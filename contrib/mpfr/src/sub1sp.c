@@ -1,8 +1,8 @@
 /* mpfr_sub1sp -- internal function to perform a "real" substraction
    All the op must have the same precision
 
-Copyright 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -155,8 +155,8 @@ mpfr_sub1sp (mpfr_ptr a, mpfr_srcptr b, mpfr_srcptr c, mpfr_rnd_t rnd_mode)
   MPFR_ASSERTD(MPFR_IS_PURE_FP(c));
 
   /* Read prec and num of limbs */
-  p = MPFR_PREC(b);
-  n = (p-1)/GMP_NUMB_BITS+1;
+  p = MPFR_PREC (b);
+  n = MPFR_PREC2LIMBS (p);
 
   /* Fast cmp of |b| and |c|*/
   bx = MPFR_GET_EXP (b);

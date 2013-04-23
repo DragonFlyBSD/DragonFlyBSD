@@ -1,7 +1,7 @@
 /* mpfr_add_ui -- add a floating-point number with a machine integer
 
-Copyright 2000, 2001, 2002, 2003, 2004, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 2000, 2001, 2002, 2003, 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -29,7 +29,7 @@ mpfr_add_ui (mpfr_ptr y, mpfr_srcptr x, unsigned long int u, mpfr_rnd_t rnd_mode
   MPFR_LOG_FUNC
     (("x[%Pu]=%.*Rg u=%d rnd=%d",
       mpfr_get_prec(x), mpfr_log_prec, x, u, rnd_mode),
-     ("y[%Pu]=%.*Rg", mpfr_get_prec (y), mpfr_get_prec, y));
+     ("y[%Pu]=%.*Rg", mpfr_get_prec (y), mpfr_log_prec, y));
 
   if (MPFR_LIKELY(u != 0) )  /* if u=0, do nothing */
     {

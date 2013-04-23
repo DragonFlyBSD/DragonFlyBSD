@@ -1,7 +1,7 @@
 /* mpfr_set_f -- set a MPFR number from a GNU MPF number
 
-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -43,7 +43,7 @@ mpfr_set_f (mpfr_ptr y, mpf_srcptr x, mpfr_rnd_t rnd_mode)
   if (SIZ(x) * MPFR_FROM_SIGN_TO_INT(MPFR_SIGN(y)) < 0)
     MPFR_CHANGE_SIGN (y);
 
-  sy = 1 + (MPFR_PREC(y) - 1) / GMP_NUMB_BITS;
+  sy = MPFR_LIMB_SIZE (y);
   my = MPFR_MANT(y);
   mx = PTR(x);
 

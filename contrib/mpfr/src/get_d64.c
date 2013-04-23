@@ -5,8 +5,8 @@ See http://gcc.gnu.org/ml/gcc/2006-06/msg00691.html,
 http://gcc.gnu.org/onlinedocs/gcc/Decimal-Float.html,
 and TR 24732 <http://www.open-std.org/jtc1/sc22/wg14/www/projects#24732>.
 
-Copyright 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -31,6 +31,10 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #define ISDIGIT(c) ('0' <= c && c <= '9')
 
 #ifdef MPFR_WANT_DECIMAL_FLOATS
+
+#ifndef DEC64_MAX
+# define DEC64_MAX 9.999999999999999E384dd
+#endif
 
 #ifdef DPD_FORMAT
 static int T[1000] = {
@@ -142,26 +146,14 @@ get_decimal64_zero (int negative)
 static _Decimal64
 get_decimal64_min (int negative)
 {
-  union ieee_double_extract x;
-
-  x.s.sig = (negative) ? 1 : 0;
-  x.s.exp = 0;
-  x.s.manh = 0;
-  x.s.manl = 1;
-  return x.d;
+  return negative ? - 1E-398dd : 1E-398dd;
 }
 
 /* construct the decimal64 largest finite number with given sign */
 static _Decimal64
 get_decimal64_max (int negative)
 {
-  union ieee_double_extract x;
-
-  x.s.sig = (negative) ? 1 : 0;
-  x.s.exp = 1919;
-  x.s.manh = 1048575; /* 2^20-1 */
-  x.s.manl = ~0;
-  return x.d;
+  return negative ? - DEC64_MAX : DEC64_MAX;
 }
 
 /* one-to-one conversion:
@@ -334,7 +326,8 @@ mpfr_get_decimal64 (mpfr_srcptr src, mpfr_rnd_t rnd_mode)
   /* the largest decimal64 number is just below 10^(385) < 2^1279 */
   else if (MPFR_UNLIKELY (e > 1279)) /* then src >= 2^1279 */
     {
-      if (MPFR_RNDZ || (rnd_mode == MPFR_RNDU && negative != 0)
+      if (rnd_mode == MPFR_RNDZ
+          || (rnd_mode == MPFR_RNDU && negative != 0)
           || (rnd_mode == MPFR_RNDD && negative == 0))
         return get_decimal64_max (negative);
       else
@@ -354,6 +347,15 @@ mpfr_get_decimal64 (mpfr_srcptr src, mpfr_rnd_t rnd_mode)
              which corresponds to s=[0.]1000...000 and e=-397 */
           if (e < -397)
             {
+              if (rnd_mode == MPFR_RNDN && e == -398)
+                {
+                  /* If 0.5E-398 < |src| < 1E-398 (smallest subnormal),
+                     src should round to +/- 1E-398 in MPFR_RNDN. */
+                  mpfr_get_str (s, &e, 10, 1, src, MPFR_RNDA);
+                  return e == -398 && s[negative] <= '5' ?
+                    get_decimal64_zero (negative) :
+                    get_decimal64_min (negative);
+                }
               if (rnd_mode == MPFR_RNDZ || rnd_mode == MPFR_RNDN
                   || (rnd_mode == MPFR_RNDD && negative == 0)
                   || (rnd_mode == MPFR_RNDU && negative != 0))
@@ -379,7 +381,8 @@ mpfr_get_decimal64 (mpfr_srcptr src, mpfr_rnd_t rnd_mode)
          which corresponds to s=[0.]9999...999 and e=385 */
       else if (e > 385)
         {
-          if (MPFR_RNDZ || (rnd_mode == MPFR_RNDU && negative != 0)
+          if (rnd_mode == MPFR_RNDZ
+              || (rnd_mode == MPFR_RNDU && negative != 0)
               || (rnd_mode == MPFR_RNDD && negative == 0))
             return get_decimal64_max (negative);
           else

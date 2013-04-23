@@ -1,8 +1,8 @@
 /* mpfr_print_binary -- print the internal binary representation of a
                      floating-point number
 
-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -84,7 +84,7 @@ mpfr_print_mant_binary(const char *str, const mp_limb_t *p, mpfr_prec_t r)
   int i;
   mpfr_prec_t count = 0;
   char c;
-  mp_size_t n = (r - 1) / GMP_NUMB_BITS + 1;
+  mp_size_t n = MPFR_PREC2LIMBS (r);
 
   printf("%s ", str);
   for(n-- ; n>=0 ; n--)
@@ -109,7 +109,7 @@ mpfr_dump_mant (const mp_limb_t *p, mpfr_prec_t r, mpfr_prec_t precx,
   int i;
   mpfr_prec_t count = 0;
   char c;
-  mp_size_t n = (r - 1) / GMP_NUMB_BITS + 1;
+  mp_size_t n = MPFR_PREC2LIMBS (r);
 
   for(n-- ; n>=0 ; n--)
     {

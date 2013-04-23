@@ -1,7 +1,7 @@
 /* mpfr_set -- copy of a floating-point number
 
-Copyright 1999, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 1999, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -48,8 +48,7 @@ mpfr_set4 (mpfr_ptr a, mpfr_srcptr b, mpfr_rnd_t rnd_mode, int signb)
       /* Same precision and b is not singular:
        * just copy the mantissa, and set the exponent and the sign
        * The result is exact. */
-      MPN_COPY (MPFR_MANT (a), MPFR_MANT (b),
-                (MPFR_PREC (b) + GMP_NUMB_BITS-1)/GMP_NUMB_BITS);
+      MPN_COPY (MPFR_MANT (a), MPFR_MANT (b), MPFR_LIMB_SIZE (b));
       MPFR_RET (0);
     }
   else

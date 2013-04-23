@@ -1,8 +1,8 @@
 /* mpfr_add1sp -- internal function to perform a "real" addition
    All the op must have the same precision
 
-Copyright 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -107,7 +107,7 @@ mpfr_add1sp (mpfr_ptr a, mpfr_srcptr b, mpfr_srcptr c, mpfr_rnd_t rnd_mode)
 
   /* Read prec and num of limbs */
   p = MPFR_PREC(b);
-  n = (p+GMP_NUMB_BITS-1)/GMP_NUMB_BITS;
+  n = MPFR_PREC2LIMBS (p);
   MPFR_UNSIGNED_MINUS_MODULO(sh, p);
   bx = MPFR_GET_EXP(b);
   d = (mpfr_uexp_t) (bx - MPFR_GET_EXP(c));

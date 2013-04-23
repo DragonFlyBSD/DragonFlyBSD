@@ -1,7 +1,7 @@
 /* mpfr_get_flt -- convert a mpfr_t to a machine single precision float
 
-Copyright 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -92,7 +92,7 @@ mpfr_get_flt (mpfr_srcptr src, mpfr_rnd_t rnd_mode)
           nbits += (125 + e);
           MPFR_ASSERTD (nbits >= 1);
         }
-      np = (nbits + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
+      np = MPFR_PREC2LIMBS (nbits);
       MPFR_ASSERTD(np <= MPFR_LIMBS_PER_FLT);
       carry = mpfr_round_raw_4 (tp, MPFR_MANT(src), MPFR_PREC(src), negative,
                                 nbits, rnd_mode);

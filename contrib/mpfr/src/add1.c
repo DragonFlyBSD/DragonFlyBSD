@@ -1,7 +1,7 @@
 /* mpfr_add1 -- internal function to perform a "real" addition
 
-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -44,12 +44,12 @@ mpfr_add1 (mpfr_ptr a, mpfr_srcptr b, mpfr_srcptr c, mpfr_rnd_t rnd_mode)
   bq = MPFR_PREC(b);
   cq = MPFR_PREC(c);
 
-  an = (aq-1)/GMP_NUMB_BITS+1; /* number of limbs of a */
+  an = MPFR_PREC2LIMBS (aq); /* number of limbs of a */
   aq2 = (mpfr_prec_t) an * GMP_NUMB_BITS;
   sh = aq2 - aq;                  /* non-significant bits in low limb */
 
-  bn = (bq-1)/GMP_NUMB_BITS+1; /* number of limbs of b */
-  cn = (cq-1)/GMP_NUMB_BITS+1; /* number of limbs of c */
+  bn = MPFR_PREC2LIMBS (bq); /* number of limbs of b */
+  cn = MPFR_PREC2LIMBS (cq); /* number of limbs of c */
 
   ap = MPFR_MANT(a);
   bp = MPFR_MANT(b);
@@ -124,7 +124,7 @@ mpfr_add1 (mpfr_ptr a, mpfr_srcptr b, mpfr_srcptr c, mpfr_rnd_t rnd_mode)
       dif = aq2 - diff_exp;
       /* dif is the number of bits of c which overlap with a' */
 
-      difn = (dif-1)/GMP_NUMB_BITS + 1;
+      difn = MPFR_PREC2LIMBS (dif);
       /* only the highest difn limbs from c have to be considered */
       if (MPFR_UNLIKELY(difn > cn))
         {

@@ -1,8 +1,8 @@
 /* mpfr_subnormalize -- Subnormalize a floating point number
    emulating sub-normal numbers.
 
-Copyright 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation, Inc.
-Contributed by the Arenaire and Caramel projects, INRIA.
+Copyright 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Free Software Foundation, Inc.
+Contributed by the AriC and Caramel projects, INRIA.
 
 This file is part of the GNU MPFR Library.
 
@@ -38,9 +38,9 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
    Set the inexact flag if the returned ternary value is non-zero.
    Set the underflow flag if a second rounding occurred (whether this
    rounding is exact or not). See
-     http://websympa.loria.fr/wwsympa/arc/mpfr/2009-06/msg00000.html
-     http://websympa.loria.fr/wwsympa/arc/mpfr/2009-06/msg00008.html
-     http://websympa.loria.fr/wwsympa/arc/mpfr/2009-06/msg00010.html
+     https://sympa.inria.fr/sympa/arc/mpfr/2009-06/msg00000.html
+     https://sympa.inria.fr/sympa/arc/mpfr/2009-06/msg00008.html
+     https://sympa.inria.fr/sympa/arc/mpfr/2009-06/msg00010.html
 */
 
 int
