@@ -261,7 +261,7 @@ devfs_rule_check_apply(struct devfs_node *node, void *unused)
 	int locked = 0;
 
 	/* Check if it is locked already. if not, we acquire the devfs lock */
-	if (!(lockstatus(&devfs_rule_lock, curthread)) == LK_EXCLUSIVE) {
+	if ((lockstatus(&devfs_rule_lock, curthread)) != LK_EXCLUSIVE) {
 		lockmgr(&devfs_rule_lock, LK_EXCLUSIVE);
 		locked = 1;
 	}

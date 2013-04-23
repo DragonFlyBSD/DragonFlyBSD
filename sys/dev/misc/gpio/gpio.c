@@ -104,7 +104,7 @@ gpio_consumer_attach(const char *consumer, void *arg, struct gpio *gp,
 	int locked = 0;
 
 	/* Check if it is locked already. if not, we acquire the lock */
-	if (!(lockstatus(&gpio_lock, curthread)) == LK_EXCLUSIVE) {
+	if ((lockstatus(&gpio_lock, curthread)) != LK_EXCLUSIVE) {
 		lockmgr(&gpio_lock, LK_EXCLUSIVE);
 		locked = 1;
 	}
@@ -146,7 +146,7 @@ gpio_consumer_detach(const char *consumer, struct gpio *gp,
 	int locked = 0;
 
 	/* Check if it is locked already. if not, we acquire the lock */
-	if (!(lockstatus(&gpio_lock, curthread)) == LK_EXCLUSIVE) {
+	if ((lockstatus(&gpio_lock, curthread)) != LK_EXCLUSIVE) {
 		lockmgr(&gpio_lock, LK_EXCLUSIVE);
 		locked = 1;
 	}
@@ -193,7 +193,7 @@ gpio_map(struct gpio *gp, int *map, int offset, u_int32_t mask)
 		return NULL;
 
 	/* Check if it is locked already. if not, we acquire the lock */
-	if (!(lockstatus(&gpio_lock, curthread)) == LK_EXCLUSIVE) {
+	if ((lockstatus(&gpio_lock, curthread)) != LK_EXCLUSIVE) {
 		lockmgr(&gpio_lock, LK_EXCLUSIVE);
 		locked = 1;
 	}
@@ -240,7 +240,7 @@ gpio_unmap(struct gpio_mapping *gmp)
 	int locked = 0;
 
 	/* Check if it is locked already. if not, we acquire the lock */
-	if (!(lockstatus(&gpio_lock, curthread)) == LK_EXCLUSIVE) {
+	if ((lockstatus(&gpio_lock, curthread)) != LK_EXCLUSIVE) {
 		lockmgr(&gpio_lock, LK_EXCLUSIVE);
 		locked = 1;
 	}
