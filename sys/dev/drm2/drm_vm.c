@@ -141,3 +141,11 @@ drm_mmap(struct dev_mmap_args *ap)
 	return 0;
 }
 
+int
+drm_mmap_single(struct dev_mmap_single_args *ap)
+{
+	struct cdev *kdev = ap->a_head.a_dev;
+
+	return drm_gem_mmap_single(kdev, ap->a_offset, ap->a_size,
+				ap->a_object, ap->a_nprot);
+}

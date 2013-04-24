@@ -120,6 +120,18 @@ struct dev_mmap_args {
 };
 
 /*
+ * int d_mmap_single(cdev_t dev, vm_ooffset_t *offset, vm_size_t size,
+ *                   struct vm_object **object, int nprot)
+ */
+struct dev_mmap_single_args {
+	struct dev_generic_args a_head;
+	vm_ooffset_t	*a_offset;
+	vm_size_t		a_size;
+	struct vm_object **a_object;
+	int		a_nprot;
+};
+
+/*
  * void d_strategy(cdev_t dev, struct bio *bio)
  */
 struct dev_strategy_args {
@@ -189,6 +201,7 @@ typedef int d_read_t (struct dev_read_args *ap);
 typedef int d_write_t (struct dev_write_args *ap);
 typedef int d_ioctl_t (struct dev_ioctl_args *ap);
 typedef int d_mmap_t (struct dev_mmap_args *ap);
+typedef int d_mmap_single_t (struct dev_mmap_single_args *ap);
 typedef int d_strategy_t (struct dev_strategy_args *ap);
 typedef int d_dump_t (struct dev_dump_args *ap);
 typedef int d_psize_t (struct dev_psize_args *ap);
@@ -219,6 +232,7 @@ struct dev_ops {
 	d_write_t	*d_write;
 	d_ioctl_t	*d_ioctl;
 	d_mmap_t	*d_mmap;
+	d_mmap_single_t	*d_mmap_single;
 	d_strategy_t	*d_strategy;
 	d_dump_t	*d_dump;
 	d_psize_t	*d_psize;
@@ -307,6 +321,8 @@ int dev_dread(cdev_t dev, struct uio *uio, int ioflag);
 int dev_dwrite(cdev_t dev, struct uio *uio, int ioflag);
 int dev_dkqfilter(cdev_t dev, struct knote *kn);
 int dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot);
+int dev_dmmap_single(cdev_t dev, vm_ooffset_t *offset, vm_size_t size,
+			struct vm_object **object, int nprot);
 int dev_dclone(cdev_t dev);
 int dev_drevoke(cdev_t dev);
 
@@ -324,6 +340,7 @@ d_read_t	noread;
 d_write_t	nowrite;
 d_ioctl_t	noioctl;
 d_mmap_t	nommap;
+d_mmap_single_t	nommap_single;
 d_strategy_t	nostrategy;
 d_dump_t	nodump;
 d_psize_t	nopsize;
@@ -343,6 +360,7 @@ extern struct syslink_desc dev_ioctl_desc;
 extern struct syslink_desc dev_dump_desc;
 extern struct syslink_desc dev_psize_desc;
 extern struct syslink_desc dev_mmap_desc;
+extern struct syslink_desc dev_mmap_single_desc;
 extern struct syslink_desc dev_strategy_desc;
 extern struct syslink_desc dev_kqfilter_desc;
 extern struct syslink_desc dev_clone_desc;

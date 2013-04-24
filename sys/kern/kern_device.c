@@ -90,6 +90,7 @@ DEVOP_DESC_INIT(ioctl);
 DEVOP_DESC_INIT(dump);
 DEVOP_DESC_INIT(psize);
 DEVOP_DESC_INIT(mmap);
+DEVOP_DESC_INIT(mmap_single);
 DEVOP_DESC_INIT(strategy);
 DEVOP_DESC_INIT(kqfilter);
 DEVOP_DESC_INIT(revoke);
@@ -109,6 +110,7 @@ struct dev_ops default_dev_ops = {
 	.d_write = nowrite,
 	.d_ioctl = noioctl,
 	.d_mmap = nommap,
+	.d_mmap_single = nommap_single,
 	.d_strategy = nostrategy,
 	.d_dump = nodump,
 	.d_psize = nopsize,
@@ -267,6 +269,30 @@ dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot)
 	if (error == 0)
 		return(ap.a_result);
 	return(-1);
+}
+
+int
+dev_dmmap_single(cdev_t dev, vm_ooffset_t *offset, vm_size_t size,
+                 struct vm_object **object, int nprot)
+{
+	struct dev_mmap_single_args ap;
+	int needmplock = dev_needmplock(dev);
+	int error;
+
+	ap.a_head.a_desc = &dev_mmap_single_desc;
+	ap.a_head.a_dev = dev;
+	ap.a_offset = offset;
+	ap.a_size = size;
+	ap.a_object = object;
+	ap.a_nprot = nprot;
+
+	if (needmplock)
+		get_mplock();
+	error = dev->si_ops->d_mmap_single(&ap);
+	if (needmplock)
+		rel_mplock();
+
+	return(error);
 }
 
 int
@@ -690,6 +716,12 @@ nokqfilter(struct dev_kqfilter_args *ap)
 
 int
 nommap(struct dev_mmap_args *ap)
+{
+	return (ENODEV);
+}
+
+int
+nommap_single(struct dev_mmap_single_args *ap)
 {
 	return (ENODEV);
 }

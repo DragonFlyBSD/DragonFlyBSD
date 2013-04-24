@@ -189,6 +189,7 @@ static struct dev_ops drm_cdevsw = {
 	.d_ioctl =	drm_ioctl,
 	.d_kqfilter =	drm_kqfilter,
 	.d_mmap =	drm_mmap,
+	.d_mmap_single =	drm_mmap_single,
 };
 
 static int drm_msi = 1;	/* Enable by default. */

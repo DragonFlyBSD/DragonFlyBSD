@@ -995,6 +995,7 @@ d_close_t drm_close;
 d_read_t drm_read;
 d_kqfilter_t drm_kqfilter;
 d_mmap_t drm_mmap;
+d_mmap_single_t drm_mmap_single;
 extern drm_local_map_t	*drm_getsarea(struct drm_device *dev);
 
 void drm_event_wakeup(struct drm_pending_event *e);

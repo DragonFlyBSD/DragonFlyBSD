@@ -1193,6 +1193,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	int rv = KERN_SUCCESS;
 	off_t objsize;
 	int docow;
+	int error;
 
 	if (size == 0)
 		return (0);
@@ -1309,11 +1310,16 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			 * Device mappings (device size unknown?).
 			 * Force them to be shared.
 			 */
-			handle = (void *)(intptr_t)vp->v_rdev;
-			object = dev_pager_alloc(handle, objsize, prot, foff);
-			if (object == NULL) {
-				lwkt_reltoken(&map->token);
-				return(EINVAL);
+			error = dev_dmmap_single(vp->v_rdev, &foff, objsize,
+						&object, prot);
+
+			if (error == ENODEV) {
+				handle = (void *)(intptr_t)vp->v_rdev;
+				object = dev_pager_alloc(handle, objsize, prot, foff);
+				if (object == NULL) {
+					lwkt_reltoken(&map->token);
+					return(EINVAL);
+				}
 			}
 			docow = MAP_PREFAULT_PARTIAL;
 			flags &= ~(MAP_PRIVATE|MAP_COPY);
