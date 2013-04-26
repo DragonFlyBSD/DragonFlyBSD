@@ -52,7 +52,7 @@
 static int dflag, eval, fflag, iflag, Pflag, vflag, Wflag, stdin_ok;
 static int rflag, Iflag, xflag;
 static uid_t uid;
-volatile sig_atomic_t info;
+static volatile sig_atomic_t info;
 
 static int	check(const char *, const char *, struct stat *);
 static int	check2(char **);
@@ -203,7 +203,7 @@ rm_tree(char **argv)
 	if ((fts = fts_open(argv, flags, NULL)) == NULL) {
 		if (fflag && errno == ENOENT)
 			return;
-		err(1, NULL);
+		err(1, "fts_open");
 	}
 	while ((p = fts_read(fts)) != NULL) {
 		switch (p->fts_info) {
@@ -366,7 +366,7 @@ rm_file(char **argv)
 		if (!fflag && !S_ISWHT(sb.st_mode) && !check(f, f, &sb))
 			continue;
 		rval = 0;
-		if (!uid &&
+		if (!uid && !S_ISWHT(sb.st_mode) &&
 		    (sb.st_flags & (UF_APPEND|UF_IMMUTABLE)) &&
 		    !(sb.st_flags & (SF_APPEND|SF_IMMUTABLE)))
 			rval = lchflags(f, sb.st_flags & ~(UF_APPEND|UF_IMMUTABLE));
