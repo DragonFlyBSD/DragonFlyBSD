@@ -369,9 +369,10 @@ ng_iface_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 				ifp->if_flags |= IFF_RUNNING;
 			}
 		} else {
-			if (ifp->if_flags & IFF_RUNNING)
+			if (ifp->if_flags & IFF_RUNNING) {
 				ifp->if_flags &= ~IFF_RUNNING;
 				ifq_clr_oactive(&ifp->if_snd);
+			}
 		}
 		break;
 
