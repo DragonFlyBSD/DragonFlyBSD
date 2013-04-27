@@ -60,7 +60,7 @@ typedef struct intrec {
 
 struct intr_info {
 	intrec_t	i_reclist;
-	struct thread	i_thread;
+	struct thread	*i_thread;	/* don't embed struct thread */
 	struct random_softc i_random;
 	int		i_running;
 	long		i_count;	/* interrupts dispatched */
@@ -285,14 +285,16 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name,
      */
     if (info->i_state == ISTATE_NOTHREAD) {
 	info->i_state = ISTATE_NORMAL;
+	info->i_thread = kmalloc(sizeof(struct thread), M_DEVBUF,
+	    M_INTWAIT | M_ZERO);
 	lwkt_create(ithread_handler, (void *)(intptr_t)intr, NULL,
-		    &info->i_thread, TDF_NOSTART | TDF_INTTHREAD, cpuid,
+		    info->i_thread, TDF_NOSTART | TDF_INTTHREAD, cpuid,
 		    "ithread%d %d", intr, cpuid);
 	if (intr >= FIRST_SOFTINT)
-	    lwkt_setpri(&info->i_thread, TDPRI_SOFT_NORM);
+	    lwkt_setpri(info->i_thread, TDPRI_SOFT_NORM);
 	else
-	    lwkt_setpri(&info->i_thread, TDPRI_INT_MED);
-	info->i_thread.td_preemptable = lwkt_preempt;
+	    lwkt_setpri(info->i_thread, TDPRI_INT_MED);
+	info->i_thread->td_preemptable = lwkt_preempt;
     }
 
     list = &info->i_reclist;
@@ -525,14 +527,14 @@ sched_ithd_intern(struct intr_info *info)
 	if (info->i_reclist == NULL) {
 	    report_stray_interrupt(info, "sched_ithd");
 	} else {
-	    if (info->i_thread.td_gd == mycpu) {
+	    if (info->i_thread->td_gd == mycpu) {
 		if (info->i_running == 0) {
 		    info->i_running = 1;
 		    if (info->i_state != ISTATE_LIVELOCKED)
-			lwkt_schedule(&info->i_thread); /* MIGHT PREEMPT */
+			lwkt_schedule(info->i_thread); /* MIGHT PREEMPT */
 		}
 	    } else {
-		lwkt_send_ipiq(info->i_thread.td_gd, sched_ithd_remote, info);
+		lwkt_send_ipiq(info->i_thread->td_gd, sched_ithd_remote, info);
 	    }
 	}
     } else {
@@ -616,7 +618,7 @@ ithread_livelock_wakeup(systimer_t st, int in_ipi __unused,
 
     info = &intr_info_ary[mycpuid][(int)(intptr_t)st->data];
     if (info->i_state != ISTATE_NOTHREAD)
-	lwkt_schedule(&info->i_thread);
+	lwkt_schedule(info->i_thread);
 }
 
 /*
