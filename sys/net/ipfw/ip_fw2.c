@@ -2480,7 +2480,7 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	pkt->pipe_nr = pipe_nr;
 
 	pkt->cpuid = mycpuid;
-	pkt->msgport = cur_netport();
+	pkt->msgport = netisr_curport();
 
 	id = &fwa->f_id;
 	fid = &pkt->id;

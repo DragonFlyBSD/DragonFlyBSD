@@ -166,7 +166,7 @@ extern lwkt_port netisr_apanic_rport;
 extern lwkt_port netisr_sync_port;
 
 lwkt_port_t	netisr_portfn(int cpu);
-lwkt_port_t	cur_netport(void);
+lwkt_port_t	netisr_curport(void);
 
 void		netisr_register(int, netisr_fn_t, netisr_cpufn_t);
 void		netisr_register_hashcheck(int, netisr_hashck_t);
@@ -186,8 +186,6 @@ void		netmsg_service_port_init(lwkt_port_t);
 void		netmsg_service_sync(void);
 void		netmsg_sync_handler(netmsg_t);
 void		schednetisr(int);
-
-#define curnetport	cur_netport()
 
 #endif	/* _KERNEL */
 
