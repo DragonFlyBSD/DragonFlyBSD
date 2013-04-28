@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2013 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -79,48 +79,78 @@ struct hammer2_state;
 struct hammer2_msg;
 
 /*
- * The chain structure tracks blockref recursions all the way to
- * the root volume.  These consist of indirect blocks, inodes,
- * and eventually the volume header.
+ * The chain structure tracks blockref recursions all the way to the root
+ * volume.  These consist of indirect blocks, inodes, and eventually the
+ * volume header itself.
  *
- * The chain structure is embedded in the hammer2_mount, hammer2_inode,
- * and other system memory structures.  The chain structure typically
- * implements the reference count and busy flag for the larger structure.
+ * In situations where a duplicate is needed to represent different snapshots
+ * or flush points a new chain will be allocated but associated with the
+ * same shared chain_core.  The RBTREE is contained in the shared chain_core
+ * and entries in the RBTREE are versioned.
  *
- * It is always possible to track a chain element all the way back to the
- * root by following the (parent) links.  (index) is a type-dependent index
- * in the parent indicating where in the parent the chain element resides.
+ * Duplication can occur whenever a chain must be modified.  Note that
+ * a deletion is not considered a modification.
  *
- * When a blockref is added or deleted the related chain element is marked
- * modified and all of its parents are marked SUBMODIFIED (the parent
- * recursion can stop once we hit a node that is already marked SUBMODIFIED).
- * A deleted chain element must remain intact until synchronized against
- * its parent.
+ *	(a) General modifications at data leafs
+ *	(b) When a chain is resized
+ *	(c) When a chain's blockref array is updated
+ *	(d) When a chain is renamed
+ *	(e) When a chain is moved (when an indirect block is split)
  *
- * The blockref at (parent, index) is not adjusted until the modified chain
- * element is flushed and unmarked.  Until then the child's blockref may
- * not match the blockref at (parent, index).
+ * Advantages:
+ *
+ *	(1) Fully coherent snapshots can be taken without requiring
+ *	    a pre-flush, resulting in extremely fast (sub-millisecond)
+ *	    snapshots.
+ *
+ *	(2) Multiple synchronization points can be in-flight at the same
+ *	    time, representing multiple snapshots or flushes.
+ *
+ *	(3) The algorithms needed to keep track of everything are actually
+ *	    not that complex.
+ *
+ * Special Considerations:
+ *
+ *	A chain is ref-counted on a per-chain basis, but the chain's lock
+ *	is associated with the shared chain_core and is not per-chain.
+ *
+ *	Each chain is representative of a filesystem topology.  Even
+ *	though the shared chain_core's are effectively multi-homed, the
+ *	chain structure is not.
+ *
+ *	chain->parent is a stable pointer and can be iterated without locking
+ *	as long as either the chain or *any* deep child under the chain
+ *	is held.
  */
 RB_HEAD(hammer2_chain_tree, hammer2_chain);
 TAILQ_HEAD(flush_deferral_list, hammer2_chain);
 
-struct hammer2_chain {
-	ccms_cst_t	cst;			/* attr or data cst */
-	struct hammer2_blockref	bref;
-	struct hammer2_blockref	bref_flush;	/* synchronized w/MOVED bit */
-	struct hammer2_chain	*parent;	/* return chain to root */
-	struct hammer2_chain_tree rbhead;
-	struct hammer2_state	*state;		/* if active cache msg */
-	RB_ENTRY(hammer2_chain) rbnode;
-	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
+struct hammer2_chain_core {
+	struct ccms_cst	cst;
+	u_int		sharecnt;
+	struct hammer2_chain_tree rbtree;
+};
 
-	struct buf	*bp;		/* buffer cache (ro) */
-	hammer2_media_data_t *data;	/* modified copy of data (rw) */
-	u_int		bytes;		/* physical size of data */
-	int		index;		/* index in parent */
-	u_int		flushing;	/* element undergoing flush (count) */
-	u_int		refs;
+typedef struct hammer2_chain_core hammer2_chain_core_t;
+
+struct hammer2_chain {
+	RB_ENTRY(hammer2_chain) rbnode;
+	hammer2_blockref_t	bref;
+	hammer2_chain_core_t	*core;
+	struct hammer2_chain	*parent;
+	struct hammer2_state	*state;		/* if active cache msg */
+	struct hammer2_mount	*hmp;
+	struct hammer2_chain	*duplink;	/* duplication link */
+
+	hammer2_tid_t	create_tid;		/* snapshot/flush filter */
+	hammer2_tid_t	delete_tid;
+	struct buf	*bp;			/* physical data buffer */
+	u_int		bytes;			/* physical data size */
+	int		index;			/* blockref index in parent */
 	u_int		flags;
+	u_int		refs;
+	hammer2_media_data_t *data;		/* data pointer shortcut */
+	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
 };
 
 typedef struct hammer2_chain hammer2_chain_t;
@@ -128,17 +158,8 @@ typedef struct hammer2_chain hammer2_chain_t;
 int hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2);
 RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
-/*
- * MOVED - This bit is set during the flush when the MODIFIED bit is cleared,
- *	   indicating that the parent's blocktable must inherit a change to
- *	   the bref (typically a block reallocation)
- *
- *	   It must also be set in situations where a chain is not MODIFIED
- *	   but whos bref has changed (typically due to fields other than
- *	   a block reallocation).
- */
-#define HAMMER2_CHAIN_MODIFIED		0x00000001	/* active mods */
-#define HAMMER2_CHAIN_UNUSED0002	0x00000002
+#define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
+#define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
 #define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
 #define HAMMER2_CHAIN_SUBMODIFIED	0x00000008	/* 1+ subs modified */
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
@@ -146,10 +167,10 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
 #define HAMMER2_CHAIN_MOVED		0x00000080	/* bref changed */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
-#define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list*/
+#define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list */
 #define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying inode */
-#define HAMMER2_CHAIN_MODIFIED_AUX	0x00000800	/* hmp->vchain only */
-#define HAMMER2_CHAIN_MODIFY_TID	0x00001000	/* mod updates field */
+#define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
+#define HAMMER2_CHAIN_UNUSED1000	0x00001000
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 
@@ -165,10 +186,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  *
  * NOTE: OPTDATA allows us to avoid instantiating buffers for INDIRECT
  *	 blocks in the INITIAL-create state.
- *
- * NOTE: NO_MODIFY_TID tells the function to not set HAMMER2_CHAIN_MODIFY_TID
- *	 when marking the chain modified (used when a sub-chain modification
- *	 propagates upward).
  */
 #define HAMMER2_MODIFY_NOSUB		0x00000001	/* do not set SUBMOD */
 #define HAMMER2_MODIFY_OPTDATA		0x00000002	/* data can be NULL */
@@ -183,6 +200,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_RESOLVE_MASK		0x0F
 
 #define HAMMER2_RESOLVE_SHARED		0x10
+#define HAMMER2_RESOLVE_NOREF		0x20
 
 /*
  * Cluster different types of storage together for allocations
@@ -237,7 +255,7 @@ struct hammer2_inode {
 	struct hammer2_pfsmount	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;
-	hammer2_chain_t		*chain;
+	hammer2_chain_t		*chain;		/* NOTE: rehomed on rename */
 	struct lockf		advlock;
 	u_int			flags;
 	u_int			refs;		/* +vpref, +flushref */
@@ -248,6 +266,22 @@ typedef struct hammer2_inode hammer2_inode_t;
 #define HAMMER2_INODE_MODIFIED		0x0001
 #define HAMMER2_INODE_DIRTYEMBED	0x0002
 #define HAMMER2_INODE_RENAME_INPROG	0x0004
+
+/*
+ * A hammer2 transaction placeholder.
+ *
+ * This structure is required for all modifying operations, including
+ * flushes.  It holds the transaction id allocated for the modifying
+ * operation and is also used to interlock flushes and snapshots.
+ */
+struct hammer2_trans {
+	struct hammer2_mount	*hmp;
+	hammer2_tid_t		sync_tid;
+	uint8_t			inodes_created;
+	uint8_t			dummy[7];
+};
+
+typedef struct hammer2_trans hammer2_trans_t;
 
 /*
  * XXX
@@ -359,12 +393,12 @@ extern long hammer2_ioa_volu_write;
 #define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
 #define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
 
-hammer2_chain_t *hammer2_inode_lock_ex(hammer2_inode_t *ip);
-hammer2_chain_t *hammer2_inode_lock_sh(hammer2_inode_t *ip);
-void hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain);
-void hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_chain_t *chain);
+void hammer2_inode_lock_ex(hammer2_inode_t *ip);
+void hammer2_inode_lock_sh(hammer2_inode_t *ip);
+void hammer2_inode_unlock_ex(hammer2_inode_t *ip);
+void hammer2_inode_unlock_sh(hammer2_inode_t *ip);
 void hammer2_voldata_lock(hammer2_mount_t *hmp);
-void hammer2_voldata_unlock(hammer2_mount_t *hmp);
+void hammer2_voldata_unlock(hammer2_mount_t *hmp, int modify);
 ccms_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
 ccms_state_t hammer2_inode_lock_upgrade(hammer2_inode_t *ip);
 void hammer2_inode_lock_restore(hammer2_inode_t *ip, ccms_state_t ostate);
@@ -398,30 +432,34 @@ void hammer2_inode_unlock_nlinks(hammer2_inode_t *ip);
 hammer2_inode_t *hammer2_inode_get(hammer2_mount_t *hmp,
 			hammer2_pfsmount_t *pmp, hammer2_inode_t *dip,
 			hammer2_chain_t *chain);
-void hammer2_inode_put(hammer2_inode_t *ip, hammer2_chain_t *passed_chain);
+void hammer2_inode_put(hammer2_inode_t *ip);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
 int hammer2_inode_calc_alloc(hammer2_key_t filesize);
 
-int hammer2_inode_create(hammer2_inode_t *dip,
+hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
+			hammer2_inode_t *dip,
 			struct vattr *vap, struct ucred *cred,
 			const uint8_t *name, size_t name_len,
-			hammer2_inode_t **nipp, hammer2_chain_t **nchainp);
-
-int hammer2_inode_duplicate(hammer2_inode_t *dip,
-			hammer2_chain_t *ochain, hammer2_chain_t **nchainp);
-int hammer2_inode_connect(hammer2_inode_t *dip, hammer2_chain_t **chainp,
+			int *errorp);
+hammer2_chain_t *hammer2_inode_duplicate(hammer2_trans_t *trans,
+			hammer2_chain_t *ochain,
+                        hammer2_inode_t *dip, int *errorp);
+int hammer2_inode_connect(hammer2_trans_t *trans,
+			hammer2_inode_t *ip,
+			hammer2_inode_t *dip,
+			hammer2_chain_t **chainp,
 			const uint8_t *name, size_t name_len);
-hammer2_inode_t *hammer2_inode_common_parent(hammer2_mount_t *hmp,
-			hammer2_inode_t *fdip, hammer2_inode_t *tdip);
+hammer2_inode_t *hammer2_inode_common_parent(hammer2_inode_t *fdip,
+			hammer2_inode_t *tdip);
 
-int hammer2_unlink_file(hammer2_inode_t *dip,
-			const uint8_t *name, size_t name_len,
-			int isdir, hammer2_chain_t *retain_chain);
-int hammer2_hardlink_consolidate(hammer2_inode_t *ip, hammer2_chain_t **chainp,
+int hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
+			const uint8_t *name, size_t name_len, int isdir);
+int hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
+			hammer2_chain_t **chainp,
 			hammer2_inode_t *tdip, int linkcnt);
-int hammer2_hardlink_deconsolidate(hammer2_inode_t *dip,
+int hammer2_hardlink_deconsolidate(hammer2_trans_t *trans, hammer2_inode_t *dip,
 			hammer2_chain_t **chainp, hammer2_chain_t **ochainp);
 int hammer2_hardlink_find(hammer2_inode_t *dip,
 			hammer2_chain_t **chainp, hammer2_chain_t **ochainp);
@@ -432,44 +470,53 @@ int hammer2_hardlink_find(hammer2_inode_t *dip,
 void hammer2_modify_volume(hammer2_mount_t *hmp);
 hammer2_chain_t *hammer2_chain_alloc(hammer2_mount_t *hmp,
 				hammer2_blockref_t *bref);
-void hammer2_chain_free(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-void hammer2_chain_ref(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-void hammer2_chain_drop(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-int hammer2_chain_lock(hammer2_mount_t *hmp, hammer2_chain_t *chain, int how);
-void hammer2_chain_moved(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-void hammer2_chain_modify(hammer2_mount_t *hmp, hammer2_chain_t *chain,
-				int flags);
-void hammer2_chain_resize(hammer2_inode_t *ip, hammer2_chain_t *chain,
+void hammer2_chain_core_alloc(hammer2_chain_t *chain,
+				hammer2_chain_core_t *core);
+void hammer2_chain_free(hammer2_chain_t *chain);
+void hammer2_chain_ref(hammer2_chain_t *chain);
+void hammer2_chain_drop(hammer2_chain_t *chain);
+int hammer2_chain_lock(hammer2_chain_t *chain, int how);
+void hammer2_chain_moved(hammer2_chain_t *chain);
+void hammer2_chain_modify(hammer2_trans_t *trans,
+				hammer2_chain_t *chain, int flags);
+void hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
+				struct buf *bp,
+				hammer2_chain_t *parent,
+				hammer2_chain_t **chainp,
 				int nradix, int flags);
-void hammer2_chain_unlock(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-void hammer2_chain_wait(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-hammer2_chain_t *hammer2_chain_find(hammer2_mount_t *hmp,
-				hammer2_chain_t *parent, int index);
-hammer2_chain_t *hammer2_chain_get(hammer2_mount_t *hmp,
-				hammer2_chain_t *parent,
-				int index, int flags);
-hammer2_chain_t *hammer2_chain_lookup(hammer2_mount_t *hmp,
-				hammer2_chain_t **parentp,
+void hammer2_chain_unlock(hammer2_chain_t *chain);
+void hammer2_chain_wait(hammer2_chain_t *chain);
+hammer2_chain_t *hammer2_chain_find(hammer2_chain_t *parent, int index);
+hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int index,
+				int flags);
+hammer2_chain_t *hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags);
+void hammer2_chain_lookup_done(hammer2_chain_t *parent);
+hammer2_chain_t *hammer2_chain_lookup(hammer2_chain_t **parentp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
 				int flags);
-hammer2_chain_t *hammer2_chain_next(hammer2_mount_t *hmp,
-				hammer2_chain_t **parentp,
+hammer2_chain_t *hammer2_chain_next(hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
 				int flags);
-hammer2_chain_t *hammer2_chain_create(hammer2_mount_t *hmp,
+int hammer2_chain_create(hammer2_trans_t *trans,
 				hammer2_chain_t *parent,
-				hammer2_chain_t *chain,
+				hammer2_chain_t **chainp,
 				hammer2_key_t key, int keybits,
-				int type, size_t bytes,
-				int *errorp);
-void hammer2_chain_delete(hammer2_mount_t *hmp, hammer2_chain_t *parent,
-				hammer2_chain_t *chain, int retain);
-void hammer2_chain_flush(hammer2_mount_t *hmp, hammer2_chain_t *chain,
-				hammer2_tid_t modify_tid);
-void hammer2_chain_commit(hammer2_mount_t *hmp, hammer2_chain_t *chain);
-void hammer2_chain_parent_setsubmod(hammer2_mount_t *hmp,
+				int type, size_t bytes);
+void hammer2_chain_duplicate(hammer2_trans_t *trans,
+				hammer2_chain_t *parent, int i,
+				hammer2_chain_t **chainp);
+void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				hammer2_chain_t *chain);
+void hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);
+void hammer2_chain_commit(hammer2_trans_t *trans, hammer2_chain_t *chain);
+void hammer2_chain_parent_setsubmod(hammer2_chain_t *chain);
+
+/*
+ * hammer2_trans.c
+ */
+void hammer2_trans_init(hammer2_trans_t *trans, hammer2_mount_t *hmp);
+void hammer2_trans_done(hammer2_trans_t *trans);
 
 /*
  * hammer2_ioctl.c

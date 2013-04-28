@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011, 2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2013 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -48,7 +48,10 @@
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
 
+#define REPORT_REFS_ERRORS 1	/* XXX remove me */
+
 struct hammer2_sync_info {
+	hammer2_trans_t trans;
 	int error;
 	int waitfor;
 };
@@ -378,18 +381,22 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	if (create_hmp) {
 		/*
+		 * Presetup
+		 */
+		lockinit(&hmp->alloclk, "h2alloc", 0, 0);
+		lockinit(&hmp->voldatalk, "voldata", 0, LK_CANRECURSE);
+
+		/*
 		 * vchain setup. vchain.data is special cased to NULL.
 		 * vchain.refs is initialized and will never drop to 0.
 		 */
+		hmp->vchain.hmp = hmp;
 		hmp->vchain.refs = 1;
 		hmp->vchain.data = (void *)&hmp->voldata;
 		hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
 		hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
-		hmp->vchain.bref_flush = hmp->vchain.bref;
-		ccms_cst_init(&hmp->vchain.cst, NULL);
+		hammer2_chain_core_alloc(&hmp->vchain, NULL);
 		/* hmp->vchain.u.xxx is left NULL */
-		lockinit(&hmp->alloclk, "h2alloc", 0, 0);
-		lockinit(&hmp->voldatalk, "voldata", 0, LK_CANRECURSE);
 
 		/*
 		 * Install the volume header
@@ -423,32 +430,31 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * represented by the label.
 	 */
 	if (create_hmp) {
-		parent = &hmp->vchain;
-		hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
-		schain = hammer2_chain_lookup(hmp, &parent,
+		parent = hammer2_chain_lookup_init(&hmp->vchain, 0);
+		schain = hammer2_chain_lookup(&parent,
 				      HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY, 0);
-		hammer2_chain_unlock(hmp, parent);
+		hammer2_chain_lookup_done(parent);
 		if (schain == NULL) {
 			kprintf("hammer2_mount: invalid super-root\n");
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return EINVAL;
 		}
-		hammer2_chain_ref(hmp, schain);	/* for hmp->schain */
-		hmp->schain = schain;		/* left locked */
+		hammer2_chain_ref(schain);	/* for hmp->schain */
+		hmp->schain = schain;		/* left locked for inode_get */
 		hmp->sroot = hammer2_inode_get(hmp, NULL, NULL, schain);
-		hammer2_inode_ref(hmp->sroot);	/* for hmp->sroot */
-		hammer2_inode_unlock_ex(hmp->sroot, NULL);
+		hammer2_inode_ref(hmp->sroot);	     /* for hmp->sroot */
+		hammer2_inode_unlock_ex(hmp->sroot); /* eats schain lock */
 	} else {
 		schain = hmp->schain;
-		hammer2_chain_lock(hmp, schain, HAMMER2_RESOLVE_ALWAYS);
 	}
 
 	/*
-	 * schain left locked at this point, use as basis for PFS search.
+	 * schain only has 1 ref now for its hmp->schain assignment.
+	 * Setup for lookup (which will lock it).
 	 */
-	parent = schain;
+	parent = hammer2_chain_lookup_init(schain, 0);
 	lhc = hammer2_dirhash(label, strlen(label));
-	rchain = hammer2_chain_lookup(hmp, &parent,
+	rchain = hammer2_chain_lookup(&parent,
 				      lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 				      0);
 	while (rchain) {
@@ -456,18 +462,18 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		    strcmp(label, rchain->data->ipdata.filename) == 0) {
 			break;
 		}
-		rchain = hammer2_chain_next(hmp, &parent, rchain,
+		rchain = hammer2_chain_next(&parent, rchain,
 					    lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 					    0);
 	}
-	hammer2_chain_unlock(hmp, parent);
+	hammer2_chain_lookup_done(parent);
 	if (rchain == NULL) {
 		kprintf("hammer2_mount: PFS label not found\n");
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EINVAL;
 	}
 	if (rchain->flags & HAMMER2_CHAIN_MOUNTED) {
-		hammer2_chain_unlock(hmp, rchain);
+		hammer2_chain_unlock(rchain);
 		kprintf("hammer2_mount: PFS label already mounted!\n");
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EBUSY;
@@ -477,11 +483,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	/*
 	 * NOTE: *_get() integrates chain's lock into the inode lock.
 	 */
-	hammer2_chain_ref(hmp, rchain);		/* for pmp->rchain */
+	hammer2_chain_ref(rchain);		/* for pmp->rchain */
 	pmp->rchain = rchain;			/* left held & unlocked */
 	pmp->iroot = hammer2_inode_get(hmp, pmp, NULL, rchain);
 	hammer2_inode_ref(pmp->iroot);		/* ref for pmp->iroot */
-	hammer2_inode_unlock_ex(pmp->iroot, rchain); /* iroot & its chain */
+	hammer2_inode_unlock_ex(pmp->iroot);	/* iroot & its chain */
 
 	kprintf("iroot %p\n", pmp->iroot);
 
@@ -534,7 +540,6 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 {
 	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
-	hammer2_chain_t *chain;
 	int flags;
 	int error = 0;
 	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
@@ -569,16 +574,14 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	 */
 	hammer2_voldata_lock(hmp);
 	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
-				 HAMMER2_CHAIN_MODIFIED_AUX |
 				 HAMMER2_CHAIN_SUBMODIFIED)) {
-		hammer2_voldata_unlock(hmp);
+		hammer2_voldata_unlock(hmp, 0);
 		hammer2_vfs_sync(mp, MNT_WAIT);
 	} else {
-		hammer2_voldata_unlock(hmp);
+		hammer2_voldata_unlock(hmp, 0);
 	}
 	if (hmp->pmp_count == 0) {
 		if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
-					 HAMMER2_CHAIN_MODIFIED_AUX |
 					 HAMMER2_CHAIN_SUBMODIFIED)) {
 			kprintf("hammer2_unmount: chains left over after "
 				"final sync\n");
@@ -592,17 +595,29 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	 * clean).
 	 */
 	if (pmp->iroot) {
-		chain = hammer2_inode_lock_ex(pmp->iroot);
-		hammer2_inode_put(pmp->iroot, chain);
+		hammer2_inode_lock_ex(pmp->iroot);
+		hammer2_inode_put(pmp->iroot);
 		/* lock destroyed by the put */
+#if REPORT_REFS_ERRORS
+		if (pmp->iroot->refs != 1)
+			kprintf("PMP->IROOT %p REFS WRONG %d\n",
+				pmp->iroot, pmp->iroot->refs);
+#else
 		KKASSERT(pmp->iroot->refs == 1);
+#endif
 		hammer2_inode_drop(pmp->iroot);	    /* ref for pmp->iroot */
 		pmp->iroot = NULL;
 	}
 	if (pmp->rchain) {
 		atomic_clear_int(&pmp->rchain->flags, HAMMER2_CHAIN_MOUNTED);
+#if REPORT_REFS_ERRORS
+		if (pmp->rchain->refs != 1)
+			kprintf("PMP->RCHAIN %p REFS WRONG %d\n",
+				pmp->rchain, pmp->rchain->refs);
+#else
 		KKASSERT(pmp->rchain->refs == 1);
-		hammer2_chain_drop(hmp, pmp->rchain);
+#endif
+		hammer2_chain_drop(pmp->rchain);
 		pmp->rchain = NULL;
 	}
 	ccms_domain_uninit(&pmp->ccms_dom);
@@ -621,8 +636,14 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			hmp->sroot = NULL;
 		}
 		if (hmp->schain) {
+#if REPORT_REFS_ERRORS
+			if (hmp->schain->refs != 1)
+				kprintf("HMP->SCHAIN %p REFS WRONG %d\n",
+					hmp->schain, hmp->schain->refs);
+#else
 			KKASSERT(hmp->schain->refs == 1);
-			hammer2_chain_drop(hmp, hmp->schain);
+#endif
+			hammer2_chain_drop(hmp->schain);
 			hmp->schain = NULL;
 		}
 
@@ -638,6 +659,13 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		}
 	}
 	hammer2_mount_unlock(hmp);
+
+	/*
+	 * Final drop of embedded volume root chain to clean up
+	 * vchain.core (vchain structure is not flagged ALLOCATED
+	 * so it is cleaned out and then left).
+	 */
+	hammer2_chain_drop(&hmp->vchain);
 
 	pmp->mp = NULL;
 	pmp->hmp = NULL;
@@ -670,7 +698,6 @@ int
 hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 {
 	hammer2_pfsmount_t *pmp;
-	hammer2_chain_t *ichain;
 	hammer2_mount_t *hmp;
 	int error;
 	struct vnode *vp;
@@ -682,9 +709,9 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 		*vpp = NULL;
 		error = EINVAL;
 	} else {
-		ichain = hammer2_inode_lock_sh(pmp->iroot);
+		hammer2_inode_lock_sh(pmp->iroot);
 		vp = hammer2_igetv(pmp->iroot, &error);
-		hammer2_inode_unlock_sh(pmp->iroot, ichain);
+		hammer2_inode_unlock_sh(pmp->iroot);
 		*vpp = vp;
 		if (vp == NULL)
 			kprintf("vnodefail\n");
@@ -766,7 +793,6 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	hammer2_mount_t *hmp;
 	int flags;
 	int error;
-	int haswork;
 	int i;
 
 	hmp = MPTOHMP(mp);
@@ -775,6 +801,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	if (waitfor & MNT_LAZY)
 		flags |= VMSC_ONEPASS;
 
+	hammer2_trans_init(&info.trans, hmp);
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vmntvnodescan(mp, flags | VMSC_NOWAIT,
@@ -794,16 +821,13 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		/* XXX */
 	}
 #endif
-	hammer2_chain_lock(hmp, &hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
+	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
-				 HAMMER2_CHAIN_MODIFIED_AUX |
 				 HAMMER2_CHAIN_SUBMODIFIED)) {
-		hammer2_chain_flush(hmp, &hmp->vchain, 0);
-		haswork = 1;
-	} else {
-		haswork = 0;
+		hammer2_chain_flush(&info.trans, &hmp->vchain);
 	}
-	hammer2_chain_unlock(hmp, &hmp->vchain);
+	hammer2_chain_unlock(&hmp->vchain);
+	hammer2_trans_done(&info.trans);
 
 	error = 0;
 
@@ -823,7 +847,13 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	error = VOP_FSYNC(hmp->devvp, MNT_WAIT, 0);
 	vn_unlock(hmp->devvp);
 
-	if (error == 0 && haswork) {
+	/*
+	 * The flush code sets CHAIN_VOLUMESYNC to indicate that the
+	 * volume header needs synchronization via hmp->volsync.
+	 *
+	 * XXX synchronize the flag & data with only this flush XXX
+	 */
+	if (error == 0 && (hmp->vchain.flags & HAMMER2_CHAIN_VOLUMESYNC)) {
 		struct buf *bp;
 
 		/*
@@ -856,6 +886,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 			i, (intmax_t)hmp->volsync.volu_size);
 		bp = getblk(hmp->devvp, i * HAMMER2_ZONE_BYTES64,
 			    HAMMER2_PBUFSIZE, 0, 0);
+		atomic_clear_int(&hmp->vchain.flags, HAMMER2_CHAIN_VOLUMESYNC);
 		bcopy(&hmp->volsync, bp->b_data, HAMMER2_PBUFSIZE);
 		bawrite(bp);
 		hmp->volhdrno = i;
@@ -1033,7 +1064,6 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 void
 hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 {
-	hammer2_chain_t *chain;
 	hammer2_inode_data_t *ipdata;
 	size_t name_len;
 
@@ -1047,14 +1077,14 @@ hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 	/*
 	 * Setup LNK_CONN fields for autoinitiated state machine
 	 */
-	chain = hammer2_inode_lock_ex(pmp->iroot);
-	ipdata = &chain->data->ipdata;
+	hammer2_inode_lock_ex(pmp->iroot);
+	ipdata = &pmp->iroot->chain->data->ipdata;
 	pmp->iocom.auto_lnk_conn.pfs_clid = ipdata->pfs_clid;
 	pmp->iocom.auto_lnk_conn.pfs_fsid = ipdata->pfs_fsid;
 	pmp->iocom.auto_lnk_conn.pfs_type = ipdata->pfs_type;
 	pmp->iocom.auto_lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
 	pmp->iocom.auto_lnk_conn.peer_type = pmp->hmp->voldata.peer_type;
-	hammer2_inode_unlock_ex(pmp->iroot, chain);
+	hammer2_inode_unlock_ex(pmp->iroot);
 
 	/*
 	 * Filter adjustment.  Clients do not need visibility into other
@@ -1176,7 +1206,7 @@ hammer2_autodmsg(kdmsg_msg_t *msg)
 				continue;
 			hammer2_volconf_update(pmp, copyid);
 		}
-		hammer2_voldata_unlock(hmp);
+		hammer2_voldata_unlock(hmp, 0);
 	}
 	if ((msg->any.head.cmd & DMSGF_DELETE) &&
 	    msg->state && (msg->state->txcmd & DMSGF_DELETE) == 0) {

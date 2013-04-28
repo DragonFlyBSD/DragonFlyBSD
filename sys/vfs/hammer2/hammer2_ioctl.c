@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2013 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -175,7 +175,7 @@ hammer2_ioctl_remote_scan(hammer2_inode_t *ip, void *data)
 
 	hammer2_voldata_lock(hmp);
 	remote->copy1 = hmp->voldata.copyinfo[copyid];
-	hammer2_voldata_unlock(hmp);
+	hammer2_voldata_unlock(hmp, 0);
 
 	/*
 	 * Adjust nextid (GET only)
@@ -223,7 +223,7 @@ hammer2_ioctl_remote_add(hammer2_inode_t *ip, void *data)
 	hmp->voldata.copyinfo[copyid] = remote->copy1;
 	hammer2_volconf_update(pmp, copyid);
 failed:
-	hammer2_voldata_unlock(hmp);
+	hammer2_voldata_unlock(hmp, 1);
 	return (error);
 }
 
@@ -261,7 +261,7 @@ hammer2_ioctl_remote_del(hammer2_inode_t *ip, void *data)
 	hmp->voldata.copyinfo[copyid].copyid = 0;
 	hammer2_volconf_update(pmp, copyid);
 failed:
-	hammer2_voldata_unlock(hmp);
+	hammer2_voldata_unlock(hmp, 1);
 	return (error);
 }
 
@@ -280,7 +280,7 @@ hammer2_ioctl_remote_rep(hammer2_inode_t *ip, void *data)
 
 	hammer2_voldata_lock(hmp);
 	/*hammer2_volconf_update(pmp, copyid);*/
-	hammer2_voldata_unlock(hmp);
+	hammer2_voldata_unlock(hmp, 1);
 
 	return(0);
 }
@@ -308,7 +308,7 @@ hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data)
 		return (EINVAL);
 
 	hammer2_voldata_lock(hmp);
-	hammer2_voldata_unlock(hmp);
+	hammer2_voldata_unlock(hmp, 0);
 
 	return(0);
 }
@@ -329,25 +329,22 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	error = 0;
 	hmp = ip->hmp;
 	pfs = data;
-	parent = hmp->schain;
-	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS);
-	if (error)
-		goto done;
+	parent = hammer2_chain_lookup_init(hmp->schain, 0);
 
 	/*
 	 * Search for the first key or specific key.  Remember that keys
 	 * can be returned in any order.
 	 */
 	if (pfs->name_key == 0) {
-		chain = hammer2_chain_lookup(hmp, &parent,
+		chain = hammer2_chain_lookup(&parent,
 					     0, (hammer2_key_t)-1, 0);
 	} else {
-		chain = hammer2_chain_lookup(hmp, &parent,
+		chain = hammer2_chain_lookup(&parent,
 					     pfs->name_key, pfs->name_key, 0);
 	}
 	while (chain && chain->bref.type != HAMMER2_BREF_TYPE_INODE) {
-		chain = hammer2_chain_next(hmp, &parent, chain,
-				     0, (hammer2_key_t)-1, 0);
+		chain = hammer2_chain_next(&parent, chain,
+					   0, (hammer2_key_t)-1, 0);
 	}
 	if (chain) {
 		/*
@@ -367,12 +364,12 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		 * Calculate the next field
 		 */
 		do {
-			chain = hammer2_chain_next(hmp, &parent, chain,
-					     0, (hammer2_key_t)-1, 0);
+			chain = hammer2_chain_next(&parent, chain,
+						   0, (hammer2_key_t)-1, 0);
 		} while (chain && chain->bref.type != HAMMER2_BREF_TYPE_INODE);
 		if (chain) {
 			pfs->name_next = chain->data->ipdata.name_key;
-			hammer2_chain_unlock(hmp, chain);
+			hammer2_chain_unlock(chain);
 		} else {
 			pfs->name_next = (hammer2_key_t)-1;
 		}
@@ -380,8 +377,8 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		pfs->name_next = (hammer2_key_t)-1;
 		error = ENOENT;
 	}
-done:
-	hammer2_chain_unlock(hmp, parent);
+	hammer2_chain_lookup_done(parent);
+
 	return (error);
 }
 
@@ -403,17 +400,13 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	error = 0;
 	hmp = ip->hmp;
 	pfs = data;
-	parent = hmp->schain;
-	error = hammer2_chain_lock(hmp, parent, HAMMER2_RESOLVE_ALWAYS |
-						HAMMER2_RESOLVE_SHARED);
-	if (error)
-		goto done;
+	parent = hammer2_chain_lookup_init(hmp->schain, HAMMER2_LOOKUP_SHARED);
 
 	pfs->name[sizeof(pfs->name) - 1] = 0;
 	len = strlen(pfs->name);
 	lhc = hammer2_dirhash(pfs->name, len);
 
-	chain = hammer2_chain_lookup(hmp, &parent,
+	chain = hammer2_chain_lookup(&parent,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 				     HAMMER2_LOOKUP_SHARED);
 	while (chain) {
@@ -422,7 +415,7 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 		    bcmp(pfs->name, chain->data->ipdata.filename, len) == 0) {
 			break;
 		}
-		chain = hammer2_chain_next(hmp, &parent, chain,
+		chain = hammer2_chain_next(&parent, chain,
 					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 					   HAMMER2_LOOKUP_SHARED);
 	}
@@ -438,12 +431,11 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 		pfs->pfs_fsid = ipdata->pfs_fsid;
 		ipdata = NULL;
 
-		hammer2_chain_unlock(hmp, chain);
+		hammer2_chain_unlock(chain);
 	} else {
 		error = ENOENT;
 	}
-done:
-	hammer2_chain_unlock(hmp, parent);
+	hammer2_chain_lookup_done(parent);
 	return (error);
 }
 
@@ -454,10 +446,10 @@ static int
 hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 {
 	hammer2_inode_data_t *nipdata;
-	hammer2_chain_t *nchain;
 	hammer2_mount_t *hmp;
 	hammer2_ioc_pfs_t *pfs;
 	hammer2_inode_t *nip;
+	hammer2_trans_t trans;
 	int error;
 
 	hmp = ip->hmp;
@@ -466,17 +458,19 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 
 	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure 0-termination */
 
-	error = hammer2_inode_create(hmp->sroot, NULL, NULL,
+	hammer2_trans_init(&trans, hmp);
+	nip = hammer2_inode_create(&trans, hmp->sroot, NULL, NULL,
 				     pfs->name, strlen(pfs->name),
-				     &nip, &nchain);
+				     &error);
 	if (error == 0) {
-		hammer2_chain_modify(hmp, nchain, 0);
-		nipdata = &nchain->data->ipdata;
+		hammer2_chain_modify(&trans, nip->chain, 0);
+		nipdata = &nip->chain->data->ipdata;
 		nipdata->pfs_type = pfs->pfs_type;
 		nipdata->pfs_clid = pfs->pfs_clid;
 		nipdata->pfs_fsid = pfs->pfs_fsid;
-		hammer2_inode_unlock_ex(nip, nchain);
+		hammer2_inode_unlock_ex(nip);
 	}
+	hammer2_trans_done(&trans);
 	return (error);
 }
 
@@ -488,11 +482,14 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 {
 	hammer2_mount_t *hmp = ip->hmp;
 	hammer2_ioc_pfs_t *pfs = data;
+	hammer2_trans_t trans;
 	int error;
 
-	error = hammer2_unlink_file(hmp->sroot,
-				    pfs->name, strlen(pfs->name),
-				    0, NULL);
+	hammer2_trans_init(&trans, hmp);
+	error = hammer2_unlink_file(&trans, hmp->sroot,
+				    pfs->name, strlen(pfs->name), 0);
+	hammer2_trans_done(&trans);
+
 	return (error);
 }
 
@@ -503,12 +500,12 @@ static int
 hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_inode_t *ino = data;
-	hammer2_chain_t *chain;
 
-	chain = hammer2_inode_lock_sh(ip);
-	ino->ip_data = chain->data->ipdata;
+	hammer2_inode_lock_sh(ip);
+	ino->ip_data = ip->chain->data->ipdata;
 	ino->kdata = ip;
-	hammer2_inode_unlock_sh(ip, chain);
+	hammer2_inode_unlock_sh(ip);
+
 	return (0);
 }
 
@@ -516,16 +513,16 @@ static int
 hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_inode_t *ino = data;
-	hammer2_chain_t *chain;
 	int error = EINVAL;
 
-	chain = hammer2_inode_lock_ex(ip);
+	hammer2_inode_lock_ex(ip);
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_IQUOTA) {
 	}
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_DQUOTA) {
 	}
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_COPIES) {
 	}
-	hammer2_inode_unlock_ex(ip, chain);
+	hammer2_inode_unlock_ex(ip);
+
 	return (error);
 }

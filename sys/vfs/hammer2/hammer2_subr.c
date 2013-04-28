@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2013 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -56,7 +56,7 @@
  * NOTE: We don't combine the inode/chain lock because putting away an
  *       inode would otherwise confuse multiple lock holders of the inode.
  */
-hammer2_chain_t *
+void
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
 {
 	hammer2_chain_t *chain;
@@ -66,24 +66,26 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 
 	chain = ip->chain;
 	KKASSERT(chain != NULL);	/* for now */
-	hammer2_chain_lock(ip->hmp, chain, HAMMER2_RESOLVE_ALWAYS);
-
-	return (chain);
+	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 }
 
 void
-hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain)
+hammer2_inode_unlock_ex(hammer2_inode_t *ip)
 {
+	hammer2_chain_t *chain;
+
 	/*
 	 * XXX this will catch parent directories too which we don't
 	 *     really want.
 	 */
-	if (ip->chain && (ip->chain->flags & (HAMMER2_CHAIN_MODIFIED |
-					      HAMMER2_CHAIN_SUBMODIFIED))) {
-		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
+	chain = ip->chain;
+	if (chain) {
+		if (chain->flags & (HAMMER2_CHAIN_MODIFIED |
+				    HAMMER2_CHAIN_SUBMODIFIED)) {
+			atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
+		}
+		hammer2_chain_unlock(chain);
 	}
-	if (chain)
-		hammer2_chain_unlock(ip->hmp, chain);
 	ccms_thread_unlock(&ip->topo_cst);
 	hammer2_inode_drop(ip);
 }
@@ -97,7 +99,7 @@ hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain)
  *	 need to upgrade them.  Only one count of a shared lock can be
  *	 upgraded.
  */
-hammer2_chain_t *
+void
 hammer2_inode_lock_sh(hammer2_inode_t *ip)
 {
 	hammer2_chain_t *chain;
@@ -107,16 +109,16 @@ hammer2_inode_lock_sh(hammer2_inode_t *ip)
 
 	chain = ip->chain;
 	KKASSERT(chain != NULL);	/* for now */
-	hammer2_chain_lock(ip->hmp, chain, HAMMER2_RESOLVE_ALWAYS |
-					   HAMMER2_RESOLVE_SHARED);
-	return (chain);
+	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
+				  HAMMER2_RESOLVE_SHARED);
+
 }
 
 void
-hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_chain_t *chain)
+hammer2_inode_unlock_sh(hammer2_inode_t *ip)
 {
-	if (chain)
-		hammer2_chain_unlock(ip->hmp, chain);
+	if (ip->chain)
+		hammer2_chain_unlock(ip->chain);
 	ccms_thread_unlock(&ip->topo_cst);
 	hammer2_inode_drop(ip);
 }
@@ -146,19 +148,19 @@ hammer2_inode_lock_restore(hammer2_inode_t *ip, ccms_state_t ostate)
 void
 hammer2_mount_exlock(hammer2_mount_t *hmp)
 {
-	ccms_thread_lock(&hmp->vchain.cst, CCMS_STATE_EXCLUSIVE);
+	ccms_thread_lock(&hmp->vchain.core->cst, CCMS_STATE_EXCLUSIVE);
 }
 
 void
 hammer2_mount_shlock(hammer2_mount_t *hmp)
 {
-	ccms_thread_lock(&hmp->vchain.cst, CCMS_STATE_SHARED);
+	ccms_thread_lock(&hmp->vchain.core->cst, CCMS_STATE_SHARED);
 }
 
 void
 hammer2_mount_unlock(hammer2_mount_t *hmp)
 {
-	ccms_thread_unlock(&hmp->vchain.cst);
+	ccms_thread_unlock(&hmp->vchain.core->cst);
 }
 
 void
@@ -168,8 +170,13 @@ hammer2_voldata_lock(hammer2_mount_t *hmp)
 }
 
 void
-hammer2_voldata_unlock(hammer2_mount_t *hmp)
+hammer2_voldata_unlock(hammer2_mount_t *hmp, int modify)
 {
+	if (modify &&
+	    (hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED);
+		hammer2_chain_ref(&hmp->vchain);
+	}
 	lockmgr(&hmp->voldatalk, LK_RELEASE);
 }
 

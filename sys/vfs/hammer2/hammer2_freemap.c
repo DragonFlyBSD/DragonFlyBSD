@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2013 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -128,8 +128,7 @@ hammer2_freemap_alloc(hammer2_mount_t *hmp, int type, size_t bytes)
 					~HAMMER2_SEGMASK64;
 			fc->bulk = data_next;
 		}
-		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED_AUX);
-		hammer2_voldata_unlock(hmp);
+		hammer2_voldata_unlock(hmp, 1);
 	}
 	lockmgr(&hmp->alloclk, LK_RELEASE);
 
