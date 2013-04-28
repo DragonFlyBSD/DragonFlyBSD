@@ -584,6 +584,9 @@ retry:
  * Connect the target inode to the media topology at (dip, name, len).
  * This function creates a directory entry and replace (*chainp).
  *
+ * The caller usually holds the related inode exclusive locked through this
+ * call and is also responsible for replacing ip->chain after we return.
+ *
  * If (*chainp) was marked DELETED then it represents a terminus inode
  * with no other nlinks, we can simply duplicate the chain (in-memory
  * chain structures cannot be moved within the in-memory topology, only
@@ -602,14 +605,15 @@ retry:
  * might reside in some parent directory.  It will not be the
  * OBJTYPE_HARDLINK pointer.
  *
- * WARNING!  This function will also replace ip->chain.  The related inode
- *	     must be locked exclusively or would wind up racing other
- *	     modifying operations on the same inode which then wind up
- *	     modifying under the old chain instead of the new chain.
+ * WARNING!  The caller is likely holding ip/ip->chain locked exclusively.
+ *	     Replacing ip->chain here would create confusion so we leave
+ *	     it to the caller to do that.
+ *
+ *	     (The caller is expected to hold the related inode exclusively)
  */
 int
 hammer2_inode_connect(hammer2_trans_t *trans, hammer2_inode_t *dip,
-		      hammer2_inode_t *ip, hammer2_chain_t **chainp,
+		      hammer2_chain_t **chainp,
 		      const uint8_t *name, size_t name_len)
 {
 	hammer2_inode_data_t *ipdata;
@@ -633,7 +637,7 @@ hammer2_inode_connect(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	parent = hammer2_chain_lookup_init(dip->chain, 0);
 
 	lhc = hammer2_dirhash(name, name_len);
-	hlink = ((ochain->flags & HAMMER2_CHAIN_DELETED) != 0);
+	hlink = ((ochain->flags & HAMMER2_CHAIN_DELETED) == 0);
 	kprintf("reconnect hlink=%d name=%*.*s\n",
 		hlink, (int)name_len, (int)name_len, name);
 
@@ -703,13 +707,10 @@ hammer2_inode_connect(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	parent = NULL;
 
 	/*
-	 * ochain still active.
-	 *
-	 * Handle the error case
+	 * nchain should be NULL on error, leave ochain (== *chainp) alone.
 	 */
 	if (error) {
 		KKASSERT(nchain == NULL);
-		hammer2_chain_unlock(ochain);
 		return (error);
 	}
 
@@ -726,6 +727,8 @@ hammer2_inode_connect(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		/*
 		 * Create the HARDLINK pointer.  oip represents the hardlink
 		 * target in this situation.
+		 *
+		 * We will return ochain (the hardlink target).
 		 */
 		hammer2_chain_modify(trans, nchain, 0);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
@@ -779,21 +782,57 @@ hammer2_inode_connect(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		}
 		ipdata->nlinks = 1;
 	}
+
+	/*
+	 * We are replacing ochain with nchain, unlock ochain.  In the
+	 * case where ochain is left unchanged the code above sets
+	 * nchain to ochain and ochain to NULL, resulting in a NOP here.
+	 */
 	if (ochain)
 		hammer2_chain_unlock(ochain);
 	*chainp = nchain;
 
-	/*
-	 * Replace ip->chain if necessary.  XXX inode sub-topology replacement.
-	 */
-	if (ip->chain != nchain) {
-		hammer2_chain_ref(nchain);			/* ip->chain */
-		if (ip->chain)
-			hammer2_chain_drop(ip->chain);		/* ip->chain */
-		ip->chain = nchain;
-	}
-
 	return (0);
+}
+
+/*
+ * Caller must hold exactly ONE exclusive lock on the inode.  *nchainp
+ * must be exclusive locked (its own exclusive lock even if it is the
+ * same as ip->chain).
+ *
+ * This function replaces ip->chain.  The exclusive lock on the passed
+ * nchain is inherited by the inode and the caller becomes responsible
+ * for unlocking it when the caller unlocks the inode.
+ *
+ * ochain was locked by the caller indirectly via the inode lock.  Since
+ * ip->chain is being repointed, we become responsible for cleaning up
+ * that lock.
+ *
+ * Return *nchainp = NULL as a safety.
+ */
+void
+hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_chain_t **nchainp)
+{
+	hammer2_chain_t *nchain = *nchainp;
+	hammer2_chain_t *ochain;
+
+	/*
+	 * Repoint ip->chain if necessary.
+	 *
+	 * (Inode must be locked exclusively by parent)
+	 */
+	ochain = ip->chain;
+	if (ochain != nchain) {
+		hammer2_chain_ref(nchain);		/* for ip->chain */
+		ip->chain = nchain;
+		if (ochain) {
+			hammer2_chain_unlock(ochain);
+			hammer2_chain_drop(ochain);	/* for ip->chain */
+		}
+	} else {
+		hammer2_chain_unlock(nchain);
+	}
+	*nchainp = NULL;
 }
 
 /*
@@ -1019,11 +1058,17 @@ hammer2_inode_calc_alloc(hammer2_key_t filesize)
 }
 
 /*
- * Given an unlocked ip consolidate for hardlink creation, adding (nlinks)
- * to the file's link count and potentially relocating the file to a
- * directory common to ip->pip and tdip.
+ * Given an exclusively locked inode we consolidate its chain for hardlink
+ * creation, adding (nlinks) to the file's link count and potentially
+ * relocating the file to a directory common to ip->pip and tdip.
  *
- * If the file has to be relocated ip->chain will also be adjusted.
+ * Returns a locked chain in (*chainp) (the chain's lock is in addition to
+ * any lock it might already have due to the inode being locked).  *chainp
+ * is set unconditionally and its previous contents can be garbage.
+ *
+ * The caller is responsible for replacing ip->chain, not us.  For certain
+ * operations such as renames the caller may do additional manipulation
+ * of the chain before replacing ip->chain.
  */
 int
 hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
@@ -1043,7 +1088,6 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 * Extra lock on chain so it can be returned locked.
 	 */
 	hmp = tdip->hmp;
-	hammer2_inode_lock_ex(ip);
 
 	chain = ip->chain;
 	error = hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
@@ -1051,18 +1095,15 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 
 	if (nlinks == 0 &&			/* no hardlink needed */
 	    (chain->data->ipdata.name_key & HAMMER2_DIRHASH_VISIBLE)) {
-		hammer2_inode_unlock_ex(ip);
 		*chainp = chain;
 		return (0);
 	}
 	if (hammer2_hardlink_enable < 0) {	/* fake hardlinks */
-		hammer2_inode_unlock_ex(ip);
 		*chainp = chain;
 		return (0);
 	}
 
 	if (hammer2_hardlink_enable == 0) {	/* disallow hardlinks */
-		hammer2_inode_unlock_ex(ip);
 		hammer2_chain_unlock(chain);
 		*chainp = NULL;
 		return (ENOTSUP);
@@ -1166,16 +1207,14 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		}
 
 		/*
-		 * Replace ip->chain with nchain (ip is still locked).
+		 * Return the new chain.
 		 */
-		hammer2_chain_ref(nchain);		/* ip->chain */
-		if (ip->chain)
-			hammer2_chain_drop(ip->chain);	/* ip->chain */
-		ip->chain = nchain;
-
 		hammer2_chain_unlock(chain);
 		*chainp = nchain;
 	} else {
+		/*
+		 * Return an error
+		 */
 		hammer2_chain_unlock(chain);
 		*chainp = NULL;
 	}
@@ -1184,7 +1223,6 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 * Cleanup, chain/nchain already dealt with.
 	 */
 done:
-	hammer2_inode_unlock_ex(ip);
 	hammer2_inode_drop(cdip);
 
 	return (error);

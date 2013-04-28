@@ -1765,7 +1765,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * returned chain is locked.
 	 */
 	ip = VTOI(ap->a_vp);
-	hammer2_inode_ref(ip);
+	hammer2_inode_lock_ex(ip);
 	error = hammer2_hardlink_consolidate(&trans, ip, &chain, dip, 1);
 	if (error)
 		goto done;
@@ -1774,17 +1774,18 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * Create a directory entry connected to the specified chain.
 	 * This function unlocks and NULL's chain on return.
 	 */
-	error = hammer2_inode_connect(&trans, dip, ip, &chain, name, name_len);
-	if (chain) {
-		hammer2_chain_unlock(chain);
-		chain = NULL;
-	}
+	error = hammer2_inode_connect(&trans, dip, &chain, name, name_len);
 	if (error == 0) {
+		hammer2_inode_repoint(ip, &chain);
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, ap->a_vp);
 	}
 done:
-	hammer2_inode_drop(ip);
+	if (chain) {
+		hammer2_chain_unlock(chain);
+		chain = NULL;
+	}
+	hammer2_inode_unlock_ex(ip);
 	hammer2_trans_done(&trans);
 
 	return error;
@@ -2031,7 +2032,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	hammer2_trans_init(&trans, hmp);
 
 	/*
-	 * ip is the inode being removed.  If this is a hardlink then
+	 * ip is the inode being renamed.  If this is a hardlink then
 	 * ip represents the actual file and not the hardlink marker.
 	 */
 	ip = VTOI(fncp->nc_vp);
@@ -2066,6 +2067,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *
 	 * The returned chain will be locked.
 	 */
+	hammer2_inode_lock_ex(ip);
 	error = hammer2_hardlink_consolidate(&trans, ip, &chain, tdip, 0);
 	if (error)
 		goto done;
@@ -2094,18 +2096,16 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *	    op (that might have to lock a vnode).
 	 */
 	error = hammer2_inode_connect(&trans, tdip,
-				      ip, &chain,
-				      tname, tname_len);
+				      &chain, tname, tname_len);
 	if (error == 0) {
-		if (chain) {
-			hammer2_chain_unlock(chain);
-			chain = NULL;
-		}
+		KKASSERT(chain != NULL);
+		hammer2_inode_repoint(ip, &chain);
 		cache_rename(ap->a_fnch, ap->a_tnch);
 	}
 done:
 	if (chain)
 		hammer2_chain_unlock(chain);
+	hammer2_inode_unlock_ex(ip);
 	hammer2_inode_drop(ip);
 	hammer2_trans_done(&trans);
 

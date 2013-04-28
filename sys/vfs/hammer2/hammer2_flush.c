@@ -782,6 +782,14 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 * blockref updates do not touch modify_tid.  Instead, mirroring
 	 * operations always reconcile the entire array during their
 	 * mirror_tid based recursion.
+	 *
+	 * WARNING! Deleted chains may still be used by the filesystem
+	 *	    in a later duplication, for example in a rename()
+	 *	    operation.  Also any topological movement of the
+	 *	    related blocks.
+	 *
+	 *	    We adjust the parent's bref pointer to the child but
+	 *	    we do not modify the contents of the child.
 	 */
 	if (action == HC_DELETE) {
 		if (base) {
@@ -805,11 +813,6 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	}
 
 cleanup:
-	/*
-	 * Deletions should also zero-out the child's bref for safety.
-	 */
-	if (action == HC_DELETE)
-		bzero(&child->bref, sizeof(child->bref));
 
 	/*
 	 * Cleanup the child's MOVED flag and unlock the child.

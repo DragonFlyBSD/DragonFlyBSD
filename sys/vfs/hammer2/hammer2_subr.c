@@ -55,6 +55,9 @@
  *
  * NOTE: We don't combine the inode/chain lock because putting away an
  *       inode would otherwise confuse multiple lock holders of the inode.
+ *
+ * WARNING! hammer2_inode_repoint() expects exactly one exclusive lock
+ *	    on ip->chain.
  */
 void
 hammer2_inode_lock_ex(hammer2_inode_t *ip)

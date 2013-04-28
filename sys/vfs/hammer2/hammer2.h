@@ -436,6 +436,7 @@ void hammer2_inode_put(hammer2_inode_t *ip);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
+void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_chain_t **chainp);
 int hammer2_inode_calc_alloc(hammer2_key_t filesize);
 
 hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
@@ -447,7 +448,6 @@ hammer2_chain_t *hammer2_inode_duplicate(hammer2_trans_t *trans,
 			hammer2_chain_t *ochain,
                         hammer2_inode_t *dip, int *errorp);
 int hammer2_inode_connect(hammer2_trans_t *trans,
-			hammer2_inode_t *ip,
 			hammer2_inode_t *dip,
 			hammer2_chain_t **chainp,
 			const uint8_t *name, size_t name_len);
