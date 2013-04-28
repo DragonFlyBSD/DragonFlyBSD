@@ -2148,6 +2148,7 @@ TO_REMOVE+=/usr/share/man/cat4/spic.4.gz
 TO_REMOVE+=/usr/share/man/man4/spic.4.gz
 TO_REMOVE+=/usr/include/machine/ioctl_ctx.h
 TO_REMOVE+=/usr/include/machine/wtio.h
+TO_REMOVE+=/usr/include/machine/if_wl_wavelan.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
