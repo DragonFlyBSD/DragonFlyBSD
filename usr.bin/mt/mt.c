@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mt.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/mt/mt.c,v 1.26.2.3 2002/11/08 11:35:57 joerg Exp $
- * $DragonFly: src/usr.bin/mt/mt.c,v 1.7 2005/09/10 21:03:27 swildner Exp $
  */
 
 /*
@@ -326,10 +325,6 @@ main(int argc, char **argv)
 #include <sundev/arreg.h>
 #endif
 
-#if defined(__DragonFly__) && defined(__i386__)
-#include <machine/wtio.h>
-#endif
-
 struct tape_desc {
 	short	t_type;		/* type of magtape device */
 	char	*t_name;	/* printing name */
@@ -350,10 +345,6 @@ struct tape_desc {
 	 * magtape driver.
 	 */
 	{ MT_ISAR,	"SCSI tape drive", 0,		0 },
-#if defined (__i386__)
-	{ MT_ISVIPER1,	"Archive Viper", WTDS_BITS, WTER_BITS },
-	{ MT_ISMFOUR,	"Wangtek",	 WTDS_BITS, WTER_BITS },
-#endif
 #endif /* defined (__DragonFly__) */
 	{ 0 }
 };

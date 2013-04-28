@@ -2146,6 +2146,8 @@ TO_REMOVE+=/usr/share/man/man3/use_helpline.3.gz
 TO_REMOVE+=/usr/include/machine/apm_segments.h
 TO_REMOVE+=/usr/share/man/cat4/spic.4.gz
 TO_REMOVE+=/usr/share/man/man4/spic.4.gz
+TO_REMOVE+=/usr/include/machine/ioctl_ctx.h
+TO_REMOVE+=/usr/include/machine/wtio.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
