@@ -379,7 +379,7 @@ struct bridge_softc {
 #define sc_if                   sc_arp.ac_if
 
 #define BRIDGE_CFGCPU		0
-#define BRIDGE_CFGPORT		netisr_portfn(BRIDGE_CFGCPU)
+#define BRIDGE_CFGPORT		netisr_cpuport(BRIDGE_CFGCPU)
 
 extern const uint8_t bstp_etheraddr[];
 

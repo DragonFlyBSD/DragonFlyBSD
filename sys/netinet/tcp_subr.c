@@ -802,7 +802,7 @@ tcp_listen_detach_handler(netmsg_t msg)
 
 	nextcpu = cpu + 1;
 	if (nextcpu < ncpus2)
-		lwkt_forwardmsg(netisr_portfn(nextcpu), &nmsg->base.lmsg);
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nmsg->base.lmsg);
 	else
 		lwkt_replymsg(&nmsg->base.lmsg, 0);
 }
@@ -849,14 +849,14 @@ tcp_close(struct tcpcb *tp)
 	if (inp->inp_flags & INP_WILDCARD_MP) {
 		struct netmsg_listen_detach nmsg;
 
-		KKASSERT(so->so_port == netisr_portfn(0));
-		KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+		KKASSERT(so->so_port == netisr_cpuport(0));
+		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
 
 		netmsg_init(&nmsg.base, NULL, &curthread->td_msgport,
 			    MSGF_PRIORITY, tcp_listen_detach_handler);
 		nmsg.nm_tp = tp;
-		lwkt_domsg(netisr_portfn(1), &nmsg.base.lmsg, 0);
+		lwkt_domsg(netisr_cpuport(1), &nmsg.base.lmsg, 0);
 
 		inp->inp_flags &= ~INP_WILDCARD_MP;
 	}
@@ -1098,7 +1098,7 @@ tcp_drain(void)
 			netmsg_init(&nm->base, NULL, &netisr_afree_rport,
 				    0, tcp_drain_handler);
 			nm->nm_head = &tcbinfo[cpu].pcblisthead;
-			lwkt_sendmsg(netisr_portfn(cpu), &nm->base.lmsg);
+			lwkt_sendmsg(netisr_cpuport(cpu), &nm->base.lmsg);
 		}
 	}
 }
@@ -1347,7 +1347,7 @@ tcp_notifyall_oncpu(netmsg_t msg)
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus2)
-		lwkt_forwardmsg(netisr_portfn(nextcpu), &nm->base.lmsg);
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nm->base.lmsg);
 	else
 		lwkt_replymsg(&nm->base.lmsg, 0);
 }
@@ -1426,7 +1426,7 @@ tcp_ctlinput(netmsg_t msg)
 	} else {
 		struct netmsg_tcp_notify *nm;
 
-		KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 		nm = kmalloc(sizeof(*nm), M_LWKTMSG, M_INTWAIT);
 		netmsg_init(&nm->base, NULL, &netisr_afree_rport,
 			    0, tcp_notifyall_oncpu);
@@ -1434,7 +1434,7 @@ tcp_ctlinput(netmsg_t msg)
 		nm->nm_arg = arg;
 		nm->nm_notify = notify;
 
-		lwkt_sendmsg(netisr_portfn(0), &nm->base.lmsg);
+		lwkt_sendmsg(netisr_cpuport(0), &nm->base.lmsg);
 	}
 done:
 	lwkt_replymsg(&msg->lmsg, 0);

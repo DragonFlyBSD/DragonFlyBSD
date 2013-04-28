@@ -413,7 +413,7 @@ extern int ip_fw_loaded;
 #define	IPFW_LOADED	(ip_fw_loaded)
 
 #define IPFW_CFGCPUID	0
-#define IPFW_CFGPORT	netisr_portfn(IPFW_CFGCPUID)
+#define IPFW_CFGPORT	netisr_cpuport(IPFW_CFGCPUID)
 #define IPFW_ASSERT_CFGPORT(msgport)	\
 	KASSERT((msgport) == IPFW_CFGPORT, ("not IPFW CFGPORT"))
 

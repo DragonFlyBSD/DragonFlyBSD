@@ -852,7 +852,7 @@ hbhcheck:
 			struct netmsg_packet *pmsg;
 			lwkt_port_t port;
 
-			port = netisr_portfn(0); /* XXX */
+			port = netisr_cpuport(0); /* XXX */
 			KKASSERT(port != NULL);
 			pmsg = &m->m_hdr.mh_netmsg;
 			netmsg_init(&pmsg->base, NULL,

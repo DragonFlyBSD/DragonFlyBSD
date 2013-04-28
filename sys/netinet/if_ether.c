@@ -463,7 +463,7 @@ arprequest_async(struct ifnet *ifp, const struct in_addr *sip,
 	pmsg->nm_packet = m;
 	pmsg->base.lmsg.u.ms_resultp = ifp;
 
-	lwkt_sendmsg(netisr_portfn(mycpuid), &pmsg->base.lmsg);
+	lwkt_sendmsg(netisr_cpuport(mycpuid), &pmsg->base.lmsg);
 }
 
 /*
@@ -1092,7 +1092,7 @@ arp_update_msghandler(netmsg_t msg)
 		rmsg->saddr = saddr;
 		rmsg->taddr = taddr;
 		rmsg->myaddr = myaddr;
-		lwkt_sendmsg(netisr_portfn(0), &rmsg->base.lmsg);
+		lwkt_sendmsg(netisr_cpuport(0), &rmsg->base.lmsg);
 	}
 }
 

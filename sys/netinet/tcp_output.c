@@ -1467,7 +1467,7 @@ tcp_output_sched(struct tcpcb *tp)
 {
 	crit_enter();
 	if (tp->tt_sndmore->lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg(netisr_portfn(mycpuid), &tp->tt_sndmore->lmsg);
+		lwkt_sendmsg(netisr_cpuport(mycpuid), &tp->tt_sndmore->lmsg);
 	crit_exit();
 }
 

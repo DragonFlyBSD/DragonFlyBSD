@@ -2963,7 +2963,7 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 #endif /* INET6 */
 	case AF_INET:
 		if (msg != NULL) {
-			lwkt_domsg(netisr_portfn(pi_cpu),
+			lwkt_domsg(netisr_cpuport(pi_cpu),
 				     &msg->base.lmsg, 0);
 		} else
 		{

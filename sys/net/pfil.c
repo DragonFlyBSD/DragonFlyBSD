@@ -43,7 +43,7 @@
 #include <net/netmsg2.h>
 #include <sys/mplock2.h>
 
-#define PFIL_CFGPORT	netisr_portfn(0)
+#define PFIL_CFGPORT	netisr_cpuport(0)
 
 #define PFIL_GETMPLOCK(pfh) \
 do { \

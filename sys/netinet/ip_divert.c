@@ -309,7 +309,7 @@ divert_packet(struct mbuf *m, int incoming)
 		else
 			nmp->base.lmsg.u.ms_result32 |= DIV_OUTPUT;
 
-		lwkt_sendmsg(netisr_portfn(0), &nmp->base.lmsg);
+		lwkt_sendmsg(netisr_cpuport(0), &nmp->base.lmsg);
 	} else {
 		div_packet(m, incoming, port);
 	}
@@ -402,7 +402,7 @@ div_attach(netmsg_t msg)
 	if (error)
 		goto out;
 	lwkt_gettoken(&div_token);
-	sosetport(so, netisr_portfn(0));
+	sosetport(so, netisr_cpuport(0));
 	error = in_pcballoc(so, &divcbinfo);
 	if (error) {
 		lwkt_reltoken(&div_token);

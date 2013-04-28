@@ -608,7 +608,7 @@ bpfwrite(struct dev_write_args *ap)
 	bmsg.nm_ifp = ifp;
 	bmsg.nm_dst = &dst;
 
-	ret = lwkt_domsg(netisr_portfn(0), &bmsg.base.lmsg, 0);
+	ret = lwkt_domsg(netisr_cpuport(0), &bmsg.base.lmsg, 0);
 	lwkt_reltoken(&bpf_token);
 
 	return ret;

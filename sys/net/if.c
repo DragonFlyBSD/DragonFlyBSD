@@ -230,7 +230,7 @@ ifsq_ifstart_ipifunc(void *arg)
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg(netisr_portfn(mycpuid), lmsg);
+		lwkt_sendmsg(netisr_cpuport(mycpuid), lmsg);
 	crit_exit();
 }
 
@@ -754,7 +754,7 @@ ifq_stage_detach(struct ifaltq *ifq)
 	base.lmsg.u.ms_resultp = ifq;
 
 	for (cpu = 0; cpu < ncpus; ++cpu)
-		lwkt_domsg(netisr_portfn(cpu), &base.lmsg, 0);
+		lwkt_domsg(netisr_cpuport(cpu), &base.lmsg, 0);
 }
 
 /*

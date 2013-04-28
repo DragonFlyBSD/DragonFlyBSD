@@ -92,7 +92,7 @@ ip_dn_queue(struct mbuf *m)
 		    0, ip_dn_dispatch);
 	nmp->nm_packet = m;
 
-	port = netisr_portfn(ip_dn_cpu);
+	port = netisr_cpuport(ip_dn_cpu);
 	lwkt_sendmsg(port, &nmp->base.lmsg);
 }
 
@@ -469,7 +469,7 @@ ip_dn_sockopt_flush(struct sockopt *sopt)
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
 		    0, ip_dn_sockopt_dispatch);
 	smsg.lmsg.u.ms_resultp = &dn_sopt;
-	lwkt_domsg(netisr_portfn(ip_dn_cpu), &smsg.lmsg, 0);
+	lwkt_domsg(netisr_cpuport(ip_dn_cpu), &smsg.lmsg, 0);
 
 	return smsg.lmsg.ms_error;
 }
@@ -487,7 +487,7 @@ ip_dn_sockopt_get(struct sockopt *sopt)
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
 		    0, ip_dn_sockopt_dispatch);
 	smsg.lmsg.u.ms_resultp = &dn_sopt;
-	lwkt_domsg(netisr_portfn(ip_dn_cpu), &smsg.lmsg, 0);
+	lwkt_domsg(netisr_cpuport(ip_dn_cpu), &smsg.lmsg, 0);
 
 	error = smsg.lmsg.ms_error;
 	if (error) {
@@ -522,7 +522,7 @@ ip_dn_sockopt_config(struct sockopt *sopt)
 	netmsg_init(&smsg, NULL, &curthread->td_msgport,
 		    0, ip_dn_sockopt_dispatch);
 	smsg.lmsg.u.ms_resultp = &dn_sopt;
-	lwkt_domsg(netisr_portfn(ip_dn_cpu), &smsg.lmsg, 0);
+	lwkt_domsg(netisr_cpuport(ip_dn_cpu), &smsg.lmsg, 0);
 
 	return smsg.lmsg.ms_error;
 }

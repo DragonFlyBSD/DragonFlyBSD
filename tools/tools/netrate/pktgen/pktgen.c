@@ -375,7 +375,7 @@ pktgen_start_ifsq(struct pktgen *pktg, struct ifaltq_subque *ifsq)
 	np->np_pktg = pktg;
 	np->np_ifsq = ifsq;
 
-	lwkt_sendmsg(netisr_portfn(ifsq_get_cpuid(ifsq)), &np->np_base.lmsg);
+	lwkt_sendmsg(netisr_cpuport(ifsq_get_cpuid(ifsq)), &np->np_base.lmsg);
 }
 
 static int
@@ -569,7 +569,7 @@ pktgen_buf_send(netmsg_t msg)
 	struct pktgen_buf *pb = (struct pktgen_buf *)msg;
 	struct mbuf *m;
 
-	KKASSERT(&curthread->td_msgport == netisr_portfn(pb->pb_cpuid));
+	KKASSERT(&curthread->td_msgport == netisr_cpuport(pb->pb_cpuid));
 
 	crit_enter();
 	lwkt_replymsg(&pb->pb_nmsg.lmsg, 0);
@@ -603,11 +603,11 @@ pktgen_buf_free(void *arg)
 		return;
 	}
 
-	if (&curthread->td_msgport != netisr_portfn(pb->pb_cpuid)) {
+	if (&curthread->td_msgport != netisr_cpuport(pb->pb_cpuid)) {
 		KKASSERT(pb->pb_cpuid == mycpuid);
 		crit_enter();
 		KKASSERT(pb->pb_nmsg.lmsg.ms_flags & MSGF_DONE);
-		lwkt_sendmsg(netisr_portfn(pb->pb_cpuid), &pb->pb_nmsg.lmsg);
+		lwkt_sendmsg(netisr_cpuport(pb->pb_cpuid), &pb->pb_nmsg.lmsg);
 		crit_exit();
 		return;
 	}

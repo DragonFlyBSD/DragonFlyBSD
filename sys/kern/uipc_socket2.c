@@ -350,7 +350,7 @@ sonewconn_faddr(struct socket *head, int connstatus,
 	if (head->so_proto->pr_flags & PR_SYNC_PORT)
 		sosetport(so, &netisr_sync_port);
 	else
-		sosetport(so, netisr_portfn(mycpu->gd_cpuid));
+		sosetport(so, netisr_cpuport(mycpuid));
 	if ((head->so_options & SO_ACCEPTFILTER) != 0)
 		connstatus = 0;
 	so->so_head = head;

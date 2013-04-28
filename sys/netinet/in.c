@@ -243,7 +243,7 @@ in_control_redispatch(u_long cmd, caddr_t data, struct ifnet *ifp,
 		msg.nm_data = data;
 		msg.nm_ifp = ifp;
 		msg.nm_td = td;
-		lwkt_domsg(netisr_portfn(0), &msg.base.lmsg, 0);
+		lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
 		error = msg.base.lmsg.ms_error;
 		break;
 

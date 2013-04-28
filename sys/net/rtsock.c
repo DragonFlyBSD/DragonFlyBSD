@@ -363,7 +363,7 @@ rts_input_skip(struct mbuf *m, sa_family_t family, struct rawcb *skip)
 
 	M_ASSERTPKTHDR(m);
 
-	port = netisr_portfn(0);	/* XXX same as for routing socket */
+	port = netisr_cpuport(0);	/* XXX same as for routing socket */
 	pmsg = &m->m_hdr.mh_netmsg;
 	netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
 		    0, rts_input_handler);

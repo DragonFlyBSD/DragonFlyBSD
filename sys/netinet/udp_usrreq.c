@@ -667,7 +667,7 @@ udp_notifyall_oncpu(netmsg_t msg)
 	/* XXX currently udp only runs on cpu 0 */
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus2)
-		lwkt_forwardmsg(netisr_portfn(nextcpu), &nm->base.lmsg);
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &nm->base.lmsg);
 	else
 		lwkt_replymsg(&nmsg->base.lmsg, 0);
 #endif
@@ -698,7 +698,7 @@ udp_ctlinput(netmsg_t msg)
 	struct in_addr faddr;
 	struct inpcb *inp;
 
-	KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 
 	faddr = ((struct sockaddr_in *)sa)->sin_addr;
 	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
@@ -722,20 +722,20 @@ udp_ctlinput(netmsg_t msg)
 	} else if (PRC_IS_REDIRECT(cmd)) {
 		struct netmsg_udp_notify *nm;
 
-		KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 		nm = kmalloc(sizeof(*nm), M_LWKTMSG, M_INTWAIT);
 		netmsg_init(&nm->base, NULL, &netisr_afree_rport,
 			    0, udp_notifyall_oncpu);
 		nm->nm_faddr = faddr;
 		nm->nm_arg = inetctlerrmap[cmd];
 		nm->nm_notify = notify;
-		lwkt_sendmsg(netisr_portfn(0), &nm->base.lmsg);
+		lwkt_sendmsg(netisr_cpuport(0), &nm->base.lmsg);
 	} else {
 		/*
 		 * XXX We should forward msg upon PRC_HOSTHEAD and ip == NULL,
 		 * once UDP inpcbs are CPU localized
 		 */
-		KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 		in_pcbnotifyall(&udbinfo.pcblisthead, faddr, inetctlerrmap[cmd],
 				notify);
 	}
@@ -991,7 +991,7 @@ udp_abort(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
-	KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 
 	inp = so->so_pcb;
 	if (inp) {
@@ -1015,7 +1015,7 @@ udp_attach(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
-	KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 
 	inp = so->so_pcb;
 	if (inp != NULL) {
@@ -1036,7 +1036,7 @@ udp_attach(netmsg_t msg)
 	/*
 	 * Set default port for protocol processing prior to bind/connect.
 	 */
-	sosetport(so, netisr_portfn(0));
+	sosetport(so, netisr_cpuport(0));
 
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_vflag |= INP_IPV4;
@@ -1085,7 +1085,7 @@ udp_connect(netmsg_t msg)
 	lwkt_port_t port;
 	int error;
 
-	KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 
 	inp = so->so_pcb;
 	if (inp == NULL) {
@@ -1213,7 +1213,7 @@ udp_detach(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
-	KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 
 	inp = so->so_pcb;
 	if (inp) {
@@ -1235,7 +1235,7 @@ udp_disconnect(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
-	KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 
 	inp = so->so_pcb;
 	if (inp == NULL) {
@@ -1275,7 +1275,7 @@ udp_send(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
-	KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 	KKASSERT(msg->send.nm_control == NULL);
 
 	inp = so->so_pcb;
@@ -1305,7 +1305,7 @@ udp_shutdown(netmsg_t msg)
 	struct inpcb *inp;
 	int error;
 
-	KKASSERT(&curthread->td_msgport == netisr_portfn(0));
+	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 
 	inp = so->so_pcb;
 	if (inp) {
