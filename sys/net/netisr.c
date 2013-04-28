@@ -539,7 +539,7 @@ netisr_portfn(int cpu)
  * Return the current cpu's network protocol thread.
  */
 lwkt_port_t
-cur_netport(void)
+netisr_curport(void)
 {
 	return(netisr_portfn(mycpu->gd_cpuid));
 }
