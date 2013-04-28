@@ -174,7 +174,7 @@ SUBDIR+=apm \
 	lptcontrol \
 	mptable \
 	rndcontrol \
-	sicontrol \
+	sicontrol
 .endif
 
 .if ${MACHINE_ARCH} == "i386"
