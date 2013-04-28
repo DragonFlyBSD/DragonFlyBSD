@@ -175,7 +175,6 @@ SUBDIR+=apm \
 	mptable \
 	rndcontrol \
 	sicontrol \
-	spkrtest
 .endif
 
 .if ${MACHINE_ARCH} == "i386"

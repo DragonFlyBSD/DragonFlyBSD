@@ -20,7 +20,6 @@ MAN=	ar.4 \
 	pnpbios.4 \
 	sbni.4 \
 	spic.4 \
-	spkr.4 \
 	sr.4 \
 	stl.4 \
 	tx.4 \
@@ -31,7 +30,6 @@ MLINKS+=ar.4 if_ar.4
 MLINKS+=ep.4 if_ep.4
 MLINKS+=lnc.4 if_lnc.4
 MLINKS+=sbni.4 if_sbni.4
-MLINKS+=spkr.4 speaker.4
 MLINKS+=sr.4 if_sr.4
 MLINKS+=tx.4 if_tx.4
 MLINKS+=vx.4 if_vx.4
