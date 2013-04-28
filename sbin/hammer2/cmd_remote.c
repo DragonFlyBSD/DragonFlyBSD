@@ -58,7 +58,7 @@ cmd_remote_connect(const char *sel_path, const char *url)
 		ecode = 1;
 	}
 	close(fd);
-	return 0;
+	return ecode;
 }
 
 int
@@ -84,7 +84,7 @@ cmd_remote_disconnect(const char *sel_path, const char *url)
 		ecode = 1;
 	}
 	close(fd);
-	return 0;
+	return ecode;
 }
 
 int

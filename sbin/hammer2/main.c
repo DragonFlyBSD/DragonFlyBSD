@@ -220,7 +220,7 @@ main(int ac, char **av)
 		 */
 		ecode = cmd_service();
 	} else if (strcmp(av[0], "stat") == 0) {
-		ecode = cmd_stat(ac - 1, (const char **)&av[1]);
+		ecode = cmd_stat(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "leaf") == 0) {
 		/*
 		 * Start the management daemon for a specific PFS.
@@ -275,7 +275,8 @@ main(int ac, char **av)
 			const char *rsapath = HAMMER2_DEFAULT_DIR "/rsa.pub";
 			ecode = cmd_rsaenc(&rsapath, 1);
 		} else {
-			ecode = cmd_rsaenc((const char **)&av[1], ac - 1);
+			ecode = cmd_rsaenc((const char **)(void *)&av[1],
+					   ac - 1);
 		}
 	} else if (strcmp(av[0], "rsadec") == 0) {
 		/*
@@ -294,7 +295,8 @@ main(int ac, char **av)
 			const char *rsapath = HAMMER2_DEFAULT_DIR "/rsa.prv";
 			ecode = cmd_rsadec(&rsapath, 1);
 		} else {
-			ecode = cmd_rsadec((const char **)&av[1], ac - 1);
+			ecode = cmd_rsadec((const char **)(void *)&av[1],
+					   ac - 1);
 		}
 	} else if (strcmp(av[0], "show") == 0) {
 		/*
