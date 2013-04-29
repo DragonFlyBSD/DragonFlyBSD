@@ -430,6 +430,13 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 
 		db_print_stack_entry(name, narg, argnp, argp, callpc);
 
+		/*
+		 * Stop at the system call boundary (else we risk
+		 * double-faulting on junk).
+		 */
+		if (name && strcmp(name, "Xfast_syscall") == 0)
+			break;
+
 		if (actframe != frame) {
 			/* `frame' belongs to caller. */
 			callpc = (db_addr_t)
