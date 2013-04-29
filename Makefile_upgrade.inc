@@ -2158,6 +2158,7 @@ TO_REMOVE+=/usr/share/man/man4/i386/speaker.4.gz
 TO_REMOVE+=/usr/sbin/spkrtest
 TO_REMOVE+=/usr/share/man/cat8/spkrtest.8.gz
 TO_REMOVE+=/usr/share/man/man8/spkrtest.8.gz
+TO_REMOVE+=/usr/include/machine/uvparam.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
