@@ -147,13 +147,17 @@ int		pthread_attr_getguardsize(const pthread_attr_t * __restrict,
 int		pthread_attr_getstack(const pthread_attr_t * __restrict,
 				      void ** __restrict, size_t * __restrict);
 int		pthread_attr_getstacksize(const pthread_attr_t *, size_t *);
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE < 200809)
 int		pthread_attr_getstackaddr(const pthread_attr_t *, void **);
+#endif
 int		pthread_attr_getdetachstate(const pthread_attr_t *, int *);
 int		pthread_attr_init(pthread_attr_t *);
 int		pthread_attr_setguardsize(pthread_attr_t *, size_t);
 int		pthread_attr_setstack(pthread_attr_t *, void *, size_t);
 int		pthread_attr_setstacksize(pthread_attr_t *, size_t);
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE < 200809)
 int		pthread_attr_setstackaddr(pthread_attr_t *, void *);
+#endif
 int		pthread_attr_setdetachstate(pthread_attr_t *, int);
 int		pthread_barrier_destroy(pthread_barrier_t *);
 int		pthread_barrier_init(pthread_barrier_t *,
