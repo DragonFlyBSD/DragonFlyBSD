@@ -74,6 +74,9 @@
 #error "kernel only header file"
 #endif
 
+#ifndef _SYS_SYSTM_H_
+#include <sys/systm.h>
+#endif
 #ifndef _SYS_THREAD_H_
 #include <sys/thread.h>
 #endif
@@ -101,6 +104,16 @@ static __inline lwkt_port_t
 netisr_curport(void)
 {
 	return netisr_cpuport(mycpuid);
+}
+
+/*
+ * Return the message port for the general protocol message servicing
+ * thread for the hash.
+ */
+static __inline lwkt_port_t
+netisr_hashport(uint16_t hash)
+{
+	return netisr_cpuport(hash & ncpus2_mask);
 }
 
 #endif	/* _NET_NETISR2_H_ */

@@ -370,7 +370,7 @@ netisr_queue(int num, struct mbuf *m)
 	 * Get the protocol port based on the packet hash, initialize
 	 * the netmsg, and send it off.
 	 */
-	port = netisr_cpuport(m->m_pkthdr.hash);
+	port = netisr_hashport(m->m_pkthdr.hash);
 	pmsg = &m->m_hdr.mh_netmsg;
 	netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
 		    0, ni->ni_handler);
@@ -397,7 +397,7 @@ netisr_handle(int num, struct mbuf *m)
 	 * Get the protocol port based on the packet hash
 	 */
 	KASSERT((m->m_flags & M_HASH), ("packet not characterized"));
-	port = netisr_cpuport(m->m_pkthdr.hash);
+	port = netisr_hashport(m->m_pkthdr.hash);
 	KASSERT(&curthread->td_msgport == port, ("wrong msgport"));
 
 	KASSERT((num > 0 && num <= NELEM(netisrs)), ("bad isr %d", num));
