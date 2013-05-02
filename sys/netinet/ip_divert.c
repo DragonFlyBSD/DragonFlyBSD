@@ -511,7 +511,7 @@ div_send(netmsg_t msg)
 	struct mbuf *control = msg->send.nm_control;
 	int error;
 
-	/* Length check already done in ip_cpufn() */
+	/* Length check already done in ip_hashfn() */
 	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
 
 	/* Send packet */

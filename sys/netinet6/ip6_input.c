@@ -193,7 +193,7 @@ ip6_init(void)
 			"error %d\n", __func__, i);
 	}
 
-	netisr_register(NETISR_IPV6, ip6_input, NULL); /* XXX cpufn */
+	netisr_register(NETISR_IPV6, ip6_input, NULL); /* XXX hashfn */
 	scope6_init();
 	addrsel_policy_init();
 	nd6_init();

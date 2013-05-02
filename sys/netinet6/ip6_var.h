@@ -290,7 +290,7 @@ struct ip6aux {
 #define	IPV6_FORWARDING		0x02	/* most of IPv6 header exists */
 #define	IPV6_MINMTU		0x04	/* use minimum MTU (IPV6_USE_MIN_MTU) */
 
-/* direction passed to ip_cpufn as last parameter */
+/* direction passed to ip_hashfn as last parameter */
 #define IP6_MPORT_IN		0 /* Find lwkt port for incoming packets */
 #define IP6_MPORT_OUT		1 /* Find lwkt port for outgoing packets */
 

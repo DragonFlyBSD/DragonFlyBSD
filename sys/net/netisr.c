@@ -58,7 +58,7 @@
 #include <sys/mplock2.h>
 
 static void netmsg_service_loop(void *arg);
-static void cpu0_cpufn(struct mbuf **mp, int hoff);
+static void netisr_hashfn0(struct mbuf **mp, int hoff);
 static void netisr_nohashck(struct mbuf *, const struct pktinfo *);
 
 struct netmsg_port_registration {
@@ -354,7 +354,7 @@ netisr_queue(int num, struct mbuf *m)
 	 * re-characterize the packet as necessary.
 	 */
 	if ((m->m_flags & M_HASH) == 0) {
-		ni->ni_cpufn(&m, 0);
+		ni->ni_hashfn(&m, 0);
 		if (m == NULL) {
 			m_freem(m);
 			return (EIO);
@@ -464,7 +464,7 @@ netisr_characterize(int num, struct mbuf **mp, int hoff)
 	 * Characterize the packet
 	 */
 	if ((m->m_flags & M_HASH) == 0) {
-		ni->ni_cpufn(mp, hoff);
+		ni->ni_hashfn(mp, hoff);
 		m = *mp;
 		if (m && (m->m_flags & M_HASH) == 0)
 			kprintf("netisr_queue(%d): packet hash failed\n", num);
@@ -472,7 +472,7 @@ netisr_characterize(int num, struct mbuf **mp, int hoff)
 }
 
 void
-netisr_register(int num, netisr_fn_t handler, netisr_cpufn_t cpufn)
+netisr_register(int num, netisr_fn_t handler, netisr_hashfn_t hashfn)
 {
 	struct netisr *ni;
 
@@ -480,14 +480,14 @@ netisr_register(int num, netisr_fn_t handler, netisr_cpufn_t cpufn)
 		("netisr_register: bad isr %d", num));
 	KKASSERT(handler != NULL);
 
-	if (cpufn == NULL)
-		cpufn = cpu0_cpufn;
+	if (hashfn == NULL)
+		hashfn = netisr_hashfn0;
 
 	ni = &netisrs[num];
 
 	ni->ni_handler = handler;
 	ni->ni_hashck = netisr_nohashck;
-	ni->ni_cpufn = cpufn;
+	ni->ni_hashfn = hashfn;
 	netmsg_init(&ni->ni_netmsg, NULL, &netisr_adone_rport, 0, NULL);
 }
 
@@ -536,13 +536,13 @@ cpu0_ctlport(int cmd __unused, struct sockaddr *sa __unused,
 
 /*
  * This is a default netisr packet characterization function which
- * sets M_HASH.  If a netisr is registered with a NULL cpufn function
+ * sets M_HASH.  If a netisr is registered with a NULL hashfn function
  * this one is assigned.
  *
  * This function makes no attempt to validate the packet.
  */
 static void
-cpu0_cpufn(struct mbuf **mp, int hoff __unused)
+netisr_hashfn0(struct mbuf **mp, int hoff __unused)
 {
 	struct mbuf *m = *mp;
 

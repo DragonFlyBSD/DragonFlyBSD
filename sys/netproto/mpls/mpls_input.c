@@ -71,7 +71,7 @@ mpls_init(void)
 		bzero(&mplsstats_percpu[cpu], sizeof(struct mpls_stats));
 	}
 
-	netisr_register(NETISR_MPLS, mpls_input_handler, mpls_cpufn);
+	netisr_register(NETISR_MPLS, mpls_input_handler, mpls_hashfn);
 }
 
 static void

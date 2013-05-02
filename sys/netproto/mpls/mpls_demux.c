@@ -83,7 +83,7 @@ mpls_lengthcheck(struct mbuf **mp, int hoff)
 }
 
 void
-mpls_cpufn(struct mbuf **mp, int hoff)
+mpls_hashfn(struct mbuf **mp, int hoff)
 {
 	struct mbuf *m = *mp;
 	struct mpls *mpls;

@@ -377,7 +377,7 @@ ip_init(void)
 		MGETHDR(ipforward_mtemp[cpu], MB_WAIT, MT_DATA);
 	}
 
-	netisr_register(NETISR_IP, ip_input_handler, ip_cpufn_in);
+	netisr_register(NETISR_IP, ip_input_handler, ip_hashfn_in);
 	netisr_register_hashcheck(NETISR_IP, ip_hashcheck);
 }
 
@@ -448,7 +448,7 @@ ip_input(struct mbuf *m)
 	 */
 	if ((m->m_flags & M_HASH) == 0) {
 		atomic_add_long(&ip_hash_count, 1);
-		ip_cpufn(&m, 0, IP_MPORT_IN);
+		ip_hashfn(&m, 0, IP_MPORT_IN);
 		if (m == NULL)
 			return;
 		KKASSERT(m->m_flags & M_HASH);
@@ -474,7 +474,7 @@ ip_input(struct mbuf *m)
 
 	ipstat.ips_total++;
 
-	/* length checks already done in ip_cpufn() */
+	/* length checks already done in ip_hashfn() */
 	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
 
 	if (IP_VHL_V(ip->ip_vhl) != IPVERSION) {
@@ -483,7 +483,7 @@ ip_input(struct mbuf *m)
 	}
 
 	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-	/* length checks already done in ip_cpufn() */
+	/* length checks already done in ip_hashfn() */
 	KASSERT(hlen >= sizeof(struct ip), ("IP header len too small"));
 	KASSERT(m->m_len >= hlen, ("complete IP header not in one mbuf"));
 
@@ -521,7 +521,7 @@ ip_input(struct mbuf *m)
 	ip->ip_len = ntohs(ip->ip_len);
 	ip->ip_off = ntohs(ip->ip_off);
 
-	/* length checks already done in ip_cpufn() */
+	/* length checks already done in ip_hashfn() */
 	KASSERT(ip->ip_len >= hlen, ("total length less then header length"));
 	KASSERT(m->m_pkthdr.len >= ip->ip_len, ("mbuf too short"));
 
@@ -934,7 +934,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		ip->ip_len = htons(ip->ip_len + hlen);
 		ip->ip_off = htons(ip->ip_off);
 
-		ip_cpufn(&m, 0, IP_MPORT_IN);
+		ip_hashfn(&m, 0, IP_MPORT_IN);
 		if (m == NULL)
 			return;
 

@@ -203,7 +203,7 @@ ipflow_fastforward(struct mbuf *m)
 	if (m->m_flags & (M_BCAST | M_MCAST))
 		return 0;
 
-	/* length checks already done in ip_cpufn() */
+	/* length checks already done in ip_hashfn() */
 	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
 	ip = mtod(m, struct ip *);
 
@@ -214,7 +214,7 @@ ipflow_fastforward(struct mbuf *m)
 		return 0;
 
 	iplen = ntohs(ip->ip_len);
-	/* length checks already done in ip_cpufn() */
+	/* length checks already done in ip_hashfn() */
 	KASSERT(iplen >= sizeof(struct ip),
 		("total length less then header length"));
 	KASSERT(m->m_pkthdr.len >= iplen, ("mbuf too short"));

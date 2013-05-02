@@ -264,7 +264,7 @@ fail:
  * This function can blow away the mbuf if the packet is malformed.
  */
 void
-ip_cpufn(struct mbuf **mptr, int hoff, int dir)
+ip_hashfn(struct mbuf **mptr, int hoff, int dir)
 {
 	struct ip *ip;
 	int iphlen;
@@ -316,15 +316,15 @@ back:
 }
 
 void
-ip_cpufn_in(struct mbuf **mptr, int hoff)
+ip_hashfn_in(struct mbuf **mptr, int hoff)
 {
-	ip_cpufn(mptr, hoff, IP_MPORT_IN);
+	ip_hashfn(mptr, hoff, IP_MPORT_IN);
 }
 
 /*
  * Verify and adjust the hash value of the packet.
  *
- * Unlike ip_cpufn(), the packet content is not accessed.  The packet info
+ * Unlike ip_hashfn(), the packet content is not accessed.  The packet info
  * (pi) and the hash of the packet (m_pkthdr.hash) is used instead.
  *
  * Caller has already made sure that m_pkthdr.hash is valid, i.e. m_flags
