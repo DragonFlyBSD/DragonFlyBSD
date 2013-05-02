@@ -59,8 +59,6 @@
 #include <netinet/udp.h>
 #include <netinet/udp_var.h>
 
-extern int udp_mpsafe_thread;
-
 /*
  * Toeplitz hash functions - the idea is to match the hardware.
  */
