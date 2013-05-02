@@ -107,13 +107,22 @@ netisr_curport(void)
 }
 
 /*
+ * Return the cpu for the hash.
+ */
+static __inline int
+netisr_hashcpu(uint16_t hash)
+{
+	return (hash & ncpus2_mask);
+}
+
+/*
  * Return the message port for the general protocol message servicing
  * thread for the hash.
  */
 static __inline lwkt_port_t
 netisr_hashport(uint16_t hash)
 {
-	return netisr_cpuport(hash & ncpus2_mask);
+	return netisr_cpuport(netisr_hashcpu(hash));
 }
 
 #endif	/* _NET_NETISR2_H_ */

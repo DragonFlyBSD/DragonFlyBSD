@@ -1392,7 +1392,7 @@ ether_input_handler(netmsg_t nmsg)
 			return;
 		KKASSERT(m->m_flags & M_HASH);
 
-		if (m->m_pkthdr.hash != mycpuid) {
+		if (netisr_hashcpu(m->m_pkthdr.hash) != mycpuid) {
 			/*
 			 * Wrong hardware supplied hash; redispatch
 			 */
