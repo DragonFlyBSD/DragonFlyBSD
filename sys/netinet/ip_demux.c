@@ -83,7 +83,7 @@ INP_MPORT_HASH_TCP(in_addr_t faddr, in_addr_t laddr,
 int
 tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	return (INP_MPORT_HASH_TCP(faddr, laddr, fport, lport));
+	return (netisr_hashcpu(INP_MPORT_HASH_TCP(faddr, laddr, fport, lport)));
 }
 
 /*
@@ -93,7 +93,7 @@ int
 udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
 #ifdef notyet
-	return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));
+	return (netisr_hashcpu(INP_MPORT_HASH_UDP(faddr, laddr, fport, lport)));
 #else
 	return 0;
 #endif
@@ -269,7 +269,7 @@ ip_hashfn(struct mbuf **mptr, int hoff, int dir)
 	struct tcphdr *th;
 	struct udphdr *uh;
 	struct mbuf *m;
-	int cpu;
+	int hash;
 
 	if (!ip_lengthcheck(mptr, hoff))
 		return;
@@ -282,35 +282,30 @@ ip_hashfn(struct mbuf **mptr, int hoff, int dir)
 	 * XXX generic packet handling defrag on CPU 0 for now.
 	 */
 	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK)) {
-		cpu = 0;
+		hash = 0;
 		goto back;
 	}
 
 	switch (ip->ip_p) {
 	case IPPROTO_TCP:
 		th = (struct tcphdr *)((caddr_t)ip + iphlen);
-		cpu = INP_MPORT_HASH_TCP(ip->ip_src.s_addr,
-					 ip->ip_dst.s_addr,
-					 th->th_sport,
-					 th->th_dport);
+		hash = INP_MPORT_HASH_TCP(ip->ip_src.s_addr, ip->ip_dst.s_addr,
+		    th->th_sport, th->th_dport);
 		break;
 
 	case IPPROTO_UDP:
 		uh = (struct udphdr *)((caddr_t)ip + iphlen);
-
-		cpu = INP_MPORT_HASH_UDP(ip->ip_src.s_addr,
-					 ip->ip_dst.s_addr,
-					 uh->uh_sport,
-					 uh->uh_dport);
+		hash = INP_MPORT_HASH_UDP(ip->ip_src.s_addr, ip->ip_dst.s_addr,
+		    uh->uh_sport, uh->uh_dport);
 		break;
 
 	default:
-		cpu = 0;
+		hash = 0;
 		break;
 	}
 back:
 	m->m_flags |= M_HASH;
-	m->m_pkthdr.hash = cpu;
+	m->m_pkthdr.hash = hash;
 }
 
 void
@@ -332,8 +327,6 @@ void
 ip_hashcheck(struct mbuf *m, const struct pktinfo *pi)
 {
 	KASSERT((m->m_flags & M_HASH), ("no valid packet hash"));
-	KASSERT(m->m_pkthdr.hash < ncpus2,
-		("invalid packet hash %#x", m->m_pkthdr.hash));
 
 	/*
 	 * XXX generic packet handling defrag on CPU 0 for now.
