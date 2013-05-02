@@ -61,7 +61,7 @@
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/bpf.h>
-#include <net/netisr.h>
+#include <net/netisr2.h>
 #include <net/route.h>
 
 #include <netinet/in.h>

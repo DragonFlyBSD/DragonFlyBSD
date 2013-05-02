@@ -71,6 +71,7 @@
 #include <net/vlan/if_vlan_ether.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #if defined(INET) || defined(INET6)
 #include <netinet/in.h>

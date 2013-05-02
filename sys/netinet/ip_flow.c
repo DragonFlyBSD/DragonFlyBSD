@@ -51,7 +51,7 @@
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/route.h>
-#include <net/netisr.h>
+#include <net/netisr2.h>
 #include <net/netmsg2.h>
 
 #include <netinet/in.h>

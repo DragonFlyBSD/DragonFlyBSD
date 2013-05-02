@@ -47,6 +47,7 @@
 #include <net/if.h>
 #include <net/if_poll.h>
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 /*
  * Polling support for network device drivers.

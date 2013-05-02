@@ -103,7 +103,7 @@
 #include <net/if_dl.h>
 #include <net/pfil.h>
 #include <net/route.h>
-#include <net/netisr.h>
+#include <net/netisr2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>

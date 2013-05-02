@@ -74,7 +74,7 @@
 #include <net/radix.h>
 #include <net/route.h>
 #include <net/if_clone.h>
-#include <net/netisr.h>
+#include <net/netisr2.h>
 #include <net/netmsg2.h>
 
 #include <machine/atomic.h>

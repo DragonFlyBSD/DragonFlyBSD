@@ -44,7 +44,7 @@
 #include <sys/globaldata.h>
 
 #include <net/if.h>
-#include <net/netisr.h>
+#include <net/netisr2.h>
 #include <net/toeplitz2.h>
 
 #include <netinet/in_systm.h>

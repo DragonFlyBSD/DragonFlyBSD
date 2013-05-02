@@ -90,6 +90,7 @@
 
 #include <sys/msgport2.h>
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #include <net/if.h>
 #include <net/route.h>

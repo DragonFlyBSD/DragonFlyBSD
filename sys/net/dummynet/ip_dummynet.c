@@ -59,6 +59,7 @@
 
 #include <net/ethernet.h>
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 #include <net/route.h>
 
 #include <netinet/in_var.h>

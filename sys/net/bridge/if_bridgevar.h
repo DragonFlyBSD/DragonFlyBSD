@@ -78,6 +78,7 @@
 
 #include <sys/callout.h>
 #include <sys/queue.h>
+#include <net/netisr2.h>
 
 /*
  * Commands used in the SIOCSDRVSPEC ioctl.  Note the lookup of the

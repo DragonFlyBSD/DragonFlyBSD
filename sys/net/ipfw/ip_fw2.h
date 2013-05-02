@@ -29,6 +29,8 @@
 #ifndef _IPFW2_H
 #define _IPFW2_H
 
+#include <net/netisr2.h>
+
 /*
  * The kernel representation of ipfw rules is made of a list of
  * 'instructions' (for all practical purposes equivalent to BPF

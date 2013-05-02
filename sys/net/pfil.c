@@ -41,6 +41,7 @@
 #include <net/if.h>
 #include <net/pfil.h>
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 #include <sys/mplock2.h>
 
 #define PFIL_CFGPORT	netisr_cpuport(0)

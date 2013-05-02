@@ -92,6 +92,7 @@
 #include <vm/vm_zone.h>
 #include <vm/pmap.h>
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>

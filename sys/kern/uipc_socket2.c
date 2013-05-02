@@ -59,6 +59,8 @@
 #include <sys/msgport2.h>
 #include <sys/socketvar2.h>
 
+#include <net/netisr2.h>
+
 int	maxsockets;
 
 /*

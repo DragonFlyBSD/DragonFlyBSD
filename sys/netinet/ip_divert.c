@@ -63,6 +63,7 @@
 #include <net/route.h>
 
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
 

@@ -98,6 +98,7 @@
 #include <net/route.h>
 
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>

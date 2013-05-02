@@ -96,7 +96,7 @@
 
 #include <net/route.h>
 #include <net/if.h>
-#include <net/netisr.h>
+#include <net/netisr2.h>
 
 #define	_IP_VHL
 #include <netinet/in.h>

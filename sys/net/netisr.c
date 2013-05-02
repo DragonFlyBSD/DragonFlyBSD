@@ -48,7 +48,7 @@
 #include <sys/socketvar.h>
 #include <net/if.h>
 #include <net/if_var.h>
-#include <net/netisr.h>
+#include <net/netisr2.h>
 #include <machine/cpufunc.h>
 #include <machine/smp.h>
 
@@ -91,7 +91,7 @@ static TAILQ_HEAD(,netmsg_port_registration) netreglist;
 static TAILQ_HEAD(,netmsg_rollup) netrulist;
 
 /* Per-CPU thread to handle any protocol.  */
-static struct thread netisr_cpu[MAXCPU];
+struct thread netisr_cpu[MAXCPU];
 lwkt_port netisr_afree_rport;
 lwkt_port netisr_afree_free_so_rport;
 lwkt_port netisr_adone_rport;
@@ -522,26 +522,6 @@ netisr_register_rollup(netisr_ru_t ru_func, int prio)
 		}
 	}
 	TAILQ_INSERT_TAIL(&netrulist, new_ru, ru_entry);
-}
-
-/*
- * Return the message port for the general protocol message servicing
- * thread for a particular cpu.
- */
-lwkt_port_t
-netisr_cpuport(int cpu)
-{
-	KKASSERT(cpu >= 0 && cpu < ncpus);
-	return (&netisr_cpu[cpu].td_msgport);
-}
-
-/*
- * Return the current cpu's network protocol thread.
- */
-lwkt_port_t
-netisr_curport(void)
-{
-	return(netisr_cpuport(mycpuid));
 }
 
 /*

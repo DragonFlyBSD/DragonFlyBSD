@@ -260,6 +260,7 @@
 #include <net/bridge/if_bridgevar.h>
 #include <net/if_llc.h>
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #include <net/route.h>
 #include <sys/in_cksum.h>

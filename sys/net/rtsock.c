@@ -88,6 +88,7 @@
 #include <net/route.h>
 #include <net/raw_cb.h>
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #ifdef SCTP
 extern void sctp_add_ip_address(struct ifaddr *ifa);
