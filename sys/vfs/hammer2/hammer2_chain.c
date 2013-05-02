@@ -124,6 +124,8 @@ hammer2_chain_parent_setsubmod(hammer2_chain_t *chain)
 	while ((parent = chain->parent) != NULL) {
 		core = parent->core;
 		spin_lock(&core->cst.spin);
+		while (parent->duplink)
+			parent = parent->duplink;
 		if (parent->flags & HAMMER2_CHAIN_SUBMODIFIED) {
 			spin_unlock(&core->cst.spin);
 			break;
@@ -314,6 +316,15 @@ void
 hammer2_chain_drop(hammer2_chain_t *chain)
 {
 	u_int refs;
+	u_int need = 0;
+
+#if 1
+	if (chain->flags & HAMMER2_CHAIN_MOVED)
+		++need;
+	if (chain->flags & HAMMER2_CHAIN_MODIFIED)
+		++need;
+	KKASSERT(chain->refs > need);
+#endif
 
 	while (chain) {
 		refs = chain->refs;
@@ -810,7 +821,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 *	 structure.
 	 */
 	hammer2_chain_delete(trans, parent, chain);
-	hammer2_chain_duplicate(trans, parent, chain->index, &chain);
+	hammer2_chain_duplicate(trans, parent, chain->index, &chain, NULL);
 
 	/*
 	 * Set MODIFIED and add a chain ref to prevent destruction.  Both
@@ -820,7 +831,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 *
 	 * If the chain is already marked MODIFIED then we can safely
 	 * return the previous allocation to the pool without having to
-	 * worry about snapshots.
+	 * worry about snapshots.  XXX check flush synchronization.
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
@@ -910,10 +921,12 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
 	}
 	hammer2_chain_parent_setsubmod(chain);
+	*chainp = chain;
 }
 
 /*
- * Convert a locked chain that was retrieved read-only to read-write.
+ * Convert a locked chain that was retrieved read-only to read-write,
+ * duplicating it if necessary to satisfy active flush points.
  *
  * If not already marked modified a new physical block will be allocated
  * and assigned to the bref.
@@ -931,6 +944,25 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
  * This function may return a different chain than was passed, in which case
  * the old chain will be unlocked and the new chain will be locked.
  */
+hammer2_inode_data_t *
+hammer2_chain_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
+			     int flags)
+{
+#if 0
+	hammer2_chain_t *ochain;
+
+	ochain = ip->chain;
+#endif
+	hammer2_chain_modify(trans, ip->chain, flags);
+#if 0
+	if (ochain != ip->chain) {
+		hammer2_chain_ref(ip->chain);
+		hammer2_chain_drop(ochain);
+	}
+#endif
+	return(&ip->chain->data->ipdata);
+}
+
 void
 hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 {
@@ -951,13 +983,18 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 		chain->bref.modify_tid = trans->sync_tid;
 
 	/*
-	 * If the chain is already marked MODIFIED we can just return.
+	 * If the chain is already marked MODIFIED we can usually just
+	 * return.
 	 *
-	 * However, it is possible that a prior lock/modify sequence
-	 * retired the buffer.  During this lock/modify sequence MODIFIED
-	 * may still be set but the buffer could wind up clean.  Since
-	 * the caller is going to modify the buffer further we have to
-	 * be sure that DIRTYBP is set again.
+	 * WARNING!  It is possible that a prior lock/modify sequence
+	 *	     retired the buffer.  During this lock/modify sequence
+	 *	     MODIFIED may still be set but the buffer could wind up
+	 *	     clean.  Since the caller is going to modify the buffer
+	 *	     further we have to be sure that DIRTYBP is set again.
+	 *
+	 * WARNING!  Currently the caller is responsible for handling
+	 *	     any delete/duplication roll of the chain to account
+	 *	     for modifications crossing synchronization points.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 		if ((flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
@@ -974,6 +1011,12 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 	 */
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 	hammer2_chain_ref(chain);
+
+	/*
+	 * Adjust chain->modify_tid so the flusher knows when the
+	 * modification occurred.
+	 */
+	chain->modify_tid = trans->sync_tid;
 
 	/*
 	 * We must allocate the copy-on-write block.
@@ -1116,21 +1159,69 @@ hammer2_modify_volume(hammer2_mount_t *hmp)
  * chain is returned with a reference and without a lock, or NULL
  * if not found.
  *
- * NOTE: A chain on-media might exist for this index when NULL is returned.
+ * This function returns the chain at the specified index with the highest
+ * delete_tid.  The caller must check whether the chain is flagged
+ * CHAIN_DELETED or not.
  *
- * NOTE: Can only be used to locate chains which have not been deleted.
+ * NOTE: If no chain is found the caller usually must check the on-media
+ *	 array to determine if a blockref exists at the index.
  */
+struct hammer2_chain_find_info {
+	hammer2_chain_t *best;
+	hammer2_tid_t	delete_tid;
+	int index;
+};
+
+static
+int
+hammer2_chain_find_cmp(hammer2_chain_t *child, void *data)
+{
+	struct hammer2_chain_find_info *info = data;
+
+	if (child->index < info->index)
+		return(-1);
+	if (child->index > info->index)
+		return(1);
+	return(0);
+}
+
+static
+int
+hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
+{
+	struct hammer2_chain_find_info *info = data;
+
+	if (info->delete_tid < child->delete_tid) {
+		info->delete_tid = child->delete_tid;
+		info->best = child;
+	}
+	return(0);
+}
+
+static
+hammer2_chain_t *
+hammer2_chain_find_locked(hammer2_chain_t *parent, int index)
+{
+	struct hammer2_chain_find_info info;
+
+	info.index = index;
+	info.delete_tid = 0;
+	info.best = NULL;
+
+	RB_SCAN(hammer2_chain_tree, &parent->core->rbtree,
+		hammer2_chain_find_cmp, hammer2_chain_find_callback,
+		&info);
+
+	return (info.best);
+}
+
 hammer2_chain_t *
 hammer2_chain_find(hammer2_chain_t *parent, int index)
 {
-	hammer2_chain_t dummy;
 	hammer2_chain_t *chain;
 
-	dummy.flags = 0;
-	dummy.index = index;
-	dummy.delete_tid = HAMMER2_MAX_TID;
 	spin_lock(&parent->core->cst.spin);
-	chain = RB_FIND(hammer2_chain_tree, &parent->core->rbtree, &dummy);
+	chain = hammer2_chain_find_locked(parent, index);
 	if (chain)
 		hammer2_chain_ref(chain);
 	spin_unlock(&parent->core->cst.spin);
@@ -1362,6 +1453,9 @@ hammer2_chain_lookup(hammer2_chain_t **parentp,
 		hammer2_chain_ref(parent);		/* ref old parent */
 		hammer2_chain_unlock(parent);		/* unlock old parent */
 		parent = parent->parent;
+		while (parent->duplink)
+			parent = parent->duplink;
+
 							/* lock new parent */
 		hammer2_chain_lock(parent, how_maybe);
 		hammer2_chain_drop(*parentp);		/* drop old parent */
@@ -1432,7 +1526,8 @@ again:
 	for (i = 0; i < count; ++i) {
 		tmp = hammer2_chain_find(parent, i);
 		if (tmp) {
-			KKASSERT((tmp->flags & HAMMER2_CHAIN_DELETED) == 0);
+			if (tmp->flags & HAMMER2_CHAIN_DELETED)
+				continue;
 			bref = &tmp->bref;
 			KKASSERT(bref->type != 0);
 		} else if (base == NULL || base[i].type == 0) {
@@ -1577,6 +1672,8 @@ again:
 
 		i = parent->index + 1;
 		nparent = parent->parent;
+		while (nparent->duplink)
+			nparent = nparent->duplink;
 		hammer2_chain_ref(nparent);	/* ref new parent */
 		hammer2_chain_unlock(parent);	/* unlock old parent */
 						/* lock new parent */
@@ -1634,7 +1731,10 @@ again2:
 	while (i < count) {
 		tmp = hammer2_chain_find(parent, i);
 		if (tmp) {
-			KKASSERT((tmp->flags & HAMMER2_CHAIN_DELETED) == 0);
+			if (tmp->flags & HAMMER2_CHAIN_DELETED) {
+				++i;
+				continue;
+			}
 			bref = &tmp->bref;
 		} else if (base == NULL || base[i].type == 0) {
 			++i;
@@ -1709,7 +1809,7 @@ again2:
  * must be locked and held.  Do not pass the inode chain to this function
  * unless that is the chain returned by the failed lookup.
  *
- * (chain) is either NULL, a newly allocated chain, or a chain allocated
+ * (*chainp) is either NULL, a newly allocated chain, or a chain allocated
  * via hammer2_chain_duplicate().  When not NULL, the passed-in chain must
  * NOT be attached to any parent, and will be attached by this function.
  * This mechanic is used by the rename code.
@@ -1740,9 +1840,9 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t *parent,
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *chain;
+	hammer2_chain_t *child;
 	hammer2_blockref_t dummy;
 	hammer2_blockref_t *base;
-	hammer2_chain_t dummy_chain;
 	int unlock_parent = 0;
 	int allocated = 0;
 	int error = 0;
@@ -1857,24 +1957,19 @@ again:
 	 * new slots can only transition from empty if the parent is
 	 * locked exclusively.
 	 */
-	bzero(&dummy_chain, sizeof(dummy_chain));
-	dummy_chain.delete_tid = HAMMER2_MAX_TID;
 
 	spin_lock(&parent->core->cst.spin);
 	for (i = 0; i < count; ++i) {
-		if (base == NULL) {
-			dummy_chain.index = i;
-			if (RB_FIND(hammer2_chain_tree,
-				    &parent->core->rbtree, &dummy_chain) == NULL) {
+		child = hammer2_chain_find_locked(parent, i);
+		if (child) {
+			if (child->flags & HAMMER2_CHAIN_DELETED)
 				break;
-			}
-		} else if (base[i].type == 0) {
-			dummy_chain.index = i;
-			if (RB_FIND(hammer2_chain_tree,
-				    &parent->core->rbtree, &dummy_chain) == NULL) {
-				break;
-			}
+			continue;
 		}
+		if (base == NULL)
+			break;
+		if (base[i].type == 0)
+			break;
 	}
 	spin_unlock(&parent->core->cst.spin);
 
@@ -1930,8 +2025,11 @@ again:
 
 	/*
 	 * (allocated) indicates that this is a newly-created chain element
-	 * rather than a renamed chain element.  In this situation we want
-	 * to place the chain element in the MODIFIED state.
+	 * rather than a renamed chain element.
+	 *
+	 * In this situation we want to place the chain element in
+	 * the MODIFIED state.  The caller expects it to NOT be in the
+	 * INITIAL state.
 	 *
 	 * The data area will be set up as follows:
 	 *
@@ -1967,16 +2065,9 @@ again:
 		}
 	} else {
 		/*
-		 * When reconnecting inodes we have to call setsubmod()
-		 * to ensure that its state propagates up the newly
-		 * connected parent.
-		 *
-		 * Make sure MOVED is set but do not update bref_flush.  If
-		 * the chain is undergoing modification bref_flush will be
-		 * updated when it gets flushed.  If it is not then the
-		 * bref may not have been flushed yet and we do not want to
-		 * set MODIFIED here as this could result in unnecessary
-		 * reallocations.
+		 * When reconnecting a chain we must set MOVED and setsubmod
+		 * so the flush recognizes that it must update the bref in
+		 * the parent.
 		 */
 		if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
 			hammer2_chain_ref(chain);
@@ -2012,12 +2103,14 @@ done:
  *	 appears atomic on the media.
  */
 void
-hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
-			int i, hammer2_chain_t **chainp)
+hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
+			hammer2_chain_t **chainp, hammer2_blockref_t *bref)
 {
 	hammer2_mount_t *hmp = trans->hmp;
 	hammer2_blockref_t *base;
-	hammer2_chain_t *chain;
+	hammer2_chain_t *ochain;
+	hammer2_chain_t *nchain;
+	hammer2_chain_t *scan;
 	size_t bytes;
 	int count;
 
@@ -2027,31 +2120,80 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * to the same bref (the same media block), and copying any inline
 	 * data.
 	 */
-	KKASSERT(((*chainp)->flags & HAMMER2_CHAIN_INITIAL) == 0);
-	chain = hammer2_chain_alloc(hmp, &(*chainp)->bref);
-	hammer2_chain_core_alloc(chain, (*chainp)->core);
+	ochain = *chainp;
+	if (bref == NULL)
+		bref = &ochain->bref;
+	nchain = hammer2_chain_alloc(hmp, bref);
+	hammer2_chain_core_alloc(nchain, ochain->core);
 
 	bytes = (hammer2_off_t)1 <<
-		(int)(chain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
-	chain->bytes = bytes;
+		(int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+	nchain->bytes = bytes;
 
-	switch(chain->bref.type) {
+	/*
+	 * Be sure to copy the INITIAL flag as well or we could end up
+	 * loading garbage from the bref.
+	 */
+	if (ochain->flags & HAMMER2_CHAIN_INITIAL)
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_INITIAL);
+
+	/*
+	 * If the old chain is modified the new one must be too,
+	 * but we only want to allocate a new bref.
+	 */
+	if (ochain->flags & HAMMER2_CHAIN_MODIFIED) {
+		/*
+		 * When duplicating chains the MODIFIED state is inherited.
+		 * A new bref typically must be allocated.  However, file
+		 * data chains may already have the data offset assigned
+		 * to a logical buffer cache buffer so we absolutely cannot
+		 * allocate a new bref here for TYPE_DATA.
+		 *
+		 * Basically the flusher core only dumps media topology
+		 * and meta-data, not file data.  The VOP_FSYNC code deals
+		 * with the file data.  XXX need back-pointer to inode.
+		 */
+		if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+			atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MODIFIED);
+			hammer2_chain_ref(nchain);
+		} else {
+			hammer2_chain_modify(trans, nchain,
+					     HAMMER2_MODIFY_OPTDATA);
+		}
+	} else if (nchain->flags & HAMMER2_CHAIN_INITIAL) {
+		/*
+		 * When duplicating chains in the INITITAL state we need
+		 * to ensure that the chain is marked modified so a
+		 * block is properly assigned to it, otherwise the MOVED
+		 * bit won't do the right thing.
+		 */
+		KKASSERT (nchain->bref.type != HAMMER2_BREF_TYPE_DATA);
+		hammer2_chain_modify(trans, nchain, HAMMER2_MODIFY_OPTDATA);
+	}
+	if (parent || (ochain->flags & HAMMER2_CHAIN_MOVED)) {
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MOVED);
+		hammer2_chain_ref(nchain);
+	}
+	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_SUBMODIFIED);
+
+	switch(nchain->bref.type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
 		panic("hammer2_chain_duplicate: cannot be called w/volhdr");
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		KKASSERT(bytes == HAMMER2_INODE_BYTES);
-		if ((*chainp)->data) {
-			chain->data = kmalloc(sizeof(chain->data->ipdata),
+		if (ochain->data) {
+			nchain->data = kmalloc(sizeof(nchain->data->ipdata),
 					      hmp->minode, M_WAITOK | M_ZERO);
-			chain->data->ipdata = (*chainp)->data->ipdata;
+			nchain->data->ipdata = ochain->data->ipdata;
 		}
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-#if 0
-		panic("hammer2_chain_duplicate: cannot be used to"
-		      "create an indirect block");
-#endif
+		if ((nchain->flags & HAMMER2_CHAIN_MODIFIED) &&
+		    nchain->data) {
+			bcopy(ochain->data, nchain->data,
+			      nchain->bytes);
+		}
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
@@ -2061,25 +2203,45 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 	case HAMMER2_BREF_TYPE_DATA:
 	default:
+		if ((nchain->flags & HAMMER2_CHAIN_MODIFIED) &&
+		    nchain->data) {
+			bcopy(ochain->data, nchain->data,
+			      nchain->bytes);
+		}
 		/* leave chain->data NULL */
-		KKASSERT(chain->data == NULL);
+		KKASSERT(nchain->data == NULL);
 		break;
 	}
 
 	/*
 	 * Both chains must be locked for us to be able to set the
-	 * duplink.  To avoid buffer cache deadlocks we do not try
-	 * to resolve the new chain until after we've unlocked the
-	 * old one.
+	 * duplink.  The caller may expect valid data.
+	 *
+	 * Unmodified duplicated blocks may have the same bref, we
+	 * must be careful to avoid buffer cache deadlocks so we
+	 * unlock the old chain before resolving the new one.
+	 *
+	 * Insert nchain at the end of the duplication list.
 	 */
-	hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER);
-	KKASSERT((*chainp)->duplink == NULL);
-	(*chainp)->duplink = chain;	/* inherits excess ref from alloc */
-	hammer2_chain_unlock(*chainp);
-	*chainp = chain;
-	hammer2_chain_lock(chain, HAMMER2_RESOLVE_MAYBE);
-	hammer2_chain_unlock(chain);
+	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER);
 
+	for (;;) {
+		for (scan = ochain; scan->duplink; scan = scan->duplink)
+			;
+		spin_lock(&scan->core->cst.spin);
+		if (scan->duplink == NULL) {
+			/* inherits excess ref from alloc */
+			scan->duplink = nchain;
+			spin_unlock(&scan->core->cst.spin);
+			break;
+		}
+		spin_unlock(&scan->core->cst.spin);
+	}
+
+	hammer2_chain_unlock(ochain);
+	*chainp = nchain;
+	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_MAYBE);
+	hammer2_chain_unlock(nchain);
 
 	/*
 	 * If parent is not NULL, insert into the parent at the requested
@@ -2125,22 +2287,22 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		KKASSERT(i >= 0 && i < count);
 		KKASSERT(base == NULL || base[i].type == 0);
 
-		chain->parent = parent;
-		chain->index = i;
-		KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0);
+		nchain->parent = parent;
+		nchain->index = i;
+		KKASSERT((nchain->flags & HAMMER2_CHAIN_DELETED) == 0);
 		KKASSERT(parent->refs > 0);
 		spin_lock(&parent->core->cst.spin);
-		if (RB_INSERT(hammer2_chain_tree, &parent->core->rbtree, chain))
+		if (RB_INSERT(hammer2_chain_tree, &parent->core->rbtree, nchain))
 			panic("hammer2_chain_link: collision");
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
-		hammer2_chain_ref(parent);	/* chain->parent ref */
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_ONRBTREE);
+		hammer2_chain_ref(parent);	/* nchain->parent ref */
 		spin_unlock(&parent->core->cst.spin);
 
-		if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
-			hammer2_chain_ref(chain);
-			atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
+		if ((nchain->flags & HAMMER2_CHAIN_MOVED) == 0) {
+			hammer2_chain_ref(nchain);
+			atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MOVED);
 		}
-		hammer2_chain_parent_setsubmod(chain);
+		hammer2_chain_parent_setsubmod(nchain);
 	}
 }
 
@@ -2195,6 +2357,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
 	hammer2_chain_t *chain;
+	hammer2_chain_t *child;
 	hammer2_chain_t *ichain;
 	hammer2_chain_t dummy;
 	hammer2_key_t key = create_key;
@@ -2213,7 +2376,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	KKASSERT(ccms_thread_lock_owned(&parent->core->cst));
 	*errorp = 0;
 
-	hammer2_chain_modify(trans, parent, HAMMER2_MODIFY_OPTDATA);
+	/*hammer2_chain_modify(trans, parent, HAMMER2_MODIFY_OPTDATA);*/
 	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
 		base = NULL;
 
@@ -2275,12 +2438,11 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	for (i = 0; i < count; ++i) {
 		int nkeybits;
 
-		dummy.index = i;
-		chain = RB_FIND(hammer2_chain_tree, &parent->core->rbtree,
-				&dummy);
-		if (chain) {
-			KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0);
-			bref = &chain->bref;
+		child = hammer2_chain_find_locked(parent, i);
+		if (child) {
+			if (child->flags & HAMMER2_CHAIN_DELETED)
+				continue;
+			bref = &child->bref;
 		} else if (base && base[i].type) {
 			bref = &base[i];
 		} else {
@@ -2293,8 +2455,13 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		 * that we will later cut in half (two halves @ nkeybits - 1).
 		 */
 		nkeybits = keybits;
-		if (nkeybits < bref->keybits)
+		if (nkeybits < bref->keybits) {
+			if (bref->keybits > 64) {
+				kprintf("bad bref index %d chain %p bref %p\n", i, chain, bref);
+				Debugger("fubar");
+			}
 			nkeybits = bref->keybits;
+		}
 		while (nkeybits < 64 &&
 		       (~(((hammer2_key_t)1 << nkeybits) - 1) &
 		        (key ^ bref->key)) != 0) {
@@ -2400,6 +2567,13 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	hammer2_chain_drop(ichain);	/* excess ref from alloc */
 
 	/*
+	 * We have to mark it modified to allocate its block, but use
+	 * OPTDATA to allow it to remain in the INITIAL state.  Otherwise
+	 * it won't be acted upon by the flush code.
+	 */
+	hammer2_chain_modify(trans, ichain, HAMMER2_MODIFY_OPTDATA);
+
+	/*
 	 * Iterate the original parent and move the matching brefs into
 	 * the new indirect block.
 	 *
@@ -2414,12 +2588,14 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		 * anyway so we can avoid checking the cache when the media
 		 * has a key.
 		 */
-		dummy.index = i;
-		chain = RB_FIND(hammer2_chain_tree, &parent->core->rbtree,
-				&dummy);
-		if (chain) {
-			KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0);
-			bref = &chain->bref;
+		child = hammer2_chain_find_locked(parent, i);
+		if (child) {
+			if (child->flags & HAMMER2_CHAIN_DELETED) {
+				if (ichain->index < 0)
+					ichain->index = i;
+				continue;
+			}
+			bref = &child->bref;
 		} else if (base && base[i].type) {
 			bref = &base[i];
 		} else {
@@ -2464,12 +2640,8 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		spin_unlock(&parent->core->cst.spin);
 		chain = hammer2_chain_get(parent, i, HAMMER2_LOOKUP_NODATA);
 		hammer2_chain_delete(trans, parent, chain);
-		hammer2_chain_duplicate(trans, ichain, i, &chain);
+		hammer2_chain_duplicate(trans, ichain, i, &chain, NULL);
 
-#if 0
-		if (base)
-			bzero(&base[i], sizeof(base[i]));
-#endif
 		hammer2_chain_unlock(chain);
 		KKASSERT(parent->refs > 0);
 		chain = NULL;
@@ -2489,6 +2661,9 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * The insertion shouldn't race as this is a completely new block
 	 * and the parent is locked.
 	 */
+	if (ichain->index < 0)
+		kprintf("indirect parent %p count %d key %016jx/%d\n",
+			parent, count, (intmax_t)key, keybits);
 	KKASSERT(ichain->index >= 0);
 	KKASSERT((ichain->flags & HAMMER2_CHAIN_ONRBTREE) == 0);
 	spin_lock(&parent->core->cst.spin);
@@ -2498,6 +2673,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	ichain->parent = parent;
 	hammer2_chain_ref(parent);	/* ichain->parent ref */
 	spin_unlock(&parent->core->cst.spin);
+	KKASSERT(parent->duplink == NULL); /* XXX mus be inside spin */
 
 	/*
 	 * Mark the new indirect block modified after insertion, which
@@ -2511,7 +2687,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * our moved blocks, then call setsubmod() to set the bit
 	 * recursively.
 	 */
-	hammer2_chain_modify(trans, ichain, HAMMER2_MODIFY_OPTDATA);
+	/*hammer2_chain_modify(trans, ichain, HAMMER2_MODIFY_OPTDATA);*/
 	hammer2_chain_parent_setsubmod(ichain);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_SUBMODIFIED);
 
@@ -2544,41 +2720,31 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 
 /*
  * Sets CHAIN_DELETED and CHAIN_MOVED in the chain being deleted and
- * remove the parent's bref reference to chain, generating a modification
- * on the parent.
+ * set chain->delete_tid.
  *
- * We do not attempt to defer adjustment of the parent bref to the chain
- * as this could become quite complex with multiple deletions / replacements.
- * Intead, a modification is generated in the parent which can cause it to
- * be duplicated if the current parent's data is required for a flush in
- * progress.
- *
- * NOTE: We can trivially adjust the parent if it is in the INITIAL state.
- *
- * NOTE: The flush code handles the actual removal of the chain from
- *	 the BTREE (also, depending on synchronization points, the
- *	 chain may still be relevant to the flush).
- *
- * NOTE: chain->delete_tid distinguishes deleted chains from live chains,
- *	 by setting it to something less than HAMMER2_MAX_TID the
- *	 chain_lookup(), chain_next(), and chain_get() functions will
- *	 not have visibility.
+ * This function does NOT generate a modification to the parent.  Such
+ * modifications are handled by the flush code and are properly merged
+ * using the flush synchronization point.  The find/get code will
+ * properly overload the RBTREE check on top of the bref check to detect
+ * deleted entries prior to flush.
  *
  * This function is NOT recursive.  Any entity already pushed into the
  * chain (such as an inode) may still need visibility into its contents,
  * as well as the ability to read and modify the contents.  For example,
  * for an unlinked file which is still open.
+ *
+ * NOTE: This function does NOT set chain->modify_tid, allowing future
+ *	 code to distinguish between live and deleted chains by testing
+ *	 sync_tid.
  */
 void
 hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		     hammer2_chain_t *chain)
 {
-	hammer2_mount_t *hmp = trans->hmp;
-	hammer2_blockref_t *base;
-	int count;
-
-	if (chain->parent != parent)
+	if (chain->parent->core != parent->core)
 		panic("hammer2_chain_delete: parent mismatch");
+	if (parent->duplink)
+		panic("hammer2_chain_delete: deleting via stale path");
 	KKASSERT(ccms_thread_lock_owned(&parent->core->cst));
 
 	/*
@@ -2588,55 +2754,9 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		return;
 
 	/*
-	 * Mark the parent modified so our base[] pointer remains valid
-	 * while we move entries.  For the optimized indirect block
-	 * case mark the parent moved instead.
-	 *
-	 * Calculate the blockref reference in the parent and zero it out.
-	 */
-	switch(parent->bref.type) {
-	case HAMMER2_BREF_TYPE_INODE:
-		hammer2_chain_modify(trans, parent,
-				     HAMMER2_MODIFY_NO_MODIFY_TID);
-		base = &parent->data->ipdata.u.blockset.blockref[0];
-		count = HAMMER2_SET_COUNT;
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		hammer2_chain_modify(trans, parent,
-				     HAMMER2_MODIFY_OPTDATA |
-				     HAMMER2_MODIFY_NO_MODIFY_TID);
-		if (parent->flags & HAMMER2_CHAIN_INITIAL)
-			base = NULL;
-		else
-			base = &parent->data->npdata.blockref[0];
-		count = parent->bytes / sizeof(hammer2_blockref_t);
-		break;
-	case HAMMER2_BREF_TYPE_VOLUME:
-		hammer2_chain_modify(trans, parent,
-				     HAMMER2_MODIFY_NO_MODIFY_TID);
-		base = &hmp->voldata.sroot_blockset.blockref[0];
-		count = HAMMER2_SET_COUNT;
-		break;
-	default:
-		panic("hammer2_chain_delete: unrecognized blockref type: %d",
-		      parent->bref.type);
-		base = NULL;	/* NOT REACHED */
-		count = 0;	/* NOT REACHED */
-		break;		/* NOT REACHED */
-	}
-	KKASSERT(chain->index >= 0 && chain->index < count);
-
-	/*
-	 * Clean out the blockref immediately.
-	 */
-	if (base)
-		bzero(&base[chain->index], sizeof(*base));
-
-	/*
-	 * Must set MOVED along with DELETED for the flush code to recognize
-	 * the operation and properly disconnect the chain in-memory.
+	 * We must set MOVED along with DELETED for the flush code to
+	 * recognize the operation and properly disconnect the chain
+	 * in-memory.
 	 *
 	 * The setting of DELETED causes finds, lookups, and _next iterations
 	 * to no longer recognize the chain.  RB_SCAN()s will still have

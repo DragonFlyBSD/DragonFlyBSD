@@ -142,7 +142,7 @@ struct hammer2_chain {
 	struct hammer2_mount	*hmp;
 	struct hammer2_chain	*duplink;	/* duplication link */
 
-	hammer2_tid_t	create_tid;		/* snapshot/flush filter */
+	hammer2_tid_t	modify_tid;		/* snapshot/flush filter */
 	hammer2_tid_t	delete_tid;
 	struct buf	*bp;			/* physical data buffer */
 	u_int		bytes;			/* physical data size */
@@ -436,7 +436,8 @@ void hammer2_inode_put(hammer2_inode_t *ip);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
-void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_chain_t **chainp);
+void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
+			hammer2_chain_t *chain);
 int hammer2_inode_calc_alloc(hammer2_key_t filesize);
 
 hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
@@ -479,6 +480,8 @@ int hammer2_chain_lock(hammer2_chain_t *chain, int how);
 void hammer2_chain_moved(hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_trans_t *trans,
 				hammer2_chain_t *chain, int flags);
+hammer2_inode_data_t *hammer2_chain_modify_ip(hammer2_trans_t *trans,
+				hammer2_inode_t *ip, int flags);
 void hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 				struct buf *bp,
 				hammer2_chain_t *parent,
@@ -503,9 +506,10 @@ int hammer2_chain_create(hammer2_trans_t *trans,
 				hammer2_chain_t **chainp,
 				hammer2_key_t key, int keybits,
 				int type, size_t bytes);
-void hammer2_chain_duplicate(hammer2_trans_t *trans,
-				hammer2_chain_t *parent, int i,
-				hammer2_chain_t **chainp);
+void hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
+				int i,
+				hammer2_chain_t **chainp,
+				hammer2_blockref_t *bref);
 void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				hammer2_chain_t *chain);
 void hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);

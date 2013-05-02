@@ -32,6 +32,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+/*
+ * Kernel Filesystem interface
+ *
+ * NOTE! local ipdata pointers must be reloaded on any modifying operation
+ *	 to the inode as its underlying chain may have changed.
+ */
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -51,8 +58,8 @@
 
 static int hammer2_read_file(hammer2_inode_t *ip, struct uio *uio,
 				int seqcount);
-static int hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
-				int ioflag, int seqcount);
+static int hammer2_write_file(hammer2_inode_t *ip, hammer2_trans_t *trans,
+				struct uio *uio, int ioflag, int seqcount);
 static hammer2_off_t hammer2_assign_physical(hammer2_trans_t *trans,
 				hammer2_inode_t *ip,
 				hammer2_key_t lbase, int lblksize,
@@ -144,9 +151,38 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	/*
 	 * Set SUBMODIFIED so we can detect and propagate the DESTROYED
 	 * bit in the flush code.
+	 *
+	 * ip->chain might be stale, correct it before checking as older
+	 * versions of the chain are likely marked deleted even if the
+	 * file hasn't been.  XXX ip->chain should never be stale on
+	 * reclaim.
 	 */
 	hammer2_inode_lock_ex(ip);
 	chain = ip->chain;
+	if (chain->duplink)
+		kprintf("RECLAIM DUPLINKED IP: %p %p\n", ip, ip->chain);
+#if 0
+	while (chain->duplink)
+		chain = chain->duplink;
+	if (ip->chain != chain) {
+		hammer2_inode_repoint(ip, ip->pip, chain);
+		chain = ip->chain;
+	}
+#endif
+
+	/*
+	 * The final close of a deleted file or directory marks it for
+	 * destruction.  The DESTROYED flag allows the flusher to shortcut
+	 * any modified blocks still unflushed (that is, just ignore them).
+	 *
+	 * HAMMER2 usually does not try to optimize the freemap by returning
+	 * deleted blocks to it as it does not usually know how many snapshots
+	 * might be referencing portions of the file/dir.  XXX TODO.
+	 *
+	 * XXX TODO - However, any modified file as-of when a snapshot is made
+	 *	      cannot use this optimization as some of the modifications
+	 *	      may wind up being part of the snapshot.
+	 */
 	vp->v_data = NULL;
 	ip->vp = NULL;
 	if (chain->flags & HAMMER2_CHAIN_DELETED) {
@@ -327,6 +363,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 		if (error == 0) {
 			if (ipdata->uflags != flags) {
 				hammer2_chain_modify(&trans, ip->chain, 0);
+				ipdata = &ip->chain->data->ipdata; /* RELOAD */
 				ipdata->uflags = flags;
 				ipdata->ctime = ctime;
 				kflags |= NOTE_ATTRIB;
@@ -360,6 +397,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 			    ipdata->mode != cur_mode
 			) {
 				hammer2_chain_modify(&trans, ip->chain, 0);
+				ipdata = &ip->chain->data->ipdata; /* RELOAD */
 				ipdata->uid = uuid_uid;
 				ipdata->gid = uuid_gid;
 				ipdata->mode = cur_mode;
@@ -382,6 +420,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 			} else {
 				hammer2_extend_file(&trans, ip, vap->va_size);
 			}
+			ipdata = &ip->chain->data->ipdata; /* RELOAD */
 			domtime = 1;
 			break;
 		default:
@@ -393,12 +432,14 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	/* atime not supported */
 	if (vap->va_atime.tv_sec != VNOVAL) {
 		hammer2_chain_modify(&trans, ip->chain, 0);
+		ipdata = &ip->chain->data->ipdata; /* RELOAD */
 		ipdata->atime = hammer2_timespec_to_time(&vap->va_atime);
 		kflags |= NOTE_ATTRIB;
 	}
 #endif
 	if (vap->va_mtime.tv_sec != VNOVAL) {
 		hammer2_chain_modify(&trans, ip->chain, 0);
+		ipdata = &ip->chain->data->ipdata; /* RELOAD */
 		ipdata->mtime = hammer2_timespec_to_time(&vap->va_mtime);
 		kflags |= NOTE_ATTRIB;
 	}
@@ -411,6 +452,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 					 cur_uid, cur_gid, &cur_mode);
 		if (error == 0 && ipdata->mode != cur_mode) {
 			hammer2_chain_modify(&trans, ip->chain, 0);
+			ipdata = &ip->chain->data->ipdata; /* RELOAD */
 			ipdata->mode = cur_mode;
 			ipdata->ctime = ctime;
 			kflags |= NOTE_ATTRIB;
@@ -664,6 +706,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 {
 	hammer2_mount_t *hmp;
 	hammer2_inode_t *ip;
+	hammer2_trans_t trans;
 	thread_t td;
 	struct vnode *vp;
 	struct uio *uio;
@@ -711,8 +754,11 @@ hammer2_vop_write(struct vop_write_args *ap)
 	 * might wind up being copied into the embedded data area.
 	 */
 	hammer2_inode_lock_ex(ip);
-	error = hammer2_write_file(ip, uio, ap->a_ioflag, seqcount);
+	hammer2_trans_init(&trans, ip->hmp);
+	error = hammer2_write_file(ip, &trans, uio, ap->a_ioflag, seqcount);
 	hammer2_inode_unlock_ex(ip);
+	hammer2_trans_done(&trans);
+
 	return (error);
 }
 
@@ -774,10 +820,9 @@ hammer2_read_file(hammer2_inode_t *ip, struct uio *uio, int seqcount)
  */
 static
 int
-hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
-		   int ioflag, int seqcount)
+hammer2_write_file(hammer2_inode_t *ip, hammer2_trans_t *trans,
+		   struct uio *uio, int ioflag, int seqcount)
 {
-	hammer2_trans_t trans;
 	hammer2_inode_data_t *ipdata;
 	hammer2_key_t old_eof;
 	struct buf *bp;
@@ -794,8 +839,6 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	kflags = 0;
 	error = 0;
 
-	hammer2_trans_init(&trans, ip->hmp);
-
 	/*
 	 * Extend the file if necessary.  If the write fails at some point
 	 * we will truncate it back down to cover as much as we were able
@@ -804,13 +847,16 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	 * Doing this now makes it easier to calculate buffer sizes in
 	 * the loop.
 	 */
+	KKASSERT(ipdata->type != HAMMER2_OBJTYPE_HARDLINK);
 	old_eof = ipdata->size;
 	if (uio->uio_offset + uio->uio_resid > ipdata->size) {
 		modified = 1;
-		hammer2_extend_file(&trans, ip,
+		hammer2_extend_file(trans, ip,
 				    uio->uio_offset + uio->uio_resid);
+		ipdata = &ip->chain->data->ipdata;	/* RELOAD */
 		kflags |= NOTE_EXTEND;
 	}
+	KKASSERT(ipdata->type != HAMMER2_OBJTYPE_HARDLINK);
 
 	/*
 	 * UIO write loop
@@ -916,8 +962,9 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 		 * strategy code will take care of it in that case.
 		 */
 		bp->b_bio2.bio_offset =
-			hammer2_assign_physical(&trans, ip,
+			hammer2_assign_physical(trans, ip,
 						lbase, lblksize, &error);
+		ipdata = &ip->chain->data->ipdata;	/* RELOAD */
 		if (error) {
 			brelse(bp);
 			break;
@@ -972,18 +1019,24 @@ hammer2_write_file(hammer2_inode_t *ip, struct uio *uio,
 	 * the entire write is a failure and we have to back-up.
 	 */
 	if (error && ipdata->size != old_eof) {
-		hammer2_truncate_file(&trans, ip, old_eof);
+		hammer2_truncate_file(trans, ip, old_eof);
+		ipdata = &ip->chain->data->ipdata;	/* RELOAD */
 	} else if (modified) {
-		hammer2_chain_modify(&trans, ip->chain, 0);
+		hammer2_chain_modify(trans, ip->chain, 0);
+		ipdata = &ip->chain->data->ipdata;	/* RELOAD */
 		hammer2_update_time(&ipdata->mtime);
 	}
 	hammer2_knote(ip->vp, kflags);
-	hammer2_trans_done(&trans);
+
 	return error;
 }
 
 /*
- * Assign physical storage to a logical block.
+ * Assign physical storage to a logical block.  This function creates the
+ * related meta-data chains representing the data blocks and marks them
+ * MODIFIED.  We could mark them MOVED instead but ultimately I need to
+ * XXX code the flusher to check that the related logical buffer is
+ * flushed.
  *
  * NOOFFSET is returned if the data is inode-embedded.  In this case the
  * strategy code will simply bcopy() the data into the inode.
@@ -1295,6 +1348,7 @@ hammer2_extend_file(hammer2_trans_t *trans,
 			    0, HAMMER2_EMBEDDED_BYTES,
 			    0, (int)nsize,
 			    1);
+		/* ipdata = &ip->chain->data->ipdata; RELOAD */
 		return;
 	}
 
@@ -1316,6 +1370,7 @@ hammer2_extend_file(hammer2_trans_t *trans,
 		    0, nblksize,
 		    0, (int)nsize & HAMMER2_PBUFMASK,
 		    1);
+	ipdata = &ip->chain->data->ipdata;
 
 	/*
 	 * Early return if we have no more work to do.
@@ -1776,7 +1831,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	error = hammer2_inode_connect(&trans, dip, &chain, name, name_len);
 	if (error == 0) {
-		hammer2_inode_repoint(ip, &chain);
+		hammer2_inode_repoint(ip, ip->pip, chain);
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, ap->a_vp);
 	}
@@ -1904,7 +1959,9 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 			auio.uio_td = curthread;
 			aiov.iov_base = ap->a_target;
 			aiov.iov_len = bytes;
-			error = hammer2_write_file(nip, &auio, IO_APPEND, 0);
+			error = hammer2_write_file(nip, &trans,
+						   &auio, IO_APPEND, 0);
+			nipdata = &nip->chain->data->ipdata; /* RELOAD */
 			/* XXX handle error */
 			error = 0;
 		}
@@ -2066,6 +2123,10 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * does nothing other than return the locked chain.
 	 *
 	 * The returned chain will be locked.
+	 *
+	 * WARNING!  We do not currently have a local copy of ipdata but
+	 *	     we do use one later remember that it must be reloaded
+	 *	     on any modification to the inode, including connects.
 	 */
 	hammer2_inode_lock_ex(ip);
 	error = hammer2_hardlink_consolidate(&trans, ip, &chain, tdip, 0);
@@ -2099,7 +2160,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 				      &chain, tname, tname_len);
 	if (error == 0) {
 		KKASSERT(chain != NULL);
-		hammer2_inode_repoint(ip, &chain);
+		hammer2_inode_repoint(ip, tdip, chain);
 		cache_rename(ap->a_fnch, ap->a_tnch);
 	}
 done:

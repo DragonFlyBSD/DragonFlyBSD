@@ -56,8 +56,8 @@
  * NOTE: We don't combine the inode/chain lock because putting away an
  *       inode would otherwise confuse multiple lock holders of the inode.
  *
- * WARNING! hammer2_inode_repoint() expects exactly one exclusive lock
- *	    on ip->chain.
+ * WARNING! hammer2_inode_repoint() can replace ip->chain and assumes that
+ *	    there is only one 'inode' lock. XXX
  */
 void
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
@@ -68,6 +68,14 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
 
 	chain = ip->chain;
+	while (chain->duplink)
+		chain = chain->duplink;
+	if (chain != ip->chain) {
+		hammer2_chain_ref(chain);
+		hammer2_chain_drop(ip->chain);
+		ip->chain = chain;
+	}
+
 	KKASSERT(chain != NULL);	/* for now */
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 }
