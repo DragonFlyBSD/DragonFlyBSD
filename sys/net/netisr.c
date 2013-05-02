@@ -427,7 +427,7 @@ netisr_handle(int num, struct mbuf *m)
  *
  * The base of the ISR type (e.g. IP) that we want to characterize is
  * at (hoff) relative to the beginning of the mbuf.  This allows
- * e.g. ether_input_chain() to not have to adjust the m_data/m_len.
+ * e.g. ether_characterize() to not have to adjust the m_data/m_len.
  */
 void
 netisr_characterize(int num, struct mbuf **mp, int hoff)
