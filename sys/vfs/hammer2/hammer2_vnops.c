@@ -237,6 +237,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 */
 	if (ip->flags & HAMMER2_INODE_DIRTYEMBED) {
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYEMBED);
+		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 		hammer2_chain_modify(&trans, ip->chain, 0);
 	}
 
@@ -248,9 +249,10 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 * which call this function will eventually call chain_flush
 	 * on the volume root as a catch-all, which is far more optimal.
 	 */
-	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-	if (ap->a_flags & VOP_FSYNC_SYSCALL)
+	if (ap->a_flags & VOP_FSYNC_SYSCALL) {
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 		hammer2_chain_flush(&trans, ip->chain);
+	}
 	hammer2_inode_unlock_ex(ip);
 	hammer2_trans_done(&trans);
 	return (0);
@@ -995,7 +997,13 @@ hammer2_write_file(hammer2_inode_t *ip, hammer2_trans_t *trans,
 		 *	 eof-straddling blocksize and is incorrect.
 		 */
 		bp->b_flags |= B_AGE;
-		if (ioflag & IO_SYNC) {
+		if ((ioflag & IO_SYNC) ||
+		    (lbase == 0 && (ipdata->op_flags &
+				    HAMMER2_OPFLAG_DIRECTDATA))) {
+			/*
+			 * Synchronous I/O requested or writing to the
+			 * inode's embedded data (which must be synchronous).
+			 */
 			bwrite(bp);
 		} else if ((ioflag & IO_DIRECT) && loff + n == lblksize) {
 			if (bp->b_bcount == HAMMER2_PBUFSIZE)
@@ -1220,7 +1228,19 @@ hammer2_truncate_file(hammer2_trans_t *trans,
 			hammer2_chain_unlock(chain);
 			if (bp->b_bcount == HAMMER2_PBUFSIZE)
 				bp->b_flags |= B_CLUSTEROK;
-			bdwrite(bp);
+			if (lbase == 0 &&
+			    (ipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA)) {
+				/*
+				 * Must be synchronous if writing to the
+				 * inode's embedded data area.
+				 */
+				bwrite(bp);
+			} else {
+				/*
+				 * Else a delayed-write is fine.
+				 */
+				bdwrite(bp);
+			}
 		} else {
 			/*
 			 * Destroy clean buffer w/ wrong buffer size.  Retain
@@ -2318,6 +2338,7 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	struct buf *bp;
 	struct bio *bio;
 	struct bio *nbio;
+	hammer2_chain_t *chain;
 	hammer2_mount_t *hmp;
 	hammer2_inode_t *ip;
 
@@ -2332,14 +2353,14 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 
 	if (nbio->bio_offset == NOOFFSET) {
 		/*
-		 * Must be embedded in the inode.
-		 *
-		 * Because the inode is dirty, the chain must exist whether
-		 * the inode is locked or not. XXX
+		 * The data is embedded in the inode.  Note that strategy
+		 * calls for embedded data are synchronous in order to
+		 * ensure that ip->chain is stable.
 		 */
 		KKASSERT(bio->bio_offset == 0);
 		KKASSERT(ip->chain && ip->chain->data);
-		bcopy(bp->b_data, ip->chain->data->ipdata.u.data,
+		chain = ip->chain;
+		bcopy(bp->b_data, chain->data->ipdata.u.data,
 		      HAMMER2_EMBEDDED_BYTES);
 		bp->b_resid = 0;
 		bp->b_error = 0;
