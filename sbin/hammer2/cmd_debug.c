@@ -314,20 +314,43 @@ int
 cmd_show(const char *devpath)
 {
 	hammer2_blockref_t broot;
+	hammer2_blockref_t best;
+	hammer2_media_data_t media;
 	int fd;
 	int i;
+	int best_i;
 
 	fd = open(devpath, O_RDONLY);
 	if (fd < 0) {
 		perror("open");
 		return 1;
 	}
+
+	/*
+	 * Show the tree using the best volume header.
+	 * -vvv will show the tree for all four volume headers.
+	 */
+	best_i = -1;
+	bzero(&best, sizeof(best));
 	for (i = 0; i < 4; ++i) {
 		bzero(&broot, sizeof(broot));
 		broot.type = HAMMER2_BREF_TYPE_VOLUME;
-		broot.data_off = (i * HAMMER2_ZONE_BYTES64) | HAMMER2_PBUFRADIX;
-		show_bref(fd, 0, i, &broot);
+		broot.data_off = (i * HAMMER2_ZONE_BYTES64) |
+				 HAMMER2_PBUFRADIX;
+		lseek(fd, broot.data_off & ~HAMMER2_OFF_MASK_RADIX, 0);
+		if (read(fd, &media, HAMMER2_PBUFSIZE) ==
+		    (ssize_t)HAMMER2_PBUFSIZE) {
+			broot.mirror_tid = media.voldata.mirror_tid;
+			if (best_i < 0 || best.mirror_tid < broot.mirror_tid) {
+				best_i = i;
+				best = broot;
+			}
+			if (VerboseOpt >= 3)
+				show_bref(fd, 0, i, &broot);
+		}
 	}
+	if (VerboseOpt < 3)
+		show_bref(fd, 0, best_i, &best);
 	close(fd);
 
 	return 0;
