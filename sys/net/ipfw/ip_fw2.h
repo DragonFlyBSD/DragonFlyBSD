@@ -23,13 +23,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.17 2008/09/26 12:12:36 sephe Exp $
  */
 
 #ifndef _IPFW2_H
 #define _IPFW2_H
 
+#ifdef _KERNEL
 #include <net/netisr2.h>
+#endif
 
 /*
  * The kernel representation of ipfw rules is made of a list of

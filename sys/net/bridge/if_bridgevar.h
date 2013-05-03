@@ -66,7 +66,6 @@
  * $OpenBSD: if_bridge.h,v 1.14 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: if_bridgevar.h,v 1.4 2003/07/08 07:13:50 itojun Exp $
  * $FreeBSD: src/sys/net/if_bridgevar.h,v 1.4 2005/07/06 01:24:45 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.10 2008/11/26 12:49:43 sephe Exp $
  */
 
 #ifndef _NET_IF_BRIDGEVAR_H
@@ -78,7 +77,9 @@
 
 #include <sys/callout.h>
 #include <sys/queue.h>
+#ifdef _KERNEL
 #include <net/netisr2.h>
+#endif
 
 /*
  * Commands used in the SIOCSDRVSPEC ioctl.  Note the lookup of the
