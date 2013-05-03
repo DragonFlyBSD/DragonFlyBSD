@@ -231,6 +231,10 @@ chn_wrupdate(struct pcm_channel *c)
 	if ((c->flags & (CHN_F_MAPPED | CHN_F_VIRTUAL)) || !(c->flags & CHN_F_TRIGGERED))
 		return;
 	chn_dmaupdate(c);
+	if (sndbuf_getsize(c->bufsoft) == 0) {
+		DEB(kprintf("chn_wrupdate: avoid calling chn_wrfeed without any data in soft buffer");)
+		return;
+	}
 	ret = chn_wrfeed(c);
 	/* tell the driver we've updated the primary buffer */
 	chn_trigger(c, PCMTRIG_EMLDMAWR);
@@ -285,6 +289,10 @@ chn_wrintr(struct pcm_channel *c)
 	/* update pointers in primary buffer */
 	chn_dmaupdate(c);
 	/* ...and feed from secondary to primary */
+	if (sndbuf_getsize(c->bufsoft) == 0) {
+		DEB(kprintf("chn_wrintr: avoid calling chn_wrfeed without any data in soft buffer");)
+		return;
+	}
 	ret = chn_wrfeed(c);
 	/* tell the driver we've updated the primary buffer */
 	chn_trigger(c, PCMTRIG_EMLDMAWR);
@@ -734,7 +742,7 @@ chn_flush(struct pcm_channel *c)
 			if (resid == resid_p)
 				count--;
 			if (resid > resid_p)
-				DEB(printf("chn_flush: buffer length increasind %d -> %d\n", resid_p, resid));
+				DEB(kprintf("chn_flush: buffer length increasind %d -> %d\n", resid_p, resid));
 			resid_p = resid;
 		}
    	}
@@ -1330,7 +1338,7 @@ chn_buildfeeder(struct pcm_channel *c)
 			desc.type = FEEDER_MIXER;
 			desc.in = 0;
 		} else {
-			DEB(printf("can't decide which feeder type to use!\n"));
+			DEB(kprintf("can't decide which feeder type to use!\n"));
 			return EOPNOTSUPP;
 		}
 		desc.out = c->format;
@@ -1379,11 +1387,11 @@ chn_buildfeeder(struct pcm_channel *c)
 			tmp[0] = fc->desc->in;
 			tmp[1] = 0;
 			if (chn_fmtchain(c, tmp) == 0) {
-				DEB(printf("failed\n"));
+				DEB(kprintf("failed\n"));
 
 				return ENODEV;
 			}
- 			DEB(printf("ok\n"));
+			DEB(kprintf("ok\n"));
 
 			err = chn_addfeeder(c, fc, fc->desc);
 			if (err) {
@@ -1403,7 +1411,7 @@ chn_buildfeeder(struct pcm_channel *c)
  		hwfmt = chn_fmtchain(c, fmtlist);
 
 	if (hwfmt == 0 || !fmtvalid(hwfmt, fmtlist)) {
-		DEB(printf("Invalid hardware format: 0x%08x\n", hwfmt));
+		DEB(kprintf("Invalid hardware format: 0x%08x\n", hwfmt));
 		return ENODEV;
 	}
 
