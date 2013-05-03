@@ -124,8 +124,13 @@ hammer2_chain_parent_setsubmod(hammer2_chain_t *chain)
 	while ((parent = chain->parent) != NULL) {
 		core = parent->core;
 		spin_lock(&core->cst.spin);
-		while (parent->duplink)
+		/*
+		 * XXX flush synchronization
+		 */
+		while (parent->duplink &&
+		       (parent->flags & HAMMER2_CHAIN_DELETED)) {
 			parent = parent->duplink;
+		}
 		if (parent->flags & HAMMER2_CHAIN_SUBMODIFIED) {
 			spin_unlock(&core->cst.spin);
 			break;
@@ -363,6 +368,7 @@ hammer2_chain_t *
 hammer2_chain_lastdrop(hammer2_chain_t *chain)
 {
 	hammer2_chain_t *parent;
+	hammer2_chain_t *tmp;
 	hammer2_chain_core_t *parent_core;
 
 	parent = chain->parent;
@@ -375,9 +381,9 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 		chain->parent = NULL;	/* NULL field, must drop implied ref */
 		spin_unlock(&parent_core->cst.spin);
-		if (chain->duplink) {
-			hammer2_chain_drop(chain->duplink);
+		if ((tmp = chain->duplink) != NULL) {
 			chain->duplink = NULL;
+			hammer2_chain_drop(tmp);
 		}
 		hammer2_chain_dealloc(chain);
 		chain = parent;		/* recursively drop parent */
@@ -493,7 +499,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 */
 	ostate = ccms_thread_lock_upgrade(&core->cst);
 	if (chain->data) {
-		ccms_thread_lock_restore(&core->cst, ostate);
+		ccms_thread_lock_downgrade(&core->cst, ostate);
 		return (0);
 	}
 
@@ -540,7 +546,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 			(intmax_t)pbase, error);
 		bqrelse(chain->bp);
 		chain->bp = NULL;
-		ccms_thread_lock_restore(&core->cst, ostate);
+		ccms_thread_lock_downgrade(&core->cst, ostate);
 		return (error);
 	}
 
@@ -611,7 +617,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 */
 	if (chain->bp)
 		BUF_KERNPROC(chain->bp);
-	ccms_thread_lock_restore(&core->cst, ostate);
+	ccms_thread_lock_downgrade(&core->cst, ostate);
 	return (0);
 }
 
@@ -764,16 +770,10 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
  * exclusively locked chain at the same index and unlocks the old chain.
  * Flushes the buffer if necessary.
  *
- * If you want the resize code to copy the data to the new block then the
- * caller should lock the chain RESOLVE_MAYBE or RESOLVE_ALWAYS.
- *
- * If the caller already holds a logical buffer containing the data and
- * intends to bdwrite() that buffer resolve with RESOLVE_NEVER.  The resize
- * operation will then not copy the (stale) data from the media.
- *
  * This function is mostly used with DATA blocks locked RESOLVE_NEVER in order
  * to avoid instantiating a device buffer that conflicts with the vnode
- * data buffer.
+ * data buffer.  That is, the passed-in bp is a logical buffer, whereas
+ * any chain-oriented bp would be a device buffer.
  *
  * XXX flags currently ignored, uses chain->bp to detect data/no-data.
  * XXX return error if cannot resize.
@@ -786,14 +786,16 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 {
 	hammer2_mount_t *hmp = trans->hmp;
 	hammer2_chain_t *chain = *chainp;
+#if 0
 	struct buf *nbp;
+	char *bdata;
+	int error;
+#endif
 	hammer2_off_t pbase;
 	size_t obytes;
 	size_t nbytes;
 	size_t bbytes;
 	int boff;
-	char *bdata;
-	int error;
 
 	/*
 	 * Only data and indirect blocks can be resized for now.
@@ -838,8 +840,10 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		hammer2_chain_ref(chain);
 	} else {
+#if 0
 		hammer2_freemap_free(hmp, chain->bref.data_off,
 				     chain->bref.type);
+#endif
 	}
 
 	/*
@@ -859,9 +863,14 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	pbase = chain->bref.data_off & ~(hammer2_off_t)(bbytes - 1);
 	boff = chain->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
 
+	KKASSERT(chain->bp == NULL);
+#if 0
 	/*
 	 * Only copy the data if resolved, otherwise the caller is
 	 * responsible.
+	 *
+	 * XXX handle device-buffer resizing case too.  Right now we
+	 *     only handle logical buffer resizing.
 	 */
 	if (chain->bp) {
 		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
@@ -911,6 +920,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		chain->data = (void *)bdata;
 		hammer2_chain_modify(trans, chain, 0);
 	}
+#endif
 
 	/*
 	 * Make sure the chain is marked MOVED and SUBMOD is set in the
@@ -1450,16 +1460,20 @@ hammer2_chain_lookup(hammer2_chain_t **parentp,
 			   ((hammer2_key_t)1 << parent->bref.keybits) - 1;
 		if (key_beg >= scan_beg && key_end <= scan_end)
 			break;
-		hammer2_chain_ref(parent);		/* ref old parent */
-		hammer2_chain_unlock(parent);		/* unlock old parent */
-		parent = parent->parent;
-		while (parent->duplink)
-			parent = parent->duplink;
-
-							/* lock new parent */
-		hammer2_chain_lock(parent, how_maybe);
-		hammer2_chain_drop(*parentp);		/* drop old parent */
-		*parentp = parent;			/* new parent */
+		/*
+		 * XXX flush synchronization
+		 */
+		tmp = parent->parent;
+		while (tmp->duplink &&
+		       (tmp->flags & HAMMER2_CHAIN_DELETED)) {
+			tmp = tmp->duplink;
+		}
+		hammer2_chain_ref(tmp);		/* ref new parent */
+		hammer2_chain_unlock(parent);	/* unlock old parent */
+						/* lock new parent */
+		hammer2_chain_lock(tmp, how_maybe |
+				        HAMMER2_RESOLVE_NOREF);
+		*parentp = parent = tmp;		/* new parent */
 	}
 
 again:
@@ -1526,8 +1540,10 @@ again:
 	for (i = 0; i < count; ++i) {
 		tmp = hammer2_chain_find(parent, i);
 		if (tmp) {
-			if (tmp->flags & HAMMER2_CHAIN_DELETED)
+			if (tmp->flags & HAMMER2_CHAIN_DELETED) {
+				hammer2_chain_drop(tmp);
 				continue;
+			}
 			bref = &tmp->bref;
 			KKASSERT(bref->type != 0);
 		} else if (base == NULL || base[i].type == 0) {
@@ -1576,8 +1592,8 @@ again:
 		hammer2_chain_unlock(parent);
 		*parentp = parent = chain;
 		if (flags & HAMMER2_LOOKUP_NOLOCK) {
-			hammer2_chain_lock(chain, how_maybe);
-			hammer2_chain_drop(chain);	/* excess ref */
+			hammer2_chain_lock(chain, how_maybe |
+						  HAMMER2_RESOLVE_NOREF);
 		} else if ((flags & HAMMER2_LOOKUP_NODATA) &&
 			   chain->data == NULL) {
 			hammer2_chain_ref(chain);
@@ -1662,8 +1678,6 @@ again:
 		 * Continue iteration with next parent unless the current
 		 * parent covers the range.
 		 */
-		hammer2_chain_t *nparent;
-
 		scan_beg = parent->bref.key;
 		scan_end = scan_beg +
 			    ((hammer2_key_t)1 << parent->bref.keybits) - 1;
@@ -1671,15 +1685,20 @@ again:
 			return (NULL);
 
 		i = parent->index + 1;
-		nparent = parent->parent;
-		while (nparent->duplink)
-			nparent = nparent->duplink;
-		hammer2_chain_ref(nparent);	/* ref new parent */
+		/*
+		 * XXX flush synchronization
+		 */
+		tmp = parent->parent;
+		while (tmp->duplink &&
+		       (tmp->flags & HAMMER2_CHAIN_DELETED)) {
+			tmp = tmp->duplink;
+		}
+		hammer2_chain_ref(tmp);		/* ref new parent */
 		hammer2_chain_unlock(parent);	/* unlock old parent */
 						/* lock new parent */
-		hammer2_chain_lock(nparent, how_maybe);
-		hammer2_chain_drop(nparent);	/* drop excess ref */
-		*parentp = parent = nparent;
+		hammer2_chain_lock(tmp, how_maybe |
+				        HAMMER2_RESOLVE_NOREF);
+		*parentp = parent = tmp;
 	}
 
 again2:
@@ -1732,6 +1751,7 @@ again2:
 		tmp = hammer2_chain_find(parent, i);
 		if (tmp) {
 			if (tmp->flags & HAMMER2_CHAIN_DELETED) {
+				hammer2_chain_drop(tmp);
 				++i;
 				continue;
 			}
@@ -1781,8 +1801,8 @@ again2:
 		*parentp = parent = chain;
 		chain = NULL;
 		if (flags & HAMMER2_LOOKUP_NOLOCK) {
-			hammer2_chain_lock(parent, how_maybe);
-			hammer2_chain_drop(parent);	/* excess ref */
+			hammer2_chain_lock(parent, how_maybe |
+						   HAMMER2_RESOLVE_NOREF);
 		} else if ((flags & HAMMER2_LOOKUP_NODATA) &&
 			   parent->data == NULL) {
 			hammer2_chain_ref(parent);
@@ -1834,16 +1854,16 @@ again2:
  * Requires an exclusively locked parent.
  */
 int
-hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t *parent,
+hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		     hammer2_chain_t **chainp,
 		     hammer2_key_t key, int keybits, int type, size_t bytes)
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *child;
+	hammer2_chain_t *parent = *parentp;
 	hammer2_blockref_t dummy;
 	hammer2_blockref_t *base;
-	int unlock_parent = 0;
 	int allocated = 0;
 	int error = 0;
 	int count;
@@ -1995,10 +2015,8 @@ again:
 			goto done;
 		}
 		if (parent != nparent) {
-			if (unlock_parent)
-				hammer2_chain_unlock(parent);
-			parent = nparent;
-			unlock_parent = 1;
+			hammer2_chain_unlock(parent);
+			parent = *parentp = nparent;
 		}
 		goto again;
 	}
@@ -2078,8 +2096,7 @@ again:
 
 done:
 	*chainp = chain;
-	if (unlock_parent)
-		hammer2_chain_unlock(parent);
+
 	return (error);
 }
 
@@ -2224,19 +2241,13 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 	 * Insert nchain at the end of the duplication list.
 	 */
 	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER);
+	/* extra ref still present from original allocation */
 
-	for (;;) {
-		for (scan = ochain; scan->duplink; scan = scan->duplink)
-			;
-		spin_lock(&scan->core->cst.spin);
-		if (scan->duplink == NULL) {
-			/* inherits excess ref from alloc */
-			scan->duplink = nchain;
-			spin_unlock(&scan->core->cst.spin);
-			break;
-		}
-		spin_unlock(&scan->core->cst.spin);
-	}
+	spin_lock(&ochain->core->cst.spin);
+	KKASSERT(nchain->duplink == NULL);
+	nchain->duplink = ochain->duplink;
+	ochain->duplink = nchain;	/* inherits excess ref from alloc */
+	spin_unlock(&ochain->core->cst.spin);
 
 	hammer2_chain_unlock(ochain);
 	*chainp = nchain;
@@ -2285,15 +2296,21 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 			break;
 		}
 		KKASSERT(i >= 0 && i < count);
-		KKASSERT(base == NULL || base[i].type == 0);
 
 		nchain->parent = parent;
 		nchain->index = i;
 		KKASSERT((nchain->flags & HAMMER2_CHAIN_DELETED) == 0);
 		KKASSERT(parent->refs > 0);
+
 		spin_lock(&parent->core->cst.spin);
-		if (RB_INSERT(hammer2_chain_tree, &parent->core->rbtree, nchain))
+		scan = hammer2_chain_find_locked(parent, i);
+		KKASSERT(base == NULL || base[i].type == 0 ||
+			 scan == NULL ||
+			 (scan->flags & HAMMER2_CHAIN_DELETED));
+		if (RB_INSERT(hammer2_chain_tree, &parent->core->rbtree,
+			      nchain)) {
 			panic("hammer2_chain_link: collision");
+		}
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_ONRBTREE);
 		hammer2_chain_ref(parent);	/* nchain->parent ref */
 		spin_unlock(&parent->core->cst.spin);
@@ -2722,11 +2739,13 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
  * Sets CHAIN_DELETED and CHAIN_MOVED in the chain being deleted and
  * set chain->delete_tid.
  *
- * This function does NOT generate a modification to the parent.  Such
- * modifications are handled by the flush code and are properly merged
- * using the flush synchronization point.  The find/get code will
- * properly overload the RBTREE check on top of the bref check to detect
- * deleted entries prior to flush.
+ * This function does NOT generate a modification to the parent.  It
+ * would be nearly impossible to figure out which parent to modify anyway.
+ * Such modifications are handled by the flush code and are properly merged
+ * using the flush synchronization point.
+ *
+ * The find/get code will properly overload the RBTREE check on top of
+ * the bref check to detect deleted entries.
  *
  * This function is NOT recursive.  Any entity already pushed into the
  * chain (such as an inode) may still need visibility into its contents,
@@ -2736,15 +2755,16 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
  * NOTE: This function does NOT set chain->modify_tid, allowing future
  *	 code to distinguish between live and deleted chains by testing
  *	 sync_tid.
+ *
+ * NOTE: Deletions normally do not occur in the middle of a duplication
+ *	 chain but we use a trick for hardlink migration that refactors
+ *	 the originating inode without deleting it, so we make no assumptions
+ *	 here.
  */
 void
 hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		     hammer2_chain_t *chain)
 {
-	if (chain->parent->core != parent->core)
-		panic("hammer2_chain_delete: parent mismatch");
-	if (parent->duplink)
-		panic("hammer2_chain_delete: deleting via stale path");
 	KKASSERT(ccms_thread_lock_owned(&parent->core->cst));
 
 	/*

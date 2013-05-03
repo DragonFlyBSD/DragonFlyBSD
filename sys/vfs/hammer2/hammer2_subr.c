@@ -55,9 +55,6 @@
  *
  * NOTE: We don't combine the inode/chain lock because putting away an
  *       inode would otherwise confuse multiple lock holders of the inode.
- *
- * WARNING! hammer2_inode_repoint() can replace ip->chain and assumes that
- *	    there is only one 'inode' lock. XXX
  */
 void
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
@@ -67,8 +64,16 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 	hammer2_inode_ref(ip);
 	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
 
+	/*
+	 * ip->chain fixup.  Certain duplications used to move inodes
+	 * into indirect blocks (for example) can cause ip->chain to
+	 * become stale.
+	 *
+	 *
+	 */
+again:
 	chain = ip->chain;
-	while (chain->duplink)
+	while (chain->duplink && (chain->flags & HAMMER2_CHAIN_DELETED))
 		chain = chain->duplink;
 	if (chain != ip->chain) {
 		hammer2_chain_ref(chain);
@@ -78,6 +83,14 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 
 	KKASSERT(chain != NULL);	/* for now */
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
+
+	/*
+	 * Resolve duplication races
+	 */
+	if (chain->duplink && (chain->flags & HAMMER2_CHAIN_DELETED)) {
+		hammer2_chain_unlock(chain);
+		goto again;
+	}
 }
 
 void
@@ -116,12 +129,24 @@ hammer2_inode_lock_sh(hammer2_inode_t *ip)
 	hammer2_chain_t *chain;
 
 	hammer2_inode_ref(ip);
+again:
 	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_SHARED);
 
 	chain = ip->chain;
 	KKASSERT(chain != NULL);	/* for now */
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
 				  HAMMER2_RESOLVE_SHARED);
+
+	/*
+	 * Resolve duplication races
+	 */
+	if (chain->duplink && (chain->flags & HAMMER2_CHAIN_DELETED)) {
+		hammer2_chain_unlock(chain);
+		ccms_thread_unlock(&ip->topo_cst);
+		hammer2_inode_lock_ex(ip);
+		hammer2_inode_unlock_ex(ip);
+		goto again;
+	}
 
 }
 
@@ -140,6 +165,12 @@ hammer2_inode_lock_temp_release(hammer2_inode_t *ip)
 	return(ccms_thread_lock_temp_release(&ip->topo_cst));
 }
 
+void
+hammer2_inode_lock_temp_restore(hammer2_inode_t *ip, ccms_state_t ostate)
+{
+	ccms_thread_lock_temp_restore(&ip->topo_cst, ostate);
+}
+
 ccms_state_t
 hammer2_inode_lock_upgrade(hammer2_inode_t *ip)
 {
@@ -147,9 +178,9 @@ hammer2_inode_lock_upgrade(hammer2_inode_t *ip)
 }
 
 void
-hammer2_inode_lock_restore(hammer2_inode_t *ip, ccms_state_t ostate)
+hammer2_inode_lock_downgrade(hammer2_inode_t *ip, ccms_state_t ostate)
 {
-	ccms_thread_lock_restore(&ip->topo_cst, ostate);
+	ccms_thread_lock_downgrade(&ip->topo_cst, ostate);
 }
 
 /*

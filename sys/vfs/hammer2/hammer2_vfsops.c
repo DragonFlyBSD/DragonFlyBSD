@@ -355,6 +355,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	mp->mnt_data = (qaddr_t)pmp;
 	pmp->mp = mp;
 
+	spin_init(&pmp->inum_spin);
+	RB_INIT(&pmp->inum_tree);
+
 	kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
 	kdmsg_iocom_init(&pmp->iocom, pmp,
 			 KDMSG_IOCOMF_AUTOCONN |
@@ -660,6 +663,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	}
 	hammer2_mount_unlock(hmp);
 
+	hammer2_dump_chain(&hmp->vchain, 0);
+
 	/*
 	 * Final drop of embedded volume root chain to clean up
 	 * vchain.core (vchain structure is not flagged ALLOCATED
@@ -796,6 +801,10 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	int i;
 
 	hmp = MPTOHMP(mp);
+#if 0
+	if ((waitfor & MNT_LAZY) == 0)
+		hammer2_dump_chain(&hmp->vchain, 0);
+#endif
 
 	flags = VMSC_GETVP;
 	if (waitfor & MNT_LAZY)
@@ -908,7 +917,8 @@ hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 
 	ip = VTOI(vp);
 	if (vp->v_type == VNON || ip == NULL ||
-	    ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
+	    ((ip->flags & (HAMMER2_INODE_MODIFIED |
+			   HAMMER2_INODE_DIRTYEMBED)) == 0 &&
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(-1);
 	}
@@ -924,7 +934,8 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 
 	ip = VTOI(vp);
 	if (vp->v_type == VNON || vp->v_type == VBAD ||
-	    ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
+	    ((ip->flags & (HAMMER2_INODE_MODIFIED |
+			   HAMMER2_INODE_DIRTYEMBED)) == 0 &&
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(0);
 	}
@@ -1234,5 +1245,33 @@ hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
 		msg->any.lnk_volconf.mediaid = hmp->voldata.fsid;
 		msg->any.lnk_volconf.index = index;
 		kdmsg_msg_write(msg);
+	}
+}
+
+void
+hammer2_dump_chain(hammer2_chain_t *chain, int tab)
+{
+	hammer2_chain_t *scan;
+
+	kprintf("%*.*schain[%d] %p.%d [%08x][core=%p] (%s) dl=%p refs=%d",
+		tab, tab, "",
+		chain->index, chain, chain->bref.type, chain->flags,
+		chain->core,
+		((chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
+		chain->data) ?  (char *)chain->data->ipdata.filename : "?"),
+		chain->duplink, chain->refs);
+	if (chain->core == NULL || RB_EMPTY(&chain->core->rbtree))
+		kprintf("\n");
+	else
+		kprintf(" {\n");
+	RB_FOREACH(scan, hammer2_chain_tree, &chain->core->rbtree) {
+		hammer2_dump_chain(scan, tab + 4);
+	}
+	if (chain->core && !RB_EMPTY(&chain->core->rbtree)) {
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE && chain->data)
+			kprintf("%*.*s}(%s)\n", tab, tab, "",
+				chain->data->ipdata.filename);
+		else
+			kprintf("%*.*s}\n", tab, tab, "");
 	}
 }

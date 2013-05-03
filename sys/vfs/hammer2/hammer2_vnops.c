@@ -1075,7 +1075,7 @@ retry:
 		 * NOTE: DATA chains are created without device backing
 		 *	 store (nor do we want any).
 		 */
-		*errorp = hammer2_chain_create(trans, parent, &chain,
+		*errorp = hammer2_chain_create(trans, &parent, &chain,
 					       lbase, HAMMER2_PBUFRADIX,
 					       HAMMER2_BREF_TYPE_DATA,
 					       lblksize);
@@ -1413,7 +1413,7 @@ retry:
 					     obase, obase,
 					     HAMMER2_LOOKUP_NODATA);
 		if (chain == NULL) {
-			error = hammer2_chain_create(trans, parent, &chain,
+			error = hammer2_chain_create(trans, &parent, &chain,
 						     obase, nblksize,
 						     HAMMER2_BREF_TYPE_DATA,
 						     nblksize);
@@ -1827,19 +1827,23 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 
 	/*
 	 * Create a directory entry connected to the specified chain.
-	 * This function unlocks and NULL's chain on return.
+	 * The hardlink consolidation code has already adjusted ip->pip
+	 * to the common parent directory containing the actual hardlink
+	 *
+	 * (which may be different from dip where we created our hardlink
+	 * entry. ip->chain always represents the actual hardlink and not
+	 * any of the pointers to the actual hardlink).
 	 */
-	error = hammer2_inode_connect(&trans, dip, &chain, name, name_len);
+	error = hammer2_inode_connect(&trans, 1,
+				      dip, &chain,
+				      name, name_len);
 	if (error == 0) {
-		hammer2_inode_repoint(ip, ip->pip, chain);
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, ap->a_vp);
 	}
 done:
-	if (chain) {
+	if (chain)
 		hammer2_chain_unlock(chain);
-		chain = NULL;
-	}
 	hammer2_inode_unlock_ex(ip);
 	hammer2_trans_done(&trans);
 
@@ -2004,7 +2008,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 	hammer2_trans_init(&trans, hmp);
-	error = hammer2_unlink_file(&trans, dip, name, name_len, 0);
+	error = hammer2_unlink_file(&trans, dip, name, name_len, 0, NULL);
 	hammer2_trans_done(&trans);
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
@@ -2037,7 +2041,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	name_len = ncp->nc_nlen;
 
 	hammer2_trans_init(&trans, hmp);
-	error = hammer2_unlink_file(&trans, dip, name, name_len, 1);
+	error = hammer2_unlink_file(&trans, dip, name, name_len, 1, NULL);
 	hammer2_trans_done(&trans);
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
@@ -2065,6 +2069,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	const uint8_t *tname;
 	size_t tname_len;
 	int error;
+	int hlink;
 
 	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)
 		return(EXDEV);
@@ -2109,7 +2114,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	/*
 	 * Remove target if it exists
 	 */
-	error = hammer2_unlink_file(&trans, tdip, tname, tname_len, -1);
+	error = hammer2_unlink_file(&trans, tdip, tname, tname_len, -1, NULL);
 	if (error && error != ENOENT)
 		goto done;
 	cache_setunresolved(ap->a_tnch);
@@ -2142,7 +2147,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * The target chain may be marked DELETED but will not be destroyed
 	 * since we retain our hold on ip and chain.
 	 */
-	error = hammer2_unlink_file(&trans, fdip, fname, fname_len, -1);
+	error = hammer2_unlink_file(&trans, fdip, fname, fname_len, -1, &hlink);
 	KKASSERT(error != EAGAIN);
 	if (error)
 		goto done;
@@ -2156,11 +2161,12 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *	    deadlocks we want to unlock before issuing a cache_*()
 	 *	    op (that might have to lock a vnode).
 	 */
-	error = hammer2_inode_connect(&trans, tdip,
-				      &chain, tname, tname_len);
+	error = hammer2_inode_connect(&trans, hlink,
+				      tdip, &chain,
+				      tname, tname_len);
 	if (error == 0) {
 		KKASSERT(chain != NULL);
-		hammer2_inode_repoint(ip, tdip, chain);
+		hammer2_inode_repoint(ip, (hlink ? ip->pip : tdip), chain);
 		cache_rename(ap->a_fnch, ap->a_tnch);
 	}
 done:

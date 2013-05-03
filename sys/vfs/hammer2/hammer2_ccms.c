@@ -270,6 +270,12 @@ ccms_thread_lock_temp_release(ccms_cst_t *cst)
 	return (CCMS_STATE_INVALID);
 }
 
+void
+ccms_thread_lock_temp_restore(ccms_cst_t *cst, ccms_state_t ostate)
+{
+	ccms_thread_lock(cst, ostate);
+}
+
 /*
  * Temporarily upgrade a thread lock for making local structural changes.
  * No new shared or exclusive locks can be acquired by others while we are
@@ -308,7 +314,7 @@ ccms_thread_lock_upgrade(ccms_cst_t *cst)
 }
 
 void
-ccms_thread_lock_restore(ccms_cst_t *cst, ccms_state_t ostate)
+ccms_thread_lock_downgrade(ccms_cst_t *cst, ccms_state_t ostate)
 {
 	if (ostate == CCMS_STATE_SHARED) {
 		KKASSERT(cst->td == curthread);
@@ -325,6 +331,7 @@ ccms_thread_lock_restore(ccms_cst_t *cst, ccms_state_t ostate)
 			spin_unlock(&cst->spin);
 		}
 	}
+	/* else nothing to do if excl->excl */
 }
 
 /*
