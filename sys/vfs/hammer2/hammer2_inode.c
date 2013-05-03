@@ -1409,7 +1409,6 @@ hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,
 	pip = dip;
 	hammer2_inode_ref(pip);		/* for loop */
 	hammer2_chain_ref(chain);	/* for (*ochainp) */
-
 	*ochainp = chain;
 
 	/*

@@ -323,7 +323,9 @@ struct hammer2_mount {
 	hammer2_inode_t	*sroot;		/* super-root inode */
 	struct lock	alloclk;	/* lockmgr lock */
 	struct lock	voldatalk;	/* lockmgr lock */
-
+	hammer2_tid_t	flush_tid;	/* (voldata locked, flush running) */
+	thread_t	flush_td;	/* vfs_sync cycle owner */
+	int		flush_wait;
 	int		volhdrno;	/* last volhdrno written */
 	hammer2_volume_data_t voldata;
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
@@ -530,7 +532,10 @@ void hammer2_chain_parent_setsubmod(hammer2_chain_t *chain);
 /*
  * hammer2_trans.c
  */
-void hammer2_trans_init(hammer2_trans_t *trans, hammer2_mount_t *hmp);
+void hammer2_trans_init_flush(hammer2_mount_t *hmp, hammer2_trans_t *trans,
+			      int master);
+void hammer2_trans_done_flush(hammer2_trans_t *trans, int master);
+void hammer2_trans_init(hammer2_mount_t *hmp, hammer2_trans_t *trans);
 void hammer2_trans_done(hammer2_trans_t *trans);
 
 /*
@@ -551,7 +556,7 @@ int hammer2_msg_adhoc_input(kdmsg_msg_t *msg);
 void hammer2_clusterctl_wakeup(kdmsg_iocom_t *iocom);
 void hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index);
 void hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp);
-void hammer2_dump_chain(hammer2_chain_t *chain, int tab);
+void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp);
 
 /*
  * hammer2_freemap.c

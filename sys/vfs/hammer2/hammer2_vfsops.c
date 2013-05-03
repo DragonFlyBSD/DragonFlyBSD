@@ -546,6 +546,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	int flags;
 	int error = 0;
 	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
+	int dumpcnt;
 	struct vnode *devvp;
 
 	pmp = MPTOPMP(mp);
@@ -663,7 +664,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	}
 	hammer2_mount_unlock(hmp);
 
-	hammer2_dump_chain(&hmp->vchain, 0);
+	dumpcnt = 200;
+	hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt);
 
 	/*
 	 * Final drop of embedded volume root chain to clean up
@@ -799,18 +801,23 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	int flags;
 	int error;
 	int i;
+#if 0
+	int dumpcnt;
+#endif
 
 	hmp = MPTOHMP(mp);
 #if 0
-	if ((waitfor & MNT_LAZY) == 0)
-		hammer2_dump_chain(&hmp->vchain, 0);
+	if ((waitfor & MNT_LAZY) == 0) {
+		dumpcnt = 50;
+		hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt);
+	}
 #endif
 
 	flags = VMSC_GETVP;
 	if (waitfor & MNT_LAZY)
 		flags |= VMSC_ONEPASS;
 
-	hammer2_trans_init(&info.trans, hmp);
+	hammer2_trans_init_flush(hmp, &info.trans, 1);
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vmntvnodescan(mp, flags | VMSC_NOWAIT,
@@ -836,7 +843,6 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		hammer2_chain_flush(&info.trans, &hmp->vchain);
 	}
 	hammer2_chain_unlock(&hmp->vchain);
-	hammer2_trans_done(&info.trans);
 
 	error = 0;
 
@@ -900,6 +906,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		bawrite(bp);
 		hmp->volhdrno = i;
 	}
+	hammer2_trans_done_flush(&info.trans, 1);
 	return (error);
 }
 
@@ -1249,10 +1256,17 @@ hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
 }
 
 void
-hammer2_dump_chain(hammer2_chain_t *chain, int tab)
+hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp)
 {
 	hammer2_chain_t *scan;
 
+	--*countp;
+	if (*countp == 0) {
+		kprintf("%*.*s...\n", tab, tab, "");
+		return;
+	}
+	if (*countp < 0)
+		return;
 	kprintf("%*.*schain[%d] %p.%d [%08x][core=%p] (%s) dl=%p refs=%d",
 		tab, tab, "",
 		chain->index, chain, chain->bref.type, chain->flags,
@@ -1265,7 +1279,7 @@ hammer2_dump_chain(hammer2_chain_t *chain, int tab)
 	else
 		kprintf(" {\n");
 	RB_FOREACH(scan, hammer2_chain_tree, &chain->core->rbtree) {
-		hammer2_dump_chain(scan, tab + 4);
+		hammer2_dump_chain(scan, tab + 4, countp);
 	}
 	if (chain->core && !RB_EMPTY(&chain->core->rbtree)) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE && chain->data)

@@ -72,26 +72,85 @@ static int hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data);
  *
  * Initializing a new transaction allocates a transaction ID.  We
  * don't bother marking the volume header MODIFIED.  Instead, the volume
- * header will be updated only if the operation actually makes modifications
- * (when then propagate to the root).
+ * will be synchronized at a later time as part of a larger flush sequence.
  *
  * WARNING! Modifications to the root volume cannot dup the root volume
  *	    header to handle synchronization points, so alloc_tid can
  *	    wind up (harmlessly) more advanced on flush.
+ *
+ * WARNING! Operations which might call inode_duplicate()/chain_duplicate()
+ *	    depend heavily on having a unique sync_tid to avoid duplication
+ *	    collisions (which key off of delete_tid).
  */
 void
-hammer2_trans_init(hammer2_trans_t *trans, hammer2_mount_t *hmp)
+hammer2_trans_init(hammer2_mount_t *hmp, hammer2_trans_t *trans)
 {
 	bzero(trans, sizeof(*trans));
 	trans->hmp = hmp;
 	hammer2_voldata_lock(hmp);
 	trans->sync_tid = hmp->voldata.alloc_tid++;
-	hammer2_voldata_unlock(hmp, 0);	/* don't immediately mark modified */
+	hammer2_voldata_unlock(hmp, 0);
+}
+
+void
+hammer2_trans_init_flush(hammer2_mount_t *hmp, hammer2_trans_t *trans,
+			 int master)
+{
+	thread_t td = curthread;
+
+	bzero(trans, sizeof(*trans));
+	trans->hmp = hmp;
+
+	hammer2_voldata_lock(hmp);
+	if (master) {
+		/*
+		 * New master flush (sync).
+		 */
+		while (hmp->flush_td) {
+			hmp->flush_wait = 1;
+			lksleep(&hmp->flush_wait, &hmp->voldatalk,
+				0, "h2sync", hz);
+		}
+		hmp->flush_td = td;
+		hmp->flush_tid = hmp->voldata.alloc_tid++;
+		trans->sync_tid = hmp->flush_tid;
+	} else if (hmp->flush_td == td) {
+		/*
+		 * Part of a running master flush (sync->fsync)
+		 */
+		trans->sync_tid = hmp->flush_tid;
+		KKASSERT(trans->sync_tid != 0);
+	} else {
+		/*
+		 * Independent flush request, make sure the sync_tid
+		 * covers all modifications made to date.
+		 */
+		trans->sync_tid = hmp->voldata.alloc_tid++;
+	}
+	hammer2_voldata_unlock(hmp, 0);
 }
 
 void
 hammer2_trans_done(hammer2_trans_t *trans)
 {
+	trans->hmp = NULL;
+}
+
+void
+hammer2_trans_done_flush(hammer2_trans_t *trans, int master)
+{
+	hammer2_mount_t *hmp = trans->hmp;
+
+	hammer2_voldata_lock(hmp);
+	if (master) {
+		hmp->flush_td = NULL;
+		if (hmp->flush_wait) {
+			hmp->flush_wait = 0;
+			wakeup(&hmp->flush_wait);
+		}
+	}
+	hammer2_voldata_unlock(hmp, 0);
+
 	trans->hmp = NULL;
 }
 
@@ -1062,9 +1121,9 @@ finalize:
 	kprintf("G child %08x act=%08x\n", child_flags, child->flags);
 #endif
 	if (child_flags & (HAMMER2_CHAIN_MOVED |
-			    HAMMER2_CHAIN_DELETED /* |
+			    HAMMER2_CHAIN_DELETED |
 			    HAMMER2_CHAIN_MODIFIED |
-			    HAMMER2_CHAIN_SUBMODIFIED*/)) {
+			    HAMMER2_CHAIN_SUBMODIFIED)) {
 		atomic_set_int(&parent->flags, HAMMER2_CHAIN_SUBMODIFIED);
 	}
 
