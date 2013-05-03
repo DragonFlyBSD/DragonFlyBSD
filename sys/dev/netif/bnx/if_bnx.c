@@ -1276,12 +1276,12 @@ bnx_blockinit(struct bnx_softc *sc)
 	 * - After the controller has placed an incoming frame into a
 	 *   receive buffer that buffer is moved into a receive return
 	 *   ring.  The driver is then responsible to passing the
-	 *   buffer up to the stack.  Many versions of the controller
-	 *   support multiple RR rings.
+	 *   buffer up to the stack.  BCM5718/BCM57785 families support
+	 *   multiple receive return rings.
 	 *
 	 * Send Ring
-	 * - This ring is used for outgoing frames.  Many versions of
-	 *   the controller support multiple send rings.
+	 * - This ring is used for outgoing frames.  BCM5719/BCM5720
+	 *   support multiple send rings.
 	 */
 
 	/* Initialize the standard receive producer ring control block. */
@@ -1438,9 +1438,7 @@ bnx_blockinit(struct bnx_softc *sc)
 	}
 
 	/*
-	 * Set up receive return rings.  Note that the NIC address
-	 * for RX return rings is 0x0.  The return rings live entirely
-	 * within the host, so the nicaddr field in the RCB isn't used.
+	 * Set up receive return rings.
 	 */
 	vrcb = BGE_MEMWIN_START + BGE_RX_RETURN_RING_RCB;
 	for (i = 0; i < sc->bnx_rx_retcnt; ++i) {
