@@ -629,18 +629,19 @@ struct sili_sge {
 #define SILI_SGE_FLAGS_XCF	0x10000000	/* external cmd fetch	*/
 
 /*
- * Each sge is 16 bytes.  We need to accomodate MAXPHYS (128K) which is
- * at least 32 entries, plus one for page slop, plus one more for every
- * 3 entries for the link entry.
+ * Each sge is 16 bytes.
  *
  * We want our prb structure to be power-of-2 aligned (it is required to be
  * at least 8-byte aligned).  the prb base header is 4 SGE's but includes 2
  * SGE's within it.
+ * The prb structure also can't cross a 64KB boundary, and thus can only
+ * have a maximum size of 65536 / 16 / 32  == ~128 entries (128 - 4)
  */
-#define SILI_MAX_SGET		(64 - 4)
+#define SILI_MAX_SGET		(128 - 4)
 #define SILI_MAX_PMPORTS	16
+#define SILI_MAXPHYS		(256 * 1024)	/* 256 KB */
 
-#if MAXPHYS / PAGE_SIZE + 1 > (SILI_MAX_SGET * 3 / 4)
+#if SILI_MAXPHYS / PAGE_SIZE + 1 > (SILI_MAX_SGET * 3 / 4)
 #error "SILI_MAX_SGET is not big enough"
 #endif
 
