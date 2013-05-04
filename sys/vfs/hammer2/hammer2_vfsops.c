@@ -388,6 +388,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 */
 		lockinit(&hmp->alloclk, "h2alloc", 0, 0);
 		lockinit(&hmp->voldatalk, "voldata", 0, LK_CANRECURSE);
+		TAILQ_INIT(&hmp->transq);
 
 		/*
 		 * vchain setup. vchain.data is special cased to NULL.
@@ -817,7 +818,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	if (waitfor & MNT_LAZY)
 		flags |= VMSC_ONEPASS;
 
-	hammer2_trans_init_flush(hmp, &info.trans, 1);
+	hammer2_trans_init(hmp, &info.trans, HAMMER2_TRANS_ISFLUSH);
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vmntvnodescan(mp, flags | VMSC_NOWAIT,
@@ -906,7 +907,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		bawrite(bp);
 		hmp->volhdrno = i;
 	}
-	hammer2_trans_done_flush(&info.trans, 1);
+	hammer2_trans_done(&info.trans);
 	return (error);
 }
 
@@ -946,7 +947,25 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(0);
 	}
+
+	/*
+	 * VOP_FSYNC will start a new transaction so replicate some code
+	 * here to do it inline (see hammer2_vop_fsync()).
+	 */
+	hammer2_inode_lock_ex(ip);
+	if (ip->vp)
+		vfsync(ip->vp, MNT_NOWAIT, 1, NULL, NULL);
+	if (ip->flags & HAMMER2_INODE_DIRTYEMBED) {
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYEMBED);
+		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
+		hammer2_chain_modify(&info->trans, ip->chain, 0);
+	}
+	hammer2_chain_flush(&info->trans, ip->chain);
+	hammer2_inode_unlock_ex(ip);
+	error = 0;
+#if 0
 	error = VOP_FSYNC(vp, MNT_NOWAIT, 0);
+#endif
 	if (error)
 		info->error = error;
 	return(0);

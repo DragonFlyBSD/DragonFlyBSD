@@ -277,20 +277,55 @@ RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
 		hammer2_tid_t);
 
 /*
- * A hammer2 transaction placeholder.
+ * A hammer2 transaction and flush sequencing structure.
  *
- * This structure is required for all modifying operations, including
- * flushes.  It holds the transaction id allocated for the modifying
- * operation and is also used to interlock flushes and snapshots.
+ * This global structure is tied into hammer2_mount and is used
+ * to sequence modifying operations and flushes.
+ *
+ * (a) Any modifying operations with sync_tid >= flush_tid will stall until
+ *     all modifying operating with sync_tid < flush_tid complete.
+ *
+ *     The flush related to flush_tid stalls until all modifying operations
+ *     with sync_tid < flush_tid complete.
+ *
+ * (b) Once unstalled, modifying operations with sync_tid > flush_tid are
+ *     allowed to run.  All modifications cause modify/duplicate operations
+ *     to occur on the related chains.  Note that most INDIRECT blocks will
+ *     be unaffected because the modifications just overload the RBTREE
+ *     structurally instead of actually modifying the indirect blocks.
+ *
+ * (c) The actual flush unstalls and RUNS CONCURRENTLY with (b), but only
+ *     utilizes the chain structures with sync_tid <= flush_tid.  The
+ *     flush will modify related indirect blocks and inodes in-place
+ *     (rather than duplicate) since the adjustments are compatible with
+ *     (b)'s RBTREE overloading
+ *
+ *     SPECIAL NOTE:  Inode modifications have to also propagate along any
+ *		      modify/duplicate chains.  File writes detect the flush
+ *		      and force out the conflicting buffer cache buffer(s)
+ *		      before reusing them.
+ *
+ * TODO: Flush merging.  When fsync() is called on multiple discrete files
+ *	 concurrently there is no reason to stall the second fsync.
+ *	 The final flush that reaches to root can cover both fsync()s.
+ *
+ *     The chains typically terminate as they fly onto the disk.  The flush
+ *     ultimately reaches the volume header.
  */
 struct hammer2_trans {
+	TAILQ_ENTRY(hammer2_trans) entry;
 	struct hammer2_mount	*hmp;
 	hammer2_tid_t		sync_tid;
+	thread_t		td;
+	int			flags;
+	int			blocked;
 	uint8_t			inodes_created;
 	uint8_t			dummy[7];
 };
 
 typedef struct hammer2_trans hammer2_trans_t;
+
+#define HAMMER2_TRANS_ISFLUSH	0x0001
 
 /*
  * XXX
@@ -305,6 +340,8 @@ typedef struct hammer2_freecache hammer2_freecache_t;
 /*
  * Global (per device) mount structure for device (aka vp->v_mount->hmp)
  */
+TAILQ_HEAD(hammer2_trans_queue, hammer2_trans);
+
 struct hammer2_mount {
 	struct vnode	*devvp;		/* device vnode */
 	int		ronly;		/* read-only mount */
@@ -323,9 +360,10 @@ struct hammer2_mount {
 	hammer2_inode_t	*sroot;		/* super-root inode */
 	struct lock	alloclk;	/* lockmgr lock */
 	struct lock	voldatalk;	/* lockmgr lock */
-	hammer2_tid_t	flush_tid;	/* (voldata locked, flush running) */
-	thread_t	flush_td;	/* vfs_sync cycle owner */
-	int		flush_wait;
+	struct hammer2_trans_queue transq; /* all in-progress transactions */
+	hammer2_trans_t	*curflush;	/* current flush in progress */
+	int		flushcnt;	/* #of flush trans on the list */
+
 	int		volhdrno;	/* last volhdrno written */
 	hammer2_volume_data_t voldata;
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
@@ -532,10 +570,8 @@ void hammer2_chain_parent_setsubmod(hammer2_chain_t *chain);
 /*
  * hammer2_trans.c
  */
-void hammer2_trans_init_flush(hammer2_mount_t *hmp, hammer2_trans_t *trans,
-			      int master);
-void hammer2_trans_done_flush(hammer2_trans_t *trans, int master);
-void hammer2_trans_init(hammer2_mount_t *hmp, hammer2_trans_t *trans);
+void hammer2_trans_init(hammer2_mount_t *hmp, hammer2_trans_t *trans,
+				int flags);
 void hammer2_trans_done(hammer2_trans_t *trans);
 
 /*

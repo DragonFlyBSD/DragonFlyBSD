@@ -74,6 +74,14 @@ static int hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data);
  * don't bother marking the volume header MODIFIED.  Instead, the volume
  * will be synchronized at a later time as part of a larger flush sequence.
  *
+ * Non-flush transactions can typically run concurrently.  However if
+ * there are non-flush transaction both before AND after a flush trans,
+ * the transactions after stall until the ones before finish.
+ *
+ * Non-flush transactions occuring after a flush pointer can run concurrently
+ * with that flush.  They only have to wait for transactions prior to the
+ * flush trans to complete before they unstall.
+ *
  * WARNING! Modifications to the root volume cannot dup the root volume
  *	    header to handle synchronization points, so alloc_tid can
  *	    wind up (harmlessly) more advanced on flush.
@@ -83,49 +91,65 @@ static int hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data);
  *	    collisions (which key off of delete_tid).
  */
 void
-hammer2_trans_init(hammer2_mount_t *hmp, hammer2_trans_t *trans)
+hammer2_trans_init(hammer2_mount_t *hmp, hammer2_trans_t *trans, int flags)
 {
+	hammer2_trans_t *scan;
+
 	bzero(trans, sizeof(*trans));
 	trans->hmp = hmp;
+
 	hammer2_voldata_lock(hmp);
 	trans->sync_tid = hmp->voldata.alloc_tid++;
-	hammer2_voldata_unlock(hmp, 0);
-}
+	trans->flags = flags;
+	trans->td = curthread;
+	TAILQ_INSERT_TAIL(&hmp->transq, trans, entry);
 
-void
-hammer2_trans_init_flush(hammer2_mount_t *hmp, hammer2_trans_t *trans,
-			 int master)
-{
-	thread_t td = curthread;
-
-	bzero(trans, sizeof(*trans));
-	trans->hmp = hmp;
-
-	hammer2_voldata_lock(hmp);
-	if (master) {
+	if (flags & HAMMER2_TRANS_ISFLUSH) {
 		/*
-		 * New master flush (sync).
+		 * If we are a flush we have to wait for all transactions
+		 * prior to our flush synchronization point to complete
+		 * before we can start our flush.
 		 */
-		while (hmp->flush_td) {
-			hmp->flush_wait = 1;
-			lksleep(&hmp->flush_wait, &hmp->voldatalk,
-				0, "h2sync", hz);
+		++hmp->flushcnt;
+		if (hmp->curflush == NULL)
+			hmp->curflush = trans;
+		while (TAILQ_FIRST(&hmp->transq) != trans) {
+			lksleep(&trans->sync_tid, &hmp->voldatalk,
+				0, "h2syncw", hz);
 		}
-		hmp->flush_td = td;
-		hmp->flush_tid = hmp->voldata.alloc_tid++;
-		trans->sync_tid = hmp->flush_tid;
-	} else if (hmp->flush_td == td) {
+
 		/*
-		 * Part of a running master flush (sync->fsync)
+		 * Once we become the running flush we can wakeup anyone
+		 * who blocked on us.
 		 */
-		trans->sync_tid = hmp->flush_tid;
-		KKASSERT(trans->sync_tid != 0);
+		scan = trans;
+		while ((scan = TAILQ_NEXT(scan, entry)) != NULL) {
+			if (scan->flags & HAMMER2_TRANS_ISFLUSH)
+				break;
+			if (scan->blocked == 0)
+				break;
+			scan->blocked = 0;
+			wakeup(&scan->blocked);
+		}
 	} else {
 		/*
-		 * Independent flush request, make sure the sync_tid
-		 * covers all modifications made to date.
+		 * If we are not a flush but our sync_tid is after a
+		 * stalled flush, we have to wait until that flush unstalls
+		 * (that is, all transactions prior to that flush complete),
+		 * but then we can run concurrently with that flush.
+		 *
+		 * (flushcnt check only good as pre-condition, otherwise it
+		 *  may represent elements queued after us after we block).
 		 */
-		trans->sync_tid = hmp->voldata.alloc_tid++;
+		if (hmp->flushcnt > 1 ||
+		    (hmp->curflush &&
+		     TAILQ_FIRST(&hmp->transq) != hmp->curflush)) {
+			trans->blocked = 1;
+			while (trans->blocked) {
+				lksleep(&trans->blocked, &hmp->voldatalk,
+					0, "h2trans", hz);
+			}
+		}
 	}
 	hammer2_voldata_unlock(hmp, 0);
 }
@@ -133,20 +157,37 @@ hammer2_trans_init_flush(hammer2_mount_t *hmp, hammer2_trans_t *trans,
 void
 hammer2_trans_done(hammer2_trans_t *trans)
 {
-	trans->hmp = NULL;
-}
-
-void
-hammer2_trans_done_flush(hammer2_trans_t *trans, int master)
-{
 	hammer2_mount_t *hmp = trans->hmp;
+	hammer2_trans_t *scan;
 
 	hammer2_voldata_lock(hmp);
-	if (master) {
-		hmp->flush_td = NULL;
-		if (hmp->flush_wait) {
-			hmp->flush_wait = 0;
-			wakeup(&hmp->flush_wait);
+	TAILQ_REMOVE(&hmp->transq, trans, entry);
+	if (trans->flags & HAMMER2_TRANS_ISFLUSH) {
+		/*
+		 * If we were a flush we have to adjust curflush to the
+		 * next flush.
+		 */
+		--hmp->flushcnt;
+		if (hmp->flushcnt) {
+			TAILQ_FOREACH(scan, &hmp->transq, entry) {
+				if (scan->flags & HAMMER2_TRANS_ISFLUSH)
+					break;
+			}
+			hmp->curflush = scan;
+		} else {
+			hmp->curflush = NULL;
+		}
+	} else {
+		/*
+		 * If we are not a flush but a flush is now at the head
+		 * of the queue and we were previously blocking it,
+		 * we can now unblock it.
+		 */
+		if (hmp->flushcnt &&
+		    (scan = TAILQ_FIRST(&hmp->transq)) != NULL &&
+		    trans->sync_tid < scan->sync_tid &&
+		    (scan->flags & HAMMER2_TRANS_ISFLUSH)) {
+			wakeup(&scan->sync_tid);
 		}
 	}
 	hammer2_voldata_unlock(hmp, 0);

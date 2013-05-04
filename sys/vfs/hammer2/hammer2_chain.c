@@ -1822,36 +1822,26 @@ again2:
 
 /*
  * Create and return a new hammer2 system memory structure of the specified
- * key, type and size and insert it RELATIVE TO (PARENT).
+ * key, type and size and insert it under (*parentp).  This is a full
+ * insertion, based on the supplied key/keybits, and may involve creating
+ * indirect blocks and moving other chains around via delete/duplicate.
  *
- * (parent) is typically either an inode or an indirect block, acquired
- * acquired as a side effect of issuing a prior failed lookup.  parent
- * must be locked and held.  Do not pass the inode chain to this function
- * unless that is the chain returned by the failed lookup.
+ * (*parentp) must be exclusive locked and may be replaced on return
+ * depending on how much work the function had to do.
  *
- * (*chainp) is either NULL, a newly allocated chain, or a chain allocated
- * via hammer2_chain_duplicate().  When not NULL, the passed-in chain must
- * NOT be attached to any parent, and will be attached by this function.
- * This mechanic is used by the rename code.
+ * (*chainp) usually starts out NULL and returns the newly created chain,
+ * but if the caller desires the caller may allocate a disconnected chain
+ * and pass it in instead.  (It is also possible for the caller to use
+ * chain_duplicate() to create a disconnected chain, manipulate it, then
+ * pass it into this function to insert it).
  *
- * Non-indirect types will automatically allocate indirect blocks as required
- * if the new item does not fit in the current (parent).
+ * This function should NOT be used to insert INDIRECT blocks.  It is
+ * typically used to create/insert inodes and data blocks.
  *
- * Indirect types will move a portion of the existing blockref array in
- * (parent) into the new indirect type and then use one of the free slots
- * to emplace the new indirect type.
- *
- * A new locked chain element is returned of the specified type.  The
- * element may or may not have a data area associated with it:
- *
- *	VOLUME		not allowed here
- *	INODE		kmalloc()'d data area is set up
- *	INDIRECT	not allowed here
- *	DATA		no data area will be set-up (caller is expected
- *			to have logical buffers, we don't want to alias
- *			the data onto device buffers!).
- *
- * Requires an exclusively locked parent.
+ * Caller must pass-in an exclusively locked parent the new chain is to
+ * be inserted under, and optionally pass-in a disconnected, exclusively
+ * locked chain to insert (else we create a new chain).  The function will
+ * adjust (*parentp) as necessary and return the existing or new chain.
  */
 int
 hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
