@@ -387,4 +387,4 @@ padstr(char *targ, const char *src, int len)
 }
 
 #define ciss_report_request(a, b, c)	\
-	_ciss_report_request(a, b, c, __FUNCTION__)
+	_ciss_report_request(a, b, c, __func__)

@@ -45,7 +45,7 @@
 /* #define OPT_DEBUG	1 */
 #ifdef OPT_DEBUG
 # define DEBUG(str, v...) \
-	printf("%s: " str "\n", __FUNCTION__ , ## v)
+	printf("%s: " str "\n", __func__ , ## v)
 #else
 # define DEBUG(str, v...) ((void)0)
 #endif

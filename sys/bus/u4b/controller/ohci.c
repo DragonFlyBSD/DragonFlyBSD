@@ -720,7 +720,7 @@ ohci_isoc_done(struct usb_xfer *xfer)
 	while (1) {
 		if (td == NULL) {
 			panic("%s:%d: out of TD's\n",
-			    __FUNCTION__, __LINE__);
+			    __func__, __LINE__);
 		}
 #ifdef USB_DEBUG
 		if (ohcidebug > 5) {
@@ -1173,12 +1173,12 @@ ohci_interrupt(ohci_softc_t *sc)
 		}
 #endif
 		if (status & OHCI_RD) {
-			kprintf("%s: resume detect\n", __FUNCTION__);
+			kprintf("%s: resume detect\n", __func__);
 			/* XXX process resume detect */
 		}
 		if (status & OHCI_UE) {
 			kprintf("%s: unrecoverable error, "
-			    "controller halted\n", __FUNCTION__);
+			    "controller halted\n", __func__);
 			OWRITE4(sc, OHCI_CONTROL, OHCI_HCFS_RESET);
 			/* XXX what else */
 		}
@@ -1203,7 +1203,7 @@ ohci_interrupt(ohci_softc_t *sc)
 		OWRITE4(sc, OHCI_INTERRUPT_DISABLE, status);
 		sc->sc_eintrs &= ~status;
 		kprintf("%s: blocking intrs 0x%x\n",
-		    __FUNCTION__, status);
+		    __func__, status);
 	}
 	/* poll all the USB transfers */
 	ohci_interrupt_poll(sc);
@@ -1295,7 +1295,7 @@ restart:
 		}
 
 		if (td_next == NULL) {
-			panic("%s: out of OHCI transfer descriptors!", __FUNCTION__);
+			panic("%s: out of OHCI transfer descriptors!", __func__);
 		}
 		/* get next TD */
 
@@ -1900,7 +1900,7 @@ ohci_device_isoc_enter(struct usb_xfer *xfer)
 	while (nframes--) {
 		if (td == NULL) {
 			panic("%s:%d: out of TD's\n",
-			    __FUNCTION__, __LINE__);
+			    __func__, __LINE__);
 		}
 		itd_offset[ncur] = length;
 		buf_offset += *plen;

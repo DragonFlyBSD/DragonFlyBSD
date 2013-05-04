@@ -287,7 +287,7 @@ do {									\
 	if (!_DRM_LOCK_IS_HELD(dev->lock.hw_lock->lock) ||		\
 	     dev->lock.file_priv != file_priv) {			\
 		DRM_ERROR("%s called without lock held\n",		\
-			   __FUNCTION__);				\
+			   __func__);				\
 		return EINVAL;						\
 	}								\
 } while (0)

@@ -138,7 +138,7 @@ SYSCTL_INT(_hw_usb_mos, OID_AUTO, debug, CTLFLAG_RW, &mos_debug, 0,
 #endif
 
 #define MOS_DPRINTFN(fmt,...) \
-  DPRINTF("mos: %s: " fmt "\n",__FUNCTION__,## __VA_ARGS__)
+  DPRINTF("mos: %s: " fmt "\n",__func__,## __VA_ARGS__)
 
 #define	USB_PRODUCT_MOSCHIP_MCS7730	0x7730
 #define	USB_PRODUCT_SITECOMEU_LN030	0x0021

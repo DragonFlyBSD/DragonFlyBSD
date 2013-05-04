@@ -151,7 +151,7 @@
         kprintf("%s:%s: " fmt,				\
 	       (sc) ? (const char *)(sc)->sc_name :	\
 	       (const char *)"umassX",			\
-		__FUNCTION__ ,## __VA_ARGS__);		\
+		__func__ ,## __VA_ARGS__);		\
     }							\
   } while (0)
 
