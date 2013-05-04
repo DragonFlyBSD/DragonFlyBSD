@@ -463,7 +463,8 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 				     pfs->name, strlen(pfs->name),
 				     &error);
 	if (error == 0) {
-		nipdata = hammer2_chain_modify_ip(&trans, nip, 0);
+		nipdata = hammer2_chain_modify_ip(&trans, nip,
+						  HAMMER2_MODIFY_ASSERTNOCOPY);
 		nipdata->pfs_type = pfs->pfs_type;
 		nipdata->pfs_clid = pfs->pfs_clid;
 		nipdata->pfs_fsid = pfs->pfs_fsid;

@@ -116,7 +116,7 @@ hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
  * the chain->core->cst.spin lock to handle collisions.
  */
 void
-hammer2_chain_parent_setsubmod(hammer2_chain_t *chain)
+hammer2_chain_parent_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain)
 {
 	hammer2_chain_t *parent;
 	hammer2_chain_core_t *core;
@@ -918,7 +918,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		brelse(chain->bp);
 		chain->bp = nbp;
 		chain->data = (void *)bdata;
-		hammer2_chain_modify(trans, chain, 0);
+		hammer2_chain_modify(trans, &chain, 0);
 	}
 #endif
 
@@ -930,7 +930,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		hammer2_chain_ref(chain);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
 	}
-	hammer2_chain_parent_setsubmod(chain);
+	hammer2_chain_parent_setsubmod(trans, chain);
 	*chainp = chain;
 }
 
@@ -955,28 +955,25 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
  * the old chain will be unlocked and the new chain will be locked.
  */
 hammer2_inode_data_t *
-hammer2_chain_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
-			     int flags)
+hammer2_chain_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip, int flags)
 {
-#if 0
 	hammer2_chain_t *ochain;
 
 	ochain = ip->chain;
-#endif
-	hammer2_chain_modify(trans, ip->chain, flags);
-#if 0
+	hammer2_chain_modify(trans, &ip->chain, flags);
 	if (ochain != ip->chain) {
 		hammer2_chain_ref(ip->chain);
 		hammer2_chain_drop(ochain);
 	}
-#endif
 	return(&ip->chain->data->ipdata);
 }
 
 void
-hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
+hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
+		     int flags)
 {
 	hammer2_mount_t *hmp = trans->hmp;
+	hammer2_chain_t *chain = *chainp;
 	hammer2_off_t pbase;
 	struct buf *nbp;
 	int error;
@@ -1147,7 +1144,7 @@ skip1:
 	}
 skip2:
 	if ((flags & HAMMER2_MODIFY_NOSUB) == 0)
-		hammer2_chain_parent_setsubmod(chain);
+		hammer2_chain_parent_setsubmod(trans, chain);
 }
 
 /*
@@ -2055,8 +2052,9 @@ again:
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_DATA:
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-			hammer2_chain_modify(trans, chain,
-					     HAMMER2_MODIFY_OPTDATA);
+			hammer2_chain_modify(trans, &chain,
+					     HAMMER2_MODIFY_OPTDATA |
+					     HAMMER2_MODIFY_ASSERTNOCOPY);
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
 		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
@@ -2064,11 +2062,13 @@ again:
 			/* not supported in this function */
 			panic("hammer2_chain_create: bad type");
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
-			hammer2_chain_modify(trans, chain,
-					     HAMMER2_MODIFY_OPTDATA);
+			hammer2_chain_modify(trans, &chain,
+					     HAMMER2_MODIFY_OPTDATA |
+					     HAMMER2_MODIFY_ASSERTNOCOPY);
 			break;
 		default:
-			hammer2_chain_modify(trans, chain, 0);
+			hammer2_chain_modify(trans, &chain,
+					     HAMMER2_MODIFY_ASSERTNOCOPY);
 			break;
 		}
 	} else {
@@ -2081,7 +2081,7 @@ again:
 			hammer2_chain_ref(chain);
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
 		}
-		hammer2_chain_parent_setsubmod(chain);
+		hammer2_chain_parent_setsubmod(trans, chain);
 	}
 
 done:
@@ -2164,8 +2164,9 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 			atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MODIFIED);
 			hammer2_chain_ref(nchain);
 		} else {
-			hammer2_chain_modify(trans, nchain,
-					     HAMMER2_MODIFY_OPTDATA);
+			hammer2_chain_modify(trans, &nchain,
+					     HAMMER2_MODIFY_OPTDATA |
+					     HAMMER2_MODIFY_ASSERTNOCOPY);
 		}
 	} else if (nchain->flags & HAMMER2_CHAIN_INITIAL) {
 		/*
@@ -2175,7 +2176,9 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 		 * bit won't do the right thing.
 		 */
 		KKASSERT (nchain->bref.type != HAMMER2_BREF_TYPE_DATA);
-		hammer2_chain_modify(trans, nchain, HAMMER2_MODIFY_OPTDATA);
+		hammer2_chain_modify(trans, &nchain,
+				     HAMMER2_MODIFY_OPTDATA |
+				     HAMMER2_MODIFY_ASSERTNOCOPY);
 	}
 	if (parent || (ochain->flags & HAMMER2_CHAIN_MOVED)) {
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MOVED);
@@ -2309,7 +2312,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 			hammer2_chain_ref(nchain);
 			atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MOVED);
 		}
-		hammer2_chain_parent_setsubmod(nchain);
+		hammer2_chain_parent_setsubmod(trans, nchain);
 	}
 }
 
@@ -2383,7 +2386,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	KKASSERT(ccms_thread_lock_owned(&parent->core->cst));
 	*errorp = 0;
 
-	/*hammer2_chain_modify(trans, parent, HAMMER2_MODIFY_OPTDATA);*/
+	/*hammer2_chain_modify(trans, &parent, HAMMER2_MODIFY_OPTDATA);*/
 	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
 		base = NULL;
 
@@ -2578,7 +2581,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * OPTDATA to allow it to remain in the INITIAL state.  Otherwise
 	 * it won't be acted upon by the flush code.
 	 */
-	hammer2_chain_modify(trans, ichain, HAMMER2_MODIFY_OPTDATA);
+	hammer2_chain_modify(trans, &ichain, HAMMER2_MODIFY_OPTDATA);
 
 	/*
 	 * Iterate the original parent and move the matching brefs into
@@ -2694,8 +2697,8 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * our moved blocks, then call setsubmod() to set the bit
 	 * recursively.
 	 */
-	/*hammer2_chain_modify(trans, ichain, HAMMER2_MODIFY_OPTDATA);*/
-	hammer2_chain_parent_setsubmod(ichain);
+	/*hammer2_chain_modify(trans, &ichain, HAMMER2_MODIFY_OPTDATA);*/
+	hammer2_chain_parent_setsubmod(trans, ichain);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_SUBMODIFIED);
 
 	/*
@@ -2778,7 +2781,7 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
 	}
 	chain->delete_tid = trans->sync_tid;
-	hammer2_chain_parent_setsubmod(chain);
+	hammer2_chain_parent_setsubmod(trans, chain);
 }
 
 void

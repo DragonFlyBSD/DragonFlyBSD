@@ -190,6 +190,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_MODIFY_NOSUB		0x00000001	/* do not set SUBMOD */
 #define HAMMER2_MODIFY_OPTDATA		0x00000002	/* data can be NULL */
 #define HAMMER2_MODIFY_NO_MODIFY_TID	0x00000004
+#define HAMMER2_MODIFY_ASSERTNOCOPY	0x00000008
 
 /*
  * Flags passed to hammer2_chain_lock()
@@ -362,6 +363,7 @@ struct hammer2_mount {
 	struct lock	voldatalk;	/* lockmgr lock */
 	struct hammer2_trans_queue transq; /* all in-progress transactions */
 	hammer2_trans_t	*curflush;	/* current flush in progress */
+	hammer2_tid_t	flush_tid;	/* currently synchronizing flush pt */
 	int		flushcnt;	/* #of flush trans on the list */
 
 	int		volhdrno;	/* last volhdrno written */
@@ -530,7 +532,7 @@ void hammer2_chain_drop(hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_chain_t *chain, int how);
 void hammer2_chain_moved(hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_trans_t *trans,
-				hammer2_chain_t *chain, int flags);
+				hammer2_chain_t **chainp, int flags);
 hammer2_inode_data_t *hammer2_chain_modify_ip(hammer2_trans_t *trans,
 				hammer2_inode_t *ip, int flags);
 void hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
@@ -565,7 +567,8 @@ void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				hammer2_chain_t *chain);
 void hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_commit(hammer2_trans_t *trans, hammer2_chain_t *chain);
-void hammer2_chain_parent_setsubmod(hammer2_chain_t *chain);
+void hammer2_chain_parent_setsubmod(hammer2_trans_t *trans,
+				hammer2_chain_t *chain);
 
 /*
  * hammer2_trans.c

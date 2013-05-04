@@ -713,7 +713,7 @@ retry:
 	nchain = tmp;
 	tmp = NULL;	/* safety */
 
-	hammer2_chain_modify(trans, nchain, 0);
+	hammer2_chain_modify(trans, &nchain, HAMMER2_MODIFY_ASSERTNOCOPY);
 	nipdata = &nchain->data->ipdata;
 	ksnprintf(nipdata->filename, sizeof(nipdata->filename),
 		  "0x%016jx", (intmax_t)nipdata->inum);
@@ -837,7 +837,8 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 		 *
 		 * We will return ochain (the hardlink target).
 		 */
-		hammer2_chain_modify(trans, nchain, 0);
+		hammer2_chain_modify(trans, &nchain,
+				     HAMMER2_MODIFY_ASSERTNOCOPY);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		ipdata = &nchain->data->ipdata;
 		bcopy(name, ipdata->filename, name_len);
@@ -859,7 +860,8 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 		 * Since this is a snapshot we return nchain in the fake
 		 * hardlink case.
 		 */
-		hammer2_chain_modify(trans, nchain, 0);
+		hammer2_chain_modify(trans, &nchain,
+				     HAMMER2_MODIFY_ASSERTNOCOPY);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		ipdata = &nchain->data->ipdata;
 		*ipdata = ochain->data->ipdata;
@@ -874,7 +876,8 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 		 * We must fixup the name stored in oip.  The bref key
 		 * has already been set up.
 		 */
-		hammer2_chain_modify(trans, nchain, 0);
+		hammer2_chain_modify(trans, &nchain,
+				     HAMMER2_MODIFY_ASSERTNOCOPY);
 		ipdata = &nchain->data->ipdata;
 
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
@@ -1127,12 +1130,12 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 			hammer2_chain_lock(dparent, HAMMER2_RESOLVE_ALWAYS);
 			hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 			hammer2_chain_drop(chain);
-			hammer2_chain_modify(trans, chain, 0);
+			hammer2_chain_modify(trans, &chain, 0);
 			--chain->data->ipdata.nlinks;
 			hammer2_chain_delete(trans, dparent, chain);
 			hammer2_chain_unlock(dparent);
 		} else {
-			hammer2_chain_modify(trans, chain, 0);
+			hammer2_chain_modify(trans, &chain, 0);
 			--chain->data->ipdata.nlinks;
 		}
 	} else {
@@ -1142,8 +1145,8 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		 *
 		 * NOTE: *_get() integrates chain's lock into the inode lock.
 		 */
+		hammer2_chain_modify(trans, &chain, 0);
 		ipdata = &chain->data->ipdata;
-		hammer2_chain_modify(trans, chain, 0);
 		--ipdata->nlinks;
 		hammer2_chain_delete(trans, parent, chain);
 	}
@@ -1249,7 +1252,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	if (cdip == fdip &&
 	    (chain->data->ipdata.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
 		if (nlinks) {
-			hammer2_chain_modify(trans, chain, 0);
+			hammer2_chain_modify(trans, &chain, 0);
 			chain->data->ipdata.nlinks += nlinks;
 		}
 		*chainp = chain;
@@ -1271,7 +1274,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		 * Bump nlinks on duplicated hidden inode, repoint
 		 * ip->chain.
 		 */
-		hammer2_chain_modify(trans, nchain, 0);
+		hammer2_chain_modify(trans, &nchain, 0);
 		nchain->data->ipdata.nlinks += nlinks;
 		hammer2_inode_repoint(ip, cdip, nchain);
 
@@ -1289,7 +1292,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			 * from trying to synchronize to the inode if the
 			 * file is extended afterwords.
 			 */
-			hammer2_chain_modify(trans, chain, 0);
+			hammer2_chain_modify(trans, &chain, 0);
 			ipdata = &chain->data->ipdata;
 			ipdata->target_type = ipdata->type;
 			ipdata->type = HAMMER2_OBJTYPE_HARDLINK;

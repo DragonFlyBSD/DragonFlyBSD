@@ -111,8 +111,10 @@ hammer2_trans_init(hammer2_mount_t *hmp, hammer2_trans_t *trans, int flags)
 		 * before we can start our flush.
 		 */
 		++hmp->flushcnt;
-		if (hmp->curflush == NULL)
+		if (hmp->curflush == NULL) {
 			hmp->curflush = trans;
+			hmp->flush_tid = trans->sync_tid;;
+		}
 		while (TAILQ_FIRST(&hmp->transq) != trans) {
 			lksleep(&trans->sync_tid, &hmp->voldatalk,
 				0, "h2syncw", hz);
@@ -166,6 +168,11 @@ hammer2_trans_done(hammer2_trans_t *trans)
 		/*
 		 * If we were a flush we have to adjust curflush to the
 		 * next flush.
+		 *
+		 * flush_tid is used to partition copy-on-write operations
+		 * (mostly duplicate-on-modify ops), which is what allows
+		 * us to execute a flush concurrent with modifying operations
+		 * with higher TIDs.
 		 */
 		--hmp->flushcnt;
 		if (hmp->flushcnt) {
@@ -173,9 +180,18 @@ hammer2_trans_done(hammer2_trans_t *trans)
 				if (scan->flags & HAMMER2_TRANS_ISFLUSH)
 					break;
 			}
+			KKASSERT(scan);
 			hmp->curflush = scan;
+			hmp->flush_tid = scan->sync_tid;
 		} else {
+			/*
+			 * Theoretically we don't have to clear flush_tid
+			 * here since the flush will have synchronized
+			 * all operations <= flush_tid already.  But for
+			 * now zero-it.
+			 */
 			hmp->curflush = NULL;
+			hmp->flush_tid = 0;
 		}
 	} else {
 		/*
@@ -308,7 +324,7 @@ hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
 			    HAMMER2_CHAIN_DELETED |
 			    HAMMER2_CHAIN_MODIFIED |
 			    HAMMER2_CHAIN_SUBMODIFIED)) {
-		hammer2_chain_parent_setsubmod(chain);
+		hammer2_chain_parent_setsubmod(trans, chain);
 	}
 }
 
@@ -1008,9 +1024,20 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 * This point is not reached on successful DESTROYED optimizations
 	 * but can be reached on recursive deletions.
 	 *
+	 * Because flushes are ordered we do not have to make a
+	 * modify/duplicate of indirect blocks.  That is, the flush
+	 * code does not have to kmalloc or duplicate anything.  We
+	 * can adjust the indirect block table in-place and reuse the
+	 * chain.  It IS possible that the chain has already been duplicated
+	 * or may wind up being duplicated on-the-fly by modifying code
+	 * on the frontend.  We simply use the original and ignore such
+	 * chains.  However, it does mean we can't clear the MOVED bit.
+	 *
 	 * XXX recursive deletions not optimized.
 	 */
-	hammer2_chain_modify(info->trans, parent, HAMMER2_MODIFY_NO_MODIFY_TID);
+	hammer2_chain_modify(info->trans, &parent,
+			     HAMMER2_MODIFY_NO_MODIFY_TID |
+			     HAMMER2_MODIFY_ASSERTNOCOPY);
 
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:

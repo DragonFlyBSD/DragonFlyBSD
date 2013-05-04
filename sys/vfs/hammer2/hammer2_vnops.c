@@ -115,7 +115,7 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYEMBED);
 		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 		hammer2_trans_init(ip->hmp, &trans, 0);
-		hammer2_chain_modify(&trans, ip->chain, 0);
+		hammer2_chain_modify_ip(&trans, ip, 0);
 		hammer2_trans_done(&trans);
 	}
 #endif
@@ -251,7 +251,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	if (ip->flags & HAMMER2_INODE_DIRTYEMBED) {
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYEMBED);
 		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-		hammer2_chain_modify(&trans, ip->chain, 0);
+		hammer2_chain_modify_ip(&trans, ip, 0);
 	}
 
 	/*
@@ -378,8 +378,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 					 ap->a_cred);
 		if (error == 0) {
 			if (ipdata->uflags != flags) {
-				hammer2_chain_modify(&trans, ip->chain, 0);
-				ipdata = &ip->chain->data->ipdata; /* RELOAD */
+				ipdata = hammer2_chain_modify_ip(&trans, ip, 0);
 				ipdata->uflags = flags;
 				ipdata->ctime = ctime;
 				kflags |= NOTE_ATTRIB;
@@ -412,8 +411,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 			    bcmp(&uuid_gid, &ipdata->gid, sizeof(uuid_gid)) ||
 			    ipdata->mode != cur_mode
 			) {
-				hammer2_chain_modify(&trans, ip->chain, 0);
-				ipdata = &ip->chain->data->ipdata; /* RELOAD */
+				ipdata = hammer2_chain_modify_ip(&trans, ip, 0);
 				ipdata->uid = uuid_uid;
 				ipdata->gid = uuid_gid;
 				ipdata->mode = cur_mode;
@@ -447,15 +445,13 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 #if 0
 	/* atime not supported */
 	if (vap->va_atime.tv_sec != VNOVAL) {
-		hammer2_chain_modify(&trans, ip->chain, 0);
-		ipdata = &ip->chain->data->ipdata; /* RELOAD */
+		ipdata = hammer2_chain_modify_ip(&trans, ip, 0);
 		ipdata->atime = hammer2_timespec_to_time(&vap->va_atime);
 		kflags |= NOTE_ATTRIB;
 	}
 #endif
 	if (vap->va_mtime.tv_sec != VNOVAL) {
-		hammer2_chain_modify(&trans, ip->chain, 0);
-		ipdata = &ip->chain->data->ipdata; /* RELOAD */
+		ipdata = hammer2_chain_modify_ip(&trans, ip, 0);
 		ipdata->mtime = hammer2_timespec_to_time(&vap->va_mtime);
 		kflags |= NOTE_ATTRIB;
 	}
@@ -467,8 +463,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 		error = vop_helper_chmod(ap->a_vp, vap->va_mode, ap->a_cred,
 					 cur_uid, cur_gid, &cur_mode);
 		if (error == 0 && ipdata->mode != cur_mode) {
-			hammer2_chain_modify(&trans, ip->chain, 0);
-			ipdata = &ip->chain->data->ipdata; /* RELOAD */
+			ipdata = hammer2_chain_modify_ip(&trans, ip, 0);
 			ipdata->mode = cur_mode;
 			ipdata->ctime = ctime;
 			kflags |= NOTE_ATTRIB;
@@ -1044,8 +1039,7 @@ hammer2_write_file(hammer2_inode_t *ip, hammer2_trans_t *trans,
 		hammer2_truncate_file(trans, ip, old_eof);
 		ipdata = &ip->chain->data->ipdata;	/* RELOAD */
 	} else if (modified) {
-		hammer2_chain_modify(trans, ip->chain, 0);
-		ipdata = &ip->chain->data->ipdata;	/* RELOAD */
+		ipdata = hammer2_chain_modify_ip(trans, ip, 0);
 		hammer2_update_time(&ipdata->mtime);
 	}
 	hammer2_knote(ip->vp, kflags);
@@ -1128,7 +1122,7 @@ retry:
 				      "size mismatch %d/%d\n",
 				      lblksize, chain->bytes);
 			}
-			hammer2_chain_modify(trans, chain,
+			hammer2_chain_modify(trans, &chain,
 					     HAMMER2_MODIFY_OPTDATA);
 			pbase = chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX;
 			break;
@@ -1173,10 +1167,9 @@ hammer2_truncate_file(hammer2_trans_t *trans,
 	int oblksize;
 	int nblksize;
 
-	hammer2_chain_modify(trans, ip->chain, 0);
 	bp = NULL;
-	ipdata = &ip->chain->data->ipdata;
 	error = 0;
+	ipdata = hammer2_chain_modify_ip(trans, ip, 0);
 
 	/*
 	 * Destroy any logical buffer cache buffers beyond the file EOF.
@@ -1283,12 +1276,12 @@ hammer2_truncate_file(hammer2_trans_t *trans,
 					     parent, chain,
 					     hammer2_allocsize(nblksize),
 					     0);
-				hammer2_chain_modify(hmp, chain, 0);
+				hammer2_chain_modify(hmp, &chain, 0);
 				bzero(chain->data->buf + loff, nblksize - loff);
 				break;
 			case HAMMER2_BREF_TYPE_INODE:
 				if (loff < HAMMER2_EMBEDDED_BYTES) {
-					hammer2_chain_modify(hmp, chain, 0);
+					hammer2_chain_modify(hmp, &chain, 0);
 					bzero(chain->data->ipdata.u.data + loff,
 					      HAMMER2_EMBEDDED_BYTES - loff);
 				}
@@ -1368,8 +1361,7 @@ hammer2_extend_file(hammer2_trans_t *trans,
 	KKASSERT(ip->vp);
 	hmp = ip->hmp;
 
-	hammer2_chain_modify(trans, ip->chain, 0);
-	ipdata = &ip->chain->data->ipdata;
+	ipdata = hammer2_chain_modify_ip(trans, ip, 0);
 
 	/*
 	 * Nothing to do if the direct-data case is still intact

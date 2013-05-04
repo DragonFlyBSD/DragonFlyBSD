@@ -958,7 +958,8 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	if (ip->flags & HAMMER2_INODE_DIRTYEMBED) {
 		atomic_clear_int(&ip->flags, HAMMER2_INODE_DIRTYEMBED);
 		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-		hammer2_chain_modify(&info->trans, ip->chain, 0);
+		hammer2_chain_modify_ip(&info->trans, ip, 0);
+		/* ip->chain may have changed */
 	}
 	hammer2_chain_flush(&info->trans, ip->chain);
 	hammer2_inode_unlock_ex(ip);
