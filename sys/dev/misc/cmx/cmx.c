@@ -62,7 +62,7 @@
 
 #ifdef CMX_DEBUG
 #define	DEBUG_printf(dev, fmt, args...) \
-	device_printf(dev, "%s: " fmt, __FUNCTION__, ##args)
+	device_printf(dev, "%s: " fmt, __func__, ##args)
 #else
 #define	DEBUG_printf(dev, fmt, args...)
 #endif

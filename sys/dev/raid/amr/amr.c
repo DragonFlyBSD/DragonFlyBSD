@@ -1383,7 +1383,7 @@ amr_setup_polled_dmamap(void *arg, bus_dma_segment_t *segs, int nsegs, int err)
     int mb_channel;
 
     if (err) {
-	device_printf(sc->amr_dev, "error %d in %s", err, __FUNCTION__);
+	device_printf(sc->amr_dev, "error %d in %s", err, __func__);
 	ac->ac_status = AMR_STATUS_ABORTED;
 	return;
     }
@@ -1585,7 +1585,7 @@ amr_setup_data(void *arg, bus_dma_segment_t *segs, int nsegs, int err)
     int mb_channel;
 
     if (err) {
-	device_printf(sc->amr_dev, "error %d in %s", err, __FUNCTION__);
+	device_printf(sc->amr_dev, "error %d in %s", err, __func__);
 	amr_abort_load(ac);
 	return;
     }
@@ -1621,7 +1621,7 @@ amr_setup_ccb(void *arg, bus_dma_segment_t *segs, int nsegs, int err)
     struct amr_ext_passthrough *aep = &ac->ac_ccb->ccb_epthru;
 
     if (err) {
-	device_printf(sc->amr_dev, "error %d in %s", err, __FUNCTION__);
+	device_printf(sc->amr_dev, "error %d in %s", err, __func__);
 	amr_abort_load(ac);
 	return;
     }

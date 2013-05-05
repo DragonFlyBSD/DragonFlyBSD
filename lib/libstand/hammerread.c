@@ -31,8 +31,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libstand/hammerread.c,v 1.2 2008/10/29 22:14:25 swildner Exp $
  */
 
 /*
@@ -575,7 +573,7 @@ hreaddir(struct hfs *hfs, ino_t ino, int64_t *off, struct dirent *de)
 	struct hammer_base_elm key, end;
 
 #if DEBUG > 2
-	printf("%s(%llx, %lld)\n", __FUNCTION__, (long long)ino, *off);
+	printf("%s(%llx, %lld)\n", __func__, (long long)ino, *off);
 #endif
 
 	bzero(&key, sizeof(key));
@@ -617,7 +615,7 @@ hresolve(struct hfs *hfs, ino_t dirino, const char *name)
 	size_t namel = strlen(name);
 
 #if DEBUG > 2
-	printf("%s(%llx, %s)\n", __FUNCTION__, (long long)dirino, name);
+	printf("%s(%llx, %s)\n", __func__, (long long)dirino, name);
 #endif
 
 	bzero(&key, sizeof(key));
@@ -661,7 +659,7 @@ static ino_t
 hlookup(struct hfs *hfs, const char *path)
 {
 #if DEBUG > 2
-	printf("%s(%s)\n", __FUNCTION__, path);
+	printf("%s(%s)\n", __func__, path);
 #endif
 
 #ifdef BOOT2
@@ -699,7 +697,7 @@ hstat(struct hfs *hfs, ino_t ino, struct stat* st)
 	struct hammer_base_elm key;
 
 #if DEBUG > 2
-	printf("%s(%llx)\n", __FUNCTION__, (long long)ino);
+	printf("%s(%llx)\n", __func__, (long long)ino);
 #endif
 
 	bzero(&key, sizeof(key));

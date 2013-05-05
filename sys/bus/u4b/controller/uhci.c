@@ -1017,7 +1017,7 @@ uhci_isoc_done(uhci_softc_t *sc, struct usb_xfer *xfer)
 	while (nframes--) {
 		if (td == NULL) {
 			panic("%s:%d: out of TD's\n",
-			    __FUNCTION__, __LINE__);
+			    __func__, __LINE__);
 		}
 		if (pp_last >= &sc->sc_isoc_p_last[UHCI_VFRAMELIST_COUNT]) {
 			pp_last = &sc->sc_isoc_p_last[0];
@@ -1438,21 +1438,21 @@ uhci_interrupt(uhci_softc_t *sc)
 		if (status & UHCI_STS_RD) {
 #ifdef USB_DEBUG
 			kprintf("%s: resume detect\n",
-			    __FUNCTION__);
+			    __func__);
 #endif
 		}
 		if (status & UHCI_STS_HSE) {
 			kprintf("%s: host system error\n",
-			    __FUNCTION__);
+			    __func__);
 		}
 		if (status & UHCI_STS_HCPE) {
 			kprintf("%s: host controller process error\n",
-			    __FUNCTION__);
+			    __func__);
 		}
 		if (status & UHCI_STS_HCH) {
 			/* no acknowledge needed */
 			DPRINTF("%s: host controller halted\n",
-			    __FUNCTION__);
+			    __func__);
 #ifdef USB_DEBUG
 			if (uhcidebug > 0) {
 				uhci_dump_all(sc);
@@ -1567,7 +1567,7 @@ restart:
 		}
 
 		if (td_next == NULL) {
-			panic("%s: out of UHCI transfer descriptors!", __FUNCTION__);
+			panic("%s: out of UHCI transfer descriptors!", __func__);
 		}
 		/* get next TD */
 
@@ -2197,7 +2197,7 @@ uhci_device_isoc_enter(struct usb_xfer *xfer)
 	while (nframes--) {
 		if (td == NULL) {
 			panic("%s:%d: out of TD's\n",
-			    __FUNCTION__, __LINE__);
+			    __func__, __LINE__);
 		}
 		if (pp_last >= &sc->sc_isoc_p_last[UHCI_VFRAMELIST_COUNT]) {
 			pp_last = &sc->sc_isoc_p_last[0];
@@ -2208,7 +2208,7 @@ uhci_device_isoc_enter(struct usb_xfer *xfer)
 				once = 0;
 				kprintf("%s: frame length(%d) exceeds %d "
 				    "bytes (frame truncated)\n",
-				    __FUNCTION__, *plen,
+				    __func__, *plen,
 				    xfer->max_frame_size);
 			}
 #endif

@@ -1447,17 +1447,17 @@ xhci_interrupt(struct xhci_softc *sc)
 
 		if (status & XHCI_STS_HCH) {
 			kprintf("%s: host controller halted\n",
-			    __FUNCTION__);
+			    __func__);
 		}
 
 		if (status & XHCI_STS_HSE) {
 			kprintf("%s: host system error\n",
-			    __FUNCTION__);
+			    __func__);
 		}
 
 		if (status & XHCI_STS_HCE) {
 			kprintf("%s: host controller error\n",
-			   __FUNCTION__);
+			   __func__);
 		}
 	}
 
@@ -1543,7 +1543,7 @@ restart:
 		}
 
 		if (td_next == NULL)
-			panic("%s: out of XHCI transfer descriptors!", __FUNCTION__);
+			panic("%s: out of XHCI transfer descriptors!", __func__);
 
 		/* get next TD */
 

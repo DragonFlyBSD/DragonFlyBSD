@@ -144,7 +144,7 @@ static __inline__ int mach64_emit_state(struct drm_file *file_priv,
 	DMALOCALS;
 
 	if (MACH64_VERBOSE) {
-		mach64_print_dirty(__FUNCTION__, dirty);
+		mach64_print_dirty(__func__, dirty);
 	} else {
 		DRM_DEBUG("dirty=0x%08x\n", dirty);
 	}

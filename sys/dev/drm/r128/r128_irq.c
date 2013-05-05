@@ -68,7 +68,7 @@ int r128_enable_vblank(struct drm_device *dev, int crtc)
 	drm_r128_private_t *dev_priv = dev->dev_private;
 
 	if (crtc != 0) {
-		DRM_ERROR("%s:  bad crtc %d\n", __FUNCTION__, crtc);
+		DRM_ERROR("%s:  bad crtc %d\n", __func__, crtc);
 		return -EINVAL;
 	}
 
@@ -79,7 +79,7 @@ int r128_enable_vblank(struct drm_device *dev, int crtc)
 void r128_disable_vblank(struct drm_device *dev, int crtc)
 {
 	if (crtc != 0)
-		DRM_ERROR("%s:  bad crtc %d\n", __FUNCTION__, crtc);
+		DRM_ERROR("%s:  bad crtc %d\n", __func__, crtc);
 
 	/*
 	 * FIXME: implement proper interrupt disable by using the vblank

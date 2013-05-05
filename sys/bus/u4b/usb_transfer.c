@@ -2711,7 +2711,7 @@ usbd_callback_wrapper_sub(struct usb_xfer *xfer)
 		if (xfer->error == 0) {
 			panic("%s: actual number of frames, %d, is "
 			    "greater than initial number of frames, %d\n",
-			    __FUNCTION__, xfer->aframes, xfer->nframes);
+			    __func__, xfer->aframes, xfer->nframes);
 		} else {
 			/* just set some valid value */
 			xfer->aframes = xfer->nframes;
@@ -2738,7 +2738,7 @@ usbd_callback_wrapper_sub(struct usb_xfer *xfer)
 		if (xfer->error == 0) {
 			panic("%s: actual length, %d, is greater than "
 			    "initial length, %d\n",
-			    __FUNCTION__, xfer->actlen, xfer->sumlen);
+			    __func__, xfer->actlen, xfer->sumlen);
 		} else {
 			/* just set some valid value */
 			xfer->actlen = xfer->sumlen;

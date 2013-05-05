@@ -62,8 +62,8 @@
 extern struct lwkt_serialize wlan_global_serializer;
 extern int ieee80211_force_swcrypto;
 
-#define wlan_serialize_enter()	_wlan_serialize_enter(__FUNCTION__)
-#define wlan_serialize_exit()	_wlan_serialize_exit(__FUNCTION__)
+#define wlan_serialize_enter()	_wlan_serialize_enter(__func__)
+#define wlan_serialize_exit()	_wlan_serialize_exit(__func__)
 void _wlan_serialize_enter(const char *funcname);
 void _wlan_serialize_exit(const char *funcname);
 int wlan_serialize_sleep(void *ident, int flags, const char *wmesg, int timo);

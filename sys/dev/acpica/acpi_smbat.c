@@ -237,7 +237,7 @@ acpi_smbus_read_2(struct acpi_smbat_softc *sc, uint8_t addr, uint8_t cmd,
 		goto out;
 	if (val & SMBUS_STS_MASK) {
 		kprintf("%s: AE_ERROR 0x%x\n",
-		       __FUNCTION__, (int)(val & SMBUS_STS_MASK));
+		       __func__, (int)(val & SMBUS_STS_MASK));
 		error = EIO;
 		goto out;
 	}
@@ -306,7 +306,7 @@ acpi_smbus_read_multi_1(struct acpi_smbat_softc *sc, uint8_t addr, uint8_t cmd,
 		goto out;
 	if (val & SMBUS_STS_MASK) {
 		kprintf("%s: AE_ERROR 0x%x\n",
-		       __FUNCTION__, (int)(val & SMBUS_STS_MASK));
+		       __func__, (int)(val & SMBUS_STS_MASK));
 		error = EIO;
 		goto out;
 	}

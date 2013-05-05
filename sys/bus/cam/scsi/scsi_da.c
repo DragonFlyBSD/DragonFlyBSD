@@ -889,7 +889,8 @@ dainit(void)
 		/* Register our shutdown event handler */
 		if ((EVENTHANDLER_REGISTER(shutdown_post_sync, dashutdown, 
 					   NULL, SHUTDOWN_PRI_DEFAULT)) == NULL)
-		    kprintf("dainit: shutdown event registration failed!\n");
+			kprintf("%s: shutdown event registration failed!\n",
+			    __func__);
 	}
 }
 
@@ -1004,8 +1005,8 @@ daasync(void *callback_arg, u_int32_t code,
 					  AC_FOUND_DEVICE, cgd);
 
 		if (status != CAM_REQ_CMP && status != CAM_REQ_INPROG) {
-			kprintf("daasync: Unable to attach to new device "
-				"due to status 0x%x\n", status);
+			kprintf("%s: Unable to attach to new device "
+			    "due to status 0x%x\n", __func__, status);
 		}
 		break;
 	}
@@ -1055,7 +1056,7 @@ dasysctlinit(void *context, int pending)
 		SYSCTL_STATIC_CHILDREN(_kern_cam_da), OID_AUTO, tmpstr2,
 		CTLFLAG_RD, 0, tmpstr);
 	if (softc->sysctl_tree == NULL) {
-		kprintf("dasysctlinit: unable to allocate sysctl tree\n");
+		kprintf("%s: unable to allocate sysctl tree\n", __func__);
 		cam_periph_release(periph);
 		rel_mplock();
 		return;
@@ -1129,12 +1130,13 @@ daregister(struct cam_periph *periph, void *arg)
 
 	cgd = (struct ccb_getdev *)arg;
 	if (periph == NULL) {
-		kprintf("daregister: periph was NULL!!\n");
+		kprintf("%s: periph was NULL!!\n", __func__);
 		return(CAM_REQ_CMP_ERR);
 	}
 
 	if (cgd == NULL) {
-		kprintf("daregister: no getdev CCB, can't register device\n");
+		kprintf("%s: no getdev CCB, can't register device\n",
+		    __func__);
 		return(CAM_REQ_CMP_ERR);
 	}
 
@@ -1249,6 +1251,12 @@ daregister(struct cam_periph *periph, void *arg)
 		softc->disk.d_rawdev->si_iosize_max = MAXPHYS;
 	else
 		softc->disk.d_rawdev->si_iosize_max = cpi.maxio;
+	if (bootverbose) {
+		kprintf("%s%d: si_iosize_max:%d\n",
+		    periph->periph_name,
+		    periph->unit_number,
+		    softc->disk.d_rawdev->si_iosize_max);
+	}
 	CAM_SIM_LOCK(periph->sim);
 
 	/*

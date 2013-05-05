@@ -598,7 +598,7 @@ extern void mfi_dump_cmds(struct mfi_softc *sc);
 extern void mfi_validate_sg(struct mfi_softc *, struct mfi_command *, const char *, int );
 #define MFI_PRINT_CMD(cm)	mfi_print_cmd(cm)
 #define MFI_DUMP_CMDS(sc)	mfi_dump_cmds(sc)
-#define MFI_VALIDATE_CMD(sc, cm) mfi_validate_sg(sc, cm, __FUNCTION__, __LINE__)
+#define MFI_VALIDATE_CMD(sc, cm) mfi_validate_sg(sc, cm, __func__, __LINE__)
 #else
 #define MFI_PRINT_CMD(cm)
 #define MFI_DUMP_CMDS(sc)

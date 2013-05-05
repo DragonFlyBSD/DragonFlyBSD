@@ -2440,6 +2440,7 @@ END_DEBUG
                 cpi->transport_version = 2;
                 cpi->protocol = PROTO_SCSI;
                 cpi->protocol_version = SCSI_REV_2;
+		cpi->maxio = SBP_MAXPHYS;
 
 		cpi->ccb_h.status = CAM_REQ_CMP;
 		xpt_done(ccb);

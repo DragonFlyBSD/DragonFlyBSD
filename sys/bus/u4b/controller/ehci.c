@@ -890,7 +890,7 @@ ehci_dump_isoc(ehci_softc_t *sc)
 	    (EHCI_VIRTUAL_FRAMELIST_COUNT - 1);
 
 	kprintf("%s: isochronous dump from frame 0x%03x:\n",
-	    __FUNCTION__, pos);
+	    __func__, pos);
 
 	itd = sc->sc_isoc_hs_p_last[pos];
 	sitd = sc->sc_isoc_fs_p_last[pos];
@@ -1487,7 +1487,7 @@ ehci_interrupt(ehci_softc_t *sc)
 
 	if (status & EHCI_STS_HSE) {
 		kprintf("%s: unrecoverable error, "
-		    "controller halted\n", __FUNCTION__);
+		    "controller halted\n", __func__);
 #ifdef USB_DEBUG
 		ehci_dump_regs(sc);
 		ehci_dump_isoc(sc);
@@ -1513,7 +1513,7 @@ ehci_interrupt(ehci_softc_t *sc)
 		/* block unprocessed interrupts */
 		sc->sc_eintrs &= ~status;
 		EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
-		kprintf("%s: blocking interrupts 0x%x\n", __FUNCTION__, status);
+		kprintf("%s: blocking interrupts 0x%x\n", __func__, status);
 	}
 	/* poll all the USB transfers */
 	ehci_interrupt_poll(sc);
@@ -1606,7 +1606,7 @@ restart:
 		}
 
 		if (td_next == NULL) {
-			panic("%s: out of EHCI transfer descriptors!", __FUNCTION__);
+			panic("%s: out of EHCI transfer descriptors!", __func__);
 		}
 		/* get next TD */
 
@@ -2038,7 +2038,7 @@ ehci_isoc_fs_done(ehci_softc_t *sc, struct usb_xfer *xfer)
 	while (nframes--) {
 		if (td == NULL) {
 			panic("%s:%d: out of TD's\n",
-			    __FUNCTION__, __LINE__);
+			    __func__, __LINE__);
 		}
 		if (pp_last >= &sc->sc_isoc_fs_p_last[EHCI_VIRTUAL_FRAMELIST_COUNT]) {
 			pp_last = &sc->sc_isoc_fs_p_last[0];
@@ -2092,7 +2092,7 @@ ehci_isoc_hs_done(ehci_softc_t *sc, struct usb_xfer *xfer)
 	while (nframes) {
 		if (td == NULL) {
 			panic("%s:%d: out of TD's\n",
-			    __FUNCTION__, __LINE__);
+			    __func__, __LINE__);
 		}
 		if (pp_last >= &sc->sc_isoc_hs_p_last[EHCI_VIRTUAL_FRAMELIST_COUNT]) {
 			pp_last = &sc->sc_isoc_hs_p_last[0];
@@ -2519,7 +2519,7 @@ ehci_device_isoc_fs_enter(struct usb_xfer *xfer)
 	while (nframes--) {
 		if (td == NULL) {
 			panic("%s:%d: out of TD's\n",
-			    __FUNCTION__, __LINE__);
+			    __func__, __LINE__);
 		}
 		if (pp_last >= &sc->sc_isoc_fs_p_last[EHCI_VIRTUAL_FRAMELIST_COUNT]) {
 			pp_last = &sc->sc_isoc_fs_p_last[0];
@@ -2535,7 +2535,7 @@ ehci_device_isoc_fs_enter(struct usb_xfer *xfer)
 				once = 0;
 				kprintf("%s: frame length(%d) exceeds %d "
 				    "bytes (frame truncated)\n",
-				    __FUNCTION__, *plen,
+				    __func__, *plen,
 				    xfer->max_frame_size);
 			}
 #endif
@@ -2809,7 +2809,7 @@ ehci_device_isoc_hs_enter(struct usb_xfer *xfer)
 	while (nframes) {
 		if (td == NULL) {
 			panic("%s:%d: out of TD's\n",
-			    __FUNCTION__, __LINE__);
+			    __func__, __LINE__);
 		}
 		if (pp_last >= &sc->sc_isoc_hs_p_last[EHCI_VIRTUAL_FRAMELIST_COUNT]) {
 			pp_last = &sc->sc_isoc_hs_p_last[0];
@@ -2821,7 +2821,7 @@ ehci_device_isoc_hs_enter(struct usb_xfer *xfer)
 				once = 0;
 				kprintf("%s: frame length(%d) exceeds %d bytes "
 				    "(frame truncated)\n",
-				    __FUNCTION__, *plen, xfer->max_frame_size);
+				    __func__, *plen, xfer->max_frame_size);
 			}
 #endif
 			*plen = xfer->max_frame_size;
@@ -2886,7 +2886,7 @@ ehci_device_isoc_hs_enter(struct usb_xfer *xfer)
 						/* new page needed */
 						page_addr = buf_res.physaddr & ~0xFFF;
 						if (page_no == 6) {
-							panic("%s: too many pages\n", __FUNCTION__);
+							panic("%s: too many pages\n", __func__);
 						}
 						page_no++;
 						/* update page address */

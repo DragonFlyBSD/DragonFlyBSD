@@ -194,7 +194,7 @@ void __os_dbgbreak(const char *file, int line);
 #define os_dbgbreak() __os_dbgbreak(__FILE__, __LINE__)
 #define HPT_ASSERT(x) do { if (!(x)) os_dbgbreak(); } while (0)
 void os_check_stack(const char *location, int size);
-#define HPT_CHECK_STACK(size) os_check_stack(__FUNCTION__, (size))
+#define HPT_CHECK_STACK(size) os_check_stack(__func__, (size))
 #else
 #define KdPrint(x)
 #define HPT_ASSERT(x)
