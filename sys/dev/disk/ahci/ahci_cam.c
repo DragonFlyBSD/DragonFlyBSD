@@ -875,6 +875,7 @@ ahci_xpt_action(struct cam_sim *sim, union ccb *ccb)
 		ccb->cpi.transport_version = 1;
 		ccb->cpi.protocol = PROTO_SCSI;
 		ccb->cpi.protocol_version = SCSI_REV_2;
+		ccb->cpi.maxio = AHCI_MAXPHYS;
 
 		ccbh->status = CAM_REQ_CMP;
 		if (ccbh->target_id == CAM_TARGET_WILDCARD) {

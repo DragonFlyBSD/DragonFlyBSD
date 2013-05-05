@@ -313,16 +313,17 @@ struct ahci_prdt {
 
 /*
  * The base command table structure is 128 bytes.  Each prdt is 16 bytes.
- * We need to accomodate MAXPHYS (128K) which is at least 32 entries,
- * plus one for page slop.
+ * We need to accomodate a 2MB maximum I/O transfer size, which is at least
+ * 512 entries, plus one for page slop.
  *
- * Making the ahci_cmd_table 1024 bytes (a reasonable power of 2)
- * thus requires MAX_PRDT to be set to 56.
+ * Making the ahci_cmd_table 16384 bytes (a reasonable power of 2)
+ * thus requires MAX_PRDT to be set to 1016.
  */
-#define AHCI_MAX_PRDT		56
+#define AHCI_MAX_PRDT		1016
 #define AHCI_MAX_PMPORTS	16
 
-#if MAXPHYS / PAGE_SIZE + 1 > AHCI_MAX_PRDT
+#define AHCI_MAXPHYS		(2 * 1024 * 1024)	/* 2MB */
+#if AHCI_MAXPHYS / PAGE_SIZE + 1 > AHCI_MAX_PRDT
 #error "AHCI_MAX_PRDT is not big enough"
 #endif
 
