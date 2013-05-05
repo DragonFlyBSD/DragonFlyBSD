@@ -256,6 +256,8 @@ static void	bnx_setup_serialize(struct bnx_softc *);
 static void	bnx_set_tick_cpuid(struct bnx_softc *, boolean_t);
 static void	bnx_setup_ring_cnt(struct bnx_softc *);
 
+static struct pktinfo *bnx_rss_info(struct pktinfo *,
+		    const struct bge_rx_bd *);
 static void	bnx_init_rss(struct bnx_softc *);
 static void	bnx_reset(struct bnx_softc *);
 static int	bnx_chipinit(struct bnx_softc *);
@@ -2115,6 +2117,8 @@ bnx_attach(device_t dev)
 		ifp->if_capabilities |= IFCAP_TSO;
 		ifp->if_hwassist |= CSUM_TSO;
 	}
+	if (BNX_RSS_ENABLED(sc))
+		ifp->if_capabilities |= IFCAP_RSS;
 	ifp->if_capenable = ifp->if_capabilities;
 
 	ifq_set_maxlen(&ifp->if_snd, BGE_TX_RING_CNT - 1);
@@ -2699,6 +2703,7 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
 	while (ret->bnx_rx_saved_considx != rx_prod && count != 0) {
+		struct pktinfo pi0, *pi = NULL;
 		struct bge_rx_bd *cur_rx;
 		struct bnx_rx_buf *rb;
 		uint32_t rxidx;
@@ -2759,6 +2764,15 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 				    CSUM_PSEUDO_HDR;
 			}
 		}
+		if (ifp->if_capenable & IFCAP_RSS) {
+			pi = bnx_rss_info(&pi0, cur_rx);
+			if (pi != NULL &&
+			    (cur_rx->bge_flags & BGE_RXBDFLAG_RSS_HASH)) {
+				m->m_flags |= M_HASH;
+				m->m_pkthdr.hash =
+				    toeplitz_hash(cur_rx->bge_hash);
+			}
+		}
 
 		/*
 		 * If we received a packet with a vlan tag, pass it
@@ -2768,7 +2782,7 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 			m->m_flags |= M_VLANTAG;
 			m->m_pkthdr.ether_vlantag = vlan_tag;
 		}
-		ifp->if_input(ifp, m);
+		ether_input_pkt(ifp, m, pi);
 	}
 	bnx_writembx(sc, ret->bnx_rx_mbx, ret->bnx_rx_saved_considx);
 
@@ -3747,6 +3761,8 @@ bnx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			else
 				ifp->if_hwassist &= ~CSUM_TSO;
 		}
+		if (mask & IFCAP_RSS)
+			ifp->if_capenable ^= IFCAP_RSS;
 		break;
 	default:
 		error = ether_ioctl(ifp, command, data);
@@ -5992,4 +6008,34 @@ bnx_rx_std_refill_sched(struct bnx_rx_ret_ring *ret,
 	}
 
 	crit_exit_gd(gd);
+}
+
+static struct pktinfo *
+bnx_rss_info(struct pktinfo *pi, const struct bge_rx_bd *cur_rx)
+{
+	/* Don't pick up IPv6 packet */
+	if (cur_rx->bge_flags & BGE_RXBDFLAG_IPV6)
+		return NULL;
+
+	/* Don't pick up IP packet w/o IP checksum */
+	if ((cur_rx->bge_flags & BGE_RXBDFLAG_IP_CSUM) == 0 ||
+	    (cur_rx->bge_error_flag & BGE_RXERRFLAG_IP_CSUM_NOK))
+		return NULL;
+
+	/* Don't pick up IP packet w/o TCP/UDP checksum */
+	if ((cur_rx->bge_flags & BGE_RXBDFLAG_TCP_UDP_CSUM) == 0)
+		return NULL;
+
+	/* May be IP fragment */
+	if (cur_rx->bge_tcp_udp_csum != 0xffff)
+		return NULL;
+
+	if (cur_rx->bge_flags & BGE_RXBDFLAG_TCP_UDP_IS_TCP)
+		pi->pi_l3proto = IPPROTO_TCP;
+	else
+		pi->pi_l3proto = IPPROTO_UDP;
+	pi->pi_netisr = NETISR_IP;
+	pi->pi_flags = 0;
+
+	return pi;
 }

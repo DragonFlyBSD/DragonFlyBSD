@@ -2173,11 +2173,12 @@ struct bge_rx_bd {
 	uint16_t		bge_error_flag;
 	uint16_t		bge_vlan_tag;
 #endif
-	uint32_t		bge_rsvd;
+	uint32_t		bge_hash;
 	uint32_t		bge_opaque;
 };
 
 #define BGE_RXBDFLAG_END		0x0004
+#define BGE_RXBDFLAG_RSS_HASH		0x0008
 #define BGE_RXBDFLAG_JUMBO_RING		0x0020
 #define BGE_RXBDFLAG_VLAN_TAG		0x0040
 #define BGE_RXBDFLAG_ERROR		0x0400
