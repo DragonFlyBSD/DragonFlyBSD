@@ -1251,6 +1251,12 @@ daregister(struct cam_periph *periph, void *arg)
 		softc->disk.d_rawdev->si_iosize_max = MAXPHYS;
 	else
 		softc->disk.d_rawdev->si_iosize_max = cpi.maxio;
+	if (bootverbose) {
+		kprintf("%s%d: si_iosize_max:%d\n",
+		    periph->periph_name,
+		    periph->unit_number,
+		    softc->disk.d_rawdev->si_iosize_max);
+	}
 	CAM_SIM_LOCK(periph->sim);
 
 	/*
