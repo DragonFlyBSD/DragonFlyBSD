@@ -140,6 +140,7 @@ int ForceOpt;
 int DeviceOpt = 1;
 int VerboseOpt;
 int DirShowOpt;
+int NotForRealOpt;
 int QuietOpt;
 int NoRemoveOpt;
 int UseMD5Opt;
@@ -189,7 +190,7 @@ main(int ac, char **av)
 
     gettimeofday(&start, NULL);
     opterr = 0;
-    while ((opt = getopt(ac, av, ":CdF:fH:Ii:j:K:klM:mopqRSs:uVvX:x")) != -1) {
+    while ((opt = getopt(ac, av, ":CdnF:fH:Ii:j:K:klM:mopqRSs:uVvX:x")) != -1) {
 	switch (opt) {
 	/* TODO: sort the branches */
 	case 'C':
@@ -200,6 +201,9 @@ main(int ac, char **av)
 	    break;
 	case 'd':
 	    DirShowOpt = 1;
+	    break;
+	case 'n':
+	    NotForRealOpt = 1;
 	    break;
 	case 'l':
 	    setlinebuf(stdout);
@@ -914,8 +918,9 @@ relink:
 		    skipdir = 1;
 		}
 		if (hc_lstat(&DstHost, dpath, &st2) != 0) {
-		    logerr("%s: lstat of newly made dir failed: %s\n",
-			(dpath ? dpath : spath), strerror(errno));
+		    if (NotForRealOpt == 0)
+			    logerr("%s: lstat of newly made dir failed: %s\n",
+				   (dpath ? dpath : spath), strerror(errno));
 		    st2Valid = 0;
 		    r = 1;
 		    skipdir = 1;

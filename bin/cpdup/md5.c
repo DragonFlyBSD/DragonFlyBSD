@@ -29,7 +29,7 @@ static int MD5SCacheDirty;
 void 
 md5_flush(void)
 {
-    if (MD5SCacheDirty && MD5SCache) {
+    if (MD5SCacheDirty && MD5SCache && NotForRealOpt == 0) {
 	FILE *fo;
 
 	if ((fo = fopen(MD5SCache, "w")) != NULL) {

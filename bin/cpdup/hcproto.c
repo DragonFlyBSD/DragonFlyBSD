@@ -656,6 +656,9 @@ hc_open(struct HostConf *hc, const char *path, int flags, mode_t mode)
     int desc = 0;
     int nflags;
 
+    if (NotForRealOpt && (flags & O_CREAT))
+	return(0x7FFFFFFF);
+
     if (hc == NULL || hc->host == NULL) {
 #ifdef O_LARGEFILE
 	flags |= O_LARGEFILE;
@@ -770,6 +773,8 @@ hc_close(struct HostConf *hc, int fd)
     struct HCHead *head;
     int *fdp;
 
+    if (NotForRealOpt && fd == 0x7FFFFFFF)
+	return(0);
     if (hc == NULL || hc->host == NULL)
 	return(close(fd));
 
@@ -982,6 +987,9 @@ hc_write(struct HostConf *hc, int fd, const void *buf, size_t bytes)
     int *fdp;
     int r;
 
+    if (NotForRealOpt)
+	return(bytes);
+
     if (hc == NULL || hc->host == NULL)
 	return(write(fd, buf, bytes));
 
@@ -1064,6 +1072,8 @@ hc_remove(struct HostConf *hc, const char *path)
     struct HCHead *head;
     int res;
 
+    if (NotForRealOpt)
+	return(0);
     if (hc == NULL || hc->host == NULL) {
 	res = remove(path);
 	if (res < 0)
@@ -1108,6 +1118,8 @@ hc_mkdir(struct HostConf *hc, const char *path, mode_t mode)
     hctransaction_t trans;
     struct HCHead *head;
 
+    if (NotForRealOpt)
+	return(0);
     if (hc == NULL || hc->host == NULL)
 	return(mkdir(path, mode));
 
@@ -1156,6 +1168,8 @@ hc_rmdir(struct HostConf *hc, const char *path)
     hctransaction_t trans;
     struct HCHead *head;
 
+    if (NotForRealOpt)
+	return(0);
     if (hc == NULL || hc->host == NULL)
 	return(rmdir(path));
 
@@ -1199,6 +1213,8 @@ hc_chown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
     struct HCHead *head;
     int rc;
 
+    if (NotForRealOpt)
+	return(0);
     if (!DstRootPrivs)
 	owner = -1;
 
@@ -1264,6 +1280,8 @@ hc_lchown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
     struct HCHead *head;
     int rc;
 
+    if (NotForRealOpt)
+	return(0);
     if (!DstRootPrivs)
 	owner = -1;
 
@@ -1328,6 +1346,8 @@ hc_chmod(struct HostConf *hc, const char *path, mode_t mode)
     hctransaction_t trans;
     struct HCHead *head;
 
+    if (NotForRealOpt)
+	return(0);
     if (hc == NULL || hc->host == NULL)
 	return(chmod(path, mode));
 
@@ -1376,6 +1396,8 @@ hc_mknod(struct HostConf *hc, const char *path, mode_t mode, dev_t rdev)
     hctransaction_t trans;
     struct HCHead *head;
 
+    if (NotForRealOpt)
+	return(0);
     if (!DstRootPrivs) {
 	/* mknod() requires root privs, so don't bother. */
 	errno = EPERM;
@@ -1435,6 +1457,8 @@ hc_link(struct HostConf *hc, const char *name1, const char *name2)
     hctransaction_t trans;
     struct HCHead *head;
 
+    if (NotForRealOpt)
+	return(0);
     if (hc == NULL || hc->host == NULL)
 	return(link(name1, name2));
 
@@ -1485,6 +1509,8 @@ hc_chflags(struct HostConf *hc, const char *path, u_long flags)
     struct HCHead *head;
     int rc;
 
+    if (NotForRealOpt)
+	return(0);
     if (!DstRootPrivs)
 	flags &= UF_SETTABLE;
 
@@ -1601,6 +1627,8 @@ hc_umask(struct HostConf *hc, mode_t numask)
     struct HCHead *head;
     struct HCLeaf *item;
 
+    if (NotForRealOpt)
+	return(umask(numask));
     if (hc == NULL || hc->host == NULL)
 	return(umask(numask));
 
@@ -1643,6 +1671,8 @@ hc_symlink(struct HostConf *hc, const char *name1, const char *name2)
     hctransaction_t trans;
     struct HCHead *head;
 
+    if (NotForRealOpt)
+	return(0);
     if (hc == NULL || hc->host == NULL)
 	return(symlink(name1, name2));
 
@@ -1691,6 +1721,8 @@ hc_rename(struct HostConf *hc, const char *name1, const char *name2)
     hctransaction_t trans;
     struct HCHead *head;
   
+    if (NotForRealOpt)
+	return(0);
     if (hc == NULL || hc->host == NULL)
 	return(rename(name1, name2));
 
@@ -1739,6 +1771,8 @@ hc_utimes(struct HostConf *hc, const char *path, const struct timeval *times)
     hctransaction_t trans;
     struct HCHead *head;
 
+    if (NotForRealOpt)
+	return(0);
     if (hc == NULL || hc->host == NULL)
 	return(utimes(path, times));
 

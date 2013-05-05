@@ -57,6 +57,7 @@ extern const char *MD5CacheFile;
 extern const char *FSMIDCacheFile;
 
 extern int QuietOpt;
+extern int NotForRealOpt;
 extern int SummaryOpt;
 extern int CompressOpt;
 extern int ReadOnlyOpt;

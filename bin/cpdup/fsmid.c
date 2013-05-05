@@ -27,7 +27,7 @@ static int FSMIDDCacheDirty;
 void 
 fsmid_flush(void)
 {
-    if (FSMIDDCacheDirty && FSMIDDCache) {
+    if (FSMIDDCacheDirty && FSMIDDCache && NotForRealOpt == 0) {
 	FILE *fo;
 
 	if ((fo = fopen(FSMIDDCache, "w")) != NULL) {
