@@ -463,7 +463,7 @@ config::expand_one(const char *&src, string &dst)
 	src++;
 	// $$ -> $
 	if (*src == '$') {
-		dst.append(src++, 1);
+		dst += *src++;
 		return;
 	}
 		
@@ -471,7 +471,7 @@ config::expand_one(const char *&src, string &dst)
 	// Not sure if I want to support this or not, so for now we just pass
 	// it through.
 	if (*src == '(') {
-		dst.append("$");
+		dst += '$';
 		count = 1;
 		/* If the string ends before ) is matched , return. */
 		while (count > 0 && *src) {
@@ -479,21 +479,21 @@ config::expand_one(const char *&src, string &dst)
 				count--;
 			else if (*src == '(')
 				count++;
-			dst.append(src++, 1);
+			dst += *src++;
 		}
 		return;
 	}
 	
-	// ${^A-Za-z] -> $\1
+	// $[^A-Za-z] -> $\1
 	if (!isalpha(*src)) {
-		dst.append("$");
-		dst.append(src++, 1);
+		dst += '$';
+		dst += *src++;
 		return;
 	}
 
 	// $var -> replace with value
 	do {
-		buffer.append(src++, 1);
+		buffer += *src++;
 	} while (is_id_char(*src));
 	buffer.append("", 1);
 	varstr = get_variable(buffer.c_str());
