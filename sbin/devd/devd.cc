@@ -727,9 +727,7 @@ event_loop(void)
 		err(1, "Can't set close-on-exec flag on devctl");
 	server_fd = create_socket(PIPE);
 	max_fd = max(fd, server_fd) + 1;
-	while (1) {
-		if (romeo_must_die)
-			break;
+	while (!romeo_must_die) {
 		if (!once && !dflag && !nflag) {
 			// Check to see if we have any events pending.
 			tv.tv_sec = 0;
@@ -866,7 +864,7 @@ set_variable(const char *var, const char *val)
 static void
 gensighand(int)
 {
-	romeo_must_die++;
+	romeo_must_die = 1;
 	unlink("/var/run/devd.pid");	/* XXX */
 }
 
