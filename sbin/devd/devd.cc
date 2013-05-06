@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2002-2003 M. Warner Losh.
+ * Copyright (c) 2002-2010 M. Warner Losh.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -119,7 +119,7 @@ event_proc::add(eps *eps)
 }
 
 bool
-event_proc::matches(config &c)
+event_proc::matches(config &c) const
 {
 	vector<eps *>::const_iterator i;
 
@@ -130,7 +130,7 @@ event_proc::matches(config &c)
 }
 
 bool
-event_proc::run(config &c)
+event_proc::run(config &c) const
 {
 	vector<eps *>::const_iterator i;
 		
@@ -177,7 +177,7 @@ match::~match()
 bool
 match::do_match(config &c)
 {
-	string value = c.get_variable(_var);
+	const string &value = c.get_variable(_var);
 	bool retval;
 
 	if (Dflag)
@@ -203,7 +203,7 @@ media::media(config &, const char *var, const char *type)
 		{ -1,			"unknown" },
 		{ 0, NULL },
 	};
-	for (int i = 0; media_types[i].ifmt_string != NULL; i++)
+	for (int i = 0; media_types[i].ifmt_string != NULL; ++i)
 		if (strcasecmp(type, media_types[i].ifmt_string) == 0) {
 			_type = media_types[i].ifmt_word;
 			break;
@@ -302,7 +302,7 @@ void
 config::parse_one_file(const char *fn)
 {
 	if (Dflag)
-		printf("Parsing %s\n", fn);
+		fprintf(stderr, "Parsing %s\n", fn);
 	yyin = fopen(fn, "r");
 	if (yyin == NULL)
 		err(1, "Cannot open config file %s", fn);
@@ -320,7 +320,7 @@ config::parse_files_in_dir(const char *dirname)
 	char path[PATH_MAX];
 
 	if (Dflag)
-		printf("Parsing files in %s\n", dirname);
+		fprintf(stderr, "Parsing files in %s\n", dirname);
 	dirp = opendir(dirname);
 	if (dirp == NULL)
 		return;
@@ -337,7 +337,7 @@ config::parse_files_in_dir(const char *dirname)
 
 class epv_greater {
 public:
-	int operator()(event_proc *const&l1, event_proc *const&l2)
+	int operator()(event_proc *const&l1, event_proc *const&l2) const
 	{
 		return (l1->get_priority() > l2->get_priority());
 	}
@@ -672,7 +672,7 @@ create_socket(const char *name)
 	unlink(name);
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
 	    	err(1, "fcntl");
-	if (bind(fd, (struct sockaddr *) & sun, slen) < 0)
+	if (::bind(fd, (struct sockaddr *) & sun, slen) < 0)
 		err(1, "bind");
 	listen(fd, 4);
 	chown(name, 0, 0);	/* XXX - root.wheel */

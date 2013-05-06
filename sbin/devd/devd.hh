@@ -134,8 +134,8 @@ public:
 	int get_priority() const { return (_prio); }
 	void set_priority(int prio) { _prio = prio; }
 	void add(eps *);
-	bool matches(config &);
-	bool run(config &);
+	bool matches(config &) const;
+	bool run(config &) const;
 private:
 	int _prio;
 	std::vector<eps *> _epsvec;
