@@ -43,17 +43,18 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include <ctype.h>
+#include <cctype>
+#include <cerrno>
+#include <csignal>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+
 #include <dirent.h>
-#include <errno.h>
 #include <err.h>
 #include <fcntl.h>
 #include <libutil.h>
 #include <regex.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <unistd.h>
 
 #include <algorithm>
