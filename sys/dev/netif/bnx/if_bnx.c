@@ -297,6 +297,7 @@ static int	bnx_sysctl_rx_coal_ticks(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_tx_coal_ticks(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_rx_coal_bds(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_tx_coal_bds(SYSCTL_HANDLER_ARGS);
+static int	bnx_sysctl_tx_coal_bds_poll(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_rx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_tx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *,
@@ -2090,6 +2091,7 @@ bnx_attach(device_t dev)
 	sc->bnx_tx_coal_ticks = BNX_TX_COAL_TICKS_DEF;
 	sc->bnx_rx_coal_bds = BNX_RX_COAL_BDS_DEF;
 	sc->bnx_tx_coal_bds = BNX_TX_COAL_BDS_DEF;
+	sc->bnx_tx_coal_bds_poll = BNX_TX_COAL_BDS_POLL_DEF;
 	sc->bnx_rx_coal_bds_int = BNX_RX_COAL_BDS_INT_DEF;
 	sc->bnx_tx_coal_bds_int = BNX_TX_COAL_BDS_INT_DEF;
 
@@ -2281,6 +2283,12 @@ bnx_attach(device_t dev)
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, bnx_sysctl_tx_coal_bds, "I",
 			"Transmit max coalesced BD count.");
+	SYSCTL_ADD_PROC(&sc->bnx_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->bnx_sysctl_tree),
+			OID_AUTO, "tx_coal_bds_poll",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, bnx_sysctl_tx_coal_bds_poll, "I",
+			"Transmit max coalesced BD count in polling.");
 	/*
 	 * A common design characteristic for many Broadcom
 	 * client controllers is that they only support a
@@ -2992,6 +3000,9 @@ bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 		if (ifp->if_flags & IFF_RUNNING) {
 			bnx_disable_intr(sc);
 			bnx_set_tick_cpuid(sc, TRUE);
+
+			sc->bnx_coal_chg = BNX_TX_COAL_BDS_CHG;
+			bnx_coal_change(sc);
 		}
 	} else {
 		for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
@@ -2999,6 +3010,9 @@ bnx_npoll(struct ifnet *ifp, struct ifpoll_info *info)
 			    sc->bnx_tx_ring[i].bnx_tx_cpuid);
 		}
 		if (ifp->if_flags & IFF_RUNNING) {
+			sc->bnx_coal_chg = BNX_TX_COAL_BDS_CHG;
+			bnx_coal_change(sc);
+
 			bnx_enable_intr(sc);
 			bnx_set_tick_cpuid(sc, FALSE);
 		}
@@ -4359,6 +4373,17 @@ bnx_sysctl_tx_coal_bds(SYSCTL_HANDLER_ARGS)
 }
 
 static int
+bnx_sysctl_tx_coal_bds_poll(SYSCTL_HANDLER_ARGS)
+{
+	struct bnx_softc *sc = arg1;
+
+	return bnx_sysctl_coal_chg(oidp, arg1, arg2, req,
+	    &sc->bnx_tx_coal_bds_poll,
+	    BNX_TX_COAL_BDS_MIN, BNX_TX_COAL_BDS_MAX,
+	    BNX_TX_COAL_BDS_CHG);
+}
+
+static int
 bnx_sysctl_rx_coal_bds_int(SYSCTL_HANDLER_ARGS)
 {
 	struct bnx_softc *sc = arg1;
@@ -4486,16 +4511,21 @@ bnx_coal_change(struct bnx_softc *sc)
 	}
 
 	if (sc->bnx_coal_chg & BNX_TX_COAL_BDS_CHG) {
+		uint32_t tx_coal_bds;
+
+		if (ifp->if_flags & IFF_NPOLLING)
+			tx_coal_bds = sc->bnx_tx_coal_bds_poll;
+		else
+			tx_coal_bds = sc->bnx_tx_coal_bds;
+
 		if (sc->bnx_tx_ringcnt == 1) {
-			CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS,
-			    sc->bnx_tx_coal_bds);
+			CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS, tx_coal_bds);
 			i = 0;
 		} else {
 			CSR_WRITE_4(sc, BGE_HCC_TX_MAX_COAL_BDS, 0);
 			for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
 				CSR_WRITE_4(sc, BGE_VEC1_TX_MAX_COAL_BDS +
-				    (i * BGE_VEC_COALSET_SIZE),
-				    sc->bnx_tx_coal_bds);
+				    (i * BGE_VEC_COALSET_SIZE), tx_coal_bds);
 			}
 		}
 		for (; i < BNX_INTR_MAX - 1; ++i) {
@@ -4503,8 +4533,9 @@ bnx_coal_change(struct bnx_softc *sc)
 			    (i * BGE_VEC_COALSET_SIZE), 0);
 		}
 		if (bootverbose) {
-			if_printf(ifp, "tx_coal_bds -> %u\n",
-			    sc->bnx_tx_coal_bds);
+			if_printf(ifp, "%stx_coal_bds -> %u\n",
+			    (ifp->if_flags & IFF_NPOLLING) ? "polling " : "",
+			    tx_coal_bds);
 		}
 	}
 
