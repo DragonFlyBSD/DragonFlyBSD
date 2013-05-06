@@ -448,7 +448,7 @@ config::get_variable(const string &var)
 }
 
 bool
-config::is_id_char(char ch)
+config::is_id_char(char ch) const
 {
 	return (ch != '\0' && (isalpha(ch) || isdigit(ch) || ch == '_' || 
 	    ch == '-'));
@@ -519,7 +519,7 @@ config::expand_string(const string &s)
 }
 
 bool
-config::chop_var(char *&buffer, char *&lhs, char *&rhs)
+config::chop_var(char *&buffer, char *&lhs, char *&rhs) const
 {
 	char *walker;
 	
