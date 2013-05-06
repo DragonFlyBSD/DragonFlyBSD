@@ -82,7 +82,7 @@ static const char detach = '-';
 int Dflag;
 int dflag;
 int nflag;
-int romeo_must_die = 0;
+static volatile sig_atomic_t romeo_must_die = 0;
 
 static const char *configfile = CF;
 
@@ -867,7 +867,6 @@ gensighand(int)
 {
 	romeo_must_die++;
 	unlink("/var/run/devd.pid");	/* XXX */
-	_exit(0);
 }
 
 static void
