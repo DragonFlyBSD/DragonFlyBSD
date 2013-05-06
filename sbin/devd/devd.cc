@@ -407,7 +407,7 @@ config::add_notify(int prio, event_proc *p)
 void
 config::set_pidfile(const char *fn)
 {
-	_pidfile = string(fn);
+	_pidfile = fn;
 }
 
 void
