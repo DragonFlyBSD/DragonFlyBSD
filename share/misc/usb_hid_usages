@@ -1,5 +1,4 @@
-# $FreeBSD: src/share/misc/usb_hid_usages,v 1.2 2006/10/24 23:52:22 markus Exp $
-# $DragonFly: src/share/misc/usb_hid_usages,v 1.3 2008/01/12 20:08:49 matthias Exp $
+# $FreeBSD: head/share/misc/usb_hid_usages 223153 2011-06-16 15:53:14Z mav $
 #
 # USB HID usage table
 # Syntax:
@@ -990,9 +989,11 @@
 	0x0B	Armature
 	0x0C	Multiple Point Digitizer
 	0x0D	Free Space Wand
+	0x0E	Device Configuration
 	0x20	Stylus
 	0x21	Puck
 	0x22	Finger
+	0x23	Device Settings
 	0x30	Tip Pressure
 	0x31	Barrel Pressure
 	0x32	In Range
@@ -1016,6 +1017,14 @@
 	0x44	Barrel Switch
 	0x45	Eraser
 	0x46	Tablet Pick
+	0x47	Touch Valid
+	0x48	Width
+	0x49	Height
+	0x51	Contact Identifier
+	0x52	Device Mode
+	0x53	Device Identifier
+	0x54	Contact Count
+	0x55	Contact Count Maximum
 
 15	Physical Interface Device
 	0x00	Undefined
