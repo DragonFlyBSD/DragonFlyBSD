@@ -180,6 +180,7 @@ gnu11_FLAGS_FILES=	chrono.cc \
 #generated sources
 SRCS+=	unwind.h \
 	unwind-cxx.h \
+	cxxabi_forced.h \
 	${CONF_HEADERS:T}
 
 HD=	${INCLUDEDIR}/c++/${GCCPOINTVER}
@@ -247,6 +248,9 @@ unwind.h: unwind-generic.h
 unwind-cxx.h: ${SRCDIR}/libsupc++/unwind-cxx.h
 	cp ${.ALLSRC} ${.TARGET}
 
+cxxabi_forced.h: ${SRCDIR}/libsupc++/cxxabi_forced.h
+	cp ${.ALLSRC} ${.TARGET}
+
 copybits:
 	mkdir -p bits
 
@@ -275,6 +279,6 @@ CLEANDIRS+=	bits
 CLEANFILES+=	atomicity.cc basic_file.cc c++locale.cc \
 		ctype_configure_char.cc unwind.h unwind-cxx.h \
 		cp-demangle.c debug-cxx.cc tree-cxx.cc vec-cxx.cc \
-		c++config.h gthr.h gthr-default.h
+		cxxabi_forced.h c++config.h gthr.h gthr-default.h
 
 .include <bsd.lib.mk>

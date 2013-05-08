@@ -1,5 +1,5 @@
 # verbatim from libstdc++/include/Makefile.in
-# Info also from libstdc++/libsupc++/Makefike.in
+# Info also from libstdc++/libsupc++/Makefile.in
 
 COMPATIBILITY_H = config/abi/compatibility.h
 CLOCALE_CC = config/locale/dragonfly/c_locale.cc

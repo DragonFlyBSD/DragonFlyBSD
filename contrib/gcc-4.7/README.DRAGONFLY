@@ -4,10 +4,10 @@ GCC-4.7.2 RELEASE
 Original source can be downloaded from:
 http://ftp.gnu.org/gnu/gcc
 
-file = gcc-4.7.2.tar.bz2
-date = 20 September 2012
-size = 82884636
-sha1 = a464ba0f26eef24c29bcd1e7489421117fb9ee35
+file = gcc-4.7.3.tar.bz2
+date = 11 April 2013
+size = 82904224
+sha1 = 69e02737bd6e1a7c6047d801600d39c32b9427ca
 
 The file README.DELETED contains a list of deleted files and directories.
 

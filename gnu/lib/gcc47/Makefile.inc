@@ -1,7 +1,7 @@
 # make sure this stays the same as gnu/usr.bin/cc47/Makefile.inc
 GCCSHORTVER=	47
 GCCPOINTVER=	4.7
-GCCSHORTDATE=	20120920
+GCCSHORTDATE=	20130411
 
 GCCDIR=		${.CURDIR}/../../../../contrib/gcc-${GCCPOINTVER}
 OCCDIR= 	${.OBJDIR}/../../../usr.bin/cc${GCCSHORTVER}

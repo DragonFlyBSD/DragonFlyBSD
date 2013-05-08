@@ -199,8 +199,11 @@ gcc/config/i386/t-cygming
 gcc/config/i386/t-darwin
 gcc/config/i386/t-darwin64
 gcc/config/i386/t-gmm_malloc
+gcc/config/i386/t-gnu
 gcc/config/i386/t-i386
 gcc/config/i386/t-interix
+gcc/config/i386/t-kfreebsd
+gcc/config/i386/t-linux
 gcc/config/i386/t-linux64
 gcc/config/i386/t-mingw-w32
 gcc/config/i386/t-mingw-w64
@@ -679,9 +682,7 @@ libstdc++-v3/config/locale/ieee_1003.1-2001/
 libstdc++-v3/config/locale/newlib/
 libstdc++-v3/config/os/aix/
 libstdc++-v3/config/os/bionic/
-libstdc++-v3/config/os/bsd/darwin/
-libstdc++-v3/config/os/bsd/freebsd/
-libstdc++-v3/config/os/bsd/netbsd/
+libstdc++-v3/config/os/bsd/
 libstdc++-v3/config/os/djgpp/
 libstdc++-v3/config/os/generic/ctype_base.h
 libstdc++-v3/config/os/generic/ctype_configure_char.cc
