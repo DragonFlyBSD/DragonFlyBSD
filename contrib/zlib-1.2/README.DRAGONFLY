@@ -1,12 +1,12 @@
-ZLIB 1.2.7
-==========
+ZLIB
+====
 
 Original source can be downloaded from:
 http://www.zlib.net
 
-file = zlib-1.2.7.tar.gz
-date = 3 May 2012
-size = 560351
-sha1 = 4aa358a95d1e5774603e6fa149c926a80df43559
+file = zlib-1.2.8.tar.gz
+date = 20 April 2013
+size = 571091
+sha1 = a4d316c404ff54ca545ea71a27af7dbc29817088
 
 A list of files and directories removed is in README.DELETED
