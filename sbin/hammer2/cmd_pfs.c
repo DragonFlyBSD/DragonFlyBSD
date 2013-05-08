@@ -85,6 +85,9 @@ cmd_pfs_list(const char *sel_path)
 		case HAMMER2_PFSTYPE_MASTER:
 			printf("MASTER      ");
 			break;
+		case HAMMER2_PFSTYPE_SNAPSHOT:
+			printf("SNAPSHOT    ");
+			break;
 		default:
 			printf("%02x          ", pfs.pfs_type);
 			break;
@@ -185,7 +188,7 @@ cmd_pfs_delete(const char *sel_path, const char *name)
 	bzero(&pfs, sizeof(pfs));
 	snprintf(pfs.name, sizeof(pfs.name), "%s", name);
 
-	if (ioctl(fd, HAMMER2IOC_PFS_CREATE, &pfs) < 0) {
+	if (ioctl(fd, HAMMER2IOC_PFS_DELETE, &pfs) < 0) {
 		fprintf(stderr, "hammer2: pfs_delete(%s): %s\n",
 			name, strerror(errno));
 		ecode = 1;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2013 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -50,3 +50,47 @@
  *
  * If the client has snapshot rights to multiple remotes then TBD.
  */
+
+int
+cmd_pfs_snapshot(const char *sel_path, const char *name)
+{
+	hammer2_ioc_pfs_t pfs;
+	int ecode = 0;
+	int fd;
+	char filename[HAMMER2_INODE_MAXNAME];
+	time_t t;
+	struct tm *tp;
+
+	if ((fd = hammer2_ioctl_handle(sel_path)) < 0)
+		return(1);
+	if (name == NULL) {
+		time(&t);
+		tp = localtime(&t);
+		bzero(&pfs, sizeof(pfs));
+		pfs.name_key = (hammer2_key_t)-1;
+		if (ioctl(fd, HAMMER2IOC_PFS_GET, &pfs) < 0) {
+			perror("ioctl");
+		}
+		snprintf(filename, sizeof(filename),
+			 "%s.%04d%02d%02d.%02d%02d%02d",
+			 pfs.name,
+			 tp->tm_year + 1900,
+			 tp->tm_mon + 1,
+			 tp->tm_mday,
+			 tp->tm_hour,
+			 tp->tm_min,
+			 tp->tm_sec);
+		name = filename;
+	}
+
+	bzero(&pfs, sizeof(pfs));
+	snprintf(pfs.name, sizeof(pfs.name), "%s", name);
+
+	if (ioctl(fd, HAMMER2IOC_PFS_SNAPSHOT, &pfs) < 0) {
+		perror("ioctl");
+		ecode = 1;
+	} else {
+		printf("created snapshot %s\n", name);
+	}
+	return ecode;
+}

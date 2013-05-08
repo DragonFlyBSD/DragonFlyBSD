@@ -211,6 +211,14 @@ main(int ac, char **av)
 		 * Create snapshot with optional pfs-type and optional
 		 * label override.
 		 */
+		if (ac > 2) {
+			fprintf(stderr, "pfs-snapshot: too many arguments\n");
+			usage(1);
+		}
+		if (ac != 2)
+			ecode = cmd_pfs_snapshot(sel_path, NULL);
+		else
+			ecode = cmd_pfs_snapshot(sel_path, av[1]);
 	} else if (strcmp(av[0], "service") == 0) {
 		/*
 		 * Start the service daemon.  This daemon accepts
