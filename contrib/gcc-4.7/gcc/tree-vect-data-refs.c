@@ -1296,7 +1296,7 @@ vect_peeling_hash_get_lowest_cost (void **slot, void *data)
     }
 
   outside_cost += vect_get_known_peeling_cost (loop_vinfo, elem->npeel, &dummy,
-                         vect_get_single_scalar_iteraion_cost (loop_vinfo));
+                         vect_get_single_scalar_iteration_cost (loop_vinfo));
 
   if (inside_cost < min->inside_cost
       || (inside_cost == min->inside_cost && outside_cost < min->outside_cost))
@@ -4572,6 +4572,13 @@ vect_can_force_dr_alignment_p (const_tree decl, unsigned int alignment)
     return false;
 
   if (TREE_ASM_WRITTEN (decl))
+    return false;
+
+  /* Do not override explicit alignment set by the user when an explicit
+     section name is also used.  This is a common idiom used by many
+     software projects.  */
+  if (DECL_SECTION_NAME (decl) != NULL_TREE
+      && !DECL_HAS_IMPLICIT_SECTION_NAME_P (decl))
     return false;
 
   if (TREE_STATIC (decl))

@@ -701,7 +701,12 @@ type_internals_preclude_sra_p (tree type, const char **msg)
 	      {
 	        *msg = "structure field size not fixed";
 		return true;
-	      }	      
+	      }
+	    if (!host_integerp (bit_position (fld), 0))
+	      {
+	        *msg = "structure field size too big";
+		return true;
+	      }
 	    if (AGGREGATE_TYPE_P (ft)
 		    && int_bit_position (fld) % BITS_PER_UNIT != 0)
 	      {
@@ -3039,15 +3044,13 @@ sra_modify_assign (gimple *stmt, gimple_stmt_iterator *gsi)
 	     ???  This should move to fold_stmt which we simply should
 	     call after building a VIEW_CONVERT_EXPR here.  */
 	  if (AGGREGATE_TYPE_P (TREE_TYPE (lhs))
-	      && !contains_bitfld_comp_ref_p (lhs)
-	      && !access_has_children_p (lacc))
+	      && !contains_bitfld_comp_ref_p (lhs))
 	    {
 	      lhs = build_ref_for_model (loc, lhs, 0, racc, gsi, false);
 	      gimple_assign_set_lhs (*stmt, lhs);
 	    }
 	  else if (AGGREGATE_TYPE_P (TREE_TYPE (rhs))
-		   && !contains_vce_or_bfcref_p (rhs)
-		   && !access_has_children_p (racc))
+		   && !contains_vce_or_bfcref_p (rhs))
 	    rhs = build_ref_for_model (loc, rhs, 0, lacc, gsi, false);
 
 	  if (!useless_type_conversion_p (TREE_TYPE (lhs), TREE_TYPE (rhs)))

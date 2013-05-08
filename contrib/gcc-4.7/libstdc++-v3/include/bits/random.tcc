@@ -1,6 +1,6 @@
 // random number generation (out of line) -*- C++ -*-
 
-// Copyright (C) 2009, 2010, 2011, 2012 Free Software Foundation, Inc.
+// Copyright (C) 2009-2012 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -401,6 +401,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  }
         if (__zero)
           _M_x[0] = __detail::_Shift<_UIntType, __w - 1>::__value;
+	_M_p = state_size;
       }
 
   template<typename _UIntType, size_t __w,
@@ -1053,7 +1054,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	double __cand;
 	do
-	  __cand = std::floor(std::log(__aurng()) / __param._M_log_1_p);
+	  __cand = std::floor(std::log(1.0 - __aurng()) / __param._M_log_1_p);
 	while (__cand >= __thr);
 
 	return result_type(__cand + __naf);
@@ -1258,7 +1259,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    do
 	      {
 		const double __u = __c * __aurng();
-		const double __e = -std::log(__aurng());
+		const double __e = -std::log(1.0 - __aurng());
 
 		double __w = 0.0;
 
@@ -1290,7 +1291,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		  __x = 1;
 		else
 		  {
-		    const double __v = -std::log(__aurng());
+		    const double __v = -std::log(1.0 - __aurng());
 		    const double __y = __param._M_d
 				     + __v * __2cx / __param._M_d;
 		    __x = std::ceil(__y);
@@ -1434,7 +1435,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	do
 	  {
-	    const double __e = -std::log(__aurng());
+	    const double __e = -std::log(1.0 - __aurng());
 	    __sum += __e / (__t - __x);
 	    __x += 1;
 	  }
@@ -1502,7 +1503,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		    __reject = __y >= __param._M_d1;
 		    if (!__reject)
 		      {
-			const double __e = -std::log(__aurng());
+			const double __e = -std::log(1.0 - __aurng());
 			__x = std::floor(__y);
 			__v = -__e - __n * __n / 2 + __param._M_c;
 		      }
@@ -1514,15 +1515,15 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		    __reject = __y >= __param._M_d2;
 		    if (!__reject)
 		      {
-			const double __e = -std::log(__aurng());
+			const double __e = -std::log(1.0 - __aurng());
 			__x = std::floor(-__y);
 			__v = -__e - __n * __n / 2;
 		      }
 		  }
 		else if (__u <= __a123)
 		  {
-		    const double __e1 = -std::log(__aurng());
-		    const double __e2 = -std::log(__aurng());
+		    const double __e1 = -std::log(1.0 - __aurng());
+		    const double __e2 = -std::log(1.0 - __aurng());
 
 		    const double __y = __param._M_d1
 				     + 2 * __s1s * __e1 / __param._M_d1;
@@ -1533,8 +1534,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		  }
 		else
 		  {
-		    const double __e1 = -std::log(__aurng());
-		    const double __e2 = -std::log(__aurng());
+		    const double __e1 = -std::log(1.0 - __aurng());
+		    const double __e2 = -std::log(1.0 - __aurng());
 
 		    const double __y = __param._M_d2
 				     + 2 * __s2s * __e1 / __param._M_d2;
@@ -2136,7 +2137,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
 	__detail::_Adaptor<_UniformRandomNumberGenerator, result_type>
 	  __aurng(__urng);
-	return __p.b() * std::pow(-std::log(__aurng()),
+	return __p.b() * std::pow(-std::log(result_type(1) - __aurng()),
 				  result_type(1) / __p.a());
       }
 
@@ -2194,7 +2195,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
 	__detail::_Adaptor<_UniformRandomNumberGenerator, result_type>
 	  __aurng(__urng);
-	return __p.a() - __p.b() * std::log(-std::log(__aurng()));
+	return __p.a() - __p.b() * std::log(-std::log(result_type(1)
+						      - __aurng()));
       }
 
   template<typename _RealType, typename _CharT, typename _Traits>

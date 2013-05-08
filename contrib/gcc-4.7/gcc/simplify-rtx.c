@@ -1,7 +1,7 @@
 /* RTL simplification functions for GNU compiler.
    Copyright (C) 1987, 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
-   2011  Free Software Foundation, Inc.
+   2011, 2012  Free Software Foundation, Inc.
 
 This file is part of GCC.
 
@@ -244,7 +244,8 @@ avoid_constant_pool_reference (rtx x)
       /* If we're accessing the constant in a different mode than it was
          originally stored, attempt to fix that up via subreg simplifications.
          If that fails we have no choice but to return the original memory.  */
-      if (offset != 0 || cmode != GET_MODE (x))
+      if ((offset != 0 || cmode != GET_MODE (x))
+	  && offset >= 0 && offset < GET_MODE_SIZE (cmode))
         {
           rtx tem = simplify_subreg (GET_MODE (x), c, cmode, offset);
           if (tem && CONSTANT_P (tem))
@@ -2239,7 +2240,7 @@ simplify_binary_operation_1 (enum rtx_code code, enum machine_mode mode,
 				    neg_const_int (mode, op1));
 
       /* (x - (x & y)) -> (x & ~y) */
-      if (GET_CODE (op1) == AND)
+      if (INTEGRAL_MODE_P (mode) && GET_CODE (op1) == AND)
 	{
 	  if (rtx_equal_p (op0, XEXP (op1, 0)))
 	    {

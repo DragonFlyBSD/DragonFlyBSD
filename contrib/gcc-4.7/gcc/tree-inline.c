@@ -2983,10 +2983,15 @@ declare_return_variable (copy_body_data *id, tree return_slot, tree modify_dest,
       if (gimple_in_ssa_p (id->src_cfun))
 	add_referenced_var (temp);
       insert_decl_map (id, result, temp);
-      /* When RESULT_DECL is in SSA form, we need to use it's default_def
-	 SSA_NAME.  */
-      if (gimple_in_ssa_p (id->src_cfun) && gimple_default_def (id->src_cfun, result))
-        temp = remap_ssa_name (gimple_default_def (id->src_cfun, result), id);
+      /* When RESULT_DECL is in SSA form, we need to remap and initialize
+	 it's default_def SSA_NAME.  */
+      if (gimple_in_ssa_p (id->src_cfun)
+	  && is_gimple_reg (result))
+	{
+	  temp = make_ssa_name (temp, NULL);
+	  insert_decl_map (id, gimple_default_def (id->src_cfun, result),
+			   temp);
+	}
       insert_init_stmt (id, entry_bb, gimple_build_assign (temp, var));
     }
   else
@@ -3836,6 +3841,12 @@ expand_call_inline (basic_block bb, gimple stmt, copy_body_data *id)
 	goto egress;
 
       if (lookup_attribute ("always_inline", DECL_ATTRIBUTES (fn))
+          /* For extern inline functions that get redefined we always
+	     silently ignored always_inline flag. Better behaviour would
+	     be to be able to keep both bodies and use extern inline body
+	     for inlining, but we can't do that because frontends overwrite
+	     the body.  */
+	  && !cg_edge->callee->local.redefined_extern_inline
 	  /* Avoid warnings during early inline pass. */
 	  && cgraph_global_info_ready
 	  /* PR 20090218-1_0.c. Body can be provided by another module. */

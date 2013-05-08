@@ -1,6 +1,6 @@
 // hashtable.h header -*- C++ -*-
 
-// Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012
+// Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013
 // Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
@@ -99,43 +99,44 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
    * - size_type       _M_bucket_count
    * - size_type       _M_element_count
    *
-   * with _Bucket being _Hash_node* and _Hash_node constaining:
+   * with _Bucket being _Hash_node* and _Hash_node containing:
    * - _Hash_node*   _M_next
    * - Tp            _M_value
-   * - size_t        _M_code if cache_hash_code is true
+   * - size_t        _M_hash_code if cache_hash_code is true
    *
-   * In terms of Standard containers the hastable is like the aggregation of:
+   * In terms of Standard containers the hashtable is like the aggregation of:
    * - std::forward_list<_Node> containing the elements
    * - std::vector<std::forward_list<_Node>::iterator> representing the buckets
    *
-   * The non-empty buckets contain the node before the first bucket node. This
-   * design allow to implement something like a std::forward_list::insert_after
-   * on container insertion and std::forward_list::erase_after on container
-   * erase calls. _M_before_begin is equivalent to
-   * std::foward_list::before_begin. Empty buckets are containing nullptr.
-   * Note that one of the non-empty bucket contains &_M_before_begin which is
-   * not a derefenrenceable node so the node pointers in buckets shall never be
-   * derefenrenced, only its next node can be.
+   * The non-empty buckets contain the node before the first node in the
+   * bucket. This design makes it possible to implement something like a
+   * std::forward_list::insert_after on container insertion and
+   * std::forward_list::erase_after on container erase calls.
+   * _M_before_begin is equivalent to std::foward_list::before_begin.
+   * Empty buckets contain nullptr.
+   * Note that one of the non-empty buckets contains &_M_before_begin which is
+   * not a dereferenceable node so the node pointer in a bucket shall never be
+   * dereferenced, only its next node can be.
    * 
-   * Walk through a bucket nodes require a check on the hash code to see if the
-   * node is still in the bucket. Such a design impose a quite efficient hash
-   * functor and is one of the reasons it is highly advise to set
-   * __cache_hash_code to true.
+   * Walking through a bucket's nodes requires a check on the hash code to see
+   * if each node is still in the bucket. Such a design assumes a quite
+   * efficient hash functor and is one of the reasons it is
+   * highly advisable to set __cache_hash_code to true.
    *
    * The container iterators are simply built from nodes. This way incrementing
    * the iterator is perfectly efficient independent of how many empty buckets
    * there are in the container.
    *
-   * On insert we compute element hash code and thanks to it find the bucket
-   * index. If the element must be inserted on an empty bucket we add it at the
-   * beginning of the singly linked list and make the bucket point to
+   * On insert we compute the element's hash code and use it to it find the
+   * bucket index. If the element must be inserted in an empty bucket we add
+   * it at the beginning of the singly linked list and make the bucket point to
    * _M_before_begin. The bucket that used to point to _M_before_begin, if any,
    * is updated to point to its new before begin node.
    *
-   * On erase, the simple iterator design impose to use the hash functor to get
-   * the index of the bucket to update. For this reason, when __cache_hash_code
-   * is set to false, there is a static assertion that the hash functor cannot
-   * throw.
+   * On erase, the simple iterator design requires using the hash functor to
+   * get the index of the bucket to update. For this reason, when
+   * __cache_hash_code is set to false, the hash functor must not throw
+   * and this is enforced by a statied assertion.
    */
 
   template<typename _Key, typename _Value, typename _Allocator,
@@ -982,7 +983,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  else if (__result)
 	    // All equivalent values are next to each other, if we found a not
 	    // equivalent value after an equivalent one it means that we won't
-	    // find anymore an equivalent value.
+	    // find any more equivalent values.
 	    break;
 	  if (!__p->_M_nxt || _M_bucket_index(__p->_M_next()) != __n)
 	    break;
@@ -1104,7 +1105,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       else
 	{
 	  // The bucket is empty, the new node is inserted at the beginning of
-	  // the singly linked list and the bucket will contain _M_before_begin
+	  // the singly-linked list and the bucket will contain _M_before_begin
 	  // pointer.
 	  __new_node->_M_nxt = _M_before_begin._M_nxt;
 	  _M_before_begin._M_nxt = __new_node;
@@ -1252,7 +1253,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    else
 	      // The inserted node has no equivalent in the hashtable. We must
 	      // insert the new node at the beginning of the bucket to preserve
-	      // equivalent elements relative positions.
+	      // equivalent elements' relative positions.
 	      _M_insert_bucket_begin(__bkt, __new_node);
 	    ++_M_element_count;
 	    return iterator(__new_node);
@@ -1434,7 +1435,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       std::size_t __bkt = _M_bucket_index(__n);
 
       // Look for previous node to unlink it from the erased one, this is why
-      // we need buckets to contain the before begin to make this research fast.
+      // we need buckets to contain the before begin to make this search fast.
       _BaseNode* __prev_n = _M_get_previous_node(__bkt, __n);
       if (__n == _M_bucket_begin(__bkt))
 	_M_remove_bucket_begin(__bkt, __n->_M_next(),
@@ -1597,6 +1598,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  // level.
 	  _M_rehash_policy._M_prev_resize = 0;
 	}
+      else
+	// No rehash, restore previous state to keep a consistent state.
+	_M_rehash_policy._M_reset(__saved_state);
     }
 
   template<typename _Key, typename _Value,
@@ -1634,7 +1638,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _Bucket* __new_buckets = _M_allocate_buckets(__n);
       _Node* __p = _M_begin();
       _M_before_begin._M_nxt = nullptr;
-      std::size_t __bbegin_bkt;
+      std::size_t __bbegin_bkt = 0;
       while (__p)
 	{
 	  _Node* __next = __p->_M_next();
@@ -1675,8 +1679,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       _Node* __p = _M_begin();
       _M_before_begin._M_nxt = nullptr;
-      std::size_t __bbegin_bkt;
-      std::size_t __prev_bkt;
+      std::size_t __bbegin_bkt = 0;
+      std::size_t __prev_bkt = 0;
       _Node* __prev_p = nullptr;
       bool __check_bucket = false;
 
@@ -1704,8 +1708,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    {
 	      if (__check_bucket)
 		{
-		  // Check if we shall update the next bucket because of insertions
-		  // into __prev_bkt bucket.
+		  // Check if we shall update the next bucket because of
+		  // insertions into __prev_bkt bucket.
 		  if (__prev_p->_M_nxt)
 		    {
 		      std::size_t __next_bkt

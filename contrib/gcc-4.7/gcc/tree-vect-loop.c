@@ -2257,7 +2257,10 @@ vect_is_simple_reduction_1 (loop_vec_info loop_info, gimple phi,
   if (orig_code == MINUS_EXPR)
     {
       tree rhs = gimple_assign_rhs2 (def_stmt);
-      tree negrhs = make_ssa_name (SSA_NAME_VAR (rhs), NULL);
+      tree var = TREE_CODE (rhs) == SSA_NAME
+		 ? SSA_NAME_VAR (rhs)
+		 : create_tmp_reg (TREE_TYPE (rhs), NULL);
+      tree negrhs = make_ssa_name (var, NULL);
       gimple negate_stmt = gimple_build_assign_with_ops (NEGATE_EXPR, negrhs,
 							 rhs, NULL);
       gimple_stmt_iterator gsi = gsi_for_stmt (def_stmt);
@@ -2383,7 +2386,7 @@ vect_force_simple_reduction (loop_vec_info loop_info, gimple phi,
 
 /* Calculate the cost of one scalar iteration of the loop.  */
 int
-vect_get_single_scalar_iteraion_cost (loop_vec_info loop_vinfo)
+vect_get_single_scalar_iteration_cost (loop_vec_info loop_vinfo)
 {
   struct loop *loop = LOOP_VINFO_LOOP (loop_vinfo);
   basic_block *bbs = LOOP_VINFO_BBS (loop_vinfo);
@@ -2616,7 +2619,7 @@ vect_estimate_min_profitable_iters (loop_vec_info loop_vinfo)
 	}
     }
 
-  scalar_single_iter_cost = vect_get_single_scalar_iteraion_cost (loop_vinfo);
+  scalar_single_iter_cost = vect_get_single_scalar_iteration_cost (loop_vinfo);
 
   /* Add additional cost for the peeled instructions in prologue and epilogue
      loop.
@@ -4450,7 +4453,6 @@ vectorizable_reduction (gimple stmt, gimple_stmt_iterator *gsi,
   if (orig_stmt)
     {
       orig_stmt_info = vinfo_for_stmt (orig_stmt);
-      gcc_assert (STMT_VINFO_RELATED_STMT (orig_stmt_info) == stmt);
       gcc_assert (STMT_VINFO_IN_PATTERN_P (orig_stmt_info));
       gcc_assert (!STMT_VINFO_IN_PATTERN_P (stmt_info));
     }
@@ -4520,7 +4522,7 @@ vectorizable_reduction (gimple stmt, gimple_stmt_iterator *gsi,
      The last use is the reduction variable.  In case of nested cycle this
      assumption is not true: we use reduc_index to record the index of the
      reduction variable.  */
-  for (i = 0; i < op_type-1; i++)
+  for (i = 0; i < op_type - 1; i++)
     {
       /* The condition of COND_EXPR is checked in vectorizable_condition().  */
       if (i == 0 && code == COND_EXPR)
@@ -4552,11 +4554,18 @@ vectorizable_reduction (gimple stmt, gimple_stmt_iterator *gsi,
   if (!vectype_in)
     vectype_in = tem;
   gcc_assert (is_simple_use);
-  gcc_assert (dt == vect_reduction_def
-              || dt == vect_nested_cycle
-              || ((dt == vect_internal_def || dt == vect_external_def
-                   || dt == vect_constant_def || dt == vect_induction_def)
-                   && nested_cycle && found_nested_cycle_def));
+  if (!(dt == vect_reduction_def
+	|| dt == vect_nested_cycle
+	|| ((dt == vect_internal_def || dt == vect_external_def
+	     || dt == vect_constant_def || dt == vect_induction_def)
+	    && nested_cycle && found_nested_cycle_def)))
+    {
+      /* For pattern recognized stmts, orig_stmt might be a reduction,
+	 but some helper statements for the pattern might not, or
+	 might be COND_EXPRs with reduction uses in the condition.  */
+      gcc_assert (orig_stmt);
+      return false;
+    }
   if (!found_nested_cycle_def)
     reduc_def_stmt = def_stmt;
 

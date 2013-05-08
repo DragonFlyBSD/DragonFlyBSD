@@ -248,7 +248,6 @@ struct GTY(()) template_parm_index_s {
   int index;
   int level;
   int orig_level;
-  int num_siblings;
   tree decl;
 };
 typedef struct template_parm_index_s template_parm_index;
@@ -646,8 +645,9 @@ enum cp_lambda_default_capture_mode_type {
 #define LAMBDA_EXPR_CAPTURE_LIST(NODE) \
   (((struct tree_lambda_expr *)LAMBDA_EXPR_CHECK (NODE))->capture_list)
 
-/* During parsing of the lambda, the node in the capture-list that holds
-   the 'this' capture.  */
+/* During parsing of the lambda-introducer, the node in the capture-list
+   that holds the 'this' capture.  During parsing of the body, the
+   capture proxy for that node.  */
 #define LAMBDA_EXPR_THIS_CAPTURE(NODE) \
   (((struct tree_lambda_expr *)LAMBDA_EXPR_CHECK (NODE))->this_capture)
 
@@ -4205,6 +4205,10 @@ extern GTY(()) tree integer_two_node;
    function, two inside the body of a function in a local class, etc.)  */
 extern int function_depth;
 
+/* Nonzero if we are inside eq_specializations, which affects comparison of
+   PARM_DECLs in cp_tree_equal.  */
+extern int comparing_specializations;
+
 /* In parser.c.  */
 
 /* Nonzero if we are parsing an unevaluated operand: an operand to
@@ -4515,9 +4519,6 @@ enum overload_flags { NO_SPECIAL = 0, DTOR_FLAG, TYPENAME_FLAG };
 	((template_parm_index*)TEMPLATE_PARM_INDEX_CHECK (NODE))
 #define TEMPLATE_PARM_IDX(NODE) (TEMPLATE_PARM_INDEX_CAST (NODE)->index)
 #define TEMPLATE_PARM_LEVEL(NODE) (TEMPLATE_PARM_INDEX_CAST (NODE)->level)
-/* The Number of sibling parms this template parm has.  */
-#define TEMPLATE_PARM_NUM_SIBLINGS(NODE) \
-  (TEMPLATE_PARM_INDEX_CAST (NODE)->num_siblings)
 #define TEMPLATE_PARM_DESCENDANTS(NODE) (TREE_CHAIN (NODE))
 #define TEMPLATE_PARM_ORIG_LEVEL(NODE) (TEMPLATE_PARM_INDEX_CAST (NODE)->orig_level)
 #define TEMPLATE_PARM_DECL(NODE) (TEMPLATE_PARM_INDEX_CAST (NODE)->decl)
@@ -4892,6 +4893,7 @@ extern tree initialize_reference		(tree, tree, int,
 						 tsubst_flags_t);
 extern tree extend_ref_init_temps		(tree, tree, VEC(tree,gc)**);
 extern tree make_temporary_var_for_ref_to_temp	(tree, tree);
+extern bool type_has_extended_temps		(tree);
 extern tree strip_top_quals			(tree);
 extern bool reference_related_p			(tree, tree);
 extern tree perform_implicit_conversion		(tree, tree, tsubst_flags_t);
@@ -5288,9 +5290,8 @@ extern void append_type_to_template_for_access_check (tree, tree, tree,
 extern tree splice_late_return_type		(tree, tree);
 extern bool is_auto				(const_tree);
 extern tree process_template_parm		(tree, location_t, tree, 
-						 bool, bool, unsigned);
+						 bool, bool);
 extern tree end_template_parm_list		(tree);
-void fixup_template_parms (void);
 extern void end_template_decl			(void);
 extern tree maybe_update_decl_type		(tree, tree);
 extern bool check_default_tmpl_args             (tree, tree, int, int, int);
@@ -5663,6 +5664,7 @@ extern bool type_has_nontrivial_copy_init	(const_tree);
 extern bool class_tmpl_impl_spec_p		(const_tree);
 extern int zero_init_p				(const_tree);
 extern tree strip_typedefs			(tree);
+extern tree strip_typedefs_expr			(tree);
 extern tree copy_binfo				(tree, tree, tree,
 						 tree *, int);
 extern int member_p				(const_tree);
@@ -5920,6 +5922,7 @@ extern bool cp_var_mod_type_p			(tree, tree);
 extern void cxx_initialize_diagnostics		(diagnostic_context *);
 extern int cxx_types_compatible_p		(tree, tree);
 extern void init_shadowed_var_for_decl		(void);
+extern bool cxx_block_may_fallthru		(const_tree);
 
 /* in cp-gimplify.c */
 extern int cp_gimplify_expr			(tree *, gimple_seq *,

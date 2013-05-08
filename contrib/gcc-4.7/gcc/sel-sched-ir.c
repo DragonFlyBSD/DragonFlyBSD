@@ -1862,8 +1862,12 @@ merge_expr (expr_t to, expr_t from, insn_t split_point)
   /* Make sure that speculative pattern is propagated into exprs that
      have non-speculative one.  This will provide us with consistent
      speculative bits and speculative patterns inside expr.  */
-  if (EXPR_SPEC_DONE_DS (to) == 0
-      && EXPR_SPEC_DONE_DS (from) != 0)
+  if ((EXPR_SPEC_DONE_DS (from) != 0
+       && EXPR_SPEC_DONE_DS (to) == 0)
+      /* Do likewise for volatile insns, so that we always retain
+	 the may_trap_p bit on the resulting expression.  */
+      || (VINSN_MAY_TRAP_P (EXPR_VINSN (from))
+	  && !VINSN_MAY_TRAP_P (EXPR_VINSN (to))))
     change_vinsn_in_expr (to, EXPR_VINSN (from));
 
   merge_expr_data (to, from, split_point);
@@ -3224,7 +3228,11 @@ has_dependence_note_reg_use (int regno)
       if (reg_last->clobbers)
 	*dsp = (*dsp & ~SPECULATIVE) | DEP_ANTI;
 
-      /* Handle BE_IN_SPEC.  */
+      /* Merge BE_IN_SPEC bits into *DSP when the dependency producer
+	 is actually a check insn.  We need to do this for any register
+	 read-read dependency with the check unless we track properly
+	 all registers written by BE_IN_SPEC-speculated insns, as
+	 we don't have explicit dependence lists.  See PR 53975.  */
       if (reg_last->uses)
 	{
 	  ds_t pro_spec_checked_ds;
@@ -3232,9 +3240,7 @@ has_dependence_note_reg_use (int regno)
 	  pro_spec_checked_ds = INSN_SPEC_CHECKED_DS (has_dependence_data.pro);
 	  pro_spec_checked_ds = ds_get_max_dep_weak (pro_spec_checked_ds);
 
-	  if (pro_spec_checked_ds != 0
-	      && bitmap_bit_p (INSN_REG_SETS (has_dependence_data.pro), regno))
-	    /* Merge BE_IN_SPEC bits into *DSP.  */
+	  if (pro_spec_checked_ds != 0)
 	    *dsp = ds_full_merge (*dsp, pro_spec_checked_ds,
 				  NULL_RTX, NULL_RTX);
 	}
@@ -5017,7 +5023,7 @@ free_sched_pools (void)
 
   free_alloc_pool (sched_lists_pool);
   gcc_assert (succs_info_pool.top == -1);
-  for (i = 0; i < succs_info_pool.max_top; i++)
+  for (i = 0; i <= succs_info_pool.max_top; i++)
     {
       VEC_free (rtx, heap, succs_info_pool.stack[i].succs_ok);
       VEC_free (rtx, heap, succs_info_pool.stack[i].succs_other);
