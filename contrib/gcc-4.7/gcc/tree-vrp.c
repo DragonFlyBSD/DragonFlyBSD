@@ -3268,8 +3268,20 @@ extract_range_basic (value_range_t *vr, gimple stmt)
   bool sop = false;
   tree type = gimple_expr_type (stmt);
 
-  if (INTEGRAL_TYPE_P (type)
-      && gimple_stmt_nonnegative_warnv_p (stmt, &sop))
+  /* If the call is __builtin_constant_p and the argument is a
+     function parameter resolve it to false.  This avoids bogus
+     array bound warnings.
+     ???  We could do this as early as inlining is finished.  */
+  if (gimple_call_builtin_p (stmt, BUILT_IN_CONSTANT_P))
+    {
+      tree arg = gimple_call_arg (stmt, 0);
+      if (TREE_CODE (arg) == SSA_NAME
+	  && SSA_NAME_IS_DEFAULT_DEF (arg)
+	  && TREE_CODE (SSA_NAME_VAR (arg)) == PARM_DECL)
+	set_value_range_to_null (vr, type);
+    }
+  else if (INTEGRAL_TYPE_P (type)
+	   && gimple_stmt_nonnegative_warnv_p (stmt, &sop))
     set_value_range_to_nonnegative (vr, type,
 				    sop || stmt_overflow_infinity (stmt));
   else if (vrp_stmt_computes_nonzero (stmt, &sop)
@@ -6608,6 +6620,20 @@ vrp_visit_phi_node (gimple phi)
 	  if (TREE_CODE (arg) == SSA_NAME)
 	    {
 	      vr_arg = *(get_value_range (arg));
+	      /* Do not allow equivalences or symbolic ranges to leak in from
+		 backedges.  That creates invalid equivalencies.  */
+	      if (e->flags & EDGE_DFS_BACK
+		  && (vr_arg.type == VR_RANGE
+		      || vr_arg.type == VR_ANTI_RANGE))
+		{
+		  vr_arg.equiv = NULL;
+		  if (symbolic_range_p (&vr_arg))
+		    {
+		      vr_arg.type = VR_VARYING;
+		      vr_arg.min = NULL_TREE;
+		      vr_arg.max = NULL_TREE;
+		    }
+		}
 	    }
 	  else
 	    {
@@ -7859,6 +7885,9 @@ execute_vrp (void)
   rewrite_into_loop_closed_ssa (NULL, TODO_update_ssa);
   scev_initialize ();
 
+  /* ???  This ends up using stale EDGE_DFS_BACK for liveness computation.
+     Inserting assertions may split edges which will invalidate
+     EDGE_DFS_BACK.  */
   insert_range_assertions ();
 
   /* Estimate number of iterations - but do not use undefined behavior
@@ -7870,6 +7899,9 @@ execute_vrp (void)
   to_remove_edges = VEC_alloc (edge, heap, 10);
   to_update_switch_stmts = VEC_alloc (switch_update, heap, 5);
   threadedge_initialize_values ();
+
+  /* For visiting PHI nodes we need EDGE_DFS_BACK computed.  */
+  mark_dfs_back_edges ();
 
   vrp_initialize ();
   ssa_propagate (vrp_visit_stmt, vrp_visit_phi_node);

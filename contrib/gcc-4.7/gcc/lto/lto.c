@@ -25,6 +25,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "toplev.h"
 #include "tree.h"
 #include "tree-flow.h"
+#include "output.h"
 #include "diagnostic-core.h"
 #include "tm.h"
 #include "cgraph.h"
@@ -761,6 +762,7 @@ uniquify_nodes (struct data_in *data_in, unsigned from)
 	     variant list state before fixup is broken.  */
 	  tree tem, mv;
 
+#ifdef ENABLE_CHECKING
 	  /* Remove us from our main variant list if we are not the
 	     variant leader.  */
 	  if (TYPE_MAIN_VARIANT (t) != t)
@@ -768,10 +770,9 @@ uniquify_nodes (struct data_in *data_in, unsigned from)
 	      tem = TYPE_MAIN_VARIANT (t);
 	      while (tem && TYPE_NEXT_VARIANT (tem) != t)
 		tem = TYPE_NEXT_VARIANT (tem);
-	      if (tem)
-		TYPE_NEXT_VARIANT (tem) = TYPE_NEXT_VARIANT (t);
-	      TYPE_NEXT_VARIANT (t) = NULL_TREE;
+	      gcc_assert (!tem && !TYPE_NEXT_VARIANT (t));
 	    }
+#endif
 
 	  /* Query our new main variant.  */
 	  mv = GIMPLE_REGISTER_TYPE (TYPE_MAIN_VARIANT (t));
@@ -1057,8 +1058,7 @@ lto_resolution_read (splay_tree file_ids, FILE *resolution, lto_file *file)
 	{
 	  nd = lto_splay_tree_lookup (file_ids, id);
 	  if (nd == NULL)
-	    internal_error ("resolution sub id " HOST_WIDE_INT_PRINT_HEX_PURE
-			    " not in object file", id);
+	    internal_error ("resolution sub id %wx not in object file", id);
 	}
 
       file_data = (struct lto_file_decl_data *)nd->value;

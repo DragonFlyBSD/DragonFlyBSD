@@ -1,5 +1,5 @@
 /* Global, SSA-based optimizations using mathematical identities.
-   Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011
+   Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012
    Free Software Foundation, Inc.
 
 This file is part of GCC.
@@ -1113,7 +1113,7 @@ gimple_expand_builtin_pow (gimple_stmt_iterator *gsi, location_t loc,
   tree type, sqrtfn, cbrtfn, sqrt_arg0, sqrt_sqrt, result, cbrt_x, powi_cbrt_x;
   tree target = NULL_TREE;
   enum machine_mode mode;
-  bool hw_sqrt_exists;
+  bool hw_sqrt_exists, c_is_int, c2_is_int;
 
   /* If the exponent isn't a constant, there's nothing of interest
      to be done.  */
@@ -1125,8 +1125,9 @@ gimple_expand_builtin_pow (gimple_stmt_iterator *gsi, location_t loc,
   c = TREE_REAL_CST (arg1);
   n = real_to_integer (&c);
   real_from_integer (&cint, VOIDmode, n, n < 0 ? -1 : 0, 0);
+  c_is_int = real_identical (&c, &cint);
 
-  if (real_identical (&c, &cint)
+  if (c_is_int
       && ((n >= -1 && n <= 2)
 	  || (flag_unsafe_math_optimizations
 	      && optimize_insn_for_speed_p ()
@@ -1224,7 +1225,8 @@ gimple_expand_builtin_pow (gimple_stmt_iterator *gsi, location_t loc,
       return build_and_insert_call (gsi, loc, &target, cbrtfn, sqrt_arg0);
     }
 
-  /* Optimize pow(x,c), where n = 2c for some nonzero integer n, into
+  /* Optimize pow(x,c), where n = 2c for some nonzero integer n
+     and c not an integer, into
 
        sqrt(x) * powi(x, n/2),                n > 0;
        1.0 / (sqrt(x) * powi(x, abs(n/2))),   n < 0.
@@ -1233,10 +1235,13 @@ gimple_expand_builtin_pow (gimple_stmt_iterator *gsi, location_t loc,
   real_arithmetic (&c2, MULT_EXPR, &c, &dconst2);
   n = real_to_integer (&c2);
   real_from_integer (&cint, VOIDmode, n, n < 0 ? -1 : 0, 0);
+  c2_is_int = real_identical (&c2, &cint);
 
   if (flag_unsafe_math_optimizations
       && sqrtfn
-      && real_identical (&c2, &cint))
+      && c2_is_int
+      && !c_is_int
+      && optimize_function_for_speed_p (cfun))
     {
       tree powi_x_ndiv2 = NULL_TREE;
 
@@ -1289,6 +1294,7 @@ gimple_expand_builtin_pow (gimple_stmt_iterator *gsi, location_t loc,
       && cbrtfn
       && (gimple_val_nonnegative_real_p (arg0) || !HONOR_NANS (mode))
       && real_identical (&c2, &c)
+      && !c2_is_int
       && optimize_function_for_speed_p (cfun)
       && powi_cost (n / 3) <= POWI_MAX_MULTS)
     {
@@ -1387,11 +1393,17 @@ execute_cse_sincos (void)
   FOR_EACH_BB (bb)
     {
       gimple_stmt_iterator gsi;
+      bool cleanup_eh = false;
 
       for (gsi = gsi_after_labels (bb); !gsi_end_p (gsi); gsi_next (&gsi))
         {
 	  gimple stmt = gsi_stmt (gsi);
 	  tree fndecl;
+
+	  /* Only the last stmt in a bb could throw, no need to call
+	     gimple_purge_dead_eh_edges if we change something in the middle
+	     of a basic block.  */
+	  cleanup_eh = false;
 
 	  if (is_gimple_call (stmt)
 	      && gimple_call_lhs (stmt)
@@ -1430,6 +1442,7 @@ execute_cse_sincos (void)
 		      gimple_set_location (new_stmt, loc);
 		      unlink_stmt_vdef (stmt);
 		      gsi_replace (&gsi, new_stmt, true);
+		      cleanup_eh = true;
 		    }
 		  break;
 
@@ -1450,6 +1463,7 @@ execute_cse_sincos (void)
 		      gimple_set_location (new_stmt, loc);
 		      unlink_stmt_vdef (stmt);
 		      gsi_replace (&gsi, new_stmt, true);
+		      cleanup_eh = true;
 		    }
 		  break;
 
@@ -1465,6 +1479,7 @@ execute_cse_sincos (void)
 		      gimple_set_location (new_stmt, loc);
 		      unlink_stmt_vdef (stmt);
 		      gsi_replace (&gsi, new_stmt, true);
+		      cleanup_eh = true;
 		    }
 		  break;
 
@@ -1472,6 +1487,8 @@ execute_cse_sincos (void)
 		}
 	    }
 	}
+      if (cleanup_eh)
+	cfg_changed |= gimple_purge_dead_eh_edges (bb);
     }
 
   statistics_counter_event (cfun, "sincos statements inserted",

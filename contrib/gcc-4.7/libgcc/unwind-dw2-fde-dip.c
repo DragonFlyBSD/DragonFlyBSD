@@ -33,7 +33,7 @@
 
 #include "tconfig.h"
 #include "tsystem.h"
-#ifndef inhibit_libc
+#if !defined(inhibit_libc) && !defined(__OpenBSD__)
 #include <elf.h>		/* Get DT_CONFIG.  */
 #endif
 #include "coretypes.h"
@@ -57,6 +57,12 @@
     && defined(TARGET_DL_ITERATE_PHDR) \
     && (defined(__FreeBSD__) || defined(__DragonFly__))
 # define ElfW __ElfN
+# define USE_PT_GNU_EH_FRAME
+#endif
+
+#if !defined(inhibit_libc) && defined(HAVE_LD_EH_FRAME_HDR) \
+    && defined(__OpenBSD__)
+# define ElfW(type) Elf_##type
 # define USE_PT_GNU_EH_FRAME
 #endif
 

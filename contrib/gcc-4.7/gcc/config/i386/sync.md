@@ -149,9 +149,7 @@
   if (<MODE>mode == DImode && !TARGET_64BIT)
     emit_insn (gen_atomic_loaddi_fpu
 	       (operands[0], operands[1],
-	        assign_386_stack_local (DImode,
-					(virtuals_instantiated
-					 ? SLOT_TEMP : SLOT_VIRTUAL))));
+	        assign_386_stack_local (DImode, SLOT_TEMP)));
   else
     emit_move_insn (operands[0], operands[1]);
   DONE;
@@ -212,9 +210,7 @@
 	 out to be significantly larger than this plus a barrier.  */
       emit_insn (gen_atomic_storedi_fpu
 		 (operands[0], operands[1],
-	          assign_386_stack_local (DImode,
-					  (virtuals_instantiated
-					   ? SLOT_TEMP : SLOT_VIRTUAL))));
+	          assign_386_stack_local (DImode, SLOT_TEMP)));
     }
   else
     {
@@ -227,14 +223,23 @@
 	  DONE;
 	}
 
-      /* Otherwise use a normal store.  */
-      emit_move_insn (operands[0], operands[1]);
+      /* Otherwise use a store.  */
+      emit_insn (gen_atomic_store<mode>_1 (operands[0], operands[1],
+					   operands[2]));
     }
   /* ... followed by an MFENCE, if required.  */
   if (model == MEMMODEL_SEQ_CST)
     emit_insn (gen_mem_thread_fence (operands[2]));
   DONE;
 })
+
+(define_insn "atomic_store<mode>_1"
+  [(set (match_operand:SWI 0 "memory_operand" "=m")
+	(unspec:SWI [(match_operand:SWI 1 "<nonmemory_operand>" "<r><i>")
+		     (match_operand:SI 2 "const_int_operand")]
+		    UNSPEC_MOVA))]
+  ""
+  "mov{<imodesuffix>}\t{%1, %0|%0, %1}")
 
 (define_insn_and_split "atomic_storedi_fpu"
   [(set (match_operand:DI 0 "memory_operand" "=m,m,m")

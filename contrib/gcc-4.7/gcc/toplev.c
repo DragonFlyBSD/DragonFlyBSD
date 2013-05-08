@@ -1494,11 +1494,14 @@ process_options (void)
   /* If the user specifically requested variable tracking with tagging
      uninitialized variables, we need to turn on variable tracking.
      (We already determined above that variable tracking is feasible.)  */
-  if (flag_var_tracking_uninit)
+  if (flag_var_tracking_uninit == 1)
     flag_var_tracking = 1;
 
   if (flag_var_tracking == AUTODETECT_VALUE)
     flag_var_tracking = optimize >= 1;
+
+  if (flag_var_tracking_uninit == AUTODETECT_VALUE)
+    flag_var_tracking_uninit = flag_var_tracking;
 
   if (flag_var_tracking_assignments == AUTODETECT_VALUE)
     flag_var_tracking_assignments = flag_var_tracking
@@ -1601,18 +1604,6 @@ process_options (void)
     }
   if (!flag_stack_protect)
     warn_stack_protect = 0;
-
-  /* ??? Unwind info is not correct around the CFG unless either a frame
-     pointer is present or A_O_A is set.  Fixing this requires rewriting
-     unwind info generation to be aware of the CFG and propagating states
-     around edges.  */
-  if (flag_unwind_tables && !ACCUMULATE_OUTGOING_ARGS
-      && flag_omit_frame_pointer)
-    {
-      warning (0, "unwind tables currently require a frame pointer "
-	       "for correctness");
-      flag_omit_frame_pointer = 0;
-    }
 
   /* Enable -Werror=coverage-mismatch when -Werror and -Wno-error
      have not been set.  */
