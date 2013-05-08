@@ -160,6 +160,7 @@ struct bnx_rx_std_ring {
 	struct bge_rx_bd	*bnx_rx_std_ring;
 
 	int			bnx_rx_std_refill __cachealign;
+	int			bnx_rx_std_used;
 	u_int			bnx_rx_std_running;
 	struct thread		bnx_rx_std_ithread;
 
@@ -193,10 +194,12 @@ struct bnx_rx_ret_ring {
 	struct bge_rx_bd	*bnx_rx_ret_ring;
 	bus_dmamap_t		bnx_rx_tmpmap;
 
-	u_long			bnx_rx_pkt;
 	bus_dma_tag_t		bnx_rx_ret_ring_tag;
 	bus_dmamap_t		bnx_rx_ret_ring_map;
 	bus_addr_t		bnx_rx_ret_ring_paddr;
+
+	u_long			bnx_rx_pkt;
+	u_long			bnx_rx_force_sched;
 } __cachealign;
 
 /*

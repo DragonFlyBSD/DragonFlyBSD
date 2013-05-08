@@ -912,6 +912,7 @@ bnx_init_rx_ring_std(struct bnx_rx_std_ring *std)
 		bnx_setup_rxdesc_std(std, i);
 	}
 
+	std->bnx_rx_std_used = 0;
 	std->bnx_rx_std_refill = 0;
 	std->bnx_rx_std_running = 0;
 	cpu_sfence();
@@ -2362,12 +2363,22 @@ bnx_attach(device_t dev)
 	    &sc->bnx_rx_std_ring.bnx_rx_std_refill, 0, "");
 	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+	    "std_used", CTLFLAG_RD,
+	    &sc->bnx_rx_std_ring.bnx_rx_std_used, 0, "");
+	SYSCTL_ADD_INT(&sc->bnx_sysctl_ctx,
+	    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
 	    "rss_debug", CTLFLAG_RW, &sc->bnx_rss_debug, 0, "");
 	for (i = 0; i < sc->bnx_rx_retcnt; ++i) {
 		ksnprintf(desc, sizeof(desc), "rx_pkt%d", i);
 		SYSCTL_ADD_ULONG(&sc->bnx_sysctl_ctx,
 		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
 		    desc, CTLFLAG_RW, &sc->bnx_rx_ret_ring[i].bnx_rx_pkt, "");
+
+		ksnprintf(desc, sizeof(desc), "rx_force_sched%d", i);
+		SYSCTL_ADD_ULONG(&sc->bnx_sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->bnx_sysctl_tree), OID_AUTO,
+		    desc, CTLFLAG_RW,
+		    &sc->bnx_rx_ret_ring[i].bnx_rx_force_sched, "");
 	}
 #endif
 #ifdef BNX_TSS_DEBUG
@@ -2709,6 +2720,7 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 	struct bnx_softc *sc = ret->bnx_sc;
 	struct bnx_rx_std_ring *std = ret->bnx_std;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int std_used = 0;
 
 	while (ret->bnx_rx_saved_considx != rx_prod && count != 0) {
 		struct pktinfo pi0, *pi = NULL;
@@ -2736,9 +2748,14 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 			vlan_tag = cur_rx->bge_vlan_tag;
 		}
 
-		if (ret->bnx_rx_cnt >= ret->bnx_rx_cntmax)
+		if (ret->bnx_rx_cnt >= ret->bnx_rx_cntmax) {
+			atomic_add_int(&std->bnx_rx_std_used, std_used);
+			std_used = 0;
+
 			bnx_rx_std_refill_sched(ret, std);
+		}
 		ret->bnx_rx_cnt++;
+		++std_used;
 
 		rb = &std->bnx_rx_std_buf[rxidx];
 		m = rb->bnx_rx_mbuf;
@@ -2794,8 +2811,18 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 	}
 	bnx_writembx(sc, ret->bnx_rx_mbx, ret->bnx_rx_saved_considx);
 
-	if (ret->bnx_rx_cnt > 0)
-		bnx_rx_std_refill_sched(ret, std);
+	if (std_used > 0) {
+		int cur_std_used;
+
+		cur_std_used = atomic_fetchadd_int(&std->bnx_rx_std_used,
+		    std_used);
+		if (cur_std_used + std_used >= (BGE_STD_RX_RING_CNT / 2)) {
+#ifdef BNX_RSS_DEBUG
+			ret->bnx_rx_force_sched++;
+#endif
+			bnx_rx_std_refill_sched(ret, std);
+		}
+	}
 }
 
 static void
@@ -5551,6 +5578,8 @@ again:
 				std->bnx_rx_std = check_idx;
 				++cnt;
 				if (cnt >= 8) {
+					atomic_subtract_int(
+					    &std->bnx_rx_std_used, cnt);
 					bnx_writembx(std->bnx_sc,
 					    BGE_MBX_RX_STD_PROD_LO,
 					    std->bnx_rx_std);
@@ -5564,6 +5593,7 @@ again:
 	}
 
 	if (cnt) {
+		atomic_subtract_int(&std->bnx_rx_std_used, cnt);
 		bnx_writembx(std->bnx_sc, BGE_MBX_RX_STD_PROD_LO,
 		    std->bnx_rx_std);
 	}
@@ -5593,7 +5623,7 @@ bnx_sysctl_std_refill(SYSCTL_HANDLER_ARGS)
 
 	ifnet_serialize_all(ifp);
 
-	if ((cntmax * sc->bnx_rx_retcnt) > BGE_STD_RX_RING_CNT / 2) {
+	if ((cntmax * sc->bnx_rx_retcnt) >= BGE_STD_RX_RING_CNT / 2) {
 		error = EINVAL;
 		goto back;
 	}
