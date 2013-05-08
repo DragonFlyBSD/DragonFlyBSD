@@ -828,10 +828,6 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	/*
 	 * The current port should be in the context of the SYN+ACK and
 	 * so should match the tcp address port.
-	 *
-	 * XXX we may be running on the netisr thread instead of a tcp
-	 *     thread, in which case port will not match
-	 *     curthread->td_msgport.
 	 */
 	if (isipv6) {
 		port = tcp6_addrport();
@@ -839,12 +835,8 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		port = tcp_addrport(inp->inp_faddr.s_addr, inp->inp_fport,
 				    inp->inp_laddr.s_addr, inp->inp_lport);
 	}
-	if (port != &curthread->td_msgport) {
-		print_backtrace(-1);
-		kprintf("TCP PORT MISMATCH %p vs %p\n",
-			port, &curthread->td_msgport);
-	}
-	/*KKASSERT(port == &curthread->td_msgport);*/
+	KASSERT(port == &curthread->td_msgport,
+	    ("TCP PORT MISMATCH %p vs %p\n", port, &curthread->td_msgport));
 
 	tp = intotcpcb(inp);
 	tp->t_state = TCPS_SYN_RECEIVED;
