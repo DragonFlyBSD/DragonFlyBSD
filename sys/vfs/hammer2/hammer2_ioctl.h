@@ -135,6 +135,7 @@ typedef struct hammer2_ioc_inode hammer2_ioc_inode_t;
 #define HAMMER2IOC_PFS_CREATE	_IOWR('h', 81, struct hammer2_ioc_pfs)
 #define HAMMER2IOC_PFS_DELETE	_IOWR('h', 82, struct hammer2_ioc_pfs)
 #define HAMMER2IOC_PFS_LOOKUP	_IOWR('h', 83, struct hammer2_ioc_pfs)
+#define HAMMER2IOC_PFS_SNAPSHOT	_IOWR('h', 84, struct hammer2_ioc_pfs)
 
 #define HAMMER2IOC_INODE_GET	_IOWR('h', 86, struct hammer2_ioc_inode)
 #define HAMMER2IOC_INODE_SET	_IOWR('h', 87, struct hammer2_ioc_inode)

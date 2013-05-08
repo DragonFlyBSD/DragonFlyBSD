@@ -170,7 +170,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list */
 #define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying inode */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
-#define HAMMER2_CHAIN_UNUSED1000	0x00001000
+#define HAMMER2_CHAIN_RECYCLE		0x00001000	/* force recycle */
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 
@@ -306,6 +306,12 @@ RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
  *		      and force out the conflicting buffer cache buffer(s)
  *		      before reusing them.
  *
+ * (d) Snapshots can be made instantly but must be flushed and disconnected
+ *     from their duplicative source before they can be mounted.  This is
+ *     because while H2's on-media structure supports forks, its in-memory
+ *     structure only supports very simple forking for background flushing
+ *     purposes.
+ *
  * TODO: Flush merging.  When fsync() is called on multiple discrete files
  *	 concurrently there is no reason to stall the second fsync.
  *	 The final flush that reaches to root can cover both fsync()s.
@@ -326,7 +332,8 @@ struct hammer2_trans {
 
 typedef struct hammer2_trans hammer2_trans_t;
 
-#define HAMMER2_TRANS_ISFLUSH	0x0001
+#define HAMMER2_TRANS_ISFLUSH		0x0001
+#define HAMMER2_TRANS_RESTRICTED	0x0002	/* snapshot flush restrict */
 
 /*
  * XXX
@@ -563,6 +570,8 @@ void hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				int i,
 				hammer2_chain_t **chainp,
 				hammer2_blockref_t *bref);
+int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
+				hammer2_ioc_pfs_t *pfs);
 void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				hammer2_chain_t *chain);
 void hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);

@@ -53,6 +53,7 @@ static int hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data);
+static int hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data);
 static int hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data);
@@ -116,6 +117,10 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 	case HAMMER2IOC_PFS_DELETE:
 		if (error == 0)
 			error = hammer2_ioctl_pfs_delete(ip, data);
+		break;
+	case HAMMER2IOC_PFS_SNAPSHOT:
+		if (error == 0)
+			error = hammer2_ioctl_pfs_snapshot(ip, data);
 		break;
 	case HAMMER2IOC_INODE_GET:
 		error = hammer2_ioctl_inode_get(ip, data);
@@ -314,7 +319,15 @@ hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data)
 }
 
 /*
- * Used to scan PFSs, which are directories under the super-root.
+ * Used to scan and retrieve PFS information.  PFS's are directories under
+ * the super-root.
+ *
+ * To scan PFSs pass name_key=0.  The function will scan for the next
+ * PFS and set all fields, as well as set name_next to the next key.
+ * When no PFSs remain, name_next is set to (hammer2_key_t)-1.
+ *
+ * To retrieve the PFS associated with the file descriptor, pass
+ * name_key set to (hammer2_key_t)-1.
  */
 static int
 hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
@@ -324,12 +337,14 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	hammer2_ioc_pfs_t *pfs;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
+	hammer2_chain_t *rchain;
 	int error;
 
 	error = 0;
 	hmp = ip->hmp;
 	pfs = data;
 	parent = hammer2_chain_lookup_init(hmp->schain, 0);
+	rchain = ip->pmp->rchain;
 
 	/*
 	 * Search for the first key or specific key.  Remember that keys
@@ -338,6 +353,11 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	if (pfs->name_key == 0) {
 		chain = hammer2_chain_lookup(&parent,
 					     0, (hammer2_key_t)-1, 0);
+	} else if (pfs->name_key == (hammer2_key_t)-1) {
+		chain = hammer2_chain_lookup(&parent,
+					     rchain->data->ipdata.name_key,
+					     rchain->data->ipdata.name_key,
+					     0);
 	} else {
 		chain = hammer2_chain_lookup(&parent,
 					     pfs->name_key, pfs->name_key, 0);
@@ -456,6 +476,8 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	pfs = data;
 	nip = NULL;
 
+	if (pfs->name[0] == 0)
+		return(EINVAL);
 	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure 0-termination */
 
 	hammer2_trans_init(hmp, &trans, 0);
@@ -488,7 +510,29 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	hammer2_trans_init(hmp, &trans, 0);
 	error = hammer2_unlink_file(&trans, hmp->sroot,
 				    pfs->name, strlen(pfs->name),
-				    0, NULL);
+				    2, NULL);
+	hammer2_trans_done(&trans);
+
+	return (error);
+}
+
+static int
+hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
+{
+	hammer2_mount_t *hmp = ip->hmp;
+	hammer2_ioc_pfs_t *pfs = data;
+	hammer2_trans_t trans;
+	int error;
+
+	if (pfs->name[0] == 0)
+		return(EINVAL);
+	if (pfs->name[sizeof(pfs->name)-1] != 0)
+		return(EINVAL);
+
+	hammer2_trans_init(hmp, &trans, 0);
+	hammer2_inode_lock_ex(ip);
+	error = hammer2_chain_snapshot(&trans, ip, pfs);
+	hammer2_inode_unlock_ex(ip);
 	hammer2_trans_done(&trans);
 
 	return (error);

@@ -1,4 +1,10 @@
 
+* When making a snapshot, do not allow the snapshot to be mounted until
+  the in-memory chain has been freed in order to break the shared core.
+
+* Snapshotting a sub-directory does not snapshot any
+  parent-directory-spanning hardlinks.
+
 * on fresh mount with multiple hardlinks present separate lookups will
   result in separate vnodes pointing to separate inodes pointing to a
   common chain (the hardlink target).

@@ -566,8 +566,10 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	if (pmp->iroot)
 		error = vflush(mp, 0, flags);
 
-	if (error)
+	if (error) {
+		hammer2_mount_unlock(hmp);
 		return error;
+	}
 
 	lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
 	--hmp->pmp_count;
@@ -662,18 +664,17 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			vrele(devvp);
 			devvp = NULL;
 		}
+
+		/*
+		 * Final drop of embedded volume root chain to clean up
+		 * vchain.core (vchain structure is not flagged ALLOCATED
+		 * so it is cleaned out and then left).
+		 */
+		dumpcnt = 200;
+		hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt);
+		hammer2_chain_drop(&hmp->vchain);
 	}
 	hammer2_mount_unlock(hmp);
-
-	dumpcnt = 200;
-	hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt);
-
-	/*
-	 * Final drop of embedded volume root chain to clean up
-	 * vchain.core (vchain structure is not flagged ALLOCATED
-	 * so it is cleaned out and then left).
-	 */
-	hammer2_chain_drop(&hmp->vchain);
 
 	pmp->mp = NULL;
 	pmp->hmp = NULL;

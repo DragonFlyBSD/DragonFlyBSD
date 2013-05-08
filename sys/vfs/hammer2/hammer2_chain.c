@@ -62,6 +62,7 @@
 #include <sys/systm.h>
 #include <sys/types.h>
 #include <sys/lock.h>
+#include <sys/kern_syscall.h>
 #include <sys/uuid.h>
 
 #include "hammer2.h"
@@ -2314,6 +2315,108 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 		}
 		hammer2_chain_parent_setsubmod(trans, nchain);
 	}
+}
+
+/*
+ * Create a snapshot of the specified {parent, chain} with the specified
+ * label.
+ *
+ * (a) We create a duplicate connected to the super-root as the specified
+ *     label.
+ *
+ * (b) We issue a restricted flush using the current transaction on the
+ *     duplicate.
+ *
+ * (c) We disconnect and reallocate the duplicate's core.
+ */
+int
+hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
+		       hammer2_ioc_pfs_t *pfs)
+{
+	hammer2_mount_t *hmp = trans->hmp;
+	hammer2_chain_t *chain;
+	hammer2_chain_t *nchain;
+	hammer2_chain_t *parent;
+	hammer2_inode_data_t *ipdata;
+	size_t name_len = strlen(pfs->name);
+	hammer2_key_t lhc = hammer2_dirhash(pfs->name, name_len);
+	int error;
+
+	/*
+	 * Create disconnected duplicate
+	 */
+	KKASSERT((trans->flags & HAMMER2_TRANS_RESTRICTED) == 0);
+	nchain = ip->chain;
+	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_MAYBE);
+	hammer2_chain_duplicate(trans, NULL, -1, &nchain, NULL);
+	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_RECYCLE);
+
+	/*
+	 * Create named entry in the super-root.
+	 */
+        parent = hammer2_chain_lookup_init(hmp->schain, 0);
+	error = 0;
+	while (error == 0) {
+		chain = hammer2_chain_lookup(&parent, lhc, lhc, 0);
+		if (chain == NULL)
+			break;
+		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
+			error = ENOSPC;
+		hammer2_chain_unlock(chain);
+		chain = NULL;
+		++lhc;
+	}
+	hammer2_chain_create(trans, &parent, &nchain, lhc, 0,
+			     HAMMER2_BREF_TYPE_INODE,
+			     HAMMER2_INODE_BYTES);
+	hammer2_chain_modify(trans, &nchain, HAMMER2_MODIFY_ASSERTNOCOPY);
+	hammer2_chain_lookup_done(parent);
+	parent = NULL;	/* safety */
+
+	/*
+	 * Name fixup
+	 */
+	ipdata = &nchain->data->ipdata;
+	ipdata->name_key = lhc;
+	ipdata->name_len = name_len;
+	ksnprintf(ipdata->filename, sizeof(ipdata->filename), "%s", pfs->name);
+
+	/*
+	 * Set PFS type, generate a unique filesystem id, and generate
+	 * a cluster id.  Use the same clid when snapshotting a PFS root,
+	 * which theoretically allows the snapshot to be used as part of
+	 * the same cluster (perhaps as a cache).
+	 */
+	ipdata->pfs_type = HAMMER2_PFSTYPE_SNAPSHOT;
+	kern_uuidgen(&ipdata->pfs_fsid, 1);
+	if (ip->chain == ip->pmp->rchain)
+		ipdata->pfs_clid = ip->chain->data->ipdata.pfs_clid;
+	else
+		kern_uuidgen(&ipdata->pfs_clid, 1);
+
+	/*
+	 * Issue a restricted flush of the snapshot.  This is a synchronous
+	 * operation.
+	 */
+	trans->flags |= HAMMER2_TRANS_RESTRICTED;
+	hammer2_chain_flush(trans, nchain);
+	trans->flags &= ~HAMMER2_TRANS_RESTRICTED;
+
+	/*
+	 * Remove the duplication
+	 */
+	chain = ip->chain;
+	KKASSERT(chain->duplink == nchain);
+	KKASSERT(chain->core == nchain->core);
+	KKASSERT(nchain->refs >= 2);
+	chain->duplink = nchain->duplink;
+	hammer2_chain_drop(nchain);
+
+	kprintf("snapshot %s nchain->refs %d nchain->flags %08x\n",
+		pfs->name, nchain->refs, nchain->flags);
+	hammer2_chain_unlock(nchain);
+
+	return (error);
 }
 
 /*

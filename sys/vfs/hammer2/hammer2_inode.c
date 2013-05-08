@@ -1034,7 +1034,7 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		error = ENOTDIR;
 		goto done;
 	}
-	if (type != HAMMER2_OBJTYPE_DIRECTORY && isdir == 1) {
+	if (type != HAMMER2_OBJTYPE_DIRECTORY && isdir >= 1) {
 		error = EISDIR;
 		goto done;
 	}
@@ -1057,14 +1057,15 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	/*
 	 * If this is a directory the directory must be empty.  However, if
 	 * isdir < 0 we are doing a rename and the directory does not have
-	 * to be empty.
+	 * to be empty, and if isdir > 1 we are deleting a PFS/snapshot
+	 * and the directory does not have to be empty.
 	 *
 	 * NOTE: We check the full key range here which covers both visible
 	 *	 and invisible entries.  Theoretically there should be no
 	 *	 invisible (hardlink target) entries if there are no visible
 	 *	 entries.
 	 */
-	if (type == HAMMER2_OBJTYPE_DIRECTORY && isdir >= 0) {
+	if (type == HAMMER2_OBJTYPE_DIRECTORY && isdir == 1) {
 		dparent = hammer2_chain_lookup_init(chain, 0);
 		dchain = hammer2_chain_lookup(&dparent,
 					      0, (hammer2_key_t)-1,
