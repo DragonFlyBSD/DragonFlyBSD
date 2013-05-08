@@ -256,6 +256,7 @@ procfs_close(struct vop_close_args *ap)
 			p->p_step = 0;
 			spin_unlock(&p->p_spin);
 			wakeup(&p->p_stype);
+		        wakeup(&p->p_step);
 		}
 		pfs_pdone(p);
 		break;
