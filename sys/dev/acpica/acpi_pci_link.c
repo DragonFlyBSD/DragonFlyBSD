@@ -1023,7 +1023,7 @@ acpi_pci_link_choose_irq(device_t dev, struct link *link)
 	 * If this is an ISA IRQ and SCI could be shared, try using
 	 * the SCI as a fallback.
 	 */
-	if (link->l_isa_irq && acpi_sci_pci_shariable()) {
+	if (link->l_isa_irq && acpi_sci_pci_shareable()) {
 		pos_irq = AcpiGbl_FADT.SciInterrupt;
 		pos_weight = pci_link_interrupt_weights[pos_irq];
 		if (pos_weight < best_weight) {
@@ -1095,7 +1095,7 @@ acpi_pci_link_identify(driver_t *driver, device_t parent)
 	 * add it to the bitmask of known good ISA IRQs.
 	 */
 	if (AcpiGbl_FADT.SciInterrupt < NUM_ISA_INTERRUPTS &&
-	    acpi_sci_pci_shariable())
+	    acpi_sci_pci_shareable())
 		pci_link_bios_isa_irqs |= (1 << AcpiGbl_FADT.SciInterrupt);
 }
 

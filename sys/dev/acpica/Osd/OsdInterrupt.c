@@ -88,7 +88,7 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
     InterruptHandler = ServiceRoutine;
 
     flags = RF_ACTIVE;
-    if (acpi_sci_pci_shariable())
+    if (acpi_sci_pci_shareable())
 	flags |= RF_SHAREABLE;
 
     /* Set up the interrupt resource. */

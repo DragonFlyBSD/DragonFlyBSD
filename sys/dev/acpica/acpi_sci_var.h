@@ -7,7 +7,7 @@
 
 void	acpi_sci_config(void);
 int	acpi_sci_enabled(void);
-int	acpi_sci_pci_shariable(void);
+int	acpi_sci_pci_shareable(void);
 int	acpi_sci_irqno(void);
 void	acpi_sci_setmode1(enum intr_trigger, enum intr_polarity);
 

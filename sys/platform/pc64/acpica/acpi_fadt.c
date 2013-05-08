@@ -266,7 +266,7 @@ acpi_sci_enabled(void)
 }
 
 int
-acpi_sci_pci_shariable(void)
+acpi_sci_pci_shareable(void)
 {
 	if (acpi_sci_irq >= 0 &&
 	    acpi_sci_trig == INTR_TRIGGER_LEVEL &&
