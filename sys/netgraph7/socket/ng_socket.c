@@ -208,14 +208,13 @@ ngc_send(netmsg_t netmsg)
 	struct sockaddr *addr = netmsg->send.nm_addr;
 	struct mbuf *control = netmsg->send.nm_control;
 	struct ngpcb *const pcbp = sotongpcb(so);
-	struct ngsock *const priv = NG_NODE_PRIVATE(pcbp->sockdata->node);
 	struct sockaddr_ng *const sap = (struct sockaddr_ng *) addr;
 	struct ng_mesg *msg;
 	struct mbuf *m0;
 	item_p item;
 	char *path = NULL;
 	int len, error = 0;
-	struct ng_apply_info apply;
+	struct ng_apply_info *apply;
 
 #ifdef	NOTYET
 	if (control && (error = ng_internalize(control, td))) {
@@ -325,29 +324,20 @@ ngc_send(netmsg_t netmsg)
 		item->el_dest->nd_type->name);
 #endif
 	SAVE_LINE(item);
+
 	/*
-	 * We do not want to return from syscall until the item
-	 * is processed by destination node. We register callback
-	 * on the item, which will update priv->error when item
+	 * We do not want the user thread to return from syscall until the
+	 * item is processed by destination node.  We register callback
+	 * on the item, which will reply to the user thread when item
 	 * was applied.
-	 * If ng_snd_item() has queued item, we sleep until
-	 * callback wakes us up.
 	 */
-	bzero(&apply, sizeof(apply));
-	apply.apply = ng_socket_item_applied;
-	apply.context = priv;
-	item->apply = &apply;
-	priv->error = -1;
+	apply = ng_alloc_apply();
+	bzero(apply, sizeof(*apply));
+	apply->apply = ng_socket_item_applied;
+	apply->context = &netmsg->send.base.lmsg;
+	item->apply = apply;
 
-	error = ng_snd_item(item, 0);
-
-	mtx_lock(&priv->mtx);
-	if (priv->error == -1)
-		mtxsleep(priv, &priv->mtx, 0, "ngsock", 0);
-	mtx_unlock(&priv->mtx);
-	KASSERT(priv->error != -1,
-	    ("ng_socket: priv->error wasn't updated"));
-	error = priv->error;
+	error = ng_snd_item(item, NG_PROGRESS);
 
 release:
 	if (path != NULL)
@@ -357,7 +347,8 @@ release:
 	if (m != NULL)
 		m_freem(m);
 done:
-	lwkt_replymsg(&netmsg->send.base.lmsg, error);
+	if (error != EINPROGRESS)
+		lwkt_replymsg(&netmsg->send.base.lmsg, error);
 }
 
 static void
@@ -1069,13 +1060,9 @@ ngs_shutdown(node_p node)
 static void
 ng_socket_item_applied(void *context, int error)
 {
-	struct ngsock *const priv = (struct ngsock *)context;
-
-	mtx_lock(&priv->mtx);
-	priv->error = error;
-	wakeup(priv);
-	mtx_unlock(&priv->mtx);
-
+	lwkt_msg *msg = context;
+ 
+	lwkt_replymsg(msg, error);
 }
 
 /*

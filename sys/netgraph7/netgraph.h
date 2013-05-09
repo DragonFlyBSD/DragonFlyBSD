@@ -85,6 +85,8 @@
 struct ng_hook ;
 struct ng_node ;
 struct ng_item ;
+struct ng_apply_info ;
+typedef	struct ng_apply_info *apply_p;
 typedef	struct ng_item *item_p;
 typedef struct ng_node *node_p;
 typedef struct ng_hook *hook_p;
@@ -329,19 +331,7 @@ _ng_hook_hi_stack(hook_p hook, char * file, int line)
  ***************** Node Structure and Methods **************************
  ***********************************************************************
  * Structure of a node
- * including the eembedded queue structure.
- *
- * The structure for queueing Netgraph request items
- * embedded in the node structure
  */
-struct ng_queue {
-	u_int		q_flags;	/* Current r/w/q lock flags */
-	u_int		q_flags2;	/* Other queue flags */
-	struct mtx	q_mtx;
-	STAILQ_ENTRY(ng_node)	q_work;	/* nodes with work to do */
-	STAILQ_HEAD(, ng_item)	queue;	/* actually items queue */
-};
-
 struct ng_node {
 	char	nd_name[NG_NODESIZ];	/* optional globally unique name */
 	struct	ng_type *nd_type;	/* the installed 'type' */
@@ -352,7 +342,7 @@ struct ng_node {
 	LIST_HEAD(hooks, ng_hook) nd_hooks;	/* linked list of node hooks */
 	LIST_ENTRY(ng_node)	  nd_nodes;	/* linked list of all nodes */
 	LIST_ENTRY(ng_node)	  nd_idnodes;	/* ID hash collision list */
-	struct	ng_queue	  nd_input_queue; /* input queue for locking */
+	struct	lwkt_token	  nd_token;
 	int	nd_refs;		/* # of references to this node */
 #ifdef	NETGRAPH_DEBUG /*----------------------------------------------*/
 #define ND_MAGIC 0x59264837
@@ -608,12 +598,10 @@ typedef	void	ng_apply_t(void *context, int error);
 struct ng_apply_info {
 	ng_apply_t	*apply;
 	void		*context;
-	int		refs;
-	int		error;
 };
 struct ng_item {
+	struct lwkt_msg		el_lmsg;
 	u_long	el_flags;
-	STAILQ_ENTRY(ng_item)	el_next;
 	node_p	el_dest; /* The node it will be applied against (or NULL) */
 	hook_p	el_hook; /* Entering hook. Optional in Control messages */
 	union {
@@ -657,6 +645,8 @@ struct ng_item {
 #define NGQF_QMODE	0x08		/* MASK for how it was queued */
 #define NGQF_QREADER	0x08		/* was queued as a reader */
 #define NGQF_QWRITER	0x00		/* was queued as a writer */
+
+#define NGQF_FREE	0x10		/* mark for freeing */
 
 /*
  * Get the mbuf (etc) out of an item.
@@ -798,7 +788,8 @@ _ngi_hook(item_p item, char *file, int line)
 #define NG_FREE_ITEM(item)						\
 	do {								\
 		_ngi_check(item, _NN_);					\
-		ng_free_item((item));					\
+		item->el_flags |= NGQF_FREE;				\
+		item = NULL;						\
 	} while (0)
 
 #define	SAVE_LINE(item)							\
@@ -823,7 +814,11 @@ _ngi_hook(item_p item, char *file, int line)
 #define	NGI_SET_NODE(i,n) _NGI_SET_NODE(i,n)
 #define	NGI_CLR_NODE(i)	  _NGI_CLR_NODE(i)
 
-#define	NG_FREE_ITEM(item)	ng_free_item((item))
+#define	NG_FREE_ITEM(item)						\
+	do {								\
+		KKASSERT(!(item->el_flags & NGQF_FREE));		\
+		item->el_flags |= NGQF_FREE;				\
+	} while (0)
 #define	SAVE_LINE(item)		do {} while (0)
 
 #endif	/* NETGRAPH_DEBUG */ /*----------------------------------------------*/
@@ -857,7 +852,7 @@ _ngi_hook(item_p item, char *file, int line)
 
 #define NGI_QUEUED_READER(i)	((i)->el_flags & NGQF_QREADER)
 #define NGI_QUEUED_WRITER(i)	(((i)->el_flags & NGQF_QMODE) == NGQF_QWRITER)
-	
+
 /**********************************************************************
 * Data macros.  Send, manipulate and free.
 **********************************************************************/
@@ -1012,8 +1007,9 @@ _ngi_hook(item_p item, char *file, int line)
 				SAVE_LINE(item);			\
 				(error) = ng_snd_item((item), NG_QUEUE);\
 			}						\
-		} else							\
+		} else {						\
 			NG_FREE_ITEM(item);				\
+		}							\
 		(item) = NULL;						\
 	} while (0)
 
@@ -1145,6 +1141,8 @@ int	ng_uncallout(struct callout *c, node_p node);
 int	ng_callout(struct callout *c, node_p node, hook_p hook, int ticks,
 	    ng_item_fn *fn, void * arg1, int arg2);
 #define	ng_callout_init(c)	callout_init(c)
+apply_p	ng_alloc_apply(void);
+void	ng_free_apply(apply_p apply);
 
 /* Flags for netgraph functions. */
 #define	NG_NOFLAGS	0x00000000	/* no special options */
