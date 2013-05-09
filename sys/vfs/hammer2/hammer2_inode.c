@@ -281,8 +281,8 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 
 /*
  * The passed-in chain must be locked and the returned inode will also be
- * locked.  A ref is added to both the chain and the inode.  The chain lock
- * is inherited by the inode structure and should not be separately released.
+ * locked.  This routine typically locates or allocates the inode, assigns
+ * ip->chain (adding a ref to chain if necessary), and returns the inode.
  *
  * The hammer2_inode structure regulates the interface between the high level
  * kernel VNOPS API and the filesystem backend (the chains).
@@ -325,6 +325,7 @@ again:
 			nip->chain = chain;		/* fully locked   */
 			hammer2_chain_drop(ochain);	/* old nip->chain */
 		}
+
 		/*
 		 * Consolidated nip/nip->chain is locked (chain locked
 		 * by caller).
@@ -385,10 +386,9 @@ again:
  * drops.
  */
 void
-hammer2_inode_put(hammer2_inode_t *ip)
+hammer2_inode_put(hammer2_inode_t *ip, hammer2_chain_t *chain)
 {
 	hammer2_inode_t *pip;
-	hammer2_chain_t *chain;
 
 	/*
 	 * Disconnect and unlock chain
@@ -397,18 +397,21 @@ hammer2_inode_put(hammer2_inode_t *ip)
 	KKASSERT(ip->topo_cst.count == -1);	/* one excl lock allowed */
 	if ((chain = ip->chain) != NULL) {
 		ip->chain = NULL;
-		hammer2_inode_unlock_ex(ip);
-		hammer2_chain_unlock(chain);	/* because ip->chain now NULL */
 		hammer2_chain_drop(chain);	/* from *_get() */
 	}
 
 	/*
 	 * Disconnect pip
 	 */
-	if ((pip = ip->pip) != NULL) {
-		ip->pip = NULL;
+	pip = ip->pip;
+	ip->pip = NULL;
+	hammer2_inode_unlock_ex(ip, chain);
+
+	/*
+	 * Cleanup delayed actions
+	 */
+	if (pip)
 		hammer2_inode_drop(pip);
-	}
 }
 
 /*
@@ -428,7 +431,7 @@ hammer2_inode_t *
 hammer2_inode_create(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		     struct vattr *vap, struct ucred *cred,
 		     const uint8_t *name, size_t name_len,
-		     int *errorp)
+		     hammer2_chain_t **chainp, int *errorp)
 {
 	hammer2_inode_data_t *dipdata;
 	hammer2_inode_data_t *nipdata;
@@ -455,13 +458,12 @@ hammer2_inode_create(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	 * NOTE: hidden inodes do not have iterators.
 	 */
 retry:
-	hammer2_inode_lock_ex(dip);
+	parent = hammer2_inode_lock_ex(dip);
 	dipdata = &dip->chain->data->ipdata;
 	dip_uid = dipdata->uid;
 	dip_gid = dipdata->gid;
 	dip_mode = dipdata->mode;
 
-	parent = hammer2_chain_lookup_init(dip->chain, 0);
 	error = 0;
 	while (error == 0) {
 		chain = hammer2_chain_lookup(&parent, lhc, lhc, 0);
@@ -487,14 +489,12 @@ retry:
 	 */
 	if (error == EAGAIN) {
 		hammer2_chain_ref(parent);
-		hammer2_chain_lookup_done(parent);
-		hammer2_inode_unlock_ex(dip);
+		hammer2_inode_unlock_ex(dip, parent);
 		hammer2_chain_wait(parent);
 		hammer2_chain_drop(parent);
 		goto retry;
 	}
-	hammer2_chain_lookup_done(parent);
-	hammer2_inode_unlock_ex(dip);
+	hammer2_inode_unlock_ex(dip, parent);
 
 	if (error) {
 		KKASSERT(chain == NULL);
@@ -570,6 +570,7 @@ retry:
 	bcopy(name, nipdata->filename, name_len);
 	nipdata->name_key = lhc;
 	nipdata->name_len = name_len;
+	*chainp = chain;
 
 	return (nip);
 }
@@ -998,9 +999,7 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	 */
 	if (hlinkp)
 		*hlinkp = 0;
-	hammer2_inode_lock_ex(dip);
-
-	parent = hammer2_chain_lookup_init(dip->chain, 0);
+	parent = hammer2_inode_lock_ex(dip);
 	chain = hammer2_chain_lookup(&parent,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 				     0);
@@ -1014,7 +1013,7 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
 					   0);
 	}
-	hammer2_inode_unlock_ex(dip);	/* retain parent */
+	hammer2_inode_unlock_ex(dip, NULL);	/* retain parent */
 
 	/*
 	 * Not found or wrong type (isdir < 0 disables the type check).
@@ -1188,13 +1187,10 @@ hammer2_inode_calc_alloc(hammer2_key_t filesize)
  * creation, adding (nlinks) to the file's link count and potentially
  * relocating the inode to a directory common to ip->pip and tdip.
  *
- * Returns a locked chain in (*chainp) (the chain's lock is in addition to
- * any lock it might already have due to the inode being locked).  *chainp
- * is set unconditionally and its previous contents can be garbage.
+ * Replaces (*chainp) if consolidation occurred, unlocking the old chain
+ * and returning a new locked chain.
  *
- * The caller is responsible for replacing ip->chain, not us.  For certain
- * operations such as renames the caller may do additional manipulation
- * of the chain before replacing ip->chain.
+ * NOTE!  This function will also replace ip->chain.
  */
 int
 hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
@@ -1210,22 +1206,14 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	hammer2_chain_t *parent;
 	int error;
 
-	/*
-	 * Extra lock on chain so it can be returned locked.
-	 */
 	hmp = tdip->hmp;
 
-	chain = ip->chain;
-	error = hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-	KKASSERT(error == 0);
-
+	chain = *chainp;
 	if (nlinks == 0 &&			/* no hardlink needed */
 	    (chain->data->ipdata.name_key & HAMMER2_DIRHASH_VISIBLE)) {
-		*chainp = chain;
 		return (0);
 	}
 	if (hammer2_hardlink_enable < 0) {	/* fake hardlinks */
-		*chainp = chain;
 		return (0);
 	}
 
@@ -1256,7 +1244,6 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			hammer2_chain_modify(trans, &chain, 0);
 			chain->data->ipdata.nlinks += nlinks;
 		}
-		*chainp = chain;
 		error = 0;
 		goto done;
 	}
@@ -1350,19 +1337,20 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		 * Return the new chain.
 		 */
 		hammer2_chain_unlock(chain);
-		*chainp = nchain;
+		chain = nchain;
 	} else {
 		/*
 		 * Return an error
 		 */
 		hammer2_chain_unlock(chain);
-		*chainp = NULL;
+		chain = NULL;
 	}
 
 	/*
 	 * Cleanup, chain/nchain already dealt with.
 	 */
 done:
+	*chainp = chain;
 	hammer2_inode_drop(cdip);
 
 	return (error);
@@ -1426,18 +1414,17 @@ hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,
 	chain = NULL;
 
 	while ((ip = pip) != NULL) {
-		hammer2_inode_lock_ex(ip);
-		parent = hammer2_chain_lookup_init(ip->chain, 0);
+		parent = hammer2_inode_lock_ex(ip);
 		hammer2_inode_drop(ip);			/* loop */
 		KKASSERT(parent->bref.type == HAMMER2_BREF_TYPE_INODE);
 		chain = hammer2_chain_lookup(&parent, lhc, lhc, 0);
-		hammer2_chain_lookup_done(parent);
+		hammer2_chain_lookup_done(parent);	/* discard parent */
 		if (chain)
 			break;
 		pip = ip->pip;		/* safe, ip held locked */
 		if (pip)
 			hammer2_inode_ref(pip);		/* loop */
-		hammer2_inode_unlock_ex(ip);
+		hammer2_inode_unlock_ex(ip, NULL);
 	}
 
 	/*
@@ -1447,7 +1434,7 @@ hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,
 	 * (parent is already unlocked).
 	 */
 	if (ip)
-		hammer2_inode_unlock_ex(ip);
+		hammer2_inode_unlock_ex(ip, NULL);
 	*chainp = chain;
 	if (chain) {
 		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INODE);

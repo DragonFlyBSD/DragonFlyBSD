@@ -56,7 +56,7 @@
  * NOTE: We don't combine the inode/chain lock because putting away an
  *       inode would otherwise confuse multiple lock holders of the inode.
  */
-void
+hammer2_chain_t *
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
 {
 	hammer2_chain_t *chain;
@@ -68,14 +68,12 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 	 * ip->chain fixup.  Certain duplications used to move inodes
 	 * into indirect blocks (for example) can cause ip->chain to
 	 * become stale.
-	 *
-	 *
 	 */
 again:
 	chain = ip->chain;
 	while (chain->duplink && (chain->flags & HAMMER2_CHAIN_DELETED))
 		chain = chain->duplink;
-	if (chain != ip->chain) {
+	if (ip->chain != chain) {
 		hammer2_chain_ref(chain);
 		hammer2_chain_drop(ip->chain);
 		ip->chain = chain;
@@ -91,25 +89,33 @@ again:
 		hammer2_chain_unlock(chain);
 		goto again;
 	}
+	return (chain);
 }
 
 void
-hammer2_inode_unlock_ex(hammer2_inode_t *ip)
+hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain)
 {
-	hammer2_chain_t *chain;
-
 	/*
 	 * XXX this will catch parent directories too which we don't
 	 *     really want.
 	 */
-	chain = ip->chain;
-	if (chain) {
-		if (chain->flags & (HAMMER2_CHAIN_MODIFIED |
-				    HAMMER2_CHAIN_SUBMODIFIED)) {
-			atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-		}
+	if (chain)
 		hammer2_chain_unlock(chain);
+
+	/*
+	 * Recalculate ip->chain on exclusive unlock too, it may
+	 * allow us to free stale chains more quickly.
+	 */
+	if ((chain = ip->chain) != NULL) {
+		while (chain->duplink && (chain->flags & HAMMER2_CHAIN_DELETED))
+			chain = chain->duplink;
+		if (ip->chain != chain) {
+			hammer2_chain_ref(chain);
+			hammer2_chain_drop(ip->chain);
+			ip->chain = chain;
+		}
 	}
+
 	ccms_thread_unlock(&ip->topo_cst);
 	hammer2_inode_drop(ip);
 }
@@ -123,7 +129,7 @@ hammer2_inode_unlock_ex(hammer2_inode_t *ip)
  *	 need to upgrade them.  Only one count of a shared lock can be
  *	 upgraded.
  */
-void
+hammer2_chain_t *
 hammer2_inode_lock_sh(hammer2_inode_t *ip)
 {
 	hammer2_chain_t *chain;
@@ -143,18 +149,18 @@ again:
 	if (chain->duplink && (chain->flags & HAMMER2_CHAIN_DELETED)) {
 		hammer2_chain_unlock(chain);
 		ccms_thread_unlock(&ip->topo_cst);
-		hammer2_inode_lock_ex(ip);
-		hammer2_inode_unlock_ex(ip);
+		chain = hammer2_inode_lock_ex(ip);
+		hammer2_inode_unlock_ex(ip, chain);
 		goto again;
 	}
-
+	return (chain);
 }
 
 void
-hammer2_inode_unlock_sh(hammer2_inode_t *ip)
+hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_chain_t *chain)
 {
-	if (ip->chain)
-		hammer2_chain_unlock(ip->chain);
+	if (chain)
+		hammer2_chain_unlock(chain);
 	ccms_thread_unlock(&ip->topo_cst);
 	hammer2_inode_drop(ip);
 }

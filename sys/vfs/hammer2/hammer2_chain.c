@@ -819,12 +819,14 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 * returning a new chain.  This allows the old chain to still be
 	 * used by the flush code.  Duplication occurs in-place.
 	 *
+	 * The parent does not have to be locked for the delete/duplicate call,
+	 * but is in this particular code path.
+	 *
 	 * NOTE: If we are not crossing a synchronization point the
 	 *	 duplication code will simply reuse the existing chain
 	 *	 structure.
 	 */
-	hammer2_chain_delete(trans, parent, chain);
-	hammer2_chain_duplicate(trans, parent, chain->index, &chain, NULL);
+	hammer2_chain_delete_duplicate(trans, &chain);
 
 	/*
 	 * Set MODIFIED and add a chain ref to prevent destruction.  Both
@@ -837,7 +839,6 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 * worry about snapshots.  XXX check flush synchronization.
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
-		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		hammer2_chain_ref(chain);
 	} else {
@@ -936,15 +937,11 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 }
 
 /*
- * Convert a locked chain that was retrieved read-only to read-write,
- * duplicating it if necessary to satisfy active flush points.
+ * Set a chain modified, making it read-write and duplicating it if necessary.
+ * This function will assign a new physical block to the chain if necessary
  *
- * If not already marked modified a new physical block will be allocated
- * and assigned to the bref.
- *
- * If already modified and the new modification crosses a synchronization
- * point the chain is duplicated in order to allow the flush to synchronize
- * the old chain.  The new chain replaces the old.
+ * Duplication of already-modified chains is possible when the modification
+ * crosses a flush synchronization boundary.
  *
  * Non-data blocks - The chain should be locked to at least the RESOLVE_MAYBE
  *		     level or the COW operation will not work.
@@ -954,17 +951,25 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
  *
  * This function may return a different chain than was passed, in which case
  * the old chain will be unlocked and the new chain will be locked.
+ *
+ * ip->chain may be adjusted by hammer2_chain_modify_ip().
  */
 hammer2_inode_data_t *
-hammer2_chain_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip, int flags)
+hammer2_chain_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
+			hammer2_chain_t **parentp, int flags)
 {
-	hammer2_chain_t *ochain;
+	hammer2_chain_t *chain;
 
-	ochain = ip->chain;
-	hammer2_chain_modify(trans, &ip->chain, flags);
-	if (ochain != ip->chain) {
-		hammer2_chain_ref(ip->chain);
-		hammer2_chain_drop(ochain);
+	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
+	hammer2_chain_modify(trans, parentp, flags);
+	if ((chain = ip->chain) != NULL) {
+		while (chain->duplink && (chain->flags & HAMMER2_CHAIN_DELETED))
+			chain = chain->duplink;
+		if (ip->chain != chain) {
+			hammer2_chain_ref(chain);
+			hammer2_chain_drop(ip->chain);
+			ip->chain = chain;
+		}
 	}
 	return(&ip->chain->data->ipdata);
 }
@@ -974,7 +979,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		     int flags)
 {
 	hammer2_mount_t *hmp = trans->hmp;
-	hammer2_chain_t *chain = *chainp;
+	hammer2_chain_t *chain;
 	hammer2_off_t pbase;
 	struct buf *nbp;
 	int error;
@@ -987,38 +992,57 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 * propagated brefs.  mirror_tid will be updated regardless during
 	 * the flush, no need to set it here.
 	 */
-	if ((flags & HAMMER2_MODIFY_NO_MODIFY_TID) == 0)
-		chain->bref.modify_tid = trans->sync_tid;
+	chain = *chainp;
 
 	/*
 	 * If the chain is already marked MODIFIED we can usually just
-	 * return.
-	 *
-	 * WARNING!  It is possible that a prior lock/modify sequence
-	 *	     retired the buffer.  During this lock/modify sequence
-	 *	     MODIFIED may still be set but the buffer could wind up
-	 *	     clean.  Since the caller is going to modify the buffer
-	 *	     further we have to be sure that DIRTYBP is set again.
-	 *
-	 * WARNING!  Currently the caller is responsible for handling
-	 *	     any delete/duplication roll of the chain to account
-	 *	     for modifications crossing synchronization points.
+	 * return.  However, if a modified chain is modified again in
+	 * a synchronization-point-crossing manner we have to
+	 * delete/duplicate the chain so as not to interfere with the
+	 * atomicy of the flush.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
-		if ((flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
-		    chain->bp == NULL) {
-			goto skip1;
+		if (chain->modify_tid <= hmp->flush_tid &&
+		    trans->sync_tid > hmp->flush_tid) {
+			/*
+			 * Modifications cross synchronization point,
+			 * requires delete-duplicate.
+			 */
+			hammer2_chain_delete_duplicate(trans, chainp);
+			chain = *chainp;
+			/* fall through using duplicate */
+		} else {
+			/*
+			 * It is possible that a prior lock/modify sequence
+			 * retired the buffer.  During this lock/modify
+			 * sequence MODIFIED may still be set but the buffer
+			 * could wind up clean.  Since the caller is going
+			 * to modify the buffer further we have to be sure
+			 * that DIRTYBP is set so our chain code knows to
+			 * bwrite/bdwrite the bp.
+			 */
+			if ((flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
+			    chain->bp == NULL) {
+				goto skip1;
+			}
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
+			if ((flags & HAMMER2_MODIFY_NO_MODIFY_TID) == 0)
+				chain->bref.modify_tid = trans->sync_tid;
+			return;
 		}
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
-		return;
 	}
+
+	if ((flags & HAMMER2_MODIFY_NO_MODIFY_TID) == 0)
+		chain->bref.modify_tid = trans->sync_tid;
 
 	/*
 	 * Set MODIFIED and add a chain ref to prevent destruction.  Both
 	 * modified flags share the same ref.
 	 */
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
-	hammer2_chain_ref(chain);
+	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+		hammer2_chain_ref(chain);
+	}
 
 	/*
 	 * Adjust chain->modify_tid so the flusher knows when the
@@ -2144,6 +2168,8 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 	 */
 	if (ochain->flags & HAMMER2_CHAIN_INITIAL)
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_INITIAL);
+	if (ochain->flags & HAMMER2_CHAIN_DIRTYBP)
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_DIRTYBP);
 
 	/*
 	 * If the old chain is modified the new one must be too,
@@ -2318,6 +2344,184 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 }
 
 /*
+ * Special in-place delete-duplicate sequence which does not require a
+ * locked parent.  (*chainp) is marked DELETED and atomically replaced
+ * with a duplicate.  Atomicy is at the very-fine spin-lock level in
+ * order to ensure that lookups do not race us.
+ */
+void
+hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
+			       hammer2_chain_t **chainp)
+{
+	hammer2_mount_t *hmp = trans->hmp;
+	hammer2_chain_t *ochain;
+	hammer2_chain_t *nchain;
+	hammer2_chain_t *parent;
+	size_t bytes;
+
+	/*
+	 * First create a duplicate of the chain structure, associating
+	 * it with the same core, making it the same size, pointing it
+	 * to the same bref (the same media block), and copying any inline
+	 * data.
+	 */
+	ochain = *chainp;
+	nchain = hammer2_chain_alloc(hmp, &ochain->bref);    /* 1 ref */
+	hammer2_chain_core_alloc(nchain, ochain->core);
+
+	kprintf("delete_duplicate %p.%d(%d)\n", ochain, ochain->bref.type, ochain->refs);
+
+	bytes = (hammer2_off_t)1 <<
+		(int)(ochain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
+	nchain->bytes = bytes;
+
+	/*
+	 * Be sure to copy the INITIAL flag as well or we could end up
+	 * loading garbage from the bref.
+	 */
+	if (ochain->flags & HAMMER2_CHAIN_INITIAL)
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_INITIAL);
+	if (ochain->flags & HAMMER2_CHAIN_DIRTYBP)
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_DIRTYBP);
+
+	/*
+	 * If the old chain is modified the new one must be too,
+	 * but we only want to allocate a new bref.
+	 */
+	if (ochain->flags & HAMMER2_CHAIN_MODIFIED) {
+		/*
+		 * When duplicating chains the MODIFIED state is inherited.
+		 * A new bref typically must be allocated.  However, file
+		 * data chains may already have the data offset assigned
+		 * to a logical buffer cache buffer so we absolutely cannot
+		 * allocate a new bref here for TYPE_DATA.
+		 *
+		 * Basically the flusher core only dumps media topology
+		 * and meta-data, not file data.  The VOP_FSYNC code deals
+		 * with the file data.  XXX need back-pointer to inode.
+		 */
+		if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+			atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MODIFIED);
+			hammer2_chain_ref(nchain);
+		} else {
+			hammer2_chain_modify(trans, &nchain,
+					     HAMMER2_MODIFY_OPTDATA |
+					     HAMMER2_MODIFY_ASSERTNOCOPY);
+		}
+	} else if (nchain->flags & HAMMER2_CHAIN_INITIAL) {
+		/*
+		 * When duplicating chains in the INITITAL state we need
+		 * to ensure that the chain is marked modified so a
+		 * block is properly assigned to it, otherwise the MOVED
+		 * bit won't do the right thing.
+		 */
+		KKASSERT (nchain->bref.type != HAMMER2_BREF_TYPE_DATA);
+		hammer2_chain_modify(trans, &nchain,
+				     HAMMER2_MODIFY_OPTDATA |
+				     HAMMER2_MODIFY_ASSERTNOCOPY);
+	}
+
+	/*
+	 * Unconditionally set the MOVED and SUBMODIFIED bit to force
+	 * update of parent bref and indirect blockrefs during flush.
+	 */
+	if ((nchain->flags & HAMMER2_CHAIN_MOVED) == 0) {
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MOVED);
+		hammer2_chain_ref(nchain);
+	}
+	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_SUBMODIFIED);
+
+	/*
+	 * Copy media contents as needed.
+	 */
+	switch(nchain->bref.type) {
+	case HAMMER2_BREF_TYPE_VOLUME:
+		panic("hammer2_chain_duplicate: cannot be called w/volhdr");
+		break;
+	case HAMMER2_BREF_TYPE_INODE:
+		KKASSERT(bytes == HAMMER2_INODE_BYTES);
+		if (ochain->data) {
+			nchain->data = kmalloc(sizeof(nchain->data->ipdata),
+					      hmp->minode, M_WAITOK | M_ZERO);
+			nchain->data->ipdata = ochain->data->ipdata;
+		}
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		if ((nchain->flags & HAMMER2_CHAIN_MODIFIED) &&
+		    nchain->data) {
+			bcopy(ochain->data, nchain->data,
+			      nchain->bytes);
+		}
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		panic("hammer2_chain_duplicate: cannot be used to"
+		      "create a freemap root or node");
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+	case HAMMER2_BREF_TYPE_DATA:
+	default:
+		if ((nchain->flags & HAMMER2_CHAIN_MODIFIED) &&
+		    nchain->data) {
+			bcopy(ochain->data, nchain->data,
+			      nchain->bytes);
+		}
+		/* leave chain->data NULL */
+		KKASSERT(nchain->data == NULL);
+		break;
+	}
+
+	/*
+	 * Both chains must be locked for us to be able to set the
+	 * duplink.  The caller may expect valid data.
+	 *
+	 * Unmodified duplicated blocks may have the same bref, we
+	 * must be careful to avoid buffer cache deadlocks so we
+	 * unlock the old chain before resolving the new one.
+	 *
+	 * Insert nchain at the end of the duplication list.
+	 */
+	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER);
+	/* extra ref still present from original allocation */
+
+	parent = ochain->parent;
+	nchain->parent = parent;
+	nchain->index = ochain->index;
+	hammer2_chain_ref(parent);	/* nchain->parent ref */
+
+	kprintf("duplicate ochain %p(%d) nchain %p(%d) %08x\n",
+		ochain, ochain->refs, nchain, nchain->refs, nchain->flags);
+
+	spin_lock(&ochain->core->cst.spin);
+	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_ONRBTREE);
+	ochain->delete_tid = trans->sync_tid;
+	atomic_set_int(&ochain->flags, HAMMER2_CHAIN_DELETED);
+	if ((ochain->flags & HAMMER2_CHAIN_MOVED) == 0) {
+		hammer2_chain_ref(ochain);
+		atomic_set_int(&ochain->flags, HAMMER2_CHAIN_MOVED);
+	}
+	if (RB_INSERT(hammer2_chain_tree, &parent->core->rbtree, nchain)) {
+		panic("hammer2_chain_link: collision");
+	}
+	KKASSERT(nchain->duplink == NULL);
+	nchain->duplink = ochain->duplink;
+	ochain->duplink = nchain;	/* inherits excess ref from alloc */
+	spin_unlock(&ochain->core->cst.spin);
+
+	/*
+	 * Cleanup.  Also note that nchain must be re-resolved to ensure
+	 * that it's data is resolved because we locked it RESOLVE_NEVER
+	 * up above.
+	 */
+	*chainp = nchain;		/* inherits locked */
+	hammer2_chain_unlock(ochain);	/* replacing ochain */
+	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_MAYBE);
+	hammer2_chain_unlock(nchain);
+
+	hammer2_chain_parent_setsubmod(trans, nchain);
+}
+
+/*
  * Create a snapshot of the specified {parent, chain} with the specified
  * label.
  *
@@ -2399,6 +2603,9 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 * operation.
 	 */
 	trans->flags |= HAMMER2_TRANS_RESTRICTED;
+	kprintf("SNAPSHOTA\n");
+	tsleep(trans, 0, "snapslp", hz*4);
+	kprintf("SNAPSHOTB\n");
 	hammer2_chain_flush(trans, nchain);
 	trans->flags &= ~HAMMER2_TRANS_RESTRICTED;
 

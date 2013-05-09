@@ -469,6 +469,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	hammer2_mount_t *hmp;
 	hammer2_ioc_pfs_t *pfs;
 	hammer2_inode_t *nip;
+	hammer2_chain_t *nchain;
 	hammer2_trans_t trans;
 	int error;
 
@@ -483,14 +484,14 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	hammer2_trans_init(hmp, &trans, 0);
 	nip = hammer2_inode_create(&trans, hmp->sroot, NULL, NULL,
 				     pfs->name, strlen(pfs->name),
-				     &error);
+				     &nchain, &error);
 	if (error == 0) {
-		nipdata = hammer2_chain_modify_ip(&trans, nip,
+		nipdata = hammer2_chain_modify_ip(&trans, nip, &nchain,
 						  HAMMER2_MODIFY_ASSERTNOCOPY);
 		nipdata->pfs_type = pfs->pfs_type;
 		nipdata->pfs_clid = pfs->pfs_clid;
 		nipdata->pfs_fsid = pfs->pfs_fsid;
-		hammer2_inode_unlock_ex(nip);
+		hammer2_inode_unlock_ex(nip, nchain);
 	}
 	hammer2_trans_done(&trans);
 	return (error);
@@ -522,6 +523,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	hammer2_mount_t *hmp = ip->hmp;
 	hammer2_ioc_pfs_t *pfs = data;
 	hammer2_trans_t trans;
+	hammer2_chain_t *parent;
 	int error;
 
 	if (pfs->name[0] == 0)
@@ -530,9 +532,9 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		return(EINVAL);
 
 	hammer2_trans_init(hmp, &trans, 0);
-	hammer2_inode_lock_ex(ip);
+	parent = hammer2_inode_lock_ex(ip);
 	error = hammer2_chain_snapshot(&trans, ip, pfs);
-	hammer2_inode_unlock_ex(ip);
+	hammer2_inode_unlock_ex(ip, parent);
 	hammer2_trans_done(&trans);
 
 	return (error);
@@ -545,11 +547,12 @@ static int
 hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_inode_t *ino = data;
+	hammer2_chain_t *parent;
 
-	hammer2_inode_lock_sh(ip);
+	parent = hammer2_inode_lock_sh(ip);
 	ino->ip_data = ip->chain->data->ipdata;
 	ino->kdata = ip;
-	hammer2_inode_unlock_sh(ip);
+	hammer2_inode_unlock_sh(ip, parent);
 
 	return (0);
 }
@@ -558,16 +561,17 @@ static int
 hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_inode_t *ino = data;
+	hammer2_chain_t *parent;
 	int error = EINVAL;
 
-	hammer2_inode_lock_ex(ip);
+	parent = hammer2_inode_lock_ex(ip);
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_IQUOTA) {
 	}
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_DQUOTA) {
 	}
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_COPIES) {
 	}
-	hammer2_inode_unlock_ex(ip);
+	hammer2_inode_unlock_ex(ip, parent);
 
 	return (error);
 }

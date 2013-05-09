@@ -269,7 +269,7 @@ struct hammer2_inode {
 typedef struct hammer2_inode hammer2_inode_t;
 
 #define HAMMER2_INODE_MODIFIED		0x0001
-#define HAMMER2_INODE_DIRTYEMBED	0x0002
+#define HAMMER2_INODE_UNUSED0002	0x0002
 #define HAMMER2_INODE_RENAME_INPROG	0x0004
 #define HAMMER2_INODE_ONRBTREE		0x0008
 
@@ -453,10 +453,10 @@ extern long hammer2_ioa_volu_write;
 #define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
 #define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
 
-void hammer2_inode_lock_ex(hammer2_inode_t *ip);
-void hammer2_inode_lock_sh(hammer2_inode_t *ip);
-void hammer2_inode_unlock_ex(hammer2_inode_t *ip);
-void hammer2_inode_unlock_sh(hammer2_inode_t *ip);
+hammer2_chain_t *hammer2_inode_lock_ex(hammer2_inode_t *ip);
+hammer2_chain_t *hammer2_inode_lock_sh(hammer2_inode_t *ip);
+void hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain);
+void hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_chain_t *chain);
 void hammer2_voldata_lock(hammer2_mount_t *hmp);
 void hammer2_voldata_unlock(hammer2_mount_t *hmp, int modify);
 ccms_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
@@ -495,7 +495,7 @@ hammer2_inode_t *hammer2_inode_lookup(hammer2_pfsmount_t *pmp,
 hammer2_inode_t *hammer2_inode_get(hammer2_mount_t *hmp,
 			hammer2_pfsmount_t *pmp, hammer2_inode_t *dip,
 			hammer2_chain_t *chain);
-void hammer2_inode_put(hammer2_inode_t *ip);
+void hammer2_inode_put(hammer2_inode_t *ip, hammer2_chain_t *chain);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
@@ -507,7 +507,7 @@ hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
 			hammer2_inode_t *dip,
 			struct vattr *vap, struct ucred *cred,
 			const uint8_t *name, size_t name_len,
-			int *errorp);
+			hammer2_chain_t **chainp, int *errorp);
 int hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 			hammer2_inode_t *dip, hammer2_chain_t **chainp,
 			const uint8_t *name, size_t name_len);
@@ -541,7 +541,8 @@ void hammer2_chain_moved(hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_trans_t *trans,
 				hammer2_chain_t **chainp, int flags);
 hammer2_inode_data_t *hammer2_chain_modify_ip(hammer2_trans_t *trans,
-				hammer2_inode_t *ip, int flags);
+				hammer2_inode_t *ip, hammer2_chain_t **chainp,
+				int flags);
 void hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 				struct buf *bp,
 				hammer2_chain_t *parent,
@@ -574,6 +575,8 @@ int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
 				hammer2_ioc_pfs_t *pfs);
 void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				hammer2_chain_t *chain);
+void hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
+				hammer2_chain_t **chainp);
 void hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_commit(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_parent_setsubmod(hammer2_trans_t *trans,
