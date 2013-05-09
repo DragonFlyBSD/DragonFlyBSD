@@ -891,8 +891,6 @@ int	ether_output_frame(struct ifnet *, struct mbuf *);
 int	ether_ioctl(struct ifnet *, u_long, caddr_t);
 u_char	*kether_aton(const char *, u_char *);
 char	*kether_ntoa(const u_char *, char *);
-boolean_t ether_tso_pullup(struct mbuf **, int *, struct ip **, int *,
-	    struct tcphdr **, int *);
 struct ifnet *ether_bridge_interface(struct ifnet *ifp);
 uint32_t	ether_crc32_le(const uint8_t *, size_t);
 uint32_t	ether_crc32_be(const uint8_t *, size_t);

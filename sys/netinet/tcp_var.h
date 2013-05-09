@@ -708,9 +708,6 @@ void	 tcp_trace (short, short, struct tcpcb *, void *, struct tcphdr *,
 void	 tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq);
 u_long	 tcp_initial_window(struct tcpcb *tp);
 void	 tcp_timer_keep_activity(struct tcpcb *tp, int thflags);
-boolean_t
-	 tcp_tso_pullup(struct mbuf **mp, int hoff, struct ip **ip, int *iphlen,
-	 	struct tcphdr **th, int *thoff);
 void	 syncache_init(void);
 void	 syncache_unreach(struct in_conninfo *, struct tcphdr *);
 int	 syncache_expand(struct in_conninfo *, struct tcphdr *,

@@ -1641,51 +1641,6 @@ ether_demux(struct mbuf *m)
 	lwkt_sendmsg(netisr_hashport(m->m_pkthdr.hash), &pmsg->base.lmsg);
 }
 
-boolean_t
-ether_tso_pullup(struct mbuf **mp, int *hoff0, struct ip **ip, int *iphlen,
-    struct tcphdr **th, int *thoff)
-{
-	struct mbuf *m = *mp;
-	struct ether_header *eh;
-	uint16_t type;
-	int hoff;
-
-	KASSERT(M_WRITABLE(m), ("not writable"));
-
-	hoff = ETHER_HDR_LEN;
-	if (m->m_len < hoff) {
-		m = m_pullup(m, hoff);
-		if (m == NULL)
-			goto failed;
-	}
-	eh = mtod(m, struct ether_header *);
-	type = eh->ether_type;
-
-	if (type == htons(ETHERTYPE_VLAN)) {
-		struct ether_vlan_header *evh;
-
-		hoff += EVL_ENCAPLEN;
-		if (m->m_len < hoff) {
-			m = m_pullup(m, hoff);
-			if (m == NULL)
-				goto failed;
-		}
-		evh = mtod(m, struct ether_vlan_header *);
-		type = evh->evl_proto;
-	}
-	KASSERT(type == htons(ETHERTYPE_IP), ("not IP %d", ntohs(type)));
-
-	*mp = m;
-	*hoff0 = hoff;
-	return tcp_tso_pullup(mp, hoff, ip, iphlen, th, thoff);
-
-failed:
-	if (m != NULL)
-		m_freem(m);
-	*mp = NULL;
-	return FALSE;
-}
-
 u_char *
 kether_aton(const char *macstr, u_char *addr)
 {
