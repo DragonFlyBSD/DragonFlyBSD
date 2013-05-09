@@ -117,8 +117,6 @@ static int	ip_setmoptions
 
 int	ip_optcopy(struct ip *, struct ip *);
 
-extern	int route_assert_owner_access;
-
 extern	struct protosw inetsw[];
 
 static int
@@ -219,16 +217,8 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		bzero(ro, sizeof *ro);
 	} else if (ro->ro_rt != NULL && ro->ro_rt->rt_cpuid != mycpuid) {
 		if (flags & IP_DEBUGROUTE) {
-			if (route_assert_owner_access) {
-				panic("ip_output: "
-				      "rt rt_cpuid %d accessed on cpu %d\n",
-				      ro->ro_rt->rt_cpuid, mycpuid);
-			} else {
-				kprintf("ip_output: "
-					"rt rt_cpuid %d accessed on cpu %d\n",
-					ro->ro_rt->rt_cpuid, mycpuid);
-				print_backtrace(-1);
-			}
+			panic("ip_output: rt rt_cpuid %d accessed on cpu %d\n",
+			    ro->ro_rt->rt_cpuid, mycpuid);
 		}
 
 		/*
