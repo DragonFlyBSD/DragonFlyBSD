@@ -167,7 +167,7 @@ static int	bnx_miibus_readreg(device_t, int, int);
 static int	bnx_miibus_writereg(device_t, int, int, int);
 static void	bnx_miibus_statchg(device_t);
 
-static void	bnx_handle_status(struct bnx_softc *);
+static int	bnx_handle_status(struct bnx_softc *);
 #ifdef IFPOLL_ENABLE
 static void	bnx_npoll(struct ifnet *, struct ifpoll_info *);
 static void	bnx_npoll_rx(struct ifnet *, void *, int);
@@ -2865,10 +2865,11 @@ bnx_txeof(struct bnx_tx_ring *txr, uint16_t tx_cons)
 		ifsq_devstart(txr->bnx_ifsq);
 }
 
-static void
+static int
 bnx_handle_status(struct bnx_softc *sc)
 {
 	uint32_t status;
+	int handle = 0;
 
 	status = *sc->bnx_hw_status;
 
@@ -2911,10 +2912,19 @@ bnx_handle_status(struct bnx_softc *sc)
 			bnx_init(sc);
 			bnx_deserialize_skipmain(sc);
 		}
+		handle = 1;
 	}
 
-	if ((status & BGE_STATFLAG_LINKSTATE_CHANGED) || sc->bnx_link_evt)
+	if ((status & BGE_STATFLAG_LINKSTATE_CHANGED) || sc->bnx_link_evt) {
+		if (bootverbose) {
+			if_printf(&sc->arpcom.ac_if, "link change, "
+			    "link_evt %d\n", sc->bnx_link_evt);
+		}
 		bnx_link_poll(sc);
+		handle = 1;
+	}
+
+	return handle;
 }
 
 #ifdef IFPOLL_ENABLE
@@ -2967,7 +2977,15 @@ bnx_npoll_status_notag(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(&sc->bnx_main_serialize);
 
-	bnx_handle_status(sc);
+	if (bnx_handle_status(sc)) {
+		/*
+		 * Status changes are handled; force the chip to
+		 * update the status block to reflect whether there
+		 * are more status changes or not, else staled status
+		 * changes are always seen.
+		 */
+		BNX_SETBIT(sc, BGE_HCC_MODE, BGE_HCCMODE_COAL_NOW);
+	}
 }
 
 static void
