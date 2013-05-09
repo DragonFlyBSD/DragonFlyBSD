@@ -67,30 +67,10 @@
 /*
  * SERIALIZATION API RULES:
  *
- * - If the driver uses the same serializer for the interrupt as for the
- *   ifnet, most of the serialization will be done automatically for the
- *   driver.
- *
- * - ifmedia entry points will be serialized by the ifmedia code using the
- *   ifnet serializer.
- *
- * - if_* entry points except for if_input will be serialized by the IF
- *   and protocol layers.
- *
- * - The device driver must be sure to serialize access from timeout code
- *   installed by the device driver.
- *
- * - The device driver typically holds the serializer at the time it wishes
- *   to call if_input.
- *
  * - We must call lwkt_serialize_handler_enable() prior to enabling the
  *   hardware interrupt and lwkt_serialize_handler_disable() after disabling
  *   the hardware interrupt in order to avoid handler execution races from
  *   scheduled interrupt threads.
- *
- *   NOTE!  Since callers into the device driver hold the ifnet serializer,
- *   the device driver may be holding a serializer at the time it calls
- *   if_input even if it is not serializer-aware.
  */
 
 #include "opt_ifpoll.h"

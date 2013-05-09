@@ -67,6 +67,9 @@
  * the routine if_input. It is called with the mbuf chain as parameter:
  *	ifp->if_input(ifp, m)
  * The input routine removes the protocol dependent header if necessary.
+ * NOTE:
+ * Driver may call type specific interface, e.g. ether_input_pkt(), instead
+ * of if_input, to take advantage of hardware supplied information.
  *
  * Routines exist for locating interfaces by their addresses
  * or for locating a interface on a certain network, as well as more general
@@ -113,9 +116,9 @@ TAILQ_HEAD(ifprefixhead, ifprefix);
 TAILQ_HEAD(ifmultihead, ifmultiaddr);
 
 /*
- * Structure defining a queue for a network interface.
+ * Structure defining a mbuf queue.
  */
-struct	ifqueue {
+struct ifqueue {
 	struct	mbuf *ifq_head;
 	struct	mbuf *ifq_tail;
 	int	ifq_len;
@@ -133,8 +136,11 @@ struct	ifqueue {
  *    See ifnet.if_npoll and ifnet.if_npoll_unused for example.
  */
 
+/*
+ * Network serialize/deserialize types
+ */
 enum ifnet_serialize {
-	IFNET_SERIALIZE_ALL
+	IFNET_SERIALIZE_ALL	/* all serializers */
 };
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
@@ -146,9 +152,9 @@ enum ifnet_serialize {
  */
 
 /*
- * NB: For FreeBSD, it is assumed that each NIC driver's softc starts with  
- * one of these structures, typically held within an arpcom structure.   
- * 
+ * NB: For DragonFlyBSD, it is assumed that each NIC driver's softc starts
+ * with one of these structures, typically held within an arpcom structure.
+ *
  *	struct <foo>_softc {
  *		struct arpcom {
  *			struct  ifnet ac_if;
@@ -159,33 +165,154 @@ enum ifnet_serialize {
  *
  * The assumption is used in a number of places, including many
  * files in sys/net, device drivers, and sys/dev/mii.c:miibus_attach().
- * 
+ *
  * Unfortunately devices' softc are opaque, so we depend on this layout
  * to locate the struct ifnet from the softc in the generic code.
  *
- * MPSAFE NOTES: 
+ *
+ *
+ * MPSAFE NOTES:
  *
  * ifnet is protected by calling if_serialize, if_tryserialize and
  * if_deserialize serialize functions with the ifnet_serialize parameter.
- * ifnet.if_snd is protected by its own spinlock.  Callers of if_ioctl,
- * if_watchdog, if_init, if_resolvemulti, and if_poll should call the
- * ifnet serialize functions with IFNET_SERIALIZE_ALL.  Callers of if_start
- * sould call the ifnet serialize functions with IFNET_SERIALIZE_TX.
+ * Callers of if_ioctl, if_watchdog, if_init, if_resolvemulti, and if_npoll
+ * should call the ifnet serialize functions with IFNET_SERIALIZE_ALL.
  *
- * FIXME: Device drivers usually use the same serializer for their interrupt
- * FIXME: but this is not required.
+ * if_snd subqueues are protected by its own serializers.  Callers of
+ * if_start should call ifsq_serialiize_hw(), ifsq_deserialize_hw() and
+ * ifsq_tryserialize_hw() to properly serialize hardware for transmission.
  *
- * Caller of if_output must not serialize ifnet by calling ifnet serialize
- * functions; if_output will call the ifnet serialize functions based on
- * its own needs.  Caller of if_input does not necessarily hold the related
- * serializer.
+ * Caller of if_output MUST NOT serialize ifnet or if_snd by calling
+ * the related serialize functions.
+ *
+ * For better tranmission performance, driver should setup if_snd subqueue
+ * owner cpuid properly using ifsq_set_cpuid() (or ifq_set_cpuid(), if not
+ * multiple transmit queue capable).  Normally, the if_snd subqueue owner
+ * cpu is the one that processing the transmission interrupt.  And in driver,
+ * direct call of if_start should be avoided, use ifsq_devstart() or
+ * ifsq_devstart_sched() instead (or if_devstart()/if_devstart_sched(), if
+ * not multiple transmit queue capable).
+ *
+ *
+ *
+ * STATISTICS:
+ *
+ * if_data is no longer used to hold per interface statistics, so DO NOT use
+ * the old style ifp->if_ipackets++ to update statistics; instead IFNET_STAT_
+ * macros should be used.
+ *
+ *
+ *
+ * SINGLE SERIALIZER MODE:
+ *
+ * In this mode, driver MUST NOT setup if_serialize, if_deserialize,
+ * if_tryserialize or if_serialize_assert.  Driver could supply its own
+ * serializer to be used (through the type specific attach function, e.g.
+ * ether_ifattach()) or it could depend on the default serializer.  In this
+ * mode if_serializer will be setup properly.
  *
  * If a device driver installs the same serializer for its interrupt
  * as for ifnet, then the driver only really needs to worry about further
- * serialization in timeout based entry points.  All other entry points
- * will already be serialized.  Older ISA drivers still using the old
- * interrupt infrastructure will have to obtain and release the serializer
- * in their interrupt routine themselves.
+ * serialization in timeout based entry points and device_method_t entry
+ * points.  All other entry points will already be serialized.
+ *
+ *
+ *
+ * MULTI SERIALIZERS MODE:
+ *
+ * In this mode, driver MUST setup if_serialize, if_deserialize,
+ * if_tryserialize and if_serialize_assert.  Driver MUST NOT supply its own
+ * serializer to be used.  In this mode, if_serializer will be left as NULL.
+ * And driver MUST setup if_snd subqueues' hardware serailizer properly by
+ * calling ifsq_set_hw_serialize().
+ *
+ *
+ *
+ * MULTIPLE TRANSMIT QUEUES:
+ *
+ * This should be implemented in "MULTI SERIALIZERS MODE".  Legacy if_watchdog
+ * method SHOULD NOT be used.
+ *
+ * 1) Attach
+ *
+ * Before the type specific attach, e.g. ether_ifattach(), driver should
+ * setup the transmit queue count and cpuid to subqueue mapping method
+ * properly (assume QCOUNT is power of 2):
+ *
+ *	ifq_set_subq_cnt(&ifp->if_snd, QCOUNT);
+ *      ifp->if_mapsubq = ifq_mapsubq_mask;
+ *	ifq_set_subq_mask(&ifp->if_snd, QCOUNT - 1);
+ *
+ * After the type specific attach, driver should setup the subqueues owner
+ * cpu, serializer and watchdog properly:
+ *
+ *	for (i = 0; i < QCOUNT, ++i) {
+ *		struct ifaltq_subque *ifsq = ifq_get_subq(&ifp->if_snd, i);
+ *
+ *		ifsq_set_cpuid(ifsq, Q_CPUID);
+ *		ifsq_set_hw_serialize(ifsq, Q_SLIZE);
+ *		ifsq_watchdog_init(Q_WDOG, ifsq, Q_WDOG_FUNC);
+ *	}
+ *
+ * Q_CPUID, the cpu which handles the hardware transmit queue interrupt
+ * Q_SLIZE, the serializer protects the hardware transmit queue
+ * Q_WDOG, per hardware transmit queue watchdog handler, struct ifsubq_watchdog
+ * Q_WDOG_FUNC, watchdog function, probably should reset hardware
+ *
+ * 2) Stop
+ *
+ * Make sure per hardware transmit queue watchdog is stopped and oactive is
+ * cleared:
+ *
+ *	for (i = 0; i < QCOUNT, ++i) {
+ *		ifsq_clr_oactive(ifsq);
+ *		ifsq_watchdog_stop(Q_WDOG);
+ *	}
+ *
+ * 3) Initialize
+ *
+ * Make sure per hardware transmit queue watchdog is started and oactive is
+ * cleared:
+ *
+ *	for (i = 0; i < QCOUNT, ++i) {
+ *		ifsq_clr_oactive(ifsq);
+ *		ifsq_watchdog_start(Q_WDOG);
+ *	}
+ *
+ * 4) if_start
+ *
+ * if_start takes subqueue as parameter, so instead of using ifq_ functions
+ * ifsq_ functions should be used.  If device could not be programmed to
+ * transmit when no media link is not up, MAKE SURE to purge the subqueue:
+ *
+ *	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifsq_is_oactive(ifsq))
+ *		return;
+ *	if (NO_LINK) {
+ *		ifsq_purge(ifsq);
+ *		return;
+ *	}
+ *	for (;;) {
+ *		if (NO_FREE_DESC) {
+ *			ifsq_set_oactive(ifsq);
+ *			break;
+ *		}
+ *		m = ifsq_dequeue(ifsq, NULL);
+ *		if (m != NULL)
+ *			DRIVER_ENCAP(m);
+ *		Q_WDOG.wd_timer = WDOG_TIMEOUT;
+ *	}
+ *
+ * 5) Transmission done, e.g. transmit queue interrupt processing
+ *
+ * Same as if_start, ifsq_ functions should be used:
+ *
+ *	DRIVER_COLLECT_DESC();
+ *	if (HAS_FREE_DESC)
+ *		ifsq_clr_oactive(ifsq);
+ *	if (NO_PENDING_DESC)
+ *		Q_WDOG.wd_timer = 0;
+ *	if (!ifsq_is_empty(ifsq))
+ *		ifsq_devstart(ifsq);
  */
 struct ifnet {
 	void	*if_softc;		/* pointer to driver state */
@@ -195,7 +322,7 @@ struct ifnet {
 	const char *if_dname;		/* driver name */
 	int	if_dunit;		/* unit or IF_DUNIT_NONE */
 	void	*if_vlantrunks;		/* vlan trunks */
-	struct	ifaddrhead *if_addrheads; /* array[NCPU] of TAILQs of addresses per if */
+	struct	ifaddrhead *if_addrheads; /* per-cpu per-if addresses */
 	int	if_pcount;		/* number of promiscuous listeners */
 	void	*if_carp;		/* carp interfaces */
 	struct	bpf_if *if_bpf;		/* packet filter structure */
@@ -206,7 +333,7 @@ struct ifnet {
 	int	if_capenable;		/* enabled features */
 	void	*if_linkmib;		/* link-type-specific MIB data */
 	size_t	if_linkmiblen;		/* length of above data */
-	struct	if_data if_data;
+	struct	if_data if_data;	/* NOTE: stats are in if_data_pcpu */
 	struct	ifmultihead if_multiaddrs; /* multicast addresses configured */
 	int	if_amcount;		/* number of all-multicast requests */
 /* procedure handles */
@@ -221,15 +348,19 @@ struct ifnet {
 		(struct ifnet *, u_long, caddr_t, struct ucred *);
 	void	(*if_watchdog)		/* timer routine */
 		(struct ifnet *);
-	void	(*if_init)		/* Init routine */
+	void	(*if_init)		/* init routine */
 		(void *);
 	int	(*if_resolvemulti)	/* validate/resolve multicast */
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
 	void	*if_unused5;
 	TAILQ_HEAD(, ifg_list) if_groups; /* linked list of groups per if */
-	int	(*if_mapsubq)
+	int	(*if_mapsubq)		/* cpuid to if_snd subqueue map */
 		(struct ifaltq *, int);
 	int	if_unused2;
+
+	/*
+	 * ifnet serialize functions
+	 */
 	void	(*if_serialize)
 		(struct ifnet *, enum ifnet_serialize);
 	void	(*if_deserialize)
@@ -243,26 +374,34 @@ struct ifnet {
 	/* Place holder */
 	void	(*if_serialize_unused)(void);
 #endif
+
 #ifdef IFPOLL_ENABLE
-	void	(*if_npoll)
+	void	(*if_npoll)		/* polling config */
 		(struct ifnet *, struct ifpoll_info *);
 #else
 	/* Place holder */
 	void	(*if_npoll_unused)(void);
 #endif
 	int	if_tsolen;		/* max TSO length */
-	struct	ifaltq if_snd;		/* output queue (includes altq) */
+	struct	ifaltq if_snd;		/* output subqueues */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
 	void	*if_bridge;		/* bridge glue */
 	void	*if_afdata[AF_MAX];
 	struct ifaddr	*if_lladdr;
-	struct lwkt_serialize *if_serializer;	/* serializer or MP lock */
-	struct lwkt_serialize if_default_serializer; /* if not supplied */
-	struct mtx	if_ioctl_mtx;	/* high-level ioctl serializing mutex */
+
+	/* serializer, in single serializer mode */
+	struct lwkt_serialize *if_serializer;
+	/*
+	 * default serializer, in single serializer mode,
+	 * if driver does not supply one
+	 */
+	struct lwkt_serialize if_default_serializer;
+
+	struct mtx	if_ioctl_mtx;	/* high-level ioctl mutex */
 	int	if_unused4;
-	struct ifdata_pcpu *if_data_pcpu;
-	void	*if_pf_kif; /* pf interface abstraction */
+	struct ifdata_pcpu *if_data_pcpu; /* per-cpu stats */
+	void	*if_pf_kif;		/* pf interface */
 	void	*if_unused7;
 };
 typedef void if_init_f_t (void *);
@@ -295,6 +434,9 @@ typedef void if_init_f_t (void *);
 /* for compatibility with other BSDs */
 #define	if_list		if_link
 
+/*
+ * Per-cpu interface statistics
+ */
 struct ifdata_pcpu {
 	u_long	ifd_ipackets;		/* packets received on interface */
 	u_long	ifd_ierrors;		/* input errors on interface */
@@ -309,12 +451,10 @@ struct ifdata_pcpu {
 	u_long	ifd_noproto;		/* destined for unsupported protocol */
 } __cachealign;
 
-#endif
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
 
 /*
- * Device private output queues and input queues are queues of messages
- * stored on ifqueue structures (defined above).  Entries are added to
- * and deleted from these structures by these macros.
+ * ifqueue operation macros
  */
 #define	IF_QFULL(ifq)		((ifq)->ifq_len >= (ifq)->ifq_maxlen)
 #define	IF_DROP(ifq)		((ifq)->ifq_drops++)
@@ -415,6 +555,12 @@ struct in_ifaddr_container {
 	struct ifaddr_container	*ia_ifac; /* parent ifaddr_container */
 };
 
+/*
+ * Per-cpu ifaddr container:
+ * - per-cpu ifaddr reference count
+ * - linkage to per-cpu addresses lists
+ * - per-cpu ifaddr statistics
+ */
 struct ifaddr_container {
 #define IFA_CONTAINER_MAGIC	0x19810219
 #define IFA_CONTAINER_DEAD	0xc0dedead
@@ -452,6 +598,11 @@ struct ifaddr_container {
  * of an interface.  They are maintained by the different address families,
  * are allocated and attached when an address is set, and are linked
  * together so all addresses for an interface can be located.
+ *
+ * NOTE:
+ * Statistics are no longer stored in if_data, instead, they are stored
+ * in the per-cpu ifaddr_container.  So don't use the old style
+ * ifa->if_ipackets++ to update statistics, use IFA_STAT_ macros.
  */
 struct ifaddr {
 	struct	sockaddr *ifa_addr;	/* address of interface */
@@ -461,7 +612,7 @@ struct ifaddr {
 	struct	if_data if_data;	/* not all members are meaningful */
 	struct	ifnet *ifa_ifp;		/* back-pointer to interface */
 	void	*ifa_link_pad;
-	struct ifaddr_container *ifa_containers;
+	struct ifaddr_container *ifa_containers; /* per-cpu data */
 	void	(*ifa_rtrequest)	/* check or clean routes (+ or -)'d */
 		(int, struct rtentry *, struct rt_addrinfo *);
 	u_short	ifa_flags;		/* mostly rt_flags for cloning */
@@ -510,11 +661,17 @@ struct ifmultiaddr {
 
 #ifdef _KERNEL
 
+/*
+ * ifaddr statistics update macro
+ */
 #define IFA_STAT_INC(ifa, name, v) \
 do { \
 	(ifa)->ifa_containers[mycpuid].ifa_##name += (v); \
 } while (0)
 
+/*
+ * Interface (ifnet) statistics update macros
+ */
 #define IFNET_STAT_INC(ifp, name, v) \
 do { \
 	(ifp)->if_data_pcpu[mycpuid].ifd_##name += (v); \
