@@ -33,10 +33,8 @@
 #define _NET_IFQ_VAR_H_
 
 #ifndef _KERNEL
-
 #error "This file should not be included by userland programs."
-
-#else
+#endif
 
 #ifndef _SYS_SYSTM_H_
 #include <sys/systm.h>
@@ -65,6 +63,9 @@
 struct ifaltq;
 struct ifaltq_subque;
 
+/*
+ * Subqueue watchdog
+ */
 typedef void	(*ifsq_watchdog_t)(struct ifaltq_subque *);
 
 struct ifsubq_watchdog {
@@ -147,7 +148,7 @@ ifq_set_ready(struct ifaltq *_ifq)
 }
 
 /*
- * ALTQ lock must be held
+ * Subqueue lock must be held
  */
 static __inline int
 ifsq_enqueue_locked(struct ifaltq_subque *_ifsq, struct mbuf *_m,
@@ -201,7 +202,7 @@ ifsq_dequeue(struct ifaltq_subque *_ifsq, struct mbuf *_mpolled)
 }
 
 /*
- * ALTQ lock must be held
+ * Subqueue lock must be held
  */
 static __inline struct mbuf *
 ifsq_poll_locked(struct ifaltq_subque *_ifsq)
@@ -231,7 +232,7 @@ ifsq_poll(struct ifaltq_subque *_ifsq)
 }
 
 /*
- * ALTQ lock must be held
+ * Subqueue lock must be held
  */
 static __inline void
 ifsq_purge_locked(struct ifaltq_subque *_ifsq)
@@ -278,7 +279,7 @@ ifq_unlock_all(struct ifaltq *_ifq)
 }
 
 /*
- * ALTQ lock must be held
+ * All of the subqueue locks must be held
  */
 static __inline void
 ifq_purge_all_locked(struct ifaltq *_ifq)
@@ -332,7 +333,7 @@ ifsq_prepend(struct ifaltq_subque *_ifsq, struct mbuf *_m)
 }
 
 /*
- * Interface TX serializer must be held
+ * Subqueue hardware serializer must be held
  */
 static __inline void
 ifsq_set_oactive(struct ifaltq_subque *_ifsq)
@@ -341,7 +342,7 @@ ifsq_set_oactive(struct ifaltq_subque *_ifsq)
 }
 
 /*
- * Interface TX serializer must be held
+ * Subqueue hardware serializer must be held
  */
 static __inline void
 ifsq_clr_oactive(struct ifaltq_subque *_ifsq)
@@ -350,7 +351,7 @@ ifsq_clr_oactive(struct ifaltq_subque *_ifsq)
 }
 
 /*
- * Interface TX serializer must be held
+ * Subqueue hardware serializer must be held
  */
 static __inline int
 ifsq_is_oactive(const struct ifaltq_subque *_ifsq)
@@ -359,11 +360,11 @@ ifsq_is_oactive(const struct ifaltq_subque *_ifsq)
 }
 
 /*
- * Hand a packet to an interface.
+ * Hand a packet to the interface's default subqueue.
  *
- * Interface TX serializer must be held.  If the interface TX
- * serializer is not held yet, ifq_dispatch() should be used
- * to get better performance.
+ * The default subqueue hardware serializer must be held.  If the
+ * subqueue hardware serializer is not held yet, ifq_dispatch()
+ * should be used to get better performance.
  */
 static __inline int
 ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
@@ -393,7 +394,7 @@ ifsq_is_empty(const struct ifaltq_subque *_ifsq)
 }
 
 /*
- * ALTQ lock must be held
+ * Subqueue lock must be held
  */
 static __inline int
 ifsq_data_ready(struct ifaltq_subque *_ifsq)
@@ -407,7 +408,7 @@ ifsq_data_ready(struct ifaltq_subque *_ifsq)
 }
 
 /*
- * ALTQ lock must be held
+ * Subqueue lock must be held
  */
 static __inline int
 ifsq_is_started(const struct ifaltq_subque *_ifsq)
@@ -416,7 +417,7 @@ ifsq_is_started(const struct ifaltq_subque *_ifsq)
 }
 
 /*
- * ALTQ lock must be held
+ * Subqueue lock must be held
  */
 static __inline void
 ifsq_set_started(struct ifaltq_subque *_ifsq)
@@ -425,7 +426,7 @@ ifsq_set_started(struct ifaltq_subque *_ifsq)
 }
 
 /*
- * ALTQ lock must be held
+ * Subqueue lock must be held
  */
 static __inline void
 ifsq_clr_started(struct ifaltq_subque *_ifsq)
@@ -603,5 +604,4 @@ ifq_set_cpuid(struct ifaltq *_ifq, int _cpuid)
 	ifsq_set_cpuid(ifq_get_subq_default(_ifq), _cpuid);
 }
 
-#endif	/* _KERNEL */
 #endif	/* _NET_IFQ_VAR_H_ */
