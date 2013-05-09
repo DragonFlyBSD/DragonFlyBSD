@@ -250,7 +250,7 @@ ifsq_stage_insert(struct ifsubq_stage_head *head, struct ifsubq_stage *stage)
 }
 
 /*
- * Schedule ifnet.if_start on ifnet's CPU
+ * Schedule ifnet.if_start on the subqueue owner CPU
  */
 static void
 ifsq_ifstart_schedule(struct ifaltq_subque *ifsq, int force)
@@ -278,8 +278,8 @@ ifsq_ifstart_schedule(struct ifaltq_subque *ifsq, int force)
 
 /*
  * NOTE:
- * This function will release ifnet.if_start interlock,
- * if ifnet.if_start does not need to be scheduled
+ * This function will release ifnet.if_start subqueue interlock,
+ * if ifnet.if_start for the subqueue does not need to be scheduled
  */
 static __inline int
 ifsq_ifstart_need_schedule(struct ifaltq_subque *ifsq, int running)
@@ -291,19 +291,20 @@ ifsq_ifstart_need_schedule(struct ifaltq_subque *ifsq, int running)
 	) {
 		ALTQ_SQ_LOCK(ifsq);
 		/*
-		 * ifnet.if_start interlock is released, if:
+		 * ifnet.if_start subqueue interlock is released, if:
 		 * 1) Hardware can not take any packets, due to
 		 *    o  interface is marked down
-		 *    o  hardware queue is full (ifq_is_oactive)
+		 *    o  hardware queue is full (ifsq_is_oactive)
 		 *    Under the second situation, hardware interrupt
 		 *    or polling(4) will call/schedule ifnet.if_start
-		 *    when hardware queue is ready
-		 * 2) There is not packet in the ifnet.if_snd.
+		 *    on the subqueue when hardware queue is ready
+		 * 2) There is no packet in the subqueue.
 		 *    Further ifq_dispatch or ifq_handoff will call/
-		 *    schedule ifnet.if_start
+		 *    schedule ifnet.if_start on the subqueue.
 		 * 3) TBR is used and it does not allow further
 		 *    dequeueing.
-		 *    TBR callout will call ifnet.if_start
+		 *    TBR callout will call ifnet.if_start on the
+		 *    subqueue.
 		 */
 		if (!running || !ifsq_data_ready(ifsq)) {
 			ifsq_clr_started(ifsq);
@@ -329,7 +330,7 @@ ifsq_ifstart_dispatch(netmsg_t msg)
 
 	if (mycpuid != ifsq_get_cpuid(ifsq)) {
 		/*
-		 * We need to chase the ifnet CPU change.
+		 * We need to chase the subqueue owner CPU change.
 		 */
 		ifsq_ifstart_schedule(ifsq, 1);
 		return;
@@ -347,8 +348,8 @@ ifsq_ifstart_dispatch(netmsg_t msg)
 	if (need_sched) {
 		/*
 		 * More data need to be transmitted, ifnet.if_start is
-		 * scheduled on ifnet's CPU, and we keep going.
-		 * NOTE: ifnet.if_start interlock is not released.
+		 * scheduled on the subqueue owner CPU, and we keep going.
+		 * NOTE: ifnet.if_start subqueue interlock is not released.
 		 */
 		ifsq_ifstart_schedule(ifsq, 0);
 	}
@@ -439,8 +440,7 @@ if_default_serialize_assert(struct ifnet *ifp,
 /*
  * Attach an interface to the list of "active" interfaces.
  *
- * The serializer is optional.  If non-NULL access to the interface
- * may be MPSAFE.
+ * The serializer is optional.
  */
 void
 if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
@@ -2554,15 +2554,15 @@ ifsq_ifstart_try(struct ifaltq_subque *ifsq, int force_sched)
 	int running = 0, need_sched;
 
 	/*
-	 * Try to do direct ifnet.if_start first, if there is
-	 * contention on ifnet's serializer, ifnet.if_start will
-	 * be scheduled on ifnet's CPU.
+	 * Try to do direct ifnet.if_start on the subqueue first, if there is
+	 * contention on the subqueue hardware serializer, ifnet.if_start on
+	 * the subqueue will be scheduled on the subqueue owner CPU.
 	 */
 	if (!ifsq_tryserialize_hw(ifsq)) {
 		/*
-		 * ifnet serializer contention happened,
-		 * ifnet.if_start is scheduled on ifnet's
-		 * CPU, and we keep going.
+		 * Subqueue hardware serializer contention happened,
+		 * ifnet.if_start on the subqueue is scheduled on
+		 * the subqueue owner CPU, and we keep going.
 		 */
 		ifsq_ifstart_schedule(ifsq, 1);
 		return;
@@ -2579,48 +2579,51 @@ ifsq_ifstart_try(struct ifaltq_subque *ifsq, int force_sched)
 
 	if (need_sched) {
 		/*
-		 * More data need to be transmitted, ifnet.if_start is
-		 * scheduled on ifnet's CPU, and we keep going.
-		 * NOTE: ifnet.if_start interlock is not released.
+		 * More data need to be transmitted, ifnet.if_start on the
+		 * subqueue is scheduled on the subqueue owner CPU, and we
+		 * keep going.
+		 * NOTE: ifnet.if_start subqueue interlock is not released.
 		 */
 		ifsq_ifstart_schedule(ifsq, force_sched);
 	}
 }
 
 /*
- * IFSUBQ packets staging mechanism:
+ * Subqeue packets staging mechanism:
  *
- * The packets enqueued into IFSUBQ are staged to a certain amount before the
- * ifnet's if_start is called.  In this way, the driver could avoid writing
- * to hardware registers upon every packet, instead, hardware registers
- * could be written when certain amount of packets are put onto hardware
- * TX ring.  The measurement on several modern NICs (emx(4), igb(4), bnx(4),
- * bge(4), jme(4)) shows that the hardware registers writing aggregation
- * could save ~20% CPU time when 18bytes UDP datagrams are transmitted at
- * 1.48Mpps.  The performance improvement by hardware registers writing
- * aggeregation is also mentioned by Luigi Rizzo's netmap paper
- * (http://info.iet.unipi.it/~luigi/netmap/).
+ * The packets enqueued into the subqueue are staged to a certain amount
+ * before the ifnet.if_start on the subqueue is called.  In this way, the
+ * driver could avoid writing to hardware registers upon every packet,
+ * instead, hardware registers could be written when certain amount of
+ * packets are put onto hardware TX ring.  The measurement on several modern
+ * NICs (emx(4), igb(4), bnx(4), bge(4), jme(4)) shows that the hardware
+ * registers writing aggregation could save ~20% CPU time when 18bytes UDP
+ * datagrams are transmitted at 1.48Mpps.  The performance improvement by
+ * hardware registers writing aggeregation is also mentioned by Luigi Rizzo's
+ * netmap paper (http://info.iet.unipi.it/~luigi/netmap/).
  *
- * IFSUBQ packets staging is performed for two entry points into drivers's
+ * Subqueue packets staging is performed for two entry points into drivers'
  * transmission function:
- * - Direct ifnet's if_start calling, i.e. ifsq_ifstart_try()
- * - ifnet's if_start scheduling, i.e. ifsq_ifstart_schedule()
+ * - Direct ifnet.if_start calling on the subqueue, i.e. ifsq_ifstart_try()
+ * - ifnet.if_start scheduling on the subqueue, i.e. ifsq_ifstart_schedule()
  *
- * IFSUBQ packets staging will be stopped upon any of the following conditions:
+ * Subqueue packets staging will be stopped upon any of the following
+ * conditions:
  * - If the count of packets enqueued on the current CPU is great than or
  *   equal to ifsq_stage_cntmax. (XXX this should be per-interface)
  * - If the total length of packets enqueued on the current CPU is great
  *   than or equal to the hardware's MTU - max_protohdr.  max_protohdr is
  *   cut from the hardware's MTU mainly bacause a full TCP segment's size
  *   is usually less than hardware's MTU.
- * - ifsq_ifstart_schedule() is not pending on the current CPU and if_start
- *   interlock (if_snd.altq_started) is not released.
+ * - ifsq_ifstart_schedule() is not pending on the current CPU and
+ *   ifnet.if_start subqueue interlock (ifaltq_subq.ifsq_started) is not
+ *   released.
  * - The if_start_rollup(), which is registered as low priority netisr
  *   rollup function, is called; probably because no more work is pending
  *   for netisr.
  *
  * NOTE:
- * Currently IFSUBQ packet staging is only performed in netisr threads.
+ * Currently subqueue packet staging is only performed in netisr threads.
  */
 int
 ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
@@ -2673,7 +2676,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		}
 
 		/*
-		 * Hold the interlock of ifnet.if_start
+		 * Hold the subqueue interlock of ifnet.if_start
 		 */
 		ifsq_set_started(ifsq);
 		start = 1;
@@ -2934,7 +2937,8 @@ if_start_rollup(void)
 			ALTQ_SQ_LOCK(ifsq);
 			if (!ifsq_is_started(ifsq)) {
 				/*
-				 * Hold the interlock of ifnet.if_start
+				 * Hold the subqueue interlock of
+				 * ifnet.if_start
 				 */
 				ifsq_set_started(ifsq);
 				start = 1;
