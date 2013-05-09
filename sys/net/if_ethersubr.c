@@ -1414,10 +1414,10 @@ ether_input_handler(netmsg_t nmsg)
 }
 
 /*
- * Send the packet to the target msgport
+ * Send the packet to the target netisr msgport
  *
- * At this point the packet had better be characterized (M_HASH set),
- * so we know which cpu to send it to.
+ * At this point the packet must be characterized (M_HASH set),
+ * so we know which netisr to send it to.
  */
 static void
 ether_dispatch(int isr, struct mbuf *m)
@@ -1488,7 +1488,7 @@ ether_input_pkt(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi)
 
 	/*
 	 * If the packet has been characterized (pi->pi_netisr / M_HASH)
-	 * we can dispatch it immediately without further inspection.
+	 * we can dispatch it immediately with trivial checks.
 	 */
 	if (pi != NULL && (m->m_flags & M_HASH)) {
 #ifdef RSS_DEBUG
