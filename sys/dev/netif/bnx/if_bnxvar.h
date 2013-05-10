@@ -340,6 +340,7 @@ struct bnx_softc {
 	uint32_t		bnx_rx_coal_ticks;
 	uint32_t		bnx_tx_coal_ticks;
 	uint32_t		bnx_rx_coal_bds;
+	uint32_t		bnx_rx_coal_bds_poll;
 	uint32_t		bnx_tx_coal_bds;
 	uint32_t		bnx_tx_coal_bds_poll;
 	uint32_t		bnx_rx_coal_bds_int;
