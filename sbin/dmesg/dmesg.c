@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dmesg.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dmesg/dmesg.c,v 1.11.2.3 2001/08/08 22:32:15 obrien Exp $
- * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.7 2005/01/14 06:38:41 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -67,15 +66,19 @@ main(int argc, char **argv)
 	kvm_t *kd;
 	char buf[5];
 	int all = 0;
+	int clear = 0;
 	int pri = 0;
 	size_t buflen, bufpos;
 
 	setlocale(LC_CTYPE, "");
 	memf = nlistf = NULL;
-	while ((ch = getopt(argc, argv, "aM:N:")) != -1)
+	while ((ch = getopt(argc, argv, "acM:N:")) != -1)
 		switch(ch) {
 		case 'a':
 			all++;
+			break;
+		case 'c':
+			clear = 1;
 			break;
 		case 'M':
 			memf = optarg;
@@ -173,12 +176,15 @@ main(int argc, char **argv)
 	} while (++p != ep);
 	if (!newl)
 		putchar('\n');
+	if (clear)
+		if (sysctlbyname("kern.msgbuf_clear", NULL, NULL, &clear, sizeof(int)) != 0)
+			err(1, "sysctl kern.msgbuf_clear");
 	exit(0);
 }
 
 void
 usage(void)
 {
-	fprintf(stderr, "usage: dmesg [-a] [-M core] [-N system]\n");
+	fprintf(stderr, "usage: dmesg [-ac] [-M core] [-N system]\n");
 	exit(1);
 }

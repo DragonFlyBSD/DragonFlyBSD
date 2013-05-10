@@ -31,9 +31,8 @@
 .\"
 .\"     @(#)dmesg.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/sbin/dmesg/dmesg.8,v 1.5.2.5 2002/08/21 18:58:17 trhodes Exp $
-.\" $DragonFly: src/sbin/dmesg/dmesg.8,v 1.2 2003/06/17 04:27:32 dillon Exp $
 .\"
-.Dd June 5, 1993
+.Dd May 10, 2013
 .Dt DMESG 8
 .Os
 .Sh NAME
@@ -42,6 +41,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl a
+.Op Fl c
 .Op Fl M Ar core
 .Op Fl N Ar system
 .Sh DESCRIPTION
@@ -67,6 +67,8 @@ Show all data in the message buffer.
 This includes any syslog records and
 .Pa /dev/console
 output.
+.It Fl c
+Clear the kernel buffer after printing.
 .It Fl M
 Extract values associated with the name list from the specified core
 instead of the default
