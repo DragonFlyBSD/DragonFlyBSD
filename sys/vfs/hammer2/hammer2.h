@@ -182,6 +182,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
+#define HAMMER2_CHAIN_IPACTIVE		0x00010000	/* ip->chain seq */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -523,7 +524,6 @@ hammer2_inode_t *hammer2_inode_lookup(hammer2_pfsmount_t *pmp,
 hammer2_inode_t *hammer2_inode_get(hammer2_mount_t *hmp,
 			hammer2_pfsmount_t *pmp, hammer2_inode_t *dip,
 			hammer2_chain_t *chain);
-void hammer2_inode_put(hammer2_inode_t *ip, hammer2_chain_t *chain);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);

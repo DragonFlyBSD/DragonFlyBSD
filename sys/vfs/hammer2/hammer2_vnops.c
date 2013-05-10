@@ -187,13 +187,10 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		hammer2_trans_done(&trans);
 	}
 #endif
-	if (ip->refs > 2)			    /* (our lock + vp ref) */
-		hammer2_inode_unlock_ex(ip, chain); /* unlock */
-	else
-		hammer2_inode_put(ip, chain);	    /* unlock & disconnect */
+	hammer2_inode_unlock_ex(ip, chain);		/* unlock */
+	hammer2_inode_drop(ip);				/* vp ref */
 	/* chain no longer referenced */
 	/* chain = NULL; not needed */
-	hammer2_inode_drop(ip);			    /* vp ref */
 
 	/*
 	 * XXX handle background sync when ip dirty, kernel will no longer

@@ -834,11 +834,6 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 {
 	hammer2_mount_t *hmp = trans->hmp;
 	hammer2_chain_t *chain = *chainp;
-#if 0
-	struct buf *nbp;
-	char *bdata;
-	int error;
-#endif
 	hammer2_off_t pbase;
 	size_t obytes;
 	size_t nbytes;
@@ -888,11 +883,6 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		hammer2_chain_ref(chain);
-	} else {
-#if 0
-		hammer2_freemap_free(hmp, chain->bref.data_off,
-				     chain->bref.type);
-#endif
 	}
 
 	/*
@@ -912,64 +902,11 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	pbase = chain->bref.data_off & ~(hammer2_off_t)(bbytes - 1);
 	boff = chain->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
 
-	KKASSERT(chain->bp == NULL);
-#if 0
 	/*
-	 * Only copy the data if resolved, otherwise the caller is
-	 * responsible.
-	 *
-	 * XXX handle device-buffer resizing case too.  Right now we
-	 *     only handle logical buffer resizing.
+	 * For now just support it on DATA chains (and not on indirect
+	 * blocks).
 	 */
-	if (chain->bp) {
-		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
-			 chain->bref.type == HAMMER2_BREF_TYPE_DATA);
-		KKASSERT(chain != &hmp->vchain);	/* safety */
-
-		/*
-		 * The getblk() optimization can only be used if the
-		 * physical block size matches the request.
-		 */
-		if (nbytes == bbytes) {
-			nbp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
-			error = 0;
-		} else {
-			error = bread(hmp->devvp, pbase, bbytes, &nbp);
-			KKASSERT(error == 0);
-		}
-		bdata = (char *)nbp->b_data + boff;
-
-		/*
-		 * chain->bp and chain->data represent the on-disk version
-		 * of the data, where as the passed-in bp is usually a
-		 * more up-to-date logical buffer.  However, there is no
-		 * need to synchronize the more up-to-date data in (bp)
-		 * as it will do that on its own when it flushes.
-		 */
-		if (nbytes < obytes) {
-			bcopy(chain->data, bdata, nbytes);
-		} else {
-			bcopy(chain->data, bdata, obytes);
-			bzero(bdata + obytes, nbytes - obytes);
-		}
-
-		/*
-		 * NOTE: The INITIAL state of the chain is left intact.
-		 *	 We depend on hammer2_chain_modify() to do the
-		 *	 right thing.
-		 *
-		 * NOTE: We set B_NOCACHE to throw away the previous bp and
-		 *	 any VM backing store, even if it was dirty.
-		 *	 Otherwise we run the risk of a logical/device
-		 *	 conflict on reallocation.
-		 */
-		chain->bp->b_flags |= B_RELBUF | B_NOCACHE;
-		brelse(chain->bp);
-		chain->bp = nbp;
-		chain->data = (void *)bdata;
-		hammer2_chain_modify(trans, &chain, 0);
-	}
-#endif
+	KKASSERT(chain->bp == NULL);
 
 	/*
 	 * Make sure the chain is marked MOVED and SUBMOD is set in the
@@ -1003,20 +940,12 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
  */
 hammer2_inode_data_t *
 hammer2_chain_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
-			hammer2_chain_t **parentp, int flags)
+			hammer2_chain_t **chainp, int flags)
 {
-	hammer2_chain_t *ochain;
-	hammer2_chain_t *nchain;
-
 	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-	hammer2_chain_modify(trans, parentp, flags);
-	nchain = *parentp;
-	ochain = ip->chain;
-	if (ochain != nchain) {
-		hammer2_chain_ref(nchain);
-		ip->chain = nchain;
-		hammer2_chain_drop(ochain);
-	}
+	hammer2_chain_modify(trans, chainp, flags);
+	if (ip->chain != *chainp)
+		hammer2_inode_repoint(ip, NULL, *chainp);
 	return(&ip->chain->data->ipdata);
 }
 
@@ -1245,7 +1174,10 @@ hammer2_modify_volume(hammer2_mount_t *hmp)
  *
  * This function returns the chain at the specified index with the highest
  * delete_tid.  The caller must check whether the chain is flagged
- * CHAIN_DELETED or not.
+ * CHAIN_DELETED or not.  However, because chain iterations can be removed
+ * from memory we must ALSO check that DELETED chains are not flushed.  A
+ * DELETED chain which has been flushed must be ignored (the caller must
+ * check the parent's blockref array).
  *
  * NOTE: If no chain is found the caller usually must check the on-media
  *	 array to determine if a blockref exists at the index.
@@ -1287,6 +1219,7 @@ hammer2_chain_t *
 hammer2_chain_find_locked(hammer2_chain_t *parent, int index)
 {
 	struct hammer2_chain_find_info info;
+	hammer2_chain_t *child;
 
 	info.index = index;
 	info.delete_tid = 0;
@@ -1295,22 +1228,23 @@ hammer2_chain_find_locked(hammer2_chain_t *parent, int index)
 	RB_SCAN(hammer2_chain_tree, &parent->core->rbtree,
 		hammer2_chain_find_cmp, hammer2_chain_find_callback,
 		&info);
+	child = info.best;
 
-	return (info.best);
+	return (child);
 }
 
 hammer2_chain_t *
 hammer2_chain_find(hammer2_chain_t *parent, int index)
 {
-	hammer2_chain_t *chain;
+	hammer2_chain_t *child;
 
 	spin_lock(&parent->core->cst.spin);
-	chain = hammer2_chain_find_locked(parent, index);
-	if (chain)
-		hammer2_chain_ref(chain);
+	child = hammer2_chain_find_locked(parent, index);
+	if (child)
+		hammer2_chain_ref(child);
 	spin_unlock(&parent->core->cst.spin);
 
-	return (chain);
+	return (child);
 }
 
 /*
@@ -2225,6 +2159,16 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 	nchain->bytes = bytes;
 
 	/*
+	 * Propagate the IPACTIVE flag.  This prevents an out-of-order
+	 * removal of a chain which can cause ip->chain sequences to sit
+	 * on a stale chain.
+	 */
+	/*if (core && (ochain->flags & HAMMER2_CHAIN_IPACTIVE))*/ {
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_IPACTIVE);
+		hammer2_chain_ref(nchain);
+	}
+
+	/*
 	 * Be sure to copy the INITIAL flag as well or we could end up
 	 * loading garbage from the bref.
 	 */
@@ -2427,11 +2371,22 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
 	core = ochain->core;
 	above = ochain->above;
 
-	kprintf("delete_duplicate %p.%d(%d)\n", ochain, ochain->bref.type, ochain->refs);
+	kprintf("delete_duplicate %p.%d(%d)\n",
+		ochain, ochain->bref.type, ochain->refs);
 
 	bytes = (hammer2_off_t)1 <<
 		(int)(ochain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
 	nchain->bytes = bytes;
+
+	/*
+	 * Propagate the IPACTIVE flag.  This prevents an out-of-order
+	 * removal of a chain which can cause ip->chain sequences to sit
+	 * on a stale chain.
+	 */
+	/*if (core && (ochain->flags & HAMMER2_CHAIN_IPACTIVE))*/ {
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_IPACTIVE);
+		hammer2_chain_ref(nchain);
+	}
 
 	/*
 	 * Be sure to copy the INITIAL flag as well or we could end up

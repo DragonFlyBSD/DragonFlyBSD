@@ -90,8 +90,8 @@ again:
 		if (ip->chain != chain) {
 			hammer2_chain_ref(chain);
 			spin_unlock(&chain->core->cst.spin);
-			hammer2_chain_drop(ip->chain);
-			ip->chain = chain;
+			hammer2_inode_repoint(ip, NULL, chain);
+			hammer2_chain_drop(chain);
 		} else {
 			spin_unlock(&chain->core->cst.spin);
 		}
@@ -119,25 +119,6 @@ hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain)
 	 */
 	if (chain)
 		hammer2_chain_unlock(chain);
-
-	/*
-	 * Recalculate ip->chain on exclusive unlock too, it may
-	 * allow us to free stale chains more quickly.
-	 */
-	if ((chain = ip->chain) != NULL &&
-	    hammer2_chain_refactor_test(chain, 1)) {
-		spin_lock(&chain->core->cst.spin);
-		while (hammer2_chain_refactor_test(chain, 1))
-			chain = chain->next_parent;
-		if (ip->chain != chain) {
-			hammer2_chain_ref(chain);
-			spin_unlock(&chain->core->cst.spin);
-			hammer2_chain_drop(ip->chain);
-			ip->chain = chain;
-		} else {
-			spin_unlock(&chain->core->cst.spin);
-		}
-	}
 	ccms_thread_unlock(&ip->topo_cst);
 	hammer2_inode_drop(ip);
 }
@@ -250,7 +231,6 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 {
 	hammer2_mount_t *hmp;
 	hammer2_inode_t *pip;
-	hammer2_chain_t *chain;
 	u_int refs;
 
 	while (ip) {
@@ -282,10 +262,12 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				ip->hmp = NULL;
 				pip = ip->pip;
 				ip->pip = NULL;
-				chain = ip->chain;
-				ip->chain = NULL;
-				if (chain)
-					hammer2_chain_drop(chain);
+
+				/*
+				 * Cleaning out ip->chain isn't entirely
+				 * trivial.
+				 */
+				hammer2_inode_repoint(ip, NULL, NULL);
 
 				/*
 				 * We have to drop pip (if non-NULL) to
@@ -459,7 +441,6 @@ hammer2_inode_get(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
 		  hammer2_inode_t *dip, hammer2_chain_t *chain)
 {
 	hammer2_inode_t *nip;
-	hammer2_chain_t *ochain;
 
 	KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INODE);
 
@@ -474,17 +455,13 @@ again:
 		if (nip == NULL)
 			break;
 		ccms_thread_lock(&nip->topo_cst, CCMS_STATE_EXCLUSIVE);
-		if ((nip->flags & HAMMER2_INODE_ONRBTREE) == 0) {
+		if ((nip->flags & HAMMER2_INODE_ONRBTREE) == 0) { /* race */
 			ccms_thread_unlock(&nip->topo_cst);
 			hammer2_inode_drop(nip);
 			continue;
 		}
-		if (nip->chain != chain) {
-			hammer2_chain_ref(chain);	/* new nip->chain */
-			ochain = nip->chain;
-			nip->chain = chain;		/* fully locked   */
-			hammer2_chain_drop(ochain);	/* old nip->chain */
-		}
+		if (nip->chain != chain)
+			hammer2_inode_repoint(nip, NULL, chain);
 
 		/*
 		 * Consolidated nip/nip->chain is locked (chain locked
@@ -498,8 +475,7 @@ again:
 	 */
 	nip = kmalloc(sizeof(*nip), hmp->minode, M_WAITOK | M_ZERO);
 	nip->inum = chain->data->ipdata.inum;
-	nip->chain = chain;
-	hammer2_chain_ref(chain);		/* nip->chain */
+	hammer2_inode_repoint(nip, NULL, chain);
 	nip->pip = dip;				/* can be NULL */
 	if (dip)
 		hammer2_inode_ref(dip);	/* ref dip for nip->pip */
@@ -533,45 +509,6 @@ again:
 	}
 
 	return (nip);
-}
-
-/*
- * Put away an inode, unlocking it and disconnecting it from its chain.
- *
- * The inode must be exclusively locked on call and non-recursed, with
- * at least 2 refs (one belonging to the exclusive lock, and one additional
- * ref belonging to the caller).
- *
- * Upon return the inode typically has one ref remaining which the caller
- * drops.
- */
-void
-hammer2_inode_put(hammer2_inode_t *ip, hammer2_chain_t *chain)
-{
-	hammer2_inode_t *pip;
-
-	/*
-	 * Disconnect and unlock chain
-	 */
-	KKASSERT(ip->refs >= 2);
-	KKASSERT(ip->topo_cst.count == -1);	/* one excl lock allowed */
-	if ((chain = ip->chain) != NULL) {
-		ip->chain = NULL;
-		hammer2_chain_drop(chain);	/* from *_get() */
-	}
-
-	/*
-	 * Disconnect pip
-	 */
-	pip = ip->pip;
-	ip->pip = NULL;
-	hammer2_inode_unlock_ex(ip, chain);
-
-	/*
-	 * Cleanup delayed actions
-	 */
-	if (pip)
-		hammer2_inode_drop(pip);
 }
 
 /*
@@ -1071,36 +1008,113 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 /*
  * Repoint ip->chain to nchain.  Caller must hold the inode exclusively
  * locked.
+ *
+ * ip->chain is set to nchain.  The prior chain in ip->chain is dropped
+ * and nchain is ref'd.
+ *
+ * This function is somewhat more complex.  When changing ip->chain it
+ * must iterate through chain->next_parent and adjust CHAIN_IPACTIVE
+ * appropriately.  CHAIN_IPACTIVE will also be set on nchain if necessary
+ * (caller should pass a locked nchain in that case).  nchain will often
+ * already have the bit set as part of a delete/duplicate sequence if
+ * the deleted chain had it set.  Refs must also be adjusted for this flag.
  */
 void
 hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		      hammer2_chain_t *nchain)
 {
 	hammer2_chain_t *ochain;
+	hammer2_chain_t *xchain;
 	hammer2_inode_t *opip;
+	u_int oflags;
 
 	/*
-	 * ip->chain points to the hardlink target, not the hardlink psuedo
-	 * inode.  Do not repoint nchain to the pseudo-node.
+	 * Repoint ip->chain if requested.
 	 */
-	if (nchain->data->ipdata.type == HAMMER2_OBJTYPE_HARDLINK)
-		return;
+	if (ip->chain == NULL) {
+		/*
+		 * ip->chain is NULL, we don't have to worry about having
+		 * to clear the IPACTIVE flag along the (non-existant) chain.
+		 * Just assign nchain and set the flag on nchain as necessary.
+		 */
+		if (nchain) {
+			spin_lock(&nchain->core->cst.spin);
+			if ((nchain->flags & HAMMER2_CHAIN_IPACTIVE) == 0) {
+				atomic_set_int(&nchain->flags,
+					       HAMMER2_CHAIN_IPACTIVE);
+				hammer2_chain_ref(nchain);
+			}
+			spin_unlock(&nchain->core->cst.spin);
+			ip->chain = nchain;
+			hammer2_chain_ref(nchain);
+		}
+	} else if (ip->chain != nchain) {
+		/*
+		 * Iterate the non-NULL ip->chain clearing IPACTIVE on the
+		 * old chains and setting it on the new ones, until we reach
+		 * nchain.
+		 */
+		while ((ochain = ip->chain) != NULL) {
+			spin_lock(&ochain->core->cst.spin);
+			xchain = ochain->next_parent;
+			ip->chain = xchain;
+			if (xchain) {
+				if (xchain->flags & HAMMER2_CHAIN_SNAPSHOT) {
+					ip->chain = ochain;
+					spin_unlock(&ochain->core->cst.spin);
+					break;
+				}
+				if (!(xchain->flags & HAMMER2_CHAIN_IPACTIVE)) {
+					atomic_set_int(&xchain->flags,
+						       HAMMER2_CHAIN_IPACTIVE);
+					hammer2_chain_ref(xchain);
+				}
+				hammer2_chain_ref(xchain);
+				KKASSERT(ochain->core == xchain->core);
+			}
+			oflags = ochain->flags;
+			atomic_clear_int(&ochain->flags,
+					 HAMMER2_CHAIN_IPACTIVE);
+			spin_unlock(&ochain->core->cst.spin);
 
-	/*
-	 * Repoint ip->chain if necessary.
-	 *
-	 * (Inode must be locked exclusively by parent)
-	 */
-	ochain = ip->chain;
-	if (ochain != nchain) {
-		hammer2_chain_ref(nchain);		/* for ip->chain */
-		ip->chain = nchain;
-		hammer2_chain_drop(ochain);
+			if (oflags & HAMMER2_CHAIN_IPACTIVE)
+				hammer2_chain_drop(ochain);
+			hammer2_chain_drop(ochain);
+
+			if (xchain == nchain) {
+				ochain = xchain;    /* for match below */
+				break;
+			}
+		}
+
+		/*
+		 * We should always match at the end of the iteration.  If
+		 * not then nchain somehow got severely disconnected from
+		 * the inode's existing chain sequence.
+		 *
+		 * Complain loudly but try to recover the situation.
+		 */
+		if (ochain != nchain) {
+			kprintf("hammer2_inode_repoint: lost IPACTIVE seq "
+				"ip=%p nchain=%p\n", ip, nchain);
+			spin_lock(&nchain->core->cst.spin);
+			if ((nchain->flags & HAMMER2_CHAIN_IPACTIVE) == 0) {
+				atomic_set_int(&nchain->flags,
+					       HAMMER2_CHAIN_IPACTIVE);
+				hammer2_chain_ref(nchain);
+			}
+			spin_unlock(&nchain->core->cst.spin);
+			ip->chain = nchain;
+			hammer2_chain_ref(nchain);
+		}
 	}
-	if (ip->pip != pip) {
+
+	/*
+	 * Repoint ip->pip if requested (non-NULL pip).
+	 */
+	if (pip && ip->pip != pip) {
 		opip = ip->pip;
-		if (pip)
-			hammer2_inode_ref(pip);
+		hammer2_inode_ref(pip);
 		ip->pip = pip;
 		if (opip)
 			hammer2_inode_drop(opip);

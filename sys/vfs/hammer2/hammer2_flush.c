@@ -485,16 +485,21 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 		 *
 		 * Scan2 is non-recursive.
 		 */
+		if (diddeferral) {
+			atomic_set_int(&chain->flags,
+				       HAMMER2_CHAIN_SUBMODIFIED);
+		} else {
 #if FLUSH_DEBUG
-		kprintf("scan2_start parent %p %08x\n", chain, chain->flags);
+			kprintf("scan2_start parent %p %08x\n", chain, chain->flags);
 #endif
-		spin_lock(&core->cst.spin);
-		RB_SCAN(hammer2_chain_tree, &core->rbtree,
-			NULL, hammer2_chain_flush_scan2, info);
-		spin_unlock(&core->cst.spin);
+			spin_lock(&core->cst.spin);
+			RB_SCAN(hammer2_chain_tree, &core->rbtree,
+				NULL, hammer2_chain_flush_scan2, info);
+			spin_unlock(&core->cst.spin);
 #if FLUSH_DEBUG
-		kprintf("scan2_stop  parent %p %08x\n", chain, chain->flags);
+			kprintf("scan2_stop  parent %p %08x\n", chain, chain->flags);
 #endif
+		}
 		chain->bref.mirror_tid = info->mirror_tid;
 		info->mirror_tid = saved_mirror;
 		info->parent = saved_parent;
@@ -770,6 +775,7 @@ static int
 hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 {
 	hammer2_flush_info_t *info = data;
+	hammer2_trans_t *trans = info->trans;
 	hammer2_chain_t *parent = info->parent;
 	/*hammer2_mount_t *hmp = info->hmp;*/
 	int diddeferral;
@@ -783,6 +789,10 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 			     HAMMER2_CHAIN_SUBMODIFIED)) == 0) {
 		return (0);
 	}
+	if (child->modify_tid > trans->sync_tid) {
+		return (0);
+	}
+
 	hammer2_chain_ref(child);
 	spin_unlock(&parent->core->cst.spin);
 
@@ -796,6 +806,13 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 
 	if ((child->flags & (HAMMER2_CHAIN_MODIFIED |
 			     HAMMER2_CHAIN_SUBMODIFIED)) == 0) {
+		hammer2_chain_unlock(child);
+		hammer2_chain_drop(child);
+		hammer2_chain_lock(parent, HAMMER2_RESOLVE_MAYBE);
+		spin_lock(&parent->core->cst.spin);
+		return (0);
+	}
+	if (child->modify_tid > trans->sync_tid) {
 		hammer2_chain_unlock(child);
 		hammer2_chain_drop(child);
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_MAYBE);
@@ -872,13 +889,11 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 {
 	hammer2_flush_info_t *info = data;
 	hammer2_chain_t *parent = info->parent;
-	hammer2_chain_t *scan;
 	hammer2_chain_core_t *above = child->above;
 	hammer2_mount_t *hmp = info->hmp;
 	hammer2_trans_t *trans = info->trans;
 	hammer2_blockref_t *base;
 	int count;
-	int child_flags;
 
 	/*
 	 * Inodes with stale children that have been converted to DIRECTDATA
@@ -891,22 +906,29 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 #if FLUSH_DEBUG
 		kprintf("B");
 #endif
-		child_flags = 0;
 		goto finalize;
 	}
 
 	/*
 	 * Ignore children created after our flush point, treating them as
-	 * if they did not exist).
+	 * if they did not exist).  These children will not cause the parent
+	 * to be updated.
 	 *
-	 * XXX modifications past our flush point do not adjust vchain.
-	 *     need to make vchain dynamic so we can. XXX
+	 * When we encounter such children and the parent chain has not been
+	 * deleted, delete/duplicated, or delete/duplicated-for-move, then
+	 * the parent may be used to funnel through several flush points.
+	 * We must re-set the SUBMODIFIED flag in the parent to ensure that
+	 * those flushes have visbility.  A simple test of delete_tid suffices
+	 * to determine if the parent spans beyond our current flush.
 	 */
 	if (child->modify_tid > trans->sync_tid) {
-		child_flags = 0;
 #if FLUSH_DEBUG
 		kprintf("E");
 #endif
+		if (parent->delete_tid > trans->sync_tid) {
+			atomic_set_int(&parent->flags,
+					HAMMER2_CHAIN_SUBMODIFIED);
+		}
 		goto finalize;
 	}
 
@@ -915,7 +937,6 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 * is already correct.
 	 */
 	if ((child->flags & HAMMER2_CHAIN_MOVED) == 0) {
-		child_flags = child->flags;
 #if FLUSH_DEBUG
 		kprintf("D");
 #endif
@@ -1046,15 +1067,18 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 * paths can occur out of order, for example if an inode is moved
 	 * as part of a hardlink consolidation or if an inode is moved into
 	 * an indirect block indexed before the inode.
+	 *
+	 * Only clear MOVED once all possible parents have been flushed.
 	 */
+#if 1
 	if (child->flags & HAMMER2_CHAIN_MOVED) {
+		hammer2_chain_t *scan;
 		int ok = 1;
 
 		spin_lock(&above->cst.spin);
 		for (scan = above->first_parent; scan;
 		     scan = scan->next_parent) {
-			if ((scan->flags & HAMMER2_CHAIN_SUBMODIFIED) &&
-			    scan->modify_tid < trans->sync_tid) {
+			if (scan->flags & HAMMER2_CHAIN_SUBMODIFIED) {
 				ok = 0;
 				break;
 			}
@@ -1064,11 +1088,16 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 			atomic_clear_int(&child->flags, HAMMER2_CHAIN_MOVED);
 			hammer2_chain_drop(child);	/* flag */
 		}
-#if 0
-		    (tmp != &hmp->vchain || hmp->flushcnt == 1) &&
-#endif
 	}
-	child_flags = child->flags;
+#endif
+#if 0
+	if (child->flags & HAMMER2_CHAIN_MOVED) {
+		if (above->sharecnt == 1) {
+			atomic_clear_int(&child->flags, HAMMER2_CHAIN_MOVED);
+			hammer2_chain_drop(child);	/* flag */
+		}
+	}
+#endif
 
 	/*
 	 * Unlock the child.  This can wind up dropping the child's
@@ -1091,13 +1120,7 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 */
 finalize:
 #if FLUSH_DEBUG
-	kprintf("G child %08x act=%08x\n", child_flags, child->flags);
+	kprintf("G child %p 08x\n", child, child->flags);
 #endif
-	if (child_flags & (HAMMER2_CHAIN_MOVED |
-			    HAMMER2_CHAIN_DELETED |
-			    HAMMER2_CHAIN_MODIFIED |
-			    HAMMER2_CHAIN_SUBMODIFIED)) {
-		atomic_set_int(&parent->flags, HAMMER2_CHAIN_SUBMODIFIED);
-	}
 	return (0);
 }

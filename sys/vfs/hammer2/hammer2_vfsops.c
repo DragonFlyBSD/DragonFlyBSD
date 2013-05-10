@@ -551,7 +551,6 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 {
 	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
-	hammer2_chain_t *parent;
 	int flags;
 	int error = 0;
 	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
@@ -610,9 +609,6 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	 * clean).
 	 */
 	if (pmp->iroot) {
-		parent = hammer2_inode_lock_ex(pmp->iroot);
-		hammer2_inode_put(pmp->iroot, parent);
-		/* lock destroyed by the put */
 #if REPORT_REFS_ERRORS
 		if (pmp->iroot->refs != 1)
 			kprintf("PMP->IROOT %p REFS WRONG %d\n",
