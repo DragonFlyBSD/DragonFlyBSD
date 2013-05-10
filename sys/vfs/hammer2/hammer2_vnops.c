@@ -152,7 +152,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * reclaim.
 	 */
 	chain = hammer2_inode_lock_ex(ip);
-	if (chain->duplink)
+	if (chain->next_parent)
 		kprintf("RECLAIM DUPLINKED IP: %p %p\n", ip, ip->chain);
 
 	/*
@@ -1333,7 +1333,7 @@ hammer2_truncate_file(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		 */
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
 			/*ip->delta_dcount -= chain->bytes;*/
-			hammer2_chain_delete(trans, parent, chain);
+			hammer2_chain_delete(trans, chain);
 		}
 		/* XXX check parent if empty indirect block & delete */
 		chain = hammer2_chain_next(&parent, chain,
@@ -2158,7 +2158,8 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * being moved, nlinks is not modified in this case.
 	 *
 	 * If ip represents a regular file the consolidation code essentially
-	 * does nothing other than return the locked chain.
+	 * does nothing other than return the same locked chain that was
+	 * passed in.
 	 *
 	 * The returned chain will be locked.
 	 *

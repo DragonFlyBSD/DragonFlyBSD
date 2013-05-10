@@ -54,6 +54,166 @@ hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
 	return(0);
 }
 
+/*
+ * HAMMER2 inode locks
+ *
+ * HAMMER2 offers shared locks and exclusive locks on inodes.
+ *
+ * An inode's ip->chain pointer is resolved and stable while an inode is
+ * locked, and can be cleaned out at any time (become NULL) when an inode
+ * is not locked.
+ *
+ * The underlying chain is also locked and returned.
+ *
+ * NOTE: We don't combine the inode/chain lock because putting away an
+ *       inode would otherwise confuse multiple lock holders of the inode.
+ */
+hammer2_chain_t *
+hammer2_inode_lock_ex(hammer2_inode_t *ip)
+{
+	hammer2_chain_t *chain;
+
+	hammer2_inode_ref(ip);
+	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
+
+	/*
+	 * ip->chain fixup.  Certain duplications used to move inodes
+	 * into indirect blocks (for example) can cause ip->chain to
+	 * become stale.
+	 */
+again:
+	chain = ip->chain;
+	if (hammer2_chain_refactor_test(chain, 1)) {
+		spin_lock(&chain->core->cst.spin);
+		while (hammer2_chain_refactor_test(chain, 1))
+			chain = chain->next_parent;
+		if (ip->chain != chain) {
+			hammer2_chain_ref(chain);
+			spin_unlock(&chain->core->cst.spin);
+			hammer2_chain_drop(ip->chain);
+			ip->chain = chain;
+		} else {
+			spin_unlock(&chain->core->cst.spin);
+		}
+	}
+
+	KKASSERT(chain != NULL);	/* for now */
+	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
+
+	/*
+	 * Resolve duplication races
+	 */
+	if (hammer2_chain_refactor_test(chain, 1)) {
+		hammer2_chain_unlock(chain);
+		goto again;
+	}
+	return (chain);
+}
+
+void
+hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain)
+{
+	/*
+	 * XXX this will catch parent directories too which we don't
+	 *     really want.
+	 */
+	if (chain)
+		hammer2_chain_unlock(chain);
+
+	/*
+	 * Recalculate ip->chain on exclusive unlock too, it may
+	 * allow us to free stale chains more quickly.
+	 */
+	if ((chain = ip->chain) != NULL &&
+	    hammer2_chain_refactor_test(chain, 1)) {
+		spin_lock(&chain->core->cst.spin);
+		while (hammer2_chain_refactor_test(chain, 1))
+			chain = chain->next_parent;
+		if (ip->chain != chain) {
+			hammer2_chain_ref(chain);
+			spin_unlock(&chain->core->cst.spin);
+			hammer2_chain_drop(ip->chain);
+			ip->chain = chain;
+		} else {
+			spin_unlock(&chain->core->cst.spin);
+		}
+	}
+	ccms_thread_unlock(&ip->topo_cst);
+	hammer2_inode_drop(ip);
+}
+
+/*
+ * NOTE: We don't combine the inode/chain lock because putting away an
+ *       inode would otherwise confuse multiple lock holders of the inode.
+ *
+ *	 Shared locks are especially sensitive to having too many shared
+ *	 lock counts (from the same thread) on certain paths which might
+ *	 need to upgrade them.  Only one count of a shared lock can be
+ *	 upgraded.
+ */
+hammer2_chain_t *
+hammer2_inode_lock_sh(hammer2_inode_t *ip)
+{
+	hammer2_chain_t *chain;
+
+	hammer2_inode_ref(ip);
+again:
+	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_SHARED);
+
+	chain = ip->chain;
+	KKASSERT(chain != NULL);	/* for now */
+	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
+				  HAMMER2_RESOLVE_SHARED);
+
+	/*
+	 * Resolve duplication races
+	 */
+	if (hammer2_chain_refactor_test(chain, 1)) {
+		hammer2_chain_unlock(chain);
+		ccms_thread_unlock(&ip->topo_cst);
+		chain = hammer2_inode_lock_ex(ip);
+		hammer2_inode_unlock_ex(ip, chain);
+		goto again;
+	}
+	return (chain);
+}
+
+void
+hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_chain_t *chain)
+{
+	if (chain)
+		hammer2_chain_unlock(chain);
+	ccms_thread_unlock(&ip->topo_cst);
+	hammer2_inode_drop(ip);
+}
+
+ccms_state_t
+hammer2_inode_lock_temp_release(hammer2_inode_t *ip)
+{
+	return(ccms_thread_lock_temp_release(&ip->topo_cst));
+}
+
+void
+hammer2_inode_lock_temp_restore(hammer2_inode_t *ip, ccms_state_t ostate)
+{
+	ccms_thread_lock_temp_restore(&ip->topo_cst, ostate);
+}
+
+ccms_state_t
+hammer2_inode_lock_upgrade(hammer2_inode_t *ip)
+{
+	return(ccms_thread_lock_upgrade(&ip->topo_cst));
+}
+
+void
+hammer2_inode_lock_downgrade(hammer2_inode_t *ip, ccms_state_t ostate)
+{
+	ccms_thread_lock_downgrade(&ip->topo_cst, ostate);
+}
+
+/*
+ * Lookup an inode by inode number
+ */
 hammer2_inode_t *
 hammer2_inode_lookup(hammer2_pfsmount_t *pmp, hammer2_tid_t inum)
 {
@@ -583,21 +743,25 @@ void
 hammer2_chain_refactor(hammer2_chain_t **chainp)
 {
 	hammer2_chain_t *chain = *chainp;
-	hammer2_chain_t *tmp;
+	hammer2_chain_core_t *core;
 
-	while (chain->duplink && (chain->flags & HAMMER2_CHAIN_DELETED)) {
-		tmp = chain->duplink;
-		while (tmp->duplink && (tmp->flags & HAMMER2_CHAIN_DELETED))
-			tmp = tmp->duplink;
+	core = chain->core;
+	spin_lock(&core->cst.spin);
+	while (hammer2_chain_refactor_test(chain, 1)) {
+		chain = chain->next_parent;
+		while (hammer2_chain_refactor_test(chain, 1))
+			chain = chain->next_parent;
 		hammer2_chain_ref(chain);
-		hammer2_chain_unlock(chain);
-		hammer2_chain_lock(tmp, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_drop(chain);
-		chain = tmp;
-		*chainp = chain;
-	}
-}
+		spin_unlock(&core->cst.spin);
 
+		hammer2_chain_unlock(*chainp);
+		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
+					  HAMMER2_RESOLVE_NOREF); /* eat ref */
+		*chainp = chain;
+		spin_lock(&core->cst.spin);
+	}
+	spin_unlock(&core->cst.spin);
+}
 
 /*
  * ochain represents the target file inode.  We need to move it to the
@@ -646,7 +810,7 @@ retry:
 		hammer2_chain_unlock(nchain);
 		nchain = NULL;
 		*errorp = ENOSPC;
-#if 0
+#if 1
 		Debugger("X3");
 #endif
 	}
@@ -694,7 +858,7 @@ retry:
 	 *
 	 * This is a bit messy.
 	 */
-	hammer2_chain_delete(trans, parent, nchain);
+	hammer2_chain_delete(trans, nchain);
 	hammer2_chain_lock(ochain, HAMMER2_RESOLVE_ALWAYS);
 	tmp = ochain;
 	bref = tmp->bref;
@@ -796,6 +960,10 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 			 * chain_duplicate().  The caller will likely delete
 			 * or has already deleted the original chain in
 			 * this case.
+			 *
+			 * NOTE: chain_duplicate() generates a new chain
+			 *	 with CHAIN_DELETED cleared (ochain typically
+			 *	 has it set from the file unlink).
 			 */
 			nchain = ochain;
 			ochain = NULL;
@@ -901,19 +1069,8 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 }
 
 /*
- * Caller must hold exactly ONE exclusive lock on the inode.  *nchainp
- * must be exclusive locked (its own exclusive lock even if it is the
- * same as ip->chain).
- *
- * This function replaces ip->chain.  The exclusive lock on the passed
- * nchain is inherited by the inode and the caller becomes responsible
- * for unlocking it when the caller unlocks the inode.
- *
- * ochain was locked by the caller indirectly via the inode lock.  Since
- * ip->chain is being repointed, we become responsible for cleaning up
- * that lock.
- *
- * Return *nchainp = NULL as a safety.
+ * Repoint ip->chain to nchain.  Caller must hold the inode exclusively
+ * locked.
  */
 void
 hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
@@ -938,12 +1095,7 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 	if (ochain != nchain) {
 		hammer2_chain_ref(nchain);		/* for ip->chain */
 		ip->chain = nchain;
-		if (ochain) {
-			hammer2_chain_unlock(ochain);
-			hammer2_chain_drop(ochain);	/* for ip->chain */
-		}
-		/* replace locked chain in ip (additional lock) */
-		hammer2_chain_lock(nchain, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_drop(ochain);
 	}
 	if (ip->pip != pip) {
 		opip = ip->pip;
@@ -957,11 +1109,7 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 
 /*
  * Unlink the file from the specified directory inode.  The directory inode
- * does not need to be locked.  The caller should pass a non-NULL (ip)
- * representing the object being removed only if the related vnode is
- * potentially inactive (not referenced in the caller's active path),
- * so we can vref/vrele it to trigger the VOP_INACTIVE path and properly
- * recycle it.
+ * does not need to be locked.
  *
  * isdir determines whether a directory/non-directory check should be made.
  * No check is made if isdir is set to -1.
@@ -985,10 +1133,8 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	hammer2_chain_t *dchain;
 	hammer2_key_t lhc;
 	int error;
-	int parent_ref;
 	uint8_t type;
 
-	parent_ref = 0;
 	error = 0;
 	ochain = NULL;
 	hmp = dip->hmp;
@@ -1047,7 +1193,6 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	 * directory.  Otherwise chain remains pointing to the original.
 	 */
 	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_HARDLINK) {
-		KKASSERT(parent_ref == 0);
 		hammer2_chain_unlock(parent);
 		parent = NULL;
 		error = hammer2_hardlink_find(dip, &chain, &ochain);
@@ -1100,44 +1245,17 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		 *	 so we can reuse it.
 		 */
 		hammer2_chain_lock(ochain, HAMMER2_RESOLVE_ALWAYS);
-		parent_ref = 1;
-		for (;;) {
-			parent = ochain->parent;
-			hammer2_chain_ref(parent);
-			hammer2_chain_unlock(ochain);
-			hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
-			hammer2_chain_lock(ochain, HAMMER2_RESOLVE_ALWAYS);
-			if (ochain->parent == parent)
-				break;
-			hammer2_chain_unlock(parent);
-			hammer2_chain_drop(parent);
-		}
-
-		hammer2_chain_delete(trans, parent, ochain);
+		hammer2_chain_delete(trans, ochain);
 		hammer2_chain_unlock(ochain);
-		hammer2_chain_unlock(parent);
-		hammer2_chain_drop(parent);
-		parent = NULL;
 
 		/*
 		 * Then decrement nlinks on hardlink target, deleting
 		 * the target when nlinks drops to 0.
 		 */
-		if (chain->data->ipdata.nlinks == 1) {
-			dparent = chain->parent;
-			hammer2_chain_ref(chain);
-			hammer2_chain_unlock(chain);
-			hammer2_chain_lock(dparent, HAMMER2_RESOLVE_ALWAYS);
-			hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-			hammer2_chain_drop(chain);
-			hammer2_chain_modify(trans, &chain, 0);
-			--chain->data->ipdata.nlinks;
-			hammer2_chain_delete(trans, dparent, chain);
-			hammer2_chain_unlock(dparent);
-		} else {
-			hammer2_chain_modify(trans, &chain, 0);
-			--chain->data->ipdata.nlinks;
-		}
+		hammer2_chain_modify(trans, &chain, 0);
+		--chain->data->ipdata.nlinks;
+		if (chain->data->ipdata.nlinks == 0)
+			hammer2_chain_delete(trans, chain);
 	} else {
 		/*
 		 * Otherwise this was not a hardlink and we can just
@@ -1148,18 +1266,15 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		hammer2_chain_modify(trans, &chain, 0);
 		ipdata = &chain->data->ipdata;
 		--ipdata->nlinks;
-		hammer2_chain_delete(trans, parent, chain);
+		hammer2_chain_delete(trans, chain);
 	}
 
 	error = 0;
 done:
 	if (chain)
 		hammer2_chain_unlock(chain);
-	if (parent) {
+	if (parent)
 		hammer2_chain_lookup_done(parent);
-		if (parent_ref)
-			hammer2_chain_drop(parent);
-	}
 	if (ochain)
 		hammer2_chain_drop(ochain);
 
@@ -1203,7 +1318,6 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	hammer2_inode_t *cdip;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *nchain;
-	hammer2_chain_t *parent;
 	int error;
 
 	hmp = tdip->hmp;
@@ -1313,24 +1427,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			/* XXX transaction ids */
 		} else {
 			kprintf("DELETE INVISIBLE\n");
-			for (;;) {
-				parent = chain->parent;
-				hammer2_chain_ref(parent);
-				hammer2_chain_ref(chain);
-				hammer2_chain_unlock(chain);
-				hammer2_chain_lock(parent,
-						   HAMMER2_RESOLVE_ALWAYS);
-				hammer2_chain_lock(chain,
-						   HAMMER2_RESOLVE_ALWAYS);
-				hammer2_chain_drop(chain);
-				if (chain->parent == parent)
-					break;
-				hammer2_chain_unlock(parent);
-				hammer2_chain_drop(parent);
-			}
-			hammer2_chain_delete(trans, parent, chain);
-			hammer2_chain_unlock(parent);
-			hammer2_chain_drop(parent);
+			hammer2_chain_delete(trans, chain);
 		}
 
 		/*

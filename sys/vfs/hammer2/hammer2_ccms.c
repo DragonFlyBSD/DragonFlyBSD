@@ -378,6 +378,32 @@ ccms_thread_unlock(ccms_cst_t *cst)
 }
 
 /*
+ * Release a previously upgraded local thread lock
+ */
+void
+ccms_thread_unlock_upgraded(ccms_cst_t *cst, ccms_state_t ostate)
+{
+	if (ostate == CCMS_STATE_SHARED) {
+		KKASSERT(cst->td == curthread);
+		KKASSERT(cst->count == -1);
+		spin_lock(&cst->spin);
+		--cst->upgrade;
+		cst->count = 0;
+		cst->td = NULL;
+		if (cst->blocked) {
+			cst->blocked = 0;
+			spin_unlock(&cst->spin);
+			wakeup(cst);
+		} else {
+			spin_unlock(&cst->spin);
+		}
+	} else {
+		ccms_thread_unlock(cst);
+	}
+}
+
+#if 0
+/*
  * Release a local thread lock with special handling of the last lock
  * reference.
  *
@@ -450,6 +476,7 @@ ccms_thread_unlock_zero(ccms_cst_t *cst)
 	}
 	return(1);
 }
+#endif
 
 int
 ccms_thread_lock_owned(ccms_cst_t *cst)

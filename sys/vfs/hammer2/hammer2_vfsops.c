@@ -399,6 +399,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp->vchain.data = (void *)&hmp->voldata;
 		hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
 		hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
+		hmp->vchain.delete_tid = HAMMER2_MAX_TID;
 		hammer2_chain_core_alloc(&hmp->vchain, NULL);
 		/* hmp->vchain.u.xxx is left NULL */
 
@@ -677,7 +678,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		 * vchain.core (vchain structure is not flagged ALLOCATED
 		 * so it is cleaned out and then left).
 		 */
-		dumpcnt = 200;
+		dumpcnt = 50;
 		hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt);
 		hammer2_mount_unlock(hmp);
 		hammer2_chain_drop(&hmp->vchain);
@@ -1298,7 +1299,7 @@ hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp)
 		chain->core,
 		((chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		chain->data) ?  (char *)chain->data->ipdata.filename : "?"),
-		chain->duplink, chain->refs);
+		chain->next_parent, chain->refs);
 	if (chain->core == NULL || RB_EMPTY(&chain->core->rbtree))
 		kprintf("\n");
 	else

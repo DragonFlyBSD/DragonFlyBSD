@@ -240,7 +240,8 @@ void ccms_thread_lock_temp_restore(ccms_cst_t *cst, ccms_state_t ostate);
 ccms_state_t ccms_thread_lock_upgrade(ccms_cst_t *cst);
 void ccms_thread_lock_downgrade(ccms_cst_t *cst, ccms_state_t ostate);
 void ccms_thread_unlock(ccms_cst_t *cst);
-int ccms_thread_unlock_zero(ccms_cst_t *cst);
+void ccms_thread_unlock_upgraded(ccms_cst_t *cst, ccms_state_t ostate);
+/*int ccms_thread_unlock_zero(ccms_cst_t *cst);*/
 int ccms_thread_lock_owned(ccms_cst_t *cst);
 
 void ccms_lock_get(ccms_lock_t *lock);
