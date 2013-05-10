@@ -1078,7 +1078,7 @@ mesginit(void)
 	mesg[SIGCKPT].pname = CSAVS(2, 109, "CheckPoint");
     }
 #endif /* SIGCKPT */
-    
+
 #ifdef SIGCKPTEXIT
     /* DragonFly BSD */
     if (mesg[SIGCKPTEXIT].pname == NULL) {

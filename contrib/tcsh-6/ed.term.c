@@ -68,7 +68,7 @@ ttyperm_t ttylist = {
 		     C_SH(C_WERASE)|C_SH(C_REPRINT)|C_SH(C_SUSP)|C_SH(C_DSUSP)|
 		     C_SH(C_EOF)|C_SH(C_EOL)|C_SH(C_DISCARD)|C_SH(C_PGOFF)|
 		     C_SH(C_KILL2)|C_SH(C_PAGE)|C_SH(C_STATUS)|C_SH(C_CHECKPT)|
-		     C_SH(C_LNEXT)), 
+		     C_SH(C_LNEXT)),
 		     0 }
     },
     {
