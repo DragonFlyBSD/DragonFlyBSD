@@ -1,5 +1,13 @@
+LESS
+====
+
 Original source can be downloaded from:
 http://www.greenwoodsoftware.com/less/
+
+file = less-458.tar.gz
+date = 4 April 2013
+size = 311224
+sha1 = d5b07180d3dad327ccc8bc66818a31577e8710a2
 
 A list of deleted files is in README.DELETED.
 
@@ -9,3 +17,6 @@ This source is used in:
 	usr.bin/less
 	usr.bin/lessecho
 	usr.bin/lesskey
+
+Local modifications applied to following files:
+	command.c
