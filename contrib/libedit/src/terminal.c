@@ -1,4 +1,4 @@
-/*	$NetBSD: terminal.c,v 1.12 2011/11/18 20:32:00 christos Exp $	*/
+/*	$NetBSD: terminal.c,v 1.14 2012/05/30 18:21:14 christos Exp $	*/
 
 /*-
  * Copyright (c) 1992, 1993
@@ -37,7 +37,7 @@
 #if 0
 static char sccsid[] = "@(#)term.c	8.2 (Berkeley) 4/30/95";
 #else
-__RCSID("$NetBSD: terminal.c,v 1.12 2011/11/18 20:32:00 christos Exp $");
+__RCSID("$NetBSD: terminal.c,v 1.14 2012/05/30 18:21:14 christos Exp $");
 #endif
 #endif /* not lint && not SCCSID */
 
@@ -62,7 +62,7 @@ __RCSID("$NetBSD: terminal.c,v 1.12 2011/11/18 20:32:00 christos Exp $");
 #endif
 
 /* Solaris's term.h does horrid things. */
-#if defined(HAVE_TERM_H) && !defined(__sun)
+#if defined(HAVE_TERM_H) && !defined(__sun) && !defined(HAVE_TERMCAP_H)
 #include <term.h>
 #endif
  
@@ -169,7 +169,9 @@ private const struct termcapstr {
 	{ "kh", "send cursor home" },
 #define	T_at7	37
 	{ "@7", "send cursor end" },
-#define	T_str	38
+#define	T_kD	38
+	{ "kD", "send cursor delete" },
+#define	T_str	39
 	{ NULL, NULL }
 };
 
@@ -1031,6 +1033,11 @@ terminal_init_arrow(EditLine *el)
 	arrow[A_K_EN].key = T_at7;
 	arrow[A_K_EN].fun.cmd = ED_MOVE_TO_END;
 	arrow[A_K_EN].type = XK_CMD;
+
+	arrow[A_K_DE].name = STR("delete");
+	arrow[A_K_DE].key = T_kD;
+	arrow[A_K_DE].fun.cmd = ED_DELETE_NEXT_CHAR;
+	arrow[A_K_DE].type = XK_CMD;
 }
 
 
@@ -1523,7 +1530,7 @@ terminal_echotc(EditLine *el, int argc __attribute__((__unused__)),
 		}
 	if (t->name == NULL) {
 		/* XXX: some systems' tgetstr needs non const */
-                scap = tgetstr(ct_encode_string(*argv, &el->el_scratch), &area);
+                scap = tgetstr(ct_encode_string((Char*)*argv, &el->el_scratch), &area);
 	}
 	if (!scap || scap[0] == '\0') {
 		if (!silent)
