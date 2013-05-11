@@ -65,7 +65,7 @@
 #define HAVE_LIMITS_H 1
 
 /* Define to 1 if you have the <malloc.h> header file. */
-#define HAVE_MALLOC_H 1
+/* #undef HAVE_MALLOC_H */
 
 /* Define to 1 if you have the `memchr' function. */
 #define HAVE_MEMCHR 1
@@ -208,7 +208,7 @@
 #define LT_OBJDIR ".libs/"
 
 /* Name of package */
-#define PACKAGE "libedit-20120311"
+#define PACKAGE "libedit-20121213"
 
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT ""
@@ -220,7 +220,7 @@
 #define PACKAGE_STRING "libedit 3.0"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "libedit-20120311"
+#define PACKAGE_TARNAME "libedit-20121213"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL ""
@@ -260,7 +260,7 @@
 #define VERSION "3.0"
 
 /* Define to 1 if you want wide-character code */
-/* #undef WIDECHAR */
+#define WIDECHAR 1
 
 /* Define to 1 if on MINIX. */
 /* #undef _MINIX */

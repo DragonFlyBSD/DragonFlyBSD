@@ -1,22 +1,19 @@
-LIBEDIT 2012-03-11
-==================
+LIBEDIT
+=======
 
 Original source can be downloaded from:
 http://www.thrysoee.dk/editline
 
-file = libedit-20120311-3.0.tar.gz
-date = 11 March 2012
-size = 469830
-sha1 = 2a4be10c33af5e3b09c1d3c8829b02fe5b41796b
+file = libedit-20121213-3.0.tar.gz
+date = 13 December 2012
+size = 473665
+sha1 = 2f20bc835c1282b6815c4c8e2f852d6fe4318f7a
 
 A list of files and directories removed is in README.DELETED
 
 Local modifications applied to following files:
-	src/editline/readline.h
+	src/chartype.h
 	src/el.c
 	src/filecomplete.c
-	src/makelist
-	src/readline.c
 	src/sys.h
 	src/vi.c
-
