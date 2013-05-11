@@ -79,10 +79,6 @@
 # define __arraycount(a) (sizeof(a) / sizeof(*(a)))
 #endif
 
-#ifndef HAVE_U_INT32_T
-typedef unsigned int  u_int32_t;
-#endif
-
 #ifndef _PTR_T
 # define _PTR_T
 typedef void	*ptr_t;

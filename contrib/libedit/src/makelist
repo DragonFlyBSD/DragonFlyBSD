@@ -1,5 +1,5 @@
 #!/bin/sh -
-#	$NetBSD: makelist,v 1.17 2011/07/28 00:43:53 christos Exp $
+#	$NetBSD: makelist,v 1.18 2012/03/21 05:34:54 matt Exp $
 #
 # Copyright (c) 1992, 1993
 #	The Regents of the University of California.  All rights reserved.
