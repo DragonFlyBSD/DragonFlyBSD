@@ -115,6 +115,9 @@
 #define	IPSEC
 #endif /* FAST_IPSEC */
 
+#define INP_LOCALGROUP_SIZMIN	8
+#define INP_LOCALGROUP_SIZMAX	256
+
 struct in_addr zeroin_addr;
 
 /*
@@ -1224,13 +1227,58 @@ in_pcblookup_local(struct inpcbinfo *pcbinfo, struct in_addr laddr,
 	return (match);
 }
 
+static struct inpcb *
+inp_localgroup_lookup(const struct inpcbinfo *pcbinfo,
+    struct in_addr laddr, uint16_t lport, uint32_t pkt_hash)
+{
+	struct inpcb *local_wild = NULL;
+	const struct inp_localgrphead *hdr;
+	const struct inp_localgroup *grp;
+
+	hdr = &pcbinfo->localgrphashbase[
+	    INP_PCBLOCALGRPHASH(lport, pcbinfo->localgrphashmask)];
+	pkt_hash >>= ncpus2_shift;
+
+	/*
+	 * Order of socket selection:
+	 * 1. non-wild.
+	 * 2. wild.
+	 *
+	 * NOTE:
+	 * - Local group does not contain jailed sockets
+	 * - Local group does not contain IPv4 mapped INET6 wild sockets
+	 */
+	LIST_FOREACH(grp, hdr, il_list) {
+#ifdef INET6
+		if (!(grp->il_vflag & INP_IPV4))
+			continue;
+#endif
+		if (grp->il_lport == lport) {
+			int idx;
+
+			idx = pkt_hash / grp->il_factor;
+			KASSERT(idx < grp->il_inpcnt && idx >= 0,
+			    ("invalid hash %04x, cnt %d or fact %d",
+			     pkt_hash, grp->il_inpcnt, grp->il_factor));
+
+			if (grp->il_laddr.s_addr == laddr.s_addr)
+				return grp->il_inp[idx];
+			else if (grp->il_laddr.s_addr == INADDR_ANY)
+				local_wild = grp->il_inp[idx];
+		}
+	}
+	if (local_wild != NULL)
+		return local_wild;
+	return NULL;
+}
+
 /*
  * Lookup PCB in hash list.
  */
 struct inpcb *
-in_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
-		  u_int fport_arg, struct in_addr laddr, u_int lport_arg,
-		  boolean_t wildcard, struct ifnet *ifp)
+in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
+    u_int fport_arg, struct in_addr laddr, u_int lport_arg,
+    boolean_t wildcard, struct ifnet *ifp, const struct mbuf *m)
 {
 	struct inpcbhead *head;
 	struct inpcb *inp, *jinp=NULL;
@@ -1271,6 +1319,18 @@ in_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 		struct inpcontainerhead *chead;
 		struct sockaddr_in jsin;
 		struct ucred *cred;
+
+		/*
+		 * Check local group first
+		 */
+		if (pcbinfo->localgrphashbase != NULL &&
+		    m != NULL && (m->m_flags & M_HASH) &&
+		    !(ifp && ifp->if_type == IFT_FAITH)) {
+			inp = inp_localgroup_lookup(pcbinfo,
+			    laddr, lport, m->m_pkthdr.hash);
+			if (inp != NULL)
+				return inp;
+		}
 
 		/*
 		 * Order of socket selection:
@@ -1341,6 +1401,15 @@ in_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 	 * Not found.
 	 */
 	return (NULL);
+}
+
+struct inpcb *
+in_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
+    u_int fport_arg, struct in_addr laddr, u_int lport_arg,
+    boolean_t wildcard, struct ifnet *ifp)
+{
+	return in_pcblookup_pkthash(pcbinfo, faddr, fport_arg,
+	    laddr, lport_arg, wildcard, ifp, NULL);
 }
 
 /*
@@ -1441,11 +1510,141 @@ in_pcbinsporthash(struct inpcb *inp)
 	return (0);
 }
 
+static struct inp_localgroup *
+inp_localgroup_alloc(struct inp_localgrphead *hdr, u_char vflag,
+    uint16_t port, const union in_dependaddr *addr, int size)
+{
+	struct inp_localgroup *grp;
+
+	grp = kmalloc(__offsetof(struct inp_localgroup, il_inp[size]),
+	    M_TEMP, M_INTWAIT | M_ZERO);
+	grp->il_vflag = vflag;
+	grp->il_lport = port;
+	grp->il_dependladdr = *addr;
+	grp->il_inpsiz = size;
+
+	LIST_INSERT_HEAD(hdr, grp, il_list);
+
+	return grp;
+}
+
+static void
+inp_localgroup_free(struct inp_localgroup *grp)
+{
+	LIST_REMOVE(grp, il_list);
+	kfree(grp, M_TEMP);
+}
+
+static struct inp_localgroup *
+inp_localgroup_resize(struct inp_localgrphead *hdr,
+    struct inp_localgroup *old_grp, int size)
+{
+	struct inp_localgroup *grp;
+	int i;
+
+	grp = inp_localgroup_alloc(hdr, old_grp->il_vflag,
+	    old_grp->il_lport, &old_grp->il_dependladdr, size);
+
+	KASSERT(old_grp->il_inpcnt < grp->il_inpsiz,
+	    ("invalid new local group size %d and old local group count %d",
+	     grp->il_inpsiz, old_grp->il_inpcnt));
+	for (i = 0; i < old_grp->il_inpcnt; ++i)
+		grp->il_inp[i] = old_grp->il_inp[i];
+	grp->il_inpcnt = old_grp->il_inpcnt;
+	grp->il_factor = old_grp->il_factor;
+
+	inp_localgroup_free(old_grp);
+
+	return grp;
+}
+
+static void
+inp_localgroup_factor(struct inp_localgroup *grp)
+{
+	grp->il_factor =
+	    ((uint32_t)(0xffff >> ncpus2_shift) / grp->il_inpcnt) + 1;
+	KASSERT(grp->il_factor != 0, ("invalid local group factor, "
+	    "ncpus2_shift %d, inpcnt %d", ncpus2_shift, grp->il_inpcnt));
+}
+
+static void
+in_pcbinslocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
+{
+	struct inp_localgrphead *hdr;
+	struct inp_localgroup *grp;
+	struct ucred *cred;
+
+	if (pcbinfo->localgrphashbase == NULL)
+		return;
+
+	/*
+	 * XXX don't allow jailed socket to join local group
+	 */
+	if (inp->inp_socket != NULL)
+		cred = inp->inp_socket->so_cred;
+	else
+		cred = NULL;
+	if (cred != NULL && jailed(cred))
+		return;
+
+#ifdef INET6
+	/*
+	 * XXX don't allow IPv4 mapped INET6 wild socket
+	 */
+	if ((inp->inp_vflag & INP_IPV4) &&
+	    inp->inp_laddr.s_addr == INADDR_ANY &&
+	    INP_CHECK_SOCKAF(inp->inp_socket, AF_INET6))
+		return;
+#endif
+
+	hdr = &pcbinfo->localgrphashbase[
+	    INP_PCBLOCALGRPHASH(inp->inp_lport, pcbinfo->localgrphashmask)];
+
+	LIST_FOREACH(grp, hdr, il_list) {
+		if (grp->il_vflag == inp->inp_vflag &&
+		    grp->il_lport == inp->inp_lport &&
+		    memcmp(&grp->il_dependladdr,
+		        &inp->inp_inc.inc_ie.ie_dependladdr,
+		        sizeof(grp->il_dependladdr)) == 0) {
+			break;
+		}
+	}
+	if (grp == NULL) {
+		/* Create new local group */
+		grp = inp_localgroup_alloc(hdr, inp->inp_vflag,
+		    inp->inp_lport, &inp->inp_inc.inc_ie.ie_dependladdr,
+		    INP_LOCALGROUP_SIZMIN);
+	} else if (grp->il_inpcnt == grp->il_inpsiz) {
+		if (grp->il_inpsiz >= INP_LOCALGROUP_SIZMAX) {
+			static int limit_logged = 0;
+
+			if (!limit_logged) {
+				limit_logged = 1;
+				kprintf("local group port %d, "
+				    "limit reached\n", ntohs(grp->il_lport));
+			}
+			return;
+		}
+
+		/* Expand this local group */
+		grp = inp_localgroup_resize(hdr, grp, grp->il_inpsiz * 2);
+	}
+
+	KASSERT(grp->il_inpcnt < grp->il_inpsiz,
+	    ("invalid local group size %d and count %d",
+	     grp->il_inpsiz, grp->il_inpcnt));
+	grp->il_inp[grp->il_inpcnt] = inp;
+	grp->il_inpcnt++;
+	inp_localgroup_factor(grp);
+}
+
 void
 in_pcbinswildcardhash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 {
 	struct inpcontainer *ic;
 	struct inpcontainerhead *bucket;
+
+	in_pcbinslocalgrphash_oncpu(inp, pcbinfo);
 
 	bucket = &pcbinfo->wildcardhashbase[
 	    INP_PCBWILDCARDHASH(inp->inp_lport, pcbinfo->wildcardhashmask)];
@@ -1472,11 +1671,54 @@ in_pcbinswildcardhash(struct inpcb *inp)
 	in_pcbinswildcardhash_oncpu(inp, pcbinfo);
 }
 
+static void
+in_pcbremlocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
+{
+	struct inp_localgrphead *hdr;
+	struct inp_localgroup *grp;
+
+	if (pcbinfo->localgrphashbase == NULL)
+		return;
+
+	hdr = &pcbinfo->localgrphashbase[
+	    INP_PCBLOCALGRPHASH(inp->inp_lport, pcbinfo->localgrphashmask)];
+
+	LIST_FOREACH(grp, hdr, il_list) {
+		int i;
+
+		for (i = 0; i < grp->il_inpcnt; ++i) {
+			if (grp->il_inp[i] != inp)
+				continue;
+
+			if (grp->il_inpcnt == 1) {
+				/* Free this local group */
+				inp_localgroup_free(grp);
+			} else {
+				/* Pull up inpcbs */
+				for (; i + 1 < grp->il_inpcnt; ++i)
+					grp->il_inp[i] = grp->il_inp[i + 1];
+				grp->il_inpcnt--;
+				inp_localgroup_factor(grp);
+
+				if (grp->il_inpsiz > INP_LOCALGROUP_SIZMIN &&
+				    grp->il_inpcnt <= (grp->il_inpsiz / 4)) {
+					/* Shrink this local group */
+					grp = inp_localgroup_resize(hdr, grp,
+					    grp->il_inpsiz / 2);
+				}
+			}
+			return;
+		}
+	}
+}
+
 void
 in_pcbremwildcardhash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 {
 	struct inpcontainer *ic;
 	struct inpcontainerhead *head;
+
+	in_pcbremlocalgrphash_oncpu(inp, pcbinfo);
 
 	/* find bucket */
 	head = &pcbinfo->wildcardhashbase[

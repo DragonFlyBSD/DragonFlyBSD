@@ -263,6 +263,10 @@ static int tcp_ignore_redun_dsack = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, ignore_redun_dsack, CTLFLAG_RW,
     &tcp_ignore_redun_dsack, 0, "Ignore redundant DSACK");
 
+static int tcp_reuseport_ext = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, reuseport_ext, CTLFLAG_RW,
+    &tcp_reuseport_ext, 0, "SO_REUSEPORT extension");
+
 static void	 tcp_dooptions(struct tcpopt *, u_char *, int, boolean_t,
 		    tcp_seq);
 static void	 tcp_pulloutofband(struct socket *,
@@ -861,10 +865,11 @@ findpcb:
 						 1, m->m_pkthdr.rcvif);
 		} else {
 			cpu = mycpu->gd_cpuid;
-			inp = in_pcblookup_hash(&tcbinfo[cpu],
-						ip->ip_src, th->th_sport,
-						ip->ip_dst, th->th_dport,
-						1, m->m_pkthdr.rcvif);
+			inp = in_pcblookup_pkthash(&tcbinfo[cpu],
+			    ip->ip_src, th->th_sport,
+			    ip->ip_dst, th->th_dport,
+			    1, m->m_pkthdr.rcvif,
+			    tcp_reuseport_ext ? m : NULL);
 		}
 	}
 

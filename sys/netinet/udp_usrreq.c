@@ -150,6 +150,10 @@ SYSCTL_INT(_net_inet_udp, OID_AUTO, sosend_prepend, CTLFLAG_RW,
 	&udp_sosend_prepend, 0,
 	"Prepend enough space for proto and link header in pru_send");
 
+static int udp_reuseport_ext = 1;
+SYSCTL_INT(_net_inet_udp, OID_AUTO, reuseport_ext, CTLFLAG_RW,
+	&udp_reuseport_ext, 0, "SO_REUSEPORT extension");
+
 struct	inpcbinfo udbinfo;
 
 static struct netisr_barrier *udbinfo_br;
@@ -198,6 +202,8 @@ udp_init(void)
 					&udbinfo.porthashmask);
 	udbinfo.wildcardhashbase = hashinit(UDBHASHSIZE, M_PCB,
 					    &udbinfo.wildcardhashmask);
+	udbinfo.localgrphashbase = hashinit(UDBHASHSIZE, M_PCB,
+					    &udbinfo.localgrphashmask);
 	udbinfo.ipi_size = sizeof(struct inpcb);
 
 	udbinfo_br = netisr_barrier_create();
@@ -471,8 +477,9 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 	/*
 	 * Locate pcb for datagram.
 	 */
-	inp = in_pcblookup_hash(&udbinfo, ip->ip_src, uh->uh_sport,
-	    ip->ip_dst, uh->uh_dport, 1, m->m_pkthdr.rcvif);
+	inp = in_pcblookup_pkthash(&udbinfo, ip->ip_src, uh->uh_sport,
+	    ip->ip_dst, uh->uh_dport, 1, m->m_pkthdr.rcvif,
+	    udp_reuseport_ext ? m : NULL);
 	if (inp == NULL) {
 		if (log_in_vain) {
 			char buf[sizeof "aaa.bbb.ccc.ddd"];

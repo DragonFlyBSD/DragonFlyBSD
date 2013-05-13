@@ -382,6 +382,8 @@ tcp_init(void)
 #endif
 		ticb->wildcardhashbase = hashinit(hashsize, M_PCB,
 						  &ticb->wildcardhashmask);
+		ticb->localgrphashbase = hashinit(hashsize, M_PCB,
+						  &ticb->localgrphashmask);
 		ticb->ipi_size = sizeof(struct inp_tp);
 		TAILQ_INIT(&tcpcbackq[cpu]);
 	}

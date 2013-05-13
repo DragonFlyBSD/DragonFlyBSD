@@ -115,6 +115,11 @@ struct in_addr_4in6 {
 	struct	in_addr	ia46_addr4;
 };
 
+union in_dependaddr {
+	struct in_addr_4in6 id46_addr;
+	struct in6_addr	id6_addr;
+};
+
 /*
  * NOTE: ipv6 addrs should be 64-bit aligned, per RFC 2553.
  * in_conninfo has some extra padding to accomplish this.
@@ -123,21 +128,28 @@ struct in_endpoints {
 	u_int16_t	ie_fport;		/* foreign port */
 	u_int16_t	ie_lport;		/* local port */
 	/* protocol dependent part, local and foreign addr */
-	union {
-		/* foreign host table entry */
-		struct	in_addr_4in6 ie46_foreign;
-		struct	in6_addr ie6_foreign;
-	} ie_dependfaddr;
-	union {
-		/* local host table entry */
-		struct	in_addr_4in6 ie46_local;
-		struct	in6_addr ie6_local;
-	} ie_dependladdr;
-#define	ie_faddr	ie_dependfaddr.ie46_foreign.ia46_addr4
-#define	ie_laddr	ie_dependladdr.ie46_local.ia46_addr4
-#define	ie6_faddr	ie_dependfaddr.ie6_foreign
-#define	ie6_laddr	ie_dependladdr.ie6_local
+	union in_dependaddr ie_dependfaddr;	/* foreign host table entry */
+	union in_dependaddr ie_dependladdr;	/* local host table entry */
+#define	ie_faddr	ie_dependfaddr.id46_addr.ia46_addr4
+#define	ie_laddr	ie_dependladdr.id46_addr.ia46_addr4
+#define	ie6_faddr	ie_dependfaddr.id6_addr
+#define	ie6_laddr	ie_dependladdr.id6_addr
 };
+
+struct inp_localgroup {
+	LIST_ENTRY(inp_localgroup) il_list;
+	uint16_t	il_lport;
+	u_char		il_vflag;
+	u_char		il_pad;
+	uint32_t	il_factor;
+	union in_dependaddr il_dependladdr;
+#define il_laddr	il_dependladdr.id46_addr.ia46_addr4
+#define il6_laddr	il_dependladdr.id6_addr
+	int		il_inpsiz;	/* size of il_inp[] */
+	int		il_inpcnt;	/* # of elem in il_inp[] */
+	struct inpcb	*il_inp[];
+};
+LIST_HEAD(inp_localgrphead, inp_localgroup);
 
 /*
  * XXX
@@ -289,6 +301,8 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 	struct 	inpcbport *portsave;	/* port allocation cache */
 	struct	inpcontainerhead *wildcardhashbase;
 	u_long	wildcardhashmask;
+	struct	inp_localgrphead *localgrphashbase;
+	u_long	localgrphashmask;
 	struct	inpcbhead pcblisthead;	/* head of queue of active pcb's */
 	u_short	lastport;
 	u_short	lastlow;
@@ -306,6 +320,8 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_PCBPORTHASH(lport, mask)		(ntohs(lport) & (mask))
 
 #define	INP_PCBWILDCARDHASH(lport, mask)	(ntohs(lport) & (mask))
+
+#define	INP_PCBLOCALGRPHASH(lport, mask)	(ntohs(lport) & (mask))
 
 /* flags in inp_flags: */
 #define	INP_RECVOPTS		0x01	/* receive incoming IP options */
@@ -430,6 +446,10 @@ struct inpcb *
 	in_pcblookup_hash (struct inpcbinfo *,
 			       struct in_addr, u_int, struct in_addr, u_int,
 			       int, struct ifnet *);
+struct inpcb *
+	in_pcblookup_pkthash (struct inpcbinfo *,
+			       struct in_addr, u_int, struct in_addr, u_int,
+			       int, struct ifnet *, const struct mbuf *);
 void	in_pcbnotifyall (struct inpcbhead *, struct in_addr,
 	    int, void (*)(struct inpcb *, int));
 int	in_setpeeraddr (struct socket *so, struct sockaddr **nam);
