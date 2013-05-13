@@ -899,7 +899,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 *	 duplication code will simply reuse the existing chain
 	 *	 structure.
 	 */
-	hammer2_chain_delete_duplicate(trans, &chain);
+	hammer2_chain_delete_duplicate(trans, &chain, 0);
 
 	/*
 	 * Set MODIFIED and add a chain ref to prevent destruction.  Both
@@ -1015,7 +1015,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 			 * requires delete-duplicate.
 			 */
 			KKASSERT((flags & HAMMER2_MODIFY_ASSERTNOCOPY) == 0);
-			hammer2_chain_delete_duplicate(trans, chainp);
+			hammer2_chain_delete_duplicate(trans, chainp, 0);
 			chain = *chainp;
 			/* fall through using duplicate */
 		} else {
@@ -2370,14 +2370,13 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
  * order to ensure that lookups do not race us.
  */
 void
-hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
-			       hammer2_chain_t **chainp)
+hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
+			       int flags)
 {
 	hammer2_mount_t *hmp = trans->hmp;
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *nchain;
 	hammer2_chain_core_t *above;
-	hammer2_chain_core_t *core;
 	size_t bytes;
 
 	/*
@@ -2388,12 +2387,11 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
 	 */
 	ochain = *chainp;
 	nchain = hammer2_chain_alloc(hmp, trans, &ochain->bref);    /* 1 ref */
-	hammer2_chain_core_alloc(nchain, ochain->core);
-	core = ochain->core;
+	if (flags & HAMMER2_DELDUP_RECORE)
+		hammer2_chain_core_alloc(nchain, NULL);
+	else
+		hammer2_chain_core_alloc(nchain, ochain->core);
 	above = ochain->above;
-
-	kprintf("delete_duplicate %p.%d(%d)\n",
-		ochain, ochain->bref.type, ochain->refs);
 
 	bytes = (hammer2_off_t)1 <<
 		(int)(ochain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
@@ -2510,9 +2508,6 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
 	/* extra ref still present from original allocation */
 
 	nchain->index = ochain->index;
-
-	kprintf("duplicate ochain %p(%d) nchain %p(%d) %08x\n",
-		ochain, ochain->refs, nchain, nchain->refs, nchain->flags);
 
 	spin_lock(&above->cst.spin);
 	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_ONRBTREE);

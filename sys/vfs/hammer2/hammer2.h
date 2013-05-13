@@ -212,6 +212,11 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_RESOLVE_NOREF		0x20
 
 /*
+ * Flags passed to hammer2_chain_delete_duplicate()
+ */
+#define HAMMER2_DELDUP_RECORE		0x0001
+
+/*
  * Cluster different types of storage together for allocations
  */
 #define HAMMER2_FREECACHE_INODE		0
@@ -602,7 +607,7 @@ int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
 				hammer2_ioc_pfs_t *pfs);
 void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
-				hammer2_chain_t **chainp);
+				hammer2_chain_t **chainp, int flags);
 void hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_commit(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain);

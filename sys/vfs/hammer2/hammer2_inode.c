@@ -1329,6 +1329,8 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			 * file is extended afterwords.
 			 */
 			hammer2_chain_modify(trans, &chain, 0);
+			hammer2_chain_delete_duplicate(trans, &chain,
+						       HAMMER2_DELDUP_RECORE);
 			ipdata = &chain->data->ipdata;
 			ipdata->target_type = ipdata->type;
 			ipdata->type = HAMMER2_OBJTYPE_HARDLINK;
@@ -1360,7 +1362,6 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			bzero(&ipdata->u, sizeof(ipdata->u));
 			/* XXX transaction ids */
 		} else {
-			kprintf("DELETE INVISIBLE %p\n", chain);
 			hammer2_chain_delete(trans, chain);
 		}
 

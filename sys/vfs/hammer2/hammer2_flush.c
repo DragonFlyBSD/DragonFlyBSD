@@ -888,6 +888,7 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 * skipped right now before we start messing with a non-existant
 	 * block table.
 	 */
+#if 0
 	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE &&
 	    (parent->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA)) {
 #if FLUSH_DEBUG
@@ -895,6 +896,7 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 #endif
 		goto finalize;
 	}
+#endif
 
 	/*
 	 * Ignore children created after our flush point, treating them as
@@ -981,10 +983,13 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 		KKASSERT((parent->data->ipdata.op_flags &
 			  HAMMER2_OPFLAG_DIRECTDATA) == 0);
 #endif
+#if 0
 		if (parent->data->ipdata.op_flags &
 		    HAMMER2_OPFLAG_DIRECTDATA) {
 			base = NULL;
-		} else {
+		} else
+#endif
+		{
 			base = &parent->data->ipdata.u.blockset.blockref[0];
 			count = HAMMER2_SET_COUNT;
 		}
@@ -1061,6 +1066,18 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 		for (scan = above->first_parent;
 		     scan;
 		     scan = scan->next_parent) {
+			/*
+			 * XXX weird code also checked at the top of scan2,
+			 *     I would like to fix this by detaching the core
+			 *     on initial hardlink consolidation (1->2 nlinks).
+			 */
+#if 0
+			if (scan->bref.type == HAMMER2_BREF_TYPE_INODE &&
+			    (scan->data->ipdata.op_flags &
+			     HAMMER2_OPFLAG_DIRECTDATA)) {
+				continue;
+			}
+#endif
 			if (scan->flags & HAMMER2_CHAIN_SUBMODIFIED) {
 				ok = 0;
 				break;
