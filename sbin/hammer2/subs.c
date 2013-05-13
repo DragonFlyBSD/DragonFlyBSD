@@ -267,3 +267,67 @@ hammer2_free(void *ptr)
 }
 
 #endif
+
+hammer2_key_t
+dirhash(const unsigned char *name, size_t len)
+{
+	const unsigned char *aname = name;
+	uint32_t crcx;
+	uint64_t key;
+	size_t i;
+	size_t j;
+
+	/*
+	 * Filesystem version 6 or better will create directories
+	 * using the ALG1 dirhash.  This hash breaks the filename
+	 * up into domains separated by special characters and
+	 * hashes each domain independently.
+	 *
+	 * We also do a simple sub-sort using the first character
+	 * of the filename in the top 5-bits.
+	 */
+	key = 0;
+
+	/*
+	 * m32
+	 */
+	crcx = 0;
+	for (i = j = 0; i < len; ++i) {
+		if (aname[i] == '.' ||
+		    aname[i] == '-' ||
+		    aname[i] == '_' ||
+		    aname[i] == '~') {
+			if (i != j)
+				crcx += hammer2_icrc32(aname + j, i - j);
+			j = i + 1;
+		}
+	}
+	if (i != j)
+		crcx += hammer2_icrc32(aname + j, i - j);
+
+	/*
+	 * The directory hash utilizes the top 32 bits of the 64-bit key.
+	 * Bit 63 must be set to 1.
+	 */
+	crcx |= 0x80000000U;
+	key |= (uint64_t)crcx << 32;
+
+	/*
+	 * l16 - crc of entire filename
+	 *
+	 * This crc reduces degenerate hash collision conditions
+	 */
+	crcx = hammer2_icrc32(aname, len);
+	crcx = crcx ^ (crcx << 16);
+	key |= crcx & 0xFFFF0000U;
+
+	/*
+	 * Set bit 15.  This allows readdir to strip bit 63 so a positive
+	 * 64-bit cookie/offset can always be returned, and still guarantee
+	 * that the values 0x0000-0x7FFF are available for artificial entries.
+	 * ('.' and '..').
+	 */
+	key |= 0x8000U;
+
+	return (key);
+}

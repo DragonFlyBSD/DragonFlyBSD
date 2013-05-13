@@ -1,5 +1,5 @@
 PROG=	hammer2
-SRCS=	main.c subs.c
+SRCS=	main.c subs.c icrc.c
 SRCS+=	cmd_remote.c cmd_snapshot.c cmd_pfs.c
 SRCS+=	cmd_service.c cmd_leaf.c cmd_debug.c
 SRCS+=	cmd_rsa.c cmd_stat.c

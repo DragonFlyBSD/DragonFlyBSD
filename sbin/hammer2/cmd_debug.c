@@ -548,6 +548,18 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
 	}
 }
 
+int
+cmd_hash(int ac, const char **av)
+{
+	int i;
+
+	for (i = 0; i < ac; ++i) {
+		printf("%016jx %s\n", dirhash(av[i], strlen(av[i])), av[i]);
+	}
+	return(0);
+}
+
+
 static
 void
 tabprintf(int tab, const char *ctl, ...)

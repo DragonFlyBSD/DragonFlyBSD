@@ -160,6 +160,8 @@ main(int ac, char **av)
 			usage(1);
 		}
 		ecode = cmd_remote_disconnect(sel_path, av[1]);
+	} else if (strcmp(av[0], "hash") == 0) {
+		ecode = cmd_hash(ac - 1, (const char **)(void *)&av[1]);
 	} else if (strcmp(av[0], "status") == 0) {
 		/*
 		 * Get status of PFS and its connections (-a for all PFSs)
@@ -347,6 +349,7 @@ usage(int code)
 		"\n"
 		"    connect <target>   Add cluster link\n"
 		"    disconnect <target> Del cluster link\n"
+		"    hash filename*     Print directory hash\n"
 		"    status             Report cluster status\n"
 		"    pfs-list           List PFSs\n"
 		"    pfs-clid <label>   Print cluster id for specific PFS\n"

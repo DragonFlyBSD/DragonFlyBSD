@@ -115,6 +115,7 @@ int cmd_pfs_delete(const char *sel_path, const char *name);
 int cmd_pfs_snapshot(const char *sel_path, const char *name);
 
 int cmd_service(void);
+int cmd_hash(int ac, const char **av);
 int cmd_stat(int ac, const char **av);
 int cmd_leaf(const char *sel_path);
 int cmd_shell(const char *hostname);
@@ -132,6 +133,7 @@ const char *hammer2_uuid_to_str(uuid_t *uuid, char **strp);
 const char *hammer2_iptype_to_str(uint8_t type);
 const char *hammer2_pfstype_to_str(uint8_t type);
 const char *sizetostr(hammer2_off_t size);
+hammer2_key_t dirhash(const unsigned char *name, size_t len);
 
 uint32_t hammer2_icrc32(const void *buf, size_t size);
 uint32_t hammer2_icrc32c(const void *buf, size_t size, uint32_t crc);

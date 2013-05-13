@@ -35,6 +35,8 @@
 
 #include <vfs/hammer2/hammer2_disk.h>
 
+#include "hammer2.h"
+
 /*****************************************************************/
 /*                                                               */
 /* CRC LOOKUP TABLE                                              */
