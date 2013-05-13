@@ -1956,6 +1956,7 @@ TO_REMOVE+=/usr/include/objc
 TO_REMOVE+=/usr/include/machine/pc/msdos.h
 TO_REMOVE+=/usr/share/man/cat4/i386/stli.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/stli.4.gz
+TO_REMOVE+=/usr/include/netgraph7/ng_eiface.h
 TO_REMOVE+=/usr/sbin/stlload
 TO_REMOVE+=/usr/share/man/cat8/i386/stlload.8.gz
 TO_REMOVE+=/usr/share/man/man8/i386/stlload.8.gz

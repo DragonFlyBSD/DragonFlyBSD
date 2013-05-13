@@ -62,9 +62,7 @@
 #include <netgraph7/cisco/ng_cisco.h>
 #include <netgraph7/deflate/ng_deflate.h>
 #include <netgraph7/echo/ng_echo.h>
-/*
 #include <netgraph7/eiface/ng_eiface.h>
-*/
 #include <netgraph7/etf/ng_etf.h>
 #include <netgraph7/ether/ng_ether.h>
 /*

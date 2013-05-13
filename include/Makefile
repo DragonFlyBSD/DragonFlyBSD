@@ -79,8 +79,8 @@ LSUBDIRS= \
 	netgraph/tee netgraph/tty netgraph/vjc \
 	netgraph7/UI netgraph7/async netgraph7/bpf \
 	netgraph7/bridge netgraph7/cisco netgraph7/deflate netgraph7/echo \
-	netgraph7/etf netgraph7/ether netgraph7/frame_relay netgraph7/hole \
-	netgraph7/hub \
+	netgraph7/eiface netgraph7/etf netgraph7/ether \
+	netgraph7/frame_relay netgraph7/hole netgraph7/hub \
 	netgraph7/iface netgraph7/ksocket netgraph7/l2tp netgraph7/lmi \
 	netgraph7/mppc netgraph7/one2many netgraph7/ppp netgraph7/pppoe \
 	netgraph7/pptpgre netgraph7/rfc1490 netgraph7/socket \

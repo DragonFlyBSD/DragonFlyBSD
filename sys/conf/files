@@ -1260,7 +1260,7 @@ netgraph7/cisco/ng_cisco.c	optional netgraph7_cisco
 netgraph7/deflate/ng_deflate.c	optional netgraph7_deflate
 netgraph7/ng_device.c		optional netgraph7_device
 netgraph7/echo/ng_echo.c	optional netgraph7_echo
-netgraph7/ng_eiface.c		optional netgraph7_eiface
+netgraph7/eiface/ng_eiface.c	optional netgraph7_eiface
 netgraph7/etf/ng_etf.c		optional netgraph7_etf
 netgraph7/ether/ng_ether.c	optional netgraph7_ether
 netgraph7/ng_fec.c		optional netgraph7_fec

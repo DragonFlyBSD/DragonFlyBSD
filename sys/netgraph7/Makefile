@@ -8,6 +8,7 @@ SUBDIR=	UI \
 	cisco \
 	deflate \
 	echo \
+	eiface \
 	etf \
 	ether \
 	frame_relay \
@@ -29,7 +30,6 @@ SUBDIR=	UI \
 	tee \
 	tty \
 	vjc
-#	eiface \
 #	fec \
 #	sync_ar \
 #	sync_sr \
