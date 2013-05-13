@@ -182,7 +182,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
-#define HAMMER2_CHAIN_IPACTIVE		0x00010000	/* ip->chain seq */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()

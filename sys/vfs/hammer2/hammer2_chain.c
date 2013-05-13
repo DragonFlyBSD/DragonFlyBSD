@@ -104,7 +104,7 @@ hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
  * parent.  SUBMODIFIED is not set in chain itself.
  *
  * This function only operates on current-time transactions and is not
- * used during flushes.
+ * used during flushes.  Instead, the flush code manages the flag itself.
  */
 void
 hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain)
@@ -200,10 +200,15 @@ hammer2_chain_core_alloc(hammer2_chain_t *chain, hammer2_chain_core_t *core)
 		atomic_add_int(&core->sharecnt, 1);
 		chain->core = core;
 		spin_lock(&core->cst.spin);
-		scanp = &core->first_parent;
-		while (*scanp)
-			scanp = &(*scanp)->next_parent;
-		*scanp = chain;
+		if (core->first_parent == NULL) {
+			core->first_parent = chain;
+		} else {
+			scanp = &core->first_parent;
+			while (*scanp)
+				scanp = &(*scanp)->next_parent;
+			*scanp = chain;
+			hammer2_chain_ref(chain);	/* next_parent link */
+		}
 		spin_unlock(&core->cst.spin);
 	}
 }
@@ -272,8 +277,8 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	hammer2_mount_t *hmp;
 	hammer2_chain_core_t *above;
 	hammer2_chain_core_t *core;
-	hammer2_chain_t **scanp;
-	hammer2_chain_t *parent;
+	hammer2_chain_t *rdrop1;
+	hammer2_chain_t *rdrop2;
 
 	/*
 	 * Spinlock the core and check to see if it is empty.  If it is
@@ -281,7 +286,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 */
 	if ((core = chain->core) != NULL) {
 		spin_lock(&core->cst.spin);
-		if (!RB_EMPTY(&core->rbtree)) {
+		if (RB_ROOT(&core->rbtree)) {
 			if (atomic_cmpset_int(&chain->refs, 1, 0)) {
 				/* 1->0 transition successful */
 				spin_unlock(&core->cst.spin);
@@ -295,7 +300,8 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	}
 
 	hmp = chain->hmp;
-	parent = NULL;
+	rdrop1 = NULL;
+	rdrop2 = NULL;
 
 	/*
 	 * Spinlock the parent and try to drop the last ref.  On success
@@ -323,26 +329,44 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		/*
 		 * Calculate a chain to return for a recursive drop.
 		 *
-		 * If the rbtree containing chain is empty we try to
-		 * recursively drop one of our parents.  Otherwise
-		 * we try to recursively drop a sibling.
+		 * XXX this needs help, we have a potential deep-recursion
+		 * problem which we try to address but sometimes we wind up
+		 * with two elements that have to be dropped.
+		 *
+		 * If the chain has an associated core with refs at 0
+		 * the chain must be the first in the core's linked list
+		 * by definition, and we will recursively drop the ref
+		 * implied by the chain->next_parent field.
+		 *
+		 * Otherwise if the rbtree containing chain is empty we try
+		 * to recursively drop our parent (only the first one could
+		 * possibly have refs == 0 since the rest are linked via
+		 * next_parent).
+		 *
+		 * Otherwise we try to recursively drop a sibling.
 		 */
+		if (chain->next_parent) {
+			KKASSERT(core != NULL);
+			rdrop1 = chain->next_parent;
+		}
 		if (RB_EMPTY(&above->rbtree)) {
-			scanp = &above->first_parent;
-			while ((parent = *scanp) != NULL) {
-				if (parent->refs == 0 &&
-				    atomic_cmpset_int(&parent->refs, 0, 1)) {
-					break;
-				}
-				scanp = &parent->next_parent;
+			rdrop2 = above->first_parent;
+			if (rdrop2 == NULL || rdrop2->refs ||
+			    atomic_cmpset_int(&rdrop2->refs, 0, 1) == 0) {
+				rdrop2 = NULL;
 			}
 		} else {
-			parent = RB_ROOT(&above->rbtree);
-			if (atomic_cmpset_int(&parent->refs, 0, 1) == 0)
-				parent = NULL;
+			rdrop2 = RB_ROOT(&above->rbtree);
+			if (atomic_cmpset_int(&rdrop2->refs, 0, 1) == 0)
+				rdrop2 = NULL;
 		}
 		spin_unlock(&above->cst.spin);
 		above = NULL;	/* safety */
+	} else {
+		if (chain->next_parent) {
+			KKASSERT(core != NULL);
+			rdrop1 = chain->next_parent;
+		}
 	}
 
 	/*
@@ -350,10 +374,12 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 * above spinlock is gone.
 	 */
 	if (core) {
-		scanp = &core->first_parent;
-		while (*scanp != chain)
-			scanp = &(*scanp)->next_parent;
-		*scanp = chain->next_parent;
+		KKASSERT(core->first_parent == chain);
+		if (chain->next_parent) {
+			/* parent should already be set */
+			KKASSERT(rdrop1 == chain->next_parent);
+		}
+		core->first_parent = chain->next_parent;
 		chain->next_parent = NULL;
 		chain->core = NULL;
 
@@ -400,8 +426,13 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		chain->flags &= ~HAMMER2_CHAIN_ALLOCATED;
 		kfree(chain, hmp->mchain);
 	}
-
-	return (parent);
+	if (rdrop1 && rdrop2) {
+		hammer2_chain_drop(rdrop1);
+		return(rdrop2);
+	} else if (rdrop1)
+		return(rdrop1);
+	else
+		return(rdrop2);
 }
 
 /*
@@ -2125,7 +2156,7 @@ done:
  * NOTE! Duplication is used in order to retain the original topology to
  *	 support flush synchronization points.  Both the original and the
  *	 new chain will have the same transaction id and thus the operation
- *	 appears atomic on the media.
+ *	 appears atomic w/regards to media flushes.
  */
 void
 hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
@@ -2157,16 +2188,6 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 	bytes = (hammer2_off_t)1 <<
 		(int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	nchain->bytes = bytes;
-
-	/*
-	 * Propagate the IPACTIVE flag.  This prevents an out-of-order
-	 * removal of a chain which can cause ip->chain sequences to sit
-	 * on a stale chain.
-	 */
-	/*if (core && (ochain->flags & HAMMER2_CHAIN_IPACTIVE))*/ {
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_IPACTIVE);
-		hammer2_chain_ref(nchain);
-	}
 
 	/*
 	 * Be sure to copy the INITIAL flag as well or we could end up
@@ -2377,16 +2398,6 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
 	bytes = (hammer2_off_t)1 <<
 		(int)(ochain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
 	nchain->bytes = bytes;
-
-	/*
-	 * Propagate the IPACTIVE flag.  This prevents an out-of-order
-	 * removal of a chain which can cause ip->chain sequences to sit
-	 * on a stale chain.
-	 */
-	/*if (core && (ochain->flags & HAMMER2_CHAIN_IPACTIVE))*/ {
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_IPACTIVE);
-		hammer2_chain_ref(nchain);
-	}
 
 	/*
 	 * Be sure to copy the INITIAL flag as well or we could end up

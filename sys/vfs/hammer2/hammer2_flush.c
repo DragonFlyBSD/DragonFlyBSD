@@ -226,16 +226,6 @@ hammer2_trans_done(hammer2_trans_t *trans)
  * are properly flushed.  Only snapshots and cluster flushes can create
  * these sorts of synchronization points.
  *
- * SUBMODIFIED is not cleared if modified elements with higher modify_tid
- * values (thus not flushed) are still present after the flush.
- *
- * If a chain is unable to completely flush we have to be sure that
- * SUBMODIFIED remains set up the parent chain, and that MOVED is not
- * cleared or our desynchronized bref will not properly update in the
- * parent.  The parent's indirect block is copied-on-write and adjusted
- * as needed so it no longer needs to be placemarked by the subchains,
- * allowing the sub-chains to be cleaned out.
- *
  * This routine can be called from several places but the most important
  * is from the hammer2_vop_reclaim() function.  We want to try to completely
  * clean out the inode structure to prevent disconnected inodes from
@@ -295,11 +285,7 @@ hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
 		}
 
 		/*
-		 * Flush pass1 on root.  SUBMODIFIED can remain set after
-		 * this call for numerous reasons, including write failures,
-		 * but most likely due to only a partial flush being
-		 * requested or the chain element belongs to the wrong
-		 * synchronization point.
+		 * Flush pass1 on root.
 		 */
 		info.diddeferral = 0;
 		hammer2_chain_flush_core(&info, chain);
@@ -313,21 +299,6 @@ hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
 		 */
 		if (TAILQ_EMPTY(&info.flush_list))
 			break;
-	}
-
-	/*
-	 * SUBMODIFIED can be temporarily cleared and then re-set, which
-	 * can prevent concurrent setsubmods from reaching all the way to
-	 * the root.  If after the flush we find the node is still in need
-	 * of flushing (though possibly due to modifications made outside
-	 * the requested synchronization zone), we must call setsubmod again
-	 * to cover the race.
-	 */
-	if (chain->flags & (HAMMER2_CHAIN_MOVED |
-			    HAMMER2_CHAIN_DELETED |
-			    HAMMER2_CHAIN_MODIFIED |
-			    HAMMER2_CHAIN_SUBMODIFIED)) {
-		hammer2_chain_setsubmod(trans, chain);
 	}
 }
 
@@ -490,14 +461,16 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 				       HAMMER2_CHAIN_SUBMODIFIED);
 		} else {
 #if FLUSH_DEBUG
-			kprintf("scan2_start parent %p %08x\n", chain, chain->flags);
+			kprintf("scan2_start parent %p %08x\n",
+				chain, chain->flags);
 #endif
 			spin_lock(&core->cst.spin);
 			RB_SCAN(hammer2_chain_tree, &core->rbtree,
 				NULL, hammer2_chain_flush_scan2, info);
 			spin_unlock(&core->cst.spin);
 #if FLUSH_DEBUG
-			kprintf("scan2_stop  parent %p %08x\n", chain, chain->flags);
+			kprintf("scan2_stop  parent %p %08x\n",
+				chain, chain->flags);
 #endif
 		}
 		chain->bref.mirror_tid = info->mirror_tid;
@@ -782,14 +755,21 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 
 	/*
 	 * We should only need to recurse if SUBMODIFIED is set, but as
-	 * a safety also recurse if MODIFIED is also set.  Return early
-	 * if neither bit is set.
+	 * a safety also recurse if MODIFIED is also set.
+	 *
+	 * Return early if neither bit is set.  We must re-assert the
+	 * SUBMODIFIED flag in the parent if any child covered by the
+	 * parent (via delete_tid) is skipped.
 	 */
 	if ((child->flags & (HAMMER2_CHAIN_MODIFIED |
 			     HAMMER2_CHAIN_SUBMODIFIED)) == 0) {
 		return (0);
 	}
 	if (child->modify_tid > trans->sync_tid) {
+		if (parent->delete_tid > trans->sync_tid) {
+			atomic_set_int(&parent->flags,
+				       HAMMER2_CHAIN_SUBMODIFIED);
+		}
 		return (0);
 	}
 
@@ -817,6 +797,10 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 		hammer2_chain_drop(child);
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_MAYBE);
 		spin_lock(&parent->core->cst.spin);
+		if (parent->delete_tid > trans->sync_tid) {
+			atomic_set_int(&parent->flags,
+				       HAMMER2_CHAIN_SUBMODIFIED);
+		}
 		return (0);
 	}
 
@@ -854,6 +838,9 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 #endif
 	--info->depth;
 	info->diddeferral += diddeferral;
+
+	if (child->flags & HAMMER2_CHAIN_SUBMODIFIED)
+		atomic_set_int(&parent->flags, HAMMER2_CHAIN_SUBMODIFIED);
 
 	hammer2_chain_unlock(child);
 	hammer2_chain_drop(child);
@@ -925,10 +912,6 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 #if FLUSH_DEBUG
 		kprintf("E");
 #endif
-		if (parent->delete_tid > trans->sync_tid) {
-			atomic_set_int(&parent->flags,
-					HAMMER2_CHAIN_SUBMODIFIED);
-		}
 		goto finalize;
 	}
 
@@ -1070,13 +1053,13 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 *
 	 * Only clear MOVED once all possible parents have been flushed.
 	 */
-#if 1
 	if (child->flags & HAMMER2_CHAIN_MOVED) {
 		hammer2_chain_t *scan;
 		int ok = 1;
 
 		spin_lock(&above->cst.spin);
-		for (scan = above->first_parent; scan;
+		for (scan = above->first_parent;
+		     scan;
 		     scan = scan->next_parent) {
 			if (scan->flags & HAMMER2_CHAIN_SUBMODIFIED) {
 				ok = 0;
@@ -1089,15 +1072,6 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 			hammer2_chain_drop(child);	/* flag */
 		}
 	}
-#endif
-#if 0
-	if (child->flags & HAMMER2_CHAIN_MOVED) {
-		if (above->sharecnt == 1) {
-			atomic_clear_int(&child->flags, HAMMER2_CHAIN_MOVED);
-			hammer2_chain_drop(child);	/* flag */
-		}
-	}
-#endif
 
 	/*
 	 * Unlock the child.  This can wind up dropping the child's

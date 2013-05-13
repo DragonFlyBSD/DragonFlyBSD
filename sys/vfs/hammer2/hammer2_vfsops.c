@@ -1289,13 +1289,15 @@ hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp)
 	}
 	if (*countp < 0)
 		return;
-	kprintf("%*.*schain[%d] %p.%d [%08x][core=%p] (%s) dl=%p refs=%d",
+	kprintf("%*.*schain[%d] %p.%d [%08x][core=%p] (%s) dl=%p dt=%s refs=%d",
 		tab, tab, "",
 		chain->index, chain, chain->bref.type, chain->flags,
 		chain->core,
 		((chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		chain->data) ?  (char *)chain->data->ipdata.filename : "?"),
-		chain->next_parent, chain->refs);
+		chain->next_parent,
+		(chain->delete_tid == HAMMER2_MAX_TID ? "max" : "fls"),
+		chain->refs);
 	if (chain->core == NULL || RB_EMPTY(&chain->core->rbtree))
 		kprintf("\n");
 	else

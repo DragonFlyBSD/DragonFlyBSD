@@ -152,8 +152,11 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * reclaim.
 	 */
 	chain = hammer2_inode_lock_ex(ip);
+#if 0
 	if (chain->next_parent)
-		kprintf("RECLAIM DUPLINKED IP: %p %p\n", ip, ip->chain);
+		kprintf("RECLAIM DUPLINKED IP: %p ip->ch=%p ch=%p np=%p\n",
+			ip, ip->chain, chain, chain->next_parent);
+#endif
 
 	/*
 	 * The final close of a deleted file or directory marks it for

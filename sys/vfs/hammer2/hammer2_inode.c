@@ -1011,103 +1011,23 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
  *
  * ip->chain is set to nchain.  The prior chain in ip->chain is dropped
  * and nchain is ref'd.
- *
- * This function is somewhat more complex.  When changing ip->chain it
- * must iterate through chain->next_parent and adjust CHAIN_IPACTIVE
- * appropriately.  CHAIN_IPACTIVE will also be set on nchain if necessary
- * (caller should pass a locked nchain in that case).  nchain will often
- * already have the bit set as part of a delete/duplicate sequence if
- * the deleted chain had it set.  Refs must also be adjusted for this flag.
  */
 void
 hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		      hammer2_chain_t *nchain)
 {
 	hammer2_chain_t *ochain;
-	hammer2_chain_t *xchain;
 	hammer2_inode_t *opip;
-	u_int oflags;
 
 	/*
 	 * Repoint ip->chain if requested.
 	 */
-	if (ip->chain == NULL) {
-		/*
-		 * ip->chain is NULL, we don't have to worry about having
-		 * to clear the IPACTIVE flag along the (non-existant) chain.
-		 * Just assign nchain and set the flag on nchain as necessary.
-		 */
-		if (nchain) {
-			spin_lock(&nchain->core->cst.spin);
-			if ((nchain->flags & HAMMER2_CHAIN_IPACTIVE) == 0) {
-				atomic_set_int(&nchain->flags,
-					       HAMMER2_CHAIN_IPACTIVE);
-				hammer2_chain_ref(nchain);
-			}
-			spin_unlock(&nchain->core->cst.spin);
-			ip->chain = nchain;
-			hammer2_chain_ref(nchain);
-		}
-	} else if (ip->chain != nchain) {
-		/*
-		 * Iterate the non-NULL ip->chain clearing IPACTIVE on the
-		 * old chains and setting it on the new ones, until we reach
-		 * nchain.
-		 */
-		while ((ochain = ip->chain) != NULL) {
-			spin_lock(&ochain->core->cst.spin);
-			xchain = ochain->next_parent;
-			ip->chain = xchain;
-			if (xchain) {
-				if (xchain->flags & HAMMER2_CHAIN_SNAPSHOT) {
-					ip->chain = ochain;
-					spin_unlock(&ochain->core->cst.spin);
-					break;
-				}
-				if (!(xchain->flags & HAMMER2_CHAIN_IPACTIVE)) {
-					atomic_set_int(&xchain->flags,
-						       HAMMER2_CHAIN_IPACTIVE);
-					hammer2_chain_ref(xchain);
-				}
-				hammer2_chain_ref(xchain);
-				KKASSERT(ochain->core == xchain->core);
-			}
-			oflags = ochain->flags;
-			atomic_clear_int(&ochain->flags,
-					 HAMMER2_CHAIN_IPACTIVE);
-			spin_unlock(&ochain->core->cst.spin);
-
-			if (oflags & HAMMER2_CHAIN_IPACTIVE)
-				hammer2_chain_drop(ochain);
-			hammer2_chain_drop(ochain);
-
-			if (xchain == nchain) {
-				ochain = xchain;    /* for match below */
-				break;
-			}
-		}
-
-		/*
-		 * We should always match at the end of the iteration.  If
-		 * not then nchain somehow got severely disconnected from
-		 * the inode's existing chain sequence.
-		 *
-		 * Complain loudly but try to recover the situation.
-		 */
-		if (ochain != nchain) {
-			kprintf("hammer2_inode_repoint: lost IPACTIVE seq "
-				"ip=%p nchain=%p\n", ip, nchain);
-			spin_lock(&nchain->core->cst.spin);
-			if ((nchain->flags & HAMMER2_CHAIN_IPACTIVE) == 0) {
-				atomic_set_int(&nchain->flags,
-					       HAMMER2_CHAIN_IPACTIVE);
-				hammer2_chain_ref(nchain);
-			}
-			spin_unlock(&nchain->core->cst.spin);
-			ip->chain = nchain;
-			hammer2_chain_ref(nchain);
-		}
-	}
+	ochain = ip->chain;
+	ip->chain = nchain;
+	if (nchain)
+		hammer2_chain_ref(nchain);
+	if (ochain)
+		hammer2_chain_drop(ochain);
 
 	/*
 	 * Repoint ip->pip if requested (non-NULL pip).
@@ -1440,7 +1360,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			bzero(&ipdata->u, sizeof(ipdata->u));
 			/* XXX transaction ids */
 		} else {
-			kprintf("DELETE INVISIBLE\n");
+			kprintf("DELETE INVISIBLE %p\n", chain);
 			hammer2_chain_delete(trans, chain);
 		}
 
