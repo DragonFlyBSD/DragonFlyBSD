@@ -765,11 +765,11 @@ display_init(struct statics *statics)
        y_mem = y_mem + n_cpus -1;
        y_swap = y_swap + n_cpus -1;
        y_message = y_message + n_cpus -1;
-       y_header = y_header + n_cpus -1; 
+       y_header = y_header + n_cpus -1;
        y_idlecursor = y_idlecursor + n_cpus -1;
        y_procs = y_procs + n_cpus -1;
     }
-	
+
     /* a kernel line shifts parts of the display down */
     kernel_names = statics->kernel_names;
     if ((num_kernel = string_count(kernel_names)) > 0)
@@ -1161,15 +1161,15 @@ i_cpustates(int *states)
 		for (cpu = 0; cpu < n_cpus; ++cpu) {
 			int y_pos = y_cpustates;
 			y_pos = y_pos + cpu;
-			colp = cpustate_columns;	
+			colp = cpustate_columns;
 			names = cpustate_names;
 			display_write(0, y_cpustates+cpu, 0, 0, cpustates_tag());
 
 			/* now walk thru the names and print the line */
 			while ((thisname = *names++) != NULL) {
 				if (*thisname != '\0') {
-	    				/* retrieve the value and remember it */
-	 				value = *states;
+					/* retrieve the value and remember it */
+					value = *states;
 
 #ifdef ENABLE_COLOR
 					/* determine color number to use */
@@ -1188,8 +1188,8 @@ i_cpustates(int *states)
 				colp++;
 				states++;
 			}
-    			/* copy over values into "last" array */
-    			memcpy(lcpustates, states, num_cpustates * sizeof(int));
+			/* copy over values into "last" array */
+			memcpy(lcpustates, states, num_cpustates * sizeof(int));
 		}
     } else {
     display_write(0, y_cpustates, 0, 0, cpustates_tag());
@@ -1256,7 +1256,7 @@ u_cpustates(int *states)
 						/* yes, change it */
 						/* retrieve value and remember it */
 						value = *states;
-						
+
 #ifdef ENABLE_COLOR
 						/* determine color number to use */
 						color = color_test(*cidx, value/10);
@@ -1265,7 +1265,7 @@ u_cpustates(int *states)
 						display_fmt(x_cpustates + *colp, y_pos, color, 0,
 									(value >= 1000 ? "%4.0f" : "%4.1f"),
 									((double)value)/10.);
-						
+
 #ifdef ENABLE_COLOR
 					cidx++;
 #endif

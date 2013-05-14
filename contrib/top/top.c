@@ -428,8 +428,8 @@ do_arguments(globalstate *gstate, int ac, char **av)
 
         case 'M':
 	    enable_ncpus = 1;
-            break;	
-		
+            break;
+
 
 #ifdef ENABLE_COLOR
 	case 'T':
