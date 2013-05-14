@@ -292,9 +292,19 @@ devfs_allocv(struct vnode **vpp, struct devfs_node *node)
 
 	KKASSERT(node);
 
+	/*
+	 * devfs master lock must not be held across a vget() call, we have
+	 * to hold our ad-hoc vp to avoid a free race from destroying the
+	 * contents of the structure.  The vget() will interlock recycles
+	 * for us.
+	 */
 try_again:
 	while ((vp = node->v_node) != NULL) {
+		vhold(vp);
+		lockmgr(&devfs_lock, LK_RELEASE);
 		error = vget(vp, LK_EXCLUSIVE);
+		vdrop(vp);
+		lockmgr(&devfs_lock, LK_EXCLUSIVE);
 		if (error == 0) {
 			*vpp = vp;
 			goto out;
@@ -305,8 +315,15 @@ try_again:
 		}
 	}
 
-	if ((error = getnewvnode(VT_DEVFS, node->mp, vpp, 0, 0)) != 0)
+	/*
+	 * devfs master lock must not be held across a getnewvnode() call.
+	 */
+	lockmgr(&devfs_lock, LK_RELEASE);
+	if ((error = getnewvnode(VT_DEVFS, node->mp, vpp, 0, 0)) != 0) {
+		lockmgr(&devfs_lock, LK_EXCLUSIVE);
 		goto out;
+	}
+	lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
 	vp = *vpp;
 
