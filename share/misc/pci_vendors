@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2013.04.04
-#	Date:    2013-04-04 03:15:01
+#	Version: 2013.05.14
+#	Date:    2013-05-14 03:15:01
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -558,8 +558,8 @@
 	0016  PCI-MFB Analogue I/O board
 	0017  PROTO-3 PCI Prototyping board
 	9100  INI-9100/9100W SCSI Host
-# nee ATI Technologies Inc.
-1002  Advanced Micro Devices [AMD] nee ATI
+# nee ATI Technologies, Inc.
+1002  Advanced Micro Devices, Inc. [AMD/ATI]
 	1304  Kaveri
 	1305  Kaveri
 	1306  Kaveri
@@ -965,7 +965,7 @@
 		1002 0155  IBM Thinkpad A22p
 		1014 0155  IBM Thinkpad A22p
 		1028 00b1  Latitude C600
-	4c47  3D Rage IIC PCI/Mobility Radeon 7500/7500C
+	4c47  3D Rage IIC PCI / Mobility Radeon 7500/7500C
 	4c49  3D Rage LT PRO PCI
 		1002 0004  Rage LT Pro
 		1002 0040  Rage LT Pro
@@ -1340,9 +1340,10 @@
 	5b65  RV370 GL [FireMV 2200]
 	5b66  RV370X
 	5b70  RV370 [Radeon X300 SE]
-		1462 0403  RX300SE-TD128E (MS-8940) (secondary display)
-		174b 0501  Radeon X300SE
-		196d 1087  X300SE HM
+# RX300SE-TD128E
+		1462 0403  Radeon X300 SE 128MB DDR
+		174b 0501  Sapphire Radeon X300 SE
+		196d 1087  Radeon X300 SE HyperMemory
 	5b72  RV380 [Radeon X300/X550/X1050 Series] (Secondary)
 	5b73  RV370 [Radeon X300/X550/X1050 Series] (Secondary)
 	5b74  RV370 GL [FireGL V3100] (Secondary)
@@ -1390,29 +1391,39 @@
 		148c 2117  PowerColor Bravo X700
 	5f57  R423 [Radeon X800 XT]
 	6600  Mars [Radeon HD 8670A/8750M]
-	6601  Mars [Radeon HD 8500/8700M Series]
+	6601  Mars [Radeon HD 8730M]
 	6602  Mars
 	6603  Mars
-	6606  Mars [Radeon HD 8790M]
-	6607  Mars [Radeon HD 8530M]
+	6606  Mars XTX [Radeon HD 8790M]
+	6607  Mars LE [Radeon HD 8530M]
 	6610  Oland [Radeon HD 8600 Series]
 	6611  Oland [Radeon HD 8500 Series]
 	6613  Oland [Radeon HD 8500 Series]
 	6620  Mars
-	6621  Mars
+	6621  Mars PRO
 	6623  Mars
 	6631  Oland
-	6640  Saturn
-	6641  Saturn
+	6640  Saturn [Radeon HD 8950]
+	6641  Saturn PRO
 	6649  Bonaire
 	6650  Bonaire
 	6651  Bonaire
 	6658  Bonaire
-	665c  Bonaire XT [Radeon HD 7790]
+	665c  Bonaire XT [Radeon HD 7790/8770]
+		1043 0452  Radeon HD 7790 DirectCU II OC
+# R7790-1GD5/OC
+		1462 2930  Radeon HD 7790 OC
+		1462 2932  Radeon HD 8770
+# FX-779A-CDB4 / FX-779A-CDBC
+		1682 3310  Radeon HD 7790 Black Edition 2 GB
+# 100356OCL / 11210-01-20G
+		174b e253  Radeon HD 7790 Dual-X OC
 		1787 2329  Radeon HD 7790 TurboDuo
-	6660  Sun [Radeon HD 8600M Series]
+	6660  Sun XT [Radeon HD 8600M Series]
+	6663  Sun PRO [Radeon HD 8500M Series]
 	6667  Sun
-	666f  Sun
+	666f  Sun [Radeon HD 8500M]
+	6670  Hainan
 	6704  Cayman PRO GL [FirePro V7900]
 	6707  Cayman LE GL [FirePro V5900]
 	6718  Cayman XT [Radeon HD 6970]
@@ -1431,7 +1442,6 @@
 		1558 5104  Radeon HD 6990M
 		1558 7201  Radeon HD 6990M
 		174b e188  Radeon HD 6970M
-	6723  Barts GL [ATI FirePro V (FireGL V) Graphics Adapter]
 	6724  Blackcomb [Mobility Radeon HD 6000 series]
 	6725  Blackcomb [Radeon HD 6900M Series]
 	6738  Barts XT [Radeon HD 6870]
@@ -1451,9 +1461,6 @@
 		1043 1d82  K53SK Laptop Radeon HD 7610M
 		8086 2111  Radeon HD 6625M
 	6743  Whistler [Radeon E6760]
-	6746  Turks GL [ATI FirePro V (FireGL V) Graphics Adapter]
-	6747  Turks GL [ATI FirePro V (FireGL V) Graphics Adapter]
-	6748  Turks GL [ATI FirePro V (FireGL V) Graphics Adapter]
 	6749  Turks GL [FirePro V4900]
 	674a  Turks GL [FirePro V3900]
 	6750  Onega [Radeon HD 6650A / 7650A]
@@ -1473,7 +1480,6 @@
 		1028 04cc  Vostro 3350
 		1043 84a0  Seymour XT [Radeon HD 6470M]
 	6761  Seymour LP [Radeon HD 6430M]
-	6762  Caicos GL [ATI FirePro V (FireGL V) Graphics Adapter]
 	6763  Seymour [Radeon E6460]
 	6764  Seymour [Radeon HD 6400M Series]
 	6765  Seymour [Radeon HD 6400M Series]
@@ -1488,7 +1494,7 @@
 	6779  Caicos [Radeon HD 6450]
 		148c 8450  Radeon HD 8450 OEM
 		174b 7450  Radeon HD 7450
-		174b e164  Sapphire HD 6450 1GB DDR3
+		174b e164  Radeon HD 6450 1 GB DDR3
 		17af 8450  Radeon HD 8450 OEM
 	677b  Caicos PRO [Radeon HD 7450]
 	6780  Tahiti XT GL [FirePro W9000]
@@ -1524,9 +1530,9 @@
 	6799  New Zealand [Radeon HD 7900 Series]
 	679a  Tahiti PRO [Radeon HD 7950]
 		1002 0b01  Radeon HD 8950 OEM
-		1002 3000  Radeon HD 7950 Boost Edition
+		1002 3000  Tahiti PRO2 [Radeon HD 7950 Boost]
 		1462 3000  Radeon HD 8950 OEM
-	679b  New Zealand [Radeon HD 7900 Series]
+	679b  Malta [Radeon HD 7990]
 	679e  Tahiti LE [Radeon HD 7870 XT]
 	679f  Tahiti
 	6800  Wimbledon XT [Radeon HD 7970M]
@@ -1549,7 +1555,7 @@
 	6818  Pitcairn XT [Radeon HD 7870 GHz Edition]
 		1002 0b05  Pitcairn XT [Radeon HD 8870 OEM]
 	6819  Pitcairn PRO [Radeon HD 7850]
-		174b e221  Sapphire HD 7850 2G GDDR5 PCI-E DVI-I/DVI-D/HDMI/DP
+		174b e221  Sapphire Radeon HD 7850 2 GB GDDR5 DVI-I/DVI-D/HDMI/DP
 	6820  Venus XTX [Radeon HD 8800M Series]
 	6821  Venus XT [Radeon HD 8800M Series]
 	6823  Venus PRO [Radeon HD 8800M Series]
@@ -1565,12 +1571,13 @@
 	682f  Chelsea LP [Radeon HD 7730M]
 	6830  Cape Verde [Radeon HD 7800M Series]
 	6831  Cape Verde [AMD Radeon HD 7700M Series]
-	6837  Cape Verde LE [Radeon HD 7700 Series]
+	6837  Cape Verde LE [Radeon HD 7730]
+		1787 3000  Radeon HD 6570
 	6838  Cape Verde
 	6839  Cape Verde
 	683b  Cape Verde [Radeon HD 7700 Series]
 	683d  Cape Verde XT [Radeon HD 7770 GHz Edition]
-		1002 0030  Cape Verde XT [Radeon HD 8760 OEM]
+		1002 0030  Radeon HD 8760 OEM
 		1019 0030  Radeon HD 8760 OEM
 		103c 6890  Radeon HD 8760 OEM
 	683f  Cape Verde PRO [Radeon HD 7750]
@@ -1579,8 +1586,6 @@
 	6842  Thames LE [Radeon HD 7000M Series]
 	6843  Thames [Radeon HD 7670M]
 	6849  Lombok [AMD Radeon HD 7400 Series]
-	684c  Pitcairn [ATI FirePro V(FireGL V) Graphics Adapter]
-	6858  Lombok [Radeon HD 7400 series]
 	6880  Cypress
 	6888  Cypress XT [FirePro V8800]
 	6889  Cypress PRO [FirePro V7800]
@@ -1592,12 +1597,14 @@
 	6898  Cypress XT [Radeon HD 5870]
 		1002 0b00  Radeon HD 5870 Eyefinity⁶ Edition
 		106b 00d0  Radeon HD 5870 Mac Edition
-		1462 8032  R5870 PM2D1G
-		174b 6870  Radeon HD 6870 OEM
+# R5870-PM2D1G
+		1462 8032  Radeon HD 5870 1 GB GDDR5
+		174b 6870  Radeon HD 6870 1600SP Edition
 	6899  Cypress PRO [Radeon HD 5850]
-		1043 0330  EAH5850 [Radeon HD5850]
+# EAH5850
+		1043 0330  Radeon HD 5850
 		174b 237b  Radeon HD 5850 X2
-		174b 6850  Radeon HD 6850 OEM
+		174b 6850  Radeon HD 6850 1440SP Edition
 	689b  Cypress PRO [Radeon HD 6800 Series]
 	689c  Hemlock [Radeon HD 5970]
 		1043 0352  ARES
@@ -1616,7 +1623,7 @@
 	68b9  Juniper LE [Radeon HD 5670 640SP Edition]
 	68ba  Juniper XT [Radeon HD 6770]
 	68be  Juniper PRO [Radeon HD 5750]
-		148c 3000  Powercolor HD 6750
+		148c 3000  Radeon HD 6750
 	68bf  Juniper PRO [Radeon HD 6750]
 		174b 6750  Radeon HD 6750
 	68c0  Madison [Mobility Radeon HD 5730 / 6570M]
@@ -1839,8 +1846,8 @@
 	9440  RV770 [Radeon HD 4870]
 	9441  R700 [Radeon HD 4870 X2]
 	9442  RV770 [Radeon HD 4850]
-		1002 0502  MSI R4850-T2D512
-		174b e810  Sapphire HD 4850 512MB GDDR3 PCI-E Dual Slot Fansink
+		1002 0502  MSI Radeon HD 4850 512MB GDDR3
+		174b e810  Sapphire Radeon HD 4850 512MB GDDR3
 	9443  R700 [Radeon HD 4850 X2]
 	9444  RV770 GL [FirePro V8750]
 	9446  RV770 GL [FirePro V7760]
@@ -1864,9 +1871,11 @@
 		174b e880  Radeon HD 4670 512MB DDR3
 	9491  RV730/M96-CSP [Radeon E4690]
 	9495  RV730 [Radeon HD 4600 AGP Series]
-		1002 9495  RV730 XT [PowerColor Radeon HD4670 AGP 1GB DDR]
-		1458 0028  HD4650
-		1682 0028  HD465X
+		1002 0028  Radeon HD 4650/4670 AGP
+		1092 0028  Radeon HD 4670 AGP 512MB DDR2
+		1458 0028  Radeon HD 4650 AGP
+		1682 0028  Radeon HD 4650 AGP
+		174b 0028  Radeon HD 4650 AGP DDR2
 	9498  RV730 PRO [Radeon HD 4650]
 	949c  RV730 GL [FirePro V7750]
 	949e  RV730 GL [FirePro V5700]
@@ -1876,15 +1885,13 @@
 	94a3  RV740/M97 GL [FirePro M7740]
 	94b3  RV740 PRO [Radeon HD 4770]
 	94b4  RV740 PRO [Radeon HD 4750]
-	94b5  RV740 [Radeon HD 4770]
 	94c1  RV610 [Radeon HD 2400 PRO/XT]
 		1028 0211  Optiplex 755
 		1028 0d02  Optiplex 755
 	94c3  RV610 [Radeon HD 2400 PRO]
-		1002 94c3  Radeon HD 2400PRO
 		1028 0302  Radeon HD 2400 Pro
-		174b e400  Sapphire HD 2400 PRO video device
-		18bc 3550  GeCube Radeon HD2400 PRO
+		174b e400  Sapphire Radeon HD 2400 PRO
+		18bc 3550  GeCube Radeon HD 2400 PRO
 	94c4  RV610 LE [Radeon HD 2400 PRO AGP]
 	94c5  RV610 [Radeon HD 2400 LE]
 	94c7  RV610 [Radeon HD 2350]
@@ -1951,14 +1958,14 @@
 	9595  RV635/M86 GL [Mobility FireGL V5700]
 	9596  RV635 PRO [Radeon HD 3650 AGP]
 		1043 0028  EAH3650 SILENT/HTDI/512M/A
-	9597  RV635 [Radeon HD 3600 Series]
-	9598  RV635 [Radeon HD 3600 Series]
+	9597  RV635 PRO [Radeon HD 3650 AGP]
+	9598  RV635 [Radeon HD 3650/3750/4570/4580]
 		1002 9598  Mobility Radeon HD 3600
 		1043 01d6  EAH3650 Silent
 		1043 3001  Radeon HD 4570
 		174b 3001  Radeon HD 3750
 		174b 4580  RV635 PRO [Radeon HD 4580]
-	9599  RV635 [Radeon HD 3650 AGP]
+	9599  RV635 PRO [Radeon HD 3650 AGP]
 	95c0  RV620 PRO [Radeon HD 3470]
 		1002 95c0  Mobility Radeon HD 3470
 	95c2  RV620/M82 [Mobility Radeon HD 3410/3430]
@@ -2571,7 +2578,7 @@
 101f  PictureTel
 1020  Hitachi Computer Products
 1021  OKI Electric Industry Co. Ltd.
-1022  Advanced Micro Devices [AMD]
+1022  Advanced Micro Devices, Inc. [AMD]
 	1100  K8 [Athlon64/Opteron] HyperTransport Technology Configuration
 	1101  K8 [Athlon64/Opteron] Address Map
 	1102  K8 [Athlon64/Opteron] DRAM Controller
@@ -2754,6 +2761,7 @@
 	780b  FCH SMBus Controller
 	780c  FCH IDE Controller
 	780d  FCH Azalia Controller
+		1043 8444  F2A85-M Series
 	780e  FCH LPC Bridge
 	780f  FCH PCI Bridge
 	7812  FCH USB XHCI Controller
@@ -6965,7 +6973,6 @@
 	05be  NF200 PCIe 2.0 switch for Quadro Plex S4 / Tesla S870 / Tesla S1070 / Tesla S2050
 	05e0  GT200b [GeForce GTX 295]
 	05e1  GT200 [GeForce GTX 280]
-# GT200 [GTX 260] or GT200 [GTX 260-216] or GT200b [GTX 260-216]
 	05e2  GT200 [GeForce GTX 260]
 	05e3  GT200b [GeForce GTX 285]
 	05e6  GT200b [GeForce GTX 275]
@@ -6983,7 +6990,6 @@
 	0600  G92 [GeForce 8800 GTS 512]
 	0601  G92 [GeForce 9800 GT]
 	0602  G92 [GeForce 8800 GT]
-# G92 B1
 	0603  G92 [GeForce GT 230 OEM]
 	0604  G92 [GeForce 9800 GX2]
 	0605  G92 [GeForce 9800 GT]
@@ -7073,7 +7079,6 @@
 	065b  G96 [GeForce 9400 GT]
 	065c  G96GLM [Quadro FX 770M]
 	065d  G96 [GeForce 9500 GA / 9600 GT / GTS 250]
-# G96 C1
 	065f  G96 [GeForce G210]
 	06c0  GF100 [GeForce GTX 480]
 	06c4  GF100 [GeForce GTX 465]
@@ -7354,7 +7359,6 @@
 	0a65  GT218 [GeForce 210]
 		1043 8334  EN210 SILENT
 	0a66  GT218 [GeForce 310]
-# taken from nv_disp.inf
 	0a67  GT218 [GeForce 315]
 	0a68  GT218M [GeForce G 105M]
 	0a69  GT218M [GeForce G 105M]
@@ -7373,7 +7377,6 @@
 	0a76  GT218 [ION 2]
 	0a78  GT218GL [Quadro FX 380 LP]
 	0a7a  GT218M [GeForce 315M]
-# GT218 B1
 	0a7b  GT218 [GeForce 505]
 	0a7c  GT218GLM [Quadro FX 380M]
 	0a80  MCP79 Host Bridge
@@ -7480,7 +7483,6 @@
 	0ca2  GT215 [GeForce GT 320]
 	0ca3  GT215 [GeForce GT 240]
 	0ca4  GT215 [GeForce GT 340]
-# taken from nv_disp.inf
 	0ca5  GT215 [GeForce GT 220]
 	0ca7  GT215 [GeForce GT 330]
 	0ca8  GT215M [GeForce GTS 260M]
@@ -7509,7 +7511,6 @@
 	0dc0  GF106 [GeForce GT 440]
 	0dc4  GF106 [GeForce GTS 450]
 	0dc5  GF106 [GeForce GTS 450 OEM]
-# taken from nv_disp.inf
 	0dc6  GF106 [GeForce GTS 450]
 	0dcd  GF106M [GeForce GT 555M]
 	0dce  GF106M [GeForce GT 555M]
@@ -7520,16 +7521,13 @@
 	0dd6  GF106M [GeForce GT 550M]
 	0dd8  GF106GL [Quadro 2000]
 		10de 0914  Quadro 2000D
-# NVIDIA calls it GF106GML
 	0dda  GF106GLM [Quadro 2000M]
 	0de0  GF108 [GeForce GT 440]
 	0de1  GF108 [GeForce GT 430]
 		3842 1430  GeForce GT 430
 	0de2  GF108 [GeForce GT 420]
 	0de3  GF108M [GeForce GT 635M]
-# taken from nv_disp.inf
 	0de4  GF108 [GeForce GT 520]
-# taken from nv_disp.inf
 	0de5  GF108 [GeForce GT 530]
 	0de8  GF108M [GeForce GT 620M]
 	0de9  GF108M [GeForce GT 630M]
@@ -7552,11 +7550,8 @@
 	0df5  GF108M [GeForce GT 525M]
 	0df6  GF108M [GeForce GT 550M]
 	0df7  GF108M [GeForce GT 520M]
-# NVIDIA calls it GL
 	0df8  GF108GL [Quadro 600]
-# NVIDIA calls it GLM
 	0df9  GF108GLM [Quadro 500M]
-# NVIDIA calls it GLM
 	0dfa  GF108GLM [Quadro 1000M]
 	0dfc  GF108GLM [NVS 5200M]
 	0e08  GF119 HDMI Audio Controller
@@ -7570,7 +7565,6 @@
 		1043 8428  GTX650-DC-1GD5
 	0e22  GF104 [GeForce GTX 460]
 		1462 2322  N460GTX Cyclone 1GD5/OC
-# taken from nv_disp.inf
 	0e23  GF104 [GeForce GTX 460 SE]
 	0e24  GF104 [GeForce GTX 460 OEM]
 	0e30  GF104M [GeForce GTX 470M]
@@ -7580,12 +7574,11 @@
 	0f00  GF108 [GeForce GT 630]
 	0f01  GF108 [GeForce GT 620]
 	0fc0  GK107 [GeForce GT 640 OEM]
-# taken from nv_disp.inf
 	0fc1  GK107 [GeForce GT 640]
 	0fc2  GK107 [GeForce GT 630 OEM]
 	0fc6  GK107 [GeForce GTX 650]
 		1043 8428  GTX650-DC-1GD5
-	0fd1  GK107M [GeForce GT 650M / GTX 660M LE]
+	0fd1  GK107M [GeForce GT 650M]
 		1043 1597  GeForce GT 650M
 		1043 15a7  GeForce GT 650M
 		1043 2103  N56VZ
@@ -7638,12 +7631,9 @@
 	1026  GK110GL [Tesla K20s]
 	1028  GK110GL [Tesla K20m]
 	1040  GF119 [GeForce GT 520]
-# taken from nv_disp.inf
 	1042  GF119 [GeForce 510]
-# taken from nv_disp.inf
 	1048  GF119 [GeForce 605]
 	1049  GF119 [GeForce GT 620 OEM]
-# taken from nv_disp.inf
 	104a  GF119 [GeForce GT 610]
 # 1024MB with passive cooling (heatsink)
 		10b0 104a  Gainward GeForce GT 610
@@ -7668,17 +7658,12 @@
 	1080  GF110 [GeForce GTX 580]
 	1081  GF110 [GeForce GTX 570]
 		10de 087e  Leadtek WinFast GTX 570
-# GF110-270-A1
 	1082  GF110 [GeForce GTX 560 Ti OEM]
-# GF110-351-A1
 	1084  GF110 [GeForce GTX 560 OEM]
 	1086  GF110 [GeForce GTX 570 Rev. 2]
 	1087  GF110 [GeForce GTX 560 Ti 448 Cores]
-# GF110-351-A1
 	1088  GF110 [GeForce GTX 590]
-# taken from nv_disp.inf
 	1089  GF110 [GeForce GTX 580]
-# taken from nv_disp.inf
 	108b  GF110 [GeForce GTX 580]
 	108e  GF110GL [Tesla C2090]
 	1091  GF110GL [Tesla M2090]
@@ -7692,11 +7677,8 @@
 	109a  GF100GLM [Quadro 5010M]
 	109b  GF100GL [Quadro 7000]
 		10de 0918  Quadro 7000
-# GT218 B1
 	10c0  GT218 [GeForce 9300 GS Rev. 2]
-# GT218 B1
 	10c3  GT218 [GeForce 8400 GS Rev. 3]
-		10de 066d  G98 [GeForce 8400GS]
 	10c5  GT218 [GeForce 405]
 	10d8  GT218 [NVS 300]
 	1140  GF117M [GeForce 610M/710M / GT 620M/625M/630M/720M]
@@ -7732,6 +7714,7 @@
 		17aa 3983  GeForce 610M
 		17aa 500d  GeForce GT 620M
 	1180  GK104 [GeForce GTX 680]
+		3842 3682  GeForce GTX 680 Mac Edition
 	1183  GK104 [GeForce GTX 660 Ti]
 	1185  GK104 [GeForce GTX 660 OEM]
 	1188  GK104 [GeForce GTX 690]
@@ -7746,6 +7729,7 @@
 	11a2  GK104M [GeForce GTX 675MX Mac Edition]
 	11a3  GK104M [GeForce GTX 680MX]
 	11a7  GK104M [GeForce GTX 675MX]
+	11ac  GK104 [GeForce GTX 770]
 	11b0  GK104GL [Quadro K2 USM]
 	11b1  GK104GL [Tesla K2 USM]
 	11ba  GK104GL [Quadro K5000]
@@ -7753,14 +7737,18 @@
 	11bc  GK104GLM [Quadro K5000M]
 	11bd  GK104GLM [Quadro K4000M]
 	11be  GK104GLM [Quadro K3000M]
-# Device renamed.
 	11bf  GK104GL [GRID K2]
-# GK106-400-A1
 	11c0  GK106 [GeForce GTX 660]
 	11c2  GK106 [GeForce GTX 650 Ti Boost]
+		1043 845b  GeForce GTX 650 Ti Boost DirectCU II OC
+		1462 2874  GeForce GTX 650 Ti Boost TwinFrozr II OC
+		1569 11c2  GeForce GTX 650 Ti Boost OC
+		19da 1281  GeForce GTX 650 Ti Boost OC
+		3842 3657  GeForce GTX 650 Ti Boost
+		3842 3658  GeForce GTX 650 Ti Boost Superclocked
 	11c3  GK106 [GeForce GTX 650 Ti OEM]
+		10de 1030  GeForce GTX 650 Ti OEM
 	11c4  GK106 [GeForce GTX 645 OEM]
-# GK106-220-A1
 	11c6  GK106 [GeForce GTX 650 Ti]
 	11e0  GK106M [GeForce GTX 770M]
 	11e2  GK106M [GeForce GTX 765M]
@@ -7771,18 +7759,14 @@
 	1202  GF114 [GeForce GTX 560 Ti OEM]
 	1203  GF114 [GeForce GTX 460 SE v2]
 	1205  GF114 [GeForce GTX 460 v2]
-# taken from nv_disp.inf
 	1206  GF114 [GeForce GTX 555]
-# taken from nv_disp.inf
-	1207  GF114 [GeForce GTX 645]
-# taken from nv_disp.inf
+	1207  GF114 [GeForce GT 645 OEM]
 	1208  GF114 [GeForce GTX 560 SE]
 	1210  GF114M [GeForce GTX 570M]
 	1211  GF114M [GeForce GTX 580M]
 	1212  GF114M [GeForce GTX 675M]
 	1213  GF114M [GeForce GTX 670M]
 	1241  GF116 [GeForce GT 545 OEM]
-# GT, not GTX
 	1243  GF116 [GeForce GT 545]
 	1244  GF116 [GeForce GTX 550 Ti]
 	1245  GF116 [GeForce GTS 450 Rev. 2]
@@ -8066,6 +8050,7 @@
 		1a3b 1139  AW-NE139H Half-size Mini PCIe Card
 	8177  RTL8188CE 802.11b/g/n WiFi Adapter
 	8178  RTL8188CE 802.11b/g/n WiFi Adapter
+	8179  RTL8188EE Wireless Network Adapter
 	8180  RTL8180L 802.11b MAC
 		1385 4700  MA521 802.11b Wireless PC Card
 		1737 0019  WPC11v4 802.11b Wireless-B Notebook Adapter
@@ -8172,6 +8157,7 @@
 		1102 1002  SB Audigy2 Platinum
 		1102 1007  SB0240 Audigy 2 Platinum 6.1
 		1102 1009  SB Audigy2 OEM HP
+		1102 2001  SB Audigy 2 ZS Platinum Pro
 		1102 2002  SB Audigy 2 ZS (SB0350)
 		1102 4001  E-MU 1010
 		1102 4002  E-MU 0404
@@ -11516,6 +11502,7 @@
 	8154  PI7C8154A/PI7C8154B/PI7C8154BI PCI-to-PCI Bridge
 	e110  PI7C9X110 PCI Express to PCI bridge
 		1775 11cc  CC11/CL11 CompactPCI Bridge
+	e111  PI7C9X111SL PCIe-to-PCI Reversible Bridge
 	e130  PCI Express to PCI-XPI7C9X130 PCI-X Bridge
 12d9  Aculab PLC
 	0002  PCI Prosody
@@ -13535,6 +13522,7 @@
 		103c 1372  Broadcom 802.11a/b/g WLAN
 		103c 1373  Broadcom 802.11a/b/g WLAN
 		103c 30b5  Presario V3242AU
+		106b 0089  AirPort Extreme
 		1371 103c  Broadcom 802.11 Multiband-netwerkadapter(6715s)
 	4313  BCM4311 802.11a
 	4315  BCM4312 802.11b/g LP-PHY
@@ -13615,6 +13603,11 @@
 		103c 1367  BCM4321 802.11a/b/g/n Wireless LAN Controller
 		103c 1368  BCM4321 802.11a/b/g/n Wireless LAN Controller
 		103c 1369  BCM4321 802.11a/b/g/n Wireless LAN Controller
+		106b 0087  AirPort Extreme
+		106b 0088  AirPort Extreme
+		106b 008b  AirPort Extreme
+		106b 008c  AirPort Extreme
+		106b 0090  AirPort Extreme
 		14e4 4328  BCM4328 802.11a/b/g/n
 		1737 0066  WPC600N v1 802.11a/b/g/n Wireless-N CardBus Adapter
 		1737 0068  WEC600N v1 802.11a/b/g/n Wireless-N ExpressCard
@@ -13625,17 +13618,28 @@
 	432a  BCM4321 802.11an Wireless Network Controller
 	432b  BCM4322 802.11a/b/g/n Wireless LAN Controller
 		1028 000d  Wireless 1510 Wireless-N WLAN Mini-Card
+		106b 008d  AirPort Extreme
 		106b 008e  AirPort Extreme
 	432c  BCM4322 802.11b/g/n
 		1799 d311  Dynex DX-NNBX 802.11n WLAN Cardbus Card
 	432d  BCM4322 802.11an Wireless Network Controller
 	4331  BCM4331 802.11a/b/g/n
 		106b 00d6  AirPort Extreme
+		106b 00e4  AirPort Extreme
+		106b 00ef  AirPort Extreme
+		106b 00f4  AirPort Extreme
+		106b 00f5  AirPort Extreme
+		106b 010e  AirPort Extreme
+		106b 010f  AirPort Extreme
 	4333  Serial (EDGE/GPRS modem part of Option GT Combo Edge)
 	4344  EDGE/GPRS data and 802.11b/g combo cardbus [GC89]
+	4350  BCM43222 Wireless Network Adapter
 	4353  BCM43224 802.11a/b/g/n
 		1028 000e  Wireless 1520 Half-size Mini PCIe Card
 		103c 1509  WMIB-275N Half-size Mini PCIe Card
+		106b 0093  AirPort Extreme
+		106b 00d1  AirPort Extreme
+		106b 00e9  AirPort Extreme
 	4357  BCM43225 802.11b/g/n
 		105b e021  T77H103.00 Wireless Half-size Mini PCIe Card
 	4358  BCM43227 802.11b/g/n
@@ -13644,6 +13648,7 @@
 		103c 182c  BCM943228HM4L 802.11a/b/g/n 2x2 Wi-Fi Adapter
 	4365  BCM43142 802.11b/g/n
 		1028 0016  Wireless 1704 802.11n + BT 4.0
+	43b1  BCM4352 802.11ac Wireless Network Adapter
 	4401  BCM4401 100Base-T
 		1025 0035  TravelMate 660
 		103c 08b0  tc1100 tablet
@@ -13701,6 +13706,7 @@
 	5841  BCM5841 Crypto Accelerator
 	5850  BCM5850 Crypto Accelerator
 	8602  BCM7400/BCM7405 Serial ATA Controller
+	a8d8  BCM43224/5 Wireless Network Adapter
 	b302  BCM56302 StrataXGS 24x1GE 2x10GE Switch Controller
 	b334  BCM56334 StrataXGS 24x1GE 4x10GE Switch Controller
 	b800  BCM56800 StrataXGS 10GE Switch Controller
@@ -14592,7 +14598,8 @@
 1682  XFX Pine Group Inc.
 1688  CastleNet Technology Inc.
 	1170  WLAN 802.11b card
-168c  Atheros Communications Inc.
+# nee Atheros Communications, Inc.
+168c  Qualcomm Atheros
 	0007  AR5210 Wireless Network Adapter [AR5000 802.11a]
 		1737 0007  WPC54A Wireless PC Card
 		1b47 0100  Harmony 8450CN Wireless CardBus Module
@@ -14716,7 +14723,7 @@
 	001c  AR242x / AR542x Wireless Network Adapter (PCI-Express)
 		0777 3006  SRX 802.11abg Wireless ExpressCard Adapter
 		103c 137a  AR5BXB63 (Foxconn) 802.11bg Mini PCIe NIC
-		106b 0086  AR5BXB6 802.11abg Wireless Mini PCIe Card
+		106b 0086  AirPort Extreme
 		144f 7106  WLL3140 (Toshiba PA3501U-1MPC) 802.11bg Wireless Mini PCIe Card
 		144f 7128  WLL3141 (Toshiba PA3613U-1MPC) 802.11bg Wireless Mini PCIe Card
 		1468 0428  AR5BXB63 802.11bg NIC
@@ -14754,7 +14761,7 @@
 		187e 3411  NWD-370N 802.11n Wireless PCI Adapter
 		1976 2008  TEW-621PC 802.11bgn Wireless CardBus Adapter
 	0024  AR5418 Wireless Network Adapter [AR5008E 802.11(a)bgn] (PCI-Express)
-		106b 0087  AR5BXB72 802.11abgn Mini PCIe Card [AR5008E-3NX]
+		106b 0087  AirPort Extreme
 		1186 3a70  DWA-556 Xtreme N PCI Express Desktop Adapter
 	0027  AR9160 Wireless Network Adapter [AR9001 802.11(a)bgn]
 		0777 4082  SR71-A 802.11abgn Wireless Mini PCI Adapter
@@ -14767,6 +14774,7 @@
 		103c 3041  AR5BHB92-H 802.11abgn Wireless Half-size Mini PCIe Card [AR9280]
 		105b e006  T77H053.00 802.11bgn Wireless Mini PCIe Card [AR9281]
 		105b e01f  T77H047.31 802.11bgn Wireless Half-size Mini PCIe Card [AR9283]
+		106b 008f  AirPort Extreme
 		11ad 6600  WN6600A 802.11bgn Wireless Mini PCIe Card [AR9281]
 		144f 7141  WLL6080 802.11bgn Wireless Mini PCIe Card [AR9281]
 		168c 0203  DW1525 802.11abgn WLAN PCIe Card [AR9280]
@@ -14791,8 +14799,9 @@
 	002c  AR2427 802.11bg Wireless Network Adapter (PCI-Express)
 	002d  AR9227 Wireless Network Adapter
 	002e  AR9287 Wireless Network Adapter (PCI-Express)
-	0030  AR9300 Wireless LAN adaptor
+	0030  AR93xx Wireless Network Adapter
 		103c 1627  AR9380/HB112 802.11abgn 3×3 Wi-Fi Adapter
+		106b 009a  AirPort Extreme
 		1186 3a7e  DWA-566 Wireless N 300 Dual Band PCIe Desktop Adapter
 		1a56 2000  Killer Wireless-N 1102 Half-size Mini PCIe Card [AR9382]
 		1a56 2001  Killer Wireless-N 1103 Half-size Mini PCIe Card [AR9380]
@@ -14800,7 +14809,8 @@
 		103c 1838  AR9485/HB125 802.11bgn 1×1 Wi-Fi Adapter
 	0033  AR9580 Wireless Network Adapter
 	0034  AR9462 Wireless Network Adapter
-	0036  AR9565 Wireless Network Adapter
+	0036  QCA9565 / AR9565 Wireless Network Adapter
+	003c  QCA988x 802.11ac Wireless Network Adapter
 	0207  AR5210 Wireless Network Adapter [AR5000 802.11a]
 	1014  AR5212 802.11abg NIC
 		1014 058a  ThinkPad 11a/b/g Wireless LAN Mini Express Adapter (AR5BXB6)
@@ -15439,6 +15449,8 @@
 	001f  SuperFSCC/4 Serial cPCI Adapter [Fastcom]
 	0020  422/4-PCIe Serial PCIe Adapter [Fastcom]
 	0021  422/8-PCIe Serial PCIe Adapter [Fastcom]
+# RS-644 Only
+	0022  SuperFSCC/4-LVDS Serial PCIe Adapter [Fastcom]
 18fb  Resilience Corporation
 1904  Hangzhou Silan Microelectronics Co., Ltd.
 	2031  SC92031 PCI Fast Ethernet Adapter
@@ -16895,6 +16907,100 @@
 	08af  Centrino Wireless-N 100
 		8086 1015  Centrino Wireless-N 100 BGN
 		8086 1017  Centrino Wireless-N 100 BG
+	08b1  Wireless 7260
+# Wilkins Peak 2 2x2 AGN + BT
+		8086 4060  Dual Band Wireless-N 7260
+# Wilkins Peak 2 BGN + BT
+		8086 4062  Wireless-N 7260
+# Wilkins Peak 2 2x2 80MHz + BT
+		8086 4070  Dual Band Wireless-AC 7260
+# Wilkins Peak 2 2x2 AGN + BT
+		8086 4160  Dual Band Wireless-N 7260
+# Wilkins Peak 2 BGN + BT
+		8086 4162  Wireless-N 7260
+# Wilkins Peak 2 2x2 80MHz + BT
+		8086 4170  Dual Band Wireless-AC 7260
+# Wilkins Peak 2 AGN + BT
+		8086 4460  Dual Band Wireless-N 7260
+# Wilkins Peak 2 BGN + BT
+		8086 4462  Wireless-N 7260
+# Wilkins Peak 2 2x2 80MHz + BT
+		8086 4470  Dual Band Wireless-AC 7260
+# Wilkins Peak 2 2x2 80MHz + BT
+		8086 486e  Dual Band Wireless-AC 7260
+# Wilkins Peak 2 2x2 80MHz + BT
+		8086 4870  Dual Band Wireless-AC 7260
+# Wilkins Peak 2 2x2 80MHz + BT
+		8086 4a6c  Dual Band Wireless-AC 7260
+# Wilkins Peak 2 2x2 80MHz + BT
+		8086 4a6e  Dual Band Wireless-AC 7260
+# Wilkins Peak 2 2x2 80MHz + BT
+		8086 4a70  Dual Band Wireless-AC 7260
+# Wilkins Peak 2 2x2 80MHz (No BT)
+		8086 c020  Dual Band Wireless-N 7260
+# Wilkins Peak 2 2x2 AGN + BT
+		8086 c060  Dual Band Wireless-N 7260
+# Wilkins Peak 2 BGN + BT
+		8086 c062  Wireless-N 7260
+# Wilkins Peak 2 2x2 80MHz + BT
+		8086 c070  Dual Band Wireless-AC 7260
+# Wilkins Peak 2 2x2 AGN + BT
+		8086 c160  Dual Band Wireless-N 7260
+# Wilkins Peak 2 BGN + BT
+		8086 c162  Wireless-N 7260
+# Wilkins Peak 2 2x2 80MHz + BT
+		8086 c170  Dual Band Wireless-AC 7260
+# Wilkins Peak 2 2x2 AGN (No BT) - Dell
+		8086 c420  Dual Band Wireless-N 7260
+# Wilkins Peak 2 AGN + BT
+		8086 c460  Dual Band Wireless-N 7260
+# Wilkins Peak 2 BGN + BT
+		8086 c462  Wireless-N 7260
+# Wilkins Peak 2 2x2 80MHz + BT
+		8086 c470  Dual Band Wireless-AC 7260
+	08b2  Wireless 7260
+# Wilkins Peak 2 2x2 AGN (No BT) - Lenovo/HP
+		8086 4220  Dual Band Wireless-N 7260
+# Wilkins Peak 2 2x2 AGN + BT - Lenovo/HP
+		8086 4260  Dual Band Wireless-N 7260
+# Wilkins Peak 2 2x2 BGN + BT - Dell
+		8086 4262  Wireless-N 7260
+# Wilkins Peak 2 2x2 80MHz + BT - Lenovo/HP
+		8086 4270  Dual Band Wireless-AC 7260
+# Wilkins Peak 2 2x2 80MHz (No BT) - Lenovo/HP
+		8086 c220  Dual Band Wireless-N 7260
+# Wilkins Peak 2 2x2 AGN + BT - Lenovo/HP
+		8086 c260  Dual Band Wireless-N 7260
+# Wilkins Peak 2 2x2 BGN + BT - Dell
+		8086 c262  Wireless-N 7260
+# Wilkins Peak 2 2x2 80MHz + BT - Lenovo/HP
+		8086 c270  Dual Band Wireless-AC 7260
+	08b3  Wireless 3160
+# Wilkins Peak 1 1x1 AGN + BT
+		8086 0060  Dual Band Wireless-N 3160
+# Wilkins Peak 1 1x1 BGN + BT
+		8086 0062  Wireless-N 3160
+# Wilkins Peak 1 1x1 80Mhz + BT
+		8086 0070  Dual Band Wireless-AC 3160
+# Wilkins Peak 1 1x1 80Mhz + BT
+		8086 0170  Dual Band Wireless-AC 3160
+# Wilkins Peak 1 1x1 80Mhz + BT
+		8086 0470  Dual Band Wireless-AC 3160
+# Wilkins Peak 1 1x1 AGN + BT
+		8086 8060  Dual Band Wireless N-3160
+# Wilkins Peak 1 1x1 BGN + BT
+		8086 8062  Wireless N-3160
+# Wilkins Peak 1 1x1 80Mhz + BT
+		8086 8070  Dual Band Wireless AC 3160
+# Wilkins Peak 1 1x1 80Mhz + BT
+		8086 8170  Dual Band Wireless AC 3160
+# Wilkins Peak 1 1x1 80Mhz + BT
+		8086 8470  Dual Band Wireless AC 3160
+	08b4  Wireless 3160
+# Wilkins Peak 1 1x1 80Mhz + BT - lenovo/HP
+		8086 0270  Dual Band Wireless-AC 3160
+# Wilkins Peak 1 1x1 80Mhz + BT - lenovo/HP
+		8086 8270  Dual Band Wireless AC 3160
 	0960  80960RP (i960RP) Microprocessor/Bridge
 	0962  80960RM (i960RM) Bridge
 	0964  80960RP (i960RP) Microprocessor/Bridge
@@ -17609,15 +17715,15 @@
 		8086 a06f  10-Gigabit XF LR Server Adapter
 	10f5  82567LM Gigabit Network Connection
 	10f6  82574L Gigabit Network Connection
-	10f7  82599EB 10-Gigabit KX4 Network Connection
+	10f7  10 Gigabit BR KX4 Dual Port Network Connection
 		108e 7b12  Sun Dual 10GbE PCIe 2.0 FEM
 		8086 000d  Ethernet Mezzanine Adapter X520-KX4-2
-	10f8  82599EB 10 Gigabit Dual Port Backplane Connection
+	10f8  82599 10 Gigabit Dual Port Backplane Connection
 		1028 1f63  10GbE 2P X520k bNDC
 		103c 17d2  Ethernet 10Gb 2-port 560M Adapter
 		103c 18d0  Ethernet 10Gb 2-port 560FLB Adapter
 		8086 000c  Ethernet X520 10GbE Dual Port KX4-KR Mezz
-	10f9  82599EB 10 Gigabit CX4 Dual Port Network Connection
+	10f9  82599 10 Gigabit Dual Port Network Connection
 	10fb  82599EB 10-Gigabit SFI/SFP+ Network Connection
 		1028 1f72  Ethernet 10G 4P X520/I350 rNDC
 		103c 17d0  Ethernet 10Gb 2-port 560FLR-SFP+ Adapter
@@ -17634,7 +17740,7 @@
 		8086 000c  Ethernet Server Adapter X520-2
 		8086 7a11  Ethernet Server Adapter X520-2
 		8086 7a12  Ethernet Server Adapter X520-2
-	10fc  82599EB 10-Gigabit XAUI/BX4 Network Connection
+	10fc  82599 10 Gigabit Dual Port Network Connection
 	10fe  82552 10/100 Network Connection
 	1107  PRO/1000 MF Server Adapter (LX)
 	1130  82815 815 Chipset Host Bridge and Memory Controller Hub
@@ -17860,7 +17966,7 @@
 		1028 04a3  Precision M4600
 	1503  82579V Gigabit Network Connection
 		1043 849c  P8P67 Deluxe Motherboard
-	1507  82599EB 10 Gigabit Network Connection
+	1507  Ethernet Express Module X520-P2
 	1508  82598EB Gigabit BX Network Connection
 	150a  82576NS Gigabit Network Connection
 	150b  82598EB 10-Gigabit AT2 Server Adapter
@@ -17877,7 +17983,7 @@
 	150f  82580 Gigabit Fiber Network Connection
 	1510  82580 Gigabit Backplane Connection
 	1511  82580 Gigabit SFP Connection
-	1514  82599EB 10 Gigabit KX4 Network Connection
+	1514  Ethernet X520 10GbE Dual Port KX4 Mezz
 		8086 000b  Ethernet X520 10GbE Dual Port KX4 Mezz
 	1515  X540 Ethernet Controller Virtual Function
 	1516  82580 Gigabit Network Connection
@@ -17886,12 +17992,13 @@
 	1517  82599ES 10 Gigabit Network Connection
 		1137 006a  UCS CNA M61KR-I Intel Converged Network Adapter
 	1518  82576NS SerDes Gigabit Network Connection
-	151c  82599EB 10 Gigabit TN Network Connection
+	151c  82599 10 Gigabit TN Network Connection
 		108e 7b13  Dual 10GBASE-T LP
 	1520  I350 Ethernet Controller Virtual Function
 	1521  I350 Gigabit Network Connection
 		1028 1f60  Intel GbE 4P I350crNDC
 		1028 1f62  Intel GbE 2P I350crNDC
+		103c 17d1  Ethernet 1Gb 4-port 366FLR Adapter
 		103c 337f  Ethernet 1Gb 2-port 361i Adapter
 		103c 3380  Ethernet 1Gb 4-port 366i Adapter
 		103c 339e  Ethernet 1Gb 2-port 361T Adapter
@@ -17938,8 +18045,8 @@
 		8086 00a2  Ethernet Converged Network Adapter X540-T1
 		8086 1f61  Ethernet 10G 4P X540/I350 rNDC
 		8086 5003  Ethernet 10G 2P X540-t Adapter
-	1529  82599 10 Gigabit Dual Port Backplane Connection with FCoE
-	152a  82599 10 Gigabit Dual port Network Connection with FCoE
+	1529  82599 10 Gigabit Dual Port Network Connection with FCoE
+	152a  82599 10 Gigabit Dual Port Backplane Connection with FCoE
 	1533  I210 Gigabit Network Connection
 		103c 0003  Ethernet Server Adapter I210-T1
 		8086 0001  Ethernet Server Adapter I210-T1
@@ -17957,12 +18064,17 @@
 		8086 011a  Ethernet Converged Network Adapter X520-4
 		8086 011b  Ethernet Converged Network Adapter X520-4
 		8086 011c  Ethernet Converged Network Adapter X520-4
-	154d  82599EB 10-Gigabit SFP+ Network Connection
+	154d  Ethernet 10G 2P X520 Adapter
 		8086 7b11  10GbE 2P X520 Adapter
 	1557  82599 10 Gigabit Network Connection
 	1559  Ethernet Connection I218-V
 	155a  Ethernet Connection I218-LM
+	155c  Ethernet Server Bypass Adapter
+		8086 0001  Ethernet Server Bypass Adapter X540-T2
+	155d  Ethernet Server Bypass Adapter
+		8086 0001  Ethernet Server Bypass Adapter X520-SR2
 	1560  Ethernet Controller X540-AT1
+	157b  I210 Gigabit Network Connection
 	1960  80960RP (i960RP) Microprocessor
 		101e 0431  MegaRAID 431 RAID Controller
 		101e 0438  MegaRAID 438 Ultra2 LVD RAID Controller
@@ -22289,6 +22401,7 @@ cace  CACE Technologies, Inc.
 	0001  TurboCap Port A
 	0002  TurboCap Port B
 	0023  AirPcap N
+caed  Canny Edge
 cafe  Chrysalis-ITS
 	0003  Luna K3 Hardware Security Module
 	0006  Luna PCI-e 3000 Hardware Security Module
