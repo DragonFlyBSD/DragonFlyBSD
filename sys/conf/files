@@ -713,6 +713,9 @@ dev/netif/sr/if_sr_pci.c	optional sr pci
 dev/disk/stg/tmc18c30.c	optional stg
 dev/disk/stg/tmc18c30_isa.c	optional stg isa
 dev/disk/stg/tmc18c30_pccard.c	optional stg pccard
+dev/crypto/tpm/tpm.c		optional tpm
+dev/crypto/tpm/tpm_acpi.c	optional tpm acpi
+dev/crypto/tpm/tpm_isa.c	optional tpm isa
 bus/iicbus/iicbb.c	optional iicbb
 bus/iicbus/iicbb_if.m		optional iicbb
 bus/iicbus/iicsmb.c		optional iicsmb

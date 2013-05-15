@@ -1483,6 +1483,7 @@ device		"snd_uaudio"
 # spic: Sony Programmable I/O controller (VAIO notebooks)
 # stl: Stallion EasyIO and EasyConnection 8/32 (PCI), EasyConnection 8/64 PCI
 # nmdm: nullmodem terminal driver (see nmdm(4))
+# tpm: Trusted Platform Module
 
 # Notes on APM
 #  The flags takes the following meaning for apm0:
@@ -1536,6 +1537,7 @@ device		spic0	at isa? irq 0 port 0x10a0
 device		stl
 # nullmodem terminal driver
 device		nmdm
+device		tpm
 
 # The `ahc' device provides support for the Adaptec 274X and 284X
 # adapters.

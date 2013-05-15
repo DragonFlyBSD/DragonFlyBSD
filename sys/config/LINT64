@@ -1295,6 +1295,7 @@ device		"snd_uaudio"
 # nrp: Comtrol Rocketport(ISA) - single card
 # si: Specialix SI/XIO 4-32 port terminal multiplexor
 # nmdm: nullmodem terminal driver (see nmdm(4))
+# tpm: Trusted Platform Module
 
 # Notes on the Comtrol Rocketport driver:
 #
@@ -1335,6 +1336,7 @@ device		nrp
 device		si0	at isa? iomem 0xd0000 irq 12
 # nullmodem terminal driver
 device		nmdm
+device		tpm
 
 # The `ahc' device provides support for the Adaptec 274X and 284X
 # adapters.
