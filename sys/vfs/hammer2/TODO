@@ -1,9 +1,19 @@
 
+* freemap / clustering.  Set block size on 2MB boundary so the cluster code
+  can be used for reading.
+
+* need API layer for shared buffers (unfortunately).
+
 * add magic number to inode header, add parent inode number too, to
   help with brute-force recovery.
 
 * modifications past our flush point do not adjust vchain.
   need to make vchain dynamic so we can (see flush_scan2).??
+
+* MINIOSIZE/RADIX set to 1KB for now to avoid buffer cache deadlocks
+  on multiple locked inodes.  Fix so we can use LBUFSIZE!  Or,
+  alternatively, allow a smaller I/O size based on the sector size
+  (not optimal though).
 
 * When making a snapshot, do not allow the snapshot to be mounted until
   the in-memory chain has been freed in order to break the shared core.

@@ -284,6 +284,7 @@ hammer2_dirhash(const unsigned char *name, size_t len)
 	return (key);
 }
 
+#if 0
 /*
  * Return the power-of-2 radix greater or equal to
  * the specified number of bytes.
@@ -312,6 +313,30 @@ hammer2_allocsize(size_t bytes)
 	return (radix);
 }
 
+#endif
+
+/*
+ * Convert bytes to radix with no limitations
+ */
+int
+hammer2_getradix(size_t bytes)
+{
+	int radix;
+
+	if (bytes == HAMMER2_PBUFSIZE)
+		radix = HAMMER2_PBUFRADIX;
+	else if (bytes >= 16384)
+		radix = 14;
+	else if (bytes >= 1024)
+		radix = 10;
+	else
+		radix = 0;
+
+	while (((size_t)1 << radix) < bytes)
+		++radix;
+	return (radix);
+}
+
 /*
  * ip must be locked sh/ex
  */
@@ -326,9 +351,9 @@ hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 	*leofp = ipdata->size & ~HAMMER2_PBUFMASK64;
 	KKASSERT(*lbasep <= *leofp);
 	if (*lbasep == *leofp /*&& *leofp < 1024 * 1024*/) {
-		radix = hammer2_allocsize((size_t)(ipdata->size - *leofp));
-		if (radix < HAMMER2_MINALLOCRADIX)
-			radix = HAMMER2_MINALLOCRADIX;
+		radix = hammer2_getradix((size_t)(ipdata->size - *leofp));
+		if (radix < HAMMER2_MIN_RADIX)
+			radix = HAMMER2_MIN_RADIX;
 		*leofp += 1U << radix;
 		return (1U << radix);
 	} else {

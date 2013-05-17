@@ -3,44 +3,60 @@
 
 				Matthew Dillon
 				 08-Feb-2012
+				 14-May-2013
 			     dillon@backplane.com
 
 * These features have been speced in the media structures.
 
 * Implementation work has begun.
 
-* A working filesystem with some features implemented is expected by July 2012.
+* Filesytem core is now operational, cluster messaging links are primitive
+  but work (and are fully encrypted).  Work continues on the block allocator
+  and work has not yet begun on copies, block-encryption, block-compression,
+  mirroring, or quorum/cluster ops.
 
-* A fully functional filesystem with most (but not all) features is expected
-  by the end of 2012.
+* Obviously a fully functional filesystem is not yet ready but once the
+  freemap and the backend garbage collector is implemented the HAMMER2
+  filesystem will be usable.  Missing many features, but usable.
 
-* All elements of the filesystem have been designed except for the freemap
-  (which isn't needed for initial work).  8MB per 2GB of filesystem
-  storage has been reserved for the freemap.  The design of the freemap
-  is expected to be completely speced by mid-year.
+* Design of all media elements is complete.
 
-* This is my only project this year.  I'm not going to be doing any major
-  kernel bug hunting this year.
-
-				Feature List
+				    Feature List
 
 * Multiple roots (allowing snapshots to be mounted).  This is implemented
   via the super-root concept.  When mounting a HAMMER2 filesystem you specify
-  a device path and a directory name in the super-root.
+  a device path and a directory name in the super-root.  (HAMMER1 had only
+  one root).
 
-* HAMMER1 had PFS's.  HAMMER2 does not.  Instead, in HAMMER2 any directory
-  in the tree can be configured as a PFS, causing all elements recursively
-  underneath that directory to become a part of that PFS.
+* Roots are really no different from snapshots (HAMMER1 distinguished between
+  its root mount and its PFS's.  HAMMER2 does not).
 
-* Writable snapshots.  Any subdirectory tree can be snapshotted.  Snapshots
-  show up in the super-root.  It is possible to snapshot a subdirectory
-  and then later snapshot a parent of that subdirectory... really there are
-  no limitations here.
+* Snapshots are writable (in HAMMER1 snapshots were read-only).
 
-* Directory sub-hierarchy based quotas and space and inode usage tracking.
-  Any directory sub-tree, whether at a mount point or not, tracks aggregate
-  inode use and data space use.  This is stored in the directory inode all
-  the way up the chain.
+* Snapshots are explicit but trivial to create.  In HAMMER1 snapshots were
+  both explicit and fine-grained/automatic.  HAMMER2 does not implement
+  automatic fine-grained snapshots.  H2 snapshots are cheap enough that you
+  can create fine-grained snapshots if you desire.
+
+* HAMMER2 flushes formalized a synchronization point for the flush, wait
+  for all running modifying operations to complete to memory (not to disk)
+  while temporarily stalling new modifying operation initiations.  The
+  flush is then able to proceed concurrent with unstalling and allowing
+  new modifying operations to run.
+
+* The flush is fully meta-data-synchronized in HAMMER2.  In HAMMER1 it was
+  possible for flushes to bisect inode creation vs directory entry creation
+  and to create problems with directory renames.  HAMMER2 has no issues with
+  any of these.  Dealing with data synchronization is another matter but
+  it should be possible to address explcit write()'s properly.  mmap()'d
+  R+W data... not so easy.
+
+* Directory sub-hierarchy-based quotas for space and inode usage tracking.
+  Any directory can be used.
+
+* Low memory footprint.  Except for the volume header, the buffer cache
+  is completely asynchronous and dirty buffers can be retired by the OS
+  directly to backing store with no further interactions with the filesystem.
 
 * Incremental queueless mirroring / mirroring-streams.  Because HAMMER2 is
   block-oriented and copy-on-write each blockref tracks both direct

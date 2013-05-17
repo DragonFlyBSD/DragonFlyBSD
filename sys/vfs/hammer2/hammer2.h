@@ -166,6 +166,19 @@ typedef struct hammer2_chain hammer2_chain_t;
 int hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2);
 RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
+/*
+ * Special notes on flags:
+ *
+ * INITIAL - This flag allows a chain to be created and for storage to
+ *	     be allocated without having to immediately instantiate the
+ *	     related buffer.  The data is assumed to be all-zeros.  It
+ *	     is primarily used for indirect blocks.
+ *
+ * MOVED   - A modified chain becomes MOVED after it flushes.  A chain
+ *	     can also become MOVED if it is moved within the topology
+ *	     (even if not modified).
+ *
+ */
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
 #define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
@@ -185,10 +198,17 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
+ *
+ * NOTE: MATCHIND allows an indirect block / freemap node to be returned
+ *	 when the passed key range matches the radix.  Remember that key_end
+ *	 is inclusive (e.g. {0x000,0xFFF}, not {0x000,0x1000}).
  */
 #define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
 #define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
 #define HAMMER2_LOOKUP_SHARED		0x00000100
+#define HAMMER2_LOOKUP_MATCHIND		0x00000200
+#define HAMMER2_LOOKUP_FREEMAP		0x00000400	/* freemap base */
+#define HAMMER2_LOOKUP_ALWAYS		0x00000800	/* resolve data */
 
 /*
  * Flags passed to hammer2_chain_modify() and hammer2_chain_resize()
@@ -199,6 +219,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_MODIFY_OPTDATA		0x00000002	/* data can be NULL */
 #define HAMMER2_MODIFY_NO_MODIFY_TID	0x00000004
 #define HAMMER2_MODIFY_ASSERTNOCOPY	0x00000008
+#define HAMMER2_MODIFY_NOREALLOC	0x00000010
 
 /*
  * Flags passed to hammer2_chain_lock()
@@ -208,8 +229,8 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_RESOLVE_ALWAYS		3
 #define HAMMER2_RESOLVE_MASK		0x0F
 
-#define HAMMER2_RESOLVE_SHARED		0x10
-#define HAMMER2_RESOLVE_NOREF		0x20
+#define HAMMER2_RESOLVE_SHARED		0x10	/* request shared lock */
+#define HAMMER2_RESOLVE_NOREF		0x20	/* already ref'd on lock */
 
 /*
  * Flags passed to hammer2_chain_delete_duplicate()
@@ -224,6 +245,11 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_FREECACHE_DATA		2
 #define HAMMER2_FREECACHE_UNUSED3	3
 #define HAMMER2_FREECACHE_TYPES		4
+
+/*
+ * hammer2_freemap_alloc() block preference
+ */
+#define HAMMER2_OFF_NOPREF		((hammer2_off_t)-1)
 
 /*
  * BMAP read-ahead maximum parameters
@@ -336,9 +362,11 @@ struct hammer2_trans {
 	TAILQ_ENTRY(hammer2_trans) entry;
 	struct hammer2_mount	*hmp;
 	hammer2_tid_t		sync_tid;
-	thread_t		td;
+	thread_t		td;		/* pointer */
 	int			flags;
 	int			blocked;
+	struct hammer2_inode	*tmp_ip;	/* heuristics only */
+	hammer2_off_t		tmp_bpref;	/* heuristics only */
 	uint8_t			inodes_created;
 	uint8_t			dummy[7];
 };
@@ -377,13 +405,16 @@ struct hammer2_mount {
 	int		nipstacks;
 	int		maxipstacks;
 	hammer2_chain_t vchain;		/* anchor chain */
+	hammer2_chain_t fchain;		/* freemap chain special */
 	hammer2_chain_t *schain;	/* super-root */
 	hammer2_inode_t	*sroot;		/* super-root inode */
 	struct lock	alloclk;	/* lockmgr lock */
 	struct lock	voldatalk;	/* lockmgr lock */
 	struct hammer2_trans_queue transq; /* all in-progress transactions */
 	hammer2_trans_t	*curflush;	/* current flush in progress */
-	hammer2_tid_t	flush_tid;	/* currently synchronizing flush pt */
+	hammer2_tid_t	topo_flush_tid;	/* currently synchronizing flush pt */
+	hammer2_tid_t	free_flush_tid;	/* currently synchronizing flush pt */
+	hammer2_off_t	heur_last_alloc;
 	int		flushcnt;	/* #of flush trans on the list */
 
 	int		volhdrno;	/* last volhdrno written */
@@ -510,7 +541,7 @@ u_int32_t hammer2_to_unix_xid(uuid_t *uuid);
 void hammer2_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
-int hammer2_allocsize(size_t bytes);
+int hammer2_getradix(size_t bytes);
 
 int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 			 hammer2_key_t *lbasep, hammer2_key_t *leofp);
@@ -615,8 +646,8 @@ void hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain);
 /*
  * hammer2_trans.c
  */
-void hammer2_trans_init(hammer2_mount_t *hmp, hammer2_trans_t *trans,
-				int flags);
+void hammer2_trans_init(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+			hammer2_inode_t *ip, int flags);
 void hammer2_trans_done(hammer2_trans_t *trans);
 
 /*
@@ -642,8 +673,8 @@ void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp);
 /*
  * hammer2_freemap.c
  */
-hammer2_off_t hammer2_freemap_alloc(hammer2_mount_t *hmp,
-				int type, size_t bytes);
+int hammer2_freemap_alloc(hammer2_trans_t *trans,
+				hammer2_blockref_t *bref, size_t bytes);
 void hammer2_freemap_free(hammer2_mount_t *hmp, hammer2_off_t data_off,
 				int type);
 

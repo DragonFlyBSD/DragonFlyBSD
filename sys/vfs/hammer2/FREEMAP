@@ -1,0 +1,141 @@
+
+		      HAMMER2 Freemap Design Notes
+
+				Overview
+
+    HAMMER2 Media is broken down into 2 GByte zones.  Each 2 GByte zone
+    contains a 4 MByte header (64 x 64K blocks).
+
+    Block #0 is the volume header.  Block #0 is the next three zones,
+    assuming the media is big enough, contain backup volume headers.
+    Flushes cycle through these four headers and the mount code iterates
+    all four to locate the best candidate to mount with.  The reason for
+    this is to ensure that mounting works even if a crash catches a
+    volume header in a partial update.
+
+    Remaining blocks are used for various purposes, primarily by the
+    freemap.
+
+    * It is very important to remember that the Freemap only uses
+      blocks from these reserved areas.  Freemap blocks are NOT dynamically
+      allocated.
+
+    * On-mount, the synchronization TID for the main H2 filesystem is
+      compared against the synchronization TID of the freemap and the
+      H2 topology is incrementally iterated using mirror_tid to update
+      the freemap with any missing information.  This way the freemap flush
+      does not need to be synchronized with the normal H2 flush.
+
+    * The freemap is flushed in a manner similar to the normal H2 filesystem,
+      but as mentioned above it does not have to be synchronized.  One freemap
+      flush could cover several H2 flushes.  A freemap flush is not necessary
+      for e.g. a fsync() or sync() to complete successfully.
+
+    * The minimum allocation radix is 10 (1 Kilobyte).  In Hammer2, the
+      inode is 1KB and contains up to 512 bytes of direct data, so in terms
+      of file storage efficiency H2 is can pack small files and their inodes
+      into a single 1KB block.
+
+      The freemap thus must handle a 1KB granularity, which comes to around
+      256KB per 2GB zone at 1-bit-per-block.  Since we have ~4MB available,
+      there is plenty of space to implement redundancy.
+
+			    Freemap Topology
+
+    The freemap topology contains 5 levels of meta-data (blockref arrays).
+
+    Level 0 - (radix 10+19+2) 256KB bitmap representing 2GB
+
+    Level 1 - (radix 10) 64KB blockmap representing 2GB.  This level
+	      shadows level 0 exactly.   There are 1024 blockref entries
+	      each representing ~2MB worth of media storage.
+
+    Level 2 - (radix 10) 64KB blockmap representing 2TB.
+    Level 3 - (radix 10) 64KB blockmap representing 2PB.
+    Level 4 - (radix 10) 64KB blockmap representing 2EB.
+    Level 5 - (radix 3) blockref x 8 in volume header representing 16EB (2^64)
+	      (this conveniently eats one 512-byte 'sector' of the 64KB
+	      volume header).
+
+    Each level is assign reserved blocks in the 4MB header per 2GB zone.
+    Level 0 requires four blocks (#1-#4), level 1, 2, 3, and 4 each require
+    one block (#5, #6, #7, #8), while level 5 is embedded in the volume
+    header.
+
+    In addition, the reserved blocks 1-8 are not overwritten on each flush.
+    Instead, a different set of reserved blocks is used.  Four sets, A-D,
+    are specified.  A=1-8, B=9-16, C=17-24, D=25-32.  Blocks 33-63 are unused
+    at present and reserved for future use.
+
+			    Blockref Substructure
+
+    The blockref substructure at each level steals some space from the
+    check code area (a 24-byte area).  We only need 4 bytes for the check
+    code icrc.  We use some of the remaining space to store information
+    that allows the block allocator to do its work more efficiently.
+
+    * biggest - Biggest available linear allocation radix (powers of 2).
+		May be initialized larger but the 2GB zone has a 4MB chunk
+		taken out of it for a header so the maximum linear allocation
+		is going to be 1GB (and not an efficient 1GB at that), which
+		would be radix 30.
+
+    * avail   - Total available space in bytes.
+
+    The freemap allocator uses a cylinder-group-like abstraction using
+    the localized allocation concept first implemented by UFS.  In HAMMER2
+    there is no such thing as a real cylinder group, but we do the next
+    best thing by implementing our layer 1 blockmap representing 2GB.
+
+    The layer 1 blockmap is an array of 1024 blockrefs, so each blockref
+    covers 2MB worth of media storage.  HAMMER2's 'cylinder group' concept
+    thus has a minimum granularity of 2MB.  A typical setting might be e.g.
+    10MB.
+
+    By localizing allocations to cylinder groups based on various bits of
+    information, HAMMER2 tries to allocate space on the disk and still leave
+    some left over for localized expansion and to reduce fragmentation at
+    the same time.  Not an easy task, especially considering the copy-on-write
+    nature of the filesystem.  This part of the algorithm likely needs a lot
+    of work but I hope I've laid down a media format that will not have to be
+    changed down the line to accomodate better allocation strategies.
+
+			    Initial Conditions
+
+    The freemap is a multi-indirect block structure but there is no real
+    reason to pre-format it in newfs_hammer2.  Instead, newfs_hammer2 simply
+    leaves the associated blockset empty and uses the (voldata->allocator_beg)
+    field to allocate space linearly, then leaves it to the live filesystem
+    to initialize the freemap as more space gets allocated.
+
+    To keep the abstraction simple, this means in the bitmap 0=unallocated,
+    1=allocated.  The allocation blockmap is initialized for the zone's 4MB
+    reserve area as new zones are opened up for allocation.  Initialization
+    of the freemap for the root zone at offset 0 is further adjusted based
+    on (voldata->allocator_beg).  This field is not used once the freemap
+    for the root zone has been setup by the live filesystem.
+
+			Use of Generic indirect-block API
+
+    I decided to use the same indirect-block allocation model for the
+    freemap that normal files use, with a few special cases added to force
+    specific radix values and to 'allocate' the freemap-related blocks
+    and indirect blocks via a reserved-block calculation and (obviously)
+    not via a recursive call to the allocator.
+
+    The Freemap is defined above as a fixed 6-level scheme (level 0-5),
+    but in actual operation the radix tree can be shortcut just as it
+    is with normal files.  However, shorcuts are forced into the radix
+    values of this specification and reserved blocks are calculated based on
+    the radix level and offset, so as the freemap becomes more fleshed
+    out the tree looks more and more like the specification.
+
+    One advantage of doing things this way is that smaller filesystems
+    won't actually use a 6-level scheme.  A 16GB filesystem can use 8
+    blockrefs at layer 5 (in the volume header) that point directly to
+    layer 1.  A 16TB filesystem can use 8 blockrefs at layer5 that point
+    to layer 2.  And so forth.
+
+    At the moment we have no plans to return any of the unused 4MB zone
+    header space back to the filesystem for general use.  There are lots
+    of things we may want to use the reserved areas for in the future.

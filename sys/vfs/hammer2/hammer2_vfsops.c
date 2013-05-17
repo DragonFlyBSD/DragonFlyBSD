@@ -61,7 +61,7 @@ static struct hammer2_mntlist hammer2_mntlist;
 static struct lock hammer2_mntlk;
 
 int hammer2_debug;
-int hammer2_cluster_enable = 1;
+int hammer2_cluster_enable = 0;	/* XXX temporary until layout ironed out */
 int hammer2_hardlink_enable = 1;
 long hammer2_iod_file_read;
 long hammer2_iod_meta_read;
@@ -391,7 +391,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		TAILQ_INIT(&hmp->transq);
 
 		/*
-		 * vchain setup. vchain.data is special cased to NULL.
+		 * vchain setup. vchain.data is embedded.
 		 * vchain.refs is initialized and will never drop to 0.
 		 */
 		hmp->vchain.hmp = hmp;
@@ -402,6 +402,25 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp->vchain.delete_tid = HAMMER2_MAX_TID;
 		hammer2_chain_core_alloc(&hmp->vchain, NULL);
 		/* hmp->vchain.u.xxx is left NULL */
+
+		/*
+		 * fchain setup.  fchain.data is embedded.
+		 * fchain.refs is initialized and will never drop to 0.
+		 *
+		 * The data is not used but needs to be initialized to
+		 * pass assertion muster.  We use this chain primarily
+		 * as a placeholder for the freemap's top-level RBTREE
+		 * so it does not interfere with the volume's topology
+		 * RBTREE.
+		 */
+		hmp->fchain.hmp = hmp;
+		hmp->fchain.refs = 1;
+		hmp->fchain.data = (void *)&hmp->voldata.freemap_blockset;
+		hmp->fchain.bref.type = HAMMER2_BREF_TYPE_FREEMAP;
+		hmp->fchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
+		hmp->fchain.delete_tid = HAMMER2_MAX_TID;
+		hammer2_chain_core_alloc(&hmp->fchain, NULL);
+		/* hmp->fchain.u.xxx is left NULL */
 
 		/*
 		 * Install the volume header
@@ -670,9 +689,16 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		}
 
 		/*
+		 * Final drop of embedded freemap root chain to clean up
+		 * fchain.core (fchain structure is not flagged ALLOCATED
+		 * so it is cleaned out and then left to rot).
+		 */
+		hammer2_chain_drop(&hmp->fchain);
+
+		/*
 		 * Final drop of embedded volume root chain to clean up
 		 * vchain.core (vchain structure is not flagged ALLOCATED
-		 * so it is cleaned out and then left).
+		 * so it is cleaned out and then left to rot).
 		 */
 		dumpcnt = 50;
 		hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt);
@@ -826,7 +852,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	if (waitfor & MNT_LAZY)
 		flags |= VMSC_ONEPASS;
 
-	hammer2_trans_init(hmp, &info.trans, HAMMER2_TRANS_ISFLUSH);
+	hammer2_trans_init(&info.trans, hmp, NULL, HAMMER2_TRANS_ISFLUSH);
 
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
@@ -847,16 +873,27 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		/* XXX */
 	}
 #endif
+	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
+	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
+				  HAMMER2_CHAIN_SUBMODIFIED)) {
+		hammer2_chain_flush(&info.trans, &hmp->vchain);
+	}
+	hammer2_chain_unlock(&hmp->vchain);
+
+#if 0
 	/*
 	 * Rollup flush.  The fsyncs above basically just flushed
 	 * data blocks.  The flush below gets all the meta-data.
 	 */
-	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
-	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
+	hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
+	if (hmp->fchain.flags & (HAMMER2_CHAIN_MODIFIED |
 				 HAMMER2_CHAIN_SUBMODIFIED)) {
-		hammer2_chain_flush(&info.trans, &hmp->vchain);
+		/* this will modify vchain as a side effect */
+		hammer2_chain_flush(&info.trans, &hmp->fchain);
 	}
-	hammer2_chain_unlock(&hmp->vchain);
+	hammer2_chain_unlock(&hmp->fchain);
+#endif
+
 
 	error = 0;
 

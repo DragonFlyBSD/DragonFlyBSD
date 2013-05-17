@@ -71,7 +71,7 @@ static int hammer2_indirect_optimize;	/* XXX SYSCTL */
 
 static hammer2_chain_t *hammer2_chain_create_indirect(
 		hammer2_trans_t *trans, hammer2_chain_t *parent,
-		hammer2_key_t key, int keybits, int *errorp);
+		hammer2_key_t key, int keybits, int for_type, int *errorp);
 
 /*
  * We use a red-black tree to guarantee safe lookups under shared locks.
@@ -147,13 +147,13 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_trans_t *trans,
 	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_INODE:
 	case HAMMER2_BREF_TYPE_INDIRECT:
-	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		chain = kmalloc(sizeof(*chain), hmp->mchain, M_WAITOK | M_ZERO);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
+	case HAMMER2_BREF_TYPE_FREEMAP:
 		chain = NULL;
 		panic("hammer2_chain_alloc volume type illegal for op");
 	default:
@@ -406,6 +406,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 
 	switch(chain->bref.type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
+	case HAMMER2_BREF_TYPE_FREEMAP:
 		chain->data = NULL;
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
@@ -530,6 +531,10 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 			return(0);
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
 			return(0);
+#if 0
+		if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE)
+			return(0);
+#endif
 		if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_LEAF)
 			return(0);
 		/* fall through */
@@ -555,7 +560,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 * API must still be used to do that).
 	 *
 	 * The device buffer is variable-sized in powers of 2 down
-	 * to HAMMER2_MINALLOCSIZE (typically 1K).  A 64K physical storage
+	 * to HAMMER2_MIN_ALLOC (typically 1K).  A 64K physical storage
 	 * chunk always contains buffers of the same size. (XXX)
 	 *
 	 * The minimum physical IO size may be larger than the variable
@@ -597,10 +602,12 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 
 	/*
 	 * Zero the data area if the chain is in the INITIAL-create state.
-	 * Mark the buffer for bdwrite().
+	 * Mark the buffer for bdwrite().  This clears the INITIAL state
+	 * but does not mark the chain modified.
 	 */
 	bdata = (char *)chain->bp->b_data + boff;
 	if (chain->flags & HAMMER2_CHAIN_INITIAL) {
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 		bzero(bdata, chain->bytes);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
 	}
@@ -616,6 +623,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 */
 	switch (bref->type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
+	case HAMMER2_BREF_TYPE_FREEMAP:
 		/*
 		 * Copy data from bp to embedded buffer
 		 */
@@ -644,7 +652,6 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_DATA:
-	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 	default:
@@ -758,7 +765,6 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 		case HAMMER2_BREF_TYPE_INDIRECT:
 			counterp = &hammer2_ioa_indr_write;
 			break;
-		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 			counterp = &hammer2_ioa_fmap_write;
@@ -779,7 +785,6 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 		case HAMMER2_BREF_TYPE_INDIRECT:
 			counterp = &hammer2_iod_indr_write;
 			break;
-		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 			counterp = &hammer2_iod_fmap_write;
@@ -920,8 +925,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 * Relocate the block, even if making it smaller (because different
 	 * block sizes may be in different regions).
 	 */
-	chain->bref.data_off = hammer2_freemap_alloc(hmp, chain->bref.type,
-						     nbytes);
+	hammer2_freemap_alloc(trans, &chain->bref, nbytes);
 	chain->bytes = nbytes;
 	/*ip->delta_dcount += (ssize_t)(nbytes - obytes);*/ /* XXX atomic */
 
@@ -987,29 +991,62 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	hammer2_mount_t *hmp = trans->hmp;
 	hammer2_chain_t *chain;
 	hammer2_off_t pbase;
+	hammer2_tid_t flush_tid;
 	struct buf *nbp;
 	int error;
+	int wasinitial;
 	size_t bbytes;
 	size_t boff;
 	void *bdata;
 
 	/*
-	 * modify_tid is only update for primary modifications, not for
-	 * propagated brefs.  mirror_tid will be updated regardless during
-	 * the flush, no need to set it here.
+	 * Data must be resolved if already assigned unless explicitly
+	 * flagged otherwise.
 	 */
 	chain = *chainp;
+	if (chain->data == NULL && (flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
+	    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
+		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_unlock(chain);
+	}
+
+	/*
+	 * data is not optional for freemap chains (we must always be sure
+	 * to copy the data on COW storage allocations).
+	 */
+	if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
+	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
+		KKASSERT((chain->flags & HAMMER2_CHAIN_INITIAL) ||
+			 (flags & HAMMER2_MODIFY_OPTDATA) == 0);
+	}
 
 	/*
 	 * If the chain is already marked MODIFIED we can usually just
 	 * return.  However, if a modified chain is modified again in
-	 * a synchronization-point-crossing manner we have to
-	 * delete/duplicate the chain so as not to interfere with the
-	 * atomicy of the flush.
+	 * a synchronization-point-crossing manner we have to issue a
+	 * delete/duplicate on the chain to avoid flush interference.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
-		if (chain->modify_tid <= hmp->flush_tid &&
-		    trans->sync_tid > hmp->flush_tid) {
+		/*
+		 * Which flush_tid do we need to check?  If the chain is
+		 * related to the freemap we have to use the freemap flush
+		 * tid (free_flush_tid), otherwise we use the normal filesystem
+		 * flush tid (topo_flush_tid).  The two flush domains are
+		 * almost completely independent of each other.
+		 */
+		if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
+		    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
+			flush_tid = hmp->topo_flush_tid; /* XXX */
+			goto skipxx;	/* XXX */
+		} else {
+			flush_tid = hmp->topo_flush_tid;
+		}
+
+		/*
+		 * Main tests
+		 */
+		if (chain->modify_tid <= flush_tid &&
+		    trans->sync_tid > flush_tid) {
 			/*
 			 * Modifications cross synchronization point,
 			 * requires delete-duplicate.
@@ -1018,33 +1055,28 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 			hammer2_chain_delete_duplicate(trans, chainp, 0);
 			chain = *chainp;
 			/* fall through using duplicate */
-		} else {
-			/*
-			 * It is possible that a prior lock/modify sequence
-			 * retired the buffer.  During this lock/modify
-			 * sequence MODIFIED may still be set but the buffer
-			 * could wind up clean.  Since the caller is going
-			 * to modify the buffer further we have to be sure
-			 * that DIRTYBP is set so our chain code knows to
-			 * bwrite/bdwrite the bp.
-			 */
-			if ((flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
-			    chain->bp == NULL) {
-				goto skip1;
-			}
-			atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
-
-			/*
-			 * Must still adjust these fields in the
-			 * already-modified path.
-			 */
-			if ((flags & HAMMER2_MODIFY_NO_MODIFY_TID) == 0)
-				chain->bref.modify_tid = trans->sync_tid;
-			chain->modify_tid = trans->sync_tid;
-			return;
 		}
+skipxx: /* XXX */
+		/*
+		 * Quick return path, set DIRTYBP to ensure that
+		 * the later retirement of bp will write it out.
+		 *
+		 * quick return path also needs the modify_tid
+		 * logic.
+		 */
+		if (chain->bp)
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
+		if ((flags & HAMMER2_MODIFY_NO_MODIFY_TID) == 0)
+			chain->bref.modify_tid = trans->sync_tid;
+		chain->modify_tid = trans->sync_tid;
+		return;
 	}
 
+	/*
+	 * modify_tid is only update for primary modifications, not for
+	 * propagated brefs.  mirror_tid will be updated regardless during
+	 * the flush, no need to set it here.
+	 */
 	if ((flags & HAMMER2_MODIFY_NO_MODIFY_TID) == 0)
 		chain->bref.modify_tid = trans->sync_tid;
 
@@ -1064,50 +1096,43 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	chain->modify_tid = trans->sync_tid;
 
 	/*
-	 * We must allocate the copy-on-write block.
+	 * The modification or re-modification requires an allocation and
+	 * possible COW.
 	 *
-	 * If the data is embedded no other action is required.
-	 *
-	 * If the data is not embedded we acquire and clear the
-	 * new block.  If chain->data is not NULL we then do the
-	 * copy-on-write.  chain->data will then be repointed to the new
-	 * buffer and the old buffer will be released.
-	 *
-	 * For newly created elements with no prior allocation we go
-	 * through the copy-on-write steps except without the copying part.
+	 * We normally always allocate new storage here.  If storage exists
+	 * and MODIFY_NOREALLOC is passed in, we do not allocate new storage.
 	 */
-	if (chain != &hmp->vchain) {
-		if ((hammer2_debug & 0x0001) &&
-		    (chain->bref.data_off & HAMMER2_OFF_MASK)) {
-			kprintf("Replace %d\n", chain->bytes);
-		}
-		chain->bref.data_off =
-			hammer2_freemap_alloc(hmp, chain->bref.type,
-					      chain->bytes);
+	if (chain != &hmp->vchain &&
+	    chain != &hmp->fchain &&
+	    ((chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0 ||
+	     (flags & HAMMER2_MODIFY_NOREALLOC) == 0)
+	) {
+		hammer2_freemap_alloc(trans, &chain->bref, chain->bytes);
 		/* XXX failed allocation */
 	}
 
 	/*
-	 * If data instantiation is optional and the chain has no current
-	 * data association (typical for DATA and newly-created INDIRECT
-	 * elements), don't instantiate the buffer now.
+	 * Do not COW if OPTDATA is set.  INITIAL flag remains unchanged.
+	 * (OPTDATA does not prevent [re]allocation of storage, only the
+	 * related copy-on-write op).
 	 */
-	if ((flags & HAMMER2_MODIFY_OPTDATA) && chain->bp == NULL)
+	if (flags & HAMMER2_MODIFY_OPTDATA)
 		goto skip2;
 
-skip1:
 	/*
-	 * Setting the DIRTYBP flag will cause the buffer to be dirtied or
-	 * written-out on unlock.  This bit is independent of the MODIFIED
-	 * bit because the chain may still need meta-data adjustments done
-	 * by virtue of MODIFIED for its parent, and the buffer can be
-	 * flushed out (possibly multiple times) by the OS before that.
-	 *
 	 * Clearing the INITIAL flag (for indirect blocks) indicates that
-	 * a zero-fill buffer has been instantiated.
+	 * we've processed the uninitialized storage allocation.
+	 *
+	 * If this flag is already clear we are likely in a copy-on-write
+	 * situation but we have to be sure NOT to bzero the storage if
+	 * no data is present.
 	 */
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
-	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
+	if (chain->flags & HAMMER2_CHAIN_INITIAL) {
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
+		wasinitial = 1;
+	} else {
+		wasinitial = 0;
+	}
 
 	/*
 	 * We currently should never instantiate a device buffer for a
@@ -1116,10 +1141,11 @@ skip1:
 	KKASSERT(chain->bref.type != HAMMER2_BREF_TYPE_DATA);
 
 	/*
-	 * Execute COW operation
+	 * Instantiate data buffer and possibly execute COW operation
 	 */
 	switch(chain->bref.type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
+	case HAMMER2_BREF_TYPE_FREEMAP:
 	case HAMMER2_BREF_TYPE_INODE:
 		/*
 		 * The data is embedded, no copy-on-write operation is
@@ -1129,13 +1155,13 @@ skip1:
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_INDIRECT:
-	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		/*
 		 * Perform the copy-on-write operation
 		 */
-		KKASSERT(chain != &hmp->vchain);	/* safety */
+		KKASSERT(chain != &hmp->vchain && chain != &hmp->fchain);
+
 		/*
 		 * The device buffer may be larger than the allocation size.
 		 */
@@ -1145,10 +1171,14 @@ skip1:
 		boff = chain->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
 
 		/*
+		 * Buffer aliasing is possible, check for the case.
+		 *
 		 * The getblk() optimization can only be used if the
 		 * physical block size matches the request.
 		 */
-		if (chain->bytes == bbytes) {
+		if (chain->bp && chain->bp->b_loffset == pbase) {
+			nbp = chain->bp;
+		} else if (chain->bytes == bbytes) {
 			nbp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
 			error = 0;
 		} else {
@@ -1159,20 +1189,38 @@ skip1:
 
 		/*
 		 * Copy or zero-fill on write depending on whether
-		 * chain->data exists or not.
+		 * chain->data exists or not.  Retire the existing bp
+		 * based on the DIRTYBP flag.  Set the DIRTYBP flag to
+		 * indicate that retirement of nbp should use bdwrite().
 		 */
 		if (chain->data) {
-			bcopy(chain->data, bdata, chain->bytes);
 			KKASSERT(chain->bp != NULL);
-		} else {
+			if (chain->data != bdata) {
+				bcopy(chain->data, bdata, chain->bytes);
+			}
+		} else if (wasinitial) {
 			bzero(bdata, chain->bytes);
+		} else {
+			/*
+			 * We have a problem.  We were asked to COW but
+			 * we don't have any data to COW with!
+			 */
+			panic("hammer2_chain_modify: having a COW %p\n",
+			      chain);
 		}
-		if (chain->bp) {
-			chain->bp->b_flags |= B_RELBUF;
-			brelse(chain->bp);
+		if (chain->bp != nbp) {
+			if (chain->bp) {
+				if (chain->flags & HAMMER2_CHAIN_DIRTYBP) {
+					bdwrite(chain->bp);
+				} else {
+					chain->bp->b_flags |= B_RELBUF;
+					brelse(chain->bp);
+				}
+			}
+			chain->bp = nbp;
 		}
-		chain->bp = nbp;
 		chain->data = bdata;
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
 		break;
 	default:
 		panic("hammer2_chain_modify: illegal non-embedded type %d",
@@ -1349,7 +1397,6 @@ retry:
 		bref = &parent->data->ipdata.u.blockset.blockref[index];
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		KKASSERT(parent->data != NULL);
 		KKASSERT(index >= 0 &&
@@ -1359,6 +1406,10 @@ retry:
 	case HAMMER2_BREF_TYPE_VOLUME:
 		KKASSERT(index >= 0 && index < HAMMER2_SET_COUNT);
 		bref = &hmp->voldata.sroot_blockset.blockref[index];
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		KKASSERT(index >= 0 && index < HAMMER2_SET_COUNT);
+		bref = &hmp->voldata.freemap_blockset.blockref[index];
 		break;
 	default:
 		bref = NULL;
@@ -1466,7 +1517,9 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
  *
  * WARNING!  THIS DOES NOT RETURN KEYS IN LOGICAL KEY ORDER!  ANY KEY
  *	     WITHIN THE RANGE CAN BE RETURNED.  HOWEVER, AN ITERATION
- *	     WHICH PICKS UP WHERE WE LEFT OFF WILL CONTINUE THE SCAN.
+ *	     WHICH PICKS UP WHERE WE LEFT OFF WILL CONTINUE THE SCAN
+ *	     AND ALL IN-RANGE KEYS WILL EVENTUALLY BE RETURNED (NOT
+ *	     NECESSARILY IN ORDER).
  *
  * (*parentp) must be exclusively locked and referenced and can be an inode
  * or an existing indirect block within the inode.
@@ -1485,6 +1538,12 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
  * This function will also recurse up the chain if the key is not within the
  * current parent's range.  (*parentp) can never be set to NULL.  An iteration
  * can simply allow (*parentp) to float inside the loop.
+ *
+ * NOTE!  chain->data is not always resolved.  By default it will not be
+ *	  resolved for BREF_TYPE_DATA, FREEMAP_NODE, or FREEMAP_LEAF.  Use
+ *	  HAMMER2_LOOKUP_ALWAYS to force resolution (but be careful w/
+ *	  BREF_TYPE_DATA as the device buffer can alias the logical file
+ *	  buffer).
  */
 hammer2_chain_t *
 hammer2_chain_lookup(hammer2_chain_t **parentp,
@@ -1503,6 +1562,9 @@ hammer2_chain_lookup(hammer2_chain_t **parentp,
 	int i;
 	int how_always = HAMMER2_RESOLVE_ALWAYS;
 	int how_maybe = HAMMER2_RESOLVE_MAYBE;
+
+	if (flags & HAMMER2_LOOKUP_ALWAYS)
+		how_maybe = how_always;
 
 	if (flags & (HAMMER2_LOOKUP_SHARED | HAMMER2_LOOKUP_NOLOCK)) {
 		how_maybe |= HAMMER2_RESOLVE_SHARED;
@@ -1550,9 +1612,21 @@ again:
 		base = &parent->data->ipdata.u.blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		/*
+		 * Handle MATCHIND on the parent
+		 */
+		if (flags & HAMMER2_LOOKUP_MATCHIND) {
+			scan_beg = parent->bref.key;
+			scan_end = scan_beg +
+			       ((hammer2_key_t)1 << parent->bref.keybits) - 1;
+			if (key_beg == scan_beg && key_end == scan_end) {
+				chain = parent;
+				hammer2_chain_lock(chain, how_maybe);
+				goto done;
+			}
+		}
 		/*
 		 * Optimize indirect blocks in the INITIAL state to avoid
 		 * I/O.
@@ -1568,6 +1642,10 @@ again:
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		base = &hmp->voldata.sroot_blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		base = &hmp->voldata.freemap_blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
@@ -1587,6 +1665,9 @@ again:
 	 *	 might represent different flush synchronization points).
 	 */
 	bref = NULL;
+	scan_beg = 0;	/* avoid compiler warning */
+	scan_end = 0;	/* avoid compiler warning */
+
 	for (i = 0; i < count; ++i) {
 		tmp = hammer2_chain_find(parent, i);
 		if (tmp) {
@@ -1636,24 +1717,31 @@ again:
 	 * so we can access its data.  It might need a fixup if the caller
 	 * passed incompatible flags.  Be careful not to cause a deadlock
 	 * as a data-load requires an exclusive lock.
+	 *
+	 * If HAMMER2_LOOKUP_MATCHIND is set and the indirect block's key
+	 * range is within the requested key range we return the indirect
+	 * block and do NOT loop.  This is usually only used to acquire
+	 * freemap nodes.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
 	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
 		hammer2_chain_unlock(parent);
 		*parentp = parent = chain;
 		if (flags & HAMMER2_LOOKUP_NOLOCK) {
-			hammer2_chain_lock(chain, how_maybe |
-						  HAMMER2_RESOLVE_NOREF);
+			hammer2_chain_lock(chain,
+					   how_maybe |
+					   HAMMER2_RESOLVE_NOREF);
 		} else if ((flags & HAMMER2_LOOKUP_NODATA) &&
 			   chain->data == NULL) {
 			hammer2_chain_ref(chain);
 			hammer2_chain_unlock(chain);
-			hammer2_chain_lock(chain, how_maybe |
-						  HAMMER2_RESOLVE_NOREF);
+			hammer2_chain_lock(chain,
+					   how_maybe |
+					   HAMMER2_RESOLVE_NOREF);
 		}
 		goto again;
 	}
-
+done:
 	/*
 	 * All done, return the chain
 	 */
@@ -1670,6 +1758,8 @@ again:
  *
  * parent must be locked on entry and remains locked throughout.  chain's
  * lock status must match flags.  Chain is always at least referenced.
+ *
+ * WARNING!  The MATCHIND flag does not apply to this function.
  */
 hammer2_chain_t *
 hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
@@ -1749,7 +1839,6 @@ again2:
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		if (parent->flags & HAMMER2_CHAIN_INITIAL) {
 			base = NULL;
@@ -1761,6 +1850,10 @@ again2:
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		base = &hmp->voldata.sroot_blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		base = &hmp->voldata.freemap_blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
@@ -1784,6 +1877,9 @@ again2:
 	 *	 might represent different flush synchronization points).
 	 */
 	bref = NULL;
+	scan_beg = 0;	/* avoid compiler warning */
+	scan_end = 0;	/* avoid compiler warning */
+
 	while (i < count) {
 		tmp = hammer2_chain_find(parent, i);
 		if (tmp) {
@@ -1831,24 +1927,34 @@ again2:
 	 * so we can access its data.  It might need a fixup if the caller
 	 * passed incompatible flags.  Be careful not to cause a deadlock
 	 * as a data-load requires an exclusive lock.
+	 *
+	 * If HAMMER2_LOOKUP_MATCHIND is set and the indirect block's key
+	 * range is within the requested key range we return the indirect
+	 * block and do NOT loop.  This is usually only used to acquire
+	 * freemap nodes.
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
 	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
-		hammer2_chain_unlock(parent);
-		*parentp = parent = chain;
-		chain = NULL;
-		if (flags & HAMMER2_LOOKUP_NOLOCK) {
-			hammer2_chain_lock(parent, how_maybe |
-						   HAMMER2_RESOLVE_NOREF);
-		} else if ((flags & HAMMER2_LOOKUP_NODATA) &&
-			   parent->data == NULL) {
-			hammer2_chain_ref(parent);
+		if ((flags & HAMMER2_LOOKUP_MATCHIND) == 0 ||
+		    key_beg > scan_beg || key_end < scan_end) {
 			hammer2_chain_unlock(parent);
-			hammer2_chain_lock(parent, how_maybe |
+			*parentp = parent = chain;
+			chain = NULL;
+			if (flags & HAMMER2_LOOKUP_NOLOCK) {
+				hammer2_chain_lock(parent,
+						   how_maybe |
 						   HAMMER2_RESOLVE_NOREF);
+			} else if ((flags & HAMMER2_LOOKUP_NODATA) &&
+				   parent->data == NULL) {
+				hammer2_chain_ref(parent);
+				hammer2_chain_unlock(parent);
+				hammer2_chain_lock(parent,
+						   how_maybe |
+						   HAMMER2_RESOLVE_NOREF);
+			}
+			i = 0;
+			goto again2;
 		}
-		i = 0;
-		goto again2;
 	}
 
 	/*
@@ -1878,7 +1984,8 @@ again2:
  * Caller must pass-in an exclusively locked parent the new chain is to
  * be inserted under, and optionally pass-in a disconnected, exclusively
  * locked chain to insert (else we create a new chain).  The function will
- * adjust (*parentp) as necessary and return the existing or new chain.
+ * adjust (*parentp) as necessary, create or connect the chain, and
+ * return an exclusively locked chain in *chainp.
  */
 int
 hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
@@ -1905,16 +2012,19 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	if (chain == NULL) {
 		/*
 		 * First allocate media space and construct the dummy bref,
-		 * then allocate the in-memory chain structure.
+		 * then allocate the in-memory chain structure.  Set the
+		 * INITIAL flag for fresh chains.
 		 */
 		bzero(&dummy, sizeof(dummy));
 		dummy.type = type;
 		dummy.key = key;
 		dummy.keybits = keybits;
-		dummy.data_off = hammer2_allocsize(bytes);
+		dummy.data_off = hammer2_getradix(bytes);
 		dummy.methods = parent->bref.methods;
 		chain = hammer2_chain_alloc(hmp, trans, &dummy);
 		hammer2_chain_core_alloc(chain, NULL);
+
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 
 		/*
 		 * Lock the chain manually, chain_lock will load the chain
@@ -1938,6 +2048,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 
 		switch(type) {
 		case HAMMER2_BREF_TYPE_VOLUME:
+		case HAMMER2_BREF_TYPE_FREEMAP:
 			panic("hammer2_chain_create: called with volume type");
 			break;
 		case HAMMER2_BREF_TYPE_INODE:
@@ -1949,7 +2060,6 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			panic("hammer2_chain_create: cannot be used to"
 			      "create indirect block");
 			break;
-		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 			panic("hammer2_chain_create: cannot be used to"
 			      "create freemap root or node");
@@ -1963,7 +2073,9 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		}
 	} else {
 		/*
-		 * Potentially update the chain's key/keybits.
+		 * Potentially update the existing chain's key/keybits.
+		 *
+		 * Do NOT mess with the current state of the INITIAL flag.
 		 */
 		chain->bref.key = key;
 		chain->bref.keybits = keybits;
@@ -1985,7 +2097,6 @@ again:
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		if (parent->flags & HAMMER2_CHAIN_INITIAL) {
 			base = NULL;
@@ -1998,6 +2109,11 @@ again:
 	case HAMMER2_BREF_TYPE_VOLUME:
 		KKASSERT(parent->data != NULL);
 		base = &hmp->voldata.sroot_blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		KKASSERT(parent->data != NULL);
+		base = &hmp->voldata.freemap_blockset.blockref[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
@@ -2045,7 +2161,7 @@ again:
 
 		nparent = hammer2_chain_create_indirect(trans, parent,
 							key, keybits,
-							&error);
+							type, &error);
 		if (nparent == NULL) {
 			if (allocated)
 				hammer2_chain_drop(chain);
@@ -2077,47 +2193,40 @@ again:
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 	spin_unlock(&above->cst.spin);
 
-	/*
-	 * (allocated) indicates that this is a newly-created chain element
-	 * rather than a renamed chain element.
-	 *
-	 * In this situation we want to place the chain element in
-	 * the MODIFIED state.  The caller expects it to NOT be in the
-	 * INITIAL state.
-	 *
-	 * The data area will be set up as follows:
-	 *
-	 *	VOLUME		not allowed here.
-	 *
-	 *	INODE		embedded data are will be set-up.
-	 *
-	 *	INDIRECT	not allowed here.
-	 *
-	 *	DATA		no data area will be set-up (caller is expected
-	 *			to have logical buffers, we don't want to alias
-	 *			the data onto device buffers!).
-	 */
 	if (allocated) {
+		/*
+		 * Mark the newly created chain modified.
+		 *
+		 * Device buffers are not instantiated for DATA elements
+		 * as these are handled by logical buffers.
+		 *
+		 * Indirect and freemap node indirect blocks are handled
+		 * by hammer2_chain_create_indirect() and not by this
+		 * function.
+		 *
+		 * Data for all other bref types is expected to be
+		 * instantiated (INODE, LEAF).
+		 */
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_DATA:
-		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 			hammer2_chain_modify(trans, &chain,
 					     HAMMER2_MODIFY_OPTDATA |
 					     HAMMER2_MODIFY_ASSERTNOCOPY);
 			break;
-		case HAMMER2_BREF_TYPE_INDIRECT:
-		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
-		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-			/* not supported in this function */
-			panic("hammer2_chain_create: bad type");
-			atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
+		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		case HAMMER2_BREF_TYPE_INODE:
 			hammer2_chain_modify(trans, &chain,
-					     HAMMER2_MODIFY_OPTDATA |
 					     HAMMER2_MODIFY_ASSERTNOCOPY);
 			break;
 		default:
-			hammer2_chain_modify(trans, &chain,
-					     HAMMER2_MODIFY_ASSERTNOCOPY);
+			/*
+			 * Remaining types are not supported by this function.
+			 * In particular, INDIRECT and LEAF_NODE types are
+			 * handled by create_indirect().
+			 */
+			panic("hammer2_chain_create: bad type: %d",
+			      chain->bref.type);
+			/* NOT REACHED */
 			break;
 		}
 	} else {
@@ -2158,6 +2267,9 @@ done:
  *	 new chain will have the same transaction id and thus the operation
  *	 appears atomic w/regards to media flushes.
  */
+static void hammer2_chain_dup_inodefixup(hammer2_chain_t *ochain,
+					 hammer2_chain_t *nchain);
+
 void
 hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 			hammer2_chain_t **chainp, hammer2_blockref_t *bref)
@@ -2168,135 +2280,35 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 	hammer2_chain_t *nchain;
 	hammer2_chain_t *scan;
 	hammer2_chain_core_t *above;
-	hammer2_chain_core_t *core;
 	size_t bytes;
 	int count;
+	int oflags;
+	void *odata;
 
 	/*
 	 * First create a duplicate of the chain structure, associating
 	 * it with the same core, making it the same size, pointing it
-	 * to the same bref (the same media block), and copying any inline
-	 * data.
+	 * to the same bref (the same media block).
 	 */
 	ochain = *chainp;
 	if (bref == NULL)
 		bref = &ochain->bref;
 	nchain = hammer2_chain_alloc(hmp, trans, bref);
 	hammer2_chain_core_alloc(nchain, ochain->core);
-	core = ochain->core;
-
 	bytes = (hammer2_off_t)1 <<
 		(int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	nchain->bytes = bytes;
+	nchain->modify_tid = ochain->modify_tid;
 
-	/*
-	 * Be sure to copy the INITIAL flag as well or we could end up
-	 * loading garbage from the bref.
-	 */
-	if (ochain->flags & HAMMER2_CHAIN_INITIAL)
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_INITIAL);
-	if (ochain->flags & HAMMER2_CHAIN_DIRTYBP)
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_DIRTYBP);
-
-	/*
-	 * If the old chain is modified the new one must be too,
-	 * but we only want to allocate a new bref.
-	 */
-	if (ochain->flags & HAMMER2_CHAIN_MODIFIED) {
-		/*
-		 * When duplicating chains the MODIFIED state is inherited.
-		 * A new bref typically must be allocated.  However, file
-		 * data chains may already have the data offset assigned
-		 * to a logical buffer cache buffer so we absolutely cannot
-		 * allocate a new bref here for TYPE_DATA.
-		 *
-		 * Basically the flusher core only dumps media topology
-		 * and meta-data, not file data.  The VOP_FSYNC code deals
-		 * with the file data.  XXX need back-pointer to inode.
-		 */
-		if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
-			atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MODIFIED);
-			hammer2_chain_ref(nchain);
-		} else {
-			hammer2_chain_modify(trans, &nchain,
-					     HAMMER2_MODIFY_OPTDATA |
-					     HAMMER2_MODIFY_ASSERTNOCOPY);
-		}
-	} else if (nchain->flags & HAMMER2_CHAIN_INITIAL) {
-		/*
-		 * When duplicating chains in the INITITAL state we need
-		 * to ensure that the chain is marked modified so a
-		 * block is properly assigned to it, otherwise the MOVED
-		 * bit won't do the right thing.
-		 */
-		KKASSERT (nchain->bref.type != HAMMER2_BREF_TYPE_DATA);
-		hammer2_chain_modify(trans, &nchain,
-				     HAMMER2_MODIFY_OPTDATA |
-				     HAMMER2_MODIFY_ASSERTNOCOPY);
-	}
-	if (parent || (ochain->flags & HAMMER2_CHAIN_MOVED)) {
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MOVED);
-		hammer2_chain_ref(nchain);
-	}
-	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_SUBMODIFIED);
-
-	switch(nchain->bref.type) {
-	case HAMMER2_BREF_TYPE_VOLUME:
-		panic("hammer2_chain_duplicate: cannot be called w/volhdr");
-		break;
-	case HAMMER2_BREF_TYPE_INODE:
-		KKASSERT(bytes == HAMMER2_INODE_BYTES);
-		if (ochain->data) {
-			nchain->data = kmalloc(sizeof(nchain->data->ipdata),
-					      hmp->minode, M_WAITOK | M_ZERO);
-			nchain->data->ipdata = ochain->data->ipdata;
-		}
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		if ((nchain->flags & HAMMER2_CHAIN_MODIFIED) &&
-		    nchain->data) {
-			bcopy(ochain->data, nchain->data,
-			      nchain->bytes);
-		}
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		panic("hammer2_chain_duplicate: cannot be used to"
-		      "create a freemap root or node");
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-	case HAMMER2_BREF_TYPE_DATA:
-	default:
-		if ((nchain->flags & HAMMER2_CHAIN_MODIFIED) &&
-		    nchain->data) {
-			bcopy(ochain->data, nchain->data,
-			      nchain->bytes);
-		}
-		/* leave chain->data NULL */
-		KKASSERT(nchain->data == NULL);
-		break;
-	}
-
-	/*
-	 * Unmodified duplicated blocks may have the same bref, we
-	 * must be careful to avoid buffer cache deadlocks so we
-	 * unlock the old chain before resolving the new one.
-	 *
-	 * Insert nchain at the end of the duplication list.
-	 */
 	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER);
-	/* extra ref still present from original allocation */
-
-	hammer2_chain_unlock(ochain);
-	*chainp = nchain;
-	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_MAYBE |
-				   HAMMER2_RESOLVE_NOREF); /* eat excess ref */
-	hammer2_chain_unlock(nchain);
+	hammer2_chain_dup_inodefixup(ochain, nchain);
 
 	/*
 	 * If parent is not NULL, insert into the parent at the requested
 	 * index.  The newly duplicated chain must be marked MOVED and
 	 * SUBMODIFIED set in its parent(s).
+	 *
+	 * Having both chains locked is extremely important for atomicy.
 	 */
 	if (parent) {
 		/*
@@ -2314,7 +2326,6 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 			count = HAMMER2_SET_COUNT;
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
-		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 			if (parent->flags & HAMMER2_CHAIN_INITIAL) {
 				base = NULL;
@@ -2327,6 +2338,11 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 		case HAMMER2_BREF_TYPE_VOLUME:
 			KKASSERT(parent->data != NULL);
 			base = &hmp->voldata.sroot_blockset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_FREEMAP:
+			KKASSERT(parent->data != NULL);
+			base = &hmp->voldata.freemap_blockset.blockref[0];
 			count = HAMMER2_SET_COUNT;
 			break;
 		default:
@@ -2361,7 +2377,74 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 		}
 		hammer2_chain_setsubmod(trans, nchain);
 	}
+
+	/*
+	 * We have to unlock ochain to flush any dirty data, asserting the
+	 * case (data == NULL) to catch any extra locks that might have been
+	 * present, then transfer state to nchain.
+	 */
+	oflags = ochain->flags;
+	odata = ochain->data;
+	hammer2_chain_unlock(ochain);
+	KKASSERT(ochain->bref.type == HAMMER2_BREF_TYPE_INODE ||
+		 ochain->data == NULL);
+
+	if (oflags & HAMMER2_CHAIN_INITIAL)
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_INITIAL);
+
+	/*
+	 * WARNING!  We should never resolve DATA to device buffers
+	 *	     (XXX allow it if the caller did?), and since
+	 *	     we currently do not have the logical buffer cache
+	 *	     buffer in-hand to fix its cached physical offset
+	 *	     we also force the modify code to not COW it. XXX
+	 */
+	if (oflags & HAMMER2_CHAIN_MODIFIED) {
+		if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+			hammer2_chain_modify(trans, &nchain,
+					     HAMMER2_MODIFY_OPTDATA |
+					     HAMMER2_MODIFY_NOREALLOC |
+					     HAMMER2_MODIFY_ASSERTNOCOPY);
+		} else if (oflags & HAMMER2_CHAIN_INITIAL) {
+			hammer2_chain_modify(trans, &nchain,
+					     HAMMER2_MODIFY_OPTDATA |
+					     HAMMER2_MODIFY_ASSERTNOCOPY);
+		} else {
+			hammer2_chain_modify(trans, &nchain,
+					     HAMMER2_MODIFY_ASSERTNOCOPY);
+		}
+		hammer2_chain_drop(nchain);
+	} else {
+		if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+			hammer2_chain_drop(nchain);
+		} else if (oflags & HAMMER2_CHAIN_INITIAL) {
+			hammer2_chain_drop(nchain);
+		} else {
+			hammer2_chain_lock(nchain, HAMMER2_RESOLVE_ALWAYS |
+						   HAMMER2_RESOLVE_NOREF);
+			hammer2_chain_unlock(nchain);
+		}
+	}
+	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_SUBMODIFIED);
+	*chainp = nchain;
 }
+
+#if 0
+		/*
+		 * When the chain is in the INITIAL state we must still
+		 * ensure that a block has been assigned so MOVED processing
+		 * works as expected.
+		 */
+		KKASSERT (nchain->bref.type != HAMMER2_BREF_TYPE_DATA);
+		hammer2_chain_modify(trans, &nchain,
+				     HAMMER2_MODIFY_OPTDATA |
+				     HAMMER2_MODIFY_ASSERTNOCOPY);
+
+
+	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_MAYBE |
+				   HAMMER2_RESOLVE_NOREF); /* eat excess ref */
+	hammer2_chain_unlock(nchain);
+#endif
 
 /*
  * Special in-place delete-duplicate sequence which does not require a
@@ -2378,12 +2461,11 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	hammer2_chain_t *nchain;
 	hammer2_chain_core_t *above;
 	size_t bytes;
+	int oflags;
+	void *odata;
 
 	/*
-	 * First create a duplicate of the chain structure, associating
-	 * it with the same core, making it the same size, pointing it
-	 * to the same bref (the same media block), and copying any inline
-	 * data.
+	 * First create a duplicate of the chain structure
 	 */
 	ochain = *chainp;
 	nchain = hammer2_chain_alloc(hmp, trans, &ochain->bref);    /* 1 ref */
@@ -2396,115 +2478,15 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	bytes = (hammer2_off_t)1 <<
 		(int)(ochain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
 	nchain->bytes = bytes;
+	nchain->modify_tid = ochain->modify_tid;
 
 	/*
-	 * Be sure to copy the INITIAL flag as well or we could end up
-	 * loading garbage from the bref.
-	 */
-	if (ochain->flags & HAMMER2_CHAIN_INITIAL)
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_INITIAL);
-	if (ochain->flags & HAMMER2_CHAIN_DIRTYBP)
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_DIRTYBP);
-
-	/*
-	 * If the old chain is modified the new one must be too,
-	 * but we only want to allocate a new bref.
-	 */
-	if (ochain->flags & HAMMER2_CHAIN_MODIFIED) {
-		/*
-		 * When duplicating chains the MODIFIED state is inherited.
-		 * A new bref typically must be allocated.  However, file
-		 * data chains may already have the data offset assigned
-		 * to a logical buffer cache buffer so we absolutely cannot
-		 * allocate a new bref here for TYPE_DATA.
-		 *
-		 * Basically the flusher core only dumps media topology
-		 * and meta-data, not file data.  The VOP_FSYNC code deals
-		 * with the file data.  XXX need back-pointer to inode.
-		 */
-		if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
-			atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MODIFIED);
-			hammer2_chain_ref(nchain);
-			nchain->modify_tid = trans->sync_tid;
-		} else {
-			hammer2_chain_modify(trans, &nchain,
-					     HAMMER2_MODIFY_OPTDATA |
-					     HAMMER2_MODIFY_ASSERTNOCOPY);
-		}
-	} else if (nchain->flags & HAMMER2_CHAIN_INITIAL) {
-		/*
-		 * When duplicating chains in the INITITAL state we need
-		 * to ensure that the chain is marked modified so a
-		 * block is properly assigned to it, otherwise the MOVED
-		 * bit won't do the right thing.
-		 */
-		KKASSERT (nchain->bref.type != HAMMER2_BREF_TYPE_DATA);
-		hammer2_chain_modify(trans, &nchain,
-				     HAMMER2_MODIFY_OPTDATA |
-				     HAMMER2_MODIFY_ASSERTNOCOPY);
-	}
-
-	/*
-	 * Unconditionally set the MOVED and SUBMODIFIED bit to force
-	 * update of parent bref and indirect blockrefs during flush.
-	 */
-	if ((nchain->flags & HAMMER2_CHAIN_MOVED) == 0) {
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MOVED);
-		hammer2_chain_ref(nchain);
-	}
-	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_SUBMODIFIED);
-
-	/*
-	 * Copy media contents as needed.
-	 */
-	switch(nchain->bref.type) {
-	case HAMMER2_BREF_TYPE_VOLUME:
-		panic("hammer2_chain_duplicate: cannot be called w/volhdr");
-		break;
-	case HAMMER2_BREF_TYPE_INODE:
-		KKASSERT(bytes == HAMMER2_INODE_BYTES);
-		if (ochain->data) {
-			nchain->data = kmalloc(sizeof(nchain->data->ipdata),
-					      hmp->minode, M_WAITOK | M_ZERO);
-			nchain->data->ipdata = ochain->data->ipdata;
-		}
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		if ((nchain->flags & HAMMER2_CHAIN_MODIFIED) &&
-		    nchain->data) {
-			bcopy(ochain->data, nchain->data,
-			      nchain->bytes);
-		}
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		panic("hammer2_chain_duplicate: cannot be used to"
-		      "create a freemap root or node");
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-	case HAMMER2_BREF_TYPE_DATA:
-	default:
-		if ((nchain->flags & HAMMER2_CHAIN_MODIFIED) &&
-		    nchain->data) {
-			bcopy(ochain->data, nchain->data,
-			      nchain->bytes);
-		}
-		/* leave chain->data NULL */
-		KKASSERT(nchain->data == NULL);
-		break;
-	}
-
-	/*
-	 * Both chains must be locked for us to be able to set the
-	 * duplink.  The caller may expect valid data.
-	 *
-	 * Unmodified duplicated blocks may have the same bref, we
-	 * must be careful to avoid buffer cache deadlocks so we
-	 * unlock the old chain before resolving the new one.
-	 *
-	 * Insert nchain at the end of the duplication list.
+	 * Lock nchain and insert into ochain's core hierarchy, marking
+	 * ochain DELETED at the same time.  Having both chains locked
+	 * is extremely important for atomicy.
 	 */
 	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER);
+	hammer2_chain_dup_inodefixup(ochain, nchain);
 	/* extra ref still present from original allocation */
 
 	nchain->index = ochain->index;
@@ -2524,17 +2506,88 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	spin_unlock(&above->cst.spin);
 
 	/*
-	 * Cleanup.  Also note that nchain must be re-resolved to ensure
-	 * that it's data is resolved because we locked it RESOLVE_NEVER
-	 * up above.
+	 * We have to unlock ochain to flush any dirty data, asserting the
+	 * case (data == NULL) to catch any extra locks that might have been
+	 * present, then transfer state to nchain.
 	 */
-	*chainp = nchain;		/* inherits locked */
+	oflags = ochain->flags;
+	odata = ochain->data;
 	hammer2_chain_unlock(ochain);	/* replacing ochain */
-	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_MAYBE |
-				   HAMMER2_RESOLVE_NOREF); /* excess ref */
-	hammer2_chain_unlock(nchain);
+	KKASSERT(ochain->bref.type == HAMMER2_BREF_TYPE_INODE ||
+		 ochain->data == NULL);
 
+	if (oflags & HAMMER2_CHAIN_INITIAL)
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_INITIAL);
+
+	/*
+	 * WARNING!  We should never resolve DATA to device buffers
+	 *	     (XXX allow it if the caller did?), and since
+	 *	     we currently do not have the logical buffer cache
+	 *	     buffer in-hand to fix its cached physical offset
+	 *	     we also force the modify code to not COW it. XXX
+	 */
+	if (oflags & HAMMER2_CHAIN_MODIFIED) {
+		if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+			hammer2_chain_modify(trans, &nchain,
+					     HAMMER2_MODIFY_OPTDATA |
+					     HAMMER2_MODIFY_NOREALLOC |
+					     HAMMER2_MODIFY_ASSERTNOCOPY);
+		} else if (oflags & HAMMER2_CHAIN_INITIAL) {
+			hammer2_chain_modify(trans, &nchain,
+					     HAMMER2_MODIFY_OPTDATA |
+					     HAMMER2_MODIFY_ASSERTNOCOPY);
+		} else {
+			hammer2_chain_modify(trans, &nchain,
+					     HAMMER2_MODIFY_ASSERTNOCOPY);
+		}
+		hammer2_chain_drop(nchain);
+	} else {
+		if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+			hammer2_chain_drop(nchain);
+		} else if (oflags & HAMMER2_CHAIN_INITIAL) {
+			hammer2_chain_drop(nchain);
+		} else {
+			hammer2_chain_lock(nchain, HAMMER2_RESOLVE_ALWAYS |
+						   HAMMER2_RESOLVE_NOREF);
+			hammer2_chain_unlock(nchain);
+		}
+	}
+
+	/*
+	 * Unconditionally set the MOVED and SUBMODIFIED bit to force
+	 * update of parent bref and indirect blockrefs during flush.
+	 */
+	if ((nchain->flags & HAMMER2_CHAIN_MOVED) == 0) {
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_MOVED);
+		hammer2_chain_ref(nchain);
+	}
+	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_SUBMODIFIED);
 	hammer2_chain_setsubmod(trans, nchain);
+	*chainp = nchain;
+}
+
+/*
+ * Helper function to fixup inodes.  The caller procedure stack may hold
+ * multiple locks on ochain if it represents an inode, preventing our
+ * unlock from retiring its state to the buffer cache.
+ *
+ * In this situation any attempt to access the buffer cache could result
+ * either in stale data or a deadlock.  Work around the problem by copying
+ * the embedded data directly.
+ */
+static
+void
+hammer2_chain_dup_inodefixup(hammer2_chain_t *ochain, hammer2_chain_t *nchain)
+{
+	if (ochain->bref.type != HAMMER2_BREF_TYPE_INODE)
+		return;
+	if (ochain->data == NULL)
+		return;
+	KKASSERT(nchain->bref.type == HAMMER2_BREF_TYPE_INODE);
+	KKASSERT(nchain->data == NULL);
+	nchain->data = kmalloc(sizeof(nchain->data->ipdata),
+			       ochain->hmp->minode, M_WAITOK | M_ZERO);
+	nchain->data->ipdata = ochain->data->ipdata;
 }
 
 /*
@@ -2690,11 +2743,17 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
  *
  * Must be called with an exclusively locked parent.
  */
+static int hammer2_chain_indkey_freemap(hammer2_chain_t *parent,
+				hammer2_key_t *keyp, int keybits,
+				hammer2_blockref_t *base, int count);
+static int hammer2_chain_indkey_normal(hammer2_chain_t *parent,
+				hammer2_key_t *keyp, int keybits,
+				hammer2_blockref_t *base, int count);
 static
 hammer2_chain_t *
 hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			      hammer2_key_t create_key, int create_bits,
-			      int *errorp)
+			      int for_type, int *errorp)
 {
 	hammer2_mount_t *hmp = trans->hmp;
 	hammer2_chain_core_t *above;
@@ -2707,8 +2766,6 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	hammer2_chain_t dummy;
 	hammer2_key_t key = create_key;
 	int keybits = create_bits;
-	int locount = 0;
-	int hicount = 0;
 	int count;
 	int nbytes;
 	int i;
@@ -2731,11 +2788,13 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			count = HAMMER2_SET_COUNT;
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
-		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 			count = parent->bytes / sizeof(hammer2_blockref_t);
 			break;
 		case HAMMER2_BREF_TYPE_VOLUME:
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_FREEMAP:
 			count = HAMMER2_SET_COUNT;
 			break;
 		default:
@@ -2752,13 +2811,16 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			count = HAMMER2_SET_COUNT;
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
-		case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
 		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 			base = &parent->data->npdata.blockref[0];
 			count = parent->bytes / sizeof(hammer2_blockref_t);
 			break;
 		case HAMMER2_BREF_TYPE_VOLUME:
 			base = &hmp->voldata.sroot_blockset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_FREEMAP:
+			base = &hmp->voldata.freemap_blockset.blockref[0];
 			count = HAMMER2_SET_COUNT;
 			break;
 		default:
@@ -2771,19 +2833,331 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	}
 
 	/*
-	 * Scan for an unallocated bref, also skipping any slots occupied
-	 * by in-memory chain elements which may not yet have been updated
-	 * in the parent's bref array.
-	 *
-	 * Deleted elements are ignored.
+	 * dummy used in later chain allocation (no longer used for lookups).
 	 */
 	bzero(&dummy, sizeof(dummy));
 	dummy.delete_tid = HAMMER2_MAX_TID;
 
+	/*
+	 * When creating an indirect block for a freemap node or leaf
+	 * the key/keybits must be fitted to static radix levels because
+	 * particular radix levels use particular reserved blocks in the
+	 * related zone.
+	 *
+	 * This routine calculates the key/radix of the indirect block
+	 * we need to create, and whether it is on the high-side or the
+	 * low-side.
+	 */
+	if (for_type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
+	    for_type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
+		keybits = hammer2_chain_indkey_freemap(parent, &key, keybits,
+						       base, count);
+	} else {
+		keybits = hammer2_chain_indkey_normal(parent, &key, keybits,
+						      base, count);
+	}
+
+	/*
+	 * Normalize the key for the radix being represented, keeping the
+	 * high bits and throwing away the low bits.
+	 */
+	key &= ~(((hammer2_key_t)1 << keybits) - 1);
+
+	/*
+	 * How big should our new indirect block be?  It has to be at least
+	 * as large as its parent.
+	 */
+	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE)
+		nbytes = HAMMER2_IND_BYTES_MIN;
+	else
+		nbytes = HAMMER2_IND_BYTES_MAX;
+	if (nbytes < count * sizeof(hammer2_blockref_t))
+		nbytes = count * sizeof(hammer2_blockref_t);
+
+	/*
+	 * Ok, create our new indirect block
+	 */
+	if (for_type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
+	    for_type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
+		dummy.bref.type = HAMMER2_BREF_TYPE_FREEMAP_NODE;
+	} else {
+		dummy.bref.type = HAMMER2_BREF_TYPE_INDIRECT;
+	}
+	dummy.bref.key = key;
+	dummy.bref.keybits = keybits;
+	dummy.bref.data_off = hammer2_getradix(nbytes);
+	dummy.bref.methods = parent->bref.methods;
+
+	ichain = hammer2_chain_alloc(hmp, trans, &dummy.bref);
+	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);
+	hammer2_chain_core_alloc(ichain, NULL);
+	icore = ichain->core;
+	hammer2_chain_lock(ichain, HAMMER2_RESOLVE_MAYBE);
+	hammer2_chain_drop(ichain);	/* excess ref from alloc */
+
+	/*
+	 * We have to mark it modified to allocate its block, but use
+	 * OPTDATA to allow it to remain in the INITIAL state.  Otherwise
+	 * it won't be acted upon by the flush code.
+	 *
+	 * XXX leave the node unmodified, depend on the SUBMODIFIED
+	 * flush to assign and modify parent blocks.
+	 */
+	hammer2_chain_modify(trans, &ichain, HAMMER2_MODIFY_OPTDATA);
+
+	/*
+	 * Iterate the original parent and move the matching brefs into
+	 * the new indirect block.
+	 *
+	 * At the same time locate an empty slot (or what will become an
+	 * empty slot) and assign the new indirect block to that slot.
+	 *
+	 * XXX handle flushes.
+	 */
 	spin_lock(&above->cst.spin);
 	for (i = 0; i < count; ++i) {
-		int nkeybits;
+		/*
+		 * For keying purposes access the bref from the media or
+		 * from our in-memory cache.  In cases where the in-memory
+		 * cache overrides the media the keyrefs will be the same
+		 * anyway so we can avoid checking the cache when the media
+		 * has a key.
+		 */
+		child = hammer2_chain_find_locked(parent, i);
+		if (child) {
+			if (child->flags & HAMMER2_CHAIN_DELETED) {
+				if (ichain->index < 0)
+					ichain->index = i;
+				continue;
+			}
+			bref = &child->bref;
+		} else if (base && base[i].type) {
+			bref = &base[i];
+		} else {
+			if (ichain->index < 0)
+				ichain->index = i;
+			continue;
+		}
 
+		/*
+		 * Skip keys that are not within the key/radix of the new
+		 * indirect block.  They stay in the parent.
+		 */
+		if ((~(((hammer2_key_t)1 << keybits) - 1) &
+		    (key ^ bref->key)) != 0) {
+			continue;
+		}
+
+		/*
+		 * This element is being moved from the parent, its slot
+		 * is available for our new indirect block.
+		 */
+		if (ichain->index < 0)
+			ichain->index = i;
+
+		/*
+		 * Load the new indirect block by acquiring or allocating
+		 * the related chain entries, then move them to the new
+		 * parent (ichain) by deleting them from their old location
+		 * and inserting a duplicate of the chain and any modified
+		 * sub-chain in the new location.
+		 *
+		 * We must set MOVED in the chain being duplicated and
+		 * SUBMODIFIED in the parent(s) so the flush code knows
+		 * what is going on.  The latter is done after the loop.
+		 *
+		 * WARNING! above->cst.spin must be held when parent is
+		 *	    modified, even though we own the full blown lock,
+		 *	    to deal with setsubmod and rename races.
+		 *	    (XXX remove this req).
+		 */
+		spin_unlock(&above->cst.spin);
+		chain = hammer2_chain_get(parent, i, HAMMER2_LOOKUP_NODATA);
+		hammer2_chain_delete(trans, chain);
+		hammer2_chain_duplicate(trans, ichain, i, &chain, NULL);
+		hammer2_chain_unlock(chain);
+		KKASSERT(parent->refs > 0);
+		chain = NULL;
+		spin_lock(&above->cst.spin);
+	}
+	spin_unlock(&above->cst.spin);
+
+	/*
+	 * Insert the new indirect block into the parent now that we've
+	 * cleared out some entries in the parent.  We calculated a good
+	 * insertion index in the loop above (ichain->index).
+	 *
+	 * We don't have to set MOVED here because we mark ichain modified
+	 * down below (so the normal modified -> flush -> set-moved sequence
+	 * applies).
+	 *
+	 * The insertion shouldn't race as this is a completely new block
+	 * and the parent is locked.
+	 */
+	if (ichain->index < 0)
+		kprintf("indirect parent %p count %d key %016jx/%d\n",
+			parent, count, (intmax_t)key, keybits);
+	KKASSERT(ichain->index >= 0);
+	KKASSERT((ichain->flags & HAMMER2_CHAIN_ONRBTREE) == 0);
+	spin_lock(&above->cst.spin);
+	if (RB_INSERT(hammer2_chain_tree, &above->rbtree, ichain))
+		panic("hammer2_chain_create_indirect: ichain insertion");
+	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_ONRBTREE);
+	ichain->above = above;
+	spin_unlock(&above->cst.spin);
+
+	/*
+	 * Mark the new indirect block modified after insertion, which
+	 * will propagate up through parent all the way to the root and
+	 * also allocate the physical block in ichain for our caller,
+	 * and assign ichain->data to a pre-zero'd space (because there
+	 * is not prior data to copy into it).
+	 *
+	 * We have to set SUBMODIFIED in ichain's flags manually so the
+	 * flusher knows it has to recurse through it to get to all of
+	 * our moved blocks, then call setsubmod() to set the bit
+	 * recursively.
+	 */
+	/*hammer2_chain_modify(trans, &ichain, HAMMER2_MODIFY_OPTDATA);*/
+	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_SUBMODIFIED);
+	hammer2_chain_setsubmod(trans, ichain);
+
+	/*
+	 * Figure out what to return.
+	 */
+	if (~(((hammer2_key_t)1 << keybits) - 1) &
+		   (create_key ^ key)) {
+		/*
+		 * Key being created is outside the key range,
+		 * return the original parent.
+		 */
+		hammer2_chain_unlock(ichain);
+	} else {
+		/*
+		 * Otherwise its in the range, return the new parent.
+		 * (leave both the new and old parent locked).
+		 */
+		parent = ichain;
+	}
+
+	return(parent);
+}
+
+/*
+ * Calculate the keybits and highside/lowside of the freemap node the
+ * caller is creating.
+ *
+ * This routine will specify the next higher-level freemap key/radix
+ * representing the lowest-ordered set.  By doing so, eventually all
+ * low-ordered sets will be moved one level down.
+ *
+ * We have to be careful here because the freemap reserves a limited
+ * number of blocks for a limited number of levels.  So we can't just
+ * push indiscriminately.
+ */
+int
+hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
+			     int keybits, hammer2_blockref_t *base, int count)
+{
+	hammer2_chain_core_t *above;
+	hammer2_chain_t *child;
+	hammer2_blockref_t *bref;
+	hammer2_key_t key;
+	int locount;
+	int hicount;
+	int i;
+
+	key = *keyp;
+	above = parent->core;
+	locount = 0;
+	hicount = 0;
+	keybits = 64;
+
+	/*
+	 * Calculate the range of keys in the array being careful to skip
+	 * slots which are overridden with a deletion.
+	 */
+	spin_lock(&above->cst.spin);
+	for (i = 0; i < count; ++i) {
+		child = hammer2_chain_find_locked(parent, i);
+		if (child) {
+			if (child->flags & HAMMER2_CHAIN_DELETED)
+				continue;
+			bref = &child->bref;
+		} else if (base && base[i].type) {
+			bref = &base[i];
+		} else {
+			continue;
+		}
+
+		if (keybits > bref->keybits) {
+			key = bref->key;
+			keybits = bref->keybits;
+		} else if (keybits == bref->keybits && bref->key < key) {
+			key = bref->key;
+		}
+	}
+	spin_unlock(&above->cst.spin);
+
+	/*
+	 * Return the keybits for a higher-level FREEMAP_NODE covering
+	 * this node.
+	 */
+	switch(keybits) {
+	case HAMMER2_FREEMAP_LEVEL0_RADIX:
+		keybits = HAMMER2_FREEMAP_LEVEL1_RADIX;
+		break;
+	case HAMMER2_FREEMAP_LEVEL1_RADIX:
+		keybits = HAMMER2_FREEMAP_LEVEL2_RADIX;
+		break;
+	case HAMMER2_FREEMAP_LEVEL2_RADIX:
+		keybits = HAMMER2_FREEMAP_LEVEL3_RADIX;
+		break;
+	case HAMMER2_FREEMAP_LEVEL3_RADIX:
+		keybits = HAMMER2_FREEMAP_LEVEL4_RADIX;
+		break;
+	case HAMMER2_FREEMAP_LEVEL4_RADIX:
+		panic("hammer2_chain_indkey_freemap: level too high");
+		break;
+	default:
+		panic("hammer2_chain_indkey_freemap: bad radix");
+		break;
+	}
+	*keyp = key;
+
+	return (keybits);
+}
+
+/*
+ * Calculate the keybits and highside/lowside of the indirect block the
+ * caller is creating.
+ */
+static int
+hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
+			    int keybits, hammer2_blockref_t *base, int count)
+{
+	hammer2_chain_core_t *above;
+	hammer2_chain_t *child;
+	hammer2_blockref_t *bref;
+	hammer2_key_t key;
+	int nkeybits;
+	int locount;
+	int hicount;
+	int i;
+
+	key = *keyp;
+	above = parent->core;
+	locount = 0;
+	hicount = 0;
+
+	/*
+	 * Calculate the range of keys in the array being careful to skip
+	 * slots which are overridden with a deletion.  Once the scan
+	 * completes we will cut the key range in half and shift half the
+	 * range into the new indirect block.
+	 */
+	spin_lock(&above->cst.spin);
+	for (i = 0; i < count; ++i) {
 		child = hammer2_chain_find_locked(parent, i);
 		if (child) {
 			if (child->flags & HAMMER2_CHAIN_DELETED)
@@ -2803,7 +3177,8 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		nkeybits = keybits;
 		if (nkeybits < bref->keybits) {
 			if (bref->keybits > 64) {
-				kprintf("bad bref index %d chain %p bref %p\n", i, chain, bref);
+				kprintf("bad bref index %d chain %p bref %p\n",
+					i, child, bref);
 				Debugger("fubar");
 			}
 			nkeybits = bref->keybits;
@@ -2855,7 +3230,6 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * element (in order to ensure that a free slot is present to hold
 	 * the indirect block).
 	 */
-	key &= ~(((hammer2_key_t)1 << keybits) - 1);
 	if (hammer2_indirect_optimize) {
 		/*
 		 * Insert node for least number of keys, this will arrange
@@ -2877,190 +3251,9 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		else
 			key &= ~(hammer2_key_t)1 << keybits;
 	}
+	*keyp = key;
 
-	/*
-	 * How big should our new indirect block be?  It has to be at least
-	 * as large as its parent.
-	 */
-	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE)
-		nbytes = HAMMER2_IND_BYTES_MIN;
-	else
-		nbytes = HAMMER2_IND_BYTES_MAX;
-	if (nbytes < count * sizeof(hammer2_blockref_t))
-		nbytes = count * sizeof(hammer2_blockref_t);
-
-	/*
-	 * Ok, create our new indirect block
-	 */
-	switch(parent->bref.type) {
-	case HAMMER2_BREF_TYPE_FREEMAP_ROOT:
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		dummy.bref.type = HAMMER2_BREF_TYPE_FREEMAP_NODE;
-		break;
-	default:
-		dummy.bref.type = HAMMER2_BREF_TYPE_INDIRECT;
-		break;
-	}
-	dummy.bref.key = key;
-	dummy.bref.keybits = keybits;
-	dummy.bref.data_off = hammer2_allocsize(nbytes);
-	dummy.bref.methods = parent->bref.methods;
-
-	ichain = hammer2_chain_alloc(hmp, trans, &dummy.bref);
-	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);
-	hammer2_chain_core_alloc(ichain, NULL);
-	icore = ichain->core;
-	hammer2_chain_lock(ichain, HAMMER2_RESOLVE_MAYBE);
-	hammer2_chain_drop(ichain);	/* excess ref from alloc */
-
-	/*
-	 * We have to mark it modified to allocate its block, but use
-	 * OPTDATA to allow it to remain in the INITIAL state.  Otherwise
-	 * it won't be acted upon by the flush code.
-	 */
-	hammer2_chain_modify(trans, &ichain, HAMMER2_MODIFY_OPTDATA);
-
-	/*
-	 * Iterate the original parent and move the matching brefs into
-	 * the new indirect block.
-	 *
-	 * XXX handle flushes.
-	 */
-	spin_lock(&above->cst.spin);
-	for (i = 0; i < count; ++i) {
-		/*
-		 * For keying purposes access the bref from the media or
-		 * from our in-memory cache.  In cases where the in-memory
-		 * cache overrides the media the keyrefs will be the same
-		 * anyway so we can avoid checking the cache when the media
-		 * has a key.
-		 */
-		child = hammer2_chain_find_locked(parent, i);
-		if (child) {
-			if (child->flags & HAMMER2_CHAIN_DELETED) {
-				if (ichain->index < 0)
-					ichain->index = i;
-				continue;
-			}
-			bref = &child->bref;
-		} else if (base && base[i].type) {
-			bref = &base[i];
-		} else {
-			if (ichain->index < 0)
-				ichain->index = i;
-			continue;
-		}
-
-		/*
-		 * Skip keys not in the chosen half (low or high), only bit
-		 * (keybits - 1) needs to be compared but for safety we
-		 * will compare all msb bits plus that bit again.
-		 */
-		if ((~(((hammer2_key_t)1 << keybits) - 1) &
-		    (key ^ bref->key)) != 0) {
-			continue;
-		}
-
-		/*
-		 * This element is being moved from the parent, its slot
-		 * is available for our new indirect block.
-		 */
-		if (ichain->index < 0)
-			ichain->index = i;
-
-		/*
-		 * Load the new indirect block by acquiring or allocating
-		 * the related chain entries, then move them to the new
-		 * parent (ichain) by deleting them from their old location
-		 * and inserting a duplicate of the chain and any modified
-		 * sub-chain in the new location.
-		 *
-		 * We must set MOVED in the chain being duplicated and
-		 * SUBMODIFIED in the parent(s) so the flush code knows
-		 * what is going on.  The latter is done after the loop.
-		 *
-		 * WARNING! above->cst.spin must be held when parent is
-		 *	    modified, even though we own the full blown lock,
-		 *	    to deal with setsubmod and rename races.
-		 *	    (XXX remove this req).
-		 */
-		spin_unlock(&above->cst.spin);
-		chain = hammer2_chain_get(parent, i, HAMMER2_LOOKUP_NODATA);
-		hammer2_chain_delete(trans, chain);
-		hammer2_chain_duplicate(trans, ichain, i, &chain, NULL);
-
-		hammer2_chain_unlock(chain);
-		KKASSERT(parent->refs > 0);
-		chain = NULL;
-		spin_lock(&above->cst.spin);
-	}
-	spin_unlock(&above->cst.spin);
-
-	/*
-	 * Insert the new indirect block into the parent now that we've
-	 * cleared out some entries in the parent.  We calculated a good
-	 * insertion index in the loop above (ichain->index).
-	 *
-	 * We don't have to set MOVED here because we mark ichain modified
-	 * down below (so the normal modified -> flush -> set-moved sequence
-	 * applies).
-	 *
-	 * The insertion shouldn't race as this is a completely new block
-	 * and the parent is locked.
-	 */
-	if (ichain->index < 0)
-		kprintf("indirect parent %p count %d key %016jx/%d\n",
-			parent, count, (intmax_t)key, keybits);
-	KKASSERT(ichain->index >= 0);
-	KKASSERT((ichain->flags & HAMMER2_CHAIN_ONRBTREE) == 0);
-	spin_lock(&above->cst.spin);
-	if (RB_INSERT(hammer2_chain_tree, &above->rbtree, ichain))
-		panic("hammer2_chain_create_indirect: ichain insertion");
-	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_ONRBTREE);
-	ichain->above = above;
-	spin_unlock(&above->cst.spin);
-
-	/*
-	 * Mark the new indirect block modified after insertion, which
-	 * will propagate up through parent all the way to the root and
-	 * also allocate the physical block in ichain for our caller,
-	 * and assign ichain->data to a pre-zero'd space (because there
-	 * is not prior data to copy into it).
-	 *
-	 * We have to set SUBMODIFIED in ichain's flags manually so the
-	 * flusher knows it has to recurse through it to get to all of
-	 * our moved blocks, then call setsubmod() to set the bit
-	 * recursively.
-	 */
-	/*hammer2_chain_modify(trans, &ichain, HAMMER2_MODIFY_OPTDATA);*/
-	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_SUBMODIFIED);
-	hammer2_chain_setsubmod(trans, ichain);
-
-	/*
-	 * Figure out what to return.
-	 */
-	if (create_bits > keybits) {
-		/*
-		 * Key being created is way outside the key range,
-		 * return the original parent.
-		 */
-		hammer2_chain_unlock(ichain);
-	} else if (~(((hammer2_key_t)1 << keybits) - 1) &
-		   (create_key ^ key)) {
-		/*
-		 * Key being created is outside the key range,
-		 * return the original parent.
-		 */
-		hammer2_chain_unlock(ichain);
-	} else {
-		/*
-		 * Otherwise its in the range, return the new parent.
-		 * (leave both the new and old parent locked).
-		 */
-		parent = ichain;
-	}
-
-	return(parent);
+	return (keybits);
 }
 
 /*

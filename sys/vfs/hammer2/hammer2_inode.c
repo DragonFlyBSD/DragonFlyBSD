@@ -1216,7 +1216,8 @@ done:
 }
 
 /*
- * Calculate the allocation size for the file fragment straddling EOF
+ * Calculate the allocation size for the file fragment straddling EOF,
+ * returning the radix.
  */
 int
 hammer2_inode_calc_alloc(hammer2_key_t filesize)
@@ -1226,7 +1227,7 @@ hammer2_inode_calc_alloc(hammer2_key_t filesize)
 
 	if (frag == 0)
 		return(0);
-	for (radix = HAMMER2_MINALLOCRADIX; frag > (1 << radix); ++radix)
+	for (radix = HAMMER2_MIN_RADIX; frag > (1 << radix); ++radix)
 		;
 	return (radix);
 }

@@ -481,7 +481,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		return(EINVAL);
 	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure 0-termination */
 
-	hammer2_trans_init(hmp, &trans, 0);
+	hammer2_trans_init(&trans, hmp, ip, 0);
 	nip = hammer2_inode_create(&trans, hmp->sroot, NULL, NULL,
 				     pfs->name, strlen(pfs->name),
 				     &nchain, &error);
@@ -508,7 +508,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	hammer2_trans_t trans;
 	int error;
 
-	hammer2_trans_init(hmp, &trans, 0);
+	hammer2_trans_init(&trans, hmp, ip, 0);
 	error = hammer2_unlink_file(&trans, hmp->sroot,
 				    pfs->name, strlen(pfs->name),
 				    2, NULL);
@@ -531,7 +531,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	if (pfs->name[sizeof(pfs->name)-1] != 0)
 		return(EINVAL);
 
-	hammer2_trans_init(hmp, &trans, 0);
+	hammer2_trans_init(&trans, hmp, ip, 0);
 	parent = hammer2_inode_lock_ex(ip);
 	error = hammer2_chain_snapshot(&trans, ip, pfs);
 	hammer2_inode_unlock_ex(ip, parent);
