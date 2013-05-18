@@ -84,6 +84,7 @@
 typedef u_char bool_t;
 #ifndef CPU_DISABLE_SSE
 static	void	fpu_clean_state(void);
+#define ldmxcsr(csr)            __asm __volatile("ldmxcsr %0" : : "m" (csr))
 #endif
 
 static struct krate badfprate = { 1 };
@@ -99,6 +100,7 @@ npxinit(u_short control)
 {
 	/*64-Byte alignment required for xsave*/
 	static union savefpu dummy __aligned(64);
+	u_int mxcsr;
 
 	/*
 	 * fninit has the same h/w bugs as fnsave.  Use the detoxified
@@ -109,6 +111,10 @@ npxinit(u_short control)
 	crit_enter();
 	stop_emulating();
 	fldcw(&control);
+
+	mxcsr = __INITIAL_MXCSR__;
+	ldmxcsr(mxcsr);
+
 	fpusave(curthread->td_savefpu);
 	mdcpu->gd_npxthread = NULL;
 	start_emulating();
