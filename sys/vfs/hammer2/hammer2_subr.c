@@ -352,8 +352,8 @@ hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 	KKASSERT(*lbasep <= *leofp);
 	if (*lbasep == *leofp /*&& *leofp < 1024 * 1024*/) {
 		radix = hammer2_getradix((size_t)(ipdata->size - *leofp));
-		if (radix < HAMMER2_MIN_RADIX)
-			radix = HAMMER2_MIN_RADIX;
+		if (radix < HAMMER2_MINIORADIX)
+			radix = HAMMER2_MINIORADIX;
 		*leofp += 1U << radix;
 		return (1U << radix);
 	} else {

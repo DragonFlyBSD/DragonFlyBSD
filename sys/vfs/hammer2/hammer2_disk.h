@@ -94,10 +94,9 @@
  *				are 1K.
  *
  * MINIOSIZE		- The minimum IO size.  This must be less than
- *			  or equal to HAMMER2_PBUFSIZE.
+ *			  or equal to HAMMER2_LBUFSIZE.
  *
- *			  XXX currently must be set to MINALLOCSIZE until/if
- *			      we deal with recursive buffer cache locks.
+ * HAMMER2_LBUFSIZE	- Nominal buffer size for I/O rollups.
  *
  * HAMMER2_PBUFSIZE	- Topological block size used by files for all
  *			  blocks except the block straddling EOF.
@@ -113,9 +112,9 @@
 #define HAMMER2_LBUFSIZE	16384
 
 /*
- * XXX FIXME multiple locked inodes deadlock on the buffer cache
+ * Generally speaking we want to use 16K and 64K I/Os
  */
-#if 0
+#if 1
 #define HAMMER2_MINIORADIX	HAMMER2_LBUFRADIX
 #define HAMMER2_MINIOSIZE	HAMMER2_LBUFSIZE
 #else
@@ -123,7 +122,7 @@
 #define HAMMER2_MINIOSIZE	1024
 #endif
 
-#define HAMMER2_IND_BYTES_MIN	4096	/* first indirect layer only */
+#define HAMMER2_IND_BYTES_MIN	HAMMER2_LBUFSIZE
 #define HAMMER2_IND_BYTES_MAX	HAMMER2_PBUFSIZE
 #define HAMMER2_IND_COUNT_MIN	(HAMMER2_IND_BYTES_MIN / \
 				 sizeof(hammer2_blockref_t))
@@ -515,6 +514,12 @@ struct hammer2_indblock_data {
 };
 
 typedef struct hammer2_indblock_data hammer2_indblock_data_t;
+
+struct hammer2_bmap_data {
+	uint64_t    array[HAMMER2_FREEMAP_LEVEL0_PSIZE / sizeof(uint64_t)];
+};
+
+typedef struct hammer2_bmap_data hammer2_bmap_data_t;
 
 /*
  * In HAMMER2 inodes ARE directory entries, with a special exception for
@@ -908,9 +913,8 @@ union hammer2_media_data {
 	hammer2_volume_data_t	voldata;
         hammer2_inode_data_t    ipdata;
 	hammer2_indblock_data_t npdata;
+	hammer2_bmap_data_t	bmdata;
 	char			buf[HAMMER2_PBUFSIZE];
-	uint64_t		bitmap[HAMMER2_FREEMAP_LEVEL0_PSIZE /
-				       sizeof(uint64_t)];
 };
 
 typedef union hammer2_media_data hammer2_media_data_t;

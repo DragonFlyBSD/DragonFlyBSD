@@ -454,7 +454,8 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				     HAMMER2_FREEMAP_LEVEL0_PSIZE);
 		if (error == 0) {
 			hammer2_chain_modify(trans, &chain, 0);
-			bzero(chain->data->bitmap, HAMMER2_FREEMAP_LEVEL0_PSIZE);
+			bzero(chain->data->bmdata.array,
+			      HAMMER2_FREEMAP_LEVEL0_PSIZE);
 			chain->bref.check.freemap.biggest =
 					HAMMER2_FREEMAP_LEVEL0_RADIX;
 			chain->bref.check.freemap.avail = l0size;
@@ -469,13 +470,13 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			      ~(hammer2_off_t)(HAMMER2_MAX_ALLOC - 1);
 			if (key < tmp) {
 				if (key + l0size <= tmp) {
-					memset(chain->data->bitmap, -1,
-						l0size / HAMMER2_MIN_ALLOC / 8);
+					memset(chain->data->bmdata.array, -1,
+					       l0size / HAMMER2_MIN_ALLOC / 8);
 					chain->bref.check.freemap.avail = 0;
 				} else {
 					count = (tmp - key) / HAMMER2_MIN_ALLOC;
 					kprintf("Init L0 BASE %d\n", count);
-					memset(chain->data->bitmap, -1,
+					memset(chain->data->bmdata.array, -1,
 					       count / 8);
 					chain->bref.check.freemap.avail -=
 						count * HAMMER2_MIN_ALLOC;
@@ -488,7 +489,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			 */
 			tmp = H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX);
 			if (key - tmp < HAMMER2_ZONE_SEG) {
-				memset(chain->data->bitmap, -1,
+				memset(chain->data->bmdata.array, -1,
 				       l0size / HAMMER2_MIN_ALLOC / 8);
 				chain->bref.check.freemap.avail = 0;
 			}
@@ -497,7 +498,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			 * Preset bitmap for end of media
 			 */
 			if (key >= trans->hmp->voldata.volu_size) {
-				memset(chain->data->bitmap, -1,
+				memset(chain->data->bmdata.array, -1,
 				       l0size / HAMMER2_MIN_ALLOC / 8);
 				chain->bref.check.freemap.avail = 0;
 			}
@@ -522,9 +523,10 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	 * natively aligned.
 	 */
 	count = HAMMER2_FREEMAP_LEVEL0_PSIZE / sizeof(uint64_t); /* 32 */
-	data = &chain->data->bitmap[0];
+	data = &chain->data->bmdata.array[0];
 
 	tmp_mask = 0; /* avoid compiler warnings */
+	subindex = 0; /* avoid compiler warnings */
 
 	/*
 	 * Allocate data and meta-data from the beginning and inodes
@@ -578,20 +580,46 @@ skip:
 		 * not go past the volume size, and must not be in the
 		 * reserved segment area for a zone.
 		 */
+		int prebuf;
+
 		KKASSERT(key >= hmp->voldata.allocator_beg &&
 			 key + bytes <= hmp->voldata.volu_size);
 		KKASSERT((key & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
 
 		/*
 		 * Modify the chain and set the bitmap appropriately.
+		 *
+		 * Determine if we can massage the buffer cache buffer
+		 * to avoid a read.  If the allocation is smaller than
+		 * the minimum IO size we look at the bitmap mask covering
+		 * the allocation at the minimum IO size.  If it is
+		 * unallocated we instantiate and clear the buffer which
+		 * marks it B_CACHE and validates it without issuing a read.
+		 *
+		 * For allocation requests >= MINIOSIZE other code will deal
+		 * with the read-avoidance when the chain is locked.
 		 */
+		prebuf = 0;
 		hammer2_chain_modify(trans, &chain, 0);
-		data = &chain->data->bitmap[0];
+		data = &chain->data->bmdata.array[0];
+		if (radix < HAMMER2_MINIORADIX) {
+			uint64_t iomask;
+			int iobmradix = HAMMER2_MINIORADIX - HAMMER2_MIN_RADIX;
+			int ioindex;
+			int iobmskip = 1 << iobmradix;
+
+			iomask = ((uint64_t)1 << iobmskip) - 1;
+			for (ioindex = 0; ioindex < 64; ioindex += iobmskip) {
+				if (tmp_mask & iomask) {
+					if ((data[index] & iomask) == 0)
+						prebuf = 1;
+					break;
+				}
+				iomask <<= iobmskip;
+			}
+		}
+
 		KKASSERT((data[index] & tmp_mask) == 0);
-		/*
-		kprintf("set %016jx data %016jx %016jx\n",
-			key, data[index], tmp_mask);
-		*/
 		data[index] |= tmp_mask;
 
 		/*
@@ -599,6 +627,21 @@ skip:
 		 */
 		*bnextp = key;
 		bref->data_off = key | radix;
+
+		if (prebuf) {
+			struct buf *bp;
+			hammer2_off_t pbase;
+
+			pbase = key & ~(hammer2_off_t)(HAMMER2_MINIOSIZE - 1);
+
+			bp = getblk(hmp->devvp, pbase,
+				    HAMMER2_MINIOSIZE, GETBLK_NOWAIT, 0);
+			if (bp) {
+				if ((bp->b_flags & B_CACHE) == 0)
+					vfs_bio_clrbuf(bp);
+				bqrelse(bp);
+			}
+		}
 
 #if 0
 		kprintf("alloc cp=%p %016jx %016jx using %016jx chain->data %d\n",

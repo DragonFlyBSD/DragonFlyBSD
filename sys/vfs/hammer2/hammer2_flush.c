@@ -675,6 +675,7 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 			}
 		}
 		break;
+#if 0
 	case HAMMER2_BREF_TYPE_INDIRECT:
 		/*
 		 * Indirect blocks may be in an INITIAL state.  Use the
@@ -699,67 +700,79 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 		chain->data = NULL;
 		hammer2_chain_unlock(chain);
 		break;
+#endif
+	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		/*
 		 * Device-backed.  Buffer will be flushed by the sync
 		 * code XXX.
 		 */
+		KKASSERT((chain->flags & HAMMER2_CHAIN_EMBEDDED) == 0);
 		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 	default:
 		/*
 		 * Embedded elements have to be flushed out.
 		 * (Basically just BREF_TYPE_INODE).
 		 */
+		KKASSERT(chain->flags & HAMMER2_CHAIN_EMBEDDED);
 		KKASSERT(chain->data != NULL);
 		KKASSERT(chain->bp == NULL);
 		bref = &chain->bref;
 
 		KKASSERT((bref->data_off & HAMMER2_OFF_MASK) != 0);
 		KKASSERT(HAMMER2_DEC_CHECK(chain->bref.methods) ==
-			 HAMMER2_CHECK_ISCSI32);
+			 HAMMER2_CHECK_ISCSI32 ||
+			 HAMMER2_DEC_CHECK(chain->bref.methods) ==
+			 HAMMER2_CHECK_FREEMAP);
 
-		if (chain->bp == NULL) {
-			/*
-			 * The data is embedded, we have to acquire the
-			 * buffer cache buffer and copy the data into it.
-			 */
-			if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
-				bbytes = HAMMER2_MINIOSIZE;
-			pbase = bref->data_off & ~(hammer2_off_t)(bbytes - 1);
-			boff = bref->data_off & HAMMER2_OFF_MASK & (bbytes - 1);
+		/*
+		 * The data is embedded, we have to acquire the
+		 * buffer cache buffer and copy the data into it.
+		 */
+		if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
+			bbytes = HAMMER2_MINIOSIZE;
+		pbase = bref->data_off & ~(hammer2_off_t)(bbytes - 1);
+		boff = bref->data_off & HAMMER2_OFF_MASK & (bbytes - 1);
 
-			/*
-			 * The getblk() optimization can only be used if the
-			 * physical block size matches the request.
-			 */
-			if (chain->bytes == bbytes) {
-				bp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
-				error = 0;
-			} else {
-				error = bread(hmp->devvp, pbase, bbytes, &bp);
-				KKASSERT(error == 0);
-			}
-			bdata = (char *)bp->b_data + boff;
-
-			/*
-			 * Copy the data to the buffer, mark the buffer
-			 * dirty, and convert the chain to unmodified.
-			 */
-			bcopy(chain->data, bdata, chain->bytes);
-			bp->b_flags |= B_CLUSTEROK;
-			bdwrite(bp);
-			bp = NULL;
-			chain->bref.check.iscsi32.value =
-				hammer2_icrc32(chain->data, chain->bytes);
-			if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
-				++hammer2_iod_meta_write;
-			else
-				++hammer2_iod_indr_write;
+		/*
+		 * The getblk() optimization can only be used if the
+		 * physical block size matches the request.
+		 */
+		if (chain->bytes == bbytes) {
+			bp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
+			error = 0;
 		} else {
+			error = bread(hmp->devvp, pbase, bbytes, &bp);
+			KKASSERT(error == 0);
+		}
+		bdata = (char *)bp->b_data + boff;
+
+		/*
+		 * Copy the data to the buffer, mark the buffer
+		 * dirty, and convert the chain to unmodified.
+		 */
+		bcopy(chain->data, bdata, chain->bytes);
+		bp->b_flags |= B_CLUSTEROK;
+		bdwrite(bp);
+		bp = NULL;
+		switch(HAMMER2_DEC_CHECK(chain->bref.methods)) {
+		case HAMMER2_CHECK_FREEMAP:
+			chain->bref.check.freemap.icrc32 =
+				hammer2_icrc32(chain->data, chain->bytes);
+			break;
+		case HAMMER2_CHECK_ISCSI32:
 			chain->bref.check.iscsi32.value =
 				hammer2_icrc32(chain->data, chain->bytes);
+			break;
+		default:
+			panic("hammer2_flush_core: bad crc type");
+			break; /* NOT REACHED */
 		}
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE)
+			++hammer2_iod_meta_write;
+		else
+			++hammer2_iod_indr_write;
 	}
 }
 

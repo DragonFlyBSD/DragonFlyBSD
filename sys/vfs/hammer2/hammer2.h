@@ -195,6 +195,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
+#define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -564,7 +565,6 @@ void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
 void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 			hammer2_chain_t *chain);
-int hammer2_inode_calc_alloc(hammer2_key_t filesize);
 
 hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
 			hammer2_inode_t *dip,

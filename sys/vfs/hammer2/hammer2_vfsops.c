@@ -418,7 +418,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp->fchain.data = (void *)&hmp->voldata.freemap_blockset;
 		hmp->fchain.bref.type = HAMMER2_BREF_TYPE_FREEMAP;
 		hmp->fchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
+		hmp->fchain.bref.methods =
+			HAMMER2_ENC_CHECK(HAMMER2_CHECK_FREEMAP) |
+			HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
 		hmp->fchain.delete_tid = HAMMER2_MAX_TID;
+
 		hammer2_chain_core_alloc(&hmp->fchain, NULL);
 		/* hmp->fchain.u.xxx is left NULL */
 

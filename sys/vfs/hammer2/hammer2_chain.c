@@ -415,6 +415,12 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 			chain->data = NULL;
 		}
 		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		if (chain->data) {
+			kfree(chain->data, hmp->mchain);
+			chain->data = NULL;
+		}
+		break;
 	default:
 		KKASSERT(chain->data == NULL);
 		break;
@@ -644,16 +650,25 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		 * device buffer.
 		 */
 		KKASSERT(chain->bytes == sizeof(chain->data->ipdata));
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_EMBEDDED);
 		chain->data = kmalloc(sizeof(chain->data->ipdata),
 				      hmp->minode, M_WAITOK | M_ZERO);
 		bcopy(bdata, &chain->data->ipdata, chain->bytes);
 		bqrelse(chain->bp);
 		chain->bp = NULL;
 		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		KKASSERT(chain->bytes == sizeof(chain->data->bmdata));
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_EMBEDDED);
+		chain->data = kmalloc(sizeof(chain->data->bmdata),
+				      hmp->mchain, M_WAITOK | M_ZERO);
+		bcopy(bdata, &chain->data->bmdata, chain->bytes);
+		bqrelse(chain->bp);
+		chain->bp = NULL;
+		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 	default:
 		/*
 		 * Point data at the device buffer and leave bp intact.
@@ -1147,6 +1162,7 @@ skipxx: /* XXX */
 	case HAMMER2_BREF_TYPE_VOLUME:
 	case HAMMER2_BREF_TYPE_FREEMAP:
 	case HAMMER2_BREF_TYPE_INODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		/*
 		 * The data is embedded, no copy-on-write operation is
 		 * needed.
@@ -1156,7 +1172,6 @@ skipxx: /* XXX */
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		/*
 		 * Perform the copy-on-write operation
 		 */
@@ -2053,6 +2068,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			break;
 		case HAMMER2_BREF_TYPE_INODE:
 			KKASSERT(bytes == HAMMER2_INODE_BYTES);
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_EMBEDDED);
 			chain->data = kmalloc(sizeof(chain->data->ipdata),
 					      hmp->minode, M_WAITOK | M_ZERO);
 			break;
@@ -2065,6 +2081,11 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			      "create freemap root or node");
 			break;
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+			KKASSERT(bytes == sizeof(chain->data->bmdata));
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_EMBEDDED);
+			chain->data = kmalloc(sizeof(chain->data->bmdata),
+					      hmp->mchain, M_WAITOK | M_ZERO);
+			break;
 		case HAMMER2_BREF_TYPE_DATA:
 		default:
 			/* leave chain->data NULL */
@@ -2267,8 +2288,8 @@ done:
  *	 new chain will have the same transaction id and thus the operation
  *	 appears atomic w/regards to media flushes.
  */
-static void hammer2_chain_dup_inodefixup(hammer2_chain_t *ochain,
-					 hammer2_chain_t *nchain);
+static void hammer2_chain_dup_fixup(hammer2_chain_t *ochain,
+				    hammer2_chain_t *nchain);
 
 void
 hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
@@ -2301,7 +2322,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 	nchain->modify_tid = ochain->modify_tid;
 
 	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER);
-	hammer2_chain_dup_inodefixup(ochain, nchain);
+	hammer2_chain_dup_fixup(ochain, nchain);
 
 	/*
 	 * If parent is not NULL, insert into the parent at the requested
@@ -2386,7 +2407,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 	oflags = ochain->flags;
 	odata = ochain->data;
 	hammer2_chain_unlock(ochain);
-	KKASSERT(ochain->bref.type == HAMMER2_BREF_TYPE_INODE ||
+	KKASSERT((ochain->flags & HAMMER2_CHAIN_EMBEDDED) ||
 		 ochain->data == NULL);
 
 	if (oflags & HAMMER2_CHAIN_INITIAL)
@@ -2486,7 +2507,7 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 * is extremely important for atomicy.
 	 */
 	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER);
-	hammer2_chain_dup_inodefixup(ochain, nchain);
+	hammer2_chain_dup_fixup(ochain, nchain);
 	/* extra ref still present from original allocation */
 
 	nchain->index = ochain->index;
@@ -2577,17 +2598,28 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
  */
 static
 void
-hammer2_chain_dup_inodefixup(hammer2_chain_t *ochain, hammer2_chain_t *nchain)
+hammer2_chain_dup_fixup(hammer2_chain_t *ochain, hammer2_chain_t *nchain)
 {
-	if (ochain->bref.type != HAMMER2_BREF_TYPE_INODE)
-		return;
 	if (ochain->data == NULL)
 		return;
-	KKASSERT(nchain->bref.type == HAMMER2_BREF_TYPE_INODE);
-	KKASSERT(nchain->data == NULL);
-	nchain->data = kmalloc(sizeof(nchain->data->ipdata),
-			       ochain->hmp->minode, M_WAITOK | M_ZERO);
-	nchain->data->ipdata = ochain->data->ipdata;
+	switch(ochain->bref.type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		KKASSERT(nchain->data == NULL);
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_EMBEDDED);
+		nchain->data = kmalloc(sizeof(nchain->data->ipdata),
+				       ochain->hmp->minode, M_WAITOK | M_ZERO);
+		nchain->data->ipdata = ochain->data->ipdata;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		KKASSERT(nchain->data == NULL);
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_EMBEDDED);
+		nchain->data = kmalloc(sizeof(nchain->data->bmdata),
+				       ochain->hmp->mchain, M_WAITOK | M_ZERO);
+		nchain->data->bmdata = ochain->data->bmdata;
+		break;
+	default:
+		break;
+	}
 }
 
 /*

@@ -1216,23 +1216,6 @@ done:
 }
 
 /*
- * Calculate the allocation size for the file fragment straddling EOF,
- * returning the radix.
- */
-int
-hammer2_inode_calc_alloc(hammer2_key_t filesize)
-{
-	int frag = (int)filesize & HAMMER2_PBUFMASK;
-	int radix;
-
-	if (frag == 0)
-		return(0);
-	for (radix = HAMMER2_MIN_RADIX; frag > (1 << radix); ++radix)
-		;
-	return (radix);
-}
-
-/*
  * Given an exclusively locked inode we consolidate its chain for hardlink
  * creation, adding (nlinks) to the file's link count and potentially
  * relocating the inode to a directory common to ip->pip and tdip.

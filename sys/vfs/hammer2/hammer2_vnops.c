@@ -1680,7 +1680,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 
 /*
  * Return the largest contiguous physical disk range for the logical
- * request.
+ * request, in bytes.
  *
  * (struct vnode *vp, off_t loffset, off_t *doffsetp, int *runp, int *runb)
  */
@@ -1757,7 +1757,7 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 	 * bmap.  The caller will have to access the file data via a
 	 * device buffer.
 	 */
-	if (array[0][0] == 0 || array[0][1] < loff + HAMMER2_LBUFSIZE) {
+	if (array[0][0] == 0 || array[0][1] < loff + HAMMER2_MINIOSIZE) {
 		*ap->a_doffsetp = NOOFFSET;
 		return (0);
 	}
