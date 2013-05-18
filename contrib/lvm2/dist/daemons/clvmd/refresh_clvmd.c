@@ -253,7 +253,7 @@ static int _cluster_request(char cmd, const char *node, void *data, int len,
 			/* Free up everything else and return error */
 			int j;
 			for (j = 0; j < i; j++)
-				dm_free(rarray[i].response);
+				dm_free(rarray[j].response);
 			free(*response);
 			errno = ENOMEM;
 			status = -1;
