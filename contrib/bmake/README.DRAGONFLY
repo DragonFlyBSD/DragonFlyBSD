@@ -13,3 +13,4 @@ The file README.DELETED contains a list of deleted files and directories.
 
 The following files have been patched:
 meta.c
+suff.c
