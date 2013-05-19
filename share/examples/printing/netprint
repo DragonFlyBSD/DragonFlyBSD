@@ -1,4 +1,4 @@
-#!/usr/pkg/bin/perl
+#!/usr/bin/env perl
 #
 #  netprint - Text filter for printer attached to network
 #  Installed in /usr/local/libexec/netprint

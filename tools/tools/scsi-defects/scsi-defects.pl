@@ -1,4 +1,4 @@
-#!/usr/pkg/bin/perl
+#!/usr/bin/env perl
 # 
 # Copyright (C) 1997
 # 	Peter Dufault, Joerg Wunsch.  All rights reserved.
@@ -25,7 +25,6 @@
 # SUCH DAMAGE.
 # 
 # $FreeBSD: src/tools/tools/scsi-defects/scsi-defects.pl,v 1.3 1999/08/28 00:54:32 peter Exp $
-# $DragonFly: src/tools/tools/scsi-defects/scsi-defects.pl,v 1.2 2003/06/17 04:29:11 dillon Exp $
 #
 
 #
