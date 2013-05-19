@@ -30,7 +30,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man7/release.7,v 1.3.2.6 2003/04/12 20:42:30 murray Exp $
 .\"
-.Dd April 21, 2013
+.Dd May 18, 2013
 .Dt NRELEASE 7
 .Os
 .Sh NAME
@@ -115,7 +115,7 @@ out if external packages to be put on the CD exist on your system.
 If they cannot be found, the release process will stop and give
 proper commands for downloading and setting up these packages.
 .Sh ENVIRONMENT
-.Bl -tag -width ".Va PKGSRC_EXTRA_PACKAGES"
+.Bl -tag -width ".Va DPORTS_EXTRA_PACKAGES"
 .It Va ISODIR
 Default prefix of
 .Va ISOFILE
@@ -134,36 +134,16 @@ Kernel configuration(s) to use.
 Location of the
 .Xr mkisofs 8
 utility which is to be used during the build.
-.It Va PKGBIN_PKG_ADD
-Location of the
-.Xr pkg_add 1
-utility which is to be used during the build.
-.It Va PKGBIN_PKG_ADMIN
-Location of the
-.Xr pkg_admin 1
-utility which is to be used during the build.
-.It Va PKGBIN_PKG_DELETE
-Location of the
-.Xr pkg_delete 1
-utility which is to be used during the build.
-.It Va PKGSRC_PACKAGES
+.It Va DPORTS_PACKAGES
 List of packages to be added to the ISO.
-.It Va PKGSRC_EXTRA_PACKAGES
+.It Va DPORTS_EXTRA_PACKAGES
 List of packages, in addition to
-.Va PKGSRC_PACKAGES ,
+.Va DPORTS_PACKAGES ,
 to be added to the ISO.
-.It Va PKGSRC_PATH
-Location of
-.Xr pkgsrc 7
-tree to be used for package building.
 .It Va DPORTS_PATH
 Location of the
 .Xr dports 7
 tree to be used for package building.
-.It Va PKGSRC_PKG_PATH
-Specifies the location where binary
-.Xr pkgsrc 7
-packages are kept.
 .It Va WITHOUT_SRCS
 If set, this variable will prevent source code from being copied to
 the ISO image.
@@ -215,8 +195,7 @@ directory.
 .Xr make.conf 5 ,
 .Xr build 7 ,
 .Xr development 7 ,
-.Xr dports 7 ,
-.Xr pkgsrc 7
+.Xr dports 7
 .Sh HISTORY
 The
 .Nm

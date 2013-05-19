@@ -40,70 +40,29 @@ KERNCONF ?= GENERIC
 KERNCONF ?= X86_64_GENERIC
 .endif
 
-PKGSRC_PREFIX?=		/usr/pkg
-PKGBIN_PKG_ADD?=	${PKGSRC_PREFIX}/sbin/pkg_add
-PKGBIN_PKG_DELETE?=	${PKGSRC_PREFIX}/sbin/pkg_delete
-PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
-PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
-
-# We use env -i in the chroot, so that environment variables won't
-# disturb any (pkgsrc) build.  This has happened for TARGET_ARCH,
-# which is used by gmake in completely different context.
-#
-CHROOT_CMD?=		env -i CCVER=${CCVER:Q} /usr/sbin/chroot ${ISOROOT} sh -c
+CHROOT_CMD?=		/usr/sbin/chroot ${ISOROOT} sh -c
 
 # User may specify extra packages in addition to the defaults
 #
-PKGSRC_EXTRA_PACKAGES?=
-
-# Pkgsrc packages to be built and installed on the release ISO
-#
-PKGSRC_PACKAGES?=	pkgtools/pkg_leaves \
-			pkgtools/pkg_tarup \
-			pkgtools/pkgin \
-			devel/scmgit-base \
-			devel/scmgit-docs \
-			net/bind96 \
-			net/isc-dhcp4 \
-			net/isc-dhcpd4 \
-			sysutils/cdrtools \
-			net/csup \
-			${PKGSRC_EXTRA_PACKAGES}
+DPORTS_EXTRA_PACKAGES?=
 
 # dports packages to be built and installed on the release ISO
 #
-DPORTS_PACKAGES+=	ports-mgmt/pkg
-
-# pkgsrc options to use when building packages
+# MISSING: csup
 #
-PKGSRC_OPTIONS+=	MAKE_JOBS=${MAKE_JOBS}
-PKGSRC_OPTIONS+=	WRKOBJDIR=/usr/pkgobj
-PKGSRC_OPTIONS+=	PKG_DEFAULT_OPTIONS='dri inet6'
+DPORTS_PACKAGES?=	devel/git \
+			dns/bind98 \
+			net/isc-dhcp42-client \
+			net/isc-dhcp42-server \
+			sysutils/cdrtools \
+			${PKGSRC_EXTRA_PACKAGES}
+
+# dports options to use when building packages
+#
+DPORTS_OPTIONS+=		-DBATCH
 .if !make(gui)
-PKGSRC_OPTIONS+=	PKG_OPTIONS.scmgit='-python'
+DPORTS_OPTIONS.devel_git+=	-DWITHOUT_CONTRIB -DWITHOUT_PERL
 .endif
-
-# Even though buildiso wipes the packages, our check target has to run
-# first and old packages (listed as they appear in pkg_info) must be
-# cleaned out in order for the pkg_add -n test we use in the check target
-# to operate properly.
-#
-OLD_PKGSRC_PACKAGES?=	cdrtools-2.01.01.27nb1 \
-			cdrecord-2.00.3nb2 \
-			bootstrap-kit-20070205 \
-			dfuibe_installer-1.1.6 \
-			gettext-lib-0.14.5 \
-			dfuibe_installer-1.1.7nb1 \
-			dfuife_curses-1.5 \
-			gettext-lib-0.14.6 \
-			gettext-tools-0.14.6nb1 \
-			libaura-3.1 \
-			libdfui-4.2 \
-			libinstaller-5.1 \
-			bootstrap-kit-20080211 \
-			cdrtools-ossdvd-2.01.1.36nb2 \
-			isc-dhcp-base-4.0.0 \
-			isc-dhcp-server-4.0.0
 
 # Specify which root skeletons are required, and let the user include
 # their own.  They are copied into ISODIR during the `customizeiso'
@@ -112,6 +71,7 @@ OLD_PKGSRC_PACKAGES?=	cdrtools-2.01.01.27nb1 \
 REQ_ROOTSKELS=	${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
+.if make(notyet)
 # LIST OF PACKAGES NOT INCLUDED DUE TO BUILD ISSUES:
 #	chat/pidgin		textproc/enchant dependency is broken
 #	x11/rxvt-unicode	broken configure
@@ -119,7 +79,6 @@ ROOTSKELS?=	${REQ_ROOTSKELS}
 #				exist.
 #	sysutils/idesk		dying on link __sync_fetch_and_add_4
 #
-.if make(gui)
 ISOFILE?=		${ISODIR}/dfly-gui.iso
 IMGFILE?=		${ISODIR}/dfly-gui.img
 
@@ -203,29 +162,17 @@ realquick:	realquickrel
 #########################################################################
 
 check:
-.if !exists(${PKGBIN_PKG_ADMIN})
-	@echo "You never bootstrapped pkgsrc on your machine.  You can install it with:"
-	@echo "    make pkgsrc_bootstrap"
-.endif
-.if !exists (${PKGBIN_MKISOFS})
+.if !exists(/usr/local/bin/mkisofs) && !exists(/usr/pkg/bin/mkisofs)
 	@echo
 	@echo "Your machine does not have cdrtools installed.  You can install it with:"
-	@echo "    make pkgsrc_cdrecord"
-.endif
-.if !defined(PKGSRC_PATH)
-	@echo "Please set PKGSRC_PATH to the pkgsrc tree that shall be used for"
-	@echo "package building.  For example /usr/pkgsrc.  See the Makefile"
-	@echo "in /usr if you are unfamiliar with pkgsrc."
+	@echo "    pkg install cdrecord"
 .endif
 .if !defined(DPORTS_PATH)
 	@echo "Please set DPORTS_PATH to the dports tree that shall be used for"
 	@echo "package building.  For example /usr/dports.  See the Makefile"
 	@echo "in /usr if you are unfamiliar with dports."
 .endif
-.if !exists (${PKGBIN_MKISOFS})
-	@/usr/bin/false
-.endif
-.if !defined(PKGSRC_PATH)
+.if !exists(/usr/local/bin/mkisofs) && !exists(/usr/pkg/bin/mkisofs)
 	@/usr/bin/false
 .endif
 .if !defined(DPORTS_PATH)
@@ -284,7 +231,7 @@ buildiso:
 #
 srcs:
 .if !defined(WITHOUT_SRCS)
-.if make(gui)
+.if make(notyet)
 	rm -f ${ISOROOT}/usr/src-sys.tgz
 	rm -f ${ISOROOT}/usr/src-sys.tar.bz2
 	cd ${ISOROOT}/usr && make pkgsrc-create-repo GITHOST=${GITHOST}
@@ -326,96 +273,44 @@ customizeiso:
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
 	#
-	# Setup some things & mount pkgsrc tree.  Use defensive umounts and
-	# rm -rf's to allow restarts.  Allow /usr/pkgsrc to be read-only.
-	#
-	# If we did not get past the bootstrap we clean out the entire
-	# /usr/pkg infrastructure.  Otherwise we attempt to pick up where
-	# we left off.
+	# Setup some things & mount dports tree.  Use defensive umounts and
+	# rm -rf's to allow restarts.  Allow /usr/dports to be read-only.
 	#
 	cp -p /etc/resolv.conf ${ISOROOT}/etc
 	${CHROOT_CMD} "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
-	-@umount ${ISOROOT}/usr/pkgsrc/distfiles
 	-@umount ${ISOROOT}/usr/distfiles
-	-@umount ${ISOROOT}/usr/pkgsrc
 	-@umount ${ISOROOT}/usr/dports
 	-@umount ${ISOROOT}/dev
-	mkdir -p ${ISODIR}/distfiles
-	rm -rf ${ISOROOT}/usr/pkgobj
 	rm -rf ${ISOROOT}/usr/obj/dports
 	#
-	# Mount /usr/pkgsrc, make sure /usr/pkgsrc/distfiles is writable.
-	# Make /usr/pkgsrc read-only for safety, else a failed umount and
+	# Mount /usr/dports, make sure /usr/distfiles is writable.
+	# Make /usr/dports read-only for safety, else a failed umount and
 	# our rm -rf will do bad things.
 	#
-	mkdir -p ${ISOROOT}/usr/pkgobj
-	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap
-	mkdir -p ${ISOROOT}/usr/pkgsrc
 	mkdir -p ${ISOROOT}/usr/dports
 	mkdir -p ${ISOROOT}/usr/distfiles
-	mount_null -o ro ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
 	mount_null -o ro ${DPORTS_PATH} ${ISOROOT}/usr/dports
 	mount_null /dev ${ISOROOT}/dev
-	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test > /dev/null 2>&1 \
-	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/pkgsrc/distfiles
-	mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/distfiles
-	#
-	# Bootstrap, if not already installed, and add licenses needed
-	# for the gui release
-	#
-	test -e ${ISODIR}/.didbootstrap || \
-	    rm -rf ${ISOROOT}/usr/pkg ${ISOROOT}/var/db/pkg \
-		    ${ISOROOT}/var/db/pkg.refcount
-	test -e ${ISODIR}/.didbootstrap || \
-	    ${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
-		export share_dir=/usr/pkgobj/bootstrap/work/share; \
-		env USE_DESTDIR=no ./bootstrap --workdir /usr/pkgobj/bootstrap/work"
-	test -e ${ISODIR}/.didbootstrap || \
-	    echo ".ifdef BSD_PKG_MK	# added by nrelease" \
-		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-	test -e ${ISODIR}/.didbootstrap || \
-	    echo "PKG_DEFAULT_OPTIONS=dri inet6" \
-		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-.if make(gui)
-	test -e ${ISODIR}/.didbootstrap || \
-	    echo "ACCEPTABLE_LICENSES+=openmotif-license" \
-		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-	test -e ${ISODIR}/.didbootstrap || \
-	    echo "ACCEPTABLE_LICENSES+=vim-license" \
-		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-.endif
-	test -e ${ISODIR}/.didbootstrap || \
-	    echo ".endif			# added by nrelease" \
-		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-	test -e ${ISODIR}/.didbootstrap || sync
-	test -e ${ISODIR}/.didbootstrap || touch ${ISODIR}/.didbootstrap
+	cp /etc/shells ${ISOROOT}/usr/distfiles/.test > /dev/null 2>&1 \
+	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/distfiles
 	#
 	# Build and install packages, skip packages already installed
 	#
-.for PKG in ${PKGSRC_PACKAGES}
-	${CHROOT_CMD} "cd /usr/pkgsrc/${PKG} && \
-	    (bmake check > /dev/null 2>&1 || \
-	    env USE_DESTDIR=no bmake ${PKGSRC_OPTIONS} clean build install)"
+.for PKG in ${DPORTS_PACKAGES}
+	${CHROOT_CMD} "cd /usr/dports/${PKG} && make ${DPORTS_OPTIONS} ${DPORTS_OPTIONS.${PKG:S/\//_/g}} install"
 .endfor
 .for PKG in ${DPORTS_PACKAGES}
-	chroot ${ISOROOT} sh -c "cd /usr/dports/${PKG} && make && make install"
-.endfor
-.for PKG in ${DPORTS_PACKAGES}
-	chroot ${ISOROOT} sh -c "cd /usr/dports/${PKG} && make clean"
+	${CHROOT_CMD} "cd /usr/dports/${PKG} && make ${DPORTS_OPTIONS} clean"
 .endfor
 	#
 	# Remove packages which nothing depends on, add a whatis database
-	# for pkgsrc manual pages, create an initial locate database and
+	# for dports manual pages, create an initial locate database and
 	# clean up
 	#
-	${CHROOT_CMD} "pkg_leaves | xargs pkg_delete -R"
 	${CHROOT_CMD} "yes | pkg autoremove"
-	${CHROOT_CMD} "makewhatis /usr/pkg/man"
-	-umount ${ISOROOT}/usr/pkgsrc/distfiles
+	${CHROOT_CMD} "makewhatis /usr/local/man"
 	-umount ${ISOROOT}/usr/distfiles
-	umount ${ISOROOT}/usr/pkgsrc
 	umount ${ISOROOT}/usr/dports
-	rm -rf ${ISOROOT}/usr/pkgobj
 	rm -rf ${ISOROOT}/usr/dports
 	rm -rf ${ISOROOT}/usr/obj/dports
 	rm -rf ${ISOROOT}/usr/distfiles
@@ -436,7 +331,7 @@ customizeiso:
 	cpdup ${ISOROOT}/etc/group ${ISOROOT}/etc.hdd/group
 
 mkiso:
-	( cd ${ISOROOT}; ${PKGBIN_MKISOFS} -b boot/cdboot -no-emul-boot \
+	( cd ${ISOROOT}; mkisofs -b boot/cdboot -no-emul-boot \
 		-R -J -o ${ISOFILE} \
 		-V "DragonFly `${.CURDIR}/../tools/gitrev.sh | cut -c -22`" . )
 
@@ -499,9 +394,7 @@ mkimg:
 	@echo "STEP: done"
 
 clean:
-	-umount ${ISOROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
 	-umount ${ISOROOT}/usr/distfiles > /dev/null 2>&1
-	-umount ${ISOROOT}/usr/pkgsrc > /dev/null 2>&1
 	-umount ${ISOROOT}/usr/dports > /dev/null 2>&1
 	-umount ${ISOROOT}/dev > /dev/null 2>&1
 	-if [ -f ${ISODIR}/vn.which ]; then umount ${IMGMNT}; 		\
@@ -516,24 +409,13 @@ realclean:	clean
 	rm -rf ${ISODIR}/packages
 	rm -rf ${ISODIR}/distfiles
 
-pkgsrc_bootstrap:
-	mkdir -p ${ISODIR}/bootstrap
-	(cd ${PKGSRC_PATH}/bootstrap; \
-	    export share_dir=${ISODIR}/bootstrap/share; \
-	    ./bootstrap --workdir ${ISODIR}/bootstrap)
-
-pkgsrc_cdrecord:
-.if !exists (${PKGBIN_MKISOFS})
-	(cd ${PKGSRC_PATH}/sysutils/cdrtools; bmake clean build install)
-.endif
-
 help all:
 	@echo "make [gui] release   - complete build from scratch"
 	@echo "make [gui] quick     - attempt to do an incremental rebuild"
 	@echo "make [gui] realquick - attempt to restart after world & kernel"
 	@echo "make [gui] restartpkgs - attempt to restart at the pkg building stage"
 	@echo ""
-	@echo "PKGSRC_EXTRA_PACKAGES may be used to add additional pkgs"
+	@echo "DPORTS_EXTRA_PACKAGES may be used to add additional pkgs"
 	@echo "GITHOST may be used to override git.dragonflybsd.org"
 	@echo "IMGSIZE may be used to override the .img (in 512-byte sectors)"
 
