@@ -702,9 +702,6 @@ state_diagnostics_menu(struct i_fn_args *a)
 		    "a", "pciconf",
 		    _("Display PCI devices"),
 		    _("Display PCI devices (pciconf)"), "",
-		    "a", "pnpinfo",
-		    _("Display Plug'n'Play ISA devices"),
-		    _("Display Plug'n'Play ISA devices (pnpinfo)"), "",
 		    "a", "natacontrol",
 		    _("Display ATA devices"),
 		    _("Display ATA devices (natacontrol)"), "",
@@ -723,8 +720,6 @@ state_diagnostics_menu(struct i_fn_args *a)
 			fn_show_dmesg(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "pciconf") == 0) {
 			fn_show_pciconf(a);
-		} else if (strcmp(dfui_response_get_action_id(r), "pnpinfo") == 0) {
-			fn_show_pnpinfo(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "natacontrol") == 0) {
 			fn_show_natacontrol(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "cancel") == 0) {

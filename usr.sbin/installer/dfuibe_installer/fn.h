@@ -76,7 +76,6 @@ void		 fn_assign_ip(struct i_fn_args *);
 
 void		 fn_show_dmesg(struct i_fn_args *);
 void		 fn_show_pciconf(struct i_fn_args *);
-void		 fn_show_pnpinfo(struct i_fn_args *);
 void		 fn_show_natacontrol(struct i_fn_args *);
 
 void		 show_ifconfig(struct dfui_connection *, char *);

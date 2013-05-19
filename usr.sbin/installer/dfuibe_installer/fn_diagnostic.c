@@ -140,41 +140,6 @@ fn_show_pciconf(struct i_fn_args *a)
 }
 
 void
-fn_show_pnpinfo(struct i_fn_args *a)
-{
-	struct aura_buffer *e;
-	struct dfui_form *f;
-	struct dfui_response *r;
-
-	e = aura_buffer_new(1024);
-	aura_buffer_cat_pipe(e, "pnpinfo");
-
-	f = dfui_form_create(
-	    "pnpinfo",
-	    _("ISA PnP Devices"),
-	    aura_buffer_buf(e),
-	    "",
-
-	    "p", "role", "informative",
-	    "p", "minimum_width", "72",
-	    "p", "monospaced", "true",
-
-	    "a", "ok", _("OK"), "", "",
-	    "p", "accelerator", "ESC",
-
-	    NULL
-	);
-
-	if (!dfui_be_present(a->c, f, &r))
-		abort_backend();
-
-	dfui_form_free(f);
-	dfui_response_free(r);
-
-	aura_buffer_free(e);
-}
-
-void
 fn_show_natacontrol(struct i_fn_args *a)
 {
 	struct aura_buffer *e;
