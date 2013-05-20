@@ -246,7 +246,7 @@ ploticus_run(struct ploticus_plot *plot)
 	printd(PLOT, "about to exec with args:\n");
 	for (i = 0; pl_argv[i]; ++i)
 		printd(PLOT, "%s\n", pl_argv[i]);
-	execve("/usr/pkg/bin/pl", __DECONST(char * const *, pl_argv), environ);
+	execve("/usr/local/bin/ploticus", __DECONST(char * const *, pl_argv), environ);
 	err(1, "failed to exec ploticus");
 }
 
@@ -298,7 +298,7 @@ static struct plotter ploticus_plotter = {
 	.plot_finish = ploticus_plot_finish,
 };
 
-static const char *ploticus_path = "/usr/pkg/bin/pl";
+static const char *ploticus_path = "/usr/local/bin/ploticus";
 
 struct plotter *
 plotter_factory(void)
