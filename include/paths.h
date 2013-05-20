@@ -38,7 +38,7 @@
 
 /* Default search path. */
 #define	_PATH_DEFPATH \
-	"/bin:/sbin:/usr/bin:/usr/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/local/bin:/usr/local/sbin"
+	"/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin"
 
 /* All standard utilities path. */
 #define	_PATH_STDPATH \

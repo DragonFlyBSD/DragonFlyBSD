@@ -4,7 +4,7 @@
 # limited.  To reach git, we need to add the directories
 # git might be located in.  Not a very nice solution, but
 # it works well enough.
-PATH=$PATH:/usr/pkg/bin:/usr/local/bin
+PATH=$PATH:/usr/local/bin:/usr/pkg/bin
 
 srcdir=${1:-$(dirname $0)}
 

@@ -6,7 +6,7 @@
 #
 
 # remove /usr/games if you want
-PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/games:/usr/pkg/sbin:/usr/pkg/bin:/usr/local/sbin:/usr/local/bin:$HOME/bin; export PATH
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/pkg/sbin:/usr/pkg/bin:$HOME/bin; export PATH
 
 # Setting TERM is normally done through /etc/ttys.  Do only override
 # if you're sure that you'll never log in via telnet or xterm or a

@@ -25,7 +25,6 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.shutdown,v 1.25 2003/07/08 02:52:14 mtm Exp $
-# $DragonFly: src/etc/rc.shutdown,v 1.5 2006/01/10 01:56:04 corecode Exp $
 #
 
 # Closing actions for daemons run by init on shutdown,
@@ -41,7 +40,7 @@ trap : 2
 trap : 3	# shouldn't be needed
 
 HOME=/
-PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/pkg/sbin:/usr/local/sbin
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/pkg/sbin
 export HOME PATH
 
 . /etc/rc.subr
