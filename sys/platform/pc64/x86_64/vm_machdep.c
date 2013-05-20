@@ -140,7 +140,6 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 	 * return address on stack.  These are the kernel mode register values.
 	 */
 	pcb2->pcb_cr3 = vtophys(vmspace_pmap(lp2->lwp_proc->p_vmspace)->pm_pml4);
-	pcb2->pcb_cr3 |= PG_RW | PG_U | PG_V;
 	pcb2->pcb_rbx = (unsigned long)fork_return;	/* fork_trampoline argument */
 	pcb2->pcb_rbp = 0;
 	pcb2->pcb_rsp = (unsigned long)lp2->lwp_md.md_regs - sizeof(void *);

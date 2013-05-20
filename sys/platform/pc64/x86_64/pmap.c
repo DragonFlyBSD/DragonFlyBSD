@@ -4522,7 +4522,6 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			tlb_flush_count++;
 #endif
 			curthread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pml4);
-			curthread->td_pcb->pcb_cr3 |= PG_RW | PG_U | PG_V;
 			load_cr3(curthread->td_pcb->pcb_cr3);
 			pmap = vmspace_pmap(oldvm);
 			atomic_clear_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
