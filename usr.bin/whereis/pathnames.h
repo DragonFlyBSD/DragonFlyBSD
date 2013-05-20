@@ -23,7 +23,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/whereis/pathnames.h,v 1.4 2002/08/22 01:50:51 johan Exp $
- * $DragonFly: src/usr.bin/whereis/pathnames.h,v 1.4 2006/07/01 19:34:43 swildner Exp $
  */
 
 /* Where to look for libexec and games */
@@ -41,6 +40,9 @@
 "/usr/src/secure/sbin:/usr/src/secure/usr.sbin:"	\
 "/usr/src/secure/libexec:/usr/src/crypto:"		\
 "/usr/src/games"
+
+/* Each subdirectory of PATH_DPORTS will be appended to PATH_SOURCES. */
+#define PATH_DPORTS "/usr/dports"
 
 /* Each subdirectory of PATH_PKGSRC will be appended to PATH_SOURCES. */
 #define PATH_PKGSRC "/usr/pkgsrc"
