@@ -120,7 +120,7 @@ UsePrivilegeSeparation sandbox		# Default for new installations.
 #PermitTunnel no
 #ChrootDirectory none
 
-#XAuthLocation /usr/pkg/bin/xauth
+#XAuthLocation /usr/local/bin/xauth
 
 # no default banner path
 #Banner none

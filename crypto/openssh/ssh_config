@@ -42,7 +42,7 @@
 #   EscapeChar ~
 #   VersionAddendum DragonFly-20121028
 
-#   XAuthLocation /usr/pkg/bin/xauth
+#   XAuthLocation /usr/local/bin/xauth
 #   Tunnel no
 #   TunnelDevice any:any
 #   PermitLocalCommand no
