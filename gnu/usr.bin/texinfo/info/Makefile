@@ -13,6 +13,7 @@ CFLAGS+=	-DHAVE_CONFIG_H
 # Additional info dirs
 #
 CFLAGS+=-DINFODIR=\"/usr/pkg/info\"
+CFLAGS+=-DINFODIR2=\"/usr/local/info\"
 
 SRCS=	dir.c \
 	display.c \

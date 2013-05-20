@@ -54,7 +54,7 @@
 /* #undef DOANONYMOUS */
 
 /* The default value of the PATH environment variable */
-#define DEFAULT_PATH "/usr/bin:/bin:/usr/sbin:/sbin:/usr/pkg/bin"
+#define DEFAULT_PATH "/usr/bin:/bin:/usr/sbin:/sbin:/usr/pkg/bin:/usr/local/bin"
 
 /* Defined if the file /etc/default/login exists 
    (and, presumably, should be looked at by login) */
