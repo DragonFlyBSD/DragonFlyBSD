@@ -511,8 +511,8 @@ sys_settimeofday(struct settimeofday_args *uap)
 	/*
 	 * Verify all parameters before changing time.
 	 *
-	 * NOTE: We do not allow the time to be set to 0.0, which also by
-	 *	 happy coincidence works around a pkgsrc bulk build bug.
+	 * XXX: We do not allow the time to be set to 0.0, which also by
+	 *	happy coincidence works around a pkgsrc bulk build bug.
 	 */
 	if (uap->tv) {
 		if ((error = copyin((caddr_t)uap->tv, (caddr_t)&atv,
