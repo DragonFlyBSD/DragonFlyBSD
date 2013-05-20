@@ -464,8 +464,7 @@ syncache_drop(struct syncache *sc, struct syncache_head *sch)
 	/*
 	 * Cleanup
 	 */
-	if (sc->sc_tp)
-		sc->sc_tp = NULL;
+	sc->sc_tp = NULL;
 
 	/*
 	 * Remove the entry from the syncache timer/timeout queue.  Note
