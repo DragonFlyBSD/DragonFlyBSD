@@ -381,7 +381,8 @@ syncache_insert(struct syncache *sc, struct syncache_head *sch)
 		 * The bucket is full, toss the oldest element.
 		 */
 		sc2 = TAILQ_FIRST(&sch->sch_bucket);
-		sc2->sc_tp->ts_recent = ticks;
+		if (sc2->sc_tp != NULL)
+			sc2->sc_tp->ts_recent = ticks;
 		syncache_drop(sc2, sch);
 		tcpstat.tcps_sc_bucketoverflow++;
 	} else if (syncache_percpu->cache_count >= tcp_syncache.cache_limit) {
@@ -398,7 +399,8 @@ syncache_insert(struct syncache *sc, struct syncache_head *sch)
 			if (sc2 != NULL)
 				break;
 		}
-		sc2->sc_tp->ts_recent = ticks;
+		if (sc2->sc_tp != NULL)
+			sc2->sc_tp->ts_recent = ticks;
 		syncache_drop(sc2, NULL);
 		tcpstat.tcps_sc_cacheoverflow++;
 	}
