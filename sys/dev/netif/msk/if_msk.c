@@ -348,7 +348,7 @@ DRIVER_MODULE(if_msk, pci, mskc_driver, mskc_devclass, NULL, NULL);
 DRIVER_MODULE(if_msk, mskc, msk_driver, msk_devclass, NULL, NULL);
 DRIVER_MODULE(miibus, msk, miibus_driver, miibus_devclass, NULL, NULL);
 
-static int	mskc_msi_enable = 1;
+static int	mskc_msi_enable = 0;
 static int	mskc_intr_rate = 0;
 static int	mskc_process_limit = MSK_PROC_DEFAULT;
 
