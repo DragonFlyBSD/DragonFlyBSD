@@ -202,15 +202,6 @@ cat >> /mnt/etc/sysctl.conf << EOF
 #net.inet.ip.portrange.first=4000
 EOF
 
-# adjust work directory for pkgsrc in case we want
-# to mount /usr/pkgsrc read-only.
-#
-cat >> /mnt/usr/pkg/etc/mk.conf << EOF
-.ifdef BSD_PKG_MK       # begin pkgsrc settings
-WRKOBJDIR=		/usr/obj/pkgsrc
-.endif                  # end pkgsrc settings
-EOF
-
 # Allow sshd root logins via dsa key only
 #
 fgrep 'PermitRootLogin without-password' /mnt/etc/ssh/sshd_config >& /dev/null

@@ -480,15 +480,6 @@ cat >> /mnt/etc/sysctl.conf << EOF
 #net.inet.ip.portrange.first=4000
 EOF
 
-# adjust work directory for pkgsrc in case we want
-# to mount /usr/pkgsrc read-only.
-#
-cat >> /mnt/usr/pkg/etc/mk.conf << EOF
-.ifdef BSD_PKG_MK       # begin pkgsrc settings
-WRKOBJDIR=		/usr/obj/pkgsrc
-.endif                  # end pkgsrc settings
-EOF
-
 # mkinitd image
 echo "* Preparing initrd image"
 /sbin/mkinitrd -b /mnt/boot >> ${logfile} 2>&1
