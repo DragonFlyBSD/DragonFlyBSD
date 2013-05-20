@@ -1,5 +1,4 @@
 /* $FreeBSD: src/lib/libopie/config.h,v 1.4.2.2 2002/07/15 14:17:08 des Exp $ */
-/* $DragonFly: src/lib/libopie/config.h,v 1.3 2007/03/25 11:35:11 swildner Exp $ */
 /* config.h.  Generated automatically by configure.  */
 /* config.h.in.  Generated automatically from configure.in by autoheader.  */
 
@@ -55,7 +54,7 @@
 /* #undef DOANONYMOUS */
 
 /* The default value of the PATH environment variable */
-#define DEFAULT_PATH "/usr/bin:/bin:/usr/sbin:/sbin:/usr/pkg/xorg/bin:/usr/X11R6/bin"
+#define DEFAULT_PATH "/usr/bin:/bin:/usr/sbin:/sbin:/usr/pkg/bin"
 
 /* Defined if the file /etc/default/login exists 
    (and, presumably, should be looked at by login) */

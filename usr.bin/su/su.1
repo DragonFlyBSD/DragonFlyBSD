@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)su.1	8.2 (Berkeley) 4/18/94
 .\" $FreeBSD: src/usr.bin/su/su.1,v 1.41 2008/07/01 20:56:23 danger Exp $
-.\" $DragonFly: src/usr.bin/su/su.1,v 1.6 2007/03/25 11:35:11 swildner Exp $
 .\"
 .Dd July 1, 2008
 .Dt SU 1
@@ -196,7 +195,7 @@ Note that the
 option is required since user
 .Dq man
 does not have a valid shell by default.
-.It Li "su -m man -c 'catman /usr/share/man /usr/local/man /usr/pkg/xorg/man'"
+.It Li "su -m man -c 'catman /usr/share/man /usr/local/man /usr/pkg/man'"
 Same as above, but the target command consists of more than a
 single word and hence is quoted for use with the
 .Fl c
@@ -204,7 +203,7 @@ option being passed to the shell.
 (Most shells expect the argument to
 .Fl c
 to be a single word).
-.It Li "su -m -c staff man -c 'catman /usr/share/man /usr/local/man /usr/pkg/xorg/man'"
+.It Li "su -m -c staff man -c 'catman /usr/share/man /usr/local/man /usr/pkg/man'"
 Same as above, but the target command is run with the resource limits of
 the login class
 .Dq staff .

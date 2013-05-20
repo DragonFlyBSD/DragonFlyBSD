@@ -12,7 +12,7 @@
 #define INCLUDEDIR "/usr/include"
 #define OLDINCLUDEDIR "/usr/include"
 #define DOCDIR "/usr/share/doc/texinfo"
-#define INFODIR "/usr/share/info:/usr/pkg/info:/usr/local/info:/usr/pkg/xorg/info:/usr/X11R6/info:."
+#define INFODIR "/usr/share/info:/usr/pkg/info:/usr/local/info:."
 #define HTMLDIR "/usr/share/doc/texinfo"
 #define DVIDIR "/usr/share/doc/texinfo"
 #define PDFDIR "/usr/share/doc/texinfo"
