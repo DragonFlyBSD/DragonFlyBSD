@@ -706,10 +706,8 @@ ixgbe_start_locked(struct tx_ring *txr, struct ifnet * ifp)
 			break;
 
 		if (ixgbe_xmit(txr, &m_head)) {
-#if 0 /* XXX: prepend to an ALTQ queue ? */
 			if (m_head != NULL)
-				IF_PREPEND(&ifp->if_snd, m_head);
-#endif
+				ifq_prepend(&ifp->if_snd, m_head);
 			if (txr->tx_avail <= IXGBE_QUEUE_MIN_FREE)
 				txr->queue_status |= IXGBE_QUEUE_DEPLETED;
 			break;
