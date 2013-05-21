@@ -108,7 +108,8 @@ typedef	__timer_t	timer_t;
 #define CLOCK_MONOTONIC_PRECISE	11	/* from freebsd */
 #define CLOCK_MONOTONIC_FAST	12	/* from freebsd */
 #define CLOCK_SECOND		13	/* from freebsd */
-#define CLOCK_THREAD_CPUTIME_ID	14
+#define CLOCK_THREAD_CPUTIME_ID		14
+#define CLOCK_PROCESS_CPUTIME_ID	15
 
 #endif /* !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 200112 */
 
