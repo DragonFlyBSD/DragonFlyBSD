@@ -204,6 +204,7 @@ kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
 			       1000;
 		break;
 	case CLOCK_PROF:
+	case CLOCK_PROCESS_CPUTIME_ID:
 		p = curproc;
 		ats->tv_sec = p->p_timer[ITIMER_PROF].it_value.tv_sec;
 		ats->tv_nsec = p->p_timer[ITIMER_PROF].it_value.tv_usec *
@@ -295,6 +296,7 @@ kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 	case CLOCK_UPTIME_FAST:
 	case CLOCK_UPTIME_PRECISE:
 	case CLOCK_THREAD_CPUTIME_ID:
+	case CLOCK_PROCESS_CPUTIME_ID:
 		/*
 		 * Round up the result of the division cheaply
 		 * by adding 1.  Rounding up is especially important
