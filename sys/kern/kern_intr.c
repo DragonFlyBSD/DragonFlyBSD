@@ -760,14 +760,13 @@ ithread_fast_handler(struct intrframe *frame)
  * The handler begins execution outside a critical section and no MP lock.
  *
  * The i_running state starts at 0.  When an interrupt occurs, the hardware
- * interrupt is disabled and sched_ithd_hard() The HW interrupt remains
- * disabled until all routines have run.  We then call ithread_done() to
- * reenable the HW interrupt and deschedule us until the next interrupt. 
+ * interrupt is disabled and sched_ithd_hard().  The HW interrupt remains
+ * disabled until all routines have run.  We then call machintr_intr_enable()
+ * to reenable the HW interrupt and deschedule us until the next interrupt. 
  *
- * We are responsible for atomically checking i_running and ithread_done()
- * is responsible for atomically checking for platform-specific delayed
- * interrupts.  i_running for our irq is only set in the context of our cpu,
- * so a critical section is a sufficient interlock.
+ * We are responsible for atomically checking i_running.  i_running for our
+ * irq is only set in the context of our cpu, so a critical section is a
+ * sufficient interlock.
  */
 #define LIVELOCK_TIMEFRAME(freq)	((freq) >> 2)	/* 1/4 second */
 
