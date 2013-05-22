@@ -393,6 +393,20 @@
 #define	__DEQUALIFY(type, var)	((type)(uintptr_t)(const volatile void *)(var))
 #endif
 
+/*
+ * Keywords added in C11.
+ */
+
+#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
+
+#if defined(__cplusplus) && __cplusplus >= 201103L
+#define	_Noreturn		[[noreturn]]
+#else
+#define	_Noreturn		__dead2
+#endif
+
+#endif /* __STDC_VERSION__ || __STDC_VERSION__ < 201112L */
+
 /*-
  * The following definitions are an extension of the behavior originally
  * implemented in <sys/_posix.h>, but with a different level of granularity.
