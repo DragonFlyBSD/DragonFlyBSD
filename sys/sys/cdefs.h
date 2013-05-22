@@ -399,7 +399,7 @@
 
 #if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
 
-#if defined(__cplusplus) && __cplusplus >= 201103L
+#if 0 /* XXX: defined(__cplusplus) && __cplusplus >= 201103L */
 #define	_Noreturn		[[noreturn]]
 #else
 #define	_Noreturn		__dead2
