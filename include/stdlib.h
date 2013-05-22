@@ -301,7 +301,8 @@ extern char *suboptarg;			/* getsubopt(3) external variable */
  */
 #if __ISO_C_VISIBLE >= 2011 || __cplusplus >= 201103L || __BSD_VISIBLE
 int 	at_quick_exit(void (*func)(void));
-void 	quick_exit(int) __dead2;
+_Noreturn void
+	quick_exit(int);
 void	*aligned_alloc(size_t, size_t);
 #endif /* __ISO_C_VISIBLE >= 2011 */
 
