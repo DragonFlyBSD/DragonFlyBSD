@@ -858,7 +858,7 @@ tpm_tis12_write(struct tpm_softc *sc, void *buf, int len)
 	}
 
 #ifdef TPM_DEBUG
-	kprintf("tpm_tis12_write: wrote %d byte\n", cnt);
+	kprintf("tpm_tis12_write: wrote %zd byte\n", cnt);
 #endif
 
 	return 0;
@@ -1206,13 +1206,13 @@ tpmread(struct dev_read_args *ap)
 
 	len = (buf[2] << 24) | (buf[3] << 16) | (buf[4] << 8) | buf[5];
 #ifdef TPM_DEBUG
-	kprintf("tpmread: len %d, io count %d\n", len, uio->uio_resid);
+	kprintf("tpmread: len %d, io count %zd\n", len, uio->uio_resid);
 #endif
 	if (len > uio->uio_resid) {
 		rv = EIO;
 		(sc->sc_end)(sc, UIO_READ, rv);
 #ifdef TPM_DEBUG
-		kprintf("tpmread: bad residual io count 0x%x\n", uio->uio_resid);
+		kprintf("tpmread: bad residual io count 0x%zx\n", uio->uio_resid);
 #endif
 		crit_exit();
 		return rv;
@@ -1265,7 +1265,7 @@ tpmwrite(struct dev_write_args *ap)
 	crit_enter();
 
 #ifdef TPM_DEBUG
-	kprintf("tpmwrite: io count %d\n", uio->uio_resid);
+	kprintf("tpmwrite: io count %zd\n", uio->uio_resid);
 #endif
 
 	n = MIN(sizeof(buf), uio->uio_resid);
