@@ -3266,6 +3266,7 @@ pf_test_rule(struct pf_rule **rm, struct pf_state **sm, int direction,
 		if (pd->ip_sum)
 			bip_sum = *pd->ip_sum;
 
+		m->m_flags &= ~M_HASH;
 		switch (pd->proto) {
 		case IPPROTO_TCP:
 			bproto_sum = th->th_sum;
