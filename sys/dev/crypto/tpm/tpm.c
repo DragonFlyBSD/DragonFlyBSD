@@ -421,7 +421,7 @@ tpm_request_locality(struct tpm_softc *sc, int l)
 		rv = tsleep(sc->sc_init, PCATCH, "tpm_locality", 1);
 		if (rv &&  rv != EWOULDBLOCK) {
 #ifdef TPM_DEBUG
-			kprintf("tpm_request_locality: interrupted %d\n", rv);
+			kprintf("%s: interrupted %d\n", __func__, rv);
 #endif
 			return rv;
 		}
@@ -430,7 +430,7 @@ tpm_request_locality(struct tpm_softc *sc, int l)
 	if ((r & (TPM_ACCESS_VALID | TPM_ACCESS_ACTIVE_LOCALITY)) !=
 	    (TPM_ACCESS_VALID | TPM_ACCESS_ACTIVE_LOCALITY)) {
 #ifdef TPM_DEBUG
-		kprintf("tpm_request_locality: access %b\n", r, TPM_ACCESS_BITS);
+		kprintf("%s: access %b\n", __func__, r, TPM_ACCESS_BITS);
 #endif
 		return EBUSY;
 	}
@@ -456,7 +456,7 @@ tpm_getburst(struct tpm_softc *sc)
 		burst |= bus_space_read_1(sc->sc_bt, sc->sc_bh, TPM_STS + 2)
 		    << 8;
 #ifdef TPM_DEBUG
-		kprintf("tpm_getburst: read %d\n", burst);
+		kprintf("%s: read %d\n", __func__, burst);
 #endif
 		if (burst)
 			return burst;
@@ -510,7 +510,7 @@ tpm_suspend(device_t dev)
 	sc->sc_write(sc, &command, sizeof(command));
 	sc->sc_read(sc, &command, sizeof(command), NULL, TPM_HDRSIZE);
 #ifdef TPM_DEBUG
-	kprintf("tpm_suspend: power down: %d -> %d\n", sc->sc_suspend, why);
+	kprintf("%s: power down: %d -> %d\n", __func__, sc->sc_suspend, why);
 #endif
 	sc->sc_suspend = why;
 
@@ -528,7 +528,7 @@ tpm_resume(device_t dev)
 	int why = 0;
 
 #ifdef TPM_DEBUG
-	kprintf("tpm_resume: resume: %d -> %d\n", sc->sc_suspend, why);
+	kprintf("%s: resume: %d -> %d\n", __func__, sc->sc_suspend, why);
 #endif
 	sc->sc_suspend = why;
 
@@ -549,7 +549,7 @@ tpm_waitfor_poll(struct tpm_softc *sc, u_int8_t mask, int tmo, void *c)
 		rv = tsleep(c, PCATCH, "tpm_poll", 1);
 		if (rv && rv != EWOULDBLOCK) {
 #ifdef TPM_DEBUG
-			kprintf("tpm_waitfor_poll: interrupted %d\n", rv);
+			kprintf("%s: interrupted %d\n", __func__, rv);
 #endif
 			return rv;
 		}
@@ -594,7 +594,7 @@ tpm_waitfor_int(struct tpm_softc *sc, u_int8_t mask, int tmo, void *c,
 
 	to = tpm_tmotohz(tmo);
 #ifdef TPM_DEBUG
-	kprintf("tpm_waitfor_int: sleeping for %d ticks on %p\n", to, c);
+	kprintf("%s: sleeping for %d ticks on %p\n", __func__, to, c);
 #endif
 	/*
 	 * tsleep(9) enables interrupts on the cpu and returns after
@@ -606,7 +606,7 @@ tpm_waitfor_int(struct tpm_softc *sc, u_int8_t mask, int tmo, void *c,
 
 	sc->sc_stat = tpm_status(sc);
 #ifdef TPM_DEBUG
-	kprintf("tpm_waitfor_int: woke up with rv %d stat %b\n", rv,
+	kprintf("%s: woke up with rv %d stat %b\n", __func__, rv,
 	    sc->sc_stat, TPM_STS_BITS);
 #endif
 	if ((sc->sc_stat & mask) == mask)
@@ -633,7 +633,7 @@ tpm_waitfor(struct tpm_softc *sc, u_int8_t b0, int tmo, void *c)
 	int re, to, rv;
 
 #ifdef TPM_DEBUG
-	kprintf("tpm_waitfor: b0 %b\n", b0, TPM_STS_BITS);
+	kprintf("%s: b0 %b\n", __func__, b0, TPM_STS_BITS);
 #endif
 
 	/*
@@ -704,7 +704,7 @@ again:
 
 	if ((sc->sc_stat & b) != b) {
 #ifdef TPM_DEBUG
-		kprintf("tpm_waitfor: timeout: stat=%b b=%b\n",
+		kprintf("%s: timeout: stat=%b b=%b\n", __func__,
 		    sc->sc_stat, TPM_STS_BITS, b, TPM_STS_BITS);
 #endif
 		if (re-- && (b0 & TPM_STS_VALID)) {
@@ -737,14 +737,14 @@ tpm_tis12_start(struct tpm_softc *sc, int flag)
 	sc->sc_stat = tpm_status(sc);
 	if (sc->sc_stat & TPM_STS_CMD_READY) {
 #ifdef TPM_DEBUG
-		kprintf("tpm_tis12_start: UIO_WRITE status %b\n", sc->sc_stat,
+		kprintf("%s: UIO_WRITE status %b\n", __func__, sc->sc_stat,
 		   TPM_STS_BITS);
 #endif
 		return 0;
 	}
 
 #ifdef TPM_DEBUG
-	kprintf("tpm_tis12_start: UIO_WRITE readying chip\n");
+	kprintf("%s: UIO_WRITE readying chip\n", __func__);
 #endif
 
 	/* Abort previous and restart. */
@@ -752,13 +752,13 @@ tpm_tis12_start(struct tpm_softc *sc, int flag)
 	if ((rv = tpm_waitfor(sc, TPM_STS_CMD_READY, TPM_READY_TMO,
 	    sc->sc_write))) {
 #ifdef TPM_DEBUG
-		kprintf("tpm_tis12_start: UIO_WRITE readying failed %d\n", rv);
+		kprintf("%s: UIO_WRITE readying failed %d\n", __func__, rv);
 #endif
 		return rv;
 	}
 
 #ifdef TPM_DEBUG
-	kprintf("tpm_tis12_start: UIO_WRITE readying done\n");
+	kprintf("%s: UIO_WRITE readying done\n", __func__);
 #endif
 
 	return 0;
@@ -773,7 +773,7 @@ tpm_tis12_read(struct tpm_softc *sc, void *buf, int len, size_t *count,
 	int rv, n, bcnt;
 
 #ifdef TPM_DEBUG
-	kprintf("tpm_tis12_read: len %d\n", len);
+	kprintf("%s: len %d\n", __func__, len);
 #endif
 	cnt = 0;
 	while (len > 0) {
@@ -784,7 +784,7 @@ tpm_tis12_read(struct tpm_softc *sc, void *buf, int len, size_t *count,
 		bcnt = tpm_getburst(sc);
 		n = MIN(len, bcnt);
 #ifdef TPM_DEBUG
-		kprintf("tpm_tis12_read: fetching %d, burst is %d\n", n, bcnt);
+		kprintf("%s: fetching %d, burst is %d\n", __func__, n, bcnt);
 #endif
 		for (; n--; len--) {
 			*p++ = bus_space_read_1(sc->sc_bt, sc->sc_bh, TPM_DATA);
@@ -795,7 +795,7 @@ tpm_tis12_read(struct tpm_softc *sc, void *buf, int len, size_t *count,
 			break;
 	}
 #ifdef TPM_DEBUG
-	kprintf("tpm_tis12_read: read %zd bytes, len %d\n", cnt, len);
+	kprintf("%s: read %zd bytes, len %d\n", __func__, cnt, len);
 #endif
 
 	if (count)
@@ -812,7 +812,7 @@ tpm_tis12_write(struct tpm_softc *sc, void *buf, int len)
 	int rv, r;
 
 #ifdef TPM_DEBUG
-	kprintf("tpm_tis12_write: sc %p buf %p len %d\n", sc, buf, len);
+	kprintf("%s: sc %p buf %p len %d\n", __func__, sc, buf, len);
 #endif
 
 	if ((rv = tpm_request_locality(sc, 0)) != 0)
@@ -826,14 +826,14 @@ tpm_tis12_write(struct tpm_softc *sc, void *buf, int len)
 		}
 		if ((rv = tpm_waitfor(sc, TPM_STS_VALID, TPM_READ_TMO, sc))) {
 #ifdef TPM_DEBUG
-			kprintf("tpm_tis12_write: failed burst rv %d\n", rv);
+			kprintf("%s: failed burst rv %d\n", __func__, rv);
 #endif
 			return rv;
 		}
 		sc->sc_stat = tpm_status(sc);
 		if (!(sc->sc_stat & TPM_STS_DATA_EXPECT)) {
 #ifdef TPM_DEBUG
-			kprintf("tpm_tis12_write: failed rv %d stat=%b\n", rv,
+			kprintf("%s: failed rv %d stat=%b\n", __func__, rv,
 			    sc->sc_stat, TPM_STS_BITS);
 #endif
 			return EIO;
@@ -845,20 +845,20 @@ tpm_tis12_write(struct tpm_softc *sc, void *buf, int len)
 
 	if ((rv = tpm_waitfor(sc, TPM_STS_VALID, TPM_READ_TMO, sc))) {
 #ifdef TPM_DEBUG
-		kprintf("tpm_tis12_write: failed last byte rv %d\n", rv);
+		kprintf("%s: failed last byte rv %d\n", __func__, rv);
 #endif
 		return rv;
 	}
 	if ((sc->sc_stat & TPM_STS_DATA_EXPECT) != 0) {
 #ifdef TPM_DEBUG
-		kprintf("tpm_tis12_write: failed rv %d stat=%b\n", rv,
+		kprintf("%s: failed rv %d stat=%b\n", __func__, rv,
 		    sc->sc_stat, TPM_STS_BITS);
 #endif
 		return EIO;
 	}
 
 #ifdef TPM_DEBUG
-	kprintf("tpm_tis12_write: wrote %zd byte\n", cnt);
+	kprintf("%s: wrote %zd byte\n", __func__, cnt);
 #endif
 
 	return 0;
@@ -879,7 +879,7 @@ tpm_tis12_end(struct tpm_softc *sc, int flag, int err)
 		sc->sc_stat = tpm_status(sc);
 		if (!err && ((sc->sc_stat & TPM_STS_DATA_AVAIL) == TPM_STS_DATA_AVAIL)) {
 #ifdef TPM_DEBUG
-			kprintf("tpm_tis12_end: read failed stat=%b\n",
+			kprintf("%s: read failed stat=%b\n", __func__,
 			    sc->sc_stat, TPM_STS_BITS);
 #endif
 			rv = EIO;
@@ -896,7 +896,7 @@ tpm_tis12_end(struct tpm_softc *sc, int flag, int err)
 		sc->sc_stat = tpm_status(sc);
 		if (!err && (sc->sc_stat & TPM_STS_DATA_EXPECT)) {
 #ifdef TPM_DEBUG
-			kprintf("tpm_tis12_end: write failed stat=%b\n",
+			kprintf("%s: write failed stat=%b\n", __func__,
 			    sc->sc_stat, TPM_STS_BITS);
 #endif
 			rv = EIO;
@@ -921,8 +921,8 @@ tpm_intr(void *v)
 	r = bus_space_read_4(sc->sc_bt, sc->sc_bh, TPM_INT_STATUS);
 #ifdef TPM_DEBUG
 	if (r != 0)
-		kprintf("tpm_intr: int=%b (%d)\n", r, TPM_INTERRUPT_ENABLE_BITS,
-		    cnt);
+		kprintf("%s: int=%b (%d)\n", __func__, r,
+		    TPM_INTERRUPT_ENABLE_BITS, cnt);
 	else
 		cnt++;
 #endif
@@ -993,7 +993,7 @@ tpm_legacy_probe(bus_space_tag_t iot, bus_addr_t iobase)
 		id[i] = tpm_legacy_in(iot, ioh, TPM_ID + i);
 
 #ifdef TPM_DEBUG
-	kprintf("tpm_legacy_probe %.4s %d.%d.%d.%d\n",
+	kprintf("%s: %.4s %d.%d.%d.%d\n", __func__,
 	    &id[4], id[0], id[1], id[2], id[3]);
 #endif
 	/*
@@ -1196,7 +1196,7 @@ tpmread(struct dev_read_args *ap)
 	}
 
 #ifdef TPM_DEBUG
-	kprintf("tpmread: getting header\n");
+	kprintf("%s: getting header\n", __func__);
 #endif
 	if ((rv = (sc->sc_read)(sc, buf, TPM_HDRSIZE, &cnt, 0))) {
 		(sc->sc_end)(sc, UIO_READ, rv);
@@ -1206,13 +1206,14 @@ tpmread(struct dev_read_args *ap)
 
 	len = (buf[2] << 24) | (buf[3] << 16) | (buf[4] << 8) | buf[5];
 #ifdef TPM_DEBUG
-	kprintf("tpmread: len %d, io count %zd\n", len, uio->uio_resid);
+	kprintf("%s: len %d, io count %zd\n", __func__, len, uio->uio_resid);
 #endif
 	if (len > uio->uio_resid) {
 		rv = EIO;
 		(sc->sc_end)(sc, UIO_READ, rv);
 #ifdef TPM_DEBUG
-		kprintf("tpmread: bad residual io count 0x%zx\n", uio->uio_resid);
+		kprintf("%s: bad residual io count 0x%zx\n", __func__,
+		    uio->uio_resid);
 #endif
 		crit_exit();
 		return rv;
@@ -1230,7 +1231,7 @@ tpmread(struct dev_read_args *ap)
 	    n = sizeof(buf)) {
 		n = MIN(n, len);
 #ifdef TPM_DEBUG
-		kprintf("tpmread: n %d len %d\n", n, len);
+		kprintf("%s: n %d len %d\n", __func__, n, len);
 #endif
 		if ((rv = (sc->sc_read)(sc, p, n, NULL, TPM_PARAM_SIZE))) {
 			(sc->sc_end)(sc, UIO_READ, rv);
@@ -1265,7 +1266,7 @@ tpmwrite(struct dev_write_args *ap)
 	crit_enter();
 
 #ifdef TPM_DEBUG
-	kprintf("tpmwrite: io count %zd\n", uio->uio_resid);
+	kprintf("%s: io count %zd\n", __func__, uio->uio_resid);
 #endif
 
 	n = MIN(sizeof(buf), uio->uio_resid);
