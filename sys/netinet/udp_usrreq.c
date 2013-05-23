@@ -164,23 +164,23 @@ static struct lwkt_serialize udbinfo_slize = LWKT_SERIALIZE_INITIALIZER;
 
 struct	udpstat udpstat_percpu[MAXCPU] __cachealign;
 
-static struct	sockaddr_in udp_in = { sizeof udp_in, AF_INET };
 #ifdef INET6
 struct udp_in6 {
 	struct sockaddr_in6	uin6_sin;
 	u_char			uin6_init_done : 1;
-} udp_in6 = {
-	{ sizeof udp_in6.uin6_sin, AF_INET6 },
-	0
 };
 struct udp_ip6 {
 	struct ip6_hdr		uip6_ip6;
 	u_char			uip6_init_done : 1;
-} udp_ip6;
+};
+#else
+struct udp_in6;
+struct udp_ip6;
 #endif /* INET6 */
 
 static void udp_append (struct inpcb *last, struct ip *ip,
-			    struct mbuf *n, int off);
+    struct mbuf *n, int off, struct sockaddr_in *udp_in,
+    struct udp_in6 *, struct udp_ip6 *);
 #ifdef INET6
 static void ip_2_ip6_hdr (struct ip6_hdr *ip6, struct ip *ip);
 #endif
@@ -266,6 +266,14 @@ check_multicast_membership(struct ip *ip, struct inpcb *inp, struct mbuf *m)
 int
 udp_input(struct mbuf **mp, int *offp, int proto)
 {
+	struct sockaddr_in udp_in = { sizeof udp_in, AF_INET };
+#ifdef INET6
+	struct udp_in6 udp_in6 = {
+		{ sizeof udp_in6.uin6_sin, AF_INET6 }, 0
+	};
+	struct udp_ip6 udp_ip6;
+#endif
+
 	int iphlen;
 	struct ip *ip;
 	struct udphdr *uh;
@@ -430,8 +438,14 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 #endif /*FAST_IPSEC*/
 				if ((n = m_copypacket(m, MB_DONTWAIT)) != NULL)
 					udp_append(last, ip, n,
-						   iphlen +
-						   sizeof(struct udphdr));
+					    iphlen + sizeof(struct udphdr),
+					    &udp_in,
+#ifdef INET6
+					    &udp_in6, &udp_ip6
+#else
+				            NULL, NULL
+#endif
+					    );
 			}
 			last = inp;
 			/*
@@ -468,7 +482,14 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 		if (ipsec4_in_reject(m, last))
 			goto bad;
 #endif /*FAST_IPSEC*/
-		udp_append(last, ip, m, iphlen + sizeof(struct udphdr));
+		udp_append(last, ip, m, iphlen + sizeof(struct udphdr),
+		    &udp_in,
+#ifdef INET6
+		    &udp_in6, &udp_ip6
+#else
+		    NULL, NULL
+#endif
+		    );
 		return(IPPROTO_DONE);
 	}
 	/*
@@ -586,7 +607,9 @@ ip_2_ip6_hdr(struct ip6_hdr *ip6, struct ip *ip)
  * caller must properly init udp_ip6 and udp_in6 beforehand.
  */
 static void
-udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off)
+udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off,
+    struct sockaddr_in *udp_in,
+    struct udp_in6 *udp_in6, struct udp_ip6 *udp_ip6)
 {
 	struct sockaddr *append_sa;
 	struct mbuf *opts = NULL;
@@ -597,13 +620,13 @@ udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off)
 		if (last->inp_vflag & INP_IPV6) {
 			int savedflags;
 
-			if (udp_ip6.uip6_init_done == 0) {
-				ip_2_ip6_hdr(&udp_ip6.uip6_ip6, ip);
-				udp_ip6.uip6_init_done = 1;
+			if (udp_ip6->uip6_init_done == 0) {
+				ip_2_ip6_hdr(&udp_ip6->uip6_ip6, ip);
+				udp_ip6->uip6_init_done = 1;
 			}
 			savedflags = last->inp_flags;
 			last->inp_flags &= ~INP_UNMAPPABLEOPTS;
-			ip6_savecontrol(last, &opts, &udp_ip6.uip6_ip6, n);
+			ip6_savecontrol(last, &opts, &udp_ip6->uip6_ip6, n);
 			last->inp_flags = savedflags;
 		} else
 #endif
@@ -611,14 +634,14 @@ udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off)
 	}
 #ifdef INET6
 	if (last->inp_vflag & INP_IPV6) {
-		if (udp_in6.uin6_init_done == 0) {
-			in6_sin_2_v4mapsin6(&udp_in, &udp_in6.uin6_sin);
-			udp_in6.uin6_init_done = 1;
+		if (udp_in6->uin6_init_done == 0) {
+			in6_sin_2_v4mapsin6(udp_in, &udp_in6->uin6_sin);
+			udp_in6->uin6_init_done = 1;
 		}
-		append_sa = (struct sockaddr *)&udp_in6.uin6_sin;
+		append_sa = (struct sockaddr *)&udp_in6->uin6_sin;
 	} else
 #endif
-		append_sa = (struct sockaddr *)&udp_in;
+		append_sa = (struct sockaddr *)udp_in;
 	m_adj(n, off);
 	lwkt_gettoken(&last->inp_socket->so_rcv.ssb_token);
 	if (ssb_appendaddr(&last->inp_socket->so_rcv, append_sa, n, opts) == 0) {
