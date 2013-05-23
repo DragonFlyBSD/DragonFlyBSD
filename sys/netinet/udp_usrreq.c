@@ -888,7 +888,8 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	/*
 	 * Set source address.
 	 */
-	if (inp->inp_laddr.s_addr == INADDR_ANY) {
+	if (inp->inp_laddr.s_addr == INADDR_ANY ||
+	    IN_MULTICAST(ntohl(inp->inp_laddr.s_addr))) {
 		struct sockaddr_in *if_sin;
 
 		if (dstaddr == NULL) {	
@@ -902,14 +903,12 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 		}
 
 		/* Look up outgoing interface. */
-		if ((error = in_pcbladdr(inp, dstaddr, &if_sin, td)))
+		error = in_pcbladdr_find(inp, dstaddr, &if_sin, td, 1);
+		if (error)
 			goto release;
 		ui->ui_src = if_sin->sin_addr;	/* use address of interface */
-	} else if (!IN_MULTICAST(ntohl(inp->inp_laddr.s_addr))) {
-		ui->ui_src = inp->inp_laddr;	/* use non-null bound address */
 	} else {
-		/* Bound to multicast address; let ip_output choose */
-		ui->ui_src.s_addr = INADDR_ANY;
+		ui->ui_src = inp->inp_laddr;	/* use non-null bound address */
 	}
 	ui->ui_sport = inp->inp_lport;
 	KASSERT(inp->inp_lport != 0, ("inp lport should have been bound"));

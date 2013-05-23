@@ -727,8 +727,8 @@ done:
  *   have forced minor changes in every protocol).
  */
 int
-in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
-	struct sockaddr_in **plocal_sin, struct thread *td)
+in_pcbladdr_find(struct inpcb *inp, struct sockaddr *nam,
+    struct sockaddr_in **plocal_sin, struct thread *td, int find)
 {
 	struct in_ifaddr *ia;
 	struct ucred *cred = NULL;
@@ -761,7 +761,7 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 		    (ia->ia_ifp->if_flags & IFF_BROADCAST))
 			sin->sin_addr = satosin(&ia->ia_broadaddr)->sin_addr;
 	}
-	if (inp->inp_laddr.s_addr == INADDR_ANY) {
+	if (find) {
 		struct route *ro;
 
 		ia = NULL;
@@ -886,6 +886,14 @@ fail:
 		bzero(ro, sizeof(*ro));
 	}
 	return (EADDRNOTAVAIL);
+}
+
+int
+in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
+    struct sockaddr_in **plocal_sin, struct thread *td)
+{
+	return in_pcbladdr_find(inp, nam, plocal_sin, td,
+	    (inp->inp_laddr.s_addr == INADDR_ANY));
 }
 
 /*
