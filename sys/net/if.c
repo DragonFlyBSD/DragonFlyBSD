@@ -2506,12 +2506,18 @@ int
 ifsq_classic_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
     struct altq_pktattr *pa __unused)
 {
-	if (IF_QFULL(ifsq)) {
+	if (ifsq->ifq_len >= ifsq->ifq_maxlen) {
 		m_freem(m);
-		return(ENOBUFS);
+		return ENOBUFS;
 	} else {
-		IF_ENQUEUE(ifsq, m);
-		return(0);
+		m->m_nextpkt = NULL;
+		if (ifsq->ifq_tail == NULL)
+			ifsq->ifq_head = m;
+		else
+			ifsq->ifq_tail->m_nextpkt = m;
+		ifsq->ifq_tail = m;
+		ifsq->ifq_len++;
+		return 0;
 	}	
 }
 
@@ -2522,16 +2528,24 @@ ifsq_classic_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 
 	switch (op) {
 	case ALTDQ_POLL:
-		IF_POLL(ifsq, m);
+		m = ifsq->ifq_head;
 		break;
+
 	case ALTDQ_REMOVE:
-		IF_DEQUEUE(ifsq, m);
+		m = ifsq->ifq_head;
+		if (m != NULL) {
+			if ((ifsq->ifq_head = m->m_nextpkt) == NULL)
+				ifsq->ifq_tail = NULL;
+			m->m_nextpkt = NULL;
+			ifsq->ifq_len--;
+		}
 		break;
+
 	default:
 		panic("unsupported ALTQ dequeue op: %d", op);
 	}
 	KKASSERT(mpolled == NULL || mpolled == m);
-	return(m);
+	return m;
 }
 
 int
@@ -2539,12 +2553,20 @@ ifsq_classic_request(struct ifaltq_subque *ifsq, int req, void *arg)
 {
 	switch (req) {
 	case ALTRQ_PURGE:
-		IF_DRAIN(ifsq);
+		for (;;) {
+			struct mbuf *m;
+
+			m = ifsq_classic_dequeue(ifsq, NULL, ALTDQ_REMOVE);
+			if (m == NULL)
+				break;
+			m_freem(m);
+		}
 		break;
+
 	default:
 		panic("unsupported ALTQ request: %d", req);
 	}
-	return(0);
+	return 0;
 }
 
 static void
