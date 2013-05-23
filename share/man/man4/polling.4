@@ -25,7 +25,7 @@
 .\" $FreeBSD: src/share/man/man4/polling.4,v 1.27 2007/04/06 14:25:14 brueffer Exp $
 .\" $DragonFly: src/share/man/man4/polling.4,v 1.13 2007/11/03 07:35:52 swildner Exp $
 .\"
-.Dd November 16, 2012
+.Dd May 23, 2013
 .Dt POLLING 4
 .Os
 .Sh NAME
@@ -34,16 +34,16 @@
 .Sh SYNOPSIS
 .Cd "options IFPOLL_ENABLE"
 .Sh DESCRIPTION
-Device polling
+Network device polling
 .Nm (
 for brevity) refers to a technique that
-lets the operating system periodically poll devices, instead of
-relying on the devices to generate interrupts when they need attention.
+lets the operating system periodically poll network devices, instead of
+relying on the network devices to generate interrupts when they need attention.
 This might seem inefficient and counterintuitive, but when done
 properly,
 .Nm
 gives more control to the operating system on
-when and how to handle devices, with a number of advantages in terms
+when and how to handle network devices, with a number of advantages in terms
 of system responsiveness and performance.
 .Pp
 In particular,
@@ -54,13 +54,13 @@ gives more control on the scheduling of a CPU between various
 tasks (user processes, software interrupts, device handling)
 which ultimately reduces the chances of livelock in the system.
 .Ss Principles of Operation
-In the normal, interrupt-based mode, devices generate an interrupt
+In the normal, interrupt-based mode, network devices generate an interrupt
 whenever they need attention.
 This in turn causes a
 context switch and the execution of an interrupt handler
-which performs whatever processing is needed by the device.
+which performs whatever processing is needed by the network device.
 The duration of the interrupt handler is potentially unbounded
-unless the device driver has been programmed with real-time
+unless the network device driver has been programmed with real-time
 concerns in mind (which is generally not the case for
 .Dx
 drivers).
@@ -68,12 +68,12 @@ Furthermore, under heavy traffic load, the system might be
 persistently processing interrupts without being able to
 complete other work, either in the kernel or in userland.
 .Pp
-Device polling disables interrupts by polling devices on clock
-interrupts.
+Network device polling disables interrupts by polling network devices on
+clock interrupts.
 This way, the context switch overhead is removed.
 Furthermore,
 the operating system can control accurately how much work to spend
-in handling device events, and thus prevent livelock by reserving
+in handling network device events, and thus prevent livelock by reserving
 some amount of CPU to other tasks.
 .Pp
 Enabling
@@ -82,9 +82,6 @@ also changes the way software network interrupts
 are scheduled, so there is never the risk of livelock because
 packets are not processed to completion.
 .Ss Enabling polling
-Currently only network interface drivers support the
-.Nm
-feature.
 It is turned on and off with help of
 .Xr ifconfig 8
 command.
@@ -183,7 +180,7 @@ This number should be tuned to match the expected load.
 Default is 250 which is adequate for 1000Mbit network and pollhz=6000.
 .Pp
 .It Va net.ifpoll.X.rx.handlers
-How many active devices have registered for packet reception
+How many active network devices have registered for packet reception
 .Nm .
 .Pp
 .It Va net.ifpoll.X.tx_frac
@@ -198,20 +195,20 @@ that the transmission queue getting saturated.
 Default is 1.
 .Pp
 .It Va net.ifpoll.X.tx.handlers
-How many active devices have registered for packet transmission
+How many active network devices have registered for packet transmission
 .Nm .
 .Pp
 .It Va net.ifpoll.0.status_frac
 Controls how often (every
 .Va status_frac No / Va pollhz
-seconds) the status registers of the device are checked for error
+seconds) the status registers of the network device are checked for error
 conditions and the like.
 Increasing this value reduces the load on the bus,
 but also delays the error detection.
 Default is 120.
 .Pp
 .It Va net.ifpoll.0.status.handlers
-How many active devices have registered for status
+How many active network devices have registered for status
 .Nm .
 .Pp
 .It Va net.ifpoll.X.rx.short_ticks
@@ -231,7 +228,8 @@ How many active devices have registered for status
 Debugging variables.
 .El
 .Sh SUPPORTED DEVICES
-Device polling requires explicit modifications to the device drivers.
+Network device polling requires explicit modifications to
+the network device drivers.
 As of this writing, the
 .Xr bce 4 ,
 .Xr bge 4 ,
@@ -256,20 +254,31 @@ and
 devices are supported,
 with others in the works.
 The
+.Xr bce 4 ,
+.Xr bnx 4 ,
 .Xr emx 4 ,
 .Xr igb 4 ,
 and
 .Xr jme 4
 support multiple reception queues based
 .Nm .
+The
+.Xr bce 4 ,
+.Xr bnx 4 ,
+certain types of
+.Xr emx 4 ,
+and
+.Xr igb 4
+support multiple transmission queues based
+.Nm .
 The modifications are rather straightforward, consisting in
 the extraction of the inner part of the interrupt service routine
 and writing a callback function,
 .Fn *_npoll ,
 which is invoked
-to probe the device for events and process them.
+to probe the network device for events and process them.
 (See the
-conditionally compiled sections of the devices mentioned above
+conditionally compiled sections of the network devices mentioned above
 for more details.)
 .Pp
 In order to reduce the latency in processing packets,
@@ -279,17 +288,17 @@ variable
 .Va net.ifpoll.X.pollhz
 to at least 1000.
 .Sh HISTORY
-Device polling first appeared in
+Network device polling first appeared in
 .Fx 4.6 .
 It was rewritten in
 .Dx 1.3 .
 .Sh AUTHORS
 .An -nosplit
-The device polling code was rewritten by
+The network device polling code was rewritten by
 .An Matt Dillon
 based on the original code by
 .An Luigi Rizzo Aq luigi@iet.unipi.it .
 .An Sepherosa Ziehau
 made the polling frequency settable at runtime,
 added per CPU polling
-and added multiple reception queue polling support.
+and added multiple reception and tranmission queue polling support.
