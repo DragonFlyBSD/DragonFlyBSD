@@ -439,6 +439,8 @@ void	in_pcbinsconnhash(struct inpcb *inp);
 int	in_pcbinsporthash (struct inpcb *);
 int	in_pcbladdr (struct inpcb *, struct sockaddr *,
 	    struct sockaddr_in **, struct thread *);
+int	in_pcbladdr_find (struct inpcb *, struct sockaddr *,
+	    struct sockaddr_in **, struct thread *, int);
 struct inpcb *
 	in_pcblookup_local (struct inpcbinfo *, struct in_addr, u_int, int,
 			    struct ucred *);
