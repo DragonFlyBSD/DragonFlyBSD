@@ -456,13 +456,14 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 static void
 ng_iface_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
-	struct mbuf *m = NULL;
 	sa_family_t sa;
 
 	KASSERT(ifq_is_enabled(&ifp->if_snd), ("%s without ALTQ", __func__));
 
 	for(;;) {
-		m = ifq_dequeue(&ifp->if_snd, m);
+		struct mbuf *m;
+
+		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 		sa = *mtod(m, sa_family_t *);
