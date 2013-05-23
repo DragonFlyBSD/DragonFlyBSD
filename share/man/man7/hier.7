@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd February 23, 2013
+.Dd May 19, 2013
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -149,6 +149,10 @@ contains the majority of user utilities and applications
 .Bl -tag -width ".Pa libdata/" -compact
 .It Pa bin/
 common utilities, programming tools, and applications
+.It Pa dports/
+The
+.Dx
+dports collection (optional).
 .It Pa games/
 useful and semi-frivolous programs
 .It Pa include/
@@ -331,25 +335,30 @@ see
 .Pp
 .It Pa local/
 local executables, libraries, etc.
+Also used as the default destination for the
+.Dx
+dports framework.
 Within
 .Pa local/ ,
 the general layout sketched out by
-.Xr hier 7
+.Nm
 for
 .Pa /usr
 should be used.
 Exceptions are the
-.Pa man/
-directory (directly under
+.Pa man
+directory
+.Po directly under
 .Pa local/
 rather than under
-.Pa local/share/ ) ,
-documentation (in
-.Pa share/doc/<app>/ ) ,
+.Pa local/share/ Ns Pc ,
+ports documentation
+.Po in
+.Pa share/doc/<port>/ Ns Pc ,
 and
 .Pa /usr/local/etc
-.Pf ( mimics
-.Pa /etc ) .
+.Po mimics
+.Pa /etc Ns Pc .
 .It Pa obj/
 architecture-specific target tree produced by building the
 .Pa /usr/src
