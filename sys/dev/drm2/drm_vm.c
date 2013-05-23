@@ -30,6 +30,9 @@
 #include <sys/conf.h>
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>
+#include <sys/mutex2.h>
+#include <vm/vm_page.h>
+#include <vm/vm_pager.h>
 
 int
 drm_mmap(struct dev_mmap_args *ap)
@@ -148,7 +151,86 @@ int
 drm_mmap_single(struct dev_mmap_single_args *ap)
 {
 	struct cdev *kdev = ap->a_head.a_dev;
-
 	return drm_gem_mmap_single(kdev, ap->a_offset, ap->a_size,
 				ap->a_object, ap->a_nprot);
+}
+
+/* XXX The following is just temporary hack to replace the
+ * vm_phys_fictitious functions available on FreeBSD
+ */
+#define VM_PHYS_FICTITIOUS_NSEGS        8
+static struct vm_phys_fictitious_seg {
+        vm_paddr_t      start;
+        vm_paddr_t      end;
+        vm_page_t       first_page;
+} vm_phys_fictitious_segs[VM_PHYS_FICTITIOUS_NSEGS];
+static struct mtx vm_phys_fictitious_reg_mtx = MTX_INITIALIZER;
+
+vm_page_t
+vm_phys_fictitious_to_vm_page(vm_paddr_t pa)
+{
+        struct vm_phys_fictitious_seg *seg;
+        vm_page_t m;
+        int segind;
+
+        m = NULL;
+        for (segind = 0; segind < VM_PHYS_FICTITIOUS_NSEGS; segind++) {
+                seg = &vm_phys_fictitious_segs[segind];
+                if (pa >= seg->start && pa < seg->end) {
+                        m = &seg->first_page[atop(pa - seg->start)];
+                        KASSERT((m->flags & PG_FICTITIOUS) != 0,
+                            ("%p not fictitious", m));
+                        break;
+                }
+        }
+        return (m);
+}
+
+static void page_init(vm_page_t m, vm_paddr_t paddr)
+{
+	bzero(m, sizeof(*m));
+
+        //m->flags = PG_BUSY | PG_FICTITIOUS;
+        m->flags = PG_FICTITIOUS;
+        m->valid = VM_PAGE_BITS_ALL;
+        m->dirty = 0;
+        m->busy = 0;
+        m->queue = PQ_NONE;
+        m->object = NULL;
+
+        m->wire_count = 1;
+        m->hold_count = 0;
+        m->phys_addr = paddr;
+}
+
+int
+vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end)
+{
+        struct vm_phys_fictitious_seg *seg;
+        vm_page_t fp;
+        long i, page_count;
+        int segind;
+
+        page_count = (end - start) / PAGE_SIZE;
+
+        fp = kmalloc(page_count * sizeof(struct vm_page), DRM_MEM_DRIVER,
+                    M_WAITOK | M_ZERO);
+
+        for (i = 0; i < page_count; i++) {
+                page_init(&fp[i], start + PAGE_SIZE * i);
+        }
+        mtx_lock(&vm_phys_fictitious_reg_mtx);
+        for (segind = 0; segind < VM_PHYS_FICTITIOUS_NSEGS; segind++) {
+                seg = &vm_phys_fictitious_segs[segind];
+                if (seg->start == 0 && seg->end == 0) {
+                        seg->start = start;
+                        seg->end = end;
+                        seg->first_page = fp;
+                        mtx_unlock(&vm_phys_fictitious_reg_mtx);
+                        return (0);
+                }
+        }
+        mtx_unlock(&vm_phys_fictitious_reg_mtx);
+        kfree(fp, DRM_MEM_DRIVER);
+        return (EBUSY);
 }
