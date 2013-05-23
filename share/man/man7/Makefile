@@ -7,6 +7,7 @@ MAN=	ascii.7 \
 	clocks.7 \
 	committer.7 \
 	development.7 \
+	dports.7 \
 	environ.7 \
 	firewall.7 \
 	hier.7 \
