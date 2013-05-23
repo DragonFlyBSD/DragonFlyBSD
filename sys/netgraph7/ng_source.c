@@ -722,7 +722,6 @@ static void
 ng_source_intr(node_p node, hook_p hook, void *arg1, int arg2)
 {
 	sc_p sc = (sc_p)arg1;
-	struct ifqueue *ifq;
 	int packets;
 
 	KASSERT(sc != NULL, ("%s: null node private", __func__));
@@ -734,7 +733,9 @@ ng_source_intr(node_p node, hook_p hook, void *arg1, int arg2)
 	}
 
 	if (sc->output_ifp != NULL) {
-		ifq = (struct ifqueue *)&sc->output_ifp->if_snd;
+		struct ifaltq_subqueue *ifsq =
+		    ifq_get_subq_default(&sc->output_ifp->if_snd);
+
 		packets = ifq->ifq_maxlen - ifq->ifq_len;
 	} else
 		packets = sc->snd_queue.ifq_len;
