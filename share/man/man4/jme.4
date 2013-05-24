@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/jme.4,v 1.1 2008/05/27 01:59:17 yongari Exp $
 .\"
-.Dd April 7, 2012
+.Dd May 24, 2013
 .Dt JME 4
 .Os
 .Sh NAME
@@ -55,11 +55,18 @@ Ethernet controllers.
 All LOMs supported by the
 .Nm
 driver have TCP/UDP/IP checksum offload for both transmit and receive,
-.\" TCP segmentation offload (TSO),
+TCP segmentation offload (TSO),
+receive side scaling (RSS),
+multiple vector MSI-X,
 hardware VLAN tag stripping/insertion features,
 .\" Wake On Lan (WOL)
 an interrupt coalescing/moderation mechanism as well as
 a 64-bit multicast hash filter.
+Up to 4 reception queues could be enabled.
+By default
+.Nm
+driver will try enabling as much reception queues as allowed by
+the number of CPUs in the system.
 .Pp
 The JMC250 also supports Jumbo Frames (up to 9216 bytes), which can be
 configured via the interface MTU setting.
@@ -101,11 +108,95 @@ The
 driver supports
 .Xr polling 4 .
 .Ss Loader Tunables
-By default, the driver will use MSI if it is supported.
-This behavior can be turned off by setting the following tunable:
+By default, the driver will use MSI-X if it is supported.
+This behavior can be turned off by setting either of the following tunables
+.Em ( X
+is the device unit number):
+.Bd -literal -offset indent
+hw.jme.msix.enable=0
+hw.jmeX.msix.enable=0
+.Ed
+.Pp
+If MSI-X is used,
+the transmission queue MSI-X's target CPU
+could be specified using following tunable:
+.Bd -literal -offset indent
+hw.jmeX.msix.txoff
+.Ed
+.Pp
+Maximum allowed value for this tunable is
+the power of 2 number of CPUs minus one.
+.Pp
+If MSI-X is used,
+the reception queue MSI-Xs' leading target CPU
+could be specified using following tunable:
+.Bd -literal -offset indent
+hw.jmeX.msix.rxoff
+.Ed
+.Pp
+The value specificed must be aligned on the number of reception queues enabled
+and must be less the power of 2 number of CPUs.
+.Pp
+If MSI-X is disabled,
+the driver will use MSI if it is supported.
+This behavior can be turned off by setting either of the following tunables:
 .Bd -literal -offset indent
 hw.jme.msi.enable=0
+hw.jmeX.msi.enable=0
 .Ed
+.Pp
+If MSI is used,
+MSI's target CPU could be changed by following tunable:
+.Bd -literal -offset indent
+hw.jmeX.msi.cpu
+.Ed
+.Pp
+Maximum allowed value for this tunable is the number of CPUs minus one.
+.Pp
+Number of reception queues that could be enable:
+.Bd -literal -offset indent
+hw.jme.rx_ring_count
+hw.jmeX.rx_ring_count
+.Ed
+.Pp
+Maximum allowed value for these tunables are 4
+and it must be power of 2 aligned.
+Setting these tunables to 0 allows driver to enable as much reception queues
+as allowed by the number of CPUs.
+.Pp
+Number of reception descriptors that could be used:
+.Bd -literal -offset indent
+hw.jme.rx_desc_count
+hw.jmeX.rx_desc_count
+.Ed
+.Pp
+Maximum allowed value for these tunables are 1024.
+.Pp
+Number of transmission descriptors that could be used:
+.Bd -literal -offset indent
+hw.jme.tx_desc_count
+hw.jmeX.tx_desc_count
+.Ed
+.Pp
+Maximum allowed value for these tunables are 1024.
+.Pp
+.Xr polling 4
+reception queues' leading target CPU could be specified by following tunable:
+.Bd -literal -offset indent
+hw.jmeX.npoll.rxoff
+.Ed
+.Pp
+The value specificed must be aligned on the number of reception queues enabled
+and must be less the power of 2 number of CPUs.
+.Pp
+.Xr polling 4
+transmission queue's target CPU could be specified by following tunable:
+.Bd -literal -offset indent
+hw.jmeX.npoll.txoff
+.Ed
+.Pp
+Maximum allowed value for this tunable is
+the power of 2 number of CPUs minus one.
 .Ss MIB Variables
 A number of per-interface variables are implemented in the
 .Va hw.jme Ns Em X
@@ -116,16 +207,16 @@ MIB.
 .It Va tx_coal_to
 Maximum amount of time to delay for TX completion interrupt in
 units of 1us.
-The accepted range is 1 to 65535, the default is 65535 (65535us).
+The accepted range is 1 to 65535, the default is 250 (250us).
 .It Va tx_coal_pkt
 Maximum number of packets to fire TX completion interrupt.
-The accepted range is 0 to 255, the default is 64.
+The accepted range is 0 to 255, the default is 128.
 Packet count based TX interrupt coalescing could be disabled
 by setting this variable to 0.
 .It Va rx_coal_to
 Maximum amount of time to delay for RX completion interrupt in
 units of 1us.
-The accepted range is 1 to 65535, the default is 100 (100us).
+The accepted range is 1 to 65535, the default is 150 (150us).
 .It Va rx_coal_pkt
 Maximum number of packets to fire RX completion interrupt.
 The accepted range is 0 to 255, the default is 64.
@@ -146,8 +237,29 @@ Number of RX rings (read-only).
 Use the tunable
 .Va hw.jme.rx_ring_count
 to configure it.
-.It Va rx_ring_inuse
-Number of RX rings being used (read-only).
+.It Va tx_wreg
+Number of transmission descriptors should be setup
+before the hardware register is written.
+Setting this value too high will have negative effect on
+transmission timeliness.
+Setting this value too low will hurt overall transmission
+due to the frequent hardware register writing.
+.It Va npoll_rxoff
+.Xr polling 4
+reception queues' leading target CPU.
+It has the same contraints as the tunable
+.Va hw.jmeX.npoll.rxoff .
+The set value will take effect upon the next time
+.Xr polling 4
+is enabled on the device.
+.It Va npoll_txoff
+.Xr polling 4
+transmission queue's target CPU.
+It has the same contraints as the tunable
+.Va hw.jmeX.npoll.txoff .
+The set value will take effect upon the next time
+.Xr polling 4
+is enabled on the device.
 .El
 .Sh SEE ALSO
 .Xr altq 4 ,
@@ -169,3 +281,6 @@ It first appeared in
 .Fx 7.1
 and was imported into
 .Dx 2.1 .
+Sepherosa Ziehau added the receive side scaling and
+multiple vector MSI-X support to
+.Dx .
