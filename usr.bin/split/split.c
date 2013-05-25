@@ -48,19 +48,19 @@
 
 #define DEFLINE	1000			/* Default num lines per file. */
 
-int64_t	 bytecnt;			/* Byte count to split on. */
-long	 numlines;			/* Line count to split on. */
-int	 file_open;			/* If a file open. */
-int	 ifd = -1, ofd = -1;		/* Input/output file descriptors. */
-char	 *bfr;				/* I/O buffer. */
-char	 fname[MAXPATHLEN];		/* File name prefix. */
-regex_t	 rgx;
-int	 pflag;
-long	 sufflen = 2;			/* File name suffix length. */
+static int64_t	 bytecnt;		/* Byte count to split on. */
+static long	 numlines;		/* Line count to split on. */
+static int	 file_open;		/* If a file open. */
+static int	 ifd = -1, ofd = -1;	/* Input/output file descriptors. */
+static char	 *bfr;			/* I/O buffer. */
+static char	 fname[MAXPATHLEN];	/* File name prefix. */
+static regex_t	 rgx;
+static int	 pflag;
+static long	 sufflen = 2;		/* File name suffix length. */
 
-void newfile(void);
-void split1(void);
-void split2(void);
+static void newfile(void);
+static void split1(void);
+static void split2(void);
 static void usage(void);
 
 int
@@ -160,7 +160,7 @@ main(int argc, char **argv)
  * split1 --
  *	Split the input by bytes.
  */
-void
+static void
 split1(void)
 {
 	off_t bcnt;
@@ -220,7 +220,7 @@ split1(void)
  * split2 --
  *	Split the input by lines.
  */
-void
+static void
 split2(void)
 {
 	int startofline = 1;
@@ -283,7 +283,7 @@ split2(void)
  * newfile --
  *	Open a new output file.
  */
-void
+static void
 newfile(void)
 {
 	long i, maxfiles, tfnum;
