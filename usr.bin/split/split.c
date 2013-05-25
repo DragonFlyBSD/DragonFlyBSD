@@ -98,7 +98,8 @@ main(int argc, char **argv)
 		case 'b':		/* Byte count. */
 			error = dehumanize_number(optarg, &bytecnt);
 			if (error != 0)
-				errx(EX_USAGE, "%s: illegal count", optarg);
+				errx(EX_USAGE, "%s: illegal byte count",
+				    optarg);
 			break;
 		case 'p' :      /* pattern matching. */
 			if (regcomp(&rgx, optarg, REG_EXTENDED|REG_NOSUB) != 0)
