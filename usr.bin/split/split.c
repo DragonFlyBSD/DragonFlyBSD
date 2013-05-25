@@ -37,6 +37,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libutil.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,7 +48,7 @@
 
 #define DEFLINE	1000			/* Default num lines per file. */
 
-off_t	 bytecnt;			/* Byte count to split on. */
+int64_t	 bytecnt;			/* Byte count to split on. */
 long	 numlines;			/* Line count to split on. */
 int	 file_open;			/* If a file open. */
 int	 ifd = -1, ofd = -1;		/* Input/output file descriptors. */
@@ -65,10 +66,9 @@ static void usage(void);
 int
 main(int argc, char **argv)
 {
-	long long bytecnti;
-	long scale;
 	int ch;
 	char *ep, *p;
+	int error;
 
 	while ((ch = getopt(argc, argv, "0123456789a:b:l:p:")) != -1)
 		switch (ch) {
@@ -96,19 +96,9 @@ main(int argc, char **argv)
 				    "%s: illegal suffix length", optarg);
 			break;
 		case 'b':		/* Byte count. */
-			errno = 0;
-			if ((bytecnti = strtoll(optarg, &ep, 10)) <= 0 ||
-			    (*ep != '\0' && *ep != 'k' && *ep != 'm') ||
-			    errno != 0)
-				errx(EX_USAGE,
-				    "%s: illegal byte count", optarg);
-			if (*ep == 'k')
-				scale = 1024;
-			else if (*ep == 'm')
-				scale = 1024 * 1024;
-			else
-				scale = 1;
-			bytecnt = (off_t)(bytecnti * scale);
+			error = dehumanize_number(optarg, &bytecnt);
+			if (error != 0)
+				errx(EX_USAGE, "%s: illegal count", optarg);
 			break;
 		case 'p' :      /* pattern matching. */
 			if (regcomp(&rgx, optarg, REG_EXTENDED|REG_NOSUB) != 0)

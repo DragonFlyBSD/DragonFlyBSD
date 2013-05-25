@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)split.1	8.3 (Berkeley) 4/16/94
 .\" $FreeBSD: src/usr.bin/split/split.1,v 1.3.2.6 2003/04/21 21:16:25 andreas Exp $
-.\" $DragonFly: src/usr.bin/split/split.1,v 1.4 2005/08/30 21:25:35 liamfoy Exp $
 .\"
-.Dd April 16, 1994
+.Dd May 25, 2013
 .Dt SPLIT 1
 .Os
 .Sh NAME
@@ -38,7 +37,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl a Ar suffix_length
-.Op Fl b Ar byte_count[k|m]
+.Op Fl b Ar byte_count[suffix]
 .Op Fl l Ar line_count
 .Op Fl p Ar pattern
 .Op Ar file Op Ar name
@@ -62,20 +61,13 @@ The options are as follows:
 Use
 .Ar suffix_length
 letters to form the suffix of the file name.
-.It Fl b Ar byte_count[k|m]
+.It Fl b Ar byte_count[suffix]
 Create smaller files
 .Ar byte_count
 bytes in length.
-If
-.Dq Li k
-is appended to the number, the file is split into
-.Ar byte_count
-kilobyte pieces.
-If
-.Dq Li m
-is appended to the number, the file is split into
-.Ar byte_count
-megabyte pieces.
+An optional suffix (as documented in
+.Xr dehumanize_number 3 )
+is supported.
 .It Fl l Ar line_count
 Create smaller files
 .Ar n
