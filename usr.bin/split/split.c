@@ -39,6 +39,7 @@
 #include <fcntl.h>
 #include <libutil.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,6 +56,7 @@ static int	 ifd = -1, ofd = -1;	/* Input/output file descriptors. */
 static char	 *bfr;			/* I/O buffer. */
 static char	 fname[MAXPATHLEN];	/* File name prefix. */
 static regex_t	 rgx;
+static bool	 dflag;
 static int	 pflag;
 static long	 sufflen = 2;		/* File name suffix length. */
 
@@ -70,7 +72,7 @@ main(int argc, char **argv)
 	char *ep, *p;
 	int error;
 
-	while ((ch = getopt(argc, argv, "0123456789a:b:l:p:")) != -1)
+	while ((ch = getopt(argc, argv, "0123456789a:b:dl:p:")) != -1)
 		switch (ch) {
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
@@ -100,6 +102,9 @@ main(int argc, char **argv)
 			if (error != 0)
 				errx(EX_USAGE, "%s: illegal byte count",
 				    optarg);
+			break;
+		case 'd':	/* Decimal suffix */
+			dflag = true;
 			break;
 		case 'p' :      /* pattern matching. */
 			if (regcomp(&rgx, optarg, REG_EXTENDED|REG_NOSUB) != 0)
@@ -289,6 +294,8 @@ newfile(void)
 	long i, maxfiles, tfnum;
 	static long fnum;
 	static char *fpnt;
+	char beg, end;
+	int pattlen;
 
 	if (ofd == -1) {
 		if (fname[0] == '\0') {
@@ -300,10 +307,22 @@ newfile(void)
 		ofd = fileno(stdout);
 	}
 
-	/* maxfiles = 26^sufflen, but don't use libm. */
+	if (dflag) {
+		beg = '0';
+		end = '9';
+	}
+	else {
+		beg = 'a';
+		end = 'z';
+	}
+	pattlen = end - beg + 1;
+
+	/* maxfiles = pattlen^sufflen, but don't use libm. */
 	for (maxfiles = 1, i = 0; i < sufflen; i++)
-		if ((maxfiles *= 26) <= 0)
+		if (LONG_MAX / pattlen < maxfiles)
 			errx(EX_USAGE, "suffix is too long (max %ld)", i);
+		else
+			maxfiles *= pattlen;
 
 	if (fnum == maxfiles)
 		errx(EX_DATAERR, "too many files");
@@ -312,8 +331,8 @@ newfile(void)
 	tfnum = fnum;
 	i = sufflen - 1;
 	do {
-		fpnt[i] = tfnum % 26 + 'a';
-		tfnum /= 26;
+		fpnt[i] = tfnum % pattlen + beg;
+		tfnum /= pattlen;
 	} while (i-- > 0);
 	fpnt[sufflen] = '\0';
 
