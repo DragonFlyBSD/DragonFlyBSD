@@ -422,7 +422,7 @@ _citrus_mapper_std_mapper_uninit(struct _citrus_mapper *cm)
 {
 	struct _citrus_mapper_std *ms;
 
-	_DIAGASSERT(cm!=NULL & cm->cm_closure!=NULL);
+	_DIAGASSERT(cm!=NULL && cm->cm_closure!=NULL);
 
 	ms = cm->cm_closure;
 	if (ms->ms_uninit)
