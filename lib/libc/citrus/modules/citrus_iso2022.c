@@ -876,7 +876,7 @@ _citrus_ISO2022_mbrtowc_priv(_ISO2022EncodingInfo * __restrict ei,
 
 	/* buffer is not empty */
 	p = psenc->ch;
-	while (psenc->chlen < sizeof(psenc->ch) && n >= 0) {
+	while (psenc->chlen < sizeof(psenc->ch)) {
 		if (n > 0) {
 			psenc->ch[psenc->chlen++] = *s0++;
 			n--;
