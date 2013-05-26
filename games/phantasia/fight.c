@@ -604,7 +604,7 @@ monsthits(void)
 			mvprintw(Lines++, 0,
 			    "%s flew away, and left you to contend with one of its friends.",
 			    Enemyname);
-			Whichmonster = 55 + (drandom() > 0.5) ? 22 : 0;
+			Whichmonster = (drandom() > 0.5) ? 77 : 55;
 			longjmp(Fightenv, 0);
 			/* NOTREACHED */
 
@@ -955,8 +955,8 @@ callmonster(int which)
 			Curmonster.m_brains = Player.p_brains;
 			Curmonster.m_energy = Player.p_might * 30.0;
 			Curmonster.m_type = SM_MORGOTH;
-			Curmonster.m_speed = Player.p_speed * 1.1
-			    + (Player.p_specialtype == SC_EXVALAR) ? Player.p_speed : 0.0;
+			Curmonster.m_speed = Player.p_speed *
+			    ((Player.p_specialtype == SC_EXVALAR) ? 2.1 : 1.1);
 			Curmonster.m_flock = 0.0;
 			Curmonster.m_treasuretype = 0;
 			Curmonster.m_experience = 0.0;
