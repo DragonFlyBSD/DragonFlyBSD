@@ -62,10 +62,10 @@ hardware VLAN tag stripping/insertion features,
 .\" Wake On Lan (WOL)
 an interrupt coalescing/moderation mechanism as well as
 a 64-bit multicast hash filter.
-Up to 4 reception queues could be enabled.
-By default
+Up to 4 reception queues can be enabled.
+By default, the
 .Nm
-driver will try enabling as much reception queues as allowed by
+driver will try enabling as many reception queues as allowed by
 the number of CPUs in the system.
 .Pp
 The JMC250 also supports Jumbo Frames (up to 9216 bytes), which can be
@@ -109,7 +109,7 @@ driver supports
 .Xr polling 4 .
 .Ss Loader Tunables
 By default, the driver will use MSI-X if it is supported.
-This behavior can be turned off by setting either of the following tunables
+This behavior can be turned off by setting the following tunable:
 .Em ( X
 is the device unit number):
 .Bd -literal -offset indent
@@ -119,83 +119,83 @@ hw.jmeX.msix.enable=0
 .Pp
 If MSI-X is used,
 the transmission queue MSI-X's target CPU
-could be specified using following tunable:
+can be specified using the following tunable:
 .Bd -literal -offset indent
 hw.jmeX.msix.txoff
 .Ed
 .Pp
-Maximum allowed value for this tunable is
+The maximum allowed value for this tunable is
 the power of 2 number of CPUs minus one.
 .Pp
 If MSI-X is used,
 the reception queue MSI-Xs' leading target CPU
-could be specified using following tunable:
+can be specified using the following tunable:
 .Bd -literal -offset indent
 hw.jmeX.msix.rxoff
 .Ed
 .Pp
-The value specificed must be aligned on the number of reception queues enabled
-and must be less the power of 2 number of CPUs.
+The value specificed must be aligned to the number of reception queues enabled
+and must be less than the power of 2 number of CPUs.
 .Pp
 If MSI-X is disabled,
 the driver will use MSI if it is supported.
-This behavior can be turned off by setting either of the following tunables:
+This behavior can be turned off by setting the following tunable:
 .Bd -literal -offset indent
 hw.jme.msi.enable=0
 hw.jmeX.msi.enable=0
 .Ed
 .Pp
 If MSI is used,
-MSI's target CPU could be changed by following tunable:
+MSI's target CPU can be changed by the following tunable:
 .Bd -literal -offset indent
 hw.jmeX.msi.cpu
 .Ed
 .Pp
-Maximum allowed value for this tunable is the number of CPUs minus one.
+The maximum allowed value for this tunable is the number of CPUs minus one.
 .Pp
-Number of reception queues that could be enable:
+Number of reception queues that can be enabled:
 .Bd -literal -offset indent
 hw.jme.rx_ring_count
 hw.jmeX.rx_ring_count
 .Ed
 .Pp
-Maximum allowed value for these tunables are 4
+Maximum allowed value for these tunables is 4
 and it must be power of 2 aligned.
-Setting these tunables to 0 allows driver to enable as much reception queues
+Setting these tunables to 0 allows driver to enable as many reception queues
 as allowed by the number of CPUs.
 .Pp
-Number of reception descriptors that could be used:
+Number of reception descriptors that can be used:
 .Bd -literal -offset indent
 hw.jme.rx_desc_count
 hw.jmeX.rx_desc_count
 .Ed
 .Pp
-Maximum allowed value for these tunables are 1024.
+Maximum allowed value for these tunables is 1024.
 .Pp
-Number of transmission descriptors that could be used:
+Number of transmission descriptors that can be used:
 .Bd -literal -offset indent
 hw.jme.tx_desc_count
 hw.jmeX.tx_desc_count
 .Ed
 .Pp
-Maximum allowed value for these tunables are 1024.
+Maximum allowed value for these tunables is 1024.
 .Pp
 .Xr polling 4
-reception queues' leading target CPU could be specified by following tunable:
+reception queues' leading target CPU can be specified by the following tunable:
 .Bd -literal -offset indent
 hw.jmeX.npoll.rxoff
 .Ed
 .Pp
-The value specificed must be aligned on the number of reception queues enabled
-and must be less the power of 2 number of CPUs.
+The value specificed must be aligned to the number of reception queues enabled
+and must be less than the power of 2 number of CPUs.
 .Pp
 .Xr polling 4
-transmission queue's target CPU could be specified by following tunable:
+transmission queue's target CPU can be specified by the following tunable:
 .Bd -literal -offset indent
 hw.jmeX.npoll.txoff
 .Ed
 .Pp
-Maximum allowed value for this tunable is
+The maximum allowed value for this tunable is
 the power of 2 number of CPUs minus one.
 .Ss MIB Variables
 A number of per-interface variables are implemented in the
@@ -238,7 +238,7 @@ Use the tunable
 .Va hw.jme.rx_ring_count
 to configure it.
 .It Va tx_wreg
-Number of transmission descriptors should be setup
+The number of transmission descriptors should be setup
 before the hardware register is written.
 Setting this value too high will have negative effect on
 transmission timeliness.
@@ -247,17 +247,17 @@ due to the frequent hardware register writing.
 .It Va npoll_rxoff
 .Xr polling 4
 reception queues' leading target CPU.
-It has the same contraints as the tunable
+It has the same constraints as the tunable
 .Va hw.jmeX.npoll.rxoff .
-The set value will take effect upon the next time
+The set value will take effect the next time
 .Xr polling 4
 is enabled on the device.
 .It Va npoll_txoff
 .Xr polling 4
 transmission queue's target CPU.
-It has the same contraints as the tunable
+It has the same constraints as the tunable
 .Va hw.jmeX.npoll.txoff .
-The set value will take effect upon the next time
+The set value will take effect the next time
 .Xr polling 4
 is enabled on the device.
 .El
