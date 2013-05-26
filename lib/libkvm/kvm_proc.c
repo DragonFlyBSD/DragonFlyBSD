@@ -296,7 +296,7 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
 				return (-1);
 			}
 			sess.s_ttyp = &tty;
-			if (tty.t_dev && tty.t_dev != NULL) {
+			if (tty.t_dev != NULL) {
 				if (KREAD(kd, (u_long)tty.t_dev, &cdev))
 					tty.t_dev = NULL;
 				else
