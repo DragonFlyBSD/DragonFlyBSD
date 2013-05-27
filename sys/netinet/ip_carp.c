@@ -1952,7 +1952,7 @@ carp_config_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 	struct in_ifaddr_container *iac;
 	const struct sockaddr_in *sin;
 	u_long iaddr;
-	int own;
+	int own, ia_match_carpdev;
 
 	KKASSERT(vha->vha_ia != NULL);
 
@@ -1961,6 +1961,7 @@ carp_config_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 
 	ia_if = NULL;
 	own = 0;
+	ia_match_carpdev = 0;
 	TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
 		struct in_ifaddr *ia = iac->ia;
 
@@ -1981,11 +1982,28 @@ carp_config_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 			if (sin->sin_addr.s_addr ==
 			    ia->ia_addr.sin_addr.s_addr)
 				own = 1;
-			if (ia_if == NULL)
+			if (ia_if == NULL) {
 				ia_if = ia;
-			else if (sc->sc_carpdev != NULL &&
-				 sc->sc_carpdev == ia->ia_ifp)
+			} else if (sc->sc_carpdev != NULL &&
+			    sc->sc_carpdev == ia->ia_ifp) {
 				ia_if = ia;
+				if (ia_if->ia_flags & IFA_ROUTE) {
+					/*
+					 * Address with prefix route
+					 * is prefered
+					 */
+					break;
+				}
+				ia_match_carpdev = 1;
+			} else if (!ia_match_carpdev) {
+				if (ia->ia_flags & IFA_ROUTE) {
+					/*
+					 * Address with prefix route
+					 * is prefered over others.
+					 */
+					ia_if = ia;
+				}
+			}
 		}
 	}
 
