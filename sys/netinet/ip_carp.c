@@ -1949,15 +1949,12 @@ carp_config_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 {
 	struct ifnet *ifp;
 	struct in_ifaddr *ia_if;
+	const struct in_ifaddr *ia_vha;
 	struct in_ifaddr_container *iac;
-	const struct sockaddr_in *sin;
-	u_long iaddr;
 	int own, ia_match_carpdev;
 
 	KKASSERT(vha->vha_ia != NULL);
-
-	sin = &vha->vha_ia->ia_addr;
-	iaddr = ntohl(sin->sin_addr.s_addr);
+	ia_vha = vha->vha_ia;
 
 	ia_if = NULL;
 	own = 0;
@@ -1978,8 +1975,9 @@ carp_config_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 		if ((ia->ia_ifp->if_flags & IFF_MULTICAST) == 0)
 			continue;
 
-		if ((iaddr & ia->ia_subnetmask) == ia->ia_subnet) {
-			if (sin->sin_addr.s_addr ==
+		if (ia_vha->ia_subnetmask == ia->ia_subnetmask &&
+		    ia_vha->ia_subnet == ia->ia_subnet) {
+			if (ia_vha->ia_addr.sin_addr.s_addr ==
 			    ia->ia_addr.sin_addr.s_addr)
 				own = 1;
 			if (ia_if == NULL) {
@@ -2912,16 +2910,14 @@ carp_link_addrs(struct carp_softc *sc, struct ifnet *ifp, struct ifaddr *ifa_if)
 	 */
 	TAILQ_FOREACH(vha, &sc->sc_vha_list, vha_link) {
 		const struct in_ifaddr *ia;
-		u_long iaddr;
 		int own;
 
 		if (vha->vha_iaback != NULL)
 			continue;
 
 		ia = vha->vha_ia;
-		iaddr = ntohl(ia->ia_addr.sin_addr.s_addr);
-
-		if ((iaddr & ia_if->ia_subnetmask) != ia_if->ia_subnet)
+		if (ia->ia_subnetmask != ia_if->ia_subnetmask ||
+		    ia->ia_subnet != ia_if->ia_subnet)
 			continue;
 
 		own = 0;
