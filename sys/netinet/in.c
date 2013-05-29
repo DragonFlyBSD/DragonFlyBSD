@@ -1201,6 +1201,16 @@ in_scrubprefix(struct in_ifaddr *target)
 	struct in_addr prefix, mask;
 	int error;
 
+#ifdef CARP
+	/*
+	 * Don't scrub prefix routes for CARP interfaces.
+	 * Prefix routes deletion is handled by CARP
+	 * interfaces themselves.
+	 */
+	if (target->ia_ifp->if_type == IFT_CARP)
+		return;
+#endif
+
 	if ((target->ia_flags & IFA_ROUTE) == 0)
 		return;
 

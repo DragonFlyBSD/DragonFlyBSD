@@ -388,6 +388,7 @@ typedef int (*rtsearch_callback_func_t)(int, struct rt_addrinfo *,
 
 void	 rtfree (struct rtentry *);
 int	 rtinit (struct ifaddr *, int, int);
+int	 rtchange (struct ifaddr *, struct ifaddr *);
 int	 rtioctl (u_long, caddr_t, struct ucred *);
 void	 rtredirect (struct sockaddr *, struct sockaddr *,
 	    struct sockaddr *, int, struct sockaddr *);

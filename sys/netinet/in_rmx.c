@@ -43,6 +43,8 @@
  *     indefinitely.  See in_rtqtimo() below for the exact mechanism.
  */
 
+#include "opt_carp.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -56,6 +58,9 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <net/if_var.h>
+#ifdef CARP
+#include <net/if_types.h>
+#endif
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
@@ -426,7 +431,7 @@ in_ifadownkill(struct radix_node *rn, void *xap)
 }
 
 int
-in_ifadown(struct ifaddr *ifa, int delete)
+in_ifadown_force(struct ifaddr *ifa, int delete)
 {
 	struct in_ifadown_arg arg;
 	struct radix_node_head *rnh;
@@ -457,3 +462,12 @@ in_ifadown(struct ifaddr *ifa, int delete)
 	return 0;
 }
 
+int
+in_ifadown(struct ifaddr *ifa, int delete)
+{
+#ifdef CARP
+	if (ifa->ifa_ifp->if_type == IFT_CARP)
+		return 0;
+#endif
+	return in_ifadown_force(ifa, delete);
+}
