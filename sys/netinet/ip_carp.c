@@ -3132,7 +3132,6 @@ static int
 carp_addroute_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha)
 {
 	struct in_ifaddr *ia, *iaback;
-	int error;
 
 	if (sc->sc_state != MASTER)
 		return 0;
@@ -3143,14 +3142,7 @@ carp_addroute_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha)
 	iaback = vha->vha_iaback;
 	KKASSERT(iaback != NULL);
 
-	rtinit(&iaback->ia_ifa, RTM_DELETE, rtinitflags(iaback));
-	in_ifadown(&iaback->ia_ifa, 1);
-	iaback->ia_flags &= ~IFA_ROUTE;
-
-	error = rtinit(&ia->ia_ifa, RTM_ADD, rtinitflags(ia) | RTF_UP);
-	if (!error)
-		ia->ia_flags |= IFA_ROUTE;
-	return error;
+	return rtchange(&iaback->ia_ifa, &ia->ia_ifa);
 }
 
 static void
@@ -3165,18 +3157,14 @@ carp_delroute_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha,
 	iaback = vha->vha_iaback;
 	KKASSERT(iaback != NULL);
 
-	rtinit(&ia->ia_ifa, RTM_DELETE, rtinitflags(ia));
-	in_ifadown(&ia->ia_ifa, 1);
-	ia->ia_flags &= ~IFA_ROUTE;
-
 	if (!del_iaback && (iaback->ia_ifp->if_flags & IFF_UP)) {
-		int error;
-
-		error = rtinit(&iaback->ia_ifa, RTM_ADD,
-		    rtinitflags(iaback) | RTF_UP);
-		if (!error)
-			iaback->ia_flags |= IFA_ROUTE;
+		rtchange(&ia->ia_ifa, &iaback->ia_ifa);
+		return;
 	}
+
+	rtinit(&ia->ia_ifa, RTM_DELETE, rtinitflags(ia));
+	in_ifadown_force(&ia->ia_ifa, 1);
+	ia->ia_flags &= ~IFA_ROUTE;
 }
 
 static int

@@ -250,6 +250,7 @@ void	in_rtqdrain (void);
 void	ip_input (struct mbuf *);
 void	ip_forward (struct mbuf *, boolean_t, struct sockaddr_in *);
 int	in_ifadown (struct ifaddr *ifa, int);
+int	in_ifadown_force (struct ifaddr *ifa, int);
 void	in_ifscrub (struct ifnet *, struct in_ifaddr *);
 void	in_iaunlink (struct in_ifaddr *);
 void	in_iahash_insert (struct in_ifaddr *);

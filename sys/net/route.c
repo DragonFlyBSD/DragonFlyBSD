@@ -1781,3 +1781,99 @@ rtmask_add_msghandler(netmsg_t msg)
 
 /* This must be before ip6_init2(), which is now SI_ORDER_MIDDLE */
 SYSINIT(route, SI_SUB_PROTO_DOMAIN, SI_ORDER_THIRD, route_init, 0);
+
+struct rtchange_arg {
+	struct ifaddr	*old_ifa;
+	struct ifaddr	*new_ifa;
+	struct rtentry	*rt;
+	int		changed;
+};
+
+static void
+rtchange_ifa(struct rtentry *rt, struct rtchange_arg *ap)
+{
+	if (rt->rt_ifa->ifa_rtrequest != NULL)
+		rt->rt_ifa->ifa_rtrequest(RTM_DELETE, rt, NULL);
+	IFAFREE(rt->rt_ifa);
+
+	IFAREF(ap->new_ifa);
+	rt->rt_ifa = ap->new_ifa;
+	rt->rt_ifp = ap->new_ifa->ifa_ifp;
+	if (rt->rt_ifa->ifa_rtrequest != NULL)
+		rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, NULL);
+
+	ap->changed = 1;
+}
+
+static int
+rtchange_callback(struct radix_node *rn, void *xap)
+{
+	struct rtchange_arg *ap = xap;
+	struct rtentry *rt = (struct rtentry *)rn;
+
+	if (rt->rt_ifa == ap->old_ifa) {
+		if (rt->rt_flags & (RTF_CLONING | RTF_PRCLONING)) {
+			/*
+			 * We could saw the branch off when we are
+			 * still sitting on it, if the ifa_rtrequest
+			 * DEL/ADD are called directly from here.
+			 */
+			ap->rt = rt;
+			return EJUSTRETURN;
+		}
+		rtchange_ifa(rt, ap);
+	}
+	return 0;
+}
+
+int
+rtchange(struct ifaddr *old_ifa, struct ifaddr *new_ifa)
+{
+	struct rtchange_arg arg;
+	int origcpu, cpu;
+
+	memset(&arg, 0, sizeof(arg));
+	arg.old_ifa = old_ifa;
+	arg.new_ifa = new_ifa;
+
+	/*
+	 * XXX individual requests are not independantly chained,
+	 * which means that the per-cpu route tables will not be
+	 * consistent in the middle of the operation.  If routes
+	 * related to the interface are manipulated while we are
+	 * doing this the inconsistancy could trigger a panic.
+	 */
+	origcpu = mycpuid;
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		struct radix_node_head *rnh;
+
+		lwkt_migratecpu(cpu);
+
+		rnh = rt_tables[cpu][AF_INET];
+		for (;;) {
+			int error;
+
+			KKASSERT(arg.rt == NULL);
+			error = rnh->rnh_walktree(rnh,
+			    rtchange_callback, &arg);
+			if (arg.rt != NULL) {
+				struct rtentry *rt;
+
+				rt = arg.rt;
+				arg.rt = NULL;
+				rtchange_ifa(rt, &arg);
+			} else {
+				break;
+			}
+		}
+	}
+	lwkt_migratecpu(origcpu);
+
+	if (arg.changed) {
+		old_ifa->ifa_flags &= ~IFA_ROUTE;
+		new_ifa->ifa_flags |= IFA_ROUTE;
+		return 0;
+	} else {
+		return ENOENT;
+	}
+}
