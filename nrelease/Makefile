@@ -14,6 +14,7 @@ gui installer img nopkgs:
 #				 SETUP		 			#
 #########################################################################
 
+DPORTS_PATH?=	/usr/dports
 ISODIR?=	/usr/release
 ISOROOT?=	${ISODIR}/root
 OBJSYS=		${.OBJDIR}/../sys
