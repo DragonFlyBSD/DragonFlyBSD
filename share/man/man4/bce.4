@@ -28,12 +28,12 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/bce.4,v 1.7 2007/02/09 18:26:13 brueffer Exp $
 .\"
-.Dd April 7, 2012
+.Dd May 30, 2013
 .Dt BCE 4
 .Os
 .Sh NAME
 .Nm bce
-.Nd "Broadcom NetXtreme II (BCM5706/BCM5708) PCI/PCIe Gigabit Ethernet adapter driver"
+.Nd "Broadcom NetXtreme II PCIe Gigabit Ethernet adapter driver"
 .Sh SYNOPSIS
 To compile this driver into the kernel,
 place the following lines in your
@@ -53,7 +53,7 @@ if_bce_load="YES"
 The
 .Nm
 driver supports Broadcom's NetXtreme II product family, including the
-BCM5706 and BCM5708 Ethernet controllers.
+BCM5706, BCM5708, BCM5709 and BCM5716 Ethernet controllers.
 .Pp
 The NetXtreme II product family is composed of various Converged NIC (or CNIC)
 Ethernet controllers which support a TCP Offload Engine (TOE), Remote DMA (RDMA),
@@ -61,8 +61,7 @@ and iSCSI acceleration, in addition to standard L2 Ethernet traffic, all on the
 same controller.
 The following features are supported in the
 .Nm
-driver under
-.Dx :
+driver:
 .Pp
 .Bl -item -offset indent -compact
 .It
@@ -71,7 +70,9 @@ TCP/UDP checksum offload
 .\".It
 .\"Jumbo frames (up to 9022 bytes)
 .It
-VLAN tag stripping
+TCP segementation offloading (TSO)
+.It
+VLAN tag stripping and inserting
 .It
 Interrupt coalescing
 .It
@@ -79,6 +80,25 @@ Interrupt coalescing
 .It
 10/100Mbps operation in half-duplex mode
 .El
+.Pp
+The following features are supported in the
+.Nm
+driver for BCM5709 and BCM5716:
+.Pp
+.Bl -item -offset indent -compact
+.It
+Receiving side scaling (RSS), up to 8 reception queues
+.It
+Multiple tranmission queues, up to 8 transmission queues
+.It
+Multiple vector MSI-X
+.El
+.Pp
+For BCM5709 and BCM5716,
+by default,
+.Nm
+driver will try enabling as many reception and transmission queues
+as allowed by the number of CPUs in the system.
 .Pp
 The
 .Nm
@@ -133,19 +153,22 @@ The
 driver supports
 .Xr polling 4 .
 .Sh TUNABLES
-.Bl -tag -width ".Va hw.bce.tx_ticks_int"
+.Em  X
+is the device unit number.
+.Pp
+.Bl -tag -width ".Va hw.bceX.npoll.offset"
 .It Va hw.bce.tx_bds
 Maximum number of sending BDs which must be processed by the device
 before the device updates the status block and generates interrupt.
 It is used together with
 .Va hw.bce.tx_ticks
 to achieve TX interrupt moderation.
-Default value is 24.
+Default value is 255.
 .It Va hw.bce.tx_bds_int
 Maximum number of sending BDs which must be processed by the device
 before the device updates the status block
 during host interrupt processing.
-Default value is 20.
+Default value is 255.
 .It Va hw.bce.tx_ticks
 How often status block should be updated and interrupt should be generated
 by the device,
@@ -153,24 +176,24 @@ due to sending packets.
 It is used together with
 .Va hw.bce.tx_bds
 to achieve TX interrupt moderation.
-Default value is 1000 (microseconds).
+Default value is 1022 (microseconds).
 .It Va hw.bce.tx_ticks_int
 How often status block should be updated by the device
 during host interrupt processing,
 due to sending packets.
-Default value is 80 (microseconds).
+Default value is 1022 (microseconds).
 .It Va hw.bce.rx_bds
 Maximum number of BDs which must be received by the device
 before the device updates the status block and generates interrupt.
 It is used together with
 .Va hw.bce.rx_ticks
 to achieve RX interrupt moderation.
-Default value is 24.
+Default value is 0.
 .It Va hw.bce.rx_bds_int
 Maximum number of BDs which must be received by the device
 before the device updates the status block
 during host interrupt processing.
-Default value is 6.
+Default value is 128.
 .It Va hw.bce.rx_ticks
 How often status block should be updated and interrupt should be generated
 by the device,
@@ -178,161 +201,150 @@ due to receiving packets.
 It is used together with
 .Va hw.bce.rx_bds
 to achieve RX interrupt moderation.
-Default value is 100 (microseconds).
+Default value is 150 (microseconds).
 .It Va hw.bce.rx_ticks_int
 How often status block should be updated by the device
 during host interrupt processing,
 due to receiving packets.
-Default value is 18 (microseconds).
-.It Va hw.bce.msi.enable
-By default, the driver will use MSI if it is supported.
+Default value is 150 (microseconds).
+.It Va hw.bce.msi.enable Va hw.bceX.msi.enable
+For BCM5706 and BCM5708,
+by default, 
+the driver will use MSI if it is supported.
 This behavior can be turned off by setting this tunable to 0.
+.It Va hw.bceX.msi.cpu
+If MSI is used, it specifies the MSI's target CPU.
+.It Va hw.bce.msix.enabel Va hw.bceX.msix.enable
+For BCM5709 and BCM5716,
+by default, 
+the driver will use MSI-X if it is supported.
+This behavior can be turned off by setting this tunable to 0.
+.It Va hw.bce.rx_pages Va hw.bceX.rx_pages
+How many reception descriptor pages should be used.
+One reception descriptor page holds 256 reception descriptors.
+Default value is 2.
+.It Va hw.bce.tx_pages Va hw.bceX.tx_pages
+How many transmission descriptor pages should be used.
+One transmission descriptor page holds 256 transmission descriptors.
+Default value is 2.
+.It Va hw.bceX.msix.offset
+For BCM5709 and BCM5716,
+if MSI-X is used,
+this tunable specifies the leading target CPU for transmission and reception
+queues processing.
+The value specificed must be aligned on the number of reception queues
+enabled and must be less the power of 2 number of CPUs.
+.It Va hw.bceX.npoll.offset
+This tunable specifies the leading target CPU for transmission and reception
+queues
+.Xr polling 4
+processing.
+The value specificed must be aligned on the number of reception queues
+enabled and must be less the power of 2 number of CPUs.
+.It Va hw.bce.rx_rings Va hw.bceX.rx_rings
+For BCM5709 and BCM5716,
+if MSI-X is used,
+this tunable specifies the number reception queues to be enabled.
+Maximum allowed value for these tunables is 8 and
+it must be power of 2 aligned.
+Setting these tunables to 0 allows driver to enable as many reception queues
+as allowed by the number of CPUs.
+.It Va hw.bce.tx_rings Va hw.bceX.tx_rings
+For BCM5709 and BCM5716,
+if MSI-X is used,
+this tunable specifies the number transmission queues to be enabled.
+Maximum allowed value for these tunables is 8,
+it must be power of 2 aligned
+and it must be less than or equal to the number of reception queues enabled.
+Setting these tunables to 0 allows driver to enable as many transmission queues
+as allowed by the number of CPUs and number reception queues enabled.
+.It Va hw.bce.tx_wreg
+The number of transmission descriptors should be setup before the hardware
+register is written.
+Setting this value too high will have negative effect
+on transmission timeliness.
+Setting this value too low will hurt overall transmission due to the frequent
+hardware register writing.
+Default value is 8.
 .El
-.Sh HARDWARE
-The
-.Nm
-driver provides support for various NICs based on the Broadcom NetXtreme II
-family of Gigabit Ethernet controllers, including the
-following:
-.Pp
-.Bl -bullet -compact
-.It
-HP NC370T Multifunction Gigabit Server Adapter
-.It
-HP NC370i Multifunction Gigabit Server Adapter
-.El
-.Sh DIAGNOSTICS
-.Bl -diag
-.It "bce%d: PCI memory allocation failed!"
-The driver has encountered a fatal initialization error.
-.It "bce%d: PCI map interrupt failed!"
-The driver has encountered a fatal initialization error.
-.It "bce%d: Unsupported controller revision (%c%d)"
-The driver does not support the controller revision in use.
-.It "bce%d: Controller initialization failed!"
-The driver has encountered a fatal initialization error.
-.It "bce%d: NVRAM test failed!"
-The driver could not access the controller NVRAM correctly.
-.It "bce%d: DMA resource allocation failed!"
-The driver could not allocate DMA memory to setup the controllers
-host memory data structures.
-.It "bce%d: Interface allocation failed!"
-The driver could not create a network interface for the controller.
-.It "bce%d: PHY probe failed!"
-The driver could not access the PHY used by the controller.
-.It "bce%d: Failed to setup IRQ!"
-The driver could not initialize the IRQ handler.
-.It "bce%d: Error: PHY read timeout!"
-The driver could not read a PHY register before the timeout period expired.
-.It "bce%d: PHY write timeout!"
-The driver could not write to the PHY register because a timeout occurred.
-.It "bce%d: Timeout error reading NVRAM at offset 0x%08X!"
-The driver could not write to NVRAM because a timeout occurred.
-.It "bce%d: Unknown Flash NVRAM found!"
-The driver does not recognize the NVRAM device being used and therefore
-cannot access it correctly.
-.It "bce%d: Invalid NVRAM magic value!"
-The driver cannot read NVRAM or the NVRAM is corrupt.
-.It "bce%d: Invalid Manufacturing Information NVRAM CRC!"
-The driver cannot read NVRAM or the NVRAM is corrupt.
-.It "bce%d: Invalid Feature Configuration Information NVRAM CRC!"
-The driver cannot read NVRAM or the NVRAM is corrupt.
-.It "bce%d: DMA mapping error!"
-The driver was unable to map memory into DMA addressable space required
-by the controller.
-.It "bce%d: Could not allocate parent DMA tag!"
-The driver could not allocate a PCI compatible DMA tag.
-.It "bce%d: Could not allocate status block DMA tag!"
-The driver could not allocate a DMA tag for the controller's
-status block.
-.It "bce%d: Could not allocate status block DMA memory!"
-The driver could not allocate DMA addressable memory for the controller's
-status block.
-.It "bce_d: Could not map status block DMA memory!"
-The driver could not map the status block memory into the controller's DMA
-address space.
-.It "bce%d: Could not allocate statistics block DMA tag!"
-The driver could not allocate a DMA tag for the controller's
-statistics block.
-.It "bce%d: Could not allocate statistics block DMA memory!"
-The driver could not allocate DMA addressable memory for the controller's
-statistics block.
-.It "bce%d: Could not map statistics block DMA memory!"
-The driver could not map the statistics block memory into the controller's DMA
-address space.
-.It "bce%d: Could not allocate TX descriptor chain DMA tag!"
-The driver could not allocate a DMA tag for the controller's
-TX chain.
-.It "bce%d: Could not allocate TX descriptor chain DMA memory!"
-The driver could not allocate DMA addressable memory for the controller's
-TX chain.
-.It "bce%d: Could not map TX descriptor chain DMA memory!"
-The driver could not map the TX descriptor chain memory into the controller's DMA
-address space.
-.It "bce%d: Could not allocate TX mbuf DMA tag!"
-The driver could not allocate a DMA tag for the controller's
-TX mbuf memory.
-.It "bce%d: Unable to create TX mbuf DMA map!"
-The driver could not map the TX mbuf memory into the controller's DMA
-address space.
-.It "bce%d: Could not allocate RX descriptor chain DMA tag!"
-The driver could not allocate a DMA tag for the controller's
-RX chain.
-.It "bce%d: Could not allocate RX descriptor chain "
-The driver could not allocate DMA addressable memory for the controller's
-RX chain.
-.It "bce%d: Could not map RX descriptor chain DMA memory!"
-The driver could not map the RX descriptor chain memory into the controller's DMA
-address space.
-.It "bce%d: Could not allocate RX mbuf DMA tag!"
-The driver could not allocate a DMA tag for the controller's
-RX mbuf memory.
-.It "bce%d: Unable to create RX mbuf DMA map!"
-The driver could not map the RX mbuf memory into the controller's DMA
-address space.
-.It "bce%d: Firmware synchronization timeout!"
-The driver was not able to synchronize with the firmware running on the
-controller.
-The firmware may be stopped or hung.
-.It "bce%d: Invalid Ethernet address!"
-The driver was not able to read a valid Ethernet MAC address from NVRAM.
-.It "bce%d: Reset failed!"
-The driver has encountered a fatal initialization error.
-.It "bce%d: Byte swap is incorrect!"
-The driver has encountered a fatal initialization error.
-Contact the author
-with details of the CPU architecture and system chipset in use.
-.It "bce%d: Firmware did not complete initialization!"
-The driver has encountered a fatal initialization error.
-.It "bce%d: Bootcode not running!"
-The driver has encountered a fatal initialization error.
-.It "bce%d: Error mapping mbuf into RX chain!"
-The driver could not map a RX mbuf into DMA addressable memory.
-.It "bce%d: Error filling RX chain: rx_bd[0x%04X]!"
-The driver was unable to allocate enough mbufs to fill the RX chain
-during initialization.
-Try increasing the number of mbufs available in
-the system, increase system memory.
-.\"or if using jumbo frames, make sure enough 9KB mbufs are available.
-.It "bce%d: Failed to allocate new mbuf, incoming frame dropped!"
-The driver was unable to allocate a new mbuf for the RX chain and reused
-the mbuf for the received frame, dropping the incoming frame in the process.
-Try increasing the number of mbufs available in the system or increase system
-memory.
-.It "bce%d: Controller reset failed!"
-A fatal initialization error has occurred.
-.It "bce%d: Controller initialization failed!"
-A fatal initialization error has occurred.
-.It "bce%d: Block initialization failed!"
-A fatal initialization error has occurred.
-.It "bce%d: Error mapping mbuf into TX chain!"
-The driver could not map a TX mbuf into DMA addressable memory.
-.It "bce%d: Watchdog timeout occurred, resetting!"
-The device has stopped responding to the network, there is a problem
-with the cable connection, or a driver logic problem has occurred..
-.It "bce%d: Fatal attention detected: 0x%08X!"
-A controller hardware failure has occurred.
-If the problem continues replace the controller.
+.Sh MIB Variables
+A number of per-interface variables are implemented in the
+.Va hw.bce Ns Em X
+branch of the
+.Xr sysctl 3
+MIB.
+.Bl -tag -width "tx_ticks_int"
+.It Va tx_bds_int
+See the tunable
+.Va hw.bce.tx_bds_int .
+.It Va tx_bds
+See the tunable
+.Va hw.bce.tx_bds .
+.It Va tx_ticks_int
+See the tunable
+.Va hw.bce.tx_ticks_int .
+.It Va tx_ticks
+See the tunable
+.Va hw.bce.tx_ticks .
+.It Va rx_bds_int
+See the tunable
+.Va hw.bce.rx_bds_int .
+.It Va rx_bds
+See the tunable
+.Va hw.bce_rx_bds .
+.It Va rx_ticks_int
+See the tunable
+.Va hw.bce.rx_ticks_int .
+.It Va rx_ticks
+See the tunable
+.Va hw.bce.rx_ticks .
+.It Va rx_rings
+Number of reception queues actually enabled (read-only).
+For BCM5709 and BCM5716,
+if MSI-X is enabled,
+the enabled reception queues will be one more than the
+value specified in tunable
+.Va hw.bce.rx_rings
+or
+.Va hw.bceX.rx_rings .
+The extra reception queue is for the packets whose RSS hash
+could not be calculated by the hardware.
+.It Va tx_rings
+Number of transmission queues enable (read-only).
+For BCM5709 and BCM5716,
+if MSI-X is enabled,
+use the tunable
+.Va hw.bce.tx_rings
+or
+.Va hw.bceX.tx_rings
+to configure it.
+.It Va rx_pages
+Number of reception descriptor pages enabled (read-only).
+Use the tunable
+.Va hw.bce.rx_pages
+or
+.Va hw.bceX.rx_pages
+to configure it.
+.It Va tx_pages
+Number of transmission descriptor pages enabled (read-only).
+Use the tunable
+.Va hw.bce.tx_pages
+or
+.Va hw.bceX.tx_pages
+to configure it.
+.It Va tx_wreg
+See the tunable
+.Va hw.bce.tx_wreg .
+.It Va npoll_offset
+.Xr polling 4
+reception and transmission queues' leading target CPU.
+It has the same constraints as the tunable
+.Va hw.bceX.npoll.offset .
+The set value will take effect the next time
+.Xr polling 4
+is enabled on the device.
+.It Va stat_*
+Various hardware statistics.
 .El
 .Sh SEE ALSO
 .Xr altq 4 ,
@@ -354,3 +366,7 @@ The
 .Nm
 driver was written by
 .An David Christensen Aq davidch@broadcom.com .
+Sepherosa Ziehau added receiving side scaling,
+multiple transmission queues
+and multiple vector MSI-X support to
+.Dx .
