@@ -1657,6 +1657,15 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp,
 		adapter->tx_nsegs += i;
 		*segs_used += i;
 	}
+
+        /* Handle VLAN tag */
+	if (m_head->m_flags & M_VLANTAG) {
+		/* Set the vlan id. */
+		txd_upper |= (htole16(m_head->m_pkthdr.ether_vlantag) << 16);
+		/* Tell hardware to add tag */
+		txd_lower |= htole32(E1000_TXD_CMD_VLE);
+	}
+
 	i = adapter->next_avail_tx_desc;
 
 	/* Set up our transmit descriptors */
@@ -1713,16 +1722,6 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp,
 	} else {
 		KKASSERT(adapter->num_tx_desc_avail > nsegs);
 		adapter->num_tx_desc_avail -= nsegs;
-	}
-
-        /* Handle VLAN tag */
-	if (m_head->m_flags & M_VLANTAG) {
-		/* Set the vlan id. */
-		ctxd->upper.fields.special =
-		    htole16(m_head->m_pkthdr.ether_vlantag);
-
-		/* Tell hardware to add tag */
-		ctxd->lower.data |= htole32(E1000_TXD_CMD_VLE);
 	}
 
 	tx_buffer->m_head = m_head;
