@@ -29,7 +29,7 @@
 .\" $FreeBSD: src/usr.bin/vmstat/vmstat.8,v 1.16.2.5 2001/08/16 13:17:13 ru Exp $
 .\" $DragonFly: src/usr.bin/vmstat/vmstat.8,v 1.6 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd September 2, 2008
+.Dd May 30, 2013
 .Dt VMSTAT 8
 .Os
 .Sh NAME
@@ -173,7 +173,7 @@ events which have occurred since system startup.
 .It Fl v
 If specified together with
 .Fl i ,
-include IRQ numbers before device names.
+include IRQ numbers and IRQ target CPU numbers before device names.
 .It Fl w
 Pause
 .Ar wait
