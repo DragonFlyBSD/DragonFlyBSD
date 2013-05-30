@@ -32,10 +32,22 @@
 osver=`uname -r | awk -F - '{ print $1; }'`
 cpuver=`uname -p | awk -F - '{ print $1; }'`
 [ -f /etc/pkg_radd.conf ] && . /etc/pkg_radd.conf
-: ${BINPKG_BASE:=http://mirror-master.dragonflybsd.org/packages}
-: ${BINPKG_SITES:=$BINPKG_BASE/$cpuver/DragonFly-$osver/stable}
-: ${PKG_PATH:=$BINPKG_SITES/All}
 
-export PKG_PATH
-
-exec pkg_add "$@"
+# If dports is installed it takes priority over pkgsrc.
+#
+# dports uses /usr/local/etc/pkg.conf
+#
+if [ -e /usr/local/sbin/pkg ]; then
+    if [ ! -f /usr/local/etc/pkg.conf ]; then
+	echo "You need to setup /usr/local/etc/pkg.conf first."
+	echo "See the sample in /usr/local/etc/pkg.conf.sample"
+	exit 1
+    fi
+    exec pkg install "$@"
+else
+    : ${BINPKG_BASE:=http://mirror-master.dragonflybsd.org/packages}
+    : ${BINPKG_SITES:=$BINPKG_BASE/$cpuver/DragonFly-$osver/stable}
+    : ${PKG_PATH:=$BINPKG_SITES/All}
+    export PKG_PATH
+    exec pkg_add "$@"
+fi
