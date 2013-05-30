@@ -103,13 +103,13 @@ typedef struct copy_info {
 	dev_t ddevNo;
 } *copy_info_t;
 
-struct hlink *hltable[HLSIZE];
+static struct hlink *hltable[HLSIZE];
 
-void RemoveRecur(const char *dpath, dev_t devNo, struct stat *dstat);
-void InitList(List *list);
-void ResetList(List *list);
-Node *IterateList(List *list, Node *node, int n);
-int AddList(List *list, const char *name, int n, struct stat *st);
+static void RemoveRecur(const char *dpath, dev_t devNo, struct stat *dstat);
+static void InitList(List *list);
+static void ResetList(List *list);
+static Node *IterateList(List *list, Node *node, int n);
+static int AddList(List *list, const char *name, int n, struct stat *st);
 static int getbool(const char *str);
 static char *SplitRemote(char *path);
 static int ChgrpAllowed(gid_t g);
@@ -126,7 +126,7 @@ static int validate_check(const char *spath, const char *dpath);
 static int shash(const char *s);
 static void hltdelete(struct hlink *);
 static void hltsetdino(struct hlink *, ino_t);
-int YesNo(const char *path);
+static int YesNo(const char *path);
 static int xrename(const char *src, const char *dst, u_long flags);
 static int xlink(const char *src, const char *dst, u_long flags);
 static int xremove(struct HostConf *host, const char *path);
@@ -149,19 +149,20 @@ int SummaryOpt;
 int CompressOpt;
 int SlaveOpt;
 int ReadOnlyOpt;
-int EnableDirectoryRetries;
-int DstBaseLen;
 int ValidateOpt;
-int HardLinkCount;
 int ssh_argc;
 const char *ssh_argv[16];
 int DstRootPrivs;
-int GroupCount;
-gid_t *GroupList;
+
 const char *UseCpFile;
-const char *UseHLPath;
 const char *MD5CacheFile;
 const char *FSMIDCacheFile;
+const char *UseHLPath;
+
+static int DstBaseLen;
+static int HardLinkCount;
+static int GroupCount;
+static gid_t *GroupList;
 
 int64_t CountSourceBytes;
 int64_t CountSourceItems;
@@ -172,8 +173,8 @@ int64_t CountWriteBytes;
 int64_t CountRemovedItems;
 int64_t CountLinkedItems;
 
-struct HostConf SrcHost;
-struct HostConf DstHost;
+static struct HostConf SrcHost;
+static struct HostConf DstHost;
 
 int
 main(int ac, char **av)
@@ -1431,7 +1432,7 @@ ScanDir(List *list, struct HostConf *host, const char *path,
  * RemoveRecur()
  */
 
-void
+static void
 RemoveRecur(const char *dpath, dev_t devNo, struct stat *dstat)
 {
     struct stat st;
@@ -1523,14 +1524,14 @@ RemoveRecur(const char *dpath, dev_t devNo, struct stat *dstat)
     }
 }
 
-void
+static void
 InitList(List *list)
 {
     bzero(list, sizeof(List));
     list->li_Node.no_Next = &list->li_Node;
 }
 
-void 
+static void
 ResetList(List *list)
 {
     Node *node;
@@ -1544,7 +1545,7 @@ ResetList(List *list)
     InitList(list);
 }
 
-Node *
+static Node *
 IterateList(List *list, Node *node, int n)
 {
     if (node == NULL)
@@ -1556,7 +1557,7 @@ IterateList(List *list, Node *node, int n)
     return (node == &list->li_Node ? NULL : node);
 }
 
-int
+static int
 AddList(List *list, const char *name, int n, struct stat *st)
 {
     Node *node;
@@ -1624,7 +1625,7 @@ shash(const char *s)
     return(((hv >> 16) ^ hv) & HMASK);
 }
 
-int
+static int
 YesNo(const char *path)
 {
     int ch, first;

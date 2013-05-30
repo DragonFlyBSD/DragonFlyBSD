@@ -46,7 +46,7 @@ struct HCHead {
     int16_t cmd;		/* command code */
     uint16_t id;		/* transaction id */
     int32_t error;		/* error code (response) */
-};
+} __aligned(8);	/* fix clang warning, not required for correct operation */
 
 #define HCMAGIC		0x48435052	/* compatible byte ordering */
 #define HCC_ALIGN(bytes)	(((bytes) + 7) & ~7)
@@ -55,7 +55,7 @@ struct HCLeaf {
     int16_t leafid;
     int16_t reserved;		/* reserved must be 0 */
     int32_t bytes;
-};
+} __aligned(8);	/* fix clang warning, not required for correct operation */
 
 #define HCF_CONTINUE	0x4000		/* expect another reply */
 #define HCF_REPLY	0x8000		/* reply */

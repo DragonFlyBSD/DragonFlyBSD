@@ -49,7 +49,7 @@ static int getmygroups(gid_t **gidlist);
 
 static int silentwarning(int *, const char *, ...) __printflike(2, 3);
 
-struct HCDesc HCDispatchTable[] = {
+static struct HCDesc HCDispatchTable[] = {
     { HC_HELLO,		rc_hello },
     { HC_STAT,		rc_stat },
     { HC_LSTAT,		rc_lstat },

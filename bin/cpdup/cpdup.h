@@ -55,13 +55,25 @@ void md5_flush(void);
 extern const char *UseCpFile;
 extern const char *MD5CacheFile;
 extern const char *FSMIDCacheFile;
+extern const char *UseHLPath;
 
+extern int AskConfirmation;
+extern int SafetyOpt;
+extern int ForceOpt;
+extern int DeviceOpt;
+extern int VerboseOpt;
+extern int DirShowOpt;
 extern int QuietOpt;
 extern int NotForRealOpt;
+extern int NoRemoveOpt;
+extern int UseMD5Opt;
+extern int UseFSMIDOpt;
+extern int SlaveOpt;
 extern int SummaryOpt;
 extern int CompressOpt;
 extern int ReadOnlyOpt;
 extern int DstRootPrivs;
+extern int ValidateOpt;
 
 extern int ssh_argc;
 extern const char *ssh_argv[];
@@ -73,6 +85,7 @@ extern int64_t CountSourceReadBytes;
 extern int64_t CountTargetReadBytes;
 extern int64_t CountWriteBytes;
 extern int64_t CountRemovedItems;
+extern int64_t CountLinkedItems;
 
 #ifdef DEBUG_MALLOC
 void *debug_malloc(size_t bytes, const char *file, int line);
