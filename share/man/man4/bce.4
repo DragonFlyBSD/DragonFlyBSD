@@ -87,7 +87,7 @@ driver for BCM5709 and BCM5716:
 .Pp
 .Bl -item -offset indent -compact
 .It
-Receiving side scaling (RSS), up to 8 reception queues
+Receive side scaling (RSS), up to 8 reception queues
 .It
 Multiple tranmission queues, up to 8 transmission queues
 .It
@@ -95,10 +95,10 @@ Multiple vector MSI-X
 .El
 .Pp
 For BCM5709 and BCM5716,
-by default,
+by default, the
 .Nm
 driver will try enabling as many reception and transmission queues
-as allowed by the number of CPUs in the system.
+as are allowed by the number of CPUs in the system.
 .Pp
 The
 .Nm
@@ -153,7 +153,7 @@ The
 driver supports
 .Xr polling 4 .
 .Sh TUNABLES
-.Em  X
+.Em X
 is the device unit number.
 .Pp
 .Bl -tag -width ".Va hw.bceX.npoll.offset"
@@ -214,7 +214,7 @@ the driver will use MSI if it is supported.
 This behavior can be turned off by setting this tunable to 0.
 .It Va hw.bceX.msi.cpu
 If MSI is used, it specifies the MSI's target CPU.
-.It Va hw.bce.msix.enabel Va hw.bceX.msix.enable
+.It Va hw.bce.msix.enable Va hw.bceX.msix.enable
 For BCM5709 and BCM5716,
 by default, 
 the driver will use MSI-X if it is supported.
@@ -232,31 +232,31 @@ For BCM5709 and BCM5716,
 if MSI-X is used,
 this tunable specifies the leading target CPU for transmission and reception
 queues processing.
-The value specificed must be aligned on the number of reception queues
-enabled and must be less the power of 2 number of CPUs.
+The value specificed must be aligned to the number of reception queues
+enabled and must be less than the power of 2 number of CPUs.
 .It Va hw.bceX.npoll.offset
 This tunable specifies the leading target CPU for transmission and reception
 queues
 .Xr polling 4
 processing.
-The value specificed must be aligned on the number of reception queues
-enabled and must be less the power of 2 number of CPUs.
+The value specificed must be aligned to the number of reception queues
+enabled and must be less than the power of 2 number of CPUs.
 .It Va hw.bce.rx_rings Va hw.bceX.rx_rings
 For BCM5709 and BCM5716,
 if MSI-X is used,
-this tunable specifies the number reception queues to be enabled.
+this tunable specifies the number of reception queues to be enabled.
 Maximum allowed value for these tunables is 8 and
 it must be power of 2 aligned.
-Setting these tunables to 0 allows driver to enable as many reception queues
+Setting these tunables to 0 allows the driver to enable as many reception queues
 as allowed by the number of CPUs.
 .It Va hw.bce.tx_rings Va hw.bceX.tx_rings
 For BCM5709 and BCM5716,
 if MSI-X is used,
-this tunable specifies the number transmission queues to be enabled.
+this tunable specifies the number of transmission queues to be enabled.
 Maximum allowed value for these tunables is 8,
 it must be power of 2 aligned
 and it must be less than or equal to the number of reception queues enabled.
-Setting these tunables to 0 allows driver to enable as many transmission queues
+Setting these tunables to 0 allows the driver to enable as many transmission queues
 as allowed by the number of CPUs and number reception queues enabled.
 .It Va hw.bce.tx_wreg
 The number of transmission descriptors should be setup before the hardware
@@ -303,7 +303,7 @@ Number of reception queues actually enabled (read-only).
 For BCM5709 and BCM5716,
 if MSI-X is enabled,
 the enabled reception queues will be one more than the
-value specified in tunable
+value specified in the tunable
 .Va hw.bce.rx_rings
 or
 .Va hw.bceX.rx_rings .
@@ -366,7 +366,7 @@ The
 .Nm
 driver was written by
 .An David Christensen Aq davidch@broadcom.com .
-Sepherosa Ziehau added receiving side scaling,
+Sepherosa Ziehau added receive side scaling,
 multiple transmission queues
 and multiple vector MSI-X support to
 .Dx .
