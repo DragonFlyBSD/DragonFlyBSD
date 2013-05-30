@@ -5691,6 +5691,10 @@ bnx_init_rss(struct bnx_softc *sc)
 
 	KKASSERT(BNX_RSS_ENABLED(sc));
 
+	/*
+	 * Configure RSS redirect table in following fashion:
+	 * (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
+	 */
 	r = 0;
 	for (j = 0; j < BGE_RSS_INDIR_TBL_CNT; ++j) {
 		uint32_t tbl = 0;
