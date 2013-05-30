@@ -245,7 +245,9 @@ Generally speaking machines with IPMI capabilities are capable of
 redirecting the BIOS POST to a fake serial port controlled by the BMC.
 It is then possible to use
 .Xr ipmitool 1
-from pkgsrc to access the console.
+from
+.Xr dports 7
+to access the console.
 .Dx
 kernels adjust the video mode in a way that the BMC cannot usually
 redirect, so your best bet is to set the boot loader AND the kernel up to

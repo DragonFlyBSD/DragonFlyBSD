@@ -572,8 +572,10 @@ appropriate TRIM commands are sent (if supported), or a low level
 factory erase is issued.
 .Pp
 .Nm smartctl
-(from pkgsrc's sysutils/smartmontools) may be used to retrieve
-the wear indicator from the drive.
+(from
+.Xr dports Ap
+.Pa sysutils/smartmontools )
+may be used to retrieve the wear indicator from the drive.
 One usually runs something like
 .Ql smartctl -d sat -a /dev/daXX
 (for AHCI/SILI/SCSI), or

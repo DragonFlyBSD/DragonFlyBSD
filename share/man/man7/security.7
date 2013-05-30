@@ -3,7 +3,6 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/security.7,v 1.13.2.11 2002/04/13 02:04:44 keramida Exp $
-.\" $DragonFly: src/share/man/man7/security.7,v 1.15 2008/10/17 11:30:24 swildner Exp $
 .\"
 .Dd September 18, 1999
 .Dt SECURITY 7
@@ -405,9 +404,9 @@ and
 It is best to physically md5 the client-box files boxes at least once a
 day, and to test control files such as those found in
 .Pa /etc ,
-.Pa /usr/pkg/etc
-and
 .Pa /usr/local/etc
+and
+.Pa /usr/pkg/etc
 even more often.  When mismatches are found relative to the base md5
 information the limited-access machine knows is valid, it should scream at
 a sysadmin to go check it out.  A good security script will also check for
@@ -665,7 +664,7 @@ machines.
 .Xr netstat 1 ,
 .Xr openssl 1 ,
 .Xr ssh 1 ,
-.Xr xdm 1 Pq Pa pkgsrc/x11/xdm ,
+.Xr xdm 1 Pq Pa x11/xdm ,
 .Xr group 5 ,
 .Xr ttys 5 ,
 .Xr firewall 7 ,

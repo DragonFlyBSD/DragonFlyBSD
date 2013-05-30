@@ -1,5 +1,4 @@
 .\"     $OpenBSD: dhcp.8,v 1.24 2008/06/08 03:03:37 jdixon Exp $
-.\"	$DragonFly: src/share/man/man8/dhcp.8,v 1.3 2008/10/15 12:48:34 matthias Exp $
 .\"
 .\"
 .\" Copyright (c) 1999 Aaron Campbell
@@ -82,10 +81,10 @@ as a DHCP server:
 Install
 .Xr dhcpd 8
 (available in
-.Xr pkgsrc 7 ) .
+.Xr dports 7 ) .
 .It
 Edit
-.Pa /usr/pkg/etc/dhcp/dhcpd.conf .
+.Pa /usr/local/etc/dhcp/dhcpd.conf .
 See
 .Xr dhcpd.conf 5
 and
@@ -103,7 +102,7 @@ to start the
 daemon at boot-time and listen for DHCP requests on the local network.
 To start it manually, execute the following command:
 .Pp
-.Dl # /usr/pkg/sbin/dhcpd [netif1 netif2 ...]
+.Dl # /usr/local/sbin/dhcpd [netif1 netif2 ...]
 .El
 .Pp
 The DHCP client and server use the Berkeley Packet Filter (BPF).
@@ -119,8 +118,8 @@ See
 for information on other available options.
 Note, however, that most of the flags are useful only for debugging purposes.
 .Sh FILES
-.Bl -tag -width /usr/pkg/etc/dhcpd.conf
-.It Pa /usr/pkg/etc/dhcp/dhcpd.conf
+.Bl -tag -width /usr/local/etc/dhcpd.conf
+.It Pa /usr/local/etc/dhcp/dhcpd.conf
 DHCP server configuration file
 .It Pa /etc/rc.conf
 configuration file where
@@ -132,7 +131,7 @@ DHCP client configuration file
 .El
 .Sh SEE ALSO
 .Xr dhclient.conf 5 ,
-.Xr dhcpd.conf 5 Pq Pa pkgsrc/net/isc-dhcpd4 ,
+.Xr dhcpd.conf 5 Pq Pa net/isc-dhcp42-server ,
 .Xr dhclient 8 ,
-.Xr dhcpd 8 Pq Pa pkgsrc/net/isc-dhcpd4 ,
-.Xr dhcrelay 8 Pq Pa pkgsrc/net/isc-dhcrelay4
+.Xr dhcpd 8 Pq Pa net/isc-dhcp42-server ,
+.Xr dhcrelay 8 Pq Pa net/isc-dhcp42-relay
