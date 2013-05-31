@@ -131,8 +131,9 @@ static long vm_shared_miss = 0;
 SYSCTL_LONG(_vm, OID_AUTO, shared_miss, CTLFLAG_RW, &vm_shared_miss, 0,
 	   "Unsuccessful shared faults");
 
-static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t);
-static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *, vpte_t, int);
+static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t, int);
+static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *,
+			vpte_t, int, int);
 #if 0
 static int vm_fault_additional_pages (vm_page_t, int, int, vm_page_t *, int *);
 #endif
@@ -260,6 +261,7 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	struct faultstate fs;
 	struct lwp *lp;
 	int growstack;
+	int retry = 0;
 
 	vm_page_pcpu_cache();
 	fs.hardfault = 0;
@@ -306,6 +308,7 @@ RetryFault:
 				result = vm_map_growstack(curproc, vaddr);
 				if (result == KERN_SUCCESS) {
 					growstack = 0;
+					++retry;
 					goto RetryFault;
 				}
 				result = KERN_FAILURE;
@@ -382,7 +385,8 @@ RetryFault:
 	 * is set.
 	 */
 	if ((curthread->td_flags & TDF_NOFAULT) &&
-	    (fs.first_object->type == OBJT_VNODE ||
+	    (retry ||
+	     fs.first_object->type == OBJT_VNODE ||
 	     fs.first_object->backing_object)) {
 		result = KERN_FAILURE;
 		unlock_things(&fs);
@@ -488,9 +492,10 @@ RetryFault:
 	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
 		result = vm_fault_vpagetable(&fs, &first_pindex,
 					     fs.entry->aux.master_pde,
-					     fault_type);
+					     fault_type, 1);
 		if (result == KERN_TRY_AGAIN) {
 			vm_object_drop(fs.first_object);
+			++retry;
 			goto RetryFault;
 		}
 		if (result != KERN_SUCCESS)
@@ -513,12 +518,13 @@ RetryFault:
 	 * If the fault code uses the shared object lock shortcut
 	 * we must not try to burst (we can't allocate VM pages).
 	 */
-	result = vm_fault_object(&fs, first_pindex, fault_type);
+	result = vm_fault_object(&fs, first_pindex, fault_type, 1);
 	if (fs.shared)
 		fault_flags &= ~VM_FAULT_BURST;
 
 	if (result == KERN_TRY_AGAIN) {
 		vm_object_drop(fs.first_object);
+		++retry;
 		goto RetryFault;
 	}
 	if (result != KERN_SUCCESS)
@@ -642,6 +648,7 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	vm_pindex_t first_pindex;
 	struct faultstate fs;
 	int result;
+	int retry = 0;
 	vm_prot_t orig_fault_type = fault_type;
 
 	fs.hardfault = 0;
@@ -706,7 +713,8 @@ RetryFault:
 	 * is set.
 	 */
 	if ((curthread->td_flags & TDF_NOFAULT) &&
-	    (fs.first_object->type == OBJT_VNODE ||
+	    (retry ||
+	     fs.first_object->type == OBJT_VNODE ||
 	     fs.first_object->backing_object)) {
 		*errorp = KERN_FAILURE;
 		unlock_things(&fs);
@@ -754,9 +762,10 @@ RetryFault:
 	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
 		result = vm_fault_vpagetable(&fs, &first_pindex,
 					     fs.entry->aux.master_pde,
-					     fault_type);
+					     fault_type, 1);
 		if (result == KERN_TRY_AGAIN) {
 			vm_object_drop(fs.first_object);
+			++retry;
 			goto RetryFault;
 		}
 		if (result != KERN_SUCCESS) {
@@ -774,10 +783,11 @@ RetryFault:
 	 * fs->first_object
 	 */
 	fs.m = NULL;
-	result = vm_fault_object(&fs, first_pindex, fault_type);
+	result = vm_fault_object(&fs, first_pindex, fault_type, 1);
 
 	if (result == KERN_TRY_AGAIN) {
 		vm_object_drop(fs.first_object);
+		++retry;
 		goto RetryFault;
 	}
 	if (result != KERN_SUCCESS) {
@@ -926,7 +936,7 @@ RetryFault:
 	if (fs.entry->maptype == VM_MAPTYPE_VPAGETABLE) {
 		result = vm_fault_vpagetable(&fs, &first_pindex,
 					     fs.entry->aux.master_pde,
-					     fault_type);
+					     fault_type, 0);
 		if (result == KERN_TRY_AGAIN)
 			goto RetryFault;
 		if (result != KERN_SUCCESS) {
@@ -943,7 +953,7 @@ RetryFault:
 	 * will have an additinal PIP count if it is not equal to
 	 * fs->first_object
 	 */
-	result = vm_fault_object(&fs, first_pindex, fault_type);
+	result = vm_fault_object(&fs, first_pindex, fault_type, 0);
 
 	if (result == KERN_TRY_AGAIN)
 		goto RetryFault;
@@ -1014,7 +1024,7 @@ RetryFault:
 static
 int
 vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
-		    vpte_t vpte, int fault_type)
+		    vpte_t vpte, int fault_type, int allow_nofault)
 {
 	struct lwbuf *lwb;
 	struct lwbuf lwb_cache;
@@ -1052,7 +1062,8 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		 * There is currently no real need to optimize this.
 		 */
 		result = vm_fault_object(fs, (vpte & VPTE_FRAME) >> PAGE_SHIFT,
-					 VM_PROT_READ|VM_PROT_WRITE);
+					 VM_PROT_READ|VM_PROT_WRITE,
+					 allow_nofault);
 		if (result != KERN_SUCCESS)
 			return (result);
 
@@ -1123,8 +1134,8 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
  */
 static
 int
-vm_fault_object(struct faultstate *fs,
-		vm_pindex_t first_pindex, vm_prot_t fault_type)
+vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
+		vm_prot_t fault_type, int allow_nofault)
 {
 	vm_object_t next_object;
 	vm_pindex_t pindex;
@@ -1238,7 +1249,10 @@ vm_fault_object(struct faultstate *fs,
 				if (fs->object != fs->first_object)
 					vm_object_drop(fs->object);
 				unlock_and_deallocate(fs);
-				vm_wait_pfault();
+				if (allow_nofault == 0 ||
+				    (curthread->td_flags & TDF_NOFAULT) == 0) {
+					vm_wait_pfault();
+				}
 				return (KERN_TRY_AGAIN);
 			}
 
@@ -1321,7 +1335,10 @@ vm_fault_object(struct faultstate *fs,
 				if (fs->object != fs->first_object)
 					vm_object_drop(fs->object);
 				unlock_and_deallocate(fs);
-				vm_wait_pfault();
+				if (allow_nofault == 0 ||
+				    (curthread->td_flags & TDF_NOFAULT) == 0) {
+					vm_wait_pfault();
+				}
 				return (KERN_TRY_AGAIN);
 			}
 
