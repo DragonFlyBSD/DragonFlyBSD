@@ -856,7 +856,7 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 
 		/* Give the protocol a chance to keep things in sync. */
 		if ((ifa = rt->rt_ifa) && ifa->ifa_rtrequest)
-			ifa->ifa_rtrequest(RTM_DELETE, rt, rtinfo);
+			ifa->ifa_rtrequest(RTM_DELETE, rt);
 
 		/*
 		 * If the caller wants it, then it can have it,
@@ -1008,7 +1008,7 @@ makeroute:
 		 * allow it to do that as well.
 		 */
 		if (ifa->ifa_rtrequest != NULL)
-			ifa->ifa_rtrequest(req, rt, rtinfo);
+			ifa->ifa_rtrequest(req, rt);
 
 		/*
 		 * We repeat the same procedure from rt_setgate() here because
@@ -1793,14 +1793,14 @@ static void
 rtchange_ifa(struct rtentry *rt, struct rtchange_arg *ap)
 {
 	if (rt->rt_ifa->ifa_rtrequest != NULL)
-		rt->rt_ifa->ifa_rtrequest(RTM_DELETE, rt, NULL);
+		rt->rt_ifa->ifa_rtrequest(RTM_DELETE, rt);
 	IFAFREE(rt->rt_ifa);
 
 	IFAREF(ap->new_ifa);
 	rt->rt_ifa = ap->new_ifa;
 	rt->rt_ifp = ap->new_ifa->ifa_ifp;
 	if (rt->rt_ifa->ifa_rtrequest != NULL)
-		rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, NULL);
+		rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt);
 
 	ap->changed = 1;
 }

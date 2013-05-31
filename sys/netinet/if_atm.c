@@ -75,7 +75,7 @@
  *	     "info" = rt_addrinfo
  */
 void
-atm_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
+atm_rtrequest(int req, struct rtentry *rt)
 {
 	struct sockaddr *gate = rt->rt_gateway;
 	struct atm_pseudoioctl api;

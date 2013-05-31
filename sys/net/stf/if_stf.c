@@ -159,7 +159,7 @@ static int stf_checkaddr4 (struct stf_softc *, struct in_addr *,
 	struct ifnet *);
 static int stf_checkaddr6 (struct stf_softc *, struct in6_addr *,
 	struct ifnet *);
-static void stf_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
+static void stf_rtrequest (int, struct rtentry *);
 static int stf_ioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 
 static int
@@ -608,7 +608,7 @@ in_stf_input(struct mbuf **mp, int *offp, int proto)
 
 /* ARGSUSED */
 static void
-stf_rtrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info)
+stf_rtrequest(int cmd, struct rtentry *rt)
 {
 
 	if (rt)

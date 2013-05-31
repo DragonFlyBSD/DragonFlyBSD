@@ -614,7 +614,7 @@ struct ifaddr {
 	void	*ifa_link_pad;
 	struct ifaddr_container *ifa_containers; /* per-cpu data */
 	void	(*ifa_rtrequest)	/* check or clean routes (+ or -)'d */
-		(int, struct rtentry *, struct rt_addrinfo *);
+		(int, struct rtentry *);
 	u_short	ifa_flags;		/* mostly rt_flags for cloning */
 	int	ifa_ncnt;		/* # of valid ifaddr_container */
 	int	ifa_metric;		/* cost of going out this interface */

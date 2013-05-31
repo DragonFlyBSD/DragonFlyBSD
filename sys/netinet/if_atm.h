@@ -43,10 +43,9 @@
 struct atm_pseudohdr;
 struct mbuf;
 struct rtentry;
-struct rt_addrinfo;
 struct sockaddr;
 
-void atm_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
+void atm_rtrequest (int, struct rtentry *);
 int atmresolve (struct rtentry *, struct mbuf *, struct sockaddr *,
 		struct atm_pseudohdr *);
 

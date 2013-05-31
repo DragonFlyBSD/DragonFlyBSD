@@ -94,7 +94,7 @@ struct faith_softc {
 static int faithioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 int faithoutput (struct ifnet *, struct mbuf *, struct sockaddr *,
 	struct rtentry *);
-static void faithrtrequest (int, struct rtentry *, struct rt_addrinfo *);
+static void faithrtrequest (int, struct rtentry *);
 #ifdef INET6
 static int faithprefix (struct in6_addr *);
 #endif
@@ -256,7 +256,7 @@ faithoutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 /* ARGSUSED */
 static void
-faithrtrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info)
+faithrtrequest(int cmd, struct rtentry *rt)
 {
 	if (rt) {
 		rt->rt_rmx.rmx_mtu = rt->rt_ifp->if_mtu; /* for ISO */

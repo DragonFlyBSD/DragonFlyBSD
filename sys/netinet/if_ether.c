@@ -151,7 +151,7 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, restricted_match, CTLFLAG_RW,
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, refresh, CTLFLAG_RW,
 	   &arp_refresh, 0, "Preemptively refresh the ARP");
 
-static void	arp_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
+static void	arp_rtrequest(int, struct rtentry *);
 static void	arprequest(struct ifnet *, const struct in_addr *,
 			   const struct in_addr *, const u_char *);
 static void	arprequest_async(struct ifnet *, const struct in_addr *,
@@ -195,7 +195,7 @@ arptimer(void *ignored_arg)
  * route and initiate arp operations if required.
  */
 static void
-arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
+arp_rtrequest(int req, struct rtentry *rt)
 {
 	struct sockaddr *gate = rt->rt_gateway;
 	struct llinfo_arp *la = rt->rt_llinfo;

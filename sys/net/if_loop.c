@@ -79,7 +79,7 @@ static void	loopattach(void *);
 static int	looutput(struct ifnet *, struct mbuf *, struct sockaddr *,
 			 struct rtentry *);
 static int	loioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	lortrequest(int, struct rtentry *, struct rt_addrinfo *);
+static void	lortrequest(int, struct rtentry *);
 #ifdef ALTQ
 static void	lo_altqstart(struct ifnet *, struct ifaltq_subque *);
 #endif
@@ -327,7 +327,7 @@ lo_altqstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 /* ARGSUSED */
 static void
-lortrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info)
+lortrequest(int cmd, struct rtentry *rt)
 {
 	if (rt) {
 		rt->rt_rmx.rmx_mtu = rt->rt_ifp->if_mtu; /* for ISO */

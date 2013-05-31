@@ -112,7 +112,7 @@ static int	ifconf(u_long, caddr_t, struct ucred *);
 static void	ifinit(void *);
 static void	ifnetinit(void *);
 static void	if_slowtimo(void *);
-static void	link_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
+static void	link_rtrequest(int, struct rtentry *);
 static int	if_rtdel(struct radix_node *, void *);
 
 /* Helper functions */
@@ -1312,7 +1312,7 @@ ifaof_ifpforaddr(struct sockaddr *addr, struct ifnet *ifp)
  * This should be moved to /sys/net/link.c eventually.
  */
 static void
-link_rtrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info)
+link_rtrequest(int cmd, struct rtentry *rt)
 {
 	struct ifaddr *ifa;
 	struct sockaddr *dst;
@@ -1327,7 +1327,7 @@ link_rtrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info)
 		IFAREF(ifa);
 		rt->rt_ifa = ifa;
 		if (ifa->ifa_rtrequest && ifa->ifa_rtrequest != link_rtrequest)
-			ifa->ifa_rtrequest(cmd, rt, info);
+			ifa->ifa_rtrequest(cmd, rt);
 	}
 }
 

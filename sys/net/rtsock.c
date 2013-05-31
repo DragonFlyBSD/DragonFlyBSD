@@ -733,7 +733,7 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 
 		if (oifa != ifa) {
 			if (oifa && oifa->ifa_rtrequest)
-				oifa->ifa_rtrequest(RTM_DELETE, rt, rtinfo);
+				oifa->ifa_rtrequest(RTM_DELETE, rt);
 			IFAFREE(rt->rt_ifa);
 			IFAREF(ifa);
 			rt->rt_ifa = ifa;
@@ -742,7 +742,7 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 	}
 	rt_setmetrics(rtm->rtm_inits, &rtm->rtm_rmx, &rt->rt_rmx);
 	if (rt->rt_ifa && rt->rt_ifa->ifa_rtrequest)
-		rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, rtinfo);
+		rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt);
 	if (rtinfo->rti_genmask != NULL) {
 		rt->rt_genmask = rtmask_purelookup(rtinfo->rti_genmask);
 		if (rt->rt_genmask == NULL) {

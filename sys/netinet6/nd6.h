@@ -387,7 +387,7 @@ struct llinfo_nd6 *nd6_free (struct rtentry *);
 void nd6_nud_hint (struct rtentry *, struct in6_addr *, int);
 int nd6_resolve (struct ifnet *, struct rtentry *,
 		     struct mbuf *, struct sockaddr *, u_char *);
-void nd6_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
+void nd6_rtrequest (int, struct rtentry *);
 int nd6_ioctl (u_long, caddr_t, struct ifnet *);
 struct rtentry *nd6_cache_lladdr (struct ifnet *, struct in6_addr *,
 	char *, int, int, int);
