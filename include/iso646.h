@@ -23,23 +23,26 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/include/iso646.h,v 1.3 1999/08/27 23:44:50 peter Exp $
- * $DragonFly: src/include/iso646.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $FreeBSD: head/include/iso646.h 225801 2011-09-27 16:33:17Z jkim $
  */
 
 #ifndef _ISO646_H_
-#define _ISO646_H_
+#define	_ISO646_H_
 
-#define and	&&
-#define and_eq	&=
-#define bitand	&
-#define bitor	|
-#define compl	~
-#define not	!
-#define not_eq	!=
-#define or	||
-#define or_eq	|=
-#define xor	^
-#define xor_eq	^=
+#ifndef __cplusplus
+
+#define	and	&&
+#define	and_eq	&=
+#define	bitand	&
+#define	bitor	|
+#define	compl	~
+#define	not	!
+#define	not_eq	!=
+#define	or	||
+#define	or_eq	|=
+#define	xor	^
+#define	xor_eq	^=
+
+#endif /* !__cplusplus */
 
 #endif /* !_ISO646_H_ */
