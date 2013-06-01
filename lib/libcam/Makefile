@@ -1,10 +1,9 @@
 # $FreeBSD: src/lib/libcam/Makefile,v 1.6.2.2 2001/04/25 10:04:22 ru Exp $
-# $DragonFly: src/lib/libcam/Makefile,v 1.5 2007/11/18 17:53:01 pavalos Exp $
 
 LIB=	cam
 SRCS=	camlib.c scsi_cmdparse.c scsi_all.c scsi_da.c scsi_sa.c cam.c
 INCS=	camlib.h
-WARNS?=	1
+WARNS?=	2
 
 DPADD+=	${LIBSBUF}
 LDADD+=	-lsbuf
