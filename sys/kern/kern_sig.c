@@ -605,6 +605,8 @@ kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss)
 		*oss = lp->lwp_sigstk;
 
 	if (ss) {
+		if (ss->ss_flags & ~SS_DISABLE)
+			return (EINVAL);
 		if (ss->ss_flags & SS_DISABLE) {
 			if (lp->lwp_sigstk.ss_flags & SS_ONSTACK)
 				return (EINVAL);
