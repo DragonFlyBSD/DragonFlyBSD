@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcam/camlib.c,v 1.8.2.2 2002/05/23 04:19:22 ken Exp $
- * $DragonFly: src/lib/libcam/camlib.c,v 1.7 2008/02/10 00:01:01 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -683,7 +682,7 @@ cam_real_open_device(const char *path, int flags, struct cam_device *device,
 			"%s: %s", func_name, func_name, strerror(errno));
 		goto crod_bailout;
 	}
-	if (ccb.cts.protocol == XPORT_SPI) {
+	if (ccb.cts.transport == XPORT_SPI) {
 		struct ccb_trans_settings_spi *spi =
 		    &ccb.cts.xport_specific.spi;
 		device->sync_period = spi->sync_period;
