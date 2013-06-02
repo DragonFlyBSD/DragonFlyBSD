@@ -155,7 +155,6 @@ driver supports
 .Sh TUNABLES
 .Em X
 is the device unit number.
-.Pp
 .Bl -tag -width ".Va hw.bceX.npoll.offset"
 .It Va hw.bce.tx_bds
 Maximum number of sending BDs which must be processed by the device
@@ -209,14 +208,14 @@ due to receiving packets.
 Default value is 150 (microseconds).
 .It Va hw.bce.msi.enable Va hw.bceX.msi.enable
 For BCM5706 and BCM5708,
-by default, 
+by default,
 the driver will use MSI if it is supported.
 This behavior can be turned off by setting this tunable to 0.
 .It Va hw.bceX.msi.cpu
 If MSI is used, it specifies the MSI's target CPU.
 .It Va hw.bce.msix.enable Va hw.bceX.msix.enable
 For BCM5709 and BCM5716,
-by default, 
+by default,
 the driver will use MSI-X if it is supported.
 This behavior can be turned off by setting this tunable to 0.
 .It Va hw.bce.rx_pages Va hw.bceX.rx_pages
