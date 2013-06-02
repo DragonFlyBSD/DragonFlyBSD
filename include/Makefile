@@ -23,7 +23,7 @@ INCS=	a.out.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
 	signal.h spawn.h stab.h stdarg.h stdbool.h \
 	stddef.h stdint.h stdio.h stdlib.h \
 	string.h stringlist.h strings.h struct.h sysexits.h \
-	tar.h time.h \
+	tar.h tgmath.h time.h \
 	timeconv.h \
 	timers.h ttyent.h tzfile.h unistd.h ulimit.h utime.h utmp.h utmpx.h \
 	uuid.h vis.h \
