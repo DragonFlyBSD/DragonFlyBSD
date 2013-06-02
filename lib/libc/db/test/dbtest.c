@@ -26,10 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dbtest.c	8.17 (Berkeley) 9/1/94
- * $FreeBSD: src/lib/libc/db/test/dbtest.c,v 1.3.8.1 2000/08/21 22:44:47 jhb Exp $
- * $DragonFly: src/lib/libc/db/test/dbtest.c,v 1.8 2008/07/10 18:29:51 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/test/dbtest.c 176380 2008-02-18 03:19:25Z kevlo $
  */
 
 #include <sys/param.h>
@@ -48,22 +46,22 @@
 
 enum S { COMMAND, COMPARE, GET, PUT, REMOVE, SEQ, SEQFLAG, KEY, DATA };
 
-void	 compare (DBT *, DBT *);
-DBTYPE	 dbtype (char *);
-void	 dump (DB *, int);
-void	 err (const char *, ...) __printflike(1, 2);
-void	 get (DB *, DBT *);
-void	 getdata (DB *, DBT *, DBT *);
-void	 put (DB *, DBT *, DBT *);
-void	 rem (DB *, DBT *);
-char	*sflags (int);
-void	 synk (DB *);
-void	*rfile (char *, size_t *);
-void	 seq (DB *, DBT *);
-u_int	 setflags (char *);
-void	*setinfo (DBTYPE, char *);
-void	 usage (void);
-void	*xmalloc (char *, size_t);
+void	 compare(DBT *, DBT *);
+DBTYPE	 dbtype(char *);
+void	 dump(DB *, int);
+void	 err(const char *, ...) __printflike(1, 2);
+void	 get(DB *, DBT *);
+void	 getdata(DB *, DBT *, DBT *);
+void	 put(DB *, DBT *, DBT *);
+void	 rem(DB *, DBT *);
+char	*sflags(int);
+void	 synk(DB *);
+void	*rfile(char *, size_t *);
+void	 seq(DB *, DBT *);
+u_int	 setflags(char *);
+void	*setinfo(DBTYPE, char *);
+void	 usage(void);
+void	*xmalloc(char *, size_t);
 
 DBTYPE type;				/* Database type. */
 void *infop;				/* Iflags. */
@@ -536,7 +534,7 @@ sflags(int flags)
 
 	return ("UNKNOWN!");
 }
-	
+
 DBTYPE
 dbtype(char *s)
 {
@@ -695,6 +693,7 @@ void
 err(const char *fmt, ...)
 {
 	va_list ap;
+
 	va_start(ap, fmt);
 	fprintf(stderr, "dbtest: ");
 	vfprintf(stderr, fmt, ap);

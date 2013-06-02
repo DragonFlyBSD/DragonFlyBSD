@@ -29,9 +29,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tseq.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/db/test/hash.tests/tseq.c,v 1.4 2005/11/12 23:01:55 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/test/hash.tests/tseq.c 165903 2007-01-09 00:28:16Z imp $
  */
 
 #include <sys/types.h>

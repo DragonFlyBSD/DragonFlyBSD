@@ -30,8 +30,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)hash.h	8.3 (Berkeley) 5/31/94
- * $FreeBSD: src/lib/libc/db/hash/hash.h,v 1.4.8.1 2001/03/05 03:50:02 kris Exp $
- * $DragonFly: src/lib/libc/db/hash/hash.h,v 1.4 2005/09/19 09:20:37 asmodai Exp $
+ * $FreeBSD: head/lib/libc/db/hash/hash.h 206178 2010-04-05 10:12:21Z avg $
  */
 
 /* Operations */
@@ -46,7 +45,7 @@ struct _bufhead {
 	BUFHEAD		*prev;		/* LRU links */
 	BUFHEAD		*next;		/* LRU links */
 	BUFHEAD		*ovfl;		/* Overflow page buffer header */
-	u_int32_t	 addr;		/* Address of this page */
+	uint32_t	 addr;		/* Address of this page */
 	char		*page;		/* Actual page data */
 	char	 	flags;
 #define	BUF_MOD		0x0001
@@ -61,29 +60,29 @@ typedef BUFHEAD **SEGMENT;
 
 /* Hash Table Information */
 typedef struct hashhdr {		/* Disk resident portion */
-	int		magic;		/* Magic NO for hash tables */
-	int		version;	/* Version ID */
-	u_int32_t	lorder;		/* Byte Order */
-	int		bsize;		/* Bucket/Page Size */
-	int		bshift;		/* Bucket shift */
-	int		dsize;		/* Directory Size */
-	int		ssize;		/* Segment Size */
-	int		sshift;		/* Segment shift */
-	int		ovfl_point;	/* Where overflow pages are being 
+	int32_t		magic;		/* Magic NO for hash tables */
+	int32_t		version;	/* Version ID */
+	uint32_t	lorder;		/* Byte Order */
+	int32_t		bsize;		/* Bucket/Page Size */
+	int32_t		bshift;		/* Bucket shift */
+	int32_t		dsize;		/* Directory Size */
+	int32_t		ssize;		/* Segment Size */
+	int32_t		sshift;		/* Segment shift */
+	int32_t		ovfl_point;	/* Where overflow pages are being
 					 * allocated */
-	int		last_freed;	/* Last overflow page freed */
-	int		max_bucket;	/* ID of Maximum bucket in use */
-	int		high_mask;	/* Mask to modulo into entire table */
-	int		low_mask;	/* Mask to modulo into lower half of 
+	int32_t		last_freed;	/* Last overflow page freed */
+	uint32_t	max_bucket;	/* ID of Maximum bucket in use */
+	uint32_t	high_mask;	/* Mask to modulo into entire table */
+	uint32_t	low_mask;	/* Mask to modulo into lower half of
 					 * table */
-	int		ffactor;	/* Fill factor */
-	int		nkeys;		/* Number of keys in hash table */
-	int		hdrpages;	/* Size of table header */
-	int		h_charkey;	/* value of hash(CHARKEY) */
+	uint32_t	ffactor;	/* Fill factor */
+	int32_t		nkeys;		/* Number of keys in hash table */
+	int32_t		hdrpages;	/* Size of table header */
+	int32_t		h_charkey;	/* value of hash(CHARKEY) */
 #define NCACHED	32			/* number of bit maps and spare 
 					 * points */
-	int		spares[NCACHED];/* spare pages for overflow */
-	u_int16_t	bitmaps[NCACHED];	/* address of overflow page 
+	int32_t		spares[NCACHED];/* spare pages for overflow */
+	uint16_t	bitmaps[NCACHED];	/* address of overflow page
 						 * bitmaps */
 } HASHHDR;
 
@@ -92,7 +91,7 @@ typedef struct htab	 {		/* Memory resident data structure */
 	int		nsegs;		/* Number of allocated segments */
 	int		exsegs;		/* Number of extra allocated 
 					 * segments */
-	u_int32_t			/* Hash function */
+	uint32_t			/* Hash function */
 	    (*hash)(const void *, size_t);
 	int		flags;		/* Flag values */
 	int		fp;		/* File pointer */
@@ -108,7 +107,7 @@ typedef struct htab	 {		/* Memory resident data structure */
 	int		save_file;	/* Indicates whether we need to flush 
 					 * file at
 					 * exit */
-	u_int32_t	*mapp[NCACHED];	/* Pointers to page maps */
+	uint32_t	*mapp[NCACHED];	/* Pointers to page maps */
 	int		nmaps;		/* Initial number of bitmaps */
 	int		nbufs;		/* Number of buffers left to 
 					 * allocate */
@@ -119,7 +118,7 @@ typedef struct htab	 {		/* Memory resident data structure */
 /*
  * Constants
  */
-#define	MAX_BSIZE		65536		/* 2^16 */
+#define	MAX_BSIZE		32768		/* 2^15 but should be 65536 */
 #define MIN_BUFFERS		6
 #define MINHDRSIZE		512
 #define DEF_BUFSIZE		65536		/* 64 K */
@@ -136,13 +135,13 @@ typedef struct htab	 {		/* Memory resident data structure */
 #define BYTE_SHIFT		3
 #define INT_TO_BYTE		2
 #define INT_BYTE_SHIFT		5
-#define ALL_SET			((u_int32_t)0xFFFFFFFF)
+#define ALL_SET			((uint32_t)0xFFFFFFFF)
 #define ALL_CLEAR		0
 
 #define PTROF(X)	((BUFHEAD *)((ptrdiff_t)(X)&~0x3))
-#define ISMOD(X)	((u_int32_t)(ptrdiff_t)(X)&0x1)
+#define ISMOD(X)	((uint32_t)(ptrdiff_t)(X)&0x1)
 #define DOMOD(X)	((X) = (char *)((ptrdiff_t)(X)|0x1))
-#define ISDISK(X)	((u_int32_t)(ptrdiff_t)(X)&0x2)
+#define ISDISK(X)	((uint32_t)(ptrdiff_t)(X)&0x2)
 #define DODISK(X)	((X) = (char *)((ptrdiff_t)(X)|0x2))
 
 #define BITS_PER_MAP	32
@@ -163,9 +162,9 @@ typedef struct htab	 {		/* Memory resident data structure */
 
 #define SPLITSHIFT	11
 #define SPLITMASK	0x7FF
-#define SPLITNUM(N)	(((u_int32_t)(N)) >> SPLITSHIFT)
+#define SPLITNUM(N)	(((uint32_t)(N)) >> SPLITSHIFT)
 #define OPAGENUM(N)	((N) & SPLITMASK)
-#define	OADDR_OF(S,O)	((u_int32_t)((u_int32_t)(S) << SPLITSHIFT) + (O))
+#define	OADDR_OF(S,O)	((uint32_t)((uint32_t)(S) << SPLITSHIFT) + (O))
 
 #define BUCKET_TO_PAGE(B) \
 	(B) + hashp->HDRPAGES + ((B) ? hashp->SPARES[__log2((B)+1)-1] : 0)

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)page.h	8.2 (Berkeley) 5/31/94
- * $DragonFly: src/lib/libc/db/hash/page.h,v 1.2 2005/09/19 09:20:37 asmodai Exp $
+ * $FreeBSD: head/lib/libc/db/hash/page.h 189327 2009-03-04 00:58:04Z delphij $
  */
 
 /*
@@ -48,7 +48,7 @@
  *	+--------+---------------------+
  *	|	 F R E E A R E A       |
  *	+--------------+---------------+
- *	|  <---- - - - | data          |
+ *	|  <---- - - - | data	       |
  *	+--------+-----+----+----------+
  *	|  key   | data     | key      |
  *	+--------+----------+----------+
@@ -70,20 +70,20 @@
  * You might as well do this up front.
  */
 
-#define	PAIRSIZE(K,D)	(2*sizeof(u_int16_t) + (K)->size + (D)->size)
-#define BIGOVERHEAD	(4*sizeof(u_int16_t))
-#define KEYSIZE(K)	(4*sizeof(u_int16_t) + (K)->size);
-#define OVFLSIZE	(2*sizeof(u_int16_t))
-#define FREESPACE(P)	((P)[(P)[0]+1])
+#define	PAIRSIZE(K,D)	(2*sizeof(uint16_t) + (K)->size + (D)->size)
+#define	BIGOVERHEAD	(4*sizeof(uint16_t))
+#define	KEYSIZE(K)	(4*sizeof(uint16_t) + (K)->size);
+#define	OVFLSIZE	(2*sizeof(uint16_t))
+#define	FREESPACE(P)	((P)[(P)[0]+1])
 #define	OFFSET(P)	((P)[(P)[0]+2])
-#define PAIRFITS(P,K,D) \
+#define	PAIRFITS(P,K,D) \
 	(((P)[2] >= REAL_KEY) && \
 	    (PAIRSIZE((K),(D)) + OVFLSIZE) <= FREESPACE((P)))
-#define PAGE_META(N)	(((N)+3) * sizeof(u_int16_t))
+#define	PAGE_META(N)	(((N)+3) * sizeof(uint16_t))
 
 typedef struct {
 	BUFHEAD *newp;
 	BUFHEAD *oldp;
 	BUFHEAD *nextp;
-	u_int16_t next_addr;
-}       SPLIT_RETURN;
+	uint16_t next_addr;
+} SPLIT_RETURN;

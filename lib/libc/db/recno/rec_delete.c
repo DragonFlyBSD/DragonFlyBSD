@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_delete.c	8.7 (Berkeley) 7/14/94
- * $DragonFly: src/lib/libc/db/recno/rec_delete.c,v 1.6 2005/11/19 20:46:32 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/recno/rec_delete.c 189292 2009-03-03 02:16:12Z delphij $
  */
 
 #include <sys/types.h>
@@ -42,7 +42,7 @@
 #include <db.h>
 #include "recno.h"
 
-static int rec_rdelete (BTREE *, recno_t);
+static int rec_rdelete(BTREE *, recno_t);
 
 /*
  * __REC_DELETE -- Delete the item(s) referenced by a key.
@@ -56,7 +56,7 @@ static int rec_rdelete (BTREE *, recno_t);
  *	RET_ERROR, RET_SUCCESS and RET_SPECIAL if the key not found.
  */
 int
-__rec_delete(const DB *dbp, const DBT *key, u_int flags)
+__rec_delete(const DB *dbp, const DBT *key, unsigned int flags)
 {
 	BTREE *t;
 	recno_t nrec;
@@ -141,11 +141,11 @@ rec_rdelete(BTREE *t, recno_t nrec)
  *	RET_SUCCESS, RET_ERROR.
  */
 int
-__rec_dleaf(BTREE *t, PAGE *h, u_int32_t idx)
+__rec_dleaf(BTREE *t, PAGE *h, uint32_t idx)
 {
 	RLEAF *rl;
 	indx_t *ip, cnt, offset;
-	u_int32_t nbytes;
+	uint32_t nbytes;
 	char *from;
 	void *to;
 

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)main.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/db/test/btree.tests/main.c,v 1.8 2008/07/10 18:29:51 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/test/btree.tests/main.c 176380 2008-02-18 03:19:25Z kevlo $
  */
 
 #include <sys/param.h>
@@ -47,37 +47,37 @@ typedef struct cmd_table {
 	char *cmd;
 	int nargs;
 	int rconv;
-	void (*func) (DB *, char **);
+	void (*func)(DB *, char **);
 	char *usage, *descrip;
 } cmd_table;
 
 int stopstop;
 DB *globaldb;
 
-void append	(DB *, char **);
-void bstat	(DB *, char **);
-void cursor	(DB *, char **);
-void delcur	(DB *, char **);
-void delete	(DB *, char **);
-void dump	(DB *, char **);
-void first	(DB *, char **);
-void get	(DB *, char **);
-void help	(DB *, char **);
-void iafter	(DB *, char **);
-void ibefore	(DB *, char **);
-void icursor	(DB *, char **);
-void insert	(DB *, char **);
-void keydata	(DBT *, DBT *);
-void last	(DB *, char **);
-void list	(DB *, char **);
-void load	(DB *, char **);
-void mstat	(DB *, char **);
-void next	(DB *, char **);
-int  parse	(char *, char **, int);
-void previous	(DB *, char **);
-void show	(DB *, char **);
-void usage	(void);
-void user	(DB *);
+void append(DB *, char **);
+void bstat(DB *, char **);
+void cursor(DB *, char **);
+void delcur(DB *, char **);
+void delete(DB *, char **);
+void dump(DB *, char **);
+void first(DB *, char **);
+void get(DB *, char **);
+void help(DB *, char **);
+void iafter(DB *, char **);
+void ibefore(DB *, char **);
+void icursor(DB *, char **);
+void insert(DB *, char **);
+void keydata(DBT *, DBT *);
+void last(DB *, char **);
+void list(DB *, char **);
+void load(DB *, char **);
+void mstat(DB *, char **);
+void next(DB *, char **);
+int  parse(char *, char **, int);
+void previous(DB *, char **);
+void show(DB *, char **);
+void usage(void);
+void user(DB *);
 
 cmd_table commands[] = {
 	"?",	0, 0, help, "help", NULL,

@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_close.c	8.6 (Berkeley) 8/18/94
- * $FreeBSD: src/lib/libc/db/recno/rec_close.c,v 1.4 2000/01/27 23:06:11 jasone Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_close.c,v 1.6 2005/11/19 20:46:32 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/recno/rec_close.c 190484 2009-03-28 05:45:29Z delphij $
  */
 
 #include "namespace.h"
@@ -80,9 +79,10 @@ __rec_close(DB *dbp)
 		if (F_ISSET(t, R_CLOSEFP)) {
 			if (fclose(t->bt_rfp))
 				status = RET_ERROR;
-		} else
+		} else {
 			if (_close(t->bt_rfd))
 				status = RET_ERROR;
+		}
 	}
 
 	if (__bt_close(dbp) == RET_ERROR)
@@ -101,7 +101,7 @@ __rec_close(DB *dbp)
  *	RET_SUCCESS, RET_ERROR.
  */
 int
-__rec_sync(const DB *dbp, u_int flags)
+__rec_sync(const DB *dbp, unsigned int flags)
 {
 	struct iovec iov[2];
 	BTREE *t;
@@ -147,19 +147,19 @@ __rec_sync(const DB *dbp, u_int flags)
 		status = (dbp->seq)(dbp, &key, &data, R_FIRST);
 		while (status == RET_SUCCESS) {
 			if (_write(t->bt_rfd, data.data, data.size) !=
-			    data.size)
+			    (ssize_t)data.size)
 				return (RET_ERROR);
 			status = (dbp->seq)(dbp, &key, &data, R_NEXT);
 		}
 	} else {
-		iov[1].iov_base = (char *)&t->bt_bval;
+		iov[1].iov_base = &t->bt_bval;
 		iov[1].iov_len = 1;
 
 		status = (dbp->seq)(dbp, &key, &data, R_FIRST);
 		while (status == RET_SUCCESS) {
 			iov[0].iov_base = data.data;
 			iov[0].iov_len = data.size;
-			if (_writev(t->bt_rfd, iov, 2) != data.size + 1)
+			if (_writev(t->bt_rfd, iov, 2) != (ssize_t)(data.size + 1))
 				return (RET_ERROR);
 			status = (dbp->seq)(dbp, &key, &data, R_NEXT);
 		}

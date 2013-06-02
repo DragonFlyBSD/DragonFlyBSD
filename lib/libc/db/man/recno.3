@@ -26,8 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)recno.3	8.5 (Berkeley) 8/18/94
-.\" $FreeBSD: src/lib/libc/db/man/recno.3,v 1.4.2.2 2001/12/14 18:33:49 ru Exp $
-.\" $DragonFly: src/lib/libc/db/man/recno.3,v 1.5 2007/08/18 20:48:47 swildner Exp $
+.\" $FreeBSD: head/lib/libc/db/man/recno.3 165903 2007-01-09 00:28:16Z imp $
 .\"
 .Dd August 18, 1994
 .Dt RECNO 3
@@ -69,12 +68,12 @@ is defined in the
 include file as follows:
 .Bd -literal
 typedef struct {
-	u_long flags;
-	u_int cachesize;
-	u_int psize;
+	unsigned long flags;
+	unsigned int cachesize;
+	unsigned int psize;
 	int lorder;
 	size_t reclen;
-	u_char bval;
+	unsigned char bval;
 	char *bfname;
 } RECNOINFO;
 .Ed
@@ -189,7 +188,7 @@ field of the key should be the size of that type.
 Because there can be no meta-data associated with the underlying
 .Nm
 access method files, any changes made to the default values
-(e.g. fixed record length or byte separator value) must be explicitly
+(e.g.\& fixed record length or byte separator value) must be explicitly
 specified each time the file is opened.
 .Pp
 In the interface specified by

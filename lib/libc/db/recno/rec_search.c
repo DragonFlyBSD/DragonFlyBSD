@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_search.c	8.4 (Berkeley) 7/14/94
- * $DragonFly: src/lib/libc/db/recno/rec_search.c,v 1.5 2005/11/12 23:01:55 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/recno/rec_search.c 189327 2009-03-04 00:58:04Z delphij $
  */
 
 #include <sys/types.h>
@@ -44,7 +44,7 @@
  * Parameters:
  *	t:	tree to search
  *	recno:	key to find
- *	op: 	search operation
+ *	op:	search operation
  *
  * Returns:
  *	EPG for matching record, if any, or the EPG for the location of the
@@ -58,7 +58,7 @@
 EPG *
 __rec_search(BTREE *t, recno_t recno, enum SRCHOP op)
 {
-	indx_t index;
+	indx_t idx;
 	PAGE *h;
 	EPGNO *parent;
 	RINTERNAL *r;
@@ -76,23 +76,23 @@ __rec_search(BTREE *t, recno_t recno, enum SRCHOP op)
 			t->bt_cur.index = recno - total;
 			return (&t->bt_cur);
 		}
-		for (index = 0, top = NEXTINDEX(h);;) {
-			r = GETRINTERNAL(h, index);
-			if (++index == top || total + r->nrecs > recno)
+		for (idx = 0, top = NEXTINDEX(h);;) {
+			r = GETRINTERNAL(h, idx);
+			if (++idx == top || total + r->nrecs > recno)
 				break;
 			total += r->nrecs;
 		}
 
-		BT_PUSH(t, pg, index - 1);
-		
+		BT_PUSH(t, pg, idx - 1);
+
 		pg = r->pgno;
 		switch (op) {
 		case SDELETE:
-			--GETRINTERNAL(h, (index - 1))->nrecs;
+			--GETRINTERNAL(h, (idx - 1))->nrecs;
 			mpool_put(t->bt_mp, h, MPOOL_DIRTY);
 			break;
 		case SINSERT:
-			++GETRINTERNAL(h, (index - 1))->nrecs;
+			++GETRINTERNAL(h, (idx - 1))->nrecs;
 			mpool_put(t->bt_mp, h, MPOOL_DIRTY);
 			break;
 		case SEARCH:
@@ -111,8 +111,8 @@ err:	sverrno = errno;
 				--GETRINTERNAL(h, parent->index)->nrecs;
 			else
 				++GETRINTERNAL(h, parent->index)->nrecs;
-                        mpool_put(t->bt_mp, h, MPOOL_DIRTY);
-                }
+			mpool_put(t->bt_mp, h, MPOOL_DIRTY);
+		}
 	errno = sverrno;
 	return (NULL);
 }

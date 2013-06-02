@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_page.c	8.3 (Berkeley) 7/14/94
- * $DragonFly: src/lib/libc/db/btree/bt_page.c,v 1.4 2005/11/12 23:01:54 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/btree/bt_page.c 190498 2009-03-28 07:31:02Z delphij $
  */
 
 #include <sys/types.h>
@@ -87,5 +87,5 @@ __bt_new(BTREE *t, pgno_t *npg)
 		F_SET(t, B_METADIRTY);
 		return (h);
 	}
-	return (mpool_new(t->bt_mp, npg));
+	return (mpool_new(t->bt_mp, npg, MPOOL_PAGE_NEXT));
 }

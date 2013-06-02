@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_seq.c	8.3 (Berkeley) 7/14/94
- * $DragonFly: src/lib/libc/db/recno/rec_seq.c,v 1.4 2005/11/12 23:01:55 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/recno/rec_seq.c 189327 2009-03-04 00:58:04Z delphij $
  */
 
 #include <sys/types.h>
@@ -53,7 +53,7 @@
  *	RET_ERROR, RET_SUCCESS or RET_SPECIAL if there's no next key.
  */
 int
-__rec_seq(const DB *dbp, DBT *key, DBT *data, u_int flags)
+__rec_seq(const DB *dbp, DBT *key, DBT *data, unsigned int flags)
 {
 	BTREE *t;
 	EPG *e;
@@ -99,7 +99,7 @@ __rec_seq(const DB *dbp, DBT *key, DBT *data, u_int flags)
 einval:		errno = EINVAL;
 		return (RET_ERROR);
 	}
-	
+
 	if (t->bt_nrecs == 0 || nrec > t->bt_nrecs) {
 		if (!F_ISSET(t, R_EOF | R_INMEM) &&
 		    (status = t->bt_irec(t, nrec)) != RET_SUCCESS)

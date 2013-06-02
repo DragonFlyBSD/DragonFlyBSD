@@ -29,10 +29,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/db/btree/bt_close.c,v 1.5 2000/01/27 23:06:05 jasone Exp $
- * $DragonFly: src/lib/libc/db/btree/bt_close.c,v 1.5 2005/09/19 09:20:37 asmodai Exp $
- *
  * @(#)bt_close.c	8.7 (Berkeley) 8/17/94
+ * $FreeBSD: head/lib/libc/db/btree/bt_close.c 189291 2009-03-02 23:47:18Z delphij $
  */
 
 #include "namespace.h"
@@ -48,7 +46,7 @@
 #include <db.h>
 #include "btree.h"
 
-static int bt_meta (BTREE *);
+static int bt_meta(BTREE *);
 
 /*
  * BT_CLOSE -- Close a btree.
@@ -114,7 +112,7 @@ __bt_close(DB *dbp)
  *	RET_SUCCESS, RET_ERROR.
  */
 int
-__bt_sync(const DB *dbp, u_int flags)
+__bt_sync(const DB *dbp, unsigned int flags)
 {
 	BTREE *t;
 	int status;

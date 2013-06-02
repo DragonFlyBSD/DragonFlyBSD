@@ -30,8 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_open.c	8.10 (Berkeley) 9/1/94
- * $FreeBSD: src/lib/libc/db/recno/rec_open.c,v 1.4 2000/01/27 23:06:11 jasone Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_open.c,v 1.6 2005/11/19 20:46:32 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/recno/rec_open.c 189327 2009-03-04 00:58:04Z delphij $
  */
 
 #include "namespace.h"
@@ -51,8 +50,8 @@
 #include "recno.h"
 
 DB *
-__rec_open(const char *fname, int flags, int mode, const RECNOINFO *openinfo,
-	   int dflags)
+__rec_open(const char *fname, int flags, mode_t mode, const RECNOINFO *openinfo,
+    int dflags)
 {
 	BTREE *t;
 	BTREEINFO btopeninfo;
@@ -60,8 +59,6 @@ __rec_open(const char *fname, int flags, int mode, const RECNOINFO *openinfo,
 	PAGE *h;
 	struct stat sb;
 	int rfd, sverrno;
-
-	rfd = 0;
 
 	/* Open the user's file -- if this fails, we're done. */
 	if (fname != NULL && (rfd = _open(fname, flags, mode)) < 0)
@@ -203,7 +200,7 @@ slow:			if ((t->bt_rfp = fdopen(rfd, "r")) == NULL)
 	if (openinfo && openinfo->flags & R_SNAPSHOT &&
 	    !F_ISSET(t, R_EOF | R_INMEM) &&
 	    t->bt_irec(t, MAX_REC_NUMBER) == RET_ERROR)
-                goto err;
+		goto err;
 	return (dbp);
 
 einval:	errno = EINVAL;

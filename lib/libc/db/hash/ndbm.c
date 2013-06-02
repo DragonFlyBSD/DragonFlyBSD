@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ndbm.c	8.4 (Berkeley) 7/21/94
- * $DragonFly: src/lib/libc/db/hash/ndbm.c,v 1.4 2005/11/12 23:01:55 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/hash/ndbm.c 165903 2007-01-09 00:28:16Z imp $
  */
 
 /*
@@ -52,8 +52,8 @@
  * 	*DBM on success
  *	 NULL on failure
  */
-extern DBM *
-dbm_open(const char *file, int flags, int mode)
+DBM *
+dbm_open(const char *file, int flags, mode_t mode)
 {
 	HASHINFO info;
 	char path[MAXPATHLEN];
@@ -74,7 +74,7 @@ dbm_open(const char *file, int flags, int mode)
 	return ((DBM *)__hash_open(path, flags, mode, &info, 0));
 }
 
-extern void
+void
 dbm_close(DBM *db)
 {
 	(db->close)(db);
@@ -85,7 +85,7 @@ dbm_close(DBM *db)
  *	DATUM on success
  *	NULL on failure
  */
-extern datum
+datum
 dbm_fetch(DBM *db, datum key)
 {
 	datum retdata;
@@ -109,7 +109,7 @@ dbm_fetch(DBM *db, datum key)
  *	DATUM on success
  *	NULL on failure
  */
-extern datum
+datum
 dbm_firstkey(DBM *db)
 {
 	int status;
@@ -129,7 +129,7 @@ dbm_firstkey(DBM *db)
  *	DATUM on success
  *	NULL on failure
  */
-extern datum
+datum
 dbm_nextkey(DBM *db)
 {
 	int status;
@@ -149,7 +149,7 @@ dbm_nextkey(DBM *db)
  *	 0 on success
  *	<0 failure
  */
-extern int
+int
 dbm_delete(DBM *db, datum key)
 {
 	int status;
@@ -170,7 +170,7 @@ dbm_delete(DBM *db, datum key)
  *	<0 failure
  *	 1 if DBM_INSERT and entry exists
  */
-extern int
+int
 dbm_store(DBM *db, datum key, datum data, int flags)
 {
 	DBT dbtkey, dbtdata;
@@ -183,7 +183,7 @@ dbm_store(DBM *db, datum key, datum data, int flags)
 	    (flags == DBM_INSERT) ? R_NOOVERWRITE : 0));
 }
 
-extern int
+int
 dbm_error(DBM *db)
 {
 	HTAB *hp;
@@ -192,7 +192,7 @@ dbm_error(DBM *db)
 	return (hp->error);
 }
 
-extern int
+int
 dbm_clearerr(DBM *db)
 {
 	HTAB *hp;
@@ -202,7 +202,7 @@ dbm_clearerr(DBM *db)
 	return (0);
 }
 
-extern int
+int
 dbm_dirfno(DBM *db)
 {
 	return(((HTAB *)db->internal)->fp);

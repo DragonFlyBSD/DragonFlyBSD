@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_utils.c	8.6 (Berkeley) 7/16/94
- * $DragonFly: src/lib/libc/db/recno/rec_utils.c,v 1.4 2005/11/12 23:01:55 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/recno/rec_utils.c 189387 2009-03-05 00:57:01Z delphij $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@
  *	e:	key/data pair to be returned
  *   nrec:	record number
  *    key:	user's key structure
- *	data:	user's data structure
+ *   data:	user's data structure
  *
  * Returns:
  *	RET_SUCCESS, RET_ERROR.
@@ -64,9 +64,7 @@ __rec_ret(BTREE *t, EPG *e, recno_t nrec, DBT *key, DBT *data)
 
 	/* We have to copy the key, it's not on the page. */
 	if (sizeof(recno_t) > t->bt_rkey.size) {
-		p = (void *)(t->bt_rkey.data == NULL ?
-		    malloc(sizeof(recno_t)) :
-		    realloc(t->bt_rkey.data, sizeof(recno_t)));
+		p = realloc(t->bt_rkey.data, sizeof(recno_t));
 		if (p == NULL)
 			return (RET_ERROR);
 		t->bt_rkey.data = p;
@@ -94,9 +92,7 @@ dataonly:
 	} else if (F_ISSET(t, B_DB_LOCK)) {
 		/* Use +1 in case the first record retrieved is 0 length. */
 		if (rl->dsize + 1 > t->bt_rdata.size) {
-			p = (void *)(t->bt_rdata.data == NULL ?
-			    malloc(rl->dsize + 1) :
-			    realloc(t->bt_rdata.data, rl->dsize + 1));
+			p = realloc(t->bt_rdata.data, rl->dsize + 1);
 			if (p == NULL)
 				return (RET_ERROR);
 			t->bt_rdata.data = p;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)db.h	8.7 (Berkeley) 6/16/94
- * $DragonFly: src/include/db.h,v 1.4 2005/09/19 09:05:31 asmodai Exp $
+ * $FreeBSD: head/include/db.h 203964 2010-02-16 19:39:50Z imp $
  */
 
 #ifndef _DB_H_
@@ -43,11 +43,11 @@
 #define	RET_SPECIAL	 1
 
 #define	MAX_PAGE_NUMBER	0xffffffff	/* >= # of pages in a file */
-typedef u_int32_t	pgno_t;
+typedef uint32_t	pgno_t;
 #define	MAX_PAGE_OFFSET	65535		/* >= # of bytes in a page */
-typedef u_int16_t	indx_t;
+typedef uint16_t	indx_t;
 #define	MAX_REC_NUMBER	0xffffffff	/* >= # of records in a tree */
-typedef u_int32_t	recno_t;
+typedef uint32_t	recno_t;
 
 /* Key/data structure -- a Data-Base Thang. */
 typedef struct {
@@ -96,14 +96,14 @@ typedef enum { DB_BTREE, DB_HASH, DB_RECNO } DBTYPE;
 /* Access method description structure. */
 typedef struct __db {
 	DBTYPE type;			/* Underlying db type. */
-	int (*close)	(struct __db *);
-	int (*del)	(const struct __db *, const DBT *, u_int);
-	int (*get)	(const struct __db *, const DBT *, DBT *, u_int);
-	int (*put)	(const struct __db *, DBT *, const DBT *, u_int);
-	int (*seq)	(const struct __db *, DBT *, DBT *, u_int);
-	int (*sync)	(const struct __db *, u_int);
+	int (*close)(struct __db *);
+	int (*del)(const struct __db *, const DBT *, unsigned int);
+	int (*get)(const struct __db *, const DBT *, DBT *, unsigned int);
+	int (*put)(const struct __db *, DBT *, const DBT *, unsigned int);
+	int (*seq)(const struct __db *, DBT *, DBT *, unsigned int);
+	int (*sync)(const struct __db *, unsigned int);
 	void *internal;			/* Access method private. */
-	int (*fd)	(const struct __db *);
+	int (*fd)(const struct __db *);
 } DB;
 
 #define	BTREEMAGIC	0x053162
@@ -112,16 +112,16 @@ typedef struct __db {
 /* Structure used to pass parameters to the btree routines. */
 typedef struct {
 #define	R_DUP		0x01	/* duplicate keys */
-	u_long	flags;
-	u_int	cachesize;	/* bytes to cache */
-	int	maxkeypage;	/* maximum keys per page */
-	int	minkeypage;	/* minimum keys per page */
-	u_int	psize;		/* page size */
-	int	(*compare)	/* comparison function */
-	    (const DBT *, const DBT *);
-	size_t	(*prefix)	/* prefix function */
-	    (const DBT *, const DBT *);
-	int	lorder;		/* byte order */
+	unsigned long	flags;
+	unsigned int	cachesize;	/* bytes to cache */
+	int		maxkeypage;	/* maximum keys per page */
+	int		minkeypage;	/* minimum keys per page */
+	unsigned int	psize;		/* page size */
+	int		(*compare)	/* comparison function */
+			    (const DBT *, const DBT *);
+	size_t		(*prefix)	/* prefix function */
+			    (const DBT *, const DBT *);
+	int		lorder;		/* byte order */
 } BTREEINFO;
 
 #define	HASHMAGIC	0x061561
@@ -129,12 +129,12 @@ typedef struct {
 
 /* Structure used to pass parameters to the hashing routines. */
 typedef struct {
-	u_int	bsize;		/* bucket size */
-	u_int	ffactor;	/* fill factor */
-	u_int	nelem;		/* number of elements */
-	u_int	cachesize;	/* bytes to cache */
-	u_int32_t		/* hash function */
-		(*hash) (const void *, size_t);
+	unsigned int	bsize;		/* bucket size */
+	unsigned int	ffactor;	/* fill factor */
+	unsigned int	nelem;		/* number of elements */
+	unsigned int	cachesize;	/* bytes to cache */
+	uint32_t			/* hash function */
+		(*hash)(const void *, size_t);
 	int	lorder;		/* byte order */
 } HASHINFO;
 
@@ -143,12 +143,12 @@ typedef struct {
 #define	R_FIXEDLEN	0x01	/* fixed-length records */
 #define	R_NOKEY		0x02	/* key not required */
 #define	R_SNAPSHOT	0x04	/* snapshot the input */
-	u_long	flags;
-	u_int	cachesize;	/* bytes to cache */
-	u_int	psize;		/* page size */
-	int	lorder;		/* byte order */
-	size_t	reclen;		/* record length (fixed-length records) */
-	u_char	bval;		/* delimiting byte (variable-length records) */
+	unsigned long	flags;
+	unsigned int	cachesize; /* bytes to cache */
+	unsigned int	psize;	/* page size */
+	int		lorder;	/* byte order */
+	size_t		reclen;	/* record length (fixed-length records) */
+	unsigned char	bval;	/* delimiting byte (variable-length records */
 	char	*bfname;	/* btree file name */ 
 } RECNOINFO;
 
@@ -160,14 +160,14 @@ typedef struct {
  *	P_32_COPY	swap from one location to another
  */
 #define	M_32_SWAP(a) {							\
-	u_int32_t _tmp = a;						\
+	uint32_t _tmp = a;						\
 	((char *)&a)[0] = ((char *)&_tmp)[3];				\
 	((char *)&a)[1] = ((char *)&_tmp)[2];				\
 	((char *)&a)[2] = ((char *)&_tmp)[1];				\
 	((char *)&a)[3] = ((char *)&_tmp)[0];				\
 }
 #define	P_32_SWAP(a) {							\
-	u_int32_t _tmp = *(u_int32_t *)a;				\
+	uint32_t _tmp = *(uint32_t *)a;					\
 	((char *)a)[0] = ((char *)&_tmp)[3];				\
 	((char *)a)[1] = ((char *)&_tmp)[2];				\
 	((char *)a)[2] = ((char *)&_tmp)[1];				\
@@ -187,12 +187,12 @@ typedef struct {
  *	P_16_COPY	swap from one location to another
  */
 #define	M_16_SWAP(a) {							\
-	u_int16_t _tmp = a;						\
+	uint16_t _tmp = a;						\
 	((char *)&a)[0] = ((char *)&_tmp)[1];				\
 	((char *)&a)[1] = ((char *)&_tmp)[0];				\
 }
 #define	P_16_SWAP(a) {							\
-	u_int16_t _tmp = *(u_int16_t *)a;				\
+	uint16_t _tmp = *(uint16_t *)a;					\
 	((char *)a)[0] = ((char *)&_tmp)[1];				\
 	((char *)a)[1] = ((char *)&_tmp)[0];				\
 }
@@ -203,12 +203,14 @@ typedef struct {
 #endif
 
 __BEGIN_DECLS
+#if __BSD_VISIBLE
 DB *dbopen(const char *, int, mode_t, DBTYPE, const void *);
+#endif
 
 #ifdef __DBINTERFACE_PRIVATE
-DB	*__bt_open(const char *, int, int, const BTREEINFO *, int);
-DB	*__hash_open(const char *, int, int, const HASHINFO *, int);
-DB	*__rec_open(const char *, int, int, const RECNOINFO *, int);
+DB	*__bt_open(const char *, int, mode_t, const BTREEINFO *, int);
+DB	*__hash_open(const char *, int, mode_t, const HASHINFO *, int);
+DB	*__rec_open(const char *, int, mode_t, const RECNOINFO *, int);
 void	 __dbpanic(DB *);
 #endif
 __END_DECLS

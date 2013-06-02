@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_put.c	8.7 (Berkeley) 8/18/94
- * $FreeBSD: src/lib/libc/db/recno/rec_put.c,v 1.4.6.1 2001/01/02 05:13:25 peter Exp $
- * $DragonFly: src/lib/libc/db/recno/rec_put.c,v 1.5 2005/11/19 20:46:32 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/recno/rec_put.c 190484 2009-03-28 05:45:29Z delphij $
  */
 
 #include <sys/types.h>
@@ -55,7 +54,7 @@
  *	already in the tree and R_NOOVERWRITE specified.
  */
 int
-__rec_put(const DB *dbp, DBT *key, const DBT *data, u_int flags)
+__rec_put(const DB *dbp, DBT *key, const DBT *data, unsigned int flags)
 {
 	BTREE *t;
 	DBT fdata, tdata;
@@ -167,7 +166,7 @@ einval:		errno = EINVAL;
 		t->bt_cursor.rcursor = nrec;
 		break;
 	}
-	
+
 	F_SET(t, R_MODIFIED);
 	return (__rec_ret(t, NULL, nrec, key, NULL));
 }
@@ -184,14 +183,14 @@ einval:		errno = EINVAL;
  *	RET_ERROR, RET_SUCCESS
  */
 int
-__rec_iput(BTREE *t, recno_t nrec, const DBT *data, u_int flags)
+__rec_iput(BTREE *t, recno_t nrec, const DBT *data, unsigned int flags)
 {
 	DBT tdata;
 	EPG *e;
 	PAGE *h;
-	indx_t curindex, nxtindex;
+	indx_t idx, nxtindex;
 	pgno_t pg;
-	u_int32_t nbytes;
+	uint32_t nbytes;
 	int dflags, status;
 	char *dest, db[NOVFLSIZE];
 
@@ -207,7 +206,7 @@ __rec_iput(BTREE *t, recno_t nrec, const DBT *data, u_int flags)
 		tdata.data = db;
 		tdata.size = NOVFLSIZE;
 		*(pgno_t *)db = pg;
-		*(u_int32_t *)(db + sizeof(pgno_t)) = data->size;
+		*(uint32_t *)(db + sizeof(pgno_t)) = data->size;
 		dflags = P_BIGDATA;
 		data = &tdata;
 	} else
@@ -220,7 +219,7 @@ __rec_iput(BTREE *t, recno_t nrec, const DBT *data, u_int flags)
 		return (RET_ERROR);
 
 	h = e->page;
-	curindex = e->index;
+	idx = e->index;
 
 	/*
 	 * Add the specified key/data pair to the tree.  The R_IAFTER and
@@ -230,13 +229,13 @@ __rec_iput(BTREE *t, recno_t nrec, const DBT *data, u_int flags)
 	 */
 	switch (flags) {
 	case R_IAFTER:
-		++curindex;
+		++idx;
 		break;
 	case R_IBEFORE:
 		break;
 	default:
 		if (nrec < t->bt_nrecs &&
-		    __rec_dleaf(t, h, curindex) == RET_ERROR) {
+		    __rec_dleaf(t, h, idx) == RET_ERROR) {
 			mpool_put(t->bt_mp, h, 0);
 			return (RET_ERROR);
 		}
@@ -249,19 +248,19 @@ __rec_iput(BTREE *t, recno_t nrec, const DBT *data, u_int flags)
 	 * the offset array, shift the pointers up.
 	 */
 	nbytes = NRLEAFDBT(data->size);
-	if (h->upper - h->lower < nbytes + sizeof(indx_t)) {
-		status = __bt_split(t, h, NULL, data, dflags, nbytes, curindex);
+	if ((uint32_t)(h->upper - h->lower) < nbytes + sizeof(indx_t)) {
+		status = __bt_split(t, h, NULL, data, dflags, nbytes, idx);
 		if (status == RET_SUCCESS)
 			++t->bt_nrecs;
 		return (status);
 	}
 
-	if (curindex < (nxtindex = NEXTINDEX(h)))
-		memmove(h->linp + curindex + 1, h->linp + curindex,
-		    (nxtindex - curindex) * sizeof(indx_t));
+	if (idx < (nxtindex = NEXTINDEX(h)))
+		memmove(h->linp + idx + 1, h->linp + idx,
+		    (nxtindex - idx) * sizeof(indx_t));
 	h->lower += sizeof(indx_t);
 
-	h->linp[curindex] = h->upper -= nbytes;
+	h->linp[idx] = h->upper -= nbytes;
 	dest = (char *)h + h->upper;
 	WR_RLEAF(dest, data, dflags);
 

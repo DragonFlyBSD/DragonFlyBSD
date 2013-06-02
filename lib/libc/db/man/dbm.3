@@ -13,12 +13,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc/db/man/dbm.3,v 1.2.2.5 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/db/man/dbm.3,v 1.5 2008/05/10 18:22:41 swildner Exp $
+.\" $FreeBSD: head/lib/libc/db/man/dbm.3 187918 2009-01-30 15:28:35Z gabor $
 .\"
-.\" Note: The date here should be updated whenever a non-trivial
-.\" change is made to the manual page.
-.Dd July 7, 1999
+.Dd April 16, 2006
 .Dt DBM 3
 .Os
 .Sh NAME
@@ -39,7 +36,7 @@
 .In fcntl.h
 .In ndbm.h
 .Ft DBM *
-.Fn dbm_open "const char *base" "int flags" "int mode"
+.Fn dbm_open "const char *base" "int flags" "mode_t mode"
 .Ft void
 .Fn dbm_close "DBM *db"
 .Ft int
@@ -127,10 +124,6 @@ The
 .Fn dbm_close db
 function
 closes the database.
-The
-.Fn dbm_close
-function
-normally returns zero.
 .Pp
 The
 .Fn dbm_store db key data flags

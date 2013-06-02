@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_utils.c	8.8 (Berkeley) 7/20/94
- * $DragonFly: src/lib/libc/db/btree/bt_utils.c,v 1.5 2005/11/12 23:01:54 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/btree/bt_utils.c 189387 2009-03-05 00:57:01Z delphij $
  */
 
 #include <sys/param.h>
@@ -81,8 +81,7 @@ __bt_ret(BTREE *t, EPG *e, DBT *key, DBT *rkey, DBT *data, DBT *rdata, int copy)
 		key->data = rkey->data;
 	} else if (copy || F_ISSET(t, B_DB_LOCK)) {
 		if (bl->ksize > rkey->size) {
-			p = (void *)(rkey->data == NULL ?
-			    malloc(bl->ksize) : realloc(rkey->data, bl->ksize));
+			p = realloc(rkey->data, bl->ksize);
 			if (p == NULL)
 				return (RET_ERROR);
 			rkey->data = p;
@@ -108,9 +107,7 @@ dataonly:
 	} else if (copy || F_ISSET(t, B_DB_LOCK)) {
 		/* Use +1 in case the first record retrieved is 0 length. */
 		if (bl->dsize + 1 > rdata->size) {
-			p = (void *)(rdata->data == NULL ?
-			    malloc(bl->dsize + 1) :
-			    realloc(rdata->data, bl->dsize + 1));
+			p = realloc(rdata->data, bl->dsize + 1);
 			if (p == NULL)
 				return (RET_ERROR);
 			rdata->data = p;
@@ -193,7 +190,7 @@ __bt_cmp(BTREE *t, const DBT *k1, EPG *e)
  *
  * Parameters:
  *	a:	DBT #1
- *	b: 	DBT #2
+ *	b:	DBT #2
  *
  * Returns:
  *	< 0 if a is < b
@@ -204,12 +201,12 @@ int
 __bt_defcmp(const DBT *a, const DBT *b)
 {
 	size_t len;
-	u_char *p1, *p2;
+	unsigned char *p1, *p2;
 
 	/*
 	 * XXX
 	 * If a size_t doesn't fit in an int, this routine can lose.
-	 * What we need is a integral type which is guaranteed to be
+	 * What we need is an integral type which is guaranteed to be
 	 * larger than a size_t, and there is no such thing.
 	 */
 	len = MIN(a->size, b->size);
@@ -224,7 +221,7 @@ __bt_defcmp(const DBT *a, const DBT *b)
  *
  * Parameters:
  *	a:	DBT #1
- *	b: 	DBT #2
+ *	b:	DBT #2
  *
  * Returns:
  *	Number of bytes needed to distinguish b from a.
@@ -232,7 +229,7 @@ __bt_defcmp(const DBT *a, const DBT *b)
 size_t
 __bt_defpfx(const DBT *a, const DBT *b)
 {
-	u_char *p1, *p2;
+	unsigned char *p1, *p2;
 	size_t cnt, len;
 
 	cnt = 1;

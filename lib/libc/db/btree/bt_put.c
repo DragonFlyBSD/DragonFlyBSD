@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_put.c	8.8 (Berkeley) 7/26/94
- * $DragonFly: src/lib/libc/db/btree/bt_put.c,v 1.8 2005/11/12 23:01:54 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/btree/bt_put.c 190484 2009-03-28 05:45:29Z delphij $
  */
 
 #include <sys/types.h>
@@ -43,7 +43,7 @@
 #include <db.h>
 #include "btree.h"
 
-static EPG *bt_fast (BTREE *, const DBT *, const DBT *, int *);
+static EPG *bt_fast(BTREE *, const DBT *, const DBT *, int *);
 
 /*
  * __BT_PUT -- Add a btree item to the tree.
@@ -59,15 +59,15 @@ static EPG *bt_fast (BTREE *, const DBT *, const DBT *, int *);
  *	tree and R_NOOVERWRITE specified.
  */
 int
-__bt_put(const DB *dbp, DBT *key, const DBT *data, u_int flags)
+__bt_put(const DB *dbp, DBT *key, const DBT *data, unsigned int flags)
 {
 	BTREE *t;
 	DBT tkey, tdata;
-	EPG *e = NULL;
+	EPG *e;
 	PAGE *h;
 	indx_t idx, nxtindex;
 	pgno_t pg;
-	u_int32_t nbytes, tmp;
+	uint32_t nbytes, tmp;
 	int dflags, exact, status;
 	char *dest, db[NOVFLSIZE], kb[NOVFLSIZE];
 
@@ -96,7 +96,7 @@ __bt_put(const DB *dbp, DBT *key, const DBT *data, u_int flags)
 		 */
 		if (F_ISSET(&t->bt_cursor, CURS_INIT) &&
 		    !F_ISSET(&t->bt_cursor,
-		        CURS_ACQUIRE | CURS_AFTER | CURS_BEFORE))
+			CURS_ACQUIRE | CURS_AFTER | CURS_BEFORE))
 			break;
 		/* FALLTHROUGH */
 	default:
@@ -122,7 +122,7 @@ storekey:		if (__ovfl_put(t, key, &pg) == RET_ERROR)
 			memmove(kb, &pg, sizeof(pgno_t));
 			tmp = key->size;
 			memmove(kb + sizeof(pgno_t),
-			    &tmp, sizeof(u_int32_t));
+			    &tmp, sizeof(uint32_t));
 			dflags |= P_BIGKEY;
 			key = &tkey;
 		}
@@ -134,7 +134,7 @@ storekey:		if (__ovfl_put(t, key, &pg) == RET_ERROR)
 			memmove(db, &pg, sizeof(pgno_t));
 			tmp = data->size;
 			memmove(db + sizeof(pgno_t),
-			    &tmp, sizeof(u_int32_t));
+			    &tmp, sizeof(uint32_t));
 			dflags |= P_BIGDATA;
 			data = &tdata;
 		}
@@ -194,7 +194,7 @@ delete:		if (__bt_dleaf(t, key, h, idx) == RET_ERROR) {
 	 * into the offset array, shift the pointers up.
 	 */
 	nbytes = NBLEAFDBT(key->size, data->size);
-	if ((size_t)(h->upper - h->lower) < nbytes + sizeof(indx_t)) {
+	if ((uint32_t)(h->upper - h->lower) < nbytes + sizeof(indx_t)) {
 		if ((status = __bt_split(t, h, key,
 		    data, dflags, nbytes, idx)) != RET_SUCCESS)
 			return (status);
@@ -243,7 +243,7 @@ success:
 }
 
 #ifdef STATISTICS
-u_long bt_cache_hit, bt_cache_miss;
+unsigned long bt_cache_hit, bt_cache_miss;
 #endif
 
 /*
@@ -254,13 +254,13 @@ u_long bt_cache_hit, bt_cache_miss;
  *	key:	key to insert
  *
  * Returns:
- * 	EPG for new record or NULL if not found.
+ *	EPG for new record or NULL if not found.
  */
 static EPG *
 bt_fast(BTREE *t, const DBT *key, const DBT *data, int *exactp)
 {
 	PAGE *h;
-	u_int32_t nbytes;
+	uint32_t nbytes;
 	int cmp;
 
 	if ((h = mpool_get(t->bt_mp, t->bt_last.pgno, 0)) == NULL) {
@@ -275,7 +275,7 @@ bt_fast(BTREE *t, const DBT *key, const DBT *data, int *exactp)
 	 * have to search to get split stack.
 	 */
 	nbytes = NBLEAFDBT(key->size, data->size);
-	if ((size_t)(h->upper - h->lower) < nbytes + sizeof(indx_t))
+	if ((uint32_t)(h->upper - h->lower) < nbytes + sizeof(indx_t))
 		goto miss;
 
 	if (t->bt_order == FORWARD) {

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_seq.c	8.7 (Berkeley) 7/20/94
- * $DragonFly: src/lib/libc/db/btree/bt_seq.c,v 1.7 2005/11/12 23:01:54 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/btree/bt_seq.c 189327 2009-03-04 00:58:04Z delphij $
  */
 
 #include <sys/types.h>
@@ -43,9 +43,9 @@
 #include <db.h>
 #include "btree.h"
 
-static int __bt_first (BTREE *, const DBT *, EPG *, int *);
-static int __bt_seqadv (BTREE *, EPG *, int);
-static int __bt_seqset (BTREE *, EPG *, DBT *, int);
+static int __bt_first(BTREE *, const DBT *, EPG *, int *);
+static int __bt_seqadv(BTREE *, EPG *, int);
+static int __bt_seqset(BTREE *, EPG *, DBT *, int);
 
 /*
  * Sequential scan support.
@@ -69,7 +69,7 @@ static int __bt_seqset (BTREE *, EPG *, DBT *, int);
  *	RET_ERROR, RET_SUCCESS or RET_SPECIAL if there's no next key.
  */
 int
-__bt_seq(const DB *dbp, DBT *key, DBT *data, u_int flags)
+__bt_seq(const DB *dbp, DBT *key, DBT *data, unsigned int flags)
 {
 	BTREE *t;
 	EPG e;
@@ -84,7 +84,7 @@ __bt_seq(const DB *dbp, DBT *key, DBT *data, u_int flags)
 	}
 
 	/*
-	 * If scan unitialized as yet, or starting at a specific record, set
+	 * If scan uninitialized as yet, or starting at a specific record, set
 	 * the scan to a specific key.  Both __bt_seqset and __bt_seqadv pin
 	 * the page the cursor references if they're successful.
 	 */
@@ -255,7 +255,7 @@ __bt_seqadv(BTREE *t, EPG *ep, int flags)
 		return (RET_ERROR);
 
 	/*
- 	 * Find the next/previous record in the tree and point the cursor at
+	 * Find the next/previous record in the tree and point the cursor at
 	 * it.  The cursor may not be moved until a new key has been found.
 	 */
 	switch (flags) {
@@ -302,8 +302,6 @@ usecurrent:		F_CLR(c, CURS_AFTER | CURS_BEFORE);
 		} else
 			--idx;
 		break;
-	default:
-		return (RET_ERROR);
 	}
 
 	ep->page = h;
@@ -347,7 +345,7 @@ __bt_first(BTREE *t, const DBT *key, EPG *erval, int *exactp)
 			*erval = *ep;
 			return (RET_SUCCESS);
 		}
-			
+
 		/*
 		 * Walk backwards, as long as the entry matches and there are
 		 * keys left in the tree.  Save a copy of each match in case
@@ -420,10 +418,10 @@ __bt_first(BTREE *t, const DBT *key, EPG *erval, int *exactp)
  * Parameters:
  *	t:	the tree
  *   pgno:	page number
- *  index:	page index
+ *    idx:	page index
  */
 void
-__bt_setcur(BTREE *t, pgno_t pgno, u_int index)
+__bt_setcur(BTREE *t, pgno_t pgno, unsigned int idx)
 {
 	/* Lose any already deleted key. */
 	if (t->bt_cursor.key.data != NULL) {
@@ -435,6 +433,6 @@ __bt_setcur(BTREE *t, pgno_t pgno, u_int index)
 
 	/* Update the cursor. */
 	t->bt_cursor.pg.pgno = pgno;
-	t->bt_cursor.pg.index = index;
+	t->bt_cursor.pg.index = idx;
 	F_SET(&t->bt_cursor, CURS_INIT);
 }

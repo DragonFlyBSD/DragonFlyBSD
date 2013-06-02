@@ -26,8 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)hash.3	8.6 (Berkeley) 8/18/94
-.\" $FreeBSD: src/lib/libc/db/man/hash.3,v 1.4.2.3 2003/02/23 19:45:52 trhodes Exp $
-.\" $DragonFly: src/lib/libc/db/man/hash.3,v 1.6 2007/08/18 20:48:47 swildner Exp $
+.\" $FreeBSD: head/lib/libc/db/man/hash.3 231564 2012-02-12 18:29:56Z ed $
 .\"
 .Dd August 18, 1994
 .Dt HASH 3
@@ -64,11 +63,11 @@ is defined in the
 include file as follows:
 .Bd -literal
 typedef struct {
-	u_int bsize;
-	u_int ffactor;
-	u_int nelem;
-	u_int cachesize;
-	u_int32_t (*hash)(const void *, size_t);
+	unsigned int bsize;
+	unsigned int ffactor;
+	unsigned int nelem;
+	unsigned int cachesize;
+	uint32_t (*hash)(const void *, size_t);
 	int lorder;
 } HASHINFO;
 .Ed
@@ -81,7 +80,7 @@ The
 element
 defines the
 .Nm
-table bucket size, and is, by default, 256 bytes.
+table bucket size, and is, by default, 4096 bytes.
 It may be preferable to increase the page size for disk-resident tables
 and tables with large data items.
 .It Va ffactor

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_delete.c	8.13 (Berkeley) 7/28/94
- * $DragonFly: src/lib/libc/db/btree/bt_delete.c,v 1.8 2005/11/12 23:01:54 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/btree/bt_delete.c 189327 2009-03-04 00:58:04Z delphij $
  */
 
 #include <sys/types.h>
@@ -42,11 +42,11 @@
 #include <db.h>
 #include "btree.h"
 
-static int __bt_bdelete (BTREE *, const DBT *);
-static int __bt_curdel (BTREE *, const DBT *, PAGE *, u_int);
-static int __bt_pdelete (BTREE *, PAGE *);
-static int __bt_relink (BTREE *, PAGE *);
-static int __bt_stkacq (BTREE *, PAGE **, CURSOR *);
+static int __bt_bdelete(BTREE *, const DBT *);
+static int __bt_curdel(BTREE *, const DBT *, PAGE *, unsigned int);
+static int __bt_pdelete(BTREE *, PAGE *);
+static int __bt_relink(BTREE *, PAGE *);
+static int __bt_stkacq(BTREE *, PAGE **, CURSOR *);
 
 /*
  * __bt_delete
@@ -55,7 +55,7 @@ static int __bt_stkacq (BTREE *, PAGE **, CURSOR *);
  * Return RET_SPECIAL if the key is not found.
  */
 int
-__bt_delete(const DB *dbp, const DBT *key, u_int flags)
+__bt_delete(const DB *dbp, const DBT *key, unsigned int flags)
 {
 	BTREE *t;
 	CURSOR *c;
@@ -139,11 +139,11 @@ __bt_stkacq(BTREE *t, PAGE **hp, CURSOR *c)
 	EPG *e;
 	EPGNO *parent;
 	PAGE *h;
-	indx_t idx = 0;
+	indx_t idx;
 	pgno_t pgno;
 	recno_t nextpg, prevpg;
 	int exact, level;
-	
+
 	/*
 	 * Find the first occurrence of the key in the tree.  Toss the
 	 * currently locked page so we don't hit an already-locked page.
@@ -259,7 +259,7 @@ __bt_stkacq(BTREE *t, PAGE **hp, CURSOR *c)
 		if ((h = mpool_get(t->bt_mp, prevpg, 0)) == NULL)
 			return (1);
 	}
-	
+
 
 ret:	mpool_put(t->bt_mp, h, 0);
 	return ((*hp = mpool_get(t->bt_mp, c->pg.pgno, 0)) == NULL);
@@ -368,7 +368,7 @@ __bt_pdelete(BTREE *t, PAGE *h)
 	PAGE *pg;
 	EPGNO *parent;
 	indx_t cnt, idx, *ip, offset;
-	u_int32_t nksize;
+	uint32_t nksize;
 	char *from;
 
 	/*
@@ -387,7 +387,7 @@ __bt_pdelete(BTREE *t, PAGE *h)
 		/* Get the parent page. */
 		if ((pg = mpool_get(t->bt_mp, parent->pgno, 0)) == NULL)
 			return (RET_ERROR);
-		
+
 		idx = parent->index;
 		bi = GETBINTERNAL(pg, idx);
 
@@ -403,7 +403,7 @@ __bt_pdelete(BTREE *t, PAGE *h)
 		 * root page. If it's the rootpage, turn it back into an empty
 		 * leaf page.
 		 */
-		if (NEXTINDEX(pg) == 1)
+		if (NEXTINDEX(pg) == 1) {
 			if (pg->pgno == P_ROOT) {
 				pg->lower = BTDATAOFF;
 				pg->upper = t->bt_psize;
@@ -413,7 +413,7 @@ __bt_pdelete(BTREE *t, PAGE *h)
 					return (RET_ERROR);
 				continue;
 			}
-		else {
+		} else {
 			/* Pack remaining key items at the end of the page. */
 			nksize = NBINTERNAL(bi->ksize);
 			from = (char *)pg + pg->upper;
@@ -456,11 +456,11 @@ __bt_pdelete(BTREE *t, PAGE *h)
  *	RET_SUCCESS, RET_ERROR.
  */
 int
-__bt_dleaf(BTREE *t, const DBT *key, PAGE *h, u_int idx)
+__bt_dleaf(BTREE *t, const DBT *key, PAGE *h, unsigned int idx)
 {
 	BLEAF *bl;
 	indx_t cnt, *ip, offset;
-	u_int32_t nbytes;
+	uint32_t nbytes;
 	void *to;
 	char *from;
 
@@ -517,7 +517,7 @@ __bt_dleaf(BTREE *t, const DBT *key, PAGE *h, u_int idx)
  *	RET_SUCCESS, RET_ERROR.
  */
 static int
-__bt_curdel(BTREE *t, const DBT *key, PAGE *h, u_int idx)
+__bt_curdel(BTREE *t, const DBT *key, PAGE *h, unsigned int idx)
 {
 	CURSOR *c;
 	EPG e;
@@ -548,7 +548,7 @@ __bt_curdel(BTREE *t, const DBT *key, PAGE *h, u_int idx)
 			key = &c->key;
 		}
 		/* Check previous key, if not at the beginning of the page. */
-		if (idx > 0) { 
+		if (idx > 0) {
 			e.page = h;
 			e.index = idx - 1;
 			if (__bt_cmp(t, key, &e) == 0) {

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)recno.h	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/db/recno/recno.h,v 1.2 2005/09/19 09:20:37 asmodai Exp $
+ * $FreeBSD: head/lib/libc/db/recno/recno.h 165903 2007-01-09 00:28:16Z imp $
  */
 
 enum SRCHOP { SDELETE, SINSERT, SEARCH};	/* Rec_search operation. */

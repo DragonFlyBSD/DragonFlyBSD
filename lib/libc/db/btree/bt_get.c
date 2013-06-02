@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_get.c	8.6 (Berkeley) 7/20/94
- * $DragonFly: src/lib/libc/db/btree/bt_get.c,v 1.4 2005/11/12 23:01:54 swildner Exp $
+ * $FreeBSD: head/lib/libc/db/btree/bt_get.c 189291 2009-03-02 23:47:18Z delphij $
  */
 
 #include <sys/types.h>
@@ -55,7 +55,7 @@
  *	RET_ERROR, RET_SUCCESS and RET_SPECIAL if the key not found.
  */
 int
-__bt_get(const DB *dbp, const DBT *key, DBT *data, u_int flags)
+__bt_get(const DB *dbp, const DBT *key, DBT *data, unsigned int flags)
 {
 	BTREE *t;
 	EPG *e;

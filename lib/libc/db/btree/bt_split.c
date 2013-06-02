@@ -29,11 +29,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)bt_split.c	8.9 (Berkeley) 7/26/94
- * $DragonFly: src/lib/libc/db/btree/bt_split.c,v 1.8 2005/11/19 20:46:32 swildner Exp $
+ * @(#)bt_split.c	8.10 (Berkeley) 1/9/95
+ * $FreeBSD: head/lib/libc/db/btree/bt_split.c 223262 2011-06-18 13:56:33Z benl $
  */
 
 #include <sys/types.h>
+#include <sys/param.h>
 
 #include <limits.h>
 #include <stdio.h>
@@ -52,7 +53,7 @@ static int	 bt_rroot(BTREE *, PAGE *, PAGE *, PAGE *);
 static recno_t	 rec_total(PAGE *);
 
 #ifdef STATISTICS
-u_long	bt_rootsplit, bt_split, bt_sortsplit, bt_pfxsaved;
+unsigned long	bt_rootsplit, bt_split, bt_sortsplit, bt_pfxsaved;
 #endif
 
 /*
@@ -72,7 +73,7 @@ u_long	bt_rootsplit, bt_split, bt_sortsplit, bt_pfxsaved;
  */
 int
 __bt_split(BTREE *t, PAGE *sp, const DBT *key, const DBT *data, int flags,
-	   size_t ilen, u_int32_t argskip)
+    size_t ilen, uint32_t argskip)
 {
 	BINTERNAL *bi;
 	BLEAF *bl, *tbl;
@@ -80,14 +81,11 @@ __bt_split(BTREE *t, PAGE *sp, const DBT *key, const DBT *data, int flags,
 	EPGNO *parent;
 	PAGE *h, *l, *r, *lchild, *rchild;
 	indx_t nxtindex;
-	u_int16_t skip;
-	u_int32_t n, nbytes, nksize;
+	uint16_t skip;
+	uint32_t n, nbytes, nksize;
 	int parentsplit;
 	char *dest;
 
-	bi = NULL;
-	bl = NULL;
-	nksize = 0;
 	/*
 	 * Split the page into two pages, l and r.  The split routines return
 	 * a pointer to the page into which the key should be inserted and with
@@ -205,7 +203,7 @@ __bt_split(BTREE *t, PAGE *sp, const DBT *key, const DBT *data, int flags,
 		}
 
 		/* Split the parent page if necessary or shift the indices. */
-		if (h->upper - h->lower < nbytes + sizeof(indx_t)) {
+		if ((uint32_t)(h->upper - h->lower) < nbytes + sizeof(indx_t)) {
 			sp = h;
 			h = h->pgno == P_ROOT ?
 			    bt_root(t, h, &l, &r, &skip, nbytes) :
@@ -376,9 +374,6 @@ bt_page(BTREE *t, PAGE *h, PAGE **lp, PAGE **rp, indx_t *skip, size_t ilen)
 		mpool_put(t->bt_mp, r, 0);
 		return (NULL);
 	}
-#ifdef PURIFY
-	memset(l, 0xff, t->bt_psize);
-#endif
 	l->pgno = h->pgno;
 	l->nextpg = r->pgno;
 	l->prevpg = h->prevpg;
@@ -485,7 +480,7 @@ bt_rroot(BTREE *t, PAGE *h, PAGE *l, PAGE *r)
 	WR_RINTERNAL(dest,
 	    l->flags & P_RLEAF ? NEXTINDEX(l) : rec_total(l), l->pgno);
 
-	h->linp[1] = h->upper -= NRINTERNAL;
+	__PAST_END(h->linp, 1) = h->upper -= NRINTERNAL;
 	dest = (char *)h + h->upper;
 	WR_RINTERNAL(dest,
 	    r->flags & P_RLEAF ? NEXTINDEX(r) : rec_total(r), r->pgno);
@@ -517,7 +512,7 @@ bt_broot(BTREE *t, PAGE *h, PAGE *l, PAGE *r)
 {
 	BINTERNAL *bi;
 	BLEAF *bl;
-	u_int32_t nbytes;
+	uint32_t nbytes;
 	char *dest;
 
 	/*
@@ -537,7 +532,7 @@ bt_broot(BTREE *t, PAGE *h, PAGE *l, PAGE *r)
 	case P_BLEAF:
 		bl = GETBLEAF(r, 0);
 		nbytes = NBINTERNAL(bl->ksize);
-		h->linp[1] = h->upper -= nbytes;
+		__PAST_END(h->linp, 1) = h->upper -= nbytes;
 		dest = (char *)h + h->upper;
 		WR_BINTERNAL(dest, bl->ksize, r->pgno, 0);
 		memmove(dest, bl->bytes, bl->ksize);
@@ -553,7 +548,7 @@ bt_broot(BTREE *t, PAGE *h, PAGE *l, PAGE *r)
 	case P_BINTERNAL:
 		bi = GETBINTERNAL(r, 0);
 		nbytes = NBINTERNAL(bi->ksize);
-		h->linp[1] = h->upper -= nbytes;
+		__PAST_END(h->linp, 1) = h->upper -= nbytes;
 		dest = (char *)h + h->upper;
 		memmove(dest, bi, nbytes);
 		((BINTERNAL *)dest)->pgno = r->pgno;
@@ -597,10 +592,9 @@ bt_psplit(BTREE *t, PAGE *h, PAGE *l, PAGE *r, indx_t *pskip, size_t ilen)
 	PAGE *rval;
 	void *src;
 	indx_t full, half, nxt, off, skip, top, used;
-	u_int32_t nbytes;
+	uint32_t nbytes;
 	int bigkeycnt, isbigkey;
 
-	src = NULL;
 	/*
 	 * Split the data to the left and right pages.  Leave the skip index
 	 * open.  Additionally, make some effort not to split on an overflow
@@ -648,8 +642,8 @@ bt_psplit(BTREE *t, PAGE *h, PAGE *l, PAGE *r, indx_t *pskip, size_t ilen)
 		 * where we decide to try and copy too much onto the left page.
 		 * Make sure that doesn't happen.
 		 */
-		if ((skip <= off &&
-		    used + nbytes + sizeof(indx_t) >= full) || nxt == top - 1) {
+		if ((skip <= off && used + nbytes + sizeof(indx_t) >= full) ||
+		    nxt == top - 1) {
 			--off;
 			break;
 		}

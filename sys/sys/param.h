@@ -339,4 +339,10 @@ void	panic (const char *, ...) __dead2 __printflike(1, 2);
 #define	ntohs(x)	__ntohs(x)
 #endif
 
+/*
+ * Access a variable length array that has been declared as a fixed
+ * length array.
+ */
+#define	__PAST_END(array, offset) (((__typeof__(*(array)) *)(array))[offset])
+
 #endif	/* _SYS_PARAM_H_ */
