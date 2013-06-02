@@ -121,7 +121,6 @@ mpt_get_spi_settings(struct mpt_softc *, struct ccb_trans_settings *);
 static void mpt_setwidth(struct mpt_softc *, int, int);
 static void mpt_setsync(struct mpt_softc *, int, int, int);
 static int mpt_update_spi_config(struct mpt_softc *, int);
-static void mpt_calc_geometry(struct ccb_calc_geometry *ccg, int extended);
 
 static mpt_reply_handler_t mpt_scsi_reply_handler;
 static mpt_reply_handler_t mpt_scsi_tmf_reply_handler;
@@ -3607,7 +3606,7 @@ mpt_action(struct cam_sim *sim, union ccb *ccb)
 			mpt_set_ccb_status(ccb, CAM_REQ_INVALID);
 			break;
 		}
-		mpt_calc_geometry(ccg, /*extended*/1);
+		cam_calc_geometry(ccg, /*extended*/1);
 		KASSERT(ccb->ccb_h.status, ("zero ccb sts at %d", __LINE__));
 		break;
 	}
@@ -3960,12 +3959,6 @@ mpt_update_spi_config(struct mpt_softc *mpt, int tgt)
 		return (-1);
 	}
 	return (0);
-}
-
-static void
-mpt_calc_geometry(struct ccb_calc_geometry *ccg, int extended)
-{
-	cam_calc_geometry(ccg, extended);
 }
 
 /****************************** Timeout Recovery ******************************/
