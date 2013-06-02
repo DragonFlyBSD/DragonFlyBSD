@@ -12,7 +12,7 @@ BINUPDATE= apmd.conf fbtab gettytab network.subr \
 	protocols \
 	rc rc.firewall6 \
 	rc.sendmail rc.shutdown \
-	rc.subr rpc services \
+	rc.subr rpc \
 	etc.${MACHINE_ARCH}/disktab
 .if defined(BINARY_UPGRADE) # location of these depends on upgrade method
 BINUPDATE+=mail.rc locate.rc
@@ -31,7 +31,7 @@ BIN1=	amd.map auth.conf \
 	inetd.conf login.access login.conf \
 	motd modems netconfig networks newsyslog.conf \
 	nscd.conf pf.conf phones printcap profile \
-	regdomain.xml remote sensorsd.conf \
+	regdomain.xml remote sensorsd.conf services \
 	shells sysctl.conf syslog.conf usbd.conf \
 	etc.${MACHINE_ARCH}/ttys
 .if defined(BINARY_UPGRADE) # location of these depends on upgrade method
