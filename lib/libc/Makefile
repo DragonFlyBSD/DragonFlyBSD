@@ -2,7 +2,7 @@
 # $FreeBSD: src/lib/libc/Makefile,v 1.24 1999/09/29 15:18:29 marcel Exp $
 #
 LIB=c
-SHLIB_MAJOR= 7
+SHLIB_MAJOR= 8
 CFLAGS+= -I${.CURDIR}/include -I${.OBJDIR} -I${.CURDIR}/${MACHINE_ARCH}
 CLEANFILES+=tags
 PRECIOUSLIB=	yes

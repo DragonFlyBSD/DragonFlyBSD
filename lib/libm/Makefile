@@ -24,7 +24,7 @@ CFLAGS+=	-I${.CURDIR}/ld80
 .PATH:	${.CURDIR}/man
 
 LIB=	m
-SHLIB_MAJOR= 3
+SHLIB_MAJOR= 4
 WARNS?=	1
 COMMON_SRCS= b_exp.c b_log.c b_tgamma.c \
 	e_acos.c e_acosf.c e_acosh.c e_acoshf.c e_asin.c e_asinf.c \
