@@ -28,7 +28,7 @@
 .\"	from: @(#)math.3	6.10 (Berkeley) 5/6/91
 .\" $FreeBSD: head/lib/msun/man/math.3 226460 2011-10-17 06:10:32Z das $
 .\"
-.Dd December 21, 2011
+.Dd June 2, 2013
 .Dt MATH 3
 .Os
 .Sh NAME
@@ -40,7 +40,7 @@
 .In math.h
 .Sh DESCRIPTION
 The math library includes the following components:
-.Bl -column "<complex.h>" "polymorphic (type-generic) versions of functions" -compact -offset indent
+.Bl -column ".In complex.h" "polymorphic (type-generic) versions of functions" -compact -offset indent
 .In math.h Ta basic routines and real-valued functions
 .In complex.h Ta complex number support
 .In tgmath.h Ta polymorphic (type-generic) versions of functions
@@ -233,7 +233,8 @@ Additional routines, including ones for
 .Vt float
 and
 .Vt long double
-values, were written for or imported into subsequent versions of FreeBSD.
+values, were written for or imported into subsequent versions of
+.Fx .
 .Sh BUGS
 Some of the
 .Vt "long double"
