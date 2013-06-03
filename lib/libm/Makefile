@@ -125,7 +125,7 @@ MLINKS+=cacos.3 cacosf.3 \
 	cacos.3 casin.3 \
 	cacos.3 casinf.3 \
 	cacos.3 casinh.3 \
-	cacos.3 casinhf \
+	cacos.3 casinhf.3 \
 	cacos.3 catan.3 \
 	cacos.3 catanf.3 \
 	cacos.3 catanh.3 \
