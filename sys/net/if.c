@@ -2506,6 +2506,7 @@ int
 ifsq_classic_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
     struct altq_pktattr *pa __unused)
 {
+	M_ASSERTPKTHDR(m);
 	if (ifsq->ifq_len >= ifsq->ifq_maxlen) {
 		m_freem(m);
 		return ENOBUFS;
@@ -2518,7 +2519,7 @@ ifsq_classic_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 		ifsq->ifq_tail = m;
 		ifsq->ifq_len++;
 		return 0;
-	}	
+	}
 }
 
 struct mbuf *
