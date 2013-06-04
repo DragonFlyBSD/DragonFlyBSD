@@ -452,7 +452,6 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	hammer2_inode_data_t *rawip;
 	hammer2_blockref_t sroot_blockref;
 	hammer2_blockref_t root_blockref;
-	hammer2_blockref_t freemap_blockref;
 	uint64_t now;
 	hammer2_off_t volu_base = 0;
 	hammer2_off_t boot_base = HAMMER2_ZONE_SEG;
@@ -613,58 +612,6 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	}
 
 	/*
-	 * Set up the freemap blockref.  This blockref must point to the
-	 * appropriate reserved block (ZONE_FREEMAP_A + ZONEFM_LAYER0).
-	 * We use a special check method CHECK_FREEMAP which is basically
-	 * just CHECK_ISCSI32 but contains additional hinting fields to
-	 * help the allocator.
-	 *
-	 * Even though the freemap is multi-level, all newfs2_hammer2 needs
-	 * to do is set up an empty root freemap indirect block.  The HAMMER2
-	 * VFS will populate the remaining layers and leaf(s) on the fly.
-	 *
-	 * The root freemap indirect block must represent a space large enough
-	 * to cover the whole filesystem.  Since we are using normal
-	 * blockref's, each indirect freemap block represents
-	 * FREEMAP_NODE_RADIX (10) bits of address space.  A 64KB leaf block
-	 * represents FREEMAP_LEAF_REP (256MB) bytes of storage.
-	 *
-	 * For now we install a MAXIMAL key range to (potentially) support
-	 * a sparse storage map by default.  Only certain keybits values
-	 * are allowed for the freemap root (64, 54, 44, or 34).
-	 */
-	bzero(buf, HAMMER2_PBUFSIZE);
-	bzero(&freemap_blockref, sizeof(freemap_blockref));
-	freemap_blockref.vradix = HAMMER2_PBUFRADIX;
-	freemap_blockref.data_off = (HAMMER2_ZONE_FREEMAP_A +
-				     HAMMER2_ZONEFM_LAYER0) |
-				    HAMMER2_PBUFRADIX;
-	freemap_blockref.copyid = HAMMER2_COPYID_LOCAL;
-	freemap_blockref.keybits = 64;
-	freemap_blockref.type = HAMMER2_BREF_TYPE_FREEMAP_ROOT;
-	freemap_blockref.methods = HAMMER2_ENC_CHECK(HAMMER2_CHECK_FREEMAP) |
-				   HAMMER2_ENC_COMP(HAMMER2_COMP_AUTOZERO);
-
-	/*
-	 * check union also has hinting fields.  We can just set the (biggest)
-	 * heuristic to a maximal value and let the allocator adjust it,
-	 * and we must initialize (avail) properly (taking into account
-	 * reserved blocks) so auto-initialized sub-trees/leafs match up
-	 * to expected values.
-	 */
-	freemap_blockref.check.freemap.icrc32 =
-					hammer2_icrc32(buf, HAMMER2_PBUFSIZE);
-	freemap_blockref.check.freemap.biggest = 64;
-	freemap_blockref.check.freemap.avail = free_space;
-
-	n = pwrite(fd, buf, HAMMER2_PBUFSIZE,
-		   freemap_blockref.data_off & HAMMER2_OFF_MASK_HI);
-	if (n != HAMMER2_PBUFSIZE) {
-		perror("write");
-		exit(1);
-	}
-
-	/*
 	 * Format the volume header.
 	 *
 	 * The volume header points to sroot_blockref.  Also be absolutely
@@ -692,7 +639,6 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	vol->allocator_beg = alloc_base;
 
 	vol->sroot_blockset.blockref[0] = sroot_blockref;
-	vol->freemap_blockref = freemap_blockref;
 	vol->mirror_tid = 0;
 	vol->alloc_tid = 16;
 	vol->icrc_sects[HAMMER2_VOL_ICRC_SECT1] =
