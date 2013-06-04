@@ -50,8 +50,7 @@
 
 int debug = 0;		/* Controls syslog() calls for debug messages	*/
 
-extern void sm_prog_1(struct svc_req *rqstp, SVCXPRT *transp);
-static void handle_sigchld();
+static void handle_sigchld(int);
 static void usage(void);
 
 int
@@ -123,7 +122,7 @@ usage(void)
 */
 
 static void
-handle_sigchld(int sig, int code, struct sigcontext *scp)
+handle_sigchld(__unused int sig)
 {
   int pid, status;
   pid = wait4(-1, &status, WNOHANG, NULL);
@@ -135,4 +134,3 @@ handle_sigchld(int sig, int code, struct sigcontext *scp)
   else syslog(LOG_ERR, "Child %d failed with status %d", pid,
     WEXITSTATUS(status));
 }
-

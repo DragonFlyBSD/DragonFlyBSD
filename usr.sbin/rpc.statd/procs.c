@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.statd/procs.c,v 1.4.2.2 2002/07/11 17:41:28 alfred Exp $
- * $DragonFly: src/usr.sbin/rpc.statd/procs.c,v 1.3 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <errno.h>
@@ -52,7 +51,7 @@
 */
 
 struct sm_stat_res *
-sm_stat_1_svc(sm_name *arg, struct svc_req *req)
+sm_stat_1_svc(sm_name *arg, __unused struct svc_req *req)
 {
   static sm_stat_res res;
 
@@ -79,7 +78,7 @@ sm_stat_1_svc(sm_name *arg, struct svc_req *req)
 */
 
 struct sm_stat_res *
-sm_mon_1_svc(mon *arg, struct svc_req *req)
+sm_mon_1_svc(mon *arg, __unused struct svc_req *req)
 {
   static sm_stat_res res;
   HostInfo *hp;
@@ -178,7 +177,7 @@ do_unmon(HostInfo *hp, my_id *idp)
 */
 
 struct sm_stat *
-sm_unmon_1_svc(mon_id *arg, struct svc_req *req)
+sm_unmon_1_svc(mon_id *arg, __unused struct svc_req *req)
 {
   static sm_stat res;
   HostInfo *hp;
@@ -217,7 +216,7 @@ sm_unmon_1_svc(mon_id *arg, struct svc_req *req)
 */
 
 struct sm_stat *
-sm_unmon_all_1_svc(my_id *arg, struct svc_req *req)
+sm_unmon_all_1_svc(my_id *arg, __unused struct svc_req *req)
 {
   static sm_stat res;
   HostInfo *hp;
@@ -255,7 +254,7 @@ sm_unmon_all_1_svc(my_id *arg, struct svc_req *req)
 */
 
 void *
-sm_simu_crash_1_svc(void *v, struct svc_req *req)
+sm_simu_crash_1_svc(__unused void *v, __unused struct svc_req *req)
 {
   static char dummy;
   int work_to_do;
@@ -300,7 +299,7 @@ sm_simu_crash_1_svc(void *v, struct svc_req *req)
 */
 
 void *
-sm_notify_1_svc(stat_chge *arg, struct svc_req *req)
+sm_notify_1_svc(stat_chge *arg, __unused struct svc_req *req)
 {
   struct timeval timeout = { 20, 0 };	/* 20 secs timeout		*/
   CLIENT *cli;

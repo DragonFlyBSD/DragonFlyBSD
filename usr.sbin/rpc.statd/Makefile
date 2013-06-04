@@ -1,10 +1,8 @@
 # $FreeBSD: src/usr.sbin/rpc.statd/Makefile,v 1.9.2.1 2001/04/25 12:10:45 ru Exp $
-# $DragonFly: src/usr.sbin/rpc.statd/Makefile,v 1.2 2003/06/17 04:30:02 dillon Exp $
 
 PROG =	rpc.statd
 SRCS =	file.c sm_inter_svc.c sm_inter.h statd.c procs.c
 MAN =	rpc.statd.8
-WARNS?=	1
 
 DPADD=	${LIBRPCSVC}
 LDADD=	-lrpcsvc

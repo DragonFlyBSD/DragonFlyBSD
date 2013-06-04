@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.statd/statd.h,v 1.2.8.1 2002/04/11 17:08:36 alfred Exp $
- * $DragonFly: src/usr.sbin/rpc.statd/statd.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
  */
 
 
@@ -106,6 +105,6 @@ extern int debug;		/* =1 to enable diagnostics to syslog	*/
 /* Function prototypes		*/
 
 extern HostInfo *find_host(char * /*hostname*/, int /*create*/);
-extern void init_file(char * /*filename*/);
+extern void init_file(const char * /*filename*/);
 extern void notify_hosts(void);
 extern void sync_file(void);
