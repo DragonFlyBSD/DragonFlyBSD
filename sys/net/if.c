@@ -2522,7 +2522,7 @@ ifsq_classic_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 }
 
 struct mbuf *
-ifsq_classic_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
+ifsq_classic_dequeue(struct ifaltq_subque *ifsq, int op)
 {
 	struct mbuf *m;
 
@@ -2544,7 +2544,6 @@ ifsq_classic_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 	default:
 		panic("unsupported ALTQ dequeue op: %d", op);
 	}
-	KKASSERT(mpolled == NULL || mpolled == m);
 	return m;
 }
 
@@ -2556,7 +2555,7 @@ ifsq_classic_request(struct ifaltq_subque *ifsq, int req, void *arg)
 		for (;;) {
 			struct mbuf *m;
 
-			m = ifsq_classic_dequeue(ifsq, NULL, ALTDQ_REMOVE);
+			m = ifsq_classic_dequeue(ifsq, ALTDQ_REMOVE);
 			if (m == NULL)
 				break;
 			m_freem(m);

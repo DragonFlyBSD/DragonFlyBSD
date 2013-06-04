@@ -74,7 +74,7 @@ static struct priq_class *priq_class_create(struct priq_if *, int, int, int, int
 static int	priq_class_destroy(struct priq_class *);
 static int	priq_enqueue(struct ifaltq_subque *, struct mbuf *,
 		    struct altq_pktattr *);
-static struct mbuf *priq_dequeue(struct ifaltq_subque *, struct mbuf *, int);
+static struct mbuf *priq_dequeue(struct ifaltq_subque *, int);
 
 static int	priq_addq(struct priq_class *, struct mbuf *);
 static struct mbuf *priq_getq(struct priq_class *);
@@ -490,11 +490,9 @@ done:
  *
  * note: ALTDQ_POLL returns the next packet without removing the packet
  *	from the queue.  ALTDQ_REMOVE is a normal dequeue operation.
- *	ALTDQ_REMOVE must return the same packet if called immediately
- *	after ALTDQ_POLL.
  */
 static struct mbuf *
-priq_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
+priq_dequeue(struct ifaltq_subque *ifsq, int op)
 {
 	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct priq_if *pif = (struct priq_if *)ifq->altq_disc;
@@ -513,7 +511,6 @@ priq_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 
 	if (ifsq_is_empty(ifsq)) {
 		/* no packet in the queue */
-		KKASSERT(mpolled == NULL);
 		return (NULL);
 	}
 
@@ -537,7 +534,6 @@ priq_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 		}
 	}
 	crit_exit();
-	KKASSERT(mpolled == NULL || mpolled == m);
 	return (m);
 }
 

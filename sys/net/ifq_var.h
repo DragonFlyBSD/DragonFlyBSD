@@ -80,8 +80,7 @@ struct ifsubq_watchdog {
  */
 int		ifsq_classic_enqueue(struct ifaltq_subque *, struct mbuf *,
 		    struct altq_pktattr *);
-struct mbuf	*ifsq_classic_dequeue(struct ifaltq_subque *, struct mbuf *,
-		    int);
+struct mbuf	*ifsq_classic_dequeue(struct ifaltq_subque *, int);
 int		ifsq_classic_request(struct ifaltq_subque *, int, void *);
 void		ifq_set_classic(struct ifaltq *);
 
@@ -193,10 +192,10 @@ ifsq_dequeue(struct ifaltq_subque *_ifsq)
 	if (_ifsq->ifsq_altq->altq_tbr != NULL)
 		_m = tbr_dequeue(_ifsq, ALTDQ_REMOVE);
 	else if (!ifq_is_enabled(_ifsq->ifsq_altq))
-		_m = ifsq_classic_dequeue(_ifsq, NULL, ALTDQ_REMOVE);
+		_m = ifsq_classic_dequeue(_ifsq, ALTDQ_REMOVE);
 	else
 #endif
-	_m = _ifsq->ifsq_dequeue(_ifsq, NULL, ALTDQ_REMOVE);
+	_m = _ifsq->ifsq_dequeue(_ifsq, ALTDQ_REMOVE);
 	ALTQ_SQ_UNLOCK(_ifsq);
 	return _m;
 }
@@ -214,10 +213,10 @@ ifsq_poll_locked(struct ifaltq_subque *_ifsq)
 	if (_ifsq->ifsq_altq->altq_tbr != NULL)
 		return tbr_dequeue(_ifsq, ALTDQ_POLL);
 	else if (!ifq_is_enabled(_ifsq->ifsq_altq))
-		return ifsq_classic_dequeue(_ifsq, NULL, ALTDQ_POLL);
+		return ifsq_classic_dequeue(_ifsq, ALTDQ_POLL);
 	else
 #endif
-	return _ifsq->ifsq_dequeue(_ifsq, NULL, ALTDQ_POLL);
+	return _ifsq->ifsq_dequeue(_ifsq, ALTDQ_POLL);
 }
 
 static __inline struct mbuf *

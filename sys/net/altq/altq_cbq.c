@@ -75,8 +75,7 @@ static int		 cbq_clear_interface(cbq_state_t *);
 static int		 cbq_request(struct ifaltq_subque *, int, void *);
 static int		 cbq_enqueue(struct ifaltq_subque *, struct mbuf *,
 			     struct altq_pktattr *);
-static struct mbuf	*cbq_dequeue(struct ifaltq_subque *, struct mbuf *,
-			     int);
+static struct mbuf	*cbq_dequeue(struct ifaltq_subque *, int);
 static void		 cbqrestart(struct ifaltq *);
 static void		 get_class_stats(class_stats_t *, struct rm_class *);
 static void		 cbq_purge(cbq_state_t *);
@@ -554,7 +553,7 @@ cbq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 }
 
 static struct mbuf *
-cbq_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
+cbq_dequeue(struct ifaltq_subque *ifsq, int op)
 {
 	struct ifaltq *ifq = ifsq->ifsq_altq;
 	cbq_state_t	*cbqp = (cbq_state_t *)ifq->altq_disc;
@@ -580,7 +579,6 @@ cbq_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 		rmc_update_class_util(&cbqp->ifnp);
 	}
 	crit_exit();
-	KKASSERT(mpolled == NULL || mpolled == m);
 	return (m);
 }
 

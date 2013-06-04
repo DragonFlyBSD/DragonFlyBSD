@@ -87,7 +87,7 @@ static int	hfsc_class_destroy(struct hfsc_class *);
 static struct hfsc_class *hfsc_nextclass(struct hfsc_class *);
 static int	hfsc_enqueue(struct ifaltq_subque *, struct mbuf *,
 			     struct altq_pktattr *);
-static struct mbuf *hfsc_dequeue(struct ifaltq_subque *, struct mbuf *, int);
+static struct mbuf *hfsc_dequeue(struct ifaltq_subque *, int);
 
 static int	hfsc_addq(struct hfsc_class *, struct mbuf *);
 static struct mbuf *hfsc_getq(struct hfsc_class *);
@@ -717,11 +717,9 @@ hfsc_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
  *
  * note: ALTDQ_POLL returns the next packet without removing the packet
  *	from the queue.  ALTDQ_REMOVE is a normal dequeue operation.
- *	ALTDQ_REMOVE must return the same packet if called immediately
- *	after ALTDQ_POLL.
  */
 static struct mbuf *
-hfsc_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
+hfsc_dequeue(struct ifaltq_subque *ifsq, int op)
 {
 	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct hfsc_if	*hif = (struct hfsc_if *)ifq->altq_disc;
@@ -844,7 +842,6 @@ hfsc_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 	}
 done:
 	crit_exit();
-	KKASSERT(mpolled == NULL || m == mpolled);
 	return (m);
 }
 

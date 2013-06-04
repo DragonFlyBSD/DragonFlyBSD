@@ -296,7 +296,7 @@ enum ifnet_serialize {
  *			ifsq_set_oactive(ifsq);
  *			break;
  *		}
- *		m = ifsq_dequeue(ifsq, NULL);
+ *		m = ifsq_dequeue(ifsq);
  *		if (m != NULL)
  *			DRIVER_ENCAP(m);
  *		Q_WDOG.wd_timer = WDOG_TIMEOUT;

@@ -133,7 +133,7 @@ static struct fairq_class *fairq_class_create(struct fairq_if *, int,
 static int	fairq_class_destroy(struct fairq_class *);
 static int	fairq_enqueue(struct ifaltq_subque *, struct mbuf *,
 					struct altq_pktattr *);
-static struct mbuf *fairq_dequeue(struct ifaltq_subque *, struct mbuf *, int);
+static struct mbuf *fairq_dequeue(struct ifaltq_subque *, int);
 
 static int	fairq_addq(struct fairq_class *, struct mbuf *, int hash);
 static struct mbuf *fairq_getq(struct fairq_class *, uint64_t);
@@ -588,11 +588,9 @@ done:
  *
  * note: ALTDQ_POLL returns the next packet without removing the packet
  *	from the queue.  ALTDQ_REMOVE is a normal dequeue operation.
- *	ALTDQ_REMOVE must return the same packet if called immediately
- *	after ALTDQ_POLL.
  */
 static struct mbuf *
-fairq_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
+fairq_dequeue(struct ifaltq_subque *ifsq, int op)
 {
 	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct fairq_if *pif = (struct fairq_if *)ifq->altq_disc;
@@ -617,7 +615,6 @@ fairq_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 
 	if (ifsq_is_empty(ifsq)) {
 		/* no packet in the queue */
-		KKASSERT(mpolled == NULL);
 		return (NULL);
 	}
 
@@ -698,7 +695,6 @@ fairq_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 		}
 	}
 	crit_exit();
-	KKASSERT(mpolled == NULL || mpolled == m);
 	return (m);
 }
 

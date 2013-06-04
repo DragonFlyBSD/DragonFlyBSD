@@ -45,8 +45,7 @@ typedef int (*altq_mapsubq_t)(struct ifaltq *, int);
 
 typedef int (*ifsq_enqueue_t)(struct ifaltq_subque *, struct mbuf *,
     struct altq_pktattr *);
-typedef struct mbuf *(*ifsq_dequeue_t)(struct ifaltq_subque *,
-    struct mbuf *, int);
+typedef struct mbuf *(*ifsq_dequeue_t)(struct ifaltq_subque *, int);
 typedef int (*ifsq_request_t)(struct ifaltq_subque *, int, void *);
 
 struct ifsubq_stage {
