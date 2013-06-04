@@ -317,7 +317,18 @@ main(int ac, char **av)
 			fprintf(stderr, "show: requires device path\n");
 			usage(1);
 		} else {
-			cmd_show(av[1]);
+			cmd_show(av[1], 0);
+		}
+	} else if (strcmp(av[0], "freemap") == 0) {
+		/*
+		 * Raw dump of freemap.  Use -v to check all crc's, and
+		 * -vv to dump bulk file data.
+		 */
+		if (ac != 2) {
+			fprintf(stderr, "freemap: requires device path\n");
+			usage(1);
+		} else {
+			cmd_show(av[1], 1);
 		}
 	} else {
 		fprintf(stderr, "Unrecognized command: %s\n", av[0]);
@@ -364,6 +375,7 @@ usage(int code)
 		"    debugspan <target> Connect to target, run CONN/SPAN\n"
 		"    rsainit            Initialize rsa fields\n"
 		"    show devpath       Raw hammer2 media dump\n"
+		"    freemap devpath    Raw hammer2 media dump\n"
 	);
 	exit(code);
 }

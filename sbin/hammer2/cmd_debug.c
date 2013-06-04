@@ -307,11 +307,12 @@ cmd_debugspan(const char *hostname)
  *				    SHOW				*
  ************************************************************************/
 
-static void show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref);
+static void show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref,
+			int dofreemap);
 static void tabprintf(int tab, const char *ctl, ...);
 
 int
-cmd_show(const char *devpath)
+cmd_show(const char *devpath, int dofreemap)
 {
 	hammer2_blockref_t broot;
 	hammer2_blockref_t best;
@@ -346,18 +347,18 @@ cmd_show(const char *devpath)
 				best = broot;
 			}
 			if (VerboseOpt >= 3)
-				show_bref(fd, 0, i, &broot);
+				show_bref(fd, 0, i, &broot, dofreemap);
 		}
 	}
 	if (VerboseOpt < 3)
-		show_bref(fd, 0, best_i, &best);
+		show_bref(fd, 0, best_i, &best, dofreemap);
 	close(fd);
 
 	return 0;
 }
 
 static void
-show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
+show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 {
 	hammer2_media_data_t media;
 	hammer2_blockref_t *bscan;
@@ -386,11 +387,19 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
 	case HAMMER2_BREF_TYPE_VOLUME:
 		type_str = "volume";
 		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		type_str = "freemap";
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		type_str = "fmapnode";
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		type_str = "fbitmap";
+		break;
 	default:
 		type_str = "unknown";
 		break;
 	}
-
 
 	tabprintf(tab, "%s.%-3d %016jx %016jx/%-2d mir=%016jx mod=%016jx ",
 	       type_str, bi, (intmax_t)bref->data_off,
@@ -399,21 +408,40 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
 	tab += SHOW_TAB;
 
 	bytes = (size_t)1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
-	if (bytes < HAMMER2_MINIOSIZE || bytes > sizeof(media)) {
-		printf("(bad block size %zd)\n", bytes);
-		return;
-	}
-	if (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1) {
-		lseek(fd, bref->data_off & ~HAMMER2_OFF_MASK_RADIX, 0);
-		if (read(fd, &media, bytes) != (ssize_t)bytes) {
-			printf("(media read failed)\n");
+
+	{
+		hammer2_off_t io_off;
+		hammer2_off_t io_base;
+		size_t io_bytes;
+		size_t boff;
+
+		io_off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
+		io_base = io_off & ~(hammer2_off_t)(HAMMER2_MINIOSIZE - 1);
+		io_bytes = bytes;
+		boff = io_off - io_base;
+
+		io_bytes = HAMMER2_MINIOSIZE;
+		while (io_bytes + boff < bytes)
+			io_bytes <<= 1;
+
+		if (io_bytes > sizeof(media)) {
+			printf("(bad block size %zd)\n", bytes);
 			return;
+		}
+		if (bref->type != HAMMER2_BREF_TYPE_DATA || VerboseOpt >= 1) {
+			lseek(fd, io_base, 0);
+			if (read(fd, &media, io_bytes) != (ssize_t)io_bytes) {
+				printf("(media read failed)\n");
+				return;
+			}
+			if (boff)
+				bcopy((char *)&media + boff, &media, bytes);
 		}
 	}
 
 	bscan = NULL;
 	bcount = 0;
-	didnl = 0;
+	didnl = 1;
 
 	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_EMPTY:
@@ -520,11 +548,39 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
 		}
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
-		bscan = &media.voldata.sroot_blockset.blockref[0];
-		bcount = HAMMER2_SET_COUNT;
+		if (dofreemap) {
+			bscan = &media.voldata.freemap_blockset.blockref[0];
+			bcount = HAMMER2_SET_COUNT;
+		} else {
+			bscan = &media.voldata.sroot_blockset.blockref[0];
+			bcount = HAMMER2_SET_COUNT;
+		}
 		printf("{\n");
 		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		printf("radix=%d {\n",
+			bref->check.freemap.radix);
+		obrace = 1;
+		for (i = 0; i < (int)(bytes / sizeof(uint64_t)); ++i) {
+			if ((i & 3) == 0)
+				tabprintf(tab, "");
+			else
+				printf(" ");
+			printf("%016jx", (intmax_t)media.bmdata.array[i]);
+			if ((i & 3) == 3)
+				printf("\n");
+		}
+		if (((i - 1) & 3) != 3)
+			printf("\n");
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		printf("{\n");
+		bscan = &media.npdata.blockref[0];
+		bcount = bytes / sizeof(hammer2_blockref_t);
+		break;
 	default:
+		printf("\n");
+		obrace = 0;
 		break;
 	}
 	if (str)
@@ -535,7 +591,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref)
 				printf("\n");
 				didnl = 1;
 			}
-			show_bref(fd, tab, i, &bscan[i]);
+			show_bref(fd, tab, i, &bscan[i], dofreemap);
 		}
 	}
 	tab -= SHOW_TAB;
