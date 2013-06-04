@@ -42,11 +42,11 @@
 #ifndef IF_PREPEND_LIST
 
 #define _IF_PREPEND_LIST(ifq, mhead, mtail, mcount) do {	\
-	(mtail)->m_nextpkt = (ifq)->ifq_head;			\
-	if ((ifq)->ifq_tail == NULL)				\
-		(ifq)->ifq_tail = (mtail);			\
-	(ifq)->ifq_head = (mhead);				\
-	(ifq)->ifq_len += (mcount);				\
+	(mtail)->m_nextpkt = (ifq)->ifsq_head;			\
+	if ((ifq)->ifsq_tail == NULL)				\
+		(ifq)->ifsq_tail = (mtail);			\
+	(ifq)->ifsq_head = (mhead);				\
+	(ifq)->ifsq_len += (mcount);				\
 } while (0)
 
 #define IF_PREPEND_LIST(ifq, mhead, mtail, mcount) do {		\

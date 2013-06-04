@@ -380,7 +380,7 @@ hfsc_purge(struct hfsc_if *hif)
 			hfsc_purgeq(cl);
 	}
 	if (ifq_is_enabled(hif->hif_ifq))
-		hif->hif_ifq->altq_subq[HFSC_SUBQ_INDEX].ifq_len = 0;
+		hif->hif_ifq->altq_subq[HFSC_SUBQ_INDEX].ifsq_len = 0;
 }
 
 struct hfsc_class *
@@ -701,7 +701,7 @@ hfsc_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 		crit_exit();
 		return (ENOBUFS);
 	}
-	ifsq->ifq_len++;
+	ifsq->ifsq_len++;
 	cl->cl_hif->hif_packets++;
 
 	/* successfully queued. */
@@ -819,7 +819,7 @@ hfsc_dequeue(struct ifaltq_subque *ifsq, int op)
 		panic("hfsc_dequeue:");
 	len = m_pktlen(m);
 	cl->cl_hif->hif_packets--;
-	ifsq->ifq_len--;
+	ifsq->ifsq_len--;
 	PKTCNTR_ADD(&cl->cl_stats.xmit_cnt, len);
 
 	update_vf(cl, len, cur_time);
@@ -903,7 +903,7 @@ hfsc_purgeq(struct hfsc_class *cl)
 		PKTCNTR_ADD(&cl->cl_stats.drop_cnt, m_pktlen(m));
 		m_freem(m);
 		cl->cl_hif->hif_packets--;
-		cl->cl_hif->hif_ifq->altq_subq[HFSC_SUBQ_INDEX].ifq_len--;
+		cl->cl_hif->hif_ifq->altq_subq[HFSC_SUBQ_INDEX].ifsq_len--;
 	}
 	KKASSERT(qlen(cl->cl_q) == 0);
 

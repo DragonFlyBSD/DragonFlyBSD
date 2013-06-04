@@ -209,7 +209,7 @@ ifinit(void *dummy)
 	crit_enter();
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		if (ifp->if_snd.altq_maxlen == 0) {
-			if_printf(ifp, "XXX: driver didn't set ifq_maxlen\n");
+			if_printf(ifp, "XXX: driver didn't set altq_maxlen\n");
 			ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
 		}
 	}
@@ -589,7 +589,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	if (ifq->altq_maxlen == 0) {
-		if_printf(ifp, "driver didn't set ifq_maxlen\n");
+		if_printf(ifp, "driver didn't set altq_maxlen\n");
 		ifq_set_maxlen(ifq, ifqmaxlen);
 	}
 
@@ -602,7 +602,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		ifsq->ifsq_altq = ifq;
 		ifsq->ifsq_ifp = ifp;
 
-		ifsq->ifq_maxlen = ifq->altq_maxlen;
+		ifsq->ifsq_maxlen = ifq->altq_maxlen;
 		ifsq->ifsq_prepended = NULL;
 		ifsq->ifsq_started = 0;
 		ifsq->ifsq_hw_oactive = 0;
@@ -2507,17 +2507,17 @@ ifsq_classic_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
     struct altq_pktattr *pa __unused)
 {
 	M_ASSERTPKTHDR(m);
-	if (ifsq->ifq_len >= ifsq->ifq_maxlen) {
+	if (ifsq->ifsq_len >= ifsq->ifsq_maxlen) {
 		m_freem(m);
 		return ENOBUFS;
 	} else {
 		m->m_nextpkt = NULL;
-		if (ifsq->ifq_tail == NULL)
-			ifsq->ifq_head = m;
+		if (ifsq->ifsq_tail == NULL)
+			ifsq->ifsq_head = m;
 		else
-			ifsq->ifq_tail->m_nextpkt = m;
-		ifsq->ifq_tail = m;
-		ifsq->ifq_len++;
+			ifsq->ifsq_tail->m_nextpkt = m;
+		ifsq->ifsq_tail = m;
+		ifsq->ifsq_len++;
 		return 0;
 	}
 }
@@ -2529,16 +2529,16 @@ ifsq_classic_dequeue(struct ifaltq_subque *ifsq, int op)
 
 	switch (op) {
 	case ALTDQ_POLL:
-		m = ifsq->ifq_head;
+		m = ifsq->ifsq_head;
 		break;
 
 	case ALTDQ_REMOVE:
-		m = ifsq->ifq_head;
+		m = ifsq->ifsq_head;
 		if (m != NULL) {
-			if ((ifsq->ifq_head = m->m_nextpkt) == NULL)
-				ifsq->ifq_tail = NULL;
+			if ((ifsq->ifsq_head = m->m_nextpkt) == NULL)
+				ifsq->ifsq_tail = NULL;
 			m->m_nextpkt = NULL;
-			ifsq->ifq_len--;
+			ifsq->ifsq_len--;
 		}
 		break;
 

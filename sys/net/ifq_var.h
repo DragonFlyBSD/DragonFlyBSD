@@ -182,8 +182,8 @@ ifsq_dequeue(struct ifaltq_subque *_ifsq)
 	if (_ifsq->ifsq_prepended != NULL) {
 		_m = _ifsq->ifsq_prepended;
 		_ifsq->ifsq_prepended = NULL;
-		KKASSERT(_ifsq->ifq_len > 0);
-		_ifsq->ifq_len--;
+		KKASSERT(_ifsq->ifsq_len > 0);
+		_ifsq->ifsq_len--;
 		ALTQ_SQ_UNLOCK(_ifsq);
 		return _m;
 	}
@@ -258,8 +258,8 @@ ifsq_purge_locked(struct ifaltq_subque *_ifsq)
 	if (_ifsq->ifsq_prepended != NULL) {
 		m_freem(_ifsq->ifsq_prepended);
 		_ifsq->ifsq_prepended = NULL;
-		KKASSERT(_ifsq->ifq_len > 0);
-		_ifsq->ifq_len--;
+		KKASSERT(_ifsq->ifsq_len > 0);
+		_ifsq->ifsq_len--;
 	}
 
 #ifdef ALTQ
@@ -346,7 +346,7 @@ ifsq_prepend(struct ifaltq_subque *_ifsq, struct mbuf *_m)
 	ALTQ_SQ_LOCK(_ifsq);
 	KASSERT(_ifsq->ifsq_prepended == NULL, ("pending prepended mbuf"));
 	_ifsq->ifsq_prepended = _m;
-	_ifsq->ifq_len++;
+	_ifsq->ifsq_len++;
 	ALTQ_SQ_UNLOCK(_ifsq);
 }
 
@@ -408,7 +408,7 @@ ifq_handoff(struct ifnet *_ifp, struct mbuf *_m, struct altq_pktattr *_pa)
 static __inline int
 ifsq_is_empty(const struct ifaltq_subque *_ifsq)
 {
-	return(_ifsq->ifq_len == 0);
+	return(_ifsq->ifsq_len == 0);
 }
 
 /*

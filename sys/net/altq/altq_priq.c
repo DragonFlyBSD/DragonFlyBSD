@@ -294,7 +294,7 @@ priq_purge(struct priq_if *pif)
 			priq_purgeq(cl);
 	}
 	if (ifq_is_enabled(pif->pif_ifq))
-		pif->pif_ifq->altq_subq[PRIQ_SUBQ_INDEX].ifq_len = 0;
+		pif->pif_ifq->altq_subq[PRIQ_SUBQ_INDEX].ifsq_len = 0;
 }
 
 static struct priq_class *
@@ -477,7 +477,7 @@ priq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 		error = ENOBUFS;
 		goto done;
 	}
-	ifsq->ifq_len++;
+	ifsq->ifsq_len++;
 	error = 0;
 done:
 	crit_exit();
@@ -525,7 +525,7 @@ priq_dequeue(struct ifaltq_subque *ifsq, int op)
 
 			m = priq_getq(cl);
 			if (m != NULL) {
-				ifsq->ifq_len--;
+				ifsq->ifsq_len--;
 				if (qempty(cl->cl_q))
 					cl->cl_period++;
 				PKTCNTR_ADD(&cl->cl_xmitcnt, m_pktlen(m));

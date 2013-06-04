@@ -257,10 +257,8 @@ tbr_dequeue(struct ifaltq_subque *ifsq, int op)
 
 	if (ifq_is_enabled(ifq))
 		m = (*ifsq->ifsq_dequeue)(ifsq, op);
-	else if (op == ALTDQ_POLL)
-		IF_POLL(ifsq, m);
 	else
-		IF_DEQUEUE(ifsq, m);
+		m = ifsq_classic_dequeue(ifsq, op);
 
 	if (m != NULL && op == ALTDQ_REMOVE)
 		tbr->tbr_token -= TBR_SCALE(m_pktlen(m));

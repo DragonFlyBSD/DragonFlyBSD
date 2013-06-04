@@ -68,10 +68,10 @@ struct ifaltq_subque {
 	void		*ifsq_hw_priv;	/* hw private data */
 
 	/* fields compatible with IFQ_ macros */
-	struct mbuf	*ifq_head;
-	struct mbuf	*ifq_tail;
-	int		ifq_len;
-	int		ifq_maxlen;
+	struct mbuf	*ifsq_head;
+	struct mbuf	*ifsq_tail;
+	int		ifsq_len;
+	int		ifsq_maxlen;
 
 	ifsq_enqueue_t	ifsq_enqueue;
 	ifsq_dequeue_t	ifsq_dequeue;
