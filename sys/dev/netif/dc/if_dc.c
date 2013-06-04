@@ -3103,7 +3103,7 @@ dc_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	need_trans = 0;
 	while(sc->dc_cdata.dc_tx_chain[idx] == NULL) {
 		m_defragged = NULL;
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 

@@ -940,7 +940,7 @@ wi_start_locked(struct ifnet *ifp)
 	memset(&frmhdr, 0, sizeof(frmhdr));
 	cur = sc->sc_txnext;
 	for (;;) {
-		m0 = ifq_dequeue(&ifp->if_snd, NULL);
+		m0 = ifq_dequeue(&ifp->if_snd);
 		if (m0 == NULL)
 			break;
 		if (sc->sc_txd[cur].d_len != 0) {

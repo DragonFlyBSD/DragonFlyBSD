@@ -239,7 +239,7 @@ ng_eiface_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 	/*
 	 * Grab a packet to transmit.
 	 */
-	m = ifq_dequeue(&ifp->if_snd, NULL);
+	m = ifq_dequeue(&ifp->if_snd);
 
 	/* If there's nothing to send, return. */
 	if(m == NULL)

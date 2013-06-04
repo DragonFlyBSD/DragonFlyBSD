@@ -969,7 +969,7 @@ emx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		}
 
 		logif(pkt_txqueue);
-		m_head = ifsq_dequeue(ifsq, NULL);
+		m_head = ifsq_dequeue(ifsq);
 		if (m_head == NULL)
 			break;
 

@@ -658,7 +658,7 @@ prepare_to_send(struct sbni_softc *sc)
 	sc->state &= ~(FL_WAIT_ACK | FL_NEED_RESEND);
 
 	for (;;) {
-		sc->tx_buf_p = ifq_dequeue(&sc->arpcom.ac_if.if_snd, NULL);
+		sc->tx_buf_p = ifq_dequeue(&sc->arpcom.ac_if.if_snd);
 		if (sc->tx_buf_p == NULL) {
 			/* nothing to transmit... */
 			sc->pktlen     = 0;

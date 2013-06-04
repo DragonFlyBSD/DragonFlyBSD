@@ -1916,7 +1916,7 @@ ti_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	need_trans = 0;
 	while(sc->ti_cdata.ti_tx_chain[prodidx] == NULL) {
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 

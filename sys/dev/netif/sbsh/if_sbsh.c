@@ -614,7 +614,7 @@ start_xmit_frames(struct sbsh_softc *sc)
 	while (sc->tail_xq != ((sc->head_xq - 1) & (XQLEN - 1))
 	    && sc->regs->LTDR != ((sc->head_tdesc - 1) & 0x7f)) {
 
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == NULL)
 			break;
 		if (m->m_pkthdr.len) {

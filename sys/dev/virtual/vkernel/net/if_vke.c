@@ -359,7 +359,7 @@ vke_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		return;
 
 	count = 0;
-	while ((m = ifsq_dequeue(ifsq, NULL)) != NULL) {
+	while ((m = ifsq_dequeue(ifsq)) != NULL) {
 		if (vke_txfifo_enqueue(sc, m) != -1) {
 			if (count++ == VKE_CHUNK) {
 				cothread_lock(cotd, 0);

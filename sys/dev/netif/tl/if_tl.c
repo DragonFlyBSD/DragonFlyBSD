@@ -1843,7 +1843,7 @@ tl_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	start_tx = sc->tl_cdata.tl_tx_free;
 
 	while(sc->tl_cdata.tl_tx_free != NULL) {
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 

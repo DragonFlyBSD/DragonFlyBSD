@@ -222,7 +222,7 @@ ng_eiface_start2(node_p node, hook_p hook, void *arg1, int arg2)
 		/*
 		 * Grab a packet to transmit.
 		 */
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifq_dequeue(&ifp->if_snd);
 
 		/* If there's nothing to send, break. */
 		if (m == NULL)

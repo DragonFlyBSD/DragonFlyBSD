@@ -492,7 +492,7 @@ epic_ifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		flist = sc->tx_flist + sc->cur_tx;
 
 		/* Get next packet to send */
-		m0 = ifq_dequeue(&ifp->if_snd, NULL);
+		m0 = ifq_dequeue(&ifp->if_snd);
 
 		/* If nothing to send, return */
 		if (m0 == NULL)

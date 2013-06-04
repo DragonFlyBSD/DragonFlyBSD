@@ -1483,7 +1483,7 @@ en_start(struct ifnet *ifp, struct ifaltq_subque *ifsq __unused)
 
     while (1) {
 
-      m = ifq_dequeue(&ifp->if_snd, NULL);
+      m = ifq_dequeue(&ifp->if_snd);
       if (m == NULL)
 	return;		/* EMPTY: >>> exit here <<< */
     

@@ -2194,7 +2194,7 @@ alc_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	}
 
 	for (enq = 0; !ifq_is_empty(&ifp->if_snd); ) {
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 		/*

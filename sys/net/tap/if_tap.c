@@ -668,7 +668,7 @@ tapifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	ifsq_set_oactive(ifsq);
 
 	ifq = &tp->tap_devq;
-	while ((m = ifsq_dequeue(ifsq, NULL)) != NULL) {
+	while ((m = ifsq_dequeue(ifsq)) != NULL) {
 		if (IF_QFULL(ifq)) {
 			IF_DROP(ifq);
 			IFNET_STAT_INC(ifp, oerrors, 1);

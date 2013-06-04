@@ -1314,7 +1314,7 @@ wb_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	start_tx = sc->wb_cdata.wb_tx_free;
 
 	while (sc->wb_cdata.wb_tx_free->wb_mbuf == NULL) {
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 

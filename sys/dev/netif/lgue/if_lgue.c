@@ -510,7 +510,7 @@ lgue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	}
 
 	/* To internal queue */
-	while ((m_head = ifq_dequeue(&ifp->if_snd, NULL)) != NULL) {
+	while ((m_head = ifq_dequeue(&ifp->if_snd)) != NULL) {
 		if (lgue_encap(sc, m_head)) {
 			m_freem(m_head);
 			break;

@@ -2305,7 +2305,7 @@ bridge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		struct ether_header *eh;
 		struct mbuf *m;
 
-		m = ifsq_dequeue(ifsq, NULL);
+		m = ifsq_dequeue(ifsq);
 		if (m == NULL)
 			break;
 		mbuftrackid(m, 75);

@@ -800,7 +800,7 @@ kue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		return;
 	}
 
-	m_head = ifq_dequeue(&ifp->if_snd, NULL);
+	m_head = ifq_dequeue(&ifp->if_snd);
 	if (m_head == NULL) {
 		KUE_UNLOCK(sc);
 		return;

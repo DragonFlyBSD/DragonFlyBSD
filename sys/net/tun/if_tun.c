@@ -551,7 +551,7 @@ tunread(struct dev_read_args *ap)
 
 	ifnet_serialize_all(ifp);
 
-	while ((m0 = ifsq_dequeue(ifsq, NULL)) == NULL) {
+	while ((m0 = ifsq_dequeue(ifsq)) == NULL) {
 		if (ap->a_ioflag & IO_NDELAY) {
 			ifnet_deserialize_all(ifp);
 			return EWOULDBLOCK;

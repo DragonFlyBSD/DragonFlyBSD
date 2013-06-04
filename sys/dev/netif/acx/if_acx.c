@@ -1159,7 +1159,7 @@ acx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 				break;
 			}
 
-			m = ifq_dequeue(&ifp->if_snd, NULL);
+			m = ifq_dequeue(&ifp->if_snd);
 			if (m == NULL)
 				break;
 

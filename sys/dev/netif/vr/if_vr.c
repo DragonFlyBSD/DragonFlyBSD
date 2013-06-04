@@ -1349,7 +1349,7 @@ vr_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		struct mbuf *m_head;
 		struct vr_chain *cur_tx;
 
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 

@@ -2511,7 +2511,7 @@ an_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 		while (sc->an_rdata.an_tx_ring[idx] == 0) {
 			ready = 1;
-			m0 = ifq_dequeue(&ifp->if_snd, NULL);
+			m0 = ifq_dequeue(&ifp->if_snd);
 			if (m0 == NULL)
 				break;
 
@@ -2569,7 +2569,7 @@ an_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		while (sc->an_rdata.an_tx_empty ||
 		       idx != sc->an_rdata.an_tx_cons) {
 			ready = 1;
-			m0 = ifq_dequeue(&ifp->if_snd, NULL);
+			m0 = ifq_dequeue(&ifp->if_snd);
 			if (m0 == NULL)
 				break;
 

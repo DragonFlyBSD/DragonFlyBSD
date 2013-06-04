@@ -1204,7 +1204,7 @@ tr_setup:
 		DPRINTFN(11, "copying frames, 16 at a time\n");
 		for (nframes = 0; nframes < 16 &&
 		    !ifq_is_empty(&ifp->if_snd); nframes++) {
-			m = ifq_dequeue(&ifp->if_snd, NULL);
+			m = ifq_dequeue(&ifp->if_snd);
 			if (m == NULL)
 				break;
 			usbd_xfer_set_frame_offset(xfer, nframes * MCLBYTES,

@@ -3530,7 +3530,7 @@ bge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	prodidx = sc->bge_tx_prodidx;
 
 	while (sc->bge_cdata.bge_tx_chain[prodidx] == NULL) {
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 

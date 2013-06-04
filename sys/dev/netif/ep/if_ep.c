@@ -437,7 +437,7 @@ ep_if_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 startagain:
     /* Sneak a peek at the next packet */
-    m = ifq_dequeue(&ifp->if_snd, NULL);
+    m = ifq_dequeue(&ifp->if_snd);
     if (m == NULL) {
 	crit_exit();
 	return;

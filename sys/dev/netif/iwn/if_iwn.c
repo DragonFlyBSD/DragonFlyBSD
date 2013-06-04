@@ -3379,7 +3379,7 @@ iwn_start_locked(struct ifnet *ifp)
 			ifq_set_oactive(&ifp->if_snd);
 			break;
 		}
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == NULL)
 			break;
 		KKASSERT(M_TRAILINGSPACE(m) >= 0);

@@ -1936,7 +1936,7 @@ iwi_start_locked(struct ifnet *ifp)
 		return;
 
 	for (;;) {
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == NULL)
 			break;
 		ac = M_WME_GETAC(m);

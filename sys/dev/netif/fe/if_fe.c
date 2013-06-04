@@ -1256,7 +1256,7 @@ fe_start (struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		/*
 		 * Get the next mbuf chain for a packet to send.
 		 */
-		m = ifq_dequeue(&sc->sc_if.if_snd, NULL);
+		m = ifq_dequeue(&sc->sc_if.if_snd);
 		if (m == NULL) {
 			/* No more packets to send.  */
 			goto indicate_inactive;

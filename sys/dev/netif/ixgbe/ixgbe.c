@@ -701,7 +701,7 @@ ixgbe_start_locked(struct tx_ring *txr, struct ifnet * ifp)
 			break;
                 }
 
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 

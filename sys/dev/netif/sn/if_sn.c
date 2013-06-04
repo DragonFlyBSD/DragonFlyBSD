@@ -364,7 +364,7 @@ startagain:
 	/*
 	 * Sneak a peek at the next packet
 	 */
-	m = ifq_dequeue(&ifp->if_snd, NULL);
+	m = ifq_dequeue(&ifp->if_snd);
 	if (m == NULL)
 		return;
 
@@ -570,7 +570,7 @@ snresume(struct ifnet *ifp)
 	/*
 	 * Sneak a peek at the next packet
 	 */
-	m = ifq_dequeue(&ifp->if_snd, NULL);
+	m = ifq_dequeue(&ifp->if_snd);
 	if (m == NULL) {
 		kprintf("%s: snresume() with nothing to send\n",
 			ifp->if_xname);

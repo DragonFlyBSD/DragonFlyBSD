@@ -3799,7 +3799,7 @@ tulip_ifstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	while (!ifq_is_empty(&sc->tulip_if.if_snd)) {
 	    struct mbuf *m;
 
-	    m = ifq_dequeue(&sc->tulip_if.if_snd, NULL);
+	    m = ifq_dequeue(&sc->tulip_if.if_snd);
 	    if (m == NULL)
 	    	break;
 

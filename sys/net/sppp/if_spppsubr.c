@@ -1108,7 +1108,7 @@ sppp_dequeue(struct ifnet *ifp)
 		IF_DEQUEUE(&sp->pp_fastq, m);
 		if (m == NULL) {
 			m = ifsq_dequeue(
-			    ifq_get_subq_default(&sp->pp_if.if_snd), NULL);
+			    ifq_get_subq_default(&sp->pp_if.if_snd));
 		}
 	}
 

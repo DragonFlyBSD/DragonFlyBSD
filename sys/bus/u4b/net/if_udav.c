@@ -566,7 +566,7 @@ tr_setup:
 			 */
 			return;
 		}
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifq_dequeue(&ifp->if_snd);
 
 		if (m == NULL)
 			return;

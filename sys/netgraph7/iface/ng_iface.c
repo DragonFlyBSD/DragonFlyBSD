@@ -463,7 +463,7 @@ ng_iface_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	for(;;) {
 		struct mbuf *m;
 
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == NULL)
 			break;
 		sa = *mtod(m, sa_family_t *);

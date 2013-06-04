@@ -1082,7 +1082,7 @@ fxp_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		/*
 		 * Grab a packet to transmit.
 		 */
-		mb_head = ifq_dequeue(&ifp->if_snd, NULL);
+		mb_head = ifq_dequeue(&ifp->if_snd);
 		if (mb_head == NULL)
 			break;
 tbdinit:

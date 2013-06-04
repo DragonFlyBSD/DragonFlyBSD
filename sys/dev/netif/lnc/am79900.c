@@ -545,7 +545,7 @@ am79900_start_locked(struct lance_softc *sc)
 			    sc->sc_no_td, sc->sc_last_td);
 		}
 
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == NULL)
 			break;
 

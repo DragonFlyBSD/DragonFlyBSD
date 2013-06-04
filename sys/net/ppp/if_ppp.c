@@ -1010,7 +1010,7 @@ ppp_dequeue(struct ppp_softc *sc)
      */
     IF_DEQUEUE(&sc->sc_fastq, m);
     if (m == NULL)
-	m = ifsq_dequeue(ifq_get_subq_default(&sc->sc_if.if_snd), NULL);
+	m = ifsq_dequeue(ifq_get_subq_default(&sc->sc_if.if_snd));
     if (m == NULL)
 	return NULL;
 

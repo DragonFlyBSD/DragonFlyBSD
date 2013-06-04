@@ -396,7 +396,7 @@ vxstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 startagain:
     /* Sneak a peek at the next packet */
-    m0 = ifq_dequeue(&ifp->if_snd, NULL);
+    m0 = ifq_dequeue(&ifp->if_snd);
     if (m0 == NULL)
 	return;
 

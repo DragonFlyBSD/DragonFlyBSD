@@ -3474,7 +3474,7 @@ bnx_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			break;
 		}
 
-		m_head = ifsq_dequeue(ifsq, NULL);
+		m_head = ifsq_dequeue(ifsq);
 		if (m_head == NULL)
 			break;
 

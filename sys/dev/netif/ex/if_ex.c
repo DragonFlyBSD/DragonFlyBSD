@@ -377,7 +377,7 @@ ex_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	 * more packets left, or the card cannot accept any more yet.
 	 */
 	while (!ifq_is_oactive(&ifp->if_snd)) {
-		opkt = ifq_dequeue(&ifp->if_snd, NULL);
+		opkt = ifq_dequeue(&ifp->if_snd);
 		if (opkt == NULL)
 			break;
 

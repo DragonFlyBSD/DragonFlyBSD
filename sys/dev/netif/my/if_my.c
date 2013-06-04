@@ -1354,7 +1354,7 @@ my_start(struct ifnet * ifp, struct ifaltq_subque *ifsq)
 
 	start_tx = sc->my_cdata.my_tx_free;
 	while (sc->my_cdata.my_tx_free->my_mbuf == NULL) {
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 

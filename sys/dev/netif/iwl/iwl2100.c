@@ -869,7 +869,7 @@ iwl2100_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		struct ether_header *eh;
 		struct mbuf *m;
 
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == NULL)
 			break;
 

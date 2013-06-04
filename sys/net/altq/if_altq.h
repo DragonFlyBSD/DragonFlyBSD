@@ -204,7 +204,7 @@ int	altq_attach(struct ifaltq *, int, void *, altq_mapsubq_t,
 int	altq_detach(struct ifaltq *);
 int	altq_enable(struct ifaltq *);
 int	altq_disable(struct ifaltq *);
-struct mbuf *tbr_dequeue(struct ifaltq_subque *, struct mbuf *, int);
+struct mbuf *tbr_dequeue(struct ifaltq_subque *, int);
 extern int	(*altq_input)(struct mbuf *, int);
 #endif /* _KERNEL */
 

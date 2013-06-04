@@ -486,7 +486,7 @@ xe_start(struct ifnet *ifp, struct ifaltq_subque *ifsq) {
    */
   while (1) {
     /* Suck a packet off the send queue */
-    mbp = ifq_dequeue(&ifp->if_snd, NULL);
+    mbp = ifq_dequeue(&ifp->if_snd);
     if (mbp == NULL) {
       /*
        * We are using the !OACTIVE flag to indicate to the outside

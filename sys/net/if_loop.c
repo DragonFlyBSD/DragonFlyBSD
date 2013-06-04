@@ -281,7 +281,7 @@ lo_altqstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	
 	while (1) {
 		crit_enter();
-		m = ifsq_dequeue(ifsq, NULL);
+		m = ifsq_dequeue(ifsq);
 		crit_exit();
 		if (m == NULL)
 			return;

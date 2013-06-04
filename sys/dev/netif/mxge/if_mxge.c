@@ -2177,7 +2177,7 @@ mxge_start_locked(struct mxge_slice_state *ss)
 	ifp = sc->ifp;
 	tx = &ss->tx;
 	while ((tx->mask - (tx->req - tx->done)) > tx->max_desc) {
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == NULL) {
 			return;
 		}

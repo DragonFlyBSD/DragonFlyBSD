@@ -580,7 +580,7 @@ slstart(struct tty *tp)
 		if (m)
 			IFNET_STAT_INC(&sc->sc_if, omcasts, 1);	/* XXX */
 		else
-			m = ifsq_dequeue(ifsq, NULL);
+			m = ifsq_dequeue(ifsq);
 		crit_exit();
 		if (m == NULL) {
 			lwkt_reltoken(&tty_token);

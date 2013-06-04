@@ -213,7 +213,7 @@ altq_disable(struct ifaltq *ifq)
 #define	TBR_UNSCALE(x)	((x) >> TBR_SHIFT)
 
 struct mbuf *
-tbr_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
+tbr_dequeue(struct ifaltq_subque *ifsq, int op)
 {
 	struct ifaltq *ifq = ifsq->ifsq_altq;
 	struct tb_regulator *tbr;
@@ -255,14 +255,12 @@ tbr_dequeue(struct ifaltq_subque *ifsq, struct mbuf *mpolled, int op)
 		}
 	}
 
-	if (ifq_is_enabled(ifq)) {
-		m = (*ifsq->ifsq_dequeue)(ifsq, mpolled, op);
-	} else if (op == ALTDQ_POLL) {
+	if (ifq_is_enabled(ifq))
+		m = (*ifsq->ifsq_dequeue)(ifsq, NULL, op);
+	else if (op == ALTDQ_POLL)
 		IF_POLL(ifsq, m);
-	} else {
+	else
 		IF_DEQUEUE(ifsq, m);
-		KKASSERT(mpolled == NULL || mpolled == m);
-	}
 
 	if (m != NULL && op == ALTDQ_REMOVE)
 		tbr->tbr_token -= TBR_SCALE(m_pktlen(m));

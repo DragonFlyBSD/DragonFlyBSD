@@ -1212,7 +1212,7 @@ txp_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			goto oactive;
 
 		m_defragged = NULL;
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == NULL)
 			break;
 again:

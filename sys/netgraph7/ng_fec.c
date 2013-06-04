@@ -1123,7 +1123,7 @@ ng_fec_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	priv = ifp->if_softc;
 	b = &priv->fec_bundle;
 
-	m0 = ifq_dequeue(&ifp->if_snd, NULL);
+	m0 = ifq_dequeue(&ifp->if_snd);
 	if (m0 == NULL)
 		return;
 

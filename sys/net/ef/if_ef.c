@@ -214,7 +214,7 @@ ef_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	EFDEBUG("\n");
 	for (;;) {
-		m = ifsq_dequeue(ifsq, NULL);
+		m = ifsq_dequeue(ifsq);
 		if (m == NULL)
 			break;
 

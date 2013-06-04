@@ -1174,7 +1174,7 @@ ae_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	while (!ifq_is_empty(&ifp->if_snd)) {
 		struct mbuf *m0;
 
-		m0 = ifq_dequeue(&ifp->if_snd, NULL);
+		m0 = ifq_dequeue(&ifp->if_snd);
 		if (m0 == NULL)
 			break;  /* Nothing to do. */
 

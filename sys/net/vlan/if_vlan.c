@@ -521,7 +521,7 @@ vlan_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	for (;;) {
 		struct netmsg_packet *nmp;
 
-		m = ifsq_dequeue(ifsq, NULL);
+		m = ifsq_dequeue(ifsq);
 		if (m == NULL)
 			break;
 		BPF_MTAP(ifp, m);

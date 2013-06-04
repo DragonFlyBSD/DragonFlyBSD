@@ -189,7 +189,7 @@ pflogstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	ASSERT_LWKT_TOKEN_HELD(&pf_token);
 
 	for (;;) {
-		m = ifsq_dequeue(ifsq, NULL);
+		m = ifsq_dequeue(ifsq);
 		if (m == NULL)
 			return;
 		else

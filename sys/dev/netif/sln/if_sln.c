@@ -747,7 +747,7 @@ sln_tx(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	while (SL_CUR_TXBUF(sc) == NULL) {	/* SL_CUR_TXBUF(x) = x->sln_bufdata.sln_tx_buf[x->sln_bufdata.cur_tx] */
 		entry = sc->sln_bufdata.cur_tx;
 
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 

@@ -497,7 +497,7 @@ fwe_as_output(struct fwe_softc *fwe, struct ifnet *ifp)
 			if_printf(ifp, "lack of xfer\n");
 			return;
 		}
-		m = ifq_dequeue(&ifp->if_snd, NULL);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == NULL)
 			break;
 		STAILQ_REMOVE_HEAD(&fwe->xferlist, link);

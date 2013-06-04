@@ -1720,7 +1720,7 @@ sis_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			break;
 		}
 
-		m_head = ifq_dequeue(&ifp->if_snd, NULL);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 

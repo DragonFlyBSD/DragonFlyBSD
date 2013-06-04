@@ -2963,7 +2963,7 @@ rtw_dequeue(struct ifnet *ifp, struct rtw_txsoft_blk **tsbp,
 		return 0;
 	}
 
-	m0 = ifq_dequeue(&ifp->if_snd, NULL);
+	m0 = ifq_dequeue(&ifp->if_snd);
 	if (m0 == NULL) {
 		DPRINTF(sc, RTW_DEBUG_XMIT,
 			("%s: no frame ready\n", ifp->if_xname));
