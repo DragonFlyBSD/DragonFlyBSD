@@ -72,6 +72,7 @@ static int hammer2_indirect_optimize;	/* XXX SYSCTL */
 static hammer2_chain_t *hammer2_chain_create_indirect(
 		hammer2_trans_t *trans, hammer2_chain_t *parent,
 		hammer2_key_t key, int keybits, int for_type, int *errorp);
+static void adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
 
 /*
  * We use a red-black tree to guarantee safe lookups under shared locks.
@@ -96,6 +97,20 @@ hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
 		return(-1);
 	if (chain1->delete_tid > chain2->delete_tid)
 		return(1);
+	return(0);
+}
+
+static __inline
+int
+hammer2_isclusterable(hammer2_chain_t *chain)
+{
+	if (hammer2_cluster_enable) {
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
+		    chain->bref.type == HAMMER2_BREF_TYPE_INODE ||
+		    chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+			return(1);
+		}
+	}
 	return(0);
 }
 
@@ -493,10 +508,11 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	hammer2_chain_core_t *core;
 	hammer2_blockref_t *bref;
 	hammer2_off_t pbase;
+	hammer2_off_t pmask;
 	hammer2_off_t peof;
 	ccms_state_t ostate;
 	size_t boff;
-	size_t bbytes;
+	size_t psize;
 	int error;
 	char *bdata;
 
@@ -574,27 +590,29 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 */
 	bref = &chain->bref;
 
-	if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
-		bbytes = HAMMER2_MINIOSIZE;
-	pbase = bref->data_off & ~(hammer2_off_t)(bbytes - 1);
-	peof = (pbase + HAMMER2_PBUFSIZE64) & ~HAMMER2_PBUFMASK64;
-	boff = bref->data_off & HAMMER2_OFF_MASK & (bbytes - 1);
+	psize = hammer2_devblksize(chain->bytes);
+	pmask = (hammer2_off_t)psize - 1;
+	pbase = bref->data_off & ~pmask;
+	boff = bref->data_off & (HAMMER2_OFF_MASK & pmask);
 	KKASSERT(pbase != 0);
+	peof = (pbase + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
 
 	/*
 	 * The getblk() optimization can only be used on newly created
 	 * elements if the physical block size matches the request.
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_INITIAL) &&
-	    chain->bytes == bbytes) {
-		chain->bp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
+	    chain->bytes == psize) {
+		chain->bp = getblk(hmp->devvp, pbase, psize, 0, 0);
 		error = 0;
-	} else if (hammer2_cluster_enable) {
-		error = cluster_read(hmp->devvp, peof, pbase, bbytes,
-				     HAMMER2_PBUFSIZE, HAMMER2_PBUFSIZE,
+	} else if (hammer2_isclusterable(chain)) {
+		error = cluster_read(hmp->devvp, peof, pbase, psize,
+				     psize, HAMMER2_PBUFSIZE*4,
 				     &chain->bp);
+		adjreadcounter(&chain->bref, chain->bytes);
 	} else {
-		error = bread(hmp->devvp, pbase, bbytes, &chain->bp);
+		error = bread(hmp->devvp, pbase, psize, &chain->bp);
+		adjreadcounter(&chain->bref, chain->bytes);
 	}
 
 	if (error) {
@@ -788,7 +806,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 			counterp = &hammer2_ioa_volu_write;
 			break;
 		}
-		++*counterp;
+		*counterp += chain->bytes;
 	} else {
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_DATA:
@@ -808,7 +826,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 			counterp = &hammer2_iod_volu_write;
 			break;
 		}
-		++*counterp;
+		*counterp += chain->bytes;
 	}
 
 	/*
@@ -1006,11 +1024,13 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	hammer2_mount_t *hmp = trans->hmp;
 	hammer2_chain_t *chain;
 	hammer2_off_t pbase;
+	hammer2_off_t pmask;
+	hammer2_off_t peof;
 	hammer2_tid_t flush_tid;
 	struct buf *nbp;
 	int error;
 	int wasinitial;
-	size_t bbytes;
+	size_t psize;
 	size_t boff;
 	void *bdata;
 
@@ -1177,29 +1197,33 @@ skipxx: /* XXX */
 		 */
 		KKASSERT(chain != &hmp->vchain && chain != &hmp->fchain);
 
-		/*
-		 * The device buffer may be larger than the allocation size.
-		 */
-		if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
-			bbytes = HAMMER2_MINIOSIZE;
-		pbase = chain->bref.data_off & ~(hammer2_off_t)(bbytes - 1);
-		boff = chain->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
+		psize = hammer2_devblksize(chain->bytes);
+		pmask = (hammer2_off_t)psize - 1;
+		pbase = chain->bref.data_off & ~pmask;
+		boff = chain->bref.data_off & (HAMMER2_OFF_MASK & pmask);
+		KKASSERT(pbase != 0);
+		peof = (pbase + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
 
 		/*
-		 * Buffer aliasing is possible, check for the case.
-		 *
 		 * The getblk() optimization can only be used if the
-		 * physical block size matches the request.
+		 * chain element size matches the physical block size.
 		 */
 		if (chain->bp && chain->bp->b_loffset == pbase) {
 			nbp = chain->bp;
-		} else if (chain->bytes == bbytes) {
-			nbp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
 			error = 0;
+		} else if (chain->bytes == psize) {
+			nbp = getblk(hmp->devvp, pbase, psize, 0, 0);
+			error = 0;
+		} else if (hammer2_isclusterable(chain)) {
+			error = cluster_read(hmp->devvp, peof, pbase, psize,
+					     psize, HAMMER2_PBUFSIZE*4,
+					     &nbp);
+			adjreadcounter(&chain->bref, chain->bytes);
 		} else {
-			error = bread(hmp->devvp, pbase, bbytes, &nbp);
-			KKASSERT(error == 0);
+			error = bread(hmp->devvp, pbase, psize, &nbp);
+			adjreadcounter(&chain->bref, chain->bytes);
 		}
+		KKASSERT(error == 0);
 		bdata = (char *)nbp->b_data + boff;
 
 		/*
@@ -1226,6 +1250,7 @@ skipxx: /* XXX */
 		if (chain->bp != nbp) {
 			if (chain->bp) {
 				if (chain->flags & HAMMER2_CHAIN_DIRTYBP) {
+					chain->bp->b_flags |= B_CLUSTEROK;
 					bdwrite(chain->bp);
 				} else {
 					chain->bp->b_flags |= B_RELBUF;
@@ -3352,4 +3377,31 @@ void
 hammer2_chain_wait(hammer2_chain_t *chain)
 {
 	tsleep(chain, 0, "chnflw", 1);
+}
+
+static
+void
+adjreadcounter(hammer2_blockref_t *bref, size_t bytes)
+{
+	long *counterp;
+
+	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_DATA:
+		counterp = &hammer2_iod_file_read;
+		break;
+	case HAMMER2_BREF_TYPE_INODE:
+		counterp = &hammer2_iod_meta_read;
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		counterp = &hammer2_iod_indr_read;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		counterp = &hammer2_iod_fmap_read;
+		break;
+	default:
+		counterp = &hammer2_iod_volu_read;
+		break;
+	}
+	*counterp += bytes;
 }

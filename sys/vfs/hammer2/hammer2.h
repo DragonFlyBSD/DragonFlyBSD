@@ -415,7 +415,7 @@ struct hammer2_mount {
 	hammer2_trans_t	*curflush;	/* current flush in progress */
 	hammer2_tid_t	topo_flush_tid;	/* currently synchronizing flush pt */
 	hammer2_tid_t	free_flush_tid;	/* currently synchronizing flush pt */
-	hammer2_off_t	heur_last_alloc;
+	hammer2_off_t	heur_freemap[HAMMER2_MAX_RADIX+1];
 	int		flushcnt;	/* #of flush trans on the list */
 
 	int		volhdrno;	/* last volhdrno written */
@@ -453,6 +453,30 @@ MALLOC_DECLARE(M_HAMMER2);
 
 #define VTOI(vp)	((hammer2_inode_t *)(vp)->v_data)
 #define ITOV(ip)	((ip)->vp)
+
+static __inline
+int
+hammer2_devblkradix(int radix)
+{
+	int cluster_radix;
+
+	if (radix <= HAMMER2_LBUFRADIX)
+		cluster_radix = HAMMER2_LBUFRADIX;
+	else
+		cluster_radix = HAMMER2_PBUFRADIX;
+	return(cluster_radix);
+}
+
+static __inline
+size_t
+hammer2_devblksize(size_t bytes)
+{
+	if (bytes <= HAMMER2_LBUFSIZE)
+		return(HAMMER2_LBUFSIZE);
+	else
+		return(HAMMER2_PBUFSIZE);
+}
+
 
 static __inline
 hammer2_pfsmount_t *
@@ -498,6 +522,8 @@ extern int hammer2_hardlink_enable;
 extern long hammer2_iod_file_read;
 extern long hammer2_iod_meta_read;
 extern long hammer2_iod_indr_read;
+extern long hammer2_iod_fmap_read;
+extern long hammer2_iod_volu_read;
 extern long hammer2_iod_file_write;
 extern long hammer2_iod_meta_write;
 extern long hammer2_iod_indr_write;
@@ -506,6 +532,8 @@ extern long hammer2_iod_volu_write;
 extern long hammer2_ioa_file_read;
 extern long hammer2_ioa_meta_read;
 extern long hammer2_ioa_indr_read;
+extern long hammer2_ioa_fmap_read;
+extern long hammer2_ioa_volu_read;
 extern long hammer2_ioa_file_write;
 extern long hammer2_ioa_meta_write;
 extern long hammer2_ioa_indr_write;

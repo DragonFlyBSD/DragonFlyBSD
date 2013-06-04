@@ -327,10 +327,11 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 	hammer2_mount_t *hmp;
 	hammer2_blockref_t *bref;
 	hammer2_off_t pbase;
+	hammer2_off_t pmask;
 	hammer2_tid_t saved_sync;
 	hammer2_trans_t *trans = info->trans;
 	hammer2_chain_core_t *core;
-	size_t bbytes;
+	size_t psize;
 	size_t boff;
 	char *bdata;
 	struct buf *bp;
@@ -660,11 +661,12 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 		 * Make sure any device buffer(s) have been flushed out here.
 		 * (there aren't usually any to flush).
 		 */
-		bbytes = chain->bytes;
-		pbase = chain->bref.data_off & ~(hammer2_off_t)(bbytes - 1);
-		boff = chain->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
+		psize = hammer2_devblksize(chain->bytes);
+		pmask = (hammer2_off_t)psize - 1;
+		pbase = chain->bref.data_off & ~pmask;
+		boff = chain->bref.data_off & (HAMMER2_OFF_MASK & pmask);
 
-		bp = getblk(hmp->devvp, pbase, bbytes, GETBLK_NOWAIT, 0);
+		bp = getblk(hmp->devvp, pbase, psize, GETBLK_NOWAIT, 0);
 		if (bp) {
 			if ((bp->b_flags & (B_CACHE | B_DIRTY)) ==
 			    (B_CACHE | B_DIRTY)) {
@@ -730,22 +732,18 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 		 * The data is embedded, we have to acquire the
 		 * buffer cache buffer and copy the data into it.
 		 */
-		if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
-			bbytes = HAMMER2_MINIOSIZE;
-		pbase = bref->data_off & ~(hammer2_off_t)(bbytes - 1);
-		boff = bref->data_off & HAMMER2_OFF_MASK & (bbytes - 1);
+		psize = hammer2_devblksize(chain->bytes);
+		pmask = (hammer2_off_t)psize - 1;
+		pbase = bref->data_off & ~pmask;
+		boff = bref->data_off & (HAMMER2_OFF_MASK & pmask);
 
 		/*
 		 * The getblk() optimization can only be used if the
 		 * physical block size matches the request.
 		 */
-		if (chain->bytes == bbytes) {
-			bp = getblk(hmp->devvp, pbase, bbytes, 0, 0);
-			error = 0;
-		} else {
-			error = bread(hmp->devvp, pbase, bbytes, &bp);
-			KKASSERT(error == 0);
-		}
+		error = bread(hmp->devvp, pbase, psize, &bp);
+		KKASSERT(error == 0);
+
 		bdata = (char *)bp->b_data + boff;
 
 		/*
@@ -756,6 +754,7 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 		bp->b_flags |= B_CLUSTEROK;
 		bdwrite(bp);
 		bp = NULL;
+
 		switch(HAMMER2_DEC_CHECK(chain->bref.methods)) {
 		case HAMMER2_CHECK_FREEMAP:
 			chain->bref.check.freemap.icrc32 =

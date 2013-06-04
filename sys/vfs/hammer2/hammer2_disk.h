@@ -102,9 +102,10 @@
  *			  blocks except the block straddling EOF.
  *
  * HAMMER2_SEGSIZE	- Allocation map segment size, typically 2MB
+ *			  (space represented by a level0 bitmap).
  */
 
-#define HAMMER2_SEGSIZE		(65536 * 8)
+#define HAMMER2_SEGSIZE		(1 << HAMMER2_FREEMAP_LEVEL0_RADIX)
 
 #define HAMMER2_PBUFRADIX	16	/* physical buf (1<<16) bytes */
 #define HAMMER2_PBUFSIZE	65536
@@ -114,13 +115,8 @@
 /*
  * Generally speaking we want to use 16K and 64K I/Os
  */
-#if 1
 #define HAMMER2_MINIORADIX	HAMMER2_LBUFRADIX
 #define HAMMER2_MINIOSIZE	HAMMER2_LBUFSIZE
-#else
-#define HAMMER2_MINIORADIX	10
-#define HAMMER2_MINIOSIZE	1024
-#endif
 
 #define HAMMER2_IND_BYTES_MIN	HAMMER2_LBUFSIZE
 #define HAMMER2_IND_BYTES_MAX	HAMMER2_PBUFSIZE
@@ -403,7 +399,7 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 		/*
 		 * Freemap hints are embedded in addition to the icrc32.
 		 *
-		 * biggest - largest possible allocation 2^N within sub-tree.
+		 * biggest - Largest possible allocation 2^N within sub-tree.
 		 *	     typically initialized to 64 in freemap_blockref
 		 *	     and reduced as-needed when a request fails.
 		 *
@@ -412,11 +408,15 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 		 *	     biggest hint will be adjusted downward.
 		 *
 		 *	     Used when allocating space.
+		 *
+		 * radix   - (Leaf only) once assigned, radix for clustering.
+		 *	     All device I/O can cluster within the 2MB
+		 *	     segment.
 		 */
 		struct {
 			uint32_t icrc32;
 			uint8_t biggest;
-			uint8_t reserved05;
+			uint8_t radix;		/* 0, LBUFRADIX, PBUFRADIX */
 			uint8_t reserved06;
 			uint8_t reserved07;
 			uint64_t avail;		/* total available bytes */

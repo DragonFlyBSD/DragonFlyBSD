@@ -58,6 +58,13 @@ static int hammer2_freemap_iterate(hammer2_trans_t *trans,
 
 #endif
 
+static __inline
+int
+hammer2_freemapradix(int radix)
+{
+	return(radix);
+}
+
 /*
  * Calculate the device offset for the specified FREEMAP_NODE or FREEMAP_LEAF
  * bref.  Return a combined media offset and physical size radix.  Freemap
@@ -90,13 +97,11 @@ hammer2_freemap_reserve(hammer2_mount_t *hmp, hammer2_blockref_t *bref,
 
 	/*
 	 * Adjust by HAMMER2_ZONE_FREEMAP_{A,B,C,D} using the existing
-	 * offset as a basis.
+	 * offset as a basis.  Start in zone A if previously unallocated.
 	 */
 	if ((bref->data_off & ~HAMMER2_OFF_MASK_RADIX) == 0) {
 		off = HAMMER2_ZONE_FREEMAP_A;
 	} else {
-		off = HAMMER2_ZONE_FREEMAP_A;
-#if 0
 		off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX &
 		      (((hammer2_off_t)1 << HAMMER2_FREEMAP_LEVEL1_RADIX) - 1);
 		off = off / HAMMER2_PBUFSIZE;
@@ -111,7 +116,6 @@ hammer2_freemap_reserve(hammer2_mount_t *hmp, hammer2_blockref_t *bref,
 			off = HAMMER2_ZONE_FREEMAP_C;
 		else
 			off = HAMMER2_ZONE_FREEMAP_B;
-#endif
 	}
 	off = off * HAMMER2_PBUFSIZE;
 
@@ -293,6 +297,7 @@ hammer2_freemap_alloc(hammer2_trans_t *trans,
 	hammer2_chain_t *parent;
 	hammer2_off_t bpref;
 	hammer2_off_t bnext;
+	int freemap_radix;
 	int radix;
 	int error;
 
@@ -315,17 +320,25 @@ hammer2_freemap_alloc(hammer2_trans_t *trans,
 	return (hammer2_freemap_simple_alloc(hmp, bref, radix));
 #else
 
-	/*
-	 * Calculate actual allocation in bytes, and radix.  This ensures
-	 * a minimum 1KB allocation.
-	 */
 	KKASSERT(bytes >= HAMMER2_MIN_ALLOC &&
 		 bytes <= HAMMER2_MAX_ALLOC);
 
-#if 0
 	/*
-	 * Calculate starting point
+	 * Calculate the starting point for our allocation search.
+	 *
+	 * Each freemap leaf is dedicated to a specific freemap_radix.
+	 * The freemap_radix can be more fine-grained than the device buffer
+	 * radix which results in inodes being grouped together in their
+	 * own segment, terminal-data (16K or less) and initial indirect
+	 * block being grouped together, and then full-indirect and full-data
+	 * blocks (64K) being grouped together.
+	 *
+	 * The single most important aspect of this is the inode grouping
+	 * because that is what allows 'find' and 'ls' and other filesystem
+	 * topology operations to run fast.
 	 */
+	freemap_radix = hammer2_freemapradix(radix);
+#if 0
 	if (bref->data_off & ~HAMMER2_OFF_MASK_RADIX)
 		bpref = bref->data_off & ~HAMMER2_OFF_MASK_RADIX;
 	else if (trans->tmp_bpref)
@@ -334,7 +347,8 @@ hammer2_freemap_alloc(hammer2_trans_t *trans,
 		bpref = trans->tmp_ip->chain->bref.data_off;
 	else
 #endif
-		bpref = hmp->heur_last_alloc;	/* SMP race ok, heuristic */
+	KKASSERT(radix >= 0 && radix <= HAMMER2_MAX_RADIX);
+	bpref = hmp->heur_freemap[freemap_radix];
 
 	/*
 	 * Make sure bpref is in-bounds.  It's ok if bpref covers a zone's
@@ -355,7 +369,7 @@ hammer2_freemap_alloc(hammer2_trans_t *trans,
 		error = hammer2_freemap_try_alloc(trans, &parent, bref,
 						  radix, bpref, &bnext);
 	}
-	hmp->heur_last_alloc = bnext;	/* XXX */
+	hmp->heur_freemap[freemap_radix] = bnext;
 	hammer2_chain_unlock(parent);
 
 	return (error);
@@ -412,6 +426,8 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	int index;
 	int count;
 	int subindex;
+	int freemap_radix;
+	int devblk_radix;
 
 	/*
 	 * Calculate the number of bytes being allocated, the number
@@ -424,6 +440,9 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	bytes = (size_t)1 << radix;
 	bits = 1 << (radix - HAMMER2_MIN_RADIX);
 	mask = (bits == 64) ? (uint64_t)-1 : (((uint64_t)1 << bits) - 1);
+
+	devblk_radix = hammer2_devblkradix(radix);
+	freemap_radix = hammer2_freemapradix(radix);
 
 	/*
 	 * Lookup the level0 freemap chain, creating and initializing one
@@ -459,6 +478,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			chain->bref.check.freemap.biggest =
 					HAMMER2_FREEMAP_LEVEL0_RADIX;
 			chain->bref.check.freemap.avail = l0size;
+			chain->bref.check.freemap.radix = freemap_radix;
 
 			/*
 			 * Preset bitmap for existing static allocations.
@@ -508,6 +528,11 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		 * Already flagged as not having enough space
 		 */
 		error = ENOSPC;
+	} else if (chain->bref.check.freemap.radix != freemap_radix) {
+		/*
+		 * Wrong cluster radix, cannot allocate from this leaf.
+		 */
+		error = ENOSPC;
 	} else {
 		/*
 		 * Modify existing chain to setup for adjustment.
@@ -532,45 +557,23 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	 * Allocate data and meta-data from the beginning and inodes
 	 * from the end.
 	 */
-	if (bref->type != HAMMER2_BREF_TYPE_INODE) {
-		for (index = 0; index < count; ++index) {
-			if (data[index] == (uint64_t)-1) /* all allocated */
-				continue;
-			tmp_mask = mask;		 /* iterate */
-			for (subindex = 0; subindex < 64; subindex += bits) {
-				if ((data[index] & tmp_mask) == 0)
-					break;
-				tmp_mask <<= bits;
-			}
-			if (subindex != 64) {
-				key += HAMMER2_MIN_ALLOC * 64 * index;
-				key += HAMMER2_MIN_ALLOC * subindex;
+	for (index = 0; index < count; ++index) {
+		if (data[index] == (uint64_t)-1) /* all allocated */
+			continue;
+		tmp_mask = mask;		 /* iterate */
+		for (subindex = 0; subindex < 64; subindex += bits) {
+			if ((data[index] & tmp_mask) == 0)
 				break;
-			}
+			tmp_mask <<= bits;
 		}
-		if (index == count)
-			error = ENOSPC;
-	} else {
-		for (index = count - 1; index >= 0; --index) {
-			if (data[index] == (uint64_t)-1) /* all allocated */
-				continue;
-			tmp_mask = mask << (64 - bits);
-			for (subindex = 64 - bits;
-			     subindex >= 0;
-			     subindex -= bits) {
-				if ((data[index] & tmp_mask) == 0)
-					break;
-				tmp_mask >>= bits;
-			}
-			if (subindex != -bits) {
-				key += HAMMER2_MIN_ALLOC * 64 * index;
-				key += HAMMER2_MIN_ALLOC * subindex;
-				break;
-			}
+		if (subindex != 64) {
+			key += HAMMER2_MIN_ALLOC * 64 * index;
+			key += HAMMER2_MIN_ALLOC * subindex;
+			break;
 		}
-		if (index == -1)
-			error = ENOSPC;
 	}
+	if (index == count)
+		error = ENOSPC;
 
 skip:
 	if (error == 0) {
@@ -589,20 +592,15 @@ skip:
 		/*
 		 * Modify the chain and set the bitmap appropriately.
 		 *
-		 * Determine if we can massage the buffer cache buffer
-		 * to avoid a read.  If the allocation is smaller than
-		 * the minimum IO size we look at the bitmap mask covering
-		 * the allocation at the minimum IO size.  If it is
-		 * unallocated we instantiate and clear the buffer which
-		 * marks it B_CACHE and validates it without issuing a read.
-		 *
-		 * For allocation requests >= MINIOSIZE other code will deal
-		 * with the read-avoidance when the chain is locked.
+		 * For smaller allocations try to avoid a read-before-write
+		 * by priming the buffer cache buffer.  The caller handles
+		 * read-avoidance for larger allocations (or more properly,
+		 * when the chain is locked).
 		 */
 		prebuf = 0;
 		hammer2_chain_modify(trans, &chain, 0);
 		data = &chain->data->bmdata.array[0];
-		if (radix < HAMMER2_MINIORADIX) {
+		if (radix != devblk_radix) {
 			uint64_t iomask;
 			int iobmradix = HAMMER2_MINIORADIX - HAMMER2_MIN_RADIX;
 			int ioindex;
@@ -631,11 +629,15 @@ skip:
 		if (prebuf) {
 			struct buf *bp;
 			hammer2_off_t pbase;
+			hammer2_off_t csize;
+			hammer2_off_t cmask;
 
-			pbase = key & ~(hammer2_off_t)(HAMMER2_MINIOSIZE - 1);
+			csize = (hammer2_off_t)1 << devblk_radix;
+			cmask = csize - 1;
+			pbase = key & ~mask;
 
-			bp = getblk(hmp->devvp, pbase,
-				    HAMMER2_MINIOSIZE, GETBLK_NOWAIT, 0);
+			bp = getblk(hmp->devvp, pbase, csize,
+				    GETBLK_NOWAIT, 0);
 			if (bp) {
 				if ((bp->b_flags & B_CACHE) == 0)
 					vfs_bio_clrbuf(bp);
@@ -667,24 +669,6 @@ skip:
 		hammer2_chain_unlock(chain);
 	return (error);
 }
-
-#if 0
-	/*
-	 * When making meta-data allocations smaller than LBUFSIZE we will
-	 * use a LBUFSIZE'd buffer.  The first chunk allocated from such a
-	 * buffer instantiates a device buffer and marks it clean to avoid
-	 * unnecessary read-before-write ops.  XXX buffer cache buffer
-	 * sharing.  XXX mixed data/meta-data issues.
-	 */
-	if (bytes < HAMMER2_MINIOSIZE &&
-	    (data_off & (HAMMER2_MINIOSIZE - 1)) == 0 &&
-	    (bitmap shows this is the initial allocation)) {
-		bp = getblk(hmp->devvp, data_off, HAMMER2_MINIOSIZE, 0, 0);
-		bp->b_flags |= B_CACHE;
-		bp->b_resid = 0;
-		bqrelse(bp);
-	}
-#endif
 
 static int
 hammer2_freemap_iterate(hammer2_trans_t *trans, hammer2_chain_t **parentp,

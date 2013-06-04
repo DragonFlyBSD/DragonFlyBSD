@@ -61,11 +61,13 @@ static struct hammer2_mntlist hammer2_mntlist;
 static struct lock hammer2_mntlk;
 
 int hammer2_debug;
-int hammer2_cluster_enable = 0;	/* XXX temporary until layout ironed out */
+int hammer2_cluster_enable = 1;
 int hammer2_hardlink_enable = 1;
 long hammer2_iod_file_read;
 long hammer2_iod_meta_read;
 long hammer2_iod_indr_read;
+long hammer2_iod_fmap_read;
+long hammer2_iod_volu_read;
 long hammer2_iod_file_write;
 long hammer2_iod_meta_write;
 long hammer2_iod_indr_write;
@@ -74,6 +76,8 @@ long hammer2_iod_volu_write;
 long hammer2_ioa_file_read;
 long hammer2_ioa_meta_read;
 long hammer2_ioa_indr_read;
+long hammer2_ioa_fmap_read;
+long hammer2_ioa_volu_read;
 long hammer2_ioa_fmap_write;
 long hammer2_ioa_file_write;
 long hammer2_ioa_meta_write;
@@ -88,32 +92,48 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_enable, CTLFLAG_RW,
 	   &hammer2_cluster_enable, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, hardlink_enable, CTLFLAG_RW,
 	   &hammer2_hardlink_enable, 0, "");
+
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_read, CTLFLAG_RW,
 	   &hammer2_iod_file_read, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_read, CTLFLAG_RW,
 	   &hammer2_iod_meta_read, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_read, CTLFLAG_RW,
 	   &hammer2_iod_indr_read, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_read, CTLFLAG_RW,
+	   &hammer2_iod_fmap_read, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_read, CTLFLAG_RW,
+	   &hammer2_iod_volu_read, 0, "");
+
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_write, CTLFLAG_RW,
 	   &hammer2_iod_file_write, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_meta_write, CTLFLAG_RW,
 	   &hammer2_iod_meta_write, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_indr_write, CTLFLAG_RW,
 	   &hammer2_iod_indr_write, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_fmap_write, CTLFLAG_RW,
+	   &hammer2_iod_fmap_write, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_volu_write, CTLFLAG_RW,
 	   &hammer2_iod_volu_write, 0, "");
+
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_file_read, CTLFLAG_RW,
 	   &hammer2_ioa_file_read, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_meta_read, CTLFLAG_RW,
 	   &hammer2_ioa_meta_read, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_indr_read, CTLFLAG_RW,
 	   &hammer2_ioa_indr_read, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_fmap_read, CTLFLAG_RW,
+	   &hammer2_ioa_fmap_read, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_volu_read, CTLFLAG_RW,
+	   &hammer2_ioa_volu_read, 0, "");
+
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_file_write, CTLFLAG_RW,
 	   &hammer2_ioa_file_write, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_meta_write, CTLFLAG_RW,
 	   &hammer2_ioa_meta_write, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_indr_write, CTLFLAG_RW,
 	   &hammer2_ioa_indr_write, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_fmap_write, CTLFLAG_RW,
+	   &hammer2_ioa_fmap_write, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_volu_write, CTLFLAG_RW,
 	   &hammer2_ioa_volu_write, 0, "");
 

@@ -184,6 +184,17 @@ but doesn't complicate anything else.  The inode number is stored in the
 inode itself, an absolutely necessary feature in order to support the
 hugely flexible snapshots that we want to have in HAMMER2.
 
+			    DISK I/O OPTIMIZATIONS
+
+The freemap implements a 1KB allocation resolution.  The minimum I/O size
+is 16KB.  HAMMER2 typically implements 16KB and 64KB physical I/O sizes
+and will cluster larger I/O's.
+
+Each 2MB segment managed by the freemap handles just one particular
+physical I/O size.  Typically this means that inodes, small data, and
+initial (small) indirect blocks get clustered together.  Also large 64KB
+file-data and indirect blocks get clustered together.
+
 				  HARDLINKS
 
 Hardlinks are a particularly sticky problem for HAMMER2 due to the lack of
