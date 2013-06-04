@@ -493,16 +493,8 @@ tunioctl(struct dev_ioctl_args *ap)
 			tp->tun_flags &= ~TUN_ASYNC;
 		break;
 	case FIONREAD:
-		if (!ifsq_is_empty(ifq_get_subq_default(&tp->tun_if.if_snd))) {
-			struct mbuf *mb;
-
-			mb = ifsq_poll(
-			    ifq_get_subq_default(&tp->tun_if.if_snd));
-			for( *(int *)ap->a_data = 0; mb != NULL; mb = mb->m_next)
-				*(int *)ap->a_data += mb->m_len;
-		} else {
-			*(int *)ap->a_data = 0;
-		}
+		*(int *)ap->a_data = ifsq_poll_pktlen(
+		    ifq_get_subq_default(&tp->tun_if.if_snd));
 		break;
 	case FIOSETOWN:
 		return (fsetown(*(int *)ap->a_data, &tp->tun_sigio));

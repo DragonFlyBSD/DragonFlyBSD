@@ -230,6 +230,25 @@ ifsq_poll(struct ifaltq_subque *_ifsq)
 	return _m;
 }
 
+static __inline int
+ifsq_poll_pktlen(struct ifaltq_subque *_ifsq)
+{
+	struct mbuf *_m;
+	int _len = 0;
+
+	ALTQ_SQ_LOCK(_ifsq);
+
+	_m = ifsq_poll_locked(_ifsq);
+	if (_m != NULL) {
+		M_ASSERTPKTHDR(_m);
+		_len = _m->m_pkthdr.len;
+	}
+
+	ALTQ_SQ_UNLOCK(_ifsq);
+
+	return _len;
+}
+
 /*
  * Subqueue lock must be held
  */

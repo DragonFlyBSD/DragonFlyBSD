@@ -753,17 +753,16 @@ tapioctl(struct dev_ioctl_args *ap)
 		break;
 
 	case FIONREAD:
-		*(int *)data = 0;
-
 		/* Take a look at devq first */
 		IF_POLL(&tp->tap_devq, mb);
-		if (mb == NULL)
-			mb = ifsq_poll(ifq_get_subq_default(&ifp->if_snd));
-
 		if (mb != NULL) {
+			*(int *)data = 0;
 			for(; mb != NULL; mb = mb->m_next)
 				*(int *)data += mb->m_len;
-		} 
+		} else {
+			*(int *)data = ifsq_poll_pktlen(
+			    ifq_get_subq_default(&ifp->if_snd));
+		}
 		break;
 
 	case FIOSETOWN:
