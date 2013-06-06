@@ -420,6 +420,19 @@
 
 #endif /* __STDC_VERSION__ || __STDC_VERSION__ < 201112L */
 
+#if !__has_extension(c_static_assert)
+#if (defined(__cplusplus) && __cplusplus >= 201103L) || \
+    __has_extension(cxx_static_assert)
+#define	_Static_assert(x, y)	static_assert(x, y)
+#elif defined(__COUNTER__)
+#define	_Static_assert(x, y)	__Static_assert(x, __COUNTER__)
+#define	__Static_assert(x, y)	___Static_assert(x, y)
+#define	___Static_assert(x, y)	typedef char __assert_ ## y[(x) ? 1 : -1]
+#else
+#define	_Static_assert(x, y)	struct __hack
+#endif
+#endif
+
 /*
  * Emulation of C11 _Generic().  Unlike the previously defined C11
  * keywords, it is not possible to implement this using exactly the same
