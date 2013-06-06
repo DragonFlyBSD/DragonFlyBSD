@@ -177,7 +177,7 @@ struct if_data {
 #define IFCAP_HWCSUM	(IFCAP_RXCSUM | IFCAP_TXCSUM)
 
 
-#define	IFQ_MAXLEN	50
+#define	IFQ_MAXLEN	250
 #define	IFNET_SLOWHZ	1		/* granularity is 1 second */
 
 /*
