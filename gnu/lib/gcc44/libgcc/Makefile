@@ -78,8 +78,7 @@ $(srcdir)/config/i386/tmmintrin.h $(srcdir)/config/i386/ammintrin.h \
 $(srcdir)/config/i386/smmintrin.h $(srcdir)/config/i386/nmmintrin.h \
 $(srcdir)/config/i386/bmmintrin.h $(srcdir)/config/i386/mmintrin-common.h \
 $(srcdir)/config/i386/wmmintrin.h $(srcdir)/config/i386/immintrin.h \
-$(srcdir)/config/i386/x86intrin.h $(srcdir)/config/i386/avxintrin.h \
-$(srcdir)/config/i386/cross-stdarg.h $(srcdir)/ginclude/tgmath.h
+$(srcdir)/config/i386/x86intrin.h $(srcdir)/config/i386/avxintrin.h
 
 SRCS+=	mm_malloc.h
 

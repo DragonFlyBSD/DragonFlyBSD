@@ -69,8 +69,7 @@ EXTRA_HEADERS = \
 	${GCCDIR}/gcc/config/i386/xopintrin.h \
 	${GCCDIR}/gcc/config/i386/cpuid.h \
 	${GCCDIR}/gcc/config/i386/mm3dnow.h \
-	${GCCDIR}/gcc/config/i386/cross-stdarg.h \
-	${GCCDIR}/gcc/ginclude/tgmath.h
+	${GCCDIR}/gcc/config/i386/cross-stdarg.h
 
 #generated sources
 SRCS+=	mm_malloc.h unwind.h
