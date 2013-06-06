@@ -96,12 +96,12 @@ struct fairq_class {
 	u_int		cl_nbucket_mask; /* bucket mask */
 	fairq_bucket_t	*cl_buckets;
 	fairq_bucket_t	*cl_head;	/* head of circular bucket list */
-	fairq_bucket_t	*cl_polled;
 	struct red	*cl_red;	/* RED state */
-	u_int		cl_hogs_m1;
-	u_int		cl_lssc_m1;
-	u_int		cl_bandwidth;
-	u_int		cl_bw_current;
+	int		cl_advanced;	/* already advanced head */
+	uint64_t	cl_hogs_m1;
+	uint64_t	cl_lssc_m1;
+	uint64_t	cl_bandwidth;
+	uint64_t	cl_bw_current;
 	uint64_t	cl_bw_bytes;
 	uint64_t	cl_bw_delta;
 	uint64_t	cl_last_time;
