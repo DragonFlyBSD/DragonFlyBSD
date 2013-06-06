@@ -41,6 +41,23 @@
 #define	_SYS_CDEFS_H_
 
 /*
+ * Testing against Clang-specific extensions.
+ */
+
+#ifndef	__has_extension
+#define	__has_extension		__has_feature
+#endif
+#ifndef	__has_feature
+#define	__has_feature(x)	0
+#endif
+#ifndef	__has_include
+#define	__has_include(x)	0
+#endif
+#ifndef	__has_builtin
+#define	__has_builtin(x)	0
+#endif
+
+/*
  * Macro to test if we are using a specific version of gcc or later.
  */
 #if defined(__GNUC__) && !defined(__INTEL_COMPILER)
@@ -402,6 +419,24 @@
 #define	_Noreturn		__dead2
 
 #endif /* __STDC_VERSION__ || __STDC_VERSION__ < 201112L */
+
+/*
+ * Emulation of C11 _Generic().  Unlike the previously defined C11
+ * keywords, it is not possible to implement this using exactly the same
+ * syntax.  Therefore implement something similar under the name
+ * __generic().  Unlike _Generic(), this macro can only distinguish
+ * between a single type, so it requires nested invocations to
+ * distinguish multiple cases.
+ */
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define	__generic(expr, t, yes, no)					\
+	_Generic(expr, t: yes, default: no)
+#elif __GNUC_PREREQ__(3, 1) && !defined(__cplusplus)
+#define	__generic(expr, t, yes, no)					\
+	__builtin_choose_expr(						\
+	    __builtin_types_compatible_p(__typeof(expr), t), yes, no)
+#endif
 
 /*-
  * The following definitions are an extension of the behavior originally
