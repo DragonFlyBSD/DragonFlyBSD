@@ -69,8 +69,10 @@ struct ifaltq_subque {
 
 	struct mbuf	*ifsq_head;
 	struct mbuf	*ifsq_tail;
-	int		ifsq_len;
+	int		ifsq_len;	/* packet counter */
 	int		ifsq_maxlen;
+	int		ifsq_bcnt;	/* byte counter */
+	int		ifsq_maxbcnt;
 
 	ifsq_enqueue_t	ifsq_enqueue;
 	ifsq_dequeue_t	ifsq_dequeue;
@@ -99,6 +101,26 @@ struct ifaltq_subque {
 	ASSERT_SERIALIZED((ifsq)->ifsq_hw_serialize)
 #define ASSERT_ALTQ_SQ_NOT_SERIALIZED_HW(ifsq) \
 	ASSERT_NOT_SERIALIZED((ifsq)->ifsq_hw_serialize)
+
+#define ALTQ_SQ_CNTR_INC(ifsq, bcnt) \
+do { \
+	(ifsq)->ifsq_len++; \
+	(ifsq)->ifsq_bcnt += (bcnt); \
+} while (0)
+
+#define ALTQ_SQ_CNTR_DEC(ifsq, bcnt) \
+do { \
+	KASSERT((ifsq)->ifsq_len > 0, ("invalid packet count")); \
+	(ifsq)->ifsq_len--; \
+	KASSERT((ifsq)->ifsq_bcnt >= bcnt, ("invalid byte count")); \
+	(ifsq)->ifsq_bcnt -= (bcnt); \
+} while (0)
+
+#define ALTQ_SQ_CNTR_RESET(ifsq) \
+do { \
+	(ifsq)->ifsq_len = 0; \
+	(ifsq)->ifsq_bcnt = 0; \
+} while (0)
 
 #endif	/* _KERNEL */
 

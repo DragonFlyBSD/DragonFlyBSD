@@ -355,7 +355,7 @@ fairq_purge(struct fairq_if *pif)
 			fairq_purgeq(cl);
 	}
 	if (ifq_is_enabled(pif->pif_ifq))
-		pif->pif_ifq->altq_subq[FAIRQ_SUBQ_INDEX].ifsq_len = 0;
+		ALTQ_SQ_CNTR_RESET(&pif->pif_ifq->altq_subq[FAIRQ_SUBQ_INDEX]);
 }
 
 static struct fairq_class *
@@ -569,7 +569,7 @@ fairq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 		error = ENOBUFS;
 		goto done;
 	}
-	ifsq->ifsq_len++;
+	ALTQ_SQ_CNTR_INC(ifsq, len);
 	error = 0;
 done:
 	crit_exit();
@@ -618,7 +618,7 @@ fairq_dequeue(struct ifaltq_subque *ifsq, int op)
 		m = fairq_getq(best_cl, cur_time);
 		pif->pif_poll_cache = NULL;
 		if (m) {
-			ifsq->ifsq_len--;
+			ALTQ_SQ_CNTR_DEC(ifsq, m_pktlen(m));
 			PKTCNTR_ADD(&best_cl->cl_xmitcnt, m_pktlen(m));
 		}
 	} else {
@@ -688,7 +688,7 @@ fairq_dequeue(struct ifaltq_subque *ifsq, int op)
 		} else if (best_cl) {
 			m = fairq_getq(best_cl, cur_time);
 			KKASSERT(best_m == m);
-			ifsq->ifsq_len--;
+			ALTQ_SQ_CNTR_DEC(ifsq, m_pktlen(m));
 			PKTCNTR_ADD(&best_cl->cl_xmitcnt, m_pktlen(m));
 		} else {
 			m = NULL;

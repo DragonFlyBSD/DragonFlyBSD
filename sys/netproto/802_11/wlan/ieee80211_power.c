@@ -408,6 +408,12 @@ pwrsave_flushq(struct ieee80211_node *ni)
 
 	qhead = &psq->psq_head[0];	/* 802.11 frames */
 	if (qhead->head != NULL) {
+		const struct mbuf *m;
+		int bcnt = 0;
+
+		for (m = qhead->head; m != NULL; m = m->m_nextpkt)
+			bcnt += m->m_pkthdr.len;
+
 		/* XXX could dispatch through vap and check M_ENCAP */
 		parent = vap->iv_ic->ic_ifp;
 		parent_ifsq = ifq_get_subq_default(&parent->if_snd);
@@ -417,7 +423,7 @@ pwrsave_flushq(struct ieee80211_node *ni)
 		/* XXX need different driver interface */
 		/* XXX bypasses q max and OACTIVE */
 		IF_PREPEND_LIST(parent_ifsq, qhead->head, qhead->tail,
-		    qhead->len);
+		    qhead->len, bcnt);
 		ALTQ_SQ_UNLOCK(parent_ifsq);
 
 		qhead->head = qhead->tail = NULL;
@@ -429,6 +435,12 @@ pwrsave_flushq(struct ieee80211_node *ni)
 
 	qhead = &psq->psq_head[1];	/* 802.3 frames */
 	if (qhead->head != NULL) {
+		const struct mbuf *m;
+		int bcnt = 0;
+
+		for (m = qhead->head; m != NULL; m = m->m_nextpkt)
+			bcnt += m->m_pkthdr.len;
+
 		ifp = vap->iv_ifp;
 		ifp_ifsq = ifq_get_subq_default(&ifp->if_snd);
 
@@ -436,7 +448,8 @@ pwrsave_flushq(struct ieee80211_node *ni)
 		ALTQ_SQ_LOCK(ifp_ifsq);
 		/* XXX need different driver interface */
 		/* XXX bypasses q max and OACTIVE */
-		IF_PREPEND_LIST(ifp_ifsq, qhead->head, qhead->tail, qhead->len);
+		IF_PREPEND_LIST(ifp_ifsq, qhead->head, qhead->tail,
+		    qhead->len, bcnt);
 		ALTQ_SQ_UNLOCK(ifp_ifsq);
 
 		qhead->head = qhead->tail = NULL;

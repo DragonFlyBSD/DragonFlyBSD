@@ -380,7 +380,7 @@ hfsc_purge(struct hfsc_if *hif)
 			hfsc_purgeq(cl);
 	}
 	if (ifq_is_enabled(hif->hif_ifq))
-		hif->hif_ifq->altq_subq[HFSC_SUBQ_INDEX].ifsq_len = 0;
+		ALTQ_SQ_CNTR_RESET(&hif->hif_ifq->altq_subq[HFSC_SUBQ_INDEX]);
 }
 
 struct hfsc_class *
@@ -696,7 +696,7 @@ hfsc_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 		crit_exit();
 		return (ENOBUFS);
 	}
-	ifsq->ifsq_len++;
+	ALTQ_SQ_CNTR_INC(ifsq, len);
 	cl->cl_hif->hif_packets++;
 
 	/* successfully queued. */
@@ -814,7 +814,7 @@ hfsc_dequeue(struct ifaltq_subque *ifsq, int op)
 		panic("hfsc_dequeue:");
 	len = m_pktlen(m);
 	cl->cl_hif->hif_packets--;
-	ifsq->ifsq_len--;
+	ALTQ_SQ_CNTR_DEC(ifsq, len);
 	PKTCNTR_ADD(&cl->cl_stats.xmit_cnt, len);
 
 	update_vf(cl, len, cur_time);
@@ -895,10 +895,12 @@ hfsc_purgeq(struct hfsc_class *cl)
 		return;
 
 	while ((m = _getq(cl->cl_q)) != NULL) {
+		ALTQ_SQ_CNTR_DEC(
+		    &cl->cl_hif->hif_ifq->altq_subq[HFSC_SUBQ_INDEX],
+		    m_pktlen(m));
 		PKTCNTR_ADD(&cl->cl_stats.drop_cnt, m_pktlen(m));
 		m_freem(m);
 		cl->cl_hif->hif_packets--;
-		cl->cl_hif->hif_ifq->altq_subq[HFSC_SUBQ_INDEX].ifsq_len--;
 	}
 	KKASSERT(qlen(cl->cl_q) == 0);
 

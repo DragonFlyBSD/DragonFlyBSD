@@ -603,6 +603,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		ifsq->ifsq_ifp = ifp;
 
 		ifsq->ifsq_maxlen = ifq->altq_maxlen;
+		ifsq->ifsq_maxbcnt = ifsq->ifsq_maxlen * MCLBYTES;
 		ifsq->ifsq_prepended = NULL;
 		ifsq->ifsq_started = 0;
 		ifsq->ifsq_hw_oactive = 0;
@@ -2526,7 +2527,8 @@ ifsq_classic_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
     struct altq_pktattr *pa __unused)
 {
 	M_ASSERTPKTHDR(m);
-	if (ifsq->ifsq_len >= ifsq->ifsq_maxlen) {
+	if (ifsq->ifsq_len >= ifsq->ifsq_maxlen ||
+	    ifsq->ifsq_bcnt >= ifsq->ifsq_maxbcnt) {
 		m_freem(m);
 		return ENOBUFS;
 	} else {
@@ -2536,7 +2538,7 @@ ifsq_classic_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 		else
 			ifsq->ifsq_tail->m_nextpkt = m;
 		ifsq->ifsq_tail = m;
-		ifsq->ifsq_len++;
+		ALTQ_SQ_CNTR_INC(ifsq, m->m_pkthdr.len);
 		return 0;
 	}
 }
@@ -2557,7 +2559,7 @@ ifsq_classic_dequeue(struct ifaltq_subque *ifsq, int op)
 			if ((ifsq->ifsq_head = m->m_nextpkt) == NULL)
 				ifsq->ifsq_tail = NULL;
 			m->m_nextpkt = NULL;
-			ifsq->ifsq_len--;
+			ALTQ_SQ_CNTR_DEC(ifsq, m->m_pkthdr.len);
 		}
 		break;
 

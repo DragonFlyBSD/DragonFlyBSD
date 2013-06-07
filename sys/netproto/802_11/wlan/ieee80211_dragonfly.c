@@ -424,7 +424,7 @@ ieee80211_flush_ifq(struct ifaltq *ifq, struct ieee80211vap *vap)
 		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
 		if (ni != NULL && ni->ni_vap == vap) {
 			*mprev = m->m_nextpkt;		/* remove from list */
-			ifsq->ifsq_len--;
+			ALTQ_SQ_CNTR_DEC(ifsq, m->m_pkthdr.len);
 
 			m_freem(m);
 			ieee80211_free_node(ni);	/* reclaim ref */

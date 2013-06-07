@@ -41,17 +41,18 @@
 
 #ifndef IF_PREPEND_LIST
 
-#define _IF_PREPEND_LIST(ifq, mhead, mtail, mcount) do {	\
+#define _IF_PREPEND_LIST(ifq, mhead, mtail, mcount, bcnt) do {	\
 	(mtail)->m_nextpkt = (ifq)->ifsq_head;			\
 	if ((ifq)->ifsq_tail == NULL)				\
 		(ifq)->ifsq_tail = (mtail);			\
 	(ifq)->ifsq_head = (mhead);				\
 	(ifq)->ifsq_len += (mcount);				\
+	(ifq)->ifsq_bcnt += (bcnt);				\
 } while (0)
 
-#define IF_PREPEND_LIST(ifq, mhead, mtail, mcount) do {		\
+#define IF_PREPEND_LIST(ifq, mhead, mtail, mcount, bcnt) do {	\
 	wlan_assert_serialized();				\
-	_IF_PREPEND_LIST(ifq, mhead, mtail, mcount);		\
+	_IF_PREPEND_LIST(ifq, mhead, mtail, mcount, bcnt);	\
 } while (0)
 
 #endif /* IF_PREPEND_LIST */

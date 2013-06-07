@@ -579,11 +579,20 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen,
 {
 	struct sockaddr_dl *sdl;
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+	struct ifaltq *ifq;
+	int i;
 
 	ifp->if_type = IFT_ETHER;
 	ifp->if_addrlen = ETHER_ADDR_LEN;
 	ifp->if_hdrlen = ETHER_HDR_LEN;
 	if_attach(ifp, serializer);
+	ifq = &ifp->if_snd;
+	for (i = 0; i < ifq->altq_subq_cnt; ++i) {
+		struct ifaltq_subque *ifsq = ifq_get_subq(ifq, i);
+
+		ifsq->ifsq_maxbcnt = ifsq->ifsq_maxlen *
+		    (ETHER_MAX_LEN - ETHER_CRC_LEN);
+	}
 	ifp->if_mtu = ETHERMTU;
 	if (ifp->if_tsolen <= 0) {
 		if ((ether_tsolen_default / ETHERMTU) < 2) {

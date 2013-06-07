@@ -182,8 +182,7 @@ ifsq_dequeue(struct ifaltq_subque *_ifsq)
 	if (_ifsq->ifsq_prepended != NULL) {
 		_m = _ifsq->ifsq_prepended;
 		_ifsq->ifsq_prepended = NULL;
-		KKASSERT(_ifsq->ifsq_len > 0);
-		_ifsq->ifsq_len--;
+		ALTQ_SQ_CNTR_DEC(_ifsq, _m->m_pkthdr.len);
 		ALTQ_SQ_UNLOCK(_ifsq);
 		return _m;
 	}
@@ -256,10 +255,9 @@ static __inline void
 ifsq_purge_locked(struct ifaltq_subque *_ifsq)
 {
 	if (_ifsq->ifsq_prepended != NULL) {
+		ALTQ_SQ_CNTR_DEC(_ifsq, _ifsq->ifsq_prepended->m_pkthdr.len);
 		m_freem(_ifsq->ifsq_prepended);
 		_ifsq->ifsq_prepended = NULL;
-		KKASSERT(_ifsq->ifsq_len > 0);
-		_ifsq->ifsq_len--;
 	}
 
 #ifdef ALTQ
@@ -346,7 +344,7 @@ ifsq_prepend(struct ifaltq_subque *_ifsq, struct mbuf *_m)
 	ALTQ_SQ_LOCK(_ifsq);
 	KASSERT(_ifsq->ifsq_prepended == NULL, ("pending prepended mbuf"));
 	_ifsq->ifsq_prepended = _m;
-	_ifsq->ifsq_len++;
+	ALTQ_SQ_CNTR_INC(_ifsq, _m->m_pkthdr.len);
 	ALTQ_SQ_UNLOCK(_ifsq);
 }
 

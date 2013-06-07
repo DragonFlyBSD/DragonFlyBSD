@@ -542,7 +542,7 @@ cbq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 
 	/* successfully queued. */
 	++cbqp->cbq_qlen;
-	++ifsq->ifsq_len;
+	ALTQ_SQ_CNTR_INC(ifsq, len);
 	crit_exit();
 	return (0);
 }
@@ -568,7 +568,7 @@ cbq_dequeue(struct ifaltq_subque *ifsq, int op)
 
 	if (m && op == ALTDQ_REMOVE) {
 		--cbqp->cbq_qlen;  /* decrement # of packets in cbq */
-		--ifsq->ifsq_len;
+		ALTQ_SQ_CNTR_DEC(ifsq, m_pktlen(m));
 
 		/* Update the class. */
 		rmc_update_class_util(&cbqp->ifnp);
@@ -626,7 +626,7 @@ cbq_purge(cbq_state_t *cbqp)
 			rmc_dropall(cl);
 	}
 	if (ifq_is_enabled(cbqp->ifnp.ifq_))
-		cbqp->ifnp.ifq_->altq_subq[CBQ_SUBQ_INDEX].ifsq_len = 0;
+		ALTQ_SQ_CNTR_RESET(&cbqp->ifnp.ifq_->altq_subq[CBQ_SUBQ_INDEX]);
 }
 
 #endif /* ALTQ_CBQ */
