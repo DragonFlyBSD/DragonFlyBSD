@@ -1826,15 +1826,57 @@ rtchange_callback(struct radix_node *rn, void *xap)
 	return 0;
 }
 
+struct netmsg_rtchange {
+	struct netmsg_base	base;
+	struct ifaddr		*old_ifa;
+	struct ifaddr		*new_ifa;
+	int			changed;
+};
+
+static void
+rtchange_dispatch(netmsg_t msg)
+{
+	struct netmsg_rtchange *rmsg = (void *)msg;
+	struct radix_node_head *rnh;
+	struct rtchange_arg arg;
+	int nextcpu, cpu;
+
+	cpu = mycpuid;
+
+	memset(&arg, 0, sizeof(arg));
+	arg.old_ifa = rmsg->old_ifa;
+	arg.new_ifa = rmsg->new_ifa;
+
+	rnh = rt_tables[cpu][AF_INET];
+	for (;;) {
+		int error;
+
+		KKASSERT(arg.rt == NULL);
+		error = rnh->rnh_walktree(rnh, rtchange_callback, &arg);
+		if (arg.rt != NULL) {
+			struct rtentry *rt;
+
+			rt = arg.rt;
+			arg.rt = NULL;
+			rtchange_ifa(rt, &arg);
+		} else {
+			break;
+		}
+	}
+	if (arg.changed)
+		rmsg->changed = 1;
+
+	nextcpu = cpu + 1;
+	if (nextcpu < ncpus)
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
+	else
+		lwkt_replymsg(&rmsg->base.lmsg, 0);
+}
+
 int
 rtchange(struct ifaddr *old_ifa, struct ifaddr *new_ifa)
 {
-	struct rtchange_arg arg;
-	int origcpu, cpu;
-
-	memset(&arg, 0, sizeof(arg));
-	arg.old_ifa = old_ifa;
-	arg.new_ifa = new_ifa;
+	struct netmsg_rtchange msg;
 
 	/*
 	 * XXX individual requests are not independantly chained,
@@ -1843,33 +1885,16 @@ rtchange(struct ifaddr *old_ifa, struct ifaddr *new_ifa)
 	 * related to the interface are manipulated while we are
 	 * doing this the inconsistancy could trigger a panic.
 	 */
-	origcpu = mycpuid;
-	for (cpu = 0; cpu < ncpus; cpu++) {
-		struct radix_node_head *rnh;
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+	    rtchange_dispatch);
+	msg.old_ifa = old_ifa;
+	msg.new_ifa = new_ifa;
+	msg.changed = 0;
+	KASSERT(&curthread->td_msgport != rtable_portfn(0),
+	    ("rtchange in rtable thread"));
+	lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
 
-		lwkt_migratecpu(cpu);
-
-		rnh = rt_tables[cpu][AF_INET];
-		for (;;) {
-			int error;
-
-			KKASSERT(arg.rt == NULL);
-			error = rnh->rnh_walktree(rnh,
-			    rtchange_callback, &arg);
-			if (arg.rt != NULL) {
-				struct rtentry *rt;
-
-				rt = arg.rt;
-				arg.rt = NULL;
-				rtchange_ifa(rt, &arg);
-			} else {
-				break;
-			}
-		}
-	}
-	lwkt_migratecpu(origcpu);
-
-	if (arg.changed) {
+	if (msg.changed) {
 		old_ifa->ifa_flags &= ~IFA_ROUTE;
 		new_ifa->ifa_flags |= IFA_ROUTE;
 		return 0;
