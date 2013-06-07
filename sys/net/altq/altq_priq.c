@@ -449,14 +449,7 @@ priq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 	crit_enter();
 
 	/* grab class set by classifier */
-	if ((m->m_flags & M_PKTHDR) == 0) {
-		/* should not happen */
-		if_printf(ifq->altq_ifp, "altq: packet does not have pkthdr\n");
-		m_freem(m);
-		error = ENOBUFS;
-		goto done;
-	}
-
+	M_ASSERTPKTHDR(m);
 	if (m->m_pkthdr.fw_flags & PF_MBUF_STRUCTURE)
 		cl = clh_to_clp(pif, m->m_pkthdr.pf.qid);
 	else
