@@ -345,7 +345,7 @@ int unidialer_get_modem_response (char *buf, int bufsz, int response_timeout)
 					if (c == '\n')
 					{
 #ifdef DEBUG
-						printf ("get_response: <CRLF> encountered.\n", buf);
+						printf ("get_response: <CRLF> encountered.\n");
 #endif
 						++state;
 					}

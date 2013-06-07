@@ -1,7 +1,5 @@
 /*
  * memcpy.c
- *
- * $DragonFly: src/test/sysperf/memcpy.c,v 1.1 2004/04/29 16:14:53 dillon Exp $
  */
 
 #include "blib.h"
@@ -50,7 +48,7 @@ main(int ac, char **av)
     case 0:
 	break;
     default:
-	fprintf(stderr, "suffix '%s' not understood\n");
+	fprintf(stderr, "suffix '%s' not understood\n", ptr);
 	exit(1);
     }
     if (bytes <= 0 && (bytes & 127)) {
