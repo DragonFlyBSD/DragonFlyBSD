@@ -450,7 +450,6 @@ loop:
 		panic("tmpfs_alloc_vp: type %p %d", node, (int)node->tn_type);
 	}
 
-	insmntque(vp, mp);
 
 unlock:
 	TMPFS_NODE_LOCK(node);
