@@ -753,6 +753,33 @@ ifq_stage_detach(struct ifaltq *ifq)
 		lwkt_domsg(netisr_cpuport(cpu), &base.lmsg, 0);
 }
 
+struct netmsg_if_rtdel {
+	struct netmsg_base	base;
+	struct ifnet		*ifp;
+};
+
+static void
+if_rtdel_dispatch(netmsg_t msg)
+{
+	struct netmsg_if_rtdel *rmsg = (void *)msg;
+	int i, nextcpu, cpu;
+
+	cpu = mycpuid;
+	for (i = 1; i <= AF_MAX; i++) {
+		struct radix_node_head	*rnh;
+
+		if ((rnh = rt_tables[cpu][i]) == NULL)
+			continue;
+		rnh->rnh_walktree(rnh, if_rtdel, rmsg->ifp);
+	}
+
+	nextcpu = cpu + 1;
+	if (nextcpu < ncpus)
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
+	else
+		lwkt_replymsg(&rmsg->base.lmsg, 0);
+}
+
 /*
  * Detach an interface, removing it from the
  * list of "active" interfaces.
@@ -760,10 +787,9 @@ ifq_stage_detach(struct ifaltq *ifq)
 void
 if_detach(struct ifnet *ifp)
 {
-	struct radix_node_head	*rnh;
-	int i, q;
-	int cpu, origcpu;
+	struct netmsg_if_rtdel msg;
 	struct domain *dp;
+	int q;
 
 	EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
 
@@ -822,20 +848,13 @@ if_detach(struct ifnet *ifp)
 
 	/*
 	 * Delete all remaining routes using this interface
-	 * Unfortuneatly the only way to do this is to slog through
-	 * the entire routing table looking for routes which point
-	 * to this interface...oh well...
 	 */
-	origcpu = mycpuid;
-	for (cpu = 0; cpu < ncpus; cpu++) {
-		lwkt_migratecpu(cpu);
-		for (i = 1; i <= AF_MAX; i++) {
-			if ((rnh = rt_tables[cpu][i]) == NULL)
-				continue;
-			rnh->rnh_walktree(rnh, if_rtdel, ifp);
-		}
-	}
-	lwkt_migratecpu(origcpu);
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+	    if_rtdel_dispatch);
+	msg.ifp = ifp;
+	KASSERT(&curthread->td_msgport != rtable_portfn(0),
+	    ("if_detach in rtable thread"));
+	lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
 
 	/* Announce that the interface is gone. */
 	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
