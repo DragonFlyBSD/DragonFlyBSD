@@ -661,7 +661,9 @@ iwn_pci_attach(device_t dev)
 	ifp->if_ioctl = iwn_ioctl;
 	ifp->if_start = iwn_start;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
+#endif
 
 	ieee80211_ifattach(ic, macaddr);
 	ic->ic_vap_create = iwn_vap_create;

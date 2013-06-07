@@ -453,7 +453,9 @@ ural_attach(device_t self)
 	ifp->if_start = ural_start;
 	ifp->if_watchdog = ural_watchdog;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
+#endif
 
 	IEEE80211_ONOE_PARAM_SETUP(&sc->sc_onoe_param);
 	sc->sc_onoe_param.onoe_raise = 20;

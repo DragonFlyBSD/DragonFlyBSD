@@ -340,7 +340,9 @@ wi_attach(device_t dev)
 	ifp->if_start = wi_start;
 	ifp->if_init = wi_init;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
+#endif
 
 	ic->ic_ifp = ifp;
 	ic->ic_phytype = IEEE80211_T_DS;

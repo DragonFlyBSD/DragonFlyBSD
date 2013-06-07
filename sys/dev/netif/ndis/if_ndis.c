@@ -744,10 +744,9 @@ ndis_attach(device_t dev)
 	ifp->if_init = ndis_init;
 	ifp->if_baudrate = 10000000;
 	ifq_set_maxlen(&ifp->if_snd, 50);
-#if 0 /* XXX swildner */
-	ifp->if_snd.ifq_drv_maxlen = 25;
-#endif
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
+#endif
 	ifp->if_capenable = ifp->if_capabilities;
 	ifp->if_hwassist = sc->ndis_hwassist;
 

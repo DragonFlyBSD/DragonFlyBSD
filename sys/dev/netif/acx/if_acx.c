@@ -485,7 +485,9 @@ acx_attach(device_t dev)
 	ifp->if_watchdog = acx_watchdog;
 	ifp->if_flags = IFF_SIMPLEX | IFF_BROADCAST | IFF_MULTICAST;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
+#endif
 
 	/* Set channels */
 	for (i = 1; i <= 14; ++i) {

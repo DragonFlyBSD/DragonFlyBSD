@@ -398,7 +398,7 @@ ieee80211_vap_setup(struct ieee80211com *ic, struct ieee80211vap *vap,
 	ifp->if_init = ieee80211_init;
 	/* NB: input+output filled in by ether_ifattach */
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
-#if 0
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
 #endif
 

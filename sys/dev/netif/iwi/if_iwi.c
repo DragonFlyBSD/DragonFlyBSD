@@ -368,7 +368,9 @@ iwi_attach(device_t dev)
 	ifp->if_ioctl = iwi_ioctl;
 	ifp->if_start = iwi_start;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
+#endif
 
 	ic->ic_ifp = ifp;
 	ic->ic_opmode = IEEE80211_M_STA;

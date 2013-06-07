@@ -570,7 +570,9 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 	ifp->if_ioctl = ath_ioctl;
 	ifp->if_init = ath_init;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
+#endif
 
 	ic->ic_ifp = ifp;
 	/* XXX not right but it's not used anywhere important */

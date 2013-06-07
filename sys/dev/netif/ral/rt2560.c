@@ -265,7 +265,9 @@ rt2560_attach(device_t dev, int id)
 	ifp->if_ioctl = rt2560_ioctl;
 	ifp->if_start = rt2560_start;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
+#endif
 
 	ic->ic_ifp = ifp;
 	ic->ic_opmode = IEEE80211_M_STA;

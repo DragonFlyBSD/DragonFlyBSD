@@ -714,7 +714,9 @@ bwi_attach(device_t dev)
 	ifp->if_start = bwi_start;
 	ifp->if_watchdog = bwi_watchdog;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
+#endif
 
 	/* Get locale */
 	sc->sc_locale = __SHIFTOUT(bwi_read_sprom(sc, BWI_SPROM_CARD_INFO),

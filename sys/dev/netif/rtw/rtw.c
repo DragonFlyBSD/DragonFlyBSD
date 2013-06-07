@@ -3857,7 +3857,9 @@ rtw_attach(device_t dev)
 	ifp->if_start = rtw_start;
 	ifp->if_watchdog = rtw_watchdog;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
+#endif
 
 	ic->ic_phytype = IEEE80211_T_DS;
 	ic->ic_opmode = IEEE80211_M_STA;

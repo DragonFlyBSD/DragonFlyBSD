@@ -237,7 +237,9 @@ iwl2100_attach(device_t dev)
 	ifp->if_start = iwl2100_start;
 	ifp->if_watchdog = iwl2100_watchdog;
 	ifq_set_maxlen(&ifp->if_snd, IWL2100_TX_USED_MAX);
+#ifdef notyet
 	ifq_set_ready(&ifp->if_snd);
+#endif
 
 #ifdef DUMP_EEPROM
 	device_printf(dev, "eeprom\n");
