@@ -187,7 +187,7 @@ static int	ncposlimit;		/* number of cache entries allocated */
 SYSCTL_INT(_debug, OID_AUTO, ncposlimit, CTLFLAG_RW, &ncposlimit, 0,
     "Number of cache entries allocated");
 
-static int	ncp_shared_lock_disable = 1;
+static int	ncp_shared_lock_disable = 0;
 SYSCTL_INT(_debug, OID_AUTO, ncp_shared_lock_disable, CTLFLAG_RW,
 	   &ncp_shared_lock_disable, 0, "Disable shared namecache locks");
 
