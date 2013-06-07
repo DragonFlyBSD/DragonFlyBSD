@@ -61,6 +61,7 @@
 #ifdef CARP
 #include <net/if_types.h>
 #endif
+#include <net/netmsg2.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
@@ -430,13 +431,40 @@ in_ifadownkill(struct radix_node *rn, void *xap)
 	return 0;
 }
 
+struct netmsg_ifadown {
+	struct netmsg_base	base;
+	struct ifaddr		*ifa;
+	int			del;
+};
+
+static void
+in_ifadown_dispatch(netmsg_t msg)
+{
+	struct netmsg_ifadown *rmsg = (void *)msg;
+	struct radix_node_head *rnh;
+	struct ifaddr *ifa = rmsg->ifa;
+	struct in_ifadown_arg arg;
+	int nextcpu, cpu;
+
+	cpu = mycpuid;
+
+	arg.rnh = rnh = rt_tables[cpu][AF_INET];
+	arg.ifa = ifa;
+	arg.del = rmsg->del;
+	rnh->rnh_walktree(rnh, in_ifadownkill, &arg);
+	ifa->ifa_flags &= ~IFA_ROUTE;
+
+	nextcpu = cpu + 1;
+	if (nextcpu < ncpus)
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
+	else
+		lwkt_replymsg(&rmsg->base.lmsg, 0);
+}
+
 int
 in_ifadown_force(struct ifaddr *ifa, int delete)
 {
-	struct in_ifadown_arg arg;
-	struct radix_node_head *rnh;
-	int origcpu;
-	int cpu;
+	struct netmsg_ifadown msg;
 
 	if (ifa->ifa_addr->sa_family != AF_INET)
 		return 1;
@@ -448,17 +476,14 @@ in_ifadown_force(struct ifaddr *ifa, int delete)
 	 * related to the interface are manipulated while we are
 	 * doing this the inconsistancy could trigger a panic.
 	 */
-	origcpu = mycpuid;
-	for (cpu = 0; cpu < ncpus; cpu++) {
-		lwkt_migratecpu(cpu);
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+	    in_ifadown_dispatch);
+	msg.ifa = ifa;
+	msg.del = delete;
+	KASSERT(&curthread->td_msgport != rtable_portfn(0),
+	    ("in_ifadown in rtable thread"));
+	lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
 
-		arg.rnh = rnh = rt_tables[cpu][AF_INET];
-		arg.ifa = ifa;
-		arg.del = delete;
-		rnh->rnh_walktree(rnh, in_ifadownkill, &arg);
-		ifa->ifa_flags &= ~IFA_ROUTE;
-	}
-	lwkt_migratecpu(origcpu);
 	return 0;
 }
 
