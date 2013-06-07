@@ -1104,6 +1104,21 @@ _cache_lock_special(struct namecache *ncp)
 	return(EWOULDBLOCK);
 }
 
+/*
+ * This function tries to get a shared lock but will back-off to an exclusive
+ * lock if:
+ *
+ * (1) Some other thread is trying to obtain an exclusive lock
+ *     (to prevent the exclusive requester from getting livelocked out
+ *     by many shared locks).
+ *
+ * (2) The current thread already owns an exclusive lock (to avoid
+ *     deadlocking).
+ *
+ * WARNING! On machines with lots of cores we really want to try hard to
+ *	    get a shared lock or concurrent path lookups can chain-react
+ *	    into a very high-latency exclusive lock.
+ */
 static int
 _cache_lock_shared_special(struct namecache *ncp)
 {
@@ -1116,8 +1131,14 @@ _cache_lock_shared_special(struct namecache *ncp)
 			}
 		}
 		_cache_unlock(ncp);
+		return(EWOULDBLOCK);
 	}
-	return(EWOULDBLOCK);
+	if (ncp->nc_locktd == curthread) {
+		_cache_lock(ncp);
+		return(0);
+	}
+	_cache_lock_shared(ncp);
+	return(0);
 }
 
 
