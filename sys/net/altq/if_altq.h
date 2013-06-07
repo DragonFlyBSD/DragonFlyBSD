@@ -67,7 +67,6 @@ struct ifaltq_subque {
 	struct ifnet	*ifsq_ifp;
 	void		*ifsq_hw_priv;	/* hw private data */
 
-	/* fields compatible with IFQ_ macros */
 	struct mbuf	*ifsq_head;
 	struct mbuf	*ifsq_tail;
 	int		ifsq_len;
