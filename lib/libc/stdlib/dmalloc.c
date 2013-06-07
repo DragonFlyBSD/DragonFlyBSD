@@ -671,9 +671,6 @@ realloc(void *ptr, size_t size)
 int
 posix_memalign(void **memptr, size_t alignment, size_t size)
 {
-	size_t chunking;
-	int zi;
-
 	/*
 	 * OpenGroup spec issue 6 checks
 	 */
@@ -862,7 +859,6 @@ static void *
 memrealloc(void *ptr, size_t nsize)
 {
 	region_t region;
-	slglobaldata_t slgd;
 	slab_t slab;
 	size_t osize;
 	char *obj;

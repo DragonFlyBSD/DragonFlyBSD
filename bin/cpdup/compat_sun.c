@@ -8,7 +8,6 @@
 int
 vasprintf(char **str, const char *format, va_list ap)
 {
-    char *newstr;
     char dummy[2];
     int result;
 

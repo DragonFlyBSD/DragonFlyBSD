@@ -185,10 +185,8 @@ rsaencpwd_is(ap, data, cnt)
 	unsigned char *data;
 	int cnt;
 {
-	Session_Key skey;
-	Block datablock;
-	char  r_passwd[PWD_SZ], r_user[NAME_SZ];
-	char  *cp, key[160];
+	char  r_passwd[PWD_SZ];
+	char  key[160];
 	char  chalkey[160], *ptr;
 	FILE  *fp;
 	int r, i, j, chalkey_len, len;
@@ -305,11 +303,8 @@ rsaencpwd_reply(ap, data, cnt)
 	unsigned char *data;
 	int cnt;
 {
-	Session_Key skey;
 	KTEXT_ST token;
-	Block enckey;
 	int r, pubkey_len;
-	char	randchal[CHAL_SZ], *cp;
 	char	chalkey[160], pubkey[128], *ptr;
 
 	if (cnt-- < 1)

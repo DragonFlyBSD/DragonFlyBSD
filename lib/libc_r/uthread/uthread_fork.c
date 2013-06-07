@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_fork.c,v 1.19.2.7 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_fork.c,v 1.6 2008/05/25 21:34:49 hasso Exp $
  */
+
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -45,7 +45,7 @@ _fork(void)
 {
 	struct pthread	*curthread = _get_curthread();
 	struct pthread_atfork *af;
-	int             i, flags;
+	int             i;
 	pid_t           ret;
 	pthread_t	pthread;
 	pthread_t	pthread_save;

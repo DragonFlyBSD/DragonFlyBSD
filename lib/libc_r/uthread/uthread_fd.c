@@ -30,9 +30,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_fd.c,v 1.16.2.7 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_fd.c,v 1.3 2006/06/14 01:45:28 dillon Exp $
- *
  */
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -77,7 +76,6 @@ _thread_fd_table_init(int fd)
 {
 	int	ret = 0;
 	struct fd_table_entry *entry;
-	int	saved_errno;
 
 	if (_thread_initial == NULL)
 		_thread_init();

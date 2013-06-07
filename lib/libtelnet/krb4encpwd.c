@@ -189,8 +189,6 @@ krb4encpwd_is(ap, data, cnt)
 	unsigned char *data;
 	int cnt;
 {
-	Session_Key skey;
-	Block datablock;
 	char  r_passwd[ANAME_SZ], r_user[ANAME_SZ];
 	char  lhostname[ANAME_SZ], *cp;
 	int r;
@@ -245,8 +243,6 @@ krb4encpwd_is(ap, data, cnt)
 		 */
 
 		if ((ap->way & AUTH_HOW_MASK) == AUTH_HOW_MUTUAL) {
-		  register int i;
-
 		  time(&now);
 		  sprintf(challenge, "%x", now);
 		  Data(ap, KRB4_ENCPWD_CHALLENGE, (void *)challenge, strlen(challenge));
@@ -266,12 +262,9 @@ krb4encpwd_reply(ap, data, cnt)
 	unsigned char *data;
 	int cnt;
 {
-	Session_Key skey;
 	KTEXT_ST krb_token;
-	Block enckey;
-	CREDENTIALS cred;
 	int r;
-	char	randchal[REALM_SZ], instance[ANAME_SZ], *cp;
+	char	instance[ANAME_SZ], *cp;
 	char	hostname[80], *realm;
 
 	if (cnt-- < 1)

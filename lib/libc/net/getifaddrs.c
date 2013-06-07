@@ -108,7 +108,7 @@ getifaddrs(struct ifaddrs **pif)
 	u_short idx = 0;
 #else	/* NET_RT_IFLIST */
 	char buf[1024];
-	int m, sock;
+	int sock;
 	struct ifconf ifc;
 	struct ifreq *ifr;
 	struct ifreq *lifr;

@@ -1376,10 +1376,6 @@ getcmd(int row, int col, const char *cp)
 static void
 suspend(void)
 {
-#ifndef SIGTSTP
-	char *sh;
-#endif
-
 	updatebettinginfo();
 	move(21, 0);
 	refresh();

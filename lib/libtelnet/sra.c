@@ -434,7 +434,6 @@ rootterm(char *ttyn)
 static int
 check_user(char *name, char *cred)
 {
-	char *cp;
 	char *xpasswd, *salt;
 
 	if (isroot(name) && !rootterm(line))
