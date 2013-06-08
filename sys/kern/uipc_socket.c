@@ -177,7 +177,8 @@ soalloc(int waitok, struct protosw *pr)
 		lwkt_token_init(&so->so_snd.ssb_token, "sndtok");
 		spin_init(&so->so_rcvd_spin);
 		netmsg_init(&so->so_rcvd_msg.base, so, &netisr_adone_rport,
-		    MSGF_DROPABLE, so->so_proto->pr_usrreqs->pru_rcvd);
+		    MSGF_DROPABLE | MSGF_PRIORITY,
+		    so->so_proto->pr_usrreqs->pru_rcvd);
 		so->so_rcvd_msg.nm_pru_flags |= PRUR_ASYNC;
 		so->so_state = SS_NOFDREF;
 		so->so_refs = 1;
