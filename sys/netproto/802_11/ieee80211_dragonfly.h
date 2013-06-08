@@ -41,11 +41,12 @@
 
 #ifndef IF_PREPEND_LIST
 
+/* XXX all are prepended to normal queue */
 #define _IF_PREPEND_LIST(ifq, mhead, mtail, mcount, bcnt) do {	\
-	(mtail)->m_nextpkt = (ifq)->ifsq_head;			\
-	if ((ifq)->ifsq_tail == NULL)				\
-		(ifq)->ifsq_tail = (mtail);			\
-	(ifq)->ifsq_head = (mhead);				\
+	(mtail)->m_nextpkt = (ifq)->ifsq_norm_head;		\
+	if ((ifq)->ifsq_norm_tail == NULL)			\
+		(ifq)->ifsq_norm_tail = (mtail);		\
+	(ifq)->ifsq_norm_head = (mhead);			\
 	(ifq)->ifsq_len += (mcount);				\
 	(ifq)->ifsq_bcnt += (bcnt);				\
 } while (0)

@@ -90,6 +90,7 @@ extern int tcp_do_rfc6675;
 extern int tcp_rfc6675_rxt;
 extern int tcp_aggregate_acks;
 extern int tcp_eifel_rtoinc;
+extern int tcp_prio_synack;
 
 /* TCP segment queue entry */
 struct tseg_qent {

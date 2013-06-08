@@ -419,7 +419,10 @@ ieee80211_flush_ifq(struct ifaltq *ifq, struct ieee80211vap *vap)
 
 	ALTQ_SQ_LOCK(ifsq);
 
-	mprev = &ifsq->ifsq_head;
+	/*
+	 * Fix normal queue
+	 */
+	mprev = &ifsq->ifsq_norm_head;
 	while ((m = *mprev) != NULL) {
 		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
 		if (ni != NULL && ni->ni_vap == vap) {
@@ -432,10 +435,32 @@ ieee80211_flush_ifq(struct ifaltq *ifq, struct ieee80211vap *vap)
 			mprev = &m->m_nextpkt;
 	}
 	/* recalculate tail ptr */
-	m = ifsq->ifsq_head;
+	m = ifsq->ifsq_norm_head;
 	for (; m != NULL && m->m_nextpkt != NULL; m = m->m_nextpkt)
 		;
-	ifsq->ifsq_tail = m;
+	ifsq->ifsq_norm_tail = m;
+
+	/*
+	 * Fix priority queue
+	 */
+	mprev = &ifsq->ifsq_prio_head;
+	while ((m = *mprev) != NULL) {
+		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
+		if (ni != NULL && ni->ni_vap == vap) {
+			*mprev = m->m_nextpkt;		/* remove from list */
+			ALTQ_SQ_CNTR_DEC(ifsq, m->m_pkthdr.len);
+			ALTQ_SQ_PRIO_CNTR_DEC(ifsq, m->m_pkthdr.len);
+
+			m_freem(m);
+			ieee80211_free_node(ni);	/* reclaim ref */
+		} else
+			mprev = &m->m_nextpkt;
+	}
+	/* recalculate tail ptr */
+	m = ifsq->ifsq_prio_head;
+	for (; m != NULL && m->m_nextpkt != NULL; m = m->m_nextpkt)
+		;
+	ifsq->ifsq_prio_tail = m;
 
 	ALTQ_SQ_UNLOCK(ifsq);
 }

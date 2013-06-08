@@ -261,6 +261,7 @@ struct mbuf {
 #define M_PROTO7        0x400000/* protocol-specific */
 #define M_PROTO8        0x800000/* protocol-specific */
 #define M_CKHASH	0x1000000/* hash needs software verification */
+#define M_PRIO		0x2000000/* high priority mbuf */
 
 /*
  * Flags copied when copying m_pkthdr.
@@ -269,7 +270,7 @@ struct mbuf {
 			 M_PROTO4|M_PROTO5|M_PROTO6|M_PROTO7|M_PROTO8 | \
 			 M_BCAST|M_MCAST|M_FRAG|M_FIRSTFRAG|M_LASTFRAG | \
 			 M_VLANTAG|M_MPLSLABELED | \
-			 M_LENCHECKED|M_HASH|M_CKHASH)
+			 M_LENCHECKED|M_HASH|M_CKHASH|M_PRIO)
 
 /*
  * Flags indicating hw checksum support and sw checksum requirements.

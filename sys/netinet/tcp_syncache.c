@@ -1200,6 +1200,8 @@ syncache_respond(struct syncache *sc, struct mbuf *m)
 	m->m_len = tlen;
 	m->m_pkthdr.len = tlen;
 	m->m_pkthdr.rcvif = NULL;
+	if (tcp_prio_synack)
+		m->m_flags |= M_PRIO;
 
 	if (isipv6) {
 		ip6 = mtod(m, struct ip6_hdr *);

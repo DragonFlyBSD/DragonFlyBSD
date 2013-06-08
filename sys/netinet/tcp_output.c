@@ -139,6 +139,10 @@ int tcp_autosndbuf_max = 2*1024*1024;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sendbuf_max, CTLFLAG_RW,
     &tcp_autosndbuf_max, 0, "Max size of automatic send buffer");
 
+int tcp_prio_synack = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, prio_synack, CTLFLAG_RW,
+    &tcp_prio_synack, 0, "Prioritize SYN, SYN|ACK and pure ACK");
+
 static int tcp_idle_cwv = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, idle_cwv, CTLFLAG_RW,
     &tcp_idle_cwv, 0,
@@ -934,6 +938,13 @@ send:
 		else
 			m->m_data += max_linkhdr;
 		m->m_len = hdrlen;
+
+		/*
+		 * Prioritize SYN, SYN|ACK and pure ACK.
+		 * Leave FIN and RST as they are.
+		 */
+		if (tcp_prio_synack && (flags & (TH_FIN | TH_RST)) == 0)
+			m->m_flags |= M_PRIO;
 	}
 	m->m_pkthdr.rcvif = NULL;
 	if (isipv6) {

@@ -67,8 +67,12 @@ struct ifaltq_subque {
 	struct ifnet	*ifsq_ifp;
 	void		*ifsq_hw_priv;	/* hw private data */
 
-	struct mbuf	*ifsq_head;
-	struct mbuf	*ifsq_tail;
+	struct mbuf	*ifsq_prio_head;
+	struct mbuf	*ifsq_prio_tail;
+	struct mbuf	*ifsq_norm_head;
+	struct mbuf	*ifsq_norm_tail;
+	int		ifsq_prio_len;
+	int		ifsq_prio_bcnt;
 	int		ifsq_len;	/* packet counter */
 	int		ifsq_maxlen;
 	int		ifsq_bcnt;	/* byte counter */
@@ -112,7 +116,7 @@ do { \
 do { \
 	KASSERT((ifsq)->ifsq_len > 0, ("invalid packet count")); \
 	(ifsq)->ifsq_len--; \
-	KASSERT((ifsq)->ifsq_bcnt >= bcnt, ("invalid byte count")); \
+	KASSERT((ifsq)->ifsq_bcnt >= (bcnt), ("invalid byte count")); \
 	(ifsq)->ifsq_bcnt -= (bcnt); \
 } while (0)
 
@@ -120,6 +124,22 @@ do { \
 do { \
 	(ifsq)->ifsq_len = 0; \
 	(ifsq)->ifsq_bcnt = 0; \
+} while (0)
+
+#define ALTQ_SQ_PRIO_CNTR_INC(ifsq, bcnt) \
+do { \
+	(ifsq)->ifsq_prio_len++; \
+	(ifsq)->ifsq_prio_bcnt += (bcnt); \
+} while (0)
+
+#define ALTQ_SQ_PRIO_CNTR_DEC(ifsq, bcnt) \
+do { \
+	KASSERT((ifsq)->ifsq_prio_len > 0, \
+	    ("invalid prio packet count")); \
+	(ifsq)->ifsq_prio_len--; \
+	KASSERT((ifsq)->ifsq_prio_bcnt >= (bcnt), \
+	    ("invalid prio byte count")); \
+	(ifsq)->ifsq_prio_bcnt -= (bcnt); \
 } while (0)
 
 #endif	/* _KERNEL */

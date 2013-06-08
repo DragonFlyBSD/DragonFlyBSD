@@ -2522,6 +2522,62 @@ ifq_set_methods(struct ifaltq *ifq, altq_mapsubq_t mapsubq,
 	}
 }
 
+static void
+ifsq_norm_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m)
+{
+	m->m_nextpkt = NULL;
+	if (ifsq->ifsq_norm_tail == NULL)
+		ifsq->ifsq_norm_head = m;
+	else
+		ifsq->ifsq_norm_tail->m_nextpkt = m;
+	ifsq->ifsq_norm_tail = m;
+	ALTQ_SQ_CNTR_INC(ifsq, m->m_pkthdr.len);
+}
+
+static void
+ifsq_prio_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m)
+{
+	m->m_nextpkt = NULL;
+	if (ifsq->ifsq_prio_tail == NULL)
+		ifsq->ifsq_prio_head = m;
+	else
+		ifsq->ifsq_prio_tail->m_nextpkt = m;
+	ifsq->ifsq_prio_tail = m;
+	ALTQ_SQ_CNTR_INC(ifsq, m->m_pkthdr.len);
+	ALTQ_SQ_PRIO_CNTR_INC(ifsq, m->m_pkthdr.len);
+}
+
+static struct mbuf *
+ifsq_norm_dequeue(struct ifaltq_subque *ifsq)
+{
+	struct mbuf *m;
+
+	m = ifsq->ifsq_norm_head;
+	if (m != NULL) {
+		if ((ifsq->ifsq_norm_head = m->m_nextpkt) == NULL)
+			ifsq->ifsq_norm_tail = NULL;
+		m->m_nextpkt = NULL;
+		ALTQ_SQ_CNTR_DEC(ifsq, m->m_pkthdr.len);
+	}
+	return m;
+}
+
+static struct mbuf *
+ifsq_prio_dequeue(struct ifaltq_subque *ifsq)
+{
+	struct mbuf *m;
+
+	m = ifsq->ifsq_prio_head;
+	if (m != NULL) {
+		if ((ifsq->ifsq_prio_head = m->m_nextpkt) == NULL)
+			ifsq->ifsq_prio_tail = NULL;
+		m->m_nextpkt = NULL;
+		ALTQ_SQ_CNTR_DEC(ifsq, m->m_pkthdr.len);
+		ALTQ_SQ_PRIO_CNTR_DEC(ifsq, m->m_pkthdr.len);
+	}
+	return m;
+}
+
 int
 ifsq_classic_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
     struct altq_pktattr *pa __unused)
@@ -2529,16 +2585,29 @@ ifsq_classic_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 	M_ASSERTPKTHDR(m);
 	if (ifsq->ifsq_len >= ifsq->ifsq_maxlen ||
 	    ifsq->ifsq_bcnt >= ifsq->ifsq_maxbcnt) {
+		if ((m->m_flags & M_PRIO) &&
+		    ifsq->ifsq_prio_len < (ifsq->ifsq_maxlen / 2) &&
+		    ifsq->ifsq_prio_bcnt < (ifsq->ifsq_maxbcnt / 2)) {
+			struct mbuf *m_drop;
+
+			/*
+			 * Perform drop-head on normal queue
+			 */
+			m_drop = ifsq_norm_dequeue(ifsq);
+			if (m_drop != NULL) {
+				m_freem(m_drop);
+				ifsq_prio_enqueue(ifsq, m);
+				return 0;
+			}
+			/* XXX nothing could be dropped? */
+		}
 		m_freem(m);
 		return ENOBUFS;
 	} else {
-		m->m_nextpkt = NULL;
-		if (ifsq->ifsq_tail == NULL)
-			ifsq->ifsq_head = m;
+		if (m->m_flags & M_PRIO)
+			ifsq_prio_enqueue(ifsq, m);
 		else
-			ifsq->ifsq_tail->m_nextpkt = m;
-		ifsq->ifsq_tail = m;
-		ALTQ_SQ_CNTR_INC(ifsq, m->m_pkthdr.len);
+			ifsq_norm_enqueue(ifsq, m);
 		return 0;
 	}
 }
@@ -2550,17 +2619,15 @@ ifsq_classic_dequeue(struct ifaltq_subque *ifsq, int op)
 
 	switch (op) {
 	case ALTDQ_POLL:
-		m = ifsq->ifsq_head;
+		m = ifsq->ifsq_prio_head;
+		if (m == NULL)
+			m = ifsq->ifsq_norm_head;
 		break;
 
 	case ALTDQ_REMOVE:
-		m = ifsq->ifsq_head;
-		if (m != NULL) {
-			if ((ifsq->ifsq_head = m->m_nextpkt) == NULL)
-				ifsq->ifsq_tail = NULL;
-			m->m_nextpkt = NULL;
-			ALTQ_SQ_CNTR_DEC(ifsq, m->m_pkthdr.len);
-		}
+		m = ifsq_prio_dequeue(ifsq);
+		if (m == NULL)
+			m = ifsq_norm_dequeue(ifsq);
 		break;
 
 	default:
