@@ -1,7 +1,6 @@
 #
 # hosts.allow access control file for "tcp wrapped" applications.
 # $FreeBSD: src/etc/hosts.allow,v 1.8.2.7 2002/04/17 19:44:22 dougb Exp $
-# $DragonFly: src/etc/hosts.allow,v 1.4 2008/08/10 21:29:16 hasso Exp $
 #
 # NOTE: The hosts.deny file is deprecated.
 #       Place both 'allow' and 'deny' rules in the hosts.allow file.
@@ -52,7 +51,7 @@ sendmail : .nice.guy.example.com : allow
 sendmail : .evil.cracker.example.com : deny
 sendmail : ALL : allow
 
-# Exim is an alternative to sendmail, available in the pkgsrc tree
+# Exim is an alternative to sendmail, available in the dports tree
 exim : localhost : allow
 exim : .nice.guy.example.com : allow
 exim : .evil.cracker.example.com : deny
