@@ -47,8 +47,6 @@ struct lwkt_tokref;
 struct lwkt_ipiq;
 struct lwkt_cpu_msg;
 struct lwkt_cpu_port;
-struct lwkt_msg;
-struct lwkt_port;
 struct lwkt_cpusync;
 union sysunion;
 
