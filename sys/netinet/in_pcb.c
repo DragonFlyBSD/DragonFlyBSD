@@ -232,7 +232,9 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	int error;
 #endif
 
-	inp = kmalloc(pcbinfo->ipi_size, M_PCB, M_WAITOK|M_ZERO);
+	inp = kmalloc(pcbinfo->ipi_size, M_PCB, M_WAITOK|M_ZERO|M_NULLOK);
+	if (inp == NULL)
+		return (ENOMEM);
 	inp->inp_gencnt = ++pcbinfo->ipi_gencnt;
 	inp->inp_pcbinfo = inp->inp_cpcbinfo = pcbinfo;
 	inp->inp_socket = so;
