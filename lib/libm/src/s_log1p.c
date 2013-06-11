@@ -1,5 +1,5 @@
 /* @(#)s_log1p.c 5.1 93/09/24 */
-/* $FreeBSD: head/lib/msun/src/s_log1p.c 251024 2013-05-27 08:50:10Z das $ */
+/* $FreeBSD: head/lib/msun/src/s_log1p.c 251292 2013-06-03 09:14:31Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -172,3 +172,7 @@ log1p(double x)
 	if(k==0) return f-(hfsq-s*(hfsq+R)); else
 		 return k*ln2_hi-((hfsq-(s*(hfsq+R)+(k*ln2_lo+c)))-f);
 }
+
+#if (LDBL_MANT_DIG == 53)
+__weak_reference(log1p, log1pl);
+#endif

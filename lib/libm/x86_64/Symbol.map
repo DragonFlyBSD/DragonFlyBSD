@@ -1,0 +1,12 @@
+/*
+ * $FreeBSD: head/lib/msun/amd64/Symbol.map 226218 2011-10-10 15:43:09Z das $
+ */
+DFLY36.0 {
+	fesetexceptflag;
+	feraiseexcept;
+	fegetenv;
+	feholdexcept;
+	feupdateenv;
+	feenableexcept;
+	fedisableexcept;
+};

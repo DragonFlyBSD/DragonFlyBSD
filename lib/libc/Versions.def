@@ -1,0 +1,19 @@
+#
+# Note: Whenever bumping the DFLY version, always make
+#       DFLYprivate_1.0 depend on the new DFLY version.
+#       This will keep it at the end of the dependency chain.
+#
+
+# This is our first version; it depends on no other.
+# This version was first added to DragonFly 3.5 
+DFLY36.0 {
+};
+
+# This is our private namespace.  Any global interfaces that are
+# strictly for use only by other DragonFly applications and libraries
+# are listed here.  We use a separate namespace so we can write
+# simple ABI-checking tools.
+#
+# Please do NOT increment the version of this namespace.
+DFLYprivate_1.0 {
+} DFLY36.0;

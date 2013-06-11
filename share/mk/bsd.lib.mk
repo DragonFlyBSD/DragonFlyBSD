@@ -109,6 +109,15 @@ PO_CXXFLAGS=${CXXFLAGS:N-ffunction-sections}
 
 all: objwarn
 
+.include <bsd.symver.mk>
+
+# Allow libraries to specify their own version map or have it
+# automatically generated (see bsd.symver.mk above).
+.if !defined(NO_SYMVER) && !empty(VERSION_MAP)
+${SHLIB_NAME}:	${VERSION_MAP}
+LDFLAGS+=	-Wl,--version-script=${VERSION_MAP}
+.endif
+
 .include <bsd.patch.mk>
 
 .if defined(LIB) && !empty(LIB) || defined(SHLIB_NAME)

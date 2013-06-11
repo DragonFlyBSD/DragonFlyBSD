@@ -1,6 +1,6 @@
 
 /* @(#)e_log10.c 1.3 95/01/18 */
-/* $FreeBSD: head/lib/msun/src/e_log10.c 251024 2013-05-27 08:50:10Z das $ */
+/* $FreeBSD: head/lib/msun/src/e_log10.c 251292 2013-06-03 09:14:31Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -19,6 +19,8 @@
  *    log10(x) = (f - 0.5*f*f + k_log1p(f)) / ln10 + k * log10(2)
  * in not-quite-routine extra precision.
  */
+
+#include <float.h>
 
 #include "math.h"
 #include "math_private.h"
@@ -84,3 +86,7 @@ __ieee754_log10(double x)
 
 	return val_lo + val_hi;
 }
+
+#if (LDBL_MANT_DIG == 53)
+__weak_reference(log10, log10l);
+#endif

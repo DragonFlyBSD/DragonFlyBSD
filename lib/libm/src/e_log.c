@@ -1,6 +1,6 @@
 
 /* @(#)e_log.c 1.3 95/01/18 */
-/* $FreeBSD: head/lib/msun/src/e_log.c 251024 2013-05-27 08:50:10Z das $ */
+/* $FreeBSD: head/lib/msun/src/e_log.c 251292 2013-06-03 09:14:31Z das $
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -62,6 +62,8 @@
  * compiler will convert from decimal to binary accurately enough 
  * to produce the hexadecimal values shown.
  */
+
+#include <float.h>
 
 #include "math.h"
 #include "math_private.h"
@@ -137,3 +139,7 @@ __ieee754_log(double x)
 		     return dk*ln2_hi-((s*(f-R)-dk*ln2_lo)-f);
 	}
 }
+
+#if (LDBL_MANT_DIG == 53)
+__weak_reference(log, logl);
+#endif

@@ -1,5 +1,5 @@
 /* @(#)s_expm1.c 5.1 93/09/24 */
-/* $FreeBSD: head/lib/msun/src/s_expm1.c 251024 2013-05-27 08:50:10Z das $ */
+/* $FreeBSD: head/lib/msun/src/s_expm1.c 251343 2013-06-03 19:51:32Z kargl $
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -214,3 +214,7 @@ expm1(double x)
 	}
 	return y;
 }
+
+#if (LDBL_MANT_DIG == 53)
+__weak_reference(expm1, expm1l);
+#endif

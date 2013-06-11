@@ -1,6 +1,6 @@
 
 /* @(#)e_log10.c 1.3 95/01/18 */
-/* $FreeBSD: head/lib/msun/src/e_log2.c 251024 2013-05-27 08:50:10Z das $ */
+/* $FreeBSD: head/lib/msun/src/e_log2.c 251404 2013-06-05 05:33:01Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -21,6 +21,8 @@
  *    log2(x) = (f - 0.5*f*f + k_log1p(f)) / ln2 + k
  * in not-quite-routine extra precision.
  */
+
+#include <float.h>
 
 #include "math.h"
 #include "math_private.h"
@@ -107,3 +109,7 @@ __ieee754_log2(double x)
 
 	return val_lo + val_hi;
 }
+
+#if (LDBL_MANT_DIG == 53)
+__weak_reference(log2, log2l);
+#endif

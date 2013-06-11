@@ -1,5 +1,5 @@
 /* @(#)s_asinh.c 5.1 93/09/24 */
-/* $FreeBSD: head/lib/msun/src/s_asinh.c 176451 2008-02-22 02:30:36Z das $ */
+/* $FreeBSD: head/lib/msun/src/s_asinh.c 251599 2013-06-10 06:04:58Z das $
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -21,6 +21,8 @@
  *		 := sign(x)*log(2|x|+1/(|x|+sqrt(x*x+1))) if|x|>2, else
  *		 := sign(x)*log1p(|x| + x^2/(1 + sqrt(1+x^2)))
  */
+
+#include <float.h>
 
 #include "math.h"
 #include "math_private.h"
@@ -52,3 +54,7 @@ asinh(double x)
 	}
 	if(hx>0) return w; else return -w;
 }
+
+#if LDBL_MANT_DIG == 53
+__weak_reference(asinh, asinhl);
+#endif

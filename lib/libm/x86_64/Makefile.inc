@@ -6,3 +6,5 @@ ARCH_SRCS = e_remainder.S e_remainderf.S e_remainderl.S \
 	    s_logbl.S s_lrint.S s_lrintf.S s_lrintl.S \
 	    s_remquo.S s_remquof.S s_remquol.S \
 	    s_rintl.S s_scalbn.S s_scalbnf.S s_scalbnl.S
+
+SYM_MAPS += ${.CURDIR}/x86_64/Symbol.map

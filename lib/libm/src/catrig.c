@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/msun/src/catrig.c 251121 2013-05-30 04:49:26Z das $
+ * $FreeBSD: head/lib/msun/src/catrig.c 251404 2013-06-05 05:33:01Z das $
  */
 
 #include <complex.h>
@@ -173,7 +173,7 @@ do_hard_work(double x, double y, double *rx, int *B_is_usable, double *B,
 		 * Am1 = fp + fm, where fp = f(x, 1+y), and fm = f(x, 1-y).
 		 * rx = log1p(Am1 + sqrt(Am1*(A+1)))
 		 */
-		if (y == 1 && x < DBL_EPSILON*DBL_EPSILON / 128) {
+		if (y == 1 && x < DBL_EPSILON * DBL_EPSILON / 128) {
 			/*
 			 * fp is of order x^2, and fm = x/2.
 			 * A = 1 (inexactly).
@@ -192,7 +192,7 @@ do_hard_work(double x, double y, double *rx, int *B_is_usable, double *B,
 			 * A = 1 (inexactly).
 			 */
 			*rx = x / sqrt((1 - y) * (1 + y));
-		} else /* if (y > 1) */ {
+		} else {		/* if (y > 1) */
 			/*
 			 * A-1 = y-1 (inexactly).
 			 */
@@ -252,7 +252,7 @@ do_hard_work(double x, double y, double *rx, int *B_is_usable, double *B,
 			*sqrt_A2my2 = x * (4 / DBL_EPSILON / DBL_EPSILON) * y /
 				sqrt((y + 1) * (y - 1));
 			*new_y = y * (4 / DBL_EPSILON / DBL_EPSILON);
-		} else /* if (y < 1) */ {
+		} else {		/* if (y < 1) */
 			/*
 			 * fm = 1-y >= DBL_EPSILON, fp is of order x^2, and
 			 * A = 1 (inexactly).
@@ -297,7 +297,6 @@ casinh(double complex z)
 		 * C99 leaves it optional whether to raise invalid if one of
 		 * the arguments is not NaN, so we opt not to raise it.
 		 */
-		/* Bruce Evans tells me this is the way to do this: */
 		return (cpack(x + 0.0L + (y + 0), x + 0.0L + (y + 0)));
 	}
 
@@ -336,6 +335,7 @@ double complex
 casin(double complex z)
 {
 	double complex w = casinh(cpack(cimag(z), creal(z)));
+
 	return (cpack(cimag(w), creal(w)));
 }
 
@@ -401,17 +401,17 @@ cacos(double complex z)
 	/* All remaining cases are inexact. */
 	raise_inexact();
 
-	if (ax < SQRT_6_EPSILON / 4 && ay < SQRT_6_EPSILON/4)
+	if (ax < SQRT_6_EPSILON / 4 && ay < SQRT_6_EPSILON / 4)
 		return (cpack(pio2_hi - (x - pio2_lo), -y));
 
 	do_hard_work(ay, ax, &ry, &B_is_usable, &B, &sqrt_A2mx2, &new_x);
 	if (B_is_usable) {
-		if (sx==0)
+		if (sx == 0)
 			rx = acos(B);
 		else
 			rx = acos(-B);
 	} else {
-		if (sx==0)
+		if (sx == 0)
 			rx = atan2(sqrt_A2mx2, new_x);
 		else
 			rx = atan2(sqrt_A2mx2, -new_x);
@@ -487,10 +487,6 @@ clog_for_large_values(double complex z)
 }
 
 /*
- *=============================================================================
- */
-
-/*
  *				=================
  *				| catanh, catan |
  *				=================
@@ -510,6 +506,7 @@ sum_squares(double x, double y)
 	/* Avoid underflow when y is small. */
 	if (y < SQRT_MIN)
 		return (x * x);
+
 	return (x * x + y * y);
 }
 
@@ -588,10 +585,9 @@ catanh(double complex z)
 		if (isinf(x))
 			return (cpack(copysign(0, x), y + y));
 		/* catanh(NaN + I*+-Inf) = sign(NaN)0 + I*+-PI/2 */
-		if (isinf(y)) {
+		if (isinf(y))
 			return (cpack(copysign(0, x),
 				      copysign(pio2_hi + pio2_lo, y)));
-		}
 		/*
 		 * All other cases involving NaN return NaN + I*NaN.
 		 * C99 leaves it optional whether to raise invalid if one of
@@ -600,10 +596,9 @@ catanh(double complex z)
 		return (cpack(x + 0.0L + (y + 0), x + 0.0L + (y + 0)));
 	}
 
-	if (ax > RECIP_EPSILON || ay > RECIP_EPSILON) {
+	if (ax > RECIP_EPSILON || ay > RECIP_EPSILON)
 		return (cpack(real_part_reciprocal(x, y),
 			      copysign(pio2_hi + pio2_lo, y)));
-	}
 
 	if (ax < SQRT_3_EPSILON / 2 && ay < SQRT_3_EPSILON / 2) {
 		/*
@@ -616,7 +611,7 @@ catanh(double complex z)
 	}
 
 	if (ax == 1 && ay < DBL_EPSILON)
-		rx = (log(ay) - m_ln2) / -2;
+		rx = (m_ln2 - log(ay)) / 2;
 	else
 		rx = log1p(4 * ax / sum_squares(ax - 1, ay)) / 4;
 
@@ -638,5 +633,6 @@ double complex
 catan(double complex z)
 {
 	double complex w = catanh(cpack(cimag(z), creal(z)));
+
 	return (cpack(cimag(w), creal(w)));
 }

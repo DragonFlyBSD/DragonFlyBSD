@@ -16,3 +16,5 @@ ARCH_SRCS+= e_log10f.S e_logf.S e_remainderf.S \
 ARCH_SRCS+= e_remainderl.S e_sqrtl.S s_ceill.S s_copysignl.S \
 	    s_floorl.S s_llrintl.S \
 	    s_logbl.S s_lrintl.S s_remquol.S s_rintl.S s_scalbnl.S s_truncl.S
+
+SYM_MAPS += ${.CURDIR}/i386/Symbol.map
