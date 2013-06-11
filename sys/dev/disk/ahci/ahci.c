@@ -2174,9 +2174,18 @@ ahci_issue_pending_commands(struct ahci_port *ap, struct ahci_ccb *ccb)
 
 	/*
 	 * Pull the next ccb off the queue and run it if possible.
+	 *
+	 * The error CCB supercedes all normal queue operations and
+	 * implies exclusive access while the error CCB is active.
 	 */
-	if ((ccb = TAILQ_FIRST(&ap->ap_ccb_pending)) == NULL)
-		return;
+	if (ccb != ap->ap_err_ccb) {
+		if ((ccb = TAILQ_FIRST(&ap->ap_ccb_pending)) == NULL)
+			return;
+		if (ap->ap_flags & AP_F_ERR_CCB_RESERVED) {
+			kprintf("DELAY CCB slot %d\n", ccb->ccb_slot);
+			return;
+		}
+	}
 
 	/*
 	 * Handle exclusivity requirements.
