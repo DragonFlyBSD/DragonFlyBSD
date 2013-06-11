@@ -64,7 +64,7 @@ struct tls_dtv {
 #define	RTLD_TCB_HAS_SELF_POINTER
 #define	RTLD_STATIC_TLS_ALIGN           16
 #define	RTLD_STATIC_TLS_ALIGN_MASK      (RTLD_STATIC_TLS_ALIGN - 1)
-#define	RTLD_STATIC_TLS_EXTRA		256
+#define	RTLD_STATIC_TLS_EXTRA		1280
 #define RTLD_STATIC_TLS_VARIANT_II
 
 /* Get the current TCB. */
