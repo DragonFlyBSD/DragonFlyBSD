@@ -684,14 +684,25 @@ loop:
 				ifnet.if_collisions += ifdata.ifd_collisions;
 			}
 
-			sum->ift_ip += ifnet.if_ipackets;
-			sum->ift_ie += ifnet.if_ierrors;
-			sum->ift_ib += ifnet.if_ibytes;
-			sum->ift_op += ifnet.if_opackets;
-			sum->ift_oe += ifnet.if_oerrors;
-			sum->ift_ob += ifnet.if_obytes;
-			sum->ift_co += ifnet.if_collisions;
-			sum->ift_dr += 0;
+			/*
+			 * Don't double-count interfaces that are associated
+			 * with bridges, they will be rolled up by the
+			 * bridge.  Errors and collisions are not rolled up.
+			 */
+			if (ifnet.if_bridge) {
+				sum->ift_ie += ifnet.if_ierrors;
+				sum->ift_oe += ifnet.if_oerrors;
+				sum->ift_co += ifnet.if_collisions;
+			} else {
+				sum->ift_ip += ifnet.if_ipackets;
+				sum->ift_ie += ifnet.if_ierrors;
+				sum->ift_ib += ifnet.if_ibytes;
+				sum->ift_op += ifnet.if_opackets;
+				sum->ift_oe += ifnet.if_oerrors;
+				sum->ift_ob += ifnet.if_obytes;
+				sum->ift_co += ifnet.if_collisions;
+				sum->ift_dr += 0;
+			}
 			off = (u_long)TAILQ_NEXT(&ifnet, if_link);
 		}
 		if (!first) {
