@@ -1521,8 +1521,9 @@ find_library(const char *xname, const Obj_Entry *refobj)
 {
     char *pathname;
     char *name;
-    bool objgiven = (refobj != NULL);
+    bool nodeflib, objgiven;
 
+    objgiven = refobj != NULL;
     if (strchr(xname, '/') != NULL) {	/* Hard coded pathname */
 	if (xname[0] != '/' && !trust) {
 	    _rtld_error("Absolute pathname required for shared object \"%s\"",
@@ -1541,20 +1542,20 @@ find_library(const char *xname, const Obj_Entry *refobj)
 
     dbg(" Searching for \"%s\"", name);
 
+    nodeflib = objgiven ? refobj->z_nodeflib : false;
     if ((objgiven &&
       (pathname = search_library_path(name, refobj->rpath)) != NULL) ||
-      (objgiven && (refobj->runpath == NULL) && (refobj != obj_main) &&
+      (objgiven && refobj->runpath == NULL && refobj != obj_main &&
       (pathname = search_library_path(name, obj_main->rpath)) != NULL) ||
       (pathname = search_library_path(name, ld_library_path)) != NULL ||
       (objgiven &&
       (pathname = search_library_path(name, refobj->runpath)) != NULL) ||
-      (pathname = search_library_path(name, gethints(refobj->z_nodeflib)))
-       != NULL ||
-      (objgiven && !refobj->z_nodeflib &&
+	  (pathname = search_library_path(name, gethints(nodeflib))) != NULL ||
+	  (objgiven && !nodeflib &&
       (pathname = search_library_path(name, STANDARD_LIBRARY_PATH)) != NULL))
-	return pathname;
+	return (pathname);
 
-    if(objgiven && refobj->path != NULL) {
+    if (objgiven && refobj->path != NULL) {
 	_rtld_error("Shared object \"%s\" not found, required by \"%s\"",
 	  name, basename(refobj->path));
     } else {
@@ -3791,7 +3792,7 @@ symlook_obj(SymLook *req, const Obj_Entry *obj)
     int flags, res, mres;
 
     /*
-     * If there is at least one valid hash at this point, and we prefer to
+     * If there is at least one valid hash at this point, we prefer to
      * use the faster GNU version if available.
      */
     if (obj->valid_hash_gnu)
