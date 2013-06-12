@@ -22,17 +22,6 @@ GITHOST?=	git.dragonflybsd.org
 
 MAKE_JOBS?=	$$(sysctl -n hw.ncpu)
 
-# temporary until everybody has converted to x86_64
-.if ${MACHINE_ARCH} == "amd64"
-MACHINE_ARCH=	x86_64
-.if defined(.PARSEDIR)
-.export MACHINE_ARCH
-.else
-# LEGACY MAKE - REMOVE FOR DFLY 3.6
-.makeenv MACHINE_ARCH
-.endif
-.endif
-
 # XXX makeshift fix to build the right kernel for the (target) architecture
 # We should configure this in the platform files somehow
 .if ${MACHINE_ARCH} == "i386"

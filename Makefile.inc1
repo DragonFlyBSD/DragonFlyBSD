@@ -134,17 +134,6 @@ WORLD_BINUTILSVER?=	binutils222
 WORLD_BACKUP?=		/var/backups/world_backup
 AUTO_BACKUP?=		${OBJTREE}/world_backup/${DESTDIR}
 
-# temporary until everybody has converted to x86_64
-.if ${MACHINE_ARCH} == "amd64"
-MACHINE_ARCH=	x86_64
-.if defined(.PARSEDIR)
-.export MACHINE_ARCH
-.else
-# LEGACY MAKE - REMOVE FOR DFLY 3.6
-.makeenv MACHINE_ARCH
-.endif
-.endif
-
 TARGET_ARCH?=	${MACHINE_ARCH}
 .if ${TARGET_ARCH} == ${MACHINE_ARCH}
 TARGET?=	${MACHINE}

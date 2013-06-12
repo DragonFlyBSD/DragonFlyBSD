@@ -42,7 +42,6 @@ ${FORWARD_HEADERS_COOKIE}: ${_MACHINE_FWD}/include/machine ${_FWDHDRS} ${_LHDRS}
 	@touch ${.TARGET}
 
 ${_FWDHDRS}:
-.if defined(.PARSEDIR)
 	@(echo "creating machine/ forwarding header ${.TARGET}" 1>&2; \
 	echo "/*" ; \
 	echo " * CONFIG-GENERATED FILE, DO NOT EDIT" ; \
@@ -53,22 +52,8 @@ ${_FWDHDRS}:
 	echo "#include <cpu/${.TARGET:T}>" ; \
 	echo "#endif" ; \
 	echo) > ${.TARGET}
-.else
-# LEGACY MAKE - REMOVE FOR DFLY 3.6
-	@(echo "creating machine/ forwarding header ${.TARGET}" 1>&2; \
-	echo "/*" ; \
-	echo " * CONFIG-GENERATED FILE, DO NOT EDIT" ; \
-	echo " */" ; \
-	echo ; \
-	echo "#ifndef _MACHINE_${.TARGET:T:S/./_/g:U}_" ; \
-	echo "#define _MACHINE_${.TARGET:T:S/./_/g:U}_" ; \
-	echo "#include <cpu/${.TARGET:T}>" ; \
-	echo "#endif" ; \
-	echo) > ${.TARGET}
-.endif
 
 ${_LHDRS}:
-.if defined(.PARSEDIR)
 	@(echo "creating sys/ forwarding header ${.TARGET}" 1>&2; \
 	echo "/*" ; \
 	echo " * CONFIG-GENERATED FILE, DO NOT EDIT" ; \
@@ -79,17 +64,3 @@ ${_LHDRS}:
 	echo "#include <sys/${.TARGET:T}>" ; \
 	echo "#endif" ; \
 	echo) > ${.TARGET}
-.else
-# LEGACY MAKE - REMOVE FOR DFLY 3.6
-	@(echo "creating sys/ forwarding header ${.TARGET}" 1>&2; \
-	echo "/*" ; \
-	echo " * CONFIG-GENERATED FILE, DO NOT EDIT" ; \
-	echo " */" ; \
-	echo ; \
-	echo "#ifndef _${.TARGET:T:S/./_/g:U}_" ; \
-	echo "#define _${.TARGET:T:S/./_/g:U}_" ; \
-	echo "#include <sys/${.TARGET:T}>" ; \
-	echo "#endif" ; \
-	echo) > ${.TARGET}
-.endif
-
