@@ -2368,8 +2368,13 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 
 	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
-	IFNET_STAT_INC(ifp, ipackets, 1);
-	IFNET_STAT_INC(ifp, ibytes, m->m_pkthdr.len);
+	/*
+	 * packet coming in on the bridge is also going out on the bridge,
+	 * but ether code won't adjust output stats for the bridge because
+	 * we are changing the interface to something else.
+	 */
+	IFNET_STAT_INC(ifp, opackets, 1);
+	IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len);
 
 	/*
 	 * Look up the bridge_iflist.
@@ -2542,12 +2547,14 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	 * associated with this bridge.
 	 */
 	if (bifp->if_flags & IFF_MONITOR) {
-	 	/* Change input interface to this bridge */
+		/*
+		 * Change input interface to this bridge
+		 *
+		 * Update bridge's ifnet statistics
+		 */
 		m->m_pkthdr.rcvif = bifp;
 
 		BPF_MTAP(bifp, m);
-
-		/* Update bridge's ifnet statistics */
 		IFNET_STAT_INC(bifp, ipackets, 1);
 		IFNET_STAT_INC(bifp, ibytes, m->m_pkthdr.len);
 		if (m->m_flags & (M_MCAST | M_BCAST))
@@ -2648,8 +2655,14 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	/*
 	 * Tap all packets arriving on the bridge, no matter if
 	 * they are local destinations or not.  In is in.
+	 *
+	 * Update bridge's ifnet statistics
 	 */
 	BPF_MTAP(bifp, m);
+	IFNET_STAT_INC(bifp, ipackets, 1);
+	IFNET_STAT_INC(bifp, ibytes, m->m_pkthdr.len);
+	if (m->m_flags & (M_MCAST | M_BCAST))
+		IFNET_STAT_INC(bifp, imcasts, 1);
 
 	bif = bridge_lookup_member_if(sc, ifp);
 	if (bif == NULL)
