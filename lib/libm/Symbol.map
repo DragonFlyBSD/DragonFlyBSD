@@ -2,7 +2,7 @@
  * $FreeBSD: head/lib/msun/Symbol.map 251599 2013-06-10 06:04:58Z das $
  */
 
-DFLY36.0 {
+DF306.0 {
 	__fe_dfl_env;
 	tgamma;
 	acos;
