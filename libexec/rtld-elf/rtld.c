@@ -1677,7 +1677,7 @@ gethints(bool nostdlib)
 	/* Keep from trying again in case the hints file is bad. */
 	hints = "";
 
-	if ((fd = open(ld_elf_hints_path, O_RDONLY)) == -1)
+	if ((fd = open(ld_elf_hints_path, O_RDONLY | O_CLOEXEC)) == -1)
 	    return (NULL);
 	if (read(fd, &hdr, sizeof hdr) != sizeof hdr ||
 	  hdr.magic != ELFHINTS_MAGIC || hdr.version != 1) {
@@ -2122,17 +2122,25 @@ load_object(const char *name, int fd_u, const Obj_Entry *refobj, int flags)
      */
     fd = -1;
     if (fd_u == -1) {
-	if ((fd = open(path, O_RDONLY)) == -1) {
+	if ((fd = open(path, O_RDONLY | O_CLOEXEC)) == -1) {
 	    _rtld_error("Cannot open \"%s\"", path);
 	    free(path);
 	    return (NULL);
 	}
     } else {
-	fd = dup(fd_u);
+	fd = fcntl(fd_u, F_DUPFD_CLOEXEC, 0);
 	if (fd == -1) {
-	    _rtld_error("Cannot dup fd");
-	    free(path);
-	    return (NULL);
+	    /*
+	     * Temporary, remove at 3.6 branch
+	     * User might not have latest kernel installed
+	     * so fall back to old command for a while
+	     */
+	    fd = dup(fd_u);
+	    if (fd == -1 || (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)) {
+		_rtld_error("Cannot dup fd");
+		free(path);
+		return (NULL);
+	    }
 	}
     }
     if (fstat(fd, &sb) == -1) {
