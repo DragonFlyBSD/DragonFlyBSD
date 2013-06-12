@@ -253,6 +253,20 @@ kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred)
 		newmin = dat->fc_fd;
 		error = kern_dup(DUP_VARIABLE, fd, newmin, &dat->fc_fd);
 		return (error);
+	case F_DUP2FD:
+		newmin = dat->fc_fd;
+		error = kern_dup(DUP_FIXED, fd, newmin, &dat->fc_fd);
+		return (error);
+	case F_DUPFD_CLOEXEC:
+		newmin = dat->fc_fd;
+		error = kern_dup(DUP_VARIABLE | DUP_CLOEXEC, fd, newmin,
+				 &dat->fc_fd);
+		return (error);
+	case F_DUP2FD_CLOEXEC:
+		newmin = dat->fc_fd;
+		error = kern_dup(DUP_FIXED | DUP_CLOEXEC, fd, newmin,
+				 &dat->fc_fd);
+		return (error);
 	default:
 		break;
 	}
@@ -406,6 +420,9 @@ sys_fcntl(struct fcntl_args *uap)
 
 	switch (uap->cmd) {
 	case F_DUPFD:
+	case F_DUP2FD:
+	case F_DUPFD_CLOEXEC:
+	case F_DUP2FD_CLOEXEC:
 		dat.fc_fd = uap->arg;
 		break;
 	case F_SETFD:
@@ -432,6 +449,9 @@ sys_fcntl(struct fcntl_args *uap)
 	if (error == 0) {
 		switch (uap->cmd) {
 		case F_DUPFD:
+		case F_DUP2FD:
+		case F_DUPFD_CLOEXEC:
+		case F_DUP2FD_CLOEXEC:
 			uap->sysmsg_result = dat.fc_fd;
 			break;
 		case F_GETFD:
@@ -442,6 +462,7 @@ sys_fcntl(struct fcntl_args *uap)
 			break;
 		case F_GETOWN:
 			uap->sysmsg_result = dat.fc_owner;
+			break;
 		case F_GETLK:
 			error = copyout(&dat.fc_flock, (caddr_t)uap->arg,
 			    sizeof(struct flock));
@@ -455,15 +476,18 @@ sys_fcntl(struct fcntl_args *uap)
 /*
  * Common code for dup, dup2, and fcntl(F_DUPFD).
  *
- * The type flag can be either DUP_FIXED or DUP_VARIABLE.  DUP_FIXED tells
- * kern_dup() to destructively dup over an existing file descriptor if new
- * is already open.  DUP_VARIABLE tells kern_dup() to find the lowest
- * unused file descriptor that is greater than or equal to new.
+ * There are three type flags: DUP_FIXED, DUP_VARIABLE, and DUP_CLOEXEC.
+ * The first two flags are mutually exclusive, and the third is optional.
+ * DUP_FIXED tells kern_dup() to destructively dup over an existing file
+ * descriptor if "new" is already open.  DUP_VARIABLE tells kern_dup()
+ * to find the lowest unused file descriptor that is greater than or
+ * equal to "new".  DUP_CLOEXEC, which works with either of the first
+ * two flags, sets the close-on-exec flag on the "new" file descriptor.
  *
  * MPSAFE
  */
 int
-kern_dup(enum dup_type type, int old, int new, int *res)
+kern_dup(int flags, int old, int new, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -499,8 +523,10 @@ retry:
 		spin_unlock(&fdp->fd_spin);
 		return (EBADF);
 	}
-	if (type == DUP_FIXED && old == new) {
+	if ((flags & DUP_FIXED) && old == new) {
 		*res = new;
+		if (flags & DUP_CLOEXEC)
+			fdp->fd_files[new].fileflags |= UF_EXCLOSE;
 		spin_unlock(&fdp->fd_spin);
 		return (0);
 	}
@@ -519,7 +545,7 @@ retry:
 	 * the target descriptor to a reserved state so we have a uniform
 	 * setup for the next code block.
 	 */
-	if (type == DUP_VARIABLE || new >= fdp->fd_nfiles) {
+	if ((flags & DUP_VARIABLE) || new >= fdp->fd_nfiles) {
 		spin_unlock(&fdp->fd_spin);
 		error = fdalloc(p, new, &newfd);
 		spin_lock(&fdp->fd_spin);
@@ -540,7 +566,7 @@ retry:
 		/*
 		 * Check for expansion race
 		 */
-		if (type != DUP_VARIABLE && new != newfd) {
+		if ((flags & DUP_VARIABLE) == 0 && new != newfd) {
 			fsetfd_locked(fdp, NULL, newfd);
 			spin_unlock(&fdp->fd_spin);
 			fdrop(fp);
@@ -599,7 +625,7 @@ retry:
 	} else {
 		holdleaders = 0;
 	}
-	KASSERT(delfp == NULL || type == DUP_FIXED,
+	KASSERT(delfp == NULL || (flags & DUP_FIXED),
 		("dup() picked an open file"));
 
 	/*
@@ -610,7 +636,10 @@ retry:
 	 * The fd_files[] array inherits fp's hold reference.
 	 */
 	fsetfd_locked(fdp, fp, new);
-	fdp->fd_files[new].fileflags = oldflags & ~UF_EXCLOSE;
+	if ((flags & DUP_CLOEXEC) != 0)
+		fdp->fd_files[new].fileflags = oldflags | UF_EXCLOSE;
+	else
+		fdp->fd_files[new].fileflags = oldflags & ~UF_EXCLOSE;
 	spin_unlock(&fdp->fd_spin);
 	fdrop(fp);
 	*res = new;

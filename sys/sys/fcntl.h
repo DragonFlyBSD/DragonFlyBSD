@@ -188,11 +188,18 @@
 #define	F_SETFL		4		/* set file status flags */
 #ifndef _POSIX_SOURCE
 #define	F_GETOWN	5		/* get SIGIO/SIGURG proc/pgrp */
-#define F_SETOWN	6		/* set SIGIO/SIGURG proc/pgrp */
+#define	F_SETOWN	6		/* set SIGIO/SIGURG proc/pgrp */
 #endif
 #define	F_GETLK		7		/* get record locking information */
 #define	F_SETLK		8		/* set record locking information */
 #define	F_SETLKW	9		/* F_SETLK; wait if blocked */
+#define	F_DUP2FD	10		/* duplicate file descriptor to arg */
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#define	F_DUPFD_CLOEXEC	17		/* Like F_DUPFD with FD_CLOEXEC set */
+#endif
+#if __BSD_VISIBLE
+#define	F_DUP2FD_CLOEXEC 18		/* Like F_DUP2FD with FD_CLOEXEC set */
+#endif
 
 /* file descriptor flags (F_GETFD, F_SETFD) */
 #define	FD_CLOEXEC	1		/* close-on-exec flag */

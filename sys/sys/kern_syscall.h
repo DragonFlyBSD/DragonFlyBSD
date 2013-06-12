@@ -37,7 +37,9 @@
 
 #include <sys/uio.h>
 
-enum dup_type {DUP_FIXED, DUP_VARIABLE};
+#define DUP_FIXED	0x1	/* Copy to specific fd even if in use */
+#define DUP_VARIABLE	0x2	/* Copy fd to an unused fd */
+#define DUP_CLOEXEC	0x4	/* Set fd close on exec flag */
 union fcntl_dat;
 struct image_args;
 struct plimit;
@@ -69,7 +71,7 @@ struct statvfs;
 /*
  * Prototypes for syscalls in kern/kern_descrip.c
  */
-int kern_dup(enum dup_type type, int old, int new, int *res);
+int kern_dup(int flags, int old, int new, int *res);
 int kern_fcntl(int fd, int cmd, union fcntl_dat *dat, struct ucred *cred);
 int kern_fstat(int fd, struct stat *st);
 

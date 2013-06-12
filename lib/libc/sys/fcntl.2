@@ -28,7 +28,7 @@
 .\"     @(#)fcntl.2	8.2 (Berkeley) 1/12/94
 .\" $FreeBSD: src/lib/libc/sys/fcntl.2,v 1.16.2.13 2002/07/22 15:15:16 bde Exp $
 .\"
-.Dd January 12, 1994
+.Dd June 12, 2013
 .Dt FCNTL 2
 .Os
 .Sh NAME
@@ -41,18 +41,20 @@
 .Ft int
 .Fn fcntl "int fd" "int cmd" "..."
 .Sh DESCRIPTION
-.Fn Fcntl
-provides for control over descriptors.
+The
+.Fn fcntl
+system call provides for control over descriptors.
 The argument
 .Fa fd
 is a descriptor to be operated on by
 .Fa cmd
-as described below.  Depending on the value of
+as described below.
+Depending on the value of
 .Fa cmd ,
-.Nm
+.Fn fcntl
 can take an additional third argument
 .Fa "int arg" .
-.Bl -tag -width F_GETOWNX
+.Bl -tag -width F_DUP2FD_CLOEXEC
 .It Dv F_DUPFD
 Return a new descriptor as follows:
 .Pp
@@ -71,11 +73,44 @@ Same access mode (read, write or read/write).
 Same file status flags (i.e., both file descriptors
 share the same file status flags).
 .It
-The close-on-exec flag associated with the new file descriptor
-is set to remain open across
+The close-on-exec flag
+.Dv FD_CLOEXEC
+associated with the new file descriptor is cleared, so the file descriptor is
+to remain open across
 .Xr execve 2
 system calls.
 .El
+.It Dv F_DUPFD_CLOEXEC
+Like
+.Dv F_DUPFD ,
+but the
+.Dv FD_CLOEXEC
+flag associated with the new file descriptor is set, so the file descriptor
+is closed when
+.Xr execve 2
+system call executes.
+.It Dv F_DUP2FD
+It is functionally equivalent to
+.Bd -literal -offset indent
+dup2(fd, arg)
+.Ed
+.It Dv F_DUP2FD_CLOEXEC
+Like
+.Dv F_DUP2FD ,
+but the
+.Dv FD_CLOEXEC
+flag associated with the new file descriptor is set.
+.Pp
+The
+.Dv F_DUP2FD
+and
+.Dv F_DUP2FD_CLOEXEC
+constants are not portable, so they should not be used if
+portability is needed.
+Use
+.Fn dup2
+instead of
+.Dv F_DUP2FD .
 .It Dv F_GETFD
 Get the close-on-exec flag associated with the file descriptor
 .Fa fd
@@ -140,7 +175,7 @@ flags are as follows:
 .It Dv O_NONBLOCK
 Non-blocking I/O; if no data is available to a
 .Xr read 2
-call, or if a
+system call, or if a
 .Xr write 2
 operation would block,
 the read or write call returns -1 with the error
@@ -152,8 +187,10 @@ corresponds to the
 flag of
 .Xr open 2 .
 .It Dv O_DIRECT
-Minimize or eliminate the cache effects of reading and writing.  The system
-will attempt to avoid caching the data you read or write.  If it cannot
+Minimize or eliminate the cache effects of reading and writing.
+The system
+will attempt to avoid caching the data you read or write.
+If it cannot
 avoid caching the data, it will minimize the impact the data has on the cache.
 Use of this flag can drastically reduce performance if not used with care.
 .It Dv O_ASYNC
@@ -190,7 +227,7 @@ in the
 .Fa flock
 structure.
 If no lock is found that would prevent this lock from being created,
-the structure is left unchanged by this function call except for the
+the structure is left unchanged by this system call except for the
 lock type which is set to
 .Dv F_UNLCK .
 .It Dv F_SETLK
@@ -324,20 +361,36 @@ requested a lock on the database.
 Another minor semantic problem with this interface is that
 locks are not inherited by a child process created using the
 .Xr fork 2
-function.
+system call.
 The
 .Xr flock 2
 interface has much more rational last close semantics and
 allows locks to be inherited by child processes.
-.Xr Flock 2
-is recommended for applications that want to ensure the integrity
+The
+.Xr flock 2
+system call is recommended for applications that want to ensure the integrity
 of their locks when using library routines or wish to pass locks
 to their children.
-Note that
-.Xr flock 2
+.Pp
+The
+.Fn fcntl ,
+.Xr flock 2 ,
 and
-.Xr fcntl 2
-locks may be safely used concurrently but
+.Xr lockf 3
+locks are compatible.
+Processes using different locking interfaces can cooperate
+over the same file safely.
+However, only one of such interfaces should be used within
+the same process.
+If a file is locked by a process through
+.Xr flock 2 ,
+any record within the file will be seen as locked
+from the viewpoint of another process using
+.Fn fcntl
+or
+.Xr lockf 3 ,
+and vice versa.
+Note that
 .Fn fcntl F_GETLK
 returns \-1 in
 .Fa l_pid
@@ -367,6 +420,9 @@ as follows:
 .Bl -tag -width F_GETOWNX -offset indent
 .It Dv F_DUPFD
 A new file descriptor.
+.It Dv F_DUP2FD
+A file descriptor equal to
+.Fa arg .
 .It Dv F_GETFD
 Value of flag (only the low-order bit is defined).
 .It Dv F_GETFL
@@ -381,8 +437,9 @@ Otherwise, a value of -1 is returned and
 .Va errno
 is set to indicate the error.
 .Sh ERRORS
-.Fn Fcntl
-will fail if:
+The
+.Fn fcntl
+system call will fail if:
 .Bl -tag -width Er
 .It Bq Er EAGAIN
 The argument
@@ -401,8 +458,18 @@ or the type is an exclusive lock and some portion of the
 segment of a file to be locked is already shared-locked or
 exclusive-locked by another process.
 .It Bq Er EBADF
-.Fa \&Fd
+The
+.Fa fd
+argument
 is not a valid open file descriptor.
+.Pp
+The argument
+.Fa cmd
+is
+.Dv F_DUP2FD ,
+and
+.Fa arg
+is not a valid file descriptor.
 .Pp
 The argument
 .Fa cmd
@@ -442,9 +509,11 @@ The argument
 .Fa cmd
 is
 .Dv F_SETLKW ,
-and the function was interrupted by a signal.
+and the system call was interrupted by a signal.
 .It Bq Er EINVAL
-.Fa Cmd
+The
+.Fa cmd
+argument
 is
 .Dv F_DUPFD
 and
@@ -457,14 +526,12 @@ The argument
 .Fa cmd
 is
 .Dv F_GETLK ,
-.Dv F_SETLK ,
+.Dv F_SETLK
 or
 .Dv F_SETLKW
 and the data to which
 .Fa arg
-points is not valid, or
-.Fa fd
-refers to a file that does not support locking.
+points is not valid.
 .It Bq Er EMFILE
 The argument
 .Fa cmd
@@ -485,14 +552,18 @@ or
 and satisfying the lock or unlock request would result in the
 number of locked regions in the system exceeding a system-imposed limit.
 .It Bq Er EPERM
-.Fa Cmd
+The
+.Fa cmd
+argument
 is
 .Dv F_SETOWN
 and
 the process ID or process group given as an argument is in a
 different session than the caller.
 .It Bq Er ESRCH
-.Fa Cmd
+The
+.Fa cmd
+argument
 is
 .Dv F_SETOWN
 and
@@ -516,15 +587,30 @@ for the reasons as stated in
 .Xr tcgetpgrp 3 .
 .Sh SEE ALSO
 .Xr close 2 ,
+.Xr dup2 2 ,
 .Xr execve 2 ,
 .Xr flock 2 ,
 .Xr getdtablesize 2 ,
 .Xr open 2 ,
 .Xr sigaction 2 ,
+.Xr lockf 3 ,
 .Xr tcgetpgrp 3 ,
 .Xr tcsetpgrp 3
+.Sh STANDARDS
+The
+.Dv F_DUP2FD
+constant is non portable.
+It is provided for compatibility with AIX and Solaris.
 .Sh HISTORY
 The
 .Fn fcntl
-function call appeared in
+system call appeared in
 .Bx 4.2 .
+.Pp
+The
+.Dv F_DUP_CLOEXEC ,
+.Dv F_DUP2FD
+and
+.Dv F_DUP2FD_CLOEXEC
+constants first appeared in
+.Dx 3.5 .
