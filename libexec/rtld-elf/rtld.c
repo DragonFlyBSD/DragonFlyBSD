@@ -148,7 +148,7 @@ static void unref_dag(Obj_Entry *);
 static void ref_dag(Obj_Entry *);
 static char *origin_subst_one(char *, const char *, const char *, bool);
 static char *origin_subst(char *, const char *);
-static void preinitialize_main_object (void);
+static void preinit_main(void);
 static int  rtld_verify_versions(const Objlist *);
 static int  rtld_verify_object_versions(Obj_Entry *);
 static void object_add_name(Obj_Entry *, const char *);
@@ -727,9 +727,8 @@ _rtld_call_init(void)
     }
 
     wlock_acquire(rtld_bind_lock, &lockstate);
-    if (obj_main->crt_no_init) {
-	preinitialize_main_object();
-    }
+    if (obj_main->crt_no_init)
+	preinit_main();
     else {
 	/*
 	 * Make sure we don't call the main program's init and fini functions
@@ -1169,19 +1168,19 @@ digest_dynamic1(Obj_Entry *obj, int early, const Elf_Dyn **dyn_rpath,
 	    break;
 
 	case DT_FINI:
-	    obj->fini = (Elf_Addr) (obj->relocbase + dynp->d_un.d_ptr);
+	    obj->fini = (Elf_Addr)(obj->relocbase + dynp->d_un.d_ptr);
 	    break;
 
 	case DT_PREINIT_ARRAY:
-	    obj->preinit_array = (Elf_Addr) (obj->relocbase + dynp->d_un.d_ptr);
+	    obj->preinit_array = (Elf_Addr)(obj->relocbase + dynp->d_un.d_ptr);
 	    break;
 
 	case DT_INIT_ARRAY:
-	    obj->init_array = (Elf_Addr) (obj->relocbase + dynp->d_un.d_ptr);
+	    obj->init_array = (Elf_Addr)(obj->relocbase + dynp->d_un.d_ptr);
 	    break;
 
 	case DT_FINI_ARRAY:
-	    obj->fini_array = (Elf_Addr) (obj->relocbase + dynp->d_un.d_ptr);
+	    obj->fini_array = (Elf_Addr)(obj->relocbase + dynp->d_un.d_ptr);
 	    break;
 
 	case DT_PREINIT_ARRAYSZ:
@@ -1405,7 +1404,8 @@ digest_notes(Obj_Entry *obj, Elf_Addr note_start, Elf_Addr note_end)
 		if (note->n_namesz != sizeof(NOTE_VENDOR) ||
 		    note->n_descsz != sizeof(int32_t))
 			continue;
-		if (note->n_type != ABI_NOTETYPE && note->n_type != CRT_NOINIT_NOTETYPE)
+		if (note->n_type != ABI_NOTETYPE &&
+		    note->n_type != CRT_NOINIT_NOTETYPE)
 			continue;
 		note_name = (const char *)(note + 1);
 		if (strncmp(NOTE_VENDOR, note_name, sizeof(NOTE_VENDOR)) != 0)
@@ -1491,12 +1491,15 @@ elf_hash(const char *name)
  * unsigned in case it's implemented with a wider type.
  */
 static uint_fast32_t
-gnu_hash (const char *s)
+gnu_hash(const char *s)
 {
-    uint_fast32_t h = 5381;
-    for (unsigned char c = *s; c != '\0'; c = *++s)
-	h = h * 33 + c;
-    return h & 0xffffffff;
+	uint_fast32_t h;
+	unsigned char c;
+
+	h = 5381;
+	for (c = *s; c != '\0'; c = *++s)
+		h = h * 33 + c;
+	return (h & 0xffffffff);
 }
 
 /*
@@ -1655,112 +1658,142 @@ find_symdef(unsigned long symnum, const Obj_Entry *refobj,
 
 /*
  * Return the search path from the ldconfig hints file, reading it if
- * necessary.  Returns NULL if there are problems with the hints file,
+ * necessary.  If nostdlib is true, then the default search paths are
+ * not added to result.
+ *
+ * Returns NULL if there are problems with the hints file,
  * or if the search path there is empty.
- * If DF_1_NODEFLIB flag set, omit STANDARD_LIBRARY_PATH directories
  */
 static const char *
 gethints(bool nostdlib)
 {
-    static char *hints, *filtered_path;
-    struct elfhints_hdr hdr;
-    struct fill_search_info_args sargs, hargs;
-    struct dl_serinfo smeta, hmeta, *SLPinfo, *hintinfo;
-    struct dl_serpath *SLPpath, *hintpath;
-    char *p;
-    unsigned int SLPndx, hintndx, fndx, fcount;
-    int fd;
-    size_t flen;
-    bool skip;
+	static char *hints, *filtered_path;
+	struct elfhints_hdr hdr;
+	struct fill_search_info_args sargs, hargs;
+	struct dl_serinfo smeta, hmeta, *SLPinfo, *hintinfo;
+	struct dl_serpath *SLPpath, *hintpath;
+	char *p;
+	unsigned int SLPndx, hintndx, fndx, fcount;
+	int fd;
+	size_t flen;
+	bool skip;
 
-    if (hints == NULL) {
-	/* Keep from trying again in case the hints file is bad. */
-	hints = "";
+	/* First call, read the hints file */
+	if (hints == NULL) {
+		/* Keep from trying again in case the hints file is bad. */
+		hints = "";
 
-	if ((fd = open(ld_elf_hints_path, O_RDONLY | O_CLOEXEC)) == -1)
-	    return (NULL);
-	if (read(fd, &hdr, sizeof hdr) != sizeof hdr ||
-	  hdr.magic != ELFHINTS_MAGIC || hdr.version != 1) {
-	    close(fd);
-	    return (NULL);
+		if ((fd = open(ld_elf_hints_path, O_RDONLY | O_CLOEXEC)) == -1)
+			return (NULL);
+		if (read(fd, &hdr, sizeof hdr) != sizeof hdr ||
+		    hdr.magic != ELFHINTS_MAGIC ||
+		    hdr.version != 1) {
+			close(fd);
+			return (NULL);
+		}
+		p = xmalloc(hdr.dirlistlen + 1);
+		if (lseek(fd, hdr.strtab + hdr.dirlist, SEEK_SET) == -1 ||
+		    read(fd, p, hdr.dirlistlen + 1) !=
+		    (ssize_t)hdr.dirlistlen + 1) {
+			free(p);
+			close(fd);
+			return (NULL);
+		}
+		hints = p;
+		close(fd);
 	}
-	p = xmalloc(hdr.dirlistlen + 1);
-	if (lseek(fd, hdr.strtab + hdr.dirlist, SEEK_SET) == -1 ||
-	  read(fd, p, hdr.dirlistlen + 1) != (ssize_t)hdr.dirlistlen + 1) {
-	    free(p);
-	    close(fd);
-	    return (NULL);
+
+	/*
+	 * If caller agreed to receive list which includes the default
+	 * paths, we are done. Otherwise, if we still have not
+	 * calculated filtered result, do it now.
+	 */
+	if (!nostdlib)
+		return (hints[0] != '\0' ? hints : NULL);
+	if (filtered_path != NULL)
+		goto filt_ret;
+
+	/*
+	 * Obtain the list of all configured search paths, and the
+	 * list of the default paths.
+	 *
+	 * First estimate the size of the results.
+	 */
+	smeta.dls_size = __offsetof(struct dl_serinfo, dls_serpath);
+	smeta.dls_cnt = 0;
+	hmeta.dls_size = __offsetof(struct dl_serinfo, dls_serpath);
+	hmeta.dls_cnt = 0;
+
+	sargs.request = RTLD_DI_SERINFOSIZE;
+	sargs.serinfo = &smeta;
+	hargs.request = RTLD_DI_SERINFOSIZE;
+	hargs.serinfo = &hmeta;
+
+	path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &sargs);
+	path_enumerate(p, fill_search_info, &hargs);
+
+	SLPinfo = xmalloc(smeta.dls_size);
+	hintinfo = xmalloc(hmeta.dls_size);
+
+	/*
+	 * Next fetch both sets of paths.
+	 */
+	sargs.request = RTLD_DI_SERINFO;
+	sargs.serinfo = SLPinfo;
+	sargs.serpath = &SLPinfo->dls_serpath[0];
+	sargs.strspace = (char *)&SLPinfo->dls_serpath[smeta.dls_cnt];
+
+	hargs.request = RTLD_DI_SERINFO;
+	hargs.serinfo = hintinfo;
+	hargs.serpath = &hintinfo->dls_serpath[0];
+	hargs.strspace = (char *)&hintinfo->dls_serpath[hmeta.dls_cnt];
+
+	path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &sargs);
+	path_enumerate(p, fill_search_info, &hargs);
+
+	/*
+	 * Now calculate the difference between two sets, by excluding
+	 * standard paths from the full set.
+	 */
+	fndx = 0;
+	fcount = 0;
+	filtered_path = xmalloc(hdr.dirlistlen + 1);
+	hintpath = &hintinfo->dls_serpath[0];
+	for (hintndx = 0; hintndx < hmeta.dls_cnt; hintndx++, hintpath++) {
+		skip = false;
+		SLPpath = &SLPinfo->dls_serpath[0];
+		/*
+		 * Check each standard path against current.
+		 */
+		for (SLPndx = 0; SLPndx < smeta.dls_cnt; SLPndx++, SLPpath++) {
+			/* matched, skip the path */
+			if (!strcmp(hintpath->dls_name, SLPpath->dls_name)) {
+				skip = true;
+				break;
+			}
+		}
+		if (skip)
+			continue;
+		/*
+		 * Not matched against any standard path, add the path
+		 * to result. Separate consecutive paths with ':'.
+		 */
+		if (fcount > 0) {
+			filtered_path[fndx] = ':';
+			fndx++;
+		}
+		fcount++;
+		flen = strlen(hintpath->dls_name);
+		strncpy((filtered_path + fndx),	hintpath->dls_name, flen);
+		fndx += flen;
 	}
-	hints = p;
-	close(fd);
-    }
+	filtered_path[fndx] = '\0';
 
-    if (!nostdlib)
-	return (hints[0] != '\0' ? hints : NULL);
-
-    if (filtered_path != NULL)
-	goto filt_ret;
-    
-    smeta.dls_size = __offsetof(struct dl_serinfo, dls_serpath);
-    smeta.dls_cnt  = 0;
-    hmeta.dls_size = __offsetof(struct dl_serinfo, dls_serpath);
-    hmeta.dls_cnt  = 0;
-
-    sargs.request = RTLD_DI_SERINFOSIZE;
-    sargs.serinfo = &smeta;
-    hargs.request = RTLD_DI_SERINFOSIZE;
-    hargs.serinfo = &hmeta;
-
-    path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &sargs);
-    path_enumerate(p, fill_search_info, &hargs);
-
-    SLPinfo = malloc(smeta.dls_size);
-    hintinfo = malloc(hmeta.dls_size);
-
-    sargs.request  = RTLD_DI_SERINFO;
-    sargs.serinfo  = SLPinfo;
-    sargs.serpath  = &SLPinfo->dls_serpath[0];
-    sargs.strspace = (char *)&SLPinfo->dls_serpath[smeta.dls_cnt];
-
-    hargs.request  = RTLD_DI_SERINFO;
-    hargs.serinfo  = hintinfo;
-    hargs.serpath  = &hintinfo->dls_serpath[0];
-    hargs.strspace = (char *)&hintinfo->dls_serpath[hmeta.dls_cnt];
-
-    path_enumerate(STANDARD_LIBRARY_PATH, fill_search_info, &sargs);
-    path_enumerate(p, fill_search_info, &hargs);
-
-    fndx = 0;
-    fcount = 0;
-    filtered_path = xmalloc(hdr.dirlistlen + 1);
-    hintpath = &hintinfo->dls_serpath[0];
-    for (hintndx = 0; hintndx < hmeta.dls_cnt; hintndx++, hintpath++) {
-	skip = false;
-	SLPpath = &SLPinfo->dls_serpath[0];
-	for (SLPndx = 0; SLPndx < smeta.dls_cnt; SLPndx++, SLPpath++) {
-	    if (!strcmp(hintpath->dls_name, SLPpath->dls_name)) {
-		skip = true;
-		break;
-	    }
-	}
-	if (skip)
-	    continue;
-	if (fcount > 0) {
-	    filtered_path[fndx] = ':';
-	    fndx++;
-	}
-	fcount++;
-	flen = strlen(hintpath->dls_name);
-	strncpy((filtered_path + fndx), hintpath->dls_name, flen);
-	fndx+= flen;
-    }
-    filtered_path[fndx] = '\0';
-
-    free(SLPinfo);
-    free(hintinfo);
+	free(SLPinfo);
+	free(hintinfo);
 
 filt_ret:
-    return (filtered_path[0] != '\0' ? filtered_path : NULL);
+	return (filtered_path[0] != '\0' ? filtered_path : NULL);
 }
 
 static void
@@ -2250,6 +2283,32 @@ obj_from_addr(const void *addr)
 }
 
 /*
+ * If the main program is defined with a .preinit_array section, call
+ * each function in order.  This must occur before the initialization
+ * of any shared object or the main program.
+ */
+static void
+preinit_main(void)
+{
+    Elf_Addr *preinit_addr;
+    int index;
+
+    preinit_addr = (Elf_Addr *)obj_main->preinit_array;
+    if (preinit_addr == NULL)
+	return;
+
+    for (index = 0; index < obj_main->preinit_array_num; index++) {
+	if (preinit_addr[index] != 0 && preinit_addr[index] != 1) {
+	    dbg("calling preinit function for %s at %p", obj_main->path,
+		(void *)preinit_addr[index]);
+	    LD_UTRACE(UTRACE_INIT_CALL, obj_main, (void *)preinit_addr[index],
+		0, 0, obj_main->path);
+	    call_init_pointer(obj_main, preinit_addr[index]);
+	}
+    }
+}
+
+/*
  * Call the finalization functions for each of the objects in "list"
  * belonging to the DAG of "root" and referenced once. If NULL "root"
  * is specified, every finalization function will be called regardless
@@ -2326,32 +2385,6 @@ objlist_call_fini(Objlist *list, Obj_Entry *root, RtldLockState *lockstate)
 	}
     } while (elm != NULL);
     errmsg_restore(saved_msg);
-}
-
-/*
- * If the main program is defined with a .preinit_array section, call
- * each function in order.  This must occur before the initialization
- * of any shared object or the main program.
- */
-static void
-preinitialize_main_object (void)
-{
-    Elf_Addr *preinit_addr;
-    int index;
-
-    preinit_addr = (Elf_Addr *)obj_main->preinit_array;
-    if (preinit_addr == NULL)
-	return;
-
-    for (index = 0; index < obj_main->preinit_array_num; index++) {
-	if (preinit_addr[index] != 0 && preinit_addr[index] != 1) {
-	    dbg("calling preinit function for %s at %p", obj_main->path,
-		(void *)preinit_addr[index]);
-	    LD_UTRACE(UTRACE_INIT_CALL, obj_main, (void *)preinit_addr[index],
-		0, 0, obj_main->path);
-	    call_init_pointer(obj_main, preinit_addr[index]);
-	}
-    }
 }
 
 /*
@@ -2509,11 +2542,11 @@ relocate_object_dag(Obj_Entry *root, bool bind_now, Obj_Entry *rtldobj,
  * Relocate single object.
  * Returns 0 on success, or -1 on failure.
  */
-
 static int
 relocate_object(Obj_Entry *obj, bool bind_now, Obj_Entry *rtldobj,
     int flags, RtldLockState *lockstate)
 {
+
 	if (obj->relocated)
 	    return (0);
 	obj->relocated = true;
@@ -2997,6 +3030,7 @@ do_dlsym(void *handle, const char *name, void *retaddr, const Ver_Entry *ve,
     const Elf_Sym *def;
     SymLook req;
     RtldLockState lockstate;
+    tls_index ti;
     int res;
 
     def = NULL;
@@ -3112,7 +3146,6 @@ do_dlsym(void *handle, const char *name, void *retaddr, const Ver_Entry *ve,
 	else if (ELF_ST_TYPE(def->st_info) == STT_GNU_IFUNC)
 	    return (rtld_resolve_ifunc(defobj, def));
 	else if (ELF_ST_TYPE(def->st_info) == STT_TLS) {
-	    tls_index ti;
 	    ti.ti_module = defobj->tlsindex;
 	    ti.ti_offset = def->st_value;
 	    return (__tls_get_addr(&ti));
@@ -3564,7 +3597,8 @@ get_program_var_addr(const char *name, RtldLockState *lockstate)
     else if (ELF_ST_TYPE(req.sym_out->st_info) == STT_GNU_IFUNC)
 	return ((const void **)rtld_resolve_ifunc(req.defobj_out, req.sym_out));
     else
-	return ((const void **)(req.defobj_out->relocbase + req.sym_out->st_value));
+	return ((const void **)(req.defobj_out->relocbase +
+	  req.sym_out->st_value));
 }
 
 /*
