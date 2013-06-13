@@ -372,6 +372,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * From this point on we have to call hammer2_unmount() on failure.
 	 */
 	pmp = kmalloc(sizeof(*pmp), M_HAMMER2, M_WAITOK | M_ZERO);
+	kmalloc_create(&pmp->minode, "HAMMER2-inodes");
 	mp->mnt_data = (qaddr_t)pmp;
 	pmp->mp = mp;
 
@@ -389,7 +390,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
 		hmp->ronly = ronly;
 		hmp->devvp = devvp;
-		kmalloc_create(&hmp->minode, "HAMMER2-inodes");
 		kmalloc_create(&hmp->mchain, "HAMMER2-chains");
 		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
 	}
@@ -737,11 +737,11 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	mp->mnt_data = NULL;
 
 	kmalloc_destroy(&pmp->mmsg);
+	kmalloc_destroy(&pmp->minode);
 
 	kfree(pmp, M_HAMMER2);
 	if (hmp->pmp_count == 0) {
 		TAILQ_REMOVE(&hammer2_mntlist, hmp, mntentry);
-		kmalloc_destroy(&hmp->minode);
 		kmalloc_destroy(&hmp->mchain);
 		kfree(hmp, M_HAMMER2);
 	}

@@ -309,7 +309,7 @@ struct hammer2_inode {
 typedef struct hammer2_inode hammer2_inode_t;
 
 #define HAMMER2_INODE_MODIFIED		0x0001
-#define HAMMER2_INODE_UNUSED0002	0x0002
+#define HAMMER2_INODE_SROOT		0x0002	/* kmalloc special case */
 #define HAMMER2_INODE_RENAME_INPROG	0x0004
 #define HAMMER2_INODE_ONRBTREE		0x0008
 
@@ -398,10 +398,6 @@ struct hammer2_mount {
 	int		pmp_count;	/* PFS mounts backed by us */
 	TAILQ_ENTRY(hammer2_mount) mntentry; /* hammer2_mntlist */
 
-	struct malloc_type *minode;
-	int 		ninodes;
-	int 		maxinodes;
-
 	struct malloc_type *mchain;
 	int		nipstacks;
 	int		maxipstacks;
@@ -428,7 +424,11 @@ struct hammer2_mount {
 typedef struct hammer2_mount hammer2_mount_t;
 
 /*
- * Per-PFS mount structure for device (aka vp->v_mount)
+ * HAMMER2 PFS mount point structure (aka vp->v_mount->mnt_data).
+ *
+ * This structure represents a cluster mount and not necessarily a
+ * PFS under a specific device mount (HMP).  The distinction is important
+ * because the elements backing a cluster mount can change on the fly.
  */
 struct hammer2_pfsmount {
 	struct mount		*mp;		/* kernel mount */
@@ -439,6 +439,7 @@ struct hammer2_pfsmount {
 	ccms_domain_t		ccms_dom;
 	struct netexport	export;		/* nfs export */
 	int			ronly;		/* read-only mount */
+	struct malloc_type	*minode;
 	struct malloc_type	*mmsg;
 	kdmsg_iocom_t		iocom;
 	struct spinlock		inum_spin;	/* inumber lookup */

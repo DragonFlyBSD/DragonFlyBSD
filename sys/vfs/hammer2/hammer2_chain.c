@@ -426,7 +426,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		if (chain->data) {
-			kfree(chain->data, hmp->minode);
+			kfree(chain->data, hmp->mchain);
 			chain->data = NULL;
 		}
 		break;
@@ -670,7 +670,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		KKASSERT(chain->bytes == sizeof(chain->data->ipdata));
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_EMBEDDED);
 		chain->data = kmalloc(sizeof(chain->data->ipdata),
-				      hmp->minode, M_WAITOK | M_ZERO);
+				      hmp->mchain, M_WAITOK | M_ZERO);
 		bcopy(bdata, &chain->data->ipdata, chain->bytes);
 		bqrelse(chain->bp);
 		chain->bp = NULL;
@@ -2096,7 +2096,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			KKASSERT(bytes == HAMMER2_INODE_BYTES);
 			atomic_set_int(&chain->flags, HAMMER2_CHAIN_EMBEDDED);
 			chain->data = kmalloc(sizeof(chain->data->ipdata),
-					      hmp->minode, M_WAITOK | M_ZERO);
+					      hmp->mchain, M_WAITOK | M_ZERO);
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
 			panic("hammer2_chain_create: cannot be used to"
@@ -2633,7 +2633,7 @@ hammer2_chain_dup_fixup(hammer2_chain_t *ochain, hammer2_chain_t *nchain)
 		KKASSERT(nchain->data == NULL);
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_EMBEDDED);
 		nchain->data = kmalloc(sizeof(nchain->data->ipdata),
-				       ochain->hmp->minode, M_WAITOK | M_ZERO);
+				       ochain->hmp->mchain, M_WAITOK | M_ZERO);
 		nchain->data->ipdata = ochain->data->ipdata;
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:

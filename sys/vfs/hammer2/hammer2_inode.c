@@ -230,6 +230,7 @@ void
 hammer2_inode_drop(hammer2_inode_t *ip)
 {
 	hammer2_mount_t *hmp;
+	hammer2_pfsmount_t *pmp;
 	hammer2_inode_t *pip;
 	u_int refs;
 
@@ -243,8 +244,9 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 			 *
 			 * NOTE: The super-root inode has no pmp.
 			 */
-			if (ip->pmp)
-				spin_lock(&ip->pmp->inum_spin);
+			pmp = ip->pmp;
+			if (pmp)
+				spin_lock(&pmp->inum_spin);
 
 			if (atomic_cmpset_int(&ip->refs, 1, 0)) {
 				KKASSERT(ip->topo_cst.count == 0);
@@ -252,16 +254,16 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 					atomic_clear_int(&ip->flags,
 						     HAMMER2_INODE_ONRBTREE);
 					RB_REMOVE(hammer2_inode_tree,
-						  &ip->pmp->inum_tree,
-						  ip);
+						  &pmp->inum_tree, ip);
 				}
-				if (ip->pmp)
-					spin_unlock(&ip->pmp->inum_spin);
+				if (pmp)
+					spin_unlock(&pmp->inum_spin);
 
 				hmp = ip->hmp;
 				ip->hmp = NULL;
 				pip = ip->pip;
 				ip->pip = NULL;
+				ip->pmp = NULL;
 
 				/*
 				 * Cleaning out ip->chain isn't entirely
@@ -274,11 +276,19 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				 * dispose of our implied reference from
 				 * ip->pip.  We can simply loop on it.
 				 */
-				kfree(ip, hmp->minode);
+				if (pmp) {
+					KKASSERT((ip->flags &
+						  HAMMER2_INODE_SROOT) == 0);
+					kfree(ip, pmp->minode);
+				} else {
+					KKASSERT(ip->flags &
+						 HAMMER2_INODE_SROOT);
+					kfree(ip, hmp->mchain);
+				}
 				ip = pip;
 				/* continue with pip (can be NULL) */
 			} else {
-				if (ip->pmp)
+				if (pmp)
 					spin_unlock(&ip->pmp->inum_spin);
 			}
 		} else {
@@ -473,7 +483,12 @@ again:
 	/*
 	 * We couldn't find the inode number, create a new inode.
 	 */
-	nip = kmalloc(sizeof(*nip), hmp->minode, M_WAITOK | M_ZERO);
+	if (pmp) {
+		nip = kmalloc(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
+	} else {
+		nip = kmalloc(sizeof(*nip), hmp->mchain, M_WAITOK | M_ZERO);
+		nip->flags = HAMMER2_INODE_SROOT;
+	}
 	nip->inum = chain->data->ipdata.inum;
 	hammer2_inode_repoint(nip, NULL, chain);
 	nip->pip = dip;				/* can be NULL */
