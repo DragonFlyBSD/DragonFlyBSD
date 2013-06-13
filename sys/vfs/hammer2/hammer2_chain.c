@@ -1258,6 +1258,7 @@ skipxx: /* XXX */
 				}
 			}
 			chain->bp = nbp;
+			BUF_KERNPROC(chain->bp);
 		}
 		chain->data = bdata;
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
@@ -1441,7 +1442,7 @@ retry:
 		KKASSERT(parent->data != NULL);
 		KKASSERT(index >= 0 &&
 			 index < parent->bytes / sizeof(hammer2_blockref_t));
-		bref = &parent->data->npdata.blockref[index];
+		bref = &parent->data->npdata[index];
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 		KKASSERT(index >= 0 && index < HAMMER2_SET_COUNT);
@@ -1676,7 +1677,7 @@ again:
 		} else {
 			if (parent->data == NULL)
 				panic("parent->data is NULL");
-			base = &parent->data->npdata.blockref[0];
+			base = &parent->data->npdata[0];
 		}
 		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
@@ -1884,7 +1885,7 @@ again2:
 			base = NULL;
 		} else {
 			KKASSERT(parent->data != NULL);
-			base = &parent->data->npdata.blockref[0];
+			base = &parent->data->npdata[0];
 		}
 		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
@@ -2148,7 +2149,7 @@ again:
 			base = NULL;
 		} else {
 			KKASSERT(parent->data != NULL);
-			base = &parent->data->npdata.blockref[0];
+			base = &parent->data->npdata[0];
 		}
 		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
@@ -2377,7 +2378,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 				base = NULL;
 			} else {
 				KKASSERT(parent->data != NULL);
-				base = &parent->data->npdata.blockref[0];
+				base = &parent->data->npdata[0];
 			}
 			count = parent->bytes / sizeof(hammer2_blockref_t);
 			break;
@@ -2640,7 +2641,9 @@ hammer2_chain_dup_fixup(hammer2_chain_t *ochain, hammer2_chain_t *nchain)
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_EMBEDDED);
 		nchain->data = kmalloc(sizeof(nchain->data->bmdata),
 				       ochain->hmp->mchain, M_WAITOK | M_ZERO);
-		nchain->data->bmdata = ochain->data->bmdata;
+		bcopy(ochain->data->bmdata,
+		      nchain->data->bmdata,
+		      sizeof(nchain->data->bmdata));
 		break;
 	default:
 		break;
@@ -2869,7 +2872,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
 		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-			base = &parent->data->npdata.blockref[0];
+			base = &parent->data->npdata[0];
 			count = parent->bytes / sizeof(hammer2_blockref_t);
 			break;
 		case HAMMER2_BREF_TYPE_VOLUME:

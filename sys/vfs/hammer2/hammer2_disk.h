@@ -226,34 +226,17 @@
  */
 #define HAMMER2_ZONE_VOLHDR		0	/* volume header or backup */
 #define HAMMER2_ZONE_FREEMAP_A		1	/* freemap layer group A */
-#define HAMMER2_ZONE_FREEMAP_B		9	/* freemap layer group B */
-#define HAMMER2_ZONE_FREEMAP_C		17	/* freemap layer group C */
-#define HAMMER2_ZONE_FREEMAP_D		25	/* freemap layer group D */
+#define HAMMER2_ZONE_FREEMAP_B		5	/* freemap layer group B */
+#define HAMMER2_ZONE_FREEMAP_C		9	/* freemap layer group C */
+#define HAMMER2_ZONE_FREEMAP_D		13	/* freemap layer group D */
 
 						/* relative to FREEMAP_x */
-#define HAMMER2_ZONEFM_LEVEL0		0	/* 256KB bitmap (4 blks) */
-#define HAMMER2_ZONEFM_LEVEL1		4	/* 2GB indmap */
-#define HAMMER2_ZONEFM_LEVEL2		5	/* 2TB indmap */
-#define HAMMER2_ZONEFM_LEVEL3		6	/* 2PB indmap */
-#define HAMMER2_ZONEFM_LEVEL4		7	/* 2EB indmap */
+#define HAMMER2_ZONEFM_LEVEL1		0	/* 2GB leafmap */
+#define HAMMER2_ZONEFM_LEVEL2		1	/* 2TB indmap */
+#define HAMMER2_ZONEFM_LEVEL3		2	/* 2PB indmap */
+#define HAMMER2_ZONEFM_LEVEL4		3	/* 2EB indmap */
 /* LEVEL5 is a set of 8 blockrefs in the volume header 16EB */
 
-#define HAMMER2_ZONE_BLOCK49		49	/* future */
-#define HAMMER2_ZONE_BLOCK50		50	/* future */
-#define HAMMER2_ZONE_BLOCK51		51	/* future */
-#define HAMMER2_ZONE_BLOCK52		52	/* future */
-#define HAMMER2_ZONE_BLOCK53		53	/* future */
-#define HAMMER2_ZONE_BLOCK54		54	/* future */
-#define HAMMER2_ZONE_BLOCK55		55	/* future */
-#define HAMMER2_ZONE_BLOCK56		56	/* future */
-#define HAMMER2_ZONE_BLOCK57		57	/* future */
-#define HAMMER2_ZONE_BLOCK58		58	/* future */
-#define HAMMER2_ZONE_BLOCK59		59	/* future */
-
-#define HAMMER2_ZONE_BLOCK60		60	/* future */
-#define HAMMER2_ZONE_BLOCK61		61	/* future */
-#define HAMMER2_ZONE_BLOCK62		62	/* future */
-#define HAMMER2_ZONE_BLOCK63		63	/* future */
 
 /*
  * Freemap radii.  Please note that LEVEL 1 blockref array entries
@@ -265,12 +248,16 @@
 #define HAMMER2_FREEMAP_LEVEL4_RADIX	61	/* 2EB */
 #define HAMMER2_FREEMAP_LEVEL3_RADIX	51	/* 2PB */
 #define HAMMER2_FREEMAP_LEVEL2_RADIX	41	/* 2TB */
-#define HAMMER2_FREEMAP_LEVEL1_RADIX	31	/* 2GB (256KB of bitmap) */
-#define HAMMER2_FREEMAP_LEVEL0_RADIX	21	/* 2MB (256 bytes of bitmap) */
+#define HAMMER2_FREEMAP_LEVEL1_RADIX	31	/* 2GB */
+#define HAMMER2_FREEMAP_LEVEL0_RADIX	21	/* 2MB (entry in l-1 leaf) */
 
 #define HAMMER2_FREEMAP_LEVELN_PSIZE	65536	/* physical bytes */
-#define HAMMER2_FREEMAP_LEVEL0_PSIZE	256	/* physical bytes */
 
+#define HAMMER2_FREEMAP_COUNT		(int)(HAMMER2_FREEMAP_LEVELN_PSIZE / \
+					 sizeof(hammer2_bmap_data_t))
+#define HAMMER2_FREEMAP_BLOCK_RADIX	14
+#define HAMMER2_FREEMAP_BLOCK_SIZE	(1 << HAMMER2_FREEMAP_BLOCK_RADIX)
+#define HAMMER2_FREEMAP_BLOCK_MASK	(HAMMER2_FREEMAP_BLOCK_SIZE - 1)
 
 /*
  * Two linear areas can be reserved after the initial 2MB segment in the base
@@ -399,26 +386,16 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 		/*
 		 * Freemap hints are embedded in addition to the icrc32.
 		 *
-		 * biggest - Largest possible allocation 2^N within sub-tree.
-		 *	     typically initialized to 64 in freemap_blockref
-		 *	     and reduced as-needed when a request fails.
+		 * bigmask - Radixes available for allocation (0-31).
+		 *	     Heuristical (may be permissive but not
+		 *	     restrictive).  Typically only radix values
+		 *	     10-16 are used (i.e. (1<<10) through (1<<16)).
 		 *
-		 *	     An allocation > 2^N is guaranteed to fail.  An
-		 *	     allocation <= 2^N MAY fail, and if it does the
-		 *	     biggest hint will be adjusted downward.
-		 *
-		 *	     Used when allocating space.
-		 *
-		 * radix   - (Leaf only) once assigned, radix for clustering.
-		 *	     All device I/O can cluster within the 2MB
-		 *	     segment.
+		 * avail   - Total available space remaining, in bytes
 		 */
 		struct {
 			uint32_t icrc32;
-			uint8_t biggest;
-			uint8_t radix;		/* 0, LBUFRADIX, PBUFRADIX */
-			uint8_t reserved06;
-			uint8_t reserved07;
+			uint32_t bigmask;	/* available radixes */
 			uint64_t avail;		/* total available bytes */
 			uint64_t unused;	/* unused must be 0 */
 		} freemap;
@@ -507,16 +484,60 @@ typedef struct hammer2_blockset hammer2_blockset_t;
 #endif
 
 /*
- * The media indirect block structure.
+ * hammer2_bmap_data - A freemap entry in the LEVEL1 block.
+ *
+ * Each 64-byte entry contains the bitmap and meta-data required to manage
+ * a LEVEL0 (2MB) block of storage.  The storage is managed in 128 x 16KB
+ * chunks.  Smaller allocation granularity is supported via a linear iterator
+ * and/or must otherwise be tracked in ram.
+ *
+ * (data structure must be 64 bytes exactly)
+ *
+ * linear  - A BYTE linear allocation offset.  May contain values between
+ *	     0 and 2MB.  Any value which is 16KB-aligned is effective neutral
+ *	     (forces the bitmap to be checked), whereas intermediate values
+ *	     allow iterative allocations from a bitmap that is already marked
+ *	     allocated.
+ *
+ *	     Please note that file data granularity may be limited by
+ *	     other issues such as buffer cache direct-mapping and the
+ *	     desire to support sector sizes up to 16KB (so H2 only issues
+ *	     I/O's in multiples of 16KB anyway).
+ *
+ * radix   - Once assigned, radix for clustering.  Cleared to 0 only if
+ *	     the entire leaf becomes free (related device buffer cache buffers
+ *	     must also be destroyed to avoid later overlap assertions).  All
+ *	     chain's within this 2MB segment must match the clustering radix.
+ *
+ *	     Device I/O size may be further adjusted to the minimum (16KB),
+ *	     even if radix is smaller.   This forms the I/O clustering radix.
+ *
+ *	     Value will typically be 10-16 (1KB to 64KB).  Smaller values may
+ *	     be allowed in the future (probably unnecessary to add that
+ *	     complication though).
+ *
+ * bitmap  - Two bits per 16KB allocation block arranged in arrays of
+ *	     32-bit elements, 128x2 bits representing ~2MB worth of media
+ *	     storage.  Bit patterns are as follows:
+ *
+ *	     00	Unallocated
+ *	     01 Armed for bulk free scan
+ *	     10 Possibly free
+ *           11 Allocated
  */
-struct hammer2_indblock_data {
-	hammer2_blockref_t blockref[HAMMER2_IND_COUNT_MAX];
-};
-
-typedef struct hammer2_indblock_data hammer2_indblock_data_t;
-
 struct hammer2_bmap_data {
-	uint64_t    array[HAMMER2_FREEMAP_LEVEL0_PSIZE / sizeof(uint64_t)];
+	int32_t linear;		/* 00 linear sub-granular allocation offset */
+	uint8_t reserved04;	/* 04 */
+	uint8_t radix;		/* 05 cluster I/O 0, LBUFRADIX, PBUFRADIX */
+	uint8_t reserved06;	/* 06 */
+	uint8_t reserved07;	/* 07 */
+	uint32_t reserved08;	/* 08 */
+	uint32_t reserved0C;	/* 0C */
+	uint32_t reserved10;	/* 10 */
+	uint32_t reserved14;	/* 14 */
+	uint32_t reserved18;	/* 18 */
+	uint32_t avail;		/* 1C */
+	uint32_t bitmap[8];	/* 20-3F 256 bits manages 2MB/16KB/2-bits */
 };
 
 typedef struct hammer2_bmap_data hammer2_bmap_data_t;
@@ -627,16 +648,19 @@ struct hammer2_inode_data {
 	/*
 	 * Quotas and cumulative sub-tree counters.
 	 */
-	hammer2_off_t	data_quota;	/* 00B0 subtree quota in bytes */
-	hammer2_off_t	data_count;	/* 00B8 subtree byte count */
-	hammer2_off_t	inode_quota;	/* 00C0 subtree quota inode count */
-	hammer2_off_t	inode_count;	/* 00C8 subtree inode count */
+	hammer2_key_t	data_quota;	/* 00B0 subtree quota in bytes */
+	hammer2_key_t	data_count;	/* 00B8 subtree byte count */
+	hammer2_key_t	inode_quota;	/* 00C0 subtree quota inode count */
+	hammer2_key_t	inode_count;	/* 00C8 subtree inode count */
 	hammer2_tid_t	attr_tid;	/* 00D0 attributes changed */
 	hammer2_tid_t	dirent_tid;	/* 00D8 directory/attr changed */
-	uint64_t	reservedE0;	/* 00E0 */
-	uint64_t	reservedE8;	/* 00E8 */
-	uint64_t	reservedF0;	/* 00F0 */
-	uint64_t	reservedF8;	/* 00F8 */
+
+	/*
+	 * Tracks (possibly degenerate) free areas covering all sub-tree
+	 * allocations under inode, not counting the inode itself.
+	 * 0/0 indicates empty entry.  fully set-associative.
+	 */
+	hammer2_off_t	freezones[4];	/* 00E0/E8/F0/F8 base|radix */
 
 	unsigned char	filename[HAMMER2_INODE_MAXNAME];
 					/* 0100-01FF (256 char, unterminated) */
@@ -912,8 +936,8 @@ typedef struct hammer2_volume_data hammer2_volume_data_t;
 union hammer2_media_data {
 	hammer2_volume_data_t	voldata;
         hammer2_inode_data_t    ipdata;
-	hammer2_indblock_data_t npdata;
-	hammer2_bmap_data_t	bmdata;
+	hammer2_blockref_t	npdata[HAMMER2_IND_COUNT_MAX];
+	hammer2_bmap_data_t	bmdata[HAMMER2_FREEMAP_COUNT];
 	char			buf[HAMMER2_PBUFSIZE];
 };
 

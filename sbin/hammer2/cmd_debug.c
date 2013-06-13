@@ -534,7 +534,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 		}
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
-		bscan = &media.npdata.blockref[0];
+		bscan = &media.npdata[0];
 		bcount = bytes / sizeof(hammer2_blockref_t);
 		didnl = 1;
 		printf("{\n");
@@ -558,24 +558,30 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 		printf("{\n");
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		printf("radix=%d {\n",
-			bref->check.freemap.radix);
-		obrace = 1;
-		for (i = 0; i < (int)(bytes / sizeof(uint64_t)); ++i) {
-			if ((i & 3) == 0)
-				tabprintf(tab, "");
-			else
-				printf(" ");
-			printf("%016jx", (intmax_t)media.bmdata.array[i]);
-			if ((i & 3) == 3)
-				printf("\n");
+		printf("{\n");
+		for (i = 0; i < HAMMER2_FREEMAP_COUNT; ++i) {
+			if (media.bmdata[i].radix == 0 &&
+			    media.bmdata[i].avail == 0) {
+				continue;
+			}
+			tabprintf(tab + 4, "%04d.%02d (avail=%5d) "
+				  "%08x %08x %08x %08x %08x %08x %08x %08x\n",
+				  i, media.bmdata[i].radix,
+				  media.bmdata[i].avail,
+				  media.bmdata[i].bitmap[0],
+				  media.bmdata[i].bitmap[1],
+				  media.bmdata[i].bitmap[2],
+				  media.bmdata[i].bitmap[3],
+				  media.bmdata[i].bitmap[4],
+				  media.bmdata[i].bitmap[5],
+				  media.bmdata[i].bitmap[6],
+				  media.bmdata[i].bitmap[7]);
 		}
-		if (((i - 1) & 3) != 3)
-			printf("\n");
+		tabprintf(tab, "}\n");
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		printf("{\n");
-		bscan = &media.npdata.blockref[0];
+		bscan = &media.npdata[0];
 		bcount = bytes / sizeof(hammer2_blockref_t);
 		break;
 	default:

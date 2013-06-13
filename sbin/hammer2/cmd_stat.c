@@ -58,7 +58,7 @@ cmd_stat(int ac, const char **av)
 	}
 	if (w < 16)
 		w = 16;
-	printf("%-*.*s ncp data-use  inode-use kaddr\n", w, w, "PATH");
+	printf("%-*.*s ncp  data-use inode-use kaddr\n", w, w, "PATH");
 	for (i = 0; i < ac; ++i) {
 		if ((fd = open(av[i], O_RDONLY)) < 0) {
 			fprintf(stderr, "%s: %s\n", av[i], strerror(errno));

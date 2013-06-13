@@ -67,6 +67,26 @@ static void hammer2_chain_flush_core(hammer2_flush_info_t *info,
 static int hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data);
 static int hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data);
 
+#if 0
+static __inline
+void
+hammer2_updatestats(hammer2_flush_info_t *info, hammer2_blockref_t *bref,
+		    int how)
+{
+	hammer2_key_t bytes;
+
+	if (bref->type != 0) {
+		bytes = 1 << (bref->data_off & HAMMER2_OFF_MASK_RADIX);
+		if (bref->type == HAMMER2_BREF_TYPE_INODE)
+			info->inode_count += how;
+		if (how < 0)
+			info->data_count -= bytes;
+		else
+			info->data_count += bytes;
+	}
+}
+#endif
+
 /*
  * Transaction support functions for writing to the filesystem.
  *
@@ -509,13 +529,19 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 	/*
 	 * If we encounter a deleted chain within our flush we can clear
 	 * the MODIFIED bit and avoid flushing it whether it has been
-	 * destroyed or not.
+	 * destroyed or not.  We must make sure that the chain is flagged
+	 * MOVED in this situation so the parent picks up the deletion.
 	 */
 	if (chain->delete_tid <= info->sync_tid) {
 		if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 			if (chain->bp) {
 				if (chain->bytes == chain->bp->b_bufsize)
 					chain->bp->b_flags |= B_INVAL|B_RELBUF;
+			}
+			if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
+				hammer2_chain_ref(chain);
+				atomic_set_int(&chain->flags,
+					       HAMMER2_CHAIN_MOVED);
 			}
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 			hammer2_chain_drop(chain);
@@ -616,6 +642,9 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 		/*
 		 * We should flush the free block table before we calculate
 		 * CRCs and copy voldata -> volsync.
+		 *
+		 * To prevent SMP races, fchain must remain locked until
+		 * voldata is copied to volsync.
 		 */
 		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
 		if (hmp->fchain.flags & (HAMMER2_CHAIN_MODIFIED |
@@ -623,7 +652,6 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 			/* this will modify vchain as a side effect */
 			hammer2_chain_flush(info->trans, &hmp->fchain);
 		}
-		hammer2_chain_unlock(&hmp->fchain);
 
 		/*
 		 * The volume header is flushed manually by the syncer, not
@@ -651,6 +679,7 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 				HAMMER2_VOLUME_ICRCVH_SIZE);
 		hmp->volsync = hmp->voldata;
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_VOLUMESYNC);
+		hammer2_chain_unlock(&hmp->fchain);
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 		/*
@@ -1042,7 +1071,7 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		if (parent->data) {
-			base = &parent->data->npdata.blockref[0];
+			base = &parent->data->npdata[0];
 		} else {
 			base = NULL;
 			KKASSERT(child->flags & HAMMER2_CHAIN_DELETED);
@@ -1054,7 +1083,7 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP:
-		base = &parent->data->npdata.blockref[0];
+		base = &parent->data->npdata[0];
 		count = HAMMER2_SET_COUNT;
 		break;
 	default:
@@ -1080,16 +1109,16 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 		if (base) {
 			KKASSERT(child->index < count);
 			bzero(&base[child->index], sizeof(child->bref));
-			if (info->mirror_tid < child->delete_tid)
-				info->mirror_tid = child->delete_tid;
 		}
+		if (info->mirror_tid < child->delete_tid)
+			info->mirror_tid = child->delete_tid;
 	} else {
 		if (base) {
 			KKASSERT(child->index < count);
 			base[child->index] = child->bref;
-			if (info->mirror_tid < child->modify_tid)
-				info->mirror_tid = child->modify_tid;
 		}
+		if (info->mirror_tid < child->modify_tid)
+			info->mirror_tid = child->modify_tid;
 	}
 
 	if (info->mirror_tid < child->bref.mirror_tid) {

@@ -325,10 +325,10 @@ hammer2_getradix(size_t bytes)
 
 	if (bytes == HAMMER2_PBUFSIZE)
 		radix = HAMMER2_PBUFRADIX;
-	else if (bytes >= 16384)
-		radix = 14;
-	else if (bytes >= 1024)
-		radix = 10;
+	else if (bytes >= HAMMER2_LBUFSIZE)
+		radix = HAMMER2_LBUFRADIX;
+	else if (bytes >= HAMMER2_MIN_ALLOC)	/* clamp */
+		radix = HAMMER2_MIN_RADIX;
 	else
 		radix = 0;
 
