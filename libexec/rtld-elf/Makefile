@@ -23,6 +23,19 @@ MLINKS=		rtld.1 ld-elf.so.1.1
 MLINKS+=	rtld.1 ld-elf.so.2.1
 MLINKS+=	rtld.1 _rtld_functrace.3
 
+.if !defined(NO_SYMVER)
+VERSION_DEF=	${.CURDIR}/../../lib/libc/Versions.def
+SYMBOL_MAPS=	${.CURDIR}/Symbol.map
+VERSION_MAP=	Version.map
+LDFLAGS+=	-Wl,--version-script=${VERSION_MAP}
+
+rtld.c:		${VERSION_MAP}
+
+.if exists(${.CURDIR}/${MACHINE_ARCH}/Symbol.map)
+SYMBOL_MAPS+=	${.CURDIR}/${MACHINE_ARCH}/Symbol.map
+.endif
+.endif
+
 .if exists(${.CURDIR}/${MACHINE_ARCH}/Makefile.inc)
 .include "${.CURDIR}/${MACHINE_ARCH}/Makefile.inc"
 .endif
@@ -38,4 +51,5 @@ CFLAGS+=	-DDEBUG
 
 .PATH: ${.CURDIR}/${MACHINE_ARCH}
 
+.include <bsd.symver.mk>
 .include <bsd.prog.mk>

@@ -100,7 +100,6 @@ static void init_dag(Obj_Entry *);
 static void init_rtld(caddr_t, Elf_Auxinfo **);
 static void initlist_add_neededs(Needed_Entry *, Objlist *);
 static void initlist_add_objects(Obj_Entry *, Obj_Entry **, Objlist *);
-static bool is_exported(const Elf_Sym *);
 static void linkmap_add(Obj_Entry *);
 static void linkmap_delete(Obj_Entry *);
 static void load_filtees(Obj_Entry *, int flags, RtldLockState *);
@@ -223,37 +222,6 @@ int osreldate;
 
 static int stack_prot = PROT_READ | PROT_WRITE | RTLD_DEFAULT_STACK_EXEC;
 static int max_stack_flags;
-
-/*
- * These are the functions the dynamic linker exports to application
- * programs.  They are the only symbols the dynamic linker is willing
- * to export from itself.
- */
-static func_ptr_type exports[] = {
-    (func_ptr_type) &_rtld_error,
-    (func_ptr_type) &dlclose,
-    (func_ptr_type) &dlerror,
-    (func_ptr_type) &dlopen,
-    (func_ptr_type) &fdlopen,
-    (func_ptr_type) &dlfunc,
-    (func_ptr_type) &dlsym,
-    (func_ptr_type) &dlvsym,
-    (func_ptr_type) &dladdr,
-    (func_ptr_type) &dlinfo,
-    (func_ptr_type) &dl_iterate_phdr,
-#ifdef __i386__
-    (func_ptr_type) &___tls_get_addr,
-#endif
-    (func_ptr_type) &__tls_get_addr,
-    (func_ptr_type) &__tls_get_addr_tcb,
-    (func_ptr_type) &_rtld_allocate_tls,
-    (func_ptr_type) &_rtld_free_tls,
-    (func_ptr_type) &_rtld_call_init,
-    (func_ptr_type) &_rtld_thread_init,
-    (func_ptr_type) &_rtld_addr_phdr,
-    (func_ptr_type) &_rtld_get_stack_prot,
-    NULL
-};
 
 /*
  * Global declarations normally provided by crt1.  The dynamic linker is
@@ -1973,19 +1941,6 @@ initlist_add_objects(Obj_Entry *obj, Obj_Entry **tail, Objlist *list)
 #define FPTR_TARGET(f)	((Elf_Addr) (f))
 #endif
 
-static bool
-is_exported(const Elf_Sym *def)
-{
-    Elf_Addr value;
-    const func_ptr_type *p;
-
-    value = (Elf_Addr)(obj_rtld.relocbase + def->st_value);
-    for (p = exports;  *p != NULL;  p++)
-	if (FPTR_TARGET(*p) == value)
-	    return true;
-    return false;
-}
-
 static void
 free_needed_filtees(Needed_Entry *n)
 {
@@ -3080,7 +3035,7 @@ do_dlsym(void *handle, const char *name, void *retaddr, const Ver_Entry *ve,
 	     */
 	    if (def == NULL || ELF_ST_BIND(def->st_info) == STB_WEAK) {
 		res = symlook_obj(&req, &obj_rtld);
-		if (res == 0 && is_exported(req.sym_out)) {
+		if (res == 0) {
 		    def = req.sym_out;
 		    defobj = req.defobj_out;
 		}
@@ -3735,13 +3690,12 @@ symlook_default(SymLook *req, const Obj_Entry *refobj)
     /*
      * Search the dynamic linker itself, and possibly resolve the
      * symbol from there.  This is how the application links to
-     * dynamic linker services such as dlopen.  Only the values listed
-     * in the "exports" array can be resolved from the dynamic linker.
+     * dynamic linker services such as dlopen.
      */
     if (req->sym_out == NULL ||
       ELF_ST_BIND(req->sym_out->st_info) == STB_WEAK) {
 	res = symlook_obj(&req1, &obj_rtld);
-	if (res == 0 && is_exported(req1.sym_out)) {
+	if (res == 0) {
 	    req->sym_out = req1.sym_out;
 	    req->defobj_out = req1.defobj_out;
 	    assert(req->defobj_out != NULL);
