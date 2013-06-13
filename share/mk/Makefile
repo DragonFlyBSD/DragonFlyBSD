@@ -15,7 +15,9 @@ FILES+=	bsd.port.options.mk
 FILES+=	bsd.port.post.mk
 FILES+=	bsd.port.pre.mk
 FILES+=	bsd.port.subdir.mk
+FILES+=	bsd.symver.mk
 FILES+=	sys.mk
+FILES+=	version_gen.awk
 NOOBJ=	noobj
 FILESDIR=	${BINDIR}/mk
 
