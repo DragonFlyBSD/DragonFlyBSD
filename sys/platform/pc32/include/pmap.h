@@ -54,9 +54,24 @@
  * Size of Kernel address space.  This is the number of page table pages
  * (4MB each) to use for the kernel.  256 pages == 1 Gigabyte.
  * This **MUST** be a multiple of 4 (eg: 252, 256, 260, etc).
+ *
+ * DEFAULT CHANGED 256->384.  32-bit systems have used 256 (1G KVM, 3G UVM)
+ * for many years, but all recent and continuing kernel development really
+ * assumes that more KVM is available.  In particularly, swapcache can be
+ * very effective on a 32-bit system with 64G or even more swap and 1GB of
+ * KVM just isn't enough to manage it.  Numerous subsystems such as tmpfs
+ * have higher overheads (e.g. when used with pourdriere), vnodes are fatter,
+ * mbufs are bigger and we need more of them, and the list goes on.  Even
+ * PCI space reservations have gone up due to Video subsystems.  On a
+ * freshly booted system well over 512MB of KVM is already reserved before
+ * the machine runs its first user process.
+ *
+ * The new default of 384 gives the kernel 1.5GB of KVM (2.5G UVM) and
+ * relieves the pressure on kernel structures.  This almost doubles the
+ * amount of KVM available to the kernel post-boot.
  */
 #ifndef KVA_PAGES
-#define KVA_PAGES	256
+#define KVA_PAGES	384
 #endif
 
 /*
