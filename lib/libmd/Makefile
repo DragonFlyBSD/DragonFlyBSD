@@ -1,5 +1,4 @@
 # $FreeBSD: src/lib/libmd/Makefile,v 1.42 2005/03/09 19:23:04 cperciva Exp $
-# $DragonFly: src/lib/libmd/Makefile,v 1.6 2008/09/11 20:25:34 swildner Exp $
 
 LIB=	md
 SRCS=	md2c.c md4c.c md5c.c md2hl.c md4hl.c md5hl.c \
@@ -8,6 +7,12 @@ SRCS=	md2c.c md4c.c md5c.c md2hl.c md4hl.c md5hl.c \
 	sha256c.c sha256hl.c sha512c.c sha512hl.c
 INCS=	md2.h md4.h md5.h ripemd.h sha.h sha256.h sha512.h
 WARNS?=	2
+
+.if defined(RELEASE36)
+SHLIB_MAJOR=	4
+VERSION_DEF=	${.CURDIR}/../libc/Versions.def
+SYMBOL_MAPS=	${.CURDIR}/Symbol.map
+.endif
 
 MAN+=	md2.3 md4.3 md5.3 ripemd.3 sha.3 sha256.3 sha384.3 sha512.3
 MLINKS+=md2.3 MD2Init.3 md2.3 MD2Update.3 md2.3 MD2Pad.3 md2.3 MD2Final.3
