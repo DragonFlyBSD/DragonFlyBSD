@@ -260,6 +260,7 @@ proto ##_stats_agg(type *ary, type *ttl, int cpucnt)          \
     }                                                         \
 }
 CPU_STATS_FUNC(ip, struct ip_stats);
+CPU_STATS_FUNC(udp, struct udpstat);
 
 static int
 fetch_ipstats(struct ip_stats *st)
@@ -284,33 +285,38 @@ fetch_ipstats(struct ip_stats *st)
 	return 0;
 }
 
-int
-initip(void)
+static int
+fetch_udpstat(struct udpstat *st)
 {
+	struct udpstat stattmp[SMP_MAXCPU];
 	size_t len;
-	int name[4];
-
-	if (fetch_ipstats(&initstat.i) < 0)
-		return 0;
+	int name[4], cpucnt;
 
 	name[0] = CTL_NET;
 	name[1] = PF_INET;
 	name[2] = IPPROTO_UDP;
 	name[3] = UDPCTL_STATS;
 
-	len = 0;
-	if (sysctl(name, 4, 0, &len, 0, 0) < 0) {
-		error("sysctl getting udpstat size failed");
-		return 0;
-	}
-	if (len > sizeof curstat.u) {
-		error("ip_stats structure has grown--recompile systat!");
-		return 0;
-	}
-	if (sysctl(name, 4, &initstat.u, &len, 0, 0) < 0) {
+	len = sizeof(struct udpstat) * SMP_MAXCPU;
+	if (sysctl(name, 4, stattmp, &len, NULL, 0) < 0) {
 		error("sysctl getting udpstat failed");
-		return 0;
+		return -1;
 	}
+	cpucnt = len / sizeof(struct udpstat);
+	udp_stats_agg(stattmp, st, cpucnt);
+
+	return 0;
+}
+
+int
+initip(void)
+{
+	if (fetch_ipstats(&initstat.i) < 0)
+		return 0;
+
+	if (fetch_udpstat(&initstat.u) < 0)
+		return 0;
+
 	oldstat = initstat;
 	return 1;
 }
@@ -318,40 +324,20 @@ initip(void)
 void
 resetip(void)
 {
-	size_t len;
-	int name[4];
-
 	fetch_ipstats(&initstat.i);
+	fetch_udpstat(&initstat.u);
 
-	name[0] = CTL_NET;
-	name[1] = PF_INET;
-	name[2] = IPPROTO_UDP;
-	name[3] = UDPCTL_STATS;
-
-	len = sizeof initstat.u;
-	if (sysctl(name, 4, &initstat.u, &len, 0, 0) < 0) {
-		error("sysctl getting udpstat failed");
-	}
 	oldstat = initstat;
 }
 
 void
 fetchip(void)
 {
-	int name[4];
-	size_t len;
-
 	oldstat = curstat;
 
 	if (fetch_ipstats(&curstat.i) < 0)
 		return;
 
-	name[0] = CTL_NET;
-	name[1] = PF_INET;
-	name[2] = IPPROTO_UDP;
-	name[3] = UDPCTL_STATS;
-	len = sizeof curstat.u;
-
-	if (sysctl(name, 4, &curstat.u, &len, 0, 0) < 0)
+	if (fetch_udpstat(&curstat.u) < 0)
 		return;
 }
