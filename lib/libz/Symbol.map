@@ -1,4 +1,4 @@
-DF306.0 {
+ZLIB_1.2.8 {
     adler32;
     adler32_combine;
     adler32_combine64;
@@ -76,12 +76,19 @@ DF306.0 {
     zError;
     zlibCompileFlags;
     zlibversion;
+};
+
+DF306.0 {
     zopen;
 };
 
-/*
- *  local symbols don't need to be listed
- *
+ZLIBprivate_1.0 {
+    _tr_align;
+    _tr_flush_bits;
+    _tr_flush_block;
+    _tr_init;
+    _tr_stored_block;
+    _tr_tally;
     deflate_copyright;
     inflate_copyright;
     inflate_fast;
@@ -91,4 +98,4 @@ DF306.0 {
     z_errmsg;
     gz_error;
     gz_intmax;
-*/
+};
