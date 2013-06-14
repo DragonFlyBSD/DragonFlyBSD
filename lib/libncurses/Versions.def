@@ -1,0 +1,5 @@
+NCURSES_5.9 {
+};
+
+NCURSESprivate_1.0 {
+} NCURSES_5.9;

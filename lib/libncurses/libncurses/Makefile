@@ -41,8 +41,8 @@ parametrized.h:
 init_keytry.h: make_keys keys.list
 	./make_keys keys.list > $@
 
-make_keys: ${NCURSESTINFODIR}/make_keys.c names.c ncurses_def.h
-	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${NCURSESTINFODIR}/make_keys.c ${NXLDLIBS} -o ${.TARGET}
+make_keys: ${NCURSESTINFODIR}/make_keys.c names.c ncurses_def.h ${VERSION_MAP}
+	${NXCC} ${NXCFLAGS} -static ${NCURSESTINFODIR}/make_keys.c ${NXLDLIBS} -o ${.TARGET}
 
 keys.list:
 	sh ${NCURSESTINFODIR}/MKkeys_list.sh ${TERMINFO_CAPS} | sort > $@
@@ -57,7 +57,7 @@ comp_captab.c: make_hash
 	sh -e ${NCURSESTINFODIR}/MKcaptab.sh awk 0 ${NCURSESTINFODIR}/MKcaptab.awk ${TERMINFO_CAPS} > $@
 
 make_hash: ${NCURSESTINFODIR}/make_hash.c
-	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -DMAIN_PROGRAM ${NXLDLIBS} -o ${.TARGET} ${NCURSESTINFODIR}/make_hash.c
+	${NXCC} ${NXCFLAGS} -static -DMAIN_PROGRAM ${NXLDLIBS} -o ${.TARGET} ${NCURSESTINFODIR}/make_hash.c
 
 make_hash: hashsize.h ncurses_def.h curses.h
 

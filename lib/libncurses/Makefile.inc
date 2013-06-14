@@ -21,4 +21,10 @@ CFLAGS+=	-I${.OBJDIR}
 
 SHLIB_MAJOR=	6
 
+.if defined(RELEASE36)
+SHLIB_MAJOR=	7
+VERSION_DEF=	${.CURDIR}/../Versions.def
+SYMBOL_MAPS=	${.CURDIR}/../lib${LIB:S|w||}/Symbol.map
+.endif
+
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
