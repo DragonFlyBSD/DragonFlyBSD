@@ -1669,6 +1669,20 @@ retry_lookup:
 			/*
 			 * Ensure that our page is still around when the I/O 
 			 * completes.
+			 *
+			 * Ensure that our page is not modified while part of
+			 * a mbuf as this could mess up tcp checksums, DMA,
+			 * etc (XXX NEEDS WORK).  The softbusy is supposed to
+			 * help here but it actually doesn't.
+			 *
+			 * XXX THIS HAS MULTIPLE PROBLEMS.  The underlying
+			 *     VM pages are not protected by the soft-busy
+			 *     unless we vm_page_protect... READ them, and
+			 *     they STILL aren't protected against
+			 *     modification via the buffer cache (VOP_WRITE).
+			 *
+			 *     Fixing the second issue is particularly
+			 *     difficult.
 			 */
 			vm_page_io_start(pg);
 			vm_page_wakeup(pg);
