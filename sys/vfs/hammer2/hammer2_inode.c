@@ -229,7 +229,6 @@ hammer2_inode_ref(hammer2_inode_t *ip)
 void
 hammer2_inode_drop(hammer2_inode_t *ip)
 {
-	hammer2_mount_t *hmp;
 	hammer2_pfsmount_t *pmp;
 	hammer2_inode_t *pip;
 	u_int refs;
@@ -259,8 +258,6 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				if (pmp)
 					spin_unlock(&pmp->inum_spin);
 
-				hmp = ip->hmp;
-				ip->hmp = NULL;
 				pip = ip->pip;
 				ip->pip = NULL;
 				ip->pmp = NULL;
@@ -283,7 +280,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				} else {
 					KKASSERT(ip->flags &
 						 HAMMER2_INODE_SROOT);
-					kfree(ip, hmp->mchain);
+					kfree(ip, M_HAMMER2);
 				}
 				ip = pip;
 				/* continue with pip (can be NULL) */
@@ -447,8 +444,8 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
  *	     is allowed to pass pmp == NULL and dip == NULL for sroot.
  */
 hammer2_inode_t *
-hammer2_inode_get(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
-		  hammer2_inode_t *dip, hammer2_chain_t *chain)
+hammer2_inode_get(hammer2_pfsmount_t *pmp, hammer2_inode_t *dip,
+		  hammer2_chain_t *chain)
 {
 	hammer2_inode_t *nip;
 
@@ -486,7 +483,7 @@ again:
 	if (pmp) {
 		nip = kmalloc(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
 	} else {
-		nip = kmalloc(sizeof(*nip), hmp->mchain, M_WAITOK | M_ZERO);
+		nip = kmalloc(sizeof(*nip), M_HAMMER2, M_WAITOK | M_ZERO);
 		nip->flags = HAMMER2_INODE_SROOT;
 	}
 	nip->inum = chain->data->ipdata.inum;
@@ -496,7 +493,6 @@ again:
 		hammer2_inode_ref(dip);	/* ref dip for nip->pip */
 
 	nip->pmp = pmp;
-	nip->hmp = hmp;
 
 	/*
 	 * ref and lock on nip gives it state compatible to after a
@@ -547,7 +543,6 @@ hammer2_inode_create(hammer2_trans_t *trans, hammer2_inode_t *dip,
 {
 	hammer2_inode_data_t *dipdata;
 	hammer2_inode_data_t *nipdata;
-	hammer2_mount_t *hmp;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
 	hammer2_inode_t *nip;
@@ -558,7 +553,6 @@ hammer2_inode_create(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	uuid_t dip_gid;
 	uint32_t dip_mode;
 
-	hmp = dip->hmp;
 	lhc = hammer2_dirhash(name, name_len);
 	*errorp = 0;
 
@@ -624,7 +618,7 @@ retry:
 	 *	 hammer2_trans_init() to allow more.
 	 */
 	chain->data->ipdata.inum = trans->sync_tid;
-	nip = hammer2_inode_get(dip->hmp, dip->pmp, dip, chain);
+	nip = hammer2_inode_get(dip->pmp, dip, chain);
 	nipdata = &chain->data->ipdata;
 
 	if (vap) {
@@ -732,7 +726,6 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_chain_t **ochainp,
 			hammer2_inode_t *dip, int *errorp)
 {
 	hammer2_inode_data_t *nipdata;
-	hammer2_mount_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *nchain;
@@ -742,7 +735,6 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_chain_t **ochainp,
 
 	ochain = *ochainp;
 	*errorp = 0;
-	hmp = dip->hmp;
 	lhc = ochain->data->ipdata.inum;
 	KKASSERT((lhc & HAMMER2_DIRHASH_VISIBLE) == 0);
 
@@ -857,14 +849,11 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 		      const uint8_t *name, size_t name_len)
 {
 	hammer2_inode_data_t *ipdata;
-	hammer2_mount_t *hmp;
 	hammer2_chain_t *nchain;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *ochain;
 	hammer2_key_t lhc;
 	int error;
-
-	hmp = dip->hmp;
 
 	ochain = *chainp;
 
@@ -1074,7 +1063,6 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		    int isdir, int *hlinkp)
 {
 	hammer2_inode_data_t *ipdata;
-	hammer2_mount_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *chain;
@@ -1086,7 +1074,6 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 
 	error = 0;
 	ochain = NULL;
-	hmp = dip->hmp;
 	lhc = hammer2_dirhash(name, name_len);
 
 	/*
@@ -1246,14 +1233,11 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			     hammer2_inode_t *tdip, int nlinks)
 {
 	hammer2_inode_data_t *ipdata;
-	hammer2_mount_t *hmp;
 	hammer2_inode_t *fdip;
 	hammer2_inode_t *cdip;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *nchain;
 	int error;
-
-	hmp = tdip->hmp;
 
 	chain = *chainp;
 	if (nlinks == 0 &&			/* no hardlink needed */

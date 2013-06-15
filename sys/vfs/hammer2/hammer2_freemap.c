@@ -48,10 +48,11 @@
 static int hammer2_freemap_try_alloc(hammer2_trans_t *trans,
 			hammer2_chain_t **parentp, hammer2_blockref_t *bref,
 			int radix, hammer2_off_t bpref, hammer2_off_t *bnext);
-static void hammer2_freemap_init(hammer2_trans_t *trans, hammer2_key_t key,
-		     hammer2_chain_t *chain);
-static int hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_bmap_data_t *bmap,
-		   int n, int radix, hammer2_key_t *basep);
+static void hammer2_freemap_init(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+			hammer2_key_t key, hammer2_chain_t *chain);
+static int hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+			hammer2_bmap_data_t *bmap,
+			int n, int radix, hammer2_key_t *basep);
 static int hammer2_freemap_iterate(hammer2_trans_t *trans,
 			hammer2_chain_t **parentp, hammer2_chain_t **chainp,
 			hammer2_off_t bpref, hammer2_off_t *bnextp);
@@ -169,10 +170,9 @@ hammer2_freemap_reserve(hammer2_mount_t *hmp, hammer2_blockref_t *bref,
  * reference.  bref->key may also be used heuristically.
  */
 int
-hammer2_freemap_alloc(hammer2_trans_t *trans,
+hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 		      hammer2_blockref_t *bref, size_t bytes)
 {
-	hammer2_mount_t *hmp = trans->hmp;
 	hammer2_chain_t *parent;
 	hammer2_off_t bpref;
 	hammer2_off_t bnext;
@@ -258,7 +258,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			  hammer2_blockref_t *bref, int radix,
 			  hammer2_off_t bpref, hammer2_off_t *bnextp)
 {
-	hammer2_mount_t *hmp = trans->hmp;
+	hammer2_mount_t *hmp = (*parentp)->hmp;
 	hammer2_off_t l0size;
 	hammer2_off_t l1size;
 	hammer2_off_t l1mask;
@@ -314,7 +314,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			chain->bref.check.freemap.avail = l1size;
 			/* bref.methods should already be inherited */
 
-			hammer2_freemap_init(trans, key, chain);
+			hammer2_freemap_init(trans, hmp, key, chain);
 		}
 	} else if ((chain->bref.check.freemap.bigmask & (1 << radix)) == 0) {
 		/*
@@ -353,7 +353,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			if (n < HAMMER2_FREEMAP_COUNT && bmap->avail &&
 			    (bmap->radix == 0 || bmap->radix == radix)) {
 				base_key = key + n * l0size;
-				error = hammer2_bmap_alloc(trans, bmap, n,
+				error = hammer2_bmap_alloc(trans, hmp, bmap, n,
 							   radix, &base_key);
 				if (error != ENOSPC) {
 					key = base_key;
@@ -365,7 +365,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			if (n >= 0 && bmap->avail &&
 			    (bmap->radix == 0 || bmap->radix == radix)) {
 				base_key = key + n * l0size;
-				error = hammer2_bmap_alloc(trans, bmap, n,
+				error = hammer2_bmap_alloc(trans, hmp, bmap, n,
 							   radix, &base_key);
 				if (error != ENOSPC) {
 					key = base_key;
@@ -425,7 +425,8 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
  */
 static
 int
-hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_bmap_data_t *bmap,
+hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+		   hammer2_bmap_data_t *bmap,
 		   int n, int radix, hammer2_key_t *basep)
 {
 	struct buf *bp;
@@ -504,7 +505,7 @@ success:
 	 */
 	if (radix < HAMMER2_MINIORADIX &&
 	    (bmap->bitmap[i] & bmmask) == 0) {
-		bp = getblk(trans->hmp->devvp, *basep + offset,
+		bp = getblk(hmp->devvp, *basep + offset,
 			    HAMMER2_MINIOSIZE, GETBLK_NOWAIT, 0);
 		if (bp) {
 			if ((bp->b_flags & B_CACHE) == 0)
@@ -549,8 +550,8 @@ success:
 
 static
 void
-hammer2_freemap_init(hammer2_trans_t *trans, hammer2_key_t key,
-		     hammer2_chain_t *chain)
+hammer2_freemap_init(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+		     hammer2_key_t key, hammer2_chain_t *chain)
 {
 	hammer2_off_t l1size;
 	hammer2_off_t lokey;
@@ -578,7 +579,7 @@ hammer2_freemap_init(hammer2_trans_t *trans, hammer2_key_t key,
 	 * WARNING! It is possible for lokey to be larger than hikey if the
 	 *	    entire 2GB segment is within the static allocation.
 	 */
-	lokey = (trans->hmp->voldata.allocator_beg + HAMMER2_SEGMASK64) &
+	lokey = (hmp->voldata.allocator_beg + HAMMER2_SEGMASK64) &
 		~HAMMER2_SEGMASK64;
 
 	if (lokey < H2FMBASE(key, HAMMER2_FREEMAP_LEVEL1_RADIX) +
@@ -588,8 +589,8 @@ hammer2_freemap_init(hammer2_trans_t *trans, hammer2_key_t key,
 	}
 
 	hikey = key + H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
-	if (hikey > trans->hmp->voldata.volu_size) {
-		hikey = trans->hmp->voldata.volu_size & ~HAMMER2_SEGMASK64;
+	if (hikey > hmp->voldata.volu_size) {
+		hikey = hmp->voldata.volu_size & ~HAMMER2_SEGMASK64;
 	}
 
 	chain->bref.check.freemap.avail =
@@ -623,9 +624,11 @@ hammer2_freemap_iterate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			hammer2_chain_t **chainp,
 			hammer2_off_t bpref, hammer2_off_t *bnextp)
 {
+	hammer2_mount_t *hmp = (*parentp)->hmp;
+
 	*bnextp &= ~(H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX) - 1);
 	*bnextp += H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
-	if (*bnextp >= trans->hmp->voldata.volu_size)
+	if (*bnextp >= hmp->voldata.volu_size)
 		return (ENOSPC);
 	return(EAGAIN);
 }

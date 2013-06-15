@@ -377,6 +377,13 @@ ccms_thread_unlock(ccms_cst_t *cst)
 	}
 }
 
+void
+ccms_thread_lock_setown(ccms_cst_t *cst)
+{
+	KKASSERT(cst->count < 0);
+	cst->td = curthread;
+}
+
 /*
  * Release a previously upgraded local thread lock
  */

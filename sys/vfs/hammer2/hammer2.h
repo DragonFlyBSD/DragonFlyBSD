@@ -295,7 +295,6 @@ RB_HEAD(hammer2_inode_tree, hammer2_inode);
 struct hammer2_inode {
 	RB_ENTRY(hammer2_inode) rbnode;		/* inumber lookup (HL) */
 	ccms_cst_t		topo_cst;	/* directory topology cst */
-	struct hammer2_mount	*hmp;		/* Global mount */
 	struct hammer2_pfsmount	*pmp;		/* PFS mount */
 	struct hammer2_inode	*pip;		/* parent inode */
 	struct vnode		*vp;
@@ -361,13 +360,11 @@ RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
  */
 struct hammer2_trans {
 	TAILQ_ENTRY(hammer2_trans) entry;
-	struct hammer2_mount	*hmp;
+	struct hammer2_pfsmount *pmp;
 	hammer2_tid_t		sync_tid;
 	thread_t		td;		/* pointer */
 	int			flags;
 	int			blocked;
-	struct hammer2_inode	*tmp_ip;	/* heuristics only */
-	hammer2_off_t		tmp_bpref;	/* heuristics only */
 	uint8_t			inodes_created;
 	uint8_t			dummy[7];
 };
@@ -424,6 +421,18 @@ struct hammer2_mount {
 typedef struct hammer2_mount hammer2_mount_t;
 
 /*
+ * HAMMER2 cluster - a device/root associated with a PFS.
+ *
+ * A PFS may have several hammer2_cluster's associated with it.
+ */
+struct hammer2_cluster {
+	struct hammer2_mount	*hmp;		/* device global mount */
+	hammer2_chain_t 	*rchain;	/* PFS root chain */
+};
+
+typedef struct hammer2_cluster hammer2_cluster_t;
+
+/*
  * HAMMER2 PFS mount point structure (aka vp->v_mount->mnt_data).
  *
  * This structure represents a cluster mount and not necessarily a
@@ -432,8 +441,8 @@ typedef struct hammer2_mount hammer2_mount_t;
  */
 struct hammer2_pfsmount {
 	struct mount		*mp;		/* kernel mount */
-	struct hammer2_mount	*hmp;		/* device global mount */
-	hammer2_chain_t 	*rchain;	/* PFS root chain */
+	hammer2_cluster_t	*mount_cluster;
+	hammer2_cluster_t	*cluster;
 	hammer2_inode_t		*iroot;		/* PFS root inode */
 	hammer2_off_t		inode_count;	/* copy of inode_count */
 	ccms_domain_t		ccms_dom;
@@ -447,6 +456,15 @@ struct hammer2_pfsmount {
 };
 
 typedef struct hammer2_pfsmount hammer2_pfsmount_t;
+
+struct hammer2_cbinfo {
+	hammer2_chain_t	*chain;
+	void (*func)(hammer2_chain_t *, struct buf *, char *, void *);
+	void *arg;
+	size_t boff;
+};
+
+typedef struct hammer2_cbinfo hammer2_cbinfo_t;
 
 #if defined(_KERNEL)
 
@@ -472,10 +490,13 @@ static __inline
 size_t
 hammer2_devblksize(size_t bytes)
 {
-	if (bytes <= HAMMER2_LBUFSIZE)
+	if (bytes <= HAMMER2_LBUFSIZE) {
 		return(HAMMER2_LBUFSIZE);
-	else
-		return(HAMMER2_PBUFSIZE);
+	} else {
+		KKASSERT(bytes <= HAMMER2_PBUFSIZE &&
+			 (bytes ^ (bytes - 1)) == ((bytes << 1) - 1));
+		return(bytes);
+	}
 }
 
 
@@ -490,7 +511,7 @@ static __inline
 hammer2_mount_t *
 MPTOHMP(struct mount *mp)
 {
-	return (((hammer2_pfsmount_t *)mp->mnt_data)->hmp);
+	return (((hammer2_pfsmount_t *)mp->mnt_data)->cluster->hmp);
 }
 
 static __inline
@@ -586,9 +607,8 @@ void hammer2_inode_lock_nlinks(hammer2_inode_t *ip);
 void hammer2_inode_unlock_nlinks(hammer2_inode_t *ip);
 hammer2_inode_t *hammer2_inode_lookup(hammer2_pfsmount_t *pmp,
 			hammer2_tid_t inum);
-hammer2_inode_t *hammer2_inode_get(hammer2_mount_t *hmp,
-			hammer2_pfsmount_t *pmp, hammer2_inode_t *dip,
-			hammer2_chain_t *chain);
+hammer2_inode_t *hammer2_inode_get(hammer2_pfsmount_t *pmp,
+			hammer2_inode_t *dip, hammer2_chain_t *chain);
 void hammer2_inode_free(hammer2_inode_t *ip);
 void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
@@ -629,6 +649,10 @@ void hammer2_chain_core_alloc(hammer2_chain_t *chain,
 void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_chain_t *chain, int how);
+void hammer2_chain_load_async(hammer2_chain_t *chain,
+				void (*func)(hammer2_chain_t *, struct buf *,
+					     char *, void *),
+				void *arg);
 void hammer2_chain_moved(hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_trans_t *trans,
 				hammer2_chain_t **chainp, int flags);
@@ -675,8 +699,8 @@ void hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain);
 /*
  * hammer2_trans.c
  */
-void hammer2_trans_init(hammer2_trans_t *trans, hammer2_mount_t *hmp,
-			hammer2_inode_t *ip, int flags);
+void hammer2_trans_init(hammer2_trans_t *trans,
+			hammer2_pfsmount_t *pmp, int flags);
 void hammer2_trans_done(hammer2_trans_t *trans);
 
 /*
@@ -702,7 +726,7 @@ void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp);
 /*
  * hammer2_freemap.c
  */
-int hammer2_freemap_alloc(hammer2_trans_t *trans,
+int hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 				hammer2_blockref_t *bref, size_t bytes);
 void hammer2_freemap_free(hammer2_mount_t *hmp, hammer2_off_t data_off,
 				int type);

@@ -251,7 +251,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	char *dev;
 	char *label;
 	int ronly = 1;
-	int create_hmp;
 	int error;
 
 	hmp = NULL;
@@ -332,12 +331,10 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 
 	/*
-	 * Open the device if this isn't a secondary mount
+	 * Open the device if this isn't a secondary mount and construct
+	 * the H2 device mount (hmp).
 	 */
-	if (hmp) {
-		create_hmp = 0;
-	} else {
-		create_hmp = 1;
+	if (hmp == NULL) {
 		if (error == 0 && vcount(devvp) > 0)
 			error = EBUSY;
 
@@ -363,49 +360,12 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			lockmgr(&hammer2_mntlk, LK_RELEASE);
 			return error;
 		}
-	}
-
-	/*
-	 * Block device opened successfully, finish initializing the
-	 * mount structure.
-	 *
-	 * From this point on we have to call hammer2_unmount() on failure.
-	 */
-	pmp = kmalloc(sizeof(*pmp), M_HAMMER2, M_WAITOK | M_ZERO);
-	kmalloc_create(&pmp->minode, "HAMMER2-inodes");
-	mp->mnt_data = (qaddr_t)pmp;
-	pmp->mp = mp;
-
-	spin_init(&pmp->inum_spin);
-	RB_INIT(&pmp->inum_tree);
-
-	kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
-	kdmsg_iocom_init(&pmp->iocom, pmp,
-			 KDMSG_IOCOMF_AUTOCONN |
-			 KDMSG_IOCOMF_AUTOSPAN |
-			 KDMSG_IOCOMF_AUTOCIRC,
-			 pmp->mmsg, hammer2_rcvdmsg);
-
-	if (create_hmp) {
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
 		hmp->ronly = ronly;
 		hmp->devvp = devvp;
 		kmalloc_create(&hmp->mchain, "HAMMER2-chains");
 		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
-	}
-	ccms_domain_init(&pmp->ccms_dom);
-	pmp->hmp = hmp;
-	++hmp->pmp_count;
-	lockmgr(&hammer2_mntlk, LK_RELEASE);
-	kprintf("hammer2_mount hmp=%p pmpcnt=%d\n", hmp, hmp->pmp_count);
-	
-	mp->mnt_flag = MNT_LOCAL;
-	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;	/* all entry pts are SMP */
 
-	if (create_hmp) {
-		/*
-		 * Presetup
-		 */
 		lockinit(&hmp->alloclk, "h2alloc", 0, 0);
 		lockinit(&hmp->voldatalk, "voldata", 0, LK_CANRECURSE);
 		TAILQ_INIT(&hmp->transq);
@@ -454,7 +414,62 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return error;
 		}
+
+		/*
+		 * First locate the super-root inode, which is key 0
+		 * relative to the volume header's blockset.
+		 *
+		 * Then locate the root inode by scanning the directory keyspace
+		 * represented by the label.
+		 */
+		parent = hammer2_chain_lookup_init(&hmp->vchain, 0);
+		schain = hammer2_chain_lookup(&parent,
+				      HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY, 0);
+		hammer2_chain_lookup_done(parent);
+		if (schain == NULL) {
+			kprintf("hammer2_mount: invalid super-root\n");
+			hammer2_vfs_unmount(mp, MNT_FORCE);
+			return EINVAL;
+		}
+		hammer2_chain_ref(schain);	/* for hmp->schain */
+		hmp->schain = schain;		/* left locked for inode_get */
+		hmp->sroot = hammer2_inode_get(NULL, NULL, schain);
+		hammer2_inode_ref(hmp->sroot);	/* for hmp->sroot */
+		hammer2_inode_unlock_ex(hmp->sroot, schain);
+		schain = NULL;
 	}
+
+	/*
+	 * Block device opened successfully, finish initializing the
+	 * mount structure.
+	 *
+	 * From this point on we have to call hammer2_unmount() on failure.
+	 */
+	pmp = kmalloc(sizeof(*pmp), M_HAMMER2, M_WAITOK | M_ZERO);
+	pmp->mount_cluster = kmalloc(sizeof(hammer2_cluster_t), M_HAMMER2,
+				     M_WAITOK | M_ZERO);
+	pmp->cluster = pmp->mount_cluster;
+
+	kmalloc_create(&pmp->minode, "HAMMER2-inodes");
+	kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
+
+	pmp->mount_cluster->hmp = hmp;
+	spin_init(&pmp->inum_spin);
+	RB_INIT(&pmp->inum_tree);
+
+	kdmsg_iocom_init(&pmp->iocom, pmp,
+			 KDMSG_IOCOMF_AUTOCONN |
+			 KDMSG_IOCOMF_AUTOSPAN |
+			 KDMSG_IOCOMF_AUTOCIRC,
+			 pmp->mmsg, hammer2_rcvdmsg);
+
+	ccms_domain_init(&pmp->ccms_dom);
+	++hmp->pmp_count;
+	lockmgr(&hammer2_mntlk, LK_RELEASE);
+	kprintf("hammer2_mount hmp=%p pmpcnt=%d\n", hmp, hmp->pmp_count);
+
+	mp->mnt_flag = MNT_LOCAL;
+	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;	/* all entry pts are SMP */
 
 	/*
 	 * required mount structure initializations
@@ -469,38 +484,14 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * Optional fields
 	 */
 	mp->mnt_iosize_max = MAXPHYS;
-
-	/*
-	 * First locate the super-root inode, which is key 0 relative to the
-	 * volume header's blockset.
-	 *
-	 * Then locate the root inode by scanning the directory keyspace
-	 * represented by the label.
-	 */
-	if (create_hmp) {
-		parent = hammer2_chain_lookup_init(&hmp->vchain, 0);
-		schain = hammer2_chain_lookup(&parent,
-				      HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY, 0);
-		hammer2_chain_lookup_done(parent);
-		if (schain == NULL) {
-			kprintf("hammer2_mount: invalid super-root\n");
-			hammer2_vfs_unmount(mp, MNT_FORCE);
-			return EINVAL;
-		}
-		hammer2_chain_ref(schain);	/* for hmp->schain */
-		hmp->schain = schain;		/* left locked for inode_get */
-		hmp->sroot = hammer2_inode_get(hmp, NULL, NULL, schain);
-		hammer2_inode_ref(hmp->sroot);	     /* for hmp->sroot */
-		hammer2_inode_unlock_ex(hmp->sroot, schain);
-	} else {
-		schain = hmp->schain;
-	}
+	mp->mnt_data = (qaddr_t)pmp;
+	pmp->mp = mp;
 
 	/*
 	 * schain only has 1 ref now for its hmp->schain assignment.
 	 * Setup for lookup (which will lock it).
 	 */
-	parent = hammer2_chain_lookup_init(schain, 0);
+	parent = hammer2_chain_lookup_init(hmp->schain, 0);
 	lhc = hammer2_dirhash(label, strlen(label));
 	rchain = hammer2_chain_lookup(&parent,
 				      lhc, lhc + HAMMER2_DIRHASH_LOMASK,
@@ -538,8 +529,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * NOTE: *_get() integrates chain's lock into the inode lock.
 	 */
 	hammer2_chain_ref(rchain);		/* for pmp->rchain */
-	pmp->rchain = rchain;			/* left held & unlocked */
-	pmp->iroot = hammer2_inode_get(hmp, pmp, NULL, rchain);
+	pmp->mount_cluster->rchain = rchain;	/* left held & unlocked */
+	pmp->iroot = hammer2_inode_get(pmp, NULL, rchain);
 	hammer2_inode_ref(pmp->iroot);		/* ref for pmp->iroot */
 	hammer2_inode_unlock_ex(pmp->iroot, rchain);
 
@@ -594,6 +585,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 {
 	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
+	hammer2_cluster_t *cluster;
 	int flags;
 	int error = 0;
 	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
@@ -601,7 +593,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	struct vnode *devvp;
 
 	pmp = MPTOPMP(mp);
-	hmp = pmp->hmp;
+	cluster = pmp->mount_cluster;
+	hmp = cluster->hmp;
 	flags = 0;
 
 	if (mntflags & MNT_FORCE)
@@ -662,17 +655,18 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		hammer2_inode_drop(pmp->iroot);	    /* ref for pmp->iroot */
 		pmp->iroot = NULL;
 	}
-	if (pmp->rchain) {
-		atomic_clear_int(&pmp->rchain->flags, HAMMER2_CHAIN_MOUNTED);
+	if (cluster->rchain) {
+		atomic_clear_int(&cluster->rchain->flags,
+				 HAMMER2_CHAIN_MOUNTED);
 #if REPORT_REFS_ERRORS
-		if (pmp->rchain->refs != 1)
+		if (cluster->rchain->refs != 1)
 			kprintf("PMP->RCHAIN %p REFS WRONG %d\n",
-				pmp->rchain, pmp->rchain->refs);
+				cluster->rchain, cluster->rchain->refs);
 #else
-		KKASSERT(pmp->rchain->refs == 1);
+		KKASSERT(cluster->rchain->refs == 1);
 #endif
-		hammer2_chain_drop(pmp->rchain);
-		pmp->rchain = NULL;
+		hammer2_chain_drop(cluster->rchain);
+		cluster->rchain = NULL;
 	}
 	ccms_domain_uninit(&pmp->ccms_dom);
 
@@ -733,12 +727,17 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	}
 
 	pmp->mp = NULL;
-	pmp->hmp = NULL;
 	mp->mnt_data = NULL;
+
+	pmp->mount_cluster = NULL;
+	pmp->cluster = NULL;		/* XXX */
 
 	kmalloc_destroy(&pmp->mmsg);
 	kmalloc_destroy(&pmp->minode);
 
+	cluster->hmp = NULL;
+
+	kfree(cluster, M_HAMMER2);
 	kfree(pmp, M_HAMMER2);
 	if (hmp->pmp_count == 0) {
 		TAILQ_REMOVE(&hammer2_mntlist, hmp, mntentry);
@@ -746,6 +745,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		kfree(hmp, M_HAMMER2);
 	}
 	lockmgr(&hammer2_mntlk, LK_RELEASE);
+
 	return (error);
 }
 
@@ -763,14 +763,11 @@ int
 hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 {
 	hammer2_pfsmount_t *pmp;
-	hammer2_mount_t *hmp;
 	hammer2_chain_t *parent;
 	int error;
 	struct vnode *vp;
 
 	pmp = MPTOPMP(mp);
-	hmp = pmp->hmp;
-	hammer2_mount_exlock(hmp);
 	if (pmp->iroot == NULL) {
 		*vpp = NULL;
 		error = EINVAL;
@@ -782,7 +779,6 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 		if (vp == NULL)
 			kprintf("vnodefail\n");
 	}
-	hammer2_mount_unlock(hmp);
 
 	return (error);
 }
@@ -856,27 +852,20 @@ int
 hammer2_vfs_sync(struct mount *mp, int waitfor)
 {
 	struct hammer2_sync_info info;
+	hammer2_pfsmount_t *pmp;
+	hammer2_cluster_t *cluster;
 	hammer2_mount_t *hmp;
 	int flags;
 	int error;
 	int i;
-#if 0
-	int dumpcnt;
-#endif
 
-	hmp = MPTOHMP(mp);
-#if 0
-	if ((waitfor & MNT_LAZY) == 0) {
-		dumpcnt = 50;
-		hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt);
-	}
-#endif
+	pmp = MPTOPMP(mp);
 
 	flags = VMSC_GETVP;
 	if (waitfor & MNT_LAZY)
 		flags |= VMSC_ONEPASS;
 
-	hammer2_trans_init(&info.trans, hmp, NULL, HAMMER2_TRANS_ISFLUSH);
+	hammer2_trans_init(&info.trans, pmp, HAMMER2_TRANS_ISFLUSH);
 
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
@@ -897,6 +886,10 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		/* XXX */
 	}
 #endif
+
+	cluster = pmp->cluster;
+	hmp = cluster->hmp;
+
 	hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
 				  HAMMER2_CHAIN_SUBMODIFIED)) {
@@ -1166,7 +1159,10 @@ hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 {
 	hammer2_inode_data_t *ipdata;
 	hammer2_chain_t *parent;
+	hammer2_mount_t *hmp;
 	size_t name_len;
+
+	hmp = pmp->mount_cluster->hmp;
 
 	/*
 	 * Closes old comm descriptor, kills threads, cleans up
@@ -1184,7 +1180,7 @@ hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 	pmp->iocom.auto_lnk_conn.pfs_fsid = ipdata->pfs_fsid;
 	pmp->iocom.auto_lnk_conn.pfs_type = ipdata->pfs_type;
 	pmp->iocom.auto_lnk_conn.proto_version = DMSG_SPAN_PROTO_1;
-	pmp->iocom.auto_lnk_conn.peer_type = pmp->hmp->voldata.peer_type;
+	pmp->iocom.auto_lnk_conn.peer_type = hmp->voldata.peer_type;
 
 	/*
 	 * Filter adjustment.  Clients do not need visibility into other
@@ -1216,7 +1212,7 @@ hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 	pmp->iocom.auto_lnk_span.pfs_clid = ipdata->pfs_clid;
 	pmp->iocom.auto_lnk_span.pfs_fsid = ipdata->pfs_fsid;
 	pmp->iocom.auto_lnk_span.pfs_type = ipdata->pfs_type;
-	pmp->iocom.auto_lnk_span.peer_type = pmp->hmp->voldata.peer_type;
+	pmp->iocom.auto_lnk_span.peer_type = hmp->voldata.peer_type;
 	pmp->iocom.auto_lnk_span.proto_version = DMSG_SPAN_PROTO_1;
 	name_len = ipdata->name_len;
 	if (name_len >= sizeof(pmp->iocom.auto_lnk_span.fs_label))
@@ -1279,7 +1275,7 @@ static void
 hammer2_autodmsg(kdmsg_msg_t *msg)
 {
 	hammer2_pfsmount_t *pmp = msg->iocom->handle;
-	hammer2_mount_t *hmp = pmp->hmp;
+	hammer2_mount_t *hmp = pmp->mount_cluster->hmp;
 	int copyid;
 
 	/*
@@ -1322,7 +1318,7 @@ hammer2_autodmsg(kdmsg_msg_t *msg)
 void
 hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
 {
-	hammer2_mount_t *hmp = pmp->hmp;
+	hammer2_mount_t *hmp = pmp->mount_cluster->hmp;
 	kdmsg_msg_t *msg;
 
 	/* XXX interlock against connection state termination */

@@ -403,7 +403,8 @@ typedef struct dmsg_lnk_conn dmsg_lnk_conn_t;
 #define DMSG_PFSTYPE_SOFT_MASTER 7
 #define DMSG_PFSTYPE_MASTER	8
 #define DMSG_PFSTYPE_SERVER	9
-#define DMSG_PFSTYPE_MAX	10	/* 0-9 */
+#define DMSG_PFSTYPE_SNAPSHOT	10
+#define DMSG_PFSTYPE_MAX	11	/* 0-10 */
 
 #define DMSG_PEER_NONE		0
 #define DMSG_PEER_CLUSTER	1	/* a cluster controller */

@@ -243,6 +243,7 @@ void ccms_thread_unlock(ccms_cst_t *cst);
 void ccms_thread_unlock_upgraded(ccms_cst_t *cst, ccms_state_t ostate);
 /*int ccms_thread_unlock_zero(ccms_cst_t *cst);*/
 int ccms_thread_lock_owned(ccms_cst_t *cst);
+void ccms_thread_lock_setown(ccms_cst_t *cst);
 
 void ccms_lock_get(ccms_lock_t *lock);
 void ccms_lock_put(ccms_lock_t *lock);

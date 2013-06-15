@@ -50,7 +50,6 @@
  * processes.
  */
 struct hammer2_flush_info {
-	hammer2_mount_t	*hmp;
 	hammer2_chain_t *parent;
 	hammer2_trans_t	*trans;
 	int		depth;
@@ -111,20 +110,21 @@ hammer2_updatestats(hammer2_flush_info_t *info, hammer2_blockref_t *bref,
  *	    collisions (which key off of delete_tid).
  */
 void
-hammer2_trans_init(hammer2_trans_t *trans, hammer2_mount_t *hmp,
-		   hammer2_inode_t *ip, int flags)
+hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp, int flags)
 {
+	hammer2_cluster_t *cluster;
+	hammer2_mount_t *hmp;
 	hammer2_trans_t *scan;
 
 	bzero(trans, sizeof(*trans));
-	trans->hmp = hmp;
+	trans->pmp = pmp;
+	cluster = pmp->cluster;
+	hmp = cluster->hmp;
 
 	hammer2_voldata_lock(hmp);
 	trans->sync_tid = hmp->voldata.alloc_tid++;
 	trans->flags = flags;
 	trans->td = curthread;
-	trans->tmp_ip = ip;
-	trans->tmp_bpref = 0;
 	TAILQ_INSERT_TAIL(&hmp->transq, trans, entry);
 
 	if (flags & HAMMER2_TRANS_ISFLUSH) {
@@ -182,8 +182,12 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 void
 hammer2_trans_done(hammer2_trans_t *trans)
 {
-	hammer2_mount_t *hmp = trans->hmp;
+	hammer2_cluster_t *cluster;
+	hammer2_mount_t *hmp;
 	hammer2_trans_t *scan;
+
+	cluster = trans->pmp->cluster;
+	hmp = cluster->hmp;
 
 	hammer2_voldata_lock(hmp);
 	TAILQ_REMOVE(&hmp->transq, trans, entry);
@@ -230,8 +234,6 @@ hammer2_trans_done(hammer2_trans_t *trans)
 		}
 	}
 	hammer2_voldata_unlock(hmp, 0);
-
-	trans->hmp = NULL;
 }
 
 /*
@@ -277,7 +279,6 @@ hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
 	 */
 	bzero(&info, sizeof(info));
 	TAILQ_INIT(&info.flush_list);
-	info.hmp = trans->hmp;
 	info.trans = trans;
 	info.sync_tid = trans->sync_tid;
 	info.mirror_tid = 0;
@@ -359,7 +360,7 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 	int wasmodified;
 	int diddeferral = 0;
 
-	hmp = info->hmp;
+	hmp = chain->hmp;
 
 #if FLUSH_DEBUG
 	if (info->parent)
@@ -824,7 +825,6 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 	hammer2_flush_info_t *info = data;
 	hammer2_trans_t *trans = info->trans;
 	hammer2_chain_t *parent = info->parent;
-	/*hammer2_mount_t *hmp = info->hmp;*/
 	int diddeferral;
 
 	/*
@@ -951,7 +951,7 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	hammer2_flush_info_t *info = data;
 	hammer2_chain_t *parent = info->parent;
 	hammer2_chain_core_t *above = child->above;
-	hammer2_mount_t *hmp = info->hmp;
+	hammer2_mount_t *hmp = child->hmp;
 	hammer2_trans_t *trans = info->trans;
 	hammer2_blockref_t *base;
 	int count;

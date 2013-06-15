@@ -707,6 +707,127 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 }
 
 /*
+ * Asynchronously read the device buffer (dbp) and execute the specified
+ * callback.  The caller should pass-in a locked chain (shared lock is ok).
+ * The function is responsible for unlocking the chain and for disposing
+ * of dbp.
+ *
+ * NOTE!  A NULL dbp (but non-NULL data) will be passed to the function
+ *	  if the dbp is integrated into the chain, because we do not want
+ *	  the caller to dispose of dbp in that situation.
+ */
+static void hammer2_chain_load_async_callback(struct bio *bio);
+
+void
+hammer2_chain_load_async(hammer2_chain_t *chain,
+	void (*func)(hammer2_chain_t *, struct buf *, char *, void *),
+	void *arg)
+{
+	hammer2_cbinfo_t *cbinfo;
+	hammer2_mount_t *hmp;
+	hammer2_blockref_t *bref;
+	hammer2_off_t pbase;
+	hammer2_off_t pmask;
+	hammer2_off_t peof;
+	struct buf *dbp;
+	size_t boff;
+	size_t psize;
+	char *bdata;
+
+	if (chain->data) {
+		func(chain, NULL, (char *)chain->data, arg);
+		return;
+	}
+
+	/*
+	 * We must resolve to a device buffer, either by issuing I/O or
+	 * by creating a zero-fill element.  We do not mark the buffer
+	 * dirty when creating a zero-fill element (the hammer2_chain_modify()
+	 * API must still be used to do that).
+	 *
+	 * The device buffer is variable-sized in powers of 2 down
+	 * to HAMMER2_MIN_ALLOC (typically 1K).  A 64K physical storage
+	 * chunk always contains buffers of the same size. (XXX)
+	 *
+	 * The minimum physical IO size may be larger than the variable
+	 * block size.
+	 */
+	bref = &chain->bref;
+
+	psize = hammer2_devblksize(chain->bytes);
+	pmask = (hammer2_off_t)psize - 1;
+	pbase = bref->data_off & ~pmask;
+	boff = bref->data_off & (HAMMER2_OFF_MASK & pmask);
+	KKASSERT(pbase != 0);
+	peof = (pbase + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
+
+	hmp = chain->hmp;
+
+	/*
+	 * The getblk() optimization can only be used on newly created
+	 * elements if the physical block size matches the request.
+	 */
+	if ((chain->flags & HAMMER2_CHAIN_INITIAL) &&
+	    chain->bytes == psize) {
+		dbp = getblk(hmp->devvp, pbase, psize, 0, 0);
+		/*atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);*/
+		bdata = (char *)dbp->b_data + boff;
+		bzero(bdata, chain->bytes);
+		/*atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);*/
+		func(chain, dbp, bdata, arg);
+		return;
+	}
+
+	adjreadcounter(&chain->bref, chain->bytes);
+	cbinfo = kmalloc(sizeof(*cbinfo), hmp->mchain, M_INTWAIT | M_ZERO);
+	cbinfo->chain = chain;
+	cbinfo->func = func;
+	cbinfo->arg = arg;
+	cbinfo->boff = boff;
+
+	cluster_readcb(hmp->devvp, peof, pbase, psize,
+		HAMMER2_PBUFSIZE*4, HAMMER2_PBUFSIZE*4,
+		hammer2_chain_load_async_callback, cbinfo);
+}
+
+static void
+hammer2_chain_load_async_callback(struct bio *bio)
+{
+	hammer2_cbinfo_t *cbinfo;
+	hammer2_mount_t *hmp;
+	struct buf *dbp;
+	char *data;
+
+	/*
+	 * Nobody is waiting for bio/dbp to complete, we are
+	 * responsible for handling the biowait() equivalent
+	 * on dbp which means clearing BIO_DONE and BIO_SYNC
+	 * and calling bpdone() if it hasn't already been called
+	 * to restore any covered holes in the buffer's backing
+	 * store.
+	 */
+	dbp = bio->bio_buf;
+	if ((bio->bio_flags & BIO_DONE) == 0)
+		bpdone(dbp, 0);
+	bio->bio_flags &= ~(BIO_DONE | BIO_SYNC);
+
+	/*
+	 * Extract the auxillary info and issue the callback.
+	 * Finish up with the dbp after it returns.
+	 */
+	cbinfo = bio->bio_caller_info1.ptr;
+	/*ccms_thread_lock_setown(cbinfo->chain->core);*/
+	data = dbp->b_data + cbinfo->boff;
+	hmp = cbinfo->chain->hmp;
+
+	cbinfo = bio->bio_caller_info1.ptr;
+	cbinfo->func(cbinfo->chain, dbp, data, cbinfo->arg);
+	/* cbinfo->chain is stale now */
+	bqrelse(dbp);
+	kfree(cbinfo, hmp->mchain);
+}
+
+/*
  * Unlock and deref a chain element.
  *
  * On the last lock release any non-embedded data (chain->bp) will be
@@ -839,8 +960,14 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	 * NOTE: Freemap leaf's use reserved blocks and thus no aliasing
 	 *	 is possible.
 	 */
+#if 0
+	/*
+	 * XXX our primary cache is now the block device, not
+	 * the logical file. don't release the buffer.
+	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
 		chain->bp->b_flags |= B_RELBUF;
+#endif
 
 	/*
 	 * The DIRTYBP flag tracks whether we have to bdwrite() the buffer
@@ -901,13 +1028,16 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		     hammer2_chain_t *parent, hammer2_chain_t **chainp,
 		     int nradix, int flags)
 {
-	hammer2_mount_t *hmp = trans->hmp;
-	hammer2_chain_t *chain = *chainp;
+	hammer2_mount_t *hmp;
+	hammer2_chain_t *chain;
 	hammer2_off_t pbase;
 	size_t obytes;
 	size_t nbytes;
 	size_t bbytes;
 	int boff;
+
+	chain = *chainp;
+	hmp = chain->hmp;
 
 	/*
 	 * Only data and indirect blocks can be resized for now.
@@ -958,7 +1088,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 * Relocate the block, even if making it smaller (because different
 	 * block sizes may be in different regions).
 	 */
-	hammer2_freemap_alloc(trans, &chain->bref, nbytes);
+	hammer2_freemap_alloc(trans, chain->hmp, &chain->bref, nbytes);
 	chain->bytes = nbytes;
 	/*ip->delta_dcount += (ssize_t)(nbytes - obytes);*/ /* XXX atomic */
 
@@ -1021,7 +1151,7 @@ void
 hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		     int flags)
 {
-	hammer2_mount_t *hmp = trans->hmp;
+	hammer2_mount_t *hmp;
 	hammer2_chain_t *chain;
 	hammer2_off_t pbase;
 	hammer2_off_t pmask;
@@ -1039,6 +1169,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 * flagged otherwise.
 	 */
 	chain = *chainp;
+	hmp = chain->hmp;
 	if (chain->data == NULL && (flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
 	    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
 		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
@@ -1142,7 +1273,8 @@ skipxx: /* XXX */
 	    ((chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0 ||
 	     (flags & HAMMER2_MODIFY_NOREALLOC) == 0)
 	) {
-		hammer2_freemap_alloc(trans, &chain->bref, chain->bytes);
+		hammer2_freemap_alloc(trans, chain->hmp,
+				      &chain->bref, chain->bytes);
 		/* XXX failed allocation */
 	}
 
@@ -1169,11 +1301,15 @@ skipxx: /* XXX */
 		wasinitial = 0;
 	}
 
+#if 0
 	/*
 	 * We currently should never instantiate a device buffer for a
 	 * file data chain.  (We definitely can for a freemap chain).
+	 *
+	 * XXX we can now do this
 	 */
 	KKASSERT(chain->bref.type != HAMMER2_BREF_TYPE_DATA);
+#endif
 
 	/*
 	 * Instantiate data buffer and possibly execute COW operation
@@ -2321,7 +2457,7 @@ void
 hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 			hammer2_chain_t **chainp, hammer2_blockref_t *bref)
 {
-	hammer2_mount_t *hmp = trans->hmp;
+	hammer2_mount_t *hmp;
 	hammer2_blockref_t *base;
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *nchain;
@@ -2338,6 +2474,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 	 * to the same bref (the same media block).
 	 */
 	ochain = *chainp;
+	hmp = ochain->hmp;
 	if (bref == NULL)
 		bref = &ochain->bref;
 	nchain = hammer2_chain_alloc(hmp, trans, bref);
@@ -2503,7 +2640,7 @@ void
 hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 			       int flags)
 {
-	hammer2_mount_t *hmp = trans->hmp;
+	hammer2_mount_t *hmp;
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *nchain;
 	hammer2_chain_core_t *above;
@@ -2515,6 +2652,7 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 * First create a duplicate of the chain structure
 	 */
 	ochain = *chainp;
+	hmp = ochain->hmp;
 	nchain = hammer2_chain_alloc(hmp, trans, &ochain->bref);    /* 1 ref */
 	if (flags & HAMMER2_DELDUP_RECORE)
 		hammer2_chain_core_alloc(nchain, NULL);
@@ -2666,14 +2804,21 @@ int
 hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		       hammer2_ioc_pfs_t *pfs)
 {
-	hammer2_mount_t *hmp = trans->hmp;
+	hammer2_cluster_t *cluster;
+	hammer2_mount_t *hmp;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *nchain;
 	hammer2_chain_t *parent;
 	hammer2_inode_data_t *ipdata;
-	size_t name_len = strlen(pfs->name);
-	hammer2_key_t lhc = hammer2_dirhash(pfs->name, name_len);
+	size_t name_len;
+	hammer2_key_t lhc;
 	int error;
+
+	name_len = strlen(pfs->name);
+	lhc = hammer2_dirhash(pfs->name, name_len);
+	cluster = ip->pmp->mount_cluster;
+	hmp = ip->chain->hmp;
+	KKASSERT(hmp == cluster->hmp);	/* XXX */
 
 	/*
 	 * Create disconnected duplicate
@@ -2723,7 +2868,7 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 */
 	ipdata->pfs_type = HAMMER2_PFSTYPE_SNAPSHOT;
 	kern_uuidgen(&ipdata->pfs_fsid, 1);
-	if (ip->chain == ip->pmp->rchain)
+	if (ip->chain == cluster->rchain)
 		ipdata->pfs_clid = ip->chain->data->ipdata.pfs_clid;
 	else
 		kern_uuidgen(&ipdata->pfs_clid, 1);
@@ -2815,7 +2960,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			      hammer2_key_t create_key, int create_bits,
 			      int for_type, int *errorp)
 {
-	hammer2_mount_t *hmp = trans->hmp;
+	hammer2_mount_t *hmp;
 	hammer2_chain_core_t *above;
 	hammer2_chain_core_t *icore;
 	hammer2_blockref_t *base;
@@ -2835,8 +2980,9 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * is known to be empty.  We need to calculate the array count
 	 * for RB lookups either way.
 	 */
-	KKASSERT(ccms_thread_lock_owned(&parent->core->cst));
+	hmp = parent->hmp;
 	*errorp = 0;
+	KKASSERT(ccms_thread_lock_owned(&parent->core->cst));
 	above = parent->core;
 
 	/*hammer2_chain_modify(trans, &parent, HAMMER2_MODIFY_OPTDATA);*/
