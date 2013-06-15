@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/fmtmsg.c,v 1.5 2003/05/01 19:03:13 nectar Exp $
+ * $FreeBSD: src/lib/libc/gen/fmtmsg.c,v 1.6 2009/11/08 14:02:54 brueffer Exp $
  */
 
 #include <fmtmsg.h>
@@ -127,7 +127,7 @@ printfmt(char *msgverb, long class __unused, const char *label, int sev,
 		size += strlen(sevname);
 	if (text != MM_NULLTXT)
 		size += strlen(text);
-	if (text != MM_NULLACT)
+	if (act != MM_NULLACT)
 		size += strlen(act);
 	if (tag != MM_NULLTAG)
 		size += strlen(tag);
