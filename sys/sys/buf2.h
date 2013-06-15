@@ -378,7 +378,6 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 			     maxreq, bpp));
 }
 
-
 #endif /* _KERNEL */
 
 #endif /* !_SYS_BUF2_H_ */

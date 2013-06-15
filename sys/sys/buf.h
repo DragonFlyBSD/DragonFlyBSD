@@ -444,6 +444,8 @@ void	pbuf_adjcount(int *pfreecnt, int n);
 void	cluster_append(struct bio *, struct buf *);
 int	cluster_readx (struct vnode *, off_t, off_t, int,
 	    size_t, size_t, struct buf **);
+void	cluster_readcb (struct vnode *, off_t, off_t, int,
+	    size_t, size_t, void (*func)(struct bio *), void *arg);
 void	cluster_write (struct buf *, off_t, int, int);
 int	physread (struct dev_read_args *);
 int	physwrite (struct dev_write_args *);

@@ -90,7 +90,12 @@ extern vm_page_t	bogus_page;
 extern int cluster_pbuf_freecnt;
 
 /*
- * This replaces bread.
+ * This replaces bread(), providing a synchronous read of the requested
+ * buffer plus asynchronous read-ahead within the specified bounds.
+ *
+ * The caller may pre-populate *bpp if it already has the requested buffer
+ * in-hand, else must set *bpp to NULL.  Note that the cluster_read() inline
+ * sets *bpp to NULL and then calls cluster_readx() for compatibility.
  *
  * filesize	- read-ahead @ blksize will not cross this boundary
  * loffset	- loffset for returned *bpp
@@ -308,6 +313,7 @@ single_block_read:
 		vn_strategy(vp, &bp->b_bio1);
 		error = 0;
 		/* bp invalid now */
+		bp = NULL;
 	}
 
 	/*
@@ -365,23 +371,6 @@ single_block_read:
 			rbp->b_bio2.bio_offset = doffset;
 		}
 
-#if defined(CLUSTERDEBUG)
-		if (rcluster) {
-			if (bp) {
-				kprintf("A+(%012jx,%d,%jd) "
-					"doff=%012jx minr=%zd ra=%d\n",
-				    (intmax_t)loffset, rbp->b_bcount,
-				    (intmax_t)(loffset - origoffset),
-				    (intmax_t)doffset, minreq, maxra);
-			} else {
-				kprintf("A-(%012jx,%d,%jd) "
-					"doff=%012jx minr=%zd ra=%d\n",
-				    (intmax_t)rbp->b_loffset, rbp->b_bcount,
-				    (intmax_t)(loffset - origoffset),
-				    (intmax_t)doffset, minreq, maxra);
-			}
-		}
-#endif
 		rbp->b_flags &= ~(B_ERROR|B_INVAL);
 
 		if ((rbp->b_flags & B_CLUSTER) == 0)
@@ -404,6 +393,316 @@ no_read_ahead:
 		error = biowait(&reqbp->b_bio1, "clurd");
 	}
 	return (error);
+}
+
+/*
+ * This replaces breadcb(), providing an asynchronous read of the requested
+ * buffer with a callback, plus an asynchronous read-ahead within the
+ * specified bounds.
+ *
+ * The callback must check whether BIO_DONE is set in the bio and issue
+ * the bpdone(bp, 0) if it isn't.  The callback is responsible for clearing
+ * BIO_DONE and disposing of the I/O (bqrelse()ing it).
+ *
+ * filesize	- read-ahead @ blksize will not cross this boundary
+ * loffset	- loffset for returned *bpp
+ * blksize	- blocksize for returned *bpp and read-ahead bps
+ * minreq	- minimum (not a hard minimum) in bytes, typically reflects
+ *		  a higher level uio resid.
+ * maxreq	- maximum (sequential heuristic) in bytes (highet typ ~2MB)
+ * bpp		- return buffer (*bpp) for (loffset,blksize)
+ */
+void
+cluster_readcb(struct vnode *vp, off_t filesize, off_t loffset,
+	     int blksize, size_t minreq, size_t maxreq,
+	     void (*func)(struct bio *), void *arg)
+{
+	struct buf *bp, *rbp, *reqbp;
+	off_t origoffset;
+	off_t doffset;
+	int i;
+	int maxra;
+	int maxrbuild;
+
+	/*
+	 * Calculate the desired read-ahead in blksize'd blocks (maxra).
+	 * To do this we calculate maxreq.
+	 *
+	 * maxreq typically starts out as a sequential heuristic.  If the
+	 * high level uio/resid is bigger (minreq), we pop maxreq up to
+	 * minreq.  This represents the case where random I/O is being
+	 * performed by the userland is issuing big read()'s.
+	 *
+	 * Then we limit maxreq to max_readahead to ensure it is a reasonable
+	 * value.
+	 *
+	 * Finally we must ensure that (loffset + maxreq) does not cross the
+	 * boundary (filesize) for the current blocksize.  If we allowed it
+	 * to cross we could end up with buffers past the boundary with the
+	 * wrong block size (HAMMER large-data areas use mixed block sizes).
+	 * minreq is also absolutely limited to filesize.
+	 */
+	if (maxreq < minreq)
+		maxreq = minreq;
+	/* minreq not used beyond this point */
+
+	if (maxreq > max_readahead) {
+		maxreq = max_readahead;
+		if (maxreq > 16 * 1024 * 1024)
+			maxreq = 16 * 1024 * 1024;
+	}
+	if (maxreq < blksize)
+		maxreq = blksize;
+	if (loffset + maxreq > filesize) {
+		if (loffset > filesize)
+			maxreq = 0;
+		else
+			maxreq = filesize - loffset;
+	}
+
+	maxra = (int)(maxreq / blksize);
+
+	/*
+	 * Get the requested block.
+	 */
+	reqbp = bp = getblk(vp, loffset, blksize, 0, 0);
+	origoffset = loffset;
+
+	/*
+	 * Calculate the maximum cluster size for a single I/O, used
+	 * by cluster_rbuild().
+	 */
+	maxrbuild = vmaxiosize(vp) / blksize;
+
+	/*
+	 * if it is in the cache, then check to see if the reads have been
+	 * sequential.  If they have, then try some read-ahead, otherwise
+	 * back-off on prospective read-aheads.
+	 */
+	if (bp->b_flags & B_CACHE) {
+		/*
+		 * Setup for func() call whether we do read-ahead or not.
+		 */
+		bp->b_bio1.bio_caller_info1.ptr = arg;
+		bp->b_bio1.bio_flags |= BIO_DONE;
+
+		/*
+		 * Not sequential, do not do any read-ahead
+		 */
+		if (maxra <= 1)
+			goto no_read_ahead;
+
+		/*
+		 * No read-ahead mark, do not do any read-ahead
+		 * yet.
+		 */
+		if ((bp->b_flags & B_RAM) == 0)
+			goto no_read_ahead;
+		bp->b_flags &= ~B_RAM;
+
+		/*
+		 * We hit a read-ahead-mark, figure out how much read-ahead
+		 * to do (maxra) and where to start (loffset).
+		 *
+		 * Shortcut the scan.  Typically the way this works is that
+		 * we've built up all the blocks inbetween except for the
+		 * last in previous iterations, so if the second-to-last
+		 * block is present we just skip ahead to it.
+		 *
+		 * This algorithm has O(1) cpu in the steady state no
+		 * matter how large maxra is.
+		 */
+		if (findblk(vp, loffset + (maxra - 2) * blksize, FINDBLK_TEST))
+			i = maxra - 1;
+		else
+			i = 1;
+		while (i < maxra) {
+			if (findblk(vp, loffset + i * blksize,
+				    FINDBLK_TEST) == NULL) {
+				break;
+			}
+			++i;
+		}
+
+		/*
+		 * We got everything or everything is in the cache, no
+		 * point continuing.
+		 */
+		if (i >= maxra)
+			goto no_read_ahead;
+
+		/*
+		 * Calculate where to start the read-ahead and how much
+		 * to do.  Generally speaking we want to read-ahead by
+		 * (maxra) when we've found a read-ahead mark.  We do
+		 * not want to reduce maxra here as it will cause
+		 * successive read-ahead I/O's to be smaller and smaller.
+		 *
+		 * However, we have to make sure we don't break the
+		 * filesize limitation for the clustered operation.
+		 */
+		loffset += i * blksize;
+		bp = NULL;
+		/* leave reqbp intact to force function callback */
+
+		if (loffset >= filesize)
+			goto no_read_ahead;
+		if (loffset + maxra * blksize > filesize) {
+			maxreq = filesize - loffset;
+			maxra = (int)(maxreq / blksize);
+		}
+	} else {
+		__debugvar off_t firstread = bp->b_loffset;
+		int nblks;
+		int tmp_error;
+
+		/*
+		 * Set-up synchronous read for bp.
+		 */
+		bp->b_flags &= ~(B_ERROR | B_EINTR | B_INVAL);
+		bp->b_cmd = BUF_CMD_READ;
+		bp->b_bio1.bio_done = func;
+		bp->b_bio1.bio_caller_info1.ptr = arg;
+		BUF_KERNPROC(bp);
+		reqbp = NULL;	/* don't func() reqbp, it's running async */
+
+		KASSERT(firstread != NOOFFSET,
+			("cluster_read: no buffer offset"));
+
+		/*
+		 * nblks is our cluster_rbuild request size, limited
+		 * primarily by the device.
+		 */
+		if ((nblks = maxra) > maxrbuild)
+			nblks = maxrbuild;
+
+		if (nblks > 1) {
+			int burstbytes;
+
+			tmp_error = VOP_BMAP(vp, loffset, &doffset,
+					     &burstbytes, NULL, BUF_CMD_READ);
+			if (tmp_error)
+				goto single_block_read;
+			if (nblks > burstbytes / blksize)
+				nblks = burstbytes / blksize;
+			if (doffset == NOOFFSET)
+				goto single_block_read;
+			if (nblks <= 1)
+				goto single_block_read;
+
+			bp = cluster_rbuild(vp, filesize, loffset,
+					    doffset, blksize, nblks, bp);
+			loffset += bp->b_bufsize;
+			maxra -= bp->b_bufsize / blksize;
+		} else {
+single_block_read:
+			/*
+			 * If it isn't in the cache, then get a chunk from
+			 * disk if sequential, otherwise just get the block.
+			 */
+			cluster_setram(bp);
+			loffset += blksize;
+			--maxra;
+		}
+	}
+
+	/*
+	 * If bp != NULL then B_CACHE was *NOT* set and bp must be issued.
+	 * bp will either be an asynchronous cluster buf or an asynchronous
+	 * single-buf.
+	 *
+	 * NOTE: Once an async cluster buf is issued bp becomes invalid.
+	 */
+	if (bp) {
+#if defined(CLUSTERDEBUG)
+		if (rcluster)
+			kprintf("S(%012jx,%d,%d)\n",
+			    (intmax_t)bp->b_loffset, bp->b_bcount, maxra);
+#endif
+		if ((bp->b_flags & B_CLUSTER) == 0)
+			vfs_busy_pages(vp, bp);
+		bp->b_flags &= ~(B_ERROR|B_INVAL);
+		vn_strategy(vp, &bp->b_bio1);
+		/* bp invalid now */
+		bp = NULL;
+	}
+
+	/*
+	 * If we have been doing sequential I/O, then do some read-ahead.
+	 * The code above us should have positioned us at the next likely
+	 * offset.
+	 *
+	 * Only mess with buffers which we can immediately lock.  HAMMER
+	 * will do device-readahead irrespective of what the blocks
+	 * represent.
+	 */
+	while (maxra > 0) {
+		int burstbytes;
+		int tmp_error;
+		int nblks;
+
+		rbp = getblk(vp, loffset, blksize,
+			     GETBLK_SZMATCH|GETBLK_NOWAIT, 0);
+		if (rbp == NULL)
+			goto no_read_ahead;
+		if ((rbp->b_flags & B_CACHE)) {
+			bqrelse(rbp);
+			goto no_read_ahead;
+		}
+
+		/*
+		 * An error from the read-ahead bmap has nothing to do
+		 * with the caller's original request.
+		 */
+		tmp_error = VOP_BMAP(vp, loffset, &doffset,
+				     &burstbytes, NULL, BUF_CMD_READ);
+		if (tmp_error || doffset == NOOFFSET) {
+			rbp->b_flags |= B_INVAL;
+			brelse(rbp);
+			rbp = NULL;
+			goto no_read_ahead;
+		}
+		if ((nblks = maxra) > maxrbuild)
+			nblks = maxrbuild;
+		if (nblks > burstbytes / blksize)
+			nblks = burstbytes / blksize;
+
+		/*
+		 * rbp: async read
+		 */
+		rbp->b_cmd = BUF_CMD_READ;
+		/*rbp->b_flags |= B_AGE*/;
+		cluster_setram(rbp);
+
+		if (nblks > 1) {
+			rbp = cluster_rbuild(vp, filesize, loffset,
+					     doffset, blksize,
+					     nblks, rbp);
+		} else {
+			rbp->b_bio2.bio_offset = doffset;
+		}
+
+		rbp->b_flags &= ~(B_ERROR|B_INVAL);
+
+		if ((rbp->b_flags & B_CLUSTER) == 0)
+			vfs_busy_pages(vp, rbp);
+		BUF_KERNPROC(rbp);
+		loffset += rbp->b_bufsize;
+		maxra -= rbp->b_bufsize / blksize;
+		vn_strategy(vp, &rbp->b_bio1);
+		/* rbp invalid now */
+	}
+
+	/*
+	 * If reqbp is non-NULL it had B_CACHE set and we issue the
+	 * function callback synchronously.
+	 *
+	 * Note that we may start additional asynchronous I/O before doing
+	 * the func() callback for the B_CACHE case
+	 */
+no_read_ahead:
+	if (reqbp)
+		func(&reqbp->b_bio1);
 }
 
 /*
