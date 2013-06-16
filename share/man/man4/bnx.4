@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd July 19, 2012
+.Dd June 16, 2013
 .Dt BNX 4
 .Os
 .Sh NAME
@@ -49,6 +49,44 @@ The
 .Nm
 driver supports the PCIe Ethernet adapters based on
 Broadcom BCM57785/BCM5718 families chips.
+.Pp
+The following features are supported in the
+.Nm
+driver:
+.Pp
+.Bl -item -offset indent -compact
+.It
+IP/TCP/UDP checksum offloading
+.It
+TCP segmentation offloading (TSO)
+.It 
+VLAN tag stripping and inserting
+.It
+Interrupt coalescing
+.It
+Receive Side Scaling (RSS),
+up to 4 reception queues
+.It
+Multiple vector MSI-X
+.It
+Multiple transmission queues
+(BCM5719 and BCM5720 only),
+up to 4 transmission queues
+.El
+.Pp
+By default,
+the
+.Nm
+driver will try enabling as many reception queues as are allowed
+by the number of CPUs in the system.
+For BCM5719 and BCM5720,
+in addition to the reception queues,
+by default,
+the
+.Nm
+driver will try enabling as many transmission queues as are allowed
+by the number of CPUs in the system
+and the number of enabled reception queues.
 .Pp
 The
 .Nm
@@ -108,6 +146,207 @@ if it is supported by the adapter.
 For more information on configuring this device,
 see
 .Xr ifconfig 8 .
+The
+.Nm
+driver supports
+.Xr polling 4 .
+.Sh TUNABLES
+.Em X
+is the device unit number.
+.Bl -tag -width ".Va hw.bnxX.npoll.offset"
+.It Va hw.bnx.rx_rings Va hw.bnxX.rx_rings
+If MSI-X is used,
+this tunable specifies the number of reception queues to be enabled.
+Maximum allowed value for these tunables is 4 and
+it must be power of 2 aligned.
+Setting these tunables to 0 allows the driver to enable as many reception queues
+as allowed by the number of CPUs.
+.It Va hw.bnx.tx_rings Va hw.bnxX.tx_rings
+For BCM5719 and BCM5720,
+if MSI-X is used,
+this tunable specifies the number of transmission queues to be enabled.
+Maximum allowed value for these tunables is 4,
+it must be power of 2 aligned
+and it must be less than or equal to the number of reception queues enabled.
+Setting these tunables to 0 allows the driver to enable as many transmission queues
+as allowed by the number of CPUs and number reception queues enabled.
+.It Va hw.bnx.msix.enable Va hw.bnxX.msix.enable
+By default,
+the driver will use MSI-X
+if it is supported.
+This behaviour can be turned off by setting this tunable to 0.
+.It Va hw.bnxX.msix.offset
+For BCM5719 and BCM5720,
+if more than 1 reception queues
+and more than 1 transmission queues are enabled,
+this tunable specifies the leading target CPU for transmission
+and reception queues processing.
+The value specificed must be aligned to the number of reception queues
+enabled and must be less than the power of 2 number of CPUs.
+.It Va hw.bnxX.msix.txoff
+If more than 1 reception queues are enabled
+and only 1 transmission queue is enabled,
+this tunable specifies the target CPU for transmission queue processing.
+The value specificed must be less than the power of 2 number of CPUs.
+.It Va hw.bnxX.msix.rxoff
+If more than 1 reception queues are enabled
+and only 1 transmission queue is enabled,
+this tunable specifies the leading target CPU for reception queues processing.
+The value specificed must be aligned to the number of reception queues
+enabled and must be less than the power of 2 number of CPUs.
+.It Va hw.bnx.msi.enable Va hw.bnxX.msi.enable
+If MSI-X is disabled and MSI is supported,
+the driver will use MSI.
+This behavior can be turned off by setting this tunable to 0.
+.It Va hw.bnxX.msi.cpu
+If MSI is used, it specifies the MSI's target CPU.
+.It Va hw.bnxX.npoll.offset
+If only 1 reception queue and only 1 transmission queue are enabled
+or more than 1 reception queues and more than 1 transmission queues are enabled,
+this tunable specifies the leading target CPU for transmission and reception
+queues
+.Xr polling 4
+processing.
+The value specificed must be aligned to the number of reception queues
+enabled and must be less than the power of 2 number of CPUs.
+.It Va hw.bnxX.npoll.txoff
+If more than 1 reception queues are enabled
+and only 1 transmission queue is enabled,
+this tunable specifies the target CPU for transmission queue processing.
+The value specificed must be less than the power of 2 number of CPUs.
+.It Va hw.bnxX.npoll.rxoff
+If more than 1 reception queues are enabled
+and only 1 transmission queue is enabled,
+this tunable specifies the leading target CPU for reception queue processing.
+The value specificed must be aligned to the number of reception queues
+enabled and must be less than the power of 2 number of CPUs.
+.El
+.Sh MIB Variables
+A number of per-interface variables are implemented in the
+.Va hw.bnx Ns Em X
+branch of the
+.Xr sysctl 3
+MIB.
+.Bl -tag -width "rx_coal_bds_poll"
+.It Va rx_rings
+Number of reception queues enabled (read-only).
+Use the tunable
+.Va hw.bnx.rx_rings
+or
+.Va hw.bnxX.rx_rings
+to configure it.
+.It Va tx_rings
+Number of transmission queues enabled (read-only).
+Use the tunable
+.Va hw.bnx.tx_rings
+or
+.Va hw.bnxX.tx_rings
+to configure it.
+.It Va rx_coal_ticks
+How often status block should be updated and interrupt should be generated
+by the device,
+due to receiving packets.
+It is used together with
+.Va rx_coal_bds
+to achieve RX interrupt moderation.
+Default value is 150 (microseconds).
+.It Va tx_coal_ticks
+How often status block should be updated and interrupt should be generated
+by the device,
+due to sending packets.
+It is used together with
+.Va tx_coal_bds
+to achieve TX interrupt moderation.
+Default value is 1023 (microseconds).
+.It Va rx_coal_bds
+Maximum number of BDs which must be received by the device
+before the device updates the status block and generates interrupt.
+It is used together with
+.Va rx_coal_ticks
+to achieve RX interrupt moderation.
+Default value is 0 (disabled).
+.It Va rx_coal_bds_poll
+Maximum number of BDs which must be received by the device
+before the device updates the status block during
+.Xr polling 4 .
+It is used together with
+.Va rx_coal_ticks
+to reduce the frequency of status block updating due to RX.
+Default value is 32.
+.It Va tx_coal_bds
+Maximum number of sending BDs which must be processed by the device
+before the device updates the status block and generates interrupt.
+It is used together with
+.Va tx_coal_ticks
+to achieve TX interrupt moderation.
+Default value is 128.
+.It Va tx_coal_bds_poll
+Maximum number of sending BDs which must be processed by the device
+before the device updates the status block during
+.Xr polling 4 .
+It is used together with
+.Va tx_coal_ticks
+to reduce the frequency of status block updating due to TX.
+Default value is 64.
+.It Va force_defrag
+Force defragment the sending mbuf chains,
+if the mbuf chain is not a TSO segment and contains more than 1 mbufs.
+This improves transmission performance on certain low end chips,
+however,
+this also increases CPU load.
+Default value is 0 (disabled).
+.It Va tx_wreg
+The number of transmission descriptors should be setup before the hardware
+register is written.
+Setting this value too high will have negative effect
+on transmission timeliness.
+Setting this value too low will hurt overall transmission due to the frequent
+hardware register writing.
+Default value is 8.
+.It Va std_refill
+Number of packets should be received
+before the standard reception producer ring is refilled.
+Setting this value too low will cause extra thread scheduling cost.
+Setting this value too high will make chip drop incoming packets.
+Default value is 128 / number of reception queues.
+.It Va rx_coal_bds_int
+Maximum number of BDs which must be received by the device
+before the device updates the status block
+during host interrupt processing.
+Default value is 80.
+.It Va tx_coal_bds_int
+Maximum number of sending BDs which must be processed by the device
+before the device updates the status block
+during host interrupt processing.
+Default value is 64.
+.It Va npoll_offset
+See the tunable
+.Va hw.bnxX.npoll.offset .
+The set value will take effect the next time
+.Xr polling 4
+is enabled on the device.
+.It Va npoll_txoff
+See the tunable
+.Va hw.bnxX.npoll.txoff .
+The set value will take effect the next time
+.Xr polling 4
+is enabled on the device.
+.It Va npoll_rxoff
+See the tunable
+.Va hw.bnxX.npoll.rxoff .
+The set value will take effect the next time
+.Xr polling 4
+is enabled on the device.
+.It Va norxbds
+Number of times the standard reception producer ring is short
+of reception BDs.
+If this value grows fast,
+it is usually an indication that
+.Va std_refill
+is set too high.
+.It Va errors
+Number of errors, both critical and non-critical, happened.
+.El
 .Sh SEE ALSO
 .Xr arp 4 ,
 .Xr bge 4 ,
@@ -115,6 +354,7 @@ see
 .Xr miibus 4 ,
 .Xr netintro 4 ,
 .Xr ng_ether 4 ,
+.Xr polling 4 ,
 .Xr vlan 4 ,
 .Xr ifconfig 8
 .Sh HISTORY
@@ -131,3 +371,7 @@ driver was based on
 written by
 .An Bill Paul
 .Aq wpaul@windriver.com .
+Sepherosa Ziehau added receive side scaling,
+multiple transmission queues
+and multiple MSI-X support to
+.Dx .
