@@ -424,7 +424,7 @@ priq_class_destroy(struct priq_class *cl)
 
 /*
  * priq_enqueue is an enqueue function to be registered to
- * (*altq_enqueue) in struct ifaltq.
+ * (*ifsq_enqueue) in struct ifaltq_subque.
  */
 static int
 priq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
@@ -479,7 +479,7 @@ done:
 
 /*
  * priq_dequeue is a dequeue function to be registered to
- * (*altq_dequeue) in struct ifaltq.
+ * (*ifsq_dequeue) in struct ifaltq_subque.
  *
  * note: ALTDQ_POLL returns the next packet without removing the packet
  *	from the queue.  ALTDQ_REMOVE is a normal dequeue operation.
