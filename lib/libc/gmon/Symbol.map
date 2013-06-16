@@ -1,0 +1,10 @@
+DF306.0 {
+    monstartup;
+    moncontrol;
+};
+
+DFprivate_1.0 {
+    .minbrk;
+    _gmonparam;
+    _mcleanup;
+};

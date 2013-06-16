@@ -1,9 +1,10 @@
 #	from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/gmon/Makefile.inc,v 1.12 2006/10/28 13:34:35 bde Exp $
-# $DragonFly: src/lib/libc/gmon/Makefile.inc,v 1.2 2003/06/17 04:26:42 dillon Exp $
 
 # gmon sources
 .PATH: ${.CURDIR}/../libc/gmon
+
+CMAPS+=	${.CURDIR}/gmon/Symbol.map
 
 SRCS+=	gmon.c mcount.c
 

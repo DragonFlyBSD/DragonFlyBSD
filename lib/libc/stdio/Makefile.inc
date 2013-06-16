@@ -1,9 +1,10 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 4/17/94
 # $FreeBSD: src/lib/libc/stdio/Makefile.inc,v 1.19.2.1 2001/04/25 10:04:11 ru Exp $
-# $DragonFly: src/lib/libc/stdio/Makefile.inc,v 1.6 2008/04/15 01:16:14 dillon Exp $
 
 # stdio sources
 .PATH: ${.CURDIR}/../libc/stdio
+
+CMAPS+=	${.CURDIR}/stdio/Symbol.map
 
 SRCS+=	__fpending.c _flock_stub.c \
 	asprintf.c clrerr.c dprintf.c \

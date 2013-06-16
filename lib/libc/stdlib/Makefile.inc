@@ -4,6 +4,8 @@
 # machine-independent stdlib sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib ${.CURDIR}/../libc/stdlib
 
+CMAPS+=	${.CURDIR}/stdlib/Symbol.map
+
 MISRCS+=a64l.c abort.c abs.c atexit.c aligned_alloc.c \
 	atof.c atoi.c atol.c atoll.c \
 	bsearch.c div.c exit.c getenv.c getopt.c getopt_long.c \

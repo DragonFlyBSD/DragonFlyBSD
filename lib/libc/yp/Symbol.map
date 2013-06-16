@@ -1,0 +1,24 @@
+DF306.0 {
+    yp_all;
+    yp_bind;
+    yp_first;
+    yp_get_default_domain;
+    yp_maplist;
+    yp_master;
+    yp_match;
+    yp_next;
+    yp_order;
+    yp_unbind;
+    ypbinderr_string;
+    yperr_string;
+    ypprot_err;
+    ypresp_allfn;
+    ypresp_data;
+};
+
+DFprivate_1.0 {
+    _ypbindlist;
+    _yp_check;
+    _yp_dobind;
+    _yplib_timeout;
+};

@@ -2,6 +2,8 @@
 
 .PATH: ${.CURDIR}/../libc/iconv
 
+CMAPS+=	${.CURDIR}/iconv/Symbol.map
+
 SRCS+=	iconv.c
 .if ${LIB} == "c"
 MAN+=	iconv.3

@@ -2,6 +2,9 @@
 # $FreeBSD: src/lib/libc/rpc/Makefile.inc,v 1.27 2005/09/11 20:59:52 stefanf Exp $
 
 .PATH: ${.CURDIR}/../libc/rpc ${.CURDIR}/.
+
+CMAPS+=	${.CURDIR}/rpc/Symbol.map
+
 SRCS+=	auth_none.c auth_unix.c authunix_prot.c bindresvport.c clnt_bcast.c \
 	clnt_dg.c clnt_generic.c clnt_perror.c clnt_raw.c clnt_simple.c \
 	clnt_vc.c rpc_dtablesize.c getnetconfig.c getnetpath.c getrpcent.c \

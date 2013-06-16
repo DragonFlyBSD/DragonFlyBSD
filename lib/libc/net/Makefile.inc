@@ -5,6 +5,8 @@
 # machine-independent net sources
 .PATH: ${.CURDIR}/../libc/net
 
+CMAPS+=	${.CURDIR}/net/Symbol.map
+
 SRCS+=	base64.c ether_addr.c eui64.c \
 	gai_strerror.c getaddrinfo.c \
 	gethostbydns.c gethostbyht.c gethostbynis.c gethostnamadr.c \

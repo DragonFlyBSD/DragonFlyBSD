@@ -1,8 +1,9 @@
 #	@(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/string/Makefile.inc,v 1.42 2009/01/09 16:24:10 ru Exp $
-# $DragonFly: src/lib/libc/string/Makefile.inc,v 1.5 2008/05/31 04:51:55 swildner Exp $
 
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/string ${.CURDIR}/../libc/string
+
+CMAPS+=	${.CURDIR}/string/Symbol.map
 
 CFLAGS+= -I${.CURDIR}/../libc/locale
 

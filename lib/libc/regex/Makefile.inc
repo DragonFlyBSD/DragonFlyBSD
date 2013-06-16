@@ -1,9 +1,10 @@
 #	from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/regex/Makefile.inc,v 1.5.2.1 2001/04/25 10:04:08 ru Exp $
-# $DragonFly: src/lib/libc/regex/Makefile.inc,v 1.3 2008/08/09 20:20:03 swildner Exp $
 
 # regex sources
 .PATH: ${.CURDIR}/../libc/regex
+
+CMAPS+=	${.CURDIR}/regex/Symbol.map
 
 CFLAGS+=-DPOSIX_MISTAKE
 

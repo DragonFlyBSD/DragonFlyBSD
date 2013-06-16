@@ -1,0 +1,19 @@
+DF306.0 {
+    creat;
+    gethostid;
+    getwd;
+    killpg;
+    sethostid;
+    setpgrp;
+    setrgid;
+    setruid;
+    sigblock;
+    sigpause;
+    sigsetmask;
+    sigvec;
+};
+
+DFprivate_1.0 {
+    __creat;
+    _creat;
+};

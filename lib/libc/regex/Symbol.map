@@ -1,0 +1,6 @@
+DF306.0 {
+    regcomp;
+    regerror;
+    regexec;
+    regfree;
+};

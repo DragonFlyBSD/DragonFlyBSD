@@ -3,6 +3,8 @@
 # Machine dependent definitions for the x86_64 architecture.
 #
 
+CMAPS+=	${.CURDIR}/x86_64/Symbol.map
+
 # Long double is 80 bits
 GDTOASRCS+=strtorx.c
 MDSRCS+=machdep_ldisx.c

@@ -2,6 +2,8 @@
 
 .PATH: ${.CURDIR}/../libc/locale
 
+CMAPS+=	${.CURDIR}/locale/Symbol.map
+
 SRCS+=	collate.c collcmp.c
 SRCS+=	_def_messages.c _def_monetary.c _def_numeric.c _def_time.c
 SRCS+=	localeconv.c nl_langinfo.c setlocale.c __mb_cur_max.c

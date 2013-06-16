@@ -4,6 +4,8 @@
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
 
+CMAPS+=	${.CURDIR}/sys/Symbol.map
+
 # Include the generated makefile containing the *complete* list
 # of syscall names in MIASM.
 .include "${.CURDIR}/../../sys/sys/syscall.mk"

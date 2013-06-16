@@ -1,8 +1,10 @@
 #	@(#)Makefile	5.11 (Berkeley) 9/6/90
 # $FreeBSD: src/lib/libc/xdr/Makefile.inc,v 1.15 2006/03/13 01:15:01 deischen Exp $
-# $DragonFly: src/lib/libc/xdr/Makefile.inc,v 1.2 2003/06/17 04:26:47 dillon Exp $
 
 .PATH: ${.CURDIR}/../libc/xdr ${.CURDIR}/.
+
+CMAPS+=	${.CURDIR}/xdr/Symbol.map
+
 SRCS+=	xdr.c xdr_array.c xdr_float.c xdr_mem.c \
 	xdr_rec.c xdr_reference.c xdr_stdio.c
 

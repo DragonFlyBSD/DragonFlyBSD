@@ -14,6 +14,11 @@ LDFLAGS+= -nodefaultlibs
 #
 .include "${.CURDIR}/Makefile.inc"
 
+.if defined(RELEASE36)
+VERSION_DEF=	${.CURDIR}/Versions.def
+SYMBOL_MAPS=	${CMAPS}
+.endif
+
 KQSRCS=	adddi3.c anddi3.c ashldi3.c ashrdi3.c cmpdi2.c divdi3.c iordi3.c \
 	lshldi3.c lshrdi3.c moddi3.c muldi3.c negdi2.c notdi2.c qdivrem.c \
 	subdi3.c ucmpdi2.c udivdi3.c umoddi3.c xordi3.c

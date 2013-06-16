@@ -2,6 +2,8 @@
 
 .include "../../i18n_module/Makefile.shlib"
 
+CMAPS+=	${.CURDIR}/citrus/Symbol.map
+
 CFLAGS+=	-DI18NMODULE_MAJOR=${MODULE_SHLIB_MAJOR} -D_I18N_DYNAMIC
 STATIC_LOCALES?=
 
