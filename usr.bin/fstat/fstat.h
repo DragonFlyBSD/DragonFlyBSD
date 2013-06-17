@@ -67,6 +67,7 @@ udev_t makeudev(int x, int y);
 int isofs_filestat(struct vnode *vp, struct filestat *fsp);
 int hammer_filestat(struct vnode *vp, struct filestat *fsp);
 int msdosfs_filestat(struct vnode *vp, struct filestat *fsp);
+int ntfs_filestat(struct vnode *vp, struct filestat *fsp);
 ssize_t kread(const void *kaddr, void *uaddr, size_t nbytes);
 
 #endif /* __FSTAT_H__ */

@@ -2,7 +2,7 @@
 # $FreeBSD: src/usr.bin/fstat/Makefile,v 1.4.2.1 2000/07/02 10:20:24 ps Exp $
 
 PROG=	fstat
-SRCS=	cd9660.c fstat.c hammer.c msdosfs.c
+SRCS=	cd9660.c fstat.c hammer.c msdosfs.c ntfs.c
 CFLAGS+=-I${.CURDIR}/../../sys
 DPADD=	${LIBKVM}
 LDADD=	-lkvm
