@@ -90,6 +90,7 @@ struct m_hdr {
 	int	mh_flags;		/* flags; see below */
 	short	mh_type;		/* type of data in this mbuf */
 	short	mh_pad;			/* padding */
+	/* XXX implicit 4 bytes padding on x86_64 */
 #ifdef MBUF_DEBUG
 	const char *mh_lastfunc;
 #endif
@@ -117,6 +118,7 @@ struct pkthdr_pf {
 	uint8_t		unused01;
 	uint8_t		unused02;
 	uint8_t		unused03;
+	/* XXX implicit 4 bytes padding on x86_64 */
 };
 
 /* pkthdr_pf.flags */
