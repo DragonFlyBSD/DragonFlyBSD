@@ -468,6 +468,10 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 		badtype = "bad";
 	else
 		switch (vn.v_tag) {
+		case VT_HAMMER:
+			if (!hammer_filestat(&vn, &fst))
+				badtype = "error";
+			break;
 		case VT_UFS:
 			if (!ufs_filestat(&vn, &fst))
 				badtype = "error";
@@ -530,7 +534,7 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 		return;
 	}
 	if (nflg)
-		(void)printf(" %3d,%-9d   ", major(fst.fsid), minor(fst.fsid));
+		(void)printf(" %3u,%-9u   ", major(fst.fsid), minor(fst.fsid));
 	else
 		(void)printf(" %-*s", wflg_mnt, getmnton(vn.v_mount, &vn.v_namecache, ncr));
 	if (nflg)
@@ -543,7 +547,7 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 	case VCHR:
 		if (nflg || ((name = devname(fst.rdev, vn.v_type == VCHR ?
 		    S_IFCHR : S_IFBLK)) == NULL))
-			printf(" %3d,%-4d", major(fst.rdev), minor(fst.rdev));
+			printf(" %3u,%-4u", major(fst.rdev), minor(fst.rdev));
 		else
 			printf(" %8s", name);
 		break;
