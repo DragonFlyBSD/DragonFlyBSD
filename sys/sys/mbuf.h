@@ -132,9 +132,9 @@ struct pkthdr_pf {
  */
 struct m_tag {
 	SLIST_ENTRY(m_tag)	m_tag_link;	/* List of packet tags */
-	u_int16_t		m_tag_id;	/* Tag ID */
-	u_int16_t		m_tag_len;	/* Length of data */
-	u_int32_t		m_tag_cookie;	/* ABI/Module ID */
+	uint16_t		m_tag_id;	/* Tag ID */
+	uint16_t		m_tag_len;	/* Length of data */
+	uint32_t		m_tag_cookie;	/* ABI/Module ID */
 };
 
 SLIST_HEAD(packet_tags, m_tag);
@@ -670,13 +670,13 @@ m_getb(int len, int how, int type, int flags)
 	
 
 /* Packet tag routines */
-struct	m_tag 	*m_tag_alloc(u_int32_t, int, int, int);
+struct	m_tag 	*m_tag_alloc(uint32_t, int, int, int);
 void		 m_tag_free(struct m_tag *);
 void		 m_tag_prepend(struct mbuf *, struct m_tag *);
 void		 m_tag_unlink(struct mbuf *, struct m_tag *);
 void		 m_tag_delete(struct mbuf *, struct m_tag *);
 void		 m_tag_delete_chain(struct mbuf *);
-struct	m_tag	*m_tag_locate(struct mbuf *, u_int32_t, int, struct m_tag *);
+struct	m_tag	*m_tag_locate(struct mbuf *, uint32_t, int, struct m_tag *);
 struct	m_tag	*m_tag_copy(struct m_tag *, int);
 int		 m_tag_copy_chain(struct mbuf *, const struct mbuf *, int);
 void		 m_tag_init(struct mbuf *);
