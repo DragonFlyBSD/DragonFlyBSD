@@ -105,13 +105,13 @@ struct m_hdr {
 
 /* pf stuff */
 struct pkthdr_pf {
-	void            *hdr;           /* saved hdr pos in mbuf, for ECN */
+	void		*hdr;		/* saved hdr pos in mbuf, for ECN */
 	void		*statekey;	/* pf stackside statekey */
-	u_int            rtableid;      /* alternate routing table id */
-	u_int32_t        qid;           /* queue id */
-	u_int16_t        tag;           /* tag id */
-	u_int8_t         flags;
-	u_int8_t         routed;
+	u_int		rtableid;	/* alternate routing table id */
+	uint32_t	qid;		/* queue id */
+	uint16_t	tag;		/* tag id */
+	uint8_t		flags;
+	uint8_t		routed;
 	uint32_t	state_hash;	/* identifies 'connections' */
 	uint8_t		ecn_af;		/* for altq_red */
 	uint8_t		unused01;
