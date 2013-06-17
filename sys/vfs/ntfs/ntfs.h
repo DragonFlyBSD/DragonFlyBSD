@@ -30,8 +30,8 @@
 
 #ifdef _KERNEL
 #include "opt_ntfs.h"
-#endif
 #include <sys/thread2.h>
+#endif
 
 
 typedef u_int64_t cn_t;
@@ -308,6 +308,7 @@ MALLOC_DECLARE(M_NTFSNTHASH);
 #define VN_LOCK(a, b)		vn_lock((a), (b))
 #define	LOCKMGR(a, b)		lockmgr((a), (b))
 
+#ifdef _KERNEL
 #if defined(NTFS_DEBUG)
 #define dprintf(a) kprintf a
 #if NTFS_DEBUG > 1
@@ -318,5 +319,6 @@ MALLOC_DECLARE(M_NTFSNTHASH);
 #else
 #define dprintf(a)
 #define ddprintf(a)
+#endif
 #endif
 
