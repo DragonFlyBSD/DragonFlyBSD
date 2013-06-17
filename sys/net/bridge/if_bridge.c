@@ -2597,7 +2597,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	}
 	eh = mtod(m, struct ether_header *);
 	m->m_pkthdr.fw_flags |= BRIDGE_MBUF_TAGGED;
-	bcopy(eh, &m->m_pkthdr.br.ether, sizeof(*eh));
+	bcopy(eh->ether_shost, m->m_pkthdr.ether_br_shost, ETHER_ADDR_LEN);
 
 	if ((bridge_debug & 1) &&
 	    (ntohs(eh->ether_type) == ETHERTYPE_ARP ||
@@ -4326,7 +4326,7 @@ bridge_handoff(struct bridge_softc *sc, struct ifnet *dst_ifp,
 			m_copyback(m,
 				   offsetof(struct ether_header, ether_shost),
 				   ETHER_ADDR_LEN,
-				   m->m_pkthdr.br.ether.ether_shost);
+				   m->m_pkthdr.ether_br_shost);
 		} /* else retain shost */
 
 		if (ifq_is_enabled(&dst_ifp->if_snd))

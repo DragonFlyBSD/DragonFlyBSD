@@ -128,14 +128,6 @@ struct pkthdr_pf {
 #define	PF_TAG_REROUTE			0x20
 
 /*
- * Valid if BRIDGE_MBUF_TAGGED is set in fw_flags, records
- * the original ether header (if compatible).  The bridge
- */
-struct pkthdr_br {
-	struct ether_header ether;
-};
-
-/*
  * Packet tag structure (see below for details).
  */
 struct m_tag {
@@ -155,11 +147,11 @@ SLIST_HEAD(packet_tags, m_tag);
  */
 struct pkthdr {
 	struct	ifnet *rcvif;		/* rcv interface */
-	int	len;			/* total packet length */
 	struct packet_tags tags;	/* list of packet tags */
 
 	/* variables for ip and tcp reassembly */
 	void	*header;		/* pointer to packet header */
+	int	len;			/* total packet length */
 
 	/* variables for hardware checksum */
 	int	csum_flags;		/* flags regarding checksum */
@@ -174,14 +166,17 @@ struct pkthdr {
 	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
 
 	uint16_t hash;			/* packet hash */
-	uint16_t wlan_seqno;		/* IEEE 802.11 seq no. */
+	/*
+	 * Valid if BRIDGE_MBUF_TAGGED is set in fw_flags, records
+	 * the original ether source address (if compatible).
+	 */
+	uint8_t ether_br_shost[ETHER_ADDR_LEN];
 
 	/* firewall flags */
-	uint32_t fw_flags;		/* flags for PF */
+	uint32_t fw_flags;		/* flags for FW */
 
 	/* variables for PF processing */
 	struct pkthdr_pf pf;		/* structure for PF */
-	struct pkthdr_br br;		/* structure for bridging */
 };
 
 /*
