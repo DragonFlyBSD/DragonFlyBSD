@@ -38,9 +38,13 @@
 
 #include <sys/param.h>
 #include <sys/types.h>
+#ifdef _KERNEL
 #include <sys/kernel.h>
+#endif
 #include <sys/conf.h>
+#ifdef _KERNEL
 #include <sys/systm.h>
+#endif
 #include <sys/tree.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
@@ -59,8 +63,10 @@
 #include <vm/vm_extern.h>
 
 #include <sys/buf2.h>
+#ifdef _KERNEL
 #include <sys/signal2.h>
 #include <vm/vm_page2.h>
+#endif
 
 #include "hammer_disk.h"
 #include "hammer_mount.h"
@@ -1536,6 +1542,7 @@ hammer_checkspace(hammer_mount_t hmp, int slop)
 
 #endif
 
+#ifdef _KERNEL
 static __inline void
 hammer_wait_mem_record(hammer_record_t record)
 {
@@ -1606,6 +1613,7 @@ hammer_modify_node_done(hammer_node_t node)
 	}
 	hammer_modify_buffer_done(node->buffer);
 }
+#endif
 
 #define hammer_modify_volume_field(trans, vol, field)		\
 	hammer_modify_volume(trans, vol, &(vol)->ondisk->field,	\
@@ -1615,6 +1623,7 @@ hammer_modify_node_done(hammer_node_t node)
 	hammer_modify_node(trans, node, &(node)->ondisk->field,	\
 			     sizeof((node)->ondisk->field))
 
+#ifdef _KERNEL
 /*
  * The HAMMER_INODE_CAP_DIR_LOCAL_INO capability is set on newly
  * created directories for HAMMER version 2 or greater and causes
@@ -1632,3 +1641,4 @@ hammer_dir_localization(hammer_inode_t dip)
 	else
 		return(HAMMER_LOCALIZE_MISC);
 }
+#endif
