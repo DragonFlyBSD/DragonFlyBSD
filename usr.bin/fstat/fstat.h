@@ -64,8 +64,9 @@ udev_t dev2udev(void *dev);
 udev_t makeudev(int x, int y);
 
 /* Additional filesystem types */
-int isofs_filestat(struct vnode *vp, struct filestat *fsp);
+int ext2fs_filestat(struct vnode *vp, struct filestat *fsp);
 int hammer_filestat(struct vnode *vp, struct filestat *fsp);
+int isofs_filestat(struct vnode *vp, struct filestat *fsp);
 int msdosfs_filestat(struct vnode *vp, struct filestat *fsp);
 int ntfs_filestat(struct vnode *vp, struct filestat *fsp);
 ssize_t kread(const void *kaddr, void *uaddr, size_t nbytes);

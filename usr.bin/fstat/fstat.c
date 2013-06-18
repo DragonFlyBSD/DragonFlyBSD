@@ -488,6 +488,11 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 			if (!ntfs_filestat(&vn, &fst))
 				badtype = "error";
 			break;
+		case VT_EXT2FS:
+			if (!ext2fs_filestat(&vn, &fst))
+				badtype = "error";
+			break;
+
 		case VT_MSDOSFS:
 			if (!msdosfs_filestat(&vn, &fst))
 				badtype = "error";
