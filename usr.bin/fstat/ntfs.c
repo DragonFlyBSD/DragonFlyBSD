@@ -43,7 +43,7 @@
 #include "fstat.h"
 
 int
-ntfs_filestat(struct vnode *vp, struct filestat __unused *fsp)
+ntfs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct fnode fn;
 	struct ntnode ino;

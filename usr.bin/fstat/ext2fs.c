@@ -42,7 +42,7 @@
 #include "fstat.h"
 
 int
-ext2fs_filestat(struct vnode *vp, struct filestat __unused *fsp)
+ext2fs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct inode ino;
 	mode_t mode;
