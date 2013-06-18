@@ -50,7 +50,6 @@ MALLOC_DECLARE(M_ALTQ);
  * machine dependent clock
  * a 64bit high resolution time counter.
  */
-extern int	machclk_usepcc;
 extern uint64_t	machclk_freq;
 extern uint32_t	machclk_per_tick;
 

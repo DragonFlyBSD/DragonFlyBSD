@@ -793,7 +793,7 @@ write_dsfield(struct mbuf *m, struct altq_pktattr *pktattr, uint8_t dsfield)
 /* if pcc is not available or disabled, emulate 256MHz using microtime() */
 #define	MACHCLK_SHIFT	8
 
-int machclk_usepcc;
+static int machclk_usepcc;
 uint64_t machclk_freq = 0;
 uint32_t machclk_per_tick = 0;
 
@@ -802,31 +802,44 @@ init_machclk(void)
 {
 	callout_init(&tbr_callout);
 
+#ifdef ALTQ_NOPCC
+	machclk_usepcc = 0;
+#else
 	machclk_usepcc = 1;
-
-#if !defined(__i386__) || defined(ALTQ_NOPCC)
-	machclk_usepcc = 0;
-#elif defined(__DragonFly__)
-	machclk_usepcc = 0;
-#elif defined(__i386__)
-	/* check if TSC is available */
-	if (machclk_usepcc == 1 && (cpu_feature & CPUID_TSC) == 0)
-		machclk_usepcc = 0;
 #endif
 
-	if (machclk_usepcc == 0) {
+#if defined(__i386__) || defined(__x86_64__)
+	/* check if TSC is available */
+	if ((cpu_feature & CPUID_TSC) == 0)
+		machclk_usepcc = 0;
+
+	if (ncpus > 1) {
+		/*
+		 * XXX
+		 * Disable PCC on SMP system, until we could
+		 * determine whether TSCs are synchronized
+		 * across CPUs or not.
+		 */
+		machclk_usepcc = 0;
+	}
+#else
+	machclk_usepcc = 0;
+#endif
+
+	if (!machclk_usepcc) {
 		/* emulate 256MHz using microtime() */
 		machclk_freq = 1000000LLU << MACHCLK_SHIFT;
 		machclk_per_tick = machclk_freq / hz;
 #ifdef ALTQ_DEBUG
-		kprintf("altq: emulate %juHz cpu clock\n", (uintmax_t)machclk_freq);
+		kprintf("altq: emulate %juHz cpu clock\n",
+		    (uintmax_t)machclk_freq);
 #endif
 		return;
 	}
 
 	/*
-	 * if the clock frequency (of Pentium TSC or Alpha PCC) is
-	 * accessible, just use it.
+	 * If the clock frequency (of Pentium TSC) is accessible,
+	 * just use it.
 	 */
 #ifdef _RDTSC_SUPPORTED_
 	if (cpu_feature & CPUID_TSC)
@@ -834,7 +847,7 @@ init_machclk(void)
 #endif
 
 	/*
-	 * if we don't know the clock frequency, measure it.
+	 * If we don't know the clock frequency, measure it.
 	 */
 	if (machclk_freq == 0) {
 		static int	wait;
@@ -881,4 +894,3 @@ read_machclk(void)
 	}
 	return (val);
 }
-
