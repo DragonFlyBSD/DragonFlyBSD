@@ -335,7 +335,7 @@ ifpoll_time_diff(const union ifpoll_time *s, const union ifpoll_time *e)
 }
 
 /*
- * Initialize per-cpu qpolling(4) context.  Called from kern_clock.c:
+ * Initialize per-cpu polling(4) context.  Called from kern_clock.c:
  */
 void
 ifpoll_init_pcpu(int cpuid)
