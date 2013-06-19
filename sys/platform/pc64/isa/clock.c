@@ -107,6 +107,7 @@ static uint16_t i8254_walltimer_cntr;
 int	adjkerntz;		/* local offset from GMT in seconds */
 int	disable_rtc_set;	/* disable resettodr() if != 0 */
 int	tsc_present;
+int	tsc_invariant;
 int64_t	tsc_frequency;
 int	tsc_is_broken;
 int	wall_cmos_clock;	/* wall CMOS clock assumed if != 0 */
@@ -535,7 +536,7 @@ calibrate_clocks(void)
 	int sec, start_sec, timeout;
 
 	if (bootverbose)
-	        kprintf("Calibrating clock(s) ... ");
+	        kprintf("Calibrating clock(s) ...\n");
 	if (!(rtcin(RTC_STATUSD) & RTCSD_PWR))
 		goto fail;
 	timeout = 100000000;
@@ -602,8 +603,11 @@ calibrate_clocks(void)
 		tsc_frequency = rdtsc() - old_tsc;
 	}
 
-	if (tsc_present)
-		kprintf("TSC clock: %llu Hz, ", (long long)tsc_frequency);
+	if (tsc_present) {
+		kprintf("TSC%s clock: %llu Hz, ",
+		    tsc_invariant ? " invariant" : "",
+		    (long long)tsc_frequency);
+	}
 	kprintf("i8254 clock: %u Hz\n", tot_count);
 	return (tot_count);
 
@@ -736,10 +740,20 @@ startrtclock(void)
 	/* 
 	 * Can we use the TSC?
 	 */
-	if (cpu_feature & CPUID_TSC)
+	if (cpu_feature & CPUID_TSC) {
 		tsc_present = 1;
-	else
+		if ((cpu_vendor_id == CPU_VENDOR_INTEL ||
+		     cpu_vendor_id == CPU_VENDOR_AMD) &&
+		    cpu_exthigh >= 0x80000007) {
+			u_int regs[4];
+
+			do_cpuid(0x80000007, regs);
+			if (regs[3] & 0x100)
+				tsc_invariant = 1;
+		}
+	} else {
 		tsc_present = 0;
+	}
 
 	/*
 	 * Initial RTC state, don't do anything unexpected
@@ -1167,6 +1181,7 @@ SYSCTL_PROC(_hw_i8254, OID_AUTO, timestamp, CTLTYPE_STRING|CTLFLAG_RD,
 
 SYSCTL_INT(_hw, OID_AUTO, tsc_present, CTLFLAG_RD,
 	    &tsc_present, 0, "TSC Available");
+SYSCTL_INT(_hw, OID_AUTO, tsc_invariant, CTLFLAG_RD,
+	    &tsc_invariant, 0, "Invariant TSC");
 SYSCTL_QUAD(_hw, OID_AUTO, tsc_frequency, CTLFLAG_RD,
 	    &tsc_frequency, 0, "TSC Frequency");
-

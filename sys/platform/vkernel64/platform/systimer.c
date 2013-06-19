@@ -61,6 +61,8 @@ SYSCTL_INT(_machdep, CPU_DISRTCSET, disable_rtc_set,
 	   CTLFLAG_RW, &disable_rtc_set, 0, "");
 SYSCTL_INT(_hw, OID_AUTO, tsc_present, CTLFLAG_RD,
             &tsc_present, 0, "TSC Available");
+SYSCTL_INT(_hw, OID_AUTO, tsc_invariant, CTLFLAG_RD,
+            &tsc_invariant, 0, "Invariant TSC");
 SYSCTL_QUAD(_hw, OID_AUTO, tsc_frequency, CTLFLAG_RD,
 	    &tsc_frequency, 0, "TSC Frequency");
 

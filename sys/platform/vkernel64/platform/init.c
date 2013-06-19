@@ -108,6 +108,7 @@ vpte_t	*KernelPTA;	/* Warning: Offset for direct VA translation */
 void *dmap_min_address;
 u_int cpu_feature;	/* XXX */
 int tsc_present;
+int tsc_invariant;
 int64_t tsc_frequency;
 int optcpus;		/* number of cpus - see mp_start() */
 int lwp_cpu_lock;	/* if/how to lock virtual CPUs to real CPUs */
@@ -367,6 +368,8 @@ main(int ac, char **av)
 	 */
 	vsize = sizeof(tsc_present);
 	sysctlbyname("hw.tsc_present", &tsc_present, &vsize, NULL, 0);
+	vsize = sizeof(tsc_invariant);
+	sysctlbyname("hw.tsc_invariant", &tsc_invariant, &vsize, NULL, 0);
 	vsize = sizeof(tsc_frequency);
 	sysctlbyname("hw.tsc_frequency", &tsc_frequency, &vsize, NULL, 0);
 	if (tsc_present)
