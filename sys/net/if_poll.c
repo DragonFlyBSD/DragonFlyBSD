@@ -316,7 +316,7 @@ sched_iopollmore(struct iopoll_ctx *io_ctx)
 static __inline void
 ifpoll_time_get(union ifpoll_time *t)
 {
-	if (__predict_true(tsc_present))
+	if (tsc_invariant)
 		t->tsc = rdtsc();
 	else
 		microuptime(&t->tv);

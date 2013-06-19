@@ -809,9 +809,10 @@ init_machclk(void)
 #endif
 
 #if defined(__i386__) || defined(__x86_64__)
-	/* check if TSC is available */
-	if ((cpu_feature & CPUID_TSC) == 0)
+	if (!tsc_present) {
+		/* No TSC */
 		machclk_usepcc = 0;
+	}
 
 	if (ncpus > 1) {
 		/*
@@ -820,6 +821,9 @@ init_machclk(void)
 		 * determine whether TSCs are synchronized
 		 * across CPUs or not.
 		 */
+		machclk_usepcc = 0;
+	} else if (!tsc_invariant) {
+		/* Not invariant TSC */
 		machclk_usepcc = 0;
 	}
 #else
@@ -842,7 +846,7 @@ init_machclk(void)
 	 * just use it.
 	 */
 #ifdef _RDTSC_SUPPORTED_
-	if (cpu_feature & CPUID_TSC)
+	if (tsc_present)
 		machclk_freq = (uint64_t)tsc_frequency;
 #endif
 
