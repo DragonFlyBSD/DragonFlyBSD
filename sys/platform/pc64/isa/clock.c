@@ -351,7 +351,8 @@ i8254_intr_reload(struct cputimer_intr *cti, sysclock_t reload)
 static void
 DODELAY(int n, int doswitch)
 {
-	int delta, prev_tick, tick, ticks_left;
+	ssysclock_t delta, ticks_left;
+	sysclock_t prev_tick, tick;
 
 #ifdef DELAYDEBUG
 	int getit_calls = 1;
@@ -529,7 +530,8 @@ static u_int
 calibrate_clocks(void)
 {
 	u_int64_t old_tsc;
-	u_int count, prev_count, tot_count;
+	u_int tot_count;
+	sysclock_t count, prev_count;
 	int sec, start_sec, timeout;
 
 	if (bootverbose)
