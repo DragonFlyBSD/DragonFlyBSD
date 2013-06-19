@@ -140,7 +140,7 @@ extern struct cputimer *sys_cputimer;
 void cputimer_select(struct cputimer *, int);
 void cputimer_register(struct cputimer *);
 void cputimer_deregister(struct cputimer *);
-void cputimer_set_frequency(struct cputimer *, int);
+void cputimer_set_frequency(struct cputimer *, sysclock_t);
 sysclock_t cputimer_default_fromhz(int);
 sysclock_t cputimer_default_fromus(int);
 void cputimer_default_construct(struct cputimer *, sysclock_t);

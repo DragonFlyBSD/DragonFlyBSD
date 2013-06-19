@@ -163,7 +163,7 @@ cputimer_deregister(struct cputimer *timer)
  * or 3000 nsec / tick x (1 << 32)
  */
 void
-cputimer_set_frequency(struct cputimer *timer, int freq)
+cputimer_set_frequency(struct cputimer *timer, sysclock_t freq)
 {
     timer->freq = freq;
     timer->freq64_usec = (1000000LL << 32) / freq;
