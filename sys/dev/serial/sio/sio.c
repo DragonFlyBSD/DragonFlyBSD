@@ -1787,7 +1787,7 @@ siointr1(struct com_s *com)
 	u_char	recv_data;
 	u_char	int_ctl;
 	u_char	int_ctl_new;
-	u_int	count;
+	sysclock_t count;
 
 	int_ctl = inb(com->intr_ctl_port);
 	int_ctl_new = int_ctl;
