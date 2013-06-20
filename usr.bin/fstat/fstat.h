@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/fstat.h,v 1.1.2.1 2000/07/02 10:20:25 ps Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.7 2007/05/09 04:33:51 dillon Exp $
  */
 
 #ifndef	__FSTAT_H__
@@ -54,6 +53,29 @@ struct  filestat {
 	int64_t	offset;
 	dev_t	rdev;
 };
+
+static inline mode_t
+mtrans(enum vtype type)
+{
+	switch (type) {
+	case VREG:
+		return S_IFREG;
+	case VDIR:
+		return S_IFDIR;
+	case VBLK:
+		return S_IFBLK;
+	case VCHR:
+		return S_IFCHR;
+	case VLNK:
+		return S_IFLNK;
+	case VSOCK:
+		return S_IFSOCK;
+	case VFIFO:
+		return S_IFIFO;
+	default:
+		return 0;
+	}
+}
 
 /* Ugh */
 extern kvm_t *kd;

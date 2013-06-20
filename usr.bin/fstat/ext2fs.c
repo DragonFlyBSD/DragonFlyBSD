@@ -45,46 +45,14 @@ int
 ext2fs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct inode ino;
-	mode_t mode;
 
 	if (!kread(VTOI(vp), &ino, sizeof(ino))) {
 		dprintf(stderr, "can't read inode at %p for pid %d\n",
 		    (void *)VTOI(vp), Pid);
 		return 0;
 	}
-	mode = ino.i_mode;
-	switch (vp->v_type) {
-	case VREG:
-		mode |= S_IFREG;
-		break;
-	case VDIR:
-		mode |= S_IFDIR;
-		break;
-	case VBLK:
-		mode |= S_IFBLK;
-		break;
-	case VCHR:
-		mode |= S_IFCHR;
-		break;
-	case VLNK:
-		mode |= S_IFLNK;
-		break;
-	case VSOCK:
-		mode |= S_IFSOCK;
-		break;
-	case VFIFO:
-		mode |= S_IFIFO;
-		break;
-	case VDATABASE:
-		break;
-	case VINT:
-	case VNON:
-	case VBAD:
-		return 0;
-	}
-
+	fsp->mode = ino.i_mode | mtrans(vp->v_type);
 	fsp->rdev = fsp->fsid = dev2udev(ino.i_dev);
-	fsp->mode = mode;
 	fsp->size = ino.i_din.di_size;
 	fsp->fileid = ino.i_number;
 

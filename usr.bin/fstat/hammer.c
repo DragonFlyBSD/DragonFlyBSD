@@ -49,7 +49,6 @@ hammer_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct hammer_inode ino;
 	struct hammer_pseudofs_inmem pfsm;
-	mode_t mode;
 
 	if (!kread(VTOI(vp), &ino, sizeof(ino))) {
 		dprintf(stderr, "can't read hammer_inode at %p for pid %d\n",
@@ -64,37 +63,7 @@ hammer_filestat(struct vnode *vp, struct filestat *fsp)
 	}
 	fsp->fsid = pfsm.fsid_udev ^ (u_int32_t)ino.obj_asof ^
 	    (u_int32_t)(ino.obj_asof >> 32);
-	mode = (mode_t)ino.ino_data.mode;
-	switch (vp->v_type) {
-	case VREG:
-		mode |= S_IFREG;
-		break;
-	case VDIR:
-		mode |= S_IFDIR;
-		break;
-	case VBLK:
-		mode |= S_IFBLK;
-		break;
-	case VCHR:
-		mode |= S_IFCHR;
-		break;
-	case VLNK:
-		mode |= S_IFLNK;
-		break;
-	case VSOCK:
-		mode |= S_IFSOCK;
-		break;
-	case VFIFO:
-		mode |= S_IFIFO;
-		break;
-	case VDATABASE:
-		break;
-	case VINT:
-	case VNON:
-	case VBAD:
-		return 0;
-	}
-	fsp->mode = mode;
+	fsp->mode = ino.ino_data.mode | mtrans(vp->v_type);
 	fsp->fileid = (long)ino.ino_leaf.base.obj_id;
 	fsp->size = ino.ino_data.size;
 	fsp->rdev = dev2udev(vp->v_rdev);

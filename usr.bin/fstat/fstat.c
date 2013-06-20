@@ -113,7 +113,6 @@ int	wflg_cmd = 10;
 int	pid_width = 5;
 int	ino_width = 6;
 
-
 struct fdnode *ofiles; 	/* buffer of pointers to file structures */
 int maxfiles;
 
@@ -604,7 +603,6 @@ int
 nfs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct nfsnode nfsnode;
-	mode_t mode;
 
 	if (!kread(VTONFS(vp), &nfsnode, sizeof (nfsnode))) {
 		dprintf(stderr, "can't read nfsnode at %p for pid %d\n",
@@ -616,37 +614,7 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 	fsp->size = nfsnode.n_size;
 	fsp->rdev = makeudev(nfsnode.n_vattr.va_rmajor,
 			     nfsnode.n_vattr.va_rminor);
-	mode = (mode_t)nfsnode.n_vattr.va_mode;
-	switch (vp->v_type) {
-	case VREG:
-		mode |= S_IFREG;
-		break;
-	case VDIR:
-		mode |= S_IFDIR;
-		break;
-	case VBLK:
-		mode |= S_IFBLK;
-		break;
-	case VCHR:
-		mode |= S_IFCHR;
-		break;
-	case VLNK:
-		mode |= S_IFLNK;
-		break;
-	case VSOCK:
-		mode |= S_IFSOCK;
-		break;
-	case VFIFO:
-		mode |= S_IFIFO;
-		break;
-	case VDATABASE:
-		break;
-	case VINT:
-	case VNON:
-	case VBAD:
-		return 0;
-	}
-	fsp->mode = mode;
+	fsp->mode = nfsnode.n_vattr.va_mode | mtrans(vp->v_type);
 
 	return 1;
 }
