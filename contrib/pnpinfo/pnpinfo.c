@@ -23,12 +23,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/contrib/pnpinfo/pnpinfo.c,v 1.7 1999/09/05 17:27:05 peter Exp $
- * $DragonFly: src/contrib/pnpinfo/pnpinfo.c,v 1.3 2003/08/08 04:18:31 dillon Exp $
+ * $FreeBSD: src/contrib/pnpinfo/pnpinfo.c,v 1.12 2012/11/17 01:48:56 svnexp Exp $
  */
 
 #include <sys/time.h>
 
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -529,8 +529,8 @@ dump_resdata(u_char *data, int csn)
 	printf("\nLogical device #%d\n", pnp_read(PNP_SET_LDN) );
 	printf("IO: ");
 	for (j=0; j<8; j++)
-	    printf(" 0x%02x%02x", pnp_read(PNP_IO_BASE_HIGH(i)),
-		pnp_read(PNP_IO_BASE_LOW(i)));
+	    printf(" 0x%02x%02x", pnp_read(PNP_IO_BASE_HIGH(j)),
+		pnp_read(PNP_IO_BASE_LOW(j)));
 	printf("\nIRQ %d %d\n",
 	    pnp_read(PNP_IRQ_LEVEL(0)), pnp_read(PNP_IRQ_LEVEL(1)) );
 	printf("DMA %d %d\n",
@@ -581,13 +581,9 @@ main(void)
 {
     int num_pnp_devs;
 
-#ifdef __i386__
     /* Hey what about a i386_iopl() call :) */
-    if (open("/dev/io", O_RDONLY) < 0) {
-	fprintf (stderr, "pnpinfo: Can't get I/O privilege.\n");
-	exit (1);
-    }
-#endif
+    if (open("/dev/io", O_RDONLY) < 0)
+	errx(1, "can't get I/O privilege");
 
     printf("Checking for Plug-n-Play devices...\n");
 
