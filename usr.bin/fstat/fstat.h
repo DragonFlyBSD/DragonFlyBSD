@@ -82,15 +82,15 @@ extern kvm_t *kd;
 extern int vflg;
 extern int Pid;
 
-udev_t dev2udev(void *dev);
-udev_t makeudev(int x, int y);
+udev_t dev2udev(void *);
+udev_t makeudev(int, int);
 
 /* Additional filesystem types */
-int ext2fs_filestat(struct vnode *vp, struct filestat *fsp);
-int hammer_filestat(struct vnode *vp, struct filestat *fsp);
-int isofs_filestat(struct vnode *vp, struct filestat *fsp);
-int msdosfs_filestat(struct vnode *vp, struct filestat *fsp);
-int ntfs_filestat(struct vnode *vp, struct filestat *fsp);
-ssize_t kread(const void *kaddr, void *uaddr, size_t nbytes);
+int ext2fs_filestat(struct vnode *, struct filestat *);
+int hammer_filestat(struct vnode *, struct filestat *);
+int isofs_filestat(struct vnode *, struct filestat *);
+int msdosfs_filestat(struct vnode *, struct filestat *);
+int ntfs_filestat(struct vnode *, struct filestat *);
+ssize_t kread(const void *, void *, size_t);
 
 #endif /* __FSTAT_H__ */

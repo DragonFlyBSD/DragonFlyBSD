@@ -128,18 +128,18 @@ int maxfiles;
 
 kvm_t *kd;
 
-void dofiles(struct kinfo_proc *kp, struct proc *p);
-void dommap(struct proc *p);
-void vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off);
-int  ufs_filestat(struct vnode *vp, struct filestat *fsp);
-int  nfs_filestat(struct vnode *vp, struct filestat *fsp);
-int  devfs_filestat(struct vnode *vp, struct filestat *fsp);
-char *getmnton(struct mount *m, struct namecache_list *ncplist, struct nchandle *ncr);
-void pipetrans(struct pipe *pi, int i, int flag);
-void socktrans(struct socket *sock, int i);
-void getinetproto(int number);
-int  getfname(const char *filename);
-void usage(void);
+static void dofiles(struct kinfo_proc *, struct proc *);
+static void dommap(struct proc *);
+static void vtrans(struct vnode *, struct nchandle *, int, int, off_t);
+static int  ufs_filestat(struct vnode *, struct filestat *);
+static int  nfs_filestat(struct vnode *, struct filestat *);
+static int  devfs_filestat(struct vnode *, struct filestat *);
+static char *getmnton(struct mount *, struct namecache_list *, struct nchandle *);
+static void pipetrans(struct pipe *, int, int);
+static void socktrans(struct socket *, int);
+static void getinetproto(int);
+static int  getfname(const char *);
+static void usage(void) __dead2;
 
 
 int
@@ -297,7 +297,7 @@ int	Pid;
 /*
  * print open files attributed to this process
  */
-void
+static void
 dofiles(struct kinfo_proc *kp, struct proc *p)
 {
 	int i;
@@ -387,7 +387,7 @@ dofiles(struct kinfo_proc *kp, struct proc *p)
 	}
 }
 
-void
+static void
 dommap(struct proc *p)
 {
 	struct vmspace vmspace;
@@ -445,7 +445,7 @@ dommap(struct proc *p)
 	}
 }
 
-void
+static void
 vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 {
 	struct vnode vn;
@@ -575,7 +575,7 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 	putchar('\n');
 }
 
-int
+static int
 ufs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct inode inode;
@@ -599,7 +599,7 @@ ufs_filestat(struct vnode *vp, struct filestat *fsp)
 	return 1;
 }
 
-int
+static int
 nfs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct nfsnode nfsnode;
@@ -619,7 +619,7 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 	return 1;
 }
 
-int
+static int
 devfs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct devfs_node devfs_node;
@@ -637,7 +637,7 @@ devfs_filestat(struct vnode *vp, struct filestat *fsp)
 	return 1;
 }
 
-char *
+static char *
 getmnton(struct mount *m, struct namecache_list *ncplist, struct nchandle *ncr)
 {
 	static struct mount mount_l;
@@ -734,7 +734,7 @@ getmnton(struct mount *m, struct namecache_list *ncplist, struct nchandle *ncr)
 	return (mt->mntonname);
 }
 
-void
+static void
 pipetrans(struct pipe *pi, int i, int flag)
 {
 	struct pipe pip;
@@ -763,7 +763,7 @@ bad:
 	printf("* error\n");
 }
 
-void
+static void
 socktrans(struct socket *sock, int i)
 {
 	static const char *stypename[] = {
@@ -919,7 +919,7 @@ makeudev(int x, int y)
  * getinetproto --
  *	print name of protocol number
  */
-void
+static void
 getinetproto(int number)
 {
 	static int isopen;
@@ -933,7 +933,7 @@ getinetproto(int number)
 		printf(" %d", number);
 }
 
-int
+static int
 getfname(const char *filename)
 {
 	struct stat statbuf;
@@ -954,7 +954,7 @@ getfname(const char *filename)
 	return(1);
 }
 
-void
+static void
 usage(void)
 {
 	(void)fprintf(stderr,
