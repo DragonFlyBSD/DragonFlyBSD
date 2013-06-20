@@ -50,7 +50,9 @@
 
 /* --------------------------------------------------------------------- */
 #include <sys/malloc.h>
+#ifdef _KERNEL
 #include <sys/systm.h>
+#endif
 #include <sys/vmmeter.h>
 #include <vm/swap_pager.h>
 
@@ -299,6 +301,10 @@ struct tmpfs_node {
 		} tn_fifo;
 	} tn_spec;
 };
+
+#define VTOI(vp)	((struct tmpfs_node *)(vp)->v_data)
+
+#ifdef _KERNEL
 LIST_HEAD(tmpfs_node_list, tmpfs_node);
 
 #define tn_rdev tn_spec.tn_rdev
@@ -540,5 +546,6 @@ VP_TO_TMPFS_DIR(struct vnode *vp)
  */
 #define BSIZE (off_t)16384          /* buffer cache size*/
 #define BMASK (off_t)(BSIZE - 1)
+#endif /* _KERNEL */
 
 #endif /* _VFS_TMPFS_TMPFS_H_ */
