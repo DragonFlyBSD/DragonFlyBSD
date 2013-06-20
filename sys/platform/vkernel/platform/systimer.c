@@ -62,6 +62,8 @@ SYSCTL_INT(_hw, OID_AUTO, tsc_present, CTLFLAG_RD,
             &tsc_present, 0, "TSC Available");
 SYSCTL_INT(_hw, OID_AUTO, tsc_invariant, CTLFLAG_RD,
             &tsc_invariant, 0, "Invariant TSC");
+SYSCTL_INT(_hw, OID_AUTO, tsc_mpsync, CTLFLAG_RD,
+            &tsc_mpsync, 0, "TSC is synchronized across CPUs");
 SYSCTL_QUAD(_hw, OID_AUTO, tsc_frequency, CTLFLAG_RD,
 	    &tsc_frequency, 0, "TSC Frequency");
 

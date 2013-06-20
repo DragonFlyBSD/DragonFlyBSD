@@ -25,6 +25,7 @@ extern u_int	timer_freq;
 extern int	timer0_max_count;
 extern int	tsc_present;
 extern int	tsc_invariant;
+extern int	tsc_mpsync;
 extern int64_t	tsc_frequency;
 extern int	tsc_is_broken;
 extern int	wall_cmos_clock;

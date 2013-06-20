@@ -106,6 +106,7 @@ int	adjkerntz;		/* local offset from GMT in seconds */
 int	disable_rtc_set;	/* disable resettodr() if != 0 */
 int	tsc_present;
 int	tsc_invariant;
+int	tsc_mpsync;
 int64_t	tsc_frequency;
 int	tsc_is_broken;
 int	wall_cmos_clock;	/* wall CMOS clock assumed if != 0 */
@@ -1166,6 +1167,89 @@ hw_i8254_timestamp(SYSCTL_HANDLER_ARGS)
     return(SYSCTL_OUT(req, buf, strlen(buf) + 1));
 }
 
+static uint64_t		tsc_mpsync_target;
+
+static void
+tsc_mpsync_test_remote(void *arg __unused)
+{
+	uint64_t tsc;
+
+	tsc = rdtsc();
+	if (tsc < tsc_mpsync_target)
+		tsc_mpsync = 0;
+}
+
+static void
+tsc_mpsync_test(void)
+{
+	struct globaldata *gd = mycpu;
+	uint64_t test_end, test_begin;
+	u_int i;
+
+	if (!tsc_invariant) {
+		/* Not even invariant TSC */
+		return;
+	}
+
+	if (ncpus == 1) {
+		/* Only one CPU */
+		tsc_mpsync = 1;
+		return;
+	}
+
+	if (cpu_vendor_id != CPU_VENDOR_INTEL) {
+		/* XXX only Intel works */
+		return;
+	}
+
+	kprintf("TSC testing MP synchronization ...\n");
+	tsc_mpsync = 1;
+
+	/* Run test for 100ms */
+	test_begin = rdtsc();
+	test_end = test_begin + (tsc_frequency / 10);
+
+#define TSC_TEST_TRYMAX		1000000	/* Make sure we could stop */
+
+	for (i = 0; i < TSC_TEST_TRYMAX; ++i) {
+		struct lwkt_cpusync cs;
+
+		crit_enter();
+		lwkt_cpusync_init(&cs, gd->gd_other_cpus,
+		    tsc_mpsync_test_remote, NULL);
+		lwkt_cpusync_interlock(&cs);
+		tsc_mpsync_target = rdtsc();
+		cpu_mfence();
+		lwkt_cpusync_deinterlock(&cs);
+		crit_exit();
+
+		if (!tsc_mpsync) {
+			kprintf("TSC is not MP synchronized @%u\n", i);
+			break;
+		}
+		if (tsc_mpsync_target > test_end)
+			break;
+	}
+
+#undef TSC_TEST_TRYMAX
+
+	if (tsc_mpsync) {
+		if (tsc_mpsync_target == test_begin) {
+			kprintf("TSC does not tick?!");
+			/* XXX disable TSC? */
+			tsc_invariant = 0;
+			tsc_mpsync = 0;
+			return;
+		}
+
+		kprintf("TSC is MP synchronized");
+		if (bootverbose)
+			kprintf(", after %u tries", i);
+		kprintf("\n");
+	}
+}
+SYSINIT(tsc_mpsync, SI_BOOT2_FINISH_SMP, SI_ORDER_ANY, tsc_mpsync_test, NULL);
+
 SYSCTL_NODE(_hw, OID_AUTO, i8254, CTLFLAG_RW, 0, "I8254");
 SYSCTL_UINT(_hw_i8254, OID_AUTO, freq, CTLFLAG_RD, &i8254_cputimer.freq, 0,
 	    "frequency");
@@ -1176,5 +1260,7 @@ SYSCTL_INT(_hw, OID_AUTO, tsc_present, CTLFLAG_RD,
 	    &tsc_present, 0, "TSC Available");
 SYSCTL_INT(_hw, OID_AUTO, tsc_invariant, CTLFLAG_RD,
 	    &tsc_invariant, 0, "Invariant TSC");
+SYSCTL_INT(_hw, OID_AUTO, tsc_mpsync, CTLFLAG_RD,
+	    &tsc_mpsync, 0, "TSC is synchronized across CPUs");
 SYSCTL_QUAD(_hw, OID_AUTO, tsc_frequency, CTLFLAG_RD,
 	    &tsc_frequency, 0, "TSC Frequency");
