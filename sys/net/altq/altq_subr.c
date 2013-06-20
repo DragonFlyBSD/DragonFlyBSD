@@ -809,23 +809,8 @@ init_machclk(void)
 #endif
 
 #if defined(__i386__) || defined(__x86_64__)
-	if (!tsc_present) {
-		/* No TSC */
+	if (!tsc_mpsync)
 		machclk_usepcc = 0;
-	}
-
-	if (ncpus > 1) {
-		/*
-		 * XXX
-		 * Disable PCC on SMP system, until we could
-		 * determine whether TSCs are synchronized
-		 * across CPUs or not.
-		 */
-		machclk_usepcc = 0;
-	} else if (!tsc_invariant) {
-		/* Not invariant TSC */
-		machclk_usepcc = 0;
-	}
 #else
 	machclk_usepcc = 0;
 #endif
