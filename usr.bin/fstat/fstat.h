@@ -91,6 +91,7 @@ int hammer_filestat(struct vnode *, struct filestat *);
 int isofs_filestat(struct vnode *, struct filestat *);
 int msdosfs_filestat(struct vnode *, struct filestat *);
 int ntfs_filestat(struct vnode *, struct filestat *);
+int tmpfs_filestat(struct vnode *, struct filestat *);
 ssize_t kread(const void *, void *, size_t);
 
 #endif /* __FSTAT_H__ */

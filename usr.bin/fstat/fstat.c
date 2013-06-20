@@ -471,6 +471,10 @@ vtrans(struct vnode *vp, struct nchandle *ncr, int i, int flag, off_t off)
 			if (!hammer_filestat(&vn, &fst))
 				badtype = "error";
 			break;
+		case VT_TMPFS:
+			if (!tmpfs_filestat(&vn, &fst))
+				badtype = "error";
+			break;
 		case VT_UFS:
 			if (!ufs_filestat(&vn, &fst))
 				badtype = "error";
