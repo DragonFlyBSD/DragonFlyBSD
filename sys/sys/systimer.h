@@ -132,10 +132,10 @@ extern struct cputimer *sys_cputimer;
 #define CPUTIMER_PRI_DUMMY	-10
 #define CPUTIMER_PRI_8254	0
 #define CPUTIMER_PRI_ACPI	10
-#define CPUTIMER_PRI_HPET	15
-#define CPUTIMER_PRI_CS5536	17
-#define CPUTIMER_PRI_GEODE	18
-#define CPUTIMER_PRI_VKERNEL	20
+#define CPUTIMER_PRI_HPET	20
+#define CPUTIMER_PRI_CS5536	30
+#define CPUTIMER_PRI_GEODE	40
+#define CPUTIMER_PRI_VKERNEL	200
 
 void cputimer_select(struct cputimer *, int);
 void cputimer_register(struct cputimer *);
