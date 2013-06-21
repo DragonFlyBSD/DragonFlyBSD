@@ -212,12 +212,16 @@ enabled and must be less than the power of 2 number of CPUs.
 .It Va hw.bnxX.npoll.txoff
 If more than 1 reception queues are enabled
 and only 1 transmission queue is enabled,
-this tunable specifies the target CPU for transmission queue processing.
+this tunable specifies the target CPU for transmission queue
+.Xr polling 4
+processing.
 The value specificed must be less than the power of 2 number of CPUs.
 .It Va hw.bnxX.npoll.rxoff
 If more than 1 reception queues are enabled
 and only 1 transmission queue is enabled,
-this tunable specifies the leading target CPU for reception queue processing.
+this tunable specifies the leading target CPU for reception queue
+.Xr polling 4
+processing.
 The value specificed must be aligned to the number of reception queues
 enabled and must be less than the power of 2 number of CPUs.
 .El
@@ -300,8 +304,8 @@ The number of transmission descriptors should be setup before the hardware
 register is written.
 Setting this value too high will have negative effect
 on transmission timeliness.
-Setting this value too low will hurt overall transmission due to the frequent
-hardware register writing.
+Setting this value too low will hurt overall transmission performance
+due to the frequent hardware register writing.
 Default value is 8.
 .It Va std_refill
 Number of packets should be received
