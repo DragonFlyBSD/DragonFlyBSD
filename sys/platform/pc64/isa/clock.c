@@ -150,6 +150,23 @@ static struct cputimer	i8254_cputimer = {
     0, 0, 0
 };
 
+static sysclock_t tsc_cputimer_count(void);
+static void tsc_cputimer_construct(struct cputimer *, sysclock_t);
+
+static struct cputimer	tsc_cputimer = {
+    SLIST_ENTRY_INITIALIZER,
+    "TSC",
+    CPUTIMER_PRI_TSC,
+    CPUTIMER_TSC,
+    tsc_cputimer_count,
+    cputimer_default_fromhz,
+    cputimer_default_fromus,
+    tsc_cputimer_construct,
+    cputimer_default_destruct,
+    0,
+    0, 0, 0
+};
+
 static void i8254_intr_reload(struct cputimer_intr *, sysclock_t);
 static void i8254_intr_config(struct cputimer_intr *, const struct cputimer *);
 static void i8254_intr_initclock(struct cputimer_intr *, boolean_t);
@@ -1256,6 +1273,57 @@ tsc_mpsync_test(void)
 	}
 }
 SYSINIT(tsc_mpsync, SI_BOOT2_FINISH_SMP, SI_ORDER_ANY, tsc_mpsync_test, NULL);
+
+#define TSC_CPUTIMER_FREQMAX	128000000	/* 128Mhz */
+
+static int tsc_cputimer_shift;
+
+static void
+tsc_cputimer_construct(struct cputimer *timer, sysclock_t oldclock)
+{
+	timer->base = 0;
+	timer->base = oldclock - tsc_cputimer_count();
+}
+
+static sysclock_t
+tsc_cputimer_count(void)
+{
+	uint64_t tsc;
+
+	tsc = rdtsc();
+	tsc >>= tsc_cputimer_shift;
+
+	return (tsc + tsc_cputimer.base);
+}
+
+static void
+tsc_cputimer_register(void)
+{
+	uint64_t freq;
+	int enable = 1;
+
+	if (!tsc_mpsync)
+		return;
+
+	TUNABLE_INT_FETCH("hw.tsc_cputimer_enable", &enable);
+	if (!enable)
+		return;
+
+	freq = tsc_frequency;
+	while (freq > TSC_CPUTIMER_FREQMAX) {
+		freq >>= 1;
+		++tsc_cputimer_shift;
+	}
+	kprintf("TSC: cputimer freq %ju, shift %d\n",
+	    (uintmax_t)freq, tsc_cputimer_shift);
+
+	tsc_cputimer.freq = freq;
+
+	cputimer_register(&tsc_cputimer);
+	cputimer_select(&tsc_cputimer, 0);
+}
+SYSINIT(tsc_cputimer_reg, SI_BOOT2_MACHDEP, SI_ORDER_ANY,
+    tsc_cputimer_register, NULL);
 
 SYSCTL_NODE(_hw, OID_AUTO, i8254, CTLFLAG_RW, 0, "I8254");
 SYSCTL_UINT(_hw_i8254, OID_AUTO, freq, CTLFLAG_RD, &i8254_cputimer.freq, 0,
