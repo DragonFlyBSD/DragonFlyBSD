@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/em.4,v 1.30 2008/10/06 21:55:53 simon Exp $
 .\"
-.Dd September 17, 2012
+.Dd June 23, 2013
 .Dt EM 4
 .Os
 .Sh NAME
@@ -67,22 +67,46 @@ The driver supports Transmit/Receive checksum offload
 and Jumbo Frames on all but 82542-based adapters.
 Furthermore it supports TCP segmentation offload (TSO) on adapters
 based on the 82571, 82572, 82573 and 82574 controller chips.
-For further hardware information, see the
-.Pa README
-included with the driver.
+.\"For further hardware information, see the
+.\".Pa README
+.\"included with the driver.
 .Pp
 The
 .Nm emx
 is a version of the
 .Nm em
 driver for 82571, 82572, 82573, and 82574 Ethernet controller chips that
-additionally supports RSS (Receive Side Scaling).
+additionally supports Receive Side Scaling (RSS, 2 reception queues).
+By default,
+the
+.Nm emx
+driver will try enabling 2 reception queues
+if there are multiple CPUs on the system.
+For 82571 and 82572,
+the
+.Nm emx
+driver could be configured to enable 2 transmission queues.
+By default,
+the
+.Nm emx
+driver only enables 1 transmission queue,
+since enabling 2 transmission queues will require setting up context
+descriptor for every packets requiring hardware transmission offloading,
+which hurts tiny packet transmission performance.
+However,
+if the workload is mainly bulk data
+or hardware transmission offloading is rarely required,
+extra transmission queue could be enabled to reduce contention on
+transmission path.
+2 transmission queues will only be used when
+.Xr polling 4
+is enabled on the device.
 .Pp
-For questions related to hardware requirements,
-refer to the documentation supplied with your Intel PRO/1000 adapter.
-All hardware requirements listed apply to use with
-.Dx .
-.Pp
+.\"For questions related to hardware requirements,
+.\"refer to the documentation supplied with your Intel PRO/1000 adapter.
+.\"All hardware requirements listed apply to use with
+.\".Dx .
+.\".Pp
 Support for Jumbo Frames is provided via the interface MTU setting.
 Selecting an MTU larger than 1500 bytes with the
 .Xr ifconfig 8
@@ -214,26 +238,118 @@ The
 .Nm emx
 driver supports Gigabit Ethernet adapters based on the Intel
 82571, 82572, 82573, and 82574 controller chips.
-.Sh LOADER TUNABLES
+.Sh TUNABLES
 Tunables can be set at the
 .Xr loader 8
 prompt before booting the kernel or stored in
 .Xr loader.conf 5 .
-.Bl -tag -width indent
+.Em Y
+is the device unit number.
+.Bl -tag -width "hw.em.int_throttle_ceil"
 .It Va hw.em.int_throttle_ceil
 Hardware interrupt throttling rate.
-The default value is 10000Hz.
+The default value is 6000Hz.
+This tunable also applies to
+.Nm emx .
+.Nm emx
+has a per device tunable
+.Va hw.emxY.int_throttle_ceil ,
+which serves the same purpose.
 .It Va hw.em.rxd
 Number of receive descriptors allocated by the driver.
-The default value is 256.
+The default value is 512.
 The 82542 and 82543-based adapters can handle up to 256 descriptors,
 while others can have up to 4096.
+This tunable also applies to
+.Nm emx .
+.Nm emx
+has a per device tunable
+.Va hw.emxY.rxd ,
+which serves the same purpose.
 .It Va hw.em.txd
 Number of transmit descriptors allocated by the driver.
-The default value is 256.
+The default value is 512.
 The 82542 and 82543-based adapters can handle up to 256 descriptors,
 while others can have up to 4096.
-.It Va hw.em.int_tx_nsegs
+This tunable also applies to
+.Nm emx .
+.Nm emx
+has a per device tunable
+.Va hw.emxY.txd ,
+which serves the same purpose.
+.It Va hw.em.msi.enable Va hw.emY.msi.enable
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting these tunable to 0.
+These tunables also applies to
+.Nm emx .
+.It Va hw.emY.msi.cpu
+If MSI is used,
+it specifies the MSI's target CPU.
+This tunable also applies to
+.Nm emx .
+.It Va hw.emY.irq.unshared
+If legacy interrupt is used,
+by default,
+the driver assumes the interrupt could be shared.
+Setting this tunable to 1 allows the driver to
+perform certain optimization based on the knowledge
+that the interrupt is not shared.
+These tunables also applies to
+.Nm emx .
+.It Va hw.emx.rxr Va hw.emxY.rxr
+This tunable specifies the number of reception queues could be enabled.
+Maximum allowed value for these tunables is 2.
+Setting these tunables to 0 allows the driver to enable reception
+queues based on the number of CPUs.
+The default value is 0.
+.It Va hw.emx.txr Va hw.emxY.txr
+These tunables only take effect on 82571 and 82572.
+This tunable specifies the number of transmission queues could be enabled.
+Maximum allowed value for these tunables is 2.
+Setting these tunables to 0 allows the driver to enable transmission
+queues based on the number of CPUs.
+The default value is 1.
+.It Va hw.emxY.npoll.rxoff
+This tunable specifies the leading target CPU for reception queues
+.Xr polling 4
+processing.
+The value specificed must be aligned to the number of reception queues enabled
+and must be less than the power of 2 number of CPUs.
+.It Va hw.emxY.npoll.rxoff
+This tunable specifies the leading target CPU for transmission queues
+.Xr polling 4
+processing.
+The value specificed must be aligned to the number of transmission queues
+enabled
+and must be less than the power of 2 number of CPUs.
+.El
+.Sh MIB Variables
+A number of per-interface variables are implemented in the
+.Va hw.emx Ns Em Y
+or
+.Va hw.em Ns Em Y
+branch of the
+.Xr sysctl 3
+MIB.
+.Bl -tag -width "int_throttle_ceil"
+.It Va rxd
+Number of reception descriptors enabled (read-only).
+Use the tunable
+.Va hw.em.rxd
+or
+.Va hw.emY.rxd
+to configure it.
+.It Va txd
+Number of transmission descriptors enabled (read-only).
+Use the tunable
+.Va hw.em.txd
+or
+.Va hw.emY.txd
+to configure it.
+.It Va int_throttle_ceil
+See the tunable
+.Va hw.em.int_throttle_ceil .
+.It Va int_tx_nsegs
 This value controls how many transmit descriptors should be consumed
 by the hardware before the hardware generates a transmit interrupt.
 The default value is 1/16 of the number of transmit descriptors.
@@ -242,31 +358,62 @@ If
 is not used on the hardware and
 the major part of the transmitted data are bulk data,
 this value could safely be set to 1/2 of the number of transmit descriptors.
-.It Va hw.em.msi.enable
-By default, the driver will use MSI if it is supported.
-This behavior can be turned off by setting this tunable to 0.
+.It Va tx_wreg_nsegs
+The number of transmission descriptors should be setup
+before the hardware register is written.
+Setting this value too high will have negative effect
+on transmission timeliness.
+Setting this value too low will hurt overall transmission due to
+the frequent hardware register writing.
+Default value is 8.
+.It Va rx_ring_cnt
+Number of reception queues enableed (read-only).
+This sysctl only applies to
+.Nm emx .
+Use the tunable
+.Va hw.emx.rxr
+or
+.Va hw.emxY.rxr
+to configure it.
+.It Va tx_ring_cnt
+Number of transmission queues that cound be enableed (read-only).
+This sysctl only applies to
+.Nm emx .
+Use the tunable
+.Va hw.emx.txr
+or
+.Va hw.emxY.txr
+to configure it.
+.It Va tx_ring_inuse
+Number of transmission queues being used (read-only).
+This sysctl only applies to
+.Nm emx .
+.It Va npoll_rxoff
+See the tunable
+.Va hw.emxY.npoll.rxoff .
+The set value will take effect the next time
+.Xr polling 4
+is enabled on the device.
+This sysctl only applies to
+.Nm emx .
+.It Va npoll_txoff
+See the tunable
+.Va hw.emxY.npoll.txoff .
+The set value will take effect the next time
+.Xr polling 4
+is enabled on the device.
+This sysctl only applies to
+.Nm emx .
 .El
+.\".Sh SUPPORT
+.\"For general information and support,
+.\"go to the Intel support website at:
+.\".Pa http://support.intel.com .
 .\".Pp
-.\" XXX emx(4) tunables
-.Sh DIAGNOSTICS
-.Bl -diag
-.It "em%d: Unable to allocate bus resource: memory"
-A fatal initialization error has occurred.
-.It "em%d: Unable to allocate bus resource: interrupt"
-A fatal initialization error has occurred.
-.It "em%d: watchdog timeout -- resetting"
-The device has stopped responding to the network, or there is a problem with
-the network connection (cable).
-.El
-.Sh SUPPORT
-For general information and support,
-go to the Intel support website at:
-.Pa http://support.intel.com .
-.Pp
-If an issue is identified with the released source code on the supported kernel
-with a supported adapter, email the specific information related to the
-issue to
-.Aq freebsdnic@mailbox.intel.com .
+.\"If an issue is identified with the released source code on the supported kernel
+.\"with a supported adapter, email the specific information related to the
+.\"issue to
+.\".Aq freebsdnic@mailbox.intel.com .
 .Sh SEE ALSO
 .Xr arp 4 ,
 .Xr ifmedia 4 ,
