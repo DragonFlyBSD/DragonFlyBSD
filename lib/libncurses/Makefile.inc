@@ -25,6 +25,9 @@ SHLIB_MAJOR=	6
 SHLIB_MAJOR=	7
 VERSION_DEF=	${.CURDIR}/../Versions.def
 SYMBOL_MAPS=	${.CURDIR}/../lib${LIB:S|w||}/Symbol.map
+.if defined(ENABLE_WIDEC)
+SYMBOL_MAPS+=	${.CURDIR}/Symbol.map
+.endif
 .endif
 
 TERMINFO_CAPS=  ${NCURSESDIR}/include/Caps
