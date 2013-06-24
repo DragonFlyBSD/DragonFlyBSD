@@ -75,7 +75,7 @@ ZLIB_1.2.8 {
     uncompress;
     zError;
     zlibCompileFlags;
-    zlibversion;
+    zlibVersion;
 };
 
 DF306.0 {
