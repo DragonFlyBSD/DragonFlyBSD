@@ -29,10 +29,12 @@ BZprivate_1.0 {
     BZ2_blockSort;
     BZ2_bsInitWrite;
     BZ2_compressBlock;
+    BZ2_crc32Table;
     BZ2_decompress;
     BZ2_hbAssignCodes;
     BZ2_hbCreateDecodeTables;
     BZ2_hbMakeCodeLengths;
     BZ2_indexIntoF;
+    BZ2_rNums;
     BZ2_bz__AssertH__fail;
 };
