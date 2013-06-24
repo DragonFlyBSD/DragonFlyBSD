@@ -511,9 +511,12 @@ em_attach(device_t dev)
 	    (adapter->hw.mac.type >= e1000_82544 && em_txd > EM_MAX_TXD) ||
 	    (adapter->hw.mac.type < e1000_82544 && em_txd > EM_MAX_TXD_82543) ||
 	    em_txd < EM_MIN_TXD) {
+		if (adapter->hw.mac.type < e1000_82544)
+			adapter->num_tx_desc = EM_MAX_TXD_82543;
+		else
+			adapter->num_tx_desc = EM_DEFAULT_TXD;
 		device_printf(dev, "Using %d TX descriptors instead of %d!\n",
-		    EM_DEFAULT_TXD, em_txd);
-		adapter->num_tx_desc = EM_DEFAULT_TXD;
+		    adapter->num_tx_desc, em_txd);
 	} else {
 		adapter->num_tx_desc = em_txd;
 	}
@@ -521,9 +524,12 @@ em_attach(device_t dev)
 	    (adapter->hw.mac.type >= e1000_82544 && em_rxd > EM_MAX_RXD) ||
 	    (adapter->hw.mac.type < e1000_82544 && em_rxd > EM_MAX_RXD_82543) ||
 	    em_rxd < EM_MIN_RXD) {
+		if (adapter->hw.mac.type < e1000_82544)
+			adapter->num_rx_desc = EM_MAX_RXD_82543;
+		else
+			adapter->num_rx_desc = EM_DEFAULT_RXD;
 		device_printf(dev, "Using %d RX descriptors instead of %d!\n",
-		    EM_DEFAULT_RXD, em_rxd);
-		adapter->num_rx_desc = EM_DEFAULT_RXD;
+		    adapter->num_rx_desc, em_rxd);
 	} else {
 		adapter->num_rx_desc = em_rxd;
 	}
