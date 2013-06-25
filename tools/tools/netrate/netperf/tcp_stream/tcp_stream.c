@@ -33,9 +33,9 @@ main(int argc, char *argv[])
 	const char *host;
 	volatile int ninst;
 	int len, ninst_done;
-	int opt, i, null_fd;
+	int opt, i, null_fd, set_minmax = 0;
 	volatile int reverse = 0;
-	double result;
+	double result, res_max, res_min, jain;
 	pid_t mypid;
 
 	host = NULL;
@@ -146,6 +146,9 @@ main(int argc, char *argv[])
 		++ninst_done;
 	}
 
+	res_max = 0.0;
+	res_min = 0.0;
+	jain = 0.0;
 	result = 0.0;
 	for (i = 0; i < ninst; ++i) {
 		char line[128], filename[128];
@@ -167,6 +170,17 @@ main(int argc, char *argv[])
 			n = sscanf(line, "%d%d%d%lf%lf",
 			    &arg1, &arg2, &arg3, &arg4, &res);
 			if (n == 5) {
+				if (!set_minmax) {
+					res_max = res;
+					res_min = res;
+					set_minmax = 1;
+				} else {
+					if (res > res_max)
+						res_max = res;
+					if (res < res_min)
+						res_min = res;
+				}
+				jain += (res * res);
 				result += res;
 				break;
 			}
@@ -174,7 +188,13 @@ main(int argc, char *argv[])
 		fclose(fp);
 		unlink(filename);
 	}
+
+	jain *= ninst;
+	jain = (result * result) / jain;
+
 	printf("%s %.2f Mbps\n", reverse ? "TCP_MAERTS" : "TCP_STREAM", result);
+	printf("min/max (jain) %.2f Mbps/%.2f Mbps (%f)\n",
+	    res_min, res_max, jain);
 
 	exit(0);
 }
