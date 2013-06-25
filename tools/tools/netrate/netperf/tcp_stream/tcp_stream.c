@@ -174,7 +174,7 @@ main(int argc, char *argv[])
 		fclose(fp);
 		unlink(filename);
 	}
-	printf("%s %f Mbps\n", reverse ? "TCP_MAERTS" : "TCP_STREAM", result);
+	printf("%s %.2f Mbps\n", reverse ? "TCP_MAERTS" : "TCP_STREAM", result);
 
 	exit(0);
 }

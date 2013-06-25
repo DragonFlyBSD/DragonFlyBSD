@@ -166,7 +166,7 @@ main(int argc, char *argv[])
 		fclose(fp);
 		unlink(filename);
 	}
-	printf("TCP_CC %f conns/s\n", result);
+	printf("TCP_CC %.2f conns/s\n", result);
 
 	exit(0);
 }
