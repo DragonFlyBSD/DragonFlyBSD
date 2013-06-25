@@ -66,7 +66,7 @@ static TAILQ_HEAD(, vm_page) dev_freepages_list =
 static MALLOC_DEFINE(M_FICTITIOUS_PAGES, "device-mapped pages",
 		"Device mapped pages");
 
-static vm_page_t dev_pager_getfake (vm_paddr_t);
+static vm_page_t dev_pager_getfake (vm_paddr_t, int);
 static void dev_pager_putfake (vm_page_t);
 
 struct pagerops devicepagerops = {
@@ -258,7 +258,7 @@ dev_pager_haspage(vm_object_t object, vm_pindex_t pindex)
  * The caller must hold dev_pager_mtx
  */
 static vm_page_t
-dev_pager_getfake(vm_paddr_t paddr)
+dev_pager_getfake(vm_paddr_t paddr, int pat_mode)
 {
 	vm_page_t m;
 
@@ -274,6 +274,7 @@ dev_pager_getfake(vm_paddr_t paddr)
 	m->wire_count = 1;
 	m->hold_count = 0;
 	m->phys_addr = paddr;
+	m->pat_mode = pat_mode;
 
 	return (m);
 }
@@ -359,7 +360,7 @@ static int old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
 		 * Replace the passed in reqpage page with our own fake page
 		 * and free up all the original pages.
 		 */
-		page = dev_pager_getfake(paddr);
+		page = dev_pager_getfake(paddr, object->pat_mode);
 		TAILQ_INSERT_TAIL(&object->un_pager.devp.devp_pglist,
 				  page, pageq);
 		vm_object_hold(object);

@@ -106,6 +106,7 @@ drm_gem_object_init(struct drm_device *dev, struct drm_gem_object *obj,
 	obj->refcount = 1;
 	obj->handle_count = 0;
 	obj->size = size;
+	obj->vm_obj->pat_mode = PAT_WRITE_COMBINING;	/* XXX */
 
 	return (0);
 }

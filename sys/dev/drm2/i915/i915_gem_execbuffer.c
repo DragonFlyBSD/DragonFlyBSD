@@ -380,7 +380,7 @@ i915_gem_execbuffer_relocate_entry(struct drm_i915_gem_object *obj,
 		char *reloc_page;
 
 		/* We can't wait for rendering with pagefaults disabled */
-		if (obj->active && (curthread->td_pflags & TDP_NOFAULTING) != 0)
+		if (obj->active && (curthread->td_flags & TDF_NOFAULT))
 			return (-EFAULT);
 		ret = i915_gem_object_set_to_gtt_domain(obj, 1);
 		if (ret)
@@ -456,7 +456,9 @@ i915_gem_execbuffer_relocate(struct drm_device *dev,
 			     struct list_head *objects)
 {
 	struct drm_i915_gem_object *obj;
-	int ret, pflags;
+	thread_t td = curthread;
+	int ret;
+	int pflags;
 
 	/* Try to move as many of the relocation targets off the active list
 	 * to avoid unnecessary fallbacks to the slow path, as we cannot wait
@@ -465,11 +467,9 @@ i915_gem_execbuffer_relocate(struct drm_device *dev,
 	i915_gem_retire_requests(dev);
 
 	ret = 0;
-#if 0
-	pflags = vm_fault_disable_pagefaults();
-else
-	kprintf("i915_gem_execbuffer_relocate: pagefault_disable\n");
-#endif
+	pflags = td->td_flags & TDF_NOFAULT;
+	atomic_set_int(&td->td_flags, TDF_NOFAULT);
+
 	/* This is the fast path and we cannot handle a pagefault whilst
 	 * holding the device lock lest the user pass in the relocations
 	 * contained within a mmaped bo. For in such a case we, the page
@@ -482,11 +482,10 @@ else
 		if (ret != 0)
 			break;
 	}
-#if 0
-	vm_fault_enable_pagefaults(pflags);
-#else
-	kprintf("i915_gem_execbuffer_relocate: pagefault_enable\n");
-#endif
+
+	if ((pflags & TDF_NOFAULT) == 0)
+		atomic_clear_int(&td->td_flags, TDF_NOFAULT);
+
 	return (ret);
 }
 

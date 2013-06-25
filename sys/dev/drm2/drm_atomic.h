@@ -45,12 +45,16 @@ typedef u_int32_t atomic_t;
 static __inline atomic_t
 test_and_set_bit(int b, volatile void *p)
 {
-	int s = splhigh();
-	unsigned int m = 1<<b;
-	unsigned int r = *(volatile int *)p & m;
-	*(volatile int *)p |= m;
-	splx(s);
-	return r;
+	unsigned int mask = 1 << b;
+	unsigned int v;
+
+	for (;;) {
+		v = *(volatile unsigned int *)p;
+		cpu_ccfence();
+		if (atomic_cmpset_int(p, v, v | mask))
+			break;
+	}
+	return (v & mask);
 }
 
 static __inline void

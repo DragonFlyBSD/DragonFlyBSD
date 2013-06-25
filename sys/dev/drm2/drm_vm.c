@@ -120,19 +120,13 @@ drm_mmap(struct dev_mmap_args *ap)
 	switch (type) {
 	case _DRM_FRAME_BUFFER:
 	case _DRM_AGP:
-#if 0
-		/* FIXME */
-		*memattr = VM_MEMATTR_WRITE_COMBINING;
-#endif
+		/* memattr set by type in map's object */
 		/* FALLTHROUGH */
 	case _DRM_REGISTERS:
 		phys = map->offset + offset;
 		break;
 	case _DRM_SCATTER_GATHER:
-#if 0
-		/* FIXME */
-		*memattr = VM_MEMATTR_WRITE_COMBINING;
-#endif
+		/* memattr set by type in map's object */
 		/* FALLTHROUGH */
 	case _DRM_CONSISTENT:
 	case _DRM_SHM:
@@ -186,7 +180,7 @@ vm_phys_fictitious_to_vm_page(vm_paddr_t pa)
         return (m);
 }
 
-static void page_init(vm_page_t m, vm_paddr_t paddr)
+static void page_init(vm_page_t m, vm_paddr_t paddr, int pat_mode)
 {
 	bzero(m, sizeof(*m));
 
@@ -197,6 +191,7 @@ static void page_init(vm_page_t m, vm_paddr_t paddr)
         m->busy = 0;
         m->queue = PQ_NONE;
         m->object = NULL;
+	m->pat_mode = pat_mode;
 
         m->wire_count = 1;
         m->hold_count = 0;
@@ -204,7 +199,7 @@ static void page_init(vm_page_t m, vm_paddr_t paddr)
 }
 
 int
-vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end)
+vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end, int pat_mode)
 {
         struct vm_phys_fictitious_seg *seg;
         vm_page_t fp;
@@ -217,7 +212,7 @@ vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end)
                     M_WAITOK | M_ZERO);
 
         for (i = 0; i < page_count; i++) {
-                page_init(&fp[i], start + PAGE_SIZE * i);
+                page_init(&fp[i], start + PAGE_SIZE * i, pat_mode);
         }
         mtx_lock(&vm_phys_fictitious_reg_mtx);
         for (segind = 0; segind < VM_PHYS_FICTITIOUS_NSEGS; segind++) {
