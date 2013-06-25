@@ -2691,6 +2691,11 @@ carp_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	carpdev = sc->sc_carpdev;
 	if (carpdev != NULL) {
+		if (m->m_flags & M_MCAST)
+			IFNET_STAT_INC(ifp, omcasts, 1);
+		IFNET_STAT_INC(ifp, obytes, m->m_pkthdr.len + ETHER_HDR_LEN);
+		IFNET_STAT_INC(ifp, opackets, 1);
+
 		/*
 		 * NOTE:
 		 * CARP's ifp is passed to backing device's
@@ -2698,6 +2703,7 @@ carp_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		 */
 		carpdev->if_output(ifp, m, dst, rt);
 	} else {
+		IFNET_STAT_INC(ifp, oerrors, 1);
 		m_freem(m);
 		error = ENETUNREACH;
 	}
