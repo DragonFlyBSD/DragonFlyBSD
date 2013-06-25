@@ -341,6 +341,10 @@ static int carp_suppress_preempt = 0;
 SYSCTL_INT(_net_inet_carp, OID_AUTO, suppress_preempt, CTLFLAG_RD,
     &carp_suppress_preempt, 0, "Preemption is suppressed");
 
+static int carp_prio_ad = 1;
+SYSCTL_INT(_net_inet_carp, OID_AUTO, prio_ad, CTLFLAG_RD,
+    &carp_prio_ad, 0, "Prioritize advertisement packet");
+
 static struct carpstats carpstats;
 SYSCTL_STRUCT(_net_inet_carp, CARPCTL_STATS, stats, CTLFLAG_RW,
     &carpstats, carpstats,
@@ -1361,6 +1365,8 @@ carp_send_ad(struct carp_softc *sc)
 		m->m_len = len;
 		MH_ALIGN(m, m->m_len);
 		m->m_flags |= M_MCAST;
+		if (carp_prio_ad)
+			m->m_flags |= M_PRIO;
 		ip = mtod(m, struct ip *);
 		ip->ip_v = IPVERSION;
 		ip->ip_hl = sizeof(*ip) >> 2;
