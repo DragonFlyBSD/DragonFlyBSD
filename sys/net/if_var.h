@@ -879,9 +879,10 @@ extern	int if_index;
 struct ip;
 struct tcphdr;
 
-void	ether_ifattach(struct ifnet *, uint8_t *, struct lwkt_serialize *);
-void	ether_ifattach_bpf(struct ifnet *, uint8_t *, u_int, u_int,
-			struct lwkt_serialize *);
+void	ether_ifattach(struct ifnet *, const uint8_t *,
+	    struct lwkt_serialize *);
+void	ether_ifattach_bpf(struct ifnet *, const uint8_t *, u_int, u_int,
+	    struct lwkt_serialize *);
 void	ether_ifdetach(struct ifnet *);
 void	ether_demux(struct mbuf *);
 void	ether_demux_oncpu(struct ifnet *, struct mbuf *);

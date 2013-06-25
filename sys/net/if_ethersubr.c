@@ -567,15 +567,16 @@ ether_input(struct ifnet *ifp, struct mbuf *m)
  * Perform common duties while attaching to interface list
  */
 void
-ether_ifattach(struct ifnet *ifp, uint8_t *lla, lwkt_serialize_t serializer)
+ether_ifattach(struct ifnet *ifp, const uint8_t *lla,
+    lwkt_serialize_t serializer)
 {
 	ether_ifattach_bpf(ifp, lla, DLT_EN10MB, sizeof(struct ether_header),
-			   serializer);
+	    serializer);
 }
 
 void
-ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen,
-		   lwkt_serialize_t serializer)
+ether_ifattach_bpf(struct ifnet *ifp, const uint8_t *lla,
+    u_int dlt, u_int hdrlen, lwkt_serialize_t serializer)
 {
 	struct sockaddr_dl *sdl;
 	char ethstr[ETHER_ADDRSTRLEN + 1];
