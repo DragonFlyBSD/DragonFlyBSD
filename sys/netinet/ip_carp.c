@@ -454,7 +454,8 @@ static struct if_clone carp_cloner =
 IF_CLONE_INITIALIZER(CARP_IFNAME, carp_clone_create, carp_clone_destroy,
 		     0, IF_MAXUNIT);
 
-static uint8_t	carp_etheraddr[ETHER_ADDR_LEN] = { 0, 0, 0x5e, 0, 1, 0 };
+static const uint8_t	carp_etheraddr[ETHER_ADDR_LEN] =
+	{ 0, 0, 0x5e, 0, 1, 0 };
 
 static eventhandler_tag carp_ifdetach_event;
 static eventhandler_tag carp_ifaddr_event;
