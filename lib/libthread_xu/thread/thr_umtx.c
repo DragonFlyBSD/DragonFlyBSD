@@ -81,6 +81,10 @@ __thr_umtx_unlock(volatile umtx_t *mtx)
 	}
 }
 
+/*
+ * Low level timed umtx lock.  This function must never return
+ * EINTR.
+ */
 int
 __thr_umtx_timedlock(volatile umtx_t *mtx, const struct timespec *timeout)
 {
@@ -105,7 +109,7 @@ __thr_umtx_timedlock(volatile umtx_t *mtx, const struct timespec *timeout)
 	    timo = 1000000;
 	}
 	ret = __thr_umtx_lock(mtx, timo);
-	if (ret != ETIMEDOUT)
+	if (ret != EINTR && ret != ETIMEDOUT)
 	    break;
 	clock_gettime(CLOCK_REALTIME, &ts3);
 	TIMESPEC_SUB(&ts2, &ts, &ts3);
@@ -135,11 +139,16 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 		ret = EINTR;
 		break;
 	    }
+#if 0
 	    if (errval == ETIMEDOUT || errval == EWOULDBLOCK) {
 		if (*mtx != exp) {
-		    fprintf(stderr, "thr_umtx_wait: FAULT VALUE CHANGE %d -> %d oncond %p\n", exp, *mtx, mtx);
+		    fprintf(stderr,
+			    "thr_umtx_wait: FAULT VALUE CHANGE "
+			    "%d -> %d oncond %p\n",
+			    exp, *mtx, mtx);
 		}
 	    }
+#endif
 	    if (*mtx != exp)
 		return(0);
 	}
