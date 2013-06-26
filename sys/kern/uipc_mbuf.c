@@ -232,7 +232,11 @@ SYSCTL_PROC(_kern_ipc, OID_AUTO, showmbufs, CTLFLAG_RD|CTLTYPE_STRING,
 static void mbinit(void *);
 SYSINIT(mbuf, SI_BOOT2_MACHDEP, SI_ORDER_FIRST, mbinit, NULL)
 
-static u_long	mbtypes[SMP_MAXCPU][MT_NTYPES];
+struct mbtypes_stat {
+	u_long	stats[MT_NTYPES];
+} __cachealign;
+
+static struct mbtypes_stat	mbtypes[SMP_MAXCPU];
 
 static struct mbstat mbstat[SMP_MAXCPU];
 int	max_linkhdr;
@@ -327,7 +331,7 @@ do_mbtypes(SYSCTL_HANDLER_ARGS)
 	for (i = 0; i < ncpus; i++)
 	{
 		for (j = 0; j < MT_NTYPES; j++)
-			totals[j] += mbtypes[i][j];
+			totals[j] += mbtypes[i].stats[j];
 	}
 
 	return(sysctl_handle_opaque(oidp, totals, sizeof(totals), req));
@@ -761,8 +765,8 @@ m_chtype(struct mbuf *m, int type)
 {
 	struct globaldata *gd = mycpu;
 
-	++mbtypes[gd->gd_cpuid][type];
-	--mbtypes[gd->gd_cpuid][m->m_type];
+	++mbtypes[gd->gd_cpuid].stats[type];
+	--mbtypes[gd->gd_cpuid].stats[m->m_type];
 	m->m_type = type;
 }
 
@@ -795,7 +799,7 @@ updatestats(struct mbuf *m, int type)
 	KASSERT(m->m_nextpkt == NULL, ("mbuf %p: bad m_nextpkt in get", m));
 #endif
 
-	++mbtypes[gd->gd_cpuid][type];
+	++mbtypes[gd->gd_cpuid].stats[type];
 	++mbstat[gd->gd_cpuid].m_mbufs;
 
 }
@@ -934,7 +938,7 @@ retryonce:
 
 	mbuftrack(m);
 
-	++mbtypes[mycpu->gd_cpuid][type];
+	++mbtypes[mycpu->gd_cpuid].stats[type];
 	++mbstat[mycpu->gd_cpuid].m_clusters;
 	return (m);
 }
@@ -1102,7 +1106,7 @@ m_free(struct mbuf *m)
 
 	KASSERT(m->m_type != MT_FREE, ("freeing free mbuf %p", m));
 	KASSERT(M_TRAILINGSPACE(m) >= 0, ("overflowed mbuf %p", m));
-	--mbtypes[gd->gd_cpuid][m->m_type];
+	--mbtypes[gd->gd_cpuid].stats[m->m_type];
 
 	n = m->m_next;
 
