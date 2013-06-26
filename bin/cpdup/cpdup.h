@@ -35,6 +35,13 @@
 #include "compat_sun.h"
 #endif
 
+#ifdef __linux
+#define __printflike(a,b)
+#define __printf0like(a,b)
+#define __aligned(x)
+#define __unused
+#endif
+
 void logstd(const char *ctl, ...) __printflike(1, 2);
 void logerr(const char *ctl, ...) __printflike(1, 2);
 char *mprintf(const char *ctl, ...) __printflike(1, 2);
