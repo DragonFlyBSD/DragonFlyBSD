@@ -319,6 +319,8 @@ struct mbuf {
 
 /*
  * General mbuf allocator statistics structure.
+ *
+ * NOTE: Make sure this struct's size is multiple cache line size.
  */
 struct mbstat {
 	u_long	m_mbufs;	/* mbufs obtained from page pool */
@@ -336,6 +338,7 @@ struct mbstat {
 	u_long	m_minclsize;	/* min length of data to allocate a cluster */
 	u_long	m_mlen;		/* length of data in an mbuf */
 	u_long	m_mhlen;	/* length of data in a header mbuf */
+	u_long	m_pad;		/* pad to cache line size (64B) */
 };
 
 /*

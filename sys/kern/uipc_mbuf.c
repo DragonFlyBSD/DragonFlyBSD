@@ -238,7 +238,7 @@ struct mbtypes_stat {
 
 static struct mbtypes_stat	mbtypes[SMP_MAXCPU];
 
-static struct mbstat mbstat[SMP_MAXCPU];
+static struct mbstat mbstat[SMP_MAXCPU] __cachealign;
 int	max_linkhdr;
 int	max_protohdr;
 int	max_hdr;
