@@ -128,7 +128,6 @@ struct object_q vm_object_list;		/* locked by vmobj_token */
 struct vm_object kernel_object;
 
 static long vm_object_count;		/* locked by vmobj_token */
-extern int vm_pageout_page_count;
 
 static long object_collapses;
 static long object_bypasses;
@@ -1281,26 +1280,26 @@ done:
 static void
 vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 {
-	int runlen;
 	int error;
-	int maxf;
-	int chkb;
-	int maxb;
+	int is;
+	int ib;
 	int i;
+	int page_base;
 	vm_pindex_t pi;
-	vm_page_t maf[vm_pageout_page_count];
-	vm_page_t mab[vm_pageout_page_count];
-	vm_page_t ma[vm_pageout_page_count];
+	vm_page_t ma[BLIST_MAX_ALLOC];
 
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
 
 	pi = p->pindex;
+	page_base = pi % BLIST_MAX_ALLOC;
+	ib = page_base - 1;
+	is = page_base + 1;
 
-	maxf = 0;
-	for(i = 1; i < vm_pageout_page_count; i++) {
+	while (ib >= 0) {
 		vm_page_t tp;
 
-		tp = vm_page_lookup_busy_try(object, pi + i, TRUE, &error);
+		tp = vm_page_lookup_busy_try(object, pi - page_base + ib,
+					     TRUE, &error);
 		if (error)
 			break;
 		if (tp == NULL)
@@ -1322,19 +1321,17 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 			vm_page_wakeup(tp);
 			break;
 		}
-		maf[i - 1] = tp;
-		maxf++;
+		ma[ib] = tp;
+		--ib;
 	}
+	++ib;	/* fixup */
 
-	maxb = 0;
-	chkb = vm_pageout_page_count -  maxf;
-	/*
-	 * NOTE: chkb can be 0
-	 */
-	for(i = 1; chkb && i < chkb; i++) {
+	while (is < BLIST_MAX_ALLOC &&
+	       pi - page_base + is < object->size) {
 		vm_page_t tp;
 
-		tp = vm_page_lookup_busy_try(object, pi - i, TRUE, &error);
+		tp = vm_page_lookup_busy_try(object, pi - page_base + is,
+					     TRUE, &error);
 		if (error)
 			break;
 		if (tp == NULL)
@@ -1356,33 +1353,19 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 			vm_page_wakeup(tp);
 			break;
 		}
-		mab[i - 1] = tp;
-		maxb++;
+		ma[is] = tp;
+		++is;
 	}
 
 	/*
-	 * All pages in the maf[] and mab[] array are busied.
+	 * All pages in the ma[] array are busied now
 	 */
-	for (i = 0; i < maxb; i++) {
-		int index = (maxb - i) - 1;
-		ma[index] = mab[i];
-		vm_page_flag_clear(ma[index], PG_CLEANCHK);
+	for (i = ib; i < is; ++i) {
+		vm_page_flag_clear(ma[i], PG_CLEANCHK);
+		vm_page_hold(ma[i]);	/* XXX need this any more? */
 	}
-	vm_page_flag_clear(p, PG_CLEANCHK);
-	ma[maxb] = p;
-	for(i = 0; i < maxf; i++) {
-		int index = (maxb + i) + 1;
-		ma[index] = maf[i];
-		vm_page_flag_clear(ma[index], PG_CLEANCHK);
-	}
-	runlen = maxb + maxf + 1;
-
-	for (i = 0; i < runlen; i++)	/* XXX need this any more? */
-		vm_page_hold(ma[i]);
-
-	vm_pageout_flush(ma, runlen, pagerflags);
-
-	for (i = 0; i < runlen; i++)	/* XXX need this any more? */
+	vm_pageout_flush(&ma[ib], is - ib, pagerflags);
+	for (i = ib; i < is; ++i)	/* XXX need this any more? */
 		vm_page_unhold(ma[i]);
 }
 

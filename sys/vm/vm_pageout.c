@@ -125,7 +125,7 @@ int vm_pageout_pages_needed=0;	/* flag saying that the pageout daemon needs page
 static int vm_pageout_req_swapout;	/* XXX */
 static int vm_daemon_needed;
 #endif
-static int vm_max_launder = 32;
+static int vm_max_launder = 4096;
 static int vm_pageout_stats_max=0, vm_pageout_stats_interval = 0;
 static int vm_pageout_full_stats_interval = 0;
 static int vm_pageout_stats_free_max=0, vm_pageout_algorithm=0;
@@ -185,9 +185,6 @@ static int pageout_lock_miss;
 SYSCTL_INT(_vm, OID_AUTO, pageout_lock_miss,
 	CTLFLAG_RD, &pageout_lock_miss, 0, "vget() lock misses during pageout");
 
-#define VM_PAGEOUT_PAGE_COUNT 16
-int vm_pageout_page_count = VM_PAGEOUT_PAGE_COUNT;
-
 int vm_page_max_wired;		/* XXX max # of wired pages system-wide */
 
 #if !defined(NO_SWAPPING)
@@ -221,8 +218,7 @@ static int
 vm_pageout_clean(vm_page_t m)
 {
 	vm_object_t object;
-	vm_page_t mc[2*vm_pageout_page_count];
-	int pageout_count;
+	vm_page_t mc[BLIST_MAX_ALLOC];
 	int error;
 	int ib, is, page_base;
 	vm_pindex_t pindex = m->pindex;
@@ -250,11 +246,16 @@ vm_pageout_clean(vm_page_t m)
 		return 0;
 	}
 
-	mc[vm_pageout_page_count] = m;
-	pageout_count = 1;
-	page_base = vm_pageout_page_count;
-	ib = 1;
-	is = 1;
+	/*
+	 * Place page in cluster.  Align cluster for optimal swap space
+	 * allocation (whether it is swap or not).  This is typically ~16-32
+	 * pages, which also tends to align the cluster to multiples of the
+	 * filesystem block size if backed by a filesystem.
+	 */
+	page_base = pindex % BLIST_MAX_ALLOC;
+	mc[page_base] = m;
+	ib = page_base - 1;
+	is = page_base + 1;
 
 	/*
 	 * Scan object for clusterable pages.
@@ -277,24 +278,16 @@ vm_pageout_clean(vm_page_t m)
 	 */
 
 	vm_object_hold(object);
-more:
-	while (ib && pageout_count < vm_pageout_page_count) {
+	while (ib >= 0) {
 		vm_page_t p;
 
-		if (ib > pindex) {
-			ib = 0;
+		p = vm_page_lookup_busy_try(object, pindex - page_base + ib,
+					    TRUE, &error);
+		if (error || p == NULL)
 			break;
-		}
-
-		p = vm_page_lookup_busy_try(object, pindex - ib, TRUE, &error);
-		if (error || p == NULL) {
-			ib = 0;
-			break;
-		}
 		if ((p->queue - p->pc) == PQ_CACHE ||
 		    (p->flags & PG_UNMANAGED)) {
 			vm_page_wakeup(p);
-			ib = 0;
 			break;
 		}
 		vm_page_test_dirty(p);
@@ -304,25 +297,19 @@ more:
 		    p->wire_count != 0 ||	/* may be held by buf cache */
 		    p->hold_count != 0) {	/* may be undergoing I/O */
 			vm_page_wakeup(p);
-			ib = 0;
 			break;
 		}
-		mc[--page_base] = p;
-		++pageout_count;
-		++ib;
-		/*
-		 * alignment boundry, stop here and switch directions.  Do
-		 * not clear ib.
-		 */
-		if ((pindex - (ib - 1)) % vm_pageout_page_count == 0)
-			break;
+		mc[ib] = p;
+		--ib;
 	}
+	++ib;	/* fixup */
 
-	while (pageout_count < vm_pageout_page_count && 
-	    pindex + is < object->size) {
+	while (is < BLIST_MAX_ALLOC &&
+	       pindex - page_base + is < object->size) {
 		vm_page_t p;
 
-		p = vm_page_lookup_busy_try(object, pindex + is, TRUE, &error);
+		p = vm_page_lookup_busy_try(object, pindex - page_base + is,
+					    TRUE, &error);
 		if (error || p == NULL)
 			break;
 		if (((p->queue - p->pc) == PQ_CACHE) ||
@@ -339,25 +326,16 @@ more:
 			vm_page_wakeup(p);
 			break;
 		}
-		mc[page_base + pageout_count] = p;
-		++pageout_count;
+		mc[is] = p;
 		++is;
 	}
-
-	/*
-	 * If we exhausted our forward scan, continue with the reverse scan
-	 * when possible, even past a page boundry.  This catches boundry
-	 * conditions.
-	 */
-	if (ib && pageout_count < vm_pageout_page_count)
-		goto more;
 
 	vm_object_drop(object);
 
 	/*
 	 * we allow reads during pageouts...
 	 */
-	return vm_pageout_flush(&mc[page_base], pageout_count, 0);
+	return vm_pageout_flush(&mc[ib], is - ib, 0);
 }
 
 /*
@@ -740,6 +718,7 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 	struct vm_page marker;
 	struct vnode *vpfailed;		/* warning, allowed to be stale */
 	int maxscan;
+	int count;
 	int delta = 0;
 	vm_object_t object;
 	int actcount;
@@ -1134,11 +1113,13 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 			 * could wind up laundering or cleaning too many
 			 * pages.
 			 */
-			if (vm_pageout_clean(m) != 0) {
-				++delta;
-				--maxlaunder;
-			}
-			/* clean ate busy, page no longer accessible */
+			count = vm_pageout_clean(m);
+			delta += count;
+			maxlaunder -= count;
+
+			/*
+			 * Clean ate busy, page no longer accessible
+			 */
 			if (vp != NULL)
 				vput(vp);
 		} else {
@@ -1166,6 +1147,7 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 	vm_page_queues_spin_lock(PQ_INACTIVE + q);
 	TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE + q].pl, &marker, pageq);
 	vm_page_queues_spin_unlock(PQ_INACTIVE + q);
+
 	return (delta);
 }
 
@@ -1777,14 +1759,13 @@ vm_pageout_thread(void)
 {
 	int pass;
 	int q;
+	int q1iterator = 0;
+	int q2iterator = 0;
 
 	/*
 	 * Initialize some paging parameters.
 	 */
 	curthread->td_flags |= TDF_SYSTHREAD;
-
-	if (vmstats.v_page_count < 2000)
-		vm_pageout_page_count = 8;
 
 	vm_pageout_free_page_calc(vmstats.v_page_count);
 
@@ -1870,8 +1851,6 @@ vm_pageout_thread(void)
 	 */
 	while (TRUE) {
 		int error;
-		int delta1;
-		int delta2;
 		int avail_shortage;
 		int inactive_shortage;
 		int vnodes_skipped = 0;
@@ -1917,15 +1896,19 @@ vm_pageout_thread(void)
 		 */
 		avail_shortage = vm_paging_target() + vm_pageout_deficit;
 		vm_pageout_deficit = 0;
-		delta1 = 0;
+
 		if (avail_shortage > 0) {
 			for (q = 0; q < PQ_L2_SIZE; ++q) {
-				delta1 += vm_pageout_scan_inactive(
-					    pass, q,
+				avail_shortage -=
+					vm_pageout_scan_inactive(
+					    pass,
+					    (q + q1iterator) & PQ_L2_MASK,
 					    PQAVERAGE(avail_shortage),
 					    &vnodes_skipped);
+				if (avail_shortage <= 0)
+					break;
 			}
-			avail_shortage -= delta1;
+			q1iterator = q + 1;
 		}
 
 		/*
@@ -1956,16 +1939,23 @@ vm_pageout_thread(void)
 		}
 
 		if (avail_shortage > 0 || inactive_shortage > 0) {
-			delta2 = 0;
+			int delta;
+
 			for (q = 0; q < PQ_L2_SIZE; ++q) {
-				delta2 += vm_pageout_scan_active(
-						pass, q,
+				delta = vm_pageout_scan_active(
+						pass,
+						(q + q2iterator) & PQ_L2_MASK,
 						PQAVERAGE(avail_shortage),
 						PQAVERAGE(inactive_shortage),
 						&recycle_count);
+				inactive_shortage -= delta;
+				avail_shortage -= delta;
+				if (inactive_shortage <= 0 &&
+				    avail_shortage <= 0) {
+					break;
+				}
 			}
-			inactive_shortage -= delta2;
-			avail_shortage -= delta2;
+			q2iterator = q + 1;
 		}
 
 		/*

@@ -153,6 +153,7 @@ struct swswapoffinfo {
 int swap_pager_full;		/* swap space exhaustion (task killing) */
 int vm_swap_cache_use;
 int vm_swap_anon_use;
+static int vm_report_swap_allocs;
 
 static int swap_pager_almost_full; /* swap space exhaustion (w/ hysteresis)*/
 static int nsw_rcount;		/* free read buffers			*/
@@ -184,6 +185,8 @@ SYSCTL_INT(_vm, OID_AUTO, swap_anon_use,
         CTLFLAG_RD, &vm_swap_anon_use, 0, "");
 SYSCTL_INT(_vm, OID_AUTO, swap_size,
         CTLFLAG_RD, &vm_swap_size, 0, "");
+SYSCTL_INT(_vm, OID_AUTO, report_swap_allocs,
+        CTLFLAG_RW, &vm_report_swap_allocs, 0, "");
 
 vm_zone_t		swap_zone;
 
@@ -492,7 +495,7 @@ swp_pager_getswapspace(vm_object_t object, int npages)
 			swap_pager_almost_full = 1;
 		}
 	} else {
-		swapiterator = blk;
+		/* swapiterator = blk; disable for now, doesn't work well */
 		swapacctspace(blk, -npages);
 		if (object->type == OBJT_SWAP)
 			vm_swap_anon_use += npages;
@@ -1570,6 +1573,10 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 				rtvals[i+j] = VM_PAGER_FAIL;
 			lwkt_reltoken(&vm_token);
 			continue;
+		}
+		if (vm_report_swap_allocs > 0) {
+			kprintf("swap_alloc %08jx,%d\n", (intmax_t)blk, n);
+			--vm_report_swap_allocs;
 		}
 
 		/*
