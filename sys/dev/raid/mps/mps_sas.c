@@ -135,7 +135,6 @@ static uint8_t op_code_prot[256] = {
 
 MALLOC_DEFINE(M_MPSSAS, "MPSSAS", "MPS SAS memory");
 
-static struct mpssas_target * mpssas_find_target_by_handle(struct mpssas_softc *, int, uint16_t);
 static void mpssas_log_command(struct mps_command *, const char *, ...)
 		__printflike(2, 3);
 #if 0 /* XXX unused */
@@ -175,7 +174,7 @@ static int mpssas_send_portenable(struct mps_softc *sc);
 static void mpssas_portenable_complete(struct mps_softc *sc,
     struct mps_command *cm);
 
-static struct mpssas_target *
+struct mpssas_target *
 mpssas_find_target_by_handle(struct mpssas_softc *sassc, int start, uint16_t handle)
 {
 	struct mpssas_target *target;
@@ -292,7 +291,7 @@ mpssas_rescan_target(struct mps_softc *sc, struct mpssas_target *targ)
 	 */
 	ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK | M_ZERO);
 
-	if (xpt_create_path(&ccb->ccb_h.path, xpt_periph, pathid,
+	if (xpt_create_path(&ccb->ccb_h.path, NULL, pathid,
 		            targetid, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		mps_dprint(sc, MPS_FAULT, "unable to create path for rescan\n");
 		xpt_free_ccb(ccb);
@@ -348,21 +347,120 @@ mpssas_log_command(struct mps_command *cm, const char *fmt, ...)
 }
 
 static void
-mpssas_lost_target(struct mps_softc *sc, struct mpssas_target *targ)
+mpssas_remove_volume(struct mps_softc *sc, struct mps_command *tm)
 {
-	struct mpssas_softc *sassc = sc->sassc;
-	path_id_t pathid = cam_sim_path(sassc->sim);
-	struct cam_path *path;
+	MPI2_SCSI_TASK_MANAGE_REPLY *reply;
+	struct mpssas_target *targ;
+	uint16_t handle;
 
-	mps_printf(sc, "%s targetid %u\n", __func__, targ->tid);
-	if (xpt_create_path(&path, NULL, pathid, targ->tid, 0) != CAM_REQ_CMP) {
-		mps_printf(sc, "unable to create path for lost target %d\n",
-		    targ->tid);
+	mps_dprint(sc, MPS_INFO, "%s\n", __func__);
+
+	reply = (MPI2_SCSI_TASK_MANAGE_REPLY *)tm->cm_reply;
+	handle = (uint16_t)(uintptr_t)tm->cm_complete_data;
+	targ = tm->cm_targ;
+
+	if (reply == NULL) {
+		/* XXX retry the remove after the diag reset completes? */
+		mps_printf(sc, "%s NULL reply reseting device 0x%04x\n",
+			   __func__, handle);
+		mpssas_free_tm(sc, tm);
 		return;
 	}
 
-	xpt_async(AC_LOST_DEVICE, path, NULL);
-	xpt_free_path(path);
+	if (reply->IOCStatus != MPI2_IOCSTATUS_SUCCESS) {
+		mps_printf(sc, "IOCStatus = 0x%x while resetting device 0x%x\n",
+			   reply->IOCStatus, handle);
+		mpssas_free_tm(sc, tm);
+		return;
+	}
+
+	mps_printf(sc, "Reset aborted %u commands\n", reply->TerminationCount);
+	mps_free_reply(sc, tm->cm_reply_data);
+	tm->cm_reply = NULL;    /* Ensures the reply won't get re-freed */
+
+	mps_printf(sc, "clearing target %u handle 0x%04x\n", targ->tid, handle);
+
+	/*
+	 * Don't clear target if remove fails because things will get confusing.
+	 * Leave the devname and sasaddr intact so that we know to avoid reusing
+	 * this target id if possible, and so we can assign the same target id
+	 * to this device if it comes back in the future.
+	 */
+	if (reply->IOCStatus == MPI2_IOCSTATUS_SUCCESS) {
+		targ = tm->cm_targ;
+		targ->handle = 0x0;
+		targ->encl_handle = 0x0;
+		targ->encl_slot = 0x0;
+		targ->exp_dev_handle = 0x0;
+		targ->phy_num = 0x0;
+		targ->linkrate = 0x0;
+		targ->devinfo = 0x0;
+		targ->flags = 0x0;
+	}
+
+	mpssas_free_tm(sc, tm);
+}
+
+/*
+ * No Need to call "MPI2_SAS_OP_REMOVE_DEVICE" For Volume removal.
+ * Otherwise Volume Delete is same as Bare Drive Removal.
+ */
+void
+mpssas_prepare_volume_remove(struct mpssas_softc *sassc, uint16_t handle)
+{
+	MPI2_SCSI_TASK_MANAGE_REQUEST *req;
+	struct mps_softc *sc;
+	struct mps_command *cm;
+	struct mpssas_target *targ = NULL;
+
+	mps_dprint(sassc->sc, MPS_INFO, "%s\n", __func__);
+	sc = sassc->sc;
+
+#ifdef WD_SUPPORT
+	/*
+	 * If this is a WD controller, determine if the disk should be exposed
+	 * to the OS or not.  If disk should be exposed, return from this
+	 * function without doing anything.
+	 */
+	if (sc->WD_available && (sc->WD_hide_expose ==
+	    MPS_WD_EXPOSE_ALWAYS)) {
+		return;
+	}
+#endif
+
+	targ = mpssas_find_target_by_handle(sassc, 0, handle);
+	if (targ == NULL) {
+		/* FIXME: what is the action? */
+		/* We don't know about this device? */
+		kprintf("%s %d : invalid handle 0x%x \n", __func__,__LINE__, handle);
+		return;
+	}
+
+	targ->flags |= MPSSAS_TARGET_INREMOVAL;
+
+	cm = mpssas_alloc_tm(sc);
+	if (cm == NULL) {
+		mps_printf(sc, "%s: command alloc failure\n", __func__);
+		return;
+	}
+
+	mpssas_rescan_target(sc, targ);
+
+	req = (MPI2_SCSI_TASK_MANAGE_REQUEST *)cm->cm_req;
+	req->DevHandle = targ->handle;
+	req->Function = MPI2_FUNCTION_SCSI_TASK_MGMT;
+	req->TaskType = MPI2_SCSITASKMGMT_TASKTYPE_TARGET_RESET;
+
+	/* SAS Hard Link Reset / SATA Link Reset */
+	req->MsgFlags = MPI2_SCSITASKMGMT_MSGFLAGS_LINK_RESET;
+
+	cm->cm_targ = targ;
+	cm->cm_data = NULL;
+	cm->cm_desc.HighPriority.RequestFlags =
+		MPI2_REQ_DESCRIPT_FLAGS_HIGH_PRIORITY;
+	cm->cm_complete = mpssas_remove_volume;
+	cm->cm_complete_data = (void *)(uintptr_t)handle;
+	mps_map_command(sc, cm);
 }
 
 /*
@@ -399,7 +497,7 @@ mpssas_prepare_remove(struct mpssas_softc *sassc, uint16_t handle)
 	if (targ == NULL) {
 		/* FIXME: what is the action? */
 		/* We don't know about this device? */
-		kprintf("%s: invalid handle 0x%x \n", __func__, handle);
+		kprintf("%s %d : invalid handle 0x%x \n", __func__,__LINE__, handle);
 		return;
 	}
 
@@ -411,7 +509,7 @@ mpssas_prepare_remove(struct mpssas_softc *sassc, uint16_t handle)
 		return;
 	}
 
-	mpssas_lost_target(sc, targ);
+	mpssas_rescan_target(sc, targ);
 
 	req = (MPI2_SCSI_TASK_MANAGE_REQUEST *)cm->cm_req;
 	memset(req, 0, sizeof(*req));
@@ -439,7 +537,7 @@ mpssas_remove_device(struct mps_softc *sc, struct mps_command *tm)
 	struct mps_command *next_cm;
 	uint16_t handle;
 
-	mps_dprint(sc, MPS_TRACE, "%s\n", __func__);
+	mps_dprint(sc, MPS_INFO, "%s\n", __func__);
 
 	reply = (MPI2_SCSI_TASK_MANAGE_REPLY *)tm->cm_reply;
 	handle = (uint16_t)(uintptr_t)tm->cm_complete_data;
@@ -476,7 +574,7 @@ mpssas_remove_device(struct mps_softc *sc, struct mps_command *tm)
 	mps_dprint(sc, MPS_INFO, "Reset aborted %u commands\n",
 	    reply->TerminationCount);
 	mps_free_reply(sc, tm->cm_reply_data);
-	tm->cm_reply = NULL;	/* Ensures the the reply won't get re-freed */
+	tm->cm_reply = NULL;	/* Ensures the reply won't get re-freed */
 
 	/* Reuse the existing command */
 	req = (MPI2_SAS_IOUNIT_CONTROL_REQUEST *)tm->cm_req;
@@ -510,7 +608,7 @@ mpssas_remove_complete(struct mps_softc *sc, struct mps_command *tm)
 	uint16_t handle;
 	struct mpssas_target *targ;
 
-	mps_dprint(sc, MPS_TRACE, "%s\n", __func__);
+	mps_dprint(sc, MPS_INFO, "%s\n", __func__);
 
 	reply = (MPI2_SAS_IOUNIT_CONTROL_REPLY *)tm->cm_reply;
 	handle = (uint16_t)(uintptr_t)tm->cm_complete_data;
@@ -554,6 +652,7 @@ mpssas_remove_complete(struct mps_softc *sc, struct mps_command *tm)
 		targ->phy_num = 0x0;
 		targ->linkrate = 0x0;
 		targ->devinfo = 0x0;
+		targ->flags = 0x0;
 	}
 
 	mpssas_free_tm(sc, tm);
@@ -687,7 +786,7 @@ mps_detach_sas(struct mps_softc *sc)
 {
 	struct mpssas_softc *sassc;
 
-	mps_dprint(sc, MPS_TRACE, "%s\n", __func__);
+	mps_dprint(sc, MPS_INFO, "%s\n", __func__);
 
 	if (sc->sassc == NULL)
 		return (0);
@@ -813,8 +912,8 @@ mpssas_action(struct cam_sim *sim, union ccb *ccb)
 		cpi->hba_misc = PIM_NOBUSRESET;
 		cpi->hba_eng_cnt = 0;
 		cpi->max_target = sassc->sc->facts->MaxTargets - 1;
-		cpi->max_lun = 0;
-		cpi->initiator_id = 255;
+		cpi->max_lun = 8;
+		cpi->initiator_id = sassc->sc->facts->MaxTargets - 1;
 		strncpy(cpi->sim_vid, "FreeBSD", SIM_IDLEN);
 		strncpy(cpi->hba_vid, "LSILogic", HBA_IDLEN);
 		strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
@@ -1479,6 +1578,14 @@ mpssas_action_scsiio(struct mpssas_softc *sassc, union ccb *ccb)
 		xpt_done(ccb);
 		return;
 	}
+	if (targ->flags & MPS_TARGET_FLAGS_RAID_COMPONENT) {
+		mps_dprint(sc, MPS_TRACE, "%s Raid component no SCSI IO supported %u\n",
+			   __func__, csio->ccb_h.target_id);
+		csio->ccb_h.status = CAM_TID_INVALID;
+		xpt_done(ccb);
+		return;
+	}
+
 	/*
 	 * If devinfo is 0 this will be a volume.  In that case don't tell CAM
 	 * that the volume has timed out.  We want volumes to be enumerated
@@ -2678,6 +2785,7 @@ mpssas_action_resetdev(struct mpssas_softc *sassc, union ccb *ccb)
 	tm->cm_desc.HighPriority.RequestFlags = MPI2_REQ_DESCRIPT_FLAGS_HIGH_PRIORITY;
 	tm->cm_complete = mpssas_resetdev_complete;
 	tm->cm_complete_data = ccb;
+	tm->cm_targ = targ;
 	mps_map_command(sc, tm);
 }
 
@@ -2789,16 +2897,25 @@ mpssas_scanner_thread(void *arg)
 
 	mps_lock(sc);
 	for (;;) {
-		lksleep(&sassc->ccb_scanq, &sc->mps_lock, 0, "mps_scanq", 0);
+		/* Sleep for 1 second and check the queue status*/
+		lksleep(&sassc->ccb_scanq, &sc->mps_lock, 0, "mps_scanq", 1 * hz);
 		if (sassc->flags & MPSSAS_SHUTDOWN) {
 			mps_dprint(sc, MPS_TRACE, "Scanner shutting down\n");
 			break;
 		}
+next_work:
+		/* Get first work */
 		ccb = (union ccb *)TAILQ_FIRST(&sassc->ccb_scanq);
 		if (ccb == NULL)
 			continue;
+		/* Got first work */
 		TAILQ_REMOVE(&sassc->ccb_scanq, &ccb->ccb_h, sim_links.tqe);
 		xpt_action(ccb);
+		if (sassc->flags & MPSSAS_SHUTDOWN) {
+			mps_dprint(sc, MPS_TRACE, "Scanner shutting down\n");
+			break;
+		}
+		goto next_work;
 	}
 
 	sassc->flags &= ~MPSSAS_SCANTHREAD;
@@ -2966,7 +3083,7 @@ mpssas_check_eedp(struct mpssas_softc *sassc)
 			ccb = kmalloc(sizeof(union ccb), M_TEMP,
 			    M_WAITOK | M_ZERO);
 
-			if (xpt_create_path(&ccb->ccb_h.path, xpt_periph,
+			if (xpt_create_path(&ccb->ccb_h.path, NULL,
 			    pathid, targetid, lunid) != CAM_REQ_CMP) {
 				mps_dprint(sc, MPS_FAULT, "Unable to create "
 				    "path for EEDP support\n");
@@ -2994,7 +3111,7 @@ mpssas_check_eedp(struct mpssas_softc *sassc)
 				}
 				if (!found_lun) {
 					lun = kmalloc(sizeof(struct mpssas_lun),
-					    M_MPT2, M_WAITOK | M_ZERO);
+					    M_MPT2, M_INTWAIT | M_ZERO);
 					lun->lun_id = lunid;
 					SLIST_INSERT_HEAD(&target->luns, lun,
 					    lun_link);
@@ -3060,6 +3177,21 @@ mpssas_read_cap_done(struct cam_periph *periph, union ccb *done_ccb)
 
 	if (done_ccb == NULL)
 		return;
+
+	/*
+	 * Driver need to release devq, it Scsi command is
+	 * generated by driver internally.
+	 * Currently there is a single place where driver
+	 * calls scsi command internally. In future if driver
+	 * calls more scsi command internally, it needs to release
+	 * devq internally, since those command will not go back to
+	 * cam_periph.
+	 */
+	if ((done_ccb->ccb_h.status & CAM_DEV_QFRZN) ) {
+		done_ccb->ccb_h.status &= ~CAM_DEV_QFRZN;
+		xpt_release_devq(done_ccb->ccb_h.path,
+				 /*count*/ 1, /*run_queue*/TRUE);
+	}
 
 	rcap_buf = (struct scsi_read_capacity_eedp *)done_ccb->csio.data_ptr;
 

@@ -34,6 +34,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
+#include <sys/endian.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/eventhandler.h>
@@ -172,7 +173,7 @@ mps_pci_probe(device_t dev)
 
 	if ((id = mps_find_ident(dev)) != NULL) {
 		device_set_desc(dev, id->desc);
-		return (BUS_PROBE_VENDOR);
+		return (BUS_PROBE_DEFAULT);
 	}
 	return (ENXIO);
 }

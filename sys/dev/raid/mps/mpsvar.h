@@ -58,7 +58,7 @@
 #ifndef _MPSVAR_H
 #define _MPSVAR_H
 
-#define MPS_DRIVER_VERSION	"11.255.03.00-fbsd"
+#define MPS_DRIVER_VERSION     "13.00.00.02-fbsd"
 
 #define MPS_DB_MAX_WAIT		2500
 
@@ -78,6 +78,7 @@
 #define MPS_PERIODIC_DELAY	1	/* 1 second heartbeat/watchdog check */
 
 #define MPS_SCSI_RI_INVALID_FRAME	(0x00000002)
+#define MPS_STRING_LENGTH		64
 
 /*
  * host mapping related macro definitions
@@ -312,6 +313,7 @@ struct mps_softc {
 
 	struct mpssas_softc		*sassc;
 
+	char				tmp_string[MPS_STRING_LENGTH];
 	TAILQ_HEAD(, mps_command)	req_list;
 	TAILQ_HEAD(, mps_command)	high_priority_req_list;
 	TAILQ_HEAD(, mps_chain)		chain_list;
@@ -524,6 +526,12 @@ mps_free_command(struct mps_softc *sc, struct mps_command *cm)
 	cm->cm_max_segs = 0;
 	cm->cm_lun = 0;
 	cm->cm_state = MPS_CM_STATE_FREE;
+	cm->cm_data = NULL;
+	cm->cm_length = 0;
+	cm->cm_out_len = 0;
+	cm->cm_sglsize = 0;
+	cm->cm_sge = NULL;
+
 	TAILQ_FOREACH_MUTABLE(chain, &cm->cm_chain_list, chain_link, chain_temp) {
 		TAILQ_REMOVE(&cm->cm_chain_list, chain, chain_link);
 		mps_free_chain(sc, chain);
@@ -639,15 +647,14 @@ do {								\
 static __inline void
 mps_from_u64(uint64_t data, U64 *mps)
 {
-	(mps)->High = (uint32_t)((data) >> 32);
-	(mps)->Low = (uint32_t)((data) & 0xffffffff);
+	(mps)->High = htole32((uint32_t)((data) >> 32));
+	(mps)->Low = htole32((uint32_t)((data) & 0xffffffff));
 }
 
 static __inline uint64_t
 mps_to_u64(U64 *data)
 {
-
-	return (((uint64_t)data->High << 32) | data->Low);
+	return (((uint64_t)le32toh(data->High) << 32) | le32toh(data->Low));
 }
 
 static __inline void
@@ -752,7 +759,9 @@ void mps_mapping_ir_config_change_event(struct mps_softc *sc,
 void mpssas_evt_handler(struct mps_softc *sc, uintptr_t data,
     MPI2_EVENT_NOTIFICATION_REPLY *event);
 void mpssas_prepare_remove(struct mpssas_softc *sassc, uint16_t handle);
+void mpssas_prepare_volume_remove(struct mpssas_softc *sassc, uint16_t handle);
 int mpssas_startup(struct mps_softc *sc);
+struct mpssas_target * mpssas_find_target_by_handle(struct mpssas_softc *, int, uint16_t);
 
 SYSCTL_DECL(_hw_mps);
 

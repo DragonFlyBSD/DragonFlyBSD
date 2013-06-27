@@ -202,8 +202,8 @@ mps_detach_user(struct mps_softc *sc)
 {
 
 	/* XXX: do a purge of pending requests? */
-	destroy_dev(sc->mps_cdev);
-
+	if (sc->mps_cdev != NULL)
+		destroy_dev(sc->mps_cdev);
 }
 
 static int
@@ -299,6 +299,7 @@ mps_user_read_extcfg_header(struct mps_softc *sc,
 	hdr = &params.hdr.Ext;
 	params.action = MPI2_CONFIG_ACTION_PAGE_HEADER;
 	hdr->PageVersion = ext_page_req->header.PageVersion;
+	hdr->PageType = MPI2_CONFIG_PAGETYPE_EXTENDED;
 	hdr->ExtPageLength = 0;
 	hdr->PageNumber = ext_page_req->header.PageNumber;
 	hdr->ExtPageType = ext_page_req->header.ExtPageType;
@@ -340,6 +341,7 @@ mps_user_read_extcfg_page(struct mps_softc *sc,
 	params.action = MPI2_CONFIG_ACTION_PAGE_READ_CURRENT;
 	params.page_address = le32toh(ext_page_req->page_address);
 	hdr->PageVersion = reqhdr->PageVersion;
+	hdr->PageType = MPI2_CONFIG_PAGETYPE_EXTENDED;
 	hdr->PageNumber = reqhdr->PageNumber;
 	hdr->ExtPageType = reqhdr->ExtPageType;
 	hdr->ExtPageLength = reqhdr->ExtPageLength;
@@ -528,11 +530,6 @@ mpi_pre_fw_upload(struct mps_command *cm, struct mps_usr_command *cmd)
 		return (EINVAL);
 
 	mpi_init_sge(cm, req, &req->SGL);
-	if (cmd->len == 0) {
-		/* Perhaps just asking what the size of the fw is? */
-		return (0);
-	}
-
 	bzero(&tc, sizeof tc);
 
 	/*
@@ -547,6 +544,8 @@ mpi_pre_fw_upload(struct mps_command *cm, struct mps_usr_command *cmd)
 	 */
 	tc.ImageOffset = 0;
 	tc.ImageSize = cmd->len;
+
+	cm->cm_flags |= MPS_CM_FLAGS_DATAIN;
 
 	return (mps_push_sge(cm, &tc, sizeof tc, 0));
 }
@@ -686,13 +685,6 @@ mps_user_command(struct mps_softc *sc, struct mps_usr_command *cmd)
 	mps_dprint(sc, MPS_INFO, "mps_user_command: Function %02X  "
 	    "MsgFlags %02X\n", hdr->Function, hdr->MsgFlags );
 
-	err = mps_user_setup_request(cm, cmd);
-	if (err != 0) {
-		mps_printf(sc, "mps_user_command: unsupported function 0x%X\n",
-		    hdr->Function );
-		goto RetFreeUnlocked;
-	}
-
 	if (cmd->len > 0) {
 		buf = kmalloc(cmd->len, M_MPSUSER, M_WAITOK|M_ZERO);
 		cm->cm_data = buf;
@@ -705,8 +697,15 @@ mps_user_command(struct mps_softc *sc, struct mps_usr_command *cmd)
 	cm->cm_flags = MPS_CM_FLAGS_SGE_SIMPLE;
 	cm->cm_desc.Default.RequestFlags = MPI2_REQ_DESCRIPT_FLAGS_DEFAULT_TYPE;
 
+	err = mps_user_setup_request(cm, cmd);
+	if (err != 0) {
+		mps_printf(sc, "mps_user_command: unsupported function 0x%X\n",
+			   hdr->Function );
+		goto RetFreeUnlocked;
+	}
+
 	mps_lock(sc);
-	err = mps_wait_command(sc, cm, 0);
+	err = mps_wait_command(sc, cm, 60);
 
 	if (err) {
 		mps_printf(sc, "%s: invalid request: error %d\n",
@@ -715,7 +714,10 @@ mps_user_command(struct mps_softc *sc, struct mps_usr_command *cmd)
 	}
 
 	rpl = (MPI2_DEFAULT_REPLY *)cm->cm_reply;
-	sz = rpl->MsgLength * 4;
+	if (rpl != NULL)
+		sz = rpl->MsgLength * 4;
+	else
+		sz = 0;
 
 	if (sz > cmd->rpl_len) {
 		mps_printf(sc,
@@ -836,7 +838,7 @@ mps_user_pass_thru(struct mps_softc *sc, mps_pass_thru_t *data)
 		cm->cm_complete = NULL;
 		cm->cm_complete_data = NULL;
 
-		err = mps_wait_command(sc, cm, 0);
+		err = mps_wait_command(sc, cm, 30);
 
 		if (err != 0) {
 			err = EIO;
@@ -973,7 +975,7 @@ mps_user_pass_thru(struct mps_softc *sc, mps_pass_thru_t *data)
 
 	mps_lock(sc);
 
-	err = mps_wait_command(sc, cm, 0);
+	err = mps_wait_command(sc, cm, 30);
 
 	if (err) {
 		mps_printf(sc, "%s: invalid request: error %d\n", __func__,
@@ -1092,10 +1094,12 @@ mps_user_get_adapter_data(struct mps_softc *sc, mps_adapter_data_t *data)
 	 * Need to get BIOS Config Page 3 for the BIOS Version.
 	 */
 	data->BiosVersion = 0;
+	mps_lock(sc);
 	if (mps_config_get_bios_pg3(sc, &mpi_reply, &config_page))
 		kprintf("%s: Error while retrieving BIOS Version\n", __func__);
 	else
 		data->BiosVersion = config_page.BiosVersion;
+	mps_unlock(sc);
 }
 
 static void
@@ -1188,7 +1192,7 @@ mps_post_fw_diag_buffer(struct mps_softc *sc,
 	/*
 	 * Send command synchronously.
 	 */
-	status = mps_wait_command(sc, cm, 0);
+	status = mps_wait_command(sc, cm, 30);
 	if (status) {
 		mps_printf(sc, "%s: invalid request: error %d\n", __func__,
 		    status);
@@ -1272,7 +1276,7 @@ mps_release_fw_diag_buffer(struct mps_softc *sc,
 	/*
 	 * Send command synchronously.
 	 */
-	status = mps_wait_command(sc, cm, 0);
+	status = mps_wait_command(sc, cm, 30);
 	if (status) {
 		mps_printf(sc, "%s: invalid request: error %d\n", __func__,
 		    status);
