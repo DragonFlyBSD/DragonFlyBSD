@@ -447,7 +447,6 @@ void
 lwkt_wait_ipiq(globaldata_t target, int seq)
 {
     lwkt_ipiq_t ip;
-    int maxc = 100000000;
 
     if (target != mycpu) {
 	ip = &mycpu->gd_ipiq[target->gd_cpuid];
@@ -457,16 +456,31 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 #elif defined(__x86_64__)
 	    unsigned long rflags = read_rflags();
 #endif
+	    int64_t time_tgt = tsc_get_target(1000000000LL);
+	    int time_loops = 10;
+	    int benice = 0;
+
 	    cpu_enable_intr();
 	    DEBUG_PUSH_INFO("wait_ipiq");
 	    while ((int)(ip->ip_xindex - seq) < 0) {
 		crit_enter();
 		lwkt_process_ipiq();
 		crit_exit();
-		if (--maxc == 0)
-			kprintf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n", mycpu->gd_cpuid, target->gd_cpuid, ip->ip_xindex - seq);
-		if (maxc < -1000000)
-			panic("LWKT_WAIT_IPIQ");
+
+		/*
+		 * IPIQs must be handled within 10 seconds and this code
+		 * will warn after one second.
+		 */
+		if ((benice & 255) == 0 && tsc_test_target(time_tgt) > 0) {
+			kprintf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n",
+				mycpu->gd_cpuid, target->gd_cpuid,
+				ip->ip_xindex - seq);
+			if (--time_loops == 0)
+				panic("LWKT_WAIT_IPIQ");
+			time_tgt = tsc_get_target(1000000000LL);
+		}
+		++benice;
+
 		/*
 		 * xindex may be modified by another cpu, use a load fence
 		 * to ensure that the loop does not use a speculative value
