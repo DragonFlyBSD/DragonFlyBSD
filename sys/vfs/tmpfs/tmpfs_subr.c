@@ -436,7 +436,7 @@ loop:
 	case VSOCK:
 		break;
 	case VREG:
-		vinitvmio(vp, node->tn_size, BMASK, -1);
+		vinitvmio(vp, node->tn_size, TMPFS_BLKMASK, -1);
 		break;
 	case VLNK:
 		break;
@@ -982,7 +982,7 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 		vm_pindex_t nsize;
 		vm_object_t aobj;
 
-		error = nvtruncbuf(vp, newsize, BSIZE, -1, 0);
+		error = nvtruncbuf(vp, newsize, TMPFS_BLKSIZE, -1, 0);
 		aobj = node->tn_reg.tn_aobj;
 		if (aobj) {
 			osize = aobj->size;
@@ -996,7 +996,8 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	} else {
 		vm_object_t aobj;
 
-		error = nvextendbuf(vp, oldsize, newsize, BSIZE, BSIZE,
+		error = nvextendbuf(vp, oldsize, newsize,
+				    TMPFS_BLKSIZE, TMPFS_BLKSIZE,
 				    -1, -1, trivial);
 		aobj = node->tn_reg.tn_aobj;
 		if (aobj)

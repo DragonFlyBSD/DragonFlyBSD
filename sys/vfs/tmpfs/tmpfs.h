@@ -544,8 +544,9 @@ VP_TO_TMPFS_DIR(struct vnode *vp)
 /*
  * buffer cache size
  */
-#define BSIZE (off_t)16384          /* buffer cache size*/
-#define BMASK (off_t)(BSIZE - 1)
+#define TMPFS_BLKSIZE	16384			/* buffer cache size*/
+#define TMPFS_BLKMASK	(TMPFS_BLKSIZE - 1)
+#define TMPFS_BLKMASK64	((off_t)(TMPFS_BLKSIZE - 1))
 #endif /* _KERNEL */
 
 #endif /* _VFS_TMPFS_TMPFS_H_ */
