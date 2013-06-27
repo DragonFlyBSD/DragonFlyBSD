@@ -713,13 +713,43 @@ tmpfs_write (struct vop_write_args *ap)
 		 */
 		bp->b_flags |= B_CLUSTEROK;
 		if (uio->uio_segflg == UIO_NOCOPY) {
+			/*
+			 * Flush from the pageout daemon, deal with
+			 * potentially very heavy tmpfs write activity
+			 * causing long stalls in the pageout daemon
+			 * before pages get to free/cache.
+			 *
+			 * (a) Under severe pressure setting B_DIRECT will
+			 *     cause a buffer release to try to free the
+			 *     underlying pages.
+			 *
+			 * (b) Under modest memory pressure the B_RELBUF
+			 *     alone is sufficient to get the pages moved
+			 *     to the cache.  We could also force this by
+			 *     setting B_NOTMETA but that might have other
+			 *     unintended side-effects (e.g. setting
+			 *     PG_NOTMETA on the VM page).
+			 *
+			 * Hopefully this will unblock the VM system more
+			 * quickly under extreme tmpfs write load.
+			 */
+			if (vm_page_count_min(0))
+				bp->b_flags |= B_DIRECT;
 			bp->b_flags |= B_AGE | B_RELBUF;
 			bp->b_act_count = 0;	/* buffer->deactivate pgs */
 			cluster_awrite(bp);
 		} else if (vm_page_count_target()) {
+			/*
+			 * Normal (userland) write but we are low on memory,
+			 * run the buffer the buffer cache.
+			 */
 			bp->b_act_count = 0;	/* buffer->deactivate pgs */
 			bdwrite(bp);
 		} else {
+			/*
+			 * Otherwise run the buffer directly through to the
+			 * backing VM store.
+			 */
 			buwrite(bp);
 			/*vm_wait_nominal();*/
 		}
