@@ -733,7 +733,7 @@ tmpfs_write (struct vop_write_args *ap)
 			 * Hopefully this will unblock the VM system more
 			 * quickly under extreme tmpfs write load.
 			 */
-			if (vm_page_count_min(0))
+			if (vm_page_count_min(vm_page_free_hysteresis))
 				bp->b_flags |= B_DIRECT;
 			bp->b_flags |= B_AGE | B_RELBUF;
 			bp->b_act_count = 0;	/* buffer->deactivate pgs */

@@ -119,7 +119,8 @@ SYSINIT(vmdaemon, SI_SUB_KTHREAD_VM, SI_ORDER_FIRST, kproc_start, &vm_kp)
 
 int vm_pages_needed=0;		/* Event on which pageout daemon sleeps */
 int vm_pageout_deficit=0;	/* Estimated number of pages deficit */
-int vm_pageout_pages_needed=0;	/* flag saying that the pageout daemon needs pages */
+int vm_pageout_pages_needed=0;	/* pageout daemon needs pages */
+int vm_page_free_hysteresis = 16;
 
 #if !defined(NO_SWAPPING)
 static int vm_pageout_req_swapout;	/* XXX */
@@ -147,6 +148,10 @@ SYSCTL_UINT(_vm, VM_PAGEOUT_ALGORITHM, anonmem_decline,
 
 SYSCTL_INT(_vm, VM_PAGEOUT_ALGORITHM, filemem_decline,
 	CTLFLAG_RW, &vm_filemem_decline, 0, "active->inactive file cache");
+
+SYSCTL_INT(_vm, OID_AUTO, page_free_hysteresis,
+	CTLFLAG_RW, &vm_page_free_hysteresis, 0,
+	"Free more pages than the minimum required");
 
 SYSCTL_INT(_vm, OID_AUTO, max_launder,
 	CTLFLAG_RW, &vm_max_launder, 0, "Limit dirty flushes in pageout");
@@ -1996,15 +2001,21 @@ vm_pageout_thread(void)
 				 */
 				tsleep(&vm_pages_needed, 0, "pdelay", hz / 10);
 			}
-		} else {
+		} else if (vm_pages_needed) {
 			/*
-			 * Interlocked wakeup of waiters (non-optional)
+			 * Interlocked wakeup of waiters (non-optional).
+			 *
+			 * Similar to vm_page_free_wakeup() in vm_page.c,
+			 * wake
 			 */
 			pass = 0;
-			if (vm_pages_needed && !vm_page_count_min(0)) {
-				wakeup(&vmstats.v_free_count);
+			if (!vm_page_count_min(vm_page_free_hysteresis) ||
+			    !vm_page_count_target()) {
 				vm_pages_needed = 0;
+				wakeup(&vmstats.v_free_count);
 			}
+		} else {
+			pass = 0;
 		}
 	}
 }

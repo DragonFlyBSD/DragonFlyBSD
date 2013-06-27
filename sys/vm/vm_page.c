@@ -1808,6 +1808,12 @@ vm_wait(int timo)
 	} else {
 		/*
 		 * Wakeup the pageout daemon if necessary and wait.
+		 *
+		 * Do not wait indefinitely for the target to be reached,
+		 * as load might prevent it from being reached any time soon.
+		 * But wait a little to try to slow down page allocations
+		 * and to give more important threads (the pagedaemon)
+		 * allocation priority.
 		 */
 		if (vm_page_count_target()) {
 			if (vm_pages_needed == 0) {
@@ -1832,6 +1838,12 @@ vm_wait_pfault(void)
 {
 	/*
 	 * Wakeup the pageout daemon if necessary and wait.
+	 *
+	 * Do not wait indefinitely for the target to be reached,
+	 * as load might prevent it from being reached any time soon.
+	 * But wait a little to try to slow down page allocations
+	 * and to give more important threads (the pagedaemon)
+	 * allocation priority.
 	 */
 	if (vm_page_count_min(0)) {
 		lwkt_gettoken(&vm_token);
@@ -1902,19 +1914,28 @@ vm_page_free_wakeup(void)
 	    vmstats.v_cache_count + vmstats.v_free_count >= 
 	    vmstats.v_pageout_free_min
 	) {
-		wakeup(&vm_pageout_pages_needed);
 		vm_pageout_pages_needed = 0;
+		wakeup(&vm_pageout_pages_needed);
 	}
 
 	/*
 	 * Wakeup processes that are waiting on memory.
 	 *
-	 * NOTE: vm_paging_target() is the pageout daemon's target, while
-	 *	 vm_page_count_target() is somewhere inbetween.  We want
-	 *	 to wake processes up prior to the pageout daemon reaching
-	 *	 its target to provide some hysteresis.
+	 * Generally speaking we want to wakeup stuck processes as soon as
+	 * possible.  !vm_page_count_min(0) is the absolute minimum point
+	 * where we can do this.  Wait a bit longer to reduce degenerate
+	 * re-blocking (vm_page_free_hysteresis).  The target check is just
+	 * to make sure the min-check w/hysteresis does not exceed the
+	 * normal target.
 	 */
 	if (vm_pages_waiting) {
+		if (!vm_page_count_min(vm_page_free_hysteresis) ||
+		    !vm_page_count_target()) {
+			vm_pages_waiting = 0;
+			wakeup(&vmstats.v_free_count);
+			++mycpu->gd_cnt.v_ppwakeups;
+		}
+#if 0
 		if (!vm_page_count_target()) {
 			/*
 			 * Plenty of pages are free, wakeup everyone.
@@ -1933,6 +1954,7 @@ vm_page_free_wakeup(void)
 			wakeup_one(&vmstats.v_free_count);
 			++mycpu->gd_cnt.v_ppwakeups;
 		}
+#endif
 	}
 }
 

@@ -92,6 +92,10 @@ vm_page_count_min(int donotcount)
 /*
  * Return TRUE if we are under our free page target.  The pageout demon
  * tries to reach the target but may stop once it gets past the min.
+ *
+ * User threads doing normal allocations might wait based on this
+ * function but MUST NOT wait in a loop based on this function as the
+ * VM load may prevent the target from being reached.
  */
 static __inline 
 int
