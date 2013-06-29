@@ -1292,6 +1292,7 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int pagerflags)
 
 	pi = p->pindex;
 	page_base = pi % BLIST_MAX_ALLOC;
+	ma[page_base] = p;
 	ib = page_base - 1;
 	is = page_base + 1;
 
