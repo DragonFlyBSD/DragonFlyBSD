@@ -79,7 +79,8 @@
 #endif
 
 static struct ieee80211vap *rt2661_vap_create(struct ieee80211com *,
-			    const char name[IFNAMSIZ], int unit, int opmode,
+			    const char name[IFNAMSIZ], int unit,
+			    enum ieee80211_opmode opmode,
 			    int flags, const uint8_t bssid[IEEE80211_ADDR_LEN],
 			    const uint8_t mac[IEEE80211_ADDR_LEN]);
 static void		rt2661_vap_delete(struct ieee80211vap *);
@@ -374,7 +375,8 @@ rt2661_detach(void *xsc)
 
 static struct ieee80211vap *
 rt2661_vap_create(struct ieee80211com *ic,
-	const char name[IFNAMSIZ], int unit, int opmode, int flags,
+	const char name[IFNAMSIZ], int unit,
+	enum ieee80211_opmode opmode, int flags,
 	const uint8_t bssid[IEEE80211_ADDR_LEN],
 	const uint8_t mac[IEEE80211_ADDR_LEN])
 {

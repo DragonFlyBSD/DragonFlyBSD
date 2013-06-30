@@ -115,7 +115,8 @@ CTASSERT(ATH_BCBUF <= 8);
 	  (((u_int8_t *)(p))[2] << 16) | (((u_int8_t *)(p))[3] << 24)))
 
 static struct ieee80211vap *ath_vap_create(struct ieee80211com *,
-		    const char name[IFNAMSIZ], int unit, int opmode,
+		    const char name[IFNAMSIZ], int unit,
+		    enum ieee80211_opmode opmode,
 		    int flags, const uint8_t bssid[IEEE80211_ADDR_LEN],
 		    const uint8_t mac[IEEE80211_ADDR_LEN]);
 static void	ath_vap_delete(struct ieee80211vap *);
@@ -869,7 +870,8 @@ assign_bslot(struct ath_softc *sc)
 
 static struct ieee80211vap *
 ath_vap_create(struct ieee80211com *ic,
-	const char name[IFNAMSIZ], int unit, int opmode, int flags,
+	const char name[IFNAMSIZ], int unit,
+	enum ieee80211_opmode opmode, int flags,
 	const uint8_t bssid[IEEE80211_ADDR_LEN],
 	const uint8_t mac0[IEEE80211_ADDR_LEN])
 {

@@ -108,7 +108,8 @@
 #include <dev/netif/wi/if_wivar.h>
 
 static struct ieee80211vap *wi_vap_create(struct ieee80211com *ic,
-		const char name[IFNAMSIZ], int unit, int opmode, int flags,
+		const char name[IFNAMSIZ], int unit,
+		enum ieee80211_opmode opmode, int flags,
 		const uint8_t bssid[IEEE80211_ADDR_LEN],
 		const uint8_t mac[IEEE80211_ADDR_LEN]);
 static void wi_vap_delete(struct ieee80211vap *vap);
@@ -510,7 +511,8 @@ wi_detach(device_t dev)
 
 static struct ieee80211vap *
 wi_vap_create(struct ieee80211com *ic,
-	const char name[IFNAMSIZ], int unit, int opmode, int flags,
+	const char name[IFNAMSIZ], int unit,
+	enum ieee80211_opmode opmode, int flags,
 	const uint8_t bssid[IEEE80211_ADDR_LEN],
 	const uint8_t mac[IEEE80211_ADDR_LEN])
 {
