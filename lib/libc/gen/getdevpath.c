@@ -109,10 +109,8 @@ finddevlabel(char **pathp, const char *devname)
 	char buf[256];
 	FILE *fp;
 	size_t len;	/* directory prefix length */
-	size_t dlen;	/* devname length */
 	size_t tlen;	/* devname length without trailer */
 
-	dlen = strlen(devname);
 	if ((trailer = strrchr(devname, '.')) != NULL)
 		tlen = trailer - devname;
 	else
