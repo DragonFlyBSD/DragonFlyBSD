@@ -1441,6 +1441,9 @@ options 	AHD_REG_PRETTY_PRINT
 # FriendlyNet GigaNIX 1000TA and 1000TPC, the Addtron AEG320T, the
 # LinkSys EG1032 and EG1064, the Surecom EP-320G-TX and the Netgear GA622T.
 #
+# The 'oce' device provides support for Emulex 10 Gbit adapters
+# (OneConnect Ethernet).
+#
 # The 'pcn' device provides support for PCI fast ethernet adapters based
 # on the AMD Am79c97x chipsets, including the PCnet/FAST, PCnet/FAST+,
 # PCnet/PRO and PCnet/Home. These were previously handled by the lnc
@@ -1652,6 +1655,7 @@ device		lge		# Level 1 LXT1001 (``Mercury'')
 device		mxge		# Myricom Myri-10G 10GbE NIC
 device		nfe		# nVidia nForce2/3 MCP04/51/55 CK804
 device		nge		# NatSemi DP83820 and DP83821
+device		oce		# Emulex 10 GbE (OneConnect Ethernet)
 device		sk		# SysKonnect GEnesis, LinkSys EG1023, D-Link
 device		ti		# Alteon (``Tigon I'', ``Tigon II'')
 device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet

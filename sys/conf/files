@@ -667,6 +667,12 @@ dev/netif/nge/if_nge.c		optional nge
 dev/misc/nmdm/nmdm.c		optional nmdm
 dev/disk/nsp/nsp.c		optional nsp
 dev/disk/nsp/nsp_pccard.c	optional nsp pccard
+dev/netif/oce/oce_hw.c		optional oce pci
+dev/netif/oce/oce_if.c		optional oce pci
+dev/netif/oce/oce_mbox.c	optional oce pci
+dev/netif/oce/oce_queue.c	optional oce pci
+dev/netif/oce/oce_sysctl.c	optional oce pci
+dev/netif/oce/oce_util.c	optional oce pci
 bus/ppbus/ppbus_if.m		optional ppbus
 dev/misc/puc/puc.c		optional puc
 dev/misc/puc/pucdata.c		optional puc

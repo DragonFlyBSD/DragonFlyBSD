@@ -216,6 +216,8 @@ device		igb		# Intel Pro/1000 (82575, 82576, 82580, i350)
 device		ig_hal		# Intel PRO/1000 hardware abstraction layer
 device		ixgbe		# Intel PRO/10GbE PCIE Ethernet Family
 
+device		oce		# Emulex OneConnect 10Gb
+
 # PCI Ethernet NICs that use the common MII bus controller code.
 # NOTE: Be sure to keep the 'device miibus' line in order to use these NICs!
 device		miibus		# MII bus support
