@@ -1553,7 +1553,7 @@ oce_alloc_rx_bufs(struct oce_rq *rq, int count)
 		rc = bus_dmamap_load_mbuf_segment(rq->tag,
 					     pd->map,
 					     pd->mbuf,
-					     segs, OCE_MAX_TX_ELEMENTS,
+					     segs, 1,
 					     &nsegs, BUS_DMA_NOWAIT);
 		if (rc) {
 			m_free(pd->mbuf);
