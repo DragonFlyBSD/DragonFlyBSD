@@ -736,39 +736,49 @@ vke_attach(const struct vknetif_info *info, int unit)
 	fd = info->tap_fd;
 
 	if (info->enaddr) {
+		/*
+		 * enaddr is supplied
+		 */
 		bcopy(info->enaddr, enaddr, ETHER_ADDR_LEN);
-		goto havemac;
-	}
-
-	/*
-	 * This is only a TAP device if tap_unit is non-zero.  If
-	 * connecting to a virtual socket we generate a unique MAC.
-	 */
-	if (info->tap_unit >= 0) {
-		if (ioctl(fd, TAPGIFINFO, &tapinfo) < 0) {
-			kprintf(VKE_DEVNAME "%d: ioctl(TAPGIFINFO) "
-				"failed: %s\n", unit, strerror(errno));
-			return ENXIO;
-		}
-
-		if (ioctl(fd, SIOCGIFADDR, enaddr) < 0) {
-			kprintf(VKE_DEVNAME "%d: ioctl(SIOCGIFADDR) "
-				"failed: %s\n", unit, strerror(errno));
-			return ENXIO;
-		}
 	} else {
-		int fd = open("/dev/urandom", O_RDONLY);
-		if (fd >= 0) {
-			read(fd, enaddr + 2, 4);
-			close(fd);
+		/*
+		 * This is only a TAP device if tap_unit is non-zero.  If
+		 * connecting to a virtual socket we generate a unique MAC.
+		 *
+		 * WARNING: enaddr[0] bit 0 is the multicast bit, when
+		 *          randomizing enaddr[] just leave the first
+		 *	    two bytes 00 00 for now.
+		 */
+		bzero(enaddr, sizeof(enaddr));
+		if (info->tap_unit >= 0) {
+			if (ioctl(fd, TAPGIFINFO, &tapinfo) < 0) {
+				kprintf(VKE_DEVNAME "%d: ioctl(TAPGIFINFO) "
+					"failed: %s\n", unit, strerror(errno));
+				return ENXIO;
+			}
+
+			if (ioctl(fd, SIOCGIFADDR, enaddr) < 0) {
+				kprintf(VKE_DEVNAME "%d: ioctl(SIOCGIFADDR) "
+					"failed: %s\n", unit, strerror(errno));
+				return ENXIO;
+			}
+		} else {
+			int fd = open("/dev/urandom", O_RDONLY);
+			if (fd >= 0) {
+				read(fd, enaddr + 2, 4);
+				close(fd);
+			}
+			enaddr[4] = (int)getpid() >> 8;
+			enaddr[5] = (int)getpid() & 255;
+
 		}
-		enaddr[4] = (int)getpid() >> 8;
-		enaddr[5] = (int)getpid() & 255;
-
+		enaddr[1] += 1;
 	}
-	enaddr[1] += 1;
+	if (ETHER_IS_MULTICAST(enaddr)) {
+		kprintf(VKE_DEVNAME "%d: illegal MULTICAST ether mac!\n", unit);
+		return ENXIO;
+	}
 
-havemac:
 	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	sc->sc_txbuf = kmalloc(MCLBYTES, M_DEVBUF, M_WAITOK);
