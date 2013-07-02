@@ -126,9 +126,9 @@ oce_add_sysctls(POCE_SOFTC sc)
 
         /*
          *  Dumps Transceiver data
-	 *  "sysctl dev.oce.0.sfp_vpd_dump=0"
-         *  "sysctl -x dev.oce.0.sfp_vpd_dump_buffer" for hex dump
-         *  "sysctl -b dev.oce.0.sfp_vpd_dump_buffer > sfp.bin" for binary dump
+	 *  "sysctl hw.oce0.sfp_vpd_dump=0"
+         *  "sysctl -x hw.oce0.sfp_vpd_dump_buffer" for hex dump
+         *  "sysctl -b hw.oce0.sfp_vpd_dump_buffer > sfp.bin" for binary dump
          */
 	SYSCTL_ADD_PROC(ctx, child, OID_AUTO, "sfp_vpd_dump",
 			CTLTYPE_INT | CTLFLAG_RW, (void *)sc, 0, oce_sysctl_sfp_vpd_dump,
@@ -219,7 +219,7 @@ oce_sys_fwupgrade(SYSCTL_HANDLER_ARGS)
 	fw = firmware_get(ufiname);
 	if (fw == NULL) {
 		device_printf(sc->dev, "Unable to get Firmware. "
-			"Make sure %s is copied to /boot/modules\n", ufiname);
+			"Make sure %s is copied to /boot/kernel\n", ufiname);
 		return ENOENT;
 	}
 

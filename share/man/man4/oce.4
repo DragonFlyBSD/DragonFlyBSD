@@ -93,7 +93,7 @@ Firmware can be updated by following the steps below:
 .It
 Copy the below code to a Makefile:
 .Bd -literal -offset indent
-\&.KMOD=elxflash
+KMOD=elxflash
 FIRMWS=imagename.ufi:elxflash
 \&.include <bsd.kmod.mk>
 .Ed
@@ -102,10 +102,9 @@ Replace imagename in above with UFI file name
 .It
 Copy Makefile and UFI file to a directory
 .It
-Execute make & copy generated elxflash.ko to
-.Pa /lib/modules
+Execute make & make install
 .It
-sysctl dev.oce.<if_id>.fw_upgrade=elxflash
+sysctl hw.oce<if_id>.fw_upgrade=elxflash
 .It
 Reboot the machine
 .El
