@@ -2280,9 +2280,6 @@ outb(u_int port, u_char data)
 
 
 
-#include "opt_cpu.h"
-
-
 /*
  * initialize all the SMP locks
  */

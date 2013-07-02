@@ -61,7 +61,6 @@
 #include <sys/syscall.h>
 #include <sys/sysctl.h>
 #include <sys/sysent.h>
-#include <sys/systm.h>
 #ifdef KTRACE
 #include <sys/ktrace.h>
 #endif

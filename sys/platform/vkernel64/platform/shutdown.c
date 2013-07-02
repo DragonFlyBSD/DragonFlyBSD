@@ -40,7 +40,6 @@
 #include <sys/reboot.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
-#include <sys/reboot.h>
 #include <sys/interrupt.h>
 #include <sys/bus.h>
 #include <ddb/ddb.h>

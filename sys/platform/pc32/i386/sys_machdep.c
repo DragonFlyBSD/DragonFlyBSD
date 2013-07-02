@@ -42,7 +42,6 @@
 #include <sys/thread.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
-#include <sys/thread.h>
 #include <sys/memrange.h>
 
 #include <vm/vm.h>

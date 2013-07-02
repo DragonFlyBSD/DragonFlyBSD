@@ -43,7 +43,6 @@
 
 /* XXX needed for to access pmap to convert per-proc virtual to physical */
 #include <sys/proc.h>
-#include <sys/lock.h>
 #include <vm/vm_map.h>
 
 #include <machine/md_var.h>

@@ -61,7 +61,6 @@
 #include <sys/systimer.h>
 #include <sys/globaldata.h>
 #include <sys/thread2.h>
-#include <sys/systimer.h>
 #include <sys/machintr.h>
 #include <sys/interrupt.h>
 

@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sys/platform/vkernel/platform/kqueue.c,v 1.6 2007/07/02 03:44:12 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -44,7 +42,6 @@
 #include <sys/bus.h>
 #include <sys/time.h>
 #include <sys/event.h>
-#include <sys/time.h>
 #include <machine/cpu.h>
 #include <machine/globaldata.h>
 #include <machine/md_var.h>
