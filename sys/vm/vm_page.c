@@ -1331,9 +1331,6 @@ vm_page_select_cache(u_short pg_color)
 		if (vm_page_busy_try(m, TRUE)) {
 			_vm_page_deactivate_locked(m, 0);
 			vm_page_spin_unlock(m);
-#ifdef INVARIANTS
-                        kprintf("Warning: busy page %p found in cache\n", m);
-#endif
 		} else {
 			/*
 			 * We successfully busied the page
@@ -1399,9 +1396,6 @@ vm_page_select_free(u_short pg_color, boolean_t prefer_zero)
 			 */
 			_vm_page_deactivate_locked(m, 0);
 			vm_page_spin_unlock(m);
-#ifdef INVARIANTS
-                        kprintf("Warning: busy page %p found in cache\n", m);
-#endif
 		} else {
 			/*
 			 * Theoretically if we are able to busy the page

@@ -1415,9 +1415,6 @@ vm_pageout_scan_cache(int avail_shortage, int vnodes_skipped, int recycle_count)
 		if (vm_page_busy_try(m, TRUE)) {
 			vm_page_deactivate_locked(m);
 			vm_page_spin_unlock(m);
-#ifdef INVARIANTS
-			kprintf("Warning: busy page %p found in cache\n", m);
-#endif
 			continue;
 		}
 		vm_page_spin_unlock(m);
