@@ -422,7 +422,10 @@ void smp_invltlb_intr(void);
 #ifndef _CPU_INVLPG_DEFINED
 
 /*
- * Invalidate a patricular VA on this cpu only
+ * Invalidate a particular VA on this cpu only
+ *
+ * TLB flush for an individual page (even if it has PG_G).
+ * Only works on 486+ CPUs (i386 does not have PG_G).
  */
 static __inline void
 cpu_invlpg(void *addr)
@@ -670,17 +673,6 @@ cpu_invltlb(void)
 
 #endif
 
-/*
- * TLB flush for an individual page (even if it has PG_G).
- * Only works on 486+ CPUs (i386 does not have PG_G).
- */
-static __inline void
-invlpg(u_long addr)
-{
-
-	__asm __volatile("invlpg %0" : : "m" (*(char *)addr) : "memory");
-}
-
 static __inline u_short
 rfs(void)
 {
@@ -918,7 +910,6 @@ void	insb(u_int port, void *addr, size_t cnt);
 void	insl(u_int port, void *addr, size_t cnt);
 void	insw(u_int port, void *addr, size_t cnt);
 void	invd(void);
-void	invlpg(u_int addr);
 void	invlpg_range(u_int start, u_int end);
 void	cpu_invltlb(void);
 u_short	inw(u_int port);
