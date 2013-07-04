@@ -31,7 +31,6 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx_93cx6.c#19 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_93cx6.c,v 1.19 2003/12/17 00:02:10 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_93cx6.c,v 1.6 2007/07/06 00:01:16 pavalos Exp $
  */
 
 /*
@@ -67,15 +66,9 @@
  *   bit to be sent from the chip.
  */
 
-#ifdef __linux__
 #include "aic7xxx_osm.h"
 #include "aic7xxx_inline.h"
 #include "aic7xxx_93cx6.h"
-#else
-#include "aic7xxx_osm.h"
-#include "aic7xxx_inline.h"
-#include "aic7xxx_93cx6.h"
-#endif
 
 /*
  * Right now, we only have to read the SEEPROM.  But we make it easier to
