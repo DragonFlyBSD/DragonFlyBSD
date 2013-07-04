@@ -45,7 +45,6 @@
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/pmap.h>
-#include <sys/bus.h>
 #include <sys/rman.h>
 
 MALLOC_DECLARE(M_AGP);

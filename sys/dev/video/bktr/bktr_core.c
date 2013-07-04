@@ -98,7 +98,6 @@
 #include <sys/signalvar.h>
 #include <sys/vnode.h>
 #include <sys/bus.h>		/* used by smbus and newbus */
-#include <sys/bus.h>
 #include <sys/thread2.h>
 
 #include <vm/vm.h>

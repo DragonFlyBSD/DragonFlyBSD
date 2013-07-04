@@ -116,7 +116,6 @@
 #include <sys/lock.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
-#include <sys/bus.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>

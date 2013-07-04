@@ -68,7 +68,6 @@ struct drm_file;
 #include <vm/vm_param.h>
 #include <machine/param.h>
 #include <machine/pmap.h>
-#include <sys/bus.h>
 #include <sys/resource.h>
 #include <machine/specialreg.h>
 #include <machine/sysarch.h>
@@ -98,7 +97,6 @@ struct drm_file;
 
 #if defined(DRM_LINUX) && DRM_LINUX && !defined(__x86_64__) && !defined(__DragonFly__) /* XXX */
 #include <sys/file.h>
-#include <sys/proc.h>
 #include <machine/../linux/linux.h>
 #include <machine/../linux/linux_proto.h>
 #else

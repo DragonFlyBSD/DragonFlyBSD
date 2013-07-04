@@ -52,7 +52,6 @@
 #include <sys/systm.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
-#include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/resource.h>
 #include <sys/wdog.h>

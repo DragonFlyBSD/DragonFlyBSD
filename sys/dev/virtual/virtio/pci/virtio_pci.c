@@ -39,8 +39,6 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
-#include <sys/bus.h>
-#include <sys/param.h>
 #include <sys/rman.h>
 
 #include <dev/virtual/virtio/virtio/virtio.h>

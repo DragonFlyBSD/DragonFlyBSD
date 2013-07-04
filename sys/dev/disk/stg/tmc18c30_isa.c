@@ -65,9 +65,6 @@
 
 #define	STG_HOSTID	7
 
-#include	<sys/kernel.h>
-#include	<sys/module.h>
-
 static	int	stgprobe(device_t devi);
 static	int	stgattach(device_t devi);
 

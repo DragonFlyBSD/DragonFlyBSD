@@ -60,7 +60,6 @@
 #include <sys/select.h>
 #include <sys/proc.h>
 #include <sys/event.h>
-#include <sys/conf.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 

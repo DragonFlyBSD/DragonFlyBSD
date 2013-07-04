@@ -170,8 +170,6 @@ struct acpicache;
 /* Not building kernel code, so use libc */
 #define ACPI_USE_STANDARD_HEADERS
 #define ACPI_FLUSH_CPU_CACHE()
-#include <sys/types.h>
-
 #define __cli()
 #define __sti()
 

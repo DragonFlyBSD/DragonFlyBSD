@@ -74,7 +74,6 @@
 #include <sys/linker.h>
 #include <sys/firmware.h>
 
-#include <sys/bus.h>
 #include <sys/resource.h>
 #include <sys/rman.h>
 

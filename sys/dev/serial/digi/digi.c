@@ -52,7 +52,6 @@
 #include <sys/syslog.h>
 #include <sys/fcntl.h>
 #include <sys/bus.h>
-#include <sys/bus.h>
 #include <sys/thread2.h>
 
 #include <vm/vm.h>

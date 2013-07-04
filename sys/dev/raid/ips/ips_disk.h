@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.h,v 1.2 2003/08/22 06:00:27 imp Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.h,v 1.4 2006/10/25 20:56:01 dillon Exp $
  */
 
 
@@ -39,7 +38,6 @@
 #include <sys/queue.h>
 #include <sys/disk.h>
 #include <sys/buf.h>
-#include <sys/disk.h>
 #include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>

@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.26 2008/08/22 08:33:59 swildner Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -53,7 +52,6 @@
 
 #include <net/if.h>
 #include <net/ifq_var.h>
-#include <net/if.h>
 #include <net/if_arp.h>
 #include <net/if_media.h> 
 #include <net/ethernet.h>

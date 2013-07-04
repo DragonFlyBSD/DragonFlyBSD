@@ -41,7 +41,6 @@
 #include <sys/taskqueue.h>
 #include <sys/libkern.h>
 
-#include <sys/bus.h>
 #include <sys/resource.h>
 #include <machine/clock.h>
 

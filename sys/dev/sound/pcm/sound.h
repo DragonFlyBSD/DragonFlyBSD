@@ -54,7 +54,6 @@
 #include <sys/buf.h>
 #include <machine/clock.h>	/* for DELAY */
 #include <sys/resource.h>
-#include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/mman.h>
 #include <sys/poll.h>
@@ -64,8 +63,6 @@
 #include <sys/kobj.h>
 #include <sys/thread2.h>
 #include <sys/taskqueue.h>
-
-#include <machine/clock.h>	/* for DELAY */
 
 #include <vm/vm.h>
 #include <vm/pmap.h>

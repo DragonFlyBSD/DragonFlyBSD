@@ -72,7 +72,6 @@
 #include <sys/priv.h>
 #include <sys/syslog.h>
 #include <sys/device.h>
-#include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/buf2.h>
 #include <sys/thread2.h>

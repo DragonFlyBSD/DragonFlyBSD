@@ -1,6 +1,5 @@
 /*	$NetBSD: am7990.c,v 1.68 2005/12/11 12:21:25 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/am7990.c,v 1.3 2006/05/16 21:04:01 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/am7990.c,v 1.5 2008/05/14 11:59:20 sephe Exp $	*/
 
 /*-
  * Copyright (c) 1997, 1998 The NetBSD Foundation, Inc.
@@ -78,7 +77,6 @@
 #include <sys/endian.h>
 #include <sys/lock.h>
 #include <sys/mbuf.h>
-#include <sys/bus.h>
 #include <sys/socket.h>
 
 #include <net/bpf.h>

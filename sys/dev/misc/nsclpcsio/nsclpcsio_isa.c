@@ -42,7 +42,6 @@
 #include <sys/sensors.h>
 #include <sys/module.h>
 #include <sys/rman.h>
-#include <sys/systm.h>
 
 #include <sys/bus.h>
 
