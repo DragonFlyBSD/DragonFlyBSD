@@ -64,6 +64,7 @@ ahci_pm_port_probe(struct ahci_port *ap, int orig_error)
 	u_int8_t	*fis = NULL;
 	int		error;
 	u_int32_t	cmd;
+	u_int32_t	fbs;
 	int		count;
 	int		i;
 
@@ -83,6 +84,42 @@ retry:
 	if ((cmd & AHCI_PREG_CMD_PMA) == 0) {
 		cmd |= AHCI_PREG_CMD_PMA;
 		ahci_pwrite(ap, AHCI_PREG_CMD, cmd);
+	}
+
+	/*
+	 * Try to enable FIS-Based switching.  We have to probe PREG_FBS
+	 *
+	 * XXX I'm still trying to find an AHCI chipset that actually
+	 *     supports FBSS so I can finish implementing support, so
+	 *     this doesn't do a whole lot right now.
+	 */
+	if (ap->ap_sc->sc_cap & AHCI_REG_CAP_FBSS) {
+		const char *str1 = "";
+		const char *str2 = "";
+		const char *str3 = "";
+
+		if (cmd & AHCI_PREG_CMD_FBSCP) {
+			str1 = "HW indicates support";
+		} else if (ap->ap_sc->sc_flags & AHCI_F_FORCE_FBSS) {
+			cmd |= AHCI_PREG_CMD_FBSCP;	/* Force on */
+			str1 = "HW indicates no-support, force";
+		} else {
+			str1 = "HW indicates no-support";
+		}
+		if (cmd & AHCI_PREG_CMD_FBSCP) {
+			fbs = ahci_pread(ap, AHCI_PREG_FBS);
+			ahci_pwrite(ap, AHCI_PREG_FBS, fbs | AHCI_PREG_FBS_EN);
+			fbs = ahci_pread(ap, AHCI_PREG_FBS);
+			if (fbs & AHCI_PREG_FBS_EN) {
+				str2 = ", enable succeeded";
+				str3 = ", (driver support not yet implemented)";
+			} else {
+				str2 = ", enable failed";
+			}
+			ahci_pwrite(ap, AHCI_PREG_FBS, fbs & ~AHCI_PREG_FBS_EN);
+		}
+		kprintf("%s: Port multiplier: FIS-Based Sw: %s%s%s\n",
+			PORTNAME(ap), str1, str2, str3);
 	}
 
 	/*

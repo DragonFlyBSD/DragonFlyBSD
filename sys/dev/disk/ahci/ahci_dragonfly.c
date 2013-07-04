@@ -129,6 +129,9 @@ ahci_attach (device_t dev)
 	if (kgetenv("hint.ahci.nofeatures"))
 		AhciNoFeatures = -1;
 
+	if (kgetenv("hint.ahci.forcefbss"))
+		sc->sc_flags |= AHCI_F_FORCE_FBSS;
+
 	sysctl_ctx_init(&sc->sysctl_ctx);
 	ksnprintf(name, sizeof(name), "%s%d",
 		device_get_name(dev), device_get_unit(dev));

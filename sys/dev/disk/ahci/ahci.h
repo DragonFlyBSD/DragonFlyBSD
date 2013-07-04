@@ -51,7 +51,7 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_REG_CAP_PSC		(1<<13) /* Partial State Capable */
 #define  AHCI_REG_CAP_SSC		(1<<14) /* Slumber State Capable */
 #define  AHCI_REG_CAP_PMD		(1<<15) /* PIO Multiple DRQ Block */
-#define  AHCI_REG_CAP_FBSS		(1<<16) /* FIS-Based Switching */
+#define  AHCI_REG_CAP_FBSS		(1<<16) /* FIS-Based Switching Supp */
 #define  AHCI_REG_CAP_SPM		(1<<17) /* Port Multiplier */
 #define  AHCI_REG_CAP_SAM		(1<<18) /* AHCI Only mode */
 #define  AHCI_REG_CAP_SNZO		(1<<19) /* Non Zero DMA Offsets */
@@ -98,6 +98,21 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define AHCI_REG_CCC_PORTS	0x018 /* Coalescing Ports */
 #define AHCI_REG_EM_LOC		0x01c /* Enclosure Mgmt Location */
 #define AHCI_REG_EM_CTL		0x020 /* Enclosure Mgmt Control */
+
+#define AHCI_REG_CAP2		0x024 /* Host Capabilities Extended */
+#define  AHCI_REG_CAP2_BOH		(1<<0) /* BIOS/OS Handoff */
+#define  AHCI_REG_CAP2_NVMP		(1<<1) /* NVMHCI Present */
+#define  AHCI_REG_CAP2_APST		(1<<2) /* A-Partial to Slumber Trans */
+#define  AHCI_FMT_CAP2		"\020" "\003BOH" "\002NVMP" "\001BOH"
+
+#define AHCI_REG_BOHC		0x028 /* BIOS/OS Handoff Control and Status */
+#define  AHCI_REG_BOHC_BOS		(1<<0) /* BIOS Owned Semaphore */
+#define  AHCI_REG_BOHC_OOS		(1<<1) /* OS Owned Semaphore */
+#define  AHCI_REG_BOHC_SOOE		(1<<2) /* SMI on OS Own chg enable */
+#define  AHCI_REG_BOHC_OOC		(1<<3) /* OS Ownership Change */
+#define  AHCI_REG_BOHC_BB		(1<<4) /* BIOS Busy */
+#define  AHCI_FMT_BOHC		"\020" "\005BB" "\004OOC" "\003SOOE" \
+				"\002OOS" "\001BOS"
 
 #define AHCI_PORT_REGION(_p)	(0x100 + ((_p) * 0x80))
 #define AHCI_PORT_SIZE		0x80
@@ -155,6 +170,11 @@ int ahcidebug = AHCI_D_VERBOSE;
 				    "\006DPE" "\005UFE" "\004SDBE" "\003DSE" \
 				    "\002PSE" "\001DHRE"
 
+/*
+ * NOTE: bits 22, 21, 20, 19, 18, 16, 15, 14, 13, 12:08, 07:05 are always
+ *       read-only.  Other bits may be read-only when the related feature
+ *	 is not supported by the HBA.
+ */
 #define AHCI_PREG_CMD		0x18 /* Command and Status */
 #define  AHCI_PREG_CMD_ST		(1<<0) /* Start */
 #define  AHCI_PREG_CMD_SUD		(1<<1) /* Spin Up Device */
@@ -171,6 +191,8 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_PREG_CMD_MPSP		(1<<19) /* Mech Presence Switch */
 #define  AHCI_PREG_CMD_CPD		(1<<20) /* Cold Presence Detection */
 #define  AHCI_PREG_CMD_ESP		(1<<21) /* External SATA Port */
+#define  AHCI_PREG_CMD_FBSCP		(1<<22) /* FIS-based sw capable port */
+#define  AHCI_PREG_CMD_APSTE		(1<<23) /* Auto Partial to Slumber */
 #define  AHCI_PREG_CMD_ATAPI		(1<<24) /* Device is ATAPI */
 #define  AHCI_PREG_CMD_DLAE		(1<<25) /* Drv LED on ATAPI Enable */
 #define  AHCI_PREG_CMD_ALPE		(1<<26) /* Aggro Pwr Mgmt Enable */
@@ -181,7 +203,8 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define  AHCI_PREG_CMD_ICC_ACTIVE	0x10000000
 #define  AHCI_PREG_CMD_ICC_IDLE		0x00000000
 #define  AHCI_PFMT_CMD		"\020" "\034ASP" "\033ALPE" "\032DLAE" \
-				    "\031ATAPI" "\026ESP" "\025CPD" "\024MPSP" \
+				    "\031ATAPI" "\030APSTE" "\027FBSCP" \
+				    "\026ESP" "\025CPD" "\024MPSP" \
 				    "\023HPCP" "\022PMA" "\021CPS" "\020CR" \
 				    "\017FR" "\016MPSS" "\005FRE" "\004CLO" \
 				    "\003POD" "\002SUD" "\001ST"
@@ -266,6 +289,40 @@ int ahcidebug = AHCI_D_VERBOSE;
 #define AHCI_PREG_CI		0x38 /* Command Issue */
 #define  AHCI_PREG_CI_ALL_SLOTS	0xffffffff
 #define AHCI_PREG_SNTF		0x3c /* SNotification */
+
+/*
+ * EN	- Enable FIS based switch, can only be changed when ST is clear
+ *
+ * DEC	- Device Error Clear, state machine.  Set to 1 by software only
+ *	  for the EN+SDE case, then poll until hardware sets it back to 0.
+ *	  Writing 0 has no effect.
+ *
+ * SDE	- Set by hardware indicating a single device error occurred.  If
+ *	  not set and an error occurred then the error was whole-port.
+ *
+ * DEV	- Set by software to the PM target of the next command to issue
+ *	  via the PREG_CI registers.  Software should not issue multiple
+ *	  commands covering different targets in a single write.  This
+ *	  basically causes writes to PREG_CI to index within the hardware.
+ *
+ * ADO	- (read only) Indicate how many concurrent devices commands may
+ *	  be issued to at once.  Degredation may occur if commands are
+ *	  issued to more devices but the case is allowed.
+ *
+ * DWE	- (read only) Only valid on SDE errors.  Hardware indicates which
+ *	  PM target generated the error in this field.
+ *
+ */
+#define AHCI_PREG_FBS		0x40 /* FIS-Based Switching Control */
+#define  AHCI_PREG_FBS_EN		(1<<0) /* FIS-Based switching enable */
+#define  AHCI_PREG_FBS_DEC		(1<<1) /* Device Error Clear */
+#define  AHCI_PREG_FBS_SDE		(1<<2) /* Single-device Error */
+#define  AHCI_PREG_FBS_DEV		0x00000F00 /* Device to Issue mask */
+#define  AHCI_PREG_FBS_ADO		0x0000F000 /* Active Dev Optimize */
+#define  AHCI_PREG_FBS_DWE		0x000F0000 /* Device With Error */
+#define  AHCI_PREG_FBS_DEV_SHIFT	8
+#define  AHCI_PREG_FBS_ADO_SHIFT	12
+#define  AHCI_PREG_FBS_DWE_SHIFT	16
 
 /*
  * AHCI mapped structures
@@ -458,6 +515,8 @@ struct ahci_softc {
 	int			sc_rid_irq;	/* saved bus RIDs */
 	int			sc_rid_regs;
 	u_int32_t		sc_cap;		/* capabilities */
+	u_int32_t		sc_cap2;	/* capabilities */
+	u_int32_t		sc_vers;	/* AHCI version */
 	int			sc_numports;
 	u_int32_t		sc_portmask;
 
@@ -469,9 +528,10 @@ struct ahci_softc {
 	bus_dma_tag_t		sc_tag_data;
 
 	int			sc_flags;
-#define AHCI_F_NO_NCQ			(1<<0)
-#define AHCI_F_IGN_FR			(1<<1)
-#define AHCI_F_INT_GOOD			(1<<2)
+#define AHCI_F_NO_NCQ			0x00000001
+#define AHCI_F_IGN_FR			0x00000002
+#define AHCI_F_INT_GOOD			0x00000004
+#define AHCI_F_FORCE_FBSS		0x00000008
 
 	u_int			sc_ncmds;
 

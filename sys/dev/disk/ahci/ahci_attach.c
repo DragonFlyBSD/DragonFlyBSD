@@ -200,10 +200,11 @@ ahci_pci_attach(device_t dev)
 	struct ahci_port *ap;
 	const char *gen;
 	uint16_t vid, did;
-	u_int32_t cap, pi, reg;
+	u_int32_t pi, reg;
+	u_int32_t cap, cap2;
 	u_int irq_flags;
 	bus_addr_t addr;
-	int i, error, msi_enable, rev;
+	int i, error, msi_enable, rev, fbs;
 	const char *revision;
 
 	if (pci_read_config(dev, PCIR_COMMAND, 2) & 0x0400) {
@@ -273,12 +274,14 @@ ahci_pci_attach(device_t dev)
 
 	/*
 	 * Get the AHCI capabilities and max number of concurrent
-	 * command tags and set up the DMA tags.
+	 * command tags and set up the DMA tags.  Adjust the saved
+	 * sc_cap according to override flags.
 	 */
-	cap = ahci_read(sc, AHCI_REG_CAP);
+	cap = sc->sc_cap = ahci_read(sc, AHCI_REG_CAP);
 	if (sc->sc_flags & AHCI_F_NO_NCQ)
-		cap &= ~AHCI_REG_CAP_SNCQ;
-	sc->sc_cap = cap;
+		sc->sc_cap &= ~AHCI_REG_CAP_SNCQ;
+	if (sc->sc_flags & AHCI_F_FORCE_FBSS)
+		sc->sc_cap |= AHCI_REG_CAP_FBSS;
 
 	/*
 	 * We assume at least 4 commands.
@@ -296,19 +299,25 @@ ahci_pci_attach(device_t dev)
 	/*
 	 * DMA tags for allocation of DMA memory buffers, lists, and so
 	 * forth.  These are typically per-port.
+	 *
+	 * When FIS-based switching is supported we need a rfis for
+	 * each target (4K total).  The spec also requires 4K alignment
+	 * for this case.
 	 */
+	fbs = (cap & AHCI_REG_CAP_FBSS) ? 16 : 1;
 	error = 0;
+
 	error += bus_dma_tag_create(
 			NULL,				/* parent tag */
-			256,				/* alignment */
+			256 * fbs,			/* alignment */
 			PAGE_SIZE,			/* boundary */
 			addr,				/* loaddr? */
 			BUS_SPACE_MAXADDR,		/* hiaddr */
 			NULL,				/* filter */
 			NULL,				/* filterarg */
-			sizeof(struct ahci_rfis),	/* [max]size */
+			sizeof(struct ahci_rfis) * fbs,	/* [max]size */
 			1,				/* maxsegs */
-			sizeof(struct ahci_rfis),	/* maxsegsz */
+			sizeof(struct ahci_rfis) * fbs,	/* maxsegsz */
 			0,				/* flags */
 			&sc->sc_tag_rfis);		/* return tag */
 
@@ -384,6 +393,7 @@ ahci_pci_attach(device_t dev)
 
 	/* check the revision */
 	reg = ahci_read(sc, AHCI_REG_VS);
+
 	switch (reg) {
 	case AHCI_REG_VS_0_95:
 		revision = "AHCI 0.95";
@@ -412,12 +422,27 @@ ahci_pci_attach(device_t dev)
 		revision = "AHCI <unknown>";
 		break;
 	}
+	sc->sc_vers = reg;
 
-	device_printf(dev,
-		      "%s capabilities 0x%b, %d ports, %d tags/port, gen %s\n",
-		      revision,
-		      cap, AHCI_FMT_CAP,
-		      AHCI_REG_CAP_NP(cap), sc->sc_ncmds, gen);
+	if (reg >= AHCI_REG_VS_1_3) {
+		cap2 = ahci_read(sc, AHCI_REG_CAP2);
+		device_printf(dev,
+			      "%s cap 0x%b cap2 0x%b, %d ports, "
+			      "%d tags/port, gen %s\n",
+			      revision,
+			      cap, AHCI_FMT_CAP,
+			      cap2, AHCI_FMT_CAP2,
+			      AHCI_REG_CAP_NP(cap), sc->sc_ncmds, gen);
+	} else {
+		cap2 = 0;
+		device_printf(dev,
+			      "%s cap 0x%b, %d ports, "
+			      "%d tags/port, gen %s\n",
+			      revision,
+			      cap, AHCI_FMT_CAP,
+			      AHCI_REG_CAP_NP(cap), sc->sc_ncmds, gen);
+	}
+	sc->sc_cap2 = cap2;
 
 	pi = ahci_read(sc, AHCI_REG_PI);
 	DPRINTF(AHCI_D_VERBOSE, "%s: ports implemented: 0x%08x\n",
