@@ -773,18 +773,18 @@ dev/netif/wi/if_wi_pccard.c		optional wi pccard
 dev/netif/wi/if_wi_pci.c		optional wi pci
 dev/netif/wpi/if_wpi.c			optional wpi
 wpifw.c			optional wpifw					\
-	dependency	"$S/contrib/dev/wpi/iwlwifi-3945-2.14.4.fw.uu"					\
+	dependency	"$S/contrib/dev/wpi/iwlwifi-3945-2.14.4.fw.uu"	\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk wpi.fw:wpifw:2144 -mwpifw -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"wpifw.c"
-wpifw.fwo			optional wpifw				\
+wpifw.fwo		optional wpifw					\
 	dependency	"wpi.fw"					\
 	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} wpi.fw" \
 	no-implicit-rule						\
 	clean		"wpifw.fwo"
 wpi.fw			optional wpifw					\
-	dependency	"$S/contrib/dev/wpi/iwlwifi-3945-2.14.4.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/wpi/iwlwifi-3945-2.14.4.fw.uu"	\
+	dependency	"$S/contrib/dev/wpi/iwlwifi-3945-2.14.4.fw.uu"	\
+	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/wpi/iwlwifi-3945-2.14.4.fw.uu" \
 	no-obj no-implicit-rule						\
 	clean		"wpi.fw"
 dev/netif/rtw/rtw.c			optional rtw
