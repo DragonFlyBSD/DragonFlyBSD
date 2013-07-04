@@ -51,17 +51,7 @@
 
 /*Include Files ------------------------------------------------------------- */
 
-#if (defined(KERNEL) && defined(__bsdi__))
-# include	 "i386/isa/dpt_osd_util.h"
-#elif ((defined(KERNEL) || defined(_KERNEL)) && defined(__FreeBSD__))
-# if (KERN_VERSION < 3)
-#  include	  "i386/isa/dpt_osd_util.h"
-# else
-#  include	  "dev/asr/osd_util.h"
-# endif
-#else
-# include	 "osd_util.h"
-#endif
+#include	 "osd_util.h"
 
 #ifndef NO_PACK
 #if defined(_DPT_AIX)

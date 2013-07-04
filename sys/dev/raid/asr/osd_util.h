@@ -76,17 +76,7 @@
 /*#define	      SEMAPHORE_T     ??? */
 /*#define	      DLL_HANDLE_T    ??? */
 
-#if (defined(KERNEL) && defined(__bsdi__))
-# include	 "i386/isa/dpt_osd_defs.h"
-#elif ((defined(KERNEL) || defined(_KERNEL)) && defined(__FreeBSD__))
-# if (KERN_VERSION < 3)
-#  include	  "i386/isa/dpt_osd_defs.h"
-# else
-#  include	  "dev/asr/osd_defs.h"
-# endif
-#else
-# include	 "osd_defs.h"
-#endif
+#include	 "osd_defs.h"
 
 #ifndef DPT_UNALIGNED
    #define	     DPT_UNALIGNED
