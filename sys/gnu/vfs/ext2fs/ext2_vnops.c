@@ -56,7 +56,6 @@
 #include <sys/stat.h>
 #include <sys/fcntl.h>
 #include <sys/buf.h>
-#include <sys/stat.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/mount.h>

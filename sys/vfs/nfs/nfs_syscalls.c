@@ -69,8 +69,6 @@
 #include "nfsnode.h"
 #include "nfsrtt.h"
 
-#include <sys/thread2.h>
-
 static MALLOC_DEFINE(M_NFSSVC, "NFS srvsock", "Nfs server structure");
 
 static int nuidhash_max = NFS_MAXUIDHASH;

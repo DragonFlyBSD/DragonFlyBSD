@@ -40,7 +40,6 @@
 #include <sys/buf.h>
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
-#include <sys/systm.h>
 #if defined(__NetBSD__)
 #include <sys/device.h>
 #endif

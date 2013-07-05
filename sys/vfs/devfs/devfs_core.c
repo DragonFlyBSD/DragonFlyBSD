@@ -41,8 +41,6 @@
 #include <sys/msgport.h>
 #include <sys/sysctl.h>
 #include <sys/ucred.h>
-#include <sys/param.h>
-#include <sys/systm.h>
 #include <sys/devfs.h>
 #include <sys/devfs_rules.h>
 #include <sys/udev.h>

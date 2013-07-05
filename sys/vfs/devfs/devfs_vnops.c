@@ -46,7 +46,6 @@
 #include <sys/uio.h>
 #include <sys/mount.h>
 #include <sys/file.h>
-#include <sys/fcntl.h>
 #include <sys/namei.h>
 #include <sys/dirent.h>
 #include <sys/malloc.h>

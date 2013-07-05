@@ -58,7 +58,6 @@
 #include <sys/buf.h>
 #include <sys/queue.h>
 #include <sys/ktr.h>
-#include <sys/globaldata.h>
 #include <sys/limits.h>
 #include <vm/vm_extern.h>
 

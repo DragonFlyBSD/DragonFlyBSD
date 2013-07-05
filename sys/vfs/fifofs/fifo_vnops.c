@@ -46,7 +46,6 @@
 #include <sys/event.h>
 #include <sys/un.h>
 
-#include <sys/thread2.h>
 #include <sys/socketvar2.h>
 
 #include "fifo.h"

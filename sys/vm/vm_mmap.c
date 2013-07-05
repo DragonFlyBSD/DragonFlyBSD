@@ -72,7 +72,6 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_pageout.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_page.h>
 #include <vm/vm_kern.h>
 
 #include <sys/file2.h>

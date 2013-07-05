@@ -62,7 +62,6 @@
 #include <sys/limits.h>
 #include <sys/buf2.h>
 #include <sys/signal2.h>
-#include <sys/tree.h>
 #include <sys/dmsg.h>
 
 #include "hammer2_disk.h"

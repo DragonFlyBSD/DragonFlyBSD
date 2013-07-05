@@ -94,9 +94,6 @@
 #ifndef _VM_VM_PAGE_H_
 #include <vm/vm_page.h>
 #endif
-#ifndef _SYS_THREAD_H_
-#include <sys/thread.h>
-#endif
 
 #ifdef _KERNEL
 
