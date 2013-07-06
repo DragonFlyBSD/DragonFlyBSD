@@ -2146,6 +2146,9 @@ TO_REMOVE+=/usr/share/man/man8/kgzip.8.gz
 TO_REMOVE+=/usr/sbin/pnpinfo
 TO_REMOVE+=/usr/share/man/cat8/pnpinfo.8.gz
 TO_REMOVE+=/usr/share/man/man8/pnpinfo.8.gz
+TO_REMOVE+=/boot/kernel/if_ar.ko
+TO_REMOVE+=/boot/kernel/glxsb.ko
+TO_REMOVE+=/boot/kernel/if_sbni.ko
 .endif
 
 # XXX Remove when pfsync(4) has been fixed
