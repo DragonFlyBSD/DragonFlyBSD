@@ -52,6 +52,8 @@
 #include <sys/device.h>
 #include <sys/thread2.h>
 
+#include <bus/pci/pcidevs.h>
+
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
@@ -272,7 +274,7 @@ iir_ioctl(struct dev_ioctl_args *ap)
                 return (ENXIO);
             /* only RP controllers */
             p->ext_type = 0x6000 | gdt->sc_device;
-            if (gdt->sc_vendor == INTEL_VENDOR_ID) {
+            if (gdt->sc_vendor == PCI_VENDOR_INTEL) {
                 p->oem_id = OEM_ID_INTEL;
                 p->type = 0xfd;
                 /* new -> subdevice into ext_type */
