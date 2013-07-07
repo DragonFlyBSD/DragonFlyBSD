@@ -242,7 +242,9 @@ int	copystr (const void *kfaddr, void *kdaddr, size_t len,
 int	copyinstr (const void *udaddr, void *kaddr, size_t len,
 		size_t *lencopied);
 int	copyin (const void *udaddr, void *kaddr, size_t len);
+int	copyin_nofault (const void *udaddr, void *kaddr, size_t len);
 int	copyout (const void *kaddr, void *udaddr, size_t len);
+int	copyout_nofault (const void *kaddr, void *udaddr, size_t len);
 
 int	fubyte (const void *base);
 int	subyte (void *base, int byte);

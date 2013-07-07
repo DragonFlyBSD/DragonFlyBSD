@@ -57,6 +57,30 @@
 SYSCTL_INT(_kern, KERN_IOV_MAX, iov_max, CTLFLAG_RD, NULL, UIO_MAXIOV,
 	"Maximum number of elements in an I/O vector; sysconf(_SC_IOV_MAX)");
 
+int
+copyin_nofault(const void *udaddr, void *kaddr, size_t len)
+{
+	thread_t td = curthread;
+	int error;
+
+	atomic_set_int(&td->td_flags, TDF_NOFAULT);
+	error = copyin(udaddr, kaddr, len);
+	atomic_clear_int(&td->td_flags, TDF_NOFAULT);
+	return error;
+}
+
+int
+copyout_nofault(const void *kaddr, void *udaddr, size_t len)
+{
+	thread_t td = curthread;
+	int error;
+
+	atomic_set_int(&td->td_flags, TDF_NOFAULT);
+	error = copyout(kaddr, udaddr, len);
+	atomic_clear_int(&td->td_flags, TDF_NOFAULT);
+	return error;
+}
+
 /*
  * UIO_READ:	copy the kernelspace cp to the user or kernelspace UIO
  * UIO_WRITE:	copy the user or kernelspace UIO to the kernelspace cp
