@@ -412,7 +412,6 @@ ukbd_do_poll(struct ukbd_softc *sc, uint8_t wait)
 	DPRINTFN(2, "polling\n");
 #if 0 /* XXX */
 	if (!kdb_active && !SCHEDULER_STOPPED()) {
-#endif
 		/*
 		 * In this context the kernel is polling for input,
 		 * but the USB subsystem works in normal interrupt-driven
@@ -430,7 +429,6 @@ ukbd_do_poll(struct ukbd_softc *sc, uint8_t wait)
 				break;
 		}
 		return;
-#if 0
 	}
 #endif
 
