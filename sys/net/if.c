@@ -45,7 +45,6 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/socketops.h>
-#include <sys/protosw.h>
 #include <sys/kernel.h>
 #include <sys/ktr.h>
 #include <sys/mutex.h>

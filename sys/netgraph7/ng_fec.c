@@ -35,7 +35,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.30 2007/05/18 15:05:49 dwmalone Exp $
- * $DragonFly: src/sys/netgraph7/ng_fec.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 /*-
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -95,7 +94,6 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/errno.h>
 #include <sys/sockio.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>

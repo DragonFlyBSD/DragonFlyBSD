@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.22 2008/03/07 11:34:21 sephe Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -57,7 +56,6 @@
 #include <netinet6/in6_var.h>
 #include <netinet6/in6_pcb.h>
 #include <netinet6/in6_ifattach.h>
-#include <netinet6/ip6_var.h>
 #include <netinet6/nd6.h>
 #include <netinet6/scope6_var.h>
 

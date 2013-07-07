@@ -73,7 +73,6 @@
 
 #include <net/pf/pfvar.h>
 #include <sys/md5.h>
-#include <net/pf/pfvar.h>
 
 #include <net/pf/if_pflog.h>
 #include <net/pf/if_pfsync.h>

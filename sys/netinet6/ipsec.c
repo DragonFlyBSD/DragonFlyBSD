@@ -70,7 +70,6 @@
 #include <netinet6/ip6_ecn.h>
 #endif
 #include <netinet/tcp.h>
-#include <netinet/udp.h>
 
 #include <netinet/ip6.h>
 #ifdef INET6

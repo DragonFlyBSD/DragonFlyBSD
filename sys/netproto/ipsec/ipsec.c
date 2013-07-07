@@ -65,7 +65,6 @@
 #include <netinet/udp.h>
 #include <netinet/udp_var.h>
 #include <netinet/tcp.h>
-#include <netinet/udp.h>
 
 #include <netinet/ip6.h>
 #ifdef INET6

@@ -46,8 +46,6 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/errno.h>
-
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>

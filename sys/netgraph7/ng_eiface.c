@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.39 2007/07/26 10:54:33 glebius Exp $
- * $DragonFly: src/sys/netgraph7/ng_eiface.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,7 +34,6 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/errno.h>
 #include <sys/sockio.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>

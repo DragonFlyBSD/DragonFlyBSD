@@ -53,7 +53,6 @@
 
 #ifdef INET
 #include <netinet/in.h>
-#include <net/ethernet.h>
 #endif
 
 int

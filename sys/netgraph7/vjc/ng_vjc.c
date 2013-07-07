@@ -39,7 +39,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_vjc.c,v 1.26 2005/12/04 00:25:03 ru Exp $
- * $DragonFly: src/sys/netgraph7/ng_vjc.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_vjc.c,v 1.17 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -54,7 +53,6 @@
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
-#include <sys/errno.h>
 
 #include <netgraph7/ng_message.h>
 #include <netgraph7/netgraph.h>

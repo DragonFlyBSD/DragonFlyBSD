@@ -3787,8 +3787,6 @@ key_ismyaddr(struct sockaddr *sa)
  * 0: other
  * NOTE: derived ip6_input() in KAME. This is necessary to modify more.
  */
-#include <netinet6/in6_var.h>
-
 static int
 key_ismyaddr6(struct sockaddr_in6 *sin6)
 {
