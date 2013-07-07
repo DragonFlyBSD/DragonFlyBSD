@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/iicbus/iic.h,v 1.6 2009/01/26 13:53:39 raj Exp $
- * $DragonFly: src/sys/platform/pc32/include/iic.h,v 1.4 2006/05/20 02:42:06 dillon Exp $
+ * $FreeBSD: head/sys/dev/iicbus/iic.h 210998 2010-08-07 08:31:32Z joel $
  *
  */
 #ifndef __IIC_H
@@ -39,14 +38,16 @@ struct iic_msg
 	uint16_t	flags;
 #define	IIC_M_WR	0	/* Fake flag for write */
 #define	IIC_M_RD	0x0001	/* read vs write */
-	uint16_t	len;	/* msg legnth */
+#define	IIC_M_NOSTOP	0x0002	/* do not send a I2C stop after message */
+#define	IIC_M_NOSTART	0x0004	/* do not send a I2C start before message */
+	uint16_t	len;	/* msg length */
 	uint8_t *	buf;
 };
 
 struct iiccmd {
 	u_char slave;
-	size_t count;
-	size_t last;
+	int count;
+	int last;
 	char *buf;
 };
 
