@@ -429,11 +429,12 @@ check_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 		}
 
 		if (!string_to_capacity(capstring, &capacity)) {
-			inform(a->c, _("Capacity must be either a '*' symbol to indicate "
-			    "'use the rest of the primary partition', or it "
-			    "must be a series of decimal digits ending with a "
-			    "'M' (indicating megabytes) or a 'G' (indicating "
-			    "gigabytes.)"));
+			inform(a->c, _("Capacity must be either a '*' symbol "
+			    "to indicate 'use the rest of the primary "
+			    "partition', or it must be a series of decimal "
+			    "digits ending with an 'M' (indicating "
+			    "megabytes), a 'G' (indicating gigabytes) and "
+			    "so on (up to 'E'.)"));
 			valid = 0;
 		}
 
@@ -686,8 +687,8 @@ make_create_subpartitions_form(struct i_fn_args *a)
 	    "in BSD tradition) you want to have on this primary "
 	    "partition.\n\n"
 	    "For Capacity, use 'M' to indicate megabytes, 'G' to "
-	    "indicate gigabytes, or a single '*' to indicate "
-	    "'use the remaining space on the primary partition'."),
+	    "indicate gigabytes, and so on (up to 'E'.) A single '*' "
+	    "indicates 'use the remaining space on the primary partition'."),
 
 	    msg_buf[0],
 

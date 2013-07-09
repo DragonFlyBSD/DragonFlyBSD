@@ -26,7 +26,7 @@ LIBINSTALLER=${.OBJDIR}/../libinstaller/libinstaller.a
 LIBINSTALLER=${.CURDIR}/../libinstaller/libinstaller.a
 .endif
 
-DPADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA}
-LDADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA}
+DPADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA} ${LIBUTIL}
+LDADD+=	${LIBINSTALLER} ${LIBDFUI} ${LIBAURA} -lutil
 
 .include <bsd.prog.mk>
