@@ -49,35 +49,6 @@
 static void	dump_config(CONFIG_PAGE_RAID_VOL_0 *vol);
 #endif
 
-static long
-dehumanize(const char *value)
-{
-        char    *vtp;
-        long    iv;
- 
-        if (value == NULL)
-                return (0);
-        iv = strtoq(value, &vtp, 0);
-        if (vtp == value || (vtp[0] != '\0' && vtp[1] != '\0')) {
-                return (0);
-        }
-        switch (vtp[0]) {
-        case 't': case 'T':
-                iv *= 1024;
-        case 'g': case 'G':
-                iv *= 1024;
-        case 'm': case 'M':
-                iv *= 1024;
-        case 'k': case 'K':
-                iv *= 1024;
-        case '\0':
-                break;
-        default:
-                return (0);
-        }
-        return (iv);
-}
-
 /*
  * Lock the volume by opening its /dev device read/write.  This will
  * only work if nothing else has it opened (including mounts).  We
@@ -665,8 +636,9 @@ create_volume(int ac, char **av)
 			quick = 1;
 			break;
 		case 's':
-			stripe_size = dehumanize(optarg);
-			if ((stripe_size < 512) || (!powerof2(stripe_size))) {
+			error = dehumanize_number(optarg, &stripe_size);
+			if ((error != 0) || (stripe_size < 512) ||
+			    (!powerof2(stripe_size))) {
 				warnx("Invalid stripe size %s", optarg);
 				return (EINVAL);
 			}
