@@ -877,6 +877,11 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 	case RTM_RESOLVE:
 		if (ret_nrt == NULL || (rt = *ret_nrt) == NULL)
 			gotoerr(EINVAL);
+
+		KASSERT(rt->rt_cpuid == mycpuid,
+		    ("rt resolve rt_cpuid %d, mycpuid %d",
+		     rt->rt_cpuid, mycpuid));
+
 		ifa = rt->rt_ifa;
 		rtinfo->rti_flags =
 		    rt->rt_flags & ~(RTF_CLONING | RTF_PRCLONING | RTF_STATIC);
