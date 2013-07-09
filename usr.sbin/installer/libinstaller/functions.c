@@ -247,7 +247,7 @@ capacity_to_string(long capacity)
 		strlcpy(string, "*", 2);
 	else
 		humanize_number(string, sizeof(string),
-		    capacity * 1024 * 1024, "",
+		    (int64_t)capacity * 1024 * 1024, "",
 		    HN_AUTOSCALE, HN_B | HN_NOSPACE | HN_DECIMAL);
 
 	return(string);
