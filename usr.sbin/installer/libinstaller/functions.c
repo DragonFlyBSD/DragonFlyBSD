@@ -246,7 +246,8 @@ capacity_to_string(long capacity)
 	if (capacity < 0)
 		strlcpy(string, "*", 2);
 	else
-		humanize_number(string, sizeof(string), capacity << 20, "",
+		humanize_number(string, sizeof(string),
+		    capacity * 1024 * 1024, "",
 		    HN_AUTOSCALE, HN_B | HN_NOSPACE | HN_DECIMAL);
 
 	return(string);
@@ -265,7 +266,7 @@ string_to_capacity(const char *string, long *capacity)
 	error = dehumanize_number(string, &result);
 	if (error != 0)
 		return(0);
-	result >>= 20;
+	result /= 1024 * 1024;
 	if (result == 0)
 		return(0);
 	*capacity = result;
