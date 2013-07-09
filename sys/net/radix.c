@@ -63,7 +63,7 @@ static struct radix_node
     *rn_search(const char *, struct radix_node *),
     *rn_search_m(const char *, struct radix_node *, const char *);
 
-static struct radix_mask *rn_mkfreelist;
+static struct radix_mask *rn_mkfreelist[MAXCPU];
 static struct radix_node_head *mask_rnheads[MAXCPU];
 
 static char rn_zeros[RN_MAXKEYLEN];
@@ -432,7 +432,6 @@ rn_addmask(char *netmask, boolean_t search, int skip,
 	char *cp, *cplim;
 	int b = 0, mlen, m0, j;
 	boolean_t maskduplicated, isnormal;
-	static int last_zeroed = 0;
 	char *addmask_key;
 
 	if ((mlen = clen(netmask)) > RN_MAXKEYLEN)
@@ -455,14 +454,14 @@ rn_addmask(char *netmask, boolean_t search, int skip,
 		cp--;
 	mlen = cp - addmask_key;
 	if (mlen <= skip) {
-		if (m0 >= last_zeroed)
-			last_zeroed = mlen;
+		if (m0 >= mask_rnh->rnh_last_zeroed)
+			mask_rnh->rnh_last_zeroed = mlen;
 		Free(addmask_key);
 		return (mask_rnh->rnh_nodes);
 	}
-	if (m0 < last_zeroed)
-		bzero(addmask_key + m0, last_zeroed - m0);
-	*addmask_key = last_zeroed = mlen;
+	if (m0 < mask_rnh->rnh_last_zeroed)
+		bzero(addmask_key + m0, mask_rnh->rnh_last_zeroed - m0);
+	*addmask_key = mask_rnh->rnh_last_zeroed = mlen;
 	x = rn_search(addmask_key, mask_rnh->rnh_treetop);
 	if (x->rn_key == NULL) {
 		kprintf("WARNING: radix_node->rn_key is NULL rn=%p\n", x);
@@ -531,7 +530,7 @@ rn_new_radix_mask(struct radix_node *tt, struct radix_mask *nextmask)
 {
 	struct radix_mask *m;
 
-	m = MKGet(&rn_mkfreelist);
+	m = MKGet(&rn_mkfreelist[mycpuid]);
 	if (m == NULL) {
 		log(LOG_ERR, "Mask for route not entered\n");
 		return (NULL);
@@ -713,6 +712,7 @@ rn_delete(char *key, char *netmask, struct radix_node_head *head)
 	struct radix_mask *m, *saved_m, **mp;
 	struct radix_node *dupedkey, *saved_tt, *top;
 	int b, head_off, klen;
+	int cpu = mycpuid;
 
 	x = head->rnh_treetop;
 	tt = rn_search(key, x);
@@ -761,7 +761,7 @@ rn_delete(char *key, char *netmask, struct radix_node_head *head)
 	for (mp = &x->rn_mklist; (m = *mp); mp = &m->rm_next)
 		if (m == saved_m) {
 			*mp = m->rm_next;
-			MKFree(&rn_mkfreelist, m);
+			MKFree(&rn_mkfreelist[cpu], m);
 			break;
 		}
 	if (m == NULL) {
@@ -855,7 +855,7 @@ on1:
 
 					x->rn_mklist = NULL;
 					if (--(m->rm_refs) < 0)
-						MKFree(&rn_mkfreelist, m);
+						MKFree(&rn_mkfreelist[cpu], m);
 					m = mm;
 				}
 			if (m)
