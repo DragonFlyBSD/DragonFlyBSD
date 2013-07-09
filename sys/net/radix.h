@@ -159,8 +159,9 @@ struct radix_node_head {
 
 	struct	radix_node rnh_nodes[3];	/* empty tree for common case */
 
+	int	rnh_last_zeroed;		/* mask last zeroed length */
+
 	/* unused entries */
-	int	rnh_addrsize;		/* permit, but not require fixed keys */
 	int	rnh_pktsize;		/* permit, but not require fixed keys */
 	struct	radix_node *(*rnh_addpkt)	/* add based on packet hdr */
 		    (void *v, char *mask,
