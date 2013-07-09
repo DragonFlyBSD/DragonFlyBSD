@@ -841,7 +841,6 @@ in_arpinput(struct mbuf *m)
 	struct in_ifaddr_container *iac;
 	struct in_ifaddr *ia = NULL;
 	struct in_addr isaddr, itaddr, myaddr;
-	struct netmsg_inarp *msg;
 	uint8_t *enaddr = NULL;
 	int req_len;
 	char hexstr[64];
@@ -1026,16 +1025,28 @@ match:
 	}
 
 	/*
-	 * Update all CPU's routing tables with this ARP packet
+	 * Update all CPU's routing tables with this ARP packet.
+	 *
+	 * However, we only need to generate rtmsg on CPU0.
 	 */
-	msg = &m->m_hdr.mh_arpmsg;
-	netmsg_init(&msg->base, NULL, &netisr_apanic_rport,
-	    0, arp_update_msghandler);
-	msg->m = m;
-	msg->saddr = isaddr.s_addr;
-	msg->taddr = itaddr.s_addr;
-	msg->myaddr = myaddr.s_addr;
-	lwkt_sendmsg(rtable_portfn(0), &msg->base.lmsg);
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("arp input not in netisr0, but on cpu%d", mycpuid));
+	arp_update_oncpu(m, isaddr.s_addr, itaddr.s_addr == myaddr.s_addr,
+	    RTL_REPORTMSG, TRUE);
+
+	if (ncpus > 1) {
+		struct netmsg_inarp *msg = &m->m_hdr.mh_arpmsg;
+
+		netmsg_init(&msg->base, NULL, &netisr_apanic_rport,
+		    0, arp_update_msghandler);
+		msg->m = m;
+		msg->saddr = isaddr.s_addr;
+		msg->taddr = itaddr.s_addr;
+		msg->myaddr = myaddr.s_addr;
+		lwkt_sendmsg(netisr_cpuport(1), &msg->base.lmsg);
+	} else {
+		goto reply;
+	}
 
 	/*
 	 * Just return here; after all CPUs's routing tables are
@@ -1063,15 +1074,16 @@ arp_update_msghandler(netmsg_t msg)
 	int nextcpu;
 
 	/*
-	 * This message handler will be called on all of the CPUs,
-	 * however, we only need to generate rtmsg on CPU0.
+	 * This message handler will be called on all of the APs;
+	 * no need to generate rtmsg on them.
 	 */
+	KASSERT(mycpuid > 0, ("arp update msg on cpu%d", mycpuid));
 	arp_update_oncpu(rmsg->m, rmsg->saddr, rmsg->taddr == rmsg->myaddr,
-	    mycpuid == 0 ? RTL_REPORTMSG : RTL_DONTREPORT, mycpuid == 0);
+	    RTL_DONTREPORT, FALSE);
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus) {
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &rmsg->base.lmsg);
 	} else {
 		struct mbuf *m = rmsg->m;
 		in_addr_t saddr = rmsg->saddr;

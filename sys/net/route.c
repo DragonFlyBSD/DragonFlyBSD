@@ -86,6 +86,7 @@
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #ifdef MPLS
 #include <netproto/mpls/mpls.h>
@@ -95,12 +96,10 @@ static struct rtstatistics rtstatistics_percpu[MAXCPU];
 #define rtstat	rtstatistics_percpu[mycpuid]
 
 struct radix_node_head *rt_tables[MAXCPU][AF_MAX+1];
-struct lwkt_port *rt_ports[MAXCPU];
 
 static void	rt_maskedcopy (struct sockaddr *, struct sockaddr *,
 			       struct sockaddr *);
 static void rtable_init(void);
-static void rtable_service_loop(void *dummy);
 static void rtinit_rtrequest_callback(int, int, struct rt_addrinfo *,
 				      struct rtentry *, void *);
 
@@ -135,18 +134,11 @@ void
 route_init(void)
 {
 	int cpu;
-	thread_t rtd;
 
 	for (cpu = 0; cpu < ncpus; ++cpu)
 		bzero(&rtstatistics_percpu[cpu], sizeof(struct rtstatistics));
 	rn_init();      /* initialize all zeroes, all ones, mask table */
 	rtable_init();	/* call dom_rtattach() on each cpu */
-
-	for (cpu = 0; cpu < ncpus; cpu++) {
-		lwkt_create(rtable_service_loop, NULL, &rtd, NULL,
-			    0, cpu, "rtable_cpu %d", cpu);
-		rt_ports[cpu] = &rtd->td_msgport;
-	}
 
 	if (route_kmalloc_limit)
 		kmalloc_raise_limit(M_RTABLE, route_kmalloc_limit);
@@ -175,24 +167,6 @@ rtable_init(void)
 
 	netmsg_init(&msg, NULL, &curthread->td_msgport, 0, rtable_init_oncpu);
 	ifnet_domsg(&msg.lmsg, 0);
-}
-
-/*
- * Our per-cpu table management protocol thread.  All route table operations
- * are sequentially chained through all cpus starting at cpu #0 in order to
- * maintain duplicate route tables on each cpu.  Having a spearate route
- * table management thread allows the protocol and interrupt threads to
- * issue route table changes.
- */
-static void
-rtable_service_loop(void *dummy __unused)
-{
-	netmsg_base_t msg;
-	thread_t td = curthread;
-
-	while ((msg = lwkt_waitport(&td->td_msgport, 0)) != NULL) {
-		msg->nm_dispatch((netmsg_t)msg);
-	}
 }
 
 /*
@@ -361,7 +335,7 @@ rtfree_remote_dispatch(netmsg_t msg)
 void
 rtfree_remote(struct rtentry *rt)
 {
-	struct netmsg_base msg;
+	struct netmsg_base *msg;
 	struct lwkt_msg *lmsg;
 
 	KKASSERT(rt->rt_cpuid != mycpuid);
@@ -375,12 +349,12 @@ rtfree_remote(struct rtentry *rt)
 		print_backtrace(-1);
 	}
 
-	netmsg_init(&msg, NULL, &curthread->td_msgport,
-		    0, rtfree_remote_dispatch);
-	lmsg = &msg.lmsg;
+	msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_INTWAIT);
+	netmsg_init(msg, NULL, &netisr_afree_rport, 0, rtfree_remote_dispatch);
+	lmsg = &msg->lmsg;
 	lmsg->u.ms_resultp = rt;
 
-	lwkt_domsg(rtable_portfn(rt->rt_cpuid), lmsg, 0);
+	lwkt_sendmsg(netisr_cpuport(rt->rt_cpuid), lmsg);
 }
 
 static int
@@ -516,7 +490,8 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 	msg.netmask = netmask;
 	msg.flags = flags;
 	msg.src = src;
-	error = lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
+	ASSERT_CANDOMSG_NETISR0(curthread);
+	error = lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
 	bzero(&rtinfo, sizeof(struct rt_addrinfo));
 	rtinfo.rti_info[RTAX_DST] = dst;
 	rtinfo.rti_info[RTAX_GATEWAY] = gateway;
@@ -535,7 +510,7 @@ rtredirect_msghandler(netmsg_t msg)
 			 rmsg->flags, rmsg->src);
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus)
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->lmsg);
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &msg->lmsg);
 	else
 		lwkt_replymsg(&msg->lmsg, 0);
 }
@@ -724,7 +699,8 @@ rtrequest1_global(int req, struct rt_addrinfo *rtinfo,
 	msg.rtinfo = rtinfo;
 	msg.callback = callback;
 	msg.arg = arg;
-	error = lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
+	ASSERT_CANDOMSG_NETISR0(curthread);
+	error = lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
 	return (error);
 }
 
@@ -773,7 +749,7 @@ rtrequest1_msghandler(netmsg_t msg)
 		}
 		lwkt_replymsg(&rmsg->base.lmsg, error);
 	} else if (nextcpu < ncpus) {
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &rmsg->base.lmsg);
 	} else {
 		lwkt_replymsg(&rmsg->base.lmsg, rmsg->base.lmsg.ms_error);
 	}
@@ -1637,7 +1613,8 @@ rtsearch_global(int req, struct rt_addrinfo *rtinfo,
 	msg.arg = arg;
 	msg.exact_match = exact_match;
 	msg.found_cnt = 0;
-	return lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
+	ASSERT_CANDOMSG_NETISR0(curthread);
+	return lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
 }
 
 static void
@@ -1727,7 +1704,7 @@ rtsearch_msghandler(netmsg_t msg)
 		}
 		lwkt_replymsg(&rmsg->base.lmsg, error);
 	} else if (nextcpu < ncpus) {
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &rmsg->base.lmsg);
 	} else {
 		if (rmsg->found_cnt == 0) {
 			/* The requested route was never seen ... */
@@ -1746,7 +1723,8 @@ rtmask_add_global(struct sockaddr *mask)
 		    0, rtmask_add_msghandler);
 	msg.lmsg.u.ms_resultp = mask;
 
-	return lwkt_domsg(rtable_portfn(0), &msg.lmsg, 0);
+	ASSERT_CANDOMSG_NETISR0(curthread);
+	return lwkt_domsg(netisr_cpuport(0), &msg.lmsg, 0);
 }
 
 struct sockaddr *
@@ -1779,7 +1757,7 @@ rtmask_add_msghandler(netmsg_t msg)
 
 	nextcpu = mycpuid + 1;
 	if (!error && nextcpu < ncpus)
-		lwkt_forwardmsg(rtable_portfn(nextcpu), lmsg);
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), lmsg);
 	else
 		lwkt_replymsg(lmsg, error);
 }
@@ -1873,7 +1851,7 @@ rtchange_dispatch(netmsg_t msg)
 
 	nextcpu = cpu + 1;
 	if (nextcpu < ncpus)
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &rmsg->base.lmsg);
+		lwkt_forwardmsg(netisr_cpuport(nextcpu), &rmsg->base.lmsg);
 	else
 		lwkt_replymsg(&rmsg->base.lmsg, 0);
 }
@@ -1895,9 +1873,8 @@ rtchange(struct ifaddr *old_ifa, struct ifaddr *new_ifa)
 	msg.old_ifa = old_ifa;
 	msg.new_ifa = new_ifa;
 	msg.changed = 0;
-	KASSERT(&curthread->td_msgport != rtable_portfn(0),
-	    ("rtchange in rtable thread"));
-	lwkt_domsg(rtable_portfn(0), &msg.base.lmsg, 0);
+	ASSERT_CANDOMSG_NETISR0(curthread);
+	lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
 
 	if (msg.changed) {
 		old_ifa->ifa_flags &= ~IFA_ROUTE;

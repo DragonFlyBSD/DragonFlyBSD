@@ -125,4 +125,9 @@ netisr_hashport(uint16_t hash)
 	return netisr_cpuport(netisr_hashcpu(hash));
 }
 
+#define ASSERT_CANDOMSG_NETISR0(td) \
+	KASSERT((td)->td_type != TD_TYPE_NETISR || \
+	    &(td)->td_msgport == netisr_cpuport(0), \
+	    ("can't domsg to netisr0 in thread %p", (td)))
+
 #endif	/* _NET_NETISR2_H_ */

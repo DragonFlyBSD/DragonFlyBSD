@@ -331,7 +331,6 @@ struct rt_addrinfo {
 #define	rti_mpls3	rti_info[RTAX_MPLS3]
 
 extern struct radix_node_head *rt_tables[MAXCPU][AF_MAX+1];
-extern struct lwkt_port *rt_ports[MAXCPU];
 
 struct ifmultiaddr;
 struct proc;
@@ -442,13 +441,6 @@ RTFREE(struct rtentry *rt)
 	} else {
 		rtfree_remote(rt);
 	}
-}
-
-static __inline
-struct lwkt_port *
-rtable_portfn(int cpu)
-{  
-        return (rt_ports[cpu]);
 }
 
 int	in_inithead(void **, int);
