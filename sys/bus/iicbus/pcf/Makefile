@@ -3,18 +3,7 @@
 .PATH: ${.CURDIR}/..
 
 KMOD=	pcf
-SRCS=	${envctrl} pcf.c ${pcf_ebus} ${pcf_isa}
-SRCS+=	bus_if.h device_if.h iicbus_if.h ${isa_if} ${ofw_bus_if}
-
-.if ${MACHINE_ARCH} == "i386"
-isa_if=		isa_if.h
-pcf_isa=	pcf.c
-.endif
-
-.if ${MACHINE_ARCH} == "sparc64"
-envctrl=	envctrl.c
-ofw_bus_if=	ofw_bus_if.h
-pcf_ebus=	pcf_ebus.c
-.endif
+SRCS=	pcf.c
+SRCS+=	bus_if.h device_if.h iicbus_if.h isa_if.h
 
 .include <bsd.kmod.mk>
