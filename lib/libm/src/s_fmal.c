@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/msun/src/s_fmal.c 251024 2013-05-27 08:50:10Z das $
+ * $FreeBSD: head/lib/msun/src/s_fmal.c 252170 2013-06-24 19:12:17Z eadler $
  */
 
 #include <fenv.h>
@@ -112,7 +112,7 @@ add_and_denormalize(long double a, long double b, int scale)
 	if (sum.lo != 0) {
 		u.e = sum.hi;
 		bits_lost = -u.bits.exp - scale + 1;
-		if (bits_lost != 1 ^ (int)(u.bits.manl & 1))
+		if ((bits_lost != 1) ^ (int)(u.bits.manl & 1))
 			sum.hi = nextafterl(sum.hi, INFINITY * sum.lo);
 	}
 	return (ldexp(sum.hi, scale));

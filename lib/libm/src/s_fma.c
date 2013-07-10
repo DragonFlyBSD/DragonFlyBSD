@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: head/lib/msun/src/s_fma.c 251024 2013-05-27 08:50:10Z das $
+ * $FreeBSD: head/lib/msun/src/s_fma.c 252170 2013-06-24 19:12:17Z eadler $
  */
 
 #include <fenv.h>
@@ -116,7 +116,7 @@ add_and_denormalize(double a, double b, int scale)
 	if (sum.lo != 0) {
 		EXTRACT_WORD64(hibits, sum.hi);
 		bits_lost = -((int)(hibits >> 52) & 0x7ff) - scale + 1;
-		if (bits_lost != 1 ^ (int)(hibits & 1)) {
+		if ((bits_lost != 1) ^ (int)(hibits & 1)) {
 			/* hibits += (int)copysign(1.0, sum.hi * sum.lo) */
 			EXTRACT_WORD64(lobits, sum.lo);
 			hibits += 1 - (((hibits ^ lobits) >> 62) & 2);
