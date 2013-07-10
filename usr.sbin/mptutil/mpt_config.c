@@ -585,7 +585,7 @@ create_volume(int ac, char **av)
 	CONFIG_PAGE_RAID_VOL_0 *vol;
 	struct config_id_state state;
 	struct volume_info *info;
-	long stripe_size;
+	int64_t stripe_size;
 	int ch, error, fd, i, quick, raid_type, verbose;
 #ifdef DEBUG
 	int dump;
