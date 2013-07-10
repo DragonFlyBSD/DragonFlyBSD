@@ -296,9 +296,11 @@ syncache_free(struct syncache *sc)
 		 * If this is the only reference to a protocol-cloned
 		 * route, remove it immediately.
 		 */
-		if ((rt->rt_flags & RTF_WASCLONED) && rt->rt_refcnt == 1)
+		if ((rt->rt_flags & (RTF_WASCLONED | RTF_LLINFO)) ==
+		    RTF_WASCLONED && rt->rt_refcnt == 1) {
 			rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
 				  rt_mask(rt), rt->rt_flags, NULL);
+		}
 		RTFREE(rt);
 	}
 	kfree(sc, M_SYNCACHE);
