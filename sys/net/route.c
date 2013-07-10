@@ -1864,7 +1864,7 @@ rtchange(struct ifaddr *old_ifa, struct ifaddr *new_ifa)
 	 * related to the interface are manipulated while we are
 	 * doing this the inconsistancy could trigger a panic.
 	 */
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
 	    rtchange_dispatch);
 	msg.old_ifa = old_ifa;
 	msg.new_ifa = new_ifa;
