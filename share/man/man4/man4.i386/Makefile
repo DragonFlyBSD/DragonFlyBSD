@@ -14,7 +14,6 @@ MAN=	ar.4 \
 	lnc.4 \
 	longrun.4 \
 	npx.4 \
-	pcf.4 \
 	perfmon.4 \
 	pnp.4 \
 	pnpbios.4 \

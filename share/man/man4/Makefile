@@ -222,6 +222,7 @@ MAN=	aac.4 \
 	pass.4 \
 	pccard.4 \
 	pccbb.4 \
+	pcf.4 \
 	pci.4 \
 	pcm.4 \
 	pcn.4 \

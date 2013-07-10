@@ -2133,6 +2133,8 @@ TO_REMOVE+=/usr/include/cpu/math.h
 TO_REMOVE+=/usr/include/machine/math.h
 TO_REMOVE+=/usr/libdata/gcc44/tgmath.h
 TO_REMOVE+=/usr/libdata/gcc47/tgmath.h
+TO_REMOVE+=/usr/share/man/cat4/i386/pcf.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/pcf.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
