@@ -1135,8 +1135,10 @@ in_losing(struct inpcb *inp)
 		rtinfo.rti_info[RTAX_NETMASK] = rt_mask(rt);
 		rtinfo.rti_flags = rt->rt_flags;
 		rt_missmsg(RTM_LOSING, &rtinfo, rt->rt_flags, 0);
-		if (rt->rt_flags & RTF_DYNAMIC)
-			rtrequest1_global(RTM_DELETE, &rtinfo, NULL, NULL);
+		if (rt->rt_flags & RTF_DYNAMIC) {
+			rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
+			    rt_mask(rt), rt->rt_flags, NULL);
+		}
 		inp->inp_route.ro_rt = NULL;
 		rtfree(rt);
 		/*
