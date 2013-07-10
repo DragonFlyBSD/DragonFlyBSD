@@ -477,7 +477,7 @@ in_ifadown_force(struct ifaddr *ifa, int delete)
 	 * related to the interface are manipulated while we are
 	 * doing this the inconsistancy could trigger a panic.
 	 */
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
 	    in_ifadown_dispatch);
 	msg.ifa = ifa;
 	msg.del = delete;
