@@ -849,7 +849,7 @@ if_detach(struct ifnet *ifp)
 	/*
 	 * Delete all remaining routes using this interface
 	 */
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
 	    if_rtdel_dispatch);
 	msg.ifp = ifp;
 	rt_domsg_global(&msg.base);
