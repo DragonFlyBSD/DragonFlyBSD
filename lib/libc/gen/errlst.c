@@ -28,7 +28,6 @@
  *
  * @(#)errlst.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/lib/libc/gen/errlst.c,v 1.9 2007/01/09 00:27:53 imp Exp $
- * $DragonFly: src/lib/libc/gen/errlst.c,v 1.3 2005/05/03 07:29:04 joerg Exp $
  */
 
 #include <stdio.h>
@@ -148,6 +147,7 @@ const char *const sys_errlist[] = {
 	"Multihop attempted",			/* 90 - EMULTIHOP */
 	"Link has been severed",		/* 91 - ENOLINK */
 	"Protocol error",			/* 92 - EPROTO */
+	"No medium found",			/* 93 - ENOMEDIUM */
 };
 __thread int errno;
 const int sys_nerr = sizeof(sys_errlist) / sizeof(sys_errlist[0]);
