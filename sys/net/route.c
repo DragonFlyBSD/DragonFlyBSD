@@ -490,8 +490,7 @@ rtredirect(struct sockaddr *dst, struct sockaddr *gateway,
 	msg.netmask = netmask;
 	msg.flags = flags;
 	msg.src = src;
-	ASSERT_CANDOMSG_NETISR0(curthread);
-	error = lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
+	error = rt_domsg_global(&msg.base);
 	bzero(&rtinfo, sizeof(struct rt_addrinfo));
 	rtinfo.rti_info[RTAX_DST] = dst;
 	rtinfo.rti_info[RTAX_GATEWAY] = gateway;
@@ -699,8 +698,7 @@ rtrequest1_global(int req, struct rt_addrinfo *rtinfo,
 	msg.rtinfo = rtinfo;
 	msg.callback = callback;
 	msg.arg = arg;
-	ASSERT_CANDOMSG_NETISR0(curthread);
-	error = lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
+	error = rt_domsg_global(&msg.base);
 	return (error);
 }
 
@@ -1613,8 +1611,7 @@ rtsearch_global(int req, struct rt_addrinfo *rtinfo,
 	msg.arg = arg;
 	msg.exact_match = exact_match;
 	msg.found_cnt = 0;
-	ASSERT_CANDOMSG_NETISR0(curthread);
-	return lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
+	return rt_domsg_global(&msg.base);
 }
 
 static void
@@ -1723,8 +1720,7 @@ rtmask_add_global(struct sockaddr *mask)
 		    0, rtmask_add_msghandler);
 	msg.lmsg.u.ms_resultp = mask;
 
-	ASSERT_CANDOMSG_NETISR0(curthread);
-	return lwkt_domsg(netisr_cpuport(0), &msg.lmsg, 0);
+	return rt_domsg_global(&msg);
 }
 
 struct sockaddr *
@@ -1873,8 +1869,7 @@ rtchange(struct ifaddr *old_ifa, struct ifaddr *new_ifa)
 	msg.old_ifa = old_ifa;
 	msg.new_ifa = new_ifa;
 	msg.changed = 0;
-	ASSERT_CANDOMSG_NETISR0(curthread);
-	lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
+	rt_domsg_global(&msg.base);
 
 	if (msg.changed) {
 		old_ifa->ifa_flags &= ~IFA_ROUTE;
@@ -1883,4 +1878,11 @@ rtchange(struct ifaddr *old_ifa, struct ifaddr *new_ifa)
 	} else {
 		return ENOENT;
 	}
+}
+
+int
+rt_domsg_global(struct netmsg_base *nmsg)
+{
+	ASSERT_CANDOMSG_NETISR0(curthread);
+	return lwkt_domsg(netisr_cpuport(0), &nmsg->lmsg, 0);
 }

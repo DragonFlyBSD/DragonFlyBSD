@@ -481,8 +481,7 @@ in_ifadown_force(struct ifaddr *ifa, int delete)
 	    in_ifadown_dispatch);
 	msg.ifa = ifa;
 	msg.del = delete;
-	ASSERT_CANDOMSG_NETISR0(curthread);
-	lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
+	rt_domsg_global(&msg.base);
 
 	return 0;
 }

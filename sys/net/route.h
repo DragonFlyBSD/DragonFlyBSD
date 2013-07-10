@@ -426,6 +426,9 @@ void	rt_print(struct rt_addrinfo *, struct rtentry *);
 void	rt_addrinfo_print(int cmd, struct rt_addrinfo *);
 void	sockaddr_print(struct sockaddr *);
 
+struct netmsg_base;
+int	rt_domsg_global(struct netmsg_base *);
+
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>
 #endif

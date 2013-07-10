@@ -852,8 +852,7 @@ if_detach(struct ifnet *ifp)
 	netmsg_init(&msg.base, NULL, &curthread->td_msgport, 0,
 	    if_rtdel_dispatch);
 	msg.ifp = ifp;
-	ASSERT_CANDOMSG_NETISR0(curthread);
-	lwkt_domsg(netisr_cpuport(0), &msg.base.lmsg, 0);
+	rt_domsg_global(&msg.base);
 
 	/* Announce that the interface is gone. */
 	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
