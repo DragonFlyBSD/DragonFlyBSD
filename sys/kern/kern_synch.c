@@ -937,12 +937,22 @@ wakeup(const volatile void *ident)
     thread_t td = gd->gd_curthread;
 
     if (td && (td->td_flags & TDF_DELAYED_WAKEUP)) {
-	if (!atomic_cmpset_ptr(&gd->gd_delayed_wakeup[0], NULL, ident)) {
-	    if (!atomic_cmpset_ptr(&gd->gd_delayed_wakeup[1], NULL, ident))
-		_wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, gd->gd_cpuid));
-	}
-	return;
+	/*
+	 * If we are in a delayed wakeup section, record up to two wakeups in
+	 * a per-CPU queue and issue them when we block or exit the delayed
+	 * wakeup section.
+	 */
+	if (atomic_cmpset_ptr(&gd->gd_delayed_wakeup[0], NULL, ident))
+		return;
+	if (atomic_cmpset_ptr(&gd->gd_delayed_wakeup[1], NULL, ident))
+		return;
+
+	ident = atomic_swap_ptr(__DEQUALIFY(volatile void **, &gd->gd_delayed_wakeup[1]),
+				__DEALL(ident));
+	ident = atomic_swap_ptr(__DEQUALIFY(volatile void **, &gd->gd_delayed_wakeup[0]),
+				__DEALL(ident));
     }
+
     _wakeup(__DEALL(ident), PWAKEUP_ENCODE(0, gd->gd_cpuid));
 }
 
