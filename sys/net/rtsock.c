@@ -529,12 +529,6 @@ route_output(struct mbuf *m, struct socket *so, ...)
 
 	family = familyof(rtinfo.rti_dst);
 
-	if (rtinfo.rti_genmask != NULL) {
-		error = rtmask_add_global(rtinfo.rti_genmask);
-		if (error)
-			goto flush;
-	}
-
 	/*
 	 * Verify that the caller has the appropriate privilege; RTM_GET
 	 * is the only operation the non-superuser is allowed.
@@ -542,6 +536,12 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	if (rtm->rtm_type != RTM_GET &&
 	    priv_check_cred(so->so_cred, PRIV_ROOT, 0) != 0)
 		gotoerr(EPERM);
+
+	if (rtinfo.rti_genmask != NULL) {
+		error = rtmask_add_global(rtinfo.rti_genmask);
+		if (error)
+			goto flush;
+	}
 
 	switch (rtm->rtm_type) {
 	case RTM_ADD:
