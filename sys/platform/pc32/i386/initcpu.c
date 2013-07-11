@@ -689,6 +689,9 @@ initializecpu(void)
 	}
 	enable_sse();
 
+	if (cpu_feature2 & CPUID2_VMM)
+		vmm_guest = 1;
+
 	if (cpu_vendor_id == CPU_VENDOR_AMD) {
 		switch((cpu_id & 0xFF0000)) {
 		case 0x100000:
@@ -700,19 +703,26 @@ initializecpu(void)
 			 * deep recursion circumstances, can cause the %rsp
 			 * to not be properly updated, almost always
 			 * resulting in a seg-fault soon after.
+			 *
+			 * While the errata is not documented as affecting
+			 * 32-bit mode, install the workaround out of an
+			 * abundance of caution.
+			 *
+			 * Do not install the workaround when we are running
+			 * in a virtual machine.
 			 */
-			msr = rdmsr(0xc0011029);
+			if (vmm_guest)
+				break;
+
+			msr = rdmsr(MSR_AMD_DE_CFG);
 			if ((msr & 1) == 0) {
 				kprintf("Errata 721 workaround installed\n");
 				msr |= 1;
-				wrmsr(0xc0011029, msr);
+				wrmsr(MSR_AMD_DE_CFG, msr);
 			}
 			break;
 		}
 	}
-
-	if (cpu_feature2 & CPUID2_VMM)
-		vmm_guest = 1;
 
 	TUNABLE_INT_FETCH("hw.clflush_enable", &hw_clflush_enable);
 	if (cpu_feature & CPUID_CLFSH) {
