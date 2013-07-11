@@ -512,6 +512,9 @@
 #define	MSR_TOP_MEM2	0xc001001d	/* boundary for ram above 4G */
 #define	MSR_K8_UCODE_UPDATE	0xc0010020	/* update microcode */
 
+/* AMD MSRs */
+#define MSR_AMD_DE_CFG	0xc0011029
+
 /* VIA ACE crypto featureset: for via_feature_rng */
 #define	VIA_HAS_RNG		1	/* cpu has RNG */
 
