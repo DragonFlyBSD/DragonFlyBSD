@@ -1030,6 +1030,15 @@ pmap_init2(void)
 	zinitna(pvzone, &pvzone_obj, NULL, 0, entry_max, ZONE_INTERRUPT, 1);
 }
 
+/*
+ * Typically used to initialize a fictitious page by vm/device_pager.c
+ */
+void
+pmap_page_init(struct vm_page *m)
+{
+	vm_page_init(m);
+	TAILQ_INIT(&m->md.pv_list);
+}
 
 /***************************************************
  * Low level helper routines.....
@@ -1812,6 +1821,9 @@ retry:
 	 * We currently allow any type of object to use this optimization.
 	 * The object itself does NOT have to be sized to a multiple of the
 	 * segment size, but the memory mapping does.
+	 *
+	 * XXX don't handle devices currently, because VM_PAGE_TO_PHYS()
+	 *     won't work as expected.
 	 */
 	if (entry == NULL ||
 	    pmap_mmu_optimize == 0 ||			/* not enabled */
@@ -1819,6 +1831,8 @@ retry:
 	    entry->inheritance != VM_INHERIT_SHARE ||	/* not shared */
 	    entry->maptype != VM_MAPTYPE_NORMAL ||	/* weird map type */
 	    entry->object.vm_object == NULL ||		/* needs VM object */
+	    entry->object.vm_object->type == OBJT_DEVICE ||	/* ick */
+	    entry->object.vm_object->type == OBJT_MGTDEVICE ||	/* ick */
 	    (entry->offset & SEG_MASK) ||		/* must be aligned */
 	    (entry->start & SEG_MASK)) {
 		return(pmap_allocpte(pmap, ptepindex, pvpp));
@@ -2255,6 +2269,10 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 		 *
 		 * NOTE: pv's must be locked bottom-up to avoid deadlocking.
 		 *	 pv is a pte_pv so we can safely lock pt_pv.
+		 *
+		 * NOTE: FICTITIOUS pages may have multiple physical mappings
+		 *	 so PHYS_TO_VM_PAGE() will not necessarily work for
+		 *	 terminal ptes.
 		 */
 		vm_pindex_t pt_pindex;
 		pt_entry_t *ptep;
@@ -2295,8 +2313,13 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 				pte, pv->pv_pindex,
 				pv->pv_pindex < pmap_pt_pindex(0));
 		}
+		/* PHYS_TO_VM_PAGE() will not work for FICTITIOUS pages */
 		/*KKASSERT((pte & (PG_MANAGED|PG_V)) == (PG_MANAGED|PG_V));*/
-		p = PHYS_TO_VM_PAGE(pte & PG_FRAME);
+		if (pte & PG_DEVICE)
+			p = pv->pv_m;
+		else
+			p = PHYS_TO_VM_PAGE(pte & PG_FRAME);
+		/* p = pv->pv_m; */
 
 		if (pte & PG_M) {
 			if (pmap_track_modified(ptepindex))
@@ -3402,6 +3425,7 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		if (info->doinval)
 			pmap_inval_deinterlock(&info->inval, pmap);
 		atomic_add_long(&pmap->pm_stats.resident_count, -1);
+		KKASSERT((pte & PG_DEVICE) == 0);
 		if (vm_page_unwire_quick(PHYS_TO_VM_PAGE(pte & PG_FRAME)))
 			panic("pmap_remove: shared pgtable1 bad wirecount");
 		if (vm_page_unwire_quick(pt_pv->pv_m))
@@ -3422,7 +3446,7 @@ pmap_remove_all(vm_page_t m)
 	struct pmap_inval_info info;
 	pv_entry_t pv;
 
-	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
+	if (!pmap_initialized /* || (m->flags & PG_FICTITIOUS)*/)
 		return;
 
 	pmap_inval_init(&info);
@@ -3507,16 +3531,22 @@ again:
 	if (pte_pv) {
 		m = NULL;
 		if (pbits & PG_A) {
-			m = PHYS_TO_VM_PAGE(pbits & PG_FRAME);
-			KKASSERT(m == pte_pv->pv_m);
-			vm_page_flag_set(m, PG_REFERENCED);
+			if ((pbits & PG_DEVICE) == 0) {
+				m = PHYS_TO_VM_PAGE(pbits & PG_FRAME);
+				KKASSERT(m == pte_pv->pv_m);
+				vm_page_flag_set(m, PG_REFERENCED);
+			}
 			cbits &= ~PG_A;
 		}
 		if (pbits & PG_M) {
 			if (pmap_track_modified(pte_pv->pv_pindex)) {
-				if (m == NULL)
-					m = PHYS_TO_VM_PAGE(pbits & PG_FRAME);
-				vm_page_dirty(m);
+				if ((pbits & PG_DEVICE) == 0) {
+					if (m == NULL) {
+						m = PHYS_TO_VM_PAGE(pbits &
+								    PG_FRAME);
+					}
+					vm_page_dirty(m);
+				}
 				cbits &= ~PG_M;
 			}
 		}
@@ -3528,6 +3558,10 @@ again:
 		 * When asked to protect something in a shared page table
 		 * page we just unmap the page table page.  We have to
 		 * invalidate the tlb in this situation.
+		 *
+		 * XXX Warning, shared page tables will not be used for
+		 * OBJT_DEVICE or OBJT_MGTDEVICE (PG_FICTITIOUS) mappings
+		 * so PHYS_TO_VM_PAGE() should be safe here.
 		 */
 		pte = pte_load_clear(ptep);
 		pmap_inval_invltlb(&info->inval);
@@ -3621,7 +3655,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		pte_pv = NULL;
 		pt_pv = NULL;
 		ptep = vtopte(va);
-	} else if (m->flags & (PG_FICTITIOUS | PG_UNMANAGED)) { /* XXX */
+	} else if (m->flags & (/*PG_FICTITIOUS |*/ PG_UNMANAGED)) { /* XXX */
 		pte_pv = NULL;
 		if (va >= VM_MAX_USER_ADDRESS) {
 			pt_pv = NULL;
@@ -3665,6 +3699,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	if (pmap == &kernel_pmap)
 		newpte |= pgeflag;
 	newpte |= pat_pte_index[m->pat_mode];
+	if (m->flags & PG_FICTITIOUS)
+		newpte |= PG_DEVICE;
 
 	/*
 	 * It is possible for multiple faults to occur in threaded
@@ -4607,7 +4643,10 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 
 		pa = pte & PG_FRAME;
 
-		m = PHYS_TO_VM_PAGE(pa);
+		if (pte & PG_DEVICE)
+			m = NULL;
+		else
+			m = PHYS_TO_VM_PAGE(pa);
 
 		/*
 		 * Modified by us
@@ -4617,7 +4656,7 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 		/*
 		 * Modified by someone
 		 */
-		else if (m->dirty || pmap_is_modified(m))
+		else if (m && (m->dirty || pmap_is_modified(m)))
 			val |= MINCORE_MODIFIED_OTHER;
 		/*
 		 * Referenced by us
@@ -4628,7 +4667,8 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 		/*
 		 * Referenced by someone
 		 */
-		else if ((m->flags & PG_REFERENCED) || pmap_ts_referenced(m)) {
+		else if (m && ((m->flags & PG_REFERENCED) ||
+				pmap_ts_referenced(m))) {
 			val |= MINCORE_REFERENCED_OTHER;
 			vm_page_flag_set(m, PG_REFERENCED);
 		}
@@ -4752,7 +4792,10 @@ pmap_addr_hint(vm_object_t obj, vm_offset_t addr, vm_size_t size)
 vm_page_t
 pmap_kvtom(vm_offset_t va)
 {
-	return(PHYS_TO_VM_PAGE(*vtopte(va) & PG_FRAME));
+	pt_entry_t *ptep = vtopte(va);
+
+	KKASSERT((*ptep & PG_DEVICE) == 0);
+	return(PHYS_TO_VM_PAGE(*ptep & PG_FRAME));
 }
 
 /*

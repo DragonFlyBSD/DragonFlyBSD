@@ -140,6 +140,16 @@ pmap_init2(void)
 }
 
 /*
+ * Typically used to initialize a fictitious page by vm/device_pager.c
+ */
+void
+pmap_page_init(struct vm_page *m)
+{
+	vm_page_init(m);
+	TAILQ_INIT(&m->md.pv_list);
+}
+
+/*
  * Bootstrap the kernel_pmap so it can be used with pmap_enter().  
  *
  * NOTE! pm_pdir for the kernel pmap is offset so VA's translate

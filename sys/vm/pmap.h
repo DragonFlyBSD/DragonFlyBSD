@@ -167,6 +167,7 @@ void		 pmap_object_init_pt (pmap_t pmap, vm_offset_t addr,
 		    vm_offset_t size, int pagelimit);
 boolean_t	 pmap_page_exists_quick (pmap_t pmap, struct vm_page *m);
 void		 pmap_page_protect (struct vm_page *m, vm_prot_t prot);
+void		 pmap_page_init (struct vm_page *m);
 vm_paddr_t	 pmap_phys_address (vm_pindex_t);
 void		 pmap_pinit (pmap_t);
 void		 pmap_puninit (pmap_t);

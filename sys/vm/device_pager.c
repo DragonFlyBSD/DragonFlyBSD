@@ -175,13 +175,11 @@ void
 cdev_pager_free_page(vm_object_t object, vm_page_t m)
 {
 	if (object->type == OBJT_MGTDEVICE) {
-		kprintf("x");
 		KKASSERT((m->flags & PG_FICTITIOUS) != 0);
 		pmap_page_protect(m, VM_PROT_NONE);
 		vm_page_remove(m);
 		vm_page_wakeup(m);
 	} else if (object->type == OBJT_DEVICE) {
-		kprintf("y");
 		TAILQ_REMOVE(&object->un_pager.devp.devp_pglist, m, pageq);
 		dev_pager_putfake(m);
 	}
@@ -263,6 +261,8 @@ dev_pager_getfake(vm_paddr_t paddr, int pat_mode)
 	vm_page_t m;
 
 	m = kmalloc(sizeof(*m), M_FICTITIOUS_PAGES, M_WAITOK|M_ZERO);
+
+	pmap_page_init(m);
 
 	m->flags = PG_BUSY | PG_FICTITIOUS;
 	m->valid = VM_PAGE_BITS_ALL;

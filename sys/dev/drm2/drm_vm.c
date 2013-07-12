@@ -188,6 +188,8 @@ static void page_init(vm_page_t m, vm_paddr_t paddr, int pat_mode)
 {
 	bzero(m, sizeof(*m));
 
+	pmap_page_init(m);
+
         //m->flags = PG_BUSY | PG_FICTITIOUS;
         m->flags = PG_FICTITIOUS;
         m->valid = VM_PAGE_BITS_ALL;

@@ -431,6 +431,7 @@ void vm_page_queue_spin_unlock(vm_page_t);
 void vm_page_queues_spin_unlock(u_short);
 void vm_page_and_queue_spin_unlock(vm_page_t m);
 
+void vm_page_init(vm_page_t m);
 void vm_page_io_finish(vm_page_t m);
 void vm_page_io_start(vm_page_t m);
 void vm_page_need_commit(vm_page_t m);

@@ -528,6 +528,12 @@ rb_vm_page_compare(struct vm_page *p1, struct vm_page *p2)
 	return(0);
 }
 
+void
+vm_page_init(vm_page_t m)
+{
+	/* do nothing for now.  Called from pmap_page_init() */
+}
+
 /*
  * Each page queue has its own spin lock, which is fairly optimal for
  * allocating and freeing pages at least.
