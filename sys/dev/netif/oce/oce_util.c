@@ -1,5 +1,5 @@
 /*-
- * Copyright (C) 2012 Emulex
+ * Copyright (C) 2013 Emulex
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,7 +37,7 @@
  */
 
 
-/* $FreeBSD: src/sys/dev/oce/oce_util.c,v 1.4 2013/03/07 00:29:47 svnexp Exp $ */
+/* $FreeBSD: src/sys/dev/oce/oce_util.c,v 1.5 2013/07/07 00:30:13 svnexp Exp $ */
 
 
 #include "oce_if.h"
