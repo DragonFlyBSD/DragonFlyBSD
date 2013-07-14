@@ -1,6 +1,5 @@
 #	@(#)Makefile	8.2 (Berkeley) 12/13/93
 # $FreeBSD: src/share/man/man3/Makefile,v 1.15.2.3 2001/04/25 11:11:30 ru Exp $
-# $DragonFly: src/share/man/man3/Makefile,v 1.6 2007/01/28 14:52:02 swildner Exp $
 
 MAN=	assert.3 bitstring.3 end.3 fpgetround.3 intro.3 queue.3 \
 	stdarg.3 sysexits.3 tgmath.3 tree.3
@@ -12,7 +11,7 @@ MLINKS+=bitstring.3 bit_alloc.3 bitstring.3 bit_clear.3 \
 MLINKS+=end.3 edata.3 end.3 etext.3
 MLINKS+=fpgetround.3 fpsetround.3 fpgetround.3 fpgetmask.3
 MLINKS+=fpgetround.3 fpsetmask.3 fpgetround.3 fpgetsticky.3
-MLINKS+=fpgetround.3 fpsetsticky.3 fpgetround.3 fpresetsticky.3
+MLINKS+=fpgetround.3 fpresetsticky.3
 MLINKS+=fpgetround.3 fpsetprec.3 fpgetround.3 fpgetprec.3
 
 MLINKS+=queue.3 LIST_EMPTY.3
