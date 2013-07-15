@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/faithd/faithd.h,v 1.1.2.3 2002/04/28 05:40:29 suz Exp $
- * $DragonFly: src/usr.sbin/faithd/faithd.h,v 1.3 2003/11/03 19:31:37 eirikn Exp $
  */
 
 extern char logname[];
@@ -37,8 +36,6 @@ extern int dflag;
 
 extern void tcp_relay(int, int, const char *);
 extern void ftp_relay(int, int);
-extern int ftp_active(int, int, int *, int *);
-extern int ftp_passive(int, int, int *, int *);
 extern void rsh_relay(int, int);
 extern void rsh_dual_relay(int, int);
 extern void exit_success(const char *, ...)

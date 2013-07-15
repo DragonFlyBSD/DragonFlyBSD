@@ -244,10 +244,6 @@ extern void	*realloc(void *, size_t);
 extern void	*reallocf(void *, size_t);
 extern void	mallocstats(void);
 
-/* disklabel support (undocumented, may be junk) */
-struct		disklabel32;
-extern char	*getdisklabel32(const char *, struct disklabel32 *);
-
 extern int	printf(const char *, ...) __printflike(1, 2);
 extern void	vprintf(const char *, __va_list) __printflike(1, 0);
 extern int	sprintf(char *, const char *, ...) __printflike(2, 3);
