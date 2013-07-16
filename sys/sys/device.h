@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/device.h,v 1.11 2007/05/17 03:02:00 dillon Exp $
  */
 
 #ifndef _SYS_DEVICE_H_
@@ -345,7 +343,7 @@ extern struct syslink_desc dev_ioctl_desc;
 extern struct syslink_desc dev_dump_desc;
 extern struct syslink_desc dev_psize_desc;
 extern struct syslink_desc dev_mmap_desc;
-extern struct syslink_desc dev_strategu_desc;
+extern struct syslink_desc dev_strategy_desc;
 extern struct syslink_desc dev_kqfilter_desc;
 extern struct syslink_desc dev_clone_desc;
 
