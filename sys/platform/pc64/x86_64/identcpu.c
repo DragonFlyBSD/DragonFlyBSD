@@ -105,9 +105,6 @@ static int cpu_cores;
 static int cpu_logical;
 #endif
 
-extern int pq_l2size;
-extern int pq_l2nways;
-
 void
 printcpuinfo(void)
 {

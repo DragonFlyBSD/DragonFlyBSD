@@ -160,9 +160,6 @@ static int slow_release;
 SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
 	&slow_release, 0, "Passive Release was nonoptimal");
 
-MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
-extern int max_sysmsg;
-
 /*
  * Passively intercepts the thread switch function to increase
  * the thread priority from a user priority to a kernel priority, reducing

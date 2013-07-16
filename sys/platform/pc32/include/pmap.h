@@ -168,8 +168,8 @@
  * and directories.
  */
 #ifdef _KERNEL
-extern pt_entry_t PTmap[], APTmap[], Upte;
-extern pd_entry_t PTD[], APTD[], PTDpde, APTDpde, Upde;
+extern pt_entry_t PTmap[], APTmap[];
+extern pd_entry_t PTD[], APTD[], PTDpde, APTDpde;
 
 extern pd_entry_t IdlePTD;	/* physical address of "Idle" state directory */
 #endif
@@ -291,14 +291,6 @@ typedef struct pv_entry {
 } *pv_entry_t;
 
 #ifdef	_KERNEL
-
-#define NPPROVMTRR		8
-#define PPRO_VMTRRphysBase0	0x200
-#define PPRO_VMTRRphysMask0	0x201
-struct ppro_vmtrr {
-	u_int64_t base, mask;
-};
-extern struct ppro_vmtrr PPro_vmtrr[NPPROVMTRR];
 
 extern caddr_t	CADDR1;
 extern pt_entry_t *CMAP1;

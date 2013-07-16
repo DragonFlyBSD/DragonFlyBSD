@@ -29,7 +29,6 @@ extern int	tsc_mpsync;
 extern int64_t	tsc_frequency;
 extern int	tsc_is_broken;
 extern int	wall_cmos_clock;
-extern int	apic_8254_intr;
 
 /*
  * Driver to clock driver interface.

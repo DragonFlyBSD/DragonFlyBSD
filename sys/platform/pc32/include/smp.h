@@ -44,7 +44,6 @@ void	bootMP			(void);
 extern volatile cpumask_t	stopped_cpus;
 extern volatile cpumask_t	started_cpus;
 
-extern volatile u_int		checkstate_probed_cpus;
 extern void (*cpustop_restartfunc) (void);
 
 extern struct pcb		stoppcbs[];
