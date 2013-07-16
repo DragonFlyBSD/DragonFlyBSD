@@ -298,11 +298,13 @@ _cache_lock(struct namecache *ncp)
 {
 	thread_t td;
 	int didwarn;
+	int begticks;
 	int error;
 	u_int count;
 
 	KKASSERT(ncp->nc_refs != 0);
 	didwarn = 0;
+	begticks = 0;
 	td = curthread;
 
 	for (;;) {
@@ -349,6 +351,8 @@ _cache_lock(struct namecache *ncp)
 			/* cmpset failed */
 			continue;
 		}
+		if (begticks == 0)
+			begticks = ticks;
 		error = tsleep(&ncp->nc_locktd, PINTERLOCKED,
 			       "clock", nclockwarn);
 		if (error == EWOULDBLOCK) {
@@ -368,7 +372,7 @@ _cache_lock(struct namecache *ncp)
 		kprintf("[diagnostic] cache_lock: unblocked %*.*s after "
 			"%d secs\n",
 			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name,
-			(int)(ticks - didwarn) / hz);
+			(int)(ticks + (hz / 2) - begticks) / hz);
 	}
 }
 
@@ -388,6 +392,7 @@ _cache_lock_shared(struct namecache *ncp)
 	int didwarn;
 	int error;
 	u_int count;
+	u_int optreq = NC_EXLOCK_REQ;
 
 	KKASSERT(ncp->nc_refs != 0);
 	didwarn = 0;
@@ -431,14 +436,14 @@ _cache_lock_shared(struct namecache *ncp)
 		/*
 		 * If already held shared we can just bump the count, but
 		 * only allow this if nobody is trying to get the lock
-		 * exclusively.
+		 * exclusively.  If we are blocking too long ignore excl
+		 * requests (which can race/deadlock us).
 		 *
 		 * VHOLD is a bit of a hack.  Even though we successfully
 		 * added another shared ref, the cpu that got the first
 		 * shared ref might not yet have held the vnode.
 		 */
-		if ((count & (NC_EXLOCK_REQ|NC_SHLOCK_FLAG)) ==
-		    NC_SHLOCK_FLAG) {
+		if ((count & (optreq|NC_SHLOCK_FLAG)) == NC_SHLOCK_FLAG) {
 			KKASSERT((count & ~(NC_EXLOCK_REQ |
 					    NC_SHLOCK_REQ |
 					    NC_SHLOCK_FLAG)) > 0);
@@ -458,6 +463,7 @@ _cache_lock_shared(struct namecache *ncp)
 		}
 		error = tsleep(ncp, PINTERLOCKED, "clocksh", nclockwarn);
 		if (error == EWOULDBLOCK) {
+			optreq = 0;
 			if (didwarn == 0) {
 				didwarn = ticks;
 				kprintf("[diagnostic] cache_lock_shared: "
