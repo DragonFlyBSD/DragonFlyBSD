@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  *      @(#)extern.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/systat/extern.h,v 1.8 2008/11/10 04:59:45 swildner Exp $
  */
 
 #include <fcntl.h>
@@ -41,15 +40,11 @@ extern struct	cmdtab *curcmd;
 extern struct	cmdtab cmdtab[];
 extern struct	text *xtext;
 extern WINDOW	*wnd;
-extern char	**dr_name;
 extern char	c, *namp, hostname[];
 extern double	avenrun[3];
-extern float	*dk_mspw;
 extern kvm_t	*kd;
 extern long	ntext, textp;
-extern int	*dk_select;
 extern int	CMDLINE;
-extern int	dk_ndrive;
 extern int	hz, stathz;
 extern double	hertz;		/* sampling frequency for cp_time and dk_time */
 extern double	naptime;
