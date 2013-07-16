@@ -50,7 +50,6 @@
  |	copyright.  All rights are reserved.
  *
  * $FreeBSD: src/usr.bin/ee/ee.c,v 1.16.2.6 2002/05/11 16:33:06 mp Exp $
- * $DragonFly: src/usr.bin/ee/ee.c,v 1.5 2008/10/16 01:52:32 swildner Exp $
  */
 
 char *ee_copyright_message = 
@@ -64,13 +63,7 @@ char *ee_long_notice[] = {
 
 char *version = "@(#) ee, version 1.4.1";
 
-#ifdef NCURSE
-#include "new_curse.h"
-#elif HAS_NCURSES
 #include <ncurses.h>
-#else
-#include <curses.h>
-#endif
 
 #ifdef HAS_CTYPE
 #include <ctype.h>
