@@ -73,7 +73,6 @@
 #include <sys/vnode.h>
 #include <sys/buf.h>
 #include <sys/ucred.h>
-#include <sys/malloc.h>
 #include <sys/dsched.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
