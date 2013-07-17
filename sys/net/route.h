@@ -396,15 +396,19 @@ int	 rtrequest (int, struct sockaddr *,
 int	 rtrequest_global (int, struct sockaddr *,
 	    struct sockaddr *, struct sockaddr *, int);
 int	 rtrequest1 (int, struct rt_addrinfo *, struct rtentry **);
-int	 rtrequest1_global (int, struct rt_addrinfo *, rtrequest1_callback_func_t, void *);
+int	 rtrequest1_global (int, struct rt_addrinfo *,
+	    rtrequest1_callback_func_t, void *, boolean_t);
 
 #define RTS_EXACTMATCH		TRUE
 #define RTS_NOEXACTMATCH	FALSE
 
-int	 rtsearch_global(int, struct rt_addrinfo *,
-	    rtsearch_callback_func_t, void *, boolean_t);
+#define RTREQ_PRIO_HIGH		TRUE
+#define RTREQ_PRIO_NORM		FALSE
 
-int	 rtmask_add_global(struct sockaddr *);
+int	 rtsearch_global(int, struct rt_addrinfo *,
+	    rtsearch_callback_func_t, void *, boolean_t, boolean_t);
+
+int	 rtmask_add_global(struct sockaddr *, boolean_t);
 
 struct sockaddr *_rtmask_lookup(struct sockaddr *, boolean_t);
 

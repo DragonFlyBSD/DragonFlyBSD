@@ -673,7 +673,7 @@ rtrequest_global(
 	rtinfo.rti_info[RTAX_GATEWAY] = gateway;
 	rtinfo.rti_info[RTAX_NETMASK] = netmask;
 	rtinfo.rti_flags = flags;
-	return rtrequest1_global(req, &rtinfo, NULL, NULL);
+	return rtrequest1_global(req, &rtinfo, NULL, NULL, RTREQ_PRIO_NORM);
 }
 
 struct netmsg_rtq {
@@ -685,14 +685,16 @@ struct netmsg_rtq {
 };
 
 int
-rtrequest1_global(int req, struct rt_addrinfo *rtinfo, 
-		  rtrequest1_callback_func_t callback, void *arg)
+rtrequest1_global(int req, struct rt_addrinfo *rtinfo,
+    rtrequest1_callback_func_t callback, void *arg, boolean_t req_prio)
 {
-	int error;
+	int error, flags = 0;
 	struct netmsg_rtq msg;
 
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
-		    0, rtrequest1_msghandler);
+	if (req_prio)
+		flags = MSGF_PRIORITY;
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, flags,
+	    rtrequest1_msghandler);
 	msg.base.lmsg.ms_error = -1;
 	msg.req = req;
 	msg.rtinfo = rtinfo;
@@ -1558,7 +1560,8 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 	rtinfo.rti_info[RTAX_NETMASK] = netmask;
 	rtinfo.rti_flags = flags | ifa->ifa_flags;
 	rtinfo.rti_ifa = ifa;
-	error = rtrequest1_global(cmd, &rtinfo, rtinit_rtrequest_callback, ifa);
+	error = rtrequest1_global(cmd, &rtinfo, rtinit_rtrequest_callback, ifa,
+	    RTREQ_PRIO_HIGH);
 	if (m != NULL)
 		m_free(m);
 	return (error);
@@ -1598,13 +1601,16 @@ struct netmsg_rts {
 
 int
 rtsearch_global(int req, struct rt_addrinfo *rtinfo,
-		rtsearch_callback_func_t callback, void *arg,
-		boolean_t exact_match)
+    rtsearch_callback_func_t callback, void *arg, boolean_t exact_match,
+    boolean_t req_prio)
 {
 	struct netmsg_rts msg;
+	int flags = 0;
 
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
-		    0, rtsearch_msghandler);
+	if (req_prio)
+		flags = MSGF_PRIORITY;
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, flags,
+	    rtsearch_msghandler);
 	msg.req = req;
 	msg.rtinfo = rtinfo;
 	msg.callback = callback;
@@ -1712,12 +1718,15 @@ rtsearch_msghandler(netmsg_t msg)
 }
 
 int
-rtmask_add_global(struct sockaddr *mask)
+rtmask_add_global(struct sockaddr *mask, boolean_t req_prio)
 {
 	struct netmsg_base msg;
+	int flags = 0;
 
-	netmsg_init(&msg, NULL, &curthread->td_msgport,
-		    0, rtmask_add_msghandler);
+	if (req_prio)
+		flags = MSGF_PRIORITY;
+	netmsg_init(&msg, NULL, &curthread->td_msgport, flags,
+	    rtmask_add_msghandler);
 	msg.lmsg.u.ms_resultp = mask;
 
 	return rt_domsg_global(&msg);

@@ -167,7 +167,7 @@ in6_ifloop_request(int cmd, struct ifaddr *ifa)
 	rtinfo.rti_flags = RTF_UP|RTF_HOST|RTF_LLINFO;
 
 	error = rtrequest1_global(cmd, &rtinfo,
-				  in6_ifloop_request_callback, ifa);
+	    in6_ifloop_request_callback, ifa, RTREQ_PRIO_NORM);
 	if (error != 0) {
 		log(LOG_ERR, "in6_ifloop_request: "
 		    "%s operation failed for %s (errno=%d)\n",

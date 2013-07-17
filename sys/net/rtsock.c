@@ -538,7 +538,9 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		gotoerr(EPERM);
 
 	if (rtinfo.rti_genmask != NULL) {
-		error = rtmask_add_global(rtinfo.rti_genmask);
+		error = rtmask_add_global(rtinfo.rti_genmask,
+		    rtm->rtm_type != RTM_GET ?
+		    RTREQ_PRIO_HIGH : RTREQ_PRIO_NORM);
 		if (error)
 			goto flush;
 	}
@@ -548,8 +550,8 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		if (rtinfo.rti_gateway == NULL) {
 			error = EINVAL;
 		} else {
-			error = rtrequest1_global(RTM_ADD, &rtinfo, 
-					  route_output_add_callback, rtm);
+			error = rtrequest1_global(RTM_ADD, &rtinfo,
+			    route_output_add_callback, rtm, RTREQ_PRIO_HIGH);
 		}
 		break;
 	case RTM_DELETE:
@@ -568,7 +570,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		arg.bak_rtm = rtm;
 		arg.new_rtm = rtm;
 		error = rtrequest1_global(RTM_DELETE, &rtinfo,
-					  route_output_delete_callback, &arg);
+		    route_output_delete_callback, &arg, RTREQ_PRIO_HIGH);
 		rtm = arg.new_rtm;
 		if (rtm != arg.bak_rtm)
 			kfree(arg.bak_rtm, M_RTABLE);
@@ -578,21 +580,21 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		arg.bak_rtm = rtm;
 		arg.new_rtm = rtm;
 		error = rtsearch_global(RTM_GET, &rtinfo,
-					route_output_get_callback, &arg,
-					RTS_NOEXACTMATCH);
+		    route_output_get_callback, &arg, RTS_NOEXACTMATCH,
+		    RTREQ_PRIO_NORM);
 		rtm = arg.new_rtm;
 		if (rtm != arg.bak_rtm)
 			kfree(arg.bak_rtm, M_RTABLE);
 		break;
 	case RTM_CHANGE:
 		error = rtsearch_global(RTM_CHANGE, &rtinfo,
-					route_output_change_callback, rtm,
-					RTS_EXACTMATCH);
+		    route_output_change_callback, rtm, RTS_EXACTMATCH,
+		    RTREQ_PRIO_HIGH);
 		break;
 	case RTM_LOCK:
 		error = rtsearch_global(RTM_LOCK, &rtinfo,
-					route_output_lock_callback, rtm,
-					RTS_EXACTMATCH);
+		    route_output_lock_callback, rtm, RTS_EXACTMATCH,
+		    RTREQ_PRIO_HIGH);
 		break;
 	default:
 		error = EOPNOTSUPP;
