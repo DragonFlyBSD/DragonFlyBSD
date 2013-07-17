@@ -41,9 +41,6 @@ KERN_TIMESTAMP			opt_global.h
 NO_F00F_HACK			opt_cpu.h
 CPU_BLUELIGHTNING_FPU_OP_CACHE	opt_cpu.h
 CPU_BLUELIGHTNING_3X		opt_cpu.h
-CPU_BTB_EN			opt_cpu.h
-CPU_CYRIX_NO_LOCK		opt_cpu.h
-CPU_DIRECT_MAPPED_CACHE		opt_cpu.h
 CPU_DISABLE_5X86_LSSER		opt_cpu.h
 CPU_ELAN			opt_cpu.h
 CPU_ENABLE_EST			opt_cpu.h
@@ -52,15 +49,10 @@ CPU_ENABLE_TCC			opt_cpu.h
 CPU_FASTER_5X86_FPU		opt_cpu.h
 CPU_GEODE			opt_cpu.h
 CPU_I486_ON_386			opt_cpu.h
-CPU_IORT			opt_cpu.h
 CPU_L2_LATENCY			opt_cpu.h
-CPU_LOOP_EN			opt_cpu.h
 CPU_PPRO2CELERON		opt_cpu.h
-CPU_RSTK_EN			opt_cpu.h
 CPU_SUSP_HLT			opt_cpu.h
 CPU_WT_ALLOC			opt_cpu.h
-CYRIX_CACHE_WORKS		opt_cpu.h
-CYRIX_CACHE_REALLY_WORKS	opt_cpu.h
 NO_MEMORY_HOLE			opt_cpu.h
 CPU_DISABLE_SSE			opt_cpu.h
 CPU_ATHLON_SSE_HACK		opt_cpu.h

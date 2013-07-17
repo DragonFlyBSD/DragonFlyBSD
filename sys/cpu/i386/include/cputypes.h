@@ -49,14 +49,9 @@
 #define	CPU_486SX	3	/* Intel 80486SX */
 #define	CPU_486		4	/* Intel 80486DX */
 #define	CPU_586		5	/* Intel P.....m (I hate lawyers; it's TM) */
-#define	CPU_486DLC	6	/* Cyrix 486DLC */
 #define	CPU_686		7	/* Pentium Pro */
-#define	CPU_M1SC	8	/* Cyrix M1sc (aka 5x86) */
-#define	CPU_M1		9	/* Cyrix M1 (aka 6x86) */
 #define	CPU_BLUE	10	/* IBM BlueLighting CPU */
-#define	CPU_M2		11	/* Cyrix M2 (aka enhanced 6x86 with MMX */
 #define	CPU_NX586	12	/* NexGen (now AMD) 586 */
-#define	CPU_CY486DX	13	/* Cyrix 486S/DX/DX2/DX4 */
 #define	CPU_PII		14	/* Intel Pentium II */
 #define	CPU_PIII	15	/* Intel Pentium III */
 #define	CPU_P4		16	/* Intel Pentium 4 */
@@ -71,7 +66,6 @@
 #define	CPU_VENDOR_SIS		0x1039		/* SiS */
 #define	CPU_VENDOR_UMC		0x1060		/* UMC */
 #define	CPU_VENDOR_NEXGEN	0x1074		/* Nexgen */
-#define	CPU_VENDOR_CYRIX	0x1078		/* Cyrix */
 #define	CPU_VENDOR_IDT		0x111d		/* Centaur/IDT/VIA */
 #define	CPU_VENDOR_TRANSMETA	0x1279		/* Transmeta */
 #define	CPU_VENDOR_INTEL	0x8086		/* Intel */

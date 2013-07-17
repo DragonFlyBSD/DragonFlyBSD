@@ -69,7 +69,6 @@ void	enable_K6_2_wt_alloc(void);
 #endif
 void panicifcpuunsupported(void);
 
-static void identifycyrix(void);
 static void init_exthigh(void);
 static u_int find_cpu_vendor_id(void);
 static void print_AMD_info(void);
@@ -81,7 +80,6 @@ static void print_via_padlock_info(void);
 
 int	cpu_class;
 u_int	cpu_exthigh;		/* Highest arg to extended CPUID */
-u_int	cyrix_did;		/* Device ID of Cyrix CPU */
 char machine[] = MACHINE;
 SYSCTL_STRING(_hw, HW_MACHINE, machine, CTLFLAG_RD, 
     machine, 0, "Machine class");
@@ -125,14 +123,9 @@ static struct {
 	{ "i486SX",		CPUCLASS_486 },		/* CPU_486SX */
 	{ "i486DX",		CPUCLASS_486 },		/* CPU_486   */
 	{ "Pentium",		CPUCLASS_586 },		/* CPU_586   */
-	{ "Cyrix 486",		CPUCLASS_486 },		/* CPU_486DLC */
 	{ "Pentium Pro",	CPUCLASS_686 },		/* CPU_686 */
-	{ "Cyrix 5x86",		CPUCLASS_486 },		/* CPU_M1SC */
-	{ "Cyrix 6x86",		CPUCLASS_486 },		/* CPU_M1 */
 	{ "Blue Lightning",	CPUCLASS_486 },		/* CPU_BLUE */
-	{ "Cyrix 6x86MX",	CPUCLASS_686 },		/* CPU_M2 */
 	{ "NexGen 586",		CPUCLASS_386 },		/* CPU_NX586 (XXX) */
-	{ "Cyrix 486S/DX",	CPUCLASS_486 },		/* CPU_CY486DX */
 	{ "Pentium II",		CPUCLASS_686 },		/* CPU_PII */
 	{ "Pentium III",	CPUCLASS_686 },		/* CPU_PIII */
 	{ "Pentium 4",		CPUCLASS_686 },		/* CPU_P4 */
@@ -146,7 +139,6 @@ static struct {
 	{ AMD_VENDOR_ID,	CPU_VENDOR_AMD },	/* AuthenticAMD */
 	{ CENTAUR_VENDOR_ID,	CPU_VENDOR_CENTAUR },	/* CentaurHauls */
 	{ NSC_VENDOR_ID,	CPU_VENDOR_NSC },	/* Geode by NSC */
-	{ CYRIX_VENDOR_ID,	CPU_VENDOR_CYRIX },	/* CyrixInstead */
 	{ TRANSMETA_VENDOR_ID,	CPU_VENDOR_TRANSMETA },	/* GenuineTMx86 */
 	{ SIS_VENDOR_ID,	CPU_VENDOR_SIS },	/* SiS SiS SiS  */
 	{ UMC_VENDOR_ID,	CPU_VENDOR_UMC },	/* UMC UMC UMC  */
@@ -423,142 +415,6 @@ printcpuinfo(void)
 				enable_K6_wt_alloc();
 		}
 #endif
-	} else if (cpu_vendor_id == CPU_VENDOR_CYRIX) {
-		strcpy(cpu_model, "Cyrix ");
-		switch (cpu_id & 0xff0) {
-		case 0x440:
-			strcat(cpu_model, "MediaGX");
-			break;
-		case 0x520:
-			strcat(cpu_model, "6x86");
-			break;
-		case 0x540:
-			cpu_class = CPUCLASS_586;
-			strcat(cpu_model, "GXm");
-			break;
-		case 0x600:
-			strcat(cpu_model, "6x86MX");
-			break;
-		default:
-			/*
-			 * Even though CPU supports the cpuid
-			 * instruction, it can be disabled.
-			 * Therefore, this routine supports all Cyrix
-			 * CPUs.
-			 */
-			switch (cyrix_did & 0xf0) {
-			case 0x00:
-				switch (cyrix_did & 0x0f) {
-				case 0x00:
-					strcat(cpu_model, "486SLC");
-					break;
-				case 0x01:
-					strcat(cpu_model, "486DLC");
-					break;
-				case 0x02:
-					strcat(cpu_model, "486SLC2");
-					break;
-				case 0x03:
-					strcat(cpu_model, "486DLC2");
-					break;
-				case 0x04:
-					strcat(cpu_model, "486SRx");
-					break;
-				case 0x05:
-					strcat(cpu_model, "486DRx");
-					break;
-				case 0x06:
-					strcat(cpu_model, "486SRx2");
-					break;
-				case 0x07:
-					strcat(cpu_model, "486DRx2");
-					break;
-				case 0x08:
-					strcat(cpu_model, "486SRu");
-					break;
-				case 0x09:
-					strcat(cpu_model, "486DRu");
-					break;
-				case 0x0a:
-					strcat(cpu_model, "486SRu2");
-					break;
-				case 0x0b:
-					strcat(cpu_model, "486DRu2");
-					break;
-				default:
-					strcat(cpu_model, "Unknown");
-					break;
-				}
-				break;
-			case 0x10:
-				switch (cyrix_did & 0x0f) {
-				case 0x00:
-					strcat(cpu_model, "486S");
-					break;
-				case 0x01:
-					strcat(cpu_model, "486S2");
-					break;
-				case 0x02:
-					strcat(cpu_model, "486Se");
-					break;
-				case 0x03:
-					strcat(cpu_model, "486S2e");
-					break;
-				case 0x0a:
-					strcat(cpu_model, "486DX");
-					break;
-				case 0x0b:
-					strcat(cpu_model, "486DX2");
-					break;
-				case 0x0f:
-					strcat(cpu_model, "486DX4");
-					break;
-				default:
-					strcat(cpu_model, "Unknown");
-					break;
-				}
-				break;
-			case 0x20:
-				if ((cyrix_did & 0x0f) < 8)
-					strcat(cpu_model, "6x86");	/* Where did you get it? */
-				else
-					strcat(cpu_model, "5x86");
-				break;
-			case 0x30:
-				strcat(cpu_model, "6x86");
-				break;
-			case 0x40:
-				if ((cyrix_did & 0xf000) == 0x3000) {
-					cpu_class = CPUCLASS_586;
-					strcat(cpu_model, "GXm");
-				} else
-					strcat(cpu_model, "MediaGX");
-				break;
-			case 0x50:
-				strcat(cpu_model, "6x86MX");
-				break;
-			case 0xf0:
-				switch (cyrix_did & 0x0f) {
-				case 0x0d:
-					strcat(cpu_model, "Overdrive CPU");
-					break;
-				case 0x0e:
-					strcpy(cpu_model, "Texas Instruments 486SXL");
-					break;
-				case 0x0f:
-					strcat(cpu_model, "486SLC/DLC");
-					break;
-				default:
-					strcat(cpu_model, "Unknown");
-					break;
-				}
-				break;
-			default:
-				strcat(cpu_model, "Unknown");
-				break;
-			}
-			break;
-		}
 	} else if (cpu_vendor_id == CPU_VENDOR_RISE) {
 		strcpy(cpu_model, "Rise ");
 		switch (cpu_id & 0xff0) {
@@ -672,12 +528,8 @@ printcpuinfo(void)
 	    cpu_vendor_id == CPU_VENDOR_TRANSMETA ||
 	    cpu_vendor_id == CPU_VENDOR_RISE ||
 	    cpu_vendor_id == CPU_VENDOR_CENTAUR ||
-	    cpu_vendor_id == CPU_VENDOR_NSC ||
-		(cpu_vendor_id == CPU_VENDOR_CYRIX &&
-		 ((cpu_id & 0xf00) > 0x500))) {
+	    cpu_vendor_id == CPU_VENDOR_NSC) {
 		kprintf("  Stepping = %u", cpu_id & 0xf);
-		if (cpu_vendor_id == CPU_VENDOR_CYRIX)
-			kprintf("  DIR=0x%04x", cyrix_did);
 		if (cpu_high > 0) {
 #if 0
 			u_int cmp = 1, htt = 1;
@@ -932,14 +784,6 @@ printcpuinfo(void)
 #endif
 
 		}
-	} else if (cpu_vendor_id == CPU_VENDOR_CYRIX) {
-		kprintf("  DIR=0x%04x", cyrix_did);
-		kprintf("  Stepping=%u", (cyrix_did & 0xf000) >> 12);
-		kprintf("  Revision=%u", (cyrix_did & 0x0f00) >> 8);
-#ifndef CYRIX_CACHE_REALLY_WORKS
-		if (cpu == CPU_M1 && (cyrix_did & 0xff00) < 0x1700)
-			kprintf("\n  CPU cache: write-through mode");
-#endif
 	}
 
 	/* Avoid ugly blank lines: only print newline when we have to. */
@@ -1080,49 +924,6 @@ identblue(void)
 	return IDENTBLUE_IBMCPU;
 }
 
-
-/*
- * identifycyrix() set lower 16 bits of cyrix_did as follows:
- *
- *  F E D C B A 9 8 7 6 5 4 3 2 1 0
- * +-------+-------+---------------+
- * |  SID  |  RID  |   Device ID   |
- * |    (DIR 1)    |    (DIR 0)    |
- * +-------+-------+---------------+
- */
-static void
-identifycyrix(void)
-{
-	int	ccr2_test = 0, dir_test = 0;
-	u_char	ccr2, ccr3;
-
-	mpintr_lock();
-
-	ccr2 = read_cyrix_reg(CCR2);
-	write_cyrix_reg(CCR2, ccr2 ^ CCR2_LOCK_NW);
-	read_cyrix_reg(CCR2);
-	if (read_cyrix_reg(CCR2) != ccr2)
-		ccr2_test = 1;
-	write_cyrix_reg(CCR2, ccr2);
-
-	ccr3 = read_cyrix_reg(CCR3);
-	write_cyrix_reg(CCR3, ccr3 ^ CCR3_MAPEN3);
-	read_cyrix_reg(CCR3);
-	if (read_cyrix_reg(CCR3) != ccr3)
-		dir_test = 1;					/* CPU supports DIRs. */
-	write_cyrix_reg(CCR3, ccr3);
-
-	if (dir_test) {
-		/* Device ID registers are available. */
-		cyrix_did = read_cyrix_reg(DIR1) << 8;
-		cyrix_did += read_cyrix_reg(DIR0);
-	} else if (ccr2_test)
-		cyrix_did = 0x0010;		/* 486S A-step */
-	else
-		cyrix_did = 0x00ff;		/* Old 486SLC/DLC and TI486SXLC/SXL */
-	mpintr_unlock();
-}
-
 #if 0
 /* Update TSC freq with the value indicated by the caller. */
 static void
@@ -1147,7 +948,6 @@ void
 finishidentcpu(void)
 {
 	int	isblue = 0;
-	u_char	ccr3;
 	u_int	regs[4];
 
 	cpu_vendor_id = find_cpu_vendor_id();
@@ -1189,79 +989,6 @@ finishidentcpu(void)
 			do_cpuid(0x80000008, regs);
 			cpu_procinfo2 = regs[2];
 		}
-	} else if (cpu_vendor_id == CPU_VENDOR_CYRIX) {
-		if (cpu == CPU_486) {
-			/*
-			 * These conditions are equivalent to:
-			 *     - CPU does not support cpuid instruction.
-			 *     - Cyrix/IBM CPU is detected.
-			 */
-			isblue = identblue();
-			if (isblue == IDENTBLUE_IBMCPU) {
-				strcpy(cpu_vendor, "IBM");
-				cpu_vendor_id = CPU_VENDOR_IBM;
-				cpu = CPU_BLUE;
-				goto finish;
-			}
-		}
-		switch (cpu_id & 0xf00) {
-		case 0x600:
-			/*
-			 * Cyrix's datasheet does not describe DIRs.
-			 * Therefor, I assume it does not have them
-			 * and use the result of the cpuid instruction.
-			 * XXX they seem to have it for now at least. -Peter
-			 */
-			identifycyrix();
-			cpu = CPU_M2;
-			break;
-		default:
-			identifycyrix();
-			/*
-			 * This routine contains a trick.
-			 * Don't check (cpu_id & 0x00f0) == 0x50 to detect M2, now.
-			 */
-			switch (cyrix_did & 0x00f0) {
-			case 0x00:
-			case 0xf0:
-				cpu = CPU_486DLC;
-				break;
-			case 0x10:
-				cpu = CPU_CY486DX;
-				break;
-			case 0x20:
-				if ((cyrix_did & 0x000f) < 8)
-					cpu = CPU_M1;
-				else
-					cpu = CPU_M1SC;
-				break;
-			case 0x30:
-				cpu = CPU_M1;
-				break;
-			case 0x40:
-				/* MediaGX CPU */
-				cpu = CPU_M1SC;
-				break;
-			default:
-				/* M2 and later CPUs are treated as M2. */
-				cpu = CPU_M2;
-
-				/*
-				 * enable cpuid instruction.
-				 */
-				ccr3 = read_cyrix_reg(CCR3);
-				write_cyrix_reg(CCR3, CCR3_MAPEN0);
-				write_cyrix_reg(CCR4, read_cyrix_reg(CCR4) | CCR4_CPUID);
-				write_cyrix_reg(CCR3, ccr3);
-
-				do_cpuid(0, regs);
-				cpu_high = regs[0];	/* eax */
-				do_cpuid(1, regs);
-				cpu_id = regs[0];	/* eax */
-				cpu_feature = regs[3];	/* edx */
-				break;
-			}
-		}
 	} else if (cpu == CPU_486 && *cpu_vendor == '\0') {
 		/*
 		 * There are BlueLightning CPUs that do not change
@@ -1282,7 +1009,6 @@ finishidentcpu(void)
 	 * Set MI flags for MI procedures implemented using machine-specific
 	 * features.
 	 */
-finish:
 	if (cpu_feature & CPUID_SSE2)
 		cpu_mi_feature |= CPU_MI_BZERONT;
 

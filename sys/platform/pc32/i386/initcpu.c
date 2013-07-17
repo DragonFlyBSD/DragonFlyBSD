@@ -48,18 +48,13 @@ void	enable_K6_2_wt_alloc(void);
 #endif
 
 #ifdef I486_CPU
-static void init_5x86(void);
 static void init_bluelightning(void);
-static void init_486dlc(void);
-static void init_cy486dx(void);
 #ifdef CPU_I486_ON_386
 static void init_i486_on_386(void);
 #endif
-static void init_6x86(void);
 #endif /* I486_CPU */
 
 #ifdef I686_CPU
-static void	init_6x86MX(void);
 static void	init_ppro(void);
 static void	init_mendocino(void);
 #endif
@@ -139,174 +134,6 @@ init_bluelightning(void)
 	write_eflags(eflags);
 }
 
-/*
- * Cyrix 486SLC/DLC/SR/DR series
- */
-static void
-init_486dlc(void)
-{
-	u_long	eflags;
-	u_char	ccr0;
-
-	eflags = read_eflags();
-	cpu_disable_intr();
-	invd();
-
-	ccr0 = read_cyrix_reg(CCR0);
-#ifndef CYRIX_CACHE_WORKS
-	ccr0 |= CCR0_NC1 | CCR0_BARB;
-	write_cyrix_reg(CCR0, ccr0);
-	invd();
-#else
-	ccr0 &= ~CCR0_NC0;
-#ifndef CYRIX_CACHE_REALLY_WORKS
-	ccr0 |= CCR0_NC1 | CCR0_BARB;
-#else
-	ccr0 |= CCR0_NC1;
-#endif
-#ifdef CPU_DIRECT_MAPPED_CACHE
-	ccr0 |= CCR0_CO;			/* Direct mapped mode. */
-#endif
-	write_cyrix_reg(CCR0, ccr0);
-
-	/* Clear non-cacheable region. */
-	write_cyrix_reg(NCR1+2, NCR_SIZE_0K);
-	write_cyrix_reg(NCR2+2, NCR_SIZE_0K);
-	write_cyrix_reg(NCR3+2, NCR_SIZE_0K);
-	write_cyrix_reg(NCR4+2, NCR_SIZE_0K);
-
-	write_cyrix_reg(0, 0);	/* dummy write */
-
-	/* Enable caching in CR0. */
-	load_cr0(rcr0() & ~(CR0_CD | CR0_NW));	/* CD = 0 and NW = 0 */
-	invd();
-#endif /* !CYRIX_CACHE_WORKS */
-	write_eflags(eflags);
-}
-
-
-/*
- * Cyrix 486S/DX series
- */
-static void
-init_cy486dx(void)
-{
-	u_long	eflags;
-	u_char	ccr2;
-
-	eflags = read_eflags();
-	cpu_disable_intr();
-	invd();
-
-	ccr2 = read_cyrix_reg(CCR2);
-#ifdef CPU_SUSP_HLT
-	ccr2 |= CCR2_SUSP_HLT;
-#endif
-
-	write_cyrix_reg(CCR2, ccr2);
-	write_eflags(eflags);
-}
-
-
-/*
- * Cyrix 5x86
- */
-static void
-init_5x86(void)
-{
-	u_long	eflags;
-	u_char	ccr2, ccr3, ccr4, pcr0;
-
-	eflags = read_eflags();
-	cpu_disable_intr();
-
-	load_cr0(rcr0() | CR0_CD | CR0_NW);
-	wbinvd();
-
-	read_cyrix_reg(CCR3);		/* dummy */
-
-	/* Initialize CCR2. */
-	ccr2 = read_cyrix_reg(CCR2);
-	ccr2 |= CCR2_WB;
-#ifdef CPU_SUSP_HLT
-	ccr2 |= CCR2_SUSP_HLT;
-#else
-	ccr2 &= ~CCR2_SUSP_HLT;
-#endif
-	ccr2 |= CCR2_WT1;
-	write_cyrix_reg(CCR2, ccr2);
-
-	/* Initialize CCR4. */
-	ccr3 = read_cyrix_reg(CCR3);
-	write_cyrix_reg(CCR3, CCR3_MAPEN0);
-
-	ccr4 = read_cyrix_reg(CCR4);
-	ccr4 |= CCR4_DTE;
-	ccr4 |= CCR4_MEM;
-#ifdef CPU_FASTER_5X86_FPU
-	ccr4 |= CCR4_FASTFPE;
-#else
-	ccr4 &= ~CCR4_FASTFPE;
-#endif
-	ccr4 &= ~CCR4_IOMASK;
-	/********************************************************************
-	 * WARNING: The "BIOS Writers Guide" mentions that I/O recovery time
-	 * should be 0 for errata fix.
-	 ********************************************************************/
-#ifdef CPU_IORT
-	ccr4 |= CPU_IORT & CCR4_IOMASK;
-#endif
-	write_cyrix_reg(CCR4, ccr4);
-
-	/* Initialize PCR0. */
-	/****************************************************************
-	 * WARNING: RSTK_EN and LOOP_EN could make your system unstable.
-	 * BTB_EN might make your system unstable.
-	 ****************************************************************/
-	pcr0 = read_cyrix_reg(PCR0);
-#ifdef CPU_RSTK_EN
-	pcr0 |= PCR0_RSTK;
-#else
-	pcr0 &= ~PCR0_RSTK;
-#endif
-#ifdef CPU_BTB_EN
-	pcr0 |= PCR0_BTB;
-#else
-	pcr0 &= ~PCR0_BTB;
-#endif
-#ifdef CPU_LOOP_EN
-	pcr0 |= PCR0_LOOP;
-#else
-	pcr0 &= ~PCR0_LOOP;
-#endif
-
-	/****************************************************************
-	 * WARNING: if you use a memory mapped I/O device, don't use
-	 * DISABLE_5X86_LSSER option, which may reorder memory mapped
-	 * I/O access.
-	 * IF YOUR MOTHERBOARD HAS PCI BUS, DON'T DISABLE LSSER.
-	 ****************************************************************/
-#ifdef CPU_DISABLE_5X86_LSSER
-	pcr0 &= ~PCR0_LSSER;
-#else
-	pcr0 |= PCR0_LSSER;
-#endif
-	write_cyrix_reg(PCR0, pcr0);
-
-	/* Restore CCR3. */
-	write_cyrix_reg(CCR3, ccr3);
-
-	read_cyrix_reg(0x80);		/* dummy */
-
-	/* Unlock NW bit in CR0. */
-	write_cyrix_reg(CCR2, read_cyrix_reg(CCR2) & ~CCR2_LOCK_NW);
-	load_cr0((rcr0() & ~CR0_CD) | CR0_NW);	/* CD = 0, NW = 1 */
-	/* Lock NW bit in CR0. */
-	write_cyrix_reg(CCR2, read_cyrix_reg(CCR2) | CCR2_LOCK_NW);
-
-	write_eflags(eflags);
-}
-
 #ifdef CPU_I486_ON_386
 /*
  * There are i486 based upgrade products for i386 machines.
@@ -325,152 +152,6 @@ init_i486_on_386(void)
 	write_eflags(eflags);
 }
 #endif
-
-/*
- * Cyrix 6x86
- *
- * XXX - What should I do here?  Please let me know.
- */
-static void
-init_6x86(void)
-{
-	u_long	eflags;
-	u_char	ccr3, ccr4;
-
-	eflags = read_eflags();
-	cpu_disable_intr();
-
-	load_cr0(rcr0() | CR0_CD | CR0_NW);
-	wbinvd();
-
-	/* Initialize CCR0. */
-	write_cyrix_reg(CCR0, read_cyrix_reg(CCR0) | CCR0_NC1);
-
-	/* Initialize CCR1. */
-#ifdef CPU_CYRIX_NO_LOCK
-	write_cyrix_reg(CCR1, read_cyrix_reg(CCR1) | CCR1_NO_LOCK);
-#else
-	write_cyrix_reg(CCR1, read_cyrix_reg(CCR1) & ~CCR1_NO_LOCK);
-#endif
-
-	/* Initialize CCR2. */
-#ifdef CPU_SUSP_HLT
-	write_cyrix_reg(CCR2, read_cyrix_reg(CCR2) | CCR2_SUSP_HLT);
-#else
-	write_cyrix_reg(CCR2, read_cyrix_reg(CCR2) & ~CCR2_SUSP_HLT);
-#endif
-
-	ccr3 = read_cyrix_reg(CCR3);
-	write_cyrix_reg(CCR3, CCR3_MAPEN0);
-
-	/* Initialize CCR4. */
-	ccr4 = read_cyrix_reg(CCR4);
-	ccr4 |= CCR4_DTE;
-	ccr4 &= ~CCR4_IOMASK;
-#ifdef CPU_IORT
-	write_cyrix_reg(CCR4, ccr4 | (CPU_IORT & CCR4_IOMASK));
-#else
-	write_cyrix_reg(CCR4, ccr4 | 7);
-#endif
-
-	/* Initialize CCR5. */
-#ifdef CPU_WT_ALLOC
-	write_cyrix_reg(CCR5, read_cyrix_reg(CCR5) | CCR5_WT_ALLOC);
-#endif
-
-	/* Restore CCR3. */
-	write_cyrix_reg(CCR3, ccr3);
-
-	/* Unlock NW bit in CR0. */
-	write_cyrix_reg(CCR2, read_cyrix_reg(CCR2) & ~CCR2_LOCK_NW);
-
-	/*
-	 * Earlier revision of the 6x86 CPU could crash the system if
-	 * L1 cache is in write-back mode.
-	 */
-	if ((cyrix_did & 0xff00) > 0x1600)
-		load_cr0(rcr0() & ~(CR0_CD | CR0_NW));	/* CD = 0 and NW = 0 */
-	else {
-		/* Revision 2.6 and lower. */
-#ifdef CYRIX_CACHE_REALLY_WORKS
-		load_cr0(rcr0() & ~(CR0_CD | CR0_NW));	/* CD = 0 and NW = 0 */
-#else
-		load_cr0((rcr0() & ~CR0_CD) | CR0_NW);	/* CD = 0 and NW = 1 */
-#endif
-	}
-
-	/* Lock NW bit in CR0. */
-	write_cyrix_reg(CCR2, read_cyrix_reg(CCR2) | CCR2_LOCK_NW);
-
-	write_eflags(eflags);
-}
-#endif /* I486_CPU */
-
-#ifdef I686_CPU
-/*
- * Cyrix 6x86MX (code-named M2)
- *
- * XXX - What should I do here?  Please let me know.
- */
-static void
-init_6x86MX(void)
-{
-	u_long	eflags;
-	u_char	ccr3, ccr4;
-
-	eflags = read_eflags();
-	cpu_disable_intr();
-
-	load_cr0(rcr0() | CR0_CD | CR0_NW);
-	wbinvd();
-
-	/* Initialize CCR0. */
-	write_cyrix_reg(CCR0, read_cyrix_reg(CCR0) | CCR0_NC1);
-
-	/* Initialize CCR1. */
-#ifdef CPU_CYRIX_NO_LOCK
-	write_cyrix_reg(CCR1, read_cyrix_reg(CCR1) | CCR1_NO_LOCK);
-#else
-	write_cyrix_reg(CCR1, read_cyrix_reg(CCR1) & ~CCR1_NO_LOCK);
-#endif
-
-	/* Initialize CCR2. */
-#ifdef CPU_SUSP_HLT
-	write_cyrix_reg(CCR2, read_cyrix_reg(CCR2) | CCR2_SUSP_HLT);
-#else
-	write_cyrix_reg(CCR2, read_cyrix_reg(CCR2) & ~CCR2_SUSP_HLT);
-#endif
-
-	ccr3 = read_cyrix_reg(CCR3);
-	write_cyrix_reg(CCR3, CCR3_MAPEN0);
-
-	/* Initialize CCR4. */
-	ccr4 = read_cyrix_reg(CCR4);
-	ccr4 &= ~CCR4_IOMASK;
-#ifdef CPU_IORT
-	write_cyrix_reg(CCR4, ccr4 | (CPU_IORT & CCR4_IOMASK));
-#else
-	write_cyrix_reg(CCR4, ccr4 | 7);
-#endif
-
-	/* Initialize CCR5. */
-#ifdef CPU_WT_ALLOC
-	write_cyrix_reg(CCR5, read_cyrix_reg(CCR5) | CCR5_WT_ALLOC);
-#endif
-
-	/* Restore CCR3. */
-	write_cyrix_reg(CCR3, ccr3);
-
-	/* Unlock NW bit in CR0. */
-	write_cyrix_reg(CCR2, read_cyrix_reg(CCR2) & ~CCR2_LOCK_NW);
-
-	load_cr0(rcr0() & ~(CR0_CD | CR0_NW));	/* CD = 0 and NW = 0 */
-
-	/* Lock NW bit in CR0. */
-	write_cyrix_reg(CCR2, read_cyrix_reg(CCR2) | CCR2_LOCK_NW);
-
-	write_eflags(eflags);
-}
 
 static void
 init_ppro(void)
@@ -633,28 +314,13 @@ initializecpu(void)
 	case CPU_BLUE:
 		init_bluelightning();
 		break;
-	case CPU_486DLC:
-		init_486dlc();
-		break;
-	case CPU_CY486DX:
-		init_cy486dx();
-		break;
-	case CPU_M1SC:
-		init_5x86();
-		break;
 #ifdef CPU_I486_ON_386
 	case CPU_486:
 		init_i486_on_386();
 		break;
 #endif
-	case CPU_M1:
-		init_6x86();
-		break;
 #endif /* I486_CPU */
 #ifdef I686_CPU
-	case CPU_M2:
-		init_6x86MX();
-		break;
 	case CPU_686:
 		if (cpu_vendor_id == CPU_VENDOR_INTEL) {
 			switch (cpu_id & 0xff0) {
@@ -884,52 +550,3 @@ enable_K6_2_wt_alloc(void)
 #endif /* I585_CPU && CPU_WT_ALLOC */
 
 #include "opt_ddb.h"
-#ifdef DDB
-#include <ddb/ddb.h>
-
-DB_SHOW_COMMAND(cyrixreg, cyrixreg)
-{
-	u_long	eflags;
-	u_int	cr0;
-	u_char	ccr1, ccr2, ccr3;
-	u_char	ccr0 = 0, ccr4 = 0, ccr5 = 0, pcr0 = 0;
-
-	cr0 = rcr0();
-	if (cpu_vendor_id == CPU_VENDOR_CYRIX) {
-		eflags = read_eflags();
-		cpu_disable_intr();
-
-
-		if ((cpu != CPU_M1SC) && (cpu != CPU_CY486DX)) {
-			ccr0 = read_cyrix_reg(CCR0);
-		}
-		ccr1 = read_cyrix_reg(CCR1);
-		ccr2 = read_cyrix_reg(CCR2);
-		ccr3 = read_cyrix_reg(CCR3);
-		if ((cpu == CPU_M1SC) || (cpu == CPU_M1) || (cpu == CPU_M2)) {
-			write_cyrix_reg(CCR3, CCR3_MAPEN0);
-			ccr4 = read_cyrix_reg(CCR4);
-			if ((cpu == CPU_M1) || (cpu == CPU_M2))
-				ccr5 = read_cyrix_reg(CCR5);
-			else
-				pcr0 = read_cyrix_reg(PCR0);
-			write_cyrix_reg(CCR3, ccr3);		/* Restore CCR3. */
-		}
-		write_eflags(eflags);
-
-		if ((cpu != CPU_M1SC) && (cpu != CPU_CY486DX))
-			kprintf("CCR0=%x, ", (u_int)ccr0);
-
-		kprintf("CCR1=%x, CCR2=%x, CCR3=%x",
-			(u_int)ccr1, (u_int)ccr2, (u_int)ccr3);
-		if ((cpu == CPU_M1SC) || (cpu == CPU_M1) || (cpu == CPU_M2)) {
-			kprintf(", CCR4=%x, ", (u_int)ccr4);
-			if (cpu == CPU_M1SC)
-				kprintf("PCR0=%x\n", pcr0);
-			else
-				kprintf("CCR5=%x\n", ccr5);
-		}
-	}
-	kprintf("CR0=%x\n", cr0);
-}
-#endif /* DDB */

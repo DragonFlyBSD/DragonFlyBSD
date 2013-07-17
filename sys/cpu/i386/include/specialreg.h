@@ -240,7 +240,6 @@
  */
 #define	AMD_VENDOR_ID		"AuthenticAMD"
 #define	CENTAUR_VENDOR_ID	"CentaurHauls"
-#define	CYRIX_VENDOR_ID		"CyrixInstead"
 #define	INTEL_VENDOR_ID		"GenuineIntel"
 #define	NEXGEN_VENDOR_ID	"NexGenDriven"
 #define	NSC_VENDOR_ID		"Geode by NSC"
@@ -364,84 +363,6 @@
 #define	MTRR_PHYSBASE_TYPE	0x00000000000000ffULL
 #define	MTRR_PHYSMASK_PHYSMASK	0x000ffffffffff000ULL
 #define	MTRR_PHYSMASK_VALID	0x0000000000000800ULL
-
-/*
- * Cyrix configuration registers, accessible as IO ports.
- */
-#define	CCR0			0xc0	/* Configuration control register 0 */
-#define	CCR0_NC0		0x01	/* First 64K of each 1M memory region is
-								   non-cacheable */
-#define	CCR0_NC1		0x02	/* 640K-1M region is non-cacheable */
-#define	CCR0_A20M		0x04	/* Enables A20M# input pin */
-#define	CCR0_KEN		0x08	/* Enables KEN# input pin */
-#define	CCR0_FLUSH		0x10	/* Enables FLUSH# input pin */
-#define	CCR0_BARB		0x20	/* Flushes internal cache when entering hold
-								   state */
-#define	CCR0_CO			0x40	/* Cache org: 1=direct mapped, 0=2x set
-								   assoc */
-#define	CCR0_SUSPEND	0x80	/* Enables SUSP# and SUSPA# pins */
-
-#define	CCR1			0xc1	/* Configuration control register 1 */
-#define	CCR1_RPL		0x01	/* Enables RPLSET and RPLVAL# pins */
-#define	CCR1_SMI		0x02	/* Enables SMM pins */
-#define	CCR1_SMAC		0x04	/* System management memory access */
-#define	CCR1_MMAC		0x08	/* Main memory access */
-#define	CCR1_NO_LOCK	0x10	/* Negate LOCK# */
-#define	CCR1_SM3		0x80	/* SMM address space address region 3 */
-
-#define	CCR2			0xc2
-#define	CCR2_WB			0x02	/* Enables WB cache interface pins */
-#define	CCR2_SADS		0x02	/* Slow ADS */
-#define	CCR2_LOCK_NW	0x04	/* LOCK NW Bit */
-#define	CCR2_SUSP_HLT	0x08	/* Suspend on HALT */
-#define	CCR2_WT1		0x10	/* WT region 1 */
-#define	CCR2_WPR1		0x10	/* Write-protect region 1 */
-#define	CCR2_BARB		0x20	/* Flushes write-back cache when entering
-								   hold state. */
-#define	CCR2_BWRT		0x40	/* Enables burst write cycles */
-#define	CCR2_USE_SUSP	0x80	/* Enables suspend pins */
-
-#define	CCR3			0xc3
-#define	CCR3_SMILOCK	0x01	/* SMM register lock */
-#define	CCR3_NMI		0x02	/* Enables NMI during SMM */
-#define	CCR3_LINBRST	0x04	/* Linear address burst cycles */
-#define	CCR3_SMMMODE	0x08	/* SMM Mode */
-#define	CCR3_MAPEN0		0x10	/* Enables Map0 */
-#define	CCR3_MAPEN1		0x20	/* Enables Map1 */
-#define	CCR3_MAPEN2		0x40	/* Enables Map2 */
-#define	CCR3_MAPEN3		0x80	/* Enables Map3 */
-
-#define	CCR4			0xe8
-#define	CCR4_IOMASK		0x07
-#define	CCR4_MEM		0x08	/* Enables momory bypassing */
-#define	CCR4_DTE		0x10	/* Enables directory table entry cache */
-#define	CCR4_FASTFPE	0x20	/* Fast FPU exception */
-#define	CCR4_CPUID		0x80	/* Enables CPUID instruction */
-
-#define	CCR5			0xe9
-#define	CCR5_WT_ALLOC	0x01	/* Write-through allocate */
-#define	CCR5_SLOP		0x02	/* LOOP instruction slowed down */
-#define	CCR5_LBR1		0x10	/* Local bus region 1 */
-#define	CCR5_ARREN		0x20	/* Enables ARR region */
-
-#define	CCR6			0xea
-
-#define	CCR7			0xeb
-
-/* Performance Control Register (5x86 only). */
-#define	PCR0			0x20
-#define	PCR0_RSTK		0x01	/* Enables return stack */
-#define	PCR0_BTB		0x02	/* Enables branch target buffer */
-#define	PCR0_LOOP		0x04	/* Enables loop */
-#define	PCR0_AIS		0x08	/* Enables all instrcutions stalled to
-								   serialize pipe. */
-#define	PCR0_MLR		0x10	/* Enables reordering of misaligned loads */
-#define	PCR0_BTBRT		0x40	/* Enables BTB test register. */
-#define	PCR0_LSSER		0x80	/* Disable reorder */
-
-/* Device Identification Registers */
-#define	DIR0			0xfe
-#define	DIR1			0xff
 
 /*
  * Machine Check register constants.
@@ -606,29 +527,5 @@
 #define	VIA_CRYPT_CWLO_KEY128		0x0000000a	/* 128bit, 10 rds */
 #define	VIA_CRYPT_CWLO_KEY192		0x0000040c	/* 192bit, 12 rds */
 #define	VIA_CRYPT_CWLO_KEY256		0x0000080e	/* 256bit, 15 rds */
-
-#ifndef LOCORE
-
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-#ifndef _CPU_CPUFUNC_H_
-#include <cpu/cpufunc.h>
-#endif
-
-static __inline u_char
-read_cyrix_reg(u_char reg)
-{
-        outb(0x22, reg);
-        return inb(0x23);
-}
-
-static __inline void
-write_cyrix_reg(u_char reg, u_char data)
-{
-        outb(0x22, reg);
-        outb(0x23, data);
-}
-#endif
 
 #endif /* !_CPU_SPECIALREG_H_ */

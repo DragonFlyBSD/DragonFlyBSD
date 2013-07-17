@@ -130,15 +130,6 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # CPU if CPU supports it. The default is double-clock mode on
 # BlueLightning CPU box.
 #
-# CPU_BTB_EN enables branch target buffer on Cyrix 5x86 (NOTE 1).
-#
-# CPU_DIRECT_MAPPED_CACHE sets L1 cache of Cyrix 486DLC CPU in direct
-# mapped mode.  Default is 2-way set associative mode.
-#
-# CPU_CYRIX_NO_LOCK enables weak locking for the entire address space
-# of Cyrix 6x86 and 6x86MX CPUs by setting the NO_LOCK bit of CCR1.
-# Otherwise, the NO_LOCK bit of CCR1 is cleared.  (NOTE 3)
-#
 # CPU_DISABLE_5X86_LSSER disables load store serialize (i.e. enables
 # reorder).  This option should not be used if you use memory mapped
 # I/O device(s).
@@ -167,10 +158,6 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # CPU_I486_ON_386 enables CPU cache on i486 based CPU upgrade products
 # for i386 machines.
 #
-# CPU_IORT defines I/O clock delay time (NOTE 1).  Default values of
-# I/O clock delay time on Cyrix 5x86 and 6x86 are 0 and 7,respectively
-# (no clock delay).
-#
 # CPU_L2_LATENCY specified the L2 cache latency value.  This option is used
 # only when CPU_PPRO2CELERON is defined and Mendocino Celeron is detected.
 # The default value is 5.
@@ -179,28 +166,14 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 #
 # CPU_GEODE enables support for AMD Geode LX, Geode SC1100 and AMD CS5536
 #
-# CPU_LOOP_EN prevents flushing the prefetch buffer if the destination
-# of a jump is already present in the prefetch buffer on Cyrix 5x86(NOTE
-# 1).
-#
 # CPU_PPRO2CELERON enables L2 cache of Mendocino Celeron CPUs.  This option
 # is useful when you use Socket 8 to Socket 370 converter, because most Pentium
 # Pro BIOSs do not enable L2 cache of Mendocino Celeron CPUs.
 #
-# CPU_RSTK_EN enables return stack on Cyrix 5x86 (NOTE 1).
-#
 # CPU_SUSP_HLT enables suspend on HALT.  If this option is set, CPU
 # enters suspend mode following execution of HALT instruction.
 #
-# CPU_WT_ALLOC enables write allocation on Cyrix 6x86/6x86MX and AMD
-# K5/K6/K6-2 cpus.
-#
-# CYRIX_CACHE_WORKS enables CPU cache on Cyrix 486 CPUs with cache
-# flush at hold state.
-#
-# CYRIX_CACHE_REALLY_WORKS enables (1) CPU cache on Cyrix 486 CPUs
-# without cache flush at hold state, and (2) write-back CPU cache on
-# Cyrix 6x86 whose revision < 2.7 (NOTE 2).
+# CPU_WT_ALLOC enables write allocation on AMD K5/K6/K6-2 cpus.
 #
 # NO_F00F_HACK disables the hack that prevents Pentiums (and ONLY
 # Pentiums) from locking up when a LOCK CMPXCHG8B instruction is
@@ -211,22 +184,12 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # which indicates that the 15-16MB range is *definitely* not being
 # occupied by an ISA memory hole.
 #
-# NOTE 1: The CPU_BTB_EN, CPU_IORT, CPU_LOOP_EN and CPU_RSTK_EN options
-# should not be used because of CPU bugs. They may crash your system.
-#
-# NOTE 2: If CYRIX_CACHE_REALLY_WORKS is not set, CPU cache is enabled
-# in write-through mode when revision < 2.7.  If revision of Cyrix
-# 6x86 >= 2.7, CPU cache is always enabled in write-back mode.
-#
 # NOTE 3: This option may cause failures for software that requires
 # locked cycles in order to operate correctly.
 #
 options 	CPU_ATHLON_SSE_HACK
 options 	CPU_BLUELIGHTNING_FPU_OP_CACHE
 options 	CPU_BLUELIGHTNING_3X
-options 	CPU_BTB_EN
-options		CPU_CYRIX_NO_LOCK
-options 	CPU_DIRECT_MAPPED_CACHE
 options 	CPU_DISABLE_5X86_LSSER
 options 	CPU_DISABLE_SSE
 options 	CPU_ELAN
@@ -237,15 +200,10 @@ options 	CPU_FASTER_5X86_FPU
 options		CPU_GEODE
 options		CPU_HAS_SSE2
 options 	CPU_I486_ON_386
-options 	CPU_IORT
 options 	CPU_L2_LATENCY=5
-options 	CPU_LOOP_EN
 options 	CPU_PPRO2CELERON
-options 	CPU_RSTK_EN
 options 	CPU_SUSP_HLT
 options 	CPU_WT_ALLOC
-options 	CYRIX_CACHE_WORKS
-options 	CYRIX_CACHE_REALLY_WORKS
 #options 	NO_F00F_HACK
 options		NO_MEMORY_HOLE
 

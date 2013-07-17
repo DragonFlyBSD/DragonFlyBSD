@@ -247,8 +247,6 @@ linprocfs_docpuinfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 
         if (cpu_vendor_id == CPU_VENDOR_AMD && (class < 6)) {
 		flags[16] = "fcmov";
-        } else if (cpu_vendor_id == CPU_VENDOR_CYRIX) {
-		flags[24] = "cxmmx";
         }
         
         for (i = 0; i < 32; i++)
