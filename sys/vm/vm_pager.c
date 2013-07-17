@@ -89,8 +89,6 @@
 
 #include <sys/buf2.h>
 
-MALLOC_DEFINE(M_VMPGDATA, "VM pgdata", "XXX: VM pager private data");
-
 extern struct pagerops defaultpagerops;
 extern struct pagerops swappagerops;
 extern struct pagerops vnodepagerops;

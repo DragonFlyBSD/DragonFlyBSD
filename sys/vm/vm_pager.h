@@ -37,7 +37,6 @@
  *
  *	@(#)vm_pager.h	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_pager.h,v 1.24.2.2 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.h,v 1.9 2006/12/28 21:24:02 dillon Exp $
  */
 
 /*
@@ -89,10 +88,6 @@ struct pagerops {
 #define	VM_PAGER_CLUSTER_OK		0x0008
 
 #ifdef _KERNEL
-
-#ifdef MALLOC_DECLARE
-MALLOC_DECLARE(M_VMPGDATA);
-#endif
 
 struct vnode;
 
