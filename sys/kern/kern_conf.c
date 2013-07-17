@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.23 2007/05/09 00:53:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,7 +38,6 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/module.h>
-#include <sys/malloc.h>
 #include <sys/conf.h>
 #include <sys/vnode.h>
 #include <sys/queue.h>
@@ -50,8 +48,6 @@
 #include <sys/sysref2.h>
 
 #include <sys/devfs.h>
-
-MALLOC_DEFINE(M_DEVT, "cdev_t", "dev_t storage");
 
 int dev_ref_debug = 0;
 SYSCTL_INT(_debug, OID_AUTO, dev_refs, CTLFLAG_RW, &dev_ref_debug, 0,

@@ -81,7 +81,6 @@ static void reaplwp(struct lwp *lp);
 static void killlwps(struct lwp *lp);
 
 static MALLOC_DEFINE(M_ATEXIT, "atexit", "atexit callback");
-static MALLOC_DEFINE(M_ZOMBIE, "zombie", "zombie proc status");
 
 static struct lwkt_token deadlwp_token = LWKT_TOKEN_INITIALIZER(deadlwp_token);
 
