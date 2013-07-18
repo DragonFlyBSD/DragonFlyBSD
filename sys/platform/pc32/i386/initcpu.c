@@ -153,6 +153,10 @@ init_i486_on_386(void)
 }
 #endif
 
+#endif /* I486_CPU */
+
+#ifdef I686_CPU
+
 static void
 init_ppro(void)
 {
