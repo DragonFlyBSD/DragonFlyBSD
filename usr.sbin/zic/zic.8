@@ -359,17 +359,6 @@ if a second was added
 or
 .Dq -
 if a second was skipped.
-.\" There's no need to document the following, since it's impossible for more
-.\" than one leap second to be inserted or deleted at a time.
-.\" The C Standard is in error in suggesting the possibility.
-.\" See Terry J Quinn, The BIPM and the accurate measure of time,
-.\" Proc IEEE 79, 7 (July 1991), 894-905.
-.\"	or
-.\"	.q ++
-.\"	if two seconds were added
-.\"	or
-.\"	.q --
-.\"	if two seconds were skipped.
 The
 .Em R/S
 field
@@ -381,7 +370,7 @@ or
 .Dq Rolling
 if the leap second time given by the other fields should be interpreted as
 local wall clock time.
-.Sh "EXTENDED EXAMPLE"
+.Sh EXAMPLES
 Here is an extended example of
 .Nm
 input, intended to illustrate many of its features.
@@ -465,7 +454,7 @@ specifying transition instants using universal time.
 .It Pa /usr/share/zoneinfo
 standard directory used for created files
 .El
-.Sh "SEE ALSO"
+.Sh SEE ALSO
 .Xr ctime 3 ,
 .Xr tzfile 5 ,
 .Xr zdump 8
