@@ -3418,6 +3418,17 @@ pmap_unmapdev(vm_offset_t va, vm_size_t size)
 }
 
 /*
+ * Change the PAT attribute on an existing kernel memory map.  Caller
+ * must ensure that the virtual memory in question is not accessed
+ * during the adjustment.
+ */
+void
+pmap_change_attr(vm_offset_t va, vm_size_t count, int mode)
+{
+	/* XXX pmap_change_attr() not implemented on i386 */
+}
+
+/*
  * Perform the pmap work for mincore
  *
  * The caller must hold vm_token if the caller wishes a stable result,
