@@ -1,5 +1,4 @@
 .\" $FreeBSD: src/usr.bin/at/at.man,v 1.34 2003/03/26 02:38:18 keramida Exp $
-.\" $DragonFly: src/usr.bin/at/at.man,v 1.7 2007/08/29 12:02:16 swildner Exp $
 .Dd January 13, 2002
 .Dt "AT" 1
 .Os
@@ -347,11 +346,11 @@ utilities do not conform to
 .Sh AUTHORS
 .An -nosplit
 At was mostly written by
-.An Thomas Koenig Aq ig25@rz.uni-karlsruhe.de .
+.An Thomas Koenig Aq Mt ig25@rz.uni-karlsruhe.de .
 The time parsing routines are by
-.An David Parsons Aq orc@pell.chi.il.us ,
+.An David Parsons Aq Mt orc@pell.chi.il.us ,
 with minor enhancements by
-.An Joe Halpin Aq joe.halpin@attbi.com .
+.An Joe Halpin Aq Mt joe.halpin@attbi.com .
 .Sh BUGS
 If the file
 .Pa /var/run/utmp
