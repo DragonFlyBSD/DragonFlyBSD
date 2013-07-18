@@ -49,13 +49,13 @@
 #define	CPU_486SX	3	/* Intel 80486SX */
 #define	CPU_486		4	/* Intel 80486DX */
 #define	CPU_586		5	/* Intel P.....m (I hate lawyers; it's TM) */
-#define	CPU_686		7	/* Pentium Pro */
-#define	CPU_BLUE	10	/* IBM BlueLighting CPU */
-#define	CPU_NX586	12	/* NexGen (now AMD) 586 */
-#define	CPU_PII		14	/* Intel Pentium II */
-#define	CPU_PIII	15	/* Intel Pentium III */
-#define	CPU_P4		16	/* Intel Pentium 4 */
-#define	CPU_GEODE1100	17	/* NS Geode SC1100 */
+#define	CPU_686		6	/* Pentium Pro */
+#define	CPU_BLUE	7	/* IBM BlueLighting CPU */
+#define	CPU_NX586	8	/* NexGen (now AMD) 586 */
+#define	CPU_PII		9	/* Intel Pentium II */
+#define	CPU_PIII	10	/* Intel Pentium III */
+#define	CPU_P4		11	/* Intel Pentium 4 */
+#define	CPU_GEODE1100	12	/* NS Geode SC1100 */
 
 /*
  * Vendors of processor.
