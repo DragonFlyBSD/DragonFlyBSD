@@ -1290,6 +1290,8 @@ pmap_invalidate_cache_range(vm_offset_t sva, vm_offset_t eva)
 void
 pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 {
+	cpu_invltlb();
+	smp_invltlb();
 	cpu_wbinvd_on_all_cpus();	/* XXX not optimal */
 }
 
@@ -4465,6 +4467,12 @@ pmap_mapdev_uncacheable(vm_paddr_t pa, vm_size_t size)
 	return(pmap_mapdev_attr(pa, size, PAT_UNCACHEABLE));
 }
 
+/*
+ * Map a set of physical memory pages into the kernel virtual
+ * address space. Return a pointer to where it is mapped. This
+ * routine is intended to be used for mapping device memory,
+ * NOT real memory.
+ */
 void *
 pmap_mapdev_attr(vm_paddr_t pa, vm_size_t size, int mode)
 {
@@ -4488,9 +4496,8 @@ pmap_mapdev_attr(vm_paddr_t pa, vm_size_t size, int mode)
 		tmpva += PAGE_SIZE;
 		pa += PAGE_SIZE;
 	}
-	cpu_invltlb();
-	smp_invltlb();
-	cpu_wbinvd_on_all_cpus();
+	pmap_invalidate_range(&kernel_pmap, va, va + size);
+	pmap_invalidate_cache_range(va, va + size);
 
 	return ((void *)(va + offset));
 }
@@ -4516,9 +4523,12 @@ void
 pmap_change_attr(vm_offset_t va, vm_size_t count, int mode)
 {
 	pt_entry_t *pte;
+	vm_offset_t base;
+	int changed = 0;
 
 	if (va == 0)
 		panic("pmap_change_attr: va is NULL");
+	base = trunc_page(va);
 
 	while (count) {
 		pte = vtopte(va);
@@ -4528,9 +4538,17 @@ pmap_change_attr(vm_offset_t va, vm_size_t count, int mode)
 		--count;
 		va += PAGE_SIZE;
 	}
-	cpu_invltlb();
-	smp_invltlb();
-	cpu_wbinvd_on_all_cpus();
+
+	changed = 1;	/* XXX: not optimal */
+
+	/*
+	 * Flush CPU caches if required to make sure any data isn't cached that
+	 * shouldn't be, etc.
+	 */
+	if (changed) {
+		pmap_invalidate_range(&kernel_pmap, base, va);
+		pmap_invalidate_cache_range(base, va);
+	}
 }
 
 /*
