@@ -1290,9 +1290,7 @@ pmap_invalidate_cache_range(vm_offset_t sva, vm_offset_t eva)
 void
 pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 {
-	cpu_invltlb();
-	smp_invltlb();
-	cpu_wbinvd_on_all_cpus();	/* XXX not optimal */
+	smp_invlpg_range(pmap->pm_active, sva, eva);
 }
 
 /*

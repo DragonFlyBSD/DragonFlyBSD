@@ -865,6 +865,18 @@ cpu_wbinvd_on_all_cpus_callback(void *arg)
     wbinvd();
 }
 
+void
+smp_invlpg_range_cpusync(void *arg)
+{
+	vm_offset_t eva, sva, addr;
+	sva = ((struct smp_invlpg_range_cpusync_arg *)arg)->sva;
+	eva = ((struct smp_invlpg_range_cpusync_arg *)arg)->eva;
+
+	for (addr = sva; addr < eva; addr += PAGE_SIZE) {
+		cpu_invlpg((void *)addr);
+	}
+}
+
 /*
  * When called the executing CPU will send an IPI to all other CPUs
  *  requesting that they halt execution.

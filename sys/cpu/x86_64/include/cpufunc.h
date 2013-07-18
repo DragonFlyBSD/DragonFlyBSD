@@ -435,6 +435,26 @@ cpu_invlpg(void *addr)
 
 #endif
 
+#if defined(_KERNEL)
+struct smp_invlpg_range_cpusync_arg {
+	vm_offset_t sva;
+	vm_offset_t eva;
+};
+
+void
+smp_invlpg_range_cpusync(void *arg);
+
+static __inline void
+smp_invlpg_range(cpumask_t mask, vm_offset_t sva, vm_offset_t eva)
+{
+	struct smp_invlpg_range_cpusync_arg arg;
+
+	arg.sva = sva;
+	arg.eva = eva;
+	lwkt_cpusync_simple(mask, smp_invlpg_range_cpusync, &arg);
+}
+#endif
+
 static __inline void
 cpu_nop(void)
 {
