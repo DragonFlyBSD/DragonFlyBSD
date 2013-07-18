@@ -4465,6 +4465,12 @@ pmap_mapdev_uncacheable(vm_paddr_t pa, vm_size_t size)
 	return(pmap_mapdev_attr(pa, size, PAT_UNCACHEABLE));
 }
 
+void *
+pmap_mapbios(vm_paddr_t pa, vm_size_t size)
+{
+	return (pmap_mapdev_attr(pa, size, PAT_WRITE_BACK));
+}
+
 /*
  * Map a set of physical memory pages into the kernel virtual
  * address space. Return a pointer to where it is mapped. This
