@@ -360,7 +360,7 @@ static int old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
 		 * Replace the passed in reqpage page with our own fake page
 		 * and free up all the original pages.
 		 */
-		page = dev_pager_getfake(paddr, object->pat_mode);
+		page = dev_pager_getfake(paddr, object->memattr);
 		TAILQ_INSERT_TAIL(&object->un_pager.devp.devp_pglist,
 				  page, pageq);
 		vm_object_hold(object);

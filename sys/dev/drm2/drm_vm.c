@@ -120,13 +120,17 @@ drm_mmap(struct dev_mmap_args *ap)
 	switch (type) {
 	case _DRM_FRAME_BUFFER:
 	case _DRM_AGP:
-		/* memattr set by type in map's object */
+#if 0	/* XXX */
+		memattr = VM_MEMATTR_WRITE_COMBINING;
+#endif
 		/* FALLTHROUGH */
 	case _DRM_REGISTERS:
 		phys = map->offset + offset;
 		break;
 	case _DRM_SCATTER_GATHER:
-		/* memattr set by type in map's object */
+#if 0	/* XXX */
+		memattr = VM_MEMATTR_WRITE_COMBINING;
+#endif
 		/* FALLTHROUGH */
 	case _DRM_CONSISTENT:
 	case _DRM_SHM:
