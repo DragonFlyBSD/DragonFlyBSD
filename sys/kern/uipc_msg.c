@@ -382,7 +382,7 @@ so_pru_sync(struct socket *so)
 
 void
 so_pru_send_async(struct socket *so, int flags, struct mbuf *m,
-	    struct sockaddr *addr0, struct mbuf *control, struct thread *td)
+    struct sockaddr *addr0, struct mbuf *control, struct thread *td)
 {
 	struct netmsg_pru_send *msg;
 	struct sockaddr *addr = NULL;
@@ -390,12 +390,20 @@ so_pru_send_async(struct socket *so, int flags, struct mbuf *m,
 	KASSERT(so->so_proto->pr_flags & PR_ASYNC_SEND,
 	    ("async pru_send is not supported"));
 
-	flags |= PRUS_NOREPLY;
 	if (addr0 != NULL) {
-		addr = kmalloc(addr0->sa_len, M_SONAME, M_WAITOK);
+		addr = kmalloc(addr0->sa_len, M_SONAME, M_NOWAIT);
+		if (addr == NULL) {
+			/*
+			 * Fail to allocate address w/o waiting;
+			 * fallback to synchronized pru_send.
+			 */
+			so_pru_send(so, flags, m, addr0, control, td);
+			return;
+		}
 		memcpy(addr, addr0, addr0->sa_len);
 		flags |= PRUS_FREEADDR;
 	}
+	flags |= PRUS_NOREPLY;
 
 	msg = &m->m_hdr.mh_sndmsg;
 	netmsg_init(&msg->base, so, &netisr_apanic_rport,
