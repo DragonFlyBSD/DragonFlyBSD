@@ -184,8 +184,8 @@ struct mbuf *ieee80211_getmgtframe(uint8_t **frm, int headroom, int pktlen);
  * Store the sequence number.
  */
 #define	M_SEQNO_SET(m, seqno) \
-	((m)->m_pkthdr.ether_vlantag = (seqno))
-#define	M_SEQNO_GET(m)	((m)->m_pkthdr.ether_vlantag)
+	((m)->m_pkthdr.wlan_seqno = (seqno))
+#define	M_SEQNO_GET(m)	((m)->m_pkthdr.wlan_seqno)
 
 #define	MTAG_ABI_NET80211	1132948340	/* net80211 ABI */
 
