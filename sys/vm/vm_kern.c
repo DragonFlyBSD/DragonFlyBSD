@@ -336,13 +336,24 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
 	return (addr);
 }
 
+/*
+ *  Allocates a region from the kernel address map and physical pages
+ *  within the specified address range to the kernel object.  Creates a
+ *  wired mapping from this region to these pages, and returns the
+ *  region's starting virtual address.  The allocated pages are not
+ *  necessarily physically contiguous.  If M_ZERO is specified through the
+ *  given flags, then the pages are zeroed before they are mapped.
+ */
 vm_offset_t
 kmem_alloc_attr(vm_map_t map, vm_size_t size, int flags,
 		vm_paddr_t minaddr, vm_paddr_t maxaddr, int pat_attr)
 {
 	vm_offset_t vm;
 
-	vm = kmem_alloc_wait(map, size);
+	size = round_page(size);
+
+	vm = ((vm_offset_t)contigmalloc_map (size, M_DEVBUF,
+		flags, minaddr, maxaddr, PAGE_SIZE, PAGE_SIZE, map));
 	pmap_change_attr(vm, size / PAGE_SIZE, pat_attr);
 
 	return (vm);
