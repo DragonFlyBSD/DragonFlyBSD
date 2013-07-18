@@ -163,7 +163,7 @@ struct vm_page {
 	u_short	pc;			/* page color */
 	u_char	act_count;		/* page usage count */
 	u_char	busy;			/* page busy count */
-	u_char	unused01;
+	u_char	pat_mode;		/* hardware page attribute */
 	u_char	unused02;
 	u_int32_t flags;		/* see below */
 	u_int	wire_count;		/* wired down maps refs (P) */

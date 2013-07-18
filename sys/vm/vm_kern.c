@@ -336,6 +336,19 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
 	return (addr);
 }
 
+vm_offset_t
+kmem_alloc_attr(vm_map_t map, vm_size_t size, int flags,
+		vm_paddr_t minaddr, vm_paddr_t maxaddr, int pat_attr)
+{
+	vm_offset_t vm;
+
+	vm = kmem_alloc_wait(map, size);
+	pmap_change_attr(vm, size / PAGE_SIZE, pat_attr);
+
+	return (vm);
+}
+
+
 /*
  * Returns memory to a submap of the kernel, and wakes up any processes
  * waiting for memory in that map.

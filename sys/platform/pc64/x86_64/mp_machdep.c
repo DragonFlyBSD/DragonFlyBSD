@@ -299,10 +299,7 @@ init_secondary(void)
 	wrmsr(MSR_SF_MASK, PSL_NT|PSL_T|PSL_I|PSL_C|PSL_D|PSL_IOPL);
 
 	pmap_set_opt();		/* PSE/4MB pages, etc */
-#if JGXXX
-	/* Initialize the PAT MSR. */
-	pmap_init_pat();
-#endif
+	pmap_init_pat();	/* Page Attribute Table */
 
 	/* set up CPU registers and state */
 	cpu_setregs();

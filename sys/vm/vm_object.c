@@ -89,6 +89,8 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
 
+#include <machine/specialreg.h>
+
 #define EASY_SCAN_FACTOR	8
 
 static void	vm_object_qcollapse(vm_object_t object,
@@ -420,6 +422,7 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	object->ref_count = 1;
 	object->hold_count = 0;
 	object->flags = 0;
+	object->pat_mode = PAT_WRITE_BACK;
 	if ((object->type == OBJT_DEFAULT) || (object->type == OBJT_SWAP))
 		vm_object_set_flag(object, OBJ_ONEMAPPING);
 	object->paging_in_progress = 0;
