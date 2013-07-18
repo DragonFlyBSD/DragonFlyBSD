@@ -127,10 +127,6 @@
 #define arcmsr_htole32(x)	htole32(x)
 typedef struct lock		arcmsr_lock_t;
 
-#if !defined(CAM_NEW_TRAN_CODE)
-#define	CAM_NEW_TRAN_CODE	1
-#endif
-
 #define arcmsr_callout_init(a)	callout_init_mp(a);
 
 #define ARCMSR_DRIVER_VERSION			"Driver Version 1.20.00.25 2012-08-17"
@@ -2481,7 +2477,6 @@ static void arcmsr_action(struct cam_sim * psim, union ccb * pccb)
 			strncpy(cpi->hba_vid, "ARCMSR", HBA_IDLEN);
 			strncpy(cpi->dev_name, cam_sim_name(psim), DEV_IDLEN);
 			cpi->unit_number=cam_sim_unit(psim);
-		#ifdef	CAM_NEW_TRAN_CODE
 			if(acb->adapter_bus_speed == ACB_BUS_SPEED_6G)
 				cpi->base_transfer_speed = 600000;
 			else
@@ -2500,7 +2495,6 @@ static void arcmsr_action(struct cam_sim * psim, union ccb * pccb)
 				cpi->protocol_version = SCSI_REV_2;
 			}
 			cpi->protocol = PROTO_SCSI;
-		#endif
 			cpi->ccb_h.status |= CAM_REQ_CMP;
 			xpt_done(pccb);
 			break;
@@ -2559,7 +2553,6 @@ static void arcmsr_action(struct cam_sim * psim, union ccb * pccb)
 				break;
 			}
 			cts= &pccb->cts;
-		#ifdef	CAM_NEW_TRAN_CODE
 			{
 				struct ccb_trans_settings_scsi *scsi;
 				struct ccb_trans_settings_spi *spi;
@@ -2599,19 +2592,6 @@ static void arcmsr_action(struct cam_sim * psim, union ccb * pccb)
 						| CTS_SPI_VALID_BUS_WIDTH;
 				}
 			}
-		#else
-			{
-				cts->flags=(CCB_TRANS_DISC_ENB | CCB_TRANS_TAG_ENB);
-				cts->sync_period=2;
-				cts->sync_offset=32;
-				cts->bus_width=MSG_EXT_WDTR_BUS_16_BIT;
-				cts->valid=CCB_TRANS_SYNC_RATE_VALID |
-				CCB_TRANS_SYNC_OFFSET_VALID |
-				CCB_TRANS_BUS_WIDTH_VALID |
-				CCB_TRANS_DISC_VALID |
-				CCB_TRANS_TQ_VALID;
-			}
-		#endif
 			pccb->ccb_h.status |= CAM_REQ_CMP;
 			xpt_done(pccb);
 			break;
