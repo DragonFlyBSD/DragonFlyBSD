@@ -31,7 +31,6 @@
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/bus_resource.h>
-#include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/nata.h>
 #include <sys/rman.h>
@@ -44,9 +43,6 @@
 #include "ata-all.h"
 #include "ata-pci.h"
 #include "ata_if.h"
-
-/* local vars */
-static MALLOC_DEFINE(M_ATAPCI, "ata_pci", "ATA driver PCI");
 
 /* misc defines */
 #define IOMASK                  0xfffffffc
