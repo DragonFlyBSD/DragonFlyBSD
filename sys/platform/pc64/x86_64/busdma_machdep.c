@@ -521,6 +521,7 @@ int
 bus_dmamem_alloc(bus_dma_tag_t dmat, void **vaddr, int flags,
 		 bus_dmamap_t *mapp)
 {
+	vm_memattr_t attr;
 	int mflags;
 
 	/* If we succeed, no mapping/bouncing will be required */
@@ -538,7 +539,12 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void **vaddr, int flags,
 		mflags = M_WAITOK;
 	if (flags & BUS_DMA_ZERO)
 		mflags |= M_ZERO;
+	if (flags & BUS_DMA_NOCACHE)
+		attr = VM_MEMATTR_UNCACHEABLE;
+	else
+		attr = VM_MEMATTR_DEFAULT;
 
+	/* XXX must alloc with correct mem attribute here */
 	if (BUS_DMAMEM_KMALLOC(dmat)) {
 		bus_size_t maxsize;
 
@@ -569,6 +575,10 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void **vaddr, int flags,
 	}
 	if (*vaddr == NULL)
 		return (ENOMEM);
+
+	/* XXX: BUS_DMA_NOCACHE */
+	if (attr != VM_MEMATTR_DEFAULT)
+		pmap_change_attr((vm_offset_t)vaddr, dmat->maxsize / PAGE_SIZE, attr);
 	return (0);
 }
 

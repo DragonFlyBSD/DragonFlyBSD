@@ -101,6 +101,7 @@
 					 * loaded kernel virtual address must be
 					 * preserved in the first physical segment
 					 * address, when the KVA is loaded into DMA. */
+#define BUS_DMA_NOCACHE		0x4000	/* map memory uncached */
 
 /* Forwards needed by prototypes below. */
 struct mbuf;

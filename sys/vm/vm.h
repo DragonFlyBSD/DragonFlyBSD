@@ -69,6 +69,7 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#include <machine/specialreg.h>
 
 typedef char vm_inherit_t;	/* inheritance codes */
 
@@ -117,5 +118,19 @@ typedef struct vm_object *vm_object_t;
 struct vm_page;
 typedef struct vm_page *vm_page_t;
 #endif
+
+
+/* Memory attributes. */
+
+typedef char vm_memattr_t;
+
+#define VM_MEMATTR_UNCACHEABLE		((vm_memattr_t)PAT_UNCACHEABLE)
+#define VM_MEMATTR_WRITE_COMBINING	((vm_memattr_t)PAT_WRITE_COMBINING)
+#define VM_MEMATTR_WRITE_THROUGH	((vm_memattr_t)PAT_WRITE_THROUGH)
+#define VM_MEMATTR_WRITE_PROTECTED	((vm_memattr_t)PAT_WRITE_PROTECTED)
+#define VM_MEMATTR_WRITE_BACK		((vm_memattr_t)PAT_WRITE_BACK)
+#define VM_MEMATTR_WEAK_UNCACHEABLE	((vm_memattr_t)PAT_UNCACHED)
+
+#define VM_MEMATTR_DEFAULT	VM_MEMATTR_WRITE_BACK
 
 #endif				/* VM_VM_H_ */
