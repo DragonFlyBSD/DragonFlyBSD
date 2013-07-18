@@ -1191,6 +1191,16 @@ pmap_map(vm_offset_t *virtp, vm_paddr_t start, vm_paddr_t end, int prot)
 	return va_start;
 }
 
+void
+pmap_invalidate_cache_range(vm_offset_t sva, vm_offset_t eva)
+{
+	cpu_wbinvd_on_all_cpus();	/* XXX not optimal */
+}
+void
+pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
+{
+	cpu_wbinvd_on_all_cpus();	/* XXX not optimal */
+}
 
 /*
  * Add a list of wired pages to the kva
