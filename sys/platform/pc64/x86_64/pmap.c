@@ -1313,7 +1313,7 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 
 		pte = vtopte(va);
 		*pte = VM_PAGE_TO_PHYS(*m) | PG_RW | PG_V |
-			pat_pte_index[(*m)->object->pat_mode] | pgeflag;
+			pat_pte_index[(*m)->pat_mode] | pgeflag;
 		cpu_invlpg((void *)va);
 		va += PAGE_SIZE;
 		m++;
@@ -3634,7 +3634,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		newpte |= PG_MANAGED;
 	if (pmap == &kernel_pmap)
 		newpte |= pgeflag;
-	newpte |= pat_pte_index[m->object->pat_mode];
+	newpte |= pat_pte_index[m->pat_mode];
 
 	/*
 	 * It is possible for multiple faults to occur in threaded

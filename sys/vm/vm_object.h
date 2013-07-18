@@ -145,10 +145,7 @@ struct vm_object {
 	vm_pindex_t size;		/* Object size */
 	int ref_count;
 	int shadow_count;		/* count of objs we are a shadow for */
-	uint8_t pat_mode;
-	uint8_t unused01;
-	uint8_t unused02;
-	uint8_t unused03;
+	vm_memattr_t memattr;		/* default memory attribute for pages */
 	objtype_t type;			/* type of pager */
 	u_short flags;			/* see below */
 	u_short pg_color;		/* color of first page in obj */
