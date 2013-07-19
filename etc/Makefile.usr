@@ -7,7 +7,11 @@ GITHOST?=git.dragonflybsd.org
 THISGIT!= which git 2>/dev/null; echo
 DPTBALL=/tmp/dports.tar.gz
 DPDLURL=https://api.github.com/repos/jrmarino/DPorts/tarball/
+PKGBOOT_i386=bootstrap_pkg_x86-32.tar.xz
+PKGBOOT_x86_64=bootstrap_pkg_x86-64.tar.xz
+PKGBOOT=http://mirror-master.dragonflybsd.org/dports/bootstraps/${PKGBOOT_${MACHINE_ARCH}}
 GITNFMSG="git must be present on the system to use this option."
+ABIVERS=`uname -P`
 ERRPS="Error: ${.CURDIR}/pkgsrc already exists"
 ERRDP="Error: ${.CURDIR}/dports already exists"
 ERRSR="Error: ${.CURDIR}/src already exists"
@@ -17,7 +21,6 @@ ERRNSR="Error: ${.CURDIR}/src does not exist"
 WSTARS="***************************************************************"
 WARNPS="  Warning: Delete or move ${.CURDIR}/pkg before building any dport!"
 LPATT="   make %-23s- %s\n"
-
 
 help all:
 	@echo "HELP:"
@@ -44,6 +47,8 @@ help all:
 	@printf ${LPATT} "dports-download"       "download & install dports tarball from Github"
 .  endif
 .endif
+	@printf ${LPATT} "pkg-bootstrap"	"Use pre-built pkg to install dports packages"
+	@printf ${LPATT} "pkg-bootstrap-force"	"Force it (pkg.conf will be overwritten)"
 	@echo
 
 .if exists(${.CURDIR}/src/.git)
@@ -213,7 +218,7 @@ dports-create:
 .else
 	@echo "If problems occur you may have to rm -rf dports and try again."
 	@echo
-	git clone git://github.com/jrmarino/DPorts.git ${.CURDIR}/dports
+	git clone git://mirror-master.dragonflybsd.org/dports.git ${.CURDIR}/dports
 .if exists(${.CURDIR}/pkg)
 	@echo ${WSTARS}
 	@echo ${WARNPS}
@@ -229,7 +234,7 @@ dports-create-shallow:
 .else
 	@echo "If problems occur you may have to rm -rf dports and try again."
 	@echo
-	git clone --depth=1 git://github.com/jrmarino/DPorts.git \
+	git clone --depth=1 git://mirror-master.dragonflybsd.org/dports.git \
 	   ${.CURDIR}/dports
 .if exists(${.CURDIR}/pkg)
 	@echo ${WSTARS}
@@ -268,4 +273,23 @@ dports-replace:
 	tar -xf ${DPTBALL} -C ${.CURDIR}
 	mv /usr/jrmarino-DPorts-* ${.CURDIR}/dports
 	rm -f ${DPTBALL}
+.endif
+
+pkg-bootstrap-force:
+	@fetch -o ${PKGBALL} ${PKGBOOT}
+	@tar -xJf ${PKGBALL} -C ${.CURDIR}/local
+	@rm -f ${PKGBALL}
+	ABI=${ABIVERS} ${.CURDIR}/local/sbin/pkg-static install -y -f pkg
+
+pkg-bootstrap:
+.if exists(${.CURDIR}/local/sbin/pkg)
+	@echo ${ERRPKG}
+.elif exists(${.CURDIR}/local/etc/pkg.conf)
+	@echo "Error: ${.CURDIR}/local/etc/pkg.conf will be ovewritten"
+	@echo "Please move this file and rerun 'make pkg-bootstrap'"
+.else
+	@fetch -o ${PKGBALL} ${PKGBOOT}
+	@tar -xJf ${PKGBALL} -C ${.CURDIR}/local
+	@rm -f ${PKGBALL}
+	ABI=${ABIVERS} ${.CURDIR}/local/sbin/pkg-static install -y pkg
 .endif
