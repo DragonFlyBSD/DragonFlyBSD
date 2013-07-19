@@ -528,13 +528,15 @@ netmsg_so_notify(netmsg_t msg)
 	 */
 	tok = lwkt_token_pool_lookup(msg->base.nm_so);
 	lwkt_gettoken(tok);
+	atomic_set_int(&ssb->ssb_flags, SSB_MEVENT);
 	if (msg->notify.nm_predicate(&msg->notify)) {
+		if (TAILQ_EMPTY(&ssb->ssb_kq.ki_mlist))
+			atomic_clear_int(&ssb->ssb_flags, SSB_MEVENT);
 		lwkt_reltoken(tok);
 		lwkt_replymsg(&msg->base.lmsg,
 			      msg->base.lmsg.ms_error);
 	} else {
 		TAILQ_INSERT_TAIL(&ssb->ssb_kq.ki_mlist, &msg->notify, nm_list);
-		atomic_set_int(&ssb->ssb_flags, SSB_MEVENT);
 		lwkt_reltoken(tok);
 	}
 }
