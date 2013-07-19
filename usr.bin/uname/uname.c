@@ -42,17 +42,19 @@
 #include <unistd.h>
 #include <string.h>
 
-#define	MFLAG	0x01
-#define	NFLAG	0x02
-#define	PFLAG	0x04
-#define	RFLAG	0x08
-#define	SFLAG	0x10
-#define	VFLAG	0x20
-#define	IFLAG   0x40
+#define	MFLAG	0x0001
+#define	NFLAG	0x0002
+#define	PFLAG	0x0004
+#define	RFLAG	0x0008
+#define	SFLAG	0x0010
+#define	VFLAG	0x0020
+#define	IFLAG   0x0040
+#define	GFLAG   0x0080
+#define	GFLAG2  0x0100
 
 typedef void (*get_t)(void);
 get_t get_ident, get_machine, get_hostname, get_arch;
-get_t get_release, get_sysname, get_version;
+get_t get_release, get_sysname, get_version, get_pkgabi;
   
 void native_ident(void);
 void native_machine(void);
@@ -61,24 +63,24 @@ void native_arch(void);
 void native_release(void);
 void native_sysname(void);
 void native_version(void);
-void print_uname(u_int);
+void native_pkgabi(void);
+void print_uname(void);
 void setup_get(void);
 void usage(void);
 
-char *ident, *machine, *hostname, *arch;
-char *release, *sysname, *version;
-int space;
+static char *ident, *machine, *hostname, *arch;
+static char *release, *sysname, *version, *pkgabi;
+static int space;
+static u_int flags;
 
 int
 main(int argc, char *argv[])
 {
-	u_int flags;
 	int ch;
 
 	setup_get();
-	flags = 0;
 
-	while ((ch = getopt(argc, argv, "aimnprsv")) != -1)
+	while ((ch = getopt(argc, argv, "aimnprsvP")) != -1) {
 		switch(ch) {
 		case 'a':
 			flags |= (MFLAG | NFLAG | RFLAG | SFLAG | VFLAG);
@@ -104,10 +106,16 @@ main(int argc, char *argv[])
 		case 'v':
 			flags |= VFLAG;
 			break;
+		case 'P':
+			if (flags & GFLAG)	/* don't adjust odd numbers */
+				flags |= GFLAG2;
+			flags |= GFLAG;
+			break;
 		case '?':
 		default:
 			usage();
 		}
+	}
 
 	argc -= optind;
 	argv += optind;
@@ -118,7 +126,7 @@ main(int argc, char *argv[])
 	if (!flags)
 		flags |= SFLAG;
 
-	print_uname(flags);
+	print_uname();
 	exit(0);
 }
 
@@ -156,6 +164,7 @@ setup_get(void)
 	CHECK_ENV("UNAME_m", &get_machine, native_machine, &machine);
 	CHECK_ENV("UNAME_p", &get_arch, native_arch, &arch);
 	CHECK_ENV("UNAME_i", &get_ident, native_ident, &ident);
+	CHECK_ENV("UNAME_G", &get_pkgabi, native_pkgabi, &pkgabi);
 }
 
 #define	PRINT_FLAG(flags,flag,var)		\
@@ -170,7 +179,7 @@ setup_get(void)
 	}
 
 void
-print_uname(u_int flags)
+print_uname(void)
 {
 	PRINT_FLAG(flags, SFLAG, sysname);
 	PRINT_FLAG(flags, NFLAG, hostname);
@@ -179,6 +188,7 @@ print_uname(u_int flags)
 	PRINT_FLAG(flags, MFLAG, machine);
 	PRINT_FLAG(flags, PFLAG, arch);
 	PRINT_FLAG(flags, IFLAG, ident);
+	PRINT_FLAG(flags, GFLAG, pkgabi);
 	printf("\n");
 }
 
@@ -245,6 +255,41 @@ NATIVE_SYSCTL2_GET(arch, CTL_HW, HW_MACHINE_ARCH) {
 
 NATIVE_SYSCTLNAME_GET(ident, "kern.ident") {
 } NATIVE_SET;
+
+void						\
+native_pkgabi(void)				\
+{
+	char osrel[64];
+	char mach[64];
+	size_t len;
+	double d;
+
+	len = sizeof(osrel);
+	if (sysctlbyname("kern.osrelease", osrel, &len, NULL, 0) == -1)
+		err(1, "sysctlbyname");
+	len = sizeof(mach);
+	if (sysctlbyname("hw.machine", mach, &len, NULL, 0) == -1)
+		err(1, "sysctlbyname");
+
+	/*
+	 * Current convention is to adjust odd release numbers to even.
+	 */
+	d = strtod(osrel, NULL);
+	if ((flags & GFLAG2) == 0) {
+		if ((int)(d * 10) & 1)
+			d = d + 0.1;	/* force to nearest even release */
+	}
+
+	/*
+	 * pkgng expects the ABI in a different form
+	 */
+	if (strcmp(mach, "x86_64") == 0)
+		snprintf(mach, sizeof(mach), "x86:64");
+	else if (strcmp(mach, "i386") == 0)
+		snprintf(mach, sizeof(mach), "x86:32");
+
+	asprintf(&pkgabi, "dragonfly:%3.1f:%s", d, mach);
+}
 
 void
 usage(void)
