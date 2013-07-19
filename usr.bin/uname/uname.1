@@ -41,7 +41,7 @@
 .Nd display information about the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl aimnprsv
+.Op Fl aimnprsvP
 .Sh DESCRIPTION
 The
 .Nm
@@ -74,6 +74,12 @@ Write the name of the operating system implementation to standard output.
 .It Fl v
 Write the version level of this release of the operating system
 to standard output.
+.It Fl P
+Generates a default ABI: configuration string for dports / pkgng to
+the standard output, including odd-to-even version-munging.
+.It Fl PP
+Generates a default ABI: configuration string for dports / pkgng to
+the standard output, without version-munging.
 .El
 .Pp
 If the
