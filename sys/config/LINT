@@ -130,10 +130,6 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # CPU if CPU supports it. The default is double-clock mode on
 # BlueLightning CPU box.
 #
-# CPU_DISABLE_5X86_LSSER disables load store serialize (i.e. enables
-# reorder).  This option should not be used if you use memory mapped
-# I/O device(s).
-#
 # CPU_DISABLE_SSE disables SSE/MMX2 instructions support.
 #
 # CPU_ENABLE_EST enables support for Enhanced SpeedStep technology
@@ -148,8 +144,6 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # TCC supports restricting power consumption using the hw.p4tcc.*
 # sysctls.  This operates independently of SpeedStep and is useful on
 # systems where other mechanisms such as apm(4) or acpi(4) don't work.
-#
-# CPU_FASTER_5X86_FPU enables faster FPU exception handler.
 #
 # CPU_HAS_SSE2 will enable the lfence and mfence instructions in
 # cpu_lfence() and cpu_mfence().  If the CPU does not support them,
@@ -170,9 +164,6 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # is useful when you use Socket 8 to Socket 370 converter, because most Pentium
 # Pro BIOSs do not enable L2 cache of Mendocino Celeron CPUs.
 #
-# CPU_SUSP_HLT enables suspend on HALT.  If this option is set, CPU
-# enters suspend mode following execution of HALT instruction.
-#
 # CPU_WT_ALLOC enables write allocation on AMD K5/K6/K6-2 cpus.
 #
 # NO_F00F_HACK disables the hack that prevents Pentiums (and ONLY
@@ -190,19 +181,16 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 options 	CPU_ATHLON_SSE_HACK
 options 	CPU_BLUELIGHTNING_FPU_OP_CACHE
 options 	CPU_BLUELIGHTNING_3X
-options 	CPU_DISABLE_5X86_LSSER
 options 	CPU_DISABLE_SSE
 options 	CPU_ELAN
 options		CPU_ENABLE_EST
 options 	CPU_ENABLE_LONGRUN
 options		CPU_ENABLE_TCC
-options 	CPU_FASTER_5X86_FPU
 options		CPU_GEODE
 options		CPU_HAS_SSE2
 options 	CPU_I486_ON_386
 options 	CPU_L2_LATENCY=5
 options 	CPU_PPRO2CELERON
-options 	CPU_SUSP_HLT
 options 	CPU_WT_ALLOC
 #options 	NO_F00F_HACK
 options		NO_MEMORY_HOLE
