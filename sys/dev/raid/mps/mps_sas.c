@@ -133,8 +133,6 @@ static uint8_t op_code_prot[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-MALLOC_DEFINE(M_MPSSAS, "MPSSAS", "MPS SAS memory");
-
 static void mpssas_log_command(struct mps_command *, const char *, ...)
 		__printflike(2, 3);
 #if 0 /* XXX unused */

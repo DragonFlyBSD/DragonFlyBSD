@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs.h,v 1.2.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs.h,v 1.8 2006/05/06 18:48:53 dillon Exp $
  */
+
 #ifndef _SMBFS_SMBFS_H_
 #define _SMBFS_SMBFS_H_
 
@@ -67,10 +67,6 @@ struct smbfs_args {
 };
 
 #ifdef _KERNEL
-
-#ifdef MALLOC_DECLARE
-MALLOC_DECLARE(M_SMBFSMNT);
-#endif
 
 struct smbnode;
 struct smb_share;

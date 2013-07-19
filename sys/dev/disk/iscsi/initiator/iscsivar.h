@@ -58,7 +58,6 @@ typedef uint32_t digest_t(const void *, int len, uint32_t ocrc);
 typedef struct objcache	*objcache_t;
 
 MALLOC_DECLARE(M_ISCSI);
-MALLOC_DECLARE(M_PDU);
 
 #ifndef BIT
 #define BIT(n)	(1 <<(n))

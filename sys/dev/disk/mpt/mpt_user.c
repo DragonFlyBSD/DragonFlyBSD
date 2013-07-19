@@ -87,8 +87,6 @@ static struct dev_ops mpt_ops = {
 	.d_ioctl =	mpt_ioctl,
 };
 
-static MALLOC_DEFINE(M_MPTUSER, "mpt_user", "Buffers for mpt(4) ioctls");
-
 static uint32_t user_handler_id = MPT_HANDLER_ID_NONE;
 
 static int

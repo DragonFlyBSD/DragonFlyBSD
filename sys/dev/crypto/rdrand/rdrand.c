@@ -32,7 +32,6 @@
 #include <sys/kobj.h>
 #include <sys/libkern.h>
 #include <sys/module.h>
-#include <sys/malloc.h>
 #include <sys/bus.h>
 #include <sys/random.h>
 
@@ -49,9 +48,6 @@ struct rdrand_softc {
 
 static void rdrand_rng_harvest(void *);
 int rdrand_rng(uint8_t *out, int limit);
-
-
-MALLOC_DEFINE(M_RDRAND, "rdrand_data", "RdRand Data");
 
 
 static void

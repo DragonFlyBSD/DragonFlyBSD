@@ -231,7 +231,6 @@ void	ng_unname(node_p node);
 MALLOC_DEFINE(M_NETGRAPH, "netgraph", "netgraph structures and ctrl messages");
 MALLOC_DEFINE(M_NETGRAPH_HOOK, "netgraph_hook", "netgraph hook structures");
 MALLOC_DEFINE(M_NETGRAPH_NODE, "netgraph_node", "netgraph node structures");
-MALLOC_DEFINE(M_NETGRAPH_ITEM, "netgraph_item", "netgraph item structures");
 MALLOC_DEFINE(M_NETGRAPH_MSG, "netgraph_msg", "netgraph name storage");
 
 /* Should not be visible outside this file */

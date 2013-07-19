@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_mount.h,v 1.5.2.1 2000/04/17 08:34:19 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_mount.h,v 1.3 2003/08/07 21:54:35 dillon Exp $
  */
 #ifndef _NWFS_MOUNT_H_
 #define	_NWFS_MOUNT_H_
@@ -72,11 +71,4 @@ struct nwfs_args {
 	int		tz;
 };
 
-#ifdef _KERNEL
-
-#ifdef MALLOC_DECLARE
-MALLOC_DECLARE(M_NWFSMNT);
-#endif
-
-#endif
 #endif /* !_NWFS_MOUNT_H_ */
