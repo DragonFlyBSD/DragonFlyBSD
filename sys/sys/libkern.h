@@ -112,6 +112,8 @@ int	 flsl(long);
 int	 locc (int, char *, u_int);
 void	 kqsort (void *base, size_t nmemb, size_t size,
 		    int (*compar)(const void *, const void *));
+void	 kqsort_r(void *base, size_t nmemb, size_t size, void *thunk,
+		    int (*compar)(void *, const void *, const void *));
 u_long	 krandom (void);
 char	*index (const char *, int);
 char	*rindex (const char *, int);

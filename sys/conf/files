@@ -1831,6 +1831,7 @@ libkern/mcount.c			optional	profiling-routine
 libkern/memmove.c			standard
 libkern/memcchr.c			standard
 libkern/qsort.c				standard
+libkern/qsort_r.c			standard
 libkern/random.c			standard
 libkern/rindex.c			standard
 libkern/scanc.c				standard
