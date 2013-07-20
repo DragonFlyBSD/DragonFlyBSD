@@ -352,6 +352,21 @@ pci_find_device(uint16_t vendor, uint16_t device)
 	return (NULL);
 }
 
+device_t
+pci_find_class(uint8_t class, uint8_t subclass)
+{
+	struct pci_devinfo *dinfo;
+
+	STAILQ_FOREACH(dinfo, &pci_devq, pci_links) {
+		if (dinfo->cfg.baseclass == class &&
+		    dinfo->cfg.subclass == subclass) {
+			return (dinfo->cfg.dev);
+		}
+	}
+
+	return (NULL);
+}
+
 /* return base address of memory or port map */
 
 static uint32_t
