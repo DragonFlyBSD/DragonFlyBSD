@@ -1441,3 +1441,24 @@ out:
 		return (EINVAL);
 	}
 }
+
+/*
+ * Translate a Mach VM return code to zero on success or the appropriate errno
+ * on failure.
+ */
+int
+vm_mmap_to_errno(int rv)
+{
+
+	switch (rv) {
+	case KERN_SUCCESS:
+		return (0);
+	case KERN_INVALID_ADDRESS:
+	case KERN_NO_SPACE:
+		return (ENOMEM);
+	case KERN_PROTECTION_FAILURE:
+		return (EACCES);
+	default:
+		return (EINVAL);
+	}
+}
