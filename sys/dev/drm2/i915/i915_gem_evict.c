@@ -24,10 +24,8 @@
  *    Eric Anholt <eric@anholt.net>
  *    Chris Wilson <chris@chris-wilson.co.uuk>
  *
+ * $FreeBSD: src/sys/dev/drm2/i915/i915_gem_evict.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/i915/i915_gem_evict.c,v 1.1 2012/05/22 11:07:44 kib Exp $");
 
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>

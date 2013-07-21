@@ -30,10 +30,8 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_memory.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/drm_memory.c,v 1.1 2012/05/22 11:07:44 kib Exp $");
 
 /** @file drm_memory.c
  * Wrappers for kernel memory allocation routines, and MTRR management support.

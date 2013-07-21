@@ -24,14 +24,13 @@
  * Authors:
  *    Eric Anholt <eric@anholt.net>
  *
+ * $FreeBSD: src/sys/dev/drm2/i915/intel_tv.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /** @file
  * Integrated TV-out support for the 915GM and 945GM.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/i915/intel_tv.c,v 1.1 2012/05/22 11:07:44 kib Exp $");
 
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>

@@ -49,10 +49,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/drm2/i915/i915_gem.c,v 1.2 2012/05/28 21:15:54 alc Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/i915/i915_gem.c,v 1.2 2012/05/28 21:15:54 alc Exp $");
 
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>

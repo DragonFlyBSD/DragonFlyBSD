@@ -18,10 +18,9 @@
  * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
+ *
+ * $FreeBSD: src/sys/dev/drm2/drm_dp_iic_helper.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/drm_dp_iic_helper.c,v 1.1 2012/05/22 11:07:44 kib Exp $");
 
 #include <sys/types.h>
 #include <sys/kobj.h>

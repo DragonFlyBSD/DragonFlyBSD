@@ -24,10 +24,8 @@
  *    Daniel Vetter <daniel@ffwll.ch>
  *
  * Derived from Xorg ddx, xf86-video-intel, src/i830_video.c
+ * $FreeBSD: src/sys/dev/drm2/i915/intel_overlay.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/i915/intel_overlay.c,v 1.1 2012/05/22 11:07:44 kib Exp $");
 
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>

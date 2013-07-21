@@ -27,10 +27,8 @@
  * Authors:
  *    Eric Anholt <anholt@FreeBSD.org>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_linux_list.h,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/drm_linux_list.h,v 1.1 2012/05/22 11:07:44 kib Exp $");
 
 #ifndef _DRM_LINUX_LIST_H_
 #define _DRM_LINUX_LIST_H_

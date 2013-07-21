@@ -23,10 +23,8 @@
  * Authors:
  *    Eric Anholt <anholt@FreeBSD.org>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_irq.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/drm_irq.c,v 1.1 2012/05/22 11:07:44 kib Exp $");
 
 /** @file drm_irq.c
  * Support code for handling setup/teardown of interrupt handlers and

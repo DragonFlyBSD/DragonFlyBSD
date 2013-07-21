@@ -24,7 +24,7 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  *
- * __FBSDID("$FreeBSD: src/sys/dev/drm/drm_mm.h,v 1.1 2010/01/31 14:25:29 rnoland Exp $");
+ * $FreeBSD: src/sys/dev/drm/drm_mm.h,v 1.1 2010/01/31 14:25:29 rnoland Exp $
  **************************************************************************/
 
 /*

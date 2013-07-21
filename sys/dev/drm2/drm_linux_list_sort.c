@@ -28,7 +28,7 @@
  */
 
 #include <dev/drm2/drmP.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/drm_linux_list_sort.c,v 1.1 2012/05/22 11:07:44 kib Exp $");
+/* $FreeBSD: src/sys/dev/drm2/drm_linux_list_sort.c,v 1.1 2012/05/22 11:07:44 kib Exp $ */
 
 struct drm_list_sort_thunk {
 	int (*cmp)(void *, struct list_head *, struct list_head *);

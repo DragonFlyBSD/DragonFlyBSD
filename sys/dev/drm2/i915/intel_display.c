@@ -22,10 +22,9 @@
  *
  * Authors:
  *	Eric Anholt <eric@anholt.net>
+ *
+ * $FreeBSD: src/sys/dev/drm2/i915/intel_display.c,v 1.2 2012/05/24 19:13:54 dim Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/i915/intel_display.c,v 1.2 2012/05/24 19:13:54 dim Exp $");
 
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>

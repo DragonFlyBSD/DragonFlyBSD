@@ -26,10 +26,8 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_drv.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/drm_drv.c,v 1.1 2012/05/22 11:07:44 kib Exp $");
 
 /** @file drm_drv.c
  * The catch-all file for DRM device support, including module setup/teardown,

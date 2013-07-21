@@ -24,10 +24,8 @@
  *    Eric Anholt <eric@anholt.net>
  *    Chris Wilson <chris@chris-wilson.co.uk>
  *
+ * $FreeBSD: src/sys/dev/drm2/i915/i915_gem_execbuffer.c,v 1.3 2012/05/28 13:58:08 kib Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/i915/i915_gem_execbuffer.c,v 1.3 2012/05/28 13:58:08 kib Exp $");
 
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>

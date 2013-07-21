@@ -27,10 +27,9 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * $FreeBSD: src/sys/dev/drm2/drm_sarea.h,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/drm_sarea.h,v 1.1 2012/05/22 11:07:44 kib Exp $");
 
 #ifndef _DRM_SAREA_H_
 #define _DRM_SAREA_H_

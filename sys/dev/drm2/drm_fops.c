@@ -27,10 +27,8 @@
  *    Daryll Strauss <daryll@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_fops.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/dev/drm2/drm_fops.c,v 1.1 2012/05/22 11:07:44 kib Exp $");
 
 /** @file drm_fops.c
  * Support code for dealing with the file privates associated with each
