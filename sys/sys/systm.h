@@ -377,5 +377,15 @@ int uminor(udev_t dev);
 int umajor(udev_t dev);
 udev_t makeudev(int x, int y);
 
+/*
+ * Unit number allocation API. (kern/subr_unit.c)
+ */
+struct unrhdr;
+struct unrhdr *new_unrhdr(int low, int high, struct lock *lock);
+void delete_unrhdr(struct unrhdr *uh);
+int alloc_unr(struct unrhdr *uh);
+int alloc_unrl(struct unrhdr *uh);
+void free_unr(struct unrhdr *uh, u_int item);
+
 #endif	/* _KERNEL */
 #endif /* !_SYS_SYSTM_H_ */
