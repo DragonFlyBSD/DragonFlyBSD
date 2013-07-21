@@ -323,14 +323,15 @@ i915_gem_init_ioctl(struct drm_device *dev, void *data,
 	    (args->gtt_end | args->gtt_start) & (PAGE_SIZE - 1))
 		return (-EINVAL);
 
-	if (mtx_initialized(&dev_priv->mm.gtt_space.unused_lock))
-		return (-EBUSY);
 	/*
 	 * XXXKIB. The second-time initialization should be guarded
 	 * against.
 	 */
-	return (i915_gem_do_init(dev, args->gtt_start, args->gtt_end,
-	    args->gtt_end));
+	lockmgr(&dev->dev_lock, LK_EXCLUSIVE|LK_RETRY|LK_CANRECURSE);
+	i915_gem_do_init(dev, args->gtt_start, args->gtt_end, args->gtt_end);
+	lockmgr(&dev->dev_lock, LK_RELEASE);
+
+	return 0;
 }
 
 int
