@@ -503,7 +503,8 @@ struct driver_module_data {
 	devclass_t	*dmd_devclass;
 };
 
-#define DRIVER_MODULE(name, busname, driver, devclass, evh, arg)	\
+#define DRIVER_MODULE_ORDERED(name, busname, driver, devclass, evh, arg,\
+                              order)					\
 									\
 static struct driver_module_data name##_##busname##_driver_mod = {	\
 	evh, arg,							\
@@ -518,8 +519,11 @@ static moduledata_t name##_##busname##_mod = {				\
 	&name##_##busname##_driver_mod					\
 };									\
 DECLARE_MODULE(name##_##busname, name##_##busname##_mod,		\
-	       SI_SUB_DRIVERS, SI_ORDER_MIDDLE)
+	       SI_SUB_DRIVERS, order)
 
+#define DRIVER_MODULE(name, busname, driver, devclass, evh, arg)	\
+	DRIVER_MODULE_ORDERED(name, busname, driver, devclass, evh, arg,\
+	                      SI_ORDER_MIDDLE)
 /**
  * Generic ivar accessor generation macros for bus drivers
  */
