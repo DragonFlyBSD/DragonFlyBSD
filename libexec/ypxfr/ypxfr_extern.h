@@ -38,7 +38,6 @@
 #include <rpcsvc/yp.h>
 
 extern HASHINFO	openinfo;
-extern BTREEINFO openinfo_b;
 
 #ifndef _PATH_YP
 #define _PATH_YP "/var/yp/"
@@ -58,5 +57,4 @@ extern int	ypxfr_get_map(char *, char *, char *, int (*)(int, char *, int, char 
 extern char	*ypxfr_get_master(char *, char *, char *, const int);
 extern unsigned	long ypxfr_get_order(char *, char *, char *, const int);
 extern int	ypxfr_match(char *, char *, char *, char *, unsigned long);
-extern char	*ypxfxerr_string(ypxfrstat);
 extern int	ypxfrd_get_map(char  *, char *, char *, char *);

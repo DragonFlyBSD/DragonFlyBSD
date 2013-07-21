@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/ypxfr/ypxfr_getmap.c,v 1.7.2.2 2002/02/15 00:46:54 des Exp $
- * $DragonFly: src/libexec/ypxfr/ypxfr_getmap.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
  */
 
 #include <stdio.h>
@@ -45,7 +44,6 @@ extern bool_t xdr_ypresp_all_seq(XDR *, unsigned long *);
 
 int (*ypresp_allfn)(int, char *, int, char *, int, char *);
 void *ypresp_data;
-extern DB *specdbp;
 extern enum ypstat yp_errno;
 
 /*
