@@ -27,7 +27,7 @@
  */
 
 #include "dev/drm/drmP.h"
-#include "dev/drm/sis_drm.h"
+#include "sis_drm.h"
 #include "sis_drv.h"
 #include "dev/drm/drm_pciids.h"
 

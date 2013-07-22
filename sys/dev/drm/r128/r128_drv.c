@@ -33,7 +33,7 @@
 
 #include "dev/drm/drmP.h"
 #include "dev/drm/drm.h"
-#include "dev/drm/r128_drm.h"
+#include "r128_drm.h"
 #include "r128_drv.h"
 #include "dev/drm/drm_pciids.h"
 

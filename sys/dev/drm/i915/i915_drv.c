@@ -32,7 +32,7 @@
 #include "dev/drm/drmP.h"
 #include "dev/drm/drm.h"
 #include "dev/drm/drm_mm.h"
-#include "dev/drm/i915_drm.h"
+#include "i915_drm.h"
 #include "i915_drv.h"
 #include "dev/drm/drm_pciids.h"
 

@@ -28,7 +28,7 @@
 
 #include "dev/drm/drmP.h"
 #include "dev/drm/drm.h"
-#include "dev/drm/savage_drm.h"
+#include "savage_drm.h"
 #include "savage_drv.h"
 #include "dev/drm/drm_pciids.h"
 

@@ -24,7 +24,7 @@
  */
 
 #include "dev/drm/drmP.h"
-#include "dev/drm/savage_drm.h"
+#include "savage_drm.h"
 #include "savage_drv.h"
 
 void savage_emit_clip_rect_s3d(drm_savage_private_t *dev_priv,

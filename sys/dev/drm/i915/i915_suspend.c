@@ -29,7 +29,7 @@
 
 #include "dev/drm/drmP.h"
 #include "dev/drm/drm.h"
-#include "dev/drm/i915_drm.h"
+#include "i915_drm.h"
 #include "i915_drv.h"
 
 static bool i915_pipe_enabled(struct drm_device *dev, enum i915_pipe pipe)

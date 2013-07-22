@@ -36,7 +36,7 @@
 
 #include "dev/drm/drmP.h"
 #include "dev/drm/drm.h"
-#include "dev/drm/mach64_drm.h"
+#include "mach64_drm.h"
 #include "mach64_drv.h"
 
 /*******************************************************************/

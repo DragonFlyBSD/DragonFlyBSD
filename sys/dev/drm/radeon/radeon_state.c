@@ -30,7 +30,7 @@
 #include "dev/drm/drmP.h"
 #include "dev/drm/drm.h"
 #include "dev/drm/drm_sarea.h"
-#include "dev/drm/radeon_drm.h"
+#include "radeon_drm.h"
 #include "radeon_drv.h"
 
 /* ================================================================

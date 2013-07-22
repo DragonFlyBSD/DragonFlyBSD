@@ -24,7 +24,7 @@
  */
 
 #include "dev/drm/drmP.h"
-#include "dev/drm/savage_drm.h"
+#include "savage_drm.h"
 #include "savage_drv.h"
 
 /* Need a long timeout for shadow status updates can take a while

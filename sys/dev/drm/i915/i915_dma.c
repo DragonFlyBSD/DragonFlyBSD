@@ -28,8 +28,8 @@
 
 #include "dev/drm/drmP.h"
 #include "dev/drm/drm.h"
-#include "dev/drm/i915_drm.h"
-#include "dev/drm/i915/i915_drv.h"
+#include "i915_drm.h"
+#include "i915_drv.h"
 
 /* Really want an OS-independent resettable timer.  Would like to have
  * this loop run for (eg) 3 sec, but have the timer reset every time

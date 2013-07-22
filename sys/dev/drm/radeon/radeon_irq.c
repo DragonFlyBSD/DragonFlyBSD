@@ -33,7 +33,7 @@
 
 #include "dev/drm/drmP.h"
 #include "dev/drm/drm.h"
-#include "dev/drm/radeon_drm.h"
+#include "radeon_drm.h"
 #include "radeon_drv.h"
 
 void radeon_irq_set_state(struct drm_device *dev, u32 mask, int state)
