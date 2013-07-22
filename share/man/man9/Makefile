@@ -383,8 +383,10 @@ MLINKS+=config_intrhook.9 config_intrhook_disestablish.9 \
 	config_intrhook.9 config_intrhook_establish.9
 MLINKS+=contigmalloc.9 contigfree.9
 MLINKS+=copy.9 copyin.9 \
+	copy.9 copyin_nofault.9 \
 	copy.9 copyinstr.9 \
 	copy.9 copyout.9 \
+	copy.9 copyout_nofault.9 \
 	copy.9 copystr.9
 MLINKS+=crit_enter.9 crit_enter_gd.9 \
 	crit_enter.9 crit_enter_id.9 \
