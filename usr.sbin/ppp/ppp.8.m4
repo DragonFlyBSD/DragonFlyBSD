@@ -5858,14 +5858,14 @@ ifdef({LOCALRAD},{},{.Xr libradius 3 ,
 .Xr vipw 8
 .Sh HISTORY
 This program was originally written by
-.An Toshiharu OHNO Aq tony-o@iij.ad.jp ,
+.An Toshiharu OHNO Aq Mt tony-o@iij.ad.jp ,
 and was submitted to
 .Fx 2.0.5
 by
-.An Atsushi Murai Aq amurai@spec.co.jp .
+.An Atsushi Murai Aq Mt amurai@spec.co.jp .
 .Pp
 It was substantially modified during 1997 by
-.An Brian Somers Aq brian@Awfulhak.org ,
+.An Brian Somers Aq Mt brian@Awfulhak.org ,
 and was ported to
 .Ox
 in November that year
