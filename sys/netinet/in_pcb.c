@@ -1249,7 +1249,9 @@ inp_localgroup_lookup(const struct inpcbinfo *pcbinfo,
 
 	hdr = &pcbinfo->localgrphashbase[
 	    INP_PCBLOCALGRPHASH(lport, pcbinfo->localgrphashmask)];
+#ifdef INP_LOCALGROUP_HASHTHR
 	pkt_hash >>= ncpus2_shift;
+#endif
 
 	/*
 	 * Order of socket selection:
@@ -1268,10 +1270,19 @@ inp_localgroup_lookup(const struct inpcbinfo *pcbinfo,
 		if (grp->il_lport == lport) {
 			int idx;
 
+#ifdef INP_LOCALGROUP_HASHTHR
 			idx = pkt_hash / grp->il_factor;
 			KASSERT(idx < grp->il_inpcnt && idx >= 0,
 			    ("invalid hash %04x, cnt %d or fact %d",
 			     pkt_hash, grp->il_inpcnt, grp->il_factor));
+#else
+			/*
+			 * Modulo-N is used here, which greatly reduces
+			 * completion queue token contention, thus more
+			 * cpu time is saved.
+			 */
+			idx = pkt_hash % grp->il_inpcnt;
+#endif
 
 			if (grp->il_laddr.s_addr == laddr.s_addr)
 				return grp->il_inp[idx];
