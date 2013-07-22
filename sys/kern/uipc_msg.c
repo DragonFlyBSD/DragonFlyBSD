@@ -537,6 +537,14 @@ netmsg_so_notify(netmsg_t msg)
 			      msg->base.lmsg.ms_error);
 	} else {
 		TAILQ_INSERT_TAIL(&ssb->ssb_kq.ki_mlist, &msg->notify, nm_list);
+		/*
+		 * NOTE:
+		 * If predict ever blocks, 'tok' will be released, so
+		 * SSB_MEVENT set beforehand could have been cleared
+		 * when we reach here.  In case that happens, we set
+		 * SSB_MEVENT again, after the notify has been queued.
+		 */
+		atomic_set_int(&ssb->ssb_flags, SSB_MEVENT);
 		lwkt_reltoken(tok);
 	}
 }
