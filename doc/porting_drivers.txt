@@ -168,6 +168,19 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp 
 
 * MPASS macro - Replace it with KKASSERT
 
+
+* PROC_LOCK / PROC_UNLOCK: to be determined on a case-by-case basis
+
+  Some of the time these macros can be removed entirely
+
+  In some cases, some locking must be done; lwkt_gettoken(&proc_token)
+  and the corresponding lwkt_reltoken() call should be good replacements
+
+  It is not a good idea to blindly implement these macros globally, some
+  particular proc subsystem locking semantics differ enough between FreeBSD
+  and DragonFly that this would cause problems
+
+
 * In DragonFly 3.3 format specifier %D was removed from kprintf. As a
   replacement functions kether_ntoa() and hexncpy() were added.
 
