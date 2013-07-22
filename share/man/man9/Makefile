@@ -448,6 +448,7 @@ MLINKS+=dsched.9 dsched_cancel_bio.9 \
 	dsched.9 DSCHED_THREAD_IO_UNLOCK.9 \
 	dsched.9 dsched_thread_io_unref.9 \
 	dsched.9 dsched_unregister.9
+MLINKS+=DRIVER_MODULE.9 DRIVER_MODULE_ORDERED.9
 MLINKS+=EVENTHANDLER.9 EVENTHANDLER_DECLARE.9 \
 	EVENTHANDLER.9 EVENTHANDLER_DEREGISTER.9 \
 	EVENTHANDLER.9 eventhandler_deregister.9 \
