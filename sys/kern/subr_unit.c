@@ -69,7 +69,7 @@
 
 #include <sys/types.h>
 #include <sys/queue.h>
-#include <sys/bitstring.h>
+#include <bitstring.h>
 
 #ifdef _KERNEL
 
