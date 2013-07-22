@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isavar.h,v 1.16.2.2 2000/10/29 13:07:56 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isavar.h,v 1.9 2006/04/30 17:22:15 dillon Exp $
  */
 
 #ifndef _ISA_ISAVAR_H_
@@ -161,10 +160,6 @@ ISA_ACCESSOR(configattr, CONFIGATTR, int)
 extern devclass_t isab_devclass;
 
 extern intrmask_t isa_irq_pending(void);
-extern intrmask_t isa_irq_mask(void);
-#ifdef __i386__
-extern void	 isa_wrap_old_drivers(void);
-#endif
 extern void	isa_probe_children(device_t dev);
 
 extern void	isa_dmacascade (int chan);
