@@ -1300,7 +1300,6 @@ oce_rx(struct oce_rq *rq, uint32_t rqe_idx, struct oce_nic_rx_cqe *cqe)
 
 		if (tail != NULL) {
 			/* additional fragments */
-			pd->mbuf->m_flags &= ~M_PKTHDR;
 			tail->m_next = pd->mbuf;
 			tail = pd->mbuf;
 		} else {
