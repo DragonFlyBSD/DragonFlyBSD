@@ -7337,9 +7337,6 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 	mtx_unlock(&dev->event_lock);
 
 	taskqueue_enqueue(dev_priv->tq, &work->task);
-
-	CTR2(KTR_DRM, "i915_flip_complete %d %p", intel_crtc->plane,
-	    work->pending_flip_obj);
 }
 
 void intel_finish_page_flip(struct drm_device *dev, int pipe)
@@ -7633,8 +7630,6 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 		goto cleanup_pending;
 	intel_disable_fbc(dev);
 	DRM_UNLOCK(dev);
-
-	CTR2(KTR_DRM, "i915_flip_request %d %p", intel_crtc->plane, obj);
 
 	return 0;
 

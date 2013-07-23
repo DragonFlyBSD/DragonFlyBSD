@@ -3288,8 +3288,6 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev, void *data,
 
 out:
 	sx_xunlock(&dev->mode_config.mutex);
-	CTR3(KTR_DRM, "page_flip_ioctl %d %d %d", curproc->p_pid,
-	    page_flip->crtc_id, ret);
 	return (ret);
 }
 

@@ -862,8 +862,6 @@ void drm_vblank_off(struct drm_device *dev, int crtc)
 		drm_vblank_put(dev, e->pipe);
 		list_move_tail(&e->base.link, &e->base.file_priv->event_list);
 		drm_event_wakeup(&e->base);
-		CTR3(KTR_DRM, "vblank_event_delivered %d %d %d",
-		    e->base.pid, e->pipe, e->event.sequence);
 	}
 
 	mtx_unlock(&dev->event_lock);
@@ -1003,9 +1001,6 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 	DRM_DEBUG("event on vblank count %d, current %d, crtc %d\n",
 		  vblwait->request.sequence, seq, pipe);
 
-	CTR4(KTR_DRM, "vblank_event_queued %d %d rt %x %d", curproc->p_pid, pipe,
-	    vblwait->request.type, vblwait->request.sequence);
-
 	e->event.sequence = vblwait->request.sequence;
 	if ((seq - vblwait->request.sequence) <= (1 << 23)) {
 		e->event.sequence = seq;
@@ -1015,8 +1010,6 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 		list_add_tail(&e->base.link, &e->base.file_priv->event_list);
 		drm_event_wakeup(&e->base);
 		vblwait->reply.sequence = seq;
-		CTR3(KTR_DRM, "vblank_event_wakeup p1 %d %d %d", curproc->p_pid,
-		    pipe, vblwait->request.sequence);
 	} else {
 		/* drm_handle_vblank_events will call drm_vblank_put */
 		list_add_tail(&e->base.link, &dev->vblank_event_list);
@@ -1133,16 +1126,9 @@ int drm_wait_vblank(struct drm_device *dev, void *data,
 		long reply_seq;
 
 		reply_seq = drm_vblank_count_and_time(dev, crtc, &now);
-		CTR5(KTR_DRM, "wait_vblank %d %d rt %x success %d %d",
-		    curproc->p_pid, crtc, vblwait->request.type,
-		    vblwait->request.sequence, reply_seq);
 		vblwait->reply.sequence = reply_seq;
 		vblwait->reply.tval_sec = now.tv_sec;
 		vblwait->reply.tval_usec = now.tv_usec;
-	} else {
-		CTR5(KTR_DRM, "wait_vblank %d %d rt %x error %d %d",
-		    curproc->p_pid, crtc, vblwait->request.type, ret,
-		    vblwait->request.sequence);
 	}
 
 done:
@@ -1157,7 +1143,6 @@ void drm_handle_vblank_events(struct drm_device *dev, int crtc)
 	unsigned int seq;
 
 	seq = drm_vblank_count_and_time(dev, crtc, &now);
-	CTR2(KTR_DRM, "drm_handle_vblank_events %d %d", seq, crtc);
 
 	mtx_lock(&dev->event_lock);
 
@@ -1173,8 +1158,6 @@ void drm_handle_vblank_events(struct drm_device *dev, int crtc)
 		drm_vblank_put(dev, e->pipe);
 		list_move_tail(&e->base.link, &e->base.file_priv->event_list);
 		drm_event_wakeup(&e->base);
-		CTR3(KTR_DRM, "vblank_event_wakeup p2 %d %d %d", e->base.pid,
-		    e->pipe, e->event.sequence);
 	}
 
 	mtx_unlock(&dev->event_lock);

@@ -144,8 +144,6 @@ drm_read(struct cdev *kdev, struct uio *uio, int ioflag)
 	while (drm_dequeue_event(dev, file_priv, uio, &e)) {
 		mtx_unlock(&dev->event_lock);
 		error = uiomove(e->event, e->event->length, uio);
-		CTR3(KTR_DRM, "drm_event_dequeued %d %d %d", curproc->p_pid,
-		    e->event->type, e->event->length);
 		e->destroy(e);
 		if (error != 0)
 			return (error);
@@ -188,11 +186,9 @@ drm_poll(struct cdev *kdev, int events, struct thread *td)
 	mtx_lock(&dev->event_lock);
 	if ((events & (POLLIN | POLLRDNORM)) != 0) {
 		if (list_empty(&file_priv->event_list)) {
-			CTR0(KTR_DRM, "drm_poll empty list");
 			selrecord(td, &file_priv->event_poll);
 		} else {
 			revents |= events & (POLLIN | POLLRDNORM);
-			CTR1(KTR_DRM, "drm_poll revents %x", revents);
 		}
 	}
 	mtx_unlock(&dev->event_lock);

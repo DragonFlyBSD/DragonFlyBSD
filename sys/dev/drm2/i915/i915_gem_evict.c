@@ -48,9 +48,6 @@ i915_gem_evict_something(struct drm_device *dev, int min_size,
 	struct drm_i915_gem_object *obj;
 	int ret = 0;
 
-	CTR4(KTR_DRM, "evict_something %p %d %u %d", dev, min_size,
-	    alignment, mappable);
-
 	/*
 	 * The goal is to evict objects and amalgamate space in LRU order.
 	 * The oldest idle objects reside on the inactive list, which is in
@@ -176,8 +173,6 @@ i915_gem_evict_everything(struct drm_device *dev, bool purgeable_only)
 	if (lists_empty)
 		return -ENOSPC;
 
-	CTR2(KTR_DRM, "evict_everything %p %d", dev, purgeable_only);
-
 	/* Flush everything (on to the inactive lists) and evict */
 	ret = i915_gpu_idle(dev, true);
 	if (ret)
@@ -195,8 +190,6 @@ i915_gem_evict_inactive(struct drm_device *dev, bool purgeable_only)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	struct drm_i915_gem_object *obj, *next;
-
-	CTR2(KTR_DRM, "evict_inactive %p %d", dev, purgeable_only);
 
 	list_for_each_entry_safe(obj, next,
 				 &dev_priv->mm.inactive_list, mm_list) {

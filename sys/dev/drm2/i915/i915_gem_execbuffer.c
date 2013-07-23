@@ -1015,8 +1015,6 @@ i915_gem_execbuffer_move_to_active(struct list_head *objects,
 				       &ring->gpu_write_list);
 			intel_mark_busy(ring->dev, obj);
 		}
-		CTR3(KTR_DRM, "object_change_domain move_to_active %p %x %x",
-		    obj, old_read, old_write);
 	}
 }
 
@@ -1347,9 +1345,6 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 		i915_gem_fix_mi_batchbuffer_end(batch_obj,
 		    args->batch_start_offset, args->batch_len);
 	}
-
-	CTR4(KTR_DRM, "ring_dispatch %s %d exec %x %x", ring->name, seqno,
-	    exec_start, exec_len);
 
 	if (cliprects) {
 		for (i = 0; i < args->num_cliprects; i++) {

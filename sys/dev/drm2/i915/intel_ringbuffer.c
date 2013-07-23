@@ -1245,7 +1245,6 @@ int intel_wait_ring_buffer(struct intel_ring_buffer *ring, int n)
 	if (ret != -ENOSPC)
 		return ret;
 
-	CTR1(KTR_DRM, "ring_wait_begin %s", ring->name);
 	if (drm_core_check_feature(dev, DRIVER_GEM))
 		/* With GEM the hangcheck timer should kick us out of the loop,
 		 * leaving it early runs the risk of corrupting GEM state (due
@@ -1259,7 +1258,6 @@ int intel_wait_ring_buffer(struct intel_ring_buffer *ring, int n)
 		ring->head = I915_READ_HEAD(ring);
 		ring->space = ring_space(ring);
 		if (ring->space >= n) {
-			CTR1(KTR_DRM, "ring_wait_end %s", ring->name);
 			return 0;
 		}
 
@@ -1276,11 +1274,9 @@ int intel_wait_ring_buffer(struct intel_ring_buffer *ring, int n)
 
 		pause("915rng", 1);
 		if (atomic_load_acq_32(&dev_priv->mm.wedged) != 0) {
-			CTR1(KTR_DRM, "ring_wait_end %s wedged", ring->name);
 			return -EAGAIN;
 		}
 	} while (!time_after(ticks, end));
-	CTR1(KTR_DRM, "ring_wait_end %s busy", ring->name);
 	return -EBUSY;
 }
 
