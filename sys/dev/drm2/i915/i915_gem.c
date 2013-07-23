@@ -1278,8 +1278,12 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	vm_object_reference(obj->vm_obj);
 	DRM_UNLOCK(dev);
 	rv = vm_map_find(map, obj->vm_obj, args->offset, &addr, args->size,
-	    VMFS_ANY_SPACE, VM_PROT_READ | VM_PROT_WRITE,
-	    VM_PROT_READ | VM_PROT_WRITE, MAP_SHARED);
+	    PAGE_SIZE, /* align */
+	    FALSE, /* fitit */
+	    VM_MAPTYPE_NORMAL, /* maptype */
+	    VM_PROT_READ | VM_PROT_WRITE, /* prot */
+	    VM_PROT_READ | VM_PROT_WRITE, /* max */
+	    MAP_SHARED /* cow */);
 	if (rv != KERN_SUCCESS) {
 		vm_object_deallocate(obj->vm_obj);
 		error = -vm_mmap_to_errno(rv);
@@ -2437,8 +2441,8 @@ i915_gem_wire_page(vm_object_t object, vm_pindex_t pindex)
 	VM_OBJECT_LOCK_ASSERT_OWNED(object);
 	m = vm_page_grab(object, pindex, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 	if (m->valid != VM_PAGE_BITS_ALL) {
-		if (vm_pager_has_page(object, pindex, NULL, NULL)) {
-			rv = vm_pager_get_pages(object, &m, 1, 0);
+		if (vm_pager_has_page(object, pindex)) {
+			rv = vm_pager_get_page(object, &m, 1);
 			m = vm_page_lookup(object, pindex);
 			if (m == NULL)
 				return (NULL);
@@ -2447,7 +2451,7 @@ i915_gem_wire_page(vm_object_t object, vm_pindex_t pindex)
 				return (NULL);
 			}
 		} else {
-			pmap_zero_page(m);
+			pmap_zero_page(VM_PAGE_TO_PHYS(m));
 			m->valid = VM_PAGE_BITS_ALL;
 			m->dirty = 0;
 		}

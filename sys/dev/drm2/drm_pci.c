@@ -80,7 +80,7 @@ drm_pci_alloc(struct drm_device *dev, size_t size,
 	    maxaddr, BUS_SPACE_MAXADDR, /* lowaddr, highaddr */
 	    NULL, NULL, /* filtfunc, filtfuncargs */
 	    size, 1, size, /* maxsize, nsegs, maxsegsize */
-	    0, NULL, NULL, /* flags, lockfunc, lockfuncargs */
+	    0,		/* flags */
 	    &dmah->tag);
 	if (ret != 0) {
 		kfree(dmah, DRM_MEM_DMA);

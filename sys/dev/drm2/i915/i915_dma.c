@@ -1096,7 +1096,7 @@ intel_alloc_mchbar_resource(struct drm_device *dev)
 	dev_priv->mch_res_rid = 0x100;
 	dev_priv->mch_res = BUS_ALLOC_RESOURCE(device_get_parent(vga),
 	    dev->device, SYS_RES_MEMORY, &dev_priv->mch_res_rid, 0, ~0UL,
-	    MCHBAR_SIZE, RF_ACTIVE | RF_SHAREABLE);
+	    MCHBAR_SIZE, RF_ACTIVE | RF_SHAREABLE, -1);
 	if (dev_priv->mch_res == NULL) {
 		DRM_ERROR("failed mchbar resource alloc\n");
 		return (-ENOMEM);
