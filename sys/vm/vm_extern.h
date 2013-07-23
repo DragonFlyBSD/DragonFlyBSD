@@ -97,6 +97,8 @@ int vm_fault (vm_map_t, vm_offset_t, vm_prot_t, int);
 vm_page_t vm_fault_page (vm_map_t, vm_offset_t, vm_prot_t, int, int *);
 vm_page_t vm_fault_page_quick (vm_offset_t, vm_prot_t, int *);
 void vm_fault_copy_entry (vm_map_t, vm_map_t, vm_map_entry_t, vm_map_entry_t);
+int vm_fault_quick_hold_pages(vm_map_t map, vm_offset_t addr, vm_size_t len,
+    vm_prot_t prot, vm_page_t *ma, int max_count);
 void vm_fault_unwire (vm_map_t, vm_map_entry_t);
 int vm_fault_wire (vm_map_t, vm_map_entry_t, boolean_t);
 void vm_fork (struct proc *, struct proc *, int);

@@ -338,8 +338,17 @@ for ( ret = 0 ; !ret && !(condition) ; ) {			\
 __inline static void
 free(void *addr, struct malloc_type *type)
 {
-        if (addr != NULL)
-                kfree(addr, type);
+	if (addr != NULL)
+		kfree(addr, type);
+}
+
+__inline static void
+vm_page_unhold_pages(vm_page_t *ma, int count)
+{
+	int i;
+
+	for (i = 0; i < count; i++)
+		vm_page_unhold(ma[i]);
 }
 
 #define DRM_ERROR(fmt, ...) \
