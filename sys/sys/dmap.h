@@ -32,7 +32,6 @@
  *
  *	@(#)dmap.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/dmap.h,v 1.7 1999/12/29 04:24:40 peter Exp $
- * $DragonFly: src/sys/sys/dmap.h,v 1.4 2008/08/10 22:09:51 dillon Exp $
  */
 
 #ifndef _SYS_DMAP_H_
@@ -57,8 +56,7 @@ struct dmap {
 	swblk_t dm_map[NDMAP];	/* first disk block number in each chunk */
 };
 #ifdef _KERNEL
-extern struct dmap zdmap;
-extern int dmmin, dmmax, dmtext;
+extern int dmmax;
 #endif
 
 /* The following structure is that ``returned'' from a call to vstodb(). */

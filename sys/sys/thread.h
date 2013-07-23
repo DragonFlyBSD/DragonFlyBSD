@@ -450,7 +450,6 @@ extern void lwkt_deschedule_self(thread_t);
 extern void lwkt_yield(void);
 extern void lwkt_yield_quick(void);
 extern void lwkt_user_yield(void);
-extern void lwkt_token_wait(void);
 extern void lwkt_hold(thread_t);
 extern void lwkt_rele(thread_t);
 extern void lwkt_passive_release(thread_t);
@@ -465,7 +464,6 @@ extern void lwkt_reltoken_hard(lwkt_token_t);
 extern int  lwkt_cnttoken(lwkt_token_t, thread_t);
 extern int  lwkt_getalltokens(thread_t, int);
 extern void lwkt_relalltokens(thread_t);
-extern void lwkt_drain_token_requests(void);
 extern void lwkt_token_init(lwkt_token_t, const char *);
 extern void lwkt_token_uninit(lwkt_token_t);
 
