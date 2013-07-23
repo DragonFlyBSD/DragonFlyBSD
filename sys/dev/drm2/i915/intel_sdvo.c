@@ -418,18 +418,18 @@ intel_sdvo_debug_write(struct intel_sdvo *intel_sdvo, u8 cmd,
 		return;
 	DRM_DEBUG_KMS("%s: W: %02X ", SDVO_NAME(intel_sdvo), cmd);
 	for (i = 0; i < args_len; i++)
-		printf("%02X ", ((const u8 *)args)[i]);
+		kprintf("%02X ", ((const u8 *)args)[i]);
 	for (; i < 8; i++)
-		printf("   ");
+		kprintf("   ");
 	for (i = 0; i < DRM_ARRAY_SIZE(sdvo_cmd_names); i++) {
 		if (cmd == sdvo_cmd_names[i].cmd) {
-			printf("(%s)", sdvo_cmd_names[i].name);
+			kprintf("(%s)", sdvo_cmd_names[i].name);
 			break;
 		}
 	}
 	if (i == DRM_ARRAY_SIZE(sdvo_cmd_names))
-		printf("(%02X)", cmd);
-	printf("\n");
+		kprintf("(%02X)", cmd);
+	kprintf("\n");
 }
 
 static const char *cmd_status_names[] = {
@@ -525,9 +525,9 @@ intel_sdvo_read_response(struct intel_sdvo *intel_sdvo, void *response,
 
 	if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0) {
 		if (status <= SDVO_CMD_STATUS_SCALING_NOT_SUPP)
-			printf("(%s)", cmd_status_names[status]);
+			kprintf("(%s)", cmd_status_names[status]);
 		else
-			printf("(??? %d)", status);
+			kprintf("(??? %d)", status);
 	}
 
 	if (status != SDVO_CMD_STATUS_SUCCESS)
@@ -540,15 +540,15 @@ intel_sdvo_read_response(struct intel_sdvo *intel_sdvo, void *response,
 					  &((u8 *)response)[i]))
 			goto log_fail;
 		if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0)
-			printf(" %02X", ((u8 *)response)[i]);
+			kprintf(" %02X", ((u8 *)response)[i]);
 	}
 	if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0)
-		printf("\n");
+		kprintf("\n");
 	return (true);
 
 log_fail:
 	if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0)
-		printf("... failed\n");
+		kprintf("... failed\n");
 	return (false);
 }
 
@@ -1323,7 +1323,7 @@ intel_sdvo_tmds_sink_detect(struct drm_connector *connector)
 		} else
 			status = connector_status_disconnected;
 		connector->display_info.raw_edid = NULL;
-		free(edid, DRM_MEM_KMS);
+		kfree(edid, DRM_MEM_KMS);
 	}
 
 	if (status == connector_status_connected) {
@@ -1398,7 +1398,7 @@ intel_sdvo_detect(struct drm_connector *connector, bool force)
 				ret = connector_status_disconnected;
 
 			connector->display_info.raw_edid = NULL;
-			free(edid, DRM_MEM_KMS);
+			kfree(edid, DRM_MEM_KMS);
 		} else
 			ret = connector_status_connected;
 	}
@@ -1444,7 +1444,7 @@ static void intel_sdvo_get_ddc_modes(struct drm_connector *connector)
 		}
 
 		connector->display_info.raw_edid = NULL;
-		free(edid, DRM_MEM_KMS);
+		kfree(edid, DRM_MEM_KMS);
 	}
 }
 
@@ -1660,7 +1660,7 @@ static void intel_sdvo_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	free(connector, DRM_MEM_KMS);
+	kfree(connector, DRM_MEM_KMS);
 }
 
 static bool intel_sdvo_detect_hdmi_audio(struct drm_connector *connector)
@@ -2035,7 +2035,7 @@ intel_sdvo_dvi_init(struct intel_sdvo *intel_sdvo, int device)
 	struct intel_connector *intel_connector;
 	struct intel_sdvo_connector *intel_sdvo_connector;
 
-	intel_sdvo_connector = malloc(sizeof(struct intel_sdvo_connector),
+	intel_sdvo_connector = kmalloc(sizeof(struct intel_sdvo_connector),
 	    DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
 	if (device == 0) {
@@ -2084,7 +2084,7 @@ intel_sdvo_tv_init(struct intel_sdvo *intel_sdvo, int type)
 	struct intel_connector *intel_connector;
 	struct intel_sdvo_connector *intel_sdvo_connector;
 
-	intel_sdvo_connector = malloc(sizeof(struct intel_sdvo_connector),
+	intel_sdvo_connector = kmalloc(sizeof(struct intel_sdvo_connector),
 	    DRM_MEM_KMS, M_WAITOK | M_ZERO);
 	if (!intel_sdvo_connector)
 		return false;
@@ -2124,7 +2124,7 @@ intel_sdvo_analog_init(struct intel_sdvo *intel_sdvo, int device)
 	struct intel_connector *intel_connector;
 	struct intel_sdvo_connector *intel_sdvo_connector;
 
-	intel_sdvo_connector = malloc(sizeof(struct intel_sdvo_connector),
+	intel_sdvo_connector = kmalloc(sizeof(struct intel_sdvo_connector),
 	    DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
 	intel_connector = &intel_sdvo_connector->base;
@@ -2157,7 +2157,7 @@ intel_sdvo_lvds_init(struct intel_sdvo *intel_sdvo, int device)
 	struct intel_connector *intel_connector;
 	struct intel_sdvo_connector *intel_sdvo_connector;
 
-	intel_sdvo_connector = malloc(sizeof(struct intel_sdvo_connector),
+	intel_sdvo_connector = kmalloc(sizeof(struct intel_sdvo_connector),
 	    DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
 	intel_connector = &intel_sdvo_connector->base;
@@ -2589,14 +2589,14 @@ bool intel_sdvo_init(struct drm_device *dev, int sdvo_reg)
 	struct intel_sdvo *intel_sdvo;
 	int i;
 
-	intel_sdvo = malloc(sizeof(struct intel_sdvo), DRM_MEM_KMS,
+	intel_sdvo = kmalloc(sizeof(struct intel_sdvo), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
 
 	intel_sdvo->sdvo_reg = sdvo_reg;
 	intel_sdvo->slave_addr = intel_sdvo_get_slave_addr(dev, sdvo_reg) >> 1;
 	intel_sdvo_select_i2c_bus(dev_priv, intel_sdvo, sdvo_reg);
 	if (!intel_sdvo_init_ddc_proxy(intel_sdvo, dev, sdvo_reg)) {
-		free(intel_sdvo, DRM_MEM_KMS);
+		kfree(intel_sdvo, DRM_MEM_KMS);
 		return false;
 	}
 
@@ -2673,7 +2673,7 @@ bool intel_sdvo_init(struct drm_device *dev, int sdvo_reg)
 
 err:
 	drm_encoder_cleanup(&intel_encoder->base);
-	free(intel_sdvo, DRM_MEM_KMS);
+	kfree(intel_sdvo, DRM_MEM_KMS);
 
 	return false;
 }

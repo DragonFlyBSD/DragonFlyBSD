@@ -1371,7 +1371,7 @@ intel_tv_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	free(connector, DRM_MEM_KMS);
+	kfree(connector, DRM_MEM_KMS);
 }
 
 
@@ -1535,9 +1535,9 @@ intel_tv_init(struct drm_device *dev)
 	    (tv_dac_off & TVDAC_STATE_CHG_EN) != 0)
 		return;
 
-	intel_tv = malloc(sizeof(struct intel_tv), DRM_MEM_KMS,
+	intel_tv = kmalloc(sizeof(struct intel_tv), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
-	intel_connector = malloc(sizeof(struct intel_connector), DRM_MEM_KMS,
+	intel_connector = kmalloc(sizeof(struct intel_connector), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
 
 	intel_encoder = &intel_tv->base;

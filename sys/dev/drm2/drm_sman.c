@@ -130,7 +130,7 @@ drm_sman_set_range(struct drm_sman * sman, unsigned int manager,
 	KASSERT(manager < sman->num_managers, ("Invalid manager"));
 
 	sman_mm = &sman->mm[manager];
-	mm = malloc(sizeof(*mm), DRM_MEM_MM, M_NOWAIT | M_ZERO);
+	mm = kmalloc(sizeof(*mm), DRM_MEM_MM, M_NOWAIT | M_ZERO);
 	if (!mm) {
 		return -ENOMEM;
 	}
@@ -173,7 +173,7 @@ static struct drm_owner_item *drm_sman_get_owner_item(struct drm_sman * sman,
 				      owner_hash);
 	}
 
-	owner_item = malloc(sizeof(*owner_item), DRM_MEM_MM, M_NOWAIT | M_ZERO);
+	owner_item = kmalloc(sizeof(*owner_item), DRM_MEM_MM, M_NOWAIT | M_ZERO);
 	if (!owner_item)
 		goto out;
 
@@ -209,7 +209,7 @@ struct drm_memblock_item *drm_sman_alloc(struct drm_sman *sman, unsigned int man
 		return NULL;
 	}
 
-	memblock = malloc(sizeof(*memblock), DRM_MEM_MM, M_NOWAIT | M_ZERO);
+	memblock = kmalloc(sizeof(*memblock), DRM_MEM_MM, M_NOWAIT | M_ZERO);
 	DRM_DEBUG("allocated mem_block %p\n", memblock);
 	if (!memblock)
 		goto out;

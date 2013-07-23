@@ -44,11 +44,11 @@ drm_sg_alloc(struct drm_device *dev, struct drm_scatter_gather *request)
 
 	DRM_DEBUG("request size=%ld\n", request->size);
 
-	entry = malloc(sizeof(*entry), DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+	entry = kmalloc(sizeof(*entry), DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
 
 	size = round_page(request->size);
 	entry->pages = OFF_TO_IDX(size);
-	entry->busaddr = malloc(entry->pages * sizeof(*entry->busaddr),
+	entry->busaddr = kmalloc(entry->pages * sizeof(*entry->busaddr),
 	    DRM_MEM_SGLISTS, M_WAITOK | M_ZERO);
 
 	entry->vaddr = kmem_alloc_attr(kernel_map, size, M_WAITOK | M_ZERO,
@@ -100,8 +100,8 @@ drm_sg_cleanup(struct drm_sg_mem *entry)
 	if (entry->vaddr != 0)
 		kmem_free(kernel_map, entry->vaddr, IDX_TO_OFF(entry->pages));
 
-	free(entry->busaddr, DRM_MEM_SGLISTS);
-	free(entry, DRM_MEM_DRIVER);
+	kfree(entry->busaddr, DRM_MEM_SGLISTS);
+	kfree(entry, DRM_MEM_DRIVER);
 
 	return;
 }

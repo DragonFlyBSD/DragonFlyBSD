@@ -48,17 +48,17 @@ drm_fetch_cmdline_mode_from_kenv(struct drm_connector *connector,
 	bool res;
 
 	res = false;
-	tun_var_name = malloc(sizeof(tun_prefix) +
+	tun_var_name = kmalloc(sizeof(tun_prefix) +
 	    strlen(drm_get_connector_name(connector)), M_TEMP, M_WAITOK);
 	strcpy(tun_var_name, tun_prefix);
 	strcat(tun_var_name, drm_get_connector_name(connector));
-	tun_mode = getenv(tun_var_name);
+	tun_mode = kgetenv(tun_var_name);
 	if (tun_mode != NULL) {
 		res = drm_mode_parse_command_line_for_connector(tun_mode,
 		    connector, cmdline_mode);
-		freeenv(tun_mode);
+		kfreeenv(tun_mode);
 	}
-	free(tun_var_name, M_TEMP);
+	kfree(tun_var_name, M_TEMP);
 	return (res);
 }
 
@@ -320,7 +320,7 @@ static bool drm_encoder_crtc_ok(struct drm_encoder *encoder,
 	int crtc_mask = 1;
 
 	if (crtc == NULL)
-		printf("checking null crtc?\n");
+		kprintf("checking null crtc?\n");
 
 	dev = crtc->dev;
 
@@ -580,11 +580,11 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set)
 
 	/* Allocate space for the backup of all (non-pointer) crtc, encoder and
 	 * connector data. */
-	save_crtcs = malloc(dev->mode_config.num_crtc * sizeof(struct drm_crtc),
+	save_crtcs = kmalloc(dev->mode_config.num_crtc * sizeof(struct drm_crtc),
 	    DRM_MEM_KMS, M_WAITOK | M_ZERO);
-	save_encoders = malloc(dev->mode_config.num_encoder *
+	save_encoders = kmalloc(dev->mode_config.num_encoder *
 	    sizeof(struct drm_encoder), DRM_MEM_KMS, M_WAITOK | M_ZERO);
-	save_connectors = malloc(dev->mode_config.num_connector *
+	save_connectors = kmalloc(dev->mode_config.num_connector *
 	    sizeof(struct drm_connector), DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
 	/* Copy data. Note that driver private data is not affected.
@@ -750,9 +750,9 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set)
 		}
 	}
 
-	free(save_connectors, DRM_MEM_KMS);
-	free(save_encoders, DRM_MEM_KMS);
-	free(save_crtcs, DRM_MEM_KMS);
+	kfree(save_connectors, DRM_MEM_KMS);
+	kfree(save_encoders, DRM_MEM_KMS);
+	kfree(save_crtcs, DRM_MEM_KMS);
 	return 0;
 
 fail:
@@ -778,9 +778,9 @@ fail:
 				      save_set.y, save_set.fb))
 		DRM_ERROR("failed to restore config after modeset failure\n");
 
-	free(save_connectors, DRM_MEM_KMS);
-	free(save_encoders, DRM_MEM_KMS);
-	free(save_crtcs, DRM_MEM_KMS);
+	kfree(save_connectors, DRM_MEM_KMS);
+	kfree(save_encoders, DRM_MEM_KMS);
+	kfree(save_crtcs, DRM_MEM_KMS);
 	return ret;
 }
 

@@ -70,12 +70,12 @@ int drm_setunique(struct drm_device *dev, void *data,
 	if (!u->unique_len || u->unique_len > 1024)
 		return EINVAL;
 
-	busid = malloc(u->unique_len + 1, DRM_MEM_DRIVER, M_WAITOK);
+	busid = kmalloc(u->unique_len + 1, DRM_MEM_DRIVER, M_WAITOK);
 	if (busid == NULL)
 		return ENOMEM;
 
 	if (DRM_COPY_FROM_USER(busid, u->unique, u->unique_len)) {
-		free(busid, DRM_MEM_DRIVER);
+		kfree(busid, DRM_MEM_DRIVER);
 		return EFAULT;
 	}
 	busid[u->unique_len] = '\0';
@@ -83,9 +83,9 @@ int drm_setunique(struct drm_device *dev, void *data,
 	/* Return error if the busid submitted doesn't match the device's actual
 	 * busid.
 	 */
-	ret = sscanf(busid, "PCI:%d:%d:%d", &bus, &slot, &func);
+	ret = ksscanf(busid, "PCI:%d:%d:%d", &bus, &slot, &func);
 	if (ret != 3) {
-		free(busid, DRM_MEM_DRIVER);
+		kfree(busid, DRM_MEM_DRIVER);
 		return EINVAL;
 	}
 	domain = bus >> 8;
@@ -95,7 +95,7 @@ int drm_setunique(struct drm_device *dev, void *data,
 	    (bus != dev->pci_bus) ||
 	    (slot != dev->pci_slot) ||
 	    (func != dev->pci_func)) {
-		free(busid, DRM_MEM_DRIVER);
+		kfree(busid, DRM_MEM_DRIVER);
 		return EINVAL;
 	}
 
@@ -126,13 +126,13 @@ drm_set_busid(struct drm_device *dev)
 	}
 
 	dev->unique_len = 20;
-	dev->unique = malloc(dev->unique_len + 1, DRM_MEM_DRIVER, M_NOWAIT);
+	dev->unique = kmalloc(dev->unique_len + 1, DRM_MEM_DRIVER, M_NOWAIT);
 	if (dev->unique == NULL) {
 		DRM_UNLOCK(dev);
 		return ENOMEM;
 	}
 
-	snprintf(dev->unique, dev->unique_len, "pci:%04x:%02x:%02x.%1x",
+	ksnprintf(dev->unique, dev->unique_len, "pci:%04x:%02x:%02x.%1x",
 	    dev->pci_domain, dev->pci_bus, dev->pci_slot, dev->pci_func);
 
 	DRM_UNLOCK(dev);

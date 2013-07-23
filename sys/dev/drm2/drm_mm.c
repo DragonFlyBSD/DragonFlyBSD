@@ -50,7 +50,7 @@ static struct drm_mm_node *drm_mm_kmalloc(struct drm_mm *mm, int atomic)
 {
 	struct drm_mm_node *child;
 
-	child = malloc(sizeof(*child), DRM_MEM_MM, M_ZERO |
+	child = kmalloc(sizeof(*child), DRM_MEM_MM, M_ZERO |
 	    (atomic ? M_NOWAIT : M_WAITOK));
 
 	if (unlikely(child == NULL)) {
@@ -76,7 +76,7 @@ int drm_mm_pre_get(struct drm_mm *mm)
 	mtx_lock(&mm->unused_lock);
 	while (mm->num_unused < MM_UNUSED_TARGET) {
 		mtx_unlock(&mm->unused_lock);
-		node = malloc(sizeof(*node), DRM_MEM_MM, M_WAITOK);
+		node = kmalloc(sizeof(*node), DRM_MEM_MM, M_WAITOK);
 		mtx_lock(&mm->unused_lock);
 
 		if (unlikely(node == NULL)) {
@@ -298,7 +298,7 @@ void drm_mm_put_block(struct drm_mm_node *node)
 		list_add(&node->node_list, &mm->unused_nodes);
 		++mm->num_unused;
 	} else
-		free(node, DRM_MEM_MM);
+		kfree(node, DRM_MEM_MM);
 	mtx_unlock(&mm->unused_lock);
 }
 
@@ -549,7 +549,7 @@ void drm_mm_takedown(struct drm_mm * mm)
 	mtx_lock(&mm->unused_lock);
 	list_for_each_entry_safe(entry, next, &mm->unused_nodes, node_list) {
 		list_del(&entry->node_list);
-		free(entry, DRM_MEM_MM);
+		kfree(entry, DRM_MEM_MM);
 		--mm->num_unused;
 	}
 	mtx_unlock(&mm->unused_lock);

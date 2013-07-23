@@ -219,7 +219,7 @@ eb_create(int size)
 {
 	struct eb_objects *eb;
 
-	eb = malloc(sizeof(*eb), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	eb = kmalloc(sizeof(*eb), DRM_I915_GEM, M_WAITOK | M_ZERO);
 	eb->buckets = hashinit(size, DRM_I915_GEM, &eb->hashmask);
 	return (eb);
 }
@@ -257,8 +257,8 @@ static void
 eb_destroy(struct eb_objects *eb)
 {
 
-	free(eb->buckets, DRM_I915_GEM);
-	free(eb, DRM_I915_GEM);
+	kfree(eb->buckets, DRM_I915_GEM);
+	kfree(eb, DRM_I915_GEM);
 }
 
 static int
@@ -628,7 +628,7 @@ i915_gem_execbuffer_reserve(struct intel_ring_buffer *ring,
 				ret_ignore = i915_gem_object_unbind(obj);
 				(void)ret_ignore;
 				if (obj->gtt_space != NULL)
-					printf("%s: gtt_space\n", __func__);
+					kprintf("%s: gtt_space\n", __func__);
 				break;
 			}
 		}
@@ -715,9 +715,9 @@ i915_gem_execbuffer_relocate_slow(struct drm_device *dev,
 	for (i = 0; i < count; i++)
 		total += exec[i].relocation_count;
 
-	reloc_offset = malloc(count * sizeof(*reloc_offset), DRM_I915_GEM,
+	reloc_offset = kmalloc(count * sizeof(*reloc_offset), DRM_I915_GEM,
 	    M_WAITOK | M_ZERO);
-	reloc = malloc(total * sizeof(*reloc), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	reloc = kmalloc(total * sizeof(*reloc), DRM_I915_GEM, M_WAITOK | M_ZERO);
 
 	total = 0;
 	for (i = 0; i < count; i++) {
@@ -780,8 +780,8 @@ i915_gem_execbuffer_relocate_slow(struct drm_device *dev,
 	 */
 
 err:
-	free(reloc, DRM_I915_GEM);
-	free(reloc_offset, DRM_I915_GEM);
+	kfree(reloc, DRM_I915_GEM);
+	kfree(reloc_offset, DRM_I915_GEM);
 	return ret;
 }
 
@@ -853,11 +853,11 @@ i915_gem_execbuffer_sync_rings(struct drm_i915_gem_object *obj,
 	if (seqno == from->outstanding_lazy_request) {
 		struct drm_i915_gem_request *request;
 
-		request = malloc(sizeof(*request), DRM_I915_GEM,
+		request = kmalloc(sizeof(*request), DRM_I915_GEM,
 		    M_WAITOK | M_ZERO);
 		ret = i915_add_request(from, NULL, request);
 		if (ret) {
-			free(request, DRM_I915_GEM);
+			kfree(request, DRM_I915_GEM);
 			return ret;
 		}
 
@@ -957,7 +957,7 @@ validate_exec_list(struct drm_i915_gem_exec_object2 *exec, int count,
 	int i, length, page_count;
 
 	/* XXXKIB various limits checking is missing there */
-	*map = malloc(count * sizeof(*ma), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	*map = kmalloc(count * sizeof(*ma), DRM_I915_GEM, M_WAITOK | M_ZERO);
 	for (i = 0; i < count; i++) {
 		/* First check for malicious input causing overflow */
 		if (exec[i].relocation_count >
@@ -977,12 +977,12 @@ validate_exec_list(struct drm_i915_gem_exec_object2 *exec, int count,
 		 * partial page.  Thus +2.
 		 */
 		page_count = howmany(length, PAGE_SIZE) + 2;
-		ma = (*map)[i] = malloc(page_count * sizeof(vm_page_t),
+		ma = (*map)[i] = kmalloc(page_count * sizeof(vm_page_t),
 		    DRM_I915_GEM, M_WAITOK | M_ZERO);
 		if (vm_fault_quick_hold_pages(&curproc->p_vmspace->vm_map,
 		    exec[i].relocs_ptr, length, VM_PROT_READ | VM_PROT_WRITE,
 		    ma, page_count) == -1) {
-			free(ma, DRM_I915_GEM);
+			kfree(ma, DRM_I915_GEM);
 			(*map)[i] = NULL;
 			return (-EFAULT);
 		}
@@ -1043,10 +1043,10 @@ i915_gem_execbuffer_retire_commands(struct drm_device *dev,
 	}
 
 	/* Add a breadcrumb for the completion of the batch buffer */
-	request = malloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	request = kmalloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
 	if (request == NULL || i915_add_request(ring, file, request)) {
 		i915_gem_next_request_seqno(ring);
-		free(request, DRM_I915_GEM);
+		kfree(request, DRM_I915_GEM);
 	} else if (i915_gem_sync_exec_requests)
 		i915_wait_request(ring, request->seqno, true);
 }
@@ -1218,7 +1218,7 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 			ret = -EINVAL;
 			goto pre_struct_lock_err;
 		}
-		cliprects = malloc( sizeof(*cliprects) * args->num_cliprects,
+		cliprects = kmalloc( sizeof(*cliprects) * args->num_cliprects,
 		    DRM_I915_GEM, M_WAITOK | M_ZERO);
 		ret = -copyin((void *)(uintptr_t)args->cliprects_ptr, cliprects,
 		    sizeof(*cliprects) * args->num_cliprects);
@@ -1387,11 +1387,11 @@ pre_struct_lock_err:
 			    exec[i].relocation_count *
 			    sizeof(struct drm_i915_gem_relocation_entry),
 			    PAGE_SIZE));
-			free(relocs_ma[i], DRM_I915_GEM);
+			kfree(relocs_ma[i], DRM_I915_GEM);
 		}
 	}
-	free(relocs_ma, DRM_I915_GEM);
-	free(cliprects, DRM_I915_GEM);
+	kfree(relocs_ma, DRM_I915_GEM);
+	kfree(cliprects, DRM_I915_GEM);
 	return ret;
 }
 
@@ -1419,17 +1419,17 @@ i915_gem_execbuffer(struct drm_device *dev, void *data,
 
 	/* Copy in the exec list from userland */
 	/* XXXKIB user-controlled malloc size */
-	exec_list = malloc(sizeof(*exec_list) * args->buffer_count,
+	exec_list = kmalloc(sizeof(*exec_list) * args->buffer_count,
 	    DRM_I915_GEM, M_WAITOK);
-	exec2_list = malloc(sizeof(*exec2_list) * args->buffer_count,
+	exec2_list = kmalloc(sizeof(*exec2_list) * args->buffer_count,
 	    DRM_I915_GEM, M_WAITOK);
 	ret = -copyin((void *)(uintptr_t)args->buffers_ptr, exec_list,
 	    sizeof(*exec_list) * args->buffer_count);
 	if (ret != 0) {
 		DRM_DEBUG("copy %d exec entries failed %d\n",
 			  args->buffer_count, ret);
-		free(exec_list, DRM_I915_GEM);
-		free(exec2_list, DRM_I915_GEM);
+		kfree(exec_list, DRM_I915_GEM);
+		kfree(exec2_list, DRM_I915_GEM);
 		return (ret);
 	}
 
@@ -1470,8 +1470,8 @@ i915_gem_execbuffer(struct drm_device *dev, void *data,
 		}
 	}
 
-	free(exec_list, DRM_I915_GEM);
-	free(exec2_list, DRM_I915_GEM);
+	kfree(exec_list, DRM_I915_GEM);
+	kfree(exec2_list, DRM_I915_GEM);
 	return ret;
 }
 
@@ -1492,15 +1492,15 @@ i915_gem_execbuffer2(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
-	/* XXXKIB user-controllable malloc size */
-	exec2_list = malloc(sizeof(*exec2_list) * args->buffer_count,
+	/* XXXKIB user-controllable kmalloc size */
+	exec2_list = kmalloc(sizeof(*exec2_list) * args->buffer_count,
 	    DRM_I915_GEM, M_WAITOK);
 	ret = -copyin((void *)(uintptr_t)args->buffers_ptr, exec2_list,
 	    sizeof(*exec2_list) * args->buffer_count);
 	if (ret != 0) {
 		DRM_DEBUG("copy %d exec entries failed %d\n",
 			  args->buffer_count, ret);
-		free(exec2_list, DRM_I915_GEM);
+		kfree(exec2_list, DRM_I915_GEM);
 		return (ret);
 	}
 
@@ -1516,6 +1516,6 @@ i915_gem_execbuffer2(struct drm_device *dev, void *data,
 		}
 	}
 
-	free(exec2_list, DRM_I915_GEM);
+	kfree(exec2_list, DRM_I915_GEM);
 	return ret;
 }

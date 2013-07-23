@@ -131,7 +131,7 @@ drm_gem_name_create(struct drm_gem_names *names, void *p, uint32_t *name)
 {
 	struct drm_gem_name *np;
 
-	np = malloc(sizeof(struct drm_gem_name), M_GEM_NAMES, M_WAITOK);
+	np = kmalloc(sizeof(struct drm_gem_name), M_GEM_NAMES, M_WAITOK);
 	mtx_lock(&names->lock);
 	if (*name != 0) {
 		mtx_unlock(&names->lock);
@@ -158,7 +158,7 @@ drm_gem_names_delete_name(struct drm_gem_names *names, struct drm_gem_name *np)
 	LIST_REMOVE(np, link);
 	mtx_unlock(&names->lock);
 	free_unr(names->unr, np->name);
-	free(np, M_GEM_NAMES);
+	kfree(np, M_GEM_NAMES);
 }
 
 void *

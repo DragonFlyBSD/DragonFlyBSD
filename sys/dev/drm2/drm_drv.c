@@ -415,7 +415,7 @@ static int drm_lastclose(struct drm_device *dev)
 		drm_irq_uninstall(dev);
 
 	if (dev->unique) {
-		free(dev->unique, DRM_MEM_DRIVER);
+		kfree(dev->unique, DRM_MEM_DRIVER);
 		dev->unique = NULL;
 		dev->unique_len = 0;
 	}
@@ -423,7 +423,7 @@ static int drm_lastclose(struct drm_device *dev)
 	for (i = 0; i < DRM_HASH_SIZE; i++) {
 		for (pt = dev->magiclist[i].head; pt; pt = next) {
 			next = pt->next;
-			free(pt, DRM_MEM_MAGIC);
+			kfree(pt, DRM_MEM_MAGIC);
 		}
 		dev->magiclist[i].head = dev->magiclist[i].tail = NULL;
 	}
@@ -445,7 +445,7 @@ static int drm_lastclose(struct drm_device *dev)
 			if (entry->bound)
 				drm_agp_unbind_memory(entry->handle);
 			drm_agp_free_memory(entry->handle);
-			free(entry, DRM_MEM_AGPLISTS);
+			kfree(entry, DRM_MEM_AGPLISTS);
 		}
 		dev->agp->memory = NULL;
 
@@ -629,7 +629,7 @@ static void drm_unload(struct drm_device *dev)
 	}
 
 	if (dev->agp) {
-		free(dev->agp, DRM_MEM_AGPLISTS);
+		kfree(dev->agp, DRM_MEM_AGPLISTS);
 		dev->agp = NULL;
 	}
 
@@ -783,7 +783,7 @@ void drm_close(void *data)
 	if (dev->driver->postclose != NULL)
 		dev->driver->postclose(dev, file_priv);
 	TAILQ_REMOVE(&dev->files, file_priv, link);
-	free(file_priv, DRM_MEM_FILES);
+	kfree(file_priv, DRM_MEM_FILES);
 
 	/* ========================================================
 	 * End inline drm_release
@@ -884,7 +884,7 @@ int drm_ioctl(struct cdev *kdev, u_long cmd, caddr_t data, int flags,
 		DRM_DEBUG("    returning %d\n", retcode);
 	if (retcode != 0 &&
 	    (drm_debug_flag & DRM_DEBUGBITS_FAILED_IOCTL) != 0) {
-		printf(
+		kprintf(
 "pid %d, cmd 0x%02lx, nr 0x%02x/%1d, dev 0x%lx, auth %d, res %d\n",
 		    DRM_CURRENTPID, cmd, nr, is_driver_ioctl, (long)dev->device,
 		    file_priv->authenticated, retcode);
@@ -912,7 +912,7 @@ drm_add_busid_modesetting(struct drm_device *dev, struct sysctl_ctx_list *ctx,
 {
 	struct sysctl_oid *oid;
 
-	snprintf(dev->busid_str, sizeof(dev->busid_str),
+	ksnprintf(dev->busid_str, sizeof(dev->busid_str),
 	     "pci:%04x:%02x:%02x.%d", dev->pci_domain, dev->pci_bus,
 	     dev->pci_slot, dev->pci_func);
 	oid = SYSCTL_ADD_STRING(ctx, SYSCTL_CHILDREN(top), OID_AUTO, "busid",

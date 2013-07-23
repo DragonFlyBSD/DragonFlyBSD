@@ -222,7 +222,7 @@ static int intel_overlay_do_wait_request(struct intel_overlay *overlay,
 	KASSERT(!overlay->last_flip_req, ("Overlay already has flip req"));
 	ret = i915_add_request(LP_RING(dev_priv), NULL, request);
 	if (ret) {
-		free(request, DRM_I915_GEM);
+		kfree(request, DRM_I915_GEM);
 		return ret;
 	}
 	overlay->last_flip_req = request->seqno;
@@ -302,11 +302,11 @@ static int intel_overlay_on(struct intel_overlay *overlay)
 			return pipe_a_quirk;
 	}
 
-	request = malloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	request = kmalloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
 
 	ret = BEGIN_LP_RING(4);
 	if (ret) {
-		free(request, DRM_I915_GEM);
+		kfree(request, DRM_I915_GEM);
 		goto out;
 	}
 
@@ -337,7 +337,7 @@ static int intel_overlay_continue(struct intel_overlay *overlay,
 
 	KASSERT(overlay->active, ("Overlay not active"));
 
-	request = malloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	request = kmalloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
 
 	if (load_polyphase_filter)
 		flip_addr |= OFC_UPDATE;
@@ -349,7 +349,7 @@ static int intel_overlay_continue(struct intel_overlay *overlay,
 
 	ret = BEGIN_LP_RING(2);
 	if (ret) {
-		free(request, DRM_I915_GEM);
+		kfree(request, DRM_I915_GEM);
 		return ret;
 	}
 	OUT_RING(MI_OVERLAY_FLIP | MI_OVERLAY_CONTINUE);
@@ -358,7 +358,7 @@ static int intel_overlay_continue(struct intel_overlay *overlay,
 
 	ret = i915_add_request(LP_RING(dev_priv), NULL, request);
 	if (ret) {
-		free(request, DRM_I915_GEM);
+		kfree(request, DRM_I915_GEM);
 		return ret;
 	}
 
@@ -403,7 +403,7 @@ static int intel_overlay_off(struct intel_overlay *overlay)
 
 	KASSERT(overlay->active, ("Overlay is not active"));
 
-	request = malloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	request = kmalloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
 
 	/* According to intel docs the overlay hw may hang (when switching
 	 * off) without loading the filter coeffs. It is however unclear whether
@@ -413,7 +413,7 @@ static int intel_overlay_off(struct intel_overlay *overlay)
 
 	ret = BEGIN_LP_RING(6);
 	if (ret) {
-		free(request, DRM_I915_GEM);
+		kfree(request, DRM_I915_GEM);
 		return ret;
 	}
 	/* wait for overlay to go idle */
@@ -473,11 +473,11 @@ static int intel_overlay_release_old_vid(struct intel_overlay *overlay)
 		struct drm_i915_gem_request *request;
 
 		/* synchronous slowpath */
-		request = malloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
+		request = kmalloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
 
 		ret = BEGIN_LP_RING(2);
 		if (ret) {
-			free(request, DRM_I915_GEM);
+			kfree(request, DRM_I915_GEM);
 			return ret;
 		}
 
@@ -1129,7 +1129,7 @@ int intel_overlay_put_image(struct drm_device *dev, void *data,
 		return ret;
 	}
 
-	params = malloc(sizeof(struct put_image_params), DRM_I915_GEM,
+	params = kmalloc(sizeof(struct put_image_params), DRM_I915_GEM,
 	    M_WAITOK | M_ZERO);
 
 	drmmode_obj = drm_mode_object_find(dev, put_image_rec->crtc_id,
@@ -1231,7 +1231,7 @@ int intel_overlay_put_image(struct drm_device *dev, void *data,
 	DRM_UNLOCK(dev);
 	sx_xunlock(&dev->mode_config.mutex);
 
-	free(params, DRM_I915_GEM);
+	kfree(params, DRM_I915_GEM);
 
 	return 0;
 
@@ -1240,7 +1240,7 @@ out_unlock:
 	sx_xunlock(&dev->mode_config.mutex);
 	drm_gem_object_unreference_unlocked(&new_bo->base);
 out_free:
-	free(params, DRM_I915_GEM);
+	kfree(params, DRM_I915_GEM);
 
 	return ret;
 }
@@ -1398,7 +1398,7 @@ void intel_setup_overlay(struct drm_device *dev)
 	if (!HAS_OVERLAY(dev))
 		return;
 
-	overlay = malloc(sizeof(struct intel_overlay), DRM_I915_GEM,
+	overlay = kmalloc(sizeof(struct intel_overlay), DRM_I915_GEM,
 	    M_WAITOK | M_ZERO);
 	DRM_LOCK(dev);
 	if (dev_priv->overlay != NULL)
@@ -1462,7 +1462,7 @@ out_free_bo:
 	drm_gem_object_unreference(&reg_bo->base);
 out_free:
 	DRM_UNLOCK(dev);
-	free(overlay, DRM_I915_GEM);
+	kfree(overlay, DRM_I915_GEM);
 	return;
 }
 
@@ -1479,7 +1479,7 @@ void intel_cleanup_overlay(struct drm_device *dev)
 	KASSERT(!dev_priv->overlay->active, ("Overlay still active"));
 
 	drm_gem_object_unreference_unlocked(&dev_priv->overlay->reg_bo->base);
-	free(dev_priv->overlay, DRM_I915_GEM);
+	kfree(dev_priv->overlay, DRM_I915_GEM);
 }
 
 struct intel_overlay_error_state {
@@ -1500,7 +1500,7 @@ intel_overlay_capture_error_state(struct drm_device *dev)
 	if (!overlay || !overlay->active)
 		return NULL;
 
-	error = malloc(sizeof(*error), DRM_I915_GEM, M_NOWAIT);
+	error = kmalloc(sizeof(*error), DRM_I915_GEM, M_NOWAIT);
 	if (error == NULL)
 		return NULL;
 
@@ -1521,7 +1521,7 @@ intel_overlay_capture_error_state(struct drm_device *dev)
 	return (error);
 
 err:
-	free(error, DRM_I915_GEM);
+	kfree(error, DRM_I915_GEM);
 	return (NULL);
 }
 

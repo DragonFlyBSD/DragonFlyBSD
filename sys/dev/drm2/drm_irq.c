@@ -339,13 +339,13 @@ void drm_vblank_cleanup(struct drm_device *dev)
 
 	vblank_disable_fn(dev);
 
-	free(dev->_vblank_count, DRM_MEM_VBLANK);
-	free(dev->vblank_refcount, DRM_MEM_VBLANK);
-	free(dev->vblank_enabled, DRM_MEM_VBLANK);
-	free(dev->last_vblank, DRM_MEM_VBLANK);
-	free(dev->last_vblank_wait, DRM_MEM_VBLANK);
-	free(dev->vblank_inmodeset, DRM_MEM_VBLANK);
-	free(dev->_vblank_time, DRM_MEM_VBLANK);
+	kfree(dev->_vblank_count, DRM_MEM_VBLANK);
+	kfree(dev->vblank_refcount, DRM_MEM_VBLANK);
+	kfree(dev->vblank_enabled, DRM_MEM_VBLANK);
+	kfree(dev->last_vblank, DRM_MEM_VBLANK);
+	kfree(dev->last_vblank_wait, DRM_MEM_VBLANK);
+	kfree(dev->vblank_inmodeset, DRM_MEM_VBLANK);
+	kfree(dev->_vblank_time, DRM_MEM_VBLANK);
 
 	dev->num_crtcs = 0;
 }
@@ -362,19 +362,19 @@ int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 
 	dev->num_crtcs = num_crtcs;
 
-	dev->_vblank_count = malloc(sizeof(atomic_t) * num_crtcs,
+	dev->_vblank_count = kmalloc(sizeof(atomic_t) * num_crtcs,
 	    DRM_MEM_VBLANK, M_WAITOK);
-	dev->vblank_refcount = malloc(sizeof(atomic_t) * num_crtcs,
+	dev->vblank_refcount = kmalloc(sizeof(atomic_t) * num_crtcs,
 	    DRM_MEM_VBLANK, M_WAITOK);
-	dev->vblank_enabled = malloc(num_crtcs * sizeof(int),
+	dev->vblank_enabled = kmalloc(num_crtcs * sizeof(int),
 	    DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
-	dev->last_vblank = malloc(num_crtcs * sizeof(u32),
+	dev->last_vblank = kmalloc(num_crtcs * sizeof(u32),
 	    DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
-	dev->last_vblank_wait = malloc(num_crtcs * sizeof(u32),
+	dev->last_vblank_wait = kmalloc(num_crtcs * sizeof(u32),
 	    DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
-	dev->vblank_inmodeset = malloc(num_crtcs * sizeof(int),
+	dev->vblank_inmodeset = kmalloc(num_crtcs * sizeof(int),
 	    DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
-	dev->_vblank_time = malloc(num_crtcs * DRM_VBLANKTIME_RBSIZE *
+	dev->_vblank_time = kmalloc(num_crtcs * DRM_VBLANKTIME_RBSIZE *
 	    sizeof(struct timeval), DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
 	DRM_INFO("Supports vblank timestamp caching Rev 1 (10.10.2010).\n");
 
@@ -530,7 +530,7 @@ drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev, int crtc,
 		/* Disable preemption to make it very likely to
 		 * succeed in the first iteration.
 		 */
-		critical_enter();
+		crit_enter();
 
 		/* Get system timestamp before query. */
 		getmicrouptime(&stime);
@@ -541,7 +541,7 @@ drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev, int crtc,
 		/* Get system timestamp after query. */
 		getmicrouptime(&raw_time);
 
-		critical_exit();
+		crit_exit();
 
 		/* Return as no-op if scanout query unsupported or failed. */
 		if (!(vbl_status & DRM_SCANOUTPOS_VALID)) {
@@ -959,7 +959,7 @@ static void
 drm_vblank_event_destroy(struct drm_pending_event *e)
 {
 
-	free(e, DRM_MEM_VBLANK);
+	kfree(e, DRM_MEM_VBLANK);
 }
 
 static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
@@ -971,7 +971,7 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 	unsigned int seq;
 	int ret;
 
-	e = malloc(sizeof *e, DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
+	e = kmalloc(sizeof *e, DRM_MEM_VBLANK, M_WAITOK | M_ZERO);
 
 	e->pipe = pipe;
 	e->base.pid = curproc->p_pid;
@@ -1022,7 +1022,7 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 
 err_unlock:
 	mtx_unlock(&dev->event_lock);
-	free(e, DRM_MEM_VBLANK);
+	kfree(e, DRM_MEM_VBLANK);
 	drm_vblank_put(dev, pipe);
 	return ret;
 }

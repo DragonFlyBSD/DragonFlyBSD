@@ -341,26 +341,26 @@ for ( ret = 0 ; !ret && !(condition) ; ) {			\
 }
 
 #define DRM_ERROR(fmt, ...) \
-	printf("error: [" DRM_NAME ":pid%d:%s] *ERROR* " fmt,		\
+	kprintf("error: [" DRM_NAME ":pid%d:%s] *ERROR* " fmt,		\
 	    DRM_CURRENTPID, __func__ , ##__VA_ARGS__)
 
-#define DRM_INFO(fmt, ...)  printf("info: [" DRM_NAME "] " fmt , ##__VA_ARGS__)
+#define DRM_INFO(fmt, ...)  kprintf("info: [" DRM_NAME "] " fmt , ##__VA_ARGS__)
 
 #define DRM_DEBUG(fmt, ...) do {					\
 	if ((drm_debug_flag & DRM_DEBUGBITS_DEBUG) != 0)		\
-		printf("[" DRM_NAME ":pid%d:%s] " fmt, DRM_CURRENTPID,	\
+		kprintf("[" DRM_NAME ":pid%d:%s] " fmt, DRM_CURRENTPID,	\
 			__func__ , ##__VA_ARGS__);			\
 } while (0)
 
 #define DRM_DEBUG_KMS(fmt, ...) do {					\
 	if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0)			\
-		printf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
+		kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
 			__func__ , ##__VA_ARGS__);			\
 } while (0)
 
 #define DRM_DEBUG_DRIVER(fmt, ...) do {					\
 	if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0)			\
-		printf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
+		kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
 			__func__ , ##__VA_ARGS__);			\
 } while (0)
 
@@ -1328,26 +1328,30 @@ u8 *drm_find_cea_extension(struct edid *edid);
 static __inline__ void *
 drm_alloc(size_t size, struct malloc_type *area)
 {
-	return malloc(size, area, M_NOWAIT);
+	return kmalloc(size, area, M_NOWAIT);
 }
 
 static __inline__ void *
 drm_calloc(size_t nmemb, size_t size, struct malloc_type *area)
 {
-	return malloc(size * nmemb, area, M_NOWAIT | M_ZERO);
+	return kmalloc(size * nmemb, area, M_NOWAIT | M_ZERO);
 }
 
 static __inline__ void *
 drm_realloc(void *oldpt, size_t oldsize, size_t size,
     struct malloc_type *area)
 {
-	return reallocf(oldpt, size, area, M_NOWAIT);
+	void *res;
+	res = krealloc(oldpt, size, area, M_NOWAIT);
+	if (res == NULL)
+		kfree(oldpt,area);
+	return res;
 }
 
 static __inline__ void
 drm_free(void *pt, size_t size, struct malloc_type *area)
 {
-	free(pt, area);
+	kfree(pt, area);
 }
 
 /* Inline replacements for DRM_IOREMAP macros */
@@ -1388,7 +1392,7 @@ static __inline__ void drm_core_dropmap(struct drm_map *map)
 #define KIB_NOTYET()							\
 do {									\
 	if (drm_debug_flag && drm_notyet_flag)				\
-		printf("NOTYET: %s at %s:%d\n", __func__, __FILE__, __LINE__); \
+		kprintf("NOTYET: %s at %s:%d\n", __func__, __FILE__, __LINE__); \
 } while (0)
 
 #define	KTR_DRM		KTR_DEV

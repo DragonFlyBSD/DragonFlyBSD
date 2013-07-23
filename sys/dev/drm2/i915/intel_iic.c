@@ -445,7 +445,7 @@ intel_gmbus_attach(device_t idev)
 	dev_priv = sc->drm_dev->dev_private;
 	pin = device_get_unit(idev);
 
-	snprintf(sc->name, sizeof(sc->name), "gmbus bus %s", gpio_names[pin]);
+	ksnprintf(sc->name, sizeof(sc->name), "gmbus bus %s", gpio_names[pin]);
 	device_set_desc(idev, sc->name);
 
 	/* By default use a conservative clock rate */
@@ -516,7 +516,7 @@ intel_iicbb_attach(device_t idev)
 	dev_priv = sc->drm_dev->dev_private;
 	pin = device_get_unit(idev);
 
-	snprintf(sc->name, sizeof(sc->name), "i915 iicbb %s", gpio_names[pin]);
+	ksnprintf(sc->name, sizeof(sc->name), "i915 iicbb %s", gpio_names[pin]);
 	device_set_desc(idev, sc->name);
 
 	sc->reg0 = pin | GMBUS_RATE_100KHZ;
@@ -601,13 +601,13 @@ intel_setup_gmbus(struct drm_device *dev)
 
 	dev_priv = dev->dev_private;
 	sx_init(&dev_priv->gmbus_sx, "gmbus");
-	dev_priv->gmbus_bridge = malloc(sizeof(device_t) * GMBUS_NUM_PORTS,
+	dev_priv->gmbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
 	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
-	dev_priv->bbbus_bridge = malloc(sizeof(device_t) * GMBUS_NUM_PORTS,
+	dev_priv->bbbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
 	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
-	dev_priv->gmbus = malloc(sizeof(device_t) * GMBUS_NUM_PORTS,
+	dev_priv->gmbus = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
 	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
-	dev_priv->bbbus = malloc(sizeof(device_t) * GMBUS_NUM_PORTS,
+	dev_priv->bbbus = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
 	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
 
 	/*
@@ -695,13 +695,13 @@ intel_teardown_gmbus_m(struct drm_device *dev, int m)
 
 	dev_priv = dev->dev_private;
 
-	free(dev_priv->gmbus, DRM_MEM_DRIVER);
+	kfree(dev_priv->gmbus, DRM_MEM_DRIVER);
 	dev_priv->gmbus = NULL;
-	free(dev_priv->bbbus, DRM_MEM_DRIVER);
+	kfree(dev_priv->bbbus, DRM_MEM_DRIVER);
 	dev_priv->bbbus = NULL;
-	free(dev_priv->gmbus_bridge, DRM_MEM_DRIVER);
+	kfree(dev_priv->gmbus_bridge, DRM_MEM_DRIVER);
 	dev_priv->gmbus_bridge = NULL;
-	free(dev_priv->bbbus_bridge, DRM_MEM_DRIVER);
+	kfree(dev_priv->bbbus_bridge, DRM_MEM_DRIVER);
 	dev_priv->bbbus_bridge = NULL;
 	sx_destroy(&dev_priv->gmbus_sx);
 }

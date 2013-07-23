@@ -341,7 +341,7 @@ init_pipe_control(struct intel_ring_buffer *ring)
 	if (ring->private)
 		return 0;
 
-	pc = malloc(sizeof(*pc), DRM_I915_GEM, M_WAITOK);
+	pc = kmalloc(sizeof(*pc), DRM_I915_GEM, M_WAITOK);
 	if (!pc)
 		return -ENOMEM;
 
@@ -377,7 +377,7 @@ err_unpin:
 err_unref:
 	drm_gem_object_unreference(&obj->base);
 err:
-	free(pc, DRM_I915_GEM);
+	kfree(pc, DRM_I915_GEM);
 	return ret;
 }
 
@@ -398,7 +398,7 @@ cleanup_pipe_control(struct intel_ring_buffer *ring)
 	i915_gem_object_unpin(obj);
 	drm_gem_object_unreference(&obj->base);
 
-	free(pc, DRM_I915_GEM);
+	kfree(pc, DRM_I915_GEM);
 	ring->private = NULL;
 }
 

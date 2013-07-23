@@ -200,14 +200,14 @@ bad:
 		DRM_DEBUG_KMS("Raw EDID:\n");
 		if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0) {
 			for (i = 0; i < EDID_LENGTH; ) {
-				printf("%02x", raw_edid[i]);
+				kprintf("%02x", raw_edid[i]);
 				i++;
 				if (i % 16 == 0 || i == EDID_LENGTH)
-					printf("\n");
+					kprintf("\n");
 				else if (i % 8 == 0)
-					printf("  ");
+					kprintf("  ");
 				else
-					printf(" ");
+					kprintf(" ");
 			}
 		}
 	}
@@ -300,7 +300,7 @@ drm_do_get_edid(struct drm_connector *connector, device_t adapter)
 	int i, j = 0, valid_extensions = 0;
 	u8 *block, *new;
 
-	block = malloc(EDID_LENGTH, DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	block = kmalloc(EDID_LENGTH, DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
 	/* base block fetch */
 	for (i = 0; i < 4; i++) {
@@ -320,7 +320,7 @@ drm_do_get_edid(struct drm_connector *connector, device_t adapter)
 	if (block[0x7e] == 0)
 		return block;
 
-	new = reallocf(block, (block[0x7e] + 1) * EDID_LENGTH, DRM_MEM_KMS,
+	new = krealloc(block, (block[0x7e] + 1) * EDID_LENGTH, DRM_MEM_KMS,
 	    M_WAITOK);
 	block = new;
 
@@ -343,7 +343,7 @@ drm_do_get_edid(struct drm_connector *connector, device_t adapter)
 	if (valid_extensions != block[0x7e]) {
 		block[EDID_LENGTH-1] += block[0x7e] - valid_extensions;
 		block[0x7e] = valid_extensions;
-		new = reallocf(block, (valid_extensions + 1) * EDID_LENGTH,
+		new = krealloc(block, (valid_extensions + 1) * EDID_LENGTH,
 		    DRM_MEM_KMS, M_WAITOK);
 		block = new;
 	}
@@ -356,7 +356,7 @@ carp:
 	    drm_get_connector_name(connector), j);
 
 out:
-	free(block, DRM_MEM_KMS);
+	kfree(block, DRM_MEM_KMS);
 	return NULL;
 }
 
@@ -767,7 +767,7 @@ drm_mode_std(struct drm_connector *connector, struct edid *edid,
 		 */
 		mode = drm_gtf_mode(dev, hsize, vsize, vrefresh_rate, 0, 0);
 		if (drm_mode_hsync(mode) > drm_gtf2_hbreak(edid)) {
-			free(mode, DRM_MEM_KMS);
+			kfree(mode, DRM_MEM_KMS);
 			mode = drm_gtf_mode_complex(dev, hsize, vsize,
 						    vrefresh_rate, 0, 0,
 						    drm_gtf2_m(edid),
@@ -857,11 +857,11 @@ static struct drm_display_mode *drm_mode_detailed(struct drm_device *dev,
 		return NULL;
 
 	if (pt->misc & DRM_EDID_PT_STEREO) {
-		printf("stereo mode not supported\n");
+		kprintf("stereo mode not supported\n");
 		return NULL;
 	}
 	if (!(pt->misc & DRM_EDID_PT_SEPARATE_SYNC)) {
-		printf("composite sync not supported\n");
+		kprintf("composite sync not supported\n");
 	}
 
 	/* it is incorrect if hsync/vsync width is zero */

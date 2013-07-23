@@ -61,15 +61,15 @@ drm_list_sort(void *priv, struct list_head *head, int (*cmp)(void *priv,
 	count = 0;
 	list_for_each(le, head)
 		count++;
-	ar = malloc(sizeof(struct list_head *) * count, M_TEMP, M_WAITOK);
+	ar = kmalloc(sizeof(struct list_head *) * count, M_TEMP, M_WAITOK);
 	i = 0;
 	list_for_each(le, head)
 		ar[i++] = le;
 	thunk.cmp = cmp;
 	thunk.priv = priv;
-	qsort_r(ar, count, sizeof(struct list_head *), &thunk, drm_le_cmp);
+	kqsort_r(ar, count, sizeof(struct list_head *), &thunk, drm_le_cmp);
 	INIT_LIST_HEAD(head);
 	for (i = 0; i < count; i++)
 		list_add_tail(ar[i], head);
-	free(ar, M_TEMP);
+	kfree(ar, M_TEMP);
 }

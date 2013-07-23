@@ -37,14 +37,14 @@
 #include <dev/drm2/drmP.h>
 
 #include <dev/agp/agpreg.h>
-#include <dev/pci/pcireg.h>
+#include <bus/pci/pcireg.h>
 
 /* Returns 1 if AGP or 0 if not. */
 static int
 drm_device_find_capability(struct drm_device *dev, int cap)
 {
 
-	return (pci_find_cap(dev->device, cap, NULL) == 0);
+	return (pci_find_extcap(dev->device, cap, NULL) == 0);
 }
 
 int drm_device_is_agp(struct drm_device *dev)
@@ -175,7 +175,7 @@ int drm_agp_alloc(struct drm_device *dev, struct drm_agp_buffer *request)
 	if (!dev->agp || !dev->agp->acquired)
 		return EINVAL;
 
-	entry = malloc(sizeof(*entry), DRM_MEM_AGPLISTS, M_NOWAIT | M_ZERO);
+	entry = kmalloc(sizeof(*entry), DRM_MEM_AGPLISTS, M_NOWAIT | M_ZERO);
 	if (entry == NULL)
 		return ENOMEM;
 
@@ -186,7 +186,7 @@ int drm_agp_alloc(struct drm_device *dev, struct drm_agp_buffer *request)
 	handle = drm_agp_allocate_memory(pages, type);
 	DRM_LOCK(dev);
 	if (handle == NULL) {
-		free(entry, DRM_MEM_AGPLISTS);
+		kfree(entry, DRM_MEM_AGPLISTS);
 		return ENOMEM;
 	}
 	
@@ -337,7 +337,7 @@ int drm_agp_free(struct drm_device *dev, struct drm_agp_buffer *request)
 	drm_agp_free_memory(entry->handle);
 	DRM_LOCK(dev);
 
-	free(entry, DRM_MEM_AGPLISTS);
+	kfree(entry, DRM_MEM_AGPLISTS);
 
 	return 0;
 
@@ -371,7 +371,7 @@ drm_agp_head_t *drm_agp_init(void)
 	DRM_DEBUG("agp_available = %d\n", agp_available);
 
 	if (agp_available) {
-		head = malloc(sizeof(*head), DRM_MEM_AGPLISTS,
+		head = kmalloc(sizeof(*head), DRM_MEM_AGPLISTS,
 		    M_NOWAIT | M_ZERO);
 		if (head == NULL)
 			return NULL;

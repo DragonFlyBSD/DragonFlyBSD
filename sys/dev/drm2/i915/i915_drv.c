@@ -528,7 +528,7 @@ gen6_gt_check_fifodbg(struct drm_i915_private *dev_priv)
 
 	gtfifodbg = I915_READ_NOTRACE(GTFIFODBG);
 	if ((gtfifodbg & GT_FIFO_CPU_ERROR_MASK) != 0) {
-		printf("MMIO read or write has been dropped %x\n", gtfifodbg);
+		kprintf("MMIO read or write has been dropped %x\n", gtfifodbg);
 		I915_WRITE_NOTRACE(GTFIFODBG, GT_FIFO_CPU_ERROR_MASK);
 	}
 }
@@ -574,7 +574,7 @@ __gen6_gt_wait_for_fifo(struct drm_i915_private *dev_priv)
 			fifo = I915_READ_NOTRACE(GT_FIFO_FREE_ENTRIES);
 		}
 		if (loop < 0 && fifo <= GT_FIFO_NUM_RESERVED_ENTRIES) {
-			printf("%s loop\n", __func__);
+			kprintf("%s loop\n", __func__);
 			++ret;
 		}
 		dev_priv->gt_fifo_count = fifo;

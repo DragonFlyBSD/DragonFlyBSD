@@ -572,7 +572,7 @@ static void intel_lvds_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	free(connector, DRM_MEM_KMS);
+	kfree(connector, DRM_MEM_KMS);
 }
 
 static int intel_lvds_set_property(struct drm_connector *connector,
@@ -937,9 +937,9 @@ bool intel_lvds_init(struct drm_device *dev)
 		}
 	}
 
-	intel_lvds = malloc(sizeof(struct intel_lvds), DRM_MEM_KMS,
+	intel_lvds = kmalloc(sizeof(struct intel_lvds), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
-	intel_connector = malloc(sizeof(struct intel_connector), DRM_MEM_KMS,
+	intel_connector = kmalloc(sizeof(struct intel_connector), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
 
 	if (!HAS_PCH_SPLIT(dev)) {
@@ -1001,7 +1001,7 @@ bool intel_lvds_init(struct drm_device *dev)
 			drm_mode_connector_update_edid_property(connector,
 								intel_lvds->edid);
 		} else {
-			free(intel_lvds->edid, DRM_MEM_KMS);
+			kfree(intel_lvds->edid, DRM_MEM_KMS);
 			intel_lvds->edid = NULL;
 		}
 	}
@@ -1117,7 +1117,7 @@ failed:
 	DRM_DEBUG_KMS("No LVDS modes found, disabling.\n");
 	drm_connector_cleanup(connector);
 	drm_encoder_cleanup(encoder);
-	free(intel_lvds, DRM_MEM_KMS);
-	free(intel_connector, DRM_MEM_KMS);
+	kfree(intel_lvds, DRM_MEM_KMS);
+	kfree(intel_connector, DRM_MEM_KMS);
 	return false;
 }

@@ -546,7 +546,7 @@ static void intel_destroy_plane(struct drm_plane *plane)
 	struct intel_plane *intel_plane = to_intel_plane(plane);
 	intel_disable_plane(plane);
 	drm_plane_cleanup(plane);
-	free(intel_plane, DRM_MEM_KMS);
+	kfree(intel_plane, DRM_MEM_KMS);
 }
 
 int intel_sprite_set_colorkey(struct drm_device *dev, void *data,
@@ -638,7 +638,7 @@ intel_plane_init(struct drm_device *dev, enum pipe pipe)
 	if (!(IS_GEN6(dev) || IS_GEN7(dev)))
 		return -ENODEV;
 
-	intel_plane = malloc(sizeof(struct intel_plane), DRM_MEM_KMS,
+	intel_plane = kmalloc(sizeof(struct intel_plane), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
 
 	if (IS_GEN6(dev)) {
@@ -661,7 +661,7 @@ intel_plane_init(struct drm_device *dev, enum pipe pipe)
 			     &intel_plane_funcs, snb_plane_formats,
 			     DRM_ARRAY_SIZE(snb_plane_formats), false);
 	if (ret)
-		free(intel_plane, DRM_MEM_KMS);
+		kfree(intel_plane, DRM_MEM_KMS);
 
 	return ret;
 }

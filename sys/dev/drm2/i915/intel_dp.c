@@ -348,7 +348,7 @@ intel_dp_check_edp(struct intel_dp *intel_dp)
 	if (!is_edp(intel_dp))
 		return;
 	if (!ironlake_edp_have_panel_power(intel_dp) && !ironlake_edp_have_panel_vdd(intel_dp)) {
-		printf("eDP powered off while attempting aux channel communication.\n");
+		kprintf("eDP powered off while attempting aux channel communication.\n");
 		DRM_DEBUG_KMS("Status 0x%08x Control 0x%08x\n",
 			      I915_READ(PCH_PP_STATUS),
 			      I915_READ(PCH_PP_CONTROL));
@@ -398,7 +398,7 @@ intel_dp_aux_ch(struct intel_dp *intel_dp,
 	}
 
 	if (try == 3) {
-		printf("dp_aux_ch not started status 0x%08x\n",
+		kprintf("dp_aux_ch not started status 0x%08x\n",
 		     I915_READ(ch_ctl));
 		return -EBUSY;
 	}
@@ -1007,7 +1007,7 @@ static void ironlake_edp_panel_vdd_on(struct intel_dp *intel_dp)
 	DRM_DEBUG_KMS("Turn eDP VDD on\n");
 
 	if (intel_dp->want_panel_vdd)
-		printf("eDP VDD already requested on\n");
+		kprintf("eDP VDD already requested on\n");
 
 	intel_dp->want_panel_vdd = true;
 
@@ -1072,7 +1072,7 @@ static void ironlake_edp_panel_vdd_off(struct intel_dp *intel_dp, bool sync)
 
 	DRM_DEBUG_KMS("Turn eDP VDD off %d\n", intel_dp->want_panel_vdd);
 	if (!intel_dp->want_panel_vdd)
-		printf("eDP VDD not forced on\n");
+		kprintf("eDP VDD not forced on\n");
 
 	intel_dp->want_panel_vdd = false;
 
@@ -1145,7 +1145,7 @@ static void ironlake_edp_panel_off(struct intel_dp *intel_dp)
 	DRM_DEBUG_KMS("Turn eDP power off\n");
 
 	if (intel_dp->want_panel_vdd)
-		printf("Cannot turn power off while VDD is on\n");
+		kprintf("Cannot turn power off while VDD is on\n");
 
 	pp = ironlake_get_pp_control(dev_priv);
 	pp &= ~(POWER_TARGET_ON | EDP_FORCE_VDD | PANEL_POWER_RESET | EDP_BLC_ENABLE);
@@ -2127,7 +2127,7 @@ intel_dp_detect(struct drm_connector *connector, bool force)
 		if (edid) {
 			intel_dp->has_audio = drm_detect_monitor_audio(edid);
 			connector->display_info.raw_edid = NULL;
-			free(edid, DRM_MEM_KMS);
+			kfree(edid, DRM_MEM_KMS);
 		}
 	}
 
@@ -2193,7 +2193,7 @@ intel_dp_detect_audio(struct drm_connector *connector)
 		has_audio = drm_detect_monitor_audio(edid);
 
 		connector->display_info.raw_edid = NULL;
-		free(edid, DRM_MEM_KMS);
+		kfree(edid, DRM_MEM_KMS);
 	}
 
 	return has_audio;
@@ -2266,7 +2266,7 @@ intel_dp_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	free(connector, DRM_MEM_KMS);
+	kfree(connector, DRM_MEM_KMS);
 }
 
 static void intel_dp_encoder_destroy(struct drm_encoder *encoder)
@@ -2294,7 +2294,7 @@ static void intel_dp_encoder_destroy(struct drm_encoder *encoder)
 		    &intel_dp->panel_vdd_task);
 		ironlake_panel_vdd_off_sync(intel_dp);
 	}
-	free(intel_dp, DRM_MEM_KMS);
+	kfree(intel_dp, DRM_MEM_KMS);
 }
 
 static const struct drm_encoder_helper_funcs intel_dp_helper_funcs = {
@@ -2392,13 +2392,13 @@ intel_dp_init(struct drm_device *dev, int output_reg)
 	const char *name = NULL;
 	int type;
 
-	intel_dp = malloc(sizeof(struct intel_dp), DRM_MEM_KMS,
+	intel_dp = kmalloc(sizeof(struct intel_dp), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
 
 	intel_dp->output_reg = output_reg;
 	intel_dp->dpms_mode = -1;
 
-	intel_connector = malloc(sizeof(struct intel_connector), DRM_MEM_KMS,
+	intel_connector = kmalloc(sizeof(struct intel_connector), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
 	intel_encoder = &intel_dp->base;
 

@@ -648,7 +648,7 @@ static int i915_batchbuffer(struct drm_device *dev, void *data,
 	if (batch->num_cliprects < 0)
 		return -EFAULT;
 	if (batch->num_cliprects != 0) {
-		cliprects = malloc(batch->num_cliprects *
+		cliprects = kmalloc(batch->num_cliprects *
 		    sizeof(struct drm_clip_rect), DRM_MEM_DMA,
 		    M_WAITOK | M_ZERO);
 
@@ -670,7 +670,7 @@ static int i915_batchbuffer(struct drm_device *dev, void *data,
 		sarea_priv->last_dispatch = READ_BREADCRUMB(dev_priv);
 
 fail_free:
-	free(cliprects, DRM_MEM_DMA);
+	kfree(cliprects, DRM_MEM_DMA);
 	return ret;
 }
 
@@ -692,7 +692,7 @@ static int i915_cmdbuffer(struct drm_device *dev, void *data,
 
 	DRM_UNLOCK(dev);
 
-	batch_data = malloc(cmdbuf->sz, DRM_MEM_DMA, M_WAITOK);
+	batch_data = kmalloc(cmdbuf->sz, DRM_MEM_DMA, M_WAITOK);
 
 	ret = -copyin(cmdbuf->buf, batch_data, cmdbuf->sz);
 	if (ret != 0) {
@@ -701,7 +701,7 @@ static int i915_cmdbuffer(struct drm_device *dev, void *data,
 	}
 
 	if (cmdbuf->num_cliprects) {
-		cliprects = malloc(cmdbuf->num_cliprects *
+		cliprects = kmalloc(cmdbuf->num_cliprects *
 		    sizeof(struct drm_clip_rect), DRM_MEM_DMA,
 		    M_WAITOK | M_ZERO);
 		ret = -copyin(cmdbuf->cliprects, cliprects,
@@ -725,9 +725,9 @@ static int i915_cmdbuffer(struct drm_device *dev, void *data,
 		sarea_priv->last_dispatch = READ_BREADCRUMB(dev_priv);
 
 fail_clip_free:
-	free(cliprects, DRM_MEM_DMA);
+	kfree(cliprects, DRM_MEM_DMA);
 fail_batch_free:
-	free(batch_data, DRM_MEM_DMA);
+	kfree(batch_data, DRM_MEM_DMA);
 	return ret;
 }
 
@@ -1207,7 +1207,7 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 	dev->types[8] = _DRM_STAT_SECONDARY;
 	dev->types[9] = _DRM_STAT_DMA;
 
-	dev_priv = malloc(sizeof(drm_i915_private_t), DRM_MEM_DRIVER,
+	dev_priv = kmalloc(sizeof(drm_i915_private_t), DRM_MEM_DRIVER,
 	    M_ZERO | M_WAITOK);
 	if (dev_priv == NULL)
 		return -ENOMEM;
@@ -1217,7 +1217,7 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 	dev_priv->info = i915_get_device_id(dev->pci_device);
 
 	if (i915_get_bridge_dev(dev)) {
-		free(dev_priv, DRM_MEM_DRIVER);
+		kfree(dev_priv, DRM_MEM_DRIVER);
 		return (-EIO);
 	}
 	dev_priv->mm.gtt = intel_gtt_get();
@@ -1404,7 +1404,7 @@ i915_driver_open(struct drm_device *dev, struct drm_file *file_priv)
 {
 	struct drm_i915_file_private *i915_file_priv;
 
-	i915_file_priv = malloc(sizeof(*i915_file_priv), DRM_MEM_FILES,
+	i915_file_priv = kmalloc(sizeof(*i915_file_priv), DRM_MEM_FILES,
 	    M_WAITOK | M_ZERO);
 
 	mtx_init(&i915_file_priv->mm.lck, "915fp", NULL, MTX_DEF);

@@ -800,7 +800,7 @@ static void assert_pll(struct drm_i915_private *dev_priv,
 	val = I915_READ(reg);
 	cur_state = !!(val & DPLL_VCO_ENABLE);
 	if (cur_state != state)
-		printf("PLL state assertion failure (expected %s, current %s)\n",
+		kprintf("PLL state assertion failure (expected %s, current %s)\n",
 		    state_string(state), state_string(cur_state));
 }
 #define assert_pll_enabled(d, p) assert_pll(d, p, true)
@@ -831,7 +831,7 @@ static void assert_pch_pll(struct drm_i915_private *dev_priv,
 	val = I915_READ(reg);
 	cur_state = !!(val & DPLL_VCO_ENABLE);
 	if (cur_state != state)
-		printf("PCH PLL state assertion failure (expected %s, current %s)\n",
+		kprintf("PCH PLL state assertion failure (expected %s, current %s)\n",
 		    state_string(state), state_string(cur_state));
 }
 #define assert_pch_pll_enabled(d, p) assert_pch_pll(d, p, true)
@@ -848,7 +848,7 @@ static void assert_fdi_tx(struct drm_i915_private *dev_priv,
 	val = I915_READ(reg);
 	cur_state = !!(val & FDI_TX_ENABLE);
 	if (cur_state != state)
-		printf("FDI TX state assertion failure (expected %s, current %s)\n",
+		kprintf("FDI TX state assertion failure (expected %s, current %s)\n",
 		    state_string(state), state_string(cur_state));
 }
 #define assert_fdi_tx_enabled(d, p) assert_fdi_tx(d, p, true)
@@ -865,7 +865,7 @@ static void assert_fdi_rx(struct drm_i915_private *dev_priv,
 	val = I915_READ(reg);
 	cur_state = !!(val & FDI_RX_ENABLE);
 	if (cur_state != state)
-		printf("FDI RX state assertion failure (expected %s, current %s)\n",
+		kprintf("FDI RX state assertion failure (expected %s, current %s)\n",
 		    state_string(state), state_string(cur_state));
 }
 #define assert_fdi_rx_enabled(d, p) assert_fdi_rx(d, p, true)
@@ -884,7 +884,7 @@ static void assert_fdi_tx_pll_enabled(struct drm_i915_private *dev_priv,
 	reg = FDI_TX_CTL(pipe);
 	val = I915_READ(reg);
 	if (!(val & FDI_TX_PLL_ENABLE))
-		printf("FDI TX PLL assertion failure, should be active but is disabled\n");
+		kprintf("FDI TX PLL assertion failure, should be active but is disabled\n");
 }
 
 static void assert_fdi_rx_pll_enabled(struct drm_i915_private *dev_priv,
@@ -896,7 +896,7 @@ static void assert_fdi_rx_pll_enabled(struct drm_i915_private *dev_priv,
 	reg = FDI_RX_CTL(pipe);
 	val = I915_READ(reg);
 	if (!(val & FDI_RX_PLL_ENABLE))
-		printf("FDI RX PLL assertion failure, should be active but is disabled\n");
+		kprintf("FDI RX PLL assertion failure, should be active but is disabled\n");
 }
 
 static void assert_panel_unlocked(struct drm_i915_private *dev_priv,
@@ -924,7 +924,7 @@ static void assert_panel_unlocked(struct drm_i915_private *dev_priv,
 		panel_pipe = PIPE_B;
 
 	if (panel_pipe == pipe && locked)
-		printf("panel assertion failure, pipe %c regs locked\n",
+		kprintf("panel assertion failure, pipe %c regs locked\n",
 	     pipe_name(pipe));
 }
 
@@ -943,7 +943,7 @@ void assert_pipe(struct drm_i915_private *dev_priv,
 	val = I915_READ(reg);
 	cur_state = !!(val & PIPECONF_ENABLE);
 	if (cur_state != state)
-		printf("pipe %c assertion failure (expected %s, current %s)\n",
+		kprintf("pipe %c assertion failure (expected %s, current %s)\n",
 		    pipe_name(pipe), state_string(state), state_string(cur_state));
 }
 
@@ -958,7 +958,7 @@ static void assert_plane(struct drm_i915_private *dev_priv,
 	val = I915_READ(reg);
 	cur_state = !!(val & DISPLAY_PLANE_ENABLE);
 	if (cur_state != state)
-		printf("plane %c assertion failure, (expected %s, current %s)\n",
+		kprintf("plane %c assertion failure, (expected %s, current %s)\n",
 		       plane_name(plane), state_string(state), state_string(cur_state));
 }
 
@@ -977,7 +977,7 @@ static void assert_planes_disabled(struct drm_i915_private *dev_priv,
 		reg = DSPCNTR(pipe);
 		val = I915_READ(reg);
 		if ((val & DISPLAY_PLANE_ENABLE) != 0)
-			printf("plane %c assertion failure, should be disabled but not\n",
+			kprintf("plane %c assertion failure, should be disabled but not\n",
 			       plane_name(pipe));
 		return;
 	}
@@ -989,7 +989,7 @@ static void assert_planes_disabled(struct drm_i915_private *dev_priv,
 		cur_pipe = (val & DISPPLANE_SEL_PIPE_MASK) >>
 			DISPPLANE_SEL_PIPE_SHIFT;
 		if ((val & DISPLAY_PLANE_ENABLE) && pipe == cur_pipe)
-			printf("plane %c assertion failure, should be off on pipe %c but is still active\n",
+			kprintf("plane %c assertion failure, should be off on pipe %c but is still active\n",
 		     plane_name(i), pipe_name(pipe));
 	}
 }
@@ -1003,7 +1003,7 @@ static void assert_pch_refclk_enabled(struct drm_i915_private *dev_priv)
 	enabled = !!(val & (DREF_SSC_SOURCE_MASK | DREF_NONSPREAD_SOURCE_MASK |
 			    DREF_SUPERSPREAD_SOURCE_MASK));
 	if (!enabled)
-		printf("PCH refclk assertion failure, should be active but is disabled\n");
+		kprintf("PCH refclk assertion failure, should be active but is disabled\n");
 }
 
 static void assert_transcoder_disabled(struct drm_i915_private *dev_priv,
@@ -1017,7 +1017,7 @@ static void assert_transcoder_disabled(struct drm_i915_private *dev_priv,
 	val = I915_READ(reg);
 	enabled = !!(val & TRANS_ENABLE);
 	if (enabled)
-		printf("transcoder assertion failed, should be off on pipe %c but is still active\n",
+		kprintf("transcoder assertion failed, should be off on pipe %c but is still active\n",
 	     pipe_name(pipe));
 }
 
@@ -1091,7 +1091,7 @@ static void assert_pch_dp_disabled(struct drm_i915_private *dev_priv,
 {
 	u32 val = I915_READ(reg);
 	if (dp_pipe_enabled(dev_priv, pipe, port_sel, val))
-		printf("PCH DP (0x%08x) enabled on transcoder %c, should be disabled\n",
+		kprintf("PCH DP (0x%08x) enabled on transcoder %c, should be disabled\n",
 	     reg, pipe_name(pipe));
 }
 
@@ -1100,7 +1100,7 @@ static void assert_pch_hdmi_disabled(struct drm_i915_private *dev_priv,
 {
 	u32 val = I915_READ(reg);
 	if (hdmi_pipe_enabled(dev_priv, val, pipe))
-		printf("PCH HDMI (0x%08x) enabled on transcoder %c, should be disabled\n",
+		kprintf("PCH HDMI (0x%08x) enabled on transcoder %c, should be disabled\n",
 	     reg, pipe_name(pipe));
 }
 
@@ -1117,13 +1117,13 @@ static void assert_pch_ports_disabled(struct drm_i915_private *dev_priv,
 	reg = PCH_ADPA;
 	val = I915_READ(reg);
 	if (adpa_pipe_enabled(dev_priv, val, pipe))
-		printf("PCH VGA enabled on transcoder %c, should be disabled\n",
+		kprintf("PCH VGA enabled on transcoder %c, should be disabled\n",
 	     pipe_name(pipe));
 
 	reg = PCH_LVDS;
 	val = I915_READ(reg);
 	if (lvds_pipe_enabled(dev_priv, val, pipe))
-		printf("PCH LVDS enabled on transcoder %c, should be disabled\n",
+		kprintf("PCH LVDS enabled on transcoder %c, should be disabled\n",
 	     pipe_name(pipe));
 
 	assert_pch_hdmi_disabled(dev_priv, pipe, HDMIB);
@@ -1767,7 +1767,7 @@ static void intel_fbc_work_fn(void *arg, int pending)
 	}
 	DRM_UNLOCK(dev);
 
-	free(work, DRM_MEM_KMS);
+	kfree(work, DRM_MEM_KMS);
 }
 
 static void intel_cancel_fbc_work(struct drm_i915_private *dev_priv)
@@ -1786,7 +1786,7 @@ static void intel_cancel_fbc_work(struct drm_i915_private *dev_priv)
 	if (taskqueue_cancel_timeout(dev_priv->tq, &dev_priv->fbc_work->task,
 	    &pending) == 0)
 		/* tasklet was killed before being run, clean up */
-		free(dev_priv->fbc_work, DRM_MEM_KMS);
+		kfree(dev_priv->fbc_work, DRM_MEM_KMS);
 
 	/* Mark the work as no longer wanted so that if it does
 	 * wake-up (because the work was already running and waiting
@@ -1807,7 +1807,7 @@ static void intel_enable_fbc(struct drm_crtc *crtc, unsigned long interval)
 
 	intel_cancel_fbc_work(dev_priv);
 
-	work = malloc(sizeof(*work), DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	work = kmalloc(sizeof(*work), DRM_MEM_KMS, M_WAITOK | M_ZERO);
 	work->crtc = crtc;
 	work->fb = crtc->fb;
 	work->interval = interval;
@@ -3507,7 +3507,7 @@ void intel_encoder_destroy(struct drm_encoder *encoder)
 	struct intel_encoder *intel_encoder = to_intel_encoder(encoder);
 
 	drm_encoder_cleanup(encoder);
-	free(intel_encoder, DRM_MEM_KMS);
+	kfree(intel_encoder, DRM_MEM_KMS);
 }
 
 static bool intel_crtc_mode_fixup(struct drm_crtc *crtc,
@@ -5851,7 +5851,7 @@ static int ironlake_crtc_mode_set(struct drm_crtc *crtc,
 		temp |= PIPE_12BPC;
 		break;
 	default:
-		printf("intel_choose_pipe_bpp returned invalid value %d\n",
+		kprintf("intel_choose_pipe_bpp returned invalid value %d\n",
 			pipe_bpp);
 		temp |= PIPE_8BPC;
 		pipe_bpp = 24;
@@ -6694,11 +6694,11 @@ intel_framebuffer_create(struct drm_device *dev,
 	struct intel_framebuffer *intel_fb;
 	int ret;
 
-	intel_fb = malloc(sizeof(*intel_fb), DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	intel_fb = kmalloc(sizeof(*intel_fb), DRM_MEM_KMS, M_WAITOK | M_ZERO);
 	ret = intel_framebuffer_init(dev, intel_fb, mode_cmd, obj);
 	if (ret) {
 		drm_gem_object_unreference_unlocked(&obj->base);
-		free(intel_fb, DRM_MEM_KMS);
+		kfree(intel_fb, DRM_MEM_KMS);
 		return (ret);
 	}
 
@@ -7025,7 +7025,7 @@ struct drm_display_mode *intel_crtc_mode_get(struct drm_device *dev,
 	int vtot = I915_READ(VTOTAL(pipe));
 	int vsync = I915_READ(VSYNC(pipe));
 
-	mode = malloc(sizeof(*mode), DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	mode = kmalloc(sizeof(*mode), DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
 	mode->clock = intel_crtc_clock_get(dev, crtc);
 	mode->hdisplay = (htot & 0xffff) + 1;
@@ -7247,12 +7247,12 @@ static void intel_crtc_destroy(struct drm_crtc *crtc)
 	if (work) {
 		taskqueue_cancel(dev_priv->tq, &work->task, NULL);
 		taskqueue_drain(dev_priv->tq, &work->task);
-		free(work, DRM_MEM_KMS);
+		kfree(work, DRM_MEM_KMS);
 	}
 
 	drm_crtc_cleanup(crtc);
 
-	free(intel_crtc, DRM_MEM_KMS);
+	kfree(intel_crtc, DRM_MEM_KMS);
 }
 
 static void intel_unpin_work_fn(void *arg, int pending)
@@ -7268,7 +7268,7 @@ static void intel_unpin_work_fn(void *arg, int pending)
 
 	intel_update_fbc(work->dev);
 	DRM_UNLOCK(dev);
-	free(work, DRM_MEM_KMS);
+	kfree(work, DRM_MEM_KMS);
 }
 
 static void do_intel_finish_page_flip(struct drm_device *dev,
@@ -7580,7 +7580,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	struct intel_unpin_work *work;
 	int ret;
 
-	work = malloc(sizeof *work, DRM_MEM_KMS, M_WAITOK | M_ZERO);
+	work = kmalloc(sizeof *work, DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
 	work->event = event;
 	work->dev = crtc->dev;
@@ -7596,7 +7596,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	mtx_lock(&dev->event_lock);
 	if (intel_crtc->unpin_work) {
 		mtx_unlock(&dev->event_lock);
-		free(work, DRM_MEM_KMS);
+		kfree(work, DRM_MEM_KMS);
 		drm_vblank_put(dev, intel_crtc->pipe);
 
 		DRM_DEBUG("flip queue: crtc already busy\n");
@@ -7645,7 +7645,7 @@ cleanup_pending:
 
 	drm_vblank_put(dev, intel_crtc->pipe);
 free_work:
-	free(work, DRM_MEM_KMS);
+	kfree(work, DRM_MEM_KMS);
 
 	return ret;
 }
@@ -7734,7 +7734,7 @@ static void intel_crtc_init(struct drm_device *dev, int pipe)
 	struct intel_crtc *intel_crtc;
 	int i;
 
-	intel_crtc = malloc(sizeof(struct intel_crtc) +
+	intel_crtc = kmalloc(sizeof(struct intel_crtc) +
 	    (INTELFB_CONN_LIMIT * sizeof(struct drm_connector *)),
 	    DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
@@ -7972,7 +7972,7 @@ static void intel_user_framebuffer_destroy(struct drm_framebuffer *fb)
 	drm_framebuffer_cleanup(fb);
 	drm_gem_object_unreference_unlocked(&intel_fb->obj->base);
 
-	free(intel_fb, DRM_MEM_KMS);
+	kfree(intel_fb, DRM_MEM_KMS);
 }
 
 static int intel_user_framebuffer_create_handle(struct drm_framebuffer *fb,
@@ -8482,7 +8482,7 @@ void gen6_enable_rps(struct drm_i915_private *dev_priv)
 		   GEN6_PM_RP_DOWN_EI_EXPIRED);
 	mtx_lock(&dev_priv->rps_lock);
 	if (dev_priv->pm_iir != 0)
-		printf("pm_iir %x\n", dev_priv->pm_iir);
+		kprintf("pm_iir %x\n", dev_priv->pm_iir);
 	I915_WRITE(GEN6_PMIMR, 0);
 	mtx_unlock(&dev_priv->rps_lock);
 	/* enable all PM interrupts */
@@ -9457,7 +9457,7 @@ intel_display_capture_error_state(struct drm_device *dev)
 	struct intel_display_error_state *error;
 	int i;
 
-	error = malloc(sizeof(*error), DRM_MEM_KMS, M_NOWAIT);
+	error = kmalloc(sizeof(*error), DRM_MEM_KMS, M_NOWAIT);
 	if (error == NULL)
 		return NULL;
 

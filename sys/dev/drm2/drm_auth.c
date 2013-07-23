@@ -75,7 +75,7 @@ static int drm_add_magic(struct drm_device *dev, struct drm_file *priv,
 	DRM_LOCK_ASSERT(dev);
 
 	hash = drm_hash_magic(magic);
-	entry = malloc(sizeof(*entry), DRM_MEM_MAGIC, M_ZERO | M_NOWAIT);
+	entry = kmalloc(sizeof(*entry), DRM_MEM_MAGIC, M_ZERO | M_NOWAIT);
 	if (!entry)
 		return ENOMEM;
 	entry->magic = magic;
@@ -119,7 +119,7 @@ static int drm_remove_magic(struct drm_device *dev, drm_magic_t magic)
 			if (prev) {
 				prev->next = pt->next;
 			}
-			free(pt, DRM_MEM_MAGIC);
+			kfree(pt, DRM_MEM_MAGIC);
 			return 0;
 		}
 	}

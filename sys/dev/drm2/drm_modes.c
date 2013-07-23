@@ -515,7 +515,7 @@ void drm_mode_set_name(struct drm_display_mode *mode)
 {
 	bool interlaced = !!(mode->flags & DRM_MODE_FLAG_INTERLACE);
 
-	snprintf(mode->name, DRM_DISPLAY_MODE_LEN, "%dx%d%s",
+	ksnprintf(mode->name, DRM_DISPLAY_MODE_LEN, "%dx%d%s",
 		 mode->hdisplay, mode->vdisplay,
 		 interlaced ? "i" : "");
 }
@@ -1090,7 +1090,7 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 	}
 done:
 	if (i >= 0) {
-		printf("parse error at position %i in video mode '%s'\n",
+		kprintf("parse error at position %i in video mode '%s'\n",
 			i, name);
 		mode->specified = false;
 		return false;

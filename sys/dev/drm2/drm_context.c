@@ -75,7 +75,7 @@ int drm_ctxbitmap_next(struct drm_device *dev)
 		drm_local_map_t **ctx_sareas;
 		int max_ctx = (bit+1);
 
-		ctx_sareas = realloc(dev->context_sareas,
+		ctx_sareas = krealloc(dev->context_sareas,
 		    max_ctx * sizeof(*dev->context_sareas),
 		    DRM_MEM_SAREA, M_NOWAIT);
 		if (ctx_sareas == NULL) {
@@ -98,7 +98,7 @@ int drm_ctxbitmap_init(struct drm_device *dev)
    	int temp;
 
 	DRM_LOCK(dev);
-	dev->ctx_bitmap = malloc(PAGE_SIZE, DRM_MEM_CTXBITMAP,
+	dev->ctx_bitmap = kmalloc(PAGE_SIZE, DRM_MEM_CTXBITMAP,
 	    M_NOWAIT | M_ZERO);
 	if (dev->ctx_bitmap == NULL) {
 		DRM_UNLOCK(dev);
@@ -120,8 +120,8 @@ void drm_ctxbitmap_cleanup(struct drm_device *dev)
 {
 	DRM_LOCK(dev);
 	if (dev->context_sareas != NULL)
-		free(dev->context_sareas, DRM_MEM_SAREA);
-	free(dev->ctx_bitmap, DRM_MEM_CTXBITMAP);
+		kfree(dev->context_sareas, DRM_MEM_SAREA);
+	kfree(dev->ctx_bitmap, DRM_MEM_CTXBITMAP);
 	DRM_UNLOCK(dev);
 }
 

@@ -479,7 +479,7 @@ i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj)
 	int i;
 
 	if (obj->bit_17 == NULL) {
-		obj->bit_17 = malloc(BITS_TO_LONGS(page_count) *
+		obj->bit_17 = kmalloc(BITS_TO_LONGS(page_count) *
 		    sizeof(long), DRM_I915_GEM, M_WAITOK);
 	}
 

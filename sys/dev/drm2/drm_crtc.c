@@ -174,7 +174,7 @@ char *drm_get_encoder_name(struct drm_encoder *encoder)
 {
 	static char buf[32];
 
-	snprintf(buf, 32, "%s-%d",
+	ksnprintf(buf, 32, "%s-%d",
 		 drm_encoder_enum_list[encoder->encoder_type].name,
 		 encoder->base.id);
 	return buf;
@@ -184,7 +184,7 @@ char *drm_get_connector_name(struct drm_connector *connector)
 {
 	static char buf[32];
 
-	snprintf(buf, 32, "%s-%d",
+	ksnprintf(buf, 32, "%s-%d",
 		 drm_connector_enum_list[connector->connector_type].name,
 		 connector->connector_type_id);
 	return buf;
@@ -394,7 +394,7 @@ void drm_crtc_cleanup(struct drm_crtc *crtc)
 	DRM_MODE_CONFIG_ASSERT_LOCKED(dev);
 
 	if (crtc->gamma_store) {
-		free(crtc->gamma_store, DRM_MEM_KMS);
+		kfree(crtc->gamma_store, DRM_MEM_KMS);
 		crtc->gamma_store = NULL;
 	}
 
@@ -579,7 +579,7 @@ int drm_plane_init(struct drm_device *dev, struct drm_plane *plane,
 
 	plane->dev = dev;
 	plane->funcs = funcs;
-	plane->format_types = malloc(sizeof(uint32_t) * format_count,
+	plane->format_types = kmalloc(sizeof(uint32_t) * format_count,
 	    DRM_MEM_KMS, M_WAITOK);
 
 	memcpy(plane->format_types, formats, format_count * sizeof(uint32_t));
@@ -608,7 +608,7 @@ void drm_plane_cleanup(struct drm_plane *plane)
 	struct drm_device *dev = plane->dev;
 
 	sx_xlock(&dev->mode_config.mutex);
-	free(plane->format_types, DRM_MEM_KMS);
+	kfree(plane->format_types, DRM_MEM_KMS);
 	drm_mode_object_put(dev, &plane->base);
 	/* if not added to a list, it must be a private plane */
 	if (!list_empty(&plane->head)) {
@@ -634,11 +634,11 @@ struct drm_display_mode *drm_mode_create(struct drm_device *dev)
 {
 	struct drm_display_mode *nmode;
 
-	nmode = malloc(sizeof(struct drm_display_mode), DRM_MEM_KMS,
+	nmode = kmalloc(sizeof(struct drm_display_mode), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
 
 	if (drm_mode_object_get(dev, &nmode->base, DRM_MODE_OBJECT_MODE)) {
-		free(nmode, DRM_MEM_KMS);
+		kfree(nmode, DRM_MEM_KMS);
 		return (NULL);
 	}
 	return nmode;
@@ -661,7 +661,7 @@ void drm_mode_destroy(struct drm_device *dev, struct drm_display_mode *mode)
 
 	drm_mode_object_put(dev, &mode->base);
 
-	free(mode, DRM_MEM_KMS);
+	kfree(mode, DRM_MEM_KMS);
 }
 
 static int drm_mode_create_standard_connector_properties(struct drm_device *dev)
@@ -908,7 +908,7 @@ drm_mode_group_init(struct drm_device *dev, struct drm_mode_group *group)
 	total_objects += dev->mode_config.num_connector;
 	total_objects += dev->mode_config.num_encoder;
 
-	group->id_list = malloc(total_objects * sizeof(uint32_t),
+	group->id_list = kmalloc(total_objects * sizeof(uint32_t),
 	    DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
 	group->num_crtcs = 0;
@@ -1012,7 +1012,7 @@ static void drm_crtc_convert_to_umode(struct drm_mode_modeinfo *out,
 	    in->hskew > USHRT_MAX || in->vdisplay > USHRT_MAX ||
 	    in->vsync_start > USHRT_MAX || in->vsync_end > USHRT_MAX ||
 	    in->vtotal > USHRT_MAX || in->vscan > USHRT_MAX)
-		printf("timing values too large for mode info\n");
+		kprintf("timing values too large for mode info\n");
 
 	out->clock = in->clock;
 	out->hdisplay = in->hdisplay;
@@ -1895,7 +1895,7 @@ int drm_mode_setcrtc(struct drm_device *dev, void *data,
 			goto out;
 		}
 
-		connector_set = malloc(crtc_req->count_connectors *
+		connector_set = kmalloc(crtc_req->count_connectors *
 		    sizeof(struct drm_connector *), DRM_MEM_KMS, M_WAITOK);
 
 		for (i = 0; i < crtc_req->count_connectors; i++) {
@@ -1932,7 +1932,7 @@ int drm_mode_setcrtc(struct drm_device *dev, void *data,
 	ret = crtc->funcs->set_config(&set);
 
 out:
-	free(connector_set, DRM_MEM_KMS);
+	kfree(connector_set, DRM_MEM_KMS);
 	drm_mode_destroy(dev, mode);
 	sx_xunlock(&dev->mode_config.mutex);
 	return ret;
@@ -2363,7 +2363,7 @@ int drm_mode_dirtyfb_ioctl(struct drm_device *dev,
 			ret = EINVAL;
 			goto out_err1;
 		}
-		clips = malloc(num_clips * sizeof(*clips), DRM_MEM_KMS,
+		clips = kmalloc(num_clips * sizeof(*clips), DRM_MEM_KMS,
 		    M_WAITOK | M_ZERO);
 
 		ret = copyin(clips_ptr, clips, num_clips * sizeof(*clips));
@@ -2380,7 +2380,7 @@ int drm_mode_dirtyfb_ioctl(struct drm_device *dev,
 	}
 
 out_err2:
-	free(clips, DRM_MEM_KMS);
+	kfree(clips, DRM_MEM_KMS);
 out_err1:
 	sx_xunlock(&dev->mode_config.mutex);
 	return ret;
@@ -2610,11 +2610,11 @@ struct drm_property *drm_property_create(struct drm_device *dev, int flags,
 	struct drm_property *property = NULL;
 	int ret;
 
-	property = malloc(sizeof(struct drm_property), DRM_MEM_KMS,
+	property = kmalloc(sizeof(struct drm_property), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
 
 	if (num_values) {
-		property->values = malloc(sizeof(uint64_t)*num_values, DRM_MEM_KMS,
+		property->values = kmalloc(sizeof(uint64_t)*num_values, DRM_MEM_KMS,
 		    M_WAITOK | M_ZERO);
 	}
 
@@ -2634,8 +2634,8 @@ struct drm_property *drm_property_create(struct drm_device *dev, int flags,
 	return property;
 
 fail:
-	free(property->values, DRM_MEM_KMS);
-	free(property, DRM_MEM_KMS);
+	kfree(property->values, DRM_MEM_KMS);
+	kfree(property, DRM_MEM_KMS);
 	return (NULL);
 }
 
@@ -2702,7 +2702,7 @@ int drm_property_add_enum(struct drm_property *property, int index,
 		}
 	}
 
-	prop_enum = malloc(sizeof(struct drm_property_enum), DRM_MEM_KMS,
+	prop_enum = kmalloc(sizeof(struct drm_property_enum), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
 
 	strncpy(prop_enum->name, name, DRM_PROP_NAME_LEN);
@@ -2720,14 +2720,14 @@ void drm_property_destroy(struct drm_device *dev, struct drm_property *property)
 
 	list_for_each_entry_safe(prop_enum, pt, &property->enum_blob_list, head) {
 		list_del(&prop_enum->head);
-		free(prop_enum, DRM_MEM_KMS);
+		kfree(prop_enum, DRM_MEM_KMS);
 	}
 
 	if (property->num_values)
-		free(property->values, DRM_MEM_KMS);
+		kfree(property->values, DRM_MEM_KMS);
 	drm_mode_object_put(dev, &property->base);
 	list_del(&property->head);
-	free(property, DRM_MEM_KMS);
+	kfree(property, DRM_MEM_KMS);
 }
 
 int drm_connector_attach_property(struct drm_connector *connector,
@@ -2896,12 +2896,12 @@ static struct drm_property_blob *drm_property_create_blob(struct drm_device *dev
 	if (!length || !data)
 		return NULL;
 
-	blob = malloc(sizeof(struct drm_property_blob) + length, DRM_MEM_KMS,
+	blob = kmalloc(sizeof(struct drm_property_blob) + length, DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
 
 	ret = drm_mode_object_get(dev, &blob->base, DRM_MODE_OBJECT_BLOB);
 	if (ret) {
-		free(blob, DRM_MEM_KMS);
+		kfree(blob, DRM_MEM_KMS);
 		return (NULL);
 	}
 
@@ -2918,7 +2918,7 @@ static void drm_property_destroy_blob(struct drm_device *dev,
 {
 	drm_mode_object_put(dev, &blob->base);
 	list_del(&blob->head);
-	free(blob, DRM_MEM_KMS);
+	kfree(blob, DRM_MEM_KMS);
 }
 
 int drm_mode_getblob_ioctl(struct drm_device *dev,
@@ -3089,7 +3089,7 @@ int drm_mode_crtc_set_gamma_size(struct drm_crtc *crtc,
 {
 	crtc->gamma_size = gamma_size;
 
-	crtc->gamma_store = malloc(gamma_size * sizeof(uint16_t) * 3,
+	crtc->gamma_store = kmalloc(gamma_size * sizeof(uint16_t) * 3,
 	    DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
 	return 0;
@@ -3203,7 +3203,7 @@ static void
 drm_kms_free(void *arg)
 {
 
-	free(arg, DRM_MEM_KMS);
+	kfree(arg, DRM_MEM_KMS);
 }
 
 int drm_mode_page_flip_ioctl(struct drm_device *dev, void *data,
@@ -3265,7 +3265,7 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev, void *data,
 		file_priv->event_space -= sizeof e->event;
 		mtx_unlock(&dev->event_lock);
 
-		e = malloc(sizeof *e, DRM_MEM_KMS, M_WAITOK | M_ZERO);
+		e = kmalloc(sizeof *e, DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
 		e->event.base.type = DRM_EVENT_FLIP_COMPLETE;
 		e->event.base.length = sizeof e->event;
@@ -3282,7 +3282,7 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev, void *data,
 			mtx_lock(&dev->event_lock);
 			file_priv->event_space += sizeof e->event;
 			mtx_unlock(&dev->event_lock);
-			free(e, DRM_MEM_KMS);
+			kfree(e, DRM_MEM_KMS);
 		}
 	}
 

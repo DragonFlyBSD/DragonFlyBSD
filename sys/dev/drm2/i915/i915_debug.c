@@ -1616,7 +1616,7 @@ i915_sysctl_init(struct drm_device *dev, struct sysctl_ctx_list *ctx,
 	struct i915_info_sysctl_thunk *thunks;
 	int i, error;
 
-	thunks = malloc(sizeof(*thunks) * DRM_ARRAY_SIZE(i915_info_sysctl_list),
+	thunks = kmalloc(sizeof(*thunks) * DRM_ARRAY_SIZE(i915_info_sysctl_list),
 	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
 	for (i = 0; i < DRM_ARRAY_SIZE(i915_info_sysctl_list); i++) {
 		thunks[i].dev = dev;
@@ -1677,5 +1677,5 @@ void
 i915_sysctl_cleanup(struct drm_device *dev)
 {
 
-	free(dev->sysctl_private, DRM_MEM_DRIVER);
+	kfree(dev->sysctl_private, DRM_MEM_DRIVER);
 }

@@ -564,7 +564,7 @@ ivybridge_irq_handler(void *arg)
 	if (pm_iir & GEN6_PM_DEFERRED_EVENTS) {
 		mtx_lock(&dev_priv->rps_lock);
 		if ((dev_priv->pm_iir & pm_iir) != 0)
-			printf("Missed a PM interrupt\n");
+			kprintf("Missed a PM interrupt\n");
 		dev_priv->pm_iir |= pm_iir;
 		I915_WRITE(GEN6_PMIMR, dev_priv->pm_iir);
 		POSTING_READ(GEN6_PMIMR);
@@ -679,7 +679,7 @@ ironlake_irq_handler(void *arg)
 	if (pm_iir & GEN6_PM_DEFERRED_EVENTS) {
 		mtx_lock(&dev_priv->rps_lock);
 		if ((dev_priv->pm_iir & pm_iir) != 0)
-			printf("Missed a PM interrupt\n");
+			kprintf("Missed a PM interrupt\n");
 		dev_priv->pm_iir |= pm_iir;
 		I915_WRITE(GEN6_PMIMR, dev_priv->pm_iir);
 		POSTING_READ(GEN6_PMIMR);
@@ -736,31 +736,31 @@ static void i915_report_and_clear_eir(struct drm_device *dev)
 	if (!eir)
 		return;
 
-	printf("i915: render error detected, EIR: 0x%08x\n", eir);
+	kprintf("i915: render error detected, EIR: 0x%08x\n", eir);
 
 	if (IS_G4X(dev)) {
 		if (eir & (GM45_ERROR_MEM_PRIV | GM45_ERROR_CP_PRIV)) {
 			u32 ipeir = I915_READ(IPEIR_I965);
 
-			printf("  IPEIR: 0x%08x\n",
+			kprintf("  IPEIR: 0x%08x\n",
 			       I915_READ(IPEIR_I965));
-			printf("  IPEHR: 0x%08x\n",
+			kprintf("  IPEHR: 0x%08x\n",
 			       I915_READ(IPEHR_I965));
-			printf("  INSTDONE: 0x%08x\n",
+			kprintf("  INSTDONE: 0x%08x\n",
 			       I915_READ(INSTDONE_I965));
-			printf("  INSTPS: 0x%08x\n",
+			kprintf("  INSTPS: 0x%08x\n",
 			       I915_READ(INSTPS));
-			printf("  INSTDONE1: 0x%08x\n",
+			kprintf("  INSTDONE1: 0x%08x\n",
 			       I915_READ(INSTDONE1));
-			printf("  ACTHD: 0x%08x\n",
+			kprintf("  ACTHD: 0x%08x\n",
 			       I915_READ(ACTHD_I965));
 			I915_WRITE(IPEIR_I965, ipeir);
 			POSTING_READ(IPEIR_I965);
 		}
 		if (eir & GM45_ERROR_PAGE_TABLE) {
 			u32 pgtbl_err = I915_READ(PGTBL_ER);
-			printf("page table error\n");
-			printf("  PGTBL_ER: 0x%08x\n",
+			kprintf("page table error\n");
+			kprintf("  PGTBL_ER: 0x%08x\n",
 			       pgtbl_err);
 			I915_WRITE(PGTBL_ER, pgtbl_err);
 			POSTING_READ(PGTBL_ER);
@@ -770,8 +770,8 @@ static void i915_report_and_clear_eir(struct drm_device *dev)
 	if (!IS_GEN2(dev)) {
 		if (eir & I915_ERROR_PAGE_TABLE) {
 			u32 pgtbl_err = I915_READ(PGTBL_ER);
-			printf("page table error\n");
-			printf("  PGTBL_ER: 0x%08x\n",
+			kprintf("page table error\n");
+			kprintf("  PGTBL_ER: 0x%08x\n",
 			       pgtbl_err);
 			I915_WRITE(PGTBL_ER, pgtbl_err);
 			POSTING_READ(PGTBL_ER);
@@ -779,43 +779,43 @@ static void i915_report_and_clear_eir(struct drm_device *dev)
 	}
 
 	if (eir & I915_ERROR_MEMORY_REFRESH) {
-		printf("memory refresh error:\n");
+		kprintf("memory refresh error:\n");
 		for_each_pipe(pipe)
-			printf("pipe %c stat: 0x%08x\n",
+			kprintf("pipe %c stat: 0x%08x\n",
 			       pipe_name(pipe), I915_READ(PIPESTAT(pipe)));
 		/* pipestat has already been acked */
 	}
 	if (eir & I915_ERROR_INSTRUCTION) {
-		printf("instruction error\n");
-		printf("  INSTPM: 0x%08x\n",
+		kprintf("instruction error\n");
+		kprintf("  INSTPM: 0x%08x\n",
 		       I915_READ(INSTPM));
 		if (INTEL_INFO(dev)->gen < 4) {
 			u32 ipeir = I915_READ(IPEIR);
 
-			printf("  IPEIR: 0x%08x\n",
+			kprintf("  IPEIR: 0x%08x\n",
 			       I915_READ(IPEIR));
-			printf("  IPEHR: 0x%08x\n",
+			kprintf("  IPEHR: 0x%08x\n",
 			       I915_READ(IPEHR));
-			printf("  INSTDONE: 0x%08x\n",
+			kprintf("  INSTDONE: 0x%08x\n",
 			       I915_READ(INSTDONE));
-			printf("  ACTHD: 0x%08x\n",
+			kprintf("  ACTHD: 0x%08x\n",
 			       I915_READ(ACTHD));
 			I915_WRITE(IPEIR, ipeir);
 			POSTING_READ(IPEIR);
 		} else {
 			u32 ipeir = I915_READ(IPEIR_I965);
 
-			printf("  IPEIR: 0x%08x\n",
+			kprintf("  IPEIR: 0x%08x\n",
 			       I915_READ(IPEIR_I965));
-			printf("  IPEHR: 0x%08x\n",
+			kprintf("  IPEHR: 0x%08x\n",
 			       I915_READ(IPEHR_I965));
-			printf("  INSTDONE: 0x%08x\n",
+			kprintf("  INSTDONE: 0x%08x\n",
 			       I915_READ(INSTDONE_I965));
-			printf("  INSTPS: 0x%08x\n",
+			kprintf("  INSTPS: 0x%08x\n",
 			       I915_READ(INSTPS));
-			printf("  INSTDONE1: 0x%08x\n",
+			kprintf("  INSTDONE1: 0x%08x\n",
 			       I915_READ(INSTDONE1));
-			printf("  ACTHD: 0x%08x\n",
+			kprintf("  ACTHD: 0x%08x\n",
 			       I915_READ(ACTHD_I965));
 			I915_WRITE(IPEIR_I965, ipeir);
 			POSTING_READ(IPEIR_I965);
@@ -1890,14 +1890,14 @@ i915_error_object_create(struct drm_i915_private *dev_priv,
 
 	page_count = src->base.size / PAGE_SIZE;
 
-	dst = malloc(sizeof(*dst) + page_count * sizeof(u32 *), DRM_I915_GEM,
+	dst = kmalloc(sizeof(*dst) + page_count * sizeof(u32 *), DRM_I915_GEM,
 	    M_NOWAIT);
 	if (dst == NULL)
 		return (NULL);
 
 	reloc_offset = src->gtt_offset;
 	for (page = 0; page < page_count; page++) {
-		d = malloc(PAGE_SIZE, DRM_I915_GEM, M_NOWAIT);
+		d = kmalloc(PAGE_SIZE, DRM_I915_GEM, M_NOWAIT);
 		if (d == NULL)
 			goto unwind;
 
@@ -1940,8 +1940,8 @@ i915_error_object_create(struct drm_i915_private *dev_priv,
 
 unwind:
 	while (page--)
-		free(dst->pages[page], DRM_I915_GEM);
-	free(dst, DRM_I915_GEM);
+		kfree(dst->pages[page], DRM_I915_GEM);
+	kfree(dst, DRM_I915_GEM);
 	return (NULL);
 }
 
@@ -1954,9 +1954,9 @@ i915_error_object_free(struct drm_i915_error_object *obj)
 		return;
 
 	for (page = 0; page < obj->page_count; page++)
-		free(obj->pages[page], DRM_I915_GEM);
+		kfree(obj->pages[page], DRM_I915_GEM);
 
-	free(obj, DRM_I915_GEM);
+	kfree(obj, DRM_I915_GEM);
 }
 
 static void
@@ -1968,12 +1968,12 @@ i915_error_state_free(struct drm_device *dev,
 	for (i = 0; i < DRM_ARRAY_SIZE(error->ring); i++) {
 		i915_error_object_free(error->ring[i].batchbuffer);
 		i915_error_object_free(error->ring[i].ringbuffer);
-		free(error->ring[i].requests, DRM_I915_GEM);
+		kfree(error->ring[i].requests, DRM_I915_GEM);
 	}
 
-	free(error->active_bo, DRM_I915_GEM);
-	free(error->overlay, DRM_I915_GEM);
-	free(error, DRM_I915_GEM);
+	kfree(error->active_bo, DRM_I915_GEM);
+	kfree(error->overlay, DRM_I915_GEM);
+	kfree(error, DRM_I915_GEM);
 }
 
 static u32
@@ -2142,7 +2142,7 @@ i915_gem_record_rings(struct drm_device *dev,
 			count++;
 
 		error->ring[i].num_requests = count;
-		error->ring[i].requests = malloc(count *
+		error->ring[i].requests = kmalloc(count *
 		    sizeof(struct drm_i915_error_request), DRM_I915_GEM,
 		    M_WAITOK);
 		if (error->ring[i].requests == NULL) {
@@ -2177,7 +2177,7 @@ i915_capture_error_state(struct drm_device *dev)
 		return;
 
 	/* Account for pipe specific data like PIPE*STAT */
-	error = malloc(sizeof(*error), DRM_I915_GEM, M_NOWAIT | M_ZERO);
+	error = kmalloc(sizeof(*error), DRM_I915_GEM, M_NOWAIT | M_ZERO);
 	if (error == NULL) {
 		DRM_DEBUG("out of memory, not capturing error state\n");
 		return;
@@ -2214,7 +2214,7 @@ i915_capture_error_state(struct drm_device *dev)
 	error->active_bo = NULL;
 	error->pinned_bo = NULL;
 	if (i) {
-		error->active_bo = malloc(sizeof(*error->active_bo) * i,
+		error->active_bo = kmalloc(sizeof(*error->active_bo) * i,
 		    DRM_I915_GEM, M_NOWAIT);
 		if (error->active_bo)
 			error->pinned_bo = error->active_bo +

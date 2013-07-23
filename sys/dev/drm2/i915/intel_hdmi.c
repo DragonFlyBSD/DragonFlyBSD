@@ -343,7 +343,7 @@ intel_hdmi_detect(struct drm_connector *connector, bool force)
 			intel_hdmi->has_audio = drm_detect_monitor_audio(edid);
 		}
 		connector->display_info.raw_edid = NULL;
-		free(edid, DRM_MEM_KMS);
+		kfree(edid, DRM_MEM_KMS);
 	} else {
 		DRM_DEBUG_KMS("[CONNECTOR:%d:%s] got no edid, ddc port %d\n",
 		    connector->base.id, drm_get_connector_name(connector),
@@ -386,7 +386,7 @@ intel_hdmi_detect_audio(struct drm_connector *connector)
 			has_audio = drm_detect_monitor_audio(edid);
 
 		connector->display_info.raw_edid = NULL;
-		free(edid, DRM_MEM_KMS);
+		kfree(edid, DRM_MEM_KMS);
 	}
 
 	return has_audio;
@@ -453,7 +453,7 @@ static void intel_hdmi_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	free(connector, DRM_MEM_KMS);
+	kfree(connector, DRM_MEM_KMS);
 }
 
 static const struct drm_encoder_helper_funcs intel_hdmi_helper_funcs = {
@@ -498,9 +498,9 @@ void intel_hdmi_init(struct drm_device *dev, int sdvox_reg)
 	struct intel_hdmi *intel_hdmi;
 	int i;
 
-	intel_hdmi = malloc(sizeof(struct intel_hdmi), DRM_MEM_KMS,
+	intel_hdmi = kmalloc(sizeof(struct intel_hdmi), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
-	intel_connector = malloc(sizeof(struct intel_connector), DRM_MEM_KMS,
+	intel_connector = kmalloc(sizeof(struct intel_connector), DRM_MEM_KMS,
 	    M_WAITOK | M_ZERO);
 
 	intel_encoder = &intel_hdmi->base;
