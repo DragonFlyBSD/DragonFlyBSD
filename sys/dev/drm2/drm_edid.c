@@ -33,8 +33,8 @@
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm_edid.h>
 #include <dev/drm2/drm_edid_modes.h>
-#include <dev/iicbus/iic.h>
-#include <dev/iicbus/iiconf.h>
+#include <bus/iicbus/iic.h>
+#include <bus/iicbus/iiconf.h>
 #include "iicbus_if.h"
 
 #define version_greater(edid, maj, min) \

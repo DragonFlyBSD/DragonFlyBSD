@@ -47,7 +47,7 @@ struct drm_file;
 #include <sys/ktr.h>
 #include <sys/module.h>
 #include <sys/systm.h>
-#include <sys/conf.h>
+#include <sys/device.h>
 #include <sys/sglist.h>
 #include <sys/stat.h>
 #include <sys/priv.h>
@@ -58,7 +58,6 @@ struct drm_file;
 #include <sys/fcntl.h>
 #include <sys/uio.h>
 #include <sys/filio.h>
-#include <sys/selinfo.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
 #include <sys/queue.h>
@@ -76,11 +75,9 @@ struct drm_file;
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_param.h>
-#include <vm/vm_phys.h>
 #include <machine/param.h>
 #include <machine/pmap.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
+#include <sys/resource.h>
 #if defined(__i386__) || defined(__amd64__)
 #include <machine/specialreg.h>
 #endif
@@ -92,10 +89,10 @@ struct drm_file;
 #include <dev/agp/agpvar.h>
 #include <sys/agpio.h>
 #include <sys/mutex.h>
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
-#include <sys/selinfo.h>
-#include <sys/bus.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+/* XXX: bool definition */
+#include <libprop/proplib.h>
 
 #include <dev/drm2/drm.h>
 #include <dev/drm2/drm_atomic.h>

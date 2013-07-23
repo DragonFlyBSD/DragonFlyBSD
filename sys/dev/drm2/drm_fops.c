@@ -36,6 +36,8 @@
  */
 
 #include <dev/drm2/drmP.h>
+#include <sys/types.h>
+#include <sys/conf.h>
 
 /* drm_open_helper is called whenever a process opens /dev/drm. */
 int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,

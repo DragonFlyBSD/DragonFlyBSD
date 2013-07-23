@@ -33,7 +33,8 @@
  * Implementation of the ioctls for setup of DRM mappings and DMA buffers.
  */
 
-#include <dev/pci/pcireg.h>
+#include <sys/conf.h>
+#include <bus/pci/pcireg.h>
 
 #include <dev/drm2/drmP.h>
 

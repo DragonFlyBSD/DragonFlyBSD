@@ -32,6 +32,8 @@
 #include <dev/drm2/drm.h>
 
 #include <sys/sysctl.h>
+#include <sys/types.h>
+#include <sys/conf.h>
 
 static int	   drm_name_info DRM_SYSCTL_HANDLER_ARGS;
 static int	   drm_vm_info DRM_SYSCTL_HANDLER_ARGS;

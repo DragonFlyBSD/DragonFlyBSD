@@ -31,7 +31,7 @@
 #include <dev/drm2/i915/i915_drv.h>
 #include <dev/drm2/i915/intel_drv.h>
 #include <dev/drm2/drm_edid.h>
-#include <dev/iicbus/iiconf.h>
+#include <bus/iicbus/iiconf.h>
 
 /**
  * intel_ddc_probe

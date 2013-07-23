@@ -25,9 +25,9 @@
 #include <sys/types.h>
 #include <sys/kobj.h>
 #include <sys/bus.h>
-#include <dev/iicbus/iic.h>
+#include <bus/iicbus/iic.h>
 #include "iicbus_if.h"
-#include <dev/iicbus/iiconf.h>
+#include <bus/iicbus/iiconf.h>
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm_dp_helper.h>
 

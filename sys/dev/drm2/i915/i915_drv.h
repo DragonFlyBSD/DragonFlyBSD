@@ -31,6 +31,8 @@
 #ifndef _I915_DRV_H_
 #define _I915_DRV_H_
 
+#include <sys/eventhandler.h>
+
 #include <dev/agp/agp_i810.h>
 #include <dev/drm2/drm_mm.h>
 #include <dev/drm2/i915/i915_reg.h>
