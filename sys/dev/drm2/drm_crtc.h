@@ -640,7 +640,7 @@ struct drm_mode_group {
  *
  */
 struct drm_mode_config {
-	struct sx mutex; /* protects configuration (mode lists etc.) */
+	struct lock lock; /* protects configuration (mode lists etc.) */
 	struct drm_gem_names crtc_names; /* use this idr for all IDs, fb, crtc, connector, modes */
 	/* this is limited to one for now */
 	int num_fb;

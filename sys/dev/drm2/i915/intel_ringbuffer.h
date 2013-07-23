@@ -60,7 +60,7 @@ struct  intel_ring_buffer {
 	 */
 	u32		last_retired_head;
 
-	struct mtx	irq_lock;
+	struct lock	irq_lock;
 	uint32_t	irq_refcount;
 	uint32_t	irq_mask;
 	uint32_t	irq_seqno;		/* last seq seem at irq time */

@@ -566,7 +566,7 @@ int intel_sprite_set_colorkey(struct drm_device *dev, void *data,
 	if ((set->flags & (I915_SET_COLORKEY_DESTINATION | I915_SET_COLORKEY_SOURCE)) == (I915_SET_COLORKEY_DESTINATION | I915_SET_COLORKEY_SOURCE))
 		return -EINVAL;
 
-	sx_xlock(&dev->mode_config.mutex);
+	lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
 	
 	obj = drm_mode_object_find(dev, set->plane_id, DRM_MODE_OBJECT_PLANE);
 	if (!obj) {
@@ -579,7 +579,7 @@ int intel_sprite_set_colorkey(struct drm_device *dev, void *data,
 	ret = intel_plane->update_colorkey(plane, set);
 
 out_unlock:
-	sx_xunlock(&dev->mode_config.mutex);
+	lockmgr(&dev->mode_config.lock, LK_RELEASE);
 	return ret;
 }
 
@@ -596,7 +596,7 @@ int intel_sprite_get_colorkey(struct drm_device *dev, void *data,
 	if (!dev_priv)
 		return -EINVAL;
 
-	sx_xlock(&dev->mode_config.mutex);
+	lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
 
 	obj = drm_mode_object_find(dev, get->plane_id, DRM_MODE_OBJECT_PLANE);
 	if (!obj) {
@@ -609,7 +609,7 @@ int intel_sprite_get_colorkey(struct drm_device *dev, void *data,
 	intel_plane->get_colorkey(plane, get);
 
 out_unlock:
-	sx_xunlock(&dev->mode_config.mutex);
+	lockmgr(&dev->mode_config.lock, LK_RELEASE);
 	return ret;
 }
 

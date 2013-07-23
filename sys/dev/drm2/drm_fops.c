@@ -130,27 +130,27 @@ drm_read(struct cdev *kdev, struct uio *uio, int ioflag)
 		return (EINVAL);
 	}
 	dev = drm_get_device_from_kdev(kdev);
-	mtx_lock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	while (list_empty(&file_priv->event_list)) {
 		if ((ioflag & O_NONBLOCK) != 0) {
 			error = EAGAIN;
 			goto out;
 		}
-		error = msleep(&file_priv->event_space, &dev->event_lock,
+		error = lksleep(&file_priv->event_space, &dev->event_lock,
 	           PCATCH, "drmrea", 0);
 	       if (error != 0)
 		       goto out;
 	}
 	while (drm_dequeue_event(dev, file_priv, uio, &e)) {
-		mtx_unlock(&dev->event_lock);
+		lockmgr(&dev->event_lock, LK_RELEASE);
 		error = uiomove(e->event, e->event->length, uio);
 		e->destroy(e);
 		if (error != 0)
 			return (error);
-		mtx_lock(&dev->event_lock);
+		lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	}
 out:
-	mtx_unlock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_RELEASE);
 	return (error);
 }
 
@@ -162,7 +162,7 @@ drm_event_wakeup(struct drm_pending_event *e)
 
 	file_priv = e->file_priv;
 	dev = file_priv->dev;
-	mtx_assert(&dev->event_lock, MA_OWNED);
+	KKASSERT(lockstatus(&dev->event_lock, curthread) != 0);
 
 	wakeup(&file_priv->event_space);
 	selwakeup(&file_priv->event_poll);
@@ -183,7 +183,7 @@ drm_poll(struct cdev *kdev, int events, struct thread *td)
 	dev = drm_get_device_from_kdev(kdev);
 
 	revents = 0;
-	mtx_lock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	if ((events & (POLLIN | POLLRDNORM)) != 0) {
 		if (list_empty(&file_priv->event_list)) {
 			selrecord(td, &file_priv->event_poll);
@@ -191,6 +191,6 @@ drm_poll(struct cdev *kdev, int events, struct thread *td)
 			revents |= events & (POLLIN | POLLRDNORM);
 		}
 	}
-	mtx_unlock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_RELEASE);
 	return (revents);
 }

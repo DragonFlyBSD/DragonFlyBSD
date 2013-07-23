@@ -308,15 +308,15 @@ static int i915_drm_thaw(struct drm_device *dev)
 			ironlake_init_pch_refclk(dev);
 
 		DRM_UNLOCK(dev);
-		sx_xlock(&dev->mode_config.mutex);
+		lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
 		drm_mode_config_reset(dev);
-		sx_xunlock(&dev->mode_config.mutex);
+		lockmgr(&dev->mode_config.lock, LK_RELEASE);
 		drm_irq_install(dev);
 
-		sx_xlock(&dev->mode_config.mutex);
+		lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
 		/* Resume the modeset for every activated CRTC */
 		drm_helper_resume_force_mode(dev);
-		sx_xunlock(&dev->mode_config.mutex);
+		lockmgr(&dev->mode_config.lock, LK_RELEASE);
 
 		if (IS_IRONLAKE_M(dev))
 			ironlake_enable_rc6(dev);
@@ -515,10 +515,10 @@ void
 gen6_gt_force_wake_get(struct drm_i915_private *dev_priv)
 {
 
-	mtx_lock(&dev_priv->gt_lock);
+	lockmgr(&dev_priv->gt_lock, LK_EXCLUSIVE);
 	if (dev_priv->forcewake_count++ == 0)
 		dev_priv->display.force_wake_get(dev_priv);
-	mtx_unlock(&dev_priv->gt_lock);
+	lockmgr(&dev_priv->gt_lock, LK_RELEASE);
 }
 
 static void
@@ -555,10 +555,10 @@ void
 gen6_gt_force_wake_put(struct drm_i915_private *dev_priv)
 {
 
-	mtx_lock(&dev_priv->gt_lock);
+	lockmgr(&dev_priv->gt_lock, LK_EXCLUSIVE);
 	if (--dev_priv->forcewake_count == 0)
  		dev_priv->display.force_wake_put(dev_priv);
-	mtx_unlock(&dev_priv->gt_lock);
+	lockmgr(&dev_priv->gt_lock, LK_RELEASE);
 }
 
 int
@@ -671,7 +671,7 @@ gen6_do_reset(struct drm_device *dev, u8 flags)
 	/* Hold gt_lock across reset to prevent any register access
 	 * with forcewake not set correctly
 	 */
-	mtx_lock(&dev_priv->gt_lock);
+	lockmgr(&dev_priv->gt_lock, LK_EXCLUSIVE);
 
 	/* Reset the chip */
 
@@ -695,7 +695,7 @@ gen6_do_reset(struct drm_device *dev, u8 flags)
 	/* Restore fifo count */
 	dev_priv->gt_fifo_count = I915_READ_NOTRACE(GT_FIFO_FREE_ENTRIES);
 
-	mtx_unlock(&dev_priv->gt_lock);
+	lockmgr(&dev_priv->gt_lock, LK_RELEASE);
 	return (ret);
 }
 
@@ -713,7 +713,7 @@ i915_reset(struct drm_device *dev, u8 flags)
 	if (!i915_try_reset)
 		return (0);
 
-	if (!sx_try_xlock(&dev->dev_struct_lock))
+	if (!lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_NOWAIT))
 		return (-EBUSY);
 
 	i915_gem_reset(dev);
@@ -768,9 +768,9 @@ i915_reset(struct drm_device *dev, u8 flags)
 	DRM_UNLOCK(dev);
 
 	if (need_display) {
-		sx_xlock(&dev->mode_config.mutex);
+		lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
 		drm_helper_resume_force_mode(dev);
-		sx_xunlock(&dev->mode_config.mutex);
+		lockmgr(&dev->mode_config.lock, LK_RELEASE);
 	}
 
 	return (0);
@@ -780,13 +780,13 @@ i915_reset(struct drm_device *dev, u8 flags)
 u##x i915_read##x(struct drm_i915_private *dev_priv, u32 reg) { \
 	u##x val = 0; \
 	if (NEEDS_FORCE_WAKE((dev_priv), (reg))) { \
-		mtx_lock(&dev_priv->gt_lock); \
+		lockmgr(&dev_priv->gt_lock, LK_EXCLUSIVE); \
 		if (dev_priv->forcewake_count == 0) \
 			dev_priv->display.force_wake_get(dev_priv); \
 		val = DRM_READ##y(dev_priv->mmio_map, reg);	\
 		if (dev_priv->forcewake_count == 0) \
 			dev_priv->display.force_wake_put(dev_priv); \
-		mtx_unlock(&dev_priv->gt_lock); \
+		lockmgr(&dev_priv->gt_lock, LK_RELEASE); \
 	} else { \
 		val = DRM_READ##y(dev_priv->mmio_map, reg);	\
 	} \

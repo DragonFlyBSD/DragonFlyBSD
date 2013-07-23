@@ -247,7 +247,7 @@ typedef struct drm_i915_private {
 	device_t *bbbus;
 	/** gmbus_sx protects against concurrent usage of the single hw gmbus
 	 * controller on different i2c buses. */
-	struct sx gmbus_sx;
+	struct lock gmbus_lock;
 
 	int has_gem;
 	int relative_constants_mode;
@@ -261,7 +261,7 @@ typedef struct drm_i915_private {
 	/** forcewake_count is protected by gt_lock */
 	unsigned forcewake_count;
 	/** gt_lock is also taken in irq contexts. */
-	struct mtx gt_lock;
+	struct lock gt_lock;
 
 	drm_i915_sarea_t *sarea_priv;
 	/* drm_i915_ring_buffer_t ring; */
@@ -293,7 +293,7 @@ typedef struct drm_i915_private {
 	u32 irq_mask;
 	u32 gt_irq_mask;
 	u32 pch_irq_mask;
-	struct mtx irq_lock;
+	struct lock irq_lock;
 
 	u32 hotplug_supported_mask;
 
@@ -675,7 +675,7 @@ typedef struct drm_i915_private {
 	int mch_res_rid;
 	struct resource *mch_res;
 
-	struct mtx rps_lock;
+	struct lock rps_lock;
 	u32 pm_iir;
 	struct task rps_task;
 
@@ -694,7 +694,7 @@ typedef struct drm_i915_private {
 	int c_m;
 	int r_t;
 	u8 corr;
-	struct mtx *mchdev_lock;
+	struct lock *mchdev_lock;
 
 	enum no_fbc_reason no_fbc_reason;
 
@@ -710,9 +710,9 @@ typedef struct drm_i915_private {
 	struct task error_task;
 	struct task hotplug_task;
 	int error_completion;
-	struct mtx error_completion_lock;
+	struct lock error_completion_lock;
 	struct drm_i915_error_state *first_error;
-	struct mtx error_lock;
+	struct lock error_lock;
 	struct callout hangcheck_timer;
 
 	unsigned long last_gpu_reset;
@@ -923,7 +923,7 @@ struct drm_i915_gem_request {
 struct drm_i915_file_private {
 	struct {
 		struct list_head request_list;
-		struct mtx lck;
+		struct lock lck;
 	} mm;
 };
 

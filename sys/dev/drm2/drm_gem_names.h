@@ -35,7 +35,6 @@
 
 #include <sys/types.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/queue.h>
 
 struct drm_gem_name {
@@ -45,7 +44,7 @@ struct drm_gem_name {
 };
 
 struct drm_gem_names {
-	struct mtx lock;
+	struct lock lock;
 	LIST_HEAD(drm_gem_names_head, drm_gem_name) *names_hash;
 	u_long hash_mask;
 	struct unrhdr *unr;

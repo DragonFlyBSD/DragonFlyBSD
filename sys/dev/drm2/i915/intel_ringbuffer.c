@@ -52,10 +52,10 @@ i915_trace_irq_get(struct intel_ring_buffer *ring, uint32_t seqno)
 {
 
 	if (ring->trace_irq_seqno == 0) {
-		mtx_lock(&ring->irq_lock);
+		lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
 		if (ring->irq_get(ring))
 			ring->trace_irq_seqno = seqno;
-		mtx_unlock(&ring->irq_lock);
+		lockmgr(&ring->irq_lock, LK_RELEASE);
 	}
 }
 
@@ -733,7 +733,7 @@ render_ring_get_irq(struct intel_ring_buffer *ring)
 	if (!dev->irq_enabled)
 		return false;
 
-	mtx_assert(&ring->irq_lock, MA_OWNED);
+	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
 	if (ring->irq_refcount++ == 0) {
 		if (HAS_PCH_SPLIT(dev))
 			ironlake_enable_irq(dev_priv,
@@ -751,7 +751,7 @@ render_ring_put_irq(struct intel_ring_buffer *ring)
 	struct drm_device *dev = ring->dev;
 	drm_i915_private_t *dev_priv = dev->dev_private;
 
-	mtx_assert(&ring->irq_lock, MA_OWNED);
+	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
 	if (--ring->irq_refcount == 0) {
 		if (HAS_PCH_SPLIT(dev))
 			ironlake_disable_irq(dev_priv,
@@ -844,7 +844,7 @@ gen6_ring_get_irq(struct intel_ring_buffer *ring, uint32_t gflag, uint32_t rflag
 
 	gen6_gt_force_wake_get(dev_priv);
 
-	mtx_assert(&ring->irq_lock, MA_OWNED);
+	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
 	if (ring->irq_refcount++ == 0) {
 		ring->irq_mask &= ~rflag;
 		I915_WRITE_IMR(ring, ring->irq_mask);
@@ -860,7 +860,7 @@ gen6_ring_put_irq(struct intel_ring_buffer *ring, uint32_t gflag, uint32_t rflag
 	struct drm_device *dev = ring->dev;
 	drm_i915_private_t *dev_priv = dev->dev_private;
 
-	mtx_assert(&ring->irq_lock, MA_OWNED);
+	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
 	if (--ring->irq_refcount == 0) {
 		ring->irq_mask |= rflag;
 		I915_WRITE_IMR(ring, ring->irq_mask);
@@ -879,7 +879,7 @@ bsd_ring_get_irq(struct intel_ring_buffer *ring)
 	if (!dev->irq_enabled)
 		return false;
 
-	mtx_assert(&ring->irq_lock, MA_OWNED);
+	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
 	if (ring->irq_refcount++ == 0) {
 		if (IS_G4X(dev))
 			i915_enable_irq(dev_priv, I915_BSD_USER_INTERRUPT);
@@ -895,7 +895,7 @@ bsd_ring_put_irq(struct intel_ring_buffer *ring)
 	struct drm_device *dev = ring->dev;
 	drm_i915_private_t *dev_priv = dev->dev_private;
 
-	mtx_assert(&ring->irq_lock, MA_OWNED);
+	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
 	if (--ring->irq_refcount == 0) {
 		if (IS_G4X(dev))
 			i915_disable_irq(dev_priv, I915_BSD_USER_INTERRUPT);
@@ -1046,7 +1046,7 @@ int intel_init_ring_buffer(struct drm_device *dev,
 	INIT_LIST_HEAD(&ring->request_list);
 	INIT_LIST_HEAD(&ring->gpu_write_list);
 
-	mtx_init(&ring->irq_lock, "ringb", NULL, MTX_DEF);
+	lockinit(&ring->irq_lock, "ringb", 0, LK_CANRECURSE);
 	ring->irq_mask = ~0;
 
 	if (I915_NEED_GFX_HWS(dev)) {

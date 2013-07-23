@@ -34,6 +34,7 @@
 #include <sys/kernel.h>
 #include <sys/limits.h>
 #include <sys/malloc.h>
+#include <sys/proc.h>
 
 #include <dev/drm2/drm_gem_names.h>
 
@@ -49,7 +50,7 @@ drm_gem_names_init(struct drm_gem_names *names)
 	names->unr = new_unrhdr(1, INT_MAX, NULL); /* XXXKIB */
 	names->names_hash = hashinit(1000 /* XXXKIB */, M_GEM_NAMES,
 	    &names->hash_mask);
-	mtx_init(&names->lock, "drmnames", NULL, MTX_DEF);
+	lockinit(&names->lock, "drmnames", 0, LK_CANRECURSE);
 }
 
 void
@@ -58,15 +59,15 @@ drm_gem_names_fini(struct drm_gem_names *names)
 	struct drm_gem_name *np;
 	int i;
 
-	mtx_lock(&names->lock);
+	lockmgr(&names->lock, LK_EXCLUSIVE);
 	for (i = 0; i <= names->hash_mask; i++) {
 		while ((np = LIST_FIRST(&names->names_hash[i])) != NULL) {
 			drm_gem_names_delete_name(names, np);
-			mtx_lock(&names->lock);
+			lockmgr(&names->lock, LK_EXCLUSIVE);
 		}
 	}
-	mtx_unlock(&names->lock);
-	mtx_destroy(&names->lock);
+	lockmgr(&names->lock, LK_RELEASE);
+	lockuninit(&names->lock);
 	hashdestroy(names->names_hash, M_GEM_NAMES, names->hash_mask);
 	delete_unrhdr(names->unr);
 }
@@ -84,16 +85,16 @@ drm_gem_name_ref(struct drm_gem_names *names, uint32_t name,
 {
 	struct drm_gem_name *n;
 
-	mtx_lock(&names->lock);
+	lockmgr(&names->lock, LK_EXCLUSIVE);
 	LIST_FOREACH(n, gem_name_hash_index(names, name), link) {
 		if (n->name == name) {
 			if (ref != NULL)
 				ref(n->ptr);
-			mtx_unlock(&names->lock);
+			lockmgr(&names->lock, LK_RELEASE);
 			return (n->ptr);
 		}
 	}
-	mtx_unlock(&names->lock);
+	lockmgr(&names->lock, LK_RELEASE);
 	return (NULL);
 }
 
@@ -132,31 +133,30 @@ drm_gem_name_create(struct drm_gem_names *names, void *p, uint32_t *name)
 	struct drm_gem_name *np;
 
 	np = kmalloc(sizeof(struct drm_gem_name), M_GEM_NAMES, M_WAITOK);
-	mtx_lock(&names->lock);
+	lockmgr(&names->lock, LK_EXCLUSIVE);
 	if (*name != 0) {
-		mtx_unlock(&names->lock);
+		lockmgr(&names->lock, LK_RELEASE);
 		return (EALREADY);
 	}
 	np->name = alloc_unr(names->unr);
 	if (np->name == -1) {
-		mtx_unlock(&names->lock);
+		lockmgr(&names->lock, LK_RELEASE);
 		free(np, M_GEM_NAMES);
 		return (ENOMEM);
 	}
 	*name = np->name;
 	np->ptr = p;
 	LIST_INSERT_HEAD(gem_name_hash_index(names, np->name), np, link);
-	mtx_unlock(&names->lock);
+	lockmgr(&names->lock, LK_RELEASE);
 	return (0);
 }
 
 static void
 drm_gem_names_delete_name(struct drm_gem_names *names, struct drm_gem_name *np)
 {
-
-	mtx_assert(&names->lock, MA_OWNED);
+	KKASSERT(lockstatus(&names->lock, curthread) != 0);
 	LIST_REMOVE(np, link);
-	mtx_unlock(&names->lock);
+	lockmgr(&names->lock, LK_RELEASE);
 	free_unr(names->unr, np->name);
 	kfree(np, M_GEM_NAMES);
 }
@@ -167,7 +167,7 @@ drm_gem_names_remove(struct drm_gem_names *names, uint32_t name)
 	struct drm_gem_name *n;
 	void *res;
 
-	mtx_lock(&names->lock);
+	lockmgr(&names->lock, LK_EXCLUSIVE);
 	LIST_FOREACH(n, gem_name_hash_index(names, name), link) {
 		if (n->name == name) {
 			res = n->ptr;
@@ -175,7 +175,7 @@ drm_gem_names_remove(struct drm_gem_names *names, uint32_t name)
 			return (res);
 		}
 	}
-	mtx_unlock(&names->lock);
+	lockmgr(&names->lock, LK_RELEASE);
 	return (NULL);
 }
 
@@ -189,7 +189,7 @@ drm_gem_names_foreach(struct drm_gem_names *names,
 
 	bzero(&marker, sizeof(marker));
 	marker.name = -1;
-	mtx_lock(&names->lock);
+	lockmgr(&names->lock, LK_EXCLUSIVE);
 	for (i = 0; i <= names->hash_mask; i++) {
 		for (np = LIST_FIRST(&names->names_hash[i]); np != NULL; ) {
 			if (np->name == -1) {
@@ -197,14 +197,14 @@ drm_gem_names_foreach(struct drm_gem_names *names,
 				continue;
 			}
 			LIST_INSERT_AFTER(np, &marker, link);
-			mtx_unlock(&names->lock);
+			lockmgr(&names->lock, LK_RELEASE);
 			fres = f(np->name, np->ptr, arg);
-			mtx_lock(&names->lock);
+			lockmgr(&names->lock, LK_EXCLUSIVE);
 			np = LIST_NEXT(&marker, link);
 			LIST_REMOVE(&marker, link);
 			if (fres)
 				break;
 		}
 	}
-	mtx_unlock(&names->lock);
+	lockmgr(&names->lock, LK_RELEASE);
 }

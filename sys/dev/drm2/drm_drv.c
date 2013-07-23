@@ -283,12 +283,12 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 		dev->irq = (int) rman_get_start(dev->irqr);
 	}
 
-	mtx_init(&dev->dev_lock, "drmdev", NULL, MTX_DEF);
-	mtx_init(&dev->irq_lock, "drmirq", NULL, MTX_DEF);
-	mtx_init(&dev->vbl_lock, "drmvbl", NULL, MTX_DEF);
-	mtx_init(&dev->drw_lock, "drmdrw", NULL, MTX_DEF);
-	mtx_init(&dev->event_lock, "drmev", NULL, MTX_DEF);
-	sx_init(&dev->dev_struct_lock, "drmslk");
+	lockinit(&dev->dev_lock, "drmdev", 0, LK_CANRECURSE);
+	lwkt_serialize_init(&dev->irq_lock);
+	lockinit(&dev->vbl_lock, "drmvbl", 0, LK_CANRECURSE);
+	DRM_SPININIT(&dev->drw_lock, "drmdrw");
+	lockinit(&dev->event_lock, "drmev", 0, LK_CANRECURSE);
+	lockinit(&dev->dev_struct_lock, "drmslk", 0, LK_CANRECURSE);
 
 	id_entry = drm_find_description(dev->pci_vendor,
 	    dev->pci_device, idlist);
@@ -576,12 +576,11 @@ error:
 	if (dev->devnode != NULL)
 		destroy_dev(dev->devnode);
 
-	mtx_destroy(&dev->drw_lock);
-	mtx_destroy(&dev->vbl_lock);
-	mtx_destroy(&dev->irq_lock);
-	mtx_destroy(&dev->dev_lock);
-	mtx_destroy(&dev->event_lock);
-	sx_destroy(&dev->dev_struct_lock);
+	DRM_SPINUNINIT(&dev->drw_lock);
+	lockuninit(&dev->vbl_lock);
+	lockuninit(&dev->dev_lock);
+	lockuninit(&dev->event_lock);
+	lockuninit(&dev->dev_struct_lock);
 
 	return retcode;
 }
@@ -647,12 +646,11 @@ static void drm_unload(struct drm_device *dev)
 	if (pci_disable_busmaster(dev->device))
 		DRM_ERROR("Request to disable bus-master failed.\n");
 
-	mtx_destroy(&dev->drw_lock);
-	mtx_destroy(&dev->vbl_lock);
-	mtx_destroy(&dev->irq_lock);
-	mtx_destroy(&dev->dev_lock);
-	mtx_destroy(&dev->event_lock);
-	sx_destroy(&dev->dev_struct_lock);
+	DRM_SPINUNINIT(&dev->drw_lock);
+	lockuninit(&dev->vbl_lock);
+	lockuninit(&dev->dev_lock);
+	lockuninit(&dev->event_lock);
+	lockuninit(&dev->dev_struct_lock);
 }
 
 int drm_version(struct drm_device *dev, void *data, struct drm_file *file_priv)
@@ -697,9 +695,7 @@ drm_open(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p)
 	if (retcode == 0) {
 		atomic_inc(&dev->counts[_DRM_STAT_OPENS]);
 		DRM_LOCK(dev);
-		mtx_lock(&Giant);
 		device_busy(dev->device);
-		mtx_unlock(&Giant);
 		if (!dev->open_count++)
 			retcode = drm_firstopen(dev);
 		DRM_UNLOCK(dev);
@@ -790,9 +786,7 @@ void drm_close(void *data)
 	 */
 
 	atomic_inc(&dev->counts[_DRM_STAT_CLOSES]);
-	mtx_lock(&Giant);
 	device_unbusy(dev->device);
-	mtx_unlock(&Giant);
 	if (--dev->open_count == 0) {
 		retcode = drm_lastclose(dev);
 	}

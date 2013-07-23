@@ -54,7 +54,7 @@ static struct drm_mm_node *drm_mm_kmalloc(struct drm_mm *mm, int atomic)
 	    (atomic ? M_NOWAIT : M_WAITOK));
 
 	if (unlikely(child == NULL)) {
-		mtx_lock(&mm->unused_lock);
+		spin_lock(&mm->unused_spin);
 		if (list_empty(&mm->unused_nodes))
 			child = NULL;
 		else {
@@ -64,7 +64,7 @@ static struct drm_mm_node *drm_mm_kmalloc(struct drm_mm *mm, int atomic)
 			list_del(&child->node_list);
 			--mm->num_unused;
 		}
-		mtx_unlock(&mm->unused_lock);
+		spin_unlock(&mm->unused_spin);
 	}
 	return child;
 }
@@ -73,21 +73,21 @@ int drm_mm_pre_get(struct drm_mm *mm)
 {
 	struct drm_mm_node *node;
 
-	mtx_lock(&mm->unused_lock);
+	spin_lock(&mm->unused_spin);
 	while (mm->num_unused < MM_UNUSED_TARGET) {
-		mtx_unlock(&mm->unused_lock);
+		spin_unlock(&mm->unused_spin);
 		node = kmalloc(sizeof(*node), DRM_MEM_MM, M_WAITOK);
-		mtx_lock(&mm->unused_lock);
+		spin_lock(&mm->unused_spin);
 
 		if (unlikely(node == NULL)) {
 			int ret = (mm->num_unused < 2) ? -ENOMEM : 0;
-			mtx_unlock(&mm->unused_lock);
+			spin_unlock(&mm->unused_spin);
 			return ret;
 		}
 		++mm->num_unused;
 		list_add_tail(&node->node_list, &mm->unused_nodes);
 	}
-	mtx_unlock(&mm->unused_lock);
+	spin_unlock(&mm->unused_spin);
 	return 0;
 }
 
@@ -293,13 +293,13 @@ void drm_mm_put_block(struct drm_mm_node *node)
 
 	drm_mm_remove_node(node);
 
-	mtx_lock(&mm->unused_lock);
+	spin_lock(&mm->unused_spin);
 	if (mm->num_unused < MM_UNUSED_TARGET) {
 		list_add(&node->node_list, &mm->unused_nodes);
 		++mm->num_unused;
 	} else
 		kfree(node, DRM_MEM_MM);
-	mtx_unlock(&mm->unused_lock);
+	spin_unlock(&mm->unused_spin);
 }
 
 static int check_free_hole(unsigned long start, unsigned long end,
@@ -521,7 +521,7 @@ int drm_mm_init(struct drm_mm * mm, unsigned long start, unsigned long size)
 	INIT_LIST_HEAD(&mm->unused_nodes);
 	mm->num_unused = 0;
 	mm->scanned_blocks = 0;
-	mtx_init(&mm->unused_lock, "drm_unused", NULL, MTX_DEF);
+	spin_init(&mm->unused_spin);
 
 	INIT_LIST_HEAD(&mm->head_node.node_list);
 	INIT_LIST_HEAD(&mm->head_node.hole_stack);
@@ -546,15 +546,15 @@ void drm_mm_takedown(struct drm_mm * mm)
 		return;
 	}
 
-	mtx_lock(&mm->unused_lock);
+	spin_lock(&mm->unused_spin);
 	list_for_each_entry_safe(entry, next, &mm->unused_nodes, node_list) {
 		list_del(&entry->node_list);
 		kfree(entry, DRM_MEM_MM);
 		--mm->num_unused;
 	}
-	mtx_unlock(&mm->unused_lock);
+	spin_unlock(&mm->unused_spin);
 
-	mtx_destroy(&mm->unused_lock);
+	spin_uninit(&mm->unused_spin);
 
 	KASSERT(mm->num_unused == 0, ("num_unused != 0"));
 }

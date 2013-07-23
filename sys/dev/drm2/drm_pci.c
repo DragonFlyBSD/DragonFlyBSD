@@ -71,9 +71,10 @@ drm_pci_alloc(struct drm_device *dev, size_t size,
 		return NULL;
 
 	/* Make sure we aren't holding mutexes here */
-	mtx_assert(&dev->dma_lock, MA_NOTOWNED);
+/* FIXME: Is it ok to remove the next 3 lines ? */
+/*	mtx_assert(&dev->dma_lock, MA_NOTOWNED);
 	if (mtx_owned(&dev->dma_lock))
-	    DRM_ERROR("called while holding dma_lock\n");
+	    DRM_ERROR("called while holding dma_lock\n"); */
 
 	ret = bus_dma_tag_create(NULL, align, 0, /* tag, align, boundary */
 	    maxaddr, BUS_SPACE_MAXADDR, /* lowaddr, highaddr */

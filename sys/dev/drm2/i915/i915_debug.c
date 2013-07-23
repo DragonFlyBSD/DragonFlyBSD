@@ -161,7 +161,7 @@ i915_gem_object_list_info(struct drm_device *dev, struct sbuf *m, void *data)
 	size_t total_obj_size, total_gtt_size;
 	int count;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 
 	switch (list) {
@@ -225,7 +225,7 @@ i915_gem_object_info(struct drm_device *dev, struct sbuf *m, void *data)
 	size_t size, mappable_size;
 	struct drm_i915_gem_object *obj;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 	sbuf_printf(m, "%u objects, %zu bytes\n",
 		   dev_priv->mm.object_count,
@@ -288,7 +288,7 @@ i915_gem_gtt_info(struct drm_device *dev, struct sbuf *m, void* data)
 	size_t total_obj_size, total_gtt_size;
 	int count;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 
 	total_obj_size = total_gtt_size = count = 0;
@@ -324,7 +324,7 @@ i915_gem_pageflip_info(struct drm_device *dev, struct sbuf *m, void *data)
 		pipe = pipe_name(crtc->pipe);
 		plane = plane_name(crtc->plane);
 
-		mtx_lock(&dev->event_lock);
+		lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 		work = crtc->unpin_work;
 		if (work == NULL) {
 			sbuf_printf(m, "No flip due on pipe %c (plane %c)\n",
@@ -354,7 +354,7 @@ i915_gem_pageflip_info(struct drm_device *dev, struct sbuf *m, void *data)
 					sbuf_printf(m, "New framebuffer gtt_offset 0x%08x\n", obj->gtt_offset);
 			}
 		}
-		mtx_unlock(&dev->event_lock);
+		lockmgr(&dev->event_lock, LK_RELEASE);
 	}
 
 	return (0);
@@ -367,7 +367,7 @@ i915_gem_request_info(struct drm_device *dev, struct sbuf *m, void *data)
 	struct drm_i915_gem_request *gem_request;
 	int count;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 
 	count = 0;
@@ -431,7 +431,7 @@ i915_gem_seqno_info(struct drm_device *dev, struct sbuf *m, void *data)
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	int i;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 	for (i = 0; i < I915_NUM_RINGS; i++)
 		i915_ring_seqno_info(m, &dev_priv->rings[i]);
@@ -446,7 +446,7 @@ i915_interrupt_info(struct drm_device *dev, struct sbuf *m, void *data)
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	int i, pipe;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 
 	if (!HAS_PCH_SPLIT(dev)) {
@@ -501,7 +501,7 @@ i915_gem_fence_regs_info(struct drm_device *dev, struct sbuf *m, void *data)
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	int i;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 
 	sbuf_printf(m, "Reserved fences = %d\n", dev_priv->fence_reg_start);
@@ -548,7 +548,7 @@ i915_ringbuffer_data(struct drm_device *dev, struct sbuf *m, void *data)
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	struct intel_ring_buffer *ring;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 	ring = &dev_priv->rings[(uintptr_t)data];
 	if (!ring->obj) {
@@ -576,7 +576,7 @@ i915_ringbuffer_info(struct drm_device *dev, struct sbuf *m, void *data)
 	if (ring->size == 0)
 		return (0);
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 
 	sbuf_printf(m, "Ring %s:\n", ring->name);
@@ -709,7 +709,7 @@ static int i915_error_state(struct drm_device *dev, struct sbuf *m,
 	struct drm_i915_error_state *error;
 	int i, j, page, offset, elt;
 
-	mtx_lock(&dev_priv->error_lock);
+	lockmgr(&dev_priv->error_lock, LK_EXCLUSIVE);
 	if (!dev_priv->first_error) {
 		sbuf_printf(m, "no error state collected\n");
 		goto out;
@@ -800,7 +800,7 @@ static int i915_error_state(struct drm_device *dev, struct sbuf *m,
 		intel_display_print_error_state(m, dev, error->display);
 
 out:
-	mtx_unlock(&dev_priv->error_lock);
+	lockmgr(&dev_priv->error_lock, LK_RELEASE);
 
 	return (0);
 }
@@ -811,7 +811,7 @@ i915_rstdby_delays(struct drm_device *dev, struct sbuf *m, void *unused)
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	u16 crstanddelay;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 	crstanddelay = I915_READ16(CRSTANDVID);
 	DRM_UNLOCK(dev);
@@ -847,7 +847,7 @@ i915_cur_delayinfo(struct drm_device *dev, struct sbuf *m, void *unused)
 		int max_freq;
 
 		/* RPSTAT1 is in the GT power well */
-		if (sx_xlock_sig(&dev->dev_struct_lock))
+		if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 			return (EINTR);
 		gen6_gt_force_wake_get(dev_priv);
 
@@ -910,7 +910,7 @@ i915_delayfreq_table(struct drm_device *dev, struct sbuf *m, void *unused)
 	u32 delayfreq;
 	int i;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 	for (i = 0; i < 16; i++) {
 		delayfreq = I915_READ(PXVFREQ_BASE + i * 4);
@@ -934,7 +934,7 @@ i915_inttoext_table(struct drm_device *dev, struct sbuf *m, void *unused)
 	u32 inttoext;
 	int i;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 	for (i = 1; i <= 32; i++) {
 		inttoext = I915_READ(INTTOEXT_BASE_ILK + i * 4);
@@ -953,7 +953,7 @@ ironlake_drpc_info(struct drm_device *dev, struct sbuf *m)
 	u32 rstdbyctl;
 	u16 crstandvid;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 	rgvmodectl = I915_READ(MEMMODECTL);
 	rstdbyctl = I915_READ(RSTDBYCTL);
@@ -1016,12 +1016,12 @@ gen6_drpc_info(struct drm_device *dev, struct sbuf *m)
 	unsigned forcewake_count;
 	int count=0;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 
-	mtx_lock(&dev_priv->gt_lock);
+	lockmgr(&dev_priv->gt_lock, LK_EXCLUSIVE);
 	forcewake_count = dev_priv->forcewake_count;
-	mtx_unlock(&dev_priv->gt_lock);
+	lockmgr(&dev_priv->gt_lock, LK_RELEASE);
 
 	if (forcewake_count) {
 		sbuf_printf(m, "RC information inaccurate because userspace "
@@ -1165,7 +1165,7 @@ static int i915_ring_freq_table(struct drm_device *dev, struct sbuf *m,
 		return (0);
 	}
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 
 	sbuf_printf(m, "GPU freq (MHz)\tEffective CPU freq (MHz)\n");
@@ -1201,7 +1201,7 @@ i915_emon_status(struct drm_device *dev, struct sbuf *m, void *unused)
 		return (0);
 	}
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 	temp = i915_mch_val(dev_priv);
 	chipset = i915_chipset_val(dev_priv);
@@ -1221,7 +1221,7 @@ i915_gfxec(struct drm_device *dev, struct sbuf *m, void *unused)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 	sbuf_printf(m, "GFXEC: %ld\n", (unsigned long)I915_READ(0x112f4));
 	DRM_UNLOCK(dev);
@@ -1236,7 +1236,7 @@ i915_opregion(struct drm_device *dev, struct sbuf *m, void *unused)
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	struct intel_opregion *opregion = &dev_priv->opregion;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 	if (opregion->header)
 		seq_write(m, opregion->header, OPREGION_SIZE);
@@ -1253,7 +1253,7 @@ i915_gem_framebuffer_info(struct drm_device *dev, struct sbuf *m, void *data)
 	struct intel_fbdev *ifbdev;
 	struct intel_framebuffer *fb;
 
-	if (sx_xlock_sig(&dev->dev_struct_lock))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 
 	ifbdev = dev_priv->fbdev;
@@ -1299,7 +1299,7 @@ i915_context_status(struct drm_device *dev, struct sbuf *m, void *data)
 		return (0);
 
 	dev_priv = dev->dev_private;
-	ret = sx_xlock_sig(&dev->mode_config.mutex);
+	ret = lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE|LK_SLEEPFAIL);
 	if (ret != 0)
 		return (EINTR);
 
@@ -1315,7 +1315,7 @@ i915_context_status(struct drm_device *dev, struct sbuf *m, void *data)
 		sbuf_printf(m, "\n");
 	}
 
-	sx_xunlock(&dev->mode_config.mutex);
+	lockmgr(&dev->mode_config.lock, LK_RELEASE);
 
 	return (0);
 }
@@ -1328,9 +1328,9 @@ i915_gen6_forcewake_count_info(struct drm_device *dev, struct sbuf *m,
 	unsigned forcewake_count;
 
 	dev_priv = dev->dev_private;
-	mtx_lock(&dev_priv->gt_lock);
+	lockmgr(&dev_priv->gt_lock, LK_EXCLUSIVE);
 	forcewake_count = dev_priv->forcewake_count;
-	mtx_unlock(&dev_priv->gt_lock);
+	lockmgr(&dev_priv->gt_lock, LK_RELEASE);
 
 	sbuf_printf(m, "forcewake count = %u\n", forcewake_count);
 
@@ -1370,7 +1370,7 @@ i915_swizzle_info(struct drm_device *dev, struct sbuf *m, void *data)
 	int ret;
 
 	dev_priv = dev->dev_private;
-	ret = sx_xlock_sig(&dev->dev_struct_lock);
+	ret = lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL);
 	if (ret != 0)
 		return (EINTR);
 
@@ -1414,7 +1414,7 @@ i915_ppgtt_info(struct drm_device *dev, struct sbuf *m, void *data)
 
 	dev_priv = dev->dev_private;
 
-	ret = sx_xlock_sig(&dev->dev_struct_lock);
+	ret = lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL);
 	if (ret != 0)
 		return (EINTR);
 	if (INTEL_INFO(dev)->gen == 6)

@@ -56,6 +56,8 @@
  * $FreeBSD: src/sys/dev/drm2/i915/intel_iic.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
+#include <sys/mplock2.h>
+
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>
 #include <dev/drm2/i915/i915_drm.h>
@@ -238,7 +240,7 @@ intel_gmbus_transfer(device_t idev, struct iic_msg *msgs, uint32_t nmsgs)
 	dev_priv = sc->drm_dev->dev_private;
 	unit = device_get_unit(idev);
 
-	sx_xlock(&dev_priv->gmbus_sx);
+	lockmgr(&dev_priv->gmbus_lock, LK_EXCLUSIVE);
 	if (sc->force_bit_dev) {
 		error = intel_iic_quirk_xfer(dev_priv->bbbus[unit], msgs, nmsgs);
 		goto out;
@@ -331,7 +333,7 @@ done:
 		DRM_INFO("GMBUS timed out waiting for idle\n");
 	I915_WRITE(GMBUS0 + reg_offset, 0);
 out:
-	sx_xunlock(&dev_priv->gmbus_sx);
+	lockmgr(&dev_priv->gmbus_lock, LK_RELEASE);
 	return (error);
 
 clear_err:
@@ -600,7 +602,7 @@ intel_setup_gmbus(struct drm_device *dev)
 	int i, ret;
 
 	dev_priv = dev->dev_private;
-	sx_init(&dev_priv->gmbus_sx, "gmbus");
+	lockinit(&dev_priv->gmbus_lock, "gmbus", 0, LK_CANRECURSE);
 	dev_priv->gmbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
 	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
 	dev_priv->bbbus_bridge = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
@@ -615,7 +617,7 @@ intel_setup_gmbus(struct drm_device *dev)
 	 * intel_setup_gmbus() is called from the attach method of the
 	 * driver.
 	 */
-	mtx_lock(&Giant);
+	get_mplock();
 	for (i = 0; i < GMBUS_NUM_PORTS; i++) {
 		/*
 		 * Initialized bbbus_bridge before gmbus_bridge, since
@@ -679,12 +681,12 @@ intel_setup_gmbus(struct drm_device *dev)
 		intel_iic_reset(dev);
 	}
 
-	mtx_unlock(&Giant);
+	rel_mplock();
 	return (0);
 
 err:
 	intel_teardown_gmbus_m(dev, i);
-	mtx_unlock(&Giant);
+	rel_mplock();
 	return (ret);
 }
 
@@ -703,14 +705,14 @@ intel_teardown_gmbus_m(struct drm_device *dev, int m)
 	dev_priv->gmbus_bridge = NULL;
 	kfree(dev_priv->bbbus_bridge, DRM_MEM_DRIVER);
 	dev_priv->bbbus_bridge = NULL;
-	sx_destroy(&dev_priv->gmbus_sx);
+	lockuninit(&dev_priv->gmbus_lock);
 }
 
 void
 intel_teardown_gmbus(struct drm_device *dev)
 {
 
-	mtx_lock(&Giant);
+	get_mplock();
 	intel_teardown_gmbus_m(dev, GMBUS_NUM_PORTS);
-	mtx_unlock(&Giant);
+	rel_mplock();
 }

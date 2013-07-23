@@ -118,7 +118,7 @@ void intel_enable_asle(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
 
-	mtx_lock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 
 	if (HAS_PCH_SPLIT(dev))
 		ironlake_enable_display_irq(dev_priv, DE_GSE);
@@ -130,7 +130,7 @@ void intel_enable_asle(struct drm_device *dev)
 					     PIPE_LEGACY_BLC_EVENT_ENABLE);
 	}
 
-	mtx_unlock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 }
 
 /**
@@ -316,14 +316,14 @@ i915_hotplug_work_func(void *context, int pending)
 
 	mode_config = &dev->mode_config;
 
-	sx_xlock(&mode_config->mutex);
+	lockmgr(&mode_config->lock, LK_EXCLUSIVE);
 	DRM_DEBUG_KMS("running encoder hotplug functions\n");
 
 	list_for_each_entry(encoder, &mode_config->encoder_list, base.head)
 		if (encoder->hot_plug)
 			encoder->hot_plug(encoder);
 
-	sx_xunlock(&mode_config->mutex);
+	lockmgr(&mode_config->lock, LK_RELEASE);
 
 	/* Just fire off a uevent and let userspace tell us what to do */
 #if 0
@@ -373,10 +373,10 @@ static void notify_ring(struct drm_device *dev,
 
 	seqno = ring->get_seqno(ring);
 
-	mtx_lock(&ring->irq_lock);
+	lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
 	ring->irq_seqno = seqno;
 	wakeup(ring);
-	mtx_unlock(&ring->irq_lock);
+	lockmgr(&ring->irq_lock, LK_RELEASE);
 
 	if (i915_enable_hangcheck) {
 		dev_priv->hangcheck_count = 0;
@@ -397,12 +397,12 @@ gen6_pm_rps_work_func(void *arg, int pending)
 	dev = dev_priv->dev;
 	new_delay = dev_priv->cur_delay;
 
-	mtx_lock(&dev_priv->rps_lock);
+	lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
 	pm_iir = dev_priv->pm_iir;
 	dev_priv->pm_iir = 0;
 	pm_imr = I915_READ(GEN6_PMIMR);
 	I915_WRITE(GEN6_PMIMR, 0);
-	mtx_unlock(&dev_priv->rps_lock);
+	lockmgr(&dev_priv->rps_lock, LK_RELEASE);
 
 	if (!pm_iir)
 		return;
@@ -562,13 +562,13 @@ ivybridge_irq_handler(void *arg)
 	}
 
 	if (pm_iir & GEN6_PM_DEFERRED_EVENTS) {
-		mtx_lock(&dev_priv->rps_lock);
+		lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
 		if ((dev_priv->pm_iir & pm_iir) != 0)
 			kprintf("Missed a PM interrupt\n");
 		dev_priv->pm_iir |= pm_iir;
 		I915_WRITE(GEN6_PMIMR, dev_priv->pm_iir);
 		POSTING_READ(GEN6_PMIMR);
-		mtx_unlock(&dev_priv->rps_lock);
+		lockmgr(&dev_priv->rps_lock, LK_RELEASE);
 		taskqueue_enqueue(dev_priv->tq, &dev_priv->rps_task);
 	}
 
@@ -677,13 +677,13 @@ ironlake_irq_handler(void *arg)
 	}
 
 	if (pm_iir & GEN6_PM_DEFERRED_EVENTS) {
-		mtx_lock(&dev_priv->rps_lock);
+		lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
 		if ((dev_priv->pm_iir & pm_iir) != 0)
 			kprintf("Missed a PM interrupt\n");
 		dev_priv->pm_iir |= pm_iir;
 		I915_WRITE(GEN6_PMIMR, dev_priv->pm_iir);
 		POSTING_READ(GEN6_PMIMR);
-		mtx_unlock(&dev_priv->rps_lock);
+		lockmgr(&dev_priv->rps_lock, LK_RELEASE);
 		taskqueue_enqueue(dev_priv->tq, &dev_priv->rps_task);
 	}
 
@@ -720,10 +720,10 @@ i915_error_work_func(void *context, int pending)
 			atomic_store_rel_int(&dev_priv->mm.wedged, 0);
 			/* kobject_uevent_env(&dev->primary->kdev.kobj, KOBJ_CHANGE, reset_done_event); */
 		}
-		mtx_lock(&dev_priv->error_completion_lock);
+		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
 		dev_priv->error_completion++;
 		wakeup(&dev_priv->error_completion);
-		mtx_unlock(&dev_priv->error_completion_lock);
+		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 	}
 }
 
@@ -854,27 +854,27 @@ void i915_handle_error(struct drm_device *dev, bool wedged)
 	i915_report_and_clear_eir(dev);
 
 	if (wedged) {
-		mtx_lock(&dev_priv->error_completion_lock);
+		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
 		dev_priv->error_completion = 0;
 		dev_priv->mm.wedged = 1;
 		/* unlock acts as rel barrier for store to wedged */
-		mtx_unlock(&dev_priv->error_completion_lock);
+		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 
 		/*
 		 * Wakeup waiting processes so they don't hang
 		 */
-		mtx_lock(&dev_priv->rings[RCS].irq_lock);
+		lockmgr(&dev_priv->rings[RCS].irq_lock, LK_EXCLUSIVE);
 		wakeup(&dev_priv->rings[RCS]);
-		mtx_unlock(&dev_priv->rings[RCS].irq_lock);
+		lockmgr(&dev_priv->rings[RCS].irq_lock, LK_RELEASE);
 		if (HAS_BSD(dev)) {
-			mtx_lock(&dev_priv->rings[VCS].irq_lock);
+			lockmgr(&dev_priv->rings[VCS].irq_lock, LK_EXCLUSIVE);
 			wakeup(&dev_priv->rings[VCS]);
-			mtx_unlock(&dev_priv->rings[VCS].irq_lock);
+			lockmgr(&dev_priv->rings[VCS].irq_lock, LK_RELEASE);
 		}
 		if (HAS_BLT(dev)) {
-			mtx_lock(&dev_priv->rings[BCS].irq_lock);
+			lockmgr(&dev_priv->rings[BCS].irq_lock, LK_EXCLUSIVE);
 			wakeup(&dev_priv->rings[BCS]);
-			mtx_unlock(&dev_priv->rings[BCS].irq_lock);
+			lockmgr(&dev_priv->rings[BCS].irq_lock, LK_RELEASE);
 		}
 	}
 
@@ -894,12 +894,12 @@ static void i915_pageflip_stall_check(struct drm_device *dev, int pipe)
 	if (intel_crtc == NULL)
 		return;
 
-	mtx_lock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	work = intel_crtc->unpin_work;
 
 	if (work == NULL || work->pending || !work->enable_stall_check) {
 		/* Either the pending flip IRQ arrived, or we're too early. Don't check */
-		mtx_unlock(&dev->event_lock);
+		lockmgr(&dev->event_lock, LK_RELEASE);
 		return;
 	}
 
@@ -915,7 +915,7 @@ static void i915_pageflip_stall_check(struct drm_device *dev, int pipe)
 							crtc->x * crtc->fb->bits_per_pixel/8);
 	}
 
-	mtx_unlock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	if (stall_detected) {
 		DRM_DEBUG("Pageflip stall detected\n");
@@ -956,7 +956,7 @@ i915_driver_irq_handler(void *arg)
 		 * It doesn't set the bit in iir again, but it still produces
 		 * interrupts (for non-MSI).
 		 */
-		mtx_lock(&dev_priv->irq_lock);
+		lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 		if (iir & I915_RENDER_COMMAND_PARSER_ERROR_INTERRUPT)
 			i915_handle_error(dev, false);
 
@@ -975,7 +975,7 @@ i915_driver_irq_handler(void *arg)
 				irq_received = 1;
 			}
 		}
-		mtx_unlock(&dev_priv->irq_lock);
+		lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 		if (!irq_received)
 			break;
@@ -1138,18 +1138,18 @@ static int i915_wait_irq(struct drm_device * dev, int irq_nr)
 #endif
 
 	ret = 0;
-	mtx_lock(&ring->irq_lock);
+	lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
 	if (ring->irq_get(ring)) {
 		DRM_UNLOCK(dev);
 		while (ret == 0 && READ_BREADCRUMB(dev_priv) < irq_nr) {
-			ret = -msleep(ring, &ring->irq_lock, PCATCH,
+			ret = -lksleep(ring, &ring->irq_lock, PCATCH,
 			    "915wtq", 3 * hz);
 		}
 		ring->irq_put(ring);
-		mtx_unlock(&ring->irq_lock);
+		lockmgr(&ring->irq_lock, LK_RELEASE);
 		DRM_LOCK(dev);
 	} else {
-		mtx_unlock(&ring->irq_lock);
+		lockmgr(&ring->irq_lock, LK_RELEASE);
 		if (_intel_wait_for(dev, READ_BREADCRUMB(dev_priv) >= irq_nr,
 		     3000, 1, "915wir"))
 			ret = -EBUSY;
@@ -1218,7 +1218,7 @@ i915_enable_vblank(struct drm_device *dev, int pipe)
 	if (!i915_pipe_enabled(dev, pipe))
 		return -EINVAL;
 
-	mtx_lock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	if (INTEL_INFO(dev)->gen >= 4)
 		i915_enable_pipestat(dev_priv, pipe,
 				     PIPE_START_VBLANK_INTERRUPT_ENABLE);
@@ -1229,7 +1229,7 @@ i915_enable_vblank(struct drm_device *dev, int pipe)
 	/* maintain vblank delivery even in deep C-states */
 	if (dev_priv->info->gen == 3)
 		I915_WRITE(INSTPM, INSTPM_AGPBUSY_DIS << 16);
-	mtx_unlock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -1242,10 +1242,10 @@ ironlake_enable_vblank(struct drm_device *dev, int pipe)
 	if (!i915_pipe_enabled(dev, pipe))
 		return -EINVAL;
 
-	mtx_lock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	ironlake_enable_display_irq(dev_priv, (pipe == 0) ?
 	    DE_PIPEA_VBLANK : DE_PIPEB_VBLANK);
-	mtx_unlock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -1258,10 +1258,10 @@ ivybridge_enable_vblank(struct drm_device *dev, int pipe)
 	if (!i915_pipe_enabled(dev, pipe))
 		return -EINVAL;
 
-	mtx_lock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	ironlake_enable_display_irq(dev_priv, (pipe == 0) ?
 				    DE_PIPEA_VBLANK_IVB : DE_PIPEB_VBLANK_IVB);
-	mtx_unlock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -1275,7 +1275,7 @@ i915_disable_vblank(struct drm_device *dev, int pipe)
 {
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
 
-	mtx_lock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	if (dev_priv->info->gen == 3)
 		I915_WRITE(INSTPM,
 			   INSTPM_AGPBUSY_DIS << 16 | INSTPM_AGPBUSY_DIS);
@@ -1283,7 +1283,7 @@ i915_disable_vblank(struct drm_device *dev, int pipe)
 	i915_disable_pipestat(dev_priv, pipe,
 	    PIPE_VBLANK_INTERRUPT_ENABLE |
 	    PIPE_START_VBLANK_INTERRUPT_ENABLE);
-	mtx_unlock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 }
 
 static void
@@ -1291,10 +1291,10 @@ ironlake_disable_vblank(struct drm_device *dev, int pipe)
 {
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
 
-	mtx_lock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	ironlake_disable_display_irq(dev_priv, (pipe == 0) ?
 	    DE_PIPEA_VBLANK : DE_PIPEB_VBLANK);
-	mtx_unlock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 }
 
 static void
@@ -1302,10 +1302,10 @@ ivybridge_disable_vblank(struct drm_device *dev, int pipe)
 {
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
 
-	mtx_lock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	ironlake_disable_display_irq(dev_priv, (pipe == 0) ?
 				     DE_PIPEA_VBLANK_IVB : DE_PIPEB_VBLANK_IVB);
-	mtx_unlock(&dev_priv->irq_lock);
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 }
 
 /* Set the vblank monitor pipe
@@ -2170,9 +2170,9 @@ i915_capture_error_state(struct drm_device *dev)
 	struct drm_i915_error_state *error;
 	int i, pipe;
 
-	mtx_lock(&dev_priv->error_lock);
+	lockmgr(&dev_priv->error_lock, LK_EXCLUSIVE);
 	error = dev_priv->first_error;
-	mtx_unlock(&dev_priv->error_lock);
+	lockmgr(&dev_priv->error_lock, LK_RELEASE);
 	if (error != NULL)
 		return;
 
@@ -2234,12 +2234,12 @@ i915_capture_error_state(struct drm_device *dev)
 	error->overlay = intel_overlay_capture_error_state(dev);
 	error->display = intel_display_capture_error_state(dev);
 
-	mtx_lock(&dev_priv->error_lock);
+	lockmgr(&dev_priv->error_lock, LK_EXCLUSIVE);
 	if (dev_priv->first_error == NULL) {
 		dev_priv->first_error = error;
 		error = NULL;
 	}
-	mtx_unlock(&dev_priv->error_lock);
+	lockmgr(&dev_priv->error_lock, LK_RELEASE);
 
 	if (error != NULL)
 		i915_error_state_free(dev, error);
@@ -2251,10 +2251,10 @@ i915_destroy_error_state(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_i915_error_state *error;
 
-	mtx_lock(&dev_priv->error_lock);
+	lockmgr(&dev_priv->error_lock, LK_EXCLUSIVE);
 	error = dev_priv->first_error;
 	dev_priv->first_error = NULL;
-	mtx_unlock(&dev_priv->error_lock);
+	lockmgr(&dev_priv->error_lock, LK_RELEASE);
 
 	if (error != NULL)
 		i915_error_state_free(dev, error);

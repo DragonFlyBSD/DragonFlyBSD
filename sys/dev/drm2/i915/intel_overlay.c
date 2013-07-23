@@ -1118,13 +1118,13 @@ int intel_overlay_put_image(struct drm_device *dev, void *data,
 	}
 
 	if (!(put_image_rec->flags & I915_OVERLAY_ENABLE)) {
-		sx_xlock(&dev->mode_config.mutex);
+		lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
 		DRM_LOCK(dev);
 
 		ret = intel_overlay_switch_off(overlay);
 
 		DRM_UNLOCK(dev);
-		sx_xunlock(&dev->mode_config.mutex);
+		lockmgr(&dev->mode_config.lock, LK_RELEASE);
 
 		return ret;
 	}
@@ -1147,7 +1147,7 @@ int intel_overlay_put_image(struct drm_device *dev, void *data,
 		goto out_free;
 	}
 
-	sx_xlock(&dev->mode_config.mutex);
+	lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
 	DRM_LOCK(dev);
 
 	if (new_bo->tiling_mode) {
@@ -1229,7 +1229,7 @@ int intel_overlay_put_image(struct drm_device *dev, void *data,
 		goto out_unlock;
 
 	DRM_UNLOCK(dev);
-	sx_xunlock(&dev->mode_config.mutex);
+	lockmgr(&dev->mode_config.lock, LK_RELEASE);
 
 	kfree(params, DRM_I915_GEM);
 
@@ -1237,7 +1237,7 @@ int intel_overlay_put_image(struct drm_device *dev, void *data,
 
 out_unlock:
 	DRM_UNLOCK(dev);
-	sx_xunlock(&dev->mode_config.mutex);
+	lockmgr(&dev->mode_config.lock, LK_RELEASE);
 	drm_gem_object_unreference_unlocked(&new_bo->base);
 out_free:
 	kfree(params, DRM_I915_GEM);
@@ -1316,7 +1316,7 @@ int intel_overlay_attrs(struct drm_device *dev, void *data,
 		return -ENODEV;
 	}
 
-	sx_xlock(&dev->mode_config.mutex);
+	lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
 	DRM_LOCK(dev);
 
 	ret = -EINVAL;
@@ -1382,7 +1382,7 @@ int intel_overlay_attrs(struct drm_device *dev, void *data,
 	ret = 0;
 out_unlock:
 	DRM_UNLOCK(dev);
-	sx_xunlock(&dev->mode_config.mutex);
+	lockmgr(&dev->mode_config.lock, LK_RELEASE);
 
 	return ret;
 }

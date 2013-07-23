@@ -126,21 +126,21 @@ i915_gem_wait_for_error(struct drm_device *dev)
 	if (!atomic_load_acq_int(&dev_priv->mm.wedged))
 		return (0);
 
-	mtx_lock(&dev_priv->error_completion_lock);
+	lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
 	while (dev_priv->error_completion == 0) {
-		ret = -msleep(&dev_priv->error_completion,
+		ret = -lksleep(&dev_priv->error_completion,
 		    &dev_priv->error_completion_lock, PCATCH, "915wco", 0);
 		if (ret != 0) {
-			mtx_unlock(&dev_priv->error_completion_lock);
+			lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 			return (ret);
 		}
 	}
-	mtx_unlock(&dev_priv->error_completion_lock);
+	lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 
 	if (atomic_read(&dev_priv->mm.wedged)) {
-		mtx_lock(&dev_priv->error_completion_lock);
+		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
 		dev_priv->error_completion++;
-		mtx_unlock(&dev_priv->error_completion_lock);
+		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 	}
 	return (0);
 }
@@ -160,7 +160,7 @@ i915_mutex_lock_interruptible(struct drm_device *dev)
 	 * interruptible shall it be. might indeed be if dev_lock is
 	 * changed to sx
 	 */
-	ret = sx_xlock_sig(&dev->dev_struct_lock);
+	ret = lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL);
 	if (ret != 0)
 		return (-ret);
 
@@ -746,25 +746,25 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 	ring = NULL;
 	seqno = 0;
 
-	mtx_lock(&file_priv->mm.lck);
+	lockmgr(&file_priv->mm.lck, LK_EXCLUSIVE);
 	list_for_each_entry(request, &file_priv->mm.request_list, client_list) {
 		if (time_after_eq(request->emitted_jiffies, recent_enough))
 			break;
 		ring = request->ring;
 		seqno = request->seqno;
 	}
-	mtx_unlock(&file_priv->mm.lck);
+	lockmgr(&file_priv->mm.lck, LK_RELEASE);
 	if (seqno == 0)
 		return (0);
 
 	ret = 0;
-	mtx_lock(&ring->irq_lock);
+	lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
 	if (!i915_seqno_passed(ring->get_seqno(ring), seqno)) {
 		if (ring->irq_get(ring)) {
 			while (ret == 0 &&
 			    !(i915_seqno_passed(ring->get_seqno(ring), seqno) ||
 			    atomic_read(&dev_priv->mm.wedged)))
-				ret = -msleep(ring, &ring->irq_lock, PCATCH,
+				ret = -lksleep(ring, &ring->irq_lock, PCATCH,
 				    "915thr", 0);
 			ring->irq_put(ring);
 			if (ret == 0 && atomic_read(&dev_priv->mm.wedged))
@@ -775,7 +775,7 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 			ret = -EBUSY;
 		}
 	}
-	mtx_unlock(&ring->irq_lock);
+	lockmgr(&ring->irq_lock, LK_RELEASE);
 
 	if (ret == 0)
 		taskqueue_enqueue_timeout(dev_priv->tq,
@@ -1240,6 +1240,9 @@ unlock:
 	DRM_UNLOCK(dev);
 	return (ret);
 }
+
+#define PROC_LOCK(p)
+#define PROC_UNLOCK(p)
 
 int
 i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
@@ -2541,9 +2544,9 @@ i915_wait_request(struct intel_ring_buffer *ring, uint32_t seqno, bool do_retire
 
 	if (atomic_load_acq_int(&dev_priv->mm.wedged) != 0) {
 		/* Give the error handler a chance to run. */
-		mtx_lock(&dev_priv->error_completion_lock);
+		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
 		recovery_complete = (&dev_priv->error_completion) > 0;
-		mtx_unlock(&dev_priv->error_completion_lock);
+		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 		return (recovery_complete ? -EIO : -EAGAIN);
 	}
 
@@ -2575,19 +2578,19 @@ i915_wait_request(struct intel_ring_buffer *ring, uint32_t seqno, bool do_retire
 		}
 
 		ring->waiting_seqno = seqno;
-		mtx_lock(&ring->irq_lock);
+		lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
 		if (ring->irq_get(ring)) {
 			flags = dev_priv->mm.interruptible ? PCATCH : 0;
 			while (!i915_seqno_passed(ring->get_seqno(ring), seqno)
 			    && !atomic_load_acq_int(&dev_priv->mm.wedged) &&
 			    ret == 0) {
-				ret = -msleep(ring, &ring->irq_lock, flags,
+				ret = -lksleep(ring, &ring->irq_lock, flags,
 				    "915gwr", 0);
 			}
 			ring->irq_put(ring);
-			mtx_unlock(&ring->irq_lock);
+			lockmgr(&ring->irq_lock, LK_RELEASE);
 		} else {
-			mtx_unlock(&ring->irq_lock);
+			lockmgr(&ring->irq_lock, LK_RELEASE);
 			if (_intel_wait_for(ring->dev,
 			    i915_seqno_passed(ring->get_seqno(ring), seqno) ||
 			    atomic_load_acq_int(&dev_priv->mm.wedged), 3000,
@@ -2665,11 +2668,11 @@ i915_add_request(struct intel_ring_buffer *ring, struct drm_file *file,
 	if (file != NULL) {
 		file_priv = file->driver_priv;
 
-		mtx_lock(&file_priv->mm.lck);
+		lockmgr(&file_priv->mm.lck, LK_EXCLUSIVE);
 		request->file_priv = file_priv;
 		list_add_tail(&request->client_list,
 		    &file_priv->mm.request_list);
-		mtx_unlock(&file_priv->mm.lck);
+		lockmgr(&file_priv->mm.lck, LK_RELEASE);
 	}
 
 	ring->outstanding_lazy_request = 0;
@@ -2696,12 +2699,12 @@ i915_gem_request_remove_from_client(struct drm_i915_gem_request *request)
 
 	DRM_LOCK_ASSERT(request->ring->dev);
 
-	mtx_lock(&file_priv->mm.lck);
+	lockmgr(&file_priv->mm.lck, LK_EXCLUSIVE);
 	if (request->file_priv != NULL) {
 		list_del(&request->client_list);
 		request->file_priv = NULL;
 	}
-	mtx_unlock(&file_priv->mm.lck);
+	lockmgr(&file_priv->mm.lck, LK_RELEASE);
 }
 
 void
@@ -2716,7 +2719,7 @@ i915_gem_release(struct drm_device *dev, struct drm_file *file)
 	 * later retire_requests won't dereference our soon-to-be-gone
 	 * file_priv.
 	 */
-	mtx_lock(&file_priv->mm.lck);
+	lockmgr(&file_priv->mm.lck, LK_EXCLUSIVE);
 	while (!list_empty(&file_priv->mm.request_list)) {
 		request = list_first_entry(&file_priv->mm.request_list,
 					   struct drm_i915_gem_request,
@@ -2724,7 +2727,7 @@ i915_gem_release(struct drm_device *dev, struct drm_file *file)
 		list_del(&request->client_list);
 		request->file_priv = NULL;
 	}
-	mtx_unlock(&file_priv->mm.lck);
+	lockmgr(&file_priv->mm.lck, LK_RELEASE);
 }
 
 static void
@@ -2872,9 +2875,9 @@ i915_gem_retire_requests_ring(struct intel_ring_buffer *ring)
 
 	if (ring->trace_irq_seqno &&
 	    i915_seqno_passed(seqno, ring->trace_irq_seqno)) {
-		mtx_lock(&ring->irq_lock);
+		lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
 		ring->irq_put(ring);
-		mtx_unlock(&ring->irq_lock);
+		lockmgr(&ring->irq_lock, LK_RELEASE);
 		ring->trace_irq_seqno = 0;
 	}
 }
@@ -3383,7 +3386,7 @@ i915_gem_retire_task_handler(void *arg, int pending)
 	dev = dev_priv->dev;
 
 	/* Come back later if the device is busy... */
-	if (!sx_try_xlock(&dev->dev_struct_lock)) {
+	if (!lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_NOWAIT)) {
 		taskqueue_enqueue_timeout(dev_priv->tq,
 		    &dev_priv->mm.retire_task, hz);
 		return;
@@ -3650,7 +3653,7 @@ i915_gem_lowmem(void *arg)
 	dev = arg;
 	dev_priv = dev->dev_private;
 
-	if (!sx_try_xlock(&dev->dev_struct_lock))
+	if (!lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_NOWAIT))
 		return;
 
 rescan:

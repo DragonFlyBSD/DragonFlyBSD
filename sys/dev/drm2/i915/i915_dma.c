@@ -43,8 +43,8 @@ static struct drm_i915_private *i915_mch_dev;
  *   - dev_priv->fmax
  *   - dev_priv->gpu_busy
  */
-static struct mtx mchdev_lock;
-MTX_SYSINIT(mchdev, &mchdev_lock, "mchdev", MTX_DEF);
+static struct lock mchdev_lock;
+LOCK_SYSINIT(mchdev, &mchdev_lock, "mchdev", LK_CANRECURSE);
 
 static void i915_pineview_get_mem_freq(struct drm_device *dev);
 static void i915_ironlake_get_mem_freq(struct drm_device *dev);
@@ -1233,10 +1233,10 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 	dev_priv->tq = taskqueue_create("915", M_WAITOK,
 	    taskqueue_thread_enqueue, &dev_priv->tq);
 	taskqueue_start_threads(&dev_priv->tq, 1, PWAIT, "i915 taskq");
-	mtx_init(&dev_priv->gt_lock, "915gt", NULL, MTX_DEF);
-	mtx_init(&dev_priv->error_lock, "915err", NULL, MTX_DEF);
-	mtx_init(&dev_priv->error_completion_lock, "915cmp", NULL, MTX_DEF);
-	mtx_init(&dev_priv->rps_lock, "915rps", NULL, MTX_DEF);
+	lockinit(&dev_priv->gt_lock, "915gt", 0, LK_CANRECURSE);
+	lockinit(&dev_priv->error_lock, "915err", 0, LK_CANRECURSE);
+	lockinit(&dev_priv->error_completion_lock, "915cmp", 0, LK_CANRECURSE);
+	lockinit(&dev_priv->rps_lock, "915rps", 0, LK_CANRECURSE);
 
 	dev_priv->has_gem = 1;
 	intel_irq_init(dev);
@@ -1265,7 +1265,7 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 	else if (IS_GEN5(dev))
 		i915_ironlake_get_mem_freq(dev);
 
-	mtx_init(&dev_priv->irq_lock, "userirq", NULL, MTX_DEF);
+	lockinit(&dev_priv->irq_lock, "userirq", 0, LK_CANRECURSE);
 
 	if (IS_IVYBRIDGE(dev))
 		dev_priv->num_pipe = 3;
@@ -1300,10 +1300,10 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 	    i915_hangcheck_elapsed, dev);
 
 	if (IS_GEN5(dev)) {
-		mtx_lock(&mchdev_lock);
+		lockmgr(&mchdev_lock, LK_EXCLUSIVE);
 		i915_mch_dev = dev_priv;
 		dev_priv->mchdev_lock = &mchdev_lock;
-		mtx_unlock(&mchdev_lock);
+		lockmgr(&mchdev_lock, LK_RELEASE);
 	}
 
 	return (0);
@@ -1374,7 +1374,7 @@ i915_driver_unload_int(struct drm_device *dev, bool locked)
 
 	i915_gem_unload(dev);
 
-	mtx_destroy(&dev_priv->irq_lock);
+	lockuninit(&dev_priv->irq_lock);
 
 	if (dev_priv->tq != NULL)
 		taskqueue_free(dev_priv->tq);
@@ -1383,9 +1383,9 @@ i915_driver_unload_int(struct drm_device *dev, bool locked)
 	drm_rmmap(dev, dev_priv->mmio_map);
 	intel_teardown_gmbus(dev);
 
-	mtx_destroy(&dev_priv->error_lock);
-	mtx_destroy(&dev_priv->error_completion_lock);
-	mtx_destroy(&dev_priv->rps_lock);
+	lockuninit(&dev_priv->error_lock);
+	lockuninit(&dev_priv->error_completion_lock);
+	lockuninit(&dev_priv->rps_lock);
 	drm_free(dev->dev_private, sizeof(drm_i915_private_t),
 	    DRM_MEM_DRIVER);
 
@@ -1407,7 +1407,7 @@ i915_driver_open(struct drm_device *dev, struct drm_file *file_priv)
 	i915_file_priv = kmalloc(sizeof(*i915_file_priv), DRM_MEM_FILES,
 	    M_WAITOK | M_ZERO);
 
-	mtx_init(&i915_file_priv->mm.lck, "915fp", NULL, MTX_DEF);
+	lockinit(&i915_file_priv->mm.lck, "915fp", 0, LK_CANRECURSE);
 	INIT_LIST_HEAD(&i915_file_priv->mm.request_list);
 	file_priv->driver_priv = i915_file_priv;
 
@@ -1442,7 +1442,7 @@ void i915_driver_postclose(struct drm_device *dev, struct drm_file *file_priv)
 {
 	struct drm_i915_file_private *i915_file_priv = file_priv->driver_priv;
 
-	mtx_destroy(&i915_file_priv->mm.lck);
+	lockuninit(&i915_file_priv->mm.lck);
 	drm_free(i915_file_priv, sizeof(*i915_file_priv), DRM_MEM_FILES);
 }
 
@@ -1951,7 +1951,7 @@ unsigned long i915_read_mch_val(void)
 	struct drm_i915_private *dev_priv;
 	unsigned long chipset_val, graphics_val, ret = 0;
 
-	mtx_lock(&mchdev_lock);
+	lockmgr(&mchdev_lock, LK_EXCLUSIVE);
 	if (!i915_mch_dev)
 		goto out_unlock;
 	dev_priv = i915_mch_dev;
@@ -1962,7 +1962,7 @@ unsigned long i915_read_mch_val(void)
 	ret = chipset_val + graphics_val;
 
 out_unlock:
-	mtx_unlock(&mchdev_lock);
+	lockmgr(&mchdev_lock, LK_RELEASE);
 
 	return ret;
 }
@@ -1977,7 +1977,7 @@ bool i915_gpu_raise(void)
 	struct drm_i915_private *dev_priv;
 	bool ret = true;
 
-	mtx_lock(&mchdev_lock);
+	lockmgr(&mchdev_lock, LK_EXCLUSIVE);
 	if (!i915_mch_dev) {
 		ret = false;
 		goto out_unlock;
@@ -1988,7 +1988,7 @@ bool i915_gpu_raise(void)
 		dev_priv->max_delay--;
 
 out_unlock:
-	mtx_unlock(&mchdev_lock);
+	lockmgr(&mchdev_lock, LK_RELEASE);
 
 	return ret;
 }
@@ -2004,7 +2004,7 @@ bool i915_gpu_lower(void)
 	struct drm_i915_private *dev_priv;
 	bool ret = true;
 
-	mtx_lock(&mchdev_lock);
+	lockmgr(&mchdev_lock, LK_EXCLUSIVE);
 	if (!i915_mch_dev) {
 		ret = false;
 		goto out_unlock;
@@ -2015,7 +2015,7 @@ bool i915_gpu_lower(void)
 		dev_priv->max_delay++;
 
 out_unlock:
-	mtx_unlock(&mchdev_lock);
+	lockmgr(&mchdev_lock, LK_RELEASE);
 
 	return ret;
 }
@@ -2030,7 +2030,7 @@ bool i915_gpu_busy(void)
 	struct drm_i915_private *dev_priv;
 	bool ret = false;
 
-	mtx_lock(&mchdev_lock);
+	lockmgr(&mchdev_lock, LK_EXCLUSIVE);
 	if (!i915_mch_dev)
 		goto out_unlock;
 	dev_priv = i915_mch_dev;
@@ -2038,7 +2038,7 @@ bool i915_gpu_busy(void)
 	ret = dev_priv->busy;
 
 out_unlock:
-	mtx_unlock(&mchdev_lock);
+	lockmgr(&mchdev_lock, LK_RELEASE);
 
 	return ret;
 }
@@ -2054,7 +2054,7 @@ bool i915_gpu_turbo_disable(void)
 	struct drm_i915_private *dev_priv;
 	bool ret = true;
 
-	mtx_lock(&mchdev_lock);
+	lockmgr(&mchdev_lock, LK_EXCLUSIVE);
 	if (!i915_mch_dev) {
 		ret = false;
 		goto out_unlock;
@@ -2067,7 +2067,7 @@ bool i915_gpu_turbo_disable(void)
 		ret = false;
 
 out_unlock:
-	mtx_unlock(&mchdev_lock);
+	lockmgr(&mchdev_lock, LK_RELEASE);
 
 	return ret;
 }

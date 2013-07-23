@@ -53,6 +53,8 @@ struct drm_file;
 #include <sys/priv.h>
 #include <sys/proc.h>
 #include <sys/lock.h>
+#include <sys/spinlock.h>
+#include <sys/spinlock2.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
 #include <sys/filio.h>
@@ -193,11 +195,11 @@ SYSCTL_DECL(_hw_drm);
 
 #define DRM_CURPROC		curthread
 #define DRM_STRUCTPROC		struct thread
-#define DRM_SPINTYPE		struct mtx
-#define DRM_SPININIT(l,name)	mtx_init(l, name, NULL, MTX_DEF)
-#define DRM_SPINUNINIT(l)	mtx_destroy(l)
-#define DRM_SPINLOCK(l)		mtx_lock(l)
-#define DRM_SPINUNLOCK(u)	mtx_unlock(u)
+#define DRM_SPINTYPE		struct spinlock
+#define DRM_SPININIT(l,name)	spin_init(l)
+#define DRM_SPINUNINIT(l)	spin_uninit(l)
+#define DRM_SPINLOCK(l)		spin_lock(l)
+#define DRM_SPINUNLOCK(u)	spin_unlock(u)
 #define DRM_SPINLOCK_IRQSAVE(l, irqflags) do {		\
 	mtx_lock(l);					\
 	(void)irqflags;					\
@@ -205,13 +207,13 @@ SYSCTL_DECL(_hw_drm);
 #define DRM_SPINUNLOCK_IRQRESTORE(u, irqflags) mtx_unlock(u)
 #define DRM_SPINLOCK_ASSERT(l)	mtx_assert(l, MA_OWNED)
 #define DRM_CURRENTPID		curthread->td_proc->p_pid
-#define DRM_LOCK(dev)		sx_xlock(&(dev)->dev_struct_lock)
-#define DRM_UNLOCK(dev) 	sx_xunlock(&(dev)->dev_struct_lock)
+#define DRM_LOCK(dev)		lockmgr(&(dev)->dev_struct_lock, LK_EXCLUSIVE);
+#define DRM_UNLOCK(dev)		lockmgr(&(dev)->dev_struct_lock, LK_RELEASE);
 #define	DRM_LOCK_SLEEP(dev, chan, flags, msg, timeout)			\
-    (sx_sleep((chan), &(dev)->dev_struct_lock, (flags), (msg), (timeout)))
+    (lksleep((chan), &(dev)->dev_struct_lock, (flags), (msg), (timeout)))
 #if defined(INVARIANTS)
-#define	DRM_LOCK_ASSERT(dev)	sx_assert(&(dev)->dev_struct_lock, SA_XLOCKED)
-#define	DRM_UNLOCK_ASSERT(dev)	sx_assert(&(dev)->dev_struct_lock, SA_UNLOCKED)
+#define	DRM_LOCK_ASSERT(dev)	KKASSERT(lockstatus(&(dev)->dev_struct_lock, curthread) != 0);
+#define	DRM_UNLOCK_ASSERT(dev)	KKASSERT(lockstatus(&(dev)->dev_struct_lock, curthread) == 0);
 #else
 #define	DRM_LOCK_ASSERT(d)
 #define	DRM_UNLOCK_ASSERT(d)
@@ -331,12 +333,12 @@ do {									\
 /* Returns -errno to shared code */
 #define DRM_WAIT_ON( ret, queue, timeout, condition )		\
 for ( ret = 0 ; !ret && !(condition) ; ) {			\
-	DRM_UNLOCK(dev);						\
-	mtx_lock(&dev->irq_lock);				\
+	DRM_UNLOCK(dev);					\
+	lwkt_serialize_enter(&dev->irq_lock);			\
 	if (!(condition))					\
 	    ret = -mtx_sleep(&(queue), &dev->irq_lock, 		\
 		PCATCH, "drmwtq", (timeout));			\
-	mtx_unlock(&dev->irq_lock);				\
+	lwkt_serialize_exit(&dev->irq_lock);			\
 	DRM_LOCK(dev);						\
 }
 
@@ -829,10 +831,10 @@ struct drm_device {
 	int		  flags;	/* Flags to open(2)		   */
 
 				/* Locks */
-	struct mtx	  dma_lock;	/* protects dev->dma */
-	struct mtx	  irq_lock;	/* protects irq condition checks */
-	struct mtx	  dev_lock;	/* protects everything else */
-	struct sx	  dev_struct_lock;
+	struct spinlock   dma_lock;	/* protects dev->dma */
+	struct lwkt_serialize irq_lock;	/* protects irq condition checks */
+	struct lock	  dev_lock;	/* protects everything else */
+	struct lock	  dev_struct_lock;
 	DRM_SPINTYPE	  drw_lock;
 
 				/* Usage Counters */
@@ -906,8 +908,8 @@ struct drm_device {
 
 	atomic_t *_vblank_count;        /**< number of VBLANK interrupts (driver must alloc the right number of counters) */
 	struct timeval *_vblank_time;   /**< timestamp of current vblank_count (drivers must alloc right number of fields) */
-	struct mtx vblank_time_lock;    /**< Protects vblank count and time updates during vblank enable/disable */
-	struct mtx vbl_lock;
+	struct lock vblank_time_lock;   /**< Protects vblank count and time updates during vblank enable/disable */
+	struct lock vbl_lock;
 	atomic_t *vblank_refcount;      /* number of users of vblank interruptsper crtc */
 	u32 *last_vblank;               /* protected by dev->vbl_lock, used */
 					/* for wraparound handling */
@@ -920,12 +922,12 @@ struct drm_device {
 	u32 max_vblank_count;           /**< size of vblank counter register */
 
 	struct list_head vblank_event_list;
-	struct mtx	 event_lock;
+	struct lock	 event_lock;
 
         struct drm_mode_config mode_config;	/**< Current mode config */
 
 	/* GEM part */
-	struct sx	  object_name_lock;
+	struct lock	  object_name_lock;
 	struct drm_gem_names object_names;
 	void		 *mm_private;
 

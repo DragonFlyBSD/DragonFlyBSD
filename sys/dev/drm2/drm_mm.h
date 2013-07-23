@@ -57,7 +57,7 @@ struct drm_mm {
 	struct drm_mm_node head_node;
 	struct list_head unused_nodes;
 	int num_unused;
-	struct mtx unused_lock;
+	struct spinlock unused_spin;
 	unsigned int scan_check_range : 1;
 	unsigned scan_alignment;
 	unsigned long scan_size;

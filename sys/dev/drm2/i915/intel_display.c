@@ -2259,13 +2259,13 @@ intel_finish_fb(struct drm_framebuffer *old_fb)
 	bool was_interruptible = dev_priv->mm.interruptible;
 	int ret;
 
-	mtx_lock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	while (!atomic_read(&dev_priv->mm.wedged) &&
 	    atomic_read(&obj->pending_flip) != 0) {
-		msleep(&obj->pending_flip, &dev->event_lock,
+		lksleep(&obj->pending_flip, &dev->event_lock,
 		    0, "915flp", 0);
 	}
-	mtx_unlock(&dev->event_lock);	   
+	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	/* Big Hammer, we also need to ensure that any pending
 	 * MI_WAIT_FOR_EVENT inside a user batch buffer on the
@@ -2946,10 +2946,10 @@ static void intel_crtc_wait_for_pending_flips(struct drm_crtc *crtc)
 	obj = to_intel_framebuffer(crtc->fb)->obj;
 	dev = crtc->dev;
 	dev_priv = dev->dev_private;
-	mtx_lock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	while (atomic_read(&obj->pending_flip) != 0)
-		msleep(&obj->pending_flip, &dev->event_lock, 0, "915wfl", 0);
-	mtx_unlock(&dev->event_lock);
+		lksleep(&obj->pending_flip, &dev->event_lock, 0, "915wfl", 0);
+	lockmgr(&dev->event_lock, LK_RELEASE);
 }
 
 static bool intel_crtc_driving_pch(struct drm_crtc *crtc)
@@ -7239,10 +7239,10 @@ static void intel_crtc_destroy(struct drm_crtc *crtc)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_unpin_work *work;
 
-	mtx_lock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	work = intel_crtc->unpin_work;
 	intel_crtc->unpin_work = NULL;
-	mtx_unlock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	if (work) {
 		taskqueue_cancel(dev_priv->tq, &work->task, NULL);
@@ -7287,10 +7287,10 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 
 	microtime(&tnow);
 
-	mtx_lock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	work = intel_crtc->unpin_work;
 	if (work == NULL || !work->pending) {
-		mtx_unlock(&dev->event_lock);
+		lockmgr(&dev->event_lock, LK_RELEASE);
 		return;
 	}
 
@@ -7334,7 +7334,7 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 	atomic_clear_int(&obj->pending_flip, 1 << intel_crtc->plane);
 	if (atomic_read(&obj->pending_flip) == 0)
 		wakeup(&obj->pending_flip);
-	mtx_unlock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	taskqueue_enqueue(dev_priv->tq, &work->task);
 }
@@ -7361,14 +7361,14 @@ void intel_prepare_page_flip(struct drm_device *dev, int plane)
 	struct intel_crtc *intel_crtc =
 		to_intel_crtc(dev_priv->plane_to_crtc_mapping[plane]);
 
-	mtx_lock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	if (intel_crtc->unpin_work) {
 		if ((++intel_crtc->unpin_work->pending) > 1)
 			DRM_ERROR("Prepared flip multiple times\n");
 	} else {
 		DRM_DEBUG("preparing flip with no unpin work?\n");
 	}
-	mtx_unlock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_RELEASE);
 }
 
 static int intel_gen2_queue_flip(struct drm_device *dev,
@@ -7593,9 +7593,9 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 		goto free_work;
 
 	/* We borrow the event spin lock for protecting unpin_work */
-	mtx_lock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	if (intel_crtc->unpin_work) {
-		mtx_unlock(&dev->event_lock);
+		lockmgr(&dev->event_lock, LK_RELEASE);
 		kfree(work, DRM_MEM_KMS);
 		drm_vblank_put(dev, intel_crtc->pipe);
 
@@ -7603,7 +7603,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 		return -EBUSY;
 	}
 	intel_crtc->unpin_work = work;
-	mtx_unlock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	intel_fb = to_intel_framebuffer(fb);
 	obj = intel_fb->obj;
@@ -7639,9 +7639,9 @@ cleanup_pending:
 	drm_gem_object_unreference(&obj->base);
 	DRM_UNLOCK(dev);
 
-	mtx_lock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	intel_crtc->unpin_work = NULL;
-	mtx_unlock(&dev->event_lock);
+	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	drm_vblank_put(dev, intel_crtc->pipe);
 free_work:
@@ -8221,9 +8221,9 @@ void gen6_disable_rps(struct drm_device *dev)
 	 * register (PMIMR) to mask PM interrupts. The only risk is in leaving
 	 * stale bits in PMIIR and PMIMR which gen6_enable_rps will clean up. */
 
-	mtx_lock(&dev_priv->rps_lock);
+	lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
 	dev_priv->pm_iir = 0;
-	mtx_unlock(&dev_priv->rps_lock);
+	lockmgr(&dev_priv->rps_lock, LK_RELEASE);
 
 	I915_WRITE(GEN6_PMIIR, I915_READ(GEN6_PMIIR));
 }
@@ -8480,11 +8480,11 @@ void gen6_enable_rps(struct drm_i915_private *dev_priv)
 		   GEN6_PM_RP_DOWN_THRESHOLD |
 		   GEN6_PM_RP_UP_EI_EXPIRED |
 		   GEN6_PM_RP_DOWN_EI_EXPIRED);
-	mtx_lock(&dev_priv->rps_lock);
+	lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
 	if (dev_priv->pm_iir != 0)
 		kprintf("pm_iir %x\n", dev_priv->pm_iir);
 	I915_WRITE(GEN6_PMIMR, 0);
-	mtx_unlock(&dev_priv->rps_lock);
+	lockmgr(&dev_priv->rps_lock, LK_RELEASE);
 	/* enable all PM interrupts */
 	I915_WRITE(GEN6_PMINTRMSK, 0);
 
