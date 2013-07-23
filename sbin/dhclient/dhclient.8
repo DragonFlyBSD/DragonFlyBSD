@@ -35,12 +35,12 @@
 .\" Enterprises.  To learn more about the Internet Software Consortium,
 .\" see ``http://www.isc.org/isc''.  To learn more about Vixie
 .\" Enterprises, see ``http://www.vix.com''.
-.Dd September 3, 2008
+.Dd July 23, 2013
 .Dt DHCLIENT 8
 .Os
 .Sh NAME
 .Nm dhclient
-.Nd Dynamic Host Configuration Protocol (DHCP) Client
+.Nd Dynamic Host Configuration Protocol (DHCP) client
 .Sh SYNOPSIS
 .Nm
 .Op Fl dqu
@@ -48,21 +48,34 @@
 .Op Fl l Ar file
 .Ar interface
 .Sh DESCRIPTION
-The
-.Nm
-utility provides a means for configuring network interfaces using DHCP, BOOTP,
-or if these protocols fail, by statically assigning an address.
+The Dynamic Host Configuration Protocol (DHCP) allows hosts on a TCP/IP network
+to configure one or more network interfaces based on information collected from
+a DHCP server.
+DHCP is often used, for example, by cable modem and DSL network
+providers to automate network configuration for their customers.
 .Pp
-The name of the network interface that
+Information typically provided via DHCP includes
+address and subnet mask for the interface,
+default route,
+and domain name server.
+.Pp
+To have
+.Dx
+configure an interface using DHCP
+(or its predecessor, BOOTP)
+the
 .Nm
-should attempt to
-configure must be specified on the command line.
+utility is used.
+.Nm
+is run on the command line with the name of the
+.Ar interface
+to be configured.
 .Pp
 The options are as follows:
 .Bl -tag -width "-p port"
 .It Fl c Ar file
-Specify an alternate location,
-.Ar file ,
+Specify an alternate location to
+.Pa /etc/dhclient.conf
 for the configuration file.
 .It Fl d
 Forces
@@ -73,8 +86,8 @@ By default,
 runs in the foreground until it has configured the interface, and then
 will revert to running in the background.
 .It Fl l Ar file
-Specify an alternate location,
-.Ar file ,
+Specify an alternate location to
+.Pa /var/db/dhclient.leases. Ns Aq Ar IFNAME
 for the leases file.
 .It Fl q
 Forces
@@ -102,17 +115,17 @@ On startup,
 reads
 .Pa /etc/dhclient.conf
 for configuration instructions.
-It then gets a list of all the
-network interfaces that are configured in the current system.
-It then attempts to configure each interface with DHCP.
+It then attempts to configure the network interface
+.Ar interface
+with DHCP.
 .Pp
 In order to keep track of leases across system reboots and server
 restarts,
 .Nm
 keeps a list of leases it has been assigned in the
-.Pa /var/db/dhclient.leases.IFNAME
+.Pa /var/db/dhclient.leases. Ns Aq Ar IFNAME
 file.
-.Qq IFNAME
+.Ar IFNAME
 represents the network interface of the DHCP client
 .Pq e.g. em0 ,
 one for each interface.
@@ -128,7 +141,7 @@ Old leases are kept around in case the DHCP server is unavailable when
 is first invoked (generally during the initial system boot
 process).
 In that event, old leases from the
-.Pa dhclient.leases.IFNAME
+.Pa dhclient.leases. Ns Aq Ar IFNAME
 file which have not yet expired are tested, and if they are determined to
 be valid, they are used until either they expire or the DHCP server
 becomes available.
@@ -156,10 +169,10 @@ See
 .Xr bpf 4
 for more information.
 .Sh FILES
-.Bl -tag -width /var/db/dhclient.leases.IFNAME~ -compact
+.Bl -tag -width "/var/db/dhclient.leases.<IFNAME>XXX" -compact
 .It Pa /etc/dhclient.conf
 DHCP client configuration file
-.It Pa /var/db/dhclient.leases.IFNAME
+.It Pa /var/db/dhclient.leases. Ns Aq Ar IFNAME
 database of acquired leases
 .El
 .Sh SEE ALSO
@@ -170,6 +183,49 @@ database of acquired leases
 .Xr dhcp 8 ,
 .Xr dhcpd 8 Pq Pa net/isc-dhcp42-server ,
 .Xr dhcrelay 8 Pq Pa net/isc-dhcp42-relay
+.Sh STANDARDS
+.Rs
+.%A R. Droms
+.%D October 1993
+.%R RFC 1534
+.%T Interoperation Between DHCP and BOOTP
+.Re
+.Pp
+.Rs
+.%A R. Droms
+.%D March 1997
+.%R RFC 2131
+.%T Dynamic Host Configuration Protocol
+.Re
+.Pp
+.Rs
+.%A S. Alexander
+.%A R. Droms
+.%D March 1997
+.%R RFC 2132
+.%T DHCP Options and BOOTP Vendor Extensions
+.Re
+.Pp
+.Rs
+.%A T. Lemon
+.%A S. Cheshire
+.%D November 2002
+.%R RFC 3396
+.%T Encoding Long Options in the Dynamic Host Configuration Protocol (DHCPv4)
+.Re
+.Pp
+.Rs
+.%A T. Lemon
+.%A S. Cheshire
+.%A B. Volz
+.%D December 2002
+.%R RFC 3442
+.%T The Classless Static Route Option for Dynamic Host Configuration Protocol (DHCP) version 4
+.Re
+.Sh HISTORY
+.Nm
+was imported into
+.Dx 2.1 .
 .Sh AUTHORS
 .An -nosplit
 .Nm
@@ -179,6 +235,4 @@ and
 .An Elliot Poger Aq Mt elliot@poger.com .
 .Pp
 The current implementation was reworked by
-.An Henning Brauer Aq Mt henning@openbsd.org
-and was imported into
-.Dx 2.1 .
+.An Henning Brauer Aq Mt henning@openbsd.org .
