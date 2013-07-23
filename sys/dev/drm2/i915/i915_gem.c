@@ -1267,7 +1267,7 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	map = &p->p_vmspace->vm_map;
 	size = round_page(args->size);
 	PROC_LOCK(p);
-	if (map->size + size > lim_cur(p, RLIMIT_VMEM)) {
+	if (map->size + size > p->p_rlimit[RLIMIT_VMEM].rlim_cur) {
 		PROC_UNLOCK(p);
 		error = ENOMEM;
 		goto out;
@@ -1406,7 +1406,7 @@ unlocked_vmobj:
 	    ("not fictitious %p", m));
 	KASSERT(m->wire_count == 1, ("wire_count not 1 %p", m));
 
-	if ((m->flags & VPO_BUSY) != 0) {
+	if ((m->flags & PG_BUSY) != 0) {
 		DRM_UNLOCK(dev);
 		vm_page_sleep(m, "915pbs");
 		goto retry;
@@ -1611,7 +1611,7 @@ i915_gem_object_flush_gtt_write_domain(struct drm_i915_gem_object *obj)
 	if (obj->base.write_domain != I915_GEM_DOMAIN_GTT)
 		return;
 
-	wmb();
+	cpu_sfence();
 
 	old_write_domain = obj->base.write_domain;
 	obj->base.write_domain = 0;
@@ -2077,7 +2077,7 @@ i915_gem_object_finish_gtt(struct drm_i915_gem_object *obj)
 	u32 old_write_domain, old_read_domains;
 
 	/* Act a barrier for all accesses through the GTT */
-	mb();
+	cpu_mfence();
 
 	/* Force a pagefault for domain tracking on next user access */
 	i915_gem_release_mmap(obj);
@@ -2426,13 +2426,15 @@ i915_gem_object_needs_bit17_swizzle(struct drm_i915_gem_object *obj)
 	    obj->tiling_mode != I915_TILING_NONE);
 }
 
+#define	VM_OBJECT_LOCK_ASSERT_OWNED(object)
+
 static vm_page_t
 i915_gem_wire_page(vm_object_t object, vm_pindex_t pindex)
 {
 	vm_page_t m;
 	int rv;
 
-	VM_OBJECT_LOCK_ASSERT(object, MA_OWNED);
+	VM_OBJECT_LOCK_ASSERT_OWNED(object);
 	m = vm_page_grab(object, pindex, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 	if (m->valid != VM_PAGE_BITS_ALL) {
 		if (vm_pager_has_page(object, pindex, NULL, NULL)) {
@@ -3095,7 +3097,7 @@ i915_gem_object_flush_fence(struct drm_i915_gem_object *obj,
 	 * and all writes before removing the fence.
 	 */
 	if (obj->base.read_domains & I915_GEM_DOMAIN_GTT)
-		mb();
+		cpu_mfence();
 
 	return 0;
 }

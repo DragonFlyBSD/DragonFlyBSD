@@ -341,7 +341,7 @@ int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 {
 	int i;
 
-	callout_init(&dev->vblank_disable_callout, CALLOUT_MPSAFE);
+	callout_init_mp(&dev->vblank_disable_callout);
 #if 0
 	mtx_init(&dev->vbl_lock, "drmvbl", NULL, MTX_DEF);
 #endif
@@ -686,7 +686,7 @@ u32 drm_vblank_count_and_time(struct drm_device *dev, int crtc,
 	do {
 		cur_vblank = atomic_read(&dev->_vblank_count[crtc]);
 		*vblanktime = vblanktimestamp(dev, crtc, cur_vblank);
-		rmb();
+		cpu_lfence();
 	} while (cur_vblank != atomic_read(&dev->_vblank_count[crtc]));
 
 	return cur_vblank;

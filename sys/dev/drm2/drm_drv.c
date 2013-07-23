@@ -193,7 +193,7 @@ static struct cdevsw drm_cdevsw = {
 static int drm_msi = 1;	/* Enable by default. */
 TUNABLE_INT("hw.drm.msi", &drm_msi);
 SYSCTL_NODE(_hw, OID_AUTO, drm, CTLFLAG_RW, NULL, "DRM device");
-SYSCTL_INT(_hw_drm, OID_AUTO, msi, CTLFLAG_RDTUN, &drm_msi, 1,
+SYSCTL_INT(_hw_drm, OID_AUTO, msi, CTLFLAG_RD, &drm_msi, 1,
     "Enable MSI interrupts for drm devices");
 
 static struct drm_msi_blacklist_entry drm_msi_blacklist[] = {
@@ -461,7 +461,11 @@ static int drm_lastclose(struct drm_device *dev)
 		dev->sg = NULL;
 	}
 
+#if defined(__DragonFly__)
+	TAILQ_FOREACH_MUTABLE(map, &dev->maplist, link, mapsave) {
+#else
 	TAILQ_FOREACH_SAFE(map, &dev->maplist, link, mapsave) {
+#endif
 		if (!(map->flags & _DRM_DRIVER))
 			drm_rmmap(dev, map);
 	}

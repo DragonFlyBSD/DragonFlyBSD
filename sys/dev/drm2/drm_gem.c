@@ -115,7 +115,8 @@ drm_gem_private_object_init(struct drm_device *dev, struct drm_gem_object *obj,
     size_t size)
 {
 
-	MPASS((size & (PAGE_SIZE - 1)) == 0);
+	KASSERT((size & (PAGE_SIZE - 1)) == 0,
+	    ("Bad size %ju", (uintmax_t)size));
 
 	obj->dev = dev;
 	obj->vm_obj = NULL;

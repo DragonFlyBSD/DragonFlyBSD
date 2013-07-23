@@ -26,6 +26,9 @@
  * $FreeBSD: src/sys/dev/drm2/i915/intel_display.c,v 1.2 2012/05/24 19:13:54 dim Exp $
  */
 
+#include <ddb/ddb.h>
+#include <sys/limits.h>
+
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>
 #include <dev/drm2/i915/i915_drm.h>
@@ -34,8 +37,6 @@
 #include <dev/drm2/drm_edid.h>
 #include <dev/drm2/drm_dp_helper.h>
 #include <dev/drm2/drm_crtc_helper.h>
-#include <sys/kdb.h>
-#include <sys/limits.h>
 
 #define HAS_eDP (intel_pipe_has_type(crtc, INTEL_OUTPUT_EDP))
 
@@ -1958,7 +1959,7 @@ static void intel_update_fbc(struct drm_device *dev)
 	}
 
 	/* If the kernel debugger is active, always disable compression */
-	if (kdb_active)
+	if (db_active)
 		goto out_disable;
 
 	/* If the scanout has not changed, don't modify the FBC settings.
@@ -7779,7 +7780,7 @@ static void intel_crtc_init(struct drm_device *dev, int pipe)
 
 	intel_crtc->busy = false;
 
-	callout_init(&intel_crtc->idle_callout, CALLOUT_MPSAFE);
+	callout_init_mp(&intel_crtc->idle_callout);
 }
 
 int intel_get_pipe_from_crtc_id(struct drm_device *dev, void *data,
@@ -9318,7 +9319,7 @@ void intel_modeset_init(struct drm_device *dev)
 	}
 
 	TASK_INIT(&dev_priv->idle_task, 0, intel_idle_update, dev_priv);
-	callout_init(&dev_priv->idle_callout, CALLOUT_MPSAFE);
+	callout_init_mp(&dev_priv->idle_callout);
 }
 
 void intel_modeset_gem_init(struct drm_device *dev)

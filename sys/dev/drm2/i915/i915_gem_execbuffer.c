@@ -798,7 +798,7 @@ i915_gem_execbuffer_flush(struct drm_device *dev,
 		intel_gtt_chipset_flush();
 
 	if (flush_domains & I915_GEM_DOMAIN_GTT)
-		wmb();
+		cpu_sfence();
 
 	if ((flush_domains | invalidate_domains) & I915_GEM_GPU_DOMAINS) {
 		for (i = 0; i < I915_NUM_RINGS; i++)

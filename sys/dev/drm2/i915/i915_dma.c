@@ -1295,7 +1295,7 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 
 	intel_opregion_init(dev);
 
-	callout_init(&dev_priv->hangcheck_timer, 1);
+	callout_init_mp(&dev_priv->hangcheck_timer);
 	callout_reset(&dev_priv->hangcheck_timer, DRM_I915_HANGCHECK_PERIOD,
 	    i915_hangcheck_elapsed, dev);
 

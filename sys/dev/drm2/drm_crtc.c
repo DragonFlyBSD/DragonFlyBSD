@@ -2461,7 +2461,7 @@ int drm_mode_attachmode_crtc(struct drm_device *dev, struct drm_crtc *crtc,
 			list_move_tail(list.next, &connector->user_modes);
 	}
 
-	MPASS(!list_empty(&list));
+	KASSERT(!list_empty(&list), ("list empty"));
 
  out:
 	list_for_each_entry_safe(dup_mode, next, &list, head)
