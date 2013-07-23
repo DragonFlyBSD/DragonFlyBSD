@@ -30,7 +30,6 @@
 .\"
 .\"     @(#)stty.1	8.4 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/stty/stty.1,v 1.13.2.6 2001/12/14 14:22:09 ru Exp $
-.\" $DragonFly: src/bin/stty/stty.1,v 1.4 2006/02/10 19:01:09 swildner Exp $
 .\"
 .Dd April 18, 1994
 .Dt STTY 1
@@ -374,30 +373,27 @@ is disabled (i.e.\& set to
 .Pf { Dv _POSIX_VDISABLE Ns } . )
 .Pp
 Recognized control-characters:
-.Bd -ragged -offset indent
-.Bl -column character Subscript
-.It control-
-.It character Ta Subscript Ta Description
-.It _________ Ta _________ Ta _______________
-.It eof Ta Tn VEOF Ta EOF No character
-.It eol Ta Tn VEOL Ta EOL No character
-.It eol2 Ta Tn VEOL2 Ta EOL2 No character
-.It erase Ta Tn VERASE Ta ERASE No character
-.It erase2 Ta Tn VERASE2 Ta ERASE2 No character
-.It werase Ta Tn VWERASE Ta WERASE No character
-.It intr Ta Tn VINTR Ta INTR No character
-.It kill Ta Tn VKILL Ta KILL No character
-.It quit Ta Tn VQUIT Ta QUIT No character
-.It susp Ta Tn VSUSP Ta SUSP No character
-.It start Ta Tn VSTART Ta START No character
-.It stop Ta Tn VSTOP Ta STOP No character
-.It dsusp Ta Tn VDSUSP Ta DSUSP No character
-.It lnext Ta Tn VLNEXT Ta LNEXT No character
-.It reprint Ta Tn VREPRINT Ta REPRINT No character
-.It status Ta Tn VSTATUS Ta STATUS No character
-.It ckpt Ta Tn VCHECKPT Ta CKPT No character
+.Bl -column "character" "Subscript" "Description"
+.It Sy Control Ta Sy Subscript Ta Sy Description
+.It Sy character Ta "" Ta ""
+.It eof Ta Dv VEOF Ta "EOF character"
+.It eol Ta Dv VEOL Ta "EOL character"
+.It eol2 Ta Dv VEOL2 Ta "EOL2 character"
+.It erase Ta Dv VERASE Ta "ERASE character"
+.It erase2 Ta Dv VERASE2 Ta "ERASE2 character"
+.It werase Ta Dv VWERASE Ta "WERASE character"
+.It intr Ta Dv VINTR Ta "INTR character"
+.It kill Ta Dv VKILL Ta "KILL character"
+.It quit Ta Dv VQUIT Ta "QUIT character"
+.It susp Ta Dv VSUSP Ta "SUSP character"
+.It start Ta Dv VSTART Ta "START character"
+.It stop Ta Dv VSTOP Ta "STOP character"
+.It dsusp Ta Dv VDSUSP Ta "DSUSP character"
+.It lnext Ta Dv VLNEXT Ta "LNEXT character"
+.It reprint Ta Dv VREPRINT Ta "REPRINT character"
+.It status Ta Dv VSTATUS Ta "STATUS character"
+.It ckpt Ta Dv VCHECKPT Ta "CKPT character"
 .El
-.Ed
 .It Cm min Ar number
 .It Cm time Ar number
 Set the value of min or time to
