@@ -1341,7 +1341,6 @@ i915_driver_unload_int(struct drm_device *dev, bool locked)
 
 	/* Free error state after interrupts are fully disabled. */
 	callout_stop(&dev_priv->hangcheck_timer);
-	callout_drain(&dev_priv->hangcheck_timer);
 
 	i915_destroy_error_state(dev);
 

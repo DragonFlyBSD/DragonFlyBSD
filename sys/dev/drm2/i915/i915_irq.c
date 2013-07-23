@@ -32,8 +32,6 @@
 #include <dev/drm2/i915/i915_drm.h>
 #include <dev/drm2/i915/i915_drv.h>
 #include <dev/drm2/i915/intel_drv.h>
-#include <sys/sched.h>
-#include <sys/sf_buf.h>
 
 static void i915_capture_error_state(struct drm_device *dev);
 static u32 ring_last_seqno(struct intel_ring_buffer *ring);
@@ -1913,7 +1911,6 @@ i915_error_object_create(struct drm_i915_private *dev_priv,
 		} else {
 			drm_clflush_pages(&src->pages[page], 1);
 
-			sched_pin();
 			sf = sf_buf_alloc(src->pages[page], SFB_CPUPRIVATE |
 			    SFB_NOWAIT);
 			if (sf != NULL) {
@@ -1924,7 +1921,6 @@ i915_error_object_create(struct drm_i915_private *dev_priv,
 				bzero(d, PAGE_SIZE);
 				strcpy(d, "XXXKIB");
 			}
-			sched_unpin();
 
 			drm_clflush_pages(&src->pages[page], 1);
 		}

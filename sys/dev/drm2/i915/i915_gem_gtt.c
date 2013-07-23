@@ -28,8 +28,6 @@
 #include <dev/drm2/i915/i915_drm.h>
 #include <dev/drm2/i915/i915_drv.h>
 #include <dev/drm2/i915/intel_drv.h>
-#include <sys/sched.h>
-#include <sys/sf_buf.h>
 
 /* PPGTT support for Sandybdrige/Gen6 and later */
 static void
@@ -52,7 +50,6 @@ i915_ppgtt_clear_range(struct i915_hw_ppgtt *ppgtt,
 		if (last_pte > I915_PPGTT_PT_ENTRIES)
 			last_pte = I915_PPGTT_PT_ENTRIES;
 
-		sched_pin();
 		sf = sf_buf_alloc(ppgtt->pt_pages[act_pd], SFB_CPUPRIVATE);
 		pt_vaddr = (uint32_t *)(uintptr_t)sf_buf_kva(sf);
 
@@ -60,7 +57,6 @@ i915_ppgtt_clear_range(struct i915_hw_ppgtt *ppgtt,
 			pt_vaddr[i] = scratch_pte;
 
 		sf_buf_free(sf);
-		sched_unpin();
 
 		num_entries -= last_pte - first_pte;
 		first_pte = 0;
@@ -93,8 +89,7 @@ i915_gem_init_aliasing_ppgtt(struct drm_device *dev)
 
 	for (i = 0; i < ppgtt->num_pd_entries; i++) {
 		ppgtt->pt_pages[i] = vm_page_alloc(NULL, 0,
-		    VM_ALLOC_NORMAL | VM_ALLOC_NOOBJ | VM_ALLOC_WIRED |
-		    VM_ALLOC_ZERO);
+		    VM_ALLOC_NORMAL | VM_ALLOC_ZERO);
 		if (ppgtt->pt_pages[i] == NULL) {
 			dev_priv->mm.aliasing_ppgtt = ppgtt;
 			i915_gem_cleanup_aliasing_ppgtt(dev);
@@ -129,7 +124,6 @@ i915_ppgtt_insert_pages(struct i915_hw_ppgtt *ppgtt, unsigned first_entry,
 		if (last_pte > I915_PPGTT_PT_ENTRIES)
 			last_pte = I915_PPGTT_PT_ENTRIES;
 
-		sched_pin();
 		sf = sf_buf_alloc(ppgtt->pt_pages[act_pd], SFB_CPUPRIVATE);
 		pt_vaddr = (uint32_t *)(uintptr_t)sf_buf_kva(sf);
 
@@ -142,7 +136,6 @@ i915_ppgtt_insert_pages(struct i915_hw_ppgtt *ppgtt, unsigned first_entry,
 		}
 
 		sf_buf_free(sf);
-		sched_unpin();
 
 		num_entries -= last_pte - first_pte;
 		first_pte = 0;

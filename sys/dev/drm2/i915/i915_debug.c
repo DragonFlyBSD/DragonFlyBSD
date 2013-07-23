@@ -1639,17 +1639,17 @@ i915_sysctl_init(struct drm_device *dev, struct sysctl_ctx_list *ctx,
 	    "i915_gem_wired_pages", CTLFLAG_RD, &i915_gem_wired_pages_cnt,
 	    NULL);
 	oid = SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(top), OID_AUTO, "wedged",
-	    CTLTYPE_INT | CTLFLAG_RW | CTLFLAG_MPSAFE, dev, 0,
+	    CTLTYPE_INT | CTLFLAG_RW, dev, 0,
 	    i915_debug_set_wedged, "I", NULL);
 	if (oid == NULL)
 		return (ENOMEM);
 	oid = SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(top), OID_AUTO, "max_freq",
-	    CTLTYPE_INT | CTLFLAG_RW | CTLFLAG_MPSAFE, dev, 0, i915_max_freq,
+	    CTLTYPE_INT | CTLFLAG_RW, dev, 0, i915_max_freq,
 	    "I", NULL);
 	if (oid == NULL)
 		return (ENOMEM);
 	oid = SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(top), OID_AUTO,
-	    "cache_sharing", CTLTYPE_INT | CTLFLAG_RW | CTLFLAG_MPSAFE, dev,
+	    "cache_sharing", CTLTYPE_INT | CTLFLAG_RW, dev,
 	    0, i915_cache_sharing, "I", NULL);
 	if (oid == NULL)
 		return (ENOMEM);

@@ -9372,11 +9372,6 @@ void intel_modeset_cleanup(struct drm_device *dev)
 		taskqueue_drain(dev_priv->tq, &dev_priv->rps_task);
 
 	/* Shut off idle work before the crtcs get freed. */
-	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
-		intel_crtc = to_intel_crtc(crtc);
-		callout_drain(&intel_crtc->idle_callout);
-	}
-	callout_drain(&dev_priv->idle_callout);
 	if (taskqueue_cancel(dev_priv->tq, &dev_priv->idle_task, NULL))
 		taskqueue_drain(dev_priv->tq, &dev_priv->idle_task);
 
