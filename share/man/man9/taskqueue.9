@@ -27,14 +27,18 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/taskqueue.9,v 1.21 2007/07/09 06:24:10 jmg Exp $
 .\"
-.Dd October 2, 2009
+.Dd July 24, 2013
 .Dt TASKQUEUE 9
 .Os
 .Sh NAME
 .Nm taskqueue_block ,
+.Nm taskqueue_cancel ,
+.Nm taskqueue_cancel_timeout ,
 .Nm taskqueue_create ,
 .Nm taskqueue_drain ,
+.Nm taskqueue_drain_timeout ,
 .Nm taskqueue_enqueue ,
+.Nm taskqueue_enqueue_timeout ,
 .Nm taskqueue_free ,
 .Nm taskqueue_find ,
 .Nm taskqueue_run ,
@@ -71,10 +75,18 @@ struct task {
 .Fn taskqueue_find "const char *name"
 .Ft int
 .Fn taskqueue_enqueue "struct taskqueue *queue" "struct task *task"
+.Ft int
+.Fn taskqueue_enqueue_timeout "struct taskqueue *queue" "struct timeout_task *timeout_task" "int ticks"
+.Ft int
+.Fn taskqueue_cancel "struct taskqueue *queue" "struct task *task" "u_int *pendp"
+.Ft int
+.Fn taskqueue_cancel_timeout "struct taskqueue *queue" "struct timeout_task *timeout_task" "u_int *pendp"
 .Ft void
 .Fn taskqueue_run "struct taskqueue *queue"
 .Ft void
 .Fn taskqueue_drain "struct taskqueue *queue" "struct task *task"
+.Ft void
+.Fn taskqueue_drain_timeout "struct taskqueue *queue" "struct timeout_task *timeout_task"
 .Ft void
 .Fn taskqueue_block "struct taskqueue *queue"
 .Ft void
@@ -154,8 +166,53 @@ and the value of
 as its second argument.
 .Pp
 The
+.Fn taskqueue_enqueue_timeout
+is used to schedule the enqueue after the specified amount of
+.Va ticks .
+If the
+.Va ticks
+argument is negative, the already scheduled enqueueing is not re-scheduled.
+Otherwise, the task is scheduled for enqueueing in the future,
+after the absolute value of
+.Va ticks
+is passed.
+.Pp
+The
+.Fn taskqueue_cancel
+function is used to cancel a task.
+The
+.Va ta_pending
+count is cleared, and the old value returned in the reference
+parameter
+.Fa pendp ,
+if it is
+.Pf non- Dv NULL .
+If the task is currently running,
+.Dv EBUSY
+is returned, otherwise 0.
+To implement a blocking
+.Fn taskqueue_cancel
+that waits for a running task to finish, it could look like:
+.Bd -literal -offset indent
+while (taskqueue_cancel(tq, task, NULL) != 0)
+	taskqueue_drain(tq, task);
+.Ed
+.Pp
+Note that, as with
+.Fn taskqueue_drain ,
+the caller is responsible for ensuring that the task is not re-enqueued
+after being canceled.
+.Pp
+Similarly, the
+.Fn taskqueue_cancel_timeout
+function is used to cancel the scheduled task execution.
+.Pp
+The
 .Fn taskqueue_drain
-function is used to wait for the task to finish.
+function is used to wait for the task to finish, and
+the
+.Fn taskqueue_drain_timeout
+function is used to wait for the scheduled task to finish.
 There is no guarantee that the task will not be
 enqueued after call to
 .Fn taskqueue_drain .
@@ -266,7 +323,7 @@ the amount of time spent with interrupts disabled.
 .Sh HISTORY
 This interface first appeared in
 .Fx 5.0 .
-There is a similar facility called tqueue in the Linux kernel.
+There is a similar facility called work_queue in the Linux kernel.
 .Sh AUTHORS
 This manual page was written by
 .An Doug Rabson .

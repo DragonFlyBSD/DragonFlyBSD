@@ -924,11 +924,15 @@ MLINKS+=systimer.9 systimer_adjust_periodic.9 \
 	systimer.9 systimers.9
 MLINKS+=taskqueue.9 TASK_INIT.9 \
 	taskqueue.9 taskqueue_block.9 \
+	taskqueue.9 taskqueue_cancel.9 \
+	taskqueue.9 taskqueue_cancel_timeout.9 \
 	taskqueue.9 taskqueue_create.9 \
 	taskqueue.9 taskqueue_drain.9 \
+	taskqueue.9 taskqueue_drain_timeout \
 	taskqueue.9 TASKQUEUE_DECLARE.9 \
 	taskqueue.9 TASKQUEUE_DEFINE.9 \
 	taskqueue.9 taskqueue_enqueue.9 \
+	taskqueue.9 taskqueue_enqueue_timeout.9 \
 	taskqueue.9 taskqueue_find.9 \
 	taskqueue.9 taskqueue_free.9 \
 	taskqueue.9 taskqueue_run.9 \
