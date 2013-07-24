@@ -44,14 +44,27 @@
 #include <errno.h>
 #include <unistd.h>
 
+#define PHASH_SIZE	1024
+
+struct pchain {
+	struct pchain *next;
+	struct kinfo_proc *proc;
+	struct pchain *parent;
+};
+
 static char	*prog;
+static struct pchain *phash[PHASH_SIZE];
+
+static struct pchain *saveparents(struct kinfo_proc *procs, int nprocs,
+				pid_t mypid);
+static int checkparent(struct pchain *mychain, pid_t pid);
 
 static void __dead2
 usage(void)
 {
 
 	fprintf(stderr, "usage: %s [-l] [-v] [-m] [-sig] "
-			"[-u user] [-j jail] [-t tty] "
+			"[-u user] [-j jail] [-t tty] [-T] "
 			"[-c cmd] [cmd]...\n", prog);
 	fprintf(stderr, "At least one option or argument to specify "
 			"processes must be given.\n");
@@ -101,6 +114,7 @@ int
 main(int ac, char **av)
 {
 	struct kinfo_proc *procs = NULL, *newprocs;
+	struct pchain 	*mychain;
 	struct stat	sb;
 	struct passwd	*pw;
 	regex_t		rgx;
@@ -116,6 +130,7 @@ main(int ac, char **av)
 	int		jflag = 0, jailid = 0;
 	int		dflag = 0;
 	int		mflag = 0;
+	int		Tflag = 0;
 	uid_t		uid = 0;
 	dev_t		tdev = 0;
 	pid_t		mypid;
@@ -198,6 +213,9 @@ main(int ac, char **av)
 			case 'm':
 				mflag++;
 				break;
+			case 'T':
+				Tflag++;
+				break;
 			default:
 				if (isalpha((unsigned char)**av)) {
 					if (strncasecmp(*av, "sig", 3) == 0)
@@ -226,8 +244,16 @@ main(int ac, char **av)
 		}
 	}
 
-	if (user == NULL && tty == NULL && cmd == NULL && jflag == 0 && ac == 0)
+	if (user == NULL && tty == NULL && cmd == NULL &&
+	    jflag == 0 && Tflag == 0 && ac == 0) {
 		usage();
+	}
+
+	if (Tflag) {
+		tty = ttyname(0);
+		if (tty)
+			tty = strdup(tty);
+	}
 
 	if (tty) {
 		if (strncmp(tty, "/dev/", 5) == 0)
@@ -306,6 +332,17 @@ main(int ac, char **av)
 		printf("nprocs %d\n", nprocs);
 	mypid = getpid();
 
+	/*
+	 * Record parent chain if Tflag
+	 */
+	if (Tflag && tty)
+		mychain = saveparents(procs, nprocs, mypid);
+	else
+		mychain = NULL;
+
+	/*
+	 * Final scan
+	 */
 	for (i = 0; i < nprocs; i++) {
 		thispid = procs[i].kp_pid;
 		strncpy(thiscmd, procs[i].kp_comm, MAXCOMLEN);
@@ -324,6 +361,8 @@ main(int ac, char **av)
 		}
 		if (tty) {
 			if (thistdev != tdev)
+				matched = 0;
+			if (Tflag && checkparent(mychain, procs[i].kp_pid))
 				matched = 0;
 		}
 		if (jflag) {
@@ -402,4 +441,61 @@ main(int ac, char **av)
 		errors = 1;
 	}
 	exit(errors);
+}
+
+
+static
+struct pchain *
+saveparents(struct kinfo_proc *procs, int nprocs, pid_t mypid)
+{
+	struct pchain *rchain = NULL;
+	struct pchain *chain;
+	struct pchain *pchain;
+	int	i;
+	int	hv;
+
+	for (i = 0; i < nprocs; ++i) {
+		if ((int)procs[i].kp_pid < 0)
+			continue;
+		hv = (int)procs[i].kp_pid & 1023;
+		chain = malloc(sizeof(*chain));
+		chain->proc = &procs[i];
+		chain->parent = NULL;
+		chain->next = phash[hv];
+		phash[hv] = chain;
+		if (mypid == procs[i].kp_pid)
+			rchain = chain;
+	}
+	for (i = 0; i < nprocs; ++i) {
+		if ((int)procs[i].kp_pid < 0)
+			continue;
+		if ((int)procs[i].kp_ppid < 0)
+			continue;
+		hv = (int)procs[i].kp_pid & 1023;
+		for (chain = phash[hv]; chain; chain = chain->next) {
+			if (chain->proc->kp_pid == procs[i].kp_pid)
+				break;
+		}
+		hv = (int)procs[i].kp_ppid & 1023;
+		for (pchain = phash[hv]; pchain; pchain = pchain->next) {
+			if (pchain->proc->kp_pid == procs[i].kp_ppid) {
+				if (chain)
+					chain->parent = pchain;
+				break;
+			}
+		}
+	}
+	return (rchain);
+}
+
+static
+int
+checkparent(struct pchain *chain, pid_t pid)
+{
+	while (chain) {
+		if (chain->proc->kp_pid == pid)
+			return(1);
+		chain = chain->parent;
+	}
+	return(0);
 }

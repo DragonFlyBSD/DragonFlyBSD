@@ -39,6 +39,7 @@
 .Op Fl l
 .Op Fl m
 .Op Fl s
+.Op Fl T
 .Op Fl u Ar user
 .Op Fl t Ar tty
 .Op Fl c Ar procname
@@ -100,6 +101,9 @@ the specified
 Limit potentially matching processes to those running on
 the specified
 .Ar tty .
+.It Fl T
+Kill all processes on the current tty except ourselves or
+processes which parent us.
 .It Fl j Ar jailid
 Limit potentially matching processes to those running in the jail with id
 .Ar jailid .
