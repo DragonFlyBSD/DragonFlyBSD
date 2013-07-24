@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/sys/taskqueue.h,v 1.3.2.2 2003/09/10 00:40:39 ken Exp $
- * $DragonFly: src/sys/sys/taskqueue.h,v 1.6 2005/09/21 18:58:55 hsu Exp $
+ * $FreeBSD: src/sys/sys/taskqueue.h,v 1.31 2011/12/19 18:55:13 jhb Exp $
  */
 
 #ifndef _SYS_TASKQUEUE_H_
@@ -35,6 +34,7 @@
 #endif
 
 #include <sys/queue.h>
+#include <sys/callout.h>
 
 struct taskqueue;
 
@@ -63,6 +63,13 @@ struct task {
 	void	*ta_context;		/* argument for handler */
 };
 
+struct timeout_task {
+	struct taskqueue *q;
+	struct task t;
+	struct callout c;
+	int    f;
+};
+
 struct taskqueue *taskqueue_create(const char *name, int mflags,
 				    taskqueue_enqueue_fn enqueue,
 				    void *context);
@@ -70,11 +77,25 @@ int	taskqueue_start_threads(struct taskqueue **tqp, int count, int pri,
 				int ncpu, const char *name, ...)
 				__printflike(5, 6);
 int	taskqueue_enqueue(struct taskqueue *queue, struct task *task);
+int	taskqueue_enqueue_timeout(struct taskqueue *queue,
+	    struct timeout_task *timeout_task, int ticks);
+int	taskqueue_cancel(struct taskqueue *queue, struct task *task,
+	    u_int *pendp);
+int	taskqueue_cancel_timeout(struct taskqueue *queue,
+	    struct timeout_task *timeout_task, u_int *pendp);
 void	taskqueue_drain(struct taskqueue *queue, struct task *task);
-struct taskqueue *taskqueue_find(const char *name);
+void	taskqueue_drain_timeout(struct taskqueue *queue,
+	    struct timeout_task *timeout_task);
+struct	taskqueue *taskqueue_find(const char *name);
 void	taskqueue_free(struct taskqueue *queue);
 void	taskqueue_block(struct taskqueue *queue);
 void	taskqueue_unblock(struct taskqueue *queue);
+
+#define TASK_INITIALIZER(priority, func, context)	\
+	{ .ta_pending = 0,				\
+	  .ta_priority = (priority),			\
+	  .ta_func = (func),				\
+	  .ta_context = (context) }
 
 /*
  * Functions for dedicated thread taskqueues
@@ -91,6 +112,12 @@ void	taskqueue_thread_enqueue(void *context);
 	(task)->ta_func = (func);			\
 	(task)->ta_context = (context);			\
 } while (0)
+
+void _timeout_task_init(struct taskqueue *queue,
+	    struct timeout_task *timeout_task, int priority, task_fn_t func,
+	    void *context);
+#define	TIMEOUT_TASK_INIT(queue, timeout_task, priority, func, context) \
+	_timeout_task_init(queue, timeout_task, priority, func, context);
 
 /*
  * Declare a reference to a taskqueue.
@@ -126,6 +153,33 @@ TASKQUEUE_DEFINE(name, taskqueue_thread_enqueue, &taskqueue_##name,	\
  * This queue is serviced by a software interrupt handler.  To enqueue
  * a task, call taskqueue_enqueue(taskqueue_swi, &task).
  */
+#define TASKQUEUE_FAST_DEFINE(name, enqueue, context, init)		\
+									\
+struct taskqueue *taskqueue_##name;					\
+									\
+static void								\
+taskqueue_define_##name(void *arg)					\
+{									\
+	taskqueue_##name =						\
+	    taskqueue_create_fast(#name, M_WAITOK, (enqueue),		\
+	    (context));							\
+	init;								\
+}									\
+									\
+SYSINIT(taskqueue_##name, SI_SUB_CONFIGURE, SI_ORDER_SECOND,		\
+	taskqueue_define_##name, NULL);					\
+									\
+struct __hack
+#define TASKQUEUE_FAST_DEFINE_THREAD(name)				\
+TASKQUEUE_FAST_DEFINE(name, taskqueue_thread_enqueue,			\
+	&taskqueue_##name, taskqueue_start_threads(&taskqueue_##name	\
+	1, PWAIT, "%s taskq", #name))
+
+/*
+ * These queues are serviced by software interrupt handlers.  To enqueue
+ * a task, call taskqueue_enqueue(taskqueue_swi, &task) or
+ * taskqueue_enqueue(taskqueue_swi_giant, &task).
+ */
 TASKQUEUE_DECLARE(swi);
 TASKQUEUE_DECLARE(swi_mp);
 
@@ -134,5 +188,17 @@ TASKQUEUE_DECLARE(swi_mp);
  * taskqueue_enqueue(taskqueue_thread[mycpuid], &task).
  */
 extern struct taskqueue *taskqueue_thread[];
+
+/*
+ * Queue for swi handlers dispatched from fast interrupt handlers.
+ * These are necessarily different from the above because the queue
+ * must be locked with spinlocks since sleep mutex's cannot be used
+ * from a fast interrupt handler context.
+ */
+TASKQUEUE_DECLARE(fast);
+int	taskqueue_enqueue_fast(struct taskqueue *queue, struct task *task);
+struct taskqueue *taskqueue_create_fast(const char *name, int mflags,
+				    taskqueue_enqueue_fn enqueue,
+				    void *context);
 
 #endif /* !_SYS_TASKQUEUE_H_ */

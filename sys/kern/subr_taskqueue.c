@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	 $FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.3 2003/09/10 00:40:39 ken Exp $
+ * $FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.69 2012/08/28 13:35:37 jhb Exp $"
  */
 
 #include <sys/param.h>
@@ -59,11 +59,25 @@ struct taskqueue {
 	struct thread		**tq_threads;
 	int			tq_tcount;
 	int			tq_flags;
+	int			tq_callouts;
 };
 
 #define	TQ_FLAGS_ACTIVE		(1 << 0)
 #define	TQ_FLAGS_BLOCKED	(1 << 1)
 #define	TQ_FLAGS_PENDING	(1 << 2)
+
+#define	DT_CALLOUT_ARMED	(1 << 0)
+
+void
+_timeout_task_init(struct taskqueue *queue, struct timeout_task *timeout_task,
+    int priority, task_fn_t func, void *context)
+{
+
+	TASK_INIT(&timeout_task->t, priority, func, context);
+	callout_init(&timeout_task->c);
+	timeout_task->q = queue;
+	timeout_task->f = 0;
+}
 
 static void taskqueue_run(struct taskqueue *queue, int lock_held);
 
@@ -169,13 +183,11 @@ taskqueue_find(const char *name)
  * So either use a throwaway task which will only be enqueued once, or
  * use one task per CPU!
  */
-int
-taskqueue_enqueue(struct taskqueue *queue, struct task *task)
+static int
+taskqueue_enqueue_locked(struct taskqueue *queue, struct task *task)
 {
 	struct task *ins;
 	struct task *prev;
-
-	TQ_LOCK(queue);
 
 	/*
 	 * Don't allow new tasks on a queue which is being freed.
@@ -190,7 +202,6 @@ taskqueue_enqueue(struct taskqueue *queue, struct task *task)
 	 */
 	if (task->ta_pending) {
 		task->ta_pending++;
-		TQ_UNLOCK(queue);
 		return 0;
 	}
 
@@ -221,9 +232,60 @@ taskqueue_enqueue(struct taskqueue *queue, struct task *task)
 		queue->tq_flags |= TQ_FLAGS_PENDING;
 	}
 
+	return 0;
+}
+
+int
+taskqueue_enqueue(struct taskqueue *queue, struct task *task)
+{
+	int res;
+
+	TQ_LOCK(queue);
+	res = taskqueue_enqueue_locked(queue, task);
 	TQ_UNLOCK(queue);
 
-	return 0;
+	return (res);
+}
+
+static void
+taskqueue_timeout_func(void *arg)
+{
+	struct taskqueue *queue;
+	struct timeout_task *timeout_task;
+
+	timeout_task = arg;
+	queue = timeout_task->q;
+	KASSERT((timeout_task->f & DT_CALLOUT_ARMED) != 0, ("Stray timeout"));
+	timeout_task->f &= ~DT_CALLOUT_ARMED;
+	queue->tq_callouts--;
+	taskqueue_enqueue_locked(timeout_task->q, &timeout_task->t);
+}
+
+int
+taskqueue_enqueue_timeout(struct taskqueue *queue,
+    struct timeout_task *timeout_task, int ticks)
+{
+	int res;
+
+	TQ_LOCK(queue);
+	KASSERT(timeout_task->q == NULL || timeout_task->q == queue,
+	    ("Migrated queue"));
+	timeout_task->q = queue;
+	res = timeout_task->t.ta_pending;
+	if (ticks == 0) {
+		taskqueue_enqueue_locked(queue, &timeout_task->t);
+	} else {
+		if ((timeout_task->f & DT_CALLOUT_ARMED) != 0) {
+			res++;
+		} else {
+			queue->tq_callouts++;
+			timeout_task->f |= DT_CALLOUT_ARMED;
+		}
+		callout_reset(&timeout_task->c, ticks, taskqueue_timeout_func,
+		    timeout_task);
+	}
+	TQ_UNLOCK(queue);
+	return (res);
 }
 
 void
@@ -277,6 +339,54 @@ taskqueue_run(struct taskqueue *queue, int lock_held)
 		TQ_UNLOCK(queue);
 }
 
+static int
+taskqueue_cancel_locked(struct taskqueue *queue, struct task *task,
+    u_int *pendp)
+{
+
+	if (task->ta_pending > 0)
+		STAILQ_REMOVE(&queue->tq_queue, task, task, ta_link);
+	if (pendp != NULL)
+		*pendp = task->ta_pending;
+	task->ta_pending = 0;
+	return (task == queue->tq_running ? EBUSY : 0);
+}
+
+int
+taskqueue_cancel(struct taskqueue *queue, struct task *task, u_int *pendp)
+{
+	u_int pending;
+	int error;
+
+	TQ_LOCK(queue);
+	pending = task->ta_pending;
+	error = taskqueue_cancel_locked(queue, task, pendp);
+	TQ_UNLOCK(queue);
+
+	return (error);
+}
+
+int
+taskqueue_cancel_timeout(struct taskqueue *queue,
+    struct timeout_task *timeout_task, u_int *pendp)
+{
+	u_int pending, pending1;
+	int error;
+
+	TQ_LOCK(queue);
+	pending = !!callout_stop(&timeout_task->c);
+	error = taskqueue_cancel_locked(queue, &timeout_task->t, &pending1);
+	if ((timeout_task->f & DT_CALLOUT_ARMED) != 0) {
+		timeout_task->f &= ~DT_CALLOUT_ARMED;
+		queue->tq_callouts--;
+	}
+	TQ_UNLOCK(queue);
+
+	if (pendp != NULL)
+		*pendp = pending + pending1;
+	return (error);
+}
+
 void
 taskqueue_drain(struct taskqueue *queue, struct task *task)
 {
@@ -284,6 +394,15 @@ taskqueue_drain(struct taskqueue *queue, struct task *task)
 	while (task->ta_pending != 0 || task == queue->tq_running)
 		TQ_SLEEP(queue, task, "-");
 	TQ_UNLOCK(queue);
+}
+
+void
+taskqueue_drain_timeout(struct taskqueue *queue,
+    struct timeout_task *timeout_task)
+{
+
+	callout_stop_sync(&timeout_task->c);
+	taskqueue_drain(queue, &timeout_task->t);
 }
 
 static void
