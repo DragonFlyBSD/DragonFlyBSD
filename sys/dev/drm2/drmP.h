@@ -1011,6 +1011,8 @@ int drm_add_busid_modesetting(struct drm_device *dev,
 extern int		drm_open_helper(struct cdev *kdev, int flags, int fmt,
 					 DRM_STRUCTPROC *p,
 					struct drm_device *dev);
+extern struct drm_file	*drm_find_file_by_proc(struct drm_device *dev,
+					DRM_STRUCTPROC *p);
 
 /* Memory management support (drm_memory.c) */
 void	drm_mem_init(void);

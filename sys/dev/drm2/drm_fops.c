@@ -39,6 +39,18 @@
 #include <sys/types.h>
 #include <sys/conf.h>
 
+struct drm_file *drm_find_file_by_proc(struct drm_device *dev, DRM_STRUCTPROC *p)
+{
+	uid_t uid = p->td_proc->p_ucred->cr_svuid;
+	pid_t pid = p->td_proc->p_pid;
+	struct drm_file *priv;
+
+	TAILQ_FOREACH(priv, &dev->files, link)
+		if (priv->pid == pid && priv->uid == uid)
+			return priv;
+	return NULL;
+}
+
 /* drm_open_helper is called whenever a process opens /dev/drm. */
 int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 		    struct drm_device *dev)
