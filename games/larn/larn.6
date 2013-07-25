@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)larn.6	5.5 (Berkeley) 12/30/93
 .\" $FreeBSD: src/games/larn/larn.6,v 1.6.2.3 2001/07/22 11:01:22 dd Exp $
-.\" $DragonFly: src/games/larn/larn.6,v 1.4 2008/05/02 02:05:03 swildner Exp $
 .\"
 .Dd December 30, 1993
 .Dt LARN 6
@@ -37,59 +36,52 @@
 .Nd exploring the caverns of Larn
 .Sh SYNOPSIS
 .Nm
-.Op Fl r
 .Op Fl H Ar number
-.Op Fl n
-.Op Fl h
+.Op Fl hnr
 .Op Fl o Ar optsfile
 .Sh DESCRIPTION
 .Nm Larn
-is a fantasy games in which your child has contracted
+is a fantasy game in which your child has contracted
 a strange disease, and none of your home remedies
 seem to have any effect.  You set out to find a remedy in a limited
 amount of time, and to collect gold along the way of course!
 .Pp
 The options are:
-.Bl -tag -width flag
-.It Fl r
-The
-.Fl r
-option restores a checkpointed game after it has died.
-.It Fl H
-The
-.Fl H
-option sets the hardness of the game.
-.It Fl n
-The
-.Fl n
-option suppresses the welcome message at start up, putting you directly
-into the game.
+.Bl -tag -width "-o optsfile"
+.It Fl H Ar number
+Set the hardness of the game.
 .It Fl h
-The
-.Fl h
-option prints the command line options.
-.It Fl o
-The
-.Fl o
-option specifies a different options file than
+Print the command line options.
+.It Fl n
+Suppress the welcome message at start up, putting you directly
+into the game.
+.It Fl o Ar optsfile
+Specify a different options file than
 .Pa ~/.larnopts .
+.It Fl r
+Restore a checkpointed game after it has died.
 .El
 .Sh COMMANDS
-These are the movement commands:
-.Bl -column "v print program version" "g give present pack weight"
-.It h move to the left	H run left	. stay here
-.It j move down	J run down	Z teleport yourself
-.It k move up	K run up	c cast a spell
-.It l move to the right	L run right	r read a scroll
-.It y move northwest	Y run northwest	q quaff a potion
-.It u move northeast	U run northeast	W wear armor
-.It b move southwest	B run southwest	T take off armor
-.It n move southeast	N run southeast	w wield a weapon
-.It ^ identify a trap	g give present pack weight	P give tax status
-.It d drop an item	i inventory your pockets	Q quit the game
-.It v print program version	S save the game	D list all items found
-.It ? this help screen	A create diagnostic file	e eat something
-.It 	(wizards only)
+These are the keyboard commands:
+.Bl -column "v" "print program version" "g" "give present pack weight"
+.It Sy h Ta "move to the left" Ta Sy H Ta "run left"
+.It Sy j Ta "move down" Ta Sy J Ta "run down"
+.It Sy k Ta "move up" Ta Sy K Ta "run up"
+.It Sy l Ta "move to the right" Ta Sy L Ta "run right"
+.It Sy y Ta "move northwest" Ta Sy Y Ta "run northwest"
+.It Sy u Ta "move northeast" Ta Sy U Ta "run northeast"
+.It Sy b Ta "move southwest" Ta Sy B Ta "run southwest"
+.It Sy n Ta "move southeast" Ta Sy N Ta "run southeast"
+.It Sy \&. Ta "stay here" Ta Sy Z Ta "teleport yourself"
+.It Sy c Ta "cast a spell" Ta Sy w Ta "wield a weapon"
+.It Sy q Ta "quaff a potion" Ta Sy r Ta "read a scroll"
+.It Sy W Ta "wear armor" Ta Sy T Ta "take off armor"
+.It Sy D Ta "list all items found" Ta Sy e Ta "eat something"
+.It Sy ^ Ta "identify a trap" Ta Sy g Ta "give present pack weight"
+.It Sy d Ta "drop an item" Ta Sy i Ta "inventory your pockets"
+.It Sy P Ta "give tax status" Ta Sy Q Ta "quit the game"
+.It Sy v Ta "print program version" Ta Sy S Ta "save the game"
+.It Sy \&? Ta "this help screen" Ta Sy A Ta "create diagnostic file"
 .El
 .Sh OPTIONS FILE
 The file
@@ -97,31 +89,18 @@ The file
 may be used to set a few options for
 .Nm Larn .
 A sequence of words terminated by whitespace is used to specify options.
-.Pp
-.Bl -tag -width "savefile: xsave-file-namex" -compact
-.It Sy "	Word
-.Sy "	Meaning
-.Pp
-.It bold-objects
-Select bold display of objects.
-.It inverse-objects
-Select inverse video display of objects.
-.It no-introduction
-Do not display intro message.
-.It enable-checkpointing
-Turn on periodic checkpointing.
-.It no-beep
-Disable beeping of the terminal.
-.It male
-Choose your sex to be a man.
-.It female
-Choose your sex to be a woman.
-.It name: \*qyour name\*q
-Choose your playing name.
-.It monster: \*qmonst name\*q
-Choose a name for a monster.
-.It savefile: \*qsave-file-name\*q
-Define what the savegame filename will be.
+.Bl -column "enable-checkpointing" "Define what the savegame filename will be."
+.It Sy Word Ta Sy Meaning
+.It bold-objects Ta "Select bold display of objects."
+.It inverse-objects Ta "Select inverse video display of objects."
+.It no-introduction Ta "Do not display intro message."
+.It enable-checkpointing Ta "Turn on periodic checkpointing."
+.It no-beep Ta "Disable beeping of the terminal."
+.It male Ta "Choose your sex to be a man."
+.It female Ta "Choose your sex to be a woman."
+.It "name: \*qname\*q" Ta "Choose your playing name."
+.It "monster: \*qname\*q" Ta "Choose a name for a monster."
+.It "savefile: \*qfile\*q" Ta "Define what the savegame filename will be."
 .El
 .Pp
 Your name and monster names must be enclosed in double quotation marks and may
