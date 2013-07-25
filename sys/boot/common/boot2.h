@@ -76,7 +76,6 @@ struct boot2_dmadat {
 
 extern uint32_t fs_off;
 extern int	ls;
-extern int	dsk_meta;
 extern struct boot2_dmadat *boot2_dmadat;
 
 extern int dskread(void *, unsigned, unsigned);

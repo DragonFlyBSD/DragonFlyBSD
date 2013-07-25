@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/isapnp.h,v 1.7 2002/03/20 07:59:37 alfred Exp $
- * $DragonFly: src/sys/boot/common/isapnp.h,v 1.6 2006/10/23 21:50:31 dillon Exp $
  */
 
 #ifndef _BOOT_COMMON_ISAPNP_H_
@@ -286,10 +285,8 @@ struct pnp_dlist_node {
 };
 
 typedef struct _pnp_id pnp_id;
-extern struct pnp_dlist_node *pnp_device_list;
 extern pnp_id pnp_devices[MAX_PNP_CARDS];
 extern struct pnp_cinfo pnp_ldn_overrides[MAX_PNP_LDN];
-extern int pnp_overrides_valid;
 
 /*
  * these two functions are for use in drivers
