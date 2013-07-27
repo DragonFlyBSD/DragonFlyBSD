@@ -247,15 +247,15 @@ Output US
 .Tn ASCII
 characters, with the exception that control characters are
 displayed using the following, lower-case, names.
-Characters greater than 0xff, hexadecimal, are displayed as hexadecimal
+Characters greater than 0xFF, hexadecimal, are displayed as hexadecimal
 strings.
-.Bl -column \&000_nu \&001_so \&002_st \&003_et \&004_eo
-.It "\&000\ NUL\t001\ SOH\t002\ STX\t003\ ETX\t004\ EOT\t005\ ENQ"
-.It "\&006\ ACK\t007\ BEL\t008\ BS\t009\ HT\t00A\ LF\t00B\ VT"
-.It "\&00C\ FF\t00D\ CR\t00E\ SO\t00F\ SI\t010\ DLE\t011\ DC1"
-.It "\&012\ DC2\t013\ DC3\t014\ DC4\t015\ NAK\t016\ SYN\t017\ ETB"
-.It "\&018\ CAN\t019\ EM\t01A\ SUB\t01B\ ESC\t01C\ FS\t01D\ GS"
-.It "\&01E\ RS\t01F\ US\t0FF\ DEL"
+.Bl -column "000 nulx" "001 sohx" "002 stxx" "003 etxx" "004 eotx" "005 enqx"
+.It "000 nul" Ta "001 soh" Ta "002 stx" Ta "003 etx" Ta "004 eot" Ta "005 enq"
+.It "006 ack" Ta "007 bel" Ta "008 bs"  Ta "009 ht"  Ta "00A nl"  Ta "00B vt"
+.It "00C ff"  Ta "00D cr"  Ta "00E so"  Ta "00F si"  Ta "010 dle" Ta "011 dc1"
+.It "012 dc2" Ta "013 dc3" Ta "014 dc4" Ta "015 nak" Ta "016 syn" Ta "017 etb"
+.It "018 can" Ta "019 em"  Ta "01a sub" Ta "01B esc" Ta "01C fs"  Ta "01D gs"
+.It "01E rs"  Ta "01F us"  Ta "0FF del" Ta ""        Ta ""        Ta ""
 .El
 .El
 .Pp
