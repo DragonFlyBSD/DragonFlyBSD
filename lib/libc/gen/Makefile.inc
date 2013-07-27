@@ -63,7 +63,8 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	getpagesize.3 getpass.3 getpeereid.3 getprogname.3 getpwent.3 \
 	getttyent.3 getusershell.3 getvfsbyname.3 getvfsent.3 \
 	glob.3 initgroups.3 isalnum.3 isalpha.3 isascii.3 isblank.3 \
-	iscntrl.3 isdigit.3 isgraph.3 islower.3 isprint.3 ispunct.3 \
+	iscntrl.3 isdigit.3 isgraph.3 isgreater.3 islower.3 \
+	isprint.3 ispunct.3 \
 	isspace.3 isupper.3 isxdigit.3 \
 	ldexp.3 lockf.3 makecontext.3 modf.3 msgctl.3 msgget.3 msgrcv.3 msgsnd.3 \
 	nice.3 nlist.3 pause.3 popen.3 posix_spawn.3 \
@@ -143,6 +144,11 @@ MLINKS+=getvfsent.3 endvfsent.3 getvfsent.3 getvfsbytype.3 \
 	getvfsent.3 vfsload.3
 MLINKS+=glob.3 globfree.3
 MLINKS+=getcontext.3 setcontext.3
+MLINKS+=isgreater.3 isgreaterequal.3 \
+	isgreater.3 isless.3 \
+	isgreater.3 islessequal.3 \
+	isgreater.3 islessgreater.3 \
+	isgreater.3 isunordered.3
 MLINKS+=ldexp.3 ldexpf.3 \
 	ldexp.3 ldexpl.3
 MLINKS+=makecontext.3 swapcontext.3
