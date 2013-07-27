@@ -1062,11 +1062,6 @@ options 	TWA_DEBUG=10	# enable debug messages
 device		tws		# 3ware 9750 series SATA/SAS RAID
 
 #
-# Promise Supertrack SX6000
-#
-#device		pst
-
-#
 # IBM ServeRAID
 #
 device	ips

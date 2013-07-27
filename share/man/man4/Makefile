@@ -236,7 +236,6 @@ MAN=	aac.4 \
 	ppi.4 \
 	ppp.4 \
 	psm.4 \
-	pst.4 \
 	pt.4 \
 	pty.4 \
 	puc.4 \

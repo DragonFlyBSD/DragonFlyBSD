@@ -2138,6 +2138,8 @@ TO_REMOVE+=/usr/share/man/man4/i386/pcf.4.gz
 TO_REMOVE+=/usr/share/man/cat3/fpsetsticky.3.gz
 TO_REMOVE+=/usr/share/man/man3/fpsetsticky.3.gz
 TO_REMOVE+=/usr/include/sys/bitstring.h
+TO_REMOVE+=/usr/share/man/cat4/pst.4.gz
+TO_REMOVE+=/usr/share/man/man4/pst.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
@@ -2154,6 +2156,7 @@ TO_REMOVE+=/usr/share/man/man8/pnpinfo.8.gz
 TO_REMOVE+=/boot/kernel/if_ar.ko
 TO_REMOVE+=/boot/kernel/glxsb.ko
 TO_REMOVE+=/boot/kernel/if_sbni.ko
+TO_REMOVE+=/boot/kernel/pst.ko
 .endif
 
 # XXX Remove when pfsync(4) has been fixed
