@@ -56,7 +56,7 @@ screen associated with a set of processes.
 Its size and position can be changed by the user at any time.
 Processes
 communicate with their window in the same way they normally
-interact with a terminal\-through their standard input, output,
+interact with a terminal-through their standard input, output,
 and diagnostic file descriptors.
 The window program handles the
 details of redirecting input and output to and from the
@@ -98,7 +98,7 @@ can be a single character, or in the form
 where
 .Ar X
 is any character, meaning
-.No control\- Ns Ar X  .
+.No control- Ns Ar X  .
 .It Fl c Ar command
 Execute the string
 .Ar command
@@ -211,14 +211,14 @@ to
 corresponding to the windows 1 to 9.
 .Ic ^X
 means
-.No control\- Ns Ar X  ,
+.No control- Ns Ar X  ,
 where
 .Ar X
 is any character.
 In particular,
 .Ic ^^
 is
-.Li control\-^ .
+.Li control-^ .
 .Ar Escape
 is the escape key, or
 .Ic ^\&[ .
@@ -488,7 +488,7 @@ Returns the value of
 .Aq Va expr1
 .Ic \&?
 .Aq Va expr2
-.Ic :
+.Ic \&:
 .Aq Va expr3
 .Xc
 Returns the value of
@@ -720,28 +720,25 @@ with
 obvious meanings, or it can be a numeric expression,
 in which case a non-zero value is true.
 .Bl -tag -width Fl
-.It Xo
-.Ic alias Ns Po Bq Aq Ar string ,
-.Bq Aq Ar string\-list Pc
-.Xc
+.It Ic alias Po Bo Ao Ar string Ac Bc , Bo Ao Ar string-list Ac Bc Pc
 If no argument is given, all currently defined alias macros are
 listed.
 Otherwise,
 .Aq Ar string
 is defined as an alias,
 with expansion
-.Aq Ar string\-list \*[Gt] .
+.Aq Ar string-list .
 The previous definition of
 .Aq Ar string ,
 if any, is returned.
 Default for
-.Aq Ar string\-list
+.Aq Ar string-list
 is no change.
-.It Ic close Ns Pq Aq Ar window\-list
+.It Ic close Ns Pq Aq Ar window-list
 Close the windows specified in
-.Aq Ar window\-list .
+.Aq Ar window-list .
 If
-.Aq Ar window\-list
+.Aq Ar window-list
 is the word
 .Ar all  ,
 than all windows are closed.
@@ -775,9 +772,9 @@ Initially, it is
 Returns the old default buffer size.
 Default is no change.
 Using a very large buffer can slow the program down considerably.
-.It Ic default_shell Ns Pq Bq Aq Ar string\-list
+.It Ic default_shell Ns Pq Bq Aq Ar string-list
 Set the default window shell program to
-.Aq Ar string\-list .
+.Aq Ar string-list .
 Returns
 the first string in the old shell setting.
 Default is no change.
@@ -804,7 +801,7 @@ The old value (as a number) is returned.
 The initial value is 1 (true).
 .It Xo
 .Ic echo Ns ( Op Ar window ,
-.Bq Aq Ar string\-list )
+.Bq Aq Ar string-list )
 .Xc
 Write the list of strings,
 .Aq Ar string-list ,
@@ -830,7 +827,7 @@ can be a string of a single character, or
 in the form
 .Fl ^X ,
 meaning
-.No control\- Ns Ar X .
+.No control- Ns Ar X .
 .It Xo
 .Ic foreground Ns ( Bq Ar window ,
 .Bq Ar flag )
@@ -980,7 +977,7 @@ see above).
 The created window's identifier is returned as a number.
 .It Xo
 .Ic write Ns ( Bq Ar window ,
-.Bq Aq Ar string\-list )
+.Bq Aq Ar string-list )
 .Xc
 Send the list of strings,
 .Aq Ar string-list ,
