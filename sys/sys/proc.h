@@ -551,8 +551,6 @@ void	setrunnable (struct lwp *);
 void	proc_stop (struct proc *);
 void	proc_unstop (struct proc *);
 void	sleep_gdinit (struct globaldata *);
-int	suser (struct thread *td);
-int	suser_cred (struct ucred *cred, int flag);
 thread_t cpu_heavy_switch (struct thread *);
 thread_t cpu_lwkt_switch (struct thread *);
 
