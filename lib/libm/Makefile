@@ -249,7 +249,7 @@ MLINKS+=log.3 logf.3 \
 	log.3 log10l.3 \
 	log.3 log2.3 \
 	log.3 log2f.3 \
-	log.3 log2l.e \
+	log.3 log2l.3 \
 	log.3 log1p.3 \
 	log.3 log1pf.3 \
 	log.3 log1pl.3
