@@ -149,7 +149,6 @@ wchar_t	*wcsstr(const wchar_t *, const wchar_t *);
 wchar_t *wcstok(wchar_t * __restrict, const wchar_t * __restrict,
 		wchar_t ** __restrict);
 size_t	wcsxfrm(wchar_t *, const wchar_t *, size_t);
-wchar_t	*wcswcs(const wchar_t *, const wchar_t *);
 wchar_t	*wmemchr(const wchar_t *, wchar_t, size_t);
 int	wmemcmp(const wchar_t *, const wchar_t *, size_t);
 wchar_t	*wmemcpy(wchar_t * __restrict, const wchar_t * __restrict, size_t);
