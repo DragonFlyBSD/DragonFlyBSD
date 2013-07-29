@@ -1049,16 +1049,17 @@ i915_gem_gtt_write(struct drm_device *dev, struct drm_i915_gem_object *obj,
     uint64_t data_ptr, uint64_t size, uint64_t offset, struct drm_file *file)
 {
 	vm_offset_t mkva;
-	vm_pindex_t obj_pi;
-	int obj_po, ret;
+	int ret;
 
-	obj_pi = OFF_TO_IDX(offset);
-	obj_po = offset & PAGE_MASK;
-
+	/*
+	 * Pass the unaligned physical address and size to pmap_mapdev_attr()
+	 * so it can properly calculate whether an extra page needs to be
+	 * mapped or not to cover the requested range.  The function will
+	 * add the page offset into the returned mkva for us.
+	 */
 	mkva = (vm_offset_t)pmap_mapdev_attr(dev->agp->base + obj->gtt_offset +
-	    IDX_TO_OFF(obj_pi), size, PAT_WRITE_COMBINING);
-	ret = -copyin_nofault((void *)(uintptr_t)data_ptr, (char *)mkva +
-	    obj_po, size);
+	    offset, size, PAT_WRITE_COMBINING);
+	ret = -copyin_nofault((void *)(uintptr_t)data_ptr, (char *)mkva, size);
 	pmap_unmapdev(mkva, size);
 	return (ret);
 }
@@ -2272,17 +2273,10 @@ i915_gem_release_mmap(struct drm_i915_gem_object *obj)
 		page_count = OFF_TO_IDX(obj->base.size);
 
 		VM_OBJECT_LOCK(devobj);
-#if 0 /* XXX: vm_page_sleep_if_busy */
-retry:
-#endif
 		for (i = 0; i < page_count; i++) {
-			m = vm_page_lookup(devobj, i);
+			m = vm_page_lookup_busy_wait(devobj, i, TRUE, "915unm");
 			if (m == NULL)
 				continue;
-#if 0 /* XXX */
-			if (vm_page_sleep_if_busy(m, true, "915unm"))
-				goto retry;
-#endif
 			cdev_pager_free_page(devobj, m);
 		}
 		VM_OBJECT_UNLOCK(devobj);
