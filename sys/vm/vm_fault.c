@@ -1387,6 +1387,7 @@ readrest:
 			 *	 writes to barf.
 			 */
 			if ((fs->first_object->type != OBJT_DEVICE) &&
+			    (fs->first_object->type != OBJT_MGTDEVICE) &&
 			    (behavior == MAP_ENTRY_BEHAV_SEQUENTIAL ||
                                 (behavior != MAP_ENTRY_BEHAV_RANDOM &&
 				 (fs->m->flags & PG_RAM)))
@@ -1907,7 +1908,8 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
 	start = entry->start;
 	end = entry->end;
 	fictitious = entry->object.vm_object &&
-			(entry->object.vm_object->type == OBJT_DEVICE);
+			(entry->object.vm_object->type == OBJT_DEVICE ||
+			 entry->object.vm_object->type == OBJT_MGTDEVICE);
 	if (entry->eflags & MAP_ENTRY_KSTACK)
 		start += PAGE_SIZE;
 	map->timestamp++;
@@ -2114,7 +2116,8 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 	/*
 	 * we don't fault-ahead for device pager
 	 */
-	if (object->type == OBJT_DEVICE) {
+	if ((object->type == OBJT_DEVICE) ||
+	    (object->type == OBJT_MGTDEVICE)) {
 		*reqpage = 0;
 		marray[0] = m;
 		return 1;

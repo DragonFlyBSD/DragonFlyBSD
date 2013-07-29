@@ -140,6 +140,8 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 			continue;
 		if (object->type == OBJT_DEVICE)
 			continue;
+		if (object->type == OBJT_MGTDEVICE)
+			continue;
 		if (object->size >= 0x7FFFFFFF) {
 			/*
 			 * Probably unbounded anonymous memory (really

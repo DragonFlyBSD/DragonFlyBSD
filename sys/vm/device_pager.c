@@ -76,22 +76,41 @@ struct pagerops devicepagerops = {
 	dev_pager_haspage
 };
 
+/* list of device pager objects */
+static struct pagerlst dev_pager_object_list =
+		TAILQ_HEAD_INITIALIZER(dev_pager_object_list);
+/* protect list manipulation */
 static struct mtx dev_pager_mtx = MTX_INITIALIZER;
 
-/*
- * No requirements.
- */
+static int old_dev_pager_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
+    vm_ooffset_t foff, struct ucred *cred, u_short *pg_color);
+static void old_dev_pager_dtor(void *handle);
+static int old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
+    int prot, vm_page_t *mres);
+
+static struct cdev_pager_ops old_dev_pager_ops = {
+	.cdev_pg_ctor = old_dev_pager_ctor,
+	.cdev_pg_dtor = old_dev_pager_dtor,
+	.cdev_pg_fault = old_dev_pager_fault
+};
+
 vm_object_t
-dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
+cdev_pager_lookup(void *handle)
+{
+	vm_object_t object;
+	mtx_lock(&dev_pager_mtx);
+	object = vm_pager_object_lookup(&dev_pager_object_list, handle);
+	mtx_unlock(&dev_pager_mtx);
+	return (object);
+}
+
+vm_object_t
+cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
+	vm_ooffset_t size, vm_prot_t prot, vm_ooffset_t foff, struct ucred *cred)
 {
 	cdev_t dev;
 	vm_object_t object;
-	unsigned int npages;
-	vm_offset_t off;
-
-	/*
-	 * Make sure this device can be mapped.
-	 */
+	u_short color;
 	dev = handle;
 
 	/*
@@ -102,32 +121,29 @@ dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 
 	size = round_page64(size);
 
-	/*
-	 * Check that the specified range of the device allows the desired
-	 * protection.
-	 *
-	 * XXX assumes VM_PROT_* == PROT_*
-	 */
-	npages = OFF_TO_IDX(size);
-	for (off = foff; npages--; off += PAGE_SIZE) {
-		if (dev_dmmap(dev, off, (int)prot) == -1)
-			return (NULL);
-	}
+	if (ops->cdev_pg_ctor(handle, size, prot, foff, cred, &color) != 0)
+		return (NULL);
 
 	/*
 	 * Look up pager, creating as necessary.
 	 */
 	mtx_lock(&dev_pager_mtx);
-	object = dev->si_object;
+	object = vm_pager_object_lookup(&dev_pager_object_list, handle);
 	if (object == NULL) {
 		/*
 		 * Allocate object and associate it with the pager.
 		 */
-		object = vm_object_allocate_hold(OBJT_DEVICE,
+		object = vm_object_allocate_hold(tp,
 						 OFF_TO_IDX(foff + size));
 		object->handle = handle;
+		object->un_pager.devp.ops = ops;
+		object->un_pager.devp.dev = handle;
 		TAILQ_INIT(&object->un_pager.devp.devp_pglist);
 		dev->si_object = object;
+
+		TAILQ_INSERT_TAIL(&dev_pager_object_list, object,
+		    pager_object_list);
+
 		vm_object_drop(object);
 	} else {
 		/*
@@ -147,26 +163,53 @@ dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
 /*
  * No requirements.
  */
+vm_object_t
+dev_pager_alloc(void *handle, off_t size, vm_prot_t prot, off_t foff)
+{
+	return (cdev_pager_allocate(handle, OBJT_DEVICE, &old_dev_pager_ops,
+	    size, prot, foff, NULL));
+}
+
+/* XXX */
+void
+cdev_pager_free_page(vm_object_t object, vm_page_t m)
+{
+	if (object->type == OBJT_MGTDEVICE) {
+		kprintf("x");
+		KKASSERT((m->flags & PG_FICTITIOUS) != 0);
+		pmap_page_protect(m, VM_PROT_NONE);
+		vm_page_remove(m);
+		vm_page_wakeup(m);
+	} else if (object->type == OBJT_DEVICE) {
+		kprintf("y");
+		TAILQ_REMOVE(&object->un_pager.devp.devp_pglist, m, pageq);
+		dev_pager_putfake(m);
+	}
+}
+
+/*
+ * No requirements.
+ */
 static void
 dev_pager_dealloc(vm_object_t object)
 {
 	vm_page_t m;
-	cdev_t dev;
 
 	mtx_lock(&dev_pager_mtx);
+        object->un_pager.devp.ops->cdev_pg_dtor(object->un_pager.devp.dev);
 
-	if ((dev = object->handle) != NULL) {
-		KKASSERT(dev->si_object);
-		dev->si_object = NULL;
-	}
-	KKASSERT(object->swblock_count == 0);
+	TAILQ_REMOVE(&dev_pager_object_list, object, pager_object_list);
 
-	/*
-	 * Free up our fake pages.
-	 */
-	while ((m = TAILQ_FIRST(&object->un_pager.devp.devp_pglist)) != 0) {
-		TAILQ_REMOVE(&object->un_pager.devp.devp_pglist, m, pageq);
-		dev_pager_putfake(m);
+	if (object->type == OBJT_DEVICE) {
+		/*
+		 * Free up our fake pages.
+		 */
+		while ((m = TAILQ_FIRST(&object->un_pager.devp.devp_pglist)) !=
+		       NULL) {
+			TAILQ_REMOVE(&object->un_pager.devp.devp_pglist,
+				     m, pageq);
+			dev_pager_putfake(m);
+		}
 	}
 	mtx_unlock(&dev_pager_mtx);
 }
@@ -177,48 +220,21 @@ dev_pager_dealloc(vm_object_t object)
 static int
 dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 {
-	vm_offset_t offset;
-	vm_paddr_t paddr;
+	vm_ooffset_t offset;
 	vm_page_t page;
-	cdev_t dev;
-	int prot;
+	int error;
 
 	mtx_lock(&dev_pager_mtx);
 
 	page = *mpp;
-	dev = object->handle;
-	offset = page->pindex;
-	prot = PROT_READ;	/* XXX should pass in? */
+	offset = page->pindex << PAGE_SHIFT;
 
-	paddr = pmap_phys_address(
-		    dev_dmmap(dev, offset << PAGE_SHIFT, prot));
-	KASSERT(paddr != -1,("dev_pager_getpage: map function returns error"));
+	error = object->un_pager.devp.ops->cdev_pg_fault(object,
+            offset, PROT_READ, mpp);
 
-	if (page->flags & PG_FICTITIOUS) {
-		/*
-		 * If the passed in reqpage page is a fake page, update it
-		 * with the new physical address.
-		 */
-		page->phys_addr = paddr;
-		page->valid = VM_PAGE_BITS_ALL;
-	} else {
-		/*
-		 * Replace the passed in reqpage page with our own fake page
-		 * and free up all the original pages.
-		 */
-		page = dev_pager_getfake(paddr);
-		TAILQ_INSERT_TAIL(&object->un_pager.devp.devp_pglist,
-				  page, pageq);
-		vm_object_hold(object);
-		vm_page_free(*mpp);
-		if (vm_page_insert(page, object, offset) == FALSE) {
-			panic("dev_pager_getpage: page (%p,%ld) exists",
-			      object, offset);
-		}
-		vm_object_drop(object);
-	}
 	mtx_unlock(&dev_pager_mtx);
-	return (VM_PAGER_OK);
+
+	return (error);
 }
 
 /*
@@ -248,12 +264,7 @@ dev_pager_getfake(vm_paddr_t paddr)
 {
 	vm_page_t m;
 
-	if ((m = TAILQ_FIRST(&dev_freepages_list)) != NULL) {
-		TAILQ_REMOVE(&dev_freepages_list, m, pageq);
-	} else {
-		m = kmalloc(sizeof(*m), M_FICTITIOUS_PAGES, M_WAITOK);
-	}
-	bzero(m, sizeof(*m));
+	m = kmalloc(sizeof(*m), M_FICTITIOUS_PAGES, M_WAITOK|M_ZERO);
 
 	m->flags = PG_BUSY | PG_FICTITIOUS;
 	m->valid = VM_PAGE_BITS_ALL;
@@ -281,6 +292,86 @@ dev_pager_putfake(vm_page_t m)
 	if (!(m->flags & PG_FICTITIOUS))
 		panic("dev_pager_putfake: bad page");
 	KKASSERT(m->object == NULL);
-	TAILQ_INSERT_HEAD(&dev_freepages_list, m, pageq);
+	KKASSERT(m->hold_count == 0);
+	kfree(m, M_FICTITIOUS_PAGES);
+}
+
+static int
+old_dev_pager_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
+    vm_ooffset_t foff, struct ucred *cred,  u_short *color)
+{
+	unsigned int npages;
+	vm_offset_t off;
+	cdev_t dev;
+
+	dev = handle;
+
+	/*
+	 * Check that the specified range of the device allows the desired
+	 * protection.
+	 *
+	 * XXX assumes VM_PROT_* == PROT_*
+	 */
+	npages = OFF_TO_IDX(size);
+	for (off = foff; npages--; off += PAGE_SIZE) {
+		if (dev_dmmap(dev, off, (int)prot) == -1)
+			return (EINVAL);
+	}
+
+	return (0);
+}
+
+static void old_dev_pager_dtor(void *handle)
+{
+	cdev_t dev;
+
+	dev = handle;
+	if (dev != NULL) {
+		KKASSERT(dev->si_object);
+		dev->si_object = NULL;
+	}
+}
+
+static int old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
+    int prot, vm_page_t *mres)
+{
+	vm_paddr_t paddr;
+	vm_page_t page;
+	cdev_t dev;
+
+	page = *mres;
+	dev = object->handle;
+	offset = page->pindex;
+
+	paddr = pmap_phys_address(
+		    dev_dmmap(dev, offset, prot));
+	KASSERT(paddr != -1,("dev_pager_getpage: map function returns error"));
+	KKASSERT(object->type == OBJT_DEVICE);
+
+	if (page->flags & PG_FICTITIOUS) {
+		/*
+		 * If the passed in reqpage page is already a fake page,
+		 * update it with the new physical address.
+		 */
+		page->phys_addr = paddr;
+		page->valid = VM_PAGE_BITS_ALL;
+	} else {
+		/*
+		 * Replace the passed in reqpage page with our own fake page
+		 * and free up all the original pages.
+		 */
+		page = dev_pager_getfake(paddr);
+		TAILQ_INSERT_TAIL(&object->un_pager.devp.devp_pglist,
+				  page, pageq);
+		vm_object_hold(object);
+		vm_page_free(*mres);
+		if (vm_page_insert(page, object, offset) == FALSE) {
+			panic("dev_pager_getpage: page (%p,%016jx) exists",
+			      object, (uintmax_t)offset);
+		}
+		vm_object_drop(object);
+	}
+
+	return (VM_PAGER_OK);
 }
 

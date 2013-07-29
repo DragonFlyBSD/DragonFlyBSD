@@ -487,7 +487,9 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 	while (lobject) {
 		if (pmap_resident_count(vm_map_pmap(map)) <= desired)
 			break;
-		if (lobject->type == OBJT_DEVICE || lobject->type == OBJT_PHYS)
+		if (lobject->type == OBJT_DEVICE ||
+		    lobject->type == OBJT_MGTDEVICE ||
+		    lobject->type == OBJT_PHYS)
 			break;
 		if (lobject->paging_in_progress)
 			break;

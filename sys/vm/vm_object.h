@@ -119,6 +119,7 @@ enum obj_type {
 	OBJT_SWAP,   	/* object backed by swap blocks */
 	OBJT_VNODE, 	/* object backed by file pages (vnode) */
 	OBJT_DEVICE, 	/* object backed by device pages */
+	OBJT_MGTDEVICE,
 	OBJT_PHYS,  	/* object backed by physical pages */
 	OBJT_DEAD,   	/* dead object */
 	OBJT_MARKER	/* marker object */
@@ -154,6 +155,7 @@ struct vm_object {
         u_int agg_pv_list_count;        /* aggregate pv list count */
 	struct vm_object *backing_object; /* object that I'm a shadow of */
 	vm_ooffset_t backing_object_offset;/* Offset in backing object */
+	TAILQ_ENTRY(vm_object) pager_object_list; /* list of all objects of this pager type */
 	void *handle;			/* control handle: vp, etc */
 	int hold_count;			/* count prevents destruction */
 	
@@ -178,6 +180,8 @@ struct vm_object {
 		 */
 		struct {
 			TAILQ_HEAD(, vm_page) devp_pglist;
+			struct cdev_pager_ops *ops;
+			struct cdev *dev;
 		} devp;
 	} un_pager;
 

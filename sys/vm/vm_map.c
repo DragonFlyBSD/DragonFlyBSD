@@ -2654,9 +2654,11 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end,
 		}
 		if (object && invalidate &&
 		   ((object->type == OBJT_VNODE) ||
-		    (object->type == OBJT_DEVICE))) {
+		    (object->type == OBJT_DEVICE) ||
+		    (object->type == OBJT_MGTDEVICE))) {
 			int clean_only = 
-				(object->type == OBJT_DEVICE) ? FALSE : TRUE;
+				((object->type == OBJT_DEVICE) ||
+				(object->type == OBJT_MGTDEVICE)) ? FALSE : TRUE;
 			/* no chain wait needed for vnode/device objects */
 			vm_object_reference_locked(object);
 			switch(current->maptype) {
