@@ -1508,7 +1508,12 @@ nfs_request_processreply(nfsm_info_t info, int error)
 				return (EAGAIN);	/* goto tryagain */
 			}
 
+#if 0
 			/*
+			 * XXX We can't do this here any more because the
+			 *     caller may be holding a shared lock on the
+			 *     namecache entry.
+			 *
 			 * If the File Handle was stale, invalidate the
 			 * lookup cache, just in case.
 			 *
@@ -1526,6 +1531,7 @@ nfs_request_processreply(nfsm_info_t info, int error)
 				if (ltype == LK_EXCLUSIVE || ltype == LK_SHARED)
 					lockmgr(&vp->v_lock, ltype);
 			}
+#endif
 			if (nmp->nm_flag & NFSMNT_NFSV3) {
 				KKASSERT(*req->r_mrp == info->mrep);
 				KKASSERT(*req->r_mdp == info->md);
