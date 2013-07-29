@@ -64,7 +64,7 @@ static int	pci_conf_match(struct pci_match_conf *matches, int num_matches,
 			       struct pci_conf *match_buf);
 static d_ioctl_t	pci_ioctl;
 
-struct dev_ops pcic_ops = {
+struct dev_ops pci_ops = {
 	{ "pci", 0, 0 },
 	.d_open =       pci_open,
 	.d_close =      pci_close,

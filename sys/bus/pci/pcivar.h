@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pci/pcivar.h,v 1.80.2.1.4.1 2009/04/15 03:14:26 kensmith Exp $
- *
  */
 
 #ifndef _PCIVAR_H_
@@ -522,9 +521,9 @@ int	pci_alloc_1intr(device_t dev, int msi_enable, int *rid, u_int *flags);
 #endif	/* _SYS_BUS_H_ */
 
 /*
- * cdev switch for control device, initialised in generic PCI code
+ * device operations for control device, initialised in generic PCI code
  */
-extern struct cdevsw pcicdev;
+extern struct dev_ops pci_ops;
 
 /*
  * List of all PCI devices, generation count for the list.

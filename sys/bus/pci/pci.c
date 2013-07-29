@@ -69,8 +69,6 @@
 #define	ACPI_PWR_FOR_SLEEP(x, y, z)
 #endif
 
-extern struct dev_ops pcic_ops;	/* XXX */
-
 typedef void	(*pci_read_cap_t)(device_t, int, int, pcicfgregs *);
 
 static uint32_t		pci_mapbase(unsigned mapreg);
@@ -3930,7 +3928,7 @@ pci_modevent(module_t mod, int what, void *arg)
 	case MOD_LOAD:
 		STAILQ_INIT(&pci_devq);
 		pci_generation = 0;
-		pci_cdev = make_dev(&pcic_ops, 0, UID_ROOT, GID_WHEEL, 0644,
+		pci_cdev = make_dev(&pci_ops, 0, UID_ROOT, GID_WHEEL, 0644,
 				    "pci");
 		pci_load_vendor_data();
 		break;
