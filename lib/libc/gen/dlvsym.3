@@ -35,15 +35,13 @@
 .Dt DLVSYM 3
 .Os
 .Sh NAME
-.Nm dlsym
+.Nm dlvsym
 .Nd shared object symbol lookup by version function
 .Sh LIBRARY
 This function is not in a library.
 It is included in every dynamically linked program automatically.
 .Sh SYNOPSIS
 .In dlfcn.h
-.Ft void *
-.Fn dlsym "void *handle" "const char *name" "const char *version"
 .Ft "void *"
 .Fn dlvsym "void *handle" "const char *name" "const char *version"
 .Sh DESCRIPTION
@@ -51,7 +49,7 @@ The
 .Fn dlvsym
 function
 does the same as
-.Fn dlsym
+.Xr dlsym 3
 but takes a version string as an additional argument.  Both the name and
 the version must match in order for the symbol to be resolved.
 .Sh NOTES
@@ -111,8 +109,7 @@ main (int argc, char *argv[])
 .Sh SEE ALSO
 .Xr rtld 1 ,
 .Xr dlfcn 3 ,
-.Xr dlsym 3 ,
-.Xr dlvsym 3
+.Xr dlsym 3
 .Sh HISTORY
 The
 .Nm
