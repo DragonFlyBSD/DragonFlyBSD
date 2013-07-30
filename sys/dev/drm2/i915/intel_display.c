@@ -7054,7 +7054,8 @@ static void intel_gpu_idle_timer(void *arg)
 
 	if (!list_empty(&dev_priv->mm.active_list)) {
 		/* Still processing requests, so just re-arm the timer. */
-		callout_schedule(&dev_priv->idle_callout, GPU_IDLE_TIMEOUT);
+		callout_reset(&dev_priv->idle_callout, GPU_IDLE_TIMEOUT,
+		    i915_hangcheck_elapsed, dev);
 		return;
 	}
 
@@ -7074,7 +7075,8 @@ static void intel_crtc_idle_timer(void *arg)
 	intel_fb = to_intel_framebuffer(crtc->fb);
 	if (intel_fb && intel_fb->obj->active) {
 		/* The framebuffer is still being accessed by the GPU. */
-		callout_schedule(&intel_crtc->idle_callout, CRTC_IDLE_TIMEOUT);
+		callout_reset(&intel_crtc->idle_callout, CRTC_IDLE_TIMEOUT,
+		    i915_hangcheck_elapsed, crtc->dev);
 		return;
 	}
 

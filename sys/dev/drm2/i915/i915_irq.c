@@ -378,8 +378,8 @@ static void notify_ring(struct drm_device *dev,
 
 	if (i915_enable_hangcheck) {
 		dev_priv->hangcheck_count = 0;
-		callout_schedule(&dev_priv->hangcheck_timer,
-		    DRM_I915_HANGCHECK_PERIOD);
+		callout_reset(&dev_priv->hangcheck_timer,
+		    DRM_I915_HANGCHECK_PERIOD, i915_hangcheck_elapsed, dev);
 	}
 }
 
@@ -1485,7 +1485,8 @@ i915_hangcheck_elapsed(void *context)
 
 repeat:
 	/* Reset timer case chip hangs without another request being added */
-	callout_schedule(&dev_priv->hangcheck_timer, DRM_I915_HANGCHECK_PERIOD);
+	callout_reset(&dev_priv->hangcheck_timer, DRM_I915_HANGCHECK_PERIOD,
+	    i915_hangcheck_elapsed, dev);
 }
 
 /* drm_dma.h hooks

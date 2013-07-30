@@ -2666,8 +2666,8 @@ i915_add_request(struct intel_ring_buffer *ring, struct drm_file *file,
 
 	if (!dev_priv->mm.suspended) {
 		if (i915_enable_hangcheck) {
-			callout_schedule(&dev_priv->hangcheck_timer,
-			    DRM_I915_HANGCHECK_PERIOD);
+			callout_reset(&dev_priv->hangcheck_timer,
+			    DRM_I915_HANGCHECK_PERIOD, i915_hangcheck_elapsed, ring->dev);
 		}
 		if (was_empty)
 			taskqueue_enqueue_timeout(dev_priv->tq,
