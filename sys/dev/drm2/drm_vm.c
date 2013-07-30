@@ -27,13 +27,18 @@
  * Support code for mmaping of DRM maps.
  */
 
+#include <sys/conf.h>
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>
 
 int
-drm_mmap(struct cdev *kdev, vm_ooffset_t offset, vm_paddr_t *paddr,
-    int prot, vm_memattr_t *memattr)
+drm_mmap(struct dev_mmap_args *ap)
+/*
+		struct cdev *kdev, vm_ooffset_t offset, vm_paddr_t *paddr,
+    int prot, vm_memattr_t *memattr)*/
 {
+	struct cdev *kdev = ap->a_head.a_dev;
+	vm_offset_t offset = ap->a_offset;
 	struct drm_device *dev = drm_get_device_from_kdev(kdev);
 	struct drm_file *file_priv = NULL;
 	drm_local_map_t *map;
@@ -62,10 +67,9 @@ drm_mmap(struct cdev *kdev, vm_ooffset_t offset, vm_paddr_t *paddr,
 
 		if (dma->pagelist != NULL) {
 			unsigned long page = offset >> PAGE_SHIFT;
-			unsigned long phys = dma->pagelist[page];
+			phys = dma->pagelist[page];
 
 			DRM_SPINUNLOCK(&dev->dma_lock);
-			*paddr = phys;
 			return 0;
 		} else {
 			DRM_SPINUNLOCK(&dev->dma_lock);
@@ -110,13 +114,19 @@ drm_mmap(struct cdev *kdev, vm_ooffset_t offset, vm_paddr_t *paddr,
 	switch (type) {
 	case _DRM_FRAME_BUFFER:
 	case _DRM_AGP:
+#if 0
+		/* FIXME */
 		*memattr = VM_MEMATTR_WRITE_COMBINING;
+#endif
 		/* FALLTHROUGH */
 	case _DRM_REGISTERS:
 		phys = map->offset + offset;
 		break;
 	case _DRM_SCATTER_GATHER:
+#if 0
+		/* FIXME */
 		*memattr = VM_MEMATTR_WRITE_COMBINING;
+#endif
 		/* FALLTHROUGH */
 	case _DRM_CONSISTENT:
 	case _DRM_SHM:
@@ -127,7 +137,7 @@ drm_mmap(struct cdev *kdev, vm_ooffset_t offset, vm_paddr_t *paddr,
 		return -1;	/* This should never happen. */
 	}
 
-	*paddr = phys;
+	ap->a_result = atop(phys);
 	return 0;
 }
 

@@ -486,7 +486,6 @@ struct drm_file {
 
 	struct list_head  event_list;
 	int		  event_space;
-	struct selinfo	  event_poll;
 };
 
 typedef struct drm_lock_data {
@@ -989,12 +988,12 @@ extern unsigned int drm_timestamp_precision;
 int	drm_probe(device_t kdev, drm_pci_id_list_t *idlist);
 int	drm_attach(device_t kdev, drm_pci_id_list_t *idlist);
 int	drm_create_cdevs(device_t kdev);
-void	drm_close(void *data);
 int	drm_detach(device_t kdev);
 d_ioctl_t drm_ioctl;
 d_open_t drm_open;
+d_close_t drm_close;
 d_read_t drm_read;
-d_poll_t drm_poll;
+d_kqfilter_t drm_kqfilter;
 d_mmap_t drm_mmap;
 extern drm_local_map_t	*drm_getsarea(struct drm_device *dev);
 

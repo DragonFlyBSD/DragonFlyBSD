@@ -111,6 +111,7 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 	return 0;
 }
 
+#if 0
 static bool
 drm_dequeue_event(struct drm_device *dev, struct drm_file *file_priv,
     struct uio *uio, struct drm_pending_event **out)
@@ -129,10 +130,17 @@ drm_dequeue_event(struct drm_device *dev, struct drm_file *file_priv,
 	*out = e;
 	return (true);
 }
+#endif
 
 int
-drm_read(struct cdev *kdev, struct uio *uio, int ioflag)
+/* drm_read(struct cdev *kdev, struct uio *uio, int ioflag) */
+drm_read(struct dev_read_args *ap)
 {
+	kprintf("drm_read(): not implemented\n");
+#if 0
+	struct cdev *kdev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
+	int ioflag = ap->a_ioflag;
 	struct drm_file *file_priv;
 	struct drm_device *dev;
 	struct drm_pending_event *e;
@@ -166,6 +174,8 @@ drm_read(struct cdev *kdev, struct uio *uio, int ioflag)
 out:
 	lockmgr(&dev->event_lock, LK_RELEASE);
 	return (error);
+#endif
+	return 0;
 }
 
 void
@@ -179,17 +189,50 @@ drm_event_wakeup(struct drm_pending_event *e)
 	KKASSERT(lockstatus(&dev->event_lock, curthread) != 0);
 
 	wakeup(&file_priv->event_space);
-	selwakeup(&file_priv->event_poll);
+//	selwakeup(&file_priv->event_poll);	/* XXX */
 }
 
+static int
+drmfilt(struct knote *kn, long hint)
+{
+	return (0);
+}
+
+static void
+drmfilt_detach(struct knote *kn) {}
+
+static struct filterops drmfiltops =
+        { FILTEROP_ISFD, NULL, drmfilt_detach, drmfilt };
+
+int
+drm_kqfilter(struct dev_kqfilter_args *ap)
+{
+	struct knote *kn = ap->a_kn;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+	case EVFILT_WRITE:
+		kn->kn_fop = &drmfiltops;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
+
+	return (0);
+}
+
+#if 0	/* XXX: poll kqueue */
 int
 drm_poll(struct cdev *kdev, int events, struct thread *td)
-{
 	struct drm_file *file_priv;
 	struct drm_device *dev;
 	int error, revents;
 
-	error = devfs_get_cdevpriv((void **)&file_priv);
+	/* FIXME */
+/*	error = devfs_get_cdevpriv((void **)&file_priv);*/
 	if (error != 0) {
 		DRM_ERROR("can't find authenticator\n");
 		return (EINVAL);
@@ -208,3 +251,4 @@ drm_poll(struct cdev *kdev, int events, struct thread *td)
 	lockmgr(&dev->event_lock, LK_RELEASE);
 	return (revents);
 }
+#endif

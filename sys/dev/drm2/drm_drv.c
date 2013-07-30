@@ -57,6 +57,9 @@ static void drm_unload(struct drm_device *dev);
 static drm_pci_id_list_t *drm_find_description(int vendor, int device,
     drm_pci_id_list_t *idlist);
 
+#define DRIVER_SOFTC(unit) \
+	((struct drm_device *)devclass_get_softc(drm_devclass, unit))
+
 static int
 drm_modevent(module_t mod, int type, void *data)
 {
@@ -178,16 +181,14 @@ static drm_ioctl_desc_t		  drm_ioctls[256] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_DESTROY_DUMB, drm_mode_destroy_dumb_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 };
 
-static struct cdevsw drm_cdevsw = {
-	.d_version =	D_VERSION,
+static struct dev_ops drm_cdevsw = {
+	{ "drm", 0, D_TRACKCLOSE },
 	.d_open =	drm_open,
+	.d_close =	drm_close,
 	.d_read =	drm_read,
 	.d_ioctl =	drm_ioctl,
-	.d_poll =	drm_poll,
+	.d_kqfilter =	drm_kqfilter,
 	.d_mmap =	drm_mmap,
-	.d_mmap_single = drm_gem_mmap_single,
-	.d_name =	"drm",
-	.d_flags =	D_TRACKCLOSE
 };
 
 static int drm_msi = 1;	/* Enable by default. */
@@ -245,11 +246,19 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 {
 	struct drm_device *dev;
 	drm_pci_id_list_t *id_entry;
-	int error, msicount;
+	int unit, msicount;
+	int rid = 0;
 
+	unit = device_get_unit(kdev);
 	dev = device_get_softc(kdev);
 
-	dev->device = kdev;
+	if (!strcmp(device_get_name(kdev), "drmsub"))
+		dev->device = device_get_parent(kdev);
+	else
+		dev->device = kdev;
+
+	dev->devnode = make_dev(&drm_cdevsw, unit, DRM_DEV_UID, DRM_DEV_GID,
+				DRM_DEV_MODE, "dri/card%d", unit);
 
 	dev->pci_domain = pci_get_domain(dev->device);
 	dev->pci_bus = pci_get_bus(dev->device);
@@ -267,11 +276,11 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 			if (msicount > 1)
 				msicount = 1;
 
-			if (pci_alloc_msi(dev->device, &msicount) == 0) {
+			if (pci_alloc_msi(dev->device, &rid, msicount, -1) == 0) {
 				DRM_INFO("MSI enabled %d message(s)\n",
 				    msicount);
 				dev->msi_enabled = 1;
-				dev->irqrid = 1;
+				dev->irqrid = rid;
 			}
 		}
 
@@ -295,27 +304,7 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	    dev->pci_device, idlist);
 	dev->id_entry = id_entry;
 
-	error = drm_load(dev);
-	if (error == 0)
-		error = drm_create_cdevs(kdev);
-	return (error);
-}
-
-int
-drm_create_cdevs(device_t kdev)
-{
-	struct drm_device *dev;
-	int error, unit;
-
-	unit = device_get_unit(kdev);
-	dev = device_get_softc(kdev);
-
-	error = make_dev_p(MAKEDEV_WAITOK | MAKEDEV_CHECKNAME, &dev->devnode,
-	    &drm_cdevsw, 0, DRM_DEV_UID, DRM_DEV_GID,
-	    DRM_DEV_MODE, "dri/card%d", unit);
-	if (error == 0)
-		dev->devnode->si_drv1 = dev;
-	return (error);
+	return drm_load(dev);
 }
 
 int drm_detach(device_t kdev)
@@ -684,12 +673,17 @@ int drm_version(struct drm_device *dev, void *data, struct drm_file *file_priv)
 }
 
 int
-drm_open(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p)
+/* drm_open(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p) */
+drm_open(struct dev_open_args *ap)
 {
+	struct cdev *kdev = ap->a_head.a_dev;
+	int flags = ap->a_oflags;
+	int fmt = 0;
+	struct thread *p = curthread;
 	struct drm_device *dev;
 	int retcode;
 
-	dev = kdev->si_drv1;
+	dev = DRIVER_SOFTC(minor(kdev));
 	if (dev == NULL)
 		return (ENXIO);
 
@@ -706,14 +700,20 @@ drm_open(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p)
 		DRM_UNLOCK(dev);
 	}
 
+	DRM_DEBUG("return %d\n", retcode);
+
 	return (retcode);
 }
 
-void drm_close(void *data)
+int drm_close(struct dev_close_args *ap)
 {
-	struct drm_file *file_priv = data;
-	struct drm_device *dev = file_priv->dev;
+	struct cdev *kdev = ap->a_head.a_dev;
+	struct drm_file *file_priv;
+	struct drm_device *dev;
 	int retcode = 0;
+
+	dev = DRIVER_SOFTC(minor(kdev));
+	file_priv = drm_find_file_by_proc(dev, curthread);
 
 	DRM_DEBUG("open_count = %d\n", dev->open_count);
 
@@ -779,7 +779,6 @@ void drm_close(void *data)
 		drm_reclaim_buffers(dev, file_priv);
 
 	funsetown(&dev->buf_sigio);
-	seldrain(&file_priv->event_poll);
 
 	if (dev->driver->postclose != NULL)
 		dev->driver->postclose(dev, file_priv);
@@ -797,13 +796,18 @@ void drm_close(void *data)
 	}
 
 	DRM_UNLOCK(dev);
+
+	return (0);
 }
 
 /* drm_ioctl is called whenever a process performs an ioctl on /dev/drm.
  */
-int drm_ioctl(struct cdev *kdev, u_long cmd, caddr_t data, int flags, 
-    DRM_STRUCTPROC *p)
+int drm_ioctl(struct dev_ioctl_args *ap)
 {
+	struct cdev *kdev = ap->a_head.a_dev;
+	u_long cmd = ap->a_cmd;
+	caddr_t data = ap->a_data;
+	struct thread *p = curthread;
 	struct drm_device *dev = drm_get_device_from_kdev(kdev);
 	int retcode = 0;
 	drm_ioctl_desc_t *ioctl;
@@ -812,11 +816,7 @@ int drm_ioctl(struct cdev *kdev, u_long cmd, caddr_t data, int flags,
 	int is_driver_ioctl = 0;
 	struct drm_file *file_priv;
 
-	retcode = devfs_get_cdevpriv((void **)&file_priv);
-	if (retcode != 0) {
-		DRM_ERROR("can't find authenticator\n");
-		return EINVAL;
-	}
+	file_priv = drm_find_file_by_proc(dev, p);
 
 	atomic_inc(&dev->counts[_DRM_STAT_IOCTLS]);
 	++file_priv->ioctl_count;
