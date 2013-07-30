@@ -1029,7 +1029,9 @@ i915_gem_swap_io(struct drm_device *dev, struct drm_i915_gem_object *obj,
 		VM_OBJECT_LOCK(vm_obj);
 		if (rw == UIO_WRITE)
 			vm_page_dirty(m);
+#if 0 /* XXX */
 		vm_page_reference(m);
+#endif
 		vm_page_unwire(m, 1);
 		atomic_add_long(&i915_gem_wired_pages_cnt, -1);
 
@@ -1275,7 +1277,9 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	PROC_UNLOCK(p);
 
 	addr = 0;
-	vm_object_reference(obj->vm_obj);
+	vm_object_hold(obj->vm_obj);
+	vm_object_reference_locked(obj->vm_obj);
+	vm_object_drop(obj->vm_obj);
 	DRM_UNLOCK(dev);
 	rv = vm_map_find(map, obj->vm_obj, args->offset, &addr, args->size,
 	    PAGE_SIZE, /* align */
@@ -1412,13 +1416,15 @@ unlocked_vmobj:
 
 	if ((m->flags & PG_BUSY) != 0) {
 		DRM_UNLOCK(dev);
+#if 0 /* XXX */
 		vm_page_sleep(m, "915pbs");
+#endif
 		goto retry;
 	}
 	m->valid = VM_PAGE_BITS_ALL;
 	*mres = m;
 	vm_page_insert(m, vm_obj, OFF_TO_IDX(offset));
-	vm_page_busy(m);
+	vm_page_busy_try(m, false);
 
 	DRM_UNLOCK(dev);
 	if (oldm != NULL) {
@@ -2238,8 +2244,10 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 		m = obj->pages[i];
 		if (obj->dirty)
 			vm_page_dirty(m);
+#if 0 /* XXX */
 		if (obj->madv == I915_MADV_WILLNEED)
 			vm_page_reference(m);
+#endif
 		vm_page_unwire(obj->pages[i], 1);
 		atomic_add_long(&i915_gem_wired_pages_cnt, -1);
 	}
@@ -2264,13 +2272,17 @@ i915_gem_release_mmap(struct drm_i915_gem_object *obj)
 		page_count = OFF_TO_IDX(obj->base.size);
 
 		VM_OBJECT_LOCK(devobj);
+#if 0 /* XXX: vm_page_sleep_if_busy */
 retry:
+#endif
 		for (i = 0; i < page_count; i++) {
 			m = vm_page_lookup(devobj, i);
 			if (m == NULL)
 				continue;
+#if 0 /* XXX */
 			if (vm_page_sleep_if_busy(m, true, "915unm"))
 				goto retry;
+#endif
 			cdev_pager_free_page(devobj, m);
 		}
 		VM_OBJECT_UNLOCK(devobj);
@@ -3515,7 +3527,9 @@ i915_gem_detach_phys_object(struct drm_device *dev,
 		drm_clflush_pages(&m, 1);
 
 		VM_OBJECT_LOCK(obj->base.vm_obj);
+#if 0 /* XXX */
 		vm_page_reference(m);
+#endif
 		vm_page_dirty(m);
 		vm_page_unwire(m, 0);
 		atomic_add_long(&i915_gem_wired_pages_cnt, -1);
@@ -3579,7 +3593,9 @@ i915_gem_attach_phys_object(struct drm_device *dev,
 
 		VM_OBJECT_LOCK(obj->base.vm_obj);
 
+#if 0 /* XXX */
 		vm_page_reference(m);
+#endif
 		vm_page_unwire(m, 0);
 		atomic_add_long(&i915_gem_wired_pages_cnt, -1);
 	}

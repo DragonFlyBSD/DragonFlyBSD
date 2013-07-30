@@ -465,7 +465,11 @@ i915_gem_execbuffer_relocate(struct drm_device *dev,
 	i915_gem_retire_requests(dev);
 
 	ret = 0;
+#if 0
 	pflags = vm_fault_disable_pagefaults();
+else
+	kprintf("i915_gem_execbuffer_relocate: pagefault_disable\n");
+#endif
 	/* This is the fast path and we cannot handle a pagefault whilst
 	 * holding the device lock lest the user pass in the relocations
 	 * contained within a mmaped bo. For in such a case we, the page
@@ -478,7 +482,11 @@ i915_gem_execbuffer_relocate(struct drm_device *dev,
 		if (ret != 0)
 			break;
 	}
+#if 0
 	vm_fault_enable_pagefaults(pflags);
+#else
+	kprintf("i915_gem_execbuffer_relocate: pagefault_enable\n");
+#endif
 	return (ret);
 }
 
