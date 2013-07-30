@@ -1284,7 +1284,7 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	DRM_UNLOCK(dev);
 	rv = vm_map_find(map, obj->vm_obj, args->offset, &addr, args->size,
 	    PAGE_SIZE, /* align */
-	    FALSE, /* fitit */
+	    TRUE, /* fitit */
 	    VM_MAPTYPE_NORMAL, /* maptype */
 	    VM_PROT_READ | VM_PROT_WRITE, /* prot */
 	    VM_PROT_READ | VM_PROT_WRITE, /* max */

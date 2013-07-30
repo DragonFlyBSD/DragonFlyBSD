@@ -220,17 +220,15 @@ dev_pager_dealloc(vm_object_t object)
 static int
 dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
 {
-	vm_ooffset_t offset;
 	vm_page_t page;
 	int error;
 
 	mtx_lock(&dev_pager_mtx);
 
 	page = *mpp;
-	offset = page->pindex << PAGE_SHIFT;
 
 	error = object->un_pager.devp.ops->cdev_pg_fault(object,
-            offset, PROT_READ, mpp);
+            IDX_TO_OFF(page->pindex), PROT_READ, mpp);
 
 	mtx_unlock(&dev_pager_mtx);
 
@@ -337,6 +335,7 @@ static int old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
 {
 	vm_paddr_t paddr;
 	vm_page_t page;
+	vm_offset_t pidx = OFF_TO_IDX(offset);
 	cdev_t dev;
 
 	page = *mres;
@@ -365,9 +364,9 @@ static int old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
 				  page, pageq);
 		vm_object_hold(object);
 		vm_page_free(*mres);
-		if (vm_page_insert(page, object, offset) == FALSE) {
+		if (vm_page_insert(page, object, pidx) == FALSE) {
 			panic("dev_pager_getpage: page (%p,%016jx) exists",
-			      object, (uintmax_t)offset);
+			      object, (uintmax_t)pidx);
 		}
 		vm_object_drop(object);
 	}

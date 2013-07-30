@@ -100,7 +100,7 @@ drm_gem_object_init(struct drm_device *dev, struct drm_gem_object *obj,
 	    ("Bad size %ju", (uintmax_t)size));
 
 	obj->dev = dev;
-	obj->vm_obj = default_pager_alloc(dev, size,
+	obj->vm_obj = default_pager_alloc(NULL, size,
 	    VM_PROT_READ | VM_PROT_WRITE, 0);
 
 	obj->refcount = 1;
