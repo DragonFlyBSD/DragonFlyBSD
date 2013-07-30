@@ -35,7 +35,6 @@
 #include <dev/drm2/i915/intel_drv.h>
 #include <dev/drm2/i915/intel_ringbuffer.h>
 #include <sys/sched.h>
-#include <sys/sf_buf.h>
 
 /*
  * 965+ support PIPE_CONTROL commands, which provide finer grained control

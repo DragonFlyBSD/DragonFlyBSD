@@ -23,6 +23,8 @@
  * $FreeBSD: src/sys/dev/drm2/i915/i915_gem_gtt.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
+#include <sys/sfbuf.h>
+
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>
 #include <dev/drm2/i915/i915_drm.h>
@@ -50,7 +52,7 @@ i915_ppgtt_clear_range(struct i915_hw_ppgtt *ppgtt,
 		if (last_pte > I915_PPGTT_PT_ENTRIES)
 			last_pte = I915_PPGTT_PT_ENTRIES;
 
-		sf = sf_buf_alloc(ppgtt->pt_pages[act_pd], SFB_CPUPRIVATE);
+		sf = sf_buf_alloc(ppgtt->pt_pages[act_pd]);
 		pt_vaddr = (uint32_t *)(uintptr_t)sf_buf_kva(sf);
 
 		for (i = first_pte; i < last_pte; i++)
@@ -124,7 +126,7 @@ i915_ppgtt_insert_pages(struct i915_hw_ppgtt *ppgtt, unsigned first_entry,
 		if (last_pte > I915_PPGTT_PT_ENTRIES)
 			last_pte = I915_PPGTT_PT_ENTRIES;
 
-		sf = sf_buf_alloc(ppgtt->pt_pages[act_pd], SFB_CPUPRIVATE);
+		sf = sf_buf_alloc(ppgtt->pt_pages[act_pd]);
 		pt_vaddr = (uint32_t *)(uintptr_t)sf_buf_kva(sf);
 
 		for (i = first_pte; i < last_pte; i++) {

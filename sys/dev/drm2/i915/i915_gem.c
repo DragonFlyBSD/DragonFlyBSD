@@ -53,15 +53,15 @@
  * $FreeBSD: src/sys/dev/drm2/i915/i915_gem.c,v 1.2 2012/05/28 21:15:54 alc Exp $
  */
 
+#include <sys/resourcevar.h>
+#include <sys/sfbuf.h>
+
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>
 #include <dev/drm2/i915/i915_drm.h>
 #include <dev/drm2/i915/i915_drv.h>
 #include <dev/drm2/i915/intel_drv.h>
 #include <dev/drm2/i915/intel_ringbuffer.h>
-#include <sys/resourcevar.h>
-#include <sys/sched.h>
-#include <sys/sf_buf.h>
 
 static void i915_gem_object_flush_cpu_write_domain(
     struct drm_i915_gem_object *obj);
@@ -996,7 +996,7 @@ i915_gem_swap_io(struct drm_device *dev, struct drm_i915_gem_object *obj,
 		m = i915_gem_wire_page(vm_obj, obj_pi);
 		VM_OBJECT_UNLOCK(vm_obj);
 
-		sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
+		sf = sf_buf_alloc(m);
 		mkva = sf_buf_kva(sf);
 		length = min(size, PAGE_SIZE - obj_po);
 		while (length > 0) {
@@ -3506,7 +3506,7 @@ i915_gem_detach_phys_object(struct drm_device *dev,
 			continue; /* XXX */
 
 		VM_OBJECT_UNLOCK(obj->base.vm_obj);
-		sf = sf_buf_alloc(m, 0);
+		sf = sf_buf_alloc(m);
 		if (sf != NULL) {
 			dst = (char *)sf_buf_kva(sf);
 			memcpy(dst, vaddr + IDX_TO_OFF(i), PAGE_SIZE);
@@ -3571,7 +3571,7 @@ i915_gem_attach_phys_object(struct drm_device *dev,
 			break;
 		}
 		VM_OBJECT_UNLOCK(obj->base.vm_obj);
-		sf = sf_buf_alloc(m, 0);
+		sf = sf_buf_alloc(m);
 		src = (char *)sf_buf_kva(sf);
 		dst = (char *)obj->phys_obj->handle->vaddr + IDX_TO_OFF(i);
 		memcpy(dst, src, PAGE_SIZE);

@@ -26,12 +26,12 @@
  * $FreeBSD: src/sys/dev/drm2/i915/i915_gem_tiling.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
+#include <sys/sfbuf.h>
+
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>
 #include <dev/drm2/i915/i915_drm.h>
 #include <dev/drm2/i915/i915_drv.h>
-
-#include <sys/sf_buf.h>
 
 /** @file i915_gem_tiling.c
  *
@@ -441,7 +441,7 @@ i915_gem_swizzle_page(vm_page_t m)
 	int i;
 
 	/* XXXKIB sleep */
-	sf = sf_buf_alloc(m, SFB_DEFAULT);
+	sf = sf_buf_alloc(m);
 	vaddr = (char *)sf_buf_kva(sf);
 
 	for (i = 0; i < PAGE_SIZE; i += 128) {

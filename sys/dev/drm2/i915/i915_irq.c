@@ -27,6 +27,8 @@
  * $FreeBSD: src/sys/dev/drm2/i915/i915_irq.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
+#include <sys/sfbuf.h>
+
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>
 #include <dev/drm2/i915/i915_drm.h>
@@ -1912,8 +1914,7 @@ i915_error_object_create(struct drm_i915_private *dev_priv,
 		} else {
 			drm_clflush_pages(&src->pages[page], 1);
 
-			sf = sf_buf_alloc(src->pages[page], SFB_CPUPRIVATE |
-			    SFB_NOWAIT);
+			sf = sf_buf_alloc(src->pages[page]);
 			if (sf != NULL) {
 				s = (void *)(uintptr_t)sf_buf_kva(sf);
 				memcpy(d, s, PAGE_SIZE);

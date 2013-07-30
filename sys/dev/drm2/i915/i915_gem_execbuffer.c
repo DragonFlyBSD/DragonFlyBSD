@@ -27,13 +27,14 @@
  * $FreeBSD: src/sys/dev/drm2/i915/i915_gem_execbuffer.c,v 1.3 2012/05/28 13:58:08 kib Exp $
  */
 
+#include <sys/limits.h>
+#include <sys/sfbuf.h>
+
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>
 #include <dev/drm2/i915/i915_drm.h>
 #include <dev/drm2/i915/i915_drv.h>
 #include <dev/drm2/i915/intel_drv.h>
-#include <sys/limits.h>
-#include <sys/sf_buf.h>
 
 struct change_domains {
 	uint32_t invalidate_domains;
@@ -368,8 +369,7 @@ i915_gem_execbuffer_relocate_entry(struct drm_i915_gem_object *obj,
 		char *vaddr;
 		struct sf_buf *sf;
 
-		sf = sf_buf_alloc(obj->pages[OFF_TO_IDX(reloc->offset)],
-		    SFB_NOWAIT);
+		sf = sf_buf_alloc(obj->pages[OFF_TO_IDX(reloc->offset)]);
 		if (sf == NULL)
 			return (-ENOMEM);
 		vaddr = (void *)sf_buf_kva(sf);
