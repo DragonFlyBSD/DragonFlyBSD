@@ -1362,7 +1362,7 @@ intel_sdvo_detect(struct drm_connector *connector, bool force)
 	/* add 30ms delay when the output type might be TV */
 	if (intel_sdvo->caps.output_flags &
 	    (SDVO_OUTPUT_SVID0 | SDVO_OUTPUT_CVBS0))
-		drm_msleep(30, "915svo");
+		DELAY(30*1000);
 
 	if (!intel_sdvo_read_response(intel_sdvo, &response, 2))
 		return connector_status_unknown;

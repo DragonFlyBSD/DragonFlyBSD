@@ -1272,7 +1272,7 @@ int intel_wait_ring_buffer(struct intel_ring_buffer *ring, int n)
 			dev_priv->sarea_priv->perf_boxes |= I915_BOX_WAIT;
 #endif
 
-		pause("915rng", 1);
+		DELAY(1000);
 		if (atomic_load_acq_32(&dev_priv->mm.wedged) != 0) {
 			return -EAGAIN;
 		}

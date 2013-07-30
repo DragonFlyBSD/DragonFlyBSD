@@ -394,7 +394,7 @@ intel_dp_aux_ch(struct intel_dp *intel_dp,
 		status = I915_READ(ch_ctl);
 		if ((status & DP_AUX_CH_CTL_SEND_BUSY) == 0)
 			break;
-		drm_msleep(1, "915ach");
+		DELAY(1000);
 	}
 
 	if (try == 3) {
@@ -1031,7 +1031,7 @@ static void ironlake_edp_panel_vdd_on(struct intel_dp *intel_dp)
 	 */
 	if (!ironlake_edp_have_panel_power(intel_dp)) {
 		DRM_DEBUG_KMS("eDP was not running\n");
-		drm_msleep(intel_dp->panel_power_up_delay, "915edpon");
+		DELAY(intel_dp->panel_power_up_delay * 1000);
 	}
 }
 
@@ -1051,7 +1051,7 @@ static void ironlake_panel_vdd_off_sync(struct intel_dp *intel_dp)
 		DRM_DEBUG_KMS("PCH_PP_STATUS: 0x%08x PCH_PP_CONTROL: 0x%08x\n",
 			      I915_READ(PCH_PP_STATUS), I915_READ(PCH_PP_CONTROL));
 
-		drm_msleep(intel_dp->panel_power_down_delay, "915vddo");
+		DELAY(intel_dp->panel_power_down_delay * 1000);
 	}
 }
 
@@ -1171,7 +1171,7 @@ static void ironlake_edp_backlight_on(struct intel_dp *intel_dp)
 	 * link.  So delay a bit to make sure the image is solid before
 	 * allowing it to appear.
 	 */
-	drm_msleep(intel_dp->backlight_on_delay, "915ebo");
+	DELAY(intel_dp->backlight_on_delay * 1000);
 	pp = ironlake_get_pp_control(dev_priv);
 	pp |= EDP_BLC_ENABLE;
 	I915_WRITE(PCH_PP_CONTROL, pp);
@@ -1192,7 +1192,7 @@ static void ironlake_edp_backlight_off(struct intel_dp *intel_dp)
 	pp &= ~EDP_BLC_ENABLE;
 	I915_WRITE(PCH_PP_CONTROL, pp);
 	POSTING_READ(PCH_PP_CONTROL);
-	drm_msleep(intel_dp->backlight_off_delay, "915bo1");
+	DELAY(intel_dp->backlight_off_delay * 1000);
 }
 
 static void ironlake_edp_pll_on(struct drm_encoder *encoder)
@@ -1247,7 +1247,7 @@ static void intel_dp_sink_dpms(struct intel_dp *intel_dp, int mode)
 							  DP_SET_POWER_D0);
 			if (ret == 1)
 				break;
-			drm_msleep(1, "915dps");
+			DELAY(1000);
 		}
 	}
 }
@@ -1345,7 +1345,7 @@ intel_dp_aux_native_read_retry(struct intel_dp *intel_dp, uint16_t address,
 					       recv_bytes);
 		if (ret == recv_bytes)
 			return true;
-		drm_msleep(1, "915dpl");
+		DELAY(1000);
 	}
 
 	return false;
@@ -1882,7 +1882,7 @@ intel_dp_link_down(struct intel_dp *intel_dp)
 	}
 	POSTING_READ(intel_dp->output_reg);
 
-	drm_msleep(17, "915dlo");
+	DELAY(17*1000);
 
 	if (is_edp(intel_dp)) {
 		if (HAS_PCH_CPT(dev) && (IS_GEN7(dev) || !is_cpu_edp(intel_dp)))
@@ -1920,7 +1920,7 @@ intel_dp_link_down(struct intel_dp *intel_dp)
 			 * continuing.
 			 */
 			POSTING_READ(intel_dp->output_reg);
-			drm_msleep(50, "915dla");
+			DELAY(50 * 1000);
 		} else
 			intel_wait_for_vblank(dev, to_intel_crtc(crtc)->pipe);
 	}
@@ -1928,7 +1928,7 @@ intel_dp_link_down(struct intel_dp *intel_dp)
 	DP &= ~DP_AUDIO_OUTPUT_ENABLE;
 	I915_WRITE(intel_dp->output_reg, DP & ~DP_PORT_EN);
 	POSTING_READ(intel_dp->output_reg);
-	drm_msleep(intel_dp->panel_power_down_delay, "915ldo");
+	DELAY(intel_dp->panel_power_down_delay * 1000);
 }
 
 static bool

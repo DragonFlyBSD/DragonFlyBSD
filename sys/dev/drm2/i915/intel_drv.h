@@ -46,10 +46,7 @@
 			ret = -ETIMEDOUT;				\
 			break;						\
 		}							\
-		if (W)							\
-			pause((WMSG), 1);				\
-		else							\
-			DELAY(1000);					\
+		DELAY(1000);						\
 	}								\
 									\
 	ret;								\

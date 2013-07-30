@@ -588,14 +588,9 @@ static int
 i8xx_do_reset(struct drm_device *dev, u8 flags)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	int onems;
 
 	if (IS_I85X(dev))
 		return -ENODEV;
-
-	onems = hz / 1000;
-	if (onems == 0)
-		onems = 1;
 
 	I915_WRITE(D_STATE, I915_READ(D_STATE) | DSTATE_GFX_RESET_I830);
 	POSTING_READ(D_STATE);
@@ -606,13 +601,13 @@ i8xx_do_reset(struct drm_device *dev, u8 flags)
 			   DEBUG_RESET_RENDER |
 			   DEBUG_RESET_FULL);
 		POSTING_READ(DEBUG_RESET_I830);
-		pause("i8xxrst1", onems);
+		DELAY(1000);
 
 		I915_WRITE(DEBUG_RESET_I830, 0);
 		POSTING_READ(DEBUG_RESET_I830);
 	}
 
-	pause("i8xxrst2", onems);
+	DELAY(1000);
 
 	I915_WRITE(D_STATE, I915_READ(D_STATE) & ~DSTATE_GFX_RESET_I830);
 	POSTING_READ(D_STATE);
