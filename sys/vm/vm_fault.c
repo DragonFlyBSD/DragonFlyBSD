@@ -1908,8 +1908,8 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
 	start = entry->start;
 	end = entry->end;
 	fictitious = entry->object.vm_object &&
-			(entry->object.vm_object->type == OBJT_DEVICE ||
-			 entry->object.vm_object->type == OBJT_MGTDEVICE);
+			((entry->object.vm_object->type == OBJT_DEVICE) ||
+			 (entry->object.vm_object->type == OBJT_MGTDEVICE));
 	if (entry->eflags & MAP_ENTRY_KSTACK)
 		start += PAGE_SIZE;
 	map->timestamp++;
@@ -1971,7 +1971,8 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 	start = entry->start;
 	end = entry->end;
 	fictitious = entry->object.vm_object &&
-			(entry->object.vm_object->type == OBJT_DEVICE);
+			((entry->object.vm_object->type == OBJT_DEVICE) ||
+			 (entry->object.vm_object->type == OBJT_MGTDEVICE));
 	if (entry->eflags & MAP_ENTRY_KSTACK)
 		start += PAGE_SIZE;
 

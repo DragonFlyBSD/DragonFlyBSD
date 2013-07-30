@@ -166,6 +166,10 @@ procfs_domap(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 				type = "device";
 				vp = NULL;
 				break;
+			case OBJT_MGTDEVICE:
+				type = "mgtdevice";
+				vp = NULL;
+				break;
 			}
 			
 			flags = obj->flags;

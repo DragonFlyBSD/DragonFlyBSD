@@ -155,6 +155,7 @@ struct pagerops *pagertab[] = {
 	&swappagerops,		/* OBJT_SWAP */
 	&vnodepagerops,		/* OBJT_VNODE */
 	&devicepagerops,	/* OBJT_DEVICE */
+	&devicepagerops,	/* OBJT_MGTDEVICE */
 	&physpagerops,		/* OBJT_PHYS */
 	&deadpagerops		/* OBJT_DEAD */
 };
