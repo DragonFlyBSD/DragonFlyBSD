@@ -1624,16 +1624,9 @@ device_set_driver(device_t dev, driver_t *driver)
 	dev->driver = driver;
 	if (driver) {
 		kobj_init((kobj_t) dev, (kobj_class_t) driver);
-		if (!(dev->flags & DF_EXTERNALSOFTC)) {
+		if (!(dev->flags & DF_EXTERNALSOFTC))
 			dev->softc = kmalloc(driver->size, M_BUS,
 					    M_INTWAIT | M_ZERO);
-			if (!dev->softc) {
-				kobj_delete((kobj_t)dev, 0);
-				kobj_init((kobj_t) dev, &null_class);
-				dev->driver = NULL;
-				return(ENOMEM);
-	    		}
-		}
 	} else {
 		kobj_init((kobj_t) dev, &null_class);
 	}
