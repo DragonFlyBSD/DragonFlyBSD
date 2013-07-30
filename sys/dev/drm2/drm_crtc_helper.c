@@ -62,7 +62,7 @@ drm_fetch_cmdline_mode_from_kenv(struct drm_connector *connector,
 	return (res);
 }
 
-static bool drm_kms_helper_poll = true;
+static bool drm_kms_helper_poll = false; // XXX fix and reenable
 
 static void drm_mode_validate_flag(struct drm_connector *connector,
 				   int flags)
