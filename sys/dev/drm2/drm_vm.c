@@ -50,13 +50,16 @@ drm_mmap(struct dev_mmap_args *ap)
 	 * the first call.  We need to assume that if error is EBADF the
 	 * call was succesful and the client is authenticated.
 	 */
-	error = devfs_get_cdevpriv((void **)&file_priv);
-	if (error == ENOENT) {
+	DRM_LOCK(dev);
+	file_priv = drm_find_file_by_proc(dev, curthread);
+	DRM_UNLOCK(dev);
+
+	if (!file_priv) {
 		DRM_ERROR("Could not find authenticator!\n");
 		return EINVAL;
 	}
 
-	if (file_priv && !file_priv->authenticated)
+	if (!file_priv->authenticated)
 		return EACCES;
 
 	DRM_DEBUG("called with offset %016jx\n", offset);

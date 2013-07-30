@@ -69,11 +69,14 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 		return ENOMEM;
 	}
 
+#if 0
+	/* FIXME */
 	retcode = devfs_set_cdevpriv(priv, drm_close);
 	if (retcode != 0) {
 		kfree(priv, DRM_MEM_FILES);
 		return retcode;
 	}
+#endif
 
 	DRM_LOCK(dev);
 	priv->dev		= dev;
@@ -95,7 +98,8 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 		/* shared code returns -errno */
 		retcode = -dev->driver->open(dev, priv);
 		if (retcode != 0) {
-			devfs_clear_cdevpriv();
+/* FIXME */
+/*			devfs_clear_cdevpriv(); */
 			kfree(priv, DRM_MEM_FILES);
 			DRM_UNLOCK(dev);
 			return retcode;
@@ -146,7 +150,8 @@ drm_read(struct dev_read_args *ap)
 	struct drm_pending_event *e;
 	int error;
 
-	error = devfs_get_cdevpriv((void **)&file_priv);
+	/* FIXME */
+/*	error = devfs_get_cdevpriv((void **)&file_priv); */
 	if (error != 0) {
 		DRM_ERROR("can't find authenticator\n");
 		return (EINVAL);
