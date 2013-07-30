@@ -335,6 +335,13 @@ for ( ret = 0 ; !ret && !(condition) ; ) {			\
 	DRM_LOCK(dev);						\
 }
 
+__inline static void
+free(void *addr, struct malloc_type *type)
+{
+        if (addr != NULL)
+                kfree(addr, type);
+}
+
 #define DRM_ERROR(fmt, ...) \
 	kprintf("error: [" DRM_NAME ":pid%d:%s] *ERROR* " fmt,		\
 	    DRM_CURRENTPID, __func__ , ##__VA_ARGS__)
@@ -1341,14 +1348,14 @@ drm_realloc(void *oldpt, size_t oldsize, size_t size,
 	void *res;
 	res = krealloc(oldpt, size, area, M_NOWAIT);
 	if (res == NULL)
-		kfree(oldpt,area);
+		free(oldpt,area);
 	return res;
 }
 
 static __inline__ void
 drm_free(void *pt, size_t size, struct malloc_type *area)
 {
-	kfree(pt, area);
+	free(pt, area);
 }
 
 /* Inline replacements for DRM_IOREMAP macros */

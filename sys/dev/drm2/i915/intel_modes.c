@@ -80,7 +80,7 @@ intel_ddc_get_modes(struct drm_connector *connector, device_t adapter)
 		ret = drm_add_edid_modes(connector, edid);
 		drm_edid_to_eld(connector, edid);
 		connector->display_info.raw_edid = NULL;
-		kfree(edid, DRM_MEM_KMS);
+		free(edid, DRM_MEM_KMS);
 	}
 
 	return ret;

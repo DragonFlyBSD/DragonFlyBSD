@@ -119,7 +119,7 @@ static int drm_remove_magic(struct drm_device *dev, drm_magic_t magic)
 			if (prev) {
 				prev->next = pt->next;
 			}
-			kfree(pt, DRM_MEM_MAGIC);
+			free(pt, DRM_MEM_MAGIC);
 			return 0;
 		}
 	}

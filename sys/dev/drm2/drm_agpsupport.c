@@ -186,7 +186,7 @@ int drm_agp_alloc(struct drm_device *dev, struct drm_agp_buffer *request)
 	handle = drm_agp_allocate_memory(pages, type);
 	DRM_LOCK(dev);
 	if (handle == NULL) {
-		kfree(entry, DRM_MEM_AGPLISTS);
+		free(entry, DRM_MEM_AGPLISTS);
 		return ENOMEM;
 	}
 	
@@ -337,7 +337,7 @@ int drm_agp_free(struct drm_device *dev, struct drm_agp_buffer *request)
 	drm_agp_free_memory(entry->handle);
 	DRM_LOCK(dev);
 
-	kfree(entry, DRM_MEM_AGPLISTS);
+	free(entry, DRM_MEM_AGPLISTS);
 
 	return 0;
 

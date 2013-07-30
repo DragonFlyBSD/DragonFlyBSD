@@ -133,7 +133,7 @@ int drm_sysctl_cleanup(struct drm_device *dev)
 	int error;
 
 	error = sysctl_ctx_free(&dev->sysctl->ctx);
-	kfree(dev->sysctl, DRM_MEM_DRIVER);
+	free(dev->sysctl, DRM_MEM_DRIVER);
 	dev->sysctl = NULL;
 	if (dev->driver->sysctl_cleanup != NULL)
 		dev->driver->sysctl_cleanup(dev);
@@ -232,7 +232,7 @@ static int drm_vm_info DRM_SYSCTL_HANDLER_ARGS
 	SYSCTL_OUT(req, "", 1);
 
 done:
-	kfree(tempmaps, DRM_MEM_DRIVER);
+	free(tempmaps, DRM_MEM_DRIVER);
 	return retcode;
 }
 
@@ -289,7 +289,7 @@ static int drm_bufs_info DRM_SYSCTL_HANDLER_ARGS
 
 	SYSCTL_OUT(req, "", 1);
 done:
-	kfree(templists, DRM_MEM_DRIVER);
+	free(templists, DRM_MEM_DRIVER);
 	return retcode;
 }
 
@@ -334,7 +334,7 @@ static int drm_clients_info DRM_SYSCTL_HANDLER_ARGS
 
 	SYSCTL_OUT(req, "", 1);
 done:
-	kfree(tempprivs, DRM_MEM_DRIVER);
+	free(tempprivs, DRM_MEM_DRIVER);
 	return retcode;
 }
 

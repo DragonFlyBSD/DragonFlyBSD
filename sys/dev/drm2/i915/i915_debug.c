@@ -1677,5 +1677,5 @@ void
 i915_sysctl_cleanup(struct drm_device *dev)
 {
 
-	kfree(dev->sysctl_private, DRM_MEM_DRIVER);
+	free(dev->sysctl_private, DRM_MEM_DRIVER);
 }

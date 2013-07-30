@@ -1371,7 +1371,7 @@ intel_tv_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	kfree(connector, DRM_MEM_KMS);
+	free(connector, DRM_MEM_KMS);
 }
 
 

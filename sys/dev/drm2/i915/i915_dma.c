@@ -670,7 +670,7 @@ static int i915_batchbuffer(struct drm_device *dev, void *data,
 		sarea_priv->last_dispatch = READ_BREADCRUMB(dev_priv);
 
 fail_free:
-	kfree(cliprects, DRM_MEM_DMA);
+	free(cliprects, DRM_MEM_DMA);
 	return ret;
 }
 
@@ -725,9 +725,9 @@ static int i915_cmdbuffer(struct drm_device *dev, void *data,
 		sarea_priv->last_dispatch = READ_BREADCRUMB(dev_priv);
 
 fail_clip_free:
-	kfree(cliprects, DRM_MEM_DMA);
+	free(cliprects, DRM_MEM_DMA);
 fail_batch_free:
-	kfree(batch_data, DRM_MEM_DMA);
+	free(batch_data, DRM_MEM_DMA);
 	return ret;
 }
 
@@ -1217,7 +1217,7 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 	dev_priv->info = i915_get_device_id(dev->pci_device);
 
 	if (i915_get_bridge_dev(dev)) {
-		kfree(dev_priv, DRM_MEM_DRIVER);
+		free(dev_priv, DRM_MEM_DRIVER);
 		return (-EIO);
 	}
 	dev_priv->mm.gtt = intel_gtt_get();

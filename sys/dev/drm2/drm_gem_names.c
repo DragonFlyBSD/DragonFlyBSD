@@ -158,7 +158,7 @@ drm_gem_names_delete_name(struct drm_gem_names *names, struct drm_gem_name *np)
 	LIST_REMOVE(np, link);
 	lockmgr(&names->lock, LK_RELEASE);
 	free_unr(names->unr, np->name);
-	kfree(np, M_GEM_NAMES);
+	free(np, M_GEM_NAMES);
 }
 
 void *

@@ -1768,7 +1768,7 @@ static void intel_fbc_work_fn(void *arg, int pending)
 	}
 	DRM_UNLOCK(dev);
 
-	kfree(work, DRM_MEM_KMS);
+	free(work, DRM_MEM_KMS);
 }
 
 static void intel_cancel_fbc_work(struct drm_i915_private *dev_priv)
@@ -1787,7 +1787,7 @@ static void intel_cancel_fbc_work(struct drm_i915_private *dev_priv)
 	if (taskqueue_cancel_timeout(dev_priv->tq, &dev_priv->fbc_work->task,
 	    &pending) == 0)
 		/* tasklet was killed before being run, clean up */
-		kfree(dev_priv->fbc_work, DRM_MEM_KMS);
+		free(dev_priv->fbc_work, DRM_MEM_KMS);
 
 	/* Mark the work as no longer wanted so that if it does
 	 * wake-up (because the work was already running and waiting
@@ -3508,7 +3508,7 @@ void intel_encoder_destroy(struct drm_encoder *encoder)
 	struct intel_encoder *intel_encoder = to_intel_encoder(encoder);
 
 	drm_encoder_cleanup(encoder);
-	kfree(intel_encoder, DRM_MEM_KMS);
+	free(intel_encoder, DRM_MEM_KMS);
 }
 
 static bool intel_crtc_mode_fixup(struct drm_crtc *crtc,
@@ -6699,7 +6699,7 @@ intel_framebuffer_create(struct drm_device *dev,
 	ret = intel_framebuffer_init(dev, intel_fb, mode_cmd, obj);
 	if (ret) {
 		drm_gem_object_unreference_unlocked(&obj->base);
-		kfree(intel_fb, DRM_MEM_KMS);
+		free(intel_fb, DRM_MEM_KMS);
 		return (ret);
 	}
 
@@ -7250,12 +7250,12 @@ static void intel_crtc_destroy(struct drm_crtc *crtc)
 	if (work) {
 		taskqueue_cancel(dev_priv->tq, &work->task, NULL);
 		taskqueue_drain(dev_priv->tq, &work->task);
-		kfree(work, DRM_MEM_KMS);
+		free(work, DRM_MEM_KMS);
 	}
 
 	drm_crtc_cleanup(crtc);
 
-	kfree(intel_crtc, DRM_MEM_KMS);
+	free(intel_crtc, DRM_MEM_KMS);
 }
 
 static void intel_unpin_work_fn(void *arg, int pending)
@@ -7271,7 +7271,7 @@ static void intel_unpin_work_fn(void *arg, int pending)
 
 	intel_update_fbc(work->dev);
 	DRM_UNLOCK(dev);
-	kfree(work, DRM_MEM_KMS);
+	free(work, DRM_MEM_KMS);
 }
 
 static void do_intel_finish_page_flip(struct drm_device *dev,
@@ -7599,7 +7599,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	if (intel_crtc->unpin_work) {
 		lockmgr(&dev->event_lock, LK_RELEASE);
-		kfree(work, DRM_MEM_KMS);
+		free(work, DRM_MEM_KMS);
 		drm_vblank_put(dev, intel_crtc->pipe);
 
 		DRM_DEBUG("flip queue: crtc already busy\n");
@@ -7648,7 +7648,7 @@ cleanup_pending:
 
 	drm_vblank_put(dev, intel_crtc->pipe);
 free_work:
-	kfree(work, DRM_MEM_KMS);
+	free(work, DRM_MEM_KMS);
 
 	return ret;
 }
@@ -7975,7 +7975,7 @@ static void intel_user_framebuffer_destroy(struct drm_framebuffer *fb)
 	drm_framebuffer_cleanup(fb);
 	drm_gem_object_unreference_unlocked(&intel_fb->obj->base);
 
-	kfree(intel_fb, DRM_MEM_KMS);
+	free(intel_fb, DRM_MEM_KMS);
 }
 
 static int intel_user_framebuffer_create_handle(struct drm_framebuffer *fb,

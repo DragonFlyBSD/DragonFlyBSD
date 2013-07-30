@@ -58,7 +58,7 @@ drm_fetch_cmdline_mode_from_kenv(struct drm_connector *connector,
 		    connector, cmdline_mode);
 		kfreeenv(tun_mode);
 	}
-	kfree(tun_var_name, M_TEMP);
+	free(tun_var_name, M_TEMP);
 	return (res);
 }
 
@@ -750,9 +750,9 @@ int drm_crtc_helper_set_config(struct drm_mode_set *set)
 		}
 	}
 
-	kfree(save_connectors, DRM_MEM_KMS);
-	kfree(save_encoders, DRM_MEM_KMS);
-	kfree(save_crtcs, DRM_MEM_KMS);
+	free(save_connectors, DRM_MEM_KMS);
+	free(save_encoders, DRM_MEM_KMS);
+	free(save_crtcs, DRM_MEM_KMS);
 	return 0;
 
 fail:
@@ -778,9 +778,9 @@ fail:
 				      save_set.y, save_set.fb))
 		DRM_ERROR("failed to restore config after modeset failure\n");
 
-	kfree(save_connectors, DRM_MEM_KMS);
-	kfree(save_encoders, DRM_MEM_KMS);
-	kfree(save_crtcs, DRM_MEM_KMS);
+	free(save_connectors, DRM_MEM_KMS);
+	free(save_encoders, DRM_MEM_KMS);
+	free(save_crtcs, DRM_MEM_KMS);
 	return ret;
 }
 

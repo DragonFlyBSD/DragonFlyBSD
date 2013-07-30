@@ -376,7 +376,7 @@ err_unpin:
 err_unref:
 	drm_gem_object_unreference(&obj->base);
 err:
-	kfree(pc, DRM_I915_GEM);
+	free(pc, DRM_I915_GEM);
 	return ret;
 }
 
@@ -397,7 +397,7 @@ cleanup_pipe_control(struct intel_ring_buffer *ring)
 	i915_gem_object_unpin(obj);
 	drm_gem_object_unreference(&obj->base);
 
-	kfree(pc, DRM_I915_GEM);
+	free(pc, DRM_I915_GEM);
 	ring->private = NULL;
 }
 

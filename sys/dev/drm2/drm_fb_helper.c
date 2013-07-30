@@ -552,11 +552,11 @@ static void drm_fb_helper_crtc_free(struct drm_fb_helper *helper)
 	int i;
 
 	for (i = 0; i < helper->connector_count; i++)
-		kfree(helper->connector_info[i], DRM_MEM_KMS);
-	kfree(helper->connector_info, DRM_MEM_KMS);
+		free(helper->connector_info[i], DRM_MEM_KMS);
+	free(helper->connector_info, DRM_MEM_KMS);
 	for (i = 0; i < helper->crtc_count; i++)
-		kfree(helper->crtc_info[i].mode_set.connectors, DRM_MEM_KMS);
-	kfree(helper->crtc_info, DRM_MEM_KMS);
+		free(helper->crtc_info[i].mode_set.connectors, DRM_MEM_KMS);
+	free(helper->crtc_info, DRM_MEM_KMS);
 }
 
 int drm_fb_helper_init(struct drm_device *dev,
@@ -1413,7 +1413,7 @@ static int drm_pick_crtcs(struct drm_fb_helper *fb_helper,
 		}
 	}
 out:
-	kfree(crtcs, DRM_MEM_KMS);
+	free(crtcs, DRM_MEM_KMS);
 	return best_score;
 }
 
@@ -1484,9 +1484,9 @@ static void drm_setup_crtcs(struct drm_fb_helper *fb_helper)
 		}
 	}
 
-	kfree(crtcs, DRM_MEM_KMS);
-	kfree(modes, DRM_MEM_KMS);
-	kfree(enabled, DRM_MEM_KMS);
+	free(crtcs, DRM_MEM_KMS);
+	free(modes, DRM_MEM_KMS);
+	free(enabled, DRM_MEM_KMS);
 }
 
 /**

@@ -1938,8 +1938,8 @@ i915_error_object_create(struct drm_i915_private *dev_priv,
 
 unwind:
 	while (page--)
-		kfree(dst->pages[page], DRM_I915_GEM);
-	kfree(dst, DRM_I915_GEM);
+		free(dst->pages[page], DRM_I915_GEM);
+	free(dst, DRM_I915_GEM);
 	return (NULL);
 }
 
@@ -1952,9 +1952,9 @@ i915_error_object_free(struct drm_i915_error_object *obj)
 		return;
 
 	for (page = 0; page < obj->page_count; page++)
-		kfree(obj->pages[page], DRM_I915_GEM);
+		free(obj->pages[page], DRM_I915_GEM);
 
-	kfree(obj, DRM_I915_GEM);
+	free(obj, DRM_I915_GEM);
 }
 
 static void
@@ -1966,12 +1966,12 @@ i915_error_state_free(struct drm_device *dev,
 	for (i = 0; i < DRM_ARRAY_SIZE(error->ring); i++) {
 		i915_error_object_free(error->ring[i].batchbuffer);
 		i915_error_object_free(error->ring[i].ringbuffer);
-		kfree(error->ring[i].requests, DRM_I915_GEM);
+		free(error->ring[i].requests, DRM_I915_GEM);
 	}
 
-	kfree(error->active_bo, DRM_I915_GEM);
-	kfree(error->overlay, DRM_I915_GEM);
-	kfree(error, DRM_I915_GEM);
+	free(error->active_bo, DRM_I915_GEM);
+	free(error->overlay, DRM_I915_GEM);
+	free(error, DRM_I915_GEM);
 }
 
 static u32

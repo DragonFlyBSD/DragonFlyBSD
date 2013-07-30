@@ -2127,7 +2127,7 @@ intel_dp_detect(struct drm_connector *connector, bool force)
 		if (edid) {
 			intel_dp->has_audio = drm_detect_monitor_audio(edid);
 			connector->display_info.raw_edid = NULL;
-			kfree(edid, DRM_MEM_KMS);
+			free(edid, DRM_MEM_KMS);
 		}
 	}
 
@@ -2193,7 +2193,7 @@ intel_dp_detect_audio(struct drm_connector *connector)
 		has_audio = drm_detect_monitor_audio(edid);
 
 		connector->display_info.raw_edid = NULL;
-		kfree(edid, DRM_MEM_KMS);
+		free(edid, DRM_MEM_KMS);
 	}
 
 	return has_audio;
@@ -2266,7 +2266,7 @@ intel_dp_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	kfree(connector, DRM_MEM_KMS);
+	free(connector, DRM_MEM_KMS);
 }
 
 static void intel_dp_encoder_destroy(struct drm_encoder *encoder)
@@ -2294,7 +2294,7 @@ static void intel_dp_encoder_destroy(struct drm_encoder *encoder)
 		    &intel_dp->panel_vdd_task);
 		ironlake_panel_vdd_off_sync(intel_dp);
 	}
-	kfree(intel_dp, DRM_MEM_KMS);
+	free(intel_dp, DRM_MEM_KMS);
 }
 
 static const struct drm_encoder_helper_funcs intel_dp_helper_funcs = {

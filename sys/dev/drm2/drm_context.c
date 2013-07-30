@@ -120,8 +120,8 @@ void drm_ctxbitmap_cleanup(struct drm_device *dev)
 {
 	DRM_LOCK(dev);
 	if (dev->context_sareas != NULL)
-		kfree(dev->context_sareas, DRM_MEM_SAREA);
-	kfree(dev->ctx_bitmap, DRM_MEM_CTXBITMAP);
+		free(dev->context_sareas, DRM_MEM_SAREA);
+	free(dev->ctx_bitmap, DRM_MEM_CTXBITMAP);
 	DRM_UNLOCK(dev);
 }
 
