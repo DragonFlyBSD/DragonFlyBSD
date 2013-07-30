@@ -53,6 +53,8 @@ drm_drawable_compare(struct bsd_drm_drawable_info *a,
 	return 0;
 }
 
+RB_PROTOTYPE_STATIC(drawable_tree, bsd_drm_drawable_info, tree,
+    drm_drawable_compare);
 RB_GENERATE_STATIC(drawable_tree, bsd_drm_drawable_info, tree,
     drm_drawable_compare);
 

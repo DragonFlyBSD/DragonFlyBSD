@@ -1232,7 +1232,7 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 
 	dev_priv->tq = taskqueue_create("915", M_WAITOK,
 	    taskqueue_thread_enqueue, &dev_priv->tq);
-	taskqueue_start_threads(&dev_priv->tq, 1, PWAIT, "i915 taskq");
+	taskqueue_start_threads(&dev_priv->tq, 1, 0, -1, "i915 taskq");
 	lockinit(&dev_priv->gt_lock, "915gt", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->error_lock, "915err", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->error_completion_lock, "915cmp", 0, LK_CANRECURSE);

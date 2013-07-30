@@ -397,7 +397,7 @@ drm_gem_object_from_offset(struct drm_device *dev, vm_ooffset_t offset)
 		    (uintmax_t)offset);
 		return (NULL);
 	}
-	obj = member2struct(drm_gem_object, map_list, map_list);
+	obj = container_of(map_list, struct drm_gem_object, map_list);
 	return (obj);
 }
 
