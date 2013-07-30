@@ -791,7 +791,7 @@ static const char *state_string(bool enabled)
 
 /* Only for pre-ILK configs */
 static void assert_pll(struct drm_i915_private *dev_priv,
-		       enum pipe pipe, bool state)
+		       enum i915_pipe pipe, bool state)
 {
 	int reg;
 	u32 val;
@@ -809,7 +809,7 @@ static void assert_pll(struct drm_i915_private *dev_priv,
 
 /* For ILK+ */
 static void assert_pch_pll(struct drm_i915_private *dev_priv,
-			   enum pipe pipe, bool state)
+			   enum i915_pipe pipe, bool state)
 {
 	int reg;
 	u32 val;
@@ -839,7 +839,7 @@ static void assert_pch_pll(struct drm_i915_private *dev_priv,
 #define assert_pch_pll_disabled(d, p) assert_pch_pll(d, p, false)
 
 static void assert_fdi_tx(struct drm_i915_private *dev_priv,
-			  enum pipe pipe, bool state)
+			  enum i915_pipe pipe, bool state)
 {
 	int reg;
 	u32 val;
@@ -856,7 +856,7 @@ static void assert_fdi_tx(struct drm_i915_private *dev_priv,
 #define assert_fdi_tx_disabled(d, p) assert_fdi_tx(d, p, false)
 
 static void assert_fdi_rx(struct drm_i915_private *dev_priv,
-			  enum pipe pipe, bool state)
+			  enum i915_pipe pipe, bool state)
 {
 	int reg;
 	u32 val;
@@ -873,7 +873,7 @@ static void assert_fdi_rx(struct drm_i915_private *dev_priv,
 #define assert_fdi_rx_disabled(d, p) assert_fdi_rx(d, p, false)
 
 static void assert_fdi_tx_pll_enabled(struct drm_i915_private *dev_priv,
-				      enum pipe pipe)
+				      enum i915_pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -889,7 +889,7 @@ static void assert_fdi_tx_pll_enabled(struct drm_i915_private *dev_priv,
 }
 
 static void assert_fdi_rx_pll_enabled(struct drm_i915_private *dev_priv,
-				      enum pipe pipe)
+				      enum i915_pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -901,11 +901,11 @@ static void assert_fdi_rx_pll_enabled(struct drm_i915_private *dev_priv,
 }
 
 static void assert_panel_unlocked(struct drm_i915_private *dev_priv,
-				  enum pipe pipe)
+				  enum i915_pipe pipe)
 {
 	int pp_reg, lvds_reg;
 	u32 val;
-	enum pipe panel_pipe = PIPE_A;
+	enum i915_pipe panel_pipe = PIPE_A;
 	bool locked = true;
 
 	if (HAS_PCH_SPLIT(dev_priv->dev)) {
@@ -930,7 +930,7 @@ static void assert_panel_unlocked(struct drm_i915_private *dev_priv,
 }
 
 void assert_pipe(struct drm_i915_private *dev_priv,
-		 enum pipe pipe, bool state)
+		 enum i915_pipe pipe, bool state)
 {
 	int reg;
 	u32 val;
@@ -967,7 +967,7 @@ static void assert_plane(struct drm_i915_private *dev_priv,
 #define assert_plane_disabled(d, p) assert_plane(d, p, false)
 
 static void assert_planes_disabled(struct drm_i915_private *dev_priv,
-				   enum pipe pipe)
+				   enum i915_pipe pipe)
 {
 	int reg, i;
 	u32 val;
@@ -1008,7 +1008,7 @@ static void assert_pch_refclk_enabled(struct drm_i915_private *dev_priv)
 }
 
 static void assert_transcoder_disabled(struct drm_i915_private *dev_priv,
-				       enum pipe pipe)
+				       enum i915_pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -1023,7 +1023,7 @@ static void assert_transcoder_disabled(struct drm_i915_private *dev_priv,
 }
 
 static bool hdmi_pipe_enabled(struct drm_i915_private *dev_priv,
-			      enum pipe pipe, u32 val)
+			      enum i915_pipe pipe, u32 val)
 {
 	if ((val & PORT_ENABLE) == 0)
 		return false;
@@ -1039,7 +1039,7 @@ static bool hdmi_pipe_enabled(struct drm_i915_private *dev_priv,
 }
 
 static bool lvds_pipe_enabled(struct drm_i915_private *dev_priv,
-			      enum pipe pipe, u32 val)
+			      enum i915_pipe pipe, u32 val)
 {
 	if ((val & LVDS_PORT_EN) == 0)
 		return false;
@@ -1055,7 +1055,7 @@ static bool lvds_pipe_enabled(struct drm_i915_private *dev_priv,
 }
 
 static bool adpa_pipe_enabled(struct drm_i915_private *dev_priv,
-			      enum pipe pipe, u32 val)
+			      enum i915_pipe pipe, u32 val)
 {
 	if ((val & ADPA_DAC_ENABLE) == 0)
 		return false;
@@ -1070,7 +1070,7 @@ static bool adpa_pipe_enabled(struct drm_i915_private *dev_priv,
 }
 
 static bool dp_pipe_enabled(struct drm_i915_private *dev_priv,
-			    enum pipe pipe, u32 port_sel, u32 val)
+			    enum i915_pipe pipe, u32 port_sel, u32 val)
 {
 	if ((val & DP_PORT_EN) == 0)
 		return false;
@@ -1088,7 +1088,7 @@ static bool dp_pipe_enabled(struct drm_i915_private *dev_priv,
 }
 
 static void assert_pch_dp_disabled(struct drm_i915_private *dev_priv,
-				   enum pipe pipe, int reg, u32 port_sel)
+				   enum i915_pipe pipe, int reg, u32 port_sel)
 {
 	u32 val = I915_READ(reg);
 	if (dp_pipe_enabled(dev_priv, pipe, port_sel, val))
@@ -1097,7 +1097,7 @@ static void assert_pch_dp_disabled(struct drm_i915_private *dev_priv,
 }
 
 static void assert_pch_hdmi_disabled(struct drm_i915_private *dev_priv,
-				     enum pipe pipe, int reg)
+				     enum i915_pipe pipe, int reg)
 {
 	u32 val = I915_READ(reg);
 	if (hdmi_pipe_enabled(dev_priv, val, pipe))
@@ -1106,7 +1106,7 @@ static void assert_pch_hdmi_disabled(struct drm_i915_private *dev_priv,
 }
 
 static void assert_pch_ports_disabled(struct drm_i915_private *dev_priv,
-				      enum pipe pipe)
+				      enum i915_pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -1143,7 +1143,7 @@ static void assert_pch_ports_disabled(struct drm_i915_private *dev_priv,
  *
  * Note!  This is for pre-ILK only.
  */
-static void intel_enable_pll(struct drm_i915_private *dev_priv, enum pipe pipe)
+static void intel_enable_pll(struct drm_i915_private *dev_priv, enum i915_pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -1180,7 +1180,7 @@ static void intel_enable_pll(struct drm_i915_private *dev_priv, enum pipe pipe)
  *
  * Note!  This is for pre-ILK only.
  */
-static void intel_disable_pll(struct drm_i915_private *dev_priv, enum pipe pipe)
+static void intel_disable_pll(struct drm_i915_private *dev_priv, enum i915_pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -1208,7 +1208,7 @@ static void intel_disable_pll(struct drm_i915_private *dev_priv, enum pipe pipe)
  * drives the transcoder clock.
  */
 static void intel_enable_pch_pll(struct drm_i915_private *dev_priv,
-				 enum pipe pipe)
+				 enum i915_pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -1231,7 +1231,7 @@ static void intel_enable_pch_pll(struct drm_i915_private *dev_priv,
 }
 
 static void intel_disable_pch_pll(struct drm_i915_private *dev_priv,
-				  enum pipe pipe)
+				  enum i915_pipe pipe)
 {
 	int reg;
 	u32 val, pll_mask = TRANSC_DPLL_ENABLE | TRANSC_DPLLB_SEL,
@@ -1264,7 +1264,7 @@ static void intel_disable_pch_pll(struct drm_i915_private *dev_priv,
 }
 
 static void intel_enable_transcoder(struct drm_i915_private *dev_priv,
-				    enum pipe pipe)
+				    enum i915_pipe pipe)
 {
 	int reg;
 	u32 val, pipeconf_val;
@@ -1311,7 +1311,7 @@ static void intel_enable_transcoder(struct drm_i915_private *dev_priv,
 }
 
 static void intel_disable_transcoder(struct drm_i915_private *dev_priv,
-				     enum pipe pipe)
+				     enum i915_pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -1348,7 +1348,7 @@ static void intel_disable_transcoder(struct drm_i915_private *dev_priv,
  * Will wait until the pipe is actually running (i.e. first vblank) before
  * returning.
  */
-static void intel_enable_pipe(struct drm_i915_private *dev_priv, enum pipe pipe,
+static void intel_enable_pipe(struct drm_i915_private *dev_priv, enum i915_pipe pipe,
 			      bool pch_port)
 {
 	int reg;
@@ -1392,7 +1392,7 @@ static void intel_enable_pipe(struct drm_i915_private *dev_priv, enum pipe pipe,
  * Will wait until the pipe has shut down before returning.
  */
 static void intel_disable_pipe(struct drm_i915_private *dev_priv,
-			       enum pipe pipe)
+			       enum i915_pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -1436,7 +1436,7 @@ static void intel_flush_display_plane(struct drm_i915_private *dev_priv,
  * Enable @plane on @pipe, making sure that @pipe is running first.
  */
 static void intel_enable_plane(struct drm_i915_private *dev_priv,
-			       enum plane plane, enum pipe pipe)
+			       enum plane plane, enum i915_pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -1463,7 +1463,7 @@ static void intel_enable_plane(struct drm_i915_private *dev_priv,
  * Disable @plane; should be an independent operation.
  */
 static void intel_disable_plane(struct drm_i915_private *dev_priv,
-				enum plane plane, enum pipe pipe)
+				enum plane plane, enum i915_pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -1479,7 +1479,7 @@ static void intel_disable_plane(struct drm_i915_private *dev_priv,
 }
 
 static void disable_pch_dp(struct drm_i915_private *dev_priv,
-			   enum pipe pipe, int reg, u32 port_sel)
+			   enum i915_pipe pipe, int reg, u32 port_sel)
 {
 	u32 val = I915_READ(reg);
 	if (dp_pipe_enabled(dev_priv, pipe, port_sel, val)) {
@@ -1489,7 +1489,7 @@ static void disable_pch_dp(struct drm_i915_private *dev_priv,
 }
 
 static void disable_pch_hdmi(struct drm_i915_private *dev_priv,
-			     enum pipe pipe, int reg)
+			     enum i915_pipe pipe, int reg)
 {
 	u32 val = I915_READ(reg);
 	if (hdmi_pipe_enabled(dev_priv, val, pipe)) {
@@ -1501,7 +1501,7 @@ static void disable_pch_hdmi(struct drm_i915_private *dev_priv,
 
 /* Disable any ports connected to this transcoder */
 static void intel_disable_pch_ports(struct drm_i915_private *dev_priv,
-				    enum pipe pipe)
+				    enum i915_pipe pipe)
 {
 	u32 reg, val;
 

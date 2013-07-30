@@ -152,7 +152,7 @@ struct intel_connector {
 
 struct intel_crtc {
 	struct drm_crtc base;
-	enum pipe pipe;
+	enum i915_pipe pipe;
 	enum plane plane;
 	u8 lut_r[256], lut_g[256], lut_b[256];
 	int dpms_mode;
@@ -177,7 +177,7 @@ struct intel_crtc {
 
 struct intel_plane {
 	struct drm_plane base;
-	enum pipe pipe;
+	enum i915_pipe pipe;
 	struct drm_i915_gem_object *obj;
 	bool primary_disabled;
 	int max_downscale;
@@ -310,7 +310,7 @@ intel_dp_set_m_n(struct drm_crtc *crtc, struct drm_display_mode *mode,
 extern bool intel_dpd_is_edp(struct drm_device *dev);
 extern void intel_edp_link_config(struct intel_encoder *, int *, int *);
 extern bool intel_encoder_is_pch_edp(struct drm_encoder *encoder);
-extern int intel_plane_init(struct drm_device *dev, enum pipe pipe);
+extern int intel_plane_init(struct drm_device *dev, enum i915_pipe pipe);
 
 /* intel_panel.c */
 extern void intel_fixed_panel_mode(struct drm_display_mode *fixed_mode,
@@ -402,7 +402,7 @@ extern int intel_overlay_attrs(struct drm_device *dev, void *data,
 extern void intel_fb_output_poll_changed(struct drm_device *dev);
 extern void intel_fb_restore_mode(struct drm_device *dev);
 
-extern void assert_pipe(struct drm_i915_private *dev_priv, enum pipe pipe,
+extern void assert_pipe(struct drm_i915_private *dev_priv, enum i915_pipe pipe,
 			bool state);
 #define assert_pipe_enabled(d, p) assert_pipe(d, p, true)
 #define assert_pipe_disabled(d, p) assert_pipe(d, p, false)

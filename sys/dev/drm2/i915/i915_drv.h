@@ -50,7 +50,7 @@
 
 MALLOC_DECLARE(DRM_I915_GEM);
 
-enum pipe {
+enum i915_pipe {
 	PIPE_A = 0,
 	PIPE_B,
 	PIPE_C,

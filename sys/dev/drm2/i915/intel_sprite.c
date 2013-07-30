@@ -629,7 +629,7 @@ static uint32_t snb_plane_formats[] = {
 };
 
 int
-intel_plane_init(struct drm_device *dev, enum pipe pipe)
+intel_plane_init(struct drm_device *dev, enum i915_pipe pipe)
 {
 	struct intel_plane *intel_plane;
 	unsigned long possible_crtcs;
