@@ -708,7 +708,7 @@ i915_reset(struct drm_device *dev, u8 flags)
 	if (!i915_try_reset)
 		return (0);
 
-	if (!lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_NOWAIT))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_NOWAIT))
 		return (-EBUSY);
 
 	i915_gem_reset(dev);

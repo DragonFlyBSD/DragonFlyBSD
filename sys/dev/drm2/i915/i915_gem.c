@@ -3385,7 +3385,7 @@ i915_gem_retire_task_handler(void *arg, int pending)
 	dev = dev_priv->dev;
 
 	/* Come back later if the device is busy... */
-	if (!lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_NOWAIT)) {
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_NOWAIT)) {
 		taskqueue_enqueue_timeout(dev_priv->tq,
 		    &dev_priv->mm.retire_task, hz);
 		return;
@@ -3656,7 +3656,7 @@ i915_gem_lowmem(void *arg)
 	dev = arg;
 	dev_priv = dev->dev_private;
 
-	if (!lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_NOWAIT))
+	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_NOWAIT))
 		return;
 
 rescan:
