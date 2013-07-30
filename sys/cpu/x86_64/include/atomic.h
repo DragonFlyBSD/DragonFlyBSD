@@ -604,6 +604,9 @@ ATOMIC_STORE_LOAD(long, "cmpxchgq %0,%1",  "xchgq %1,%0");
 #define	atomic_readandclear_32	atomic_readandclear_int
 #define	atomic_fetchadd_32	atomic_fetchadd_int
 
+/* Operations on 64-bit quad words. */
+#define	atomic_load_acq_64	atomic_load_acq_long
+
 /* Operations on pointers. */
 #define atomic_set_ptr(p, v) \
 	atomic_set_long((volatile u_long *)(p), (u_long)(v))

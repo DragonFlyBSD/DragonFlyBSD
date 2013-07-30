@@ -60,7 +60,7 @@
 /*
  * The above functions are expanded inline in the statically-linked
  * kernel.  Lock prefixes are generated if an SMP kernel is being
- * built, or if user code is using these functions.
+ * built.
  *
  * Kernel modules call real functions which are built into the kernel.
  * This allows kernel modules to be portable between UP and SMP systems.
@@ -266,6 +266,7 @@ int atomic_intr_cond_test(__atomic_intr_t *p);
 int atomic_intr_cond_try(__atomic_intr_t *p);
 void atomic_intr_cond_enter(__atomic_intr_t *p, void (*func)(void *), void *arg);
 void atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg);
+uint64_t atomic_load_acq_64_i586(volatile uint64_t *p);
 
 #else
 
@@ -365,7 +366,25 @@ atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
 			 : "ax", "cx", "dx");
 }
 
-#endif
+static __inline uint64_t
+atomic_load_acq_64_i586(volatile uint64_t *p)
+{
+	uint64_t res;
+
+	__asm __volatile(
+	"	movl %%ebx,%%eax ;	"
+	"	movl %%ecx,%%edx ;	"
+	"	" MPLOCKED "		"
+	"	cmpxchg8b %2"
+	: "=&A" (res),			/* 0 */
+	  "=m" (*p)			/* 1 */
+	: "m" (*p)			/* 2 */
+	: "memory", "cc");
+
+	return (res);
+}
+
+#endif /* _KERNEL */
 
 /*
  * Atomic compare and set
@@ -572,6 +591,9 @@ ATOMIC_STORE_LOAD(long, "cmpxchgl %0,%1",  "xchgl %1,%0");
 #define	atomic_cmpset_rel_32	atomic_cmpset_rel_int
 #define	atomic_readandclear_32	atomic_readandclear_int
 #define	atomic_fetchadd_32	atomic_fetchadd_int
+
+/* Operations on 64-bit quad words. */
+#define	atomic_load_acq_64	atomic_load_acq_64_i586
 
 /* Operations on pointers. */
 #define	atomic_set_ptr(p, v) \
