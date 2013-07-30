@@ -145,7 +145,7 @@ struct protosw {
 #define PR_MPSAFE	0x0100		/* protocal is MPSAFE */
 #define PR_SYNC_PORT	0x0200		/* synchronous port (no proto thrds) */
 #define PR_ASYNC_SEND	0x0400		/* async pru_send */
-#define PR_ASYNC_RCVD	0x0400		/* async pru_rcvd */
+#define PR_ASYNC_RCVD	0x0800		/* async pru_rcvd */
 
 /*
  * The arguments to usrreq are:
