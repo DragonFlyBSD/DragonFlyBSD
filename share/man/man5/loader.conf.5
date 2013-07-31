@@ -180,10 +180,20 @@ or simply inherit the baud set in the boot code.
 Normally these must be set if you want to use a stock kernel in a
 IPMI environment.
 .Pp
-The boot code uses BIOS calls to read and write the screen but also
+Some IPMI environments do not enable sio1 during the BIOS boot,
+which can cause the loader to get confused and not pass RB_SERIAL
+to the kernel.
+Setting console=comconsole in this situation also does not work because
+then the loader is inacessible.  Instead, set the sioX fields as shown
+above and also add
+.Va set boot_serial="YES"
+to cause the kernel to use the serial port without also forcing the
+boot loader to use the serial port.
+.Pp
+The boot1/boot2 code uses BIOS calls to read and write the screen but also
 mirrors output to and monitors COM1 @ 9600.
 In an IPMI environment you do not usually have to adjust the boot code
-at all, instead using the IPMI BIOS redirect feature.
+at all, instead using the IPMI feature to redirect the video output.
 In non-IPMI setups if you want the boot code to be available on
 COM2 at 57600 baud instead of COM1, for example, you must set the variables
 .Va BOOT_COMCONSOLE_PORT=0x2f8
