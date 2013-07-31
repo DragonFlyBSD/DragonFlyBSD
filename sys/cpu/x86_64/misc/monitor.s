@@ -41,33 +41,35 @@
 	.text
 
 /*
- * void cpu_mmw_pause_int(int *addr, int oldval)
+ * void cpu_mmw_pause_int(int *addr, int oldval, int cstatetarget)
  */	
 ENTRY(cpu_mmw_pause_int)
 	movq	%rdi, %rax
+	movq	%rdx, %r8
 
 	xorq	%rcx, %rcx
 	xorq	%rdx, %rdx
 	monitor
 	cmpl	(%rax), %esi
 	jne	1f
-	xorq	%rax, %rax
+	movq	%r8, %rax
 	mwait
 1:
 	ret
 
 /*
- * void cpu_mmw_pause_long(long *addr, long oldval)
+ * void cpu_mmw_pause_long(long *addr, long oldval, cstatetarget)
  */	
 ENTRY(cpu_mmw_pause_long)
 	movq	%rdi, %rax
 
+	movq	%rdx, %r8
 	xorq	%rcx, %rcx
 	xorq	%rdx, %rdx
 	monitor
 	cmpq	(%rax), %rsi
 	jne	1f
-	xorq	%rax, %rax
+	movq	%r8, %rax
 	mwait
 1:
 	ret

@@ -153,6 +153,7 @@ SYSINIT(cpu_finish, SI_BOOT2_FINISH_CPU, SI_ORDER_FIRST, cpu_finish, NULL)
 int	_udatasel, _ucodesel;
 u_int	atdevbase;
 int64_t tsc_offsets[MAXCPU];
+int cpu_mwait_halt = 0;
 
 #if defined(SWTCH_OPTIM_STATS)
 extern int swtch_optim_stats;
@@ -161,6 +162,8 @@ SYSCTL_INT(_debug, OID_AUTO, swtch_optim_stats,
 SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 	CTLFLAG_RD, &tlb_flush_count, 0, "");
 #endif
+SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
+	CTLFLAG_RW, &cpu_mwait_halt, 0, "");
 
 long physmem = 0;
 
@@ -815,7 +818,8 @@ cpu_idle(void)
 
 		if (quick && (cpu_mi_feature & CPU_MI_MONITOR) &&
 		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
-			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags);
+			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
+					  cpu_mwait_halt);
 			++cpu_idle_hltcnt;
 		} else if (cpu_idle_hlt) {
 			__asm __volatile("cli");

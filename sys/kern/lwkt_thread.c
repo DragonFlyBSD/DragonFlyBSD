@@ -91,6 +91,7 @@ static __int64_t preempt_miss = 0;
 static __int64_t preempt_weird = 0;
 static int lwkt_use_spin_port;
 static struct objcache *thread_cache;
+int cpu_mwait_spin = 0;
 
 static void lwkt_schedule_remote(void *arg, int arg2, struct intrframe *frame);
 static void lwkt_setcpu_remote(void *arg);
@@ -110,6 +111,8 @@ TUNABLE_INT("lwkt.use_spin_port", &lwkt_use_spin_port);
 SYSCTL_INT(_lwkt, OID_AUTO, panic_on_cscount, CTLFLAG_RW, &panic_on_cscount, 0,
     "Panic if attempting to switch lwkt's while mastering cpusync");
 #endif
+SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_spin, CTLFLAG_RW, &cpu_mwait_spin, 0,
+    "monitor/mwait target state");
 SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0,
     "Number of switched threads");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, 
@@ -789,7 +792,8 @@ skip:
 	{
 	    cpu_mmw_pause_int(&gd->gd_reqflags,
 			      (gd->gd_reqflags | RQF_SPINNING) &
-			      ~RQF_IDLECHECK_WK_MASK);
+			      ~RQF_IDLECHECK_WK_MASK,
+			      cpu_mwait_spin);
 	}
 
 	/*
@@ -821,7 +825,7 @@ skip:
 		cpu_ccfence();
 #if 1
 		if (cpu_mi_feature & CPU_MI_MONITOR) {
-		    cpu_mmw_pause_int(&lwkt_cseq_rindex, oseq);
+		    cpu_mmw_pause_int(&lwkt_cseq_rindex, oseq, cpu_mwait_spin);
 		} else {
 #endif
 		    cpu_pause();

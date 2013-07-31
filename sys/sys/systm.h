@@ -69,6 +69,8 @@ extern char copyright[];	/* system copyright */
 extern int selwait;		/* select timeout address */
 
 extern u_char curpriority;	/* priority of current process */
+extern int cpu_mwait_spin;	/* typically set in machdep, used by lwkt */
+extern int cpu_mwait_halt;	/* typically set in machdep, used by idle */
 
 extern long physmem;		/* physical memory */
 
@@ -320,8 +322,8 @@ void		setsofttq (void);
 void		schedsofttty (void);
 void		splz (void);
 void		splz_check (void);
-void		cpu_mmw_pause_int(int*, int);
-void		cpu_mmw_pause_long(long*, long);
+void		cpu_mmw_pause_int(int*, int, int);
+void		cpu_mmw_pause_long(long*, long, int);
 #endif /* __i386__ */
 
 /*

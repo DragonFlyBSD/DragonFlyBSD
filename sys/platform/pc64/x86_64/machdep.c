@@ -163,6 +163,7 @@ struct privatespace CPU_prvspace[MAXCPU] __aligned(4096); /* XXX */
 int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
 int64_t tsc_offsets[MAXCPU];
+int cpu_mwait_halt;
 
 #if defined(SWTCH_OPTIM_STATS)
 extern int swtch_optim_stats;
@@ -171,6 +172,8 @@ SYSCTL_INT(_debug, OID_AUTO, swtch_optim_stats,
 SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 	CTLFLAG_RD, &tlb_flush_count, 0, "");
 #endif
+SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
+	CTLFLAG_RW, &cpu_mwait_halt, 0, "");
 
 long physmem = 0;
 
@@ -886,7 +889,8 @@ cpu_idle(void)
 		if (quick && (cpu_mi_feature & CPU_MI_MONITOR) &&
 		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 			splz(); /* XXX */
-			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags);
+			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
+					  cpu_mwait_halt);
 			++cpu_idle_hltcnt;
 		} else if (cpu_idle_hlt) {
 			__asm __volatile("cli");
