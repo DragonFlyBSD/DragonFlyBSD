@@ -784,6 +784,7 @@ tcp_drop(struct tcpcb *tp, int error)
 struct netmsg_listen_detach {
 	struct netmsg_base	base;
 	struct tcpcb		*nm_tp;
+	struct tcpcb		*nm_tp_inh;
 };
 
 static void
@@ -794,7 +795,7 @@ tcp_listen_detach_handler(netmsg_t msg)
 	int cpu = mycpuid, nextcpu;
 
 	if (tp->t_flags & TF_LISTEN)
-		syncache_destroy(tp);
+		syncache_destroy(tp, nmsg->nm_tp_inh);
 
 	in_pcbremwildcardhash_oncpu(tp->t_inpcb, &tcbinfo[cpu]);
 
@@ -816,6 +817,8 @@ tcp_close(struct tcpcb *tp)
 {
 	struct tseg_qent *q;
 	struct inpcb *inp = tp->t_inpcb;
+	struct inpcb *inp_inh = NULL;
+	struct tcpcb *tp_inh = NULL;
 	struct socket *so = inp->inp_socket;
 	struct rtentry *rt;
 	boolean_t dosavessthresh;
@@ -825,6 +828,26 @@ tcp_close(struct tcpcb *tp)
 #else
 	const boolean_t isipv6 = FALSE;
 #endif
+
+	if (tp->t_flags & TF_LISTEN) {
+		/*
+		 * Pending socket/syncache inheritance
+		 *
+		 * If this is a listen(2) socket, find another listen(2)
+		 * socket in the same local group, which could inherit
+		 * the syncache and sockets pending on the completion
+		 * and incompletion queues.
+		 *
+		 * NOTE:
+		 * Currently the inheritance could only happen on the
+		 * listen(2) sockets w/ SO_REUSEPORT set.
+		 */
+		KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+		    ("listen socket close not in netisr0"));
+		inp_inh = in_pcblocalgroup_last(&tcbinfo[0], inp);
+		if (inp_inh != NULL)
+			tp_inh = intotcpcb(inp_inh);
+	}
 
 	/*
 	 * INP_WILDCARD_MP indicates that listen(2) has been called on
@@ -854,6 +877,7 @@ tcp_close(struct tcpcb *tp)
 		netmsg_init(&nmsg.base, NULL, &curthread->td_msgport,
 			    MSGF_PRIORITY, tcp_listen_detach_handler);
 		nmsg.nm_tp = tp;
+		nmsg.nm_tp_inh = tp_inh;
 		lwkt_domsg(netisr_cpuport(1), &nmsg.base.lmsg, 0);
 
 		inp->inp_flags &= ~INP_WILDCARD_MP;
@@ -996,8 +1020,17 @@ no_valid_rt:
 	tcp_destroy_timermsg(tp);
 	tcp_output_cancel(tp);
 
-	if (tp->t_flags & TF_LISTEN)
-		syncache_destroy(tp);
+	if (tp->t_flags & TF_LISTEN) {
+		syncache_destroy(tp, tp_inh);
+		if (inp_inh != NULL && inp_inh->inp_socket != NULL) {
+			/*
+			 * Pending sockets inheritance only needs
+			 * to be done once in the current thread,
+			 * i.e. netisr0.
+			 */
+			soinherit(so, inp_inh->inp_socket);
+		}
+	}
 
 	so_async_rcvd_drop(so);
 	/* Drop the reference for the asynchronized pru_rcvd */

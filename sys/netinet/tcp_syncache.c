@@ -418,7 +418,7 @@ syncache_insert(struct syncache *sc, struct syncache_head *sch)
 }
 
 void
-syncache_destroy(struct tcpcb *tp)
+syncache_destroy(struct tcpcb *tp, struct tcpcb *tp_inh)
 {
 	struct tcp_syncache_percpu *syncache_percpu;
 	struct syncache_head *bucket;
@@ -432,7 +432,7 @@ syncache_destroy(struct tcpcb *tp)
 		bucket = &syncache_percpu->hashbase[i];
 		TAILQ_FOREACH(sc, &bucket->sch_bucket, sc_hash) {
 			if (sc->sc_tp == tp)
-				sc->sc_tp = NULL;
+				sc->sc_tp = tp_inh;
 		}
 	}
 }

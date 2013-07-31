@@ -465,6 +465,8 @@ void	in_pcbremconnhash(struct inpcb *inp);
 void	in_pcbremlists (struct inpcb *inp);
 int	prison_xinpcb (struct thread *p, struct inpcb *inp);
 void	in_savefaddr (struct socket *so, const struct sockaddr *faddr);
+struct inpcb *
+	in_pcblocalgroup_last(const struct inpcbinfo *, const struct inpcb *);
 
 int	in_pcblist_global(SYSCTL_HANDLER_ARGS);
 int	in_pcblist_global_nomarker(SYSCTL_HANDLER_ARGS,

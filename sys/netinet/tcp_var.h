@@ -717,7 +717,7 @@ int	 syncache_add(struct in_conninfo *, struct tcpopt *,
 	     struct tcphdr *, struct socket *, struct mbuf *);
 void	 syncache_chkrst(struct in_conninfo *, struct tcphdr *);
 void	 syncache_badack(struct in_conninfo *);
-void	 syncache_destroy(struct tcpcb *tp);
+void	 syncache_destroy(struct tcpcb *tp, struct tcpcb *new_tp);
 
 #ifdef TCP_SIGNATURE
 int tcpsignature_apply(void *fstate, void *data, unsigned int len);

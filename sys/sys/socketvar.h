@@ -463,6 +463,7 @@ int	solisten (struct socket *so, int backlog, struct thread *td);
 struct socket *sonewconn (struct socket *head, int connstatus);
 struct socket *sonewconn_faddr (struct socket *head, int connstatus,
 	    const struct sockaddr *faddr);
+void	soinherit(struct socket *so, struct socket *so_inh);
 int	sooptcopyin (struct sockopt *sopt, void *buf, size_t len,
 			 size_t minlen);
 int	soopt_to_kbuf (struct sockopt *sopt, void *buf, size_t len,
