@@ -604,7 +604,9 @@ test_m_maps_pv(vm_page_t m, pv_entry_t pv)
 	pv_entry_t spv;
 
 	crit_enter();
+#ifdef PMAP_DEBUG
 	KKASSERT(pv->pv_m == m);
+#endif
 	TAILQ_FOREACH(spv, &m->md.pv_list, pv_list) {
 		if (pv == spv) {
 			crit_exit();
@@ -1661,8 +1663,10 @@ free_pv_entry(pv_entry_t pv)
 {
 	struct mdglobaldata *gd;
 
+#ifdef PMAP_DEBUG
 	KKASSERT(pv->pv_m != NULL);
 	pv->pv_m = NULL;
+#endif
 	gd = mdcpu;
 	pv_entry_count--;
 	if (gd->gd_freepv == NULL)
@@ -1754,23 +1758,20 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 
 	/*
 	 * Cannot block
-	 *
-	 * XXX very poor performance for PG_FICTITIOUS pages (m will be NULL).
 	 */
 	ASSERT_LWKT_TOKEN_HELD(&vm_token);
-	if (m && m->md.pv_list_count < pmap->pm_stats.resident_count) {
+	if (m->md.pv_list_count < pmap->pm_stats.resident_count) {
 		TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 			if (pmap == pv->pv_pmap && va == pv->pv_va) 
 				break;
 		}
 	} else {
 		TAILQ_FOREACH(pv, &pmap->pm_pvlist, pv_plist) {
+#ifdef PMAP_DEBUG
 			KKASSERT(pv->pv_pmap == pmap);
-			if (va == pv->pv_va) {
-				if (m == NULL) 	/* PG_FICTITIOUS case */
-					m = pv->pv_m;
+#endif
+			if (va == pv->pv_va)
 				break;
-			}
 		}
 	}
 	KKASSERT(pv);
@@ -1806,8 +1807,10 @@ static void
 pmap_insert_entry(pmap_t pmap, pv_entry_t pv, vm_offset_t va,
 		  vm_page_t mpte, vm_page_t m)
 {
+#ifdef PMAP_DEBUG
 	KKASSERT(pv->pv_m == NULL);
 	pv->pv_m = m;
+#endif
 	pv->pv_va = va;
 	pv->pv_pmap = pmap;
 	pv->pv_ptem = mpte;
@@ -1854,10 +1857,7 @@ pmap_remove_pte(struct pmap *pmap, unsigned *ptq, vm_offset_t va,
 	KKASSERT(pmap->pm_stats.resident_count > 0);
 	--pmap->pm_stats.resident_count;
 	if (oldpte & PG_MANAGED) {
-		if (oldpte & PG_DEVICE)
-			m = NULL;
-		else
-			m = PHYS_TO_VM_PAGE(oldpte);
+		m = PHYS_TO_VM_PAGE(oldpte);
 		if (oldpte & PG_M) {
 #if defined(PMAP_DIAGNOSTIC)
 			if (pmap_nw_modified((pt_entry_t) oldpte)) {
@@ -1866,10 +1866,10 @@ pmap_remove_pte(struct pmap *pmap, unsigned *ptq, vm_offset_t va,
 					(void *)va, (long)oldpte);
 			}
 #endif
-			if (m && pmap_track_modified(va))
+			if (pmap_track_modified(va))
 				vm_page_dirty(m);
 		}
-		if (m && (oldpte & PG_A))
+		if (oldpte & PG_A)
 			vm_page_flag_set(m, PG_REFERENCED);
 		pmap_remove_entry(pmap, m, va, info);
 	} else {
@@ -2029,7 +2029,7 @@ pmap_remove_all(vm_page_t m)
 	pv_entry_t pv;
 	pmap_t pmap;
 
-	if (!pmap_initialized /* || (m->flags & PG_FICTITIOUS)*/)
+	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return;
 	if (TAILQ_EMPTY(&m->md.pv_list))
 		return;
@@ -2056,7 +2056,7 @@ pmap_remove_all(vm_page_t m)
 		pmap_inval_deinterlock(&info, pmap);
 		if (tpte & PG_A)
 			vm_page_flag_set(m, PG_REFERENCED);
-		KKASSERT((tpte & PG_DEVICE) || PHYS_TO_VM_PAGE(tpte) == m);
+		KKASSERT(PHYS_TO_VM_PAGE(tpte) == m);
 
 		/*
 		 * Update the vm_page_t clean and reference bits.
@@ -2072,7 +2072,9 @@ pmap_remove_all(vm_page_t m)
 			if (pmap_track_modified(pv->pv_va))
 				vm_page_dirty(m);
 		}
+#ifdef PMAP_DEBUG
 		KKASSERT(pv->pv_m == m);
+#endif
 		KKASSERT(pv == TAILQ_FIRST(&m->md.pv_list));
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
@@ -2165,20 +2167,15 @@ again:
 			if (pbits & PG_MANAGED) {
 				m = NULL;
 				if (pbits & PG_A) {
-					if ((pbits & PG_DEVICE) == 0) {
-						m = PHYS_TO_VM_PAGE(pbits);
-						vm_page_flag_set(m,
-								 PG_REFERENCED);
-					}
+					m = PHYS_TO_VM_PAGE(pbits);
+					vm_page_flag_set(m, PG_REFERENCED);
 					cbits &= ~PG_A;
 				}
 				if (pbits & PG_M) {
 					if (pmap_track_modified(i386_ptob(sindex))) {
-						if ((pbits & PG_DEVICE) == 0) {
-							if (m == NULL)
-								m = PHYS_TO_VM_PAGE(pbits);
-							vm_page_dirty(m);
-						}
+						if (m == NULL)
+							m = PHYS_TO_VM_PAGE(pbits);
+						vm_page_dirty(m);
 						cbits &= ~PG_M;
 					}
 				}
@@ -2244,7 +2241,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * This can block, get it before we do anything important.
 	 */
 	if (pmap_initialized &&
-	    (m->flags & (/*PG_FICTITIOUS|*/PG_UNMANAGED)) == 0) {
+	    (m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
 		pv = get_pv_entry();
 	} else {
 		pv = NULL;
@@ -2306,9 +2303,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		 * so we go ahead and sense modify status.
 		 */
 		if (origpte & PG_MANAGED) {
-			if ((origpte & PG_M) &&
-			    (origpte & PG_DEVICE) == 0 &&
-			    pmap_track_modified(va)) {
+			if ((origpte & PG_M) && pmap_track_modified(va)) {
 				vm_page_t om;
 				om = PHYS_TO_VM_PAGE(opa);
 				vm_page_dirty(om);
@@ -2353,7 +2348,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * called at interrupt time.
 	 */
 	if (pmap_initialized && 
-	    (m->flags & (/*PG_FICTITIOUS|*/PG_UNMANAGED)) == 0) {
+	    (m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
 		pmap_insert_entry(pmap, pv, va, mpte, m);
 		pv = NULL;
 		ptbase_assert(pmap);
@@ -2382,8 +2377,6 @@ validate:
 		newpte |= PG_U;
 	if (pmap == &kernel_pmap)
 		newpte |= pgeflag;
-	if (m->flags & PG_FICTITIOUS)
-		newpte |= PG_DEVICE;
 
 	/*
 	 * If the mapping or permission bits are different, we need
@@ -2452,7 +2445,6 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 	unsigned ptepindex;
 	vm_offset_t ptepa;
 	pmap_inval_info info;
-	vm_offset_t newpte;
 	pv_entry_t pv;
 
 	vm_object_hold(pmap->pm_pteobj);
@@ -2462,7 +2454,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 	 * This can block, get it before we do anything important.
 	 */
 	if (pmap_initialized &&
-	    (m->flags & (/*PG_FICTITIOUS|*/PG_UNMANAGED)) == 0) {
+	    (m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
 		pv = get_pv_entry();
 	} else {
 		pv = NULL;
@@ -2552,7 +2544,7 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 	 * Enter on the PV list if part of our managed memory
 	 */
 	if (pmap_initialized &&
-	    (m->flags & (/*PG_FICTITIOUS|*/PG_UNMANAGED)) == 0) {
+	    (m->flags & (PG_FICTITIOUS|PG_UNMANAGED)) == 0) {
 		pmap_insert_entry(pmap, pv, va, mpte, m);
 		pv = NULL;
 		vm_page_flag_set(m, PG_MAPPED);
@@ -2568,12 +2560,10 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 	/*
 	 * Now validate mapping with RO protection
 	 */
-	newpte = pa | PG_V | PG_U;
-	if (m->flags & PG_FICTITIOUS)
-		newpte |= PG_DEVICE;
-	if ((m->flags & PG_UNMANAGED) == 0)
-		newpte |= PG_MANAGED;
-	*pte = newpte;
+	if (m->flags & (PG_FICTITIOUS|PG_UNMANAGED))
+		*pte = pa | PG_V | PG_U;
+	else
+		*pte = pa | PG_V | PG_U | PG_MANAGED;
 /*	pmap_inval_add(&info, pmap, va); shouldn't be needed inval->valid */
 	pmap_inval_done(&info);
 	if (pv) {
@@ -3014,10 +3004,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		tpte = loadandclear(pte);
 		pmap_inval_deinterlock(&info, pmap);
 
-		if (tpte & PG_DEVICE)
-			m = pv->pv_m;
-		else
-			m = PHYS_TO_VM_PAGE(tpte);
+		m = PHYS_TO_VM_PAGE(tpte);
 		test_m_maps_pv(m, pv);
 
 		KASSERT(m < &vm_page_array[vm_page_array_size],
@@ -3034,8 +3021,10 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		}
 
 		npv = TAILQ_NEXT(pv, pv_plist);
+#ifdef PMAP_DEBUG
 		KKASSERT(pv->pv_m == m);
 		KKASSERT(pv->pv_pmap == pmap);
+#endif
 		TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
 		save_generation = ++pmap->pm_generation;
 
@@ -3476,17 +3465,14 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 
 		pa = pte & PG_FRAME;
 
-		if (pte & PG_DEVICE)
-			m = NULL;
-		else
-			m = PHYS_TO_VM_PAGE(pa);
+		m = PHYS_TO_VM_PAGE(pa);
 
 		if (pte & PG_M) {
 			/*
 			 * Modified by us
 			 */
 			val |= MINCORE_MODIFIED|MINCORE_MODIFIED_OTHER;
-		} else if (m && (m->dirty || pmap_is_modified(m))) {
+		} else if (m->dirty || pmap_is_modified(m)) {
 			/*
 			 * Modified by someone else
 			 */
@@ -3498,8 +3484,8 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 			 * Referenced by us
 			 */
 			val |= MINCORE_REFERENCED|MINCORE_REFERENCED_OTHER;
-		} else if (m && ((m->flags & PG_REFERENCED) ||
-				 pmap_ts_referenced(m))) {
+		} else if ((m->flags & PG_REFERENCED) ||
+			   pmap_ts_referenced(m)) {
 			/*
 			 * Referenced by someone else
 			 */
@@ -3641,10 +3627,7 @@ pmap_get_pgeflag(void)
 vm_page_t
 pmap_kvtom(vm_offset_t va)
 {
-	unsigned *ptep = vtopte(va);
-
-	KKASSERT((*ptep & PG_DEVICE) == 0);
-	return(PHYS_TO_VM_PAGE(*ptep & PG_FRAME));
+	return(PHYS_TO_VM_PAGE(*vtopte(va) & PG_FRAME));
 }
 
 void

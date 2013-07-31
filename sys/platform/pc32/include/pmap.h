@@ -283,7 +283,11 @@ typedef struct pv_entry {
 	TAILQ_ENTRY(pv_entry)	pv_list;
 	TAILQ_ENTRY(pv_entry)	pv_plist;
 	struct vm_page	*pv_ptem;	/* VM page for pte */
+#ifdef PMAP_DEBUG
 	struct vm_page	*pv_m;
+#else
+	void		*pv_dummy;	/* align structure to 32 bytes */
+#endif
 } *pv_entry_t;
 
 #ifdef	_KERNEL
