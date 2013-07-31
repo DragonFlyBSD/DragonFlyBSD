@@ -4,7 +4,7 @@
 PROG=	test
 
 LINKS=	${BINDIR}/test ${BINDIR}/[
-MLINKS=	test.1 '[.1'
+MLINKS=	test.1 [.1
 
 regress: test
 	cd ${.CURDIR}/../../tools/regression/bin/test && \

@@ -9,7 +9,11 @@
  *
  * This program is in the Public Domain.
  *
- * $FreeBSD: src/bin/test/test.c,v 1.55 2010/03/28 13:16:08 ed Exp $
+ * $FreeBSD: head/bin/test/test.c 251208 2013-05-31 22:54:20Z jilles $
+ */
+/*
+ * Important: This file is used both as a standalone program /bin/test and
+ * as a builtin for /bin/sh (#define SHELL).
  */
 
 #include <sys/types.h>
@@ -115,8 +119,8 @@ enum token_types {
 	PAREN
 };
 
-struct t_op {
-	const char *op_text;
+static struct t_op {
+	char op_text[4];
 	short op_num, op_type;
 } const ops [] = {
 	{"-r",	FILRD,	UNOP},
@@ -141,6 +145,7 @@ struct t_op {
 	{"-L",	FILSYM,	UNOP},
 	{"-S",	FILSOCK,UNOP},
 	{"=",	STREQ,	BINOP},
+	{"==",	STREQ,	BINOP},
 	{"!=",	STRNE,	BINOP},
 	{"<",	STRLT,	BINOP},
 	{">",	STRGT,	BINOP},
@@ -158,13 +163,13 @@ struct t_op {
 	{"-o",	BOR,	BBINOP},
 	{"(",	LPAREN,	PAREN},
 	{")",	RPAREN,	PAREN},
-	{0,	0,	0}
+	{"",	0,	0}
 };
 
-struct t_op const *t_wp_op;
-int nargc;
-char **t_wp;
-int parenlevel;
+static struct t_op const *t_wp_op;
+static int nargc;
+static char **t_wp;
+static int parenlevel;
 
 static int	aexpr(enum token);
 static int	binop(void);
@@ -187,8 +192,6 @@ static enum	token t_lex(char *);
 int
 main(int argc, char **argv)
 {
-	gid_t	egid, gid;
-	uid_t	euid, uid;
 	int	res;
 	char	*p;
 
@@ -209,14 +212,6 @@ main(int argc, char **argv)
 #ifndef SHELL
 	setlocale(LC_CTYPE, "");
 #endif
-	/* XXX work around the absence of an eaccess(2) syscall */
-	egid = getegid();
-	euid = geteuid();
-	gid = getgid();
-	uid = getuid();
-	setregid(egid, gid);
-	setreuid(euid, uid);
-
 	nargc = argc;
 	t_wp = &argv[1];
 	parenlevel = 0;
@@ -230,8 +225,6 @@ main(int argc, char **argv)
 
 	if (--nargc > 0)
 		syntax(*t_wp, "unexpected operator");
-	setregid(gid, egid);
-	setreuid(uid, euid);
 
 	return res;
 }
@@ -383,18 +376,18 @@ filstat(char *nm, enum token mode)
 
 	switch (mode) {
 	case FILRD:
-		return access(nm, R_OK) == 0;
+		return (eaccess(nm, R_OK) == 0);
 	case FILWR:
-		return access(nm, W_OK) == 0;
+		return (eaccess(nm, W_OK) == 0);
 	case FILEX:
-		/* XXX work around access(2) false positives for superuser */
-		if (access(nm, X_OK) != 0)
+		/* XXX work around eaccess(2) false positives for superuser */
+		if (eaccess(nm, X_OK) != 0)
 			return 0;
-		if (S_ISDIR(s.st_mode) || getuid() != 0)
+		if (S_ISDIR(s.st_mode) || geteuid() != 0)
 			return 1;
 		return (s.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
 	case FILEXIST:
-		return access(nm, F_OK) == 0;
+		return (eaccess(nm, F_OK) == 0);
 	case FILREG:
 		return S_ISREG(s.st_mode);
 	case FILDIR:
@@ -435,7 +428,7 @@ t_lex(char *s)
 		t_wp_op = NULL;
 		return EOI;
 	}
-	while (op->op_text) {
+	while (*op->op_text) {
 		if (strcmp(s, op->op_text) == 0) {
 			if (((op->op_type == UNOP || op->op_type == BUNOP)
 						&& isunopoperand()) ||
@@ -464,7 +457,7 @@ isunopoperand(void)
 	if (nargc == 2)
 		return parenlevel == 1 && strcmp(s, ")") == 0;
 	t = *(t_wp + 2);
-	while (op->op_text) {
+	while (*op->op_text) {
 		if (strcmp(s, op->op_text) == 0)
 			return op->op_type == BINOP &&
 			    (parenlevel == 0 || t[0] != ')' || t[1] != '\0');
@@ -486,7 +479,7 @@ islparenoperand(void)
 		return parenlevel == 1 && strcmp(s, ")") == 0;
 	if (nargc != 3)
 		return 0;
-	while (op->op_text) {
+	while (*op->op_text) {
 		if (strcmp(s, op->op_text) == 0)
 			return op->op_type == BINOP;
 		op++;

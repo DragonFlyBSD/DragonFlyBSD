@@ -1,4 +1,4 @@
-# $FreeBSD: src/tools/regression/bin/test/Makefile,v 1.1 2010/11/08 23:15:10 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/test/Makefile 215022 2010-11-08 23:15:10Z jilles $
 
 TEST?=	/bin/test
 

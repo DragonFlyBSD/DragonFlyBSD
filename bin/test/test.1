@@ -30,9 +30,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)test.1	8.1 (Berkeley) 5/31/93
-.\" $FreeBSD: src/bin/test/test.1,v 1.31 2010/09/11 10:49:56 brucec Exp $
+.\" $FreeBSD: head/bin/test/test.1 251211 2013-05-31 22:57:04Z jilles $
 .\"
-.Dd September 10, 2010
+.Dd June 1, 2013
 .Dt TEST 1
 .Os
 .Sh NAME
@@ -52,7 +52,8 @@ to true, returns a zero (true) exit status; otherwise
 it returns 1 (false).
 If there is no expression,
 .Nm
-also returns 1 (false).
+also
+returns 1 (false).
 .Pp
 All operators and flags are separate arguments to the
 .Nm
@@ -133,15 +134,9 @@ True if
 .Ar file
 exists and is writable.
 True
-indicates both that the write flag is on and that
-.Ar file
-resides on a read-write file system.
-.Pp
-Note that this behaviour is specific to
-.Dx .
-When writing portable scripts, keep in mind that
-on some systems, this test may
-indicate only that the write flag is on.
+indicates only that the write flag is on.
+The file is not writable on a read-only file
+system even if this test indicates true.
 .It Fl x Ar file
 True if
 .Ar file
@@ -336,10 +331,33 @@ missing.
 .It >1
 An error occurred.
 .El
+.Sh EXAMPLES
+Implement
+.Li test FILE1 -nt FILE2
+using only
+.Tn POSIX
+functionality:
+.Pp
+.Dl test -n \&"$(find -L -- FILE1 -prune -newer FILE2 2>/dev/null)\&"
+.Pp
+This can be modified using non-standard
+.Xr find 1
+primaries like
+.Cm -newerca
+to compare other timestamps.
+.Sh COMPATIBILITY
+For compatibility with some other implementations,
+the
+.Cm =
+primary can be substituted with
+.Cm ==
+with the same meaning.
 .Sh SEE ALSO
 .Xr builtin 1 ,
 .Xr expr 1 ,
+.Xr find 1 ,
 .Xr sh 1 ,
+.Xr stat 1 ,
 .Xr symlink 7
 .Sh STANDARDS
 The
@@ -347,6 +365,17 @@ The
 utility implements a superset of the
 .St -p1003.2
 specification.
+The primaries
+.Cm < ,
+.Cm == ,
+.Cm > ,
+.Fl ef ,
+.Fl nt ,
+.Fl ot ,
+.Fl G ,
+and
+.Fl O
+are extensions.
 .Sh BUGS
 Both sides are always evaluated in
 .Fl a

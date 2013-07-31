@@ -2,7 +2,7 @@
 
 #-
 # Copyright (c) June 1996 Wolfram Schneider <wosch@FreeBSD.org>. Berlin.
-# All rights reserved. 
+# All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,10 +28,10 @@
 #
 # TEST.sh - check if test(1) or builtin test works
 #
-# $FreeBSD: src/tools/regression/bin/test/regress.sh,v 1.1 2010/11/08 23:15:10 jilles Exp $
+# $FreeBSD: head/tools/regression/bin/test/regress.sh 251208 2013-05-31 22:54:20Z jilles $
 
 # force a specified test program, e.g. `env test=/bin/test sh regress.sh'
-: ${test=test}		
+: ${test=test}
 
 t ()
 {
@@ -52,12 +52,15 @@ t ()
 }
 
 count=0
-echo "1..94"
+echo "1..130"
 
-t 0 'b = b' 
-t 1 'b != b' 
-t 0 '\( b = b \)' 
-t 1 '! \( b = b \)' 
+t 0 'b = b'
+t 0 'b == b'
+t 1 'b != b'
+t 0 '\( b = b \)'
+t 0 '\( b == b \)'
+t 1 '! \( b = b \)'
+t 1 '! \( b == b \)'
 t 1 '! -f /etc/passwd'
 
 t 0 '-h = -h'
@@ -135,8 +138,6 @@ t 1 '! = a'
 t 0 '! != -n'
 t 0 '! -c /etc/passwd'
 
-t 0 '! \( = \)'
-t 1 '! \( != \)'
 t 1 '! = = ='
 t 0 '! = = \)'
 t 0 '! "" -o ""'
@@ -144,7 +145,6 @@ t 1 '! "x" -o ""'
 t 1 '! "" -o "x"'
 t 1 '! "x" -o "x"'
 t 0 '\( -f /etc/passwd \)'
-t 1 '\( ! = \)'
 t 0 '\( ! "" \)'
 t 1 '\( ! -e \)'
 
@@ -157,3 +157,40 @@ t 1 '-z y -o y = "#" -o y = x'
 t 0 '0 -ne 0 -o ! -f /'
 t 0 '1 -ne 0 -o ! -f /etc/passwd'
 t 1 '0 -ne 0 -o ! -f /etc/passwd'
+
+t 0 '-n ='
+t 1 '-z ='
+t 1 '! ='
+t 0 '-n -eq'
+t 1 '-z -eq'
+t 1 '! -eq'
+t 0 '-n -a'
+t 1 '-z -a'
+t 1 '! -a'
+t 0 '-n -o'
+t 1 '-z -o'
+t 1 '! -o'
+t 1 '! -n ='
+t 0 '! -z ='
+t 0 '! ! ='
+t 1 '! -n -eq'
+t 0 '! -z -eq'
+t 0 '! ! -eq'
+t 1 '! -n -a'
+t 0 '! -z -a'
+t 0 '! ! -a'
+t 1 '! -n -o'
+t 0 '! -z -o'
+t 0 '! ! -o'
+t 0 '\( -n = \)'
+t 1 '\( -z = \)'
+t 1 '\( ! = \)'
+t 0 '\( -n -eq \)'
+t 1 '\( -z -eq \)'
+t 1 '\( ! -eq \)'
+t 0 '\( -n -a \)'
+t 1 '\( -z -a \)'
+t 1 '\( ! -a \)'
+t 0 '\( -n -o \)'
+t 1 '\( -z -o \)'
+t 1 '\( ! -o \)'
