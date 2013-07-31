@@ -123,12 +123,20 @@ setjobctl(int on)
 	if (on) {
 		if (ttyfd != -1)
 			close(ttyfd);
+#ifndef O_CLOEXEC
+		if ((ttyfd = open(_PATH_TTY, O_RDWR)) < 0) {
+#else
 		if ((ttyfd = open(_PATH_TTY, O_RDWR | O_CLOEXEC)) < 0) {
+#endif
 			i = 0;
 			while (i <= 2 && !isatty(i))
 				i++;
 			if (i > 2 ||
+#ifndef F_DUPFD_CLOEXEC
+			    (ttyfd = fcntl(i, F_DUPFD, 10)) < 0)
+#else
 			    (ttyfd = fcntl(i, F_DUPFD_CLOEXEC, 10)) < 0)
+#endif
 				goto out;
 		}
 		if (ttyfd < 10) {
@@ -136,7 +144,11 @@ setjobctl(int on)
 			 * Keep our TTY file descriptor out of the way of
 			 * the user's redirections.
 			 */
+#ifndef F_DUPFD_CLOEXEC
+			if ((i = fcntl(ttyfd, F_DUPFD, 10)) < 0) {
+#else
 			if ((i = fcntl(ttyfd, F_DUPFD_CLOEXEC, 10)) < 0) {
+#endif
 				close(ttyfd);
 				ttyfd = -1;
 				goto out;
@@ -144,6 +156,13 @@ setjobctl(int on)
 			close(ttyfd);
 			ttyfd = i;
 		}
+#if !defined(O_CLOEXEC) || !defined(F_DUPFD_CLOEXEC)
+		if (fcntl(ttyfd, F_SETFD, FD_CLOEXEC) < 0) {
+			close(ttyfd);
+			ttyfd = -1;
+			goto out;
+		}
+#endif
 		do { /* while we are in the background */
 			initialpgrp = tcgetpgrp(ttyfd);
 			if (initialpgrp < 0) {
