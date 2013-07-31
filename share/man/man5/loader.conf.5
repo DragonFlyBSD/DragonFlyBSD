@@ -174,9 +174,18 @@ To change this to sio1 you must specify
 and
 .Va sio1.flags=0x10
 in addition to setting the console to the comconsole.
+You can also set the baud rate with (for example)
+.Va sio1.baud=115200
+or simply inherit the baud set in the boot code.
+Normally these must be set if you want to use a stock kernel in a
+IPMI environment.
 .Pp
-If you want the boot code to be available on COM2 at 57600 baud instead
-of COM1, for example, you must set the variables
+The boot code uses BIOS calls to read and write the screen but also
+mirrors output to and monitors COM1 @ 9600.
+In an IPMI environment you do not usually have to adjust the boot code
+at all, instead using the IPMI BIOS redirect feature.
+In non-IPMI setups if you want the boot code to be available on
+COM2 at 57600 baud instead of COM1, for example, you must set the variables
 .Va BOOT_COMCONSOLE_PORT=0x2f8
 and
 .Va BOOT_COMCONSOLE_SPEED=57600

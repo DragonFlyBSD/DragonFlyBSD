@@ -2979,7 +2979,6 @@ siocnclose(struct siocnstate *sp, Port_t iobase)
 static void
 siocnprobe(struct consdev *cp)
 {
-	speed_t			boot_speed;
 	u_char			cfcr;
 	u_int			divisor;
 	int			unit;
@@ -3012,15 +3011,23 @@ siocnprobe(struct consdev *cp)
 			continue;
 		if (COM_CONSOLE(flags) || COM_DEBUGGER(flags)) {
 			int port;
+			int baud;
 			Port_t iobase;
+			speed_t boot_speed;
 
 			if (resource_int_value("sio", unit, "port", &port))
 				continue;
+			if (resource_int_value("sio", unit, "baud", &baud) == 0)
+				boot_speed = baud;
+			else
+				boot_speed = 0;
 			iobase = port;
 			crit_enter();
 			if (boothowto & RB_SERIAL) {
-				boot_speed =
-				    siocngetspeed(iobase, comdefaultrclk);
+				if (boot_speed == 0) {
+					boot_speed = siocngetspeed(iobase,
+								comdefaultrclk);
+				}
 				if (boot_speed)
 					comdefaultrate = boot_speed;
 			}
