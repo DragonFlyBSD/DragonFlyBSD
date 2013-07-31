@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
- * $FreeBSD: head/bin/sh/input.c 245676 2013-01-19 22:12:08Z jilles $
+ * $FreeBSD: head/bin/sh/input.c 253658 2013-07-25 19:48:15Z jilles $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -61,7 +61,7 @@
 
 struct strpush {
 	struct strpush *prev;	/* preceding string on stack */
-	char *prevstring;
+	const char *prevstring;
 	int prevnleft;
 	int prevlleft;
 	struct alias *ap;	/* if push was associated with an alias */
@@ -78,7 +78,7 @@ struct parsefile {
 	int fd;			/* file descriptor (or -1 if string) */
 	int nleft;		/* number of chars left in this line */
 	int lleft;		/* number of lines left in this buffer */
-	char *nextc;		/* next char in buffer */
+	const char *nextc;	/* next char in buffer */
 	char *buf;		/* input buffer */
 	struct strpush *strpush; /* for pushing strings at this level */
 	struct strpush basestrpush; /* so pushing one is fast */
@@ -87,8 +87,8 @@ struct parsefile {
 
 int plinno = 1;			/* input line number */
 int parsenleft;			/* copy of parsefile->nleft */
-MKINIT int parselleft;		/* copy of parsefile->lleft */
-char *parsenextc;		/* copy of parsefile->nextc */
+static int parselleft;		/* copy of parsefile->lleft */
+const char *parsenextc;		/* copy of parsefile->nextc */
 static char basebuf[BUFSIZ + 1];/* buffer for top level input file */
 static struct parsefile basepf = {	/* top level input file */
 	.nextc = basebuf,
@@ -103,16 +103,12 @@ static void pushfile(void);
 static int preadfd(void);
 static void popstring(void);
 
-#ifdef mkinit
-INCLUDE <stdio.h>
-INCLUDE "input.h"
-INCLUDE "error.h"
-
-RESET {
+void
+resetinput(void)
+{
 	popallfiles();
 	parselleft = parsenleft = 0;	/* clear input buffer */
 }
-#endif
 
 
 /*
@@ -181,7 +177,7 @@ retry:
 			nr = el_len;
 			if (nr > BUFSIZ)
 				nr = BUFSIZ;
-			memcpy(parsenextc, rl_cp, nr);
+			memcpy(parsefile->buf, rl_cp, nr);
 			if (nr != el_len) {
 				el_len -= nr;
 				rl_cp += nr;
@@ -190,7 +186,7 @@ retry:
 		}
 	} else
 #endif
-		nr = read(parsefile->fd, parsenextc, BUFSIZ);
+		nr = read(parsefile->fd, parsefile->buf, BUFSIZ);
 
 	if (nr <= 0) {
                 if (nr < 0) {
@@ -248,7 +244,7 @@ again:
 		}
 	}
 
-	q = p = parsenextc;
+	q = p = parsefile->buf + (parsenextc - parsefile->buf);
 
 	/* delete nul characters */
 	something = 0;
@@ -393,10 +389,10 @@ setinputfile(const char *fname, int push)
 	int fd2;
 
 	INTOFF;
-	if ((fd = open(fname, O_RDONLY)) < 0)
+	if ((fd = open(fname, O_RDONLY | O_CLOEXEC)) < 0)
 		error("cannot open %s: %s", fname, strerror(errno));
 	if (fd < 10) {
-		fd2 = fcntl(fd, F_DUPFD, 10);
+		fd2 = fcntl(fd, F_DUPFD_CLOEXEC, 10);
 		close(fd);
 		if (fd2 < 0)
 			error("Out of file descriptors");
@@ -408,14 +404,13 @@ setinputfile(const char *fname, int push)
 
 
 /*
- * Like setinputfile, but takes an open file descriptor.  Call this with
- * interrupts off.
+ * Like setinputfile, but takes an open file descriptor (which should have
+ * its FD_CLOEXEC flag already set).  Call this with interrupts off.
  */
 
 void
 setinputfd(int fd, int push)
 {
-	fcntl(fd, F_SETFD, FD_CLOEXEC);
 	if (push) {
 		pushfile();
 		parsefile->buf = ckmalloc(BUFSIZ + 1);
@@ -435,7 +430,7 @@ setinputfd(int fd, int push)
  */
 
 void
-setinputstring(char *string, int push)
+setinputstring(const char *string, int push)
 {
 	INTOFF;
 	if (push)

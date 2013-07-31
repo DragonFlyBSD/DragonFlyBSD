@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)redir.c	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/redir.c 246288 2013-02-03 15:54:57Z jilles $
+ * $FreeBSD: head/bin/sh/redir.c 253658 2013-07-25 19:48:15Z jilles $
  */
 
 #include <sys/types.h>
@@ -59,17 +59,15 @@
 
 #define EMPTY -2		/* marks an unused slot in redirtab */
 #define CLOSED -1		/* fd was not open before redir */
-#define PIPESIZE 4096		/* amount of buffering in a pipe */
 
 
-MKINIT
 struct redirtab {
 	struct redirtab *next;
 	int renamed[10];
 };
 
 
-MKINIT struct redirtab *redirlist;
+static struct redirtab *redirlist;
 
 /*
  * We keep track of whether or not fd0 has been redirected.  This is for
@@ -117,7 +115,7 @@ redirect(union node *redir, int flags)
 
 		if ((flags & REDIR_PUSH) && sv->renamed[fd] == EMPTY) {
 			INTOFF;
-			if ((i = fcntl(fd, F_DUPFD, 10)) == -1) {
+			if ((i = fcntl(fd, F_DUPFD_CLOEXEC, 10)) == -1) {
 				switch (errno) {
 				case EBADF:
 					i = CLOSED;
@@ -127,8 +125,7 @@ redirect(union node *redir, int flags)
 					error("%d: %s", fd, strerror(errno));
 					break;
 				}
-			} else
-				(void)fcntl(i, F_SETFD, FD_CLOEXEC);
+			}
 			sv->renamed[fd] = i;
 			INTON;
 		}
@@ -248,7 +245,9 @@ openhere(union node *redir)
 {
 	char *p;
 	int pip[2];
-	int len = 0;
+	size_t len = 0;
+	int flags;
+	ssize_t written = 0;
 
 	if (pipe(pip) < 0)
 		error("Pipe call failed: %s", strerror(errno));
@@ -258,9 +257,16 @@ openhere(union node *redir)
 	else
 		p = redir->nhere.doc->narg.text;
 	len = strlen(p);
-	if (len <= PIPESIZE) {
-		xwrite(pip[1], p, len);
+	if (len == 0)
 		goto out;
+	flags = fcntl(pip[1], F_GETFL, 0);
+	if (flags != -1 && fcntl(pip[1], F_SETFL, flags | O_NONBLOCK) != -1) {
+		written = write(pip[1], p, len);
+		if (written < 0)
+			written = 0;
+		if ((size_t)written == len)
+			goto out;
+		fcntl(pip[1], F_SETFL, flags);
 	}
 
 	if (forkshell(NULL, NULL, FORK_NOJOB) == 0) {
@@ -270,7 +276,7 @@ openhere(union node *redir)
 		signal(SIGHUP, SIG_IGN);
 		signal(SIGTSTP, SIG_IGN);
 		signal(SIGPIPE, SIG_DFL);
-		xwrite(pip[1], p, len);
+		xwrite(pip[1], p + written, len - written);
 		_exit(0);
 	}
 out:
@@ -312,16 +318,13 @@ popredir(void)
  * Undo all redirections.  Called on error or interrupt.
  */
 
-#ifdef mkinit
-
-INCLUDE "redir.h"
-
-RESET {
+void
+resetredir(void)
+{
 	while (redirlist)
 		popredir();
 }
 
-#endif
 
 /* Return true if fd 0 has already been redirected at least once.  */
 int

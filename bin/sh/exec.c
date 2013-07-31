@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)exec.c	8.4 (Berkeley) 6/8/95
- * $FreeBSD: head/bin/sh/exec.c 245426 2013-01-14 16:40:50Z jilles $
+ * $FreeBSD: head/bin/sh/exec.c 253650 2013-07-25 15:08:41Z jilles $
  */
 
 #include <sys/types.h>
@@ -65,7 +65,6 @@
 #include "syntax.h"
 #include "memalloc.h"
 #include "error.h"
-#include "init.h"
 #include "mystring.h"
 #include "show.h"
 #include "jobs.h"
@@ -181,7 +180,7 @@ padvance(const char **path, const char *name)
 {
 	const char *p, *start;
 	char *q;
-	int len;
+	size_t len;
 
 	if (*path == NULL)
 		return NULL;

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)parser.h	8.3 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/parser.h 246507 2013-02-07 21:24:10Z jilles $
+ * $FreeBSD: head/bin/sh/parser.h 253650 2013-07-25 15:08:41Z jilles $
  */
 
 /* control characters in argument strings */
@@ -83,7 +83,8 @@ extern const char *const parsekwd[];
 
 union node *parsecmd(int);
 void fixredir(union node *, const char *, int);
+void resetparser(void);
 int goodname(const char *);
 int isassignment(const char *);
 const char *getprompt(void *);
-const char *expandstr(char *);
+const char *expandstr(const char *);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)trap.c	8.5 (Berkeley) 6/5/95
- * $FreeBSD: head/bin/sh/trap.c 247720 2013-03-03 17:33:59Z jilles $
+ * $FreeBSD: head/bin/sh/trap.c 253658 2013-07-25 19:48:15Z jilles $
  */
 
 #include <signal.h>
@@ -67,7 +67,7 @@
 #define S_RESET 5		/* temporary - to reset a hard ignored sig */
 
 
-MKINIT char sigmode[NSIG];	/* current value of signal */
+static char sigmode[NSIG];	/* current value of signal */
 volatile sig_atomic_t pendingsig;	/* indicates some signal received */
 int in_dotrap;			/* do we execute in a trap handler? */
 static char *volatile trap[NSIG];	/* trap handler commands */

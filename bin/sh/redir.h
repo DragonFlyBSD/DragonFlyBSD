@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)redir.h	8.2 (Berkeley) 5/4/95
- * $FreeBSD: head/bin/sh/redir.h 127958 2004-04-06 20:06:54Z markm $
+ * $FreeBSD: head/bin/sh/redir.h 253650 2013-07-25 15:08:41Z jilles $
  */
 
 /* flags passed to redirect */
@@ -44,5 +44,6 @@
 union node;
 void redirect(union node *, int);
 void popredir(void);
+void resetredir(void);
 int fd0_redirected_p(void);
 void clearredir(void);

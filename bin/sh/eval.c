@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
- * $FreeBSD: head/bin/sh/eval.c 247206 2013-02-23 22:50:57Z jilles $
+ * $FreeBSD: head/bin/sh/eval.c 253658 2013-07-25 19:48:15Z jilles $
  */
 
 #include <sys/time.h>
@@ -73,7 +73,7 @@
 
 int evalskip;			/* set if we are skipping commands */
 int skipcount;			/* number of levels to skip */
-MKINIT int loopnest;		/* current loop nesting level */
+static int loopnest;		/* current loop nesting level */
 int funcnest;			/* depth of function calls */
 static int builtin_flags;	/* evalcommand flags for builtins */
 
@@ -101,16 +101,13 @@ static void prehash(union node *);
  * Called to reset things after an exception.
  */
 
-#ifdef mkinit
-INCLUDE "eval.h"
-
-RESET {
+void
+reseteval(void)
+{
 	evalskip = 0;
 	loopnest = 0;
 	funcnest = 0;
 }
-#endif
-
 
 
 /*
@@ -276,6 +273,8 @@ evaltree(union node *n, int flags)
 			break;
 		case NNOT:
 			evaltree(n->nnot.com, EV_TESTED);
+			if (evalskip)
+				goto out;
 			exitstatus = !exitstatus;
 			break;
 

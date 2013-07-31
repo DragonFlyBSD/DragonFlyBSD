@@ -31,7 +31,7 @@
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
- * $FreeBSD: head/bin/sh/main.c 247206 2013-02-23 22:50:57Z jilles $
+ * $FreeBSD: head/bin/sh/main.c 253650 2013-07-25 15:08:41Z jilles $
  */
 
 #include <stdio.h>
@@ -58,10 +58,10 @@
 #include "show.h"
 #include "memalloc.h"
 #include "error.h"
-#include "init.h"
 #include "mystring.h"
 #include "exec.h"
 #include "cd.h"
+#include "redir.h"
 #include "builtins.h"
 
 int rootpid;
@@ -69,6 +69,7 @@ int rootshell;
 struct jmploc main_handler;
 int localeisutf8, initial_localeisutf8;
 
+static void reset(void);
 static void cmdloop(int);
 static void read_profile(const char *);
 static const char *find_dot_file(const char *);
@@ -160,8 +161,8 @@ state3:
 	if (minusc) {
 		evalstring(minusc, sflag ? 0 : EV_EXIT);
 	}
+state4:
 	if (sflag || minusc == NULL) {
-state4:	/* XXX ??? - why isn't this before the "if" statement */
 		cmdloop(1);
 	}
 	exitshell(exitstatus);
@@ -169,6 +170,14 @@ state4:	/* XXX ??? - why isn't this before the "if" statement */
 	return 0;
 }
 
+static void
+reset(void)
+{
+	reseteval();
+	resetinput();
+	resetparser();
+	resetredir();
+}
 
 /*
  * Read and execute commands.  "Top" is nonzero for the top level command
@@ -238,7 +247,7 @@ read_profile(const char *name)
 	if (expandedname == NULL)
 		return;
 	INTOFF;
-	if ((fd = open(expandedname, O_RDONLY)) >= 0)
+	if ((fd = open(expandedname, O_RDONLY | O_CLOEXEC)) >= 0)
 		setinputfd(fd, 1);
 	INTON;
 	if (fd < 0)
