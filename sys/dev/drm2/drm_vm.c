@@ -232,6 +232,6 @@ vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end, int pat_mode)
                 }
         }
         mtx_unlock(&vm_phys_fictitious_reg_mtx);
-        kfree(fp, DRM_MEM_DRIVER);
+        drm_free(fp, DRM_MEM_DRIVER);
         return (EBUSY);
 }

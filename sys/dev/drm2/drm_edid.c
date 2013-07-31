@@ -356,7 +356,7 @@ carp:
 	    drm_get_connector_name(connector), j);
 
 out:
-	free(block, DRM_MEM_KMS);
+	drm_free(block, DRM_MEM_KMS);
 	return NULL;
 }
 
@@ -767,7 +767,7 @@ drm_mode_std(struct drm_connector *connector, struct edid *edid,
 		 */
 		mode = drm_gtf_mode(dev, hsize, vsize, vrefresh_rate, 0, 0);
 		if (drm_mode_hsync(mode) > drm_gtf2_hbreak(edid)) {
-			free(mode, DRM_MEM_KMS);
+			drm_free(mode, DRM_MEM_KMS);
 			mode = drm_gtf_mode_complex(dev, hsize, vsize,
 						    vrefresh_rate, 0, 0,
 						    drm_gtf2_m(edid),

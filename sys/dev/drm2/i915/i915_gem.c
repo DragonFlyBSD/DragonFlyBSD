@@ -188,9 +188,9 @@ i915_gem_free_object_tail(struct drm_i915_gem_object *obj)
 	drm_gem_object_release(&obj->base);
 	i915_gem_info_remove_obj(dev_priv, obj->base.size);
 
-	free(obj->page_cpu_valid, DRM_I915_GEM);
-	free(obj->bit_17, DRM_I915_GEM);
-	free(obj, DRM_I915_GEM);
+	drm_free(obj->page_cpu_valid, DRM_I915_GEM);
+	drm_free(obj->bit_17, DRM_I915_GEM);
+	drm_free(obj, DRM_I915_GEM);
 }
 
 void
@@ -714,7 +714,7 @@ i915_gem_busy_ioctl(struct drm_device *dev, void *data,
 			    M_WAITOK | M_ZERO);
 			ret = i915_add_request(obj->ring, NULL, request);
 			if (ret != 0)
-				free(request, DRM_I915_GEM);
+				drm_free(request, DRM_I915_GEM);
 		}
 
 		i915_gem_retire_requests_ring(obj->ring);
@@ -929,7 +929,7 @@ i915_gem_create(struct drm_file *file, struct drm_device *dev, uint64_t size,
 	if (ret != 0) {
 		drm_gem_object_release(&obj->base);
 		i915_gem_info_remove_obj(dev->dev_private, obj->base.size);
-		free(obj, DRM_I915_GEM);
+		drm_free(obj, DRM_I915_GEM);
 		return (-ret);
 	}
 
@@ -1146,7 +1146,7 @@ unlock:
 unlocked:
 	vm_page_unhold_pages(ma, npages);
 free_ma:
-	free(ma, DRM_I915_GEM);
+	drm_free(ma, DRM_I915_GEM);
 	return (ret);
 }
 
@@ -1542,7 +1542,7 @@ i915_gem_alloc_object(struct drm_device *dev, size_t size)
 	obj = kmalloc(sizeof(*obj), DRM_I915_GEM, M_WAITOK | M_ZERO);
 
 	if (drm_gem_object_init(dev, &obj->base, size) != 0) {
-		free(obj, DRM_I915_GEM);
+		drm_free(obj, DRM_I915_GEM);
 		return (NULL);
 	}
 
@@ -1852,7 +1852,7 @@ i915_gem_object_set_to_full_cpu_read_domain(struct drm_i915_gem_object *obj)
 		}
 	}
 
-	free(obj->page_cpu_valid, DRM_I915_GEM);
+	drm_free(obj->page_cpu_valid, DRM_I915_GEM);
 	obj->page_cpu_valid = NULL;
 }
 
@@ -2197,7 +2197,7 @@ failed:
 		atomic_add_long(&i915_gem_wired_pages_cnt, -1);
 	}
 	VM_OBJECT_UNLOCK(vm_obj);
-	free(obj->pages, DRM_I915_GEM);
+	drm_free(obj->pages, DRM_I915_GEM);
 	obj->pages = NULL;
 	return (-EIO);
 }
@@ -2261,7 +2261,7 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 	}
 	VM_OBJECT_UNLOCK(obj->base.vm_obj);
 	obj->dirty = 0;
-	free(obj->pages, DRM_I915_GEM);
+	drm_free(obj->pages, DRM_I915_GEM);
 	obj->pages = NULL;
 }
 
@@ -2558,7 +2558,7 @@ i915_wait_request(struct intel_ring_buffer *ring, uint32_t seqno, bool do_retire
 
 		ret = i915_add_request(ring, NULL, request);
 		if (ret != 0) {
-			free(request, DRM_I915_GEM);
+			drm_free(request, DRM_I915_GEM);
 			return (ret);
 		}
 
@@ -2746,7 +2746,7 @@ i915_gem_reset_ring_lists(struct drm_i915_private *dev_priv,
 
 		list_del(&request->list);
 		i915_gem_request_remove_from_client(request);
-		free(request, DRM_I915_GEM);
+		drm_free(request, DRM_I915_GEM);
 	}
 
 	while (!list_empty(&ring->active_list)) {
@@ -2851,7 +2851,7 @@ i915_gem_retire_requests_ring(struct intel_ring_buffer *ring)
 
 		list_del(&request->list);
 		i915_gem_request_remove_from_client(request);
-		free(request, DRM_I915_GEM);
+		drm_free(request, DRM_I915_GEM);
 	}
 
 	/* Move any buffers on the active list that are no longer referenced
@@ -3411,7 +3411,7 @@ i915_gem_retire_task_handler(void *arg, int pending)
 			    M_WAITOK | M_ZERO);
 			if (ret || request == NULL ||
 			    i915_add_request(ring, NULL, request))
-				free(request, DRM_I915_GEM);
+				drm_free(request, DRM_I915_GEM);
 		}
 
 		idle &= list_empty(&ring->request_list);
@@ -3466,7 +3466,7 @@ i915_gem_init_phys_object(struct drm_device *dev, int id, int size, int align)
 	return (0);
 
 free_obj:
-	free(phys_obj, DRM_I915_GEM);
+	drm_free(phys_obj, DRM_I915_GEM);
 	return (ret);
 }
 
@@ -3485,7 +3485,7 @@ i915_gem_free_phys_object(struct drm_device *dev, int id)
 		i915_gem_detach_phys_object(dev, phys_obj->cur_obj);
 
 	drm_pci_free(dev, phys_obj->handle);
-	free(phys_obj, DRM_I915_GEM);
+	drm_free(phys_obj, DRM_I915_GEM);
 	dev_priv->mm.phys_objs[id - 1] = NULL;
 }
 

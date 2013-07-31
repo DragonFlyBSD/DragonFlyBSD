@@ -1323,7 +1323,7 @@ intel_sdvo_tmds_sink_detect(struct drm_connector *connector)
 		} else
 			status = connector_status_disconnected;
 		connector->display_info.raw_edid = NULL;
-		free(edid, DRM_MEM_KMS);
+		drm_free(edid, DRM_MEM_KMS);
 	}
 
 	if (status == connector_status_connected) {
@@ -1398,7 +1398,7 @@ intel_sdvo_detect(struct drm_connector *connector, bool force)
 				ret = connector_status_disconnected;
 
 			connector->display_info.raw_edid = NULL;
-			free(edid, DRM_MEM_KMS);
+			drm_free(edid, DRM_MEM_KMS);
 		} else
 			ret = connector_status_connected;
 	}
@@ -1444,7 +1444,7 @@ static void intel_sdvo_get_ddc_modes(struct drm_connector *connector)
 		}
 
 		connector->display_info.raw_edid = NULL;
-		free(edid, DRM_MEM_KMS);
+		drm_free(edid, DRM_MEM_KMS);
 	}
 }
 
@@ -1660,7 +1660,7 @@ static void intel_sdvo_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	free(connector, DRM_MEM_KMS);
+	drm_free(connector, DRM_MEM_KMS);
 }
 
 static bool intel_sdvo_detect_hdmi_audio(struct drm_connector *connector)
@@ -2596,7 +2596,7 @@ bool intel_sdvo_init(struct drm_device *dev, int sdvo_reg)
 	intel_sdvo->slave_addr = intel_sdvo_get_slave_addr(dev, sdvo_reg) >> 1;
 	intel_sdvo_select_i2c_bus(dev_priv, intel_sdvo, sdvo_reg);
 	if (!intel_sdvo_init_ddc_proxy(intel_sdvo, dev, sdvo_reg)) {
-		free(intel_sdvo, DRM_MEM_KMS);
+		drm_free(intel_sdvo, DRM_MEM_KMS);
 		return false;
 	}
 
@@ -2673,7 +2673,7 @@ bool intel_sdvo_init(struct drm_device *dev, int sdvo_reg)
 
 err:
 	drm_encoder_cleanup(&intel_encoder->base);
-	free(intel_sdvo, DRM_MEM_KMS);
+	drm_free(intel_sdvo, DRM_MEM_KMS);
 
 	return false;
 }

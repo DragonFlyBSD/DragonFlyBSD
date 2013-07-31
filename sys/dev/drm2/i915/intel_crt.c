@@ -291,7 +291,7 @@ static bool intel_crt_detect_ddc(struct drm_connector *connector)
 		if (edid != NULL) {
 			is_digital = edid->input & DRM_EDID_INPUT_DIGITAL;
 			connector->display_info.raw_edid = NULL;
-			free(edid, DRM_MEM_KMS);
+			drm_free(edid, DRM_MEM_KMS);
 		}
 
 		if (!is_digital) {
@@ -471,7 +471,7 @@ static void intel_crt_destroy(struct drm_connector *connector)
 	drm_sysfs_connector_remove(connector);
 #endif
 	drm_connector_cleanup(connector);
-	free(connector, DRM_MEM_KMS);
+	drm_free(connector, DRM_MEM_KMS);
 }
 
 static int intel_crt_get_modes(struct drm_connector *connector)

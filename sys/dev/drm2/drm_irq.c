@@ -326,13 +326,13 @@ void drm_vblank_cleanup(struct drm_device *dev)
 
 	vblank_disable_fn(dev);
 
-	free(dev->_vblank_count, DRM_MEM_VBLANK);
-	free(dev->vblank_refcount, DRM_MEM_VBLANK);
-	free(dev->vblank_enabled, DRM_MEM_VBLANK);
-	free(dev->last_vblank, DRM_MEM_VBLANK);
-	free(dev->last_vblank_wait, DRM_MEM_VBLANK);
-	free(dev->vblank_inmodeset, DRM_MEM_VBLANK);
-	free(dev->_vblank_time, DRM_MEM_VBLANK);
+	drm_free(dev->_vblank_count, DRM_MEM_VBLANK);
+	drm_free(dev->vblank_refcount, DRM_MEM_VBLANK);
+	drm_free(dev->vblank_enabled, DRM_MEM_VBLANK);
+	drm_free(dev->last_vblank, DRM_MEM_VBLANK);
+	drm_free(dev->last_vblank_wait, DRM_MEM_VBLANK);
+	drm_free(dev->vblank_inmodeset, DRM_MEM_VBLANK);
+	drm_free(dev->_vblank_time, DRM_MEM_VBLANK);
 
 	dev->num_crtcs = 0;
 }
@@ -946,7 +946,7 @@ static void
 drm_vblank_event_destroy(struct drm_pending_event *e)
 {
 
-	free(e, DRM_MEM_VBLANK);
+	drm_free(e, DRM_MEM_VBLANK);
 }
 
 static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
@@ -1009,7 +1009,7 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 
 err_unlock:
 	lockmgr(&dev->event_lock, LK_RELEASE);
-	free(e, DRM_MEM_VBLANK);
+	drm_free(e, DRM_MEM_VBLANK);
 	drm_vblank_put(dev, pipe);
 	return ret;
 }

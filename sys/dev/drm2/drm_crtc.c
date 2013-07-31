@@ -394,7 +394,7 @@ void drm_crtc_cleanup(struct drm_crtc *crtc)
 	DRM_MODE_CONFIG_ASSERT_LOCKED(dev);
 
 	if (crtc->gamma_store) {
-		free(crtc->gamma_store, DRM_MEM_KMS);
+		drm_free(crtc->gamma_store, DRM_MEM_KMS);
 		crtc->gamma_store = NULL;
 	}
 
@@ -608,7 +608,7 @@ void drm_plane_cleanup(struct drm_plane *plane)
 	struct drm_device *dev = plane->dev;
 
 	lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
-	free(plane->format_types, DRM_MEM_KMS);
+	drm_free(plane->format_types, DRM_MEM_KMS);
 	drm_mode_object_put(dev, &plane->base);
 	/* if not added to a list, it must be a private plane */
 	if (!list_empty(&plane->head)) {
@@ -638,7 +638,7 @@ struct drm_display_mode *drm_mode_create(struct drm_device *dev)
 	    M_WAITOK | M_ZERO);
 
 	if (drm_mode_object_get(dev, &nmode->base, DRM_MODE_OBJECT_MODE)) {
-		free(nmode, DRM_MEM_KMS);
+		drm_free(nmode, DRM_MEM_KMS);
 		return (NULL);
 	}
 	return nmode;
@@ -661,7 +661,7 @@ void drm_mode_destroy(struct drm_device *dev, struct drm_display_mode *mode)
 
 	drm_mode_object_put(dev, &mode->base);
 
-	free(mode, DRM_MEM_KMS);
+	drm_free(mode, DRM_MEM_KMS);
 }
 
 static int drm_mode_create_standard_connector_properties(struct drm_device *dev)
@@ -1932,7 +1932,7 @@ int drm_mode_setcrtc(struct drm_device *dev, void *data,
 	ret = crtc->funcs->set_config(&set);
 
 out:
-	free(connector_set, DRM_MEM_KMS);
+	drm_free(connector_set, DRM_MEM_KMS);
 	drm_mode_destroy(dev, mode);
 	lockmgr(&dev->mode_config.lock, LK_RELEASE);
 	return ret;
@@ -2380,7 +2380,7 @@ int drm_mode_dirtyfb_ioctl(struct drm_device *dev,
 	}
 
 out_err2:
-	free(clips, DRM_MEM_KMS);
+	drm_free(clips, DRM_MEM_KMS);
 out_err1:
 	lockmgr(&dev->mode_config.lock, LK_RELEASE);
 	return ret;
@@ -2634,8 +2634,8 @@ struct drm_property *drm_property_create(struct drm_device *dev, int flags,
 	return property;
 
 fail:
-	free(property->values, DRM_MEM_KMS);
-	free(property, DRM_MEM_KMS);
+	drm_free(property->values, DRM_MEM_KMS);
+	drm_free(property, DRM_MEM_KMS);
 	return (NULL);
 }
 
@@ -2720,14 +2720,14 @@ void drm_property_destroy(struct drm_device *dev, struct drm_property *property)
 
 	list_for_each_entry_safe(prop_enum, pt, &property->enum_blob_list, head) {
 		list_del(&prop_enum->head);
-		free(prop_enum, DRM_MEM_KMS);
+		drm_free(prop_enum, DRM_MEM_KMS);
 	}
 
 	if (property->num_values)
-		free(property->values, DRM_MEM_KMS);
+		drm_free(property->values, DRM_MEM_KMS);
 	drm_mode_object_put(dev, &property->base);
 	list_del(&property->head);
-	free(property, DRM_MEM_KMS);
+	drm_free(property, DRM_MEM_KMS);
 }
 
 int drm_connector_attach_property(struct drm_connector *connector,
@@ -2901,7 +2901,7 @@ static struct drm_property_blob *drm_property_create_blob(struct drm_device *dev
 
 	ret = drm_mode_object_get(dev, &blob->base, DRM_MODE_OBJECT_BLOB);
 	if (ret) {
-		free(blob, DRM_MEM_KMS);
+		drm_free(blob, DRM_MEM_KMS);
 		return (NULL);
 	}
 
@@ -2918,7 +2918,7 @@ static void drm_property_destroy_blob(struct drm_device *dev,
 {
 	drm_mode_object_put(dev, &blob->base);
 	list_del(&blob->head);
-	free(blob, DRM_MEM_KMS);
+	drm_free(blob, DRM_MEM_KMS);
 }
 
 int drm_mode_getblob_ioctl(struct drm_device *dev,
@@ -3203,7 +3203,7 @@ static void
 drm_kms_free(void *arg)
 {
 
-	free(arg, DRM_MEM_KMS);
+	drm_free(arg, DRM_MEM_KMS);
 }
 
 int drm_mode_page_flip_ioctl(struct drm_device *dev, void *data,
@@ -3282,7 +3282,7 @@ int drm_mode_page_flip_ioctl(struct drm_device *dev, void *data,
 			lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 			file_priv->event_space += sizeof e->event;
 			lockmgr(&dev->event_lock, LK_RELEASE);
-			free(e, DRM_MEM_KMS);
+			drm_free(e, DRM_MEM_KMS);
 		}
 	}
 

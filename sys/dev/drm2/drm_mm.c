@@ -298,7 +298,7 @@ void drm_mm_put_block(struct drm_mm_node *node)
 		list_add(&node->node_list, &mm->unused_nodes);
 		++mm->num_unused;
 	} else
-		free(node, DRM_MEM_MM);
+		drm_free(node, DRM_MEM_MM);
 	spin_unlock(&mm->unused_spin);
 }
 
@@ -549,7 +549,7 @@ void drm_mm_takedown(struct drm_mm * mm)
 	spin_lock(&mm->unused_spin);
 	list_for_each_entry_safe(entry, next, &mm->unused_nodes, node_list) {
 		list_del(&entry->node_list);
-		free(entry, DRM_MEM_MM);
+		drm_free(entry, DRM_MEM_MM);
 		--mm->num_unused;
 	}
 	spin_unlock(&mm->unused_spin);

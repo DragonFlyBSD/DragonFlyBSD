@@ -73,7 +73,7 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 	/* FIXME */
 	retcode = devfs_set_cdevpriv(priv, drm_close);
 	if (retcode != 0) {
-		free(priv, DRM_MEM_FILES);
+		drm_free(priv, DRM_MEM_FILES);
 		return retcode;
 	}
 #endif
@@ -100,7 +100,7 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 		if (retcode != 0) {
 /* FIXME */
 /*			devfs_clear_cdevpriv(); */
-			free(priv, DRM_MEM_FILES);
+			drm_free(priv, DRM_MEM_FILES);
 			DRM_UNLOCK(dev);
 			return retcode;
 		}

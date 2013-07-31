@@ -336,13 +336,6 @@ for ( ret = 0 ; !ret && !(condition) ; ) {			\
 }
 
 __inline static void
-free(void *addr, struct malloc_type *type)
-{
-	if (addr != NULL)
-		kfree(addr, type);
-}
-
-__inline static void
 vm_page_unhold_pages(vm_page_t *ma, int count)
 {
 	int i;
@@ -1363,8 +1356,8 @@ drm_realloc(void *oldpt, size_t oldsize, size_t size,
 {
 	void *res;
 	res = krealloc(oldpt, size, area, M_NOWAIT);
-	if (res == NULL)
-		free(oldpt,area);
+	if (res == NULL && oldpt != NULL)
+		kfree(oldpt,area);
 	return res;
 }
 
@@ -1372,7 +1365,7 @@ static __inline__ void
 drm_free(void *pt, struct malloc_type *area)
 {
 	if (pt != NULL)
-		free(pt, area);
+		kfree(pt, area);
 }
 
 /* Inline replacements for DRM_IOREMAP macros */

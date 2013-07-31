@@ -71,5 +71,5 @@ drm_list_sort(void *priv, struct list_head *head, int (*cmp)(void *priv,
 	INIT_LIST_HEAD(head);
 	for (i = 0; i < count; i++)
 		list_add_tail(ar[i], head);
-	free(ar, M_TEMP);
+	drm_free(ar, M_TEMP);
 }

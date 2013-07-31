@@ -222,7 +222,7 @@ int intel_fbdev_init(struct drm_device *dev)
 				 dev_priv->num_pipe,
 				 INTELFB_CONN_LIMIT);
 	if (ret) {
-		free(ifbdev, DRM_MEM_KMS);
+		drm_free(ifbdev, DRM_MEM_KMS);
 		return ret;
 	}
 
@@ -238,7 +238,7 @@ void intel_fbdev_fini(struct drm_device *dev)
 		return;
 
 	intel_fbdev_destroy(dev, dev_priv->fbdev);
-	free(dev_priv->fbdev, DRM_MEM_KMS);
+	drm_free(dev_priv->fbdev, DRM_MEM_KMS);
 	dev_priv->fbdev = NULL;
 }
 

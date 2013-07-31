@@ -102,8 +102,8 @@ int drm_rmdraw(struct drm_device *dev, void *data, struct drm_file *file_priv)
 		    (struct bsd_drm_drawable_info *)info);
 		DRM_SPINUNLOCK(&dev->drw_lock);
 		free_unr(dev->drw_unrhdr, draw->handle);
-		free(info->rects, DRM_MEM_DRAWABLE);
-		free(info, DRM_MEM_DRAWABLE);
+		drm_free(info->rects, DRM_MEM_DRAWABLE);
+		drm_free(info, DRM_MEM_DRAWABLE);
 		return 0;
 	} else {
 		DRM_SPINUNLOCK(&dev->drw_lock);
@@ -126,7 +126,7 @@ int drm_update_draw(struct drm_device *dev, void *data,
 	case DRM_DRAWABLE_CLIPRECTS:
 		DRM_SPINLOCK(&dev->drw_lock);
 		if (update->num != info->num_rects) {
-			free(info->rects, DRM_MEM_DRAWABLE);
+			drm_free(info->rects, DRM_MEM_DRAWABLE);
 			info->rects = NULL;
 			info->num_rects = 0;
 		}
@@ -165,8 +165,8 @@ void drm_drawable_free_all(struct drm_device *dev)
 		    (struct bsd_drm_drawable_info *)info);
 		DRM_SPINUNLOCK(&dev->drw_lock);
 		free_unr(dev->drw_unrhdr, info->handle);
-		free(info->info.rects, DRM_MEM_DRAWABLE);
-		free(info, DRM_MEM_DRAWABLE);
+		drm_free(info->info.rects, DRM_MEM_DRAWABLE);
+		drm_free(info, DRM_MEM_DRAWABLE);
 		DRM_SPINLOCK(&dev->drw_lock);
 	}
 	DRM_SPINUNLOCK(&dev->drw_lock);

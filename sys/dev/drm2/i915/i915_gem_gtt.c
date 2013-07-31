@@ -204,8 +204,8 @@ i915_gem_cleanup_aliasing_ppgtt(struct drm_device *dev)
 			vm_page_free(m);
 		}
 	}
-	free(ppgtt->pt_pages, DRM_I915_GEM);
-	free(ppgtt, DRM_I915_GEM);
+	drm_free(ppgtt->pt_pages, DRM_I915_GEM);
+	drm_free(ppgtt, DRM_I915_GEM);
 }
 
 
