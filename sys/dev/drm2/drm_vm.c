@@ -47,7 +47,6 @@ drm_mmap(struct dev_mmap_args *ap)
 	drm_local_map_t *map;
 	enum drm_map_type type;
 	vm_paddr_t phys;
-	int error;
 
 	/* d_mmap gets called twice, we can only reference file_priv during
 	 * the first call.  We need to assume that if error is EBADF the
@@ -65,7 +64,7 @@ drm_mmap(struct dev_mmap_args *ap)
 	if (!file_priv->authenticated)
 		return EACCES;
 
-	DRM_DEBUG("called with offset %016jx\n", offset);
+	DRM_DEBUG("called with offset %016jx\n", (uintmax_t)offset);
 	if (dev->dma && offset < ptoa(dev->dma->page_count)) {
 		drm_device_dma_t *dma = dev->dma;
 
@@ -99,7 +98,8 @@ drm_mmap(struct dev_mmap_args *ap)
 	}
 
 	if (map == NULL) {
-		DRM_DEBUG("Can't find map, request offset = %016jx\n", offset);
+		DRM_DEBUG("Can't find map, request offset = %016jx\n",
+		    (uintmax_t)offset);
 		TAILQ_FOREACH(map, &dev->maplist, link) {
 			DRM_DEBUG("map offset = %016lx, handle = %016lx\n",
 			    map->offset, (unsigned long)map->handle);

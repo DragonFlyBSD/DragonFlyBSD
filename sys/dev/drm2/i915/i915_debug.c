@@ -1580,7 +1580,9 @@ struct i915_info_sysctl_thunk {
 static int
 i915_info_sysctl_handler(SYSCTL_HANDLER_ARGS)
 {
+#if 0
 	struct sbuf m;
+#endif
 	struct i915_info_sysctl_thunk *thunk;
 	struct drm_device *dev;
 	drm_i915_private_t *dev_priv;

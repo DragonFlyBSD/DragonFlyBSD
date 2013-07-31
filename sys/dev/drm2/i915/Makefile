@@ -27,6 +27,7 @@ SRCS	= \
 	intel_sprite.c \
 	intel_tv.c
 
-SRCS   += device_if.h bus_if.h pci_if.h iicbus_if.h iicbb_if.h opt_drm.h
+SRCS   += device_if.h bus_if.h pci_if.h iicbus_if.h iicbb_if.h opt_drm.h \
+	  opt_ktr.h
 
 .include <bsd.kmod.mk>

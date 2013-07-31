@@ -32,5 +32,6 @@ SRCS	= \
 	drm_vm.c
 
 SRCS   += device_if.h bus_if.h pci_if.h device_if.h iicbus_if.h opt_drm.h \
+	  opt_ktr.h opt_vm.h
 
 .include <bsd.kmod.mk>

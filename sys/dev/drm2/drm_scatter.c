@@ -74,8 +74,9 @@ drm_sg_alloc(struct drm_device *dev, struct drm_scatter_gather *request)
 
 	request->handle = entry->vaddr;
 
-	DRM_DEBUG("allocated %ju pages @ 0x%08zx, contents=%08lx\n",
-	    entry->pages, entry->vaddr, *(unsigned long *)entry->vaddr);
+	DRM_DEBUG("allocated %ju pages @ 0x%08jx, contents=%08lx\n",
+	    entry->pages, (uintmax_t)entry->vaddr,
+	    *(unsigned long *)entry->vaddr);
 
 	return (0);
 }
@@ -120,7 +121,7 @@ drm_sg_free(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	if (!entry || entry->vaddr != request->handle)
 		return (EINVAL);
 
-	DRM_DEBUG("free 0x%zx\n", entry->vaddr);
+	DRM_DEBUG("free 0x%jx\n", (uintmax_t)entry->vaddr);
 
 	drm_sg_cleanup(entry);
 
