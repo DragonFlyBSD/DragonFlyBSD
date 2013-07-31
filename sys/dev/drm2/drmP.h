@@ -1369,9 +1369,10 @@ drm_realloc(void *oldpt, size_t oldsize, size_t size,
 }
 
 static __inline__ void
-drm_free(void *pt, size_t size, struct malloc_type *area)
+drm_free(void *pt, struct malloc_type *area)
 {
-	free(pt, area);
+	if (pt != NULL)
+		free(pt, area);
 }
 
 /* Inline replacements for DRM_IOREMAP macros */

@@ -52,8 +52,7 @@ void drm_sman_takedown(struct drm_sman * sman)
 	drm_ht_remove(&sman->user_hash_tab);
 	drm_ht_remove(&sman->owner_hash_tab);
 	if (sman->mm)
-		drm_free(sman->mm, sman->num_managers * sizeof(*sman->mm),
-		    DRM_MEM_MM);
+		drm_free(sman->mm, DRM_MEM_MM);
 }
 
 int
@@ -79,7 +78,7 @@ drm_sman_init(struct drm_sman * sman, unsigned int num_managers,
 
 	drm_ht_remove(&sman->owner_hash_tab);
 out1:
-	drm_free(sman->mm, num_managers * sizeof(*sman->mm), DRM_MEM_MM);
+	drm_free(sman->mm, DRM_MEM_MM);
 out:
 	return ret;
 }
@@ -110,7 +109,7 @@ static void drm_sman_mm_destroy(void *private)
 {
 	struct drm_mm *mm = (struct drm_mm *) private;
 	drm_mm_takedown(mm);
-	drm_free(mm, sizeof(*mm), DRM_MEM_MM);
+	drm_free(mm, DRM_MEM_MM);
 }
 
 static unsigned long drm_sman_mm_offset(void *private, void *ref)
@@ -138,7 +137,7 @@ drm_sman_set_range(struct drm_sman * sman, unsigned int manager,
 	ret = drm_mm_init(mm, start, size);
 
 	if (ret) {
-		drm_free(mm, sizeof(*mm), DRM_MEM_MM);
+		drm_free(mm, DRM_MEM_MM);
 		return ret;
 	}
 
@@ -187,7 +186,7 @@ static struct drm_owner_item *drm_sman_get_owner_item(struct drm_sman * sman,
 	return owner_item;
 
 out1:
-	drm_free(owner_item, sizeof(*owner_item), DRM_MEM_MM);
+	drm_free(owner_item, DRM_MEM_MM);
 out:
 	return NULL;
 }
@@ -239,7 +238,7 @@ struct drm_memblock_item *drm_sman_alloc(struct drm_sman *sman, unsigned int man
 out2:
 	drm_ht_remove_item(&sman->user_hash_tab, &memblock->user_hash);
 out1:
-	drm_free(memblock, sizeof(*memblock), DRM_MEM_MM);
+	drm_free(memblock, DRM_MEM_MM);
 out:
 	sman_mm->free(sman_mm->private, tmp);
 
@@ -253,7 +252,7 @@ static void drm_sman_free(struct drm_memblock_item *item)
 	list_del(&item->owner_list);
 	drm_ht_remove_item(&sman->user_hash_tab, &item->user_hash);
 	item->mm->free(item->mm->private, item->mm_info);
-	drm_free(item, sizeof(*item), DRM_MEM_MM);
+	drm_free(item, DRM_MEM_MM);
 }
 
 int drm_sman_free_key(struct drm_sman *sman, unsigned int key)
@@ -275,7 +274,7 @@ static void drm_sman_remove_owner(struct drm_sman *sman,
 {
 	list_del(&owner_item->sman_list);
 	drm_ht_remove_item(&sman->owner_hash_tab, &owner_item->owner_hash);
-	drm_free(owner_item, sizeof(*owner_item), DRM_MEM_MM);
+	drm_free(owner_item, DRM_MEM_MM);
 }
 
 int drm_sman_owner_clean(struct drm_sman *sman, unsigned long owner)
