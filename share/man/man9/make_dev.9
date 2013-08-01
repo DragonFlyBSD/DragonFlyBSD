@@ -61,11 +61,11 @@
 .Ft int
 .Fn dev_ops_remove_minor "struct dev_ops *ops" "int minor"
 .Ft cdev_t
-.Fn make_dev "struct dev_ops *ops" "int minor" "uid_t uid" "gid_t gid" "int perms" "char *fmt" ...
+.Fn make_dev "struct dev_ops *ops" "int minor" "uid_t uid" "gid_t gid" "int perms" "const char *fmt" ...
 .Ft int
 .Fn make_dev_alias "cdev_t target" "const char *fmt" ...
 .Ft cdev_t
-.Fn make_dev_covering "struct dev_ops *ops" "cdev_t rdev" "int minor" "uid_t uid" "gid_t gid" "int perms" "char *fmt" ...
+.Fn make_dev_covering "struct dev_ops *ops" "struct dev_ops *bops" "int minor" "uid_t uid" "gid_t gid" "int perms" "const char *fmt" ...
 .Ft cdev_t
 .Fn make_only_dev "struct dev_ops *ops" "int minor" "uid_t uid" "gid_t gid" "int perms" "const char *fmt" ...
 .Ft cdev_t
@@ -182,7 +182,7 @@ mydev_open(struct dev_open_args *ap)
 .Pp
 .Fn make_dev_covering
 is equivalent to make_dev, except that it also takes an argument
-.Vt cdev_t rdev
+.Fa bops
 which is set as the backing device for the newly created device.
 This function should be used whenever a device is created covering
 another raw device, as the disk subsystem does.

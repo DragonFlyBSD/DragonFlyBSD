@@ -197,7 +197,7 @@ make_dev(struct dev_ops *ops, int minor, uid_t uid, gid_t gid,
 
 /*
  * make_dev_covering has equivalent functionality to make_dev, except that it
- * also takes the cdev of the underlying device. Hence this function should
+ * also takes the dev_ops of the underlying device. Hence this function should
  * only be used by systems and drivers which create devices covering others
  */
 cdev_t
