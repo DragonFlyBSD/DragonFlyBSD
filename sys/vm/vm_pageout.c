@@ -1942,7 +1942,13 @@ vm_pageout_thread(void)
 			inactive_shortage += tmp;
 		}
 
-		if (avail_shortage > 0 || inactive_shortage > 0) {
+		/*
+		 * Only trigger on inactive shortage.  Triggering on
+		 * avail_shortage can starve the active queue with
+		 * unnecessary active->inactive transitions and destroy
+		 * performance.
+		 */
+		if (/*avail_shortage > 0 ||*/ inactive_shortage > 0) {
 			int delta;
 
 			for (q = 0; q < PQ_L2_SIZE; ++q) {
