@@ -36,6 +36,7 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 
+#include <dev/drm2/drmP.h>
 #include <dev/drm2/drm_gem_names.h>
 
 MALLOC_DEFINE(M_GEM_NAMES, "gem_name", "Hash headers for the gem names");
