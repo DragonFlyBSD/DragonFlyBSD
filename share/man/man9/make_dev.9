@@ -183,7 +183,7 @@ mydev_open(struct dev_open_args *ap)
 .Fn make_dev_covering
 is equivalent to make_dev, except that it also takes an argument
 .Fa bops
-which is set as the backing device for the newly created device.
+which is set as the ops of the backing device for the newly created device.
 This function should be used whenever a device is created covering
 another raw device, as the disk subsystem does.
 .Pp
