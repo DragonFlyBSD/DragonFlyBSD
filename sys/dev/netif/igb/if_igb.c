@@ -1021,6 +1021,8 @@ igb_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
+		sc->hw.mac.get_link_status = 1;
 	igb_update_link_status(sc);
 
 	ifmr->ifm_status = IFM_AVALID;
