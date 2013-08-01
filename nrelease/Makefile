@@ -308,7 +308,7 @@ customizeiso:
 	#
 	# Add a pkg.conf
 	#
-	${CHROOT_CMD} "echo PACKAGESITE: http://avalon.dragonflybsd.org/dports/$$\\{ABI\\}/RELEASE >/usr/local/etc/pkg.conf"
+	cp -p ${ISOROOT}/usr/local/etc/pkg.conf.sample ${ISOROOT}/usr/local/etc/pkg.conf
 	#
 	# Finally, update the locate(8) database
 	#
