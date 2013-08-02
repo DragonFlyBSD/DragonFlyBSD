@@ -248,8 +248,10 @@ sys_usched_set(struct usched_set_args *uap)
 			break;
 		}
 		lp->lwp_cpumask = CPUMASK(cpuid);
-		if (cpuid != mycpu->gd_cpuid)
+		if (cpuid != mycpu->gd_cpuid) {
 			lwkt_migratecpu(cpuid);
+			p->p_usched->changedcpu(lp);
+		}
 		break;
 	case USCHED_GET_CPU:
 		/* USCHED_GET_CPU doesn't require special privileges. */
@@ -302,6 +304,7 @@ sys_usched_set(struct usched_set_args *uap)
 				cpuid = BSFCPUMASK(lp->lwp_cpumask &
 						   smp_active_mask);
 				lwkt_migratecpu(cpuid);
+				p->p_usched->changedcpu(lp);
 			}
 		}
 		break;
