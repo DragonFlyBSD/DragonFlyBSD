@@ -576,9 +576,8 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void **vaddr, int flags,
 	if (*vaddr == NULL)
 		return (ENOMEM);
 
-	/* XXX: BUS_DMA_NOCACHE */
 	if (attr != VM_MEMATTR_DEFAULT)
-		pmap_change_attr((vm_offset_t)vaddr, dmat->maxsize / PAGE_SIZE, attr);
+		pmap_change_attr((vm_offset_t)(*vaddr), dmat->maxsize / PAGE_SIZE, attr);
 	return (0);
 }
 
