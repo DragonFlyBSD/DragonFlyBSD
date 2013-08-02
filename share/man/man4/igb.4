@@ -96,6 +96,16 @@ the
 driver will try enabling as many reception queues and transmission queues
 as are allowed by the number of CPUs in the system.
 .Pp
+If multiple transmission queues are used,
+the round-robin arbitration is performed among the transmission queues.
+It should be noted that
+if both TSO and multiple transmission queues are used,
+for 82575, the round-robin arbitration between transmission queues is done
+at the TSO packet boundary;
+for the reset of the hardwares, the round-robin arbitration
+between transmission queues is done at the TCP segment boundary after
+the hardware segmentation is performed.
+.Pp
 82575 supports 4 reception queues and 4 transmission queues.
 MSI-X is not enabled due to hardware errata.
 Under MSI or legacy interrupt mode,
