@@ -341,7 +341,6 @@ static int old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
 
 	page = *mres;
 	dev = object->handle;
-	offset = page->pindex;
 
 	paddr = pmap_phys_address(
 		    dev_dmmap(dev, offset, prot));
