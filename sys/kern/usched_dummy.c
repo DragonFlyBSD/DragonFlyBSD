@@ -72,6 +72,7 @@ static void dummy_forking(struct lwp *plp, struct lwp *lp);
 static void dummy_exiting(struct lwp *plp, struct proc *child);
 static void dummy_uload_update(struct lwp *lp);
 static void dummy_yield(struct lwp *lp);
+static void dummy_changedcpu(struct lwp *lp);
 
 struct usched usched_dummy = {
 	{ NULL },
@@ -88,7 +89,8 @@ struct usched usched_dummy = {
 	dummy_exiting,
 	dummy_uload_update,
 	NULL,			/* setcpumask not supported */
-	dummy_yield
+	dummy_yield,
+	dummy_changedcpu
 };
 
 struct usched_dummy_pcpu {
@@ -364,6 +366,12 @@ void
 dummy_yield(struct lwp *lp)
 {
 	need_user_resched();
+}
+
+static
+void
+dummy_changedcpu(struct lwp *lp __unused)
+{
 }
 
 /*

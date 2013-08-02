@@ -108,6 +108,7 @@ static void bsd4_kick_helper(struct lwp *lp);
 static struct lwp *bsd4_chooseproc_locked(struct lwp *chklp);
 static void bsd4_remrunqueue_locked(struct lwp *lp);
 static void bsd4_setrunqueue_locked(struct lwp *lp);
+static void bsd4_changedcpu(struct lwp *lp);
 
 struct usched usched_bsd4 = {
 	{ NULL },
@@ -124,7 +125,8 @@ struct usched usched_bsd4 = {
 	bsd4_exiting,
 	bsd4_uload_update,
 	NULL,			/* setcpumask not supported */
-	bsd4_yield
+	bsd4_yield,
+	bsd4_changedcpu
 };
 
 struct usched_bsd4_pcpu {
@@ -1207,6 +1209,12 @@ bsd4_yield(struct lwp *lp)
 	}
 #endif
         need_user_resched();
+}
+
+static
+void
+bsd4_changedcpu(struct lwp *lp __unused)
+{
 }
 
 /*

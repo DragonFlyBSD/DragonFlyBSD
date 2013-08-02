@@ -44,6 +44,7 @@ struct usched {
     void (*uload_update)(struct lwp *);
     void (*setcpumask)(struct usched *, cpumask_t);
     void (*yield)(struct lwp *);
+    void (*changedcpu)(struct lwp *);
 };
 
 union usched_data {

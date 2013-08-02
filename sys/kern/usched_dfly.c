@@ -144,6 +144,7 @@ static struct lwp *dfly_chooseproc_locked(dfly_pcpu_t rdd, dfly_pcpu_t dd,
 					  struct lwp *chklp, int worst);
 static void dfly_remrunqueue_locked(dfly_pcpu_t dd, struct lwp *lp);
 static void dfly_setrunqueue_locked(dfly_pcpu_t dd, struct lwp *lp);
+static void dfly_changedcpu(struct lwp *lp);
 
 struct usched usched_dfly = {
 	{ NULL },
@@ -160,7 +161,8 @@ struct usched usched_dfly = {
 	dfly_exiting,
 	dfly_uload_update,
 	NULL,			/* setcpumask not supported */
-	dfly_yield
+	dfly_yield,
+	dfly_changedcpu
 };
 
 /*
@@ -1133,6 +1135,30 @@ dfly_yield(struct lwp *lp)
 	}
 #endif
         need_user_resched();
+}
+
+/*
+ * Thread was forcefully migrated to another cpu.  Normally forced migrations
+ * are used for iterations and the kernel returns to the original cpu before
+ * returning and this is not needed.  However, if the kernel migrates a
+ * thread to another cpu and wants to leave it there, it has to call this
+ * scheduler helper.
+ *
+ * Note that the lwkt_migratecpu() function also released the thread, so
+ * we don't have to worry about that.
+ */
+static
+void
+dfly_changedcpu(struct lwp *lp)
+{
+	dfly_pcpu_t dd = &dfly_pcpu[lp->lwp_qcpu];
+	dfly_pcpu_t rdd = &dfly_pcpu[mycpu->gd_cpuid];
+
+	if (dd != rdd) {
+		spin_lock(&dd->spin);
+		dfly_changeqcpu_locked(lp, dd, rdd);
+		spin_unlock(&dd->spin);
+	}
 }
 
 /*
