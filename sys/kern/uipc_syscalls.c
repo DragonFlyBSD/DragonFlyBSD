@@ -1683,8 +1683,14 @@ retry_lookup:
 			 *
 			 *     Fixing the second issue is particularly
 			 *     difficult.
+			 *
+			 * XXX We also can't soft-busy anyway because it can
+			 *     deadlock against the syncer doing a vfs_msync(),
+			 *     vfs_msync->vmntvnodesca->vfs_msync_scan2->
+			 *     vm_object_page_clean->(scan)-> ... page
+			 *     busy-wait.
 			 */
-			vm_page_io_start(pg);
+			/*vm_page_io_start(pg);*/
 			vm_page_wakeup(pg);
 
 			/*
@@ -1707,7 +1713,7 @@ retry_lookup:
 			vn_unlock(vp);
 			vm_page_flag_clear(pg, PG_ZERO);
 			vm_page_busy_wait(pg, FALSE, "sockpg");
-			vm_page_io_finish(pg);
+			/*vm_page_io_finish(pg);*/
 			if (error) {
 				vm_page_unwire(pg, 0);
 				vm_page_wakeup(pg);
