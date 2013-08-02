@@ -101,6 +101,12 @@ transmission path.
 2 transmission queues will only be used when
 .Xr polling 4
 is enabled on the device.
+If multiple transmission queues are used,
+the round-robin arbitration is performed among the transmission queues.
+It should be noted that
+if both TSO and multiple transmission queues are used,
+the round-robin arbitration between transmission queues is done
+at the TSO packet boundary.
 .Pp
 .\"For questions related to hardware requirements,
 .\"refer to the documentation supplied with your Intel PRO/1000 adapter.
