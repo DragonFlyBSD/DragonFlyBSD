@@ -114,8 +114,8 @@ platform/acenv.h			optional	acpi		\
 acpi_wakecode.h				optional        acpi		\
 	dependency	"$S/${OSACPI_MD_DIR}/acpi_wakecode.S"		\
 	compile-with	"${MAKE} -f $S/${OSACPI_MD_DIR}/Makefile MAKESRCPATH=$S/${OSACPI_MD_DIR}" \
-       no-obj no-implicit-rule before-depend				\
-       clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
+	no-obj no-implicit-rule before-depend				\
+	clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
 #
 dev/crypto/aesni/aesencdec_i386.S	optional	aesni
 dev/crypto/aesni/aeskeys_i386.S		optional	aesni

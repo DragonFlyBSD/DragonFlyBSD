@@ -100,8 +100,8 @@ platform/acenv.h			optional	acpi		\
 acpi_wakecode.h				optional        acpi		\
 	dependency	"$S/${OSACPI_MD_DIR}/acpi_wakecode.S"		\
 	compile-with	"${MAKE} -f $S/${OSACPI_MD_DIR}/Makefile MAKESRCPATH=$S/${OSACPI_MD_DIR}" \
-       no-obj no-implicit-rule before-depend				\
-       clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
+	no-obj no-implicit-rule before-depend				\
+	clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
 #
 dev/crypto/aesni/aesencdec_x86_64.S	optional	aesni
 dev/crypto/aesni/aeskeys_x86_64.S	optional	aesni
@@ -153,7 +153,7 @@ vfs/smbfs/smbfs_vfsops.c	optional	smbfs
 vfs/smbfs/smbfs_vnops.c		optional	smbfs
 
 cpu/x86_64/misc/atomic.c		standard			\
-        compile-with    "${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
+	compile-with    "${CC} -c ${CFLAGS} ${WERROR} ${DEFINED_PROF:S/^$/-fomit-frame-pointer/} ${.IMPSRC}"
 platform/pc64/x86_64/autoconf.c	standard
 platform/pc64/x86_64/mpboot.S	standard
 
