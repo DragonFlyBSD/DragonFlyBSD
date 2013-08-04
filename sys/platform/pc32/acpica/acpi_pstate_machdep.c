@@ -154,33 +154,25 @@ acpi_pst_md_probe(void)
 static const struct acpi_pst_md *
 acpi_pst_amd_probe(void)
 {
-	uint32_t regs[4], ext_family;
+	uint32_t regs[4];
 
-	if ((cpu_id & 0x00000f00) != 0x00000f00)
+	/* Only Family >= 0fh has P-State support */
+	if (CPUID_TO_FAMILY(cpu_id) < 0xf)
 		return NULL;
 
 	/* Check whether APMI exists */
-	do_cpuid(0x80000000, regs);
-	if (regs[0] < 0x80000007)
+	if (cpu_exthigh < 0x80000007)
 		return NULL;
 
 	/* Fetch APMI */
 	do_cpuid(0x80000007, regs);
 
-	ext_family = cpu_id & 0x0ff00000;
-	switch (ext_family) {
-	case 0x00000000:	/* Family 0fh */
+	if (CPUID_TO_FAMILY(cpu_id) == 0xf) {		/* Family 0fh */
 		if ((regs[3] & 0x06) == 0x06)
 			return &acpi_pst_amd0f;
-		break;
-
-	case 0x00100000:	/* Family 10h */
+	} else if (CPUID_TO_FAMILY(cpu_id) >= 0x10) {	/* Family >= 10h */
 		if (regs[3] & 0x80)
 			return &acpi_pst_amd10;
-		break;
-
-	default:
-		break;
 	}
 	return NULL;
 }
