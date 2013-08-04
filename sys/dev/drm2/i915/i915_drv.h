@@ -1012,7 +1012,6 @@ extern int intel_iommu_enabled;
 extern struct drm_ioctl_desc i915_ioctls[];
 extern struct drm_driver_info i915_driver_info;
 extern struct cdev_pager_ops i915_gem_pager_ops;
-extern unsigned int i915_fbpercrtc;
 extern int i915_panel_ignore_lid;
 extern unsigned int i915_powersave;
 extern int i915_semaphores;
