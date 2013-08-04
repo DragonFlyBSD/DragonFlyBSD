@@ -53,7 +53,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/drm2/i915/intel_iic.c,v 1.1 2012/05/22 11:07:44 kib Exp $
+ * $FreeBSD: head/sys/dev/drm2/i915/intel_iic.c 249041 2013-04-03 08:27:35Z dumbbell $
  */
 
 #include <sys/mplock2.h>
@@ -258,7 +258,7 @@ intel_gmbus_transfer(device_t idev, struct iic_msg *msgs, uint32_t nmsgs)
 			I915_WRITE(GMBUS1 + reg_offset, GMBUS_CYCLE_WAIT |
 			    (i + 1 == nmsgs ? GMBUS_CYCLE_STOP : 0) |
 			    (len << GMBUS_BYTE_COUNT_SHIFT) |
-			    (msgs[i].slave << GMBUS_SLAVE_ADDR_SHIFT) |
+			    (msgs[i].slave << (GMBUS_SLAVE_ADDR_SHIFT - 1)) |
 			    GMBUS_SLAVE_READ | GMBUS_SW_RDY);
 			POSTING_READ(GMBUS2 + reg_offset);
 			do {
@@ -289,7 +289,7 @@ intel_gmbus_transfer(device_t idev, struct iic_msg *msgs, uint32_t nmsgs)
 			I915_WRITE(GMBUS1 + reg_offset, GMBUS_CYCLE_WAIT |
 			    (i + 1 == nmsgs ? GMBUS_CYCLE_STOP : 0) |
 			    (msgs[i].len << GMBUS_BYTE_COUNT_SHIFT) |
-			    (msgs[i].slave << GMBUS_SLAVE_ADDR_SHIFT) |
+			    (msgs[i].slave << (GMBUS_SLAVE_ADDR_SHIFT - 1)) |
 			    GMBUS_SLAVE_WRITE | GMBUS_SW_RDY);
 			POSTING_READ(GMBUS2+reg_offset);
 
@@ -399,17 +399,11 @@ intel_iic_quirk_xfer(device_t idev, struct iic_msg *msgs, int nmsgs)
 	IICBB_SETSCL(bridge_dev, 1);
 	DELAY(I2C_RISEFALL_TIME);
 
-	/* convert slave addresses to format expected by iicbb */
-	for (i = 0; i < nmsgs; i++) {
-		msgs[i].slave <<= 1;
+	for (i = 0; i < nmsgs - 1; i++) {
 		/* force use of repeated start instead of default stop+start */
-		if (i != (nmsgs - 1))
-			 msgs[i].flags |= IIC_M_NOSTOP;
+		msgs[i].flags |= IIC_M_NOSTOP;
 	}
 	ret = iicbus_transfer(idev, msgs, nmsgs);
-	/* restore the addresses */
-	for (i = 0; i < nmsgs; i++)
-		msgs[i].slave >>= 1;
 	IICBB_SETSDA(bridge_dev, 1);
 	IICBB_SETSCL(bridge_dev, 1);
 	intel_iic_quirk_set(dev_priv, false);

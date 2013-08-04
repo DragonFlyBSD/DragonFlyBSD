@@ -25,7 +25,7 @@
  *    Zou Nan hai <nanhai.zou@intel.com>
  *    Xiang Hai hao<haihao.xiang@intel.com>
  *
- * $FreeBSD: src/sys/dev/drm2/i915/intel_ringbuffer.c,v 1.1 2012/05/22 11:07:44 kib Exp $
+ * $FreeBSD: head/sys/dev/drm2/i915/intel_ringbuffer.c 253709 2013-07-27 16:42:29Z kib $
  */
 
 #include <dev/drm2/drmP.h>
@@ -362,8 +362,6 @@ init_pipe_control(struct intel_ring_buffer *ring)
 	if (pc->cpu_page == NULL)
 		goto err_unpin;
 	pmap_qenter((uintptr_t)pc->cpu_page, &obj->pages[0], 1);
-	pmap_invalidate_range(&kernel_pmap, (vm_offset_t)pc->cpu_page,
-	    (vm_offset_t)pc->cpu_page + PAGE_SIZE);
 	pmap_invalidate_cache_range((vm_offset_t)pc->cpu_page,
 	    (vm_offset_t)pc->cpu_page + PAGE_SIZE);
 
@@ -391,8 +389,6 @@ cleanup_pipe_control(struct intel_ring_buffer *ring)
 
 	obj = pc->obj;
 	pmap_qremove((vm_offset_t)pc->cpu_page, 1);
-	pmap_invalidate_range(&kernel_pmap, (vm_offset_t)pc->cpu_page,
-	    (vm_offset_t)pc->cpu_page + PAGE_SIZE);
 	kmem_free(&kernel_map, (uintptr_t)pc->cpu_page, PAGE_SIZE);
 	i915_gem_object_unpin(obj);
 	drm_gem_object_unreference(&obj->base);
@@ -969,9 +965,6 @@ static void cleanup_status_page(struct intel_ring_buffer *ring)
 		return;
 
 	pmap_qremove((vm_offset_t)ring->status_page.page_addr, 1);
-	pmap_invalidate_range(&kernel_pmap,
-	    (vm_offset_t)ring->status_page.page_addr,
-	    (vm_offset_t)ring->status_page.page_addr + PAGE_SIZE);
 	kmem_free(&kernel_map, (vm_offset_t)ring->status_page.page_addr,
 	    PAGE_SIZE);
 	i915_gem_object_unpin(obj);
@@ -1011,9 +1004,6 @@ static int init_status_page(struct intel_ring_buffer *ring)
 	}
 	pmap_qenter((vm_offset_t)ring->status_page.page_addr, &obj->pages[0],
 	    1);
-	pmap_invalidate_range(&kernel_pmap,
-	    (vm_offset_t)ring->status_page.page_addr,
-	    (vm_offset_t)ring->status_page.page_addr + PAGE_SIZE);
 	pmap_invalidate_cache_range((vm_offset_t)ring->status_page.page_addr,
 	    (vm_offset_t)ring->status_page.page_addr + PAGE_SIZE);
 	ring->status_page.obj = obj;

@@ -19,7 +19,7 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
  *
- * $FreeBSD: src/sys/dev/drm2/drm_dp_iic_helper.c,v 1.1 2012/05/22 11:07:44 kib Exp $
+ * $FreeBSD: head/sys/dev/drm2/drm_dp_iic_helper.c 249249 2013-04-08 08:37:57Z dumbbell $
  */
 
 #include <sys/types.h>
@@ -145,7 +145,7 @@ iic_dp_aux_xfer(device_t idev, struct iic_msg *msgs, uint32_t num)
 		len = msgs[m].len;
 		buf = msgs[m].buf;
 		reading = (msgs[m].flags & IIC_M_RD) != 0;
-		ret = iic_dp_aux_address(idev, msgs[m].slave, reading);
+		ret = iic_dp_aux_address(idev, msgs[m].slave >> 1, reading);
 		if (ret != 0)
 			break;
 		if (reading) {

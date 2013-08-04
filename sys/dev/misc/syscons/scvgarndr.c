@@ -29,7 +29,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.17 2008/08/10 19:45:01 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -323,6 +322,8 @@ vga_txtblink(scr_stat *scp, int at, int flip)
 {
 }
 
+int sc_txtmouse_no_retrace_wait;
+
 #ifndef SC_NO_CUTPASTE
 
 static void
@@ -371,7 +372,9 @@ draw_txtmouse(scr_stat *scp, int x, int y)
 
 #if 1
 	/* wait for vertical retrace to avoid jitter on some videocards */
-	while (!(inb(CRTC + 6) & 0x08)) /* idle */ ;
+	while (!sc_txtmouse_no_retrace_wait &&
+	    !(inb(CRTC + 6) & 0x08))
+		/* idle */ ;
 #endif
 	c = scp->sc->mouse_char;
 	(*vidsw[scp->sc->adapter]->load_font)(scp->sc->adp, 0, 32, font_buf,

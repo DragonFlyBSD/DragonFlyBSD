@@ -27,7 +27,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * $FreeBSD: src/sys/dev/drm2/drm_edid.c,v 1.1 2012/05/22 11:07:44 kib Exp $
+ * $FreeBSD: head/sys/dev/drm2/drm_edid.c 249041 2013-04-03 08:27:35Z dumbbell $
  */
 
 #include <dev/drm2/drmP.h>
@@ -263,12 +263,12 @@ drm_do_probe_ddc_edid(device_t adapter, unsigned char *buf,
 	do {
 		struct iic_msg msgs[] = {
 			{
-				.slave	= DDC_ADDR,
+				.slave	= DDC_ADDR << 1,
 				.flags	= IIC_M_WR,
 				.len	= 1,
 				.buf	= &start,
 			}, {
-				.slave	= DDC_ADDR,
+				.slave	= DDC_ADDR << 1,
 				.flags	= IIC_M_RD,
 				.len	= len,
 				.buf	= buf,

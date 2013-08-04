@@ -29,7 +29,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
- * $FreeBSD: src/sys/dev/drm2/drmP.h,v 1.1 2012/05/22 11:07:44 kib Exp $
+ * $FreeBSD: head/sys/dev/drm2/drmP.h 248084 2013-03-09 02:32:23Z attilio $
  */
 
 #ifndef _DRM_P_H_
@@ -220,6 +220,7 @@ typedef void			irqreturn_t;
 #define IRQ_NONE		/* nothing */
 
 #define unlikely(x)            __builtin_expect(!!(x), 0)
+#define likely(x)              __builtin_expect(!!(x), 1)
 #define container_of(ptr, type, member) ({			\
 	__typeof( ((type *)0)->member ) *__mptr = (ptr);	\
 	(type *)( (char *)__mptr - offsetof(type,member) );})
