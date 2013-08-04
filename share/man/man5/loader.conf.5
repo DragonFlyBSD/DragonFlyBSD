@@ -179,6 +179,15 @@ You can also set the baud rate with (for example)
 or simply inherit the baud set in the boot code.
 Normally these must be set if you want to use a stock kernel in a
 IPMI environment.
+When setting the serial console you must specify the serial port
+with (for example)
+.Va sio1.port=0x3e8 .
+Typically sio0 is on 0x3f8 and sio1 is on 0x2f8, but IPMI consoles
+on sio1 are often on 0x3e8 (instead of sio2), which can be confusing.
+Be sure to specify the correct port
+if you want early kernel boot messages to work.
+If you do not specify the port the console will still operate on
+the serial port but only after the kernel has started init.
 .Pp
 Some IPMI environments do not enable sio1 during the BIOS boot,
 which can cause the loader to get confused and not pass RB_SERIAL
