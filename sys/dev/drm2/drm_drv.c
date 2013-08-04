@@ -227,8 +227,7 @@ int drm_probe(device_t kdev, drm_pci_id_list_t *idlist)
 	vendor = pci_get_vendor(kdev);
 	device = pci_get_device(kdev);
 
-	if (pci_get_class(kdev) != PCIC_DISPLAY
-	    || pci_get_subclass(kdev) != PCIS_DISPLAY_VGA)
+	if (pci_get_class(kdev) != PCIC_DISPLAY)
 		return ENXIO;
 
 	id_entry = drm_find_description(vendor, device, idlist);
