@@ -99,6 +99,12 @@ by default, the
 .Nm
 driver will try enabling as many reception and transmission queues
 as are allowed by the number of CPUs in the system.
+If multiple transmission queues are enabled,
+the round-robin arbitration is performed among the transmission queues.
+It should be noted that
+if both TSO and multiple transmission queues are enabled,
+the round-robin arbitration between transmission queues is done
+at the TSO packet boundary.
 .Pp
 The
 .Nm
