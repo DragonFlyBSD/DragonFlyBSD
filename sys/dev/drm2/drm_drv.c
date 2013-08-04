@@ -26,7 +26,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
- * $FreeBSD: src/sys/dev/drm2/drm_drv.c,v 1.1 2012/05/22 11:07:44 kib Exp $
+ * $FreeBSD: head/sys/dev/drm2/drm_drv.c 247835 2013-03-05 09:49:34Z kib $
  */
 
 /** @file drm_drv.c
@@ -189,7 +189,7 @@ static struct dev_ops drm_cdevsw = {
 	.d_ioctl =	drm_ioctl,
 	.d_kqfilter =	drm_kqfilter,
 	.d_mmap =	drm_mmap,
-	.d_mmap_single =	drm_mmap_single,
+	.d_mmap_single = drm_mmap_single,
 };
 
 static int drm_msi = 1;	/* Enable by default. */
@@ -925,6 +925,27 @@ drm_add_busid_modesetting(struct drm_device *dev, struct sysctl_ctx_list *ctx,
 		return (ENOMEM);
 
 	return (0);
+}
+
+int
+drm_mmap_single(struct dev_mmap_single_args *ap)
+{
+	struct drm_device *dev;
+	struct cdev *kdev = ap->a_head.a_dev;
+	vm_ooffset_t *offset = ap->a_offset;
+	vm_size_t size = ap->a_size;
+	struct vm_object **obj_res = ap->a_object;
+	int nprot = ap->a_nprot;
+
+	dev = drm_get_device_from_kdev(kdev);
+	if ((dev->driver->driver_features & DRIVER_GEM) != 0) {
+		return (drm_gem_mmap_single(dev, offset, size, obj_res, nprot));
+	} else if (dev->drm_ttm_bo != NULL) {
+		return (ttm_bo_mmap_single(dev->drm_ttm_bo, offset, size,
+		    obj_res, nprot));
+	} else {
+		return (ENODEV);
+	}
 }
 
 #if DRM_LINUX

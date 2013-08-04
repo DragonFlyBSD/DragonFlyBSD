@@ -1,4 +1,4 @@
-.PATH:	${.CURDIR}/..
+.PATH:	${.CURDIR}/.. ${.CURDIR}/../ttm
 KMOD	= drmn
 SRCS	= \
 	drm_agpsupport.c \
@@ -30,7 +30,17 @@ SRCS	= \
 	drm_sman.c \
 	drm_stub.c \
 	drm_sysctl.c \
-	drm_vm.c
+	drm_vm.c \
+	ttm_lock.c \
+	ttm_object.c \
+	ttm_tt.c \
+	ttm_bo_util.c \
+	ttm_bo.c \
+	ttm_bo_manager.c \
+	ttm_execbuf_util.c \
+	ttm_memory.c \
+	ttm_page_alloc.c \
+	ttm_bo_vm.c
 
 SRCS   += device_if.h bus_if.h pci_if.h device_if.h iicbus_if.h opt_drm.h \
 	  opt_ktr.h opt_vm.h

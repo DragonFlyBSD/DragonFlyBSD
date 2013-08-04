@@ -20,7 +20,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- * $FreeBSD: src/sys/dev/drm2/drm_vm.c,v 1.1 2012/05/22 11:07:44 kib Exp $
+ * $FreeBSD: head/sys/dev/drm2/drm_vm.c 235783 2012-05-22 11:07:44Z kib $"
  */
 
 /** @file drm_vm.c
@@ -143,14 +143,6 @@ drm_mmap(struct dev_mmap_args *ap)
 
 	ap->a_result = atop(phys);
 	return 0;
-}
-
-int
-drm_mmap_single(struct dev_mmap_single_args *ap)
-{
-	struct cdev *kdev = ap->a_head.a_dev;
-	return drm_gem_mmap_single(kdev, ap->a_offset, ap->a_size,
-				ap->a_object, ap->a_nprot);
 }
 
 /* XXX The following is just temporary hack to replace the
