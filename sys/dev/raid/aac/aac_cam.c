@@ -152,7 +152,7 @@ aac_bus_scan_cb(struct cam_periph *periph, union ccb *ccb)
 			ccb->ccb_h.status);
 
 	xpt_free_path(ccb->ccb_h.path);
-	kfree(ccb, M_TEMP);
+	xpt_free_ccb(ccb);
 }
 
 static void

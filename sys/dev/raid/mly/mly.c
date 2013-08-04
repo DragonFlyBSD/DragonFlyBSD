@@ -2025,7 +2025,7 @@ mly_cam_rescan_btl(struct mly_softc *sc, int bus, int target)
 static void
 mly_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
 {
-    kfree(ccb, M_TEMP);
+    xpt_free_ccb(ccb);
 }
 
 /********************************************************************************

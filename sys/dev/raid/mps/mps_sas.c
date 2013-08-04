@@ -287,7 +287,7 @@ mpssas_rescan_target(struct mps_softc *sc, struct mpssas_target *targ)
 	/*
 	 * Allocate a CCB and schedule a rescan.
 	 */
-	ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK | M_ZERO);
+	ccb = xpt_alloc_ccb();
 
 	if (xpt_create_path(&ccb->ccb_h.path, xpt_periph, pathid,
 		            targetid, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
