@@ -560,13 +560,13 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		printf("{\n");
 		for (i = 0; i < HAMMER2_FREEMAP_COUNT; ++i) {
-			if (media.bmdata[i].radix == 0 &&
+			if (media.bmdata[i].class == 0 &&
 			    media.bmdata[i].avail == 0) {
 				continue;
 			}
-			tabprintf(tab + 4, "%04d.%02d (avail=%5d) "
+			tabprintf(tab + 4, "%04d.%04x (avail=%5d) "
 				  "%08x %08x %08x %08x %08x %08x %08x %08x\n",
-				  i, media.bmdata[i].radix,
+				  i, media.bmdata[i].class,
 				  media.bmdata[i].avail,
 				  media.bmdata[i].bitmap[0],
 				  media.bmdata[i].bitmap[1],

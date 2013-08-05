@@ -92,6 +92,17 @@ struct hammer2_idmap {
 
 typedef struct hammer2_idmap hammer2_idmap_t;
 
+/*
+ * UDP broadcast structure (must be endian neutral)
+ */
+struct hammer2_udppkt {
+	char	key[8];		/* HAMMER2.01 */
+	char	gen[8];
+	char	label[64];
+};
+
+typedef struct hammer2_udppkt hammer2_udppkt_t;
+
 extern int DebugOpt;
 extern int VerboseOpt;
 extern int QuietOpt;

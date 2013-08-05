@@ -81,9 +81,31 @@ static void xdisk_disconnect(void *handle);
 static void *xdisk_attach_tmpthread(void *data);
 
 /*
- * Start-up the master listener daemon for the machine.
+ * Start-up the master listener daemon for the machine.  This daemon runs
+ * a UDP discovery protocol, a TCP rendezvous, and scans certain files
+ * and directories for work.
  *
- * The master listener serves as a rendezvous point in the cluster, accepting
+ * --
+ *
+ * The only purpose for the UDP discovery protocol is to determine what
+ * other IPs on the LAN are running the hammer2 service daemon.  DNS is not
+ * required to operate, but hostnames (if assigned) must be unique.  If
+ * no hostname is assigned the host's IP is used as the name.  This name
+ * is broadcast along with the mtime of the originator's private key.
+ *
+ * Receiving hammer2 service daemons which are able to match the label against
+ * /etc/hammer2/remote/<label>.pub will initiate a persistent connection
+ * to the target.  Removal of the file will cause a disconnection.  A failed
+ * public key negotiation stops further connection attempts until either the
+ * file is updated or the remote mtime is updated.
+ *
+ * Generally speaking this results in a web of connections, typically a
+ * combination of point-to-point for the more important links and relayed
+ * (spanning tree) for less important or filtered links.
+ *
+ * --
+ *
+ * The TCP listener serves as a rendezvous point in the cluster, accepting
  * connections, performing registrations and authentications, maintaining
  * the spanning tree, and keeping track of message state so disconnects can
  * be handled properly.
@@ -92,10 +114,12 @@ static void *xdisk_attach_tmpthread(void *data);
  * tracking persistent messages) are handled by this daemon.  This daemon
  * does not run the higher level quorum or locking protocols.
  *
- * This daemon can also be told to maintain connections to other nodes,
- * forming a messaging backbone, which in turn allows PFS's (if desired) to
- * simply connect to the master daemon via localhost if desired.
- * Backbones are specified via /etc/hammer2.conf.
+ * --
+ *
+ * The file /etc/hammer2/autoconn, if it exists, contains a list of targets
+ * to connect to (which do not have to be on the local lan).  This list will
+ * be retried until a connection can be established.  The file is not usually
+ * needed for linkages local to the LAN.
  */
 int
 cmd_service(void)
