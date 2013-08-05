@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ic/sc26198.h,v 1.1.2.1 2001/08/30 12:29:55 murray Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ic/sc26198.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
  */
 
 /*****************************************************************************/

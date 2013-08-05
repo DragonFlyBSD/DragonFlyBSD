@@ -52,8 +52,8 @@
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/thread2.h>
-#include <machine_base/isa/ic/scd1400.h>
-#include <machine_base/isa/ic/sc26198.h>
+#include <dev/serial/stl/scd1400.h>
+#include <dev/serial/stl/sc26198.h>
 #include <machine/comstats.h>
 
 #include <bus/pci/pcivar.h>

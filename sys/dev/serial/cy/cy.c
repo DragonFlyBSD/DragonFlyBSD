@@ -86,7 +86,7 @@
 #include <machine/psl.h>
 
 #include "cyreg.h"
-#include <machine_base/isa/ic/cd1400.h>
+#include "cd1400.h"
 
 #define disable_intr()	com_lock()
 #define enable_intr()	com_unlock()

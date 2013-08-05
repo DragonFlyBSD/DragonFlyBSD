@@ -41,7 +41,7 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 
-#include <machine_base/isa/ic/mb86960.h>
+#include "mb86960.h"
 #include "if_fereg.h"
 #include "if_fevar.h"
 
