@@ -1036,7 +1036,6 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag)
 		boff = chain->bref.data_off & (HAMMER2_OFF_MASK & pmask);
 		peof = (pbase + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
 
-		KKASSERT(chain->bytes == psize);
 		dbp = getblk(chain->hmp->devvp, pbase, psize, 0, 0);
 		bcopy(bp->b_data, dbp->b_data + boff, chain->bytes);
 
@@ -1316,7 +1315,7 @@ hammer2_truncate_file(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		 */
 		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
 			/*ip->delta_dcount -= chain->bytes;*/
-			hammer2_chain_delete(trans, chain);
+			hammer2_chain_delete(trans, chain, 0);
 		}
 		/* XXX check parent if empty indirect block & delete */
 		chain = hammer2_chain_next(&parent, chain,

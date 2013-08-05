@@ -144,12 +144,11 @@ struct hammer2_chain {
 	struct hammer2_chain	*next_parent;
 	struct hammer2_state	*state;		/* if active cache msg */
 	struct hammer2_mount	*hmp;
-#if 0
-	struct hammer2_chain	*duplink;	/* duplication link */
-#endif
 
 	hammer2_tid_t	modify_tid;		/* snapshot/flush filter */
 	hammer2_tid_t	delete_tid;
+	hammer2_key_t   data_count;		/* delta's to apply */
+	hammer2_key_t   inode_count;		/* delta's to apply */
 	struct buf	*bp;			/* physical data buffer */
 	u_int		bytes;			/* physical data size */
 	int		index;			/* blockref index in parent */
@@ -176,7 +175,6 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * MOVED   - A modified chain becomes MOVED after it flushes.  A chain
  *	     can also become MOVED if it is moved within the topology
  *	     (even if not modified).
- *
  */
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
@@ -231,6 +229,11 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 #define HAMMER2_RESOLVE_SHARED		0x10	/* request shared lock */
 #define HAMMER2_RESOLVE_NOREF		0x20	/* already ref'd on lock */
+
+/*
+ * Flags passed to hammer2_chain_delete()
+ */
+#define HAMMER2_DELETE_WILLDUP		0x0001	/* no blk free, will be dup */
 
 /*
  * Flags passed to hammer2_chain_delete_duplicate()
@@ -373,15 +376,10 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_TRANS_ISFLUSH		0x0001
 #define HAMMER2_TRANS_RESTRICTED	0x0002	/* snapshot flush restrict */
 
-/*
- * XXX
- */
-struct hammer2_freecache {
-	hammer2_off_t	bulk;
-	hammer2_off_t	single;
-};
-
-typedef struct hammer2_freecache hammer2_freecache_t;
+#define HAMMER2_FREEMAP_HEUR_NRADIX	4	/* pwr 2 PBUFRADIX-MINIORADIX */
+#define HAMMER2_FREEMAP_HEUR_TYPES	8
+#define HAMMER2_FREEMAP_HEUR		(HAMMER2_FREEMAP_HEUR_NRADIX * \
+					 HAMMER2_FREEMAP_HEUR_TYPES)
 
 /*
  * Global (per device) mount structure for device (aka vp->v_mount->hmp)
@@ -407,14 +405,12 @@ struct hammer2_mount {
 	hammer2_trans_t	*curflush;	/* current flush in progress */
 	hammer2_tid_t	topo_flush_tid;	/* currently synchronizing flush pt */
 	hammer2_tid_t	free_flush_tid;	/* currently synchronizing flush pt */
-	hammer2_off_t	heur_freemap[HAMMER2_MAX_RADIX+1];
+	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR];
 	int		flushcnt;	/* #of flush trans on the list */
 
 	int		volhdrno;	/* last volhdrno written */
 	hammer2_volume_data_t voldata;
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
-	hammer2_freecache_t freecache[HAMMER2_FREECACHE_TYPES]
-				     [HAMMER2_MAX_RADIX+1];
 };
 
 typedef struct hammer2_mount hammer2_mount_t;
@@ -472,30 +468,45 @@ MALLOC_DECLARE(M_HAMMER2);
 #define VTOI(vp)	((hammer2_inode_t *)(vp)->v_data)
 #define ITOV(ip)	((ip)->vp)
 
+/*
+ * Currently locked chains retain the locked buffer cache buffer for
+ * indirect blocks, and indirect blocks can be one of two sizes.  The
+ * device buffer has to match the case to avoid deadlocking recursive
+ * chains that might otherwise try to access different offsets within
+ * the same device buffer.
+ */
 static __inline
 int
 hammer2_devblkradix(int radix)
 {
-	int cluster_radix;
-
-	if (radix <= HAMMER2_LBUFRADIX)
-		cluster_radix = HAMMER2_LBUFRADIX;
-	else
-		cluster_radix = HAMMER2_PBUFRADIX;
-	return(cluster_radix);
+#if 1
+	if (radix <= HAMMER2_LBUFRADIX) {
+		return (HAMMER2_LBUFRADIX);
+	} else {
+		return (HAMMER2_PBUFRADIX);
+	}
+#else
+	return (HAMMER2_PBUFRADIX);
+#endif
 }
 
 static __inline
 size_t
 hammer2_devblksize(size_t bytes)
 {
+#if 1
 	if (bytes <= HAMMER2_LBUFSIZE) {
 		return(HAMMER2_LBUFSIZE);
 	} else {
 		KKASSERT(bytes <= HAMMER2_PBUFSIZE &&
 			 (bytes ^ (bytes - 1)) == ((bytes << 1) - 1));
-		return(bytes);
+		return (HAMMER2_PBUFSIZE);
 	}
+#else
+	KKASSERT(bytes <= HAMMER2_PBUFSIZE &&
+		 (bytes ^ (bytes - 1)) == ((bytes << 1) - 1));
+	return(HAMMER2_PBUFSIZE);
+#endif
 }
 
 
@@ -677,6 +688,12 @@ hammer2_chain_t *hammer2_chain_next(hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
 				int flags);
+int hammer2_chain_iterate(hammer2_chain_t *parent,
+			  int (*callback)(hammer2_chain_t *parent,
+					  hammer2_chain_t **chainp,
+					  void *arg),
+			  void *arg, int flags);
+
 int hammer2_chain_create(hammer2_trans_t *trans,
 				hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
@@ -688,7 +705,8 @@ void hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				hammer2_blockref_t *bref);
 int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
 				hammer2_ioc_pfs_t *pfs);
-void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain);
+void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain,
+				int flags);
 void hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
 				hammer2_chain_t **chainp, int flags);
 void hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);
@@ -727,8 +745,9 @@ void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp);
  */
 int hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 				hammer2_blockref_t *bref, size_t bytes);
-void hammer2_freemap_free(hammer2_mount_t *hmp, hammer2_off_t data_off,
-				int type);
+void hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+				hammer2_blockref_t *bref, int how);
+
 
 #endif /* !_KERNEL */
 #endif /* !_VFS_HAMMER2_HAMMER2_H_ */

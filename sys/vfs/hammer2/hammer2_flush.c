@@ -65,6 +65,8 @@ static void hammer2_chain_flush_core(hammer2_flush_info_t *info,
 				hammer2_chain_t *chain);
 static int hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data);
 static int hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data);
+static void hammer2_rollup_stats(hammer2_chain_t *parent,
+				hammer2_chain_t *child, int how);
 
 #if 0
 static __inline
@@ -532,6 +534,9 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 	 * the MODIFIED bit and avoid flushing it whether it has been
 	 * destroyed or not.  We must make sure that the chain is flagged
 	 * MOVED in this situation so the parent picks up the deletion.
+	 *
+	 * Note that scan2 has already executed above so statistics have
+	 * already been rolled up.
 	 */
 	if (chain->delete_tid <= info->sync_tid) {
 		if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
@@ -933,6 +938,8 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
  * been fully flushed.  Unlike scan1, this function is NOT recursive and
  * the parent remains locked across the entire scan.
  *
+ * This function also rolls up storage statistics.
+ *
  * NOTE!  We must re-set SUBMODIFIED on the parent(s) as appropriate, and
  *	  due to the above conditions it is possible to do this and still
  *	  have some children flagged MOVED depending on the synchronization.
@@ -1107,6 +1114,7 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	KKASSERT(child->index >= 0);
 	if (child->delete_tid <= trans->sync_tid) {
 		if (base) {
+			hammer2_rollup_stats(parent, child, -1);
 			KKASSERT(child->index < count);
 			bzero(&base[child->index], sizeof(child->bref));
 		}
@@ -1115,6 +1123,10 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	} else {
 		if (base) {
 			KKASSERT(child->index < count);
+			if (base[child->index].type == 0)
+				hammer2_rollup_stats(parent, child, 1);
+			else
+				hammer2_rollup_stats(parent, child, 0);
 			base[child->index] = child->bref;
 		}
 		if (info->mirror_tid < child->modify_tid)
@@ -1194,4 +1206,43 @@ finalize:
 	kprintf("G child %p 08x\n", child, child->flags);
 #endif
 	return (0);
+}
+
+static
+void
+hammer2_rollup_stats(hammer2_chain_t *parent, hammer2_chain_t *child, int how)
+{
+	hammer2_chain_t *grandp;
+
+	parent->data_count += child->data_count;
+	parent->inode_count += child->inode_count;
+	child->data_count = 0;
+	child->inode_count = 0;
+	if (how < 0) {
+		parent->data_count -= child->bytes;
+		if (child->bref.type == HAMMER2_BREF_TYPE_INODE) {
+			parent->inode_count -= 1;
+			parent->data_count -= child->data->ipdata.data_count;
+			parent->inode_count -= child->data->ipdata.inode_count;
+		}
+	} else if (how > 0) {
+		parent->data_count += child->bytes;
+		if (child->bref.type == HAMMER2_BREF_TYPE_INODE) {
+			parent->inode_count += 1;
+			parent->data_count += child->data->ipdata.data_count;
+			parent->inode_count += child->data->ipdata.inode_count;
+		}
+	}
+	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
+		parent->data->ipdata.data_count += parent->data_count;
+		parent->data->ipdata.inode_count += parent->inode_count;
+		for (grandp = parent->above->first_parent;
+		     grandp;
+		     grandp = grandp->next_parent) {
+			grandp->data_count += parent->data_count;
+			grandp->inode_count += parent->inode_count;
+		}
+		parent->data_count = 0;
+		parent->inode_count = 0;
+	}
 }

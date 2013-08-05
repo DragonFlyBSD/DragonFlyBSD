@@ -802,7 +802,7 @@ retry:
 	 *
 	 * This is a bit messy.
 	 */
-	hammer2_chain_delete(trans, nchain);
+	hammer2_chain_delete(trans, nchain, HAMMER2_DELETE_WILLDUP);
 	hammer2_chain_lock(ochain, HAMMER2_RESOLVE_ALWAYS);
 	tmp = ochain;
 	bref = tmp->bref;
@@ -1052,10 +1052,11 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
  * isdir determines whether a directory/non-directory check should be made.
  * No check is made if isdir is set to -1.
  *
- * NOTE!  This function does not prevent the underlying file from still
- *	  being used if it has other refs (such as from an inode, or if it's
- *	  chain is manually held).  However, the caller is responsible for
- *	  fixing up ip->chain if e.g. a rename occurs (see chain_duplicate()).
+ * NOTE!  The underlying file can still be active with open descriptors
+ *	  or if the chain is being manually held (e.g. for rename).
+ *
+ *	  The caller is responsible for fixing up ip->chain if e.g. a
+ *	  rename occurs (see chain_duplicate()).
  */
 int
 hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
@@ -1181,7 +1182,7 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		 *	 so we can reuse it.
 		 */
 		hammer2_chain_lock(ochain, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_delete(trans, ochain);
+		hammer2_chain_delete(trans, ochain, 0);
 		hammer2_chain_unlock(ochain);
 
 		/*
@@ -1191,7 +1192,7 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		hammer2_chain_modify(trans, &chain, 0);
 		--chain->data->ipdata.nlinks;
 		if (chain->data->ipdata.nlinks == 0)
-			hammer2_chain_delete(trans, chain);
+			hammer2_chain_delete(trans, chain, 0);
 	} else {
 		/*
 		 * Otherwise this was not a hardlink and we can just
@@ -1202,7 +1203,7 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		hammer2_chain_modify(trans, &chain, 0);
 		ipdata = &chain->data->ipdata;
 		--ipdata->nlinks;
-		hammer2_chain_delete(trans, chain);
+		hammer2_chain_delete(trans, chain, 0);
 	}
 
 	error = 0;
@@ -1345,7 +1346,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			bzero(&ipdata->u, sizeof(ipdata->u));
 			/* XXX transaction ids */
 		} else {
-			hammer2_chain_delete(trans, chain);
+			hammer2_chain_delete(trans, chain, 0);
 		}
 
 		/*

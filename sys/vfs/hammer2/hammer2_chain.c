@@ -1095,8 +1095,7 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	/*
 	 * The device buffer may be larger than the allocation size.
 	 */
-	if ((bbytes = chain->bytes) < HAMMER2_MINIOSIZE)
-		bbytes = HAMMER2_MINIOSIZE;
+	bbytes = hammer2_devblksize(chain->bytes);
 	pbase = chain->bref.data_off & ~(hammer2_off_t)(bbytes - 1);
 	boff = chain->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
 
@@ -1527,7 +1526,9 @@ hammer2_chain_get(hammer2_chain_t *parent, int index, int flags)
 	 * Figure out how to lock.  MAYBE can be used to optimized
 	 * the initial-create state for indirect blocks.
 	 */
-	if (flags & (HAMMER2_LOOKUP_NODATA | HAMMER2_LOOKUP_NOLOCK))
+	if (flags & HAMMER2_LOOKUP_ALWAYS)
+		how = HAMMER2_RESOLVE_ALWAYS;
+	else if (flags & (HAMMER2_LOOKUP_NODATA | HAMMER2_LOOKUP_NOLOCK))
 		how = HAMMER2_RESOLVE_NEVER;
 	else
 		how = HAMMER2_RESOLVE_MAYBE;
@@ -2141,6 +2142,116 @@ again2:
 }
 
 /*
+ * Loop on parent's children, issuing the callback for each child.
+ *
+ * Uses LOOKUP flags.
+ */
+int
+hammer2_chain_iterate(hammer2_chain_t *parent,
+		      int (*callback)(hammer2_chain_t *parent,
+				      hammer2_chain_t **chainp,
+				      void *arg),
+		      void *arg, int flags)
+{
+	hammer2_chain_t *chain;
+	hammer2_blockref_t *base;
+	int count;
+	int i;
+	int res;
+
+	/*
+	 * Scan the children (if any)
+	 */
+	res = 0;
+	i = 0;
+	for (;;) {
+		/*
+		 * Calculate the blockref array on each loop in order
+		 * to allow the callback to temporarily unlock/relock
+		 * the parent.
+		 */
+		switch(parent->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			base = &parent->data->ipdata.u.blockset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_INDIRECT:
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+			if (parent->flags & HAMMER2_CHAIN_INITIAL) {
+				base = NULL;
+			} else {
+				KKASSERT(parent->data != NULL);
+				base = &parent->data->npdata[0];
+			}
+			count = parent->bytes / sizeof(hammer2_blockref_t);
+			break;
+		case HAMMER2_BREF_TYPE_VOLUME:
+			base = &parent->hmp->voldata.sroot_blockset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		case HAMMER2_BREF_TYPE_FREEMAP:
+			base = &parent->hmp->voldata.freemap_blockset.blockref[0];
+			count = HAMMER2_SET_COUNT;
+			break;
+		default:
+			/*
+			 * The function allows calls on non-recursive
+			 * chains and will effectively be a nop() in that
+			 * case.
+			 */
+			base = NULL;
+			count = 0;
+			break;
+		}
+
+		/*
+		 * Loop termination
+		 */
+		if (i >= count)
+			break;
+
+		/*
+		 * Lookup the child, properly overloading any elements
+		 * held in memory.
+		 *
+		 * NOTE: Deleted elements cover any underlying base[] entry
+		 *	 (which might not have been zero'd out yet).
+		 *
+		 * NOTE: The fact that there can be multiple stacked
+		 *	 deleted elements at the same index is hidden
+		 *	 by hammer2_chain_find().
+		 */
+		chain = hammer2_chain_find(parent, i);
+		if (chain) {
+			if (chain->flags & HAMMER2_CHAIN_DELETED) {
+				hammer2_chain_drop(chain);
+				++i;
+				continue;
+			}
+		} else if (base == NULL || base[i].type == 0) {
+			++i;
+			continue;
+		}
+		if (chain)
+			hammer2_chain_drop(chain);
+		chain = hammer2_chain_get(parent, i, flags);
+		if (chain) {
+			res = callback(parent, &chain, arg);
+			if (chain) {
+				if (flags & HAMMER2_LOOKUP_NOLOCK)
+					hammer2_chain_drop(chain);
+				else
+					hammer2_chain_unlock(chain);
+			}
+			if (res < 0)
+				break;
+		}
+		++i;
+	}
+	return res;
+}
+
+/*
  * Create and return a new hammer2 system memory structure of the specified
  * key, type and size and insert it under (*parentp).  This is a full
  * insertion, based on the supplied key/keybits, and may involve creating
@@ -2664,6 +2775,8 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		(int)(ochain->bref.data_off & HAMMER2_OFF_MASK_RADIX);
 	nchain->bytes = bytes;
 	nchain->modify_tid = ochain->modify_tid;
+	nchain->data_count += ochain->data_count;
+	nchain->inode_count += ochain->inode_count;
 
 	/*
 	 * Lock nchain and insert into ochain's core hierarchy, marking
@@ -3179,7 +3292,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		 */
 		spin_unlock(&above->cst.spin);
 		chain = hammer2_chain_get(parent, i, HAMMER2_LOOKUP_NODATA);
-		hammer2_chain_delete(trans, chain);
+		hammer2_chain_delete(trans, chain, HAMMER2_DELETE_WILLDUP);
 		hammer2_chain_duplicate(trans, ichain, i, &chain, NULL);
 		hammer2_chain_unlock(chain);
 		KKASSERT(parent->refs > 0);
@@ -3489,7 +3602,7 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
  *	 here.
  */
 void
-hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain)
+hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 {
 	KKASSERT(ccms_thread_lock_owned(&chain->core->cst));
 
@@ -3519,6 +3632,14 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain)
 	}
 	chain->delete_tid = trans->sync_tid;
 	spin_unlock(&chain->above->cst.spin);
+
+	/*
+	 * Mark the underlying block as possibly being free unless WILLDUP
+	 * is set.  Duplication can occur in many situations, particularly
+	 * when chains are moved to indirect blocks.
+	 */
+	if ((flags & HAMMER2_DELETE_WILLDUP) == 0)
+		hammer2_freemap_free(trans, chain->hmp, &chain->bref, 0);
 	hammer2_chain_setsubmod(trans, chain);
 }
 

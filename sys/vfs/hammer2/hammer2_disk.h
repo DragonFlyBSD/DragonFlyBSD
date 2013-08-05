@@ -106,6 +106,7 @@
  */
 
 #define HAMMER2_SEGSIZE		(1 << HAMMER2_FREEMAP_LEVEL0_RADIX)
+#define HAMMER2_SEGRADIX	HAMMER2_FREEMAP_LEVEL0_RADIX
 
 #define HAMMER2_PBUFRADIX	16	/* physical buf (1<<16) bytes */
 #define HAMMER2_PBUFSIZE	65536
@@ -168,15 +169,15 @@
  *	+-----------------------+
  *      |	Volume Hdr	| block 0	volume header & alternates
  *	+-----------------------+		(first four zones only)
- *	|   FreeBlk Section A   | block 1-8
+ *	|   FreeBlk Section A   | block 1-4
  *	+-----------------------+
- *	|   FreeBlk Section B   | block 9-16
+ *	|   FreeBlk Section B   | block 5-8
  *	+-----------------------+
- *	|   FreeBlk Section C   | block 17-24
+ *	|   FreeBlk Section C   | block 9-12
  *	+-----------------------+
- *	|   FreeBlk Section D   | block 25-32
+ *	|   FreeBlk Section D   | block 13-16
  *	+-----------------------+
- *      |			| block 33...63
+ *      |			| block 17...63
  *      |	reserved	|
  *      |			|
  *	+-----------------------+
@@ -184,8 +185,35 @@
  * The first few 2GB zones contain volume headers and volume header backups.
  * After that the volume header block# is reserved.
  *
- * The freemap utilizes blocks #1-32 for now, see the FREEMAP document.
- * The Free block table has a resolution of 1KB
+ *			Freemap (see the FREEMAP document)
+ *
+ * The freemap utilizes blocks #1-16 for now, see the FREEMAP document.
+ * The filesystems rotations through the sections to avoid disturbing the
+ * 'previous' version of the freemap during a flush.
+ *
+ * Each freemap section is 4 x 64K blocks and represents 2GB, 2TB, 2PB,
+ * and 2EB indirect map, plus the volume header has a set of 8 blockrefs
+ * for another 3 bits for a total of 64 bits of address space.  The Level 0
+ * 64KB block representing 2GB of storage is a hammer2_bmap_data[1024].
+ * Each element contains a 128x2 bit bitmap representing 16KB per chunk for
+ * 2MB of storage (x1024 elements = 2GB).  2 bits per chunk:
+ *
+ *	00	Free
+ *	01	Possibly fragmented
+ *	10	Possibly free
+ *	11	Allocated
+ *
+ * One important thing to note here is that the freemap resolution is 16KB,
+ * but the minimuim storage allocation size is 1KB.  The hammer2 vfs keeps
+ * track of sub-allocations in memory (on umount or reboot obvious the whole
+ * 16KB will be considered allocated even if only 1KB is allocated).  It is
+ * possible for fragmentation to build up over time.
+ *
+ * The Second thing to note is that due to the way snapshots and inode
+ * replication works, deleting a file cannot immediately free the related
+ * space.  Instead, the freemap elements transition from 11->10.  The bulk
+ * freeing code which does a complete scan is then responsible for
+ * transitioning the elements to 00 or back to 11 or to 01 for that matter.
  *
  * WARNING!  ZONE_SEG and VOLUME_ALIGN must be a multiple of 1<<LEVEL0_RADIX
  *	     (i.e. a multiple of 2MB).  VOLUME_ALIGN must be >= ZONE_SEG.
@@ -413,6 +441,9 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 
 #define HAMMER2_BLOCKREF_BYTES		64	/* blockref struct in bytes */
 
+/*
+ * On-media and off-media blockref types.
+ */
 #define HAMMER2_BREF_TYPE_EMPTY		0
 #define HAMMER2_BREF_TYPE_INODE		1
 #define HAMMER2_BREF_TYPE_INDIRECT	2
@@ -493,28 +524,28 @@ typedef struct hammer2_blockset hammer2_blockset_t;
  *
  * (data structure must be 64 bytes exactly)
  *
- * linear  - A BYTE linear allocation offset.  May contain values between
- *	     0 and 2MB.  Any value which is 16KB-aligned is effective neutral
- *	     (forces the bitmap to be checked), whereas intermediate values
- *	     allow iterative allocations from a bitmap that is already marked
- *	     allocated.
+ * linear  - A BYTE linear allocation offset used for sub-16KB allocations
+ *	     only.  May contain values between 0 and 2MB.  Must be ignored
+ *	     if 16KB-aligned (i.e. force bitmap scan), otherwise may be
+ *	     used to sub-allocate within the 16KB block (which is already
+ *	     marked as allocated in the bitmap).
+ *
+ *	     Sub-allocations need only be 1KB-aligned and do not have to be
+ *	     size-aligned, and 16KB or larger allocations do not update this
+ *	     field, resulting in pretty good packing.
  *
  *	     Please note that file data granularity may be limited by
  *	     other issues such as buffer cache direct-mapping and the
  *	     desire to support sector sizes up to 16KB (so H2 only issues
  *	     I/O's in multiples of 16KB anyway).
  *
- * radix   - Once assigned, radix for clustering.  Cleared to 0 only if
- *	     the entire leaf becomes free (related device buffer cache buffers
- *	     must also be destroyed to avoid later overlap assertions).  All
- *	     chain's within this 2MB segment must match the clustering radix.
+ * class   - Clustering class.  Cleared to 0 only if the entire leaf becomes
+ *	     free.  Used to cluster device buffers so all elements must have
+ *	     the same device block size, but may mix logical sizes.
  *
- *	     Device I/O size may be further adjusted to the minimum (16KB),
- *	     even if radix is smaller.   This forms the I/O clustering radix.
- *
- *	     Value will typically be 10-16 (1KB to 64KB).  Smaller values may
- *	     be allowed in the future (probably unnecessary to add that
- *	     complication though).
+ *	     Typically integrated with the blockref type in the upper 8 bits
+ *	     to localize inodes and indrect blocks, improving bulk free scans
+ *	     and directory scans.
  *
  * bitmap  - Two bits per 16KB allocation block arranged in arrays of
  *	     32-bit elements, 128x2 bits representing ~2MB worth of media
@@ -527,8 +558,7 @@ typedef struct hammer2_blockset hammer2_blockset_t;
  */
 struct hammer2_bmap_data {
 	int32_t linear;		/* 00 linear sub-granular allocation offset */
-	uint8_t reserved04;	/* 04 */
-	uint8_t radix;		/* 05 cluster I/O 0, LBUFRADIX, PBUFRADIX */
+	uint16_t class;		/* 04-05 clustering class ((type<<8)|radix) */
 	uint8_t reserved06;	/* 06 */
 	uint8_t reserved07;	/* 07 */
 	uint32_t reserved08;	/* 08 */

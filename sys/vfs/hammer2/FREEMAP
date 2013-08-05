@@ -20,22 +20,23 @@
       can be done very quickly on-mount.
 
     * The freemap is flushed in a manner similar to the normal H2 filesystem,
-      but as mentioned above it does not have to be synchronized.  One freemap
-      flush could cover several H2 flushes.  A freemap flush is not necessary
-      for e.g. a fsync() or sync() to complete successfully.
+      but as mentioned above it can be synchronized independently of the data
+      it represents.  One freemap flush could cover several H2 flushes.  A
+      freemap flush is not necessary for e.g. a fsync() or sync() to
+      complete successfully.
 
     * The freemap granularity is 64KB (radix of 16) but the minimum
       allocation radix for code is 1KB (radix of 10).  1KB inodes can
       hold up to 512 bytes of direct data, so small files eat exactly
-      1KB of media storage.
+      1KB of media storage inclusive of the inode.
 
     * Representation of storage is block-oriented with ~1KB granularity
       in the filesystem topology.  However, H2 also stores freemap locality
       hints in the inode at all levels which specifies which freemap zones
       all storage allocations made by the sub-tree are allocated from.  Up
-      to four zones may be listed in each inode.  The zones are power-of-sized
-      and aligned the same and use a base/radix representation (same as used
-      for blockref->data_off).
+      to four zones may be listed in each inode.  The zones are power-of-2
+      sized and aligned the same and use a base/radix representation
+      (same as used for blockref->data_off).
 
       During updates higher level inodes may not have a sufficient number of
       entries to represent the storage used on a fine-grain.  In this
@@ -48,6 +49,8 @@
       warrant a split.  This optimization should NOT attempt to dup common
       data blocks.
 
+      XXX
+
     * The zone oriented forward storage references in the inode (the four
       entries) is used by the bulk free-scan to reduce the amount of
       meta-data which must be duplicatively scanned.  More specifically,
@@ -56,12 +59,15 @@
       scan the meta-data topology that covers ONLY those areas to determine
       if it is possible to free up any actual blocks.
 
+      XXX
+
     * H2 does not require that a rm -rf or snapshot destruction, truncation,
-      or any other operation actually modify the freemap.  That is, the
-      freemap elements can remain set to ALLOCATED (11).  In fact, it is
-      possible to just delete the directory inode and not even recursively
-      scan sub-directories.  The related storage will eventually be freed
-      by an exhaustive bulk free-scan anyway.
+      or any other operation actually mark freemap blocks as being
+      almost-free.  That is, the freemap elements can remain set to
+      ALLOCATED (11).  In fact, it is possible to just delete the directory
+      inode itself and not even recursively scan or delete sub-directories or
+      files.  The related storage will eventually be freed by an exhaustive
+      bulk free-scan anyway.
 
 				Freemap Topology
 
