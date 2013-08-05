@@ -248,7 +248,7 @@ void ttm_tt_unbind(struct ttm_tt *ttm)
 
 	if (ttm->state == tt_bound) {
 		ret = ttm->func->unbind(ttm);
-		MPASS(ret == 0);
+		KKASSERT(ret == 0);
 		ttm->state = tt_unbound;
 	}
 }
@@ -332,8 +332,8 @@ int ttm_tt_swapout(struct ttm_tt *ttm, vm_object_t persistent_swap_storage)
 	vm_page_t from_page, to_page;
 	int i;
 
-	MPASS(ttm->state == tt_unbound || ttm->state == tt_unpopulated);
-	MPASS(ttm->caching_state == tt_cached);
+	KKASSERT(ttm->state == tt_unbound || ttm->state == tt_unpopulated);
+	KKASSERT(ttm->caching_state == tt_cached);
 
 	if (persistent_swap_storage == NULL) {
 		obj = vm_pager_allocate(OBJT_SWAP, NULL,

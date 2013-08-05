@@ -305,7 +305,7 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 		}
 
 		rw_wunlock(&tfile->lock);
-		MPASS(ret == -EINVAL);
+		KKASSERT(ret == -EINVAL);
 
 		ttm_mem_global_free(mem_glob, sizeof(*ref));
 		free(ref, M_TTM_OBJ_REF);

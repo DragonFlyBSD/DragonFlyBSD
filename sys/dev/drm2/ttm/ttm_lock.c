@@ -153,7 +153,7 @@ int ttm_read_trylock(struct ttm_lock *lock, bool interruptible)
 		if (ret != 0)
 			break;
 	}
-	MPASS(!locked || ret == 0);
+	KKASSERT(!locked || ret == 0);
 	mtx_unlock(&lock->lock);
 
 	return (locked) ? 0 : -EBUSY;
@@ -244,7 +244,7 @@ static void ttm_vt_lock_remove(struct ttm_base_object **p_base)
 
 	*p_base = NULL;
 	ret = __ttm_vt_unlock(lock);
-	MPASS(ret == 0);
+	KKASSERT(ret == 0);
 }
 
 static bool __ttm_vt_lock(struct ttm_lock *lock)

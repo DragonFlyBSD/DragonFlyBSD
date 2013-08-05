@@ -111,13 +111,13 @@ static void ttm_bo_release_list(struct ttm_buffer_object *bo)
 	struct ttm_bo_device *bdev = bo->bdev;
 	size_t acc_size = bo->acc_size;
 
-	MPASS(atomic_read(&bo->list_kref) == 0);
-	MPASS(atomic_read(&bo->kref) == 0);
-	MPASS(atomic_read(&bo->cpu_writers) == 0);
-	MPASS(bo->sync_obj == NULL);
-	MPASS(bo->mem.mm_node == NULL);
-	MPASS(list_empty(&bo->lru));
-	MPASS(list_empty(&bo->ddestroy));
+	KKASSERT(atomic_read(&bo->list_kref) == 0);
+	KKASSERT(atomic_read(&bo->kref) == 0);
+	KKASSERT(atomic_read(&bo->cpu_writers) == 0);
+	KKASSERT(bo->sync_obj == NULL);
+	KKASSERT(bo->mem.mm_node == NULL);
+	KKASSERT(list_empty(&bo->lru));
+	KKASSERT(list_empty(&bo->ddestroy));
 
 	if (bo->ttm)
 		ttm_tt_destroy(bo->ttm);
@@ -157,11 +157,11 @@ void ttm_bo_add_to_lru(struct ttm_buffer_object *bo)
 	struct ttm_bo_device *bdev = bo->bdev;
 	struct ttm_mem_type_manager *man;
 
-	MPASS(ttm_bo_is_reserved(bo));
+	KKASSERT(ttm_bo_is_reserved(bo));
 
 	if (!(bo->mem.placement & TTM_PL_FLAG_NO_EVICT)) {
 
-		MPASS(list_empty(&bo->lru));
+		KKASSERT(list_empty(&bo->lru));
 
 		man = &bdev->man[bo->mem.mem_type];
 		list_add_tail(&bo->lru, &man->lru);
@@ -747,7 +747,7 @@ static int ttm_bo_evict(struct ttm_buffer_object *bo, bool interruptible,
 		goto out;
 	}
 
-	MPASS(ttm_bo_is_reserved(bo));
+	KKASSERT(ttm_bo_is_reserved(bo));
 
 	evict_mem = bo->mem;
 	evict_mem.mm_node = NULL;
@@ -818,7 +818,7 @@ static int ttm_mem_evict_first(struct ttm_bo_device *bdev,
 	put_count = ttm_bo_del_from_lru(bo);
 	mtx_unlock(&glob->lru_lock);
 
-	MPASS(ret == 0);
+	KKASSERT(ret == 0);
 
 	ttm_bo_list_ref_sub(bo, put_count, true);
 
@@ -1038,7 +1038,7 @@ int ttm_bo_move_buffer(struct ttm_buffer_object *bo,
 	struct ttm_mem_reg mem;
 	struct ttm_bo_device *bdev = bo->bdev;
 
-	MPASS(ttm_bo_is_reserved(bo));
+	KKASSERT(ttm_bo_is_reserved(bo));
 
 	/*
 	 * FIXME: It's possible to pipeline buffer moves.
@@ -1097,7 +1097,7 @@ int ttm_bo_validate(struct ttm_buffer_object *bo,
 {
 	int ret;
 
-	MPASS(ttm_bo_is_reserved(bo));
+	KKASSERT(ttm_bo_is_reserved(bo));
 	/* Check that range is valid */
 	if (placement->lpfn || placement->fpfn)
 		if (placement->fpfn > placement->lpfn ||
@@ -1134,7 +1134,7 @@ int ttm_bo_validate(struct ttm_buffer_object *bo,
 int ttm_bo_check_placement(struct ttm_buffer_object *bo,
 				struct ttm_placement *placement)
 {
-	MPASS(!((placement->fpfn || placement->lpfn) &&
+	KKASSERT(!((placement->fpfn || placement->lpfn) &&
 	    (bo->mem.num_pages > (placement->lpfn - placement->fpfn))));
 
 	return 0;
@@ -1366,9 +1366,9 @@ int ttm_bo_init_mm(struct ttm_bo_device *bdev, unsigned type,
 	int ret = -EINVAL;
 	struct ttm_mem_type_manager *man;
 
-	MPASS(type < TTM_NUM_MEM_TYPES);
+	KKASSERT(type < TTM_NUM_MEM_TYPES);
 	man = &bdev->man[type];
-	MPASS(!man->has_type);
+	KKASSERT(!man->has_type);
 	man->io_reserve_fastpath = true;
 	man->use_io_reserve_lru = false;
 	sx_init(&man->io_reserve_mutex, "ttmman");
@@ -1488,7 +1488,7 @@ int ttm_bo_device_release(struct ttm_bo_device *bdev)
 		TTM_DEBUG("Swap list was clean\n");
 	mtx_unlock(&glob->lru_lock);
 
-	MPASS(drm_mm_clean(&bdev->addr_space_mm));
+	KKASSERT(drm_mm_clean(&bdev->addr_space_mm));
 	rw_wlock(&bdev->vm_lock);
 	drm_mm_takedown(&bdev->addr_space_mm);
 	rw_wunlock(&bdev->vm_lock);
