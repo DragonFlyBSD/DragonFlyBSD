@@ -9,6 +9,23 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 3.4 to later versions                +
++-----------------------------------------------------------------------+
+
+CYRIX OPTIONS REMOVED
+---------------------
+
+The following Cyrix related options have been removed: CPU_BTB_EN,
+CPU_CYRIX_NO_LOCK, CPU_DIRECT_MAPPED_CACHE, CPU_DISABLE_5X86_LSSER,
+CPU_FASTER_5X86_FPU, CPU_IORT, CPU_LOOP_EN, CPU_RSTK_EN, CPU_SUSP_HLT,
+CYRIX_CACHE_WORKS, and CYRIX_CACHE_REALLY_WORKS
+
+ISA SUPPORT REMOVED FROM RP(4)
+------------------------------
+
+ISA support has been removed from the rp(4) driver. It is now PCI only.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.2 to later versions                +
 +-----------------------------------------------------------------------+
 
