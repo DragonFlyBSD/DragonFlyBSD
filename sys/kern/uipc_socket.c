@@ -414,7 +414,8 @@ soclose(struct socket *so, int fflag)
 	funsetown(&so->so_sigio);
 	if (!use_soclose_fast ||
 	    (so->so_proto->pr_flags & PR_SYNC_PORT) ||
-	    (so->so_options & SO_LINGER)) {
+	    ((so->so_state & SS_ISCONNECTED) &&
+	     (so->so_options & SO_LINGER))) {
 		error = soclose_sync(so, fflag);
 	} else {
 		soclose_fast(so);
