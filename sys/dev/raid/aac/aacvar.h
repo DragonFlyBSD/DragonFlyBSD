@@ -248,7 +248,6 @@ struct aac_interface
 };
 extern struct aac_interface	aac_rx_interface;
 extern struct aac_interface	aac_sa_interface;
-extern struct aac_interface	aac_fa_interface;
 extern struct aac_interface	aac_rkt_interface;
 
 #define AAC_GET_FWSTATUS(sc)		((sc)->aac_if.aif_get_fwstatus((sc)))

@@ -46,12 +46,6 @@
  */
 
 
-/* External data structures. */
-
-extern int	mp_ncpus;
-
-
-
 /* Functions in tw_osl_freebsd.c */
 
 /* Build a firmware passthru cmd pkt, and submit it to CL. */

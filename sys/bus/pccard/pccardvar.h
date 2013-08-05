@@ -1,6 +1,5 @@
 /*	$NetBSD: pcmciavar.h,v 1.12 2000/02/08 12:51:31 enami Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccardvar.h,v 1.54 2005/07/13 15:00:59 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.8 2007/08/14 15:32:32 sephe Exp $ */
 
 /*-
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -30,8 +29,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-extern int	pccard_verbose;
 
 /*
  * PCCARD_API_LEVEL.  When set to 5, we provide a 5.x compatable API

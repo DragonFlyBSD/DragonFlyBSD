@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.123 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.12 2008/09/27 11:45:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -538,7 +537,6 @@ struct ata_channel {
 
 /* externs */
 extern int (*ata_raid_ioctl_func)(u_long cmd, caddr_t data);
-extern struct intr_config_hook *ata_delayed_attach;
 extern devclass_t ata_devclass;
 extern int ata_wc;
  
