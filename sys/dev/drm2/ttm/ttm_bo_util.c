@@ -78,13 +78,14 @@ int ttm_mem_io_lock(struct ttm_mem_type_manager *man, bool interruptible)
 		return 0;
 
 	if (interruptible) {
-		if (sx_xlock_sig(&man->io_reserve_mutex))
+		if (lockmgr(&man->io_reserve_mutex,
+			    LK_EXCLUSIVE | LK_SLEEPFAIL))
 			return (-EINTR);
 		else
 			return (0);
 	}
 
-	sx_xlock(&man->io_reserve_mutex);
+	lockmgr(&man->io_reserve_mutex, LK_EXCLUSIVE);
 	return 0;
 }
 
@@ -93,7 +94,7 @@ void ttm_mem_io_unlock(struct ttm_mem_type_manager *man)
 	if (likely(man->io_reserve_fastpath))
 		return;
 
-	sx_xunlock(&man->io_reserve_mutex);
+	lockmgr(&man->io_reserve_mutex, LK_RELEASE);
 }
 
 static int ttm_mem_io_evict(struct ttm_mem_type_manager *man)
@@ -594,7 +595,7 @@ int ttm_bo_move_accel_cleanup(struct ttm_buffer_object *bo,
 	void *tmp_obj = NULL;
 	void *sync_obj_ref;
 
-	mtx_lock(&bdev->fence_lock);
+	lockmgr(&bdev->fence_lock, LK_EXCLUSIVE);
 	if (bo->sync_obj) {
 		tmp_obj = bo->sync_obj;
 		bo->sync_obj = NULL;
@@ -602,7 +603,7 @@ int ttm_bo_move_accel_cleanup(struct ttm_buffer_object *bo,
 	bo->sync_obj = driver->sync_obj_ref(sync_obj);
 	if (evict) {
 		ret = ttm_bo_wait(bo, false, false, false);
-		mtx_unlock(&bdev->fence_lock);
+		lockmgr(&bdev->fence_lock, LK_RELEASE);
 		if (tmp_obj)
 			driver->sync_obj_unref(&tmp_obj);
 		if (ret)
@@ -627,7 +628,7 @@ int ttm_bo_move_accel_cleanup(struct ttm_buffer_object *bo,
 		set_bit(TTM_BO_PRIV_FLAG_MOVING, &bo->priv_flags);
 
 		sync_obj_ref = bo->bdev->driver->sync_obj_ref(bo->sync_obj);
-		mtx_unlock(&bdev->fence_lock);
+		lockmgr(&bdev->fence_lock, LK_RELEASE);
 		/* ttm_buffer_object_transfer accesses bo->sync_obj */
 		ret = ttm_buffer_object_transfer(bo, sync_obj_ref, &ghost_obj);
 		if (tmp_obj)

@@ -48,7 +48,7 @@
 
 void ttm_lock_init(struct ttm_lock *lock)
 {
-	mtx_init(&lock->lock, "ttmlk", NULL, MTX_DEF);
+	lockinit(&lock->lock, "ttmlk", 0, LK_CANRECURSE);
 	lock->rw = 0;
 	lock->flags = 0;
 	lock->kill_takers = false;
@@ -68,10 +68,10 @@ ttm_lock_send_sig(int signo)
 
 void ttm_read_unlock(struct ttm_lock *lock)
 {
-	mtx_lock(&lock->lock);
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	if (--lock->rw == 0)
 		wakeup(lock);
-	mtx_unlock(&lock->lock);
+	lockmgr(&lock->lock, LK_RELEASE);
 }
 
 static bool __ttm_read_lock(struct ttm_lock *lock)
@@ -103,7 +103,7 @@ ttm_read_lock(struct ttm_lock *lock, bool interruptible)
 		flags = 0;
 		wmsg = "ttmr";
 	}
-	mtx_lock(&lock->lock);
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	while (!__ttm_read_lock(lock)) {
 		ret = msleep(lock, &lock->lock, flags, wmsg, 0);
 		if (ret != 0)
@@ -147,24 +147,24 @@ int ttm_read_trylock(struct ttm_lock *lock, bool interruptible)
 		flags = 0;
 		wmsg = "ttmrt";
 	}
-	mtx_lock(&lock->lock);
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	while (!__ttm_read_trylock(lock, &locked)) {
 		ret = msleep(lock, &lock->lock, flags, wmsg, 0);
 		if (ret != 0)
 			break;
 	}
 	KKASSERT(!locked || ret == 0);
-	mtx_unlock(&lock->lock);
+	lockmgr(&lock->lock, LK_RELEASE);
 
 	return (locked) ? 0 : -EBUSY;
 }
 
 void ttm_write_unlock(struct ttm_lock *lock)
 {
-	mtx_lock(&lock->lock);
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	lock->rw = 0;
 	wakeup(lock);
-	mtx_unlock(&lock->lock);
+	lockmgr(&lock->lock, LK_RELEASE);
 }
 
 static bool __ttm_write_lock(struct ttm_lock *lock)
@@ -199,7 +199,7 @@ ttm_write_lock(struct ttm_lock *lock, bool interruptible)
 		flags = 0;
 		wmsg = "ttmw";
 	}
-	mtx_lock(&lock->lock);
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	/* XXXKIB: linux uses __ttm_read_lock for uninterruptible sleeps */
 	while (!__ttm_write_lock(lock)) {
 		ret = msleep(lock, &lock->lock, flags, wmsg, 0);
@@ -209,29 +209,29 @@ ttm_write_lock(struct ttm_lock *lock, bool interruptible)
 			break;
 		}
 	}
-	mtx_unlock(&lock->lock);
+	lockmgr(&lock->lock, LK_RELEASE);
 
 	return (-ret);
 }
 
 void ttm_write_lock_downgrade(struct ttm_lock *lock)
 {
-	mtx_lock(&lock->lock);
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	lock->rw = 1;
 	wakeup(lock);
-	mtx_unlock(&lock->lock);
+	lockmgr(&lock->lock, LK_RELEASE);
 }
 
 static int __ttm_vt_unlock(struct ttm_lock *lock)
 {
 	int ret = 0;
 
-	mtx_lock(&lock->lock);
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	if (unlikely(!(lock->flags & TTM_VT_LOCK)))
 		ret = -EINVAL;
 	lock->flags &= ~TTM_VT_LOCK;
 	wakeup(lock);
-	mtx_unlock(&lock->lock);
+	lockmgr(&lock->lock, LK_RELEASE);
 
 	return ret;
 }
@@ -276,7 +276,7 @@ int ttm_vt_lock(struct ttm_lock *lock,
 		flags = 0;
 		wmsg = "ttmw";
 	}
-	mtx_lock(&lock->lock);
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	while (!__ttm_vt_lock(lock)) {
 		ret = msleep(lock, &lock->lock, flags, wmsg, 0);
 		if (interruptible && ret != 0) {
@@ -310,10 +310,10 @@ int ttm_vt_unlock(struct ttm_lock *lock)
 
 void ttm_suspend_unlock(struct ttm_lock *lock)
 {
-	mtx_lock(&lock->lock);
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	lock->flags &= ~TTM_SUSPEND_LOCK;
 	wakeup(lock);
-	mtx_unlock(&lock->lock);
+	lockmgr(&lock->lock, LK_RELEASE);
 }
 
 static bool __ttm_suspend_lock(struct ttm_lock *lock)
@@ -332,8 +332,8 @@ static bool __ttm_suspend_lock(struct ttm_lock *lock)
 
 void ttm_suspend_lock(struct ttm_lock *lock)
 {
-	mtx_lock(&lock->lock);
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	while (!__ttm_suspend_lock(lock))
 		msleep(lock, &lock->lock, 0, "ttms", 0);
-	mtx_unlock(&lock->lock);
+	lockmgr(&lock->lock, LK_RELEASE);
 }

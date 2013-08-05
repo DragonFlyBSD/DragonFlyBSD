@@ -104,9 +104,9 @@ void ttm_eu_backoff_reservation(struct list_head *list)
 
 	entry = list_first_entry(list, struct ttm_validate_buffer, head);
 	glob = entry->bo->glob;
-	mtx_lock(&glob->lru_lock);
+	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	ttm_eu_backoff_reservation_locked(list);
-	mtx_unlock(&glob->lru_lock);
+	lockmgr(&glob->lru_lock, LK_RELEASE);
 }
 
 /*
@@ -140,7 +140,7 @@ int ttm_eu_reserve_buffers(struct list_head *list)
 	entry = list_first_entry(list, struct ttm_validate_buffer, head);
 	glob = entry->bo->glob;
 
-	mtx_lock(&glob->lru_lock);
+	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 retry_locked:
 	val_seq = entry->bo->bdev->val_seq++;
 
@@ -155,7 +155,7 @@ retry_this_bo:
 		case -EBUSY:
 			ret = ttm_eu_wait_unreserved_locked(list, bo);
 			if (unlikely(ret != 0)) {
-				mtx_unlock(&glob->lru_lock);
+				lockmgr(&glob->lru_lock, LK_RELEASE);
 				ttm_eu_list_ref_sub(list);
 				return ret;
 			}
@@ -165,13 +165,13 @@ retry_this_bo:
 			ttm_eu_list_ref_sub(list);
 			ret = ttm_bo_wait_unreserved_locked(bo, true);
 			if (unlikely(ret != 0)) {
-				mtx_unlock(&glob->lru_lock);
+				lockmgr(&glob->lru_lock, LK_RELEASE);
 				return ret;
 			}
 			goto retry_locked;
 		default:
 			ttm_eu_backoff_reservation_locked(list);
-			mtx_unlock(&glob->lru_lock);
+			lockmgr(&glob->lru_lock, LK_RELEASE);
 			ttm_eu_list_ref_sub(list);
 			return ret;
 		}
@@ -179,14 +179,14 @@ retry_this_bo:
 		entry->reserved = true;
 		if (unlikely(atomic_read(&bo->cpu_writers) > 0)) {
 			ttm_eu_backoff_reservation_locked(list);
-			mtx_unlock(&glob->lru_lock);
+			lockmgr(&glob->lru_lock, LK_RELEASE);
 			ttm_eu_list_ref_sub(list);
 			return -EBUSY;
 		}
 	}
 
 	ttm_eu_del_from_lru_locked(list);
-	mtx_unlock(&glob->lru_lock);
+	lockmgr(&glob->lru_lock, LK_RELEASE);
 	ttm_eu_list_ref_sub(list);
 
 	return 0;
@@ -208,8 +208,8 @@ void ttm_eu_fence_buffer_objects(struct list_head *list, void *sync_obj)
 	driver = bdev->driver;
 	glob = bo->glob;
 
-	mtx_lock(&glob->lru_lock);
-	mtx_lock(&bdev->fence_lock);
+	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
+	lockmgr(&bdev->fence_lock, LK_EXCLUSIVE);
 
 	list_for_each_entry(entry, list, head) {
 		bo = entry->bo;
@@ -218,8 +218,8 @@ void ttm_eu_fence_buffer_objects(struct list_head *list, void *sync_obj)
 		ttm_bo_unreserve_locked(bo);
 		entry->reserved = false;
 	}
-	mtx_unlock(&bdev->fence_lock);
-	mtx_unlock(&glob->lru_lock);
+	lockmgr(&bdev->fence_lock, LK_RELEASE);
+	lockmgr(&glob->lru_lock, LK_RELEASE);
 
 	list_for_each_entry(entry, list, head) {
 		if (entry->old_sync_obj)

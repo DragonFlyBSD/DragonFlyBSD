@@ -150,16 +150,16 @@ reserve:
 	 * move.
 	 */
 
-	mtx_lock(&bdev->fence_lock);
+	lockmgr(&bdev->fence_lock, LK_EXCLUSIVE);
 	if (test_bit(TTM_BO_PRIV_FLAG_MOVING, &bo->priv_flags)) {
 		ret = ttm_bo_wait(bo, false, true, false);
-		mtx_unlock(&bdev->fence_lock);
+		lockmgr(&bdev->fence_lock, LK_RELEASE);
 		if (unlikely(ret != 0)) {
 			retval = VM_PAGER_ERROR;
 			goto out_unlock;
 		}
 	} else
-		mtx_unlock(&bdev->fence_lock);
+		lockmgr(&bdev->fence_lock, LK_RELEASE);
 
 	ret = ttm_mem_io_lock(man, true);
 	if (unlikely(ret != 0)) {
@@ -288,11 +288,11 @@ ttm_bo_mmap_single(struct ttm_bo_device *bdev, vm_ooffset_t *offset, vm_size_t s
 	struct vm_object *vm_obj;
 	int ret;
 
-	rw_wlock(&bdev->vm_lock);
+	lockmgr(&bdev->vm_lock, LK_EXCLUSIVE);
 	bo = ttm_bo_vm_lookup_rb(bdev, OFF_TO_IDX(*offset), OFF_TO_IDX(size));
 	if (likely(bo != NULL))
 		refcount_acquire(&bo->kref);
-	rw_wunlock(&bdev->vm_lock);
+	lockmgr(&bdev->vm_lock, LK_RELEASE);
 
 	if (unlikely(bo == NULL)) {
 		kprintf("[TTM] Could not find buffer object to map\n");

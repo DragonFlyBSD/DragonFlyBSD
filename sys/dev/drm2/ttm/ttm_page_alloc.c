@@ -70,7 +70,7 @@
  * @npages: Number of pages in pool.
  */
 struct ttm_page_pool {
-	struct mtx		lock;
+	struct lock		lock;
 	bool			fill_lock;
 	bool			dma32;
 	struct pglist		list;
@@ -329,7 +329,7 @@ static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free)
 	    M_TEMP, M_WAITOK | M_ZERO);
 
 restart:
-	mtx_lock(&pool->lock);
+	lockmgr(&pool->lock, LK_EXCLUSIVE);
 
 	TAILQ_FOREACH_REVERSE_SAFE(p, &pool->list, pglist, pageq, p1) {
 		if (freed_pages >= npages_to_free)
@@ -346,7 +346,7 @@ restart:
 			 * Because changing page caching is costly
 			 * we unlock the pool to prevent stalling.
 			 */
-			mtx_unlock(&pool->lock);
+			lockmgr(&pool->lock, LK_RELEASE);
 
 			ttm_pages_put(pages_to_free, freed_pages);
 			if (likely(nr_free != FREE_ALL_PAGES))
@@ -380,7 +380,7 @@ restart:
 		nr_free -= freed_pages;
 	}
 
-	mtx_unlock(&pool->lock);
+	lockmgr(&pool->lock, LK_RELEASE);
 
 	if (freed_pages)
 		ttm_pages_put(pages_to_free, freed_pages);
@@ -593,12 +593,12 @@ static void ttm_page_pool_fill_locked(struct ttm_page_pool *pool,
 		 * Can't change page caching if in irqsave context. We have to
 		 * drop the pool->lock.
 		 */
-		mtx_unlock(&pool->lock);
+		lockmgr(&pool->lock, LK_RELEASE);
 
 		TAILQ_INIT(&new_pages);
 		r = ttm_alloc_new_pages(&new_pages, pool->ttm_page_alloc_flags,
 		    ttm_flags, cstate, alloc_size);
-		mtx_lock(&pool->lock);
+		lockmgr(&pool->lock, LK_EXCLUSIVE);
 
 		if (!r) {
 			TAILQ_CONCAT(&pool->list, &new_pages, pageq);
@@ -632,7 +632,7 @@ static unsigned ttm_page_pool_get_pages(struct ttm_page_pool *pool,
 	vm_page_t p;
 	unsigned i;
 
-	mtx_lock(&pool->lock);
+	lockmgr(&pool->lock, LK_EXCLUSIVE);
 	ttm_page_pool_fill_locked(pool, ttm_flags, cstate, count);
 
 	if (count >= pool->npages) {
@@ -650,7 +650,7 @@ static unsigned ttm_page_pool_get_pages(struct ttm_page_pool *pool,
 	pool->npages -= count;
 	count = 0;
 out:
-	mtx_unlock(&pool->lock);
+	lockmgr(&pool->lock, LK_RELEASE);
 	return count;
 }
 
@@ -672,7 +672,7 @@ static void ttm_put_pages(vm_page_t *pages, unsigned npages, int flags,
 		return;
 	}
 
-	mtx_lock(&pool->lock);
+	lockmgr(&pool->lock, LK_EXCLUSIVE);
 	for (i = 0; i < npages; i++) {
 		if (pages[i]) {
 			TAILQ_INSERT_TAIL(&pool->list, pages[i], pageq);
@@ -689,7 +689,7 @@ static void ttm_put_pages(vm_page_t *pages, unsigned npages, int flags,
 		if (npages < NUM_PAGES_TO_ALLOC)
 			npages = NUM_PAGES_TO_ALLOC;
 	}
-	mtx_unlock(&pool->lock);
+	lockmgr(&pool->lock, LK_RELEASE);
 	if (npages)
 		ttm_page_pool_free(pool, npages);
 }
@@ -773,7 +773,7 @@ static int ttm_get_pages(vm_page_t *pages, unsigned npages, int flags,
 static void ttm_page_pool_init_locked(struct ttm_page_pool *pool, int flags,
 				      char *name)
 {
-	mtx_init(&pool->lock, "ttmpool", NULL, MTX_DEF);
+	lockinit(&pool->lock, "ttmpool", 0, LK_CANRECURSE);
 	pool->fill_lock = false;
 	TAILQ_INIT(&pool->list);
 	pool->npages = pool->nfrees = 0;

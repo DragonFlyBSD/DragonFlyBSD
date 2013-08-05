@@ -44,7 +44,7 @@
 
 struct ttm_range_manager {
 	struct drm_mm mm;
-	struct mtx lock;
+	struct lock lock;
 };
 
 MALLOC_DEFINE(M_TTM_RMAN, "ttm_rman", "TTM Range Manager");
@@ -68,19 +68,19 @@ static int ttm_bo_man_get_node(struct ttm_mem_type_manager *man,
 		if (unlikely(ret))
 			return ret;
 
-		mtx_lock(&rman->lock);
+		lockmgr(&rman->lock, LK_EXCLUSIVE);
 		node = drm_mm_search_free_in_range(mm,
 					mem->num_pages, mem->page_alignment,
 					placement->fpfn, lpfn, 1);
 		if (unlikely(node == NULL)) {
-			mtx_unlock(&rman->lock);
+			lockmgr(&rman->lock, LK_RELEASE);
 			return 0;
 		}
 		node = drm_mm_get_block_atomic_range(node, mem->num_pages,
 						     mem->page_alignment,
 						     placement->fpfn,
 						     lpfn);
-		mtx_unlock(&rman->lock);
+		lockmgr(&rman->lock, LK_RELEASE);
 	} while (node == NULL);
 
 	mem->mm_node = node;
@@ -94,9 +94,9 @@ static void ttm_bo_man_put_node(struct ttm_mem_type_manager *man,
 	struct ttm_range_manager *rman = (struct ttm_range_manager *) man->priv;
 
 	if (mem->mm_node) {
-		mtx_lock(&rman->lock);
+		lockmgr(&rman->lock, LK_EXCLUSIVE);
 		drm_mm_put_block(mem->mm_node);
-		mtx_unlock(&rman->lock);
+		lockmgr(&rman->lock, LK_RELEASE);
 		mem->mm_node = NULL;
 	}
 }
@@ -114,7 +114,7 @@ static int ttm_bo_man_init(struct ttm_mem_type_manager *man,
 		return ret;
 	}
 
-	mtx_init(&rman->lock, "ttmrman", NULL, MTX_DEF);
+	lockinit(&rman->lock, "ttmrman", 0, LK_CANRECURSE);
 	man->priv = rman;
 	return 0;
 }
@@ -124,16 +124,16 @@ static int ttm_bo_man_takedown(struct ttm_mem_type_manager *man)
 	struct ttm_range_manager *rman = (struct ttm_range_manager *) man->priv;
 	struct drm_mm *mm = &rman->mm;
 
-	mtx_lock(&rman->lock);
+	lockmgr(&rman->lock, LK_EXCLUSIVE);
 	if (drm_mm_clean(mm)) {
 		drm_mm_takedown(mm);
-		mtx_unlock(&rman->lock);
-		mtx_destroy(&rman->lock);
+		lockmgr(&rman->lock, LK_RELEASE);
+		lockuninit(&rman->lock);
 		drm_free(rman, M_TTM_RMAN);
 		man->priv = NULL;
 		return 0;
 	}
-	mtx_unlock(&rman->lock);
+	lockmgr(&rman->lock, LK_RELEASE);
 	return -EBUSY;
 }
 
@@ -142,9 +142,9 @@ static void ttm_bo_man_debug(struct ttm_mem_type_manager *man,
 {
 	struct ttm_range_manager *rman = (struct ttm_range_manager *) man->priv;
 
-	mtx_lock(&rman->lock);
+	lockmgr(&rman->lock, LK_EXCLUSIVE);
 	drm_mm_debug_table(&rman->mm, prefix);
-	mtx_unlock(&rman->lock);
+	lockmgr(&rman->lock, LK_RELEASE);
 }
 
 const struct ttm_mem_type_manager_func ttm_bo_manager_func = {

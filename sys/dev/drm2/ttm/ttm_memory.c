@@ -163,20 +163,20 @@ static void ttm_shrink(struct ttm_mem_global *glob, bool from_wq,
 	int ret;
 	struct ttm_mem_shrink *shrink;
 
-	mtx_lock(&glob->lock);
+	spin_lock(&glob->spin);
 	if (glob->shrink == NULL)
 		goto out;
 
 	while (ttm_zones_above_swap_target(glob, from_wq, extra)) {
 		shrink = glob->shrink;
-		mtx_unlock(&glob->lock);
+		spin_lock(&glob->spin);
 		ret = shrink->do_shrink(shrink);
-		mtx_lock(&glob->lock);
+		spin_unlock(&glob->spin);
 		if (unlikely(ret != 0))
 			goto out;
 	}
 out:
-	mtx_unlock(&glob->lock);
+	spin_unlock(&glob->spin);
 }
 
 
@@ -251,7 +251,7 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 	int i;
 	struct ttm_mem_zone *zone;
 
-	mtx_init(&glob->lock, "ttmgz", NULL, MTX_DEF);
+	spin_init(&glob->spin);
 	glob->swap_queue = taskqueue_create("ttm_swap", M_WAITOK,
 	    taskqueue_thread_enqueue, &glob->swap_queue);
 	taskqueue_start_threads(&glob->swap_queue, 1, PVM, "ttm swap");
@@ -307,7 +307,7 @@ static void ttm_check_swapping(struct ttm_mem_global *glob)
 	unsigned int i;
 	struct ttm_mem_zone *zone;
 
-	mtx_lock(&glob->lock);
+	spin_lock(&glob->spin);
 	for (i = 0; i < glob->num_zones; ++i) {
 		zone = glob->zones[i];
 		if (zone->used_mem > zone->swap_limit) {
@@ -315,8 +315,7 @@ static void ttm_check_swapping(struct ttm_mem_global *glob)
 			break;
 		}
 	}
-
-	mtx_unlock(&glob->lock);
+	spin_unlock(&glob->spin);
 
 	if (unlikely(needs_swapping))
 		taskqueue_enqueue(glob->swap_queue, &glob->work);
@@ -330,14 +329,14 @@ static void ttm_mem_global_free_zone(struct ttm_mem_global *glob,
 	unsigned int i;
 	struct ttm_mem_zone *zone;
 
-	mtx_lock(&glob->lock);
+	spin_lock(&glob->spin);
 	for (i = 0; i < glob->num_zones; ++i) {
 		zone = glob->zones[i];
 		if (single_zone && zone != single_zone)
 			continue;
 		zone->used_mem -= amount;
 	}
-	mtx_unlock(&glob->lock);
+	spin_unlock(&glob->spin);
 }
 
 void ttm_mem_global_free(struct ttm_mem_global *glob,
@@ -355,7 +354,7 @@ static int ttm_mem_global_reserve(struct ttm_mem_global *glob,
 	unsigned int i;
 	struct ttm_mem_zone *zone;
 
-	mtx_lock(&glob->lock);
+	spin_lock(&glob->spin);
 	for (i = 0; i < glob->num_zones; ++i) {
 		zone = glob->zones[i];
 		if (single_zone && zone != single_zone)
@@ -379,7 +378,7 @@ static int ttm_mem_global_reserve(struct ttm_mem_global *glob,
 
 	ret = 0;
 out_unlock:
-	mtx_unlock(&glob->lock);
+	spin_unlock(&glob->spin);
 	ttm_check_swapping(glob);
 
 	return ret;
