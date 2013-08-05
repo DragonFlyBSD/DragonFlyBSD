@@ -52,7 +52,6 @@
 #include <sys/rman.h>
 #include <sys/thread2.h>
 
-#define ROCKET_C
 #include "rpreg.h"
 #include "rpvar.h"
 
@@ -97,14 +96,6 @@ static Byte_t RRegData[RREGDATASIZE]=
    0x22, 0x09, 0x0a, 0x0a	       /* 30: Rx FIFO Enable */
 };
 
-#if 0
-/* IRQ number to MUDBAC register 2 mapping */
-Byte_t sIRQMap[16] =
-{
-   0,0,0,0x10,0x20,0x30,0,0,0,0x40,0x50,0x60,0x70,0,0,0x80
-};
-#endif
-
 Byte_t rp_sBitMapClrTbl[8] =
 {
    0xfe,0xfd,0xfb,0xf7,0xef,0xdf,0xbf,0x7f
@@ -114,21 +105,6 @@ Byte_t rp_sBitMapSetTbl[8] =
 {
    0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80
 };
-
-/* Actually not used */
-#if 0 /* notdef */
-struct termios deftermios = {
-	TTYDEF_IFLAG,
-	TTYDEF_OFLAG,
-	TTYDEF_CFLAG,
-	TTYDEF_LFLAG,
-	{ CEOF, CEOL, CEOL, CERASE, CWERASE, CKILL, CREPRINT,
-	_POSIX_VDISABLE, CINTR, CQUIT, CSUSP, CDSUSP, CSTART, CSTOP, CLNEXT,
-	CDISCARD, CMIN, CTIME, CSTATUS, _POSIX_VDISABLE },
-	TTYDEF_SPEED,
-	TTYDEF_SPEED
-};
-#endif
 
 /***************************************************************************
 Function: sReadAiopID
@@ -906,9 +882,6 @@ rp_attachcommon(CONTROLLER_T *ctlp, int num_aiops, int num_ports)
 
 			rp->rp_intmask = RXF_TRIG | TXFIFO_MT | SRC_INT |
 				DELTA_CD | DELTA_CTS | DELTA_DSR;
-#if 0 /* notdef */
-			ChanStatus = sGetChanStatus(&rp->rp_channel);
-#endif /* notdef */
 			if(sInitChan(ctlp, &rp->rp_channel, aiop, chan) == 0) {
 				device_printf(ctlp->dev, "RocketPort sInitChan(%d, %d, %d) failed.\n",
 					      unit, aiop, chan);

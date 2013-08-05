@@ -695,7 +695,6 @@ dev/disk/vpo/vpo.c		optional vpo
 dev/disk/vpo/vpoio.c	optional vpo
 dev/crypto/rndtest/rndtest.c	optional rndtest
 dev/serial/rp/rp.c		optional nrp
-dev/serial/rp/rp_isa.c		optional nrp isa
 dev/serial/rp/rp_pci.c		optional nrp pci
 dev/crypto/safe/safe.c		optional safe
 dev/netif/sbsh/if_sbsh.c	optional sbsh

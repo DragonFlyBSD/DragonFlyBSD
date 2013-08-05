@@ -45,7 +45,6 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#define ROCKET_C
 #include "rpreg.h"
 #include "rpvar.h"
 
@@ -88,10 +87,6 @@ static devclass_t rp_devclass;
 
 static int rp_pciprobe(device_t dev);
 static int rp_pciattach(device_t dev);
-#if 0 /* notdef */
-static int rp_pcidetach(device_t dev);
-static int rp_pcishutdown(device_t dev);
-#endif /* notdef */
 static void rp_pcireleaseresource(CONTROLLER_t *ctlp);
 static int sPCIInitController( CONTROLLER_t *CtlP,
 			       int AiopNum,
@@ -187,38 +182,6 @@ nogo:
 	return (retval);
 }
 
-#if 0 /* notdef */
-static int
-rp_pcidetach(device_t dev)
-{
-	CONTROLLER_t	*ctlp;
-
-	if (device_get_state(dev) == DS_BUSY)
-		return (EBUSY);
-
-	ctlp = device_get_softc(dev);
-
-	rp_pcireleaseresource(ctlp);
-
-	return (0);
-}
-
-static int
-rp_pcishutdown(device_t dev)
-{
-	CONTROLLER_t	*ctlp;
-
-	if (device_get_state(dev) == DS_BUSY)
-		return (EBUSY);
-
-	ctlp = device_get_softc(dev);
-
-	rp_pcireleaseresource(ctlp);
-
-	return (0);
-}
-#endif /* notdef */
-
 static void
 rp_pcireleaseresource(CONTROLLER_t *ctlp)
 {
@@ -276,11 +239,7 @@ sPCIInitController( CONTROLLER_t *CtlP,
       			CtlP->AiopNumChan[i] = 8;
 			break;
 		default:
-#if 0 /* notdef */
-      			CtlP->AiopNumChan[i] = 8;
-#else
       			CtlP->AiopNumChan[i] = sReadAiopNumChan(CtlP, i);
-#endif /* notdef */
 			break;
 		}
 		/*device_printf(CtlP->dev, "%d channels.\n", CtlP->AiopNumChan[i]);*/
@@ -330,10 +289,6 @@ static device_method_t rp_pcimethods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		rp_pciprobe),
 	DEVMETHOD(device_attach,	rp_pciattach),
-#if 0 /* notdef */
-	DEVMETHOD(device_detach,	rp_pcidetach),
-	DEVMETHOD(device_shutdown,	rp_pcishutdown),
-#endif /* notdef */
 
 	DEVMETHOD_END
 };

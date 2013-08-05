@@ -81,8 +81,3 @@ struct rp_port {
 	unsigned short		TxBuf[TXFIFO_SIZE/2 + 1];
 	unsigned short		RxBuf[RXFIFO_SIZE/2 + 1];
 };
-
-/* Actually not used */
-#if 0 /* notdef */
-extern struct termios deftermios;
-#endif /* notdef */

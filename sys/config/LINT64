@@ -1287,36 +1287,10 @@ device		"snd_uaudio"
 # bktr: Brooktree bt848/848a/849a/878/879 video capture and TV Tuner board
 # ecc: ECC memory controller
 # joy: joystick
-# nrp: Comtrol Rocketport(ISA) - single card
+# nrp: Comtrol Rocketport
 # si: Specialix SI/XIO 4-32 port terminal multiplexor
 # nmdm: nullmodem terminal driver (see nmdm(4))
 # tpm: Trusted Platform Module
-
-# Notes on the Comtrol Rocketport driver:
-#
-# The exact values used for nrp0 depend on how many boards you have
-# in the system.  The manufacturer's sample configs are listed as:
-#
-#   Comtrol Rocketport ISA single card
-#               device  nrp0     at isa? port 0x280
-#
-#   If instead you have two ISA cards, one installed at 0x100 and the
-#   second installed at 0x180, then you should add the following to
-#   your kernel configuration file:
-#
-#               device  nrp0     at isa? port 0x100
-#               device  nrp1     at isa? port 0x180
-#
-#   For 4 ISA cards, it might be something like this:
-#
-#               device  nrp0     at isa? port 0x180
-#               device  nrp1     at isa? port 0x100
-#               device  nrp2     at isa? port 0x340
-#               device  nrp3     at isa? port 0x240
-#
-#   And for PCI cards, you only need say:
-#
-#               device nrp
 
 # Notes on the Specialix SI/XIO driver:
 #  **This is NOT a Specialix supported Driver!**

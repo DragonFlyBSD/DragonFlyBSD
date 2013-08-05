@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rpreg.h,v 1.4.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rpreg.h,v 1.3 2004/05/19 22:52:49 dillon Exp $
  */
 
 /*
@@ -1003,10 +1002,5 @@ void sDisInterrupts(CHANNEL_T *ChP,Word_t Flags);
 int rp_attachcommon(CONTROLLER_T *ctlp, int num_aiops, int num_ports);
 void rp_releaseresource(CONTROLLER_t *ctlp);
 
-#ifndef ROCKET_C
-extern Byte_t R[RDATASIZE];
-extern CONTROLLER_T sController[CTL_SIZE];
-extern Byte_t sIRQMap[16];
-#endif
 extern Byte_t rp_sBitMapClrTbl[8];
 extern Byte_t rp_sBitMapSetTbl[8];
