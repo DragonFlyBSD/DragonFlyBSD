@@ -102,6 +102,8 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp 
 	mtx_assert(&my_mtx, MA_OWNED|MA_NOTRECURSED);
 
   calls.
+
+* rwlock conversion: Use lockmgr locks
 	
 * UMA conversion - generally speaking UMA should be converted to a standard
   kmalloc.
@@ -202,3 +204,28 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp 
 	 * 01-02-03-04-05-06
 	 */
 	kprintf("%s\n", hexncpy(mydata, 6, hexstr, HEX_NCPYLEN(6), "-"));
+
+* TAILQ_XXX_SAFE
+
+  Use TAILQ_XXX_MUTABLE; the macros have the same effect, only the name is
+  different
+
+* kern_yield()
+
+  Replace by lwkt_yield()
+
+* vm_page_lock() and vm_page_unlock()
+
+  Not needed on DragonFly, remove these calls
+
+* vm_pager_get_pages()
+
+  Removed, use vm_pager_get_page() instead
+
+* VPO_BUSY
+
+  Replace by PG_BUSY
+
+* kern_psignal()
+
+  Replace by ksignal()
