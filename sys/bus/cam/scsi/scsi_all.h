@@ -15,7 +15,6 @@
  * Ported to run under 386BSD by Julian Elischer (julian@tfs.com) Sept 1992
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.h,v 1.31 2008/08/07 17:25:05 jkim Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.h,v 1.15 2008/08/23 22:27:27 pavalos Exp $
  */
 
 /*
@@ -1123,8 +1122,6 @@ union  ccb;
 #ifndef _KERNEL
 struct cam_device;
 #endif
-
-extern const char *scsi_sense_key_text[];
 
 struct sbuf;
 
