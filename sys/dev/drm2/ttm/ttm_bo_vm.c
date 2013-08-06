@@ -295,7 +295,7 @@ ttm_bo_mmap_single(struct ttm_bo_device *bdev, vm_ooffset_t *offset, vm_size_t s
 	rw_wunlock(&bdev->vm_lock);
 
 	if (unlikely(bo == NULL)) {
-		printf("[TTM] Could not find buffer object to map\n");
+		kprintf("[TTM] Could not find buffer object to map\n");
 		return (EINVAL);
 	}
 

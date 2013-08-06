@@ -50,15 +50,15 @@ MALLOC_DEFINE(M_TTM_PD, "ttm_pd", "TTM Page Directories");
  */
 static void ttm_tt_alloc_page_directory(struct ttm_tt *ttm)
 {
-	ttm->pages = malloc(ttm->num_pages * sizeof(void *),
+	ttm->pages = kmalloc(ttm->num_pages * sizeof(void *),
 	    M_TTM_PD, M_WAITOK | M_ZERO);
 }
 
 static void ttm_dma_tt_alloc_page_directory(struct ttm_dma_tt *ttm)
 {
-	ttm->ttm.pages = malloc(ttm->ttm.num_pages * sizeof(void *),
+	ttm->ttm.pages = kmalloc(ttm->ttm.num_pages * sizeof(void *),
 	    M_TTM_PD, M_WAITOK | M_ZERO);
-	ttm->dma_address = malloc(ttm->ttm.num_pages *
+	ttm->dma_address = kmalloc(ttm->ttm.num_pages *
 	    sizeof(*ttm->dma_address), M_TTM_PD, M_WAITOK);
 }
 
@@ -195,7 +195,7 @@ int ttm_tt_init(struct ttm_tt *ttm, struct ttm_bo_device *bdev,
 	ttm_tt_alloc_page_directory(ttm);
 	if (!ttm->pages) {
 		ttm_tt_destroy(ttm);
-		printf("Failed allocating page table\n");
+		kprintf("Failed allocating page table\n");
 		return -ENOMEM;
 	}
 	return 0;
@@ -203,7 +203,7 @@ int ttm_tt_init(struct ttm_tt *ttm, struct ttm_bo_device *bdev,
 
 void ttm_tt_fini(struct ttm_tt *ttm)
 {
-	free(ttm->pages, M_TTM_PD);
+	drm_free(ttm->pages, M_TTM_PD);
 	ttm->pages = NULL;
 }
 
@@ -226,7 +226,7 @@ int ttm_dma_tt_init(struct ttm_dma_tt *ttm_dma, struct ttm_bo_device *bdev,
 	ttm_dma_tt_alloc_page_directory(ttm_dma);
 	if (!ttm->pages || !ttm_dma->dma_address) {
 		ttm_tt_destroy(ttm);
-		printf("Failed allocating page table\n");
+		kprintf("Failed allocating page table\n");
 		return -ENOMEM;
 	}
 	return 0;
@@ -236,9 +236,9 @@ void ttm_dma_tt_fini(struct ttm_dma_tt *ttm_dma)
 {
 	struct ttm_tt *ttm = &ttm_dma->ttm;
 
-	free(ttm->pages, M_TTM_PD);
+	drm_free(ttm->pages, M_TTM_PD);
 	ttm->pages = NULL;
-	free(ttm_dma->dma_address, M_TTM_PD);
+	drm_free(ttm_dma->dma_address, M_TTM_PD);
 	ttm_dma->dma_address = NULL;
 }
 
@@ -340,7 +340,7 @@ int ttm_tt_swapout(struct ttm_tt *ttm, vm_object_t persistent_swap_storage)
 		    IDX_TO_OFF(ttm->num_pages), VM_PROT_DEFAULT, 0,
 		    curthread->td_ucred);
 		if (obj == NULL) {
-			printf("[TTM] Failed allocating swap storage\n");
+			kprintf("[TTM] Failed allocating swap storage\n");
 			return (-ENOMEM);
 		}
 	} else

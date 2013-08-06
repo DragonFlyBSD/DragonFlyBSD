@@ -164,7 +164,7 @@ ttm_caching_state_to_vm(enum ttm_caching_state cstate)
 static void ttm_pool_kobj_release(struct ttm_pool_manager *m)
 {
 
-	free(m, M_TTM_POOLMGR);
+	drm_free(m, M_TTM_POOLMGR);
 }
 
 #if 0
@@ -294,7 +294,7 @@ static void ttm_pages_put(vm_page_t *pages, unsigned npages)
 
 	/* Our VM handles vm memattr automatically on the page free. */
 	if (set_pages_array_wb(pages, npages))
-		printf("[TTM] Failed to set %d pages to wb!\n", npages);
+		kprintf("[TTM] Failed to set %d pages to wb!\n", npages);
 	for (i = 0; i < npages; ++i)
 		ttm_vm_page_free(pages[i]);
 }
@@ -325,7 +325,7 @@ static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free)
 	if (NUM_PAGES_TO_ALLOC < nr_free)
 		npages_to_free = NUM_PAGES_TO_ALLOC;
 
-	pages_to_free = malloc(npages_to_free * sizeof(vm_page_t),
+	pages_to_free = kmalloc(npages_to_free * sizeof(vm_page_t),
 	    M_TEMP, M_WAITOK | M_ZERO);
 
 restart:
@@ -385,7 +385,7 @@ restart:
 	if (freed_pages)
 		ttm_pages_put(pages_to_free, freed_pages);
 out:
-	free(pages_to_free, M_TEMP);
+	drm_free(pages_to_free, M_TEMP);
 	return nr_free;
 }
 
@@ -446,12 +446,12 @@ static int ttm_set_pages_caching(vm_page_t *pages,
 	case tt_uncached:
 		r = set_pages_array_uc(pages, cpages);
 		if (r)
-			printf("[TTM] Failed to set %d pages to uc!\n", cpages);
+			kprintf("[TTM] Failed to set %d pages to uc!\n", cpages);
 		break;
 	case tt_wc:
 		r = set_pages_array_wc(pages, cpages);
 		if (r)
-			printf("[TTM] Failed to set %d pages to wc!\n", cpages);
+			kprintf("[TTM] Failed to set %d pages to wc!\n", cpages);
 		break;
 	default:
 		break;
@@ -497,7 +497,7 @@ static int ttm_alloc_new_pages(struct pglist *pages, int ttm_alloc_flags,
 	    VM_ALLOC_ZERO : 0);
 	
 	/* allocate array for page caching change */
-	caching_array = malloc(max_cpages * sizeof(vm_page_t), M_TEMP,
+	caching_array = kmalloc(max_cpages * sizeof(vm_page_t), M_TEMP,
 	    M_WAITOK | M_ZERO);
 
 	for (i = 0, cpages = 0; i < count; ++i) {
@@ -506,7 +506,7 @@ static int ttm_alloc_new_pages(struct pglist *pages, int ttm_alloc_flags,
 		    VM_MAX_ADDRESS, PAGE_SIZE, 0,
 		    ttm_caching_state_to_vm(cstate));
 		if (!p) {
-			printf("[TTM] Unable to get page %u\n", i);
+			kprintf("[TTM] Unable to get page %u\n", i);
 
 			/* store already allocated pages in the pool after
 			 * setting the caching state */
@@ -557,7 +557,7 @@ static int ttm_alloc_new_pages(struct pglist *pages, int ttm_alloc_flags,
 					caching_array, cpages);
 	}
 out:
-	free(caching_array, M_TEMP);
+	drm_free(caching_array, M_TEMP);
 
 	return r;
 }
@@ -605,7 +605,7 @@ static void ttm_page_pool_fill_locked(struct ttm_page_pool *pool,
 			++pool->nrefills;
 			pool->npages += alloc_size;
 		} else {
-			printf("[TTM] Failed to fill pool (%p)\n", pool);
+			kprintf("[TTM] Failed to fill pool (%p)\n", pool);
 			/* If we have any pages left put them to the pool. */
 			TAILQ_FOREACH(p, &pool->list, pageq) {
 				++cpages;
@@ -719,7 +719,7 @@ static int ttm_get_pages(vm_page_t *pages, unsigned npages, int flags,
 			    VM_MAX_ADDRESS, PAGE_SIZE,
 			    0, ttm_caching_state_to_vm(cstate));
 			if (!p) {
-				printf("[TTM] Unable to allocate page\n");
+				kprintf("[TTM] Unable to allocate page\n");
 				return -ENOMEM;
 			}
 			p->oflags &= ~VPO_UNMANAGED;
@@ -761,7 +761,7 @@ static int ttm_get_pages(vm_page_t *pages, unsigned npages, int flags,
 		if (r) {
 			/* If there is any pages in the list put them back to
 			 * the pool. */
-			printf("[TTM] Failed to allocate extra pages for large request\n");
+			kprintf("[TTM] Failed to allocate extra pages for large request\n");
 			ttm_put_pages(pages, count, flags, cstate);
 			return r;
 		}
@@ -785,10 +785,10 @@ int ttm_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
 {
 
 	if (_manager != NULL)
-		printf("[TTM] manager != NULL\n");
-	printf("[TTM] Initializing pool allocator\n");
+		kprintf("[TTM] manager != NULL\n");
+	kprintf("[TTM] Initializing pool allocator\n");
 
-	_manager = malloc(sizeof(*_manager), M_TTM_POOLMGR, M_WAITOK | M_ZERO);
+	_manager = kmalloc(sizeof(*_manager), M_TTM_POOLMGR, M_WAITOK | M_ZERO);
 
 	ttm_page_pool_init_locked(&_manager->wc_pool, 0, "wc");
 	ttm_page_pool_init_locked(&_manager->uc_pool, 0, "uc");
@@ -811,7 +811,7 @@ void ttm_page_alloc_fini(void)
 {
 	int i;
 
-	printf("[TTM] Finalizing pool allocator\n");
+	kprintf("[TTM] Finalizing pool allocator\n");
 	ttm_pool_mm_shrink_fini(_manager);
 
 	for (i = 0; i < NUM_POOLS; ++i)

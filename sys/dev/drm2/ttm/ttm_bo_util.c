@@ -372,7 +372,7 @@ MALLOC_DEFINE(M_TTM_TRANSF_OBJ, "ttm_transf_obj", "TTM Transfer Objects");
 
 static void ttm_transfered_destroy(struct ttm_buffer_object *bo)
 {
-	free(bo, M_TTM_TRANSF_OBJ);
+	drm_free(bo, M_TTM_TRANSF_OBJ);
 }
 
 /**
@@ -396,7 +396,7 @@ ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 {
 	struct ttm_buffer_object *fbo;
 
-	fbo = malloc(sizeof(*fbo), M_TTM_TRANSF_OBJ, M_ZERO | M_WAITOK);
+	fbo = kmalloc(sizeof(*fbo), M_TTM_TRANSF_OBJ, M_ZERO | M_WAITOK);
 	*fbo = *bo;
 
 	/**

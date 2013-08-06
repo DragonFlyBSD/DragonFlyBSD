@@ -49,9 +49,9 @@ MALLOC_DEFINE(M_TTM_ZONE, "ttm_zone", "TTM Zone");
 static void ttm_mem_zone_kobj_release(struct ttm_mem_zone *zone)
 {
 
-	printf("[TTM] Zone %7s: Used memory at exit: %llu kiB\n",
+	kprintf("[TTM] Zone %7s: Used memory at exit: %llu kiB\n",
 		zone->name, (unsigned long long)zone->used_mem >> 10);
-	free(zone, M_TTM_ZONE);
+	drm_free(zone, M_TTM_ZONE);
 }
 
 #if 0
@@ -193,7 +193,7 @@ static int ttm_mem_init_kernel_zone(struct ttm_mem_global *glob,
 {
 	struct ttm_mem_zone *zone;
 
-	zone = malloc(sizeof(*zone), M_TTM_ZONE, M_WAITOK | M_ZERO);
+	zone = kmalloc(sizeof(*zone), M_TTM_ZONE, M_WAITOK | M_ZERO);
 
 	zone->name = "kernel";
 	zone->zone_mem = mem;
@@ -213,14 +213,14 @@ static int ttm_mem_init_dma32_zone(struct ttm_mem_global *glob,
 {
 	struct ttm_mem_zone *zone;
 
-	zone = malloc(sizeof(*zone), M_TTM_ZONE, M_WAITOK | M_ZERO);
+	zone = kmalloc(sizeof(*zone), M_TTM_ZONE, M_WAITOK | M_ZERO);
 
 	/**
 	 * No special dma32 zone needed.
 	 */
 
 	if (mem <= ((uint64_t) 1ULL << 32)) {
-		free(zone, M_TTM_ZONE);
+		drm_free(zone, M_TTM_ZONE);
 		return 0;
 	}
 
@@ -269,7 +269,7 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 		goto out_no_zone;
 	for (i = 0; i < glob->num_zones; ++i) {
 		zone = glob->zones[i];
-		printf("[TTM] Zone %7s: Available graphics memory: %llu kiB\n",
+		kprintf("[TTM] Zone %7s: Available graphics memory: %llu kiB\n",
 			zone->name, (unsigned long long)zone->max_mem >> 10);
 	}
 	ttm_page_alloc_init(glob, glob->zone_kernel->max_mem/(2*PAGE_SIZE));

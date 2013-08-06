@@ -127,7 +127,7 @@ ttm_object_file_ref(struct ttm_object_file *tfile)
 static void ttm_object_file_destroy(struct ttm_object_file *tfile)
 {
 
-	free(tfile, M_TTM_OBJ_FILE);
+	drm_free(tfile, M_TTM_OBJ_FILE);
 }
 
 
@@ -240,7 +240,7 @@ struct ttm_base_object *ttm_base_object_lookup(struct ttm_object_file *tfile,
 		return NULL;
 
 	if (tfile != base->tfile && !base->shareable) {
-		printf("[TTM] Attempted access of non-shareable object %p\n",
+		kprintf("[TTM] Attempted access of non-shareable object %p\n",
 		    base);
 		ttm_base_object_unref(&base);
 		return NULL;
@@ -280,7 +280,7 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 					   false, false);
 		if (unlikely(ret != 0))
 			return ret;
-		ref = malloc(sizeof(*ref), M_TTM_OBJ_REF, M_WAITOK);
+		ref = kmalloc(sizeof(*ref), M_TTM_OBJ_REF, M_WAITOK);
 		if (unlikely(ref == NULL)) {
 			ttm_mem_global_free(mem_glob, sizeof(*ref));
 			return -ENOMEM;
@@ -308,7 +308,7 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 		KKASSERT(ret == -EINVAL);
 
 		ttm_mem_global_free(mem_glob, sizeof(*ref));
-		free(ref, M_TTM_OBJ_REF);
+		drm_free(ref, M_TTM_OBJ_REF);
 	}
 
 	return ret;
@@ -331,7 +331,7 @@ static void ttm_ref_object_release(struct ttm_ref_object *ref)
 
 	ttm_base_object_unref(&ref->obj);
 	ttm_mem_global_free(mem_glob, sizeof(*ref));
-	free(ref, M_TTM_OBJ_REF);
+	drm_free(ref, M_TTM_OBJ_REF);
 	rw_wlock(&tfile->lock);
 }
 
@@ -392,7 +392,7 @@ struct ttm_object_file *ttm_object_file_init(struct ttm_object_device *tdev,
 	unsigned int j = 0;
 	int ret;
 
-	tfile = malloc(sizeof(*tfile), M_TTM_OBJ_FILE, M_WAITOK);
+	tfile = kmalloc(sizeof(*tfile), M_TTM_OBJ_FILE, M_WAITOK);
 	rw_init(&tfile->lock, "ttmfo");
 	tfile->tdev = tdev;
 	refcount_init(&tfile->refcount, 1);
@@ -411,7 +411,7 @@ out_err:
 	for (i = 0; i < j; ++i)
 		drm_ht_remove(&tfile->ref_hash[i]);
 
-	free(tfile, M_TTM_OBJ_FILE);
+	drm_free(tfile, M_TTM_OBJ_FILE);
 
 	return NULL;
 }
@@ -425,7 +425,7 @@ struct ttm_object_device *ttm_object_device_init(struct ttm_mem_global
 	struct ttm_object_device *tdev;
 	int ret;
 
-	tdev = malloc(sizeof(*tdev), M_TTM_OBJ_DEV, M_WAITOK);
+	tdev = kmalloc(sizeof(*tdev), M_TTM_OBJ_DEV, M_WAITOK);
 	tdev->mem_glob = mem_glob;
 	rw_init(&tdev->object_lock, "ttmdo");
 	atomic_set(&tdev->object_count, 0);
@@ -434,7 +434,7 @@ struct ttm_object_device *ttm_object_device_init(struct ttm_mem_global
 	if (ret == 0)
 		return tdev;
 
-	free(tdev, M_TTM_OBJ_DEV);
+	drm_free(tdev, M_TTM_OBJ_DEV);
 	return NULL;
 }
 
@@ -448,5 +448,5 @@ void ttm_object_device_release(struct ttm_object_device **p_tdev)
 	drm_ht_remove(&tdev->object_hash);
 	rw_wunlock(&tdev->object_lock);
 
-	free(tdev, M_TTM_OBJ_DEV);
+	drm_free(tdev, M_TTM_OBJ_DEV);
 }
