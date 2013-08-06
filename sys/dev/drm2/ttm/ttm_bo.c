@@ -145,7 +145,7 @@ ttm_bo_wait_unreserved_locked(struct ttm_buffer_object *bo, bool interruptible)
 		wmsg = "ttbowu";
 	}
 	while (!ttm_bo_is_reserved(bo)) {
-		ret = -msleep(bo, &bo->glob->lru_lock, flags, wmsg, 0);
+		ret = -lksleep(bo, &bo->glob->lru_lock, 0, wmsg, 0);
 		if (ret != 0)
 			break;
 	}

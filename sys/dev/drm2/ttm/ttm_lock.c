@@ -105,7 +105,7 @@ ttm_read_lock(struct ttm_lock *lock, bool interruptible)
 	}
 	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	while (!__ttm_read_lock(lock)) {
-		ret = msleep(lock, &lock->lock, flags, wmsg, 0);
+		ret = lksleep(lock, &lock->lock, 0, wmsg, 0);
 		if (ret != 0)
 			break;
 	}
@@ -149,7 +149,7 @@ int ttm_read_trylock(struct ttm_lock *lock, bool interruptible)
 	}
 	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	while (!__ttm_read_trylock(lock, &locked)) {
-		ret = msleep(lock, &lock->lock, flags, wmsg, 0);
+		ret = lksleep(lock, &lock->lock, 0, wmsg, 0);
 		if (ret != 0)
 			break;
 	}
@@ -202,7 +202,7 @@ ttm_write_lock(struct ttm_lock *lock, bool interruptible)
 	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	/* XXXKIB: linux uses __ttm_read_lock for uninterruptible sleeps */
 	while (!__ttm_write_lock(lock)) {
-		ret = msleep(lock, &lock->lock, flags, wmsg, 0);
+		ret = lksleep(lock, &lock->lock, 0, wmsg, 0);
 		if (interruptible && ret != 0) {
 			lock->flags &= ~TTM_WRITE_LOCK_PENDING;
 			wakeup(lock);
@@ -278,7 +278,7 @@ int ttm_vt_lock(struct ttm_lock *lock,
 	}
 	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	while (!__ttm_vt_lock(lock)) {
-		ret = msleep(lock, &lock->lock, flags, wmsg, 0);
+		ret = lksleep(lock, &lock->lock, 0, wmsg, 0);
 		if (interruptible && ret != 0) {
 			lock->flags &= ~TTM_VT_LOCK_PENDING;
 			wakeup(lock);
@@ -334,6 +334,6 @@ void ttm_suspend_lock(struct ttm_lock *lock)
 {
 	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	while (!__ttm_suspend_lock(lock))
-		msleep(lock, &lock->lock, 0, "ttms", 0);
+		lksleep(lock, &lock->lock, 0, "ttms", 0);
 	lockmgr(&lock->lock, LK_RELEASE);
 }
