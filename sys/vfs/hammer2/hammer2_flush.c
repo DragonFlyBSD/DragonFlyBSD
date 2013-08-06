@@ -1222,15 +1222,21 @@ hammer2_rollup_stats(hammer2_chain_t *parent, hammer2_chain_t *child, int how)
 		parent->data_count -= child->bytes;
 		if (child->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			parent->inode_count -= 1;
+#if 0
+			/* XXX child->data may be NULL atm */
 			parent->data_count -= child->data->ipdata.data_count;
 			parent->inode_count -= child->data->ipdata.inode_count;
+#endif
 		}
 	} else if (how > 0) {
 		parent->data_count += child->bytes;
 		if (child->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			parent->inode_count += 1;
+#if 0
+			/* XXX child->data may be NULL atm */
 			parent->data_count += child->data->ipdata.data_count;
 			parent->inode_count += child->data->ipdata.inode_count;
+#endif
 		}
 	}
 	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE) {
