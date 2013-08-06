@@ -314,6 +314,9 @@ extern vm_offset_t clean_eva;
 extern vm_offset_t clean_sva;
 extern char *ptvmmap;		/* poor name! */
 
+typedef struct vm_page *vm_page_t;
+typedef char vm_memattr_t;
+
 void	pmap_release(struct pmap *pmap);
 void	pmap_interlock_wait (struct vmspace *);
 void	pmap_bootstrap (vm_paddr_t *);
@@ -321,13 +324,13 @@ void	*pmap_mapbios(vm_paddr_t, vm_size_t);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	*pmap_mapdev_attr(vm_paddr_t, vm_size_t, int);
 void	*pmap_mapdev_uncacheable(vm_paddr_t, vm_size_t);
+void	pmap_page_set_memattr(vm_page_t m, vm_memattr_t ma);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
 void	pmap_set_opt (void);
 void	pmap_init_pat(void);
 vm_paddr_t pmap_kextract(vm_offset_t);
 void	pmap_invalidate_range(pmap_t, vm_offset_t, vm_offset_t);
-typedef struct vm_page *vm_page_t;
 void	pmap_invalidate_cache_pages(vm_page_t *pages, int count);
 void	pmap_invalidate_cache_range(vm_offset_t sva, vm_offset_t eva);
 

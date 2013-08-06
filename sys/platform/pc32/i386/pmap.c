@@ -3426,6 +3426,24 @@ pmap_unmapdev(vm_offset_t va, vm_size_t size)
 	kmem_free(&kernel_map, base, size);
 }
 
+ /*
+  * Sets the memory attribute for the specified page.
+  */
+void
+pmap_page_set_memattr(vm_page_t m, vm_memattr_t ma)
+{
+	m->pat_mode = ma;
+
+	/*
+	 * If "m" is a normal page, update its direct mapping.  This update
+	 * can be relied upon to perform any cache operations that are
+	 * required for data coherence.
+	 */
+	if ((m->flags & PG_FICTITIOUS) == 0)
+	    pmap_change_attr(PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)), PAGE_SIZE,
+	    m->pat_mode);
+}
+
 /*
  * Change the PAT attribute on an existing kernel memory map.  Caller
  * must ensure that the virtual memory in question is not accessed
