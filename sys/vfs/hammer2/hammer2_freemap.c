@@ -502,6 +502,7 @@ hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	 */
 	if (((uint32_t)bmap->linear & HAMMER2_FREEMAP_BLOCK_MASK) + size <=
 	    HAMMER2_FREEMAP_BLOCK_SIZE &&
+	    (bmap->linear & HAMMER2_FREEMAP_BLOCK_MASK) &&
 	    bmap->linear < HAMMER2_SEGSIZE) {
 		KKASSERT(bmap->linear >= 0 &&
 			 bmap->linear + size <= HAMMER2_SEGSIZE &&
@@ -543,7 +544,8 @@ success:
 	 * so the actual bitmap test is somewhat more involved.  We have
 	 * to use a compatible buffer size for this operation.
 	 */
-	if (radix < HAMMER2_MINIORADIX && (bmap->bitmap[i] & bmmask) == 0) {
+	if ((bmap->bitmap[i] & bmmask) == 0 &&
+	    hammer2_devblksize(size) != size) {
 		size_t psize = hammer2_devblksize(size);
 		hammer2_off_t pmask = (hammer2_off_t)psize - 1;
 		int pbmradix = 2 << (hammer2_devblkradix(radix) -
@@ -554,12 +556,19 @@ success:
 		while ((pbmmask & bmmask) == 0)
 			pbmmask <<= pbmradix;
 
+#if 0
+		kprintf("%016jx mask %08x %08x %08x (%zd/%zd)\n",
+			*basep + offset, bmap->bitmap[i],
+			pbmmask, bmmask, size, psize);
+#endif
+
 		if ((bmap->bitmap[i] & pbmmask) == 0) {
 			bp = getblk(hmp->devvp, *basep + (offset & ~pmask),
 				    psize, GETBLK_NOWAIT, 0);
 			if (bp) {
 				if ((bp->b_flags & B_CACHE) == 0)
 					vfs_bio_clrbuf(bp);
+				bp->b_flags |= B_CACHE;
 				bqrelse(bp);
 			}
 		}
@@ -656,6 +665,7 @@ hammer2_freemap_init(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 			memset(bmap->bitmap, -1,
 			       sizeof(bmap->bitmap));
 			bmap->avail = 0;
+			bmap->linear = HAMMER2_SEGSIZE;
 			chain->bref.check.freemap.avail -=
 				H2FMSHIFT(HAMMER2_FREEMAP_LEVEL0_RADIX);
 		} else {
