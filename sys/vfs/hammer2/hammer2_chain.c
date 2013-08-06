@@ -1092,10 +1092,6 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	chain->bytes = nbytes;
 	/*ip->delta_dcount += (ssize_t)(nbytes - obytes);*/ /* XXX atomic */
 
-	hammer2_voldata_lock(hmp);
-	hmp->voldata.allocator_free -= nbytes;  /* XXX */
-	hammer2_voldata_unlock(hmp, 1);
-
 	/*
 	 * The device buffer may be larger than the allocation size.
 	 */

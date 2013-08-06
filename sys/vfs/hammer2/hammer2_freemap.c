@@ -595,6 +595,10 @@ success:
 	bmap->avail -= size;
 	*basep += offset;
 
+	hammer2_voldata_lock(hmp);
+	hmp->voldata.allocator_free -= size;  /* XXX */
+	hammer2_voldata_unlock(hmp, 1);
+
 	return(0);
 }
 
