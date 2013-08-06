@@ -1959,18 +1959,14 @@ kdmsg_state_reply(kdmsg_state_t *state, uint32_t error)
 	 * If our direction has already been closed we just return without
 	 * doing anything.
 	 */
-	if (state) {
-		if (state->txcmd & DMSGF_DELETE)
-			return;
-		if ((state->txcmd & DMSGF_CREATE) == 0)
-			cmd |= DMSGF_CREATE;
-		if (state->txcmd & DMSGF_REPLY)
-			cmd |= DMSGF_REPLY;
-		cmd |= DMSGF_DELETE;
-	} else {
-		if ((state->txcmd & DMSGF_REPLY) == 0)
-			cmd |= DMSGF_REPLY;
-	}
+	KKASSERT(state);
+	if (state->txcmd & DMSGF_DELETE)
+		return;
+	if ((state->txcmd & DMSGF_CREATE) == 0)
+		cmd |= DMSGF_CREATE;
+	if (state->txcmd & DMSGF_REPLY)
+		cmd |= DMSGF_REPLY;
+	cmd |= DMSGF_DELETE;
 
 	/* XXX messy mask cmd to avoid allocating state */
 	nmsg = kdmsg_msg_alloc_state(state, cmd, NULL, NULL);
@@ -2004,18 +2000,14 @@ kdmsg_state_result(kdmsg_state_t *state, uint32_t error)
 	 * If our direction has already been closed we just return without
 	 * doing anything.
 	 */
-	if (state) {
-		if (state->txcmd & DMSGF_DELETE)
-			return;
-		if ((state->txcmd & DMSGF_CREATE) == 0)
-			cmd |= DMSGF_CREATE;
-		if (state->txcmd & DMSGF_REPLY)
-			cmd |= DMSGF_REPLY;
-		/* continuing transaction, do not set MSGF_DELETE */
-	} else {
-		if ((state->txcmd & DMSGF_REPLY) == 0)
-			cmd |= DMSGF_REPLY;
-	}
+	KKASSERT(state);
+	if (state->txcmd & DMSGF_DELETE)
+		return;
+	if ((state->txcmd & DMSGF_CREATE) == 0)
+		cmd |= DMSGF_CREATE;
+	if (state->txcmd & DMSGF_REPLY)
+		cmd |= DMSGF_REPLY;
+	/* continuing transaction, do not set MSGF_DELETE */
 
 	/* XXX messy mask cmd to avoid allocating state */
 	nmsg = kdmsg_msg_alloc_state(state, cmd, NULL, NULL);
