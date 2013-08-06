@@ -822,8 +822,7 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	mp->mnt_vstat.f_files = pmp->inode_count;
 	mp->mnt_vstat.f_ffree = 0;
 	mp->mnt_vstat.f_blocks = hmp->voldata.allocator_size / HAMMER2_PBUFSIZE;
-	mp->mnt_vstat.f_bfree = (hmp->voldata.allocator_size -
-				 hmp->voldata.allocator_beg) / HAMMER2_PBUFSIZE;
+	mp->mnt_vstat.f_bfree =  hmp->voldata.allocator_free / HAMMER2_PBUFSIZE;
 	mp->mnt_vstat.f_bavail = mp->mnt_vstat.f_bfree;
 
 	*sbp = mp->mnt_vstat;
