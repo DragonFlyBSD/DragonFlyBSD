@@ -167,23 +167,45 @@ static void	arp_update_msghandler(netmsg_t);
 static void	arp_reply_msghandler(netmsg_t);
 #endif
 
-static struct callout	arptimer_ch[MAXCPU];
+struct arptimer_ctx {
+	struct callout		timer_ch;
+	struct netmsg_base	timer_nmsg;
+	int			timer_inited;
+} __cachealign;
+
+static struct arptimer_ctx	arptimer_context[MAXCPU];
 
 /*
  * Timeout routine.  Age arp_tab entries periodically.
  */
-/* ARGSUSED */
 static void
-arptimer(void *ignored_arg)
+arptimer_dispatch(netmsg_t nmsg)
 {
 	struct llinfo_arp *la, *nla;
+	int cpuid = mycpuid;
 
+	/* Reply ASAP */
 	crit_enter();
-	LIST_FOREACH_MUTABLE(la, &llinfo_arp_list[mycpuid], la_le, nla) {
+	lwkt_replymsg(&nmsg->lmsg, 0);
+	crit_exit();
+
+	LIST_FOREACH_MUTABLE(la, &llinfo_arp_list[cpuid], la_le, nla) {
 		if (la->la_rt->rt_expire && la->la_rt->rt_expire <= time_second)
 			arptfree(la);
 	}
-	callout_reset(&arptimer_ch[mycpuid], arpt_prune * hz, arptimer, NULL);
+	callout_reset(&arptimer_context[cpuid].timer_ch, arpt_prune * hz,
+	    arptimer, NULL);
+}
+
+static void
+arptimer(void *arg __unused)
+{
+	int cpuid = mycpuid;
+	struct lwkt_msg *lmsg = &arptimer_context[cpuid].timer_nmsg.lmsg;
+
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg(netisr_cpuport(cpuid), lmsg);
 	crit_exit();
 }
 
@@ -200,12 +222,15 @@ arp_rtrequest(int req, struct rtentry *rt)
 	struct llinfo_arp *la = rt->rt_llinfo;
 
 	struct sockaddr_dl null_sdl = { sizeof null_sdl, AF_LINK };
-	static boolean_t arpinit_done[MAXCPU];
 
-	if (!arpinit_done[mycpuid]) {
-		arpinit_done[mycpuid] = TRUE;
-		callout_init(&arptimer_ch[mycpuid]);
-		callout_reset(&arptimer_ch[mycpuid], hz, arptimer, NULL);
+	if (__predict_false(!arptimer_context[mycpuid].timer_inited)) {
+		struct arptimer_ctx *ctx = &arptimer_context[mycpuid];
+
+		ctx->timer_inited = TRUE;
+		netmsg_init(&ctx->timer_nmsg, NULL, &netisr_adone_rport, 0,
+		    arptimer_dispatch);
+		callout_init_mp(&ctx->timer_ch);
+		callout_reset(&ctx->timer_ch, hz, arptimer, NULL);
 	}
 	if (rt->rt_flags & RTF_GATEWAY)
 		return;
