@@ -287,8 +287,7 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 	VM_OBJECT_WLOCK(obj);
 	vm_object_pip_add(obj, 1);
 	for (i = 0; i < ttm->num_pages; ++i) {
-		from_page = vm_page_grab(obj, i, VM_ALLOC_NOBUSY |
-		    VM_ALLOC_RETRY);
+		from_page = vm_page_grab(obj, i, VM_ALLOC_RETRY);
 		if (from_page->valid != VM_PAGE_BITS_ALL) {
 			vm_page_busy_try(from_page, FALSE);
 			if (vm_pager_has_page(obj, i)) {
@@ -307,7 +306,8 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 			ret = -ENOMEM;
 			goto err_ret;
 		}
-		pmap_copy_page(from_page, to_page);
+		pmap_copy_page(VM_PAGE_TO_PHYS(from_page),
+					VM_PAGE_TO_PHYS(to_page));
 	}
 	vm_object_pip_wakeup(obj);
 	VM_OBJECT_WUNLOCK(obj);
@@ -356,7 +356,8 @@ int ttm_tt_swapout(struct ttm_tt *ttm, vm_object_t persistent_swap_storage)
 		if (unlikely(from_page == NULL))
 			continue;
 		to_page = vm_page_grab(obj, i, VM_ALLOC_RETRY);
-		pmap_copy_page(from_page, to_page);
+		pmap_copy_page(VM_PAGE_TO_PHYS(from_page),
+					VM_PAGE_TO_PHYS(to_page));
 		vm_page_dirty(to_page);
 		to_page->valid = VM_PAGE_BITS_ALL;
 		vm_page_wakeup(to_page);

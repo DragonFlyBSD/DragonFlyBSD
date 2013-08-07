@@ -139,9 +139,11 @@ ttm_vm_page_free(vm_page_t m)
 	KASSERT(m->object == NULL, ("ttm page %p is owned", m));
 	KASSERT(m->wire_count == 1, ("ttm lost wire %p", m));
 	KASSERT((m->flags & PG_FICTITIOUS) != 0, ("ttm lost fictitious %p", m));
+#if 0
 	KASSERT((m->oflags & VPO_UNMANAGED) == 0, ("ttm got unmanaged %p", m));
-	m->flags &= ~PG_FICTITIOUS;
 	m->oflags |= VPO_UNMANAGED;
+#endif
+	m->flags &= ~PG_FICTITIOUS;
 	vm_page_unwire(m, 0);
 	vm_page_free(m);
 }
@@ -492,7 +494,7 @@ static int ttm_alloc_new_pages(struct pglist *pages, int ttm_alloc_flags,
 	unsigned max_cpages = min(count,
 			(unsigned)(PAGE_SIZE/sizeof(vm_page_t)));
 
-	aflags = VM_ALLOC_NORMAL | VM_ALLOC_WIRED | VM_ALLOC_NOOBJ |
+	aflags = VM_ALLOC_NORMAL |
 	    ((ttm_alloc_flags & TTM_PAGE_FLAG_ZERO_ALLOC) != 0 ?
 	    VM_ALLOC_ZERO : 0);
 	
@@ -521,7 +523,9 @@ static int ttm_alloc_new_pages(struct pglist *pages, int ttm_alloc_flags,
 			r = -ENOMEM;
 			goto out;
 		}
+#if 0
 		p->oflags &= ~VPO_UNMANAGED;
+#endif
 		p->flags |= PG_FICTITIOUS;
 
 #ifdef CONFIG_HIGHMEM /* KIB: nop */
@@ -708,7 +712,7 @@ static int ttm_get_pages(vm_page_t *pages, unsigned npages, int flags,
 	unsigned count;
 	int r;
 
-	aflags = VM_ALLOC_NORMAL | VM_ALLOC_NOOBJ | VM_ALLOC_WIRED |
+	aflags = VM_ALLOC_NORMAL |
 	    ((flags & TTM_PAGE_FLAG_ZERO_ALLOC) != 0 ? VM_ALLOC_ZERO : 0);
 
 	/* No pool for cached pages */
@@ -722,7 +726,9 @@ static int ttm_get_pages(vm_page_t *pages, unsigned npages, int flags,
 				kprintf("[TTM] Unable to allocate page\n");
 				return -ENOMEM;
 			}
+#if 0
 			p->oflags &= ~VPO_UNMANAGED;
+#endif
 			p->flags |= PG_FICTITIOUS;
 			pages[r] = p;
 		}
@@ -743,7 +749,7 @@ static int ttm_get_pages(vm_page_t *pages, unsigned npages, int flags,
 	/* clear the pages coming from the pool if requested */
 	if (flags & TTM_PAGE_FLAG_ZERO_ALLOC) {
 		TAILQ_FOREACH(p, &plist, pageq) {
-			pmap_zero_page(p);
+			pmap_zero_page(VM_PAGE_TO_PHYS(p));
 		}
 	}
 
