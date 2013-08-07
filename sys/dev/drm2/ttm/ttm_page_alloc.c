@@ -40,6 +40,7 @@
  * - doesn't track currently in use pages
  */
 
+#include <sys/eventhandler.h>
 
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/ttm/ttm_bo_driver.h>

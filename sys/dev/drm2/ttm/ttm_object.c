@@ -55,7 +55,6 @@
 
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/drm.h>
-#include <sys/rwlock.h>
 #include <dev/drm2/ttm/ttm_object.h>
 #include <dev/drm2/ttm/ttm_module.h>
 

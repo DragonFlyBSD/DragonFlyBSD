@@ -37,7 +37,6 @@
 #include <dev/drm2/ttm/ttm_memory.h>
 #include <dev/drm2/ttm/ttm_module.h>
 #include <dev/drm2/drm_global.h>
-#include <sys/rwlock.h>
 #include <sys/tree.h>
 
 struct ttm_backend_func {
