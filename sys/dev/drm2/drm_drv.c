@@ -967,11 +967,57 @@ drm_linux_ioctl(DRM_STRUCTPROC *p, struct linux_ioctl_args* args)
 }
 #endif /* DRM_LINUX */
 
+static bool
+dmi_found(const struct dmi_system_id *dsi)
+{
+	int i, slot;
+	char *hw_vendor, *hw_prod;
+
+	hw_vendor = kgetenv("smbios.planar.maker");
+	hw_prod = kgetenv("smbios.planar.product");
+
+	for (i = 0; i < nitems(dsi->matches); i++) {
+		slot = dsi->matches[i].slot;
+		switch (slot) {
+		case DMI_NONE:
+			break;
+		case DMI_SYS_VENDOR:
+		case DMI_BOARD_VENDOR:
+			if (hw_vendor != NULL &&
+			    !strcmp(hw_vendor, dsi->matches[i].substr))
+				break;
+			else
+				return false;
+		case DMI_PRODUCT_NAME:
+		case DMI_BOARD_NAME:
+			if (hw_prod != NULL &&
+			    !strcmp(hw_prod, dsi->matches[i].substr))
+				break;
+			else
+				return false;
+		default:
+			return false;
+		}
+	}
+	kfreeenv(hw_vendor);
+	kfreeenv(hw_prod);
+
+	return true;
+}
+
 bool
 dmi_check_system(const struct dmi_system_id *sysid)
 {
+	const struct dmi_system_id *dsi;
+	int num = 0;
 
-	/* XXXKIB */
-	return (false);
+	for (dsi = sysid; dsi->matches[0].slot != 0 ; dsi++) {
+		if (dmi_found(dsi)) {
+			num++;
+			if (dsi->callback && dsi->callback(dsi))
+				break;
+		}
+	}
+	return (num);
 }
 
