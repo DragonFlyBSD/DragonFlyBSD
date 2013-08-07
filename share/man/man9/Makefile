@@ -431,6 +431,7 @@ MLINKS+=devstat.9 devicestat.9 \
 	devstat.9 devstat_end_transaction_buf.9 \
 	devstat.9 devstat_remove_entry.9 \
 	devstat.9 devstat_start_transaction.9
+MLINKS+=DRIVER_MODULE.9 DRIVER_MODULE_ORDERED.9
 MLINKS+=dsched.9 dsched_cancel_bio.9 \
 	dsched.9 dsched_debug.9 \
 	dsched.9 DSCHED_DISK_CTX_LOCK.9 \
@@ -450,7 +451,6 @@ MLINKS+=dsched.9 dsched_cancel_bio.9 \
 	dsched.9 DSCHED_THREAD_IO_UNLOCK.9 \
 	dsched.9 dsched_thread_io_unref.9 \
 	dsched.9 dsched_unregister.9
-MLINKS+=DRIVER_MODULE.9 DRIVER_MODULE_ORDERED.9
 MLINKS+=EVENTHANDLER.9 EVENTHANDLER_DECLARE.9 \
 	EVENTHANDLER.9 EVENTHANDLER_DEREGISTER.9 \
 	EVENTHANDLER.9 eventhandler_deregister.9 \
