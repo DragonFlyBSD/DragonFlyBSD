@@ -775,6 +775,7 @@ hammer2_chain_load_async(hammer2_chain_t *chain,
 		bzero(bdata, chain->bytes);
 		/*atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);*/
 		func(chain, dbp, bdata, arg);
+		bqrelse(dbp);
 		return;
 	}
 
