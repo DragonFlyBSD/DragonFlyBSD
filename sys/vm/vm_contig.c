@@ -267,7 +267,8 @@ vm_contig_pg_alloc(unsigned long size, vm_paddr_t low, vm_paddr_t high,
 	 * alist.  The returned pages will be allocated and wired but not
 	 * busied.
 	 */
-	m = vm_page_alloc_contig(low, high, alignment, boundary, size);
+	m = vm_page_alloc_contig(
+		low, high, alignment, boundary, size, VM_MEMATTR_DEFAULT);
 	if (m)
 		return (m - &pga[0]);
 

@@ -1682,9 +1682,11 @@ done:
 vm_page_t
 vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 		     unsigned long alignment, unsigned long boundary,
-		     unsigned long size)
+		     unsigned long size, vm_memattr_t memattr)
 {
 	alist_blk_t blk;
+	vm_page_t m;
+	int i;
 
 	alignment >>= PAGE_SHIFT;
 	if (alignment == 0)
@@ -1721,7 +1723,12 @@ vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
 			(intmax_t)(vm_paddr_t)blk << PAGE_SHIFT,
 			(size + PAGE_MASK) * (PAGE_SIZE / 1024));
 	}
-	return (PHYS_TO_VM_PAGE((vm_paddr_t)blk << PAGE_SHIFT));
+
+	m = PHYS_TO_VM_PAGE((vm_paddr_t)blk << PAGE_SHIFT);
+	if (memattr != VM_MEMATTR_DEFAULT)
+		for (i = 0;i < size;i++)
+			pmap_page_set_memattr(&m[i], memattr);
+	return m;
 }
 
 /*

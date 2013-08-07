@@ -444,7 +444,7 @@ void vm_page_pcpu_cache(void);
 vm_page_t vm_page_alloc (struct vm_object *, vm_pindex_t, int);
 vm_page_t vm_page_alloc_contig(vm_paddr_t low, vm_paddr_t high,
                      unsigned long alignment, unsigned long boundary,
-		     unsigned long size);
+		     unsigned long size, vm_memattr_t memattr);
 vm_page_t vm_page_grab (struct vm_object *, vm_pindex_t, int);
 void vm_page_cache (vm_page_t);
 int vm_page_try_to_cache (vm_page_t);
