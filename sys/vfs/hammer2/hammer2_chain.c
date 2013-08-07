@@ -822,7 +822,7 @@ hammer2_chain_load_async_callback(struct bio *bio)
 	hmp = cbinfo->chain->hmp;
 
 	cbinfo = bio->bio_caller_info1.ptr;
-	if (chain->flags & HAMMER2_CHAIN_INITIAL)
+	if (cbinfo->chain->flags & HAMMER2_CHAIN_INITIAL)
 		bzero(data, cbinfo->chain->bytes);
 	cbinfo->func(cbinfo->chain, dbp, data, cbinfo->arg);
 	/* cbinfo->chain is stale now */
