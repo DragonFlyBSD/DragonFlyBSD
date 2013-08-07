@@ -474,7 +474,7 @@ static void ttm_bo_cleanup_memtype_use(struct ttm_buffer_object *bo)
 	 *
 	 * This function only needs protection against the final kref_put.
 	 */
-	mb();
+	cpu_mfence();
 }
 
 static void ttm_bo_cleanup_refs_or_queue(struct ttm_buffer_object *bo)
@@ -519,7 +519,7 @@ static void ttm_bo_cleanup_refs_or_queue(struct ttm_buffer_object *bo)
 		driver->sync_obj_flush(sync_obj);
 		driver->sync_obj_unref(&sync_obj);
 	}
-	taskqueue_enqueue_timeout(taskqueue_thread, &bdev->wq,
+	taskqueue_enqueue_timeout(taskqueue_thread[mycpuid], &bdev->wq,
 	    ((hz / 100) < 1) ? 1 : hz / 100);
 }
 
@@ -675,7 +675,7 @@ static void ttm_bo_delayed_workqueue(void *arg, int pending __unused)
 	struct ttm_bo_device *bdev = arg;
 
 	if (ttm_bo_delayed_delete(bdev, false)) {
-		taskqueue_enqueue_timeout(taskqueue_thread, &bdev->wq,
+		taskqueue_enqueue_timeout(taskqueue_thread[mycpuid], &bdev->wq,
 		    ((hz / 100) < 1) ? 1 : hz / 100);
 	}
 }
@@ -714,16 +714,16 @@ int ttm_bo_lock_delayed_workqueue(struct ttm_bo_device *bdev)
 {
 	int pending;
 
-	taskqueue_cancel_timeout(taskqueue_thread, &bdev->wq, &pending);
+	taskqueue_cancel_timeout(taskqueue_thread[mycpuid], &bdev->wq, &pending);
 	if (pending)
-		taskqueue_drain_timeout(taskqueue_thread, &bdev->wq);
+		taskqueue_drain_timeout(taskqueue_thread[mycpuid], &bdev->wq);
 	return (pending);
 }
 
 void ttm_bo_unlock_delayed_workqueue(struct ttm_bo_device *bdev, int resched)
 {
 	if (resched) {
-		taskqueue_enqueue_timeout(taskqueue_thread, &bdev->wq,
+		taskqueue_enqueue_timeout(taskqueue_thread[mycpuid], &bdev->wq,
 		    ((hz / 100) < 1) ? 1 : hz / 100);
 	}
 }
@@ -1473,8 +1473,8 @@ int ttm_bo_device_release(struct ttm_bo_device *bdev)
 	list_del(&bdev->device_list);
 	lockmgr(&glob->device_list_mutex, LK_RELEASE);
 
-	if (taskqueue_cancel_timeout(taskqueue_thread, &bdev->wq, NULL))
-		taskqueue_drain_timeout(taskqueue_thread, &bdev->wq);
+	if (taskqueue_cancel_timeout(taskqueue_thread[mycpuid], &bdev->wq, NULL))
+		taskqueue_drain_timeout(taskqueue_thread[mycpuid], &bdev->wq);
 
 	while (ttm_bo_delayed_delete(bdev, true))
 		;
@@ -1521,7 +1521,7 @@ int ttm_bo_device_init(struct ttm_bo_device *bdev,
 	if (unlikely(ret != 0))
 		goto out_no_addr_mm;
 
-	TIMEOUT_TASK_INIT(taskqueue_thread, &bdev->wq, 0,
+	TIMEOUT_TASK_INIT(taskqueue_thread[mycpuid], &bdev->wq, 0,
 	    ttm_bo_delayed_workqueue, bdev);
 	INIT_LIST_HEAD(&bdev->ddestroy);
 	bdev->dev_mapping = NULL;

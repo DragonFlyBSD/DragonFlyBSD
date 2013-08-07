@@ -33,7 +33,7 @@
 #include <dev/drm2/drmP.h>
 #include <dev/drm2/ttm/ttm_bo_driver.h>
 #include <dev/drm2/ttm/ttm_placement.h>
-#include <sys/sf_buf.h>
+#include <sys/sfbuf.h>
 
 void ttm_bo_free_old_node(struct ttm_buffer_object *bo)
 {
@@ -349,7 +349,7 @@ int ttm_bo_move_memcpy(struct ttm_buffer_object *bo,
 		if (ret)
 			goto out1;
 	}
-	mb();
+	cpu_mfence();
 out2:
 	old_copy = *old_mem;
 	*old_mem = *new_mem;
@@ -486,7 +486,7 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 
 		map->bo_kmap_type = ttm_bo_map_kmap;
 		map->page = ttm->pages[start_page];
-		map->sf = sf_buf_alloc(map->page, 0);
+		map->sf = sf_buf_alloc(map->page);
 		map->virtual = (void *)sf_buf_kva(map->sf);
 	} else {
 		/*
@@ -498,8 +498,8 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 			ttm_io_prot(mem->placement);
 		map->bo_kmap_type = ttm_bo_map_vmap;
 		map->num_pages = num_pages;
-		map->virtual = (void *)kmem_alloc_nofault(kernel_map,
-		    num_pages * PAGE_SIZE);
+		map->virtual = (void *)kmem_alloc_nofault(&kernel_map,
+		    num_pages * PAGE_SIZE, PAGE_SIZE);
 		if (map->virtual != NULL) {
 			for (i = 0; i < num_pages; i++) {
 				/* XXXKIB hack */
@@ -561,7 +561,7 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 		break;
 	case ttm_bo_map_vmap:
 		pmap_qremove((vm_offset_t)(map->virtual), map->num_pages);
-		kmem_free(kernel_map, (vm_offset_t)map->virtual,
+		kmem_free(&kernel_map, (vm_offset_t)map->virtual,
 		    map->num_pages * PAGE_SIZE);
 		break;
 	case ttm_bo_map_kmap:

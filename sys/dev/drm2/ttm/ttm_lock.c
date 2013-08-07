@@ -62,7 +62,7 @@ ttm_lock_send_sig(int signo)
 
 	p = curproc;	/* XXXKIB curthread ? */
 	PROC_LOCK(p);
-	kern_psignal(p, signo);
+	ksignal(p, signo);
 	PROC_UNLOCK(p);
 }
 

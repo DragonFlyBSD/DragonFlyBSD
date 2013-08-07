@@ -331,7 +331,7 @@ static int ttm_page_pool_free(struct ttm_page_pool *pool, unsigned nr_free)
 restart:
 	lockmgr(&pool->lock, LK_EXCLUSIVE);
 
-	TAILQ_FOREACH_REVERSE_SAFE(p, &pool->list, pglist, pageq, p1) {
+	TAILQ_FOREACH_REVERSE_MUTABLE(p, &pool->list, pglist, pageq, p1) {
 		if (freed_pages >= npages_to_free)
 			break;
 
