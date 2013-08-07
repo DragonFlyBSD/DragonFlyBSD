@@ -501,10 +501,10 @@ static int ttm_alloc_new_pages(struct pglist *pages, int ttm_alloc_flags,
 	    M_WAITOK | M_ZERO);
 
 	for (i = 0, cpages = 0; i < count; ++i) {
-		p = vm_page_alloc_contig(NULL, 0, aflags, 1, 0,
+		p = vm_page_alloc_contig(0,
 		    (ttm_alloc_flags & TTM_PAGE_FLAG_DMA32) ? 0xffffffff :
 		    VM_MAX_ADDRESS, PAGE_SIZE, 0,
-		    ttm_caching_state_to_vm(cstate));
+		    1*PAGE_SIZE, ttm_caching_state_to_vm(cstate));
 		if (!p) {
 			kprintf("[TTM] Unable to get page %u\n", i);
 
@@ -714,10 +714,10 @@ static int ttm_get_pages(vm_page_t *pages, unsigned npages, int flags,
 	/* No pool for cached pages */
 	if (pool == NULL) {
 		for (r = 0; r < npages; ++r) {
-			p = vm_page_alloc_contig(NULL, 0, aflags, 1, 0,
+			p = vm_page_alloc_contig(0,
 			    (flags & TTM_PAGE_FLAG_DMA32) ? 0xffffffff :
 			    VM_MAX_ADDRESS, PAGE_SIZE,
-			    0, ttm_caching_state_to_vm(cstate));
+			    0, 1*PAGE_SIZE, ttm_caching_state_to_vm(cstate));
 			if (!p) {
 				kprintf("[TTM] Unable to allocate page\n");
 				return -ENOMEM;
