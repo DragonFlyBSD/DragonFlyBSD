@@ -70,7 +70,8 @@ up to 4 reception queues
 Multiple vector MSI-X
 .It
 Multiple transmission queues
-(BCM5719 and BCM5720 only),
+(BCM5717C,
+BCM5719 and BCM5720 only),
 up to 4 transmission queues
 .El
 .Pp
@@ -79,7 +80,8 @@ the
 .Nm
 driver will try enabling as many reception queues as are allowed
 by the number of CPUs in the system.
-For BCM5719 and BCM5720,
+For BCM5717C,
+BCM5719 and BCM5720,
 in addition to the reception queues,
 by default,
 the
@@ -168,7 +170,8 @@ it must be power of 2 aligned.
 Setting these tunables to 0 allows the driver to enable as many reception queues
 as allowed by the number of CPUs.
 .It Va hw.bnx.tx_rings Va hw.bnxX.tx_rings
-For BCM5719 and BCM5720,
+For BCM5717C,
+BCM5719 and BCM5720,
 if MSI-X is used,
 this tunable specifies the number of transmission queues to be enabled.
 Maximum allowed value for these tunables is 4,
@@ -182,7 +185,8 @@ the driver will use MSI-X
 if it is supported.
 This behaviour can be turned off by setting this tunable to 0.
 .It Va hw.bnxX.msix.offset
-For BCM5719 and BCM5720,
+For BCM5717C,
+BCM5719 and BCM5720,
 if more than 1 reception queues
 and more than 1 transmission queues are enabled,
 this tunable specifies the leading target CPU for transmission
