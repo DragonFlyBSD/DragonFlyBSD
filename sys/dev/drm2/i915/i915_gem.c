@@ -1243,9 +1243,6 @@ unlock:
 	return (ret);
 }
 
-#define PROC_LOCK(p)
-#define PROC_UNLOCK(p)
-
 int
 i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
     struct drm_file *file)

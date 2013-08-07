@@ -1413,5 +1413,10 @@ do {									\
 #define	KTR_DRM		KTR_DEV
 #define	KTR_DRM_REG	KTR_SPARE3
 
+
+/* FreeBSD compatibility macros */
+#define PROC_LOCK(p)
+#define PROC_UNLOCK(p)
+
 #endif /* __KERNEL__ */
 #endif /* _DRM_P_H_ */
