@@ -110,9 +110,7 @@ ttm_bo_vm_fault(vm_object_t vm_obj, vm_ooffset_t offset,
 	vm_object_pip_add(vm_obj, 1);
 	oldm = *mres;
 	if (oldm != NULL) {
-		vm_page_lock(oldm);
 		vm_page_remove(oldm);
-		vm_page_unlock(oldm);
 		*mres = NULL;
 	} else
 		oldm = NULL;
@@ -124,7 +122,7 @@ reserve:
 	ret = ttm_bo_reserve(bo, false, false, false, 0);
 	if (unlikely(ret != 0)) {
 		if (ret == -EBUSY) {
-			kern_yield(0);
+			lwkt_yield();
 			goto reserve;
 		}
 	}
@@ -137,7 +135,7 @@ reserve:
 		case -EBUSY:
 		case -ERESTART:
 		case -EINTR:
-			kern_yield(0);
+			lwkt_yield();
 			goto reserve;
 		default:
 			retval = VM_PAGER_ERROR;
@@ -212,7 +210,9 @@ reserve:
 
 	VM_OBJECT_WLOCK(vm_obj);
 	if ((m->flags & VPO_BUSY) != 0) {
+#if 0
 		vm_page_sleep(m, "ttmpbs");
+#endif
 		ttm_mem_io_unlock(man);
 		ttm_bo_unreserve(bo);
 		goto retry;
@@ -227,12 +227,10 @@ reserve:
 		    ("inconsistent insert bo %p m %p m1 %p offset %jx",
 		    bo, m, m1, (uintmax_t)offset));
 	}
-	vm_page_busy(m);
+	vm_page_busy_try(m, FALSE);
 
 	if (oldm != NULL) {
-		vm_page_lock(oldm);
 		vm_page_free(oldm);
-		vm_page_unlock(oldm);
 	}
 
 out_io_unlock1:
