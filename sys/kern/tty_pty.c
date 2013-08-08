@@ -67,8 +67,6 @@
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 
-#define	UNIX98_PTYS	1
-
 MALLOC_DEFINE(M_PTY, "ptys", "pty data structures");
 
 static void ptsstart (struct tty *tp);
@@ -92,7 +90,6 @@ static	d_read_t	ptcread;
 static	d_write_t	ptcwrite;
 static	d_kqfilter_t	ptckqfilter;
 
-#ifdef UNIX98_PTYS
 DEVFS_DECLARE_CLONE_BITMAP(pty);
 
 static	d_clone_t 	ptyclone;
@@ -120,7 +117,6 @@ static struct dev_ops ptc98_ops = {
 	.d_kqfilter =	ptckqfilter,
 	.d_revoke =	ttyrevoke
 };
-#endif
 
 static struct dev_ops pts_ops = {
 	{ "pts", 0, D_TTY | D_MPSAFE },
@@ -217,7 +213,6 @@ ptyinit(int n)
 	ttyregister(&pt->pt_tty);
 }
 
-#ifdef UNIX98_PTYS
 static int
 ptyclone(struct dev_clone_args *ap)
 {
@@ -261,7 +256,6 @@ ptyclone(struct dev_clone_args *ap)
 
 	return 0;
 }
-#endif
 
 /*
  * pti_hold() prevents the pti from being destroyed due to a termination
@@ -294,7 +288,6 @@ pti_done(struct pt_ioctl *pti)
 {
 	lwkt_gettoken(&tty_token);
 	if (--pti->pt_refs == 0) {
-#ifdef UNIX98_PTYS
 		cdev_t dev;
 		int uminor_no;
 
@@ -334,7 +327,6 @@ pti_done(struct pt_ioctl *pti)
 					       uminor_no);
 			kfree(pti, M_PTY);
 		}
-#endif
 	}
 	lwkt_reltoken(&tty_token);
 }
@@ -1132,7 +1124,6 @@ ptyioctl(struct dev_ioctl_args *ap)
 			lwkt_reltoken(&tty_token);
 			return (0);
 
-#ifdef UNIX98_PTYS
 		case TIOCISPTMASTER:
 			if ((pti->pt_flags & PF_UNIX98) &&
 			    (pti->devc == dev)) {
@@ -1143,7 +1134,6 @@ ptyioctl(struct dev_ioctl_args *ap)
 				return (EINVAL);
 			}
 		}
-#endif
 
 		/*
 		 * The rest of the ioctls shouldn't be called until 
@@ -1273,24 +1263,20 @@ ptyioctl(struct dev_ioctl_args *ap)
 
 static void ptc_drvinit (void *unused);
 
-#ifdef UNIX98_PTYS
 SYSCTL_INT(_kern, OID_AUTO, pty_debug, CTLFLAG_RW, &pty_debug_level,
 		0, "Change pty debug level");
-#endif
 
 static void
 ptc_drvinit(void *unused)
 {
 	int i;
 
-#ifdef UNIX98_PTYS
 	/*
 	 * Unix98 pty stuff.
 	 * Create the clonable base device.
 	 */
 	make_autoclone_dev(&ptc_ops, &DEVFS_CLONE_BITMAP(pty), ptyclone,
 	    0, 0, 0666, "ptmx");
-#endif
 
 	for (i = 0; i < 256; i++) {
 		ptyinit(i);

@@ -28,7 +28,6 @@
  *
  * @(#)pty.c	8.3 (Berkeley) 5/16/94
  * $FreeBSD: src/lib/libutil/pty.c,v 1.10 1999/08/28 00:05:51 peter Exp $
- * $DragonFly: src/lib/libutil/pty.c,v 1.6 2007/12/30 13:44:33 matthias Exp $
  */
 
 #include <sys/types.h>
@@ -45,8 +44,6 @@
 
 #include "libutil.h"
 
-#define UNIX98_PTYS	1
-
 int
 openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 	struct winsize *winp)
@@ -62,7 +59,6 @@ openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 	else
 		ttygid = -1;
 
-#ifdef UNIX98_PTYS
 	master = posix_openpt(O_RDWR|O_NOCTTY);
 	if (master == -1)
 		goto fallback;
@@ -102,8 +98,6 @@ openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 	return (0);
 
 fallback:
-#endif
-
 	for (cp1 = "pqrsPQRS"; *cp1; cp1++) {
 		line[8] = *cp1;
 		for (cp2 = "0123456789abcdefghijklmnopqrstuv"; *cp2; cp2++) {
