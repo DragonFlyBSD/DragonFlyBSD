@@ -306,6 +306,13 @@ in_rtqkill(struct radix_node *rn, void *rock)
 #define RTQ_TIMEOUT	60*10	/* run no less than once every ten minutes */
 static int rtq_timeout = RTQ_TIMEOUT;
 
+/*
+ * NOTE:
+ * 'last_adjusted_timeout' and 'rtq_reallyold' are _not_ read-only, and
+ * could be changed by all CPUs.  However, they are changed at so low
+ * frequency that we could ignore the cache trashing issue and take them
+ * as read-mostly.
+ */
 static void
 in_rtqtimo_dispatch(netmsg_t nmsg)
 {
