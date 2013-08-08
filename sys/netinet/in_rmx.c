@@ -70,7 +70,15 @@
 
 #define RTPRF_EXPIRING	RTF_PROTO3	/* set on routes we manage */
 
-static struct callout in_rtqtimo_ch[MAXCPU];
+struct in_rtqtimo_ctx {
+	struct callout		timo_ch;
+	struct netmsg_base	timo_nmsg;
+	struct radix_node_head	*timo_rnh;
+} __cachealign;
+
+static void	in_rtqtimo(void *);
+
+static struct in_rtqtimo_ctx in_rtqtimo_context[MAXCPU];
 
 /*
  * Do what we need to do when inserting a route.
@@ -299,20 +307,24 @@ in_rtqkill(struct radix_node *rn, void *rock)
 static int rtq_timeout = RTQ_TIMEOUT;
 
 static void
-in_rtqtimo(void *rock)
+in_rtqtimo_dispatch(netmsg_t nmsg)
 {
-	struct radix_node_head *rnh = rock;
 	struct rtqk_arg arg;
 	struct timeval atv;
 	static time_t last_adjusted_timeout = 0;
+	struct in_rtqtimo_ctx *ctx = &in_rtqtimo_context[mycpuid];
+	struct radix_node_head *rnh = ctx->timo_rnh;
+
+	/* Reply ASAP */
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);
+	crit_exit();
 
 	arg.found = arg.killed = 0;
 	arg.rnh = rnh;
 	arg.nextstop = time_second + rtq_timeout;
 	arg.draining = arg.updating = 0;
-	crit_enter();
 	rnh->rnh_walktree(rnh, in_rtqkill, &arg);
-	crit_exit();
 
 	/*
 	 * Attempt to be somewhat dynamic about this:
@@ -337,15 +349,24 @@ in_rtqtimo(void *rock)
 #endif
 		arg.found = arg.killed = 0;
 		arg.updating = 1;
-		crit_enter();
 		rnh->rnh_walktree(rnh, in_rtqkill, &arg);
-		crit_exit();
 	}
 
 	atv.tv_usec = 0;
 	atv.tv_sec = arg.nextstop - time_second;
-	callout_reset(&in_rtqtimo_ch[mycpuid], tvtohz_high(&atv), in_rtqtimo,
-		      rock);
+	callout_reset(&ctx->timo_ch, tvtohz_high(&atv), in_rtqtimo, NULL);
+}
+
+static void
+in_rtqtimo(void *arg __unused)
+{
+	int cpuid = mycpuid;
+	struct lwkt_msg *lmsg = &in_rtqtimo_context[cpuid].timo_nmsg.lmsg;
+
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg(netisr_cpuport(cpuid), lmsg);
+	crit_exit();
 }
 
 void
@@ -371,19 +392,27 @@ int
 in_inithead(void **head, int off)
 {
 	struct radix_node_head *rnh;
+	struct in_rtqtimo_ctx *ctx;
+	int cpuid = mycpuid;
 
-	if (!rn_inithead(head, rn_cpumaskhead(mycpuid), off))
+	if (!rn_inithead(head, rn_cpumaskhead(cpuid), off))
 		return 0;
 
-	if (head != (void **)&rt_tables[mycpuid][AF_INET]) /* BOGUS! */
+	if (head != (void **)&rt_tables[cpuid][AF_INET]) /* BOGUS! */
 		return 1;	/* only do this for the real routing table */
 
 	rnh = *head;
 	rnh->rnh_addaddr = in_addroute;
 	rnh->rnh_matchaddr = in_matchroute;
 	rnh->rnh_close = in_closeroute;
-	callout_init(&in_rtqtimo_ch[mycpuid]);
-	in_rtqtimo(rnh);	/* kick off timeout first time */
+
+	ctx = &in_rtqtimo_context[cpuid];
+	ctx->timo_rnh = rnh;
+	callout_init_mp(&ctx->timo_ch);
+	netmsg_init(&ctx->timo_nmsg, NULL, &netisr_adone_rport, 0,
+	    in_rtqtimo_dispatch);
+
+	in_rtqtimo(NULL);	/* kick off timeout first time */
 	return 1;
 }
 
