@@ -1018,10 +1018,14 @@ dmi_found(const struct dmi_system_id *dsi)
 	found = true;
 
 done:
-	kfreeenv(sys_vendor);
-	kfreeenv(board_vendor);
-	kfreeenv(product_name);
-	kfreeenv(board_name);
+	if (sys_vendor != NULL)
+		kfreeenv(sys_vendor);
+	if (board_vendor != NULL)
+		kfreeenv(board_vendor);
+	if (product_name != NULL)
+		kfreeenv(product_name);
+	if (board_name != NULL)
+		kfreeenv(board_name);
 
 	return found;
 }
