@@ -1418,5 +1418,10 @@ do {									\
 #define PROC_LOCK(p)
 #define PROC_UNLOCK(p)
 
+#define VM_OBJECT_RLOCK(object)		VM_OBJECT_LOCK(object)
+#define VM_OBJECT_RUNLOCK(object)	VM_OBJECT_UNLOCK(object)
+#define VM_OBJECT_WLOCK(object)		VM_OBJECT_LOCK(object)
+#define VM_OBJECT_WUNLOCK(object)	VM_OBJECT_UNLOCK(object)
+
 #endif /* __KERNEL__ */
 #endif /* _DRM_P_H_ */
