@@ -976,7 +976,7 @@ dmi_found(const struct dmi_system_id *dsi)
 	hw_vendor = kgetenv("smbios.planar.maker");
 	hw_prod = kgetenv("smbios.planar.product");
 
-	for (i = 0; i < nitems(dsi->matches); i++) {
+	for (i = 0; i < NELEM(dsi->matches); i++) {
 		slot = dsi->matches[i].slot;
 		switch (slot) {
 		case DMI_NONE:

@@ -225,8 +225,6 @@ typedef void			irqreturn_t;
 	__typeof( ((type *)0)->member ) *__mptr = (ptr);	\
 	(type *)( (char *)__mptr - offsetof(type,member) );})
 
-#define nitems(_a)	(sizeof((_a)) / sizeof((_a)[0]))
-
 enum {
 	DRM_IS_NOT_AGP,
 	DRM_IS_AGP,
