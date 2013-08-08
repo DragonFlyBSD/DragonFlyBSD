@@ -104,6 +104,9 @@
 
 #define USRSTACK		VM_MAX_USER_ADDRESS
 
+#define VM_MAX_ADDRESS		UPT_MAX_ADDRESS
+#define VM_MIN_ADDRESS		(0)
+
 /* initial pagein size of beginning of executable file */
 #ifndef VM_INITIAL_PAGEIN
 #define	VM_INITIAL_PAGEIN	16

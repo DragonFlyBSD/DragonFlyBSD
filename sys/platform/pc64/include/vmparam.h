@@ -128,6 +128,9 @@
 
 #define USRSTACK		VM_MAX_USER_ADDRESS
 
+#define VM_MAX_ADDRESS		UPT_MAX_ADDRESS
+#define VM_MIN_ADDRESS		(0)
+
 #define	PHYS_TO_DMAP(x)		((vm_offset_t)(x) | DMAP_MIN_ADDRESS)
 #define	DMAP_TO_PHYS(x)		((vm_paddr_t)(x) & ~DMAP_MIN_ADDRESS)
 
