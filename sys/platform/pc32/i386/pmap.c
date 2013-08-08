@@ -3426,13 +3426,20 @@ pmap_unmapdev(vm_offset_t va, vm_size_t size)
 	kmem_free(&kernel_map, base, size);
 }
 
- /*
-  * Sets the memory attribute for the specified page.
-  */
+/*
+ * Sets the memory attribute for the specified page.
+ */
 void
 pmap_page_set_memattr(vm_page_t m, vm_memattr_t ma)
 {
 	m->pat_mode = ma;
+
+#ifdef notyet
+	/*
+	 * XXX
+	 * The following code is NOP, until we get pmap_change_attr()
+	 * implemented.
+	 */
 
 	/*
 	 * If "m" is a normal page, update its direct mapping.  This update
@@ -3442,6 +3449,7 @@ pmap_page_set_memattr(vm_page_t m, vm_memattr_t ma)
 	if ((m->flags & PG_FICTITIOUS) == 0)
 	    pmap_change_attr(PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)), PAGE_SIZE,
 	    m->pat_mode);
+#endif
 }
 
 /*
@@ -3453,6 +3461,7 @@ void
 pmap_change_attr(vm_offset_t va, vm_size_t count, int mode)
 {
 	/* XXX pmap_change_attr() not implemented on i386 */
+	/* XXX update pmap_page_set_memattr() once this is implemented */
 }
 
 /*
