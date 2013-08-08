@@ -967,14 +967,20 @@ drm_linux_ioctl(DRM_STRUCTPROC *p, struct linux_ioctl_args* args)
 }
 #endif /* DRM_LINUX */
 
+/*
+ * Check if dmi_system_id structure matches system DMI data
+ */
 static bool
 dmi_found(const struct dmi_system_id *dsi)
 {
 	int i, slot;
-	char *hw_vendor, *hw_prod;
+	bool found = false;
+	char *sys_vendor, *board_vendor, *product_name, *board_name;
 
-	hw_vendor = kgetenv("smbios.planar.maker");
-	hw_prod = kgetenv("smbios.planar.product");
+	sys_vendor = kgetenv("smbios.system.maker");
+	board_vendor = kgetenv("smbios.planar.maker");
+	product_name = kgetenv("smbios.system.product");
+	board_name = kgetenv("smbios.planar.product");
 
 	for (i = 0; i < NELEM(dsi->matches); i++) {
 		slot = dsi->matches[i].slot;
@@ -982,27 +988,42 @@ dmi_found(const struct dmi_system_id *dsi)
 		case DMI_NONE:
 			break;
 		case DMI_SYS_VENDOR:
+			if (sys_vendor != NULL &&
+			    !strcmp(sys_vendor, dsi->matches[i].substr))
+				break;
+			else
+				goto done;
 		case DMI_BOARD_VENDOR:
-			if (hw_vendor != NULL &&
-			    !strcmp(hw_vendor, dsi->matches[i].substr))
+			if (board_vendor != NULL &&
+			    !strcmp(board_vendor, dsi->matches[i].substr))
 				break;
 			else
-				return false;
+				goto done;
 		case DMI_PRODUCT_NAME:
-		case DMI_BOARD_NAME:
-			if (hw_prod != NULL &&
-			    !strcmp(hw_prod, dsi->matches[i].substr))
+			if (product_name != NULL &&
+			    !strcmp(product_name, dsi->matches[i].substr))
 				break;
 			else
-				return false;
+				goto done;
+		case DMI_BOARD_NAME:
+			if (board_name != NULL &&
+			    !strcmp(board_name, dsi->matches[i].substr))
+				break;
+			else
+				goto done;
 		default:
-			return false;
+			goto done;
 		}
 	}
-	kfreeenv(hw_vendor);
-	kfreeenv(hw_prod);
+	found = true;
 
-	return true;
+done:
+	kfreeenv(sys_vendor);
+	kfreeenv(board_vendor);
+	kfreeenv(product_name);
+	kfreeenv(board_name);
+
+	return found;
 }
 
 bool
