@@ -59,13 +59,13 @@
 .Ft struct udev_enumerate *
 .Fn udev_enumerate_new "struct udev *udev_ctx"
 .Ft struct udev_enumerate *
-.Fn udev_enumerate_ref "struct udev *udev_ctx"
+.Fn udev_enumerate_ref "struct udev_enumerate *udev_enum"
 .Ft void
-.Fn udev_enumerate_unref "struct udev *udev_ctx"
+.Fn udev_enumerate_unref "struct udev_enumerate *udev_enum"
 .Ft struct udev *
-.Fn udev_enumerate_get_udev "struct udev *udev_ctx"
+.Fn udev_enumerate_get_udev "struct udev_enumerate *udev_enum"
 .Ft int
-.Fn udev_enumerate_scan_devices "struct udev *udev_ctx"
+.Fn udev_enumerate_scan_devices "struct udev_enumerate *udev_enum"
 .Ft prop_array_t
 .Fn udev_enumerate_get_array "struct udev_enumerate *udev_enum"
 .Ft struct udev_list_entry *
