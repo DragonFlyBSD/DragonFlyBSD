@@ -3139,6 +3139,15 @@ i386_protection_init(void)
 }
 
 /*
+ * Sets the memory attribute for the specified page.
+ */
+void
+pmap_page_set_memattr(vm_page_t m, vm_memattr_t ma)
+{
+	/* This is a vkernel, do nothing */
+}
+
+/*
  * Change the PAT attribute on an existing kernel memory map.  Caller
  * must ensure that the virtual memory in question is not accessed
  * during the adjustment.

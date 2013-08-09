@@ -202,8 +202,12 @@ extern char *ptvmmap;		/* poor name! */
 extern vm_offset_t clean_sva;
 extern vm_offset_t clean_eva;
 
+typedef struct vm_page *vm_page_t;
+typedef char vm_memattr_t;
+
 void	pmap_bootstrap(vm_paddr_t *, int64_t);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
+void	pmap_page_set_memattr(vm_page_t m, vm_memattr_t ma);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
 void	pmap_release(struct pmap *pmap);
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
