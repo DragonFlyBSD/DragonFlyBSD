@@ -28,13 +28,13 @@
 .Sh SYNOPSIS
 .In sys/systimer.h
 .Ft void
-.Fn systimer_init_periodic "systimer_t info" "void *func" "void *data" "int hz"
+.Fn systimer_init_periodic "systimer_t info" "systimer_func_t func" "void *data" "int hz"
 .Ft void
-.Fn systimer_init_periodic_nq "systimer_t info" "void *func" "void *data" "int hz"
+.Fn systimer_init_periodic_nq "systimer_t info" "systimer_func_t func" "void *data" "int hz"
 .Ft void
 .Fn systimer_adjust_periodic "systimer_t info" "int hz"
 .Ft void
-.Fn systimer_init_oneshot "systimer_t info" "void *func" "void *data" "int us"
+.Fn systimer_init_oneshot "systimer_t info" "systimer_func_t func" "void *data" "int us"
 .Sh DESCRIPTION
 Systimers invoke callbacks at either fixed frequencies or after time delays.
 The callbacks are invoked in an interrupt thread and should only be used
