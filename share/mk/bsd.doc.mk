@@ -81,6 +81,8 @@ UNROFFFLAGS+=	split=1
 # Berkeley me macros.
 COMPAT?=	-C
 
+_MANINSTALLFLAGS:= ${INSTALLFLAGS}
+
 .PATH: ${.CURDIR} ${SRCDIR}
 
 all:	${DFILE}
@@ -105,10 +107,10 @@ realinstall:
 .if ${PRINTERDEVICE} == "html"
 	cd ${SRCDIR}; \
 		${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
-		${DOC}*.html ${DESTDIR}${BINDIR}/${VOLUME}
+		${_MANINSTALLFLAGS} ${DOC}*.html ${DESTDIR}${BINDIR}/${VOLUME}
 .else
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
-		${DFILE} ${DESTDIR}${BINDIR}/${VOLUME}
+		${_MANINSTALLFLAGS} ${DFILE} ${DESTDIR}${BINDIR}/${VOLUME}
 .endif
 
 spell: ${SRCS}
