@@ -23,7 +23,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libftpio/ftpio.3,v 1.21.2.9 2002/12/29 16:35:35 schweikh Exp $
-.\" $DragonFly: src/lib/libftpio/ftpio.3,v 1.5 2008/05/04 00:55:01 swildner Exp $
 .\"
 .Dd June 17, 1996
 .Dt FTPIO 3
@@ -52,7 +51,7 @@
 .Sh SYNOPSIS
 .In ftpio.h
 .Ft FILE *
-.Fn ftpLogin "char *host" "char *user" "char *passwd" "int ftp_port" "int verbose" "int *retcode"
+.Fn ftpLogin "const char *host" "const char *user" "const char *passwd" "int ftp_port" "int verbose" "int *retcode"
 .Ft int
 .Fn ftpChdir "FILE *stream" "char *dirname"
 .Ft int
@@ -60,13 +59,13 @@
 .Ft const char *
 .Fn ftpErrString "int errno"
 .Ft time_t
-.Fn ftpGetModtime "FILE *stream" "char *file"
+.Fn ftpGetModtime "FILE *stream" "const char *file"
 .Ft off_t
-.Fn ftpGetSize "FILE *stream" "char *file"
+.Fn ftpGetSize "FILE *stream" "const char *file"
 .Ft FILE *
-.Fn ftpGet "FILE *stream" "char *file" "off_t *seekto"
+.Fn ftpGet "FILE *stream" "const char *file" "off_t *seekto"
 .Ft FILE *
-.Fn ftpPut "FILE *stream" "char *file"
+.Fn ftpPut "FILE *stream" "const char *file"
 .Ft int
 .Fn ftpAscii "FILE *stream"
 .Ft int
@@ -76,15 +75,15 @@
 .Ft void
 .Fn ftpVerbose "FILE *stream" "int status"
 .Ft FILE *
-.Fn ftpGetURL "char *url" "char *user" "char *passwd" "int *retcode"
+.Fn ftpGetURL "const char *url" "const char *user" "const char *passwd" "int *retcode"
 .Ft FILE *
-.Fn ftpPutURL "char *url" "char *user" "char *passwd" "int *retcode"
+.Fn ftpPutURL "const char *url" "const char *user" "const char *passwd" "int *retcode"
 .Ft FILE *
-.Fn ftpLoginAf "char *host" "int af" "char *user" "char *passwd" "int ftp_port" "int verbose" "int *retcode"
+.Fn ftpLoginAf "const char *host" "int af" "const char *user" "const char *passwd" "int ftp_port" "int verbose" "int *retcode"
 .Ft FILE *
-.Fn ftpGetURLAf "char *url" "int af" "char *user" "char *passwd" "int *retcode"
+.Fn ftpGetURLAf "const char *url" "int af" "const char *user" "const char *passwd" "int *retcode"
 .Ft FILE *
-.Fn ftpPutURLAf "char *url" "int af" "char *user" "char *passwd" "int *retcode"
+.Fn ftpPutURLAf "const char *url" "int af" "const char *user" "const char *passwd" "int *retcode"
 .Sh DESCRIPTION
 These functions implement a high-level library for managing FTP connections.
 .Pp
