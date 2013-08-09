@@ -35,7 +35,6 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/kernacc.9,v 1.7.2.4 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/kernacc.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
 .\"
 .Dd June 16, 1996
 .Dt KERNACC 9
@@ -49,9 +48,9 @@
 .In vm/vm.h
 .In vm/vm_extern.h
 .Ft int
-.Fn kernacc "caddr_t addr" "int len" "int rw"
+.Fn kernacc "c_caddr_t addr" "int len" "int rw"
 .Ft int
-.Fn useracc "caddr_t addr" "int len" "int rw"
+.Fn useracc "c_caddr_t addr" "int len" "int rw"
 .Sh DESCRIPTION
 The
 .Fn kernacc
