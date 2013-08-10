@@ -656,10 +656,6 @@ SCTP_STR_LOGGING	opt_sctp.h
 SCTP_FR_LOGGING		opt_sctp.h
 SCTP_MAP_LOGGING	opt_sctp.h
 
-# syslink kernel support
-#
-SYSLINK			opt_syslink.h
-
 # DSCHED stuff
 DSCHED_AS		opt_dsched.h
 DSCHED_BFQ		opt_dsched.h

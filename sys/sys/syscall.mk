@@ -252,7 +252,6 @@ MIASM =  \
 	usched_set.o \
 	extaccept.o \
 	extconnect.o \
-	syslink.o \
 	mcontrol.o \
 	vmspace_create.o \
 	vmspace_destroy.o \

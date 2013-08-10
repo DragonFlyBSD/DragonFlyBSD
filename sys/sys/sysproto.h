@@ -1877,14 +1877,6 @@ struct	extconnect_args {
 	caddr_t	name;	char name_[PAD_(caddr_t)];
 	int	namelen;	char namelen_[PAD_(int)];
 };
-struct	syslink_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	cmd;	char cmd_[PAD_(int)];
-	struct syslink_info *	info;	char info_[PAD_(struct syslink_info *)];
-	size_t	bytes;	char bytes_[PAD_(size_t)];
-};
 struct	mcontrol_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2847,7 +2839,6 @@ int	sys_getdents (struct getdents_args *);
 int	sys_usched_set (struct usched_set_args *);
 int	sys_extaccept (struct extaccept_args *);
 int	sys_extconnect (struct extconnect_args *);
-int	sys_syslink (struct syslink_args *);
 int	sys_mcontrol (struct mcontrol_args *);
 int	sys_vmspace_create (struct vmspace_create_args *);
 int	sys_vmspace_destroy (struct vmspace_destroy_args *);

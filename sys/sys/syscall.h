@@ -324,7 +324,7 @@
 #define	SYS_usched_set	481
 #define	SYS_extaccept	482
 #define	SYS_extconnect	483
-#define	SYS_syslink	484
+				/* 484 is obsolete syslink */
 #define	SYS_mcontrol	485
 #define	SYS_vmspace_create	486
 #define	SYS_vmspace_destroy	487

@@ -248,7 +248,6 @@ DF306.0 {
     sys_checkpoint;
     sysarch;
     syscall;
-    syslink;
     truncate;
     umask;
     umtx_sleep;
@@ -542,7 +541,6 @@ DFprivate_1.0 {
     __sys_sys_checkpoint;
     __sys_sysarch;
     __sys_syscall;
-    __sys_syslink;
     __sys_umask;
     __sys_umtx_sleep;
     __sys_umtx_wakeup;
@@ -839,7 +837,6 @@ DFprivate_1.0 {
     _sys_checkpoint;
     _sysarch;
     _syscall;
-    _syslink;
     _umask;
     _umtx_sleep;
     _umtx_wakeup;

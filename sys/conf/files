@@ -914,7 +914,6 @@ kern/subr_firmware.c	standard
 kern/subr_kcore.c	standard
 kern/subr_kobj.c	standard
 kern/subr_log.c		standard
-kern/subr_shims.c	standard
 kern/libmchain/subr_mchain.c	optional libmchain
 kern/subr_module.c	standard
 kern/subr_param.c	standard

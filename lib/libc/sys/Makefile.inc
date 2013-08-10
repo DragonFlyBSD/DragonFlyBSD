@@ -85,7 +85,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	setuid.2 shmat.2 shmctl.2 shmget.2 shutdown.2 \
 	sigaction.2 sigaltstack.2 sigpending.2 sigprocmask.2 sigreturn.2 \
 	sigstack.2 sigsuspend.2 socket.2 socketpair.2 stat.2 statfs.2 \
-	statvfs.2 swapon.2 symlink.2 sync.2 sysarch.2 syscall.2 syslink.2 \
+	statvfs.2 swapon.2 symlink.2 sync.2 sysarch.2 syscall.2 \
 	truncate.2 tls.2 umask.2 umtx.2 undelete.2 \
 	unlink.2 unlinkat.2 utimes.2 utrace.2 usched_set.2 \
 	uuidgen.2 \

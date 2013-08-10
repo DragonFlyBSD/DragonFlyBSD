@@ -662,7 +662,7 @@
 				int bytes); }
 482	STD	BSD	{ int extaccept(int s, int flags, caddr_t name, int *anamelen); }
 483	STD	BSD	{ int extconnect(int s, int flags, caddr_t name, int namelen); }
-484	STD	BSD	{ int syslink(int cmd, struct syslink_info *info, size_t bytes); }
+484	OBSOL	BSD	syslink
 485	STD	BSD	{ int mcontrol(void *addr, size_t len, int behav, off_t value); }
 486	STD	BSD	{ int vmspace_create(void *id, int type, void *data); } 
 487	STD	BSD	{ int vmspace_destroy(void *id); }

@@ -359,7 +359,6 @@ union sysunion {
 	struct	usched_set_args usched_set;
 	struct	extaccept_args extaccept;
 	struct	extconnect_args extconnect;
-	struct	syslink_args syslink;
 	struct	mcontrol_args mcontrol;
 	struct	vmspace_create_args vmspace_create;
 	struct	vmspace_destroy_args vmspace_destroy;
