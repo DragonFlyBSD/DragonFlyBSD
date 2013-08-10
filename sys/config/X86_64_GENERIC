@@ -47,7 +47,7 @@ options 	AHC_REG_PRETTY_PRINT	# Print register bitfields in debug
 					# output.  Adds ~128k to driver.
 options 	AHD_REG_PRETTY_PRINT	# Print register bitfields in debug
 					# output.  Adds ~215k to driver.
-options         DSCHED_FQ               # Fair-queuing disk scheduler
+options		DSCHED_FQ		# Fair-queuing disk scheduler
 
 # ALTQ
 options		ALTQ		#alternate queueing
@@ -64,8 +64,6 @@ options		ALTQ_FAIRQ	#fair queueing
 options 	DDB
 options 	DDB_TRACE
 options 	INVARIANTS
-
-#options 	ACPI_DEBUG
 
 device		isa
 device		pci
@@ -202,7 +200,6 @@ device		lpt		# Printer
 device		plip		# TCP/IP over parallel
 device		ppi		# Parallel port interface device
 #device		vpo		# Requires scbus and da
-
 
 # PCI Ethernet NICs.
 device		de		# DEC/Intel DC21x4x (``Tulip'')

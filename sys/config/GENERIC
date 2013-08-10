@@ -52,18 +52,18 @@ options 	AHC_REG_PRETTY_PRINT	# Print register bitfields in debug
 					# output.  Adds ~128k to driver.
 options 	AHD_REG_PRETTY_PRINT	# Print register bitfields in debug
 					# output.  Adds ~215k to driver.
-options		DSCHED_FQ               # Fair-queuing disk scheduler
+options		DSCHED_FQ		# Fair-queuing disk scheduler
 
 # ALTQ
-options         ALTQ            #alternate queueing
-options         ALTQ_CBQ        #class based queueing
-options         ALTQ_RED        #random early detection
-options         ALTQ_RIO        #triple red for diffserv (needs RED)
-options         ALTQ_HFSC       #hierarchical fair service curve
-options         ALTQ_PRIQ       #priority queue
-options         ALTQ_FAIRQ      #fair queueing
-#options        ALTQ_NOPCC      #don't use processor cycle counter
-#options        ALTQ_DEBUG      #for debugging
+options		ALTQ		#alternate queueing
+options		ALTQ_CBQ	#class based queueing
+options		ALTQ_RED	#random early detection
+options		ALTQ_RIO	#triple red for diffserv (needs RED)
+options		ALTQ_HFSC	#hierarchical fair service curve
+options		ALTQ_PRIQ	#priority queue
+options		ALTQ_FAIRQ	#fair queueing
+#options	ALTQ_NOPCC	#don't use processor cycle counter
+#options	ALTQ_DEBUG	#for debugging
 
 # Debugging for Development
 options 	DDB
