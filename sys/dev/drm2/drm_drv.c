@@ -296,7 +296,7 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	lockinit(&dev->dev_lock, "drmdev", 0, LK_CANRECURSE);
 	lwkt_serialize_init(&dev->irq_lock);
 	lockinit(&dev->vbl_lock, "drmvbl", 0, LK_CANRECURSE);
-	DRM_SPININIT(&dev->drw_lock, "drmdrw");
+	spin_init(&dev->drw_lock);
 	lockinit(&dev->event_lock, "drmev", 0, LK_CANRECURSE);
 	lockinit(&dev->dev_struct_lock, "drmslk", 0, LK_CANRECURSE);
 
@@ -570,7 +570,7 @@ error:
 	if (dev->devnode != NULL)
 		destroy_dev(dev->devnode);
 
-	DRM_SPINUNINIT(&dev->drw_lock);
+	spin_uninit(&dev->drw_lock);
 	lockuninit(&dev->vbl_lock);
 	lockuninit(&dev->dev_lock);
 	lockuninit(&dev->event_lock);
@@ -640,7 +640,7 @@ static void drm_unload(struct drm_device *dev)
 	if (pci_disable_busmaster(dev->device))
 		DRM_ERROR("Request to disable bus-master failed.\n");
 
-	DRM_SPINUNINIT(&dev->drw_lock);
+	spin_uninit(&dev->drw_lock);
 	lockuninit(&dev->vbl_lock);
 	lockuninit(&dev->dev_lock);
 	lockuninit(&dev->event_lock);

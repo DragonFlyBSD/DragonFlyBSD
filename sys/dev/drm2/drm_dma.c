@@ -46,7 +46,7 @@ int drm_dma_setup(struct drm_device *dev)
 	if (dev->dma == NULL)
 		return ENOMEM;
 
-	DRM_SPININIT(&dev->dma_lock, "drmdma");
+	spin_init(&dev->dma_lock);
 
 	return 0;
 }
@@ -84,7 +84,7 @@ void drm_dma_takedown(struct drm_device *dev)
 	drm_free(dma->pagelist, DRM_MEM_PAGES);
 	drm_free(dev->dma, DRM_MEM_DRIVER);
 	dev->dma = NULL;
-	DRM_SPINUNINIT(&dev->dma_lock);
+	spin_uninit(&dev->dma_lock);
 }
 
 

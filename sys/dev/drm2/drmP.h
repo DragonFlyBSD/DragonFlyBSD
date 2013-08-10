@@ -188,17 +188,6 @@ SYSCTL_DECL(_hw_drm);
 
 #define DRM_CURPROC		curthread
 #define DRM_STRUCTPROC		struct thread
-#define DRM_SPINTYPE		struct spinlock
-#define DRM_SPININIT(l,name)	spin_init(l)
-#define DRM_SPINUNINIT(l)	spin_uninit(l)
-#define DRM_SPINLOCK(l)		spin_lock(l)
-#define DRM_SPINUNLOCK(u)	spin_unlock(u)
-#define DRM_SPINLOCK_IRQSAVE(l, irqflags) do {		\
-	mtx_lock(l);					\
-	(void)irqflags;					\
-} while (0)
-#define DRM_SPINUNLOCK_IRQRESTORE(u, irqflags) mtx_unlock(u)
-#define DRM_SPINLOCK_ASSERT(l)	mtx_assert(l, MA_OWNED)
 #define DRM_CURRENTPID		curthread->td_proc->p_pid
 #define DRM_LOCK(dev)		lockmgr(&(dev)->dev_struct_lock, LK_EXCLUSIVE);
 #define DRM_UNLOCK(dev)		lockmgr(&(dev)->dev_struct_lock, LK_RELEASE);
@@ -844,7 +833,7 @@ struct drm_device {
 	struct lwkt_serialize irq_lock;	/* protects irq condition checks */
 	struct lock	  dev_lock;	/* protects everything else */
 	struct lock	  dev_struct_lock;
-	DRM_SPINTYPE	  drw_lock;
+	struct spinlock   drw_lock;
 
 				/* Usage Counters */
 	int		  open_count;	/* Outstanding files open	   */
