@@ -61,11 +61,9 @@
 
 /*
  * The above functions are expanded inline in the statically-linked
- * kernel.  Lock prefixes are generated if an SMP kernel is being
- * built, or if user code is using these functions.
+ * kernel and lock prefixes are generated.
  *
  * Kernel modules call real functions which are built into the kernel.
- * This allows kernel modules to be portable between UP and SMP systems.
  */
 #if defined(KLD_MODULE)
 #define ATOMIC_ASM(NAME, TYPE, OP, CONS, V)		\

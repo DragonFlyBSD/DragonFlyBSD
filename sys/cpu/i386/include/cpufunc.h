@@ -409,11 +409,6 @@ invd(void)
 
 #if defined(_KERNEL)
 
-/*
- * If we are not a true-SMP box then smp_invltlb() is a NOP.  Note that this
- * will cause the invl*() functions to be equivalent to the cpu_invl*()
- * functions.
- */
 void smp_invltlb(void);
 void smp_invltlb_intr(void);
 
