@@ -2140,6 +2140,7 @@ TO_REMOVE+=/usr/share/man/man3/fpsetsticky.3.gz
 TO_REMOVE+=/usr/include/sys/bitstring.h
 TO_REMOVE+=/usr/share/man/cat4/pst.4.gz
 TO_REMOVE+=/usr/share/man/man4/pst.4.gz
+TO_REMOVE+=/usr/share/man/man8/loader.8.gz.old
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
