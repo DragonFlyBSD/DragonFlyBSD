@@ -23,13 +23,35 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/sys/dev/iicbus/iicbb_if.m,v 1.6 2005/01/06 01:42:47 imp Exp $
-# $DragonFly: src/sys/bus/iicbus/iicbb_if.m,v 1.3 2003/11/17 00:54:39 asmodai Exp $
+# $FreeBSD: head/sys/dev/iicbus/iicbb_if.m 232365 2012-03-01 20:58:20Z kan $
 #
 
 #include <sys/bus.h>
 
 INTERFACE iicbb;
+
+#
+# Default implementation of optional methods
+#
+CODE {
+	static int
+	null_pre_xfer(device_t dev)
+	{
+		return 0;
+	}
+
+	static void
+	null_post_xfer(device_t dev)
+
+	{
+	}
+
+	static int
+	null_callback(device_t dev, int index, caddr_t data)
+	{
+		return 0;
+	}
+};
 
 #
 # iicbus callback
@@ -38,7 +60,21 @@ METHOD int callback {
 	device_t dev;
 	int index;
 	caddr_t data;
-};
+} DEFAULT null_callback;
+
+#
+# Prepare device for I2C transfer
+#
+METHOD int pre_xfer {
+	device_t dev;
+} DEFAULT null_pre_xfer;
+
+#
+# Cleanup device after I2C transfer
+#
+METHOD void post_xfer {
+	device_t dev;
+} DEFAULT null_post_xfer;
 
 #
 # Set I2C bus data line
