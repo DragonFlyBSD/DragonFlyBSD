@@ -23,7 +23,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/mbuf.9,v 1.27.2.1 2003/05/28 13:53:18 yar Exp $
-.\" $DragonFly: src/share/man/man9/mbuf.9,v 1.8 2007/08/18 18:58:20 swildner Exp $
 .\"
 .Dd September 17, 2010
 .Dt MBUF 9
@@ -76,7 +75,7 @@
 .Ft struct mbuf *
 .Fn m_pullup "struct mbuf *mbuf" "int len"
 .Ft struct mbuf *
-.Fn m_copym "struct mbuf *mbuf" "int offset" "int len" "int how"
+.Fn m_copym "const struct mbuf *mbuf" "int offset" "int len" "int how"
 .Ft struct mbuf *
 .Fn m_copypacket "struct mbuf *mbuf" "int how"
 .Ft struct mbuf *
@@ -91,7 +90,7 @@
 .Fa "int len"
 .Fa "int offset"
 .Fa "struct ifnet *ifp"
-.Fa "void (*copy)(char *from, caddr_t to, u_int len)"
+.Fa "void (*copy)(volatile const void *from, volatile void *to, size_t len)"
 .Fc
 .Ft void
 .Fn m_cat "struct mbuf *m" "struct mbuf *n"

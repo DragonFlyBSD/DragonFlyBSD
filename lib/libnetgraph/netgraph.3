@@ -64,7 +64,7 @@
 .Ft int
 .Fn NgSendAsciiMsg "int cs" "const char *path" "const char *fmt" "..."
 .Ft int
-.Fn NgSendReplyMsg "int cs" "const char *path" "struct ng_mesg *msg" "const void *arg" "size_t arglen"
+.Fn NgSendReplyMsg "int cs" "const char *path" "const struct ng_mesg *msg" "const void *arg" "size_t arglen"
 .Ft int
 .Fn NgRecvMsg "int cs" "struct ng_mesg *rep" "size_t replen" "char *path"
 .Ft int
