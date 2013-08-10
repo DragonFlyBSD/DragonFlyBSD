@@ -1,6 +1,5 @@
 #	@(#)bsd.README	8.2 (Berkeley) 4/2/94
 # $FreeBSD: src/share/mk/bsd.README,v 1.25 2003/05/17 18:03:05 trhodes Exp $
-# $DragonFly: src/share/mk/bsd.README,v 1.8 2008/03/02 19:56:53 swildner Exp $
 
 This is the README file for the "include" files for the DragonFly
 source tree.  The files are installed in /usr/share/mk, and are, by
@@ -143,6 +142,8 @@ MANSUBDIR	Subdirectory under the manual page section, i.e. "/vax"
 		or "/tahoe" for machine specific manual pages.
 
 MAN		The manual pages to be installed (use a .1 - .9 suffix).
+
+MANINSTALLFLAGS	Additional flags to pass to install(1).
 
 MLINKS		List of manual page links (using a .1 - .9 suffix).  The
 		linked-to file must come first, the linked file second,

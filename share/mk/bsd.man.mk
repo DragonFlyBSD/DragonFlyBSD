@@ -53,7 +53,7 @@
 .error bsd.man.mk cannot be included directly.
 .endif
 
-_MANINSTALLFLAGS:= ${INSTALLFLAGS}
+_MANINSTALLFLAGS:= ${MANINSTALLFLAGS}
 
 MINSTALL?=	${INSTALL} -o ${MANOWN} -g ${MANGRP} -m ${MANMODE} \
 		${_MANINSTALLFLAGS}

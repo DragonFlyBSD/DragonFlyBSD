@@ -1,6 +1,5 @@
 #	from: @(#)bsd.doc.mk	5.3 (Berkeley) 1/2/91
 # $FreeBSD: src/share/mk/bsd.doc.mk,v 1.47.2.5 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.doc.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
 #
 # The include file <bsd.doc.mk> handles installing BSD troff documents.
 #
@@ -81,7 +80,7 @@ UNROFFFLAGS+=	split=1
 # Berkeley me macros.
 COMPAT?=	-C
 
-_MANINSTALLFLAGS:= ${INSTALLFLAGS}
+_DOCINSTALLFLAGS:= ${DOCINSTALLFLAGS}
 
 .PATH: ${.CURDIR} ${SRCDIR}
 
@@ -107,10 +106,10 @@ realinstall:
 .if ${PRINTERDEVICE} == "html"
 	cd ${SRCDIR}; \
 		${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
-		${_MANINSTALLFLAGS} ${DOC}*.html ${DESTDIR}${BINDIR}/${VOLUME}
+		${_DOCINSTALLFLAGS} ${DOC}*.html ${DESTDIR}${BINDIR}/${VOLUME}
 .else
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
-		${_MANINSTALLFLAGS} ${DFILE} ${DESTDIR}${BINDIR}/${VOLUME}
+		${_DOCINSTALLFLAGS} ${DFILE} ${DESTDIR}${BINDIR}/${VOLUME}
 .endif
 
 spell: ${SRCS}
