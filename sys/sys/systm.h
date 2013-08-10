@@ -407,5 +407,17 @@ bitcount16(uint32_t x)
 	return (x);
 }
 
+static __inline uint32_t
+bitcount32(uint32_t x)
+{
+
+	x = (x & 0x55555555) + ((x & 0xaaaaaaaa) >> 1);
+	x = (x & 0x33333333) + ((x & 0xcccccccc) >> 2);
+	x = (x + (x >> 4)) & 0x0f0f0f0f;
+	x = (x + (x >> 8));
+	x = (x + (x >> 16)) & 0x000000ff;
+	return (x);
+}
+
 #endif	/* _KERNEL */
 #endif /* !_SYS_SYSTM_H_ */
