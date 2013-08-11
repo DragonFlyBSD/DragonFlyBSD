@@ -511,6 +511,9 @@ int	pci_msi_device_blacklisted(device_t dev);
 
 void	pci_ht_map_msi(device_t dev, uint64_t addr);
 
+void	pci_restore_state(device_t dev);
+void	pci_save_state(device_t dev);
+
 /* Returns PCI_INTR_TYPE_ */
 int	pci_alloc_1intr(device_t dev, int msi_enable, int *rid, u_int *flags);
 

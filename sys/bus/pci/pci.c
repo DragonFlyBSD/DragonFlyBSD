@@ -4379,3 +4379,22 @@ pci_alloc_1intr(device_t dev, int msi_enable, int *rid0, u_int *flags0)
 
 	return type;
 }
+
+/* Wrapper APIs suitable for device driver use. */
+void
+pci_save_state(device_t dev)
+{
+	struct pci_devinfo *dinfo;
+
+	dinfo = device_get_ivars(dev);
+	pci_cfg_save(dev, dinfo, 0);
+}
+
+void
+pci_restore_state(device_t dev)
+{
+	struct pci_devinfo *dinfo;
+
+	dinfo = device_get_ivars(dev);
+	pci_cfg_restore(dev, dinfo);
+}
