@@ -98,7 +98,7 @@
 .Ft int
 .Fn rman_fini "struct rman *rm"
 .Ft int
-.Fn rman_init "struct rman *rm"
+.Fn rman_init "struct rman *rm" "int cpuid"
 .Ft int
 .Fn rman_manage_region "struct rman *rm" "u_long start" "u_long end"
 .Ft int
