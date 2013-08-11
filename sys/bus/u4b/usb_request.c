@@ -70,6 +70,11 @@ static int usb_no_cs_fail;
 SYSCTL_INT(_hw_usb, OID_AUTO, no_cs_fail, CTLFLAG_RW,
     &usb_no_cs_fail, 0, "USB clear stall failures are ignored, if set");
 
+static int usb_full_ddesc;
+
+SYSCTL_INT(_hw_usb, OID_AUTO, full_ddesc, CTLFLAG_RW,
+    &usb_full_ddesc, 0, "USB always read complete device descriptor, if set");
+
 #ifdef USB_DEBUG
 #ifdef USB_REQ_DEBUG
 /* The following structures are used in connection to fault injection. */
@@ -77,7 +82,7 @@ struct usb_ctrl_debug {
 	int bus_index;		/* target bus */
 	int dev_index;		/* target address */
 	int ds_fail;		/* fail data stage */
-	int ss_fail;		/* fail data stage */
+	int ss_fail;		/* fail status stage */
 	int ds_delay;		/* data stage delay in ms */
 	int ss_delay;		/* status stage delay in ms */
 	int bmRequestType_value;
@@ -409,7 +414,7 @@ usbd_do_request_flags(struct usb_device *udev, struct lock *lock,
 	uint16_t length;
 	uint16_t temp;
 	uint16_t acttemp;
-	uint8_t enum_locked;
+	uint8_t do_unlock;
 
 	if (timeout < 50) {
 		/* timeout is too small */
@@ -420,8 +425,6 @@ usbd_do_request_flags(struct usb_device *udev, struct lock *lock,
 		timeout = 30000;
 	}
 	length = UGETW(req->wLength);
-
-	enum_locked = usbd_enum_is_locked(udev);
 
 	DPRINTFN(5, "udev=%p bmRequestType=0x%02x bRequest=0x%02x "
 	    "wValue=0x%02x%02x wIndex=0x%02x%02x wLength=0x%02x%02x\n",
@@ -456,17 +459,16 @@ usbd_do_request_flags(struct usb_device *udev, struct lock *lock,
 	}
 
 	/*
+	 * Grab the USB device enumeration SX-lock serialization is
+	 * achieved when multiple threads are involved:
+	 */
+	do_unlock = usbd_enum_lock(udev);
+
+	/*
 	 * We need to allow suspend and resume at this point, else the
 	 * control transfer will timeout if the device is suspended!
 	 */
-	if (enum_locked)
-		usbd_sr_unlock(udev);
-
-	/*
-	 * Grab the default sx-lock so that serialisation
-	 * is achieved when multiple threads are involved:
-	 */
-	lockmgr(&udev->ctrl_lock, LK_EXCLUSIVE);
+	usbd_sr_unlock(udev);
 
 	hr_func = usbd_get_hr_func(udev);
 
@@ -710,10 +712,10 @@ usbd_do_request_flags(struct usb_device *udev, struct lock *lock,
 	USB_XFER_UNLOCK(xfer);
 
 done:
-	lockmgr(&udev->ctrl_lock, LK_RELEASE);
+	usbd_sr_lock(udev);
 
-	if (enum_locked)
-		usbd_sr_lock(udev);
+	if (do_unlock)
+		usbd_enum_unlock(udev);
 
 #if 0
 	if ((mtx != NULL) && (mtx != &Giant))
@@ -800,7 +802,6 @@ usbd_req_reset_port(struct usb_device *udev, struct lock *lock, uint8_t port)
 	/* check for errors */
 	if (err)
 		goto done;
- 
 	n = 0;
 	while (1) {
 		/* wait for the device to recover from reset */
@@ -848,7 +849,7 @@ usbd_req_reset_port(struct usb_device *udev, struct lock *lock, uint8_t port)
 		goto done;
 	}
 	/* wait for the device to recover from reset */
-	usb_pause_mtx(lock, USB_MS_TO_TICKS(USB_PORT_RESET_RECOVERY));
+	usb_pause_mtx(lock, USB_MS_TO_TICKS(usb_port_reset_recovery));
 
 done:
 	DPRINTFN(2, "port %d reset returning error=%s\n",
@@ -911,8 +912,8 @@ usbd_req_warm_reset_port(struct usb_device *udev, struct lock *lock,
 	n = 0;
 	while (1) {
 		/* wait for the device to recover from reset */
-		usb_pause_mtx(lock, USB_MS_TO_TICKS(USB_PORT_RESET_DELAY));
-		n += USB_PORT_RESET_DELAY;
+		usb_pause_mtx(lock, USB_MS_TO_TICKS(usb_port_reset_delay));
+		n += usb_port_reset_delay;
 		err = usbd_req_get_port_status(udev, lock, &ps, port);
 		if (err)
 			goto done;
@@ -1007,7 +1008,7 @@ usbd_req_get_desc(struct usb_device *udev,
 		USETW(req.wLength, min_len);
 
 		err = usbd_do_request_flags(udev, lock, &req,
-		    desc, 0, NULL, 1000);
+		    desc, 0, NULL, 500 /* ms */);
 
 		if (err) {
 			if (!retries) {
@@ -1260,10 +1261,53 @@ done:
 }
 
 /*------------------------------------------------------------------------*
+ *	usbd_alloc_config_desc
+ *
+ * This function is used to allocate a zeroed configuration
+ * descriptor.
+ *
+ * Returns:
+ * NULL: Failure
+ * Else: Success
+ *------------------------------------------------------------------------*/
+void *
+usbd_alloc_config_desc(struct usb_device *udev, uint32_t size)
+{
+	if (size > USB_CONFIG_MAX) {
+		DPRINTF("Configuration descriptor too big\n");
+		return (NULL);
+	}
+#if (USB_HAVE_FIXED_CONFIG == 0)
+	return (kmalloc(size, M_USBDEV, M_ZERO | M_WAITOK));
+#else
+	memset(udev->config_data, 0, sizeof(udev->config_data));
+	return (udev->config_data);
+#endif
+}
+
+/*------------------------------------------------------------------------*
+ *	usbd_alloc_config_desc
+ *
+ * This function is used to free a configuration descriptor.
+ *------------------------------------------------------------------------*/
+void
+usbd_free_config_desc(struct usb_device *udev, void *ptr)
+{
+#if (USB_HAVE_FIXED_CONFIG == 0)
+	if(ptr) {
+		kfree(ptr, M_USBDEV);
+	} else {
+		kprintf("usbd_free_config_desc: nullpointer\n");
+	}
+#endif
+}
+
+/*------------------------------------------------------------------------*
  *	usbd_req_get_config_desc_full
  *
  * This function gets the complete USB configuration descriptor and
- * ensures that "wTotalLength" is correct.
+ * ensures that "wTotalLength" is correct. The returned configuration
+ * descriptor is freed by calling "usbd_free_config_desc()".
  *
  * Returns:
  *    0: Success
@@ -1271,12 +1315,11 @@ done:
  *------------------------------------------------------------------------*/
 usb_error_t
 usbd_req_get_config_desc_full(struct usb_device *udev, struct lock *lock,
-    struct usb_config_descriptor **ppcd, struct malloc_type *mtype,
-    uint8_t index)
+    struct usb_config_descriptor **ppcd, uint8_t index)
 {
 	struct usb_config_descriptor cd;
 	struct usb_config_descriptor *cdesc;
-	uint16_t len;
+	uint32_t len;
 	usb_error_t err;
 
 	DPRINTFN(4, "index=%d\n", index);
@@ -1289,15 +1332,20 @@ usbd_req_get_config_desc_full(struct usb_device *udev, struct lock *lock,
 	}
 	/* get full descriptor */
 	len = UGETW(cd.wTotalLength);
-	if (len < sizeof(*cdesc)) {
+	if (len < (uint32_t)sizeof(*cdesc)) {
 		/* corrupt descriptor */
 		return (USB_ERR_INVAL);
+	} else if (len > USB_CONFIG_MAX) {
+		DPRINTF("Configuration descriptor was truncated\n");
+		len = USB_CONFIG_MAX;
 	}
-	cdesc = kmalloc(len, mtype, M_WAITOK);
+	cdesc = usbd_alloc_config_desc(udev, len);
+	if (cdesc == NULL)
+		return (USB_ERR_NOMEM);
 	err = usbd_req_get_desc(udev, lock, NULL, cdesc, len, len, 0,
 	    UDESC_CONFIG, index, 3);
 	if (err) {
-		kfree(cdesc, mtype);
+		usbd_free_config_desc(udev, cdesc);
 		return (err);
 	}
 	/* make sure that the device is not fooling us: */
@@ -1889,32 +1937,41 @@ usbd_setup_device_desc(struct usb_device *udev, struct lock *lock)
 	 */
 	switch (udev->speed) {
 	case USB_SPEED_FULL:
-	case USB_SPEED_LOW:
+		if (usb_full_ddesc != 0) {
+			/* get full device descriptor */
+			err = usbd_req_get_device_desc(udev, lock, &udev->ddesc);
+			if (err == 0)
+				break;
+		}
+
+		/* get partial device descriptor, some devices crash on this */
 		err = usbd_req_get_desc(udev, lock, NULL, &udev->ddesc,
 		    USB_MAX_IPACKET, USB_MAX_IPACKET, 0, UDESC_DEVICE, 0, 0);
-		if (err != 0) {
-			DPRINTFN(0, "getting device descriptor "
-			    "at addr %d failed, %s\n", udev->address,
-			    usbd_errstr(err));
-			return (err);
-		}
+		if (err != 0)
+			break;
+
+		/* get the full device descriptor */
+		err = usbd_req_get_device_desc(udev, lock, &udev->ddesc);
 		break;
+
 	default:
-		DPRINTF("Minimum MaxPacketSize is large enough "
-		    "to hold the complete device descriptor\n");
+		DPRINTF("Minimum bMaxPacketSize is large enough "
+		    "to hold the complete device descriptor or "
+		    "only one bMaxPacketSize choice\n");
+
+		/* get the full device descriptor */
+		err = usbd_req_get_device_desc(udev, lock, &udev->ddesc);
+
+		/* try one more time, if error */
+		if (err != 0)
+			err = usbd_req_get_device_desc(udev, lock, &udev->ddesc);
 		break;
 	}
 
-	/* get the full device descriptor */
-	err = usbd_req_get_device_desc(udev, lock, &udev->ddesc);
-
-	/* try one more time, if error */
-	if (err)
-		err = usbd_req_get_device_desc(udev, lock, &udev->ddesc);
-
-	if (err) {
-		DPRINTF("addr=%d, getting full desc failed\n",
-		    udev->address);
+	if (err != 0) {
+		DPRINTFN(0, "getting device descriptor "
+		    "at addr %d failed, %s\n", udev->address,
+		    usbd_errstr(err));
 		return (err);
 	}
 

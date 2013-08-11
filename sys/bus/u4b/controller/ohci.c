@@ -2075,13 +2075,8 @@ struct ohci_config_desc ohci_confd =
 static const
 struct usb_hub_descriptor ohci_hubd =
 {
-	0,				/* dynamic length */
-	UDESC_HUB,
-	0,
-	{0, 0},
-	0,
-	0,
-	{0},
+	.bDescLength = 0,	/* dynamic length */
+	.bDescriptorType = UDESC_HUB,
 };
 
 static usb_error_t
@@ -2315,6 +2310,7 @@ ohci_roothub_exec(struct usb_device *udev,
 		}
 		v = OREAD4(sc, OHCI_RH_PORT_STATUS(index));
 		DPRINTFN(9, "port status=0x%04x\n", v);
+		v &= ~UPS_PORT_MODE_DEVICE;	/* force host mode */
 		USETW(sc->sc_hub_desc.ps.wPortStatus, v);
 		USETW(sc->sc_hub_desc.ps.wPortChange, v >> 16);
 		len = sizeof(sc->sc_hub_desc.ps);
@@ -2344,7 +2340,7 @@ ohci_roothub_exec(struct usb_device *udev,
 			for (v = 0;; v++) {
 				if (v < 12) {
 					usb_pause_mtx(&sc->sc_bus.bus_lock,
-					    USB_MS_TO_TICKS(USB_PORT_ROOT_RESET_DELAY));
+					    USB_MS_TO_TICKS(usb_port_root_reset_delay));
 
 					if ((OREAD4(sc, port) & UPS_RESET) == 0) {
 						break;
@@ -2551,10 +2547,6 @@ ohci_ep_init(struct usb_device *udev, struct usb_endpoint_descriptor *edesc,
 	    edesc->bEndpointAddress, udev->flags.usb_mode,
 	    sc->sc_addr);
 
-	if (udev->flags.usb_mode != USB_MODE_HOST) {
-		/* not supported */
-		return;
-	}
 	if (udev->device_index != sc->sc_addr) {
 		switch (edesc->bmAttributes & UE_XFERTYPE) {
 		case UE_CONTROL:

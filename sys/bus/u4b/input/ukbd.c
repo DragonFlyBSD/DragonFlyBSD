@@ -85,15 +85,19 @@
 #ifdef USB_DEBUG
 static int ukbd_debug = 0;
 static int ukbd_no_leds = 0;
+static int ukbd_pollrate = 0;
 
-static SYSCTL_NODE(_hw_usb, OID_AUTO, ukbd, CTLFLAG_RW, 0, "USB ukbd");
+static SYSCTL_NODE(_hw_usb, OID_AUTO, ukbd, CTLFLAG_RW, 0, "USB keyboard");
 SYSCTL_INT(_hw_usb_ukbd, OID_AUTO, debug, CTLFLAG_RW,
     &ukbd_debug, 0, "Debug level");
 SYSCTL_INT(_hw_usb_ukbd, OID_AUTO, no_leds, CTLFLAG_RW,
     &ukbd_no_leds, 0, "Disables setting of keyboard leds");
+SYSCTL_INT(_hw_usb_ukbd, OID_AUTO, pollrate, CTLFLAG_RW,
+    &ukbd_pollrate, 0, "Force this polling rate, 1-1000Hz");
 
 TUNABLE_INT("hw.usb.ukbd.debug", &ukbd_debug);
 TUNABLE_INT("hw.usb.ukbd.no_leds", &ukbd_no_leds);
+TUNABLE_INT("hw.usb.ukbd.pollrate", &ukbd_pollrate);
 #endif
 
 #define	UKBD_EMULATE_ATSCANCODE	       1
@@ -989,13 +993,12 @@ ukbd_probe(device_t dev)
 	if (uaa->info.bInterfaceClass != UICLASS_HID)
 		return (ENXIO);
 
+	if (usb_test_quirk(uaa, UQ_KBD_IGNORE))
+		return (ENXIO);
+
 	if ((uaa->info.bInterfaceSubClass == UISUBCLASS_BOOT) &&
-	    (uaa->info.bInterfaceProtocol == UIPROTO_BOOT_KEYBOARD)) {
-		if (usb_test_quirk(uaa, UQ_KBD_IGNORE))
-			return (ENXIO);
-		else
-			return (BUS_PROBE_DEFAULT);
-	}
+	    (uaa->info.bInterfaceProtocol == UIPROTO_BOOT_KEYBOARD))
+		return (BUS_PROBE_DEFAULT);
 
 	error = usbd_req_get_hid_desc(uaa->device, NULL,
 	    &d_ptr, &d_len, M_TEMP, uaa->info.bIfaceIndex);
@@ -1003,23 +1006,20 @@ ukbd_probe(device_t dev)
 	if (error)
 		return (ENXIO);
 
-	/*
-	 * NOTE: we currently don't support USB mouse and USB keyboard
-	 * on the same USB endpoint.
-	 */
-	if (hid_is_collection(d_ptr, d_len,
-	    HID_USAGE2(HUP_GENERIC_DESKTOP, HUG_MOUSE))) {
-		/* most likely a mouse */
-		error = ENXIO;
-	} else if (hid_is_collection(d_ptr, d_len,
-	    HID_USAGE2(HUP_GENERIC_DESKTOP, HUG_KEYBOARD))) {
-		if (usb_test_quirk(uaa, UQ_KBD_IGNORE))
+	if (hid_is_keyboard(d_ptr, d_len)) {
+		if (hid_is_mouse(d_ptr, d_len)) {
+			/*
+			 * NOTE: We currently don't support USB mouse
+			 * and USB keyboard on the same USB endpoint.
+			 * Let "ums" driver win.
+			 */
 			error = ENXIO;
-		else
+		} else {
 			error = BUS_PROBE_DEFAULT;
-	} else
+		}
+	} else {
 		error = ENXIO;
-
+	}
 	kfree(d_ptr, M_TEMP);
 	return (error);
 }
@@ -1169,6 +1169,10 @@ ukbd_attach(device_t dev)
 	usb_error_t err;
 	uint16_t n;
 	uint16_t hid_len;
+#ifdef USB_DEBUG
+	int rate;
+#endif
+	UKBD_LOCK_ASSERT();
 
 	kbd_init_struct(kbd, UKBD_DRIVER_NAME, KB_OTHER,
             unit, 0, KB_PRI_USB, 0, 0);
@@ -1269,13 +1273,27 @@ ukbd_attach(device_t dev)
 		genkbd_diag(kbd, bootverbose);
 	}
 
+#ifdef USB_DEBUG
+	/* check for polling rate override */
+	rate = ukbd_pollrate;
+	if (rate > 0) {
+		if (rate > 1000)
+			rate = 1;
+		else
+			rate = 1000 / rate;
+
+		/* set new polling interval in ms */
+		usbd_xfer_set_interval(sc->sc_xfer[UKBD_INTR_DT], rate);
+	}
+#endif
 	/* start the keyboard */
+	/* XXX mp locking added */
 	UKBD_LOCK(sc);
 	usbd_transfer_start(sc->sc_xfer[UKBD_INTR_DT]);
 	UKBD_UNLOCK(sc);
 
-	return (0);			/* success */
 
+	return (0);			/* success */
 detach:
 	ukbd_detach(dev);
 	return (ENXIO);			/* error */
@@ -2055,7 +2073,7 @@ ukbd_key2scan(struct ukbd_softc *sc, int code, int shift, int up)
 		0x5c,	/* Keyboard Intl' 6 (Keypad ,) (For PC-9821 layout) */
 	};
 
-	if ((code >= 89) && (code < (89 + (sizeof(scan) / sizeof(scan[0]))))) {
+	if ((code >= 89) && (code < (int)(89 + (sizeof(scan) / sizeof(scan[0]))))) {
 		code = scan[code - 89];
 	}
 	/* Pause/Break */

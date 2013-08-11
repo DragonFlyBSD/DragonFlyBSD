@@ -119,8 +119,7 @@ static d_ioctl_t usb_ioctl;
 static d_read_t usb_read;
 static d_write_t usb_write;
 static d_kqfilter_t usb_kqfilter;
-static d_open_t usb_static_open;
-static d_close_t usb_static_close;
+
 static d_ioctl_t usb_static_ioctl;
 
 static usb_fifo_open_t usb_fifo_dummy_open;
@@ -144,8 +143,6 @@ static struct cdev* usb_dev = NULL;
 /* character device structure used for /bus/u4b */
 static struct dev_ops usb_static_ops = {
 	{ "usb", 0, D_MEM },
-	.d_open = usb_static_open,
-	.d_close = usb_static_close,
 	.d_ioctl = usb_static_ioctl,
 };
 
@@ -222,7 +219,7 @@ usb_ref_device(struct usb_cdev_privdata *cpd,
 		 * We need to grab the sx-lock before grabbing the
 		 * FIFO refs to avoid deadlock at detach!
 		 */
-		usbd_enum_lock(cpd->udev);
+		crd->do_unlock = usbd_enum_lock(cpd->udev);
 
 		lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
 
@@ -283,9 +280,10 @@ usb_ref_device(struct usb_cdev_privdata *cpd,
 	return (0);
 
 error:
-	if (crd->is_uref) {
+	if (crd->do_unlock)
 		usbd_enum_unlock(cpd->udev);
 
+	if (crd->is_uref) {
 		if (--(cpd->udev->refcount) == 0) {
 			cv_signal(&cpd->udev->ref_cv);
 		}
@@ -1588,19 +1586,6 @@ done:
 	return (err);
 }
 
-
-static int
-usb_static_open(struct dev_open_args *ap)
-{
-	return(0);
-}
-
-static int
-usb_static_close(struct dev_close_args *ap)
-{
-	return(0);
-}
-
 int
 usb_static_ioctl(struct dev_ioctl_args *ap)
 {
@@ -1776,7 +1761,7 @@ usb_fifo_check_methods(struct usb_fifo_methods *pm)
 int
 usb_fifo_attach(struct usb_device *udev, void *priv_sc,
     struct lock *priv_lock, struct usb_fifo_methods *pm,
-    struct usb_fifo_sc *f_sc, uint16_t unit, uint16_t subunit,
+    struct usb_fifo_sc *f_sc, uint16_t unit, int16_t subunit,
     uint8_t iface_index, uid_t uid, gid_t gid, int mode)
 {
 	struct usb_fifo *f_tx;

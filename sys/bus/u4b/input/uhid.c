@@ -81,6 +81,7 @@ SYSCTL_INT(_hw_usb_uhid, OID_AUTO, debug, CTLFLAG_RW,
 #define	UHID_FRAME_NUM 	  50		/* bytes, frame number */
 
 enum {
+	UHID_INTR_DT_WR,
 	UHID_INTR_DT_RD,
 	UHID_CTRL_DT_WR,
 	UHID_CTRL_DT_RD,
@@ -122,7 +123,8 @@ static device_probe_t uhid_probe;
 static device_attach_t uhid_attach;
 static device_detach_t uhid_detach;
 
-static usb_callback_t uhid_intr_callback;
+static usb_callback_t uhid_intr_write_callback;
+static usb_callback_t uhid_intr_read_callback;
 static usb_callback_t uhid_write_callback;
 static usb_callback_t uhid_read_callback;
 
@@ -146,7 +148,36 @@ static struct usb_fifo_methods uhid_fifo_methods = {
 };
 
 static void
-uhid_intr_callback(struct usb_xfer *xfer, usb_error_t error)
+uhid_intr_write_callback(struct usb_xfer *xfer, usb_error_t error)
+{
+	struct uhid_softc *sc = usbd_xfer_softc(xfer);
+	struct usb_page_cache *pc;
+	int actlen;
+
+	switch (USB_GET_STATE(xfer)) {
+	case USB_ST_TRANSFERRED:
+	case USB_ST_SETUP:
+tr_setup:
+		pc = usbd_xfer_get_frame(xfer, 0);
+		if (usb_fifo_get_data(sc->sc_fifo.fp[USB_FIFO_TX], pc,
+		    0, usbd_xfer_max_len(xfer), &actlen, 0)) {
+			usbd_xfer_set_frame_len(xfer, 0, actlen);
+			usbd_transfer_submit(xfer);
+		}
+		return;
+
+	default:			/* Error */
+		if (error != USB_ERR_CANCELLED) {
+			/* try to clear stall first */
+			usbd_xfer_set_stall(xfer);
+			goto tr_setup;
+		}
+		return;
+	}
+}
+
+static void
+uhid_intr_read_callback(struct usb_xfer *xfer, usb_error_t error)
 {
 	struct uhid_softc *sc = usbd_xfer_softc(xfer);
 	struct usb_page_cache *pc;
@@ -164,10 +195,10 @@ uhid_intr_callback(struct usb_xfer *xfer, usb_error_t error)
 		 * If the ID byte is non zero we allow descriptors
 		 * having multiple sizes:
 		 */
-		if ((actlen >= sc->sc_isize) ||
+		if ((actlen >= (int)sc->sc_isize) ||
 		    ((actlen > 0) && (sc->sc_iid != 0))) {
 			/* limit report length to the maximum */
-			if (actlen > sc->sc_isize)
+			if (actlen > (int)sc->sc_isize)
 				actlen = sc->sc_isize;
 			usb_fifo_put_data(sc->sc_fifo.fp[USB_FIFO_RX], pc,
 			    0, actlen, 1);
@@ -321,13 +352,22 @@ uhid_read_callback(struct usb_xfer *xfer, usb_error_t error)
 
 static const struct usb_config uhid_config[UHID_N_TRANSFER] = {
 
+	[UHID_INTR_DT_WR] = {
+		.type = UE_INTERRUPT,
+		.endpoint = UE_ADDR_ANY,
+		.direction = UE_DIR_OUT,
+		.flags = {.pipe_bof = 1,.no_pipe_ok = 1, },
+		.bufsize = UHID_BSIZE,
+		.callback = &uhid_intr_write_callback,
+	},
+
 	[UHID_INTR_DT_RD] = {
 		.type = UE_INTERRUPT,
 		.endpoint = UE_ADDR_ANY,
 		.direction = UE_DIR_IN,
 		.flags = {.pipe_bof = 1,.short_xfer_ok = 1,},
 		.bufsize = UHID_BSIZE,
-		.callback = &uhid_intr_callback,
+		.callback = &uhid_intr_read_callback,
 	},
 
 	[UHID_CTRL_DT_WR] = {
@@ -375,7 +415,12 @@ uhid_start_write(struct usb_fifo *fifo)
 {
 	struct uhid_softc *sc = usb_fifo_softc(fifo);
 
-	usbd_transfer_start(sc->sc_xfer[UHID_CTRL_DT_WR]);
+	if ((sc->sc_flags & UHID_FLAG_IMMED) ||
+	    sc->sc_xfer[UHID_INTR_DT_WR] == NULL) {
+		usbd_transfer_start(sc->sc_xfer[UHID_CTRL_DT_WR]);
+	} else {
+		usbd_transfer_start(sc->sc_xfer[UHID_INTR_DT_WR]);
+	}
 }
 
 static void
@@ -384,6 +429,7 @@ uhid_stop_write(struct usb_fifo *fifo)
 	struct uhid_softc *sc = usb_fifo_softc(fifo);
 
 	usbd_transfer_stop(sc->sc_xfer[UHID_CTRL_DT_WR]);
+	usbd_transfer_stop(sc->sc_xfer[UHID_INTR_DT_WR]);
 }
 
 static int
@@ -396,6 +442,10 @@ uhid_get_report(struct uhid_softc *sc, uint8_t type,
 
 	if (kern_data == NULL) {
 		kern_data = kmalloc(len, M_USBDEV, M_WAITOK);
+		if (kern_data == NULL) {
+			err = ENOMEM;
+			goto done;
+		}
 		free_data = 1;
 	}
 	err = usbd_req_get_report(sc->sc_udev, NULL, kern_data,
@@ -428,6 +478,10 @@ uhid_set_report(struct uhid_softc *sc, uint8_t type,
 
 	if (kern_data == NULL) {
 		kern_data = kmalloc(len, M_USBDEV, M_WAITOK);
+		if (kern_data == NULL) {
+			err = ENOMEM;
+			goto done;
+		}
 		free_data = 1;
 		err = copyin(user_data, kern_data, len);
 		if (err) {
@@ -631,10 +685,11 @@ uhid_probe(device_t dev)
 	 */
 	if ((uaa->info.bInterfaceClass == UICLASS_HID) &&
 	    (uaa->info.bInterfaceSubClass == UISUBCLASS_BOOT) &&
-	    ((uaa->info.bInterfaceProtocol == UIPROTO_BOOT_KEYBOARD) ||
-	     (uaa->info.bInterfaceProtocol == UIPROTO_MOUSE))) {
+	    (((uaa->info.bInterfaceProtocol == UIPROTO_BOOT_KEYBOARD) &&
+	      !usb_test_quirk(uaa, UQ_KBD_IGNORE)) ||
+	     ((uaa->info.bInterfaceProtocol == UIPROTO_MOUSE) &&
+	      !usb_test_quirk(uaa, UQ_UMS_IGNORE))))
 		return (ENXIO);
-	}
 
 	return (BUS_PROBE_GENERIC);
 }
@@ -754,7 +809,7 @@ uhid_attach(device_t dev)
 
 	error = usb_fifo_attach(uaa->device, sc, &sc->sc_lock,
 	    &uhid_fifo_methods, &sc->sc_fifo,
-	    unit, 0 - 1, uaa->info.bIfaceIndex,
+	    unit, -1, uaa->info.bIfaceIndex,
 	    UID_ROOT, GID_OPERATOR, 0644);
 	if (error) {
 		goto detach;
@@ -791,6 +846,7 @@ static device_method_t uhid_methods[] = {
 	DEVMETHOD(device_probe, uhid_probe),
 	DEVMETHOD(device_attach, uhid_attach),
 	DEVMETHOD(device_detach, uhid_detach),
+
 	DEVMETHOD_END
 };
 

@@ -126,6 +126,12 @@ ohci_pci_match(device_t self)
 		return "ATI SB400 USB Controller";
 	case 0x43751002:
 		return "ATI SB400 USB Controller";
+	case 0x43971002:
+		return ("AMD SB7x0/SB8x0/SB9x0 USB controller");
+	case 0x43981002:
+		return ("AMD SB7x0/SB8x0/SB9x0 USB controller");
+	case 0x43991002:
+		return ("AMD SB7x0/SB8x0/SB9x0 USB controller");
 
 	case 0x06701095:
 		return ("CMD Tech 670 (USB0670) USB controller");

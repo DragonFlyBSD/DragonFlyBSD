@@ -2345,13 +2345,11 @@ static const struct uhci_config_desc uhci_confd = {
 static const
 struct usb_hub_descriptor_min uhci_hubd_piix =
 {
-	sizeof(uhci_hubd_piix),
-	UDESC_HUB,
-	2,
-	{UHD_PWR_NO_SWITCH | UHD_OC_INDIVIDUAL, 0},
-	50,				/* power on to power good */
-	0,
-	{0x00},				/* both ports are removable */
+	.bDescLength = sizeof(uhci_hubd_piix),
+	.bDescriptorType = UDESC_HUB,
+	.bNbrPorts = 2,
+	.wHubCharacteristics = {UHD_PWR_NO_SWITCH | UHD_OC_INDIVIDUAL, 0},
+	.bPwrOn2PwrGood = 50,
 };
 
 /*
@@ -2389,7 +2387,7 @@ uhci_portreset(uhci_softc_t *sc, uint16_t index)
 	UWRITE2(sc, port, x | UHCI_PORTSC_PR);
 
 	usb_pause_mtx(&sc->sc_bus.bus_lock,
-	    USB_MS_TO_TICKS(USB_PORT_ROOT_RESET_DELAY));
+	    USB_MS_TO_TICKS(usb_port_root_reset_delay));
 
 	DPRINTFN(4, "uhci port %d reset, status0 = 0x%04x\n",
 	    index, UREAD2(sc, port));
@@ -2417,7 +2415,7 @@ uhci_portreset(uhci_softc_t *sc, uint16_t index)
 	for (lim = 0; lim < 12; lim++) {
 
 		usb_pause_mtx(&sc->sc_bus.bus_lock,
-		    USB_MS_TO_TICKS(USB_PORT_RESET_DELAY));
+		    USB_MS_TO_TICKS(usb_port_reset_delay));
 
 		x = UREAD2(sc, port);
 
@@ -3026,10 +3024,6 @@ uhci_ep_init(struct usb_device *udev, struct usb_endpoint_descriptor *edesc,
 	    edesc->bEndpointAddress, udev->flags.usb_mode,
 	    sc->sc_addr);
 
-	if (udev->flags.usb_mode != USB_MODE_HOST) {
-		/* not supported */
-		return;
-	}
 	if (udev->device_index != sc->sc_addr) {
 		switch (edesc->bmAttributes & UE_XFERTYPE) {
 		case UE_CONTROL:

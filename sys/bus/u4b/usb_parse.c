@@ -45,6 +45,10 @@
 #include <bus/u4b/usbdi.h>
 #include <bus/u4b/usbdi_util.h>
 
+#define USB_DEBUG_VAR usb_debug
+
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_debug.h>
 
 /*------------------------------------------------------------------------*
  *	usb_desc_foreach
@@ -137,7 +141,7 @@ usb_idesc_foreach(struct usb_config_descriptor *cd,
 	}
 
 	if (ps->desc == NULL) {
-		/* first time */
+		/* first time or zero descriptors */
 	} else if (new_iface) {
 		/* new interface */
 		ps->iface_index ++;
@@ -145,6 +149,14 @@ usb_idesc_foreach(struct usb_config_descriptor *cd,
 	} else {
 		/* new alternate interface */
 		ps->iface_index_alt ++;
+	}
+#if (USB_IFACE_MAX <= 0)
+#error "USB_IFACE_MAX must be defined greater than zero"
+#endif
+	/* check for too many interfaces */
+	if (ps->iface_index >= USB_IFACE_MAX) {
+		DPRINTF("Interface limit reached\n");
+		id = NULL;
 	}
 
 	/* store and return current descriptor */

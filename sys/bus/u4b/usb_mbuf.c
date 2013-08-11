@@ -71,6 +71,9 @@ usb_alloc_mbufs(struct malloc_type *type, struct usb_ifqueue *ifq,
 
 		free_ptr = kmalloc(alloc_size, type, M_WAITOK | M_ZERO);
 
+		if (free_ptr == NULL) {
+			goto done;
+		}
 		m_ptr = free_ptr;
 		data_ptr = (void *)(m_ptr + nblocks);
 
@@ -88,5 +91,6 @@ usb_alloc_mbufs(struct malloc_type *type, struct usb_ifqueue *ifq,
 			data_ptr += block_size;
 		}
 	}
+done:
 	return (free_ptr);
 }

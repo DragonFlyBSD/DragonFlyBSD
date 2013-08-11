@@ -48,6 +48,7 @@
 #include <bus/u4b/usb_process.h>
 #include <bus/u4b/usb_device.h>
 #include <bus/u4b/usb_dynamic.h>
+#include <bus/u4b/usb_request.h>
 
 /* function prototypes */
 static usb_handle_req_t usb_temp_get_desc_w;
@@ -92,10 +93,8 @@ usb_temp_get_desc_w(struct usb_device *udev, struct usb_device_request *req, con
 static void
 usb_temp_unsetup_w(struct usb_device *udev)
 {
-	if (udev->usb_template_ptr) {
-
-		kfree(udev->usb_template_ptr, M_USB);
-
+	if(udev->usb_template_ptr) {
+		usbd_free_config_desc(udev, udev->usb_template_ptr);
 		udev->usb_template_ptr = NULL;
 	}
 }

@@ -98,9 +98,6 @@ ehci_pci_match(device_t self)
 	uint32_t device_id = pci_get_devid(self);
 
 	switch (device_id) {
-	case 0x268c8086:
-		return ("Intel 63XXESB USB 2.0 controller");
-
 	case 0x523910b9:
 		return "ALi M5239 USB 2.0 controller";
 
@@ -108,13 +105,19 @@ ehci_pci_match(device_t self)
 		return "AMD 8111 USB 2.0 controller";
 
 	case 0x20951022:
-		return ("AMD CS5536 (Geode) USB 2.0 controller");
+		return "AMD CS5536 (Geode) USB 2.0 controller";
 
 	case 0x43451002:
 		return "ATI SB200 USB 2.0 controller";
 	case 0x43731002:
 		return "ATI SB400 USB 2.0 controller";
+	case 0x43961002:
+		return "AMD SB7x0/SB8x0/SB9x0 USB 2.0 controller";
 
+	case 0x1e268086:
+		return "Intel Panther Point USB 2.0 controller";
+	case 0x1e2d8086:
+		return "Intel Panther Point USB 2.0 controller";
 	case 0x25ad8086:
 		return "Intel 6300ESB USB 2.0 controller";
 	case 0x24cd8086:
@@ -123,9 +126,10 @@ ehci_pci_match(device_t self)
 		return "Intel 82801EB/R (ICH5) USB 2.0 controller";
 	case 0x265c8086:
 		return "Intel 82801FB (ICH6) USB 2.0 controller";
+	case 0x268c8086:
+		return "Intel 63XXESB USB 2.0 controller";
 	case 0x27cc8086:
 		return "Intel 82801GB/R (ICH7) USB 2.0 controller";
-
 	case 0x28368086:
 		return "Intel 82801H (ICH8) USB 2.0 controller USB2-A";
 	case 0x283a8086:
@@ -237,6 +241,7 @@ ehci_pci_via_quirk(device_t self)
 		val = pci_read_config(self, 0x4b, 1);
 		if (val & 0x20)
 			return;
+		val |= 0x20;
 		pci_write_config(self, 0x4b, val, 1);
 		device_printf(self, "VIA-quirk applied\n");
 	}
@@ -357,7 +362,6 @@ ehci_pci_attach(device_t self)
 		ksprintf(sc->sc_vendor, "(0x%04x)", pci_get_vendor(self));
 	}
 
-	/* XXX Can we make good use of the serializer? */
 	err = bus_setup_intr(self, sc->sc_irq_res, INTR_MPSAFE,
 	    (driver_intr_t *)ehci_interrupt, sc, &sc->sc_intr_hdl, NULL);
 

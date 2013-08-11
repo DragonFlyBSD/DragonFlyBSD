@@ -143,6 +143,7 @@ usb_handle_set_config(struct usb_xfer *xfer, uint8_t conf_no)
 {
 	struct usb_device *udev = xfer->xroot->udev;
 	usb_error_t err = 0;
+	uint8_t do_unlock;
 
 	/*
 	 * We need to protect against other threads doing probe and
@@ -150,7 +151,8 @@ usb_handle_set_config(struct usb_xfer *xfer, uint8_t conf_no)
 	 */
 	USB_XFER_UNLOCK(xfer);
 
-	usbd_enum_lock(udev);
+	/* Prevent re-enumeration */
+	do_unlock = usbd_enum_lock(udev);
 
 	if (conf_no == USB_UNCONFIG_NO) {
 		conf_no = USB_UNCONFIG_INDEX;
@@ -173,7 +175,8 @@ usb_handle_set_config(struct usb_xfer *xfer, uint8_t conf_no)
 		goto done;
 	}
 done:
-	usbd_enum_unlock(udev);
+	if (do_unlock)
+		usbd_enum_unlock(udev);
 	USB_XFER_LOCK(xfer);
 	return (err);
 }
@@ -185,13 +188,8 @@ usb_check_alt_setting(struct usb_device *udev,
 	uint8_t do_unlock;
 	usb_error_t err = 0;
 
-	/* automatic locking */
-	if (usbd_enum_is_locked(udev)) {
-		do_unlock = 0;
-	} else {
-		do_unlock = 1;
-		usbd_enum_lock(udev);
-	}
+	/* Prevent re-enumeration */
+	do_unlock = usbd_enum_lock(udev);
 
 	if (alt_index >= usbd_get_no_alts(udev->cdesc, iface->idesc))
 		err = USB_ERR_INVAL;
@@ -220,6 +218,7 @@ usb_handle_iface_request(struct usb_xfer *xfer,
 	int error;
 	uint8_t iface_index;
 	uint8_t temp_state;
+	uint8_t do_unlock;
 
 	if ((req.bmRequestType & 0x1F) == UT_INTERFACE) {
 		iface_index = req.wIndex[0];	/* unicast */
@@ -233,7 +232,8 @@ usb_handle_iface_request(struct usb_xfer *xfer,
 	 */
 	USB_XFER_UNLOCK(xfer);
 
-	usbd_enum_lock(udev);
+	/* Prevent re-enumeration */
+	do_unlock = usbd_enum_lock(udev);
 
 	error = ENXIO;
 
@@ -349,17 +349,20 @@ tr_repeat:
 		goto tr_stalled;
 	}
 tr_valid:
-	usbd_enum_unlock(udev);
+	if (do_unlock)
+		usbd_enum_unlock(udev);
 	USB_XFER_LOCK(xfer);
 	return (0);
 
 tr_short:
-	usbd_enum_unlock(udev);
+	if (do_unlock)
+		usbd_enum_unlock(udev);
 	USB_XFER_LOCK(xfer);
 	return (USB_ERR_SHORT_XFER);
 
 tr_stalled:
-	usbd_enum_unlock(udev);
+	if (do_unlock)
+		usbd_enum_unlock(udev);
 	USB_XFER_LOCK(xfer);
 	return (USB_ERR_STALLED);
 }
@@ -464,7 +467,6 @@ usb_handle_request(struct usb_xfer *xfer)
 	uint16_t rem;			/* data remainder */
 	uint16_t max_len;		/* max fragment length */
 	uint16_t wValue;
-	uint16_t wIndex;
 	uint8_t state;
 	uint8_t is_complete = 1;
 	usb_error_t err;
@@ -530,11 +532,10 @@ usb_handle_request(struct usb_xfer *xfer)
 	/* get some request fields decoded */
 
 	wValue = UGETW(req.wValue);
-	wIndex = UGETW(req.wIndex);
 
 	DPRINTF("req 0x%02x 0x%02x 0x%04x 0x%04x "
 	    "off=0x%x rem=0x%x, state=%d\n", req.bmRequestType,
-	    req.bRequest, wValue, wIndex, off, rem, state);
+	    req.bRequest, wValue, UGETW(req.wIndex), off, rem, state);
 
 	/* demultiplex the control request */
 

@@ -54,6 +54,7 @@
 #include <sys/kthread.h>
 #include <sys/sched.h>
 
+static struct proc *usbproc;
 static int usb_pcount;
 #define	USB_THREAD_CREATE(f, s, p, ...) \
 		kthread_create((f), (s), (p), __VA_ARGS__)
@@ -172,11 +173,10 @@ usb_process(void *arg)
 	up->up_ptr = NULL;
 	cv_signal(&up->up_cv);
 	lockmgr(up->up_lock, LK_RELEASE);
-#if 0
+
 	/* Clear the proc pointer if this is the last thread. */
 	if (--usb_pcount == 0)
 		usbproc = NULL;
-#endif
 
 	USB_THREAD_EXIT(0);
 }
