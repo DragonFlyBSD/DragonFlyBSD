@@ -28,7 +28,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/md_var.h,v 1.71 2004/01/29 00:05:03 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/md_var.h,v 1.5 2008/08/29 17:07:17 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -50,6 +49,7 @@ extern	u_int	via_feature_xcrypt;
 extern	u_int	amd_feature;
 extern	u_int	amd_feature2;
 extern	u_int	cpu_clflush_line_size;
+extern	u_int	cpu_stdext_feature;
 extern	u_int	cpu_fxsr;
 extern	u_int	cpu_xsave;
 extern	u_int	cpu_high;

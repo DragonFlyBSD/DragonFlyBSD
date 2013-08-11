@@ -65,6 +65,7 @@ u_int	cpu_fxsr;		/* SSE enabled */
 u_int	cpu_xsave;		/* AVX enabled by OS*/
 u_int	cpu_mxcsr_mask;		/* Valid bits in mxcsr */
 u_int	cpu_clflush_line_size = 32;	/* Default CLFLUSH line size */
+u_int	cpu_stdext_feature;
 
 /*
  * -1: automatic (enable on h/w, disable on VMs)

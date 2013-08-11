@@ -358,6 +358,37 @@ printcpuinfo(void)
 				);
 			}
 
+			if (cpu_stdext_feature != 0) {
+				kprintf("\n  Standard Extended Features=0x%b",
+				    cpu_stdext_feature,
+				       "\020"
+				       /* RDFSBASE/RDGSBASE/WRFSBASE/WRGSBASE */
+				       "\001GSFSBASE"
+				       "\002TSCADJ"
+				       /* Bit Manipulation Instructions */
+				       "\004BMI1"
+				       /* Hardware Lock Elision */
+				       "\005HLE"
+				       /* Advanced Vector Instructions 2 */
+				       "\006AVX2"
+				       /* Supervisor Mode Execution Prot. */
+				       "\010SMEP"
+				       /* Bit Manipulation Instructions */
+				       "\011BMI2"
+				       "\012ENHMOVSB"
+				       /* Invalidate Processor Context ID */
+				       "\013INVPCID"
+				       /* Restricted Transactional Memory */
+				       "\014RTM"
+				       /* Enhanced NRBG */
+				       "\023RDSEED"
+				       /* ADCX + ADOX */
+				       "\024ADX"
+				       /* Supervisor Mode Access Prevention */
+				       "\025SMAP"
+				       );
+			}
+
 			if (cpu_vendor_id == CPU_VENDOR_CENTAUR)
 				print_via_padlock_info();
 			/*
@@ -466,7 +497,7 @@ EVENTHANDLER_DEFINE(cpufreq_post_change, tsc_freq_changed, NULL,
 void
 identify_cpu(void)
 {
-	u_int regs[4];
+	u_int regs[4], cpu_stdext_disable;
 
 	do_cpuid(0, regs);
 	cpu_high = regs[0];
@@ -481,6 +512,25 @@ identify_cpu(void)
 	cpu_procinfo = regs[1];
 	cpu_feature = regs[3];
 	cpu_feature2 = regs[2];
+
+	if (cpu_high >= 7) {
+		cpuid_count(7, 0, regs);
+		cpu_stdext_feature = regs[1];
+
+		/*
+		 * Some hypervisors fail to filter out unsupported
+		 * extended features.  For now, disable the
+		 * extensions, activation of which requires setting a
+		 * bit in CR4, and which VM monitors do not support.
+		 */
+		if (cpu_feature2 & CPUID2_VMM) {
+			cpu_stdext_disable = CPUID_STDEXT_FSGSBASE |
+			    CPUID_STDEXT_SMEP;
+		} else
+			cpu_stdext_disable = 0;
+		TUNABLE_INT_FETCH("hw.cpu_stdext_disable", &cpu_stdext_disable);
+		cpu_stdext_feature &= ~cpu_stdext_disable;
+	}
 
 	if (cpu_vendor_id == CPU_VENDOR_INTEL ||
 	    cpu_vendor_id == CPU_VENDOR_AMD ||
