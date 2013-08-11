@@ -43,12 +43,12 @@
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 #include <sys/serialize.h>
-#include "acmacros.h"
-#include "acconfig.h"
-#include "aclocal.h"
-#include "acobject.h"
-#include "acstruct.h"
-#include "acutils.h"
+#include <contrib/dev/acpica-unix/include/acmacros.h>
+#include <contrib/dev/acpica-unix/include/acconfig.h>
+#include <contrib/dev/acpica-unix/include/aclocal.h>
+#include <contrib/dev/acpica-unix/include/acobject.h>
+#include <contrib/dev/acpica-unix/include/acstruct.h>
+#include <contrib/dev/acpica-unix/include/acutils.h>
 
 struct apm_clone_data;
 struct acpi_softc {

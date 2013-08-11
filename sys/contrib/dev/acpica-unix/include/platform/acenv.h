@@ -203,7 +203,7 @@
 #include "acfreebsd.h"
 
 #elif defined(__DragonFly__)
-#include "acdragonfly.h"
+#include <dev/acpica/acdragonfly.h>
 
 #elif defined(__NetBSD__)
 #include "acnetbsd.h"
