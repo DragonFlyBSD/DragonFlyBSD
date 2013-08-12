@@ -568,7 +568,10 @@ netmsg_so_notify_doabort(lwkt_msg_t lmsg)
 	struct netmsg_so_notify_abort msg;
 
 	if ((lmsg->ms_flags & (MSGF_DONE | MSGF_REPLY)) == 0) {
-		netmsg_init(&msg.base, NULL, &curthread->td_msgport,
+		const struct netmsg_base *nmsg =
+		    (const struct netmsg_base *)lmsg;
+
+		netmsg_init(&msg.base, nmsg->nm_so, &curthread->td_msgport,
 			    0, netmsg_so_notify_abort);
 		msg.nm_notifymsg = (void *)lmsg;
 		lwkt_domsg(lmsg->ms_target_port, &msg.base.lmsg, 0);
