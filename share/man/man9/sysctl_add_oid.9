@@ -25,7 +25,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man9/sysctl_add_oid.9,v 1.3.2.10 2001/12/17 11:30:19 ru Exp $
+.\" $FreeBSD: src/share/man/man9/sysctl_add_oid.9,v 1.21 2006/04/28 10:45:27 rwatson Exp $
 .\"
 .Dd June 22, 2006
 .Dt SYSCTL_ADD_OID 9
@@ -61,14 +61,14 @@
 .Fc
 .Ft struct sysctl_oid_list *
 .Fo SYSCTL_STATIC_CHILDREN
-.Fa "OID_NAME"
+.Fa "struct sysctl_oid_list oid_name"
 .Fc
 .Ft struct sysctl_oid *
 .Fo SYSCTL_ADD_OID
 .Fa "struct sysctl_ctx_list *ctx"
 .Fa "struct sysctl_oid_list *parent"
 .Fa "int number"
-.Fa "NAME"
+.Fa "const char *name"
 .Fa "int kind"
 .Fa "void *arg1"
 .Fa "int arg2"
@@ -81,7 +81,7 @@
 .Fa "struct sysctl_ctx_list *ctx"
 .Fa "struct sysctl_oid_list *parent"
 .Fa "int number"
-.Fa "NAME"
+.Fa "const char *name"
 .Fa "int access"
 .Fa "int (*handler) (SYSCTL_HANDLER_ARGS)"
 .Fa "const char *descr"
@@ -91,10 +91,10 @@
 .Fa "struct sysctl_ctx_list *ctx"
 .Fa "struct sysctl_oid_list *parent"
 .Fa "int number"
-.Fa "NAME"
+.Fa "const char *name"
 .Fa "int access"
 .Fa "char *arg"
-.Fa "0"
+.Fa "int len"
 .Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
@@ -102,32 +102,10 @@
 .Fa "struct sysctl_ctx_list *ctx"
 .Fa "struct sysctl_oid_list *parent"
 .Fa "int number"
-.Fa "NAME"
+.Fa "const char *name"
 .Fa "int access"
 .Fa "int *arg"
-.Fa "0"
-.Fa "const char *descr"
-.Fc
-.Ft struct sysctl_oid *
-.Fo SYSCTL_ADD_QUAD
-.Fa "struct sysctl_ctx_list *ctx"
-.Fa "struct sysctl_oid_list *parent"
-.Fa "int number"
-.Fa "NAME"
-.Fa "int access"
-.Fa "quad_t *arg"
-.Fa "0"
-.Fa "const char *descr"
-.Fc
-.Ft struct sysctl_oid *
-.Fo SYSCTL_ADD_UQUAD
-.Fa "struct sysctl_ctx_list *ctx"
-.Fa "struct sysctl_oid_list *parent"
-.Fa "int number"
-.Fa "NAME"
-.Fa "int access"
-.Fa "u_quad_t *arg"
-.Fa "0"
+.Fa "int len"
 .Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
@@ -135,10 +113,10 @@
 .Fa "struct sysctl_ctx_list *ctx"
 .Fa "struct sysctl_oid_list *parent"
 .Fa "int number"
-.Fa "NAME"
+.Fa "const char *name"
 .Fa "int access"
 .Fa "unsigned int *arg"
-.Fa "0"
+.Fa "int len"
 .Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
@@ -146,10 +124,9 @@
 .Fa "struct sysctl_ctx_list *ctx"
 .Fa "struct sysctl_oid_list *parent"
 .Fa "int number"
-.Fa "NAME"
+.Fa "const char *name"
 .Fa "int access"
 .Fa "long *arg"
-.Fa "0"
 .Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
@@ -157,10 +134,31 @@
 .Fa "struct sysctl_ctx_list *ctx"
 .Fa "struct sysctl_oid_list *parent"
 .Fa "int number"
-.Fa "NAME"
+.Fa "const char *name"
 .Fa "int access"
 .Fa "unsigned long *arg"
-.Fa "0"
+.Fa "const char *descr"
+.Fc
+.Ft struct sysctl_oid *
+.Fo SYSCTL_ADD_QUAD
+.Fa "struct sysctl_ctx_list *ctx"
+.Fa "struct sysctl_oid_list *parent"
+.Fa "int number"
+.Fa "const char *name"
+.Fa "int access"
+.Fa "quad_t *arg"
+.Fa "int len"
+.Fa "const char *descr"
+.Fc
+.Ft struct sysctl_oid *
+.Fo SYSCTL_ADD_UQUAD
+.Fa "struct sysctl_ctx_list *ctx"
+.Fa "struct sysctl_oid_list *parent"
+.Fa "int number"
+.Fa "const char *name"
+.Fa "int access"
+.Fa "u_quad_t *arg"
+.Fa "int len"
 .Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
@@ -168,10 +166,10 @@
 .Fa "struct sysctl_ctx_list *ctx"
 .Fa "struct sysctl_oid_list *parent"
 .Fa "int number"
-.Fa "NAME"
+.Fa "const char *name"
 .Fa "int access"
 .Fa "void *arg"
-.Fa "size_t *len"
+.Fa "int len"
 .Fa "const char *format"
 .Fa "const char *descr"
 .Fc
@@ -180,10 +178,10 @@
 .Fa "struct sysctl_ctx_list *ctx"
 .Fa "struct sysctl_oid_list *parent"
 .Fa "int number"
-.Fa "NAME"
+.Fa "const char *name"
 .Fa "int access"
-.Fa "struct TYPE *arg"
-.Fa "TYPE"
+.Fa "void *arg"
+.Fa STRUCT_NAME
 .Fa "const char *descr"
 .Fc
 .Ft struct sysctl_oid *
@@ -191,10 +189,10 @@
 .Fa "struct sysctl_ctx_list *ctx"
 .Fa "struct sysctl_oid_list *parent"
 .Fa "int number"
-.Fa "NAME"
+.Fa "const char *name"
 .Fa "int access"
-.Fa "0"
-.Fa "0"
+.Fa "void *arg1"
+.Fa "int arg2"
 .Fa "int (*handler) (SYSCTL_HANDLER_ARGS)"
 .Fa "const char *format"
 .Fa "const char *descr"
@@ -208,7 +206,7 @@ based on linker sets (see
 .In sys/linker_set.h
 and
 .\" XXX Manual pages should avoid referencing source files
-.Pa sys/kern/kern_sysctl.c
+.Pa /sys/kern/kern_sysctl.c
 for details), only allows creation and deletion
 on module load and unload respectively.
 .Pp
@@ -428,14 +426,6 @@ creates an oid that handles a zero-terminated character string.
 creates an oid that handles an
 .Li int
 variable.
-.It Fn SYSCTL_ADD_QUAD
-creates an oid that handles a 64-bit
-.Li int
-variable.
-.It Fn SYSCTL_ADD_UQUAD
-creates an oid that handles a 64-bit
-.Li unsigned int
-variable.
 .It Fn SYSCTL_ADD_UINT
 creates an oid that handles an
 .Li unsigned int
@@ -447,6 +437,14 @@ variable.
 .It Fn SYSCTL_ADD_ULONG
 creates an oid that handles an
 .Li unsigned long
+variable.
+.It Fn SYSCTL_ADD_QUAD
+creates an oid that handles a 64-bit
+.Li int
+variable.
+.It Fn SYSCTL_ADD_UQUAD
+creates an oid that handles a 64-bit
+.Li unsigned int
 variable.
 .It Fn SYSCTL_ADD_OPAQUE
 creates an oid that handles any chunk of opaque data
