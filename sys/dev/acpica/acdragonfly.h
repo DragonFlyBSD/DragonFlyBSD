@@ -120,7 +120,7 @@
 /* DragonFly uses GCC */
 
 #include <sys/types.h>
-#include <contrib/dev/acpica-unix/include/platform/acgcc.h>
+#include <platform/acgcc.h>
 #include <machine/acpica_machdep.h>
 
 #define ACPI_UINTPTR_T		uintptr_t
