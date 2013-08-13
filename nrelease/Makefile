@@ -377,6 +377,8 @@ mkimg:
 	mv ${IMGMNT}/boot/loader.conf.new ${IMGMNT}/boot/loader.conf
 	@echo "STEP: cleanup"
 	df ${IMGMNT}
+	sync
+	sleep 1
 	umount ${IMGMNT}
 	vnconfig -u `cat ${ISODIR}/vn.which`
 	rm -f ${ISODIR}/vn.which
@@ -384,6 +386,8 @@ mkimg:
 	@echo "STEP: done"
 
 clean:
+	sync
+	sleep 1
 	-umount ${ISOROOT}/usr/distfiles > /dev/null 2>&1
 	-umount ${ISOROOT}/usr/dports > /dev/null 2>&1
 	-umount ${ISOROOT}/dev > /dev/null 2>&1
