@@ -924,8 +924,8 @@ struct drm_i915_gem_request {
 
 struct drm_i915_file_private {
 	struct {
+		struct spinlock lock;
 		struct list_head request_list;
-		struct lock lck;
 	} mm;
 };
 

@@ -1404,7 +1404,7 @@ i915_driver_open(struct drm_device *dev, struct drm_file *file_priv)
 	i915_file_priv = kmalloc(sizeof(*i915_file_priv), DRM_MEM_FILES,
 	    M_WAITOK | M_ZERO);
 
-	lockinit(&i915_file_priv->mm.lck, "915fp", 0, LK_CANRECURSE);
+	spin_init(&i915_file_priv->mm.lock);
 	INIT_LIST_HEAD(&i915_file_priv->mm.request_list);
 	file_priv->driver_priv = i915_file_priv;
 
@@ -1439,7 +1439,7 @@ void i915_driver_postclose(struct drm_device *dev, struct drm_file *file_priv)
 {
 	struct drm_i915_file_private *i915_file_priv = file_priv->driver_priv;
 
-	lockuninit(&i915_file_priv->mm.lck);
+	spin_uninit(&i915_file_priv->mm.lock);
 	drm_free(i915_file_priv, DRM_MEM_FILES);
 }
 

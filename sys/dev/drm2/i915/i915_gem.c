@@ -727,36 +727,42 @@ unlock:
 	return (ret);
 }
 
+/* Throttle our rendering by waiting until the ring has completed our requests
+ * emitted over 20 msec ago.
+ *
+ * Note that if we were to use the current jiffies each time around the loop,
+ * we wouldn't escape the function with any frames outstanding if the time to
+ * render a frame was over 20ms.
+ *
+ * This should get us reasonable parallelism between CPU and GPU but also
+ * relatively low latency when blocking on a particular request to finish.
+ */
 static int
 i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 {
-	struct drm_i915_private *dev_priv;
-	struct drm_i915_file_private *file_priv;
-	unsigned long recent_enough;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_file_private *file_priv = file->driver_priv;
+	unsigned long recent_enough = ticks - (20 * hz / 1000);
 	struct drm_i915_gem_request *request;
-	struct intel_ring_buffer *ring;
-	u32 seqno;
+	struct intel_ring_buffer *ring = NULL;
+	u32 seqno = 0;
 	int ret;
 
-	dev_priv = dev->dev_private;
 	if (atomic_read(&dev_priv->mm.wedged))
-		return (-EIO);
+		return -EIO;
 
-	file_priv = file->driver_priv;
-	recent_enough = ticks - (20 * hz / 1000);
-	ring = NULL;
-	seqno = 0;
-
-	lockmgr(&file_priv->mm.lck, LK_EXCLUSIVE);
+	spin_lock(&file_priv->mm.lock);
 	list_for_each_entry(request, &file_priv->mm.request_list, client_list) {
 		if (time_after_eq(request->emitted_jiffies, recent_enough))
 			break;
+
 		ring = request->ring;
 		seqno = request->seqno;
 	}
-	lockmgr(&file_priv->mm.lck, LK_RELEASE);
+	spin_unlock(&file_priv->mm.lock);
+
 	if (seqno == 0)
-		return (0);
+		return 0;
 
 	ret = 0;
 	lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
@@ -782,7 +788,7 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 		taskqueue_enqueue_timeout(dev_priv->tq,
 		    &dev_priv->mm.retire_task, 0);
 
-	return (ret);
+	return ret;
 }
 
 int
@@ -2684,11 +2690,11 @@ i915_add_request(struct intel_ring_buffer *ring, struct drm_file *file,
 	if (file != NULL) {
 		file_priv = file->driver_priv;
 
-		lockmgr(&file_priv->mm.lck, LK_EXCLUSIVE);
+		spin_lock(&file_priv->mm.lock);
 		request->file_priv = file_priv;
 		list_add_tail(&request->client_list,
 		    &file_priv->mm.request_list);
-		lockmgr(&file_priv->mm.lck, LK_RELEASE);
+		spin_unlock(&file_priv->mm.lock);
 	}
 
 	ring->outstanding_lazy_request = 0;
@@ -2715,12 +2721,12 @@ i915_gem_request_remove_from_client(struct drm_i915_gem_request *request)
 
 	DRM_LOCK_ASSERT(request->ring->dev);
 
-	lockmgr(&file_priv->mm.lck, LK_EXCLUSIVE);
+	spin_lock(&file_priv->mm.lock);
 	if (request->file_priv != NULL) {
 		list_del(&request->client_list);
 		request->file_priv = NULL;
 	}
-	lockmgr(&file_priv->mm.lck, LK_RELEASE);
+	spin_unlock(&file_priv->mm.lock);
 }
 
 void
@@ -2735,7 +2741,7 @@ i915_gem_release(struct drm_device *dev, struct drm_file *file)
 	 * later retire_requests won't dereference our soon-to-be-gone
 	 * file_priv.
 	 */
-	lockmgr(&file_priv->mm.lck, LK_EXCLUSIVE);
+	spin_lock(&file_priv->mm.lock);
 	while (!list_empty(&file_priv->mm.request_list)) {
 		request = list_first_entry(&file_priv->mm.request_list,
 					   struct drm_i915_gem_request,
@@ -2743,7 +2749,7 @@ i915_gem_release(struct drm_device *dev, struct drm_file *file)
 		list_del(&request->client_list);
 		request->file_priv = NULL;
 	}
-	lockmgr(&file_priv->mm.lck, LK_RELEASE);
+	spin_unlock(&file_priv->mm.lock);
 }
 
 static void
