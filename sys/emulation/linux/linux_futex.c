@@ -105,7 +105,7 @@ struct lock futex_mtx;			/* protects the futex list */
 #define FUTEXES_UNLOCK		lockmgr(&futex_mtx, LK_RELEASE)
 
 /* Debug magic to take advantage of freebsd's mess */
-#if LINUX_DEBUG
+#ifdef LINUX_DEBUG
 #define LINUX_CTR_PREFIX
 #else
 #define LINUX_CTR_PREFIX	while (0)
