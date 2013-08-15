@@ -1185,6 +1185,10 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 		 */
 		if (prop & SA_TTYSTOP && p->p_pgrp->pg_jobc == 0 &&
 		    action == SIG_DFL) {
+			if (lp) {
+				lwkt_reltoken(&lp->lwp_token);
+				LWPRELE(lp);
+			}
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 		        return;
