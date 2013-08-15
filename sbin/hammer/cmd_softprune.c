@@ -36,19 +36,7 @@
 
 #include "hammer.h"
 
-struct softprune {
-	struct softprune *next;
-	struct statfs fs;
-	char *filesystem;
-	struct hammer_ioc_prune prune;
-	int maxelms;
-	int prune_min;
-};
-
 static void softprune_usage(int code);
-static void hammer_softprune_scandir(struct softprune **basep,
-			struct hammer_ioc_prune *template,
-			const char *dirname);
 static int hammer_softprune_scanmeta(int fd, struct softprune *scan,
 			int delete_all);
 static void hammer_meta_flushdelete(int fd, struct hammer_ioc_snapshot *dsnap);
@@ -250,7 +238,7 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
  *	 snapshot mechanic we don't have to scan softlinks any more
  *	 and can just use the meta-data.  But for now we do both.
  */
-static void
+void
 hammer_softprune_scandir(struct softprune **basep,
 			 struct hammer_ioc_prune *template,
 			 const char *dirname)

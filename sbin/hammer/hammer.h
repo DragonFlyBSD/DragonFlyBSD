@@ -62,6 +62,15 @@
 
 #include <libhammer.h>
 
+struct softprune {
+	struct softprune *next;
+	struct statfs fs;
+	char *filesystem;
+	struct hammer_ioc_prune prune;
+	int maxelms;
+	int prune_min;
+};
+
 extern int RecurseOpt;
 extern int VerboseOpt;
 extern int QuietOpt;
@@ -132,3 +141,6 @@ void hammer_reset_cycle(void);
 int getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path);
 void relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs);
 void hammer_check_restrict(const char *path);
+void hammer_softprune_scandir(struct softprune **basep,
+                         struct hammer_ioc_prune *template,
+                         const char *dirname);

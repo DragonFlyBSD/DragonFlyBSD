@@ -1048,23 +1048,39 @@ create_snapshot(const char *path, const char *snapshots_path)
 }
 
 static int
-cleanup_prune(const char *path __unused, const char *snapshots_path,
+cleanup_prune(const char *path, const char *snapshots_path,
 		  int arg1 __unused, int arg2, int snapshots_disabled)
 {
+	const char *path_or_snapshots_path;
+	struct softprune *base = NULL;
+	struct hammer_ioc_prune dummy_template;
+
+	bzero(&dummy_template, sizeof(dummy_template));
+	hammer_softprune_scandir(&base, &dummy_template, snapshots_path);
+
+	/*
+	 * If the snapshots_path (e.g. /var/hammer/...) has no snapshots
+	 * in it then prune will get confused and prune the filesystem
+	 * containing the snapshots_path instead of the requested
+	 * filesystem.  De-confuse prune.  We need a better way.
+	 */
+	path_or_snapshots_path = base ? snapshots_path : path;
+
 	/*
 	 * If snapshots have been disabled run prune-everything instead
 	 * of prune.
 	 */
 	if (snapshots_disabled && arg2) {
-		runcmd(NULL, "hammer -c %s/.prune.cycle -t %d prune-everything %s",
-			snapshots_path, arg2, path);
+		runcmd(NULL,
+		       "hammer -c %s/.prune.cycle -t %d prune-everything %s",
+		       snapshots_path, arg2, path);
 	} else if (snapshots_disabled) {
 		runcmd(NULL, "hammer prune-everything %s", path);
 	} else if (arg2) {
 		runcmd(NULL, "hammer -c %s/.prune.cycle -t %d prune %s",
-			snapshots_path, arg2, snapshots_path);
+			snapshots_path, arg2, path_or_snapshots_path);
 	} else {
-		runcmd(NULL, "hammer prune %s", snapshots_path);
+		runcmd(NULL, "hammer prune %s", path_or_snapshots_path);
 	}
 	return(0);
 }
