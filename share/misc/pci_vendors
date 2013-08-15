@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2013.07.14
-#	Date:    2013-07-14 03:15:01
+#	Version: 2013.08.09
+#	Date:    2013-08-09 03:15:02
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -636,7 +636,7 @@
 	4154  RV350 GL [FireGL T2]
 	4155  RV350 [Radeon 9600]
 	4157  RV350 GL [FireGL T2]
-	4158  68800AX [Mach32]
+	4158  68800AX [Graphics Ultra Pro PCI]
 	4164  R300 [Radeon 9500 PRO] (Secondary)
 	4165  R300 [Radeon 9700 PRO] (Secondary)
 	4166  R300 [Radeon 9700 PRO] (Secondary)
@@ -691,36 +691,36 @@
 		105b 0c81  Realtek ALC 653
 		107b 0300  MX6421
 		1462 0131  MS-1013 Notebook
-	4371  IXP SB400 PCI-PCI Bridge
+	4371  IXP SB4x0 PCI-PCI Bridge
 		103c 308b  MX6125
 		1462 7217  Aspire L250
-	4372  IXP SB400 SMBus Controller
+	4372  IXP SB4x0 SMBus Controller
 		1025 0080  Aspire 5024WLMMi
 		103c 2a20  Pavilion t3030.de Desktop PC
 		103c 308b  MX6125
 		1462 0131  MS-1013 Notebook
 		1462 7217  Aspire L250
-	4373  IXP SB400 USB2 Host Controller
+	4373  IXP SB4x0 USB2 Host Controller
 		1025 0080  Aspire 5024WLMMi
 		103c 2a20  Pavilion t3030.de Desktop PC
 		103c 308b  MX6125
 		1462 7217  Aspire L250
-	4374  IXP SB400 USB Host Controller
+	4374  IXP SB4x0 USB Host Controller
 		103c 2a20  Pavilion t3030.de Desktop PC
 		103c 308b  MX6125
 		1462 7217  Aspire L250
-	4375  IXP SB400 USB Host Controller
+	4375  IXP SB4x0 USB Host Controller
 		1025 0080  Aspire 5024WLMMi
 		103c 2a20  Pavilion t3030.de Desktop PC
 		103c 308b  MX6125
 		1462 7217  Aspire L250
-	4376  IXP SB400 IDE Controller
+	4376  IXP SB4x0 IDE Controller
 		1025 0080  Aspire 5024WLMMi
 		103c 2a20  Pavilion t3030.de Desktop PC
 		103c 308b  MX6125
 		1462 0131  MS-1013 Notebook
 		1462 7217  Aspire L250
-	4377  IXP SB400 PCI-ISA Bridge
+	4377  IXP SB4x0 PCI-ISA Bridge
 		1025 0080  Aspire 5024WLMi
 		103c 2a20  Pavilion t3030.de Desktop PC
 		103c 308b  MX6125
@@ -729,7 +729,7 @@
 		1025 0080  Aspire 5024WLMMi
 		103c 308b  MX6125
 		1462 0131  MS-1013 Notebook
-	4379  IXP SB400 Serial ATA Controller
+	4379  IXP SB4x0 Serial ATA Controller
 		1462 7141  Aspire L250
 	437a  IXP SB400 Serial ATA Controller
 		1002 4379  4379 Serial ATA Controller
@@ -747,7 +747,7 @@
 		1458 b005  Gigabyte GA-MA69G-S3H Motherboard
 		1462 7327  K9AG Neo2
 		17f2 5999  KI690-AM2 Motherboard
-	4381  SB400 SATA Controller (RAID 5 mode)
+	4381  SB600 SATA Controller (RAID 5 mode)
 	4382  SB600 AC97 Audio
 	4383  SBx00 Azalia (Intel HDA)
 		1019 2120  A785GM-M
@@ -931,7 +931,7 @@
 	4753  Rage XC
 		1002 4753  Rage XC
 	4754  3D Rage II/II+ PCI [Mach64 GT]
-	4755  3D Rage II+ PCI [Mach64 GTB]
+	4755  Mach64 GTB [3D Rage II+ DVD]
 	4756  3D Rage IIC PCI [Mach64 GT IIC]
 		1002 4756  Rage IIC
 	4757  3D Rage IIC AGP
@@ -1338,15 +1338,14 @@
 		15d9 a811  H8DGU
 	5a20  RD890S PCI Express bridge for GPP2 port 1
 	5a23  RD990 I/O Memory Management Unit (IOMMU)
-	5a33  Radeon Xpress 200 Host Bridge
-	5a34  RS480 PCI-X Root Port
-# Comes in pair with 5a3f
-	5a36  RS480 PCI Bridge
-	5a37  RS480 PCI Bridge
-	5a38  RS480 PCI Bridge
-# Comes in pair with 5a38
-	5a39  RS480 PCI Bridge
-	5a3f  RS480 PCI Bridge
+	5a31  RC410 Host Bridge
+	5a33  RS400 Host Bridge
+	5a34  RS4xx PCI Express Port [ext gfx]
+	5a36  RC4xx/RS4xx PCI Express Port 1
+	5a37  RC4xx/RS4xx PCI Express Port 2
+	5a38  RC4xx/RS4xx PCI Express Port 3
+	5a39  RC4xx/RS4xx PCI Express Port 4
+	5a3f  RC4xx/RS4xx PCI Bridge [int gfx]
 		1462 7217  Aspire L250
 	5a41  RS400 [Radeon Xpress 200]
 	5a42  RS400M [Radeon Xpress 200M]
@@ -2101,7 +2100,7 @@
 		17aa 5101  Radeon HD 7670M
 		17aa 5102  Radeon HD 7670M
 		17aa 5103  Radeon HD 7670M
-	6841  Thames [Radeon 7550M/7570M/7650M]
+	6841  Thames [Radeon HD 7550M/7570M/7650M]
 		1028 0561  Radeon HD 7650M
 		1028 056c  Radeon HD 7650M
 		1028 057f  Radeon HD 7570M
@@ -3441,7 +3440,7 @@
 		1014 035d  PCIe3 1.8GB Cache RAID SAS Adapter Quad-port 6GB (57C8)
 		1014 035e  PCIe2 3.6GB Cache 6Gb SAS RAID Adapter Quad-port (57CE)
 		1014 03fb  PCIe3 28GB Cache RAID SAS Enclosure 6Gb x 16 (57D5)
-	04aa  Flash Adapter 900GB Full Height
+	04aa  Flash Adapter 90 (PCIe2 0.9TB)
 	3022  QLA3022 Network Adapter
 	4022  QLA3022 Network Adapter
 	ffff  MPIC-2 interrupt controller
@@ -6511,7 +6510,7 @@
 	1681  M1681 P4 Northbridge [AGP8X,HyperTransport and SDR/DDR]
 	1687  M1687 K8 Northbridge [AGP8X and HyperTransport]
 	1689  M1689 K8 Northbridge [Super K8 Single Chip]
-	1695  M1695 K8 Northbridge [PCI Express and HyperTransport]
+	1695  M1695 Host Bridge
 	1697  M1697 HTT Host Bridge
 	3141  M3141
 	3143  M3143
@@ -8329,6 +8328,45 @@
 	0a76  GT218 [ION 2]
 	0a78  GT218GL [Quadro FX 380 LP]
 	0a7a  GT218M [GeForce 315M]
+		104d 907e  GeForce 315M
+		1179 fc50  GeForce 315M
+		1179 fc61  GeForce 315M
+		1179 fc71  GeForce 315M
+		1179 fc90  GeForce 315M
+		1179 fcc0  GeForce 315M
+		1179 fcd0  GeForce 315M
+		1179 fce2  GeForce 315M
+		1179 fcf2  GeForce 315M
+		1179 fd16  GeForce 315M
+		1179 fd40  GeForce 315M
+		1179 fd50  GeForce 315M
+		1179 fd52  GeForce 315M
+		1179 fd61  GeForce 315M
+		1179 fd71  GeForce 315M
+		1179 fd92  GeForce 315M
+		1179 fd96  GeForce 315M
+		1179 fdd0  GeForce 315M
+		1179 fdd2  GeForce 315M
+		1179 fdfe  GeForce 315M
+		144d c0a2  GeForce 315M
+		144d c0b2  GeForce 315M
+		144d c581  GeForce 315M
+		144d c587  GeForce 315M
+		144d c588  GeForce 315M
+		144d c597  GeForce 315M
+		144d c606  GeForce 315M
+		1462 aa51  GeForce 405
+		1462 aa58  GeForce 405
+		1462 ac71  GeForce 405
+		1462 ac81  GeForce 315M
+		1462 ac82  GeForce 405
+		1462 ae33  GeForce 405
+		17aa 3950  GeForce 405M
+		17aa 397d  GeForce 405M
+		1b0a 2091  GeForce 315M
+		1bfd 0003  GeForce 405
+		1bfd 8006  GeForce 405
+		1bfd 8007  GeForce 315M
 	0a7b  GT218 [GeForce 505]
 	0a7c  GT218GLM [Quadro FX 380M]
 	0a80  MCP79 Host Bridge
@@ -8531,6 +8569,7 @@
 	0fc2  GK107 [GeForce GT 630 OEM]
 	0fc6  GK107 [GeForce GTX 650]
 		1043 8428  GTX650-DC-1GD5
+	0fcd  GK107M [GeForce GT 755M]
 	0fd1  GK107M [GeForce GT 650M]
 		1043 1597  GeForce GT 650M
 		1043 15a7  GeForce GT 650M
@@ -8554,7 +8593,7 @@
 	0fe4  GK107M [GeForce GT 750M]
 	0fe5  GK107 [GeForce K340 USM]
 	0fe6  GK107 [NVS K1 USM]
-	0fe7  GRID K1 vGPU
+	0fe7  GK107GL [GRID K1]
 		10de 101e  GRID K100
 	0fef  GK107GL [GRID K340]
 	0ff1  GK107 [NVS 1000]
@@ -8562,6 +8601,7 @@
 	0ff5  GK107GL [Tesla K1 USM]
 	0ff7  GK107GL [Quadro K1 USM]
 		10de 1037  GRID K140Q
+	0ff8  GK107GLM [Quadro K500M]
 	0ff9  GK107GL [Quadro K2000D]
 	0ffa  GK107GL [Quadro K600]
 	0ffb  GK107GLM [Quadro K2000M]
@@ -8715,6 +8755,7 @@
 		1043 21fa  GeForce GT 720M
 		1043 220a  GeForce GT 720M
 		1043 221a  GeForce GT 720M
+		1043 8595  GeForce GT 720M
 		1179 fa01  GeForce 710M
 		1179 fa02  GeForce 710M
 		1179 fa03  GeForce 710M
@@ -8739,6 +8780,7 @@
 		1179 fa59  GeForce 710M
 		1179 fa88  GeForce 710M
 		1179 fa89  GeForce 710M
+		144d b092  GeForce GT 620M
 		144d c0d5  GeForce GT 630M
 		144d c0d7  GeForce GT 620M
 		144d c0e2  NVS 5200M
@@ -8749,6 +8791,9 @@
 		144d c711  GeForce 710M
 		1462 10b8  GeForce GT 710M
 		1462 10e9  GeForce GT 720M
+		1462 aa33  GeForce 720M
+		1462 aaa2  GeForce GT 720M
+		1462 ae71  GeForce GT 720M
 		152d 0926  GeForce 620M
 		152d 0982  GeForce GT 630M
 		152d 0983  GeForce GT 630M
@@ -8793,10 +8838,11 @@
 	118a  GK104GL [GRID K520]
 	118b  GK104 [GeForce K2 USM]
 	118c  GK104 [NVS K2 USM]
-	118d  GRID K2 vGPU
+	118d  GK104GL [GRID K2]
 		10de 101d  GRID K200
 	118f  GK104GL [Tesla K10]
 	119d  GK104M [GeForce GTX 775M]
+	119e  GK104M [GeForce GTX 780M]
 	119f  GK104M [GeForce GTX 780M]
 	11a0  GK104M [GeForce GTX 680M]
 	11a1  GK104M [GeForce GTX 670MX]
@@ -8808,6 +8854,7 @@
 		10de 101a  GRID K240Q
 		10de 101b  GRID K260Q
 	11b1  GK104GL [Tesla K2 USM]
+	11b7  GK104GLM [Quadro K4100M]
 	11ba  GK104GL [Quadro K5000]
 	11bb  GK104GL [Quadro 4100]
 	11bc  GK104GLM [Quadro K5000M]
@@ -8826,11 +8873,13 @@
 		10de 1030  GeForce GTX 650 Ti OEM
 	11c4  GK106 [GeForce GTX 645 OEM]
 	11c6  GK106 [GeForce GTX 650 Ti]
+	11c8  GK106 [GeForce GTX 650 OEM]
 	11e0  GK106M [GeForce GTX 770M]
 	11e1  GK106M [GeForce GTX 765M]
 	11e2  GK106M [GeForce GTX 765M]
 	11e3  GK106M [GeForce GTX 760M]
 	11fa  GK106GL [Quadro K4000]
+	11fc  GK106GLM [Quadro K2100M]
 	1200  GF114 [GeForce GTX 560 Ti]
 	1201  GF114 [GeForce GTX 560]
 	1202  GF114 [GeForce GTX 560 Ti OEM]
@@ -8855,7 +8904,16 @@
 		1043 212a  GeForce GT 635M
 		1043 212b  GeForce GT 635M
 		1043 212c  GeForce GT 635M
-	1248  GF116M [GeForce GT 555M]
+		152d 0930  GeForce GT 635M
+	1248  GF116M [GeForce GT 555M/635M]
+		152d 0930  GeForce GT 635M
+		17c0 10e7  GeForce GT 555M
+		17c0 10e8  GeForce GT 555M
+		17c0 10ea  GeForce GT 555M
+		1854 0890  GeForce GT 555M
+		1854 0891  GeForce GT 555M
+		1854 1795  GeForce GT 555M
+		1854 1796  GeForce GT 555M
 	1249  GF116 [GeForce GTS 450 Rev. 3]
 	124b  GF116 [GeForce GT 640 OEM]
 	124d  GF116M [GeForce GT 555M/635M]
@@ -8872,7 +8930,10 @@
 	1292  GK208M [GeForce GT 740M]
 	1293  GK208M [GeForce GT 730M]
 	1294  GK208M [GeForce GT 740M]
+	1295  GK208M [GeForce 710M]
 	12a0  GK208
+	12b9  GK208GLM [Quadro K610M]
+	12ba  GK208GLM [Quadro K510M]
 10df  Emulex Corporation
 	0720  OneConnect NIC (Skyhawk)
 	0722  OneConnect iSCSI Initiator (Skyhawk)
@@ -9029,7 +9090,7 @@
 		1af4 1100  Qemu virtual machine
 	8129  RTL-8129
 		10ec 8129  RT8129 Fast Ethernet Adapter
-		11ec 8129  RT8129 Fast Ethernet Adapter
+		11ec 8129  RTL8111/8168 PCIe Gigabit Ethernet (misconfigured)
 	8136  RTL8101E/RTL8102E PCI Express Fast Ethernet controller
 		103c 2ab1  Pavillion p6774
 		103c 30cc  Pavilion dv6700
@@ -10497,6 +10558,8 @@
 		1137 0048  VIC M81KR Mezzanine FCoE HBA
 		1137 004f  VIC 1280 Mezzanine FCoE HBA
 	004e  VIC 82 PCIe Upstream Port
+	0084  VIC 1240 MLOM FCoE HBA
+	0085  VIC 1225 PCIe FCOE HBA
 	00cf  VIC Userspace NIC
 1138  Ziatech Corporation
 	8905  8905 [STD 32 Bridge]
@@ -12110,6 +12173,7 @@
 	0510  SM501 VoyagerGX Rev. B
 	0710  SM710 LynxEM
 	0712  SM712 LynxEM+
+	0718  SM718 LynxSE+
 	0720  SM720 Lynx3DM
 	0730  SM731 Cougar3DR
 	0810  SM810 LynxE
@@ -15612,10 +15676,14 @@
 	0620  FarSync T2U (2 port X.21/V.35/V.24)
 	0640  FarSync T4U (4 port X.21/V.35/V.24)
 	1610  FarSync TE1 (T1,E1)
+	1612  FarSync TE1 PCI Express (T1,E1)
 	2610  FarSync DSL-S1 (SHDSL)
 	3640  FarSync T4E (4-port X.21/V.35/V.24)
 	4620  FarSync T2Ue PCI Express (2-port X.21/V.35/V.24)
 	4640  FarSync T4Ue PCI Express (4-port X.21/V.35/V.24)
+	5621  FarSync T2Ee PCI Express (2 port X.21/V.35/V.24)
+	5641  FarSync T4Ee PCI Express (4 port X.21/V.35/V.24)
+	6620  FarSync T2U-PMC PCI Express (2 port X.21/V.35/V.24)
 161f  Rioworks
 1626  TDK Semiconductor Corp.
 	8410  RTL81xx Fast Ethernet
@@ -15645,16 +15713,20 @@
 		103c 1743  HP 81B 8Gbps single port FC HBA
 		1657 0014  415/815 4Gbps/8Gbps single port PCIe FC HBA
 	0021  804 8Gbps FC HBA for HP Bladesystem c-class
-	0022  1867/1860: 16Gbps/10Gbps Fabric Adapter
+# AnyIO Adapter
+	0022  1860 16Gbps/10Gbps Fabric Adapter
 		1657 0022  10Gbps CNA - FCOE
 		1657 0023  10Gbps CNA - LL
 		1657 0024  16Gbps FC HBA
+# Mezz card for IBM
+	0023  1867/1869 16Gbps FC HBA
 # Same Device_ID used for 410 (1port) and 420 (2 port) HBAs.
 	0646  400 4Gbps PCIe FC HBA
 165a  Epix Inc
 	c100  PIXCI(R) CL1 Camera Link Video Capture Board [custom QL5232]
 	d200  PIXCI(R) D2X Digital Video Capture Board [custom QL5232]
 	d300  PIXCI(R) D3X Digital Video Capture Board [custom QL5232]
+	eb01  PIXCI(R) EB1 PCI Camera Link Video Capture Board
 165d  Hsing Tech. Enterprise Co., Ltd.
 165f  Linux Media Labs, LLC
 	1020  LMLM4 MPEG-4 encoder
@@ -16551,6 +16623,8 @@
 	0025  SuperFSCC/4-LVDS Serial PCI Adapter [Fastcom]
 # RS-644 Only, Software UARTs
 	0026  SuperFSCC-LVDS Serial PCI Adapter [Fastcom]
+# Software UARTs
+	0027  FSCC/4 Serial PCIe Adapter [Fastcom]
 18fb  Resilience Corporation
 1904  Hangzhou Silan Microelectronics Co., Ltd.
 	2031  SC92031 PCI Fast Ethernet Adapter
@@ -17728,6 +17802,10 @@
 	1025  16 photo couple 16 relay Card
 	4000  WatchDog Card
 6688  Zycoo Co., Ltd
+	1200  CooVOX TDM Analog Module
+	1400  CooVOX TDM GSM Module
+	1600  CooVOX TDM E1/T1 Module
+	1800  CooVOX TDM BRI Module
 # nee Qumranet
 6900  Red Hat, Inc.
 7063  pcHDTV
@@ -19191,13 +19269,16 @@
 		8086 7b11  10GbE 2P X520 Adapter
 	1557  82599 10 Gigabit Network Connection
 		8086 0001  Ethernet OCP Server Adapter X520-1
+	1558  Ethernet Converged Network Adapter X520-Q1
+		8086 011a  Ethernet Converged Network Adapter X520-Q1
+		8086 011b  Ethernet Converged Network Adapter X520-Q1
 	1559  Ethernet Connection I218-V
 	155a  Ethernet Connection I218-LM
 	155c  Ethernet Server Bypass Adapter
 		8086 0001  Ethernet Server Bypass Adapter X540-T2
 	155d  Ethernet Server Bypass Adapter
 		8086 0001  Ethernet Server Bypass Adapter X520-SR2
-	1560  Ethernet Controller X540-AT1
+	1560  Ethernet Controller X540
 	157b  I210 Gigabit Network Connection
 	15a0  Ethernet Connection (2) I218-LM
 	15a1  Ethernet Connection (2) I218-V
@@ -19575,12 +19656,11 @@
 	1f3d  Avoton PCU SMBus
 	1f3e  Avoton RAID SATA3 Controller
 	1f3f  Avoton RAID SATA3 Controller
-	1f40  Avoton GbE x4 1000base-KX
-	1f41  Avoton GbE x4 SGMII
+	1f40  Ethernet Connection I354 1.0 GbE Backplane
+	1f41  Ethernet Connection I354
 	1f42  Avoton GbE
-	1f43  Avoton GbE EEPROM-less
 	1f44  Avoton GbE Virtual Function
-	1f45  Avoton GbE 2500base-KX
+	1f45  Ethernet Connection I354 2.5 GbE Backplane
 	2250  Xeon Phi coprocessor 5100 series
 	225c  Xeon Phi coprocessor SE10/7120 series
 	225d  Xeon Phi coprocessor 3120 series 
@@ -22980,7 +23060,7 @@
 	8d66  Wellsburg sSATA Controller [RAID mode]
 	8d68  Wellsburg sSATA Controller [IDE mode]
 	8d6e  Wellsburg sSATA Controller [RAID mode]
-	8d7c  Wellsburg EPSS
+	8d7c  Wellsburg SPSR
 	8d7d  Wellsburg MS SMBus 0
 	8d7e  Wellsburg MS SMBus 1
 	8d7f  Wellsburg MS SMBus 2
