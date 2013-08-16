@@ -62,6 +62,7 @@ extern int tls_max_index;
 extern int main_argc;
 extern char **main_argv;
 extern char **environ;
+extern const char *__ld_sharedlib_base;
 
 struct stat;
 struct Struct_Obj_Entry;

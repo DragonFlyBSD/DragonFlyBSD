@@ -170,6 +170,21 @@ main(int ac, char **av)
 	size_t kenv_size;
 	size_t kenv_size2;
 
+	/*
+	 * Currently a bad hack but rtld-elf needs LD_SHAREDLIB_BASE to
+	 * be set to force it to mmap() shared libraries into low memory,
+	 * so our module loader can link against the related symbols.
+	 */
+	if (getenv("LD_SHAREDLIB_BASE") == NULL) {
+		setenv("LD_SHAREDLIB_BASE", "0x10000000", 1);
+		execv(av[0], av);
+		fprintf(stderr, "Must run %s with full path\n", av[0]);
+		exit(1);
+	}
+
+	/*
+	 * Starting for real
+	 */
 	save_ac = ac;
 	save_av = av;
 	eflag = 0;
@@ -1413,10 +1428,6 @@ setrealcpu(void)
 int
 vkernel_module_memory_alloc(vm_offset_t *basep, size_t bytes)
 {
-	kprintf("module loading for vkernel64's not currently supported\n");
-	*basep = 0;
-	return ENOMEM;
-#if 0
 #if 1
 	size_t xtra;
 	xtra = (PAGE_SIZE - (vm_offset_t)sbrk(0)) & PAGE_MASK;
@@ -1429,10 +1440,7 @@ vkernel_module_memory_alloc(vm_offset_t *basep, size_t bytes)
 	if ((void *)*basep == MAP_FAILED)
 		return ENOMEM;
 #endif
-	kprintf("basep %p %p %zd\n",
-		(void *)vkernel_module_memory_alloc, (void *)*basep, bytes);
 	return 0;
-#endif
 }
 
 void

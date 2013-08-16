@@ -75,6 +75,9 @@ world: checkq
 kernel: checkq
 	cd ${SRCDIR} && make -j 4 KERNCONF=${USEKERNEL} buildkernel
 
+nativekernel: checkq
+	cd ${SRCDIR} && make -j 4 KERNCONF=${USEKERNEL} nativekernel
+
 # Quick build - just rebuild the kernel quickly
 #
 #
@@ -82,7 +85,7 @@ quickworld: checkq
 	cd ${SRCDIR} && make -j 4 quickworld
 
 quickkernel: checkq
-	cd ${SRCDIR} && make KERNCONF=${USEKERNEL} quickkernel
+	cd ${SRCDIR} && make -j 4 KERNCONF=${USEKERNEL} quickkernel
 
 # Build and mount an empty filesystem for the emulated root disk
 #
@@ -126,7 +129,6 @@ install: mount
 	cd ${SRCDIR} && \
 	    make -j 4 \
 		 DESTDIR=${VKDIR}/root KERNCONF=${USEKERNEL} \
-		 NO_MODULES= \
 		 installkernel
 	cp ${VKDIR}/root/boot/kernel/kernel ${VKDIR}/vkernel
 
@@ -143,7 +145,7 @@ reinstall: mount
 reinstallkernel: mount
 	cd ${SRCDIR} && \
 	    make -j 4 DESTDIR=${VKDIR}/root KERNCONF=${USEKERNEL} \
-		 NO_MODULES= installkernel
+		 installkernel
 	cp ${VKDIR}/root/boot/kernel/kernel ${VKDIR}/vkernel
 
 sysloader: mount

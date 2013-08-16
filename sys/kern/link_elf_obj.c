@@ -653,6 +653,7 @@ link_elf_obj_load_file(const char *filename, linker_file_t * result)
 	 */
 #if defined(__x86_64__) && defined(_KERNEL_VIRTUAL)
 	error = vkernel_module_memory_alloc(&mapbase, round_page(mapsize));
+	vm_object_drop(ef->object);
 #else
 	mapbase = KERNBASE;
 	error = vm_map_find(&kernel_map, ef->object, 0, &mapbase,

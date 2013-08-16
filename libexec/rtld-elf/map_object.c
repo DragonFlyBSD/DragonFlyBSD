@@ -64,6 +64,7 @@ map_object(int fd, const char *path, const struct stat *sb)
     Elf_Phdr *phinterp;
     Elf_Phdr *phtls;
     caddr_t mapbase;
+    caddr_t shlib_base;
     size_t mapsize;
     Elf_Addr base_vaddr;
     Elf_Addr base_vlimit;
@@ -91,6 +92,12 @@ map_object(int fd, const char *path, const struct stat *sb)
     hdr = get_elf_header(fd, path);
     if (hdr == NULL)
 	return (NULL);
+
+    if (__ld_sharedlib_base) {
+	shlib_base = (void *)(intptr_t)strtoul(__ld_sharedlib_base, NULL, 0);
+    } else {
+	shlib_base = NULL;
+    }
 
     /*
      * Scan the program header entries, and save key information.
@@ -177,8 +184,25 @@ map_object(int fd, const char *path, const struct stat *sb)
     mapsize = base_vlimit - base_vaddr;
     base_addr = (caddr_t) base_vaddr;
 
-    mapbase = mmap(base_addr, mapsize, PROT_NONE, MAP_ANON | MAP_PRIVATE |
-      MAP_NOCORE, -1, 0);
+    if (base_addr == NULL && shlib_base) {
+	size_t limit = 1024 * 256 * 1024;
+	size_t offset;
+
+	for (offset = 0; offset < limit; offset += 256 * 1024) {
+		mapbase = mmap(shlib_base + offset, mapsize,
+			       PROT_NONE,
+			       MAP_ANON | MAP_PRIVATE | MAP_NOCORE |
+			       MAP_TRYFIXED,
+			       -1, 0);
+		if (mapbase != MAP_FAILED)
+			break;
+	}
+    } else {
+	mapbase = mmap(base_addr, mapsize,
+		       PROT_NONE,
+		       MAP_ANON | MAP_PRIVATE | MAP_NOCORE,
+		       -1, 0);
+    }
     if (mapbase == (caddr_t) -1) {
 	_rtld_error("%s: mmap of entire address space failed: %s",
 	  path, rtld_strerror(errno));

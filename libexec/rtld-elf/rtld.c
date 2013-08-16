@@ -207,6 +207,7 @@ static Objlist list_fini =	/* Objects needing fini() calls */
   STAILQ_HEAD_INITIALIZER(list_fini);
 
 static Elf_Sym sym_zero;	/* For resolving undefined weak refs. */
+const char *__ld_sharedlib_base;
 
 #define GDB_STATE(s,m)	r_debug.r_state = s; r_debug_state(&r_debug,m);
 
@@ -404,11 +405,13 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	    || unsetenv("LD_LIBMAP")
 	    || unsetenv("LD_LIBMAP_DISABLE")
 	    || unsetenv("LD_LOADFLTR")
+	    || unsetenv("LD_SHAREDLIB_BASE")
 	) {
 	    _rtld_error("environment corrupt; aborting");
 	    die();
 	}
     }
+    __ld_sharedlib_base = _getenv_ld("LD_SHAREDLIB_BASE");
     ld_debug = _getenv_ld("LD_DEBUG");
     libmap_disable = _getenv_ld("LD_LIBMAP_DISABLE") != NULL;
     libmap_override = (char *)_getenv_ld("LD_LIBMAP");
