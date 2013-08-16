@@ -112,8 +112,10 @@ soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 
 	error = so_pru_sosend(so, NULL, uio, NULL, NULL, msgflags, uio->uio_td);
 	if (error == EPIPE && !(fflags & MSG_NOSIGNAL) &&
-	    !(so->so_options & SO_NOSIGPIPE))
+	    !(so->so_options & SO_NOSIGPIPE) &&
+	    uio->uio_td->td_lwp) {
 		lwpsignal(uio->uio_td->td_proc, uio->uio_td->td_lwp, SIGPIPE);
+	}
 	return (error);
 }
 
