@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.32 2008/05/08 01:21:04 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -126,23 +125,6 @@ Xrsvdary:
  */
 
 #define	TRAP(a)		pushl $(a) ; jmp alltraps
-
-#ifdef BDE_DEBUGGER
-#define	BDBTRAP(name) \
-	ss ; \
-	cmpb	$0,bdb_exists ; \
-	je	1f ; \
-	testb	$SEL_RPL_MASK,4(%esp) ; \
-	jne	1f ; \
-	ss ; \
-	.globl	__CONCAT(__CONCAT(bdb_,name),_ljmp); \
-__CONCAT(__CONCAT(bdb_,name),_ljmp): \
-	ljmp	$0,$0 ; \
-1:
-#else
-#define BDBTRAP(name)
-#endif
-
 #define BPTTRAP(a)	testl $PSL_I,4+8(%esp) ; je 1f ; sti ; 1: ; TRAP(a)
 
 MCOUNT_LABEL(user)
@@ -151,12 +133,10 @@ MCOUNT_LABEL(btrap)
 IDTVEC(div)
 	pushl $0; TRAP(T_DIVIDE)
 IDTVEC(dbg)
-	BDBTRAP(dbg)
 	pushl $0; BPTTRAP(T_TRCTRAP)
 IDTVEC(nmi)
 	pushl $0; TRAP(T_NMI)
 IDTVEC(bpt)
-	BDBTRAP(bpt)
 	pushl $0; BPTTRAP(T_BPTFLT)
 IDTVEC(ofl)
 	pushl $0; TRAP(T_OFLOW)

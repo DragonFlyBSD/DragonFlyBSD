@@ -133,11 +133,6 @@ vm86phystk:	.long	0			/* PA of vm86/bios stack */
 vm86paddr:	.long	0			/* address of vm86 region */
 vm86pa:		.long	0			/* phys addr of vm86 region */
 
-#ifdef BDE_DEBUGGER
-	.globl	bdb_exists			/* BDE debugger is present */
-bdb_exists:	.long	0
-#endif
-
 /**********************************************************************
  *
  * Some handy macros
@@ -195,16 +190,6 @@ bdb_exists:	.long	0
  */
 NON_GPROF_ENTRY(btext)
 
-#ifdef BDE_DEBUGGER
-#ifdef BIOS_STEALS_3K
-	cmpl	$0x0375c339,0x95504
-#else
-	cmpl	$0x0375c339,0x96104	/* XXX - debugger signature */
-#endif
-	jne	1f
-	movb	$1,R(bdb_exists)
-1:
-#endif
 /* Tell the bios to warmboot next time */
 	movw	$0x1234,0x472
 
@@ -266,31 +251,12 @@ NON_GPROF_ENTRY(btext)
 	movl	%eax, %cr4
 1:
 
-#ifdef BDE_DEBUGGER
-/*
- * Adjust as much as possible for paging before enabling paging so that the
- * adjustments can be traced.
- */
-	call	bdb_prepare_paging
-#endif
-
 /* Now enable paging */
 	movl	R(IdlePTD), %eax
 	movl	%eax,%cr3			/* load ptd addr into mmu */
 	movl	%cr0,%eax			/* get control word */
 	orl	$CR0_PE|CR0_PG,%eax		/* enable paging */
 	movl	%eax,%cr0			/* and let's page NOW! */
-
-
-#ifdef BDE_DEBUGGER
-/*
- * Complete the adjustments for paging so that we can keep tracing through
- * initi386() after the low (physical) addresses for the gdt and idt become
- * invalid.
- */
-	call	bdb_commit_paging
-#endif
-
 	pushl	$begin				/* jump to high virtualized address */
 	ret
 
@@ -709,12 +675,7 @@ no_kernend:
 	movl	%esi, R(SMPpt)		/* relocated to KVM space */
 
 /* Map read-only from zero to the end of the kernel text section */
-	xorl	%eax, %eax
-#ifdef BDE_DEBUGGER
-/* If the debugger is present, actually map everything read-write. */
-	cmpl	$0,R(bdb_exists)
-	jne	map_read_write
-#endif
+	xorl	%eax,%eax
 	xorl	%edx,%edx
 
 2:	movl	$R(etext),%ecx
@@ -823,83 +784,3 @@ map_read_write:
 	fillkpt(R(IdlePTD), $PG_RW)
 
 	ret
-
-#ifdef BDE_DEBUGGER
-bdb_prepare_paging:
-	cmpl	$0,R(bdb_exists)
-	je	bdb_prepare_paging_exit
-
-	subl	$6,%esp
-
-	/*
-	 * Copy and convert debugger entries from the bootstrap gdt and idt
-	 * to the kernel gdt and idt.  Everything is still in low memory.
-	 * Tracing continues to work after paging is enabled because the
-	 * low memory addresses remain valid until everything is relocated.
-	 * However, tracing through the setidt() that initializes the trace
-	 * trap will crash.
-	 */
-	sgdt	(%esp)
-	movl	2(%esp),%esi		/* base address of bootstrap gdt */
-	movl	$R(gdt),%edi
-	movl	%edi,2(%esp)		/* prepare to load kernel gdt */
-	movl	$8*18/4,%ecx
-	cld
-	rep				/* copy gdt */
-	movsl
-	movl	$R(gdt),-8+2(%edi)	/* adjust gdt self-ptr */
-	movb	$0x92,-8+5(%edi)
-	lgdt	(%esp)
-
-	sidt	(%esp)
-	movl	2(%esp),%esi		/* base address of current idt */
-	movl	8+4(%esi),%eax		/* convert dbg descriptor to ... */
-	movw	8(%esi),%ax
-	movl	%eax,R(bdb_dbg_ljmp+1)	/* ... immediate offset ... */
-	movl	8+2(%esi),%eax
-	movw	%ax,R(bdb_dbg_ljmp+5)	/* ... and selector for ljmp */
-	movl	24+4(%esi),%eax		/* same for bpt descriptor */
-	movw	24(%esi),%ax
-	movl	%eax,R(bdb_bpt_ljmp+1)
-	movl	24+2(%esi),%eax
-	movw	%ax,R(bdb_bpt_ljmp+5)
-	movl	R(idt),%edi
-	movl	%edi,2(%esp)		/* prepare to load kernel idt */
-	movl	$8*4/4,%ecx
-	cld
-	rep				/* copy idt */
-	movsl
-	lidt	(%esp)
-
-	addl	$6,%esp
-
-bdb_prepare_paging_exit:
-	ret
-
-/* Relocate debugger gdt entries and gdt and idt pointers. */
-bdb_commit_paging:
-	cmpl	$0,_bdb_exists
-	je	bdb_commit_paging_exit
-
-	movl	$_gdt+8*9,%eax		/* adjust slots 9-17 */
-	movl	$9,%ecx
-reloc_gdt:
-	movb	$KERNBASE>>24,7(%eax)	/* top byte of base addresses, was 0, */
-	addl	$8,%eax			/* now KERNBASE>>24 */
-	loop	reloc_gdt
-
-	subl	$6,%esp
-	sgdt	(%esp)
-	addl	$KERNBASE,2(%esp)
-	lgdt	(%esp)
-	sidt	(%esp)
-	addl	$KERNBASE,2(%esp)
-	lidt	(%esp)
-	addl	$6,%esp
-
-	int	$3
-
-bdb_commit_paging_exit:
-	ret
-
-#endif /* BDE_DEBUGGER */

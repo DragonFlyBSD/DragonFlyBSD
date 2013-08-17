@@ -228,11 +228,7 @@ struct region_descriptor {
 #define	GNDIS_SEL	18	/* For the NDIS layer */
 
 #define NGTLS		(GTLS_END - GTLS_START + 1)
-#ifdef BDE_DEBUGGER
-#define	NGDT		21	/* some of 11-17 are reserved for debugger */
-#else
 #define NGDT 		19
-#endif
 
 /*
  * Entries in the Local Descriptor Table (LDT)

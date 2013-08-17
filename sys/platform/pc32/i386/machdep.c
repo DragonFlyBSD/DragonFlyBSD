@@ -1837,19 +1837,13 @@ init386(int first)
 	gd->mi.gd_prvspace = &CPU_prvspace[0];
 
 	/*
-	 * Note: on both UP and SMP curthread must be set non-NULL
+	 * Note: curthread must be set non-NULL
 	 * early in the boot sequence because the system assumes
 	 * that 'curthread' is never NULL.
 	 */
 
-	for (x = 0; x < NGDT; x++) {
-#ifdef BDE_DEBUGGER
-		/* avoid overwriting db entries with APM ones */
-		if (x >= GAPMCODE32_SEL && x <= GAPMDATA_SEL)
-			continue;
-#endif
+	for (x = 0; x < NGDT; x++)
 		ssdtosd(&gdt_segs[x], &gdt[x].sd);
-	}
 
 	r_gdt.rd_limit = NGDT * sizeof(gdt[0]) - 1;
 	r_gdt.rd_base =  (int) gdt;
