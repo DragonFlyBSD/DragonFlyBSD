@@ -2441,7 +2441,6 @@ ehci_device_isoc_fs_enter(struct usb_xfer *xfer)
 	uint16_t tlen;
 	uint8_t sa;
 	uint8_t sb;
-	uint8_t error;
 
 #ifdef USB_DEBUG
 	uint8_t once = 1;
