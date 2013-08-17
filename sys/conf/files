@@ -589,8 +589,8 @@ rt2860.fw			optional ralfw		\
 	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/ral/rt2860.fw.uu"	\
 	no-obj no-implicit-rule						\
 	clean		"rt2860.fw"
-dev/netif/rum/if_rum.c		optional rum
-dev/netif/ural/if_ural.c	optional ural
+#dev/netif/rum/if_rum.c		optional rum usb
+#dev/netif/ural/if_ural.c	optional ural usb
 dev/netif/lge/if_lge.c	optional lge
 dev/disk/md/md.c		optional md
 dev/raid/mfi/mfi.c		optional mfi
