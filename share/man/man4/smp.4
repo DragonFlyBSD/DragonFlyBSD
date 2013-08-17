@@ -23,7 +23,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/smp.4,v 1.7.2.4 2001/08/17 13:08:39 ru Exp $
 .\"
-.Dd October 26, 2012
+.Dd August 17, 2013
 .Dt SMP 4
 .Os
 .Sh NAME
@@ -35,7 +35,10 @@ The
 kernel implements symmetric multiprocessor support by default.
 APIC I/O can be enabled or disabled by setting the
 .Va hw.ioapic_enable
-loader tunable (default is enabled).
+loader tunable to 1 or 0.
+.Dx Ap s
+default is to enable APIC I/O on real hardware and to disable it in
+virtual machines, as determined by the VMM bit in the CPU features.
 .Sh COMPATIBILITY
 The
 .Nm
