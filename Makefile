@@ -163,13 +163,7 @@ kernel: buildkernel installkernel
 test:
 .if defined(notdef)
 .undef notdef
-.if defined(.PARSEDIR)
 .if defined(notdef) && ${notdef:tu}
-.endif
-.else
-# LEGACY MAKE - REMOVE FOR DFLY 3.6
-.if defined(notdef) && ${notdef:U}
-.endif
 .endif
 .endif
 

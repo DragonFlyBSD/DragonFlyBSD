@@ -52,14 +52,8 @@ CPUTYPE= ${FORCE_CPUTYPE}
 # cross compiling from 4.x or older versions of DFly and should not be set
 # by the user.
 #
-.if defined(.PARSEDIR)
 .export CCVER
 .export HOST_CCVER
-.else
-# LEGACY MAKE - REMOVE FOR DFLY 3.6
-.makeenv CCVER
-.makeenv HOST_CCVER
-.endif
 
 # We can reassign _CPUCFLAGS and CFLAGS will evaluate properly to the
 # new value, we do not have to add the variable to CFLAGS twice.
