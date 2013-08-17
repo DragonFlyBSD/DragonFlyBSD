@@ -100,9 +100,10 @@
  * 300400 - 3.4 release
  * 300500 - 3.5 master
  * 300501 - Convert libm to FreeBSD's version
+ * 300502 - GEM and i915 KMS support in kernel
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300501	/* propagated to newvers */
+#define __DragonFly_version 300502	/* propagated to newvers */
 
 #include <sys/_null.h>
 
