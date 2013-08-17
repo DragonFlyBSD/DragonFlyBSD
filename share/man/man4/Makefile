@@ -333,7 +333,6 @@ MAN=	aac.4 \
 	uguru.4 \
 	uhci.4 \
 	uhid.4 \
-	uhidev.4 \
 	ukbd.4 \
 	ulpt.4 \
 	umass.4 \
