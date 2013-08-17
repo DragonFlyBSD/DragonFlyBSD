@@ -1,3 +1,3 @@
-SUBDIR=	uether if_axe if_udav
+SUBDIR=	axe udav uether
 
 .include <bsd.subdir.mk>

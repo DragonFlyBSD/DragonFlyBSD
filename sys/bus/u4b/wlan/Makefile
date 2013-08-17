@@ -1,3 +1,3 @@
-SUBDIR=	if_rum
+SUBDIR=	rum
 
 .include <bsd.subdir.mk>
