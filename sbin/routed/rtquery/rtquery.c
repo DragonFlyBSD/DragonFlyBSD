@@ -369,7 +369,7 @@ query_loop(char *argv[], int argc)
 	fd_set bits;
 	struct timeval now, delay;
 	struct sockaddr_in from;
-	int fromlen;
+	socklen_t fromlen;
 	MD5_CTX md5_ctx;
 
 

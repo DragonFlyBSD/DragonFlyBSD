@@ -32,8 +32,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sbin/rconfig/subs.c,v 1.4 2005/04/02 22:15:20 dillon Exp $
  */
 
 #include "defs.h"
@@ -84,7 +82,7 @@ udp_transact(struct sockaddr_in *sain, struct sockaddr_in *rsin, int *pfd,
     va_list va;
     int fd;
     int n;
-    int rsin_len = sizeof(*rsin);
+    socklen_t rsin_len = sizeof(*rsin);
     int rc;
     int nretry = 3;
     int timeout = 1;

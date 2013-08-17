@@ -32,8 +32,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sbin/rconfig/server.c,v 1.4 2006/10/20 14:50:42 pavalos Exp $
  */
 
 #include "defs.h"
@@ -97,7 +95,7 @@ doServer(void)
 	    }
 	    signal(SIGCHLD, server_chld_exit);
 	    for (;;) {
-		int slen = sizeof(sain);
+		socklen_t slen = sizeof(sain);
 		fd = accept(lfd, (void *)&sain, &slen);
 		if (fd < 0) {
 		    if (errno != EINTR)
@@ -242,7 +240,7 @@ service_packet_loop(int fd)
     struct sockaddr_in sain;
     char ibuf[256+1];
     char obuf[256+1];
-    int sain_len;
+    socklen_t sain_len;
     int n;
     char *scan;
     const char *cmd;

@@ -438,7 +438,8 @@ list(int ac, char **av)
 	struct ip6_fw *r, *rules, *n;
 	int l,i;
 	unsigned long rulenum;
-	int nalloc, bytes, maxbytes;
+	int nalloc, maxbytes;
+	socklen_t bytes;
 
 	/* extract rules from kernel, resizing array as necessary */
 	rules = NULL;

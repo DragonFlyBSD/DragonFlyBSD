@@ -57,7 +57,8 @@ read_rip(int sock,
 {
 	struct sockaddr_in from;
 	struct interface *aifp;
-	int fromlen, cc;
+	int cc;
+	socklen_t fromlen;
 #ifdef USE_PASSIFNAME
 	static struct msg_limit  bad_name;
 	struct {

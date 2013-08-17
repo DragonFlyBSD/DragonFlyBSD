@@ -943,7 +943,8 @@ read_d(void)
 	static struct msg_limit  bad_name;
 #endif
 	struct sockaddr_in from;
-	int n, fromlen, cc, hlen;
+	int n, cc, hlen;
+	socklen_t fromlen;
 	struct {
 #ifdef USE_PASSIFNAME
 		char	ifname[IFNAMSIZ];

@@ -1769,7 +1769,7 @@ static void
 get_local_ip ( int s, long *aval )
 {
 	char			intf_name[IFNAMSIZ];
-	int			namelen = IFNAMSIZ;
+	socklen_t		namelen = IFNAMSIZ;
 	struct air_netif_rsp	*net_info = NULL;
 	struct sockaddr_in	*sin;
 

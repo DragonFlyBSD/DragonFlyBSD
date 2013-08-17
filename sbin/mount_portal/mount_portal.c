@@ -196,7 +196,7 @@ main(int argc, char **argv)
 	 */
 	for (;;) {
 		struct sockaddr_un un2;
-		int len2 = sizeof(un2);
+		socklen_t len2 = sizeof(un2);
 		int so2;
 		pid_t pid;
 		fd_set fdset;
