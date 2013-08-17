@@ -158,7 +158,8 @@ __mtx_lock_ex(mtx_t mtx, mtx_link_t link, const char *ident, int flags, int to)
 				atomic_clear_int(&mtx->mtx_lock, MTX_EXLINK);
 				--td->td_critcount;
 
-				error = tsleep(link, flags, ident, to);
+				error = tsleep(link, flags | PINTERLOCKED,
+					       ident, to);
 				++mtx_contention_count;
 
 				/*
@@ -249,7 +250,8 @@ __mtx_lock_sh(mtx_t mtx, const char *ident, int flags, int to)
 			nlock = lock | MTX_SHWANTED;
 			tsleep_interlock(mtx, 0);
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
-				error = tsleep(mtx, flags, ident, to);
+				error = tsleep(mtx, flags | PINTERLOCKED,
+					       ident, to);
 				if (error)
 					break;
 				++mtx_contention_count;
