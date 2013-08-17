@@ -2181,9 +2181,6 @@ TO_REMOVE+=/usr/share/man/man4/iwl.4.gz
 TO_REMOVE+=/boot/kernel/if_rtw.ko
 TO_REMOVE+=/usr/share/man/cat4/rtw.4.gz
 TO_REMOVE+=/usr/share/man/man4/rtw.4.gz
-TO_REMOVE+=/boot/kernel/if_rum.ko
-TO_REMOVE+=/usr/share/man/cat4/rum.4.gz
-TO_REMOVE+=/usr/share/man/man4/rum.4.gz
 TO_REMOVE+=/boot/kernel/if_ural.ko
 TO_REMOVE+=/usr/share/man/cat4/ural.4.gz
 TO_REMOVE+=/usr/share/man/man4/ural.4.gz
@@ -2241,4 +2238,7 @@ TO_REMOVE+=/usr/lib/profile/libusb.a
 TO_REMOVE+=/usr/sbin/usbcontrol
 TO_REMOVE+=/usr/share/man/cat8/usbcontrol.8.gz
 TO_REMOVE+=/usr/share/man/man8/usbcontrol.8.gz
+TO_REMOVE+=/boot/kernel/if_rum.ko
+TO_REMOVE+=/usr/share/man/cat4/rum.4.gz
+TO_REMOVE+=/usr/share/man/man4/rum.4.gz
 .endif

@@ -2039,7 +2039,7 @@ device		rue
 # USB wireless NICs, requires wlan_amrr
 #
 # Ralink Technology RT2501USB/RT2601USB
-#device		rum
+device		rum
 #
 # Ralink Technology RT2500USB
 #device		ural

@@ -2232,6 +2232,10 @@ bus/u4b/net/usb_ethernet.c		optional uether usb4bsd
 bus/u4b/net/if_axe.c			optional axe uether usb4bsd
 bus/u4b/net/if_udav.c			optional udav uether usb4bsd
 #
+# USB WLAN drivers
+#
+bus/u4b/wlan/if_rum.c			optional rum usb4bsd
+#
 # USB input drivers
 #
 bus/u4b/input/ukbd.c			optional ukbd usb4bsd

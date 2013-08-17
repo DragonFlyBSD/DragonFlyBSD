@@ -1,4 +1,4 @@
-/*	$FreeBSD$	*/
+/*	$FreeBSD: src/sys/dev/usb/wlan/if_rumfw.h,v 1.2 2012/11/17 01:52:23 svnexp Exp $	*/
 
 /*-
  * Copyright (c) 2005-2006, Ralink Technology, Corp.

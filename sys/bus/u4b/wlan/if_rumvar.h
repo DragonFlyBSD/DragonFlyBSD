@@ -1,4 +1,4 @@
-/*	$FreeBSD$	*/
+/*	$FreeBSD: src/sys/dev/usb/wlan/if_rumvar.h,v 1.10 2013/02/11 00:34:54 svnexp Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006 Damien Bergamini <damien.bergamini@free.fr>
@@ -100,12 +100,13 @@ struct rum_softc {
 	int				tx_nfree;
 	struct rum_rx_desc		sc_rx_desc;
 
-	struct mtx			sc_mtx;
+	struct lock			sc_lock;
 
 	uint32_t			sta[6];
 	uint32_t			rf_regs[4];
 	uint8_t				txpow[44];
 	uint8_t				sc_bssid[6];
+	uint8_t				sc_detached;
 
 	struct {
 		uint8_t	val;
@@ -129,6 +130,6 @@ struct rum_softc {
 	int				sc_txtap_len;
 };
 
-#define RUM_LOCK(sc)		mtx_lock(&(sc)->sc_mtx)
-#define RUM_UNLOCK(sc)		mtx_unlock(&(sc)->sc_mtx)
-#define RUM_LOCK_ASSERT(sc, t)	mtx_assert(&(sc)->sc_mtx, t)
+#define RUM_LOCK(sc)		lockmgr(&(sc)->sc_lock, LK_EXCLUSIVE)
+#define RUM_UNLOCK(sc)		lockmgr(&(sc)->sc_lock, LK_RELEASE)
+#define RUM_LOCK_ASSERT(sc, t)	KKASSERT(lockstatus(&(sc)->sc_lock, curthread) != 0)

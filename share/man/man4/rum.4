@@ -1,6 +1,5 @@
-.\" $OpenBSD: rum.4,v 1.16 2006/10/19 16:53:48 jsg Exp $
 .\"
-.\" Copyright (c) 2005, 2006
+.\" Copyright (c) 2005-2007
 .\"	Damien Bergamini <damien.bergamini@free.fr>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
@@ -15,12 +14,14 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd July 26, 2008
-.Os
+.\" $FreeBSD: src/share/man/man4/rum.4,v 1.13 2012/11/17 01:50:46 svnexp Exp $
+.\"
+.Dd August 17, 2013
 .Dt RUM 4
+.Os
 .Sh NAME
 .Nm rum
-.Nd "Ralink Technology RT2501USB/RT2601USB IEEE 802.11 driver"
+.Nd Ralink Technology USB IEEE 802.11a/b/g wireless network device
 .Sh SYNOPSIS
 To compile this driver into the kernel,
 place the following lines in your
@@ -32,7 +33,7 @@ kernel configuration file:
 .Cd "device usb"
 .Cd "device rum"
 .Cd "device wlan"
-.Cd "device wlan_ratectl_onoe"
+.Cd "device wlan_amrr"
 .Ed
 .Pp
 Alternatively, to load the driver as a
@@ -44,103 +45,105 @@ if_rum_load="YES"
 .Sh DESCRIPTION
 The
 .Nm
-driver supports USB 2.0 and and PCI Express Mini Card wireless adapters based on
-the Ralink RT2501USB and RT2601USB chipsets.
+driver supports USB 2.0 and PCI Express Mini Card wireless adapters
+based on the Ralink RT2501USB and RT2601USB chipsets.
 .Pp
-Ralink PCI Express Mini Card adapters show up as normal USB 2.0 devices and
-are thus handled by the
+Ralink PCI Express Mini Card adapters show up as normal USB 2.0
+devices and are thus handled by the
 .Nm
 driver.
 .Pp
-The RT2501USB chipset is the second generation of 802.11a/b/g adapters
-from Ralink.
-It consists of two integrated chips,
-an RT2571W MAC/BBP and an RT2528 or RT5226 radio transceiver.
+The RT2501USB chipset is the second generation of 802.11a/b/g adapters from
+Ralink.
+It consists of two integrated chips, an RT2571W MAC/BBP and an RT2528 or
+RT5226 radio transceiver.
 .Pp
-The RT2601USB chipset consists of two integrated chips,
-an RT2671 MAC/BBP and an RT2527 or RT5225 radio transceiver.
-This chipset uses the MIMO (multiple-input multiple-output) technology with
-multiple antennas to extend the operating range of the adapter and to achieve
-higher throughput.
-MIMO is the basis of the forthcoming IEEE 802.11n standard.
+The RT2601USB chipset consists of two integrated chips, an RT2671
+MAC/BBP and an RT2527 or RT5225 radio transceiver.
+This chipset uses the MIMO (multiple-input multiple-output) technology
+with multiple antennas to extend the operating range of the adapter
+and to achieve higher throughput.
+.Pp
+.Nm
+supports
+.Cm station ,
+.Cm adhoc ,
+.Cm hostap ,
+and
+.Cm monitor
+mode operation.
+Only one virtual interface may be configured at any time.
+For more information on configuring this device, see
+.Xr ifconfig 8 .
 .Sh HARDWARE
 The
 .Nm
-driver supports the following adapters:
+driver supports USB 2.0 wireless
+adapters based on the Ralink RT2501USB and RT2601USB chipsets,
+including:
 .Pp
-.Bl -bullet -compact
-.It
-3Com Aolynk WUB320g
-.It
-Abocom WUG2700
-.It
-Airlink101 AWLL5025
-.It
-ASUS WL-167g ver 2
-.It
-Belkin F5D7050 ver 3
-.It
-Belkin F5D9050 ver 3
-.It
-Buffalo WLI-U2-SG54HP
-.It
-Buffalo WLI-U2-G54HP
-.It
-CNet CWD-854 ver F
-.It
-Cisco-Linksys WUSB54G rev C
-.It
-Conceptronic C54RU ver 2
-.It
-Corega CG-WLUSB2GO
-.It
-D-Link DWL-G122 rev C1
-.It
-D-Link WUA-1340
-.It
-Digitus DN-7003GR
-.It
-Edimax EW-7318USG
-.It
-Gigabyte GN-WB01GS
-.It
-Gigabyte GN-WI05GS
-.It
-Hawking HWUG1
-.It
-Hawking HWU54DM
-.It
-Hercules HWGUSB2-54-LB
-.It
-Hercules HWGUSB2-54V2-AP
-.It
-LevelOne WNC-0301USB v3
-.It
-Linksys WUSB54G rev C
-.It
-Linksys WUSB54GR
-.It
-Planex GW-US54HP
-.It
-Planex GW-US54Mini2
-.It
-Planex GW-USMM
-.It
-Senao NUB-3701
-.It
-Sitecom WL-113 ver 2
-.It
-Sitecom WL-172
-.It
-Sweex LW053
-.It
-TP-LINK TL-WN321G
+.Bl -column -compact "Atlantis Land A02-PCM-W54" "Bus"
+.It Em Card Ta Em Bus
+.It "3Com Aolynk WUB320g" Ta USB
+.It "Abocom WUG2700 Ta" Ta USB
+.It "Airlink101 AWLL5025" Ta USB
+.It "ASUS WL-167g ver 2" Ta USB
+.It "Belkin F5D7050 ver 3" Ta USB
+.It "Belkin F5D9050 ver 3" Ta USB
+.It "Buffalo WLI-U2-SG54HP" Ta USB
+.It "Buffalo WLI-U2-SG54HG" Ta USB
+.It "Buffalo WLI-U2-G54HP" Ta USB
+.It "Buffalo WLI-UC-G" Ta USB
+.It "CNet CWD-854 ver F" Ta USB
+.It "Conceptronic C54RU ver 2" Ta USB
+.It "Corega CG-WLUSB2GO" Ta USB
+.It "D-Link DWA-110" Ta USB
+.It "D-Link DWA-111" Ta USB
+.It "D-Link DWL-G122 rev C1" Ta USB
+.It "D-Link WUA-1340" Ta USB
+.It "Digitus DN-7003GR" Ta USB
+.It "Edimax EW-7318USG" Ta USB
+.It "Gigabyte GN-WB01GS" Ta USB
+.It "Gigabyte GN-WI05GS" Ta USB
+.It "Hawking HWUG1" Ta USB
+.It "Hawking HWU54DM" Ta USB
+.It "Hercules HWGUSB2-54-LB" Ta USB
+.It "Hercules HWGUSB2-54V2-AP" Ta USB
+.It "LevelOne WNC-0301USB v3" Ta USB
+.It "Linksys WUSB54G rev C" Ta USB
+.It "Linksys WUSB54GR" Ta USB
+.It "Planex GW-US54HP" Ta USB
+.It "Planex GW-US54Mini2" Ta USB
+.It "Planex GW-USMM" Ta USB
+.It "Senao NUB-3701" Ta USB
+.It "Sitecom WL-113 ver 2" Ta USB
+.It "Sitecom WL-172" Ta USB
+.It "Sweex LW053" Ta USB
+.It "TP-LINK TL-WN321G" Ta USB
 .El
 .Sh EXAMPLES
-Refer to the
-.Sx EXAMPLES
-section of
-.Xr wlan 4 .
+Join an existing BSS network (i.e., connect to an access point):
+.Bd -literal -offset indent
+ifconfig wlan create wlandev rum0 inet 192.168.0.20 \e
+    netmask 0xffffff00
+.Ed
+.Pp
+Join a specific BSS network with network name
+.Dq Li my_net :
+.Pp
+.Dl "ifconfig wlan create wlandev rum0 ssid my_net up"
+.Pp
+Join a specific BSS network with 64-bit WEP encryption:
+.Bd -literal -offset indent
+ifconfig wlan create wlandev rum0 ssid my_net \e
+	wepmode on wepkey 0x1234567890 weptxkey 1 up
+.Ed
+.Pp
+Join a specific BSS network with 128-bit WEP encryption:
+.Bd -literal -offset indent
+ifconfig wlan create wlandev rum0 wlanmode adhoc ssid my_net \e
+    wepmode on wepkey 0x01020304050607080910111213 weptxkey 1
+.Ed
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "rum%d: could not load 8051 microcode"
@@ -151,12 +154,16 @@ The driver will reset the hardware.
 This should not happen.
 .El
 .Sh SEE ALSO
-.Xr arp 4 ,
 .Xr ifmedia 4 ,
+.Xr intro 4 ,
 .Xr netintro 4 ,
 .Xr usb 4 ,
 .Xr wlan 4 ,
-.Xr wlan_ratectl 4 ,
+.Xr wlan_amrr 4 ,
+.Xr wlan_ccmp 4 ,
+.Xr wlan_tkip 4 ,
+.Xr wlan_wep 4 ,
+.Xr wlan_xauth 4 ,
 .Xr hostapd 8 ,
 .Xr ifconfig 8 ,
 .Xr wpa_supplicant 8
@@ -169,17 +176,15 @@ The
 .Nm
 driver first appeared in
 .Ox 4.0 .
-.Sh CAVEATS
-The
-.Nm
-driver supports automatic adaptation of the transmit speed in IBSS
-and HostAP operating modes,
-but it does not work well if there are more than one peer node.
 .Sh AUTHORS
 .An -nosplit
-The
+The original
 .Nm
 driver was written by
 .An Niall O'Higgins Aq Mt niallo@openbsd.org
 and
 .An Damien Bergamini Aq Mt damien@openbsd.org .
+.Sh BUGS
+Host AP mode doesn't support client power save.
+Clients using power save mode will experience
+packet loss (disabling power saving on the client will fix this).

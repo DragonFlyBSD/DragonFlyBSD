@@ -382,7 +382,6 @@ MAN=	aac.4 \
 #	bwi.4 \
 #	iwl.4 \
 #	rtw.4 \
-#	rum.4 \
 #	ural.4 \
 
 MLINKS=	acpi_thermal.4 acpi_tz.4
@@ -471,7 +470,6 @@ MLINKS+=re.4 if_re.4
 MLINKS+=rl.4 if_rl.4
 #MLINKS+=rtw.4 if_rtw.4
 MLINKS+=rue.4 if_rue.4
-#MLINKS+=rum.4 if_rum.4
 MLINKS+=sbsh.4 if_sbsh.4
 MLINKS+=scsi.4 CAM.4 \
 	scsi.4 cam.4 \
@@ -504,6 +502,11 @@ MLINKS+=wi.4 if_wi.4
 MLINKS+=wpi.4 if_wpi.4
 MLINKS+=xe.4 if_xe.4
 MLINKS+=xl.4 if_xl.4
+
+.if defined(WANT_USB4BSD)
+MAN+=	rum.4
+MLINKS+=rum.4 if_rum.4
+.endif
 
 .if ${MACHINE_ARCH} == "i386"
 SUBDIR=	 man4.${MACHINE_ARCH}
