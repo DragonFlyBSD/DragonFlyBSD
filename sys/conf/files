@@ -402,12 +402,12 @@ iwibssfw.c			optional iwifw		\
 	clean		"iwibssfw.c"
 iwi_bss.fwo			optional iwifw		\
 	dependency	"iwi_bss.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} iwi_bss.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"iwi_bss.fwo"
 iwi_bss.fw			optional iwifw		\
 	dependency	"$S/contrib/dev/iwi/ipw2200-bss.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/iwi/ipw2200-bss.fw.uu" \
+	compile-with	"${NORMAL_FW}" \
 	no-obj no-implicit-rule						\
 	clean		"iwi_bss.fw"
 iwiibssfw.c			optional iwifw		\
@@ -416,12 +416,12 @@ iwiibssfw.c			optional iwifw		\
 	clean		"iwiibssfw.c"
 iwi_ibss.fwo			optional iwifw		\
 	dependency	"iwi_ibss.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} iwi_ibss.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"iwi_ibss.fwo"
 iwi_ibss.fw			optional iwifw		\
 	dependency	"$S/contrib/dev/iwi/ipw2200-ibss.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/iwi/ipw2200-ibss.fw.uu" \
+	compile-with	"${NORMAL_FW}" \
 	no-obj no-implicit-rule						\
 	clean		"iwi_ibss.fw"
 iwimonitorfw.c			optional iwifw		\
@@ -430,12 +430,12 @@ iwimonitorfw.c			optional iwifw		\
 	clean		"iwimonitorfw.c"
 iwi_monitor.fwo			optional iwifw		\
 	dependency	"iwi_monitor.fw"				\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} iwi_monitor.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"iwi_monitor.fwo"
 iwi_monitor.fw			optional iwifw		\
 	dependency	"$S/contrib/dev/iwi/ipw2200-sniffer.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/iwi/ipw2200-sniffer.fw.uu" \
+	compile-with	"${NORMAL_FW}" \
 	no-obj no-implicit-rule						\
 	clean		"iwi_monitor.fw"
 dev/netif/iwn/if_iwn.c	optional iwn
@@ -445,12 +445,12 @@ iwn1000fw.c			optional iwnfw		\
 	clean		"iwn1000fw.c"
 iwn1000fw.fwo			optional iwnfw		\
 	dependency	"iwn1000.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} iwn1000.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"iwn1000fw.fwo"
 iwn1000.fw			optional iwnfw		\
 	dependency	"$S/contrib/dev/iwn/iwlwifi-1000-128.50.3.1.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/iwn/iwlwifi-1000-128.50.3.1.fw.uu" \
+	compile-with	"${NORMAL_FW}" \
 	no-obj no-implicit-rule						\
 	clean		"iwn1000.fw"
 iwn4965fw.c			optional iwnfw		\
@@ -459,12 +459,12 @@ iwn4965fw.c			optional iwnfw		\
 	clean		"iwn4965fw.c"
 iwn4965fw.fwo			optional iwnfw		\
 	dependency	"iwn4965.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} iwn4965.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"iwn4965fw.fwo"
 iwn4965.fw			optional iwnfw		\
 	dependency	"$S/contrib/dev/iwn/iwlwifi-4965-228.61.2.24.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/iwn/iwlwifi-4965-228.61.2.24.fw.uu" \
+	compile-with	"${NORMAL_FW}" \
 	no-obj no-implicit-rule						\
 	clean		"iwn4965.fw"
 iwn5000fw.c			optional iwnfw		\
@@ -473,12 +473,12 @@ iwn5000fw.c			optional iwnfw		\
 	clean		"iwn5000fw.c"
 iwn5000fw.fwo		optional iwnfw			\
 	dependency	"iwn5000.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} iwn5000.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"iwn5000fw.fwo"
 iwn5000.fw			optional iwnfw		\
 	dependency	"$S/contrib/dev/iwn/iwlwifi-5000-8.24.2.12.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/iwn/iwlwifi-5000-8.24.2.12.fw.uu"	\
+	compile-with	"${NORMAL_FW}"	\
 	no-obj no-implicit-rule						\
 	clean		"iwn5000.fw"
 iwn5150fw.c			optional iwnfw		\
@@ -487,12 +487,12 @@ iwn5150fw.c			optional iwnfw		\
 	clean		"iwn5150fw.c"
 iwn5150fw.fwo			optional iwnfw		\
 	dependency	"iwn5150.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} iwn5150.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"iwn5150fw.fwo"
 iwn5150.fw			optional iwnfw		\
 	dependency	"$S/contrib/dev/iwn/iwlwifi-5150-8.24.2.2.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/iwn/iwlwifi-5150-8.24.2.2.fw.uu" \
+	compile-with	"${NORMAL_FW}" \
 	no-obj no-implicit-rule						\
 	clean		"iwn5150.fw"
 iwn6000fw.c			optional iwnfw		\
@@ -501,12 +501,12 @@ iwn6000fw.c			optional iwnfw		\
 	clean		"iwn6000fw.c"
 iwn6000fw.fwo			optional iwnfw		\
 	dependency	"iwn6000.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} iwn6000.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"iwn6000fw.fwo"
 iwn6000.fw			optional iwnfw		\
 	dependency	"$S/contrib/dev/iwn/iwlwifi-6000-9.221.4.1.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/iwn/iwlwifi-6000-9.221.4.1.fw.uu" \
+	compile-with	"${NORMAL_FW}" \
 	no-obj no-implicit-rule						\
 	clean		"iwn6000.fw"
 iwn6050fw.c			optional iwnfw		\
@@ -515,12 +515,12 @@ iwn6050fw.c			optional iwnfw		\
 	clean		"iwn6050fw.c"
 iwn6050fw.fwo			optional iwnfw		\
 	dependency	"iwn6050.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} iwn6050.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"iwn6050fw.fwo"
 iwn6050.fw			optional iwnfw		\
 	dependency	"$S/contrib/dev/iwn/iwlwifi-6050-9.201.4.1.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/iwn/iwlwifi-6050-9.201.4.1.fw.uu" \
+	compile-with	"${NORMAL_FW}" \
 	no-obj no-implicit-rule						\
 	clean		"iwn6050.fw"
 dev/netif/iwl/if_iwl.c	optional iwl
@@ -539,12 +539,12 @@ rt2561fw.c			optional ralfw		\
 	clean		"rt2561fw.c"
 rt2561fw.fwo			optional ralfw		\
 	dependency	"rt2561.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} rt2561.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"rt2561fw.fwo"
 rt2561.fw			optional ralfw		\
 	dependency	"$S/contrib/dev/ral/rt2561.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/ral/rt2561.fw.uu" \
+	compile-with	"${NORMAL_FW}" \
 	no-obj no-implicit-rule						\
 	clean		"rt2561.fw"
 rt2561sfw.c			optional ralfw		\
@@ -553,12 +553,12 @@ rt2561sfw.c			optional ralfw		\
 	clean		"rt2561sfw.c"
 rt2561sfw.fwo			optional ralfw		\
 	dependency	"rt2561s.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} rt2561s.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"rt2561sfw.fwo"
 rt2561s.fw			optional ralfw		\
 	dependency	"$S/contrib/dev/ral/rt2561s.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/ral/rt2561s.fw.uu"	\
+	compile-with	"${NORMAL_FW}"	\
 	no-obj no-implicit-rule						\
 	clean		"rt2561s.fw"
 rt2661fw.c			optional ralfw		\
@@ -567,12 +567,12 @@ rt2661fw.c			optional ralfw		\
 	clean		"rt2661fw.c"
 rt2661fw.fwo			optional ralfw		\
 	dependency	"rt2661.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} rt2661.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"rt2661fw.fwo"
 rt2661.fw			optional ralfw		\
 	dependency	"$S/contrib/dev/ral/rt2661.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/ral/rt2661.fw.uu"	\
+	compile-with	"${NORMAL_FW}"	\
 	no-obj no-implicit-rule						\
 	clean		"rt2661.fw"
 rt2860fw.c			optional ralfw		\
@@ -581,12 +581,12 @@ rt2860fw.c			optional ralfw		\
 	clean		"rt2860fw.c"
 rt2860fw.fwo			optional ralfw		\
 	dependency	"rt2860.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} rt2860.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"rt2860fw.fwo"
 rt2860.fw			optional ralfw		\
 	dependency	"$S/contrib/dev/ral/rt2860.fw.uu"					\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/ral/rt2860.fw.uu"	\
+	compile-with	"${NORMAL_FW}"	\
 	no-obj no-implicit-rule						\
 	clean		"rt2860.fw"
 #dev/netif/rum/if_rum.c		optional rum usb
@@ -778,12 +778,12 @@ wpifw.c			optional wpifw					\
 	clean		"wpifw.c"
 wpifw.fwo		optional wpifw					\
 	dependency	"wpi.fw"					\
-	compile-with	"${LD} -b binary -d -warn-common -r -d -o ${.TARGET} wpi.fw" \
+	compile-with	"${NORMAL_FWO}" \
 	no-implicit-rule						\
 	clean		"wpifw.fwo"
 wpi.fw			optional wpifw					\
 	dependency	"$S/contrib/dev/wpi/iwlwifi-3945-2.14.4.fw.uu"	\
-	compile-with	"uudecode -o ${.TARGET} $S/contrib/dev/wpi/iwlwifi-3945-2.14.4.fw.uu" \
+	compile-with	"${NORMAL_FW}" \
 	no-obj no-implicit-rule						\
 	clean		"wpi.fw"
 dev/netif/rtw/rtw.c			optional rtw

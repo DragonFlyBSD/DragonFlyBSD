@@ -79,6 +79,9 @@ PROFILE_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
 NORMAL_M= awk -f $S/tools/makeobjops.awk -- -c $<; \
 	${CC} -c ${CFLAGS} ${PROF} ${.PREFIX}.c
 
+NORMAL_FW= uudecode -o ${.TARGET} ${.ALLSRC}
+NORMAL_FWO= ${LD} -b binary -d -warn-common -r -o ${.TARGET} ${.ALLSRC:M*.fw}
+
 .if !defined(NO_WERROR) && (${CCVER} == "gcc44" || ${CCVER} == "gcc47")
 WERROR=-Werror
 .endif
