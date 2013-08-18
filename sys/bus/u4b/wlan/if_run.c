@@ -800,8 +800,6 @@ run_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
 
 	rvp = (struct run_vap *) kmalloc(sizeof(struct run_vap),
 	    M_80211_VAP, M_INTWAIT | M_ZERO);
-	if (rvp == NULL)
-		return (NULL);
 	vap = &rvp->vap;
 	ieee80211_vap_setup(ic, vap, name, unit, opmode, flags, bssid, mac);
 

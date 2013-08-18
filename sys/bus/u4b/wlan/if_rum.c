@@ -605,8 +605,6 @@ rum_vap_create(struct ieee80211com *ic, const char name[IFNAMSIZ], int unit,
 		return NULL;
 	rvp = (struct rum_vap *) kmalloc(sizeof(struct rum_vap),
 	    M_80211_VAP, M_INTWAIT | M_ZERO);
-	if (rvp == NULL)
-		return NULL;
 	vap = &rvp->vap;
 	/* enable s/w bmiss handling for sta mode */
 	ieee80211_vap_setup(ic, vap, name, unit, opmode,
