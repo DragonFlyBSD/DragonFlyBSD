@@ -2241,4 +2241,9 @@ TO_REMOVE+=/usr/share/man/man8/usbcontrol.8.gz
 TO_REMOVE+=/boot/kernel/if_rum.ko
 TO_REMOVE+=/usr/share/man/cat4/rum.4.gz
 TO_REMOVE+=/usr/share/man/man4/rum.4.gz
+TO_REMOVE+=/boot/kernel/if_run.ko
+TO_REMOVE+=/usr/share/man/cat4/run.4.gz
+TO_REMOVE+=/usr/share/man/man4/run.4.gz
+TO_REMOVE+=/usr/share/man/cat4/runfw.4.gz
+TO_REMOVE+=/usr/share/man/man4/runfw.4.gz
 .endif

@@ -17,7 +17,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $FreeBSD$
+ * $FreeBSD: src/sys/dev/usb/wlan/if_runvar.h,v 1.10 2013/02/11 00:34:54 svnexp Exp $
  */
 
 #ifndef _IF_RUNVAR_H_
@@ -205,7 +205,7 @@ struct run_softc {
 
 	uint8_t				sc_bssid[6];
 
-	struct mtx			sc_mtx;
+	struct lock			sc_lock;
 
 	struct run_endpoint_queue	sc_epq[RUN_EP_QUEUES];
 
@@ -239,6 +239,7 @@ struct run_softc {
 	uint8_t				sta_running;
 	uint8_t				rvp_cnt;
 	uint8_t				rvp_bmap;
+	uint8_t				sc_detached;
 
 	union {
 		struct run_rx_radiotap_header th;
@@ -255,8 +256,8 @@ struct run_softc {
 	int				sc_txtap_len;
 };
 
-#define RUN_LOCK(sc)		mtx_lock(&(sc)->sc_mtx)
-#define RUN_UNLOCK(sc)		mtx_unlock(&(sc)->sc_mtx)
-#define RUN_LOCK_ASSERT(sc, t)	mtx_assert(&(sc)->sc_mtx, t)
+#define RUN_LOCK(sc)		lockmgr(&(sc)->sc_lock, LK_EXCLUSIVE)
+#define RUN_UNLOCK(sc)		lockmgr(&(sc)->sc_lock, LK_RELEASE)
+#define RUN_LOCK_ASSERT(sc, t)	KKASSERT(lockstatus(&(sc)->sc_lock, curthread) != 0)
 
 #endif	/* _IF_RUNVAR_H_ */

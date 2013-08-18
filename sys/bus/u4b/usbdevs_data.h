@@ -7624,6 +7624,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "LAN-W150N/U2",
 	},
 	{
+	    USB_VENDOR_LOGITEC, USB_PRODUCT_LOGITEC_LANW300NU2S,
+	    0,
+	    "Logitec",
+	    "LAN-W300N/U2S",
+	},
+	{
 	    USB_VENDOR_LONGCHEER, USB_PRODUCT_LONGCHEER_WM66,
 	    0,
 	    "Longcheer Holdings, Ltd.",

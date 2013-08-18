@@ -504,8 +504,11 @@ MLINKS+=xe.4 if_xe.4
 MLINKS+=xl.4 if_xl.4
 
 .if defined(WANT_USB4BSD)
-MAN+=	rum.4
+MAN+=	rum.4 \
+	run.4 \
+	runfw.4
 MLINKS+=rum.4 if_rum.4
+MLINKS+=run.4 if_run.4
 .endif
 
 .if ${MACHINE_ARCH} == "i386"

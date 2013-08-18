@@ -2234,6 +2234,21 @@ bus/u4b/net/if_udav.c			optional udav uether usb4bsd
 # USB WLAN drivers
 #
 bus/u4b/wlan/if_rum.c			optional rum usb4bsd
+bus/u4b/wlan/if_run.c			optional run usb4bsd
+runfw.c					optional runfw usb4bsd		\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk run.fw:runfw -mrunfw -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"runfw.c"
+runfw.fwo				optional runfw usb4bsd		\
+	dependency	"run.fw"					\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"runfw.fwo"
+run.fw					optional runfw usb4bsd		\
+	dependency	"$S/contrib/dev/run/rt2870.fw.uu"		\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"run.fw"
 #
 # USB input drivers
 #
