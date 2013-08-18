@@ -396,131 +396,131 @@ dev/raid/iir/iir.c		optional iir
 dev/raid/iir/iir_ctrl.c	optional iir
 dev/raid/iir/iir_pci.c	optional iir pci
 dev/netif/iwi/if_iwi.c	optional iwi
-iwibssfw.c			optional iwifw		\
+iwibssfw.c			optional iwifw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwi_bss.fw:iwi_bss:300 -lintel_iwi -miwi_bss -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"iwibssfw.c"
-iwi_bss.fwo			optional iwifw		\
+iwi_bss.fwo			optional iwifw				\
 	dependency	"iwi_bss.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"iwi_bss.fwo"
-iwi_bss.fw			optional iwifw		\
-	dependency	"$S/contrib/dev/iwi/ipw2200-bss.fw.uu"					\
-	compile-with	"${NORMAL_FW}" \
+iwi_bss.fw			optional iwifw				\
+	dependency	"$S/contrib/dev/iwi/ipw2200-bss.fw.uu"		\
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwi_bss.fw"
-iwiibssfw.c			optional iwifw		\
+iwiibssfw.c			optional iwifw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwi_ibss.fw:iwi_ibss:300 -lintel_iwi -miwi_ibss -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"iwiibssfw.c"
-iwi_ibss.fwo			optional iwifw		\
+iwi_ibss.fwo			optional iwifw				\
 	dependency	"iwi_ibss.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"iwi_ibss.fwo"
-iwi_ibss.fw			optional iwifw		\
-	dependency	"$S/contrib/dev/iwi/ipw2200-ibss.fw.uu"					\
-	compile-with	"${NORMAL_FW}" \
+iwi_ibss.fw			optional iwifw				\
+	dependency	"$S/contrib/dev/iwi/ipw2200-ibss.fw.uu"		\
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwi_ibss.fw"
-iwimonitorfw.c			optional iwifw		\
+iwimonitorfw.c			optional iwifw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwi_monitor.fw:iwi_monitor:300 -lintel_iwi -miwi_monitor -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"iwimonitorfw.c"
-iwi_monitor.fwo			optional iwifw		\
+iwi_monitor.fwo			optional iwifw				\
 	dependency	"iwi_monitor.fw"				\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"iwi_monitor.fwo"
-iwi_monitor.fw			optional iwifw		\
-	dependency	"$S/contrib/dev/iwi/ipw2200-sniffer.fw.uu"					\
-	compile-with	"${NORMAL_FW}" \
+iwi_monitor.fw			optional iwifw				\
+	dependency	"$S/contrib/dev/iwi/ipw2200-sniffer.fw.uu"	\
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwi_monitor.fw"
 dev/netif/iwn/if_iwn.c	optional iwn
-iwn1000fw.c			optional iwnfw		\
+iwn1000fw.c			optional iwnfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwn1000.fw:iwn1000fw -miwn1000fw -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"iwn1000fw.c"
-iwn1000fw.fwo			optional iwnfw		\
+iwn1000fw.fwo			optional iwnfw				\
 	dependency	"iwn1000.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"iwn1000fw.fwo"
-iwn1000.fw			optional iwnfw		\
-	dependency	"$S/contrib/dev/iwn/iwlwifi-1000-128.50.3.1.fw.uu"					\
-	compile-with	"${NORMAL_FW}" \
+iwn1000.fw			optional iwnfw				\
+	dependency	"$S/contrib/dev/iwn/iwlwifi-1000-128.50.3.1.fw.uu" \
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwn1000.fw"
-iwn4965fw.c			optional iwnfw		\
+iwn4965fw.c			optional iwnfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwn4965.fw:iwn4965fw -miwn4965fw -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"iwn4965fw.c"
-iwn4965fw.fwo			optional iwnfw		\
+iwn4965fw.fwo			optional iwnfw				\
 	dependency	"iwn4965.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"iwn4965fw.fwo"
-iwn4965.fw			optional iwnfw		\
-	dependency	"$S/contrib/dev/iwn/iwlwifi-4965-228.61.2.24.fw.uu"					\
-	compile-with	"${NORMAL_FW}" \
+iwn4965.fw			optional iwnfw				\
+	dependency	"$S/contrib/dev/iwn/iwlwifi-4965-228.61.2.24.fw.uu" \
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwn4965.fw"
-iwn5000fw.c			optional iwnfw		\
+iwn5000fw.c			optional iwnfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwn5000.fw:iwn5000fw -miwn5000fw -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"iwn5000fw.c"
-iwn5000fw.fwo		optional iwnfw			\
+iwn5000fw.fwo		optional iwnfw					\
 	dependency	"iwn5000.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"iwn5000fw.fwo"
-iwn5000.fw			optional iwnfw		\
-	dependency	"$S/contrib/dev/iwn/iwlwifi-5000-8.24.2.12.fw.uu"					\
-	compile-with	"${NORMAL_FW}"	\
+iwn5000.fw			optional iwnfw				\
+	dependency	"$S/contrib/dev/iwn/iwlwifi-5000-8.24.2.12.fw.uu" \
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwn5000.fw"
-iwn5150fw.c			optional iwnfw		\
+iwn5150fw.c			optional iwnfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwn5150.fw:iwn5150fw -miwn5150fw -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"iwn5150fw.c"
-iwn5150fw.fwo			optional iwnfw		\
+iwn5150fw.fwo			optional iwnfw				\
 	dependency	"iwn5150.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"iwn5150fw.fwo"
-iwn5150.fw			optional iwnfw		\
-	dependency	"$S/contrib/dev/iwn/iwlwifi-5150-8.24.2.2.fw.uu"					\
-	compile-with	"${NORMAL_FW}" \
+iwn5150.fw			optional iwnfw				\
+	dependency	"$S/contrib/dev/iwn/iwlwifi-5150-8.24.2.2.fw.uu" \
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwn5150.fw"
-iwn6000fw.c			optional iwnfw		\
+iwn6000fw.c			optional iwnfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwn6000.fw:iwn6000fw -miwn6000fw -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"iwn6000fw.c"
-iwn6000fw.fwo			optional iwnfw		\
+iwn6000fw.fwo			optional iwnfw				\
 	dependency	"iwn6000.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"iwn6000fw.fwo"
-iwn6000.fw			optional iwnfw		\
-	dependency	"$S/contrib/dev/iwn/iwlwifi-6000-9.221.4.1.fw.uu"					\
-	compile-with	"${NORMAL_FW}" \
+iwn6000.fw			optional iwnfw				\
+	dependency	"$S/contrib/dev/iwn/iwlwifi-6000-9.221.4.1.fw.uu" \
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwn6000.fw"
-iwn6050fw.c			optional iwnfw		\
+iwn6050fw.c			optional iwnfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk iwn6050.fw:iwn6050fw -miwn6050fw -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"iwn6050fw.c"
-iwn6050fw.fwo			optional iwnfw		\
+iwn6050fw.fwo			optional iwnfw				\
 	dependency	"iwn6050.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"iwn6050fw.fwo"
-iwn6050.fw			optional iwnfw		\
-	dependency	"$S/contrib/dev/iwn/iwlwifi-6050-9.201.4.1.fw.uu"					\
-	compile-with	"${NORMAL_FW}" \
+iwn6050.fw			optional iwnfw				\
+	dependency	"$S/contrib/dev/iwn/iwlwifi-6050-9.201.4.1.fw.uu" \
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"iwn6050.fw"
 dev/netif/iwl/if_iwl.c	optional iwl
@@ -533,60 +533,60 @@ dev/netif/acx/acx111.c	optional acx
 dev/netif/ral/if_ral_pci.c	optional ral
 dev/netif/ral/rt2560.c		optional ral
 dev/netif/ral/rt2661.c		optional ral
-rt2561fw.c			optional ralfw		\
+rt2561fw.c			optional ralfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk rt2561.fw:rt2561fw -mrt2561 -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"rt2561fw.c"
-rt2561fw.fwo			optional ralfw		\
+rt2561fw.fwo			optional ralfw				\
 	dependency	"rt2561.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"rt2561fw.fwo"
-rt2561.fw			optional ralfw		\
-	dependency	"$S/contrib/dev/ral/rt2561.fw.uu"					\
-	compile-with	"${NORMAL_FW}" \
+rt2561.fw			optional ralfw				\
+	dependency	"$S/contrib/dev/ral/rt2561.fw.uu"		\
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"rt2561.fw"
-rt2561sfw.c			optional ralfw		\
+rt2561sfw.c			optional ralfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk rt2561s.fw:rt2561sfw -mrt2561s -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"rt2561sfw.c"
-rt2561sfw.fwo			optional ralfw		\
+rt2561sfw.fwo			optional ralfw				\
 	dependency	"rt2561s.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"rt2561sfw.fwo"
-rt2561s.fw			optional ralfw		\
-	dependency	"$S/contrib/dev/ral/rt2561s.fw.uu"					\
-	compile-with	"${NORMAL_FW}"	\
+rt2561s.fw			optional ralfw				\
+	dependency	"$S/contrib/dev/ral/rt2561s.fw.uu"		\
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"rt2561s.fw"
-rt2661fw.c			optional ralfw		\
+rt2661fw.c			optional ralfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk rt2661.fw:rt2661fw -mrt2661 -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"rt2661fw.c"
-rt2661fw.fwo			optional ralfw		\
+rt2661fw.fwo			optional ralfw				\
 	dependency	"rt2661.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"rt2661fw.fwo"
-rt2661.fw			optional ralfw		\
-	dependency	"$S/contrib/dev/ral/rt2661.fw.uu"					\
-	compile-with	"${NORMAL_FW}"	\
+rt2661.fw			optional ralfw				\
+	dependency	"$S/contrib/dev/ral/rt2661.fw.uu"		\
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"rt2661.fw"
-rt2860fw.c			optional ralfw		\
+rt2860fw.c			optional ralfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk rt2860.fw:rt2860fw -mrt2860 -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"rt2860fw.c"
-rt2860fw.fwo			optional ralfw		\
+rt2860fw.fwo			optional ralfw				\
 	dependency	"rt2860.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"rt2860fw.fwo"
-rt2860.fw			optional ralfw		\
-	dependency	"$S/contrib/dev/ral/rt2860.fw.uu"					\
-	compile-with	"${NORMAL_FW}"	\
+rt2860.fw			optional ralfw				\
+	dependency	"$S/contrib/dev/ral/rt2860.fw.uu"		\
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"rt2860.fw"
 #dev/netif/rum/if_rum.c		optional rum usb
@@ -772,18 +772,17 @@ dev/netif/wi/if_wi_pccard.c		optional wi pccard
 dev/netif/wi/if_wi_pci.c		optional wi pci
 dev/netif/wpi/if_wpi.c			optional wpi
 wpifw.c			optional wpifw					\
-	dependency	"$S/contrib/dev/wpi/iwlwifi-3945-2.14.4.fw.uu"	\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk wpi.fw:wpifw:2144 -mwpifw -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
 	clean		"wpifw.c"
 wpifw.fwo		optional wpifw					\
 	dependency	"wpi.fw"					\
-	compile-with	"${NORMAL_FWO}" \
+	compile-with	"${NORMAL_FWO}"					\
 	no-implicit-rule						\
 	clean		"wpifw.fwo"
 wpi.fw			optional wpifw					\
 	dependency	"$S/contrib/dev/wpi/iwlwifi-3945-2.14.4.fw.uu"	\
-	compile-with	"${NORMAL_FW}" \
+	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"wpi.fw"
 dev/netif/rtw/rtw.c			optional rtw
