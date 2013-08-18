@@ -3542,6 +3542,7 @@ xhci_configure_reset_endpoint(struct usb_xfer *xfer)
 	edesc = xfer->endpoint->edesc;
 
 	epno = edesc->bEndpointAddress;
+	stream_id = xfer->stream_id;
 
 	if ((edesc->bmAttributes & UE_XFERTYPE) == UE_CONTROL)
 		epno |= UE_DIR_IN;
@@ -3579,7 +3580,7 @@ xhci_configure_reset_endpoint(struct usb_xfer *xfer)
 
 	err = xhci_cmd_set_tr_dequeue_ptr(sc,
 	    (pepext->physaddr + (stream_id * sizeof(struct xhci_trb) *
-		XHCI_MAX_TRANSFERS)) | XHCI_EPCTX_2_DCS_SET(1),
+	    XHCI_MAX_TRANSFERS)) | XHCI_EPCTX_2_DCS_SET(1),
 	    stream_id, epno, index);
 
 	if (err != 0)
@@ -3590,7 +3591,7 @@ xhci_configure_reset_endpoint(struct usb_xfer *xfer)
 	 * endpoint context state diagram in the XHCI specification:
 	 */
 
-	xhci_configure_mask(udev, 1U << epno, 0);
+	xhci_configure_mask(udev, (1U << epno) | 1U, 0);
 
 	err = xhci_cmd_evaluate_ctx(sc, buf_inp.physaddr, index);
 
