@@ -422,6 +422,8 @@ struct umass_softc {
 	uint8_t	sc_maxlun;		/* maximum LUN number, inclusive */
 	uint8_t	sc_last_xfer_index;
 	uint8_t	sc_status_try;
+
+	struct usb_callout sc_rescan_timeout;
 };
 
 struct umass_probe_proto {
@@ -2083,6 +2085,7 @@ umass_cam_attach_sim(struct umass_softc *sc)
 	 * The CAM layer will then after a while start probing for devices on
 	 * the bus. The number of SIMs is limited to one.
 	 */
+	usb_callout_init_mtx(&sc->sc_rescan_timeout, &sc->sc_lock, 0);
 
 	devq = cam_simq_alloc(1 /* maximum openings */ );
 	if (devq == NULL) {
@@ -2116,6 +2119,64 @@ umass_cam_attach_sim(struct umass_softc *sc)
 	return (0);
 }
 
+
+/*
+ * (mp) We need this for DragonflyBSD to realise that there
+ * is a new device present
+ */
+
+static void
+umass_cam_rescan_callback(struct cam_periph *periph, union ccb *ccb)
+{
+#ifdef USB_DEBUG
+        if (ccb->ccb_h.status != CAM_REQ_CMP) {
+                kprintf("%s:%d Rescan failed, 0x%04x\n",
+                    periph->periph_name, periph->unit_number, 
+                    ccb->ccb_h.status);
+        } else {
+                kprintf("%s%d: Rescan succeeded\n",
+                    periph->periph_name, periph->unit_number);
+        }
+#endif
+
+        xpt_free_path(ccb->ccb_h.path);
+        kfree(ccb, M_USBDEV);
+}
+
+/*
+ * Rescan the SCSI bus to detect newly added devices.  We use
+ * an async rescan to avoid reentrancy issues.
+ */
+static void
+umass_cam_rescan(void *addr)
+{
+        struct umass_softc *sc = (struct umass_softc *) addr;
+        struct cam_path *path;
+        union ccb *ccb;
+
+        ccb = kmalloc(sizeof(union ccb), M_USBDEV, M_INTWAIT|M_ZERO);
+
+        DPRINTF(sc, UDMASS_SCSI, "scbus%d: scanning for %s:%d:%d:%d\n",
+            cam_sim_path(sc->sc_sim),
+            device_get_nameunit(sc->sc_dev), cam_sim_path(sc->sc_sim),
+            device_get_unit(sc->sc_dev), CAM_LUN_WILDCARD);
+
+        if (xpt_create_path(&path, xpt_periph, cam_sim_path(sc->sc_sim),
+                CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP)
+        {
+                kfree(ccb, M_USBDEV);
+                return;
+        }
+
+        xpt_setup_ccb(&ccb->ccb_h, path, 5/*priority (low)*/);
+        ccb->ccb_h.func_code = XPT_SCAN_BUS;
+        ccb->ccb_h.cbfcnp = umass_cam_rescan_callback;
+        ccb->crcn.flags = CAM_FLAG_NONE;
+        xpt_action_async(ccb);
+
+        /* The scan is in progress now. */
+} 
+
 static void
 umass_cam_attach(struct umass_softc *sc)
 {
@@ -2126,6 +2187,17 @@ umass_cam_attach(struct umass_softc *sc)
 		    sc->sc_name, cam_sim_path(sc->sc_sim),
 		    sc->sc_unit, CAM_LUN_WILDCARD,
 		    cam_sim_path(sc->sc_sim));
+
+        if (!cold) {
+                /*
+                 * failure is benign, as the user can still do it by hand
+                 * (camcontrol rescan <busno>). Only do this if we are not
+                 * booting, because CAM does a scan after booting has
+                 * completed, when interrupts have been enabled.
+                 */
+                usb_callout_reset(&sc->sc_rescan_timeout, USB_MS_TO_TICKS(200),
+                    umass_cam_rescan, sc);
+        }
 }
 
 /* umass_cam_detach
