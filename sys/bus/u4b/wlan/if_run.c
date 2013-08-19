@@ -3420,10 +3420,8 @@ run_start_locked(struct ifnet *ifp)
 	struct ieee80211_node *ni;
 	struct mbuf *m = NULL;
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0) {
-		wlan_serialize_exit();
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
-	}
 
 	for (;;) {
 		/* send data frames */
