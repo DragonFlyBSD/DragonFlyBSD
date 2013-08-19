@@ -644,7 +644,7 @@ ncv_pdma_end(struct ncv_softc *sc, struct targ_info *ti)
 bad:
 			if ((slp->sl_error & PDMAERR) == 0)
 			{
-				kprintf("%s: stragne cnt hw 0x%x soft 0x%x\n",
+				kprintf("%s: strange cnt hw 0x%x soft 0x%x\n",
 					slp->sl_xname, len,
 					slp->sl_scp.scp_datalen);
 			}

@@ -1131,7 +1131,7 @@ static void arcmsr_stop_hba_bgrb(struct AdapterControlBlock *acb)
 	CHIP_REG_WRITE32(HBA_MessageUnit,
 	0, inbound_msgaddr0, ARCMSR_INBOUND_MESG0_STOP_BGRB);
 	if(!arcmsr_hba_wait_msgint_ready(acb)) {
-		kprintf("arcmsr%d: wait 'stop adapter background rebulid' timeout \n"
+		kprintf("arcmsr%d: wait 'stop adapter background rebuild' timeout \n"
 			, acb->pci_unit);
 	}
 	return;
@@ -1146,7 +1146,7 @@ static void arcmsr_stop_hbb_bgrb(struct AdapterControlBlock *acb)
 	CHIP_REG_WRITE32(HBB_DOORBELL,
 	0, drv2iop_doorbell, ARCMSR_MESSAGE_STOP_BGRB);
 	if(!arcmsr_hbb_wait_msgint_ready(acb)) {
-		kprintf( "arcmsr%d: wait 'stop adapter background rebulid' timeout \n"
+		kprintf( "arcmsr%d: wait 'stop adapter background rebuild' timeout \n"
 			, acb->pci_unit);
 	}
 }
@@ -1160,7 +1160,7 @@ static void arcmsr_stop_hbc_bgrb(struct AdapterControlBlock *acb)
 	CHIP_REG_WRITE32(HBC_MessageUnit, 0, inbound_msgaddr0, ARCMSR_INBOUND_MESG0_STOP_BGRB);
 	CHIP_REG_WRITE32(HBC_MessageUnit, 0, inbound_doorbell,ARCMSR_HBCMU_DRV2IOP_MESSAGE_CMD_DONE);
 	if(!arcmsr_hbc_wait_msgint_ready(acb)) {
-		kprintf("arcmsr%d: wait 'stop adapter background rebulid' timeout \n", acb->pci_unit);
+		kprintf("arcmsr%d: wait 'stop adapter background rebuild' timeout \n", acb->pci_unit);
 	}
 }
 /*
@@ -2625,7 +2625,7 @@ static void arcmsr_start_hba_bgrb(struct AdapterControlBlock *acb)
 	acb->acb_flags |= ACB_F_MSG_START_BGRB;
 	CHIP_REG_WRITE32(HBA_MessageUnit, 0, inbound_msgaddr0, ARCMSR_INBOUND_MESG0_START_BGRB);
 	if(!arcmsr_hba_wait_msgint_ready(acb)) {
-		kprintf("arcmsr%d: wait 'start adapter background rebulid' timeout \n", acb->pci_unit);
+		kprintf("arcmsr%d: wait 'start adapter background rebuild' timeout \n", acb->pci_unit);
 	}
 }
 /*
@@ -2637,7 +2637,7 @@ static void arcmsr_start_hbb_bgrb(struct AdapterControlBlock *acb)
 	acb->acb_flags |= ACB_F_MSG_START_BGRB;
 	CHIP_REG_WRITE32(HBB_DOORBELL, 0, drv2iop_doorbell,  ARCMSR_MESSAGE_START_BGRB);
 	if(!arcmsr_hbb_wait_msgint_ready(acb)) {
-		kprintf( "arcmsr%d: wait 'start adapter background rebulid' timeout \n", acb->pci_unit);
+		kprintf( "arcmsr%d: wait 'start adapter background rebuild' timeout \n", acb->pci_unit);
 	}
 }
 /*
@@ -2650,7 +2650,7 @@ static void arcmsr_start_hbc_bgrb(struct AdapterControlBlock *acb)
 	CHIP_REG_WRITE32(HBC_MessageUnit, 0, inbound_msgaddr0, ARCMSR_INBOUND_MESG0_START_BGRB);
 	CHIP_REG_WRITE32(HBC_MessageUnit, 0, inbound_doorbell, ARCMSR_HBCMU_DRV2IOP_MESSAGE_CMD_DONE);
 	if(!arcmsr_hbc_wait_msgint_ready(acb)) {
-		kprintf("arcmsr%d: wait 'start adapter background rebulid' timeout \n", acb->pci_unit);
+		kprintf("arcmsr%d: wait 'start adapter background rebuild' timeout \n", acb->pci_unit);
 	}
 }
 /*

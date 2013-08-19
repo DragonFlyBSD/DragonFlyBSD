@@ -659,5 +659,5 @@ dm_builtin_uninit(void *arg)
 
 TUNABLE_INT("debug.dm_debug", &dm_debug_level);
 SYSCTL_INT(_debug, OID_AUTO, dm_debug, CTLFLAG_RW, &dm_debug_level,
-	       0, "Eanble device mapper debugging");
+	       0, "Enable device mapper debugging");
 

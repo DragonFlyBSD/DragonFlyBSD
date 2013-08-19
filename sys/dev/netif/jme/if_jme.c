@@ -3027,7 +3027,7 @@ jme_stop_rx(struct jme_softc *sc)
 			break;
 	}
 	if (i == 0)
-		device_printf(sc->jme_dev, "stopping recevier timeout!\n");
+		device_printf(sc->jme_dev, "stopping receiver timeout!\n");
 }
 
 static void

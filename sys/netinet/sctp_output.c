@@ -5767,7 +5767,7 @@ sctp_med_chunk_output(struct sctp_inpcb *inp,
 							 */
 #ifdef SCTP_DEBUG
 							if (sctp_debug_on & SCTP_DEBUG_OUTPUT3) {
-								kprintf("Moving data to an alterante\n");
+								kprintf("Moving data to an alternate\n");
 							}
 #endif
 							sctp_move_to_an_alt(stcb, asoc, net);

@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/lib/libipsec/ipsec_strerror.c,v 1.1.2.2 2001/07/03 11:01:14 ume Exp $	*/
-/*	$DragonFly: src/lib/libipsec/ipsec_strerror.c,v 1.2 2003/06/17 04:26:49 dillon Exp $	*/
 /*	$KAME: ipsec_strerror.c,v 1.7 2000/07/30 00:45:12 itojun Exp $	*/
 
 /*
@@ -59,7 +58,7 @@ static const char *ipsec_errlist[] = {
 "Invalid key length",				/*EIPSEC_INVAL_KEYLEN*/
 "Invalid address family",			/*EIPSEC_INVAL_FAMILY*/
 "Invalid prefix length",			/*EIPSEC_INVAL_PREFIXLEN*/
-"Invalid direciton",				/*EIPSEC_INVAL_DIR*/
+"Invalid direction",				/*EIPSEC_INVAL_DIR*/
 "SPI range violation",				/*EIPSEC_INVAL_SPI*/
 "No protocol specified",			/*EIPSEC_NO_PROTO*/
 "No algorithm specified",			/*EIPSEC_NO_ALGS*/

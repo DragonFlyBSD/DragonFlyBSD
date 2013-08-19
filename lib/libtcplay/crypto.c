@@ -214,7 +214,7 @@ apply_keyfiles(unsigned char *pass, size_t pass_memsz, const char *keyfiles[],
 	uint32_t crc;
 
 	if (pass_memsz < MAX_PASSSZ) {
-		tc_log(1, "Not enough memory for password manipluation\n");
+		tc_log(1, "Not enough memory for password manipulation\n");
 		return ENOMEM;
 	}
 

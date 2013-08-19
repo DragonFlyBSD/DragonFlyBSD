@@ -1937,7 +1937,7 @@ mly_cam_attach(struct mly_softc *sc)
 		return(ENOMEM);
 	    }
 	    if (xpt_bus_register(sc->mly_cam_sim[chn], chn)) {
-		mly_printf(sc, "CAM XPT phsyical channel registration failed\n");
+		mly_printf(sc, "CAM XPT physical channel registration failed\n");
 		return(ENXIO);
 	    }
 	    debug(1, "registered physical channel %d", chn);

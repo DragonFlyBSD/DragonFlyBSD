@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/faithd/faithd.c,v 1.2.2.7 2002/04/28 08:01:39 ume Exp $
- * $DragonFly: src/usr.sbin/faithd/faithd.c,v 1.5 2004/02/10 02:59:41 rob Exp $
  */
 
 /*
@@ -620,12 +619,12 @@ play_child(int s_src, struct sockaddr *srcaddr)
 		break;
 	case RSH_PORT:
 		syslog(LOG_WARNING,
-		    "WARINNG: it is insecure to relay rsh port");
+		    "WARNING: it is insecure to relay rsh port");
 		rsh_relay(s_src, s_dst);
 		break;
 	case RLOGIN_PORT:
 		syslog(LOG_WARNING,
-		    "WARINNG: it is insecure to relay rlogin port");
+		    "WARNING: it is insecure to relay rlogin port");
 		/*FALLTHROUGH*/
 	default:
 		tcp_relay(s_src, s_dst, service);
