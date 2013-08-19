@@ -2249,6 +2249,35 @@ run.fw					optional runfw usb4bsd		\
 	compile-with	"${NORMAL_FW}"					\
 	no-obj no-implicit-rule						\
 	clean		"run.fw"
+bus/u4b/wlan/if_urtwn.c			optional urtwn usb4bsd
+urtwn-rtl8192cfwT.c			optional urtwnfw usb4bsd	\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk urtwn-rtl8192cfwT.fw:urtwn-rtl8192cfwT:111 -murtwn-rtl8192cfwT -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"urtwn-rtl8192cfwT.c"
+urtwn-rtl8192cfwT.fwo			optional urtwnfw usb4bsd	\
+	dependency	"urtwn-rtl8192cfwT.fw"				\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"urtwn-rtl8192cfwT.fwo"
+urtwn-rtl8192cfwT.fw			optional urtwnfw usb4bsd	\
+	dependency	"$S/contrib/dev/urtwn/urtwn-rtl8192cfwT.fw.uu"	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"urtwn-rtl8192cfwT.fw"
+urtwn-rtl8192cfwU.c			optional urtwnfw usb4bsd	\
+	compile-with	"${AWK} -f $S/tools/fw_stub.awk urtwn-rtl8192cfwU.fw:urtwn-rtl8192cfwU:111 -murtwn-rtl8192cfwU -c${.TARGET}" \
+	no-implicit-rule before-depend local				\
+	clean		"urtwn-rtl8192cfwU.c"
+urtwn-rtl8192cfwU.fwo			optional urtwnfw usb4bsd	\
+	dependency	"urtwn-rtl8192cfwU.fw"				\
+	compile-with	"${NORMAL_FWO}"					\
+	no-implicit-rule						\
+	clean		"urtwn-rtl8192cfwU.fwo"
+urtwn-rtl8192cfwU.fw			optional urtwnfw usb4bsd	\
+	dependency	"$S/contrib/dev/urtwn/urtwn-rtl8192cfwU.fw.uu"	\
+	compile-with	"${NORMAL_FW}"					\
+	no-obj no-implicit-rule						\
+	clean		"urtwn-rtl8192cfwU.fw"
 #
 # USB input drivers
 #

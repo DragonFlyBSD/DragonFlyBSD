@@ -2242,8 +2242,14 @@ TO_REMOVE+=/boot/kernel/if_rum.ko
 TO_REMOVE+=/usr/share/man/cat4/rum.4.gz
 TO_REMOVE+=/usr/share/man/man4/rum.4.gz
 TO_REMOVE+=/boot/kernel/if_run.ko
+TO_REMOVE+=/boot/kernel/runfw.ko
 TO_REMOVE+=/usr/share/man/cat4/run.4.gz
 TO_REMOVE+=/usr/share/man/man4/run.4.gz
 TO_REMOVE+=/usr/share/man/cat4/runfw.4.gz
 TO_REMOVE+=/usr/share/man/man4/runfw.4.gz
+TO_REMOVE+=/boot/kernel/if_urtwn.ko
+TO_REMOVE+=/boot/kernel/urtwn-rtl8192cfwT.ko
+TO_REMOVE+=/boot/kernel/urtwn-rtl8192cfwU.ko
+TO_REMOVE+=/usr/share/man/cat4/urtwn.4.gz
+TO_REMOVE+=/usr/share/man/man4/urtwn.4.gz
 .endif

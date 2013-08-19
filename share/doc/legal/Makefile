@@ -3,6 +3,7 @@
 SUBDIR=	intel_iwi \
 	intel_iwn \
 	intel_wpi \
-	ralink_ral
+	ralink_ral \
+	realtek
 
 .include <bsd.subdir.mk>

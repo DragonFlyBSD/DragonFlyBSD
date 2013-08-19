@@ -126,6 +126,8 @@
                 ..
                 ralink_ral
                 ..
+                realtek
+                ..
             ..
         ..
         examples

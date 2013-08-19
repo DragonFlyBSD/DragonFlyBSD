@@ -292,6 +292,24 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "WUG2700",
 	},
 	{
+	    USB_VENDOR_ABOCOM, USB_PRODUCT_ABOCOM_RTL8188CU_1,
+	    0,
+	    "AboCom Systems",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_ABOCOM, USB_PRODUCT_ABOCOM_RTL8188CU_2,
+	    0,
+	    "AboCom Systems",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_ABOCOM, USB_PRODUCT_ABOCOM_RTL8192CU,
+	    0,
+	    "AboCom Systems",
+	    "RTL8192CU",
+	},
+	{
 	    USB_VENDOR_ACTON, USB_PRODUCT_ACTON_SPECTRAPRO,
 	    0,
 	    "Acton Research Corp.",
@@ -1456,6 +1474,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "RT3070",
 	},
 	{
+	    USB_VENDOR_ASUS, USB_PRODUCT_ASUS_RTL8192CU,
+	    0,
+	    "ASUSTeK Computer",
+	    "RTL8192CU",
+	},
+	{
 	    USB_VENDOR_ASUS, USB_PRODUCT_ASUS_A730W,
 	    0,
 	    "ASUSTeK Computer",
@@ -1654,6 +1678,24 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "RT3070",
 	},
 	{
+	    USB_VENDOR_AZUREWAVE, USB_PRODUCT_AZUREWAVE_RTL8188CU,
+	    0,
+	    "AsureWave",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_AZUREWAVE, USB_PRODUCT_AZUREWAVE_RTL8188CE_1,
+	    0,
+	    "AsureWave",
+	    "RTL8188CE",
+	},
+	{
+	    USB_VENDOR_AZUREWAVE, USB_PRODUCT_AZUREWAVE_RTL8188CE_2,
+	    0,
+	    "AsureWave",
+	    "RTL8188CE",
+	},
+	{
 	    USB_VENDOR_BALTECH, USB_PRODUCT_BALTECH_CARDREADER,
 	    0,
 	    "Baltech",
@@ -1850,6 +1892,24 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "Belkin Components",
 	    "F5U120-PC Hub",
+	},
+	{
+	    USB_VENDOR_BELKIN, USB_PRODUCT_BELKIN_RTL8188CU,
+	    0,
+	    "Belkin Components",
+	    "RTL8188CU Wireless Adapter",
+	},
+	{
+	    USB_VENDOR_BELKIN, USB_PRODUCT_BELKIN_RTL8192CU,
+	    0,
+	    "Belkin Components",
+	    "RTL8192CU Wireless Adapter",
+	},
+	{
+	    USB_VENDOR_BELKIN, USB_PRODUCT_BELKIN_F7D2102,
+	    0,
+	    "Belkin Components",
+	    "F7D2102 Wireless Adapter",
 	},
 	{
 	    USB_VENDOR_BELKIN, USB_PRODUCT_BELKIN_ZD1211B,
@@ -2174,6 +2234,36 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "Chicony Electronics",
 	    "Notebook Web Camera",
+	},
+	{
+	    USB_VENDOR_CHICONY, USB_PRODUCT_CHICONY_RTL8188CUS_1,
+	    0,
+	    "Chicony Electronics",
+	    "RTL8188CUS",
+	},
+	{
+	    USB_VENDOR_CHICONY, USB_PRODUCT_CHICONY_RTL8188CUS_2,
+	    0,
+	    "Chicony Electronics",
+	    "RTL8188CUS",
+	},
+	{
+	    USB_VENDOR_CHICONY, USB_PRODUCT_CHICONY_RTL8188CUS_3,
+	    0,
+	    "Chicony Electronics",
+	    "RTL8188CUS",
+	},
+	{
+	    USB_VENDOR_CHICONY, USB_PRODUCT_CHICONY_RTL8188CUS_4,
+	    0,
+	    "Chicony Electronics",
+	    "RTL8188CUS",
+	},
+	{
+	    USB_VENDOR_CHICONY, USB_PRODUCT_CHICONY_RTL8188CUS_5,
+	    0,
+	    "Chicony Electronics",
+	    "RTL8188CUS",
 	},
 	{
 	    USB_VENDOR_CHICONY2, USB_PRODUCT_CHICONY2_TWINKLECAM,
@@ -2588,6 +2678,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "Corega",
 	    "CG-WLUSB300GNM",
+	},
+	{
+	    USB_VENDOR_COREGA, USB_PRODUCT_COREGA_RTL8192CU,
+	    0,
+	    "Corega",
+	    "RTL8192CU",
 	},
 	{
 	    USB_VENDOR_COREGA, USB_PRODUCT_COREGA_WLUSB_11_STICK,
@@ -3130,6 +3226,36 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "DUB-H7 USB 2.0 7-Port Hub",
 	},
 	{
+	    USB_VENDOR_DLINK, USB_PRODUCT_DLINK_RTL8188CU,
+	    0,
+	    "D-Link",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_DLINK, USB_PRODUCT_DLINK_RTL8192CU_1,
+	    0,
+	    "D-Link",
+	    "RTL8192CU",
+	},
+	{
+	    USB_VENDOR_DLINK, USB_PRODUCT_DLINK_RTL8192CU_2,
+	    0,
+	    "D-Link",
+	    "RTL8192CU",
+	},
+	{
+	    USB_VENDOR_DLINK, USB_PRODUCT_DLINK_RTL8192CU_3,
+	    0,
+	    "D-Link",
+	    "RTL8192CU",
+	},
+	{
+	    USB_VENDOR_DLINK, USB_PRODUCT_DLINK_DWA131B,
+	    0,
+	    "D-Link",
+	    "DWA-131 rev B",
+	},
+	{
 	    USB_VENDOR_DLINK2, USB_PRODUCT_DLINK2_DWA120,
 	    0,
 	    "D-Link",
@@ -3302,6 +3428,18 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "Edimax",
 	    "EW-7718",
+	},
+	{
+	    USB_VENDOR_EDIMAX, USB_PRODUCT_EDIMAX_EW7811UN,
+	    0,
+	    "Edimax",
+	    "EW-7811Un",
+	},
+	{
+	    USB_VENDOR_EDIMAX, USB_PRODUCT_EDIMAX_RTL8192CU,
+	    0,
+	    "Edimax",
+	    "RTL8192CU",
 	},
 	{
 	    USB_VENDOR_EGALAX, USB_PRODUCT_EGALAX_TPANEL,
@@ -3818,6 +3956,18 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "Falcom Wireless Communications GmbH",
 	    "FTDI compatible adapter",
+	},
+	{
+	    USB_VENDOR_FEIXUN, USB_PRODUCT_FEIXUN_RTL8188CU,
+	    0,
+	    "FeiXun Communication",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_FEIXUN, USB_PRODUCT_FEIXUN_RTL8192CU,
+	    0,
+	    "FeiXun Communication",
+	    "RTL8192CU",
 	},
 	{
 	    USB_VENDOR_FEIYA, USB_PRODUCT_FEIYA_DUMMY,
@@ -5590,6 +5740,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "HWNU-300",
 	},
 	{
+	    USB_VENDOR_GUILLEMOT, USB_PRODUCT_GUILLEMOT_HWNUP150,
+	    0,
+	    "Guillemot",
+	    "HWNUP-150",
+	},
+	{
 	    USB_VENDOR_HAGIWARA, USB_PRODUCT_HAGIWARA_FGSM,
 	    0,
 	    "Hagiwara Sys-Com",
@@ -5666,6 +5822,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "Hawking",
 	    "RT3070",
+	},
+	{
+	    USB_VENDOR_HAWKING, USB_PRODUCT_HAWKING_RTL8192CU,
+	    0,
+	    "Hawking",
+	    "RTL8192CU",
 	},
 	{
 	    USB_VENDOR_HAWKING, USB_PRODUCT_HAWKING_UF100,
@@ -5924,6 +6086,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "Hewlett Packard",
 	    "DeskJet 930c",
+	},
+	{
+	    USB_VENDOR_HP3, USB_PRODUCT_HP3_RTL8188CU,
+	    0,
+	    "Hewlett Packard",
+	    "RTL8188CU",
 	},
 	{
 	    USB_VENDOR_HP, USB_PRODUCT_HP_P2000U,
@@ -10204,6 +10372,18 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "WG111V2",
 	},
 	{
+	    USB_VENDOR_NETGEAR, USB_PRODUCT_NETGEAR_RTL8192CU,
+	    0,
+	    "BayNETGEAR",
+	    "RTL8192CU",
+	},
+	{
+	    USB_VENDOR_NETGEAR, USB_PRODUCT_NETGEAR_WNA1000M,
+	    0,
+	    "BayNETGEAR",
+	    "WNA1000M",
+	},
+	{
 	    USB_VENDOR_NETGEAR2, USB_PRODUCT_NETGEAR2_MA101,
 	    0,
 	    "Netgear",
@@ -10246,6 +10426,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "WPN111",
 	},
 	{
+	    USB_VENDOR_NETGEAR4, USB_PRODUCT_NETGEAR4_RTL8188CU,
+	    0,
+	    "Netgear",
+	    "RTL8188CU",
+	},
+	{
 	    USB_VENDOR_NETINDEX, USB_PRODUCT_NETINDEX_WS002IN,
 	    0,
 	    "NetIndex",
@@ -10286,6 +10472,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "NovaTech",
 	    "RT2573",
+	},
+	{
+	    USB_VENDOR_NOVATECH, USB_PRODUCT_NOVATECH_RTL8188CU,
+	    0,
+	    "NovaTech",
+	    "RTL8188CU",
 	},
 	{
 	    USB_VENDOR_NOKIA, USB_PRODUCT_NOKIA_N958GB,
@@ -11308,6 +11500,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "GW-US11H WLAN",
 	},
 	{
+	    USB_VENDOR_PLANEX2, USB_PRODUCT_PLANEX2_RTL8188CUS,
+	    0,
+	    "Planex Communications",
+	    "RTL8188CUS",
+	},
+	{
 	    USB_VENDOR_PLANEX2, USB_PRODUCT_PLANEX2_GW_US11S,
 	    0,
 	    "Planex Communications",
@@ -11318,6 +11516,36 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "Planex Communications",
 	    "GW-US54GXS WLAN",
+	},
+	{
+	    USB_VENDOR_PLANEX2, USB_PRODUCT_PLANEX2_RTL8188CU_1,
+	    0,
+	    "Planex Communications",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_PLANEX2, USB_PRODUCT_PLANEX2_RTL8188CU_2,
+	    0,
+	    "Planex Communications",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_PLANEX2, USB_PRODUCT_PLANEX2_RTL8188CU_3,
+	    0,
+	    "Planex Communications",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_PLANEX2, USB_PRODUCT_PLANEX2_RTL8188CU_4,
+	    0,
+	    "Planex Communications",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_PLANEX2, USB_PRODUCT_PLANEX2_RTL8192CU,
+	    0,
+	    "Planex Communications",
+	    "RTL8192CU",
 	},
 	{
 	    USB_VENDOR_PLANEX2, USB_PRODUCT_PLANEX2_GWUS54HP,
@@ -12418,10 +12646,76 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "USB20CRW Card Reader",
 	},
 	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8188CTV,
+	    0,
+	    "Realtek",
+	    "RTL8188CTV",
+	},
+	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8188RU_2,
+	    0,
+	    "Realtek",
+	    "RTL8188RU",
+	},
+	{
 	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_USBKR100,
 	    0,
 	    "Realtek",
 	    "USBKR100 USB Ethernet",
+	},
+	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8188CE_0,
+	    0,
+	    "Realtek",
+	    "RTL8188CE",
+	},
+	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8188CU_0,
+	    0,
+	    "Realtek",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8191CU,
+	    0,
+	    "Realtek",
+	    "RTL8191CU",
+	},
+	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8192CU,
+	    0,
+	    "Realtek",
+	    "RTL8192CU",
+	},
+	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8188CU_1,
+	    0,
+	    "Realtek",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8188CU_2,
+	    0,
+	    "Realtek",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8192CE,
+	    0,
+	    "Realtek",
+	    "RTL8192CE",
+	},
+	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8188RU_1,
+	    0,
+	    "Realtek",
+	    "RTL8188RU",
+	},
+	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8188CE_1,
+	    0,
+	    "Realtek",
+	    "RTL8188CE",
 	},
 	{
 	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8187,
@@ -12436,6 +12730,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "RTL8187B Wireless Adapter",
 	},
 	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8188CUS,
+	    0,
+	    "Realtek",
+	    "RTL8188CUS",
+	},
+	{
 	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8187B_1,
 	    0,
 	    "Realtek",
@@ -12446,6 +12746,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "Realtek",
 	    "RTL8187B Wireless Adapter",
+	},
+	{
+	    USB_VENDOR_REALTEK, USB_PRODUCT_REALTEK_RTL8188CU_COMBO,
+	    0,
+	    "Realtek",
+	    "RTL8188CU",
 	},
 	{
 	    USB_VENDOR_REDOCTANE, USB_PRODUCT_REDOCTANE_DUMMY,
@@ -14308,6 +14614,24 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "RT3072",
 	},
 	{
+	    USB_VENDOR_SITECOMEU, USB_PRODUCT_SITECOMEU_RTL8188CU_1,
+	    0,
+	    "Sitecom Europe",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_SITECOMEU, USB_PRODUCT_SITECOMEU_RTL8188CU_2,
+	    0,
+	    "Sitecom Europe",
+	    "RTL8188CU",
+	},
+	{
+	    USB_VENDOR_SITECOMEU, USB_PRODUCT_SITECOMEU_RTL8192CU,
+	    0,
+	    "Sitecom Europe",
+	    "RTL8192CU",
+	},
+	{
 	    USB_VENDOR_SITECOMEU, USB_PRODUCT_SITECOMEU_LN028,
 	    0,
 	    "Sitecom Europe",
@@ -15118,6 +15442,18 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    "ThumbDrive_8MB",
 	},
 	{
+	    USB_VENDOR_TRENDNET, USB_PRODUCT_TRENDNET_RTL8192CU,
+	    0,
+	    "TRENDnet",
+	    "RTL8192CU",
+	},
+	{
+	    USB_VENDOR_TRENDNET, USB_PRODUCT_TRENDNET_RTL8188CU,
+	    0,
+	    "TRENDnet",
+	    "RTL8188CU",
+	},
+	{
 	    USB_VENDOR_TRIPPLITE, USB_PRODUCT_TRIPPLITE_U209,
 	    0,
 	    "Tripp-Lite",
@@ -15836,6 +16172,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "ZyXEL Communication",
 	    "RT2870",
+	},
+	{
+	    USB_VENDOR_ZYXEL, USB_PRODUCT_ZYXEL_RTL8192CU,
+	    0,
+	    "ZyXEL Communication",
+	    "RTL8192CU",
 	},
 	{
 	    USB_VENDOR_UNKNOWN1, 0,
@@ -18946,6 +19288,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    NULL,
 	},
 	{
+	    USB_VENDOR_HP3, 0,
+	    USB_KNOWNDEV_NOPROD,
+	    "Hewlett Packard",
+	    NULL,
+	},
+	{
 	    USB_VENDOR_TTI, 0,
 	    USB_KNOWNDEV_NOPROD,
 	    "Thurlby Thandar Instruments",
@@ -19810,6 +20158,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    NULL,
 	},
 	{
+	    USB_VENDOR_TRENDNET, 0,
+	    USB_KNOWNDEV_NOPROD,
+	    "TRENDnet",
+	    NULL,
+	},
+	{
 	    USB_VENDOR_RTSYSTEMS, 0,
 	    USB_KNOWNDEV_NOPROD,
 	    "RTSYSTEMS",
@@ -19936,6 +20290,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    NULL,
 	},
 	{
+	    USB_VENDOR_FEIXUN, 0,
+	    USB_KNOWNDEV_NOPROD,
+	    "FeiXun Communication",
+	    NULL,
+	},
+	{
 	    USB_VENDOR_PAPOUCH, 0,
 	    USB_KNOWNDEV_NOPROD,
 	    "Papouch products",
@@ -20023,6 +20383,12 @@ const struct usb_knowndev usb_knowndevs[] = {
 	    USB_VENDOR_MOSCHIP, 0,
 	    USB_KNOWNDEV_NOPROD,
 	    "MosChip Semiconductor",
+	    NULL,
+	},
+	{
+	    USB_VENDOR_NETGEAR4, 0,
+	    USB_KNOWNDEV_NOPROD,
+	    "Netgear",
 	    NULL,
 	},
 	{

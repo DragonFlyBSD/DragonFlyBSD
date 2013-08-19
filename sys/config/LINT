@@ -2209,12 +2209,17 @@ device		rue
 #
 # Ralink Technology RT2501USB/RT2601USB
 device		rum
+#
 # Ralink Technology RT2700U/RT2800U/RT3000U wireless driver
 device		run
 device		runfw
 #
 # Ralink Technology RT2500USB
 #device		ural
+#
+# Realtek RTL8188CU/RTL8192CU wireless driver
+device		urtwn
+device		urtwnfw
 
 # debugging options for the USB subsystem
 #
