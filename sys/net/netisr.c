@@ -299,8 +299,16 @@ netmsg_service_loop(void *arg)
 				 * ops can change ports on us.  Chase the
 				 * port.
 				 */
+#ifdef foo
+				/*
+				 * This could be quite common for protocols
+				 * which support asynchronous pru_connect,
+				 * e.g. TCP, so kprintf socket port chasing
+				 * could be too verbose for the console.
+				 */
 				kprintf("netmsg_service_loop: Warning, "
 					"port changed so=%p\n", msg->nm_so);
+#endif
 				lwkt_forwardmsg(msg->nm_so->so_port,
 						&msg->lmsg);
 			} else {

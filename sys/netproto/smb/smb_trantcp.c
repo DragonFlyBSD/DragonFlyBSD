@@ -164,7 +164,7 @@ nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct thread *td)
 	nb_setsockopt_int(so, IPPROTO_TCP, TCP_NODELAY, 1);
 	atomic_clear_int(&so->so_rcv.ssb_flags, SSB_NOINTR);
 	atomic_clear_int(&so->so_snd.ssb_flags, SSB_NOINTR);
-	error = soconnect(so, (struct sockaddr*)to, td);
+	error = soconnect(so, (struct sockaddr*)to, td, TRUE);
 
 	/*
 	 * If signals are allowed nbssn_recv() can wind up in a hard loop

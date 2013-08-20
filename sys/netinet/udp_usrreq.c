@@ -1129,10 +1129,10 @@ udp_connect(netmsg_t msg)
 		goto out;
 	}
 
-	if (msg->connect.nm_reconnect & NMSG_RECONNECT_RECONNECT) {
+	if (msg->connect.nm_flags & PRUC_RECONNECT) {
 		panic("UDP does not support RECONNECT");
 #ifdef notyet
-		msg->connect.nm_reconnect &= ~NMSG_RECONNECT_RECONNECT;
+		msg->connect.nm_flags &= ~PRUC_RECONNECT;
 		in_pcblink(inp, &udbinfo);
 #endif
 	}
@@ -1188,7 +1188,7 @@ udp_connect(netmsg_t msg)
 		in_pcbunlink(so->so_pcb, &udbinfo);
 		/* in_pcbunlink(so->so_pcb, &udbinfo[mycpu->gd_cpuid]); */
 		sosetport(so, port);
-		msg->connect.nm_reconnect |= NMSG_RECONNECT_RECONNECT;
+		msg->connect.nm_flags |= PRUC_RECONNECT;
 		msg->connect.base.nm_dispatch = udp_connect;
 
 		lwkt_forwardmsg(port, &msg->connect.base.lmsg);

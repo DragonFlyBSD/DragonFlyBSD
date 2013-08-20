@@ -747,7 +747,7 @@ ng_ksocket_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			/* Do connect */
 			if ((so->so_state & SS_ISCONNECTING) != 0)
 				ERROUT(EALREADY);
-			if ((error = soconnect(so, sa, td)) != 0) {
+			if ((error = soconnect(so, sa, td, TRUE)) != 0) {
 				soclrstate(so, SS_ISCONNECTING);
 				ERROUT(error);
 			}

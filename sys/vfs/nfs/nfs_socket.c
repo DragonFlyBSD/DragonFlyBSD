@@ -255,7 +255,7 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 			goto bad;
 		}
 	} else {
-		error = soconnect(so, nmp->nm_nam, td);
+		error = soconnect(so, nmp->nm_nam, td, TRUE);
 		if (error)
 			goto bad;
 

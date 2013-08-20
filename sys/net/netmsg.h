@@ -137,14 +137,16 @@ struct netmsg_pru_connect {
 	struct sockaddr		*nm_nam;
 	struct thread		*nm_td;
 	struct mbuf		*nm_m;		/* connect with send */
-	int			nm_flags;	/* connect with send */
-	int			nm_reconnect;	/* message control */
+	int			nm_sndflags;	/* connect with send, PRUS_ */
+	int			nm_flags;	/* message control */
 };
 
-#define NMSG_RECONNECT_RECONNECT	0x0001	/* thread port change */
-#define NMSG_RECONNECT_NAMALLOC		0x0002	/* nm_nam allocated */
-#define NMSG_RECONNECT_PUSH		0x0004	/* call tcp_output */
-#define NMSG_RECONNECT_FALLBACK		0x0008	/* fallback to ipv4 */
+#define PRUC_RECONNECT		0x0001		/* thread port change */
+#define PRUC_NAMALLOC		0x0002		/* nm_nam allocated */
+#define PRUC_PUSH		0x0004		/* call tcp_output */
+#define PRUC_FALLBACK		0x0008		/* fallback to ipv4 */
+#define PRUC_ASYNC		0x0010
+#define PRUC_HELDTD		0x0020
 
 struct netmsg_pru_connect2 {
 	struct netmsg_base	base;

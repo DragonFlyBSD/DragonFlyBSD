@@ -176,10 +176,53 @@ so_pru_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	msg.nm_nam = nam;
 	msg.nm_td = td;
 	msg.nm_m = NULL;
+	msg.nm_sndflags = 0;
 	msg.nm_flags = 0;
-	msg.nm_reconnect = 0;
 	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
+}
+
+int
+so_pru_connect_async(struct socket *so, struct sockaddr *nam, struct thread *td)
+{
+	struct netmsg_pru_connect *msg;
+	int error, flags;
+
+	KASSERT(so->so_proto->pr_usrreqs->pru_preconnect != NULL,
+	    ("async pru_connect is not supported"));
+
+	/* NOTE: sockaddr immediately follows netmsg */
+	msg = kmalloc(sizeof(*msg) + nam->sa_len, M_LWKTMSG, M_NOWAIT);
+	if (msg == NULL) {
+		/*
+		 * Fail to allocate address w/o waiting;
+		 * fallback to synchronized pru_connect.
+		 */
+		return so_pru_connect(so, nam, td);
+	}
+
+	error = so->so_proto->pr_usrreqs->pru_preconnect(so, nam, td);
+	if (error) {
+		kfree(msg, M_LWKTMSG);
+		return error;
+	}
+
+	flags = PRUC_ASYNC;
+	if (td != NULL && (so->so_proto->pr_flags & PR_ACONN_HOLDTD)) {
+		lwkt_hold(td);
+		flags |= PRUC_HELDTD;
+	}
+
+	netmsg_init(&msg->base, so, &netisr_afree_rport, 0,
+	    so->so_proto->pr_usrreqs->pru_connect);
+	msg->nm_nam = (struct sockaddr *)(msg + 1);
+	memcpy(msg->nm_nam, nam, nam->sa_len);
+	msg->nm_td = td;
+	msg->nm_m = NULL;
+	msg->nm_sndflags = 0;
+	msg->nm_flags = flags;
+	lwkt_sendmsg(so->so_port, &msg->base.lmsg);
+	return 0;
 }
 
 int

@@ -145,6 +145,10 @@ int use_sendfile_async = 1;
 SYSCTL_INT(_kern_ipc, OID_AUTO, sendfile_async, CTLFLAG_RW,
     &use_sendfile_async, 0, "sendfile uses asynchronized pru_send");
 
+int use_soconnect_async = 1;
+SYSCTL_INT(_kern_ipc, OID_AUTO, soconnect_async, CTLFLAG_RW,
+    &use_soconnect_async, 0, "soconnect uses asynchronized pru_connect");
+
 /*
  * Socket operation routines.
  * These routines are called by the routines in
@@ -695,7 +699,8 @@ soaccept(struct socket *so, struct sockaddr **nam)
 }
 
 int
-soconnect(struct socket *so, struct sockaddr *nam, struct thread *td)
+soconnect(struct socket *so, struct sockaddr *nam, struct thread *td,
+    boolean_t sync)
 {
 	int error;
 
@@ -717,7 +722,10 @@ soconnect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		 * from biting us.
 		 */
 		so->so_error = 0;
-		error = so_pru_connect(so, nam, td);
+		if (!sync && so->so_proto->pr_usrreqs->pru_preconnect)
+			error = so_pru_connect_async(so, nam, td);
+		else
+			error = so_pru_connect(so, nam, td);
 	}
 	return (error);
 }

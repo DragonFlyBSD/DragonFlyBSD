@@ -88,7 +88,7 @@ static int
 ncp_soconnect(struct socket *so,struct sockaddr *target, struct thread *td) {
 	int error;
 
-	error = soconnect(so, target, td);
+	error = soconnect(so, target, td, TRUE);
 	if (error)
 		return error;
 	/*

@@ -82,6 +82,7 @@
 
 extern int use_soaccept_pred_fast;
 extern int use_sendfile_async;
+extern int use_soconnect_async;
 
 /*
  * System call interface to the socket abstraction.
@@ -512,7 +513,7 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 		error = EALREADY;
 		goto done;
 	}
-	error = soconnect(so, sa, td);
+	error = soconnect(so, sa, td, use_soconnect_async ? FALSE : TRUE);
 	if (error)
 		goto bad;
 	if ((fflags & FNONBLOCK) && (so->so_state & SS_ISCONNECTING)) {

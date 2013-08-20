@@ -1356,7 +1356,7 @@ ng_btsocket_rfcomm_session_create(ng_btsocket_rfcomm_session_p *sp,
 		l2sa.l2cap_psm = htole16(NG_L2CAP_PSM_RFCOMM);
 	        bcopy(dst, &l2sa.l2cap_bdaddr, sizeof(l2sa.l2cap_bdaddr));
 
-		error = soconnect(s->l2so, (struct sockaddr *) &l2sa, td);
+		error = soconnect(s->l2so, (struct sockaddr *) &l2sa, td, TRUE);
 		if (error != 0)
 			goto bad;
 	}

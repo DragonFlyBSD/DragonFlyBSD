@@ -529,6 +529,12 @@ out:
 		m_freem(msg->connect.nm_m);
 		msg->connect.nm_m = NULL;
 	}
+	if (msg->connect.nm_flags & PRUC_HELDTD)
+		lwkt_rele(td);
+	if (error && (msg->connect.nm_flags & PRUC_ASYNC)) {
+		so->so_error = error;
+		soisdisconnected(so);
+	}
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
@@ -574,7 +580,7 @@ tcp6_usr_connect(netmsg_t msg)
 		inp->inp_vflag |= INP_IPV4;
 		inp->inp_vflag &= ~INP_IPV6;
 		msg->connect.nm_nam = (struct sockaddr *)sinp;
-		msg->connect.nm_reconnect |= NMSG_RECONNECT_NAMALLOC;
+		msg->connect.nm_flags |= PRUC_NAMALLOC;
 		tcp_connect(msg);
 		/* msg is invalid now */
 		return;
@@ -583,7 +589,7 @@ tcp6_usr_connect(netmsg_t msg)
 	inp->inp_vflag |= INP_IPV6;
 	inp->inp_inc.inc_isipv6 = 1;
 
-	msg->connect.nm_reconnect |= NMSG_RECONNECT_FALLBACK;
+	msg->connect.nm_flags |= PRUC_FALLBACK;
 	tcp6_connect(msg);
 	/* msg is invalid now */
 	return;
@@ -881,6 +887,21 @@ tcp6_usr_savefaddr(struct socket *so, const struct sockaddr *faddr)
 }
 #endif
 
+static int
+tcp_usr_preconnect(struct socket *so, const struct sockaddr *nam,
+    struct thread *td __unused)
+{
+	const struct sockaddr_in *sinp;
+
+	sinp = (const struct sockaddr_in *)nam;
+	if (sinp->sin_family == AF_INET &&
+	    IN_MULTICAST(ntohl(sinp->sin_addr.s_addr)))
+		return EAFNOSUPPORT;
+
+	soisconnecting(so);
+	return 0;
+}
+
 /* xxx - should be const */
 struct pr_usrreqs tcp_usrreqs = {
 	.pru_abort = tcp_usr_abort,
@@ -902,7 +923,8 @@ struct pr_usrreqs tcp_usrreqs = {
 	.pru_sockaddr = in_setsockaddr_dispatch,
 	.pru_sosend = sosendtcp,
 	.pru_soreceive = sorecvtcp,
-	.pru_savefaddr = tcp_usr_savefaddr
+	.pru_savefaddr = tcp_usr_savefaddr,
+	.pru_preconnect = tcp_usr_preconnect
 };
 
 #ifdef INET6
@@ -1042,8 +1064,8 @@ tcp_connect(netmsg_t msg)
 	/*
 	 * Reconnect our pcb if we have to
 	 */
-	if (msg->connect.nm_reconnect & NMSG_RECONNECT_RECONNECT) {
-		msg->connect.nm_reconnect &= ~NMSG_RECONNECT_RECONNECT;
+	if (msg->connect.nm_flags & PRUC_RECONNECT) {
+		msg->connect.nm_flags &= ~PRUC_RECONNECT;
 		in_pcblink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 	}
 
@@ -1108,14 +1130,20 @@ tcp_connect(netmsg_t msg)
 		 */
 		in_pcbunlink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 		sosetport(so, port);
-		msg->connect.nm_reconnect |= NMSG_RECONNECT_RECONNECT;
+		msg->connect.nm_flags |= PRUC_RECONNECT;
 		msg->connect.base.nm_dispatch = tcp_connect;
 
 		lwkt_forwardmsg(port, &msg->connect.base.lmsg);
 		/* msg invalid now */
 		return;
+	} else if (msg->connect.nm_flags & PRUC_HELDTD) {
+		/*
+		 * The original thread is no longer needed; release it.
+		 */
+		lwkt_rele(td);
+		msg->connect.nm_flags &= ~PRUC_HELDTD;
 	}
-	error = tcp_connect_oncpu(tp, msg->connect.nm_flags,
+	error = tcp_connect_oncpu(tp, msg->connect.nm_sndflags,
 				  msg->connect.nm_m, sin, if_sin);
 	msg->connect.nm_m = NULL;
 out:
@@ -1123,9 +1151,15 @@ out:
 		m_freem(msg->connect.nm_m);
 		msg->connect.nm_m = NULL;
 	}
-	if (msg->connect.nm_reconnect & NMSG_RECONNECT_NAMALLOC) {
+	if (msg->connect.nm_flags & PRUC_NAMALLOC) {
 		kfree(msg->connect.nm_nam, M_LWKTMSG);
 		msg->connect.nm_nam = NULL;
+	}
+	if (msg->connect.nm_flags & PRUC_HELDTD)
+		lwkt_rele(td);
+	if (error && (msg->connect.nm_flags & PRUC_ASYNC)) {
+		so->so_error = error;
+		soisdisconnected(so);
 	}
 	lwkt_replymsg(&msg->connect.base.lmsg, error);
 	/* msg invalid now */
@@ -1151,8 +1185,8 @@ tcp6_connect(netmsg_t msg)
 	/*
 	 * Reconnect our pcb if we have to
 	 */
-	if (msg->connect.nm_reconnect & NMSG_RECONNECT_RECONNECT) {
-		msg->connect.nm_reconnect &= ~NMSG_RECONNECT_RECONNECT;
+	if (msg->connect.nm_flags & PRUC_RECONNECT) {
+		msg->connect.nm_flags &= ~PRUC_RECONNECT;
 		in_pcblink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 	}
 
@@ -1190,18 +1224,18 @@ tcp6_connect(netmsg_t msg)
 
 		in_pcbunlink(so->so_pcb, &tcbinfo[mycpu->gd_cpuid]);
 		sosetport(so, port);
-		msg->connect.nm_reconnect |= NMSG_RECONNECT_RECONNECT;
+		msg->connect.nm_flags |= PRUC_RECONNECT;
 		msg->connect.base.nm_dispatch = tcp6_connect;
 
 		lwkt_forwardmsg(port, &msg->connect.base.lmsg);
 		/* msg invalid now */
 		return;
 	}
-	error = tcp6_connect_oncpu(tp, msg->connect.nm_flags,
+	error = tcp6_connect_oncpu(tp, msg->connect.nm_sndflags,
 				   &msg->connect.nm_m, sin6, addr6);
 	/* nm_m may still be intact */
 out:
-	if (error && (msg->connect.nm_reconnect & NMSG_RECONNECT_FALLBACK)) {
+	if (error && (msg->connect.nm_flags & PRUC_FALLBACK)) {
 		tcp_connect(msg);
 		/* msg invalid now */
 	} else {
@@ -1209,7 +1243,7 @@ out:
 			m_freem(msg->connect.nm_m);
 			msg->connect.nm_m = NULL;
 		}
-		if (msg->connect.nm_reconnect & NMSG_RECONNECT_NAMALLOC) {
+		if (msg->connect.nm_flags & PRUC_NAMALLOC) {
 			kfree(msg->connect.nm_nam, M_LWKTMSG);
 			msg->connect.nm_nam = NULL;
 		}

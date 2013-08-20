@@ -83,6 +83,8 @@ int so_pru_attach_direct(struct socket *so, int proto,
 		struct pru_attach_info *ai);
 int so_pru_bind (struct socket *so, struct sockaddr *nam, struct thread *td);
 int so_pru_connect (struct socket *so, struct sockaddr *nam, struct thread *td);
+int so_pru_connect_async (struct socket *so, struct sockaddr *nam,
+		struct thread *td);
 int so_pru_connect2 (struct socket *so1, struct socket *so2);
 int so_pru_control_direct(struct socket *so, u_long cmd, caddr_t data,
 		struct ifnet *ifp);
