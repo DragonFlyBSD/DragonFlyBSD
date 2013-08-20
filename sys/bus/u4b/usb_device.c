@@ -1554,15 +1554,10 @@ usb_alloc_device(device_t parent_dev, struct usb_bus *bus,
 	if (udev == NULL) {
 		return (NULL);
 	}
-#if 0
-	/* initialise our SX-lock */
-	sx_init_flags(&udev->ctrl_sx, "USB device SX lock", SX_DUPOK);
-	/* initialise our SX-lock */
-	sx_init_flags(&udev->enum_sx, "USB config SX lock", SX_DUPOK);
-	sx_init_flags(&udev->sr_sx, "USB suspend and resume SX lock", SX_NOWITNESS);
-#endif
+	/* Initialise SX-locks */
 	lockinit(&udev->enum_lock, "USB config SX lock", 0, LK_CANRECURSE);
-	lockinit(&udev->sr_lock, "USB suspend and resume SX lock", 0, 0);
+	/* XXX (mp) is this LK_CANRECURSE necessary? */
+	lockinit(&udev->sr_lock, "USB suspend and resume SX lock", 0, LK_CANRECURSE);
 
 	cv_init(&udev->ctrlreq_cv, "WCTRL");
 	cv_init(&udev->ref_cv, "UGONE");
@@ -2689,7 +2684,7 @@ usbd_device_attached(struct usb_device *udev)
 uint8_t
 usbd_enum_lock(struct usb_device *udev)
 {
-        if (lockstatus(&udev->enum_lock, NULL)==LK_EXCLUSIVE)
+        if (lockstatus(&udev->enum_lock, curthread)==LK_EXCLUSIVE)
                 return (0);
 
 	lockmgr(&udev->enum_lock, LK_EXCLUSIVE);
