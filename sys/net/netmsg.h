@@ -209,6 +209,7 @@ struct netmsg_pru_send {
 #define PRUS_NOREPLY		0x10
 #define PRUS_DONTROUTE		0x20
 #define PRUS_FREEADDR		0x40
+#define PRUS_HELDTD		0x80
 
 struct netmsg_pru_sense {
 	struct netmsg_base	base;

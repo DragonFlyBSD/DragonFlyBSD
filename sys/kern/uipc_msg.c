@@ -405,6 +405,11 @@ so_pru_send_async(struct socket *so, int flags, struct mbuf *m,
 	}
 	flags |= PRUS_NOREPLY;
 
+	if (td != NULL && (so->so_proto->pr_flags & PR_ASEND_HOLDTD)) {
+		lwkt_hold(td);
+		flags |= PRUS_HELDTD;
+	}
+
 	msg = &m->m_hdr.mh_sndmsg;
 	netmsg_init(&msg->base, so, &netisr_apanic_rport,
 		    0, so->so_proto->pr_usrreqs->pru_send);

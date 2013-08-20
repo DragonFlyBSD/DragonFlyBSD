@@ -146,6 +146,7 @@ struct protosw {
 #define PR_SYNC_PORT	0x0200		/* synchronous port (no proto thrds) */
 #define PR_ASYNC_SEND	0x0400		/* async pru_send */
 #define PR_ASYNC_RCVD	0x0800		/* async pru_rcvd */
+#define PR_ASEND_HOLDTD	0x1000		/* async pru_send hold orig thread */
 
 /*
  * The arguments to usrreq are:
