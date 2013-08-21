@@ -1,519 +1,526 @@
-.nr N 30
-.nr D 5
-.nr L 1
-.nr K 1
-.TH TOP 1 "December 20, 2009"
-.SH NAME
-top \- display and update information about the top cpu processes
-.SH SYNOPSIS
-.B top
-[
-.B \-CIMSTabcinqtuv
-] [
-.BI \-d count
-] [
-.BI \-m mode
-] [
-.BI \-o field
-] [
-.BI \-s time
-] [
-.BI \-U username
-] [
-.I number
-]
-.SH DESCRIPTION
-.\" This defines appropriate quote strings for nroff and troff
-.ds lq \&"
-.ds rq \&"
-.if t .ds lq ``
-.if t .ds rq ''
-.\" Just in case these number registers aren't set yet...
-.if \nN==0 .nr N 10
-.if \nD==0 .nr D 5
-.I Top
+.Dd August 21, 2013
+.Dt TOP 1
+.Os
+.Sh NAME
+.Nm top
+.Nd display and update information about the top cpu processes
+.Sh SYNOPSIS
+.Nm top
+.Op Fl CIMSTabcinqtuv
+.Op Fl d Ar count
+.Op Fl m Ar mode
+.Op Fl o Ar field
+.Op Fl s Ar time
+.Op Fl U Ar username
+.Op Ar number
+.Sh DESCRIPTION
+.Nm
 displays the top
-.if !\nN==-1 \nN
 processes on the system and periodically updates this information.
-.if \nN==-1 \
-\{\
-If standard output is an intelligent terminal (see below) then
-as many processes as will fit on the terminal screen are displayed
-by default.  Otherwise, a good number of them are shown (around 20).
-.\}
-Raw cpu percentage is used to rank the processes.  If
-.I number
-is given, then the top
-.I number
-processes will be displayed instead of the default.
-.PP
-.I Top
+Raw cpu percentage is used to rank the processes.
+.Pp
+.Nm
 makes a distinction between terminals that support advanced capabilities
-and those that do not.  This
-distinction affects the choice of defaults for certain options.  In the
-remainder of this document, an \*(lqintelligent\*(rq terminal is one that
+and those that do not.
+This distinction affects the choice of defaults for certain options.
+In the remainder of this document, an
+.Dq intelligent
+terminal is one that
 supports cursor addressing, clear screen, and clear to end of line.
-Conversely, a \*(lqdumb\*(rq terminal is one that does not support such
-features.  If the output of
-.I top
+Conversely, a
+.Dq dumb
+terminal is one that does not support such features.
+If the output of
+.Nm
 is redirected to a file, it acts as if it were being run on a dumb
 terminal.
-.SH OPTIONS
-.if \nL==0 Long options are not available on this system.
-.TP
-.B "\-C, \-\-color"
+.Ss OPTIONS
+.Bl -tag -width "-U username" -offset indent
+.It Fl C
 Turn off the use of color in the display.
-.TP
-.B "\-I, \-\-idle-procs"
+.It Fl I
 Do not display idle processes.
 By default, top displays both active and idle processes.
-.TP
-.B "\-M"
+.It Fl M
 Enable multi-CPU display.
-.TP
-.B "\-S, \-\-system-procs"
-Show system processes in the display.  Normally, system processes such as
-the pager and the swapper are not shown.  This option makes them visible.
-.TP
-.B "\-T, \-\-tag-names"
+.It Fl S
+Show system processes in the display.
+Normally, system processes such as the pager and the swapper are not shown.
+This option makes them visible.
+.It Fl T
 List all available color tags and the current set of tests used for
 color highlighting, then exit.
-.TP
-.B "\-a, \-\-all"
-Show all processes for as long as possible.  This is shorthand for
-\*(lq-d all all\*(rq.  This option is especially handy in batch mode.
-.TP
-.B "\-b, \-n, \-\-batch"
-Use \*(lqbatch\*(rq mode.  In this mode, all input from the terminal is
-ignored.  Interrupt characters (such as ^C and ^\e) still have an effect.
+.It Fl a
+Show all processes for as long as possible.
+This is shorthand for
+.Dq Fl d Li all Li all .
+This option is especially handy in batch mode.
+.It Fl b
+Use
+.Dq batch
+mode.
+In this mode, all input from the terminal is ignored.
+Interrupt characters (such as ^C and ^\e) still have an effect.
 This is the default on a dumb terminal, or when the output is not a terminal.
-.TP
-.B "\-c, \-\-full-commands"
-Show the full command line for each process. Default is to show just the
-command name.  This option is not supported on all platforms.
-.TP
-.B "\-i, \-\-interactive"
-Use \*(lqinteractive\*(rq mode.  In this mode, any input is immediately
-read for processing.  See the section on \*(lqInteractive Mode\*(rq
-for an explanation of
-which keys perform what functions.  After the command is processed, the
-screen will immediately be updated, even if the command was not
-understood.  This mode is the default when standard output is an
-intelligent terminal.
-.TP
-.B "\-q, \-\-quick"
+.It Fl c
+Show the full command line for each process.
+Default is to show just the command name.
+This option is not supported on all platforms.
+.It Fl i
+Use
+.Dq interactive
+mode.
+In this mode, any input is immediately read for processing.
+See the subsection on
+.Sx INTERACTIVE MODE
+for an explanation of which keys perform what functions.
+After the command is processed, the screen will immediately be updated,
+even if the command was not understood.
+This mode is the default when standard output is an intelligent terminal.
+.It Fl q
 Renice
-.I top
-to -20 so that it will run faster.  This can be used when the system is
-being very sluggish to improve the possibility of discovering the problem.
+.Nm
+to \-20 so that it will run faster.
+This can be used when the system is being very sluggish to improve the
+possibility of discovering the problem.
 This option can only be used by root.
-.TP
-.B "\-t, \-\-threads"
-Show individual threads on separate lines.  By default, on systems
-which support threading, each process is shown with a count of the number
-of threads. This option shows each thread on a separate line.  This option
-is not supported on all platforms.
-.TP
-.B "\-u, \-\-uids"
-Do not take the time to map uid numbers to usernames.  Normally,
-.I top
-will read as much of the file \*(lq/etc/passwd\*(rq as is necessary to map
-all the user id numbers it encounters into login names.  This option
-disables all that, while possibly decreasing execution time.  The uid
-numbers are displayed instead of the names.
-.TP
-.B "\-v, \-\-version"
+.It Fl t
+Show individual threads on separate lines.
+By default, on systems which support threading, each process is shown
+with a count of the number of threads.
+This option shows each thread on a separate line.
+This option is not supported on all platforms.
+.It Fl u
+Do not take the time to map uid numbers to usernames.
+Normally,
+.Nm
+will read as much of the file
+.Pa /etc/passwd
+as is necessary to map all the user id numbers it encounters into login names.
+This option disables all that, while possibly decreasing execution time.
+The uid numbers are displayed instead of the names.
+.It Fl v
 Write version number information to stderr then exit immediately.
-No other processing takes place when this option is used.  To see current
-revision information while top is running, use the help command \*(lq?\*(rq.
-.TP
-.B "\-d \fIcount\fP, \-\-displays \fIcount\fP"
+No other processing takes place when this option is used.
+To see current revision information while top is running,
+use the help command
+.Dq \&? .
+.It Fl d Ar count
 Show only
-.I count
-displays, then exit.  A display is considered to be one update of the
-screen.  This option allows the user to select the number of displays he
+.Ar count
+displays, then exit.
+A display is considered to be one update of the screen.
+This option allows the user to select the number of displays he
 wants to see before
-.I top
-automatically exits.  Any proper prefix of the words \*(lqinfinity\*(rq,
-\*(lqmaximum\*(rq,
+.Nm
+automatically exits.
+Any proper prefix of the words
+.Sq Li infinity ,
+.Sq Li maximum ,
 or
-\*(lqall\*(rq can be used to indicate an infinite number of displays.
-The default for intelligent terminals is infinity.
-The default for dumb terminals is 1.
-.TP
-.B "\-m \fImode\fP, \-\-mode=\fImode\fP"
-Start the display in an alternate mode.  Some platforms support multiple
-process displays to show additional process information.  The value
-\fImode\fP is a number indicating which mode to display.  The default is
-0.  On platforms that do not have multiple display modes this option has
+.Sq Li all
+can be used to indicate an infinite number of displays.
+The default for intelligent terminals is
+.Sq Li infinity .
+The default for dumb terminals is
+.Sq Li 1 .
+.It Fl m Ar mode
+Start the display in an alternate mode.
+Some platforms support multiple
+process displays to show additional process information.
+The value of
+.Ar mode
+is a number indicating which mode to display.
+The default is
+.Sq Li 0 .
+On platforms that do not have multiple display modes this option has
 no effect.
-.TP
-.B "\-o \fIfield\fP, \-\-sort-order=\fIfield\fP"
-Sort the process display area on the specified field.  The field name is
-the name of the column as seen in the output, but in lower case.  Likely
-values are \*(lqcpu\*(rq, \*(lqsize\*(rq, \*(lqres\*(rq, and \*(lqtime\*(rq,
-but may vary on different operating systems.  Note that
-not all operating systems support this option.
-.TP
-.B "\-s \fItime\fP, \-\-delay=\fItime\fP"
+.It Fl o Ar field
+Sort the process display area on the specified field.
+The field name is the name of the column as seen in the output,
+but in lower case.
+Likely values are
+.Sq Li cpu ,
+.Sq Li size ,
+.Sq Li res ,
+and
+.Sq Li time ,
+but may vary on different operating systems.
+Note that not all operating systems support this option.
+.It Fl s Ar time
 Set the delay between screen updates to
-.I time
-seconds.  The default delay between updates is \nD seconds.
-.TP
-.B "\-U \fIusername\fP, \-\-user=\fIusername\fP"
+.Ar time
+seconds.
+The default delay between updates is 5 seconds.
+.It Fl U Ar username
 Show only those processes owned by
-.IR username .
+.Ar username .
 This option currently only accepts usernames and will not understand
 uid numbers.
-.PP
+.El
+.Pp
+If
+.Ar number
+is given, then the top
+.Ar number
+processes will be displayed instead of the default.
 Both
-.I count
+.Ar count
 and
-.I number
-fields can be specified as \*(lqinfinite\*(rq, indicating that they can
-stretch as far as possible.  This is accomplished by using any proper
-prefix of the keywords
-\*(lqinfinity\*(rq,
-\*(lqmaximum\*(rq,
+.Ar number
+fields can be specified as
+.Sq Li infinite ,
+indicating that they can stretch as far as possible.
+This is accomplished by using any proper prefix of the keywords
+.Sq Li infinity ,
+.Sq Li maximum ,
 or
-\*(lqall\*(rq.
+.Sq Li all .
 The default for
-.I count
+.Ar count
 on an intelligent terminal is, in fact,
-\fBinfinity\fP.
-.PP
-The environment variable
-.B TOP
-is examined for options before the command line is scanned.  This enables
-a user to set his or her own defaults.  The number of processes to display
-can also be specified in the environment variable
-.BR TOP .
-The options
-.BR \-C ,
-.BR \-I ,
-.BR \-S ,
-and
-.B \-u
-are actually toggles.  A second specification of any of these options
-will negate the first.  Thus a user who has the environment variable
-.B TOP
-set to \*(lq\-I\*(rq may use the command \*(lqtop \-I\*(rq to see idle processes.
-.SH "INTERACTIVE MODE"
+.Sq Li infinity .
+.Ss INTERACTIVE MODE
 When
-.I top
-is running in \*(lqinteractive mode\*(rq, it reads commands from the
-terminal and acts upon them accordingly.  In this mode, the terminal is
-put in \*(lqCBREAK\*(rq, so that a character will be
-processed as soon as it is typed.  Almost always, a key will be
-pressed when
-.I top
+.Nm
+is running in
+.Dq interactive mode ,
+it reads commands from the terminal and acts upon them accordingly.
+In this mode, the terminal is put in
+.Dq CBREAK ,
+so that a character will be processed as soon as it is typed.
+Almost always, a key will be pressed when
+.Nm
 is between displays; that is, while it is waiting for
-.I time
-seconds to elapse.  If this is the case, the command will be
+.Ar time
+seconds to elapse.
+If this is the case, the command will be
 processed and the display will be updated immediately thereafter
-(reflecting any changes that the command may have specified).  This
-happens even if the command was incorrect.  If a key is pressed while 
-.I top
+(reflecting any changes that the command may have specified).
+This happens even if the command was incorrect.
+If a key is pressed while
+.Nm
 is in the middle of updating the display, it will finish the update and
-then process the command.  Some commands require additional information,
-and the user will be prompted accordingly.  While typing this information
+then process the command.
+Some commands require additional information,
+and the user will be prompted accordingly.
+While typing this information
 in, the user's erase and kill keys (as set up by the command
-.IR stty )
-are recognized, and a newline terminates the input.  Note that a control-L
+.Xr stty 1 )
+are recognized, and a newline terminates the input.
+Note that a control\-L
 (^L) always redraws the current screen and a space forces an immediate
 update to the screen using new data.
-.PP
+.Pp
 These commands are currently recognized:
-.TP
-.I "\fBh\fP\ or\ \fB?\fP"
-Display a summary of the commands (help screen).  Version information
-is included in this display.
-.TP
-.B C
+.Bl -tag -width "h or \&?" -offset indent
+.It h or \&?
+Display a summary of the commands (help screen).
+Version information is included in this display.
+.It C
 Toggle the use of color in the display.
-.TP
-.B c
-Display only processes whose commands match the specified string.  An empty
-string will display all processes.  This command is not supported on all 
-platforms.
-.TP
-.B d
+.It c
+Display only processes whose commands match the specified string.
+An empty string will display all processes.
+This command is not supported on all platforms.
+.It d
 Change the number of displays to show (prompt for new number).
 Remember that the next display counts as one, so typing
-.B d1
+.Dq d1
 will make
-.I top
+.Nm
 show one final display and then immediately exit.
-.TP
-.B f
+.It f
 Toggle the display of the full command line.
-.TP
-.B H
-Toggle the display of threads on separate lines.  By default, on systems
-which support threading, each process is shown with a count of the number
-of threads. This command shows each thread on a separate line.  This command
-is not supported on all platforms.
-.TP
-.B i
-(or
-.BR I )
+.It H
+Toggle the display of threads on separate lines.
+By default, on systems which support threading,
+each process is shown with a count of the number of threads.
+This command shows each thread on a separate line.
+This command is not supported on all platforms.
+.It i or I
 Toggle the display of idle processes.
-.if \nK==1 \{\
-.TP
-.B k
-Send a signal (\*(lqkill\*(rq by default) to a list of processes.  This
-acts similarly to the command
-.IR kill (1)).
-.\}
-.TP
-.B M
-Sort display by memory usage.  Shorthand for \*(lqo size\*(rq.
-.TP
-.B m
-Change to a different process display mode.  Some systems provide multiple
-display modes for the process display which shows different information.
-This command toggles between the available modes.  This command is not 
-supported on all platforms.
-.TP
-.B N
-Sort by process id.  Shorthand for \*(lqo pid\*(rq.
-.TP
-.B n or #
-Change the number of processes to display (prompt for new number).
-.TP
-.B o
-Change the order in which the display is sorted.  This command is not
-available on all systems.  The sort key names vary fron system to system
-but usually include:  \*(lqcpu\*(rq, \*(lqres\*(rq, \*(lqsize\*(rq,
-\*(lqtime\*(rq.  The default is cpu.
-.TP
-.B P
-Sort by CPU usage.  Shorthand for \*(lqo cpu\*(rq.
-.TP
-.B q
-Quit
-.IR top.
-.if \nK==1 \{\
-.TP
-.B r
-Change the priority (the \*(lqnice\*(rq) of a list of processes.
+.It k
+Send a signal (
+.Dq kill
+by default) to a list of processes.
 This acts similarly to the command
-.IR renice (8)).
-.\}
-.TP
-.B s
+.Xr kill 1 .
+.It M
+Sort display by memory usage.
+Shorthand for
+.Dq Fl o Li size .
+.It m
+Change to a different process display mode.
+Some systems provide multiple
+display modes for the process display which shows different information.
+This command toggles between the available modes.
+This command is not supported on all platforms.
+.It N
+Sort by process id.
+Shorthand for
+.Dq Fl o Li pid .
+.It n or #
+Change the number of processes to display (prompt for new number).
+.It o
+Change the order in which the display is sorted.
+This command is not available on all systems.
+The sort key names vary fron system to system,
+but usually include:
+.Sq Li cpu ,
+.Sq Li res ,
+.Sq Li size ,
+and
+.Sq Li time .
+The default is
+.Sq Li cpu .
+.It P
+Sort by CPU usage.
+Shorthand for
+.Dq Fl o Li cpu .
+.It q
+Quit
+.Nm .
+.It r
+Change the priority (the niceness) of a list of processes.
+This acts similarly to the command
+.Xr renice 8 .
+.It s
 Change the number of seconds to delay between displays
 (prompt for new number).
-.TP
-.B T
-Sort by CPU time.  Shorthand for \*(lqo time\*(rq.
-.TP
-.B U
+.It T
+Sort by CPU time.
+Shorthand for
+.Dq Fl o Li time .
+.It U
 Toggle between displaying usernames and uids.
-.TP
-.B u
+.It u
 Display only processes owned by a specific username (prompt for username).
-If the username specified is simply \*(lq+\*(rq, then processes belonging
-to all users will be displayed.
-.SH "THE DISPLAY"
+If the username specified is simply
+.Dq + ,
+then processes belonging to all users will be displayed.
+.El
+.Ss THE DISPLAY
 The actual display varies depending on the specific variant of Unix
-that the machine is running.  This description may not exactly match
-what is seen by top running on this particular machine.  Differences
-are listed at the end of this manual entry.
-.PP
+that the machine is running.
+This description may not exactly match what is seen by top running on
+this particular machine.
+Differences are listed at the end of this manual entry.
+.Pp
 The top lines of the display show general information
-about the state of the system.  The first line shows
+about the state of the system.
+The first line shows
 (on some systems) the last process id assigned to a process,
 the three load averages,
 the system uptime, and the current time.
 The second line displays the total number of processes followed
-by a breakdown of processes per state.  Examples of states common
+by a breakdown of processes per state.
+Examples of states common
 to Unix systems are sleeping, running, starting, stopped, and zombie.
 The next line displays a percentage of time spent in each of the
 processor states (user, nice, system, interrupt, idle).
 These percentages show the processor activity during the time since
-the last update.  For multi-processor systems, this information is 
-an average of all processors.  The next line shows
-kernel-related activity (not available on all systems).  The numbers
-shown on this line are per-second rates sampled since the last update.
-The exact
-information displayed varies between systems, but some examples are:
+the last update.
+For multi-processor systems, this information is an average of all processors.
+The next line shows kernel-related activity (not available on all systems).
+The numbers shown on this line are per-second rates sampled since the last
+update.
+The exact information displayed varies between systems, but some examples are:
 context switches, interrupts, traps, forks, and page faults.
-.PP
-The last
-two lines show a summary of memory and swap activity.  The fields are
-as follows:
-.TP
-.B Active:
+.Pp
+The last two lines show a summary of memory and swap activity.
+The fields are as follows:
+.Bl -tag -width "Active:" -offset indent
+.It Active:
 number of pages active
-.TP
-.B Inact:
+.It Inact:
 number of pages inactive
-.TP
-.B Wired:
+.It Wired:
 number of pages wired down, including cached file data pages
-.TP
-.B Cache:
+.It Cache:
 number of pages used for VM-level disk caching
-.TP
-.B Buf:
+.It Buf:
 number of pages used for BIO-level disk caching
-.TP
-.B Free:
+.It Free:
 number of pages free
-.TP
-.B Total:
+.It Total:
 total available swap usage
-.TP
-.B Free:
+.It Free:
 total free swap usage
-.TP
-.B Inuse:
+.It Inuse:
 swap usage
-.TP
-.B In:
+.It In:
 pages paged in from swap devices (last interval)
-.TP
-.B Out:
+.It Out:
 pages paged out to swap devices (last interval)
-.TP
-.B K:
+.It K:
 Kilobyte
-.TP
-.B M:
+.It M:
 Megabyte
-.TP
-.B %:
+.It %:
 1/100
-.PP
+.El
+.Pp
 The remainder of the screen displays information about individual
-processes.  This display is similar in spirit to
-.IR ps (1)
-but it is not exactly the same.  The columns displayed by top will
-differ slightly between operating systems.  Generally, the following
-fields are displayed:
-.TP
-.B PID
+processes.
+This display is similar in spirit to
+.Xr ps 1 ,
+but it is not exactly the same.
+The columns displayed by top will differ slightly between operating systems.
+Generally, the following fields are displayed:
+.Bl -tag -width "USERNAME" -offset indent
+.It PID
 The process id.
-.TP
-.B USERNAME
+.It USERNAME
 Username of the process's owner (if
-.B \-u
+.Fl u
 is specified, a UID column will be substituted for USERNAME).
-.TP
-.B THR
+.It THR
 The number of threads in the processes (this column may also
 be labeled NLWP).
-.TP
-.B PRI
-Current priority of the process.  This field is no longer displayed.
-.TP
-.B NICE
+.It PRI
+Current priority of the process.
+This field is no longer displayed.
+.It NICE
 Nice amount in the range \-20 to 20, as established by the use of
 the command
-.IR nice .
-.TP
-.B SIZE
+.Xr nice 1 .
+.It SIZE
 Total size of the process (text, data, and stack) given in kilobytes.
-.TP
-.B PRES
+.It PRES
 Proportional resident memory: current amount of process memory that resides
-in physical memory, given in kilobytes.  Shared memory is divided amoungst
-the processes doing the sharing.  This field replaces RES.
-.TP
-.B STATE
-Current state (typically one of \*(lqsleep\*(rq,
-\*(lqrun\*(rq, \*(lqidl\*(rq, \*(lqzomb\*(rq, or \*(lqstop\*(rq).
-.TP
-.B C
+in physical memory, given in kilobytes.
+Shared memory is divided amoungst the processes doing the sharing.
+This field replaces RES.
+.It STATE
+Current state (typically one of
+.Sq sleep ,
+.Sq run ,
+.Sq idl ,
+.Sq zomb ,
+or
+.Sq stop ) .
+.It C
 Number of CPU the process is currently running on (only on multi-CPU machines).
-.TP
-.B TIME
+.It TIME
 Number of system and user cpu seconds that the process has used.
-.TP
-.B CTIME
-The cumulated CPU time of the process and its exited children.  This value
-is similar to what
-.IR ps (1)
+.It CTIME
+The cumulated CPU time of the process and its exited children.
+This value is similar to what
+.Xr ps 1
 displays as CPU time when run with the
-.BR \-S
+.Fl S
 option.
-.TP
-.B CPU
+.It CPU
 Percentage of available cpu time used by this process.
-.TP
-.B COMMAND
+.It COMMAND
 Name of the command that the process is currently running.
-.SH COLOR
-Top supports the use of ANSI color in its output. By default, color is
-available but not used.  The environment variable
-.B TOPCOLORS
+.El
+.Ss COLOR
+Top supports the use of ANSI color in its output.
+By default, color is available but not used.
+The environment variable
+.Ev TOPCOLORS
 specifies colors to use and conditions for which they should be used.
-At the present time, only numbers in the summay display area can be 
-colored. In a future version it will be possible to highlight numbers
-in the process display area as well.  The environment variable is the
-only way to specify color: there is no equivalent command line option.
+At the present time, only numbers in the summary display area can be
+colored.
+In a future version it will be possible to highlight numbers
+in the process display area as well.
+The environment variable is the only way to specify color:
+there is no equivalent command line option.
 Note that the environment variable
-.B TOPCOLOURS
-is also understood. The British spelling takes precedence.  The use of
-color only works on terminals that understand and process ANSI color
-escape sequences.
-.PP
-The environment variable is a sequence of color specifications, separated
-by colons. Each specification takes the form tag=min,max#code where
-.I tag
-is the name of the value to check,
-.I min
-and
-.I max
-specify a range for the value, and
-.I code
-is an ANSI color code.  Multiple color codes can be listed and separated
-with semi-colons.  A missing
-.I min
-implies the lowest possible value (usually 0)
-and a missing
-.I max
-implies infinity. The comma must always be present. When specifying numbers
-for load averages, they should be multiplied by 100.
-For example, the specification
-.B 1min=500,1000#31
-indicates that a 1 minute load average between
-5 and 10 should be displayed in red. Color attributes can be combined.
-For example, the specification
-.B 5min=1000,#37;41
-indicates that a 5 minute load average higher than 10 should be displayed
-with white characters on a red background. A special tag named
-.I header
-is used to control the color of the header for process display.  It should
-be specified with no lower and upper limits, specifically
-.B header=,#
-followed by the ANSI color code.
-.PP
+.Ev TOPCOLOURS
+is also understood.
+The British spelling takes precedence.
+The use of color only works on terminals that understand and process
+ANSI color escape sequences.
+.Pp
 You can see a list of color codes recognized by this installation of top
 with the
-.B \-T
-option.  This will also show the current set of tests used for
+.Fl T
+option.
+This will also show the current set of tests used for
 color highligting, as specified in the environment.
-.SH AUTHOR
-William LeFebvre
-.SH ENVIRONMENT
-.DT
-TOP		user-configurable defaults for options.
-TOPCOLORS	color specification
-.SH BUGS
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm :
+.Bl -tag -width "TOPCOLORS"
+.It Ev TOP
+The environment variable
+.Ev TOP
+is examined for options before the command line is scanned.
+This enables a user to set his or her own defaults.
+The number of processes to display
+can also be specified in the environment variable
+.Ev TOP .
+The options
+.Dq Fl C ,
+.Dq Fl I ,
+.Dq Fl S ,
+and
+.Dq Fl u
+are actually toggles.
+A second specification of any of these options will negate the first.
+Thus a user who has the environment variable
+.Ev TOP
+set to
+.Dq Fl I
+may use the command
+.Dq Nm Fl I
+to see idle processes.
+.It Ev TOPCOLORS
+The environment variable is a sequence of color specifications, separated
+by colons.
+Each specification takes the form tag=min,max#code where
+.Li tag
+is the name of the value to check,
+.Li min
+and
+.Li max
+specify a range for the value, and
+.Li code
+is an ANSI color code.
+Multiple color codes can be listed and separated with semi-colons.
+A missing
+.Li min
+implies the lowest possible value (usually 0)
+and a missing
+.Li max
+implies infinity.
+The comma must always be present.
+When specifying numbers for load averages, they should be multiplied by 100.
+For example, the specification
+.Li 1min=500,1000#31
+indicates that a 1 minute load average between
+5 and 10 should be displayed in red.
+Color attributes can be combined.
+For example, the specification
+.Li 5min=1000,#37;41
+indicates that a 5 minute load average higher than 10 should be displayed
+with white characters on a red background.
+A special tag named
+.Li header
+is used to control the color of the header for process display.
+It should be specified with no lower and upper limits, specifically
+.Li header=,#
+followed by the ANSI color code.
+.El
+.Sh SEE ALSO
+.Xr kill 1 ,
+.Xr ps 1 ,
+.Xr stty 1 ,
+.Xr mem 4 ,
+.Xr renice 8
+.Sh AUTHORS
+.An William LeFebvre
+.Sh BUGS
 As with
-.IR ps (1),
+.Xr ps 1 ,
 things can change while
-.I top
-is collecting information for an update.  The picture it gives is only a
-close approximation to reality.
-.SH "SEE ALSO"
-kill(1),
-ps(1),
-stty(1),
-mem(4),
-renice(8)
-.SH COPYRIGHT
-Copyright (C) 1984-2007 William LeFebvre. For additional licensing
-information, see http://www.unixtop.org/license/
+.Nm
+is collecting information for an update.
+The picture it gives is only a close approximation to reality.
+.\" .Sh COPYRIGHT
+.\" Copyright (C) 1984-2007 William LeFebvre.
+.\" For additional licensing information, see
+.\" http://www.unixtop.org/license/
