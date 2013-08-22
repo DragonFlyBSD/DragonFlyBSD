@@ -1958,9 +1958,11 @@ static void intel_update_fbc(struct drm_device *dev)
 		goto out_disable;
 	}
 
+#ifdef DDB
 	/* If the kernel debugger is active, always disable compression */
 	if (db_active)
 		goto out_disable;
+#endif
 
 	/* If the scanout has not changed, don't modify the FBC settings.
 	 * Note that we make the fundamental assumption that the fb->obj
