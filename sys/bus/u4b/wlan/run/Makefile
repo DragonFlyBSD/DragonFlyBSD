@@ -28,7 +28,7 @@
 .PATH:	${.CURDIR}/..
 
 KMOD=	if_run
-SRCS=	opt_bus.h opt_usb.h device_if.h bus_if.h usb_if.h \
+SRCS=	opt_bus.h opt_usb.h device_if.h bus_if.h usb_if.h usbdevs.h \
 	if_run.c
 
 .include <bsd.kmod.mk>

@@ -55,7 +55,7 @@
 
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
-#include <bus/u4b/usbdevs.h>
+#include "usbdevs.h"
 #include "usb_if.h"
 
 #define	USB_DEBUG_VAR ustorage_fs_debug

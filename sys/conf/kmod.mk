@@ -349,6 +349,26 @@ ${_src}: @/tools/makeobjops.awk @/${_srcsrc}
 #.endif
 #.endfor
 
+.if !empty(SRCS:Musbdevs.h)
+CLEANFILES+=	usbdevs.h
+.if !exists(@)
+usbdevs.h: @
+.else
+usbdevs.h: @/tools/usbdevs2h.awk @/bus/u4b/usbdevs
+.endif
+	${AWK} -f @/tools/usbdevs2h.awk @/bus/u4b/usbdevs -h
+.endif
+
+.if !empty(SRCS:Musbdevs_data.h)
+CLEANFILES+=	usbdevs_data.h
+.if !exists(@)
+usbdevs_data.h: @
+.else
+usbdevs_data.h: @/tools/usbdevs2h.awk @/bus/u4b/usbdevs
+.endif
+	${AWK} -f @/tools/usbdevs2h.awk @/bus/u4b/usbdevs -d
+.endif
+
 .if !empty(SRCS:Massym.s)
 CLEANFILES+=	assym.s genassym.o
 assym.s: genassym.o

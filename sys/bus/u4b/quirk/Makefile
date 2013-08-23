@@ -26,7 +26,7 @@
 #
 
 KMOD=	usb_quirk
-SRCS=	bus_if.h device_if.h usb_if.h opt_bus.h opt_usb.h \
+SRCS=	bus_if.h device_if.h usb_if.h opt_bus.h opt_usb.h usbdevs.h \
 	usb_quirk.c
 
 .include <bsd.kmod.mk>

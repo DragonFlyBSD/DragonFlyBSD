@@ -28,7 +28,7 @@
 .PATH:	${.CURDIR}/..
 
 KMOD=	if_rum
-SRCS=	opt_bus.h opt_inet.h opt_usb.h device_if.h bus_if.h usb_if.h \
+SRCS=	opt_bus.h opt_inet.h opt_usb.h device_if.h bus_if.h usb_if.h usbdevs.h \
 	if_rum.c
 
 .if !defined(BUILDING_WITH_KERNEL)

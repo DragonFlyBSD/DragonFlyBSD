@@ -61,7 +61,7 @@
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <bus/u4b/usbdevs.h>
+#include "usbdevs.h"
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
 #include <bus/u4b/usbdi_util.h>

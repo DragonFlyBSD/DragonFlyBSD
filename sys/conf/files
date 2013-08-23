@@ -2173,12 +2173,12 @@ ${ACPICA_DIR}/utilities/utxferror.c		optional acpi
 #
 # experimental new USB stack from recent FreeBSD
 #
-usbdevs.h			optional u4b \
+usbdevs.h			optional usb4bsd \
 	dependency		"$S/tools/usbdevs2h.awk $S/bus/u4b/usbdevs" \
 	compile-with		"${AWK} -f $S/tools/usbdevs2h.awk $S/bus/u4b/usbdevs -h" \
 	no-obj no-implicit-rule before-depend \
 	clean "usbdevs.h"
-usbdevs_data.h			optional u4b \
+usbdevs_data.h			optional usb4bsd \
 	dependency		"$S/tools/usbdevs2h.awk $S/bus/u4b/usbdevs" \
 	compile-with		"${AWK} -f $S/tools/usbdevs2h.awk $S/bus/u4b/usbdevs -d" \
 	no-obj no-implicit-rule before-depend \
