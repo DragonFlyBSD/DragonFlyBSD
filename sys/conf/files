@@ -865,7 +865,6 @@ kern/kern_resource.c	standard
 kern/kern_plimit.c	standard
 kern/kern_slaballoc.c	standard
 kern/kern_systimer.c	standard
-kern/kern_syslink.c	optional syslink
 kern/kern_cputimer.c	standard
 kern/kern_mpipe.c	standard
 kern/kern_shutdown.c	standard
