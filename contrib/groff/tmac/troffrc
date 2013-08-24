@@ -41,12 +41,18 @@ troffrc!X100 troffrc!X100-12 troffrc!lj4 troff!lbp troffrc!html
 .\" Set the hyphenation language to `us'.
 .do hla us
 .
-.\" Load hyphenation patterns and exceptions.
-.do hpf hyphen.us
-.do hpfa hyphenex.us
-.if '\*[.T]'koi8-r' \
-.      do hpfa hyphen.ru
-.
+.\" Disable hyphenation:
+.\" Do not load hyphenation patterns and exceptions.
+.\" do hpf hyphen.us
+.\" do hpfa hyphenex.us
+.\" if '\*[.T]'koi8-r' \
+.\"       do hpfa hyphen.ru
+.\"
+.\" Disable adjustment by default,
+.\" such that manuals look similar with groff and mandoc(1).
+.ad l
+.de ad
+..
 .\" Handle paper formats.
 .do mso papersize.tmac
 .
