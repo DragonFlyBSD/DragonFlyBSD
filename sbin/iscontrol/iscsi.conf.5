@@ -193,9 +193,6 @@ chaptest {
    tags		= 256
 }
 .Ed
-.Sh ERRORS
-The parsing is very primitive, so do not expect - at the moment - any
-error messages.
 .Sh SEE ALSO
 .Xr iscsi_initiator 4 ,
 .Xr iscontrol 8
@@ -206,5 +203,8 @@ ISCSI RFC 3720
 .Sh BUGS
 Some options have not been implemented, either they were found
 to be unnecessary, or not understood, this can change in the future.
-.br
+.Pp
 The tags opening value is difficult to calculate, use wisely.
+.Pp
+The parsing is very primitive, so do not expect - at the moment - any
+error messages.

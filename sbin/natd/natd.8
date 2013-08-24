@@ -120,13 +120,9 @@ source address.
 According to RFC 1918, unregistered source addresses are 10.0.0.0/8,
 172.16.0.0/12 and 192.168.0.0/16.
 .It Fl redirect_port Ar proto Xo
-.Ar targetIP Ns : Ns Xo
-.Ar targetPORT Ns Op - Ns Ar targetPORT Xc
-.Op Ar aliasIP Ns : Ns Xo
-.Ar aliasPORT Ns Op - Ns Ar aliasPORT Xc
-.Oo Ar remoteIP Ns Oo : Ns
-.Ar remotePORT Ns Op - Ns Ar remotePORT
-.Oc Oc
+.Ar targetIP Ns : Ns Ar targetPORT Ns Op \- Ns Ar targetPORT
+.Op Ar aliasIP Ns : Ns Ar aliasPORT Ns Op \- Ns Ar aliasPORT
+.Op Ar remoteIP Ns Op : Ns Ar remotePORT Ns Op \- Ns Ar remotePORT
 .Xc
 Redirect incoming connections arriving to given port(s) to another host
 and port(s).
@@ -222,22 +218,6 @@ translated local address (192.168.0.4), but outgoing
 traffic from the first two addresses will still be aliased
 to appear from the specified
 .Ar public_addr .
-.It Fl redirect_port Ar proto Xo
-.Ar targetIP Ns : Ns Xo
-.Ar targetPORT Ns Oo , Ns
-.Ar targetIP Ns : Ns Xo
-.Ar targetPORT Ns Oo , Ns
-.Ar ...\&
-.Oc Oc
-.Xc
-.Xc
-.Op Ar aliasIP Ns : Ns Xo
-.Ar aliasPORT
-.Xc
-.Oo Ar remoteIP Ns
-.Op : Ns Ar remotePORT
-.Oc
-.Xc
 .It Fl redirect_address Xo
 .Ar localIP Ns Oo , Ns
 .Ar localIP Ns Oo , Ns
