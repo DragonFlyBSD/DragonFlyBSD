@@ -739,6 +739,8 @@ device		pass			#CAM passthrough driver
 device		sg			#Passthrough device (linux scsi generic)
 device		pt			#SCSI processor type
 device		ses			#SCSI SES/SAF-TE driver
+device		targ			#SCSI Target Mode Code
+device		targbh			#SCSI Target Mode Blackhole Device
 
 # Options for device mapper
 device		dm
