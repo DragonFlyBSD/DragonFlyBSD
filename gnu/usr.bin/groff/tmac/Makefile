@@ -1,5 +1,4 @@
 # $FreeBSD: src/gnu/usr.bin/groff/tmac/Makefile,v 1.42 2003/09/08 17:46:33 ru Exp $
-# $DragonFly: src/gnu/usr.bin/groff/tmac/Makefile,v 1.4 2005/09/09 14:11:04 asmodai Exp $
 
 .include "../Makefile.inc"
 
@@ -16,7 +15,6 @@ MLINKS+=	groff_man.7 man.7
 MLINKS+=	groff_me.7 me.7
 MLINKS+=	groff_mdoc.7 mdoc.7 groff_mdoc.7 mdoc.samples.7
 
-PATCHES!=       echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=     ${DIST_DIR}
 
 SRCS=		${PATCHES}

@@ -55,6 +55,7 @@ ifdef ascii ! define n %1% !
 ifdef latin1 ! define n %1% !
 ifdef utf8 ! define n %1% !
 ifdef cp1047 ! define n %1% !
+ifdef koi8-r ! define n %1% !
 ifdef n !
 set nroff 1
 !

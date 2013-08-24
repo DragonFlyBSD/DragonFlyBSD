@@ -19,6 +19,7 @@
 .do ds troffrc!latin1 tty.tmac
 .do ds troffrc!utf8 tty.tmac
 .do ds troffrc!cp1047 tty.tmac
+.do ds troffrc!koi8-r tty.tmac
 .do ds troffrc!lj4 lj4.tmac
 .do ds troffrc!lbp lbp.tmac
 .do ds troffrc!html html.tmac
@@ -30,7 +31,10 @@ troffrc!X100 troffrc!X100-12 troffrc!lj4 troff!lbp troffrc!html
 .\" Test whether we work under EBCDIC and map the no-breakable space
 .\" character accordingly.
 .do ie '\[char97]'a' \
-.	do tr \[char160]\~
+.      ie '\*[.T]'koi8-r' \
+.              do tr \[char154]\~
+.      el \
+.              do tr \[char160]\~
 .el \
 .	do tr \[char65]\~
 .
@@ -40,11 +44,21 @@ troffrc!X100 troffrc!X100-12 troffrc!lj4 troff!lbp troffrc!html
 .\" Load hyphenation patterns and exceptions.
 .do hpf hyphen.us
 .do hpfa hyphenex.us
+.if '\*[.T]'koi8-r' \
+.      do hpfa hyphen.ru
 .
 .\" Handle paper formats.
 .do mso papersize.tmac
 .
 .\" Handle PS images.
 .do mso pspic.tmac
+.
+.\" Disable SGR support in grotty(1).
+.if n \{\
+.  do nop \X'tty: sgr 0'
+.  sp -1
+.  nr nl 0-1
+.  nr % -1
+.\}
 .
 .\" Don't let blank lines creep in here.
