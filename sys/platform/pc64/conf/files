@@ -127,11 +127,9 @@ dev/netif/ndis/if_ndis_u4b.c		optional	ndis usb4bsd
 dev/misc/kbd/atkbd.c			optional	atkbd
 dev/misc/kbd/atkbdc.c			optional	atkbdc
 dev/misc/kbd/kbd.c			optional	atkbd
-dev/misc/kbd/kbd.c			optional	kbd
 dev/misc/kbd/kbd.c			optional	sc
 dev/misc/kbd/kbd.c			optional	ukbd
 dev/misc/kbd/kbdsw.c			optional	atkbd
-dev/misc/kbd/kbdsw.c			optional	kbd
 dev/misc/kbd/kbdsw.c			optional	sc
 dev/misc/kbd/kbdsw.c			optional	ukbd
 dev/misc/syscons/schistory.c		optional	sc
