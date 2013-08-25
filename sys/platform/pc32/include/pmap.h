@@ -315,6 +315,8 @@ unsigned *pmap_kernel_pte (vm_offset_t) __pure2;
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
 int	pmap_get_pgeflag(void);
 void	pmap_set_opt (void);
+void	pmap_invalidate_range(pmap_t, vm_offset_t, vm_offset_t);
+void	pmap_invalidate_cache_range(vm_offset_t sva, vm_offset_t eva);
 
 #endif /* _KERNEL */
 
