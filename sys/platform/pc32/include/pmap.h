@@ -307,6 +307,7 @@ typedef char vm_memattr_t;
 void	pmap_release(struct pmap *pmap);
 void	pmap_interlock_wait (struct vmspace *);
 void	pmap_bootstrap (vm_paddr_t, vm_paddr_t);
+void	*pmap_mapbios(vm_paddr_t, vm_size_t);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	*pmap_mapdev_attr(vm_paddr_t, vm_size_t, int);
 void	*pmap_mapdev_uncacheable (vm_paddr_t, vm_size_t);
