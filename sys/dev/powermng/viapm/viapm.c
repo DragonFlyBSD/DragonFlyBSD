@@ -454,7 +454,7 @@ viapm_pro_detach(device_t dev)
 
 #ifdef notyet
 	if ((error = bus_release_resource(dev, SYS_RES_IRQ,
-					viapm->irqrid, viapm->irqres))
+					viapm->irqrid, viapm->irqres)))
 		return (error);
 #endif
 

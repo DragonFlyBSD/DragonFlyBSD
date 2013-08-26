@@ -2649,8 +2649,8 @@ mly_print_packet(struct mly_command *mc)
     case MDACMD_SCSIPT:
     case MDACMD_SCSI:
 	mly_printf(sc, "   cdb length           %d\n", ss->cdb_length);
-	mly_printf(sc, "   cdb                  %s\n", hexncpy(ss->cdb, ss->cdb_length,
-		hexstr, HEX_NCPYLEN(ss->cdb_length), " ");
+	mly_printf(sc, "   cdb                  %s\n",
+	    hexncpy(ss->cdb, ss->cdb_length, hexstr, HEX_NCPYLEN(ss->cdb_length), " "));
 	transfer = 1;
 	break;
     case MDACMD_SCSILC:
