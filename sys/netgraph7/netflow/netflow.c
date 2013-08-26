@@ -556,7 +556,7 @@ ng_netflow_flow_show(priv_p priv, uint32_t last, struct ng_mesg *resp)
 			continue;
 
 		TAILQ_FOREACH(fle, &hsh->head, fle_hash) {
-			if (mtx_contested(&hsh->mtx)
+			if (mtx_contested(&hsh->mtx))
 				break;
 
 			bcopy(&fle->f, &(data->entries[data->nentries]),
