@@ -370,6 +370,11 @@ or
 .Dq Rolling
 if the leap second time given by the other fields should be interpreted as
 local wall clock time.
+.Sh FILES
+.Bl -tag -width ".Pa /usr/share/zoneinfo" -compact
+.It Pa /usr/share/zoneinfo
+standard directory used for created files
+.El
 .Sh EXAMPLES
 Here is an extended example of
 .Nm
@@ -449,11 +454,6 @@ produces a single transition to daylight saving at the new UTC offset
 To get separate transitions
 use multiple zone continuation lines
 specifying transition instants using universal time.
-.Sh FILES
-.Bl -tag -width ".Pa /usr/share/zoneinfo" -compact
-.It Pa /usr/share/zoneinfo
-standard directory used for created files
-.El
 .Sh SEE ALSO
 .Xr ctime 3 ,
 .Xr tzfile 5 ,

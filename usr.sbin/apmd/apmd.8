@@ -63,7 +63,7 @@ built-in functions in the configuration file.
 The
 .Nm
 utility recognizes the following runtime options:
-.Bl -tag -width -f_file
+.Bl -tag -width ".Fl f Ar file"
 .It Fl d
 Starts in debug mode.  This causes
 .Nm
@@ -229,14 +229,11 @@ built-in functions instead of command lines.
 A built-in function name should be terminated with a semicolon,
 just as with a command line.
 The following built-in functions are currently supported:
-.Bl -item
-.It
-- reject:
-.Bd -ragged -offset indent
+.Bl -tag -width "- reject:"
+.It - reject:
 Reject last request posted by APM BIOS.  This can be used to reject
 a SUSPEND request when the LCD is closed and put the system in a
 STANDBY state instead.
-.Ed
 .El
 .Ed
 .El

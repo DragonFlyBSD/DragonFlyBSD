@@ -122,68 +122,68 @@ hashmarks ('#') are treated as comment lines.
 .Ar src Ar dst Ar protocol Ar spi
 .Op Ar extensions
 .Ar algorithm...
-.Li ;
+.Li \&;
 .Xc
 Add an SAD entry.
 .\"
 .It Xo
 .Li get
 .Ar src Ar dst Ar protocol Ar spi
-.Li ;
+.Li \&;
 .Xc
 Show an SAD entry.
 .\"
 .It Xo
 .Li delete
 .Ar src Ar dst Ar protocol Ar spi
-.Li ;
+.Li \&;
 .Xc
 Remove an SAD entry.
 .\"
 .It Xo
 .Li deleteall
 .Ar src Ar dst Ar protocol
-.Li ;
+.Li \&;
 .Xc
 Remove all SAD entries that match the specification.
 .\"
 .It Xo
 .Li flush
 .Op Ar protocol
-.Li ;
+.Li \&;
 .Xc
 Clear all SAD entries matched by the options.
 .\"
 .It Xo
 .Li dump
 .Op Ar protocol
-.Li ;
+.Li \&;
 .Xc
 Dumps all SAD entries matched by the options.
 .\"
 .It Xo
 .Li spdadd
 .Ar src_range Ar dst_range Ar upperspec Ar policy
-.Li ;
+.Li \&;
 .Xc
 Add an SPD entry.
 .\"
 .It Xo
 .Li spddelete
 .Ar src_range Ar dst_range Ar upperspec Fl P Ar direction
-.Li ;
+.Li \&;
 .Xc
 Delete an SPD entry.
 .\"
 .It Xo
 .Li spdflush
-.Li ;
+.Li \&;
 .Xc
 Clear all SPD entries.
 .\"
 .It Xo
 .Li spddump
-.Li ;
+.Li \&;
 .Xc
 Dumps all SPD entries.
 .El
