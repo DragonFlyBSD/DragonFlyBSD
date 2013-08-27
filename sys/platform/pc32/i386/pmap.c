@@ -147,11 +147,16 @@ vm_offset_t KvaSize;		/* max size of kernel virtual address space */
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
 static int pgeflag;		/* PG_G or-in */
 static int pseflag;		/* PG_PS or-in */
+uint64_t PatMsr;
 
 static vm_object_t kptobj;
 
 static int nkpt;
 vm_offset_t kernel_vm_end;
+
+#define PAT_INDEX_SIZE  8
+static pt_entry_t pat_pte_index[PAT_INDEX_SIZE];	/* PAT -> PG_ bits */
+/*static pt_entry_t pat_pde_index[PAT_INDEX_SIZE];*/	/* PAT -> PG_ bits */
 
 /*
  * Data for the pv entry allocation mechanism
@@ -471,6 +476,82 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 	gd->gd_GDADDR1= (unsigned *)VADDR(APTDPTDI, 0);
 
 	cpu_invltlb();
+
+	/* Initialize the PAT MSR */
+	pmap_init_pat();
+}
+
+/*
+ * Setup the PAT MSR.
+ */
+void
+pmap_init_pat(void)
+{
+	uint64_t pat_msr;
+	u_long cr0, cr4;
+
+	/*
+	 * Default values mapping PATi,PCD,PWT bits at system reset.
+	 * The default values effectively ignore the PATi bit by
+	 * repeating the encodings for 0-3 in 4-7, and map the PCD
+	 * and PWT bit combinations to the expected PAT types.
+	 */
+	pat_msr = PAT_VALUE(0, PAT_WRITE_BACK) |	/* 000 */
+		  PAT_VALUE(1, PAT_WRITE_THROUGH) |	/* 001 */
+		  PAT_VALUE(2, PAT_UNCACHED) |		/* 010 */
+		  PAT_VALUE(3, PAT_UNCACHEABLE) |	/* 011 */
+		  PAT_VALUE(4, PAT_WRITE_BACK) |	/* 100 */
+		  PAT_VALUE(5, PAT_WRITE_THROUGH) |	/* 101 */
+		  PAT_VALUE(6, PAT_UNCACHED) |		/* 110 */
+		  PAT_VALUE(7, PAT_UNCACHEABLE);	/* 111 */
+	pat_pte_index[PAT_WRITE_BACK]	= 0;
+	pat_pte_index[PAT_WRITE_THROUGH]= 0         | PG_NC_PWT;
+	pat_pte_index[PAT_UNCACHED]	= PG_NC_PCD;
+	pat_pte_index[PAT_UNCACHEABLE]	= PG_NC_PCD | PG_NC_PWT;
+	pat_pte_index[PAT_WRITE_PROTECTED] = pat_pte_index[PAT_UNCACHEABLE];
+	pat_pte_index[PAT_WRITE_COMBINING] = pat_pte_index[PAT_UNCACHEABLE];
+
+	if (cpu_feature & CPUID_PAT) {
+		/*
+		 * If we support the PAT then set-up entries for
+		 * WRITE_PROTECTED and WRITE_COMBINING using bit patterns
+		 * 4 and 5.
+		 */
+		pat_msr = (pat_msr & ~PAT_MASK(4)) |
+			  PAT_VALUE(4, PAT_WRITE_PROTECTED);
+		pat_msr = (pat_msr & ~PAT_MASK(5)) |
+			  PAT_VALUE(5, PAT_WRITE_COMBINING);
+		pat_pte_index[PAT_WRITE_PROTECTED] = PG_PTE_PAT | 0;
+		pat_pte_index[PAT_WRITE_COMBINING] = PG_PTE_PAT | PG_NC_PWT;
+
+		/*
+		 * Then enable the PAT
+		 */
+
+		/* Disable PGE. */
+		cr4 = rcr4();
+		load_cr4(cr4 & ~CR4_PGE);
+
+		/* Disable caches (CD = 1, NW = 0). */
+		cr0 = rcr0();
+		load_cr0((cr0 & ~CR0_NW) | CR0_CD);
+
+		/* Flushes caches and TLBs. */
+		wbinvd();
+		cpu_invltlb();
+
+		/* Update PAT and index table. */
+		wrmsr(MSR_PAT, pat_msr);
+
+		/* Flush caches and TLBs again. */
+		wbinvd();
+		cpu_invltlb();
+
+		/* Restore caches and PGE. */
+		load_cr0(cr0);
+		load_cr4(cr4);
+		PatMsr = pat_msr;
+	}
 }
 
 /*
@@ -931,9 +1012,12 @@ pmap_invalidate_range(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 }
 
 /*
- * Add a list of wired pages to the kva, fully SMP synchronized.
- *
- * No requirements, non blocking.
+ * Add a list of wired pages to the kva
+ * this routine is only used for temporary
+ * kernel mappings that do not need to have
+ * page modification or references recorded.
+ * Note that old mappings are simply written
+ * over.  The page *must* be wired.
  */
 void
 pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
@@ -943,10 +1027,11 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 	end_va = va + count * PAGE_SIZE;
 		
 	while (va < end_va) {
-		unsigned *pte;
+		pt_entry_t *pte;
 
-		pte = (unsigned *)vtopte(va);
-		*pte = VM_PAGE_TO_PHYS(*m) | PG_RW | PG_V | pgeflag;
+		pte = vtopte(va);
+		*pte = VM_PAGE_TO_PHYS(*m) | PG_RW | PG_V |
+			pat_pte_index[(*m)->pat_mode] | pgeflag;
 		cpu_invlpg((void *)va);
 		va += PAGE_SIZE;
 		m++;
@@ -2399,6 +2484,7 @@ validate:
 		newpte |= PG_U;
 	if (pmap == &kernel_pmap)
 		newpte |= pgeflag;
+	newpte |= pat_pte_index[m->pat_mode];
 
 	/*
 	 * If the mapping or permission bits are different, we need
@@ -3372,63 +3458,57 @@ i386_protection_init(void)
  * routine is intended to be used for mapping device memory,
  * NOT real memory.
  *
- * NOTE: we can't use pgeflag unless we invalidate the pages one at
- * a time.
+ * NOTE: We can't use pgeflag unless we invalidate the pages one at
+ *	 a time.
  *
- * No requirements.
+ * NOTE: The PAT attributes {WRITE_BACK, WRITE_THROUGH, UNCACHED, UNCACHEABLE}
+ *	 work whether the cpu supports PAT or not.  The remaining PAT
+ *	 attributes {WRITE_PROTECTED, WRITE_COMBINING} only work if the cpu
+ *	 supports PAT.
  */
 void *
 pmap_mapdev(vm_paddr_t pa, vm_size_t size)
 {
-	vm_offset_t va, tmpva, offset;
-	unsigned *pte;
-
-	offset = pa & PAGE_MASK;
-	size = roundup(offset + size, PAGE_SIZE);
-
-	va = kmem_alloc_nofault(&kernel_map, size, PAGE_SIZE);
-	if (!va)
-		panic("pmap_mapdev: Couldn't alloc kernel virtual memory");
-
-	pa = pa & PG_FRAME;
-	for (tmpva = va; size > 0;) {
-		pte = (unsigned *)vtopte(tmpva);
-		*pte = pa | PG_RW | PG_V; /* | pgeflag; */
-		size -= PAGE_SIZE;
-		tmpva += PAGE_SIZE;
-		pa += PAGE_SIZE;
-	}
-	smp_invltlb();
-	cpu_invltlb();
-
-	return ((void *)(va + offset));
+	return(pmap_mapdev_attr(pa, size, PAT_WRITE_BACK));
 }
 
 void *
 pmap_mapdev_uncacheable(vm_paddr_t pa, vm_size_t size)
 {
+	return(pmap_mapdev_attr(pa, size, PAT_UNCACHEABLE));
+}
+
+/*
+ * Map a set of physical memory pages into the kernel virtual
+ * address space. Return a pointer to where it is mapped. This
+ * routine is intended to be used for mapping device memory,
+ * NOT real memory.
+ */
+void *
+pmap_mapdev_attr(vm_paddr_t pa, vm_size_t size, int mode)
+{
 	vm_offset_t va, tmpva, offset;
-	unsigned *pte;
+	pt_entry_t *pte;
+	vm_size_t tmpsize;
 
 	offset = pa & PAGE_MASK;
 	size = roundup(offset + size, PAGE_SIZE);
 
 	va = kmem_alloc_nofault(&kernel_map, size, PAGE_SIZE);
-	if (va == 0) {
-		panic("pmap_mapdev_uncacheable: "
-		    "Couldn't alloc kernel virtual memory");
-	}
+	if (va == 0)
+		panic("pmap_mapdev: Couldn't alloc kernel virtual memory");
 
-	pa = pa & PG_FRAME;
-	for (tmpva = va; size > 0;) {
-		pte = (unsigned *)vtopte(tmpva);
-		*pte = pa | PG_RW | PG_V | PG_N; /* | pgeflag; */
-		size -= PAGE_SIZE;
+	pa = pa & ~PAGE_MASK;
+	for (tmpva = va, tmpsize = size; tmpsize > 0;) {
+		pte = vtopte(tmpva);
+		*pte = pa | PG_RW | PG_V | /* pgeflag | */
+		       pat_pte_index[mode];
+		tmpsize -= PAGE_SIZE;
 		tmpva += PAGE_SIZE;
 		pa += PAGE_SIZE;
 	}
-	smp_invltlb();
-	cpu_invltlb();
+	pmap_invalidate_range(&kernel_pmap, va, va + size);
+	pmap_invalidate_cache_range(va, va + size);
 
 	return ((void *)(va + offset));
 }
@@ -3482,8 +3562,33 @@ pmap_page_set_memattr(vm_page_t m, vm_memattr_t ma)
 void
 pmap_change_attr(vm_offset_t va, vm_size_t count, int mode)
 {
-	/* XXX pmap_change_attr() not implemented on i386 */
-	/* XXX update pmap_page_set_memattr() once this is implemented */
+	pt_entry_t *pte;
+	vm_offset_t base;
+	int changed = 0;
+
+	if (va == 0)
+		panic("pmap_change_attr: va is NULL");
+	base = trunc_page(va);
+
+	while (count) {
+		pte = vtopte(va);
+		*pte = (*pte & ~(pt_entry_t)(PG_PTE_PAT | PG_NC_PCD |
+					     PG_NC_PWT)) |
+		       pat_pte_index[mode];
+		--count;
+		va += PAGE_SIZE;
+	}
+
+	changed = 1;	/* XXX: not optimal */
+
+	/*
+	 * Flush CPU caches if required to make sure any data isn't cached that
+	 * shouldn't be, etc.
+	 */
+	if (changed) {
+		pmap_invalidate_range(&kernel_pmap, base, va);
+		pmap_invalidate_cache_range(base, va);
+	}
 }
 
 /*

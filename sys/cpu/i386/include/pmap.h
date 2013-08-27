@@ -62,10 +62,12 @@
 #define PG_A		0x020	/* A	Accessed		*/
 #define	PG_M		0x040	/* D	Dirty			*/
 #define	PG_PS		0x080	/* PS	Page size (0=4k,1=4M)	*/
+#define	PG_PTE_PAT	0x080	/* PAT	PAT index		*/
 #define	PG_G		0x100	/* G	Global			*/
 #define	PG_AVAIL1	0x200	/*    /	Available for system	*/
 #define	PG_AVAIL2	0x400	/*   <	programmers use		*/
 #define	PG_AVAIL3	0x800	/*    \				*/
+#define	PG_PDE_PAT	0x1000	/* PAT	PAT index		*/
 
 
 /* Our various interpretations of the above */

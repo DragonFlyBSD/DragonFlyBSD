@@ -277,6 +277,8 @@ init_secondary(void)
 	load_cr0(cr0);
 	pmap_set_opt();		/* PSE/4MB pages, etc */
 
+	pmap_init_pat();	/* Page Attribute Table */
+
 	/* set up CPU registers and state */
 	cpu_setregs();
 

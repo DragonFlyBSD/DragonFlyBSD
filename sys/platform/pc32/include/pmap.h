@@ -308,6 +308,7 @@ void	pmap_release(struct pmap *pmap);
 void	pmap_interlock_wait (struct vmspace *);
 void	pmap_bootstrap (vm_paddr_t, vm_paddr_t);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
+void	*pmap_mapdev_attr(vm_paddr_t, vm_size_t, int);
 void	*pmap_mapdev_uncacheable (vm_paddr_t, vm_size_t);
 void	pmap_page_set_memattr(vm_page_t m, vm_memattr_t ma);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
@@ -315,6 +316,7 @@ unsigned *pmap_kernel_pte (vm_offset_t) __pure2;
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
 int	pmap_get_pgeflag(void);
 void	pmap_set_opt (void);
+void	pmap_init_pat(void);
 void	pmap_invalidate_range(pmap_t, vm_offset_t, vm_offset_t);
 void	pmap_invalidate_cache_range(vm_offset_t sva, vm_offset_t eva);
 
