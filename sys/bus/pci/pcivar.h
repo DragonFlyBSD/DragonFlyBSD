@@ -595,4 +595,11 @@ DECLARE_MODULE(name, name##_mod, SI_SUB_DRIVERS, SI_ORDER_ANY)
 
 #endif /* COMPAT_OLDPCI */
 
+#define	VGA_PCI_BIOS_SHADOW_ADDR	0xC0000
+#define	VGA_PCI_BIOS_SHADOW_SIZE	131072
+
+int	vga_pci_is_boot_display(device_t dev);
+void *	vga_pci_map_bios(device_t dev, size_t *size);
+void	vga_pci_unmap_bios(device_t dev, void *bios);
+
 #endif /* _PCIVAR_H_ */
