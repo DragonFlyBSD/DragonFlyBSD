@@ -48,6 +48,7 @@
 #include "use_en.h"
 
 #include <sys/param.h>
+#include <sys/bus.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #if defined(__DragonFly__) || defined(__FreeBSD__)

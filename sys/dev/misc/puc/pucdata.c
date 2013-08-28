@@ -39,6 +39,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/bus.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>

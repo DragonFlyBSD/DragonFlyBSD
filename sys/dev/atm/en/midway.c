@@ -118,6 +118,7 @@
 #endif
 
 #include <sys/param.h>
+#include <sys/bus.h>
 #include <sys/systm.h>
 #include <sys/queue.h>
 #include <sys/sockio.h>
