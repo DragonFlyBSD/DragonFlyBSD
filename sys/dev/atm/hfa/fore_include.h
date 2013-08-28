@@ -24,8 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_include.h,v 1.2 1999/08/28 00:41:50 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_include.h,v 1.7 2005/02/01 00:51:50 joerg Exp $
- *
  */
 
 /*
@@ -38,6 +36,8 @@
 
 #ifndef _FORE_INCLUDE_H
 #define _FORE_INCLUDE_H
+
+#include <sys/bus.h>
 
 #include <netproto/atm/kern_include.h>
 

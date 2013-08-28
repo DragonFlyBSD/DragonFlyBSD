@@ -24,8 +24,6 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.h,v 1.2 1999/08/28 00:41:43 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.h,v 1.4 2005/02/01 00:51:49 joerg Exp $
- *
  */
 
 /*
@@ -37,6 +35,8 @@
 
 #ifndef	_ENI_ENI_H
 #define	_ENI_ENI_H
+
+#include <sys/bus.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
