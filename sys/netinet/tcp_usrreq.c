@@ -1546,8 +1546,7 @@ SYSCTL_INT(_net_inet_tcp, TCPCTL_RECVSPACE, recvspace, CTLFLAG_RW,
 
 /*
  * Attach TCP protocol to socket, allocating internet protocol control
- * block, tcp control block, bufer space, and entering LISTEN state
- * if to accept connections.
+ * block, tcp control block, buffer space, and entering CLOSED state.
  */
 static int
 tcp_attach(struct socket *so, struct pru_attach_info *ai)
