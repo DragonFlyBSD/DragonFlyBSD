@@ -228,9 +228,6 @@ struct pru_attach_info {
  *	pru_soreceive() - called synchronously from user context.  Typically
  *			  runs generic kernel code and remains synchronous.
  *
- *	pru_savefaddr() - called synchronoutly by protocol thread. Typically
- *			  save the foreign address into socket.so_faddr.
- *
  *	pru_preconnect() - called synchronously from user context.  Typically
  *                         prepares for later asynchronous pru_connect, e.g.
  *                         sets ISCONNECTING.  Non-NULL means asynchronous
@@ -275,7 +272,10 @@ struct pr_usrreqs {
 				      struct sockbuf *sio,
 				      struct mbuf **controlp, int *flagsp);
 
-	/* synchronously called by protocol thread */
+	/*
+	 * Synchronously called by protocol thread.  Typically save the
+	 * foreign address into socket.so_faddr.
+	 */
 	void	(*pru_savefaddr) (struct socket *so,
 				      const struct sockaddr *addr);
 
