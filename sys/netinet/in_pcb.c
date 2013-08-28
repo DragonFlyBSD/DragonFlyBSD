@@ -265,11 +265,15 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 void
 in_pcbunlink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 {
-	KKASSERT(inp->inp_pcbinfo == pcbinfo);
+	KASSERT(inp->inp_pcbinfo == pcbinfo, ("pcbinfo mismatch"));
+	KASSERT(inp->inp_cpcbinfo == pcbinfo, ("cpcbinfo mismatch"));
+	KASSERT((inp->inp_flags & (INP_WILDCARD | INP_CONNECTED)) == 0,
+	    ("already linked"));
 
 	LIST_REMOVE(inp, inp_list);
 	pcbinfo->ipi_count--;
 	inp->inp_pcbinfo = NULL;
+	inp->inp_cpcbinfo = NULL;
 }
 
 /*
@@ -278,7 +282,12 @@ in_pcbunlink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 void
 in_pcblink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 {
-	KKASSERT(inp->inp_pcbinfo == NULL);
+	KASSERT(inp->inp_pcbinfo == NULL, ("has pcbinfo"));
+	KASSERT(inp->inp_cpcbinfo == NULL, ("has cpcbinfo"));
+	KASSERT((inp->inp_flags & (INP_WILDCARD | INP_CONNECTED)) == 0,
+	    ("already linked"));
+
+	inp->inp_cpcbinfo = pcbinfo;
 	inp->inp_pcbinfo = pcbinfo;
 	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, inp, inp_list);
 	pcbinfo->ipi_count++;

@@ -960,7 +960,10 @@ tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 	struct socket *so = inp->inp_socket;
 	struct route *ro = &inp->inp_route;
 
-	oinp = in_pcblookup_hash(&tcbinfo[mycpu->gd_cpuid],
+	KASSERT(inp->inp_cpcbinfo == &tcbinfo[mycpu->gd_cpuid],
+	    ("cpcbinfo mismatch"));
+
+	oinp = in_pcblookup_hash(inp->inp_cpcbinfo,
 				 sin->sin_addr, sin->sin_port,
 				 (inp->inp_laddr.s_addr != INADDR_ANY ?
 				  inp->inp_laddr : if_sin->sin_addr),
@@ -973,7 +976,6 @@ tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 		inp->inp_laddr = if_sin->sin_addr;
 	inp->inp_faddr = sin->sin_addr;
 	inp->inp_fport = sin->sin_port;
-	inp->inp_cpcbinfo = &tcbinfo[mycpu->gd_cpuid];
 	in_pcbinsconnhash(inp);
 
 	/*
