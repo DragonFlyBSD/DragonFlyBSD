@@ -386,8 +386,30 @@ tcp_usr_listen(netmsg_t msg)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 	struct netmsg_inswildcard nm;
+	lwkt_port_t port0 = netisr_cpuport(0);
 
 	COMMON_START(so, inp, 0);
+
+	if (&curthread->td_msgport != port0) {
+		KASSERT((msg->listen.nm_flags & PRUL_RELINK) == 0,
+		    ("already asked to relink"));
+
+		in_pcbunlink(so->so_pcb, &tcbinfo[mycpuid]);
+		sosetport(so, port0);
+		msg->listen.nm_flags |= PRUL_RELINK;
+
+		lwkt_forwardmsg(port0, &msg->listen.base.lmsg);
+		/* msg invalid now */
+		return;
+	}
+	KASSERT(so->so_port == port0, ("so_port is not netisr0"));
+
+	if (msg->listen.nm_flags & PRUL_RELINK) {
+		msg->listen.nm_flags &= ~PRUL_RELINK;
+		in_pcblink(so->so_pcb, &tcbinfo[mycpuid]);
+	}
+	KASSERT(inp->inp_pcbinfo == &tcbinfo[0], ("pcbinfo is not tcbinfo0"));
+	KASSERT(inp->inp_cpcbinfo == &tcbinfo[0], ("cpcbinfo is not tcbinfo0"));
 
 	if (tp->t_flags & TF_LISTEN)
 		goto out;
@@ -414,10 +436,6 @@ tcp_usr_listen(netmsg_t msg)
 		KASSERT(!(inp->inp_flags & INP_WILDCARD_MP),
 			("already on MP wildcardhash"));
 		inp->inp_flags |= INP_WILDCARD_MP;
-
-		KKASSERT(so->so_port == netisr_cpuport(0));
-		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
-		KKASSERT(inp->inp_pcbinfo == &tcbinfo[0]);
 
 		netmsg_init(&nm.base, NULL, &curthread->td_msgport,
 			    MSGF_PRIORITY, in_pcbinswildcardhash_handler);

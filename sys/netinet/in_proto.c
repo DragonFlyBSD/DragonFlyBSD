@@ -141,7 +141,8 @@ struct protosw inetsw[] = {
 	.pr_domain = &inetdomain,
 	.pr_protocol = IPPROTO_TCP,
 	.pr_flags = PR_CONNREQUIRED|PR_WANTRCVD|PR_MPSAFE|
-	    PR_ASYNC_SEND|PR_ASYNC_RCVD|PR_ACONN_HOLDTD,
+	    PR_ASYNC_SEND|PR_ASYNC_RCVD|PR_ACONN_HOLDTD|
+	    PR_RAND_INITPORT,
 
 	.pr_input = tcp_input,
 	.pr_output = NULL,

@@ -321,6 +321,7 @@ so_pru_listen(struct socket *so, struct thread *td)
 	netmsg_init(&msg.base, so, &curthread->td_msgport,
 		    0, so->so_proto->pr_usrreqs->pru_listen);
 	msg.nm_td = td;		/* used only for prison_ip() XXX JH */
+	msg.nm_flags = 0;
 	error = lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	return (error);
 }

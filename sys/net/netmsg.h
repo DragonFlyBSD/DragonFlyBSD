@@ -173,7 +173,10 @@ struct netmsg_pru_disconnect {
 struct netmsg_pru_listen {
 	struct netmsg_base	base;
 	struct thread		*nm_td;
+	int			nm_flags;	/* PRUL_xxx */
 };
+
+#define PRUL_RELINK		0x1
 
 struct netmsg_pru_peeraddr {
 	struct netmsg_base	base;
