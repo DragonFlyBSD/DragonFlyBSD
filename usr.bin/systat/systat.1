@@ -93,6 +93,7 @@ to be one of:
 .Ic ip6 ,
 .Ic mbufs ,
 .Ic netstat ,
+.Ic netbw ,
 .Ic pigs ,
 .Ic pvmmeter ,
 .Ic sensors ,
@@ -478,6 +479,9 @@ then only the requested information will be displayed.
 Reset the port, host, and protocol matching mechanisms to the default
 (any protocol, port, or host).
 .El
+.It Ic netbw
+Display aggregate and per-connection tcp receive and transmit rates.
+Only active tcp connections are shown.
 .El
 .Pp
 Commands to switch between displays may be abbreviated to the
