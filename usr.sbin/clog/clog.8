@@ -24,21 +24,20 @@
 .\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $Id: clog.8,v 1.2 2001/10/02 04:41:21 jdw Exp $
-.\" $DragonFly: src/usr.sbin/clog/clog.8,v 1.6 2007/05/12 21:22:10 swildner Exp $
 .\"
 .Dd May 6, 2006
 .Dt CLOG 8
 .Os
 .Sh NAME
 .Nm clog
-.Nd "display or initialize a circular system log"
+.Nd display or initialize a circular system log
 .Sh SYNOPSIS
 .Nm
 .Op Fl f
 .Op Fl i Fl s Ar size
 .Ar logfile
 .Sh DESCRIPTION
-.Nm Clog
+.Nm
 displays or initializes a circular log file.
 .Pp
 The options are as follows:
@@ -46,8 +45,8 @@ The options are as follows:
 .It Fl f
 Display the contents of the circular logfile
 .Ar logfile ,
-then go into a loop waiting for
-new material to arrive.  This is essentially the same as using the
+then go into a loop waiting for new material to arrive.
+This is essentially the same as using the
 .Fl f
 option of the
 .Xr tail 1
@@ -55,14 +54,17 @@ command on a standard syslog file.
 .It Fl i
 Initialize
 .Ar logfile
-rather than reading it.  This option requires the
+rather than reading it.
+This option requires the
 .Fl s
-option.  If
+option.
+If
 .Ar logfile
 already exists, it will be truncated and recreated by this command.
 .It Fl s
 This option specifies the size in bytes of the circular logfile that should
-be created.  This option requires the
+be created.
+This option requires the
 .Fl i
 option.
 .El
@@ -72,19 +74,22 @@ The
 command supports circular logfiles for
 .Xr syslogd 8 .
 A circular logfile differs from a standard syslog file in that is has a fixed
-size.  It does not grow, and does not need to be rotated.  When
+size.
+It does not grow, and does not need to be rotated.
+When
 .Xr syslogd 8
 reaches the end of a circular logfile, it simply begins again at the beginning,
-overwriting the oldest data.  The circular logfile also contains information
-allowing
+overwriting the oldest data.
+The circular logfile also contains information allowing
 .Nm
 to establish what parts of the file are valid, and in what order they should
 be displayed.
 .Pp
 Circular logfiles are primarily useful for their ability to control the amount
-of storage devoted to logfiles.  This may be valuable when storage space is
-at a premium or when the consequences of running out of storage space are
-unacceptable.  Circular logfiles can safely be used on a memory disk (see
+of storage devoted to logfiles.
+This may be valuable when storage space is at a premium or when the
+consequences of running out of storage space are unacceptable.
+Circular logfiles can safely be used on a memory disk (see
 .Xr md 4 ) .
 .Pp
 Circular logfiles are also useful to catch messages that are generated rapidly
