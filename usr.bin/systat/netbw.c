@@ -296,11 +296,12 @@ shownetbw(void)
 
 	mvwprintw(wnd, 0, 0,
 		  "tcp accepts %s connects %s "
-		  "         recv %s send %s",
+		  "         rcv %s snd %s rexmit %s",
 		  numtok(DELTARATE(tcps_accepts)),
 		  numtok(DELTARATE(tcps_connects) - DELTARATE(tcps_accepts)),
 		  numtok(DELTARATE(tcps_rcvbyte)),
-		  numtok(DELTARATE(tcps_sndbyte)));
+		  numtok(DELTARATE(tcps_sndbyte)),
+		  numtok(DELTARATE(tcps_sndrexmitbyte)));
 
 	row = 2;
 	delm = NULL;
@@ -319,7 +320,7 @@ shownetbw(void)
 			mvwprintw(wnd, row, 0,
 				  "%s %s "
 				  /*"rxb %s txb %s "*/
-				  "recv %s send %s "
+				  "rcv %s snd %s "
 				  "[%c%c%c%c%c%c%c]",
 				  netaddrstr(
 				    elm->xtcp.xt_inp.inp_vflag,
