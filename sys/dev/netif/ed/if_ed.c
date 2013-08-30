@@ -961,7 +961,7 @@ ed_probe_SIC(device_t dev, int port_rid, int flags)
 	}
 #ifdef ED_DEBUG
 	device_printf(dev, "ed_probe_sic: got address %s\n",
-	    kether_ntoa(sc->arpcom.ac_enaddr, ethestr));
+	    kether_ntoa(sc->arpcom.ac_enaddr, ethstr));
 #endif
 	if (sum != 0) {
 		return (ENXIO);
