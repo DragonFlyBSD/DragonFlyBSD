@@ -135,6 +135,10 @@ install: mount
 leaf: mount
 	echo 'ifconfig_vke0="up"' > ${VKDIR}/root/etc/rc.conf
 	echo 'defaultrouter="10.26.0.1"' >> ${VKDIR}/root/etc/rc.conf
+	echo 'search dragonflybsd.org backplane.com' > ${VKDIR}/root/etc/resolv.conf
+	echo 'nameserver 10.0.0.25' >> ${VKDIR}/root/etc/resolv.conf
+	echo 'nameserver 10.0.0.2' >> ${VKDIR}/root/etc/resolv.conf
+	echo 'nameserver 8.8.8.8' >> ${VKDIR}/root/etc/resolv.conf
 
 # Quick reinstall - just install a new kernel on top of an existing image
 #
