@@ -342,6 +342,7 @@ showpftop(void)
 			  numtok(DELTARATE(bytes[0])),
 			  numtok(DELTARATE(bytes[1]))
 		);
+		wclrtoeol(wnd);
 		if (++row >= LINES-3)
 			break;
 	}

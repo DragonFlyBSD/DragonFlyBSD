@@ -354,6 +354,7 @@ shownetbw(void)
 				  ((elm->xtcp.xt_tp.t_flags & TF_FASTRECOVERY) ?
 				   'F' : ' ')
 			);
+			wclrtoeol(wnd);
 			if (++row >= LINES-3)
 				break;
 		} else if (elm->seq != tcp_pcb_seq) {
