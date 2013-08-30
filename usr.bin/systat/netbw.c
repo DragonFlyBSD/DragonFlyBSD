@@ -81,37 +81,74 @@ struct mytcpcb {
 static int
 mytcpcb_cmp(struct mytcpcb *tcp1, struct mytcpcb *tcp2)
 {
-	if (tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_fport <
-	    tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_fport)
+	int r;
+
+	/*
+	 * Low local or foreign port comes first (local has priority).
+	 */
+	if (ntohs(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_lport) >= 1024 &&
+	    ntohs(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_lport) >= 1024) {
+		if (ntohs(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_fport) <
+		    ntohs(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_fport))
+			return(-1);
+		if (ntohs(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_fport) >
+		    ntohs(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_fport))
+			return(1);
+	}
+
+	if (ntohs(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_lport) <
+	    ntohs(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_lport))
 		return(-1);
-	if (tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_fport >
-	    tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_fport)
+	if (ntohs(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_lport) >
+	    ntohs(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_lport))
 		return(1);
-	if (tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_lport <
-	    tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_lport)
+	if (ntohs(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_fport) <
+	    ntohs(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_fport))
 		return(-1);
-	if (tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_lport >
-	    tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_lport)
+	if (ntohs(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_fport) >
+	    ntohs(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_fport))
 		return(1);
-	if (tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_laddr.s_addr <
-	    tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_laddr.s_addr)
+
+	/*
+	 * Sort IPV4 vs IPV6 addresses
+	 */
+	if ((tcp1->xtcp.xt_inp.inp_vflag & (INP_IPV4|INP_IPV6)) <
+	    (tcp2->xtcp.xt_inp.inp_vflag & (INP_IPV4|INP_IPV6)))
 		return(-1);
-	if (tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_laddr.s_addr >
-	    tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_laddr.s_addr)
+	if ((tcp1->xtcp.xt_inp.inp_vflag & (INP_IPV4|INP_IPV6)) >
+	    (tcp2->xtcp.xt_inp.inp_vflag & (INP_IPV4|INP_IPV6)))
 		return(1);
-	if (tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_faddr.s_addr <
-	    tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_faddr.s_addr)
-		return(-1);
-	if (tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_faddr.s_addr >
-	    tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_faddr.s_addr)
-		return(1);
+
+	/*
+	 * Local and foreign addresses
+	 */
+	if (tcp1->xtcp.xt_inp.inp_vflag & INP_IPV4) {
+		if (ntohl(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_laddr.s_addr) <
+		    ntohl(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_laddr.s_addr))
+			return(-1);
+		if (ntohl(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_laddr.s_addr) >
+		    ntohl(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_laddr.s_addr))
+			return(1);
+		if (ntohl(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_faddr.s_addr) <
+		    ntohl(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_faddr.s_addr))
+			return(-1);
+		if (ntohl(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie_faddr.s_addr) >
+		    ntohl(tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie_faddr.s_addr))
+			return(1);
+	} else if (tcp1->xtcp.xt_inp.inp_vflag & INP_IPV6) {
+		r = bcmp(&tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie6_faddr,
+			 &tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie6_faddr,
+			 sizeof(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie6_faddr));
+		if (r)
+			return(r);
+	} else {
+		r = bcmp(&tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie6_faddr,
+			 &tcp2->xtcp.xt_inp.inp_inc.inc_ie.ie6_faddr,
+			 sizeof(tcp1->xtcp.xt_inp.inp_inc.inc_ie.ie6_faddr));
+		if (r)
+			return(r);
+	}
 	return(0);
-#if 0
-	r = bcmp(&tcp1->xtcp.xt_inp.inp_inc.inc_ie,
-		 &tcp2->xtcp.xt_inp.inp_inc.inc_ie,
-		 sizeof(tcp1->xtcp.xt_inp.inp_inc.inc_ie));
-	return (r);
-#endif
 }
 
 struct mytcpcb_tree;
@@ -257,14 +294,15 @@ shownetbw(void)
 	if (delta_time < 0.1)
 		return;
 
-	mvwprintw(wnd, 0, 0, "Scaled to rate/sec");
-	mvwprintw(wnd, 1, 0, "tcp accepts %s connects %s rdata %s wdata %s",
+	mvwprintw(wnd, 0, 0,
+		  "tcp accepts %s connects %s "
+		  "         recv %s send %s",
 		  numtok(DELTARATE(tcps_accepts)),
-		  numtok(DELTARATE(tcps_connects)),
+		  numtok(DELTARATE(tcps_connects) - DELTARATE(tcps_accepts)),
 		  numtok(DELTARATE(tcps_rcvbyte)),
 		  numtok(DELTARATE(tcps_sndbyte)));
 
-	row = 3;
+	row = 2;
 	delm = NULL;
 	RB_FOREACH(elm, mytcpcb_tree, &mytcp_tree) {
 		if (delm) {
@@ -281,7 +319,8 @@ shownetbw(void)
 			mvwprintw(wnd, row, 0,
 				  "%s %s "
 				  /*"rxb %s txb %s "*/
-				  "recv %s send %s",
+				  "recv %s send %s "
+				  "[%c%c%c%c%c%c%c]",
 				  netaddrstr(
 				    elm->xtcp.xt_inp.inp_vflag,
 				    &elm->xtcp.xt_inp.inp_inc.inc_ie.
@@ -297,23 +336,40 @@ shownetbw(void)
 				  numtok(elm->xtcp.xt_socket.so_snd.sb_cc),
 				*/
 				  numtok(DELTAELM(xt_tp.rcv_nxt)),
-				  numtok(DELTAELM(xt_tp.snd_max)));
-#if 0
-				  numtok(DELTAELM(xt_socket.so_rcv.sb_cc)),
-				  numtok(DELTAELM(xt_socket.so_snd.sb_cc)));
-#endif
-			++row;
+				  numtok(DELTAELM(xt_tp.snd_max)),
+				  (elm->xtcp.xt_socket.so_rcv.sb_cc > 15000 ?
+				   'R' : ' '),
+				  (elm->xtcp.xt_socket.so_snd.sb_cc > 15000 ?
+				   'T' : ' '),
+				  ((elm->xtcp.xt_tp.t_flags & TF_NODELAY) ?
+				   'N' : ' '),
+				  ((elm->xtcp.xt_tp.t_flags & TF_RCVD_TSTMP) ?
+				   'T' : ' '),
+				  ((elm->xtcp.xt_tp.t_flags &
+				   TF_SACK_PERMITTED) ?
+				   'S' : ' '),
+				  ((elm->xtcp.xt_tp.t_flags & TF_RCVD_SCALE) ?
+				   'X' : ' '),
+				  ((elm->xtcp.xt_tp.t_flags & TF_FASTRECOVERY) ?
+				   'F' : ' ')
+			);
+			if (++row >= LINES-3)
+				break;
 		} else if (elm->seq != tcp_pcb_seq) {
 			delm = elm;
 		}
 	}
-	wmove(wnd, row, 0);
-	wclrtobot(wnd);
 	if (delm) {
 		RB_REMOVE(mytcpcb_tree, &mytcp_tree, delm);
 		free(delm);
 		delm = NULL;
 	}
+	wmove(wnd, row, 0);
+	wclrtobot(wnd);
+	mvwprintw(wnd, LINES-2, 0,
+		  "Rate/sec, "
+		  "R=rxpend T=txpend N=nodelay T=tstmp "
+		  "S=sack X=winscale F=fastrec");
 }
 
 #if 0
@@ -346,15 +402,15 @@ numtok(double value)
 	}
 	nexti = (nexti + 1) % MAXINDEXES;
 	if (value < 0.001) {
-		fmt = "       ";
+		fmt = "      ";
 	} else if (value < 1.0) {
-		fmt = "%6.3f%s";
+		fmt = "%5.3f%s";
 	} else if (value < 10.0) {
-		fmt = "%6.3f%s";
+		fmt = "%5.3f%s";
 	} else if (value < 100.0) {
-		fmt = "%6.2f%s";
+		fmt = "%5.2f%s";
 	} else {
-		fmt = "%6.1f%s";
+		fmt = "%5.1f%s";
 	}
 	snprintf(buf[nexti], sizeof(buf[nexti]),
 		 fmt, value, suffixes[suffix]);
@@ -366,12 +422,13 @@ netaddrstr(u_char vflags, union in_dependaddr *depaddr, u_int16_t port)
 {
 	static char buf[MAXINDEXES][64];
 	static int nexta;
+	char bufip[64];
 
 	nexta = (nexta + 1) % MAXINDEXES;
 
 	if (vflags & INP_IPV4) {
-		snprintf(buf[nexta], sizeof(buf[nexta]),
-			 "%3d.%03d.%03d.%03d:%-5d",
+		snprintf(bufip, sizeof(bufip),
+			 "%d.%d.%d.%d",
 			 (ntohl(depaddr->id46_addr.ia46_addr4.s_addr) >> 24) &
 			  255,
 			 (ntohl(depaddr->id46_addr.ia46_addr4.s_addr) >> 16) &
@@ -379,11 +436,12 @@ netaddrstr(u_char vflags, union in_dependaddr *depaddr, u_int16_t port)
 			 (ntohl(depaddr->id46_addr.ia46_addr4.s_addr) >> 8) &
 			  255,
 			 (ntohl(depaddr->id46_addr.ia46_addr4.s_addr) >> 0) &
-			  255,
-			 port);
+			  255);
+		snprintf(buf[nexta], sizeof(buf[nexta]),
+			 "%15s:%-5d", bufip, port);
 	} else if (vflags & INP_IPV6) {
 		snprintf(buf[nexta], sizeof(buf[nexta]),
-			 "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x:%-5d",
+			 "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
 			 ntohs(depaddr->id6_addr.s6_addr16[0]),
 			 ntohs(depaddr->id6_addr.s6_addr16[1]),
 			 ntohs(depaddr->id6_addr.s6_addr16[2]),
@@ -391,11 +449,11 @@ netaddrstr(u_char vflags, union in_dependaddr *depaddr, u_int16_t port)
 			 ntohs(depaddr->id6_addr.s6_addr16[4]),
 			 ntohs(depaddr->id6_addr.s6_addr16[5]),
 			 ntohs(depaddr->id6_addr.s6_addr16[6]),
-			 ntohs(depaddr->id6_addr.s6_addr16[7]),
-			 port);
-	} else {
+			 ntohs(depaddr->id6_addr.s6_addr16[7]));
 		snprintf(buf[nexta], sizeof(buf[nexta]),
-			"<unknown>:%-5d", port);
+			 "%39s:%-5d", bufip, port);
+	} else {
+		snprintf(bufip, sizeof(bufip), "<unknown>:%-5d", port);
 	}
 	return (buf[nexta]);
 }
