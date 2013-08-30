@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2011, Intel Corporation 
+  Copyright (c) 2001-2012, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD$*/
+/*$FreeBSD:$*/
 
 #ifndef _E1000_NVM_H_
 #define _E1000_NVM_H_
@@ -44,6 +44,7 @@ struct e1000_fw_version {
 	u32 etrack_id;
 	u16 eep_major;
 	u16 eep_minor;
+	u16 eep_build;
 
 	u8 invm_major;
 	u8 invm_minor;

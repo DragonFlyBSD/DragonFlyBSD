@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2011, Intel Corporation 
+  Copyright (c) 2001-2012, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -803,7 +803,7 @@ static s32 e1000_polarity_reversal_workaround_82543(struct e1000_hw *hw)
 		if (ret_val)
 			goto out;
 
-		if ((mii_status_reg & ~MII_SR_LINK_STATUS) == 0)
+		if (!(mii_status_reg & ~MII_SR_LINK_STATUS))
 			break;
 		msec_delay_irq(100);
 	}
@@ -1350,8 +1350,8 @@ static s32 e1000_check_for_fiber_link_82543(struct e1000_hw *hw)
 	if ((!(ctrl & E1000_CTRL_SWDPIN1)) &&
 	    (!(status & E1000_STATUS_LU)) &&
 	    (!(rxcw & E1000_RXCW_C))) {
-		if (mac->autoneg_failed == 0) {
-			mac->autoneg_failed = 1;
+		if (!mac->autoneg_failed) {
+			mac->autoneg_failed = TRUE;
 			ret_val = 0;
 			goto out;
 		}

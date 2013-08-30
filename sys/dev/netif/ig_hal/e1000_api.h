@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2011, Intel Corporation 
+  Copyright (c) 2001-2012, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD$*/
+/*$FreeBSD:$*/
 
 #ifndef _E1000_API_H_
 #define _E1000_API_H_
@@ -109,7 +109,6 @@ s32 e1000_read_nvm(struct e1000_hw *hw, u16 offset, u16 words, u16 *data);
 s32 e1000_read_kmrn_reg(struct e1000_hw *hw, u32 offset, u16 *data);
 s32 e1000_write_kmrn_reg(struct e1000_hw *hw, u32 offset, u16 data);
 s32 e1000_write_nvm(struct e1000_hw *hw, u16 offset, u16 words, u16 *data);
-s32 e1000_wait_autoneg(struct e1000_hw *hw);
 s32 e1000_set_d3_lplu_state(struct e1000_hw *hw, bool active);
 s32 e1000_set_d0_lplu_state(struct e1000_hw *hw, bool active);
 bool e1000_check_mng_mode(struct e1000_hw *hw);
@@ -170,6 +169,4 @@ u32  e1000_translate_register_82542(u32 reg);
 
 #define E1000_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define E1000_DIVIDE_ROUND_UP(a, b)	(((a) + (b) - 1) / (b)) /* ceil(a/b) */
-u32 e1000_div_64b_by_32b(u64 *n, u32 divisor);
-#define E1000_DIV_64b_BY_32b(n, d)	e1000_div_64b_by_32b(n, d)
 #endif /* _E1000_API_H_ */

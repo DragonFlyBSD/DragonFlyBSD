@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2011, Intel Corporation 
+  Copyright (c) 2001-2012, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,15 +30,11 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD$*/
+/*$FreeBSD:$*/
 
 #ifndef _E1000_MAC_H_
 #define _E1000_MAC_H_
 
-/*
- * Functions that should not be called directly from drivers but can be used
- * by other files in this 'shared code'
- */
 void e1000_init_mac_ops_generic(struct e1000_hw *hw);
 void e1000_null_mac_generic(struct e1000_hw *hw);
 s32  e1000_null_ops_generic(struct e1000_hw *hw);
@@ -47,6 +43,7 @@ bool e1000_null_mng_mode(struct e1000_hw *hw);
 void e1000_null_update_mc(struct e1000_hw *hw, u8 *h, u32 a);
 void e1000_null_write_vfta(struct e1000_hw *hw, u32 a, u32 b);
 void e1000_null_rar_set(struct e1000_hw *hw, u8 *h, u32 a);
+s32  e1000_null_set_obff_timer(struct e1000_hw *hw, u32 a);
 s32  e1000_blink_led_generic(struct e1000_hw *hw);
 s32  e1000_check_for_copper_link_generic(struct e1000_hw *hw);
 s32  e1000_check_for_fiber_link_generic(struct e1000_hw *hw);
@@ -90,7 +87,6 @@ void e1000_clear_vfta_generic(struct e1000_hw *hw);
 void e1000_init_rx_addrs_generic(struct e1000_hw *hw, u16 rar_count);
 void e1000_pcix_mmrbc_workaround_generic(struct e1000_hw *hw);
 void e1000_put_hw_semaphore_generic(struct e1000_hw *hw);
-void e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index);
 s32  e1000_check_alt_mac_addr_generic(struct e1000_hw *hw);
 void e1000_reset_adaptive_generic(struct e1000_hw *hw);
 void e1000_set_pcie_no_snoop_generic(struct e1000_hw *hw, u32 no_snoop);

@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2011, Intel Corporation 
+  Copyright (c) 2001-2012, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -72,13 +72,11 @@
 #define GG82563_MSCR_TX_CLK_MASK		0x0007
 #define GG82563_MSCR_TX_CLK_10MBPS_2_5		0x0004
 #define GG82563_MSCR_TX_CLK_100MBPS_25		0x0005
-#define GG82563_MSCR_TX_CLK_1000MBPS_2_5	0x0006
 #define GG82563_MSCR_TX_CLK_1000MBPS_25		0x0007
 
 #define GG82563_MSCR_ASSERT_CRS_ON_TX		0x0010 /* 1=Assert */
 
-/* DSP Distance Register (Page 5, Register 26) */
-/*
+/* DSP Distance Register (Page 5, Register 26)
  * 0 = <50M
  * 1 = 50-80M
  * 2 = 80-100M

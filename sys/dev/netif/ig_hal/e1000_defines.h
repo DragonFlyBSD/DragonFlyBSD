@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2011, Intel Corporation 
+  Copyright (c) 2001-2012, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD$*/
+/*$FreeBSD:$*/
 
 #ifndef _E1000_DEFINES_H_
 #define _E1000_DEFINES_H_
@@ -156,6 +156,7 @@
 #define E1000_CTRL_EXT_GPI1_EN		0x00000002 /* Maps SDP5 to GPI1 */
 #define E1000_CTRL_EXT_PHYINT_EN	E1000_CTRL_EXT_GPI1_EN
 #define E1000_CTRL_EXT_GPI2_EN		0x00000004 /* Maps SDP6 to GPI2 */
+#define E1000_CTRL_EXT_LPCD		0x00000004 /* LCD Power Cycle Done */
 #define E1000_CTRL_EXT_GPI3_EN		0x00000008 /* Maps SDP7 to GPI3 */
 /* Reserved (bits 4,5) in >= 82575 */
 #define E1000_CTRL_EXT_SDP4_DATA	0x00000010 /* SW Definable Pin 4 data */
@@ -168,6 +169,7 @@
 #define E1000_CTRL_EXT_SDP5_DIR	0x00000200 /* Direction of SDP5 0=in 1=out */
 #define E1000_CTRL_EXT_SDP6_DIR	0x00000400 /* Direction of SDP6 0=in 1=out */
 #define E1000_CTRL_EXT_SDP3_DIR	0x00000800 /* Direction of SDP3 0=in 1=out */
+#define E1000_CTRL_EXT_FORCE_SMBUS	0x00000800 /* Force SMBus mode */
 #define E1000_CTRL_EXT_ASDCHK	0x00001000 /* Initiate an ASD sequence */
 #define E1000_CTRL_EXT_EE_RST	0x00002000 /* Reinitialize from EEPROM */
 #define E1000_CTRL_EXT_IPS	0x00004000 /* Invert Power State */
@@ -389,8 +391,7 @@
 #define E1000_RCTL_FLXBUF_MASK	0x78000000 /* Flexible buffer size */
 #define E1000_RCTL_FLXBUF_SHIFT	27 /* Flexible buffer shift */
 
-/*
- * Use byte values for the following shift parameters
+/* Use byte values for the following shift parameters
  * Usage:
  *     psrctl |= (((ROUNDUP(value0, 128) >> E1000_PSRCTL_BSIZE0_SHIFT) &
  *		  E1000_PSRCTL_BSIZE0_MASK) |
@@ -454,10 +455,12 @@
 #define E1000_CTRL_EXT_LINK_EN		0x00010000
 #define E1000_CTRL_LANPHYPC_OVERRIDE	0x00010000 /* SW control of LANPHYPC */
 #define E1000_CTRL_LANPHYPC_VALUE	0x00020000 /* SW value of LANPHYPC */
+#define E1000_CTRL_MEHE		0x00080000 /* Memory Error Handling Enable */
 #define E1000_CTRL_SWDPIN0	0x00040000 /* SWDPIN 0 value */
 #define E1000_CTRL_SWDPIN1	0x00080000 /* SWDPIN 1 value */
 #define E1000_CTRL_SWDPIN2	0x00100000 /* SWDPIN 2 value */
 #define E1000_CTRL_ADVD3WUC	0x00100000 /* D3 WUC */
+#define E1000_CTRL_EN_PHY_PWR_MGMT	0x00200000 /* PHY PM enable */
 #define E1000_CTRL_SWDPIN3	0x00200000 /* SWDPIN 3 value */
 #define E1000_CTRL_SWDPIO0	0x00400000 /* SWDPIN 0 Input or output */
 #define E1000_CTRL_SWDPIO1	0x00800000 /* SWDPIN 1 input or output */
@@ -486,6 +489,8 @@
 #define E1000_CTRL_PHY_RESET4		E1000_CTRL_EXT_SDP4_DATA
 
 #define E1000_CONNSW_ENRGSRC		0x4
+#define E1000_CONNSW_PHYSD		0x400
+#define E1000_CONNSW_SERDESD		0x200
 #define E1000_PCS_CFG_PCS_EN		8
 #define E1000_PCS_LCTL_FLV_LINK_UP	1
 #define E1000_PCS_LCTL_FSV_10		0
@@ -527,7 +532,7 @@
 #define E1000_STATUS_FUNC_1		0x00000004 /* Function 1 */
 #define E1000_STATUS_TXOFF		0x00000010 /* transmission paused */
 #define E1000_STATUS_TBIMODE		0x00000020 /* TBI mode */
-#define E1000_STATUS_SPEED_MASK		0x000000C0
+#define E1000_STATUS_SPEED_MASK	0x000000C0
 #define E1000_STATUS_SPEED_10		0x00000000 /* Speed 10Mb/s */
 #define E1000_STATUS_SPEED_100		0x00000040 /* Speed 100Mb/s */
 #define E1000_STATUS_SPEED_1000		0x00000080 /* Speed 1000Mb/s */
@@ -677,6 +682,7 @@
 
 /* SerDes Control */
 #define E1000_SCTL_DISABLE_SERDES_LOOPBACK	0x0400
+#define E1000_SCTL_ENABLE_SERDES_LOOPBACK	0x0410
 
 /* Receive Checksum Control */
 #define E1000_RXCSUM_PCSS_MASK	0x000000FF /* Packet Checksum Start */
@@ -760,6 +766,9 @@
 
 #define E1000_KABGTXD_BGSQLBIAS			0x00050000
 
+/* Low Power IDLE Control */
+#define E1000_LPIC_LPIET_SHIFT		24	/* Low Power Idle Entry Time */
+
 /* PBA constants */
 #define E1000_PBA_6K		0x0006    /* 6KB */
 #define E1000_PBA_8K		0x0008    /* 8KB */
@@ -785,6 +794,12 @@
 
 #define E1000_PBS_16K		E1000_PBA_16K
 #define E1000_PBS_24K		E1000_PBA_24K
+
+/* Uncorrectable/correctable ECC Error counts and enable bits */
+#define E1000_PBECCSTS_CORR_ERR_CNT_MASK	0x000000FF
+#define E1000_PBECCSTS_UNCORR_ERR_CNT_MASK	0x0000FF00
+#define E1000_PBECCSTS_UNCORR_ERR_CNT_SHIFT	8
+#define E1000_PBECCSTS_ECC_ENABLE		0x00010000
 
 #define IFS_MAX			80
 #define IFS_MIN			40
@@ -822,6 +837,7 @@
 #define E1000_ICR_DOCK		0x00080000 /* Dock/Undock */
 #define E1000_ICR_TS		0x00080000 /* Time Sync Interrupt */
 #define E1000_ICR_DRSTA		0x40000000 /* Device Reset Asserted */
+#define E1000_ICR_ECCER		0x00400000 /* Uncorrectable ECC Error */
 /* If this bit asserted, the driver should claim the interrupt */
 #define E1000_ICR_INT_ASSERTED	0x80000000
 #define E1000_ICR_RXD_FIFO_PAR0	0x00100000 /* Q0 Rx desc FIFO parity error */
@@ -874,8 +890,7 @@
 #define E1000_TCPTIMER_COUNT_FINISH	0x00000400 /* Count finish */
 #define E1000_TCPTIMER_LOOP	0x00000800 /* Loop */
 
-/*
- * This defines the bits that are set in the Interrupt Mask
+/* This defines the bits that are set in the Interrupt Mask
  * Set/Read Register.  Each bit is documented below:
  *   o RXDMT0 = Receive Descriptor Minimum Threshold hit (ring 0)
  *   o RXSEQ  = Receive Sequence Error
@@ -938,6 +953,7 @@
 #define E1000_IMS_PHYINT	E1000_ICR_PHYINT
 #define E1000_IMS_DOUTSYNC	E1000_ICR_DOUTSYNC /* NIC DMA out of sync */
 #define E1000_IMS_EPRST		E1000_ICR_EPRST
+#define E1000_IMS_ECCER		E1000_ICR_ECCER   /* Uncorrectable ECC Error */
 #define E1000_IMS_RXQ0		E1000_ICR_RXQ0 /* Rx Queue 0 Interrupt */
 #define E1000_IMS_RXQ1		E1000_ICR_RXQ1 /* Rx Queue 1 Interrupt */
 #define E1000_IMS_TXQ0		E1000_ICR_TXQ0 /* Tx Queue 0 Interrupt */
@@ -1032,8 +1048,7 @@
 #define VLAN_TAG_SIZE			4    /* 802.3ac tag (not DMA'd) */
 #define E1000_VLAN_FILTER_TBL_SIZE	128  /* VLAN Filter Table (4096 bits) */
 
-/* Receive Address */
-/*
+/* Receive Address
  * Number of high/low register pairs in the RAR. The RAR (Receive Address
  * Registers) holds the directed and multicast addresses that we monitor.
  * Technically, we have 16 spots.  However, we reserve one of these spots
@@ -1143,6 +1158,12 @@
 #define E1000_TSYNCRXCFG_PTP_V2_SIGNALLING_MESSAGE	0x0C00
 #define E1000_TSYNCRXCFG_PTP_V2_MANAGEMENT_MESSAGE	0x0D00
 
+#define E1000_RXMTRL_PTP_V1_SYNC_MESSAGE	0x00000000
+#define E1000_RXMTRL_PTP_V1_DELAY_REQ_MESSAGE	0x00010000
+
+#define E1000_RXMTRL_PTP_V2_SYNC_MESSAGE	0x00000000
+#define E1000_RXMTRL_PTP_V2_DELAY_REQ_MESSAGE	0x01000000
+
 #define E1000_TIMINCA_16NS_SHIFT	24
 #define E1000_TIMINCA_INCPERIOD_SHIFT	24
 #define E1000_TIMINCA_INCVALUE_MASK	0x00FFFFFF
@@ -1172,6 +1193,14 @@
 #define E1000_MDICNFG_COM_MDIO		0x40000000 /* MDI shared w/ lan 0 */
 #define E1000_MDICNFG_PHY_MASK		0x03E00000
 #define E1000_MDICNFG_PHY_SHIFT		21
+#define E1000_MEDIA_PORT_COPPER		1
+#define E1000_MEDIA_PORT_OTHER		2
+#define E1000_M88E1112_AUTO_A		0x010 /* Auto Copper/SGMII Mode */
+#define E1000_M88E1112_AUTO_B		0x011 /* Auto Copper/1000 Base X Mode */
+#define E1000_M88E1112_STATUS_LINK	0x0004 /* Interface Link Bit */
+#define E1000_M88E1112_MAC_CTRL_1	0x10 /* MAC Specific Control 1 */
+#define E1000_M88E1112_PAGE_ADDR	0x16
+#define E1000_M88E1112_STATUS		0x01
 
 #define E1000_THSTAT_LOW_EVENT		0x20000000 /* Low thermal threshold */
 #define E1000_THSTAT_MID_EVENT		0x00200000 /* Mid thermal threshold */
@@ -1189,7 +1218,22 @@
 #define E1000_EEER_EEE_NEG		0x20000000 /* EEE capability nego */
 #define E1000_EEER_RX_LPI_STATUS	0x40000000 /* Rx in LPI state */
 #define E1000_EEER_TX_LPI_STATUS	0x80000000 /* Tx in LPI state */
+#define E1000_EEE_LP_ADV_ADDR_I350	0x040F     /* EEE LP Advertisement */
+#define E1000_M88E1545_PAGE_ADDR	0x16       /* Page Offset Register */
+#define E1000_M88E1545_EEE_CTRL_1	0x0
+#define E1000_M88E1545_EEE_CTRL_1_MS	0x0001     /* EEE Master/Slave */
+#define E1000_EEE_ADV_DEV_I354		7
+#define E1000_EEE_ADV_ADDR_I354		60
+#define E1000_EEE_ADV_100_SUPPORTED	(1 << 1)   /* 100BaseTx EEE Supported */
+#define E1000_EEE_ADV_1000_SUPPORTED	(1 << 2)   /* 1000BaseT EEE Supported */
+#define E1000_PCS_STATUS_DEV_I354	3
+#define E1000_PCS_STATUS_ADDR_I354	1
+#define E1000_PCS_STATUS_TX_LPI_IND	0x0200     /* Tx in LPI state */
+#define E1000_PCS_STATUS_RX_LPI_RCVD	0x0400
+#define E1000_PCS_STATUS_TX_LPI_RCVD	0x0800
 #define E1000_EEE_SU_LPI_CLK_STP	0x00800000 /* EEE LPI Clock Stop */
+#define E1000_EEE_LP_ADV_DEV_I210	7          /* EEE LP Adv Device */
+#define E1000_EEE_LP_ADV_ADDR_I210	61         /* EEE LP Adv Register */
 /* PCI Express Control */
 #define E1000_GCR_RXD_NO_SNOOP		0x00000001
 #define E1000_GCR_RXDSCW_NO_SNOOP	0x00000002
@@ -1208,6 +1252,8 @@
 				 E1000_GCR_TXD_NO_SNOOP    | \
 				 E1000_GCR_TXDSCW_NO_SNOOP | \
 				 E1000_GCR_TXDSCR_NO_SNOOP)
+
+#define E1000_MMDAC_FUNC_DATA	0x4000 /* Data, no post increment */
 
 /* mPHY address control and data registers */
 #define E1000_MPHY_ADDR_CTL		0x0024 /* Address Control Reg */
@@ -1366,13 +1412,20 @@
 #define E1000_EECD_FLUPD_I210		0x00800000 /* Update FLASH */
 #define E1000_EECD_FLUDONE_I210		0x04000000 /* Update FLASH done */
 #define E1000_EECD_FLASH_DETECTED_I210	0x00080000 /* FLASH detected */
+#define E1000_EECD_SEC1VAL_I210		0x02000000 /* Sector One Valid */
 #define E1000_FLUDONE_ATTEMPTS		20000
 #define E1000_EERD_EEWR_MAX_COUNT	512 /* buffered EEPROM words rw */
-#define E1000_I210_FIFO_SEL_RX			0x00
+#define E1000_I210_FIFO_SEL_RX		0x00
 #define E1000_I210_FIFO_SEL_TX_QAV(_i)	(0x02 + (_i))
 #define E1000_I210_FIFO_SEL_TX_LEGACY	E1000_I210_FIFO_SEL_TX_QAV(0)
 #define E1000_I210_FIFO_SEL_BMC2OS_TX	0x06
 #define E1000_I210_FIFO_SEL_BMC2OS_RX	0x01
+
+#define E1000_I210_FLASH_SECTOR_SIZE	0x1000 /* 4KB FLASH sector unit size */
+/* Secure FLASH mode requires removing MSb */
+#define E1000_I210_FW_PTR_MASK		0x7FFF
+/* Firmware code revision field word offset*/
+#define E1000_I210_FW_VER_OFFSET	328
 
 #define E1000_NVM_SWDPIN0	0x0001 /* SWDPIN 0 NVM Value */
 #define E1000_NVM_LED_LOGIC	0x0020 /* Led Logic Word */
@@ -1390,18 +1443,42 @@
 #define NVM_VERSION			0x0005
 #define NVM_SERDES_AMPLITUDE		0x0006 /* SERDES output amplitude */
 #define NVM_PHY_CLASS_WORD		0x0007
+#define E1000_I210_NVM_FW_MODULE_PTR	0x0010
+#define E1000_I350_NVM_FW_MODULE_PTR	0x0051
+#define NVM_FUTURE_INIT_WORD1		0x0019
+#define NVM_COMPAT_VALID_CSUM		0x0001
+#define NVM_FUTURE_INIT_WORD1_VALID_CSUM	0x0040
 #define NVM_ETRACK_WORD			0x0042
+#define NVM_ETRACK_HIWORD		0x0043
 #define NVM_COMB_VER_OFF		0x0083
 #define NVM_COMB_VER_PTR		0x003d
 
 /* NVM version defines */
 #define NVM_MAJOR_MASK			0xF000
-#define NVM_MINOR_MASK			0x000F
+#define NVM_MINOR_MASK			0x0FF0
+#define NVM_IMAGE_ID_MASK		0x000F
 #define NVM_COMB_VER_MASK		0x00FF
 #define NVM_MAJOR_SHIFT			12
+#define NVM_MINOR_SHIFT			4
 #define NVM_COMB_VER_SHFT		8
 #define NVM_VER_INVALID			0xFFFF
 #define NVM_ETRACK_SHIFT		16
+#define NVM_ETRACK_VALID		0x8000
+#define NVM_NEW_DEC_MASK		0x0F00
+#define NVM_HEX_CONV			16
+#define NVM_HEX_TENS			10
+
+/* FW version defines */
+/* Offset of "Loader patch ptr" in Firmware Header */
+#define E1000_I350_NVM_FW_LOADER_PATCH_PTR_OFFSET	0x01
+/* Patch generation hour & minutes */
+#define E1000_I350_NVM_FW_VER_WORD1_OFFSET		0x04
+/* Patch generation month & day */
+#define E1000_I350_NVM_FW_VER_WORD2_OFFSET		0x05
+/* Patch generation year */
+#define E1000_I350_NVM_FW_VER_WORD3_OFFSET		0x06
+/* Patch major & minor numbers */
+#define E1000_I350_NVM_FW_VER_WORD4_OFFSET		0x07
 
 #define NVM_MAC_ADDR			0x0000
 #define NVM_SUB_DEV_ID			0x000B
@@ -1414,6 +1491,9 @@
 #define NVM_LED_0_2_CFG			0x001F
 
 #define NVM_INIT_CONTROL1_REG		0x000A
+#define NVM_COMPAT_VALID_CSUM		0x0001
+#define NVM_FUTURE_INIT_WORD1_VALID_CSUM	0x0040
+
 #define NVM_INIT_CONTROL2_REG		0x000F
 #define NVM_SWDEF_PINS_CTRL_PORT_1	0x0010
 #define NVM_INIT_CONTROL3_PORT_B	0x0014
@@ -1464,6 +1544,7 @@
 #define NVM_SUM				0xBABA
 
 #define NVM_MAC_ADDR_OFFSET		0
+/* PBA (printed board assembly) number words */
 #define NVM_PBA_OFFSET_0		8
 #define NVM_PBA_OFFSET_1		9
 #define NVM_PBA_PTR_GUARD		0xFAFA
@@ -1551,8 +1632,7 @@
 #define MAX_PHY_REG_ADDRESS		0x1F  /* 5 bit address bus (0-0x1F) */
 #define MAX_PHY_MULTI_PAGE_REG		0xF
 
-/* Bit definitions for valid PHY IDs. */
-/*
+/* Bit definitions for valid PHY IDs.
  * I = Integrated
  * E = External
  */
@@ -1562,6 +1642,7 @@
 #define IGP01E1000_I_PHY_ID	0x02A80380
 #define M88E1011_I_REV_4	0x04
 #define M88E1111_I_PHY_ID	0x01410CC0
+#define M88E1545_E_PHY_ID	0x01410EA0
 #define M88E1112_E_PHY_ID	0x01410C90
 #define I347AT4_E_PHY_ID	0x01410DC0
 #define M88E1340M_E_PHY_ID	0x01410DF0
@@ -1575,6 +1656,7 @@
 #define I82577_E_PHY_ID		0x01540050
 #define I82578_E_PHY_ID		0x004DD040
 #define I82579_E_PHY_ID		0x01540090
+#define I217_E_PHY_ID		0x015400A0
 #define I82580_I_PHY_ID		0x015403A0
 #define I350_I_PHY_ID		0x015403B0
 #define I210_I_PHY_ID		0x01410C00
@@ -1624,8 +1706,7 @@
 #define M88E1000_PSSR_REV_POLARITY	0x0002 /* 1=Polarity reversed */
 #define M88E1000_PSSR_DOWNSHIFT		0x0020 /* 1=Downshifted */
 #define M88E1000_PSSR_MDIX		0x0040 /* 1=MDIX; 0=MDI */
-/*
- * 0 = <50M
+/* 0 = <50M
  * 1 = 50-80M
  * 2 = 80-110M
  * 3 = 110-140M
@@ -1652,8 +1733,7 @@
  * within 1ms in 1000BASE-T
  */
 #define M88E1000_EPSCR_DOWN_NO_IDLE	0x8000
-/*
- * Number of times we will attempt to autonegotiate before downshifting if we
+/* Number of times we will attempt to autonegotiate before downshifting if we
  * are the master
  */
 #define M88E1000_EPSCR_MASTER_DOWNSHIFT_MASK	0x0C00
@@ -1661,8 +1741,7 @@
 #define M88E1000_EPSCR_MASTER_DOWNSHIFT_2X	0x0400
 #define M88E1000_EPSCR_MASTER_DOWNSHIFT_3X	0x0800
 #define M88E1000_EPSCR_MASTER_DOWNSHIFT_4X	0x0C00
-/*
- * Number of times we will attempt to autonegotiate before downshifting if we
+/* Number of times we will attempt to autonegotiate before downshifting if we
  * are the slave
  */
 #define M88E1000_EPSCR_SLAVE_DOWNSHIFT_MASK	0x0300
@@ -1690,8 +1769,7 @@
 
 /* I347AT4 Extended PHY Specific Control Register */
 
-/*
- * Number of times we will attempt to autonegotiate before downshifting if we
+/* Number of times we will attempt to autonegotiate before downshifting if we
  * are the master
  */
 #define I347AT4_PSCR_DOWNSHIFT_ENABLE	0x0800
@@ -1729,8 +1807,7 @@
 /* BME1000 PHY Specific Control Register */
 #define BME1000_PSCR_ENABLE_DOWNSHIFT	0x0800 /* 1 = enable downshift */
 
-/*
- * Bits...
+/* Bits...
  * 15-5: page
  * 4-0: register offset
  */
@@ -1867,7 +1944,7 @@
 #define E1000_RXPBS_SIZE_I210_MASK	0x0000003F /* Rx packet buffer size */
 #define E1000_TXPB0S_SIZE_I210_MASK	0x0000003F /* Tx packet buffer 0 size */
 
-/* Proxy Filer Control */
+/* Proxy Filter Control */
 #define E1000_PROXYFC_D0		0x00000001 /* Enable offload in D0 */
 #define E1000_PROXYFC_EX		0x00000004 /* Directed exact proxy */
 #define E1000_PROXYFC_MC		0x00000008 /* Directed MC Proxy */
@@ -1875,7 +1952,7 @@
 #define E1000_PROXYFC_ARP_DIRECTED	0x00000020 /* Directed ARP Proxy Ena */
 #define E1000_PROXYFC_IPV4		0x00000040 /* Directed IPv4 Enable */
 #define E1000_PROXYFC_IPV6		0x00000080 /* Directed IPv6 Enable */
-#define E1000_PROXYFC_NS		0x00000200 /* IPv4 NBRHD Solicitation */
+#define E1000_PROXYFC_NS		0x00000200 /* IPv6 Neighbor Solicitation */
 #define E1000_PROXYFC_ARP		0x00000800 /* ARP Request Proxy Ena */
 /* Proxy Status */
 #define E1000_PROXYS_CLEAR		0xFFFFFFFF /* Clear */
@@ -1889,4 +1966,5 @@
 /* Lan ID bit field offset in status register */
 #define E1000_STATUS_LAN_ID_OFFSET	2
 #define E1000_VFTA_ENTRIES		128
+#define E1000_UNUSEDARG
 #endif /* _E1000_DEFINES_H_ */
