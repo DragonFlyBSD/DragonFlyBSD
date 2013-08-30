@@ -170,7 +170,7 @@ static int mach64_ring_idle(drm_mach64_private_t *dev_priv)
 }
 
 /**
- * Reset the the ring buffer descriptors.
+ * Reset the ring buffer descriptors.
  *
  * \sa mach64_do_engine_reset()
  */
@@ -509,7 +509,7 @@ void mach64_dump_ring_info(drm_mach64_private_t *dev_priv)
 
 	DRM_INFO("\n");
 
-	if (ring->head >= 0 && ring->head < ring->size / sizeof(u32)) {
+       if (ring->head < ring->size / sizeof(u32)) {
 		struct list_head *ptr;
 		u32 addr = le32_to_cpu(((u32 *) ring->start)[ring->head + 1]);
 
@@ -1075,11 +1075,11 @@ static int mach64_do_dma_init(struct drm_device * dev, drm_mach64_init_t * init)
 	}
 
 	dev_priv->sarea_priv = (drm_mach64_sarea_t *)
-	    ((u8 *) dev_priv->sarea->handle + init->sarea_priv_offset);
+	    ((u8 *) dev_priv->sarea->virtual + init->sarea_priv_offset);
 
 	if (!dev_priv->is_pci) {
 		drm_core_ioremap(dev_priv->ring_map, dev);
-		if (!dev_priv->ring_map->handle) {
+		if (!dev_priv->ring_map->virtual) {
 			DRM_ERROR("can not ioremap virtual address for"
 				  " descriptor ring\n");
 			dev->dev_private = (void *)dev_priv;
@@ -1100,7 +1100,7 @@ static int mach64_do_dma_init(struct drm_device * dev, drm_mach64_init_t * init)
 		dev_priv->dev_buffers = dev->agp_buffer_map;
 
 		drm_core_ioremap(dev->agp_buffer_map, dev);
-		if (!dev->agp_buffer_map->handle) {
+		if (!dev->agp_buffer_map->virtual) {
 			DRM_ERROR("can not ioremap virtual address for"
 				  " dma buffer\n");
 			dev->dev_private = (void *)dev_priv;
@@ -1144,7 +1144,7 @@ static int mach64_do_dma_init(struct drm_device * dev, drm_mach64_init_t * init)
 	}
 
 	dev_priv->ring.size = 0x4000;	/* 16KB */
-	dev_priv->ring.start = dev_priv->ring_map->handle;
+	dev_priv->ring.start = dev_priv->ring_map->virtual;
 	dev_priv->ring.start_addr = (u32) dev_priv->ring_map->offset;
 
 	memset(dev_priv->ring.start, 0, dev_priv->ring.size);
@@ -1273,7 +1273,7 @@ int mach64_do_dispatch_pseudo_dma(drm_mach64_private_t *dev_priv)
 			entry = list_entry(ptr, drm_mach64_freelist_t, list);
 			buf = entry->buf;
 			offset = buf_addr - GETBUFADDR(buf);
-			if (offset >= 0 && offset < MACH64_BUFFER_SIZE) {
+                       if (offset < MACH64_BUFFER_SIZE) {
 				found = 1;
 				break;
 			}

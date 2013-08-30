@@ -331,7 +331,8 @@ int drm_mm_init(struct drm_mm * mm, unsigned long start, unsigned long size)
 	mm->num_unused = 0;
 	DRM_SPININIT(&mm->unused_lock, "drm_unused");
 
-	return drm_mm_create_tail_node(mm, start, size, 0);
+	/* XXX This could be non-atomic but gets called from a locked path */
+	return drm_mm_create_tail_node(mm, start, size, 1);
 }
 
 void drm_mm_takedown(struct drm_mm * mm)

@@ -973,6 +973,11 @@ i915_gem_create_ioctl(struct drm_device *dev, void *data,
 	return (i915_gem_create(file, dev, args->size, &args->handle));
 }
 
+static inline void vm_page_reference(vm_page_t m)
+{
+	vm_page_flag_set(m, PG_REFERENCED);
+}
+
 static int
 i915_gem_swap_io(struct drm_device *dev, struct drm_i915_gem_object *obj,
     uint64_t data_ptr, uint64_t size, uint64_t offset, enum uio_rw rw,
@@ -1036,9 +1041,7 @@ i915_gem_swap_io(struct drm_device *dev, struct drm_i915_gem_object *obj,
 		VM_OBJECT_LOCK(vm_obj);
 		if (rw == UIO_WRITE)
 			vm_page_dirty(m);
-#if 0 /* XXX */
 		vm_page_reference(m);
-#endif
 		vm_page_busy_wait(m, FALSE, "i915gem");
 		vm_page_unwire(m, 1);
 		vm_page_wakeup(m);
@@ -2272,10 +2275,8 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 		m = obj->pages[i];
 		if (obj->dirty)
 			vm_page_dirty(m);
-#if 0 /* XXX */
 		if (obj->madv == I915_MADV_WILLNEED)
 			vm_page_reference(m);
-#endif
 		vm_page_busy_wait(obj->pages[i], FALSE, "i915gem");
 		vm_page_unwire(obj->pages[i], 1);
 		vm_page_wakeup(obj->pages[i]);
@@ -3550,9 +3551,7 @@ i915_gem_detach_phys_object(struct drm_device *dev,
 		drm_clflush_pages(&m, 1);
 
 		VM_OBJECT_LOCK(obj->base.vm_obj);
-#if 0 /* XXX */
 		vm_page_reference(m);
-#endif
 		vm_page_dirty(m);
 		vm_page_busy_wait(m, FALSE, "i915gem");
 		vm_page_unwire(m, 0);
@@ -3618,9 +3617,7 @@ i915_gem_attach_phys_object(struct drm_device *dev,
 
 		VM_OBJECT_LOCK(obj->base.vm_obj);
 
-#if 0 /* XXX */
 		vm_page_reference(m);
-#endif
 		vm_page_busy_wait(m, FALSE, "i915gem");
 		vm_page_unwire(m, 0);
 		vm_page_wakeup(m);

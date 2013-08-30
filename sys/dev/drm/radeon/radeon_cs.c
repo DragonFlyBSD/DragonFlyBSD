@@ -23,7 +23,6 @@
  *
  * Authors:
  *    Jerome Glisse <glisse@freedesktop.org>
- * __FBSDID("$FreeBSD: src/sys/dev/drm/radeon_cs.c,v 1.2 2009/09/28 22:41:28 rnoland Exp $");
  */
 
 #include "dev/drm/drmP.h"
@@ -142,24 +141,25 @@ int radeon_cs_ioctl(struct drm_device *dev, void *data, struct drm_file *fpriv)
 	long size;
 	int r, i;
 
-	if (dev_priv == NULL) {
-		DRM_ERROR("called with no initialization\n");
-		return -EINVAL;
-	}
-	DRM_SPINLOCK(&dev_priv->cs.cs_mutex);
+	lockmgr(&dev_priv->cs.cs_mutex, LK_EXCLUSIVE);
 	/* set command stream id to 0 which is fake id */
 	cs_id = 0;
 	cs->cs_id = cs_id;
 
+	if (dev_priv == NULL) {
+		DRM_ERROR("called with no initialization\n");
+		lockmgr(&dev_priv->cs.cs_mutex, LK_RELEASE);
+		return -EINVAL;
+	}
 	if (!cs->num_chunks) {
-		DRM_SPINUNLOCK(&dev_priv->cs.cs_mutex);
+		lockmgr(&dev_priv->cs.cs_mutex, LK_RELEASE);
 		return 0;
 	}
 
 
 	chunk_array = drm_calloc(cs->num_chunks, sizeof(uint64_t), DRM_MEM_DRIVER);
 	if (!chunk_array) {
-		DRM_SPINUNLOCK(&dev_priv->cs.cs_mutex);
+		lockmgr(&dev_priv->cs.cs_mutex, LK_RELEASE);
 		return -ENOMEM;
 	}
 
@@ -266,7 +266,7 @@ out:
 
 	cs->cs_id = cs_id;
 
-	DRM_SPINUNLOCK(&dev_priv->cs.cs_mutex);
+	lockmgr(&dev_priv->cs.cs_mutex, LK_RELEASE);
 
 	for (i = 0; i < parser.num_chunks; i++) {
 		if (parser.chunks[i].kdata)
@@ -819,7 +819,7 @@ static int r600_ib_get(struct drm_radeon_cs_parser *parser)
 	}
 	buf->file_priv = parser->file_priv;
 	dev_priv->cs_buf = buf;
-	parser->ib = (void *)((vm_offset_t)dev->agp_buffer_map->handle +
+	parser->ib = (void *)((vm_offset_t)dev->agp_buffer_map->virtual +
 	    buf->offset);
 
 	return 0;

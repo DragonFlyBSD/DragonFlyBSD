@@ -180,10 +180,8 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 {
 	struct drm_device *dev;
 	drm_pci_id_list_t *id_entry;
-	int unit;
-#if 0
-	int msicount;
-#endif
+	int unit, msicount;
+	int rid = 0;
 
 	unit = device_get_unit(kdev);
 	dev = device_get_softc(kdev);
@@ -207,19 +205,17 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	if (drm_core_check_feature(dev, DRIVER_HAVE_IRQ)) {
 		if (drm_msi &&
 		    !drm_msi_is_blacklisted(dev->pci_vendor, dev->pci_device)) {
-#if 0
 			msicount = pci_msi_count(dev->device);
 			DRM_DEBUG("MSI count = %d\n", msicount);
 			if (msicount > 1)
 				msicount = 1;
 
-			if (pci_alloc_msi(dev->device, &msicount) == 0) {
+			if (pci_alloc_msi(dev->device, &rid, msicount, -1) == 0) {
 				DRM_INFO("MSI enabled %d message(s)\n",
 				    msicount);
 				dev->msi_enabled = 1;
-				dev->irqrid = 1;
+				dev->irqrid = rid;
 			}
-#endif
 		}
 
 		dev->irqr = bus_alloc_resource_any(dev->device, SYS_RES_IRQ,
@@ -255,12 +251,10 @@ int drm_detach(device_t kdev)
 		bus_release_resource(dev->device, SYS_RES_IRQ, dev->irqrid,
 		    dev->irqr);
 
-#if 0
 		if (dev->msi_enabled) {
 			pci_release_msi(dev->device);
 			DRM_INFO("MSI released\n");
 		}
-#endif
 	}
 
 	return 0;
@@ -413,6 +407,12 @@ static int drm_load(struct drm_device *dev)
 	DRM_DEBUG("\n");
 
 	TAILQ_INIT(&dev->maplist);
+	dev->map_unrhdr = new_unrhdr(1, ((1 << DRM_MAP_HANDLE_BITS) - 1), NULL);
+	if (dev->map_unrhdr == NULL) {
+		DRM_ERROR("Couldn't allocate map number allocator\n");
+		return EINVAL;
+	}
+
 
 	drm_mem_init();
 	drm_sysctl_init(dev);

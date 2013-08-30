@@ -81,10 +81,8 @@ drm_ati_alloc_pcigart_table(struct drm_device *dev,
 
 	flags = BUS_DMA_WAITOK | BUS_DMA_ZERO;
 
-#if 0
 	if (gart_info->gart_reg_if == DRM_ATI_GART_IGP)
 	    flags |= BUS_DMA_NOCACHE;
-#endif
 	
 	ret = bus_dmamem_alloc(dmah->tag, &dmah->vaddr, flags, &dmah->map);
 	if (ret != 0) {

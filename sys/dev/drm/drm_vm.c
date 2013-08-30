@@ -50,6 +50,7 @@ int drm_mmap(struct dev_mmap_args *ap)
         if (!file_priv->authenticated)
                 return EACCES;
 
+	DRM_DEBUG("called with offset %016jx\n", offset);
 	if (dev->dma && offset < ptoa(dev->dma->page_count)) {
 		drm_device_dma_t *dma = dev->dma;
 
@@ -67,31 +68,31 @@ int drm_mmap(struct dev_mmap_args *ap)
 		}
 	}
 
-				/* A sequential search of a linked list is
-				   fine here because: 1) there will only be
-				   about 5-10 entries in the list and, 2) a
-				   DRI client only has to do this mapping
-				   once, so it doesn't have to be optimized
-				   for performance, even if the list was a
-				   bit longer. */
+	/* A sequential search of a linked list is
+	   fine here because: 1) there will only be
+	   about 5-10 entries in the list and, 2) a
+	   DRI client only has to do this mapping
+	   once, so it doesn't have to be optimized
+	   for performance, even if the list was a
+	   bit longer.
+	*/
 	DRM_LOCK();
 	TAILQ_FOREACH(map, &dev->maplist, link) {
-		if (offset >= map->offset && offset < map->offset + map->size)
+		if (offset >> DRM_MAP_HANDLE_SHIFT ==
+		    (unsigned long)map->handle >> DRM_MAP_HANDLE_SHIFT)
 			break;
 	}
 
 	if (map == NULL) {
-		DRM_DEBUG("Can't find map, requested offset = %016lx\n",
-		    (unsigned long)offset);
+		DRM_DEBUG("Can't find map, request offset = %016jx\n", offset);
 		TAILQ_FOREACH(map, &dev->maplist, link) {
 			DRM_DEBUG("map offset = %016lx, handle = %016lx\n",
-			    (unsigned long)map->offset,
-			    (unsigned long)map->handle);
+			    map->offset, (unsigned long)map->handle);
 		}
 		DRM_UNLOCK();
 		return -1;
 	}
-	if (((map->flags&_DRM_RESTRICTED) && !DRM_SUSER(DRM_CURPROC))) {
+	if (((map->flags & _DRM_RESTRICTED) && !DRM_SUSER(DRM_CURPROC))) {
 		DRM_UNLOCK();
 		DRM_DEBUG("restricted map\n");
 		return -1;
@@ -99,18 +100,26 @@ int drm_mmap(struct dev_mmap_args *ap)
 	type = map->type;
 	DRM_UNLOCK();
 
+	offset = offset & ((1ULL << DRM_MAP_HANDLE_SHIFT) - 1);
+
 	switch (type) {
 	case _DRM_FRAME_BUFFER:
-	case _DRM_REGISTERS:
 	case _DRM_AGP:
-		phys = offset;
-		break;
-	case _DRM_CONSISTENT:
-		phys = vtophys((char *)map->handle + (offset - map->offset));
+#if 0	/* XXX */
+		*memattr = VM_MEMATTR_WRITE_COMBINING;
+#endif
+		/* FALLTHROUGH */
+	case _DRM_REGISTERS:
+		phys = map->offset + offset;
 		break;
 	case _DRM_SCATTER_GATHER:
+#if 0	/* XXX */
+		*memattr = VM_MEMATTR_WRITE_COMBINING;
+#endif
+		/* FALLTHROUGH */
+	case _DRM_CONSISTENT:
 	case _DRM_SHM:
-		phys = vtophys(offset);
+		phys = vtophys((char *)map->virtual + offset);
 		break;
 	default:
 		DRM_ERROR("bad map type %d\n", type);

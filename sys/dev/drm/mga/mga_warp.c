@@ -93,7 +93,7 @@ unsigned int mga_warp_microcode_size(const drm_mga_private_t * dev_priv)
 
 static int mga_warp_install_g400_microcode(drm_mga_private_t * dev_priv)
 {
-	unsigned char *vcbase = dev_priv->warp->handle;
+	unsigned char *vcbase = dev_priv->warp->virtual;
 	unsigned long pcbase = dev_priv->warp->offset;
 
 	memset(dev_priv->warp_pipe_phys, 0, sizeof(dev_priv->warp_pipe_phys));
@@ -121,7 +121,7 @@ static int mga_warp_install_g400_microcode(drm_mga_private_t * dev_priv)
 
 static int mga_warp_install_g200_microcode(drm_mga_private_t * dev_priv)
 {
-	unsigned char *vcbase = dev_priv->warp->handle;
+	unsigned char *vcbase = dev_priv->warp->virtual;
 	unsigned long pcbase = dev_priv->warp->offset;
 
 	memset(dev_priv->warp_pipe_phys, 0, sizeof(dev_priv->warp_pipe_phys));
