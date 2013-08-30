@@ -322,7 +322,7 @@ showpftop(void)
 		free(delm);
 		delm = NULL;
 	}
-	qsort(array, i, sizeof(array), statebwcmp);
+	qsort(array, i, sizeof(array[0]), statebwcmp);
 
 	row = 2;
 	n = i;
@@ -446,7 +446,7 @@ netaddrstr(sa_family_t af, struct pf_addr *addr, u_int16_t port)
 		snprintf(buf[nexta], sizeof(buf[nexta]),
 			 "%15s:%-5d", bufip, port);
 	} else if (af == AF_INET6) {
-		snprintf(buf[nexta], sizeof(buf[nexta]),
+		snprintf(bufip, sizeof(bufip),
 			 "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
 			 ntohs(addr->v6.s6_addr16[0]),
 			 ntohs(addr->v6.s6_addr16[1]),
@@ -460,6 +460,8 @@ netaddrstr(sa_family_t af, struct pf_addr *addr, u_int16_t port)
 			 "%39s:%-5d", bufip, port);
 	} else {
 		snprintf(bufip, sizeof(bufip), "<unknown>:%-5d", port);
+		snprintf(buf[nexta], sizeof(buf[nexta]),
+			 "%15s:%-5d", bufip, port);
 	}
 	return (buf[nexta]);
 }

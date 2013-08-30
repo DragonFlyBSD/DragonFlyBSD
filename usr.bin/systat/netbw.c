@@ -441,7 +441,7 @@ netaddrstr(u_char vflags, union in_dependaddr *depaddr, u_int16_t port)
 		snprintf(buf[nexta], sizeof(buf[nexta]),
 			 "%15s:%-5d", bufip, port);
 	} else if (vflags & INP_IPV6) {
-		snprintf(buf[nexta], sizeof(buf[nexta]),
+		snprintf(bufip, sizeof(bufip),
 			 "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
 			 ntohs(depaddr->id6_addr.s6_addr16[0]),
 			 ntohs(depaddr->id6_addr.s6_addr16[1]),
@@ -454,7 +454,9 @@ netaddrstr(u_char vflags, union in_dependaddr *depaddr, u_int16_t port)
 		snprintf(buf[nexta], sizeof(buf[nexta]),
 			 "%39s:%-5d", bufip, port);
 	} else {
-		snprintf(bufip, sizeof(bufip), "<unknown>:%-5d", port);
+		snprintf(bufip, sizeof(bufip), "<unknown>");
+		snprintf(buf[nexta], sizeof(buf[nexta]),
+			 "%15s:%-5d", bufip, port);
 	}
 	return (buf[nexta]);
 }
