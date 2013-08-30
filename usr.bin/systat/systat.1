@@ -94,6 +94,7 @@ to be one of:
 .Ic mbufs ,
 .Ic netstat ,
 .Ic netbw ,
+.Ic pftop ,
 .Ic pigs ,
 .Ic pvmmeter ,
 .Ic sensors ,
@@ -481,7 +482,14 @@ Reset the port, host, and protocol matching mechanisms to the default
 .El
 .It Ic netbw
 Display aggregate and per-connection tcp receive and transmit rates.
-Only active tcp connections are shown.
+Only active tcp connections originated or terminated by the host
+are shown.
+.It Ic pftop
+Display packet filter (pf) state information for states which are
+actively passing data.  This requires pf to be active to be meaningful
+but is capable of displaying connection state for all packet traffic
+passing through the machine, even for connections that do not originate
+or terminate on the machine.
 .El
 .Pp
 Commands to switch between displays may be abbreviated to the
