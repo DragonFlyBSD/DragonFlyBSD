@@ -280,13 +280,13 @@ gpio_pin_read(struct gpio *gp, struct gpio_mapping *map, int pin)
 void
 gpio_pin_write(struct gpio *gp, struct gpio_mapping *map, int pin, int data)
 {
-	return gp->pin_write(gp->arg, map->map[pin], data);
+	gp->pin_write(gp->arg, map->map[pin], data);
 }
 
 void
 gpio_pin_ctl(struct gpio *gp, struct gpio_mapping *map, int pin, int flags)
 {
-	return gp->pin_ctl(gp->arg, map->map[pin], flags);
+	gp->pin_ctl(gp->arg, map->map[pin], flags);
 }
 
 int

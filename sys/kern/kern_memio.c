@@ -477,7 +477,7 @@ void
 mem_range_AP_init(void)
 {
 	if (mem_range_softc.mr_op && mem_range_softc.mr_op->initAP)
-		return (mem_range_softc.mr_op->initAP(&mem_range_softc));
+		mem_range_softc.mr_op->initAP(&mem_range_softc);
 }
 
 static int 

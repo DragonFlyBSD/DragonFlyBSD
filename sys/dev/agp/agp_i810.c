@@ -2565,5 +2565,5 @@ intel_gtt_write(u_int entry, uint32_t val)
 	struct agp_i810_softc *sc;
 
 	sc = device_get_softc(intel_agp);
-	return (sc->match->driver->write_gtt(intel_agp, entry, val));
+	sc->match->driver->write_gtt(intel_agp, entry, val);
 }

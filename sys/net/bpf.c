@@ -1263,7 +1263,8 @@ bpf_mtap(struct bpf_if *bp, struct mbuf *m)
  * it or keep a pointer to it.
  */
 void
-bpf_mtap_hdr(struct bpf_if *arg, caddr_t data, u_int dlen, struct mbuf *m, u_int direction)
+bpf_mtap_hdr(struct bpf_if *arg, caddr_t data, u_int dlen, struct mbuf *m,
+    u_int direction)
 {
 	struct m_hdr mh;
 
@@ -1272,7 +1273,7 @@ bpf_mtap_hdr(struct bpf_if *arg, caddr_t data, u_int dlen, struct mbuf *m, u_int
 	mh.mh_len = dlen;
 	mh.mh_data = data;
 
-	return bpf_mtap(arg, (struct mbuf *) &mh);
+	bpf_mtap(arg, (struct mbuf *) &mh);
 }
 
 void

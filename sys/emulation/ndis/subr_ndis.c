@@ -1630,8 +1630,8 @@ void
 NdisAllocatePacketPoolEx(ndis_status *status, ndis_handle *pool,
     uint32_t descnum, uint32_t oflowdescnum, uint32_t protrsvdlen)
 {
-	return (NdisAllocatePacketPool(status, pool,
-	    descnum + oflowdescnum, protrsvdlen));
+	NdisAllocatePacketPool(status, pool, descnum + oflowdescnum,
+	    protrsvdlen);
 }
 
 uint32_t
