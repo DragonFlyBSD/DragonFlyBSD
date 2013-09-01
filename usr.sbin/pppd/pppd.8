@@ -534,7 +534,7 @@ enable general debug messages, 2 to request that the contents of
 received packets be printed, and 4 to request that the contents of
 transmitted packets be printed.
 On most systems, messages printed by the kernel are logged by
-.Xr syslog 1 ,
+.Xr syslogd 8 ,
 to a file as directed in the
 .Pa /etc/syslog.conf
 configuration file.
@@ -1623,12 +1623,12 @@ signal to the
 process.
 This signal acts as a toggle.
 .Sh SEE ALSO
-.Xr syslog 1 ,
 .Xr tcpdump 1 ,
 .Xr crypt 3 ,
 .Xr syslog.conf 5 ,
 .Xr chat 8 ,
-.Xr ppp 8
+.Xr ppp 8 ,
+.Xr syslogd 8
 .Sh STANDARDS
 .Rs
 .%A V. Jacobson
