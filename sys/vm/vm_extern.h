@@ -83,8 +83,7 @@ vm_offset_t kmem_alloc_nofault (vm_map_t, vm_size_t, vm_size_t);
 vm_offset_t kmem_alloc_pageable (vm_map_t, vm_size_t);
 vm_offset_t kmem_alloc_wait (vm_map_t, vm_size_t);
 vm_offset_t kmem_alloc_attr(vm_map_t map, vm_size_t size, int flags,
-			vm_paddr_t minaddr, vm_paddr_t maxaddr,
-			int pat_attr);
+	vm_paddr_t low, vm_paddr_t high, vm_memattr_t memattr);
 void kmem_free (vm_map_t, vm_offset_t, vm_size_t);
 void kmem_free_wakeup (vm_map_t, vm_offset_t, vm_size_t);
 void kmem_init (void);

@@ -345,18 +345,44 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
  *  given flags, then the pages are zeroed before they are mapped.
  */
 vm_offset_t
-kmem_alloc_attr(vm_map_t map, vm_size_t size, int flags,
-		vm_paddr_t minaddr, vm_paddr_t maxaddr, int pat_attr)
+kmem_alloc_attr(vm_map_t map, vm_size_t size, int flags, vm_paddr_t low,
+    vm_paddr_t high, vm_memattr_t memattr)
 {
-	vm_offset_t vm;
+	vm_offset_t addr, i, offset;
+	vm_page_t m;
+	int count;
 
 	size = round_page(size);
-
-	vm = ((vm_offset_t)contigmalloc_map (size, M_DEVBUF,
-		flags, minaddr, maxaddr, PAGE_SIZE, PAGE_SIZE, map));
-	pmap_change_attr(vm, size / PAGE_SIZE, pat_attr);
-
-	return (vm);
+	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
+	vm_map_lock(map);
+	if (vm_map_findspace(map, vm_map_min(map), size, PAGE_SIZE,
+				flags, &addr)) {
+		vm_map_unlock(map);
+		vm_map_entry_release(count);
+		return (0);
+	}
+	offset = addr - VM_MIN_KERNEL_ADDRESS;
+	vm_object_hold(&kernel_object);
+	vm_object_reference_locked(&kernel_object);
+	vm_map_insert(map, &count, &kernel_object, offset, addr, addr + size,
+		VM_MAPTYPE_NORMAL, VM_PROT_ALL, VM_PROT_ALL, 0);
+	vm_map_unlock(map);
+	vm_map_entry_release(count);
+	vm_object_drop(&kernel_object);
+	for (i = 0; i < size; i += PAGE_SIZE) {
+		m = vm_page_alloc_contig(low, high, PAGE_SIZE, 0, PAGE_SIZE, memattr);
+		if (!m) {
+			return (0);
+		}
+		vm_object_hold(&kernel_object);
+		vm_page_insert(m, &kernel_object, OFF_TO_IDX(offset + i));
+		vm_object_drop(&kernel_object);
+		if ((flags & M_ZERO) && (m->flags & PG_ZERO) == 0)
+			pmap_zero_page(VM_PAGE_TO_PHYS(m));
+		m->valid = VM_PAGE_BITS_ALL;
+	}
+	vm_map_wire(map, addr, addr + size, 0);
+	return (addr);
 }
 
 
