@@ -26,6 +26,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_agpsupport.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /** @file drm_agpsupport.c
@@ -33,7 +34,7 @@
  * the DRM's AGP ioctls.
  */
 
-#include "dev/drm/drmP.h"
+#include <dev/drm/drmP.h>
 
 #include <dev/agp/agpreg.h>
 #include <bus/pci/pcireg.h>
@@ -173,18 +174,16 @@ int drm_agp_alloc(struct drm_device *dev, struct drm_agp_buffer *request)
 	if (!dev->agp || !dev->agp->acquired)
 		return EINVAL;
 
-	entry = malloc(sizeof(*entry), DRM_MEM_AGPLISTS, M_NOWAIT | M_ZERO);
+	entry = kmalloc(sizeof(*entry), DRM_MEM_AGPLISTS, M_NOWAIT | M_ZERO);
 	if (entry == NULL)
 		return ENOMEM;
 
 	pages = (request->size + PAGE_SIZE - 1) / PAGE_SIZE;
 	type = (u_int32_t) request->type;
 
-	DRM_UNLOCK();
 	handle = drm_agp_allocate_memory(pages, type);
-	DRM_LOCK();
 	if (handle == NULL) {
-		free(entry, DRM_MEM_AGPLISTS);
+		drm_free(entry, DRM_MEM_AGPLISTS);
 		return ENOMEM;
 	}
 	
@@ -213,9 +212,7 @@ int drm_agp_alloc_ioctl(struct drm_device *dev, void *data,
 
 	request = *(struct drm_agp_buffer *) data;
 
-	DRM_LOCK();
 	retcode = drm_agp_alloc(dev, &request);
-	DRM_UNLOCK();
 
 	*(struct drm_agp_buffer *) data = request;
 
@@ -245,9 +242,7 @@ int drm_agp_unbind(struct drm_device *dev, struct drm_agp_binding *request)
 	if (entry == NULL || !entry->bound)
 		return EINVAL;
 
-	DRM_UNLOCK();
 	retcode = drm_agp_unbind_memory(entry->handle);
-	DRM_LOCK();
 
 	if (retcode == 0)
 		entry->bound = 0;
@@ -263,9 +258,7 @@ int drm_agp_unbind_ioctl(struct drm_device *dev, void *data,
 
 	request = *(struct drm_agp_binding *) data;
 
-	DRM_LOCK();
 	retcode = drm_agp_unbind(dev, &request);
-	DRM_UNLOCK();
 
 	return retcode;
 }
@@ -279,7 +272,7 @@ int drm_agp_bind(struct drm_device *dev, struct drm_agp_binding *request)
 	if (!dev->agp || !dev->agp->acquired)
 		return EINVAL;
 
-	DRM_DEBUG("agp_bind, page_size=%x\n", PAGE_SIZE);
+	DRM_DEBUG("agp_bind, page_size=%x\n", (int)PAGE_SIZE);
 
 	entry = drm_agp_lookup_entry(dev, (void *)request->handle);
 	if (entry == NULL || entry->bound)
@@ -287,9 +280,7 @@ int drm_agp_bind(struct drm_device *dev, struct drm_agp_binding *request)
 
 	page = (request->offset + PAGE_SIZE - 1) / PAGE_SIZE;
 
-	DRM_UNLOCK();
 	retcode = drm_agp_bind_memory(entry->handle, page);
-	DRM_LOCK();
 	if (retcode == 0)
 		entry->bound = dev->agp->base + (page << PAGE_SHIFT);
 
@@ -304,9 +295,7 @@ int drm_agp_bind_ioctl(struct drm_device *dev, void *data,
 
 	request = *(struct drm_agp_binding *) data;
 
-	DRM_LOCK();
 	retcode = drm_agp_bind(dev, &request);
-	DRM_UNLOCK();
 
 	return retcode;
 }
@@ -329,13 +318,11 @@ int drm_agp_free(struct drm_device *dev, struct drm_agp_buffer *request)
 	if (entry->next)
 		entry->next->prev = entry->prev;
 
-	DRM_UNLOCK();
 	if (entry->bound)
 		drm_agp_unbind_memory(entry->handle);
 	drm_agp_free_memory(entry->handle);
-	DRM_LOCK();
 
-	free(entry, DRM_MEM_AGPLISTS);
+	drm_free(entry, DRM_MEM_AGPLISTS);
 
 	return 0;
 
@@ -349,9 +336,7 @@ int drm_agp_free_ioctl(struct drm_device *dev, void *data,
 
 	request = *(struct drm_agp_buffer *) data;
 
-	DRM_LOCK();
 	retcode = drm_agp_free(dev, &request);
-	DRM_UNLOCK();
 
 	return retcode;
 }
@@ -369,7 +354,7 @@ drm_agp_head_t *drm_agp_init(void)
 	DRM_DEBUG("agp_available = %d\n", agp_available);
 
 	if (agp_available) {
-		head = malloc(sizeof(*head), DRM_MEM_AGPLISTS,
+		head = kmalloc(sizeof(*head), DRM_MEM_AGPLISTS,
 		    M_NOWAIT | M_ZERO);
 		if (head == NULL)
 			return NULL;

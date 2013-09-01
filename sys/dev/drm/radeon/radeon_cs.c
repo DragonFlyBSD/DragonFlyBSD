@@ -270,11 +270,11 @@ out:
 
 	for (i = 0; i < parser.num_chunks; i++) {
 		if (parser.chunks[i].kdata)
-			drm_free(parser.chunks[i].kdata, parser.chunks[i].length_dw * sizeof(uint32_t), DRM_MEM_DRIVER);
+			drm_free(parser.chunks[i].kdata, DRM_MEM_DRIVER);
 	}
 
-	drm_free(parser.chunks, sizeof(struct drm_radeon_kernel_chunk)*parser.num_chunks, DRM_MEM_DRIVER);
-	drm_free(chunk_array, sizeof(uint64_t)*parser.num_chunks, DRM_MEM_DRIVER);
+	drm_free(parser.chunks, DRM_MEM_DRIVER);
+	drm_free(chunk_array, DRM_MEM_DRIVER);
 
 	return r;
 }

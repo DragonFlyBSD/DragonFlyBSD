@@ -26,6 +26,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_auth.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /** @file drm_auth.c
@@ -48,7 +49,7 @@ static struct drm_file *drm_find_file(struct drm_device *dev, drm_magic_t magic)
 	drm_magic_entry_t *pt;
 	int hash = drm_hash_magic(magic);
 
-	DRM_SPINLOCK_ASSERT(&dev->dev_lock);
+	DRM_LOCK_ASSERT(dev);
 
 	for (pt = dev->magiclist[hash].head; pt; pt = pt->next) {
 		if (pt->magic == magic) {
@@ -71,10 +72,10 @@ static int drm_add_magic(struct drm_device *dev, struct drm_file *priv,
 
 	DRM_DEBUG("%d\n", magic);
 
-	DRM_SPINLOCK_ASSERT(&dev->dev_lock);
+	DRM_LOCK_ASSERT(dev);
 
 	hash = drm_hash_magic(magic);
-	entry = malloc(sizeof(*entry), DRM_MEM_MAGIC, M_ZERO | M_NOWAIT);
+	entry = kmalloc(sizeof(*entry), DRM_MEM_MAGIC, M_ZERO | M_NOWAIT);
 	if (!entry)
 		return ENOMEM;
 	entry->magic = magic;
@@ -102,7 +103,7 @@ static int drm_remove_magic(struct drm_device *dev, drm_magic_t magic)
 	drm_magic_entry_t *pt;
 	int		  hash;
 
-	DRM_SPINLOCK_ASSERT(&dev->dev_lock);
+	DRM_LOCK_ASSERT(dev);
 
 	DRM_DEBUG("%d\n", magic);
 	hash = drm_hash_magic(magic);
@@ -118,7 +119,7 @@ static int drm_remove_magic(struct drm_device *dev, drm_magic_t magic)
 			if (prev) {
 				prev->next = pt->next;
 			}
-			free(pt, DRM_MEM_MAGIC);
+			drm_free(pt, DRM_MEM_MAGIC);
 			return 0;
 		}
 	}
@@ -143,7 +144,7 @@ int drm_getmagic(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	if (file_priv->magic) {
 		auth->magic = file_priv->magic;
 	} else {
-		DRM_LOCK();
+		DRM_LOCK(dev);
 		do {
 			int old = sequence;
 
@@ -154,7 +155,7 @@ int drm_getmagic(struct drm_device *dev, void *data, struct drm_file *file_priv)
 		} while (drm_find_file(dev, auth->magic));
 		file_priv->magic = auth->magic;
 		drm_add_magic(dev, file_priv, auth->magic);
-		DRM_UNLOCK();
+		DRM_UNLOCK(dev);
 	}
 
 	DRM_DEBUG("%u\n", auth->magic);
@@ -173,15 +174,15 @@ int drm_authmagic(struct drm_device *dev, void *data,
 
 	DRM_DEBUG("%u\n", auth->magic);
 
-	DRM_LOCK();
+	DRM_LOCK(dev);
 	priv = drm_find_file(dev, auth->magic);
 	if (priv != NULL) {
 		priv->authenticated = 1;
 		drm_remove_magic(dev, auth->magic);
-		DRM_UNLOCK();
+		DRM_UNLOCK(dev);
 		return 0;
 	} else {
-		DRM_UNLOCK();
+		DRM_UNLOCK(dev);
 		return EINVAL;
 	}
 }

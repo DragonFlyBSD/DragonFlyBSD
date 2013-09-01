@@ -127,7 +127,7 @@ int setNext(set_t * set, ITEM_TYPE * item)
 
 int setDestroy(set_t * set)
 {
-	drm_free(set, sizeof(set_t), DRM_MEM_DRIVER);
+	drm_free(set, DRM_MEM_DRIVER);
 
 	return 1;
 }
@@ -267,7 +267,7 @@ static __inline__ int Join2Blocks(TMemBlock * p)
 		TMemBlock *q = p->next;
 		p->size += q->size;
 		p->next = q->next;
-		drm_free(q, sizeof(TMemBlock), DRM_MEM_DRIVER);
+		drm_free(q, DRM_MEM_DRIVER);
 		return 1;
 	}
 	return 0;

@@ -19,6 +19,8 @@
  * AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * $FreeBSD: src/sys/dev/drm2/drm_pci.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /**
@@ -64,7 +66,7 @@ drm_pci_alloc(struct drm_device *dev, size_t size,
 		return NULL;
 	}
 
-	dmah = malloc(sizeof(drm_dma_handle_t), DRM_MEM_DMA, M_ZERO | M_NOWAIT);
+	dmah = kmalloc(sizeof(drm_dma_handle_t), DRM_MEM_DMA, M_ZERO | M_NOWAIT);
 	if (dmah == NULL)
 		return NULL;
 
@@ -82,19 +84,18 @@ drm_pci_alloc(struct drm_device *dev, size_t size,
 	    maxaddr, BUS_SPACE_MAXADDR, /* lowaddr, highaddr */
 	    NULL, NULL, /* filtfunc, filtfuncargs */
 	    size, 1, size, /* maxsize, nsegs, maxsegsize */
-	    0, /* flags */
+	    0,		/* flags */
 	    &dmah->tag);
 	if (ret != 0) {
-		free(dmah, DRM_MEM_DMA);
+		drm_free(dmah, DRM_MEM_DMA);
 		return NULL;
 	}
 
-	/* XXX BUS_DMA_NOCACHE */
 	ret = bus_dmamem_alloc(dmah->tag, &dmah->vaddr,
-	    BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmah->map);
+	    BUS_DMA_WAITOK | BUS_DMA_ZERO | BUS_DMA_NOCACHE, &dmah->map);
 	if (ret != 0) {
 		bus_dma_tag_destroy(dmah->tag);
-		free(dmah, DRM_MEM_DMA);
+		drm_free(dmah, DRM_MEM_DMA);
 		return NULL;
 	}
 
@@ -103,7 +104,7 @@ drm_pci_alloc(struct drm_device *dev, size_t size,
 	if (ret != 0) {
 		bus_dmamem_free(dmah->tag, dmah->vaddr, dmah->map);
 		bus_dma_tag_destroy(dmah->tag);
-		free(dmah, DRM_MEM_DMA);
+		drm_free(dmah, DRM_MEM_DMA);
 		return NULL;
 	}
 
@@ -122,7 +123,7 @@ drm_pci_free(struct drm_device *dev, drm_dma_handle_t *dmah)
 	bus_dmamem_free(dmah->tag, dmah->vaddr, dmah->map);
 	bus_dma_tag_destroy(dmah->tag);
 
-	free(dmah, DRM_MEM_DMA);
+	drm_free(dmah, DRM_MEM_DMA);
 }
 
 /*@}*/

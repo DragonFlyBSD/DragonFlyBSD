@@ -995,7 +995,7 @@ int savage_bci_cmdbuf(struct drm_device *dev, void *data, struct drm_file *file_
 		if (DRM_COPY_FROM_USER(kcmd_addr, cmdbuf->cmd_addr,
 				       cmdbuf->size * 8))
 		{
-			drm_free(kcmd_addr, cmdbuf->size * 8, DRM_MEM_DRIVER);
+			drm_free(kcmd_addr, DRM_MEM_DRIVER);
 			return -EFAULT;
 		}
 		cmdbuf->cmd_addr = kcmd_addr;
@@ -1157,10 +1157,9 @@ int savage_bci_cmdbuf(struct drm_device *dev, void *data, struct drm_file *file_
 
 done:
 	/* If we didn't need to allocate them, these'll be NULL */
-	drm_free(kcmd_addr, cmdbuf->size * 8, DRM_MEM_DRIVER);
-	drm_free(kvb_addr, cmdbuf->vb_size, DRM_MEM_DRIVER);
-	drm_free(kbox_addr, cmdbuf->nbox * sizeof(struct drm_clip_rect),
-		 DRM_MEM_DRIVER);
+	drm_free(kcmd_addr, DRM_MEM_DRIVER);
+	drm_free(kvb_addr, DRM_MEM_DRIVER);
+	drm_free(kbox_addr, DRM_MEM_DRIVER);
 
 	return ret;
 }

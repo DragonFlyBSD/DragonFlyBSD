@@ -87,7 +87,7 @@ radeon_attach(device_t kdev)
 {
 	struct drm_device *dev = device_get_softc(kdev);
 
-	dev->driver = malloc(sizeof(struct drm_driver_info), DRM_MEM_DRIVER,
+	dev->driver = kmalloc(sizeof(struct drm_driver_info), DRM_MEM_DRIVER,
 	    M_WAITOK | M_ZERO);
 
 	radeon_configure(dev);
@@ -103,7 +103,7 @@ radeon_detach(device_t kdev)
 
 	ret = drm_detach(kdev);
 
-	free(dev->driver, DRM_MEM_DRIVER);
+	drm_free(dev->driver, DRM_MEM_DRIVER);
 
 	return ret;
 }

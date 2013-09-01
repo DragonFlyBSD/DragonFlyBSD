@@ -495,7 +495,7 @@ static __inline__ int copy_from_user_vertex(u32 *to,
 		return -ENOMEM;
 
 	if (DRM_COPY_FROM_USER(from, ufrom, bytes)) {
-		drm_free(from, bytes, DRM_MEM_DRIVER);
+		drm_free(from, DRM_MEM_DRIVER);
 		return -EFAULT;
 	}
 	orig_from = from; /* we'll be modifying the "from" ptr, so save it */
@@ -526,19 +526,19 @@ static __inline__ int copy_from_user_vertex(u32 *to,
 				to += count;
 			} else {
 				DRM_ERROR("Got bad command: 0x%04x\n", reg);
-				drm_free(orig_from, bytes, DRM_MEM_DRIVER);
+				drm_free(orig_from, DRM_MEM_DRIVER);
 				return -EACCES;
 			}
 		} else {
 			DRM_ERROR
 			    ("Got bad command count(=%u) dwords remaining=%lu\n",
 			     count, n);
-			drm_free(orig_from, bytes, DRM_MEM_DRIVER);
+			drm_free(orig_from, DRM_MEM_DRIVER);
 			return -EINVAL;
 		}
 	}
 
-	drm_free(orig_from, bytes, DRM_MEM_DRIVER);
+	drm_free(orig_from, DRM_MEM_DRIVER);
 	if (n == 0)
 		return 0;
 	else {

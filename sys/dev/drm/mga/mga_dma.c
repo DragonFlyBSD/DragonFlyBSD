@@ -301,7 +301,7 @@ static void mga_freelist_cleanup(struct drm_device * dev)
 	entry = dev_priv->head;
 	while (entry) {
 		next = entry->next;
-		drm_free(entry, sizeof(drm_mga_freelist_t), DRM_MEM_DRIVER);
+		drm_free(entry, DRM_MEM_DRIVER);
 		entry = next;
 	}
 
@@ -1148,7 +1148,7 @@ int mga_dma_buffers(struct drm_device *dev, void *data,
  */
 int mga_driver_unload(struct drm_device * dev)
 {
-	drm_free(dev->dev_private, sizeof(drm_mga_private_t), DRM_MEM_DRIVER);
+	drm_free(dev->dev_private, DRM_MEM_DRIVER);
 	dev->dev_private = NULL;
 
 	return 0;

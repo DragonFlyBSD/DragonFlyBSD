@@ -31,6 +31,8 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * $FreeBSD: src/sys/dev/drm2/drm.h,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /**
@@ -95,6 +97,7 @@
 #if defined(__linux__) || defined(__NetBSD__)
 #define DRM_MAJOR       226
 #endif
+#define DRM_MAX_MINOR   15
 
 #define DRM_NAME	"drm"	  /**< Name in kernel, /dev, and /proc */
 #define DRM_MIN_ORDER	5	  /**< At least 2^5 bytes = 32 bytes */
@@ -235,7 +238,7 @@ enum drm_map_type {
 	_DRM_AGP = 3,		  /**< AGP/GART */
 	_DRM_SCATTER_GATHER = 4,  /**< Scatter/gather memory for PCI DMA */
 	_DRM_CONSISTENT = 5,	  /**< Consistent memory for PCI DMA */
-	_DRM_TTM = 6
+	_DRM_GEM = 6		  /**< GEM */
 };
 
 /**
@@ -521,15 +524,18 @@ struct drm_irq_busid {
 enum drm_vblank_seq_type {
 	_DRM_VBLANK_ABSOLUTE = 0x0,	/**< Wait for specific vblank sequence number */
 	_DRM_VBLANK_RELATIVE = 0x1,	/**< Wait for given number of vblanks */
+	_DRM_VBLANK_HIGH_CRTC_MASK = 0x0000003e,
+	_DRM_VBLANK_EVENT = 0x4000000,   /**< Send event instead of blocking */
 	_DRM_VBLANK_FLIP = 0x8000000,	/**< Scheduled buffer swap should flip */
 	_DRM_VBLANK_NEXTONMISS = 0x10000000,	/**< If missed, wait for next vblank */
 	_DRM_VBLANK_SECONDARY = 0x20000000,	/**< Secondary display controller */
 	_DRM_VBLANK_SIGNAL = 0x40000000	/**< Send signal instead of blocking */
 };
+#define _DRM_VBLANK_HIGH_CRTC_SHIFT 1
 
 #define _DRM_VBLANK_TYPES_MASK (_DRM_VBLANK_ABSOLUTE | _DRM_VBLANK_RELATIVE)
-#define _DRM_VBLANK_FLAGS_MASK (_DRM_VBLANK_SIGNAL | _DRM_VBLANK_SECONDARY | \
-				_DRM_VBLANK_NEXTONMISS)
+#define _DRM_VBLANK_FLAGS_MASK (_DRM_VBLANK_EVENT | _DRM_VBLANK_SIGNAL | \
+				_DRM_VBLANK_SECONDARY | _DRM_VBLANK_NEXTONMISS)
 
 struct drm_wait_vblank_request {
 	enum drm_vblank_seq_type type;
@@ -640,7 +646,6 @@ struct drm_set_version {
 	int drm_dd_minor;
 };
 
-
 #define DRM_FENCE_FLAG_EMIT                0x00000001
 #define DRM_FENCE_FLAG_SHAREABLE           0x00000002
 /**
@@ -667,7 +672,7 @@ struct drm_fence_arg {
 	unsigned int error;
 	unsigned int sequence;
 	unsigned int pad64;
-	uint64_t expand_pad[2]; /*Future expansion */
+	uint64_t expand_pad[2]; /* Future expansion */
 };
 
 /* Buffer permissions, referring to how the GPU uses the buffers.
@@ -983,6 +988,35 @@ struct drm_gem_open {
 	uint64_t size;
 };
 
+struct drm_get_cap {
+	uint64_t capability;
+	uint64_t value;
+};
+
+struct drm_event {
+	uint32_t type;
+	uint32_t length;
+};
+
+#define DRM_EVENT_VBLANK 0x01
+#define DRM_EVENT_FLIP_COMPLETE 0x02
+
+struct drm_event_vblank {
+	struct drm_event base;
+	uint64_t user_data;
+	uint32_t tv_sec;
+	uint32_t tv_usec;
+	uint32_t sequence;
+	uint32_t reserved;
+};
+
+#define DRM_CAP_DUMB_BUFFER 0x1
+#define DRM_CAP_VBLANK_HIGH_CRTC 0x2
+#define DRM_CAP_DUMB_PREFERRED_DEPTH 0x3
+#define DRM_CAP_DUMB_PREFER_SHADOW 0x4
+
+#include "drm_mode.h"
+
 /**
  * \name Ioctls Definitions
  */
@@ -1008,6 +1042,8 @@ struct drm_gem_open {
 #define DRM_IOCTL_GEM_FLINK		DRM_IOWR(0x0a, struct drm_gem_flink)
 #define DRM_IOCTL_GEM_OPEN		DRM_IOWR(0x0b, struct drm_gem_open)
 
+#define DRM_IOCTL_GET_CAP		DRM_IOWR(0x0c, struct drm_get_cap)
+
 #define DRM_IOCTL_SET_UNIQUE		DRM_IOW( 0x10, struct drm_unique)
 #define DRM_IOCTL_AUTH_MAGIC		DRM_IOW( 0x11, struct drm_auth)
 #define DRM_IOCTL_BLOCK			DRM_IOWR(0x12, struct drm_block)
@@ -1025,6 +1061,9 @@ struct drm_gem_open {
 #define DRM_IOCTL_SET_SAREA_CTX		DRM_IOW( 0x1c, struct drm_ctx_priv_map)
 #define DRM_IOCTL_GET_SAREA_CTX		DRM_IOWR(0x1d, struct drm_ctx_priv_map)
 
+#define DRM_IOCTL_SET_MASTER            DRM_IO(0x1e)
+#define DRM_IOCTL_DROP_MASTER           DRM_IO(0x1f)
+
 #define DRM_IOCTL_ADD_CTX		DRM_IOWR(0x20, struct drm_ctx)
 #define DRM_IOCTL_RM_CTX		DRM_IOWR(0x21, struct drm_ctx)
 #define DRM_IOCTL_MOD_CTX		DRM_IOW( 0x22, struct drm_ctx)
@@ -1038,6 +1077,8 @@ struct drm_gem_open {
 #define DRM_IOCTL_LOCK			DRM_IOW( 0x2a, struct drm_lock)
 #define DRM_IOCTL_UNLOCK		DRM_IOW( 0x2b, struct drm_lock)
 #define DRM_IOCTL_FINISH		DRM_IOW( 0x2c, struct drm_lock)
+
+#define DRM_IOCTL_GEM_PRIME_OPEN        DRM_IOWR(0x2e, struct drm_gem_open)
 
 #define DRM_IOCTL_AGP_ACQUIRE		DRM_IO(  0x30)
 #define DRM_IOCTL_AGP_RELEASE		DRM_IO(  0x31)
@@ -1054,6 +1095,34 @@ struct drm_gem_open {
 #define DRM_IOCTL_WAIT_VBLANK		DRM_IOWR(0x3a, union drm_wait_vblank)
 
 #define DRM_IOCTL_UPDATE_DRAW           DRM_IOW(0x3f, struct drm_update_draw)
+
+#define DRM_IOCTL_MODE_GETRESOURCES	DRM_IOWR(0xA0, struct drm_mode_card_res)
+#define DRM_IOCTL_MODE_GETCRTC		DRM_IOWR(0xA1, struct drm_mode_crtc)
+#define DRM_IOCTL_MODE_SETCRTC		DRM_IOWR(0xA2, struct drm_mode_crtc)
+#define DRM_IOCTL_MODE_CURSOR		DRM_IOWR(0xA3, struct drm_mode_cursor)
+#define DRM_IOCTL_MODE_GETGAMMA		DRM_IOWR(0xA4, struct drm_mode_crtc_lut)
+#define DRM_IOCTL_MODE_SETGAMMA		DRM_IOWR(0xA5, struct drm_mode_crtc_lut)
+#define DRM_IOCTL_MODE_GETENCODER	DRM_IOWR(0xA6, struct drm_mode_get_encoder)
+#define DRM_IOCTL_MODE_GETCONNECTOR	DRM_IOWR(0xA7, struct drm_mode_get_connector)
+#define DRM_IOCTL_MODE_ATTACHMODE	DRM_IOWR(0xA8, struct drm_mode_mode_cmd)
+#define DRM_IOCTL_MODE_DETACHMODE	DRM_IOWR(0xA9, struct drm_mode_mode_cmd)
+
+#define DRM_IOCTL_MODE_GETPROPERTY	DRM_IOWR(0xAA, struct drm_mode_get_property)
+#define DRM_IOCTL_MODE_SETPROPERTY	DRM_IOWR(0xAB, struct drm_mode_connector_set_property)
+#define DRM_IOCTL_MODE_GETPROPBLOB	DRM_IOWR(0xAC, struct drm_mode_get_blob)
+#define DRM_IOCTL_MODE_GETFB		DRM_IOWR(0xAD, struct drm_mode_fb_cmd)
+#define DRM_IOCTL_MODE_ADDFB		DRM_IOWR(0xAE, struct drm_mode_fb_cmd)
+#define DRM_IOCTL_MODE_RMFB		DRM_IOWR(0xAF, unsigned int)
+#define DRM_IOCTL_MODE_PAGE_FLIP	DRM_IOWR(0xB0, struct drm_mode_crtc_page_flip)
+#define DRM_IOCTL_MODE_DIRTYFB		DRM_IOWR(0xB1, struct drm_mode_fb_dirty_cmd)
+
+#define DRM_IOCTL_MODE_CREATE_DUMB	DRM_IOWR(0xB2, struct drm_mode_create_dumb)
+#define DRM_IOCTL_MODE_MAP_DUMB		DRM_IOWR(0xB3, struct drm_mode_map_dumb)
+#define DRM_IOCTL_MODE_DESTROY_DUMB	DRM_IOWR(0xB4, struct drm_mode_destroy_dumb)
+#define DRM_IOCTL_MODE_GETPLANERESOURCES DRM_IOWR(0xB5, struct drm_mode_get_plane_res)
+#define DRM_IOCTL_MODE_GETPLANE		DRM_IOWR(0xB6, struct drm_mode_get_plane)
+#define DRM_IOCTL_MODE_SETPLANE		DRM_IOWR(0xB7, struct drm_mode_set_plane)
+#define DRM_IOCTL_MODE_ADDFB2		DRM_IOWR(0xB8, struct drm_mode_fb_cmd2)
 
 #define DRM_IOCTL_MM_INIT               DRM_IOWR(0xc0, struct drm_mm_init_arg)
 #define DRM_IOCTL_MM_TAKEDOWN           DRM_IOWR(0xc1, struct drm_mm_type_arg)

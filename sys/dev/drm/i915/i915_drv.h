@@ -128,7 +128,7 @@ typedef struct drm_i915_private {
 
 	wait_queue_head_t irq_queue;
 	/** Protects user_irq_refcount and irq_mask_reg */
-	DRM_SPINTYPE user_irq_lock;
+	struct spinlock user_irq_lock;
 	/** Refcount for i915_user_irq_get() versus i915_user_irq_put(). */
 	int user_irq_refcount;
 	/** Cached value of IER to avoid reads in updating the bitfield */

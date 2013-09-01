@@ -61,12 +61,12 @@ drm_ati_alloc_pcigart_table(struct drm_device *dev,
 	struct drm_dma_handle *dmah;
 	int flags, ret;
 
-	dmah = malloc(sizeof(struct drm_dma_handle), DRM_MEM_DMA,
+	dmah = kmalloc(sizeof(struct drm_dma_handle), DRM_MEM_DMA,
 	    M_ZERO | M_NOWAIT);
 	if (dmah == NULL)
 		return ENOMEM;
 
-	DRM_UNLOCK();
+	DRM_UNLOCK(dev);
 	ret = bus_dma_tag_create(NULL, PAGE_SIZE, 0, /* tag, align, boundary */
 	    gart_info->table_mask, BUS_SPACE_MAXADDR, /* lowaddr, highaddr */
 	    NULL, NULL, /* filtfunc, filtfuncargs */
@@ -75,7 +75,7 @@ drm_ati_alloc_pcigart_table(struct drm_device *dev,
 	    0, /* flags */
 	    &dmah->tag);
 	if (ret != 0) {
-		free(dmah, DRM_MEM_DMA);
+		kfree(dmah, DRM_MEM_DMA);
 		return ENOMEM;
 	}
 
@@ -87,10 +87,10 @@ drm_ati_alloc_pcigart_table(struct drm_device *dev,
 	ret = bus_dmamem_alloc(dmah->tag, &dmah->vaddr, flags, &dmah->map);
 	if (ret != 0) {
 		bus_dma_tag_destroy(dmah->tag);
-		free(dmah, DRM_MEM_DMA);
+		kfree(dmah, DRM_MEM_DMA);
 		return ENOMEM;
 	}
-	DRM_LOCK();
+	DRM_LOCK(dev);
 
 	ret = bus_dmamap_load(dmah->tag, dmah->map, dmah->vaddr,
 	    gart_info->table_size, drm_ati_alloc_pcigart_table_cb, dmah,
@@ -98,7 +98,7 @@ drm_ati_alloc_pcigart_table(struct drm_device *dev,
 	if (ret != 0) {
 		bus_dmamem_free(dmah->tag, dmah->vaddr, dmah->map);
 		bus_dma_tag_destroy(dmah->tag);
-		free(dmah, DRM_MEM_DMA);
+		kfree(dmah, DRM_MEM_DMA);
 		return ENOMEM;
 	}
 
@@ -115,7 +115,7 @@ drm_ati_free_pcigart_table(struct drm_device *dev,
 
 	bus_dmamem_free(dmah->tag, dmah->vaddr, dmah->map);
 	bus_dma_tag_destroy(dmah->tag);
-	free(dmah, DRM_MEM_DMA);
+	kfree(dmah, DRM_MEM_DMA);
 	gart_info->dmah = NULL;
 }
 

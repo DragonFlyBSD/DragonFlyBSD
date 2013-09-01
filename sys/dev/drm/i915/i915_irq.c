@@ -205,7 +205,7 @@ irqreturn_t i915_driver_irq_handler(DRM_IRQ_ARGS)
 		 * It doesn't set the bit in iir again, but it still produces
 		 * interrupts (for non-MSI).
 		 */
-		DRM_SPINLOCK(&dev_priv->user_irq_lock);
+		spin_lock(&dev_priv->user_irq_lock);
 		pipea_stats = I915_READ(PIPEASTAT);
 		pipeb_stats = I915_READ(PIPEBSTAT);
 
@@ -221,7 +221,7 @@ irqreturn_t i915_driver_irq_handler(DRM_IRQ_ARGS)
 			I915_WRITE(PIPEBSTAT, pipeb_stats);
 			irq_received = 1;
 		}
-		DRM_SPINUNLOCK(&dev_priv->user_irq_lock);
+		spin_unlock(&dev_priv->user_irq_lock);
 
 		if (!irq_received)
 			break;
@@ -294,10 +294,10 @@ void i915_user_irq_get(struct drm_device *dev)
 		return;
 
 	DRM_DEBUG("\n");
-	DRM_SPINLOCK(&dev_priv->user_irq_lock);
+	spin_lock(&dev_priv->user_irq_lock);
 	if (++dev_priv->user_irq_refcount == 1)
 		i915_enable_irq(dev_priv, I915_USER_INTERRUPT);
-	DRM_SPINUNLOCK(&dev_priv->user_irq_lock);
+	spin_unlock(&dev_priv->user_irq_lock);
 }
 
 void i915_user_irq_put(struct drm_device *dev)
@@ -307,11 +307,11 @@ void i915_user_irq_put(struct drm_device *dev)
 	if (dev->irq_enabled == 0)
 		return;
 
-	DRM_SPINLOCK(&dev_priv->user_irq_lock);
+	spin_lock(&dev_priv->user_irq_lock);
 	KASSERT(dev_priv->user_irq_refcount > 0, ("invalid refcount"));
 	if (--dev_priv->user_irq_refcount == 0)
 		i915_disable_irq(dev_priv, I915_USER_INTERRUPT);
-	DRM_SPINUNLOCK(&dev_priv->user_irq_lock);
+	spin_unlock(&dev_priv->user_irq_lock);
 }
 
 static int i915_wait_irq(struct drm_device * dev, int irq_nr)
@@ -401,14 +401,14 @@ int i915_enable_vblank(struct drm_device *dev, int pipe)
 	if (!i915_pipe_enabled(dev, pipe))
 		return -EINVAL;
 
-	DRM_SPINLOCK(&dev_priv->user_irq_lock);
+	spin_lock(&dev_priv->user_irq_lock);
 	if (IS_I965G(dev))
 		i915_enable_pipestat(dev_priv, pipe,
 				     PIPE_START_VBLANK_INTERRUPT_ENABLE);
 	else
 		i915_enable_pipestat(dev_priv, pipe,
 				     PIPE_VBLANK_INTERRUPT_ENABLE);
-	DRM_SPINUNLOCK(&dev_priv->user_irq_lock);
+	spin_unlock(&dev_priv->user_irq_lock);
 	return 0;
 }
 
@@ -419,11 +419,11 @@ void i915_disable_vblank(struct drm_device *dev, int pipe)
 {
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
 
-	DRM_SPINLOCK(&dev_priv->user_irq_lock);
+	spin_lock(&dev_priv->user_irq_lock);
 	i915_disable_pipestat(dev_priv, pipe,
 			      PIPE_VBLANK_INTERRUPT_ENABLE |
 			      PIPE_START_VBLANK_INTERRUPT_ENABLE);
-	DRM_SPINUNLOCK(&dev_priv->user_irq_lock);
+	spin_unlock(&dev_priv->user_irq_lock);
 }
 
 /* Set the vblank monitor pipe

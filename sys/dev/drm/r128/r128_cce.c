@@ -616,8 +616,7 @@ int r128_do_cleanup_cce(struct drm_device * dev)
 					DRM_ERROR("failed to cleanup PCI GART!\n");
 		}
 
-		drm_free(dev->dev_private, sizeof(drm_r128_private_t),
-			 DRM_MEM_DRIVER);
+		drm_free(dev->dev_private, DRM_MEM_DRIVER);
 		dev->dev_private = NULL;
 	}
 

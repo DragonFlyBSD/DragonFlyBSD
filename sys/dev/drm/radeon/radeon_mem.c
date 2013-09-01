@@ -118,7 +118,7 @@ static void free_block(struct mem_block *p)
 		p->size += q->size;
 		p->next = q->next;
 		p->next->prev = p;
-		drm_free(q, sizeof(*q), DRM_MEM_BUFS);
+		drm_free(q, DRM_MEM_BUFS);
 	}
 
 	if (p->prev->file_priv == NULL) {
@@ -126,7 +126,7 @@ static void free_block(struct mem_block *p)
 		q->size += p->size;
 		q->next = p->next;
 		q->next->prev = q;
-		drm_free(p, sizeof(*q), DRM_MEM_BUFS);
+		drm_free(p, DRM_MEM_BUFS);
 	}
 }
 
@@ -141,7 +141,7 @@ static int init_heap(struct mem_block **heap, int start, int size)
 
 	*heap = drm_alloc(sizeof(**heap), DRM_MEM_BUFS);
 	if (!*heap) {
-		drm_free(blocks, sizeof(*blocks), DRM_MEM_BUFS);
+		drm_free(blocks, DRM_MEM_BUFS);
 		return -ENOMEM;
 	}
 
@@ -179,7 +179,7 @@ void radeon_mem_release(struct drm_file *file_priv, struct mem_block *heap)
 			p->size += q->size;
 			p->next = q->next;
 			p->next->prev = p;
-			drm_free(q, sizeof(*q), DRM_MEM_DRIVER);
+			drm_free(q, DRM_MEM_DRIVER);
 		}
 	}
 }
@@ -196,10 +196,10 @@ void radeon_mem_takedown(struct mem_block **heap)
 	for (p = (*heap)->next; p != *heap;) {
 		struct mem_block *q = p;
 		p = p->next;
-		drm_free(q, sizeof(*q), DRM_MEM_DRIVER);
+		drm_free(q, DRM_MEM_DRIVER);
 	}
 
-	drm_free(*heap, sizeof(**heap), DRM_MEM_DRIVER);
+	drm_free(*heap, DRM_MEM_DRIVER);
 	*heap = NULL;
 }
 

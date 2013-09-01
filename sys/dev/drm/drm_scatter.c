@@ -20,11 +20,12 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
+ *
+ * $FreeBSD: src/sys/dev/drm2/drm_scatter.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /** @file drm_scatter.c
  * Allocation of memory for scatter-gather mappings by the graphics chip.
- *
  * The memory allocated here is then made into an aperture in the card
  * by mapping the pages into the GART.
  */
@@ -43,11 +44,11 @@ drm_sg_alloc(struct drm_device *dev, struct drm_scatter_gather *request)
 
 	DRM_DEBUG("request size=%ld\n", request->size);
 
-	entry = malloc(sizeof(*entry), DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
+	entry = kmalloc(sizeof(*entry), DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
 
 	size = round_page(request->size);
 	entry->pages = OFF_TO_IDX(size);
-	entry->busaddr = malloc(entry->pages * sizeof(*entry->busaddr),
+	entry->busaddr = kmalloc(entry->pages * sizeof(*entry->busaddr),
 	    DRM_MEM_SGLISTS, M_WAITOK | M_ZERO);
 
 	entry->vaddr = kmem_alloc_attr(&kernel_map, size, M_WAITOK | M_ZERO,
@@ -62,19 +63,20 @@ drm_sg_alloc(struct drm_device *dev, struct drm_scatter_gather *request)
 		    vtophys(entry->vaddr + IDX_TO_OFF(pindex));
 	}
 
-	DRM_LOCK();
+	DRM_LOCK(dev);
 	if (dev->sg) {
-		DRM_UNLOCK();
+		DRM_UNLOCK(dev);
 		drm_sg_cleanup(entry);
 		return (EINVAL);
 	}
 	dev->sg = entry;
-	DRM_UNLOCK();
+	DRM_UNLOCK(dev);
 
 	request->handle = entry->vaddr;
 
-	DRM_DEBUG("allocated %ju pages @ 0x%08zx, contents=%08lx\n",
-	    entry->pages, entry->vaddr, *(unsigned long *)entry->vaddr);
+	DRM_DEBUG("allocated %ju pages @ 0x%08jx, contents=%08lx\n",
+	    entry->pages, (uintmax_t)entry->vaddr,
+	    *(unsigned long *)entry->vaddr);
 
 	return (0);
 }
@@ -99,8 +101,8 @@ drm_sg_cleanup(struct drm_sg_mem *entry)
 	if (entry->vaddr != 0)
 		kmem_free(&kernel_map, entry->vaddr, IDX_TO_OFF(entry->pages));
 
-	free(entry->busaddr, DRM_MEM_SGLISTS);
-	free(entry, DRM_MEM_DRIVER);
+	drm_free(entry->busaddr, DRM_MEM_SGLISTS);
+	drm_free(entry, DRM_MEM_DRIVER);
 
 	return;
 }
@@ -111,15 +113,15 @@ drm_sg_free(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	struct drm_scatter_gather *request = data;
 	struct drm_sg_mem *entry;
 
-	DRM_LOCK();
+	DRM_LOCK(dev);
 	entry = dev->sg;
 	dev->sg = NULL;
-	DRM_UNLOCK();
+	DRM_UNLOCK(dev);
 
 	if (!entry || entry->vaddr != request->handle)
 		return (EINVAL);
 
-	DRM_DEBUG("free 0x%zx\n", entry->vaddr);
+	DRM_DEBUG("free 0x%jx\n", (uintmax_t)entry->vaddr);
 
 	drm_sg_cleanup(entry);
 

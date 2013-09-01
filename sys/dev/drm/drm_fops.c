@@ -27,12 +27,16 @@
  *    Daryll Strauss <daryll@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_fops.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /** @file drm_fops.c
  * Support code for dealing with the file privates associated with each
  * open of the DRM device.
  */
+
+#include <sys/types.h>
+#include <sys/conf.h>
 
 #include "dev/drm/drmP.h"
 
@@ -53,60 +57,130 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 		    struct drm_device *dev)
 {
 	struct drm_file *priv;
-	int m = minor(kdev);
 	int retcode;
 
 	if (flags & O_EXCL)
 		return EBUSY; /* No exclusive opens */
 	dev->flags = flags;
 
-	DRM_DEBUG("pid = %d, minor = %d\n", DRM_CURRENTPID, m);
-        DRM_LOCK();
+	DRM_DEBUG("pid = %d, device = %s\n", DRM_CURRENTPID, devtoname(kdev));
+	DRM_LOCK(dev);
+
         priv = drm_find_file_by_proc(dev, p);
         if (priv) {
-                priv->refs++;
-        } else {
-                priv = malloc(sizeof(*priv), DRM_MEM_FILES, M_NOWAIT | M_ZERO);
-                if (priv == NULL) {
-                        DRM_UNLOCK();
-                        return ENOMEM;
-                }
-                priv->uid               = p->td_proc->p_ucred->cr_svuid;
-                priv->pid               = p->td_proc->p_pid;
-                priv->refs              = 1;
-                priv->minor             = m;
-                priv->ioctl_count       = 0;
+		goto priv_found;
+        }
 
-                /* for compatibility root is always authenticated */
-                priv->authenticated     = DRM_SUSER(p);
+	priv = kmalloc(sizeof(*priv), DRM_MEM_FILES, M_NOWAIT | M_ZERO);
+	if (priv == NULL) {
+		return ENOMEM;
+	}
+	
+priv_found:
 
-                if (dev->driver->open) {
-                        /* shared code returns -errno */
-                        retcode = -dev->driver->open(dev, priv);
-                        if (retcode != 0) {
-                                free(priv, DRM_MEM_FILES);
-                                DRM_UNLOCK();
-                                return retcode;
-                        }
-                }
+	priv->dev		= dev;
+	priv->uid               = p->td_proc->p_ucred->cr_svuid;
+	priv->uid		= p->td_ucred->cr_svuid;
+	priv->pid		= p->td_proc->p_pid;
+	priv->ioctl_count 	= 0;
 
-                /* first opener automatically becomes master */
-                priv->master = TAILQ_EMPTY(&dev->files);
+	/* for compatibility root is always authenticated */
+	priv->authenticated	= DRM_SUSER(p);
 
-                TAILQ_INSERT_TAIL(&dev->files, priv, link);
+	INIT_LIST_HEAD(&priv->fbs);
+	INIT_LIST_HEAD(&priv->event_list);
+	priv->event_space = 4096; /* set aside 4k for event buffer */
+
+	if (dev->driver->driver_features & DRIVER_GEM)
+		drm_gem_open(dev, priv);
+
+	if (dev->driver->open) {
+		/* shared code returns -errno */
+		retcode = -dev->driver->open(dev, priv);
+		if (retcode != 0) {
+			drm_free(priv, DRM_MEM_FILES);
+			DRM_UNLOCK(dev);
+			return retcode;
+		}
 	}
 
-	DRM_UNLOCK();
+	/* first opener automatically becomes master */
+	priv->master = TAILQ_EMPTY(&dev->files);
+
+	TAILQ_INSERT_TAIL(&dev->files, priv, link);
+	DRM_UNLOCK(dev);
 	kdev->si_drv1 = dev;
 	return 0;
 }
 
-
-/* The drm_read and drm_poll are stubs to prevent spurious errors
- * on older X Servers (4.3.0 and earlier) */
-int drm_read(struct dev_read_args *ap)
+static bool
+drm_dequeue_event(struct drm_device *dev, struct drm_file *file_priv,
+    struct uio *uio, struct drm_pending_event **out)
 {
-	return 0;
+	struct drm_pending_event *e;
+
+	if (list_empty(&file_priv->event_list))
+		return (false);
+	e = list_first_entry(&file_priv->event_list,
+	    struct drm_pending_event, link);
+	if (e->event->length > uio->uio_resid)
+		return (false);
+
+	file_priv->event_space += e->event->length;
+	list_del(&e->link);
+	*out = e;
+	return (true);
+}
+
+int
+drm_read(struct dev_read_args *ap)
+{
+	struct cdev *kdev = ap->a_head.a_dev;
+	struct uio *uio = ap->a_uio;
+	int ioflag = ap->a_ioflag;
+	struct drm_file *file_priv;
+	struct drm_device *dev;
+	struct drm_pending_event *e;
+	int error;
+
+	dev = drm_get_device_from_kdev(kdev);
+	file_priv = drm_find_file_by_proc(dev, curthread);
+
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	while (list_empty(&file_priv->event_list)) {
+		if ((ioflag & O_NONBLOCK) != 0) {
+			error = EAGAIN;
+			goto out;
+		}
+		error = lksleep(&file_priv->event_space, &dev->event_lock,
+	           PCATCH, "drmrea", 0);
+	       if (error != 0)
+		       goto out;
+	}
+	while (drm_dequeue_event(dev, file_priv, uio, &e)) {
+		lockmgr(&dev->event_lock, LK_RELEASE);
+		error = uiomove((caddr_t)e->event, e->event->length, uio);
+		e->destroy(e);
+		if (error != 0)
+			return (error);
+		lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	}
+out:
+	lockmgr(&dev->event_lock, LK_RELEASE);
+	return (error);
+}
+
+void
+drm_event_wakeup(struct drm_pending_event *e)
+{
+	struct drm_file *file_priv;
+	struct drm_device *dev;
+
+	file_priv = e->file_priv;
+	dev = file_priv->dev;
+	KKASSERT(lockstatus(&dev->event_lock, curthread) != 0);
+
+	wakeup(&file_priv->event_space);
 }
 
 static int

@@ -26,6 +26,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_drawable.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /** @file drm_drawable.c
@@ -73,20 +74,16 @@ int drm_adddraw(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	struct drm_draw *draw = data;
 	struct bsd_drm_drawable_info *info;
 
-	info = malloc(sizeof(struct bsd_drm_drawable_info), DRM_MEM_DRAWABLE,
+	info = kmalloc(sizeof(struct bsd_drm_drawable_info), DRM_MEM_DRAWABLE,
 	    M_NOWAIT | M_ZERO);
 	if (info == NULL)
 		return ENOMEM;
 
-	/*
-	 * XXX Only valid for sizeof(int) == sizeof(void *)
-	 */
-	info->handle = (intptr_t)info;
-
-	DRM_SPINLOCK(&dev->drw_lock);
+	info->handle = alloc_unr(dev->drw_unrhdr);
+	spin_lock(&dev->drw_lock);
 	RB_INSERT(drawable_tree, &dev->drw_head, info);
 	draw->handle = info->handle;
-	DRM_SPINUNLOCK(&dev->drw_lock);
+	spin_unlock(&dev->drw_lock);
 
 	DRM_DEBUG("%d\n", draw->handle);
 
@@ -98,17 +95,18 @@ int drm_rmdraw(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	struct drm_draw *draw = (struct drm_draw *)data;
 	struct drm_drawable_info *info;
 
-	DRM_SPINLOCK(&dev->drw_lock);
+	spin_lock(&dev->drw_lock);
 	info = drm_get_drawable_info(dev, draw->handle);
 	if (info != NULL) {
 		RB_REMOVE(drawable_tree, &dev->drw_head,
 		    (struct bsd_drm_drawable_info *)info);
-		DRM_SPINUNLOCK(&dev->drw_lock);
-		free(info->rects, DRM_MEM_DRAWABLE);
-		free(info, DRM_MEM_DRAWABLE);
+		spin_unlock(&dev->drw_lock);
+		free_unr(dev->drw_unrhdr, draw->handle);
+		drm_free(info->rects, DRM_MEM_DRAWABLE);
+		drm_free(info, DRM_MEM_DRAWABLE);
 		return 0;
 	} else {
-		DRM_SPINUNLOCK(&dev->drw_lock);
+		spin_unlock(&dev->drw_lock);
 		return EINVAL;
 	}
 }
@@ -126,21 +124,21 @@ int drm_update_draw(struct drm_device *dev, void *data,
 
 	switch (update->type) {
 	case DRM_DRAWABLE_CLIPRECTS:
-		DRM_SPINLOCK(&dev->drw_lock);
+		spin_lock(&dev->drw_lock);
 		if (update->num != info->num_rects) {
-			free(info->rects, DRM_MEM_DRAWABLE);
+			drm_free(info->rects, DRM_MEM_DRAWABLE);
 			info->rects = NULL;
 			info->num_rects = 0;
 		}
 		if (update->num == 0) {
-			DRM_SPINUNLOCK(&dev->drw_lock);
+			spin_unlock(&dev->drw_lock);
 			return 0;
 		}
 		if (info->rects == NULL) {
-			info->rects = malloc(sizeof(*info->rects) *
+			info->rects = kmalloc(sizeof(*info->rects) *
 			    update->num, DRM_MEM_DRAWABLE, M_NOWAIT);
 			if (info->rects == NULL) {
-				DRM_SPINUNLOCK(&dev->drw_lock);
+				spin_unlock(&dev->drw_lock);
 				return ENOMEM;
 			}
 			info->num_rects = update->num;
@@ -148,7 +146,7 @@ int drm_update_draw(struct drm_device *dev, void *data,
 		/* For some reason the pointer arg is unsigned long long. */
 		ret = copyin((void *)(intptr_t)update->data, info->rects,
 		    sizeof(*info->rects) * info->num_rects);
-		DRM_SPINUNLOCK(&dev->drw_lock);
+		spin_unlock(&dev->drw_lock);
 		return ret;
 	default:
 		return EINVAL;
@@ -159,15 +157,17 @@ void drm_drawable_free_all(struct drm_device *dev)
 {
 	struct bsd_drm_drawable_info *info, *next;
 
-	DRM_SPINLOCK(&dev->drw_lock);
+	spin_lock(&dev->drw_lock);
 	for (info = RB_MIN(drawable_tree, &dev->drw_head);
 	    info != NULL ; info = next) {
 		next = RB_NEXT(drawable_tree, &dev->drw_head, info);
-		RB_REMOVE(drawable_tree, &dev->drw_head, info);
-		DRM_SPINUNLOCK(&dev->drw_lock);
-		free(info->info.rects, DRM_MEM_DRAWABLE);
-		free(info, DRM_MEM_DRAWABLE);
-		DRM_SPINLOCK(&dev->drw_lock);
+		RB_REMOVE(drawable_tree, &dev->drw_head,
+		    (struct bsd_drm_drawable_info *)info);
+		spin_unlock(&dev->drw_lock);
+		free_unr(dev->drw_unrhdr, info->handle);
+		drm_free(info->info.rects, DRM_MEM_DRAWABLE);
+		drm_free(info, DRM_MEM_DRAWABLE);
+		spin_lock(&dev->drw_lock);
 	}
-	DRM_SPINUNLOCK(&dev->drw_lock);
+	spin_unlock(&dev->drw_lock);
 }

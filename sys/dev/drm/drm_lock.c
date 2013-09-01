@@ -26,6 +26,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_lock.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /** @file drm_lock.c
@@ -68,7 +69,7 @@ int drm_lock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	    lock->context < 0)
 		return EINVAL;
 
-	DRM_LOCK();
+	DRM_LOCK(dev);
 	for (;;) {
 		if (drm_lock_take(&dev->lock, lock->context)) {
 			dev->lock.file_priv = file_priv;
@@ -78,15 +79,12 @@ int drm_lock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 		}
 
 		/* Contention */
-		tsleep_interlock((void *)&dev->lock.lock_queue, PCATCH);
-		DRM_UNLOCK();
-		ret = tsleep((void *)&dev->lock.lock_queue,
-			     PCATCH | PINTERLOCKED, "drmlk2", 0);
-		DRM_LOCK();
+		ret = DRM_LOCK_SLEEP(dev, &dev->lock.lock_queue,
+		    PCATCH, "drmlk2", 0);
 		if (ret != 0)
 			break;
 	}
-	DRM_UNLOCK();
+	DRM_UNLOCK(dev);
 
 	if (ret == ERESTART)
 		DRM_DEBUG("restarting syscall\n");
@@ -122,13 +120,13 @@ int drm_unlock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 
 	atomic_inc(&dev->counts[_DRM_STAT_UNLOCKS]);
 
-	DRM_LOCK();
+	DRM_LOCK(dev);
 	drm_lock_transfer(&dev->lock, DRM_KERNEL_CONTEXT);
 
 	if (drm_lock_free(&dev->lock, DRM_KERNEL_CONTEXT)) {
 		DRM_ERROR("\n");
 	}
-	DRM_UNLOCK();
+	DRM_UNLOCK(dev);
 
 	return 0;
 }

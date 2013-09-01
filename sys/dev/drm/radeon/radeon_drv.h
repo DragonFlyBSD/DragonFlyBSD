@@ -256,7 +256,7 @@ struct drm_radeon_cs_parser {
 
 /* command submission struct */
 struct drm_radeon_cs_priv {
-	DRM_SPINTYPE cs_mutex;
+	struct lock cs_mutex;
 	uint32_t id_wcnt;
 	uint32_t id_scnt;
 	uint32_t id_last_wcnt;

@@ -26,6 +26,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_ioctl.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /** @file drm_ioctl.c
@@ -69,12 +70,12 @@ int drm_setunique(struct drm_device *dev, void *data,
 	if (!u->unique_len || u->unique_len > 1024)
 		return EINVAL;
 
-	busid = malloc(u->unique_len + 1, DRM_MEM_DRIVER, M_WAITOK);
+	busid = kmalloc(u->unique_len + 1, DRM_MEM_DRIVER, M_WAITOK);
 	if (busid == NULL)
 		return ENOMEM;
 
 	if (DRM_COPY_FROM_USER(busid, u->unique, u->unique_len)) {
-		free(busid, DRM_MEM_DRIVER);
+		drm_free(busid, DRM_MEM_DRIVER);
 		return EFAULT;
 	}
 	busid[u->unique_len] = '\0';
@@ -82,9 +83,9 @@ int drm_setunique(struct drm_device *dev, void *data,
 	/* Return error if the busid submitted doesn't match the device's actual
 	 * busid.
 	 */
-	ret = sscanf(busid, "PCI:%d:%d:%d", &bus, &slot, &func);
+	ret = ksscanf(busid, "PCI:%d:%d:%d", &bus, &slot, &func);
 	if (ret != 3) {
-		free(busid, DRM_MEM_DRIVER);
+		drm_free(busid, DRM_MEM_DRIVER);
 		return EINVAL;
 	}
 	domain = bus >> 8;
@@ -94,20 +95,20 @@ int drm_setunique(struct drm_device *dev, void *data,
 	    (bus != dev->pci_bus) ||
 	    (slot != dev->pci_slot) ||
 	    (func != dev->pci_func)) {
-		free(busid, DRM_MEM_DRIVER);
+		drm_free(busid, DRM_MEM_DRIVER);
 		return EINVAL;
 	}
 
 	/* Actually set the device's busid now. */
-	DRM_LOCK();
+	DRM_LOCK(dev);
 	if (dev->unique_len || dev->unique) {
-		DRM_UNLOCK();
+		DRM_UNLOCK(dev);
 		return EBUSY;
 	}
 
 	dev->unique_len = u->unique_len;
 	dev->unique = busid;
-	DRM_UNLOCK();
+	DRM_UNLOCK(dev);
 
 	return 0;
 }
@@ -117,24 +118,24 @@ static int
 drm_set_busid(struct drm_device *dev)
 {
 
-	DRM_LOCK();
+	DRM_LOCK(dev);
 
 	if (dev->unique != NULL) {
-		DRM_UNLOCK();
+		DRM_UNLOCK(dev);
 		return EBUSY;
 	}
 
 	dev->unique_len = 20;
-	dev->unique = malloc(dev->unique_len + 1, DRM_MEM_DRIVER, M_NOWAIT);
+	dev->unique = kmalloc(dev->unique_len + 1, DRM_MEM_DRIVER, M_NOWAIT);
 	if (dev->unique == NULL) {
-		DRM_UNLOCK();
+		DRM_UNLOCK(dev);
 		return ENOMEM;
 	}
 
-	snprintf(dev->unique, dev->unique_len, "pci:%04x:%02x:%02x.%1x",
+	ksnprintf(dev->unique, dev->unique_len, "pci:%04x:%02x:%02x.%1x",
 	    dev->pci_domain, dev->pci_bus, dev->pci_slot, dev->pci_func);
 
-	DRM_UNLOCK();
+	DRM_UNLOCK(dev);
 
 	return 0;
 }
@@ -148,9 +149,9 @@ int drm_getmap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 
 	idx = map->offset;
 
-	DRM_LOCK();
+	DRM_LOCK(dev);
 	if (idx < 0) {
-		DRM_UNLOCK();
+		DRM_UNLOCK(dev);
 		return EINVAL;
 	}
 
@@ -167,7 +168,7 @@ int drm_getmap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 		i++;
 	}
 
-	DRM_UNLOCK();
+	DRM_UNLOCK(dev);
 
  	if (mapinlist == NULL)
 		return EINVAL;
@@ -184,7 +185,7 @@ int drm_getclient(struct drm_device *dev, void *data,
 	int i = 0;
 
 	idx = client->idx;
-	DRM_LOCK();
+	DRM_LOCK(dev);
 	TAILQ_FOREACH(pt, &dev->files, link) {
 		if (i == idx) {
 			client->auth  = pt->authenticated;
@@ -192,12 +193,12 @@ int drm_getclient(struct drm_device *dev, void *data,
 			client->uid   = pt->uid;
 			client->magic = pt->magic;
 			client->iocs  = pt->ioctl_count;
-			DRM_UNLOCK();
+			DRM_UNLOCK(dev);
 			return 0;
 		}
 		i++;
 	}
-	DRM_UNLOCK();
+	DRM_UNLOCK(dev);
 
 	return EINVAL;
 }
@@ -209,7 +210,7 @@ int drm_getstats(struct drm_device *dev, void *data, struct drm_file *file_priv)
 
 	memset(stats, 0, sizeof(struct drm_stats));
 	
-	DRM_LOCK();
+	DRM_LOCK(dev);
 
 	for (i = 0; i < dev->counters; i++) {
 		if (dev->types[i] == _DRM_STAT_LOCK)
@@ -222,10 +223,36 @@ int drm_getstats(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	
 	stats->count = dev->counters;
 
-	DRM_UNLOCK();
+	DRM_UNLOCK(dev);
 
 	return 0;
 }
+
+int drm_getcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
+{
+	struct drm_get_cap *req = data;
+
+	req->value = 0;
+	switch (req->capability) {
+	case DRM_CAP_DUMB_BUFFER:
+		if (dev->driver->dumb_create)
+			req->value = 1;
+		break;
+	case DRM_CAP_VBLANK_HIGH_CRTC:
+		req->value = 1;
+		break;
+	case DRM_CAP_DUMB_PREFERRED_DEPTH:
+		req->value = dev->mode_config.preferred_depth;
+		break;
+	case DRM_CAP_DUMB_PREFER_SHADOW:
+		req->value = dev->mode_config.prefer_shadow;
+		break;
+	default:
+		return EINVAL;
+	}
+	return 0;
+}
+
 
 #define DRM_IF_MAJOR	1
 #define DRM_IF_MINOR	2
@@ -245,6 +272,15 @@ int drm_setversion(struct drm_device *dev, void *data,
 	sv->drm_di_minor = DRM_IF_MINOR;
 	sv->drm_dd_major = dev->driver->major;
 	sv->drm_dd_minor = dev->driver->minor;
+
+	DRM_DEBUG("ver.drm_di_major %d ver.drm_di_minor %d "
+	    "ver.drm_dd_major %d ver.drm_dd_minor %d\n",
+	    ver.drm_di_major, ver.drm_di_minor, ver.drm_dd_major,
+	    ver.drm_dd_minor);
+	DRM_DEBUG("sv->drm_di_major %d sv->drm_di_minor %d "
+	    "sv->drm_dd_major %d sv->drm_dd_minor %d\n",
+	    sv->drm_di_major, sv->drm_di_minor, sv->drm_dd_major,
+	    sv->drm_dd_minor);
 
 	if (ver.drm_di_major != -1) {
 		if (ver.drm_di_major != DRM_IF_MAJOR ||

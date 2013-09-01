@@ -683,7 +683,7 @@ int savage_driver_unload(struct drm_device *dev)
 {
 	drm_savage_private_t *dev_priv = dev->dev_private;
 
-	drm_free(dev_priv, sizeof(drm_savage_private_t), DRM_MEM_DRIVER);
+	drm_free(dev_priv, DRM_MEM_DRIVER);
 
 	return 0;
 }
@@ -916,8 +916,7 @@ static int savage_do_cleanup_bci(struct drm_device *dev)
 
 	if (dev_priv->cmd_dma == &dev_priv->fake_dma) {
 		if (dev_priv->fake_dma.virtual)
-			drm_free(dev_priv->fake_dma.virtual,
-				 SAVAGE_FAKE_DMA_SIZE, DRM_MEM_DRIVER);
+			drm_free(dev_priv->fake_dma.virtual,DRM_MEM_DRIVER);
 	} else if (dev_priv->cmd_dma && dev_priv->cmd_dma->virtual &&
 		   dev_priv->cmd_dma->type == _DRM_AGP &&
 		   dev_priv->dma_type == SAVAGE_DMA_AGP)
@@ -933,9 +932,7 @@ static int savage_do_cleanup_bci(struct drm_device *dev)
 	}
 
 	if (dev_priv->dma_pages)
-		drm_free(dev_priv->dma_pages,
-			 sizeof(drm_savage_dma_page_t)*dev_priv->nr_dma_pages,
-			 DRM_MEM_DRIVER);
+		drm_free(dev_priv->dma_pages, DRM_MEM_DRIVER);
 
 	return 0;
 }

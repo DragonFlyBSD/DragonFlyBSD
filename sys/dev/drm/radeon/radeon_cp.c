@@ -1697,11 +1697,11 @@ void radeon_do_release(struct drm_device * dev)
 					DRM_DEBUG("radeon_do_cp_idle %d\n", ret);
 					tsleep_interlock(&dev->lock.lock_queue,
 							 PCATCH);
-                			DRM_UNLOCK();
+                			DRM_UNLOCK(dev);
 					ret = tsleep(&dev->lock.lock_queue,
 						    PCATCH | PINTERLOCKED,
 						    "rdnrel", 0);
-                			DRM_LOCK();
+                			DRM_LOCK(dev);
 /* DragonFly equivalent of
  *					mtx_sleep(&ret, &dev->dev_lock, 0,
  *					    "rdnrel", 1);
@@ -1712,11 +1712,11 @@ void radeon_do_release(struct drm_device * dev)
 					DRM_DEBUG("radeon_do_cp_idle %d\n", ret);
 					tsleep_interlock(&dev->lock.lock_queue,
 							 PCATCH);
-                			DRM_UNLOCK();
+                			DRM_UNLOCK(dev);
 					ret = tsleep(&dev->lock.lock_queue,
 						    PCATCH | PINTERLOCKED,
 						    "rdnrel", 0);
-                			DRM_LOCK();
+                			DRM_LOCK(dev);
 				}
 			}
 			if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600) {
@@ -2042,7 +2042,7 @@ int radeon_driver_load(struct drm_device *dev, unsigned long flags)
 	else
 		dev_priv->flags |= RADEON_IS_PCI;
 
-	DRM_SPININIT(&dev_priv->cs.cs_mutex, "cs_mtx");
+	lockinit(&dev_priv->cs.cs_mutex, "cs_mtx", 0, LK_EXCLUSIVE);
 
 	ret = drm_addmap(dev, drm_get_resource_start(dev, 2),
 			 drm_get_resource_len(dev, 2), _DRM_REGISTERS,
@@ -2098,7 +2098,7 @@ int radeon_driver_unload(struct drm_device *dev)
 
 	lockuninit(&dev_priv->cs.cs_mutex);
 
-	drm_free(dev_priv, sizeof(*dev_priv), DRM_MEM_DRIVER);
+	drm_free(dev_priv, DRM_MEM_DRIVER);
 
 	dev->dev_private = NULL;
 	return 0;

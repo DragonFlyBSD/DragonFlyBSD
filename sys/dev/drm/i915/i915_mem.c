@@ -168,7 +168,7 @@ static void free_block(struct mem_block *p)
 		p->size += q->size;
 		p->next = q->next;
 		p->next->prev = p;
-		drm_free(q, sizeof(*q), DRM_MEM_BUFLISTS);
+		drm_free(q, DRM_MEM_BUFLISTS);
 	}
 
 	if (p->prev->file_priv == NULL) {
@@ -176,7 +176,7 @@ static void free_block(struct mem_block *p)
 		q->size += p->size;
 		q->next = p->next;
 		q->next->prev = q;
-		drm_free(p, sizeof(*q), DRM_MEM_BUFLISTS);
+		drm_free(p, DRM_MEM_BUFLISTS);
 	}
 }
 
@@ -191,7 +191,7 @@ static int init_heap(struct mem_block **heap, int start, int size)
 
 	*heap = drm_alloc(sizeof(**heap), DRM_MEM_BUFLISTS);
 	if (!*heap) {
-		drm_free(blocks, sizeof(*blocks), DRM_MEM_BUFLISTS);
+		drm_free(blocks, DRM_MEM_BUFLISTS);
 		return -ENOMEM;
 	}
 
@@ -232,7 +232,7 @@ void i915_mem_release(struct drm_device * dev, struct drm_file *file_priv,
 			p->size += q->size;
 			p->next = q->next;
 			p->next->prev = p;
-			drm_free(q, sizeof(*q), DRM_MEM_BUFLISTS);
+			drm_free(q, DRM_MEM_BUFLISTS);
 		}
 	}
 }
@@ -249,10 +249,10 @@ void i915_mem_takedown(struct mem_block **heap)
 	for (p = (*heap)->next; p != *heap;) {
 		struct mem_block *q = p;
 		p = p->next;
-		drm_free(q, sizeof(*q), DRM_MEM_BUFLISTS);
+		drm_free(q, DRM_MEM_BUFLISTS);
 	}
 
-	drm_free(*heap, sizeof(**heap), DRM_MEM_BUFLISTS);
+	drm_free(*heap, DRM_MEM_BUFLISTS);
 	*heap = NULL;
 }
 

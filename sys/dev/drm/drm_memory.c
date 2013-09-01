@@ -1,7 +1,11 @@
 /*-
  *Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
- * All Rights Reserved.
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ *
+ * Portions of this software were developed by Konstantin Belousov
+ * under sponsorship from the FreeBSD Foundation.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -26,6 +30,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
+ * $FreeBSD: src/sys/dev/drm2/drm_memory.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
 /** @file drm_memory.c
@@ -36,7 +41,7 @@
  * has been stripped out for now.
  */
 
-#include "dev/drm/drmP.h"
+#include <dev/drm/drmP.h>
 
 MALLOC_DEFINE(DRM_MEM_DMA, "drm_dma", "DRM DMA Data Structures");
 MALLOC_DEFINE(DRM_MEM_SAREA, "drm_sarea", "DRM SAREA Data Structures");
@@ -55,6 +60,7 @@ MALLOC_DEFINE(DRM_MEM_SGLISTS, "drm_sglists", "DRM SGLISTS Data Structures");
 MALLOC_DEFINE(DRM_MEM_DRAWABLE, "drm_drawable", "DRM DRAWABLE Data Structures");
 MALLOC_DEFINE(DRM_MEM_MM, "drm_sman", "DRM MEMORY MANAGER Data Structures");
 MALLOC_DEFINE(DRM_MEM_HASHTAB, "drm_hashtab", "DRM HASHTABLE Data Structures");
+MALLOC_DEFINE(DRM_MEM_KMS, "drm_kms", "DRM KMS Data Structures");
 
 void drm_mem_init(void)
 {
@@ -67,7 +73,6 @@ void drm_mem_uninit(void)
 void *drm_ioremap_wc(struct drm_device *dev, drm_local_map_t *map)
 {
 	return pmap_mapdev_attr(map->offset, map->size, VM_MEMATTR_WRITE_COMBINING);
-	return pmap_mapdev(map->offset, map->size);
 }
 
 void *drm_ioremap(struct drm_device *dev, drm_local_map_t *map)
@@ -106,4 +111,11 @@ drm_mtrr_del(int __unused handle, unsigned long offset, size_t size, int flags)
 	act = MEMRANGE_SET_REMOVE;
 	strlcpy(mrdesc.mr_owner, "drm", sizeof(mrdesc.mr_owner));
 	return mem_range_attr_set(&mrdesc, &act);
+}
+
+void
+drm_clflush_pages(vm_page_t *pages, unsigned long num_pages)
+{
+
+	pmap_invalidate_cache_pages(pages, num_pages);
 }

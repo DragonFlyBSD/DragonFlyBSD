@@ -24,7 +24,7 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  *
- * $FreeBSD: src/sys/dev/drm/drm_hashtab.h,v 1.1 2010/01/31 14:25:29 rnoland Exp $
+ * $FreeBSD: head/sys/dev/drm2/drm_hashtab.h 235783 2012-05-22 11:07:44Z kib $
  **************************************************************************/
 
 /*
@@ -46,7 +46,7 @@ struct drm_hash_item {
 
 struct drm_open_hash {
 	LIST_HEAD(drm_hash_item_list, drm_hash_item) *table;
-	unsigned int  size;
+	unsigned int size;
 	unsigned int order;
 	unsigned long mask;
 };
