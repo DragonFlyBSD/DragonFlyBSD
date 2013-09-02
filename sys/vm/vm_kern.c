@@ -361,7 +361,7 @@ kmem_alloc_attr(vm_map_t map, vm_size_t size, int flags, vm_paddr_t low,
 		vm_map_entry_release(count);
 		return (0);
 	}
-	offset = addr - VM_MIN_KERNEL_ADDRESS;
+	offset = addr - vm_map_min(&kernel_map);
 	vm_object_hold(&kernel_object);
 	vm_object_reference_locked(&kernel_object);
 	vm_map_insert(map, &count, &kernel_object, offset, addr, addr + size,

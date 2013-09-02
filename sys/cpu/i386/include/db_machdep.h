@@ -32,6 +32,7 @@
 
 #include <cpu/frame.h>
 #include <cpu/psl.h>
+#include <cpu/stdint.h>
 #include <cpu/trap.h>
 
 #define i386_saved_state trapframe
