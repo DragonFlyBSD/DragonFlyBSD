@@ -989,6 +989,21 @@ pmap_map(vm_offset_t *virtp, vm_paddr_t start, vm_paddr_t end, int prot)
 	return (sva);
 }
 
+#define PMAP_CLFLUSH_THRESHOLD  (2 * 1024 * 1024)
+
+/*
+ * Remove the specified set of pages from the data and instruction caches.
+ *
+ * In contrast to pmap_invalidate_cache_range(), this function does not
+ * rely on the CPU's self-snoop feature, because it is intended for use
+ * when moving pages into a different cache domain.
+ */
+void
+pmap_invalidate_cache_pages(vm_page_t *pages, int count)
+{
+	wbinvd();	/* XXX: not optimal */
+}
+
 void
 pmap_invalidate_cache_range(vm_offset_t sva, vm_offset_t eva)
 {
