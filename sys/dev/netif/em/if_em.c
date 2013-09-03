@@ -489,13 +489,9 @@ em_attach(device_t dev)
 		adapter->flags |= EM_FLAG_TSO_PULLEX;
 		/* FALL THROUGH */
 
-	case e1000_82573:
-	case e1000_82574:
-	case e1000_80003es2lan:
-		adapter->flags |= EM_FLAG_TSO;
-		break;
-
 	default:
+		if (pci_is_pcie(dev))
+			adapter->flags |= EM_FLAG_TSO;
 		break;
 	}
 
