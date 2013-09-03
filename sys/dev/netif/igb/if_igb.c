@@ -124,10 +124,14 @@ static struct igb_device {
 	IGB_DEVICE(I210_COPPER),
 	IGB_DEVICE(I210_COPPER_IT),
 	IGB_DEVICE(I210_COPPER_OEM1),
+	IGB_DEVICE(I210_COPPER_FLASHLESS),
+	IGB_DEVICE(I210_SERDES_FLASHLESS),
 	IGB_DEVICE(I210_FIBER),
 	IGB_DEVICE(I210_SERDES),
 	IGB_DEVICE(I210_SGMII),
 	IGB_DEVICE(I211_COPPER),
+	IGB_DEVICE(I354_BACKPLANE_1GBPS),
+	IGB_DEVICE(I354_SGMII),
 
 	/* required last entry */
 	IGB_DEVICE_NULL
@@ -433,6 +437,10 @@ igb_attach(device_t dev)
 		ring_max = IGB_MAX_RING_I350;
 		break;
 
+	case e1000_i354:
+		ring_max = IGB_MAX_RING_I354;
+		break;
+
 	case e1000_i210:
 		ring_max = IGB_MAX_RING_I210;
 		break;
@@ -583,8 +591,12 @@ igb_attach(device_t dev)
 		sc->dma_coalesce = igb_dma_coalesce;
 		sc->hw.dev_spec._82575.eee_disable = igb_eee_disabled;
 #endif
-		if (sc->hw.phy.media_type == e1000_media_type_copper)
-			e1000_set_eee_i350(&sc->hw);
+		if (sc->hw.phy.media_type == e1000_media_type_copper) {
+                        if (sc->hw.mac.type == e1000_i354)
+				e1000_set_eee_i354(&sc->hw);
+			else
+				e1000_set_eee_i350(&sc->hw);
+		}
 	}
 
 	/*
@@ -1010,8 +1022,12 @@ igb_init(void *xsc)
 	}
 
 	/* Set Energy Efficient Ethernet */
-	if (sc->hw.phy.media_type == e1000_media_type_copper)
-		e1000_set_eee_i350(&sc->hw);
+	if (sc->hw.phy.media_type == e1000_media_type_copper) {
+		if (sc->hw.mac.type == e1000_i354)
+			e1000_set_eee_i354(&sc->hw);
+		else
+			e1000_set_eee_i350(&sc->hw);
+	}
 }
 
 static void
@@ -1139,7 +1155,9 @@ static void
 igb_disable_promisc(struct igb_softc *sc)
 {
 	struct e1000_hw *hw = &sc->hw;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t reg;
+	int mcnt = 0;
 
 	if (sc->vf_ifp) {
 		e1000_promisc_set_vf(hw, e1000_promisc_disabled);
@@ -1147,7 +1165,21 @@ igb_disable_promisc(struct igb_softc *sc)
 	}
 	reg = E1000_READ_REG(hw, E1000_RCTL);
 	reg &= ~E1000_RCTL_UPE;
-	reg &= ~E1000_RCTL_MPE;
+	if (ifp->if_flags & IFF_ALLMULTI) {
+		mcnt = MAX_NUM_MULTICAST_ADDRESSES;
+	} else {
+		struct  ifmultiaddr *ifma;
+		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+			if (ifma->ifma_addr->sa_family != AF_LINK)
+				continue;
+			if (mcnt == MAX_NUM_MULTICAST_ADDRESSES)
+				break;
+			mcnt++;
+		}
+	}
+	/* Don't disable if in MAX groups */
+	if (mcnt < MAX_NUM_MULTICAST_ADDRESSES)
+		reg &= ~E1000_RCTL_MPE;
 	E1000_WRITE_REG(hw, E1000_RCTL, reg);
 }
 
@@ -1284,6 +1316,11 @@ igb_update_link_status(struct igb_softc *sc)
 		if ((ctrl & E1000_CTRL_EXT_LINK_MODE_GMII) &&
 		    (thstat & E1000_THSTAT_LINK_THROTTLE))
 			if_printf(ifp, "Link: thermal downshift\n");
+		/* Delay Link Up for Phy update */
+		if ((hw->mac.type == e1000_i210 ||
+		     hw->mac.type == e1000_i211) &&
+		    hw->phy.id == I210_I_PHY_ID)
+			msec_delay(IGB_I210_LINK_DELAY);
 		/* This can sleep */
 		ifp->if_link_state = LINK_STATE_UP;
 		if_link_state_change(ifp);
@@ -1363,6 +1400,7 @@ igb_reset(struct igb_softc *sc)
 
 	case e1000_82580:
 	case e1000_i350:
+	case e1000_i354:
 	case e1000_vfadapt_i350:
 		pba = E1000_READ_REG(hw, E1000_RXPBS);
 		pba = e1000_rxpbs_adjust_82580(pba);
@@ -2600,7 +2638,8 @@ igb_rxeof(struct igb_rx_ring *rxr, int count)
 			int len;
 
 			len = le16toh(cur->wb.upper.length);
-			if (rxr->sc->hw.mac.type == e1000_i350 &&
+			if ((rxr->sc->hw.mac.type == e1000_i350 ||
+			     rxr->sc->hw.mac.type == e1000_i354) &&
 			    (staterr & E1000_RXDEXT_STATERR_LB))
 				vlan = be16toh(cur->wb.upper.vlan);
 			else
@@ -3823,6 +3862,10 @@ igb_init_unshared_intr(struct igb_softc *sc)
 			ivar_max = IGB_MAX_IVAR_I350;
 			break;
 
+		case e1000_i354:
+			ivar_max = IGB_MAX_IVAR_I354;
+			break;
+
 		case e1000_vfadapt:
 		case e1000_vfadapt_i350:
 			ivar_max = IGB_MAX_IVAR_VF;
@@ -3858,6 +3901,7 @@ igb_init_unshared_intr(struct igb_softc *sc)
 	switch (sc->hw.mac.type) {
 	case e1000_82580:
 	case e1000_i350:
+	case e1000_i354:
 	case e1000_vfadapt:
 	case e1000_vfadapt_i350:
 	case e1000_i210:
@@ -4162,6 +4206,10 @@ igb_alloc_intr(struct igb_softc *sc)
 
 	case e1000_i350:
 		intr_bitmax = IGB_MAX_TXRXINT_I350;
+		break;
+
+	case e1000_i354:
+		intr_bitmax = IGB_MAX_TXRXINT_I354;
 		break;
 
 	case e1000_i210:
