@@ -1900,21 +1900,42 @@ dev/drm/drm_agpsupport.c		optional drm
 dev/drm/drm_auth.c			optional drm
 dev/drm/drm_bufs.c			optional drm
 dev/drm/drm_context.c			optional drm
+dev/drm/drm_crtc.c			optional drm
+dev/drm/drm_crtc_helper.c		optional drm
 dev/drm/drm_dma.c			optional drm
+dev/drm/drm_dp_iic_helper.c		optional drm
 dev/drm/drm_drawable.c			optional drm
 dev/drm/drm_drv.c			optional drm
+dev/drm/drm_edid.c			optional drm
+dev/drm/drm_fb_helper.c			optional drm
 dev/drm/drm_fops.c			optional drm
+dev/drm/drm_gem.c			optional drm
+dev/drm/drm_gem_names.c			optional drm
+dev/drm/drm_global.c			optional drm
 dev/drm/drm_hashtab.c			optional drm
 dev/drm/drm_ioctl.c			optional drm
 dev/drm/drm_irq.c			optional drm
+dev/drm/drm_linux_list_sort.c		optional drm
 dev/drm/drm_lock.c			optional drm
 dev/drm/drm_memory.c			optional drm
 dev/drm/drm_mm.c			optional drm
+dev/drm/drm_modes.c			optional drm
 dev/drm/drm_pci.c			optional drm
 dev/drm/drm_scatter.c			optional drm
 dev/drm/drm_sman.c			optional drm
+dev/drm/drm_stub.c			optional drm
 dev/drm/drm_sysctl.c			optional drm
 dev/drm/drm_vm.c			optional drm
+dev/drm/ttm/ttm_lock.c			optional drm
+dev/drm/ttm/ttm_object.c		optional drm
+dev/drm/ttm/ttm_tt.c			optional drm
+dev/drm/ttm/ttm_bo_util.c		optional drm
+dev/drm/ttm/ttm_bo.c			optional drm
+dev/drm/ttm/ttm_bo_manager.c		optional drm
+dev/drm/ttm/ttm_execbuf_util.c		optional drm
+dev/drm/ttm/ttm_memory.c		optional drm
+dev/drm/ttm/ttm_page_alloc.c		optional drm
+dev/drm/ttm/ttm_bo_vm.c			optional drm
 dev/drm/i915/i915_dma.c			optional i915drm drm
 dev/drm/i915/i915_drv.c			optional i915drm drm
 dev/drm/i915/i915_irq.c			optional i915drm drm
