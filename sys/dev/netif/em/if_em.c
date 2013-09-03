@@ -116,7 +116,7 @@
 #define DEBUG_HW 0
 
 #define EM_NAME	"Intel(R) PRO/1000 Network Connection "
-#define EM_VER	" 7.3.4"
+#define EM_VER	" 7.3.8"
 
 #define _EM_DEVICE(id, ret)	\
 	{ EM_VENDOR_ID, E1000_DEV_ID_##id, ret, EM_NAME #id EM_VER }
@@ -232,6 +232,11 @@ static const struct em_vendor_info em_vendor_info_array[] = {
 
 	EM_DEVICE(PCH2_LV_LM),
 	EM_DEVICE(PCH2_LV_V),
+
+	EM_DEVICE(PCH_LPT_I217_LM),
+	EM_DEVICE(PCH_LPT_I217_V),
+	EM_DEVICE(PCH_LPTLP_I218_LM),
+	EM_DEVICE(PCH_LPTLP_I218_V),
 
 	/* required last entry */
 	EM_DEVICE_NULL
@@ -446,7 +451,8 @@ em_attach(device_t dev)
 	    adapter->hw.mac.type == e1000_ich9lan ||
 	    adapter->hw.mac.type == e1000_ich10lan ||
 	    adapter->hw.mac.type == e1000_pchlan ||
-	    adapter->hw.mac.type == e1000_pch2lan) {
+	    adapter->hw.mac.type == e1000_pch2lan ||
+	    adapter->hw.mac.type == e1000_pch_lpt) {
 		adapter->flash_rid = EM_BAR_FLASH;
 
 		adapter->flash = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
@@ -1066,6 +1072,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case e1000_ich9lan:
 		case e1000_ich10lan:
 		case e1000_pch2lan:
+		case e1000_pch_lpt:
 		case e1000_82574:
 		case e1000_82583:
 		case e1000_80003es2lan:
@@ -2364,6 +2371,7 @@ em_reset(struct adapter *adapter)
 
 	case e1000_pchlan:
 	case e1000_pch2lan:
+	case e1000_pch_lpt:
 		pba = E1000_PBA_26K;
 		break;
 
@@ -2425,6 +2433,7 @@ em_reset(struct adapter *adapter)
 		break;
 
 	case e1000_pch2lan:
+	case e1000_pch_lpt:
 		adapter->hw.fc.high_water = 0x5C20;
 		adapter->hw.fc.low_water = 0x5048;
 		adapter->hw.fc.pause_time = 0x0650;
@@ -3270,7 +3279,7 @@ em_init_rx_unit(struct adapter *adapter)
 		E1000_WRITE_REG(&adapter->hw, E1000_RXDCTL(0), rxdctl | 3);
 	}
 
-	if (adapter->hw.mac.type == e1000_pch2lan) {
+	if (adapter->hw.mac.type >= e1000_pch2lan) {
 		if (ifp->if_mtu > ETHERMTU)
 			e1000_lv_jumbo_workaround_ich8lan(&adapter->hw, TRUE);
 		else
