@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/igb.4,v 1.2 2010/05/14 20:11:30 marius Exp $
 .\"
-.Dd June 21, 2013
+.Dd September 3, 2013
 .Dt IGB 4
 .Os
 .Sh NAME
@@ -63,7 +63,7 @@ the Intel
 82580,
 I210,
 I211,
-and I350
+I350 and I354
 Ethernet controller chips.
 The
 .Nm
@@ -123,7 +123,8 @@ When
 is enabled on the devices,
 at most 16 reception queues and 16 transmission queues will be enabled.
 .Pp
-82580 and I350 support 8 reception queues and 8 transmission queues.
+82580,
+I350 and I354 support 8 reception queues and 8 transmission queues.
 MSI-X is enabled by default.
 .Pp
 I210 supports 4 reception queues and 4 transmission queues.
@@ -209,7 +210,7 @@ driver supports Gigabit Ethernet adapters based on the Intel
 82580,
 I210,
 I211,
-and I350
+I350 and I354
 controller chips:
 .Pp
 .Bl -bullet -compact
@@ -225,6 +226,8 @@ Intel Ethernet Controller I210 Series
 Intel Ethernet Controller I211 Series
 .It
 Intel Ethernet Controller I350
+.It
+Intel Ethernet Controller I354
 .It
 Intel Ethernet Server Adapter I210-T1
 .It
