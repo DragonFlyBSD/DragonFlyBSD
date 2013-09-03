@@ -3,9 +3,10 @@
 
 # require it to be specified
 SRCDIR ?= ${.CURDIR}/../..
-ROOTSIZE ?= 2048M
+ROOTSIZE ?=
 PHYSMEM ?= 256m
 NCPUS ?= 2
+FSTYPE ?=
 
 all: help
 
@@ -32,6 +33,7 @@ help:
 	@echo ""
 	@echo "    setenv ROOTSIZE size (optional)"
 	@echo "    setenv VKDIR target_dir"
+	@echo "    setenv FSTYPE fstype (optional. values:hammer, 4.2BSD)"
 	@echo ""
 	@echo "Meta target components:"
 	@echo ""
@@ -99,17 +101,19 @@ root:	check
 	fdisk -IB `cat ${VKDIR}/vn.which`
 	disklabel -r -w `cat ${VKDIR}/vn.which`s1 auto
 	disklabel `cat ${VKDIR}/vn.which`s1 > ${VKDIR}/label.tmp
-	echo 'a: * 0 4.2BSD' >> ${VKDIR}/label.tmp
+	echo 'a: * 0 ${FSTYPE}' >> ${VKDIR}/label.tmp
 	disklabel -R `cat ${VKDIR}/vn.which`s1 ${VKDIR}/label.tmp
 	disklabel -B `cat ${VKDIR}/vn.which`s1
-	newfs /dev/`cat ${VKDIR}/vn.which`s1a
+	${NEWFS_CMD} ${NEWFS_ARGS} /dev/`cat ${VKDIR}/vn.which`s1a
 	mkdir -p ${VKDIR}/root
 	vnconfig -u `cat ${VKDIR}/vn.which` > /dev/null 2>&1
 
 mount: check
 	vnconfig -c -s labels `cat ${VKDIR}/vn.which` ${VKDIR}/root.img
-	fsck -p /dev/`cat ${VKDIR}/vn.which`s1a
-	mount /dev/`cat ${VKDIR}/vn.which`s1a ${VKDIR}/root
+.	if ${FSTYPE} == "4.2BSD"
+		fsck -p /dev/`cat ${VKDIR}/vn.which`s1a
+.	endif
+	${MOUNT_CMD} /dev/`cat ${VKDIR}/vn.which`s1a ${VKDIR}/root
 	@echo "Mounted ${VKDIR}/root"
 
 umount: check
@@ -187,11 +191,26 @@ checkq:
 .if !defined(VKDIR)
 	@(echo "must specify VKDIR=target or as an environment variable"; /usr/bin/false)
 .endif
+
 .if exists(${VKDIR})
 	@echo "${VKDIR} found"
 .else
 	mkdir -p ${VKDIR}
 .endif
+
+.if ${FSTYPE} == "hammer"
+NEWFS_CMD = newfs_${FSTYPE}
+NEWFS_ARGS = -L VKROOT -f
+MOUNT_CMD = mount_${FSTYPE}
+ROOTSIZE ?= 5G
+.else
+FSTYPE = 4.2BSD
+NEWFS_CMD = newfs
+NEWFS_ARGS =
+MOUNT_CMD = mount
+ROOTSIZE ?= 2G
+.endif
+
 
 check: checkq
 .if exists(${VKDIR}/vn.which)
