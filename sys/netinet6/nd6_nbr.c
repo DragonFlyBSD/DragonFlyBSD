@@ -103,6 +103,7 @@ void
 nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 {
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
+	struct ifnet *cmpifp;
 	struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
 	struct nd_neighbor_solicit *nd_ns;
 	struct in6_addr saddr6 = ip6->ip6_src;
@@ -116,6 +117,14 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 	int tlladdr;
 	union nd_opts ndopts;
 	struct sockaddr_dl *proxydl = NULL;
+
+	/*
+	 * Collapse interfaces to the bridge for comparison and
+	 * mac (llinfo) purposes.
+	 */
+	cmpifp = ifp;
+	if (ifp->if_bridge)
+		cmpifp = ifp->if_bridge;
 
 #ifndef PULLDOWN_TEST
 	IP6_EXTHDR_CHECK(m, off, icmp6len,);
@@ -154,8 +163,11 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 	} else {
 		/*
 		 * Make sure the source address is from a neighbor's address.
+		 *
+		 * XXX probably only need to check cmpifp.
 		 */
-		if (in6ifa_ifplocaladdr(ifp, &saddr6) == NULL) {
+		if (in6ifa_ifplocaladdr(cmpifp, &saddr6) == NULL &&
+		    in6ifa_ifplocaladdr(ifp, &saddr6) == NULL) {
 			nd6log((LOG_INFO, "nd6_ns_input: "
 			    "NS packet from non-neighbor\n"));
 			goto bad;
@@ -245,6 +257,10 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 	 *     the ND6 must be in promiscuous mode or it will not see the
 	 *     solicited multicast requests for various hosts being proxied.
 	 *
+	 *     WARNING! Since this is a subnet proxy we have to treat bridge
+	 *     interfaces as being the bridge itself so we do not proxy-nd6
+	 *     between bridge interfaces (which are effectively switched).
+	 *
 	 *     (In the specific-host-proxy case via RTF_ANNOUNCE, which is
 	 *     a bitch to configure, a specific multicast route is already
 	 *     added for that host <-- NOT RECOMMENDED).
@@ -252,6 +268,7 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 	if (!ifa && ip6_forwarding) {
 		struct rtentry *rt;
 		struct sockaddr_in6 tsin6;
+		struct ifnet *rtifp;
 
 		bzero(&tsin6, sizeof tsin6);
 		tsin6.sin6_len = sizeof(struct sockaddr_in6);
@@ -259,15 +276,20 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 		tsin6.sin6_addr = taddr6;
 
 		rt = rtpurelookup((struct sockaddr *)&tsin6);
+		rtifp = rt ? rt->rt_ifp : NULL;
+		if (rtifp && rtifp->if_bridge)
+			rtifp = rtifp->if_bridge;
+
 		if (rt != NULL &&
-		    (ifp != rt->rt_ifp ||
-		     (ifp == rt->rt_ifp && (m->m_flags & M_MCAST) == 0))
+		    (cmpifp != rtifp ||
+		     (cmpifp == rtifp && (m->m_flags & M_MCAST) == 0))
 		) {
-			ifa = (struct ifaddr *)in6ifa_ifpforlinklocal(ifp,
+			ifa = (struct ifaddr *)in6ifa_ifpforlinklocal(cmpifp,
 				IN6_IFF_NOTREADY|IN6_IFF_ANYCAST);
 			nd6log((LOG_INFO,
-			       "nd6_ns_input: nd6 proxy %s<-%s ifa %p\n",
-			       if_name(ifp), if_name(rt->rt_ifp), ifa));
+			       "nd6_ns_input: nd6 proxy %s(%s)<-%s ifa %p\n",
+			       if_name(cmpifp), if_name(ifp),
+			       if_name(rtifp), ifa));
 			if (ifa) {
 				proxy = 1;
 				/*
@@ -275,7 +297,7 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 				 * w/announce flag will proxy-arp using
 				 * target mac, else our mac is used.
 				 */
-				if (ifp == rt->rt_ifp &&
+				if (cmpifp == rtifp &&
 				    (rt->rt_flags & RTF_ANNOUNCE) &&
 				    rt->rt_gateway->sa_family == AF_LINK) {
 					proxydl = SDL(rt->rt_gateway);
@@ -299,11 +321,11 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 	if (((struct in6_ifaddr *)ifa)->ia6_flags & IN6_IFF_DUPLICATED)
 		goto freeit;
 
-	if (lladdr && ((ifp->if_addrlen + 2 + 7) & ~7) != lladdrlen) {
+	if (lladdr && ((cmpifp->if_addrlen + 2 + 7) & ~7) != lladdrlen) {
 		nd6log((LOG_INFO,
 		    "nd6_ns_input: lladdrlen mismatch for %s "
 		    "(if %d, NS packet %d)\n",
-			ip6_sprintf(&taddr6), ifp->if_addrlen, lladdrlen - 2));
+		    ip6_sprintf(&taddr6), cmpifp->if_addrlen, lladdrlen - 2));
 		goto bad;
 	}
 
@@ -350,8 +372,8 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 	 */
 	if (IN6_IS_ADDR_UNSPECIFIED(&saddr6)) {
 		saddr6 = kin6addr_linklocal_allnodes;
-		saddr6.s6_addr16[1] = htons(ifp->if_index);
-		nd6_na_output(ifp, &saddr6, &taddr6,
+		saddr6.s6_addr16[1] = htons(cmpifp->if_index);
+		nd6_na_output(cmpifp, &saddr6, &taddr6,
 			      ((anycast || proxy || !tlladdr)
 				      ? 0 : ND_NA_FLAG_OVERRIDE)
 			      	| (ip6_forwarding ? ND_NA_FLAG_ROUTER : 0),
@@ -359,7 +381,8 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 		goto freeit;
 	}
 
-	nd6_cache_lladdr(ifp, &saddr6, lladdr, lladdrlen, ND_NEIGHBOR_SOLICIT, 0);
+	nd6_cache_lladdr(cmpifp, &saddr6, lladdr,
+			 lladdrlen, ND_NEIGHBOR_SOLICIT, 0);
 
 	nd6_na_output(ifp, &saddr6, &taddr6,
 		      ((anycast || proxy || !tlladdr) ? 0 : ND_NA_FLAG_OVERRIDE)
