@@ -74,7 +74,6 @@ smb_lib_init(void)
 
 	if (smblib_initialized)
 		return 0;
-#if __FreeBSD_version > 400000
 	error = sysctlbyname("net.smb.version", &kv, &kvlen, NULL, 0);
 	if (error) {
 		warnx("%s: can't find kernel module\n", __FUNCTION__);
@@ -84,7 +83,6 @@ smb_lib_init(void)
 		warnx("%s: kernel module version(%d) don't match library(%d).\n", __FUNCTION__, kv, NSMB_VERSION);
 		return EINVAL;
 	}
-#endif
 	if ((error = nls_setlocale("")) != 0) {
 		warnx("%s: can't initialise locale\n", __FUNCTION__);
 		return error;
