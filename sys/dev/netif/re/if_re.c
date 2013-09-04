@@ -1063,11 +1063,9 @@ re_probe(device_t dev)
 			return 0;
 		}
 	}
+	device_printf(dev, "unknown hwrev 0x%08x, macmode 0x%08x\n",
+	    hwrev, macmode);
 
-	if (bootverbose) {
-		device_printf(dev, "unknown hwrev 0x%08x, macmode 0x%08x\n",
-			      hwrev, macmode);
-	}
 	return ENXIO;
 }
 
