@@ -213,8 +213,9 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 
 	/*
 	 * Target address (taddr6) must be either:
-	 * (1) Valid unicast/anycast address for my receiving interface,
-	 * (2) Unicast address for which I'm offering proxy service, or
+	 * (1) Valid unicast/anycast address for my receiving interface.
+	 * (2) Unicast or anycast address for which I'm offering proxy
+	 *     service.
 	 * (3) "tentative" address on which DAD is being performed.
 	 */
 	/* (1) and (3) check. */
@@ -227,8 +228,28 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 	ifa = (struct ifaddr *)in6ifa_ifpwithaddr(ifp, &taddr6);
 #endif
 
-	/* (2) check. */
-	if (!ifa) {
+	/*
+	 * (2) Check proxying.  Requires ip6_forwarding to be turned on.
+	 *
+	 *     If the packet is anycast the target route must be on a
+	 *     different interface because the anycast will get anything
+	 *     on the current interface.
+	 *
+	 *     If the packet is unicast the target route may be on the
+	 *     same interface.  If the gateway is a (typically manually
+	 *     configured) link address we can directly offer it.
+	 *     XXX for now we don't do this but instead offer ours and
+	 *     presumably relay.
+	 *
+	 *     WARNING! Since this is a subnet proxy the interface proxying
+	 *     the ND6 must be in promiscuous mode or it will not see the
+	 *     solicited multicast requests for various hosts being proxied.
+	 *
+	 *     (In the specific-host-proxy case via RTF_ANNOUNCE, which is
+	 *     a bitch to configure, a specific multicast route is already
+	 *     added for that host <-- NOT RECOMMENDED).
+	 */
+	if (!ifa && ip6_forwarding) {
 		struct rtentry *rt;
 		struct sockaddr_in6 tsin6;
 
@@ -238,16 +259,27 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 		tsin6.sin6_addr = taddr6;
 
 		rt = rtpurelookup((struct sockaddr *)&tsin6);
-		if (rt != NULL && (rt->rt_flags & RTF_ANNOUNCE) &&
-		    rt->rt_gateway->sa_family == AF_LINK) {
-			/*
-			 * proxy NDP for single entry
-			 */
+		if (rt != NULL &&
+		    (ifp != rt->rt_ifp ||
+		     (ifp == rt->rt_ifp && (m->m_flags & M_MCAST) == 0))
+		) {
 			ifa = (struct ifaddr *)in6ifa_ifpforlinklocal(ifp,
 				IN6_IFF_NOTREADY|IN6_IFF_ANYCAST);
+			nd6log((LOG_INFO,
+			       "nd6_ns_input: nd6 proxy %s<-%s ifa %p\n",
+			       if_name(ifp), if_name(rt->rt_ifp), ifa));
 			if (ifa) {
 				proxy = 1;
-				proxydl = SDL(rt->rt_gateway);
+				/*
+				 * Manual link address on same interface
+				 * w/announce flag will proxy-arp using
+				 * target mac, else our mac is used.
+				 */
+				if (ifp == rt->rt_ifp &&
+				    (rt->rt_flags & RTF_ANNOUNCE) &&
+				    rt->rt_gateway->sa_family == AF_LINK) {
+					proxydl = SDL(rt->rt_gateway);
+				}
 			}
 		}
 		if (rt != NULL)

@@ -469,24 +469,14 @@ ip6_input(netmsg_t msg)
 
 	/*
 	 * Multicast check
+	 *
+	 * WARNING!  For general subnet proxying the interface hw will
+	 *	     likely filter out the multicast solicitations, so
+	 *	     the interface must be in promiscuous mode.
 	 */
 	if (IN6_IS_ADDR_MULTICAST(&ip6->ip6_dst)) {
-		struct	in6_multi *in6m = NULL;
-
+		ours = 1;
 		in6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_mcast);
-		/*
-		 * See if we belong to the destination multicast group on the
-		 * arrival interface.
-		 */
-		IN6_LOOKUP_MULTI(ip6->ip6_dst, m->m_pkthdr.rcvif, in6m);
-		if (in6m)
-			ours = 1;
-		else if (!ip6_mrouter) {
-			ip6stat.ip6s_notmember++;
-			ip6stat.ip6s_cantforward++;
-			in6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_discard);
-			goto bad;
-		}
 		deliverifp = m->m_pkthdr.rcvif;
 		goto hbhcheck;
 	}
