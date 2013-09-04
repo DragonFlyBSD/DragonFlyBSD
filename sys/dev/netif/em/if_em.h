@@ -279,7 +279,6 @@ struct adapter {
 	struct callout		timer;
 	struct callout		tx_fifo_timer;
 	int			if_flags;
-	int			max_frame_size;
 	int			min_frame_size;
 
 	/* WOL register value */
