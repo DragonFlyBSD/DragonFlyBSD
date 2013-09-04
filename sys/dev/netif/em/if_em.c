@@ -626,6 +626,9 @@ em_attach(device_t dev)
 		    "PHY reset is blocked due to SOL/IDER session.\n");
 	}
 
+	/* Disable EEE */
+	adapter->hw.dev_spec.ich8lan.eee_disable = 1;
+
 	/*
 	 * Start from a known state, this is important in reading the
 	 * nvm and mac from that.
