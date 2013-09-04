@@ -1032,29 +1032,10 @@ tmpfs_chflags(struct vnode *vp, int vaflags, struct ucred *cred)
 		return EROFS;
 	error = vop_helper_setattr_flags(&flags, vaflags, node->tn_uid, cred);
 
-	/*
-	 * Unprivileged processes are not permitted to unset system
-	 * flags, or modify flags if any system flags are set.
-	 *
-	 * Silently enforce SF_NOCACHE on the root tmpfs vnode so
-	 * tmpfs data is not double-cached by swapcache.
-	 */
+	/* Actually change the flags on the node itself */
 	if (error == 0) {
 		TMPFS_NODE_LOCK(node);
-		if (!priv_check_cred(cred, PRIV_VFS_SYSFLAGS, 0)) {
-			if (vp->v_flag & VROOT)
-				flags |= SF_NOCACHE;
-			node->tn_flags = flags;
-		} else {
-			if (node->tn_flags & (SF_NOUNLINK | SF_IMMUTABLE |
-					      SF_APPEND) ||
-			    (flags & UF_SETTABLE) != flags) {
-				error = EPERM;
-			} else {
-				node->tn_flags &= SF_SETTABLE;
-				node->tn_flags |= (flags & UF_SETTABLE);
-			}
-		}
+		node->tn_flags = flags;
 		node->tn_status |= TMPFS_NODE_CHANGED;
 		TMPFS_NODE_UNLOCK(node);
 	}
