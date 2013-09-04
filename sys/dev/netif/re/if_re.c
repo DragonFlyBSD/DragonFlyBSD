@@ -287,6 +287,18 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
 	  RE_C_STOP_RXTX | RE_C_FASTE },
 
+	{ RE_HWREV_8401E,	ETHERMTU,
+	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
+	  RE_C_STOP_RXTX | RE_C_FASTE },
+
+	{ RE_HWREV_8402,	ETHERMTU,
+	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
+	  RE_C_STOP_RXTX | RE_C_FASTE },
+
+	{ RE_HWREV_8106E,	ETHERMTU,
+	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT | RE_C_AUTOPAD |
+	  RE_C_STOP_RXTX | RE_C_FASTE },
+
 	{ RE_HWREV_NULL, 0, 0 }
 };
 
@@ -1013,12 +1025,44 @@ re_probe(device_t dev)
 			 * Apply chip property fixup
 			 */
 			switch (sc->re_hwrev) {
-			case RE_HWREV_8101E:
-				if (macmode == 0 ||
-				    macmode == 0x200000) {
-					sc->re_caps |= RE_C_EE_EADDR;
-					sc->re_ee_eaddr = RE_EE_EADDR0;
+			case RE_HWREV_8168GU:
+				if (vendor == PCI_VENDOR_REALTEK &&
+				    product == PCI_PRODUCT_REALTEK_RT8101E) {
+					/* 8106EUS */
+					sc->re_caps = RE_C_HWCSUM | RE_C_MAC2 |
+					    RE_C_PHYPMGT | RE_C_AUTOPAD |
+					    RE_C_STOP_RXTX | RE_C_FASTE;
+					sc->re_maxmtu = ETHERMTU;
+					device_printf(dev, "8106EUS fixup\n");
+				} else {
+					/* 8168GU */
+					goto ee_eaddr1;
 				}
+				break;
+
+			case RE_HWREV_8168E:
+				if (vendor == PCI_VENDOR_REALTEK &&
+				    product == PCI_PRODUCT_REALTEK_RT8101E) {
+					/* 8105E */
+					sc->re_caps = RE_C_HWCSUM | RE_C_MAC2 |
+					    RE_C_PHYPMGT | RE_C_AUTOPAD |
+					    RE_C_STOP_RXTX | RE_C_FASTE;
+					sc->re_maxmtu = ETHERMTU;
+					device_printf(dev, "8105E fixup\n");
+					goto ee_eaddr0;
+				}
+				/* 8168E */
+				break;
+
+			case RE_HWREV_8101E:
+			case RE_HWREV_8102E:
+			case RE_HWREV_8102EL:
+			case RE_HWREV_8401E:
+			case RE_HWREV_8105E:
+			case RE_HWREV_8106E:
+ee_eaddr0:
+				sc->re_caps |= RE_C_EE_EADDR;
+				sc->re_ee_eaddr = RE_EE_EADDR0;
 				break;
 
 			case RE_HWREV_8168F:
@@ -1033,8 +1077,8 @@ re_probe(device_t dev)
 
 			case RE_HWREV_8411:
 			case RE_HWREV_8168EP:
-			case RE_HWREV_8168GU:
 			case RE_HWREV_8411B:
+ee_eaddr1:
 				sc->re_caps |= RE_C_EE_EADDR;
 				sc->re_ee_eaddr = RE_EE_EADDR1;
 				break;
