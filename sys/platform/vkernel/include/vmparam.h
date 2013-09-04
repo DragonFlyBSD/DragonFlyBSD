@@ -76,7 +76,7 @@
 #define KERNEL_KVA_SIZE		0x40000000
 
 #define VM_MIN_USER_ADDRESS	0x00000000
-#define VM_MAX_USER_ADDRESS	0xBFC00000	/* XXX match to real kernel */
+#define VM_MAX_USER_ADDRESS	0x9FC00000	/* XXX match to real kernel */
 
 #define USRSTACK		VM_MAX_USER_ADDRESS
 
