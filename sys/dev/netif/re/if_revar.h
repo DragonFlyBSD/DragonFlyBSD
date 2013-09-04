@@ -78,39 +78,9 @@
 
 struct re_hwrev {
 	uint32_t		re_hwrev;
-	uint32_t		re_macver;	/* see RE_MACVER_ */
 	int			re_maxmtu;
 	uint32_t		re_caps;	/* see RE_C_ */
 };
-
-#define RE_MACVER_UNKN		0
-#define RE_MACVER_03		0x03
-#define RE_MACVER_04		0x04
-#define RE_MACVER_05		0x05
-#define RE_MACVER_06		0x06
-#define RE_MACVER_11		0x11
-#define RE_MACVER_12		0x12
-#define RE_MACVER_13		0x13
-#define RE_MACVER_14		0x14
-#define RE_MACVER_15		0x15
-#define RE_MACVER_16		0x16
-#define RE_MACVER_21		0x21
-#define RE_MACVER_22		0x22
-#define RE_MACVER_23		0x23
-#define RE_MACVER_24		0x24
-#define RE_MACVER_25		0x25
-#define RE_MACVER_26		0x26
-#define RE_MACVER_27		0x27
-#define RE_MACVER_28		0x28
-#define RE_MACVER_29		0x29
-#define RE_MACVER_2A		0x2a
-#define RE_MACVER_2B		0x2b
-#define RE_MACVER_2C		0x2c
-#define RE_MACVER_2D		0x2d
-#define RE_MACVER_2E		0x2e
-#define RE_MACVER_2F		0x2f
-#define RE_MACVER_30		0x30
-#define RE_MACVER_31		0x31
 
 struct re_softc;
 struct re_jbuf {
@@ -176,10 +146,10 @@ struct re_softc {
 	struct mbuf		*re_head;
 	struct mbuf		*re_tail;
 	uint32_t		re_caps;	/* see RE_C_ */
-	uint32_t		re_macver;	/* see RE_MACVER_ */
 	uint32_t		re_rxlenmask;
 	int			re_txstart;
 	int			re_eewidth;
+	int			re_ee_eaddr;
 	int			re_maxmtu;
 	int			re_rx_desc_cnt;
 	int			re_tx_desc_cnt;
@@ -223,6 +193,7 @@ struct re_softc {
 #define RE_C_CONTIGRX		0x400	/* need contig buf to RX jumbo frames */
 #define RE_C_STOP_RXTX		0x800	/* could stop RX/TX engine */
 #define RE_C_FASTE		0x1000	/* 10/100 only NIC */
+#define RE_C_EE_EADDR		0x2000	/* ethernet address in EEPROM */
 
 #define RE_IS_8139CP(sc)	((sc)->re_caps & RE_C_8139CP)
 #define RE_IS_8169(sc)		((sc)->re_caps & RE_C_8169)
