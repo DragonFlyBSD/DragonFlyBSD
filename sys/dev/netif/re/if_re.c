@@ -212,19 +212,13 @@ static const struct re_hwrev re_hwrevs[] = {
 	{ RE_HWREV_8169SB,	RE_MACVER_04,		RE_MTU_6K,
 	  RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_8169 },
 
-	{ RE_HWREV_8169SC1,	RE_MACVER_05,		RE_MTU_6K,
-	  RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_8169 },
-
-	{ RE_HWREV_8169SC2,	RE_MACVER_06,		RE_MTU_6K,
+	{ RE_HWREV_8169SC,	RE_MACVER_05,		RE_MTU_6K,
 	  RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_8169 },
 
 	{ RE_HWREV_8168B1,	RE_MACVER_21,		RE_MTU_6K,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_PHYPMGT },
 
 	{ RE_HWREV_8168B2,	RE_MACVER_23,		RE_MTU_6K,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_AUTOPAD },
-
-	{ RE_HWREV_8168B3,	RE_MACVER_23,		RE_MTU_6K,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_AUTOPAD },
 
 	{ RE_HWREV_8168C,	RE_MACVER_29,		RE_MTU_6K,
@@ -258,10 +252,7 @@ static const struct re_hwrev re_hwrevs[] = {
 	{ RE_HWREV_8100E,	RE_MACVER_UNKN,		ETHERMTU,
 	  RE_C_HWCSUM | RE_C_FASTE },
 
-	{ RE_HWREV_8101E1,	RE_MACVER_16,		ETHERMTU,
-	  RE_C_HWCSUM | RE_C_FASTE },
-
-	{ RE_HWREV_8101E2,	RE_MACVER_16,		ETHERMTU,
+	{ RE_HWREV_8101E,	RE_MACVER_16,		ETHERMTU,
 	  RE_C_HWCSUM | RE_C_FASTE },
 
 	{ RE_HWREV_8102E,	RE_MACVER_15,		ETHERMTU,
@@ -1003,8 +994,7 @@ re_probe(device_t dev)
 			 * Apply chip property fixup
 			 */
 			switch (sc->re_hwrev) {
-			case RE_HWREV_8101E1:
-			case RE_HWREV_8101E2:
+			case RE_HWREV_8101E:
 				if (macmode == 0)
 					sc->re_macver = RE_MACVER_11;
 				else if (macmode == 0x200000)
@@ -1018,7 +1008,6 @@ re_probe(device_t dev)
 					sc->re_macver = RE_MACVER_14;
 				break;
 			case RE_HWREV_8168B2:
-			case RE_HWREV_8168B3:
 				if (macmode == 0)
 					sc->re_macver = RE_MACVER_22;
 				break;
