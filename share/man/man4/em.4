@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/em.4,v 1.30 2008/10/06 21:55:53 simon Exp $
 .\"
-.Dd September 3, 2013
+.Dd September 4, 2013
 .Dt EM 4
 .Os
 .Sh NAME
@@ -61,15 +61,11 @@ The
 .Nm
 driver provides support for PCI Gigabit Ethernet adapters based on
 the Intel 82540, 82541ER, 82541PI, 82542, 82543, 82544, 82545, 82546,
-82546EB, 82546GB, 82547, 82571, 81572, 82573, and 82574 Ethernet
-controller chips.
+82546EB, 82546GB, 82547, 82571, 81572, 82573, 82574, I217 and I218
+Ethernet controller chips.
 The driver supports Transmit/Receive checksum offload
 and Jumbo Frames on all but 82542-based adapters.
-Furthermore it supports TCP segmentation offload (TSO) on adapters
-based on the 82571, 82572, 82573 and 82574 controller chips.
-.\"For further hardware information, see the
-.\".Pa README
-.\"included with the driver.
+Furthermore it supports TCP segmentation offload (TSO) on PCI-E adapters.
 .Pp
 The
 .Nm emx
