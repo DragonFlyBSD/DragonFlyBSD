@@ -249,6 +249,26 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
 	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
 
+	{ RE_HWREV_8411,	ETHERMTU,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
+
+	{ RE_HWREV_8168G,	ETHERMTU,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
+
+	{ RE_HWREV_8168EP,	ETHERMTU,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
+
+	{ RE_HWREV_8168GU,	ETHERMTU,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
+
+	{ RE_HWREV_8411B,	ETHERMTU,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
+
 	{ RE_HWREV_8100E,	ETHERMTU,
 	  RE_C_HWCSUM | RE_C_FASTE },
 
@@ -1003,11 +1023,20 @@ re_probe(device_t dev)
 
 			case RE_HWREV_8168F:
 			case RE_HWREV_8111F:
+			case RE_HWREV_8168G:
 				if (macmode == 0 ||
 				    macmode == 0x100000) {
 					sc->re_caps |= RE_C_EE_EADDR;
 					sc->re_ee_eaddr = RE_EE_EADDR1;
 				}
+				break;
+
+			case RE_HWREV_8411:
+			case RE_HWREV_8168EP:
+			case RE_HWREV_8168GU:
+			case RE_HWREV_8411B:
+				sc->re_caps |= RE_C_EE_EADDR;
+				sc->re_ee_eaddr = RE_EE_EADDR1;
 				break;
 			}
 			if (pci_is_pcie(dev))
