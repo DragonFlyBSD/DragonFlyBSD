@@ -128,6 +128,7 @@
 #define EMX_VENDOR_ID			0x8086
 
 #define EMX_BAR_MEM			PCIR_BAR(0)
+#define EMX_BAR_FLASH			PCIR_BAR(1)
 
 #define EMX_JUMBO_PBA			0x00000028
 #define EMX_DEFAULT_PBA			0x00000030
@@ -352,6 +353,9 @@ struct emx_softc {
 	struct resource		*memory;
 	int			memory_rid;
 
+	struct resource		*flash;
+	int			flash_rid;
+
 	struct resource		*intr_res;
 	void			*intr_tag;
 	int			intr_rid;
@@ -360,8 +364,6 @@ struct emx_softc {
 	struct ifmedia		media;
 	struct callout		timer;
 	int			if_flags;
-	int			max_frame_size;
-	int			min_frame_size;
 
 	/* WOL register value */
 	int			wol;

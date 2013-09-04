@@ -161,6 +161,11 @@ static const struct emx_device {
 	EMX_DEVICE(82574L),
 	EMX_DEVICE(82574LA),
 
+	EMX_DEVICE(PCH_LPT_I217_LM),
+	EMX_DEVICE(PCH_LPT_I217_V),
+	EMX_DEVICE(PCH_LPTLP_I218_LM),
+	EMX_DEVICE(PCH_LPTLP_I218_V),
+
 	/* required last entry */
 	EMX_DEVICE_NULL
 };
@@ -554,6 +559,31 @@ emx_attach(device_t dev)
 	sc->hw.bus.pci_cmd_word = pci_read_config(dev, PCIR_COMMAND, 2);
 	sc->hw.back = &sc->osdep;
 
+	/*
+	 * For I217/I218, we need to map the flash memory and this
+	 * must happen after the MAC is identified.
+	 */
+	if (sc->hw.mac.type == e1000_pch_lpt) {
+		sc->flash_rid = EMX_BAR_FLASH;
+
+		sc->flash = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
+		    &sc->flash_rid, RF_ACTIVE);
+		if (sc->flash == NULL) {
+			device_printf(dev, "Mapping of Flash failed\n");
+			error = ENXIO;
+			goto fail;
+		}
+		sc->osdep.flash_bus_space_tag = rman_get_bustag(sc->flash);
+		sc->osdep.flash_bus_space_handle =
+		    rman_get_bushandle(sc->flash);
+
+		/*
+		 * This is used in the shared code
+		 * XXX this goof is actually not used.
+		 */
+		sc->hw.flash_address = (uint8_t *)sc->flash;
+	}
+
 	/* Do Shared Code initialization */
 	if (e1000_setup_init_funcs(&sc->hw, TRUE)) {
 		device_printf(dev, "Setup of Shared code failed\n");
@@ -598,8 +628,7 @@ emx_attach(device_t dev)
 	}
 
 	/* Set the frame limits assuming standard ethernet sized frames. */
-	sc->max_frame_size = ETHERMTU + ETHER_HDR_LEN + ETHER_CRC_LEN;
-	sc->min_frame_size = ETHER_MIN_LEN;
+	sc->hw.mac.max_frame_size = ETHERMTU + ETHER_HDR_LEN + ETHER_CRC_LEN;
 
 	/* This controls when hardware reports transmit completion status. */
 	sc->hw.mac.report_tx_early = 1;
@@ -610,6 +639,9 @@ emx_attach(device_t dev)
 
 	/*
 	 * Calculate # of TX rings
+	 *
+	 * XXX
+	 * I217/I218 claims to have 2 TX queues
 	 *
 	 * NOTE:
 	 * Don't enable multiple TX queues on 82574; it always gives
@@ -642,6 +674,9 @@ emx_attach(device_t dev)
 		device_printf(dev,
 		    "PHY reset is blocked due to SOL/IDER session.\n");
 	}
+
+	/* Disable EEE on I217/I218 */
+	sc->hw.dev_spec.ich8lan.eee_disable = 1;
 
 	/*
 	 * Start from a known state, this is important in reading the
@@ -878,6 +913,11 @@ emx_detach(device_t dev)
 				     sc->memory);
 	}
 
+	if (sc->flash != NULL) {
+		bus_release_resource(dev, SYS_RES_MEMORY, sc->flash_rid,
+		    sc->flash);
+	}
+
 	emx_dma_free(sc);
 
 	/* Free sysctl tree */
@@ -1026,6 +1066,7 @@ emx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		case e1000_82571:
 		case e1000_82572:
 		case e1000_82574:
+		case e1000_pch_lpt:
 		case e1000_80003es2lan:
 			max_frame_size = 9234;
 			break;
@@ -1041,8 +1082,8 @@ emx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		}
 
 		ifp->if_mtu = ifr->ifr_mtu;
-		sc->max_frame_size = ifp->if_mtu + ETHER_HDR_LEN +
-				     ETHER_CRC_LEN;
+		sc->hw.mac.max_frame_size = ifp->if_mtu + ETHER_HDR_LEN +
+		    ETHER_CRC_LEN;
 
 		if (ifp->if_flags & IFF_RUNNING)
 			emx_init(sc);
@@ -1870,9 +1911,13 @@ emx_reset(struct emx_softc *sc)
 		pba = E1000_PBA_20K; /* 20K for Rx, 20K for Tx */
 		break;
 
+	case e1000_pch_lpt:
+ 		pba = E1000_PBA_26K;
+ 		break;
+
 	default:
 		/* Devices before 82547 had a Packet Buffer of 64K.   */
-		if (sc->max_frame_size > 8192)
+		if (sc->hw.mac.max_frame_size > 8192)
 			pba = E1000_PBA_40K; /* 40K for Rx, 24K for Tx */
 		else
 			pba = E1000_PBA_48K; /* 48K for Rx, 16K for Tx */
@@ -1896,15 +1941,29 @@ emx_reset(struct emx_softc *sc)
 	rx_buffer_size = (E1000_READ_REG(&sc->hw, E1000_PBA) & 0xffff) << 10;
 
 	sc->hw.fc.high_water = rx_buffer_size -
-			       roundup2(sc->max_frame_size, 1024);
+	    roundup2(sc->hw.mac.max_frame_size, 1024);
 	sc->hw.fc.low_water = sc->hw.fc.high_water - 1500;
 
-	if (sc->hw.mac.type == e1000_80003es2lan)
-		sc->hw.fc.pause_time = 0xFFFF;
-	else
-		sc->hw.fc.pause_time = EMX_FC_PAUSE_TIME;
+	sc->hw.fc.pause_time = EMX_FC_PAUSE_TIME;
 	sc->hw.fc.send_xon = TRUE;
 	sc->hw.fc.requested_mode = e1000_fc_full;
+
+	/*
+	 * Device specific overrides/settings
+	 */
+	if (sc->hw.mac.type == e1000_pch_lpt) {
+		sc->hw.fc.high_water = 0x5C20;
+		sc->hw.fc.low_water = 0x5048;
+		sc->hw.fc.pause_time = 0x0650;
+		sc->hw.fc.refresh_time = 0x0400;
+		/* Jumbos need adjusted PBA */
+		if (sc->arpcom.ac_if.if_mtu > ETHERMTU)
+			E1000_WRITE_REG(&sc->hw, E1000_PBA, 12);
+		else
+			E1000_WRITE_REG(&sc->hw, E1000_PBA, 26);
+	} else if (sc->hw.mac.type == e1000_80003es2lan) {
+		sc->hw.fc.pause_time = 0xFFFF;
+	}
 
 	/* Issue a global reset */
 	e1000_reset_hw(&sc->hw);
@@ -2615,7 +2674,7 @@ emx_newbuf(struct emx_rxdata *rdata, int i, int init)
 	}
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
 
-	if (rdata->sc->max_frame_size <= MCLBYTES - ETHER_ALIGN)
+	if (rdata->sc->hw.mac.max_frame_size <= MCLBYTES - ETHER_ALIGN)
 		m_adj(m, ETHER_ALIGN);
 
 	error = bus_dmamap_load_mbuf_segment(rdata->rxtag,
@@ -2951,6 +3010,13 @@ emx_init_rx_unit(struct emx_softc *sc)
 		E1000_WRITE_REG(&sc->hw, E1000_RDH(i), 0);
 		E1000_WRITE_REG(&sc->hw, E1000_RDT(i),
 		    sc->rx_data[i].num_rx_desc - 1);
+	}
+
+	if (sc->hw.mac.type >= e1000_pch2lan) {
+		if (ifp->if_mtu > ETHERMTU)
+			e1000_lv_jumbo_workaround_ich8lan(&sc->hw, TRUE);
+		else
+			e1000_lv_jumbo_workaround_ich8lan(&sc->hw, FALSE);
 	}
 
 	/* Setup the Receive Control Register */
