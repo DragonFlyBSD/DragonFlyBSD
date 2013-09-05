@@ -381,13 +381,16 @@ in6_rtqtimo(void *rock)
 
 	atv.tv_usec = 0;
 	atv.tv_sec = arg.nextstop - time_second;
-	if (atv.tv_sec < time_second) {
-		kprintf("invalid mtu expiration time on routing table\n");
-		arg.nextstop = time_second + 30;	/* last resort */
-		atv.tv_sec = 30;
+	if ((int)atv.tv_sec < 1) {		/* time shift safety */
+		atv.tv_sec = 1;
+		arg.nextstop = time_second + atv.tv_sec;
 	}
-	callout_reset(&in6_rtqtimo_ch[mycpuid], tvtohz_high(&atv), in6_rtqtimo,
-		      rock);
+	if ((int)atv.tv_sec > rtq_timeout) {	/* time shift safety */
+		atv.tv_sec = rtq_timeout;
+		arg.nextstop = time_second + atv.tv_sec;
+	}
+	callout_reset(&in6_rtqtimo_ch[mycpuid], tvtohz_high(&atv),
+		      in6_rtqtimo, rock);
 }
 
 /*
@@ -437,13 +440,16 @@ in6_mtutimo(void *rock)
 
 	atv.tv_usec = 0;
 	atv.tv_sec = arg.nextstop - time_second;
-	if (atv.tv_sec < time_second) {
-		kprintf("invalid mtu expiration time on routing table\n");
-		arg.nextstop = time_second + 30;	/* last resort */
-		atv.tv_sec = 30;
+	if ((int)atv.tv_sec < 1) {		/* time shift safety */
+		atv.tv_sec = 1;
+		arg.nextstop = time_second + atv.tv_sec;
 	}
-	callout_reset(&in6_mtutimo_ch[mycpuid], tvtohz_high(&atv), in6_mtutimo,
-		      rock);
+	if ((int)atv.tv_sec > rtq_timeout) {	/* time shift safety */
+		atv.tv_sec = rtq_timeout;
+		arg.nextstop = time_second + atv.tv_sec;
+	}
+	callout_reset(&in6_mtutimo_ch[mycpuid], tvtohz_high(&atv),
+		      in6_mtutimo, rock);
 }
 
 #if 0

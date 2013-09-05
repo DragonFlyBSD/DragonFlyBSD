@@ -361,6 +361,14 @@ in_rtqtimo_dispatch(netmsg_t nmsg)
 
 	atv.tv_usec = 0;
 	atv.tv_sec = arg.nextstop - time_second;
+	if ((int)atv.tv_sec < 1) {		/* time shift safety */
+		atv.tv_sec = 1;
+		arg.nextstop = time_second + atv.tv_sec;
+	}
+	if ((int)atv.tv_sec > rtq_timeout) {	/* time shift safety */
+		atv.tv_sec = rtq_timeout;
+		arg.nextstop = time_second + atv.tv_sec;
+	}
 	callout_reset(&ctx->timo_ch, tvtohz_high(&atv), in_rtqtimo, NULL);
 }
 
@@ -417,7 +425,7 @@ in_inithead(void **head, int off)
 	ctx->timo_rnh = rnh;
 	callout_init_mp(&ctx->timo_ch);
 	netmsg_init(&ctx->timo_nmsg, NULL, &netisr_adone_rport, 0,
-	    in_rtqtimo_dispatch);
+		    in_rtqtimo_dispatch);
 
 	in_rtqtimo(NULL);	/* kick off timeout first time */
 	return 1;
