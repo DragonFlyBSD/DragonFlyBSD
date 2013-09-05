@@ -217,9 +217,9 @@ db_iprintf(const char *fmt,...)
  * End line if too long.
  */
 void
-db_end_line(void)
+db_end_line(int field_width)
 {
-	if (db_output_position >= db_max_width)
+	if (db_output_position + field_width > db_max_width)
 	    db_printf("\n");
 }
 

@@ -38,7 +38,7 @@
  * Printing routines for kernel debugger.
  */
 
-void	db_end_line (void);
+void	db_end_line(int);
 void	db_force_whitespace (void);
 void	db_format_hex(char *, size_t, quad_t, int);
 int	db_print_position (void);

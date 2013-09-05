@@ -179,7 +179,7 @@ db_examine(db_addr_t addr, char *fmt, int count)
 				break;
 			}
 			if (db_print_position() != 0)
-			    db_end_line();
+			    db_end_line(1);
 			break;
 		}
 	    }

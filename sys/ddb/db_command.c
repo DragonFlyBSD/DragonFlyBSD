@@ -260,13 +260,13 @@ db_cmd_list(struct command *table, struct command **aux_tablep,
 
 	for (cmd = table; cmd->name != 0; cmd++) {
 	    db_printf("%-12s", cmd->name);
-	    db_end_line();
+	    db_end_line(12);
 	}
 	if (aux_tablep == NULL)
 	    return;
 	for (aux_cmdp = aux_tablep; aux_cmdp < aux_tablep_end; aux_cmdp++) {
 	    db_printf("%-12s", (*aux_cmdp)->name);
-	    db_end_line();
+	    db_end_line(12);
 	}
 }
 
@@ -430,7 +430,7 @@ db_help_cmd(void)
 
 	while (cmd->name != 0) {
 	    db_printf("%-12s", cmd->name);
-	    db_end_line();
+	    db_end_line(12);
 	    cmd++;
 	}
 }
