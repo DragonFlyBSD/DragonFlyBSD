@@ -3,7 +3,6 @@
 
 # require it to be specified
 SRCDIR ?= ${.CURDIR}/../..
-ROOTSIZE ?=
 PHYSMEM ?= 256m
 NCPUS ?= 2
 FSTYPE ?=
