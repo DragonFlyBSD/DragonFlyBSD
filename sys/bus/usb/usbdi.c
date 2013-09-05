@@ -1131,9 +1131,9 @@ usbd_get_endpoint_descriptor(usbd_interface_handle iface, u_int8_t address)
 int
 usbd_ratecheck(struct timeval *last)
 {
-	if (last->tv_sec == time_second)
+	if (last->tv_sec == time_uptime)
 		return (0);
-	last->tv_sec = time_second;
+	last->tv_sec = time_uptime;
 	return (1);
 }
 

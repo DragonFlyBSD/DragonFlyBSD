@@ -359,7 +359,7 @@ ip_init(void)
 	maxnipq = nmbclusters / 32;
 	maxfragsperpacket = 16;
 
-	ip_id = time_second & 0xffff;
+	ip_id = time_second & 0xffff;	/* time_second survives reboots */
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
 		/*

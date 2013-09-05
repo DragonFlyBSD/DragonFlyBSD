@@ -912,7 +912,7 @@ do {									\
 static void
 remove_dyn_rule_locked(struct ip_fw *rule, ipfw_dyn_rule *keep_me)
 {
-	static uint32_t last_remove = 0; /* XXX */
+	static time_t last_remove = 0; /* XXX */
 
 #define FORCE	(keep_me == NULL)
 
@@ -922,9 +922,9 @@ remove_dyn_rule_locked(struct ip_fw *rule, ipfw_dyn_rule *keep_me)
 	if (ipfw_dyn_v == NULL || dyn_count == 0)
 		return;
 	/* do not expire more than once per second, it is useless */
-	if (!FORCE && last_remove == time_second)
+	if (!FORCE && last_remove == time_uptime)
 		return;
-	last_remove = time_second;
+	last_remove = time_uptime;
 
 	/*
 	 * because O_LIMIT refer to parent rules, during the first pass only

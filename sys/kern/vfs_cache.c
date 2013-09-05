@@ -2188,8 +2188,8 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 		dvp = pvp;
 	}
 	if (error == 0) {
-		if (last_fromdvp_report != time_second) {
-			last_fromdvp_report = time_second;
+		if (last_fromdvp_report != time_uptime) {
+			last_fromdvp_report = time_uptime;
 			kprintf("Warning: extremely inefficient path "
 				"resolution on %s\n",
 				nch.ncp->nc_name);

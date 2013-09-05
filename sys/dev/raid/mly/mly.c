@@ -1464,7 +1464,7 @@ mly_start(struct mly_command *mc)
     mc->mc_packet->generic.command_id = mc->mc_slot;
 
 #ifdef MLY_DEBUG
-    mc->mc_timestamp = time_second;
+    mc->mc_timestamp = time_uptime;
 #endif
 
     crit_enter();
@@ -2976,12 +2976,12 @@ mly_timeout(struct mly_softc *sc)
 	struct mly_command *mc;
 	int deadline;
 
-	deadline = time_second - MLY_CMD_TIMEOUT;
+	deadline = time_uptime - MLY_CMD_TIMEOUT;
 	TAILQ_FOREACH(mc, &sc->mly_busy, mc_link) {
 		if ((mc->mc_timestamp < deadline)) {
 			device_printf(sc->mly_dev,
 			    "COMMAND %p TIMEOUT AFTER %d SECONDS\n", mc,
-			    (int)(time_second - mc->mc_timestamp));
+			    (int)(time_uptime - mc->mc_timestamp));
 		}
 	}
 

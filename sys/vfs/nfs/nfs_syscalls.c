@@ -261,7 +261,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 				    nuidp->nu_cr.cr_ngroups = NGROUPS;
 				nuidp->nu_cr.cr_ref = 1;
 				nuidp->nu_timestamp = nsd->nsd_timestamp;
-				nuidp->nu_expire = time_second + nsd->nsd_ttl;
+				nuidp->nu_expire = time_uptime + nsd->nsd_ttl;
 				/*
 				 * and save the session key in nu_key.
 				 */
@@ -1064,7 +1064,7 @@ nfs_getnickauth(struct nfsmount *nmp, struct ucred *cred, char **auth_str,
 		if (nuidp->nu_cr.cr_uid == cred->cr_uid)
 			break;
 	}
-	if (!nuidp || nuidp->nu_expire < time_second)
+	if (!nuidp || nuidp->nu_expire < time_uptime)
 		return (EACCES);
 
 	/*
@@ -1084,9 +1084,9 @@ nfs_getnickauth(struct nfsmount *nmp, struct ucred *cred, char **auth_str,
 	 */
 	verfp = (u_int32_t *)verf_str;
 	*verfp++ = txdr_unsigned(RPCAKN_NICKNAME);
-	if (time_second > nuidp->nu_timestamp.tv_sec ||
+	if (time_second != nuidp->nu_timestamp.tv_sec ||
 	    (time_second == nuidp->nu_timestamp.tv_sec &&
-	     time_second > nuidp->nu_timestamp.tv_usec))
+	     time_second > nuidp->nu_timestamp.tv_usec))	/* XXX */
 		getmicrotime(&nuidp->nu_timestamp);
 	else
 		nuidp->nu_timestamp.tv_usec++;
@@ -1164,7 +1164,7 @@ nfs_savenickauth(struct nfsmount *nmp, struct ucred *cred, int len,
 			}
 			nuidp->nu_flag = 0;
 			nuidp->nu_cr.cr_uid = cred->cr_uid;
-			nuidp->nu_expire = time_second + NFS_KERBTTL;
+			nuidp->nu_expire = time_uptime + NFS_KERBTTL;
 			nuidp->nu_timestamp = ktvout;
 			nuidp->nu_nickname = nick;
 			bcopy(key, nuidp->nu_key, sizeof (NFSKERBKEY_T));

@@ -491,7 +491,7 @@ softdep_process_worklist(struct mount *matchmnt)
 {
 	thread_t td = curthread;
 	int matchcnt, loopcount;
-	long starttime;
+	int starttime;
 
 	ACQUIRE_LOCK(&lk);
 
@@ -530,7 +530,7 @@ softdep_process_worklist(struct mount *matchmnt)
 		wakeup_one(&proc_waiting);
 	}
 	loopcount = 1;
-	starttime = time_second;
+	starttime = ticks;
 	while (num_on_worklist > 0) {
 		matchcnt += process_worklist_item(matchmnt, 0);
 
@@ -570,8 +570,11 @@ softdep_process_worklist(struct mount *matchmnt)
 		 * Never allow processing to run for more than one
 		 * second. Otherwise the other syncer tasks may get
 		 * excessively backlogged.
+		 *
+		 * Use ticks to avoid boundary condition w/time_second or
+		 * time_uptime.
 		 */
-		if (starttime != time_second && matchmnt == NULL) {
+		if ((ticks - starttime) > hz && matchmnt == NULL) {
 			matchcnt = -1;
 			break;
 		}

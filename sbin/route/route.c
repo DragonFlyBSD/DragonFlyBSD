@@ -1537,8 +1537,11 @@ print_getmsg(struct rt_msghdr *rtm, int msglen)
 	printf("%8ld%c ", msec(rtm->rtm_rmx.rmx_rttvar), lock(RTTVAR));
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_hopcount, lock(HOPCOUNT));
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_mtu, lock(MTU));
-	if (rtm->rtm_rmx.rmx_expire != 0)
-		rtm->rtm_rmx.rmx_expire -= time(0);
+	if (rtm->rtm_rmx.rmx_expire != 0) {
+		struct timespec sp;
+		clock_gettime(CLOCK_MONOTONIC, &tp);
+		rtm->rtm_rmx.rmx_expire -= tp.tv_sec;
+	}
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_expire, lock(EXPIRE));
 	printf("%8ld ", rtm->rtm_rmx.rmx_msl);
 	printf("%5ld ", rtm->rtm_rmx.rmx_iwmaxsegs);

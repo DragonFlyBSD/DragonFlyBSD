@@ -147,7 +147,7 @@ static long time_constant;		/* poll interval (shift) (s) */
 static long time_precision = 1;		/* clock precision (ns) */
 static long time_maxerror = MAXPHASE / 1000; /* maximum error (us) */
 static long time_esterror = MAXPHASE / 1000; /* estimated error (us) */
-static long time_reftime;		/* time at last adjustment (s) */
+static time_t time_reftime;		/* time at last adjustment (s) */
 static long time_tick;			/* nanoseconds per tick (ns) */
 static l_fp time_offset;		/* time offset (ns) */
 static l_fp time_freq;			/* frequency offset (ns/s) */
@@ -632,13 +632,13 @@ hardupdate(long offset)
 	 * to discipline the frequency, the PPS frequency is used;
 	 * otherwise, the argument offset is used to compute it.
 	 */
-	if (time_status & STA_PPSFREQ && time_status & STA_PPSSIGNAL) {
-		time_reftime = time_second;
+	if ((time_status & STA_PPSFREQ) && time_status & STA_PPSSIGNAL) {
+		time_reftime = time_uptime;
 		return;
 	}
-	if (time_status & STA_FREQHOLD || time_reftime == 0)
-		time_reftime = time_second;
-	mtemp = time_second - time_reftime;
+	if ((time_status & STA_FREQHOLD) || time_reftime == 0)
+		time_reftime = time_uptime;
+	mtemp = time_uptime - time_reftime;
 	L_LINT(ftemp, time_monitor);
 	L_RSHIFT(ftemp, (SHIFT_PLL + 2 + time_constant) << 1);
 	L_MPY(ftemp, mtemp);
@@ -650,7 +650,7 @@ hardupdate(long offset)
 		L_ADD(time_freq, ftemp);
 		time_status |= STA_MODE;
 	}
-	time_reftime = time_second;
+	time_reftime = time_uptime;
 	if (L_GINT(time_freq) > MAXFREQ)
 		L_LINT(time_freq, MAXFREQ);
 	else if (L_GINT(time_freq) < -MAXFREQ)

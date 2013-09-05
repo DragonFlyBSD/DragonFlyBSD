@@ -183,7 +183,7 @@ struct ifbifconf {
  */
 struct ifbareq {
 	char		ifba_ifsname[IFNAMSIZ];	/* member if name */
-	unsigned long	ifba_expire;		/* address expire time */
+	time_t 		ifba_expire;		/* address expire time */
 	uint8_t		ifba_flags;		/* address flags */
 	uint8_t		ifba_dst[ETHER_ADDR_LEN];/* destination address */
 };
@@ -316,7 +316,7 @@ TAILQ_HEAD(bridge_iflist_head, bridge_iflist);
  */
 struct bridge_rtinfo {
 	struct ifnet		*bri_ifp;	/* destination if */
-	unsigned long		bri_expire;	/* expiration time */
+	time_t 			bri_expire;	/* expiration time */
 	uint8_t			bri_flags;	/* address flags */
 	uint8_t			bri_dead;
 	uint8_t			bri_pad[2];

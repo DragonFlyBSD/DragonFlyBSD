@@ -190,7 +190,7 @@ arptimer_dispatch(netmsg_t nmsg)
 	crit_exit();
 
 	LIST_FOREACH_MUTABLE(la, &llinfo_arp_list[cpuid], la_le, nla) {
-		if (la->la_rt->rt_expire && la->la_rt->rt_expire <= time_second)
+		if (la->la_rt->rt_expire && la->la_rt->rt_expire <= time_uptime)
 			arptfree(la);
 	}
 	callout_reset(&arptimer_context[cpuid].timer_ch, arpt_prune * hz,
@@ -255,7 +255,7 @@ arp_rtrequest(int req, struct rtentry *rt)
 			gate = rt->rt_gateway;
 			SDL(gate)->sdl_type = rt->rt_ifp->if_type;
 			SDL(gate)->sdl_index = rt->rt_ifp->if_index;
-			rt->rt_expire = time_second;
+			rt->rt_expire = time_uptime;
 			break;
 		}
 		/* Announce a new entry if requested. */
@@ -538,7 +538,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	 * Check the address family and length is valid, the address
 	 * is resolved; otherwise, try to resolve.
 	 */
-	if ((rt->rt_expire == 0 || rt->rt_expire > time_second) &&
+	if ((rt->rt_expire == 0 || rt->rt_expire > time_uptime) &&
 	    sdl->sdl_family == AF_LINK && sdl->sdl_alen != 0) {
 		/*
 		 * If entry has an expiry time and it is approaching,
@@ -546,7 +546,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		 * arpt_down interval.
 		 */
 		if ((rt->rt_expire != 0) &&
-		    (time_second + la->la_preempt > rt->rt_expire)) {
+		    (time_uptime + la->la_preempt > rt->rt_expire)) {
 			arprequest(ifp,
 				   &SIN(rt->rt_ifa->ifa_addr)->sin_addr,
 				   &SIN(dst)->sin_addr,
@@ -577,8 +577,8 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	la->la_hold = m;
 	if (rt->rt_expire || ((rt->rt_flags & RTF_STATIC) && !sdl->sdl_alen)) {
 		rt->rt_flags &= ~RTF_REJECT;
-		if (la->la_asked == 0 || rt->rt_expire != time_second) {
-			rt->rt_expire = time_second;
+		if (la->la_asked == 0 || rt->rt_expire != time_uptime) {
+			rt->rt_expire = time_uptime;
 			if (la->la_asked++ < arp_maxtries) {
 				arprequest(ifp,
 					   &SIN(rt->rt_ifa->ifa_addr)->sin_addr,
@@ -792,7 +792,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		}
 		memcpy(LLADDR(sdl), ar_sha(ah), sdl->sdl_alen = ah->ar_hln);
 		if (rt->rt_expire != 0) {
-			rt->rt_expire = time_second + arpt_keep;
+			rt->rt_expire = time_uptime + arpt_keep;
 		}
 		rt->rt_flags &= ~RTF_REJECT;
 		la->la_asked = 0;

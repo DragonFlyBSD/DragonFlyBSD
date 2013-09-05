@@ -632,7 +632,7 @@ mps_send_iocinit(struct mps_softc *sc)
 	init.ReplyFreeQueueAddress.High = 0;
 	init.ReplyFreeQueueAddress.Low = (uint32_t)sc->free_busaddr;
 	init.TimeStamp.High = 0;
-	init.TimeStamp.Low = (uint32_t)time_second;
+	init.TimeStamp.Low = (uint32_t)time_uptime;
 
 	error = mps_request_sync(sc, &init, &reply, req_sz, reply_sz, 5);
 	if ((reply.IOCStatus & MPI2_IOCSTATUS_MASK) != MPI2_IOCSTATUS_SUCCESS)

@@ -1811,14 +1811,14 @@ nfs_timer_req(struct nfsreq *req)
 #define NFSFS	(NFS_RTT_SCALE * NFS_HZ)
 		if (req->r_flags & R_TIMING) {
 			static long last_time;
-			if (nfs_showrtt && last_time != time_second) {
+			if (nfs_showrtt && last_time != time_uptime) {
 				kprintf("rpccmd %d NFS SRTT %d SDRTT %d "
 					"timeo %d.%03d\n",
 					proct[req->r_procnum],
 					NFS_SRTT(req), NFS_SDRTT(req),
 					timeo / NFSFS,
 					timeo % NFSFS * 1000 /  NFSFS);
-				last_time = time_second;
+				last_time = time_uptime;
 			}
 		}
 #undef NFSFS
@@ -2453,7 +2453,7 @@ nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 
 			tvout.tv_sec = fxdr_unsigned(long, tvout.tv_sec);
 			tvout.tv_usec = fxdr_unsigned(long, tvout.tv_usec);
-			if (nuidp->nu_expire < time_second ||
+			if (nuidp->nu_expire != time_uptime ||
 			    nuidp->nu_timestamp.tv_sec > tvout.tv_sec ||
 			    (nuidp->nu_timestamp.tv_sec == tvout.tv_sec &&
 			     nuidp->nu_timestamp.tv_usec > tvout.tv_usec)) {

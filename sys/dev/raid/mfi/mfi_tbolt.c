@@ -396,7 +396,7 @@ mfi_tbolt_init_MFI_queue(struct mfi_softc *sc)
 	mfiAddressTemp->u.addressLow = (uint32_t)phyAddress;
 	mfiAddressTemp->u.addressHigh = (uint32_t)((uint64_t)phyAddress >> 32);
 	mpi2IocInit->ReplyFreeQueueAddress =  0; /* Not supported by MR. */
-	mpi2IocInit->TimeStamp = time_second;
+	mpi2IocInit->TimeStamp = time_uptime;
 
 	if (sc->verbuf) {
 		ksnprintf((char *)sc->verbuf, strlen(MEGASAS_VERSION) + 2, "%s\n",
@@ -417,7 +417,7 @@ mfi_tbolt_init_MFI_queue(struct mfi_softc *sc)
 
 	cm->cm_data = NULL;
 	cm->cm_flags |= MFI_CMD_POLLED;
-	cm->cm_timestamp = time_second;
+	cm->cm_timestamp = time_uptime;
 	if ((error = mfi_mapcmd(sc, cm)) != 0) {
 		device_printf(sc->mfi_dev, "failed to send IOC init2 "
 		    "command %d at %lx\n", error, (long)cm->cm_frame_busaddr);
@@ -1146,7 +1146,7 @@ mfi_tbolt_send_frame(struct mfi_softc *sc, struct mfi_command *cm)
 	if (sc->adpreset)
 		return 1;
 	if ((cm->cm_flags & MFI_CMD_POLLED) == 0) {
-		cm->cm_timestamp = time_second;
+		cm->cm_timestamp = time_uptime;
 		mfi_enqueue_busy(cm);
 	}
 	else {

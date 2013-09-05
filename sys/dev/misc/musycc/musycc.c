@@ -447,11 +447,11 @@ status_chans(struct softc *sc, char *s)
 		ksprintf(s + strlen(s), "c%2d:", i);
 		ksprintf(s + strlen(s), " ts %08x", scp->ts);
 		ksprintf(s + strlen(s), " RX %lus/%lus",
-		    time_second - scp->last_recv, time_second - scp->last_rxerr);
+		    time_uptime - scp->last_recv, time_uptime - scp->last_rxerr);
 		ksprintf(s + strlen(s), " TX %lus/%lus/%lus",
-		    time_second - scp->last_xmit, 
-		    time_second - scp->last_txerr,
-		    time_second - scp->last_txdrop);
+		    time_uptime - scp->last_xmit,
+		    time_uptime - scp->last_txerr,
+		    time_uptime - scp->last_txdrop);
 		ksprintf(s + strlen(s), " TXdrop %lu Pend %lu", 
 		    scp->tx_drop,
 		    scp->tx_pending);
@@ -703,7 +703,7 @@ musycc_intr0_rx_eom(struct softc *sc, int ch)
 					md->m = m2;
 					md->data = vtophys(m2->m_data);
 					/* Pass the received mbuf upwards. */
-					sch->last_recv = time_second;
+					sch->last_recv = time_uptime;
 					ng_queue_data(sch->hook, m, NULL);
 				} else {
 					/*
@@ -713,7 +713,7 @@ musycc_intr0_rx_eom(struct softc *sc, int ch)
 				         * the mbuf+cluster we already had.
 					 */
 					m_freem(m2);
-					sch->last_rdrop = time_second;
+					sch->last_rdrop = time_uptime;
 					sch->rx_drop++;
 				}
 			} else {
@@ -721,23 +721,23 @@ musycc_intr0_rx_eom(struct softc *sc, int ch)
 				 * We didn't get a mbuf, drop received packet
 				 * and recycle the "old" mbuf+cluster.
 				 */
-				sch->last_rdrop = time_second;
+				sch->last_rdrop = time_uptime;
 				sch->rx_drop++;
 			}
 		} else if (error == 9) {
-			sch->last_rxerr = time_second;
+			sch->last_rxerr = time_uptime;
 			sch->crc_error++;
 		} else if (error == 10) {
-			sch->last_rxerr = time_second;
+			sch->last_rxerr = time_uptime;
 			sch->dribble_error++;
 		} else if (error == 11) {
-			sch->last_rxerr = time_second;
+			sch->last_rxerr = time_uptime;
 			sch->abort_error++;
 		} else if (error == 12) {
-			sch->last_rxerr = time_second;
+			sch->last_rxerr = time_uptime;
 			sch->long_error++;
 		} else {
-			sch->last_rxerr = time_second;
+			sch->last_rxerr = time_uptime;
 			/* Receive error, print some useful info */
 			kprintf("%s %s: RX 0x%08x ", sch->sc->nodename, 
 			    sch->hookname, status);
@@ -810,7 +810,7 @@ musycc_intr0(void *arg)
 				break;
 			case 0:
 				if (er == 13) {	/* SHT */
-					sc->chan[ch]->last_rxerr = time_second;
+					sc->chan[ch]->last_rxerr = time_uptime;
 					sc->chan[ch]->short_error++;
 					break;
 				}
@@ -1113,7 +1113,7 @@ musycc_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	} 
 	if (sch->tx_pending + m->m_pkthdr.len > sch->tx_limit * maxlatency) {
 		sch->tx_drop++;
-		sch->last_txdrop = time_second;
+		sch->last_txdrop = time_uptime;
 		NG_FREE_DATA(m, meta);
 		return (0);
 	}
@@ -1126,7 +1126,7 @@ musycc_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 			continue;
 		if (md->status != 0) {
 			sch->tx_drop++;
-			sch->last_txdrop = time_second;
+			sch->last_txdrop = time_uptime;
 			NG_FREE_DATA(m, meta);
 			return (0);
 		}
@@ -1142,9 +1142,9 @@ musycc_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 			continue;
 		if (md->status != 0) {
 			kprintf("Out of tx md(2)\n");
-			sch->last_txerr = time_second;
+			sch->last_txerr = time_uptime;
 			sch->tx_drop++;
-			sch->last_txdrop = time_second;
+			sch->last_txdrop = time_uptime;
 			NG_FREE_DATA(m, meta);
 			break;
 		}
@@ -1175,7 +1175,7 @@ musycc_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 			md->status = u;
 			md0->status = u0 | 0x80000000; /* OWNER = MUSYCC */
 		}
-		sch->last_xmit = time_second;
+		sch->last_xmit = time_uptime;
 		sch->tx_next_md = md->snext;
 	}
 	sch->txn++;

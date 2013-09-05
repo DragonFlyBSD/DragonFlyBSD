@@ -714,7 +714,7 @@ i915_reset(struct drm_device *dev, u8 flags)
 	i915_gem_reset(dev);
 
 	ret = -ENODEV;
-	if (time_second - dev_priv->last_gpu_reset < 5) {
+	if (time_uptime - dev_priv->last_gpu_reset < 5) {
 		DRM_ERROR("GPU hanging too fast, declaring wedged!\n");
 	} else {
 		switch (INTEL_INFO(dev)->gen) {
@@ -733,7 +733,7 @@ i915_reset(struct drm_device *dev, u8 flags)
 			break;
 		}
 	}
-	dev_priv->last_gpu_reset = time_second;
+	dev_priv->last_gpu_reset = time_uptime;
 	if (ret) {
 		DRM_ERROR("Failed to reset chip.\n");
 		DRM_UNLOCK(dev);

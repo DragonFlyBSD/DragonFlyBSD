@@ -769,7 +769,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 		}
 		
 		if (outstanding == 0 &&
-		    (rtimo == 0 || time_second >= rtimo)) {
+		    (rtimo == 0 || time_uptime >= rtimo)) {
 			error = 0;
 			goto gotreply;
 		}
@@ -787,8 +787,8 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 		 * Wait for up to timo seconds for a reply.
 		 * The socket receive timeout was set to 1 second.
 		 */
-		atimo = timo + time_second;
-		while (time_second < atimo) {
+		atimo = timo + time_uptime;
+		while (time_uptime < atimo) {
 			aio.iov_base = (caddr_t) &gctx->reply;
 			aio.iov_len = sizeof(gctx->reply);
 			
@@ -803,7 +803,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 			rcvflg = 0;
 			error = soreceive(so, NULL, &auio,
 					  NULL, NULL, &rcvflg);
-			gctx->secs = time_second - gctx->starttime;
+			gctx->secs = time_uptime - gctx->starttime;
 			for (ifctx = gctx->interfaces;
 			     ifctx != NULL;
 			     ifctx = ifctx->next) {
@@ -886,13 +886,13 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 					}
 					/* Network settle delay */
 					if (outstanding == 0)
-						atimo = time_second +
+						atimo = time_uptime +
 							BOOTP_SETTLE_DELAY;
 				} else
 					kprintf(" (ignored)");
 				if (ifctx->gotrootpath) {
 					gotrootpath = 1;
-					rtimo = time_second +
+					rtimo = time_uptime +
 						BOOTP_SETTLE_DELAY;
 					kprintf(" (got root path)");
 				} else
@@ -921,7 +921,7 @@ bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 		
 		if (gotrootpath != 0) {
 			gctx->gotrootpath = gotrootpath;
-			if (rtimo != 0 && time_second >= rtimo)
+			if (rtimo != 0 && time_uptime >= rtimo)
 				break;
 		}
 	} /* forever send/receive */
@@ -1530,16 +1530,10 @@ bootpc_init(void)
 	if (nfs_diskless_valid != 0)
 		return;
 
-	/*
-	 * Wait until arp entries can be handled.
-	 */
-	while (time_second == 0)
-		tsleep(&time_second, 0, "arpkludge", 10);
-	
 	gctx = kmalloc(sizeof(*gctx), M_TEMP, M_WAITOK | M_ZERO);
 	
 	gctx->xid = ~0xFFFF;
-	gctx->starttime = time_second;
+	gctx->starttime = time_uptime;
 	
 	ifctx = allocifctx(gctx);
 

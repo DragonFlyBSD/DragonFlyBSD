@@ -195,7 +195,7 @@ dev_dread(cdev_t dev, struct uio *uio, int ioflag)
 	if (needmplock)
 		rel_mplock();
 	if (error == 0)
-		dev->si_lastread = time_second;
+		dev->si_lastread = time_uptime;
 	return (error);
 }
 
@@ -206,7 +206,7 @@ dev_dwrite(cdev_t dev, struct uio *uio, int ioflag)
 	int needmplock = dev_needmplock(dev);
 	int error;
 
-	dev->si_lastwrite = time_second;
+	dev->si_lastwrite = time_uptime;
 	ap.a_head.a_desc = &dev_write_desc;
 	ap.a_head.a_dev = dev;
 	ap.a_uio = uio;

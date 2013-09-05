@@ -2273,7 +2273,7 @@ ieee80211_node_join(struct ieee80211_node *ni, int resp)
 			return;
 		}
 		ni->ni_associd = aid | 0xc000;
-		ni->ni_jointime = time_second;
+		ni->ni_jointime = time_uptime;
 		IEEE80211_AID_SET(vap, ni->ni_associd);
 		vap->iv_sta_assoc++;
 		ic->ic_sta_assoc++;

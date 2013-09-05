@@ -1472,7 +1472,7 @@ bridge_ioctl_rts(struct bridge_softc *sc, void *arg)
 	count = 0;
 	LIST_FOREACH(brt, &sc->sc_rtlists[mycpuid], brt_list) {
 		struct bridge_rtinfo *bri = brt->brt_info;
-		unsigned long expire;
+		time_t expire;
 
 		if (len < sizeof(*bareq))
 			break;
@@ -1482,8 +1482,8 @@ bridge_ioctl_rts(struct bridge_softc *sc, void *arg)
 		memcpy(bareq->ifba_dst, brt->brt_addr, sizeof(brt->brt_addr));
 		expire = bri->bri_expire;
 		if ((bri->bri_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC &&
-		    time_second < expire)
-			bareq->ifba_expire = expire - time_second;
+		    time_uptime < expire)
+			bareq->ifba_expire = expire - time_uptime;
 		else
 			bareq->ifba_expire = 0;
 		bareq->ifba_flags = bri->bri_flags;
@@ -3166,8 +3166,8 @@ bridge_rtinfo_update(struct bridge_rtinfo *bri, struct ifnet *dst_if,
 	    bri->bri_ifp != dst_if)
 		bri->bri_ifp = dst_if;
 	if ((flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC &&
-	    bri->bri_expire != time_second + timeo)
-		bri->bri_expire = time_second + timeo;
+	    bri->bri_expire != time_uptime + timeo)
+		bri->bri_expire = time_uptime + timeo;
 	if (setflags)
 		bri->bri_flags = flags;
 }
@@ -3488,7 +3488,7 @@ bridge_rtage_finddead(struct bridge_softc *sc)
 		struct bridge_rtinfo *bri = brt->brt_info;
 
 		if ((bri->bri_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC &&
-		    time_second >= bri->bri_expire) {
+		    time_uptime >= bri->bri_expire) {
 			bri->bri_dead = 1;
 			++dead;
 			KKASSERT(dead <= sc->sc_brtcnt);

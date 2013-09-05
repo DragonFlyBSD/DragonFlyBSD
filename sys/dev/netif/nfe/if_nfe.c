@@ -921,11 +921,11 @@ nfe_intr(void *arg)
 		return;	/* not for us */
 	NFE_WRITE(sc, NFE_IRQ_STATUS, r);
 
-	if (sc->sc_rate_second != time_second) {
+	if (sc->sc_rate_second != time_uptime) {
 		/*
 		 * Calculate sc_rate_avg - interrupts per second.
 		 */
-		sc->sc_rate_second = time_second;
+		sc->sc_rate_second = time_uptime;
 		if (sc->sc_rate_avg < sc->sc_rate_acc)
 			sc->sc_rate_avg = sc->sc_rate_acc;
 		else

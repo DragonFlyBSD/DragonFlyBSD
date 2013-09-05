@@ -86,11 +86,11 @@ fore_get_stats(Fore_unit *fup)
 	/*
 	 * Limit stats gathering to once a second or so
 	 */
-	if (time_second == fup->fu_stats_time) {
+	if (time_uptime == fup->fu_stats_time) {
 		crit_exit();
 		return (0);
 	} else
-		fup->fu_stats_time = time_second;
+		fup->fu_stats_time = time_uptime;
 
 	/*
 	 * Queue command at end of command queue

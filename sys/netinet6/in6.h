@@ -369,11 +369,11 @@ extern const struct in6_addr in6addr_linklocal_allnodes;
 
 #define IFA6_IS_DEPRECATED(a)						\
 	((a)->ia6_lifetime.ia6t_preferred != 0 &&			\
-	 (a)->ia6_lifetime.ia6t_preferred < time_second)
+	 (a)->ia6_lifetime.ia6t_preferred < time_uptime)
 
 #define IFA6_IS_INVALID(a)						\
 	((a)->ia6_lifetime.ia6t_expire != 0 &&				\
-	 (a)->ia6_lifetime.ia6t_expire < time_second)
+	 (a)->ia6_lifetime.ia6t_expire < time_uptime)
 #endif
 
 /*

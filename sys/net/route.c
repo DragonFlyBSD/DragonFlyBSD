@@ -1314,7 +1314,7 @@ rt_llroute(struct sockaddr *dst, struct rtentry *rt0, struct rtentry **drt)
 		rt = up_rt;
 	if (rt->rt_flags & RTF_REJECT &&
 	    (rt->rt_rmx.rmx_expire == 0 ||		/* rt doesn't expire */
-	     time_second < rt->rt_rmx.rmx_expire))	/* rt not expired */
+	     time_uptime < rt->rt_rmx.rmx_expire))	/* rt not expired */
 		return (rt->rt_flags & RTF_HOST ?  EHOSTDOWN : EHOSTUNREACH);
 	*drt = rt;
 	return 0;

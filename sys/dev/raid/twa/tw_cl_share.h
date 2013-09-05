@@ -396,7 +396,7 @@ extern TW_VOID	tw_osl_free_lock(struct tw_cl_ctlr_handle *ctlr_handle,
 
 
 #ifndef tw_osl_get_local_time
-/* Get local time. */
+/* Get local time. XXX now gets monotonic uptime, used only for timeouts */
 extern TW_TIME	tw_osl_get_local_time(TW_VOID);
 #endif
 

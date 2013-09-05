@@ -340,8 +340,8 @@ krateprintf(struct krate *rate, const char *fmt, ...)
 {
 	__va_list ap;
 
-	if (rate->ticks != (int)time_second) {
-		rate->ticks = (int)time_second;
+	if (rate->ticks != (int)time_uptime) {
+		rate->ticks = (int)time_uptime;
 		if (rate->count > 0)
 			rate->count = 0;
 	}

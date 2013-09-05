@@ -681,7 +681,7 @@ drop2:
 	 * idle lines.
 	 */
 	if (do_account)
-		sp->pp_last_recv = time_second;
+		sp->pp_last_recv = time_uptime;
 }
 
 /*
@@ -931,7 +931,7 @@ sppp_output_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 	 * network-layer traffic; control-layer traffic is handled
 	 * by sppp_cp_send().
 	 */
-	sp->pp_last_sent = time_second;
+	sp->pp_last_sent = time_uptime;
 
 	crit_exit();
 	return (0);
@@ -982,7 +982,7 @@ sppp_attach(struct ifnet *ifp)
 	sp->pp_phase = PHASE_DEAD;
 	sp->pp_up = lcp.Up;
 	sp->pp_down = lcp.Down;
-	sp->pp_last_recv = sp->pp_last_sent = time_second;
+	sp->pp_last_recv = sp->pp_last_sent = time_uptime;
 	sp->confflags = 0;
 #ifdef INET
 	sp->confflags |= CONF_ENABLE_VJ;

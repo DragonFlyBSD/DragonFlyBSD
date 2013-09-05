@@ -836,7 +836,7 @@ mlx_ioctl(struct dev_ioctl_args *ap)
 
 	    /* looks ok, go with it */
 	    sc->mlx_pause.mp_which = mp->mp_which;
-	    sc->mlx_pause.mp_when = time_second + mp->mp_when;
+	    sc->mlx_pause.mp_when = time_uptime + mp->mp_when;
 	    sc->mlx_pause.mp_howlong = sc->mlx_pause.mp_when + mp->mp_howlong;
 	}
 	return(0);
@@ -987,7 +987,7 @@ mlx_periodic(void *data)
      */
     if ((sc->mlx_pause.mp_which != 0) &&
 	(sc->mlx_pause.mp_when > 0) &&
-	(time_second >= sc->mlx_pause.mp_when)){
+	(time_uptime >= sc->mlx_pause.mp_when)){
 
 	mlx_pause_action(sc);		/* pause is running */
 	sc->mlx_pause.mp_when = 0;
@@ -1000,19 +1000,19 @@ mlx_periodic(void *data)
 	       (sc->mlx_pause.mp_when == 0)) {
 
 	/* time to stop bus pause? */
-	if (time_second >= sc->mlx_pause.mp_howlong) {
+	if (time_uptime >= sc->mlx_pause.mp_howlong) {
 	    mlx_pause_action(sc);
 	    sc->mlx_pause.mp_which = 0;	/* pause is complete */
 	    sysbeep(500, hz);
 	} else {
-	    sysbeep((time_second % 5) * 100 + 500, hz/8);
+	    sysbeep((time_uptime % 5) * 100 + 500, hz/8);
 	}
 
 	/* 
 	 * Run normal periodic activities? 
 	 */
-    } else if (time_second > (sc->mlx_lastpoll + 10)) {
-	sc->mlx_lastpoll = time_second;
+    } else if (time_uptime > (sc->mlx_lastpoll + 10)) {
+	sc->mlx_lastpoll = time_uptime;
 
 	/* 
 	 * Check controller status.
@@ -1379,10 +1379,10 @@ mlx_pause_action(struct mlx_softc *sc)
 	 * which is specified in multiples of 30 seconds.
 	 * This constrains us to a maximum pause of 450 seconds.
 	 */
-	failsafe = ((sc->mlx_pause.mp_howlong - time_second) + 5) / 30;
+	failsafe = ((sc->mlx_pause.mp_howlong - time_uptime) + 5) / 30;
 	if (failsafe > 0xf) {
 	    failsafe = 0xf;
-	    sc->mlx_pause.mp_howlong = time_second + (0xf * 30) - 5;
+	    sc->mlx_pause.mp_howlong = time_uptime + (0xf * 30) - 5;
 	}
     }
 
@@ -1428,7 +1428,7 @@ mlx_pause_done(struct mlx_command *mc)
 		      command == MLX_CMD_STOPCHANNEL ? "pause" : "resume", mlx_diagnose_command(mc));
     } else if (command == MLX_CMD_STOPCHANNEL) {
 	device_printf(sc->mlx_dev, "channel %d pausing for %ld seconds\n", 
-		      channel, (long)(sc->mlx_pause.mp_howlong - time_second));
+		      channel, (long)(sc->mlx_pause.mp_howlong - time_uptime));
     } else {
 	device_printf(sc->mlx_dev, "channel %d resuming\n", channel);
     }
@@ -2085,7 +2085,7 @@ mlx_start(struct mlx_command *mc)
     mc->mc_status = MLX_STATUS_BUSY;
 
     /* set a default 60-second timeout  XXX tunable?  XXX not currently used */
-    mc->mc_timeout = time_second + 60;
+    mc->mc_timeout = time_uptime + 60;
     
     /* spin waiting for the mailbox */
     for (i = 100000, done = 0; (i > 0) && !done; i--) {

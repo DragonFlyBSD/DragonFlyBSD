@@ -517,7 +517,7 @@ tws_aen_synctime_with_host(struct tws_softc *sc)
     TWS_TRACE_DEBUG(sc, "entry", sc, 0);
 
     sync_time = (TWS_LOCAL_TIME - (3 * 86400)) % 604800;
-    TWS_TRACE_DEBUG(sc, "sync_time,ts", sync_time, time_second);
+    TWS_TRACE_DEBUG(sc, "sync_time,ts", sync_time, time_uptime);
     TWS_TRACE_DEBUG(sc, "utc_offset", utc_offset(), 0);
     error = tws_set_param(sc, TWS_PARAM_TIME_TABLE, TWS_PARAM_TIME_SCHED_TIME,
                            4, &sync_time);

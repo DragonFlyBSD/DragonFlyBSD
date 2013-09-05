@@ -191,7 +191,8 @@ struct clockinfo {
 
 #ifdef _KERNEL
 
-extern time_t	time_second;
+extern time_t	time_second;		/* simple time_t (can step) */
+extern time_t	time_uptime;		/* monotonic simple uptime / seconds */
 extern int64_t	ntp_tick_permanent;
 extern int64_t	ntp_tick_acc;
 extern int64_t	ntp_delta;

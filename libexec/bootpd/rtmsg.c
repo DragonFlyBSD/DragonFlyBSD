@@ -121,7 +121,7 @@ bsd_arp_set(struct in_addr *ia, char *eaddr, int len)
 	struct sockaddr_dl *sdl;
 	struct rt_msghdr *rtm = &(m_rtmsg.m_rtm);
 	u_char *ea;
-	struct timeval time;
+	struct timespec tp;
 	int op = RTM_ADD;
 
 	getsocket();
@@ -135,8 +135,8 @@ bsd_arp_set(struct in_addr *ia, char *eaddr, int len)
 	doing_proxy = flags = export_only = expire_time = 0;
 
 	/* make arp entry temporary */
-	gettimeofday(&time, 0);
-	expire_time = time.tv_sec + 20 * 60;
+	clock_gettime(CLOCK_MONOTONIC, &tp);
+	expire_time = tp.tv_sec + 20 * 60;
 
 tryagain:
 	if (rtmsg(RTM_GET) < 0) {

@@ -926,7 +926,7 @@ inittodr(time_t base)
 
 	sec += tz.tz_minuteswest * 60 + (wall_cmos_clock ? adjkerntz : 0);
 
-	y = time_second - sec;
+	y = (int)(time_second - sec);
 	if (y <= -2 || y >= 2) {
 		/* badly off, adjust it */
 		ts.tv_sec = sec;

@@ -331,12 +331,12 @@ init_prefix_ltimes(struct rr_prefix *rpp)
 	    rpp->rp_rrf_decrprefd == 0)
 		rpp->rp_preferred = 0;
 	else
-		rpp->rp_preferred = time_second + rpp->rp_pltime;
+		rpp->rp_preferred = time_uptime + rpp->rp_pltime;
 	if (rpp->rp_vltime == RR_INFINITE_LIFETIME ||
 	    rpp->rp_rrf_decrvalid == 0)
 		rpp->rp_expire = 0;
 	else
-		rpp->rp_expire = time_second + rpp->rp_vltime;
+		rpp->rp_expire = time_uptime + rpp->rp_vltime;
 }
 
 static int
@@ -955,7 +955,7 @@ unprefer_prefix(struct rr_prefix *rpp)
 	     rap = rap->ra_entry.le_next) {
 		if (rap->ra_addr == NULL)
 			continue;
-		rap->ra_addr->ia6_lifetime.ia6t_preferred = time_second;
+		rap->ra_addr->ia6_lifetime.ia6t_preferred = time_uptime;
 		rap->ra_addr->ia6_lifetime.ia6t_pltime = 0;
 	}
 }
@@ -1190,7 +1190,7 @@ in6_rr_timer(void *ignored_arg)
 	/* expire */
 	rpp = LIST_FIRST(&rr_prefix);
 	while (rpp) {
-		if (rpp->rp_expire && rpp->rp_expire < time_second) {
+		if (rpp->rp_expire && rpp->rp_expire < time_uptime) {
 			struct rr_prefix *next_rpp;
 
 			next_rpp = LIST_NEXT(rpp, rp_entry);
@@ -1198,7 +1198,7 @@ in6_rr_timer(void *ignored_arg)
 			rpp = next_rpp;
 			continue;
 		}
-		if (rpp->rp_preferred && rpp->rp_preferred < time_second)
+		if (rpp->rp_preferred && rpp->rp_preferred < time_uptime)
 			unprefer_prefix(rpp);
 		rpp = LIST_NEXT(rpp, rp_entry);
 	}

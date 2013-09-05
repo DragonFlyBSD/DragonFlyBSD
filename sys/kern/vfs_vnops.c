@@ -828,11 +828,15 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		dev = vp->v_rdev;
 		if (dev != NULL) {
 			if (dev->si_lastread) {
-				sb->st_atimespec.tv_sec = dev->si_lastread;
+				sb->st_atimespec.tv_sec = time_second +
+							  (time_uptime -
+							   dev->si_lastread);
 				sb->st_atimespec.tv_nsec = 0;
 			}
 			if (dev->si_lastwrite) {
-				sb->st_atimespec.tv_sec = dev->si_lastwrite;
+				sb->st_atimespec.tv_sec = time_second +
+							  (time_uptime -
+							   dev->si_lastwrite);
 				sb->st_atimespec.tv_nsec = 0;
 			}
 		}

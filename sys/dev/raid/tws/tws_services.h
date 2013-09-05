@@ -130,5 +130,4 @@ extern struct error_desc array[];
 
 
 /* ------------------------ */
-#define TWS_LOCAL_TIME (time_second - (tz.tz_minuteswest * 60) -   \
-                  (wall_cmos_clock ? adjkerntz : 0))
+#define TWS_LOCAL_TIME		time_uptime

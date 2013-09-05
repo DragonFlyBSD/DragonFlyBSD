@@ -506,7 +506,7 @@ aac_cam_action(struct cam_sim *sim, union ccb *ccb)
 
 	cm->cm_complete = aac_cam_complete;
 	cm->cm_private = ccb;
-	cm->cm_timestamp = time_second;
+	cm->cm_timestamp = time_uptime;
 
 	fib->Header.XferState =
 	    AAC_FIBSTATE_HOSTOWNED	|

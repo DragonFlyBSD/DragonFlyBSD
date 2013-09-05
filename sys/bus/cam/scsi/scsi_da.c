@@ -1429,13 +1429,13 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		/* DEBUGGING */
 		static int savets;
 		static long savets2;
-		if (1 || time_second != savets2 || (ticks != savets && (softc->outstanding_cmds_rd || softc->outstanding_cmds_wr))) {
+		if (1 || time_uptime != savets2 || (ticks != savets && (softc->outstanding_cmds_rd || softc->outstanding_cmds_wr))) {
 			kprintf("%d %d (%d)\n",
 				softc->outstanding_cmds_rd,
 				softc->outstanding_cmds_wr,
 				limit);
 			savets = ticks;
-			savets2 = time_second;
+			savets2 = time_uptime;
 		}
 #endif
 		if (bio_rd && softc->outstanding_cmds_rd < limit) {

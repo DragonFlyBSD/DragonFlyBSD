@@ -558,11 +558,11 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 		/* sanity for overflow - beware unsigned */
 		lt = &ifr->ifr_ifru.ifru_lifetime;
 		if (lt->ia6t_vltime != ND6_INFINITE_LIFETIME
-		 && lt->ia6t_vltime + time_second < time_second) {
+		    && lt->ia6t_vltime + time_uptime < time_uptime) {
 			return EINVAL;
 		}
 		if (lt->ia6t_pltime != ND6_INFINITE_LIFETIME
-		 && lt->ia6t_pltime + time_second < time_second) {
+		    && lt->ia6t_pltime + time_uptime < time_uptime) {
 			return EINVAL;
 		}
 		break;
@@ -618,12 +618,12 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 		/* for sanity */
 		if (ia->ia6_lifetime.ia6t_vltime != ND6_INFINITE_LIFETIME) {
 			ia->ia6_lifetime.ia6t_expire =
-				time_second + ia->ia6_lifetime.ia6t_vltime;
+				time_uptime + ia->ia6_lifetime.ia6t_vltime;
 		} else
 			ia->ia6_lifetime.ia6t_expire = 0;
 		if (ia->ia6_lifetime.ia6t_pltime != ND6_INFINITE_LIFETIME) {
 			ia->ia6_lifetime.ia6t_preferred =
-				time_second + ia->ia6_lifetime.ia6t_pltime;
+				time_uptime + ia->ia6_lifetime.ia6t_pltime;
 		} else
 			ia->ia6_lifetime.ia6t_preferred = 0;
 		break;
@@ -905,7 +905,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 	/* lifetime consistency check */
 	lt = &ifra->ifra_lifetime;
 	if (lt->ia6t_vltime != ND6_INFINITE_LIFETIME
-	    && lt->ia6t_vltime + time_second < time_second) {
+	    && lt->ia6t_vltime + time_uptime < time_uptime) {
 		return EINVAL;
 	}
 	if (lt->ia6t_vltime == 0) {
@@ -918,7 +918,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		    ip6_sprintf(&ifra->ifra_addr.sin6_addr));
 	}
 	if (lt->ia6t_pltime != ND6_INFINITE_LIFETIME
-	    && lt->ia6t_pltime + time_second < time_second) {
+	    && lt->ia6t_pltime + time_uptime < time_uptime) {
 		return EINVAL;
 	}
 
@@ -1150,12 +1150,12 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 	/* for sanity */
 	if (ia->ia6_lifetime.ia6t_vltime != ND6_INFINITE_LIFETIME) {
 		ia->ia6_lifetime.ia6t_expire =
-			time_second + ia->ia6_lifetime.ia6t_vltime;
+			time_uptime + ia->ia6_lifetime.ia6t_vltime;
 	} else
 		ia->ia6_lifetime.ia6t_expire = 0;
 	if (ia->ia6_lifetime.ia6t_pltime != ND6_INFINITE_LIFETIME) {
 		ia->ia6_lifetime.ia6t_preferred =
-			time_second + ia->ia6_lifetime.ia6t_pltime;
+			time_uptime + ia->ia6_lifetime.ia6t_pltime;
 	} else
 		ia->ia6_lifetime.ia6t_preferred = 0;
 

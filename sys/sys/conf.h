@@ -102,8 +102,8 @@ struct cdev {
 	} __si_u;
 	struct bio_track si_track_read;
 	struct bio_track si_track_write;
-	time_t		si_lastread;	/* time_second */
-	time_t		si_lastwrite;	/* time_second */
+	time_t		si_lastread;	/* time_uptime */
+	time_t		si_lastwrite;	/* time_uptime */
 	struct vm_object *si_object;	/* vm_pager support */
 	prop_dictionary_t si_dict;
 	struct kqinfo	si_kqinfo;	/* degenerate delegated knotes */

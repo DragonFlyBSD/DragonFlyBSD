@@ -822,8 +822,8 @@ send:
 			if (tp->t_maxopd <= optlen + ipoptlen) {
 				static time_t last_optlen_report;
 
-				if (last_optlen_report != time_second) {
-					last_optlen_report = time_second;
+				if (last_optlen_report != time_uptime) {
+					last_optlen_report = time_uptime;
 					kprintf("tcpcb %p: MSS (%d) too "
 					    "small to hold options!\n",
 					    tp, tp->t_maxopd);

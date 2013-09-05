@@ -1272,14 +1272,14 @@ twe_wait_status(struct twe_softc *sc, u_int32_t status, int timeout)
 
     debug_called(4);
 
-    expiry = time_second + timeout;
+    expiry = time_uptime + timeout;
 
     do {
 	status_reg = TWE_STATUS(sc);
 	if (status_reg & status)	/* got the required bit(s)? */
 	    return(0);
 	DELAY(100000);
-    } while (time_second <= expiry);
+    } while (time_uptime <= expiry);
 
     return(1);
 }
@@ -1565,7 +1565,7 @@ twe_wait_aen(struct twe_softc *sc, int aen, int timeout)
 
     debug_called(4);
 
-    expiry = time_second + timeout;
+    expiry = time_uptime + timeout;
     found = 0;
 
     sc->twe_wait_aen = aen;
@@ -1574,7 +1574,7 @@ twe_wait_aen(struct twe_softc *sc, int aen, int timeout)
 	lksleep(&sc->twe_wait_aen, &sc->twe_io_lock, 0, "twewaen", hz);
 	if (sc->twe_wait_aen == -1)
 	    found = 1;
-    } while ((time_second <= expiry) && !found);
+    } while ((time_uptime <= expiry) && !found);
     return(!found);
 }
 #endif
@@ -1742,19 +1742,19 @@ twe_check_bits(struct twe_softc *sc, u_int32_t status_reg)
 
     result = 0;
     if ((status_reg & TWE_STATUS_EXPECTED_BITS) != TWE_STATUS_EXPECTED_BITS) {
-	if (time_second > (lastwarn[0] + 5)) {
+	if (time_uptime > (lastwarn[0] + 5)) {
 	    twe_printf(sc, "missing expected status bit(s) %b\n", ~status_reg & TWE_STATUS_EXPECTED_BITS, 
 		       TWE_STATUS_BITS_DESCRIPTION);
-	    lastwarn[0] = time_second;
+	    lastwarn[0] = time_uptime;
 	}
 	result = 1;
     }
 
     if ((status_reg & TWE_STATUS_UNEXPECTED_BITS) != 0) {
-	if (time_second > (lastwarn[1] + 5)) {
+	if (time_uptime > (lastwarn[1] + 5)) {
 	    twe_printf(sc, "unexpected status bit(s) %b\n", status_reg & TWE_STATUS_UNEXPECTED_BITS, 
 		       TWE_STATUS_BITS_DESCRIPTION);
-	    lastwarn[1] = time_second;
+	    lastwarn[1] = time_uptime;
 	}
 	result = 1;
 	if (status_reg & TWE_STATUS_PCI_PARITY_ERROR) {

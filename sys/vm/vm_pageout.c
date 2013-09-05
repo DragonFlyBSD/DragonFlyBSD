@@ -1446,11 +1446,11 @@ vm_pageout_scan_cache(int avail_shortage, int vnodes_skipped, int recycle_count)
 	 * Idle process swapout -- run once per second.
 	 */
 	if (vm_swap_idle_enabled) {
-		static long lsec;
-		if (time_second != lsec) {
+		static time_t lsec;
+		if (time_uptime != lsec) {
 			vm_pageout_req_swapout |= VM_SWAP_IDLE;
 			vm_req_vmdaemon();
-			lsec = time_second;
+			lsec = time_uptime;
 		}
 	}
 #endif

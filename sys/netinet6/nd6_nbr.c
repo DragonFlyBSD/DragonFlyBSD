@@ -735,11 +735,11 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 			ln->ln_state = ND6_LLINFO_REACHABLE;
 			ln->ln_byhint = 0;
 			if (ln->ln_expire)
-				ln->ln_expire = time_second +
+				ln->ln_expire = time_uptime +
 				    ND_IFINFO(rt->rt_ifp)->reachable;
 		} else {
 			ln->ln_state = ND6_LLINFO_STALE;
-			ln->ln_expire = time_second + nd6_gctimer;
+			ln->ln_expire = time_uptime + nd6_gctimer;
 		}
 		if ((ln->ln_router = is_router) != 0) {
 			/*
@@ -793,7 +793,7 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 			 */
 			if (ln->ln_state == ND6_LLINFO_REACHABLE) {
 				ln->ln_state = ND6_LLINFO_STALE;
-				ln->ln_expire = time_second + nd6_gctimer;
+				ln->ln_expire = time_uptime + nd6_gctimer;
 			}
 			goto freeit;
 		} else if (is_override				   /* (2a) */
@@ -816,13 +816,13 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 				ln->ln_state = ND6_LLINFO_REACHABLE;
 				ln->ln_byhint = 0;
 				if (ln->ln_expire) {
-					ln->ln_expire = time_second +
+					ln->ln_expire = time_uptime +
 					    ND_IFINFO(ifp)->reachable;
 				}
 			} else {
 				if (lladdr && llchange) {
 					ln->ln_state = ND6_LLINFO_STALE;
-					ln->ln_expire = time_second + nd6_gctimer;
+					ln->ln_expire = time_uptime + nd6_gctimer;
 				}
 			}
 		}

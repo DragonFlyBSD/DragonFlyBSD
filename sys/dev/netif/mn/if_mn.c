@@ -407,19 +407,19 @@ ngmn_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr, struct ng_mes
 
 		pos += ksprintf(r + pos, "  Last Rx: ");
 		if (sch->last_recv)
-			pos += ksprintf(r + pos, "%lu s", time_second - sch->last_recv);
+			pos += ksprintf(r + pos, "%lu s", time_uptime - sch->last_recv);
 		else
 			pos += ksprintf(r + pos, "never");
 
 		pos += ksprintf(r + pos, ", last RxErr: ");
 		if (sch->last_rxerr)
-			pos += ksprintf(r + pos, "%lu s", time_second - sch->last_rxerr);
+			pos += ksprintf(r + pos, "%lu s", time_uptime - sch->last_rxerr);
 		else
 			pos += ksprintf(r + pos, "never");
 
 		pos += ksprintf(r + pos, ", last Tx: ");
 		if (sch->last_xmit)
-			pos += ksprintf(r + pos, "%lu s\n", time_second - sch->last_xmit);
+			pos += ksprintf(r + pos, "%lu s\n", time_uptime - sch->last_xmit);
 		else
 			pos += ksprintf(r + pos, "never\n");
 
@@ -1105,7 +1105,7 @@ mn_tx_intr(struct softc *sc, u_int32_t vector)
 			sc->ch[chan]->tx_pending -= m->m_pkthdr.len;
 			m_freem(m);
 		}
-		sc->ch[chan]->last_xmit = time_second;
+		sc->ch[chan]->last_xmit = time_uptime;
 		sc->ch[chan]->x1 = dp->vnext;
 		mn_free_desc(dp);
 	}
@@ -1143,7 +1143,7 @@ mn_rx_intr(struct softc *sc, u_int32_t vector)
 		err = (dp->status >> 8) & 0xff;
 		if (!err) {
 			ng_queue_data(sch->hook, m, NULL);
-			sch->last_recv = time_second;
+			sch->last_recv = time_uptime;
 			m = NULL;
 			/* we could be down by now... */
 			if (sch->state != UP) 
@@ -1162,7 +1162,7 @@ mn_rx_intr(struct softc *sc, u_int32_t vector)
 			sch->overflow_error++;
 		}
 		if (err) {
-			sch->last_rxerr = time_second;
+			sch->last_rxerr = time_uptime;
 			sch->prev_error = sch->last_error;
 			sch->last_error = err;
 		}

@@ -178,6 +178,7 @@ SYSCTL_PROC(_kern, OID_AUTO, cp_time, (CTLTYPE_LONG|CTLFLAG_RD), 0, 0,
  */
 struct timespec boottime;	/* boot time (realtime) for reference only */
 time_t time_second;		/* read-only 'passive' uptime in seconds */
+time_t time_uptime;		/* read-only 'passive' uptime in seconds */
 
 /*
  * basetime is used to calculate the compensated real time of day.  The
@@ -379,6 +380,8 @@ hardclock(systimer_t info, int in_ipi __unused, struct intrframe *frame)
 	if (cputicks >= sys_cputimer->freq) {
 		++gd->gd_time_seconds;
 		gd->gd_cpuclock_base += sys_cputimer->freq;
+		if (gd->gd_cpuid == 0)
+			++time_uptime;	/* uncorrected monotonic 1-sec gran */
 	}
 
 	/*

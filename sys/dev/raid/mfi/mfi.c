@@ -2293,7 +2293,7 @@ mfi_send_frame(struct mfi_softc *sc, struct mfi_command *cm)
 	hdr = &cm->cm_frame->header;
 
 	if ((cm->cm_flags & MFI_CMD_POLLED) == 0) {
-		cm->cm_timestamp = time_second;
+		cm->cm_timestamp = time_uptime;
 		mfi_enqueue_busy(cm);
 	} else {
 		hdr->cmd_status = MFI_STAT_INVALID_STATUS;
@@ -3484,13 +3484,13 @@ mfi_dump_all(void)
 			break;
 		device_printf(sc->mfi_dev, "Dumping\n\n");
 		timedout = 0;
-		deadline = time_second - mfi_cmd_timeout;
+		deadline = time_uptime - mfi_cmd_timeout;
 		lockmgr(&sc->mfi_io_lock, LK_EXCLUSIVE);
 		TAILQ_FOREACH(cm, &sc->mfi_busy, cm_link) {
 			if (cm->cm_timestamp < deadline) {
 				device_printf(sc->mfi_dev,
 				    "COMMAND %p TIMEOUT AFTER %d SECONDS\n",
-				    cm, (int)(time_second - cm->cm_timestamp));
+				    cm, (int)(time_uptime - cm->cm_timestamp));
 				MFI_PRINT_CMD(cm);
 				timedout++;
 			}
@@ -3515,7 +3515,7 @@ mfi_timeout(void *data)
 	time_t deadline;
 	int timedout = 0;
 
-	deadline = time_second - mfi_cmd_timeout;
+	deadline = time_uptime - mfi_cmd_timeout;
 	if (sc->adpreset == 0) {
 		if (!mfi_tbolt_reset(sc)) {
 			callout_reset(&sc->mfi_watchdog_callout,
@@ -3529,11 +3529,11 @@ mfi_timeout(void *data)
 			continue;
 		if ((sc->mfi_aen_cm != cm) && (cm->cm_timestamp < deadline)) {
 			if (sc->adpreset != 0 && sc->issuepend_done == 0) {
-				cm->cm_timestamp = time_second;
+				cm->cm_timestamp = time_uptime;
 			} else {
 				device_printf(sc->mfi_dev,
 				    "COMMAND %p TIMEOUT AFTER %d SECONDS\n",
-				     cm, (int)(time_second - cm->cm_timestamp));
+				     cm, (int)(time_uptime - cm->cm_timestamp));
 				MFI_PRINT_CMD(cm);
 				MFI_VALIDATE_CMD(sc, cm);
 				timedout++;

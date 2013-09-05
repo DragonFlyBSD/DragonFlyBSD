@@ -1139,7 +1139,7 @@ aac_complete(void *context, int pending)
 		if ((cm->cm_flags & AAC_CMD_TIMEDOUT) != 0)
 			device_printf(sc->aac_dev,
 			    "COMMAND %p COMPLETED AFTER %d SECONDS\n",
-			    cm, (int)(time_second-cm->cm_timestamp));
+			    cm, (int)(time_uptime - cm->cm_timestamp));
 
 		aac_remove_busy(cm);
 
@@ -1207,7 +1207,7 @@ aac_bio_command(struct aac_softc *sc, struct aac_command **cmp)
 	cm->cm_datalen = bp->b_bcount;
 	cm->cm_complete = aac_bio_complete;
 	cm->cm_private = bio;
-	cm->cm_timestamp = time_second;
+	cm->cm_timestamp = time_uptime;
 
 	/* build the FIB */
 	fib = cm->cm_fib;
@@ -1697,7 +1697,7 @@ aac_check_firmware(struct aac_softc *sc)
 	/*
 	 * Wait for the adapter to come ready.
 	 */
-	then = time_second;
+	then = time_uptime;
 	do {
 		code = AAC_GET_FWSTATUS(sc);
 		if (code & AAC_SELF_TEST_FAILED) {
@@ -1709,7 +1709,7 @@ aac_check_firmware(struct aac_softc *sc)
 				      "FATAL: controller kernel panic");
 			return(ENXIO);
 		}
-		if (time_second > (then + AAC_BOOT_TIMEOUT)) {
+		if (time_uptime > (then + AAC_BOOT_TIMEOUT)) {
 			device_printf(sc->aac_dev,
 				      "FATAL: controller not coming ready, "
 					   "status %x\n", code);
@@ -1888,7 +1888,7 @@ aac_init(struct aac_softc *sc)
 		ip->HostPhysMemPages =
 		    (ip->HostPhysMemPages + AAC_PAGE_SIZE) / AAC_PAGE_SIZE;
 	}
-	ip->HostElapsedSeconds = time_second;	/* reset later if invalid */
+	ip->HostElapsedSeconds = time_uptime;	/* reset later if invalid */
 
 	ip->InitFlags = 0;
 	if (sc->flags & AAC_FLAGS_NEW_COMM) {
@@ -2057,9 +2057,9 @@ aac_sync_command(struct aac_softc *sc, u_int32_t command,
 	AAC_QNOTIFY(sc, AAC_DB_SYNC_COMMAND);
 
 	/* spin waiting for the command to complete */
-	then = time_second;
+	then = time_uptime;
 	do {
-		if (time_second > (then + AAC_IMMEDIATE_TIMEOUT)) {
+		if (time_uptime > (then + AAC_IMMEDIATE_TIMEOUT)) {
 			fwprintf(sc, HBA_FLAGS_DBG_ERROR_B, "timed out");
 			return(EIO);
 		}
@@ -2359,7 +2359,7 @@ aac_timeout(struct aac_softc *sc)
 	 * only.
 	 */
 	timedout = 0;
-	deadline = time_second - AAC_CMD_TIMEOUT;
+	deadline = time_uptime - AAC_CMD_TIMEOUT;
 	TAILQ_FOREACH(cm, &sc->aac_busy, cm_link) {
 		if ((cm->cm_timestamp  < deadline)
 		    && !(cm->cm_flags & AAC_CMD_TIMEDOUT)) {
@@ -2367,7 +2367,7 @@ aac_timeout(struct aac_softc *sc)
 			device_printf(sc->aac_dev,
 			    "COMMAND %p (TYPE %d) TIMEOUT AFTER %d SECONDS\n",
 			    cm, cm->cm_fib->Header.Command,
-			    (int)(time_second-cm->cm_timestamp));
+			    (int)(time_uptime-cm->cm_timestamp));
 			AAC_PRINT_FIB(sc, cm->cm_fib);
 			timedout++;
 		}
@@ -3047,7 +3047,7 @@ aac_ioctl_sendfib(struct aac_softc *sc, caddr_t ufib)
 	if ((error = copyin(ufib, cm->cm_fib, size)) != 0)
 		goto out;
 	cm->cm_fib->Header.Size = size;
-	cm->cm_timestamp = time_second;
+	cm->cm_timestamp = time_uptime;
 
 	/*
 	 * Pass the FIB to the controller, wait for it to complete.

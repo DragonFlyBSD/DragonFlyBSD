@@ -271,7 +271,7 @@ in6_clsroute(struct radix_node *rn, struct radix_node_head *head)
 	 */
 	if (rtq_reallyold != 0) {
 		rt->rt_flags |= RTPRF_OURS;
-		rt->rt_rmx.rmx_expire = time_second + rtq_reallyold;
+		rt->rt_rmx.rmx_expire = time_uptime + rtq_reallyold;
 	} else {
 		/*
 		 * Remove route from the radix tree, but defer deallocation
@@ -307,7 +307,7 @@ in6_rtqkill(struct radix_node *rn, void *rock)
 	if (rt->rt_flags & RTPRF_OURS) {
 		ap->found++;
 
-		if (ap->draining || rt->rt_rmx.rmx_expire <= time_second) {
+		if (ap->draining || rt->rt_rmx.rmx_expire <= time_uptime) {
 			if (rt->rt_refcnt > 0)
 				panic("rtqkill route really not free");
 
@@ -319,10 +319,10 @@ in6_rtqkill(struct radix_node *rn, void *rock)
 				ap->killed++;
 		} else {
 			if (ap->updating &&
-			    (rt->rt_rmx.rmx_expire - time_second >
+			    (rt->rt_rmx.rmx_expire - time_uptime >
 			     rtq_reallyold)) {
 				rt->rt_rmx.rmx_expire =
-				    time_second + rtq_reallyold;
+				    time_uptime + rtq_reallyold;
 			}
 			ap->nextstop = lmin(ap->nextstop,
 					    rt->rt_rmx.rmx_expire);
@@ -345,7 +345,7 @@ in6_rtqtimo(void *rock)
 
 	arg.found = arg.killed = 0;
 	arg.rnh = rnh;
-	arg.nextstop = time_second + rtq_timeout;
+	arg.nextstop = time_uptime + rtq_timeout;
 	arg.draining = arg.updating = 0;
 	crit_enter();
 	rnh->rnh_walktree(rnh, in6_rtqkill, &arg);
@@ -360,14 +360,14 @@ in6_rtqtimo(void *rock)
 	 * hard.
 	 */
 	if ((arg.found - arg.killed > rtq_toomany)
-	   && (time_second - last_adjusted_timeout >= rtq_timeout)
+	   && (int)(time_uptime - last_adjusted_timeout) >= rtq_timeout
 	   && rtq_reallyold > rtq_minreallyold) {
 		rtq_reallyold = 2*rtq_reallyold / 3;
 		if (rtq_reallyold < rtq_minreallyold) {
 			rtq_reallyold = rtq_minreallyold;
 		}
 
-		last_adjusted_timeout = time_second;
+		last_adjusted_timeout = time_uptime;
 #ifdef DIAGNOSTIC
 		log(LOG_DEBUG, "in6_rtqtimo: adjusted rtq_reallyold to %d",
 		    rtq_reallyold);
@@ -380,14 +380,14 @@ in6_rtqtimo(void *rock)
 	}
 
 	atv.tv_usec = 0;
-	atv.tv_sec = arg.nextstop - time_second;
+	atv.tv_sec = arg.nextstop - time_uptime;
 	if ((int)atv.tv_sec < 1) {		/* time shift safety */
 		atv.tv_sec = 1;
-		arg.nextstop = time_second + atv.tv_sec;
+		arg.nextstop = time_uptime + atv.tv_sec;
 	}
 	if ((int)atv.tv_sec > rtq_timeout) {	/* time shift safety */
 		atv.tv_sec = rtq_timeout;
-		arg.nextstop = time_second + atv.tv_sec;
+		arg.nextstop = time_uptime + atv.tv_sec;
 	}
 	callout_reset(&in6_rtqtimo_ch[mycpuid], tvtohz_high(&atv),
 		      in6_rtqtimo, rock);
@@ -412,7 +412,7 @@ in6_mtuexpire(struct radix_node *rn, void *rock)
 		panic("rt == NULL in in6_mtuexpire");
 
 	if (rt->rt_rmx.rmx_expire && !(rt->rt_flags & RTF_PROBEMTU)) {
-		if (rt->rt_rmx.rmx_expire <= time_second) {
+		if (rt->rt_rmx.rmx_expire <= time_uptime) {
 			rt->rt_flags |= RTF_PROBEMTU;
 		} else {
 			ap->nextstop = lmin(ap->nextstop,
@@ -433,20 +433,20 @@ in6_mtutimo(void *rock)
 	struct timeval atv;
 
 	arg.rnh = rnh;
-	arg.nextstop = time_second + MTUTIMO_DEFAULT;
+	arg.nextstop = time_uptime + MTUTIMO_DEFAULT;
 	crit_enter();
 	rnh->rnh_walktree(rnh, in6_mtuexpire, &arg);
 	crit_exit();
 
 	atv.tv_usec = 0;
-	atv.tv_sec = arg.nextstop - time_second;
+	atv.tv_sec = arg.nextstop - time_uptime;
 	if ((int)atv.tv_sec < 1) {		/* time shift safety */
 		atv.tv_sec = 1;
-		arg.nextstop = time_second + atv.tv_sec;
+		arg.nextstop = time_uptime + atv.tv_sec;
 	}
 	if ((int)atv.tv_sec > rtq_timeout) {	/* time shift safety */
 		atv.tv_sec = rtq_timeout;
-		arg.nextstop = time_second + atv.tv_sec;
+		arg.nextstop = time_uptime + atv.tv_sec;
 	}
 	callout_reset(&in6_mtutimo_ch[mycpuid], tvtohz_high(&atv),
 		      in6_mtutimo, rock);

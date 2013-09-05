@@ -428,7 +428,7 @@ nd6_timer(void *ignored_arg)
 		ndi = ND_IFINFO(ifp);
 		dst = (struct sockaddr_in6 *)rt_key(rt);
 
-		if (ln->ln_expire > time_second) {
+		if (ln->ln_expire > time_uptime) {
 			ln = next;
 			continue;
 		}
@@ -446,7 +446,7 @@ nd6_timer(void *ignored_arg)
 		case ND6_LLINFO_INCOMPLETE:
 			if (ln->ln_asked < nd6_mmaxtries) {
 				ln->ln_asked++;
-				ln->ln_expire = time_second +
+				ln->ln_expire = time_uptime +
 					ND_IFINFO(ifp)->retrans / 1000;
 				nd6_ns_output(ifp, NULL, &dst->sin6_addr,
 					ln, 0);
@@ -473,7 +473,7 @@ nd6_timer(void *ignored_arg)
 		case ND6_LLINFO_REACHABLE:
 			if (ln->ln_expire) {
 				ln->ln_state = ND6_LLINFO_STALE;
-				ln->ln_expire = time_second + nd6_gctimer;
+				ln->ln_expire = time_uptime + nd6_gctimer;
 			}
 			break;
 
@@ -488,20 +488,20 @@ nd6_timer(void *ignored_arg)
 				/* We need NUD */
 				ln->ln_asked = 1;
 				ln->ln_state = ND6_LLINFO_PROBE;
-				ln->ln_expire = time_second +
+				ln->ln_expire = time_uptime +
 					ndi->retrans / 1000;
 				nd6_ns_output(ifp, &dst->sin6_addr,
 					      &dst->sin6_addr,
 					      ln, 0);
 			} else {
 				ln->ln_state = ND6_LLINFO_STALE; /* XXX */
-				ln->ln_expire = time_second + nd6_gctimer;
+				ln->ln_expire = time_uptime + nd6_gctimer;
 			}
 			break;
 		case ND6_LLINFO_PROBE:
 			if (ln->ln_asked < nd6_umaxtries) {
 				ln->ln_asked++;
-				ln->ln_expire = time_second +
+				ln->ln_expire = time_uptime +
 					ND_IFINFO(ifp)->retrans / 1000;
 				nd6_ns_output(ifp, &dst->sin6_addr,
 					       &dst->sin6_addr, ln, 0);
@@ -516,7 +516,7 @@ nd6_timer(void *ignored_arg)
 	/* expire default router list */
 	dr = TAILQ_FIRST(&nd_defrouter);
 	while (dr) {
-		if (dr->expire && dr->expire < time_second) {
+		if (dr->expire && dr->expire < time_uptime) {
 			struct nd_defrouter *t;
 			t = TAILQ_NEXT(dr, dr_entry);
 			defrtrlist_del(dr);
@@ -606,7 +606,7 @@ addrloop:
 		 * since pltime is just for autoconf, pltime processing for
 		 * prefix is not necessary.
 		 */
-		if (pr->ndpr_expire && pr->ndpr_expire < time_second) {
+		if (pr->ndpr_expire && pr->ndpr_expire < time_uptime) {
 			struct nd_prefix *t;
 			t = pr->ndpr_next;
 
@@ -1045,7 +1045,7 @@ nd6_nud_hint(struct rtentry *rt, struct in6_addr *dst6, int force)
 
 	ln->ln_state = ND6_LLINFO_REACHABLE;
 	if (ln->ln_expire)
-		ln->ln_expire = time_second +
+		ln->ln_expire = time_uptime +
 			ND_IFINFO(rt->rt_ifp)->reachable;
 }
 
@@ -1116,7 +1116,7 @@ nd6_rtrequest(int req, struct rtentry *rt)
 			SDL(gate)->sdl_type = ifp->if_type;
 			SDL(gate)->sdl_index = ifp->if_index;
 			if (ln)
-				ln->ln_expire = time_second;
+				ln->ln_expire = time_uptime;
 #if 1
 			if (ln && ln->ln_expire == 0) {
 				/* kludge for desktops */
@@ -1205,7 +1205,7 @@ nd6_rtrequest(int req, struct rtentry *rt)
 			 * initialized in rtrequest(), so rt_expire is 0.
 			 */
 			ln->ln_state = ND6_LLINFO_NOSTATE;
-			ln->ln_expire = time_second;
+			ln->ln_expire = time_uptime;
 		}
 		rt->rt_flags |= RTF_LLINFO;
 		ln->ln_next = llinfo_nd6.ln_next;
@@ -1667,7 +1667,7 @@ fail:
 			 * we must set the timer now, although it is actually
 			 * meaningless.
 			 */
-			ln->ln_expire = time_second + nd6_gctimer;
+			ln->ln_expire = time_uptime + nd6_gctimer;
 
 			if (ln->ln_hold) {
 				/*
@@ -1681,7 +1681,7 @@ fail:
 			}
 		} else if (ln->ln_state == ND6_LLINFO_INCOMPLETE) {
 			/* probe right away */
-			ln->ln_expire = time_second;
+			ln->ln_expire = time_uptime;
 		}
 	}
 
@@ -1901,7 +1901,7 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m,
 	if ((ifp->if_flags & IFF_POINTOPOINT) &&
 	    ln->ln_state < ND6_LLINFO_REACHABLE) {
 		ln->ln_state = ND6_LLINFO_STALE;
-		ln->ln_expire = time_second + nd6_gctimer;
+		ln->ln_expire = time_uptime + nd6_gctimer;
 	}
 
 	/*
@@ -1914,7 +1914,7 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m,
 	if (ln->ln_state == ND6_LLINFO_STALE) {
 		ln->ln_asked = 0;
 		ln->ln_state = ND6_LLINFO_DELAY;
-		ln->ln_expire = time_second + nd6_delay;
+		ln->ln_expire = time_uptime + nd6_delay;
 	}
 
 	/*
@@ -1941,9 +1941,9 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m,
 	ln->ln_hold = m;
 	if (ln->ln_expire) {
 		if (ln->ln_asked < nd6_mmaxtries &&
-		    ln->ln_expire < time_second) {
+		    ln->ln_expire < time_uptime) {
 			ln->ln_asked++;
-			ln->ln_expire = time_second +
+			ln->ln_expire = time_uptime +
 				ND_IFINFO(ifp)->retrans / 1000;
 			nd6_ns_output(ifp, NULL, &dst->sin6_addr, ln, 0);
 		}

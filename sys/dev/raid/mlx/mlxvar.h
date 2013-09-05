@@ -148,7 +148,7 @@ struct mlx_softc
 #define MLX_STATE_OPEN		(1<<2)	/* control device is open */
 #define MLX_STATE_SUSPEND	(1<<3)	/* controller is suspended */
     struct callout	mlx_timeout;	/* periodic status monitor */
-    time_t		mlx_lastpoll;	/* last time_second we polled for status */
+    time_t		mlx_lastpoll;	/* last time_uptime we polled for status */
     u_int16_t		mlx_lastevent;	/* sequence number of the last event we recorded */
     int			mlx_currevent;	/* sequence number last time we looked */
     int			mlx_background;	/* if != 0 rebuild or check is in progress */

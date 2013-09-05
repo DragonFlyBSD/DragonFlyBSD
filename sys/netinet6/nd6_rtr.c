@@ -269,7 +269,7 @@ nd6_ra_input(struct mbuf *m, int off, int icmp6len)
 	dr0.rtaddr = saddr6;
 	dr0.flags  = nd_ra->nd_ra_flags_reserved;
 	dr0.rtlifetime = ntohs(nd_ra->nd_ra_router_lifetime);
-	dr0.expire = time_second + dr0.rtlifetime;
+	dr0.expire = time_uptime + dr0.rtlifetime;
 	dr0.ifp = ifp;
 	dr0.advint = 0;		/* Mobile IPv6 */
 	dr0.advint_expire = 0;	/* Mobile IPv6 */
@@ -1065,7 +1065,7 @@ prelist_update(struct nd_prefix *new, struct nd_defrouter *dr, struct mbuf *m)
 		else if (IFA6_IS_INVALID(ifa6))
 			storedlifetime = 0;
 		else
-			storedlifetime = lt6_tmp.ia6t_expire - time_second;
+			storedlifetime = lt6_tmp.ia6t_expire - time_uptime;
 
 		/* when not updating, keep the current stored lifetime. */
 		lt6_tmp.ia6t_vltime = storedlifetime;
@@ -1753,14 +1753,14 @@ again:
 	 */
 	if (ia0->ia6_lifetime.ia6t_expire != 0) {
 		vltime0 = IFA6_IS_INVALID(ia0) ? 0 :
-			(ia0->ia6_lifetime.ia6t_expire - time_second);
+			(ia0->ia6_lifetime.ia6t_expire - time_uptime);
 		if (vltime0 > ip6_temp_valid_lifetime)
 			vltime0 = ip6_temp_valid_lifetime;
 	} else
 		vltime0 = ip6_temp_valid_lifetime;
 	if (ia0->ia6_lifetime.ia6t_preferred != 0) {
 		pltime0 = IFA6_IS_DEPRECATED(ia0) ? 0 :
-			(ia0->ia6_lifetime.ia6t_preferred - time_second);
+			(ia0->ia6_lifetime.ia6t_preferred - time_uptime);
 		if (pltime0 > ip6_temp_preferred_lifetime - ip6_desync_factor) {
 			pltime0 = ip6_temp_preferred_lifetime -
 				ip6_desync_factor;
@@ -1811,11 +1811,11 @@ in6_init_prefix_ltimes(struct nd_prefix *ndpr)
 	if (ndpr->ndpr_pltime == ND6_INFINITE_LIFETIME)
 		ndpr->ndpr_preferred = 0;
 	else
-		ndpr->ndpr_preferred = time_second + ndpr->ndpr_pltime;
+		ndpr->ndpr_preferred = time_uptime + ndpr->ndpr_pltime;
 	if (ndpr->ndpr_vltime == ND6_INFINITE_LIFETIME)
 		ndpr->ndpr_expire = 0;
 	else
-		ndpr->ndpr_expire = time_second + ndpr->ndpr_vltime;
+		ndpr->ndpr_expire = time_uptime + ndpr->ndpr_vltime;
 
 	return 0;
 }
@@ -1827,7 +1827,7 @@ in6_init_address_ltimes(struct nd_prefix *new, struct in6_addrlifetime *lt6)
 	if (lt6->ia6t_vltime == ND6_INFINITE_LIFETIME)
 		lt6->ia6t_expire = 0;
 	else {
-		lt6->ia6t_expire = time_second;
+		lt6->ia6t_expire = time_uptime;
 		lt6->ia6t_expire += lt6->ia6t_vltime;
 	}
 
@@ -1835,7 +1835,7 @@ in6_init_address_ltimes(struct nd_prefix *new, struct in6_addrlifetime *lt6)
 	if (lt6->ia6t_pltime == ND6_INFINITE_LIFETIME)
 		lt6->ia6t_preferred = 0;
 	else {
-		lt6->ia6t_preferred = time_second;
+		lt6->ia6t_preferred = time_uptime;
 		lt6->ia6t_preferred += lt6->ia6t_pltime;
 	}
 }

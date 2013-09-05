@@ -1391,7 +1391,7 @@ static char *ncr_name (ncb_p np)
  * THESE MUST ALL BE ALIGNED TO A 4-BYTE BOUNDARY.
  */
 static void *script_kvars[] =
-	{ &time_second, &ticks, &ncr_cache };
+	{ &time_uptime, &ticks, &ncr_cache };
 
 static	struct script script0 = {
 /*--------------------------< START >-----------------------*/ {
@@ -4141,7 +4141,7 @@ ncr_action (struct cam_sim *sim, union ccb *ccb)
 		*/
 
 		cp->jump_nccb.l_cmd	= (SCR_JUMP ^ IFFALSE (DATA (cp->tag)));
-		cp->tlimit		= time_second
+		cp->tlimit		= time_uptime
 					+ ccb->ccb_h.timeout / 1000 + 2;
 		cp->magic		= CCB_MAGIC;
 
@@ -5104,7 +5104,7 @@ static void
 ncr_timeout (void *arg)
 {
 	ncb_p	np = arg;
-	time_t	thistime = time_second;
+	time_t	thistime = time_uptime;
 	ticks_t	step  = np->ticks;
 	u_long	count = 0;
 	long signed   t;
@@ -5412,9 +5412,9 @@ void ncr_exception (ncb_p np)
 	**========================================
 	*/
 
-	if (time_second - np->regtime > 10) {
+	if (time_uptime - np->regtime > 10) {
 		int i;
-		np->regtime = time_second;
+		np->regtime = time_uptime;
 		for (i=0; i<sizeof(np->regdump); i++)
 			((volatile char*)&np->regdump)[i] = INB_OFF(i);
 		np->regdump.nc_dstat = dstat;

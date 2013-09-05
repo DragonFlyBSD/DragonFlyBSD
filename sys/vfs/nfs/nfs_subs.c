@@ -785,7 +785,7 @@ nfs_loadattrcache(struct vnode *vp, struct mbuf **mdp, caddr_t *dposp,
 		vap->va_gen = fxdr_unsigned(u_int32_t,fp->fa2_ctime.nfsv2_usec);
 		vap->va_filerev = 0;
 	}
-	np->n_attrstamp = time_second;
+	np->n_attrstamp = time_uptime;
 	if (vap->va_size != np->n_size) {
 		if (vap->va_type == VREG) {
 			/*
@@ -923,10 +923,10 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 
 	if (nfs_acdebug)
 		kprintf("nfs_getattrcache: age = %d; final timeo = %d\n",
-			(int)(time_second - np->n_attrstamp), timeo);
+			(int)(time_uptime - np->n_attrstamp), timeo);
 #endif
 
-	if (np->n_attrstamp == 0 || (time_second - np->n_attrstamp) >= timeo) {
+	if (np->n_attrstamp == 0 || (time_uptime - np->n_attrstamp) >= timeo) {
 		nfsstats.attrcache_misses++;
 		return (ENOENT);
 	}

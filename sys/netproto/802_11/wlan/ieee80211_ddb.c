@@ -250,8 +250,8 @@ _db_show_sta(const struct ieee80211_node *ni)
 		ni->ni_ath_flags, ni->ni_ath_defkeyix);
 	db_printf("\tassocid 0x%x txpower %u vlan %u\n",
 		ni->ni_associd, ni->ni_txpower, ni->ni_vlan);
-	db_printf("\tjointime %d (%lu secs) challenge %p\n",
-		ni->ni_jointime, (unsigned long)(time_second - ni->ni_jointime),
+	db_printf("\tjointime %lu (%lu secs) challenge %p\n",
+		(unsigned long)ni->ni_jointime, (unsigned long)(time_uptime - ni->ni_jointime),
 		ni->ni_challenge);
 	db_printf("\ties: data %p len %d\n", ni->ni_ies.data, ni->ni_ies.len);
 	db_printf("\t[wpa_ie %p rsn_ie %p wme_ie %p ath_ie %p\n",

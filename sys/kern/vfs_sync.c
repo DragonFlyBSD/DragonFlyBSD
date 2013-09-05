@@ -319,7 +319,7 @@ syncer_thread(void *_ctx)
 	for (;;) {
 		kproc_suspend_loop();
 
-		starttime = time_second;
+		starttime = time_uptime;
 		lwkt_gettoken(&ctx->sc_token);
 
 		/*
@@ -399,7 +399,7 @@ syncer_thread(void *_ctx)
 		 * matter as we are just trying to generally pace the
 		 * filesystem activity.
 		 */
-		if (time_second == starttime)
+		if (time_uptime == starttime)
 			tsleep(ctx, 0, "syncer", hz);
 	}
 

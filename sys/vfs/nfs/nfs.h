@@ -445,7 +445,7 @@ struct nfsuid {
 	int		nu_flag;	/* Flags */
 	union nethostaddr nu_haddr;	/* Host addr. for dgram sockets */
 	struct ucred	nu_cr;		/* Cred uid mapped to */
-	int		nu_expire;	/* Expiry time (sec) */
+	time_t		nu_expire;	/* Expiry time (time_uptime) */
 	struct timeval	nu_timestamp;	/* Kerb. timestamp */
 	u_int32_t	nu_nickname;	/* Nickname on server */
 	NFSKERBKEY_T	nu_key;		/* and session key */

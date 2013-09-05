@@ -151,7 +151,7 @@ struct ieee80211_node {
 #define IEEE80211_NODE_BOOST	0x0080		/* Dynamic Turbo boosted */
 	uint16_t		ni_ath_defkeyix;/* Atheros def key index */
 	const struct ieee80211_txparam *ni_txparms;
-	uint32_t		ni_jointime;	/* time of join (secs) */
+	time_t			ni_jointime;	/* time of join (time_uptime) */
 	uint32_t		*ni_challenge;	/* shared-key challenge */
 	struct ieee80211_ies	ni_ies;		/* captured ie's */
 						/* tx seq per-tid */

@@ -372,7 +372,7 @@ smbfs_attr_cacheenter(struct vnode *vp, struct smbfattr *fap)
 		return;
 	np->n_mtime = fap->fa_mtime;
 	np->n_dosattr = fap->fa_attr;
-	np->n_attrage = time_second;
+	np->n_attrage = time_uptime;
 	return;
 }
 
@@ -383,7 +383,7 @@ smbfs_attr_cachelookup(struct vnode *vp, struct vattr *va)
 	struct smbmount *smp = VTOSMBFS(vp);
 	int diff;
 
-	diff = time_second - np->n_attrage;
+	diff = (int)(time_uptime - np->n_attrage);
 	if (diff > 2)	/* XXX should be configurable */
 		return ENOENT;
 	va->va_type = vp->v_type;		/* vnode type (for create) */

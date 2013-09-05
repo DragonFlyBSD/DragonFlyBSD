@@ -333,7 +333,7 @@ nwfs_attr_cachelookup(struct vnode *vp, struct vattr *va)
 	struct nwnode *np = VTONW(vp);
 	int diff;
 
-	diff = time_second - np->n_atime;
+	diff = (int)(time_second - np->n_atime);
 	if (diff > 2) {	/* XXX should be configurable */
 		return ENOENT;
 	}

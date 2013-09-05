@@ -612,10 +612,10 @@ ips_morpheus_poll(ips_command_t *command)
 {
 	uint32_t ts;
 
-	ts = time_second + command->timeout;
+	ts = time_uptime + command->timeout;
 	while (command->timeout != 0 &&
 	    ips_morpheus_check_intr(command->sc) == 0 &&
-	    (ts > time_second))
+	    (ts > time_uptime))
 		DELAY(1000);
  }
 

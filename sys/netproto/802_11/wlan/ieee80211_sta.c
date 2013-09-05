@@ -1564,7 +1564,7 @@ sta_recv_mgmt(struct ieee80211_node *ni, struct mbuf *m0,
 		ni->ni_capinfo = capinfo;
 		ni->ni_associd = associd;
 		if (ni->ni_jointime == 0)
-			ni->ni_jointime = time_second;
+			ni->ni_jointime = time_uptime;
 		if (wme != NULL &&
 		    ieee80211_parse_wmeparams(vap, wme, wh) >= 0) {
 			ni->ni_flags |= IEEE80211_NODE_QOS;

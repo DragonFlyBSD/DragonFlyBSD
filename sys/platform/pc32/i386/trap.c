@@ -835,12 +835,11 @@ kernel_trap:
 		{
 		  static unsigned lastalert = 0;
 
-		  if(time_second - lastalert > 10)
-		    {
+		  if (time_uptime - lastalert > 10) {
 		      log(LOG_WARNING, "NMI: power fail\n");
 		      sysbeep(TIMER_FREQ/880, hz);
-		      lastalert = time_second;
-		    }
+		      lastalert = time_uptime;
+		  }
 		    /* YYY mp count */
 		  goto out2;
 		}

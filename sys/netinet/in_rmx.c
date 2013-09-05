@@ -244,7 +244,7 @@ in_closeroute(struct radix_node *rn, struct radix_node_head *head)
 	 */
 	if (rtq_reallyold != 0) {
 		rt->rt_flags |= RTPRF_EXPIRING;
-		rt->rt_rmx.rmx_expire = time_second + rtq_reallyold;
+		rt->rt_rmx.rmx_expire = time_uptime + rtq_reallyold;
 	} else {
 		/*
 		 * Remove route from the radix tree, but defer deallocation
@@ -278,7 +278,7 @@ in_rtqkill(struct radix_node *rn, void *rock)
 
 	if (rt->rt_flags & RTPRF_EXPIRING) {
 		ap->found++;
-		if (ap->draining || rt->rt_rmx.rmx_expire <= time_second) {
+		if (ap->draining || rt->rt_rmx.rmx_expire <= time_uptime) {
 			if (rt->rt_refcnt > 0)
 				panic("rtqkill route really not free");
 
@@ -290,9 +290,9 @@ in_rtqkill(struct radix_node *rn, void *rock)
 				ap->killed++;
 		} else {
 			if (ap->updating &&
-			    (rt->rt_rmx.rmx_expire - time_second >
-			     rtq_reallyold)) {
-				rt->rt_rmx.rmx_expire = time_second +
+			    (int)(rt->rt_rmx.rmx_expire - time_uptime) >
+			     rtq_reallyold) {
+				rt->rt_rmx.rmx_expire = time_uptime +
 				    rtq_reallyold;
 			}
 			ap->nextstop = lmin(ap->nextstop,
@@ -329,7 +329,7 @@ in_rtqtimo_dispatch(netmsg_t nmsg)
 
 	arg.found = arg.killed = 0;
 	arg.rnh = rnh;
-	arg.nextstop = time_second + rtq_timeout;
+	arg.nextstop = time_uptime + rtq_timeout;
 	arg.draining = arg.updating = 0;
 	rnh->rnh_walktree(rnh, in_rtqkill, &arg);
 
@@ -342,14 +342,14 @@ in_rtqtimo_dispatch(netmsg_t nmsg)
 	 * hard.
 	 */
 	if ((arg.found - arg.killed > rtq_toomany) &&
-	    (time_second - last_adjusted_timeout >= rtq_timeout) &&
+	    (int)(time_uptime - last_adjusted_timeout) >= rtq_timeout &&
 	    rtq_reallyold > rtq_minreallyold) {
 		rtq_reallyold = 2*rtq_reallyold / 3;
 		if (rtq_reallyold < rtq_minreallyold) {
 			rtq_reallyold = rtq_minreallyold;
 		}
 
-		last_adjusted_timeout = time_second;
+		last_adjusted_timeout = time_uptime;
 #ifdef DIAGNOSTIC
 		log(LOG_DEBUG, "in_rtqtimo: adjusted rtq_reallyold to %d\n",
 		    rtq_reallyold);
@@ -360,14 +360,14 @@ in_rtqtimo_dispatch(netmsg_t nmsg)
 	}
 
 	atv.tv_usec = 0;
-	atv.tv_sec = arg.nextstop - time_second;
+	atv.tv_sec = arg.nextstop - time_uptime;
 	if ((int)atv.tv_sec < 1) {		/* time shift safety */
 		atv.tv_sec = 1;
-		arg.nextstop = time_second + atv.tv_sec;
+		arg.nextstop = time_uptime + atv.tv_sec;
 	}
 	if ((int)atv.tv_sec > rtq_timeout) {	/* time shift safety */
 		atv.tv_sec = rtq_timeout;
-		arg.nextstop = time_second + atv.tv_sec;
+		arg.nextstop = time_uptime + atv.tv_sec;
 	}
 	callout_reset(&ctx->timo_ch, tvtohz_high(&atv), in_rtqtimo, NULL);
 }

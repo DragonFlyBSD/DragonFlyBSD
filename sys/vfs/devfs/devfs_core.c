@@ -2250,8 +2250,8 @@ devfs_new_cdev(struct dev_ops *ops, int minor, struct dev_ops *bops)
 	dev->si_perms = 0;
 	dev->si_drv1 = NULL;
 	dev->si_drv2 = NULL;
-	dev->si_lastread = 0;		/* time_second */
-	dev->si_lastwrite = 0;		/* time_second */
+	dev->si_lastread = 0;		/* time_uptime */
+	dev->si_lastwrite = 0;		/* time_uptime */
 
 	dev->si_dict = NULL;
 	dev->si_parent = NULL;

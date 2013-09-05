@@ -51,7 +51,7 @@ struct sensor_task {
 	void				(*func)(void *);
 
 	int				period;
-	time_t				nextrun;
+	time_t				nextrun;	/* time_uptime */
 	volatile int			running;
 	TAILQ_ENTRY(sensor_task)	entry;
 };
@@ -258,7 +258,7 @@ sensor_task_thread(void *arg)
 
 	while (!TAILQ_EMPTY(&tasklist)) {
 		while ((nst = TAILQ_FIRST(&tasklist))->nextrun >
-		    (now = time_second))
+		    (now = time_uptime))
 			lksleep(&tasklist, &sensor_task_lock, 0, "timeout",
 			       (nst->nextrun - now) * hz);
 
@@ -292,7 +292,7 @@ sensor_task_schedule(struct sensor_task *st)
 	struct sensor_task 	*cst;
 
 	lockmgr(&sensor_task_lock, LK_EXCLUSIVE);
-	st->nextrun = time_second + st->period;
+	st->nextrun = time_uptime + st->period;
 
 	TAILQ_FOREACH(cst, &tasklist, entry) {
 		if (cst->nextrun > st->nextrun) {
