@@ -340,7 +340,8 @@ getsocket(void)
 struct	sockaddr_in6 so_mask = {sizeof(so_mask), AF_INET6 };
 struct	sockaddr_in6 blank_sin = {sizeof(blank_sin), AF_INET6 }, sin_m;
 struct	sockaddr_dl blank_sdl = {sizeof(blank_sdl), AF_LINK }, sdl_m;
-int	expire_time, flags, found_entry;
+int	flags, found_entry;
+time_t	expire_time;
 struct	{
 	struct	rt_msghdr m_rtm;
 	char	m_space[512];
@@ -384,12 +385,14 @@ set(int argc, char **argv)
 	ea = (u_char *)LLADDR(&sdl_m);
 	if (ndp_ether_aton(eaddr, ea) == 0)
 		sdl_m.sdl_alen = 6;
-	flags = expire_time = 0;
+	flags = 0;
+	expire_time = 0;
 	while (argc-- > 0) {
 		if (strncmp(argv[0], "temp", 4) == 0) {
-			struct timeval time;
-			gettimeofday(&time, 0);
-			expire_time = time.tv_sec + 20 * 60;
+			struct timespec sp;
+
+			clock_gettime(CLOCK_MONOTONIC, &sp);
+			expire_time = sp.tv_sec + 20 * 60;
 		} else if (strncmp(argv[0], "proxy", 5) == 0)
 			flags |= RTF_ANNOUNCE;
 		argv++;

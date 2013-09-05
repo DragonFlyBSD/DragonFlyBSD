@@ -93,7 +93,8 @@ static int s = -1;
 struct	sockaddr_in so_mask;
 struct	sockaddr_inarp blank_sin, sin_m;
 struct	sockaddr_dl blank_sdl, sdl_m;
-int	expire_time, flags, doing_proxy, proxy_only, found_entry;
+int	flags, doing_proxy, proxy_only, found_entry;
+time_t	expire_time;
 struct	{
 	struct	rt_msghdr m_rtm;
 	char	m_space[512];
@@ -278,9 +279,10 @@ set(int argc, char **argv)
 	doing_proxy = flags = proxy_only = expire_time = 0;
 	while (argc-- > 0) {
 		if (strncmp(argv[0], "temp", 4) == 0) {
-			struct timeval tv;
-			gettimeofday(&tv, 0);
-			expire_time = tv.tv_sec + 20 * 60;
+			struct timespec sp;
+
+			clock_gettime(CLOCK_MONOTONIC, &sp);
+			expire_time = sp.tv_sec + 20 * 60;
 		}
 		else if (strncmp(argv[0], "pub", 3) == 0) {
 			flags |= RTF_ANNOUNCE;

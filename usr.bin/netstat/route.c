@@ -351,10 +351,14 @@ size_cols_rtentry(struct rtentry *rt)
 			wid_if = MAX(len, wid_if);
 		}
 		if (rt->rt_rmx.rmx_expire) {
-			time_t expire_time;
+			struct timespec sp;
+			int expire_time;
 
-			if ((expire_time =
-			    rt->rt_rmx.rmx_expire - time(NULL)) > 0) {
+			clock_gettime(CLOCK_MONOTONIC, &sp);
+
+			expire_time = (int)(rt->rt_rmx.rmx_expire - sp.tv_sec);
+
+			if (expire_time > 0) {
 				snprintf(buffer, sizeof(buffer), "%d",
 					 (int)expire_time);
 				wid_expire = MAX(len, wid_expire);
@@ -817,10 +821,13 @@ p_rtentry(struct rtentry *rt)
 		}
 		printf("%*.*s", wid_if, wid_if, prettyname);
 		if (rt->rt_rmx.rmx_expire) {
-			time_t expire_time;
+			struct timespec sp;
+			int expire_time;
 
-			if ((expire_time =
-			    rt->rt_rmx.rmx_expire - time(NULL)) > 0)
+			clock_gettime(CLOCK_MONOTONIC, &sp);
+
+			expire_time = (int)(rt->rt_rmx.rmx_expire - sp.tv_sec);
+			if (expire_time > 0)
 				printf(" %*d", wid_expire, (int)expire_time);
 			else
 				printf("%*s ", wid_expire, "");

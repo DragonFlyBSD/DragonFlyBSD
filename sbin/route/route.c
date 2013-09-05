@@ -1539,8 +1539,8 @@ print_getmsg(struct rt_msghdr *rtm, int msglen)
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_mtu, lock(MTU));
 	if (rtm->rtm_rmx.rmx_expire != 0) {
 		struct timespec sp;
-		clock_gettime(CLOCK_MONOTONIC, &tp);
-		rtm->rtm_rmx.rmx_expire -= tp.tv_sec;
+		clock_gettime(CLOCK_MONOTONIC, &sp);
+		rtm->rtm_rmx.rmx_expire -= sp.tv_sec;
 	}
 	printf("%8ld%c ", rtm->rtm_rmx.rmx_expire, lock(EXPIRE));
 	printf("%8ld ", rtm->rtm_rmx.rmx_msl);
