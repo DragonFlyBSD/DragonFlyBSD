@@ -10,7 +10,7 @@
 #include <sys/linker.h>
 #include <sys/firmware.h>
 #include <sys/systm.h>
-#include <dev/netif/mxge/eth_z8e.h>
+#include <dev/netif/mxge/fw/eth_z8e/eth_z8e.h>
 
 static int
 mxge_eth_z8e_fw_modevent(module_t mod, int type, void *unused)
