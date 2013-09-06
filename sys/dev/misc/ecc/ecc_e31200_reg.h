@@ -64,7 +64,6 @@
 /* enchanced interleave */
 #define MCH_E31200_DIMM_ENHI		__BIT(22)
 #define MCH_E31200_DIMM_ECC		__BITS(24, 25)
-#define MCH_E31200_DIMM_ECC_SHIFT	24
 #define MCH_E31200_DIMM_ECC_NONE	0x0
 #define MCH_E31200_DIMM_ECC_IO		0x1
 #define MCH_E31200_DIMM_ECC_LOGIC	0x2

@@ -245,10 +245,8 @@ ecc_e31200_attach(device_t dev)
 		} else { /* V3 */
 			uint32_t ecc_mode0, ecc_mode1;
 
-			ecc_mode0 = dimm_ch0 & MCH_E31200_DIMM_ECC;
-			ecc_mode1 = dimm_ch1 & MCH_E31200_DIMM_ECC;
-			ecc_mode0 >>= MCH_E31200_DIMM_ECC_SHIFT;
-			ecc_mode1 >>= MCH_E31200_DIMM_ECC_SHIFT;
+			ecc_mode0 = __SHIFTOUT(dimm_ch0, MCH_E31200_DIMM_ECC);
+			ecc_mode1 = __SHIFTOUT(dimm_ch1, MCH_E31200_DIMM_ECC);
 
 			/*
 			 * Only active ALL/NONE is supported
@@ -258,13 +256,13 @@ ecc_e31200_attach(device_t dev)
 			    ecc_mode0 != MCH_E31200_DIMM_ECC_ALL) {
 				ecc_active = 0;
 				ecc_printf(sc, "channel0, invalid ECC "
-				    "active 0x%x", ecc_mode0);
+				    "active 0x%x\n", ecc_mode0);
 			}
 			if (ecc_mode1 != MCH_E31200_DIMM_ECC_NONE &&
 			    ecc_mode1 != MCH_E31200_DIMM_ECC_ALL) {
 				ecc_active = 0;
 				ecc_printf(sc, "channel1, invalid ECC "
-				    "active 0x%x", ecc_mode1);
+				    "active 0x%x\n", ecc_mode1);
 			}
 
 			if (ecc_mode0 == MCH_E31200_DIMM_ECC_NONE &&
