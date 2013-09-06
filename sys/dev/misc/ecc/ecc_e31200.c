@@ -247,6 +247,8 @@ ecc_e31200_attach(device_t dev)
 
 			ecc_mode0 = dimm_ch0 & MCH_E31200_DIMM_ECC;
 			ecc_mode1 = dimm_ch1 & MCH_E31200_DIMM_ECC;
+			ecc_mode0 >>= MCH_E31200_DIMM_ECC_SHIFT;
+			ecc_mode1 >>= MCH_E31200_DIMM_ECC_SHIFT;
 
 			/*
 			 * Only active ALL/NONE is supported
