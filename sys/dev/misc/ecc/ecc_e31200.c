@@ -51,16 +51,22 @@
 
 #include <dev/misc/ecc/ecc_e31200_reg.h>
 
+#define ECC_E31200_VER_1	1	/* Sandy Bridge */
+#define ECC_E31200_VER_2	2	/* Ivy Bridge */
+#define ECC_E31200_VER_3	3	/* Haswell */
+
 struct ecc_e31200_memctrl {
 	uint16_t	vid;
 	uint16_t	did;
 	const char	*desc;
+	int		ver;		/* ECC_E31200_VER_ */
 };
 
 struct ecc_e31200_softc {
 	device_t	ecc_device;
 	device_t	ecc_mydev;
 	struct callout	ecc_callout;
+	int		ecc_ver;	/* ECC_E31200_VER_ */
 	volatile uint8_t *ecc_addr;
 };
 
@@ -81,7 +87,12 @@ static void	ecc_e31200_errlog_ch(struct ecc_e31200_softc *, int, int,
 		    const char *);
 
 static const struct ecc_e31200_memctrl ecc_memctrls[] = {
-	{ 0x8086, 0x0108, "Intel E3-1200 memory controller" },
+	{ 0x8086, 0x0108, "Intel E3-1200 memory controller",
+	  ECC_E31200_VER_1 },
+	{ 0x8086, 0x0158, "Intel E3-1200 v2 memory controller",
+	  ECC_E31200_VER_2 },
+	{ 0x8086, 0x0c08, "Intel E3-1200 v3 memory controller",
+	  ECC_E31200_VER_3 },
 	{ 0, 0, NULL } /* required last entry */
 };
 
@@ -120,6 +131,7 @@ ecc_e31200_probe(device_t dev)
 			device_set_desc(dev, mc->desc);
 			sc->ecc_mydev = dev;
 			sc->ecc_device = device_get_parent(dev);
+			sc->ecc_ver = mc->ver;
 			return (0);
 		}
 	}
@@ -132,7 +144,7 @@ ecc_e31200_attach(device_t dev)
 	struct ecc_e31200_softc *sc = device_get_softc(dev);
 	uint32_t capa, dmfc, mch_barlo, mch_barhi;
 	uint64_t mch_bar;
-	int bus, slot;
+	int bus, slot, dmfc_parsed = 1;
 
 	dev = sc->ecc_device; /* XXX */
 
@@ -141,14 +153,44 @@ ecc_e31200_attach(device_t dev)
 
 	capa = pcib_read_config(dev, bus, slot, 0, PCI_E31200_CAPID0_A, 4);
 
-	dmfc = __SHIFTOUT(capa, PCI_E31200_CAPID0_A_DMFC);
-	if (dmfc == PCI_E31200_CAPID0_A_DMFC_1333) {
-		ecc_printf(sc, "CAP DDR3 1333 ");
-	} else if (dmfc == PCI_E31200_CAPID0_A_DMFC_1067) {
+	if (sc->ecc_ver == ECC_E31200_VER_1) {
+		dmfc = __SHIFTOUT(capa, PCI_E31200_CAPID0_A_DMFC);
+	} else { /* V2/V3 */
+		uint32_t capb;
+
+		capb = pcib_read_config(dev, bus, slot, 0,
+		    PCI_E31200_CAPID0_B, 4);
+		dmfc = __SHIFTOUT(capb, PCI_E31200_CAPID0_B_DMFC);
+	}
+
+	if (dmfc == PCI_E31200_CAPID0_DMFC_1067) {
 		ecc_printf(sc, "CAP DDR3 1067 ");
-	} else if (dmfc == PCI_E31200_CAPID0_A_DMFC_ALL) {
-		ecc_printf(sc, "no CAP ");
+	} else if (dmfc == PCI_E31200_CAPID0_DMFC_1333) {
+		ecc_printf(sc, "CAP DDR3 1333 ");
 	} else {
+		if (sc->ecc_ver == ECC_E31200_VER_1) {
+			if (dmfc == PCI_E31200_CAPID0_DMFC_V1_ALL)
+				ecc_printf(sc, "no CAP ");
+			else
+				dmfc_parsed = 0;
+		} else { /* V2/V3 */
+			if (dmfc == PCI_E31200_CAPID0_DMFC_1600)
+				ecc_printf(sc, "CAP DDR3 1600 ");
+			else if (dmfc == PCI_E31200_CAPID0_DMFC_1867)
+				ecc_printf(sc, "CAP DDR3 1867 ");
+			else if (dmfc == PCI_E31200_CAPID0_DMFC_2133)
+				ecc_printf(sc, "CAP DDR3 2133 ");
+			else if (dmfc == PCI_E31200_CAPID0_DMFC_2400)
+				ecc_printf(sc, "CAP DDR3 2400 ");
+			else if (dmfc == PCI_E31200_CAPID0_DMFC_2667)
+				ecc_printf(sc, "CAP DDR3 2667 ");
+			else if (dmfc == PCI_E31200_CAPID0_DMFC_2933)
+				ecc_printf(sc, "CAP DDR3 2933 ");
+			else
+				dmfc_parsed = 0;
+		}
+	}
+	if (!dmfc_parsed) {
 		ecc_printf(sc, "unknown DMFC %#x\n", dmfc);
 		return 0;
 	}
@@ -172,6 +214,7 @@ ecc_e31200_attach(device_t dev)
 	if (mch_bar & PCI_E31200_MCHBAR_LO_EN) {
 		uint64_t map_addr = mch_bar & PCI_E31200_MCHBAR_ADDRMASK;
 		uint32_t dimm_ch0, dimm_ch1;
+		int ecc_active;
 
 		sc->ecc_addr = pmap_mapdev_uncacheable(map_addr,
 		    MCH_E31200_SIZE);
@@ -191,12 +234,51 @@ ecc_e31200_attach(device_t dev)
 			ecc_e31200_chaninfo(sc, dimm_ch1, "channel1");
 		}
 
-		if (((dimm_ch0 | dimm_ch1) & MCH_E31200_DIMM_ECC) == 0) {
-			ecc_printf(sc, "No ECC active\n");
+		ecc_active = 1;
+		if (sc->ecc_ver == ECC_E31200_VER_1 ||
+		    sc->ecc_ver == ECC_E31200_VER_2) {
+			if (((dimm_ch0 | dimm_ch1) & MCH_E31200_DIMM_ECC) ==
+			    MCH_E31200_DIMM_ECC_NONE) {
+				ecc_active = 0;
+				ecc_printf(sc, "No ECC active\n");
+			}
+		} else { /* V3 */
+			uint32_t ecc_mode0, ecc_mode1;
+
+			ecc_mode0 = dimm_ch0 & MCH_E31200_DIMM_ECC;
+			ecc_mode1 = dimm_ch1 & MCH_E31200_DIMM_ECC;
+
+			/*
+			 * Only active ALL/NONE is supported
+			 */
+
+			if (ecc_mode0 != MCH_E31200_DIMM_ECC_NONE &&
+			    ecc_mode0 != MCH_E31200_DIMM_ECC_ALL) {
+				ecc_active = 0;
+				ecc_printf(sc, "channel0, invalid ECC "
+				    "active 0x%x", ecc_mode0);
+			}
+			if (ecc_mode1 != MCH_E31200_DIMM_ECC_NONE &&
+			    ecc_mode1 != MCH_E31200_DIMM_ECC_ALL) {
+				ecc_active = 0;
+				ecc_printf(sc, "channel1, invalid ECC "
+				    "active 0x%x", ecc_mode1);
+			}
+
+			if (ecc_mode0 == MCH_E31200_DIMM_ECC_NONE &&
+			    ecc_mode1 == MCH_E31200_DIMM_ECC_NONE) {
+				ecc_active = 0;
+				ecc_printf(sc, "No ECC active\n");
+			}
+		}
+
+		if (!ecc_active) {
 			pmap_unmapdev((vm_offset_t)sc->ecc_addr,
 			    MCH_E31200_SIZE);
 			return 0;
 		}
+	} else {
+		ecc_printf(sc, "MCHBAR is not enabled\n");
 	}
 
 	ecc_e31200_status(sc);
@@ -225,18 +307,19 @@ ecc_e31200_status(struct ecc_e31200_softc *sc)
 	bus = pci_get_bus(dev);
 	slot = pci_get_slot(dev);
 
-	errsts = pcib_read_config(dev, bus, slot, 0, 0xc8, 2);
-	if (errsts & 0x2)
-		ecc_printf(sc, "Uncorrectable ECC error\n");
-	else if (errsts & 0x1)
-		ecc_printf(sc, "Correctable ECC error\n");
+	errsts = pcib_read_config(dev, bus, slot, 0, PCI_E31200_ERRSTS, 2);
+	if (errsts & PCI_E31200_ERRSTS_DMERR)
+		ecc_printf(sc, "Uncorrectable multilple-bit ECC error\n");
+	else if (errsts & PCI_E31200_ERRSTS_DSERR)
+		ecc_printf(sc, "Correctable single-bit ECC error\n");
 
-	if (errsts & 0x3) {
+	if (errsts & (PCI_E31200_ERRSTS_DSERR | PCI_E31200_ERRSTS_DMERR)) {
 		if (sc->ecc_addr != NULL)
 			ecc_e31200_errlog(sc);
 
 		/* Clear pending errors */
-		pcib_write_config(dev, bus, slot, 0, 0xc8, errsts, 2);
+		pcib_write_config(dev, bus, slot, 0, PCI_E31200_ERRSTS,
+		    errsts, 2);
 	}
 }
 
@@ -268,21 +351,37 @@ ecc_e31200_chaninfo(struct ecc_e31200_softc *sc, uint32_t dimm_ch,
 		return;
 
 	ecc = __SHIFTOUT(dimm_ch, MCH_E31200_DIMM_ECC);
-	if (ecc == MCH_E31200_DIMM_ECC_NONE)
+	if (ecc == MCH_E31200_DIMM_ECC_NONE) {
 		ecc_printf(sc, "%s, no ECC active\n", desc);
-	else if (ecc == MCH_E31200_DIMM_ECC_IO)
-		ecc_printf(sc, "%s, ECC active IO\n", desc);
-	else if (ecc == MCH_E31200_DIMM_ECC_LOGIC)
-		ecc_printf(sc, "%s, ECC active logic\n", desc);
-	else
+	} else if (ecc == MCH_E31200_DIMM_ECC_ALL) {
 		ecc_printf(sc, "%s, ECC active IO/logic\n", desc);
+	} else {
+		if (sc->ecc_ver == ECC_E31200_VER_1 ||
+		    sc->ecc_ver == ECC_E31200_VER_2) {
+			if (ecc == MCH_E31200_DIMM_ECC_IO)
+				ecc_printf(sc, "%s, ECC active IO\n", desc);
+			else
+				ecc_printf(sc, "%s, ECC active logic\n", desc);
+		} else { /* V3 */
+			ecc_printf(sc, "%s, invalid ECC active 0x%x\n",
+			    desc, ecc);
+		}
+	}
 
-	if (dimm_ch & (MCH_E31200_DIMM_ENHI | MCH_E31200_DIMM_RI)) {
+	if (sc->ecc_ver == ECC_E31200_VER_1 ||
+	    sc->ecc_ver == ECC_E31200_VER_2) {
+		/* This bit is V3 only */
+		dimm_ch &= ~MCH_E31200_DIMM_HORI;
+	}
+	if (dimm_ch & (MCH_E31200_DIMM_ENHI | MCH_E31200_DIMM_RI |
+	    MCH_E31200_DIMM_HORI)) {
 		ecc_printf(sc, "%s", desc);
 		if (dimm_ch & MCH_E31200_DIMM_RI)
 			kprintf(", rank interleave");
 		if (dimm_ch & MCH_E31200_DIMM_ENHI)
 			kprintf(", enhanced interleave");
+		if (dimm_ch & MCH_E31200_DIMM_HORI)
+			kprintf(", high order rank interleave");
 		kprintf("\n");
 	}
 }

@@ -9,12 +9,26 @@
 #define PCI_E31200_MCHBAR_LO_EN		0x1
 #define PCI_E31200_MCHBAR_HI		0x4c
 
+#define PCI_E31200_ERRSTS		0xc8
+#define PCI_E31200_ERRSTS_DMERR		__BIT(1)
+#define PCI_E31200_ERRSTS_DSERR		__BIT(0)
+
 #define PCI_E31200_CAPID0_A		0xe4
-#define PCI_E31200_CAPID0_A_DMFC	__BITS(0, 2)
-#define PCI_E31200_CAPID0_A_DMFC_ALL	0
-#define PCI_E31200_CAPID0_A_DMFC_1333	0x6
-#define PCI_E31200_CAPID0_A_DMFC_1067	0x7
+#define PCI_E31200_CAPID0_A_DMFC	__BITS(0, 2)	/* V1 */
 #define PCI_E31200_CAPID0_A_ECCDIS	__BIT(25)
+
+#define PCI_E31200_CAPID0_B		0xe8
+#define PCI_E31200_CAPID0_B_DMFC	__BITS(4, 6)	/* V2/V3 */
+
+#define PCI_E31200_CAPID0_DMFC_V1_ALL	0x0	/* V1 */
+#define PCI_E31200_CAPID0_DMFC_2933	0x0	/* V2/V3 */
+#define PCI_E31200_CAPID0_DMFC_2667	0x1	/* V2/V3 */
+#define PCI_E31200_CAPID0_DMFC_2400	0x2	/* V2/V3 */
+#define PCI_E31200_CAPID0_DMFC_2133	0x3	/* V2/V3 */
+#define PCI_E31200_CAPID0_DMFC_1867	0x4	/* V2/V3 */
+#define PCI_E31200_CAPID0_DMFC_1600	0x5	/* V2/V3 */
+#define PCI_E31200_CAPID0_DMFC_1333	0x6
+#define PCI_E31200_CAPID0_DMFC_1067	0x7
 
 #define PCI_E31200_MCHBAR_ADDRMASK	__BITS64(15, 38)
 
@@ -47,11 +61,16 @@
 #define MCH_E31200_DIMM_A_X16		__BIT(19)
 #define MCH_E31200_DIMM_B_X16		__BIT(20)
 #define MCH_E31200_DIMM_RI		__BIT(21)	/* rank interleave */
-#define MCH_E31200_DIMM_ENHI		__BIT(22)	/* enchanced interleave */
+/* enchanced interleave */
+#define MCH_E31200_DIMM_ENHI		__BIT(22)
 #define MCH_E31200_DIMM_ECC		__BITS(24, 25)
 #define MCH_E31200_DIMM_ECC_NONE	0x0
 #define MCH_E31200_DIMM_ECC_IO		0x1
 #define MCH_E31200_DIMM_ECC_LOGIC	0x2
 #define MCH_E31200_DIMM_ECC_ALL		0x3
+/* high order rank interleave */
+#define MCH_E31200_DIMM_HORI		__BIT(26)	/* V3 */
+/* high order rank interleave address (addr bits [20,27]) */
+#define MCH_E31200_DIMM_HORIADDR	__BITS(27, 29)	/* V3 */
 
 #endif	/* !_ECC_E31200_REG_H_ */
