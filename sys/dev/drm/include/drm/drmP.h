@@ -560,14 +560,14 @@ typedef struct drm_agp_mem {
 
 typedef struct drm_agp_head {
 	device_t	   agpdev;
-	struct agp_info    info;
+	struct agp_info    agp_info;
 	const char         *chipset;
 	drm_agp_mem_t      *memory;
 	unsigned long      mode;
 	int                enabled;
 	int                acquired;
 	unsigned long      base;
-   	int 		   mtrr;
+	int		   agp_mtrr;
 	int		   cant_use_aperture;
 	unsigned long	   page_mask;
 } drm_agp_head_t;

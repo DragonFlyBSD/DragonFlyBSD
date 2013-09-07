@@ -74,7 +74,7 @@ int drm_agp_info(struct drm_device * dev, struct drm_agp_info *info)
 	if (!dev->agp || !dev->agp->acquired)
 		return EINVAL;
 
-	kern                   = &dev->agp->info;
+	kern                   = &dev->agp->agp_info;
 	agp_get_info(dev->agp->agpdev, kern);
 	info->agp_version_major = 1;
 	info->agp_version_minor = 0;
@@ -359,12 +359,12 @@ drm_agp_head_t *drm_agp_init(void)
 		if (head == NULL)
 			return NULL;
 		head->agpdev = agpdev;
-		agp_get_info(agpdev, &head->info);
-		head->base = head->info.ai_aperture_base;
+		agp_get_info(agpdev, &head->agp_info);
+		head->base = head->agp_info.ai_aperture_base;
 		head->memory = NULL;
 		DRM_INFO("AGP at 0x%08lx %dMB\n",
-			 (long)head->info.ai_aperture_base,
-			 (int)(head->info.ai_aperture_size >> 20));
+			 (long)head->agp_info.ai_aperture_base,
+			 (int)(head->agp_info.ai_aperture_size >> 20));
 	}
 	return head;
 }

@@ -200,10 +200,10 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 		 */
 		if (map->offset < dev->agp->base ||
 		    map->offset > dev->agp->base +
-		    dev->agp->info.ai_aperture_size - 1) {
+		    dev->agp->agp_info.ai_aperture_size - 1) {
 			map->offset += dev->agp->base;
 		}
-		map->mtrr   = dev->agp->mtrr; /* for getmap */
+		map->mtrr   = dev->agp->agp_mtrr; /* for getmap */
 		/*for (entry = dev->agp->memory; entry; entry = entry->next) {
 			if ((map->offset >= entry->bound) &&
 			    (map->offset + map->size <=

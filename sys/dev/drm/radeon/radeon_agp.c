@@ -152,11 +152,11 @@ int radeon_agp_init(struct radeon_device *rdev)
 		return ret;
 	}
 
-	if (rdev->ddev->agp->info.ai_aperture_size < 32) {
+	if (rdev->ddev->agp->agp_info.ai_aperture_size < 32) {
 		drm_agp_release(rdev->ddev);
 		dev_warn(rdev->dev, "AGP aperture too small (%zuM) "
 			"need at least 32M, disabling AGP\n",
-			rdev->ddev->agp->info.ai_aperture_size);
+			rdev->ddev->agp->agp_info.ai_aperture_size);
 		return -EINVAL;
 	}
 
@@ -244,8 +244,8 @@ int radeon_agp_init(struct radeon_device *rdev)
 		return ret;
 	}
 
-	rdev->mc.agp_base = rdev->ddev->agp->info.ai_aperture_base;
-	rdev->mc.gtt_size = rdev->ddev->agp->info.ai_aperture_size << 20;
+	rdev->mc.agp_base = rdev->ddev->agp->agp_info.ai_aperture_base;
+	rdev->mc.gtt_size = rdev->ddev->agp->agp_info.ai_aperture_size << 20;
 	rdev->mc.gtt_start = rdev->mc.agp_base;
 	rdev->mc.gtt_end = rdev->mc.gtt_start + rdev->mc.gtt_size - 1;
 	dev_info(rdev->dev, "GTT: %juM 0x%08jX - 0x%08jX\n",

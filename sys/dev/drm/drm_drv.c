@@ -549,10 +549,10 @@ static int drm_load(struct drm_device *dev)
 			retcode = ENOMEM;
 			goto error;
 		}
-		if (dev->agp != NULL && dev->agp->info.ai_aperture_base != 0) {
-			if (drm_mtrr_add(dev->agp->info.ai_aperture_base,
-			    dev->agp->info.ai_aperture_size, DRM_MTRR_WC) == 0)
-				dev->agp->mtrr = 1;
+		if (dev->agp != NULL && dev->agp->agp_info.ai_aperture_base != 0) {
+			if (drm_mtrr_add(dev->agp->agp_info.ai_aperture_base,
+			    dev->agp->agp_info.ai_aperture_size, DRM_MTRR_WC) == 0)
+				dev->agp->agp_mtrr = 1;
 		}
 	}
 
@@ -635,11 +635,11 @@ static void drm_unload(struct drm_device *dev)
 	if (dev->driver->driver_features & DRIVER_GEM)
 		drm_gem_destroy(dev);
 
-	if (dev->agp && dev->agp->mtrr) {
+	if (dev->agp && dev->agp->agp_mtrr) {
 		int __unused retcode;
 
-		retcode = drm_mtrr_del(0, dev->agp->info.ai_aperture_base,
-		    dev->agp->info.ai_aperture_size, DRM_MTRR_WC);
+		retcode = drm_mtrr_del(0, dev->agp->agp_info.ai_aperture_base,
+		    dev->agp->agp_info.ai_aperture_size, DRM_MTRR_WC);
 		DRM_DEBUG("mtrr_del = %d", retcode);
 	}
 
