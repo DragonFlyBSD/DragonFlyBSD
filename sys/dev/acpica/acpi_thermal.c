@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.79 2011/11/17 23:04:43 eadler Exp $
+ * $FreeBSD: head/sys/dev/acpica/acpi_thermal.c 255077 2013-08-30 19:21:12Z dumbbell $
  */
 
 #include "opt_acpi.h"
@@ -69,8 +69,6 @@ ACPI_MODULE_NAME("THERMAL")
 /* Notify the user we will be shutting down in one more poll cycle. */
 #define TZ_NOTIFYCOUNT	(TZ_VALIDCHECKS - 1)
 
-#define abs(x) ( x < 0 ? -x : x )
-
 /* ACPI spec defines this */
 #define TZ_NUMLEVELS	10
 struct acpi_tz_zone {
@@ -112,6 +110,7 @@ struct acpi_tz_softc {
 
     struct acpi_tz_zone 	tz_zone;	/*Thermal zone parameters*/
     int				tz_validchecks;
+    int				tz_insane_tmp_notified;
 
     /* passive cooling */
     struct thread		*tz_cooling_proc;
@@ -124,6 +123,8 @@ struct acpi_tz_softc {
     struct ksensordev		sensordev;
     struct ksensor		sensor;
 };
+
+#define	TZ_ACTIVE_LEVEL(act)	((act) >= 0 ? (act) : TZ_NUMLEVELS)
 
 #define CPUFREQ_MAX_LEVELS	64 /* XXX cpufreq should export this */
 
@@ -162,6 +163,8 @@ static driver_t acpi_tz_driver = {
     acpi_tz_methods,
     sizeof(struct acpi_tz_softc),
 };
+
+static char *acpi_tz_tmp_name = "_TMP";
 
 static devclass_t acpi_tz_devclass;
 DRIVER_MODULE(acpi_tz, acpi, acpi_tz_driver, acpi_tz_devclass, NULL, NULL);
@@ -467,12 +470,11 @@ acpi_tz_get_temperature(struct acpi_tz_softc *sc)
 {
     int		temp;
     ACPI_STATUS	status;
-    static char	*tmp_name = "_TMP";
 
     ACPI_FUNCTION_NAME ("acpi_tz_get_temperature");
 
     /* Evaluate the thermal zone's _TMP method. */
-    status = acpi_GetInteger(sc->tz_handle, tmp_name, &temp);
+    status = acpi_GetInteger(sc->tz_handle, acpi_tz_tmp_name, &temp);
     if (ACPI_FAILURE(status)) {
 	ACPI_VPRINT(sc->tz_dev, acpi_device_get_parent_softc(sc->tz_dev),
 	    "error fetching current temperature -- %s\n",
@@ -481,7 +483,7 @@ acpi_tz_get_temperature(struct acpi_tz_softc *sc)
     }
 
     /* Check it for validity. */
-    acpi_tz_sanity(sc, &temp, tmp_name);
+    acpi_tz_sanity(sc, &temp, acpi_tz_tmp_name);
     if (temp == -1)
 	return (FALSE);
 
@@ -524,15 +526,8 @@ acpi_tz_monitor(void *Context)
      */
     newactive = TZ_ACTIVE_NONE;
     for (i = TZ_NUMLEVELS - 1; i >= 0; i--) {
-	if (sc->tz_zone.ac[i] != -1 && temp >= sc->tz_zone.ac[i]) {
+	if (sc->tz_zone.ac[i] != -1 && temp >= sc->tz_zone.ac[i])
 	    newactive = i;
-	    if (sc->tz_active != newactive) {
-		ACPI_VPRINT(sc->tz_dev,
-			    acpi_device_get_parent_softc(sc->tz_dev),
-			    "_AC%d: temperature %d.%d >= setpoint %d.%d\n", i,
-			    TZ_KELVTOC(temp), TZ_KELVTOC(sc->tz_zone.ac[i]));
-	    }
-	}
     }
 
     /*
@@ -582,18 +577,21 @@ acpi_tz_monitor(void *Context)
     }
 
     if (newactive != sc->tz_active) {
-	/* Turn off the cooling devices that are on, if any are */
-	if (sc->tz_active != TZ_ACTIVE_NONE)
+	/* Turn off unneeded cooling devices that are on, if any are */
+	for (i = TZ_ACTIVE_LEVEL(sc->tz_active);
+	     i < TZ_ACTIVE_LEVEL(newactive); i++) {
 	    acpi_ForeachPackageObject(
-		(ACPI_OBJECT *)sc->tz_zone.al[sc->tz_active].Pointer,
+		(ACPI_OBJECT *)sc->tz_zone.al[i].Pointer,
 		acpi_tz_switch_cooler_off, sc);
-
+	}
 	/* Turn on cooling devices that are required, if any are */
-	if (newactive != TZ_ACTIVE_NONE) {
+	for (i = TZ_ACTIVE_LEVEL(sc->tz_active) - 1;
+	     i >= TZ_ACTIVE_LEVEL(newactive); i--) {
 	    acpi_ForeachPackageObject(
-		(ACPI_OBJECT *)sc->tz_zone.al[newactive].Pointer,
+		(ACPI_OBJECT *)sc->tz_zone.al[i].Pointer,
 		acpi_tz_switch_cooler_on, sc);
 	}
+
 	ACPI_VPRINT(sc->tz_dev, acpi_device_get_parent_softc(sc->tz_dev),
 		    "switched from %s to %s: %d.%dC\n",
 		    acpi_tz_aclevel_string(sc->tz_active),
@@ -715,10 +713,29 @@ static void
 acpi_tz_sanity(struct acpi_tz_softc *sc, int *val, char *what)
 {
     if (*val != -1 && (*val < TZ_ZEROC || *val > TZ_ZEROC + 2000)) {
-	device_printf(sc->tz_dev, "%s value is absurd, ignored (%d.%dC)\n",
-		      what, TZ_KELVTOC(*val));
+	/*
+	 * If the value we are checking is _TMP, warn the user only
+	 * once. This avoids spamming messages if, for instance, the
+	 * sensor is broken and always returns an invalid temperature.
+	 *
+	 * This is only done for _TMP; other values always emit a
+	 * warning.
+	 */
+	if (what != acpi_tz_tmp_name || !sc->tz_insane_tmp_notified) {
+	    device_printf(sc->tz_dev, "%s value is absurd, ignored (%d.%dC)\n",
+			  what, TZ_KELVTOC(*val));
+
+	    /* Don't warn the user again if the read value doesn't improve. */
+	    if (what == acpi_tz_tmp_name)
+		sc->tz_insane_tmp_notified = 1;
+	}
 	*val = -1;
+	return;
     }
+
+    /* This value is correct. Warn if it's incorrect again. */
+    if (what == acpi_tz_tmp_name)
+	sc->tz_insane_tmp_notified = 0;
 }
 
 /*
