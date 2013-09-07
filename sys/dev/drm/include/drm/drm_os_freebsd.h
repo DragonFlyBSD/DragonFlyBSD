@@ -11,6 +11,12 @@
 #define	__LITTLE_ENDIAN 1234
 #endif
 
+#ifdef __LP64__
+#define	BITS_PER_LONG	64
+#else
+#define	BITS_PER_LONG	32
+#endif
+
 #define	cpu_to_le16(x)	htole16(x)
 #define	le16_to_cpu(x)	le16toh(x)
 #define	cpu_to_le32(x)	htole32(x)
