@@ -261,7 +261,7 @@ static struct drm_driver driver_old = {
 };
 #endif /* DUMBBELL_WIP */
 
-static struct drm_driver_info kms_driver;
+static struct drm_driver kms_driver;
 
 #ifdef DUMBBELL_WIP
 static int radeon_kick_out_firmware_fb(struct pci_dev *pdev)
@@ -335,7 +335,7 @@ static const struct file_operations radeon_driver_kms_fops = {
 };
 #endif /* DUMBBELL_WIP */
 
-static struct drm_driver_info kms_driver = {
+static struct drm_driver kms_driver = {
 	.driver_features =
 	    DRIVER_USE_AGP | DRIVER_USE_MTRR | DRIVER_PCI_DMA | DRIVER_SG |
 	    DRIVER_HAVE_IRQ | DRIVER_HAVE_DMA | DRIVER_IRQ_SHARED | DRIVER_GEM |

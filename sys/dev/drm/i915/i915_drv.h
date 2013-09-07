@@ -1010,7 +1010,7 @@ struct drm_i915_error_state {
 
 extern int intel_iommu_enabled;
 extern struct drm_ioctl_desc i915_ioctls[];
-extern struct drm_driver_info i915_driver_info;
+extern struct drm_driver i915_driver_info;
 extern struct cdev_pager_ops i915_gem_pager_ops;
 extern int i915_panel_ignore_lid;
 extern unsigned int i915_powersave;

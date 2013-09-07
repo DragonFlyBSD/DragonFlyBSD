@@ -764,7 +764,7 @@ struct drm_master {
 
 #define upper_32_bits(n) ((u32)(((n) >> 16) >> 16))
 
-struct drm_driver_info {
+struct drm_driver {
 	int	(*load)(struct drm_device *, unsigned long flags);
 	int	(*use_msi)(struct drm_device *, unsigned long flags);
 	int	(*firstopen)(struct drm_device *);
@@ -899,7 +899,7 @@ struct drm_pending_vblank_event {
  * may contain multiple heads.
  */
 struct drm_device {
-	struct drm_driver_info *driver;
+	struct drm_driver *driver;
 	drm_pci_id_list_t *id_entry;	/* PCI ID, name, and chipset private */
 
 	uint16_t pci_device;		/* PCI device id */

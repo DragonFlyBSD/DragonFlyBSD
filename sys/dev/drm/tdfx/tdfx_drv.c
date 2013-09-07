@@ -69,7 +69,7 @@ tdfx_attach(device_t kdev)
 {
 	struct drm_device *dev = device_get_softc(kdev);
 
-	dev->driver = kmalloc(sizeof(struct drm_driver_info), DRM_MEM_DRIVER,
+	dev->driver = kmalloc(sizeof(struct drm_driver), DRM_MEM_DRIVER,
 	    M_WAITOK | M_ZERO);
 
 	tdfx_configure(dev);

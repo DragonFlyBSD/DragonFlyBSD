@@ -1487,7 +1487,7 @@ struct drm_ioctl_desc i915_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_I915_GET_SPRITE_COLORKEY, intel_sprite_get_colorkey, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 };
 
-struct drm_driver_info i915_driver_info = {
+struct drm_driver i915_driver_info = {
 	.driver_features =   DRIVER_USE_AGP | DRIVER_REQUIRE_AGP |
 	    DRIVER_USE_MTRR | DRIVER_HAVE_IRQ | DRIVER_LOCKLESS_IRQ |
 	    DRIVER_GEM /*| DRIVER_MODESET*/,
