@@ -31,6 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
 #include <dirent.h>
 #include <err.h>
 #include <errno.h>
@@ -57,15 +58,16 @@ libhammer_get_volinfo(const char *path)
 	int pfs_id;
 	int fd;
 
-	hvi = _libhammer_malloc(sizeof(*hvi));
-
-	TAILQ_INIT(&hvi->list_pseudo);
-
 	if ((fd = open(path, O_RDONLY)) < 0)
-		goto error1;
+		return NULL;
 
-	if ((ioctl(fd, HAMMERIOC_GET_INFO, &info)) < 0)
-		goto error1;
+	hvi = _libhammer_malloc(sizeof(*hvi));
+	TAILQ_INIT(&hvi->list_pseudo);
+	if ((ioctl(fd, HAMMERIOC_GET_INFO, &info)) < 0) {
+		libhammer_free_volinfo(hvi);
+		close(fd);
+		return NULL;
+	}
 
 	/* Fill volume information */
 	snprintf(hvi->vol_name, TXTLEN, "%s", info.vol_name);
@@ -77,39 +79,39 @@ libhammer_get_volinfo(const char *path)
 	hvi->freebigblocks = info.freebigblocks;
 	hvi->rsvbigblocks = info.rsvbigblocks;
 
-	/*
-	 * XXX - By now we iterate the whole range of +65000 possible
-	 * pseudofs to discover the ones that are in use. Of course
-	 * this is suboptimal. Best way would be to extract the
-	 * pseudofs information from the control records in the
-	 * B-Tree, that's in kernel land.
-	 */
 	pfs_od = _libhammer_malloc(sizeof(*pfs_od));
 
+	/*
+	 * XXX - Iterate HAMMER_MAX_PFS (65536) PFS ids and rely on the ioctl(2)
+	 * return code to determine whether the PFS actually exists or not.
+	 * This is suboptimal. The correct way would be to extract the pseudofs
+	 * information from the control records in the B-Tree, that's in kernel
+	 * land.
+	 */
 	for(pfs_id = 0; pfs_id < HAMMER_MAX_PFS; pfs_id++) {
-		/* Clear the struct to be passed to the ioctl. */
 		bzero(&pseudofs, sizeof(pseudofs));
-
-		pfstmp = _libhammer_malloc(sizeof(*pfstmp));
+		bzero(pfs_od, sizeof(*pfs_od));
 
 		pseudofs.pfs_id = pfs_id;
 		pseudofs.ondisk = pfs_od;
 		pseudofs.bytes = sizeof(struct hammer_pseudofs_data);
 		pseudofs.version = HAMMER_IOC_PSEUDOFS_VERSION;
 		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pseudofs) != -1) {
-			/* XXX
-			 * It may be completely wrong in the case that we pass a path
-			 * that is in PFS 0 but isn't the mount path of it. There's no
-			 * easy way to do this.
+			/*
+			 * XXX - In the case the path passed is on PFS#0 but it
+			 * is not the mountpoint itself, it could produce a
+			 * wrong type of PFS.
 			 */
-			pfstmp->ismaster = (pfs_od->mirror_flags & HAMMER_PFSD_SLAVE)
-			    ? 0 : 1;
+			pfstmp = _libhammer_malloc(sizeof(*pfstmp));
+			pfstmp->ismaster =
+			    (pfs_od->mirror_flags & HAMMER_PFSD_SLAVE) ? 0 : 1;
 
 			if (pfs_id == 0)
 				pfstmp->mountedon = strdup(path);
 			else
-				pfstmp->mountedon = libhammer_find_pfs_mount(pfs_id,
-				    hvi->vol_fsid, pfstmp->ismaster);
+				pfstmp->mountedon =
+				    libhammer_find_pfs_mount(pfs_id,
+					hvi->vol_fsid, pfstmp->ismaster);
 			/*
 			 * Fill in structs used in the library. We don't rely on
 			 * HAMMER own struct but we do fill our own.
@@ -118,20 +120,15 @@ libhammer_get_volinfo(const char *path)
 			pfstmp->pfs_id = pseudofs.pfs_id;
 			pfstmp->mirror_flags = pfs_od->mirror_flags;
 			pfstmp->snapcount = count_snapshots(hvi->version,
-			    pfstmp->snapshots, pfstmp->mountedon, &pfstmp->head.error);
+			    pfstmp->snapshots, pfstmp->mountedon,
+			    &pfstmp->head.error);
 
 			TAILQ_INSERT_TAIL(&hvi->list_pseudo, pfstmp, entries);
 		}
 	}
+	free(pfs_od);
+	close (fd);
 
-	goto end;
-
-error1:
-	libhammer_free_volinfo(hvi);
-	if (fd != -1)
-		close(fd);
-
-end:
 	return (hvi);
 }
 
@@ -150,7 +147,8 @@ libhammer_free_volinfo(libhammer_volinfo_t volinfo)
 }
 
 static u_int32_t
-count_snapshots(u_int32_t version, char *pfs_snapshots, char *mountedon, int *errorp)
+count_snapshots(u_int32_t version, char *pfs_snapshots, char *mountedon,
+    int *errorp)
 {
 	struct hammer_ioc_snapshot snapinfo;
 	char *snapshots_path, *fpath;
