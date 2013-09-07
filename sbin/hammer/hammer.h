@@ -117,7 +117,6 @@ void hammer_cmd_pseudofs_update(char **av, int ac);
 void hammer_cmd_pseudofs_destroy(char **av, int ac);
 void hammer_cmd_pseudofs_upgrade(char **av, int ac);
 void hammer_cmd_pseudofs_downgrade(char **av, int ac);
-void hammer_cmd_status(char **av, int ac);
 void hammer_cmd_snapshot(char **av, int ac);
 void hammer_cmd_snap(char **av, int ac, int tostdout, int fsbase);
 void hammer_cmd_snapls(char **av, int ac);

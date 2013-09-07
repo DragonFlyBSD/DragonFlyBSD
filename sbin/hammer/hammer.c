@@ -380,10 +380,6 @@ main(int ac, char **av)
 		hammer_cmd_pseudofs_destroy(av + 1, ac - 1);
 		exit(0);
 	}
-	if (strcmp(av[0], "status") == 0) {
-		hammer_cmd_status(av + 1, ac - 1);
-		exit(0);
-	}
 	if (strcmp(av[0], "prune") == 0) {
 		hammer_cmd_softprune(av + 1, ac - 1, 0);
 		exit(0);
