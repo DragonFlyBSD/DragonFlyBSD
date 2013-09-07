@@ -204,6 +204,8 @@ count_snapshots(u_int32_t version, char *pfs_snapshots, char *mountedon,
 	}
 
 out:
+	if (!pfs_snapshots[0])
+		free(snapshots_path);
 	if (fd != -1)
 		close(fd);
 	return snapshot_count;
