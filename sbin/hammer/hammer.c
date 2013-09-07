@@ -397,7 +397,7 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strcmp(av[0], "info") == 0) {
-		hammer_cmd_info();
+		hammer_cmd_info(av + 1, ac - 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "prune-everything") == 0) {

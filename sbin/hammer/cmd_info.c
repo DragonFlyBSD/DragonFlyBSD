@@ -41,30 +41,38 @@ void show_info(char *path);
 static double percent(int64_t value, int64_t total);
 
 void
-hammer_cmd_info(void)
+hammer_cmd_info(char **av, int ac)
 {
 	struct statfs *stfsbuf;
 	int mntsize, i, first = 1;
 	char *fstype, *path;
 
 	tzset();
-	mntsize = getmntinfo(&stfsbuf, MNT_NOWAIT);
-	if (mntsize > 0) {
-		for (i = 0; i < mntsize; i++) {
-			fstype = stfsbuf[i].f_fstypename;
-			path = stfsbuf[i].f_mntonname;
-			if ((strcmp(fstype, "hammer")) == 0) {
-				if (first)
-					first = 0;
-				else
-					fprintf(stdout, "\n");
-				show_info(path);
-			}
-		}
-	} else {
-		fprintf(stdout, "No mounted filesystems found\n");
-	}
 
+	if (ac > 0) {
+                while (ac) {
+                        show_info(*av);
+                        --ac;
+                        ++av;
+                }
+	} else {
+		mntsize = getmntinfo(&stfsbuf, MNT_NOWAIT);
+		if (mntsize > 0) {
+			for (i = 0; i < mntsize; i++) {
+				fstype = stfsbuf[i].f_fstypename;
+				path = stfsbuf[i].f_mntonname;
+				if ((strcmp(fstype, "hammer")) == 0) {
+					if (first)
+						first = 0;
+					else
+						fprintf(stdout, "\n");
+					show_info(path);
+				}
+			}
+		} else {
+			fprintf(stdout, "No mounted filesystems found\n");
+		}
+	}
 }
 
 void

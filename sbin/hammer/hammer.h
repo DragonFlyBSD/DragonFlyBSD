@@ -124,7 +124,7 @@ void hammer_cmd_snaprm(char **av, int ac);
 void hammer_cmd_cleanup(char **av, int ac);
 void hammer_cmd_config(char **av, int ac);
 void hammer_cmd_viconfig(char **av, int ac);
-void hammer_cmd_info(void);
+void hammer_cmd_info(char **av, int ac);
 void hammer_cmd_get_version(char **av, int ac);
 void hammer_cmd_set_version(char **av, int ac);
 void hammer_cmd_volume_add(char **av, int ac);
