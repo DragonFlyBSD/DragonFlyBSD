@@ -43,7 +43,7 @@
 #include <unistd.h>
 #include <uuid.h>
 
-#include <libhammer.h>
+#include "libhammer.h"
 
 char *
 libhammer_find_pfs_mount(int pfsid, uuid_t parentuuid, int ismaster)

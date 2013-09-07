@@ -43,7 +43,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <libhammer.h>
+#include "libhammer.h"
 
 static u_int32_t count_snapshots(u_int32_t, char *, char *, int *);
 
