@@ -623,7 +623,7 @@ usage(int exit_code)
 		"hammer namekey2 <path>\n"
 		"hammer namekey32 <path>\n"
 		"hammer cleanup [<filesystem> ...]\n"
-		"hammer info\n"
+		"hammer info [<dirpath> ...]\n"
 		"hammer snapshot [<filesystem>] <snapshot-dir>\n"
 		"hammer snapshot <filesystem> <snapshot-dir> [<note>]\n"
 		"hammer prune <softlink-dir>\n"
