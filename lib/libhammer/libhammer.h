@@ -33,6 +33,7 @@
  * SUCH DAMAGE.
  *
  */
+
 #ifndef _LIBHAMMER_H_
 #define _LIBHAMMER_H_
 
@@ -109,12 +110,59 @@ typedef struct libhammer_volinfo {
 	TAILQ_HEAD(pfslist, libhammer_pfsinfo) list_pseudo;
 } *libhammer_volinfo_t;
 
+struct libhammer_btree_stats {
+	int64_t elements;
+	int64_t iterations;
+	int64_t splits;
+	int64_t inserts;
+	int64_t deletes;
+	int64_t lookups;
+	int64_t searches;
+};
+
+struct libhammer_io_stats {
+	int64_t undo;
+	int64_t dev_writes;
+	int64_t dev_reads;
+	int64_t file_writes;
+	int64_t file_reads;
+	int64_t file_iop_writes;
+	int64_t file_iop_reads;
+	int64_t inode_flushes;
+	int64_t commits;
+};
+
 /*
- * INFO directive prototypes
+ * Function prototypes
  */
 __BEGIN_DECLS
 libhammer_volinfo_t libhammer_get_volinfo(const char *);
 void libhammer_free_volinfo(libhammer_volinfo_t);
+
+int libhammer_stats_redo(int64_t *);
+int libhammer_stats_undo(int64_t *);
+int libhammer_stats_commits(int64_t *);
+int libhammer_stats_inode_flushes(int64_t *);
+int libhammer_stats_disk_write(int64_t *);
+int libhammer_stats_disk_read(int64_t *);
+int libhammer_stats_file_iopsw(int64_t *);
+int libhammer_stats_file_iopsr(int64_t *);
+int libhammer_stats_file_write(int64_t *);
+int libhammer_stats_file_read(int64_t *);
+int libhammer_stats_record_iterations(int64_t *);
+int libhammer_stats_root_iterations(int64_t *);
+int libhammer_stats_btree_iterations(int64_t *);
+int libhammer_stats_btree_splits(int64_t *);
+int libhammer_stats_btree_elements(int64_t *);
+int libhammer_stats_btree_deletes(int64_t *);
+int libhammer_stats_btree_inserts(int64_t *);
+int libhammer_stats_btree_lookups(int64_t *);
+int libhammer_stats_btree_searches(int64_t *);
+int libhammer_btree_stats(struct libhammer_btree_stats *);
+int libhammer_io_stats(struct libhammer_io_stats *);
+
+char *libhammer_find_pfs_mount(int, uuid_t, int);
+void *_libhammer_malloc(size_t);
 __END_DECLS
 
 static __inline libhammer_pfsinfo_t
@@ -140,13 +188,5 @@ libhammer_get_last_pfs(libhammer_volinfo_t volinfo)
 {
 	return TAILQ_LAST(&volinfo->list_pseudo, pfslist);
 }
-
-/*
- * MISC directive prototypes
- */
-__BEGIN_DECLS
-char *libhammer_find_pfs_mount(int, uuid_t, int);
-void *_libhammer_malloc(size_t);
-__END_DECLS
 
 #endif
