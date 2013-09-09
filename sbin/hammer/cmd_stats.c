@@ -34,152 +34,78 @@
  * $DragonFly: src/sbin/hammer/cmd_stats.c,v 1.3 2008/07/14 20:28:07 dillon Exp $
  */
 
-#include "hammer.h"
+#include <libhammer.h>
 #include <math.h>
-#include <sys/sysctl.h>
+
+#include "hammer.h"
+
 
 static void loaddelay(struct timespec *ts, const char *arg);
 
 void
 hammer_cmd_bstats(char **av, int ac)
 {
-	int mibs[8][16];
-	size_t lens[8];
-	int64_t stats[8];
-	int64_t copy[8];
-	size_t size;
+	struct libhammer_btree_stats bs, bsc;
 	struct timespec delay = { 1, 0 };
 	int count;
-	int i;
-	int r;
 
 	if (ac > 0)
 		loaddelay(&delay, av[0]);
-	lens[0] = 16;
-	lens[1] = 16;
-	lens[2] = 16;
-	lens[3] = 16;
-	lens[4] = 16;
-	lens[5] = 16;
-	r = 0;
 
-	r |= sysctlnametomib("vfs.hammer.stats_btree_elements",
-			     mibs[0], &lens[0]);
-	r |= sysctlnametomib("vfs.hammer.stats_btree_iterations",
-			     mibs[1], &lens[1]);
-	r |= sysctlnametomib("vfs.hammer.stats_btree_lookups",
-			     mibs[2], &lens[2]);
-	r |= sysctlnametomib("vfs.hammer.stats_btree_inserts",
-			     mibs[3], &lens[3]);
-	r |= sysctlnametomib("vfs.hammer.stats_btree_deletes",
-			     mibs[4], &lens[4]);
-	r |= sysctlnametomib("vfs.hammer.stats_btree_splits",
-			     mibs[5], &lens[5]);
-	if (r < 0) {
-		perror("sysctl: HAMMER stats not available:");
-		exit(1);
-	}
-
+	bzero(&bsc, sizeof(bsc));
 	for (count = 0; ; ++count) {
-		for (i = 0; i < 6; ++i) {
-			size = sizeof(stats[0]);
-			r = sysctl(mibs[i], lens[i], &stats[i], &size, NULL, 0);
-			if (r < 0) {
-				perror("sysctl");
-				exit(1);
-			}
-		}
+		if (libhammer_btree_stats(&bs) < 0)
+			err(1, "Failed to get information from HAMMER sysctls");
 		if (count) {
 			if ((count & 15) == 1)
-				printf("  elements iterations    lookups    inserts    deletes     splits\n");
+				printf("  elements iterations    lookups    "
+				    "inserts    deletes     splits\n");
 			printf("%10jd %10jd %10jd %10jd %10jd %10jd\n",
-				(intmax_t)(stats[0] - copy[0]),
-				(intmax_t)(stats[1] - copy[1]),
-				(intmax_t)(stats[2] - copy[2]),
-				(intmax_t)(stats[3] - copy[3]),
-				(intmax_t)(stats[4] - copy[4]),
-				(intmax_t)(stats[5] - copy[5]));
+			    (intmax_t)(bs.elements - bsc.elements),
+			    (intmax_t)(bs.iterations - bsc.iterations),
+			    (intmax_t)(bs.lookups - bsc.lookups),
+			    (intmax_t)(bs.inserts - bsc.inserts),
+			    (intmax_t)(bs.deletes - bsc.deletes),
+			    (intmax_t)(bs.splits - bsc.splits));
 		}
+		bcopy(&bs, &bsc, sizeof(bs));
 		nanosleep(&delay, NULL);
-		bcopy(stats, copy, sizeof(stats));
 	}
 }
-
 
 void
 hammer_cmd_iostats(char **av, int ac)
 {
-	int mibs[9][16];
-	size_t lens[9];
-	int64_t stats[9];
-	int64_t copy[9];
-	size_t size;
+	struct libhammer_io_stats ios, iosc;
 	struct timespec delay = { 1, 0 };
+	int64_t tiops = 0;
 	int count;
-	int i;
-	int r;
 
 	if (ac > 0)
 		loaddelay(&delay, av[0]);
-	lens[0] = 16;
-	lens[1] = 16;
-	lens[2] = 16;
-	lens[3] = 16;
-	lens[4] = 16;
-	lens[5] = 16;
-	lens[6] = 16;
-	lens[7] = 16;
-	lens[8] = 16;
-	r = 0;
 
-	r |= sysctlnametomib("vfs.hammer.stats_file_read",
-			     mibs[0], &lens[0]);
-	r |= sysctlnametomib("vfs.hammer.stats_file_write",
-			     mibs[1], &lens[1]);
-	r |= sysctlnametomib("vfs.hammer.stats_disk_read",
-			     mibs[2], &lens[2]);
-	r |= sysctlnametomib("vfs.hammer.stats_disk_write",
-			     mibs[3], &lens[3]);
-	r |= sysctlnametomib("vfs.hammer.stats_file_iopsr",
-			     mibs[4], &lens[4]);
-	r |= sysctlnametomib("vfs.hammer.stats_file_iopsw",
-			     mibs[5], &lens[5]);
-	r |= sysctlnametomib("vfs.hammer.stats_inode_flushes",
-			     mibs[6], &lens[6]);
-	r |= sysctlnametomib("vfs.hammer.stats_commits",
-			     mibs[7], &lens[7]);
-	r |= sysctlnametomib("vfs.hammer.stats_undo",
-			     mibs[8], &lens[8]);
-	if (r < 0) {
-		perror("sysctl: HAMMER stats not available");
-		exit(1);
-	}
-
+	bzero(&iosc, sizeof(iosc));
 	for (count = 0; ; ++count) {
-		for (i = 0; i <= 8; ++i) {
-			size = sizeof(stats[0]);
-			r = sysctl(mibs[i], lens[i], &stats[i], &size, NULL, 0);
-			if (r < 0) {
-				perror("sysctl");
-				exit(1);
-			}
-		}
+		if (libhammer_io_stats(&ios) < 0)
+			err(1, "Failed to get information from HAMMER sysctls");
+		tiops = (ios.file_iop_writes + ios.file_iop_reads) -
+		    (iosc.file_iop_writes + iosc.file_iop_reads);
 		if (count) {
 			if ((count & 15) == 1)
-				printf("  file-rd   file-wr  dev-read dev-write inode_ops ino_flsh cmmit     undo\n");
+				printf("  file-rd   file-wr  dev-read dev-write"
+				    " inode_ops ino_flsh cmmit     undo\n");
 			printf("%9jd %9jd %9jd %9jd %9jd %8jd %5jd %8jd\n",
-				(intmax_t)(stats[0] - copy[0]),
-				(intmax_t)(stats[1] - copy[1]),
-				(intmax_t)(stats[2] - copy[2]),
-				(intmax_t)(stats[3] - copy[3]),
-				(intmax_t)(stats[4] + stats[5] -
-					   copy[4] - copy[5]),
-				(intmax_t)(stats[6] - copy[6]),
-				(intmax_t)(stats[7] - copy[7]),
-				(intmax_t)(stats[8] - copy[8]));
+			    (intmax_t)(ios.file_reads - iosc.file_reads),
+			    (intmax_t)(ios.file_writes - iosc.file_writes),
+			    (intmax_t)(ios.dev_reads - iosc.dev_reads),
+			    (intmax_t)(ios.dev_writes - iosc.dev_writes),
+			    (intmax_t)tiops,
+			    (intmax_t)(ios.inode_flushes - iosc.inode_flushes),
+			    (intmax_t)(ios.commits - iosc.commits),
+			    (intmax_t)(ios.undo - iosc.undo));
 		}
 		nanosleep(&delay, NULL);
-		bcopy(stats, copy, sizeof(stats));
+		bcopy(&ios, &iosc, sizeof(ios));
 	}
 }
 
@@ -198,4 +124,3 @@ loaddelay(struct timespec *ts, const char *arg)
 	ts->tv_sec = (int)d;
 	ts->tv_nsec = (int)(modf(d, &d) * 1000000000.0);
 }
-
