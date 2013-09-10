@@ -1314,6 +1314,21 @@ sysctl_dumpentry(struct radix_node *rn, void *vw)
 	return (0);
 }
 
+static void
+ifnet_compute_stats(struct ifnet *ifp)
+{
+	IFNET_STAT_GET(ifp, ipackets, ifp->if_ipackets);
+	IFNET_STAT_GET(ifp, ierrors, ifp->if_ierrors);
+	IFNET_STAT_GET(ifp, opackets, ifp->if_opackets);
+	IFNET_STAT_GET(ifp, collisions, ifp->if_collisions);
+	IFNET_STAT_GET(ifp, ibytes, ifp->if_ibytes);
+	IFNET_STAT_GET(ifp, obytes, ifp->if_obytes);
+	IFNET_STAT_GET(ifp, imcasts, ifp->if_imcasts);
+	IFNET_STAT_GET(ifp, omcasts, ifp->if_omcasts);
+	IFNET_STAT_GET(ifp, iqdrops, ifp->if_iqdrops);
+	IFNET_STAT_GET(ifp, noproto, ifp->if_noproto);
+}
+
 static int
 sysctl_iflist(int af, struct walkarg *w)
 {
@@ -1341,6 +1356,7 @@ sysctl_iflist(int af, struct walkarg *w)
 
 			ifm->ifm_index = ifp->if_index;
 			ifm->ifm_flags = ifp->if_flags;
+			ifnet_compute_stats(ifp);
 			ifm->ifm_data = ifp->if_data;
 			ifm->ifm_addrs = rtinfo.rti_addrs;
 			error = SYSCTL_OUT(w->w_req, ifm, msglen);
