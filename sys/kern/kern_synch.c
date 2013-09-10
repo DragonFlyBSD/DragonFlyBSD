@@ -841,8 +841,12 @@ endtsleep(void *arg)
 	KKASSERT(td->td_flags & TDF_TSLEEP_DESCHEDULED);
 
 	if (lp) {
-		if (lp->lwp_proc->p_stat != SSTOP)
-			setrunnable(lp);
+		/*
+		 * callout timer should never be set in tstop() because
+		 * it passes a timeout of 0.
+		 */
+		KKASSERT(lp->lwp_stat != LSSTOP);
+		setrunnable(lp);
 		lwkt_reltoken(&lp->lwp_token);
 	} else {
 		_tsleep_remove(td);
