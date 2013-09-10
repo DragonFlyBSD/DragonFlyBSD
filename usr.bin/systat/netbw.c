@@ -164,6 +164,7 @@ static struct tcp_stats tcp_last;
 static int tcp_pcb_seq;
 
 static const char *numtok(double value);
+static void netbwline(int row, struct mytcpcb *elm, double delta_time);
 const char * netaddrstr(u_char vflags, union in_dependaddr *depaddr,
 			u_int16_t port);
 static void updatepcb(struct xtcpcb *xtcp);
@@ -248,10 +249,8 @@ fetchnetbw(void)
 	 * General stats
 	 */
 	len = sizeof(tcp_array);
-	if (sysctlbyname("net.inet.tcp.stats", tcp_array, &len, NULL, 0) < 0) {
-		free(tcp_pcbs);
+	if (sysctlbyname("net.inet.tcp.stats", tcp_array, &len, NULL, 0) < 0)
 		return;
-	}
 	ncpus = len / sizeof(tcp_array[0]);
 	tcp_last = tcp_curr;
 	tv_last = tv_curr;
@@ -317,46 +316,9 @@ shownetbw(void)
 		     DELTAELM(xt_tp.snd_max) ||
 		     DELTAELM(xt_tp.rcv_nxt)
 		    )) {
-			mvwprintw(wnd, row, 0,
-				  "%s %s "
-				  /*"rxb %s txb %s "*/
-				  "rcv %s snd %s "
-				  "[%c%c%c%c%c%c%c]",
-				  netaddrstr(
-				    elm->xtcp.xt_inp.inp_vflag,
-				    &elm->xtcp.xt_inp.inp_inc.inc_ie.
-					ie_dependladdr,
-				    ntohs(elm->xtcp.xt_inp.inp_inc.inc_ie.ie_lport)),
-				  netaddrstr(
-				    elm->xtcp.xt_inp.inp_vflag,
-				    &elm->xtcp.xt_inp.inp_inc.inc_ie.
-					ie_dependfaddr,
-				    ntohs(elm->xtcp.xt_inp.inp_inc.inc_ie.ie_fport)),
-				/*
-				  numtok(elm->xtcp.xt_socket.so_rcv.sb_cc),
-				  numtok(elm->xtcp.xt_socket.so_snd.sb_cc),
-				*/
-				  numtok(DELTAELM(xt_tp.rcv_nxt)),
-				  numtok(DELTAELM(xt_tp.snd_max)),
-				  (elm->xtcp.xt_socket.so_rcv.sb_cc > 15000 ?
-				   'R' : ' '),
-				  (elm->xtcp.xt_socket.so_snd.sb_cc > 15000 ?
-				   'T' : ' '),
-				  ((elm->xtcp.xt_tp.t_flags & TF_NODELAY) ?
-				   'N' : ' '),
-				  ((elm->xtcp.xt_tp.t_flags & TF_RCVD_TSTMP) ?
-				   'T' : ' '),
-				  ((elm->xtcp.xt_tp.t_flags &
-				   TF_SACK_PERMITTED) ?
-				   'S' : ' '),
-				  ((elm->xtcp.xt_tp.t_flags & TF_RCVD_SCALE) ?
-				   'X' : ' '),
-				  ((elm->xtcp.xt_tp.t_flags & TF_FASTRECOVERY) ?
-				   'F' : ' ')
-			);
-			wclrtoeol(wnd);
-			if (++row >= LINES-3)
-				break;
+			if (row < LINES - 3)
+				netbwline(row, elm, delta_time);
+			++row;
 		} else if (elm->seq != tcp_pcb_seq) {
 			delm = elm;
 		}
@@ -372,6 +334,50 @@ shownetbw(void)
 		  "Rate/sec, "
 		  "R=rxpend T=txpend N=nodelay T=tstmp "
 		  "S=sack X=winscale F=fastrec");
+}
+
+static
+void
+netbwline(int row, struct mytcpcb *elm, double delta_time)
+{
+	mvwprintw(wnd, row, 0,
+		  "%s %s "
+		  /*"rxb %s txb %s "*/
+		  "rcv %s snd %s "
+		  "[%c%c%c%c%c%c%c]",
+		  netaddrstr(
+		    elm->xtcp.xt_inp.inp_vflag,
+		    &elm->xtcp.xt_inp.inp_inc.inc_ie.
+			ie_dependladdr,
+		    ntohs(elm->xtcp.xt_inp.inp_inc.inc_ie.ie_lport)),
+		  netaddrstr(
+		    elm->xtcp.xt_inp.inp_vflag,
+		    &elm->xtcp.xt_inp.inp_inc.inc_ie.
+			ie_dependfaddr,
+		    ntohs(elm->xtcp.xt_inp.inp_inc.inc_ie.ie_fport)),
+		/*
+		  numtok(elm->xtcp.xt_socket.so_rcv.sb_cc),
+		  numtok(elm->xtcp.xt_socket.so_snd.sb_cc),
+		*/
+		  numtok(DELTAELM(xt_tp.rcv_nxt)),
+		  numtok(DELTAELM(xt_tp.snd_max)),
+		  (elm->xtcp.xt_socket.so_rcv.sb_cc > 15000 ?
+		   'R' : ' '),
+		  (elm->xtcp.xt_socket.so_snd.sb_cc > 15000 ?
+		   'T' : ' '),
+		  ((elm->xtcp.xt_tp.t_flags & TF_NODELAY) ?
+		   'N' : ' '),
+		  ((elm->xtcp.xt_tp.t_flags & TF_RCVD_TSTMP) ?
+		   'T' : ' '),
+		  ((elm->xtcp.xt_tp.t_flags &
+		   TF_SACK_PERMITTED) ?
+		   'S' : ' '),
+		  ((elm->xtcp.xt_tp.t_flags & TF_RCVD_SCALE) ?
+		   'X' : ' '),
+		  ((elm->xtcp.xt_tp.t_flags & TF_FASTRECOVERY) ?
+				   'F' : ' ')
+	);
+	wclrtoeol(wnd);
 }
 
 #if 0
