@@ -85,7 +85,7 @@ $FreeBSD: head/sys/dev/mxge/if_mxge.c 254263 2013-08-12 23:30:01Z scottl $
 /* tunable params */
 static int mxge_nvidia_ecrc_enable = 1;
 static int mxge_force_firmware = 0;
-static int mxge_intr_coal_delay = 30;
+static int mxge_intr_coal_delay = 150;
 static int mxge_deassert_wait = 1;
 static int mxge_flow_control = 1;
 static int mxge_verbose = 0;
@@ -4342,6 +4342,9 @@ mxge_attach(device_t dev)
 	ifp->if_ioctl = mxge_ioctl;
 	ifp->if_start = mxge_start;
 	/* XXX watchdog */
+
+	/* Increase TSO burst length */
+	ifp->if_tsolen = (32 * ETHERMTU);
 
 	/* Initialise the ifmedia structure */
 	ifmedia_init(&sc->media, 0, mxge_media_change, 
