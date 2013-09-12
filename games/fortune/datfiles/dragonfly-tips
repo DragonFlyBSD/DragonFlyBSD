@@ -49,6 +49,11 @@ Nice tcsh prompt: set prompt = '[%B%m%b] %B%~%b%# '
 %
 Simple tcsh prompt: set prompt = '%# '
 %
+Red tcsh prompt for root:
+
+  set prompt = "%{\033[1;31m%}%n@%m%{\033[0m%}:%~ # "
+		-- Antonio Huete Jimenez <tuxillo@quantumachine.net>
+%
 If you want df(1) and other commands to display disk sizes in
 kilobytes instead of 512-byte blocks, set BLOCKSIZE in your
 environment to 'K'.  You can also use 'M' for Megabytes or 'G' for
