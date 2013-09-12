@@ -2146,6 +2146,7 @@ TO_REMOVE+=/usr/share/man/man2/syslink.2.gz
 TO_REMOVE+=/usr/share/man/cat4/uhidev.4.gz
 TO_REMOVE+=/usr/share/man/man4/uhidev.4.gz
 TO_REMOVE+=/boot/kernel/drmn.ko
+TO_REMOVE+=/boot/kernel/i915.ko
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
