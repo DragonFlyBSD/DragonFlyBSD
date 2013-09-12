@@ -653,7 +653,6 @@ dev/disk/mpt/mpt_pci.c		optional mpt pci
 dev/disk/mpt/mpt_raid.c		optional mpt
 dev/disk/mpt/mpt_user.c		optional mpt
 dev/netif/mxge/if_mxge.c	optional mxge pci
-#dev/netif/mxge/mxge_lro.c	optional mxge pci
 dev/netif/mxge/fw/eth_z8e/mxge_eth_z8e.c	optional mxge pci
 dev/netif/mxge/fw/ethp_z8e/mxge_ethp_z8e.c	optional mxge pci
 dev/netif/mxge/fw/rss_eth_z8e/mxge_rss_eth_z8e.c	optional mxge pci
