@@ -32,7 +32,6 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.83 2008/09/17 21:44:19 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -335,14 +334,8 @@ extern	time_t metadelay;		/* time to delay syncing metadata */
 extern	struct objcache *namei_oc;
 extern	int prtactive;			/* nonzero to call vprint() */
 extern	struct vattr va_null;		/* predefined null vattr structure */
-extern	int vfs_ioopt;
 extern	int numvnodes;
 extern	int freevnodes;
-
-/*
- * Interlock for scanning list of vnodes attached to a mountpoint
- */
-extern struct lwkt_token mntvnode_token;
 
 /*
  * This macro is very helpful in defining those offsets in the vdesc struct.
