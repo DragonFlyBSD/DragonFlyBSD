@@ -20,7 +20,7 @@ struct netperf_child {
 static void
 usage(const char *cmd)
 {
-	fprintf(stderr, "%s -H host [-l len_s] [-i instances] [-r]\n", cmd);
+	fprintf(stderr, "%s -H host [-l len_s] [-i instances] [-r|-s]\n", cmd);
 	exit(1);
 }
 
@@ -34,7 +34,7 @@ main(int argc, char *argv[])
 	volatile int ninst;
 	int len, ninst_done;
 	int opt, i, null_fd, set_minmax = 0;
-	volatile int reverse = 0;
+	volatile int reverse = 0, sfile = 0;
 	double result, res_max, res_min, jain;
 	pid_t mypid;
 
@@ -42,7 +42,7 @@ main(int argc, char *argv[])
 	ninst = 2;
 	len = 10;
 
-	while ((opt = getopt(argc, argv, "i:H:l:r")) != -1) {
+	while ((opt = getopt(argc, argv, "i:H:l:rs")) != -1) {
 		switch (opt) {
 		case 'i':
 			ninst = strtoul(optarg, NULL, 10);
@@ -58,6 +58,12 @@ main(int argc, char *argv[])
 
 		case 'r':
 			reverse = 1;
+			sfile = 0;
+			break;
+
+		case 's':
+			reverse = 0;
+			sfile = 1;
 			break;
 
 		default:
@@ -81,6 +87,8 @@ main(int argc, char *argv[])
 	args[i++] = __DECONST(char *, "-t");
 	if (reverse)
 		args[i++] = __DECONST(char *, "TCP_MAERTS");
+	else if (sfile)
+		args[i++] = __DECONST(char *, "TCP_SENDFILE");
 	else
 		args[i++] = __DECONST(char *, "TCP_STREAM");
 	args[i] = NULL;
