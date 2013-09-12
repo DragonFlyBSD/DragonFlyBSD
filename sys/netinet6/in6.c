@@ -609,6 +609,14 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 			*((struct in6_ifextra *)ifp->if_afdata[AF_INET6])->icmp6_ifstat;
 		break;
 
+	case SIOCSIFADDR:
+	case SIOCSIFDSTADDR:
+		/*
+		 * Do not pass those ioctl to driver handler since they are not
+		 * properly setup.  Instead just error out.
+		 */
+		return (EOPNOTSUPP);
+		
 	case SIOCGIFALIFETIME_IN6:
 		ifr->ifr_ifru.ifru_lifetime = ia->ia6_lifetime;
 		break;
