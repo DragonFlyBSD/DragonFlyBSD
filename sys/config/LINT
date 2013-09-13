@@ -2328,7 +2328,7 @@ device		pmtimer		# adjust the system clock after resume
 
 # DRM options:
 # drm:		General DRM code
-# i915drm:	Intel i830, i845, i915, i945, i965, G33/35
+# i915kmsdrm:	Intel integrated GPUs, starting from the 830M family
 # mach64drm:	ATI Mach64 cards - Rage and 3D Rage series
 # mgadrm:	AGP Matrox G200, G400, G450, G550
 # r128drm:	ATI Rage 128 cards
@@ -2342,7 +2342,7 @@ device		pmtimer		# adjust the system clock after resume
 # DRM requires AGP in the kernel.
 
 device		drm
-device		"i915drm"
+#device		"i915kmsdrm"	# breaks VGA console, disabled by default
 device		"mach64drm"
 device		mgadrm
 device		"r128drm"
