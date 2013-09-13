@@ -62,14 +62,14 @@ static struct mbtypenames {
  * Print mbuf statistics.
  */
 void
-mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr,
-     u_long ncpusaddr)
+mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbjcaddr,
+    u_long nmbufaddr, u_long ncpusaddr)
 {
 	u_long totmem, totpossible;
 	struct mbstat *mbstat;
 	struct mbtypenames *mp;
-	int name[3], nmbclusters, nmbufs, nmbtypes;
-	size_t nmbclen, nmbuflen, mbstatlen, mbtypeslen;
+	int name[3], nmbclusters, nmbjclusters, nmbufs, nmbtypes;
+	size_t nmbclen, nmbjclen, nmbuflen, mbstatlen, mbtypeslen;
 	u_long *mbtypes;
 	int ncpus;
 	int n;
@@ -105,6 +105,8 @@ mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr,
 		if (kread(mbtaddr, (char *)mbtypes, mbtypeslen * ncpus))
 			goto err;
 		if (kread(nmbcaddr, (char *)&nmbclusters, sizeof(int)))
+			goto err;
+		if (kread(nmbjcaddr, (char *)&nmbjclusters, sizeof(int)))
 			goto err;
 		if (kread(nmbufaddr, (char *)&nmbufs, sizeof(int)))
 			goto err;
@@ -145,6 +147,13 @@ mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr,
 			goto err;
 		}
 
+		nmbjclen = sizeof(int);
+		if (sysctlbyname("kern.ipc.nmbjclusters",
+		    &nmbjclusters, &nmbjclen, 0, 0) < 0) {
+			warn("sysctl: retrieving nmbjclusters");
+			goto err;
+		}
+
 		nmbuflen = sizeof(int);
 		if (sysctlbyname("kern.ipc.nmbufs", &nmbufs, &nmbuflen, 0, 0) < 0) {
 			warn("sysctl: retrieving nmbufs");
@@ -156,10 +165,14 @@ mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr,
 #define MSIZE		(mbstat->m_msize)
 #undef MCLBYTES
 #define	MCLBYTES	(mbstat->m_mclbytes)
+#undef MJUMPAGESIZE
+#define MJUMPAGESIZE	(mbstat->m_mjumpagesize)
 
 	printf("%lu/%u mbufs in use (current/max):\n", mbstat->m_mbufs, nmbufs);
 	printf("%lu/%u mbuf clusters in use (current/max)\n",
 		mbstat->m_clusters, nmbclusters);
+	printf("%lu/%u mbuf jumbo clusters in use (current/max)\n",
+		mbstat->m_jclusters, nmbjclusters);
 	for (mp = mbtypenames; mp->mt_name; mp++)
 		if (mbtypes[mp->mt_type]) {
 			seen[mp->mt_type] = YES;
@@ -173,8 +186,10 @@ mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbufaddr,
 			printf("\t%lu mbufs and mbuf clusters allocated to <mbuf type %d>\n",
 			    mbtypes[i], i);
 		}
-	totmem = mbstat->m_mbufs * MSIZE + mbstat->m_clusters * MCLBYTES;
-	totpossible = nmbclusters * MCLBYTES + MSIZE * nmbufs; 
+	totmem = mbstat->m_mbufs * MSIZE + mbstat->m_clusters * MCLBYTES +
+	    mbstat->m_jclusters * MJUMPAGESIZE;
+	totpossible =  MSIZE * nmbufs + nmbclusters * MCLBYTES +
+	    nmbjclusters * MJUMPAGESIZE;
 	printf("%lu Kbytes allocated to network (%lu%% of mb_map in use)\n",
 		totmem / 1024, (totmem * 100) / totpossible);
 	printf("%lu requests for memory denied\n", mbstat->m_drops);
