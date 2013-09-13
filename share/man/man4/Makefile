@@ -407,14 +407,21 @@ MLINKS+=cue.4 if_cue.4
 MLINKS+=dc.4 if_dc.4
 MLINKS+=disc.4 if_disc.4
 MLINKS+=dm.4 dm_target_linear.4
-MLINKS+=drm.4 i915drm.4 \
+MLINKS+=drm.4 i915kms.4 \
 	drm.4 mach64drm.4 \
+	drm.4 mach64.4 \
 	drm.4 mgadrm.4 \
+	drm.4 mga.4 \
 	drm.4 r128drm.4 \
+	drm.4 r128.4 \
 	drm.4 radeondrm.4 \
+	drm.4 radeon.4 \
 	drm.4 savagedrm.4 \
+	drm.4 savage.4 \
 	drm.4 sisdrm.4 \
-	drm.4 tdfxdrm.4
+	drm.4 sis.4 \
+	drm.4 tdfxdrm.4 \
+	drm.4 tdfx.4
 #	drm.4 viadrm.4
 MLINKS+=dsched.4 dsched_fq.4
 MLINKS+=ed.4 if_ed.4

@@ -23,26 +23,12 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd January 11, 2012
+.Dd September 13, 2013
 .Dt DRM 4
 .Os
 .Sh NAME
 .Nm drm
 .Nd Direct Rendering Manager (DRI kernel support)
-.Sh SYNOPSIS
-.Cd device drm
-.Cd device i915drm
-.Cd device mach64drm
-.Cd device mgadrm
-.Cd device r128drm
-.Cd device radeondrm
-.Cd device savagedrm
-.Cd device sisdrm
-.Cd device tdfxdrm
-.\".Cd device viadrm
-.Pp
-.Cd options DRM_DEBUG
-.\".Cd options DRM_LINUX
 .Sh DESCRIPTION
 The
 .Tn Direct Rendering Manager
@@ -60,55 +46,58 @@ The
 .Nm
 drivers provide support for the following chipsets:
 .Pp
-.Bl -tag -width XsavagedrmXXX -offset indent -compact
-.It i915drm
-Intel i915, i945, i965, G3x, G4x
-.It mach64drm
-Mach64 (3D Rage Pro, Rage)
-.It mgadrm
-Matrox G[24]00, G[45]50
-.It r128drm
-ATI Rage 128
-.It radeondrm
-ATI Radeon
-.It savagedrm
-S3 Savage
-.It sisdrm
-SiS
-.It tdfxdrm
-3dfx (Voodoo)
-.\".It viadrm
-.\"VIA
+.Bl -column -offset -indent ".Sy ModuleXXX" ".Sy DeviceXXX" ".Sy ChipsetXXX"
+.It Sy Module Ta Sy Kernel Ta Sy Chipset
+.It Pa i915kms.ko Ta n/a Ta Intel i915, i945, i965, G3x, G4x
+.It Pa mach64.ko Ta Cd mach64drm Ta Mach64 (3D Rage Pro, Rage)
+.It Pa mga.ko Ta Cd mgadrm Ta Matrox G[24]00, G[45]50
+.It Pa r128.ko Ta Cd r128drm Ta Rage 128
+.It Pa radeon.ko Ta Cd radeondrm Ta Radeon
+.It Pa savage.ko Ta Cd savagedrm Ta S3 Savage
+.It Pa sis.ko Ta Cd sisdrm Ta SiS
+.It Pa tdfx.ko Ta Cd tdfxdrm Ta 3dfx (Voodoo)
+.\".It Pa via.ko Ta Cd viadrm Ta VIA
 .El
 .Pp
-To make use of the driver:
+In most cases
+.Xr Xorg 1
+will take care of loading the appropriate modules and it is not necessary to
+modify
+.Xr loader.conf 5
+or the kernel configuration to enable
+.Nm
+support.
 .Pp
-.Bl -bullet -compact
-.It
-The kernel must include
-.Xr agp 4
-.It
+Newer versions of
 .Xr Xorg 1 ,
-MesaLib and the video driver to be used must be compiled with DRI support
-.It
-DRI must be enabled in the
+like the one from
+.Xr dports 7 ,
+do a pretty good job of figuring out the right configuration on their own,
+so having no
 .Xr xorg.conf 5
-configuration file:
+file at all is usually the best advice.
+If for some reason an
+.Xr xorg.conf 5
+is preferred, DRI must be enabled:
+.Pp
 .Bd -literal
 Section "DRI"
         Group "wheel"
         Mode 0660
 EndSection
 .Ed
-.El
 .Pp
-In order to use two graphics cards (an on-board and another
-AGP/PCI/PCIe card) with DRI, a
-.Pa /dev/dri/card1
-link to
-.Pa /dev/dri/card0
-has to be created using
-.Xr devfsctl 8 .
+With KMS, DRI is always enabled since the
+.Nm
+is always required.
+.\".Pp
+.\"In order to use two graphics cards (an on-board and another
+.\"AGP/PCI/PCIe card) with DRI, a
+.\".Pa /dev/dri/card1
+.\"link to
+.\".Pa /dev/dri/card0
+.\"has to be created using
+.\".Xr devfsctl 8 .
 .Pp
 If
 .Xr Xorg 1
@@ -128,7 +117,6 @@ node
 .Ar hw.dri.0.debug .
 .Sh SEE ALSO
 .Xr Xorg 1 ,
-.Xr agp 4 ,
 .Xr xorg.conf 5
 .Sh HISTORY
 DRM was first available for Linux.
@@ -141,10 +129,10 @@ Disable AIGLX if necessary
 Section "ServerFlags"
         Option  "AIGLX" "off"
 EndSection
-
-Section "Extensions"
-        Option "Composite" "Disable"
-EndSection
+.\"
+.\"Section "Extensions"
+.\"        Option "Composite" "Disable"
+.\"EndSection
 .Ed
 .Pp
 .Cd options DRM_DEBUG

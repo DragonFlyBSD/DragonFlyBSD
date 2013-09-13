@@ -2147,6 +2147,7 @@ TO_REMOVE+=/usr/share/man/cat4/uhidev.4.gz
 TO_REMOVE+=/usr/share/man/man4/uhidev.4.gz
 TO_REMOVE+=/boot/kernel/drmn.ko
 TO_REMOVE+=/boot/kernel/i915.ko
+TO_REMOVE+=/usr/share/man/man4/i915drm.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
