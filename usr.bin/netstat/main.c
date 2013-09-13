@@ -145,6 +145,8 @@ static struct nlist nl[] = {
 	{ .n_name = "_ncpus" },
 #define	N_CARPSTAT	42
 	{ .n_name = "_carpstats" },
+#define N_NMBJCLUSTERS	43
+	{ .n_name = "_nmbjclusters" },
 	{ .n_name = NULL },
 };
 
@@ -468,10 +470,11 @@ main(int argc, char **argv)
 				mbpr(nl[N_MBSTAT].n_value,
 				    nl[N_MBTYPES].n_value,
 				    nl[N_NMBCLUSTERS].n_value,
+				    nl[N_NMBJCLUSTERS].n_value,
 				    nl[N_NMBUFS].n_value,
 				    nl[N_NCPUS].n_value);
 		} else {
-			mbpr(0, 0, 0, 0, 0);
+			mbpr(0, 0, 0, 0, 0, 0);
 		}
 		exit(0);
 	}

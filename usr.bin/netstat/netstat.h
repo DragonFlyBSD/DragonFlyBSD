@@ -97,7 +97,7 @@ const char *netname6 (struct sockaddr_in6 *, struct in6_addr *);
 void	pfkey_stats (u_long, const char *, int);
 #endif
 
-void	mbpr (u_long, u_long, u_long, u_long, u_long);
+void	mbpr (u_long, u_long, u_long, u_long, u_long, u_long);
 
 void	hostpr (u_long, u_long);
 void	impstats (u_long, u_long);

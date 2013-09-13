@@ -297,7 +297,7 @@ do_mbstat(SYSCTL_HANDLER_ARGS)
 	{
 		mbstat_total.m_mbufs += mbstat[i].m_mbufs;	
 		mbstat_total.m_clusters += mbstat[i].m_clusters;	
-		mbstat_total.m_spare += mbstat[i].m_spare;	
+		mbstat_total.m_jclusters += mbstat[i].m_jclusters;	
 		mbstat_total.m_clfree += mbstat[i].m_clfree;	
 		mbstat_total.m_drops += mbstat[i].m_drops;	
 		mbstat_total.m_wait += mbstat[i].m_wait;	
@@ -374,6 +374,7 @@ static MALLOC_DEFINE(M_MCLMETA, "mclmeta", "mclmeta");
 static void m_reclaim (void);
 static void m_mclref(void *arg);
 static void m_mclfree(void *arg);
+static void m_mjclfree(void *arg);
 
 /*
  * NOTE: Default NMBUFS must take into account a possible DOS attack
@@ -389,7 +390,7 @@ static void m_mclfree(void *arg);
 #define MCL_CACHEFRAC	4
 #endif
 #ifndef NMBJCLUSTERS
-#define NMBJCLUSTERS	2048
+#define NMBJCLUSTERS	(NMBCLUSTERS / 2)
 #endif
 #ifndef NMBUFS
 #define NMBUFS		(nmbclusters * 2 + maxfiles)
@@ -526,7 +527,10 @@ linkjcluster(struct mbuf *m, struct mbcluster *cl, uint size)
 	m->m_ext.ext_arg = cl;
 	m->m_ext.ext_buf = cl->mcl_data;
 	m->m_ext.ext_ref = m_mclref;
-	m->m_ext.ext_free = m_mclfree;
+	if (size != MCLBYTES)
+		m->m_ext.ext_free = m_mjclfree;
+	else
+		m->m_ext.ext_free = m_mclfree;
 	m->m_ext.ext_size = size;
 	atomic_add_int(&cl->mcl_refs, 1);
 
@@ -705,7 +709,7 @@ mbinit(void *dummy)
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
-	limit = nmbjclusters / 4; /* XXX really rarely used */
+	limit = nmbjclusters;
 	mbufjcluster_cache = objcache_create("mbuf + jcluster",
 	    limit, 0,
 	    mbufjcluster_ctor, mbufcluster_dtor, NULL,
@@ -714,7 +718,7 @@ mbinit(void *dummy)
 
 	limit = nmbjclusters;
 	mbufphdrjcluster_cache = objcache_create("mbuf pkt hdr + jcluster",
-	    limit, nmbjclusters / 16,
+	    limit, 0,
 	    mbufphdrjcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
@@ -899,7 +903,7 @@ m_getclr(int how, int type)
 
 static struct mbuf *
 m_getcl_cache(int how, short type, int flags, struct objcache *mbclc,
-    struct objcache *mbphclc)
+    struct objcache *mbphclc, u_long *cl_stats)
 {
 	struct mbuf *m = NULL;
 	int ocflags = MBTOM(how);
@@ -939,7 +943,7 @@ retryonce:
 	mbuftrack(m);
 
 	++mbtypes[mycpu->gd_cpuid][type];
-	++mbstat[mycpu->gd_cpuid].m_clusters;
+	++(*cl_stats);
 	return (m);
 }
 
@@ -947,19 +951,22 @@ struct mbuf *
 m_getjcl(int how, short type, int flags, size_t size)
 {
 	struct objcache *mbclc, *mbphclc;
+	u_long *cl_stats;
 
 	switch (size) {
 	case MCLBYTES:
 		mbclc = mbufcluster_cache;
 		mbphclc = mbufphdrcluster_cache;
+		cl_stats = &mbstat[mycpu->gd_cpuid].m_clusters;
 		break;
 
 	default:
 		mbclc = mbufjcluster_cache;
 		mbphclc = mbufphdrjcluster_cache;
+		cl_stats = &mbstat[mycpu->gd_cpuid].m_jclusters;
 		break;
 	}
-	return m_getcl_cache(how, type, flags, mbclc, mbphclc);
+	return m_getcl_cache(how, type, flags, mbclc, mbphclc, cl_stats);
 }
 
 /*
@@ -973,7 +980,8 @@ struct mbuf *
 m_getcl(int how, short type, int flags)
 {
 	return m_getcl_cache(how, type, flags,
-	    mbufcluster_cache, mbufphdrcluster_cache);
+	    mbufcluster_cache, mbufphdrcluster_cache,
+	    &mbstat[mycpu->gd_cpuid].m_clusters);
 }
 
 /*
@@ -1080,6 +1088,17 @@ m_mclfree(void *arg)
 	}
 }
 
+static void
+m_mjclfree(void *arg)
+{
+	struct mbcluster *mcl = arg;
+
+	if (atomic_fetchadd_int(&mcl->mcl_refs, -1) == 1) {
+		--mbstat[mycpu->gd_cpuid].m_jclusters;
+		objcache_put(mjclmeta_cache, mcl);
+	}
+}
+
 /*
  * Free a single mbuf and any associated external storage.  The successor,
  * if any, is returned.
@@ -1179,13 +1198,14 @@ m_free(struct mbuf *m)
 					objcache_put(mbufphdrjcluster_cache, m);
 				else
 					objcache_put(mbufjcluster_cache, m);
+				--mbstat[mycpu->gd_cpuid].m_jclusters;
 			} else {
 				if (m->m_flags & M_PHCACHE)
 					objcache_put(mbufphdrcluster_cache, m);
 				else
 					objcache_put(mbufcluster_cache, m);
+				--mbstat[mycpu->gd_cpuid].m_clusters;
 			}
-			--mbstat[mycpu->gd_cpuid].m_clusters;
 		} else {
 			/*
 			 * Hell.  Someone else has a ref on this cluster,

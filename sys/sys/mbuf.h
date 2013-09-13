@@ -325,7 +325,7 @@ struct mbuf {
 struct mbstat {
 	u_long	m_mbufs;	/* mbufs obtained from page pool */
 	u_long	m_clusters;	/* clusters obtained from page pool */
-	u_long	m_spare;	/* spare field */
+	u_long	m_jclusters;	/* jclusters obtained from page pool */
 	u_long	m_clfree;	/* free clusters */
 	u_long	m_drops;	/* times failed to find space */
 	u_long	m_wait;		/* times waited for space */
@@ -579,6 +579,20 @@ m_getl(int len, int how, int type, int flags, int *psize)
 	if (psize != NULL)
 		*psize = size;
 	return (m);
+}
+
+static __inline struct mbuf *
+m_getlj(int len, int how, int type, int flags, int *psize)
+{
+	if (len > MCLBYTES) {
+		struct mbuf *m;
+
+		m = m_getjcl(how, type, flags, MJUMPAGESIZE);
+		if (psize != NULL)
+			*psize = MJUMPAGESIZE;
+		return m;
+	}
+	return m_getl(len, how, type, flags, psize);
 }
 
 /*
