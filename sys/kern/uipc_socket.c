@@ -99,6 +99,7 @@
 #ifdef INET
 extern int tcp_sosend_agglim;
 extern int tcp_sosend_async;
+extern int tcp_sosend_jcluster;
 extern int udp_sosend_async;
 extern int udp_sosend_prepend;
 
@@ -1184,8 +1185,13 @@ restart:
 		    } else do {
 			if (resid > INT_MAX)
 				resid = INT_MAX;
-			m = m_getl((int)resid, MB_WAIT, MT_DATA,
-				   top == NULL ? M_PKTHDR : 0, &mlen);
+			if (tcp_sosend_jcluster) {
+				m = m_getlj((int)resid, MB_WAIT, MT_DATA,
+					   top == NULL ? M_PKTHDR : 0, &mlen);
+			} else {
+				m = m_getl((int)resid, MB_WAIT, MT_DATA,
+					   top == NULL ? M_PKTHDR : 0, &mlen);
+			}
 			if (top == NULL) {
 				m->m_pkthdr.len = 0;
 				m->m_pkthdr.rcvif = NULL;

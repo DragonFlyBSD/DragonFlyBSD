@@ -251,13 +251,17 @@ int tcp_autorcvbuf_max = 2*1024*1024;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, recvbuf_max, CTLFLAG_RW,
     &tcp_autorcvbuf_max, 0, "Max size of automatic receive buffer");
 
-int tcp_sosend_agglim = 3;
+int tcp_sosend_agglim = 2;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosend_agglim, CTLFLAG_RW,
     &tcp_sosend_agglim, 0, "TCP sosend mbuf aggregation limit");
 
 int tcp_sosend_async = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosend_async, CTLFLAG_RW,
     &tcp_sosend_async, 0, "TCP asynchronized pru_send");
+
+int tcp_sosend_jcluster = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, sosend_jcluster, CTLFLAG_RW,
+    &tcp_sosend_jcluster, 0, "TCP output uses jcluster");
 
 static int tcp_ignore_redun_dsack = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, ignore_redun_dsack, CTLFLAG_RW,
