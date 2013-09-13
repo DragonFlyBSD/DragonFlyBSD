@@ -55,9 +55,9 @@ LDADD=		-lutil
 
 MAN=	make.1
 make.1:	bmake.1
-	sed -e 's/^.Nx/NetBSD/' -e '/^.Nm/s/bmake/${PROG}/' \
-	    -e '/^.Sh HISTORY/rmy.history' \
-	    -e '/^.Sh HISTORY/,$$s,^.Nm,make,' \
+	@sed -e '/^.Nm/s/bmake/${PROG}/' -e 's/Xr make 1/Nm bmake/' \
+	    -e 's/ $$//' -e 's/^make$$/.Nm/' -e 's/ NetBSD$$/\'$$'\n.Nx/' \
+	    -e '/^NetBSD .\..$$/s/NetBSD/.Nx/' \
 	    < ${.ALLSRC} > ${.TARGET}
 
 CLEANFILES+=	make.1
