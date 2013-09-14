@@ -706,6 +706,7 @@ typedef u_int32_t pcireg_t;             /* ~typical configuration space */
 
 /* PCI Express link capabilities, 32bits */
 #define PCIER_LINKCAP			0x0c
+#define PCIER_LINK_CAP2			0x2c
 #define PCIEM_LNKCAP_SPEED_MASK		0x000f	/* Supported link speeds */
 #define PCIEM_LNKCAP_SPEED_2_5		0x1	/* 2.5GT/s */
 #define PCIEM_LNKCAP_SPEED_5		0x2	/* 5.0GT/s and 2.5GT/s */

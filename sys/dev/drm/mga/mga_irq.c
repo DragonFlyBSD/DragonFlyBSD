@@ -38,7 +38,7 @@
 
 u32 mga_get_vblank_counter(struct drm_device *dev, int crtc)
 {
-	const drm_mga_private_t *const dev_priv = 
+	drm_mga_private_t *const dev_priv = 
 		(drm_mga_private_t *) dev->dev_private;
 
 	if (crtc != 0) {

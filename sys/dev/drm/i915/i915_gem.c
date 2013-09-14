@@ -137,7 +137,7 @@ i915_gem_wait_for_error(struct drm_device *dev)
 	}
 	lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 
-	if (atomic_read(&dev_priv->mm.wedged)) {
+	if (atomic_load_acq_int(&dev_priv->mm.wedged)) {
 		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
 		dev_priv->error_completion++;
 		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
@@ -748,8 +748,13 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 	u32 seqno = 0;
 	int ret;
 
-	if (atomic_read(&dev_priv->mm.wedged))
-		return -EIO;
+	dev_priv = dev->dev_private;
+	if (atomic_load_acq_int(&dev_priv->mm.wedged))
+		return (-EIO);
+
+	recent_enough = ticks - (20 * hz / 1000);
+	ring = NULL;
+	seqno = 0;
 
 	spin_lock(&file_priv->mm.lock);
 	list_for_each_entry(request, &file_priv->mm.request_list, client_list) {
@@ -770,15 +775,15 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 		if (ring->irq_get(ring)) {
 			while (ret == 0 &&
 			    !(i915_seqno_passed(ring->get_seqno(ring), seqno) ||
-			    atomic_read(&dev_priv->mm.wedged)))
+			    atomic_load_acq_int(&dev_priv->mm.wedged)))
 				ret = -lksleep(ring, &ring->irq_lock, PCATCH,
 				    "915thr", 0);
 			ring->irq_put(ring);
-			if (ret == 0 && atomic_read(&dev_priv->mm.wedged))
+			if (ret == 0 && atomic_load_acq_int(&dev_priv->mm.wedged))
 				ret = -EIO;
 		} else if (_intel_wait_for(dev,
 		    i915_seqno_passed(ring->get_seqno(ring), seqno) ||
-		    atomic_read(&dev_priv->mm.wedged), 3000, 0, "915rtr")) {
+		    atomic_load_acq_int(&dev_priv->mm.wedged), 3000, 0, "915rtr")) {
 			ret = -EBUSY;
 		}
 	}

@@ -1902,6 +1902,7 @@ dev/drm/drm_context.c			optional drm
 dev/drm/drm_crtc.c			optional drm
 dev/drm/drm_crtc_helper.c		optional drm
 dev/drm/drm_dma.c			optional drm
+dev/drm/drm_dp_helper.c			optional drm
 dev/drm/drm_dp_iic_helper.c		optional drm
 dev/drm/drm_drawable.c			optional drm
 dev/drm/drm_drv.c			optional drm

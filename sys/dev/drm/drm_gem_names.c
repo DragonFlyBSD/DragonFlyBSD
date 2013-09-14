@@ -133,12 +133,12 @@ drm_gem_name_create(struct drm_gem_names *names, void *p, uint32_t *name)
 {
 	struct drm_gem_name *np;
 
-	np = kmalloc(sizeof(struct drm_gem_name), M_GEM_NAMES, M_WAITOK);
-	lockmgr(&names->lock, LK_EXCLUSIVE);
 	if (*name != 0) {
-		lockmgr(&names->lock, LK_RELEASE);
 		return (EALREADY);
 	}
+
+	np = kmalloc(sizeof(struct drm_gem_name), M_GEM_NAMES, M_WAITOK);
+	lockmgr(&names->lock, LK_EXCLUSIVE);
 	np->name = alloc_unr(names->unr);
 	if (np->name == -1) {
 		lockmgr(&names->lock, LK_RELEASE);

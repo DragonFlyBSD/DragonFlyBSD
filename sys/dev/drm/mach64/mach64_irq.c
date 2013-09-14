@@ -70,7 +70,7 @@ irqreturn_t mach64_driver_irq_handler(DRM_IRQ_ARGS)
 
 u32 mach64_get_vblank_counter(struct drm_device * dev, int crtc)
 {
-	const drm_mach64_private_t *const dev_priv = dev->dev_private;
+	drm_mach64_private_t *const dev_priv = dev->dev_private;
 
 	if (crtc != 0)
 		return 0;

@@ -37,7 +37,7 @@
 
 u32 r128_get_vblank_counter(struct drm_device *dev, int crtc)
 {
-	const drm_r128_private_t *dev_priv = dev->dev_private;
+	drm_r128_private_t *dev_priv = dev->dev_private;
 
 	if (crtc != 0)
 		return 0;

@@ -355,11 +355,11 @@ int ttm_tt_swapout(struct ttm_tt *ttm, vm_object_t persistent_swap_storage)
 		from_page = ttm->pages[i];
 		if (unlikely(from_page == NULL))
 			continue;
-		to_page = vm_page_grab(obj, i, VM_ALLOC_RETRY);
+		to_page = vm_page_grab(obj, i, VM_ALLOC_NORMAL);
 		pmap_copy_page(VM_PAGE_TO_PHYS(from_page),
 					VM_PAGE_TO_PHYS(to_page));
-		vm_page_dirty(to_page);
 		to_page->valid = VM_PAGE_BITS_ALL;
+		vm_page_dirty(to_page);
 		vm_page_wakeup(to_page);
 	}
 	vm_object_pip_wakeup(obj);

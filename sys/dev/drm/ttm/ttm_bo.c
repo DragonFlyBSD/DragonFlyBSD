@@ -130,7 +130,7 @@ static void ttm_bo_release_list(struct ttm_buffer_object *bo)
 	ttm_mem_global_free(bdev->glob->mem_glob, acc_size);
 }
 
-int
+static int
 ttm_bo_wait_unreserved_locked(struct ttm_buffer_object *bo, bool interruptible)
 {
 	const char *wmsg;
@@ -144,7 +144,7 @@ ttm_bo_wait_unreserved_locked(struct ttm_buffer_object *bo, bool interruptible)
 		flags = 0;
 		wmsg = "ttbowu";
 	}
-	while (!ttm_bo_is_reserved(bo)) {
+	while (ttm_bo_is_reserved(bo)) {
 		ret = -lksleep(bo, &bo->glob->lru_lock, 0, wmsg, 0);
 		if (ret != 0)
 			break;
@@ -195,13 +195,13 @@ int ttm_bo_del_from_lru(struct ttm_buffer_object *bo)
 	return put_count;
 }
 
-int ttm_bo_reserve_locked(struct ttm_buffer_object *bo,
+int ttm_bo_reserve_nolru(struct ttm_buffer_object *bo,
 			  bool interruptible,
 			  bool no_wait, bool use_sequence, uint32_t sequence)
 {
 	int ret;
 
-	while (unlikely(atomic_read(&bo->reserved) != 0)) {
+	while (unlikely(atomic_xchg(&bo->reserved, 1) != 0)) {
 		/**
 		 * Deadlock avoidance for multi-bo reserving.
 		 */
@@ -223,22 +223,35 @@ int ttm_bo_reserve_locked(struct ttm_buffer_object *bo,
 			return -EBUSY;
 
 		ret = ttm_bo_wait_unreserved_locked(bo, interruptible);
+
 		if (unlikely(ret))
 			return ret;
 	}
 
-	atomic_set(&bo->reserved, 1);
 	if (use_sequence) {
+		bool wake_up = false;
 		/**
 		 * Wake up waiters that may need to recheck for deadlock,
 		 * if we decreased the sequence number.
 		 */
 		if (unlikely((bo->val_seq - sequence < (1 << 31))
 			     || !bo->seq_valid))
-			wakeup(bo);
+			wake_up = true;
 
+		/*
+		 * In the worst case with memory ordering these values can be
+		 * seen in the wrong order. However since we call wake_up_all
+		 * in that case, this will hopefully not pose a problem,
+		 * and the worst case would only cause someone to accidentally
+		 * hit -EAGAIN in ttm_bo_reserve when they see old value of
+		 * val_seq. However this would only happen if seq_valid was
+		 * written before val_seq was, and just means some slightly
+		 * increased cpu usage
+		 */
 		bo->val_seq = sequence;
 		bo->seq_valid = true;
+		if (wake_up)
+			wakeup(bo);
 	} else {
 		bo->seq_valid = false;
 	}
@@ -267,15 +280,67 @@ int ttm_bo_reserve(struct ttm_buffer_object *bo,
 	int put_count = 0;
 	int ret;
 
-	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
-	ret = ttm_bo_reserve_locked(bo, interruptible, no_wait, use_sequence,
-				    sequence);
-	if (likely(ret == 0))
+	lockmgr(&bo->glob->lru_lock, LK_EXCLUSIVE);
+	ret = ttm_bo_reserve_nolru(bo, interruptible, no_wait, use_sequence,
+				   sequence);
+	if (likely(ret == 0)) {
 		put_count = ttm_bo_del_from_lru(bo);
-	lockmgr(&glob->lru_lock, LK_RELEASE);
+		lockmgr(&glob->lru_lock, LK_RELEASE);
+		ttm_bo_list_ref_sub(bo, put_count, true);
+	} else
+		lockmgr(&bo->glob->lru_lock, LK_RELEASE);
 
-	ttm_bo_list_ref_sub(bo, put_count, true);
+	return ret;
+}
 
+int ttm_bo_reserve_slowpath_nolru(struct ttm_buffer_object *bo,
+				  bool interruptible, uint32_t sequence)
+{
+	bool wake_up = false;
+	int ret;
+
+	while (unlikely(atomic_xchg(&bo->reserved, 1) != 0)) {
+		if (bo->seq_valid && sequence == bo->val_seq) {
+			DRM_ERROR(
+			    "%s: bo->seq_valid && sequence == bo->val_seq",
+			    __func__);
+		}
+
+		ret = ttm_bo_wait_unreserved_locked(bo, interruptible);
+
+		if (unlikely(ret))
+			return ret;
+	}
+
+	if ((bo->val_seq - sequence < (1 << 31)) || !bo->seq_valid)
+		wake_up = true;
+
+	/**
+	 * Wake up waiters that may need to recheck for deadlock,
+	 * if we decreased the sequence number.
+	 */
+	bo->val_seq = sequence;
+	bo->seq_valid = true;
+	if (wake_up)
+		wakeup(bo);
+
+	return 0;
+}
+
+int ttm_bo_reserve_slowpath(struct ttm_buffer_object *bo,
+			    bool interruptible, uint32_t sequence)
+{
+	struct ttm_bo_global *glob = bo->glob;
+	int put_count, ret;
+
+	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
+	ret = ttm_bo_reserve_slowpath_nolru(bo, interruptible, sequence);
+	if (likely(!ret)) {
+		put_count = ttm_bo_del_from_lru(bo);
+		lockmgr(&glob->lru_lock, LK_RELEASE);
+		ttm_bo_list_ref_sub(bo, put_count, true);
+	} else
+		lockmgr(&glob->lru_lock, LK_RELEASE);
 	return ret;
 }
 
@@ -411,6 +476,7 @@ static int ttm_bo_handle_move_mem(struct ttm_buffer_object *bo,
 			bo->mem = tmp_mem;
 			bdev->driver->move_notify(bo, mem);
 			bo->mem = *mem;
+			*mem = tmp_mem;
 		}
 
 		goto out_err;
@@ -487,7 +553,7 @@ static void ttm_bo_cleanup_refs_or_queue(struct ttm_buffer_object *bo)
 	int ret;
 
 	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
-	ret = ttm_bo_reserve_locked(bo, false, true, false, 0);
+	ret = ttm_bo_reserve_nolru(bo, false, true, false, 0);
 
 	lockmgr(&bdev->fence_lock, LK_EXCLUSIVE);
 	(void) ttm_bo_wait(bo, false, false, true);
@@ -579,7 +645,7 @@ static int ttm_bo_cleanup_refs_and_unlock(struct ttm_buffer_object *bo,
 			return ret;
 
 		lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
-		ret = ttm_bo_reserve_locked(bo, false, true, false, 0);
+		ret = ttm_bo_reserve_nolru(bo, false, true, false, 0);
 
 		/*
 		 * We raced, and lost, someone else holds the reservation now,
@@ -643,7 +709,12 @@ static int ttm_bo_delayed_delete(struct ttm_bo_device *bdev, bool remove_all)
 			refcount_acquire(&nentry->list_kref);
 		}
 
-		ret = ttm_bo_reserve_locked(entry, false, !remove_all, false, 0);
+		ret = ttm_bo_reserve_nolru(entry, false, true, false, 0);
+		if (remove_all && ret) {
+			ret = ttm_bo_reserve_nolru(entry, false, false,
+						   false, 0);
+		}
+
 		if (!ret)
 			ret = ttm_bo_cleanup_refs_and_unlock(entry, false,
 							     !remove_all);
@@ -795,7 +866,7 @@ static int ttm_mem_evict_first(struct ttm_bo_device *bdev,
 
 	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	list_for_each_entry(bo, &man->lru, lru) {
-		ret = ttm_bo_reserve_locked(bo, false, true, false, 0);
+		ret = ttm_bo_reserve_nolru(bo, false, true, false, 0);
 		if (!ret)
 			break;
 	}
@@ -1563,13 +1634,8 @@ bool ttm_mem_reg_is_pci(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem)
 
 void ttm_bo_unmap_virtual_locked(struct ttm_buffer_object *bo)
 {
-	struct ttm_bo_device *bdev = bo->bdev;
-	/* off_t offset = (off_t)bo->addr_space_offset;XXXKIB */
-	/* off_t holelen = ((off_t)bo->mem.num_pages) << PAGE_SHIFT;XXXKIB */
 
-	if (!bdev->dev_mapping)
-		return;
-	/* unmap_mapping_range(bdev->dev_mapping, offset, holelen, 1); XXXKIB */
+	ttm_bo_release_mmap(bo);
 	ttm_mem_io_free_vm(bo);
 }
 
@@ -1735,7 +1801,7 @@ static int ttm_bo_swapout(struct ttm_mem_shrink *shrink)
 
 	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	list_for_each_entry(bo, &glob->swap_lru, swap) {
-		ret = ttm_bo_reserve_locked(bo, false, true, false, 0);
+		ret = ttm_bo_reserve_nolru(bo, false, true, false, 0);
 		if (!ret)
 			break;
 	}
