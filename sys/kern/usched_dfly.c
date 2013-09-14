@@ -384,9 +384,6 @@ dfly_acquire_curproc(struct lwp *lp)
 		if (lp->lwp_thread->td_mpflags & TDF_MP_DIDYIELD) {
 			u_int32_t tsqbits;
 
-			atomic_clear_int(&lp->lwp_thread->td_mpflags,
-					 TDF_MP_DIDYIELD);
-
 			switch(lp->lwp_rqtype) {
 			case RTP_PRIO_NORMAL:
 				tsqbits = dd->queuebits;
@@ -402,6 +399,8 @@ dfly_acquire_curproc(struct lwp *lp)
 			}
 			lwkt_deschedule(lp->lwp_thread);
 			dfly_setrunqueue_dd(dd, lp);
+			atomic_clear_int(&lp->lwp_thread->td_mpflags,
+					 TDF_MP_DIDYIELD);
 			lwkt_switch();
 			gd = mycpu;
 			dd = &dfly_pcpu[gd->gd_cpuid];
@@ -721,15 +720,14 @@ dfly_setrunqueue_dd(dfly_pcpu_t rdd, struct lwp *lp)
 	} else if (rgd == mycpu) {
 		/*
 		 * We should interrupt the currently running thread, which
-		 * is on the current cpu.
+		 * is on the current cpu.  However, if DIDYIELD is set we
+		 * round-robin unconditionally and do not interrupt it.
 		 */
 		spin_unlock(&rdd->spin);
-		if (rdd->uschedcp == NULL) {
+		if (rdd->uschedcp == NULL)
 			wakeup_mycpu(&rdd->helper_thread); /* XXX */
+		if ((lp->lwp_thread->td_mpflags & TDF_MP_DIDYIELD) == 0)
 			need_user_resched();
-		} else {
-			need_user_resched();
-		}
 	} else {
 		/*
 		 * We should interrupt the currently running thread, which

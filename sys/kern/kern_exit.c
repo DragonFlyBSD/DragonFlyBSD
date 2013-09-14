@@ -557,12 +557,6 @@ exit1(int rv)
 	plimit_free(p);
 
 	/*
-	 * Release the current user process designation on the process so
-	 * the userland scheduler can work in someone else.
-	 */
-	p->p_usched->release_curproc(lp);
-
-	/*
 	 * Finally, call machine-dependent code to release as many of the
 	 * lwp's resources as we can and halt execution of this thread.
 	 */
@@ -581,6 +575,12 @@ lwp_exit(int masterexit)
 	struct lwp *lp = td->td_lwp;
 	struct proc *p = lp->lwp_proc;
 	int dowake = 0;
+
+	/*
+	 * Release the current user process designation on the process so
+	 * the userland scheduler can work in someone else.
+	 */
+	p->p_usched->release_curproc(lp);
 
 	/*
 	 * lwp_exit() may be called without setting LWP_MP_WEXIT, so
