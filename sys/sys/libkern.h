@@ -103,6 +103,9 @@ void	*kbsearch (const void *, const void *, size_t,
 #ifndef HAVE_INLINE_FFS
 int	 ffs (int);
 #endif
+#ifndef HAVE_INLINE_FFSL
+int	 ffsl (long);
+#endif
 #ifndef	HAVE_INLINE_FLS
 int	 fls (int);
 #endif

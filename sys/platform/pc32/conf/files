@@ -298,6 +298,7 @@ kern/subr_diskmbr.c			standard
 kern/subr_diskgpt.c			standard
 #libkern/cmpdi2.c			standard
 libkern/divdi3.c			standard
+libkern/ffsl.c				standard
 libkern/flsl.c				standard
 libkern/moddi3.c			standard
 libkern/qdivrem.c			standard
