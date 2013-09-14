@@ -739,8 +739,6 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 	if ((u_int)sig > _SIG_MAXSIG)
 		return (EINVAL);
 
-	lwkt_gettoken(&proc_token);
-
 	if (pid > 0) {
 		struct proc *p;
 		struct lwp *lp = NULL;
@@ -752,11 +750,8 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 		 * don't actually try to deliver the signal.
 		 */
 		if ((p = pfind(pid)) == NULL) {
-			if ((p = zpfind(pid)) == NULL) {
-				lwkt_reltoken(&proc_token);
+			if ((p = zpfind(pid)) == NULL)
 				return (ESRCH);
-			}
-			lwkt_reltoken(&proc_token);
 			PRELE(p);
 			return (0);
 		}
@@ -764,7 +759,6 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 		if (!CANSIGNAL(p, sig)) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return (EPERM);
 		}
 
@@ -776,7 +770,6 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 		if (p->p_flags & P_WEXIT) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return (0);
 		}
 		if (tid != -1) {
@@ -784,7 +777,6 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 			if (lp == NULL) {
 				lwkt_reltoken(&p->p_token);
 				PRELE(p);
-				lwkt_reltoken(&proc_token);
 				return (ESRCH);
 			}
 		}
@@ -792,7 +784,7 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 			lwpsignal(p, lp, sig);
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);
-		lwkt_reltoken(&proc_token);
+
 		return (0);
 	}
 
@@ -800,10 +792,9 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 	 * If we come here, pid is a special broadcast pid.
 	 * This doesn't mix with a tid.
 	 */
-	if (tid != -1) {
-		lwkt_reltoken(&proc_token);
+	if (tid != -1)
 		return (EINVAL);
-	}
+
 	switch (pid) {
 	case -1:		/* broadcast signal */
 		t = (dokillpg(sig, 0, 1));
@@ -815,7 +806,6 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 		t = (dokillpg(sig, -pid, 0));
 		break;
 	}
-	lwkt_reltoken(&proc_token);
 	return t;
 }
 

@@ -336,17 +336,18 @@ dfly_acquire_curproc(struct lwp *lp)
 
 		spin_lock(&dd->spin);
 
-		/*
-		 * We are not or are no longer the current lwp and a forced
-		 * reschedule was requested.  Figure out the best cpu to
-		 * run on (our current cpu will be given significant weight).
-		 *
-		 * (if a reschedule was not requested we want to move this
-		 *  step after the uschedcp tests).
-		 */
 		if (force_resched &&
-		    (usched_dfly_features & 0x08) &&
-		    (rdd = dfly_choose_best_queue(lp)) != dd) {
+		   (usched_dfly_features & 0x08) &&
+		   (rdd = dfly_choose_best_queue(lp)) != dd) {
+			/*
+			 * We are not or are no longer the current lwp and a
+			 * forced reschedule was requested.  Figure out the
+			 * best cpu to run on (our current cpu will be given
+			 * significant weight).
+			 *
+			 * (if a reschedule was not requested we want to
+			 *  move this step after the uschedcp tests).
+			 */
 			dfly_changeqcpu_locked(lp, dd, rdd);
 			spin_unlock(&dd->spin);
 			lwkt_deschedule(lp->lwp_thread);
@@ -363,12 +364,48 @@ dfly_acquire_curproc(struct lwp *lp)
 		 * trivially become the current lwp on the current cpu.
 		 */
 		if (dd->uschedcp == NULL) {
+			atomic_clear_int(&lp->lwp_thread->td_mpflags,
+					 TDF_MP_DIDYIELD);
 			atomic_set_cpumask(&dfly_curprocmask, gd->gd_cpumask);
 			dd->uschedcp = lp;
 			dd->upri = lp->lwp_priority;
 			KKASSERT(lp->lwp_qcpu == dd->cpuid);
 			spin_unlock(&dd->spin);
 			break;
+		}
+
+		/*
+		 * Put us back on the same run queue unconditionally.
+		 *
+		 * Set rrinterval to force placement at end of queue.
+		 * Select the worst queue to ensure we round-robin,
+		 * but do not change estcpu.
+		 */
+		if (lp->lwp_thread->td_mpflags & TDF_MP_DIDYIELD) {
+			u_int32_t tsqbits;
+
+			atomic_clear_int(&lp->lwp_thread->td_mpflags,
+					 TDF_MP_DIDYIELD);
+
+			switch(lp->lwp_rqtype) {
+			case RTP_PRIO_NORMAL:
+				tsqbits = dd->queuebits;
+				spin_unlock(&dd->spin);
+
+				lp->lwp_rrcount = usched_dfly_rrinterval;
+				if (tsqbits)
+					lp->lwp_rqindex = bsrl(tsqbits);
+				break;
+			default:
+				spin_unlock(&dd->spin);
+				break;
+			}
+			lwkt_deschedule(lp->lwp_thread);
+			dfly_setrunqueue_dd(dd, lp);
+			lwkt_switch();
+			gd = mycpu;
+			dd = &dfly_pcpu[gd->gd_cpuid];
+			continue;
 		}
 
 		/*
@@ -1124,17 +1161,16 @@ static
 void
 dfly_yield(struct lwp *lp)
 {
-#if 0
-	/* FUTURE (or something similar) */
-	switch(lp->lwp_rqtype) {
-	case RTP_PRIO_NORMAL:
-		lp->lwp_estcpu = ESTCPULIM(lp->lwp_estcpu + ESTCPUINCR);
-		break;
-	default:
-		break;
-	}
-#endif
-        need_user_resched();
+	if (lp->lwp_qcpu != mycpu->gd_cpuid)
+		return;
+	KKASSERT(lp == curthread->td_lwp);
+
+	/*
+	 * Don't set need_user_resched() or mess with rrcount or anything.
+	 * the TDF flag will override everything as long as we release.
+	 */
+	atomic_set_int(&lp->lwp_thread->td_mpflags, TDF_MP_DIDYIELD);
+	dfly_release_curproc(lp);
 }
 
 /*

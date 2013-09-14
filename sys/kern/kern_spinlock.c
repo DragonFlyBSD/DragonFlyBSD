@@ -66,6 +66,10 @@
 #include <sys/spinlock2.h>
 #include <sys/ktr.h>
 
+#ifdef _KERNEL_VIRTUAL
+#include <pthread.h>
+#endif
+
 struct spinlock pmap_spin = SPINLOCK_INITIALIZER(pmap_spin);
 
 struct indefinite_info {
@@ -247,6 +251,9 @@ spin_lock_contested(struct spinlock *spin)
 			if (spin_indefinite_check(spin, &info))
 				break;
 		}
+#ifdef _KERNEL_VIRTUAL
+		pthread_yield();
+#endif
 	}
 	/*logspin(end, spin, 'w');*/
 }
@@ -309,6 +316,9 @@ spin_lock_shared_contested(struct spinlock *spin)
 			if (spin_indefinite_check(spin, &info))
 				break;
 		}
+#ifdef _KERNEL_VIRTUAL
+		pthread_yield();
+#endif
 	}
 	/*logspin(end, spin, 'w');*/
 }

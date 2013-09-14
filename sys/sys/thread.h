@@ -376,6 +376,7 @@ struct thread {
 #define TDF_MP_EXITWAIT		0x00000004	/* reaper, see lwp_wait() */
 #define TDF_MP_EXITSIG		0x00000008	/* reaper, see lwp_wait() */
 #define TDF_MP_BATCH_DEMARC	0x00000010	/* batch mode handling */
+#define TDF_MP_DIDYIELD		0x00000020	/* effects scheduling */
 
 #define TD_TYPE_GENERIC		0		/* generic thread */
 #define TD_TYPE_CRYPTO		1		/* crypto thread */

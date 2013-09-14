@@ -348,8 +348,19 @@ inferior(struct proc *p)
 struct proc *
 pfind(pid_t pid)
 {
-	struct proc *p;
+	struct proc *p = curproc;
 
+	/*
+	 * Shortcut the current process
+	 */
+	if (p && p->p_pid == pid) {
+		PHOLD(p);
+		return (p);
+	}
+
+	/*
+	 * Otherwise find it in the hash table.
+	 */
 	lwkt_gettoken(&proc_token);
 	LIST_FOREACH(p, PIDHASH(pid), p_hash) {
 		if (p->p_pid == pid) {
@@ -359,6 +370,7 @@ pfind(pid_t pid)
 		}
 	}
 	lwkt_reltoken(&proc_token);
+
 	return (NULL);
 }
 

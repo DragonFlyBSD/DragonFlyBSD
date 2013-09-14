@@ -66,6 +66,10 @@
 #include <machine/smp.h>
 #include <machine/atomic.h>
 
+#ifdef _KERNEL_VIRTUAL
+#include <pthread.h>
+#endif
+
 struct ipiq_stats {
     __int64_t ipiq_count;	/* total calls to lwkt_send_ipiq*() */
     __int64_t ipiq_fifofull;	/* number of fifo full conditions detected */
@@ -821,6 +825,9 @@ lwkt_cpusync_interlock(lwkt_cpusync_t cs)
 	while (cs->cs_mack != mask) {
 	    lwkt_process_ipiq();
 	    cpu_pause();
+#ifdef _KERNEL_VIRTUAL
+	    pthread_yield();
+#endif
 	}
 #if 0
 	if (gd->gd_curthread->td_wmesg == smsg)
@@ -869,6 +876,9 @@ lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
 	while (cs->cs_mack != mask) {
 	    lwkt_process_ipiq();
 	    cpu_pause();
+#ifdef _KERNEL_VIRTUAL
+	    pthread_yield();
+#endif
 	}
 #if 0
 	if (gd->gd_curthread->td_wmesg == smsg)
@@ -923,6 +933,9 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 	lwkt_ipiq_t ip;
 	int wi;
 
+#ifdef _KERNEL_VIRTUAL
+	pthread_yield();
+#endif
 	ip = &gd->gd_cpusyncq;
 	wi = ip->ip_windex & MAXCPUFIFO_MASK;
 	ip->ip_info[wi].func = (ipifunc3_t)(ipifunc1_t)lwkt_cpusync_remote2;
