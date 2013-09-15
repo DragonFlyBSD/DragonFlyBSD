@@ -45,9 +45,8 @@ for 2d acceleration (XVideo, EXA) as well.
 The
 .Nm
 drivers provide support for the following chipsets:
-.Pp
-.Bl -column -offset -indent ".Sy ModuleXXX" ".Sy DeviceXXX" ".Sy ChipsetXXX"
-.It Sy Module Ta Sy Kernel Ta Sy Chipset
+.Bl -column -offset indent ".Sy ModuleXXX" ".Sy Kernel option" ".Sy Chipset"
+.It Sy Module Ta Sy "Kernel option" Ta Sy Chipset
 .It Pa i915kms.ko Ta n/a Ta Intel i915, i945, i965, G3x, G4x
 .It Pa mach64.ko Ta Cd mach64drm Ta Mach64 (3D Rage Pro, Rage)
 .It Pa mga.ko Ta Cd mgadrm Ta Matrox G[24]00, G[45]50
@@ -79,7 +78,6 @@ file at all is usually the best advice.
 If for some reason an
 .Xr xorg.conf 5
 is preferred, DRI must be enabled:
-.Pp
 .Bd -literal
 Section "DRI"
         Group "wheel"
