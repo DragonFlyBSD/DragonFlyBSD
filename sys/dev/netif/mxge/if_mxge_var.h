@@ -39,18 +39,13 @@ $FreeBSD: head/sys/dev/mxge/if_mxge_var.h 247160 2013-02-22 19:23:33Z gallatin $
 #define MXGE_EEPROM_STRINGS_SIZE	256
 #define MXGE_MAX_SEND_DESC		128
 
-#define MXGE_VIRT_JUMBOS		0
+#define MXGE_VIRT_JUMBOS		1
 
-typedef struct {
-	void *addr;
-	bus_addr_t bus_addr;
-	bus_dma_tag_t dmat;
-	bus_dmamap_t map;
-} mxge_dma_t;
+#define MXGE_INTR_COAL_DELAY		150
 
 typedef struct {
 	mcp_slot_t *entry;
-	mxge_dma_t dma;
+	bus_dmamem_t dma;
 	int cnt;
 	int idx;
 	int mask;
@@ -132,7 +127,7 @@ struct mxge_slice_state {
 	u_long omcasts;
 	u_long oerrors;
 	int if_drv_flags;
-	mxge_dma_t fw_stats_dma;
+	bus_dmamem_t fw_stats_dma;
 	struct sysctl_oid *sysctl_tree;
 	struct sysctl_ctx_list sysctl_ctx;
 	char scratch[256];
@@ -148,8 +143,8 @@ struct mxge_softc {
 	int sram_size;
 	volatile uint32_t *irq_deassert;
 	mcp_cmd_response_t *cmd;
-	mxge_dma_t cmd_dma;
-	mxge_dma_t zeropad_dma;
+	bus_dmamem_t cmd_dma;
+	bus_dmamem_t zeropad_dma;
 	struct pci_dev *pdev;
 	int irq_rid;
 	int irq_type;
@@ -195,7 +190,7 @@ struct mxge_softc {
 	int dying;
 	int connector;
 	int current_media;
-	mxge_dma_t dmabench_dma;
+	bus_dmamem_t dmabench_dma;
 	struct callout co_hdl;
 	struct sysctl_ctx_list sysctl_ctx;
 	struct sysctl_oid *sysctl_tree;
