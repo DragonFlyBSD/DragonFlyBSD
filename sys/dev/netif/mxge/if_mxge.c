@@ -1348,23 +1348,28 @@ mxge_handle_be32(SYSCTL_HANDLER_ARGS)
 static void
 mxge_rem_sysctls(mxge_softc_t *sc)
 {
-	struct mxge_slice_state *ss;
-	int slice;
+	if (sc->ss != NULL) {
+		struct mxge_slice_state *ss;
+		int slice;
 
-	if (sc->slice_sysctl_tree == NULL)
-		return;
-
-	for (slice = 0; slice < sc->num_slices; slice++) {
-		ss = &sc->ss[slice];
-		if (ss == NULL || ss->sysctl_tree == NULL)
-			continue;
-		sysctl_ctx_free(&ss->sysctl_ctx);
-		ss->sysctl_tree = NULL;
+		for (slice = 0; slice < sc->num_slices; slice++) {
+			ss = &sc->ss[slice];
+			if (ss->sysctl_tree != NULL) {
+				sysctl_ctx_free(&ss->sysctl_ctx);
+				ss->sysctl_tree = NULL;
+			}
+		}
 	}
-	sysctl_ctx_free(&sc->slice_sysctl_ctx);
-	sc->slice_sysctl_tree = NULL;
-	sysctl_ctx_free(&sc->sysctl_ctx);
-	sc->sysctl_tree = NULL;
+
+	if (sc->slice_sysctl_tree != NULL) {
+		sysctl_ctx_free(&sc->slice_sysctl_ctx);
+		sc->slice_sysctl_tree = NULL;
+	}
+
+	if (sc->sysctl_tree != NULL) {
+		sysctl_ctx_free(&sc->sysctl_ctx);
+		sc->sysctl_tree = NULL;
+	}
 }
 
 static void
@@ -1503,6 +1508,10 @@ mxge_add_sysctls(mxge_softc_t *sc)
 	sysctl_ctx_init(&sc->slice_sysctl_ctx);
 	sc->slice_sysctl_tree = SYSCTL_ADD_NODE(&sc->slice_sysctl_ctx,
 	    children, OID_AUTO, "slice", CTLFLAG_RD, 0, "");
+	if (sc->slice_sysctl_tree == NULL) {
+		device_printf(sc->dev, "can't add slice sysctl node\n");
+		return;
+	}
 
 	for (slice = 0; slice < sc->num_slices; slice++) {
 		ss = &sc->ss[slice];
@@ -1512,6 +1521,11 @@ mxge_add_sysctls(mxge_softc_t *sc)
 		ksprintf(slice_num, "%d", slice);
 		ss->sysctl_tree = SYSCTL_ADD_NODE(ctx, children, OID_AUTO,
 		    slice_num, CTLFLAG_RD, 0, "");
+		if (ss->sysctl_tree == NULL) {
+			device_printf(sc->dev,
+			    "can't add %d slice sysctl node\n", slice);
+			return;	/* XXX continue? */
+		}
 		children = SYSCTL_CHILDREN(ss->sysctl_tree);
 
 		/*
@@ -2706,25 +2720,30 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 {
 	int i;
 
-	if (ss->rx_done.entry != NULL)
+	if (ss->rx_done.entry != NULL) {
 		mxge_dma_free(&ss->rx_done.dma);
-	ss->rx_done.entry = NULL;
+		ss->rx_done.entry = NULL;
+	}
 
-	if (ss->tx.req_bytes != NULL)
+	if (ss->tx.req_bytes != NULL) {
 		kfree(ss->tx.req_bytes, M_DEVBUF);
-	ss->tx.req_bytes = NULL;
+		ss->tx.req_bytes = NULL;
+	}
 
-	if (ss->tx.seg_list != NULL)
+	if (ss->tx.seg_list != NULL) {
 		kfree(ss->tx.seg_list, M_DEVBUF);
-	ss->tx.seg_list = NULL;
+		ss->tx.seg_list = NULL;
+	}
 
-	if (ss->rx_small.shadow != NULL)
+	if (ss->rx_small.shadow != NULL) {
 		kfree(ss->rx_small.shadow, M_DEVBUF);
-	ss->rx_small.shadow = NULL;
+		ss->rx_small.shadow = NULL;
+	}
 
-	if (ss->rx_big.shadow != NULL)
+	if (ss->rx_big.shadow != NULL) {
 		kfree(ss->rx_big.shadow, M_DEVBUF);
-	ss->rx_big.shadow = NULL;
+		ss->rx_big.shadow = NULL;
+	}
 
 	if (ss->tx.info != NULL) {
 		if (ss->tx.dmat != NULL) {
@@ -2735,8 +2754,8 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 			bus_dma_tag_destroy(ss->tx.dmat);
 		}
 		kfree(ss->tx.info, M_DEVBUF);
+		ss->tx.info = NULL;
 	}
-	ss->tx.info = NULL;
 
 	if (ss->rx_small.info != NULL) {
 		if (ss->rx_small.dmat != NULL) {
@@ -2749,8 +2768,8 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 			bus_dma_tag_destroy(ss->rx_small.dmat);
 		}
 		kfree(ss->rx_small.info, M_DEVBUF);
+		ss->rx_small.info = NULL;
 	}
-	ss->rx_small.info = NULL;
 
 	if (ss->rx_big.info != NULL) {
 		if (ss->rx_big.dmat != NULL) {
@@ -2763,14 +2782,17 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 			bus_dma_tag_destroy(ss->rx_big.dmat);
 		}
 		kfree(ss->rx_big.info, M_DEVBUF);
+		ss->rx_big.info = NULL;
 	}
-	ss->rx_big.info = NULL;
 }
 
 static void
 mxge_free_rings(mxge_softc_t *sc)
 {
 	int slice;
+
+	if (sc->ss == NULL)
+		return;
 
 	for (slice = 0; slice < sc->num_slices; slice++)
 		mxge_free_slice_rings(&sc->ss[slice]);
@@ -2824,6 +2846,34 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 		return err;
 	}
 
+	err = bus_dmamap_create(ss->rx_small.dmat, BUS_DMA_WAITOK,
+	    &ss->rx_small.extra_map);
+	if (err != 0) {
+		device_printf(sc->dev, "Err %d extra rx_small dmamap\n", err);
+		bus_dma_tag_destroy(ss->rx_small.dmat);
+		ss->rx_small.dmat = NULL;
+		return err;
+	}
+	for (i = 0; i <= ss->rx_small.mask; i++) {
+		err = bus_dmamap_create(ss->rx_small.dmat, BUS_DMA_WAITOK,
+		    &ss->rx_small.info[i].map);
+		if (err != 0) {
+			int j;
+
+			device_printf(sc->dev, "Err %d rx_small dmamap\n", err);
+
+			for (j = 0; j < i; ++j) {
+				bus_dmamap_destroy(ss->rx_small.dmat,
+				    ss->rx_small.info[j].map);
+			}
+			bus_dmamap_destroy(ss->rx_small.dmat,
+			    ss->rx_small.extra_map);
+			bus_dma_tag_destroy(ss->rx_small.dmat);
+			ss->rx_small.dmat = NULL;
+			return err;
+		}
+	}
+
 	err = bus_dma_tag_create(sc->parent_dmat,	/* parent */
 				 1,			/* alignment */
 				 4096,			/* boundary */
@@ -2842,34 +2892,31 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 		return err;
 	}
 
-	for (i = 0; i <= ss->rx_small.mask; i++) {
-		err = bus_dmamap_create(ss->rx_small.dmat, BUS_DMA_WAITOK,
-		    &ss->rx_small.info[i].map);
-		if (err != 0) {
-			device_printf(sc->dev, "Err %d rx_small dmamap\n", err);
-			return err;
-		}
-	}
-	err = bus_dmamap_create(ss->rx_small.dmat, BUS_DMA_WAITOK,
-	    &ss->rx_small.extra_map);
-	if (err != 0) {
-		device_printf(sc->dev, "Err %d extra rx_small dmamap\n", err);
-		return err;
-	}
-
-	for (i = 0; i <= ss->rx_big.mask; i++) {
-		err = bus_dmamap_create(ss->rx_big.dmat, BUS_DMA_WAITOK,
-		    &ss->rx_big.info[i].map);
-		if (err != 0) {
-			device_printf(sc->dev, "Err %d rx_big dmamap\n", err);
-			return err;
-		}
-	}
 	err = bus_dmamap_create(ss->rx_big.dmat, BUS_DMA_WAITOK,
 	    &ss->rx_big.extra_map);
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d extra rx_big dmamap\n", err);
+		bus_dma_tag_destroy(ss->rx_big.dmat);
+		ss->rx_big.dmat = NULL;
 		return err;
+	}
+	for (i = 0; i <= ss->rx_big.mask; i++) {
+		err = bus_dmamap_create(ss->rx_big.dmat, BUS_DMA_WAITOK,
+		    &ss->rx_big.info[i].map);
+		if (err != 0) {
+			int j;
+
+			device_printf(sc->dev, "Err %d rx_big dmamap\n", err);
+			for (j = 0; j < i; ++j) {
+				bus_dmamap_destroy(ss->rx_big.dmat,
+				    ss->rx_big.info[j].map);
+			}
+			bus_dmamap_destroy(ss->rx_big.dmat,
+			    ss->rx_big.extra_map);
+			bus_dma_tag_destroy(ss->rx_big.dmat);
+			ss->rx_big.dmat = NULL;
+			return err;
+		}
 	}
 
 	/*
@@ -2927,7 +2974,15 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 		err = bus_dmamap_create(ss->tx.dmat,
 		    BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE, &ss->tx.info[i].map);
 		if (err != 0) {
+			int j;
+
 			device_printf(sc->dev, "Err %d tx dmamap\n", err);
+			for (j = 0; j < i; ++j) {
+				bus_dmamap_destroy(ss->tx.dmat,
+				    ss->tx.info[j].map);
+			}
+			bus_dma_tag_destroy(ss->tx.dmat);
+			ss->tx.dmat = NULL;
 			return err;
 		}
 	}
@@ -2946,7 +3001,7 @@ mxge_alloc_rings(mxge_softc_t *sc)
 	err = mxge_send_cmd(sc, MXGEFW_CMD_GET_SEND_RING_SIZE, &cmd);
 	if (err != 0) {
 		device_printf(sc->dev, "Cannot determine tx ring sizes\n");
-		goto abort;
+		return err;
 	}
 	tx_ring_size = cmd.data0;
 
@@ -2958,15 +3013,13 @@ mxge_alloc_rings(mxge_softc_t *sc)
 	for (slice = 0; slice < sc->num_slices; slice++) {
 		err = mxge_alloc_slice_rings(&sc->ss[slice],
 		    rx_ring_entries, tx_ring_entries);
-		if (err != 0)
-			goto abort;
+		if (err != 0) {
+			device_printf(sc->dev,
+			    "alloc %d slice rings failed\n", slice);
+			return err;
+		}
 	}
 	return 0;
-
-abort:
-	mxge_free_rings(sc);
-	return err;
-
 }
 
 static void
@@ -3712,7 +3765,7 @@ mxge_alloc_slices(mxge_softc_t *sc)
 	}
 	sc->rx_ring_size = cmd.data0;
 	max_intr_slots = 2 * (sc->rx_ring_size / sizeof (mcp_dma_addr_t));
-	
+
 	bytes = sizeof(*sc->ss) * sc->num_slices;
 	sc->ss = kmalloc(bytes, M_DEVBUF, M_WAITOK | M_ZERO);
 
@@ -3726,8 +3779,11 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		 */
 		bytes = max_intr_slots * sizeof(*ss->rx_done.entry);
 		err = mxge_dma_alloc(sc, &ss->rx_done.dma, bytes, 4096);
-		if (err != 0)
-			goto abort;
+		if (err != 0) {
+			device_printf(sc->dev,
+			    "alloc %d slice rx_done failed\n", i);
+			return err;
+		}
 		ss->rx_done.entry = ss->rx_done.dma.dmem_addr;
 
 		/* 
@@ -3743,16 +3799,14 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		bytes = sizeof(*ss->fw_stats);
 		err = mxge_dma_alloc(sc, &ss->fw_stats_dma,
 		    sizeof(*ss->fw_stats), 64);
-		if (err != 0)
-			goto abort;
+		if (err != 0) {
+			device_printf(sc->dev,
+			    "alloc %d fw_stats failed\n", i);
+			return err;
+		}
 		ss->fw_stats = ss->fw_stats_dma.dmem_addr;
 	}
-
 	return 0;
-
-abort:
-	mxge_free_slices(sc);
-	return ENOMEM;
 }
 
 static void
@@ -3962,7 +4016,6 @@ static int
 mxge_add_single_irq(mxge_softc_t *sc)
 {
 	u_int irq_flags;
-	int err;
 
 	sc->irq_type = pci_alloc_1intr(sc->dev, mxge_msi_enable,
 	    &sc->irq_rid, &irq_flags);
@@ -3974,15 +4027,8 @@ mxge_add_single_irq(mxge_softc_t *sc)
 		return ENXIO;
 	}
 
-	err = bus_setup_intr(sc->dev, sc->irq_res, INTR_MPSAFE,
+	return bus_setup_intr(sc->dev, sc->irq_res, INTR_MPSAFE,
 	    mxge_intr, &sc->ss[0], &sc->ih, sc->ifp->if_serializer);
-	if (err != 0) {
-		bus_release_resource(sc->dev, SYS_RES_IRQ, sc->irq_rid,
-		    sc->irq_res);
-		if (sc->irq_type == PCI_INTR_TYPE_MSI)
-			pci_release_msi(sc->dev);
-	}
-	return err;
 }
 
 #if 0
@@ -4016,26 +4062,6 @@ mxge_rem_msix_irqs(mxge_softc_t *sc)
 	return;
 }
 #endif
-
-static void
-mxge_rem_single_irq(mxge_softc_t *sc)
-{
-	bus_teardown_intr(sc->dev, sc->irq_res, sc->ih);
-	bus_release_resource(sc->dev, SYS_RES_IRQ, sc->irq_rid, sc->irq_res);
-	if (sc->irq_type == PCI_INTR_TYPE_MSI)
-		pci_release_msi(sc->dev);
-}
-
-static void
-mxge_rem_irq(mxge_softc_t *sc)
-{
-#if 0
-	if (sc->num_slices > 1)
-		mxge_rem_msix_irqs(sc);
-	else
-#endif
-		mxge_rem_single_irq(sc);
-}
 
 static int
 mxge_add_irq(mxge_softc_t *sc)
@@ -4072,6 +4098,7 @@ mxge_attach(device_t dev)
 	sc->ifp = ifp;
 	sc->dev = dev;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
+	ifmedia_init(&sc->media, 0, mxge_media_change, mxge_media_status);
 
 	mxge_fetch_tunables(sc);
 
@@ -4087,8 +4114,8 @@ mxge_attach(device_t dev)
 				 0,			/* flags */
 				 &sc->parent_dmat);	/* tag */
 	if (err != 0) {
-		device_printf(sc->dev, "Err %d allocating parent dmat\n", err);
-		goto abort_with_nothing;
+		device_printf(dev, "Err %d allocating parent dmat\n", err);
+		goto failed;
 	}
 
 	callout_init_mp(&sc->co_hdl);
@@ -4104,7 +4131,7 @@ mxge_attach(device_t dev)
 	if (sc->mem_res == NULL) {
 		device_printf(dev, "could not map memory\n");
 		err = ENXIO;
-		goto abort_with_parent_dmat;
+		goto failed;
 	}
 
 	sc->sram = rman_get_virtual(sc->mem_res);
@@ -4113,7 +4140,7 @@ mxge_attach(device_t dev)
 		device_printf(dev, "impossible memory region size %ld\n",
 		    rman_get_size(sc->mem_res));
 		err = ENXIO;
-		goto abort_with_mem_res;
+		goto failed;
 	}
 
 	/*
@@ -4126,8 +4153,10 @@ mxge_attach(device_t dev)
 	    sc->sram_size - MXGE_EEPROM_STRINGS_SIZE,
 	    sc->eeprom_strings, MXGE_EEPROM_STRINGS_SIZE - 2);
 	err = mxge_parse_strings(sc);
-	if (err != 0)
-		goto abort_with_mem_res;
+	if (err != 0) {
+		device_printf(dev, "parse EEPROM string failed\n");
+		goto failed;
+	}
 
 	/*
 	 * Enable write combining for efficient use of PCIe bus
@@ -4138,36 +4167,48 @@ mxge_attach(device_t dev)
 	 * Allocate the out of band DMA memory
 	 */
 	err = mxge_dma_alloc(sc, &sc->cmd_dma, sizeof(mxge_cmd_t), 64);
-	if (err != 0)
-		goto abort_with_mem_res;
+	if (err != 0) {
+		device_printf(dev, "alloc cmd DMA buf failed\n");
+		goto failed;
+	}
 	sc->cmd = sc->cmd_dma.dmem_addr;
 
 	err = mxge_dma_alloc(sc, &sc->zeropad_dma, 64, 64);
-	if (err != 0)
-		goto abort_with_cmd_dma;
+	if (err != 0) {
+		device_printf(dev, "alloc zeropad DMA buf failed\n");
+		goto failed;
+	}
 
 	err = mxge_dma_alloc(sc, &sc->dmabench_dma, 4096, 4096);
-	if (err != 0)
-		goto abort_with_zeropad_dma;
+	if (err != 0) {
+		device_printf(dev, "alloc dmabench DMA buf failed\n");
+		goto failed;
+	}
 
 	/* Select & load the firmware */
 	err = mxge_select_firmware(sc);
-	if (err != 0)
-		goto abort_with_dmabench;
+	if (err != 0) {
+		device_printf(dev, "select firmware failed\n");
+		goto failed;
+	}
 
 	mxge_slice_probe(sc);
 	err = mxge_alloc_slices(sc);
-	if (err != 0)
-		goto abort_with_dmabench;
+	if (err != 0) {
+		device_printf(dev, "alloc slices failed\n");
+		goto failed;
+	}
 
 	err = mxge_reset(sc, 0);
-	if (err != 0)
-		goto abort_with_slices;
+	if (err != 0) {
+		device_printf(dev, "reset failed\n");
+		goto failed;
+	}
 
 	err = mxge_alloc_rings(sc);
 	if (err != 0) {
-		device_printf(sc->dev, "failed to allocate rings\n");
-		goto abort_with_slices;
+		device_printf(dev, "failed to allocate rings\n");
+		goto failed;
 	}
 
 	ifp->if_baudrate = IF_Gbps(10UL);
@@ -4192,7 +4233,6 @@ mxge_attach(device_t dev)
 	ifp->if_tsolen = (32 * ETHERMTU);
 
 	/* Initialise the ifmedia structure */
-	ifmedia_init(&sc->media, 0, mxge_media_change, mxge_media_status);
 	mxge_media_init(sc);
 	mxge_media_probe(sc);
 
@@ -4204,8 +4244,9 @@ mxge_attach(device_t dev)
 	/* must come after ether_ifattach() */
 	err = mxge_add_irq(sc);
 	if (err != 0) {
-		device_printf(sc->dev, "failed to add irq\n");
-		goto abort_with_rings;
+		device_printf(dev, "alloc and setup intr failed\n");
+		ether_ifdetach(ifp);
+		goto failed;
 	}
 	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
 
@@ -4214,22 +4255,8 @@ mxge_attach(device_t dev)
 	callout_reset(&sc->co_hdl, mxge_ticks, mxge_tick, sc);
 	return 0;
 
-abort_with_rings:
-	mxge_free_rings(sc);
-abort_with_slices:
-	mxge_free_slices(sc);
-abort_with_dmabench:
-	mxge_dma_free(&sc->dmabench_dma);
-abort_with_zeropad_dma:
-	mxge_dma_free(&sc->zeropad_dma);
-abort_with_cmd_dma:
-	mxge_dma_free(&sc->cmd_dma);
-abort_with_mem_res:
-	bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BARS, sc->mem_res);
-	pci_disable_busmaster(dev);
-abort_with_parent_dmat:
-	bus_dma_tag_destroy(sc->parent_dmat);
-abort_with_nothing:
+failed:
+	mxge_detach(dev);
 	return err;
 }
 
@@ -4238,32 +4265,58 @@ mxge_detach(device_t dev)
 {
 	mxge_softc_t *sc = device_get_softc(dev);
 
-	lwkt_serialize_enter(sc->ifp->if_serializer);
-	sc->dying = 1;
-	if (sc->ifp->if_flags & IFF_RUNNING)
-		mxge_close(sc, 1);
-	/*
-	 * XXX: race: the callout callback could be spinning on
-	 * the serializer and run anyway
-	 */
-	callout_stop(&sc->co_hdl);
-	lwkt_serialize_exit(sc->ifp->if_serializer);
+	if (device_is_attached(dev)) {
+		struct ifnet *ifp = sc->ifp;
 
-	callout_terminate(&sc->co_hdl);
+		lwkt_serialize_enter(ifp->if_serializer);
 
-	ether_ifdetach(sc->ifp);
+		sc->dying = 1;
+		if (ifp->if_flags & IFF_RUNNING)
+			mxge_close(sc, 1);
+		callout_stop(&sc->co_hdl);
+
+		bus_teardown_intr(sc->dev, sc->irq_res, sc->ih);
+
+		lwkt_serialize_exit(ifp->if_serializer);
+
+		callout_terminate(&sc->co_hdl);
+
+		ether_ifdetach(ifp);
+	}
 	ifmedia_removeall(&sc->media);
-	mxge_dummy_rdma(sc, 0);
+
+	if (sc->cmd != NULL && sc->zeropad_dma.dmem_addr != NULL &&
+	    sc->sram != NULL)
+		mxge_dummy_rdma(sc, 0);
+
 	mxge_rem_sysctls(sc);
-	mxge_rem_irq(sc);
 	mxge_free_rings(sc);
+
+	/* MUST after sysctls and rings are freed */
 	mxge_free_slices(sc);
-	mxge_dma_free(&sc->dmabench_dma);
-	mxge_dma_free(&sc->zeropad_dma);
-	mxge_dma_free(&sc->cmd_dma);
-	bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BARS, sc->mem_res);
-	pci_disable_busmaster(dev);
-	bus_dma_tag_destroy(sc->parent_dmat);
+
+	if (sc->dmabench_dma.dmem_addr != NULL)
+		mxge_dma_free(&sc->dmabench_dma);
+	if (sc->zeropad_dma.dmem_addr != NULL)
+		mxge_dma_free(&sc->zeropad_dma);
+	if (sc->cmd_dma.dmem_addr != NULL)
+		mxge_dma_free(&sc->cmd_dma);
+
+	if (sc->irq_res != NULL) {
+		bus_release_resource(dev, SYS_RES_IRQ, sc->irq_rid,
+		    sc->irq_res);
+	}
+	if (sc->irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(dev);
+
+	if (sc->mem_res != NULL) {
+		bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BARS,
+		    sc->mem_res);
+	}
+
+	if (sc->parent_dmat != NULL)
+		bus_dma_tag_destroy(sc->parent_dmat);
+
 	return 0;
 }
 
