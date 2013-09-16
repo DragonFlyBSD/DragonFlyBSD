@@ -175,12 +175,16 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 	KKASSERT(error == 0);
 
 	/*
-	 * Increase the total number of bigblocks
+	 * Increase the total number of bigblocks and update stat/vstat totals.
 	 */
 	hammer_modify_volume_field(trans, trans->rootvol,
 		vol0_stat_bigblocks);
 	trans->rootvol->ondisk->vol0_stat_bigblocks += stat.total_bigblocks;
 	hammer_modify_volume_done(trans->rootvol);
+	mp->mnt_stat.f_blocks += ondisk->vol0_stat_bigblocks *
+	    (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
+	mp->mnt_vstat.f_blocks += ondisk->vol0_stat_bigblocks *
+	    (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
 
 	/*
 	 * Increase the number of free bigblocks
