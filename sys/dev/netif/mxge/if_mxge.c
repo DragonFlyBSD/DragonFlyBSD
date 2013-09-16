@@ -140,7 +140,7 @@ MODULE_DEPEND(mxge, zlib, 1, 1, 1);
 
 static int mxge_load_firmware(mxge_softc_t *sc, int adopt);
 static int mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data);
-static int mxge_close(mxge_softc_t *sc, int down);
+static void mxge_close(mxge_softc_t *sc, int down);
 static int mxge_open(mxge_softc_t *sc);
 static void mxge_tick(void *arg);
 
@@ -3270,37 +3270,38 @@ abort:
 	return err;
 }
 
-static int
+static void
 mxge_close(mxge_softc_t *sc, int down)
 {
+	struct ifnet *ifp = sc->ifp;
 	mxge_cmd_t cmd;
 	int err, old_down_cnt;
 
-	ASSERT_SERIALIZED(sc->ifp->if_serializer);
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	sc->ifp->if_flags &= ~IFF_RUNNING;
+	ifp->if_flags &= ~IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
+
 	if (!down) {
 		old_down_cnt = sc->down_cnt;
 		wmb();
+
 		err = mxge_send_cmd(sc, MXGEFW_CMD_ETHERNET_DOWN, &cmd);
-		if (err) {
-			device_printf(sc->dev,
-				      "Couldn't bring down link\n");
-		}
+		if (err)
+			if_printf(ifp, "Couldn't bring down link\n");
+
 		if (old_down_cnt == sc->down_cnt) {
-			/* wait for down irq */
-			lwkt_serialize_exit(sc->ifp->if_serializer);
+			/* Wait for down irq */
+			lwkt_serialize_exit(ifp->if_serializer);
 			DELAY(10 * sc->intr_coal_delay);
-			lwkt_serialize_enter(sc->ifp->if_serializer);
+			lwkt_serialize_enter(ifp->if_serializer);
 		}
+
 		wmb();
-		if (old_down_cnt == sc->down_cnt) {
-			device_printf(sc->dev, "never got down irq\n");
-		}
+		if (old_down_cnt == sc->down_cnt)
+			if_printf(ifp, "never got down irq\n");
 	}
 	mxge_free_mbufs(sc);
-
-	return 0;
 }
 
 static void
