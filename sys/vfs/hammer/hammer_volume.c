@@ -181,9 +181,9 @@ hammer_ioc_volume_add(hammer_transaction_t trans, hammer_inode_t ip,
 		vol0_stat_bigblocks);
 	trans->rootvol->ondisk->vol0_stat_bigblocks += stat.total_bigblocks;
 	hammer_modify_volume_done(trans->rootvol);
-	mp->mnt_stat.f_blocks += ondisk->vol0_stat_bigblocks *
+	mp->mnt_stat.f_blocks += trans->rootvol->ondisk->vol0_stat_bigblocks *
 	    (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
-	mp->mnt_vstat.f_blocks += ondisk->vol0_stat_bigblocks *
+	mp->mnt_vstat.f_blocks += trans->rootvol->ondisk->vol0_stat_bigblocks *
 	    (HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE);
 
 	/*
