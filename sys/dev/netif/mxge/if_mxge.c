@@ -2054,60 +2054,39 @@ done:
 static int
 mxge_get_buf_big(struct mxge_slice_state *ss, bus_dmamap_t map, int idx)
 {
-	bus_dma_segment_t seg[3];
+	bus_dma_segment_t seg;
 	struct mbuf *m;
 	mxge_rx_ring_t *rx = &ss->rx_big;
-	int cnt, err, i;
+	int cnt, err;
 
 	if (rx->cl_size == MCLBYTES)
 		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
-	else {
-#if 0
-		m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, rx->cl_size);
-#else
-		/*
-		 * XXX: allocate normal sized buffers for big buffers.
-		 * We should be fine as long as we don't get any jumbo frames
-		 */
-		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
-#endif
-	}
+	else
+		m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
 	if (m == NULL) {
 		rx->alloc_fail++;
 		err = ENOBUFS;
 		goto done;
 	}
 	m->m_len = m->m_pkthdr.len = rx->mlen;
-	err = bus_dmamap_load_mbuf_segment(rx->dmat, map, m, 
-				      seg, 1, &cnt, BUS_DMA_NOWAIT);
+
+	err = bus_dmamap_load_mbuf_segment(rx->dmat, map, m,
+	    &seg, 1, &cnt, BUS_DMA_NOWAIT);
 	if (err != 0) {
 		kprintf("can't dmamap big (%d)\n", err);
 		m_free(m);
 		goto done;
 	}
+
 	rx->info[idx].m = m;
 	rx->shadow[idx].addr_low = 
-		htobe32(MXGE_LOWPART_TO_U32(seg->ds_addr));
+		htobe32(MXGE_LOWPART_TO_U32(seg.ds_addr));
 	rx->shadow[idx].addr_high = 
-		htobe32(MXGE_HIGHPART_TO_U32(seg->ds_addr));
-
-#if MXGE_VIRT_JUMBOS
-	for (i = 1; i < cnt; i++) {
-		rx->shadow[idx + i].addr_low = 
-			htobe32(MXGE_LOWPART_TO_U32(seg[i].ds_addr));
-		rx->shadow[idx + i].addr_high = 
-			htobe32(MXGE_HIGHPART_TO_U32(seg[i].ds_addr));
-	}
-#endif
+		htobe32(MXGE_HIGHPART_TO_U32(seg.ds_addr));
 
 done:
-	for (i = 0; i < rx->nbufs; i++) {
-		if ((idx & 7) == 7) {
-			mxge_submit_8rx(&rx->lanai[idx - 7],
-					&rx->shadow[idx - 7]);
-		}
-		idx++;
-	}
+	if ((idx & 7) == 7)
+		mxge_submit_8rx(&rx->lanai[idx - 7], &rx->shadow[idx - 7]);
 	return err;
 }
 
@@ -2203,7 +2182,7 @@ mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 	ifp = sc->ifp;
 	rx = &ss->rx_big;
 	idx = rx->cnt & rx->mask;
-	rx->cnt += rx->nbufs;
+	rx->cnt++;
 	/* save a pointer to the received mbuf */
 	m = rx->info[idx].m;
 	/* try to replace the received mbuf */
@@ -2887,8 +2866,8 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 				 BUS_SPACE_MAXADDR,	/* low */
 				 BUS_SPACE_MAXADDR,	/* high */
 				 NULL, NULL,		/* filter */
-				 3*4096,		/* maxsize */
-				 3,			/* num segs */
+				 4096,			/* maxsize */
+				 1,			/* num segs */
 				 4096,			/* maxsegsize*/
 				 BUS_DMA_WAITOK | BUS_DMA_ALLOCNOW,
 				 			/* flags */
@@ -3030,42 +3009,20 @@ mxge_alloc_rings(mxge_softc_t *sc)
 }
 
 static void
-mxge_choose_params(int mtu, int *big_buf_size, int *cl_size, int *nbufs)
+mxge_choose_params(int mtu, int *cl_size)
 {
 	int bufsize = mtu + ETHER_HDR_LEN + EVL_ENCAPLEN + MXGEFW_PAD;
 
 	if (bufsize < MCLBYTES) {
-		/* easy, everything fits in a single buffer */
-		*big_buf_size = MCLBYTES;
 		*cl_size = MCLBYTES;
-		*nbufs = 1;
-		return;
-	}
-
-	if (bufsize < MJUMPAGESIZE) {
-		/* still easy, everything still fits in a single buffer */
-		*big_buf_size = MJUMPAGESIZE;
+	} else {
+		KASSERT(bufsize < MJUMPAGESIZE, ("invalid MTU %d", mtu));
 		*cl_size = MJUMPAGESIZE;
-		*nbufs = 1;
-		return;
 	}
-#if MXGE_VIRT_JUMBOS
-	/* now we need to use virtually contiguous buffers */
-	*cl_size = MJUM9BYTES;
-	*big_buf_size = 4096;
-	*nbufs = mtu / 4096 + 1;
-	/* needs to be a power of two, so round up */
-	if (*nbufs == 3)
-		*nbufs = 4;
-#else
-	*cl_size = MJUM9BYTES;
-	*big_buf_size = MJUM9BYTES;
-	*nbufs = 1;
-#endif
 }
 
 static int
-mxge_slice_open(struct mxge_slice_state *ss, int nbufs, int cl_size)
+mxge_slice_open(struct mxge_slice_state *ss, int cl_size)
 {
 	mxge_cmd_t cmd;
 	bus_dmamap_t map;
@@ -3130,12 +3087,11 @@ mxge_slice_open(struct mxge_slice_state *ss, int nbufs, int cl_size)
 		ss->rx_big.shadow[i].addr_high = 0xffffffff;
 	}
 
-	ss->rx_big.nbufs = nbufs;
 	ss->rx_big.cl_size = cl_size;
 	ss->rx_big.mlen = ss->sc->ifp->if_mtu + ETHER_HDR_LEN +
 	    EVL_ENCAPLEN + MXGEFW_PAD;
 
-	for (i = 0; i <= ss->rx_big.mask; i += ss->rx_big.nbufs) {
+	for (i = 0; i <= ss->rx_big.mask; i++) {
 		map = ss->rx_big.info[i].map;
 		err = mxge_get_buf_big(ss, map, i);
 		if (err) {
@@ -3152,7 +3108,7 @@ mxge_open(mxge_softc_t *sc)
 {
 	struct ifnet *ifp = sc->ifp;
 	mxge_cmd_t cmd;
-	int err, big_bytes, nbufs, slice, cl_size, i;
+	int err, slice, cl_size, i;
 	bus_addr_t bus;
 	volatile uint8_t *itable;
 	struct mxge_slice_state *ss;
@@ -3205,18 +3161,14 @@ mxge_open(mxge_softc_t *sc)
 		ifp->if_hwassist &= ~CSUM_TSO;
 	}
 
-	mxge_choose_params(ifp->if_mtu, &big_bytes, &cl_size, &nbufs);
+	mxge_choose_params(ifp->if_mtu, &cl_size);
 
-	cmd.data0 = nbufs;
+	cmd.data0 = 1;
 	err = mxge_send_cmd(sc, MXGEFW_CMD_ALWAYS_USE_N_BIG_BUFFERS, &cmd);
 	/*
 	 * Error is only meaningful if we're trying to set
 	 * MXGEFW_CMD_ALWAYS_USE_N_BIG_BUFFERS > 1
 	 */
-	if (err && nbufs > 1) {
-		if_printf(ifp, "Failed to set alway-use-n to %d\n", nbufs);
-		return EIO;
-	}
 
 	/*
 	 * Give the firmware the mtu and the big and small buffer
@@ -3226,10 +3178,11 @@ mxge_open(mxge_softc_t *sc)
 	cmd.data0 = ifp->if_mtu + ETHER_HDR_LEN + EVL_ENCAPLEN;
 	err = mxge_send_cmd(sc, MXGEFW_CMD_SET_MTU, &cmd);
 
+	/* XXX need to cut MXGEFW_PAD here? */
 	cmd.data0 = MHLEN - MXGEFW_PAD;
 	err |= mxge_send_cmd(sc, MXGEFW_CMD_SET_SMALL_BUFFER_SIZE, &cmd);
 
-	cmd.data0 = big_bytes;
+	cmd.data0 = cl_size;
 	err |= mxge_send_cmd(sc, MXGEFW_CMD_SET_BIG_BUFFER_SIZE, &cmd);
 
 	if (err != 0) {
@@ -3273,7 +3226,7 @@ mxge_open(mxge_softc_t *sc)
 	}
 
 	for (slice = 0; slice < sc->num_slices; slice++) {
-		err = mxge_slice_open(&sc->ss[slice], nbufs, cl_size);
+		err = mxge_slice_open(&sc->ss[slice], cl_size);
 		if (err != 0) {
 			if_printf(ifp, "couldn't open slice %d\n", slice);
 			goto abort;
@@ -3614,12 +3567,10 @@ mxge_change_mtu(mxge_softc_t *sc, int mtu)
 	int real_mtu, old_mtu;
 	int err = 0;
 
-	if (ifp->if_serializer)
-		ASSERT_SERIALIZED(ifp->if_serializer);
-
 	real_mtu = mtu + ETHER_HDR_LEN + EVL_ENCAPLEN;
-	if ((real_mtu > sc->max_mtu) || real_mtu < 60)
+	if (mtu > sc->max_mtu || real_mtu < 60)
 		return EINVAL;
+
 	old_mtu = ifp->if_mtu;
 	ifp->if_mtu = mtu;
 	if (ifp->if_flags & IFF_RUNNING) {
@@ -3628,7 +3579,7 @@ mxge_change_mtu(mxge_softc_t *sc, int mtu)
 		if (err != 0) {
 			ifp->if_mtu = old_mtu;
 			mxge_close(sc, 0);
-			(void) mxge_open(sc);
+			mxge_open(sc);
 		}
 	}
 	return err;
@@ -4256,7 +4207,13 @@ mxge_attach(device_t dev)
 
 	ether_ifattach(ifp, sc->mac_addr, NULL);
 
-	sc->max_mtu = ETHERMTU + EVL_ENCAPLEN;
+	/*
+	 * XXX
+	 * We are not ready to do "gather" jumbo frame, so
+	 * limit MTU to MJUMPAGESIZE
+	 */
+	sc->max_mtu = MJUMPAGESIZE -
+	    ETHER_HDR_LEN - EVL_ENCAPLEN - MXGEFW_PAD - 1;
 	sc->dying = 0;
 
 	/* must come after ether_ifattach() */

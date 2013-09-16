@@ -39,8 +39,6 @@ $FreeBSD: head/sys/dev/mxge/if_mxge_var.h 247160 2013-02-22 19:23:33Z gallatin $
 #define MXGE_EEPROM_STRINGS_SIZE	256
 #define MXGE_MAX_SEND_DESC		128
 
-#define MXGE_VIRT_JUMBOS		1
-
 #define MXGE_INTR_COAL_DELAY		150
 
 typedef struct {
@@ -75,7 +73,6 @@ typedef struct {
 	bus_dma_tag_t dmat;
 	bus_dmamap_t extra_map;
 	int cnt;
-	int nbufs;
 	int cl_size;
 	int alloc_fail;
 	int mask;			/* number of rx slots -1 */
