@@ -90,7 +90,6 @@ static int mxge_deassert_wait = 1;
 static int mxge_flow_control = 1;
 static int mxge_ticks;
 static int mxge_max_slices = 1;
-static int mxge_rss_hash_type = MXGEFW_RSS_HASH_TYPE_TCP_IPV4;
 static int mxge_always_promisc = 0;
 static int mxge_throttle = 0;
 static int mxge_msi_enable = 1;
@@ -754,7 +753,7 @@ mxge_dummy_rdma(mxge_softc_t *sc, int enable)
 		i++;
 	}
 	if (*confirm != 0xffffffff) {
-		device_printf(sc->dev, "dummy rdma %s failed (%p = 0x%x)",
+		if_printf(sc->ifp, "dummy rdma %s failed (%p = 0x%x)",
 		    (enable ? "enable" : "disable"), confirm, *confirm);
 	}
 }
@@ -769,15 +768,7 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 	uint32_t dma_low, dma_high;
 	int err, sleep_total = 0;
 
-	/*
-	 * We may be called during attach, before if_serializer is available.
-	 * This is not a fast path, just check for NULL
-	 * XXX SERIALIZE
-	 */
-	if (sc->ifp->if_serializer)
-		ASSERT_SERIALIZED(sc->ifp->if_serializer);
-
-	/* ensure buf is aligned to 8 bytes */
+	/* Ensure buf is aligned to 8 bytes */
 	buf = (mcp_cmd_t *)((unsigned long)(buf_bytes + 7) & ~7UL);
 
 	buf->data0 = htobe32(data->data0);
@@ -794,9 +785,11 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 	wmb();
 	mxge_pio_copy((volatile void *)cmd_addr, buf, sizeof (*buf));
 
-	/* wait up to 20ms */
+	/*
+	 * Wait up to 20ms
+	 */
 	err = EAGAIN;
-	for (sleep_total = 0; sleep_total <  20; sleep_total++) {
+	for (sleep_total = 0; sleep_total < 20; sleep_total++) {
 		wmb();
 		switch (be32toh(response->result)) {
 		case 0:
@@ -819,20 +812,18 @@ mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data)
 			err = ENXIO;
 			break;
 		default:
-			device_printf(sc->dev, 
-				      "mxge: command %d "
-				      "failed, result = %d\n",
-				      cmd, be32toh(response->result));
+			if_printf(sc->ifp, "command %d failed, result = %d\n",
+			    cmd, be32toh(response->result));
 			err = ENXIO;
 			break;
 		}
 		if (err != EAGAIN)
 			break;
 	}
-	if (err == EAGAIN)
-		device_printf(sc->dev, "mxge: command %d timed out"
-			      "result = %d\n",
-			      cmd, be32toh(response->result));
+	if (err == EAGAIN) {
+		if_printf(sc->ifp, "command %d timed out result = %d\n",
+		    cmd, be32toh(response->result));
+	}
 	return err;
 }
 
@@ -1127,7 +1118,7 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 	memset(&cmd, 0, sizeof (cmd));
 	status = mxge_send_cmd(sc, MXGEFW_CMD_RESET, &cmd);
 	if (status != 0) {
-		device_printf(sc->dev, "failed reset\n");
+		if_printf(sc->ifp, "failed reset\n");
 		return ENXIO;
 	}
 
@@ -1151,8 +1142,7 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 		/* Ask the maximum number of slices it supports */
 		status = mxge_send_cmd(sc, MXGEFW_CMD_GET_MAX_RSS_QUEUES, &cmd);
 		if (status != 0) {
-			device_printf(sc->dev,
-			    "failed to get number of slices\n");
+			if_printf(sc->ifp, "failed to get number of slices\n");
 			return status;
 		}
 
@@ -1167,8 +1157,7 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 #endif
 		status = mxge_send_cmd(sc, MXGEFW_CMD_ENABLE_RSS_QUEUES, &cmd);
 		if (status != 0) {
-			device_printf(sc->dev,
-			    "failed to set number of slices\n");
+			if_printf(sc->ifp, "failed to set number of slices\n");
 			return status;
 		}
 	}
@@ -1199,7 +1188,7 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 	sc->irq_deassert = (volatile uint32_t *)(sc->sram + cmd.data0);
 
 	if (status != 0) {
-		device_printf(sc->dev, "failed set interrupt parameters\n");
+		if_printf(sc->ifp, "failed set interrupt parameters\n");
 		return status;
 	}
 
@@ -1240,7 +1229,7 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 	if (sc->throttle) {
 		cmd.data0 = sc->throttle;
 		if (mxge_send_cmd(sc, MXGEFW_CMD_SET_THROTTLE_FACTOR, &cmd))
-			device_printf(sc->dev, "can't enable throttle\n");
+			if_printf(sc->ifp, "can't enable throttle\n");
 	}
 	return status;
 }
@@ -3135,46 +3124,45 @@ mxge_slice_open(struct mxge_slice_state *ss, int nbufs, int cl_size)
 static int 
 mxge_open(mxge_softc_t *sc)
 {
+	struct ifnet *ifp = sc->ifp;
 	mxge_cmd_t cmd;
 	int err, big_bytes, nbufs, slice, cl_size, i;
 	bus_addr_t bus;
 	volatile uint8_t *itable;
 	struct mxge_slice_state *ss;
 
-	ASSERT_SERIALIZED(sc->ifp->if_serializer);
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	/* Copy the MAC address in case it was overridden */
-	bcopy(IF_LLADDR(sc->ifp), sc->mac_addr, ETHER_ADDR_LEN);
+	bcopy(IF_LLADDR(ifp), sc->mac_addr, ETHER_ADDR_LEN);
 
 	err = mxge_reset(sc, 1);
 	if (err != 0) {
-		device_printf(sc->dev, "failed to reset\n");
+		if_printf(ifp, "failed to reset\n");
 		return EIO;
 	}
 
 	if (sc->num_slices > 1) {
-		/* setup the indirection table */
+		/* Setup the indirection table */
 		cmd.data0 = sc->num_slices;
-		err = mxge_send_cmd(sc, MXGEFW_CMD_SET_RSS_TABLE_SIZE,
-				    &cmd);
+		err = mxge_send_cmd(sc, MXGEFW_CMD_SET_RSS_TABLE_SIZE, &cmd);
 
-		err |= mxge_send_cmd(sc, MXGEFW_CMD_GET_RSS_TABLE_OFFSET,
-				     &cmd);
+		err |= mxge_send_cmd(sc, MXGEFW_CMD_GET_RSS_TABLE_OFFSET, &cmd);
 		if (err != 0) {
-			device_printf(sc->dev,
-				      "failed to setup rss tables\n");
+			if_printf(ifp, "failed to setup rss tables\n");
 			return err;
 		}
 
-		/* just enable an identity mapping */
+		/* Just enable an identity mapping */
 		itable = sc->sram + cmd.data0;
 		for (i = 0; i < sc->num_slices; i++)
 			itable[i] = (uint8_t)i;
 
 		cmd.data0 = 1;
-		cmd.data1 = mxge_rss_hash_type;
+		cmd.data1 = MXGEFW_RSS_HASH_TYPE_TCP_IPV4;
 		err = mxge_send_cmd(sc, MXGEFW_CMD_SET_RSS_ENABLE, &cmd);
 		if (err != 0) {
-			device_printf(sc->dev, "failed to enable slices\n");
+			if_printf(ifp, "failed to enable slices\n");
 			return err;
 		}
 	}
@@ -3182,38 +3170,44 @@ mxge_open(mxge_softc_t *sc)
 	cmd.data0 = MXGEFW_TSO_MODE_NDIS;
 	err = mxge_send_cmd(sc, MXGEFW_CMD_SET_TSO_MODE, &cmd);
 	if (err) {
-		device_printf(sc->dev, "failed set TSO mode\n");
-		sc->ifp->if_capenable &= ~IFCAP_TSO;
-		sc->ifp->if_capabilities &= ~IFCAP_TSO;
-		sc->ifp->if_hwassist &= ~CSUM_TSO;
+		/*
+		 * Can't change TSO mode to NDIS, never allow TSO then
+		 */
+		if_printf(ifp, "failed to set TSO mode\n");
+		ifp->if_capenable &= ~IFCAP_TSO;
+		ifp->if_capabilities &= ~IFCAP_TSO;
+		ifp->if_hwassist &= ~CSUM_TSO;
 	}
 
-	mxge_choose_params(sc->ifp->if_mtu, &big_bytes, &cl_size, &nbufs);
+	mxge_choose_params(ifp->if_mtu, &big_bytes, &cl_size, &nbufs);
 
 	cmd.data0 = nbufs;
-	err = mxge_send_cmd(sc, MXGEFW_CMD_ALWAYS_USE_N_BIG_BUFFERS,
-			    &cmd);
-	/* error is only meaningful if we're trying to set 
-	   MXGEFW_CMD_ALWAYS_USE_N_BIG_BUFFERS > 1 */
+	err = mxge_send_cmd(sc, MXGEFW_CMD_ALWAYS_USE_N_BIG_BUFFERS, &cmd);
+	/*
+	 * Error is only meaningful if we're trying to set
+	 * MXGEFW_CMD_ALWAYS_USE_N_BIG_BUFFERS > 1
+	 */
 	if (err && nbufs > 1) {
-		device_printf(sc->dev,
-			      "Failed to set alway-use-n to %d\n",
-			      nbufs);
+		if_printf(ifp, "Failed to set alway-use-n to %d\n", nbufs);
 		return EIO;
 	}
-	/* Give the firmware the mtu and the big and small buffer
-	   sizes.  The firmware wants the big buf size to be a power
-	   of two. Luckily, FreeBSD's clusters are powers of two */
-	cmd.data0 = sc->ifp->if_mtu + ETHER_HDR_LEN + EVL_ENCAPLEN;
+
+	/*
+	 * Give the firmware the mtu and the big and small buffer
+	 * sizes.  The firmware wants the big buf size to be a power
+	 * of two. Luckily, FreeBSD's clusters are powers of two
+	 */
+	cmd.data0 = ifp->if_mtu + ETHER_HDR_LEN + EVL_ENCAPLEN;
 	err = mxge_send_cmd(sc, MXGEFW_CMD_SET_MTU, &cmd);
+
 	cmd.data0 = MHLEN - MXGEFW_PAD;
-	err |= mxge_send_cmd(sc, MXGEFW_CMD_SET_SMALL_BUFFER_SIZE,
-			     &cmd);
+	err |= mxge_send_cmd(sc, MXGEFW_CMD_SET_SMALL_BUFFER_SIZE, &cmd);
+
 	cmd.data0 = big_bytes;
 	err |= mxge_send_cmd(sc, MXGEFW_CMD_SET_BIG_BUFFER_SIZE, &cmd);
 
 	if (err != 0) {
-		device_printf(sc->dev, "failed to setup params\n");
+		if_printf(ifp, "failed to setup params\n");
 		goto abort;
 	}
 
@@ -3238,9 +3232,9 @@ mxge_open(mxge_softc_t *sc)
 		bus += offsetof(struct mcp_irq_data, send_done_count);
 		cmd.data0 = MXGE_LOWPART_TO_U32(bus);
 		cmd.data1 = MXGE_HIGHPART_TO_U32(bus);
-		err = mxge_send_cmd(sc,
-				    MXGEFW_CMD_SET_STATS_DMA_OBSOLETE,
-				    &cmd);
+		err = mxge_send_cmd(sc, MXGEFW_CMD_SET_STATS_DMA_OBSOLETE,
+		    &cmd);
+
 		/* Firmware cannot support multicast without STATS_DMA_V2 */
 		sc->fw_multicast_support = 0;
 	} else {
@@ -3248,15 +3242,14 @@ mxge_open(mxge_softc_t *sc)
 	}
 
 	if (err != 0) {
-		device_printf(sc->dev, "failed to setup params\n");
+		if_printf(ifp, "failed to setup params\n");
 		goto abort;
 	}
 
 	for (slice = 0; slice < sc->num_slices; slice++) {
 		err = mxge_slice_open(&sc->ss[slice], nbufs, cl_size);
 		if (err != 0) {
-			device_printf(sc->dev, "couldn't open slice %d\n",
-				      slice);
+			if_printf(ifp, "couldn't open slice %d\n", slice);
 			goto abort;
 		}
 	}
@@ -3264,18 +3257,16 @@ mxge_open(mxge_softc_t *sc)
 	/* Finally, start the firmware running */
 	err = mxge_send_cmd(sc, MXGEFW_CMD_ETHERNET_UP, &cmd);
 	if (err) {
-		device_printf(sc->dev, "Couldn't bring up link\n");
+		if_printf(ifp, "Couldn't bring up link\n");
 		goto abort;
 	}
-	sc->ifp->if_flags |= IFF_RUNNING;
-	ifq_clr_oactive(&sc->ifp->if_snd);
+	ifp->if_flags |= IFF_RUNNING;
+	ifq_clr_oactive(&ifp->if_snd);
 
 	return 0;
 
-
 abort:
 	mxge_free_mbufs(sc);
-
 	return err;
 }
 
