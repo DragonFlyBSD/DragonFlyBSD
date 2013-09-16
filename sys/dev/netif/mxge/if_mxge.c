@@ -3049,72 +3049,80 @@ mxge_choose_params(int mtu, int *big_buf_size, int *cl_size, int *nbufs)
 static int
 mxge_slice_open(struct mxge_slice_state *ss, int nbufs, int cl_size)
 {
-	mxge_softc_t *sc;
 	mxge_cmd_t cmd;
 	bus_dmamap_t map;
 	int err, i, slice;
 
-	sc = ss->sc;
-	slice = ss - sc->ss;
+	slice = ss - ss->sc->ss;
 
-	/* get the lanai pointers to the send and receive rings */
-
+	/*
+	 * Get the lanai pointers to the send and receive rings
+	 */
 	err = 0;
 #ifndef IFNET_BUF_RING
 	/* We currently only send from the first slice */
 	if (slice == 0) {
 #endif
 		cmd.data0 = slice;
-		err = mxge_send_cmd(sc, MXGEFW_CMD_GET_SEND_OFFSET, &cmd);
-		ss->tx.lanai = 
-			(volatile mcp_kreq_ether_send_t *)(sc->sram + cmd.data0);
+		err = mxge_send_cmd(ss->sc, MXGEFW_CMD_GET_SEND_OFFSET, &cmd);
+		ss->tx.lanai = (volatile mcp_kreq_ether_send_t *)
+		    (ss->sc->sram + cmd.data0);
 		ss->tx.send_go = (volatile uint32_t *)
-			(sc->sram + MXGEFW_ETH_SEND_GO + 64 * slice);
+		    (ss->sc->sram + MXGEFW_ETH_SEND_GO + 64 * slice);
 		ss->tx.send_stop = (volatile uint32_t *)
-		(sc->sram + MXGEFW_ETH_SEND_STOP + 64 * slice);
+		    (ss->sc->sram + MXGEFW_ETH_SEND_STOP + 64 * slice);
 #ifndef IFNET_BUF_RING
 	}
 #endif
+
 	cmd.data0 = slice;
-	err |= mxge_send_cmd(sc, 
-			     MXGEFW_CMD_GET_SMALL_RX_OFFSET, &cmd);
-	ss->rx_small.lanai = 
-		(volatile mcp_kreq_ether_recv_t *)(sc->sram + cmd.data0);
+	err |= mxge_send_cmd(ss->sc, MXGEFW_CMD_GET_SMALL_RX_OFFSET, &cmd);
+	ss->rx_small.lanai =
+	    (volatile mcp_kreq_ether_recv_t *)(ss->sc->sram + cmd.data0);
+
 	cmd.data0 = slice;
-	err |= mxge_send_cmd(sc, MXGEFW_CMD_GET_BIG_RX_OFFSET, &cmd);
-	ss->rx_big.lanai = 
-		(volatile mcp_kreq_ether_recv_t *)(sc->sram + cmd.data0);
+	err |= mxge_send_cmd(ss->sc, MXGEFW_CMD_GET_BIG_RX_OFFSET, &cmd);
+	ss->rx_big.lanai =
+	    (volatile mcp_kreq_ether_recv_t *)(ss->sc->sram + cmd.data0);
 
 	if (err != 0) {
-		device_printf(sc->dev, 
-			      "failed to get ring sizes or locations\n");
+		if_printf(ss->sc->ifp,
+		    "failed to get ring sizes or locations\n");
 		return EIO;
 	}
 
-	/* stock receive rings */
+	/*
+	 * Stock small receive ring
+	 */
 	for (i = 0; i <= ss->rx_small.mask; i++) {
 		map = ss->rx_small.info[i].map;
 		err = mxge_get_buf_small(ss, map, i);
 		if (err) {
-			device_printf(sc->dev, "alloced %d/%d smalls\n",
-				      i, ss->rx_small.mask + 1);
+			if_printf(ss->sc->ifp, "alloced %d/%d smalls\n", i,
+			    ss->rx_small.mask + 1);
 			return ENOMEM;
 		}
 	}
+
+	/*
+	 * Stock big receive ring
+	 */
 	for (i = 0; i <= ss->rx_big.mask; i++) {
 		ss->rx_big.shadow[i].addr_low = 0xffffffff;
 		ss->rx_big.shadow[i].addr_high = 0xffffffff;
 	}
+
 	ss->rx_big.nbufs = nbufs;
 	ss->rx_big.cl_size = cl_size;
 	ss->rx_big.mlen = ss->sc->ifp->if_mtu + ETHER_HDR_LEN +
-		EVL_ENCAPLEN + MXGEFW_PAD;
+	    EVL_ENCAPLEN + MXGEFW_PAD;
+
 	for (i = 0; i <= ss->rx_big.mask; i += ss->rx_big.nbufs) {
 		map = ss->rx_big.info[i].map;
 		err = mxge_get_buf_big(ss, map, i);
 		if (err) {
-			device_printf(sc->dev, "alloced %d/%d bigs\n",
-				      i, ss->rx_big.mask + 1);
+			if_printf(ss->sc->ifp, "alloced %d/%d bigs\n", i,
+			    ss->rx_big.mask + 1);
 			return ENOMEM;
 		}
 	}
