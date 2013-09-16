@@ -2005,8 +2005,7 @@ mxge_get_buf_small(mxge_rx_ring_t *rx, bus_dmamap_t map, int idx,
 {
 	bus_dma_segment_t seg;
 	struct mbuf *m;
-	int cnt, err;
-	int mflag;
+	int cnt, err, mflag;
 
 	mflag = MB_DONTWAIT;
 	if (__predict_false(init))
@@ -2052,20 +2051,31 @@ done:
 }
 
 static int
-mxge_get_buf_big(struct mxge_slice_state *ss, bus_dmamap_t map, int idx)
+mxge_get_buf_big(mxge_rx_ring_t *rx, bus_dmamap_t map, int idx,
+    boolean_t init)
 {
 	bus_dma_segment_t seg;
 	struct mbuf *m;
-	mxge_rx_ring_t *rx = &ss->rx_big;
-	int cnt, err;
+	int cnt, err, mflag;
+
+	mflag = MB_DONTWAIT;
+	if (__predict_false(init))
+		mflag = MB_WAIT;
 
 	if (rx->cl_size == MCLBYTES)
-		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(mflag, MT_DATA, M_PKTHDR);
 	else
-		m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
+		m = m_getjcl(mflag, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
 	if (m == NULL) {
 		rx->alloc_fail++;
 		err = ENOBUFS;
+		if (__predict_false(init)) {
+			/*
+			 * During initialization, there
+			 * is nothing to setup; bail out
+			 */
+			return err;
+		}
 		goto done;
 	}
 	m->m_len = m->m_pkthdr.len = rx->mlen;
@@ -2073,16 +2083,20 @@ mxge_get_buf_big(struct mxge_slice_state *ss, bus_dmamap_t map, int idx)
 	err = bus_dmamap_load_mbuf_segment(rx->dmat, map, m,
 	    &seg, 1, &cnt, BUS_DMA_NOWAIT);
 	if (err != 0) {
-		kprintf("can't dmamap big (%d)\n", err);
-		m_free(m);
+		m_freem(m);
+		if (__predict_false(init)) {
+			/*
+			 * During initialization, there
+			 * is nothing to setup; bail out
+			 */
+			return err;
+		}
 		goto done;
 	}
 
 	rx->info[idx].m = m;
-	rx->shadow[idx].addr_low = 
-		htobe32(MXGE_LOWPART_TO_U32(seg.ds_addr));
-	rx->shadow[idx].addr_high = 
-		htobe32(MXGE_HIGHPART_TO_U32(seg.ds_addr));
+	rx->shadow[idx].addr_low = htobe32(MXGE_LOWPART_TO_U32(seg.ds_addr));
+	rx->shadow[idx].addr_high = htobe32(MXGE_HIGHPART_TO_U32(seg.ds_addr));
 
 done:
 	if ((idx & 7) == 7)
@@ -2186,7 +2200,7 @@ mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 	/* save a pointer to the received mbuf */
 	m = rx->info[idx].m;
 	/* try to replace the received mbuf */
-	if (mxge_get_buf_big(ss, rx->extra_map, idx)) {
+	if (mxge_get_buf_big(rx, rx->extra_map, idx, FALSE)) {
 		/* drop the frame -- the old mbuf is re-cycled */
 		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
@@ -3025,7 +3039,6 @@ static int
 mxge_slice_open(struct mxge_slice_state *ss, int cl_size)
 {
 	mxge_cmd_t cmd;
-	bus_dmamap_t map;
 	int err, i, slice;
 
 	slice = ss - ss->sc->ss;
@@ -3092,8 +3105,8 @@ mxge_slice_open(struct mxge_slice_state *ss, int cl_size)
 	    EVL_ENCAPLEN + MXGEFW_PAD;
 
 	for (i = 0; i <= ss->rx_big.mask; i++) {
-		map = ss->rx_big.info[i].map;
-		err = mxge_get_buf_big(ss, map, i);
+		err = mxge_get_buf_big(&ss->rx_big,
+		    ss->rx_big.info[i].map, i, TRUE);
 		if (err) {
 			if_printf(ss->sc->ifp, "alloced %d/%d bigs\n", i,
 			    ss->rx_big.mask + 1);
