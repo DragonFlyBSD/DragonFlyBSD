@@ -147,12 +147,11 @@ static void mxge_tick(void *arg);
 static int
 mxge_probe(device_t dev)
 {
-	int rev;
+	if (pci_get_vendor(dev) == MXGE_PCI_VENDOR_MYRICOM &&
+	    (pci_get_device(dev) == MXGE_PCI_DEVICE_Z8E ||
+	     pci_get_device(dev) == MXGE_PCI_DEVICE_Z8E_9)) {
+		int rev = pci_get_revid(dev);
 
-	if ((pci_get_vendor(dev) == MXGE_PCI_VENDOR_MYRICOM) &&
-	    ((pci_get_device(dev) == MXGE_PCI_DEVICE_Z8E) ||
-	     (pci_get_device(dev) == MXGE_PCI_DEVICE_Z8E_9))) {
-		rev = pci_get_revid(dev);
 		switch (rev) {
 		case MXGE_PCI_REV_Z8E:
 			device_set_desc(dev, "Myri10G-PCIE-8A");
@@ -162,8 +161,7 @@ mxge_probe(device_t dev)
 			break;
 		default:
 			device_set_desc(dev, "Myri10G-PCIE-8??");
-			device_printf(dev, "Unrecognized rev %d NIC\n",
-				      rev);
+			device_printf(dev, "Unrecognized rev %d NIC\n", rev);
 			break;	
 		}
 		return 0;
