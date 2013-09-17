@@ -1564,7 +1564,7 @@ mxge_add_sysctls(mxge_softc_t *sc)
  * Copy an array of mcp_kreq_ether_send_t's to the mcp.  Copy 
  * backwards one at a time and handle ring wraps
  */
-static inline void 
+static __inline void 
 mxge_submit_req_backwards(mxge_tx_ring_t *tx,
     mcp_kreq_ether_send_t *src, int cnt)
 {
@@ -1585,7 +1585,7 @@ mxge_submit_req_backwards(mxge_tx_ring_t *tx,
  * pio handler in the nic.   We re-write the first segment's flags
  * to mark them valid only after writing the entire chain 
  */
-static inline void 
+static __inline void 
 mxge_submit_req(mxge_tx_ring_t *tx, mcp_kreq_ether_send_t *src, int cnt)
 {
 	int idx, i;
@@ -1933,7 +1933,7 @@ drop:
 	ss->oerrors++;
 }
 
-static inline void
+static __inline void
 mxge_start_locked(struct mxge_slice_state *ss)
 {
 	mxge_softc_t *sc;
@@ -1980,7 +1980,7 @@ mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
  * DMA address to mark it valid only after we write the entire chunk
  * in a burst
  */
-static inline void
+static __inline void
 mxge_submit_8rx(volatile mcp_kreq_ether_recv_t *dst,
     mcp_kreq_ether_recv_t *src)
 {
@@ -2332,7 +2332,7 @@ mxge_clean_rx_done(struct mxge_slice_state *ss)
 	}
 }
 
-static inline void
+static __inline void
 mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 {
 	struct ifnet *ifp;
