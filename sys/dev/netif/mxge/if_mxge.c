@@ -1932,44 +1932,36 @@ drop:
 	ss->oerrors++;
 }
 
-static __inline void
-mxge_start_locked(struct mxge_slice_state *ss)
-{
-	mxge_softc_t *sc;
-	struct mbuf *m;
-	struct ifnet *ifp;
-	mxge_tx_ring_t *tx;
-
-	sc = ss->sc;
-	ifp = sc->ifp;
-	tx = &ss->tx;
-	while ((tx->mask - (tx->req - tx->done)) > tx->max_desc) {
-		m = ifq_dequeue(&ifp->if_snd);
-		if (m == NULL) {
-			return;
-		}
-		/* let BPF see it */
-		BPF_MTAP(ifp, m);
-
-		/* give it to the nic */
-		mxge_encap(ss, m);
-	}
-
-	/* ran out of transmit slots */
-	ifq_set_oactive(&ifp->if_snd);
-}
-
 static void
 mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	mxge_softc_t *sc = ifp->if_softc;
 	struct mxge_slice_state *ss;
+	mxge_tx_ring_t *tx;
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(sc->ifp->if_serializer);
-	/* only use the first slice for now */
+
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifsq_is_oactive(ifsq))
+		return;
+
+	/* XXX Only use the first slice for now */
 	ss = &sc->ss[0];
-	mxge_start_locked(ss);
+	tx = &ss->tx;
+
+	while (tx->mask - (tx->req - tx->done) > tx->max_desc) {
+		struct mbuf *m;
+
+		m = ifsq_dequeue(ifsq);
+		if (m == NULL)
+			return;
+
+		BPF_MTAP(ifp, m);
+		mxge_encap(ss, m);
+	}
+
+	/* Ran out of transmit slots */
+	ifsq_set_oactive(ifsq);
 }
 
 /*
