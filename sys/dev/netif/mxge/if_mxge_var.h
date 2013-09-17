@@ -163,7 +163,7 @@ struct mxge_softc {
 	struct resource *msix_pba_res;
 	void *ih; 
 	void **msix_ih;
-	char *fw_name;
+	const char *fw_name;
 	char eeprom_strings[MXGE_EEPROM_STRINGS_SIZE];
 	char fw_version[128];
 	int fw_ver_major;
@@ -193,7 +193,6 @@ struct mxge_softc {
 	struct sysctl_oid *sysctl_tree;
 	struct sysctl_oid *slice_sysctl_tree;
 	struct sysctl_ctx_list slice_sysctl_ctx;
-	char *mac_addr_string;
 	uint8_t	mac_addr[6];		/* eeprom mac address */
 	uint16_t pectl;			/* save PCIe CTL state */
 	char product_code_string[64];

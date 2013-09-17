@@ -94,10 +94,10 @@ static int mxge_always_promisc = 0;
 static int mxge_throttle = 0;
 static int mxge_msi_enable = 1;
 
-static char *mxge_fw_unaligned = "mxge_ethp_z8e";
-static char *mxge_fw_aligned = "mxge_eth_z8e";
-static char *mxge_fw_rss_aligned = "mxge_rss_eth_z8e";
-static char *mxge_fw_rss_unaligned = "mxge_rss_ethp_z8e";
+static const char *mxge_fw_unaligned = "mxge_ethp_z8e";
+static const char *mxge_fw_aligned = "mxge_eth_z8e";
+static const char *mxge_fw_rss_aligned = "mxge_rss_eth_z8e";
+static const char *mxge_fw_rss_unaligned = "mxge_rss_ethp_z8e";
 
 TUNABLE_INT("hw.mxge.max_slices", &mxge_max_slices);
 TUNABLE_INT("hw.mxge.flow_control_enabled", &mxge_flow_control);
@@ -221,7 +221,7 @@ mxge_dma_free(bus_dmamem_t *dma)
 static int
 mxge_parse_strings(mxge_softc_t *sc)
 {
-	char *ptr;
+	const char *ptr;
 	int i, found_mac, found_sn2;
 	char *endptr;
 
@@ -2419,7 +2419,7 @@ mxge_media_set(mxge_softc_t *sc, int media_type)
 static void
 mxge_media_init(mxge_softc_t *sc)
 {
-	char *ptr;
+	const char *ptr;
 	int i;
 
 	ifmedia_removeall(&sc->media);
@@ -3793,7 +3793,7 @@ static void
 mxge_slice_probe(mxge_softc_t *sc)
 {
 	mxge_cmd_t cmd;
-	char *old_fw;
+	const char *old_fw;
 	int msix_cnt, status, max_intr_slots;
 
 	sc->num_slices = 1;
