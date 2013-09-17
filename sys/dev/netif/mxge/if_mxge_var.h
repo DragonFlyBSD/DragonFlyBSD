@@ -99,12 +99,9 @@ typedef struct {
 	int queue_active;		/* fw currently polling this queue*/
 	int activate;
 	int deactivate;
-	int stall;			/* #times hw queue exhausted */
-	int wake;			/* #times irq re-enabled xmit */
 	int watchdog_req;		/* cache of req */
 	int watchdog_done;		/* cache of done */
 	int watchdog_rx_pause;		/* cache of pause rq recvd */
-	int defrag;
 } mxge_tx_ring_t;
 
 struct mxge_softc;
@@ -123,11 +120,9 @@ struct mxge_slice_state {
 	u_long obytes;
 	u_long omcasts;
 	u_long oerrors;
-	int if_drv_flags;
 	bus_dmamem_t fw_stats_dma;
 	struct sysctl_oid *sysctl_tree;
 	struct sysctl_ctx_list sysctl_ctx;
-	char scratch[256];
 };
 
 struct mxge_softc {
@@ -135,7 +130,7 @@ struct mxge_softc {
 	struct ifnet* ifp;		/* points to arpcom.ac_if */
 	struct mxge_slice_state *ss;
 	int tx_boundary;		/* boundary transmits cannot cross*/
-	bus_dma_tag_t	parent_dmat;
+	bus_dma_tag_t parent_dmat;
 	volatile uint8_t *sram;
 	int sram_size;
 	volatile uint32_t *irq_deassert;
@@ -179,7 +174,6 @@ struct mxge_softc {
 	int link_width;
 	int max_mtu;
 	int throttle;
-	int tx_defrag;
 	int media_flags;
 	int need_media_probe;
 	int num_slices;

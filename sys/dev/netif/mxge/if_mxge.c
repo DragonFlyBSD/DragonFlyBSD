@@ -1209,9 +1209,6 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 		ss->tx.queue_active = 0;
 		ss->tx.activate = 0;
 		ss->tx.deactivate = 0;
-		ss->tx.wake = 0;
-		ss->tx.defrag = 0;
-		ss->tx.stall = 0;
 		ss->rx_big.cnt = 0;
 		ss->rx_small.cnt = 0;
 		if (ss->fw_stats != NULL)
@@ -1539,15 +1536,6 @@ mxge_add_sysctls(mxge_softc_t *sc)
 
 		SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_pkt_done",
 		    CTLFLAG_RD, &ss->tx.pkt_done, 0, "tx_done");
-
-		SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_stall",
-		    CTLFLAG_RD, &ss->tx.stall, 0, "tx_stall");
-
-		SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_wake",
-		    CTLFLAG_RD, &ss->tx.wake, 0, "tx_wake");
-
-		SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_defrag",
-		    CTLFLAG_RD, &ss->tx.defrag, 0, "tx_defrag");
 
 		SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_queue_active",
 		    CTLFLAG_RD, &ss->tx.queue_active, 0, "tx_queue_active");
