@@ -2103,38 +2103,39 @@ done:
 }
 
 /* 
- *  Myri10GE hardware checksums are not valid if the sender
- *  padded the frame with non-zero padding.  This is because
- *  the firmware just does a simple 16-bit 1s complement
- *  checksum across the entire frame, excluding the first 14
- *  bytes.  It is best to simply to check the checksum and
- *  tell the stack about it only if the checksum is good
+ * Myri10GE hardware checksums are not valid if the sender
+ * padded the frame with non-zero padding.  This is because
+ * the firmware just does a simple 16-bit 1s complement
+ * checksum across the entire frame, excluding the first 14
+ * bytes.  It is best to simply to check the checksum and
+ * tell the stack about it only if the checksum is good
  */
-static inline uint16_t
+static __inline uint16_t
 mxge_rx_csum(struct mbuf *m, int csum)
 {
-	struct ether_header *eh;
-	struct ip *ip;
+	const struct ether_header *eh;
+	const struct ip *ip;
 	uint16_t c;
 
-	eh = mtod(m, struct ether_header *);
+	eh = mtod(m, const struct ether_header *);
 
-	/* only deal with IPv4 TCP & UDP for now */
+	/* Only deal with IPv4 TCP & UDP for now */
 	if (__predict_false(eh->ether_type != htons(ETHERTYPE_IP)))
 		return 1;
-	ip = (struct ip *)(eh + 1);
-	if (__predict_false(ip->ip_p != IPPROTO_TCP &&
-			    ip->ip_p != IPPROTO_UDP))
+
+	ip = (const struct ip *)(eh + 1);
+	if (__predict_false(ip->ip_p != IPPROTO_TCP && ip->ip_p != IPPROTO_UDP))
 		return 1;
+
 #ifdef INET
 	c = in_pseudo(ip->ip_src.s_addr, ip->ip_dst.s_addr,
-		      htonl(ntohs(csum) + ntohs(ip->ip_len) +
-			    - (ip->ip_hl << 2) + ip->ip_p));
+	    htonl(ntohs(csum) + ntohs(ip->ip_len) +
+	          - (ip->ip_hl << 2) + ip->ip_p));
 #else
 	c = 1;
 #endif
 	c ^= 0xffff;
-	return (c);
+	return c;
 }
 
 static void
@@ -2146,21 +2147,24 @@ mxge_vlan_tag_remove(struct mbuf *m, uint32_t *csum)
 	evl = mtod(m, struct ether_vlan_header *);
 
 	/*
-	 * fix checksum by subtracting EVL_ENCAPLEN bytes
-	 * after what the firmware thought was the end of the ethernet
+	 * Fix checksum by subtracting EVL_ENCAPLEN bytes after
+	 * what the firmware thought was the end of the ethernet
 	 * header.
 	 */
 
-	/* put checksum into host byte order */
-	*csum = ntohs(*csum); 
-	partial = ntohl(*(uint32_t *)(mtod(m, char *) + ETHER_HDR_LEN));
-	(*csum) += ~partial;
-	(*csum) +=  ((*csum) < ~partial);
-	(*csum) = ((*csum) >> 16) + ((*csum) & 0xFFFF);
-	(*csum) = ((*csum) >> 16) + ((*csum) & 0xFFFF);
+	/* Put checksum into host byte order */
+	*csum = ntohs(*csum);
 
-	/* restore checksum to network byte order; 
-	   later consumers expect this */
+	partial = ntohl(*(uint32_t *)(mtod(m, char *) + ETHER_HDR_LEN));
+	*csum += ~partial;
+	*csum += ((*csum) < ~partial);
+	*csum = ((*csum) >> 16) + ((*csum) & 0xFFFF);
+	*csum = ((*csum) >> 16) + ((*csum) & 0xFFFF);
+
+	/*
+	 * Restore checksum to network byte order;
+	 * later consumers expect this
+	 */
 	*csum = htons(*csum);
 
 	/* save the tag */
@@ -2174,18 +2178,18 @@ mxge_vlan_tag_remove(struct mbuf *m, uint32_t *csum)
 	 * type field is already in place.
 	 */
 	bcopy((char *)evl, (char *)evl + EVL_ENCAPLEN,
-	      ETHER_HDR_LEN - ETHER_TYPE_LEN);
+	    ETHER_HDR_LEN - ETHER_TYPE_LEN);
 	m_adj(m, EVL_ENCAPLEN);
 }
 
 
-static inline void
+static __inline void
 mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 {
 	mxge_softc_t *sc;
 	struct ifnet *ifp;
 	struct mbuf *m;
-	struct ether_header *eh;
+	const struct ether_header *eh;
 	mxge_rx_ring_t *rx;
 	bus_dmamap_t old_map;
 	int idx;
@@ -2193,61 +2197,61 @@ mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 	sc = ss->sc;
 	ifp = sc->ifp;
 	rx = &ss->rx_big;
+
 	idx = rx->cnt & rx->mask;
 	rx->cnt++;
-	/* save a pointer to the received mbuf */
+
+	/* Save a pointer to the received mbuf */
 	m = rx->info[idx].m;
-	/* try to replace the received mbuf */
+
+	/* Try to replace the received mbuf */
 	if (mxge_get_buf_big(rx, rx->extra_map, idx, FALSE)) {
-		/* drop the frame -- the old mbuf is re-cycled */
+		/* Drop the frame -- the old mbuf is re-cycled */
 		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 
-	/* unmap the received buffer */
+	/* Unmap the received buffer */
 	old_map = rx->info[idx].map;
 	bus_dmamap_sync(rx->dmat, old_map, BUS_DMASYNC_POSTREAD);
 	bus_dmamap_unload(rx->dmat, old_map);
 
-	/* swap the bus_dmamap_t's */
+	/* Swap the bus_dmamap_t's */
 	rx->info[idx].map = rx->extra_map;
 	rx->extra_map = old_map;
 
-	/* mcp implicitly skips 1st 2 bytes so that packet is properly
-	 * aligned */
+	/*
+	 * mcp implicitly skips 1st 2 bytes so that packet is properly
+	 * aligned
+	 */
 	m->m_data += MXGEFW_PAD;
 
 	m->m_pkthdr.rcvif = ifp;
 	m->m_len = m->m_pkthdr.len = len;
+
 	ss->ipackets++;
-	eh = mtod(m, struct ether_header *);
-	if (eh->ether_type == htons(ETHERTYPE_VLAN)) {
+
+	eh = mtod(m, const struct ether_header *);
+	if (eh->ether_type == htons(ETHERTYPE_VLAN))
 		mxge_vlan_tag_remove(m, &csum);
-	}
-	/* if the checksum is valid, mark it in the mbuf header */
+
+	/* If the checksum is valid, mark it in the mbuf header */
 	if ((ifp->if_capenable & IFCAP_RXCSUM) &&
-	    0 == mxge_rx_csum(m, csum)) {
+	    mxge_rx_csum(m, csum) == 0) {
 		/* Tell the stack that the checksum is good */
 		m->m_pkthdr.csum_data = 0xffff;
 		m->m_pkthdr.csum_flags = CSUM_PSEUDO_HDR |
 		    CSUM_DATA_VALID;
 	}
-#if 0
-	/* flowid only valid if RSS hashing is enabled */
-	if (sc->num_slices > 1) {
-		m->m_pkthdr.flowid = (ss - sc->ss);
-		m->m_flags |= M_FLOWID;
-	}
-#endif
 	ifp->if_input(ifp, m);
 }
 
-static inline void
+static __inline void
 mxge_rx_done_small(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 {
 	mxge_softc_t *sc;
 	struct ifnet *ifp;
-	struct ether_header *eh;
+	const struct ether_header *eh;
 	struct mbuf *m;
 	mxge_rx_ring_t *rx;
 	bus_dmamap_t old_map;
@@ -2256,77 +2260,75 @@ mxge_rx_done_small(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 	sc = ss->sc;
 	ifp = sc->ifp;
 	rx = &ss->rx_small;
+
 	idx = rx->cnt & rx->mask;
 	rx->cnt++;
-	/* save a pointer to the received mbuf */
+
+	/* Save a pointer to the received mbuf */
 	m = rx->info[idx].m;
-	/* try to replace the received mbuf */
+
+	/* Try to replace the received mbuf */
 	if (mxge_get_buf_small(rx, rx->extra_map, idx, FALSE)) {
-		/* drop the frame -- the old mbuf is re-cycled */
+		/* Drop the frame -- the old mbuf is re-cycled */
 		IFNET_STAT_INC(ifp, ierrors, 1);
 		return;
 	}
 
-	/* unmap the received buffer */
+	/* Unmap the received buffer */
 	old_map = rx->info[idx].map;
 	bus_dmamap_sync(rx->dmat, old_map, BUS_DMASYNC_POSTREAD);
 	bus_dmamap_unload(rx->dmat, old_map);
 
-	/* swap the bus_dmamap_t's */
+	/* Swap the bus_dmamap_t's */
 	rx->info[idx].map = rx->extra_map;
 	rx->extra_map = old_map;
 
-	/* mcp implicitly skips 1st 2 bytes so that packet is properly
-	 * aligned */
+	/*
+	 * mcp implicitly skips 1st 2 bytes so that packet is properly
+	 * aligned
+	 */
 	m->m_data += MXGEFW_PAD;
 
 	m->m_pkthdr.rcvif = ifp;
 	m->m_len = m->m_pkthdr.len = len;
+
 	ss->ipackets++;
-	eh = mtod(m, struct ether_header *);
-	if (eh->ether_type == htons(ETHERTYPE_VLAN)) {
+
+	eh = mtod(m, const struct ether_header *);
+	if (eh->ether_type == htons(ETHERTYPE_VLAN))
 		mxge_vlan_tag_remove(m, &csum);
-	}
-	/* if the checksum is valid, mark it in the mbuf header */
+
+	/* If the checksum is valid, mark it in the mbuf header */
 	if ((ifp->if_capenable & IFCAP_RXCSUM) &&
-	    0 == mxge_rx_csum(m, csum)) {
+	    mxge_rx_csum(m, csum) == 0) {
 		/* Tell the stack that the checksum is good */
 		m->m_pkthdr.csum_data = 0xffff;
 		m->m_pkthdr.csum_flags = CSUM_PSEUDO_HDR |
 		    CSUM_DATA_VALID;
 	}
-#if 0
-	/* flowid only valid if RSS hashing is enabled */
-	if (sc->num_slices > 1) {
-		m->m_pkthdr.flowid = (ss - sc->ss);
-		m->m_flags |= M_FLOWID;
-	}
-#endif
 	ifp->if_input(ifp, m);
 }
 
-static inline void
+static __inline void
 mxge_clean_rx_done(struct mxge_slice_state *ss)
 {
 	mxge_rx_done_t *rx_done = &ss->rx_done;
-	int limit = 0;
-	uint16_t length;
-	uint16_t checksum;
 
 	while (rx_done->entry[rx_done->idx].length != 0) {
+		uint16_t length, checksum;
+
 		length = ntohs(rx_done->entry[rx_done->idx].length);
 		rx_done->entry[rx_done->idx].length = 0;
+
 		checksum = rx_done->entry[rx_done->idx].checksum;
+
 		if (length <= (MHLEN - MXGEFW_PAD))
 			mxge_rx_done_small(ss, length, checksum);
 		else
 			mxge_rx_done_big(ss, length, checksum);
+
 		rx_done->cnt++;
 		rx_done->idx = rx_done->cnt & rx_done->mask;
-
-		/* limit potential for livelock */
-		if (__predict_false(++limit > rx_done->mask / 2))
-			break;
 	}
 }
 
