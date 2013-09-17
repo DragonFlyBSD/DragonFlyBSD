@@ -2328,27 +2328,27 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 {
 	struct ifnet *ifp;
 	mxge_tx_ring_t *tx;
-	struct mbuf *m;
-	bus_dmamap_t map;
-	int idx;
 
 	tx = &ss->tx;
 	ifp = ss->sc->ifp;
 	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	while (tx->pkt_done != mcp_idx) {
+		struct mbuf *m;
+		int idx;
+
 		idx = tx->done & tx->mask;
 		tx->done++;
+
 		m = tx->info[idx].m;
-		/* mbuf and DMA map only attached to the first
-		   segment per-mbuf */
+		/*
+		 * mbuf and DMA map only attached to the first
+		 * segment per-mbuf.
+		 */
 		if (m != NULL) {
-			ss->obytes += m->m_pkthdr.len;
-			if (m->m_flags & M_MCAST)
-				ss->omcasts++;
 			ss->opackets++;
 			tx->info[idx].m = NULL;
-			map = tx->info[idx].map;
-			bus_dmamap_unload(tx->dmat, map);
+			bus_dmamap_unload(tx->dmat, tx->info[idx].map);
 			m_freem(m);
 		}
 		if (tx->info[idx].flag) {
@@ -2356,10 +2356,12 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 			tx->pkt_done++;
 		}
 	}
-	
-	/* If we have space, clear OACTIVE to tell the stack that
-           its OK to send packets */
-	if (tx->req - tx->done < (tx->mask + 1)/4)
+
+	/*
+	 * If we have space, clear OACTIVE to tell the stack that
+	 * its OK to send packets
+	 */
+	if (tx->req - tx->done < (tx->mask + 1) / 4)
 		ifq_clr_oactive(&ifp->if_snd);
 
 	if (!ifq_is_empty(&ifp->if_snd))
