@@ -904,6 +904,37 @@ vm_page_unhold(vm_page_t m)
 }
 
 /*
+ *	vm_page_getfake:
+ *
+ *	Create a fictitious page with the specified physical address and
+ *	memory attribute.  The memory attribute is the only the machine-
+ *	dependent aspect of a fictitious page that must be initialized.
+ */
+
+void
+vm_page_initfake(vm_page_t m, vm_paddr_t paddr, vm_memattr_t memattr)
+{
+
+	if ((m->flags & PG_FICTITIOUS) != 0) {
+		/*
+		 * The page's memattr might have changed since the
+		 * previous initialization.  Update the pmap to the
+		 * new memattr.
+		 */
+		goto memattr;
+	}
+	m->phys_addr = paddr;
+	m->queue = PQ_NONE;
+	/* Fictitious pages don't use "segind". */
+	/* Fictitious pages don't use "order" or "pool". */
+	m->flags = PG_FICTITIOUS | PG_UNMANAGED | PG_BUSY;
+	m->wire_count = 1;
+	pmap_page_init(m);
+memattr:
+	pmap_page_set_memattr(m, memattr);
+}
+
+/*
  * Inserts the given vm_page into the object and object list.
  *
  * The pagetables are not updated but will presumably fault the page

@@ -349,10 +349,6 @@ vm_page_unhold_pages(vm_page_t *ma, int count)
 vm_page_t
 vm_phys_fictitious_to_vm_page(vm_paddr_t pa);
 
-int
-vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end, int pat_mode);
-
-
 #define DRM_ERROR(fmt, ...) \
 	kprintf("error: [" DRM_NAME ":pid%d:%s] *ERROR* " fmt,		\
 	    DRM_CURRENTPID, __func__ , ##__VA_ARGS__)
