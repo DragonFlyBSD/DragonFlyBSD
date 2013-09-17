@@ -1569,12 +1569,12 @@ mxge_submit_req_backwards(mxge_tx_ring_t *tx,
     mcp_kreq_ether_send_t *src, int cnt)
 {
 	int idx, starting_slot;
+
 	starting_slot = tx->req;
 	while (cnt > 1) {
 		cnt--;
 		idx = (starting_slot + cnt) & tx->mask;
-		mxge_pio_copy(&tx->lanai[idx],
-			      &src[cnt], sizeof(*src));
+		mxge_pio_copy(&tx->lanai[idx], &src[cnt], sizeof(*src));
 		wmb();
 	}
 }
@@ -1582,7 +1582,7 @@ mxge_submit_req_backwards(mxge_tx_ring_t *tx,
 /*
  * Copy an array of mcp_kreq_ether_send_t's to the mcp.  Copy
  * at most 32 bytes at a time, so as to avoid involving the software
- * pio handler in the nic.   We re-write the first segment's flags
+ * pio handler in the nic.  We re-write the first segment's flags
  * to mark them valid only after writing the entire chain 
  */
 static __inline void 
@@ -1604,31 +1604,33 @@ mxge_submit_req(mxge_tx_ring_t *tx, mcp_kreq_ether_send_t *src, int cnt)
 	srcp = src;
 
 	if ((idx + cnt) < tx->mask) {
-		for (i = 0; i < (cnt - 1); i += 2) {
+		for (i = 0; i < cnt - 1; i += 2) {
 			mxge_pio_copy(dstp, srcp, 2 * sizeof(*src));
 			wmb(); /* force write every 32 bytes */
 			srcp += 2;
 			dstp += 2;
 		}
 	} else {
-		/* submit all but the first request, and ensure 
-		   that it is submitted below */
+		/*
+		 * Submit all but the first request, and ensure 
+		 * that it is submitted below
+		 */
 		mxge_submit_req_backwards(tx, src, cnt);
 		i = 0;
 	}
 	if (i < cnt) {
-		/* submit the first request */
+		/* Submit the first request */
 		mxge_pio_copy(dstp, srcp, sizeof(*src));
 		wmb(); /* barrier before setting valid flag */
 	}
 
-	/* re-write the last 32-bits with the valid flags */
+	/* Re-write the last 32-bits with the valid flags */
 	src->flags = last_flags;
 	src_ints = (uint32_t *)src;
 	src_ints+=3;
 	dst_ints = (volatile uint32_t *)dst;
 	dst_ints+=3;
-	*dst_ints =  *src_ints;
+	*dst_ints = *src_ints;
 	tx->req += cnt;
 	wmb();
 }
@@ -1662,10 +1664,8 @@ mxge_pullup_tso(struct mbuf **mp)
 }
 
 static void
-mxge_encap_tso(struct mxge_slice_state *ss, struct mbuf *m,
-    int busdma_seg_cnt)
+mxge_encap_tso(mxge_tx_ring_t *tx, struct mbuf *m, int busdma_seg_cnt)
 {
-	mxge_tx_ring_t *tx;
 	mcp_kreq_ether_send_t *req;
 	bus_dma_segment_t *seg;
 	uint32_t low, high_swapped;
@@ -1673,79 +1673,85 @@ mxge_encap_tso(struct mxge_slice_state *ss, struct mbuf *m,
 	int next_is_first, chop, cnt, rdma_count, small;
 	uint16_t pseudo_hdr_offset, cksum_offset, mss;
 	uint8_t flags, flags_next;
-	static int once;
 
 	mss = m->m_pkthdr.tso_segsz;
 
-	/* negative cum_len signifies to the
-	 * send loop that we are still in the
-	 * header portion of the TSO packet.
+	/*
+	 * Negative cum_len signifies to the send loop that we are
+	 * still in the header portion of the TSO packet.
 	 */
 	cum_len = -(m->m_pkthdr.csum_lhlen + m->m_pkthdr.csum_iphlen +
 	    m->m_pkthdr.csum_thlen);
 
-	/* TSO implies checksum offload on this hardware */
+	/*
+	 * TSO implies checksum offload on this hardware
+	 */
 	cksum_offset = m->m_pkthdr.csum_lhlen + m->m_pkthdr.csum_iphlen;
 	flags = MXGEFW_FLAGS_TSO_HDR | MXGEFW_FLAGS_FIRST;
 
-	/* for TSO, pseudo_hdr_offset holds mss.
-	 * The firmware figures out where to put
-	 * the checksum by parsing the header. */
+	/*
+	 * For TSO, pseudo_hdr_offset holds mss.  The firmware figures
+	 * out where to put the checksum by parsing the header.
+	 */
 	pseudo_hdr_offset = htobe16(mss);
 
-	tx = &ss->tx;
 	req = tx->req_list;
 	seg = tx->seg_list;
 	cnt = 0;
 	rdma_count = 0;
-	/* "rdma_count" is the number of RDMAs belonging to the
-	 * current packet BEFORE the current send request. For
-	 * non-TSO packets, this is equal to "count".
-	 * For TSO packets, rdma_count needs to be reset
-	 * to 0 after a segment cut.
+
+	/*
+	 * "rdma_count" is the number of RDMAs belonging to the current
+	 * packet BEFORE the current send request.  For non-TSO packets,
+	 * this is equal to "count".
 	 *
-	 * The rdma_count field of the send request is
-	 * the number of RDMAs of the packet starting at
-	 * that request. For TSO send requests with one ore more cuts
-	 * in the middle, this is the number of RDMAs starting
-	 * after the last cut in the request. All previous
-	 * segments before the last cut implicitly have 1 RDMA.
+	 * For TSO packets, rdma_count needs to be reset to 0 after a
+	 * segment cut.
 	 *
-	 * Since the number of RDMAs is not known beforehand,
-	 * it must be filled-in retroactively - after each
-	 * segmentation cut or at the end of the entire packet.
+	 * The rdma_count field of the send request is the number of
+	 * RDMAs of the packet starting at that request.  For TSO send
+	 * requests with one ore more cuts in the middle, this is the
+	 * number of RDMAs starting after the last cut in the request.
+	 * All previous segments before the last cut implicitly have 1
+	 * RDMA.
+	 *
+	 * Since the number of RDMAs is not known beforehand, it must be
+	 * filled-in retroactively - after each segmentation cut or at
+	 * the end of the entire packet.
 	 */
 
 	while (busdma_seg_cnt) {
-		/* Break the busdma segment up into pieces*/
+		/*
+		 * Break the busdma segment up into pieces
+		 */
 		low = MXGE_LOWPART_TO_U32(seg->ds_addr);
-		high_swapped = 	htobe32(MXGE_HIGHPART_TO_U32(seg->ds_addr));
+		high_swapped = htobe32(MXGE_HIGHPART_TO_U32(seg->ds_addr));
 		len = seg->ds_len;
 
 		while (len) {
 			flags_next = flags & ~MXGEFW_FLAGS_FIRST;
 			seglen = len;
 			cum_len_next = cum_len + seglen;
-			(req-rdma_count)->rdma_count = rdma_count + 1;
+			(req - rdma_count)->rdma_count = rdma_count + 1;
 			if (__predict_true(cum_len >= 0)) {
-				/* payload */
+				/* Payload */
 				chop = (cum_len_next > mss);
 				cum_len_next = cum_len_next % mss;
 				next_is_first = (cum_len_next == 0);
 				flags |= chop * MXGEFW_FLAGS_TSO_CHOP;
-				flags_next |= next_is_first *
-					MXGEFW_FLAGS_FIRST;
+				flags_next |=
+				    next_is_first * MXGEFW_FLAGS_FIRST;
 				rdma_count |= -(chop | next_is_first);
 				rdma_count += chop & !next_is_first;
 			} else if (cum_len_next >= 0) {
-				/* header ends */
+				/* Header ends */
 				rdma_count = -1;
 				cum_len_next = 0;
 				seglen = -cum_len;
 				small = (mss <= MXGEFW_SEND_SMALL_SIZE);
 				flags_next = MXGEFW_FLAGS_TSO_PLD |
-					MXGEFW_FLAGS_FIRST | 
-					(small * MXGEFW_FLAGS_SMALL);
+				    MXGEFW_FLAGS_FIRST |
+				    (small * MXGEFW_FLAGS_SMALL);
 			}
 
 			req->addr_high = high_swapped;
@@ -1755,8 +1761,8 @@ mxge_encap_tso(struct mxge_slice_state *ss, struct mbuf *m,
 			req->rdma_count = 1;
 			req->length = htobe16(seglen);
 			req->cksum_offset = cksum_offset;
-			req->flags = flags | ((cum_len & 1) *
-					      MXGEFW_FLAGS_ALIGN_ODD);
+			req->flags =
+			    flags | ((cum_len & 1) * MXGEFW_FLAGS_ALIGN_ODD);
 			low += seglen;
 			len -= seglen;
 			cum_len = cum_len_next;
@@ -1774,7 +1780,7 @@ mxge_encap_tso(struct mxge_slice_state *ss, struct mbuf *m,
 		busdma_seg_cnt--;
 		seg++;
 	}
-	(req-rdma_count)->rdma_count = rdma_count;
+	(req - rdma_count)->rdma_count = rdma_count;
 
 	do {
 		req--;
@@ -1797,13 +1803,9 @@ mxge_encap_tso(struct mxge_slice_state *ss, struct mbuf *m,
 drop:
 	bus_dmamap_unload(tx->dmat, tx->info[tx->req & tx->mask].map);
 	m_freem(m);
-	ss->oerrors++;
-	if (!once) {
-		kprintf("tx->max_desc exceeded via TSO!\n");
-		kprintf("mss = %d, %ld, %d!\n", mss,
-		       (long)seg - (long)tx->seg_list, tx->max_desc);
-		once = 1;
-	}
+#if 0
+	/* TODO update oerror counter */
+#endif
 }
 
 static void
@@ -1815,7 +1817,7 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 	mxge_tx_ring_t *tx;
 	int cnt, cum_len, err, i, idx, odd_flag;
 	uint16_t pseudo_hdr_offset;
-        uint8_t flags, cksum_offset;
+	uint8_t flags, cksum_offset;
 
 	sc = ss->sc;
 	tx = &ss->tx;
@@ -1825,7 +1827,9 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 			return;
 	}
 
-	/* (try to) map the frame for DMA */
+	/*
+	 * Map the frame for DMA
+	 */
 	idx = tx->req & tx->mask;
 	err = bus_dmamap_load_mbuf_defrag(tx->dmat, tx->info[idx].map, &m,
 	    tx->seg_list, tx->max_desc - 2, &cnt, BUS_DMA_NOWAIT);
@@ -1834,9 +1838,11 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 	bus_dmamap_sync(tx->dmat, tx->info[idx].map, BUS_DMASYNC_PREWRITE);
 	tx->info[idx].m = m;
 
-	/* TSO is different enough, we handle it in another routine */
+	/*
+	 * TSO is different enough, we handle it in another routine
+	 */
 	if (m->m_pkthdr.csum_flags & CSUM_TSO) {
-		mxge_encap_tso(ss, m, cnt);
+		mxge_encap_tso(tx, m, cnt);
 		return;
 	}
 
@@ -1845,7 +1851,9 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 	pseudo_hdr_offset = 0;
 	flags = MXGEFW_FLAGS_NO_TSO;
 
-	/* checksum offloading? */
+	/*
+	 * Checksum offloading
+	 */
 	if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
 		cksum_offset = m->m_pkthdr.csum_lhlen + m->m_pkthdr.csum_iphlen;
 		pseudo_hdr_offset = cksum_offset +  m->m_pkthdr.csum_data;
@@ -1859,15 +1867,15 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 	if (m->m_pkthdr.len < MXGEFW_SEND_SMALL_SIZE)
 		flags |= MXGEFW_FLAGS_SMALL;
 
-	/* convert segments into a request list */
+	/*
+	 * Convert segments into a request list
+	 */
 	cum_len = 0;
 	seg = tx->seg_list;
 	req->flags = MXGEFW_FLAGS_FIRST;
 	for (i = 0; i < cnt; i++) {
-		req->addr_low = 
-			htobe32(MXGE_LOWPART_TO_U32(seg->ds_addr));
-		req->addr_high = 
-			htobe32(MXGE_HIGHPART_TO_U32(seg->ds_addr));
+		req->addr_low = htobe32(MXGE_LOWPART_TO_U32(seg->ds_addr));
+		req->addr_high = htobe32(MXGE_HIGHPART_TO_U32(seg->ds_addr));
 		req->length = htobe16(seg->ds_len);
 		req->cksum_offset = cksum_offset;
 		if (cksum_offset > seg->ds_len)
@@ -1884,7 +1892,10 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 		req->flags = 0;
 	}
 	req--;
-	/* pad runts to 60 bytes */
+
+	/*
+	 * Pad runt to 60 bytes
+	 */
 	if (cum_len < 60) {
 		req++;
 		req->addr_low =
