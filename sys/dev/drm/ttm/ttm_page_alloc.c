@@ -142,6 +142,7 @@ ttm_vm_page_free(vm_page_t m)
 	m->oflags |= VPO_UNMANAGED;
 #endif
 	m->flags &= ~PG_FICTITIOUS;
+	vm_page_busy_wait(m, FALSE, "ttmvpf");
 	vm_page_unwire(m, 0);
 	vm_page_free(m);
 }
