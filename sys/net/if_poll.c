@@ -326,7 +326,7 @@ ifpoll_time_get(union ifpoll_time *t)
 static __inline int
 ifpoll_time_diff(const union ifpoll_time *s, const union ifpoll_time *e)
 {
-	if (__predict_true(tsc_present)) {
+	if (tsc_invariant) {
 		return (((e->tsc - s->tsc) * 1000000) / tsc_frequency);
 	} else {
 		return ((e->tv.tv_usec - s->tv.tv_usec) +
