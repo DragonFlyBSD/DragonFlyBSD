@@ -985,7 +985,7 @@ mxge_change_pause(mxge_softc_t *sc, int pause)
 	else
 		status = mxge_send_cmd(sc, MXGEFW_DISABLE_FLOW_CONTROL, &cmd);
 	if (status) {
-		device_printf(sc->dev, "Failed to set flow control mode\n");
+		if_printf(sc->ifp, "Failed to set flow control mode\n");
 		return ENXIO;
 	}
 	sc->pause = pause;
@@ -1238,9 +1238,8 @@ mxge_change_throttle(SYSCTL_HANDLER_ARGS)
 	sc = arg1;
 	throttle = sc->throttle;
 	err = sysctl_handle_int(oidp, &throttle, arg2, req);
-	if (err != 0) {
+	if (err != 0)
 		return err;
-	}
 
 	if (throttle == sc->throttle)
 		return 0;
@@ -1248,7 +1247,6 @@ mxge_change_throttle(SYSCTL_HANDLER_ARGS)
 	if (throttle < MXGE_MIN_THROTTLE || throttle > MXGE_MAX_THROTTLE)
 		return EINVAL;
 
-	/* XXX SERIALIZE */
 	lwkt_serialize_enter(sc->ifp->if_serializer);
 
 	cmd.data0 = throttle;
@@ -1270,16 +1268,15 @@ mxge_change_intr_coal(SYSCTL_HANDLER_ARGS)
 	sc = arg1;
 	intr_coal_delay = sc->intr_coal_delay;
 	err = sysctl_handle_int(oidp, &intr_coal_delay, arg2, req);
-	if (err != 0) {
+	if (err != 0)
 		return err;
-	}
+
 	if (intr_coal_delay == sc->intr_coal_delay)
 		return 0;
 
 	if (intr_coal_delay == 0 || intr_coal_delay > 1000*1000)
 		return EINVAL;
 
-	/* XXX SERIALIZE */
 	lwkt_serialize_enter(sc->ifp->if_serializer);
 
 	*sc->intr_coal_delay_ptr = htobe32(intr_coal_delay);
@@ -1299,13 +1296,12 @@ mxge_change_flow_control(SYSCTL_HANDLER_ARGS)
 	sc = arg1;
 	enabled = sc->pause;
 	err = sysctl_handle_int(oidp, &enabled, arg2, req);
-	if (err != 0) {
+	if (err != 0)
 		return err;
-	}
+
 	if (enabled == sc->pause)
 		return 0;
 
-	/* XXX SERIALIZE */
 	lwkt_serialize_enter(sc->ifp->if_serializer);
 	err = mxge_change_pause(sc, enabled);
 	lwkt_serialize_exit(sc->ifp->if_serializer);
