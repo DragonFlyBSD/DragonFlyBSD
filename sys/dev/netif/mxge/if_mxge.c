@@ -2660,8 +2660,7 @@ mxge_free_slice_mbufs(struct mxge_slice_state *ss)
 	for (i = 0; i <= ss->rx_big.mask; i++) {
 		if (ss->rx_big.info[i].m == NULL)
 			continue;
-		bus_dmamap_unload(ss->rx_big.dmat,
-				  ss->rx_big.info[i].map);
+		bus_dmamap_unload(ss->rx_big.dmat, ss->rx_big.info[i].map);
 		m_freem(ss->rx_big.info[i].m);
 		ss->rx_big.info[i].m = NULL;
 	}
@@ -2669,13 +2668,12 @@ mxge_free_slice_mbufs(struct mxge_slice_state *ss)
 	for (i = 0; i <= ss->rx_small.mask; i++) {
 		if (ss->rx_small.info[i].m == NULL)
 			continue;
-		bus_dmamap_unload(ss->rx_small.dmat,
-				  ss->rx_small.info[i].map);
+		bus_dmamap_unload(ss->rx_small.dmat, ss->rx_small.info[i].map);
 		m_freem(ss->rx_small.info[i].m);
 		ss->rx_small.info[i].m = NULL;
 	}
 
-	/* transmit ring used only on the first slice */
+	/* Transmit ring used only on the first slice */
 	if (ss->tx.info == NULL)
 		return;
 
@@ -2683,8 +2681,7 @@ mxge_free_slice_mbufs(struct mxge_slice_state *ss)
 		ss->tx.info[i].flag = 0;
 		if (ss->tx.info[i].m == NULL)
 			continue;
-		bus_dmamap_unload(ss->tx.dmat,
-				  ss->tx.info[i].map);
+		bus_dmamap_unload(ss->tx.dmat, ss->tx.info[i].map);
 		m_freem(ss->tx.info[i].m);
 		ss->tx.info[i].m = NULL;
 	}
