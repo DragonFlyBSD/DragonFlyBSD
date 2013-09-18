@@ -583,3 +583,5 @@ for the directory, SRC, you would like to replicate, and use:
 
 DEST can be created on the fly, it must be a slave PFS, and will be read-only.
 See "man HAMMER" for details.
+%
+Moo
