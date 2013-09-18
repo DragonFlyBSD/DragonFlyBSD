@@ -1006,7 +1006,7 @@ mxge_change_promisc(mxge_softc_t *sc, int promisc)
 	else
 		status = mxge_send_cmd(sc, MXGEFW_DISABLE_PROMISC, &cmd);
 	if (status)
-		device_printf(sc->dev, "Failed to set promisc mode\n");
+		if_printf(sc->ifp, "Failed to set promisc mode\n");
 }
 
 static void
@@ -1024,8 +1024,8 @@ mxge_set_multicast_list(mxge_softc_t *sc)
 	/* Disable multicast filtering while we play with the lists*/
 	err = mxge_send_cmd(sc, MXGEFW_ENABLE_ALLMULTI, &cmd);
 	if (err != 0) {
-		device_printf(sc->dev, "Failed MXGEFW_ENABLE_ALLMULTI,"
-		    " error status: %d\n", err);
+		if_printf(ifp, "Failed MXGEFW_ENABLE_ALLMULTI, "
+		    "error status: %d\n", err);
 		return;
 	}
 
@@ -1040,8 +1040,7 @@ mxge_set_multicast_list(mxge_softc_t *sc)
 	/* Flush all the filters */
 	err = mxge_send_cmd(sc, MXGEFW_LEAVE_ALL_MULTICAST_GROUPS, &cmd);
 	if (err != 0) {
-		device_printf(sc->dev,
-		    "Failed MXGEFW_LEAVE_ALL_MULTICAST_GROUPS, "
+		if_printf(ifp, "Failed MXGEFW_LEAVE_ALL_MULTICAST_GROUPS, "
 		    "error status: %d\n", err);
 		return;
 	}
@@ -1061,8 +1060,7 @@ mxge_set_multicast_list(mxge_softc_t *sc)
 		cmd.data1 = htonl(cmd.data1);
 		err = mxge_send_cmd(sc, MXGEFW_JOIN_MULTICAST_GROUP, &cmd);
 		if (err != 0) {
-			device_printf(sc->dev, "Failed "
-			    "MXGEFW_JOIN_MULTICAST_GROUP, "
+			if_printf(ifp, "Failed MXGEFW_JOIN_MULTICAST_GROUP, "
 			    "error status: %d\n", err);
 			/* Abort, leaving multicast filtering off */
 			return;
@@ -1072,7 +1070,7 @@ mxge_set_multicast_list(mxge_softc_t *sc)
 	/* Enable multicast filtering */
 	err = mxge_send_cmd(sc, MXGEFW_DISABLE_ALLMULTI, &cmd);
 	if (err != 0) {
-		device_printf(sc->dev, "Failed MXGEFW_DISABLE_ALLMULTI, "
+		if_printf(ifp, "Failed MXGEFW_DISABLE_ALLMULTI, "
 		    "error status: %d\n", err);
 	}
 }
@@ -2428,14 +2426,14 @@ mxge_media_init(mxge_softc_t *sc)
 	 */
 	ptr = sc->product_code_string;
 	if (ptr == NULL) {
-		device_printf(sc->dev, "Missing product code\n");
+		if_printf(sc->ifp, "Missing product code\n");
 		return;
 	}
 
 	for (i = 0; i < 3; i++, ptr++) {
 		ptr = strchr(ptr, '-');
 		if (ptr == NULL) {
-			device_printf(sc->dev, "only %d dashes in PC?!?\n", i);
+			if_printf(sc->ifp, "only %d dashes in PC?!?\n", i);
 			return;
 		}
 	}
@@ -2446,7 +2444,7 @@ mxge_media_init(mxge_softc_t *sc)
 	} else if (*ptr == 'Q') {
 		/* -Q is Quad Ribbon Fiber */
 		sc->connector = MXGE_QRF;
-		device_printf(sc->dev, "Quad Ribbon Fiber Media\n");
+		if_printf(sc->ifp, "Quad Ribbon Fiber Media\n");
 		/* FreeBSD has no media type for Quad ribbon fiber */
 	} else if (*ptr == 'R') {
 		/* -R is XFP */
@@ -2455,7 +2453,7 @@ mxge_media_init(mxge_softc_t *sc)
 		/* -S or -2S is SFP+ */
 		sc->connector = MXGE_SFP;
 	} else {
-		device_printf(sc->dev, "Unknown media type: %c\n", *ptr);
+		if_printf(sc->ifp, "Unknown media type: %c\n", *ptr);
 	}
 }
 
@@ -2508,9 +2506,9 @@ mxge_media_probe(mxge_softc_t *sc)
 	cmd.data1 = byte;
 	err = mxge_send_cmd(sc, MXGEFW_CMD_I2C_READ, &cmd);
 	if (err == MXGEFW_CMD_ERROR_I2C_FAILURE)
-		device_printf(sc->dev, "failed to read XFP\n");
+		if_printf(sc->ifp, "failed to read XFP\n");
 	if (err == MXGEFW_CMD_ERROR_I2C_ABSENT)
-		device_printf(sc->dev, "Type R/S with no XFP!?!?\n");
+		if_printf(sc->ifp, "Type R/S with no XFP!?!?\n");
 	if (err != MXGEFW_CMD_OK)
 		return;
 
@@ -2523,14 +2521,14 @@ mxge_media_probe(mxge_softc_t *sc)
 		err = mxge_send_cmd(sc, MXGEFW_CMD_I2C_BYTE, &cmd);
 	}
 	if (err != MXGEFW_CMD_OK) {
-		device_printf(sc->dev, "failed to read %s (%d, %dms)\n",
+		if_printf(sc->ifp, "failed to read %s (%d, %dms)\n",
 		    cage_type, err, ms);
 		return;
 	}
 
 	if (cmd.data0 == mxge_media_types[0].bitmask) {
 		if (bootverbose) {
-			device_printf(sc->dev, "%s:%s\n", cage_type,
+			if_printf(sc->ifp, "%s:%s\n", cage_type,
 			    mxge_media_types[0].name);
 		}
 		if (sc->current_media != mxge_media_types[0].flag) {
@@ -2542,7 +2540,7 @@ mxge_media_probe(mxge_softc_t *sc)
 	for (i = 1; i < mxge_media_type_entries; i++) {
 		if (cmd.data0 & mxge_media_types[i].bitmask) {
 			if (bootverbose) {
-				device_printf(sc->dev, "%s:%s\n", cage_type,
+				if_printf(sc->ifp, "%s:%s\n", cage_type,
 				    mxge_media_types[i].name);
 			}
 
@@ -2554,7 +2552,7 @@ mxge_media_probe(mxge_softc_t *sc)
 		}
 	}
 	if (bootverbose) {
-		device_printf(sc->dev, "%s media 0x%x unknown\n", cage_type,
+		if_printf(sc->ifp, "%s media 0x%x unknown\n", cage_type,
 		    cmd.data0);
 	}
 }
@@ -3613,31 +3611,33 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 	struct ifreq *ifr = (struct ifreq *)data;
 	int err, mask;
 
-	err = 0;
 	ASSERT_SERIALIZED(ifp->if_serializer);
+	err = 0;
+
 	switch (command) {
 	case SIOCSIFMTU:
 		err = mxge_change_mtu(sc, ifr->ifr_mtu);
 		break;
 
 	case SIOCSIFFLAGS:
-		if (sc->dying) {
+		if (sc->dying)
 			return EINVAL;
-		}
+
 		if (ifp->if_flags & IFF_UP) {
 			if (!(ifp->if_flags & IFF_RUNNING)) {
 				err = mxge_open(sc);
 			} else {
-				/* take care of promis can allmulti
-				   flag chages */
-				mxge_change_promisc(sc, 
-						    ifp->if_flags & IFF_PROMISC);
+				/*
+				 * Take care of PROMISC and ALLMULTI
+				 * flag changes
+				 */
+				mxge_change_promisc(sc,
+				    ifp->if_flags & IFF_PROMISC);
 				mxge_set_multicast_list(sc);
 			}
 		} else {
-			if (ifp->if_flags & IFF_RUNNING) {
+			if (ifp->if_flags & IFF_RUNNING)
 				mxge_close(sc, 0);
-			}
 		}
 		break;
 
@@ -3670,8 +3670,8 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 
 	case SIOCGIFMEDIA:
 		mxge_media_probe(sc);
-		err = ifmedia_ioctl(ifp, (struct ifreq *)data, 
-				    &sc->media, command);
+		err = ifmedia_ioctl(ifp, (struct ifreq *)data,
+		    &sc->media, command);
 		break;
 
 	default:
