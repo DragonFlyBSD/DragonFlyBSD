@@ -587,7 +587,7 @@ static int
 mxge_validate_firmware(mxge_softc_t *sc, const mcp_gen_header_t *hdr)
 {
 	if (be32toh(hdr->mcp_type) != MCP_TYPE_ETH) {
-		device_printf(sc->dev, "Bad firmware type: 0x%x\n",
+		if_printf(sc->ifp, "Bad firmware type: 0x%x\n",
 		    be32toh(hdr->mcp_type));
 		return EIO;
 	}
@@ -595,16 +595,16 @@ mxge_validate_firmware(mxge_softc_t *sc, const mcp_gen_header_t *hdr)
 	/* Save firmware version for sysctl */
 	strlcpy(sc->fw_version, hdr->version, sizeof(sc->fw_version));
 	if (bootverbose)
-		device_printf(sc->dev, "firmware id: %s\n", hdr->version);
+		if_printf(sc->ifp, "firmware id: %s\n", hdr->version);
 
 	ksscanf(sc->fw_version, "%d.%d.%d", &sc->fw_ver_major,
 	    &sc->fw_ver_minor, &sc->fw_ver_tiny);
 
 	if (!(sc->fw_ver_major == MXGEFW_VERSION_MAJOR &&
 	      sc->fw_ver_minor == MXGEFW_VERSION_MINOR)) {
-		device_printf(sc->dev, "Found firmware version %s\n",
+		if_printf(sc->ifp, "Found firmware version %s\n",
 		    sc->fw_version);
-		device_printf(sc->dev, "Driver needs %d.%d\n",
+		if_printf(sc->ifp, "Driver needs %d.%d\n",
 		    MXGEFW_VERSION_MAJOR, MXGEFW_VERSION_MINOR);
 		return EINVAL;
 	}
@@ -638,7 +638,7 @@ mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 
 	fw = firmware_get(sc->fw_name);
 	if (fw == NULL) {
-		device_printf(sc->dev, "Could not find firmware image %s\n",
+		if_printf(sc->ifp, "Could not find firmware image %s\n",
 		    sc->fw_name);
 		return ENOENT;
 	}
@@ -665,7 +665,7 @@ mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 	zs.next_out = inflate_buffer;
 	status = inflate(&zs, Z_FINISH);
 	if (status != Z_STREAM_END) {
-		device_printf(sc->dev, "zlib %d\n", status);
+		if_printf(sc->ifp, "zlib %d\n", status);
 		status = EIO;
 		goto abort_with_buffer;
 	}
@@ -674,7 +674,7 @@ mxge_load_firmware_helper(mxge_softc_t *sc, uint32_t *limit)
 	hdr_offset =
 	htobe32(*(const uint32_t *)(inflate_buffer + MCP_HEADER_PTR_OFFSET));
 	if ((hdr_offset & 3) || hdr_offset + sizeof(*hdr) > fw_len) {
-		device_printf(sc->dev, "Bad firmware file");
+		if_printf(sc->ifp, "Bad firmware file");
 		status = EIO;
 		goto abort_with_buffer;
 	}
@@ -840,9 +840,8 @@ mxge_adopt_running_firmware(mxge_softc_t *sc)
 	htobe32(*(volatile uint32_t *)(sc->sram + MCP_HEADER_PTR_OFFSET));
 
 	if ((hdr_offset & 3) || hdr_offset + sizeof(*hdr) > sc->sram_size) {
-		device_printf(sc->dev,
-		    "Running firmware has bad header offset (%zu)\n",
-		    hdr_offset);
+		if_printf(sc->ifp, "Running firmware has bad header offset "
+		    "(%zu)\n", hdr_offset);
 		return EIO;
 	}
 
@@ -864,7 +863,7 @@ mxge_adopt_running_firmware(mxge_softc_t *sc)
 	if (sc->fw_ver_major == 1 && sc->fw_ver_minor == 4 &&
 	    sc->fw_ver_tiny >= 4 && sc->fw_ver_tiny <= 11) {
 		sc->adopted_rx_filter_bug = 1;
-		device_printf(sc->dev, "Adopting fw %d.%d.%d: "
+		if_printf(sc->ifp, "Adopting fw %d.%d.%d: "
 		    "working around rx filter bug\n",
 		    sc->fw_ver_major, sc->fw_ver_minor, sc->fw_ver_tiny);
 	}
@@ -895,19 +894,17 @@ mxge_load_firmware(mxge_softc_t *sc, int adopt)
 		 */
 		status = mxge_adopt_running_firmware(sc);
 		if (status) {
-			device_printf(sc->dev,
+			if_printf(sc->ifp,
 			    "failed to adopt running firmware\n");
 			return status;
 		}
-		device_printf(sc->dev,
-		    "Successfully adopted running firmware\n");
+		if_printf(sc->ifp, "Successfully adopted running firmware\n");
 
 		if (sc->tx_boundary == 4096) {
-			device_printf(sc->dev,
+			if_printf(sc->ifp,
 			     "Using firmware currently running on NIC.  "
 			     "For optimal\n");
-			device_printf(sc->dev,
-			     "performance consider loading "
+			if_printf(sc->ifp, "performance consider loading "
 			     "optimized firmware\n");
 		}
 		sc->fw_name = mxge_fw_unaligned;
@@ -955,7 +952,7 @@ mxge_load_firmware(mxge_softc_t *sc, int adopt)
 		i++;
 	}
 	if (*confirm != 0xffffffff) {
-		device_printf(sc->dev,"handoff failed (%p = 0x%x)", 
+		if_printf(sc->ifp,"handoff failed (%p = 0x%x)", 
 		    confirm, *confirm);
 		return ENXIO;
 	}
@@ -3316,17 +3313,16 @@ mxge_read_reboot(mxge_softc_t *sc)
 	device_t dev = sc->dev;
 	uint32_t vs;
 
-	/* find the vendor specific offset */
+	/* Find the vendor specific offset */
 	if (pci_find_extcap(dev, PCIY_VENDOR, &vs) != 0) {
-		device_printf(sc->dev,
-			      "could not find vendor specific offset\n");
+		if_printf(sc->ifp, "could not find vendor specific offset\n");
 		return (uint32_t)-1;
 	}
-	/* enable read32 mode */
+	/* Enable read32 mode */
 	pci_write_config(dev, vs + 0x10, 0x3, 1);
-	/* tell NIC which register to read */
+	/* Tell NIC which register to read */
 	pci_write_config(dev, vs + 0x18, 0xfffffff0, 4);
-	return (pci_read_config(dev, vs + 0x14, 4));
+	return pci_read_config(dev, vs + 0x14, 4);
 }
 
 static void
@@ -3339,10 +3335,10 @@ mxge_watchdog_reset(mxge_softc_t *sc)
 
 	err = ENXIO;
 
-	device_printf(sc->dev, "Watchdog reset!\n");
+	if_printf(sc->ifp, "Watchdog reset!\n");
 
-	/* 
-	 * check to see if the NIC rebooted.  If it did, then all of
+	/*
+	 * Check to see if the NIC rebooted.  If it did, then all of
 	 * PCI config space has been reset, and things like the
 	 * busmaster bit will be zero.  If this is the case, then we
 	 * must restore PCI config space before the NIC can be used
@@ -3351,26 +3347,24 @@ mxge_watchdog_reset(mxge_softc_t *sc)
 	cmd = pci_read_config(sc->dev, PCIR_COMMAND, 2);
 	if (cmd == 0xffff) {
 		/* 
-		 * maybe the watchdog caught the NIC rebooting; wait
+		 * Maybe the watchdog caught the NIC rebooting; wait
 		 * up to 100ms for it to finish.  If it does not come
 		 * back, then give up 
 		 */
 		DELAY(1000*100);
 		cmd = pci_read_config(sc->dev, PCIR_COMMAND, 2);
-		if (cmd == 0xffff) {
-			device_printf(sc->dev, "NIC disappeared!\n");
-		}
+		if (cmd == 0xffff)
+			if_printf(sc->ifp, "NIC disappeared!\n");
 	}
 	if ((cmd & PCIM_CMD_BUSMASTEREN) == 0) {
-		/* print the reboot status */
+		/* Print the reboot status */
 		reboot = mxge_read_reboot(sc);
-		device_printf(sc->dev, "NIC rebooted, status = 0x%x\n",
-			      reboot);
+		if_printf(sc->ifp, "NIC rebooted, status = 0x%x\n", reboot);
+
 		running = sc->ifp->if_flags & IFF_RUNNING;
 		if (running) {
-
-			/* 
-			 * quiesce NIC so that TX routines will not try to
+			/*
+			 * Quiesce NIC so that TX routines will not try to
 			 * xmit after restoration of BAR
 			 */
 
@@ -3381,33 +3375,28 @@ mxge_watchdog_reset(mxge_softc_t *sc)
 			}
 			mxge_close(sc, 1);
 		}
-		/* restore PCI configuration space */
+		/* Restore PCI configuration space */
 		dinfo = device_get_ivars(sc->dev);
 		pci_cfg_restore(sc->dev, dinfo);
 
-		/* and redo any changes we made to our config space */
+		/* And redo any changes we made to our config space */
 		mxge_setup_cfg_space(sc);
 
-		/* reload f/w */
+		/* Reload f/w */
 		err = mxge_load_firmware(sc, 0);
-		if (err) {
-			device_printf(sc->dev,
-				      "Unable to re-load f/w\n");
-		}
-		if (running) {
-			if (!err) {
-				err = mxge_open(sc);
-				if_devstart_sched(sc->ifp);
-			}
+		if (err)
+			if_printf(sc->ifp, "Unable to re-load f/w\n");
+		if (running && !err) {
+			err = mxge_open(sc);
+			if_devstart_sched(sc->ifp);
 		}
 		sc->watchdog_resets++;
 	} else {
-		device_printf(sc->dev,
-			      "NIC did not reboot, not resetting\n");
+		if_printf(sc->ifp, "NIC did not reboot, not resetting\n");
 		err = 0;
 	}
 	if (err) {
-		device_printf(sc->dev, "watchdog reset failed\n");
+		if_printf(sc->ifp, "watchdog reset failed\n");
 	} else {
 		if (sc->dying == 2)
 			sc->dying = 0;
@@ -3418,16 +3407,13 @@ mxge_watchdog_reset(mxge_softc_t *sc)
 static void
 mxge_warn_stuck(mxge_softc_t *sc, mxge_tx_ring_t *tx, int slice)
 {
-	tx = &sc->ss[slice].tx;
-	device_printf(sc->dev, "slice %d struck? ring state:\n", slice);
-	device_printf(sc->dev,
-		      "tx.req=%d tx.done=%d, tx.queue_active=%d\n",
-		      tx->req, tx->done, tx->queue_active);
-	device_printf(sc->dev, "tx.activate=%d tx.deactivate=%d\n",
-			      tx->activate, tx->deactivate);
-	device_printf(sc->dev, "pkt_done=%d fw=%d\n",
-		      tx->pkt_done,
-		      be32toh(sc->ss->fw_stats->send_done_count));
+	if_printf(sc->ifp, "slice %d struck? ring state:\n", slice);
+	if_printf(sc->ifp, "tx.req=%d tx.done=%d, tx.queue_active=%d\n",
+	    tx->req, tx->done, tx->queue_active);
+	if_printf(sc->ifp, "tx.activate=%d tx.deactivate=%d\n",
+	    tx->activate, tx->deactivate);
+	if_printf(sc->ifp, "pkt_done=%d fw=%d\n",
+	    tx->pkt_done, be32toh(sc->ss->fw_stats->send_done_count));
 }
 
 static int
