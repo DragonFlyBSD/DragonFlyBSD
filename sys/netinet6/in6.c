@@ -611,6 +611,8 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 
 	case SIOCSIFADDR:
 	case SIOCSIFDSTADDR:
+	case SIOCSIFBRDADDR:
+	case SIOCSIFNETMASK:
 		/*
 		 * Do not pass those ioctl to driver handler since they are not
 		 * properly setup.  Instead just error out.
