@@ -2384,7 +2384,9 @@ run_newassoc(struct ieee80211_node *ni, int isnew)
 	uint8_t ridx;
 	uint8_t wcid;
 	int i, j;
+#ifdef RUN_DEBUG
 	char ethstr[ETHER_ADDRSTRLEN + 1];
+#endif
 
 	wcid = (vap->iv_opmode == IEEE80211_M_STA) ?
 	    1 : RUN_AID2WCID(ni->ni_associd);
