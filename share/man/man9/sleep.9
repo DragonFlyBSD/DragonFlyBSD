@@ -76,21 +76,21 @@
 .In sys/systm.h
 .In sys/proc.h
 .Ft int
-.Fn tsleep "void *ident" "int flags" "const char *wmesg" "int timo"
+.Fn tsleep "const volatile void *ident" "int flags" "const char *wmesg" "int timo"
 .Ft int
-.Fn ssleep "void *ident" "struct spinlock *spin" "int flags" "const char *wmesg" "int timo"
+.Fn ssleep "const volatile void *ident" "struct spinlock *spin" "int flags" "const char *wmesg" "int timo"
 .Ft int
-.Fn lksleep "void *ident" "struct lock *lock" "int flags" "const char *wmesg" "int timo"
+.Fn lksleep "const volatile void *ident" "struct lock *lock" "int flags" "const char *wmesg" "int timo"
 .Ft int
-.Fn mtxsleep "void *ident" "struct mtx *mtx" "int flags" "const char *wmesg" "int timo"
+.Fn mtxsleep "const volatile void *ident" "struct mtx *mtx" "int flags" "const char *wmesg" "int timo"
 .Ft int
-.Fn zsleep "void *ident" "struct lwkt_serialize *slz" "int flags" "const char *wmesg" "int timo"
+.Fn zsleep "const volatile void *ident" "struct lwkt_serialize *slz" "int flags" "const char *wmesg" "int timo"
 .Ft void
-.Fn tsleep_interlock "void *ident" "int flags"
+.Fn tsleep_interlock "const volatile void *ident" "int flags"
 .Ft void
-.Fn wakeup "void *ident"
+.Fn wakeup "const volatile void *ident"
 .Ft void
-.Fn wakeup_one "void *ident"
+.Fn wakeup_one "const volatile void *ident"
 .Sh DESCRIPTION
 The functions
 .Fn tsleep ,
