@@ -745,6 +745,14 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	class = (bref->type << 8) | hammer2_devblkradix(radix);
 
 	/*
+	 * We can't free data allocated by newfs_hammer2.
+	 * Assert validity.
+	 */
+	if (data_off < hmp->voldata.allocator_beg)
+		return;
+	KKASSERT((data_off & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
+
+	/*
 	 * Lookup the level1 freemap chain.  The chain must exist.
 	 */
 	key = H2FMBASE(data_off, HAMMER2_FREEMAP_LEVEL1_RADIX);

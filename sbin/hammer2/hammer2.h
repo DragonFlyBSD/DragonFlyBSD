@@ -50,6 +50,7 @@
 #include <sys/udev.h>
 #include <sys/diskslice.h>
 #include <dmsg.h>
+#include <dirent.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -135,6 +136,9 @@ int cmd_show(const char *devpath, int dofreemap);
 int cmd_rsainit(const char *dir_path);
 int cmd_rsaenc(const char **keys, int nkeys);
 int cmd_rsadec(const char **keys, int nkeys);
+int cmd_setcomp(char* comp_string, char* file_string);
+int cmd_setcomp_recursive(char* option_string, char* comp_string,
+	char* file_string);
 
 /*
  * Misc functions
@@ -150,3 +154,6 @@ uint32_t hammer2_icrc32(const void *buf, size_t size);
 uint32_t hammer2_icrc32c(const void *buf, size_t size, uint32_t crc);
 
 void hammer2_shell_parse(dmsg_msg_t *msg);
+int setcomp_recursive_call(char *directory, int comp_method,
+	int set_files);
+void print_inode(char* inode_string);

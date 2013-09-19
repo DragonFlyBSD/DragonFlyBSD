@@ -330,6 +330,25 @@ main(int ac, char **av)
 		} else {
 			cmd_show(av[1], 1);
 		}
+	} else if (strcmp(av[0], "setcomp") == 0) {
+		if (ac < 3 || ac > 4) {
+			fprintf(stderr, "setcomp: requires compression method and"
+				"directory/file path\n");
+			usage(1);
+		} else {
+			if (ac == 3) //no option specified, no recursion by default
+				ecode = cmd_setcomp(av[1], av[2]);
+			else
+				ecode = cmd_setcomp_recursive(av[1], av[2], av[3]);
+			if (ecode == 0) printf("Compression mode set.\n");			
+		}
+	} else if (strcmp(av[0], "printinode") == 0) {
+		if (ac != 2) {
+			fprintf(stderr, "printinode: requires directory/file path\n");
+			usage(1);
+		}
+		else
+			print_inode(av[1]);
 	} else {
 		fprintf(stderr, "Unrecognized command: %s\n", av[0]);
 		usage(1);
@@ -376,6 +395,7 @@ usage(int code)
 		"    rsainit            Initialize rsa fields\n"
 		"    show devpath       Raw hammer2 media dump\n"
 		"    freemap devpath    Raw hammer2 media dump\n"
+		"    setcomp comp_algo directory   Sets compression with comp_algo (0-2) on a directory\n"
 	);
 	exit(code);
 }

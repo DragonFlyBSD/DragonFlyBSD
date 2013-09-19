@@ -83,8 +83,8 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 	 */
 again:
 	chain = ip->chain;
+	spin_lock(&chain->core->cst.spin);
 	if (hammer2_chain_refactor_test(chain, 1)) {
-		spin_lock(&chain->core->cst.spin);
 		while (hammer2_chain_refactor_test(chain, 1))
 			chain = chain->next_parent;
 		if (ip->chain != chain) {
@@ -95,6 +95,8 @@ again:
 		} else {
 			spin_unlock(&chain->core->cst.spin);
 		}
+	} else {
+		spin_unlock(&chain->core->cst.spin);
 	}
 
 	KKASSERT(chain != NULL);	/* for now */
@@ -277,6 +279,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 					KKASSERT((ip->flags &
 						  HAMMER2_INODE_SROOT) == 0);
 					kfree(ip, pmp->minode);
+					atomic_add_long(&pmp->inmem_inodes, -1);
 				} else {
 					KKASSERT(ip->flags &
 						 HAMMER2_INODE_SROOT);
@@ -482,11 +485,15 @@ again:
 	 */
 	if (pmp) {
 		nip = kmalloc(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
+		atomic_add_long(&pmp->inmem_inodes, 1);
+		hammer2_chain_memory_wakeup(pmp);
 	} else {
 		nip = kmalloc(sizeof(*nip), M_HAMMER2, M_WAITOK | M_ZERO);
 		nip->flags = HAMMER2_INODE_SROOT;
 	}
 	nip->inum = chain->data->ipdata.inum;
+	nip->size = chain->data->ipdata.size;
+	nip->mtime = chain->data->ipdata.mtime;
 	hammer2_inode_repoint(nip, NULL, chain);
 	nip->pip = dip;				/* can be NULL */
 	if (dip)
@@ -583,12 +590,11 @@ retry:
 		chain = NULL;
 		++lhc;
 	}
-	if (error == 0) {
-		error = hammer2_chain_create(trans, &parent, &chain,
+	if (error == 0)
+		error = hammer2_chain_create(trans, &parent, &chain, //sets chain's brefs to parent's brefs
 					     lhc, 0,
 					     HAMMER2_BREF_TYPE_INODE,
 					     HAMMER2_INODE_BYTES);
-	}
 
 	/*
 	 * Cleanup and handle retries.
@@ -619,7 +625,7 @@ retry:
 	 */
 	chain->data->ipdata.inum = trans->sync_tid;
 	nip = hammer2_inode_get(dip->pmp, dip, chain);
-	nipdata = &chain->data->ipdata;
+	nipdata = &chain->data->ipdata; //nipdata will have chain's brefs data
 
 	if (vap) {
 		KKASSERT(trans->inodes_created == 0);
@@ -630,6 +636,11 @@ retry:
 		nipdata->type = HAMMER2_OBJTYPE_DIRECTORY;
 		nipdata->inum = 1;
 	}
+	
+	/* Inherit parent's inode compression mode. */
+	nipdata->comp_algo = dipdata->comp_algo;
+	nipdata->reserved85 = 0;
+	
 	nipdata->version = HAMMER2_INODE_VERSION_ONE;
 	hammer2_update_time(&nipdata->ctime);
 	nipdata->mtime = nipdata->ctime;
@@ -951,6 +962,7 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 				     HAMMER2_MODIFY_ASSERTNOCOPY);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		ipdata = &nchain->data->ipdata;
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_HARDLINK);
 		bcopy(name, ipdata->filename, name_len);
 		ipdata->name_key = lhc;
 		ipdata->name_len = name_len;
@@ -1032,6 +1044,12 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		hammer2_chain_ref(nchain);
 	if (ochain)
 		hammer2_chain_drop(ochain);
+
+	/*
+	 * Flag the chain for the refactor test
+	 */
+	if (nchain && nchain->data && nchain->data->ipdata.type == HAMMER2_OBJTYPE_HARDLINK)
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_HARDLINK);
 
 	/*
 	 * Repoint ip->pip if requested (non-NULL pip).
@@ -1315,6 +1333,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			hammer2_chain_modify(trans, &chain, 0);
 			hammer2_chain_delete_duplicate(trans, &chain,
 						       HAMMER2_DELDUP_RECORE);
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_HARDLINK);
 			ipdata = &chain->data->ipdata;
 			ipdata->target_type = ipdata->type;
 			ipdata->type = HAMMER2_OBJTYPE_HARDLINK;
@@ -1506,4 +1525,75 @@ hammer2_inode_common_parent(hammer2_inode_t *fdip, hammer2_inode_t *tdip)
 	      fdip, tdip);
 	/* NOT REACHED */
 	return(NULL);
+}
+
+/*
+ * Synchronize the inode's frontend state with the chain state prior
+ * to any explicit flush of the inode or any strategy write call.
+ *
+ * Called with a locked inode.
+ */
+void
+hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip, 
+		    hammer2_chain_t **chainp)
+{
+	hammer2_inode_data_t *ipdata;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_key_t lbase;
+
+	ipdata = &ip->chain->data->ipdata;
+
+	if (ip->flags & HAMMER2_INODE_MTIME) {
+		ipdata = hammer2_chain_modify_ip(trans, ip, chainp, 0);
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_MTIME);
+		ipdata->mtime = ip->mtime;
+	}
+	if ((ip->flags & HAMMER2_INODE_RESIZED) && ip->size < ipdata->size) {
+		ipdata = hammer2_chain_modify_ip(trans, ip, chainp, 0);
+		ipdata->size = ip->size;
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED);
+
+		/*
+		 * We must delete any chains beyond the EOF.  The chain
+		 * straddling the EOF will be pending in the bioq.
+		 */
+		lbase = (ipdata->size + HAMMER2_PBUFMASK64) &
+			~HAMMER2_PBUFMASK64;
+		parent = hammer2_chain_lookup_init(ip->chain, 0);
+		chain = hammer2_chain_lookup(&parent,
+					     lbase, (hammer2_key_t)-1,
+					     HAMMER2_LOOKUP_NODATA);
+		while (chain) {
+			/*
+			 * Degenerate embedded case, nothing to loop on
+			 */
+			if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
+				hammer2_chain_unlock(chain);
+				break;
+			}
+			if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
+				hammer2_chain_delete(trans, chain, 0);
+			}
+			chain = hammer2_chain_next(&parent, chain,
+						   lbase, (hammer2_key_t)-1,
+						   HAMMER2_LOOKUP_NODATA);
+		}
+		hammer2_chain_lookup_done(parent);
+	} else
+	if ((ip->flags & HAMMER2_INODE_RESIZED) && ip->size > ipdata->size) {
+		ipdata = hammer2_chain_modify_ip(trans, ip, chainp, 0);
+		ipdata->size = ip->size;
+		atomic_clear_int(&ip->flags, HAMMER2_INODE_RESIZED);
+
+		/*
+		 * When resizing larger we may not have any direct-data
+		 * available.
+		 */
+		if ((ipdata->op_flags & HAMMER2_OPFLAG_DIRECTDATA) &&
+		    ip->size > HAMMER2_EMBEDDED_BYTES) {
+			ipdata->op_flags &= ~HAMMER2_OPFLAG_DIRECTDATA;
+			bzero(&ipdata->u.blockset, sizeof(ipdata->u.blockset));
+		}
+	}
 }

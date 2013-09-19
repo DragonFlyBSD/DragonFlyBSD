@@ -3,6 +3,7 @@
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
+ * by Daniel Flores (GSOC 2013 - mentored by Matthew Dillon, compression)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,12 +44,29 @@
 #include <sys/vfsops.h>
 #include <sys/sysctl.h>
 #include <sys/socket.h>
+#include <sys/objcache.h>
+
+#include <sys/proc.h>
+#include <sys/namei.h>
+#include <sys/mountctl.h>
+#include <sys/dirent.h>
+#include <sys/uio.h>
+
+#include <sys/mutex.h>
+#include <sys/mutex2.h>
 
 #include "hammer2.h"
 #include "hammer2_disk.h"
 #include "hammer2_mount.h"
 
+#include "hammer2.h"
+#include "hammer2_lz4.h"
+
+#include "zlib/hammer2_zlib.h"
+
 #define REPORT_REFS_ERRORS 1	/* XXX remove me */
+
+MALLOC_DEFINE(M_OBJCACHE, "objcache", "Object Cache");
 
 struct hammer2_sync_info {
 	hammer2_trans_t trans;
@@ -83,6 +101,18 @@ long hammer2_ioa_file_write;
 long hammer2_ioa_meta_write;
 long hammer2_ioa_indr_write;
 long hammer2_ioa_volu_write;
+
+MALLOC_DECLARE(C_BUFFER);
+MALLOC_DEFINE(C_BUFFER, "compbuffer", "Buffer used for compression.");
+
+MALLOC_DECLARE(D_BUFFER);
+MALLOC_DEFINE(D_BUFFER, "decompbuffer", "Buffer used for decompression.");
+
+MALLOC_DECLARE(W_BIOQUEUE);
+MALLOC_DEFINE(W_BIOQUEUE, "wbioqueue", "Writing bio queue.");
+
+MALLOC_DECLARE(W_MTX);
+MALLOC_DEFINE(W_MTX, "wmutex", "Mutex for write thread.");
 
 SYSCTL_NODE(_vfs, OID_AUTO, hammer2, CTLFLAG_RW, 0, "HAMMER2 filesystem");
 
@@ -138,6 +168,7 @@ SYSCTL_LONG(_vfs_hammer2, OID_AUTO, ioa_volu_write, CTLFLAG_RW,
 	   &hammer2_ioa_volu_write, 0, "");
 
 static int hammer2_vfs_init(struct vfsconf *conf);
+static int hammer2_vfs_uninit(struct vfsconf *vfsp);
 static int hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 				struct ucred *cred);
 static int hammer2_remount(struct mount *, char *, struct vnode *,
@@ -161,14 +192,49 @@ static int hammer2_install_volume_header(hammer2_mount_t *hmp);
 static int hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
+static void hammer2_write_thread(void *arg);
+
+/* 
+ * Functions for compression in threads,
+ * from hammer2_vnops.c
+ */
+static void hammer2_write_file_core_t(struct buf *bp, hammer2_trans_t *trans,
+				hammer2_inode_t *ip,
+				hammer2_inode_data_t *ipdata,
+				hammer2_chain_t **parentp,
+				hammer2_key_t lbase, int ioflag, int pblksize,
+				int *errorp);
+static void hammer2_compress_and_write_t(struct buf *bp, hammer2_trans_t *trans,
+				hammer2_inode_t *ip,
+				hammer2_inode_data_t *ipdata,
+				hammer2_chain_t **parentp,
+				hammer2_key_t lbase, int ioflag,
+				int pblksize, int *errorp, int comp_method);
+static void hammer2_zero_check_and_write_t(struct buf *bp,
+				hammer2_trans_t *trans, hammer2_inode_t *ip,
+				hammer2_inode_data_t *ipdata,
+				hammer2_chain_t **parentp,
+				hammer2_key_t lbase,
+				int ioflag, int pblksize, int* error);
+static int test_block_not_zeros_t(char *buf, size_t bytes);
+static void zero_write_t(struct buf *bp, hammer2_trans_t *trans,
+				hammer2_inode_t *ip,
+				hammer2_inode_data_t *ipdata,
+				hammer2_chain_t **parentp, 
+				hammer2_key_t lbase);
+static void hammer2_write_bp_t(hammer2_chain_t *chain, struct buf *bp,
+				int ioflag, int pblksize);
+
 static int hammer2_rcvdmsg(kdmsg_msg_t *msg);
 static void hammer2_autodmsg(kdmsg_msg_t *msg);
+
 
 /*
  * HAMMER2 vfs operations.
  */
 static struct vfsops hammer2_vfsops = {
 	.vfs_init	= hammer2_vfs_init,
+	.vfs_uninit = hammer2_vfs_uninit,
 	.vfs_sync	= hammer2_vfs_sync,
 	.vfs_mount	= hammer2_vfs_mount,
 	.vfs_unmount	= hammer2_vfs_unmount,
@@ -190,6 +256,9 @@ static
 int
 hammer2_vfs_init(struct vfsconf *conf)
 {
+	static struct objcache_malloc_args margs_read;
+	static struct objcache_malloc_args margs_write;
+
 	int error;
 
 	error = 0;
@@ -203,11 +272,33 @@ hammer2_vfs_init(struct vfsconf *conf)
 
 	if (error)
 		kprintf("HAMMER2 structure size mismatch; cannot continue.\n");
+	
+	margs_read.objsize = 65536;
+	margs_read.mtype = D_BUFFER;
+	
+	margs_write.objsize = 32768;
+	margs_write.mtype = C_BUFFER;
+	
+	cache_buffer_read = objcache_create(margs_read.mtype->ks_shortdesc,
+				0, 1, NULL, NULL, NULL, objcache_malloc_alloc,
+				objcache_malloc_free, &margs_read);
+	cache_buffer_write = objcache_create(margs_write.mtype->ks_shortdesc,
+				0, 1, NULL, NULL, NULL, objcache_malloc_alloc,
+				objcache_malloc_free, &margs_write);
 
 	lockinit(&hammer2_mntlk, "mntlk", 0, 0);
 	TAILQ_INIT(&hammer2_mntlist);
 
 	return (error);
+}
+
+static
+int
+hammer2_vfs_uninit(struct vfsconf *vfsp __unused)
+{
+	objcache_destroy(cache_buffer_read);
+	objcache_destroy(cache_buffer_write);
+	return 0;
 }
 
 /*
@@ -258,6 +349,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	dev = NULL;
 	label = NULL;
 	devvp = NULL;
+	
 
 	kprintf("hammer2_mount\n");
 
@@ -437,6 +529,16 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hammer2_inode_ref(hmp->sroot);	/* for hmp->sroot */
 		hammer2_inode_unlock_ex(hmp->sroot, schain);
 		schain = NULL;
+		
+		mtx_init(&hmp->wthread_mtx);
+		bioq_init(&hmp->wthread_bioq);
+		hmp->wthread_destroy = 0;
+	
+		/*
+		 * Launch threads.
+		 */
+		lwkt_create(hammer2_write_thread, hmp,
+				NULL, NULL, 0, -1, "hammer2-write");
 	}
 
 	/*
@@ -466,7 +568,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	ccms_domain_init(&pmp->ccms_dom);
 	++hmp->pmp_count;
 	lockmgr(&hammer2_mntlk, LK_RELEASE);
-	kprintf("hammer2_mount hmp=%p pmpcnt=%d\n", hmp, hmp->pmp_count);
+	kprintf("hammer2_mount hmp=%p pmp=%p pmpcnt=%d\n", hmp, pmp, hmp->pmp_count);
 
 	mp->mnt_flag = MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;	/* all entry pts are SMP */
@@ -532,6 +634,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	pmp->mount_cluster->rchain = rchain;	/* left held & unlocked */
 	pmp->iroot = hammer2_inode_get(pmp, NULL, rchain);
 	hammer2_inode_ref(pmp->iroot);		/* ref for pmp->iroot */
+
+	KKASSERT(rchain->pmp == NULL);		/* bootstrap the tracking pmp for rchain */
+	rchain->pmp = pmp;
+	atomic_add_long(&pmp->inmem_chains, 1);
+
 	hammer2_inode_unlock_ex(pmp->iroot, rchain);
 
 	kprintf("iroot %p\n", pmp->iroot);
@@ -567,8 +674,592 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 * Initial statfs to prime mnt_stat.
 	 */
 	hammer2_vfs_statfs(mp, &mp->mnt_stat, cred);
-
+	
 	return 0;
+}
+
+/*
+ * Handle bioq for strategy write
+ */
+static
+void
+hammer2_write_thread(void *arg)
+{
+	hammer2_mount_t* hmp;
+	struct bio *bio;
+	struct buf *bp;
+	hammer2_trans_t trans;
+	struct vnode *vp;
+	hammer2_inode_t *last_ip;
+	hammer2_inode_t *ip;
+	hammer2_chain_t *parent;
+	hammer2_chain_t **parentp; //to comply with the current functions...
+	hammer2_inode_data_t *ipdata;
+	hammer2_key_t lbase;
+	int lblksize;
+	int pblksize;
+	int error;
+	
+	hmp = arg;
+	
+	mtx_lock(&hmp->wthread_mtx);
+	while (hmp->wthread_destroy == 0) {
+		if (bioq_first(&hmp->wthread_bioq) == NULL) {
+			mtxsleep(&hmp->wthread_bioq, &hmp->wthread_mtx,
+				 0, "h2bioqw", 0);
+		}
+		last_ip = NULL;
+		parent = NULL;
+		parentp = &parent;
+
+		while ((bio = bioq_takefirst(&hmp->wthread_bioq)) != NULL) {
+			mtx_unlock(&hmp->wthread_mtx);
+			
+			error = 0;
+			bp = bio->bio_buf;
+			vp = bp->b_vp;
+			ip = VTOI(vp);
+
+			/*
+			 * Cache transaction for multi-buffer flush efficiency.
+			 * Lock the ip separately for each buffer to allow
+			 * interleaving with frontend writes.
+			 */
+			if (last_ip != ip) {
+				if (last_ip)
+					hammer2_trans_done(&trans);
+				hammer2_trans_init(&trans, ip->pmp,
+						   HAMMER2_TRANS_BUFCACHE);
+				last_ip = ip;
+			}
+			parent = hammer2_inode_lock_ex(ip);
+
+			/*
+			 * Inode is modified, flush size and mtime changes
+			 * to ensure that the file size remains consistent
+			 * with the buffers being flushed.
+			 */
+			if (ip->flags & (HAMMER2_INODE_RESIZED |
+					 HAMMER2_INODE_MTIME)) {
+				hammer2_inode_fsync(&trans, ip, parentp);
+			}
+			ipdata = hammer2_chain_modify_ip(&trans, ip,
+							 parentp, 0);
+			lblksize = hammer2_calc_logical(ip, bio->bio_offset,
+							&lbase, NULL);
+			pblksize = hammer2_calc_physical(ip, lbase);
+			hammer2_write_file_core_t(bp, &trans, ip, ipdata,
+						parentp,
+						lbase, IO_ASYNC,
+						pblksize, &error);
+			hammer2_inode_unlock_ex(ip, parent);
+			if (error) {
+				kprintf("An error occured in writing thread.\n");
+				break;
+			}
+			biodone(bio);
+			mtx_lock(&hmp->wthread_mtx);
+		}
+
+		/*
+		 * Clean out transaction cache
+		 */
+		if (last_ip)
+			hammer2_trans_done(&trans);
+	}
+	hmp->wthread_destroy = -1;
+	wakeup(&hmp->wthread_destroy);
+	
+	mtx_unlock(&hmp->wthread_mtx);
+}
+
+/* 
+ * From hammer2_vnops.c. 
+ * Physical block assignement function.
+ */
+static
+hammer2_chain_t *
+hammer2_assign_physical(hammer2_trans_t *trans,
+			hammer2_inode_t *ip, hammer2_chain_t **parentp,
+			hammer2_key_t lbase, int pblksize, int *errorp)
+{
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_off_t pbase;
+	int pradix = hammer2_getradix(pblksize);
+
+	/*
+	 * Locate the chain associated with lbase, return a locked chain.
+	 * However, do not instantiate any data reference (which utilizes a
+	 * device buffer) because we will be using direct IO via the
+	 * logical buffer cache buffer.
+	 */
+	*errorp = 0;
+retry:
+	parent = *parentp;
+	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS); /* extra lock */
+	chain = hammer2_chain_lookup(&parent,
+				     lbase, lbase,
+				     HAMMER2_LOOKUP_NODATA);
+
+	if (chain == NULL) {
+		/*
+		 * We found a hole, create a new chain entry.
+		 *
+		 * NOTE: DATA chains are created without device backing
+		 *	 store (nor do we want any).
+		 */
+		*errorp = hammer2_chain_create(trans, &parent, &chain,
+					       lbase, HAMMER2_PBUFRADIX,
+					       HAMMER2_BREF_TYPE_DATA,
+					       pblksize);
+		if (chain == NULL) {
+			hammer2_chain_lookup_done(parent);
+			panic("hammer2_chain_create: par=%p error=%d\n",
+				parent, *errorp);
+			goto retry;
+		}
+
+		pbase = chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX;
+		/*ip->delta_dcount += pblksize;*/
+	} else {
+		switch (chain->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			/*
+			 * The data is embedded in the inode.  The
+			 * caller is responsible for marking the inode
+			 * modified and copying the data to the embedded
+			 * area.
+			 */
+			pbase = NOOFFSET;
+			break;
+		case HAMMER2_BREF_TYPE_DATA:
+			if (chain->bytes != pblksize) {
+				hammer2_chain_resize(trans, ip,
+						     parent, &chain,
+						     pradix,
+						     HAMMER2_MODIFY_OPTDATA);
+			}
+			hammer2_chain_modify(trans, &chain,
+					     HAMMER2_MODIFY_OPTDATA);
+			pbase = chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX;
+			break;
+		default:
+			panic("hammer2_assign_physical: bad type");
+			/* NOT REACHED */
+			pbase = NOOFFSET;
+			break;
+		}
+	}
+
+	/*
+	 * Cleanup.  If chain wound up being the inode (i.e. DIRECTDATA),
+	 * we might have to replace *parentp.
+	 */
+	hammer2_chain_lookup_done(parent);
+	if (chain) {
+		if (*parentp != chain &&
+		    (*parentp)->core == chain->core) {
+			parent = *parentp;
+			*parentp = chain;		/* eats lock */
+			hammer2_chain_unlock(parent);
+			hammer2_chain_lock(chain, 0);	/* need another */
+		}
+		/* else chain already locked for return */
+	}
+	return (chain);
+}
+
+/* 
+ * From hammer2_vnops.c.
+ * The core write function which determines which path to take
+ * depending on compression settings.
+ */
+static
+void
+hammer2_write_file_core_t(struct buf *bp, hammer2_trans_t *trans,
+			hammer2_inode_t *ip, hammer2_inode_data_t *ipdata,
+			hammer2_chain_t **parentp,
+			hammer2_key_t lbase, int ioflag, int pblksize,
+			int *errorp)
+{
+	hammer2_chain_t *chain;
+	if (ipdata->comp_algo > HAMMER2_COMP_AUTOZERO) {
+		hammer2_compress_and_write_t(bp, trans, ip,
+					   ipdata, parentp,
+					   lbase, ioflag,
+					   pblksize, errorp, ipdata->comp_algo);
+	} else if (ipdata->comp_algo == HAMMER2_COMP_AUTOZERO) {
+		hammer2_zero_check_and_write_t(bp, trans, ip,
+				    ipdata, parentp, lbase,
+				    ioflag, pblksize, errorp);
+	} else {
+		/*
+		 * We have to assign physical storage to the buffer
+		 * we intend to dirty or write now to avoid deadlocks
+		 * in the strategy code later.
+		 *
+		 * This can return NOOFFSET for inode-embedded data.
+		 * The strategy code will take care of it in that case.
+		 */
+		chain = hammer2_assign_physical(trans, ip, parentp,
+						lbase, pblksize,
+						errorp);
+		hammer2_write_bp_t(chain, bp, ioflag, pblksize);
+		if (chain)
+			hammer2_chain_unlock(chain);
+	}
+	ipdata = &ip->chain->data->ipdata;	/* reload */
+}
+
+/*
+ * From hammer2_vnops.c
+ * Generic function that will perform the compression in compression
+ * write path. The compression algorithm is determined by the settings
+ * obtained from inode.
+ */
+static
+void
+hammer2_compress_and_write_t(struct buf *bp, hammer2_trans_t *trans,
+	hammer2_inode_t *ip, hammer2_inode_data_t *ipdata,
+	hammer2_chain_t **parentp,
+	hammer2_key_t lbase, int ioflag, int pblksize,
+	int *errorp, int comp_method)
+{
+	hammer2_chain_t *chain;
+
+	if (test_block_not_zeros_t(bp->b_data, pblksize)) {
+		int compressed_size = 0;
+		int compressed_block_size;
+		char *compressed_buffer = NULL; //to avoid a compiler warning
+
+		KKASSERT(pblksize / 2 <= 32768);
+		
+		if (ipdata->reserved85 < 8 || (ipdata->reserved85 & 7) == 0) {
+			if ((comp_method & 0x0F) == HAMMER2_COMP_LZ4) {
+				//kprintf("LZ4 compression activated.\n");
+				compressed_buffer = objcache_get(cache_buffer_write, M_INTWAIT);
+				compressed_size = LZ4_compress_limitedOutput(bp->b_data,
+				    &compressed_buffer[sizeof(int)], pblksize,
+				    pblksize / 2 - sizeof(int));
+				*(int *)compressed_buffer = compressed_size;
+				if (compressed_size)
+					compressed_size += sizeof(int);	/* our added overhead */
+				//kprintf("Compressed size = %d.\n", compressed_size);
+			} else if ((comp_method & 0x0F) == HAMMER2_COMP_ZLIB) {
+				int comp_level = (comp_method >> 4) & 0x0F;
+				z_stream strm_compress;
+				int ret;
+			    //kprintf("ZLIB compression activated, level %d.\n", comp_level);
+
+				ret = deflateInit(&strm_compress, comp_level);
+				if (ret != Z_OK)
+					kprintf("HAMMER2 ZLIB: fatal error on deflateInit.\n");
+				
+				compressed_buffer = objcache_get(cache_buffer_write, M_INTWAIT);
+				strm_compress.next_in = bp->b_data;
+				strm_compress.avail_in = pblksize;
+				strm_compress.next_out = compressed_buffer;
+				strm_compress.avail_out = pblksize / 2;
+				ret = deflate(&strm_compress, Z_FINISH);
+				if (ret == Z_STREAM_END) {
+					compressed_size = pblksize / 2 - strm_compress.avail_out;
+				} else {
+					compressed_size = 0;
+				}
+				ret = deflateEnd(&strm_compress);
+				//kprintf("Compressed size = %d.\n", compressed_size);
+			}
+			else {
+				kprintf("Error: Unknown compression method.\n");
+				kprintf("Comp_method = %d.\n", comp_method);
+				//And the block will be written uncompressed...
+			}
+		}
+		if (compressed_size == 0) { //compression failed or turned off
+			compressed_block_size = pblksize;	/* safety */
+			++(ipdata->reserved85);
+			if (ipdata->reserved85 == 255) { //protection against overflows
+				ipdata->reserved85 = 8;
+			}
+		} else {
+			ipdata->reserved85 = 0;
+			if (compressed_size <= 1024) {
+				compressed_block_size = 1024;
+			} else if (compressed_size <= 2048) {
+				compressed_block_size = 2048;
+			} else if (compressed_size <= 4096) {
+				compressed_block_size = 4096;
+			} else if (compressed_size <= 8192) {
+				compressed_block_size = 8192;
+			} else if (compressed_size <= 16384) {
+				compressed_block_size = 16384;
+			} else if (compressed_size <= 32768) {
+				compressed_block_size = 32768;
+			} else {
+				panic("WRITE PATH: Weird compressed_size value.\n");
+				compressed_block_size = pblksize;	/* NOT REACHED */
+			}
+		}
+
+		chain = hammer2_assign_physical(trans, ip, parentp,
+						lbase, compressed_block_size,
+						errorp);
+		ipdata = &ip->chain->data->ipdata;	/* RELOAD */
+			
+		if (*errorp) {
+			kprintf("WRITE PATH: An error occurred while "
+				"assigning physical space.\n");
+			KKASSERT(chain == NULL);
+		} else {
+			/* Get device offset */
+			hammer2_off_t pbase;
+			hammer2_off_t pmask;
+			hammer2_off_t peof;
+			size_t boff;
+			size_t psize;
+			struct buf *dbp;
+			
+			KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
+			
+			switch(chain->bref.type) {
+			case HAMMER2_BREF_TYPE_INODE:
+				KKASSERT(chain->data->ipdata.op_flags &
+					HAMMER2_OPFLAG_DIRECTDATA);
+				KKASSERT(bp->b_loffset == 0);
+				bcopy(bp->b_data, chain->data->ipdata.u.data,
+					HAMMER2_EMBEDDED_BYTES);
+				break;
+			case HAMMER2_BREF_TYPE_DATA:				
+				psize = hammer2_devblksize(chain->bytes);
+				pmask = (hammer2_off_t)psize - 1;
+				pbase = chain->bref.data_off & ~pmask;
+				boff = chain->bref.data_off & (HAMMER2_OFF_MASK & pmask);
+				peof = (pbase + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
+				int temp_check = HAMMER2_DEC_CHECK(chain->bref.methods);
+
+				/*
+				 * Optimize out the read-before-write if possible.
+				 */
+				if (compressed_block_size == psize) {
+					dbp = getblk(chain->hmp->devvp, pbase, psize, 0, 0);
+				} else {
+					*errorp = bread(chain->hmp->devvp, pbase, psize, &dbp);
+					if (*errorp) {
+						kprintf("WRITE PATH: An error ocurred while bread().\n");
+						break;
+					}
+				}
+
+				/*
+				 * When loading the block make sure we don't leave garbage
+				 * after the compressed data.
+				 */
+				if (compressed_size) {
+					chain->bref.methods = HAMMER2_ENC_COMP(comp_method) +
+							      HAMMER2_ENC_CHECK(temp_check);
+					bcopy(compressed_buffer, dbp->b_data + boff,
+					      compressed_size);
+					if (compressed_size != compressed_block_size) {
+						bzero(dbp->b_data + boff + compressed_size,
+						      compressed_block_size - compressed_size);
+					}
+				} else {
+					chain->bref.methods = HAMMER2_ENC_COMP(HAMMER2_COMP_NONE) +
+							      HAMMER2_ENC_CHECK(temp_check);
+					bcopy(bp->b_data, dbp->b_data + boff, pblksize);
+				}
+
+				/*
+				 * Device buffer is now valid, chain is no
+				 * longer in the initial state.
+				 */
+				atomic_clear_int(&chain->flags,
+						 HAMMER2_CHAIN_INITIAL);
+
+				/* Now write the related bdp. */
+				if (ioflag & IO_SYNC) {
+					/*
+					 * Synchronous I/O requested.
+					 */
+					bwrite(dbp);
+				/*
+				} else if ((ioflag & IO_DIRECT) && loff + n == pblksize) {
+					bdwrite(dbp);
+				*/
+				} else if (ioflag & IO_ASYNC) {
+					bawrite(dbp);
+				} else if (hammer2_cluster_enable) {
+					cluster_write(dbp, peof, HAMMER2_PBUFSIZE, 4/*XXX*/);
+				} else {
+					bdwrite(dbp);
+				}
+				break;
+			default:
+				panic("hammer2_write_bp_t: bad chain type %d\n",
+					chain->bref.type);
+			/* NOT REACHED */
+				break;
+			}
+			
+			hammer2_chain_unlock(chain);
+		}
+		if (compressed_buffer)
+			objcache_put(cache_buffer_write, compressed_buffer);
+	} else {
+		zero_write_t(bp, trans, ip, ipdata, parentp, lbase);
+	}
+}
+
+/*
+ * Function that performs zero-checking and writing without compression,
+ * it corresponds to default zero-checking path.
+ */
+static
+void
+hammer2_zero_check_and_write_t(struct buf *bp, hammer2_trans_t *trans,
+	hammer2_inode_t *ip, hammer2_inode_data_t *ipdata,
+	hammer2_chain_t **parentp,
+	hammer2_key_t lbase, int ioflag, int pblksize, int *errorp)
+{
+	hammer2_chain_t *chain;
+
+	if (test_block_not_zeros_t(bp->b_data, pblksize)) {
+		chain = hammer2_assign_physical(trans, ip, parentp,
+						lbase, pblksize, errorp);
+		hammer2_write_bp_t(chain, bp, ioflag, pblksize);
+		if (chain)
+			hammer2_chain_unlock(chain);
+	} else {
+		zero_write_t(bp, trans, ip, ipdata, parentp, lbase);
+	}
+}
+
+/*
+ * A function to test whether a block of data contains only zeros,
+ * returns 0 in that case or returns 1 otherwise.
+ */
+static
+int
+test_block_not_zeros_t(char *buf, size_t bytes)
+{
+	size_t i;
+
+	for (i = 0; i < bytes; i += sizeof(long)) {
+		if (*(long *)(buf + i) != 0)
+			return (1);
+	}
+	return (0);
+}
+
+/*
+ * Function to "write" a block that contains only zeros.
+ */
+static
+void
+zero_write_t(struct buf *bp, hammer2_trans_t *trans, hammer2_inode_t *ip,
+	hammer2_inode_data_t *ipdata, hammer2_chain_t **parentp,
+	hammer2_key_t lbase)
+{
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+
+	parent = hammer2_chain_lookup_init(*parentp, 0);
+
+	chain = hammer2_chain_lookup(&parent, lbase, lbase,
+				     HAMMER2_LOOKUP_NODATA);
+	if (chain) {
+		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
+			bzero(chain->data->ipdata.u.data,
+			      HAMMER2_EMBEDDED_BYTES);
+		} else {
+			hammer2_chain_delete(trans, chain, 0);
+		}
+		hammer2_chain_unlock(chain);
+	}
+	hammer2_chain_lookup_done(parent);
+}
+
+/*
+ * Function to write the data as it is, without performing any sort of
+ * compression. This function is used in path without compression and
+ * default zero-checking path.
+ */
+static
+void
+hammer2_write_bp_t(hammer2_chain_t *chain, struct buf *bp, int ioflag,
+				int pblksize)
+{
+	hammer2_off_t pbase;
+	hammer2_off_t pmask;
+	hammer2_off_t peof;
+	struct buf *dbp;
+	size_t boff;
+	size_t psize;
+	int error;
+	int temp_check = HAMMER2_DEC_CHECK(chain->bref.methods);
+
+	KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
+
+	switch(chain->bref.type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		KKASSERT(chain->data->ipdata.op_flags &
+			 HAMMER2_OPFLAG_DIRECTDATA);
+		KKASSERT(bp->b_loffset == 0);
+		bcopy(bp->b_data, chain->data->ipdata.u.data,
+		      HAMMER2_EMBEDDED_BYTES);
+		break;
+	case HAMMER2_BREF_TYPE_DATA:
+		psize = hammer2_devblksize(chain->bytes);
+		pmask = (hammer2_off_t)psize - 1;
+		pbase = chain->bref.data_off & ~pmask;
+		boff = chain->bref.data_off & (HAMMER2_OFF_MASK & pmask);
+		peof = (pbase + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
+
+		if (psize == pblksize) {
+			dbp = getblk(chain->hmp->devvp, pbase,
+				psize, 0, 0);
+		} else {
+			error = bread(chain->hmp->devvp, pbase, psize, &dbp);
+			if (error) {
+				kprintf("WRITE PATH: An error ocurred while bread().\n");
+				break;
+			}
+		}
+
+		chain->bref.methods = HAMMER2_ENC_COMP(HAMMER2_COMP_NONE) +
+				      HAMMER2_ENC_CHECK(temp_check);
+		bcopy(bp->b_data, dbp->b_data + boff, chain->bytes);
+		
+		/*
+		 * Device buffer is now valid, chain is no
+		 * longer in the initial state.
+	     */
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
+
+		if (ioflag & IO_SYNC) {
+			/*
+			 * Synchronous I/O requested.
+			 */
+			bwrite(dbp);
+		/*
+		} else if ((ioflag & IO_DIRECT) && loff + n == pblksize) {
+			bdwrite(dbp);
+		*/
+		} else if (ioflag & IO_ASYNC) {
+			bawrite(dbp);
+		} else if (hammer2_cluster_enable) {
+			cluster_write(dbp, peof, HAMMER2_PBUFSIZE, 4/*XXX*/);
+		} else {
+			bdwrite(dbp);
+		}
+		break;
+	default:
+		panic("hammer2_write_bp_t: bad chain type %d\n",
+		      chain->bref.type);
+		/* NOT REACHED */
+		break;
+	}
 }
 
 static
@@ -623,9 +1314,10 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	 * to synchronize against HAMMER2_CHAIN_MODIFIED_AUX.
 	 */
 	hammer2_voldata_lock(hmp);
-	if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
-				 HAMMER2_CHAIN_SUBMODIFIED)) {
+	if ((hmp->vchain.flags | hmp->fchain.flags) &
+	    (HAMMER2_CHAIN_MODIFIED | HAMMER2_CHAIN_SUBMODIFIED)) {
 		hammer2_voldata_unlock(hmp, 0);
+		hammer2_vfs_sync(mp, MNT_WAIT);
 		hammer2_vfs_sync(mp, MNT_WAIT);
 	} else {
 		hammer2_voldata_unlock(hmp, 0);
@@ -740,6 +1432,15 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	kfree(cluster, M_HAMMER2);
 	kfree(pmp, M_HAMMER2);
 	if (hmp->pmp_count == 0) {
+		mtx_lock(&hmp->wthread_mtx);
+		hmp->wthread_destroy = 1;
+		wakeup(&hmp->wthread_bioq);
+		while (hmp->wthread_destroy != -1) {
+			mtxsleep(&hmp->wthread_destroy, &hmp->wthread_mtx, 0,
+				"umount-sleep",	0);
+		}
+		mtx_unlock(&hmp->wthread_mtx);
+		
 		TAILQ_REMOVE(&hammer2_mntlist, hmp, mntentry);
 		kmalloc_destroy(&hmp->mchain);
 		kfree(hmp, M_HAMMER2);
@@ -859,7 +1560,15 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 
 	pmp = MPTOPMP(mp);
 
-	flags = VMSC_GETVP;
+	/*
+	 * We can't acquire locks on existing vnodes while in a transaction
+	 * without risking a deadlock.  This assumes that vfsync() can be
+	 * called without the vnode locked (which it can in DragonFly).
+	 * Otherwise we'd have to implement a multi-pass or flag the lock
+	 * failures and retry.
+	 */
+	/*flags = VMSC_GETVP;*/
+	flags = 0;
 	if (waitfor & MNT_LAZY)
 		flags |= VMSC_ONEPASS;
 
@@ -895,7 +1604,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	}
 	hammer2_chain_unlock(&hmp->vchain);
 
-#if 0
+#if 1
 	/*
 	 * Rollup flush.  The fsyncs above basically just flushed
 	 * data blocks.  The flush below gets all the meta-data.
@@ -1009,11 +1718,14 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	/*
 	 * VOP_FSYNC will start a new transaction so replicate some code
 	 * here to do it inline (see hammer2_vop_fsync()).
+	 *
+	 * WARNING: The vfsync interacts with the buffer cache and might
+	 *          block, we can't hold the inode lock at that time.
 	 */
-	parent = hammer2_inode_lock_ex(ip);
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	if (ip->vp)
 		vfsync(ip->vp, MNT_NOWAIT, 1, NULL, NULL);
+	parent = hammer2_inode_lock_ex(ip);
 	hammer2_chain_flush(&info->trans, parent);
 	hammer2_inode_unlock_ex(ip, parent);
 	error = 0;

@@ -467,7 +467,9 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_DEC_COMP(n)		((n) & 15)
 
 #define HAMMER2_COMP_NONE		0
-#define HAMMER2_COMP_AUTOZERO		1
+#define HAMMER2_COMP_AUTOZERO	1
+#define HAMMER2_COMP_LZ4		2
+#define HAMMER2_COMP_ZLIB		3
 
 
 /*

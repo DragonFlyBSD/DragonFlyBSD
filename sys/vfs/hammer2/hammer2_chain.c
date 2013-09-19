@@ -72,6 +72,7 @@ static int hammer2_indirect_optimize;	/* XXX SYSCTL */
 static hammer2_chain_t *hammer2_chain_create_indirect(
 		hammer2_trans_t *trans, hammer2_chain_t *parent,
 		hammer2_key_t key, int keybits, int for_type, int *errorp);
+static void hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop);
 static void adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
 
 /*
@@ -97,6 +98,20 @@ hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
 		return(-1);
 	if (chain1->delete_tid > chain2->delete_tid)
 		return(1);
+
+	/*
+	 * Multiple deletions in the same transaction are possible.  We
+	 * still need to detect SMP races on _get() so only do this
+	 * conditionally.
+	 */
+	if ((chain1->flags & HAMMER2_CHAIN_DELETED) &&
+	    (chain2->flags & HAMMER2_CHAIN_DELETED)) {
+		if (chain1 < chain2)
+			return(-1);
+		if (chain1 > chain2)
+			return(1);
+	}
+
 	return(0);
 }
 
@@ -150,8 +165,8 @@ hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain)
  * NOTE: Returns a referenced but unlocked (because there is no core) chain.
  */
 hammer2_chain_t *
-hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_trans_t *trans,
-		    hammer2_blockref_t *bref)
+hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
+		    hammer2_trans_t *trans, hammer2_blockref_t *bref)
 {
 	hammer2_chain_t *chain;
 	u_int bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
@@ -165,7 +180,16 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_trans_t *trans,
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		/*
+		 * Chain's are really only associated with the hmp but we maintain
+		 * a pmp association for per-mount memory tracking purposes.  The
+		 * pmp can be NULL.
+		 */
 		chain = kmalloc(sizeof(*chain), hmp->mchain, M_WAITOK | M_ZERO);
+		if (pmp) {
+			chain->pmp = pmp;
+			atomic_add_long(&pmp->inmem_chains, 1);
+		}
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 	case HAMMER2_BREF_TYPE_FREEMAP:
@@ -289,6 +313,7 @@ static
 hammer2_chain_t *
 hammer2_chain_lastdrop(hammer2_chain_t *chain)
 {
+	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
 	hammer2_chain_core_t *above;
 	hammer2_chain_core_t *core;
@@ -315,6 +340,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	}
 
 	hmp = chain->hmp;
+	pmp = chain->pmp;	/* can be NULL */
 	rdrop1 = NULL;
 	rdrop2 = NULL;
 
@@ -419,10 +445,41 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	KKASSERT((chain->flags & (HAMMER2_CHAIN_MOVED |
 				  HAMMER2_CHAIN_MODIFIED)) == 0);
 
+	hammer2_chain_drop_data(chain, 1);
+
+	KKASSERT(chain->bp == NULL);
+	chain->hmp = NULL;
+
+	if (chain->flags & HAMMER2_CHAIN_ALLOCATED) {
+		chain->flags &= ~HAMMER2_CHAIN_ALLOCATED;
+		kfree(chain, hmp->mchain);
+		if (pmp) {
+			atomic_add_long(&pmp->inmem_chains, -1);
+			hammer2_chain_memory_wakeup(pmp);
+		}
+	}
+	if (rdrop1 && rdrop2) {
+		hammer2_chain_drop(rdrop1);
+		return(rdrop2);
+	} else if (rdrop1)
+		return(rdrop1);
+	else
+		return(rdrop2);
+}
+
+/*
+ * On either last lock release or last drop
+ */
+static void
+hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
+{
+	hammer2_mount_t *hmp = chain->hmp;
+
 	switch(chain->bref.type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
 	case HAMMER2_BREF_TYPE_FREEMAP:
-		chain->data = NULL;
+		if (lastdrop)
+			chain->data = NULL;
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		if (chain->data) {
@@ -440,22 +497,8 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		KKASSERT(chain->data == NULL);
 		break;
 	}
-
-	KKASSERT(chain->bp == NULL);
-	chain->hmp = NULL;
-
-	if (chain->flags & HAMMER2_CHAIN_ALLOCATED) {
-		chain->flags &= ~HAMMER2_CHAIN_ALLOCATED;
-		kfree(chain, hmp->mchain);
-	}
-	if (rdrop1 && rdrop2) {
-		hammer2_chain_drop(rdrop1);
-		return(rdrop2);
-	} else if (rdrop1)
-		return(rdrop1);
-	else
-		return(rdrop2);
 }
+
 
 /*
  * Ref and lock a chain element, acquiring its data with I/O if necessary,
@@ -901,6 +944,8 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	 */
 	if (chain->bp == NULL) {
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
+		if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0)
+			hammer2_chain_drop_data(chain, 0);
 		ccms_thread_unlock_upgraded(&core->cst, ostate);
 		hammer2_chain_drop(chain);
 		return;
@@ -1027,7 +1072,6 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
  */
 void
 hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
-		     struct buf *bp,
 		     hammer2_chain_t *parent, hammer2_chain_t **chainp,
 		     int nradix, int flags)
 {
@@ -1466,8 +1510,19 @@ hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
 	struct hammer2_chain_find_info *info = data;
 
 	if (info->delete_tid < child->delete_tid) {
-		info->delete_tid = child->delete_tid;
-		info->best = child;
+		/*
+		 * Normally the child with the larger delete_tid (which would
+		 * be MAX_TID if the child is not deleted) wins.  However, if
+		 * the child was deleted AND flushed (DELETED set and MOVED
+		 * no longer set), the parent bref is now valid and we don't
+		 * want the child to improperly shadow it.
+		 */
+		if ((child->flags &
+		     (HAMMER2_CHAIN_DELETED | HAMMER2_CHAIN_MOVED)) !=
+		    HAMMER2_CHAIN_DELETED) {
+			info->delete_tid = child->delete_tid;
+			info->best = child;
+		}
 	}
 	return(0);
 }
@@ -1608,7 +1663,7 @@ retry:
 	 *
 	 * The locking operation we do later will issue I/O to read it.
 	 */
-	chain = hammer2_chain_alloc(hmp, NULL, bref);
+	chain = hammer2_chain_alloc(hmp, parent->pmp, NULL, bref);
 	hammer2_chain_core_alloc(chain, NULL);	/* ref'd chain returned */
 
 	/*
@@ -2312,7 +2367,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		dummy.keybits = keybits;
 		dummy.data_off = hammer2_getradix(bytes);
 		dummy.methods = parent->bref.methods;
-		chain = hammer2_chain_alloc(hmp, trans, &dummy);
+		chain = hammer2_chain_alloc(hmp, parent->pmp, trans, &dummy);
 		hammer2_chain_core_alloc(chain, NULL);
 
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
@@ -2591,7 +2646,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 	hmp = ochain->hmp;
 	if (bref == NULL)
 		bref = &ochain->bref;
-	nchain = hammer2_chain_alloc(hmp, trans, bref);
+	nchain = hammer2_chain_alloc(hmp, ochain->pmp, trans, bref);
 	hammer2_chain_core_alloc(nchain, ochain->core);
 	bytes = (hammer2_off_t)1 <<
 		(int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
@@ -2749,6 +2804,10 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
  * locked parent.  (*chainp) is marked DELETED and atomically replaced
  * with a duplicate.  Atomicy is at the very-fine spin-lock level in
  * order to ensure that lookups do not race us.
+ *
+ * If the input chain is already marked deleted the duplicated chain will
+ * also be marked deleted.  This case can occur when an inode is removed
+ * from the filesystem but programs still have an open descriptor to it.
  */
 void
 hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
@@ -2762,12 +2821,23 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	int oflags;
 	void *odata;
 
+	ochain = *chainp;
+	oflags = ochain->flags;
+	hmp = ochain->hmp;
+
+	/*
+	 * Shortcut DELETED case if possible (only if delete_tid already matches the
+	 * transaction id).
+	 */
+	if ((oflags & HAMMER2_CHAIN_DELETED) &&
+	    ochain->delete_tid == trans->sync_tid) {
+		return;
+	}
+
 	/*
 	 * First create a duplicate of the chain structure
 	 */
-	ochain = *chainp;
-	hmp = ochain->hmp;
-	nchain = hammer2_chain_alloc(hmp, trans, &ochain->bref);    /* 1 ref */
+	nchain = hammer2_chain_alloc(hmp, ochain->pmp, trans, &ochain->bref);    /* 1 ref */
 	if (flags & HAMMER2_DELDUP_RECORE)
 		hammer2_chain_core_alloc(nchain, NULL);
 	else
@@ -2782,9 +2852,14 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	nchain->inode_count += ochain->inode_count;
 
 	/*
-	 * Lock nchain and insert into ochain's core hierarchy, marking
-	 * ochain DELETED at the same time.  Having both chains locked
-	 * is extremely important for atomicy.
+	 * Lock nchain so both chains are now locked (extremely important
+	 * for atomicy).  Mark ochain deleted and reinsert into the topology
+	 * and insert nchain all in one go.
+	 *
+	 * If the ochain is already deleted it is left alone and nchain
+	 * is inserted into the topology as a deleted chain.  This is
+	 * important because it allows ongoing operations to be executed
+	 * on a deleted inode which still has open descriptors.
 	 */
 	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER);
 	hammer2_chain_dup_fixup(ochain, nchain);
@@ -2792,17 +2867,30 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 
 	nchain->index = ochain->index;
 
+	KKASSERT(ochain->flags & HAMMER2_CHAIN_ONRBTREE);
 	spin_lock(&above->cst.spin);
-	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_ONRBTREE);
-	ochain->delete_tid = trans->sync_tid;
+	KKASSERT(ochain->flags & HAMMER2_CHAIN_ONRBTREE);
+
+	if (oflags & HAMMER2_CHAIN_DELETED) {
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_DELETED);
+		nchain->delete_tid = trans->sync_tid;
+	} else {
+		RB_REMOVE(hammer2_chain_tree, &above->rbtree, ochain);
+		ochain->delete_tid = trans->sync_tid;
+		atomic_set_int(&ochain->flags, HAMMER2_CHAIN_DELETED);
+		if (RB_INSERT(hammer2_chain_tree, &above->rbtree, ochain))
+			panic("chain_delete: reinsertion failed %p", ochain);
+	}
+
 	nchain->above = above;
-	atomic_set_int(&ochain->flags, HAMMER2_CHAIN_DELETED);
+	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_ONRBTREE);
+	if (RB_INSERT(hammer2_chain_tree, &above->rbtree, nchain)) {
+		panic("hammer2_chain_delete_duplicate: collision");
+	}
+
 	if ((ochain->flags & HAMMER2_CHAIN_MOVED) == 0) {
 		hammer2_chain_ref(ochain);
 		atomic_set_int(&ochain->flags, HAMMER2_CHAIN_MOVED);
-	}
-	if (RB_INSERT(hammer2_chain_tree, &above->rbtree, nchain)) {
-		panic("hammer2_chain_delete_duplicate: collision");
 	}
 	spin_unlock(&above->cst.spin);
 
@@ -2811,7 +2899,6 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 * case (data == NULL) to catch any extra locks that might have been
 	 * present, then transfer state to nchain.
 	 */
-	oflags = ochain->flags;
 	odata = ochain->data;
 	hammer2_chain_unlock(ochain);	/* replacing ochain */
 	KKASSERT(ochain->bref.type == HAMMER2_BREF_TYPE_INODE ||
@@ -3210,7 +3297,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	dummy.bref.data_off = hammer2_getradix(nbytes);
 	dummy.bref.methods = parent->bref.methods;
 
-	ichain = hammer2_chain_alloc(hmp, trans, &dummy.bref);
+	ichain = hammer2_chain_alloc(hmp, parent->pmp, trans, &dummy.bref);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);
 	hammer2_chain_core_alloc(ichain, NULL);
 	icore = ichain->core;
@@ -3627,13 +3714,19 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 	 * We need the spinlock on the core whos RBTREE contains chain
 	 * to protect against races.
 	 */
+	KKASSERT(chain->flags & HAMMER2_CHAIN_ONRBTREE);
 	spin_lock(&chain->above->cst.spin);
+
+	RB_REMOVE(hammer2_chain_tree, &chain->above->rbtree, chain);
+	chain->delete_tid = trans->sync_tid;
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
+	if (RB_INSERT(hammer2_chain_tree, &chain->above->rbtree, chain))
+		panic("chain_delete: reinsertion failed %p", chain);
+
 	if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
 		hammer2_chain_ref(chain);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
 	}
-	chain->delete_tid = trans->sync_tid;
 	spin_unlock(&chain->above->cst.spin);
 
 	/*
@@ -3650,6 +3743,42 @@ void
 hammer2_chain_wait(hammer2_chain_t *chain)
 {
 	tsleep(chain, 0, "chnflw", 1);
+}
+
+/*
+ * Manage excessive memory resource use for chain and related
+ * structures.
+ */
+void
+hammer2_chain_memory_wait(hammer2_pfsmount_t *pmp)
+{
+#if 0
+	while (pmp->inmem_chains > desiredvnodes / 10 &&
+	       pmp->inmem_chains > pmp->mp->mnt_nvnodelistsize * 2) {
+		kprintf("w");
+		speedup_syncer();
+		pmp->inmem_waiting = 1;
+		tsleep(&pmp->inmem_waiting, 0, "chnmem", hz);
+	}
+#endif
+#if 0
+	if (pmp->inmem_chains > desiredvnodes / 10 &&
+	    pmp->inmem_chains > pmp->mp->mnt_nvnodelistsize * 7 / 4) {
+		speedup_syncer();
+	}
+#endif
+}
+
+void
+hammer2_chain_memory_wakeup(hammer2_pfsmount_t *pmp)
+{
+	if (pmp->inmem_waiting &&
+	    (pmp->inmem_chains <= desiredvnodes / 10 ||
+	     pmp->inmem_chains <= pmp->mp->mnt_nvnodelistsize * 2)) {
+		kprintf("s");
+		pmp->inmem_waiting = 0;
+		wakeup(&pmp->inmem_waiting);
+	}
 }
 
 static

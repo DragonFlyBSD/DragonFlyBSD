@@ -140,4 +140,8 @@ typedef struct hammer2_ioc_inode hammer2_ioc_inode_t;
 #define HAMMER2IOC_INODE_GET	_IOWR('h', 86, struct hammer2_ioc_inode)
 #define HAMMER2IOC_INODE_SET	_IOWR('h', 87, struct hammer2_ioc_inode)
 
+/*#define HAMMER2IOC_INODE_COMP_SET	_IOWR('h', 88, struct hammer2_ioc_inode) //set compression mode on inode
+#define HAMMER2IOC_INODE_COMP_REC_SET	_IOWR('h', 89, struct hammer2_ioc_inode)
+#define HAMMER2IOC_INODE_COMP_REC_SET2	_IOWR('h', 90, struct hammer2_ioc_inode)*/
+
 #endif
