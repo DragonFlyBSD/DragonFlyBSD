@@ -309,6 +309,7 @@ struct hammer2_inode {
 	hammer2_tid_t		inum;
 	u_int			flags;
 	u_int			refs;		/* +vpref, +flushref */
+	uint8_t			comp_heuristic;
 	hammer2_off_t		size;
 	uint64_t		mtime;
 };

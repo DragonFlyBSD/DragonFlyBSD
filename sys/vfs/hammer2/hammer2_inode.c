@@ -590,11 +590,13 @@ retry:
 		chain = NULL;
 		++lhc;
 	}
-	if (error == 0)
-		error = hammer2_chain_create(trans, &parent, &chain, //sets chain's brefs to parent's brefs
+
+	if (error == 0) {
+		error = hammer2_chain_create(trans, &parent, &chain,
 					     lhc, 0,
 					     HAMMER2_BREF_TYPE_INODE,
 					     HAMMER2_INODE_BYTES);
+	}
 
 	/*
 	 * Cleanup and handle retries.
@@ -622,10 +624,12 @@ retry:
 	 * NOTE: Only one new inode can currently be created per
 	 *	 transaction.  If the need arises we can adjust
 	 *	 hammer2_trans_init() to allow more.
+	 *
+	 * NOTE: nipdata will have chain's blockset data.
 	 */
 	chain->data->ipdata.inum = trans->sync_tid;
 	nip = hammer2_inode_get(dip->pmp, dip, chain);
-	nipdata = &chain->data->ipdata; //nipdata will have chain's brefs data
+	nipdata = &chain->data->ipdata;
 
 	if (vap) {
 		KKASSERT(trans->inodes_created == 0);
@@ -638,9 +642,8 @@ retry:
 	}
 	
 	/* Inherit parent's inode compression mode. */
+	nip->comp_heuristic = 0;
 	nipdata->comp_algo = dipdata->comp_algo;
-	nipdata->reserved85 = 0;
-	
 	nipdata->version = HAMMER2_INODE_VERSION_ONE;
 	hammer2_update_time(&nipdata->ctime);
 	nipdata->mtime = nipdata->ctime;

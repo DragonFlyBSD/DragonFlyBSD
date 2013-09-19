@@ -213,7 +213,9 @@ hammer2_decompress_ZLIB_callback(struct bio *bio)
 		buffer = bp->b_data + loff;
 		compressed_buffer = objcache_get(cache_buffer_read, M_INTWAIT);
 		strm_decompress.next_in = buffer;
-		strm_decompress.avail_in = bp->b_bufsize - loff; //bp->b_bufsize?
+
+		/* XXX supply proper size, subset of device bp */
+		strm_decompress.avail_in = bp->b_bufsize - loff;
 		strm_decompress.next_out = compressed_buffer;
 		strm_decompress.avail_out = obp->b_bufsize;
 		
