@@ -18,6 +18,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 
 struct lvalue {
@@ -25,10 +26,15 @@ struct lvalue {
 	ssize_t store;
 };
 
+struct termios;
+
 int		yylex(void);
 void		yyerror(char *);
 void		fatal(const char *);
 void		abort_line(int);
+int		gettty(struct termios *);
+void		tstpcont(int);
+unsigned char	bc_eof(EditLine *, int);
 
 extern int	lineno;
 extern char	*yytext;
@@ -38,6 +44,7 @@ extern int	sargc;
 extern char	**sargv;
 extern char	*filename;
 extern char	*cmdexpr;
+extern struct termios ttysaved;
 extern bool	 interactive;
 extern EditLine	*el;
 extern History	*hist;

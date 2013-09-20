@@ -42,6 +42,8 @@ History		*hist;
 static char	*strbuf = NULL;
 static size_t	strbuf_sz = 1;
 static bool	dot_seen;
+static int	use_el;
+static volatile sig_atomic_t skipchars;
 
 static void	init_strbuf(void);
 static void	add_str(const char *);
@@ -240,13 +242,36 @@ add_str(const char *str)
 void
 abort_line(int sig)
 {
-	const char str[] = "[\n]P\n";
+	const char str1[] = "[\n]P\n";
+	const char str2[] = "[^C\n]P\n";
 	int save_errno;
+	const LineInfo *info;
 
 	save_errno = errno;
-	YY_FLUSH_BUFFER;	/* XXX signal race? */
-	write(STDOUT_FILENO, str, sizeof(str) - 1);
+	if (use_el) {
+		write(STDOUT_FILENO, str2, sizeof(str2) - 1);
+		info = el_line(el);
+		skipchars = info->lastchar - info->buffer;
+	} else
+		write(STDOUT_FILENO, str1, sizeof(str1) - 1);
 	errno = save_errno;
+}
+
+/*
+ * Avoid the echo of ^D by the default code of editline and take
+ * into account skipchars to make ^D work when the cursor is at start of
+ * line after a ^C.
+ */
+unsigned char
+bc_eof(EditLine *e, int ch)
+{
+	const struct lineinfo *info = el_line(e);
+
+	if (info->buffer + skipchars == info->cursor &&
+	    info->cursor == info->lastchar)
+		return (CC_EOF);
+	else
+		return (CC_ERROR);
 }
 
 int
@@ -286,8 +311,10 @@ yywrap(void)
 	} else if (fileindex == sargc) {
 		fileindex++;
 		yyin = stdin;
-		if (interactive)
+		if (interactive) {
 			signal(SIGINT, abort_line);
+			signal(SIGTSTP, tstpcont);
+		}
 		lineno = 1;
 		filename = "stdin";
 		return (0);
@@ -299,17 +326,32 @@ static int
 bc_yyinput(char *buf, int maxlen)
 {
 	int num;
-	if (yyin == stdin && interactive) {
+
+	if (el != NULL)
+		el_get(el, EL_EDITMODE, &use_el);
+
+	if (yyin == stdin && interactive && use_el) {
 		const char *bp;
+		sigset_t oset, nset;
 
 		if ((bp = el_gets(el, &num)) == NULL || num == 0)
 			return (0);
+		sigemptyset(&nset);
+		sigaddset(&nset, SIGINT);
+		sigprocmask(SIG_BLOCK, &nset, &oset);
+		if (skipchars < num) {
+			bp += skipchars;
+			num -= skipchars;
+		}
+		skipchars = 0;
+		sigprocmask(SIG_SETMASK, &oset, NULL);
 		if (num > maxlen) {
 			el_push(el, (char *)(uintptr_t)(bp) + maxlen);
 			num = maxlen;
 		}
 		memcpy(buf, bp, num);
 		history(hist, &he, H_ENTER, bp);
+		el_get(el, EL_EDITMODE, &use_el);
 	} else {
 		int c = '*';
 		for (num = 0; num < maxlen &&

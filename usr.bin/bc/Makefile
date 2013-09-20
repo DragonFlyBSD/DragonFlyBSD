@@ -1,7 +1,7 @@
 #	$OpenBSD: Makefile,v 1.2 2003/11/03 19:51:42 otto Exp $
 
 PROG=		bc
-SRCS=		bc.y scan.l y.tab.h
+SRCS=		bc.y scan.l tty.c y.tab.h
 CFLAGS+=	-I. -I${.CURDIR}
 WARNS?=		3
 

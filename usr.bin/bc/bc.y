@@ -43,7 +43,6 @@
 #include <search.h>
 #include <signal.h>
 #include <stdarg.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -947,6 +946,10 @@ yyerror(char *s)
 	if (yyin != NULL && feof(yyin))
 		n = asprintf(&str, "%s: %s:%d: %s: unexpected EOF",
 		    __progname, filename, lineno, s);
+	else if (yytext[0] == '\n')
+		n = asprintf(&str,
+		    "%s: %s:%d: %s: newline unexpected",
+		    __progname, filename, lineno, s);
 	else if (isspace(yytext[0]) || !isprint(yytext[0]))
 		n = asprintf(&str,
 		    "%s: %s:%d: %s: ascii char 0x%02x unexpected",
@@ -1061,20 +1064,22 @@ static void
 sigchld(int signo)
 {
 	pid_t pid;
-	int status;
+	int status, save_errno = errno;
 
 	for (;;) {
-		pid = waitpid(dc, &status, WCONTINUED);
+		pid = waitpid(dc, &status, WCONTINUED | WNOHANG);
 		if (pid == -1) {
 			if (errno == EINTR)
 				continue;
 			_exit(0);
-		}
+		} else if (pid == 0)
+			break;
 		if (WIFEXITED(status) || WIFSIGNALED(status))
 			_exit(0);
 		else
 			break;
 	}
+	errno = save_errno;
 }
 
 static const char *
@@ -1149,13 +1154,17 @@ main(int argc, char *argv[])
 		}
 	}
 	if (interactive) {
+		gettty(&ttysaved);
 		el = el_init("bc", stdin, stderr, stderr);
 		hist = history_init();
 		history(hist, &he, H_SETSIZE, 100);
 		el_set(el, EL_HIST, history, hist);
 		el_set(el, EL_EDITOR, "emacs");
 		el_set(el, EL_SIGNAL, 1);
+		el_set(el, EL_SIGNAL, 0);
 		el_set(el, EL_PROMPT, dummy_prompt);
+		el_set(el, EL_ADDFN, "bc_eof", "", bc_eof);
+		el_set(el, EL_BIND, "^D", "bc_eof", NULL);
 		el_source(el, NULL);
 	}
 	yywrap();
