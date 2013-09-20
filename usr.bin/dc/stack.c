@@ -1,5 +1,5 @@
 /*
- * $OpenBSD: stack.c,v 1.7 2005/03/28 17:39:20 deraadt Exp $
+ * $OpenBSD: stack.c,v 1.11 2009/10/27 23:59:37 deraadt Exp $
  * $DragonFly: src/usr.bin/dc/stack.c,v 1.2 2005/04/21 18:50:50 swildner Exp $
  */
 
@@ -95,7 +95,7 @@ stack_dup_value(const struct value *a, struct value *copy)
 	return copy;
 }
 
-int
+size_t
 stack_size(const struct stack *stack)
 {
 	return stack->sp + 1;
@@ -132,7 +132,7 @@ stack_swap(struct stack *stack)
 static void
 stack_grow(struct stack *stack)
 {
-	int new_size, i;
+	size_t new_size, i;
 
 	if (++stack->sp == stack->size) {
 		new_size = stack->size * 2 + 1;
@@ -253,7 +253,7 @@ stack_clear(struct stack *stack)
 void
 stack_print(FILE *f, const struct stack *stack, const char *prefix, u_int base)
 {
-	int i;
+	ssize_t i;
 
 	for (i = stack->sp; i >= 0; i--) {
 		print_value(f, &stack->stack[i], prefix, base);
@@ -276,7 +276,7 @@ array_new(void)
 static __inline void
 array_free(struct array *a)
 {
-	u_int i;
+	size_t i;
 
 	if (a == NULL)
 		return;
@@ -290,7 +290,7 @@ static struct array *
 array_dup(const struct array *a)
 {
 	struct array	*n;
-	u_int		i;
+	size_t	i;
 
 	if (a == NULL)
 		return NULL;
@@ -307,8 +307,10 @@ array_grow(struct array *array, size_t newsize)
 	size_t i;
 
 	array->data = brealloc(array->data, newsize * sizeof(*array->data));
-	for (i = array->size; i < newsize; i++)
+	for (i = array->size; i < newsize; i++) {
+		array->data[i].type = BCODE_NONE;
 		array->data[i].array = NULL;
+	}
 	array->size = newsize;
 }
 
@@ -317,6 +319,7 @@ array_assign(struct array *array, size_t index, const struct value *v)
 {
 	if (index >= array->size)
 		array_grow(array, index+1);
+	stack_free_value(&array->data[index]);
 	array->data[index] = *v;
 }
 

@@ -1,5 +1,5 @@
 /*
- * $OpenBSD: inout.c,v 1.12 2005/03/29 10:53:54 otto Exp $
+ * $OpenBSD: inout.c,v 1.17 2012/11/07 11:06:14 otto Exp $
  * $DragonFly: src/usr.bin/dc/inout.c,v 1.2 2005/04/21 18:50:50 swildner Exp $
  */
 
@@ -32,11 +32,11 @@ static int	lastchar;
 static int	charcount;
 
 static int	src_getcharstream(struct source *);
-static int	src_ungetcharstream(struct source *);
+static void	src_ungetcharstream(struct source *);
 static char	*src_getlinestream(struct source *);
 static void	src_freestream(struct source *);
 static int	src_getcharstring(struct source *);
-static int	src_ungetcharstring(struct source *);
+static void	src_ungetcharstring(struct source *);
 static char	*src_getlinestring(struct source *);
 static void	src_freestring(struct source *);
 static void	flushwrap(FILE *);
@@ -79,10 +79,10 @@ src_getcharstream(struct source *src)
 	return src->lastchar = getc(src->u.stream);
 }
 
-static int
+static void
 src_ungetcharstream(struct source *src)
 {
-	return ungetc(src->lastchar, src->u.stream);
+	ungetc(src->lastchar, src->u.stream);
 }
 
 static void
@@ -112,18 +112,13 @@ src_getcharstring(struct source *src)
 	}
 }
 
-static int
+static void
 src_ungetcharstring(struct source *src)
 {
-	int ch;
-
 	if (src->u.string.pos > 0) {
 		if (src->lastchar != '\0')
 			--src->u.string.pos;
-		ch = src->u.string.buf[src->u.string.pos];
-		return ch == '\0' ? EOF : ch;
-	} else
-		return EOF;
+	}
 }
 
 static char *
@@ -318,7 +313,7 @@ printnumber(FILE *f, const struct number *b, u_int base)
 		i++;
 	}
 	sz = i;
-	if (BN_cmp(b->number, &zero) < 0)
+	if (BN_is_negative(b->number))
 		putcharwrap(f, '-');
 	for (i = 0; i < sz; i++) {
 		p = stack_popstring(&stack);
@@ -334,11 +329,11 @@ printnumber(FILE *f, const struct number *b, u_int base)
 
 		putcharwrap(f, '.');
 		num_base = new_number();
-		BN_set_word(num_base->number, base);
+		bn_check(BN_set_word(num_base->number, base));
 		BN_init(&mult);
-		BN_one(&mult);
+		bn_check(BN_one(&mult));
 		BN_init(&stop);
-		BN_one(&stop);
+		bn_check(BN_one(&stop));
 		scale_number(&stop, b->scale);
 
 		i = 0;
@@ -349,17 +344,18 @@ printnumber(FILE *f, const struct number *b, u_int base)
 				putcharwrap(f, ' ');
 			i = 1;
 
-			bmul_number(fract_part, fract_part, num_base);
+			bmul_number(fract_part, fract_part, num_base,
+			    bmachine_scale());
 			split_number(fract_part, int_part->number, NULL);
 			rem = BN_get_word(int_part->number);
 			p = get_digit(rem, digits, base);
 			int_part->scale = 0;
 			normalize(int_part, fract_part->scale);
-			BN_sub(fract_part->number, fract_part->number,
-			    int_part->number);
+			bn_check(BN_sub(fract_part->number, fract_part->number,
+			    int_part->number));
 			printwrap(f, p);
 			free(p);
-			BN_mul_word(&mult, base);
+			bn_check(BN_mul_word(&mult, base));
 		}
 		free_number(num_base);
 		BN_free(&mult);
@@ -397,8 +393,8 @@ print_ascii(FILE *f, const struct number *n)
 	v = BN_dup(n->number);
 	bn_checkp(v);
 
-	if (BN_cmp(v, &zero) < 0)
-		bn_check(BN_sub(v, &zero, v));
+	if (BN_is_negative(v))
+		BN_set_negative(v, 0);
 
 	numbits = BN_num_bytes(v) * 8;
 	while (numbits > 0) {

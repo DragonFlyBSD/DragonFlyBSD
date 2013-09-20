@@ -1,5 +1,5 @@
 /*
- * $OpenBSD: dc.c,v 1.6 2004/10/18 07:49:00 otto Exp $
+ * $OpenBSD: dc.c,v 1.11 2009/10/27 23:59:37 deraadt Exp $
  * $DragonFly: src/usr.bin/dc/dc.c,v 1.2 2005/04/21 18:50:50 swildner Exp $
  */
 
@@ -19,7 +19,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/stat.h>
 #include <err.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -45,6 +47,7 @@ main(int argc, char *argv[])
 	FILE		*file;
 	struct source	src;
 	char		*buf, *p;
+	struct stat	st;
 
 	if ((buf = strdup("")) == NULL)
 		err(1, NULL);
@@ -87,6 +90,13 @@ main(int argc, char *argv[])
 		file = fopen(argv[0], "r");
 		if (file == NULL)
 			err(1, "cannot open file %s", argv[0]);
+		if (fstat(fileno(file), &st) == -1)
+			err(1, "%s", argv[0]);
+		if (S_ISDIR(st.st_mode)) {
+			errno = EISDIR;
+			err(1, "%s", argv[0]);
+		}
+
 		src_setstream(&src, file);
 		reset_bmachine(&src);
 		eval();
