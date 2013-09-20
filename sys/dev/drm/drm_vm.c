@@ -155,6 +155,8 @@ static struct vm_phys_fictitious_seg {
 } vm_phys_fictitious_segs[VM_PHYS_FICTITIOUS_NSEGS];
 static struct mtx vm_phys_fictitious_reg_mtx = MTX_INITIALIZER;
 
+MALLOC_DEFINE(M_FICT_PAGES, "", "");
+
 vm_page_t
 vm_phys_fictitious_to_vm_page(vm_paddr_t pa)
 {
@@ -186,7 +188,7 @@ vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end,
 
         page_count = (end - start) / PAGE_SIZE;
 
-        fp = kmalloc(page_count * sizeof(struct vm_page), DRM_MEM_DRIVER,
+        fp = kmalloc(page_count * sizeof(struct vm_page), M_FICT_PAGES,
                     M_WAITOK | M_ZERO);
 
         for (i = 0; i < page_count; i++) {
@@ -205,6 +207,29 @@ vm_phys_fictitious_reg_range(vm_paddr_t start, vm_paddr_t end,
                 }
         }
         mtx_unlock(&vm_phys_fictitious_reg_mtx);
-        drm_free(fp, DRM_MEM_DRIVER);
+        kfree(fp, M_FICT_PAGES);
         return (EBUSY);
+}
+
+void
+vm_phys_fictitious_unreg_range(vm_paddr_t start, vm_paddr_t end)
+{
+	struct vm_phys_fictitious_seg *seg;
+	vm_page_t fp;
+	int segind;
+
+	mtx_lock(&vm_phys_fictitious_reg_mtx);
+	for (segind = 0; segind < VM_PHYS_FICTITIOUS_NSEGS; segind++) {
+		seg = &vm_phys_fictitious_segs[segind];
+		if (seg->start == start && seg->end == end) {
+			seg->start = seg->end = 0;
+			fp = seg->first_page;
+			seg->first_page = NULL;
+			mtx_unlock(&vm_phys_fictitious_reg_mtx);
+			kfree(fp, M_FICT_PAGES);
+			return;
+		}
+	}
+	mtx_unlock(&vm_phys_fictitious_reg_mtx);
+	KASSERT(0, ("Unregistering not registered fictitious range"));
 }
