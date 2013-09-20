@@ -334,6 +334,8 @@ struct	proc {
 	struct lwkt_token p_token;	/* Token for LWP access to proc */
 	struct sem_undo	*p_sem_undo;	/* Fast semaphore tracking lookup */
 	void		*p_drv_priv;	/* scp linkage (for syscons) */
+	void		*p_vmm;
+	cpumask_t	p_vmm_cpumask;
 };
 
 #define lwp_wchan	lwp_thread->td_wchan

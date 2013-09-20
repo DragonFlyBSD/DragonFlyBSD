@@ -250,6 +250,28 @@ struct pv_entry_rb_tree;
 RB_PROTOTYPE2(pv_entry_rb_tree, pv_entry, pv_entry,
 	      pv_entry_compare, vm_pindex_t);
 
+/* Types of PMAP (regular, EPT Intel, NPT Amd) */
+#define	REGULAR_PMAP		0
+#define	EPT_PMAP		1
+
+/* Bits indexes in pmap_bits */
+#define	TYPE_IDX		0
+#define	PG_V_IDX		1
+#define	PG_RW_IDX		2
+#define	PG_U_IDX		3
+#define	PG_A_IDX		4
+#define	PG_M_IDX		5
+#define	PG_PS_IDX		6
+#define	PG_G_IDX		7
+#define	PG_W_IDX		8
+#define	PG_MANAGED_IDX		9
+#define	PG_DEVICE_IDX		10
+#define	PG_N_IDX		11
+#define	PG_BITS_SIZE		12
+
+#define PROTECTION_CODES_SIZE	8
+#define PAT_INDEX_SIZE  8
+
 struct pmap {
 	pml4_entry_t		*pm_pml4;	/* KVA of level 4 page table */
 	struct pv_entry		*pm_pmlpv;	/* PV entry for pml4 */
@@ -263,12 +285,26 @@ struct pmap {
 	int			pm_generation;	/* detect pvlist deletions */
 	struct spinlock		pm_spin;
 	struct lwkt_token	pm_token;
+	long			pm_invgen;
+	uint64_t		pmap_bits[PG_BITS_SIZE];
+	int			protection_codes[PROTECTION_CODES_SIZE];
+	pt_entry_t		pmap_cache_bits[PAT_INDEX_SIZE];
+	pt_entry_t		pmap_cache_mask;
+	int (*copyinstr)(const void *, void *, size_t, size_t *);
+	int (*copyin)(const void *, void *, size_t);
+	int (*copyout)(const void *, void *, size_t);
+	int (*fubyte)(const void *);
+	int (*subyte)(void *, int);
+	long (*fuword)(const void *);
+	int (*suword)(void *, long);
+	int (*suword32)(void *, int);
 };
 
 #define CPUMASK_LOCK		CPUMASK(SMP_MAXCPU)
 #define CPUMASK_BIT		SMP_MAXCPU	/* for 1LLU << SMP_MAXCPU */
 
 #define PMAP_FLAG_SIMPLE	0x00000001
+#define PMAP_EMULATE_AD_BITS	0x00000002
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
 
@@ -333,6 +369,11 @@ vm_paddr_t pmap_kextract(vm_offset_t);
 void	pmap_invalidate_range(pmap_t, vm_offset_t, vm_offset_t);
 void	pmap_invalidate_cache_pages(vm_page_t *pages, int count);
 void	pmap_invalidate_cache_range(vm_offset_t sva, vm_offset_t eva);
+
+static __inline int
+pmap_emulate_ad_bits(pmap_t pmap) {
+	return pmap->pm_flags & PMAP_EMULATE_AD_BITS;
+}
 
 #endif /* _KERNEL */
 

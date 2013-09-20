@@ -979,6 +979,7 @@ kern/vfs_vfsops.c	standard
 kern/kern_threads.c	standard
 kern/vfs_aio.c		standard
 kern/subr_cpu_topology.c	standard
+kern/sys_vmm.c		standard
 vfs/deadfs/dead_vnops.c	standard
 vfs/fdesc/fdesc_vfsops.c	optional fdesc
 vfs/fdesc/fdesc_vnops.c	optional fdesc

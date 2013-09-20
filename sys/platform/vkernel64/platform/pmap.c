@@ -81,6 +81,7 @@
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
 #include <sys/spinlock2.h>
+#include <vm/vm_page2.h>
 
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
@@ -95,6 +96,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #define PMAP_KEEP_PDIRS
 #ifndef PMAP_SHPGPERPROC
@@ -146,6 +148,8 @@ static uint64_t	KPDphys;	/* phys addr of kernel level 2 */
 uint64_t		KPDPphys;	/* phys addr of kernel level 3 */
 uint64_t		KPML4phys;	/* phys addr of kernel level 4 */
 
+extern int vmm_enabled;
+extern void *vkernel_stack;
 
 /*
  * Data for the pv entry allocation mechanism
@@ -376,6 +380,77 @@ allocpages(vm_paddr_t *firstaddr, int n)
 }
 
 static void
+create_dmap_vmm(vm_paddr_t *firstaddr)
+{
+	void *stack_addr;
+	int pml4_stack_index;
+	int pdp_stack_index;
+	int pd_stack_index;
+	long i,j;
+	int regs[4];
+	int amd_feature;
+
+	uint64_t KPDP_DMAP_phys = allocpages(firstaddr, NDMPML4E);
+	uint64_t KPDP_VSTACK_phys = allocpages(firstaddr, 1);
+	uint64_t KPD_VSTACK_phys = allocpages(firstaddr, 1);
+
+	pml4_entry_t *KPML4virt = (pml4_entry_t *)PHYS_TO_DMAP(KPML4phys);
+	pdp_entry_t *KPDP_DMAP_virt = (pdp_entry_t *)PHYS_TO_DMAP(KPDP_DMAP_phys);
+	pdp_entry_t *KPDP_VSTACK_virt = (pdp_entry_t *)PHYS_TO_DMAP(KPDP_VSTACK_phys);
+	pd_entry_t *KPD_VSTACK_virt = (pd_entry_t *)PHYS_TO_DMAP(KPD_VSTACK_phys);
+
+	bzero(KPDP_DMAP_virt, NDMPML4E * PAGE_SIZE);
+	bzero(KPDP_VSTACK_virt, 1 * PAGE_SIZE);
+	bzero(KPD_VSTACK_virt, 1 * PAGE_SIZE);
+
+	do_cpuid(0x80000001, regs);
+	amd_feature = regs[3];
+
+	/* Build the mappings for the first 512GB */
+	if (amd_feature & AMDID_PAGE1GB) {
+		/* In pages of 1 GB, if supported */
+		for (i = 0; i < NPDPEPG; i++) {
+			KPDP_DMAP_virt[i] = ((uint64_t)i << PDPSHIFT);
+			KPDP_DMAP_virt[i] |= VPTE_RW | VPTE_V | VPTE_PS | VPTE_U;
+		}
+	} else {
+		/* In page of 2MB, otherwise */
+		for (i = 0; i < NPDPEPG; i++) {
+			uint64_t KPD_DMAP_phys = allocpages(firstaddr, 1);
+			pd_entry_t *KPD_DMAP_virt = (pd_entry_t *)PHYS_TO_DMAP(KPD_DMAP_phys);
+
+			bzero(KPD_DMAP_virt, PAGE_SIZE);
+
+			KPDP_DMAP_virt[i] = KPD_DMAP_phys;
+			KPDP_DMAP_virt[i] |= VPTE_RW | VPTE_V | VPTE_U;
+
+			/* For each PD, we have to allocate NPTEPG PT */
+			for (j = 0; j < NPTEPG; j++) {
+				KPD_DMAP_virt[j] = (i << PDPSHIFT) | (j << PDRSHIFT);
+				KPD_DMAP_virt[j] |= VPTE_RW | VPTE_V | VPTE_PS | VPTE_U;
+			}
+		}
+	}
+
+	/* DMAP for the first 512G */
+	KPML4virt[0] = KPDP_DMAP_phys;
+	KPML4virt[0] |= VPTE_RW | VPTE_V | VPTE_U;
+
+	/* create a 2 MB map of the new stack */
+	pml4_stack_index = (uint64_t)&stack_addr >> PML4SHIFT;
+	KPML4virt[pml4_stack_index] = KPDP_VSTACK_phys;
+	KPML4virt[pml4_stack_index] |= VPTE_RW | VPTE_V | VPTE_U;
+
+	pdp_stack_index = ((uint64_t)&stack_addr & PML4MASK) >> PDPSHIFT;
+	KPDP_VSTACK_virt[pdp_stack_index] = KPD_VSTACK_phys;
+	KPDP_VSTACK_virt[pdp_stack_index] |= VPTE_RW | VPTE_V | VPTE_U;
+
+	pd_stack_index = ((uint64_t)&stack_addr & PDPMASK) >> PDRSHIFT;
+	KPD_VSTACK_virt[pd_stack_index] = (uint64_t) vkernel_stack;
+	KPD_VSTACK_virt[pd_stack_index] |= VPTE_RW | VPTE_V | VPTE_U | VPTE_PS;
+}
+
+static void
 create_pagetables(vm_paddr_t *firstaddr, int64_t ptov_offset)
 {
 	int i;
@@ -385,6 +460,7 @@ create_pagetables(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	pt_entry_t *KPTvirt;
 	int kpml4i = pmap_pml4e_index(ptov_offset);
 	int kpdpi = pmap_pdpe_index(ptov_offset);
+	int kpdi = pmap_pde_index(ptov_offset);
 
 	/*
          * Calculate NKPT - number of kernel page tables.  We have to
@@ -394,7 +470,6 @@ create_pagetables(vm_paddr_t *firstaddr, int64_t ptov_offset)
          * Maxmem is in pages.
          */
         nkpt = (Maxmem * (sizeof(struct vm_page) * 2) + MSGBUF_SIZE) / NBPDR;
-
 	/*
 	 * Allocate pages
 	 */
@@ -415,23 +490,23 @@ create_pagetables(vm_paddr_t *firstaddr, int64_t ptov_offset)
 
 	/* Now map the page tables at their location within PTmap */
 	for (i = 0; i < nkpt; i++) {
-		KPDvirt[i] = KPTphys + (i << PAGE_SHIFT);
-		KPDvirt[i] |= VPTE_R | VPTE_W | VPTE_V;
+		KPDvirt[i + kpdi] = KPTphys + (i << PAGE_SHIFT);
+		KPDvirt[i + kpdi] |= VPTE_RW | VPTE_V | VPTE_U;
 	}
 
 	/* And connect up the PD to the PDP */
 	for (i = 0; i < NKPDPE; i++) {
 		KPDPvirt[i + kpdpi] = KPDphys + (i << PAGE_SHIFT);
-		KPDPvirt[i + kpdpi] |= VPTE_R | VPTE_W | VPTE_V;
+		KPDPvirt[i + kpdpi] |= VPTE_RW | VPTE_V | VPTE_U;
 	}
 
 	/* And recursively map PML4 to itself in order to get PTmap */
 	KPML4virt[PML4PML4I] = KPML4phys;
-	KPML4virt[PML4PML4I] |= VPTE_R | VPTE_W | VPTE_V;
+	KPML4virt[PML4PML4I] |= VPTE_RW | VPTE_V | VPTE_U;
 
 	/* Connect the KVA slot up to the PML4 */
 	KPML4virt[kpml4i] = KPDPphys;
-	KPML4virt[kpml4i] |= VPTE_R | VPTE_W | VPTE_V;
+	KPML4virt[kpml4i] |= VPTE_RW | VPTE_V | VPTE_U;
 }
 
 /*
@@ -465,7 +540,12 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	 */
 	create_pagetables(firstaddr, ptov_offset);
 
-	virtual_start = KvaStart + *firstaddr;
+	/* Create the DMAP for the VMM */
+	if(vmm_enabled) {
+		create_dmap_vmm(firstaddr);
+	}
+
+	virtual_start = KvaStart;
 	virtual_end = KvaEnd;
 
 	/*
@@ -483,7 +563,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	 */
 	kernel_pmap.pm_pml4 = (pml4_entry_t *)PHYS_TO_DMAP(KPML4phys);
 	kernel_pmap.pm_count = 1;
-	kernel_pmap.pm_active = (cpumask_t)-1;	/* don't allow deactivation */
+	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;	/* don't allow deactivation */
 	kernel_pmap.pm_pteobj = &kernel_object;
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	TAILQ_INIT(&kernel_pmap.pm_pvlist_free);
@@ -499,7 +579,6 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 
 	va = virtual_start;
 	pte = pmap_pte(&kernel_pmap, va);
-
 	/*
 	 * CMAP1/CMAP2 are used for zeroing and copying pages.
 	 */
@@ -528,8 +607,10 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	virtual_start = va;
 
 	*CMAP1 = 0;
+	/* Not ready to do an invltlb yet for VMM*/
+	if (!vmm_enabled)
+		cpu_invltlb();
 
-	cpu_invltlb();
 }
 
 /*
@@ -655,6 +736,17 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 }
 
 /*
+ * Similar to extract but checks protections, SMP-friendly short-cut for
+ * vm_fault_page[_quick]().
+ */
+vm_page_t
+pmap_fault_page_quick(pmap_t pmap __unused, vm_offset_t vaddr __unused,
+		      vm_prot_t prot __unused)
+{
+	return(NULL);
+}
+
+/*
  *	Routine:	pmap_kextract
  *	Function:
  *		Extract the physical page address associated
@@ -716,7 +808,7 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	pt_entry_t npte;
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
-	npte = pa | VPTE_R | VPTE_W | VPTE_V;
+	npte = pa | VPTE_RW | VPTE_V | VPTE_U;
 	pte = vtopte(va);
 	if (*pte & VPTE_V)
 		pmap_inval_pte(pte, &kernel_pmap, va);
@@ -739,24 +831,12 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
-	npte = (vpte_t)pa | VPTE_R | VPTE_W | VPTE_V;
+	npte = (vpte_t)pa | VPTE_RW | VPTE_V | VPTE_U;
 	pte = vtopte(va);
+
 	if (*pte & VPTE_V)
 		pmap_inval_pte_quick(pte, &kernel_pmap, va);
 	*pte = npte;
-	//cpu_invlpg((void *)va);
-}
-
-/*
- * Synchronize a kvm mapping originally made for the private use on
- * some other cpu so it can be used on all cpus.
- *
- * XXX add MADV_RESYNC to improve performance.
- */
-void
-pmap_kenter_sync(vm_offset_t va)
-{
-	madvise((void *)va, PAGE_SIZE, MADV_INVAL);
 }
 
 /*
@@ -769,7 +849,7 @@ pmap_kenter_sync(vm_offset_t va)
 void
 pmap_kenter_sync_quick(vm_offset_t va)
 {
-	madvise((void *)va, PAGE_SIZE, MADV_INVAL);
+	cpu_invlpg((void *)va);
 }
 
 /*
@@ -840,7 +920,7 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 		pte = vtopte(va);
 		if (*pte & VPTE_V)
 			pmap_inval_pte(pte, &kernel_pmap, va);
-		*pte = VM_PAGE_TO_PHYS(*m) | VPTE_R | VPTE_W | VPTE_V;
+		*pte = VM_PAGE_TO_PHYS(*m) | VPTE_RW | VPTE_V | VPTE_U;
 		va += PAGE_SIZE;
 		m++;
 	}
@@ -1290,8 +1370,9 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 		/* Wire up a new PDP page */
 		pml4index = ptepindex - (NUPDE + NUPDPE);
 		pml4 = &pmap->pm_pml4[pml4index];
-		*pml4 = VM_PAGE_TO_PHYS(m) | VPTE_R | VPTE_W | VPTE_V |
-			VPTE_A | VPTE_M;
+		*pml4 = VM_PAGE_TO_PHYS(m) |
+		    VPTE_RW | VPTE_V | VPTE_U |
+		    VPTE_A | VPTE_M;
 	} else if (ptepindex >= NUPDE) {
 		vm_pindex_t pml4index;
 		vm_pindex_t pdpindex;
@@ -1321,7 +1402,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 		/* Now find the pdp page */
 		pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
 		KKASSERT(*pdp == 0);	/* JG DEBUG64 */
-		*pdp = VM_PAGE_TO_PHYS(m) | VPTE_R | VPTE_W | VPTE_V |
+		*pdp = VM_PAGE_TO_PHYS(m) | VPTE_RW | VPTE_V | VPTE_U |
 		       VPTE_A | VPTE_M;
 	} else {
 		vm_pindex_t pml4index;
@@ -1373,7 +1454,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex)
 		/* Now we know where the page directory page is */
 		pd = &pd[ptepindex & ((1ul << NPDEPGSHIFT) - 1)];
 		KKASSERT(*pd == 0);	/* JG DEBUG64 */
-		*pd = VM_PAGE_TO_PHYS(m) | VPTE_R | VPTE_W | VPTE_V |
+		*pd = VM_PAGE_TO_PHYS(m) | VPTE_RW | VPTE_V | VPTE_U |
 		      VPTE_A | VPTE_M;
 	}
 
@@ -1560,8 +1641,9 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 			if ((nkpg->flags & PG_ZERO) == 0)
 				pmap_zero_page(paddr);
 			vm_page_flag_clear(nkpg, PG_ZERO);
-			newpdp = (pdp_entry_t)(paddr | VPTE_V | VPTE_R |
-					       VPTE_W | VPTE_A | VPTE_M);
+			newpdp = (pdp_entry_t)(paddr |
+			    VPTE_V | VPTE_RW | VPTE_U |
+			    VPTE_A | VPTE_M);
 			*pmap_pdpe(&kernel_pmap, kernel_vm_end) = newpdp;
 			nkpt++;
 			continue; /* try again */
@@ -1590,8 +1672,9 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		ptppaddr = VM_PAGE_TO_PHYS(nkpg);
 		pmap_zero_page(ptppaddr);
 		vm_page_flag_clear(nkpg, PG_ZERO);
-		newpdir = (pd_entry_t)(ptppaddr | VPTE_V | VPTE_R |
-				       VPTE_W | VPTE_A | VPTE_M);
+		newpdir = (pd_entry_t)(ptppaddr |
+		    VPTE_V | VPTE_RW | VPTE_U |
+		    VPTE_A | VPTE_M);
 		*pmap_pde(&kernel_pmap, kernel_vm_end) = newpdir;
 		nkpt++;
 
@@ -1635,6 +1718,13 @@ cpu_vmspace_alloc(struct vmspace *vm)
 	void *rp;
 	vpte_t vpte;
 
+	/*
+	 * If VMM enable, don't do nothing, we
+	 * are able to use real page tables
+	 */
+	if (vmm_enabled)
+		return;
+
 #define USER_SIZE	(VM_MAX_USER_ADDRESS - VM_MIN_USER_ADDRESS)
 
 	if (vmspace_create(&vm->vm_pmap, 0, NULL) < 0)
@@ -1648,7 +1738,7 @@ cpu_vmspace_alloc(struct vmspace *vm)
 		panic("vmspace_mmap: failed");
 	vmspace_mcontrol(&vm->vm_pmap, VM_MIN_USER_ADDRESS, USER_SIZE,
 			 MADV_NOSYNC, 0);
-	vpte = VM_PAGE_TO_PHYS(vmspace_pmap(vm)->pm_pdirm) | VPTE_R | VPTE_W | VPTE_V;
+	vpte = VM_PAGE_TO_PHYS(vmspace_pmap(vm)->pm_pdirm) | VPTE_RW | VPTE_V | VPTE_U;
 	r = vmspace_mcontrol(&vm->vm_pmap, VM_MIN_USER_ADDRESS, USER_SIZE,
 			     MADV_SETMAP, vpte);
 	if (r < 0)
@@ -1658,6 +1748,13 @@ cpu_vmspace_alloc(struct vmspace *vm)
 void
 cpu_vmspace_free(struct vmspace *vm)
 {
+	/*
+	 * If VMM enable, don't do nothing, we
+	 * are able to use real page tables
+	 */
+	if (vmm_enabled)
+		return;
+
 	if (vmspace_destroy(&vm->vm_pmap) < 0)
 		panic("vmspace_destroy() failed");
 }
@@ -2312,11 +2409,11 @@ validate:
 	/*
 	 * Now validate mapping with desired protection/wiring.
 	 */
-	newpte = (pt_entry_t) (pa | pte_prot(pmap, prot) | VPTE_V);
+	newpte = (pt_entry_t) (pa | pte_prot(pmap, prot) | VPTE_V | VPTE_U);
 
 	if (wired)
 		newpte |= VPTE_WIRED;
-	if (pmap != &kernel_pmap)
+//	if (pmap != &kernel_pmap)
 		newpte |= VPTE_U;
 
 	/*
@@ -2328,9 +2425,9 @@ validate:
 	 * XXX should we synchronize RO->RW changes to avoid another
 	 * fault?
 	 */
-	if ((origpte & ~(VPTE_W|VPTE_M|VPTE_A)) != newpte) {
+	if ((origpte & ~(VPTE_RW|VPTE_M|VPTE_A)) != newpte) {
 		*pte = newpte | VPTE_A;
-		if (newpte & VPTE_W)
+		if (newpte & VPTE_RW)
 			vm_page_flag_set(m, PG_WRITEABLE);
 	}
 	KKASSERT((newpte & VPTE_MANAGED) == 0 || (m->flags & PG_MAPPED));
@@ -2926,7 +3023,7 @@ pmap_clearbit(vm_page_t m, int bit)
 		/*
 		 * don't write protect pager mappings
 		 */
-		if (bit == VPTE_W) {
+		if (bit == VPTE_RW) {
 			if (!pmap_track_modified(pv->pv_pmap, pv->pv_va))
 				continue;
 		}
@@ -2941,7 +3038,7 @@ pmap_clearbit(vm_page_t m, int bit)
 		/*
 		 * Careful here.  We can use a locked bus instruction to
 		 * clear VPTE_A or VPTE_M safely but we need to synchronize
-		 * with the target cpus when we mess with VPTE_W.
+		 * with the target cpus when we mess with VPTE_RW.
 		 *
 		 * On virtual kernels we must force a new fault-on-write
 		 * in the real kernel if we clear the Modify bit ourselves,
@@ -2950,10 +3047,10 @@ pmap_clearbit(vm_page_t m, int bit)
 		 */
 		pte = pmap_pte(pv->pv_pmap, pv->pv_va);
 		if (*pte & bit) {
-			if (bit == VPTE_W) {
+			if (bit == VPTE_RW) {
 				/*
 				 * We must also clear VPTE_M when clearing
-				 * VPTE_W
+				 * VPTE_RW
 				 */
 				pbits = pmap_clean_pte(pte, pv->pv_pmap,
 						       pv->pv_va);
@@ -2972,7 +3069,7 @@ pmap_clearbit(vm_page_t m, int bit)
 				 * the fault to us.
 				 */
 				atomic_clear_long(pte, VPTE_M);
-			} else if ((bit & (VPTE_W|VPTE_M)) == (VPTE_W|VPTE_M)) {
+			} else if ((bit & (VPTE_RW|VPTE_M)) == (VPTE_RW|VPTE_M)) {
 				/*
 				 * We've been asked to clear W & M, I guess
 				 * the caller doesn't want us to update
@@ -3003,7 +3100,7 @@ pmap_page_protect(vm_page_t m, vm_prot_t prot)
 	if ((prot & VM_PROT_WRITE) == 0) {
 		lwkt_gettoken(&vm_token);
 		if (prot & (VM_PROT_READ | VM_PROT_EXECUTE)) {
-			pmap_clearbit(m, VPTE_W);
+			pmap_clearbit(m, VPTE_RW);
 			vm_page_flag_clear(m, PG_WRITEABLE);
 		} else {
 			pmap_remove_all(m);
@@ -3129,11 +3226,11 @@ i386_protection_init(void)
 	kp = protection_codes;
 	for (prot = 0; prot < 8; prot++) {
 		if (prot & VM_PROT_READ)
-			*kp |= VPTE_R;
+			*kp |= 0; /* if it's VALID is readeable */
 		if (prot & VM_PROT_WRITE)
-			*kp |= VPTE_W;
+			*kp |= VPTE_RW;
 		if (prot & VM_PROT_EXECUTE)
-			*kp |= VPTE_X;
+			*kp |= 0; /* if it's VALID is executable */
 		++kp;
 	}
 }
@@ -3251,23 +3348,40 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 	struct vmspace *oldvm;
 	struct pmap *pmap;
 
-	crit_enter();
 	oldvm = lp->lwp_vmspace;
-
-	if (oldvm != newvm) {
-		lp->lwp_vmspace = newvm;
-		if (curthread->td_lwp == lp) {
-			pmap = vmspace_pmap(newvm);
-			atomic_set_cpumask(&pmap->pm_active, CPUMASK(mycpu->gd_cpuid));
+	if (oldvm == newvm)
+		return;
+	lp->lwp_vmspace = newvm;
+	if (curthread->td_lwp != lp)
+		return;
+	/*
+	 * NOTE: We don't have to worry about the CPULOCK here because
+	 *	 the virtual kernel doesn't call this function when VMM
+	 *	 is enabled (and depends on the host kernel when it isn't).
+	 */
+	crit_enter();
+	pmap = vmspace_pmap(newvm);
+	atomic_set_cpumask(&pmap->pm_active, CPUMASK(mycpu->gd_cpuid));
 #if defined(SWTCH_OPTIM_STATS)
-			tlb_flush_count++;
+	tlb_flush_count++;
 #endif
-			pmap = vmspace_pmap(oldvm);
-			atomic_clear_cpumask(&pmap->pm_active,
-					     CPUMASK(mycpu->gd_cpuid));
-		}
-	}
+	pmap = vmspace_pmap(oldvm);
+	atomic_clear_cpumask(&pmap->pm_active, CPUMASK(mycpu->gd_cpuid));
 	crit_exit();
+}
+
+/*
+ * The swtch code tried to switch in a heavy weight process whos pmap
+ * is locked by another cpu.  We have to wait for the lock to clear before
+ * the pmap can be used.
+ */
+void
+pmap_interlock_wait (struct vmspace *vm)
+{
+	pmap_t pmap = vmspace_pmap(vm);
+
+	while (pmap->pm_active & CPUMASK_LOCK)
+		pthread_yield();
 }
 
 vm_offset_t

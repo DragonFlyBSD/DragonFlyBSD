@@ -50,39 +50,40 @@
  * of the fields not present here and there, depending on a lot of things.
  */
 				/* ---- Intel Nomenclature ---- */
-#define	PG_V		0x001	/* P	Valid			*/
-#define PG_RW		0x002	/* R/W	Read/Write		*/
-#define PG_U		0x004	/* U/S  User/Supervisor		*/
-#define	PG_NC_PWT	0x008	/* PWT	Write through		*/
-#define	PG_NC_PCD	0x010	/* PCD	Cache disable		*/
-#define PG_A		0x020	/* A	Accessed		*/
-#define	PG_M		0x040	/* D	Dirty			*/
-#define	PG_PS		0x080	/* PS	Page size (0=4k,1=2M)	*/
-#define	PG_PTE_PAT	0x080	/* PAT	PAT index		*/
-#define	PG_G		0x100	/* G	Global			*/
-#define	PG_AVAIL1	0x200	/*    /	Available for system	*/
-#define	PG_AVAIL2	0x400	/*   <	programmers use		*/
-#define	PG_AVAIL3	0x800	/*    \				*/
-#define	PG_PDE_PAT	0x1000	/* PAT	PAT index		*/
-#define	PG_NX		(1ul<<63) /* No-execute */
+#define	X86_PG_V		0x001	/* P	Valid			*/
+#define	X86_PG_RW		0x002	/* R/W	Read/Write		*/
+#define	X86_PG_U		0x004	/* U/S  User/Supervisor		*/
+#define	X86_PG_NC_PWT		0x008	/* PWT	Write through		*/
+#define	X86_PG_NC_PCD		0x010	/* PCD	Cache disable		*/
+#define	X86_PG_A		0x020	/* A	Accessed		*/
+#define	X86_PG_M		0x040	/* D	Dirty			*/
+#define	X86_PG_PS		0x080	/* PS	Page size (0=4k,1=2M)	*/
+#define	X86_PG_PTE_PAT		0x080	/* PAT	PAT index		*/
+#define	X86_PG_G		0x100	/* G	Global			*/
+#define	X86_PG_AVAIL1		0x200	/*    /	Available for system	*/
+#define	X86_PG_AVAIL2		0x400	/*   <	programmers use		*/
+#define	X86_PG_AVAIL3		0x800	/*    \				*/
+#define	X86_PG_PDE_PAT		0x1000	/* PAT	PAT index		*/
+#define	X86_PG_NX		(1ul<<63) /* No-execute */
 
 
 /* Our various interpretations of the above */
-#define PG_W		PG_AVAIL1	/* "Wired" pseudoflag */
-#define	PG_MANAGED	PG_AVAIL2
-#define	PG_DEVICE	PG_AVAIL3
+//#define PG_W		PG_AVAIL1	/* "Wired" pseudoflag */
+//#define	PG_MANAGED	PG_AVAIL2
+//#define	PG_DEVICE	PG_AVAIL3
 #define	PG_FRAME	(0x000ffffffffff000ul)
 #define	PG_PS_FRAME	(0x000fffffffe00000ul)
-#define	PG_PROT		(PG_RW|PG_U)	/* all protection bits . */
-#define PG_N		(PG_NC_PWT|PG_NC_PCD)	/* Non-cacheable */
+//#define	PG_PROT		(PG_RW|PG_U)	/* all protection bits . */
+//#define PG_N		(PG_NC_PWT|PG_NC_PCD)	/* Non-cacheable */
 
 /*
  * Promotion to a 2MB (PDE) page mapping requires that the corresponding 4KB
  * (PTE) page mappings have identical settings for the following fields:
  */
+/*
 #define	PG_PTE_PROMOTE	(PG_NX | PG_MANAGED | PG_W | PG_G | PG_PTE_PAT | \
 	    PG_M | PG_A | PG_NC_PCD | PG_NC_PWT | PG_U | PG_RW | PG_V)
-
+*/
 /*
  * Page Protection Exception bits
  */

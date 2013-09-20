@@ -121,6 +121,7 @@
 #include <machine/cpu.h>
 
 #include <sys/thread2.h>
+#include <vm/vm_page2.h>
 
 #define btokup(z)	(&pmap_kvtom((vm_offset_t)(z))->ku_pagecnt)
 

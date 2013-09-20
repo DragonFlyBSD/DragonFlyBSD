@@ -100,6 +100,8 @@ void	cpu_kthread_restore (void);/* cannot be called from C */
 thread_t cpu_exit_switch (struct thread *next);
 
 void	syscall2 (struct trapframe *);
+void	trap_handle_userenter(struct thread *);
+void	trap_handle_userexit(struct trapframe *, int);
 void    minidumpsys(struct dumperinfo *);
 void	dump_add_page(vm_paddr_t);
 void	dump_drop_page(vm_paddr_t);

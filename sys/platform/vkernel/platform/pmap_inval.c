@@ -136,15 +136,15 @@ pmap_inval_pde_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 
 /*
  * These carefully handle interactions with other cpus and return
- * the original vpte.  Clearing VPTE_W prevents us from racing the
+ * the original vpte.  Clearing VPTE_RW prevents us from racing the
  * setting of VPTE_M, allowing us to invalidate the tlb (the real cpu's
  * pmap) and get good status for VPTE_M.
  *
  * When messing with page directory entries we have to clear the cpu
  * mask to force a reload of the kernel's page table mapping cache.
  *
- * clean: clear VPTE_M and VPTE_W
- * setro: clear VPTE_W
+ * clean: clear VPTE_M and VPTE_RW
+ * setro: clear VPTE_RW
  * load&clear: clear entire field
  */
 vpte_t
@@ -154,10 +154,10 @@ pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		atomic_clear_long(ptep, VPTE_W);
+		atomic_clear_long(ptep, VPTE_RW);
 		pmap_inval_cpu(pmap, va, PAGE_SIZE);
 		pte = *ptep;
-		atomic_clear_long(ptep, VPTE_W|VPTE_M);
+		atomic_clear_long(ptep, VPTE_RW|VPTE_M);
 	}
 	return(pte);
 }
@@ -169,10 +169,10 @@ pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		atomic_clear_long(ptep, VPTE_W);
+		atomic_clear_long(ptep, VPTE_RW);
 		pmap_inval_cpu(pmap, va, SEG_SIZE);
 		pte = *ptep;
-		atomic_clear_long(ptep, VPTE_W|VPTE_M);
+		atomic_clear_long(ptep, VPTE_RW|VPTE_M);
 		pmap->pm_cpucachemask = 0;
 	}
 	return(pte);
@@ -192,7 +192,7 @@ pmap_setro_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	pte = *ptep;
 	if (pte & VPTE_V) {
 		pte = *ptep;
-		atomic_clear_long(ptep, VPTE_W);
+		atomic_clear_long(ptep, VPTE_RW);
 		pmap_inval_cpu(pmap, va, PAGE_SIZE);
 		pte |= *ptep & VPTE_M;
 	}
@@ -214,7 +214,7 @@ pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
 	pte = *ptep;
 	if (pte & VPTE_V) {
 		pte = *ptep;
-		atomic_clear_long(ptep, VPTE_R|VPTE_W);
+		atomic_clear_long(ptep, VPTE_RW);
 		pmap_inval_cpu(pmap, va, PAGE_SIZE);
 		pte |= *ptep & (VPTE_A | VPTE_M);
 	}

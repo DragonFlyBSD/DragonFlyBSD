@@ -1475,7 +1475,10 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			/*
 			 * map page into kernel: valid, read/write,non-cacheable
 			 */
-			*pte = pa | PG_V | PG_RW | PG_N;
+			*pte = pa |
+			    kernel_pmap.pmap_bits[PG_V_IDX] |
+			    kernel_pmap.pmap_bits[PG_RW_IDX] |
+			    kernel_pmap.pmap_bits[PG_N_IDX];
 			cpu_invltlb();
 
 			tmp = *ptr;

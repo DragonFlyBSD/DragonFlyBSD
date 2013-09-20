@@ -258,7 +258,7 @@ _kvm_vatop(kvm_t *kd, u_long va, off_t *pa)
 
 	pml4eindex = (va >> PML4SHIFT) & (NPML4EPG - 1);
 	pml4e = vm->PML4[pml4eindex];
-	if (((u_long)pml4e & PG_V) == 0) {
+	if (((u_long)pml4e & X86_PG_V) == 0) {
 		_kvm_err(kd, kd->program, "_kvm_vatop: pml4e not valid");
 		goto invalid;
 	}
@@ -280,7 +280,7 @@ _kvm_vatop(kvm_t *kd, u_long va, off_t *pa)
 		_kvm_syserr(kd, kd->program, "_kvm_vatop: read pdpe");
 		goto invalid;
 	}
-	if (((u_long)pdpe & PG_V) == 0) {
+	if (((u_long)pdpe & X86_PG_V) == 0) {
 		_kvm_err(kd, kd->program, "_kvm_vatop: pdpe not valid");
 		goto invalid;
 	}
@@ -301,12 +301,12 @@ _kvm_vatop(kvm_t *kd, u_long va, off_t *pa)
 		_kvm_syserr(kd, kd->program, "_kvm_vatop: read pde");
 		goto invalid;
 	}
-	if (((u_long)pde & PG_V) == 0) {
+	if (((u_long)pde & X86_PG_V) == 0) {
 		_kvm_err(kd, kd->program, "_kvm_vatop: pde not valid");
 		goto invalid;
 	}
 
-	if ((u_long)pde & PG_PS) {
+	if ((u_long)pde & X86_PG_PS) {
 	      /*
 	       * No final-level page table; ptd describes one 2MB page.
 	       */
@@ -339,7 +339,7 @@ _kvm_vatop(kvm_t *kd, u_long va, off_t *pa)
 		_kvm_syserr(kd, kd->program, "_kvm_vatop: read");
 		goto invalid;
 	}
-	if (((u_long)pte & PG_V) == 0) {
+	if (((u_long)pte & X86_PG_V) == 0) {
 		_kvm_err(kd, kd->program, "_kvm_vatop: pte not valid");
 		goto invalid;
 	}

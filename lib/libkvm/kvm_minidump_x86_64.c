@@ -209,7 +209,7 @@ _kvm_minidump_vatop(kvm_t *kd, u_long va, off_t *pa)
 	if (va >= vm->hdr.kernbase) {
 		pteindex = (va - vm->hdr.kernbase) >> PAGE_SHIFT;
 		pte = vm->ptemap[pteindex];
-		if (((u_long)pte & PG_V) == 0) {
+		if (((u_long)pte & X86_PG_V) == 0) {
 			_kvm_err(kd, kd->program, "_kvm_vatop: pte not valid");
 			goto invalid;
 		}

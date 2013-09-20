@@ -564,7 +564,7 @@ init_kern_memory(void)
 	 */
 	lseek(MemImageFd, 0L, 0);
 	for (i = 0; i < KERNEL_KVA_SIZE / SEG_SIZE; ++i) {
-		pte = ((i + 1) * PAGE_SIZE) | VPTE_V | VPTE_R | VPTE_W;
+		pte = ((i + 1) * PAGE_SIZE) | VPTE_V | VPTE_RW;
 		write(MemImageFd, &pte, sizeof(pte));
 	}
 
@@ -575,7 +575,7 @@ init_kern_memory(void)
 	 */
 	lseek(MemImageFd, PAGE_SIZE, 0);
 	for (i = 0; i <= KERNEL_KVA_SIZE / SEG_SIZE * sizeof(vpte_t); ++i) {
-		pte = (i * PAGE_SIZE) | VPTE_V | VPTE_R | VPTE_W;
+		pte = (i * PAGE_SIZE) | VPTE_V | VPTE_RW;
 		write(MemImageFd, &pte, sizeof(pte));
 	}
 
@@ -599,7 +599,7 @@ init_kern_memory(void)
 	 * KernelPTA must be offset so we can do direct VA translations
 	 */
 	mcontrol(base, KERNEL_KVA_SIZE, MADV_SETMAP,
-		 0 | VPTE_R | VPTE_W | VPTE_V);
+		 0 | VPTE_RW | VPTE_V);
 	KernelPTD = (vpte_t *)base;			  /* pg directory */
 	KernelPTA = (vpte_t *)((char *)base + PAGE_SIZE); /* pg table pages */
 	KernelPTA -= KvaStart >> PAGE_SHIFT;

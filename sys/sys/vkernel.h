@@ -80,6 +80,7 @@ struct vkernel_proc {
 	RB_HEAD(vmspace_rb_tree, vmspace_entry) root;
 	struct lwkt_token token;
 	int refs;
+	register_t vkernel_cr3;
 };
 
 struct vmspace_entry {
@@ -138,16 +139,17 @@ typedef u_long	vpte_t;
 #define VPTE_PAGETABLE_SIZE	PAGE_SIZE
 
 #define VPTE_V		0x00000001	/* valid */
-#define VPTE_PS		0x00000002	/* page directory direct mapping */
-#define VPTE_R		0x00000004	/* readable */
-#define VPTE_W		0x00000008	/* writable */
-#define VPTE_X		0x00000010	/* executable */
+#define VPTE_RW		0x00000002	/* read/write */
+#define VPTE_U		0x00000004	/* user access bit if managed vmspace */
+
 #define VPTE_A		0x00000020	/* page accessed bit */
 #define VPTE_M		0x00000040	/* page modified bit */
-#define VPTE_U		0x00000080	/* user access bit if managed vmspace */
-#define VPTE_MANAGED	0x00000100	/* managed bit ?? */
-#define VPTE_G		0x00000200	/* global bit ?? */
-#define VPTE_WIRED	0x00000400	/* wired */
+#define VPTE_PS		0x00000080	/* page directory direct mapping */
+
+#define VPTE_G		0x00000100	/* global bit ?? */
+#define VPTE_WIRED	0x00000200	/* wired */
+#define VPTE_MANAGED	0x00000400	/* managed bit ?? */
+
 
 #endif
 

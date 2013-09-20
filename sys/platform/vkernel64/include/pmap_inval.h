@@ -43,6 +43,7 @@
 
 typedef struct pmap_inval_info {
     int			pir_flags;
+    vm_offset_t		pir_va;
     struct lwkt_cpusync	pir_cpusync;
 } pmap_inval_info;
 
@@ -67,6 +68,12 @@ vpte_t pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
 vpte_t pmap_setro_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
 vpte_t pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va);
 
+/* VMM used stuff */
+void pmap_inval_init(pmap_inval_info_t);
+void pmap_inval_interlock(pmap_inval_info_t, pmap_t, vm_offset_t);
+void pmap_inval_invltlb(pmap_inval_info_t);
+void pmap_inval_deinterlock(pmap_inval_info_t, pmap_t);
+void pmap_inval_done(pmap_inval_info_t);
 #endif
 
 #endif

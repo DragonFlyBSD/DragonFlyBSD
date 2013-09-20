@@ -106,10 +106,12 @@ pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
     }
     DEBUG_POP_INFO();
     KKASSERT((info->pir_flags & PIRF_CPUSYNC) == 0);
+
     info->pir_va = va;
     info->pir_flags = PIRF_CPUSYNC;
     lwkt_cpusync_init(&info->pir_cpusync, oactive, pmap_inval_callback, info);
     lwkt_cpusync_interlock(&info->pir_cpusync);
+    atomic_add_acq_long(&pmap->pm_invgen, 1);
 }
 
 void

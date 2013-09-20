@@ -185,6 +185,9 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 {
     lwkt_ipiq_t ip;
     int windex;
+#ifdef _KERNEL_VIRTUAL
+    int repeating = 0;
+#endif
     struct globaldata *gd = mycpu;
 
     logipiq(send_norm, func, arg1, arg2, gd, target);
@@ -230,6 +233,10 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
 	    lwkt_process_ipiq();
 	    cpu_pause();
+#ifdef _KERNEL_VIRTUAL
+	    if (repeating++ > 10)
+		    pthread_yield();
+#endif
 	}
 	DEBUG_POP_INFO();
 #if defined(__i386__)
@@ -283,6 +290,9 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 {
     lwkt_ipiq_t ip;
     int windex;
+#ifdef _KERNEL_VIRTUAL
+    int repeating = 0;
+#endif
     struct globaldata *gd = mycpu;
 
     KKASSERT(target != gd);
@@ -320,6 +330,10 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
 	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
 	    lwkt_process_ipiq();
 	    cpu_pause();
+#ifdef _KERNEL_VIRTUAL
+	    if (repeating++ > 10)
+		    pthread_yield();
+#endif
 	}
 	DEBUG_POP_INFO();
 #if defined(__i386__)
@@ -463,6 +477,9 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 	    int64_t time_tgt = tsc_get_target(1000000000LL);
 	    int time_loops = 10;
 	    int benice = 0;
+#ifdef _KERNEL_VIRTUAL
+	    int repeating = 0;
+#endif
 
 	    cpu_enable_intr();
 	    DEBUG_PUSH_INFO("wait_ipiq");
@@ -470,6 +487,10 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 		crit_enter();
 		lwkt_process_ipiq();
 		crit_exit();
+#ifdef _KERNEL_VIRTUAL
+		if (repeating++ > 10)
+			pthread_yield();
+#endif
 
 		/*
 		 * IPIQs must be handled within 10 seconds and this code

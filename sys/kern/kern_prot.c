@@ -94,7 +94,6 @@ int
 sys_lwp_gettid(struct lwp_gettid_args *uap)
 {
 	struct lwp *lp = curthread->td_lwp;
-
 	uap->sysmsg_result = lp->lwp_tid;
 	return (0);
 }

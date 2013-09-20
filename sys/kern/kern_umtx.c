@@ -65,6 +65,8 @@
 
 #include <vm/vm_page2.h>
 
+#include <machine/vmm.h>
+
 static void umtx_sleep_page_action_cow(vm_page_t m, vm_page_action_t action);
 
 /*
@@ -108,6 +110,13 @@ sys_umtx_sleep(struct umtx_sleep_args *uap)
 
     if (uap->timeout < 0)
 	return (EINVAL);
+
+    if (curthread->td_vmm) {
+	register_t gpa;
+	vmm_vm_get_gpa(curproc, &gpa, (register_t) uap->ptr);
+	uap->ptr = (const int *)gpa;
+    }
+
     if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))
 	return (EFAULT);
 
@@ -192,6 +201,12 @@ sys_umtx_wakeup(struct umtx_wakeup_args *uap)
     int offset;
     int error;
     void *waddr;
+
+    if (curthread->td_vmm) {
+	register_t gpa;
+	vmm_vm_get_gpa(curproc, &gpa, (register_t) uap->ptr);
+	uap->ptr = (const int *)gpa;
+    }
 
     cpu_mfence();
     if ((vm_offset_t)uap->ptr & (sizeof(int) - 1))

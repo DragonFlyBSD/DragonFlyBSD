@@ -211,10 +211,10 @@ ENTRY(fillw)
  */
 
 /*
- * copyout(from_kernel, to_user, len)  - MP SAFE
+ * std_copyout(from_kernel, to_user, len)  - MP SAFE
  *         %rdi,        %rsi,    %rdx
  */
-ENTRY(copyout)
+ENTRY(std_copyout)
 	movq	PCPU(curthread),%rax
 	movq	TD_PCB(%rax), %rax
 	movq	$copyout_fault,PCB_ONFAULT(%rax)
@@ -274,10 +274,10 @@ copyout_fault:
 	ret
 
 /*
- * copyin(from_user, to_kernel, len) - MP SAFE
+ * std_copyin(from_user, to_kernel, len) - MP SAFE
  *        %rdi,      %rsi,      %rdx
  */
-ENTRY(copyin)
+ENTRY(std_copyin)
 	movq	PCPU(curthread),%rax
 	movq	TD_PCB(%rax), %rax
 	movq	$copyin_fault,PCB_ONFAULT(%rax)
@@ -387,7 +387,7 @@ ENTRY(casuword)
  */
 
 ALTENTRY(fuword64)
-ENTRY(fuword)
+ENTRY(std_fuword)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -441,7 +441,7 @@ ENTRY(fuword16)
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
 
-ENTRY(fubyte)
+ENTRY(std_fubyte)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -473,7 +473,7 @@ fusufault:
  * Write a long
  */
 ALTENTRY(suword64)
-ENTRY(suword)
+ENTRY(std_suword)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -493,7 +493,7 @@ ENTRY(suword)
 /*
  * Write an int
  */
-ENTRY(suword32)
+ENTRY(std_suword32)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -527,7 +527,7 @@ ENTRY(suword16)
 	movq	%rax,PCB_ONFAULT(%rcx)
 	ret
 
-ENTRY(subyte)
+ENTRY(std_subyte)
 	movq	PCPU(curthread),%rcx
 	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
@@ -546,7 +546,7 @@ ENTRY(subyte)
 	ret
 
 /*
- * copyinstr(from, to, maxlen, int *lencopied) - MP SAFE
+ * std_copyinstr(from, to, maxlen, int *lencopied) - MP SAFE
  *           %rdi, %rsi, %rdx, %rcx
  *
  *	copy a string from from to to, stop when a 0 character is reached.
@@ -554,7 +554,7 @@ ENTRY(subyte)
  *	EFAULT on protection violations. If lencopied is non-zero,
  *	return the actual length in *lencopied.
  */
-ENTRY(copyinstr)
+ENTRY(std_copyinstr)
 	movq	%rdx,%r8			/* %r8 = maxlen */
 	movq	%rcx,%r9			/* %r9 = *len */
 	xchgq	%rdi,%rsi			/* %rdi = from, %rsi = to */

@@ -70,6 +70,7 @@ struct trapframe {
 	int	tf_cs;
 	int	tf_eflags;
 	/* below only when crossing rings (e.g. user to kernel) */
+#define tf_sp tf_esp
 	int	tf_esp;
 	int	tf_ss;
 };

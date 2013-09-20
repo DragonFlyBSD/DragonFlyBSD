@@ -800,6 +800,23 @@ out2:	;
 #endif
 }
 
+void
+trap_handle_userenter(struct thread *td)
+{
+	userenter(td, td->td_proc);
+}
+
+void
+trap_handle_userexit(struct trapframe *frame, int sticks)
+{
+	struct lwp *lp = curthread->td_lwp;
+
+	if (lp) {
+		userret(lp, frame, sticks);
+		userexit(lp);
+	}
+}
+
 static int
 trap_pfault(struct trapframe *frame, int usermode)
 {

@@ -51,9 +51,9 @@
 #include <vm/pmap.h>
 
 #include <machine/vmparam.h>
+#include <machine/vmm.h>
 
 #include <sys/sysref2.h>
-#include <sys/mplock2.h>
 
 static struct vmspace_entry *vkernel_find_vmspace(struct vkernel_proc *vkp,
 						  void *id);
@@ -107,7 +107,8 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 		lwkt_reltoken(&proc_token);
 	}
 
-	get_mplock();
+	if (curthread->td_vmm)
+		return 0;
 
 	/*
 	 * Create a new VMSPACE, disallow conflicting ids
@@ -127,7 +128,7 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 		error = 0;
 	}
 	lwkt_reltoken(&vkp->token);
-	rel_mplock();
+
 	return (error);
 }
 
@@ -143,7 +144,6 @@ sys_vmspace_destroy(struct vmspace_destroy_args *uap)
 	struct vmspace_entry *ve;
 	int error;
 
-	get_mplock();
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
 		goto done3;
@@ -162,7 +162,6 @@ sys_vmspace_destroy(struct vmspace_destroy_args *uap)
 done2:
 	lwkt_reltoken(&vkp->token);
 done3:
-	rel_mplock();
 	return(error);
 }
 
@@ -181,7 +180,7 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 {
 	struct vkernel_proc *vkp;
 	struct vkernel_lwp *vklp;
-	struct vmspace_entry *ve;
+	struct vmspace_entry *ve = NULL;
 	struct lwp *lp;
 	struct proc *p;
 	int framesz;
@@ -193,11 +192,15 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 	if ((vkp = p->p_vkernel) == NULL)
 		return (EINVAL);
 
-	get_mplock();
-	lwkt_gettoken(&vkp->token);
-	if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
-		error = ENOENT;
-		goto done;
+	/*
+	 * ve only matters when VMM is not used.
+	 */
+	if (curthread->td_vmm == NULL) {
+		lwkt_gettoken(&vkp->token);
+		if ((ve = vkernel_find_vmspace(vkp, uap->id)) == NULL) {
+			error = ENOENT;
+			goto done;
+		}
 	}
 
 	switch(uap->cmd) {
@@ -207,7 +210,9 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 		 * install the passed register context.  Return with
 		 * EJUSTRETURN so the syscall code doesn't adjust the context.
 		 */
-		atomic_add_int(&ve->refs, 1);
+		if (curthread->td_vmm == NULL)
+			atomic_add_int(&ve->refs, 1);
+
 		framesz = sizeof(struct trapframe);
 		if ((vklp = lp->lwp_vkernel) == NULL) {
 			vklp = kmalloc(sizeof(*vklp), M_VKERNEL,
@@ -235,10 +240,20 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 			bcopy(&vklp->save_vextframe.vx_tls, &curthread->td_tls,
 			      sizeof(vklp->save_vextframe.vx_tls));
 			set_user_TLS();
-			atomic_subtract_int(&ve->refs, 1);
+			if (curthread->td_vmm == NULL)
+				atomic_subtract_int(&ve->refs, 1);
 		} else {
-			vklp->ve = ve;
-			pmap_setlwpvm(lp, ve->vmspace);
+			/* If it's a VMM thread just set the CR3. We also set the
+			 * vklp->ve to a key to be able to distinguish when a
+			 * vkernel user process runs and when not (when it's NULL)
+			 */
+			if (curthread->td_vmm == NULL) {
+				vklp->ve = ve;
+				pmap_setlwpvm(lp, ve->vmspace);
+			} else {
+				vklp->ve = uap->id;
+				vmm_vm_set_guest_cr3((register_t)uap->id);
+			}
 			set_user_TLS();
 			set_vkernel_fp(uap->sysmsg_frame);
 			error = EJUSTRETURN;
@@ -249,8 +264,8 @@ sys_vmspace_ctl(struct vmspace_ctl_args *uap)
 		break;
 	}
 done:
-	lwkt_reltoken(&vkp->token);
-	rel_mplock();
+	if (curthread->td_vmm == NULL)
+		lwkt_reltoken(&vkp->token);
 	return(error);
 }
 
@@ -316,7 +331,6 @@ sys_vmspace_munmap(struct vmspace_munmap_args *uap)
 	vm_map_t map;
 	int error;
 
-	get_mplock();
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
 		goto done3;
@@ -377,7 +391,6 @@ done1:
 done2:
 	lwkt_reltoken(&vkp->token);
 done3:
-	rel_mplock();
 	return (error);
 }
 
@@ -399,7 +412,6 @@ sys_vmspace_pread(struct vmspace_pread_args *uap)
 	struct vmspace_entry *ve;
 	int error;
 
-	get_mplock();
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
 		goto done3;
@@ -413,7 +425,6 @@ sys_vmspace_pread(struct vmspace_pread_args *uap)
 done2:
 	lwkt_reltoken(&vkp->token);
 done3:
-	rel_mplock();
 	return (error);
 }
 
@@ -435,7 +446,6 @@ sys_vmspace_pwrite(struct vmspace_pwrite_args *uap)
 	struct vmspace_entry *ve;
 	int error;
 
-	get_mplock();
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
 		goto done3;
@@ -449,7 +459,6 @@ sys_vmspace_pwrite(struct vmspace_pwrite_args *uap)
 done2:
 	lwkt_reltoken(&vkp->token);
 done3:
-	rel_mplock();
 	return (error);
 }
 
@@ -469,7 +478,6 @@ sys_vmspace_mcontrol(struct vmspace_mcontrol_args *uap)
 	vm_offset_t tmpaddr = (vm_offset_t)uap->addr + uap->len;
 	int error;
 
-	get_mplock();
 	if ((vkp = curproc->p_vkernel) == NULL) {
 		error = EINVAL;
 		goto done3;
@@ -517,7 +525,6 @@ done1:
 done2:
 	lwkt_reltoken(&vkp->token);
 done3:
-	rel_mplock();
 	return (error);
 }
 
@@ -697,18 +704,24 @@ vkernel_trap(struct lwp *lp, struct trapframe *frame)
 	 */
 	vklp = lp->lwp_vkernel;
 	KKASSERT(vklp);
-	ve = vklp->ve;
-	KKASSERT(ve != NULL);
 
-	/*
-	 * Switch the LWP vmspace back to the virtual kernel's VM space.
-	 */
-	vklp->ve = NULL;
-	pmap_setlwpvm(lp, p->p_vmspace);
-	KKASSERT(ve->refs > 0);
-	atomic_subtract_int(&ve->refs, 1);
-	/* ve is invalid once we kill our ref */
+	/* If it's a VMM thread just set the vkernel CR3 back */
+	if (curthread->td_vmm == NULL) {
+		ve = vklp->ve;
+		KKASSERT(ve != NULL);
 
+		/*
+		 * Switch the LWP vmspace back to the virtual kernel's VM space.
+		 */
+		vklp->ve = NULL;
+		pmap_setlwpvm(lp, p->p_vmspace);
+		KKASSERT(ve->refs > 0);
+		atomic_subtract_int(&ve->refs, 1);
+		/* ve is invalid once we kill our ref */
+	} else {
+		vklp->ve = NULL;
+		vmm_vm_set_guest_cr3(p->p_vkernel->vkernel_cr3);
+	}
 	/*
 	 * Copy the emulated process frame to the virtual kernel process.
 	 * The emulated process cannot change TLS descriptors so don't

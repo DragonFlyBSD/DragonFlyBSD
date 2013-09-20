@@ -82,6 +82,7 @@ struct trapframe {
 	register_t	tf_rip;
 	register_t	tf_cs;
 	register_t	tf_rflags;
+#define tf_sp tf_rsp
 	register_t	tf_rsp;
 	register_t	tf_ss;
 };

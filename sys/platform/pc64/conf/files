@@ -171,6 +171,7 @@ platform/pc64/x86_64/identcpu.c		standard
 platform/pc64/x86_64/amd64_mem.c	standard
 platform/pc64/x86_64/cpufreq_machdep.c    standard
 platform/pc64/x86_64/msi.c		standard
+platform/pc64/x86_64/uwrapper.c		standard
 
 platform/pc64/apic/lapic.c		standard
 platform/pc64/apic/ioapic.c		standard
@@ -218,3 +219,20 @@ platform/pc64/isa/clock.c		standard
 platform/pc64/isa/isa_intr.c		optional	isa
 platform/pc64/x86_64/spinlock.s		standard
 dev/netif/elink_layer/elink.c		optional	ep
+
+vmx_genassym.o				standard					\
+	dependency 	" $S/platform/$P/vmm/vmx_genassym.c ${FORWARD_HEADERS_COOKIE}"	\
+	compile-with	"${CC} ${CFLAGS:N-fno-common} ${WERROR} -c ${.IMPSRC}"		\
+	no-obj no-implicit-rule								\
+	clean		"vmx_genassym.o"
+vmx_assym.h				standard					\
+	dependency 	"$S/kern/genassym.sh vmx_genassym.o"				\
+	compile-with	"sh $S/kern/genassym.sh vmx_genassym.o > ${.TARGET}"		\
+	no-obj no-implicit-rule before-depend						\
+	clean		"vmx_assym.h"
+platform/pc64/vmm/vmm.c			standard
+platform/pc64/vmm/vmm_utils.c		standard
+platform/pc64/vmm/vmx.c			standard
+platform/pc64/vmm/ept.c			standard
+platform/pc64/vmm/vmx_trap.s		standard
+platform/pc64/vmm/svm.c			standard

@@ -53,6 +53,7 @@
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_zone.h>
+#include <vm/vm_page2.h>
 
 static void dev_pager_dealloc (vm_object_t);
 static int dev_pager_getpage (vm_object_t, vm_page_t *, int);

@@ -287,7 +287,7 @@ struct thread {
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */
     struct ucred *td_ucred;		/* synchronized from p_ucred */
-    void	 *td_unused04;	/* for future fields */
+    void	 *td_vmm;	/* vmm private data */
     lwkt_tokref_t td_toks_have;		/* tokens we own */
     lwkt_tokref_t td_toks_stop;		/* tokens we want */
     struct lwkt_tokref td_toks_array[LWKT_MAXTOKENS];

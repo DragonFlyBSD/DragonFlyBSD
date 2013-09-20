@@ -148,7 +148,7 @@ union wait {
 #define	WSTOPPED	_WSTOPPED
 #endif /* _POSIX_SOURCE */
 
-#ifndef _KERNEL
+#if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif

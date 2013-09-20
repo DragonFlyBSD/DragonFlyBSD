@@ -75,6 +75,7 @@
 #include <sys/msgport2.h>
 #include <sys/socketvar2.h>
 #include <net/netmsg2.h>
+#include <vm/vm_page2.h>
 
 #ifdef SCTP
 #include <netinet/sctp_peeloff.h>

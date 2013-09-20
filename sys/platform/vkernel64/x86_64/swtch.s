@@ -128,11 +128,28 @@ ENTRY(cpu_heavy_switch)
 	movq	%r14,PCB_R14(%rdx)
 	movq	%r15,PCB_R15(%rdx)
 
-	movq	%rcx,%rbx			/* RBX = curthread */
-	movq	TD_LWP(%rcx),%rcx
+	/*
+	 * Clear the cpu bit in the pmap active mask.  The restore
+	 * function will set the bit in the pmap active mask.
+	 *
+	 * Special case: when switching between threads sharing the
+	 * same vmspace if we avoid clearing the bit we do not have
+	 * to reload %cr3 (if we clear the bit we could race page
+	 * table ops done by other threads and would have to reload
+	 * %cr3, because those ops will not know to IPI us).
+	 */
+	movq	%rcx,%rbx			/* RBX = oldthread */
+	movq	TD_LWP(%rcx),%rcx		/* RCX = oldlwp	*/
+	movq	TD_LWP(%rdi),%r13		/* R13 = newlwp */
+	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = oldvmspace */
+	testq	%r13,%r13			/* might not be a heavy */
+	jz	1f
+	cmpq	LWP_VMSPACE(%r13),%rcx		/* same vmspace? */
+	je	2f
+1:
 	movslq	PCPU(cpuid), %rax
-	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
 	MPLOCKED btrq	%rax, VM_PMAP+PM_ACTIVE(%rcx)
+2:
 
 	/*
 	 * Push the LWKT switch restore function, which resumes a heavy
@@ -281,7 +298,6 @@ ENTRY(cpu_exit_switch)
 ENTRY(cpu_heavy_restore)
 	popfq
 	movq	TD_PCB(%rax),%rdx		/* RDX = PCB */
-	movq	TD_LWP(%rax),%rcx
 
 #if defined(SWTCH_OPTIM_STATS)
 	incl	_swtch_optim_stats
@@ -291,10 +307,25 @@ ENTRY(cpu_heavy_restore)
 	 * safely test/reload %cr3 until after we have set the bit in the
 	 * pmap (remember, we do not hold the MP lock in the switch code).
 	 */
+	movq	TD_LWP(%rax),%rcx
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	movslq	PCPU(cpuid), %rsi
-	MPLOCKED btsq	%rsi, VM_PMAP+PM_ACTIVE(%rcx)
+	movq    %rax,%r12                       /* save newthread ptr */
+1:
+	movq    VM_PMAP+PM_ACTIVE(%rcx),%rax    /* old contents */
+	movq    PCPU(cpumask),%rsi              /* new contents */
+	orq     %rax,%rsi
+	MPLOCKED cmpxchgq %rsi,VM_PMAP+PM_ACTIVE(%rcx)
+	jnz     1b
 
+	btq	$CPUMASK_BIT,%rax
+	jnc	2f
+
+	movq    %rcx,%rdi               /* (found to be set) */
+	call    pmap_interlock_wait     /* pmap_interlock_wait(%rdi:vm) */
+	movq    %r12,%rax
+	movq    TD_PCB(%rax),%rdx       /* RDX = PCB */
+2:
+	movq	%r12,%rax
 	/*
 	 * Restore the MMU address space.  If it is the same as the last
 	 * thread we don't have to invalidate the tlb (i.e. reload cr3).

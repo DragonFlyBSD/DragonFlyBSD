@@ -57,6 +57,7 @@
 #include <sys/sfbuf.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_object.h>
+#include <vm/vm_page2.h>
 
 #ifdef LWBUF_IS_OPTIMAL
 

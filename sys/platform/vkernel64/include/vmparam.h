@@ -73,7 +73,11 @@
  * For virtual kernels running as userland processes the user and kernel
  * address spaces exist in different VM spaces and can overlap.
  */
-#define KERNEL_KVA_SIZE		(2UL * 1024 * 1024 * 1024)
+#define KERNEL_KVA_START	(512ULL << 30)	/* From 512GB */
+#define KERNEL_KVA_SIZE		(512UL * 1024 * 1024 * 1024)
+#define KERNEL_STACK_SIZE	(512 * PAGE_SIZE)
+
+#define VKERNEL_USEABLE_PHYS_RAM_BASE (128ULL << 30) /* from 32GB */
 
 #define VM_MIN_USER_ADDRESS	((vm_offset_t)0)
 #define VM_MAX_USER_ADDRESS	UVADDR(NUPML4E, 0, 0, 0)

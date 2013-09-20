@@ -35,6 +35,8 @@
 #include <sys/interrupt.h>
 #include <machine/globaldata.h>
 
+#include <unistd.h>
+
 /*
  * Bits in the ipending bitmap variable must be set atomically because
  * ipending may be manipulated by interrupts or other cpu's without holding
@@ -49,6 +51,7 @@ name(void)								\
 	struct mdglobaldata *gd = mdcpu;				\
 	atomic_set_int_nonlocked(var, bits);				\
 	atomic_set_int(&gd->mi.gd_reqflags, RQF_INTPEND);		\
+	umtx_wakeup(&gd->mi.gd_reqflags, 0);				\
 }									\
 
 DO_SETBITS(setdelayed,   &gd->gd_spending, loadandclear(&gd->gd_sdelayed))

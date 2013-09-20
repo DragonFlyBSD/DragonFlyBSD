@@ -265,7 +265,7 @@ db_write_bytes(vm_offset_t addr, size_t size, char *data)
 
 	    ptep0 = pmap_kpte(addr);
 	    oldmap0 = *ptep0;
-	    *ptep0 |= VPTE_W;
+	    *ptep0 |= VPTE_RW;
 
 	    /* Map another page if the data crosses a page boundary. */
 	    if ((*ptep0 & PG_PS) == 0) {
@@ -273,14 +273,14 @@ db_write_bytes(vm_offset_t addr, size_t size, char *data)
 	    	if (trunc_page(addr) != addr1) {
 		    ptep1 = pmap_kpte(addr1);
 		    oldmap1 = *ptep1;
-		    *ptep1 |= VPTE_W;
+		    *ptep1 |= VPTE_RW;
 	    	}
 	    } else {
 		addr1 = trunc_4mpage(addr + size - 1);
 		if (trunc_4mpage(addr) != addr1) {
 		    ptep1 = pmap_kpte(addr1);
 		    oldmap1 = *ptep1;
-		    *ptep1 |= VPTE_W;
+		    *ptep1 |= VPTE_RW;
 		}
 	    }
 

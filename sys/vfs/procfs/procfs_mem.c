@@ -60,6 +60,8 @@
 #include <sys/user.h>
 #include <sys/ptrace.h>
 
+#include <machine/vmm.h>
+
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
 
@@ -122,6 +124,17 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		 */
 		pageno = trunc_page(uva);
 		page_offset = uva - pageno;
+
+		/*
+		 * If the target process is running in VMM mode
+		 * translate the address into a GPA (Guest Physical
+		 * Address) via the EPT before doing the lookup.
+		 */
+		if (p->p_vmm) {
+			register_t gpa;
+			vmm_vm_get_gpa(p, &gpa, (register_t) pageno);
+			pageno = (vm_offset_t)gpa;
+		}
 
 		/*
 		 * How many bytes to copy

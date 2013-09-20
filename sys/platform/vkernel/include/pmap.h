@@ -187,6 +187,11 @@ void	pmap_release(struct pmap *pmap);
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
 void	pmap_set_opt (void);
 
+static __inline int
+pmap_emulate_ad_bits(pmap_t pmap) {
+	return 0;
+}
+
 #endif /* _KERNEL */
 
 #endif /* !LOCORE */

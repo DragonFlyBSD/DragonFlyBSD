@@ -300,4 +300,6 @@ MIASM =  \
 	vquotactl.o \
 	linkat.o \
 	eaccess.o \
-	lpathconf.o
+	lpathconf.o \
+	vmm_guest_ctl.o \
+	vmm_guest_sync_addr.o

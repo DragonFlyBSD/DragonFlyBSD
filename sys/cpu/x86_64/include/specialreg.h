@@ -66,6 +66,7 @@
 #define	CR4_PCE		0x00000100	/* Performance monitoring counter enable */
 #define	CR4_FXSR	0x00000200	/* Fast FPU save/restore used by OS */
 #define	CR4_XMM		0x00000400	/* Enable SIMD/MMX2 to use except 16 */
+#define	CR4_VMXE	0x00002000	/* Enables VMX - Intel specific */
 #define	CR4_XSAVE	0x00040000	/* Enable XSave (for AVX Instructions)*/
 
 /*
@@ -75,6 +76,7 @@
 #define	EFER_LME	0x000000100	/* Long mode enable (R/W) */
 #define	EFER_LMA	0x000000400	/* Long mode active (R) */
 #define	EFER_NXE	0x000000800	/* PTE No-Execute bit enable (R/W) */
+#define	EFER_SVME	0x000001000	/* SVM Enable (R/W) */
 
 /*
  * CPUID instruction features register
@@ -531,6 +533,13 @@
 
 /* AMD MSRs */
 #define MSR_AMD_DE_CFG	0xc0011029
+
+/* AMD SVM MSRs */
+#define MSR_AMD_VM_CR		0xc0010114
+#define MSR_AMD_VM_HSAVE_PA	0xc0010117
+
+/* AMD MSR_AMD_VM_CR fields */
+#define MSR_AMD_VM_CR_SVMDIS	0x00000010	/* SVM Disabled */
 
 /* VIA ACE crypto featureset: for via_feature_rng */
 #define	VIA_HAS_RNG		1	/* cpu has RNG */

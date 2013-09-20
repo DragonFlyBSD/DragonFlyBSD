@@ -76,6 +76,8 @@
 #include <sys/sysref2.h>
 #include <sys/mplock2.h>
 
+#include <machine/vmm.h>
+
 static void reaplwps(void *context, int dummy);
 static void reaplwp(struct lwp *lp);
 static void killlwps(struct lwp *lp);
@@ -594,6 +596,9 @@ lwp_exit(int masterexit)
 	 */
 	if (lp->lwp_vkernel)
 		vkernel_lwp_exit(lp);
+
+	if (td->td_vmm)
+		vmm_vmdestroy();
 
 	/*
 	 * Clean up select/poll support

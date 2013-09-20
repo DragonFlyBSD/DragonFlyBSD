@@ -55,6 +55,9 @@
 	.set	gd_reqflags,globaldata + GD_REQFLAGS
 	.set	gd_common_tss,globaldata + GD_COMMON_TSS
 
+	.globl	gd_cpumask
+	.set	gd_cpumask,globaldata + GD_CPUMASK
+
 	.globl	gd_common_tssd, gd_tss_gdt
 	.set	gd_common_tssd,globaldata + GD_COMMON_TSSD
 	.set	gd_tss_gdt,globaldata + GD_TSS_GDT

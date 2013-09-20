@@ -3917,6 +3917,12 @@ RetryLookup:
 			fault_type |= VM_PROT_WRITE;
 	}
 
+	if (curthread->td_lwp && curthread->td_lwp->lwp_vmspace &&
+	    pmap_emulate_ad_bits(&curthread->td_lwp->lwp_vmspace->vm_pmap)) {
+		if ((prot & VM_PROT_WRITE) == 0)
+			fault_type |= VM_PROT_WRITE;
+	}
+
 	/*
 	 * If the entry was copy-on-write, we either ...
 	 */

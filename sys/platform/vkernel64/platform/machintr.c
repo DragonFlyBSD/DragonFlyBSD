@@ -46,6 +46,8 @@
 #include <machine/md_var.h>
 #include <sys/thread2.h>
 
+#include <unistd.h>
+
 /*
  * Interrupt Subsystem ABI
  */
@@ -162,6 +164,7 @@ signalintr(int intr)
 	if (td->td_critcount || td->td_nest_count) {
 		atomic_set_int_nonlocked(&gd->gd_fpending, 1 << intr);
 		atomic_set_int(&gd->mi.gd_reqflags, RQF_INTPEND);
+		umtx_wakeup(&gd->mi.gd_reqflags, 0);
 	} else {
 		++td->td_nest_count;
 		atomic_clear_int(&gd->gd_fpending, 1 << intr);
@@ -197,16 +200,4 @@ void
 cpu_unmask_all_signals(void)
 {
 	sigsetmask(0);
-}
-
-void
-cpu_invlpg(void *addr)
-{
-	madvise(addr, PAGE_SIZE, MADV_INVAL);
-}
-
-void
-cpu_invltlb(void)
-{
-	madvise((void *)KvaStart, KvaEnd - KvaStart, MADV_INVAL);
 }

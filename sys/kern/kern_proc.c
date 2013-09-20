@@ -383,7 +383,13 @@ pfind(pid_t pid)
 struct proc *
 pfindn(pid_t pid)
 {
-	struct proc *p;
+	struct proc *p = curproc;
+
+	/*
+	 * Shortcut the current process
+	 */
+	if (p && p->p_pid == pid)
+		return (p);
 
 	lwkt_gettoken(&proc_token);
 	LIST_FOREACH(p, PIDHASH(pid), p_hash) {

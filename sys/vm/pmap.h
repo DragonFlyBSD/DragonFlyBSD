@@ -156,6 +156,7 @@ void		 pmap_copy_page_frag (vm_paddr_t, vm_paddr_t, size_t bytes);
 void		 pmap_enter (pmap_t, vm_offset_t, struct vm_page *,
 			vm_prot_t, boolean_t, struct vm_map_entry *);
 void		 pmap_enter_quick (pmap_t, vm_offset_t, struct vm_page *);
+vm_page_t	 pmap_fault_page_quick(pmap_t, vm_offset_t, vm_prot_t);
 vm_paddr_t	 pmap_extract (pmap_t pmap, vm_offset_t va);
 void		 pmap_growkernel (vm_offset_t, vm_offset_t);
 void		 pmap_init (void);

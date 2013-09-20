@@ -89,6 +89,8 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
 
+#include <vm/vm_page2.h>
+
 #include <machine/specialreg.h>
 
 #define EASY_SCAN_FACTOR	8

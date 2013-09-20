@@ -185,6 +185,8 @@ ASSYM(TD_MACH, offsetof(struct thread, td_mach));
 ASSYM(TD_WCHAN, offsetof(struct thread, td_wchan));
 ASSYM(TD_NEST_COUNT, offsetof(struct thread, td_nest_count));
 ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
+ASSYM(TD_TYPE, offsetof(struct thread, td_type));
+
 ASSYM(TD_SAVEFPU, offsetof(struct thread, td_savefpu));
 ASSYM(TDF_RUNNING, TDF_RUNNING);
 ASSYM(TDF_USINGFP, TDF_USINGFP);

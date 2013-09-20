@@ -40,6 +40,7 @@
 #include <vm/vm_zone.h>
 
 #include <sys/thread2.h>
+#include <vm/vm_page2.h>
 
 /*
  * No requirements.

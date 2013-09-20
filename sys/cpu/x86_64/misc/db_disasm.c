@@ -170,6 +170,45 @@ static const char * const db_Grp7[] = {
 	"invlpg"
 };
 
+static const char * const db_Grp7_11_000[] = {
+	"",
+	"vmcall",
+	"vmlaunch",
+	"vmresume",
+	"vmxoff",
+};
+
+static const char * const db_Grp7_11_001[] = {
+	"monitor",
+	"mwait",
+	"clac",
+	"stac",
+};
+
+static const char * const db_Grp7_11_010[] = {
+	"xgetbv",
+	"xsetbv",
+	"",
+	"",
+	"vmfunc",
+	"xend",
+	"xtest",
+};
+
+static const char * const db_Grp7_11_111[] = {
+	"swapgs",
+	"rdtscp",
+};
+
+static const char * const* db_Grp7_11[] = {
+	db_Grp7_11_000,
+	db_Grp7_11_001,
+	db_Grp7_11_010,
+	NULL,
+	NULL,
+	db_Grp7_11_111,
+};
+
 static const char * const db_Grp8[] = {
 	"",
 	"",
@@ -1226,9 +1265,18 @@ db_disasm(db_addr_t loc, boolean_t altfmt, db_regs_t *dummy)
 	i_mode = ip->i_mode;
 
 	if (ip->i_extra == db_Grp1 || ip->i_extra == db_Grp2 ||
-	    ip->i_extra == db_Grp6 || ip->i_extra == db_Grp7 ||
-	    ip->i_extra == db_Grp8 || ip->i_extra == db_Grp9) {
+	    ip->i_extra == db_Grp6 || ip->i_extra == db_Grp8 ||
+	    ip->i_extra == db_Grp9) {
 	    i_name = ((const char * const *)ip->i_extra)[f_reg(rex, regmodrm)];
+	}
+	else if (ip->i_extra == db_Grp7) {
+	     if((regmodrm & 0xC0) == 0xC0) {
+		i_name = db_Grp7_11[f_reg(rex, regmodrm)][regmodrm &0x7];
+		i_mode = 0;
+	     }
+	     else {
+		i_name = ((const char * const *)ip->i_extra)[f_reg(rex, regmodrm)];
+	     }
 	}
 	else if (ip->i_extra == db_Grp3) {
 	    ip = ip->i_extra;

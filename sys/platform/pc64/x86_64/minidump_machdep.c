@@ -223,11 +223,12 @@ minidumpsys(struct dumperinfo *di)
 		 */
 		i = (va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1);
 		ptesize += PAGE_SIZE;
-		if ((pdp[i] & PG_V) == 0)
+		if ((pdp[i] & kernel_pmap.pmap_bits[PG_V_IDX]) == 0)
 			continue;
 		pd = (uint64_t *)PHYS_TO_DMAP(pdp[i] & PG_FRAME);
 		j = ((va >> PDRSHIFT) & ((1ul << NPDEPGSHIFT) - 1));
-		if ((pd[j] & (PG_PS | PG_V)) == (PG_PS | PG_V))  {
+		if ((pd[j] & (kernel_pmap.pmap_bits[PG_PS_IDX] | kernel_pmap.pmap_bits[PG_V_IDX])) ==
+		    (kernel_pmap.pmap_bits[PG_PS_IDX] | kernel_pmap.pmap_bits[PG_V_IDX]))  {
 			/* This is an entire 2M page. */
 			pa = pd[j] & PG_PS_FRAME;
 			for (k = 0; k < NPTEPG; k++) {
@@ -237,11 +238,11 @@ minidumpsys(struct dumperinfo *di)
 			}
 			continue;
 		}
-		if ((pd[j] & PG_V) == PG_V) {
+		if ((pd[j] & kernel_pmap.pmap_bits[PG_V_IDX]) == kernel_pmap.pmap_bits[PG_V_IDX]) {
 			/* set bit for each valid page in this 2MB block */
 			pt = (uint64_t *)PHYS_TO_DMAP(pd[j] & PG_FRAME);
 			for (k = 0; k < NPTEPG; k++) {
-				if ((pt[k] & PG_V) == PG_V) {
+				if ((pt[k] & kernel_pmap.pmap_bits[PG_V_IDX]) == kernel_pmap.pmap_bits[PG_V_IDX]) {
 					pa = pt[k] & PG_FRAME;
 					if (is_dumpable(pa))
 						dump_add_page(pa);
@@ -334,7 +335,7 @@ minidumpsys(struct dumperinfo *di)
 		 * We always write a page, even if it is zero
 		 */
 		i = (va >> PDPSHIFT) & ((1ul << NPDPEPGSHIFT) - 1);
-		if ((pdp[i] & PG_V) == 0) {
+		if ((pdp[i] & kernel_pmap.pmap_bits[PG_V_IDX]) == 0) {
 			bzero(fakept, sizeof(fakept));
 			error = blk_write(di, (char *)&fakept, 0, PAGE_SIZE);
 			if (error)
@@ -347,11 +348,16 @@ minidumpsys(struct dumperinfo *di)
 		}
 		pd = (uint64_t *)PHYS_TO_DMAP(pdp[i] & PG_FRAME);
 		j = ((va >> PDRSHIFT) & ((1ul << NPDEPGSHIFT) - 1));
-		if ((pd[j] & (PG_PS | PG_V)) == (PG_PS | PG_V))  {
+		if ((pd[j] & (kernel_pmap.pmap_bits[PG_PS_IDX] | kernel_pmap.pmap_bits[PG_V_IDX])) ==
+		    (kernel_pmap.pmap_bits[PG_PS_IDX] | kernel_pmap.pmap_bits[PG_V_IDX]))  {
 			/* This is a single 2M block. Generate a fake PTP */
 			pa = pd[j] & PG_PS_FRAME;
 			for (k = 0; k < NPTEPG; k++) {
-				fakept[k] = (pa + (k * PAGE_SIZE)) | PG_V | PG_RW | PG_A | PG_M;
+				fakept[k] = (pa + (k * PAGE_SIZE)) |
+				    kernel_pmap.pmap_bits[PG_V_IDX] |
+				    kernel_pmap.pmap_bits[PG_RW_IDX] |
+				    kernel_pmap.pmap_bits[PG_A_IDX] |
+				    kernel_pmap.pmap_bits[PG_M_IDX];
 			}
 			error = blk_write(di, (char *)&fakept, 0, PAGE_SIZE);
 			if (error)
@@ -362,7 +368,7 @@ minidumpsys(struct dumperinfo *di)
 				goto fail;
 			continue;
 		}
-		if ((pd[j] & PG_V) == PG_V) {
+		if ((pd[j] & kernel_pmap.pmap_bits[PG_V_IDX]) == kernel_pmap.pmap_bits[PG_V_IDX]) {
 			pt = (uint64_t *)PHYS_TO_DMAP(pd[j] & PG_FRAME);
 			error = blk_write(di, (char *)pt, 0, PAGE_SIZE);
 			if (error)

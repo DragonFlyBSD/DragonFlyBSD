@@ -52,12 +52,12 @@
 #include "opt_msgbuf.h"
 
 #include <sys/param.h>
-#include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/msgbuf.h>
 #include <sys/vmmeter.h>
 #include <sys/mman.h>
+#include <sys/systm.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -137,19 +137,19 @@
  */
 #define pdir_pde(m, v) (m[(vm_offset_t)(v) >> PDRSHIFT])
 
-#define pmap_pde_v(pte)		((*(pd_entry_t *)pte & PG_V) != 0)
-#define pmap_pte_w(pte)		((*(pt_entry_t *)pte & PG_W) != 0)
-#define pmap_pte_m(pte)		((*(pt_entry_t *)pte & PG_M) != 0)
-#define pmap_pte_u(pte)		((*(pt_entry_t *)pte & PG_A) != 0)
-#define pmap_pte_v(pte)		((*(pt_entry_t *)pte & PG_V) != 0)
+#define pmap_pde_v(pmap, pte)		((*(pd_entry_t *)pte & pmap->pmap_bits[PG_V_IDX]) != 0)
+#define pmap_pte_w(pmap, pte)		((*(pt_entry_t *)pte & pmap->pmap_bits[PG_W_IDX]) != 0)
+#define pmap_pte_m(pmap, pte)		((*(pt_entry_t *)pte & pmap->pmap_bits[PG_M_IDX]) != 0)
+#define pmap_pte_u(pmap, pte)		((*(pt_entry_t *)pte & pmap->pmap_bits[PG_U_IDX]) != 0)
+#define pmap_pte_v(pmap, pte)		((*(pt_entry_t *)pte & pmap->pmap_bits[PG_V_IDX]) != 0)
 
 /*
  * Given a map and a machine independent protection code,
  * convert to a vax protection code.
  */
 #define pte_prot(m, p)		\
-	(protection_codes[p & (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)])
-static int protection_codes[8];
+	(m->protection_codes[p & (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)])
+static int protection_codes[PROTECTION_CODES_SIZE];
 
 struct pmap kernel_pmap;
 static TAILQ_HEAD(,pmap)	pmap_list = TAILQ_HEAD_INITIALIZER(pmap_list);
@@ -166,8 +166,8 @@ vm_offset_t KvaStart;		/* VA start of KVA space */
 vm_offset_t KvaEnd;		/* VA end of KVA space (non-inclusive) */
 vm_offset_t KvaSize;		/* max size of kernel virtual address space */
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
-static int pgeflag;		/* PG_G or-in */
-static int pseflag;		/* PG_PS or-in */
+//static int pgeflag;		/* PG_G or-in */
+//static int pseflag;		/* PG_PS or-in */
 uint64_t PatMsr;
 
 static int ndmpdp;
@@ -175,7 +175,6 @@ static vm_paddr_t dmaplimit;
 static int nkpt;
 vm_offset_t kernel_vm_end = VM_MIN_KERNEL_ADDRESS;
 
-#define PAT_INDEX_SIZE  8
 static pt_entry_t pat_pte_index[PAT_INDEX_SIZE];	/* PAT -> PG_ bits */
 /*static pt_entry_t pat_pde_index[PAT_INDEX_SIZE];*/	/* PAT -> PG_ bits */
 
@@ -208,6 +207,24 @@ static pt_entry_t *msgbufmap;
 struct msgbuf *msgbufp=NULL;
 
 /*
+ * PMAP default PG_* bits. Needed to be able to add
+ * EPT/NPT pagetable pmap_bits for the VMM module
+ */
+uint64_t pmap_bits_default[] = {
+		REGULAR_PMAP,					/* TYPE_IDX		0 */
+		X86_PG_V,					/* PG_V_IDX		1 */
+		X86_PG_RW,					/* PG_RW_IDX		2 */
+		X86_PG_U,					/* PG_U_IDX		3 */
+		X86_PG_A,					/* PG_A_IDX		4 */
+		X86_PG_M,					/* PG_M_IDX		5 */
+		X86_PG_PS,					/* PG_PS_IDX3		6 */
+		X86_PG_G,					/* PG_G_IDX		7 */
+		X86_PG_AVAIL1,					/* PG_AVAIL1_IDX	8 */
+		X86_PG_AVAIL2,					/* PG_AVAIL2_IDX	9 */
+		X86_PG_AVAIL3,					/* PG_AVAIL3_IDX	10 */
+		X86_PG_NC_PWT | X86_PG_NC_PCD,			/* PG_N_IDX	11 */
+};
+/*
  * Crashdump maps.
  */
 static pt_entry_t *pt_crashdumpmap;
@@ -221,6 +238,17 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_mmu_optimize, CTLFLAG_RW,
     &pmap_mmu_optimize, 0, "Share page table pages when possible");
 
 #define DISABLE_PSE
+
+/* Standard user access funtions */
+extern int std_copyinstr (const void *udaddr, void *kaddr, size_t len,
+    size_t *lencopied);
+extern int std_copyin (const void *udaddr, void *kaddr, size_t len);
+extern int std_copyout (const void *kaddr, void *udaddr, size_t len);
+extern int std_fubyte (const void *base);
+extern int std_subyte (void *base, int byte);
+extern long std_fuword (const void *base);
+extern int std_suword (void *base, long word);
+extern int std_suword32 (void *base, int word);
 
 static void pv_hold(pv_entry_t pv);
 static int _pv_hold_try(pv_entry_t pv
@@ -262,6 +290,8 @@ static boolean_t pmap_testbit (vm_page_t m, int bit);
 
 static pt_entry_t * pmap_pte_quick (pmap_t pmap, vm_offset_t va);
 static vm_offset_t pmap_kmem_choose(vm_offset_t addr);
+
+static void pmap_pinit_defaults(struct pmap *pmap);
 
 static unsigned pdir4mb;
 
@@ -456,7 +486,7 @@ pmap_pd(pmap_t pmap, vm_offset_t va)
 	pml4_entry_t *pdp;
 
 	pdp = pmap_pdp(pmap, va);
-	if ((*pdp & PG_V) == 0)
+	if ((*pdp & pmap->pmap_bits[PG_V_IDX]) == 0)
 		return NULL;
 	return (pmap_pdp_to_pd(*pdp, va));
 }
@@ -499,7 +529,7 @@ pmap_pt(pmap_t pmap, vm_offset_t va)
 		return (pmap_pd_to_pt(VM_PAGE_TO_PHYS(pv->pv_m), va));
 	} else {
 		pd = pmap_pd(pmap, va);
-		if (pd == NULL || (*pd & PG_V) == 0)
+		if (pd == NULL || (*pd & pmap->pmap_bits[PG_V_IDX]) == 0)
 			 return NULL;
 		return (pmap_pd_to_pt(*pd, va));
 	}
@@ -528,9 +558,9 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
 	pd_entry_t *pt;
 
 	pt = pmap_pt(pmap, va);
-	if (pt == NULL || (*pt & PG_V) == 0)
+	if (pt == NULL || (*pt & pmap->pmap_bits[PG_V_IDX]) == 0)
 		 return NULL;
-	if ((*pt & PG_PS) != 0)
+	if ((*pt & pmap->pmap_bits[PG_PS_IDX]) != 0)
 		return ((pt_entry_t *)pt);
 	return (pmap_pt_to_pte(*pt, va));
 }
@@ -538,6 +568,9 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
 /*
  * Of all the layers (PTE, PT, PD, PDP, PML4) the best one to cache is
  * the PT layer.  This will speed up core pmap operations considerably.
+ *
+ * NOTE: Can be called with the pmap spin lock held shared.  pm_pvhint
+ *	 race is ok.
  */
 static __inline
 void
@@ -655,7 +688,10 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 */
 	for (i = 0; (i << PAGE_SHIFT) < *firstaddr; i++) {
 		((pt_entry_t *)KPTbase)[i] = i << PAGE_SHIFT;
-		((pt_entry_t *)KPTbase)[i] |= PG_RW | PG_V | PG_G;
+		((pt_entry_t *)KPTbase)[i] |=
+		    pmap_bits_default[PG_RW_IDX] |
+		    pmap_bits_default[PG_V_IDX] |
+		    pmap_bits_default[PG_G_IDX];
 	}
 
 	/*
@@ -666,11 +702,15 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 */
 	for (i = 0; i < nkpt_base; i++) {
 		((pd_entry_t *)KPDbase)[i] = KPTbase + (i << PAGE_SHIFT);
-		((pd_entry_t *)KPDbase)[i] |= PG_RW | PG_V;
+		((pd_entry_t *)KPDbase)[i] |=
+		    pmap_bits_default[PG_RW_IDX] |
+		    pmap_bits_default[PG_V_IDX];
 	}
 	for (i = 0; i < nkpt_phys; i++) {
 		((pd_entry_t *)KPDphys)[i] = KPTphys + (i << PAGE_SHIFT);
-		((pd_entry_t *)KPDphys)[i] |= PG_RW | PG_V;
+		((pd_entry_t *)KPDphys)[i] |=
+		    pmap_bits_default[PG_RW_IDX] |
+		    pmap_bits_default[PG_V_IDX];
 	}
 
 	/*
@@ -680,7 +720,11 @@ create_pagetables(vm_paddr_t *firstaddr)
 	 */
 	for (i = 0; (i << PDRSHIFT) < *firstaddr; i++) {
 		((pd_entry_t *)KPDbase)[i] = i << PDRSHIFT;
-		((pd_entry_t *)KPDbase)[i] |= PG_RW | PG_V | PG_PS | PG_G;
+		((pd_entry_t *)KPDbase)[i] |=
+		    pmap_bits_default[PG_RW_IDX] |
+		    pmap_bits_default[PG_V_IDX] |
+		    pmap_bits_default[PG_PS_IDX] |
+		    pmap_bits_default[PG_G_IDX];
 	}
 
 	/*
@@ -691,7 +735,9 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pdp_entry_t *)KPDPphys)[NPDPEPG - NKPDPE + i] =
 				KPDphys + (i << PAGE_SHIFT);
 		((pdp_entry_t *)KPDPphys)[NPDPEPG - NKPDPE + i] |=
-				PG_RW | PG_V | PG_U;
+		    pmap_bits_default[PG_RW_IDX] |
+		    pmap_bits_default[PG_V_IDX] |
+		    pmap_bits_default[PG_U_IDX];
 	}
 
 	/*
@@ -704,8 +750,13 @@ create_pagetables(vm_paddr_t *firstaddr)
 	if ((amd_feature & AMDID_PAGE1GB) == 0) {
 		for (i = 0; i < NPDEPG * ndmpdp; i++) {
 			((pd_entry_t *)DMPDphys)[i] = i << PDRSHIFT;
-			((pd_entry_t *)DMPDphys)[i] |= PG_RW | PG_V | PG_PS |
-						       PG_G | PG_M | PG_A;
+			((pd_entry_t *)DMPDphys)[i] |=
+			    pmap_bits_default[PG_RW_IDX] |
+			    pmap_bits_default[PG_V_IDX] |
+			    pmap_bits_default[PG_PS_IDX] |
+			    pmap_bits_default[PG_G_IDX] |
+			    pmap_bits_default[PG_M_IDX] |
+			    pmap_bits_default[PG_A_IDX];
 		}
 
 		/*
@@ -714,35 +765,51 @@ create_pagetables(vm_paddr_t *firstaddr)
 		for (i = 0; i < ndmpdp; i++) {
 			((pdp_entry_t *)DMPDPphys)[i] = DMPDphys +
 							(i << PAGE_SHIFT);
-			((pdp_entry_t *)DMPDPphys)[i] |= PG_RW | PG_V | PG_U;
+			((pdp_entry_t *)DMPDPphys)[i] |=
+			    pmap_bits_default[PG_RW_IDX] |
+			    pmap_bits_default[PG_V_IDX] |
+			    pmap_bits_default[PG_U_IDX];
 		}
 	} else {
 		for (i = 0; i < ndmpdp; i++) {
 			((pdp_entry_t *)DMPDPphys)[i] =
 						(vm_paddr_t)i << PDPSHIFT;
-			((pdp_entry_t *)DMPDPphys)[i] |= PG_RW | PG_V | PG_PS |
-							 PG_G | PG_M | PG_A;
+			((pdp_entry_t *)DMPDPphys)[i] |=
+			    pmap_bits_default[PG_RW_IDX] |
+			    pmap_bits_default[PG_V_IDX] |
+			    pmap_bits_default[PG_PS_IDX] |
+			    pmap_bits_default[PG_G_IDX] |
+			    pmap_bits_default[PG_M_IDX] |
+			    pmap_bits_default[PG_A_IDX];
 		}
 	}
 
 	/* And recursively map PML4 to itself in order to get PTmap */
 	((pdp_entry_t *)KPML4phys)[PML4PML4I] = KPML4phys;
-	((pdp_entry_t *)KPML4phys)[PML4PML4I] |= PG_RW | PG_V | PG_U;
+	((pdp_entry_t *)KPML4phys)[PML4PML4I] |=
+	    pmap_bits_default[PG_RW_IDX] |
+	    pmap_bits_default[PG_V_IDX] |
+	    pmap_bits_default[PG_U_IDX];
 
 	/*
 	 * Connect the Direct Map slots up to the PML4
 	 */
 	for (j = 0; j < NDMPML4E; ++j) {
 		((pdp_entry_t *)KPML4phys)[DMPML4I + j] =
-			(DMPDPphys + ((vm_paddr_t)j << PML4SHIFT)) |
-			PG_RW | PG_V | PG_U;
+		    (DMPDPphys + ((vm_paddr_t)j << PML4SHIFT)) |
+		    pmap_bits_default[PG_RW_IDX] |
+		    pmap_bits_default[PG_V_IDX] |
+		    pmap_bits_default[PG_U_IDX];
 	}
 
 	/*
 	 * Connect the KVA slot up to the PML4
 	 */
 	((pdp_entry_t *)KPML4phys)[KPML4I] = KPDPphys;
-	((pdp_entry_t *)KPML4phys)[KPML4I] |= PG_RW | PG_V | PG_U;
+	((pdp_entry_t *)KPML4phys)[KPML4I] |=
+	    pmap_bits_default[PG_RW_IDX] |
+	    pmap_bits_default[PG_V_IDX] |
+	    pmap_bits_default[PG_U_IDX];
 }
 
 /*
@@ -843,12 +910,12 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 * cases rather then invl1pg.  Actually, I don't even know why it
 	 * works under UP because self-referential page table mappings
 	 */
-	pgeflag = 0;
+//	pgeflag = 0;
 
 /*
  * Initialize the 4MB page size flag
  */
-	pseflag = 0;
+//	pseflag = 0;
 /*
  * The 4MB page version of the initial
  * kernel page mapping.
@@ -861,10 +928,14 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 		/*
 		 * Note that we have enabled PSE mode
 		 */
-		pseflag = PG_PS;
+//		pseflag = kernel_pmap.pmap_bits[PG_PS_IDX];
 		ptditmp = *(PTmap + x86_64_btop(KERNBASE));
 		ptditmp &= ~(NBPDR - 1);
-		ptditmp |= PG_V | PG_RW | PG_PS | PG_U | pgeflag;
+		ptditmp |= pmap_bits_default[PG_V_IDX] |
+		    pmap_bits_default[PG_RW_IDX] |
+		    pmap_bits_default[PG_PS_IDX] |
+		    pmap_bits_default[PG_U_IDX];
+//		    pgeflag;
 		pdir4mb = ptditmp;
 	}
 #endif
@@ -872,6 +943,8 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 
 	/* Initialize the PAT MSR */
 	pmap_init_pat();
+
+	pmap_pinit_defaults(&kernel_pmap);
 }
 
 /*
@@ -898,9 +971,9 @@ pmap_init_pat(void)
 		  PAT_VALUE(6, PAT_UNCACHED) |		/* 110 */
 		  PAT_VALUE(7, PAT_UNCACHEABLE);	/* 111 */
 	pat_pte_index[PAT_WRITE_BACK]	= 0;
-	pat_pte_index[PAT_WRITE_THROUGH]= 0         | PG_NC_PWT;
-	pat_pte_index[PAT_UNCACHED]	= PG_NC_PCD;
-	pat_pte_index[PAT_UNCACHEABLE]	= PG_NC_PCD | PG_NC_PWT;
+	pat_pte_index[PAT_WRITE_THROUGH]= 0         | X86_PG_NC_PWT;
+	pat_pte_index[PAT_UNCACHED]	= X86_PG_NC_PCD;
+	pat_pte_index[PAT_UNCACHEABLE]	= X86_PG_NC_PCD | X86_PG_NC_PWT;
 	pat_pte_index[PAT_WRITE_PROTECTED] = pat_pte_index[PAT_UNCACHEABLE];
 	pat_pte_index[PAT_WRITE_COMBINING] = pat_pte_index[PAT_UNCACHEABLE];
 
@@ -914,8 +987,8 @@ pmap_init_pat(void)
 			  PAT_VALUE(4, PAT_WRITE_PROTECTED);
 		pat_msr = (pat_msr & ~PAT_MASK(5)) |
 			  PAT_VALUE(5, PAT_WRITE_COMBINING);
-		pat_pte_index[PAT_WRITE_PROTECTED] = PG_PTE_PAT | 0;
-		pat_pte_index[PAT_WRITE_COMBINING] = PG_PTE_PAT | PG_NC_PWT;
+		pat_pte_index[PAT_WRITE_PROTECTED] = X86_PG_PTE_PAT | 0;
+		pat_pte_index[PAT_WRITE_COMBINING] = X86_PG_PTE_PAT | X86_PG_NC_PWT;
 
 		/*
 		 * Then enable the PAT
@@ -953,7 +1026,7 @@ pmap_init_pat(void)
 void
 pmap_set_opt(void)
 {
-	if (pseflag && (cpu_feature & CPUID_PSE)) {
+	if (cpu_feature & CPUID_PSE) {
 		load_cr4(rcr4() | CR4_PSE);
 		if (pdir4mb && mycpu->gd_cpuid == 0) {	/* only on BSP */
 			cpu_invltlb();
@@ -1082,13 +1155,13 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 		pd_entry_t *pt;
 
 		pt = pmap_pt(pmap, va);
-		if (pt && (*pt & PG_V)) {
-			if (*pt & PG_PS) {
+		if (pt && (*pt & pmap->pmap_bits[PG_V_IDX])) {
+			if (*pt & pmap->pmap_bits[PG_PS_IDX]) {
 				rtval = *pt & PG_PS_FRAME;
 				rtval |= va & PDRMASK;
 			} else {
 				ptep = pmap_pt_to_pte(*pt, va);
-				if (*pt & PG_V) {
+				if (*pt & pmap->pmap_bits[PG_V_IDX]) {
 					rtval = *ptep & PG_FRAME;
 					rtval |= va & PAGE_MASK;
 				}
@@ -1103,7 +1176,7 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 		pt_pv = pv_find(pmap, pmap_pt_pindex(va));
 		if (pt_pv) {
 			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(va));
-			if (*ptep & PG_V) {
+			if (*ptep & pmap->pmap_bits[PG_V_IDX]) {
 				rtval = *ptep & PG_FRAME;
 				rtval |= va & PAGE_MASK;
 			}
@@ -1111,6 +1184,57 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 		}
 	}
 	return rtval;
+}
+
+/*
+ * Similar to extract but checks protections, SMP-friendly short-cut for
+ * vm_fault_page[_quick]().  Can return NULL to cause the caller to
+ * fall-through to the real fault code.
+ *
+ * The returned page, if not NULL, is held (and not busied).
+ */
+vm_page_t
+pmap_fault_page_quick(pmap_t pmap, vm_offset_t va, vm_prot_t prot)
+{
+	if (pmap && va < VM_MAX_USER_ADDRESS) {
+		pv_entry_t pt_pv;
+		pv_entry_t pte_pv;
+		pt_entry_t *ptep;
+		pt_entry_t req;
+		vm_page_t m;
+		int error;
+
+		req = pmap->pmap_bits[PG_V_IDX] |
+		      pmap->pmap_bits[PG_U_IDX];
+		if (prot & VM_PROT_WRITE)
+			req |= pmap->pmap_bits[PG_RW_IDX];
+
+		pt_pv = pv_find(pmap, pmap_pt_pindex(va));
+		if (pt_pv == NULL)
+			return (NULL);
+		ptep = pv_pte_lookup(pt_pv, pmap_pte_index(va));
+		if ((*ptep & req) != req) {
+			pv_drop(pt_pv);
+			return (NULL);
+		}
+		pte_pv = pv_get_try(pmap, pmap_pte_pindex(va), &error);
+		if (pte_pv && error == 0) {
+			m = pte_pv->pv_m;
+			vm_page_hold(m);
+			if (prot & VM_PROT_WRITE)
+				vm_page_dirty(m);
+			pv_put(pte_pv);
+		} else if (pte_pv) {
+			pv_drop(pte_pv);
+			m = NULL;
+		} else {
+			m = NULL;
+		}
+		pv_drop(pt_pv);
+		return(m);
+	} else {
+		return(NULL);
+	}
 }
 
 /*
@@ -1126,7 +1250,7 @@ pmap_kextract(vm_offset_t va)
 		pa = DMAP_TO_PHYS(va);
 	} else {
 		pt = *vtopt(va);
-		if (pt & PG_PS) {
+		if (pt & kernel_pmap.pmap_bits[PG_PS_IDX]) {
 			pa = (pt & PG_PS_FRAME) | (va & PDRMASK);
 		} else {
 			/*
@@ -1163,7 +1287,10 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	pmap_inval_info info;
 
 	pmap_inval_init(&info);				/* XXX remove */
-	npte = pa | PG_RW | PG_V | pgeflag;
+	npte = pa |
+	    kernel_pmap.pmap_bits[PG_RW_IDX] |
+	    kernel_pmap.pmap_bits[PG_V_IDX];
+//	    pgeflag;
 	pte = vtopte(va);
 	pmap_inval_interlock(&info, &kernel_pmap, va);	/* XXX remove */
 	*pte = npte;
@@ -1183,7 +1310,10 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 	pt_entry_t *pte;
 	pt_entry_t npte;
 
-	npte = pa | PG_RW | PG_V | pgeflag;
+	npte = pa |
+	    kernel_pmap.pmap_bits[PG_RW_IDX] |
+	    kernel_pmap.pmap_bits[PG_V_IDX];
+//	    pgeflag;
 	pte = vtopte(va);
 	*pte = npte;
 	cpu_invlpg((void *)va);
@@ -1238,16 +1368,18 @@ pmap_kremove_quick(vm_offset_t va)
 void
 pmap_kmodify_rw(vm_offset_t va)
 {
-	atomic_set_long(vtopte(va), PG_RW);
+	atomic_set_long(vtopte(va), kernel_pmap.pmap_bits[PG_RW_IDX]);
 	cpu_invlpg((void *)va);
 }
 
+/* NOT USED
 void
 pmap_kmodify_nc(vm_offset_t va)
 {
 	atomic_set_long(vtopte(va), PG_N);
 	cpu_invlpg((void *)va);
 }
+*/
 
 /*
  * Used to map a range of physical addresses into kernel virtual
@@ -1351,8 +1483,11 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 		pt_entry_t *pte;
 
 		pte = vtopte(va);
-		*pte = VM_PAGE_TO_PHYS(*m) | PG_RW | PG_V |
-			pat_pte_index[(*m)->pat_mode] | pgeflag;
+		*pte = VM_PAGE_TO_PHYS(*m) |
+		    kernel_pmap.pmap_bits[PG_RW_IDX] |
+		    kernel_pmap.pmap_bits[PG_V_IDX] |
+		    kernel_pmap.pmap_cache_bits[(*m)->pat_mode];
+//		pgeflag;
 		cpu_invlpg((void *)va);
 		va += PAGE_SIZE;
 		m++;
@@ -1406,6 +1541,21 @@ pmap_init_proc(struct proc *p)
 {
 }
 
+static void
+pmap_pinit_defaults(struct pmap *pmap) {
+	bcopy(pmap_bits_default, pmap->pmap_bits, sizeof(pmap_bits_default));
+	bcopy(protection_codes, pmap->protection_codes, sizeof(protection_codes));
+	bcopy(pat_pte_index, pmap->pmap_cache_bits, sizeof(pat_pte_index));
+	pmap->pmap_cache_mask = X86_PG_NC_PWT | X86_PG_NC_PCD | X86_PG_PTE_PAT;
+	pmap->copyinstr = std_copyinstr;
+	pmap->copyin = std_copyin;
+	pmap->copyout = std_copyout;
+	pmap->fubyte = std_fubyte;
+	pmap->subyte = std_subyte;
+	pmap->fuword = std_fuword;
+	pmap->suword = std_suword;
+	pmap->suword32 = std_suword32;
+}
 /*
  * Initialize pmap0/vmspace0.  This pmap is not added to pmap_list because
  * it, and IdlePTD, represents the template used to update all other pmaps.
@@ -1425,6 +1575,7 @@ pmap_pinit0(struct pmap *pmap)
 	spin_init(&pmap->pm_spin);
 	lwkt_token_init(&pmap->pm_token, "pmap_tok");
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
+	pmap_pinit_defaults(pmap);
 }
 
 /*
@@ -1441,6 +1592,8 @@ pmap_pinit_simple(struct pmap *pmap)
 	pmap->pm_active = 0;
 	pmap->pm_pvhint = NULL;
 	pmap->pm_flags = PMAP_FLAG_SIMPLE;
+
+	pmap_pinit_defaults(pmap);
 
 	/*
 	 * Don't blow up locks/tokens on re-use (XXX fix/use drop code
@@ -1459,6 +1612,12 @@ pmap_pinit(struct pmap *pmap)
 {
 	pv_entry_t pv;
 	int j;
+
+	if (pmap->pm_pmlpv) {
+		if (pmap->pmap_bits[TYPE_IDX] != REGULAR_PMAP) {
+			pmap_puninit(pmap);
+		}
+	}
 
 	pmap_pinit_simple(pmap);
 	pmap->pm_flags &= ~PMAP_FLAG_SIMPLE;
@@ -1490,16 +1649,24 @@ pmap_pinit(struct pmap *pmap)
 		 */
 		for (j = 0; j < NDMPML4E; ++j) {
 			pmap->pm_pml4[DMPML4I + j] =
-				(DMPDPphys + ((vm_paddr_t)j << PML4SHIFT)) |
-				PG_RW | PG_V | PG_U;
+			    (DMPDPphys + ((vm_paddr_t)j << PML4SHIFT)) |
+			    pmap->pmap_bits[PG_RW_IDX] |
+			    pmap->pmap_bits[PG_V_IDX] |
+			    pmap->pmap_bits[PG_U_IDX];
 		}
-		pmap->pm_pml4[KPML4I] = KPDPphys | PG_RW | PG_V | PG_U;
+		pmap->pm_pml4[KPML4I] = KPDPphys |
+		    pmap->pmap_bits[PG_RW_IDX] |
+		    pmap->pmap_bits[PG_V_IDX] |
+		    pmap->pmap_bits[PG_U_IDX];
 
 		/*
 		 * install self-referential address mapping entry
 		 */
 		pmap->pm_pml4[PML4PML4I] = VM_PAGE_TO_PHYS(pv->pv_m) |
-					   PG_V | PG_RW | PG_A | PG_M;
+		    pmap->pmap_bits[PG_V_IDX] |
+		    pmap->pmap_bits[PG_RW_IDX] |
+		    pmap->pmap_bits[PG_A_IDX] |
+		    pmap->pmap_bits[PG_M_IDX];
 	} else {
 		KKASSERT(pv->pv_m->flags & PG_MAPPED);
 		KKASSERT(pv->pv_m->flags & PG_WRITEABLE);
@@ -1744,7 +1911,7 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	 */
 	if (pvp) {
 		ptep = pv_pte_lookup(pvp, ptepindex);
-		if (*ptep & PG_V) {
+		if (*ptep & pmap->pmap_bits[PG_V_IDX]) {
 			pt_entry_t pte;
 			pmap_inval_info info;
 
@@ -1766,8 +1933,12 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 		} else {
 			vm_page_wire_quick(pvp->pv_m);
 		}
-		*ptep = VM_PAGE_TO_PHYS(m) | (PG_U | PG_RW | PG_V |
-					      PG_A | PG_M);
+		*ptep = VM_PAGE_TO_PHYS(m) |
+		    (pmap->pmap_bits[PG_U_IDX] |
+		    pmap->pmap_bits[PG_RW_IDX] |
+		    pmap->pmap_bits[PG_V_IDX] |
+		    pmap->pmap_bits[PG_A_IDX] |
+		    pmap->pmap_bits[PG_M_IDX]);
 	}
 	vm_page_wakeup(m);
 notnew:
@@ -1923,7 +2094,11 @@ retry:
 	 */
 	pt = pv_pte_lookup(proc_pd_pv, pmap_pt_index(b));
 	npte = VM_PAGE_TO_PHYS(xpv->pv_m) |
-	       (PG_U | PG_RW | PG_V | PG_A | PG_M);
+	    (pmap->pmap_bits[PG_U_IDX] |
+	    pmap->pmap_bits[PG_RW_IDX] |
+	    pmap->pmap_bits[PG_V_IDX] |
+	    pmap->pmap_bits[PG_A_IDX] |
+	    pmap->pmap_bits[PG_M_IDX]);
 
 	/*
 	 * Dispose of previous page table page if it was local to the
@@ -1979,7 +2154,7 @@ retry:
 		 * NOTE: replacing valid pte, wire_count on proc_pd_pv
 		 * stays the same.
 		 */
-		KKASSERT(opte & PG_V);
+		KKASSERT(opte & pmap->pmap_bits[PG_V_IDX]);
 		m = PHYS_TO_VM_PAGE(opte & PG_FRAME);
 		if (vm_page_unwire_quick(m)) {
 			panic("pmap_allocpte_seg: "
@@ -2205,7 +2380,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 			gotpvp = 1;
 		}
 		pdp = &pmap->pm_pml4[pdp_index & ((1ul << NPML4EPGSHIFT) - 1)];
-		KKASSERT((*pdp & PG_V) != 0);
+		KKASSERT((*pdp & pmap->pmap_bits[PG_V_IDX]) != 0);
 		p = PHYS_TO_VM_PAGE(*pdp & PG_FRAME);
 		*pdp = 0;
 		KKASSERT(info == NULL);
@@ -2233,7 +2408,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 		if (pvp) {
 			pd = pv_pte_lookup(pvp, pd_index &
 						((1ul << NPDPEPGSHIFT) - 1));
-			KKASSERT((*pd & PG_V) != 0);
+			KKASSERT((*pd & pmap->pmap_bits[PG_V_IDX]) != 0);
 			p = PHYS_TO_VM_PAGE(*pd & PG_FRAME);
 			*pd = 0;
 		} else {
@@ -2259,7 +2434,7 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 			gotpvp = 1;
 		}
 		pt = pv_pte_lookup(pvp, pt_index & ((1ul << NPDPEPGSHIFT) - 1));
-		KKASSERT((*pt & PG_V) != 0);
+		KKASSERT((*pt & pmap->pmap_bits[PG_V_IDX]) != 0);
 		p = PHYS_TO_VM_PAGE(*pt & PG_FRAME);
 		*pt = 0;
 		KKASSERT(info == NULL);
@@ -2308,29 +2483,30 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 		/*
 		 * Now update the vm_page_t
 		 */
-		if ((pte & (PG_MANAGED|PG_V)) != (PG_MANAGED|PG_V)) {
+		if ((pte & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) !=
+		    (pmap->pmap_bits[PG_MANAGED_IDX]|pmap->pmap_bits[PG_V_IDX])) {
 			kprintf("remove_pte badpte %016lx %016lx %d\n",
 				pte, pv->pv_pindex,
 				pv->pv_pindex < pmap_pt_pindex(0));
 		}
 		/* PHYS_TO_VM_PAGE() will not work for FICTITIOUS pages */
 		/*KKASSERT((pte & (PG_MANAGED|PG_V)) == (PG_MANAGED|PG_V));*/
-		if (pte & PG_DEVICE)
+		if (pte & pmap->pmap_bits[PG_DEVICE_IDX])
 			p = pv->pv_m;
 		else
 			p = PHYS_TO_VM_PAGE(pte & PG_FRAME);
 		/* p = pv->pv_m; */
 
-		if (pte & PG_M) {
+		if (pte & pmap->pmap_bits[PG_M_IDX]) {
 			if (pmap_track_modified(ptepindex))
 				vm_page_dirty(p);
 		}
-		if (pte & PG_A) {
+		if (pte & pmap->pmap_bits[PG_A_IDX]) {
 			vm_page_flag_set(p, PG_REFERENCED);
 		}
-		if (pte & PG_W)
+		if (pte & pmap->pmap_bits[PG_W_IDX])
 			atomic_add_long(&pmap->pm_stats.wired_count, -1);
-		if (pte & PG_G)
+		if (pte & pmap->pmap_bits[PG_G_IDX])
 			cpu_invlpg((void *)va);
 	}
 
@@ -2392,7 +2568,7 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 	if (kernel_vm_end == 0) {
 		kernel_vm_end = VM_MIN_KERNEL_ADDRESS;
 		nkpt = 0;
-		while ((*pmap_pt(&kernel_pmap, kernel_vm_end) & PG_V) != 0) {
+		while ((*pmap_pt(&kernel_pmap, kernel_vm_end) & kernel_pmap.pmap_bits[PG_V_IDX]) != 0) {
 			kernel_vm_end = (kernel_vm_end + PAGE_SIZE * NPTEPG) &
 					~(PAGE_SIZE * NPTEPG - 1);
 			nkpt++;
@@ -2440,12 +2616,16 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 				pmap_zero_page(paddr);
 			vm_page_flag_clear(nkpg, PG_ZERO);
 			newpd = (pdp_entry_t)
-				(paddr | PG_V | PG_RW | PG_A | PG_M);
+			    (paddr |
+			    kernel_pmap.pmap_bits[PG_V_IDX] |
+			    kernel_pmap.pmap_bits[PG_RW_IDX] |
+			    kernel_pmap.pmap_bits[PG_A_IDX] |
+			    kernel_pmap.pmap_bits[PG_M_IDX]);
 			*pmap_pd(&kernel_pmap, kstart) = newpd;
 			nkpt++;
 			continue; /* try again */
 		}
-		if ((*pt & PG_V) != 0) {
+		if ((*pt & kernel_pmap.pmap_bits[PG_V_IDX]) != 0) {
 			kstart = (kstart + PAGE_SIZE * NPTEPG) &
 				 ~(PAGE_SIZE * NPTEPG - 1);
 			if (kstart - 1 >= kernel_map.max_offset) {
@@ -2469,7 +2649,11 @@ pmap_growkernel(vm_offset_t kstart, vm_offset_t kend)
 		ptppaddr = VM_PAGE_TO_PHYS(nkpg);
 		pmap_zero_page(ptppaddr);
 		vm_page_flag_clear(nkpg, PG_ZERO);
-		newpt = (pd_entry_t) (ptppaddr | PG_V | PG_RW | PG_A | PG_M);
+		newpt = (pd_entry_t) (ptppaddr |
+		    kernel_pmap.pmap_bits[PG_V_IDX] |
+		    kernel_pmap.pmap_bits[PG_RW_IDX] |
+		    kernel_pmap.pmap_bits[PG_A_IDX] |
+		    kernel_pmap.pmap_bits[PG_M_IDX]);
 		*pmap_pt(&kernel_pmap, kstart) = newpt;
 		nkpt++;
 
@@ -2714,21 +2898,21 @@ pv_get_try(pmap_t pmap, vm_pindex_t pindex, int *errorp)
 {
 	pv_entry_t pv;
 
-	spin_lock(&pmap->pm_spin);
+	spin_lock_shared(&pmap->pm_spin);
 	if ((pv = pmap->pm_pvhint) == NULL || pv->pv_pindex != pindex)
 		pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot, pindex);
 	if (pv == NULL) {
-		spin_unlock(&pmap->pm_spin);
+		spin_unlock_shared(&pmap->pm_spin);
 		*errorp = 0;
 		return NULL;
 	}
 	if (pv_hold_try(pv)) {
 		pv_cache(pv, pindex);
-		spin_unlock(&pmap->pm_spin);
+		spin_unlock_shared(&pmap->pm_spin);
 		*errorp = 0;
 		return(pv);	/* lock succeeded */
 	}
-	spin_unlock(&pmap->pm_spin);
+	spin_unlock_shared(&pmap->pm_spin);
 	*errorp = 1;
 	return (pv);		/* lock failed */
 }
@@ -2742,7 +2926,7 @@ pv_find(pmap_t pmap, vm_pindex_t pindex)
 {
 	pv_entry_t pv;
 
-	spin_lock(&pmap->pm_spin);
+	spin_lock_shared(&pmap->pm_spin);
 
 	if ((pv = pmap->pm_pvhint) == NULL || pv->pv_pindex != pindex)
 		pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot, pindex);
@@ -2752,7 +2936,7 @@ pv_find(pmap_t pmap, vm_pindex_t pindex)
 	}
 	pv_hold(pv);
 	pv_cache(pv, pindex);
-	spin_unlock(&pmap->pm_spin);
+	spin_unlock_shared(&pmap->pm_spin);
 	return(pv);
 }
 
@@ -3013,18 +3197,19 @@ pmap_scan(struct pmap_scan_info *info)
 			 */
 			KKASSERT(pte_pv == NULL);
 		} else if (pte_pv) {
-			KASSERT((*ptep & (PG_MANAGED|PG_V)) == (PG_MANAGED|
-								PG_V),
-				("bad *ptep %016lx sva %016lx pte_pv %p",
-				*ptep, info->sva, pte_pv));
+			KASSERT((*ptep & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) ==
+			    (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX]),
+			    ("bad *ptep %016lx sva %016lx pte_pv %p",
+			    *ptep, info->sva, pte_pv));
 			info->func(pmap, info, pte_pv, pt_pv, 0,
 				   info->sva, ptep, info->arg);
 		} else {
-			KASSERT((*ptep & (PG_MANAGED|PG_V)) == PG_V,
-				("bad *ptep %016lx sva %016lx pte_pv NULL",
-				*ptep, info->sva));
+			KASSERT((*ptep & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) ==
+			    pmap->pmap_bits[PG_V_IDX],
+			    ("bad *ptep %016lx sva %016lx pte_pv NULL",
+			    *ptep, info->sva));
 			info->func(pmap, info, NULL, pt_pv, 0,
-				   info->sva, ptep, info->arg);
+			    info->sva, ptep, info->arg);
 		}
 		if (pt_pv)
 			pv_put(pt_pv);
@@ -3200,7 +3385,7 @@ pmap_scan_callback(pv_entry_t pv, void *data)
 				pd_pv = pv_get(pmap, pmap_pd_pindex(sva));
 			KKASSERT(pd_pv != NULL);
 			ptep = pv_pte_lookup(pd_pv, pmap_pt_index(sva));
-			if (*ptep & PG_V) {
+			if (*ptep & pmap->pmap_bits[PG_V_IDX]) {
 				info->func(pmap, info, NULL, pd_pv, 1,
 					   sva, ptep, info->arg);
 			}
@@ -3309,21 +3494,21 @@ kernel_skip:
 			 * isn't.
 			 */
 			if (pte_pv) {
-				KASSERT((*ptep & (PG_MANAGED|PG_V)) ==
-					 (PG_MANAGED|PG_V),
-					("bad *ptep %016lx sva %016lx "
-					 "pte_pv %p",
-					 *ptep, sva, pte_pv));
+				KASSERT((*ptep & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) ==
+				    (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX]),
+				    ("bad *ptep %016lx sva %016lx "
+				    "pte_pv %p",
+				    *ptep, sva, pte_pv));
 				info->func(pmap, info, pte_pv, pt_pv, 0,
-					   sva, ptep, info->arg);
+				    sva, ptep, info->arg);
 			} else {
-				KASSERT((*ptep & (PG_MANAGED|PG_V)) ==
-					 PG_V,
-					("bad *ptep %016lx sva %016lx "
-					 "pte_pv NULL",
-					 *ptep, sva));
+				KASSERT((*ptep & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) ==
+				    pmap->pmap_bits[PG_V_IDX],
+				    ("bad *ptep %016lx sva %016lx "
+				    "pte_pv NULL",
+				     *ptep, sva));
 				info->func(pmap, info, NULL, pt_pv, 0,
-					   sva, ptep, info->arg);
+				    sva, ptep, info->arg);
 			}
 			pte_pv = NULL;
 			sva += PAGE_SIZE;
@@ -3406,7 +3591,7 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		pte = pte_load_clear(ptep);
 		if (info->doinval)
 			pmap_inval_deinterlock(&info->inval, pmap);
-		if (pte & PG_W)
+		if (pte & pmap->pmap_bits[PG_W_IDX])
 			atomic_add_long(&pmap->pm_stats.wired_count, -1);
 		atomic_add_long(&pmap->pm_stats.resident_count, -1);
 		if (vm_page_unwire_quick(pt_pv->pv_m))
@@ -3425,7 +3610,7 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		if (info->doinval)
 			pmap_inval_deinterlock(&info->inval, pmap);
 		atomic_add_long(&pmap->pm_stats.resident_count, -1);
-		KKASSERT((pte & PG_DEVICE) == 0);
+		KKASSERT((pte & pmap->pmap_bits[PG_DEVICE_IDX]) == 0);
 		if (vm_page_unwire_quick(PHYS_TO_VM_PAGE(pte & PG_FRAME)))
 			panic("pmap_remove: shared pgtable1 bad wirecount");
 		if (vm_page_unwire_quick(pt_pv->pv_m))
@@ -3530,24 +3715,24 @@ again:
 	cbits = pbits;
 	if (pte_pv) {
 		m = NULL;
-		if (pbits & PG_A) {
-			if ((pbits & PG_DEVICE) == 0) {
+		if (pbits & pmap->pmap_bits[PG_A_IDX]) {
+			if ((pbits & pmap->pmap_bits[PG_DEVICE_IDX]) == 0) {
 				m = PHYS_TO_VM_PAGE(pbits & PG_FRAME);
 				KKASSERT(m == pte_pv->pv_m);
 				vm_page_flag_set(m, PG_REFERENCED);
 			}
-			cbits &= ~PG_A;
+			cbits &= ~pmap->pmap_bits[PG_A_IDX];
 		}
-		if (pbits & PG_M) {
+		if (pbits & pmap->pmap_bits[PG_M_IDX]) {
 			if (pmap_track_modified(pte_pv->pv_pindex)) {
-				if ((pbits & PG_DEVICE) == 0) {
+				if ((pbits & pmap->pmap_bits[PG_DEVICE_IDX]) == 0) {
 					if (m == NULL) {
 						m = PHYS_TO_VM_PAGE(pbits &
 								    PG_FRAME);
 					}
 					vm_page_dirty(m);
 				}
-				cbits &= ~PG_M;
+				cbits &= ~pmap->pmap_bits[PG_M_IDX];
 			}
 		}
 	} else if (sharept) {
@@ -3574,7 +3759,7 @@ again:
 	/* else unmanaged page, adjust bits, no wire changes */
 
 	if (ptep) {
-		cbits &= ~PG_RW;
+		cbits &= ~pmap->pmap_bits[PG_RW_IDX];
 		if (pbits != cbits && !atomic_cmpset_long(ptep, pbits, cbits)) {
 			goto again;
 		}
@@ -3665,7 +3850,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 						  NULL, entry, va);
 			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(va));
 		}
-		KKASSERT(*ptep == 0 || (*ptep & PG_MANAGED) == 0);
+		KKASSERT(*ptep == 0 || (*ptep & pmap->pmap_bits[PG_MANAGED_IDX]) == 0);
 	} else {
 		if (va >= VM_MAX_USER_ADDRESS) {
 			/*
@@ -3682,31 +3867,33 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 						   &pt_pv, entry, va);
 			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(va));
 		}
-		KKASSERT(*ptep == 0 || (*ptep & PG_MANAGED));
+		KKASSERT(*ptep == 0 || (*ptep & pmap->pmap_bits[PG_MANAGED_IDX]));
 	}
 
 	pa = VM_PAGE_TO_PHYS(m);
 	origpte = *ptep;
 	opa = origpte & PG_FRAME;
 
-	newpte = (pt_entry_t)(pa | pte_prot(pmap, prot) | PG_V | PG_A);
+	newpte = (pt_entry_t)(pa | pte_prot(pmap, prot) |
+	    pmap->pmap_bits[PG_V_IDX] | pmap->pmap_bits[PG_A_IDX]);
 	if (wired)
-		newpte |= PG_W;
+		newpte |= pmap->pmap_bits[PG_W_IDX];
 	if (va < VM_MAX_USER_ADDRESS)
-		newpte |= PG_U;
+		newpte |= pmap->pmap_bits[PG_U_IDX];
 	if (pte_pv)
-		newpte |= PG_MANAGED;
-	if (pmap == &kernel_pmap)
-		newpte |= pgeflag;
-	newpte |= pat_pte_index[m->pat_mode];
+		newpte |= pmap->pmap_bits[PG_MANAGED_IDX];
+//	if (pmap == &kernel_pmap)
+//		newpte |= pgeflag;
+	newpte |= pmap->pmap_cache_bits[m->pat_mode];
 	if (m->flags & PG_FICTITIOUS)
-		newpte |= PG_DEVICE;
+		newpte |= pmap->pmap_bits[PG_DEVICE_IDX];
 
 	/*
 	 * It is possible for multiple faults to occur in threaded
 	 * environments, the existing pte might be correct.
 	 */
-	if (((origpte ^ newpte) & ~(pt_entry_t)(PG_M|PG_A)) == 0)
+	if (((origpte ^ newpte) & ~(pt_entry_t)(pmap->pmap_bits[PG_M_IDX] |
+	    pmap->pmap_bits[PG_A_IDX])) == 0)
 		goto done;
 
 	if ((prot & VM_PROT_NOSYNC) == 0)
@@ -3817,7 +4004,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 			atomic_add_long(&pmap->pm_stats.wired_count, 1);
 		}
 	}
-	if (newpte & PG_RW)
+	if (newpte & pmap->pmap_bits[PG_RW_IDX])
 		vm_page_flag_set(m, PG_WRITEABLE);
 
 	/*
@@ -3832,7 +4019,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	if ((prot & VM_PROT_NOSYNC) == 0 || pte_pv == NULL)
 		pmap_inval_done(&info);
 done:
-	KKASSERT((newpte & PG_MANAGED) == 0 || (m->flags & PG_MAPPED));
+	KKASSERT((newpte & pmap->pmap_bits[PG_MANAGED_IDX]) == 0 || (m->flags & PG_MAPPED));
 
 	/*
 	 * Cleanup the pv entry, allowing other accessors.
@@ -3880,7 +4067,7 @@ static int pmap_object_init_pt_callback(vm_page_t p, void *data);
 
 void
 pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
-		    vm_object_t object, vm_pindex_t pindex, 
+		    vm_object_t object, vm_pindex_t pindex,
 		    vm_size_t size, int limit)
 {
 	struct rb_vm_page_scan_info info;
@@ -4006,7 +4193,7 @@ pmap_prefault_ok(pmap_t pmap, vm_offset_t addr)
 
 	/*spin_lock(&pmap->pm_spin);*/
 	if ((pte = pmap_pte(pmap, addr)) != NULL) {
-		if (*pte & PG_V) {
+		if (*pte & pmap->pmap_bits[PG_V_IDX]) {
 			/*spin_unlock(&pmap->pm_spin);*/
 			return FALSE;
 		}
@@ -4032,9 +4219,9 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired,
 	pv = pmap_allocpte_seg(pmap, pmap_pt_pindex(va), NULL, entry, va);
 	ptep = pv_pte_lookup(pv, pmap_pte_index(va));
 
-	if (wired && !pmap_pte_w(ptep))
+	if (wired && !pmap_pte_w(pmap, ptep))
 		atomic_add_long(&pv->pv_pmap->pm_stats.wired_count, 1);
-	else if (!wired && pmap_pte_w(ptep))
+	else if (!wired && pmap_pte_w(pmap, ptep))
 		atomic_add_long(&pv->pv_pmap->pm_stats.wired_count, -1);
 
 	/*
@@ -4045,9 +4232,9 @@ pmap_change_wiring(pmap_t pmap, vm_offset_t va, boolean_t wired,
 	 * wiring changes.
 	 */
 	if (wired)
-		atomic_set_long(ptep, PG_W);
+		atomic_set_long(ptep, pmap->pmap_bits[PG_W_IDX]);
 	else
-		atomic_clear_long(ptep, PG_W);
+		atomic_clear_long(ptep, pmap->pmap_bits[PG_W_IDX]);
 	pv_put(pv);
 	lwkt_reltoken(&pmap->pm_token);
 }
@@ -4205,6 +4392,7 @@ pmap_testbit(vm_page_t m, int bit)
 {
 	pv_entry_t pv;
 	pt_entry_t *pte;
+	pmap_t pmap;
 
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
 		return FALSE;
@@ -4218,15 +4406,6 @@ pmap_testbit(vm_page_t m, int bit)
 	}
 
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
-		/*
-		 * if the bit being tested is the modified bit, then
-		 * mark clean_map and ptes as never
-		 * modified.
-		 */
-		if (bit & (PG_A|PG_M)) {
-			if (!pmap_track_modified(pv->pv_pindex))
-				continue;
-		}
 
 #if defined(PMAP_DIAGNOSTIC)
 		if (pv->pv_pmap == NULL) {
@@ -4235,8 +4414,21 @@ pmap_testbit(vm_page_t m, int bit)
 			continue;
 		}
 #endif
+		pmap = pv->pv_pmap;
+
+		/*
+		 * if the bit being tested is the modified bit, then
+		 * mark clean_map and ptes as never
+		 * modified.
+		 */
+		if (bit == PG_A_IDX || bit == PG_M_IDX) {
+				//& (pmap->pmap_bits[PG_A_IDX] | pmap->pmap_bits[PG_M_IDX])) {
+			if (!pmap_track_modified(pv->pv_pindex))
+				continue;
+		}
+
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
-		if (*pte & bit) {
+		if (*pte & pmap->pmap_bits[bit]) {
 			vm_page_spin_unlock(m);
 			return TRUE;
 		}
@@ -4253,15 +4445,16 @@ pmap_testbit(vm_page_t m, int bit)
  */
 static __inline
 void
-pmap_clearbit(vm_page_t m, int bit)
+pmap_clearbit(vm_page_t m, int bit_index)
 {
 	struct pmap_inval_info info;
 	pv_entry_t pv;
 	pt_entry_t *pte;
 	pt_entry_t pbits;
 	pmap_t save_pmap;
+	pmap_t pmap;
 
-	if (bit == PG_RW)
+	if (bit_index == PG_RW_IDX)
 		vm_page_flag_clear(m, PG_WRITEABLE);
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS)) {
 		return;
@@ -4282,7 +4475,7 @@ pmap_clearbit(vm_page_t m, int bit)
 	 *
 	 * NOTE: Does not re-dirty the page when clearing only PG_M.
 	 */
-	if ((bit & PG_RW) == 0) {
+	if (bit_index != PG_RW_IDX) {
 		vm_page_spin_lock(m);
 		TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 	#if defined(PMAP_DIAGNOSTIC)
@@ -4292,11 +4485,12 @@ pmap_clearbit(vm_page_t m, int bit)
 				continue;
 			}
 	#endif
+			pmap = pv->pv_pmap;
 			pte = pmap_pte_quick(pv->pv_pmap,
 					     pv->pv_pindex << PAGE_SHIFT);
 			pbits = *pte;
-			if (pbits & bit)
-				atomic_clear_long(pte, bit);
+			if (pbits & pmap->pmap_bits[bit_index])
+				atomic_clear_long(pte, pmap->pmap_bits[bit_index]);
 		}
 		vm_page_spin_unlock(m);
 		return;
@@ -4324,11 +4518,12 @@ restart:
 			continue;
 		}
 #endif
+		pmap = pv->pv_pmap;
 		/*
 		 * Skip pages which do not have PG_RW set.
 		 */
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
-		if ((*pte & PG_RW) == 0)
+		if ((*pte & pmap->pmap_bits[PG_RW_IDX]) == 0)
 			continue;
 
 		/*
@@ -4349,8 +4544,9 @@ restart:
 		for (;;) {
 			pbits = *pte;
 			cpu_ccfence();
-			if (atomic_cmpset_long(pte, pbits,
-					       pbits & ~(PG_RW|PG_M))) {
+			if (atomic_cmpset_long(pte, pbits, pbits &
+			    ~(save_pmap->pmap_bits[PG_RW_IDX] |
+			    save_pmap->pmap_bits[PG_M_IDX]))) {
 				break;
 			}
 		}
@@ -4362,7 +4558,7 @@ restart:
 		 * we also clear PG_M (done above) and mark the page dirty.
 		 * Callers expect this behavior.
 		 */
-		if (pbits & PG_M)
+		if (pbits & save_pmap->pmap_bits[PG_M_IDX])
 			vm_page_dirty(m);
 		pv_put(pv);
 	}
@@ -4385,7 +4581,7 @@ pmap_page_protect(vm_page_t m, vm_prot_t prot)
 			 * NOTE: pmap_clearbit(.. PG_RW) also clears
 			 *	 the PG_WRITEABLE flag in (m).
 			 */
-			pmap_clearbit(m, PG_RW);
+			pmap_clearbit(m, PG_RW_IDX);
 		} else {
 			pmap_remove_all(m);
 		}
@@ -4415,6 +4611,7 @@ pmap_ts_referenced(vm_page_t m)
 {
 	pv_entry_t pv;
 	pt_entry_t *pte;
+	pmap_t pmap;
 	int rtval = 0;
 
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS))
@@ -4424,9 +4621,10 @@ pmap_ts_referenced(vm_page_t m)
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 		if (!pmap_track_modified(pv->pv_pindex))
 			continue;
+		pmap = pv->pv_pmap;
 		pte = pmap_pte_quick(pv->pv_pmap, pv->pv_pindex << PAGE_SHIFT);
-		if (pte && (*pte & PG_A)) {
-			atomic_clear_long(pte, PG_A);
+		if (pte && (*pte & pmap->pmap_bits[PG_A_IDX])) {
+			atomic_clear_long(pte, pmap->pmap_bits[PG_A_IDX]);
 			rtval++;
 			if (rtval > 4)
 				break;
@@ -4447,7 +4645,7 @@ pmap_is_modified(vm_page_t m)
 {
 	boolean_t res;
 
-	res = pmap_testbit(m, PG_M);
+	res = pmap_testbit(m, PG_M_IDX);
 	return (res);
 }
 
@@ -4457,7 +4655,7 @@ pmap_is_modified(vm_page_t m)
 void
 pmap_clear_modify(vm_page_t m)
 {
-	pmap_clearbit(m, PG_M);
+	pmap_clearbit(m, PG_M_IDX);
 }
 
 /*
@@ -4468,7 +4666,7 @@ pmap_clear_modify(vm_page_t m)
 void
 pmap_clear_reference(vm_page_t m)
 {
-	pmap_clearbit(m, PG_A);
+	pmap_clearbit(m, PG_A_IDX);
 }
 
 /*
@@ -4483,7 +4681,7 @@ i386_protection_init(void)
 
 	/* JG NX support may go here; No VM_PROT_EXECUTE ==> set NX bit  */
 	kp = protection_codes;
-	for (prot = 0; prot < 8; prot++) {
+	for (prot = 0; prot < PROTECTION_CODES_SIZE; prot++) {
 		switch (prot) {
 		case VM_PROT_NONE | VM_PROT_NONE | VM_PROT_NONE:
 			/*
@@ -4499,7 +4697,7 @@ i386_protection_init(void)
 		case VM_PROT_NONE | VM_PROT_WRITE | VM_PROT_EXECUTE:
 		case VM_PROT_READ | VM_PROT_WRITE | VM_PROT_NONE:
 		case VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE:
-			*kp++ = PG_RW;
+			*kp++ = pmap_bits_default[PG_RW_IDX];
 			break;
 		}
 	}
@@ -4560,8 +4758,10 @@ pmap_mapdev_attr(vm_paddr_t pa, vm_size_t size, int mode)
 	pa = pa & ~PAGE_MASK;
 	for (tmpva = va, tmpsize = size; tmpsize > 0;) {
 		pte = vtopte(tmpva);
-		*pte = pa | PG_RW | PG_V | /* pgeflag | */
-		       pat_pte_index[mode];
+		*pte = pa |
+		    kernel_pmap.pmap_bits[PG_RW_IDX] |
+		    kernel_pmap.pmap_bits[PG_V_IDX] | /* pgeflag | */
+		    kernel_pmap.pmap_cache_bits[mode];
 		tmpsize -= PAGE_SIZE;
 		tmpva += PAGE_SIZE;
 		pa += PAGE_SIZE;
@@ -4621,9 +4821,8 @@ pmap_change_attr(vm_offset_t va, vm_size_t count, int mode)
 
 	while (count) {
 		pte = vtopte(va);
-		*pte = (*pte & ~(pt_entry_t)(PG_PTE_PAT | PG_NC_PCD |
-					     PG_NC_PWT)) |
-		       pat_pte_index[mode];
+		*pte = (*pte & ~(pt_entry_t)(kernel_pmap.pmap_cache_mask)) |
+		       kernel_pmap.pmap_cache_bits[mode];
 		--count;
 		va += PAGE_SIZE;
 	}
@@ -4657,12 +4856,12 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 		vm_offset_t pa;
 
 		val = MINCORE_INCORE;
-		if ((pte & PG_MANAGED) == 0)
+		if ((pte & pmap->pmap_bits[PG_MANAGED_IDX]) == 0)
 			goto done;
 
 		pa = pte & PG_FRAME;
 
-		if (pte & PG_DEVICE)
+		if (pte & pmap->pmap_bits[PG_DEVICE_IDX])
 			m = NULL;
 		else
 			m = PHYS_TO_VM_PAGE(pa);
@@ -4670,7 +4869,7 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 		/*
 		 * Modified by us
 		 */
-		if (pte & PG_M)
+		if (pte & pmap->pmap_bits[PG_M_IDX])
 			val |= MINCORE_MODIFIED|MINCORE_MODIFIED_OTHER;
 		/*
 		 * Modified by someone
@@ -4680,7 +4879,7 @@ pmap_mincore(pmap_t pmap, vm_offset_t addr)
 		/*
 		 * Referenced by us
 		 */
-		if (pte & PG_A)
+		if (pte & pmap->pmap_bits[PG_A_IDX])
 			val |= MINCORE_REFERENCED|MINCORE_REFERENCED_OTHER;
 
 		/*
@@ -4754,7 +4953,13 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 #if defined(SWTCH_OPTIM_STATS)
 			tlb_flush_count++;
 #endif
-			curthread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pml4);
+			if (pmap->pmap_bits[TYPE_IDX] == REGULAR_PMAP) {
+				curthread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pml4);
+			} else if (pmap->pmap_bits[TYPE_IDX] == EPT_PMAP) {
+				curthread->td_pcb->pcb_cr3 = KPML4phys;
+			} else {
+				panic("pmap_setlwpvm: unknown pmap type\n");
+			}
 			load_cr3(curthread->td_pcb->pcb_cr3);
 			pmap = vmspace_pmap(oldvm);
 			atomic_clear_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
@@ -4813,7 +5018,7 @@ pmap_kvtom(vm_offset_t va)
 {
 	pt_entry_t *ptep = vtopte(va);
 
-	KKASSERT((*ptep & PG_DEVICE) == 0);
+	KKASSERT((*ptep & kernel_pmap.pmap_bits[PG_DEVICE_IDX]) == 0);
 	return(PHYS_TO_VM_PAGE(*ptep & PG_FRAME));
 }
 

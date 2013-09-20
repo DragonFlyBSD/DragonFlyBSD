@@ -87,6 +87,7 @@
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 #include <sys/sysref2.h>
+#include <vm/vm_page2.h>
 
 static int nvtruncbuf_bp_trunc_cmp(struct buf *bp, void *data);
 static int nvtruncbuf_bp_trunc(struct buf *bp, void *data);

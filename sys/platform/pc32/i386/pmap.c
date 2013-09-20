@@ -841,6 +841,17 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 	return rtval;
 }
 
+/*
+ * Similar to extract but checks protections, SMP-friendly short-cut for
+ * vm_fault_page[_quick]().
+ */
+vm_page_t
+pmap_fault_page_quick(pmap_t pmap __unused, vm_offset_t vaddr __unused,
+		      vm_prot_t prot __unused)
+{
+	return(NULL);
+}
+
 /***************************************************
  * Low level mapping routines.....
  ***************************************************/

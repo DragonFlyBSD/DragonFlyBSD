@@ -655,6 +655,20 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	fs.fault_flags = fault_flags;
 	KKASSERT((fault_flags & VM_FAULT_WIRE_MASK) == 0);
 
+	/*
+	 * Dive the pmap (concurrency possible).  If we find the
+	 * appropriate page we can terminate early and quickly.
+	 */
+	fs.m = pmap_fault_page_quick(map->pmap, vaddr, fault_type);
+	if (fs.m) {
+		*errorp = 0;
+		return(fs.m);
+	}
+
+	/*
+	 * Otherwise take a concurrency hit and do a formal page
+	 * fault.
+	 */
 	lwkt_gettoken(&map->token);
 
 RetryFault:
@@ -1042,11 +1056,7 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 			unlock_and_deallocate(fs);
 			return (KERN_FAILURE);
 		}
-		if ((fault_type & VM_PROT_READ) && (vpte & VPTE_R) == 0) {
-			unlock_and_deallocate(fs);
-			return (KERN_FAILURE);
-		}
-		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_W) == 0) {
+		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_RW) == 0) {
 			unlock_and_deallocate(fs);
 			return (KERN_FAILURE);
 		}
@@ -1087,14 +1097,13 @@ vm_fault_vpagetable(struct faultstate *fs, vm_pindex_t *pindex,
 		 */
 		vm_page_activate(fs->m);
 		if ((fault_type & VM_PROT_WRITE) && (vpte & VPTE_V) &&
-		    (vpte & VPTE_W)) {
+		    (vpte & VPTE_RW)) {
 			if ((vpte & (VPTE_M|VPTE_A)) != (VPTE_M|VPTE_A)) {
 				atomic_set_long(ptep, VPTE_M | VPTE_A);
 				vm_page_dirty(fs->m);
 			}
 		}
-		if ((fault_type & VM_PROT_READ) && (vpte & VPTE_V) &&
-		    (vpte & VPTE_R)) {
+		if ((fault_type & VM_PROT_READ) && (vpte & VPTE_V)) {
 			if ((vpte & VPTE_A) == 0) {
 				atomic_set_long(ptep, VPTE_A);
 				vm_page_dirty(fs->m);
@@ -1169,6 +1178,12 @@ vm_fault_object(struct faultstate *fs, vm_pindex_t first_pindex,
 	 * access to force a re-fault.
 	 */
 	if (fs->entry->maptype == VM_MAPTYPE_VPAGETABLE) {
+		if ((fault_type & VM_PROT_WRITE) == 0)
+			fs->prot &= ~VM_PROT_WRITE;
+	}
+
+	if (curthread->td_lwp && curthread->td_lwp->lwp_vmspace &&
+	    pmap_emulate_ad_bits(&curthread->td_lwp->lwp_vmspace->vm_pmap)) {
 		if ((fault_type & VM_PROT_WRITE) == 0)
 			fs->prot &= ~VM_PROT_WRITE;
 	}

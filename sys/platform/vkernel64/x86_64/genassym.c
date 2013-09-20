@@ -79,6 +79,11 @@ ASSYM(PM_ACTIVE, offsetof(struct pmap, pm_active));
 ASSYM(LWP_VMSPACE, offsetof(struct lwp, lwp_vmspace));
 ASSYM(GD_CURTHREAD, offsetof(struct mdglobaldata, mi.gd_curthread));
 ASSYM(GD_CPUID, offsetof(struct mdglobaldata, mi.gd_cpuid));
+ASSYM(GD_CPUMASK, offsetof(struct mdglobaldata, mi.gd_cpumask));
+
+ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);
+ASSYM(CPUMASK_BIT, CPUMASK_BIT);
+
 ASSYM(PCB_R15, offsetof(struct pcb, pcb_r15));
 ASSYM(PCB_R14, offsetof(struct pcb, pcb_r14));
 ASSYM(PCB_R13, offsetof(struct pcb, pcb_r13));

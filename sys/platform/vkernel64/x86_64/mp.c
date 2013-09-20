@@ -38,6 +38,7 @@
 #include <sys/memrange.h>
 #include <sys/tls.h>
 #include <sys/types.h>
+#include <sys/vmm.h>
 
 #include <vm/vm_extern.h>
 #include <vm/vm_kern.h>
@@ -53,6 +54,7 @@
 #include <machine/pmap.h>
 #include <machine/smp.h>
 #include <machine/tls.h>
+#include <machine/param.h>
 
 #include <unistd.h>
 #include <pthread.h>
@@ -60,6 +62,8 @@
 #include <stdio.h>
 
 extern pt_entry_t *KPTphys;
+
+extern int vmm_enabled;
 
 volatile cpumask_t stopped_cpus;
 cpumask_t	smp_active_mask = 1;  /* which cpus are ready for IPIs etc? */
@@ -130,7 +134,6 @@ ap_finish(void)
 
 SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)
 
-
 void *
 start_ap(void *arg __unused)
 {
@@ -148,7 +151,6 @@ void
 mp_start(void)
 {
 	int shift;
-
 	ncpus = optcpus;
 
 	mp_naps = ncpus - 1;
@@ -203,11 +205,6 @@ cpu_send_ipiq(int dcpu)
 #if 0
 	panic("XXX cpu_send_ipiq()");
 #endif
-}
-
-void
-smp_invltlb(void)
-{
 }
 
 void
@@ -269,7 +266,6 @@ restart_cpus(cpumask_t map)
 
 	return(1);
 }
-
 void
 ap_init(void)
 {
@@ -384,6 +380,8 @@ start_all_aps(u_int boot_addr)
 	struct privatespace *ps;
 	vm_page_t m;
 	vm_offset_t va;
+	void *stack;
+	pthread_attr_t attr;
 #if 0
 	struct lwp_params params;
 #endif
@@ -393,6 +391,7 @@ start_all_aps(u_int boot_addr)
 	 * FIXME: rename ap_tids?
 	 */
 	ap_tids[0] = pthread_self();
+	pthread_attr_init(&attr);
 
 	vm_object_hold(&kernel_object);
 	for (x = 1; x <= mp_naps; x++)
@@ -447,7 +446,18 @@ start_all_aps(u_int boot_addr)
 		 * have already been enabled.
 		 */
 		cpu_disable_intr();
-		pthread_create(&ap_tids[x], NULL, start_ap, NULL);
+
+		if (vmm_enabled) {
+			stack = mmap(NULL, KERNEL_STACK_SIZE,
+			    PROT_READ|PROT_WRITE|PROT_EXEC,
+			    MAP_ANON, -1, 0);
+			if (stack == MAP_FAILED) {
+				panic("Unable to allocate stack for thread %d\n", x);
+			}
+			pthread_attr_setstack(&attr, stack, KERNEL_STACK_SIZE);
+		}
+
+		pthread_create(&ap_tids[x], &attr, start_ap, NULL);
 		cpu_enable_intr();
 
 		while((smp_startup_mask & CPUMASK(x)) == 0) {
@@ -456,6 +466,7 @@ start_all_aps(u_int boot_addr)
 		}
 	}
 	vm_object_drop(&kernel_object);
+	pthread_attr_destroy(&attr);
 
 	return(ncpus - 1);
 }

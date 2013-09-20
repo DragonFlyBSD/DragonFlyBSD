@@ -75,6 +75,7 @@
 #include <sys/unistd.h>
 
 #include <machine/limits.h>
+#include <machine/vmm.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -157,10 +158,18 @@ useracc(c_caddr_t addr, int len, int rw)
 	vm_map_t map;
 	vm_map_entry_t save_hint;
 	vm_offset_t wrap;
+	vm_offset_t gpa;
 
 	KASSERT((rw & (~VM_PROT_ALL)) == 0,
 	    ("illegal ``rw'' argument to useracc (%x)", rw));
 	prot = rw;
+
+	if (curthread->td_vmm) {
+		if (vmm_vm_get_gpa(curproc, (register_t *)&gpa, (register_t) addr))
+			panic("%s: could not get GPA\n", __func__);
+		addr = (c_caddr_t) gpa;
+	}
+
 	/*
 	 * XXX - check separately to disallow access to user area and user
 	 * page tables - they are in the map.

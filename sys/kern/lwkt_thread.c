@@ -512,6 +512,7 @@ lwkt_free_thread(thread_t td)
 	td->td_kstack = NULL;
 	td->td_kstack_size = 0;
     }
+
     KTR_LOG(ctxsw_deadtd, td);
 }
 
@@ -1394,6 +1395,9 @@ lwkt_acquire(thread_t td)
 			td, td->td_flags);
 		retry = 10000000;
 	    }
+#ifdef _KERNEL_VIRTUAL
+	    pthread_yield();
+#endif
 	}
 	DEBUG_POP_INFO();
 	cpu_mfence();

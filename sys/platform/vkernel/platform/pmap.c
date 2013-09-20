@@ -76,6 +76,7 @@
 
 #include <sys/sysref2.h>
 #include <sys/spinlock2.h>
+#include <vm/vm_page2.h>
 
 #include <assert.h>
 
@@ -633,7 +634,7 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	vpte_t npte;
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
-	npte = (vpte_t)pa | VPTE_R | VPTE_W | VPTE_V;
+	npte = (vpte_t)pa | VPTE_RW | VPTE_V;
 	ptep = KernelPTA + (va >> PAGE_SHIFT);
 	if (*ptep & VPTE_V)
 		pmap_inval_pte(ptep, &kernel_pmap, va);
@@ -673,7 +674,7 @@ pmap_kenter_sync_quick(vm_offset_t va)
 void
 pmap_kmodify_rw(vm_offset_t va)
 {
-        *pmap_kpte(va) |= VPTE_R | VPTE_W;
+        *pmap_kpte(va) |= VPTE_RW;
 	madvise((void *)va, PAGE_SIZE, MADV_INVAL);
 }
 
@@ -733,7 +734,7 @@ pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
 
 	KKASSERT(va >= KvaStart && va < KvaEnd);
 
-	npte = (vpte_t)pa | VPTE_R | VPTE_W | VPTE_V;
+	npte = (vpte_t)pa | VPTE_RW | VPTE_V;
 	ptep = KernelPTA + (va >> PAGE_SHIFT);
 	if (*ptep & VPTE_V)
 		pmap_inval_pte_quick(ptep, &kernel_pmap, va);
@@ -820,7 +821,7 @@ pmap_qenter(vm_offset_t va, struct vm_page **m, int count)
 		ptep = KernelPTA + (va >> PAGE_SHIFT);
 		if (*ptep & VPTE_V)
 			pmap_inval_pte(ptep, &kernel_pmap, va);
-		*ptep = (vpte_t)(*m)->phys_addr | VPTE_R | VPTE_W | VPTE_V;
+		*ptep = (vpte_t)(*m)->phys_addr | VPTE_RW | VPTE_V;
 		--count;
 		++m;
 		va += PAGE_SIZE;
@@ -1150,7 +1151,7 @@ _pmap_allocpte(pmap_t pmap, unsigned ptepindex)
 	++pmap->pm_stats.resident_count;
 
 	ptepa = VM_PAGE_TO_PHYS(m);
-	pmap->pm_pdir[ptepindex] = (vpte_t)ptepa | VPTE_R | VPTE_W | VPTE_V |
+	pmap->pm_pdir[ptepindex] = (vpte_t)ptepa | VPTE_RW | VPTE_V |
 				   VPTE_A | VPTE_M;
 
 	/*
@@ -1888,9 +1889,9 @@ validate:
 	 * XXX should we synchronize RO->RW changes to avoid another
 	 * fault?
 	 */
-	if ((origpte & ~(VPTE_W|VPTE_M|VPTE_A)) != newpte) {
+	if ((origpte & ~(VPTE_RW|VPTE_M|VPTE_A)) != newpte) {
 		*pte = newpte | VPTE_A;
-		if (newpte & VPTE_W)
+		if (newpte & VPTE_RW)
 			vm_page_flag_set(m, PG_WRITEABLE);
 	}
 	KKASSERT((newpte & VPTE_MANAGED) == 0 || m->flags & PG_MAPPED);
@@ -2025,6 +2026,17 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
 	}
 	lwkt_reltoken(&vm_token);
 	return(rtval);
+}
+
+/*
+ * Similar to extract but checks protections, SMP-friendly short-cut for
+ * vm_fault_page[_quick]().
+ */
+vm_page_t
+pmap_fault_page_quick(pmap_t pmap __unused, vm_offset_t vaddr __unused,
+		      vm_prot_t prot __unused)
+{
+	return(NULL);
 }
 
 #define MAX_INIT_PT (96)
@@ -2357,7 +2369,7 @@ pmap_zero_page(vm_paddr_t phys)
 	crit_enter();
 	if (*gd->gd_CMAP3)
 		panic("pmap_zero_page: CMAP3 busy");
-	*gd->gd_CMAP3 = VPTE_V | VPTE_R | VPTE_W | (phys & VPTE_FRAME) | VPTE_A | VPTE_M;
+	*gd->gd_CMAP3 = VPTE_V | VPTE_RW | (phys & VPTE_FRAME) | VPTE_A | VPTE_M;
 	madvise(gd->gd_CADDR3, PAGE_SIZE, MADV_INVAL);
 
 	bzero(gd->gd_CADDR3, PAGE_SIZE);
@@ -2379,7 +2391,7 @@ pmap_page_assertzero(vm_paddr_t phys)
 	crit_enter();
 	if (*gd->gd_CMAP3)
 		panic("pmap_zero_page: CMAP3 busy");
-	*gd->gd_CMAP3 = VPTE_V | VPTE_R | VPTE_W |
+	*gd->gd_CMAP3 = VPTE_V | VPTE_RW |
 			(phys & VPTE_FRAME) | VPTE_A | VPTE_M;
 	madvise(gd->gd_CADDR3, PAGE_SIZE, MADV_INVAL);
 	for (i = 0; i < PAGE_SIZE; i += 4) {
@@ -2408,7 +2420,7 @@ pmap_zero_page_area(vm_paddr_t phys, int off, int size)
 	crit_enter();
 	if (*gd->gd_CMAP3)
 		panic("pmap_zero_page: CMAP3 busy");
-	*gd->gd_CMAP3 = VPTE_V | VPTE_R | VPTE_W |
+	*gd->gd_CMAP3 = VPTE_V | VPTE_RW |
 			(phys & VPTE_FRAME) | VPTE_A | VPTE_M;
 	madvise(gd->gd_CADDR3, PAGE_SIZE, MADV_INVAL);
 
@@ -2435,8 +2447,8 @@ pmap_copy_page(vm_paddr_t src, vm_paddr_t dst)
 	if (*(int *) gd->gd_CMAP2)
 		panic("pmap_copy_page: CMAP2 busy");
 
-	*(int *) gd->gd_CMAP1 = VPTE_V | VPTE_R | (src & PG_FRAME) | VPTE_A;
-	*(int *) gd->gd_CMAP2 = VPTE_V | VPTE_R | VPTE_W | (dst & VPTE_FRAME) | VPTE_A | VPTE_M;
+	*(int *) gd->gd_CMAP1 = VPTE_V | (src & PG_FRAME) | VPTE_A;
+	*(int *) gd->gd_CMAP2 = VPTE_V | VPTE_RW | (dst & VPTE_FRAME) | VPTE_A | VPTE_M;
 
 	madvise(gd->gd_CADDR1, PAGE_SIZE, MADV_INVAL);
 	madvise(gd->gd_CADDR2, PAGE_SIZE, MADV_INVAL);
@@ -2467,7 +2479,7 @@ pmap_copy_page_frag(vm_paddr_t src, vm_paddr_t dst, size_t bytes)
 		panic("pmap_copy_page: CMAP2 busy");
 
 	*(int *) gd->gd_CMAP1 = VPTE_V | (src & VPTE_FRAME) | VPTE_A;
-	*(int *) gd->gd_CMAP2 = VPTE_V | VPTE_R | VPTE_W | (dst & VPTE_FRAME) | VPTE_A | VPTE_M;
+	*(int *) gd->gd_CMAP2 = VPTE_V | VPTE_RW | (dst & VPTE_FRAME) | VPTE_A | VPTE_M;
 
 	madvise(gd->gd_CADDR1, PAGE_SIZE, MADV_INVAL);
 	madvise(gd->gd_CADDR2, PAGE_SIZE, MADV_INVAL);
@@ -2674,7 +2686,7 @@ pmap_clearbit(vm_page_t m, int bit)
 		/*
 		 * don't write protect pager mappings
 		 */
-		if (bit == VPTE_W) {
+		if (bit == VPTE_RW) {
 			if (!pmap_track_modified(pv->pv_pmap, pv->pv_va))
 				continue;
 		}
@@ -2689,7 +2701,7 @@ pmap_clearbit(vm_page_t m, int bit)
 		/*
 		 * Careful here.  We can use a locked bus instruction to
 		 * clear VPTE_A or VPTE_M safely but we need to synchronize
-		 * with the target cpus when we mess with VPTE_W.
+		 * with the target cpus when we mess with VPTE_EW.
 		 *
 		 * On virtual kernels we must force a new fault-on-write
 		 * in the real kernel if we clear the Modify bit ourselves,
@@ -2698,10 +2710,10 @@ pmap_clearbit(vm_page_t m, int bit)
 		 */
 		pte = pmap_pte(pv->pv_pmap, pv->pv_va);
 		if (*pte & bit) {
-			if (bit == VPTE_W) {
+			if (bit == VPTE_RW) {
 				/*
 				 * We must also clear VPTE_M when clearing
-				 * VPTE_W
+				 * VPTE_RW
 				 */
 				pbits = pmap_clean_pte(pte, pv->pv_pmap,
 						       pv->pv_va);
@@ -2720,7 +2732,7 @@ pmap_clearbit(vm_page_t m, int bit)
 				 * the fault to us.
 				 */
 				atomic_clear_long(pte, VPTE_M);
-			} else if ((bit & (VPTE_W|VPTE_M)) == (VPTE_W|VPTE_M)) {
+			} else if ((bit & (VPTE_RW|VPTE_M)) == (VPTE_RW|VPTE_M)) {
 				/*
 				 * We've been asked to clear W & M, I guess
 				 * the caller doesn't want us to update
@@ -2750,7 +2762,7 @@ pmap_page_protect(vm_page_t m, vm_prot_t prot)
 	if ((prot & VM_PROT_WRITE) == 0) {
 		lwkt_gettoken(&vm_token);
 		if (prot & (VM_PROT_READ | VM_PROT_EXECUTE)) {
-			pmap_clearbit(m, VPTE_W);
+			pmap_clearbit(m, VPTE_RW);
 			vm_page_flag_clear(m, PG_WRITEABLE);
 		} else {
 			pmap_remove_all(m);
@@ -2876,11 +2888,11 @@ i386_protection_init(void)
 	kp = protection_codes;
 	for (prot = 0; prot < 8; prot++) {
 		if (prot & VM_PROT_READ)
-			*kp |= VPTE_R;
+			*kp |= 0;
 		if (prot & VM_PROT_WRITE)
-			*kp |= VPTE_W;
+			*kp |= VPTE_RW;
 		if (prot & VM_PROT_EXECUTE)
-			*kp |= VPTE_X;
+			*kp |= 0;
 		++kp;
 	}
 }
@@ -2912,7 +2924,7 @@ pmap_mapdev(vm_paddr_t pa, vm_size_t size)
 	pa = pa & VPTE_FRAME;
 	for (tmpva = va; size > 0;) {
 		pte = KernelPTA + (tmpva >> PAGE_SHIFT);
-		*pte = pa | VPTE_R | VPTE_W | VPTE_V; /* | pgeflag; */
+		*pte = pa | VPTE_RW | VPTE_V; /* | pgeflag; */
 		size -= PAGE_SIZE;
 		tmpva += PAGE_SIZE;
 		pa += PAGE_SIZE;

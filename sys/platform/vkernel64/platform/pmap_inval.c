@@ -56,9 +56,10 @@
 #include <sys/proc.h>
 #include <sys/vmmeter.h>
 #include <sys/thread2.h>
-
+#include <sys/cdefs.h>
 #include <sys/mman.h>
 #include <sys/vmspace.h>
+#include <sys/vmm.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -72,15 +73,104 @@
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
 
+#include <unistd.h>
+#include <pthread.h>
+
+extern int vmm_enabled;
+
+static __inline
+void
+vmm_cpu_invltlb(void)
+{
+	/* For VMM mode forces vmmexit/resume */
+	uint64_t rax = -1;
+	__asm __volatile("syscall;"
+			:
+			: "a" (rax)
+			:);
+}
+
+/*
+ * Invalidate va in the TLB on the current cpu
+ */
 static __inline
 void
 pmap_inval_cpu(struct pmap *pmap, vm_offset_t va, size_t bytes)
 {
-    if (pmap == &kernel_pmap) {
-	madvise((void *)va, bytes, MADV_INVAL);
-    } else {
-	vmspace_mcontrol(pmap, (void *)va, bytes, MADV_INVAL, 0);
-    }
+	if (pmap == &kernel_pmap) {
+		madvise((void *)va, bytes, MADV_INVAL);
+	} else {
+		vmspace_mcontrol(pmap, (void *)va, bytes, MADV_INVAL, 0);
+	}
+}
+
+/*
+ * This is a bit of a mess because we don't know what virtual cpus are
+ * mapped to real cpus.  Basically try to optimize the degenerate cases
+ * (primarily related to user processes with only one thread or only one
+ * running thread), and shunt all the rest to the host cpu.  The host cpu
+ * will invalidate all real cpu's the vkernel is running on.
+ *
+ * This can't optimize situations where a pmap is only mapped to some of
+ * the virtual cpus, though shunting to the real host will still be faster
+ * if the virtual kernel processes are running on fewer real-host cpus.
+ * (And probably will be faster anyway since there's no round-trip signaling
+ * overhead).
+ *
+ * NOTE: The critical section protects against preemption while the pmap
+ *	 is locked, which could otherwise result in a deadlock.
+ */
+static __inline
+void
+guest_sync_addr(struct pmap *pmap,
+		volatile vpte_t *dst_ptep, volatile vpte_t *src_ptep)
+{
+	globaldata_t gd = mycpu;
+	cpumask_t oactive;
+	cpumask_t nactive;
+
+	crit_enter();
+	if (pmap->pm_active == 0 &&
+	    atomic_cmpset_cpumask(&pmap->pm_active, 0, CPUMASK_LOCK)) {
+		/*
+		 * Avoid IPIs if pmap is inactive and we can trivially
+		 * lock it.
+		 */
+		*dst_ptep = *src_ptep;
+		vmm_cpu_invltlb();
+	} else if (pmap->pm_active == gd->gd_cpumask &&
+	    atomic_cmpset_cpumask(&pmap->pm_active,
+			    gd->gd_cpumask, gd->gd_cpumask | CPUMASK_LOCK)) {
+		/*
+		 * Avoid IPIs if only our cpu is using the pmap and we
+		 * can trivially lock it.
+		 */
+		*dst_ptep = *src_ptep;
+		vmm_cpu_invltlb();
+	} else {
+		/*
+		 * Lock the pmap
+		 */
+		for (;;) {
+			oactive = pmap->pm_active;
+			cpu_ccfence();
+			if ((oactive & CPUMASK_LOCK) == 0) {
+				nactive = oactive | CPUMASK_LOCK;
+				if (atomic_cmpset_cpumask(&pmap->pm_active,
+							  oactive,
+							  nactive)) {
+					break;
+				}
+			}
+			cpu_pause();
+			lwkt_process_ipiq();
+			pthread_yield();
+		}
+		vmm_guest_sync_addr(__DEVOLATILE(void *, dst_ptep),
+				    __DEVOLATILE(void *, src_ptep));
+	}
+	atomic_clear_cpumask(&pmap->pm_active, CPUMASK_LOCK);
+	crit_exit();
 }
 
 /*
@@ -97,9 +187,15 @@ pmap_inval_cpu(struct pmap *pmap, vm_offset_t va, size_t bytes)
 void
 pmap_inval_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
-	*ptep = 0;
-	pmap_inval_cpu(pmap, va, PAGE_SIZE);
-	*ptep = 0;
+	vpte_t pte;
+
+	if (vmm_enabled == 0) {
+		*ptep = 0;
+		pmap_inval_cpu(pmap, va, PAGE_SIZE);
+	} else {
+		pte = 0;
+		guest_sync_addr(pmap, ptep, &pte);
+	}
 }
 
 /*
@@ -110,8 +206,10 @@ void
 pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
 	*ptep = 0;
-	pmap_inval_cpu(pmap, va, PAGE_SIZE);
-	*ptep = 0;
+	if (vmm_enabled)
+		vmm_cpu_invltlb();
+	else
+		pmap_inval_cpu(pmap, va, PAGE_SIZE);
 }
 
 /*
@@ -122,9 +220,18 @@ pmap_inval_pte_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 void
 pmap_inval_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
-	*ptep = 0;
-	pmap_inval_cpu(pmap, va, SEG_SIZE);
-	*ptep = 0;
+	vpte_t pte;
+
+	if (vmm_enabled == 0) {
+		*ptep = 0;
+		pmap_inval_cpu(pmap, va, SEG_SIZE);
+	} else if ((pmap->pm_active & mycpu->gd_other_cpus) == 0) {
+		*ptep = 0;
+		vmm_cpu_invltlb();
+	} else {
+		pte = 0;
+		guest_sync_addr(pmap, ptep, &pte);
+	}
 }
 
 void
@@ -135,17 +242,18 @@ pmap_inval_pde_quick(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 
 /*
  * These carefully handle interactions with other cpus and return
- * the original vpte.  Clearing VPTE_W prevents us from racing the
+ * the original vpte.  Clearing VPTE_RW prevents us from racing the
  * setting of VPTE_M, allowing us to invalidate the tlb (the real cpu's
  * pmap) and get good status for VPTE_M.
  *
  * When messing with page directory entries we have to clear the cpu
  * mask to force a reload of the kernel's page table mapping cache.
  *
- * clean: clear VPTE_M and VPTE_W
- * setro: clear VPTE_W
+ * clean: clear VPTE_M and VPTE_RW
+ * setro: clear VPTE_RW
  * load&clear: clear entire field
  */
+#include<stdio.h>
 vpte_t
 pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
@@ -153,10 +261,14 @@ pmap_clean_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		atomic_clear_long(ptep, VPTE_W);
-		pmap_inval_cpu(pmap, va, PAGE_SIZE);
-		pte = *ptep;
-		atomic_clear_long(ptep, VPTE_W|VPTE_M);
+		atomic_clear_long(ptep, VPTE_RW);  /* XXX */
+		if (vmm_enabled == 0) {
+			pmap_inval_cpu(pmap, va, PAGE_SIZE);
+			pte = *ptep;
+		} else {
+			guest_sync_addr(pmap, &pte, ptep);
+		}
+		atomic_clear_long(ptep, VPTE_RW|VPTE_M);
 	}
 	return(pte);
 }
@@ -168,10 +280,14 @@ pmap_clean_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		atomic_clear_long(ptep, VPTE_W);
-		pmap_inval_cpu(pmap, va, SEG_SIZE);
-		pte = *ptep;
-		atomic_clear_long(ptep, VPTE_W|VPTE_M);
+		atomic_clear_long(ptep, VPTE_RW);
+		if (vmm_enabled == 0) {
+			pmap_inval_cpu(pmap, va, SEG_SIZE);
+			pte = *ptep;
+		} else {
+			guest_sync_addr(pmap, &pte, ptep);
+		}
+		atomic_clear_long(ptep, VPTE_RW|VPTE_M);
 	}
 	return(pte);
 }
@@ -186,13 +302,18 @@ vpte_t
 pmap_setro_pte(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 {
 	vpte_t pte;
+	vpte_t npte;
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
-		pte = *ptep;
-		atomic_clear_long(ptep, VPTE_W);
-		pmap_inval_cpu(pmap, va, PAGE_SIZE);
-		pte |= *ptep & VPTE_M;
+		atomic_clear_long(ptep, VPTE_RW);
+		if (vmm_enabled == 0) {
+			pmap_inval_cpu(pmap, va, PAGE_SIZE);
+			pte |= *ptep & VPTE_M;
+		} else {
+			guest_sync_addr(pmap, &npte, ptep);
+			pte |= npte & VPTE_M;
+		}
 	}
 	return(pte);
 }
@@ -208,14 +329,60 @@ pmap_inval_loadandclear(volatile vpte_t *ptep, struct pmap *pmap,
 			vm_offset_t va)
 {
 	vpte_t pte;
+	vpte_t npte;
 
 	pte = *ptep;
 	if (pte & VPTE_V) {
 		pte = *ptep;
-		atomic_clear_long(ptep, VPTE_R|VPTE_W);
-		pmap_inval_cpu(pmap, va, PAGE_SIZE);
-		pte |= *ptep & (VPTE_A | VPTE_M);
+		atomic_clear_long(ptep, VPTE_RW);
+		if (vmm_enabled == 0) {
+			pmap_inval_cpu(pmap, va, PAGE_SIZE);
+			pte |= *ptep & (VPTE_A | VPTE_M);
+		} else {
+			guest_sync_addr(pmap, &npte, ptep);
+			pte |= npte & (VPTE_A | VPTE_M);
+		}
 	}
 	*ptep = 0;
 	return(pte);
+}
+
+/*
+ * Synchronize a kvm mapping originally made for the private use on
+ * some other cpu so it can be used on all cpus.
+ *
+ * XXX add MADV_RESYNC to improve performance.
+ *
+ * We don't need to do anything because our pmap_inval_pte_quick()
+ * synchronizes it immediately.
+ */
+void
+pmap_kenter_sync(vm_offset_t va __unused)
+{
+}
+
+void
+cpu_invlpg(void *addr)
+{
+	if (vmm_enabled)
+		vmm_cpu_invltlb(); /* For VMM mode forces vmmexit/resume */
+	else
+		madvise(addr, PAGE_SIZE, MADV_INVAL);
+}
+
+void
+cpu_invltlb(void)
+{
+	if (vmm_enabled)
+		vmm_cpu_invltlb(); /* For VMM mode forces vmmexit/resume */
+	else
+		madvise((void *)KvaStart, KvaEnd - KvaStart, MADV_INVAL);
+}
+
+void
+smp_invltlb(void)
+{
+	/* XXX must invalidate the tlb on all cpus */
+	/* at the moment pmap_inval_pte_quick */
+	/* do nothing */
 }

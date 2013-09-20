@@ -68,6 +68,7 @@
 #include <stdio.h>
 
 static void cothread_thread(void *arg);
+extern int vmm_enabled;
 
 /*
  * Create a co-processor thread for a virtual kernel.  This thread operates
@@ -80,6 +81,8 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 		void *arg, const char *name)
 {
 	cothread_t cotd;
+	void *stack;
+	pthread_attr_t attr;
 
 	cotd = kmalloc(sizeof(*cotd), M_DEVBUF, M_WAITOK|M_ZERO);
 	cotd->thr_intr = thr_intr;
@@ -99,11 +102,23 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 	 * The vkernel's cpu_disable_intr() masks signals.  We don't want
 	 * our coprocessor thread taking any unix signals :-)
 	 */
+	pthread_attr_init(&attr);
+	if (vmm_enabled) {
+		stack = mmap(NULL, KERNEL_STACK_SIZE,
+		    PROT_READ|PROT_WRITE|PROT_EXEC,
+		    MAP_ANON, -1, 0);
+		if (stack == MAP_FAILED) {
+			panic("Unable to allocate stack for cothread\n");
+		}
+		pthread_attr_setstack(&attr, stack, KERNEL_STACK_SIZE);
+	}
 	crit_enter();
 	cpu_mask_all_signals();
-	pthread_create(&cotd->pthr, NULL, (void *)cothread_thread, cotd);
+	pthread_create(&cotd->pthr, &attr, (void *)cothread_thread, cotd);
 	cpu_unmask_all_signals();
 	crit_exit();
+	pthread_attr_destroy(&attr);
+
 	return(cotd);
 }
 

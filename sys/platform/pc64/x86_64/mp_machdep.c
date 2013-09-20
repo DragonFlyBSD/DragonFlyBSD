@@ -367,15 +367,22 @@ start_all_aps(u_int boot_addr)
 	for (i = 0; i < 512; i++) {
 		/* Each slot of the level 4 pages points to the same level 3 page */
 		pt4[i] = (u_int64_t)(uintptr_t)(mptramp_pagetables + PAGE_SIZE);
-		pt4[i] |= PG_V | PG_RW | PG_U;
+		pt4[i] |= kernel_pmap.pmap_bits[PG_V_IDX] |
+		    kernel_pmap.pmap_bits[PG_RW_IDX] |
+		    kernel_pmap.pmap_bits[PG_U_IDX];
 
 		/* Each slot of the level 3 pages points to the same level 2 page */
 		pt3[i] = (u_int64_t)(uintptr_t)(mptramp_pagetables + (2 * PAGE_SIZE));
-		pt3[i] |= PG_V | PG_RW | PG_U;
+		pt3[i] |= kernel_pmap.pmap_bits[PG_V_IDX] |
+		    kernel_pmap.pmap_bits[PG_RW_IDX] |
+		    kernel_pmap.pmap_bits[PG_U_IDX];
 
 		/* The level 2 page slots are mapped with 2MB pages for 1GB. */
 		pt2[i] = i * (2 * 1024 * 1024);
-		pt2[i] |= PG_V | PG_RW | PG_PS | PG_U;
+		pt2[i] |= kernel_pmap.pmap_bits[PG_V_IDX] |
+		    kernel_pmap.pmap_bits[PG_RW_IDX] |
+		    kernel_pmap.pmap_bits[PG_PS_IDX] |
+		    kernel_pmap.pmap_bits[PG_U_IDX];
 	}
 
 	/* save the current value of the warm-start vector */
