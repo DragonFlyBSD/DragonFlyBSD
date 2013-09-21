@@ -342,7 +342,7 @@ static void ttm_mem_global_free_zone(struct ttm_mem_global *glob,
 void ttm_mem_global_free(struct ttm_mem_global *glob,
 			 uint64_t amount)
 {
-	return ttm_mem_global_free_zone(glob, NULL, amount);
+	ttm_mem_global_free_zone(glob, NULL, amount);
 }
 
 static int ttm_mem_global_reserve(struct ttm_mem_global *glob,
