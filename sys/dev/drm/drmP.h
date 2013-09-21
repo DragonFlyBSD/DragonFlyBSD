@@ -71,7 +71,7 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_map.h>
 #include <vm/vm_object.h>
-#include <vm/vm_page.h>
+#include <vm/vm_page2.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_param.h>
 #include <machine/param.h>
