@@ -99,8 +99,6 @@ typedef struct {
 	int queue_active;		/* fw currently polling this queue*/
 	int activate;
 	int deactivate;
-	int watchdog_req;		/* cache of req */
-	int watchdog_done;		/* cache of done */
 	int watchdog_rx_pause;		/* cache of pause rq recvd */
 } mxge_tx_ring_t;
 
@@ -147,7 +145,6 @@ struct mxge_softc {
 	int stop_queue;
 	int down_cnt;
 	int watchdog_resets;
-	int watchdog_countdown;
 	int pause;
 	struct resource *mem_res;
 	struct resource *irq_res;

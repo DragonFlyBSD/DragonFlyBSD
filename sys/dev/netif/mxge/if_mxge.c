@@ -143,6 +143,8 @@ static int mxge_send_cmd(mxge_softc_t *sc, uint32_t cmd, mxge_cmd_t *data);
 static void mxge_close(mxge_softc_t *sc, int down);
 static int mxge_open(mxge_softc_t *sc);
 static void mxge_tick(void *arg);
+static void mxge_watchdog_reset(mxge_softc_t *sc);
+static void mxge_warn_stuck(mxge_softc_t *sc, mxge_tx_ring_t *tx, int slice);
 
 static int
 mxge_probe(device_t dev)
@@ -1642,7 +1644,7 @@ mxge_pullup_tso(struct mbuf **mp)
 	return 0;
 }
 
-static void
+static int
 mxge_encap_tso(mxge_tx_ring_t *tx, struct mbuf *m, int busdma_seg_cnt)
 {
 	mcp_kreq_ether_send_t *req;
@@ -1777,7 +1779,7 @@ mxge_encap_tso(mxge_tx_ring_t *tx, struct mbuf *m, int busdma_seg_cnt)
 		wmb();
 	}
 #endif
-	return;
+	return 0;
 
 drop:
 	bus_dmamap_unload(tx->dmat, tx->info[tx->req & tx->mask].map);
@@ -1785,9 +1787,10 @@ drop:
 #if 0
 	/* TODO update oerror counter */
 #endif
+	return ENOBUFS;
 }
 
-static void
+static int
 mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 {
 	mxge_softc_t *sc;
@@ -1802,8 +1805,9 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 	tx = &ss->tx;
 
 	if (m->m_pkthdr.csum_flags & CSUM_TSO) {
-		if (mxge_pullup_tso(&m))
-			return;
+		err = mxge_pullup_tso(&m);
+		if (__predict_false(err))
+			return err;
 	}
 
 	/*
@@ -1820,10 +1824,8 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 	/*
 	 * TSO is different enough, we handle it in another routine
 	 */
-	if (m->m_pkthdr.csum_flags & CSUM_TSO) {
-		mxge_encap_tso(tx, m, cnt);
-		return;
-	}
+	if (m->m_pkthdr.csum_flags & CSUM_TSO)
+		return mxge_encap_tso(tx, m, cnt);
 
 	req = tx->req_list;
 	cksum_offset = 0;
@@ -1916,11 +1918,12 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 		wmb();
 	}
 #endif
-	return;
+	return 0;
 
 drop:
 	m_freem(m);
 	ss->oerrors++;
+	return err;
 }
 
 static void
@@ -1929,6 +1932,7 @@ mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	mxge_softc_t *sc = ifp->if_softc;
 	struct mxge_slice_state *ss;
 	mxge_tx_ring_t *tx;
+	int encap = 0;
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 	ASSERT_SERIALIZED(sc->ifp->if_serializer);
@@ -1942,17 +1946,44 @@ mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	while (tx->mask - (tx->req - tx->done) > tx->max_desc) {
 		struct mbuf *m;
+		int error;
 
 		m = ifsq_dequeue(ifsq);
 		if (m == NULL)
-			return;
+			goto done;
 
 		BPF_MTAP(ifp, m);
-		mxge_encap(ss, m);
+		error = mxge_encap(ss, m);
+		if (!error)
+			encap = 1;
 	}
 
 	/* Ran out of transmit slots */
 	ifsq_set_oactive(ifsq);
+done:
+	if (encap)
+		ifp->if_timer = 5;
+}
+
+static void
+mxge_watchdog(struct ifnet *ifp)
+{
+	struct mxge_softc *sc = ifp->if_softc;
+	uint32_t rx_pause = be32toh(sc->ss->fw_stats->dropped_pause);
+	mxge_tx_ring_t *tx = &sc->ss[0].tx;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	/* Check for pause blocking before resetting */
+	if (tx->watchdog_rx_pause == rx_pause) {
+		mxge_warn_stuck(sc, tx, 0);
+		mxge_watchdog_reset(sc);
+		return;
+	} else {
+		if_printf(ifp, "Flow control blocking xmits, "
+		    "check link partner\n");
+	}
+	tx->watchdog_rx_pause = rx_pause;
 }
 
 /*
@@ -2352,8 +2383,11 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 	 * If we have space, clear OACTIVE to tell the stack that
 	 * its OK to send packets
 	 */
-	if (tx->req - tx->done < (tx->mask + 1) / 4)
+	if (tx->req - tx->done < (tx->mask + 1) / 4) {
 		ifq_clr_oactive(&ifp->if_snd);
+		if (tx->req == tx->done)
+			ifp->if_timer = 0;
+	}
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -3235,6 +3269,7 @@ mxge_open(mxge_softc_t *sc)
 	}
 	ifp->if_flags |= IFF_RUNNING;
 	ifq_clr_oactive(&ifp->if_snd);
+	ifp->if_timer = 0;
 
 	return 0;
 
@@ -3254,6 +3289,7 @@ mxge_close(mxge_softc_t *sc, int down)
 
 	ifp->if_flags &= ~IFF_RUNNING;
 	ifq_clr_oactive(&ifp->if_snd);
+	ifp->if_timer = 0;
 
 	if (!down) {
 		old_down_cnt = sc->down_cnt;
@@ -3413,47 +3449,6 @@ mxge_warn_stuck(mxge_softc_t *sc, mxge_tx_ring_t *tx, int slice)
 	    tx->pkt_done, be32toh(sc->ss->fw_stats->send_done_count));
 }
 
-static int
-mxge_watchdog(mxge_softc_t *sc)
-{
-	mxge_tx_ring_t *tx;
-	uint32_t rx_pause = be32toh(sc->ss->fw_stats->dropped_pause);
-	int i, err = 0;
-
-	/* see if we have outstanding transmits, which
-	   have been pending for more than mxge_ticks */
-	for (i = 0; 
-#ifdef IFNET_BUF_RING
-	     (i < sc->num_slices) && (err == 0);
-#else
-	     (i < 1) && (err == 0);
-#endif
-	     i++) {
-		tx = &sc->ss[i].tx;		
-		if (tx->req != tx->done &&
-		    tx->watchdog_req != tx->watchdog_done &&
-		    tx->done == tx->watchdog_done) {
-			/* check for pause blocking before resetting */
-			if (tx->watchdog_rx_pause == rx_pause) {
-				mxge_warn_stuck(sc, tx, i);
-				mxge_watchdog_reset(sc);
-				return (ENXIO);
-			}
-			else
-				device_printf(sc->dev, "Flow control blocking "
-					      "xmits, check link partner\n");
-		}
-
-		tx->watchdog_req = tx->req;
-		tx->watchdog_done = tx->done;
-		tx->watchdog_rx_pause = rx_pause;
-	}
-
-	if (sc->need_media_probe)
-		mxge_media_probe(sc);
-	return (err);
-}
-
 static u_long
 mxge_update_stats(mxge_softc_t *sc)
 {
@@ -3503,31 +3498,27 @@ mxge_tick(void *arg)
 	mxge_softc_t *sc = arg;
 	u_long pkts = 0;
 	int err = 0;
-	int running, ticks;
+	int ticks;
 	uint16_t cmd;
 
 	lwkt_serialize_enter(sc->ifp->if_serializer);
 
 	ticks = mxge_ticks;
-	running = sc->ifp->if_flags & IFF_RUNNING;
-	if (running) {
-		/* aggregate stats from different slices */
+	if (sc->ifp->if_flags & IFF_RUNNING) {
+		/* Aggregate stats from different slices */
 		pkts = mxge_update_stats(sc);
-		if (!sc->watchdog_countdown) {
-			err = mxge_watchdog(sc);
-			sc->watchdog_countdown = 4;
-		}
-		sc->watchdog_countdown--;
+		if (sc->need_media_probe)
+			mxge_media_probe(sc);
 	}
 	if (pkts == 0) {
-		/* ensure NIC did not suffer h/w fault while idle */
+		/* Ensure NIC did not suffer h/w fault while idle */
 		cmd = pci_read_config(sc->dev, PCIR_COMMAND, 2);		
 		if ((cmd & PCIM_CMD_BUSMASTEREN) == 0) {
 			sc->dying = 2;
 			mxge_watchdog_reset(sc);
 			err = ENXIO;
 		}
-		/* look less often if NIC is idle */
+		/* Look less often if NIC is idle */
 		ticks *= 4;
 	}
 
@@ -4181,7 +4172,7 @@ mxge_attach(device_t dev)
 	ifp->if_init = mxge_init;
 	ifp->if_ioctl = mxge_ioctl;
 	ifp->if_start = mxge_start;
-	/* XXX watchdog */
+	ifp->if_watchdog = mxge_watchdog;
 
 	/* Increase TSO burst length */
 	ifp->if_tsolen = (32 * ETHERMTU);
