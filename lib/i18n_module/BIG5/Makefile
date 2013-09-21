@@ -1,6 +1,7 @@
-# $DragonFly: src/lib/i18n_module/BIG5/Makefile,v 1.2 2008/04/10 10:21:00 hasso Exp $
+# $FreeBSD: head/lib/libiconv_modules/BIG5/Makefile 219019 2011-02-25 00:04:39Z gabor $
 
-SRCPRE=	citrus_
-SRCS+=	citrus_big5.c citrus_prop.c
+LIB=	BIG5
+SRCS+=	citrus_big5.c
+CFLAGS+= --param max-inline-insns-single=32
 
 .include <bsd.lib.mk>

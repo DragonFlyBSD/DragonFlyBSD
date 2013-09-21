@@ -1,9 +1,11 @@
-/* $NetBSD: fgetwc.c,v 1.8 2007/04/01 18:35:53 tnozaki Exp $ */
-/* $DragonFly: src/lib/libc/stdio/fgetwc.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
-
 /*-
- * Copyright (c)2001 Citrus Project,
+ * Copyright (c) 2002-2004 Tim J. Robbins.
  * All rights reserved.
+ *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,76 +28,88 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Citrus$
+ * $FreeBSD: head/lib/libc/stdio/fgetwc.c 234799 2012-04-29 16:28:39Z das $
  */
 
+
 #include "namespace.h"
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <wchar.h>
 #include "un-namespace.h"
-
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
+#include "mblocal.h"
+#include "xlocale_private.h"
 
+/*
+ * MT-safe version.
+ */
 wint_t
-__fgetwc_unlock(FILE *fp)
-{
-	struct wchar_io_data *wcio;
-	wchar_t wc;
-	size_t nr;
-
-	_DIAGASSERT(fp != NULL);
-
-	_SET_ORIENTATION(fp, 1);
-	wcio = WCIO_GET(fp);
-	_DIAGASSERT(wcio != NULL);
-
-	/* if there're ungetwc'ed wchars, use them */
-	if (wcio->wcio_ungetwc_inbuf)
-		return(wcio->wcio_ungetwc_buf[--wcio->wcio_ungetwc_inbuf]);
-
-	if (fp->pub._r <= 0) {
-restart:
-		if (__srefill(fp) != 0)
-			return WEOF;
-	}
-	nr = mbrtowc(&wc, (const char *)fp->pub._p,
-	    (size_t)fp->pub._r, &wcio->wcio_mbstate_in);
-	if (nr == (size_t)-1) {
-		fp->pub._flags |= __SERR;
-		return WEOF;
-	} else if (nr == (size_t)-2) {
-		fp->pub._p += fp->pub._r;
-		fp->pub._r = 0;
-		goto restart;
-	}
-	if (wc == L'\0') {
-		while (*fp->pub._p != '\0') {
-			++fp->pub._p;
-			--fp->pub._r;
-		}
-		nr = 1;
-	}
-	fp->pub._p += nr;
-	fp->pub._r -= nr;
-
-	return wc;
-}
-
-wint_t
-fgetwc(FILE *fp)
+fgetwc_l(FILE *fp, locale_t locale)
 {
 	wint_t r;
-
-	_DIAGASSERT(fp != NULL);
+	FIX_LOCALE(locale);
 
 	FLOCKFILE(fp);
-	r = __fgetwc_unlock(fp);
+	ORIENT(fp, 1);
+	r = __fgetwc(fp, locale);
 	FUNLOCKFILE(fp);
 
 	return (r);
 }
 
+wint_t
+fgetwc(FILE *fp)
+{
+	return fgetwc_l(fp, __get_locale());
+}
+
+/*
+ * Internal (non-MPSAFE) version of fgetwc().  This version takes an
+ * mbstate_t argument specifying the initial conversion state.  For
+ * wide streams, this should always be fp->_mbstate.  On return, *nread
+ * is set to the number of bytes read.
+ */
+wint_t 
+__fgetwc_mbs(FILE *fp, mbstate_t *mbs, int *nread, locale_t locale)
+{
+	wchar_t wc;
+	size_t nconv;
+	struct xlocale_ctype *l = XLOCALE_CTYPE(locale);
+
+	if (fp->pub._r <= 0 && __srefill(fp)) {
+		*nread = 0;
+		return (WEOF);
+	}
+	if (MB_CUR_MAX == 1) {
+		/* Fast path for single-byte encodings. */
+		wc = *fp->pub._p++;
+		fp->pub._r--;
+		*nread = 1;
+		return (wc);
+	}
+	*nread = 0;
+	do {
+		nconv = l->__mbrtowc(&wc, fp->pub._p, fp->pub._r, mbs);
+		if (nconv == (size_t)-1)
+			break;
+		else if (nconv == (size_t)-2)
+			continue;
+		else if (nconv == 0) {
+			fp->pub._p++;
+			fp->pub._r--;
+			(*nread)++;
+			return (L'\0');
+		} else {
+			fp->pub._p += nconv;
+			fp->pub._r -= nconv;
+			*nread += nconv;
+			return (wc);
+		}
+	} while (__srefill(fp) == 0);
+	fp->pub._flags |= __SERR;
+	errno = EILSEQ;
+	return (WEOF);
+}

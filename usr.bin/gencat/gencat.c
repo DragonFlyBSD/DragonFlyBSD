@@ -1,5 +1,7 @@
-/*	$NetBSD: src/usr.bin/gencat/gencat.c,v 1.19 2004/01/05 23:23:34 jmmv Exp $	*/
-/*	$DragonFly: src/usr.bin/gencat/gencat.c,v 1.5 2008/10/16 01:52:32 swildner Exp $ */
+/* ex:ts=4
+ */
+
+/*	$NetBSD: gencat.c,v 1.18 2003/10/27 00:12:43 lukem Exp $	*/
 
 /*
  * Copyright (c) 1996 The NetBSD Foundation, Inc.
@@ -16,13 +18,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD 
- *	  Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its 
- *    contributors may be used to endorse or promote products derived 
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -35,6 +30,8 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/usr.bin/gencat/gencat.c 241737 2012-10-19 14:49:42Z ed $
  */
 
 /***********************************************************
@@ -69,69 +66,61 @@ up-to-date.  Many thanks.
 
 ******************************************************************/
 
+
+#define _NLS_PRIVATE
+
 #include <sys/types.h>
 #include <sys/queue.h>
 
-#include <arpa/inet.h>
+#include <arpa/inet.h>		/* for htonl() */
 
 #include <ctype.h>
 #include <err.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <nl_types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#define _NLS_PRIVATE
-#include <nl_types.h>
-
-#ifndef NL_SETMAX
-#define NL_SETMAX 255
-#endif
-#ifndef NL_MSGMAX
-#define NL_MSGMAX 2048
-#endif
-
 struct _msgT {
 	long    msgId;
 	char   *str;
-        LIST_ENTRY(_msgT) entries;
+	LIST_ENTRY(_msgT) entries;
 };
 
 struct _setT {
 	long    setId;
-        LIST_HEAD(msghead, _msgT) msghead;
-        LIST_ENTRY(_setT) entries;
+	LIST_HEAD(msghead, _msgT) msghead;
+	LIST_ENTRY(_setT) entries;
 };
 
-LIST_HEAD(sethead, _setT) sethead;
+static LIST_HEAD(sethead, _setT) sethead;
 static struct _setT *curSet;
 
 static char *curline = NULL;
 static long lineno = 0;
 
-static char	*cskip(char *);
-static void	 error(char *, char *);
-static void	 nomem(void);
-static char	*getline(int);
-static char	*getmsg(int, char *, char);
-static void	 warning(char *, char *);
-static char	*wskip(char *);
-static char	*xstrdup(const char *);
-static void	*xmalloc(size_t);
-static void	*xrealloc(void *, size_t);
+static	char   *cskip(char *);
+static	void	error(const char *);
+static	char   *getline(int);
+static	char   *getmsg(int, char *, char);
+static	void	warning(const char *, const char *);
+static	char   *wskip(char *);
+static	char   *xstrdup(const char *);
+static	void   *xmalloc(size_t);
+static	void   *xrealloc(void *, size_t);
 
-void	MCParse(int fd);
-void	MCReadCat(int fd);
-void	MCWriteCat(int fd);
-void	MCDelMsg(int msgId);
-void	MCAddMsg(int msgId, const char *msg);
-void	MCAddSet(int setId);
-void	MCDelSet(int setId);
-int	main(int, char **);
+void	MCParse(int);
+void	MCReadCat(int);
+void	MCWriteCat(int);
+void	MCDelMsg(int);
+void	MCAddMsg(int, const char *);
+void	MCAddSet(int);
+void	MCDelSet(int);
 void	usage(void);
-
+int	main(int, char **);
 
 void
 usage(void)
@@ -141,14 +130,28 @@ usage(void)
 }
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
 	int     ofd, ifd;
-	char   *catfile = NULL;
+	char	*catfile = NULL;
 	int     c;
 
+#define DEPRECATEDMSG	1
+
+#ifdef DEPRECATEDMSG
+	while ((c = getopt(argc, argv, "new")) != -1) {
+#else
 	while ((c = getopt(argc, argv, "")) != -1) {
+#endif
 		switch (c) {
+#ifdef DEPRECATEDMSG
+		case 'n':
+			fprintf(stderr, "WARNING: Usage of \"-new\" argument is deprecated.\n");
+		case 'e':
+		case 'w':
+			break;
+#endif
+		case '?':
 		default:
 			usage();
 			/* NOTREACHED */
@@ -177,7 +180,7 @@ main(int argc, char *argv[])
 }
 
 static void
-warning(char *cptr, char *msg)
+warning(const char *cptr, const char *msg)
 {
 	fprintf(stderr, "%s: %s on line %ld\n", getprogname(), msg, lineno);
 	fprintf(stderr, "%s\n", curline);
@@ -189,25 +192,14 @@ warning(char *cptr, char *msg)
 	}
 }
 
+#define	CORRUPT()	{ error("corrupt message catalog"); }
+#define	NOMEM()		{ error("out of memory"); }
+
 static void
-error(char *cptr, char *msg)
+error(const char *msg)
 {
-	warning(cptr, msg);
+	warning(NULL, msg);
 	exit(1);
-}
-
-#if 0	/* XXX unused */
-static void
-corrupt(void)
-{
-	error(NULL, "corrupt message catalog");
-}
-#endif
-
-static void
-nomem(void)
-{
-	error(NULL, "out of memory");
 }
 
 static void *
@@ -216,7 +208,7 @@ xmalloc(size_t len)
 	void   *p;
 
 	if ((p = malloc(len)) == NULL)
-		nomem();
+		NOMEM();
 	return (p);
 }
 
@@ -224,7 +216,7 @@ static void *
 xrealloc(void *ptr, size_t size)
 {
 	if ((ptr = realloc(ptr, size)) == NULL)
-		nomem();
+		NOMEM();
 	return (ptr);
 }
 
@@ -234,7 +226,7 @@ xstrdup(const char *str)
 	char *nstr;
 
 	if ((nstr = strdup(str)) == NULL)
-		nomem();
+		NOMEM();
 	return (nstr);
 }
 
@@ -344,40 +336,28 @@ getmsg(int fd, char *cptr, char quote)
 				case '\0':
 					cptr = getline(fd);
 					if (!cptr)
-						error(NULL, "premature end of file");
+						error("premature end of file");
 					msglen += strlen(cptr);
 					i = tptr - msg;
 					msg = xrealloc(msg, msglen);
 					tptr = msg + i;
 					break;
-				case 'n':
-					*tptr++ = '\n';
-					++cptr;
-					break;
-				case 't':
-					*tptr++ = '\t';
-					++cptr;
-					break;
-				case 'v':
-					*tptr++ = '\v';
-					++cptr;
-					break;
-				case 'b':
-					*tptr++ = '\b';
-					++cptr;
-					break;
-				case 'r':
-					*tptr++ = '\r';
-					++cptr;
-					break;
-				case 'f':
-					*tptr++ = '\f';
-					++cptr;
-					break;
-				case '\\':
-					*tptr++ = '\\';
-					++cptr;
-					break;
+
+		#define	CASEOF(CS, CH)		\
+			case CS:		\
+				*tptr++ = CH;	\
+				++cptr;		\
+				break;		\
+
+				CASEOF('n', '\n');
+				CASEOF('t', '\t');
+				CASEOF('v', '\v');
+				CASEOF('b', '\b');
+				CASEOF('r', '\r');
+				CASEOF('f', '\f');
+				CASEOF('"', '"');
+				CASEOF('\\', '\\');
+
 				default:
 					if (quote && *cptr == quote) {
 						*tptr++ = *cptr++;
@@ -482,88 +462,6 @@ MCParse(int fd)
 	}
 }
 
-void
-MCReadCat(int fd)
-{
-#if 0
-	MCHeaderT mcHead;
-	MCMsgT  mcMsg;
-	MCSetT  mcSet;
-	msgT   *msg;
-	setT   *set;
-	int     i;
-	char   *data;
-
-	/* XXX init sethead? */
-
-	if (read(fd, &mcHead, sizeof(mcHead)) != sizeof(mcHead))
-		corrupt();
-	if (strncmp(mcHead.magic, MCMagic, MCMagicLen) != 0)
-		corrupt();
-	if (mcHead.majorVer != MCMajorVer)
-		error(NULL, "unrecognized catalog version");
-	if ((mcHead.flags & MCGetByteOrder()) == 0)
-		error(NULL, "wrong byte order");
-
-	if (lseek(fd, mcHead.firstSet, SEEK_SET) == -1)
-		corrupt();
-
-	for (;;) {
-		if (read(fd, &mcSet, sizeof(mcSet)) != sizeof(mcSet))
-			corrupt();
-		if (mcSet.invalid)
-			continue;
-
-		set = xmalloc(sizeof(setT));
-		memset(set, '\0', sizeof(*set));
-		if (cat->first) {
-			cat->last->next = set;
-			set->prev = cat->last;
-			cat->last = set;
-		} else
-			cat->first = cat->last = set;
-
-		set->setId = mcSet.setId;
-
-		/* Get the data */
-		if (mcSet.dataLen) {
-			data = xmalloc(mcSet.dataLen);
-			if (lseek(fd, mcSet.data.off, SEEK_SET) == -1)
-				corrupt();
-			if (read(fd, data, mcSet.dataLen) != mcSet.dataLen)
-				corrupt();
-			if (lseek(fd, mcSet.u.firstMsg, SEEK_SET) == -1)
-				corrupt();
-
-			for (i = 0; i < mcSet.numMsgs; ++i) {
-				if (read(fd, &mcMsg, sizeof(mcMsg)) != sizeof(mcMsg))
-					corrupt();
-				if (mcMsg.invalid) {
-					--i;
-					continue;
-				}
-				msg = xmalloc(sizeof(msgT));
-				memset(msg, '\0', sizeof(*msg));
-				if (set->first) {
-					set->last->next = msg;
-					msg->prev = set->last;
-					set->last = msg;
-				} else
-					set->first = set->last = msg;
-
-				msg->msgId = mcMsg.msgId;
-				msg->str = xstrdup((char *) (data + mcMsg.msg.off));
-			}
-			free(data);
-		}
-		if (!mcSet.nextSet)
-			break;
-		if (lseek(fd, mcSet.nextSet, SEEK_SET) == -1)
-			corrupt();
-	}
-#endif
-}
-
 /*
  * Write message catalog.
  *
@@ -635,9 +533,9 @@ MCWriteCat(int fd)
 	    nmsgs * sizeof(struct _nls_msg_hdr));
 
 	/* compute offsets for set & msg header tables and string pool */
-	set_hdr = (struct _nls_set_hdr *) ((char *) msgcat +
+	set_hdr = (struct _nls_set_hdr *)(void *)((char *)msgcat +
 	    sizeof(struct _nls_cat_hdr));
-	msg_hdr = (struct _nls_msg_hdr *) ((char *) msgcat +
+	msg_hdr = (struct _nls_msg_hdr *)(void *)((char *)msgcat +
 	    sizeof(struct _nls_cat_hdr) +
 	    nsets * sizeof(struct _nls_set_hdr));
 	strings = (char *) msgcat +
@@ -684,11 +582,11 @@ MCAddSet(int setId)
 	struct _setT *p, *q;
 
 	if (setId <= 0) {
-		error(NULL, "setId's must be greater than zero");
+		error("setId's must be greater than zero");
 		/* NOTREACHED */
 	}
 	if (setId > NL_SETMAX) {
-		error(NULL, "setId exceeds limit");
+		error("setId exceeds limit");
 		/* NOTREACHED */
 	}
 
@@ -721,14 +619,14 @@ MCAddMsg(int msgId, const char *str)
 	struct _msgT *p, *q;
 
 	if (!curSet)
-		error(NULL, "can't specify a message when no set exists");
+		error("can't specify a message when no set exists");
 
 	if (msgId <= 0) {
-		error(NULL, "msgId's must be greater than zero");
+		error("msgId's must be greater than zero");
 		/* NOTREACHED */
 	}
 	if (msgId > NL_MSGMAX) {
-		error(NULL, "msgID exceeds limit");
+		error("msgID exceeds limit");
 		/* NOTREACHED */
 	}
 
@@ -782,7 +680,7 @@ MCDelMsg(int msgId)
 	struct _msgT *msg;
 
 	if (!curSet)
-		error(NULL, "you can't delete a message before defining the set");
+		error("you can't delete a message before defining the set");
 
 	msg = curSet->msghead.lh_first;
 	for (; msg != NULL && msg->msgId < msgId; msg = msg->entries.le_next);

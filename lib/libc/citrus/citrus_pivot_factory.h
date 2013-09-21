@@ -1,5 +1,5 @@
-/* $NetBSD: src/lib/libc/citrus/citrus_pivot_factory.h,v 1.1 2003/06/25 09:51:39 tshiozak Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_pivot_factory.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_pivot_factory.h 219019 2011-02-25 00:04:39Z gabor $ */
+/* $NetBSD: citrus_pivot_factory.h,v 1.1 2003/06/25 09:51:39 tshiozak Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -31,7 +31,7 @@
 #define _CITRUS_PIVOT_FACTORY_H_
 
 __BEGIN_DECLS
-int	_citrus_pivot_factory_convert(FILE *, FILE *);
+int	 _citrus_pivot_factory_convert(FILE *, FILE *);
 __END_DECLS
 
 #endif

@@ -30,11 +30,9 @@
  * SUCH DAMAGE.
  *
  * @(#)strstr.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/wcsstr.c,v 1.9 2007/01/09 00:28:12 imp Exp $
- * $DragonFly: src/lib/libc/string/wcsstr.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
+ * $FreeBSD: head/lib/libc/string/wcsstr.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
-#include <sys/types.h>
 #include <wchar.h>
 
 /*
@@ -46,7 +44,7 @@ wcsstr(const wchar_t * __restrict s, const wchar_t * __restrict find)
 	wchar_t c, sc;
 	size_t len;
 
-	if ((c = *find++) != 0) {
+	if ((c = *find++) != L'\0') {
 		len = wcslen(find);
 		do {
 			do {
@@ -56,5 +54,5 @@ wcsstr(const wchar_t * __restrict s, const wchar_t * __restrict find)
 		} while (wcsncmp(s, find, len) != 0);
 		s--;
 	}
-	return (__DECONST(wchar_t *, s));
+	return ((wchar_t *)s);
 }

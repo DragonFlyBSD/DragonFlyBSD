@@ -1,6 +1,5 @@
+/* $FreeBSD: head/lib/libc/iconv/citrus_db_hash.h 219019 2011-02-25 00:04:39Z gabor $ */
 /* $NetBSD: citrus_db_hash.h,v 1.2 2008/02/09 14:56:20 junyoung Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_db_hash.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
-
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -32,7 +31,7 @@
 #define _CITRUS_DB_HASH_H_
 
 __BEGIN_DECLS
-uint32_t	_citrus_db_hash_std(void *, struct _citrus_region *);
+uint32_t	 _citrus_db_hash_std(struct _citrus_region *);
 __END_DECLS
 
 #endif

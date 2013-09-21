@@ -1,5 +1,4 @@
 /* $NetBSD: fwide.c,v 1.3 2005/06/12 05:21:27 lukem Exp $ */
-/* $DragonFly: src/lib/libc/stdio/fwide.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
 
 /*-
  * Copyright (c)2001 Citrus Project,
@@ -37,7 +36,6 @@
 
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
 
 int
 fwide(FILE *fp, int mode)

@@ -1,8 +1,11 @@
-/* $NetBSD: fputwc.c,v 1.4 2005/06/12 05:21:27 lukem Exp $ */
-
 /*-
- * Copyright (c)2001 Citrus Project,
+ * Copyright (c) 2002-2004 Tim J. Robbins.
  * All rights reserved.
+ *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,39 +28,34 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Citrus$
+ * $FreeBSD: head/lib/libc/stdio/fputwc.c 227753 2011-11-20 14:45:42Z theraven $
  */
 
+
 #include "namespace.h"
-#include <assert.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <wchar.h>
 #include "un-namespace.h"
-
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
+#include "mblocal.h"
 
+/*
+ * Non-MT-safe version.
+ */
 wint_t
-__fputwc_unlock(wchar_t wc, FILE *fp)
+__fputwc(wchar_t wc, FILE *fp, locale_t locale)
 {
 	struct wchar_io_data *wcio;
 	mbstate_t *st;
-	size_t size;
 	char buf[MB_LEN_MAX];
-	struct __suio uio;
-	struct __siov iov;
+	size_t i, len;
+	struct xlocale_ctype *l = XLOCALE_CTYPE(locale);
 
-	_DIAGASSERT(fp != NULL);
-	
-	/* LINTED we don't play with buf */
-	iov.iov_base = (void *)buf;
-	uio.uio_iov = &iov;
-	uio.uio_iovcnt = 1;
-
-	_SET_ORIENTATION(fp, 1);
+	ORIENT(fp, 1);
 	wcio = WCIO_GET(fp);
 	if (wcio == NULL) {
 		errno = ENOMEM;
@@ -67,32 +65,45 @@ __fputwc_unlock(wchar_t wc, FILE *fp)
 	wcio->wcio_ungetwc_inbuf = 0;
 	st = &wcio->wcio_mbstate_out;
 
-	size = wcrtomb(buf, wc, st);
-	if (size == (size_t)-1) {
-		errno = EILSEQ;
-		return WEOF;
+	if (MB_CUR_MAX == 1 && wc > 0 && wc <= UCHAR_MAX) {
+		/*
+		 * Assume single-byte locale with no special encoding.
+		 * A more careful test would be to check
+		 * _CurrentRuneLocale->encoding.
+		 */
+		*buf = (unsigned char)wc;
+		len = 1;
+	} else {
+		if ((len = l->__wcrtomb(buf, wc, st)) == (size_t)-1) {
+			fp->pub._flags |= __SERR;
+			return (WEOF);
+		}
 	}
 
-	_DIAGASSERT(size != 0);
+	for (i = 0; i < len; i++)
+		if (__sputc((unsigned char)buf[i], fp) == EOF)
+			return (WEOF);
 
-	uio.uio_resid = iov.iov_len = size;
-	if (__sfvwrite(fp, &uio)) {
-		return WEOF;
-	}
-
-	return (wint_t)wc;
+	return ((wint_t)wc);
 }
 
+/*
+ * MT-safe version.
+ */
 wint_t
-fputwc(wchar_t wc, FILE *fp)
+fputwc_l(wchar_t wc, FILE *fp, locale_t locale)
 {
 	wint_t r;
-
-	_DIAGASSERT(fp != NULL);
+	FIX_LOCALE(locale);
 
 	FLOCKFILE(fp);
-	r = __fputwc_unlock(wc, fp);
+	r = __fputwc(wc, fp, locale);
 	FUNLOCKFILE(fp);
 
 	return (r);
+}
+wint_t
+fputwc(wchar_t wc, FILE *fp)
+{
+	return fputwc_l(wc, fp, __get_locale());
 }

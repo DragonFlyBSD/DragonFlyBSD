@@ -11,7 +11,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. Neither the name of the University nor the names of its contributors
+.\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -27,9 +27,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc/stdtime/ctime.3,v 1.11.2.7 2003/05/23 23:53:40 keramida Exp $
+.\"     From: @(#)ctime.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: head/contrib/tzcode/stdtime/ctime.3 165903 2007-01-09 00:28:16Z imp $
 .\"
-.Dd October 19, 2008
+.Dd January 2, 1999
 .Dt CTIME 3
 .Os
 .Sh NAME
@@ -81,7 +82,7 @@ and
 all take as an argument a time value representing the time in seconds since
 the Epoch (00:00:00
 .Tn UTC ,
-1970-01-01; see
+January 1, 1970; see
 .Xr time 3 ) .
 .Pp
 The function
@@ -92,11 +93,18 @@ and returns a pointer to a
 .Dq Fa struct tm
 (described below) which contains
 the broken-out time information for the value after adjusting for the current
-time zone and any time zone adjustments.
+time zone (and any other factors such as Daylight Saving Time).
 Time zone adjustments are performed as specified by the
 .Ev TZ
 environment variable (see
 .Xr tzset 3 ) .
+The function
+.Fn localtime
+uses
+.Xr tzset 3
+to initialize time conversion information if
+.Xr tzset 3
+has not already been called by the process.
 .Pp
 After filling in the tm structure,
 .Fn localtime
@@ -106,7 +114,7 @@ element of
 .Fa tzname
 to a pointer to an
 .Tn ASCII
-string that's the time zone abbreviation to be
+string that is the time zone abbreviation to be
 used with
 .Fn localtime Ns 's
 return value.
@@ -121,21 +129,12 @@ The
 function
 adjusts the time value for the current time zone in the same manner as
 .Fn localtime ,
-and returns a pointer to a string of the form:
+and returns a pointer to a 26-character string of the form:
 .Bd -literal -offset indent
 Thu Nov 24 18:22:48 1986\en\e0
 .Ed
 .Pp
-Years requiring fewer than four characters are padded with leading zeroes.
-For years longer than four characters, the string is of the form
-.Bd -literal -offset indent
-Thu Nov 24 18:22:48     81986\en\e0
-.Ed
-.Pp
-with five spaces before the year.
-These unusual formats are designed to make it less likely that older
-software that expects exactly 26 bytes of output will mistakenly output
-misleading values for out-of-range years.
+All the fields have constant width.
 .Pp
 The
 .Fn ctime_r
@@ -226,9 +225,7 @@ A negative value for
 causes the
 .Fn mktime
 function to attempt to divine whether summer time is in effect for the
-specified time; in this case it does not use a consistent
-rule and may give a different answer when later
-presented with the same argument.
+specified time.
 The
 .Fa tm_isdst
 and
@@ -293,27 +290,10 @@ is the offset (in seconds) of the time represented from
 .Tn UTC ,
 with positive
 values indicating east of the Prime Meridian.
-.Sh COMPATIBILITY
-The
-.Fn asctime
-and
-.Fn ctime
-functions
-behave strangely for years before 1000 or after 9999.
-The 1989 and 1999 editions of the C Standard say
-that years from -99 through 999 are converted without
-extra spaces, but this conflicts with longstanding
-tradition and with this implementation.
-Traditional implementations of these two functions are
-restricted to years in the range 1900 through 2099.
-To avoid this portability mess, new programs should use
-.Xr strftime 3
-instead.
 .Sh SEE ALSO
 .Xr date 1 ,
 .Xr gettimeofday 2 ,
 .Xr getenv 3 ,
-.Xr strftime 3 ,
 .Xr time 3 ,
 .Xr tzset 3 ,
 .Xr tzfile 5
@@ -370,7 +350,8 @@ function will modify the same object.
 The C Standard provides no mechanism for a program to modify its current
 local timezone setting, and the
 .Tn POSIX Ns No \&-standard
-method is not reentrant.  (However, thread-safe implementations are provided
+method is not reentrant.
+(However, thread-safe implementations are provided
 in the
 .Tn POSIX
 threaded environment.)

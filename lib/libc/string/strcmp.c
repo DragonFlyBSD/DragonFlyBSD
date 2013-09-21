@@ -30,8 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)strcmp.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/strcmp.c,v 1.6 2007/01/09 00:28:12 imp Exp $
- * $DragonFly: src/lib/libc/string/strcmp.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/strcmp.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <string.h>
@@ -43,7 +42,7 @@ int
 strcmp(const char *s1, const char *s2)
 {
 	while (*s1 == *s2++)
-		if (*s1++ == 0)
+		if (*s1++ == '\0')
 			return (0);
 	return (*(const unsigned char *)s1 - *(const unsigned char *)(s2 - 1));
 }

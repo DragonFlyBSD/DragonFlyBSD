@@ -24,10 +24,7 @@
  * SUCH DAMAGE.
  *
  *	citrus Id: wcscpy.c,v 1.2 2000/12/21 04:51:09 itojun Exp
- *
- * $NetBSD: wcscpy.c,v 1.1 2000/12/23 23:14:36 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcscpy.c,v 1.8 2002/09/26 09:23:07 tjr Exp $
- * $DragonFly: src/lib/libc/string/wcscpy.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/wcscpy.c 188080 2009-02-03 17:58:20Z danger $
  */
 
 #include <wchar.h>

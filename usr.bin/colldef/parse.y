@@ -25,17 +25,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/colldef/parse.y,v 1.15.2.5 2002/10/11 10:43:45 ache Exp $
- * $DragonFly: src/usr.bin/colldef/parse.y,v 1.6 2008/07/10 18:29:51 swildner Exp $
+ * $FreeBSD: head/usr.bin/colldef/parse.y 175038 2008-01-01 10:04:10Z imp $
  */
 
+
 #include <sys/types.h>
-#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <err.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <sysexits.h>
 #include "collate.h"
@@ -59,7 +58,7 @@ u_char __collate_substitute_table[UCHAR_MAX + 1][STR_LEN];
 struct __collate_st_char_pri __collate_char_pri_table[UCHAR_MAX + 1];
 struct __collate_st_chain_pri *__collate_chain_pri_table;
 
-int chain_index;
+int chain_index = 0;
 int prim_pri = 1, sec_pri = 1;
 #ifdef COLLATE_DEBUG
 int debug;
@@ -119,49 +118,59 @@ order : ORDER order_list {
 	if ((__collate_chain_pri_table = realloc(__collate_chain_pri_table,
 	     sizeof(*__collate_chain_pri_table) * (chain_index + 1))) == NULL)
 		yyerror("can't grow chain table");
-	(void)memset(__collate_chain_pri_table[chain_index].str, 0,
-		     sizeof(__collate_chain_pri_table[0].str));
-	__collate_chain_pri_table[chain_index].prim = 0;
-	__collate_chain_pri_table[chain_index].sec = 0;
+	(void)memset(&__collate_chain_pri_table[chain_index], 0,
+		     sizeof(__collate_chain_pri_table[0]));
 	chain_index++;
 
-	if ((fp = fopen(out_file, "w")) == NULL)
-		err(EX_UNAVAILABLE, "can't open destination file %s",
-		    out_file);
-
-	strcpy(__collate_version, COLLATE_VERSION1_1);
-	if (fwrite(__collate_version, sizeof(__collate_version), 1, fp) != 1)
-		err(EX_IOERR,
-		"IO error writing collate version to destination file %s",
-		    out_file);
-	u32 = htonl(chain_index);
-	if (fwrite(&u32, sizeof(u32), 1, fp) != 1)
-		err(EX_IOERR,
-		"IO error writing chains number to destination file %s",
-		    out_file);
-	if (fwrite(__collate_substitute_table,
-		   sizeof(__collate_substitute_table), 1, fp) != 1)
-		err(EX_IOERR,
-		"IO error writing substitute table to destination file %s",
-		    out_file);
-	if (fwrite(__collate_char_pri_table,
-		   sizeof(__collate_char_pri_table), 1, fp) != 1)
-		err(EX_IOERR,
-		"IO error writing char table to destination file %s",
-		    out_file);
-	if (fwrite(__collate_chain_pri_table,
-		   sizeof(*__collate_chain_pri_table), chain_index, fp) !=
-		   (size_t)chain_index)
-		err(EX_IOERR,
-		"IO error writing chain table to destination file %s",
-		    out_file);
-	if (fclose(fp) != 0)
-		err(EX_IOERR, "IO error closing destination file %s",
-		    out_file);
 #ifdef COLLATE_DEBUG
 	if (debug)
 		collate_print_tables();
 #endif
+	if ((fp = fopen(out_file, "w")) == NULL)
+		err(EX_UNAVAILABLE, "can't open destination file %s",
+		    out_file);
+
+	strcpy(__collate_version, COLLATE_VERSION1_2);
+	if (fwrite(__collate_version, sizeof(__collate_version), 1, fp) != 1)
+		err(EX_IOERR,
+		"IO error writting collate version to destination file %s",
+		    out_file);
+	u32 = htonl(chain_index);
+	if (fwrite(&u32, sizeof(u32), 1, fp) != 1)
+		err(EX_IOERR,
+		"IO error writting chains number to destination file %s",
+		    out_file);
+	if (fwrite(__collate_substitute_table,
+		   sizeof(__collate_substitute_table), 1, fp) != 1)
+		err(EX_IOERR,
+		"IO error writting substitute table to destination file %s",
+		    out_file);
+	for (ch = 0; ch < UCHAR_MAX + 1; ch++) {
+		__collate_char_pri_table[ch].prim =
+		    htonl(__collate_char_pri_table[ch].prim);
+		__collate_char_pri_table[ch].sec =
+		    htonl(__collate_char_pri_table[ch].sec);
+	}
+	if (fwrite(__collate_char_pri_table,
+		   sizeof(__collate_char_pri_table), 1, fp) != 1)
+		err(EX_IOERR,
+		"IO error writting char table to destination file %s",
+		    out_file);
+	for (ch = 0; ch < chain_index; ch++) {
+		__collate_chain_pri_table[ch].prim =
+		    htonl(__collate_chain_pri_table[ch].prim);
+		__collate_chain_pri_table[ch].sec =
+		    htonl(__collate_chain_pri_table[ch].sec);
+	}
+	if (fwrite(__collate_chain_pri_table,
+		   sizeof(*__collate_chain_pri_table), chain_index, fp) !=
+		   (size_t)chain_index)
+		err(EX_IOERR,
+		"IO error writting chain table to destination file %s",
+		    out_file);
+	if (fclose(fp) != 0)
+		err(EX_IOERR, "IO error closing destination file %s",
+		    out_file);
 	exit(EX_OK);
 }
 ;
@@ -195,11 +204,10 @@ item :  CHAR {
 	if ((__collate_chain_pri_table = realloc(__collate_chain_pri_table,
 	     sizeof(*__collate_chain_pri_table) * (chain_index + 1))) == NULL)
 		yyerror("can't grow chain table");
-	(void)memset(__collate_chain_pri_table[chain_index].str, 0,
-		     sizeof(__collate_chain_pri_table[0].str));
+	(void)memset(&__collate_chain_pri_table[chain_index], 0,
+		     sizeof(__collate_chain_pri_table[0]));
 	(void)strcpy(__collate_chain_pri_table[chain_index].str, curr_chain);
 	__collate_chain_pri_table[chain_index].prim = prim_pri++;
-	__collate_chain_pri_table[chain_index].sec = 0;
 	chain_index++;
 }
 	| CHAR RANGE CHAR {
@@ -250,11 +258,10 @@ prim_sub_item : CHAR {
 	if ((__collate_chain_pri_table = realloc(__collate_chain_pri_table,
 	     sizeof(*__collate_chain_pri_table) * (chain_index + 1))) == NULL)
 		yyerror("can't grow chain table");
-	(void)memset(__collate_chain_pri_table[chain_index].str, 0,
-		     sizeof(__collate_chain_pri_table[0].str));
+	(void)memset(&__collate_chain_pri_table[chain_index], 0,
+		     sizeof(__collate_chain_pri_table[0]));
 	(void)strcpy(__collate_chain_pri_table[chain_index].str, curr_chain);
 	__collate_chain_pri_table[chain_index].prim = prim_pri;
-	__collate_chain_pri_table[chain_index].sec = 0;
 	chain_index++;
 }
 ;
@@ -282,8 +289,8 @@ sec_sub_item : CHAR {
 	if ((__collate_chain_pri_table = realloc(__collate_chain_pri_table,
 	     sizeof(*__collate_chain_pri_table) * (chain_index + 1))) == NULL)
 		yyerror("can't grow chain table");
-	(void)memset(__collate_chain_pri_table[chain_index].str, 0,
-		     sizeof(__collate_chain_pri_table[0].str));
+	(void)memset(&__collate_chain_pri_table[chain_index], 0,
+		     sizeof(__collate_chain_pri_table[0]));
 	(void)strcpy(__collate_chain_pri_table[chain_index].str, curr_chain);
 	__collate_chain_pri_table[chain_index].prim = prim_pri;
 	__collate_chain_pri_table[chain_index].sec = sec_pri++;
@@ -335,7 +342,7 @@ main(int ac, char **av)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: colldef [-o out_file] [-I map_dir] [filename]\n");
+	fprintf(stderr, "usage: colldef [-I map_dir] [-o out_file] [filename]\n");
 	exit(EX_USAGE);
 }
 
@@ -356,7 +363,6 @@ static void
 collate_print_tables(void)
 {
 	int i;
-	struct __collate_st_chain_pri *p2;
 
 	printf("Substitute table:\n");
 	for (i = 0; i < UCHAR_MAX + 1; i++)
@@ -364,8 +370,11 @@ collate_print_tables(void)
 		printf("\t'%c' --> \"%s\"\n", i,
 		       __collate_substitute_table[i]);
 	printf("Chain priority table:\n");
-	for (p2 = __collate_chain_pri_table; p2->str[0] != '\0'; p2++)
-		printf("\t\"%s\" : %d %d\n", p2->str, p2->prim, p2->sec);
+	for (i = 0; i < chain_index - 1; i++)
+		printf("\t\"%s\" : %d %d\n",
+		    __collate_chain_pri_table[i].str,
+		    __collate_chain_pri_table[i].prim,
+		    __collate_chain_pri_table[i].sec);
 	printf("Char priority table:\n");
 	for (i = 0; i < UCHAR_MAX + 1; i++)
 		printf("\t'%c' : %d %d\n", i, __collate_char_pri_table[i].prim,

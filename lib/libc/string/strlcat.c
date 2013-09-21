@@ -1,3 +1,5 @@
+/*	$OpenBSD: strlcat.c,v 1.13 2005/08/08 08:05:37 espie Exp $	*/
+
 /*
  * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
  *
@@ -13,9 +15,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $OpenBSD: strlcat.c,v 1.13 2005/08/08 08:05:37 espie Exp $
- * $FreeBSD: src/lib/libc/string/strlcat.c,v 1.11 2009/01/12 06:09:34 delphij Exp $
- * $DragonFly: src/lib/libc/string/strlcat.c,v 1.4 2004/12/18 21:37:43 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/strlcat.c 189133 2009-02-28 05:15:02Z das $
  */
 
 #include <sys/types.h>
@@ -29,7 +29,7 @@
  * If retval >= siz, truncation occurred.
  */
 size_t
-strlcat(char *dst, const char *src, size_t siz)
+strlcat(char * __restrict dst, const char * __restrict src, size_t siz)
 {
 	char *d = dst;
 	const char *s = src;

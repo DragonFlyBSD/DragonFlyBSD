@@ -1,5 +1,5 @@
-/* $NetBSD: src/lib/libc/citrus/citrus_mapper.h,v 1.3 2003/07/12 15:39:19 tshiozak Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_mapper.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_mapper.h 219019 2011-02-25 00:04:39Z gabor $ */
+/* $NetBSD: citrus_mapper.h,v 1.3 2003/07/12 15:39:19 tshiozak Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -36,18 +36,18 @@ struct _citrus_mapper_ops;
 struct _citrus_mapper_traits;
 
 __BEGIN_DECLS
-int	_citrus_mapper_create_area(
-		struct _citrus_mapper_area *__restrict *__restrict,
-		const char *__restrict);
-int	_citrus_mapper_open(struct _citrus_mapper_area *__restrict,
-			    struct _citrus_mapper *__restrict *__restrict,
-			    const char *__restrict);
-int	_citrus_mapper_open_direct(
-		struct _citrus_mapper_area *__restrict,
-		struct _citrus_mapper *__restrict *__restrict,
-		const char *__restrict, const char *__restrict);
-void	_citrus_mapper_close(struct _citrus_mapper *);
-void	_citrus_mapper_set_persistent(struct _citrus_mapper * __restrict);
+int	 _citrus_mapper_create_area(
+	    struct _citrus_mapper_area *__restrict *__restrict,
+	    const char *__restrict);
+int	 _citrus_mapper_open(struct _citrus_mapper_area *__restrict,
+	    struct _citrus_mapper *__restrict *__restrict,
+	    const char *__restrict);
+int	 _citrus_mapper_open_direct(
+	    struct _citrus_mapper_area *__restrict,
+	    struct _citrus_mapper *__restrict *__restrict,
+	    const char *__restrict, const char *__restrict);
+void	 _citrus_mapper_close(struct _citrus_mapper *);
+void	 _citrus_mapper_set_persistent(struct _citrus_mapper * __restrict);
 __END_DECLS
 
 #include "citrus_mapper_local.h"
@@ -77,14 +77,11 @@ __END_DECLS
  */
 static __inline int
 _citrus_mapper_convert(struct _citrus_mapper * __restrict cm,
-		       _citrus_index_t * __restrict dst,
-		       _citrus_index_t src,
-		       void * __restrict ps)
+    _citrus_index_t * __restrict dst, _citrus_index_t src,
+    void * __restrict ps)
 {
 
-	_DIAGASSERT(cm && cm->cm_ops && cm->cm_ops->mo_convert && dst);
-
-	return (*cm->cm_ops->mo_convert)(cm, dst, src, ps);
+	return ((*cm->cm_ops->mo_convert)(cm, dst, src, ps));
 }
 
 /*
@@ -92,13 +89,10 @@ _citrus_mapper_convert(struct _citrus_mapper * __restrict cm,
  *	initialize the state.
  */
 static __inline void
-_citrus_mapper_init_state(struct _citrus_mapper * __restrict cm,
-			  void * __restrict ps)
+_citrus_mapper_init_state(struct _citrus_mapper * __restrict cm)
 {
 
-	_DIAGASSERT(cm && cm->cm_ops && cm->cm_ops->mo_init_state);
-
-	(*cm->cm_ops->mo_init_state)(cm, ps);
+	(*cm->cm_ops->mo_init_state)();
 }
 
 /*
@@ -109,9 +103,7 @@ static __inline size_t
 _citrus_mapper_get_state_size(struct _citrus_mapper * __restrict cm)
 {
 
-	_DIAGASSERT(cm && cm->cm_traits);
-
-	return cm->cm_traits->mt_state_size;
+	return (cm->cm_traits->mt_state_size);
 }
 
 /*
@@ -122,9 +114,7 @@ static __inline size_t
 _citrus_mapper_get_src_max(struct _citrus_mapper * __restrict cm)
 {
 
-	_DIAGASSERT(cm && cm->cm_traits);
-
-	return cm->cm_traits->mt_src_max;
+	return (cm->cm_traits->mt_src_max);
 }
 
 /*
@@ -135,9 +125,7 @@ static __inline size_t
 _citrus_mapper_get_dst_max(struct _citrus_mapper * __restrict cm)
 {
 
-	_DIAGASSERT(cm && cm->cm_traits);
-
-	return cm->cm_traits->mt_dst_max;
+	return (cm->cm_traits->mt_dst_max);
 }
 
 #endif

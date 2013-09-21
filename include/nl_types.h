@@ -1,5 +1,4 @@
-/*	$NetBSD: src/include/nl_types.h,v 1.10 2001/12/06 23:04:06 wiz Exp $	*/
-/*	$DragonFly: src/include/nl_types.h,v 1.4 2005/04/21 16:36:34 joerg Exp $ */
+/*	$NetBSD: nl_types.h,v 1.9 2000/10/03 19:53:32 sommerfeld Exp $	*/
 
 /*-
  * Copyright (c) 1996 The NetBSD Foundation, Inc.
@@ -16,13 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -35,18 +27,21 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: head/include/nl_types.h 203963 2010-02-16 19:28:10Z imp $
  */
 
 #ifndef _NL_TYPES_H_
 #define _NL_TYPES_H_
+
 #include <sys/cdefs.h>
-#include <machine/stdint.h>
+#include <sys/types.h>
 
 #ifdef _NLS_PRIVATE
 /*
  * MESSAGE CATALOG FILE FORMAT.
  *
- * The NetBSD message catalog format is similar to the format used by
+ * The NetBSD/FreeBSD message catalog format is similar to the format used by
  * Svr4 systems.  The differences are:
  *   * fixed byte order (big endian)
  *   * fixed data field sizes
@@ -78,21 +73,24 @@ struct _nls_msg_hdr {
 	int32_t __offset;
 } ;
 
-#endif
+#endif	/* _NLS_PRIVATE */
 
-#define	NL_SETD		1
-#define NL_CAT_LOCALE   1
+#define	NL_SETD		0
+#define	NL_CAT_LOCALE	1
 
 typedef struct __nl_cat_d {
-	void		*__data;
-	__size_t	 __size;
+	void	*__data;
+	int	__size;
 } *nl_catd;
 
-typedef long	nl_item;
+#ifndef _NL_ITEM_DECLARED
+typedef	__nl_item	nl_item;
+#define	_NL_ITEM_DECLARED
+#endif
 
 __BEGIN_DECLS
-nl_catd	 catopen(const char *, int);
-char	*catgets(nl_catd, int, int, const char *);
+nl_catd  catopen(const char *, int);
+char    *catgets(nl_catd, int, int, const char *) __format_arg(4);
 int	 catclose(nl_catd);
 __END_DECLS
 

@@ -23,19 +23,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/string/stpncpy.c, SVN Rev. 189136 $
+ * $FreeBSD: head/lib/libc/string/stpncpy.c 189136 2009-02-28 06:00:58Z das $
  */
 
 #include <string.h>
 
 char *
-stpncpy(char * __restrict dst, const char * __restrict src, size_t len)
+stpncpy(char * __restrict dst, const char * __restrict src, size_t n)
 {
 
-	for (; len--; dst++, src++) {
+	for (; n--; dst++, src++) {
 		if (!(*dst = *src)) {
 			char *ret = dst;
-			while (len--)
+			while (n--)
 				*++dst = '\0';
 			return (ret);
 		}

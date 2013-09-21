@@ -74,7 +74,11 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
   ctype<wchar_t>::
   do_is(mask __m, wchar_t __c) const
   {
+#ifdef _CTYPE_S
+    return __istype (__c, __m);
+#else
     return __libc_ctype_ [__c + 1] & __m;
+#endif
   }
 
   inline const wchar_t*
@@ -82,6 +86,10 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
   do_is(const wchar_t* __lo, const wchar_t* __hi, mask* __vec) const
   {
     for (; __lo < __hi; ++__vec, ++__lo)
+#ifdef _CTYPE_S
+      *__vec = __maskrune (*__lo, upper | lower | alpha | digit | xdigit
+			   | space | print | graph | cntrl | punct | alnum);
+#else
     {
       mask __m = 0;
       if (isupper (*__lo)) __m |= _CTYPEMASK_U;
@@ -99,6 +107,7 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 
       *__vec = __m;
     }
+#endif
     return __hi;
   }
 
@@ -106,7 +115,11 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
   ctype<wchar_t>::
   do_scan_is(mask __m, const wchar_t* __lo, const wchar_t* __hi) const
   {
+#ifdef _CTYPE_S
+    while (__lo < __hi && ! __istype (*__lo, __m))
+#else
     while (__lo < __hi && !(__libc_ctype_ [*__lo + 1] & __m))
+#endif
       ++__lo;
     return __lo;
   }
@@ -115,7 +128,11 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
   ctype<wchar_t>::
   do_scan_not(mask __m, const char_type* __lo, const char_type* __hi) const
   {
+#ifdef _CTYPE_S
+    while (__lo < __hi && __istype (*__lo, __m))
+#else
     while (__lo < __hi && (__libc_ctype_ [*__lo + 1] & __m))
+#endif
       ++__lo;
     return __lo;
   }

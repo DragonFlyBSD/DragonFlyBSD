@@ -31,12 +31,10 @@
  *
  * @(#)wbuf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/wbuf.c,v 1.12 2007/01/09 00:28:08 imp Exp $
- * $DragonFly: src/lib/libc/stdio/wbuf.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <stdio.h>
 #include "local.h"
-#include "priv_stdio.h"
 
 /*
  * Write the given character into the (probably full) buffer for

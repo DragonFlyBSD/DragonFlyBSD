@@ -24,10 +24,7 @@
  * SUCH DAMAGE.
  *
  *	citrus Id: wcsspn.c,v 1.1 1999/12/29 21:47:45 tshiozak Exp
- *
- * $NetBSD: wcsspn.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcsspn.c,v 1.7 2002/09/21 00:29:23 tjr Exp $
- * $DragonFly: src/lib/libc/string/wcsspn.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/wcsspn.c 188080 2009-02-03 17:58:20Z danger $
  */
 
 #include <wchar.h>

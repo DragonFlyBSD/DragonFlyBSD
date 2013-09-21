@@ -1,5 +1,5 @@
-/* $NetBSD: src/lib/libc/citrus/citrus_lookup_factory.c,v 1.4 2003/10/27 00:12:42 lukem Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_lookup_factory.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_lookup_factory.c 219019 2011-02-25 00:04:39Z gabor $ */
+/* $NetBSD: citrus_lookup_factory.c,v 1.4 2003/10/27 00:12:42 lukem Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -27,14 +27,15 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/endian.h>
+#include <sys/cdefs.h>
+
 #include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <ctype.h>
-#include <limits.h>
 
 #include "citrus_namespace.h"
 #include "citrus_region.h"
@@ -49,7 +50,7 @@ static int
 convert_line(struct _citrus_db_factory *df, const char *line, size_t len)
 {
 	const char *p;
-	char key[LINE_MAX], data[LINE_MAX];
+	char data[LINE_MAX], key[LINE_MAX];
 
 	/* cut off trailing comment */
 	p = memchr(line, T_COMM, len);
@@ -59,10 +60,10 @@ convert_line(struct _citrus_db_factory *df, const char *line, size_t len)
 	/* key */
 	line = _bcs_skip_ws_len(line, &len);
 	if (len == 0)
-		return 0;
+		return (0);
 	p = _bcs_skip_nonws_len(line, &len);
-	if (p==line)
-		return 0;
+	if (p == line)
+		return (0);
 	snprintf(key, sizeof(key), "%.*s", (int)(p-line), line);
 	_bcs_convert_to_lower(key);
 
@@ -71,22 +72,22 @@ convert_line(struct _citrus_db_factory *df, const char *line, size_t len)
 	_bcs_trunc_rws_len(line, &len);
 	snprintf(data, sizeof(data), "%.*s", (int)len, line);
 
-	return _db_factory_addstr_by_s(df, key, data);
+	return (_db_factory_addstr_by_s(df, key, data));
 }
 
 static int
 dump_db(struct _citrus_db_factory *df, struct _region *r)
 {
-	size_t size;
 	void *ptr;
+	size_t size;
 
 	size = _db_factory_calc_size(df);
 	ptr = malloc(size);
 	if (ptr == NULL)
-		return errno;
+		return (errno);
 	_region_init(r, ptr, size);
 
-	return _db_factory_serialize(df, _CITRUS_LOOKUP_MAGIC, r);
+	return (_db_factory_serialize(df, _CITRUS_LOOKUP_MAGIC, r));
 }
 
 int
@@ -100,21 +101,21 @@ _citrus_lookup_factory_convert(FILE *out, FILE *in)
 
 	ret = _db_factory_create(&df, &_db_hash_std, NULL);
 	if (ret)
-		return ret;
+		return (ret);
 
 	while ((line = fgetln(in, &size)) != NULL)
 		if ((ret = convert_line(df, line, size))) {
 			_db_factory_free(df);
-			return ret;
+			return (ret);
 		}
 
 	ret = dump_db(df, &r);
 	_db_factory_free(df);
 	if (ret)
-		return ret;
+		return (ret);
 
 	if (fwrite(_region_head(&r), _region_size(&r), 1, out) != 1)
-		return errno;
+		return (errno);
 
-	return 0;
+	return (0);
 }

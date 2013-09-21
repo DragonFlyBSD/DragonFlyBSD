@@ -31,7 +31,6 @@
  *
  * @(#)fdopen.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fdopen.c,v 1.11 2008/05/10 18:39:20 antoine Exp $
- * $DragonFly: src/lib/libc/stdio/fdopen.c,v 1.6 2005/07/23 20:23:05 joerg Exp $
  */
 
 #include "namespace.h"
@@ -43,7 +42,6 @@
 #include "un-namespace.h"
 
 #include "local.h"
-#include "priv_stdio.h"
 
 FILE *
 fdopen(int fd, const char *mode)

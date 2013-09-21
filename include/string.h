@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -31,8 +27,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)string.h	8.1 (Berkeley) 6/2/93
- * $FreeBSD: src/include/string.h,v 1.27 2008/12/08 21:04:24 kib Exp $
- * $DragonFly: src/include/string.h,v 1.9 2008/06/05 17:53:10 swildner Exp $
+ * $FreeBSD: head/include/string.h 246803 2013-02-14 19:26:58Z zeising $
  */
 
 #ifndef _STRING_H_
@@ -56,17 +51,19 @@ typedef	__size_t	size_t;
 #endif
 
 __BEGIN_DECLS
-#if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
+#if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE >= 600
 void	*memccpy(void * __restrict, const void * __restrict, int, size_t);
 #endif
 void	*memchr(const void *, int, size_t) __pure;
+#if __BSD_VISIBLE
 void	*memrchr(const void *, int, size_t) __pure;
+#endif
 #if !defined(_KERNEL_VIRTUAL)
 int	 memcmp(const void *, const void *, size_t) __pure;
 void	*memcpy(void * __restrict, const void * __restrict, size_t);
 #endif
 #if __BSD_VISIBLE
-void	*memmem(const void *, size_t, const void *, size_t);
+void	*memmem(const void *, size_t, const void *, size_t) __pure;
 void	*mempcpy(void *, const void *, size_t);
 #endif
 #if !defined(_KERNEL_VIRTUAL)
@@ -74,17 +71,19 @@ void	*memmove(void *, const void *, size_t);
 void	*memset(void *, int, size_t);
 #endif
 #if __POSIX_VISIBLE >= 200809 || __BSD_VISIBLE
-char    *stpcpy(char *, const char *);
-char    *stpncpy(char * __restrict, const char * __restrict, size_t);
+char	*stpcpy(char * __restrict, const char * __restrict);
+char	*stpncpy(char * __restrict, const char * __restrict, size_t);
 #endif
 #if __BSD_VISIBLE
 char	*strcasestr(const char *, const char *) __pure;
-char	*strchrnul(const char *, int) __pure;
 #endif
 #if !defined(_KERNEL_VIRTUAL)
 char	*strcat(char * __restrict, const char * __restrict);
 char	*strchr(const char *, int) __pure;
 int	 strcmp(const char *, const char *) __pure;
+#endif
+#if __BSD_VISIBLE
+char	*strchrnul(const char*, int) __pure;
 #endif
 int	 strcoll(const char *, const char *);
 #if !defined(_KERNEL_VIRTUAL)
@@ -100,9 +99,9 @@ int	 strerror_r(int, char *, size_t);
 #endif
 #if !defined(_KERNEL_VIRTUAL)
 #if __BSD_VISIBLE
-size_t	 strlcat(char *, const char *, size_t);
-size_t	 strlcpy(char *, const char *, size_t);
-#endif /* __BSD_VISIBLE */
+size_t	 strlcat(char * __restrict, const char * __restrict, size_t);
+size_t	 strlcpy(char * __restrict, const char * __restrict, size_t);
+#endif
 size_t	 strlen(const char *) __pure;
 #endif /* !_KERNEL_VIRTUAL */
 #if __BSD_VISIBLE
@@ -113,9 +112,11 @@ char	*strncat(char * __restrict, const char * __restrict, size_t);
 int	 strncmp(const char *, const char *, size_t) __pure;
 char	*strncpy(char * __restrict, const char * __restrict, size_t);
 #endif
-#if __BSD_VISIBLE
+#if __POSIX_VISIBLE >= 200809 || __BSD_VISIBLE
 char	*strndup(const char *, size_t);
 size_t	 strnlen(const char *, size_t) __pure;
+#endif
+#if __BSD_VISIBLE
 char	*strnstr(const char *, const char *, size_t) __pure;
 #endif
 char	*strpbrk(const char *, const char *) __pure;
@@ -126,6 +127,8 @@ char	*strrchr(const char *, int) __pure;
 #if !defined(_KERNEL_VIRTUAL)
 char	*strsep(char **, const char *);
 #endif
+#endif
+#if __POSIX_VISIBLE >= 200809 || __BSD_VISIBLE
 char	*strsignal(int);
 #endif
 size_t	 strspn(const char *, const char *) __pure;
@@ -149,6 +152,10 @@ void	 swab(const void * __restrict, void * __restrict, ssize_t);
 #endif /* _SWAB_DECLARED */
 
 #endif /* __BSD_VISIBLE */
+
+#if __POSIX_VISIBLE >= 200809 || defined(_XLOCALE_H_)
+#include <xlocale/_string.h>
+#endif
 __END_DECLS
 
 #endif /* _STRING_H_ */

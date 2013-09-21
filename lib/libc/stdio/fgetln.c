@@ -31,7 +31,6 @@
  *
  * @(#)fgetln.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fgetln.c,v 1.11 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -42,7 +41,6 @@
 
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
 
 /*
  * Expand the line buffer.  Return -1 on error.

@@ -1,19 +1,12 @@
-NOPROFILE=	1
-.include "../Makefile.shlib"
+# $FreeBSD: head/lib/libiconv_modules/Makefile.inc 255298 2013-09-06 10:40:38Z theraven $
 
-SHLIB_MAJOR=	${MODULE_SHLIB_MAJOR}
+.PATH: ${.CURDIR}/../../libc/iconv
 
-BASENAME=	${.CURDIR:T}
-LIB=		${BASENAME}
-SRCS?=		${SRCPRE:tl}${BASENAME:tl}.c
+SHLIB_MAJOR= 	2
+WARNS?=		6
+CFLAGS+= 	-I${.CURDIR}/../../libc/citrus
 
-TARGET_LIBDIR=		/usr/lib/i18n
-TARGET_SHLIBDIR=	/usr/lib/i18n
+CFLAGS+=	-Dbool=_Bool
 
-CITRUSDIR=	${.CURDIR}/../../libc/citrus
-
-CFLAGS+=	-I${CITRUSDIR}
-CFLAGS+=	-DLOCALEMOD_MAJOR=${MODULE_SHLIB_MAJOR}
-WARNS?=		1
-
-.PATH: ${CITRUSDIR} ${CITRUSDIR}/modules 
+LIBDIR=	 	/usr/lib/i18n
+NOPROFILE=	yes

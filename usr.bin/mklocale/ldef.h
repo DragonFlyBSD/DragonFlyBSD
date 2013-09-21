@@ -1,5 +1,3 @@
-/*	$NetBSD: src/usr.bin/mklocale/ldef.h,v 1.4 2003/08/07 11:15:14 agc Exp $	*/
-
 /*-
  * Copyright (c) 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -32,23 +30,24 @@
  * SUCH DAMAGE.
  *
  *	@(#)ldef.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/mklocale/ldef.h,v 1.3 2005/04/21 16:36:35 joerg Exp $
+ *	$FreeBSD: head/usr.bin/mklocale/ldef.h 216370 2010-12-11 08:32:16Z joel $
  */
 
-#include "locale/runetype.h"
+#include <sys/types.h>
+#include "runefile.h"
 
 /*
  * This should look a LOT like a _RuneEntry
  */
 typedef struct rune_list {
-    __nbrune_t		min;
-    __nbrune_t 		max;
-    __nbrune_t 		map;
-    u_int32_t		*types;
+    int32_t		min;
+    int32_t 		max;
+    int32_t 		map;
+    uint32_t		*types;
     struct rune_list	*next;
 } rune_list;
 
 typedef struct rune_map {
-    u_int32_t		map[_NB_CACHED_RUNES];
+    uint32_t		map[_CACHED_RUNES];
     rune_list		*root;
 } rune_map;

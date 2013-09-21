@@ -1,4 +1,7 @@
-# $DragonFly: src/lib/i18n_module/UES/Makefile,v 1.1 2008/04/10 10:21:01 hasso Exp $
+# $FreeBSD: head/lib/libiconv_modules/UES/Makefile 219019 2011-02-25 00:04:39Z gabor $
 
-SRCPRE=citrus_
+LIB=	UES
+SRCS+=	citrus_ues.c
+CFLAGS+= --param max-inline-insns-single=64
+
 .include <bsd.lib.mk>

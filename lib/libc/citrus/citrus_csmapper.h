@@ -1,5 +1,5 @@
+/* $FreeBSD: head/lib/libc/iconv/citrus_csmapper.h 219019 2011-02-25 00:04:39Z gabor $ */
 /* $NetBSD: citrus_csmapper.h,v 1.2 2008/02/09 14:56:20 junyoung Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_csmapper.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -40,10 +40,9 @@
 
 #define _CITRUS_CSMAPPER_F_PREVENT_PIVOT	0x00000001
 __BEGIN_DECLS
-int	_citrus_csmapper_open(struct _citrus_csmapper *__restrict *__restrict,
-			      const char *__restrict,
-			      const char *__restrict, uint32_t,
-			      unsigned long *);
+int	 _citrus_csmapper_open(struct _citrus_csmapper *__restrict *__restrict,
+	    const char *__restrict, const char *__restrict, uint32_t,
+	    unsigned long *);
 __END_DECLS
 
 #endif

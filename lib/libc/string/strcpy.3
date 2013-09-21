@@ -30,22 +30,20 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strcpy.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/strcpy.3,v 1.26 2007/01/09 00:28:12 imp Exp $
-.\" $DragonFly: src/lib/libc/string/strcpy.3,v 1.3 2005/08/05 22:35:10 swildner Exp $
+.\" $FreeBSD: head/lib/libc/string/strcpy.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd January 20, 2012
+.Dd February 28, 2009
 .Dt STRCPY 3
 .Os
 .Sh NAME
-.Nm strcpy ,
-.Nm strncpy
+.Nm stpcpy, stpncpy, strcpy , strncpy
 .Nd copy strings
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In string.h
 .Ft char *
-.Fn stpcpy "char *dst" "const char *src"
+.Fn stpcpy "char * restrict dst" "const char * restrict src"
 .Ft char *
 .Fn stpncpy "char * restrict dst" "const char * restrict src" "size_t len"
 .Ft char *
@@ -109,15 +107,13 @@ character of
 .Fa dst .
 If
 .Fn stpncpy
-does not null-terminate
+does not terminate
 .Fa dst
-because the length of
-.Fa src
-was greater than
-.Fa len ,
-then it returns a pointer to
-.Li dst[len] ,
-which may not be valid.
+with a
+.Dv NUL
+character, it instead returns a pointer to
+.Li dst[n]
+(which does not necessarily refer to a valid memory location.)
 .Sh EXAMPLES
 The following sets
 .Va chararray
@@ -178,22 +174,13 @@ Note that because
 .Xr strlcpy 3
 is not defined in any standards, it should
 only be used when portability is not a concern.
-.Sh SECURITY CONSIDERATIONS
-The
-.Fn strcpy
-function is easily misused in a manner which enables malicious users
-to arbitrarily change a running program's functionality through a
-buffer overflow attack.
-(See
-the FSA
-and
-.Sx EXAMPLES . )
 .Sh SEE ALSO
 .Xr bcopy 3 ,
 .Xr memccpy 3 ,
 .Xr memcpy 3 ,
 .Xr memmove 3 ,
-.Xr strlcpy 3
+.Xr strlcpy 3 ,
+.Xr wcscpy 3
 .Sh STANDARDS
 The
 .Fn strcpy
@@ -213,8 +200,17 @@ The
 .Fn stpcpy
 function first appeared in
 .Fx 4.4 ,
-coming from 1998-vintage Linux
 and
 .Fn stpncpy
-first appeared in
-.Dx 2.13 .
+was added in
+.Fx 8.0 .
+.Sh SECURITY CONSIDERATIONS
+The
+.Fn strcpy
+function is easily misused in a manner which enables malicious users
+to arbitrarily change a running program's functionality through a
+buffer overflow attack.
+(See
+the FSA
+and
+.Sx EXAMPLES . )

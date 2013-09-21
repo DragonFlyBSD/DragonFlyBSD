@@ -31,7 +31,6 @@
  *
  * @(#)ftell.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/lib/libc/stdio/ftell.c,v 1.27 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/ftell.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
@@ -42,7 +41,6 @@
 #include "un-namespace.h"
 #include "local.h"
 #include "libc_private.h"
-#include "priv_stdio.h"
 
 /*
  * standard ftell function.

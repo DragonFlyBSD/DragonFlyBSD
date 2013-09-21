@@ -468,7 +468,6 @@ DFprivate_1.0 {
     __libc_C_toupper_;
     __libc_allocate_tls;
     __libc_call_init;
-    __libc_ctype_;
     __libc_free_tls;
 #if defined(i386)
     __libc_tls_get_addr;

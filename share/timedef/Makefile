@@ -1,4 +1,4 @@
-# $FreeBSD: src/share/timedef/Makefile,v 1.56 2012/11/17 01:51:02 svnexp Exp $
+# $FreeBSD: head/share/timedef/Makefile 196814 2009-09-04 06:26:40Z ache $
 
 LOCALES=	am_ET.UTF-8 \
 		be_BY.CP1131 \
@@ -28,7 +28,6 @@ LOCALES=	am_ET.UTF-8 \
 		eu_ES.ISO8859-1 \
 		fi_FI.ISO8859-1 \
 		fi_FI.UTF-8 \
-		fo_FO.ISO8859-1 \
 		fr_FR.ISO8859-1 \
 		fr_FR.UTF-8 \
 		he_IL.UTF-8 \

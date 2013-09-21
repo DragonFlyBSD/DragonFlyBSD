@@ -31,12 +31,10 @@
  *
  * @(#)rget.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/rget.c,v 1.6 2007/01/09 00:28:07 imp Exp $
- * $DragonFly: src/lib/libc/stdio/rget.c,v 1.3 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <stdio.h>
 #include "local.h"
-#include "priv_stdio.h"
 
 /*
  * Handle getc() when the buffer ran out:

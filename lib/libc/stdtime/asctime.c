@@ -8,7 +8,7 @@
 ** the output of strftime is supposed to be locale specific
 ** whereas the output of asctime is supposed to be constant.
 **
-** $FreeBSD: src/lib/libc/stdtime/asctime.c,v 1.7.6.1 2001/03/05 11:37:20 obrien Exp $
+** $FreeBSD: head/contrib/tzcode/stdtime/asctime.c 214411 2010-10-27 07:14:46Z edwin $
 */
 /*LINTLIBRARY*/
 
@@ -71,9 +71,10 @@ static char	buf_asctime[MAX_ASCTIME_BUF_SIZE];
 ** A la ISO/IEC 9945-1, ANSI/IEEE Std 1003.1, 2004 Edition.
 */
 
-
 char *
-asctime_r(const struct tm *timeptr, char *buf)
+asctime_r(timeptr, buf)
+const struct tm *	timeptr;
+char *			buf;
 {
 	static const char	wday_name[][3] = {
 		"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
@@ -82,10 +83,10 @@ asctime_r(const struct tm *timeptr, char *buf)
 		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 	};
-	char		year[INT_STRLEN_MAXIMUM(int) + 2];
-	char		result[MAX_ASCTIME_BUF_SIZE];
 	const char *	wn;
 	const char *	mn;
+	char			year[INT_STRLEN_MAXIMUM(int) + 2];
+	char			result[MAX_ASCTIME_BUF_SIZE];
 
 	if (timeptr == NULL) {
 		errno = EINVAL;
@@ -103,17 +104,24 @@ asctime_r(const struct tm *timeptr, char *buf)
 	** Assume that strftime is unaffected by other out-of-range members
 	** (e.g., timeptr->tm_mday) when processing "%Y".
 	*/
-	strftime(year, sizeof year, "%Y", timeptr);
-	snprintf(result, sizeof result,
+	(void) strftime(year, sizeof year, "%Y", timeptr);
+	/*
+	** We avoid using snprintf since it's not available on all systems.
+	*/
+	(void) sprintf(result,
 		((strlen(year) <= 4) ? ASCTIME_FMT : ASCTIME_FMT_B),
 		wn, mn,
 		timeptr->tm_mday, timeptr->tm_hour,
 		timeptr->tm_min, timeptr->tm_sec,
 		year);
-	if (strlen(result) < STD_ASCTIME_BUF_SIZE || buf == buf_asctime) {
+	if (strlen(result) < STD_ASCTIME_BUF_SIZE || buf == buf_asctime)
 		return strcpy(buf, result);
-	} else {
+	else {
+#ifdef EOVERFLOW
 		errno = EOVERFLOW;
+#else /* !defined EOVERFLOW */
+		errno = EINVAL;
+#endif /* !defined EOVERFLOW */
 		return NULL;
 	}
 }
@@ -123,7 +131,8 @@ asctime_r(const struct tm *timeptr, char *buf)
 */
 
 char *
-asctime(const struct tm *timeptr)
+asctime(timeptr)
+const struct tm *	timeptr;
 {
 	return asctime_r(timeptr, buf_asctime);
 }

@@ -26,7 +26,6 @@ strtopdd.c
 strtopf.c
 strtopx.c
 strtopxL.c
-strtorQ.c
 strtordd.c
 strtorf.c
 strtorxL.c

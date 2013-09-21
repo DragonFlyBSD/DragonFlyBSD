@@ -1,5 +1,5 @@
-/* $NetBSD: src/lib/libc/citrus/citrus_lookup.h,v 1.2 2004/07/21 14:16:34 tshiozak Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_lookup.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_lookup.h 219019 2011-02-25 00:04:39Z gabor $ */
+/* $NetBSD: citrus_lookup.h,v 1.2 2004/07/21 14:16:34 tshiozak Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -35,20 +35,22 @@
 
 struct _citrus_lookup;
 __BEGIN_DECLS
-char *_citrus_lookup_simple(const char *, const char *, char *, size_t, int);
-int _citrus_lookup_seq_open(struct _citrus_lookup **, const char *, int);
-void _citrus_lookup_seq_rewind(struct _citrus_lookup *);
-int _citrus_lookup_seq_next(struct _citrus_lookup *,
+char		*_citrus_lookup_simple(const char *, const char *, char *,
+		    size_t, int);
+int		 _citrus_lookup_seq_open(struct _citrus_lookup **,
+		    const char *, int);
+void		 _citrus_lookup_seq_rewind(struct _citrus_lookup *);
+int		 _citrus_lookup_seq_next(struct _citrus_lookup *,
 			    struct _region *, struct _region *);
-int _citrus_lookup_seq_lookup(struct _citrus_lookup *, const char *,
-			      struct _region *);
-int _citrus_lookup_get_number_of_entries(struct _citrus_lookup *);
-void _citrus_lookup_seq_close(struct _citrus_lookup *);
+int		 _citrus_lookup_seq_lookup(struct _citrus_lookup *,
+		    const char *, struct _region *);
+int		 _citrus_lookup_get_number_of_entries(struct _citrus_lookup *);
+void		 _citrus_lookup_seq_close(struct _citrus_lookup *);
 __END_DECLS
 
 static __inline const char *
 _citrus_lookup_alias(const char *path, const char *key, char *buf, size_t n,
-		     int ignore_case)
+    int ignore_case)
 {
 	const char *ret;
 
@@ -56,7 +58,7 @@ _citrus_lookup_alias(const char *path, const char *key, char *buf, size_t n,
 	if (ret == NULL)
 		ret = key;
 
-	return ret;
+	return (ret);
 }
 
 #endif

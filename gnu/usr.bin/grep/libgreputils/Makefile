@@ -72,7 +72,9 @@ SRCS=		argmatch.c \
 		openat-proc.c \
 		regex.c \
 		strerror.c \
-		strerror-override.c \
-		wcwidth.c
+		strerror-override.c
+
+# no longer needed
+#		wcwidth.c
 
 .include <bsd.lib.mk>

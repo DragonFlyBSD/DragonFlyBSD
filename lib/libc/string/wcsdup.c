@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/string/wcsdup.c,v 1.1 2005/08/13 05:54:33 tjr Exp $
+ * $FreeBSD: head/lib/libc/string/wcsdup.c 149011 2005-08-13 05:54:33Z tjr $
  */
 
 #include <stdlib.h>

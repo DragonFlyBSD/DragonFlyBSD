@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2000-2001, Boris Popov
+/*-
+ * Copyright (c) 2000-2001 Boris Popov
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,12 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by Boris Popov.
- * 4. Neither the name of the author nor the names of any co-contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -29,15 +23,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/sys/iconv.h,v 1.12.8.1 2009/04/15 03:14:26 kensmith Exp $
- * $DragonFly: src/sys/sys/iconv.h,v 1.6 2007/10/03 18:58:20 dillon Exp $
+ * $FreeBSD: head/sys/sys/iconv.h 235711 2012-05-21 02:30:22Z kevlo $
  */
 #ifndef _SYS_ICONV_H_
 #define _SYS_ICONV_H_
-
-#ifndef _SYS_MODULE_H_
-#include <sys/module.h>
-#endif
 
 #define	ICONV_CSNMAXLEN		31	/* maximum length of charset name */
 #define	ICONV_CNVNMAXLEN	31	/* maximum length of converter name */
@@ -56,6 +45,10 @@
 #define	KICONV_UPPER		2	/* toupper converted character */
 #define	KICONV_FROM_LOWER	4	/* tolower source character, then convert */
 #define	KICONV_FROM_UPPER	8	/* toupper source character, then convert */
+#define	KICONV_WCTYPE		16	/* towlower/towupper characters */
+
+#define	ENCODING_UNICODE	"UTF-16BE"
+#define	KICONV_WCTYPE_NAME	"_wctype"
 
 /*
  * Entry for cslist sysctl
@@ -93,13 +86,14 @@ struct iconv_add_out {
 
 __BEGIN_DECLS
 
-#define	ENCODING_UNICODE	"UTF-16BE"
 #define	KICONV_VENDOR_MICSFT	1	/* Microsoft Vendor Code for quirk */
 
 int   kiconv_add_xlat_table(const char *, const char *, const u_char *);
 int   kiconv_add_xlat16_cspair(const char *, const char *, int);
 int   kiconv_add_xlat16_cspairs(const char *, const char *);
 int   kiconv_add_xlat16_table(const char *, const char *, const void *, int);
+int   kiconv_lookupconv(const char *drvname);
+int   kiconv_lookupcs(const char *tocode, const char *fromcode);
 const char *kiconv_quirkcs(const char *, int);
 
 __END_DECLS
@@ -107,6 +101,7 @@ __END_DECLS
 #else /* !_KERNEL */
 
 #include <sys/kobj.h>
+#include <sys/module.h>			/* can't avoid that */
 #include <sys/queue.h>			/* can't avoid that */
 #include <sys/sysctl.h>			/* can't avoid that */
 
@@ -132,7 +127,7 @@ struct iconv_cspair {
 	TAILQ_ENTRY(iconv_cspair)	cp_link;
 };
 
-#define	KICONV_CONVERTER(name,size) 			\
+#define	KICONV_CONVERTER(name,size)			\
     static struct iconv_converter_class iconv_ ## name ## _class = { \
 	"iconv_"#name, iconv_ ## name ## _methods, size, NULL \
     };							\
@@ -142,7 +137,7 @@ struct iconv_cspair {
     };							\
     DECLARE_MODULE(iconv_ ## name, iconv_ ## name ## _mod, SI_SUB_DRIVERS, SI_ORDER_ANY);
 
-#define	KICONV_CES(name,size) 				\
+#define	KICONV_CES(name,size)				\
     static DEFINE_CLASS(iconv_ces_ ## name, iconv_ces_ ## name ## _methods, (size)); \
     static moduledata_t iconv_ces_ ## name ## _mod = {	\
 	"iconv_ces_"#name, iconv_cesmod_handler,	\
@@ -167,9 +162,13 @@ int iconv_convchr(void *handle, const char **inbuf,
 	size_t *inbytesleft, char **outbuf, size_t *outbytesleft);
 int iconv_convchr_case(void *handle, const char **inbuf,
 	size_t *inbytesleft, char **outbuf, size_t *outbytesleft, int casetype);
+int iconv_add(const char *converter, const char *to, const char *from);
 char* iconv_convstr(void *handle, char *dst, const char *src);
 void* iconv_convmem(void *handle, void *dst, const void *src, int size);
 int iconv_vfs_refcount(const char *fsname);
+
+int towlower(int c, void *handle);
+int towupper(int c, void *handle);
 
 /*
  * Bridge struct of iconv functions
@@ -208,7 +207,7 @@ struct iconv_functions {
 			fsname ## _iconv = & fsname ## _iconv_core;	\
 			break;						\
 		case MOD_UNLOAD:					\
-			error = iconv_vfs_refcount(#fsname); 	        \
+			error = iconv_vfs_refcount(#fsname);		\
 			if (error)					\
 				return (EBUSY);				\
 			fsname ## _iconv = NULL;			\
@@ -237,10 +236,11 @@ int iconv_lookupcp(char **cpp, const char *s);
 
 int iconv_converter_initstub(struct iconv_converter_class *dp);
 int iconv_converter_donestub(struct iconv_converter_class *dp);
+int iconv_converter_tolowerstub(int c, void *handle);
 int iconv_converter_handler(module_t mod, int type, void *data);
 
 #ifdef ICONV_DEBUG
-#define ICDEBUG(format, ...) kprintf("%s: "format, __func__ , __VA_ARGS__)
+#define ICDEBUG(format, ...) printf("%s: "format, __func__ , ## __VA_ARGS__)
 #else
 #define ICDEBUG(format, ...)
 #endif

@@ -1,3 +1,0 @@
-# $DragonFly: src/lib/i18n_module/Makefile.shlib,v 1.1 2005/03/11 20:47:05 joerg Exp $
-
-MODULE_SHLIB_MAJOR=	1

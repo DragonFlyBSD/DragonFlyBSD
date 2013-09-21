@@ -30,10 +30,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strcat.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/strcat.3,v 1.15 2007/01/09 00:28:12 imp Exp $
-.\" $DragonFly: src/lib/libc/string/strcat.3,v 1.3 2007/10/19 20:46:53 swildner Exp $
+.\" $FreeBSD: head/lib/libc/string/strcat.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd June 4, 1993
+.Dd December 1, 2009
 .Dt STRCAT 3
 .Os
 .Sh NAME
@@ -81,6 +80,23 @@ and
 functions
 return the pointer
 .Fa s .
+.Sh SEE ALSO
+.Xr bcopy 3 ,
+.Xr memccpy 3 ,
+.Xr memcpy 3 ,
+.Xr memmove 3 ,
+.Xr strcpy 3 ,
+.Xr strlcat 3 ,
+.Xr strlcpy 3 ,
+.Xr wcscat 3
+.Sh STANDARDS
+The
+.Fn strcat
+and
+.Fn strncat
+functions
+conform to
+.St -isoC .
 .Sh SECURITY CONSIDERATIONS
 The
 .Fn strcat
@@ -118,13 +134,13 @@ foo(const char *arbitrary_string)
 	/*
 	 * This first strcat is bad behavior.  Do not use strcat!
 	 */
-	strcat(onstack, arbitrary_string);	/* BAD! */
+	(void)strcat(onstack, arbitrary_string);	/* BAD! */
 #elif defined(BETTER)
 	/*
 	 * The following two lines demonstrate better use of
 	 * strncat().
 	 */
-	strncat(onstack, arbitrary_string,
+	(void)strncat(onstack, arbitrary_string,
 	    sizeof(onstack) - strlen(onstack) - 1);
 #elif defined(BEST)
 	/*
@@ -134,24 +150,8 @@ foo(const char *arbitrary_string)
 	if (strlen(arbitrary_string) + 1 >
 	    sizeof(onstack) - strlen(onstack))
 		err(1, "onstack would be truncated");
-	strncat(onstack, arbitrary_string,
+	(void)strncat(onstack, arbitrary_string,
 	    sizeof(onstack) - strlen(onstack) - 1);
 #endif
 }
 .Ed
-.Sh SEE ALSO
-.Xr bcopy 3 ,
-.Xr memccpy 3 ,
-.Xr memcpy 3 ,
-.Xr memmove 3 ,
-.Xr strcpy 3 ,
-.Xr strlcat 3 ,
-.Xr strlcpy 3
-.Sh STANDARDS
-The
-.Fn strcat
-and
-.Fn strncat
-functions
-conform to
-.St -isoC .

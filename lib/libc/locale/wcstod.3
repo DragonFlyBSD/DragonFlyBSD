@@ -1,6 +1,3 @@
-.\" $NetBSD: wcstod.3,v 1.5 2007/05/21 15:29:51 tnozaki Exp $
-.\" $DragonFly: src/lib/libc/locale/wcstod.3,v 1.1 2006/11/02 19:53:56 swildner Exp $
-.\"
 .\" Copyright (c) 2002, 2003 Tim J. Robbins
 .\" All rights reserved.
 .\"
@@ -25,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: wcstod.3,v 1.4 2003/05/22 13:02:27 ru Exp $
+.\" $FreeBSD: head/lib/libc/locale/wcstod.3 115225 2003-05-22 13:02:28Z ru $
 .\"
-.Dd April 23, 2009
+.Dd February 22, 2003
 .Dt WCSTOD 3
 .Os
 .Sh NAME
@@ -35,7 +32,7 @@
 .Nm wcstod ,
 .Nm wcstold
 .Nd convert string to
-.Vt float , double ,
+.Vt float , double
 or
 .Vt "long double"
 .Sh LIBRARY
@@ -44,19 +41,19 @@ or
 .In wchar.h
 .Ft float
 .Fn wcstof "const wchar_t * restrict nptr" "wchar_t ** restrict endptr"
-.Ft double
-.Fn wcstod "const wchar_t * restrict nptr" "wchar_t **endptr"
 .Ft "long double"
 .Fn wcstold "const wchar_t * restrict nptr" "wchar_t ** restrict endptr"
+.Ft double
+.Fn wcstod "const wchar_t * restrict nptr" "wchar_t ** restrict endptr"
 .Sh DESCRIPTION
 The
 .Fn wcstof ,
-.Fn wcstod ,
+.Fn wcstod
 and
 .Fn wcstold
 functions are the wide-character versions of the
 .Fn strtof ,
-.Fn strtod ,
+.Fn strtod
 and
 .Fn strtold
 functions.
@@ -68,11 +65,8 @@ for details.
 .Xr wcstol 3
 .Sh STANDARDS
 The
+.Fn wcstof ,
 .Fn wcstod
-function conforms to
-.St -isoC-amd1 .
-The
-.Fn wcstof
 and
 .Fn wcstold
 functions conform to

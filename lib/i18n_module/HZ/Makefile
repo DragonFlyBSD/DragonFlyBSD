@@ -1,6 +1,6 @@
-# $DragonFly: src/lib/i18n_module/HZ/Makefile,v 1.1 2008/04/10 10:21:00 hasso Exp $
+# $FreeBSD: head/lib/libiconv_modules/HZ/Makefile 219019 2011-02-25 00:04:39Z gabor $
 
-SRCPRE=citrus_
-SRCS+=  citrus_hz.c citrus_prop.c
+LIB=	HZ
+SRCS+=	citrus_hz.c
 
 .include <bsd.lib.mk>

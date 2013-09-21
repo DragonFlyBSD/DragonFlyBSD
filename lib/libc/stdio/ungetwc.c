@@ -1,8 +1,11 @@
-/* $NetBSD: ungetwc.c,v 1.3 2005/06/12 05:21:27 lukem Exp $ */
-
 /*-
- * Copyright (c)2001 Citrus Project,
+ * Copyright (c) 2002-2004 Tim J. Robbins.
  * All rights reserved.
+ *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,53 +28,73 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Citrus$
+ * $FreeBSD: head/lib/libc/stdio/ungetwc.c 227753 2011-11-20 14:45:42Z theraven $
  */
 
+
 #include "namespace.h"
-#include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <wchar.h>
 #include "un-namespace.h"
-
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
+#include "mblocal.h"
+#include "xlocale_private.h"
 
+/*
+ * Non-MT-safe version.
+ */
+wint_t
+__ungetwc(wint_t wc, FILE *fp, locale_t locale)
+{
+	char buf[MB_LEN_MAX];
+	size_t len;
+	struct xlocale_ctype *l = XLOCALE_CTYPE(locale);
+	struct wchar_io_data *wcio;
+	mbstate_t *st;
+
+	ORIENT(fp,1);
+	wcio = WCIO_GET(fp);
+
+	if (wc == WEOF)
+		return (WEOF);
+	if (wcio == NULL) {
+		return (WEOF);
+	}
+	wcio->wcio_ungetwc_inbuf = 0;
+	st = &wcio->wcio_mbstate_out;
+	if ((len = l->__wcrtomb(buf, wc, st)) == (size_t)-1) {
+		fp->pub._flags |= __SERR;
+		return (WEOF);
+	}
+	while (len-- != 0)
+		if (__ungetc((unsigned char)buf[len], fp) == EOF)
+			return (WEOF);
+
+	return (wc);
+}
+
+/*
+ * MT-safe version.
+ */
+wint_t
+ungetwc_l(wint_t wc, FILE *fp, locale_t locale)
+{
+	wint_t r;
+	FIX_LOCALE(locale);
+
+	FLOCKFILE(fp);
+	ORIENT(fp, 1);
+	r = __ungetwc(wc, fp, locale);
+	FUNLOCKFILE(fp);
+
+	return (r);
+}
 wint_t
 ungetwc(wint_t wc, FILE *fp)
 {
-	struct wchar_io_data *wcio;
-
-	_DIAGASSERT(fp);
-
-	if (wc == WEOF)
-		return WEOF;
-
-	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, 1);
-	/*
-	 * XXX since we have no way to transform a wchar string to
-	 * a char string in reverse order, we can't use ungetc.
-	 */
-	/* XXX should we flush ungetc buffer? */
-
-	wcio = WCIO_GET(fp);
-	if (wcio == NULL) {
-		FUNLOCKFILE(fp);
-		errno = ENOMEM; /* XXX */
-		return WEOF;
-	}
-
-	if (wcio->wcio_ungetwc_inbuf >= WCIO_UNGETWC_BUFSIZE) {
-		FUNLOCKFILE(fp);
-		return WEOF;
-	}
-
-	wcio->wcio_ungetwc_buf[wcio->wcio_ungetwc_inbuf++] = wc;
-	__sclearerr(fp);
-	FUNLOCKFILE(fp);
-
-	return wc;
+	return ungetwc_l(wc, fp, __get_locale());
 }

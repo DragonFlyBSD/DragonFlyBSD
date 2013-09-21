@@ -1,5 +1,5 @@
+/* $FreeBSD: head/lib/libc/iconv/citrus_bcs.c 219019 2011-02-25 00:04:39Z gabor $ */
 /* $NetBSD: citrus_bcs.c,v 1.5 2005/05/14 17:55:42 tshiozak Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_bcs.c,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -27,7 +27,8 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
+#include <sys/cdefs.h>
+
 #include <assert.h>
 #include <stdlib.h>
 
@@ -39,9 +40,11 @@
  */
 int
 _citrus_bcs_strcasecmp(const char * __restrict str1,
-		       const char * __restrict str2)
+    const char * __restrict str2)
 {
-	int c1 = 1, c2 = 1;
+	int c1, c2;
+
+	c1 = c2 = 1;
 
 	while (c1 && c2 && c1 == c2) {
 		c1 = _bcs_toupper(*str1++);
@@ -56,9 +59,11 @@ _citrus_bcs_strcasecmp(const char * __restrict str1,
  */
 int
 _citrus_bcs_strncasecmp(const char * __restrict str1,
-			const char * __restrict str2, size_t sz)
+    const char * __restrict str2, size_t sz)
 {
-	int c1 = 1, c2 = 1;
+	int c1, c2;
+
+	c1 = c2 = 1;
 
 	while (c1 && c2 && c1 == c2 && sz != 0) {
 		c1 = _bcs_toupper(*str1++);
@@ -142,6 +147,7 @@ _citrus_bcs_trunc_rws_len(const char * __restrict p, size_t * __restrict len)
 void
 _citrus_bcs_convert_to_lower(char *s)
 {
+
 	while (*s) {
 		*s = _bcs_tolower(*s);
 		s++;
@@ -154,6 +160,7 @@ _citrus_bcs_convert_to_lower(char *s)
 void
 _citrus_bcs_convert_to_upper(char *s)
 {
+
 	while (*s) {
 		*s = _bcs_toupper(*s);
 		s++;

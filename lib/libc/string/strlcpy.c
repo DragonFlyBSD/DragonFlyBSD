@@ -1,3 +1,5 @@
+/*	$OpenBSD: strlcpy.c,v 1.11 2006/05/05 15:27:38 millert Exp $	*/
+
 /*
  * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
  *
@@ -13,9 +15,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $OpenBSD: strlcpy.c,v 1.11 2006/05/05 15:27:38 millert Exp $
- * $FreeBSD: src/lib/libc/string/strlcpy.c,v 1.10 2008/10/19 10:11:35 delphij Exp $
- * $DragonFly: src/lib/libc/string/strlcpy.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/strlcpy.c 189133 2009-02-28 05:15:02Z das $
  */
 
 #include <sys/types.h>
@@ -27,7 +27,7 @@
  * Returns strlen(src); if retval >= siz, truncation occurred.
  */
 size_t
-strlcpy(char *dst, const char *src, size_t siz)
+strlcpy(char * __restrict dst, const char * __restrict src, size_t siz)
 {
 	char *d = dst;
 	const char *s = src;

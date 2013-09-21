@@ -1,10 +1,12 @@
 #ifndef TZFILE_H
-
 #define TZFILE_H
+
 
 /*
 ** This file is in the public domain, so clarified as of
 ** 1996-06-05 by Arthur David Olson.
+**
+** $FreeBSD: head/contrib/tzcode/stdtime/tzfile.h 192625 2009-05-23 06:31:50Z edwin $
 */
 
 /*
@@ -14,6 +16,18 @@
 ** Do NOT copy it to any system include directory.
 ** Thank you!
 */
+
+/*
+** ID
+*/
+
+#ifndef lint
+#ifndef NOID
+/*
+static char	tzfilehid[] = "@(#)tzfile.h	8.1";
+*/
+#endif /* !defined NOID */
+#endif /* !defined lint */
 
 /*
 ** Information about time zone files.

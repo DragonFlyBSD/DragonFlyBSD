@@ -31,14 +31,12 @@
  *
  * @(#)wsetup.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/wsetup.c,v 1.11 2009/01/08 06:38:06 das Exp $
- * $DragonFly: src/lib/libc/stdio/wsetup.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "local.h"
-#include "priv_stdio.h"
 
 /*
  * Various output routines call wsetup to be sure it is safe to write,

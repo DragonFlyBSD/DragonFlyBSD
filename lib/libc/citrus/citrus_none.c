@@ -1,7 +1,9 @@
-/* $NetBSD: citrus_none.c,v 1.17 2005/12/02 11:14:20 yamt Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_none.c 252583 2013-07-03 18:27:45Z peter $ */
+/* $NetBSD: citrus_none.c,v 1.18 2008/06/14 16:01:07 tnozaki Exp $ */
 
 /*-
- * Copyright (c)2002 Citrus Project,
+ * Copyright (c) 2002 Citrus Project,
+ * Copyright (c) 2010 Gabor Kovesdan <gabor@FreeBSD.org>,
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,349 +28,23 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/cdefs.h>
+#include <sys/types.h>
+
 #include <assert.h>
 #include <errno.h>
-#include <string.h>
+#include <iconv.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
-#include <locale.h>
+#include <string.h>
 #include <wchar.h>
-#include <sys/types.h>
 
 #include "citrus_namespace.h"
 #include "citrus_types.h"
 #include "citrus_module.h"
-#include "citrus_ctype.h"
 #include "citrus_none.h"
 #include "citrus_stdenc.h"
-
-/* ---------------------------------------------------------------------- */
-static int
-_citrus_NONE_ctype_getops(_citrus_ctype_ops_rec_t *, size_t, uint32_t);
-static int
-_citrus_NONE_stdenc_getops(struct _citrus_stdenc_ops *, size_t, uint32_t);
-
-_CITRUS_CTYPE_DECLS(NONE);
-_CITRUS_CTYPE_DEF_OPS(NONE);
-
-
-/* ---------------------------------------------------------------------- */
-
-static int
-_citrus_NONE_ctype_getops(_citrus_ctype_ops_rec_t *ops, size_t lenops,
-			uint32_t expected_version)
-{
-	if (expected_version<_CITRUS_CTYPE_ABI_VERSION || lenops<sizeof(*ops))
-		return (EINVAL);
-
-	memcpy(ops, &_citrus_NONE_ctype_ops, sizeof(_citrus_NONE_ctype_ops));
-
-	return (0);
-}
-
-static int
-_citrus_NONE_stdenc_getops(struct _citrus_stdenc_ops *ops, size_t lenops,
-			 uint32_t expected_version)
-{
-	if (expected_version<_CITRUS_STDENC_ABI_VERSION || lenops<sizeof(*ops))
-		return (EINVAL);
-
-	memcpy(ops, &_citrus_NONE_stdenc_ops, sizeof(_citrus_NONE_stdenc_ops));
-
-	return (0);
-}
-
-static int
-/*ARGSUSED*/
-_citrus_NONE_ctype_init(void ** __restrict cl, void * __restrict var __unused,
-			size_t lenvar __unused, size_t lenps __unused)
-{
-	*cl = NULL;
-	return (0);
-}
-
-static void
-/*ARGSUSED*/
-_citrus_NONE_ctype_uninit(void *cl __unused)
-{
-}
-
-static unsigned
-/*ARGSUSED*/
-_citrus_NONE_ctype_get_mb_cur_max(void *cl __unused)
-{
-	return (1);
-}
-
-static int
-/*ARGSUSED*/
-_citrus_NONE_ctype_mblen(void * __restrict cl __unused,
-			 const char * __restrict s, size_t n,
-			 int * __restrict nresult)
-{
-	if (!s) {
-		*nresult = 0; /* state independent */
-		return (0);
-	}
-	if (n==0) {
-		*nresult = -1;
-		return (EILSEQ);
-	}
-	*nresult = (*s == 0) ? 0 : 1;
-	return (0);
-}
-
-static int
-/*ARGSUSED*/
-_citrus_NONE_ctype_mbrlen(void * __restrict cl __unused,
-			  const char * __restrict s, size_t n,
-			  void * __restrict pspriv __unused,
-			  size_t * __restrict nresult)
-{
-	if (!s) {
-		*nresult = 0;
-		return (0);
-	}
-	if (n==0) {
-		*nresult = (size_t)-2;
-		return (0);
-	}
-	*nresult = (*s == 0) ? 0 : 1;
-	return (0);
-}
-
-static int
-/*ARGSUSED*/
-_citrus_NONE_ctype_mbrtowc(void * __restrict cl __unused,
-			   wchar_t * __restrict pwc,
-			   const char * __restrict s, size_t n,
-			   void * __restrict pspriv __unused,
-			   size_t * __restrict nresult)
-{
-	if (s == NULL) {
-		*nresult = 0;
-		return (0);
-	}
-	if (n == 0) {
-		*nresult = (size_t)-2;
-		return (0);
-	}
-
-	if (pwc != NULL)
-		*pwc = (wchar_t)(unsigned char) *s;
-
-	*nresult = *s == '\0' ? 0 : 1;
-	return (0);
-}
-
-static int
-/*ARGSUSED*/
-_citrus_NONE_ctype_mbsinit(void * __restrict cl __unused,
-			   const void * __restrict pspriv __unused,
-			   int * __restrict nresult)
-{
-	*nresult = 1;  /* always initial state */
-	return (0);
-}
-
-static int
-/*ARGSUSED*/
-_citrus_NONE_ctype_mbsrtowcs(void * __restrict cl __unused,
-			     wchar_t * __restrict pwcs,
-			     const char ** __restrict s, size_t n,
-			     void * __restrict pspriv __unused,
-			     size_t * __restrict nresult)
-{
-	int cnt;
-	const char *s0;
-
-	/* if pwcs is NULL, ignore n */
-	if (pwcs == NULL)
-		n = 1; /* arbitrary >0 value */
-
-	cnt = 0;
-	s0 = *s; /* to keep *s unchanged for now, use copy instead. */
-	while (n > 0) {
-		if (pwcs != NULL) {
-			*pwcs = (wchar_t)(unsigned char)*s0;
-		}
-		if (*s0 == '\0') {
-			s0 = NULL;
-			break;
-		}
-		s0++;
-		if (pwcs != NULL) {
-			pwcs++;
-			n--;
-		}
-		cnt++;
-	}
-	if (pwcs)
-		*s = s0;
-
-	*nresult = (size_t)cnt;
-
-	return (0);
-}
-
-static int
-_citrus_NONE_ctype_mbstowcs(void * __restrict cl, wchar_t * __restrict wcs,
-			    const char * __restrict s, size_t n,
-			    size_t * __restrict nresult)
-{
-	const char *tmp_s = __DEQUALIFY(const char *, s);
-
-	return (_citrus_NONE_ctype_mbsrtowcs(cl, wcs, &tmp_s, n, NULL, nresult));
-}
-
-static int
-/*ARGSUSED*/
-_citrus_NONE_ctype_mbtowc(void * __restrict cl __unused,
-			  wchar_t * __restrict pwc,
-			  const char * __restrict s, size_t n,
-			  int * __restrict nresult)
-{
-
-	if (s == NULL) {
-		*nresult = 0; /* state independent */
-		return (0);
-	}
-	if (n == 0) {
-		return (EILSEQ);
-	}
-	if (pwc == NULL) {
-		if (*s == '\0') {
-			*nresult = 0;
-		} else {
-			*nresult = 1;
-		}
-		return (0);
-	}
-
-	*pwc = (wchar_t)(unsigned char)*s;
-	*nresult = *s == '\0' ? 0 : 1;
-
-	return (0);
-}
-
-static int
-/*ARGSUSED*/
-_citrus_NONE_ctype_wcrtomb(void * __restrict cl __unused,
-			   char * __restrict s, wchar_t wc,
-			   void * __restrict pspriv __unused,
-			   size_t * __restrict nresult)
-{
-	if ((wc&~0xFFU) != 0) {
-		*nresult = (size_t)-1;
-		return (EILSEQ);
-	}
-
-	*nresult = 1;
-	if (s!=NULL)
-		*s = (char)wc;
-
-	return (0);
-}
-
-static int
-/*ARGSUSED*/
-_citrus_NONE_ctype_wcsrtombs(void * __restrict cl __unused,
-			     char * __restrict s,
-			     const wchar_t ** __restrict pwcs, size_t n,
-			     void * __restrict pspriv __unused,
-			     size_t * __restrict nresult)
-{
-	size_t count;
-	const wchar_t *pwcs0;
-
-	pwcs0 = *pwcs;
-	count = 0;
-
-	if (s == NULL)
-		n = 1;
-
-	while (n > 0) {
-		if ((*pwcs0 & ~0xFFU) != 0) {
-			*nresult = (size_t)-1;
-			return (EILSEQ);
-		}
-		if (s != NULL) {
-			*s++ = (char)*pwcs0;
-			n--;
-		}
-		if (*pwcs0 == L'\0') {
-			pwcs0 = NULL;
-			break;
-		}
-		count++;
-		pwcs0++;
-	}
-	if (s != NULL)
-		*pwcs = pwcs0;
-
-	*nresult = count;
-
-	return (0);
-}
-
-static int
-_citrus_NONE_ctype_wcstombs(void * __restrict cl, char * __restrict s,
-			    const wchar_t * __restrict pwcs, size_t n,
-			    size_t * __restrict nresult)
-{
-	const wchar_t *tmp_pwcs = __DEQUALIFY(const wchar_t *, pwcs);
-
-	return (_citrus_NONE_ctype_wcsrtombs(cl, s, &tmp_pwcs, n, NULL, nresult));
-}
-
-static int
-_citrus_NONE_ctype_wctomb(void * __restrict cl, char * __restrict s,
-			  wchar_t wc, int * __restrict nresult)
-{
-	int ret;
-	size_t nr;
-
-	if (s == NULL) {
-		/*
-		 * initialize state here.
-		 * (nothing to do for us.)
-		 */
-		*nresult = 0; /* we're state independent */
-		return (0);
-	}
-
-	ret = _citrus_NONE_ctype_wcrtomb(cl, s, wc, NULL, &nr);
-	*nresult = (int)nr;
-
-	return (ret);
-}
-
-static int
-/*ARGSUSED*/
-_citrus_NONE_ctype_btowc(_citrus_ctype_rec_t * __restrict cc __unused,
-			 int c, wint_t * __restrict wcresult)
-{
-	if (c == EOF || c & ~0xFF)
-		*wcresult = WEOF;
-	else
-		*wcresult = (wint_t)c;
-	return (0);
-}
-
-static int
-/*ARGSUSED*/
-_citrus_NONE_ctype_wctob(_citrus_ctype_rec_t * __restrict cc __unused,
-			 wint_t wc, int * __restrict cresult)
-{
-	if (wc == WEOF || wc & ~0xFF)
-		*cresult = EOF;
-	else
-		*cresult = (int)wc;
-	return (0);
-}
-
-/* ---------------------------------------------------------------------- */
 
 _CITRUS_STDENC_DECLS(NONE);
 _CITRUS_STDENC_DEF_OPS(NONE);
@@ -378,10 +54,9 @@ struct _citrus_stdenc_traits _citrus_NONE_stdenc_traits = {
 };
 
 static int
-/*ARGSUSED*/
 _citrus_NONE_stdenc_init(struct _citrus_stdenc * __restrict ce,
-			 const void *var __unused, size_t lenvar __unused,
-			 struct _citrus_stdenc_traits * __restrict et)
+    const void *var __unused, size_t lenvar __unused,
+    struct _citrus_stdenc_traits * __restrict et)
 {
 
 	et->et_state_size = 0;
@@ -393,30 +68,26 @@ _citrus_NONE_stdenc_init(struct _citrus_stdenc * __restrict ce,
 }
 
 static void
-/*ARGSUSED*/
 _citrus_NONE_stdenc_uninit(struct _citrus_stdenc *ce __unused)
 {
+
 }
 
 static int
-/*ARGSUSED*/
 _citrus_NONE_stdenc_init_state(struct _citrus_stdenc * __restrict ce __unused,
-			       void * __restrict ps __unused)
+    void * __restrict ps __unused)
 {
+
 	return (0);
 }
 
 static int
-/*ARGSUSED*/
 _citrus_NONE_stdenc_mbtocs(struct _citrus_stdenc * __restrict ce __unused,
-			   _csid_t *csid, _index_t *idx,
-			   const char **s, size_t n,
-			   void *ps __unused, size_t *nresult)
+    _citrus_csid_t *csid, _citrus_index_t *idx, const char **s, size_t n, 
+    void *ps __unused, size_t *nresult, struct iconv_hooks *hooks)
 {
 
-	_DIAGASSERT(csid != NULL && idx != NULL);
-
-	if (n<1) {
+	if (n < 1) {
 		*nresult = (size_t)-2;
 		return (0);
 	}
@@ -425,42 +96,74 @@ _citrus_NONE_stdenc_mbtocs(struct _citrus_stdenc * __restrict ce __unused,
 	*idx = (_index_t)(unsigned char)*(*s)++;
 	*nresult = *idx == 0 ? 0 : 1;
 
+	if ((hooks != NULL) && (hooks->uc_hook != NULL))
+		hooks->uc_hook((unsigned int)*idx, hooks->data);
+
 	return (0);
 }
 
 static int
-/*ARGSUSED*/
 _citrus_NONE_stdenc_cstomb(struct _citrus_stdenc * __restrict ce __unused,
-			   char *s, size_t n,
-			   _csid_t csid, _index_t idx,
-			   void *ps __unused, size_t *nresult)
+    char *s, size_t n, _csid_t csid, _index_t idx, void *ps __unused,
+    size_t *nresult, struct iconv_hooks *hooks __unused)
 {
 
 	if (csid == _CITRUS_CSID_INVALID) {
 		*nresult = 0;
 		return (0);
 	}
-	if (n<1) {
-		*nresult = (size_t)-1;
-		return (E2BIG);
-	}
-	if (csid != 0 || (idx&0xFF) != idx)
+	if (csid != 0)
 		return (EILSEQ);
 
-	*s = (char)idx;
-	*nresult = 1;
-
+	if ((idx & 0x000000FF) == idx) {
+		if (n < 1) {
+			*nresult = (size_t)-1;
+			return (E2BIG);
+		}
+		*s = (char)idx;
+		*nresult = 1;
+	} else if ((idx & 0x0000FFFF) == idx) {
+		if (n < 2) {
+			*nresult = (size_t)-1;
+			return (E2BIG);
+		}
+		s[0] = (char)idx;
+		/* XXX: might be endian dependent */
+		s[1] = (char)(idx >> 8);
+		*nresult = 2;
+	} else if ((idx & 0x00FFFFFF) == idx) {
+		if (n < 3) {
+			*nresult = (size_t)-1;
+			return (E2BIG);
+		}
+		s[0] = (char)idx;
+		/* XXX: might be endian dependent */
+		s[1] = (char)(idx >> 8);
+		s[2] = (char)(idx >> 16);
+		*nresult = 3;
+	} else {
+		if (n < 3) {
+			*nresult = (size_t)-1;
+			return (E2BIG);
+		}
+		s[0] = (char)idx;
+		/* XXX: might be endian dependent */
+		s[1] = (char)(idx >> 8);
+		s[2] = (char)(idx >> 16);
+		s[3] = (char)(idx >> 24);
+		*nresult = 4;
+	}
+		
 	return (0);
 }
 
 static int
-/*ARGSUSED*/
 _citrus_NONE_stdenc_mbtowc(struct _citrus_stdenc * __restrict ce __unused,
-			   _wc_t * __restrict pwc,
-			   const char ** __restrict s, size_t n,
-			   void * __restrict pspriv __unused,
-			   size_t * __restrict nresult)
+    _wc_t * __restrict pwc, const char ** __restrict s, size_t n,
+    void * __restrict pspriv __unused, size_t * __restrict nresult,
+    struct iconv_hooks *hooks)
 {
+
 	if (s == NULL) {
 		*nresult = 0;
 		return (0);
@@ -474,39 +177,40 @@ _citrus_NONE_stdenc_mbtowc(struct _citrus_stdenc * __restrict ce __unused,
 		*pwc = (_wc_t)(unsigned char) **s;
 
 	*nresult = *s == '\0' ? 0 : 1;
+
+	if ((hooks != NULL) && (hooks->wc_hook != NULL))
+		hooks->wc_hook(*pwc, hooks->data);
+
 	return (0);
 }
 
 static int
-/*ARGSUSED*/
 _citrus_NONE_stdenc_wctomb(struct _citrus_stdenc * __restrict ce __unused,
-			   char * __restrict s, size_t n, _wc_t wc,
-			   void * __restrict pspriv __unused,
-			   size_t * __restrict nresult)
+    char * __restrict s, size_t n, _wc_t wc,
+    void * __restrict pspriv __unused, size_t * __restrict nresult,
+    struct iconv_hooks *hooks __unused)
 {
-	if ((wc&~0xFFU) != 0) {
+
+	if ((wc & ~0xFFU) != 0) {
 		*nresult = (size_t)-1;
 		return (EILSEQ);
 	}
-	if (n==0) {
+	if (n == 0) {
 		*nresult = (size_t)-1;
 		return (E2BIG);
 	}
 
 	*nresult = 1;
-	if (s!=NULL && n>0)
+	if (s != NULL && n > 0)
 		*s = (char)wc;
 
 	return (0);
 }
 
 static int
-/*ARGSUSED*/
 _citrus_NONE_stdenc_put_state_reset(struct _citrus_stdenc * __restrict ce __unused,
-				    char * __restrict s __unused,
-				    size_t n __unused,
-				    void * __restrict pspriv __unused,
-				    size_t * __restrict nresult)
+    char * __restrict s __unused, size_t n __unused,
+    void * __restrict pspriv __unused, size_t * __restrict nresult)
 {
 
 	*nresult = 0;
@@ -515,11 +219,9 @@ _citrus_NONE_stdenc_put_state_reset(struct _citrus_stdenc * __restrict ce __unus
 }
 
 static int
-/*ARGSUSED*/
 _citrus_NONE_stdenc_get_state_desc(struct _stdenc * __restrict ce __unused,
-				   void * __restrict ps __unused,
-				   int id,
-				   struct _stdenc_state_desc * __restrict d)
+    void * __restrict ps __unused, int id,
+    struct _stdenc_state_desc * __restrict d)
 {
 	int ret = 0;
 
@@ -531,5 +233,5 @@ _citrus_NONE_stdenc_get_state_desc(struct _stdenc * __restrict ce __unused,
 		ret = EOPNOTSUPP;
 	}
 
-	return ret;
+	return (ret);
 }

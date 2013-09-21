@@ -1,4 +1,5 @@
-/*	$NetBSD: ldef.h,v 1.2 2006/09/09 14:35:17 tnozaki Exp $	*/
+/* $FreeBSD: head/usr.bin/mkcsmapper/ldef.h 250984 2013-05-25 15:36:15Z ed $ */
+/* $NetBSD: ldef.h,v 1.2 2006/09/09 14:35:17 tnozaki Exp $	*/
 
 /*-
  * Copyright (c)2003, 2006 Citrus Project,
@@ -26,13 +27,15 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+
 typedef struct {
-	uint32_t	begin;
-	uint32_t	end;
-	uint32_t	width;
+	u_int32_t	 begin;
+	u_int32_t	 end;
+	u_int32_t	 width;
 } linear_zone_t;
 
-extern int	aline_number;
-extern int	debug;
-
-int	yyerror(const char *);
+extern int	 debug;
+extern int	 linenumber;
+extern int	 yyerror(const char *);
+extern int	 yylex(void);

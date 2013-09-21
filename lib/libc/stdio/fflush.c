@@ -31,7 +31,6 @@
  *
  * @(#)fflush.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fflush.c,v 1.14 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/fflush.c,v 1.6 2005/07/23 20:23:05 joerg Exp $
  */
 
 #include "namespace.h"
@@ -41,7 +40,6 @@
 #include "libc_private.h"
 
 #include "local.h"
-#include "priv_stdio.h"
 
 static int	sflush_locked(FILE *);
 

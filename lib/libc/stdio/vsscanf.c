@@ -2,6 +2,11 @@
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * This code is derived from software contributed to Berkeley by
  * Donn Seeley at UUNET Technologies, Inc.
  *
@@ -30,14 +35,13 @@
  * SUCH DAMAGE.
  *
  * @(#)vsscanf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/vsscanf.c,v 1.14 2008/04/17 22:17:54 jhb Exp $
- * $DragonFly: src/lib/libc/stdio/vsscanf.c,v 1.10 2006/03/02 18:05:30 joerg Exp $
+ * $FreeBSD: head/lib/libc/stdio/vsscanf.c 249808 2013-04-23 13:33:13Z emaste $
  */
 
 #include <stdio.h>
 #include <string.h>
 #include "local.h"
-#include "priv_stdio.h"
+#include "xlocale_private.h"
 
 static int
 eofread(void *, char *, int);
@@ -51,17 +55,21 @@ eofread(void *cookie __unused, char *buf __unused, int len __unused)
 }
 
 int
-vsscanf(const char * __restrict str, const char * __restrict fmt, __va_list ap)
+vsscanf_l(const char * __restrict str, locale_t locale,
+		const char * __restrict fmt, __va_list ap)
 {
-	FILE f;
+	FILE f = FAKE_FILE;
+	FIX_LOCALE(locale);
 
-	f.pub._fileno = -1;
 	f.pub._flags = __SRD;
 	f._bf._base = f.pub._p = (unsigned char *)str;
 	f._bf._size = f.pub._r = strlen(str);
 	f._read = eofread;
-	f._ub._base = NULL;
-	f._lb._base = NULL;
-	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
-	return (__svfscanf(&f, fmt, ap));
+	return (__svfscanf(&f, locale, fmt, ap));
+}
+int
+vsscanf(const char * __restrict str, const char * __restrict fmt,
+	__va_list ap)
+{
+	return vsscanf_l(str, __get_locale(), fmt, ap);
 }

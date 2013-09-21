@@ -135,7 +135,7 @@ main(int argc, char **argv)
 	if (!rflag && time(&tval) == -1)
 		err(1, "time");
 
-	format = nl_langinfo(_DATE_FMT);
+	format = nl_langinfo(D_FMT);
 
 	/* allow the operands in any order */
 	if (*argv && **argv == '+') {

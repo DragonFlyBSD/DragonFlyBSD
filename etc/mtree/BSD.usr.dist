@@ -543,6 +543,8 @@
             ..
             fr_FR.UTF-8
             ..
+            gl_ES.ISO8859-1
+            ..
             he_IL.UTF-8
             ..
             hi_IN.ISCII-DEV
@@ -979,21 +981,11 @@
             ..
             et_EE.UTF-8
             ..
-            eu_ES.ISO8859-1
-            ..
-            eu_ES.ISO8859-15
-            ..
-            eu_ES.UTF-8
-            ..
             fi_FI.ISO8859-1
             ..
             fi_FI.ISO8859-15
             ..
             fi_FI.UTF-8
-            ..
-            fo_FO.ISO8859-1
-            ..
-            fo_FO.UTF-8
             ..
             fr_BE.ISO8859-1
             ..
@@ -1019,11 +1011,11 @@
             ..
             fr_FR.UTF-8
             ..
+            gl_ES.ISO8859-1
+            ..
             he_IL.UTF-8
             ..
             hi_IN.ISCII-DEV
-            ..
-            hi_IN.UTF-8
             ..
             hr_HR.ISO8859-2
             ..
@@ -1073,6 +1065,8 @@
             ..
             la_LN.ISO8859-1
             ..
+            la_LN.ISO8859-13
+            ..
             la_LN.ISO8859-15
             ..
             la_LN.ISO8859-2
@@ -1081,13 +1075,17 @@
             ..
             la_LN.US-ASCII
             ..
-            la_LN.UTF-8
-            ..
             lt_LT.ISO8859-13
             ..
             lt_LT.ISO8859-4
             ..
             lt_LT.UTF-8
+            ..
+            lv_LV.ISO8859-13
+            ..
+            lv_LV.UTF-8
+            ..
+            mn_MN.UTF-8
             ..
             nl_BE.ISO8859-1
             ..

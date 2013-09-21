@@ -5,6 +5,11 @@
  * This code is derived from software contributed to Berkeley by
  * Chris Torek.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -30,9 +35,9 @@
  * SUCH DAMAGE.
  *
  * @(#)scanf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/scanf.c,v 1.13 2007/01/09 00:28:07 imp Exp $
- * $DragonFly: src/lib/libc/stdio/scanf.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
+ * $FreeBSD: head/lib/libc/stdio/scanf.c 249808 2013-04-23 13:33:13Z emaste $
  */
+
 
 #include "namespace.h"
 #include <stdio.h>
@@ -40,16 +45,31 @@
 #include "un-namespace.h"
 #include "libc_private.h"
 #include "local.h"
+#include "xlocale_private.h"
 
 int
-scanf(const char * __restrict fmt, ...)
+scanf(char const * __restrict fmt, ...)
 {
 	int ret;
 	va_list ap;
 
 	va_start(ap, fmt);
 	FLOCKFILE(stdin);
-	ret = __svfscanf(stdin, fmt, ap);
+	ret = __svfscanf(stdin, __get_locale(), fmt, ap);
+	FUNLOCKFILE(stdin);
+	va_end(ap);
+	return (ret);
+}
+int
+scanf_l(locale_t locale, char const * __restrict fmt, ...)
+{
+	int ret;
+	va_list ap;
+	FIX_LOCALE(locale);
+
+	va_start(ap, fmt);
+	FLOCKFILE(stdin);
+	ret = __svfscanf(stdin, locale, fmt, ap);
 	FUNLOCKFILE(stdin);
 	va_end(ap);
 	return (ret);

@@ -23,13 +23,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * citrus Id: wcspbrk.c,v 1.2 2000/12/21 05:07:25 itojun Exp
- * $NetBSD: wcspbrk.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcspbrk.c,v 1.6 2002/09/21 00:29:23 tjr Exp $
- * $DragonFly: src/lib/libc/string/wcspbrk.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
+ *	citrus Id: wcspbrk.c,v 1.2 2000/12/21 05:07:25 itojun Exp
+ * $FreeBSD: head/lib/libc/string/wcspbrk.c 188080 2009-02-03 17:58:20Z danger $
  */
 
-#include <sys/types.h>
 #include <wchar.h>
 
 wchar_t *
@@ -44,7 +41,7 @@ wcspbrk(const wchar_t *s, const wchar_t *set)
 		while (*q) {
 			if (*p == *q) {
 				/* LINTED interface specification */
-				return(__DECONST(wchar_t *, p));
+				return (wchar_t *)p;
 			}
 			q++;
 		}

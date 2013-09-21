@@ -30,8 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)memcpy.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/memcpy.3,v 1.8 2007/01/09 00:28:12 imp Exp $
-.\" $DragonFly: src/lib/libc/string/memcpy.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
+.\" $FreeBSD: head/lib/libc/string/memcpy.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
 .Dd June 4, 1993
 .Dt MEMCPY 3
@@ -45,15 +44,11 @@
 .In string.h
 .Ft void *
 .Fn memcpy "void *dst" "const void *src" "size_t len"
-.Ft void *
-.Fn mempcpy "void *dst" "const void *src" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn memcpy
-and
-.Fn mempcpy
-functions
-copy
+function
+copies
 .Fa len
 bytes from string
 .Fa src
@@ -65,16 +60,12 @@ The
 function
 returns the original value of
 .Fa dst .
-The
-.Fn mempcpy
-function
-returns a pointer to the byte directly following the last byte written in
-.Fa dst .
 .Sh SEE ALSO
 .Xr bcopy 3 ,
 .Xr memccpy 3 ,
 .Xr memmove 3 ,
-.Xr strcpy 3
+.Xr strcpy 3 ,
+.Xr wmemcpy 3
 .Sh STANDARDS
 The
 .Fn memcpy

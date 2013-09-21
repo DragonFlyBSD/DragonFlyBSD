@@ -11,11 +11,14 @@ LSRCS=	aicasm_scan.l aicasm_macro_scan.l
 GENHDRS=	aicasm_gram.h aicasm_macro_gram.h
 .ORDER: aicasm_gram.c aicasm_macro_gram.c aicasm_scan.c aicasm_macro_scan.c
 
-SRCS=	${GENHDRS} ${CSRCS} ${YSRCS} ${LSRCS}
-CLEANFILES+= ${GENHDRS} ${YSRCS:R:C/(.*)/\1.output/g}
-DPADD+=	${LIBL}
-LDADD+=	-ll
-WARNS?=	6
+SRCS=		${GENHDRS} ${CSRCS} ${YSRCS} ${LSRCS}
+SRCS+=		sys/types.h ctype.h
+CLEANFILES+=	${GENHDRS} ${YSRCS:R:C/(.*)/\1.output/g}
+CLEANFILES+=	ctype.h
+CLEANDIRS+=	sys
+DPADD+=		${LIBL}
+LDADD+=		-ll
+WARNS?=		6
 
 # Correct path for kernel builds
 # Don't rely on the kernel's .depend file
@@ -24,7 +27,7 @@ WARNS?=	6
 DEPENDFILE=
 .endif
 
-CFLAGS+= -nostdinc -I/usr/include -I. -I${.CURDIR}
+CFLAGS+= -I. -I${.CURDIR}
 .ifdef MAKESRCPATH
 CFLAGS+= -I${MAKESRCPATH}
 .endif
@@ -37,6 +40,13 @@ CFLAGS+= -DDEBUG -g
 YFLAGS+= -t -v
 LFLAGS+= -d
 .endif
+
+sys/types.h: /usr/include/sys/types.h
+	mkdir -p sys
+	cp ${.ALLSRC} ${.TARGET}
+
+ctype.h: /usr/include/ctype.h
+	cp ${.ALLSRC} ${.TARGET}
 
 # aicasm is used in place, it is not installed anywhere
 #

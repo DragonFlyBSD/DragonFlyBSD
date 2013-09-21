@@ -1,4 +1,7 @@
-# $DragonFly: src/lib/i18n_module/JOHAB/Makefile,v 1.1 2008/04/10 10:21:00 hasso Exp $
+# $FreeBSD: head/lib/libiconv_modules/JOHAB/Makefile 219019 2011-02-25 00:04:39Z gabor $
 
-SRCPRE=citrus_
+LIB=	JOHAB
+SRCS+=	citrus_johab.c
+CFLAGS+= --param max-inline-insns-single=16
+
 .include <bsd.lib.mk>

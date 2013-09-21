@@ -41,6 +41,13 @@
 #include <sys/_null.h>
 #include <sys/types.h>
 
+#if __BSD_VISIBLE
+#ifndef _RUNE_T_DECLARED
+typedef	__rune_t	rune_t;
+#define	_RUNE_T_DECLARED
+#endif
+#endif
+
 #ifndef _SIZE_T_DECLARED
 typedef	__size_t	size_t;
 #define	_SIZE_T_DECLARED
@@ -68,10 +75,14 @@ typedef struct {
 
 #define	RAND_MAX	0x7fffffff
 
-extern int __mb_cur_max;
-#define	MB_CUR_MAX	__mb_cur_max
-
 __BEGIN_DECLS
+#ifdef _XLOCALE_H_
+#include <xlocale/_stdlib.h>
+#endif
+extern int __mb_cur_max;
+extern int ___mb_cur_max(void);
+#define	MB_CUR_MAX	(___mb_cur_max())
+
 void	 abort(void) __dead2;
 /* void	 abort2(const char *, int, void **) __dead2; */
 #if !defined(_KERNEL_VIRTUAL)

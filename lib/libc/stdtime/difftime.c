@@ -2,16 +2,18 @@
 ** This file is in the public domain, so clarified as of
 ** 1996-06-05 by Arthur David Olson.
 **
-** $FreeBSD: src/lib/libc/stdtime/difftime.c,v 1.4.8.1 2001/03/05 11:37:21 obrien Exp $
+** $FreeBSD: head/contrib/tzcode/stdtime/difftime.c 192625 2009-05-23 06:31:50Z edwin $
 */
 /*LINTLIBRARY*/
 
 #include "namespace.h"
-#include "private.h"
+#include "private.h"	/* for time_t, TYPE_INTEGRAL, and TYPE_SIGNED */
 #include "un-namespace.h"
 
 double
-difftime(const time_t time1, const time_t time0)
+difftime(time1, time0)
+const time_t	time1;
+const time_t	time0;
 {
 	/*
 	** If (sizeof (double) > sizeof (time_t)) simply convert and subtract

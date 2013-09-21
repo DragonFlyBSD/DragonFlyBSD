@@ -30,9 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)strcmp.c	8.1 (Berkeley) 6/4/93
- * $NetBSD: wcscmp.c,v 1.3 2001/01/05 12:13:12 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcscmp.c,v 1.8 2007/01/09 00:28:12 imp Exp $
- * $DragonFly: src/lib/libc/string/wcscmp.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/wcscmp.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <wchar.h>
@@ -45,7 +43,7 @@ wcscmp(const wchar_t *s1, const wchar_t *s2)
 {
 
 	while (*s1 == *s2++)
-		if (*s1++ == 0)
+		if (*s1++ == '\0')
 			return (0);
 	/* XXX assumes wchar_t = int */
 	return (*(const unsigned int *)s1 - *(const unsigned int *)--s2);

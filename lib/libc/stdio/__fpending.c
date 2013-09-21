@@ -30,13 +30,10 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libc/stdio/__fpending.c,v 1.2 2005/07/23 23:14:44 joerg Exp $
  */
 
 #include <stdio.h>
 
-#include "priv_stdio.h"
 #include "local.h"
 
 __ssize_t

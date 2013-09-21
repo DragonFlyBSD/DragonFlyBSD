@@ -25,7 +25,6 @@ LOCALES=	bg_BG.CP1251 \
 		la_LN.ISO8859-2 \
 		la_LN.ISO8859-4 \
 		la_LN.US-ASCII \
-		la_LN.UTF-8 \
 		no_NO.ISO8859-1 \
 		no_NO.ISO8859-15 \
 		lt_LT.ISO8859-4 \

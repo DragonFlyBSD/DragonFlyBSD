@@ -31,14 +31,14 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/string/wcstok.c,v 1.3 2007/12/12 18:33:06 wes Exp $
+ * $FreeBSD: head/lib/libc/string/wcstok.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <wchar.h>
 
 wchar_t *
 wcstok(wchar_t * __restrict s, const wchar_t * __restrict delim,
-       wchar_t ** __restrict last)
+    wchar_t ** __restrict last)
 {
 	const wchar_t *spanp;
 	wchar_t *tok;

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/string/wcsnlen.c,v 1.1 2009/02/28 06:00:58 das Exp $
+ * $FreeBSD: head/lib/libc/string/wcsnlen.c 189136 2009-02-28 06:00:58Z das $
  */
 
 #include <wchar.h>

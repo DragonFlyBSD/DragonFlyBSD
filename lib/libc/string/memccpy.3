@@ -26,8 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)memccpy.3	8.1 (Berkeley) 6/9/93
-.\" $FreeBSD: src/lib/libc/string/memccpy.3,v 1.7 2007/01/09 00:28:12 imp Exp $
-.\" $DragonFly: src/lib/libc/string/memccpy.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
+.\" $FreeBSD: head/lib/libc/string/memccpy.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
 .Dd June 9, 1993
 .Dt MEMCCPY 3
@@ -51,7 +50,9 @@ to string
 .Fa dst .
 If the character
 .Fa c
-(as converted to an unsigned char) occurs in the string
+(as converted to an
+.Vt "unsigned char" )
+occurs in the string
 .Fa src ,
 the copy stops and a pointer to the byte after the copy of
 .Fa c

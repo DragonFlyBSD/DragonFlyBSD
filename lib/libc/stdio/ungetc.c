@@ -31,7 +31,6 @@
  *
  * @(#)ungetc.c	8.2 (Berkeley) 11/3/93
  * $FreeBSD: src/lib/libc/stdio/ungetc.c,v 1.18 2008/04/17 22:17:54 jhb Exp $
- * $DragonFly: src/lib/libc/stdio/ungetc.c,v 1.8 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -41,7 +40,6 @@
 #include "un-namespace.h"
 #include "local.h"
 #include "libc_private.h"
-#include "priv_stdio.h"
 
 static int __submore(FILE *);
 

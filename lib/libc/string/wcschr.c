@@ -23,11 +23,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/string/wcschr.c,v 1.3.2.2 2002/11/12 11:34:34 tjr Exp $
- * $DragonFly: src/lib/libc/string/wcschr.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
+ * $FreeBSD: head/lib/libc/string/wcschr.c 105785 2002-10-23 10:47:47Z tjr $
  */
 
-#include <sys/types.h>
 #include <wchar.h>
 
 wchar_t *
@@ -37,6 +35,6 @@ wcschr(const wchar_t *s, wchar_t c)
 	while (*s != c && *s != L'\0')
 		s++;
 	if (*s == c)
-		return (__DECONST(wchar_t *, s));
+		return ((wchar_t *)s);
 	return (NULL);
 }

@@ -1,8 +1,11 @@
-/* $NetBSD: wcstof.c,v 1.3 2008/04/25 16:43:00 christos Exp $ */
-
 /*-
- * Copyright (c)2006 Citrus Project,
+ * Copyright (c) 2002, 2003 Tim J. Robbins
  * All rights reserved.
+ *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,18 +27,57 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/lib/libc/locale/wcstof.c 227753 2011-11-20 14:45:42Z theraven $
  */
 
-#include <assert.h>
-#include <errno.h>
-#include <math.h>
+
 #include <stdlib.h>
-#include <string.h>
 #include <wchar.h>
 #include <wctype.h>
+#include "xlocale_private.h"
 
-#define _FUNCNAME	wcstof
-#define _RETURN_TYPE	float
-#define _STRTOD_FUNC	strtof
+/*
+ * See wcstod() for comments as to the logic used.
+ */
+float
+wcstof_l(const wchar_t * __restrict nptr, wchar_t ** __restrict endptr,
+		locale_t locale)
+{
+	static const mbstate_t initial;
+	mbstate_t mbs;
+	float val;
+	char *buf, *end;
+	const wchar_t *wcp;
+	size_t len;
+	FIX_LOCALE(locale);
 
-#include "_wcstod.h"
+	while (iswspace_l(*nptr, locale))
+		nptr++;
+
+	wcp = nptr;
+	mbs = initial;
+	if ((len = wcsrtombs_l(NULL, &wcp, 0, &mbs, locale)) == (size_t)-1) {
+		if (endptr != NULL)
+			*endptr = (wchar_t *)nptr;
+		return (0.0);
+	}
+	if ((buf = malloc(len + 1)) == NULL)
+		return (0.0);
+	mbs = initial;
+	wcsrtombs_l(buf, &wcp, len + 1, &mbs, locale);
+
+	val = strtof_l(buf, &end, locale);
+
+	if (endptr != NULL)
+		*endptr = (wchar_t *)nptr + (end - buf);
+
+	free(buf);
+
+	return (val);
+}
+float
+wcstof(const wchar_t * __restrict nptr, wchar_t ** __restrict endptr)
+{
+	return wcstof_l(nptr, endptr, __get_locale());
+}

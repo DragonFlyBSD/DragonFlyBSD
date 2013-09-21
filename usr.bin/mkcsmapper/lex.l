@@ -1,4 +1,5 @@
-/*	$NetBSD: lex.l,v 1.4 2006/02/09 22:03:15 dogcow Exp $	*/
+/* $FreeBSD: head/usr.bin/mkcsmapper/lex.l 252582 2013-07-03 18:25:27Z peter $ */
+/* $NetBSD: lex.l,v 1.4 2006/02/09 22:03:15 dogcow Exp $	*/
 
 %{
 /*-
@@ -28,7 +29,9 @@
  */
 
 #pragma GCC diagnostic ignored "-Wsign-compare"
-#include <machine/endian.h>
+#include <sys/cdefs.h>
+#include <sys/endian.h>
+
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
@@ -39,33 +42,34 @@
 #include "ldef.h"
 #include "yacc.h"
 
-int aline_number = 1;
-%}
+#define YY_DECL int yylex(void)
 
-%option noinput
-%option nounput
+int linenumber = 1;
+%}
+%option	noinput
+%option	nounput
 
 %x	COMMENT
 
 %%
 
 [ \t]+	{ }
-#.*[\n]|"//".*[\n]|[\n]	{ aline_number++; return (R_LN); }
+#.*[\n]|"//".*[\n]|[\n]	{ linenumber++; return (R_LN); }
 
 "/*"		{ BEGIN COMMENT; }
 <COMMENT>"*/"	{ BEGIN 0; }
-<COMMENT>[\n]	{ aline_number++; }
+<COMMENT>[\n]	{ linenumber++; }
 <COMMENT>.	{ }
 <COMMENT><<EOF>>	{
-		yyerror("unexpected file end (unterminate comment)\n");
+		yyerror("unexpected file end (unterminated comment)\n");
 		exit(1);
 	}
 
-"="|"/"|"-"	{ return (int)yytext[0]; }
+"="|"/"|"-"	{ return ((int)yytext[0]); }
 
 ([1-9][0-9]*)|(0[0-9]*)|(0[xX][0-9A-Fa-f]+)	{
 		yylval.i_value = strtoul(yytext, NULL, 0);
-		return L_IMM;
+		return (L_IMM);
 	}
 
 "TYPE"		{ return (R_TYPE); }
@@ -83,14 +87,15 @@ int aline_number = 1;
 
 \"([^\"\n]*(\\\")?)*\"|\'([^\'\n]*(\\\')?)*\'	{
 		size_t len;
+
 		len = strlen(yytext);
-		yylval.s_value = malloc(len-1);
-		strlcpy(yylval.s_value, yytext+1, len-1);
-		return L_STRING;
+		yylval.s_value = malloc(len - 1);
+		strlcpy(yylval.s_value, yytext + 1, len - 1);
+		return (L_STRING);
 	}
 [^ =/\-0-9\t\n][^ \t\n]*	{
 		yylval.s_value = strdup(yytext);
-		return L_STRING;
+		return (L_STRING);
 	}
 
 %%
@@ -99,6 +104,7 @@ int aline_number = 1;
 int
 yywrap(void)
 {
+
 	return (1);
 }
 #endif

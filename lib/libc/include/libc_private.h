@@ -35,6 +35,8 @@
 #ifndef _LIBC_PRIVATE_H_
 #define _LIBC_PRIVATE_H_
 
+#include <sys/_pthreadtypes.h>
+
 /*
  * This global flag is non-zero when a process has created one
  * or more threads. It is used to avoid calling locking functions
@@ -93,5 +95,22 @@ void _nmalloc_thr_init(void);
 
 struct dl_phdr_info;
 int __elf_phdr_match_addr(struct dl_phdr_info *, void *);
+
+/*
+ * libc should use libc_dlopen internally, which respects a global
+ * flag where loading of new shared objects can be restricted.
+ */
+void *libc_dlopen(const char *, int);
+
+/*
+ * For dynamic linker
+ */
+void _rtld_error(const char *fmt, ...);
+
+/*
+ * Provides pthread_once()-like functionality for both single-threaded
+ * and multi-threaded applications
+ */
+int _once(pthread_once_t *, void (*)(void));
 
 #endif /* _LIBC_PRIVATE_H_ */

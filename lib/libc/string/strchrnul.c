@@ -23,13 +23,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/string/strchrnul.c,v 1.1 2013/02/14 01:18:03 svnexp Exp $
+ * $FreeBSD: head/lib/libc/string/strchrnul.c 246766 2013-02-13 15:46:33Z zeising $
  */
 
+#include <stddef.h>
 #include <string.h>
 
+__weak_reference(__strchrnul, strchrnul);
+
 char *
-strchrnul(const char *p, int ch)
+__strchrnul(const char *p, int ch)
 {
 	char c;
 
@@ -40,3 +43,4 @@ strchrnul(const char *p, int ch)
 	}
 	/* NOTREACHED */
 }
+

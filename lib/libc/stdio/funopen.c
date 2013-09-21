@@ -31,14 +31,12 @@
  *
  * @(#)funopen.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/funopen.c,v 1.6 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/funopen.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <stdio.h>
 #include <errno.h>
 
 #include "local.h"
-#include "priv_stdio.h"
 
 FILE *
 funopen(const void *cookie, int (*readfn)(void *, char *, int),

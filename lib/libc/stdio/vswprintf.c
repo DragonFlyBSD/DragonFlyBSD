@@ -4,6 +4,11 @@
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
  * All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -26,60 +31,67 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdio/vswprintf.c,v 1.7 2008/04/17 22:17:54 jhb Exp $
- * $DragonFly: src/lib/libc/stdio/vswprintf.c,v 1.2 2006/03/02 18:05:30 joerg Exp $
+ * $FreeBSD: head/lib/libc/stdio/vswprintf.c 234531 2012-04-21 06:10:18Z das $
  */
 
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <wchar.h>
 #include "local.h"
-#include "priv_stdio.h"
+#include "xlocale_private.h"
 
 int
-vswprintf(wchar_t * __restrict s, size_t n, const wchar_t * __restrict fmt,
-	  __va_list ap)
+vswprintf_l(wchar_t * __restrict s, size_t n, locale_t locale,
+		const wchar_t * __restrict fmt, __va_list ap)
 {
 	static const mbstate_t initial;
 	mbstate_t mbs;
-	FILE f;
+	FILE f = FAKE_FILE;
 	char *mbp;
 	int ret, sverrno;
 	size_t nwc;
+	FIX_LOCALE(locale);
 
 	if (n == 0) {
 		errno = EINVAL;
 		return (-1);
 	}
+	if (n - 1 > INT_MAX) {
+		errno = EOVERFLOW;
+		*s = L'\0';
+		return (-1);
+	}
 
-	f.pub._fileno = -1;
 	f.pub._flags = __SWR | __SSTR | __SALC;
 	f._bf._base = f.pub._p = (unsigned char *)malloc(128);
 	if (f._bf._base == NULL) {
 		errno = ENOMEM;
+		*s = L'\0';
 		return (-1);
 	}
 	f._bf._size = f.pub._w = 127;		/* Leave room for the NUL */
-	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
-	ret = __vfwprintf(&f, fmt, ap);
+	ret = __vfwprintf(&f, locale, fmt, ap);
 	if (ret < 0) {
 		sverrno = errno;
 		free(f._bf._base);
 		errno = sverrno;
+		*s = L'\0';
 		return (-1);
 	}
 	*f.pub._p = '\0';
-	mbp = (char *)f._bf._base;
+	mbp = f._bf._base;
 	/*
 	 * XXX Undo the conversion from wide characters to multibyte that
 	 * fputwc() did in __vfwprintf().
 	 */
 	mbs = initial;
-	nwc = mbsrtowcs(s, (const char **)&mbp, n, &mbs);
+	nwc = mbsrtowcs_l(s, (const char **)&mbp, n, &mbs, locale);
 	free(f._bf._base);
 	if (nwc == (size_t)-1) {
 		errno = EILSEQ;
+		*s = L'\0';
 		return (-1);
 	}
 	if (nwc == n) {
@@ -89,4 +101,10 @@ vswprintf(wchar_t * __restrict s, size_t n, const wchar_t * __restrict fmt,
 	}
 
 	return (ret);
+}
+int
+vswprintf(wchar_t * __restrict s, size_t n, const wchar_t * __restrict fmt,
+    __va_list ap)
+{
+	return vswprintf_l(s, n, __get_locale(), fmt, ap);
 }

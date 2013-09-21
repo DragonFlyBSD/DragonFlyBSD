@@ -1,5 +1,5 @@
-/* $NetBSD: citrus_memstream.c,v 1.3 2008/02/09 14:56:20 junyoung Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_memstream.c,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_memstream.c 219019 2011-02-25 00:04:39Z gabor $ */
+/* $NetBSD: citrus_memstream.c,v 1.4 2009/02/03 05:02:12 lukem Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -27,7 +27,8 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
+#include <sys/cdefs.h>
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,11 +41,11 @@
 
 const char *
 _citrus_memory_stream_getln(struct _citrus_memory_stream * __restrict ms,
-			    size_t * __restrict rlen)
+    size_t * __restrict rlen)
 {
-	int i;
 	const uint8_t *h, *p;
 	size_t ret;
+	int i;
 
 	if (ms->ms_pos>=_region_size(&ms->ms_region))
 		return (NULL);
@@ -67,15 +68,13 @@ _citrus_memory_stream_getln(struct _citrus_memory_stream * __restrict ms,
 
 const char *
 _citrus_memory_stream_matchline(struct _citrus_memory_stream * __restrict ms,
-				const char * __restrict key,
-				size_t * __restrict rlen,
-				int iscasesensitive)
+    const char * __restrict key, size_t * __restrict rlen, int iscasesensitive)
 {
 	const char *p, *q;
-	size_t len, keylen;
+	size_t keylen, len;
 
 	keylen = strlen(key);
-	while (/*CONSTCOND*/ 1) {
+	for(;;) {
 		p = _citrus_memory_stream_getln(ms, &len);
 		if (p == NULL)
 			return (NULL);
@@ -83,7 +82,7 @@ _citrus_memory_stream_matchline(struct _citrus_memory_stream * __restrict ms,
 		/* ignore comment */
 		q = memchr(p, T_COMM, len);
 		if (q) {
-			len = q-p;
+			len = q - p;
 		}
 		/* ignore trailing white space and newline */
 		_bcs_trunc_rws_len(p, &len);
@@ -94,7 +93,7 @@ _citrus_memory_stream_matchline(struct _citrus_memory_stream * __restrict ms,
 		p = _bcs_skip_ws_len(p, &len);
 		q = _bcs_skip_nonws_len(p, &len);
 
-		if ((size_t)(q-p) == keylen) {
+		if ((size_t)(q - p) == keylen) {
 			if (iscasesensitive) {
 				if (memcmp(key, p, keylen) == 0)
 					break; /* match */
@@ -113,27 +112,27 @@ _citrus_memory_stream_matchline(struct _citrus_memory_stream * __restrict ms,
 
 void *
 _citrus_memory_stream_chr(struct _citrus_memory_stream *ms,
-			  struct _citrus_region *r, char ch)
+    struct _citrus_region *r, char ch)
 {
-	void *head, *chr;
+	void *chr, *head;
 	size_t sz;
 
 	if (ms->ms_pos >= _region_size(&ms->ms_region))
-		return NULL;
+		return (NULL);
 
 	head = _region_offset(&ms->ms_region, ms->ms_pos);
 	chr = memchr(head, ch, _memstream_remainder(ms));
 	if (chr == NULL) {
 		_region_init(r, head, _memstream_remainder(ms));
 		ms->ms_pos = _region_size(&ms->ms_region);
-		return NULL;
+		return (NULL);
 	}
 	sz = (char *)chr - (char *)head;
 
 	_region_init(r, head, sz);
-	ms->ms_pos += sz+1;
+	ms->ms_pos += sz + 1;
 
-	return chr;
+	return (chr);
 }
 
 void

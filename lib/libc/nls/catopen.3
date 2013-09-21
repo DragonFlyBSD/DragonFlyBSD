@@ -26,9 +26,8 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc/nls/catopen.3,v 1.9.2.6 2001/12/14 18:33:56 ru Exp $
-.\" $DragonFly: src/lib/libc/nls/catopen.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
-.Dd May 29, 1994
+.\" $FreeBSD: head/lib/libc/nls/catopen.3 142665 2005-02-27 16:30:16Z phantom $
+.Dd February 12, 2005
 .Dt CATOPEN 3
 .Os
 .Sh NAME
@@ -136,7 +135,7 @@ is set to indicate the error.
 .It Bq Er EINVAL
 Argument
 .Fa name
-does not point to a valid message catalog.
+does not point to a valid message catalog, or catalog is corrupt.
 .It Bq Er ENAMETOOLONG
 An entire path to the message catalog exceeded 1024 characters.
 .It Bq Er ENOENT
@@ -155,4 +154,4 @@ Insufficient memory is available.
 The
 .Fn catopen
 function conforms to
-.St -xpg4 .
+.St -p1003.1-2001 .

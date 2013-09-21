@@ -1,68 +1,3 @@
-/*	$NetBSD: src/lib/libc/locale/setrunelocale.c,v 1.14 2003/08/07 16:43:07 agc Exp $	*/
-/*	$DragonFly: src/lib/libc/locale/setrunelocale.c,v 1.6 2005/05/08 15:55:15 joerg Exp $ */
-
-/*-
- * Copyright (c)1999 Citrus Project,
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- */
-
-/*-
- * Copyright (c) 1998 The NetBSD Foundation, Inc.
- * All rights reserved.
- *
- * This code is derived from software contributed to The NetBSD Foundation
- * by Paul Kranenburg.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
- * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-
 /*-
  * Copyright (c) 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -70,6 +5,11 @@
  * This code is derived from software contributed to Berkeley by
  * Paul Borman at Krystal Technologies.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -78,7 +18,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
+ * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -93,130 +33,191 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/lib/libc/locale/setrunelocale.c 244126 2012-12-11 22:52:56Z jilles $
  */
 
-#include <assert.h>
+
+#define __RUNETYPE_INTERNAL 1
+
+#include <runetype.h>
 #include <errno.h>
 #include <limits.h>
-#include <locale.h>
-#include <stddef.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <wchar.h>
-#include "../citrus/citrus_module.h"
-#include "../citrus/citrus_ctype.h"
-#include "rune.h"
-#include "rune_local.h"
-#include "multibyte.h"
+#include "ldpart.h"
+#include "mblocal.h"
+#include "setlocale.h"
 
-struct localetable {
-	char path[PATH_MAX];
-	_RuneLocale *runelocale;
-	struct localetable *next;
-};
-static struct localetable *localetable_head;
+#undef _CurrentRuneLocale
+extern _RuneLocale const *_CurrentRuneLocale;
+#ifndef __NO_TLS
+/*
+ * A cached version of the runes for this thread.  Used by ctype.h
+ */
+__thread const _RuneLocale *_ThreadRuneLocale;
+#endif
 
-_RuneLocale *
-_findrunelocale(char *path)
+extern int __mb_sb_limit;
+
+extern _RuneLocale	*_Read_RuneMagi(FILE *);
+
+static int		__setrunelocale(struct xlocale_ctype *l, const char *);
+
+#define __collate_substitute_nontrivial (table->__collate_substitute_nontrivial)
+#define __collate_substitute_table_ptr (table->__collate_substitute_table_ptr)
+#define __collate_char_pri_table_ptr (table->__collate_char_pri_table_ptr)
+#define __collate_chain_pri_table (table->__collate_chain_pri_table)
+
+
+static void
+destruct_ctype(void *v)
 {
-	struct localetable *lt;
+	struct xlocale_ctype *l = v;
 
-	_DIAGASSERT(path != NULL);
-
-	/* ones which we have seen already */
-	for (lt = localetable_head; lt; lt = lt->next) {
-		if (strcmp(path, lt->path) == 0)
-			return(lt->runelocale);
-	}
-
-	return(NULL);
+	if (strcmp(l->runes->__encoding, "EUC") == 0)
+		free(l->runes->__variable);
+	if (&_DefaultRuneLocale != l->runes) 
+		free(l->runes);
+	free(l);
 }
 
-int
-_newrunelocale(char *path)
+const _RuneLocale *
+__getCurrentRuneLocale(void)
 {
-	struct localetable *lt;
+
+	return XLOCALE_CTYPE(__get_locale())->runes;
+}
+
+static void
+free_runes(_RuneLocale *rl)
+{
+
+	/* FIXME: The "EUC" check here is a hideous abstraction violation. */
+	if ((rl != &_DefaultRuneLocale) && (rl)) {
+		if (strcmp(rl->__encoding, "EUC") == 0) {
+			free(rl->__variable);
+		}
+		free(rl);
+	}
+}
+
+static int
+__setrunelocale(struct xlocale_ctype *l, const char *encoding)
+{
 	FILE *fp;
+	char name[PATH_MAX];
 	_RuneLocale *rl;
-	int ret;
+	int saverr, ret;
+	struct xlocale_ctype saved = *l;
 
-	/* path may be NULL (actually, it's checked below) */
-
-	if (path == NULL || strlen(path) + 1 > sizeof(lt->path))
-		return(EFAULT);
-
-	rl = _findrunelocale(path);
-	if (rl)
-		return(0);
-
-	if ((fp = fopen(path, "r")) == NULL)
-		return(ENOENT);
-
-	if ((rl = _Read_RuneMagi(fp)) != NULL)
-		goto found;
-
-	fclose(fp);
-	return(EFTYPE);
-
-found:
-	fclose(fp);
-
-	rl->rl_citrus_ctype = NULL;
-	ret = _citrus_ctype_open(&rl->rl_citrus_ctype, rl->rl_encoding,
-				 rl->rl_variable, rl->rl_variable_len,
-				 _PRIVSIZE);
-	if (ret) {
-		_NukeRune(rl);
-		return(ret);
-	}
-	if (__MB_LEN_MAX_RUNTIME <
-	    _citrus_ctype_get_mb_cur_max(rl->rl_citrus_ctype)) {
-		_NukeRune(rl);
-		return(EINVAL);
+	/*
+	 * The "C" and "POSIX" locale are always here.
+	 */
+	if (strcmp(encoding, "C") == 0 || strcmp(encoding, "POSIX") == 0) {
+		free_runes(saved.runes);
+		(void) _none_init(l, (_RuneLocale*)&_DefaultRuneLocale);
+		return (0);
 	}
 
-	/* register it */
-	lt = malloc(sizeof(struct localetable));
-	if (lt == NULL) {
-		_NukeRune(rl);
-		return(ENOMEM);
-	}
-	strlcpy(lt->path, path, sizeof(lt->path));
-	lt->runelocale = rl;
-	lt->next = localetable_head;
-	localetable_head = lt;
+	/* Range checking not needed, encoding length already checked before */
+	(void) strcpy(name, _PathLocale);
+	(void) strcat(name, "/");
+	(void) strcat(name, encoding);
+	(void) strcat(name, "/LC_CTYPE");
 
-	return(0);
+	if ((fp = fopen(name, "re")) == NULL)
+		return (errno == 0 ? ENOENT : errno);
+
+	if ((rl = _Read_RuneMagi(fp)) == NULL) {
+		saverr = (errno == 0 ? EFTYPE : errno);
+		(void)fclose(fp);
+		return (saverr);
+	}
+	(void)fclose(fp);
+
+	l->__mbrtowc = NULL;
+	l->__mbsinit = NULL;
+	l->__mbsnrtowcs = __mbsnrtowcs_std;
+	l->__wcrtomb = NULL;
+	l->__wcsnrtombs = __wcsnrtombs_std;
+
+	rl->__sputrune = NULL;
+	rl->__sgetrune = NULL;
+	if (strcmp(rl->__encoding, "NONE") == 0)
+		ret = _none_init(l, rl);
+	else if (strcmp(rl->__encoding, "ASCII") == 0)
+		ret = _ascii_init(l, rl);
+	else if (strcmp(rl->__encoding, "UTF-8") == 0)
+		ret = _UTF8_init(l, rl);
+	else if (strcmp(rl->__encoding, "EUC") == 0)
+		ret = _EUC_init(l, rl);
+	else if (strcmp(rl->__encoding, "GB18030") == 0)
+ 		ret = _GB18030_init(l, rl);
+	else if (strcmp(rl->__encoding, "GB2312") == 0)
+		ret = _GB2312_init(l, rl);
+	else if (strcmp(rl->__encoding, "GBK") == 0)
+		ret = _GBK_init(l, rl);
+	else if (strcmp(rl->__encoding, "BIG5") == 0)
+		ret = _BIG5_init(l, rl);
+	else if (strcmp(rl->__encoding, "MSKanji") == 0)
+		ret = _MSKanji_init(l, rl);
+	else
+		ret = EFTYPE;
+
+	if (ret == 0) {
+		/* Free the old runes if it exists. */
+		free_runes(saved.runes);
+	} else {
+		/* Restore the saved version if this failed. */
+		memcpy(l, &saved, sizeof(struct xlocale_ctype));
+		free(rl);
+	}
+
+	return (ret);
 }
 
 int
-_xpg4_setrunelocale(const char *encoding)
+__wrap_setrunelocale(const char *locale)
 {
-	char path[PATH_MAX];
-	_RuneLocale *rl;
-	int error;
+	int ret = __setrunelocale(&__xlocale_global_ctype, locale);
 
-	_DIAGASSERT(encoding != NULL);
-
-	if (strcmp(encoding, "C") == 0 || strcmp(encoding, "POSIX") == 0) {
-		rl = &_DefaultRuneLocale;
-		goto found;
+	if (ret != 0) {
+		errno = ret;
+		return (_LDP_ERROR);
 	}
+	__mb_cur_max = __xlocale_global_ctype.__mb_cur_max;
+	__mb_sb_limit = __xlocale_global_ctype.__mb_sb_limit;
+	_CurrentRuneLocale = __xlocale_global_ctype.runes;
+	return (_LDP_LOADED);
+}
 
-	snprintf(path, sizeof(path), "%s/%s/LC_CTYPE", _PathLocale, encoding);
+#ifndef __NO_TLS
+void
+__set_thread_rune_locale(locale_t loc)
+{
 
-	error = _newrunelocale(path);
-	if (error)
-		return(error);
-	rl = _findrunelocale(path);
-	if (!rl)
-		return(ENOENT);
+	if (loc == NULL) {
+		_ThreadRuneLocale = &_DefaultRuneLocale;
+	} else {
+		_ThreadRuneLocale = XLOCALE_CTYPE(loc)->runes;
+	}
+}
+#endif
 
-found:
-	_CurrentRuneLocale = rl;
-	__mb_cur_max = _citrus_ctype_get_mb_cur_max(rl->rl_citrus_ctype);
+void *
+__ctype_load(const char *locale, locale_t unused)
+{
+	struct xlocale_ctype *l = calloc(sizeof(struct xlocale_ctype), 1);
 
-	return(0);
+	l->header.header.destructor = destruct_ctype;
+	if (__setrunelocale(l, locale))
+	{
+		free(l);
+		return NULL;
+	}
+	return l;
 }

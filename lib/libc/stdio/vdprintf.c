@@ -2,6 +2,11 @@
  * Copyright (c) 2009 David Schultz <das@FreeBSD.org>
  * All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -23,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdio/vdprintf.c,v 1.1 2009/03/04 03:38:51 das Exp $
+ * $FreeBSD: head/lib/libc/stdio/vdprintf.c 227753 2011-11-20 14:45:42Z theraven $
  */
 
 #include "namespace.h"
@@ -34,12 +39,12 @@
 #include "un-namespace.h"
 
 #include "local.h"
-#include "priv_stdio.h"
+#include "xlocale_private.h"
 
 int
 vdprintf(int fd, const char * __restrict fmt, va_list ap)
 {
-	FILE f;
+	FILE f = FAKE_FILE;
 	unsigned char buf[BUFSIZ];
 	int ret;
 
@@ -56,9 +61,8 @@ vdprintf(int fd, const char * __restrict fmt, va_list ap)
 	f._write = __swrite;
 	f._bf._base = buf;
 	f._bf._size = sizeof(buf);
-	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 
-	if ((ret = __vfprintf(&f, fmt, ap)) < 0)
+	if ((ret = __vfprintf(&f, __get_locale(), fmt, ap)) < 0)
 		return (ret);
 
 	return (__fflush(&f) ? EOF : ret);

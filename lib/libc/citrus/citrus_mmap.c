@@ -1,5 +1,5 @@
-/* $NetBSD: src/lib/libc/citrus/citrus_mmap.c,v 1.3 2005/01/19 00:52:37 mycroft Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_mmap.c,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_mmap.c 244350 2012-12-17 10:38:51Z jilles $ */
+/* $NetBSD: citrus_mmap.c,v 1.3 2005/01/19 00:52:37 mycroft Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -27,9 +27,11 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
+#include <sys/cdefs.h>
 #include <sys/mman.h>
+#include <sys/types.h>
 #include <sys/stat.h>
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -47,20 +49,16 @@ int
 _citrus_map_file(struct _citrus_region * __restrict r,
     const char * __restrict path)
 {
-	int fd, ret = 0;
 	struct stat st;
 	void *head;
+	int fd, ret;
 
-	_DIAGASSERT(r != NULL);
+	ret = 0;
 
 	_region_init(r, NULL, 0);
 
-	if ((fd = open(path, O_RDONLY)) == -1)
-		return errno;
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {
-		ret = errno;
-		goto error;
-	}
+	if ((fd = open(path, O_RDONLY | O_CLOEXEC)) == -1)
+		return (errno);
 
 	if (fstat(fd, &st)  == -1) {
 		ret = errno;
@@ -80,17 +78,16 @@ _citrus_map_file(struct _citrus_region * __restrict r,
 	_region_init(r, head, (size_t)st.st_size);
 
 error:
-	close(fd);
-	return ret;
+	(void)close(fd);
+	return (ret);
 }
 
 void
 _citrus_unmap_file(struct _citrus_region *r)
 {
-	_DIAGASSERT(r != NULL);
 
 	if (_region_head(r) != NULL) {
-		munmap(_region_head(r), _region_size(r));
+		(void)munmap(_region_head(r), _region_size(r));
 		_region_init(r, NULL, 0);
 	}
 }

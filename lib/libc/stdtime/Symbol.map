@@ -1,9 +1,16 @@
 DF306.0 {
+    _int_to_time;
+    _long_to_time;
+    _time32_to_time;
+    _time64_to_time;
+    _time_to_int;
+    _time_to_long;
+    _time_to_time32;
+    _time_to_time64;
     asctime;
     asctime_r;
     ctime;
     ctime_r;
-    daylight;
     difftime;
     gmtime;
     gmtime_r;
@@ -21,15 +28,4 @@ DF306.0 {
     tzname;
     tzset;
     tzsetwall;
-};
-
-DFprivate_1.0 {
-    _int_to_time;
-    _long_to_time;
-    _time32_to_time;
-    _time64_to_time;
-    _time_to_int;
-    _time_to_long;
-    _time_to_time32;
-    _time_to_time64;
 };

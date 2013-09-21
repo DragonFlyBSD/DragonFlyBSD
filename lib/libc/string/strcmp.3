@@ -30,8 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strcmp.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/strcmp.3,v 1.11 2007/01/09 00:28:12 imp Exp $
-.\" $DragonFly: src/lib/libc/string/strcmp.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
+.\" $FreeBSD: head/lib/libc/string/strcmp.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
 .Dd October 11, 2001
 .Dt STRCMP 3
@@ -76,7 +75,7 @@ The
 .Fn strcmp
 and
 .Fn strncmp
-return an integer greater than, equal to, or less than 0, according
+functions return an integer greater than, equal to, or less than 0, according
 as the string
 .Fa s1
 is greater than, equal to, or less than the string
@@ -90,7 +89,8 @@ is greater than
 .Xr memcmp 3 ,
 .Xr strcasecmp 3 ,
 .Xr strcoll 3 ,
-.Xr strxfrm 3
+.Xr strxfrm 3 ,
+.Xr wcscmp 3
 .Sh STANDARDS
 The
 .Fn strcmp

@@ -37,7 +37,6 @@
 
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
 
 static inline size_t
 p2roundup(size_t n)

@@ -1,4 +1,6 @@
-# $DragonFly: src/lib/i18n_module/DECHanyu/Makefile,v 1.1 2008/04/10 10:21:00 hasso Exp $
+# $FreeBSD: head/lib/libiconv_modules/DECHanyu/Makefile 219019 2011-02-25 00:04:39Z gabor $
 
-SRCPRE=citrus_
+LIB=	DECHanyu
+SRCS+=	citrus_dechanyu.c
+
 .include <bsd.lib.mk>

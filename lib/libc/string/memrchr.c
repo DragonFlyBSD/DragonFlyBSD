@@ -1,3 +1,5 @@
+/*	$OpenBSD: memrchr.c,v 1.2 2007/11/27 16:22:12 martynas Exp $	*/
+
 /*
  * Copyright (c) 2007 Todd C. Miller <Todd.Miller@courtesan.com>
  *
@@ -13,8 +15,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $OpenBSD: memrchr.c,v 1.2 2007/11/27 16:22:12 martynas Exp $
- * $FreeBSD: src/lib/libc/string/memrchr.c,v 1.1 2008/04/10 00:12:44 delphij Exp $
+ * $FreeBSD: head/lib/libc/string/memrchr.c 178051 2008-04-10 00:12:44Z delphij $
  */
 
 #include <string.h>

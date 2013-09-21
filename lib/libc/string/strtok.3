@@ -22,7 +22,7 @@
 .\"    disclaimer in the documentation and/or other materials provided
 .\"    with the distribution.
 .\"
-.\" 4. Neither the name of Softweyr LLC, the University nor the names
+.\" 3. Neither the name of Softweyr LLC, the University nor the names
 .\"    of its contributors may be used to endorse or promote products
 .\"    derived from this software without specific prior written
 .\"    permission.
@@ -42,14 +42,13 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strtok.3	8.2 (Berkeley) 2/3/94
-.\" $FreeBSD: src/lib/libc/string/strtok.3,v 1.26 2007/12/12 18:33:06 wes Exp $
+.\" $FreeBSD: head/lib/libc/string/strtok.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
 .Dd November 27, 1998
 .Dt STRTOK 3
 .Os
 .Sh NAME
-.Nm strtok ,
-.Nm strtok_r
+.Nm strtok , strtok_r
 .Nd string tokens
 .Sh LIBRARY
 .Lb libc
@@ -151,8 +150,9 @@ function
 conforms to
 .St -isoC .
 .Sh AUTHORS
-.An Wes Peters Aq Mt wes@softweyr.com ,
-Softweyr LLC
+.An Wes Peters ,
+Softweyr LLC:
+.Aq wes@softweyr.com
 .Pp
 Based on the
 .Fx 3.0

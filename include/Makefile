@@ -7,7 +7,7 @@
 # links.
 
 CLEANFILES= osreldate.h version vers.c vers.txt
-SUBDIR= arpa protocols rpc rpcsvc
+SUBDIR= arpa protocols rpc rpcsvc xlocale
 INCS=	a.out.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
 	dirent.h disktab.h \
 	dlfcn.h elf.h elf-hints.h err.h float.h fmtmsg.h fnmatch.h fstab.h \
@@ -17,17 +17,18 @@ INCS=	a.out.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
 	mntopts.h mpool.h mqueue.h monetary.h ndbm.h netconfig.h \
 	netdb.h nl_types.h nlist.h nss.h nsswitch.h objformat.h \
 	paths.h printf.h pthread.h pthread_np.h pwd.h \
-	ranlib.h readpassphrase.h regex.h regexp.h \
+	ranlib.h readpassphrase.h regex.h \
 	res_update.h resolv.h re_comp.h rmd160.h \
-	search.h setjmp.h sgtty.h \
+	runetype.h search.h setjmp.h sgtty.h \
 	signal.h spawn.h stab.h stdarg.h stdbool.h \
 	stddef.h stdint.h stdio.h stdlib.h \
 	string.h stringlist.h strings.h struct.h sysexits.h \
 	tar.h tgmath.h time.h \
 	timeconv.h \
-	timers.h ttyent.h tzfile.h unistd.h ulimit.h utime.h utmp.h utmpx.h \
+	timers.h ttyent.h tzfile.h \
+	uchar.h unistd.h ulimit.h utime.h utmp.h utmpx.h \
 	uuid.h vis.h \
-	wchar.h wctype.h wordexp.h
+	wchar.h wctype.h wordexp.h xlocale.h
 
 .if defined(WANT_HESIOD)
 INCS+=	hesiod.h

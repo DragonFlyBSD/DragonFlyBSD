@@ -1,5 +1,5 @@
-/* $NetBSD: src/lib/libc/citrus/citrus_module.h,v 1.1 2002/03/17 22:14:20 tshiozak Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_module.h,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_module.h 219019 2011-02-25 00:04:39Z gabor $ */
+/* $NetBSD: citrus_module.h,v 1.1 2002/03/17 22:14:20 tshiozak Exp $ */
 
 /*-
  * Copyright (c)2002 Citrus Project,
@@ -31,39 +31,24 @@
 #ifndef _CITRUS_MODULE_H_
 #define _CITRUS_MODULE_H_
 
-#include <sys/linker_set.h>
-
-struct citrus_metadata {
-    const char *module_name;
-    const char *interface_name;
-    void *module_ops;
-};
-
-#ifdef __PIC__
-#define CITRUS_MODULE(name, interface, ops)
-#else
-
-#define	CITRUS_MODULE(name, interface, ops)				\
-static const char __citrus_module_ ## name ## _ ## interface ## _str[] = \
-    #name; \
-static struct citrus_metadata						\
-    __citrus_module_ ## name ## _ ## interface = { 			\
-	    __citrus_module_ ## name ## _ ##interface ## _str,		\
-	    #interface, ops						\
-};									\
-__weak_reference(__citrus_module_ ## name ## _ ## interface ## _str,	\
-		 _citrus_module_ ## name);				\
-DATA_SET(citrus_set, __citrus_module_ ## name ## _ ## interface);
-#endif
+#define MATCH(x, act)						\
+do {								\
+	if (lenvar >= (sizeof(#x)-1) &&				\
+	    _bcs_strncasecmp(p, #x, sizeof(#x)-1) == 0) {	\
+		act;						\
+		lenvar -= sizeof(#x)-1;				\
+		p += sizeof(#x)-1;				\
+	}							\
+} while (0)
 
 typedef struct _citrus_module_rec *_citrus_module_t;
 
 __BEGIN_DECLS
-void *_citrus_find_getops(_citrus_module_t __restrict,
-			  const char * __restrict, const char * __restrict);
-int _citrus_load_module(_citrus_module_t * __restrict,
-			const char * __restrict);
-void _citrus_unload_module(_citrus_module_t);
+void	*_citrus_find_getops(_citrus_module_t __restrict,
+	    const char * __restrict, const char * __restrict);
+int	 _citrus_load_module(_citrus_module_t * __restrict,
+	    const char * __restrict);
+void	 _citrus_unload_module(_citrus_module_t);
 __END_DECLS
 
 #endif

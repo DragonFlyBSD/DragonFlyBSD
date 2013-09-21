@@ -1,104 +1,191 @@
-.\" $NetBSD: src/usr.bin/gencat/gencat.1,v 1.8 2003/05/02 08:35:42 gmcgarry Exp $
+.\"	$OpenBSD: gencat.1,v 1.3 1997/06/11 15:39:54 kstailey Exp $
 .\"
-.\" Written by Kee Hinckley <nazgul@somewhere.com>
+.\" Copyright (c) 1997 Ken Stailey
 .\"
-.Dd April 29, 1999
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. The name of the author may not be used to endorse or promote products
+.\"    derived from this software without specific prior written permission
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.\" $FreeBSD: head/usr.bin/gencat/gencat.1 213573 2010-10-08 12:40:16Z uqs $
+.\"
+.Dd June 11, 1997
 .Dt GENCAT 1
 .Os
 .Sh NAME
 .Nm gencat
-.Nd generates a Native Language Support (NLS) message catalog file
+.Nd NLS catalog compiler
 .Sh SYNOPSIS
 .Nm
-.Ar catalog-file
-.Ar message-file
-.Op Ar message-file ...
+.Ar "output-file"
+.Ar "input-files..."
 .Sh DESCRIPTION
 The
 .Nm
-command reads one or more files containing message strings that will
-be displayed using the
-.Xr catgets 3
-library call.
-From these files it generates a message catalog which
-is loaded dynamically by the Native Language Support (NLS) library at run time.
-.Pp
-The message description files are text files in the format described below.
-.Pp
-The message catalog file is a binary file.
-If it already exists, it will be truncated when
-.Nm
-is run.
-.Pp
-Error messages are grouped into sets, and a program can load a
-particular set depending on which type, or language, of messages
-is desired.
-.Sh MESSAGE FILE FORMAT
-Empty lines and leading blanks are ignored.
-.Bl -tag -width "NN message"
-.It Em "$set NN"
-Determines the set to be used for all subsequent messages.
-.Ar "NN"
-is an integer greater than 0.
-.It Em "$delset NN"
-Removes a set from the catalog.
-.Ar "NN"
-is an integer greater than 0.
-.Pp
-If a set was created earlier in the
-current file, or in a file previously read by the
-.Nm
-command, this command will remove it.
-.It Em "$quote C"
-Sets a quote character to be used around the messages.
-.Ar "C"
-may be any character other than white space.
-.Pp
-If this is specified, then messages must begin and end with the
-quote character.
-By default no quote character is used.
-If none is specified, then the current quote character is unset.
-This is useful when messages must contain leading white space.
-.It Em "NN message"
-Defines a message.
-.Ar "NN"
-is an integer greater than 0.
-.Pp
-The message is read until the end of the line or a quote character (if one is
-specified).
-If no message is provided, the message with the number
-.Ar "NN"
-is removed from the catalog.
-If no "set" has been created, this command generates an error.
+utility merges the text NLS input files
+.Ar "input-files..."
+into a formatted message catalog file
+.Ar "output-file" .
+The file
+.Ar "output-file"
+will be created if it does not already exist.
+If
+.Ar "output-file"
+does exist, its messages will be included in the new
+.Ar "output-file" .
+If set and message numbers collide, the new message text defined in
+.Ar "input-files..."
+will replace the old message text currently contained in
+.Ar "output-file" .
+.Sh INPUT FILES
+The format of a message text source file is defined below.
+Note that
+the fields of a message text source line are separated by a single space
+character: any other space characters are considered to be part of the
+field contents.
+.Bl -tag -width 3n
+.It Li $set Ar n comment
+This line specifies the set identifier of the following messages until
+the next
+.Li $set
+or end-of-file appears.
+The argument
+.Ar n
+is the set identifier which is defined as a number in the range
+[1, (NL_SETMAX)].
+Set identifiers must occur in ascending order within
+a single source file, but need not be contiguous.
+Any string following
+a space following the set identifier is treated as a comment.
+If no
+.Li $set
+directive is specified in a given source file, all messages will
+be located in the default message set NL_SETD.
+.It Li $del Ar n comment
+This line deletes messages from set
+.Ar n
+from a message catalog.
+The
+.Ar n
+specifies a set number.
+Any string following a space following the set
+number is treated as a comment.
+.It Li $ Ar comment
+A line beginning with
+.Li $
+followed by a space is treated as a comment.
+.It Ar m message-text
+A message line consists of a message identifier
+.Ar m
+in the range [1, (NL_MSGMAX)].
+The
+.Ar message-text
+is stored in the message catalog with the set identifier specified by
+the last
+.Li $set
+directive, and the message identifier
+.Ar m .
+If the
+.Ar message-text
+is empty, and there is a space character following the message identifier,
+an empty string is stored in the message catalog.
+If the
+.Ar message-text
+is empty, and if there is no space character following the message
+identifier, then the existing message in the current set with the
+specified message identifier is deleted from the catalog.
+Message
+identifiers must be in ascending order within a single set, but
+need not be contiguous.
+The
+.Ar message-text
+length must be in the range [0, (NL_TEXTMAX)].
+.It Li $quote Ar c
+This line specifies an optional quote character
+.Ar c
+which can be used to surround
+.Ar message-text
+so that trailing space or empty messages are visible in message
+source files.
+By default, or if an empty
+.Li $quote
+directive is specified, no quoting of
+.Ar message-text
+will be recognized.
 .El
 .Pp
-Messages may contain any characters, however the "\\"
-is special as an escape character, where the following instances
-are allowed:
-.Bd -literal -offset indent
-\&\\\\	Generates a single backslash.
-\&\\n	Generates a newline (as defined by the C compiler).
-\&\\t	Generates a tab (as defined by the C compiler).
-\&\\v	Generates a vertical tab (as defined by the C compiler).
-\&\\b	Generates a backspace (as defined by the C compiler).
-\&\\r	Generates a carriage return (as defined by the C compiler).
-\&\\f	Generates a form feed (as defined by the C compiler).
-\&\\NNN	Generates the character corresponding to the specified
-	octal number.
-\&\\EOL	A backslash at the end of line continues the message onto
-	the next line.
-\&\\quote	A backslash preceding the current quote character generates
-	the quote character.
-.Ed
+Empty lines in message source files are ignored.
+The effect of lines
+beginning with any character other than those described above is
+undefined.
+.Pp
+Text strings can contain the following special characters and escape
+sequences.
+In addition, if a quote character is defined, it may be
+escaped as well to embed a literal quote character.
+.Pp
+.Bl -tag -width "\eooo" -offset indent -compact
+.It Li \en
+line feed
+.It Li \et
+horizontal tab
+.It Li \ev
+vertical tab
+.It Li \eb
+backspace
+.It Li \er
+carriage return
+.It Li \ef
+form feed
+.It Li \e\e
+backslash
+.It Li \eooo
+octal number in the range [000, 377]
+.El
+.Pp
+A backslash character immediately before the end of the line in a file
+is used to continue the line onto the next line, e.g.:
+.Pp
+.Dl 1 This line is continued \e
+.Dl on this line.
+.Pp
+If the character following the backslash is not one of those specified,
+the backslash is ignored.
+.Sh EXIT STATUS
+.Ex -std
 .Sh SEE ALSO
 .Xr catclose 3 ,
 .Xr catgets 3 ,
-.Xr catopen 3 ,
-.Xr nls 7
+.Xr catopen 3
+.Sh STANDARDS
+The
+.Nm
+utility is compliant with the
+.St -xpg4
+standard.
 .Sh AUTHORS
 .An -nosplit
-The Native Language Support (NLS) message catalog facility was
-contributed by
-.An J.T. Conklin Aq Mt jtc@NetBSD.org .
-This page was written by
-.An Kee Hinckley Aq Mt nazgul@somewhere.com .
+This manual page was originally written by
+.An Ken Stailey
+and later revised by
+.An Terry Lambert .
+.Sh BUGS
+A message catalog file created from a blank input file cannot be revised;
+it must be deleted and recreated.

@@ -2,6 +2,11 @@
  * Copyright (c) 2003 David Schultz <das@FreeBSD.ORG>
  * All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -23,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gdtoa/machdep_ldisx.c,v 1.3 2007/12/03 07:17:32 das Exp $
+ * $FreeBSD: head/lib/libc/gdtoa/machdep_ldisx.c 227753 2011-11-20 14:45:42Z theraven $
  */
 
 /*
@@ -32,15 +37,17 @@
  * is an IEEE extended precision number.
  */
 
+
 #include <float.h>
 
 #include "gdtoaimp.h"
 
 long double
-strtold(const char * __restrict s, char ** __restrict sp)
+strtold_l(const char * __restrict s, char ** __restrict sp, locale_t locale)
 {
 	long double result;
+	FIX_LOCALE(locale);
 
-	strtorx(s, sp, FLT_ROUNDS, &result);
+	strtorx_l(s, sp, FLT_ROUNDS, &result, locale);
 	return result;
 }

@@ -30,8 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)swab.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/swab.c,v 1.7 2007/01/09 00:28:12 imp Exp $
- * $DragonFly: src/lib/libc/string/swab.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/swab.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <unistd.h>
@@ -43,6 +42,8 @@ swab(const void * __restrict from, void * __restrict to, ssize_t len)
 	int n;
 	char *fp, *tp;
 
+	if (len <= 0)
+		return;
 	n = len >> 1;
 	fp = (char *)from;
 	tp = (char *)to;

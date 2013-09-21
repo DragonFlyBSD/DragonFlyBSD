@@ -31,7 +31,6 @@
  *
  * @(#)fgets.c	8.2 (Berkeley) 12/22/93
  * $FreeBSD: src/lib/libc/stdio/fgets.c,v 1.14 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/fgets.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -40,7 +39,6 @@
 #include "un-namespace.h"
 #include "local.h"
 #include "libc_private.h"
-#include "priv_stdio.h"
 
 /*
  * Read at most n-1 characters from the given file.

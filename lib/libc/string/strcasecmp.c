@@ -2,6 +2,11 @@
  * Copyright (c) 1987, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -27,33 +32,53 @@
  * SUCH DAMAGE.
  *
  * @(#)strcasecmp.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/strcasecmp.c,v 1.7 2007/01/09 00:28:12 imp Exp $
- * $DragonFly: src/lib/libc/string/strcasecmp.c,v 1.8 2005/04/29 16:12:52 dillon Exp $
+ * $FreeBSD: head/lib/libc/string/strcasecmp.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
-#include <sys/types.h>
 #include <strings.h>
 #include <ctype.h>
+#include "xlocale_private.h"
 
+int
+strcasecmp_l(const char *s1, const char *s2, locale_t locale)
+{
+	const u_char
+			*us1 = (const u_char *)s1,
+			*us2 = (const u_char *)s2;
+	FIX_LOCALE(locale);
+
+	while (tolower_l(*us1, locale) == tolower_l(*us2++, locale))
+		if (*us1++ == '\0')
+			return (0);
+	return (tolower_l(*us1, locale) - tolower_l(*--us2, locale));
+}
 int
 strcasecmp(const char *s1, const char *s2)
 {
-	while (tolower((u_char)*s1) == tolower((u_char)*s2++))
-		if (*s1++ == '\0')
-			return (0);
-	return (tolower((u_char)*s1) - tolower((u_char)*--s2));
+	return strcasecmp_l(s1, s2, __get_locale());
+}
+
+int
+strncasecmp_l(const char *s1, const char *s2, size_t n, locale_t locale)
+{
+	FIX_LOCALE(locale);
+	if (n != 0) {
+		const u_char
+				*us1 = (const u_char *)s1,
+				*us2 = (const u_char *)s2;
+
+		do {
+			if (tolower_l(*us1, locale) != tolower_l(*us2++, locale))
+				return (tolower_l(*us1, locale) - tolower_l(*--us2, locale));
+			if (*us1++ == '\0')
+				break;
+		} while (--n != 0);
+	}
+	return (0);
 }
 
 int
 strncasecmp(const char *s1, const char *s2, size_t n)
 {
-	if (n != 0) {
-		do {
-			if (tolower((u_char)*s1) != tolower((u_char)*s2++))
-				return (tolower((u_char)*s1) - tolower((u_char)*--s2));
-			if (*s1++ == '\0')
-				break;
-		} while (--n != 0);
-	}
-	return (0);
+	return strncasecmp_l(s1, s2, n, __get_locale());
 }

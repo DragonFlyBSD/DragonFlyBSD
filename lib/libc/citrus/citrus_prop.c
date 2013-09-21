@@ -1,5 +1,5 @@
+/* $FreeBSD: head/lib/libc/iconv/citrus_prop.c 219019 2011-02-25 00:04:39Z gabor $ */
 /* $NetBSD: citrus_prop.c,v 1.3 2006/11/22 23:47:21 tnozaki Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_prop.c,v 1.1 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2006 Citrus Project,
@@ -28,9 +28,12 @@
  *
  */
 
+#include <sys/cdefs.h>
+
 #include <assert.h>
-#include <limits.h>
 #include <errno.h>
+#include <limits.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -47,7 +50,8 @@ typedef struct {
 	_citrus_prop_type_t type;
 	union {
 		const char *str;
-		int bool, chr;
+		int chr;
+		bool boolean;
 		uint64_t num;
 	} u;
 } _citrus_prop_object_t;
@@ -55,7 +59,6 @@ typedef struct {
 static __inline void
 _citrus_prop_object_init(_citrus_prop_object_t *obj, _citrus_prop_type_t type)
 {
-	_DIAGASSERT(obj != NULL);
 
 	obj->type = type;
 	memset(&obj->u, 0, sizeof(obj->u));
@@ -64,7 +67,6 @@ _citrus_prop_object_init(_citrus_prop_object_t *obj, _citrus_prop_type_t type)
 static __inline void
 _citrus_prop_object_uninit(_citrus_prop_object_t *obj)
 {
-	_DIAGASSERT(obj != NULL);
 
 	if (obj->type == _CITRUS_PROP_STR)
 		free(__DECONST(void *, obj->u.str));
@@ -75,14 +77,11 @@ static const char *xdigit = "0123456789ABCDEF";
 #define _CITRUS_PROP_READ_UINT_COMMON(_func_, _type_, _max_)		\
 static int								\
 _citrus_prop_read_##_func_##_common(struct _memstream * __restrict ms,	\
-	_type_ * __restrict result, int base)				\
+    _type_ * __restrict result, int base)				\
 {									\
 	_type_ acc, cutoff;						\
-	int n, ch, cutlim;						\
+	int ch, cutlim, n;						\
 	char *p;							\
-									\
-	_DIAGASSERT(ms != NULL);					\
-	_DIAGASSERT(result != NULL);					\
 									\
 	acc = (_type_)0;						\
 	cutoff = _max_ / base;						\
@@ -99,7 +98,7 @@ _citrus_prop_read_##_func_##_common(struct _memstream * __restrict ms,	\
 	}								\
 	_memstream_ungetc(ms, ch);					\
 	*result = acc;							\
-	return 0;							\
+	return (0);							\
 }
 _CITRUS_PROP_READ_UINT_COMMON(chr, int, UCHAR_MAX)
 _CITRUS_PROP_READ_UINT_COMMON(num, uint64_t, UINT64_MAX)
@@ -108,12 +107,9 @@ _CITRUS_PROP_READ_UINT_COMMON(num, uint64_t, UINT64_MAX)
 #define _CITRUS_PROP_READ_INT(_func_, _type_)			\
 static int							\
 _citrus_prop_read_##_func_(struct _memstream * __restrict ms,	\
-	_citrus_prop_object_t * __restrict obj)			\
+    _citrus_prop_object_t * __restrict obj)			\
 {								\
-	int ch, neg, base;					\
-								\
-	_DIAGASSERT(ms != NULL);				\
-	_DIAGASSERT(obj != NULL);				\
+	int base, ch, neg;					\
 								\
 	_memstream_skip_ws(ms);					\
 	ch = _memstream_getc(ms);				\
@@ -133,15 +129,15 @@ _citrus_prop_read_##_func_(struct _memstream * __restrict ms,	\
 			if (_bcs_isxdigit(ch) == 0) {		\
 				_memstream_ungetc(ms, ch);	\
 				obj->u._func_ = 0;		\
-				return 0;			\
+				return (0);			\
 			}					\
 			base += 8;				\
 		}						\
 	} else if (_bcs_isdigit(ch) == 0)			\
-		return EINVAL;					\
+		return (EINVAL);				\
 	_memstream_ungetc(ms, ch);				\
-	return _citrus_prop_read_##_func_##_common		\
-	    (ms, &obj->u._func_, base);				\
+	return (_citrus_prop_read_##_func_##_common		\
+	    (ms, &obj->u._func_, base));			\
 }
 _CITRUS_PROP_READ_INT(chr, int)
 _CITRUS_PROP_READ_INT(num, uint64_t)
@@ -149,74 +145,80 @@ _CITRUS_PROP_READ_INT(num, uint64_t)
 
 static int
 _citrus_prop_read_character_common(struct _memstream * __restrict ms,
-	int * __restrict result)
+    int * __restrict result)
 {
-	int ch, base;
-
-	_DIAGASSERT(ms != NULL);
-	_DIAGASSERT(result != NULL);
+	int base, ch;
 
 	ch = _memstream_getc(ms);
-	if (ch != '\\') {
+	if (ch != '\\')
 		*result = ch;
-	} else {
+	else {
 		ch = _memstream_getc(ms);
 		base = 16;
 		switch (ch) {
-		case 'a': *result = '\a'; break;
-		case 'b': *result = '\b'; break;
-		case 'f': *result = '\f'; break;
-		case 'n': *result = '\n'; break;
-		case 'r': *result = '\r'; break;
-		case 't': *result = '\t'; break;
-		case 'v': *result = '\v'; break;
-		/*FALLTHROUGH*/
+		case 'a':
+			*result = '\a';
+			break;
+		case 'b':
+			*result = '\b';
+			break;
+		case 'f':
+			*result = '\f';
+			break;
+		case 'n':
+			*result = '\n';
+			break;
+		case 'r':
+			*result = '\r';
+			break;
+		case 't':
+			*result = '\t';
+			break;
+		case 'v':
+			*result = '\v';
+			break;
 		case '0': case '1': case '2': case '3':
 		case '4': case '5': case '6': case '7':
 			_memstream_ungetc(ms, ch);
 			base -= 8;
+			/*FALLTHROUGH*/
 		case 'x':
-			return _citrus_prop_read_chr_common(ms, result, base);
-			
+			return (_citrus_prop_read_chr_common(ms, result, base));
+			/*NOTREACHED*/
 		default:
 			/* unknown escape */
 			*result = ch;
 		}
 	}
-	return 0;
+	return (0);
 }
 
 static int
 _citrus_prop_read_character(struct _memstream * __restrict ms,
-	_citrus_prop_object_t * __restrict obj)
+    _citrus_prop_object_t * __restrict obj)
 {
 	int ch, errnum;
-
-	_DIAGASSERT(ms != NULL);
-	_DIAGASSERT(obj != NULL);
 
 	_memstream_skip_ws(ms);
 	ch = _memstream_getc(ms);
 	if (ch != '\'') {
 		_memstream_ungetc(ms, ch);
-		return _citrus_prop_read_chr(ms, obj);
+		return (_citrus_prop_read_chr(ms, obj));
 	}
 	errnum = _citrus_prop_read_character_common(ms, &ch);
 	if (errnum != 0)
-		return errnum;
+		return (errnum);
 	obj->u.chr = ch;
 	ch = _memstream_getc(ms);
 	if (ch != '\'')
-		return EINVAL;
-	return 0;
+		return (EINVAL);
+	return (0);
 }
 
 static int
 _citrus_prop_read_bool(struct _memstream * __restrict ms,
-	_citrus_prop_object_t * __restrict obj)
+    _citrus_prop_object_t * __restrict obj)
 {
-	_DIAGASSERT(ms != NULL);
-	_DIAGASSERT(obj != NULL);
 
 	_memstream_skip_ws(ms);
 	switch (_bcs_tolower(_memstream_getc(ms))) {
@@ -224,8 +226,8 @@ _citrus_prop_read_bool(struct _memstream * __restrict ms,
 		if (_bcs_tolower(_memstream_getc(ms)) == 'r' &&
 		    _bcs_tolower(_memstream_getc(ms)) == 'u' &&
 		    _bcs_tolower(_memstream_getc(ms)) == 'e') {
-			obj->u.bool = 1;
-			return 0;
+			obj->u.boolean = true;
+			return (0);
 		}
 		break;
 	case 'f':
@@ -233,39 +235,37 @@ _citrus_prop_read_bool(struct _memstream * __restrict ms,
 		    _bcs_tolower(_memstream_getc(ms)) == 'l' &&
 		    _bcs_tolower(_memstream_getc(ms)) == 's' &&
 		    _bcs_tolower(_memstream_getc(ms)) == 'e') {
-			obj->u.bool = 0;
-			return 0;
+			obj->u.boolean = false;
+			return (0);
 		}
 	}
-	return EINVAL;
+	return (EINVAL);
 }
 
 static int
 _citrus_prop_read_str(struct _memstream * __restrict ms,
-	_citrus_prop_object_t * __restrict obj)
+    _citrus_prop_object_t * __restrict obj)
 {
-	int errnum, quot, ch;
+	int ch, errnum, quot;
 	char *s, *t;
 #define _CITRUS_PROP_STR_BUFSIZ	512
-	size_t n, m;
-
-	_DIAGASSERT(ms != NULL);
-	_DIAGASSERT(obj != NULL);
+	size_t m, n;
 
 	m = _CITRUS_PROP_STR_BUFSIZ;
 	s = malloc(m);
 	if (s == NULL)
-		return ENOMEM;
+		return (ENOMEM);
 	n = 0;
 	_memstream_skip_ws(ms);
 	quot = _memstream_getc(ms);
 	switch (quot) {
 	case EOF:
 		goto done;
+		/*NOTREACHED*/
 	case '\\':
 		_memstream_ungetc(ms, quot);
 		quot = EOF;
-	/*FALLTHROUGH*/
+		/*FALLTHROUGH*/
 	case '\"': case '\'':
 		break;
 	default:
@@ -279,7 +279,7 @@ _citrus_prop_read_str(struct _memstream * __restrict ms,
 			t = realloc(s, n + m);
 			if (t == NULL) {
 				free(s);
-				return ENOMEM;
+				return (ENOMEM);
 			}
 			s = t;
 		}
@@ -289,22 +289,22 @@ _citrus_prop_read_str(struct _memstream * __restrict ms,
 done:
 			s[n] = '\0';
 			obj->u.str = (const char *)s;
-			return 0;
+			return (0);
 		}
 		_memstream_ungetc(ms, ch);
 		errnum = _citrus_prop_read_character_common(ms, &ch);
 		if (errnum != 0)
-			return errnum;
+			return (errnum);
 		s[n] = ch;
 		++n, --m;
 	}
 	free(s);
-	return EINVAL;
+	return (EINVAL);
 #undef _CITRUS_PROP_STR_BUFSIZ
 }
 
 typedef int (*_citrus_prop_read_type_t)(struct _memstream * __restrict,
-	_citrus_prop_object_t * __restrict);
+    _citrus_prop_object_t * __restrict);
 
 static const _citrus_prop_read_type_t readers[] = {
 	_citrus_prop_read_bool,
@@ -315,14 +315,10 @@ static const _citrus_prop_read_type_t readers[] = {
 
 static __inline int
 _citrus_prop_read_symbol(struct _memstream * __restrict ms,
-	char * __restrict s, size_t n)
+    char * __restrict s, size_t n)
 {
 	int ch;
 	size_t m;
-
-	_DIAGASSERT(ms != NULL);
-	_DIAGASSERT(s != NULL);
-	_DIAGASSERT(n > 0);
 
 	for (m = 0; m < n; ++m) {
 		ch = _memstream_getc(ms);
@@ -332,19 +328,18 @@ _citrus_prop_read_symbol(struct _memstream * __restrict ms,
 	}
 	ch = _memstream_getc(ms);
 	if (ch == '_' || _bcs_isalnum(ch) != 0)
-		return EINVAL;
+		return (EINVAL);
 
 name_found:
 	_memstream_ungetc(ms, ch);
 	s[m] = '\0';
 
-	return 0;
+	return (0);
 }
 
 static int
 _citrus_prop_parse_element(struct _memstream * __restrict ms,
-	const _citrus_prop_hint_t * __restrict hints,
-	void ** __restrict context)
+    const _citrus_prop_hint_t * __restrict hints, void ** __restrict context)
 {
 	int ch, errnum;
 #define _CITRUS_PROP_HINT_NAME_LEN_MAX	255
@@ -352,17 +347,13 @@ _citrus_prop_parse_element(struct _memstream * __restrict ms,
 	const _citrus_prop_hint_t *hint;
 	_citrus_prop_object_t ostart, oend;
 
-	_DIAGASSERT(ms != NULL);
-	_DIAGASSERT(hints != NULL);
-
 	errnum = _citrus_prop_read_symbol(ms, name, sizeof(name));
 	if (errnum != 0)
-		return errnum;
-	for (hint = hints; hint->name != NULL; ++hint) {
+		return (errnum);
+	for (hint = hints; hint->name != NULL; ++hint)
 		if (_citrus_bcs_strcasecmp(name, hint->name) == 0)
 			goto hint_found;
-	}
-	return EINVAL;
+	return (EINVAL);
 
 hint_found:
 	_memstream_skip_ws(ms);
@@ -374,11 +365,12 @@ hint_found:
 		_citrus_prop_object_init(&oend, hint->type);
 		errnum = (*readers[hint->type])(ms, &ostart);
 		if (errnum != 0)
-			return errnum;
+			return (errnum);
 		_memstream_skip_ws(ms);
 		ch = _memstream_getc(ms);
 		switch (hint->type) {
 		case _CITRUS_PROP_BOOL:
+			/*FALLTHROUGH*/
 		case _CITRUS_PROP_STR:
 			break;
 		default:
@@ -386,27 +378,33 @@ hint_found:
 				break;
 			errnum = (*readers[hint->type])(ms, &oend);
 			if (errnum != 0)
-				return errnum;
+				return (errnum);
 			_memstream_skip_ws(ms);
 			ch = _memstream_getc(ms);
 		}
 #define CALL0(_func_)					\
 do {							\
-	_DIAGASSERT(hint->cb._func_.func != NULL);	\
 	errnum = (*hint->cb._func_.func)(context,	\
 	    hint->name,	ostart.u._func_);		\
-} while (/*CONSTCOND*/0)
+} while (0)
 #define CALL1(_func_)					\
 do {							\
-	_DIAGASSERT(hint->cb._func_.func != NULL);	\
 	errnum = (*hint->cb._func_.func)(context,	\
 	    hint->name,	ostart.u._func_, oend.u._func_);\
-} while (/*CONSTCOND*/0)
+} while (0)
 		switch (hint->type) {
-		case _CITRUS_PROP_BOOL: CALL0(bool); break;
-		case _CITRUS_PROP_STR : CALL0( str); break;
-		case _CITRUS_PROP_CHR : CALL1( chr); break;
-		case _CITRUS_PROP_NUM : CALL1( num); break;
+		case _CITRUS_PROP_BOOL:
+			CALL0(boolean);
+			break;
+		case _CITRUS_PROP_STR:
+			CALL0(str);
+			break;
+		case _CITRUS_PROP_CHR:
+			CALL1(chr);
+			break;
+		case _CITRUS_PROP_NUM:
+			CALL1(num);
+			break;
 		default:
 			abort();
 			/*NOTREACHED*/
@@ -416,21 +414,19 @@ do {							\
 		_citrus_prop_object_uninit(&ostart);
 		_citrus_prop_object_uninit(&oend);
 		if (errnum != 0)
-			return errnum;
+			return (errnum);
 	} while (ch == ',');
 	if (ch != ';')
 		_memstream_ungetc(ms, ch);
-	return 0;
+	return (0);
 }
 
 int
 _citrus_prop_parse_variable(const _citrus_prop_hint_t * __restrict hints,
-	void * __restrict context, const void *var, size_t lenvar)
+    void * __restrict context, const void *var, size_t lenvar)
 {
 	struct _memstream ms;
-	int errnum, ch;
-
-	_DIAGASSERT(hints != NULL);
+	int ch, errnum;
 
 	_memstream_bind_ptr(&ms, __DECONST(void *, var), lenvar);
 	for (;;) {
@@ -440,9 +436,9 @@ _citrus_prop_parse_variable(const _citrus_prop_hint_t * __restrict hints,
 			break;
 		_memstream_ungetc(&ms, ch);
 		errnum = _citrus_prop_parse_element(
-		    &ms, hints, (void **)&context);
+		    &ms, hints, (void ** __restrict)context);
 		if (errnum != 0)
-			return errnum;
+			return (errnum);
 	}
-	return 0;
+	return (0);
 }

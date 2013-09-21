@@ -36,7 +36,6 @@
 #include <stdlib.h>
 
 #include "local.h"
-#include "priv_stdio.h"
 
 struct fmemopen_cookie {
 	char *head, *tail, *cur, *eob;

@@ -1,9 +1,11 @@
-/*	$NetBSD: fgetwln.c,v 1.2 2009/01/31 06:08:28 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdio/fgetwln.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
-
 /*-
  * Copyright (c) 2002-2004 Tim J. Robbins.
  * All rights reserved.
+ *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,33 +27,36 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/lib/libc/stdio/fgetwln.c 227753 2011-11-20 14:45:42Z theraven $
  */
+
 
 #include "namespace.h"
 #include <stdio.h>
 #include <wchar.h>
 #include "un-namespace.h"
-
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
+#include "xlocale_private.h"
 
 wchar_t *
-fgetwln(FILE * __restrict fp, size_t *lenp)
+fgetwln_l(FILE * __restrict fp, size_t *lenp, locale_t locale)
 {
 	wint_t wc;
 	size_t len;
+	FIX_LOCALE(locale);
 
 	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, 1);
+	ORIENT(fp, 1);
 
 	len = 0;
-	while ((wc = __fgetwc_unlock(fp)) != WEOF) {
+	while ((wc = __fgetwc(fp, locale)) != WEOF) {
 #define	GROW	512
-		if (len * sizeof(wchar_t) >= (size_t)fp->_lb._size &&
+		if (len * sizeof(wchar_t) >= fp->_lb._size &&
 		    __slbexpand(fp, (len + GROW) * sizeof(wchar_t)))
 			goto error;
-		*((wchar_t *)(void *)fp->_lb._base + len++) = wc;
+		*((wchar_t *)fp->_lb._base + len++) = wc;
 		if (wc == L'\n')
 			break;
 	}
@@ -60,10 +65,15 @@ fgetwln(FILE * __restrict fp, size_t *lenp)
 
 	FUNLOCKFILE(fp);
 	*lenp = len;
-	return ((wchar_t *)(void *)fp->_lb._base);
+	return ((wchar_t *)fp->_lb._base);
 
 error:
 	FUNLOCKFILE(fp);
 	*lenp = 0;
 	return (NULL);
+}
+wchar_t *
+fgetwln(FILE * __restrict fp, size_t *lenp)
+{
+	return fgetwln_l(fp, lenp, __get_locale());
 }

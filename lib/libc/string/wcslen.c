@@ -23,10 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * citrus Id: wcslen.c,v 1.1 1999/12/29 21:47:45 tshiozak Exp
- * $NetBSD: wcslen.c,v 1.1 2000/12/23 23:14:36 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcslen.c,v 1.6 2002/09/21 00:29:23 tjr Exp $
- * $DragonFly: src/lib/libc/string/wcslen.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
+ *	citrus Id: wcslen.c,v 1.1 1999/12/29 21:47:45 tshiozak Exp
+ * $FreeBSD: head/lib/libc/string/wcslen.c 188080 2009-02-03 17:58:20Z danger $
  */
 
 #include <wchar.h>
@@ -40,5 +38,5 @@ wcslen(const wchar_t *s)
 	while (*p)
 		p++;
 
-	return (p - s);
+	return p - s;
 }

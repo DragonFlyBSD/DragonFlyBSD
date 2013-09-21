@@ -26,9 +26,8 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc/nls/catgets.3,v 1.7.2.4 2001/12/14 18:33:56 ru Exp $
-.\" $DragonFly: src/lib/libc/nls/catgets.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
-.Dd May 29, 1994
+.\" $FreeBSD: head/lib/libc/nls/catgets.3 147402 2005-06-15 19:04:04Z ru $
+.Dd February 12, 2005
 .Dt CATGETS 3
 .Os
 .Sh NAME
@@ -59,6 +58,19 @@ If the specified message was retrieved successfully,
 returns a pointer to an internal buffer containing the message string;
 otherwise it returns
 .Fa s .
+.Sh ERRORS
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Fa catd
+argument is not a valid message catalog descriptor.
+.It Bq Er EBADMSG
+The message identified by
+.Fa set_id
+and
+.Fa msg_id
+is not in the message catalog.
+.El
 .Sh SEE ALSO
 .Xr gencat 1 ,
 .Xr catclose 3 ,
@@ -67,4 +79,4 @@ otherwise it returns
 The
 .Fn catgets
 function conforms to
-.St -xpg4 .
+.St -p1003.1-2001 .

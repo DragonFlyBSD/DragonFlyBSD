@@ -26,36 +26,36 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/colldef/scan.l,v 1.11.2.2 2002/10/11 10:43:45 ache Exp $
+ * $FreeBSD: head/usr.bin/colldef/scan.l 175038 2008-01-01 10:04:10Z imp $
  */
+
 
 #include <ctype.h>
 #include <err.h>
 #include <limits.h>
+#include <unistd.h>
 #include <string.h>
 #include <sysexits.h>
-#include <unistd.h>
 #include "common.h"
 #include "y.tab.h"
 
 #pragma GCC diagnostic ignored "-Wsign-compare"
 
 int line_no = 1, save_no, fromsubs;
-static u_char buffer[BUFSIZE], *buf_ptr;
+u_char buff[BUFSIZE], *zptr;
 FILE *map_fp;
 YY_BUFFER_STATE main_buf, map_buf;
 #ifdef FLEX_DEBUG
 YYSTYPE yylval;
 #endif /* FLEX_DEBUG */
-
 %}
 %option noinput
 %option nounput
 %%
 <INITIAL,charmap,nchar,subs,subs2>[ \t]+      ;
-<subs2>\"               { buf_ptr = buffer; BEGIN(string); }
-<subs>\<                { buf_ptr = buffer; fromsubs = 1; BEGIN(name); }
-<INITIAL>\<             { buf_ptr = buffer; fromsubs = 0; BEGIN(name); }
+<subs2>\"               { zptr = buff; BEGIN(string); }
+<subs>\<                { zptr = buff; fromsubs = 1; BEGIN(name); }
+<INITIAL>\<             { zptr = buff; fromsubs = 0; BEGIN(name); }
 ^#.*\n			line_no++;
 ^\n			line_no++;
 <INITIAL>\\\n           line_no++;
@@ -74,7 +74,7 @@ YYSTYPE yylval;
 <INITIAL,nchar>\n       {
 	line_no++;
 	if (map_fp != NULL) {
-		buf_ptr = buffer;
+		zptr = buff;
 		BEGIN(defn);
 	}
 	return '\n';
@@ -103,45 +103,45 @@ YYSTYPE yylval;
 <INITIAL,nchar,subs>.   { yylval.ch = *yytext; return CHAR; }
 <defn>^#.*\n            line_no++;
 <defn>[ \t]+            {
-	if (buf_ptr == buffer)
+	if (zptr == buff)
 		errx(EX_UNAVAILABLE, "map expected near line %u of %s",
 		     line_no, map_name);
-	*buf_ptr = '\0';
-	strcpy(yylval.str, buffer);
+	*zptr = '\0';
+	strcpy(yylval.str, buff);
 	BEGIN(nchar);
 	return DEFN;
 }
 <name>\/\/              {
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "name buffer overflow near line %u, character '/'",
 		     line_no);
-	*buf_ptr++ = '/';
+	*zptr++ = '/';
 }
 <name>\/\>              {
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "name buffer overflow near line %u, character '>'",
 		     line_no);
-	*buf_ptr++ = '>';
+	*zptr++ = '>';
 }
 <string>\\\"		{
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "string buffer overflow near line %u, character '\"'",
 		     line_no);
-	*buf_ptr++ = '"';
+	*zptr++ = '"';
 }
 <name>\>		{
 	u_int i;
 
-	if (buf_ptr == buffer)
+	if (zptr == buff)
 		errx(EX_UNAVAILABLE, "non-empty name expected near line %u",
 		     line_no);
-	*buf_ptr = '\0';
+	*zptr = '\0';
 	for (i = 0; i <= UCHAR_MAX; i++) {
-		if (strcmp(charmap_table[i], buffer) == 0)
+		if (strcmp(charmap_table[i], buff) == 0)
 			goto findit;
 	}
 	errx(EX_UNAVAILABLE, "name <%s> not 'charmap'-defined near line %u",
-		buffer, line_no);
+		buff, line_no);
  findit:
 	yylval.ch = i;
 	if (fromsubs)
@@ -151,8 +151,8 @@ YYSTYPE yylval;
 	return CHAR;
 }
 <string>\"		{
-	*buf_ptr = '\0';
-	strcpy(yylval.str, buffer);
+	*zptr = '\0';
+	strcpy(yylval.str, buff);
 	BEGIN(subs2);
 	return STRING;
 }
@@ -162,52 +162,52 @@ YYSTYPE yylval;
 	if (!isascii(*yytext) || !isprint(*yytext))
 		errx(EX_UNAVAILABLE, "non-ASCII or non-printable character 0x%02x not allowed in the map/name near line %u of %s",
 		     *yytext, line_no, s);
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "map/name buffer overflow near line %u of %s, character '%c'",
 		     line_no, s, *yytext);
-	*buf_ptr++ = *yytext;
+	*zptr++ = *yytext;
 }
 <string>\\t             {
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "string buffer overflow near line %u, character '\\t'",
 		     line_no);
-	*buf_ptr++ = '\t';
+	*zptr++ = '\t';
 }
 <string>\\b             {
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "string buffer overflow near line %u, character '\\b'",
 		     line_no);
-	*buf_ptr++ = '\b';
+	*zptr++ = '\b';
 }
 <string>\\f             {
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "string buffer overflow near line %u, character '\\f'",
 		     line_no);
-	*buf_ptr++ = '\f';
+	*zptr++ = '\f';
 }
 <string>\\v             {
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "string buffer overflow near line %u, character '\\v'",
 		     line_no);
-	*buf_ptr++ = '\v';
+	*zptr++ = '\v';
 }
 <string>\\n             {
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "string buffer overflow near line %u, character '\\n'",
 		     line_no);
-	*buf_ptr++ = '\n';
+	*zptr++ = '\n';
 }
 <string>\\r             {
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "string buffer overflow near line %u, character '\\r'",
 		     line_no);
-	*buf_ptr++ = '\r';
+	*zptr++ = '\r';
 }
 <string>\\a             {
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "string buffer overflow near line %u, character '\\a'",
 		     line_no);
-	*buf_ptr++ = '\a';
+	*zptr++ = '\a';
 }
 <name,string,defn>\n            {
 	const char *s = (map_fp != NULL) ? map_name : "input";
@@ -223,25 +223,25 @@ YYSTYPE yylval;
 	u_int v;
 
 	sscanf(&yytext[2], "%x", &v);
-	*buf_ptr++ = (u_char)v;
+	*zptr++ = (u_char)v;
 }
 <string>\\[0-7]{3}              {
 	u_int v;
 
 	sscanf(&yytext[1], "%o", &v);
-	*buf_ptr++ = (u_char)v;
+	*zptr++ = (u_char)v;
 }
 <string>\\.             {
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "string buffer overflow near line %u, character '%c'",
 		     line_no, yytext[1]);
-	*buf_ptr++ = yytext[1];
+	*zptr++ = yytext[1];
 }
 <string>.               {
-	if(buf_ptr >= buffer + sizeof(buffer) - 1)
+	if(zptr >= buff + sizeof(buff) - 1)
 		errx(EX_UNAVAILABLE, "string buffer overflow near line %u, character '%c'",
 		     line_no, *yytext);
-	*buf_ptr++ = *yytext;
+	*zptr++ = *yytext;
 }
 <charmap>[^ \t\n]+	{
 	strcat(map_name, "/");
@@ -254,7 +254,7 @@ YYSTYPE yylval;
 	map_buf = yy_new_buffer(map_fp, YY_BUF_SIZE);
 	main_buf = YY_CURRENT_BUFFER;
 	yy_switch_to_buffer(map_buf);
-	buf_ptr = buffer;
+	zptr = buff;
 	BEGIN(defn);
 }
 <charmap>\n             {
@@ -267,7 +267,7 @@ YYSTYPE yylval;
 }
 <INITIAL,defn><<EOF>>                 {
 	if(map_fp != NULL) {
-		if (buf_ptr != buffer)
+		if (zptr != buff)
 			errx(EX_UNAVAILABLE, "premature EOF in the map near line %u of %s", line_no, map_name);
 		yy_switch_to_buffer(main_buf);
 		yy_delete_buffer(map_buf);
@@ -280,7 +280,7 @@ YYSTYPE yylval;
 }
 %%
 #ifdef FLEX_DEBUG
-main(void)
+main()
 {
 	while(yylex())
 		;

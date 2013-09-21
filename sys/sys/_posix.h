@@ -73,7 +73,7 @@
 /* Default to existing user space version.
  */
 #ifndef _POSIX_VERSION
-#define	_POSIX_VERSION		200112L
+#define	_POSIX_VERSION		200809L
 #endif
 
 /* Test for visibility of P1003.1B features:

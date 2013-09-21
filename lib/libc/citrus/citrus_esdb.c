@@ -1,6 +1,5 @@
+/* $FreeBSD: head/lib/libc/iconv/citrus_esdb.c 219019 2011-02-25 00:04:39Z gabor $ */
 /* $NetBSD: citrus_esdb.c,v 1.5 2008/02/09 14:56:20 junyoung Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_esdb.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
-
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -28,14 +27,17 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/cdefs.h>
+#include <sys/types.h>
+
 #include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
 #include <limits.h>
 #include <paths.h>
-#include <sys/types.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "citrus_namespace.h"
 #include "citrus_types.h"
@@ -59,8 +61,9 @@
 const char *
 _citrus_esdb_alias(const char *esname, char *buf, size_t bufsize)
 {
-	return _lookup_alias(_PATH_ESDB "/" ESDB_ALIAS, esname, buf, bufsize,
-			     _LOOKUP_CASE_IGNORE);
+
+	return (_lookup_alias(_PATH_ESDB "/" ESDB_ALIAS, esname, buf, bufsize,
+	    _LOOKUP_CASE_IGNORE));
 }
 
 
@@ -71,11 +74,11 @@ _citrus_esdb_alias(const char *esname, char *buf, size_t bufsize)
 static int
 conv_esdb(struct _citrus_esdb *esdb, struct _region *fr)
 {
-	int ret;
 	struct _citrus_db *db;
-	uint32_t version, num_charsets, csid, i, tmp;
-	char buf[100];
 	const char *str;
+	char buf[100];
+	uint32_t csid, i, num_charsets, tmp, version;
+	int ret;
 
 	/* open db */
 	ret = _db_open(&db, fr, _CITRUS_ESDB_MAGIC, &_db_hash_std, NULL);
@@ -110,7 +113,7 @@ conv_esdb(struct _citrus_esdb *esdb, struct _region *fr)
 	esdb->db_variable = NULL;
 	ret = _db_lookupstr_by_s(db, _CITRUS_ESDB_SYM_VARIABLE, &str, NULL);
 	if (ret == 0) {
-		esdb->db_len_variable = strlen(str)+1;
+		esdb->db_len_variable = strlen(str) + 1;
 		esdb->db_variable = strdup(str);
 		if (esdb->db_variable == NULL) {
 			ret = errno;
@@ -121,7 +124,7 @@ conv_esdb(struct _citrus_esdb *esdb, struct _region *fr)
 
 	/* get number of charsets */
 	ret = _db_lookup32_by_s(db, _CITRUS_ESDB_SYM_NUM_CHARSETS,
-				&num_charsets, NULL);
+	    &num_charsets, NULL);
 	if (ret)
 		goto err3;
 	esdb->db_num_charsets = num_charsets;
@@ -163,7 +166,7 @@ conv_esdb(struct _citrus_esdb *esdb, struct _region *fr)
 	}
 
 	_db_close(db);
-	return 0;
+	return (0);
 
 err4:
 	for (; i > 0; i--)
@@ -178,7 +181,7 @@ err1:
 	if (ret == ENOENT)
 		ret = EFTYPE;
 err0:
-	return ret;
+	return (ret);
 }
 
 /*
@@ -188,34 +191,32 @@ err0:
 int
 _citrus_esdb_open(struct _citrus_esdb *db, const char *esname)
 {
-	int ret;
+	struct _region fr;
 	const char *realname, *encfile;
 	char buf1[PATH_MAX], buf2[PATH_MAX], path[PATH_MAX];
-	struct _region fr;
-
-	_DIAGASSERT(esname != NULL);
+	int ret;
 
 	snprintf(path, sizeof(path), "%s/%s", _PATH_ESDB, ESDB_ALIAS);
 	realname = _lookup_alias(path, esname, buf1, sizeof(buf1),
-				 _LOOKUP_CASE_IGNORE);
+	    _LOOKUP_CASE_IGNORE);
 
 	snprintf(path, sizeof(path), "%s/%s", _PATH_ESDB, ESDB_DIR);
 	encfile = _lookup_simple(path, realname, buf2, sizeof(buf2),
-				 _LOOKUP_CASE_IGNORE);
-	if (encfile==NULL)
-		return ENOENT;
+	    _LOOKUP_CASE_IGNORE);
+	if (encfile == NULL)
+		return (ENOENT);
 
 	/* open file */
 	snprintf(path, sizeof(path), "%s/%s", _PATH_ESDB, encfile);
 	ret = _map_file(&fr, path);
 	if (ret)
-		return ret;
+		return (ret);
 
 	ret = conv_esdb(db, &fr);
 
 	_unmap_file(&fr);
 
-	return ret;
+	return (ret);
 }
 
 /*
@@ -225,12 +226,8 @@ _citrus_esdb_open(struct _citrus_esdb *db, const char *esname)
 void
 _citrus_esdb_close(struct _citrus_esdb *db)
 {
-	int i;
 
-	_DIAGASSERT(db != NULL);
-	_DIAGASSERT(db->db_num_charsets == 0 || db->db_charsets != NULL);
-
-	for (i = 0; i < db->db_num_charsets; i++)
+	for (int i = 0; i < db->db_num_charsets; i++)
 		free(db->db_charsets[i].ec_csname);
 	db->db_num_charsets = 0;
 	free(db->db_charsets); db->db_charsets = NULL;
@@ -246,9 +243,8 @@ _citrus_esdb_close(struct _citrus_esdb *db)
 void
 _citrus_esdb_free_list(char **list, size_t num)
 {
-	size_t i;
 
-	for (i = 0; i < num; i++)
+	for (size_t i = 0; i < num; i++)
 		free(list[i]);
 	free(list);
 }
@@ -258,24 +254,24 @@ _citrus_esdb_free_list(char **list, size_t num)
  *	get esdb entries.
  */
 int
-_citrus_esdb_get_list(char ***rlist, size_t *rnum)
+_citrus_esdb_get_list(char ***rlist, size_t *rnum, bool sorted)
 {
-	int ret;
-	struct _region key;
-	size_t num;
 	struct _citrus_lookup *cla, *cld;
+	struct _region key, data;
 	char **list, **q;
 	char buf[PATH_MAX];
+	size_t num;
+	int ret;
 
 	num = 0;
 
 	ret = _lookup_seq_open(&cla, _PATH_ESDB "/" ESDB_ALIAS,
-			       _LOOKUP_CASE_IGNORE);
+	    _LOOKUP_CASE_IGNORE);
 	if (ret)
 		goto quit0;
 
 	ret = _lookup_seq_open(&cld, _PATH_ESDB "/" ESDB_DIR,
-			       _LOOKUP_CASE_IGNORE);
+	    _LOOKUP_CASE_IGNORE);
 	if (ret)
 		goto quit1;
 
@@ -294,11 +290,20 @@ _citrus_esdb_get_list(char ***rlist, size_t *rnum)
 	}
 
 	/* get alias entries */
-	while ((ret = _lookup_seq_next(cla, &key, NULL)) == 0) {
-		snprintf(buf, sizeof(buf), "%.*s",
-			 (int)_region_size(&key),
-			 (const char *)_region_head(&key));
-		_bcs_convert_to_lower(buf);
+	while ((ret = _lookup_seq_next(cla, &key, &data)) == 0) {
+		if (sorted)
+			snprintf(buf, sizeof(buf), "%.*s/%.*s",
+			    (int)_region_size(&data),
+			    (const char *)_region_head(&data),
+			    (int)_region_size(&key),
+			    (const char *)_region_head(&key));
+		else
+			snprintf(buf, sizeof(buf), "%.*s/%.*s",
+			    (int)_region_size(&data),
+			    (const char *)_region_head(&data),
+			    (int)_region_size(&key),
+			    (const char *)_region_head(&key));
+		_bcs_convert_to_upper(buf);
 		list[num] = strdup(buf);
 		if (list[num] == NULL) {
 			ret = errno;
@@ -309,12 +314,28 @@ _citrus_esdb_get_list(char ***rlist, size_t *rnum)
 	if (ret != ENOENT)
 		goto quit3;
 	/* get dir entries */
-	while ((ret = _lookup_seq_next(cld, &key, NULL)) == 0) {
-		/* check duplicated entry */
-		snprintf(buf, sizeof(buf), "%.*s",
-			 (int)_region_size(&key),
-			 (const char *)_region_head(&key));
-		_bcs_convert_to_lower(buf);
+	while ((ret = _lookup_seq_next(cld, &key, &data)) == 0) {
+		if (!sorted)
+			snprintf(buf, sizeof(buf), "%.*s",
+			    (int)_region_size(&key),
+			    (const char *)_region_head(&key));
+		else {
+			/* check duplicated entry */
+			char *p;
+			char buf1[PATH_MAX];
+
+			snprintf(buf1, sizeof(buf1), "%.*s",
+			    (int)_region_size(&data),
+			    (const char *)_region_head(&data));
+			if ((p = strchr(buf1, '/')) != NULL)
+				memcpy(buf1, p + 1, strlen(p) - 1);
+			if ((p = strstr(buf1, ".esdb")) != NULL)
+				*p = '\0';
+			snprintf(buf, sizeof(buf), "%s/%.*s", buf1,
+			    (int)_region_size(&key),
+			    (const char *)_region_head(&key));
+		}
+		_bcs_convert_to_upper(buf);
 		ret = _lookup_seq_lookup(cla, buf, NULL);
 		if (ret) {
 			if (ret != ENOENT)
@@ -332,6 +353,8 @@ _citrus_esdb_get_list(char ***rlist, size_t *rnum)
 		goto quit3;
 
 	ret = 0;
+	/* XXX: why reallocing the list space posteriorly?
+	    shouldn't be done earlier? */
 	q = realloc(list, num * sizeof(char *));
 	if (!q) {
 		ret = ENOMEM;
@@ -347,5 +370,5 @@ quit3:
 quit1:
 	_lookup_seq_close(cla);
 quit0:
-	return ret;
+	return (ret);
 }

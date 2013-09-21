@@ -24,10 +24,8 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $OpenBSD: strlcat.c,v 1.3 2000/11/24 11:10:02 itojun Exp $
- * $NetBSD: wcslcat.c,v 1.1 2000/12/23 23:14:36 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcslcat.c,v 1.6 2002/09/21 00:29:23 tjr Exp $
- * $DragonFly: src/lib/libc/string/wcslcat.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
+ *	from OpenBSD: strlcat.c,v 1.3 2000/11/24 11:10:02 itojun Exp
+ * $FreeBSD: head/lib/libc/string/wcslcat.c 188080 2009-02-03 17:58:20Z danger $
  */
 
 #include <sys/types.h>

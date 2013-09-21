@@ -28,10 +28,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)glob.3	8.3 (Berkeley) 4/16/94
-.\" $FreeBSD: src/lib/libc/gen/glob.3,v 1.32 2007/01/09 00:27:54 imp Exp $
-.\" $DragonFly: src/lib/libc/gen/glob.3,v 1.5 2007/06/30 19:03:52 swildner Exp $
+.\" $FreeBSD: head/lib/libc/gen/glob.3 228754 2011-12-20 22:56:13Z eadler $
 .\"
-.Dd December 6, 2005
+.Dd December 20, 2011
 .Dt GLOB 3
 .Os
 .Sh NAME
@@ -43,7 +42,7 @@
 .Sh SYNOPSIS
 .In glob.h
 .Ft int
-.Fn glob "const char *pattern" "int flags" "int (*errfunc)(const char *, int)" "glob_t *pglob"
+.Fn glob "const char * restrict pattern" "int flags" "int (*errfunc)(const char *, int)" "glob_t * restrict pglob"
 .Ft void
 .Fn globfree "glob_t *pglob"
 .Sh DESCRIPTION
@@ -267,8 +266,6 @@ that can be coerced into a denial of service attack
 via patterns that expand to a very large number of matches,
 such as a long string of
 .Ql */../*/.. .
-.It Dv GLOB_PERIOD
-Allow matching of pathnames which start with a period.
 .El
 .Pp
 If, during the search, a directory is encountered that cannot be opened
@@ -372,10 +369,9 @@ are undefined.
 .Pp
 If
 .Fn glob
-terminates due to an error, it sets
-.Va errno
-and returns one of the
-following non-zero constants, which are defined in the include file
+terminates due to an error, it sets errno and returns one of the
+following non-zero constants, which are defined in the include
+file
 .In glob.h :
 .Bl -tag -width GLOB_NOCHECK
 .It Dv GLOB_NOSPACE
@@ -421,7 +417,7 @@ execvp("ls", g.gl_pathv);
 .Sh SEE ALSO
 .Xr sh 1 ,
 .Xr fnmatch 3 ,
-.Xr regexp 3
+.Xr regex 3
 .Sh STANDARDS
 The current implementation of the
 .Fn glob
@@ -463,9 +459,9 @@ may cause unchecked errors.
 .Pp
 The
 .Fn glob
-argument may fail and set
-.Va errno
-for any of the errors specified for the library routines
+argument
+may fail and set errno for any of the errors specified for the
+library routines
 .Xr stat 2 ,
 .Xr closedir 3 ,
 .Xr opendir 3 ,

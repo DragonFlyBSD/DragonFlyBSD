@@ -31,7 +31,6 @@
  *
  * @(#)refill.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/refill.c,v 1.20 2008/04/17 22:17:54 jhb Exp $
- * $DragonFly: src/lib/libc/stdio/refill.c,v 1.10 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -42,7 +41,6 @@
 
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
 
 static int lflush(FILE *);
 

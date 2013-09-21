@@ -26,10 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)strncmp.c	8.1 (Berkeley) 6/4/93
- * $NetBSD: wcsncmp.c,v 1.3 2001/01/05 12:13:13 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcsncmp.c,v 1.8 2007/01/09 00:28:12 imp Exp $
- * $DragonFly: src/lib/libc/string/wcsncmp.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/wcsncmp.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <wchar.h>

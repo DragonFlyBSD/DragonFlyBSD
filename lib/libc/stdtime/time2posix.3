@@ -1,6 +1,6 @@
-.\" $FreeBSD: src/lib/libc/stdtime/time2posix.3,v 1.9.2.4 2001/12/14 18:33:59 ru Exp $
+.\" $FreeBSD: head/contrib/tzcode/stdtime/time2posix.3 192890 2009-05-27 12:18:39Z edwin $
 .\"
-.Dd October 19, 2008
+.Dd September 11, 2005
 .Dt TIME2POSIX 3
 .Os
 .Sh NAME
@@ -12,13 +12,13 @@
 .Sh SYNOPSIS
 .In time.h
 .Ft time_t
-.Fn time2posix "const time_t *t"
+.Fn time2posix "time_t t"
 .Ft time_t
-.Fn posix2time "const time_t *t"
+.Fn posix2time "time_t t"
 .Sh DESCRIPTION
 .St -p1003.1-88
 legislates that a time_t value of
-536457599 shall correspond to "Wed Dec 31 23:59:59 UTC 1986."
+536457599 shall correspond to "Wed Dec 31 23:59:59 GMT 1986."
 This effectively implies that POSIX time_t's cannot include leap
 seconds and,
 therefore,
@@ -78,7 +78,7 @@ The
 function is less well-behaved:
 for a positive leap second hit the result is not unique,
 and for a negative leap second hit the corresponding
-POSIX time_t doesn't exist so an adjacent value is returned.
+POSIX time_t does not exist so an adjacent value is returned.
 Both of these are good indicators of the inferiority of the
 POSIX representation.
 .Pp
@@ -118,5 +118,6 @@ degenerate to the identity function.
 .Xr localtime 3 ,
 .Xr mktime 3 ,
 .Xr time 3
+.\" @(#)time2posix.3  8.2
 .\" This file is in the public domain, so clarified as of
 .\" 1996-06-05 by Arthur David Olson.

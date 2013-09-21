@@ -1,4 +1,5 @@
-/*	$NetBSD: yacc.y,v 1.7 2006/09/09 14:35:17 tnozaki Exp $	*/
+/* $FreeBSD: head/usr.bin/mkcsmapper/yacc.y 250984 2013-05-25 15:36:15Z ed $ */
+/* $NetBSD: yacc.y,v 1.7 2006/09/09 14:35:17 tnozaki Exp $	*/
 
 %{
 /*-
@@ -27,7 +28,9 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/cdefs.h>
 #include <sys/types.h>
+
 #include <assert.h>
 #include <err.h>
 #include <errno.h>
@@ -36,10 +39,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "ldef.h"
+
+#ifndef __packed
+#define __packed
+#endif
 
 #include "citrus_namespace.h"
 #include "citrus_types.h"
@@ -50,20 +56,23 @@
 #include "citrus_lookup_factory.h"
 #include "citrus_pivot_factory.h"
 
-extern FILE *	yyin;
+extern FILE		*yyin;
 
-int			debug = 0;
+int			 debug = 0;
+
+static linear_zone_t	 rowcol[_CITRUS_MAPPER_STD_ROWCOL_MAX];
+static char		*map_name;
 static char		*output = NULL;
 static void		*table = NULL;
-static size_t		table_size;
-static char		*map_name;
-static int		map_type;
-static u_int32_t	dst_invalid, dst_ilseq, oob_mode, dst_unit_bits;
-static void		(*putfunc)(void *, size_t, u_int32_t) = 0;
+static size_t		 rowcol_len = 0;
+static size_t		 table_size;
+static u_int32_t	 done_flag = 0;
+static u_int32_t	 dst_ilseq, dst_invalid, dst_unit_bits, oob_mode;
+static u_int32_t	 rowcol_bits = 0, rowcol_mask = 0;
+static u_int32_t	 src_next;
+static int		 map_type;
+static void		 (*putfunc)(void *, size_t, u_int32_t) = NULL;
 
-static u_int32_t	src_next;
-
-static u_int32_t	done_flag = 0;
 #define DF_TYPE			0x00000001
 #define DF_NAME			0x00000002
 #define DF_SRC_ZONE		0x00000004
@@ -71,10 +80,6 @@ static u_int32_t	done_flag = 0;
 #define DF_DST_ILSEQ		0x00000010
 #define DF_DST_UNIT_BITS	0x00000020
 #define DF_OOB_MODE		0x00000040
-
-static linear_zone_t	rowcol[_CITRUS_MAPPER_STD_ROWCOL_MAX];
-static size_t		rowcol_len = 0;
-static u_int32_t	rowcol_bits = 0, rowcol_mask = 0;
 
 static void	dump_file(void);
 static void	setup_map(void);
@@ -92,14 +97,12 @@ static void	put16(void *, size_t, u_int32_t);
 static void	put32(void *, size_t, u_int32_t);
 static void	set_range(u_int32_t, u_int32_t);
 static void	set_src(linear_zone_t *, u_int32_t, u_int32_t);
-
-int yylex (void);
 %}
 
 %union {
-	u_int32_t	i_value;
+	u_int32_t	 i_value;
 	char		*s_value;
-	linear_zone_t	lz_value;
+	linear_zone_t	 lz_value;
 }
 
 %token			R_TYPE R_NAME R_SRC_ZONE R_DST_UNIT_BITS
@@ -199,12 +202,14 @@ lns		: R_LN
 static void
 warning(const char *s)
 {
-	fprintf(stderr, "%s in %d\n", s, aline_number);
+
+	fprintf(stderr, "%s in %d\n", s, linenumber);
 }
 
 int
 yyerror(const char *s)
 {
+
 	warning(s);
 	exit(1);
 }
@@ -212,12 +217,14 @@ yyerror(const char *s)
 void
 put8(void *ptr, size_t ofs, u_int32_t val)
 {
+
 	*((u_int8_t *)ptr + ofs) = val;
 }
 
 void
 put16(void *ptr, size_t ofs, u_int32_t val)
 {
+
 	u_int16_t oval = htons(val);
 	memcpy((u_int16_t *)ptr + ofs, &oval, 2);
 }
@@ -225,6 +232,7 @@ put16(void *ptr, size_t ofs, u_int32_t val)
 void
 put32(void *ptr, size_t ofs, u_int32_t val)
 {
+
 	u_int32_t oval = htonl(val);
 	memcpy((u_int32_t *)ptr + ofs, &oval, 4);
 }
@@ -232,9 +240,9 @@ put32(void *ptr, size_t ofs, u_int32_t val)
 static void
 alloc_table(void)
 {
-	size_t i;
-	u_int32_t val = 0;
 	linear_zone_t *p;
+	size_t i;
+	uint32_t val = 0;
 
 	i = rowcol_len;
 	p = &rowcol[--i];
@@ -257,7 +265,7 @@ alloc_table(void)
 		val = dst_ilseq;
 		break;
 	default:
-		;
+		break;
 	}
 	for (i = 0; i < table_size; i++)
 		(*putfunc)(table, i, val);
@@ -290,7 +298,7 @@ static void
 create_rowcol_info(struct _region *r)
 {
 	void *ptr;
-	size_t ofs, i, len;
+	size_t i, len, ofs;
 
 	ofs = 0;
 	ptr = malloc(_CITRUS_MAPPER_STD_ROWCOL_INFO_SIZE);
@@ -330,7 +338,7 @@ create_rowcol_ext_ilseq_info(struct _region *r)
 
 	ofs = 0;
 	ptr = malloc(_CITRUS_MAPPER_STD_ROWCOL_EXT_ILSEQ_SIZE);
-	if (ptr==NULL)
+	if (ptr == NULL)
 		err(EXIT_FAILURE, "malloc");
 
 	put32(ptr, ofs, oob_mode); ofs++;
@@ -349,12 +357,12 @@ do {									\
 static void
 dump_file(void)
 {
-	FILE *fp;
-	int ret;
 	struct _db_factory *df;
 	struct _region data;
 	void *serialized;
+	FILE *fp;
 	size_t size;
+	int ret;
 
 	/*
 	 * build database
@@ -363,31 +371,27 @@ dump_file(void)
 
 	/* store type */
 	CHKERR(ret, _db_factory_addstr_by_s,
-	       (df, _CITRUS_MAPPER_STD_SYM_TYPE,
-		_CITRUS_MAPPER_STD_TYPE_ROWCOL));
+	    (df, _CITRUS_MAPPER_STD_SYM_TYPE, _CITRUS_MAPPER_STD_TYPE_ROWCOL));
 
 	/* store info */
 	create_rowcol_info(&data);
 	CHKERR(ret, _db_factory_add_by_s,
-	       (df, _CITRUS_MAPPER_STD_SYM_INFO, &data, 1));
+	    (df, _CITRUS_MAPPER_STD_SYM_INFO, &data, 1));
 
 	/* ilseq extension */
 	create_rowcol_ext_ilseq_info(&data);
 	CHKERR(ret, _db_factory_add_by_s,
-	       (df, _CITRUS_MAPPER_STD_SYM_ROWCOL_EXT_ILSEQ, &data, 1));
+	    (df, _CITRUS_MAPPER_STD_SYM_ROWCOL_EXT_ILSEQ, &data, 1));
 
 	/* store table */
 	_region_init(&data, table, table_size*dst_unit_bits/8);
 	CHKERR(ret, _db_factory_add_by_s,
-	       (df, _CITRUS_MAPPER_STD_SYM_TABLE, &data, 1));
+	    (df, _CITRUS_MAPPER_STD_SYM_TABLE, &data, 1));
 
 	/*
 	 * dump database to file
 	 */
-	if (output)
-		fp = fopen(output, "wb");
-	else
-		fp = stdout;
+	fp = output ? fopen(output, "wb") : stdout;
 
 	if (fp == NULL) {
 		perror("fopen");
@@ -399,7 +403,7 @@ dump_file(void)
 	serialized = malloc(size);
 	_region_init(&data, serialized, size);
 	CHKERR(ret, _db_factory_serialize,
-	       (df, _CITRUS_MAPPER_STD_MAGIC, &data));
+	    (df, _CITRUS_MAPPER_STD_MAGIC, &data));
 	if (fwrite(serialized, size, 1, fp) != 1)
 		err(EXIT_FAILURE, "fwrite");
 
@@ -420,6 +424,7 @@ set_type(int type)
 
 	done_flag |= DF_TYPE;
 }
+
 static void
 /*ARGSUSED*/
 set_name(char *str)
@@ -434,11 +439,12 @@ set_name(char *str)
 
 	done_flag |= DF_NAME;
 }
+
 static void
 set_src_zone(u_int32_t val)
 {
-	size_t i;
 	linear_zone_t *p;
+	size_t i;
 
 	if (done_flag & DF_SRC_ZONE) {
 		warning("SRC_ZONE is duplicated. ignored this one");
@@ -459,7 +465,6 @@ set_src_zone(u_int32_t val)
 	rowcol_mask |= rowcol_mask - 1;
 	for (i = 0; i < rowcol_len; ++i) {
 		p = &rowcol[i];
-		_DIAGASSERT(p->begin <= p->end);
 		if (p->end > rowcol_mask)
 			goto bad;
 	}
@@ -469,6 +474,7 @@ set_src_zone(u_int32_t val)
 bad:
 	yyerror("Illegal argument for SRC_ZONE");
 }
+
 static void
 set_dst_invalid(u_int32_t val)
 {
@@ -482,6 +488,7 @@ set_dst_invalid(u_int32_t val)
 
 	done_flag |= DF_DST_INVALID;
 }
+
 static void
 set_dst_ilseq(u_int32_t val)
 {
@@ -495,6 +502,7 @@ set_dst_ilseq(u_int32_t val)
 
 	done_flag |= DF_DST_ILSEQ;
 }
+
 static void
 set_oob_mode(u_int32_t val)
 {
@@ -508,6 +516,7 @@ set_oob_mode(u_int32_t val)
 
 	done_flag |= DF_OOB_MODE;
 }
+
 static void
 set_dst_unit_bits(u_int32_t val)
 {
@@ -535,41 +544,42 @@ set_dst_unit_bits(u_int32_t val)
 	}
 	done_flag |= DF_DST_UNIT_BITS;
 }
+
 static int
 check_src(u_int32_t begin, u_int32_t end)
 {
-	size_t i;
 	linear_zone_t *p;
+	size_t i;
 	u_int32_t m, n;
 
 	if (begin > end)
-		return 1;
+		return (1);
 	if (begin < end) {
 		m = begin & ~rowcol_mask;
 		n = end & ~rowcol_mask;
 		if (m != n)
-			return 1;
+			return (1);
 	}
 	for (i = rowcol_len * rowcol_bits, p = &rowcol[0]; i > 0; ++p) {
 		i -= rowcol_bits;
 		m = (begin >> i) & rowcol_mask;
 		if (m < p->begin || m > p->end)
-			return 1;
+			return (1);
 	}
 	if (begin < end) {
 		n = end & rowcol_mask;
-		_DIAGASSERT(p > rowcol);
 		--p;
 		if (n < p->begin || n > p->end)
-			return 1;
+			return (1);
 	}
-	return 0;
+	return (0);
 }
+
 static void
 store(const linear_zone_t *lz, u_int32_t dst, int inc)
 {
-	size_t i, ofs;
 	linear_zone_t *p;
+	size_t i, ofs;
 	u_int32_t n;
 
 	ofs = 0;
@@ -585,6 +595,7 @@ store(const linear_zone_t *lz, u_int32_t dst, int inc)
 			dst++;
 	}
 }
+
 static void
 set_range(u_int32_t begin, u_int32_t end)
 {
@@ -604,10 +615,10 @@ set_range(u_int32_t begin, u_int32_t end)
 bad:
 	yyerror("Illegal argument for SRC_ZONE");
 }
+
 static void
 set_src(linear_zone_t *lz, u_int32_t begin, u_int32_t end)
 {
-	_DIAGASSERT(lz != NULL);
 
 	if (check_src(begin, end) != 0)
 		yyerror("illegal zone");
@@ -621,16 +632,13 @@ set_src(linear_zone_t *lz, u_int32_t begin, u_int32_t end)
 static void
 do_mkdb(FILE *in)
 {
-	int ret;
 	FILE *out;
+	int ret;
 
         /* dump DB to file */
-	if (output)
-		out = fopen(output, "wb");
-	else
-		out = stdout;
+	out = output ? fopen(output, "wb") : stdout;
 
-	if (out==NULL)
+	if (out == NULL)
 		err(EXIT_FAILURE, "fopen");
 
 	ret = _lookup_factory_convert(out, in);
@@ -642,16 +650,13 @@ do_mkdb(FILE *in)
 static void
 do_mkpv(FILE *in)
 {
-	int ret;
 	FILE *out;
+	int ret;
 
         /* dump pivot to file */
-	if (output)
-		out = fopen(output, "wb");
-	else
-		out = stdout;
+	out = output ? fopen(output, "wb") : stdout;
 
-	if (out==NULL)
+	if (out == NULL)
 		err(EXIT_FAILURE, "fopen");
 
 	ret = _pivot_factory_convert(out, in);
@@ -666,24 +671,23 @@ static void
 usage(void)
 {
 	warnx("usage: \n"
-	      "\t%s [-d] [-o outfile] [infile]\n"
-	      "\t%s -m [-d] [-o outfile] [infile]\n"
-	      "\t%s -p [-d] [-o outfile] [infile]\n",
-	      getprogname(), getprogname(), getprogname());
+	    "\t%s [-d] [-o outfile] [infile]\n"
+	    "\t%s -m [-d] [-o outfile] [infile]\n"
+	    "\t%s -p [-d] [-o outfile] [infile]\n",
+	    getprogname(), getprogname(), getprogname());
 	exit(1);
 }
 
 int
 main(int argc, char **argv)
 {
-	int ch;
 	FILE *in = NULL;
-	int mkdb = 0, mkpv = 0;
+	int ch, mkdb = 0, mkpv = 0;
 
-	while ((ch = getopt(argc, argv, "do:mp")) != -1) {
+	while ((ch = getopt(argc, argv, "do:mp")) != EOF) {
 		switch (ch) {
 		case 'd':
-			debug=1;
+			debug = 1;
 			break;
 		case 'o':
 			output = strdup(optarg);
@@ -699,8 +703,8 @@ main(int argc, char **argv)
 		}
 	}
 
-	argc-=optind;
-	argv+=optind;
+	argc -= optind;
+	argv += optind;
 	switch (argc) {
 	case 0:
 		in = stdin;
@@ -708,7 +712,7 @@ main(int argc, char **argv)
 	case 1:
 		in = fopen(argv[0], "r");
 		if (!in)
-			err(EXIT_FAILURE, argv[0]);
+			err(EXIT_FAILURE, "%s", argv[0]);
 		break;
 	default:
 		usage();

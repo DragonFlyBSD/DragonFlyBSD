@@ -28,7 +28,6 @@
  *
  * @(#)perror.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/perror.c,v 1.9 2007/01/09 00:28:07 imp Exp $
- * $DragonFly: src/lib/libc/stdio/perror.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -42,7 +41,6 @@
 #include "un-namespace.h"
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
 
 void
 perror(const char *s)

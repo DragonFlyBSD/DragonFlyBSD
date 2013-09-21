@@ -1,4 +1,4 @@
-# $FreeBSD: src/share/numericdef/Makefile,v 1.65 2012/11/17 01:51:00 svnexp Exp $
+# $FreeBSD: head/share/numericdef/Makefile 245889 2013-01-24 17:00:11Z brooks $
 
 LOCALES=	af_ZA.ISO8859-1 \
 		am_ET.UTF-8 \
@@ -15,7 +15,6 @@ LOCALES=	af_ZA.ISO8859-1 \
 		et_EE.ISO8859-15 \
 		eu_ES.ISO8859-1 \
 		fi_FI.ISO8859-1 \
-		fo_FO.ISO8859-1 \
 		fr_BE.ISO8859-1 \
 		fr_FR.ISO8859-1 \
 		hi_IN.ISCII-DEV \
@@ -94,7 +93,7 @@ eucJP_UTF-8=	ja_JP
 eucKR_CP949=	ko_KR
 eucKR_UTF-8=	ko_KR
 ISO8859-1_ISO8859-15= af_ZA ca_ES da_DK de_CH de_DE en_US es_ES eu_ES \
-		fi_FI fr_BE fr_FR is_IS it_CH it_IT nl_NL no_NO pt_PT sv_SE \
+		fi_FI fr_BE fr_FR is_IS it_IT nl_NL no_NO pt_PT sv_SE \
 		${BE_LINKS} ${CA_LINKS} ${DE_LINKS} ${FR_LINKS} ${GB_LINKS} \
 		${IT_LINKS} ${NO_LINKS} ${US_LINKS}
 ISO8859-1_ISO8859-1= ${BE_LINKS} ${CA_LINKS} ${DE_LINKS} ${FR_LINKS} \

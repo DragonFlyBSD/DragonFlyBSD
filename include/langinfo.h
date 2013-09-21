@@ -23,15 +23,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/include/langinfo.h,v 1.4.2.1 2002/03/12 17:12:24 phantom Exp $
- * $DragonFly: src/include/langinfo.h,v 1.4 2005/04/21 07:28:59 joerg Exp $
+ * $FreeBSD: head/include/langinfo.h 233600 2012-03-28 12:11:54Z theraven $
  */
 
 #ifndef _LANGINFO_H_
 #define	_LANGINFO_H_
 
 #include <sys/cdefs.h>
-#include <nl_types.h>
+#include <sys/types.h>
+
+#ifndef _NL_ITEM_DECLARED
+typedef	__nl_item	nl_item;
+#define	_NL_ITEM_DECLARED
+#endif
 
 #define	CODESET		0	/* codeset name */
 #define	D_T_FMT		1	/* string for formatting date and time */
@@ -98,16 +102,38 @@
 
 #define	YESEXPR		52	/* affirmative response expression */
 #define	NOEXPR		53	/* negative response expression */
+
+#if __BSD_VISIBLE || __XSI_VISIBLE <= 500
 #define	YESSTR		54	/* affirmative response for yes/no queries */
 #define	NOSTR		55	/* negative response for yes/no queries */
+#endif
 
 #define	CRNCYSTR	56	/* currency symbol */
 
+#if __BSD_VISIBLE
 #define	D_MD_ORDER	57	/* month/day order (local extension) */
-#define	_DATE_FMT	58	/* date(1) format string (local extension) */
+#endif
+
+/* standalone months forms for %OB */
+#define	ALTMON_1	58
+#define	ALTMON_2	59
+#define	ALTMON_3	60
+#define	ALTMON_4	61
+#define	ALTMON_5	62
+#define	ALTMON_6	63
+#define	ALTMON_7	64
+#define	ALTMON_8	65
+#define	ALTMON_9	66
+#define	ALTMON_10	67
+#define	ALTMON_11	68
+#define	ALTMON_12	69
 
 __BEGIN_DECLS
-char	*nl_langinfo (nl_item);
+char	*nl_langinfo(nl_item);
+
+#if __POSIX_VISIBLE >= 200809 || defined(_XLOCALE_H_)
+#include <xlocale/_langinfo.h>
+#endif
 __END_DECLS
 
 #endif /* !_LANGINFO_H_ */

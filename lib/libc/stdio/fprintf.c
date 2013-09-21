@@ -5,6 +5,11 @@
  * This code is derived from software contributed to Berkeley by
  * Chris Torek.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -30,12 +35,13 @@
  * SUCH DAMAGE.
  *
  * @(#)fprintf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/fprintf.c,v 1.11 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/fprintf.c,v 1.4 2004/07/27 07:59:10 asmodai Exp $
+ * $FreeBSD: head/lib/libc/stdio/fprintf.c 249808 2013-04-23 13:33:13Z emaste $
  */
+
 
 #include <stdio.h>
 #include <stdarg.h>
+#include "xlocale_private.h"
 
 int
 fprintf(FILE * __restrict fp, const char * __restrict fmt, ...)
@@ -44,7 +50,19 @@ fprintf(FILE * __restrict fp, const char * __restrict fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	ret = vfprintf(fp, fmt, ap);
+	ret = vfprintf_l(fp, __get_locale(), fmt, ap);
+	va_end(ap);
+	return (ret);
+}
+int
+fprintf_l(FILE * __restrict fp, locale_t locale, const char * __restrict fmt, ...)
+{
+	int ret;
+	va_list ap;
+	FIX_LOCALE(locale);
+
+	va_start(ap, fmt);
+	ret = vfprintf_l(fp, locale, fmt, ap);
 	va_end(ap);
 	return (ret);
 }

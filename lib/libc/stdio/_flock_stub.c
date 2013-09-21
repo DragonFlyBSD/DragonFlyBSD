@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.16 2008/04/17 22:17:53 jhb Exp $
- * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.10 2005/07/23 23:14:44 joerg Exp $
  */
 
 /*
@@ -43,7 +42,6 @@
 #include "un-namespace.h"
 
 #include "local.h"
-#include "priv_stdio.h"
 
 
 /*

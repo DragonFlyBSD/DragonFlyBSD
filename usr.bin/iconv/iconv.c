@@ -1,5 +1,5 @@
-/*	$NetBSD: iconv.c,v 1.4 2003/10/20 12:56:18 yamt Exp $	*/
-/*	$DragonFly: src/usr.bin/iconv/iconv.c,v 1.2 2008/07/10 18:29:51 swildner Exp $ */
+/* $FreeBSD: head/usr.bin/iconv/iconv.c 252583 2013-07-03 18:27:45Z peter $ */
+/* $NetBSD: iconv.c,v 1.16 2009/02/20 15:28:21 yamt Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -27,190 +27,193 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/endian.h>
+#include <sys/cdefs.h>
+
 #include <err.h>
 #include <errno.h>
+#include <getopt.h>
 #include <iconv.h>
+#include <limits.h>
+#include <locale.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+static unsigned long long invalids;
+
+static void		 do_conv(FILE *, const char *, const char *, bool, bool);
+static int		 do_list(unsigned int, const char * const *, void *);
+static void		 usage(void);
+
+static struct option long_options[] = {
+	{"from-code",		required_argument,	NULL, 'f'},
+	{"list",		no_argument,		NULL, 'l'},
+	{"silent",		no_argument,		NULL, 's'},
+        {"to-code",		required_argument,	NULL, 't'},
+        {NULL,                  no_argument,            NULL, 0}
+};
+
 static void
 usage(void)
 {
-	fprintf(stderr,
-		"usage:\n"
-		"\t%s [-cs] -f <from> -t <to> [file ...]\n"
-		"\t%s -l\n",
-		getprogname(), getprogname());
+	(void)fprintf(stderr,
+	    "Usage:\t%1$s [-cs] -f <from_code> -t <to_code> [file ...]\n"
+	    "\t%1$s -f <from_code> [-cs] [-t <to_code>] [file ...]\n"
+	    "\t%1$s -t <to_code> [-cs] [-f <from_code>] [file ...]\n"
+	    "\t%1$s -l\n", getprogname());
 	exit(1);
 }
 
-/*
- * qsort() helper function
- */
-static int
-scmp(const void *v1, const void *v2)
-{
-	const char * const *s1 = v1;
-	const char * const *s2 = v2;
-
-	return(strcasecmp(*s1, *s2));
-}
-
-static void
-show_codesets(void)
-{
-	char **list;
-	size_t sz, i;
-
-	if (__iconv_get_list(&list, &sz))
-		err(EXIT_FAILURE, "__iconv_get_list()");
-
-	qsort(list, sz, sizeof(char *), scmp);
-
-	for (i=0; i<sz; i++) {
-		printf("%s\n", list[i]);
-	}
-
-	__iconv_free_list(list, sz);
-}
-
 #define INBUFSIZE 1024
-#define OUTBUFSIZE (INBUFSIZE*2)
-
+#define OUTBUFSIZE (INBUFSIZE * 2)
 static void
-do_conv(FILE *fp, const char *from, const char *to, int silent,
-	int hide_invalid)
+do_conv(FILE *fp, const char *from, const char *to, bool silent,
+    bool hide_invalid)
 {
+	iconv_t cd;
 	char inbuf[INBUFSIZE], outbuf[OUTBUFSIZE], *out;
 	const char *in;
-	size_t inbytes, outbytes, invalids;
-	ssize_t ret;
-	iconv_t cd;
-	u_int32_t flags = 0;
+	size_t inbytes, outbytes, ret;
 
-	if (hide_invalid)
-		flags |= __ICONV_F_HIDE_INVALID;
-	cd = iconv_open(to, from);
-	if (cd == (iconv_t)-1)
+	if ((cd = iconv_open(to, from)) == (iconv_t)-1)
 		err(EXIT_FAILURE, "iconv_open(%s, %s)", to, from);
 
-	invalids = 0;
+	if (hide_invalid) {
+		int arg = 1;
+
+		if (iconvctl(cd, ICONV_SET_DISCARD_ILSEQ, (void *)&arg) == -1)
+			err(1, NULL);
+	}
 	while ((inbytes = fread(inbuf, 1, INBUFSIZE, fp)) > 0) {
 		in = inbuf;
-		while (inbytes>0) {
+		while (inbytes > 0) {
 			size_t inval;
 
 			out = outbuf;
 			outbytes = OUTBUFSIZE;
 			ret = __iconv(cd, &in, &inbytes, &out, &outbytes,
-				      flags, &inval);
+			    0, &inval);
 			invalids += inval;
-			if (ret == -1 && errno != E2BIG) {
-				/*
-				 * XXX: iconv(3) is bad interface.
-				 *   invalid character count is lost here.
-				 *   instead, we just provide __iconv function.
-				 */
+			if (outbytes < OUTBUFSIZE)
+				(void)fwrite(outbuf, 1, OUTBUFSIZE - outbytes,
+				    stdout);
+			if (ret == (size_t)-1 && errno != E2BIG) {
 				if (errno != EINVAL || in == inbuf)
 					err(EXIT_FAILURE, "iconv()");
 
 				/* incomplete input character */
-				memmove(inbuf, in, inbytes);
-				ret = fread(inbuf+inbytes, 1,
-					    INBUFSIZE-inbytes, fp);
+				(void)memmove(inbuf, in, inbytes);
+				ret = fread(inbuf + inbytes, 1,
+				    INBUFSIZE - inbytes, fp);
 				if (ret == 0) {
+					fflush(stdout);
 					if (feof(fp))
 						errx(EXIT_FAILURE,
-						     "iconv(): %s",
-						     strerror(EINVAL));
+						    "unexpected end of file; "
+						    "the last character is "
+						    "incomplete.");
 					else
 						err(EXIT_FAILURE, "fread()");
 				}
 				in = inbuf;
 				inbytes += ret;
 			}
-			if (outbytes < OUTBUFSIZE)
-				fwrite(outbuf, 1, OUTBUFSIZE-outbytes, stdout);
 		}
 	}
 	/* reset the shift state of the output buffer */
 	outbytes = OUTBUFSIZE;
 	out = outbuf;
 	ret = iconv(cd, NULL, NULL, &out, &outbytes);
-	if (ret == -1)
+	if (ret == (size_t)-1)
 		err(EXIT_FAILURE, "iconv()");
 	if (outbytes < OUTBUFSIZE)
-		fwrite(outbuf, 1, OUTBUFSIZE-outbytes, stdout);
+		(void)fwrite(outbuf, 1, OUTBUFSIZE - outbytes, stdout);
 
 	if (invalids > 0 && !silent)
-		warnx("warning: invalid characters: %lu",
-		      (unsigned long)invalids);
+		warnx("warning: invalid characters: %llu", invalids);
 
 	iconv_close(cd);
+}
+
+static int
+do_list(unsigned int n, const char * const *list, void *data __unused)
+{
+	unsigned int i;
+
+	for(i = 0; i < n; i++) {
+		printf("%s", list[i]);
+		if (i < n - 1)
+			printf(" ");
+	}
+	printf("\n");
+
+	return (1);
 }
 
 int
 main(int argc, char **argv)
 {
-	int ch, i;
-	int opt_l = 0, opt_s = 0, opt_c = 0;
-	char *opt_f = NULL, *opt_t = NULL;
 	FILE *fp;
+	char *opt_f, *opt_t;
+	int ch, i;
+	bool opt_c = false, opt_s = false;
 
-	while ((ch=getopt(argc, argv, "cslf:t:")) != -1) {
+	opt_f = opt_t = strdup("");
+
+	setlocale(LC_ALL, "");
+	setprogname(argv[0]);
+
+	while ((ch = getopt_long(argc, argv, "csLlf:t:",
+	    long_options, NULL)) != -1) {
 		switch (ch) {
 		case 'c':
-			opt_c = 1;
+			opt_c = true;
 			break;
 		case 's':
-			opt_s = 1;
+			opt_s = true;
 			break;
 		case 'l':
 			/* list */
-			opt_l = 1;
-			break;
+			if (opt_s || opt_c || strcmp(opt_f, "") != 0 ||
+			    strcmp(opt_t, "") != 0) {
+				warnx("-l is not allowed with other flags.");
+				usage();
+			}
+			iconvlist(do_list, NULL);
+			return (EXIT_SUCCESS);
 		case 'f':
 			/* from */
-			opt_f = strdup(optarg);
+			if (optarg != NULL)
+				opt_f = strdup(optarg);
 			break;
 		case 't':
 			/* to */
-			opt_t = strdup(optarg);
+			if (optarg != NULL)
+				opt_t = strdup(optarg);
 			break;
 		default:
 			usage();
 		}
 	}
-	argc-=optind;
-	argv+=optind;
-	if (opt_l) {
-		if (argc>0 || opt_s || opt_f != NULL || opt_t != NULL) {
-			warnx("%s: -l should be specified solely.",
-			      getprogname());
-			usage();
-		}
-		show_codesets();
-	} else {
-		if (opt_f == NULL || opt_t == NULL)
-			usage();
-
-		if (argc == 0)
-			do_conv(stdin, opt_f, opt_t, opt_s, opt_c);
-		else {
-			for (i=0; i<argc; i++) {
-				fp = fopen(argv[i], "r");
-				if (fp == NULL)
-					errx(EXIT_FAILURE, "%s: %s:%s",
-					     getprogname(), argv[i],
-					     strerror(errno));
-				do_conv(fp, opt_f, opt_t, opt_s, opt_c);
-				fclose(fp);
-			}
+	argc -= optind;
+	argv += optind;
+	if ((strcmp(opt_f, "") == 0) && (strcmp(opt_t, "") == 0))
+		usage();
+	if (argc == 0)
+		do_conv(stdin, opt_f, opt_t, opt_s, opt_c);
+	else {
+		for (i = 0; i < argc; i++) {
+			fp = (strcmp(argv[i], "-") != 0) ?
+			    fopen(argv[i], "r") : stdin;
+			if (fp == NULL)
+				err(EXIT_FAILURE, "Cannot open `%s'",
+				    argv[i]);
+			do_conv(fp, opt_f, opt_t, opt_s,
+			    opt_c);
+			(void)fclose(fp);
 		}
 	}
-
-	return(EXIT_SUCCESS);
+	return (EXIT_SUCCESS);
 }

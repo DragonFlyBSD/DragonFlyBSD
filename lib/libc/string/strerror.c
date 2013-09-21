@@ -27,7 +27,8 @@
  * SUCH DAMAGE.
  *
  * @(#)strerror.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/strerror.c,v 1.16 2007/01/09 00:28:12 imp Exp $
+ * $FreeBSD: head/lib/libc/string/strerror.c 255108 2013-08-31 22:32:42Z jilles $
+ * (errlst.h removed)
  */
 
 #if defined(NLS)
@@ -84,7 +85,7 @@ strerror_r(int errnum, char *strerrbuf, size_t buflen)
 	catd = catopen("libc", NL_CAT_LOCALE);
 #endif
 
-	if (errnum < 1 || errnum >= sys_nerr) {
+	if (errnum < 0 || errnum >= sys_nerr) {
 		errstr(errnum,
 #if defined(NLS)
 			catgets(catd, 1, 0xffff, UPREFIX),

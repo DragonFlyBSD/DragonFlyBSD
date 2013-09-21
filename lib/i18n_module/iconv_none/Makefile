@@ -1,4 +1,6 @@
-# $DragonFly: src/lib/i18n_module/iconv_none/Makefile,v 1.1 2005/03/11 20:47:05 joerg Exp $
+# $FreeBSD: head/lib/libiconv_modules/iconv_none/Makefile 219019 2011-02-25 00:04:39Z gabor $
 
-SRCPRE=citrus_
+LIB=	iconv_none
+SRCS+=	citrus_iconv_none.c
+
 .include <bsd.lib.mk>

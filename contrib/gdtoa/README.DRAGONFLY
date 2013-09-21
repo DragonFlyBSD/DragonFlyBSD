@@ -1,0 +1,18 @@
+GDTOA
+=====
+
+Original source can be downloaded from:
+TBW
+
+A list of files and directories removed is in README.DELETED
+
+Local modifications applied to following files for locale support:
+	gdtoaimp.h
+	strtod.c
+	strtodg.c
+	strtof.c
+	strtod.c
+	strtorx.c
+
+This file should have been in the vendor branch and has since been modified:
+	strtorQ.c

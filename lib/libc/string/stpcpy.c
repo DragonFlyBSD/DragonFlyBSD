@@ -29,13 +29,13 @@
  * SUCH DAMAGE.
  *
  * @(#)strcpy.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/stpcpy.c,v 1.1 2002/10/03 19:39:20 obrien Exp $
+ * $FreeBSD: head/lib/libc/string/stpcpy.c 189137 2009-02-28 06:05:37Z das $
  */
 
 #include <string.h>
 
 char *
-stpcpy(char *to, const char *from)
+stpcpy(char * __restrict to, const char * __restrict from)
 {
 
 	for (; (*to = *from); ++from, ++to);

@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/lib/libc/stdio/sreadahead.c,v 1.1 2008/04/15 01:16:14 dillon Exp $
  */
 /*
  * This is an externalized internal function that the M4 package needs.
@@ -46,7 +44,6 @@
 
 #include "local.h"
 #include "libc_private.h"
-#include "priv_stdio.h"
 
 size_t
 __sreadahead(FILE *fp)

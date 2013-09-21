@@ -29,6 +29,8 @@ THIS SOFTWARE.
 /* Please send bug reports to David M. Gay (dmg at acm dot org,
  * with " at " changed at "@" and " dot " changed to ".").	*/
 
+/* $FreeBSD: head/contrib/gdtoa/strtod.c 227753 2011-11-20 14:45:42Z theraven $ */
+
 #include "gdtoaimp.h"
 #ifndef NO_FENV_H
 #include <fenv.h>
@@ -80,11 +82,11 @@ sulp
 #endif /*}*/
 
  double
-strtod
+strtod_l
 #ifdef KR_headers
-	(s00, se) CONST char *s00; char **se;
+	(s00, se, loc) CONST char *s00; char **se; locale_t loc
 #else
-	(CONST char *s00, char **se)
+	(CONST char *s00, char **se, locale_t loc)
 #endif
 {
 #ifdef Avoid_Underflow
@@ -106,14 +108,14 @@ strtod
 #endif
 #ifdef USE_LOCALE /*{{*/
 #ifdef NO_LOCALE_CACHE
-	char *decimalpoint = localeconv()->decimal_point;
+	char *decimalpoint = localeconv_l(loc)->decimal_point;
 	int dplen = strlen(decimalpoint);
 #else
 	char *decimalpoint;
 	static char *decimalpoint_cache;
 	static int dplen;
 	if (!(s0 = decimalpoint_cache)) {
-		s0 = localeconv()->decimal_point;
+		s0 = localeconv_l(loc)->decimal_point;
 		if ((decimalpoint_cache = (char*)MALLOC(strlen(s0) + 1))) {
 			strcpy(decimalpoint_cache, s0);
 			s0 = decimalpoint_cache;
@@ -315,7 +317,7 @@ strtod
 					if (*s == '(' /*)*/
 					 && hexnan(&s, &fpinan, bits)
 							== STRTOG_NaNbits) {
-						word0(&rv) = 0x7ff00000 | bits[1];
+						word0(&rv) = 0x7ff80000 | bits[1];
 						word1(&rv) = bits[0];
 						}
 					else {
@@ -1071,4 +1073,15 @@ strtod
 		*se = (char *)s;
 	return sign ? -dval(&rv) : dval(&rv);
 	}
+
+ double
+strtod
+#ifdef KR_headers
+	(s00, se, loc) CONST char *s00; char **se; locale_t
+#else
+	(CONST char *s00, char **se)
+#endif
+{
+	return strtod_l(s00, se, __get_locale());
+}
 

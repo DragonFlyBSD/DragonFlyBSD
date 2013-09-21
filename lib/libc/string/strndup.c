@@ -1,3 +1,5 @@
+/*      $NetBSD: strndup.c,v 1.3 2007/01/14 23:41:24 cbiere Exp $       */
+
 /*
  * Copyright (c) 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -26,8 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $NetBSD: strndup.c,v 1.3 2007/01/14 23:41:24 cbiere Exp $
- * $FreeBSD: src/lib/libc/string/strndup.c,v 1.1 2008/12/06 09:37:54 kib Exp $
+ * $FreeBSD: head/lib/libc/string/strndup.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <stddef.h>
@@ -40,9 +41,7 @@ strndup(const char *str, size_t n)
 	size_t len;
 	char *copy;
 
-	for (len = 0; len < n && str[len]; len++)
-		continue;
-
+	len = strnlen(str, n);
 	if ((copy = malloc(len + 1)) == NULL)
 		return (NULL);
 	memcpy(copy, str, len);

@@ -1,4 +1,9 @@
-# $DragonFly: src/lib/i18n_module/mapper_parallel/Makefile,v 1.1 2005/03/11 20:47:05 joerg Exp $
+# $FreeBSD: head/lib/libiconv_modules/mapper_parallel/Makefile 219019 2011-02-25 00:04:39Z gabor $
 
-SRCS=citrus_mapper_serial.c
+.PATH: ${.CURDIR}/../mapper_serial
+
+LIB=	mapper_parallel
+SRCS+=	citrus_mapper_serial.c
+CFLAGS+= --param max-inline-insns-single=32
+
 .include <bsd.lib.mk>

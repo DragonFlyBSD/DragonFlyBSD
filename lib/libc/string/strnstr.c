@@ -31,11 +31,9 @@
  * SUCH DAMAGE.
  *
  * @(#)strstr.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/strnstr.c,v 1.4 2007/01/09 00:28:12 imp Exp $
- * $DragonFly: src/lib/libc/string/strnstr.c,v 1.4 2006/03/20 17:24:20 dillon Exp $
+ * $FreeBSD: head/lib/libc/string/strnstr.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
-#include <sys/types.h>
 #include <string.h>
 
 /*
@@ -52,15 +50,13 @@ strnstr(const char *s, const char *find, size_t slen)
 		len = strlen(find);
 		do {
 			do {
-				if (slen < 1 || (sc = *s) == '\0')
+				if (slen-- < 1 || (sc = *s++) == '\0')
 					return (NULL);
-				--slen;
-				++s;
 			} while (sc != c);
 			if (len > slen)
 				return (NULL);
 		} while (strncmp(s, find, len) != 0);
 		s--;
 	}
-	return (__DECONST(char *, s));
+	return ((char *)s);
 }

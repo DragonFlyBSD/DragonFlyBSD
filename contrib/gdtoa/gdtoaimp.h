@@ -26,6 +26,8 @@ THIS SOFTWARE.
 
 ****************************************************************/
 
+/* $FreeBSD: head/contrib/gdtoa/gdtoaimp.h 227753 2011-11-20 14:45:42Z theraven $ */
+
 /* This is a variation on dtoa.c that converts arbitary binary
    floating-point formats to and from decimal notation.  It uses
    double-precision arithmetic internally, so there are still
@@ -89,8 +91,7 @@ THIS SOFTWARE.
  * #define IBM for IBM mainframe-style floating-point arithmetic.
  * #define VAX for VAX-style floating-point arithmetic (D_floating).
  * #define No_leftright to omit left-right logic in fast floating-point
- *	computation of dtoa and gdtoa.  This will cause modes 4 and 5 to be
- *	treated the same as modes 2 and 3 for some inputs.
+ *	computation of dtoa.
  * #define Check_FLT_ROUNDS if FLT_ROUNDS can assume the values 2 or 3.
  * #define RND_PRODQUOT to use rnd_prod and rnd_quot (assembly routines
  *	that use extended-precision instructions to compute rounded
@@ -179,8 +180,7 @@ THIS SOFTWARE.
 #ifndef GDTOAIMP_H_INCLUDED
 #define GDTOAIMP_H_INCLUDED
 
-#define USE_LOCALE
-#define Honor_FLT_ROUNDS
+#define	Long	int
 
 #include "gdtoa.h"
 #include "gd_qnan.h"
@@ -201,6 +201,7 @@ THIS SOFTWARE.
 #include "namespace.h"
 #include <pthread.h>
 #include "un-namespace.h"
+#include "xlocale_private.h"
 
 #ifdef KR_headers
 #define Char char
@@ -213,6 +214,12 @@ extern Char *MALLOC ANSI((size_t));
 #else
 #define MALLOC malloc
 #endif
+
+#define INFNAN_CHECK
+#define USE_LOCALE
+#define NO_LOCALE_CACHE
+#define Honor_FLT_ROUNDS
+#define Trust_FLT_ROUNDS
 
 #undef IEEE_Arith
 #undef Avoid_Underflow
@@ -519,11 +526,11 @@ extern void memcpy_D2A ANSI((void*, const void*, size_t));
 #define	strtoIQ		__strtoIQ
 #define	strtoIx		__strtoIx
 #define	strtoIxL	__strtoIxL
-#define	strtord		__strtord
+#define	strtord_l		__strtord_l
 #define	strtordd	__strtordd
 #define	strtorf		__strtorf
-#define	strtorQ		__strtorQ
-#define	strtorx		__strtorx
+#define	strtorQ_l		__strtorQ_l
+#define	strtorx_l		__strtorx_l
 #define	strtorxL	__strtorxL
 #define	strtodI		__strtodI
 #define	strtopd		__strtopd
@@ -556,7 +563,7 @@ extern void memcpy_D2A ANSI((void*, const void*, size_t));
 #define	hexdig		__hexdig_D2A
 #define	hexdig_init_D2A	__hexdig_init_D2A
 #define	hexnan		__hexnan_D2A
-#define	hi0bits(x)	__hi0bits_D2A((ULong)(x))
+#define	hi0bits		__hi0bits_D2A
 #define	hi0bits_D2A	__hi0bits_D2A
 #define	i2b		__i2b_D2A
 #define	increment	__increment_D2A
@@ -574,7 +581,7 @@ extern void memcpy_D2A ANSI((void*, const void*, size_t));
 #define	s2b		__s2b_D2A
 #define	set_ones	__set_ones_D2A
 #define	strcp		__strcp_D2A
-#define	strcp_D2A	__strcp_D2A
+#define	strcp_D2A      	__strcp_D2A
 #define	strtoIg		__strtoIg_D2A
 #define	sum		__sum_D2A
 #define	tens		__tens_D2A
@@ -605,13 +612,13 @@ extern void memcpy_D2A ANSI((void*, const void*, size_t));
  extern char *dtoa ANSI((double d, int mode, int ndigits,
 			int *decpt, int *sign, char **rve));
  extern void freedtoa ANSI((char*));
- extern char *g__fmt ANSI((char*, char*, char*, int, ULong, size_t));
  extern char *gdtoa ANSI((FPI *fpi, int be, ULong *bits, int *kindp,
 			  int mode, int ndigits, int *decpt, char **rve));
+ extern char *g__fmt ANSI((char*, char*, char*, int, ULong, size_t));
  extern int gethex ANSI((CONST char**, FPI*, Long*, Bigint**, int));
  extern void hexdig_init_D2A(Void);
  extern int hexnan ANSI((CONST char**, FPI*, ULong*));
- extern int hi0bits_D2A ANSI((ULong));
+ extern int hi0bits ANSI((ULong));
  extern Bigint *i2b ANSI((int));
  extern Bigint *increment ANSI((Bigint*));
  extern int lo0bits ANSI((ULong*));
@@ -628,7 +635,7 @@ extern void memcpy_D2A ANSI((void*, const void*, size_t));
  extern Bigint *s2b ANSI((CONST char*, int, int, ULong, int));
  extern Bigint *set_ones ANSI((Bigint*, int));
  extern char *strcp ANSI((char*, const char*));
- extern int strtodg ANSI((CONST char*, char**, FPI*, Long*, ULong*));
+ extern int strtodg_l ANSI((CONST char*, char**, FPI*, Long*, ULong*, locale_t));
 
  extern int strtoId ANSI((CONST char *, char **, double *, double *));
  extern int strtoIdd ANSI((CONST char *, char **, double *, double *));
@@ -638,17 +645,18 @@ extern void memcpy_D2A ANSI((void*, const void*, size_t));
  extern int strtoIx ANSI((CONST char *, char **, void *, void *));
  extern int strtoIxL ANSI((CONST char *, char **, void *, void *));
  extern double strtod ANSI((const char *s00, char **se));
+ extern double strtod_l ANSI((const char *s00, char **se, locale_t));
  extern int strtopQ ANSI((CONST char *, char **, Void *));
  extern int strtopf ANSI((CONST char *, char **, float *));
  extern int strtopd ANSI((CONST char *, char **, double *));
  extern int strtopdd ANSI((CONST char *, char **, double *));
  extern int strtopx ANSI((CONST char *, char **, Void *));
  extern int strtopxL ANSI((CONST char *, char **, Void *));
- extern int strtord ANSI((CONST char *, char **, int, double *));
+ extern int strtord_l ANSI((CONST char *, char **, int, double *, locale_t));
  extern int strtordd ANSI((CONST char *, char **, int, double *));
  extern int strtorf ANSI((CONST char *, char **, int, float *));
- extern int strtorQ ANSI((CONST char *, char **, int, void *));
- extern int strtorx ANSI((CONST char *, char **, int, void *));
+ extern int strtorQ_l ANSI((CONST char *, char **, int, void *, locale_t));
+ extern int strtorx_l ANSI((CONST char *, char **, int, void *, locale_t));
  extern int strtorxL ANSI((CONST char *, char **, int, void *));
  extern Bigint *sum ANSI((Bigint*, Bigint*));
  extern int trailz ANSI((Bigint*));

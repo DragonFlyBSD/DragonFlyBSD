@@ -35,17 +35,6 @@
 
 #include "math_private.h"
 
-static int
-digittoint(char c)
-{
-
-	if (isdigit(c))
-		return (c - '0');
-	if (islower(c))
-		return (c - 'a' + 10);
-	return (c - 'A' + 10);
-}
-
 /*
  * Scan a string of hexadecimal digits (the format nan(3) expects) and
  * make a bit array (using the local endianness). We stop when we

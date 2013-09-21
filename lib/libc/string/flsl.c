@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/string/flsl.c,v 1.3 2007/01/09 00:28:12 imp Exp $
+ * $FreeBSD: head/lib/libc/string/flsl.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <strings.h>

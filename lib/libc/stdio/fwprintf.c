@@ -2,6 +2,11 @@
  * Copyright (c) 2002 Tim J. Robbins
  * All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -23,13 +28,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdio/fwprintf.c,v 1.1 2002/09/21 13:00:30 tjr Exp $
- * $DragonFly: src/lib/libc/stdio/fwprintf.c,v 1.1 2005/07/25 00:37:41 joerg Exp $
+ * $FreeBSD: head/lib/libc/stdio/fwprintf.c 227753 2011-11-20 14:45:42Z theraven $
  */
+
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <wchar.h>
+#include <xlocale.h>
 
 int
 fwprintf(FILE * __restrict fp, const wchar_t * __restrict fmt, ...)
@@ -39,6 +45,18 @@ fwprintf(FILE * __restrict fp, const wchar_t * __restrict fmt, ...)
 
 	va_start(ap, fmt);
 	ret = vfwprintf(fp, fmt, ap);
+	va_end(ap);
+
+	return (ret);
+}
+int
+fwprintf_l(FILE * __restrict fp, locale_t locale, const wchar_t * __restrict fmt, ...)
+{
+	int ret;
+	va_list ap;
+
+	va_start(ap, fmt);
+	ret = vfwprintf_l(fp, locale, fmt, ap);
 	va_end(ap);
 
 	return (ret);

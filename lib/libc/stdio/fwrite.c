@@ -31,14 +31,12 @@
  *
  * @(#)fwrite.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fwrite.c,v 1.12 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/fwrite.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
 #include <stdio.h>
 #include "un-namespace.h"
 #include "local.h"
-#include "priv_stdio.h"
 #include "libc_private.h"
 
 /*

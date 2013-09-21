@@ -8,8 +8,8 @@ WARNS?=	0
 # Portability layer
 SRCS+=	fmt_scaled.c
 
-DPADD+=	${LIBEDIT}
-LDADD+=	-ledit
+DPADD+=	${LIBEDIT} ${LIBNCURSES}
+LDADD+=	-ledit -lncurses
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>

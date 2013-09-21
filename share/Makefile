@@ -4,7 +4,7 @@
 # Do not include `info' in the SUBDIR list, it is handled separately.
 
 SUBDIR= colldef dict doc examples i18n initrd \
-	locale man me misc mk monetdef msgdef \
+	man me misc mk mklocale monetdef msgdef \
 	numericdef skel syscons tabset termcap terminfo timedef zoneinfo
 
 .if !defined(NO_SENDMAIL)

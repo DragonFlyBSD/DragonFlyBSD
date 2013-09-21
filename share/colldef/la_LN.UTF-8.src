@@ -1,6 +1,0 @@
-# UTF-8
-#
-# $DragonFly: src/share/colldef/la_LN.UTF-8.src,v 1.1 2004/09/27 19:30:50 asmodai Exp $
-#
-order \
-	\x00;...;\xff

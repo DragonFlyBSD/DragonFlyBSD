@@ -30,8 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)strncpy.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/strncpy.c,v 1.7 2007/01/09 00:28:12 imp Exp $
- * $DragonFly: src/lib/libc/string/strncpy.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/strncpy.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <string.h>
@@ -48,10 +47,10 @@ strncpy(char * __restrict dst, const char * __restrict src, size_t n)
 		const char *s = src;
 
 		do {
-			if ((*d++ = *s++) == 0) {
+			if ((*d++ = *s++) == '\0') {
 				/* NUL pad the remaining n-1 bytes */
 				while (--n != 0)
-					*d++ = 0;
+					*d++ = '\0';
 				break;
 			}
 		} while (--n != 0);

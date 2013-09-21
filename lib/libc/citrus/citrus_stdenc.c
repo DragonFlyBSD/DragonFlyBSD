@@ -1,3 +1,4 @@
+/* $FreeBSD: head/lib/libc/iconv/citrus_stdenc.c 219019 2011-02-25 00:04:39Z gabor $ */
 /* $NetBSD: citrus_stdenc.c,v 1.3 2005/10/29 18:02:04 tshiozak Exp $ */
 
 /*-
@@ -26,7 +27,8 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
+#include <sys/cdefs.h>
+
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -35,8 +37,8 @@
 #include "citrus_namespace.h"
 #include "citrus_types.h"
 #include "citrus_module.h"
-#include "citrus_stdenc.h"
 #include "citrus_none.h"
+#include "citrus_stdenc.h"
 
 struct _citrus_stdenc _citrus_stdenc_default = {
 	&_citrus_NONE_stdenc_ops,	/* ce_ops */
@@ -45,38 +47,22 @@ struct _citrus_stdenc _citrus_stdenc_default = {
 	&_citrus_NONE_stdenc_traits,	/* ce_traits */
 };
 
-#ifdef _I18N_DYNAMIC
-
-static int
-/*ARGSUSED*/
-get_state_desc_default(struct _citrus_stdenc * __restrict ce __unused,
-		       void * __restrict ps __unused,
-		       int id __unused,
-		       struct _citrus_stdenc_state_desc * __restrict d __unused)
-{
-	return EOPNOTSUPP;
-}
-
 int
 _citrus_stdenc_open(struct _citrus_stdenc * __restrict * __restrict rce,
-		    char const * __restrict encname,
-		    const void * __restrict variable, size_t lenvar)
+    char const * __restrict encname, const void * __restrict variable,
+    size_t lenvar)
 {
-	int ret;
-	_citrus_module_t handle;
 	struct _citrus_stdenc *ce;
+	_citrus_module_t handle;
 	_citrus_stdenc_getops_t getops;
-
-	_DIAGASSERT(encname != NULL);
-	_DIAGASSERT(!lenvar || variable!=NULL);
-	_DIAGASSERT(rce != NULL);
+	int ret;
 
 	if (!strcmp(encname, _CITRUS_DEFAULT_STDENC_NAME)) {
 		*rce = &_citrus_stdenc_default;
 		return (0);
 	}
 	ce = malloc(sizeof(*ce));
-	if (ce==NULL) {
+	if (ce == NULL) {
 		ret = errno;
 		goto bad;
 	}
@@ -91,9 +77,8 @@ _citrus_stdenc_open(struct _citrus_stdenc * __restrict * __restrict rce,
 
 	ce->ce_module = handle;
 
-	getops =
-	    (_citrus_stdenc_getops_t)_citrus_find_getops(ce->ce_module,
-							 encname, "stdenc");
+	getops = (_citrus_stdenc_getops_t)_citrus_find_getops(ce->ce_module,
+	    encname, "stdenc");
 	if (getops == NULL) {
 		ret = EINVAL;
 		goto bad;
@@ -105,15 +90,9 @@ _citrus_stdenc_open(struct _citrus_stdenc * __restrict * __restrict rce,
 		goto bad;
 	}
 
-	ret = (*getops)(ce->ce_ops, sizeof(*ce->ce_ops),
-			_CITRUS_STDENC_ABI_VERSION);
+	ret = (*getops)(ce->ce_ops, sizeof(*ce->ce_ops));
 	if (ret)
 		goto bad;
-
-	/* If return ABI version is not expected, should fixup it */
-	if (ce->ce_ops->eo_abi_version < 0x00000002) {
-		ce->ce_ops->eo_get_state_desc = &get_state_desc_default;
-	}
 
 	/* validation check */
 	if (ce->ce_ops->eo_init == NULL ||
@@ -150,8 +129,6 @@ void
 _citrus_stdenc_close(struct _citrus_stdenc *ce)
 {
 
-	_DIAGASSERT(ce != NULL);
-
 	if (ce == &_citrus_stdenc_default)
 		return;
 
@@ -166,27 +143,3 @@ _citrus_stdenc_close(struct _citrus_stdenc *ce)
 	}
 	free(ce);
 }
-
-#else
-/* !_I18N_DYNAMIC */
-
-int
-/*ARGSUSED*/
-_citrus_stdenc_open(struct _citrus_stdenc * __restrict * __restrict rce,
-		    char const * __restrict encname,
-		    const void * __restrict variable, size_t lenvar)
-{
-	if (!strcmp(encname, _CITRUS_DEFAULT_STDENC_NAME)) {
-		*rce = &_citrus_stdenc_default;
-		return (0);
-	}
-	return (EINVAL);
-}
-
-void
-/*ARGSUSED*/
-_citrus_stdenc_close(struct _citrus_stdenc *ce)
-{
-}
-
-#endif

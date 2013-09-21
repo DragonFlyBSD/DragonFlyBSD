@@ -2,6 +2,11 @@
  * Copyright (C) 1996 by Andrey A. Chernov, Moscow, Russia.
  * All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -23,63 +28,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/locale/collcmp.c,v 1.12.2.1 2000/08/22 01:54:39 jhb Exp $
- * $DragonFly: src/lib/libc/locale/collcmp.c,v 1.4 2005/11/20 09:18:37 swildner Exp $
+ * $FreeBSD: head/lib/libc/locale/collcmp.c 227753 2011-11-20 14:45:42Z theraven $
  */
 
-#define ASCII_COMPATIBLE_COLLATE        /* see share/colldef */
 
 #include <string.h>
+#include <xlocale.h>
 #include "collate.h"
-#ifndef ASCII_COMPATIBLE_COLLATE
-#include <ctype.h>
-#endif
 
 /*
- * Compare two characters converting collate information
- * into ASCII-compatible range, it allows to handle
- * "[a-z]"-type ranges with national characters.
+ * Compare two characters using collate
  */
 
-int
-__collate_range_cmp(int c1, int c2)
+int __collate_range_cmp(struct xlocale_collate *table, int c1, int c2)
 {
 	static char s1[2], s2[2];
-	int ret;
-#ifndef ASCII_COMPATIBLE_COLLATE
-	int as1, as2, al1, al2;
-#endif
 
-	c1 &= UCHAR_MAX;
-	c2 &= UCHAR_MAX;
-	if (c1 == c2)
-		return (0);
-
-#ifndef ASCII_COMPATIBLE_COLLATE
-	as1 = isascii(c1);
-	as2 = isascii(c2);
-	al1 = isalpha(c1);
-	al2 = isalpha(c2);
-
-	if (as1 || as2 || al1 || al2) {
-		if ((as1 && as2) || (!al1 && !al2))
-			return (c1 - c2);
-		if (al1 && !al2) {
-			if (isupper(c1))
-				return ('A' - c2);
-			else
-				return ('a' - c2);
-		} else if (al2 && !al1) {
-			if (isupper(c2))
-				return (c1 - 'A');
-			else
-				return (c1 - 'a');
-		}
-	}
-#endif
 	s1[0] = c1;
 	s2[0] = c2;
-	if ((ret = strcoll(s1, s2)) != 0)
-		return (ret);
-	return (c1 - c2);
+	struct _xlocale l = {{0}};
+	l.components[XLC_COLLATE] = (struct xlocale_component *)table;
+	return (strcoll_l(s1, s2, &l));
 }

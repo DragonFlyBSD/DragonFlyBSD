@@ -1,6 +1,5 @@
+/* $FreeBSD: head/lib/libc/iconv/citrus_db_hash.c 219019 2011-02-25 00:04:39Z gabor $ */
 /* $NetBSD: citrus_db_hash.c,v 1.5 2008/02/09 14:56:20 junyoung Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_db_hash.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
-
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -28,10 +27,12 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/cdefs.h>
+#include <sys/types.h>
+
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
 
 #include "citrus_namespace.h"
 #include "citrus_types.h"
@@ -40,12 +41,14 @@
 #include "citrus_db_hash.h"
 
 uint32_t
-/*ARGSUSED*/
-_citrus_db_hash_std(void *closure __unused, struct _region *r)
+_citrus_db_hash_std(struct _region *r)
 {
-	const uint8_t *p = _region_head(r);
-	uint32_t hash = 0, tmp;
+	const uint8_t *p;
+	uint32_t hash, tmp;
 	size_t i;
+
+	hash = 0;
+	p = _region_head(r);
 
 	for (i = _region_size(r); i > 0; i--) {
 		hash <<= 4;
@@ -57,5 +60,5 @@ _citrus_db_hash_std(void *closure __unused, struct _region *r)
 		}
 		p++;
 	}
-	return hash;
+	return (hash);
 }

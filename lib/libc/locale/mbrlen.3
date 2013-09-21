@@ -1,7 +1,4 @@
-.\" $NetBSD: src/lib/libc/locale/mbrlen.3,v 1.6 2004/01/24 16:58:54 wiz Exp $
-.\" $DragonFly: src/lib/libc/locale/mbrlen.3,v 1.1 2005/03/12 00:18:01 joerg Exp $
-.\"
-.\" Copyright (c)2002 Citrus Project,
+.\" Copyright (c) 2002-2004 Tim J. Robbins
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -25,183 +22,124 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 3, 2002
+.\" $FreeBSD: head/lib/libc/locale/mbrlen.3 131360 2004-06-30 19:32:41Z ru $
+.\"
+.Dd April 7, 2004
 .Dt MBRLEN 3
 .Os
-.\" ----------------------------------------------------------------------
 .Sh NAME
 .Nm mbrlen
-.Nd get number of bytes in a multibyte character (restartable)
-.\" ----------------------------------------------------------------------
+.Nd "get number of bytes in a character (restartable)"
 .Sh LIBRARY
 .Lb libc
-.\" ----------------------------------------------------------------------
 .Sh SYNOPSIS
 .In wchar.h
-.Ft int
+.Ft size_t
 .Fn mbrlen "const char * restrict s" "size_t n" "mbstate_t * restrict ps"
-.\" ----------------------------------------------------------------------
 .Sh DESCRIPTION
 The
 .Fn mbrlen
-function usually determines the number of bytes in
-a multibyte character pointed to by
-.Fa s
-and returns it.
-This function shall only examine max n bytes of the array beginning from
-.Fa s .
-.Pp
-.Fn mbrlen
-is equivalent to the following call (except
-.Fa ps
-is evaluated only once):
-.Bd -literal -offset indent
-mbrtowc(NULL, s, n, (ps != NULL) ? ps : &internal);
-.Ed
-.Pp
-Here,
-.Fa internal
-is an internal state object.
-.Pp
-In state-dependent encodings,
-.Fa s
-may point to the special sequence bytes to change the shift-state.
-Although such sequence bytes corresponds to no individual
-wide-character code, these affect the conversion state object pointed
-to by
-.Fa ps ,
-and the
-.Fn mbrlen
-treats the special sequence bytes
-as if these are a part of the subsequent multibyte character.
-.Pp
-Unlike
-.Xr mblen 3 ,
-.Fn mbrlen
-may accept the byte sequence when it is not a complete character
-but possibly contains part of a valid character.
-In this case, this function will accept all such bytes
-and save them into the conversion state object pointed to by
-.Fa ps .
-They will be used on subsequent calls of this function to restart
-the conversion suspended.
-.Pp
-The behaviour of
-.Fn mbrlen
-is affected by the
-.Dv LC_CTYPE
-category of the current locale.
-.Pp
-These are the special cases:
-.Bl -tag -width 0123456789
-.It "s == NULL"
-.Fn mbrlen
-sets the conversion state object pointed to by
-.Fa ps
-to an initial state and always returns 0.
-Unlike
-.Xr mblen 3 ,
-the value returned does not indicate whether the current encoding of
-the locale is state-dependent.
-.Pp
-In this case,
-.Fn mbrlen
-ignores
-.Fa n .
-.It "n == 0"
-In this case,
-the first
+function inspects at most
 .Fa n
-bytes of the array pointed to by
+bytes pointed to by
 .Fa s
-never form a complete character.
-Thus,
-.Fn mbrlen
-always returns (size_t)-2.
-.It "ps == NULL"
-.Fn mbrlen
-uses its own internal state object to keep the conversion state,
-instead of
-.Fa ps
-mentioned in this manual page.
+to determine the number of bytes needed to complete the next
+multibyte character.
 .Pp
-Calling any other functions in
-.Lb libc
-never changes the internal
-state of
-.Fn mbrlen ,
-except for calling
-.Xr setlocale 3
-with a changing
-.Dv LC_CTYPE
-category of the current locale.
-Such
-.Xr setlocale 3
-calls cause the internal state of this function to be indeterminate.
-This internal state is initialized at startup time of the program.
-.El
-.\" ----------------------------------------------------------------------
+The
+.Vt mbstate_t
+argument,
+.Fa ps ,
+is used to keep track of the shift state.
+If it is
+.Dv NULL ,
+.Fn mbrlen
+uses an internal, static
+.Vt mbstate_t
+object, which is initialized to the initial conversion state
+at program startup.
+.Pp
+It is equivalent to:
+.Pp
+.Dl "mbrtowc(NULL, s, n, ps);"
+.Pp
+Except that when
+.Fa ps
+is a
+.Dv NULL
+pointer,
+.Fn mbrlen
+uses its own static, internal
+.Vt mbstate_t
+object to keep track of the shift state.
 .Sh RETURN VALUES
 The
 .Fn mbrlen
-returns:
-.Bl -tag -width 0123456789
-.It "0"
-.Fa s
-points to a null byte
-.Pq Sq \e0 .
-.It "positive"
-The value returned is
-a number of bytes for the valid multibyte character pointed to by
-.Fa s .
-There are no cases that this value is greater than
+functions returns:
+.Bl -tag -width indent
+.It 0
+The next
 .Fa n
-or the value of the
-.Dv MB_CUR_MAX
-macro.
-.It "(size_t)-2"
-.Fa s
-points to the byte sequence which possibly contains part of a valid
-multibyte character, but which is incomplete.
-When
+or fewer bytes
+represent the null wide character
+.Pq Li "L'\e0'" .
+.It >0
+The next
 .Fa n
-is at least
-.Dv MB_CUR_MAX ,
-this case can only occur if the array pointed to by
-.Fa s
-contains a redundant shift sequence.
-.It "(size_t)-1"
-.Fa s
-points to an illegal byte sequence which does not form a valid multibyte
-character.
-In this case,
-.Fn mbrtowc
-sets
-.Va errno
-to indicate the error.
-.El
-.\" ----------------------------------------------------------------------
-.Sh ERRORS
+or fewer bytes
+represent a valid character,
 .Fn mbrlen
-may cause an error in the following case:
+returns the number of bytes used to complete the multibyte character.
+.It Po Vt size_t Pc Ns \-2
+The next
+.Fa n
+contribute to, but do not complete, a valid multibyte character sequence,
+and all
+.Fa n
+bytes have been processed.
+.It Po Vt size_t Pc Ns \-1
+An encoding error has occurred.
+The next
+.Fa n
+or fewer bytes do not contribute to a valid multibyte character.
+.El
+.Sh EXAMPLES
+A function that calculates the number of characters in a multibyte
+character string:
+.Bd -literal -offset indent
+size_t
+nchars(const char *s)
+{
+	size_t charlen, chars;
+	mbstate_t mbs;
+
+	chars = 0;
+	memset(&mbs, 0, sizeof(mbs));
+	while ((charlen = mbrlen(s, MB_CUR_MAX, &mbs)) != 0 &&
+	    charlen != (size_t)-1 && charlen != (size_t)-2) {
+		s += charlen;
+		chars++;
+	}
+
+	return (chars);
+}
+.Ed
+.Sh ERRORS
+The
+.Fn mbrlen
+function will fail if:
 .Bl -tag -width Er
 .It Bq Er EILSEQ
-.Fa s
-points to an invalid multibyte character.
+An invalid multibyte sequence was detected.
 .It Bq Er EINVAL
-.Fa ps
-points to an invalid or uninitialized mbstate_t object.
+The conversion state is invalid.
 .El
-.\" ----------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr mblen 3 ,
 .Xr mbrtowc 3 ,
-.Xr setlocale 3
-.\" ----------------------------------------------------------------------
+.Xr multibyte 3
 .Sh STANDARDS
 The
 .Fn mbrlen
 function conforms to
-.St -isoC-amd1 .
-The restrict qualifier is added at
 .St -isoC-99 .

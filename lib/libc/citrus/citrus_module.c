@@ -1,5 +1,5 @@
-/* $NetBSD: citrus_module.c,v 1.5 2005/11/29 03:11:58 christos Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_module.c,v 1.5 2008/04/10 10:21:01 hasso Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_module.c 228843 2011-12-23 15:00:37Z cperciva $ */
+/* $NetBSD: citrus_module.c,v 1.9 2009/01/11 02:46:24 christos Exp $ */
 
 /*-
  * Copyright (c)1999, 2000, 2001, 2002 Citrus Project,
@@ -42,13 +42,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -95,28 +88,32 @@
  * SUCH DAMAGE.
  */
 
-#include <assert.h>
-#include <errno.h>
-#include <limits.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <locale.h>
-#include <stddef.h>
-#include <paths.h>
-#include <wchar.h>
-#include "citrus_module.h"
-
+#include <sys/cdefs.h>
 #include <sys/types.h>
+
+#include <assert.h>
 #include <dirent.h>
 #include <dlfcn.h>
+#include <errno.h>
+#include <limits.h>
+#include <paths.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#ifdef __PIC__
+#define	I18NMODULE_MAJOR	2
 
-static int _getdewey(int [], char *);
-static int _cmpndewey(int [], int, int [], int);
-static const char *_findshlib(char *, int *, int *);
+#include "citrus_namespace.h"
+#include "citrus_bcs.h"
+#include "citrus_module.h"
+#include "libc_private.h"
+
+static int		 _getdewey(int[], char *);
+static int		 _cmpndewey(int[], int, int[], int);
+static const char	*_findshlib(char *, int *, int *);
 
 static const char *_pathI18nModule = NULL;
 
@@ -128,10 +125,7 @@ static const char *_pathI18nModule = NULL;
 static int
 _getdewey(int dewey[], char *cp)
 {
-	int	i, n;
-
-	_DIAGASSERT(dewey != NULL);
-	_DIAGASSERT(cp != NULL);
+	int i, n;
 
 	for (n = 0, i = 0; i < MAXDEWEY; i++) {
 		if (*cp == '\0')
@@ -139,12 +133,12 @@ _getdewey(int dewey[], char *cp)
 
 		if (*cp == '.') cp++;
 		if (*cp < '0' || '9' < *cp)
-			return 0;
+			return (0);
 
-		dewey[n++] = (int)strtol(cp, &cp, 10);
+		dewey[n++] = (int)_bcs_strtol(cp, &cp, 10);
 	}
 
-	return n;
+	return (n);
 }
 
 /*
@@ -156,49 +150,38 @@ _getdewey(int dewey[], char *cp)
 static int
 _cmpndewey(int d1[], int n1, int d2[], int n2)
 {
-	int	i;
-
-	_DIAGASSERT(d1 != NULL);
-	_DIAGASSERT(d2 != NULL);
+	int i;
 
 	for (i = 0; i < n1 && i < n2; i++) {
 		if (d1[i] < d2[i])
-			return -1;
+			return (-1);
 		if (d1[i] > d2[i])
-			return 1;
+			return (1);
 	}
 
 	if (n1 == n2)
-		return 0;
+		return (0);
 
 	if (i == n1)
-		return -1;
+		return (-1);
 
 	if (i == n2)
-		return 1;
+		return (1);
 
-	/* XXX cannot happen */
-	return 0;
+	/* cannot happen */
+	return (0);
 }
 
 static const char *
 _findshlib(char *name, int *majorp, int *minorp)
 {
-	int		dewey[MAXDEWEY];
-	int		ndewey;
-	int		tmp[MAXDEWEY];
-	int		i;
-	int		len;
-	char		*lname;
-	static char	path[PATH_MAX];
-	int		major, minor;
-	const char	*search_dirs[1];
-	const int	n_search_dirs = 1;
+	char *lname;
+	const char *search_dirs[1];
+	static char path[PATH_MAX];
+	int dewey[MAXDEWEY], tmp[MAXDEWEY];
+	int i, len, major, minor, ndewey, n_search_dirs;
 
-	_DIAGASSERT(name != NULL);
-	_DIAGASSERT(majorp != NULL);
-	_DIAGASSERT(minorp != NULL);
-
+	n_search_dirs = 1;
 	major = *majorp;
 	minor = *minorp;
 	path[0] = '\0';
@@ -209,16 +192,15 @@ _findshlib(char *name, int *majorp, int *minorp)
 	ndewey = 0;
 
 	for (i = 0; i < n_search_dirs; i++) {
-		DIR		*dd = opendir(search_dirs[i]);
-		struct dirent	*dp;
-		int		found_dot_a = 0;
-		int		found_dot_so = 0;
+		struct dirent *dp;
+		DIR *dd = opendir(search_dirs[i]);
+		int found_dot_a = 0, found_dot_so = 0;
 
 		if (dd == NULL)
-			continue;
+			break;
 
 		while ((dp = readdir(dd)) != NULL) {
-			int	n;
+			int n;
 
 			if (dp->d_namlen < len + 4)
 				continue;
@@ -235,9 +217,9 @@ _findshlib(char *name, int *majorp, int *minorp)
 
 			/* XXX should verify the library is a.out/ELF? */
 
-			if (major == -1 && minor == -1) {
+			if (major == -1 && minor == -1)
 				goto compare_version;
-			} else if (major != -1 && minor == -1) {
+			else if (major != -1 && minor == -1) {
 				if (tmp[0] == major)
 					goto compare_version;
 			} else if (major != -1 && minor != -1) {
@@ -270,26 +252,23 @@ _findshlib(char *name, int *majorp, int *minorp)
 			/*
 			 * There's a lib in this dir; take it.
 			 */
-			return path[0] ? path : NULL;
+			return (path[0] ? path : NULL);
 	}
 
-	return path[0] ? path : NULL;
+	return (path[0] ? path : NULL);
 }
 
 void *
 _citrus_find_getops(_citrus_module_t handle, const char *modname,
-		    const char *ifname)
+    const char *ifname)
 {
 	char name[PATH_MAX];
 	void *p;
 
-	_DIAGASSERT(handle != NULL);
-	_DIAGASSERT(modname != NULL);
-	_DIAGASSERT(ifname != NULL);
-
-	snprintf(name, sizeof(name), "_citrus_%s_%s_getops", modname, ifname);
+	snprintf(name, sizeof(name), "_citrus_%s_%s_getops",
+	    modname, ifname);
 	p = dlsym((void *)handle, name);
-	return p;
+	return (p);
 }
 
 int
@@ -297,30 +276,30 @@ _citrus_load_module(_citrus_module_t *rhandle, const char *encname)
 {
 	const char *p;
 	char path[PATH_MAX];
-	int maj, min;
 	void *handle;
-
-	_DIAGASSERT(rhandle != NULL);
+	int maj, min;
 
 	if (_pathI18nModule == NULL) {
 		p = getenv("PATH_I18NMODULE");
 		if (p != NULL && !issetugid()) {
 			_pathI18nModule = strdup(p);
 			if (_pathI18nModule == NULL)
-				return ENOMEM;
+				return (ENOMEM);
 		} else
 			_pathI18nModule = _PATH_I18NMODULE;
 	}
 
-	snprintf(path, sizeof(path), "lib%s", encname);
+	(void)snprintf(path, sizeof(path), "lib%s", encname);
 	maj = I18NMODULE_MAJOR;
 	min = -1;
 	p = _findshlib(path, &maj, &min);
 	if (!p)
 		return (EINVAL);
-	handle = dlopen(p, RTLD_LAZY);
-	if (!handle)
+	handle = libc_dlopen(p, RTLD_LAZY);
+	if (!handle) {
+		printf("%s", dlerror());
 		return (EINVAL);
+	}
 
 	*rhandle = (_citrus_module_t)handle;
 
@@ -330,187 +309,7 @@ _citrus_load_module(_citrus_module_t *rhandle, const char *encname)
 void
 _citrus_unload_module(_citrus_module_t handle)
 {
+
 	if (handle)
 		dlclose((void *)handle);
 }
-#elif defined(_I18N_STATIC)
-/*
- * Compiled-in multibyte locale support for statically linked programs.
- */
-#include "citrus_ctype.h"
-#include "sys/queue.h"
-#include "citrus_types.h"
-#include "citrus_hash.h"
-#include "citrus_namespace.h"
-#include "citrus_region.h"
-#include "citrus_iconv_local.h"
-#include "citrus_mapper_local.h"
-#include "citrus_stdenc_local.h"
-#include "modules/citrus_mapper_serial.h"
-#include "modules/citrus_mapper_std.h"
-#include "modules/citrus_mapper_none.h"
-#include "modules/citrus_iconv_std.h"
-#include "modules/citrus_utf1632.h"
-
-#ifdef _I18N_STATIC_BIG5
-#include "modules/citrus_big5.h"
-#endif
-#ifdef _I18N_STATIC_EUC
-#include "modules/citrus_euc.h"
-#endif
-#ifdef _I18N_STATIC_EUCTW
-#include "modules/citrus_euctw.h"
-#endif
-#ifdef _I18N_STATIC_ISO2022
-#include "modules/citrus_iso2022.h"
-#endif
-#ifdef _I18N_STATIC_MSKanji
-#include "modules/citrus_mskanji.h"
-#endif
-#ifdef _I18N_STATIC_UTF8
-#include "modules/citrus_utf8.h"
-#endif
-
-#define _CITRUS_GETOPS_FUNC(_m_, _if_) _citrus_##_m_##_##_if_##_getops
-/* only ctype is supported */
-#define _CITRUS_LOCALE_TABLE_ENTRY(_n_) \
-{ #_n_, "ctype", _CITRUS_GETOPS_FUNC(_n_, ctype) }
-
-#define _CITRUS_MODULE_TABLE_ENTRY(_n_, _if_) \
-{ #_n_, #_if_, _CITRUS_GETOPS_FUNC(_n_, _if_) }
-/*
- * Table of compiled-in modules.
- */
-struct citrus_metadata module_table[] = {
- _CITRUS_MODULE_TABLE_ENTRY(iconv_std, iconv),
- _CITRUS_MODULE_TABLE_ENTRY(mapper_std, mapper),
- _CITRUS_MODULE_TABLE_ENTRY(mapper_serial, mapper),
- _CITRUS_MODULE_TABLE_ENTRY(mapper_none, mapper),
- _CITRUS_MODULE_TABLE_ENTRY(UTF1632, stdenc),
-#ifdef _I18N_STATIC_BIG5
- _CITRUS_LOCALE_TABLE_ENTRY(BIG5),
-#endif
-#ifdef _I18N_STATIC_EUC
- _CITRUS_LOCALE_TABLE_ENTRY(EUC),
-#endif
-#ifdef _I18N_STATIC_EUCTW
- _CITRUS_LOCALE_TABLE_ENTRY(EUCTW),
-#endif
-#ifdef _I18N_STATIC_ISO2022
- _CITRUS_LOCALE_TABLE_ENTRY(ISO2022),
-#endif
-#ifdef _I18N_STATIC_MSKanji
- _CITRUS_LOCALE_TABLE_ENTRY(MSKanji),
-#endif
-#ifdef _I18N_STATIC_UTF8
- _CITRUS_LOCALE_TABLE_ENTRY(UTF8),
-#endif
- { NULL, NULL, NULL },
-};
-
-SET_DECLARE(citrus_set, struct citrus_metadata);
-
-DATA_SET(citrus_set, module_table);
-
-#define MAGIC_HANDLE	(void *)(0xC178C178)
-
-void *
-/*ARGSUSED*/
-_citrus_find_getops(_citrus_module_t handle __unused, const char *modname,
-		    const char *ifname)
-{
-	struct citrus_metadata **mdp, *mod;
-
-	SET_FOREACH(mdp, citrus_set) {
-		mod = *mdp;
-		if (mod == NULL || mod->module_name == NULL || mod->interface_name == NULL)
-			continue;
-		if (strcmp(mod->module_name, modname) != 0)
-			continue;
-		if (strcmp(mod->interface_name, ifname) != 0)
-			continue;	
-		return(mod->module_ops);
-	}
-	return (NULL);
-}
-
-int
-/*ARGSUSED*/
-_citrus_load_module(_citrus_module_t *rhandle, char const *modname)
-{
-	struct citrus_metadata **mdp, *mod;
-
-	SET_FOREACH(mdp, citrus_set) {
-		mod = *mdp;
-		if (mod == NULL || mod->module_name == NULL)
-			continue;
-		if (strcmp(mod->module_name, modname) != 0)
-			continue;
-		*rhandle = (_citrus_module_t)mod;
-		return(0);
-	}
-	return (EINVAL);
-}
-
-void
-/*ARGSUSED*/
-_citrus_unload_module(_citrus_module_t handle __unused)
-{
-}
-#else
-SET_DECLARE(citrus_set, struct citrus_metadata);
-
-struct citrus_metadata empty = {
-    NULL, NULL, NULL
-};
-
-DATA_SET(citrus_set, empty);
-
-#define MAGIC_HANDLE    (void *)(0xC178C178)
-
-void *
-/*ARGSUSED*/
-_citrus_find_getops(_citrus_module_t handle __unused, const char *modname,
-                    const char *ifname)
-{
-        struct citrus_metadata **mdp, *mod;
-
-        _DIAGASSERT(handle == MAGIC_HANDLE);
-
-        SET_FOREACH(mdp, citrus_set) {
-                mod = *mdp;
-                if (mod == NULL || mod->module_name == NULL || mod->interface_name == NULL)
-                        continue;
-                if (strcmp(mod->module_name, modname) != 0)
-                        continue;
-                if (strcmp(mod->interface_name, ifname) != 0)
-                        continue;
-                return(mod->module_ops);
-        }
-        return (NULL);
-}
-
-int
-/*ARGSUSED*/
-_citrus_load_module(_citrus_module_t *rhandle, char const *modname)
-{
-        struct citrus_metadata **mdp, *mod;
-
-        SET_FOREACH(mdp, citrus_set) {
-                mod = *mdp;
-                if (mod == NULL || mod->module_name == NULL)
-                        continue;
-                if (strcmp(mod->module_name, modname) != 0)
-                        continue;
-                *rhandle = MAGIC_HANDLE;
-                return(0);
-        }
-        return (EINVAL);
-}
-
-void
-/*ARGSUSED*/
-_citrus_unload_module(_citrus_module_t handle __unused)
-{
-}
-#endif

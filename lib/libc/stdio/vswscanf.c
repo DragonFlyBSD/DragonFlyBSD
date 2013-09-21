@@ -5,6 +5,11 @@
  * This code is derived from software contributed to Berkeley by
  * Donn Seeley at UUNET Technologies, Inc.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -30,8 +35,7 @@
  * SUCH DAMAGE.
  *
  * @(#)vsscanf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/vswscanf.c,v 1.6 2009/01/15 18:53:52 rdivacky Exp $
- * $DragonFly: src/lib/libc/stdio/vswscanf.c,v 1.3 2006/03/02 18:05:30 joerg Exp $
+ * $FreeBSD: head/lib/libc/stdio/vswscanf.c 249808 2013-04-23 13:33:13Z emaste $
  */
 
 #include <limits.h>
@@ -41,7 +45,7 @@
 #include <string.h>
 #include <wchar.h>
 #include "local.h"
-#include "priv_stdio.h"
+#include "xlocale_private.h"
 
 static int	eofread(void *, char *, int);
 
@@ -53,16 +57,17 @@ eofread(void *cookie __unused, char *buf __unused, int len __unused)
 }
 
 int
-vswscanf(const wchar_t * __restrict str, const wchar_t * __restrict fmt,
-	 va_list ap)
+vswscanf_l(const wchar_t * __restrict str, locale_t locale,
+		const wchar_t * __restrict fmt, va_list ap)
 {
 	static const mbstate_t initial;
 	mbstate_t mbs;
-	FILE f;
+	FILE f = FAKE_FILE;
 	char *mbstr;
 	size_t mlen;
 	int r;
 	const wchar_t *strp;
+	FIX_LOCALE(locale);
 
 	/*
 	 * XXX Convert the wide character string to multibyte, which
@@ -72,20 +77,22 @@ vswscanf(const wchar_t * __restrict str, const wchar_t * __restrict fmt,
 		return (EOF);
 	mbs = initial;
 	strp = str;
-	if ((mlen = wcsrtombs(mbstr, &strp, SIZE_T_MAX, &mbs)) == (size_t)-1) {
+	if ((mlen = wcsrtombs_l(mbstr, &strp, SIZE_T_MAX, &mbs, locale)) == (size_t)-1) {
 		free(mbstr);
 		return (EOF);
 	}
-	f.pub._fileno = -1;
 	f.pub._flags = __SRD;
 	f._bf._base = f.pub._p = (unsigned char *)mbstr;
 	f._bf._size = f.pub._r = mlen;
 	f._read = eofread;
-	f._ub._base = NULL;
-	f._lb._base = NULL;
-	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
-	r = __vfwscanf(&f, fmt, ap);
+	r = __vfwscanf(&f, locale, fmt, ap);
 	free(mbstr);
 
 	return (r);
+}
+int
+vswscanf(const wchar_t * __restrict str, const wchar_t * __restrict fmt,
+    va_list ap)
+{
+	return vswscanf_l(str, __get_locale(), fmt, ap);
 }

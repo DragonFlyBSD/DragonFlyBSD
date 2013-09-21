@@ -1,7 +1,4 @@
-.\" $NetBSD: src/lib/libc/locale/mbrtowc.3,v 1.6 2004/01/24 16:58:54 wiz Exp $
-.\" $DragonFly: src/lib/libc/locale/mbrtowc.3,v 1.1 2005/03/12 00:18:01 joerg Exp $
-.\"
-.\" Copyright (c)2002 Citrus Project,
+.\" Copyright (c) 2002-2004 Tim J. Robbins
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -25,171 +22,158 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 4, 2002
+.\" $FreeBSD: head/lib/libc/locale/mbrtowc.3 250883 2013-05-21 19:59:37Z ed $
+.\"
+.Dd May 21, 2013
 .Dt MBRTOWC 3
 .Os
-.\" ----------------------------------------------------------------------
 .Sh NAME
-.Nm mbrtowc
-.Nd converts a multibyte character to a wide character (restartable)
-.\" ----------------------------------------------------------------------
+.Nm mbrtowc ,
+.Nm mbrtoc16 ,
+.Nm mbrtoc32
+.Nd "convert a character to a wide-character code (restartable)"
 .Sh LIBRARY
 .Lb libc
-.\" ----------------------------------------------------------------------
 .Sh SYNOPSIS
 .In wchar.h
 .Ft size_t
-.Fn mbrtowc "wchar_t * restrict pwc" "const char * restrict s" "size_t n" \
-"mbstate_t * restrict ps"
-.\" ----------------------------------------------------------------------
+.Fo mbrtowc
+.Fa "wchar_t * restrict pc" "const char * restrict s" "size_t n"
+.Fa "mbstate_t * restrict ps"
+.Fc
+.In uchar.h
+.Ft size_t
+.Fo mbrtoc16
+.Fa "char16_t * restrict pc" "const char * restrict s" "size_t n"
+.Fa "mbstate_t * restrict ps"
+.Fc
+.Ft size_t
+.Fo mbrtoc32
+.Fa "char32_t * restrict pc" "const char * restrict s" "size_t n"
+.Fa "mbstate_t * restrict ps"
+.Fc
 .Sh DESCRIPTION
 The
-.Fn mbrtowc
-usually converts the multibyte character pointed to by
-.Fa s
-to a wide character, and stores the wide character
-to the wchar_t object pointed to by
-.Fa pwc
-if
-.Fa pwc
-is non-null and
-.Fa s
-points to a valid character.
-The conversion happens in accordance with, and changes the conversion
-state described in the mbstate_t object pointed to by
-.Fa ps .
-This function may examine at most
-.Fa n
-bytes of the array beginning from
-.Fa s .
-.Pp
-If
-.Fa s
-points to a valid character and the character corresponds to a null wide
-character, then the
-.Fn mbrtowc
-places the mbstate_t object pointed to by
-.Fa ps
-to an initial conversion state.
-.Pp
-Unlike
-.Xr mbtowc 3 ,
-the
-.Fn mbrtowc
-may accept the byte sequence pointed to by
-.Fa s
-not forming a complete multibyte character
-but which may be part of a valid character.
-In this case, this function will accept all such bytes
-and save them into the conversion state object pointed to by
-.Fa ps .
-They will be used at subsequent calls of this function to restart
-the conversion suspended.
-.Pp
-The behaviour of
-.Fn mbrtowc
-is affected by the
-.Dv LC_CTYPE
-category of the current locale.
-.Pp
-These are the special cases:
-.Bl -tag -width 012345678901
-.It "s == NULL"
-.Fn mbrtowc
-sets the conversion state object pointed to by
-.Fa ps
-to an initial state and always returns 0.
-Unlike
-.Xr mbtowc 3 ,
-the value returned does not indicate whether the current encoding of
-the locale is state-dependent.
-.Pp
-In this case,
-.Fn mbrtowc
-ignores
-.Fa pwc
-and
-.Fa n ,
-and is equivalent to the following call:
-.Bd -literal -offset indent
-mbrtowc(NULL, "", 1, ps);
-.Ed
-.It "pwc == NULL"
-The conversion from a multibyte character to a wide character has
-taken place and the conversion state may be affected, but the resulting
-wide character is discarded.
-.It "ps == NULL"
-.Fn mbrtowc
-uses its own internal state object to keep the conversion state,
-instead of
-.Fa ps
-mentioned in this manual page.
-.Pp
-Calling any other functions in
-.Lb libc
-never changes the internal state of
 .Fn mbrtowc ,
-which is initialized at startup time of the program.
-.El
-.\" ----------------------------------------------------------------------
-.Sh RETURN VALUES
-In the usual cases,
-.Fn mbrtowc
-returns:
-.Bl -tag -width 012345678901
-.It 0
-The next bytes pointed to by
+.Fn mbrtoc16
+and
+.Fn mbrtoc32
+functions inspect at most
+.Fa n
+bytes pointed to by
 .Fa s
-form a null character.
-.It positive
+to determine the number of bytes needed to complete the next multibyte
+character.
+If a character can be completed, and
+.Fa pc
+is not
+.Dv NULL ,
+the wide character which is represented by
+.Fa s
+is stored in the
+.Vt wchar_t ,
+.Vt char16_t
+or
+.Vt char32_t
+it points to.
+.Pp
 If
 .Fa s
-points to a valid character,
-.Fn mbrtowc
-returns the number of bytes in the character.
-.It (size_t)-2
+is
+.Dv NULL ,
+these functions behave as if
+.Fa pc
+was
+.Dv NULL ,
 .Fa s
-points to a byte sequence which possibly contains part of a valid
-multibyte character, but which is incomplete.
-When
+was an empty string
+.Pq Qq
+and
 .Fa n
-is at least
-.Dv MB_CUR_MAX ,
-this case can only occur if the array pointed to by
-.Fa s
-contains a redundant shift sequence.
-.It (size_t)-1
-.Fa s
-points to an illegal byte sequence which does not form a valid multibyte
-character.
-In this case,
-.Fn mbrtowc
-sets
-.Va errno
-to indicate the error.
+was 1.
+.Pp
+The
+.Vt mbstate_t
+argument,
+.Fa ps ,
+is used to keep track of the shift state.
+If it is
+.Dv NULL ,
+these functions use an internal, static
+.Vt mbstate_t
+object, which is initialized to the initial conversion state
+at program startup.
+.Pp
+As a single
+.Vt char16_t
+is not large enough to represent certain multibyte characters, the
+.Fn mbrtoc16
+function may need to be invoked multiple times to convert a single
+multibyte character sequence.
+.Sh RETURN VALUES
+The
+.Fn mbrtowc ,
+.Fn mbrtoc16
+and
+.Fn mbrtoc32
+functions return:
+.Bl -tag -width indent
+.It 0
+The next
+.Fa n
+or fewer bytes
+represent the null wide character
+.Pq Li "L'\e0'" .
+.It >0
+The next
+.Fa n
+or fewer bytes represent a valid character, these functions
+return the number of bytes used to complete the multibyte character.
+.It Po Vt size_t Pc Ns \-1
+An encoding error has occurred.
+The next
+.Fa n
+or fewer bytes do not contribute to a valid multibyte character.
+.It Po Vt size_t Pc Ns \-2
+The next
+.Fa n
+contribute to, but do not complete, a valid multibyte character sequence,
+and all
+.Fa n
+bytes have been processed.
 .El
-.\" ----------------------------------------------------------------------
+.Pp
+The
+.Fn mbrtoc16
+function also returns:
+.Bl -tag -width indent
+.It Po Vt size_t Pc Ns \-3
+The next character resulting from a previous call has been stored.
+No bytes from the input have been consumed.
+.El
 .Sh ERRORS
-.Fn mbrtowc
-may cause an error in the following case:
+The
+.Fn mbrtowc ,
+.Fn mbrtoc16
+and
+.Fn mbrtoc32
+functions will fail if:
 .Bl -tag -width Er
 .It Bq Er EILSEQ
-.Fa s
-points to an invalid or incomplete multibyte character.
+An invalid multibyte sequence was detected.
 .It Bq Er EINVAL
-.Fa ps
-points to an invalid or uninitialized mbstate_t object.
+The conversion state is invalid.
 .El
-.\" ----------------------------------------------------------------------
 .Sh SEE ALSO
-.Xr mbrlen 3 ,
 .Xr mbtowc 3 ,
-.Xr setlocale 3
-.\" ----------------------------------------------------------------------
+.Xr multibyte 3 ,
+.Xr setlocale 3 ,
+.Xr wcrtomb 3
 .Sh STANDARDS
 The
-.Fn mbrtowc
-function conforms to
-.St -isoC-amd1 .
-The restrict qualifier is added at
-.St -isoC-99 .
+.Fn mbrtowc ,
+.Fn mbrtoc16
+and
+.Fn mbrtoc32
+functions conform to
+.St -isoC-2011 .

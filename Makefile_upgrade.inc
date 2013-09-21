@@ -347,7 +347,6 @@ TO_REMOVE+=/usr/include/machine/pcvt_ioctl.h
 TO_REMOVE+=/usr/include/net/bpf_compat.h
 TO_REMOVE+=/usr/include/netinet/ipprotosw.h
 TO_REMOVE+=/usr/include/rune.h
-TO_REMOVE+=/usr/include/runetype.h
 TO_REMOVE+=/modules/if_snc.ko
 TO_REMOVE+=/usr/include/machine/gencount.h
 TO_REMOVE+=/usr/sbin/cursor
@@ -2148,6 +2147,13 @@ TO_REMOVE+=/usr/share/man/man4/uhidev.4.gz
 TO_REMOVE+=/boot/kernel/drmn.ko
 TO_REMOVE+=/boot/kernel/i915.ko
 TO_REMOVE+=/usr/share/man/man4/i915drm.4.gz
+TO_REMOVE+=/usr/share/nls/eu_ES.ISO8859-1
+TO_REMOVE+=/usr/share/nls/eu_ES.ISO8859-15
+TO_REMOVE+=/usr/share/nls/eu_ES.UTF-8
+TO_REMOVE+=/usr/share/nls/fo_FO.ISO8859-1
+TO_REMOVE+=/usr/share/nls/fo_FO.UTF-8
+TO_REMOVE+=/usr/share/nls/hi_IN.UTF-8
+TO_REMOVE+=/usr/share/nls/la_LN.UTF-8
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

@@ -39,7 +39,6 @@
 #include "un-namespace.h"
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
 
 __warn_references(gets, "warning: this program uses gets(), which is unsafe.");
 

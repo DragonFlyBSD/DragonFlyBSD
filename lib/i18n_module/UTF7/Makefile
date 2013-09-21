@@ -1,4 +1,7 @@
-# $DragonFly: src/lib/i18n_module/UTF7/Makefile,v 1.1 2005/03/11 21:50:39 joerg Exp $
+# $FreeBSD: head/lib/libiconv_modules/UTF7/Makefile 219019 2011-02-25 00:04:39Z gabor $
 
-SRCPRE=citrus_
+LIB=	UTF7
+SRCS+=	citrus_utf7.c
+CFLAGS+= --param max-inline-insns-single=32
+
 .include <bsd.lib.mk>

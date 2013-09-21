@@ -29,13 +29,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libkiconv/xlat16_sysctl.c,v 1.2.8.1 2009/04/15 03:14:26 kensmith Exp $
+ * $FreeBSD: head/lib/libkiconv/xlat16_sysctl.c 194637 2009-06-22 17:00:20Z delphij $
  */
 
 /*
  * kiconv(3) requires shared linked, and reduce module size
  * when statically linked.
  */
+
+#ifdef PIC
 
 #include <sys/types.h>
 #include <sys/iconv.h>
@@ -65,3 +67,19 @@ kiconv_add_xlat16_table(const char *to, const char *from, const void *data, int 
 		return (errno);
 	return (0);
 }
+
+#else /* statically linked */
+
+#include <sys/types.h>
+#include <sys/iconv.h>
+#include <errno.h>
+
+int
+kiconv_add_xlat16_table(const char *to __unused, const char *from __unused,
+    const void *data __unused, int datalen __unused)
+{
+
+	return (EINVAL);
+}
+
+#endif /* PIC */

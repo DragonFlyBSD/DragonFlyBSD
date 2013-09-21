@@ -1,5 +1,5 @@
-/* $NetBSD: citrus_pivot_factory.c,v 1.6 2008/02/09 14:56:20 junyoung Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_pivot_factory.c,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_pivot_factory.c 219019 2011-02-25 00:04:39Z gabor $ */
+/* $NetBSD: citrus_pivot_factory.c,v 1.7 2009/04/12 14:20:19 lukem Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -27,8 +27,9 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/endian.h>
+#include <sys/cdefs.h>
 #include <sys/queue.h>
+
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -46,9 +47,9 @@
 #include "citrus_pivot_factory.h"
 
 struct src_entry {
-	char *se_name;
-	struct _citrus_db_factory *se_df;
-	STAILQ_ENTRY(src_entry) se_entry;
+	char				*se_name;
+	struct _citrus_db_factory	*se_df;
+	STAILQ_ENTRY(src_entry)		 se_entry;
 };
 STAILQ_HEAD(src_head, src_entry);
 
@@ -61,28 +62,28 @@ find_src(struct src_head *sh, struct src_entry **rse, const char *name)
 	STAILQ_FOREACH(se, sh, se_entry) {
 		if (_bcs_strcasecmp(se->se_name, name) == 0) {
 			*rse = se;
-			return 0;
+			return (0);
 		}
 	}
 	se = malloc(sizeof(*se));
 	if (se == NULL)
-		return errno;
+		return (errno);
 	se->se_name = strdup(name);
 	if (se->se_name == NULL) {
 		ret = errno;
 		free(se);
-		return ret;
+		return (ret);
 	}
 	ret = _db_factory_create(&se->se_df, &_db_hash_std, NULL);
 	if (ret) {
 		free(se->se_name);
 		free(se);
-		return ret;
+		return (ret);
 	}
 	STAILQ_INSERT_TAIL(sh, se, se_entry);
 	*rse = se;
 
-	return 0;
+	return (0);
 }
 
 static void
@@ -103,13 +104,14 @@ free_src(struct src_head *sh)
 static int
 convert_line(struct src_head *sh, const char *line, size_t len)
 {
-	int ret;
 	struct src_entry *se;
 	const char *p;
 	char key1[LINE_MAX], key2[LINE_MAX], data[LINE_MAX];
+	char *ep;
 	uint32_t val;
+	int ret;
 
-	se = NULL; /* XXX gcc */
+	se = NULL;
 
 	/* cut off trailing comment */
 	p = memchr(line, T_COMM, len);
@@ -119,51 +121,50 @@ convert_line(struct src_head *sh, const char *line, size_t len)
 	/* key1 */
 	line = _bcs_skip_ws_len(line, &len);
 	if (len == 0)
-		return 0;
+		return (0);
 	p = _bcs_skip_nonws_len(line, &len);
-	if (p==line)
-		return 0;
-	snprintf(key1, sizeof(key1), "%.*s", (int)(p-line), line);
+	if (p == line)
+		return (0);
+	snprintf(key1, sizeof(key1), "%.*s", (int)(p - line), line);
 
 	/* key2 */
 	line = _bcs_skip_ws_len(p, &len);
 	if (len == 0)
-		return 0;
+		return (0);
 	p = _bcs_skip_nonws_len(line, &len);
-	if (p==line)
-		return 0;
-	snprintf(key2, sizeof(key2), "%.*s", (int)(p-line), line);
+	if (p == line)
+		return (0);
+	snprintf(key2, sizeof(key2), "%.*s", (int)(p - line), line);
 
 	/* data */
 	line = _bcs_skip_ws_len(p, &len);
 	_bcs_trunc_rws_len(line, &len);
 	snprintf(data, sizeof(data), "%.*s", (int)len, line);
-	/* LINTED: discard const */
-	val = strtoul(data, __DECONST(char **, &p), 0);
-	if (*p != '\0')
-		return EFTYPE;
+	val = strtoul(data, &ep, 0);
+	if (*ep != '\0')
+		return (EFTYPE);
 
 	/* insert to DB */
 	ret = find_src(sh, &se, key1);
 	if (ret)
-		return ret;
+		return (ret);
 
-	return _db_factory_add32_by_s(se->se_df, key2, val);
+	return (_db_factory_add32_by_s(se->se_df, key2, val));
 }
 
 static int
 dump_db(struct src_head *sh, struct _region *r)
 {
-	int ret;
 	struct _db_factory *df;
 	struct src_entry *se;
-	size_t size;
-	void *ptr;
 	struct _region subr;
+	void *ptr;
+	size_t size;
+	int ret;
 
 	ret = _db_factory_create(&df, &_db_hash_std, NULL);
 	if (ret)
-		return ret;
+		return (ret);
 
 	STAILQ_FOREACH(se, sh, se_entry) {
 		size = _db_factory_calc_size(se->se_df);
@@ -172,7 +173,7 @@ dump_db(struct src_head *sh, struct _region *r)
 			goto quit;
 		_region_init(&subr, ptr, size);
 		ret = _db_factory_serialize(se->se_df, _CITRUS_PIVOT_SUB_MAGIC,
-					    &subr);
+		    &subr);
 		if (ret)
 			goto quit;
 		ret = _db_factory_add_by_s(df, se->se_name, &subr, 1);
@@ -192,7 +193,7 @@ dump_db(struct src_head *sh, struct _region *r)
 quit:
 	free(ptr);
 	_db_factory_free(df);
-	return ret;
+	return (ret);
 }
 
 int
@@ -209,16 +210,16 @@ _citrus_pivot_factory_convert(FILE *out, FILE *in)
 	while ((line = fgetln(in, &size)) != NULL)
 		if ((ret = convert_line(&sh, line, size))) {
 			free_src(&sh);
-			return ret;
+			return (ret);
 		}
 
 	ret = dump_db(&sh, &r);
 	free_src(&sh);
 	if (ret)
-		return ret;
+		return (ret);
 
 	if (fwrite(_region_head(&r), _region_size(&r), 1, out) != 1)
-		return errno;
+		return (errno);
 
-	return 0;
+	return (0);
 }

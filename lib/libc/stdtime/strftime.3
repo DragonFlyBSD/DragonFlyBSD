@@ -13,7 +13,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. Neither the name of the University nor the names of its contributors
+.\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -29,9 +29,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc/stdtime/strftime.3,v 1.18.2.10 2003/05/24 00:01:31 keramida Exp $
+.\"     @(#)strftime.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: head/lib/libc/stdtime/strftime.3 237573 2012-06-25 21:51:40Z issyl0 $
 .\"
-.Dd October 19, 2008
+.Dd June 25, 2012
 .Dt STRFTIME 3
 .Os
 .Sh NAME
@@ -48,6 +49,8 @@
 .Fa "const char * restrict format"
 .Fa "const struct tm * restrict timeptr"
 .Fc
+.Ft size_t
+.Fn strftime_l "char *restrict buf" "size_t maxsize" "const char * restrict format" "const struct tm *restrict timeptr" "locale_t loc"
 .Sh DESCRIPTION
 The
 .Fn strftime
@@ -57,6 +60,11 @@ into the buffer
 .Fa buf
 according to the string pointed to by
 .Fa format .
+The function
+.Fn strftime_l
+does the same as
+.Fn strftime
+but takes an explicit locale rather than using the current locale.
 .Pp
 The
 .Fa format
@@ -101,7 +109,7 @@ is equivalent to
 .Dq Li %m/%d/%y .
 .It Cm %d
 is replaced by the day of the month as a decimal number (01-31).
-.It Cm \&%E* Cm \&%O*
+.It Cm %E* %O*
 POSIX locale extensions.
 The sequences
 %Ec %EC %Ex %EX %Ey %EY
@@ -114,10 +122,10 @@ Additionally %OB implemented
 to represent alternative months names
 (used standalone, without day mentioned).
 .It Cm %e
-is replaced by the day of month as a decimal number (1-31); single
+is replaced by the day of the month as a decimal number (1-31); single
 digits are preceded by a blank.
 .It Cm \&%F
-is replaced by the date in the format
+is equivalent to
 .Dq Li %Y-%m-%d .
 .It Cm \&%G
 is replaced by a year as a decimal number with century.
@@ -130,7 +138,8 @@ but as a decimal number without century (00-99).
 .It Cm \&%H
 is replaced by the hour (24-hour clock) as a decimal number (00-23).
 .It Cm %h
-the same as %b.
+the same as
+.Cm %b .
 .It Cm \&%I
 is replaced by the hour (12-hour clock) as a decimal number (01-12).
 .It Cm %j
@@ -147,13 +156,14 @@ is replaced by the minute as a decimal number (00-59).
 is replaced by the month as a decimal number (01-12).
 .It Cm %n
 is replaced by a newline.
-.It Cm \&%O*
-the same as %E*.
+.It Cm %O*
+the same as
+.Cm %E* .
 .It Cm %p
 is replaced by national representation of either
-"ante meridiem"
+"ante meridiem" (a.m.)
 or
-"post meridiem"
+"post meridiem" (p.m.)
 as appropriate.
 .It Cm \&%R
 is equivalent to
@@ -179,7 +189,8 @@ is replaced by the weekday (Monday as the first day of the week)
 as a decimal number (1-7).
 .It Cm \&%V
 is replaced by the week number of the year (Monday as the first day of
-the week) as a decimal number (01-53).  If the week containing January
+the week) as a decimal number (01-53).
+If the week containing January
 1 has four or more days in the new year, then it is week 1; otherwise
 it is the last week of the previous year, and the next week is week 1.
 .It Cm %v
@@ -200,20 +211,25 @@ is replaced by the year with century as a decimal number.
 .It Cm %y
 is replaced by the year without century as a decimal number (00-99).
 .It Cm \&%Z
-is replaced by the time zone name,
-or by the empty string if this is not determinable.
-.It Cm \&%z
-is replaced by the offset from UTC in the format
-.Li ++HHMM
-or
-.Li --HHMM
-as appropriate,
-with positive values representing locations east of Greenwich,
-or by the empty string if this is not determinable.
+is replaced by the time zone name.
+.It Cm %z
+is replaced by the time zone offset from UTC; a leading plus sign stands for
+east of UTC, a minus sign for west of UTC, hours and minutes follow
+with two digits each and no delimiter between them (common form for
+RFC 822 date headers).
 .It Cm %+
 is replaced by national representation of the date and time
 (the format is similar to that produced by
 .Xr date 1 ) .
+.It Cm %-*
+GNU libc extension.
+Do not do any padding when performing numerical outputs.
+.It Cm %_*
+GNU libc extension.
+Explicitly specify space for padding.
+.It Cm %0*
+GNU libc extension.
+Explicitly specify zero for padding.
 .It Cm %%
 is replaced by
 .Ql % .
@@ -223,7 +239,8 @@ is replaced by
 .Xr printf 1 ,
 .Xr ctime 3 ,
 .Xr printf 3 ,
-.Xr strptime 3
+.Xr strptime 3 ,
+.Xr wcsftime 3
 .Sh STANDARDS
 The
 .Fn strftime
@@ -258,5 +275,15 @@ The peculiar week number and year in the replacements of
 and
 .Ql \&%V
 are defined in ISO 8601: 1988.
+The
+.Fn strftime_l
+function conforms to
+.St -p1003.1-2008 .
 .Sh BUGS
 There is no conversion specification for the phase of the moon.
+.Pp
+The
+.Fn strftime
+function does not correctly handle multibyte characters in the
+.Fa format
+argument.

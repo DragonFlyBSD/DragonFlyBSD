@@ -1,8 +1,5 @@
-.\"	$NetBSD: src/lib/libc/locale/towlower.3,v 1.7 2003/09/08 17:54:31 wiz Exp $
-.\"	$DragonFly: src/lib/libc/locale/towlower.3,v 1.1 2005/03/12 00:18:01 joerg Exp $
-.\"
-.\" Copyright (c) 1989, 1991 The Regents of the University of California.
-.\" All rights reserved.
+.\" Copyright (c) 1989, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
 .\"
 .\" This code is derived from software contributed to Berkeley by
 .\" the American National Standards Committee X3, on Information
@@ -16,7 +13,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. Neither the name of the University nor the names of its contributors
+.\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -32,39 +29,38 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"	@(#)tolower.3	5.2 (Berkeley) 6/29/91
+.\"	@(#)tolower.3	8.1 (Berkeley) 6/4/93
+.\" $FreeBSD: head/lib/libc/locale/towlower.3 165903 2007-01-09 00:28:16Z imp $
 .\"
-.Dd December 22, 2000
+.Dd October 3, 2002
 .Dt TOWLOWER 3
 .Os
 .Sh NAME
 .Nm towlower
-.Nd wide character case letter conversion utilities
+.Nd "upper case to lower case letter conversion (wide character version)"
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
 .In wctype.h
 .Ft wint_t
 .Fn towlower "wint_t wc"
-.Ft wint_t
-.Fn towupper "wint_t wc"
 .Sh DESCRIPTION
 The
 .Fn towlower
-function converts an upper-case wide character to the corresponding lower-case
-letter.
-The
-.Fn towupper
-function converts an lower-case wide character to the corresponding upper-case
+function converts an upper-case letter to the corresponding lower-case
 letter.
 .Sh RETURN VALUES
-If the argument is an upper/lower-case letter, the
-.Fn tolower
-function returns the corresponding counterpart if there is
+If the argument is an upper-case letter, the
+.Fn towlower
+function returns the corresponding lower-case letter if there is
 one; otherwise the argument is returned unchanged.
 .Sh SEE ALSO
+.Xr iswlower 3 ,
 .Xr tolower 3 ,
-.Xr toupper 3
+.Xr towupper 3 ,
+.Xr wctrans 3
 .Sh STANDARDS
-The functions conform to
+The
+.Fn towlower
+function conforms to
 .St -isoC-99 .

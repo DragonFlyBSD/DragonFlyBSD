@@ -2,6 +2,11 @@
  * Copyright (c) 2002 Tim J. Robbins.
  * All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -23,13 +28,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdio/getwchar.c,v 1.3 2004/05/25 10:42:52 tjr Exp $
- * $DragonFly: src/lib/libc/stdio/getwchar.c,v 1.2 2005/11/20 11:07:30 swildner Exp $
+ * $FreeBSD: head/lib/libc/stdio/getwchar.c 227753 2011-11-20 14:45:42Z theraven $
  */
+
 
 #include "namespace.h"
 #include <stdio.h>
 #include <wchar.h>
+#include <xlocale.h>
 #include "un-namespace.h"
 #include "libc_private.h"
 #include "local.h"
@@ -42,6 +48,10 @@
 wint_t
 getwchar(void)
 {
-
 	return (fgetwc(stdin));
+}
+wint_t
+getwchar_l(locale_t locale)
+{
+	return (fgetwc_l(stdin, locale));
 }

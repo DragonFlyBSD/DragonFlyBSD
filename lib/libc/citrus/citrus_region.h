@@ -1,5 +1,5 @@
+/* $FreeBSD: head/lib/libc/iconv/citrus_region.h 219019 2011-02-25 00:04:39Z gabor $ */
 /* $NetBSD: citrus_region.h,v 1.7 2008/02/09 14:56:20 junyoung Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_region.h,v 1.3 2008/04/10 10:21:01 hasso Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -31,16 +31,17 @@
 #ifndef _CITRUS_REGION_H_
 #define _CITRUS_REGION_H_
 
+#include <sys/types.h>
+
 struct _citrus_region {
-/* private: */
 	void	*r_head;
-	size_t	r_size;
+	size_t	 r_size;
 };
 
 static __inline void
 _citrus_region_init(struct _citrus_region *r, void *h, size_t sz)
 {
-	_DIAGASSERT(r);
+
 	r->r_head = h;
 	r->r_size = sz;
 }
@@ -48,58 +49,65 @@ _citrus_region_init(struct _citrus_region *r, void *h, size_t sz)
 static __inline void *
 _citrus_region_head(const struct _citrus_region *r)
 {
-	return r->r_head;
+
+	return (r->r_head);
 }
 
 static __inline size_t
 _citrus_region_size(const struct _citrus_region *r)
 {
-	return r->r_size;
+
+	return (r->r_size);
 }
 
 static __inline int
 _citrus_region_check(const struct _citrus_region *r, size_t ofs, size_t sz)
 {
-	return r->r_size >= ofs + sz ? 0 : -1;
+
+	return (r->r_size >= ofs + sz ? 0 : -1);
 }
 
 static __inline void *
 _citrus_region_offset(const struct _citrus_region *r, size_t pos)
 {
-	return (void *)((uint8_t *)r->r_head + pos);
+
+	return ((void *)((uint8_t *)r->r_head + pos));
 }
 
 static __inline uint8_t
 _citrus_region_peek8(const struct _citrus_region *r, size_t pos)
 {
-	return *(uint8_t *)_citrus_region_offset(r, pos);
+
+	return (*(uint8_t *)_citrus_region_offset(r, pos));
 }
 
 static __inline uint16_t
 _citrus_region_peek16(const struct _citrus_region *r, size_t pos)
 {
 	uint16_t val;
-	memcpy(&val, _citrus_region_offset(r, pos), 2);
-	return val;
+
+	memcpy(&val, _citrus_region_offset(r, pos), (size_t)2);
+	return (val);
 }
 
 static __inline uint32_t
 _citrus_region_peek32(const struct _citrus_region *r, size_t pos)
 {
 	uint32_t val;
-	memcpy(&val, _citrus_region_offset(r, pos), 4);
-	return val;
+
+	memcpy(&val, _citrus_region_offset(r, pos), (size_t)4);
+	return (val);
 }
 
 static __inline int
 _citrus_region_get_subregion(struct _citrus_region *subr,
-			     const struct _citrus_region *r,
-			     size_t ofs, size_t sz)
+    const struct _citrus_region *r, size_t ofs, size_t sz)
 {
+
 	if (_citrus_region_check(r, ofs, sz))
-		return -1;
+		return (-1);
 	_citrus_region_init(subr, _citrus_region_offset(r, ofs), sz);
-	return 0;
+	return (0);
 }
 
 #endif

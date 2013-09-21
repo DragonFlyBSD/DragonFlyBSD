@@ -3,6 +3,11 @@
  *		at Electronni Visti IA, Kiev, Ukraine.
  *			All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -24,8 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/locale/collate.h,v 1.9.2.3 2002/10/11 10:36:47 ache Exp $
- * $DragonFly: src/lib/libc/locale/collate.h,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ * $FreeBSD: head/lib/libc/locale/collate.h 227753 2011-11-20 14:45:42Z theraven $
  */
 
 #ifndef _COLLATE_H_
@@ -34,11 +38,12 @@
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <limits.h>
+#include "xlocale_private.h"
 
 #define STR_LEN 10
 #define TABLE_SIZE 100
 #define COLLATE_VERSION    "1.0\n"
-#define COLLATE_VERSION1_1 "1.1\n"
+#define COLLATE_VERSION1_2 "1.2\n"
 
 struct __collate_st_char_pri {
 	int prim, sec;
@@ -48,20 +53,26 @@ struct __collate_st_chain_pri {
 	int prim, sec;
 };
 
-extern int __collate_load_error;
-extern int __collate_substitute_nontrivial;
 #define __collate_substitute_table (*__collate_substitute_table_ptr)
-extern u_char __collate_substitute_table[UCHAR_MAX + 1][STR_LEN];
 #define __collate_char_pri_table (*__collate_char_pri_table_ptr)
-extern struct __collate_st_char_pri __collate_char_pri_table[UCHAR_MAX + 1];
-extern struct __collate_st_chain_pri *__collate_chain_pri_table;
+
+struct xlocale_collate {
+	struct xlocale_component header;
+	int __collate_load_error;
+	int __collate_substitute_nontrivial;
+
+	u_char (*__collate_substitute_table_ptr)[UCHAR_MAX + 1][STR_LEN];
+	struct __collate_st_char_pri (*__collate_char_pri_table_ptr)[UCHAR_MAX + 1];
+	struct __collate_st_chain_pri *__collate_chain_pri_table;
+};
+
 
 __BEGIN_DECLS
 u_char	*__collate_strdup(u_char *);
-u_char	*__collate_substitute(const u_char *);
+u_char	*__collate_substitute(struct xlocale_collate *, const u_char *);
 int	__collate_load_tables(const char *);
-void	__collate_lookup(const u_char *, int *, int *, int *);
-int	__collate_range_cmp(int, int);
+void	__collate_lookup(struct xlocale_collate *, const u_char *, int *, int *, int *);
+int	__collate_range_cmp(struct xlocale_collate *, int, int);
 #ifdef COLLATE_DEBUG
 void	__collate_print_tables(void);
 #endif

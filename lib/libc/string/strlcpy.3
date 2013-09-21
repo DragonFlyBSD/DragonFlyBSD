@@ -25,8 +25,7 @@
 .\" OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 .\" ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libc/string/strlcpy.3,v 1.14 2009/01/12 06:10:48 delphij Exp $
-.\" $DragonFly: src/lib/libc/string/strlcpy.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
+.\" $FreeBSD: head/lib/libc/string/strlcpy.3 235286 2012-05-11 20:06:46Z gjb $
 .\"
 .Dd June 22, 1998
 .Dt STRLCPY 3
@@ -40,9 +39,9 @@
 .Sh SYNOPSIS
 .In string.h
 .Ft size_t
-.Fn strlcpy "char *dst" "const char *src" "size_t size"
+.Fn strlcpy "char * restrict dst" "const char * restrict src" "size_t size"
 .Ft size_t
-.Fn strlcat "char *dst" "const char *src" "size_t size"
+.Fn strlcat "char * restrict dst" "const char * restrict src" "size_t size"
 .Sh DESCRIPTION
 The
 .Fn strlcpy
@@ -170,7 +169,7 @@ if (strlcat(pname, file, sizeof(pname)) >= sizeof(pname))
 .Ed
 .Pp
 Since it is known how many characters were copied the first time, things
-can be sped up a bit by using a copy instead of an append
+can be sped up a bit by using a copy instead of an append.
 .Bd -literal -offset indent
 char *dir, *file, pname[MAXPATHLEN];
 size_t n;
@@ -193,7 +192,8 @@ As a matter of fact, the first version of this manual page got it wrong.
 .Sh SEE ALSO
 .Xr snprintf 3 ,
 .Xr strncat 3 ,
-.Xr strncpy 3
+.Xr strncpy 3 ,
+.Xr wcslcpy 3
 .Sh HISTORY
 The
 .Fn strlcpy

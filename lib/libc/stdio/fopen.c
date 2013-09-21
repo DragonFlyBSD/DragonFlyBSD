@@ -31,7 +31,6 @@
  *
  * @(#)fopen.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fopen.c,v 1.14 2008/04/22 17:03:32 jhb Exp $
- * $DragonFly: src/lib/libc/stdio/fopen.c,v 1.6 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -43,7 +42,6 @@
 #include "un-namespace.h"
 
 #include "local.h"
-#include "priv_stdio.h"
 
 FILE *
 fopen(const char * __restrict file, const char * __restrict mode)

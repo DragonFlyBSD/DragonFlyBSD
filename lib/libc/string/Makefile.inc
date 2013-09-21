@@ -1,5 +1,5 @@
 #	@(#)Makefile.inc	8.1 (Berkeley) 6/4/93
-# $FreeBSD: src/lib/libc/string/Makefile.inc,v 1.42 2009/01/09 16:24:10 ru Exp $
+# $FreeBSD: head/lib/libc/string/Makefile.inc 247899 2013-03-06 19:59:42Z zeising $
 
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/string ${.CURDIR}/../libc/string
 
@@ -10,19 +10,16 @@ CFLAGS+= -I${.CURDIR}/../libc/locale
 # machine-independent string sources
 MISRCS+=bcmp.c bcopy.c bzero.c ffs.c ffsl.c ffsll.c fls.c flsl.c flsll.c \
 	index.c memccpy.c memchr.c memrchr.c memcmp.c \
-	memcpy.c memmem.c memmove.c mempcpy.c memset.c rindex.c stpcpy.c \
-	stpncpy.c \
-	strcasecmp.c strcat.c strcasestr.c strchr.c strchrnul.c \
-	strcmp.c strcoll.c \
-	strcpy.c strcspn.c strdup.c strerror.c strlcat.c strlcpy.c strlen.c \
-	strmode.c strncat.c strncmp.c strncpy.c strndup.c strnlen.c strnstr.c \
+	memcpy.c memmem.c memmove.c mempcpy.c memset.c rindex.c \
+	stpcpy.c stpncpy.c strcasecmp.c \
+	strcat.c strcasestr.c strchr.c strchrnul.c strcmp.c strcoll.c strcpy.c\
+	strcspn.c strdup.c strerror.c strlcat.c strlcpy.c strlen.c strmode.c \
+	strncat.c strncmp.c strncpy.c strndup.c strnlen.c strnstr.c \
 	strpbrk.c strrchr.c strsep.c strsignal.c strspn.c strstr.c strtok.c \
-	strxfrm.c swab.c wcscat.c wcschr.c wcscmp.c wcscoll.c wcscpy.c \
-	wcscspn.c wcsdup.c \
-	wcslcat.c wcslcpy.c wcslen.c wcsncat.c wcsncmp.c wcsncpy.c wcsnlen.c \
-	wcspbrk.c \
-	wcscasecmp.c \
-	wcsncasecmp.c \
+	strxfrm.c swab.c wcpcpy.c wcpncpy.c wcscasecmp.c wcscat.c \
+	wcschr.c wcscmp.c wcscoll.c wcscpy.c wcscspn.c wcsdup.c \
+	wcslcat.c wcslcpy.c wcslen.c wcsncasecmp.c wcsncat.c wcsncmp.c \
+	wcsncpy.c wcsnlen.c wcspbrk.c \
 	wcsrchr.c wcsspn.c wcsstr.c wcstok.c wcswidth.c wcsxfrm.c wmemchr.c \
 	wmemcmp.c \
 	wmemcpy.c wmemmove.c wmemset.c
@@ -48,11 +45,14 @@ MLINKS+=ffs.3 ffsl.3 \
 MLINKS+=index.3 rindex.3
 MLINKS+=memchr.3 memrchr.3
 MLINKS+=memcpy.3 mempcpy.3
-MLINKS+=strcasecmp.3 strncasecmp.3
+MLINKS+=strcasecmp.3 strncasecmp.3 \
+	strcasecmp.3 strcasecmp_l.3 \
+	strcasecmp.3 strncasecmp_l.3
 MLINKS+=strcat.3 strncat.3
 MLINKS+=strchr.3 strrchr.3 \
 	strchr.3 strchrnul.3
 MLINKS+=strcmp.3 strncmp.3
+MLINKS+=strcoll.3 strcoll_l.3
 MLINKS+=strcpy.3 stpcpy.3 \
 	strcpy.3 stpncpy.3 \
 	strcpy.3 strncpy.3
@@ -64,9 +64,14 @@ MLINKS+=strerror.3 perror.3 \
 MLINKS+=strlcpy.3 strlcat.3
 MLINKS+=strlen.3 strnlen.3
 MLINKS+=strstr.3 strcasestr.3 \
-	strstr.3 strnstr.3
+	strstr.3 strnstr.3 \
+	strstr.3 strcasestr_l.3
 MLINKS+=strtok.3 strtok_r.3
-MLINKS+=wmemchr.3 wcscat.3 \
+MLINKS+=strxfrm.3 strxfrm_l.3
+MLINKS+=wmemchr.3 wcpcpy.3 \
+	wmemchr.3 wcpncpy.3 \
+	wmemchr.3 wcscasecmp.3 \
+	wmemchr.3 wcscat.3 \
 	wmemchr.3 wcschr.3 \
 	wmemchr.3 wcscmp.3 \
 	wmemchr.3 wcscpy.3 \
@@ -75,6 +80,7 @@ MLINKS+=wmemchr.3 wcscat.3 \
 	wmemchr.3 wcslcat.3 \
 	wmemchr.3 wcslcpy.3 \
 	wmemchr.3 wcslen.3 \
+	wmemchr.3 wcsncasecmp.3 \
 	wmemchr.3 wcsncat.3 \
 	wmemchr.3 wcsncmp.3 \
 	wmemchr.3 wcsncpy.3 \
@@ -83,8 +89,6 @@ MLINKS+=wmemchr.3 wcscat.3 \
 	wmemchr.3 wcsrchr.3 \
 	wmemchr.3 wcsspn.3 \
 	wmemchr.3 wcsstr.3 \
-	wmemchr.3 wcscasecmp.3 \
-	wmemchr.3 wcsncasecmp.3 \
 	wmemchr.3 wmemcmp.3 \
 	wmemchr.3 wmemcpy.3 \
 	wmemchr.3 wmemmove.3 \

@@ -30,15 +30,13 @@
  * SUCH DAMAGE.
  *
  * @(#)fvwrite.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/fvwrite.c,v 1.18 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.7 2005/07/23 20:23:06 joerg Exp $
+ * $FreeBSD: head/lib/libc/stdio/fvwrite.c 249810 2013-04-23 14:36:44Z emaste $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "local.h"
-#include "priv_stdio.h"
 
 /*
  * Write some memory regions.  Return zero on success, EOF on error.
@@ -56,25 +54,25 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 	char *nl;
 	int nlknown, nldist;
 
-	if ((len = uio->uio_resid) == 0)
+	if (uio->uio_resid == 0)
 		return (0);
 	/* make sure we can write */
 	if (prepwrite(fp) != 0)
 		return (EOF);
 
-#define	MIN(a, b)	((a) < (b) ? (a) : (b))
-#define	COPY(n)		memcpy((void *)fp->pub._p, (void *)p, (size_t)(n))
+#define	MIN(a, b) ((a) < (b) ? (a) : (b))
+#define	COPY(n)	  (void)memcpy((void *)fp->pub._p, (void *)p, (size_t)(n))
 
 	iov = uio->uio_iov;
 	p = iov->iov_base;
 	len = iov->iov_len;
 	iov++;
-#define	GETIOV(extra_work)		\
-	while (len == 0) {		\
-		extra_work;		\
-		p = iov->iov_base;	\
-		len = iov->iov_len;	\
-		iov++;			\
+#define GETIOV(extra_work) \
+	while (len == 0) { \
+		extra_work; \
+		p = iov->iov_base; \
+		len = iov->iov_len; \
+		iov++; \
 	}
 	if (fp->pub._flags & __SNBF) {
 		/*
@@ -123,7 +121,7 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 				if (len < w)
 					w = len;
 				if (w > 0) {
-					COPY(w);	/* copy MIN(fp->pub._w, len), */
+					COPY(w);        /* copy MIN(fp->pub._w,len), */
 					fp->pub._w -= w;
 					fp->pub._p += w;
 				}

@@ -15,14 +15,15 @@ DF306.0 {
     memcpy;
     memmem;
     memmove;
-    mempcpy;
     memrchr;
     memset;
     rindex;
     stpcpy;
     stpncpy;
     strcasecmp;
+    strcasecmp_l;
     strcasestr;
+    strcasestr_l;
     strcat;
     strchr;
     strchrnul;
@@ -38,6 +39,7 @@ DF306.0 {
     strlen;
     strmode;
     strncasecmp;
+    strncasecmp_l;
     strncat;
     strncmp;
     strncpy;
@@ -54,6 +56,8 @@ DF306.0 {
     strtok_r;
     strxfrm;
     swab;
+    wcpcpy;
+    wcpncpy;
     wcscasecmp;
     wcscat;
     wcschr;
@@ -76,7 +80,9 @@ DF306.0 {
     wcsstr;
     wcstok;
     wcswidth;
+    wcswidth_l;
     wcsxfrm;
+    wcwidth_l;
     wmemchr;
     wmemcmp;
     wmemcpy;

@@ -23,10 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * citrus Id: wmemset.c,v 1.2 2000/12/20 14:08:31 itojun Exp
- * $NetBSD: wmemset.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wmemset.c,v 1.6 2002/09/21 00:29:23 tjr Exp $
- * $DragonFly: src/lib/libc/string/wmemset.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
+ *	citrus Id: wmemset.c,v 1.2 2000/12/20 14:08:31 itojun Exp
+ * $FreeBSD: head/lib/libc/string/wmemset.c 188098 2009-02-03 20:25:36Z imp $
  */
 
 #include <wchar.h>

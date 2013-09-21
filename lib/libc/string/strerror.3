@@ -30,9 +30,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strerror.3	8.1 (Berkeley) 6/9/93
-.\" $FreeBSD: src/lib/libc/string/strerror.3,v 1.24 2007/01/09 00:28:12 imp Exp $
+.\" $FreeBSD: head/lib/libc/string/strerror.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd October 12, 2004
+.Dd April 5, 2011
 .Dt STRERROR 3
 .Os
 .Sh NAME
@@ -114,6 +114,9 @@ the range 0 <
 .Fa errnum
 <
 .Fa sys_nerr .
+The number 0 is also recognized, although applications that take advantage of
+this are likely to use unspecified values of
+.Va errno .
 .Pp
 If insufficient storage is provided in
 .Fa strerrbuf
@@ -144,6 +147,7 @@ or
 should be used instead.
 .Sh SEE ALSO
 .Xr intro 2 ,
+.Xr err 3 ,
 .Xr psignal 3
 .Sh STANDARDS
 The
@@ -168,12 +172,12 @@ The
 function was implemented in
 .Fx 4.4
 by
-.An Wes Peters Aq Mt wes@FreeBSD.org .
+.An Wes Peters Aq wes@FreeBSD.org .
 .Sh BUGS
-For unknown error numbers, the
+The
 .Fn strerror
-function will return its result in a static buffer which
-may be overwritten by subsequent calls.
+function returns its result in a static buffer which
+will be overwritten by subsequent calls.
 .Pp
 The return type for
 .Fn strerror

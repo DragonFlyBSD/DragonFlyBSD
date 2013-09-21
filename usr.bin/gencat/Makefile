@@ -8,9 +8,15 @@ WARNS?=	2
 .if defined(BOOTSTRAPPING)
 nl_types.h:	../../include/nl_types.h
 	cp ${.CURDIR}/../../include/nl_types.h ${.TARGET}
-SRCS+=	nl_types.h
+
+types.h: ${.CURDIR}/../../sys/sys/types.h
+	mkdir sys
+	cp ${.ALLSRC} sys/${.TARGET}
+
+SRCS+=		nl_types.h types.h
 CFLAGS+=	-I${.OBJDIR}
 CLEANFILES+=	nl_types.h
+CLEANDIRS+=	sys
 .endif
 
 .include <bsd.prog.mk>

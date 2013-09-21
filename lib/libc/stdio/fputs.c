@@ -31,7 +31,6 @@
  *
  * @(#)fputs.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fputs.c,v 1.12 2007/01/09 00:28:06 imp Exp $
- * $DragonFly: src/lib/libc/stdio/fputs.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
@@ -40,7 +39,6 @@
 #include "un-namespace.h"
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
 
 /*
  * Write the given string to the given file.

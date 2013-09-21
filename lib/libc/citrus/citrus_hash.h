@@ -1,6 +1,5 @@
-/* $NetBSD: src/lib/libc/citrus/citrus_hash.h,v 1.3 2004/01/02 21:49:35 itojun Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_hash.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
-
+/* $FreeBSD: head/lib/libc/iconv/citrus_hash.h 219019 2011-02-25 00:04:39Z gabor $ */
+/* $NetBSD: citrus_hash.h,v 1.3 2004/01/02 21:49:35 itojun Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -39,22 +38,22 @@ struct headname {					\
 #define _CITRUS_HASH_INIT(head, hashsize)			\
 do {								\
 	int _ch_loop;						\
+								\
 	for (_ch_loop = 0; _ch_loop < hashsize; _ch_loop++)	\
 		LIST_INIT(&(head)->chh_table[_ch_loop]);	\
-} while (/*CONSTCOND*/0)
-#define _CITRUS_HASH_REMOVE(elm, field) LIST_REMOVE(elm, field)
+} while (0)
+#define _CITRUS_HASH_REMOVE(elm, field)	LIST_REMOVE(elm, field)
 #define _CITRUS_HASH_INSERT(head, elm, field, hashval)		\
-LIST_INSERT_HEAD(&(head)->chh_table[hashval], elm, field)
+    LIST_INSERT_HEAD(&(head)->chh_table[hashval], elm, field)
 #define _CITRUS_HASH_SEARCH(head, elm, field, matchfunc, key, hashval)	\
 do {									\
-	LIST_FOREACH((elm), &(head)->chh_table[hashval], field) {	\
-		if (matchfunc((elm), key)==0)				\
+	LIST_FOREACH((elm), &(head)->chh_table[hashval], field)		\
+		if (matchfunc((elm), key) == 0)				\
 			break;						\
-	}								\
-} while (/*CONSTCOND*/0)
+} while (0)
 
 __BEGIN_DECLS
-int	_citrus_string_hash_func(const char *, int);
+int	 _citrus_string_hash_func(const char *, int);
 __END_DECLS
 
 #endif

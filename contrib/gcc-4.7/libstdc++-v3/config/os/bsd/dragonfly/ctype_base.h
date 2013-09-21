@@ -27,8 +27,6 @@
 //
 
 // Information as gleaned from /usr/include/ctype.h on DragonFly.
-// Full details can be found from git repo at:
-// http://gitweb.dragonflybsd.org/dragonfly.git/blob_plain/HEAD:/include/ctype.h
 
 namespace std _GLIBCXX_VISIBILITY(default)
 {
@@ -42,6 +40,22 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
     // NB: Offsets into ctype<char>::_M_table force a particular size
     // on the mask type. Because of this, we don't use an enum.
+#ifdef _CTYPE_S
+    // DragonFly 3.6 and later
+    typedef unsigned long 	mask;
+    static const mask upper	= _CTYPE_U;
+    static const mask lower 	= _CTYPE_L;
+    static const mask alpha 	= _CTYPE_A;
+    static const mask digit 	= _CTYPE_D;
+    static const mask xdigit 	= _CTYPE_X;
+    static const mask space 	= _CTYPE_S;
+    static const mask print 	= _CTYPE_R;
+    static const mask graph 	= _CTYPE_A | _CTYPE_D | _CTYPE_P;
+    static const mask cntrl 	= _CTYPE_C;
+    static const mask punct 	= _CTYPE_P;
+    static const mask alnum 	= _CTYPE_A | _CTYPE_D;
+#else
+    // DragonFly 3.4 and older
     typedef uint16_t		mask;
     static const mask upper	= _CTYPEMASK_U;
     static const mask lower	= _CTYPEMASK_L;
@@ -54,6 +68,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     static const mask cntrl	= _CTYPEMASK_C;
     static const mask punct	= _CTYPEMASK_P;
     static const mask alnum	= _CTYPEMASK_A | _CTYPEMASK_D;
+#endif
   };
 
 _GLIBCXX_END_NAMESPACE_VERSION

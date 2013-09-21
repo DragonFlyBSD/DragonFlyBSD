@@ -10,11 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,7 +28,6 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.20 2008/06/18 09:36:07 hasso Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -99,7 +94,7 @@ struct timezone {
 
 /* Operations on timevals. */
 
-#define	timevalclear(tvp)		(tvp)->tv_sec = (tvp)->tv_usec = 0
+#define	timevalclear(tvp)		((tvp)->tv_sec = (tvp)->tv_usec = 0)
 #define	timevalisset(tvp)		((tvp)->tv_sec || (tvp)->tv_usec)
 #define	timevalcmp(tvp, uvp, cmp)					\
 	(((tvp)->tv_sec == (uvp)->tv_sec) ?				\
@@ -112,7 +107,7 @@ struct timezone {
 
 #ifndef _KERNEL			/* NetBSD/OpenBSD compatible interfaces */
 
-#define	timerclear(tvp)		(tvp)->tv_sec = (tvp)->tv_usec = 0
+#define	timerclear(tvp)		((tvp)->tv_sec = (tvp)->tv_usec = 0)
 #define	timerisset(tvp)		((tvp)->tv_sec || (tvp)->tv_usec)
 #define	timercmp(tvp, uvp, cmp)					\
 	(((tvp)->tv_sec == (uvp)->tv_sec) ?				\
@@ -153,8 +148,6 @@ struct	itimerval {
 
 /*
  * Getkerninfo clock information structure
- *
- * XXX Should be removed, use kinfo_clockinfo insteada.
  */
 struct clockinfo {
 	int	hz;		/* clock frequency */
@@ -238,14 +231,21 @@ int	nanosleep1(struct timespec *rqt, struct timespec *rmt);
 #endif /* !_KERNEL */
 
 __BEGIN_DECLS
-int	adjtime (const struct timeval *, struct timeval *);
-int	futimes (int, const struct timeval *);
-int	getitimer (int, struct itimerval *);
-int	gettimeofday (struct timeval *, struct timezone *);
-int	lutimes (const char *, const struct timeval *);
-int	setitimer (int, const struct itimerval *, struct itimerval *);
-int	settimeofday (const struct timeval *, const struct timezone *);
-int	utimes (const char *, const struct timeval *);
+
+#if __BSD_VISIBLE
+int	adjtime(const struct timeval *, struct timeval *);
+int	futimes(int, const struct timeval *);
+int	lutimes(const char *, const struct timeval *);
+int	setitimer(int, const struct itimerval *, struct itimerval *);
+int	settimeofday(const struct timeval *, const struct timezone *);
+int	utimes(const char *, const struct timeval *);
+#endif
+
+#if __XSI_VISIBLE
+int	getitimer(int, struct itimerval *);
+int	gettimeofday(struct timeval *, struct timezone *);
+#endif
+
 __END_DECLS
 
 

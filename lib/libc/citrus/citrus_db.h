@@ -1,6 +1,5 @@
+/* $FreeBSD: head/lib/libc/iconv/citrus_db.h 219019 2011-02-25 00:04:39Z gabor $ */
 /* $NetBSD: citrus_db.h,v 1.2 2008/02/09 14:56:20 junyoung Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_db.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
-
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -31,44 +30,39 @@
 #ifndef _CITRUS_DB_H_
 #define _CITRUS_DB_H_
 
+#include "citrus_db_factory.h"
+
 struct _citrus_db;
 struct _citrus_db_locator {
-	u_int32_t	dl_hashval;
+	uint32_t	dl_hashval;
 	size_t		dl_offset;
 };
 
 __BEGIN_DECLS
-int	_citrus_db_open(struct _citrus_db **, struct _citrus_region *,
-			const char *,
-			u_int32_t (*)(void *, struct _citrus_region *),
-			void *);
-void	_citrus_db_close(struct _citrus_db *);
-int	_citrus_db_lookup(struct _citrus_db *, struct _citrus_region *,
-			  struct _citrus_region *,
-			  struct _citrus_db_locator *);
-int	_citrus_db_lookup_by_string(struct _citrus_db *, const char *,
-				    struct _citrus_region *,
-				    struct _citrus_db_locator *);
-int	_citrus_db_lookup8_by_string(struct _citrus_db *, const char *,
-				     u_int8_t *,
-				     struct _citrus_db_locator *);
-int	_citrus_db_lookup16_by_string(struct _citrus_db *, const char *,
-				      u_int16_t *,
-				      struct _citrus_db_locator *);
-int	_citrus_db_lookup32_by_string(struct _citrus_db *, const char *,
-				      u_int32_t *,
-				      struct _citrus_db_locator *);
-int	_citrus_db_lookup_string_by_string(struct _citrus_db *, const char *,
-					   const char **,
-					   struct _citrus_db_locator *);
-int	_citrus_db_get_number_of_entries(struct _citrus_db *);
-int	_citrus_db_get_entry(struct _citrus_db *, int,
-			     struct _citrus_region *, struct _citrus_region *);
+int	 _citrus_db_open(struct _citrus_db **, struct _citrus_region *,
+	    const char *, _citrus_db_hash_func_t, void *);
+void	 _citrus_db_close(struct _citrus_db *);
+int	 _citrus_db_lookup(struct _citrus_db *, struct _citrus_region *,
+	    struct _citrus_region *, struct _citrus_db_locator *);
+int	 _citrus_db_lookup_by_string(struct _citrus_db *, const char *,
+	    struct _citrus_region *, struct _citrus_db_locator *);
+int	 _citrus_db_lookup8_by_string(struct _citrus_db *, const char *,
+	    uint8_t *, struct _citrus_db_locator *);
+int	 _citrus_db_lookup16_by_string(struct _citrus_db *, const char *,
+	    uint16_t *, struct _citrus_db_locator *);
+int	 _citrus_db_lookup32_by_string(struct _citrus_db *, const char *,
+	    uint32_t *, struct _citrus_db_locator *);
+int	 _citrus_db_lookup_string_by_string(struct _citrus_db *, const char *,
+	    const char **, struct _citrus_db_locator *);
+int	 _citrus_db_get_number_of_entries(struct _citrus_db *);
+int	 _citrus_db_get_entry(struct _citrus_db *, int,
+	    struct _citrus_region *, struct _citrus_region *);
 __END_DECLS
 
 static __inline void
 _citrus_db_locator_init(struct _citrus_db_locator *dl)
 {
+
 	dl->dl_hashval = 0;
 	dl->dl_offset = 0;
 }

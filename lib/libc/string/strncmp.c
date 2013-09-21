@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)strncmp.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/strncmp.c,v 1.6 2007/01/09 00:28:12 imp Exp $
- * $DragonFly: src/lib/libc/string/strncmp.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/strncmp.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <string.h>
@@ -43,7 +42,7 @@ strncmp(const char *s1, const char *s2, size_t n)
 		if (*s1 != *s2++)
 			return (*(const unsigned char *)s1 -
 				*(const unsigned char *)(s2 - 1));
-		if (*s1++ == 0)
+		if (*s1++ == '\0')
 			break;
 	} while (--n != 0);
 	return (0);

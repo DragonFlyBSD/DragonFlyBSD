@@ -31,7 +31,6 @@
  *
  * @(#)fseek.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fseek.c,v 1.44 2008/04/17 22:17:54 jhb Exp $
- * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.10 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -45,7 +44,6 @@
 #include "un-namespace.h"
 #include "local.h"
 #include "libc_private.h"
-#include "priv_stdio.h"
 
 #define	POS_ERR	(-(fpos_t)1)
 

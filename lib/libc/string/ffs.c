@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ffs.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/ffs.c,v 1.8 2007/01/09 00:28:11 imp Exp $
- * $DragonFly: src/lib/libc/string/ffs.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/ffs.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <strings.h>
@@ -42,7 +41,7 @@ ffs(int mask)
 	int bit;
 
 	if (mask == 0)
-		return (0);
+		return(0);
 	for (bit = 1; !(mask & 1); bit++)
 		mask = (unsigned int)mask >> 1;
 	return (bit);

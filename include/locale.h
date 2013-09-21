@@ -1,6 +1,3 @@
-/*	$NetBSD: src/include/locale.h,v 1.13 2003/08/07 09:44:10 agc Exp $	*/
-/*	$DragonFly: src/include/locale.h,v 1.5 2008/06/05 17:53:10 swildner Exp $ */
-
 /*
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -30,10 +27,13 @@
  * SUCH DAMAGE.
  *
  *	@(#)locale.h	8.1 (Berkeley) 6/2/93
+ * $FreeBSD: head/include/locale.h 232498 2012-03-04 15:31:13Z theraven $
  */
 
 #ifndef _LOCALE_H_
 #define _LOCALE_H_
+
+#include <sys/_null.h>
 
 struct lconv {
 	char	*decimal_point;
@@ -62,8 +62,6 @@ struct lconv {
 	char	int_n_sign_posn;
 };
 
-#include <sys/_null.h>
-
 #define	LC_ALL		0
 #define	LC_COLLATE	1
 #define	LC_CTYPE	2
@@ -79,6 +77,11 @@ struct lconv {
 __BEGIN_DECLS
 struct lconv	*localeconv(void);
 char		*setlocale(int, const char *);
+
+#if __POSIX_VISIBLE >= 200809
+#include <xlocale/_locale.h>
+#endif
 __END_DECLS
+
 
 #endif /* _LOCALE_H_ */

@@ -1,9 +1,7 @@
-# $DragonFly: src/lib/i18n_module/Makefile,v 1.3 2008/04/10 10:21:00 hasso Exp $
+# $FreeBSD: head/lib/libiconv_modules/Makefile 255298 2013-09-06 10:40:38Z theraven $
 
-SUBDIR=	BIG5 DECHanyu EUC EUCTW GBK2K HZ ISO2022 JOHAB MSKanji UES UTF1632
-SUBDIR+=UTF7 UTF8 VIQR ZW
-SUBDIR+=iconv_none iconv_std
-SUBDIR+=mapper_646 mapper_none mapper_serial mapper_parallel mapper_std
-SUBDIR+=mapper_zone
+SUBDIR=	BIG5 DECHanyu EUC EUCTW GBK2K HZ ISO2022 JOHAB MSKanji UES UTF1632 \
+	UTF7 UTF8 VIQR ZW iconv_none iconv_std mapper_646 mapper_none \
+	mapper_parallel mapper_serial mapper_std mapper_zone
 
 .include <bsd.subdir.mk>

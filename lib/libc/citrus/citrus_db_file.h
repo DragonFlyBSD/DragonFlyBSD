@@ -1,6 +1,5 @@
+/* $FreeBSD: head/lib/libc/iconv/citrus_db_file.h 219019 2011-02-25 00:04:39Z gabor $ */
 /* $NetBSD: citrus_db_file.h,v 1.4 2008/02/10 05:58:22 junyoung Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_db_file.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
-
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -71,7 +70,7 @@ struct _citrus_db_header_x {
 	char		dhx_magic[_CITRUS_DB_MAGIC_SIZE];
 	uint32_t	dhx_num_entries;
 	uint32_t	dhx_entry_offset;
-} __attribute__((__packed__));
+} __packed;
 
 struct _citrus_db_entry_x {
 	uint32_t	dex_hash_value;
@@ -80,7 +79,7 @@ struct _citrus_db_entry_x {
 	uint32_t	dex_key_size;
 	uint32_t	dex_data_offset;
 	uint32_t	dex_data_size;
-} __attribute__((__packed__));
+} __packed;
 #define _CITRUS_DB_ENTRY_SIZE	24
 
 #endif

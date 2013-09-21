@@ -31,16 +31,13 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strstr.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/strstr.3,v 1.14 2007/01/09 00:28:12 imp Exp $
-.\" $DragonFly: src/lib/libc/string/strstr.3,v 1.5 2005/08/05 22:35:10 swildner Exp $
+.\" $FreeBSD: head/lib/libc/string/strstr.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
 .Dd October 11, 2001
 .Dt STRSTR 3
 .Os
 .Sh NAME
-.Nm strstr ,
-.Nm strcasestr ,
-.Nm strnstr
+.Nm strstr , strcasestr , strnstr
 .Nd locate a substring in a string
 .Sh LIBRARY
 .Lb libc
@@ -52,6 +49,10 @@
 .Fn strcasestr "const char *big" "const char *little"
 .Ft char *
 .Fn strnstr "const char *big" "const char *little" "size_t len"
+.In string.h
+.In xlocale.h
+.Ft char *
+.Fn strcasestr_l "const char *big" "const char *little" "locale_t loc"
 .Sh DESCRIPTION
 The
 .Fn strstr
@@ -66,6 +67,12 @@ The
 function is similar to
 .Fn strstr ,
 but ignores the case of both strings.
+.Pp
+The
+.Fn strcasestr_l
+function does the same as
+.Fn strcasestr
+but takes an explicit locale rather than using the current locale.
 .Pp
 The
 .Fn strnstr
@@ -84,8 +91,6 @@ Since the
 .Fn strnstr
 function is a
 .Fx
-/
-.Dx
 specific API, it should only be used when portability is not a concern.
 .Sh RETURN VALUES
 If
@@ -140,7 +145,8 @@ ptr = strnstr(largestring, smallstring, 4);
 .Xr strrchr 3 ,
 .Xr strsep 3 ,
 .Xr strspn 3 ,
-.Xr strtok 3
+.Xr strtok 3 ,
+.Xr wcsstr 3
 .Sh STANDARDS
 The
 .Fn strstr

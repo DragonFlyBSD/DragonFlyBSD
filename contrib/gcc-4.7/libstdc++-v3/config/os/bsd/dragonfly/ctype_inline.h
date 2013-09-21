@@ -46,7 +46,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     if (_M_table)
       return _M_table[static_cast<unsigned char>(__c)] & __m;
     else
+#ifdef _CTYPE_S
+      return __istype(__c, __m);
+#else
       return __libc_ctype_ [__c + 1] & __m;
+#endif
   }
 
   const char*
@@ -59,6 +63,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     else
       for (;__low < __high; ++__vec, ++__low)
 	{
+#ifdef _CTYPE_S
+	  *__vec = __maskrune (*__low, upper | lower | alpha | digit | xdigit
+			       | space | print | graph | cntrl | punct | alnum);
+#else
 	  mask __m = 0;
 	  if (this->is(upper, *__low))  __m |= upper;
 	  if (this->is(lower, *__low))  __m |= lower;
@@ -73,6 +81,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  // Do not include explicit line for alnum mask since it is a
 	  // pure composite of masks on DragonFly.
 	  *__vec = __m;
+#endif
 	}
     return __high;
   }
@@ -110,7 +119,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   ctype<wchar_t>::
   do_is(mask __m, wchar_t __c) const
   {
+#ifdef _CTYPE_S
+    return __istype (__c, __m);
+#else
     return __libc_ctype_ [__c + 1] & __m;
+#endif
   }
 
   inline const wchar_t*
@@ -118,6 +131,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   do_is(const wchar_t* __lo, const wchar_t* __hi, mask* __vec) const
   {
     for (; __lo < __hi; ++__vec, ++__lo)
+#ifdef _CTYPE_S
+      *__vec = __maskrune (*__lo, upper | lower | alpha | digit | xdigit
+			   | space | print | graph | cntrl | punct | alnum);
+#else
     {
       mask __m = 0;
       if (isupper (*__lo)) __m |= _CTYPEMASK_U;
@@ -135,6 +152,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       *__vec = __m;
     }
+#endif
     return __hi;
   }
 
@@ -142,7 +160,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   ctype<wchar_t>::
   do_scan_is(mask __m, const wchar_t* __lo, const wchar_t* __hi) const
   {
+#ifdef _CTYPE_S
+    while (__lo < __hi && ! __istype (*__lo, __m))
+#else
     while (__lo < __hi && !(__libc_ctype_ [*__lo + 1] & __m))
+#endif
       ++__lo;
     return __lo;
   }
@@ -151,7 +173,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   ctype<wchar_t>::
   do_scan_not(mask __m, const char_type* __lo, const char_type* __hi) const
   {
+#ifdef _CTYPE_S
+    while (__lo < __hi && __istype (*__lo, __m))
+#else
     while (__lo < __hi && (__libc_ctype_ [*__lo + 1] & __m))
+#endif
       ++__lo;
     return __lo;
   }

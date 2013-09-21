@@ -32,8 +32,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * @(#)strtok.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/strtok.c,v 1.10 2007/12/12 18:33:06 wes Exp $
- * $DragonFly: src/lib/libc/string/strtok.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
+ * $FreeBSD: head/lib/libc/string/strtok.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <stddef.h>
@@ -49,9 +48,8 @@ __weak_reference(__strtok_r, strtok_r);
 char *
 __strtok_r(char *s, const char *delim, char **last)
 {
-	const char *spanp;
+	char *spanp, *tok;
 	int c, sc;
-	char *tok;
 
 	if (s == NULL && (s = *last) == NULL)
 		return (NULL);
@@ -61,7 +59,7 @@ __strtok_r(char *s, const char *delim, char **last)
 	 */
 cont:
 	c = *s++;
-	for (spanp = delim; (sc = *spanp++) != 0;) {
+	for (spanp = (char *)delim; (sc = *spanp++) != 0;) {
 		if (c == sc)
 			goto cont;
 	}
@@ -78,7 +76,7 @@ cont:
 	 */
 	for (;;) {
 		c = *s++;
-		spanp = delim;
+		spanp = (char *)delim;
 		do {
 			if ((sc = *spanp++) == c) {
 				if (c == 0)

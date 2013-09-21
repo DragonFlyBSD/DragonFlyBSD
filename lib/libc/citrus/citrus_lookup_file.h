@@ -1,5 +1,5 @@
-/* $NetBSD: src/lib/libc/citrus/citrus_lookup_factory.h,v 1.1 2003/06/25 09:51:35 tshiozak Exp $ */
-/* $DragonFly: src/lib/libc/citrus/citrus_lookup_file.h,v 1.2 2008/04/10 10:21:01 hasso Exp $ */
+/* $FreeBSD: head/lib/libc/iconv/citrus_lookup_file.h 219019 2011-02-25 00:04:39Z gabor $ */
+/* $NetBSD: citrus_lookup_file.h,v 1.1 2003/06/25 09:51:36 tshiozak Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,

@@ -30,8 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)memcmp.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/memcmp.3,v 1.9 2007/01/09 00:28:12 imp Exp $
-.\" $DragonFly: src/lib/libc/string/memcmp.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
+.\" $FreeBSD: head/lib/libc/string/memcmp.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
 .Dd June 4, 1993
 .Dt MEMCMP 3
@@ -62,7 +61,9 @@ The
 function
 returns zero if the two strings are identical,
 otherwise returns the difference between the first two differing bytes
-(treated as unsigned char values, so that
+(treated as
+.Vt "unsigned char"
+values, so that
 .Sq Li \e200
 is greater than
 .Sq Li \&\e0 ,
@@ -73,7 +74,8 @@ Zero-length strings are always identical.
 .Xr strcasecmp 3 ,
 .Xr strcmp 3 ,
 .Xr strcoll 3 ,
-.Xr strxfrm 3
+.Xr strxfrm 3 ,
+.Xr wmemcmp 3
 .Sh STANDARDS
 The
 .Fn memcmp

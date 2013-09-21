@@ -23,15 +23,22 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libkiconv/quirks.c,v 1.1.30.1 2009/04/15 03:14:26 kensmith Exp $
+ * $FreeBSD: head/lib/libkiconv/quirks.c 194637 2009-06-22 17:00:20Z delphij $
  */
+
+/*
+ * kiconv(3) requires shared linked, and reduce module size
+ * when statically linked.
+ */
+
+#ifdef PIC
 
 /*
  * Why do we need quirks?
  * Since each vendors has their own Unicode mapping rules,
  * we need some quirks until iconv(3) supports them.
  * We can define Microsoft mappings here.
- *
+ * 
  * For example, the eucJP and Unocode mapping rule is based on
  * the JIS standard. Since Microsoft uses cp932 for Unicode mapping
  * witch is not truly based on the JIS standard, reading a file
@@ -173,3 +180,17 @@ quirk_unix2vendor(uint16_t c, struct quirk_replace_list *replace_list, size_t nu
 
 	return (c);
 }
+
+#else /* statically linked */
+
+#include <sys/types.h>
+#include <sys/iconv.h>
+
+const char *
+kiconv_quirkcs(const char* base __unused, int vendor __unused)
+{
+
+	return (base);
+}
+
+#endif /* PIC */

@@ -5,6 +5,11 @@
  * This code is derived from software contributed to Berkeley by
  * Chris Torek.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -30,8 +35,7 @@
  * SUCH DAMAGE.
  *
  * @(#)vfprintf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/vfwprintf.c,v 1.41 2009/02/28 06:06:57 das Exp $
- * $DragonFly: src/lib/libc/stdio/vfwprintf.c,v 1.3 2006/03/02 18:05:30 joerg Exp $
+ * $FreeBSD: head/lib/libc/stdio/vfwprintf.c 249808 2013-04-23 13:33:13Z emaste $
  */
 
 /*
@@ -45,6 +49,7 @@
 #include <sys/types.h>
 
 #include <ctype.h>
+#include <errno.h>
 #include <limits.h>
 #include <locale.h>
 #include <stdarg.h>
@@ -59,12 +64,12 @@
 
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
 #include "printflocal.h"
+#include "xlocale_private.h"
 
-static int	__sprint(FILE *, struct __suio *);
-static int	__sbprintf(FILE *, const wchar_t *, va_list) __noinline;
-static wint_t	__xfputwc(wchar_t, FILE *);
+static int	__sprint(FILE *, struct __suio *, locale_t);
+static int	__sbprintf(FILE *, locale_t, const wchar_t *, va_list) __noinline;
+static wint_t	__xfputwc(wchar_t, FILE *, locale_t);
 static wchar_t	*__mbsconv(char *, int);
 
 #define	CHAR	wchar_t
@@ -81,28 +86,28 @@ struct grouping_state {
 static const mbstate_t initial_mbs;
 
 static inline wchar_t
-get_decpt(void)
+get_decpt(locale_t locale)
 {
 	mbstate_t mbs;
 	wchar_t decpt;
 	int nconv;
 
 	mbs = initial_mbs;
-	nconv = mbrtowc(&decpt, localeconv()->decimal_point, MB_CUR_MAX, &mbs);
+	nconv = mbrtowc(&decpt, localeconv_l(locale)->decimal_point, MB_CUR_MAX, &mbs);
 	if (nconv == (size_t)-1 || nconv == (size_t)-2)
 		decpt = '.';    /* failsafe */
 	return (decpt);
 }
 
 static inline wchar_t
-get_thousep(void)
+get_thousep(locale_t locale)
 {
 	mbstate_t mbs;
 	wchar_t thousep;
 	int nconv;
 
 	mbs = initial_mbs;
-	nconv = mbrtowc(&thousep, localeconv()->thousands_sep,
+	nconv = mbrtowc(&thousep, localeconv_l(locale)->thousands_sep,
 	    MB_CUR_MAX, &mbs);
 	if (nconv == (size_t)-1 || nconv == (size_t)-2)
 		thousep = '\0';    /* failsafe */
@@ -115,11 +120,11 @@ get_thousep(void)
  * of wide characters that will be printed.
  */
 static int
-grouping_init(struct grouping_state *gs, int ndigits)
+grouping_init(struct grouping_state *gs, int ndigits, locale_t locale)
 {
 
-	gs->grouping = localeconv()->grouping;
-	gs->thousands_sep = get_thousep();
+	gs->grouping = localeconv_l(locale)->grouping;
+	gs->thousands_sep = get_thousep(locale);
 
 	gs->nseps = gs->nrepeats = 0;
 	gs->lead = ndigits;
@@ -141,11 +146,11 @@ grouping_init(struct grouping_state *gs, int ndigits)
  */
 static int
 grouping_print(struct grouping_state *gs, struct io_state *iop,
-	       const CHAR *cp, const CHAR *ep)
+	       const CHAR *cp, const CHAR *ep, locale_t locale)
 {
 	const CHAR *cp0 = cp;
 
-	if (io_printandpad(iop, cp, ep, gs->lead, zeroes))
+	if (io_printandpad(iop, cp, ep, gs->lead, zeroes, locale))
 		return (-1);
 	cp += gs->lead;
 	while (gs->nseps > 0 || gs->nrepeats > 0) {
@@ -155,9 +160,9 @@ grouping_print(struct grouping_state *gs, struct io_state *iop,
 			gs->grouping--;
 			gs->nseps--;
 		}
-		if (io_print(iop, &gs->thousands_sep, 1))
+		if (io_print(iop, &gs->thousands_sep, 1, locale))
 			return (-1);
-		if (io_printandpad(iop, cp, ep, *gs->grouping, zeroes))
+		if (io_printandpad(iop, cp, ep, *gs->grouping, zeroes, locale))
 			return (-1);
 		cp += *gs->grouping;
 	}
@@ -176,7 +181,7 @@ grouping_print(struct grouping_state *gs, struct io_state *iop,
  * string eclipses the benefits of buffering.
  */
 static int
-__sprint(FILE *fp, struct __suio *uio)
+__sprint(FILE *fp, struct __suio *uio, locale_t locale)
 {
 	struct __siov *iov;
 	wchar_t *p;
@@ -187,7 +192,7 @@ __sprint(FILE *fp, struct __suio *uio)
 		p = (wchar_t *)iov->iov_base;
 		len = iov->iov_len;
 		for (i = 0; i < len; i++) {
-			if (__xfputwc(p[i], fp) == WEOF)
+			if (__xfputwc(p[i], fp, locale) == WEOF)
 				return (-1);
 		}
 	}
@@ -201,7 +206,7 @@ __sprint(FILE *fp, struct __suio *uio)
  * worries about ungetc buffers and so forth.
  */
 static int
-__sbprintf(FILE *fp, const wchar_t *fmt, va_list ap)
+__sbprintf(FILE *fp, locale_t locale, const wchar_t *fmt, va_list ap)
 {
 	int ret;
 	FILE fake;
@@ -216,7 +221,6 @@ __sbprintf(FILE *fp, const wchar_t *fmt, va_list ap)
 	fake.pub._fileno = fp->pub._fileno;
 	fake._cookie = fp->_cookie;
 	fake._write = fp->_write;
-	memcpy(WCIO_GET(&fake), WCIO_GET(fp), sizeof(struct wchar_io_data));
 
 	/* set up the buffer */
 	fake._bf._base = fake.pub._p = buf;
@@ -224,7 +228,7 @@ __sbprintf(FILE *fp, const wchar_t *fmt, va_list ap)
 	fake.pub._lbfsize = 0;	/* not actually used, but Just In Case */
 
 	/* do the work, then copy any error status */
-	ret = __vfwprintf(&fake, fmt, ap);
+	ret = __vfwprintf(&fake, locale, fmt, ap);
 	if (ret >= 0 && __fflush(&fake))
 		ret = WEOF;
 	if (fake.pub._flags & __SERR)
@@ -237,7 +241,7 @@ __sbprintf(FILE *fp, const wchar_t *fmt, va_list ap)
  * File must already be locked.
  */
 static wint_t
-__xfputwc(wchar_t wc, FILE *fp)
+__xfputwc(wchar_t wc, FILE *fp, locale_t locale)
 {
 	mbstate_t mbs;
 	char buf[MB_LEN_MAX];
@@ -246,7 +250,7 @@ __xfputwc(wchar_t wc, FILE *fp)
 	size_t len;
 
 	if ((fp->pub._flags & __SSTR) == 0)
-		return (__fputwc_unlock(wc, fp));
+		return (__fputwc(wc, fp, locale));
 
 	mbs = initial_mbs;
 	if ((len = wcrtomb(buf, wc, &mbs)) == (size_t)-1) {
@@ -288,7 +292,7 @@ __mbsconv(char *mbsarg, int prec)
 		 * number of characters to print.
 		 */
 		p = mbsarg;
-		insize = nchars = 0;
+		insize = nchars = nconv = 0;
 		mbs = initial_mbs;
 		while (nchars != (size_t)prec) {
 			nconv = mbrlen(p, MB_CUR_MAX, &mbs);
@@ -338,19 +342,26 @@ __mbsconv(char *mbsarg, int prec)
  * MT-safe version
  */
 int
-vfwprintf(FILE * __restrict fp, const wchar_t * __restrict fmt0, va_list ap)
+vfwprintf_l(FILE * __restrict fp, locale_t locale,
+		const wchar_t * __restrict fmt0, va_list ap)
+
 {
 	int ret;
-
+	FIX_LOCALE(locale);
 	FLOCKFILE(fp);
 	/* optimise fprintf(stderr) (and other unbuffered Unix files) */
 	if ((fp->pub._flags & (__SNBF|__SWR|__SRW)) == (__SNBF|__SWR) &&
 	    fp->pub._fileno >= 0)
-		ret = __sbprintf(fp, fmt0, ap);
+		ret = __sbprintf(fp, locale, fmt0, ap);
 	else
-		ret = __vfwprintf(fp, fmt0, ap);
+		ret = __vfwprintf(fp, locale, fmt0, ap);
 	FUNLOCKFILE(fp);
 	return (ret);
+}
+int
+vfwprintf(FILE * __restrict fp, const wchar_t * __restrict fmt0, va_list ap)
+{
+	return vfwprintf_l(fp, __get_locale(), fmt0, ap);
 }
 
 /*
@@ -368,7 +379,7 @@ vfwprintf(FILE * __restrict fp, const wchar_t * __restrict fmt0, va_list ap)
  * Non-MT-safe version
  */
 int
-__vfwprintf(FILE *fp, const wchar_t *fmt0, va_list ap)
+__vfwprintf(FILE *fp, locale_t locale, const wchar_t *fmt0, va_list ap)
 {
 	wchar_t *fmt;		/* format string */
 	wchar_t ch;		/* character from fmt */
@@ -431,19 +442,19 @@ __vfwprintf(FILE *fp, const wchar_t *fmt0, va_list ap)
 
 	/* BEWARE, these `goto error' on error. */
 #define	PRINT(ptr, len)	do {			\
-	if (io_print(&io, (ptr), (len)))	\
+	if (io_print(&io, (ptr), (len), locale))	\
 		goto error; \
 } while (0)
 #define	PAD(howmany, with) { \
-	if (io_pad(&io, (howmany), (with))) \
+	if (io_pad(&io, (howmany), (with), locale)) \
 		goto error; \
 }
 #define	PRINTANDPAD(p, ep, len, with) {	\
-	if (io_printandpad(&io, (p), (ep), (len), (with))) \
+	if (io_printandpad(&io, (p), (ep), (len), (with), locale)) \
 		goto error; \
 }
 #define	FLUSH() { \
-	if (io_flush(&io)) \
+	if (io_flush(&io, locale)) \
 		goto error; \
 }
 
@@ -452,7 +463,7 @@ __vfwprintf(FILE *fp, const wchar_t *fmt0, va_list ap)
 	 * built, use it to get the argument.  If its not, get the next
 	 * argument (and arguments must be gotten sequentially).
 	 */
-#define	GETARG(type) \
+#define GETARG(type) \
 	((argtable != NULL) ? *((type*)(&argtable[nextarg++])) : \
 	    (nextarg++, va_arg(ap, type)))
 
@@ -471,7 +482,7 @@ __vfwprintf(FILE *fp, const wchar_t *fmt0, va_list ap)
 	    flags&CHARINT ? (u_long)(u_char)GETARG(int) : \
 	    (u_long)GETARG(u_int))
 #define	INTMAX_SIZE	(INTMAXT|SIZET|PTRDIFFT|LLONGINT)
-#define	SJARG() \
+#define SJARG() \
 	(flags&INTMAXT ? GETARG(intmax_t) : \
 	    flags&SIZET ? (intmax_t)GETARG(ssize_t) : \
 	    flags&PTRDIFFT ? (intmax_t)GETARG(ptrdiff_t) : \
@@ -497,7 +508,7 @@ __vfwprintf(FILE *fp, const wchar_t *fmt0, va_list ap)
 		int hold = nextarg; \
 		if (argtable == NULL) { \
 			argtable = statargtable; \
-			if (__find_warguments(fmt0, orgap, &argtable)) { \
+			if (__find_warguments (fmt0, orgap, &argtable)) { \
 				ret = EOF; \
 				goto error; \
 			} \
@@ -516,14 +527,14 @@ __vfwprintf(FILE *fp, const wchar_t *fmt0, va_list ap)
 		return (EOF);
 
 	convbuf = NULL;
-	fmt = __DECONST(wchar_t *, fmt0);
+	fmt = (wchar_t *)fmt0;
 	argtable = NULL;
 	nextarg = 1;
 	va_copy(orgap, ap);
 	io_init(&io, fp);
 	ret = 0;
 #ifndef NO_FLOATING_POINT
-	decimal_point = get_decpt();
+	decimal_point = get_decpt(locale);
 #endif
 
 	/*
@@ -535,6 +546,7 @@ __vfwprintf(FILE *fp, const wchar_t *fmt0, va_list ap)
 		if ((n = fmt - cp) != 0) {
 			if ((unsigned)ret + n > INT_MAX) {
 				ret = EOF;
+				errno = EOVERFLOW;
 				goto error;
 			}
 			PRINT(cp, n);
@@ -573,7 +585,7 @@ reswitch:	switch (ch) {
 			 *	-- ANSI X3J11
 			 * They don't exclude field widths read from args.
 			 */
-			GETASTER(width);
+			GETASTER (width);
 			if (width >= 0)
 				goto rflag;
 			width = -width;
@@ -589,7 +601,7 @@ reswitch:	switch (ch) {
 			goto rflag;
 		case '.':
 			if ((ch = *fmt++) == '*') {
-				GETASTER(prec);
+				GETASTER (prec);
 				goto rflag;
 			}
 			prec = 0;
@@ -617,8 +629,8 @@ reswitch:	switch (ch) {
 				nextarg = n;
 				if (argtable == NULL) {
 					argtable = statargtable;
-					if (__find_warguments(fmt0, orgap,
-							      &argtable)) {
+					if (__find_warguments (fmt0, orgap,
+							       &argtable)) {
 						ret = EOF;
 						goto error;
 					}
@@ -636,9 +648,8 @@ reswitch:	switch (ch) {
 			if (flags & SHORTINT) {
 				flags &= ~SHORTINT;
 				flags |= CHARINT;
-			} else {
+			} else
 				flags |= SHORTINT;
-			}
 			goto rflag;
 		case 'j':
 			flags |= INTMAXT;
@@ -647,9 +658,8 @@ reswitch:	switch (ch) {
 			if (flags & LONGINT) {
 				flags &= ~LONGINT;
 				flags |= LLONGINT;
-			} else {
+			} else
 				flags |= LONGINT;
-			}
 			goto rflag;
 		case 'q':
 			flags |= LLONGINT;	/* not necessarily */
@@ -812,7 +822,7 @@ fp_common:
 				if (prec || flags & ALT)
 					size += prec + 1;
 				if ((flags & GROUPING) && expt > 0)
-					size += grouping_init(&gs, expt);
+					size += grouping_init(&gs, expt, locale);
 			}
 			break;
 #endif /* !NO_FLOATING_POINT */
@@ -951,7 +961,7 @@ number:			if ((dprec = prec) >= 0)
 			if (size > BUF)	/* should never happen */
 				abort();
 			if ((flags & GROUPING) && size != 0)
-				size += grouping_init(&gs, size);
+				size += grouping_init(&gs, size, locale);
 			break;
 		default:	/* "%?" prints ?, unless ? is NUL */
 			if (ch == '\0')
@@ -987,6 +997,7 @@ number:			if ((dprec = prec) >= 0)
 		prsize = width > realsz ? width : realsz;
 		if ((unsigned)ret + prsize > INT_MAX) {
 			ret = EOF;
+			errno = EOVERFLOW;
 			goto error;
 		}
 
@@ -1014,7 +1025,7 @@ number:			if ((dprec = prec) >= 0)
 			/* leading zeroes from decimal precision */
 			PAD(dprec - size, zeroes);
 			if (gs.grouping) {
-				if (grouping_print(&gs, &io, cp, buf+BUF) < 0)
+				if (grouping_print(&gs, &io, cp, buf+BUF, locale) < 0)
 					goto error;
 			} else {
 				PRINT(cp, size);
@@ -1032,7 +1043,7 @@ number:			if ((dprec = prec) >= 0)
 				} else {
 					if (gs.grouping) {
 						n = grouping_print(&gs, &io,
-						    cp, convbuf + ndig);
+						    cp, convbuf + ndig, locale);
 						if (n < 0)
 							goto error;
 						cp += n;
@@ -1076,7 +1087,7 @@ error:
 	if (__sferror(fp))
 		ret = EOF;
 	if ((argtable != NULL) && (argtable != statargtable))
-		free(argtable);
+		free (argtable);
 	return (ret);
 	/* NOTREACHED */
 }

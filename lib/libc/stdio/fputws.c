@@ -1,9 +1,11 @@
-/* $NetBSD: fputws.c,v 1.1 2003/03/07 07:11:37 tshiozak Exp $ */
-/* $DragonFly: src/lib/libc/stdio/fputws.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
-
 /*-
- * Copyright (c) 2002 Tim J. Robbins.
+ * Copyright (c) 2002-2004 Tim J. Robbins.
  * All rights reserved.
+ *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,38 +28,66 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * Original version ID:
- * FreeBSD: src/lib/libc/stdio/fputws.c,v 1.4 2002/09/20 13:25:40 tjr Exp
+ * $FreeBSD: head/lib/libc/stdio/fputws.c 234536 2012-04-21 07:31:27Z das $
  */
 
+
 #include "namespace.h"
-#include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <wchar.h>
 #include "un-namespace.h"
-
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
+#include "mblocal.h"
+
+int
+fputws_l(const wchar_t * __restrict ws, FILE * __restrict fp, locale_t locale)
+{
+	struct wchar_io_data *wcio;
+	mbstate_t *st;
+	size_t nbytes;
+	char buf[BUFSIZ];
+	struct __suio uio;
+	struct __siov iov;
+	const wchar_t *wsp;
+	FIX_LOCALE(locale);
+	struct xlocale_ctype *l = XLOCALE_CTYPE(locale);
+
+	FLOCKFILE(fp);
+	ORIENT(fp, 1);
+	wcio = WCIO_GET(fp);
+	if (wcio == NULL)
+	        goto error;
+	wcio->wcio_ungetwc_inbuf = 0;
+	st = &wcio->wcio_mbstate_out;
+
+	if (prepwrite(fp) != 0)
+		goto error;
+	uio.uio_iov = &iov;
+	uio.uio_iovcnt = 1;
+	iov.iov_base = buf;
+	wsp = ws;
+	do {
+		nbytes = l->__wcsnrtombs(buf, &wsp, SIZE_T_MAX, sizeof(buf),
+		    st);
+		if (nbytes == (size_t)-1)
+			goto error;
+		iov.iov_len = uio.uio_resid = nbytes;
+		if (__sfvwrite(fp, &uio) != 0)
+			goto error;
+	} while (wsp != NULL);
+	FUNLOCKFILE(fp);
+	return (0);
+
+error:
+	FUNLOCKFILE(fp);
+	return (-1);
+}
 
 int
 fputws(const wchar_t * __restrict ws, FILE * __restrict fp)
 {
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(ws != NULL);
-
-	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, 1);
-
-	while (*ws != '\0') {
-		if (__fputwc_unlock(*ws++, fp) == WEOF) {
-			FUNLOCKFILE(fp);
-			return (-1);
-		}
-	}
-
-	FUNLOCKFILE(fp);
-
-	return (0);
+	return fputws_l(ws, fp, __get_locale());
 }

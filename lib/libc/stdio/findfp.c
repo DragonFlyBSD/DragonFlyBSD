@@ -44,7 +44,6 @@
 
 #include "libc_private.h"
 #include "local.h"
-#include "priv_stdio.h"
 
 int	__sdidinit;
 

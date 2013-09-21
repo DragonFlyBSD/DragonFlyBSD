@@ -1,4 +1,7 @@
-# $DragonFly: src/lib/i18n_module/GBK2K/Makefile,v 1.1 2005/03/11 20:47:05 joerg Exp $
+# $FreeBSD: head/lib/libiconv_modules/GBK2K/Makefile 219019 2011-02-25 00:04:39Z gabor $
 
-SRCPRE=citrus_
+LIB=	GBK2K
+SRCS+=	citrus_gbk2k.c
+CFLAGS+= --param max-inline-insns-single=16
+
 .include <bsd.lib.mk>

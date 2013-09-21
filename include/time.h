@@ -15,11 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
+ * 3. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -38,13 +34,16 @@
  *	@(#)time.h	8.3 (Berkeley) 1/21/94
  */
 
+/*
+ * $FreeBSD: head/include/time.h 245428 2013-01-14 18:01:19Z dim $
+ */
+
 #ifndef _TIME_H_
 #define	_TIME_H_
 
 #include <sys/cdefs.h>
-
-#include <machine/stdint.h>
-#include <sys/_posix.h>
+#include <sys/_null.h>
+#include <sys/types.h>
 
 #if __POSIX_VISIBLE > 0 && __POSIX_VISIBLE < 200112 || __BSD_VISIBLE
 /*
@@ -56,8 +55,6 @@
 
 /* Frequency of the clock ticks reported by clock().  */
 #define	CLOCKS_PER_SEC	128
-
-#include <sys/_null.h>
 
 #ifndef _CLOCK_T_DECLARED
 #define _CLOCK_T_DECLARED
@@ -88,9 +85,16 @@ typedef	__clockid_t	clockid_t;
 typedef	__timer_t	timer_t;
 #endif
 
-#include <sys/_timespec.h>
+#include <sys/timespec.h>
 
 #endif /* __POSIX_VISIBLE >= 199309 */
+
+#if __POSIX_VISIBLE >= 200112
+#ifndef _PID_T_DECLARED
+#define	_PID_T_DECLARED
+typedef	__pid_t		pid_t;
+#endif
+#endif
 
 /* These macros are also in sys/time.h. */
 #if !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 200112
@@ -99,18 +103,17 @@ typedef	__timer_t	timer_t;
 #define CLOCK_VIRTUAL		1
 #define CLOCK_PROF		2
 #endif
-#define CLOCK_MONOTONIC		4	/* from freebsd */
-#define CLOCK_UPTIME		5	/* from freebsd */
-#define CLOCK_UPTIME_PRECISE	7	/* from freebsd */
-#define CLOCK_UPTIME_FAST	8	/* from freebsd */
-#define CLOCK_REALTIME_PRECISE	9	/* from freebsd */
-#define CLOCK_REALTIME_FAST	10	/* from freebsd */
-#define CLOCK_MONOTONIC_PRECISE	11	/* from freebsd */
-#define CLOCK_MONOTONIC_FAST	12	/* from freebsd */
-#define CLOCK_SECOND		13	/* from freebsd */
-#define CLOCK_THREAD_CPUTIME_ID		14
-#define CLOCK_PROCESS_CPUTIME_ID	15
-
+#define CLOCK_MONOTONIC		4
+#define CLOCK_UPTIME		5	/* FreeBSD-specific. */
+#define CLOCK_UPTIME_PRECISE	7	/* FreeBSD-specific. */
+#define CLOCK_UPTIME_FAST	8	/* FreeBSD-specific. */
+#define CLOCK_REALTIME_PRECISE	9	/* FreeBSD-specific. */
+#define CLOCK_REALTIME_FAST	10	/* FreeBSD-specific. */
+#define CLOCK_MONOTONIC_PRECISE	11	/* FreeBSD-specific. */
+#define CLOCK_MONOTONIC_FAST	12	/* FreeBSD-specific. */
+#define CLOCK_SECOND		13	/* FreeBSD-specific. */
+#define CLOCK_THREAD_CPUTIME_ID	14
+#define	CLOCK_PROCESS_CPUTIME_ID	15
 #endif /* !defined(CLOCK_REALTIME) && __POSIX_VISIBLE >= 200112 */
 
 #if !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 200112
@@ -118,7 +121,7 @@ typedef	__timer_t	timer_t;
 #define TIMER_RELTIME	0x0	/* relative timer */
 #endif
 #define TIMER_ABSTIME	0x1	/* absolute timer */
-#endif
+#endif /* !defined(TIMER_ABSTIME) && __POSIX_VISIBLE >= 200112 */
 
 struct tm {
 	int	tm_sec;		/* seconds after the minute [0-60] */
@@ -130,7 +133,7 @@ struct tm {
 	int	tm_wday;	/* days since Sunday [0-6] */
 	int	tm_yday;	/* days since January 1 [0-365] */
 	int	tm_isdst;	/* Daylight Savings Time flag */
-	long	tm_gmtoff;	/* offset from CUT in seconds */
+	long	tm_gmtoff;	/* offset from UTC in seconds */
 	char	*tm_zone;	/* timezone abbreviation */
 };
 
@@ -139,48 +142,65 @@ extern char *tzname[];
 #endif
 
 __BEGIN_DECLS
-char *asctime (const struct tm *);
-clock_t clock (void);
-char *ctime (const time_t *);
-double difftime (time_t, time_t);
-struct tm *gmtime (const time_t *);
-struct tm *localtime (const time_t *);
-time_t mktime (struct tm *);
-size_t strftime (char * __restrict, size_t, const char * __restrict,
-		 const struct tm * __restrict);
-time_t time (time_t *);
-
-#if __POSIX_VISIBLE
-void tzset (void);
+char *asctime(const struct tm *);
+clock_t clock(void);
+char *ctime(const time_t *);
+double difftime(time_t, time_t);
+/* XXX missing: getdate() */
+struct tm *gmtime(const time_t *);
+struct tm *localtime(const time_t *);
+time_t mktime(struct tm *);
+size_t strftime(char * __restrict, size_t, const char * __restrict,
+    const struct tm * __restrict);
+time_t time(time_t *);
+#if __POSIX_VISIBLE >= 200112
+struct sigevent;
+int timer_create(clockid_t, struct sigevent *__restrict, timer_t *__restrict);
+int timer_delete(timer_t);
+int timer_gettime(timer_t, struct itimerspec *);
+int timer_getoverrun(timer_t);
+int timer_settime(timer_t, int, const struct itimerspec *__restrict,
+	struct itimerspec *__restrict);
 #endif
-
-#if __POSIX_VISIBLE >= 199506
-char *asctime_r (const struct tm *, char *);
-char *ctime_r (const time_t *, char *);
-struct tm *gmtime_r (const time_t *, struct tm *);
-struct tm *localtime_r (const time_t *, struct tm *);
+#if __POSIX_VISIBLE
+void tzset(void);
 #endif
 
 #if __POSIX_VISIBLE >= 199309
-/* Introduced in POSIX 1003.1b-1993, not part of 1003.1-1990. */
-int clock_getres (clockid_t, struct timespec *);
-int clock_gettime (clockid_t, struct timespec *);
-int clock_settime (clockid_t, const struct timespec *);
-int nanosleep (const struct timespec *, struct timespec *);
+int clock_getres(clockid_t, struct timespec *);
+int clock_gettime(clockid_t, struct timespec *);
+int clock_settime(clockid_t, const struct timespec *);
+/* XXX missing: clock_nanosleep() */
+int nanosleep(const struct timespec *, struct timespec *);
 #endif /* __POSIX_VISIBLE >= 199309 */
+
+#if __POSIX_VISIBLE >= 200112
+int clock_getcpuclockid(pid_t, clockid_t *);
+#endif
+
+#if __POSIX_VISIBLE >= 199506
+char *asctime_r(const struct tm *, char *);
+char *ctime_r(const time_t *, char *);
+struct tm *gmtime_r(const time_t *, struct tm *);
+struct tm *localtime_r(const time_t *, struct tm *);
+#endif
 
 #if __XSI_VISIBLE
 extern int daylight;
 extern long timezone;
-char *strptime (const char * __restrict, const char * __restrict,
-		struct tm * __restrict);
+char *strptime(const char * __restrict, const char * __restrict,
+    struct tm * __restrict);
 #endif
 
 #if __BSD_VISIBLE
-void tzsetwall (void);
-time_t timelocal (struct tm * const);
-time_t timegm (struct tm * const);
+void tzsetwall(void);
+time_t timelocal(struct tm * const);
+time_t timegm(struct tm * const);
 #endif /* __BSD_VISIBLE */
+
+#if __POSIX_VISIBLE >= 200809 || defined(_XLOCALE_H_)
+#include <xlocale/_time.h>
+#endif
 __END_DECLS
 
 #endif /* !_TIME_H_ */

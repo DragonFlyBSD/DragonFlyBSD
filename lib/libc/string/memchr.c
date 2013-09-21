@@ -30,8 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)memchr.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/memchr.c,v 1.5 2007/01/09 00:28:12 imp Exp $
- * $DragonFly: src/lib/libc/string/memchr.c,v 1.5 2005/09/20 15:00:45 asmodai Exp $
+ * $FreeBSD: head/lib/libc/string/memchr.c 251069 2013-05-28 20:57:40Z emaste $
  */
 
 #include <string.h>
