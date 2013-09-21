@@ -94,7 +94,6 @@
  */
 
 #define EX_OK		0	/* successful termination */
-#define EX_REBOOT	32	/* vkernel specific - reboot */
 
 #define EX__BASE	64	/* base value for error messages */
 

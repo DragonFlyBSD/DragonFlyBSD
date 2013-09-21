@@ -82,6 +82,7 @@
 #include <assert.h>
 #include <sysexits.h>
 
+#define EX_VKERNEL_REBOOT	32
 
 vm_paddr_t phys_avail[16];
 vm_paddr_t Maxmem;
@@ -207,7 +208,7 @@ int main(int ac, char **av) {
 			if (errno == ECHILD)
 				exit(1);
 		}
-		if (WEXITSTATUS(status) != EX_REBOOT)
+		if (WEXITSTATUS(status) != EX_VKERNEL_REBOOT)
 			return 0;
 	}
 
@@ -1531,7 +1532,7 @@ cpu_reset(void)
 	kprintf("cpu reset, rebooting vkernel\n");
 	closefrom(3);
 	cleanpid();
-	exit(EX_REBOOT);
+	exit(EX_VKERNEL_REBOOT);
 
 }
 
