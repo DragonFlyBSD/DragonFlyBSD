@@ -114,7 +114,6 @@ static int mxge_probe(device_t dev);
 static int mxge_attach(device_t dev);
 static int mxge_detach(device_t dev);
 static int mxge_shutdown(device_t dev);
-static void mxge_intr(void *arg);
 
 static device_method_t mxge_methods[] = {
 	/* Device interface */
@@ -2561,7 +2560,40 @@ mxge_media_probe(mxge_softc_t *sc)
 }
 
 static void
-mxge_intr(void *arg)
+mxge_intr_status(struct mxge_softc *sc, const mcp_irq_data_t *stats)
+{
+	if (sc->link_state != stats->link_up) {
+		sc->link_state = stats->link_up;
+		if (sc->link_state) {
+			sc->ifp->if_link_state = LINK_STATE_UP;
+			if_link_state_change(sc->ifp);
+			if (bootverbose)
+				if_printf(sc->ifp, "link up\n");
+		} else {
+			sc->ifp->if_link_state = LINK_STATE_DOWN;
+			if_link_state_change(sc->ifp);
+			if (bootverbose)
+				if_printf(sc->ifp, "link down\n");
+		}
+		sc->need_media_probe = 1;
+	}
+
+	if (sc->rdma_tags_available != be32toh(stats->rdma_tags_available)) {
+		sc->rdma_tags_available = be32toh(stats->rdma_tags_available);
+		if_printf(sc->ifp, "RDMA timed out! %d tags left\n",
+		    sc->rdma_tags_available);
+	}
+
+	if (stats->link_down) {
+		sc->down_cnt += stats->link_down;
+		sc->link_state = 0;
+		sc->ifp->if_link_state = LINK_STATE_DOWN;
+		if_link_state_change(sc->ifp);
+	}
+}
+
+static void
+mxge_legacy(void *arg)
 {
 	struct mxge_slice_state *ss = arg;
 	mxge_softc_t *sc = ss->sc;
@@ -2571,8 +2603,7 @@ mxge_intr(void *arg)
 	uint32_t send_done_count;
 	uint8_t valid;
 
-
-#ifndef IFNET_BUF_RING
+#if 0
 	/* an interrupt on a non-zero slice is implicitly valid
 	   since MSI-X irqs are not shared */
 	if (ss != sc->ss) {
@@ -2582,25 +2613,24 @@ mxge_intr(void *arg)
 	}
 #endif
 
-	/* make sure the DMA has finished */
-	if (!stats->valid) {
+	/* Make sure the DMA has finished */
+	if (!stats->valid)
 		return;
-	}
 	valid = stats->valid;
 
-	if (sc->irq_type == PCI_INTR_TYPE_LEGACY) {
-		/* lower legacy IRQ  */
-		*sc->irq_deassert = 0;
-		if (!mxge_deassert_wait)
-			/* don't wait for conf. that irq is low */
-			stats->valid = 0;
-	} else {
+	/* Lower legacy IRQ */
+	*sc->irq_deassert = 0;
+	if (!mxge_deassert_wait) {
+		/* Don't wait for conf. that irq is low */
 		stats->valid = 0;
 	}
 
-	/* loop while waiting for legacy irq deassertion */
+	/*
+	 * Loop while waiting for legacy irq deassertion
+	 * XXX do we really want to loop?
+	 */
 	do {
-		/* check for transmit completes and receives */
+		/* Check for transmit completes and receives */
 		send_done_count = be32toh(stats->send_done_count);
 		while ((send_done_count != tx->pkt_done) ||
 		       (rx_done->entry[rx_done->idx].length != 0)) {
@@ -2609,44 +2639,51 @@ mxge_intr(void *arg)
 			mxge_clean_rx_done(rx_done);
 			send_done_count = be32toh(stats->send_done_count);
 		}
-		if (sc->irq_type == PCI_INTR_TYPE_LEGACY && mxge_deassert_wait)
+		if (mxge_deassert_wait)
 			wmb();
-	} while (*((volatile uint8_t *) &stats->valid));
+	} while (*((volatile uint8_t *)&stats->valid));
 
-	/* fw link & error stats meaningful only on the first slice */
-	if (__predict_false((ss == sc->ss) && stats->stats_updated)) {
-		if (sc->link_state != stats->link_up) {
-			sc->link_state = stats->link_up;
-			if (sc->link_state) {
-				sc->ifp->if_link_state = LINK_STATE_UP;
-				if_link_state_change(sc->ifp);
-				if (bootverbose)
-					device_printf(sc->dev, "link up\n");
-			} else {
-				sc->ifp->if_link_state = LINK_STATE_DOWN;
-				if_link_state_change(sc->ifp);
-				if (bootverbose)
-					device_printf(sc->dev, "link down\n");
-			}
-			sc->need_media_probe = 1;
-		}
-		if (sc->rdma_tags_available !=
-		    be32toh(stats->rdma_tags_available)) {
-			sc->rdma_tags_available = 
-				be32toh(stats->rdma_tags_available);
-			device_printf(sc->dev, "RDMA timed out! %d tags "
-				      "left\n", sc->rdma_tags_available);
-		}
+	/* Fw link & error stats meaningful only on the first slice */
+	if (__predict_false(stats->stats_updated))
+		mxge_intr_status(sc, stats);
 
-		if (stats->link_down) {
-			sc->down_cnt += stats->link_down;
-			sc->link_state = 0;
-			sc->ifp->if_link_state = LINK_STATE_DOWN;
-			if_link_state_change(sc->ifp);
-		}
-	}
+	/* Check to see if we have rx token to pass back */
+	if (valid & 0x1)
+	    *ss->irq_claim = be32toh(3);
+	*(ss->irq_claim + 1) = be32toh(3);
+}
 
-	/* check to see if we have rx token to pass back */
+static void
+mxge_msi(void *arg)
+{
+	struct mxge_slice_state *ss = arg;
+	mxge_softc_t *sc = ss->sc;
+	mcp_irq_data_t *stats = ss->fw_stats;
+	mxge_tx_ring_t *tx = &ss->tx;
+	mxge_rx_done_t *rx_done = &ss->rx_done;
+	uint32_t send_done_count;
+	uint8_t valid;
+
+	/* Make sure the DMA has finished */
+	if (!stats->valid)
+		return;
+
+	valid = stats->valid;
+	stats->valid = 0;
+
+	/* Check for receives */
+	if (rx_done->entry[rx_done->idx].length != 0)
+		mxge_clean_rx_done(rx_done);
+
+	/* Check for transmit completes */
+	send_done_count = be32toh(stats->send_done_count);
+	if (send_done_count != tx->pkt_done)
+		mxge_tx_done(tx, (int)send_done_count);
+
+	if (__predict_false(stats->stats_updated))
+		mxge_intr_status(sc, stats);
+
+	/* Check to see if we have rx token to pass back */
 	if (valid & 0x1)
 	    *ss->irq_claim = be32toh(3);
 	*(ss->irq_claim + 1) = be32toh(3);
@@ -3917,6 +3954,7 @@ abort_with_msix_table:
 static int
 mxge_add_single_irq(mxge_softc_t *sc)
 {
+	driver_intr_t *intr_func;
 	u_int irq_flags;
 
 	sc->irq_type = pci_alloc_1intr(sc->dev, mxge_msi_enable,
@@ -3929,8 +3967,13 @@ mxge_add_single_irq(mxge_softc_t *sc)
 		return ENXIO;
 	}
 
+	if (sc->irq_type == PCI_INTR_TYPE_LEGACY)
+		intr_func = mxge_legacy;
+	else
+		intr_func = mxge_msi;
+
 	return bus_setup_intr(sc->dev, sc->irq_res, INTR_MPSAFE,
-	    mxge_intr, &sc->ss[0], &sc->ih, sc->ifp->if_serializer);
+	    intr_func, &sc->ss[0], &sc->ih, sc->ifp->if_serializer);
 }
 
 #if 0
