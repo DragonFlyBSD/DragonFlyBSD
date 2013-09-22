@@ -41,13 +41,8 @@ $FreeBSD: head/sys/dev/mxge/if_mxge_var.h 247160 2013-02-22 19:23:33Z gallatin $
 
 #define MXGE_INTR_COAL_DELAY		150
 
-typedef struct {
-	mcp_slot_t *entry;
-	bus_dmamem_t dma;
-	int cnt;
-	int idx;
-	int mask;
-} mxge_rx_done_t;
+struct mxge_softc;
+typedef struct mxge_softc mxge_softc_t;
 
 typedef struct {
 	uint32_t data0;
@@ -67,6 +62,7 @@ struct mxge_tx_buffer_state {
 };
 
 typedef struct {
+	mxge_softc_t *sc;
 	volatile mcp_kreq_ether_recv_t *lanai;	/* lanai ptr for recv ring */
 	mcp_kreq_ether_recv_t *shadow;	/* host shadow of recv ring */
 	struct mxge_rx_buffer_state *info;
@@ -80,6 +76,17 @@ typedef struct {
 } mxge_rx_ring_t;
 
 typedef struct {
+	mxge_rx_ring_t *rx_small;
+	mxge_rx_ring_t *rx_big;
+	mcp_slot_t *entry;
+	bus_dmamem_t dma;
+	int cnt;
+	int idx;
+	int mask;
+} mxge_rx_done_t;
+
+typedef struct {
+	mxge_softc_t *sc;
 	volatile mcp_kreq_ether_send_t *lanai;	/* lanai ptr for sendq	*/
 	volatile uint32_t *send_go;		/* doorbell for sendq */
 	volatile uint32_t *send_stop;		/* doorbell for sendq */
@@ -98,9 +105,6 @@ typedef struct {
 	int watchdog_rx_pause;		/* cache of pause rq recvd */
 } mxge_tx_ring_t;
 
-struct mxge_softc;
-typedef struct mxge_softc mxge_softc_t;
-
 struct mxge_slice_state {
 	mxge_softc_t *sc;
 	mxge_tx_ring_t tx;		/* transmit ring */
@@ -109,8 +113,6 @@ struct mxge_slice_state {
 	mxge_rx_done_t rx_done;
 	mcp_irq_data_t *fw_stats;
 	volatile uint32_t *irq_claim;
-	u_long ipackets;
-	u_long opackets;
 	bus_dmamem_t fw_stats_dma;
 	struct sysctl_oid *sysctl_tree;
 	struct sysctl_ctx_list sysctl_ctx;
@@ -173,6 +175,8 @@ struct mxge_softc {
 	int current_media;
 	bus_dmamem_t dmabench_dma;
 	struct callout co_hdl;
+	u_long opackets;		/* saved ifnet.opackets */
+	u_long ipackets;		/* saved ifnet.ipackets */
 	struct sysctl_ctx_list sysctl_ctx;
 	struct sysctl_oid *sysctl_tree;
 	struct sysctl_oid *slice_sysctl_tree;

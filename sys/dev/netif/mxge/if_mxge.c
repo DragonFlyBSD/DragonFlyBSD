@@ -1788,18 +1788,13 @@ drop:
 }
 
 static int
-mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
+mxge_encap(mxge_tx_ring_t *tx, struct mbuf *m)
 {
-	mxge_softc_t *sc;
 	mcp_kreq_ether_send_t *req;
 	bus_dma_segment_t *seg;
-	mxge_tx_ring_t *tx;
 	int cnt, cum_len, err, i, idx, odd_flag;
 	uint16_t pseudo_hdr_offset;
 	uint8_t flags, cksum_offset;
-
-	sc = ss->sc;
-	tx = &ss->tx;
 
 	if (m->m_pkthdr.csum_flags & CSUM_TSO) {
 		err = mxge_pullup_tso(&m);
@@ -1876,10 +1871,10 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 	 */
 	if (cum_len < 60) {
 		req++;
-		req->addr_low =
-		    htobe32(MXGE_LOWPART_TO_U32(sc->zeropad_dma.dmem_busaddr));
-		req->addr_high =
-		    htobe32(MXGE_HIGHPART_TO_U32(sc->zeropad_dma.dmem_busaddr));
+		req->addr_low = htobe32(
+		    MXGE_LOWPART_TO_U32(tx->sc->zeropad_dma.dmem_busaddr));
+		req->addr_high = htobe32(
+		    MXGE_HIGHPART_TO_U32(tx->sc->zeropad_dma.dmem_busaddr));
 		req->length = htobe16(60 - cum_len);
 		req->cksum_offset = 0;
 		req->pseudo_hdr_offset = pseudo_hdr_offset;
@@ -1949,7 +1944,7 @@ mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			goto done;
 
 		BPF_MTAP(ifp, m);
-		error = mxge_encap(ss, m);
+		error = mxge_encap(tx, m);
 		if (!error)
 			encap = 1;
 		else
@@ -2195,19 +2190,13 @@ mxge_vlan_tag_remove(struct mbuf *m, uint32_t *csum)
 
 
 static __inline void
-mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
+mxge_rx_done_big(mxge_rx_ring_t *rx, uint32_t len, uint32_t csum)
 {
-	mxge_softc_t *sc;
-	struct ifnet *ifp;
+	struct ifnet *ifp = rx->sc->ifp;
 	struct mbuf *m;
 	const struct ether_header *eh;
-	mxge_rx_ring_t *rx;
 	bus_dmamap_t old_map;
 	int idx;
-
-	sc = ss->sc;
-	ifp = sc->ifp;
-	rx = &ss->rx_big;
 
 	idx = rx->cnt & rx->mask;
 	rx->cnt++;
@@ -2240,7 +2229,7 @@ mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 	m->m_pkthdr.rcvif = ifp;
 	m->m_len = m->m_pkthdr.len = len;
 
-	ss->ipackets++;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 
 	eh = mtod(m, const struct ether_header *);
 	if (eh->ether_type == htons(ETHERTYPE_VLAN))
@@ -2258,19 +2247,13 @@ mxge_rx_done_big(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 }
 
 static __inline void
-mxge_rx_done_small(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
+mxge_rx_done_small(mxge_rx_ring_t *rx, uint32_t len, uint32_t csum)
 {
-	mxge_softc_t *sc;
-	struct ifnet *ifp;
+	struct ifnet *ifp = rx->sc->ifp;
 	const struct ether_header *eh;
 	struct mbuf *m;
-	mxge_rx_ring_t *rx;
 	bus_dmamap_t old_map;
 	int idx;
-
-	sc = ss->sc;
-	ifp = sc->ifp;
-	rx = &ss->rx_small;
 
 	idx = rx->cnt & rx->mask;
 	rx->cnt++;
@@ -2303,7 +2286,7 @@ mxge_rx_done_small(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 	m->m_pkthdr.rcvif = ifp;
 	m->m_len = m->m_pkthdr.len = len;
 
-	ss->ipackets++;
+	IFNET_STAT_INC(ifp, ipackets, 1);
 
 	eh = mtod(m, const struct ether_header *);
 	if (eh->ether_type == htons(ETHERTYPE_VLAN))
@@ -2321,10 +2304,8 @@ mxge_rx_done_small(struct mxge_slice_state *ss, uint32_t len, uint32_t csum)
 }
 
 static __inline void
-mxge_clean_rx_done(struct mxge_slice_state *ss)
+mxge_clean_rx_done(mxge_rx_done_t *rx_done)
 {
-	mxge_rx_done_t *rx_done = &ss->rx_done;
-
 	while (rx_done->entry[rx_done->idx].length != 0) {
 		uint16_t length, checksum;
 
@@ -2334,9 +2315,9 @@ mxge_clean_rx_done(struct mxge_slice_state *ss)
 		checksum = rx_done->entry[rx_done->idx].checksum;
 
 		if (length <= (MHLEN - MXGEFW_PAD))
-			mxge_rx_done_small(ss, length, checksum);
+			mxge_rx_done_small(rx_done->rx_small, length, checksum);
 		else
-			mxge_rx_done_big(ss, length, checksum);
+			mxge_rx_done_big(rx_done->rx_big, length, checksum);
 
 		rx_done->cnt++;
 		rx_done->idx = rx_done->cnt & rx_done->mask;
@@ -2344,13 +2325,10 @@ mxge_clean_rx_done(struct mxge_slice_state *ss)
 }
 
 static __inline void
-mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
+mxge_tx_done(mxge_tx_ring_t *tx, uint32_t mcp_idx)
 {
-	struct ifnet *ifp;
-	mxge_tx_ring_t *tx;
+	struct ifnet *ifp = tx->sc->ifp;
 
-	tx = &ss->tx;
-	ifp = ss->sc->ifp;
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	while (tx->pkt_done != mcp_idx) {
@@ -2366,7 +2344,7 @@ mxge_tx_done(struct mxge_slice_state *ss, uint32_t mcp_idx)
 		 * segment per-mbuf.
 		 */
 		if (m != NULL) {
-			ss->opackets++;
+			IFNET_STAT_INC(ifp, opackets, 1);
 			tx->info[idx].m = NULL;
 			bus_dmamap_unload(tx->dmat, tx->info[idx].map);
 			m_freem(m);
@@ -2598,7 +2576,7 @@ mxge_intr(void *arg)
 	/* an interrupt on a non-zero slice is implicitly valid
 	   since MSI-X irqs are not shared */
 	if (ss != sc->ss) {
-		mxge_clean_rx_done(ss);
+		mxge_clean_rx_done(rx_done);
 		*ss->irq_claim = be32toh(3);
 		return;
 	}
@@ -2627,8 +2605,8 @@ mxge_intr(void *arg)
 		while ((send_done_count != tx->pkt_done) ||
 		       (rx_done->entry[rx_done->idx].length != 0)) {
 			if (send_done_count != tx->pkt_done)
-				mxge_tx_done(ss, (int)send_done_count);
-			mxge_clean_rx_done(ss);
+				mxge_tx_done(tx, (int)send_done_count);
+			mxge_clean_rx_done(rx_done);
 			send_done_count = be32toh(stats->send_done_count);
 		}
 		if (sc->irq_type == PCI_INTR_TYPE_LEGACY && mxge_deassert_wait)
@@ -3450,25 +3428,17 @@ mxge_warn_stuck(mxge_softc_t *sc, mxge_tx_ring_t *tx, int slice)
 static u_long
 mxge_update_stats(mxge_softc_t *sc)
 {
-	struct mxge_slice_state *ss;
-	u_long pkts = 0;
-	u_long ipackets = 0, old_ipackets;
-	u_long opackets = 0, old_opackets;
-	int slice;
+	u_long ipackets, opackets, pkts;
 
-	for (slice = 0; slice < sc->num_slices; slice++) {
-		ss = &sc->ss[slice];
-		ipackets += ss->ipackets;
-		opackets += ss->opackets;
-	}
-	IFNET_STAT_GET(sc->ifp, ipackets, old_ipackets);
-	IFNET_STAT_GET(sc->ifp, opackets, old_opackets);
+	IFNET_STAT_GET(sc->ifp, ipackets, ipackets);
+	IFNET_STAT_GET(sc->ifp, opackets, opackets);
 
-	pkts = ipackets - old_ipackets;
-	pkts += opackets - old_opackets;
+	pkts = ipackets - sc->ipackets;
+	pkts += opackets - sc->opackets;
 
-	IFNET_STAT_SET(sc->ifp, ipackets, ipackets);
-	IFNET_STAT_SET(sc->ifp, opackets, opackets);
+	sc->ipackets = ipackets;
+	sc->opackets = opackets;
+
 	return pkts;
 }
 
@@ -3479,7 +3449,6 @@ mxge_tick(void *arg)
 	u_long pkts = 0;
 	int err = 0;
 	int ticks;
-	uint16_t cmd;
 
 	lwkt_serialize_enter(sc->ifp->if_serializer);
 
@@ -3491,6 +3460,8 @@ mxge_tick(void *arg)
 			mxge_media_probe(sc);
 	}
 	if (pkts == 0) {
+		uint16_t cmd;
+
 		/* Ensure NIC did not suffer h/w fault while idle */
 		cmd = pci_read_config(sc->dev, PCIR_COMMAND, 2);		
 		if ((cmd & PCIM_CMD_BUSMASTEREN) == 0) {
@@ -3498,6 +3469,7 @@ mxge_tick(void *arg)
 			mxge_watchdog_reset(sc);
 			err = ENXIO;
 		}
+
 		/* Look less often if NIC is idle */
 		ticks *= 4;
 	}
@@ -3698,6 +3670,11 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		ss = &sc->ss[i];
 
 		ss->sc = sc;
+		ss->tx.sc = sc;
+		ss->rx_small.sc = sc;
+		ss->rx_big.sc = sc;
+		ss->rx_done.rx_big = &ss->rx_big;
+		ss->rx_done.rx_small = &ss->rx_small;
 
 		/*
 		 * Allocate per-slice rx interrupt queues
