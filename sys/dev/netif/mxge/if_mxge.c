@@ -2740,9 +2740,9 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 		ss->rx_done.entry = NULL;
 	}
 
-	if (ss->tx.req_bytes != NULL) {
-		kfree(ss->tx.req_bytes, M_DEVBUF);
-		ss->tx.req_bytes = NULL;
+	if (ss->tx.req_list != NULL) {
+		kfree(ss->tx.req_list, M_DEVBUF);
+		ss->tx.req_list = NULL;
 	}
 
 	if (ss->tx.seg_list != NULL) {
@@ -2947,12 +2947,12 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	ss->tx.mask = tx_ring_entries - 1;
 	ss->tx.max_desc = MIN(MXGE_MAX_SEND_DESC, tx_ring_entries / 4);
 
-	/* Allocate the tx request copy block XXX */
-	bytes = 8 + sizeof(*ss->tx.req_list) * (ss->tx.max_desc + 4);
-	ss->tx.req_bytes = kmalloc(bytes, M_DEVBUF, M_WAITOK);
-	/* Ensure req_list entries are aligned to 8 bytes */
-	ss->tx.req_list = (mcp_kreq_ether_send_t *)
-	    ((unsigned long)(ss->tx.req_bytes + 7) & ~7UL);
+	/* Allocate the tx request copy block; MUST be 8 bytes aligned */
+	bytes = sizeof(*ss->tx.req_list) * (ss->tx.max_desc + 4);
+	ss->tx.req_list = kmalloc(bytes, M_DEVBUF, M_WAITOK);
+	/* DragonFly's kmalloc(9) promises at least 8 bytes alignment */
+	KASSERT(((uintptr_t)ss->tx.req_list & 0x7) == 0,
+	    ("req_list not 8 bytes aligned"));
 
 	/* Allocate the tx busdma segment list */
 	bytes = sizeof(*ss->tx.seg_list) * ss->tx.max_desc;

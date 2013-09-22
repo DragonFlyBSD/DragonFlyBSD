@@ -80,14 +80,10 @@ typedef struct {
 } mxge_rx_ring_t;
 
 typedef struct {
-#ifdef IFNET_BUF_RING
-	struct buf_ring *br;
-#endif
 	volatile mcp_kreq_ether_send_t *lanai;	/* lanai ptr for sendq	*/
 	volatile uint32_t *send_go;		/* doorbell for sendq */
 	volatile uint32_t *send_stop;		/* doorbell for sendq */
 	mcp_kreq_ether_send_t *req_list;	/* host shadow of sendq */
-	char *req_bytes;
 	bus_dma_segment_t *seg_list;
 	struct mxge_tx_buffer_state *info;
 	bus_dma_tag_t dmat;
