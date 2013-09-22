@@ -57,6 +57,8 @@
 .Fn kfree "void *addr" "struct malloc_type *type"
 .Ft void *
 .Fn krealloc "void *addr" "unsigned long size" "struct malloc_type *type" "int flags"
+.Ft void
+.Fn kmalloc_raise_limit "struct malloc_type *type" "size_t bytes"
 .Fn MALLOC_DECLARE type
 .In sys/param.h
 .In sys/malloc.h
@@ -113,6 +115,13 @@ the
 function behaves identically to
 .Fn kmalloc
 for the specified size.
+.Pp
+.Fn kmalloc_raise_limit
+is used to increase the internal pool limit to
+.Fa bytes .
+Under most of the cases
+the default internal pool limit should be more than enough,
+so this function is currently rarely used and must be used with care.
 .Pp
 Unlike its standard C library counterpart
 .Pq Xr malloc 3 ,
