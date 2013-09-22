@@ -4,7 +4,6 @@
  *
  * @(#)svcauth_des.c	2.3 89/07/11 4.0 RPCSRC; from 1.15 88/02/08 SMI
  * $FreeBSD: src/lib/libc/rpc/svc_auth_des.c,v 1.9 2002/03/22 23:18:37 obrien Exp $
- * $DragonFly: src/lib/libc/rpc/svc_auth_des.c,v 1.6 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
@@ -89,11 +88,12 @@ struct cache_entry {
 static struct cache_entry *authdes_cache/* [AUTHDES_CACHESZ] */;
 static short *authdes_lru/* [AUTHDES_CACHESZ] */;
 
-static void cache_init();	/* initialize the cache */
-static short cache_spot();	/* find an entry in the cache */
+static void cache_init(void);	/* initialize the cache */
+static short cache_spot(des_block *, char *, struct timeval *);
+				/* find an entry in the cache */
 static void cache_ref(short sid);	/* note that sid was ref'd */
 
-static void invalidate();	/* invalidate entry in cache */
+static void invalidate(char *);	/* invalidate entry in cache */
 
 /*
  * cache statistics 
