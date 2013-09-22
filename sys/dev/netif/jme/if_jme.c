@@ -1092,7 +1092,7 @@ jme_attach(device_t dev)
 
 	/* Setup the TX ring's CPUID */
 	ifq_set_cpuid(&ifp->if_snd, sc->jme_tx_cpuid);
-	ifsq_set_hw_serialize(ifq_get_subq_default(&ifp->if_snd),
+	ifq_set_hw_serialize(&ifp->if_snd,
 	    &sc->jme_cdata.jme_tx_data.jme_tx_serialize);
 
 	error = jme_intr_setup(dev);

@@ -620,4 +620,13 @@ ifq_set_cpuid(struct ifaltq *_ifq, int _cpuid)
 	ifsq_set_cpuid(ifq_get_subq_default(_ifq), _cpuid);
 }
 
+/* COMPAT */
+static __inline void
+ifq_set_hw_serialize(struct ifaltq *_ifq, struct lwkt_serialize *_hwslz)
+{
+	KASSERT(_ifq->altq_subq_cnt == 1,
+	    ("invalid subqueue count %d", _ifq->altq_subq_cnt));
+	ifsq_set_hw_serialize(ifq_get_subq_default(_ifq), _hwslz);
+}
+
 #endif	/* _NET_IFQ_VAR_H_ */
