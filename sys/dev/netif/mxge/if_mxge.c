@@ -321,7 +321,7 @@ mxge_enable_nvidia_ecrc(mxge_softc_t *sc)
 	 * config read/write beyond 0xff will access the config space
 	 * for the next larger function.  Uncomment this and remove 
 	 * the hacky pmap_mapdev() way of accessing config space when
-	 * FreeBSD grows support for extended pcie config space access
+	 * DragonFly grows support for extended pcie config space access.
 	 */
 #if 0
 	/*
@@ -1987,9 +1987,9 @@ mxge_watchdog(struct ifnet *ifp)
 }
 
 /*
- * copy an array of mcp_kreq_ether_recv_t's to the mcp.  Copy
+ * Copy an array of mcp_kreq_ether_recv_t's to the mcp.  Copy
  * at most 32 bytes at a time, so as to avoid involving the software
- * pio handler in the nic.   We re-write the first segment's low
+ * pio handler in the nic.  We re-write the first segment's low
  * DMA address to mark it valid only after we write the entire chunk
  * in a burst
  */
@@ -2446,7 +2446,7 @@ mxge_media_init(mxge_softc_t *sc)
 	mxge_media_set(sc, IFM_AUTO);
 
 	/* 
-	 * parse the product code to deterimine the interface type
+	 * Parse the product code to deterimine the interface type
 	 * (CX4, XFP, Quad Ribbon Fiber) by looking at the character
 	 * after the 3rd dash in the driver's cached copy of the
 	 * EEPROM's product code string.
@@ -2472,7 +2472,7 @@ mxge_media_init(mxge_softc_t *sc)
 		/* -Q is Quad Ribbon Fiber */
 		sc->connector = MXGE_QRF;
 		if_printf(sc->ifp, "Quad Ribbon Fiber Media\n");
-		/* FreeBSD has no media type for Quad ribbon fiber */
+		/* DragonFly has no media type for Quad ribbon fiber */
 	} else if (*ptr == 'R') {
 		/* -R is XFP */
 		sc->connector = MXGE_XFP;
@@ -3201,7 +3201,7 @@ mxge_open(mxge_softc_t *sc)
 	/*
 	 * Give the firmware the mtu and the big and small buffer
 	 * sizes.  The firmware wants the big buf size to be a power
-	 * of two. Luckily, FreeBSD's clusters are powers of two
+	 * of two. Luckily, DragonFly's clusters are powers of two
 	 */
 	cmd.data0 = ifp->if_mtu + ETHER_HDR_LEN + EVL_ENCAPLEN;
 	err = mxge_send_cmd(sc, MXGEFW_CMD_SET_MTU, &cmd);
