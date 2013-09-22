@@ -140,7 +140,8 @@ is required when running in an interrupt context.
 Indicates that it is OK to wait for resources.
 If the request cannot be immediately fulfilled, the current process is put
 to sleep to wait for resources to be released by other processes.
-The
+Before the internal pool limit is reached,
+the
 .Fn kmalloc
 and
 .Fn krealloc ,
@@ -149,6 +150,22 @@ functions cannot return
 if
 .Dv M_WAITOK
 is specified.
+If the internal pool limit is reached and
+.Dv M_NULLOK
+is not specified along with
+.Dv M_WAITOK ,
+the system will panic.
+If the internal pool limit is reached and
+.Dv M_NULLOK
+is specified along with
+.Dv M_WAITOK ,
+the
+.Fn kmalloc
+and
+.Fn krealloc ,
+functions return
+.Dv NULL
+instead of panicing the system.
 .It Dv M_INTWAIT
 Indicates
 .Fn kmalloc
@@ -157,6 +174,32 @@ perform the allocation.
 This is typically used in interrupts where you cannot afford
 .Fn kmalloc
 to fail.
+Before the internal pool limit is reached,
+the
+.Fn kmalloc
+and
+.Fn krealloc ,
+functions cannot return
+.Dv NULL
+if
+.Dv M_INTWAIT
+is specified.
+If the internal pool limit is reached and
+.Dv M_NULLOK
+is not specified along with
+.Dv M_INTWAIT ,
+the system will panic.
+If the internal pool limit is reached and
+.Dv M_NULLOK
+is specified along with
+.Dv M_INTWAIT ,
+the
+.Fn kmalloc
+and
+.Fn krealloc ,
+functions return
+.Dv NULL
+instead of panicing the system.
 .It Dv M_USE_RESERVE
 Indicates that the system can dig into its reserve in order to obtain the
 requested memory.
@@ -167,6 +210,21 @@ This option has been deprecated and is slowly being removed from the kernel,
 and so should not be used with any new code.
 .It Dv M_POWEROF2
 Rounds up the size to the nearest power of 2.
+.It Dv M_NULLOK
+This flag is usually specified along with
+.Dv M_WAITOK
+or
+.Dv M_INTWAIT ,
+so when the interal pool limit is reached,
+.Fn kmalloc
+and
+.Fn krealloc ,
+functions will not panic the system,
+instead,
+.Dv NULL
+will be returned.
+This flag is usually used on the kernel code path that is triggered by
+user space programs' requests.
 .El
 .Pp
 Exactly one of either
