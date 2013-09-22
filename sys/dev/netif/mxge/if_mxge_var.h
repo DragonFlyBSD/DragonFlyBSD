@@ -111,7 +111,6 @@ struct mxge_slice_state {
 	volatile uint32_t *irq_claim;
 	u_long ipackets;
 	u_long opackets;
-	u_long oerrors;
 	bus_dmamem_t fw_stats_dma;
 	struct sysctl_oid *sysctl_tree;
 	struct sysctl_ctx_list sysctl_ctx;

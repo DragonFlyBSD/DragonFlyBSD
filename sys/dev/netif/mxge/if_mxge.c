@@ -1784,9 +1784,6 @@ mxge_encap_tso(mxge_tx_ring_t *tx, struct mbuf *m, int busdma_seg_cnt)
 drop:
 	bus_dmamap_unload(tx->dmat, tx->info[tx->req & tx->mask].map);
 	m_freem(m);
-#if 0
-	/* TODO update oerror counter */
-#endif
 	return ENOBUFS;
 }
 
@@ -1922,7 +1919,6 @@ mxge_encap(struct mxge_slice_state *ss, struct mbuf *m)
 
 drop:
 	m_freem(m);
-	ss->oerrors++;
 	return err;
 }
 
@@ -1956,6 +1952,8 @@ mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		error = mxge_encap(ss, m);
 		if (!error)
 			encap = 1;
+		else
+			IFNET_STAT_INC(ifp, oerrors, 1);
 	}
 
 	/* Ran out of transmit slots */
@@ -3456,24 +3454,12 @@ mxge_update_stats(mxge_softc_t *sc)
 	u_long pkts = 0;
 	u_long ipackets = 0, old_ipackets;
 	u_long opackets = 0, old_opackets;
-#ifdef IFNET_BUF_RING
-	u_long obytes = 0;
-	u_long omcasts = 0;
-	u_long odrops = 0;
-#endif
-	u_long oerrors = 0;
 	int slice;
 
 	for (slice = 0; slice < sc->num_slices; slice++) {
 		ss = &sc->ss[slice];
 		ipackets += ss->ipackets;
 		opackets += ss->opackets;
-#ifdef IFNET_BUF_RING
-		obytes += ss->obytes;
-		omcasts += ss->omcasts;
-		odrops += ss->tx.br->br_drops;
-#endif
-		oerrors += ss->oerrors;
 	}
 	IFNET_STAT_GET(sc->ifp, ipackets, old_ipackets);
 	IFNET_STAT_GET(sc->ifp, opackets, old_opackets);
@@ -3483,12 +3469,6 @@ mxge_update_stats(mxge_softc_t *sc)
 
 	IFNET_STAT_SET(sc->ifp, ipackets, ipackets);
 	IFNET_STAT_SET(sc->ifp, opackets, opackets);
-#ifdef IFNET_BUF_RING
-	sc->ifp->if_obytes = obytes;
-	sc->ifp->if_omcasts = omcasts;
-	sc->ifp->if_snd.ifq_drops = odrops;
-#endif
-	IFNET_STAT_SET(sc->ifp, oerrors, oerrors);
 	return pkts;
 }
 
