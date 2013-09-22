@@ -211,6 +211,7 @@ buf = kmalloc(sizeof *buf, M_FOOBUF, M_NOWAIT);
 The memory allocator allocates memory in chunks that have size a power
 of two for requests up to the size of a page of memory.
 For larger requests, one or more pages is allocated.
+The allocated memory will be at least 8 bytes aligned.
 While it should not be relied upon, this information may be useful for
 optimizing the efficiency of memory use.
 .Sh RETURN VALUES
