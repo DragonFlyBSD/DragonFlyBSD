@@ -109,10 +109,10 @@ vmm_init(void)
 	}
 
 	if (ctl->init()) {
-		SYSCTL_ADD_STRING(&vmm_sysctl_ctx,
+		SYSCTL_ADD_INT(&vmm_sysctl_ctx,
 		    SYSCTL_CHILDREN(vmm_sysctl_tree),
 		    OID_AUTO, "enable", CTLFLAG_RD,
-		    "NOT SUPPORTED", 0,
+		    &vmm_enabled, 0,
 		    "enable not supported");
 	} else {
 		SYSCTL_ADD_STRING(&vmm_sysctl_ctx,
