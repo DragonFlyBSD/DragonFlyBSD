@@ -105,12 +105,16 @@ typedef struct {
 	int watchdog_rx_pause;		/* cache of pause rq recvd */
 } mxge_tx_ring_t;
 
+struct mxge_rx_data {
+	mxge_rx_done_t rx_done;
+	mxge_rx_ring_t rx_small;
+	mxge_rx_ring_t rx_big;
+};
+
 struct mxge_slice_state {
 	mxge_softc_t *sc;
 	mxge_tx_ring_t tx;		/* transmit ring */
-	mxge_rx_ring_t rx_small;
-	mxge_rx_ring_t rx_big;
-	mxge_rx_done_t rx_done;
+	struct mxge_rx_data rx_data;
 	mcp_irq_data_t *fw_stats;
 	volatile uint32_t *irq_claim;
 	bus_dmamem_t fw_stats_dma;

@@ -1159,7 +1159,7 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 	if (interrupts_setup) {
 		/* Now exchange information about interrupts  */
 		for (slice = 0; slice < sc->num_slices; slice++) {
-			rx_done = &sc->ss[slice].rx_done;
+			rx_done = &sc->ss[slice].rx_data.rx_done;
 			memset(rx_done->entry, 0, sc->rx_ring_size);
 			cmd.data0 =
 			    MXGE_LOWPART_TO_U32(rx_done->dma.dmem_busaddr);
@@ -1197,16 +1197,16 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 		ss->irq_claim = irq_claim + (2 * slice);
 
 		/* Reset mcp/driver shared state back to 0 */
-		ss->rx_done.idx = 0;
-		ss->rx_done.cnt = 0;
+		ss->rx_data.rx_done.idx = 0;
+		ss->rx_data.rx_done.cnt = 0;
 		ss->tx.req = 0;
 		ss->tx.done = 0;
 		ss->tx.pkt_done = 0;
 		ss->tx.queue_active = 0;
 		ss->tx.activate = 0;
 		ss->tx.deactivate = 0;
-		ss->rx_big.cnt = 0;
-		ss->rx_small.cnt = 0;
+		ss->rx_data.rx_big.cnt = 0;
+		ss->rx_data.rx_small.cnt = 0;
 		if (ss->fw_stats != NULL)
 			bzero(ss->fw_stats, sizeof(*ss->fw_stats));
 	}
@@ -1509,10 +1509,10 @@ mxge_add_sysctls(mxge_softc_t *sc)
 		 */
 
 		SYSCTL_ADD_INT(ctx, children, OID_AUTO, "rx_small_cnt",
-		    CTLFLAG_RD, &ss->rx_small.cnt, 0, "rx_small_cnt");
+		    CTLFLAG_RD, &ss->rx_data.rx_small.cnt, 0, "rx_small_cnt");
 
 		SYSCTL_ADD_INT(ctx, children, OID_AUTO, "rx_big_cnt",
-		    CTLFLAG_RD, &ss->rx_big.cnt, 0, "rx_small_cnt");
+		    CTLFLAG_RD, &ss->rx_data.rx_big.cnt, 0, "rx_small_cnt");
 
 #ifndef IFNET_BUF_RING
 		/* only transmit from slice 0 for now */
@@ -2599,7 +2599,7 @@ mxge_legacy(void *arg)
 	mxge_softc_t *sc = ss->sc;
 	mcp_irq_data_t *stats = ss->fw_stats;
 	mxge_tx_ring_t *tx = &ss->tx;
-	mxge_rx_done_t *rx_done = &ss->rx_done;
+	mxge_rx_done_t *rx_done = &ss->rx_data.rx_done;
 	uint32_t send_done_count;
 	uint8_t valid;
 
@@ -2660,7 +2660,7 @@ mxge_msi(void *arg)
 	mxge_softc_t *sc = ss->sc;
 	mcp_irq_data_t *stats = ss->fw_stats;
 	mxge_tx_ring_t *tx = &ss->tx;
-	mxge_rx_done_t *rx_done = &ss->rx_done;
+	mxge_rx_done_t *rx_done = &ss->rx_data.rx_done;
 	uint32_t send_done_count;
 	uint8_t valid;
 
@@ -2704,20 +2704,22 @@ mxge_free_slice_mbufs(struct mxge_slice_state *ss)
 {
 	int i;
 
-	for (i = 0; i <= ss->rx_big.mask; i++) {
-		if (ss->rx_big.info[i].m == NULL)
+	for (i = 0; i <= ss->rx_data.rx_big.mask; i++) {
+		if (ss->rx_data.rx_big.info[i].m == NULL)
 			continue;
-		bus_dmamap_unload(ss->rx_big.dmat, ss->rx_big.info[i].map);
-		m_freem(ss->rx_big.info[i].m);
-		ss->rx_big.info[i].m = NULL;
+		bus_dmamap_unload(ss->rx_data.rx_big.dmat,
+		    ss->rx_data.rx_big.info[i].map);
+		m_freem(ss->rx_data.rx_big.info[i].m);
+		ss->rx_data.rx_big.info[i].m = NULL;
 	}
 
-	for (i = 0; i <= ss->rx_small.mask; i++) {
-		if (ss->rx_small.info[i].m == NULL)
+	for (i = 0; i <= ss->rx_data.rx_small.mask; i++) {
+		if (ss->rx_data.rx_small.info[i].m == NULL)
 			continue;
-		bus_dmamap_unload(ss->rx_small.dmat, ss->rx_small.info[i].map);
-		m_freem(ss->rx_small.info[i].m);
-		ss->rx_small.info[i].m = NULL;
+		bus_dmamap_unload(ss->rx_data.rx_small.dmat,
+		    ss->rx_data.rx_small.info[i].map);
+		m_freem(ss->rx_data.rx_small.info[i].m);
+		ss->rx_data.rx_small.info[i].m = NULL;
 	}
 
 	/* Transmit ring used only on the first slice */
@@ -2748,9 +2750,9 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 {
 	int i;
 
-	if (ss->rx_done.entry != NULL) {
-		mxge_dma_free(&ss->rx_done.dma);
-		ss->rx_done.entry = NULL;
+	if (ss->rx_data.rx_done.entry != NULL) {
+		mxge_dma_free(&ss->rx_data.rx_done.dma);
+		ss->rx_data.rx_done.entry = NULL;
 	}
 
 	if (ss->tx.req_list != NULL) {
@@ -2763,14 +2765,14 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 		ss->tx.seg_list = NULL;
 	}
 
-	if (ss->rx_small.shadow != NULL) {
-		kfree(ss->rx_small.shadow, M_DEVBUF);
-		ss->rx_small.shadow = NULL;
+	if (ss->rx_data.rx_small.shadow != NULL) {
+		kfree(ss->rx_data.rx_small.shadow, M_DEVBUF);
+		ss->rx_data.rx_small.shadow = NULL;
 	}
 
-	if (ss->rx_big.shadow != NULL) {
-		kfree(ss->rx_big.shadow, M_DEVBUF);
-		ss->rx_big.shadow = NULL;
+	if (ss->rx_data.rx_big.shadow != NULL) {
+		kfree(ss->rx_data.rx_big.shadow, M_DEVBUF);
+		ss->rx_data.rx_big.shadow = NULL;
 	}
 
 	if (ss->tx.info != NULL) {
@@ -2785,32 +2787,32 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 		ss->tx.info = NULL;
 	}
 
-	if (ss->rx_small.info != NULL) {
-		if (ss->rx_small.dmat != NULL) {
-			for (i = 0; i <= ss->rx_small.mask; i++) {
-				bus_dmamap_destroy(ss->rx_small.dmat,
-				    ss->rx_small.info[i].map);
+	if (ss->rx_data.rx_small.info != NULL) {
+		if (ss->rx_data.rx_small.dmat != NULL) {
+			for (i = 0; i <= ss->rx_data.rx_small.mask; i++) {
+				bus_dmamap_destroy(ss->rx_data.rx_small.dmat,
+				    ss->rx_data.rx_small.info[i].map);
 			}
-			bus_dmamap_destroy(ss->rx_small.dmat,
-			    ss->rx_small.extra_map);
-			bus_dma_tag_destroy(ss->rx_small.dmat);
+			bus_dmamap_destroy(ss->rx_data.rx_small.dmat,
+			    ss->rx_data.rx_small.extra_map);
+			bus_dma_tag_destroy(ss->rx_data.rx_small.dmat);
 		}
-		kfree(ss->rx_small.info, M_DEVBUF);
-		ss->rx_small.info = NULL;
+		kfree(ss->rx_data.rx_small.info, M_DEVBUF);
+		ss->rx_data.rx_small.info = NULL;
 	}
 
-	if (ss->rx_big.info != NULL) {
-		if (ss->rx_big.dmat != NULL) {
-			for (i = 0; i <= ss->rx_big.mask; i++) {
-				bus_dmamap_destroy(ss->rx_big.dmat,
-				    ss->rx_big.info[i].map);
+	if (ss->rx_data.rx_big.info != NULL) {
+		if (ss->rx_data.rx_big.dmat != NULL) {
+			for (i = 0; i <= ss->rx_data.rx_big.mask; i++) {
+				bus_dmamap_destroy(ss->rx_data.rx_big.dmat,
+				    ss->rx_data.rx_big.info[i].map);
 			}
-			bus_dmamap_destroy(ss->rx_big.dmat,
-			    ss->rx_big.extra_map);
-			bus_dma_tag_destroy(ss->rx_big.dmat);
+			bus_dmamap_destroy(ss->rx_data.rx_big.dmat,
+			    ss->rx_data.rx_big.extra_map);
+			bus_dma_tag_destroy(ss->rx_data.rx_big.dmat);
 		}
-		kfree(ss->rx_big.info, M_DEVBUF);
-		ss->rx_big.info = NULL;
+		kfree(ss->rx_data.rx_big.info, M_DEVBUF);
+		ss->rx_data.rx_big.info = NULL;
 	}
 }
 
@@ -2838,22 +2840,23 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	 * Allocate per-slice receive resources
 	 */
 
-	ss->rx_small.mask = ss->rx_big.mask = rx_ring_entries - 1;
-	ss->rx_done.mask = (2 * rx_ring_entries) - 1;
+	ss->rx_data.rx_small.mask = ss->rx_data.rx_big.mask =
+	    rx_ring_entries - 1;
+	ss->rx_data.rx_done.mask = (2 * rx_ring_entries) - 1;
 
 	/* Allocate the rx shadow rings */
-	bytes = rx_ring_entries * sizeof(*ss->rx_small.shadow);
-	ss->rx_small.shadow = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
+	bytes = rx_ring_entries * sizeof(*ss->rx_data.rx_small.shadow);
+	ss->rx_data.rx_small.shadow = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
 
-	bytes = rx_ring_entries * sizeof(*ss->rx_big.shadow);
-	ss->rx_big.shadow = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
+	bytes = rx_ring_entries * sizeof(*ss->rx_data.rx_big.shadow);
+	ss->rx_data.rx_big.shadow = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
 
 	/* Allocate the rx host info rings */
-	bytes = rx_ring_entries * sizeof(*ss->rx_small.info);
-	ss->rx_small.info = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
+	bytes = rx_ring_entries * sizeof(*ss->rx_data.rx_small.info);
+	ss->rx_data.rx_small.info = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
 
-	bytes = rx_ring_entries * sizeof(*ss->rx_big.info);
-	ss->rx_big.info = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
+	bytes = rx_ring_entries * sizeof(*ss->rx_data.rx_big.info);
+	ss->rx_data.rx_big.info = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
 
 	/* Allocate the rx busdma resources */
 	err = bus_dma_tag_create(sc->parent_dmat,	/* parent */
@@ -2867,37 +2870,37 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 				 MHLEN,			/* maxsegsize */
 				 BUS_DMA_WAITOK | BUS_DMA_ALLOCNOW,
 				 			/* flags */
-				 &ss->rx_small.dmat);	/* tag */
+				 &ss->rx_data.rx_small.dmat); /* tag */
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d allocating rx_small dmat\n",
 		    err);
 		return err;
 	}
 
-	err = bus_dmamap_create(ss->rx_small.dmat, BUS_DMA_WAITOK,
-	    &ss->rx_small.extra_map);
+	err = bus_dmamap_create(ss->rx_data.rx_small.dmat, BUS_DMA_WAITOK,
+	    &ss->rx_data.rx_small.extra_map);
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d extra rx_small dmamap\n", err);
-		bus_dma_tag_destroy(ss->rx_small.dmat);
-		ss->rx_small.dmat = NULL;
+		bus_dma_tag_destroy(ss->rx_data.rx_small.dmat);
+		ss->rx_data.rx_small.dmat = NULL;
 		return err;
 	}
-	for (i = 0; i <= ss->rx_small.mask; i++) {
-		err = bus_dmamap_create(ss->rx_small.dmat, BUS_DMA_WAITOK,
-		    &ss->rx_small.info[i].map);
+	for (i = 0; i <= ss->rx_data.rx_small.mask; i++) {
+		err = bus_dmamap_create(ss->rx_data.rx_small.dmat,
+		    BUS_DMA_WAITOK, &ss->rx_data.rx_small.info[i].map);
 		if (err != 0) {
 			int j;
 
 			device_printf(sc->dev, "Err %d rx_small dmamap\n", err);
 
 			for (j = 0; j < i; ++j) {
-				bus_dmamap_destroy(ss->rx_small.dmat,
-				    ss->rx_small.info[j].map);
+				bus_dmamap_destroy(ss->rx_data.rx_small.dmat,
+				    ss->rx_data.rx_small.info[j].map);
 			}
-			bus_dmamap_destroy(ss->rx_small.dmat,
-			    ss->rx_small.extra_map);
-			bus_dma_tag_destroy(ss->rx_small.dmat);
-			ss->rx_small.dmat = NULL;
+			bus_dmamap_destroy(ss->rx_data.rx_small.dmat,
+			    ss->rx_data.rx_small.extra_map);
+			bus_dma_tag_destroy(ss->rx_data.rx_small.dmat);
+			ss->rx_data.rx_small.dmat = NULL;
 			return err;
 		}
 	}
@@ -2913,36 +2916,36 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 				 4096,			/* maxsegsize*/
 				 BUS_DMA_WAITOK | BUS_DMA_ALLOCNOW,
 				 			/* flags */
-				 &ss->rx_big.dmat);	/* tag */
+				 &ss->rx_data.rx_big.dmat); /* tag */
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d allocating rx_big dmat\n",
 		    err);
 		return err;
 	}
 
-	err = bus_dmamap_create(ss->rx_big.dmat, BUS_DMA_WAITOK,
-	    &ss->rx_big.extra_map);
+	err = bus_dmamap_create(ss->rx_data.rx_big.dmat, BUS_DMA_WAITOK,
+	    &ss->rx_data.rx_big.extra_map);
 	if (err != 0) {
 		device_printf(sc->dev, "Err %d extra rx_big dmamap\n", err);
-		bus_dma_tag_destroy(ss->rx_big.dmat);
-		ss->rx_big.dmat = NULL;
+		bus_dma_tag_destroy(ss->rx_data.rx_big.dmat);
+		ss->rx_data.rx_big.dmat = NULL;
 		return err;
 	}
-	for (i = 0; i <= ss->rx_big.mask; i++) {
-		err = bus_dmamap_create(ss->rx_big.dmat, BUS_DMA_WAITOK,
-		    &ss->rx_big.info[i].map);
+	for (i = 0; i <= ss->rx_data.rx_big.mask; i++) {
+		err = bus_dmamap_create(ss->rx_data.rx_big.dmat, BUS_DMA_WAITOK,
+		    &ss->rx_data.rx_big.info[i].map);
 		if (err != 0) {
 			int j;
 
 			device_printf(sc->dev, "Err %d rx_big dmamap\n", err);
 			for (j = 0; j < i; ++j) {
-				bus_dmamap_destroy(ss->rx_big.dmat,
-				    ss->rx_big.info[j].map);
+				bus_dmamap_destroy(ss->rx_data.rx_big.dmat,
+				    ss->rx_data.rx_big.info[j].map);
 			}
-			bus_dmamap_destroy(ss->rx_big.dmat,
-			    ss->rx_big.extra_map);
-			bus_dma_tag_destroy(ss->rx_big.dmat);
-			ss->rx_big.dmat = NULL;
+			bus_dmamap_destroy(ss->rx_data.rx_big.dmat,
+			    ss->rx_data.rx_big.extra_map);
+			bus_dma_tag_destroy(ss->rx_data.rx_big.dmat);
+			ss->rx_data.rx_big.dmat = NULL;
 			return err;
 		}
 	}
@@ -3093,12 +3096,12 @@ mxge_slice_open(struct mxge_slice_state *ss, int cl_size)
 
 	cmd.data0 = slice;
 	err |= mxge_send_cmd(ss->sc, MXGEFW_CMD_GET_SMALL_RX_OFFSET, &cmd);
-	ss->rx_small.lanai =
+	ss->rx_data.rx_small.lanai =
 	    (volatile mcp_kreq_ether_recv_t *)(ss->sc->sram + cmd.data0);
 
 	cmd.data0 = slice;
 	err |= mxge_send_cmd(ss->sc, MXGEFW_CMD_GET_BIG_RX_OFFSET, &cmd);
-	ss->rx_big.lanai =
+	ss->rx_data.rx_big.lanai =
 	    (volatile mcp_kreq_ether_recv_t *)(ss->sc->sram + cmd.data0);
 
 	if (err != 0) {
@@ -3110,12 +3113,12 @@ mxge_slice_open(struct mxge_slice_state *ss, int cl_size)
 	/*
 	 * Stock small receive ring
 	 */
-	for (i = 0; i <= ss->rx_small.mask; i++) {
-		err = mxge_get_buf_small(&ss->rx_small,
-		    ss->rx_small.info[i].map, i, TRUE);
+	for (i = 0; i <= ss->rx_data.rx_small.mask; i++) {
+		err = mxge_get_buf_small(&ss->rx_data.rx_small,
+		    ss->rx_data.rx_small.info[i].map, i, TRUE);
 		if (err) {
 			if_printf(ss->sc->ifp, "alloced %d/%d smalls\n", i,
-			    ss->rx_small.mask + 1);
+			    ss->rx_data.rx_small.mask + 1);
 			return ENOMEM;
 		}
 	}
@@ -3123,21 +3126,21 @@ mxge_slice_open(struct mxge_slice_state *ss, int cl_size)
 	/*
 	 * Stock big receive ring
 	 */
-	for (i = 0; i <= ss->rx_big.mask; i++) {
-		ss->rx_big.shadow[i].addr_low = 0xffffffff;
-		ss->rx_big.shadow[i].addr_high = 0xffffffff;
+	for (i = 0; i <= ss->rx_data.rx_big.mask; i++) {
+		ss->rx_data.rx_big.shadow[i].addr_low = 0xffffffff;
+		ss->rx_data.rx_big.shadow[i].addr_high = 0xffffffff;
 	}
 
-	ss->rx_big.cl_size = cl_size;
-	ss->rx_big.mlen = ss->sc->ifp->if_mtu + ETHER_HDR_LEN +
+	ss->rx_data.rx_big.cl_size = cl_size;
+	ss->rx_data.rx_big.mlen = ss->sc->ifp->if_mtu + ETHER_HDR_LEN +
 	    EVL_ENCAPLEN + MXGEFW_PAD;
 
-	for (i = 0; i <= ss->rx_big.mask; i++) {
-		err = mxge_get_buf_big(&ss->rx_big,
-		    ss->rx_big.info[i].map, i, TRUE);
+	for (i = 0; i <= ss->rx_data.rx_big.mask; i++) {
+		err = mxge_get_buf_big(&ss->rx_data.rx_big,
+		    ss->rx_data.rx_big.info[i].map, i, TRUE);
 		if (err) {
 			if_printf(ss->sc->ifp, "alloced %d/%d bigs\n", i,
-			    ss->rx_big.mask + 1);
+			    ss->rx_data.rx_big.mask + 1);
 			return ENOMEM;
 		}
 	}
@@ -3675,9 +3678,9 @@ mxge_free_slices(mxge_softc_t *sc)
 			mxge_dma_free(&ss->fw_stats_dma);
 			ss->fw_stats = NULL;
 		}
-		if (ss->rx_done.entry != NULL) {
-			mxge_dma_free(&ss->rx_done.dma);
-			ss->rx_done.entry = NULL;
+		if (ss->rx_data.rx_done.entry != NULL) {
+			mxge_dma_free(&ss->rx_data.rx_done.dma);
+			ss->rx_data.rx_done.entry = NULL;
 		}
 	}
 	kfree(sc->ss, M_DEVBUF);
@@ -3708,22 +3711,22 @@ mxge_alloc_slices(mxge_softc_t *sc)
 
 		ss->sc = sc;
 		ss->tx.sc = sc;
-		ss->rx_small.sc = sc;
-		ss->rx_big.sc = sc;
-		ss->rx_done.rx_big = &ss->rx_big;
-		ss->rx_done.rx_small = &ss->rx_small;
+		ss->rx_data.rx_small.sc = sc;
+		ss->rx_data.rx_big.sc = sc;
+		ss->rx_data.rx_done.rx_big = &ss->rx_data.rx_big;
+		ss->rx_data.rx_done.rx_small = &ss->rx_data.rx_small;
 
 		/*
 		 * Allocate per-slice rx interrupt queues
 		 */
-		bytes = max_intr_slots * sizeof(*ss->rx_done.entry);
-		err = mxge_dma_alloc(sc, &ss->rx_done.dma, bytes, 4096);
+		bytes = max_intr_slots * sizeof(*ss->rx_data.rx_done.entry);
+		err = mxge_dma_alloc(sc, &ss->rx_data.rx_done.dma, bytes, 4096);
 		if (err != 0) {
 			device_printf(sc->dev,
 			    "alloc %d slice rx_done failed\n", i);
 			return err;
 		}
-		ss->rx_done.entry = ss->rx_done.dma.dmem_addr;
+		ss->rx_data.rx_done.entry = ss->rx_data.rx_done.dma.dmem_addr;
 
 		/* 
 		 * Allocate the per-slice firmware stats; stats
