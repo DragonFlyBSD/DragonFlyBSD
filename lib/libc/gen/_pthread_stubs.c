@@ -232,7 +232,8 @@ stub_exit(void)
  * If libpthread is loaded, make sure it is initialised before
  * other libraries call pthread functions
  */
-void _pthread_init(void) __constructor(0);
+void _pthread_init(void) __constructor(101);
+void _pthread_init_early(void);
 void
 _pthread_init(void)
 {

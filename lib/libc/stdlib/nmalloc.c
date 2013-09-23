@@ -297,9 +297,16 @@ typedef struct thr_mags {
 	int		init;
 } thr_mags;
 
-/* With this attribute set, do not require a function call for accessing
- * this variable when the code is compiled -fPIC */
-#define TLS_ATTRIBUTE __attribute__ ((tls_model ("initial-exec")));
+/*
+ * With this attribute set, do not require a function call for accessing
+ * this variable when the code is compiled -fPIC. Empty for libc_rtld
+ * (like __thread).
+ */
+#ifdef __LIBC_RTLD
+#define TLS_ATTRIBUTE
+#else
+#define TLS_ATTRIBUTE __attribute__ ((tls_model ("initial-exec")))
+#endif
 
 static int mtmagazine_free_live;
 static __thread thr_mags thread_mags TLS_ATTRIBUTE;
@@ -345,7 +352,7 @@ static void mtmagazine_destructor(void *);
 static slzone_t zone_alloc(int flags);
 static void zone_free(void *z);
 static void _mpanic(const char *ctl, ...) __printflike(1, 2);
-static void malloc_init(void) __constructor(0);
+static void malloc_init(void) __constructor(101);
 #if defined(INVARIANTS)
 static void chunk_mark_allocated(slzone_t z, void *chunk);
 static void chunk_mark_free(slzone_t z, void *chunk);
