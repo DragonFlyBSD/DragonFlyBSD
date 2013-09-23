@@ -34,6 +34,8 @@
 
 #include "hammer2.h"
 
+static const char *compmodestr(uint8_t comp_algo);
+
 /*
  * Should be run as root.  Creates /etc/hammer2/rsa.{pub,prv} using
  * an openssl command.
@@ -75,7 +77,7 @@ cmd_stat(int ac, const char **av)
 		printf("%9s ", sizetostr(ino.ip_data.data_count));
 		printf("%9s ", sizetostr(ino.ip_data.inode_count));
 		printf("%p ", ino.kdata);
-		printf("%02x ", ino.ip_data.comp_algo);
+		printf("comp=%s ", compmodestr(ino.ip_data.comp_algo));
 		if (ino.ip_data.data_quota || ino.ip_data.inode_quota) {
 			printf(" quota ");
 			printf("%12s", sizetostr(ino.ip_data.data_quota));
@@ -84,4 +86,31 @@ cmd_stat(int ac, const char **av)
 		printf("\n");
 	}
 	return ec;
+}
+
+static
+const char *
+compmodestr(uint8_t comp_algo)
+{
+	static char buf[64];
+	static const char *comps[] = HAMMER2_COMP_STRINGS;
+	int comp = HAMMER2_DEC_COMP(comp_algo);
+	int level = HAMMER2_DEC_LEVEL(comp_algo);
+
+	if (level) {
+		if (comp >= 0 && comp < HAMMER2_COMP_STRINGS_COUNT)
+			snprintf(buf, sizeof(buf), "%s:%d",
+				 comps[comp], level);
+		else
+			snprintf(buf, sizeof(buf), "unknown(%d):%d",
+				 comp, level);
+	} else {
+		if (comp >= 0 && comp < HAMMER2_COMP_STRINGS_COUNT)
+			snprintf(buf, sizeof(buf), "%s:default",
+				 comps[comp]);
+		else
+			snprintf(buf, sizeof(buf), "unknown(%d):default",
+				 comp);
+	}
+	return (buf);
 }

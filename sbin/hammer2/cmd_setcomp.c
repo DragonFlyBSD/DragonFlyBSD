@@ -31,86 +31,174 @@
  */
 
 #include "hammer2.h"
+
+static int cmd_setcomp_core(uint8_t comp_algo, const char *path_str,
+			    struct stat *st);
  
 int
-cmd_setcomp(char* comp_string, char* file_string)
+cmd_setcomp(const char *comp_str, char **paths)
 {
-	int comp_method;
-	if (strcmp(comp_string, "0") == 0) {
-		printf("Will turn off compression on directory/file %s\n", file_string);
-		comp_method = HAMMER2_COMP_NONE;
-	} else if (strcmp(comp_string, "1") == 0) {
-		printf("Will set zero-checking compression on directory/file %s.\n",
-			file_string);
-		comp_method = HAMMER2_COMP_AUTOZERO;
-	} else if (strcmp(comp_string, "2") == 0) {
-		printf("Will set LZ4 compression on directory/file %s.\n", file_string);
-		comp_method = HAMMER2_COMP_LZ4;
-	} else if (strcmp(comp_string, "3:6") == 0) {
-		printf("Will set ZLIB level 6 compression on directory/file %s.\n", file_string);
-		comp_method = 6 << 4;
-		comp_method += HAMMER2_COMP_ZLIB;
-	} else if (strcmp(comp_string, "3") == 0 || strcmp(comp_string, "3:7") == 0) {
-		printf("Will set ZLIB level 7 (default) compression on directory/file %s.\n", file_string);
-		comp_method = 7 << 4;
-		comp_method += HAMMER2_COMP_ZLIB;
-	} else if (strcmp(comp_string, "3:8") == 0) {
-		printf("Will set ZLIB level 8 compression on directory/file %s.\n", file_string);
-		comp_method = 8 << 4;
-		comp_method += HAMMER2_COMP_ZLIB;
-	} else if (strcmp(comp_string, "3:9") == 0) {
-		printf("Will set ZLIB level 9 compression on directory/file %s.\n", file_string);
-		printf("CAUTION: May be extremely slow on big amount of data.\n");
-		comp_method = 9 << 4;
-		comp_method += HAMMER2_COMP_ZLIB;
-	} else if (strcmp(comp_string, "3:5") == 0 || strcmp(comp_string, "3:4") == 0 ||
-				strcmp(comp_string, "3:3") == 0 || strcmp(comp_string, "3:2") == 0 ||
-				strcmp(comp_string, "3:1") == 0) {
-		printf("ZLIB compression levels below 6 are not supported,\n");
-		printf("please use LZ4 (setcomp 2) for fast compression instead.\n");
-		return 1;
-	}
-	else {
-		printf("ERROR: Unknown compression method.\n");
-		return 1;
-	}
-	int fd = hammer2_ioctl_handle(file_string);
-	hammer2_ioc_inode_t inode;
-	int res = ioctl(fd, HAMMER2IOC_INODE_GET, &inode);
-	if (res < 0) {
-		fprintf(stderr, "ERROR before setting the mode: %s\n",
-			strerror(errno));
-		return 3;
-	}
-	inode.ip_data.comp_algo = comp_method & 0x0FF;
-	res = ioctl(fd, HAMMER2IOC_INODE_SET, &inode);
-	if (res < 0) {
-		if (errno != EINVAL) {
-			fprintf(stderr, "ERROR after trying to set the mode: %s\n",
-				strerror(errno));
-			return 3;
+	static const char *comps[] = HAMMER2_COMP_STRINGS;
+	struct stat st;
+	int comp_algo;
+	int comp_level;
+	int ecode;
+	int res;
+	char *str;
+	const char *s1;
+	const char *s2;
+
+	str = strdup(comp_str);
+	s1 = strtok(str, ":");
+	s2 = s1 ? strtok(NULL, ":") : NULL;
+	ecode = 0;
+
+	if (isdigit(s1[0])) {
+		comp_algo = strtol(s1, NULL, 0);
+	} else {
+		comp_algo = HAMMER2_COMP_STRINGS_COUNT;
+		while (--comp_algo >= 0) {
+			if (strcasecmp(s1, comps[comp_algo]) == 0)
+				break;
+		}
+		if (comp_algo < 0 && strcasecmp(s1, "default") == 0) {
+			comp_algo = HAMMER2_COMP_LZ4;
+			s1 = "lz4";
+		}
+		if (comp_algo < 0 && strcasecmp(s1, "disabled") == 0) {
+			comp_algo = HAMMER2_COMP_AUTOZERO;
+			s1 = "autozero";
+		}
+		if (comp_algo < 0) {
+			fprintf(stderr, "Unknown compression type: %s\n", s1);
+			ecode = 3;
 		}
 	}
-	close(fd);
-	return 0;
+	if (s2 == NULL) {
+		comp_level = 0;
+	} else if (isdigit(s2[0])) {
+		comp_level = strtol(s2, NULL, 0);
+	} else if (strcasecmp(s2, "default") == 0) {
+		comp_level = 0;
+	} else {
+		comp_level = 0;
+		fprintf(stderr, "Unknown compression level: %s\n", s2);
+		ecode = 3;
+	}
+
+	if (comp_level) {
+		switch(comp_algo) {
+		case HAMMER2_COMP_ZLIB:
+			if (comp_level < 6 || comp_level > 9) {
+				fprintf(stderr,
+					"Unsupported comp_level %d for %s\n",
+					comp_level, s1);
+				ecode = 3;
+			}
+			break;
+		default:
+			fprintf(stderr,
+				"Unsupported comp_level %d for %s\n",
+				comp_level, s1);
+			ecode = 3;
+		}
+	}
+
+	if (ecode == 0) {
+		while (*paths) {
+			if (lstat(*paths, &st) == 0) {
+				res = cmd_setcomp_core(
+					HAMMER2_ENC_COMP(comp_algo) |
+					 HAMMER2_ENC_LEVEL(comp_level),
+				        *paths,
+					&st);
+				if (res)
+					ecode = res;
+			} else {
+				printf("%s: %s\n", *paths, strerror(errno));
+				ecode = 3;
+			}
+			++paths;
+		}
+	}
+	free (str);
+
+	return ecode;
 }
+
+static int
+cmd_setcomp_core(uint8_t comp_algo, const char *path_str, struct stat *st)
+{
+	hammer2_ioc_inode_t inode;
+	int fd;
+	int res;
+
+	fd = hammer2_ioctl_handle(path_str);
+	if (fd < 0) {
+		res = 3;
+		goto failed;
+	}
+	res = ioctl(fd, HAMMER2IOC_INODE_GET, &inode);
+	if (res < 0) {
+		fprintf(stderr,
+			"%s: HAMMER2IOC_INODE_GET: error %s\n",
+			path_str, strerror(errno));
+		res = 3;
+		goto failed;
+	}
+	printf("%s\tcomp_algo=0x%02x\n", path_str, comp_algo);
+	inode.ip_data.comp_algo = comp_algo;
+	res = ioctl(fd, HAMMER2IOC_INODE_SET, &inode);
+	if (res < 0) {
+		fprintf(stderr,
+			"%s: HAMMER2IOC_INODE_SET: error %s\n",
+			path_str, strerror(errno));
+		res = 3;
+		goto failed;
+	}
+	res = 0;
+
+	if (RecurseOpt && S_ISDIR(st->st_mode)) {
+		DIR *dir;
+		char *path;
+		struct dirent *den;
+
+		if ((dir = fdopendir(fd)) != NULL) {
+			while ((den = readdir(dir)) != NULL) {
+				if (strcmp(den->d_name, ".") == 0 ||
+				    strcmp(den->d_name, "..") == 0) {
+					continue;
+				}
+				asprintf(&path, "%s/%s", path_str, den->d_name);
+				if (lstat(path, st) == 0)
+					cmd_setcomp_core(comp_algo, path, st);
+				free(path);
+			}
+			closedir(dir);
+		}
+	}
+failed:
+	close(fd);
+	return res;
+}
+
+#if 0
 
 int
 cmd_setcomp_recursive(char* option_string, char* comp_string, char* file_string)
 {
 	int ecode = 0;
 	int set_files;
+	int comp_method;
+
 	if (strcmp(option_string, "-r") == 0) {
 		set_files = 0;
-	}
-	else if (strcmp(option_string, "-rf") == 0) {
+	} else if (strcmp(option_string, "-rf") == 0) {
 		set_files = 1;
-	}
-	else {
+	} else {
 		printf("setcomp: Unrecognized option.\n");
 		exit(1);
 	}
-	int comp_method;
 	if (strcmp(comp_string, "0") == 0) {
 		printf("Will turn off compression on directory/file %s\n", file_string);
 		comp_method = HAMMER2_COMP_NONE;
@@ -217,3 +305,5 @@ setcomp_recursive_call(char *directory, int comp_method, int set_files)
     }
     return ecode;
 }
+
+#endif

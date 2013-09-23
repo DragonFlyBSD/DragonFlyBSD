@@ -464,12 +464,18 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_CHECK_FREEMAP		4
 
 #define HAMMER2_ENC_COMP(n)		(n)
+#define HAMMER2_ENC_LEVEL(n)		((n) << 4)
 #define HAMMER2_DEC_COMP(n)		((n) & 15)
+#define HAMMER2_DEC_LEVEL(n)		(((n) >> 4) & 15)
 
 #define HAMMER2_COMP_NONE		0
-#define HAMMER2_COMP_AUTOZERO	1
+#define HAMMER2_COMP_AUTOZERO		1
 #define HAMMER2_COMP_LZ4		2
 #define HAMMER2_COMP_ZLIB		3
+
+#define HAMMER2_COMP_NEWFS_DEFAULT	HAMMER2_COMP_LZ4
+#define HAMMER2_COMP_STRINGS		{ "none", "autozero", "lz4", "zlib" }
+#define HAMMER2_COMP_STRINGS_COUNT	4
 
 
 /*

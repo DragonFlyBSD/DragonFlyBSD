@@ -574,41 +574,29 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 	return (0);
 }
 
-//original
-/*static int
-hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
-{
-	hammer2_ioc_inode_t *ino = data;
-	int error = EINVAL;
-
-	if (ino->flags & HAMMER2IOC_INODE_FLAG_IQUOTA) {
-	}
-	if (ino->flags & HAMMER2IOC_INODE_FLAG_DQUOTA) {
-	}
-	if (ino->flags & HAMMER2IOC_INODE_FLAG_COPIES) {
-	}
-
-	return (error);
-}*/
-
-//use this set function instead of dedicated ioctl for some time
+/*
+ * Set various parameters in an inode which cannot be set through
+ * normal filesystem VNOPS.
+ */
 static int
 hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 {
 	hammer2_inode_data_t *ipdata;
 	hammer2_ioc_inode_t *ino = data;
-	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
 	hammer2_trans_t trans;
-	int error = EINVAL;
+	int error = 0;
 
 	hammer2_trans_init(&trans, ip->pmp, 0);
-	parent = hammer2_inode_lock_ex(ip);
-	ipdata = hammer2_chain_modify_ip(&trans, ip, &parent,
-						  HAMMER2_MODIFY_ASSERTNOCOPY);
-	ip->chain->data->ipdata = ino->ip_data;
+	chain = hammer2_inode_lock_ex(ip);
+
+	if (ino->ip_data.comp_algo != chain->data->ipdata.comp_algo) {
+		ipdata = hammer2_chain_modify_ip(&trans, ip, &chain, 0);
+		ipdata->comp_algo = ino->ip_data.comp_algo;
+	}
 	ino->kdata = ip;
 	
-	/*Ignore those flags for now...*/
+	/* Ignore these flags for now...*/
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_IQUOTA) {
 	}
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_DQUOTA) {
@@ -616,7 +604,7 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_COPIES) {
 	}
 	hammer2_trans_done(&trans);
-	hammer2_inode_unlock_ex(ip, parent);
+	hammer2_inode_unlock_ex(ip, chain);
 
 	return (error);
 }

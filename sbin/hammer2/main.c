@@ -35,12 +35,14 @@
 
 #include "hammer2.h"
 
-static void usage(int code);
-
 int DebugOpt;
 int VerboseOpt;
 int QuietOpt;
 int NormalExit = 1;	/* if set to 0 main() has to pthread_exit() */
+int RecurseOpt;
+int ForceOpt;
+
+static void usage(int code);
 
 int
 main(int ac, char **av)
@@ -60,13 +62,19 @@ main(int ac, char **av)
 	/*
 	 * Core options
 	 */
-	while ((ch = getopt(ac, av, "adqs:t:u:v")) != -1) {
+	while ((ch = getopt(ac, av, "adfrqs:t:u:v")) != -1) {
 		switch(ch) {
 		case 'a':
 			all_opt = 1;
 			break;
 		case 'd':
 			DebugOpt = 1;
+			break;
+		case 'f':
+			ForceOpt = 1;
+			break;
+		case 'r':
+			RecurseOpt = 1;
 			break;
 		case 's':
 			sel_path = optarg;
@@ -331,20 +339,25 @@ main(int ac, char **av)
 			cmd_show(av[1], 1);
 		}
 	} else if (strcmp(av[0], "setcomp") == 0) {
-		if (ac < 3 || ac > 4) {
-			fprintf(stderr, "setcomp: requires compression method and"
+		if (ac < 3) {
+			/*
+			 * Missing compression method and at least one
+			 * path.
+			 */
+			fprintf(stderr,
+				"setcomp: requires compression method and"
 				"directory/file path\n");
 			usage(1);
 		} else {
-			if (ac == 3) //no option specified, no recursion by default
-				ecode = cmd_setcomp(av[1], av[2]);
-			else
-				ecode = cmd_setcomp_recursive(av[1], av[2], av[3]);
-			if (ecode == 0) printf("Compression mode set.\n");			
+			/*
+			 * Multiple paths may be specified
+			 */
+			ecode = cmd_setcomp(av[1], &av[2]);
 		}
 	} else if (strcmp(av[0], "printinode") == 0) {
 		if (ac != 2) {
-			fprintf(stderr, "printinode: requires directory/file path\n");
+			fprintf(stderr,
+				"printinode: requires directory/file path\n");
 			usage(1);
 		}
 		else
@@ -377,25 +390,44 @@ usage(int code)
 		"    -t type            PFS type for pfs-create\n"
 		"    -u uuid            uuid for pfs-create\n"
 		"\n"
-		"    connect <target>   Add cluster link\n"
-		"    disconnect <target> Del cluster link\n"
-		"    hash filename*     Print directory hash\n"
-		"    status             Report cluster status\n"
-		"    pfs-list           List PFSs\n"
-		"    pfs-clid <label>   Print cluster id for specific PFS\n"
-		"    pfs-fsid <label>   Print private id for specific PFS\n"
-		"    pfs-create <label> Create a PFS\n"
-		"    pfs-delete <label> Destroy a PFS\n"
-		"    snapshot           Snapshot a PFS\n"
-		"    service            Start service daemon\n"
-		"    stat [<path>]	Return inode quota & config\n"
-		"    leaf               Start pfs leaf daemon\n"
-		"    shell [<host>]     Connect to debug shell\n"
-		"    debugspan <target> Connect to target, run CONN/SPAN\n"
-		"    rsainit            Initialize rsa fields\n"
-		"    show devpath       Raw hammer2 media dump\n"
-		"    freemap devpath    Raw hammer2 media dump\n"
-		"    setcomp comp_algo directory   Sets compression with comp_algo (0-2) on a directory\n"
+		"    connect <target>             "
+			"Add cluster link\n"
+		"    disconnect <target>          "
+			"Del cluster link\n"
+		"    hash filename*               "
+			"Print directory hash\n"
+		"    status                       "
+			"Report cluster status\n"
+		"    pfs-list                     "
+			"List PFSs\n"
+		"    pfs-clid <label>             "
+			"Print cluster id for specific PFS\n"
+		"    pfs-fsid <label>             "
+			"Print private id for specific PFS\n"
+		"    pfs-create <label>           "
+			"Create a PFS\n"
+		"    pfs-delete <label>           "
+			"Destroy a PFS\n"
+		"    snapshot                     "
+			"Snapshot a PFS\n"
+		"    service                      "
+			"Start service daemon\n"
+		"    stat [<path>]	          "
+			"Return inode quota & config\n"
+		"    leaf                         "
+			"Start pfs leaf daemon\n"
+		"    shell [<host>]               "
+			"Connect to debug shell\n"
+		"    debugspan <target>           "
+			"Connect to target, run CONN/SPAN\n"
+		"    rsainit                      "
+			"Initialize rsa fields\n"
+		"    show devpath                 "
+			"Raw hammer2 media dump\n"
+		"    freemap devpath              "
+			"Raw hammer2 media dump\n"
+		"    setcomp comp[:level] path    "
+			"Set compression {none, autozero, lz4, zlib} & level\n"
 	);
 	exit(code);
 }

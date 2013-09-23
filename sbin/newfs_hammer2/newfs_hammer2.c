@@ -523,7 +523,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	/*
 	 * Compression mode and supported copyids.
 	 */
-	rawip->comp_algo = HAMMER2_COMP_AUTOZERO;
+	rawip->comp_algo = HAMMER2_COMP_NEWFS_DEFAULT;
 
 	rawip->pfs_clid = Hammer2_RPFSId;
 	rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
@@ -546,7 +546,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 			hammer2_icrc32(rawip, sizeof(*rawip));
 	root_blockref.type = HAMMER2_BREF_TYPE_INODE;
 	root_blockref.methods = HAMMER2_ENC_CHECK(HAMMER2_CHECK_ISCSI32) |
-				HAMMER2_ENC_COMP(HAMMER2_COMP_AUTOZERO);
+				HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
 
 	/*
 	 * Format the super-root directory inode, giving it one directory

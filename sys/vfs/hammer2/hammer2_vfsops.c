@@ -209,14 +209,14 @@ static void hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_inode_data_t *ipdata,
 				hammer2_chain_t **parentp,
 				hammer2_key_t lbase, int ioflag,
-				int pblksize, int *errorp, int comp_method);
+				int pblksize, int *errorp, int comp_algo);
 static void hammer2_zero_check_and_write(struct buf *bp,
 				hammer2_trans_t *trans, hammer2_inode_t *ip,
 				hammer2_inode_data_t *ipdata,
 				hammer2_chain_t **parentp,
 				hammer2_key_t lbase,
 				int ioflag, int pblksize, int *errorp);
-static int test_block_not_zeros(char *buf, size_t bytes);
+static int test_block_zeros(const char *buf, size_t bytes);
 static void zero_write(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_inode_t *ip,
 				hammer2_inode_data_t *ipdata,
@@ -887,17 +887,9 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 			int *errorp)
 {
 	hammer2_chain_t *chain;
-	if (ipdata->comp_algo > HAMMER2_COMP_AUTOZERO) {
-		hammer2_compress_and_write(bp, trans, ip,
-					   ipdata, parentp,
-					   lbase, ioflag,
-					   pblksize, errorp,
-					   ipdata->comp_algo);
-	} else if (ipdata->comp_algo == HAMMER2_COMP_AUTOZERO) {
-		hammer2_zero_check_and_write(bp, trans, ip,
-				    ipdata, parentp, lbase,
-				    ioflag, pblksize, errorp);
-	} else {
+
+	switch(HAMMER2_DEC_COMP(ipdata->comp_algo)) {
+	case HAMMER2_COMP_NONE:
 		/*
 		 * We have to assign physical storage to the buffer
 		 * we intend to dirty or write now to avoid deadlocks
@@ -912,6 +904,27 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 		hammer2_write_bp(chain, bp, ioflag, pblksize, errorp);
 		if (chain)
 			hammer2_chain_unlock(chain);
+		break;
+	case HAMMER2_COMP_AUTOZERO:
+		/*
+		 * Check for zero-fill only
+		 */
+		hammer2_zero_check_and_write(bp, trans, ip,
+				    ipdata, parentp, lbase,
+				    ioflag, pblksize, errorp);
+		break;
+	case HAMMER2_COMP_LZ4:
+	case HAMMER2_COMP_ZLIB:
+	default:
+		/*
+		 * Check for zero-fill and attempt compression.
+		 */
+		hammer2_compress_and_write(bp, trans, ip,
+					   ipdata, parentp,
+					   lbase, ioflag,
+					   pblksize, errorp,
+					   ipdata->comp_algo);
+		break;
 	}
 	ipdata = &ip->chain->data->ipdata;	/* reload */
 }
@@ -928,222 +941,234 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 	hammer2_inode_t *ip, hammer2_inode_data_t *ipdata,
 	hammer2_chain_t **parentp,
 	hammer2_key_t lbase, int ioflag, int pblksize,
-	int *errorp, int comp_method)
+	int *errorp, int comp_algo)
 {
 	hammer2_chain_t *chain;
+	int comp_size;
+	int comp_block_size;
+	char *comp_buffer;
 
-	if (test_block_not_zeros(bp->b_data, pblksize)) {
-		int comp_size = 0;
-		int comp_block_size;
-		char *comp_buffer;
-
-		comp_buffer = NULL;
-
-		KKASSERT(pblksize / 2 <= 32768);
-		
-		if (ip->comp_heuristic < 8 || (ip->comp_heuristic & 7) == 0) {
-			if ((comp_method & 0x0F) == HAMMER2_COMP_LZ4) {
-				comp_buffer = objcache_get(cache_buffer_write,
-							   M_INTWAIT);
-				comp_size = LZ4_compress_limitedOutput(
-						bp->b_data,
-						&comp_buffer[sizeof(int)],
-						pblksize,
-						pblksize / 2 - sizeof(int));
-				/*
-				 * We need to prefix with the size, LZ4
-				 * doesn't do it for us.  Add the related
-				 * overhead.
-				 */
-				*(int *)comp_buffer = comp_size;
-				if (comp_size)
-					comp_size += sizeof(int);
-			} else if ((comp_method & 0x0F) == HAMMER2_COMP_ZLIB) {
-				int comp_level = (comp_method >> 4) & 0x0F;
-				z_stream strm_compress;
-				int ret;
-
-				ret = deflateInit(&strm_compress, comp_level);
-				if (ret != Z_OK)
-					kprintf("HAMMER2 ZLIB: fatal error "
-						"on deflateInit.\n");
-				
-				comp_buffer = objcache_get(cache_buffer_write,
-							   M_INTWAIT);
-				strm_compress.next_in = bp->b_data;
-				strm_compress.avail_in = pblksize;
-				strm_compress.next_out = comp_buffer;
-				strm_compress.avail_out = pblksize / 2;
-				ret = deflate(&strm_compress, Z_FINISH);
-				if (ret == Z_STREAM_END) {
-					comp_size = pblksize / 2 -
-						    strm_compress.avail_out;
-				} else {
-					comp_size = 0;
-				}
-				ret = deflateEnd(&strm_compress);
-			} else {
-				kprintf("Error: Unknown compression method.\n");
-				kprintf("Comp_method = %d.\n", comp_method);
-			}
-		}
-
-		if (comp_size == 0) {
-			/*
-			 * compression failed or turned off
-			 */
-			comp_block_size = pblksize;	/* safety */
-			if (++ip->comp_heuristic > 128)
-				ip->comp_heuristic = 8;
-		} else {
-			/*
-			 * compression succeeded
-			 */
-			ip->comp_heuristic = 0;
-			if (comp_size <= 1024) {
-				comp_block_size = 1024;
-			} else if (comp_size <= 2048) {
-				comp_block_size = 2048;
-			} else if (comp_size <= 4096) {
-				comp_block_size = 4096;
-			} else if (comp_size <= 8192) {
-				comp_block_size = 8192;
-			} else if (comp_size <= 16384) {
-				comp_block_size = 16384;
-			} else if (comp_size <= 32768) {
-				comp_block_size = 32768;
-			} else {
-				panic("hammer2: WRITE PATH: "
-				      "Weird comp_size value.");
-				/* NOT REACHED */
-				comp_block_size = pblksize;
-			}
-		}
-
-		chain = hammer2_assign_physical(trans, ip, parentp,
-						lbase, comp_block_size,
-						errorp);
-		ipdata = &ip->chain->data->ipdata;	/* RELOAD */
-			
-		if (*errorp) {
-			kprintf("WRITE PATH: An error occurred while "
-				"assigning physical space.\n");
-			KKASSERT(chain == NULL);
-		} else {
-			/* Get device offset */
-			hammer2_off_t pbase;
-			hammer2_off_t pmask;
-			hammer2_off_t peof;
-			size_t boff;
-			size_t psize;
-			struct buf *dbp;
-			int temp_check;
-			
-			KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
-			
-			switch(chain->bref.type) {
-			case HAMMER2_BREF_TYPE_INODE:
-				KKASSERT(chain->data->ipdata.op_flags &
-					HAMMER2_OPFLAG_DIRECTDATA);
-				KKASSERT(bp->b_loffset == 0);
-				bcopy(bp->b_data, chain->data->ipdata.u.data,
-					HAMMER2_EMBEDDED_BYTES);
-				break;
-			case HAMMER2_BREF_TYPE_DATA:				
-				psize = hammer2_devblksize(chain->bytes);
-				pmask = (hammer2_off_t)psize - 1;
-				pbase = chain->bref.data_off & ~pmask;
-				boff = chain->bref.data_off &
-				       (HAMMER2_OFF_MASK & pmask);
-				peof = (pbase + HAMMER2_SEGMASK64) &
-				       ~HAMMER2_SEGMASK64;
-				temp_check = HAMMER2_DEC_CHECK(
-							chain->bref.methods);
-
-				/*
-				 * Optimize out the read-before-write
-				 * if possible.
-				 */
-				if (comp_block_size == psize) {
-					dbp = getblk(chain->hmp->devvp, pbase,
-						     psize, 0, 0);
-				} else {
-					*errorp = bread(chain->hmp->devvp,
-							pbase, psize, &dbp);
-					if (*errorp) {
-						kprintf("hammer2: WRITE PATH: "
-							"dbp bread error\n");
-						break;
-					}
-				}
-
-				/*
-				 * When loading the block make sure we don't
-				 * leave garbage after the compressed data.
-				 */
-				if (comp_size) {
-					chain->bref.methods =
-						HAMMER2_ENC_COMP(comp_method) +
-						HAMMER2_ENC_CHECK(temp_check);
-					bcopy(comp_buffer, dbp->b_data + boff,
-					      comp_size);
-					if (comp_size != comp_block_size) {
-						bzero(dbp->b_data + boff +
-							comp_size,
-						      comp_block_size -
-						        comp_size);
-					}
-				} else {
-					chain->bref.methods =
-						HAMMER2_ENC_COMP(
-							HAMMER2_COMP_NONE) +
-						HAMMER2_ENC_CHECK(temp_check);
-					bcopy(bp->b_data, dbp->b_data + boff,
-					      pblksize);
-				}
-
-				/*
-				 * Device buffer is now valid, chain is no
-				 * longer in the initial state.
-				 */
-				atomic_clear_int(&chain->flags,
-						 HAMMER2_CHAIN_INITIAL);
-
-				/* Now write the related bdp. */
-				if (ioflag & IO_SYNC) {
-					/*
-					 * Synchronous I/O requested.
-					 */
-					bwrite(dbp);
-				/*
-				} else if ((ioflag & IO_DIRECT) &&
-					   loff + n == pblksize) {
-					bdwrite(dbp);
-				*/
-				} else if (ioflag & IO_ASYNC) {
-					bawrite(dbp);
-				} else if (hammer2_cluster_enable) {
-					cluster_write(dbp, peof,
-						      HAMMER2_PBUFSIZE,
-						      4/*XXX*/);
-				} else {
-					bdwrite(dbp);
-				}
-				break;
-			default:
-				panic("hammer2_write_bp: bad chain type %d\n",
-					chain->bref.type);
-				/* NOT REACHED */
-				break;
-			}
-			
-			hammer2_chain_unlock(chain);
-		}
-		if (comp_buffer)
-			objcache_put(cache_buffer_write, comp_buffer);
-	} else {
+	if (test_block_zeros(bp->b_data, pblksize)) {
 		zero_write(bp, trans, ip, ipdata, parentp, lbase, errorp);
+		return;
 	}
+
+	comp_size = 0;
+	comp_buffer = NULL;
+
+	KKASSERT(pblksize / 2 <= 32768);
+		
+	if (ip->comp_heuristic < 8 || (ip->comp_heuristic & 7) == 0) {
+		z_stream strm_compress;
+		int comp_level;
+		int ret;
+
+		switch(HAMMER2_DEC_COMP(comp_algo)) {
+		case HAMMER2_COMP_LZ4:
+			comp_buffer = objcache_get(cache_buffer_write,
+						   M_INTWAIT);
+			comp_size = LZ4_compress_limitedOutput(
+					bp->b_data,
+					&comp_buffer[sizeof(int)],
+					pblksize,
+					pblksize / 2 - sizeof(int));
+			/*
+			 * We need to prefix with the size, LZ4
+			 * doesn't do it for us.  Add the related
+			 * overhead.
+			 */
+			*(int *)comp_buffer = comp_size;
+			if (comp_size)
+				comp_size += sizeof(int);
+			break;
+		case HAMMER2_COMP_ZLIB:
+			comp_level = HAMMER2_DEC_LEVEL(comp_algo);
+			if (comp_level == 0)
+				comp_level = 6;	/* default zlib compression */
+			else if (comp_level < 6)
+				comp_level = 6;
+			else if (comp_level > 9)
+				comp_level = 9;
+			ret = deflateInit(&strm_compress, comp_level);
+			if (ret != Z_OK) {
+				kprintf("HAMMER2 ZLIB: fatal error "
+					"on deflateInit.\n");
+			}
+
+			comp_buffer = objcache_get(cache_buffer_write,
+						   M_INTWAIT);
+			strm_compress.next_in = bp->b_data;
+			strm_compress.avail_in = pblksize;
+			strm_compress.next_out = comp_buffer;
+			strm_compress.avail_out = pblksize / 2;
+			ret = deflate(&strm_compress, Z_FINISH);
+			if (ret == Z_STREAM_END) {
+				comp_size = pblksize / 2 -
+					    strm_compress.avail_out;
+			} else {
+				comp_size = 0;
+			}
+			ret = deflateEnd(&strm_compress);
+			break;
+		default:
+			kprintf("Error: Unknown compression method.\n");
+			kprintf("Comp_method = %d.\n", comp_algo);
+			break;
+		}
+	}
+
+	if (comp_size == 0) {
+		/*
+		 * compression failed or turned off
+		 */
+		comp_block_size = pblksize;	/* safety */
+		if (++ip->comp_heuristic > 128)
+			ip->comp_heuristic = 8;
+	} else {
+		/*
+		 * compression succeeded
+		 */
+		ip->comp_heuristic = 0;
+		if (comp_size <= 1024) {
+			comp_block_size = 1024;
+		} else if (comp_size <= 2048) {
+			comp_block_size = 2048;
+		} else if (comp_size <= 4096) {
+			comp_block_size = 4096;
+		} else if (comp_size <= 8192) {
+			comp_block_size = 8192;
+		} else if (comp_size <= 16384) {
+			comp_block_size = 16384;
+		} else if (comp_size <= 32768) {
+			comp_block_size = 32768;
+		} else {
+			panic("hammer2: WRITE PATH: "
+			      "Weird comp_size value.");
+			/* NOT REACHED */
+			comp_block_size = pblksize;
+		}
+	}
+
+	chain = hammer2_assign_physical(trans, ip, parentp,
+					lbase, comp_block_size,
+					errorp);
+	ipdata = &ip->chain->data->ipdata;	/* RELOAD */
+
+	if (*errorp) {
+		kprintf("WRITE PATH: An error occurred while "
+			"assigning physical space.\n");
+		KKASSERT(chain == NULL);
+	} else {
+		/* Get device offset */
+		hammer2_off_t pbase;
+		hammer2_off_t pmask;
+		hammer2_off_t peof;
+		size_t boff;
+		size_t psize;
+		struct buf *dbp;
+		int temp_check;
+
+		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
+
+		switch(chain->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			KKASSERT(chain->data->ipdata.op_flags &
+				 HAMMER2_OPFLAG_DIRECTDATA);
+			KKASSERT(bp->b_loffset == 0);
+			bcopy(bp->b_data, chain->data->ipdata.u.data,
+			      HAMMER2_EMBEDDED_BYTES);
+			break;
+		case HAMMER2_BREF_TYPE_DATA:
+			psize = hammer2_devblksize(chain->bytes);
+			pmask = (hammer2_off_t)psize - 1;
+			pbase = chain->bref.data_off & ~pmask;
+			boff = chain->bref.data_off &
+			       (HAMMER2_OFF_MASK & pmask);
+			peof = (pbase + HAMMER2_SEGMASK64) &
+			       ~HAMMER2_SEGMASK64;
+			temp_check = HAMMER2_DEC_CHECK(chain->bref.methods);
+
+			/*
+			 * Optimize out the read-before-write
+			 * if possible.
+			 */
+			if (comp_block_size == psize) {
+				dbp = getblk(chain->hmp->devvp, pbase,
+					     psize, 0, 0);
+			} else {
+				*errorp = bread(chain->hmp->devvp,
+						pbase, psize, &dbp);
+				if (*errorp) {
+					kprintf("hammer2: WRITE PATH: "
+						"dbp bread error\n");
+					break;
+				}
+			}
+
+			/*
+			 * When loading the block make sure we don't
+			 * leave garbage after the compressed data.
+			 */
+			if (comp_size) {
+				chain->bref.methods =
+					HAMMER2_ENC_COMP(comp_algo) +
+					HAMMER2_ENC_CHECK(temp_check);
+				bcopy(comp_buffer, dbp->b_data + boff,
+				      comp_size);
+				if (comp_size != comp_block_size) {
+					bzero(dbp->b_data + boff +
+						comp_size,
+					      comp_block_size -
+						comp_size);
+				}
+			} else {
+				chain->bref.methods =
+					HAMMER2_ENC_COMP(
+						HAMMER2_COMP_NONE) +
+					HAMMER2_ENC_CHECK(temp_check);
+				bcopy(bp->b_data, dbp->b_data + boff,
+				      pblksize);
+			}
+
+			/*
+			 * Device buffer is now valid, chain is no
+			 * longer in the initial state.
+			 */
+			atomic_clear_int(&chain->flags,
+					 HAMMER2_CHAIN_INITIAL);
+
+			/* Now write the related bdp. */
+			if (ioflag & IO_SYNC) {
+				/*
+				 * Synchronous I/O requested.
+				 */
+				bwrite(dbp);
+			/*
+			} else if ((ioflag & IO_DIRECT) &&
+				   loff + n == pblksize) {
+				bdwrite(dbp);
+			*/
+			} else if (ioflag & IO_ASYNC) {
+				bawrite(dbp);
+			} else if (hammer2_cluster_enable) {
+				cluster_write(dbp, peof,
+					      HAMMER2_PBUFSIZE,
+					      4/*XXX*/);
+			} else {
+				bdwrite(dbp);
+			}
+			break;
+		default:
+			panic("hammer2_write_bp: bad chain type %d\n",
+				chain->bref.type);
+			/* NOT REACHED */
+			break;
+		}
+
+		hammer2_chain_unlock(chain);
+	}
+	if (comp_buffer)
+		objcache_put(cache_buffer_write, comp_buffer);
 }
 
 /*
@@ -1159,32 +1184,32 @@ hammer2_zero_check_and_write(struct buf *bp, hammer2_trans_t *trans,
 {
 	hammer2_chain_t *chain;
 
-	if (test_block_not_zeros(bp->b_data, pblksize)) {
+	if (test_block_zeros(bp->b_data, pblksize)) {
+		zero_write(bp, trans, ip, ipdata, parentp, lbase, errorp);
+	} else {
 		chain = hammer2_assign_physical(trans, ip, parentp,
 						lbase, pblksize, errorp);
 		hammer2_write_bp(chain, bp, ioflag, pblksize, errorp);
 		if (chain)
 			hammer2_chain_unlock(chain);
-	} else {
-		zero_write(bp, trans, ip, ipdata, parentp, lbase, errorp);
 	}
 }
 
 /*
  * A function to test whether a block of data contains only zeros,
- * returns 0 in that case or returns 1 otherwise.
+ * returns TRUE (non-zero) if the block is all zeros.
  */
 static
 int
-test_block_not_zeros(char *buf, size_t bytes)
+test_block_zeros(const char *buf, size_t bytes)
 {
 	size_t i;
 
 	for (i = 0; i < bytes; i += sizeof(long)) {
-		if (*(long *)(buf + i) != 0)
-			return (1);
+		if (*(const long *)(buf + i) != 0)
+			return (0);
 	}
-	return (0);
+	return (1);
 }
 
 /*
