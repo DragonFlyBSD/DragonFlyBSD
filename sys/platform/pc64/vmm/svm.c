@@ -28,6 +28,9 @@ static vm_offset_t vm_hsave_va[MAXCPU];
 static int svm_init(void) {
 	uint64_t vm_cr;
 
+	/* Not fully implemented and will break vkernel64 bootstrap */
+	return (ENODEV);
+
 	/* SVM is identified by CPUID */
 	if ((amd_feature2 & AMDID2_SVM) == 0)
 		return (ENODEV);
