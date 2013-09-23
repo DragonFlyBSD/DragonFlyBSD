@@ -476,6 +476,7 @@ emx_attach(device_t dev)
 
 	KKASSERT(i == EMX_NSERIALIZE);
 
+	ifmedia_init(&sc->media, IFM_IMASK, emx_media_change, emx_media_status);
 	callout_init_mp(&sc->timer);
 
 	sc->dev = sc->osdep.dev = dev;
@@ -825,6 +826,7 @@ emx_attach(device_t dev)
 	error = emx_reset(sc);
 	if (error) {
 		device_printf(dev, "Unable to reset the hardware\n");
+		ether_ifdetach(&sc->arpcom.ac_if);
 		goto fail;
 	}
 
@@ -898,6 +900,8 @@ emx_detach(device_t dev)
 	} else if (sc->memory != NULL) {
 		emx_rel_hw_control(sc);
 	}
+
+	ifmedia_removeall(&sc->media);
 	bus_generic_detach(dev);
 
 	if (sc->intr_res != NULL) {
@@ -2044,8 +2048,6 @@ emx_setup_ifp(struct emx_softc *sc)
 	 * Specify the media types supported by this sc and register
 	 * callbacks to update media and link information
 	 */
-	ifmedia_init(&sc->media, IFM_IMASK,
-		     emx_media_change, emx_media_status);
 	if (sc->hw.phy.media_type == e1000_media_type_fiber ||
 	    sc->hw.phy.media_type == e1000_media_type_internal_serdes) {
 		ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_SX | IFM_FDX,

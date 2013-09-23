@@ -429,6 +429,9 @@ em_attach(device_t dev)
 	callout_init_mp(&adapter->timer);
 	callout_init_mp(&adapter->tx_fifo_timer);
 
+	ifmedia_init(&adapter->media, IFM_IMASK,
+	    em_media_change, em_media_status);
+
 	/* Determine hardware and mac info */
 	error = em_get_hw_info(adapter);
 	if (error) {
@@ -788,6 +791,7 @@ em_attach(device_t dev)
 	error = em_reset(adapter);
 	if (error) {
 		device_printf(dev, "Unable to reset the hardware\n");
+		ether_ifdetach(ifp);
 		goto fail;
 	}
 
@@ -863,7 +867,7 @@ em_attach(device_t dev)
 			       ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "Failed to register interrupt handler");
-		ether_ifdetach(&adapter->arpcom.ac_if);
+		ether_ifdetach(ifp);
 		goto fail;
 	}
 	return (0);
@@ -904,6 +908,8 @@ em_detach(device_t dev)
 	} else if (adapter->memory != NULL) {
 		em_rel_hw_control(adapter);
 	}
+
+	ifmedia_removeall(&adapter->media);
 	bus_generic_detach(dev);
 
 	em_free_pci_res(adapter);
@@ -2520,8 +2526,6 @@ em_setup_ifp(struct adapter *adapter)
 	 * Specify the media types supported by this adapter and register
 	 * callbacks to update media and link information
 	 */
-	ifmedia_init(&adapter->media, IFM_IMASK,
-		     em_media_change, em_media_status);
 	if (adapter->hw.phy.media_type == e1000_media_type_fiber ||
 	    adapter->hw.phy.media_type == e1000_media_type_internal_serdes) {
 		u_char fiber_type = IFM_1000_SX; /* default type */
