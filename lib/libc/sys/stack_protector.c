@@ -106,7 +106,7 @@ __stack_smash_handler(char func[], int damaged  __unused)
 {
     static char buf[128];
 
-    vsnprintf(buf, sizeof(buf), "stack overflow in function %s", func);
+    snprintf(buf, sizeof(buf), "stack overflow in function %s", func);
     __fail(buf);
 }
 
