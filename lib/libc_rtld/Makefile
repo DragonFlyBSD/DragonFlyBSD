@@ -10,6 +10,7 @@ CFLAGS+=-I${.CURDIR}/../../include
 CFLAGS+=-I${.CURDIR}/../libc/${MACHINE_ARCH}
 CFLAGS+=-I${.OBJDIR}
 CFLAGS+=-D__thread=
+CFLAGS+=-D__LIBC_RTLD
 
 PRECIOUSLIB=	yes
 
@@ -37,3 +38,6 @@ HIDDEN_SYSCALLS= aio_suspend.o accept.o bind.o close.o connect.o dup.o dup2.o \
 .PATH:  ${.CURDIR}/../libc/resolv
 
 .include <bsd.lib.mk>
+
+# Disable warnings in contributed sources.
+CWARNFLAGS:=	${.IMPSRC:N*dtoa*.c:C/^.+$/${CWARNFLAGS}/:C/^$/-w/}
