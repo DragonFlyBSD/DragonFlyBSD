@@ -790,9 +790,16 @@ em_attach(device_t dev)
 	/* Reset the hardware */
 	error = em_reset(adapter);
 	if (error) {
-		device_printf(dev, "Unable to reset the hardware\n");
-		ether_ifdetach(ifp);
-		goto fail;
+		/*
+		 * Some 82573 parts fail the first reset, call it again,
+		 * if it fails a second time its a real issue.
+		 */
+		error = em_reset(adapter);
+		if (error) {
+			device_printf(dev, "Unable to reset the hardware\n");
+			ether_ifdetach(ifp);
+			goto fail;
+		}
 	}
 
 	/* Initialize statistics */

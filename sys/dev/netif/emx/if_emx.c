@@ -825,9 +825,16 @@ emx_attach(device_t dev)
 	/* Reset the hardware */
 	error = emx_reset(sc);
 	if (error) {
-		device_printf(dev, "Unable to reset the hardware\n");
-		ether_ifdetach(&sc->arpcom.ac_if);
-		goto fail;
+		/*
+		 * Some 82573 parts fail the first reset, call it again,
+		 * if it fails a second time its a real issue.
+		 */
+		error = emx_reset(sc);
+		if (error) {
+			device_printf(dev, "Unable to reset the hardware\n");
+			ether_ifdetach(&sc->arpcom.ac_if);
+			goto fail;
+		}
 	}
 
 	/* Initialize statistics */
