@@ -180,10 +180,8 @@ madt_check(vm_paddr_t madt_paddr)
 	 * MADT in ACPI specification 1.0 - 4.0
 	 */
 	if (madt->madt_hdr.sdth_rev < 1 || madt->madt_hdr.sdth_rev > 3) {
-		kprintf("madt_check: unsupported MADT revision %d\n",
+		kprintf("madt_check: unknown MADT revision %d\n",
 			madt->madt_hdr.sdth_rev);
-		error = EOPNOTSUPP;
-		goto back;
 	}
 
 	if (madt->madt_hdr.sdth_len <

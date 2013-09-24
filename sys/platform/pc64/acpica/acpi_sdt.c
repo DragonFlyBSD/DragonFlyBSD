@@ -204,8 +204,13 @@ sdt_search_xsdt(vm_paddr_t xsdt_paddr, const uint8_t *sig)
 	}
 
 	if (xsdt->xsdt_hdr.sdth_rev != 1) {
-		kprintf("sdt_search_xsdt: unsupported XSDT revision %d\n",
+		kprintf("sdt_search_xsdt: unknown XSDT revision %d\n",
 			xsdt->xsdt_hdr.sdth_rev);
+	}
+
+	if (xsdt->xsdt_hdr.sdth_len < sizeof(xsdt->xsdt_hdr)) {
+		kprintf("sdt_search_xsdt: invalid XSDT length %u\n",
+			xsdt->xsdt_hdr.sdth_len);
 		goto back;
 	}
 
@@ -260,8 +265,13 @@ sdt_search_rsdt(vm_paddr_t rsdt_paddr, const uint8_t *sig)
 	}
 
 	if (rsdt->rsdt_hdr.sdth_rev != 1) {
-		kprintf("sdt_search_rsdt: unsupported RSDT revision %d\n",
+		kprintf("sdt_search_rsdt: unknown RSDT revision %d\n",
 			rsdt->rsdt_hdr.sdth_rev);
+	}
+
+	if (rsdt->rsdt_hdr.sdth_len < sizeof(rsdt->rsdt_hdr)) {
+		kprintf("sdt_search_rsdt: invalid RSDT length %u\n",
+			rsdt->rsdt_hdr.sdth_len);
 		goto back;
 	}
 
