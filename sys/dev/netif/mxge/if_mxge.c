@@ -2014,7 +2014,6 @@ mxge_get_buf_small(mxge_rx_ring_t *rx, bus_dmamap_t map, int idx,
 
 	m = m_gethdr(mflag, MT_DATA);
 	if (m == NULL) {
-		rx->alloc_fail++;
 		err = ENOBUFS;
 		if (__predict_false(init)) {
 			/*
@@ -2068,7 +2067,6 @@ mxge_get_buf_big(mxge_rx_ring_t *rx, bus_dmamap_t map, int idx,
 	else
 		m = m_getjcl(mflag, MT_DATA, M_PKTHDR, MJUMPAGESIZE);
 	if (m == NULL) {
-		rx->alloc_fail++;
 		err = ENOBUFS;
 		if (__predict_false(init)) {
 			/*
