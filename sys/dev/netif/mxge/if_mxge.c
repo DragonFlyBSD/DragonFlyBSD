@@ -2695,12 +2695,20 @@ mxge_msi(void *arg)
 		mxge_clean_rx_done(rx_done);
 	lwkt_serialize_exit(&ss->rx_data.rx_serialize);
 
-	/* Check for transmit completes */
-	lwkt_serialize_enter(&tx->tx_serialize);
+	/*
+	 * Check for transmit completes
+	 *
+	 * NOTE:
+	 * Since pkt_done is only changed by mxge_tx_done(),
+	 * which is called only in interrupt handler, the
+	 * check w/o holding tx serializer is MPSAFE.
+	 */
 	send_done_count = be32toh(stats->send_done_count);
-	if (send_done_count != tx->pkt_done)
+	if (send_done_count != tx->pkt_done) {
+		lwkt_serialize_enter(&tx->tx_serialize);
 		mxge_tx_done(tx, (int)send_done_count);
-	lwkt_serialize_exit(&tx->tx_serialize);
+		lwkt_serialize_exit(&tx->tx_serialize);
+	}
 
 	if (__predict_false(stats->stats_updated))
 		mxge_intr_status(sc, stats);
