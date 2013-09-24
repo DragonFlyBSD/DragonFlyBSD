@@ -1245,14 +1245,14 @@ mxge_change_throttle(SYSCTL_HANDLER_ARGS)
 	if (throttle < MXGE_MIN_THROTTLE || throttle > MXGE_MAX_THROTTLE)
 		return EINVAL;
 
-	lwkt_serialize_enter(sc->ifp->if_serializer);
+	ifnet_serialize_all(sc->ifp);
 
 	cmd.data0 = throttle;
 	err = mxge_send_cmd(sc, MXGEFW_CMD_SET_THROTTLE_FACTOR, &cmd);
 	if (err == 0)
 		sc->throttle = throttle;
 
-	lwkt_serialize_exit(sc->ifp->if_serializer);
+	ifnet_deserialize_all(sc->ifp);
 	return err;
 }
 
@@ -1275,12 +1275,12 @@ mxge_change_intr_coal(SYSCTL_HANDLER_ARGS)
 	if (intr_coal_delay == 0 || intr_coal_delay > 1000*1000)
 		return EINVAL;
 
-	lwkt_serialize_enter(sc->ifp->if_serializer);
+	ifnet_serialize_all(sc->ifp);
 
 	*sc->intr_coal_delay_ptr = htobe32(intr_coal_delay);
 	sc->intr_coal_delay = intr_coal_delay;
 
-	lwkt_serialize_exit(sc->ifp->if_serializer);
+	ifnet_deserialize_all(sc->ifp);
 	return err;
 }
 
@@ -1300,9 +1300,9 @@ mxge_change_flow_control(SYSCTL_HANDLER_ARGS)
 	if (enabled == sc->pause)
 		return 0;
 
-	lwkt_serialize_enter(sc->ifp->if_serializer);
+	ifnet_serialize_all(sc->ifp);
 	err = mxge_change_pause(sc, enabled);
-	lwkt_serialize_exit(sc->ifp->if_serializer);
+	ifnet_deserialize_all(sc->ifp);
 
 	return err;
 }
@@ -1920,19 +1920,17 @@ static void
 mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	mxge_softc_t *sc = ifp->if_softc;
-	struct mxge_slice_state *ss;
 	mxge_tx_ring_t *tx;
 	int encap = 0;
 
+	/* XXX Only use the first slice for now */
+	tx = &sc->ss[0].tx;
+
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
-	ASSERT_SERIALIZED(sc->ifp->if_serializer);
+	ASSERT_SERIALIZED(&tx->tx_serialize);
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifsq_is_oactive(ifsq))
 		return;
-
-	/* XXX Only use the first slice for now */
-	ss = &sc->ss[0];
-	tx = &ss->tx;
 
 	while (tx->mask - (tx->req - tx->done) > tx->max_desc) {
 		struct mbuf *m;
@@ -1964,7 +1962,7 @@ mxge_watchdog(struct ifnet *ifp)
 	uint32_t rx_pause = be32toh(sc->ss->fw_stats->dropped_pause);
 	mxge_tx_ring_t *tx = &sc->ss[0].tx;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	/* Check for pause blocking before resetting */
 	if (tx->watchdog_rx_pause == rx_pause) {
@@ -2328,7 +2326,7 @@ mxge_tx_done(mxge_tx_ring_t *tx, uint32_t mcp_idx)
 {
 	struct ifnet *ifp = tx->sc->ifp;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&tx->tx_serialize);
 
 	while (tx->pkt_done != mcp_idx) {
 		struct mbuf *m;
@@ -2593,6 +2591,18 @@ mxge_intr_status(struct mxge_softc *sc, const mcp_irq_data_t *stats)
 }
 
 static void
+mxge_serialize_skipmain(struct mxge_softc *sc)
+{
+	lwkt_serialize_array_enter(sc->serializes, sc->nserialize, 1);
+}
+
+static void
+mxge_deserialize_skipmain(struct mxge_softc *sc)
+{
+	lwkt_serialize_array_exit(sc->serializes, sc->nserialize, 1);
+}
+
+static void
 mxge_legacy(void *arg)
 {
 	struct mxge_slice_state *ss = arg;
@@ -2602,6 +2612,8 @@ mxge_legacy(void *arg)
 	mxge_rx_done_t *rx_done = &ss->rx_data.rx_done;
 	uint32_t send_done_count;
 	uint8_t valid;
+
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 #if 0
 	/* an interrupt on a non-zero slice is implicitly valid
@@ -2625,6 +2637,8 @@ mxge_legacy(void *arg)
 		stats->valid = 0;
 	}
 
+	mxge_serialize_skipmain(sc);
+
 	/*
 	 * Loop while waiting for legacy irq deassertion
 	 * XXX do we really want to loop?
@@ -2642,6 +2656,8 @@ mxge_legacy(void *arg)
 		if (mxge_deassert_wait)
 			wmb();
 	} while (*((volatile uint8_t *)&stats->valid));
+
+	mxge_deserialize_skipmain(sc);
 
 	/* Fw link & error stats meaningful only on the first slice */
 	if (__predict_false(stats->stats_updated))
@@ -2664,6 +2680,8 @@ mxge_msi(void *arg)
 	uint32_t send_done_count;
 	uint8_t valid;
 
+	ASSERT_SERIALIZED(&sc->main_serialize);
+
 	/* Make sure the DMA has finished */
 	if (!stats->valid)
 		return;
@@ -2672,13 +2690,17 @@ mxge_msi(void *arg)
 	stats->valid = 0;
 
 	/* Check for receives */
+	lwkt_serialize_enter(&ss->rx_data.rx_serialize);
 	if (rx_done->entry[rx_done->idx].length != 0)
 		mxge_clean_rx_done(rx_done);
+	lwkt_serialize_exit(&ss->rx_data.rx_serialize);
 
 	/* Check for transmit completes */
+	lwkt_serialize_enter(&tx->tx_serialize);
 	send_done_count = be32toh(stats->send_done_count);
 	if (send_done_count != tx->pkt_done)
 		mxge_tx_done(tx, (int)send_done_count);
+	lwkt_serialize_exit(&tx->tx_serialize);
 
 	if (__predict_false(stats->stats_updated))
 		mxge_intr_status(sc, stats);
@@ -2694,7 +2716,7 @@ mxge_init(void *arg)
 {
 	struct mxge_softc *sc = arg;
 
-	ASSERT_SERIALIZED(sc->ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(sc->ifp);
 	if ((sc->ifp->if_flags & IFF_RUNNING) == 0)
 		mxge_open(sc);
 }
@@ -3157,7 +3179,7 @@ mxge_open(mxge_softc_t *sc)
 	volatile uint8_t *itable;
 	struct mxge_slice_state *ss;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	/* Copy the MAC address in case it was overridden */
 	bcopy(IF_LLADDR(ifp), sc->mac_addr, ETHER_ADDR_LEN);
@@ -3301,7 +3323,7 @@ mxge_close(mxge_softc_t *sc, int down)
 	mxge_cmd_t cmd;
 	int err, old_down_cnt;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	ifp->if_flags &= ~IFF_RUNNING;
 	ifq_clr_oactive(&ifp->if_snd);
@@ -3317,9 +3339,9 @@ mxge_close(mxge_softc_t *sc, int down)
 
 		if (old_down_cnt == sc->down_cnt) {
 			/* Wait for down irq */
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 			DELAY(10 * sc->intr_coal_delay);
-			lwkt_serialize_enter(ifp->if_serializer);
+			ifnet_serialize_all(ifp);
 		}
 
 		wmb();
@@ -3490,7 +3512,7 @@ mxge_tick(void *arg)
 	int err = 0;
 	int ticks;
 
-	lwkt_serialize_enter(sc->ifp->if_serializer);
+	lwkt_serialize_enter(&sc->main_serialize);
 
 	ticks = mxge_ticks;
 	if (sc->ifp->if_flags & IFF_RUNNING) {
@@ -3506,7 +3528,9 @@ mxge_tick(void *arg)
 		cmd = pci_read_config(sc->dev, PCIR_COMMAND, 2);		
 		if ((cmd & PCIM_CMD_BUSMASTEREN) == 0) {
 			sc->dying = 2;
+			mxge_serialize_skipmain(sc);
 			mxge_watchdog_reset(sc);
+			mxge_deserialize_skipmain(sc);
 			err = ENXIO;
 		}
 
@@ -3517,7 +3541,7 @@ mxge_tick(void *arg)
 	if (err == 0)
 		callout_reset(&sc->co_hdl, ticks, mxge_tick, sc);
 
-	lwkt_serialize_exit(sc->ifp->if_serializer);
+	lwkt_serialize_exit(&sc->main_serialize);
 }
 
 static int
@@ -3573,7 +3597,7 @@ mxge_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 	struct ifreq *ifr = (struct ifreq *)data;
 	int err, mask;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 	err = 0;
 
 	switch (command) {
@@ -3715,6 +3739,9 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		ss->rx_data.rx_big.sc = sc;
 		ss->rx_data.rx_done.rx_big = &ss->rx_data.rx_big;
 		ss->rx_data.rx_done.rx_small = &ss->rx_data.rx_small;
+
+		lwkt_serialize_init(&ss->rx_data.rx_serialize);
+		lwkt_serialize_init(&ss->tx.tx_serialize);
 
 		/*
 		 * Allocate per-slice rx interrupt queues
@@ -3976,7 +4003,7 @@ mxge_add_single_irq(mxge_softc_t *sc)
 		intr_func = mxge_msi;
 
 	return bus_setup_intr(sc->dev, sc->irq_res, INTR_MPSAFE,
-	    intr_func, &sc->ss[0], &sc->ih, sc->ifp->if_serializer);
+	    intr_func, &sc->ss[0], &sc->ih, &sc->main_serialize);
 }
 
 #if 0
@@ -4032,6 +4059,77 @@ mxge_add_irq(mxge_softc_t *sc)
 #endif
 }
 
+static void
+mxge_setup_serialize(struct mxge_softc *sc)
+{
+	int i = 0, slice;
+
+	/* Main + rx + tx */
+	sc->nserialize = (2 * sc->num_slices) + 1;
+	sc->serializes =
+	    kmalloc(sc->nserialize * sizeof(struct lwkt_serialize *),
+	        M_DEVBUF, M_WAITOK | M_ZERO);
+
+	/*
+	 * Setup serializes
+	 *
+	 * NOTE: Order is critical
+	 */
+
+	KKASSERT(i < sc->nserialize);
+	sc->serializes[i++] = &sc->main_serialize;
+
+	for (slice = 0; slice < sc->num_slices; ++slice) {
+		KKASSERT(i < sc->nserialize);
+		sc->serializes[i++] = &sc->ss[slice].rx_data.rx_serialize;
+	}
+
+	for (slice = 0; slice < sc->num_slices; ++slice) {
+		KKASSERT(i < sc->nserialize);
+		sc->serializes[i++] = &sc->ss[slice].tx.tx_serialize;
+	}
+
+	KKASSERT(i == sc->nserialize);
+}
+
+static void
+mxge_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct mxge_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_enter(sc->serializes, sc->nserialize, slz);
+}
+
+static void
+mxge_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct mxge_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_exit(sc->serializes, sc->nserialize, slz);
+}
+
+static int
+mxge_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct mxge_softc *sc = ifp->if_softc;
+
+	return ifnet_serialize_array_try(sc->serializes, sc->nserialize, slz);
+}
+
+#ifdef INVARIANTS
+
+static void
+mxge_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
+    boolean_t serialized)
+{
+	struct mxge_softc *sc = ifp->if_softc;
+
+	ifnet_serialize_array_assert(sc->serializes, sc->nserialize,
+	    slz, serialized);
+}
+
+#endif	/* INVARIANTS */
+
 static int 
 mxge_attach(device_t dev)
 {
@@ -4047,6 +4145,8 @@ mxge_attach(device_t dev)
 	sc->dev = dev;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifmedia_init(&sc->media, 0, mxge_media_change, mxge_media_status);
+
+	lwkt_serialize_init(&sc->main_serialize);
 
 	mxge_fetch_tunables(sc);
 
@@ -4147,6 +4247,9 @@ mxge_attach(device_t dev)
 		goto failed;
 	}
 
+	/* Setup serializes */
+	mxge_setup_serialize(sc);
+
 	err = mxge_reset(sc, 0);
 	if (err != 0) {
 		device_printf(dev, "reset failed\n");
@@ -4176,6 +4279,12 @@ mxge_attach(device_t dev)
 	ifp->if_ioctl = mxge_ioctl;
 	ifp->if_start = mxge_start;
 	ifp->if_watchdog = mxge_watchdog;
+	ifp->if_serialize = mxge_serialize;
+	ifp->if_deserialize = mxge_deserialize;
+	ifp->if_tryserialize = mxge_tryserialize;
+#ifdef INVARIANTS
+	ifp->if_serialize_assert = mxge_serialize_assert;
+#endif
 
 	/* Increase TSO burst length */
 	ifp->if_tsolen = (32 * ETHERMTU);
@@ -4202,7 +4311,9 @@ mxge_attach(device_t dev)
 		ether_ifdetach(ifp);
 		goto failed;
 	}
+
 	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
+	ifq_set_hw_serialize(&ifp->if_snd, &sc->ss[0].tx.tx_serialize);
 
 	mxge_add_sysctls(sc);
 
@@ -4222,7 +4333,7 @@ mxge_detach(device_t dev)
 	if (device_is_attached(dev)) {
 		struct ifnet *ifp = sc->ifp;
 
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 
 		sc->dying = 1;
 		if (ifp->if_flags & IFF_RUNNING)
@@ -4231,7 +4342,7 @@ mxge_detach(device_t dev)
 
 		bus_teardown_intr(sc->dev, sc->irq_res, sc->ih);
 
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 
 		callout_terminate(&sc->co_hdl);
 

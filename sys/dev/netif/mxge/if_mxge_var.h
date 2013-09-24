@@ -86,6 +86,7 @@ typedef struct {
 } mxge_rx_done_t;
 
 typedef struct {
+	struct lwkt_serialize tx_serialize;
 	mxge_softc_t *sc;
 	volatile mcp_kreq_ether_send_t *lanai;	/* lanai ptr for sendq	*/
 	volatile uint32_t *send_go;		/* doorbell for sendq */
@@ -106,15 +107,16 @@ typedef struct {
 } mxge_tx_ring_t;
 
 struct mxge_rx_data {
+	struct lwkt_serialize rx_serialize;
 	mxge_rx_done_t rx_done;
 	mxge_rx_ring_t rx_small;
 	mxge_rx_ring_t rx_big;
 };
 
 struct mxge_slice_state {
-	mxge_softc_t *sc;
-	mxge_tx_ring_t tx;		/* transmit ring */
 	struct mxge_rx_data rx_data;
+	mxge_tx_ring_t tx;		/* transmit ring */
+	mxge_softc_t *sc;
 	mcp_irq_data_t *fw_stats;
 	volatile uint32_t *irq_claim;
 	bus_dmamem_t fw_stats_dma;
@@ -125,6 +127,9 @@ struct mxge_slice_state {
 struct mxge_softc {
 	struct arpcom arpcom;
 	struct ifnet* ifp;		/* points to arpcom.ac_if */
+	struct lwkt_serialize main_serialize;
+	int nserialize;
+	struct lwkt_serialize **serializes;
 	struct mxge_slice_state *ss;
 	int tx_boundary;		/* boundary transmits cannot cross*/
 	bus_dma_tag_t parent_dmat;
