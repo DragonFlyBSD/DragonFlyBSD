@@ -4325,7 +4325,8 @@ mxge_attach(device_t dev)
 
 	mxge_add_sysctls(sc);
 
-	callout_reset(&sc->co_hdl, mxge_ticks, mxge_tick, sc);
+	callout_reset_bycpu(&sc->co_hdl, mxge_ticks, mxge_tick, sc,
+	    rman_get_cpuid(sc->irq_res));
 	return 0;
 
 failed:
