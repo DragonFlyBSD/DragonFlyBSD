@@ -2077,7 +2077,7 @@ mxge_get_buf_big(mxge_rx_ring_t *rx, bus_dmamap_t map, int idx,
 		}
 		goto done;
 	}
-	m->m_len = m->m_pkthdr.len = rx->mlen;
+	m->m_len = m->m_pkthdr.len = rx->cl_size;
 
 	err = bus_dmamap_load_mbuf_segment(rx->dmat, map, m,
 	    &seg, 1, &cnt, BUS_DMA_NOWAIT);
@@ -3160,8 +3160,6 @@ mxge_slice_open(struct mxge_slice_state *ss, int cl_size)
 	}
 
 	ss->rx_data.rx_big.cl_size = cl_size;
-	ss->rx_data.rx_big.mlen = ss->sc->ifp->if_mtu + ETHER_HDR_LEN +
-	    EVL_ENCAPLEN + MXGEFW_PAD;
 
 	for (i = 0; i <= ss->rx_data.rx_big.mask; i++) {
 		err = mxge_get_buf_big(&ss->rx_data.rx_big,

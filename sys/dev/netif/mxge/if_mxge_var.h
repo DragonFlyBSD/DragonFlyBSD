@@ -71,7 +71,6 @@ typedef struct {
 	int cnt;
 	int cl_size;
 	int mask;			/* number of rx slots -1 */
-	int mlen;
 } mxge_rx_ring_t;
 
 typedef struct {
