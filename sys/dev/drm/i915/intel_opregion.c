@@ -26,7 +26,7 @@
  * $FreeBSD: src/sys/dev/drm2/i915/intel_opregion.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 #include "i915_drm.h"
 #include "i915_drv.h"
 #include "intel_drv.h"

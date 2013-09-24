@@ -30,8 +30,7 @@
 #include <sys/limits.h>
 #include <sys/sfbuf.h>
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm.h>
+#include <drm/drmP.h>
 #include "i915_drm.h"
 #include "i915_drv.h"
 #include "intel_drv.h"

@@ -33,7 +33,7 @@
  * Implementation of the context management ioctls.
  */
 
-#include "dev/drm/drmP.h"
+#include <drm/drmP.h>
 
 /* ================================================================
  * Context bitmap support

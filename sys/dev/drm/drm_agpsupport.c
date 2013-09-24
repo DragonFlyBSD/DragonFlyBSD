@@ -34,7 +34,7 @@
  * the DRM's AGP ioctls.
  */
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 
 #include <dev/agp/agpreg.h>
 #include <bus/pci/pcireg.h>

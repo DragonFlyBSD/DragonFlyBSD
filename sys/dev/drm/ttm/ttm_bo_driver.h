@@ -32,11 +32,11 @@
 #ifndef _TTM_BO_DRIVER_H_
 #define _TTM_BO_DRIVER_H_
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 #include <dev/drm/ttm/ttm_bo_api.h>
 #include <dev/drm/ttm/ttm_memory.h>
 #include <dev/drm/ttm/ttm_module.h>
-#include <dev/drm/drm_global.h>
+#include <drm/drm_global.h>
 #include <sys/tree.h>
 
 struct ttm_backend_func {

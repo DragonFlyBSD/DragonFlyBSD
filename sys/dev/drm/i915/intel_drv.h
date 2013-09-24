@@ -30,9 +30,10 @@
 
 #include "i915_drm.h"
 #include "i915_drv.h"
-#include <dev/drm/drm_crtc.h>
-#include <dev/drm/drm_crtc_helper.h>
-#include <dev/drm/drm_fb_helper.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_crtc_helper.h>
+#include <drm/drm_fb_helper.h>
+#include <drm/drm_dp_helper.h>
 
 #define _intel_wait_for(DEV, COND, MS, W, WMSG)				\
 ({									\

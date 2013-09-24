@@ -26,7 +26,7 @@
 #define __DRM_EDID_H__
 
 #include <sys/types.h>
-#include <dev/drm/drmP.h>
+#include "drmP.h"
 
 #define EDID_LENGTH 128
 #define DDC_ADDR 0x50

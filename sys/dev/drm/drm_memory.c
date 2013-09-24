@@ -41,7 +41,7 @@
  * has been stripped out for now.
  */
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 
 MALLOC_DEFINE(DRM_MEM_DMA, "drm_dma", "DRM DMA Data Structures");
 MALLOC_DEFINE(DRM_MEM_SAREA, "drm_sarea", "DRM SAREA Data Structures");

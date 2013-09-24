@@ -47,4 +47,6 @@ SRCS	= \
 SRCS   += device_if.h bus_if.h pci_if.h device_if.h iicbus_if.h opt_drm.h \
 	  opt_ktr.h opt_vm.h
 
+CFLAGS+= -I${SYSDIR}/dev/drm/include
+
 .include <bsd.kmod.mk>

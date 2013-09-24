@@ -32,8 +32,7 @@
 #include <sys/sysctl.h>
 #include <sys/types.h>
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
+#include <drm/drmP.h>
 
 static int	   drm_name_info DRM_SYSCTL_HANDLER_ARGS;
 static int	   drm_vm_info DRM_SYSCTL_HANDLER_ARGS;

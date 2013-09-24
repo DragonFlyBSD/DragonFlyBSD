@@ -38,7 +38,7 @@
 #ifndef _TTM_OBJECT_H_
 #define _TTM_OBJECT_H_
 
-#include <dev/drm/drm_hashtab.h>
+#include <drm/drm_hashtab.h>
 #include <dev/drm/ttm/ttm_memory.h>
 
 /**

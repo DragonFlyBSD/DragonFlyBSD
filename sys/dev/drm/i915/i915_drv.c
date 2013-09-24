@@ -30,12 +30,10 @@
  * $FreeBSD: src/sys/dev/drm2/i915/i915_drv.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm.h>
-#include <dev/drm/drm_mm.h>
+#include <drm/drmP.h>
 #include "i915_drm.h"
 #include "i915_drv.h"
-#include <dev/drm/drm_pciids.h>
+#include <drm/drm_pciids.h>
 #include "intel_drv.h"
 
 /* drv_PCI_IDs comes from drm_pciids.h, generated from drm_pciids.txt. */

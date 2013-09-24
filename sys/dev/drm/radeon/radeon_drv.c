@@ -29,11 +29,10 @@
  *
  */
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
+#include <drm/drmP.h>
 #include "radeon_drm.h"
 #include "radeon_drv.h"
-#include "dev/drm/drm_pciids.h"
+#include <drm/drm_pciids.h>
 
 int radeon_no_wb;
 

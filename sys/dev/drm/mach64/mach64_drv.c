@@ -32,11 +32,10 @@
 
 #include <sys/types.h>
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
+#include <drm/drmP.h>
 #include "mach64_drm.h"
 #include "mach64_drv.h"
-#include "dev/drm/drm_pciids.h"
+#include <drm/drm_pciids.h>
 
 /* drv_PCI_IDs comes from drm_pciids.h, generated from drm_pciids.txt. */
 static drm_pci_id_list_t mach64_pciidlist[] = {

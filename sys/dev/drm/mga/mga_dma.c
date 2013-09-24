@@ -35,9 +35,7 @@
  * \author Gareth Hughes <gareth@valinux.com>
  */
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
-#include "dev/drm/drm_sarea.h"
+#include <drm/drmP.h>
 #include "mga_drm.h"
 #include "mga_drv.h"
 

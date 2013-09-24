@@ -26,7 +26,7 @@
  * $FreeBSD: head/sys/dev/drm2/ttm/ttm_execbuf_util.c 247835 2013-03-05 09:49:34Z kib $
  **************************************************************************/
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 #include <dev/drm/ttm/ttm_execbuf_util.h>
 #include <dev/drm/ttm/ttm_bo_driver.h>
 #include <dev/drm/ttm/ttm_placement.h>

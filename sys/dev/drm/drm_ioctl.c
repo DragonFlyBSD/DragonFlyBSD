@@ -34,8 +34,8 @@
  * information and reporting DRM information to userland.
  */
 
-#include "dev/drm/drmP.h"
-#include <dev/drm/drm_core.h>
+#include <drm/drmP.h>
+#include <drm/drm_core.h>
 
 /*
  * Beginning in revision 1.1 of the DRM interface, getunique will return

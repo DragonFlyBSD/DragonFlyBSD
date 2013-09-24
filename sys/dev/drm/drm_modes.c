@@ -32,9 +32,8 @@
  * $FreeBSD: src/sys/dev/drm2/drm_modes.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm.h>
-#include <dev/drm/drm_crtc.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
 
 #define	KHZ2PICOS(a)	(1000000000UL/(a))
 

@@ -52,6 +52,9 @@ INCLUDES+= -I${.OBJDIR} -I"$S/${OSACPI_MI_DIR}" -I"$S/${ACPICA_DIR}/include"
 # ... and the same for Atheros HAL
 INCLUDES+= -I$S/dev/netif/ath/hal -I$S/dev/netif/ath/hal/ath_hal
 
+# Same thing for drm includes
+INCLUDES+= -I$S/dev/drm/include
+
 COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -include opt_global.h
 CFLAGS=	${COPTFLAGS} ${CWARNFLAGS} ${DEBUG} ${COPTS}
 

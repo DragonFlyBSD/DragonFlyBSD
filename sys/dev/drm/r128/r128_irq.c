@@ -30,8 +30,7 @@
  *    Eric Anholt <anholt@FreeBSD.org>
  */
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
+#include <drm/drmP.h>
 #include "r128_drm.h"
 #include "r128_drv.h"
 

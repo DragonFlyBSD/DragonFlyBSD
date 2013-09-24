@@ -29,14 +29,13 @@
 #include <ddb/ddb.h>
 #include <sys/limits.h>
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm.h>
+#include <drm/drmP.h>
+#include <drm/drm_edid.h>
+#include "intel_drv.h"
 #include "i915_drm.h"
 #include "i915_drv.h"
-#include "intel_drv.h"
-#include <dev/drm/drm_edid.h>
-#include <dev/drm/drm_dp_helper.h>
-#include <dev/drm/drm_crtc_helper.h>
+#include <drm/drm_dp_helper.h>
+#include <drm/drm_crtc_helper.h>
 
 #define HAS_eDP (intel_pipe_has_type(crtc, INTEL_OUTPUT_EDP))
 

@@ -32,11 +32,9 @@
  * $FreeBSD: src/sys/dev/drm2/drm_crtc.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
-#include <dev/drm/drm.h>
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm_crtc.h>
-#include <dev/drm/drm_edid.h>
-#include <dev/drm/drm_fourcc.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_edid.h>
 #include <sys/limits.h>
 
 /* Avoid boilerplate.  I'm tired of typing. */

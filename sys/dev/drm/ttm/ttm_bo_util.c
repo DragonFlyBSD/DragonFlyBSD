@@ -30,7 +30,7 @@
  * $FreeBSD: head/sys/dev/drm2/ttm/ttm_bo_util.c 248666 2013-03-23 22:23:15Z kib $
  */
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 #include <dev/drm/ttm/ttm_bo_driver.h>
 #include <dev/drm/ttm/ttm_placement.h>
 #include <sys/sfbuf.h>

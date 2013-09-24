@@ -41,8 +41,8 @@
  * Thomas Hellström <thomas-at-tungstengraphics-dot-com>
  */
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm_mm.h"
+#include <drm/drmP.h>
+#include <drm/drm_mm.h>
 
 #define MM_UNUSED_TARGET 4
 

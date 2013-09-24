@@ -29,8 +29,8 @@
  * $FreeBSD: head/sys/dev/drm2/drm_global.c 248060 2013-03-08 18:11:02Z dumbbell $
  */
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm_global.h>
+#include <drm/drmP.h>
+#include <drm/drm_global.h>
 
 MALLOC_DEFINE(M_DRM_GLOBAL, "drm_global", "DRM Global Items");
 

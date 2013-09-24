@@ -30,10 +30,10 @@
  * $FreeBSD: src/sys/dev/drm2/drm_fb_helper.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm_crtc.h>
-#include <dev/drm/drm_fb_helper.h>
-#include <dev/drm/drm_crtc_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_fb_helper.h>
+#include <drm/drm_crtc_helper.h>
 
 static DRM_LIST_HEAD(kernel_fb_helper_list);
 

@@ -30,7 +30,7 @@
  * $FreeBSD: head/sys/dev/drm2/ttm/ttm_bo.c 248060 2013-03-08 18:11:02Z dumbbell $
  */
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 #include <dev/drm/ttm/ttm_module.h>
 #include <dev/drm/ttm/ttm_bo_driver.h>
 #include <dev/drm/ttm/ttm_placement.h>

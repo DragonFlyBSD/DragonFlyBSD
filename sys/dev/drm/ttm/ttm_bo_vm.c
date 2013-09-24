@@ -39,7 +39,7 @@
 
 #include "opt_vm.h"
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 #include <dev/drm/ttm/ttm_module.h>
 #include <dev/drm/ttm/ttm_bo_driver.h>
 #include <dev/drm/ttm/ttm_placement.h>

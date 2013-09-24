@@ -33,11 +33,11 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm_crtc.h>
-#include <dev/drm/drm_fourcc.h>
-#include <dev/drm/drm_crtc_helper.h>
-#include <dev/drm/drm_fb_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <uapi_drm/drm_fourcc.h>
+#include <drm/drm_crtc_helper.h>
+#include <drm/drm_fb_helper.h>
 
 bool
 drm_fetch_cmdline_mode_from_kenv(struct drm_connector *connector,

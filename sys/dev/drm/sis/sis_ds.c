@@ -28,8 +28,7 @@
  *
  */
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
+#include <drm/drmP.h>
 #include "sis_ds.h"
 
 /* Set Data Structure, not check repeated value

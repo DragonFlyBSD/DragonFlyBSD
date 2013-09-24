@@ -49,7 +49,7 @@ enum sis_family {
 #endif
 
 #ifdef SIS_HAVE_CORE_MM
-#include "dev/drm/drm_sman.h"
+#include "drm_sman.h"
 
 #define SIS_BASE (dev_priv->mmio)
 #define SIS_READ(reg)	 DRM_READ32(SIS_BASE, reg);

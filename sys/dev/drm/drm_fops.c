@@ -38,7 +38,7 @@
 #include <sys/types.h>
 #include <sys/conf.h>
 
-#include "dev/drm/drmP.h"
+#include <drm/drmP.h>
 
 struct drm_file *drm_find_file_by_proc(struct drm_device *dev, DRM_STRUCTPROC *p)
 {

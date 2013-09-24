@@ -27,8 +27,7 @@
  * __FBSDID("$FreeBSD: src/sys/dev/drm/r600_cp.c,v 1.10 2009/08/23 14:55:57 rnoland Exp $");
  */
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
+#include <drm/drmP.h>
 #include "radeon_drm.h"
 #include "radeon_drv.h"
 

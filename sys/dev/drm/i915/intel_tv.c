@@ -32,13 +32,12 @@
  */
 
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm.h>
-#include <dev/drm/drm_crtc.h>
-#include <dev/drm/drm_edid.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_edid.h>
+#include "intel_drv.h"
 #include "i915_drm.h"
 #include "i915_drv.h"
-#include "intel_drv.h"
 
 enum tv_margin {
 	TV_MARGIN_LEFT, TV_MARGIN_TOP,

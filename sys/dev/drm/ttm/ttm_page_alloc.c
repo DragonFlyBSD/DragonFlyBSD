@@ -42,7 +42,7 @@
 
 #include <sys/eventhandler.h>
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 #include <dev/drm/ttm/ttm_bo_driver.h>
 #include <dev/drm/ttm/ttm_page_alloc.h>
 

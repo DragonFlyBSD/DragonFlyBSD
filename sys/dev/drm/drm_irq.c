@@ -31,8 +31,7 @@
  * handing interrupt handlers off to the drivers.
  */
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
+#include <drm/drmP.h>
 
 MALLOC_DEFINE(DRM_MEM_VBLANK, "drm_vblank", "DRM VBLANK Handling Data");
 

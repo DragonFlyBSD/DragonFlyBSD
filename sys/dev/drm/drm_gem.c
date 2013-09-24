@@ -41,9 +41,7 @@
 #include <vm/vm.h>
 #include <vm/vm_page.h>
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm.h>
-#include <dev/drm/drm_sarea.h>
+#include <drm/drmP.h>
 
 /*
  * We make up offsets for buffer objects so we can recognize them at

@@ -21,4 +21,6 @@ opt_drm.h:
 	echo $(DRM_DEBUG_OPT) >> ${.TARGET}
 	echo $(DRM_LINUX_OPT) >> ${.TARGET}
 
+CFLAGS+= -I${SYSDIR}/dev/drm/include
+
 .include <bsd.kmod.mk>

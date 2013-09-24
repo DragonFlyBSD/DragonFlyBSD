@@ -30,7 +30,7 @@
  * by mapping the pages into the GART.
  */
 
-#include "dev/drm/drmP.h"
+#include <drm/drmP.h>
 
 int
 drm_sg_alloc(struct drm_device *dev, struct drm_scatter_gather *request)

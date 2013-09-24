@@ -28,14 +28,14 @@
  * $FreeBSD: head/sys/dev/drm2/i915/intel_sdvo.c 249041 2013-04-03 08:27:35Z dumbbell $
  */
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm.h>
-#include <dev/drm/drm_crtc.h>
-#include <dev/drm/drm_edid.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_edid.h>
+#include "intel_drv.h"
 #include "i915_drm.h"
 #include "i915_drv.h"
 #include "intel_sdvo_regs.h"
-#include "intel_drv.h"
+
 #include <bus/iicbus/iic.h>
 #include <bus/iicbus/iiconf.h>
 #include "iicbus_if.h"

@@ -29,9 +29,7 @@
  * __FBSDID("$FreeBSD: src/sys/dev/drm/radeon_cp.c,v 1.36 2009/10/30 18:07:22 rnoland Exp $");
  */
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
-#include "dev/drm/drm_sarea.h"
+#include <drm/drmP.h>
 #include "radeon_drm.h"
 #include "radeon_drv.h"
 #include "r300_reg.h"

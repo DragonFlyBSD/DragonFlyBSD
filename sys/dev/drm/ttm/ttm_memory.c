@@ -26,7 +26,7 @@
  * $FreeBSD: head/sys/dev/drm2/ttm/ttm_memory.c 248663 2013-03-23 20:46:47Z dumbbell $
  **************************************************************************/
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 #include <dev/drm/ttm/ttm_memory.h>
 #include <dev/drm/ttm/ttm_module.h>
 #include <dev/drm/ttm/ttm_page_alloc.h>

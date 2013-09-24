@@ -30,11 +30,11 @@
  * $FreeBSD: head/sys/dev/drm2/ttm/ttm_bo_manager.c 247835 2013-03-05 09:49:34Z kib $
  */
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 #include <dev/drm/ttm/ttm_module.h>
 #include <dev/drm/ttm/ttm_bo_driver.h>
 #include <dev/drm/ttm/ttm_placement.h>
-#include <dev/drm/drm_mm.h>
+#include <drm/drm_mm.h>
 
 /**
  * Currently we use a spinlock for the lock, but a mutex *may* be

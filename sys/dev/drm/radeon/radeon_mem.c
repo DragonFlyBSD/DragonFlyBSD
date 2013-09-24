@@ -29,8 +29,7 @@
  *    Keith Whitwell <keith@tungstengraphics.com>
  */
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
+#include <drm/drmP.h>
 #include "radeon_drm.h"
 #include "radeon_drv.h"
 

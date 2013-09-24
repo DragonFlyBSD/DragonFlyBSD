@@ -32,7 +32,7 @@
 #ifndef _TTM_BO_API_H_
 #define _TTM_BO_API_H_
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 
 struct ttm_bo_device;
 

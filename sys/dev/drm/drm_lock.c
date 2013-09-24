@@ -48,7 +48,7 @@
  * contending client may be woken up.
  */
 
-#include "dev/drm/drmP.h"
+#include <drm/drmP.h>
 
 int drm_lock(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {

@@ -34,7 +34,7 @@
  * such as the current set of cliprects for vblank-synced buffer swaps.
  */
 
-#include "dev/drm/drmP.h"
+#include <drm/drmP.h>
 
 struct bsd_drm_drawable_info {
 	struct drm_drawable_info info;

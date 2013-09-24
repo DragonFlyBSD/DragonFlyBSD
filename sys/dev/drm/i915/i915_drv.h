@@ -34,10 +34,9 @@
 #include <sys/eventhandler.h>
 
 #include <dev/agp/agp_i810.h>
-#include <dev/drm/drm_mm.h>
 #include "i915_reg.h"
-#include "intel_ringbuffer.h"
 #include "intel_bios.h"
+#include "intel_ringbuffer.h"
 
 /* General customization:
  */

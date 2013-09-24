@@ -30,8 +30,7 @@
  *    José Fonseca <j_r_fonseca@yahoo.co.uk>
  */
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
+#include <drm/drmP.h>
 #include "mach64_drm.h"
 #include "mach64_drv.h"
 

@@ -27,8 +27,8 @@
 #ifndef __DRM_CRTC_H__
 #define __DRM_CRTC_H__
 
-#include <dev/drm/drm_gem_names.h>
-#include <dev/drm/drm_fourcc.h>
+#include "drm_gem_names.h"
+#include <uapi_drm/drm_fourcc.h>
 
 struct drm_device;
 struct drm_mode_set;

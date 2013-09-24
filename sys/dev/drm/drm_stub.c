@@ -33,7 +33,7 @@
  * $FreeBSD: src/sys/dev/drm2/drm_stub.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
-#include "drmP.h"
+#include <drm/drmP.h>
 
 int
 drm_setmaster_ioctl(struct drm_device *dev, void *data,

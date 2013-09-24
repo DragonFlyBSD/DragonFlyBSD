@@ -53,8 +53,7 @@
 
 #define pr_fmt(fmt) "[TTM] " fmt
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm.h>
+#include <drm/drmP.h>
 #include <dev/drm/ttm/ttm_object.h>
 #include <dev/drm/ttm/ttm_module.h>
 

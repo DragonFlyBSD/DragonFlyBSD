@@ -32,12 +32,12 @@
  * $FreeBSD: src/sys/dev/drm2/i915/intel_sprite.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <uapi_drm/drm_fourcc.h>
+#include "intel_drv.h"
 #include "i915_drm.h"
 #include "i915_drv.h"
-#include "intel_drv.h"
-#include <dev/drm/drm_fourcc.h>
 
 static void
 ivb_update_plane(struct drm_plane *plane, struct drm_framebuffer *fb,

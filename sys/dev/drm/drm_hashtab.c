@@ -36,8 +36,8 @@
 
 #include <sys/hash.h>
 
-#include "drmP.h"
-#include "drm_hashtab.h"
+#include <drm/drmP.h>
+#include <drm/drm_hashtab.h>
 
 int drm_ht_create(struct drm_open_hash *ht, unsigned int order)
 {

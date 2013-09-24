@@ -37,11 +37,8 @@
 #include <sys/devfs.h>
 #include <machine/limits.h>
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
-#include "dev/drm/drm_core.h"
-#include "dev/drm/drm_global.h"
-#include "dev/drm/drm_sarea.h"
+#include <drm/drmP.h>
+#include <drm/drm_core.h>
 
 #ifdef DRM_DEBUG_DEFAULT_ON
 int drm_debug_flag = (DRM_DEBUGBITS_DEBUG | DRM_DEBUGBITS_KMS |

@@ -30,7 +30,7 @@
  * \author Eric Anholt <anholt@FreeBSD.org>
  */
 
-#include "dev/drm/drmP.h"
+#include <drm/drmP.h>
 
 /**********************************************************************/
 /** \name PCI memory */

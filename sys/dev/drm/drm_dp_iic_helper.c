@@ -28,8 +28,8 @@
 #include <bus/iicbus/iic.h>
 #include "iicbus_if.h"
 #include <bus/iicbus/iiconf.h>
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm_dp_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_dp_helper.h>
 
 static int
 iic_dp_aux_transaction(device_t idev, int mode, uint8_t write_byte,

@@ -32,8 +32,7 @@
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
 
-#include "dev/drm/drmP.h"
-#include "dev/drm/drm.h"
+#include <drm/drmP.h>
 
 int drm_mmap(struct dev_mmap_args *ap)
 {

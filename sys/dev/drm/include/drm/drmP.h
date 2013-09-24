@@ -90,22 +90,20 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
-#include <dev/drm/drm.h>
-#include <dev/drm/drm_sarea.h>
+#include <uapi_drm/drm.h>
+#include <uapi_drm/drm_sarea.h>
 
 #include <dev/drm/drm_atomic.h>
-#include <dev/drm/drm_linux_list.h>
-#include <dev/drm/drm_gem_names.h>
+#include "drm_linux_list.h"
+#include "drm_gem_names.h"
 
 struct drm_file;
 struct drm_device;
 
-#include <dev/drm/drm_os_freebsd.h>
-#include <dev/drm/drm_hashtab.h>
-#include <dev/drm/drm_mm.h>
+#include "drm_os_freebsd.h"
+#include "drm_hashtab.h"
+#include "drm_mm.h"
 
-#include "opt_compat.h"
-#include "opt_drm.h"
 #ifdef DRM_DEBUG
 #undef DRM_DEBUG
 #define DRM_DEBUG_DEFAULT_ON 1
@@ -1387,6 +1385,9 @@ void drm_gem_object_handle_reference(struct drm_gem_object *obj);
 void drm_gem_object_handle_unreference(struct drm_gem_object *obj);
 void drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj);
 void drm_gem_object_handle_free(struct drm_gem_object *obj);
+
+#include <drm/drm_global.h>
+
 void drm_gem_object_reference(struct drm_gem_object *obj);
 void drm_gem_object_unreference(struct drm_gem_object *obj);
 void drm_gem_object_unreference_unlocked(struct drm_gem_object *obj);

@@ -26,13 +26,12 @@
  * $FreeBSD: head/sys/dev/drm2/i915/intel_fb.c 251961 2013-06-18 20:19:09Z kib $
  */
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm.h>
-#include <dev/drm/drm_crtc.h>
-#include <dev/drm/drm_fb_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_fb_helper.h>
+#include "intel_drv.h"
 #include "i915_drm.h"
 #include "i915_drv.h"
-#include "intel_drv.h"
 
 static int intelfb_create(struct intel_fbdev *ifbdev,
 			  struct drm_fb_helper_surface_size *sizes)

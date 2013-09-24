@@ -22,8 +22,8 @@
  * $FreeBSD: head/sys/dev/drm2/drm_dp_helper.c 254817 2013-08-24 23:38:57Z dumbbell $
  */
 
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm_dp_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_dp_helper.h>
 
 /**
  * DOC: dp helpers

@@ -35,7 +35,7 @@
 #include <linux/sisfb.h>
 #endif
 #endif
-#include "dev/drm/drmP.h"
+#include <drm/drmP.h>
 #include "sis_drm.h"
 #include "sis_drv.h"
 #include "sis_ds.h"

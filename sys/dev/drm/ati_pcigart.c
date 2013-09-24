@@ -31,7 +31,7 @@
  * address space with addresses remapped to system memory.
  */
 
-#include "dev/drm/drmP.h"
+#include <drm/drmP.h>
 
 #define ATI_PCIGART_PAGE_SIZE		4096	/* PCI GART page size */
 #define ATI_PCIGART_PAGE_MASK		(~(ATI_PCIGART_PAGE_SIZE-1))

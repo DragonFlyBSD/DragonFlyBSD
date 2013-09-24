@@ -37,7 +37,7 @@
  * $FreeBSD: head/sys/dev/drm2/ttm/ttm_tt.c 251452 2013-06-06 06:17:20Z alc $
  */
 
-#include <dev/drm/drmP.h>
+#include <drm/drmP.h>
 #include <dev/drm/ttm/ttm_module.h>
 #include <dev/drm/ttm/ttm_bo_driver.h>
 #include <dev/drm/ttm/ttm_placement.h>

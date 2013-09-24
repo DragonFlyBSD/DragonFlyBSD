@@ -34,7 +34,7 @@
  * scheme between the master and clients.
  */
 
-#include "dev/drm/drmP.h"
+#include <drm/drmP.h>
 
 static int drm_hash_magic(drm_magic_t magic)
 {

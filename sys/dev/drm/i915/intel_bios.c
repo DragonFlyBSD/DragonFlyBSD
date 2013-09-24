@@ -25,9 +25,8 @@
  *
  * $FreeBSD: src/sys/dev/drm2/i915/intel_bios.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
-#include <dev/drm/drmP.h>
-#include <dev/drm/drm.h>
-#include <dev/drm/drm_dp_helper.h>
+#include <drm/drmP.h>
+#include <drm/drm_dp_helper.h>
 #include "i915_drm.h"
 #include "i915_drv.h"
 #include "intel_bios.h"
