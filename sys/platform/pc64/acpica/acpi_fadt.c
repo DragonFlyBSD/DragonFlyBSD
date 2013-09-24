@@ -112,9 +112,8 @@ fadt_probe(void)
 	 * FADT in ACPI specification 1.0 - 4.0
 	 */
 	if (fadt->fadt_hdr.sdth_rev < 1 || fadt->fadt_hdr.sdth_rev > 4) {
-		kprintf("fadt_probe: unsupported FADT revision %d\n",
+		kprintf("fadt_probe: unknown FADT revision %d\n",
 			fadt->fadt_hdr.sdth_rev);
-		goto back;
 	}
 
 	if (fadt->fadt_hdr.sdth_len < sizeof(*fadt)) {
