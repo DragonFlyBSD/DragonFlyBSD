@@ -233,6 +233,7 @@ kvprintf(char const *fmt, void (*func)(int, void *), void *arg, int radix,
 		qflag = 0; lflag = 0; ladjust = 0; sharpflag = 0; neg = 0;
 		sign = 0; dot = 0; dwidth = 0; upper = 0;
 		cflag = 0; hflag = 0; jflag = 0; tflag = 0; zflag = 0;
+
 reswitch:	switch (ch = (u_char)*fmt++) {
 		case '.':
 			dot = 1;

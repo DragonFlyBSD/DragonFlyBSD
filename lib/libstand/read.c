@@ -65,6 +65,8 @@
 #include <sys/param.h>
 #include "stand.h"
 
+int no_io_error;
+
 ssize_t
 read(int fd, void *dest, size_t bcount)
 {

@@ -382,6 +382,7 @@ print_partition(u_int8_t fstype, unsigned long long offset,
 	if ((fstype == FS_SWAP) ||
 	    (fstype == FS_VINUM) ||
 	    (fstype == FS_HAMMER) ||
+	    (fstype == FS_HAMMER2) ||
 	    (fstype == FS_BSDFFS) ||
 	    (fstype == FS_ZFS) ||
 	    (fstype == FS_JFS2) ||
@@ -398,6 +399,7 @@ print_partition(u_int8_t fstype, unsigned long long offset,
 			    (fstype == FS_SWAP) ? "swap" :
 			    (fstype == FS_VINUM) ? "vinum" :
 			    (fstype == FS_HAMMER) ? "HAMMER" :
+			    (fstype == FS_HAMMER2) ? "HAMMER2" :
 			    (fstype == FS_JFS2) ? "JFS2" :
 			    (fstype == FS_ZFS) ? "ZFS" :
 			    (fstype == FS_BSDFFS) ? "FFS" :
@@ -414,6 +416,7 @@ print_partition(u_int8_t fstype, unsigned long long offset,
 			    (fstype == FS_SWAP) ? "swap" :
 			    (fstype == FS_VINUM) ? "vinum" :
 			    (fstype == FS_HAMMER) ? "HAMMER" :
+			    (fstype == FS_HAMMER2) ? "HAMMER2" :
 			    (fstype == FS_JFS2) ? "JFS2" :
 			    (fstype == FS_ZFS) ? "ZFS" :
 			    (fstype == FS_BSDFFS) ? "FFS" :

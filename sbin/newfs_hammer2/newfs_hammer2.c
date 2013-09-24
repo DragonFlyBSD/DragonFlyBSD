@@ -522,8 +522,14 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 
 	/*
 	 * Compression mode and supported copyids.
+	 *
+	 * Do not allow compression when creating a "boot" label
+	 * (pfs-create also does the same if the pfs is named "boot")
 	 */
-	rawip->comp_algo = HAMMER2_COMP_NEWFS_DEFAULT;
+	if (strcmp(Label, "boot") == 0)
+		rawip->comp_algo = HAMMER2_COMP_AUTOZERO;
+	else
+		rawip->comp_algo = HAMMER2_COMP_NEWFS_DEFAULT;
 
 	rawip->pfs_clid = Hammer2_RPFSId;
 	rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;

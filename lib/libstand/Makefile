@@ -48,6 +48,9 @@ SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
 SRCS+=  ucmpdi2.c
 .endif
 
+.PATH:	${.CURDIR}/../../sys/libkern
+SRCS+=  icrc32.c
+
 # _setjmp/_longjmp
 .if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
 .PATH:	${.CURDIR}/i386
@@ -89,7 +92,8 @@ SRCS+=	ufs.c nfs.c cd9660.c tftp.c zipfs.c bzipfs.c gzipfs.c
 SRCS+=	netif.c nfs.c
 SRCS+=	dosfs.c ext2fs.c
 SRCS+=	splitfs.c
-SRCS+=	hammerread.c
+SRCS+=	hammer1.c
+SRCS+=	hammer2.c
 
 .include <bsd.lib.mk>
 

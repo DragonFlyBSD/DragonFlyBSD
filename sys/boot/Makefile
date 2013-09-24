@@ -14,7 +14,11 @@ SUBDIR+=		ofw
 .endif
 
 # Pick the machine-dependant subdir based on the target architecture.
+.if ${REALLY_X86_64} == "true"
+SUBDIR+=		pc32
+.else
 SUBDIR+=		${MACHINE_PLATFORM}
+.endif
 
 # Build EFI executable on ia64
 .if ${MACHINE_ARCH} == "ia64"

@@ -559,6 +559,7 @@ hammer2_inode_create(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	uuid_t dip_uid;
 	uuid_t dip_gid;
 	uint32_t dip_mode;
+	uint8_t dip_algo;
 
 	lhc = hammer2_dirhash(name, name_len);
 	*errorp = 0;
@@ -576,6 +577,7 @@ retry:
 	dip_uid = dipdata->uid;
 	dip_gid = dipdata->gid;
 	dip_mode = dipdata->mode;
+	dip_algo = dipdata->comp_algo;
 
 	error = 0;
 	while (error == 0) {
@@ -643,7 +645,7 @@ retry:
 	
 	/* Inherit parent's inode compression mode. */
 	nip->comp_heuristic = 0;
-	nipdata->comp_algo = dipdata->comp_algo;
+	nipdata->comp_algo = dip_algo;
 	nipdata->version = HAMMER2_INODE_VERSION_ONE;
 	hammer2_update_time(&nipdata->ctime);
 	nipdata->mtime = nipdata->ctime;

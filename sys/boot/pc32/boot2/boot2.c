@@ -168,6 +168,7 @@ static struct bootinfo bootinfo;
  * NOTE: boot2_dmadat is extended by per-filesystem APIs
  */
 uint32_t fs_off;
+int	no_io_error;
 int	ls;
 struct boot2_dmadat *boot2_dmadat;
 
@@ -200,7 +201,7 @@ strcmp(const char *s1, const char *s2)
     return ((int)((unsigned char)*s1 - (unsigned char)*s2));
 }
 
-#if defined(UFS) && defined(HAMMERFS)
+#if defined(UFS) && defined(HAMMER2FS)
 
 const struct boot2_fsapi *fsapi;
 
@@ -208,9 +209,9 @@ const struct boot2_fsapi *fsapi;
 
 #define fsapi	(&boot2_ufs_api)
 
-#elif defined(HAMMERFS)
+#elif defined(HAMMER2FS)
 
-#define fsapi	(&boot2_hammer_api)
+#define fsapi	(&boot2_hammer2_api)
 
 #endif
 
@@ -602,11 +603,11 @@ dskprobe(void)
     /*
      * Probe filesystem
      */
-#if defined(UFS) && defined(HAMMERFS)
+#if defined(UFS) && defined(HAMMER2FS)
     if (boot2_ufs_api.fsinit() == 0) {
 	fsapi = &boot2_ufs_api;
-    } else if (boot2_hammer_api.fsinit() == 0) {
-	fsapi = &boot2_hammer_api;
+    } else if (boot2_hammer2_api.fsinit() == 0) {
+	fsapi = &boot2_hammer2_api;
     } else {
 	printf("fs probe failed\n");
 	fsapi = &boot2_ufs_api;
@@ -639,6 +640,9 @@ printf(const char *fmt,...)
     static char buf[10];
     char *s;
     unsigned u;
+#ifdef HAMMER2FS
+    uint64_t q;
+#endif
     int c;
 
     va_start(ap, fmt);
@@ -653,6 +657,33 @@ printf(const char *fmt,...)
 		for (s = va_arg(ap, char *); *s; s++)
 		    putchar(*s);
 		continue;
+#ifdef HAMMER2FS
+	    case 'q':
+		++fmt;	/* skip the 'x' */
+		q = va_arg(ap, uint64_t);
+		s = buf;
+		do {
+		    if ((q & 15) < 10)
+			*s++ = '0' + (q & 15);
+		    else
+			*s++ = 'a' + (q & 15) - 10;
+		} while (q >>= 4);
+		while (--s >= buf)
+		    putchar(*s);
+		continue;
+	    case 'x':
+		u = va_arg(ap, unsigned);
+		s = buf;
+		do {
+		    if ((u & 15) < 10)
+			*s++ = '0' + (u & 15);
+		    else
+			*s++ = 'a' + (u & 15) - 10;
+		} while (u >>= 4);
+		while (--s >= buf)
+		    putchar(*s);
+		continue;
+#endif
 	    case 'u':
 		u = va_arg(ap, unsigned);
 		s = buf;
@@ -701,7 +732,7 @@ drvread(void *buf, unsigned lba, unsigned nblk)
     v86.edx = nblk << 8 | dsk.drive;
     v86int();
     v86.ctl = V86_FLAGS;
-    if (V86_CY(v86.efl)) {
+    if (V86_CY(v86.efl) && !no_io_error) {
 	printf("error %u lba %u\n", v86.eax >> 8 & 0xff, lba);
 	return -1;
     }

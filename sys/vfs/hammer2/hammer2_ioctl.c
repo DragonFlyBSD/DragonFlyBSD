@@ -508,6 +508,13 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		nipdata->pfs_type = pfs->pfs_type;
 		nipdata->pfs_clid = pfs->pfs_clid;
 		nipdata->pfs_fsid = pfs->pfs_fsid;
+
+		/*
+		 * Do not allow compression on PFS's with the special name
+		 * "boot", the boot loader can't decompress (yet).
+		 */
+		if (strcmp(pfs->name, "boot") == 0)
+			nipdata->comp_algo = HAMMER2_COMP_AUTOZERO;
 		hammer2_inode_unlock_ex(nip, nchain);
 	}
 	hammer2_trans_done(&trans);

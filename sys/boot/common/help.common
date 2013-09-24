@@ -505,13 +505,13 @@
 
 			"hammer:da8se1a"
 
-		One file system HAMMER multi volume examples:
+		One file system HAMMER2 redundant copies examples:
 
-			"hammer:da8s1a:da9s1a"
+			"hammer2:da8s1a:da9s1a"
 
 		Several file systems, boot list, example:
 
-			"ufs:da0s1a;hammer:ad1s1d"
+			"ufs:da0s1a;hammer2:ad1s1d"
 
 		Each file system in the list will be tried in the order
 		specified until the mount succeeds.  If all fail, the

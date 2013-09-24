@@ -33,7 +33,7 @@
  */
 /*
  * boot2 encapsulated ABI.  The boot2 standalone code provides these functions
- * to the boot2 add-on modules (ufsread.c and hammerread.c).
+ * to the boot2 add-on modules (ufsread.c and hammer2.c).
  */
 
 #ifndef _BOOT_COMMON_BOOT2_H_
@@ -53,7 +53,7 @@
  * We only need a 32 bit ino_t for UFS-only boot code.  We have to squeeze
  * space usage, else we'd just use 64 bits across the board.
  */
-#if defined(HAMMERFS)
+#if defined(HAMMERFS) || defined(HAMMER2FS)
 typedef uint64_t boot2_ino_t;
 #else
 typedef uint32_t boot2_ino_t;
@@ -75,6 +75,7 @@ struct boot2_dmadat {
 };
 
 extern uint32_t fs_off;
+extern int	no_io_error;
 extern int	ls;
 extern struct boot2_dmadat *boot2_dmadat;
 
@@ -89,6 +90,9 @@ extern const struct boot2_fsapi boot2_ufs_api;
 #endif
 #ifdef HAMMERFS
 extern const struct boot2_fsapi boot2_hammer_api;
+#endif
+#ifdef HAMMER2FS
+extern const struct boot2_fsapi boot2_hammer2_api;
 #endif
 
 #endif

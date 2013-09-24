@@ -152,6 +152,7 @@ struct devsw {
 extern struct devsw netdev;
 
 extern int errno;
+extern int no_io_error;
 
 struct open_file {
     int			f_flags;	/* see F_* below */
