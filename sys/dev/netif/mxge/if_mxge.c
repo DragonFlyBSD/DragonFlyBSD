@@ -2373,7 +2373,7 @@ mxge_tx_done(struct ifnet *ifp, mxge_tx_ring_t *tx, uint32_t mcp_idx)
 	 * If we have space, clear OACTIVE to tell the stack that
 	 * its OK to send packets
 	 */
-	if (tx->req - tx->done < (tx->mask + 1) / 4) {
+	if (tx->req - tx->done < (tx->mask + 1) / 2) {
 		ifq_clr_oactive(&ifp->if_snd);
 		if (tx->req == tx->done)
 			ifp->if_timer = 0;
