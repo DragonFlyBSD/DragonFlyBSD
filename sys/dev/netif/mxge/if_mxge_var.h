@@ -74,7 +74,6 @@ typedef struct {
 
 typedef struct {
 	mcp_slot_t *entry;
-	bus_dmamem_t dma;
 	int cnt;
 	int idx;
 	int mask;
@@ -114,6 +113,7 @@ struct mxge_slice_state {
 	mcp_irq_data_t *fw_stats;
 	volatile uint32_t *irq_claim;
 	bus_dmamem_t fw_stats_dma;
+	bus_dmamem_t rx_done_dma;
 	struct sysctl_oid *sysctl_tree;
 	struct sysctl_ctx_list sysctl_ctx;
 };

@@ -1159,12 +1159,15 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 	if (interrupts_setup) {
 		/* Now exchange information about interrupts  */
 		for (slice = 0; slice < sc->num_slices; slice++) {
-			rx_done = &sc->ss[slice].rx_data.rx_done;
+			ss = &sc->ss[slice];
+
+			rx_done = &ss->rx_data.rx_done;
 			memset(rx_done->entry, 0, sc->rx_ring_size);
+
 			cmd.data0 =
-			    MXGE_LOWPART_TO_U32(rx_done->dma.dmem_busaddr);
+			    MXGE_LOWPART_TO_U32(ss->rx_done_dma.dmem_busaddr);
 			cmd.data1 =
-			    MXGE_HIGHPART_TO_U32(rx_done->dma.dmem_busaddr);
+			    MXGE_HIGHPART_TO_U32(ss->rx_done_dma.dmem_busaddr);
 			cmd.data2 = slice;
 			status |= mxge_send_cmd(sc, MXGEFW_CMD_SET_INTRQ_DMA,
 			    &cmd);
@@ -2784,7 +2787,7 @@ mxge_free_slice_rings(struct mxge_slice_state *ss)
 	int i;
 
 	if (ss->rx_data.rx_done.entry != NULL) {
-		mxge_dma_free(&ss->rx_data.rx_done.dma);
+		mxge_dma_free(&ss->rx_done_dma);
 		ss->rx_data.rx_done.entry = NULL;
 	}
 
@@ -3712,7 +3715,7 @@ mxge_free_slices(mxge_softc_t *sc)
 			ss->fw_stats = NULL;
 		}
 		if (ss->rx_data.rx_done.entry != NULL) {
-			mxge_dma_free(&ss->rx_data.rx_done.dma);
+			mxge_dma_free(&ss->rx_done_dma);
 			ss->rx_data.rx_done.entry = NULL;
 		}
 	}
@@ -3751,13 +3754,13 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		 * Allocate per-slice rx interrupt queues
 		 */
 		bytes = max_intr_slots * sizeof(*ss->rx_data.rx_done.entry);
-		err = mxge_dma_alloc(sc, &ss->rx_data.rx_done.dma, bytes, 4096);
+		err = mxge_dma_alloc(sc, &ss->rx_done_dma, bytes, 4096);
 		if (err != 0) {
 			device_printf(sc->dev,
 			    "alloc %d slice rx_done failed\n", i);
 			return err;
 		}
-		ss->rx_data.rx_done.entry = ss->rx_data.rx_done.dma.dmem_addr;
+		ss->rx_data.rx_done.entry = ss->rx_done_dma.dmem_addr;
 
 		/* 
 		 * Allocate the per-slice firmware stats; stats
