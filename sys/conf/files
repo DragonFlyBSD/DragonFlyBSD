@@ -1923,7 +1923,6 @@ dev/drm/drm_mm.c			optional drm
 dev/drm/drm_modes.c			optional drm
 dev/drm/drm_pci.c			optional drm
 dev/drm/drm_scatter.c			optional drm
-dev/drm/drm_sman.c			optional drm
 dev/drm/drm_stub.c			optional drm
 dev/drm/drm_sysctl.c			optional drm
 dev/drm/drm_vm.c			optional drm

@@ -30,7 +30,6 @@ SRCS	= \
 	drm_modes.c \
 	drm_pci.c \
 	drm_scatter.c \
-	drm_sman.c \
 	drm_stub.c \
 	drm_sysctl.c \
 	drm_vm.c \
