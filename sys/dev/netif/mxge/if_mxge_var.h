@@ -50,12 +50,7 @@ typedef struct {
 	uint32_t data2;
 } mxge_cmd_t;
 
-struct mxge_rx_buffer_state {
-	struct mbuf *m;
-	bus_dmamap_t map;
-};
-
-struct mxge_tx_buffer_state {
+struct mxge_buffer_state {
 	struct mbuf *m;
 	bus_dmamap_t map;
 };
@@ -63,7 +58,7 @@ struct mxge_tx_buffer_state {
 typedef struct {
 	volatile mcp_kreq_ether_recv_t *lanai;	/* lanai ptr for recv ring */
 	mcp_kreq_ether_recv_t *shadow;	/* host shadow of recv ring */
-	struct mxge_rx_buffer_state *info;
+	struct mxge_buffer_state *info;
 	bus_dma_tag_t dmat;
 	bus_dmamap_t extra_map;
 	int cnt;
@@ -84,7 +79,7 @@ typedef struct {
 	volatile uint32_t *send_stop;		/* doorbell for sendq */
 	mcp_kreq_ether_send_t *req_list;	/* host shadow of sendq */
 	bus_dma_segment_t *seg_list;
-	struct mxge_tx_buffer_state *info;
+	struct mxge_buffer_state *info;
 	bus_dma_tag_t dmat;
 	int req;			/* transmits submitted	*/
 	int mask;			/* number of transmit slots -1 */

@@ -1646,7 +1646,7 @@ mxge_pullup_tso(struct mbuf **mp)
 }
 
 static int
-mxge_encap_tso(mxge_tx_ring_t *tx, struct mxge_tx_buffer_state *info_map,
+mxge_encap_tso(mxge_tx_ring_t *tx, struct mxge_buffer_state *info_map,
     struct mbuf *m, int busdma_seg_cnt)
 {
 	mcp_kreq_ether_send_t *req;
@@ -1656,7 +1656,7 @@ mxge_encap_tso(mxge_tx_ring_t *tx, struct mxge_tx_buffer_state *info_map,
 	int next_is_first, chop, cnt, rdma_count, small;
 	uint16_t pseudo_hdr_offset, cksum_offset, mss;
 	uint8_t flags, flags_next;
-	struct mxge_tx_buffer_state *info_last;
+	struct mxge_buffer_state *info_last;
 	bus_dmamap_t map = info_map->map;
 
 	mss = m->m_pkthdr.tso_segsz;
@@ -1805,7 +1805,7 @@ mxge_encap(mxge_tx_ring_t *tx, struct mbuf *m, bus_addr_t zeropad)
 	int cnt, cum_len, err, i, idx, odd_flag;
 	uint16_t pseudo_hdr_offset;
 	uint8_t flags, cksum_offset;
-	struct mxge_tx_buffer_state *info_map, *info_last;
+	struct mxge_buffer_state *info_map, *info_last;
 
 	if (m->m_pkthdr.csum_flags & CSUM_TSO) {
 		err = mxge_pullup_tso(&m);
