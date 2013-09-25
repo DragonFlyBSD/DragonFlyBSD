@@ -62,7 +62,6 @@ struct mxge_tx_buffer_state {
 };
 
 typedef struct {
-	mxge_softc_t *sc;
 	volatile mcp_kreq_ether_recv_t *lanai;	/* lanai ptr for recv ring */
 	mcp_kreq_ether_recv_t *shadow;	/* host shadow of recv ring */
 	struct mxge_rx_buffer_state *info;
@@ -74,8 +73,6 @@ typedef struct {
 } mxge_rx_ring_t;
 
 typedef struct {
-	mxge_rx_ring_t *rx_small;
-	mxge_rx_ring_t *rx_big;
 	mcp_slot_t *entry;
 	bus_dmamem_t dma;
 	int cnt;
@@ -85,7 +82,6 @@ typedef struct {
 
 typedef struct {
 	struct lwkt_serialize tx_serialize;
-	mxge_softc_t *sc;
 	volatile mcp_kreq_ether_send_t *lanai;	/* lanai ptr for sendq	*/
 	volatile uint32_t *send_go;		/* doorbell for sendq */
 	volatile uint32_t *send_stop;		/* doorbell for sendq */

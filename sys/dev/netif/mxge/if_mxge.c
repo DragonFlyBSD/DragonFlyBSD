@@ -1787,7 +1787,7 @@ drop:
 }
 
 static int
-mxge_encap(mxge_tx_ring_t *tx, struct mbuf *m)
+mxge_encap(mxge_tx_ring_t *tx, struct mbuf *m, bus_addr_t zeropad)
 {
 	mcp_kreq_ether_send_t *req;
 	bus_dma_segment_t *seg;
@@ -1870,10 +1870,8 @@ mxge_encap(mxge_tx_ring_t *tx, struct mbuf *m)
 	 */
 	if (cum_len < 60) {
 		req++;
-		req->addr_low = htobe32(
-		    MXGE_LOWPART_TO_U32(tx->sc->zeropad_dma.dmem_busaddr));
-		req->addr_high = htobe32(
-		    MXGE_HIGHPART_TO_U32(tx->sc->zeropad_dma.dmem_busaddr));
+		req->addr_low = htobe32(MXGE_LOWPART_TO_U32(zeropad));
+		req->addr_high = htobe32(MXGE_HIGHPART_TO_U32(zeropad));
 		req->length = htobe16(60 - cum_len);
 		req->cksum_offset = 0;
 		req->pseudo_hdr_offset = pseudo_hdr_offset;
@@ -1921,6 +1919,7 @@ mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 {
 	mxge_softc_t *sc = ifp->if_softc;
 	mxge_tx_ring_t *tx;
+	bus_addr_t zeropad;
 	int encap = 0;
 
 	/* XXX Only use the first slice for now */
@@ -1932,6 +1931,7 @@ mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifsq_is_oactive(ifsq))
 		return;
 
+	zeropad = sc->zeropad_dma.dmem_busaddr;
 	while (tx->mask - (tx->req - tx->done) > tx->max_desc) {
 		struct mbuf *m;
 		int error;
@@ -1941,7 +1941,7 @@ mxge_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 			goto done;
 
 		BPF_MTAP(ifp, m);
-		error = mxge_encap(tx, m);
+		error = mxge_encap(tx, m, zeropad);
 		if (!error)
 			encap = 1;
 		else
@@ -2185,9 +2185,9 @@ mxge_vlan_tag_remove(struct mbuf *m, uint32_t *csum)
 
 
 static __inline void
-mxge_rx_done_big(mxge_rx_ring_t *rx, uint32_t len, uint32_t csum)
+mxge_rx_done_big(struct ifnet *ifp, mxge_rx_ring_t *rx,
+    uint32_t len, uint32_t csum)
 {
-	struct ifnet *ifp = rx->sc->ifp;
 	struct mbuf *m;
 	const struct ether_header *eh;
 	bus_dmamap_t old_map;
@@ -2242,9 +2242,9 @@ mxge_rx_done_big(mxge_rx_ring_t *rx, uint32_t len, uint32_t csum)
 }
 
 static __inline void
-mxge_rx_done_small(mxge_rx_ring_t *rx, uint32_t len, uint32_t csum)
+mxge_rx_done_small(struct ifnet *ifp, mxge_rx_ring_t *rx,
+    uint32_t len, uint32_t csum)
 {
-	struct ifnet *ifp = rx->sc->ifp;
 	const struct ether_header *eh;
 	struct mbuf *m;
 	bus_dmamap_t old_map;
@@ -2299,8 +2299,10 @@ mxge_rx_done_small(mxge_rx_ring_t *rx, uint32_t len, uint32_t csum)
 }
 
 static __inline void
-mxge_clean_rx_done(mxge_rx_done_t *rx_done)
+mxge_clean_rx_done(struct ifnet *ifp, struct mxge_rx_data *rx_data)
 {
+	mxge_rx_done_t *rx_done = &rx_data->rx_done;
+
 	while (rx_done->entry[rx_done->idx].length != 0) {
 		uint16_t length, checksum;
 
@@ -2309,10 +2311,13 @@ mxge_clean_rx_done(mxge_rx_done_t *rx_done)
 
 		checksum = rx_done->entry[rx_done->idx].checksum;
 
-		if (length <= (MHLEN - MXGEFW_PAD))
-			mxge_rx_done_small(rx_done->rx_small, length, checksum);
-		else
-			mxge_rx_done_big(rx_done->rx_big, length, checksum);
+		if (length <= (MHLEN - MXGEFW_PAD)) {
+			mxge_rx_done_small(ifp, &rx_data->rx_small,
+			    length, checksum);
+		} else {
+			mxge_rx_done_big(ifp, &rx_data->rx_big,
+			    length, checksum);
+		}
 
 		rx_done->cnt++;
 		rx_done->idx = rx_done->cnt & rx_done->mask;
@@ -2320,10 +2325,8 @@ mxge_clean_rx_done(mxge_rx_done_t *rx_done)
 }
 
 static __inline void
-mxge_tx_done(mxge_tx_ring_t *tx, uint32_t mcp_idx)
+mxge_tx_done(struct ifnet *ifp, mxge_tx_ring_t *tx, uint32_t mcp_idx)
 {
-	struct ifnet *ifp = tx->sc->ifp;
-
 	ASSERT_SERIALIZED(&tx->tx_serialize);
 
 	while (tx->pkt_done != mcp_idx) {
@@ -2646,9 +2649,11 @@ mxge_legacy(void *arg)
 		send_done_count = be32toh(stats->send_done_count);
 		while ((send_done_count != tx->pkt_done) ||
 		       (rx_done->entry[rx_done->idx].length != 0)) {
-			if (send_done_count != tx->pkt_done)
-				mxge_tx_done(tx, (int)send_done_count);
-			mxge_clean_rx_done(rx_done);
+			if (send_done_count != tx->pkt_done) {
+				mxge_tx_done(&sc->arpcom.ac_if, tx,
+				    (int)send_done_count);
+			}
+			mxge_clean_rx_done(&sc->arpcom.ac_if, &ss->rx_data);
 			send_done_count = be32toh(stats->send_done_count);
 		}
 		if (mxge_deassert_wait)
@@ -2690,7 +2695,7 @@ mxge_msi(void *arg)
 	/* Check for receives */
 	lwkt_serialize_enter(&ss->rx_data.rx_serialize);
 	if (rx_done->entry[rx_done->idx].length != 0)
-		mxge_clean_rx_done(rx_done);
+		mxge_clean_rx_done(&sc->arpcom.ac_if, &ss->rx_data);
 	lwkt_serialize_exit(&ss->rx_data.rx_serialize);
 
 	/*
@@ -2704,7 +2709,7 @@ mxge_msi(void *arg)
 	send_done_count = be32toh(stats->send_done_count);
 	if (send_done_count != tx->pkt_done) {
 		lwkt_serialize_enter(&tx->tx_serialize);
-		mxge_tx_done(tx, (int)send_done_count);
+		mxge_tx_done(&sc->arpcom.ac_if, tx, (int)send_done_count);
 		lwkt_serialize_exit(&tx->tx_serialize);
 	}
 
@@ -3738,11 +3743,6 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		ss = &sc->ss[i];
 
 		ss->sc = sc;
-		ss->tx.sc = sc;
-		ss->rx_data.rx_small.sc = sc;
-		ss->rx_data.rx_big.sc = sc;
-		ss->rx_data.rx_done.rx_big = &ss->rx_data.rx_big;
-		ss->rx_data.rx_done.rx_small = &ss->rx_data.rx_small;
 
 		lwkt_serialize_init(&ss->rx_data.rx_serialize);
 		lwkt_serialize_init(&ss->tx.tx_serialize);
