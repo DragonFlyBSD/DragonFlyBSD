@@ -370,6 +370,8 @@
     vfs
         hammer
         ..
+        hammer2
+        ..
         msdosfs
         ..
         nfs
