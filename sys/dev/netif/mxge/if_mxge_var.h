@@ -58,7 +58,6 @@ struct mxge_rx_buffer_state {
 struct mxge_tx_buffer_state {
 	struct mbuf *m;
 	bus_dmamap_t map;
-	int flag;
 };
 
 typedef struct {

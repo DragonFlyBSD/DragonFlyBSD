@@ -1646,7 +1646,8 @@ mxge_pullup_tso(struct mbuf **mp)
 }
 
 static int
-mxge_encap_tso(mxge_tx_ring_t *tx, struct mbuf *m, int busdma_seg_cnt)
+mxge_encap_tso(mxge_tx_ring_t *tx, struct mxge_tx_buffer_state *info_map,
+    struct mbuf *m, int busdma_seg_cnt)
 {
 	mcp_kreq_ether_send_t *req;
 	bus_dma_segment_t *seg;
@@ -1655,6 +1656,8 @@ mxge_encap_tso(mxge_tx_ring_t *tx, struct mbuf *m, int busdma_seg_cnt)
 	int next_is_first, chop, cnt, rdma_count, small;
 	uint16_t pseudo_hdr_offset, cksum_offset, mss;
 	uint8_t flags, flags_next;
+	struct mxge_tx_buffer_state *info_last;
+	bus_dmamap_t map = info_map->map;
 
 	mss = m->m_pkthdr.tso_segsz;
 
@@ -1769,7 +1772,12 @@ mxge_encap_tso(mxge_tx_ring_t *tx, struct mbuf *m, int busdma_seg_cnt)
 		req->flags |= MXGEFW_FLAGS_TSO_LAST;
 	} while (!(req->flags & (MXGEFW_FLAGS_TSO_CHOP | MXGEFW_FLAGS_FIRST)));
 
-	tx->info[((cnt - 1) + tx->req) & tx->mask].flag = 1;
+	info_last = &tx->info[((cnt - 1) + tx->req) & tx->mask];
+
+	info_map->map = info_last->map;
+	info_last->map = map;
+	info_last->m = m;
+
 	mxge_submit_req(tx, tx->req_list, cnt);
 #ifdef IFNET_BUF_RING
 	if ((ss->sc->num_slices > 1) && tx->queue_active == 0) {
@@ -1793,9 +1801,11 @@ mxge_encap(mxge_tx_ring_t *tx, struct mbuf *m, bus_addr_t zeropad)
 {
 	mcp_kreq_ether_send_t *req;
 	bus_dma_segment_t *seg;
+	bus_dmamap_t map;
 	int cnt, cum_len, err, i, idx, odd_flag;
 	uint16_t pseudo_hdr_offset;
 	uint8_t flags, cksum_offset;
+	struct mxge_tx_buffer_state *info_map, *info_last;
 
 	if (m->m_pkthdr.csum_flags & CSUM_TSO) {
 		err = mxge_pullup_tso(&m);
@@ -1807,18 +1817,20 @@ mxge_encap(mxge_tx_ring_t *tx, struct mbuf *m, bus_addr_t zeropad)
 	 * Map the frame for DMA
 	 */
 	idx = tx->req & tx->mask;
-	err = bus_dmamap_load_mbuf_defrag(tx->dmat, tx->info[idx].map, &m,
+	info_map = &tx->info[idx];
+	map = info_map->map;
+
+	err = bus_dmamap_load_mbuf_defrag(tx->dmat, map, &m,
 	    tx->seg_list, tx->max_desc - 2, &cnt, BUS_DMA_NOWAIT);
 	if (__predict_false(err != 0))
 		goto drop;
-	bus_dmamap_sync(tx->dmat, tx->info[idx].map, BUS_DMASYNC_PREWRITE);
-	tx->info[idx].m = m;
+	bus_dmamap_sync(tx->dmat, map, BUS_DMASYNC_PREWRITE);
 
 	/*
 	 * TSO is different enough, we handle it in another routine
 	 */
 	if (m->m_pkthdr.csum_flags & CSUM_TSO)
-		return mxge_encap_tso(tx, m, cnt);
+		return mxge_encap_tso(tx, info_map, m, cnt);
 
 	req = tx->req_list;
 	cksum_offset = 0;
@@ -1898,7 +1910,12 @@ mxge_encap(mxge_tx_ring_t *tx, struct mbuf *m, bus_addr_t zeropad)
 	}
 	kprintf("--------------\n");
 #endif
-	tx->info[((cnt - 1) + tx->req) & tx->mask].flag = 1;
+	info_last = &tx->info[((cnt - 1) + tx->req) & tx->mask];
+
+	info_map->map = info_last->map;
+	info_last->map = map;
+	info_last->m = m;
+
 	mxge_submit_req(tx, tx->req_list, cnt);
 #ifdef IFNET_BUF_RING
 	if ((ss->sc->num_slices > 1) && tx->queue_active == 0) {
@@ -2344,14 +2361,11 @@ mxge_tx_done(struct ifnet *ifp, mxge_tx_ring_t *tx, uint32_t mcp_idx)
 		 * segment per-mbuf.
 		 */
 		if (m != NULL) {
+			tx->pkt_done++;
 			IFNET_STAT_INC(ifp, opackets, 1);
 			tx->info[idx].m = NULL;
 			bus_dmamap_unload(tx->dmat, tx->info[idx].map);
 			m_freem(m);
-		}
-		if (tx->info[idx].flag) {
-			tx->info[idx].flag = 0;
-			tx->pkt_done++;
 		}
 	}
 
@@ -2762,7 +2776,6 @@ mxge_free_slice_mbufs(struct mxge_slice_state *ss)
 		return;
 
 	for (i = 0; i <= ss->tx.mask; i++) {
-		ss->tx.info[i].flag = 0;
 		if (ss->tx.info[i].m == NULL)
 			continue;
 		bus_dmamap_unload(ss->tx.dmat, ss->tx.info[i].map);
