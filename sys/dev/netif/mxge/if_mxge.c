@@ -1201,7 +1201,6 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 
 		/* Reset mcp/driver shared state back to 0 */
 		ss->rx_data.rx_done.idx = 0;
-		ss->rx_data.rx_done.cnt = 0;
 		ss->tx.req = 0;
 		ss->tx.done = 0;
 		ss->tx.pkt_done = 0;
@@ -2322,8 +2321,8 @@ mxge_clean_rx_done(struct ifnet *ifp, struct mxge_rx_data *rx_data)
 			    length, checksum);
 		}
 
-		rx_done->cnt++;
-		rx_done->idx = rx_done->cnt & rx_done->mask;
+		rx_done->idx++;
+		rx_done->idx &= rx_done->mask;
 	}
 }
 

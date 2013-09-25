@@ -74,7 +74,6 @@ typedef struct {
 
 typedef struct {
 	mcp_slot_t *entry;
-	int cnt;
 	int idx;
 	int mask;
 } mxge_rx_done_t;
