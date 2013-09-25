@@ -3011,12 +3011,13 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	ss->tx.mask = tx_ring_entries - 1;
 	ss->tx.max_desc = MIN(MXGE_MAX_SEND_DESC, tx_ring_entries / 4);
 
-	/* Allocate the tx request copy block; MUST be 8 bytes aligned */
+	/*
+	 * Allocate the tx request copy block; MUST be at least 8 bytes
+	 * aligned
+	 */
 	bytes = sizeof(*ss->tx.req_list) * (ss->tx.max_desc + 4);
-	ss->tx.req_list = kmalloc(bytes, M_DEVBUF, M_WAITOK);
-	/* DragonFly's kmalloc(9) promises at least 8 bytes alignment */
-	KASSERT(((uintptr_t)ss->tx.req_list & 0x7) == 0,
-	    ("req_list not 8 bytes aligned"));
+	ss->tx.req_list = kmalloc_cachealign(__VM_CACHELINE_ALIGN(bytes),
+	    M_DEVBUF, M_WAITOK);
 
 	/* Allocate the tx busdma segment list */
 	bytes = sizeof(*ss->tx.seg_list) * ss->tx.max_desc;
@@ -3025,7 +3026,7 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	/* Allocate the tx host info ring */
 	bytes = tx_ring_entries * sizeof(*ss->tx.info);
 	ss->tx.info = kmalloc(bytes, M_DEVBUF, M_ZERO|M_WAITOK);
-	
+
 	/* Allocate the tx busdma resources */
 	err = bus_dma_tag_create(sc->parent_dmat,	/* parent */
 				 1,			/* alignment */
@@ -3752,7 +3753,7 @@ mxge_alloc_slices(mxge_softc_t *sc)
 	max_intr_slots = 2 * (sc->rx_ring_size / sizeof (mcp_dma_addr_t));
 
 	bytes = sizeof(*sc->ss) * sc->num_slices;
-	sc->ss = kmalloc(bytes, M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->ss = kmalloc_cachealign(bytes, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	for (i = 0; i < sc->num_slices; i++) {
 		ss = &sc->ss[i];

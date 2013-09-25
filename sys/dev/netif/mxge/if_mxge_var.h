@@ -62,8 +62,8 @@ typedef struct {
 	bus_dma_tag_t dmat;
 	bus_dmamap_t extra_map;
 	int cnt;
-	int cl_size;
-	int mask;			/* number of rx slots -1 */
+	int16_t cl_size;
+	int16_t mask;			/* number of rx slots -1 */
 } mxge_rx_ring_t;
 
 typedef struct {
@@ -109,7 +109,7 @@ struct mxge_slice_state {
 	bus_dmamem_t rx_done_dma;
 	struct sysctl_oid *sysctl_tree;
 	struct sysctl_ctx_list sysctl_ctx;
-};
+} __cachealign;
 
 struct mxge_softc {
 	struct arpcom arpcom;
