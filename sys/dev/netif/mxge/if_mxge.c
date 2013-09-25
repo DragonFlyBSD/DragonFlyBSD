@@ -82,6 +82,8 @@ $FreeBSD: head/sys/dev/mxge/if_mxge.c 254263 2013-08-12 23:30:01Z scottl $
 #include <dev/netif/mxge/mcp_gen_header.h>
 #include <dev/netif/mxge/if_mxge_var.h>
 
+#define MXGE_RX_SMALL_BUFLEN		(MHLEN - MXGEFW_PAD)
+
 /* tunable params */
 static int mxge_nvidia_ecrc_enable = 1;
 static int mxge_force_firmware = 0;
@@ -2330,7 +2332,7 @@ mxge_clean_rx_done(struct ifnet *ifp, struct mxge_rx_data *rx_data)
 
 		checksum = rx_done->entry[rx_done->idx].checksum;
 
-		if (length <= (MHLEN - MXGEFW_PAD)) {
+		if (length <= MXGE_RX_SMALL_BUFLEN) {
 			mxge_rx_done_small(ifp, &rx_data->rx_small,
 			    length, checksum);
 		} else {
@@ -3269,8 +3271,7 @@ mxge_open(mxge_softc_t *sc)
 	cmd.data0 = ifp->if_mtu + ETHER_HDR_LEN + EVL_ENCAPLEN;
 	err = mxge_send_cmd(sc, MXGEFW_CMD_SET_MTU, &cmd);
 
-	/* XXX need to cut MXGEFW_PAD here? */
-	cmd.data0 = MHLEN - MXGEFW_PAD;
+	cmd.data0 = MXGE_RX_SMALL_BUFLEN;
 	err |= mxge_send_cmd(sc, MXGEFW_CMD_SET_SMALL_BUFFER_SIZE, &cmd);
 
 	cmd.data0 = cl_size;
