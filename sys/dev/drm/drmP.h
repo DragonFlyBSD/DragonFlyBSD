@@ -94,7 +94,6 @@
 #include <dev/drm/drm_sarea.h>
 
 #include <dev/drm/drm_atomic.h>
-#include <dev/drm/drm_internal.h>
 #include <dev/drm/drm_linux_list.h>
 #include <dev/drm/drm_gem_names.h>
 

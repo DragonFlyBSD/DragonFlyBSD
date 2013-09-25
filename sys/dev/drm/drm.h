@@ -137,6 +137,14 @@ struct drm_clip_rect {
 };
 
 /**
+ * Drawable information.
+ */
+struct drm_drawable_info {
+	unsigned int num_rects;
+	struct drm_clip_rect *rects;
+};
+
+/**
  * Texture region,
  */
 struct drm_tex_region {
