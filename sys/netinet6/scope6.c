@@ -48,8 +48,18 @@
 #include <netinet6/scope6_var.h>
 
 static struct scope6_id sid_default;
-#define SID(ifp) \
-	(((struct in6_ifextra *)(ifp)->if_afdata[AF_INET6])->scope6_id)
+
+static __inline
+struct scope6_id *
+SID(struct ifnet *ifp)
+{
+	struct in6_ifextra *xtra;
+
+	xtra = ifp->if_afdata[AF_INET6];
+	if (xtra)
+		return (xtra->scope6_id);
+	return(NULL);
+}
 
 void
 scope6_init(void)

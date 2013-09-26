@@ -428,6 +428,7 @@ extern struct lwkt_token proc_token;
 extern struct lwkt_token tty_token;
 extern struct lwkt_token vnode_token;
 extern struct lwkt_token vmobj_token;
+extern struct lwkt_token ifnet_token;
 
 /*
  * Procedures

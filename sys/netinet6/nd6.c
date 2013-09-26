@@ -1781,6 +1781,8 @@ nd6_slowtimo(void *ignored_arg)
 	callout_reset(&nd6_slowtimo_ch, ND6_SLOWTIMER_INTERVAL * hz,
 			nd6_slowtimo, NULL);
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list)) {
+		if (ifp->if_afdata[AF_INET6] == NULL)
+			continue;
 		nd6if = ND_IFINFO(ifp);
 		if (nd6if->basereachable && /* already initialized */
 		    (nd6if->recalctm -= ND6_SLOWTIMER_INTERVAL) <= 0) {

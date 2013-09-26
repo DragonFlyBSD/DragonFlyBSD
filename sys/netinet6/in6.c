@@ -392,6 +392,7 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 	struct	in6_ifreq *ifr = (struct in6_ifreq *)data;
 	struct	in6_ifaddr *ia = NULL;
 	struct	in6_aliasreq *ifra = (struct in6_aliasreq *)data;
+	struct	in6_ifextra *xtra;
 	int privileged;
 	int error;
 
@@ -594,19 +595,19 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 		break;
 
 	case SIOCGIFSTAT_IN6:
-		if (ifp == NULL)
+		if (ifp == NULL || (xtra = ifp->if_afdata[AF_INET6]) == NULL)
 			return EINVAL;
 		bzero(&ifr->ifr_ifru.ifru_stat,
-			sizeof(ifr->ifr_ifru.ifru_stat));
-		ifr->ifr_ifru.ifru_stat =
-			*((struct in6_ifextra *)ifp->if_afdata[AF_INET6])->in6_ifstat;
+		      sizeof(ifr->ifr_ifru.ifru_stat));
+		ifr->ifr_ifru.ifru_stat = *xtra->in6_ifstat;
 		break;
 
 	case SIOCGIFSTAT_ICMP6:
+		if (ifp == NULL || (xtra = ifp->if_afdata[AF_INET6]) == NULL)
+			return EINVAL;
 		bzero(&ifr->ifr_ifru.ifru_stat,
 			sizeof(ifr->ifr_ifru.ifru_icmp6stat));
-		ifr->ifr_ifru.ifru_icmp6stat =
-			*((struct in6_ifextra *)ifp->if_afdata[AF_INET6])->icmp6_ifstat;
+		ifr->ifr_ifru.ifru_icmp6stat = *xtra->icmp6_ifstat;
 		break;
 
 	case SIOCSIFADDR:
@@ -2036,6 +2037,8 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst)
 		 * We can never take an address that breaks the scope zone
 		 * of the destination.
 		 */
+		if (ifp->if_afdata[AF_INET6] == NULL)
+			continue;
 		if (in6_addr2scopeid(ifp, dst) != in6_addr2scopeid(oifp, dst))
 			continue;
 
@@ -2443,9 +2446,9 @@ in6_setmaxmtu(void)
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list))
 	{
 		/* this function can be called during ifnet initialization */
-		if (!ifp->if_afdata[AF_INET6])
+		if (ifp->if_afdata[AF_INET6] == NULL)
 			continue;
-		if (!(ifp->if_flags & IFF_LOOPBACK) &&
+		if ((ifp->if_flags & IFF_LOOPBACK) == 0 &&
 		    ND_IFINFO(ifp)->linkmtu > maxmtu)
 			maxmtu =  ND_IFINFO(ifp)->linkmtu;
 	}

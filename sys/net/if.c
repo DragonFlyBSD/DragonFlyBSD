@@ -497,7 +497,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	mtx_init(&ifp->if_ioctl_mtx);
 	mtx_lock(&ifp->if_ioctl_mtx);
 
-	TAILQ_INSERT_TAIL(&ifnet, ifp, if_link);
+	lwkt_gettoken(&ifnet_token);	/* protect if_index and ifnet tailq */
 	ifp->if_index = ++if_index;
 
 	/*
@@ -568,9 +568,6 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	ifp->if_data_pcpu = kmalloc_cachealign(
 	    ncpus * sizeof(struct ifdata_pcpu), M_DEVBUF, M_WAITOK | M_ZERO);
 
-	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
-	devctl_notify("IFNET", ifp->if_xname, "ATTACH", NULL);
-
 	if (ifp->if_mapsubq == NULL)
 		ifp->if_mapsubq = ifq_mapsubq_default;
 
@@ -630,7 +627,12 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	if (!SLIST_EMPTY(&domains))
 		if_attachdomain1(ifp);
 
+	TAILQ_INSERT_TAIL(&ifnet, ifp, if_link);
+	lwkt_reltoken(&ifnet_token);
+
 	/* Announce the interface. */
+	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
+	devctl_notify("IFNET", ifp->if_xname, "ATTACH", NULL);
 	rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
 
 	mtx_unlock(&ifp->if_ioctl_mtx);
@@ -866,11 +868,13 @@ if_detach(struct ifnet *ifp)
 	/*
 	 * Remove interface from ifindex2ifp[] and maybe decrement if_index.
 	 */
+	lwkt_gettoken(&ifnet_token);
 	ifindex2ifnet[ifp->if_index] = NULL;
 	while (if_index > 0 && ifindex2ifnet[if_index] == NULL)
 		if_index--;
-
 	TAILQ_REMOVE(&ifnet, ifp, if_link);
+	lwkt_reltoken(&ifnet_token);
+
 	kfree(ifp->if_addrheads, M_IFADDR);
 
 	lwkt_synchronize_ipiqs("if_detach");

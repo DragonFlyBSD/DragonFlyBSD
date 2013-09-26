@@ -137,6 +137,7 @@ struct lwkt_token proc_token = LWKT_TOKEN_INITIALIZER(proc_token);
 struct lwkt_token tty_token = LWKT_TOKEN_INITIALIZER(tty_token);
 struct lwkt_token vnode_token = LWKT_TOKEN_INITIALIZER(vnode_token);
 struct lwkt_token vmobj_token = LWKT_TOKEN_INITIALIZER(vmobj_token);
+struct lwkt_token ifnet_token = LWKT_TOKEN_INITIALIZER(ifnet_token);
 
 static int lwkt_token_spin = 5;
 SYSCTL_INT(_lwkt, OID_AUTO, token_spin, CTLFLAG_RW,

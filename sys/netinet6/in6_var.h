@@ -487,9 +487,10 @@ extern struct in6_ifaddr *in6_ifaddr;
 
 extern struct icmp6stat icmp6stat;
 #define in6_ifstat_inc(ifp, tag) \
-do {								\
-	if (ifp)						\
-		((struct in6_ifextra *)((ifp)->if_afdata[AF_INET6]))->in6_ifstat->tag++; \
+do {									\
+	struct in6_ifextra *xtra;					\
+	if ((ifp) && (xtra = (ifp)->if_afdata[AF_INET6]) != NULL)	\
+		xtra->in6_ifstat->tag++;				\
 } while (0)
 
 extern struct ifqueue ip6intrq;		/* IP6 packet input queue */

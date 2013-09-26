@@ -920,6 +920,8 @@ in6_tmpaddrtimer(void *ignored_arg)
 
 	bzero(nullbuf, sizeof(nullbuf));
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list)) {
+		if (ifp->if_afdata[AF_INET6] == NULL)
+			continue;
 		ndi = ND_IFINFO(ifp);
 		if (bcmp(ndi->randomid, nullbuf, sizeof(nullbuf)) != 0) {
 			/*
