@@ -2704,7 +2704,7 @@ mxge_msi(void *arg)
 	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	/* Make sure the DMA has finished */
-	if (!stats->valid)
+	if (__predict_false(!stats->valid))
 		return;
 
 	valid = stats->valid;
