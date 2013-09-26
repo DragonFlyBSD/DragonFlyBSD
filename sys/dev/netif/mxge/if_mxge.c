@@ -1518,12 +1518,6 @@ mxge_add_sysctls(mxge_softc_t *sc)
 		SYSCTL_ADD_INT(ctx, children, OID_AUTO, "rx_big_cnt",
 		    CTLFLAG_RD, &ss->rx_data.rx_big.cnt, 0, "rx_small_cnt");
 
-#ifndef IFNET_BUF_RING
-		/* only transmit from slice 0 for now */
-		if (slice > 0)
-			continue;
-#endif
-
 		SYSCTL_ADD_INT(ctx, children, OID_AUTO, "tx_req",
 		    CTLFLAG_RD, &ss->tx.req, 0, "tx_req");
 
@@ -3004,12 +2998,6 @@ mxge_alloc_slice_rings(struct mxge_slice_state *ss, int rx_ring_entries,
 	 * Now allocate TX resources
 	 */
 
-#ifndef IFNET_BUF_RING
-	/* only use a single TX ring for now */
-	if (ss != ss->sc->ss)
-		return 0;
-#endif
-
 	ss->tx.mask = tx_ring_entries - 1;
 	ss->tx.max_desc = MIN(MXGE_MAX_SEND_DESC, tx_ring_entries / 4);
 
@@ -3283,13 +3271,7 @@ mxge_open(mxge_softc_t *sc)
 	}
 
 	/* Now give him the pointer to the stats block */
-	for (slice = 0; 
-#ifdef IFNET_BUF_RING
-	     slice < sc->num_slices;
-#else
-	     slice < 1;
-#endif
-	     slice++) {
+	for (slice = 0; slice < sc->num_slices; slice++) {
 		ss = &sc->ss[slice];
 		cmd.data0 = MXGE_LOWPART_TO_U32(ss->fw_stats_dma.dmem_busaddr);
 		cmd.data1 = MXGE_HIGHPART_TO_U32(ss->fw_stats_dma.dmem_busaddr);
@@ -3777,15 +3759,8 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		ss->rx_data.rx_done.entry = ss->rx_done_dma.dmem_addr;
 
 		/* 
-		 * Allocate the per-slice firmware stats; stats
-		 * (including tx) are used used only on the first
-		 * slice for now
+		 * Allocate the per-slice firmware stats
 		 */
-#ifndef IFNET_BUF_RING
-		if (i > 0)
-			continue;
-#endif
-
 		bytes = sizeof(*ss->fw_stats);
 		err = mxge_dma_alloc(sc, &ss->fw_stats_dma,
 		    sizeof(*ss->fw_stats), 64);
