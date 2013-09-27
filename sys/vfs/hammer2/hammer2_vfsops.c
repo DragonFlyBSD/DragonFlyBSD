@@ -330,6 +330,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	struct hammer2_mount_info info;
 	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
+	hammer2_key_t key_next;
+	hammer2_key_t key_dummy;
 	hammer2_key_t lhc;
 	struct vnode *devvp;
 	struct nlookupdata nd;
@@ -344,13 +346,14 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	char *label;
 	int ronly = 1;
 	int error;
+	int cache_index;
 
 	hmp = NULL;
 	pmp = NULL;
 	dev = NULL;
 	label = NULL;
 	devvp = NULL;
-	
+	cache_index = -1;
 
 	kprintf("hammer2_mount\n");
 
@@ -473,7 +476,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
 		hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
 		hmp->vchain.delete_tid = HAMMER2_MAX_TID;
-		hammer2_chain_core_alloc(&hmp->vchain, NULL);
+		hammer2_chain_core_alloc(NULL, &hmp->vchain, NULL);
 		/* hmp->vchain.u.xxx is left NULL */
 
 		/*
@@ -496,7 +499,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
 		hmp->fchain.delete_tid = HAMMER2_MAX_TID;
 
-		hammer2_chain_core_alloc(&hmp->fchain, NULL);
+		hammer2_chain_core_alloc(NULL, &hmp->fchain, NULL);
 		/* hmp->fchain.u.xxx is left NULL */
 
 		/*
@@ -516,8 +519,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 * represented by the label.
 		 */
 		parent = hammer2_chain_lookup_init(&hmp->vchain, 0);
-		schain = hammer2_chain_lookup(&parent,
-				      HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY, 0);
+		schain = hammer2_chain_lookup(&parent, &key_dummy,
+				      HAMMER2_SROOT_KEY, HAMMER2_SROOT_KEY,
+				      &cache_index, 0);
 		hammer2_chain_lookup_done(parent);
 		if (schain == NULL) {
 			kprintf("hammer2_mount: invalid super-root\n");
@@ -597,17 +601,18 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	parent = hammer2_chain_lookup_init(hmp->schain, 0);
 	lhc = hammer2_dirhash(label, strlen(label));
-	rchain = hammer2_chain_lookup(&parent,
+	rchain = hammer2_chain_lookup(&parent, &key_next,
 				      lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-				      0);
+				      &cache_index, 0);
 	while (rchain) {
 		if (rchain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		    strcmp(label, rchain->data->ipdata.filename) == 0) {
 			break;
 		}
-		rchain = hammer2_chain_next(&parent, rchain,
-					    lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-					    0);
+		rchain = hammer2_chain_next(&parent, rchain, &key_next,
+					    key_next,
+					    lhc + HAMMER2_DIRHASH_LOMASK,
+					    &cache_index, 0);
 	}
 	hammer2_chain_lookup_done(parent);
 	if (rchain == NULL) {
@@ -789,7 +794,9 @@ hammer2_assign_physical(hammer2_trans_t *trans,
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_off_t pbase;
+	hammer2_key_t key_dummy;
 	int pradix = hammer2_getradix(pblksize);
+	int cache_index = -1;
 
 	/*
 	 * Locate the chain associated with lbase, return a locked chain.
@@ -801,9 +808,9 @@ hammer2_assign_physical(hammer2_trans_t *trans,
 retry:
 	parent = *parentp;
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS); /* extra lock */
-	chain = hammer2_chain_lookup(&parent,
+	chain = hammer2_chain_lookup(&parent, &key_dummy,
 				     lbase, lbase,
-				     HAMMER2_LOOKUP_NODATA);
+				     &cache_index, HAMMER2_LOOKUP_NODATA);
 
 	if (chain == NULL) {
 		/*
@@ -1223,11 +1230,13 @@ zero_write(struct buf *bp, hammer2_trans_t *trans, hammer2_inode_t *ip,
 {
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
+	hammer2_key_t key_dummy;
+	int cache_index = -1;
 
 	parent = hammer2_chain_lookup_init(*parentp, 0);
 
-	chain = hammer2_chain_lookup(&parent, lbase, lbase,
-				     HAMMER2_LOOKUP_NODATA);
+	chain = hammer2_chain_lookup(&parent, &key_dummy, lbase, lbase,
+				     &cache_index, HAMMER2_LOOKUP_NODATA);
 	if (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			bzero(chain->data->ipdata.u.data,
@@ -2112,7 +2121,9 @@ hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
 void
 hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp)
 {
+	hammer2_chain_layer_t *layer;
 	hammer2_chain_t *scan;
+	hammer2_chain_t *first_parent;
 
 	--*countp;
 	if (*countp == 0) {
@@ -2121,23 +2132,31 @@ hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp)
 	}
 	if (*countp < 0)
 		return;
-	kprintf("%*.*schain[%d] %p.%d [%08x][core=%p] (%s) dl=%p dt=%s refs=%d",
+	first_parent = chain->core ? TAILQ_FIRST(&chain->core->ownerq) : NULL;
+	kprintf("%*.*schain %p.%d [%08x][core=%p fp=%p] (%s) np=%p dt=%s refs=%d",
 		tab, tab, "",
-		chain->index, chain, chain->bref.type, chain->flags,
+		chain, chain->bref.type, chain->flags,
 		chain->core,
+		first_parent,
 		((chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		chain->data) ?  (char *)chain->data->ipdata.filename : "?"),
-		chain->next_parent,
+		(first_parent ? TAILQ_NEXT(chain, core_entry) : NULL),
 		(chain->delete_tid == HAMMER2_MAX_TID ? "max" : "fls"),
 		chain->refs);
-	if (chain->core == NULL || RB_EMPTY(&chain->core->rbtree))
+	if (first_parent)
+		kprintf(" [fpflags %08x fprefs %d\n",
+			first_parent->flags,
+			first_parent->refs);
+	if (chain->core == NULL || TAILQ_EMPTY(&chain->core->layerq))
 		kprintf("\n");
 	else
 		kprintf(" {\n");
-	RB_FOREACH(scan, hammer2_chain_tree, &chain->core->rbtree) {
-		hammer2_dump_chain(scan, tab + 4, countp);
+	TAILQ_FOREACH(layer, &chain->core->layerq, entry) {
+		RB_FOREACH(scan, hammer2_chain_tree, &layer->rbtree) {
+			hammer2_dump_chain(scan, tab + 4, countp);
+		}
 	}
-	if (chain->core && !RB_EMPTY(&chain->core->rbtree)) {
+	if (chain->core && !TAILQ_EMPTY(&chain->core->layerq)) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE && chain->data)
 			kprintf("%*.*s}(%s)\n", tab, tab, "",
 				chain->data->ipdata.filename);

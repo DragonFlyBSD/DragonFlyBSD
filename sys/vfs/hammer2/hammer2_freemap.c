@@ -285,11 +285,13 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	hammer2_off_t l0size;
 	hammer2_off_t l1size;
 	hammer2_off_t l1mask;
+	hammer2_key_t key_dummy;
 	hammer2_chain_t *chain;
 	hammer2_off_t key;
 	size_t bytes;
 	uint16_t class;
 	int error = 0;
+	int cache_index = -1;
 
 
 	/*
@@ -313,7 +315,8 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	l1size = H2FMSHIFT(HAMMER2_FREEMAP_LEVEL1_RADIX);
 	l1mask = l1size - 1;
 
-	chain = hammer2_chain_lookup(parentp, key, key + l1mask,
+	chain = hammer2_chain_lookup(parentp, &key_dummy, key, key + l1mask,
+				     &cache_index,
 				     HAMMER2_LOOKUP_FREEMAP |
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_MATCHIND/*XXX*/);
@@ -722,6 +725,7 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	hammer2_chain_t *parent;
 	hammer2_bmap_data_t *bmap;
 	hammer2_key_t key;
+	hammer2_key_t key_dummy;
 	hammer2_off_t l0size;
 	hammer2_off_t l1size;
 	hammer2_off_t l1mask;
@@ -736,6 +740,7 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	int start;
 	int count;
 	int modified = 0;
+	int cache_index = -1;
 
 	radix = (int)data_off & HAMMER2_OFF_MASK_RADIX;
 	data_off &= ~HAMMER2_OFF_MASK_RADIX;
@@ -763,7 +768,8 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	parent = &hmp->fchain;
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
 
-	chain = hammer2_chain_lookup(&parent, key, key + l1mask,
+	chain = hammer2_chain_lookup(&parent, &key_dummy, key, key + l1mask,
+				     &cache_index,
 				     HAMMER2_LOOKUP_FREEMAP |
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_MATCHIND/*XXX*/);

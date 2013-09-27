@@ -34,28 +34,30 @@
  */
 /*
  * This subsystem implements most of the core support functions for
- * the hammer2_chain and hammer2_chain_core structures.
+ * the hammer2_chain structure.
  *
- * Chains represent the filesystem media topology in-memory.  Any given
- * chain can represent an inode, indirect block, data, or other types
- * of blocks.
+ * Chains are the in-memory version on media objects (volume header, inodes,
+ * indirect blocks, data blocks, etc).  Chains represent a portion of the
+ * HAMMER2 topology.
  *
- * This module provides APIs for direct and indirect block searches,
- * iterations, recursions, creation, deletion, replication, and snapshot
- * views (used by the flush and snapshot code).
+ * A chain is topologically stable once it has been inserted into the
+ * in-memory topology.  Modifications which copy, move, or resize the chain
+ * are handled via the DELETE-DUPLICATE mechanic where the original chain
+ * stays intact but is marked deleted and a new chain is allocated which
+ * shares the old chain's children.
  *
- * Generally speaking any modification made to a chain must propagate all
- * the way back to the volume header, issuing copy-on-write updates to the
- * blockref tables all the way up.  Any chain except the volume header itself
- * can be flushed to disk at any time, in any order.  None of it matters
- * until we get to the point where we want to synchronize the volume header
- * (see the flush code).
+ * This sharing is handled via the hammer2_chain_core structure.
  *
- * The chain structure supports snapshot views in time, which are primarily
- * used until the related data and meta-data is flushed to allow the
- * filesystem to make snapshots without requiring it to first flush,
- * and to allow the filesystem flush and modify the filesystem concurrently
- * with minimal or no stalls.
+ * The DELETE-DUPLICATE mechanism allows the same topological level to contain
+ * many overloadings.  However, our RBTREE mechanics require that there be
+ * no overlaps so we accomplish the overloading by moving conflicting chains
+ * with smaller or equal radii into a sub-RBTREE under the chain being
+ * overloaded.
+ *
+ * DELETE-DUPLICATE is also used when a modification to a chain crosses a
+ * flush synchronization boundary, allowing the flush code to continue flushing
+ * the older version of the topology and not be disrupted by new frontend
+ * operations.
  */
 #include <sys/cdefs.h>
 #include <sys/param.h>
@@ -76,43 +78,36 @@ static void hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop);
 static void adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
 
 /*
- * We use a red-black tree to guarantee safe lookups under shared locks.
+ * Basic RBTree for chains.  Chains cannot overlap within any given
+ * core->rbtree without recursing through chain->rbtree.  We effectively
+ * guarantee this by checking the full range rather than just the first
+ * key element.  By matching on the full range callers can detect when
+ * recursrion through chain->rbtree is needed.
  *
- * Chains can be overloaded onto the same index, creating a different
- * view of a blockref table based on a transaction id.  The RBTREE
- * deconflicts the view by sub-sorting on delete_tid.
- *
- * NOTE: Any 'current' chain which is not yet deleted will have a
- *	 delete_tid of HAMMER2_MAX_TID (0xFFF....FFFLLU).
+ * NOTE: This also means the a delete-duplicate on the same key will
+ *	 overload by placing the deleted element in the new element's
+ *	 chain->rbtree (when doing a direct replacement).
  */
 RB_GENERATE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 
 int
 hammer2_chain_cmp(hammer2_chain_t *chain1, hammer2_chain_t *chain2)
 {
-	if (chain1->index < chain2->index)
-		return(-1);
-	if (chain1->index > chain2->index)
-		return(1);
-	if (chain1->delete_tid < chain2->delete_tid)
-		return(-1);
-	if (chain1->delete_tid > chain2->delete_tid)
-		return(1);
+	hammer2_key_t c1_beg;
+	hammer2_key_t c1_end;
+	hammer2_key_t c2_beg;
+	hammer2_key_t c2_end;
 
-	/*
-	 * Multiple deletions in the same transaction are possible.  We
-	 * still need to detect SMP races on _get() so only do this
-	 * conditionally.
-	 */
-	if ((chain1->flags & HAMMER2_CHAIN_DELETED) &&
-	    (chain2->flags & HAMMER2_CHAIN_DELETED)) {
-		if (chain1 < chain2)
-			return(-1);
-		if (chain1 > chain2)
-			return(1);
-	}
+	c1_beg = chain1->bref.key;
+	c1_end = c1_beg + ((hammer2_key_t)1 << chain1->bref.keybits) - 1;
+	c2_beg = chain2->bref.key;
+	c2_end = c2_beg + ((hammer2_key_t)1 << chain2->bref.keybits) - 1;
 
-	return(0);
+	if (c1_end < c2_beg)	/* fully to the left */
+		return(-1);
+	if (c1_beg > c2_end)	/* fully to the right */
+		return(1);
+	return(0);		/* overlap (must not cross edge boundary) */
 }
 
 static __inline
@@ -145,9 +140,9 @@ hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain)
 		return;
 	while ((above = chain->above) != NULL) {
 		spin_lock(&above->cst.spin);
-		chain = above->first_parent;
+		chain = TAILQ_FIRST(&above->ownerq);
 		while (hammer2_chain_refactor_test(chain, 1))
-			chain = chain->next_parent;
+			chain = TAILQ_NEXT(chain, core_entry);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_SUBMODIFIED);
 		spin_unlock(&above->cst.spin);
 	}
@@ -181,9 +176,9 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		/*
-		 * Chain's are really only associated with the hmp but we maintain
-		 * a pmp association for per-mount memory tracking purposes.  The
-		 * pmp can be NULL.
+		 * Chain's are really only associated with the hmp but we
+		 * maintain a pmp association for per-mount memory tracking
+		 * purposes.  The pmp can be NULL.
 		 */
 		chain = kmalloc(sizeof(*chain), hmp->mchain, M_WAITOK | M_ZERO);
 		if (pmp) {
@@ -203,7 +198,6 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
 
 	chain->hmp = hmp;
 	chain->bref = *bref;
-	chain->index = -1;		/* not yet assigned */
 	chain->bytes = bytes;
 	chain->refs = 1;
 	chain->flags = HAMMER2_CHAIN_ALLOCATED;
@@ -218,36 +212,45 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
  * Associate an existing core with the chain or allocate a new core.
  *
  * The core is not locked.  No additional refs on the chain are made.
+ * (trans) must not be NULL if (core) is not NULL.
+ *
+ * When chains are delete-duplicated during flushes we insert nchain on
+ * the ownerq after ochain instead of at the end in order to give the
+ * drop code visibility in the correct order, otherwise drops can be missed.
  */
 void
-hammer2_chain_core_alloc(hammer2_chain_t *chain, hammer2_chain_core_t *core)
+hammer2_chain_core_alloc(hammer2_trans_t *trans,
+			 hammer2_chain_t *nchain, hammer2_chain_t *ochain)
 {
-	hammer2_chain_t **scanp;
+	hammer2_chain_core_t *core;
 
-	KKASSERT(chain->core == NULL);
-	KKASSERT(chain->next_parent == NULL);
+	KKASSERT(nchain->core == NULL);
 
-	if (core == NULL) {
-		core = kmalloc(sizeof(*core), chain->hmp->mchain,
+	if (ochain == NULL) {
+		core = kmalloc(sizeof(*core), nchain->hmp->mchain,
 			       M_WAITOK | M_ZERO);
-		RB_INIT(&core->rbtree);
+		TAILQ_INIT(&core->layerq);
+		TAILQ_INIT(&core->ownerq);
 		core->sharecnt = 1;
-		chain->core = core;
-		ccms_cst_init(&core->cst, chain);
-		core->first_parent = chain;
+		nchain->core = core;
+		ccms_cst_init(&core->cst, nchain);
+		TAILQ_INSERT_TAIL(&core->ownerq, nchain, core_entry);
 	} else {
+		core = ochain->core;
 		atomic_add_int(&core->sharecnt, 1);
-		chain->core = core;
+
 		spin_lock(&core->cst.spin);
-		if (core->first_parent == NULL) {
-			core->first_parent = chain;
+		nchain->core = core;
+#if 1
+		TAILQ_INSERT_TAIL(&core->ownerq, nchain, core_entry);
+#else
+		if (trans->flags & HAMMER2_TRANS_ISFLUSH) {
+			TAILQ_INSERT_AFTER(&core->ownerq, ochain, nchain,
+					   core_entry);
 		} else {
-			scanp = &core->first_parent;
-			while (*scanp)
-				scanp = &(*scanp)->next_parent;
-			*scanp = chain;
-			hammer2_chain_ref(chain);	/* next_parent link */
+			TAILQ_INSERT_TAIL(&core->ownerq, nchain, core_entry);
 		}
+#endif
 		spin_unlock(&core->cst.spin);
 	}
 }
@@ -259,6 +262,70 @@ void
 hammer2_chain_ref(hammer2_chain_t *chain)
 {
 	atomic_add_int(&chain->refs, 1);
+}
+
+/*
+ * Insert the chain in the core rbtree at the first layer
+ * which accepts it (for now we don't sort layers by the transaction tid)
+ */
+#define HAMMER2_CHAIN_INSERT_SPIN	0x0001
+#define HAMMER2_CHAIN_INSERT_LIVE	0x0002
+#define HAMMER2_CHAIN_INSERT_RACE	0x0004
+
+static
+void
+hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_t *chain,
+		     int flags)
+{
+	hammer2_chain_layer_t *layer;
+	hammer2_chain_t *xchain;
+
+	if (flags & HAMMER2_CHAIN_INSERT_SPIN)
+		spin_lock(&above->cst.spin);
+        chain->above = above;
+	layer = TAILQ_FIRST(&above->layerq);
+	xchain = NULL;
+
+	/*
+	 * Try to insert
+	 */
+	if (layer == NULL ||
+	    (xchain = RB_INSERT(hammer2_chain_tree,
+				&layer->rbtree, chain)) != NULL) {
+		/*
+		 * Either no layers have been allocated or the insertion
+		 * failed.  This is fatal if the conflicted xchain is not
+		 * flagged as deleted.  Caller may or may allow the failure.
+		 */
+		if (xchain && (xchain->flags & HAMMER2_CHAIN_DELETED) == 0) {
+			if (flags & HAMMER2_CHAIN_INSERT_RACE) {
+				chain->above = NULL;
+				chain->inlayer = NULL;
+				goto failed;
+			}
+			panic("hammer2_chain_insert: collision2 %p", xchain);
+		}
+
+		/*
+		 * Allocate a new layer to resolve the issue.
+		 */
+		spin_unlock(&above->cst.spin);
+		layer = kmalloc(sizeof(*layer), chain->hmp->mchain,
+				M_WAITOK | M_ZERO);
+		spin_lock(&above->cst.spin);
+		RB_INIT(&layer->rbtree);
+		TAILQ_INSERT_HEAD(&above->layerq, layer, entry);
+		RB_INSERT(hammer2_chain_tree, &layer->rbtree, chain);
+	}
+	chain->inlayer = layer;
+	++above->chain_count;
+
+	if (flags & HAMMER2_CHAIN_INSERT_LIVE)
+		atomic_add_int(&above->live_count, 1);
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
+failed:
+	if (flags & HAMMER2_CHAIN_INSERT_SPIN)
+		spin_unlock(&above->cst.spin);
 }
 
 /*
@@ -286,7 +353,6 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 		++need;
 	KKASSERT(chain->refs > need);
 #endif
-
 	while (chain) {
 		refs = chain->refs;
 		cpu_ccfence();
@@ -304,7 +370,7 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 
 /*
  * Safe handling of the 1->0 transition on chain.  Returns a chain for
- * recursive drop or NULL, possibly returning the same chain of the atomic
+ * recursive drop or NULL, possibly returning the same chain if the atomic
  * op fails.
  *
  * The cst spinlock is allowed nest child-to-parent (not parent-to-child).
@@ -317,36 +383,59 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	hammer2_mount_t *hmp;
 	hammer2_chain_core_t *above;
 	hammer2_chain_core_t *core;
+	hammer2_chain_layer_t *layer;
 	hammer2_chain_t *rdrop1;
 	hammer2_chain_t *rdrop2;
 
 	/*
 	 * Spinlock the core and check to see if it is empty.  If it is
-	 * not empty we leave chain intact with refs == 0.
+	 * not empty we leave chain intact with refs == 0.  The elements
+	 * in core->rbtree are associated with other chains contemporary
+	 * with ours but not with our chain directly.
 	 */
 	if ((core = chain->core) != NULL) {
 		spin_lock(&core->cst.spin);
-		if (RB_ROOT(&core->rbtree)) {
-			if (atomic_cmpset_int(&chain->refs, 1, 0)) {
-				/* 1->0 transition successful */
-				spin_unlock(&core->cst.spin);
-				return(NULL);
-			} else {
-				/* 1->0 transition failed, retry */
-				spin_unlock(&core->cst.spin);
-				return(chain);
-			}
+
+		/*
+		 * We can't drop any chains if they have children because
+		 * there might be a flush dependency.
+		 *
+		 * NOTE: We return (chain) on failure to retry.
+		 */
+		if (core->chain_count) {
+			if (atomic_cmpset_int(&chain->refs, 1, 0))
+				chain = NULL;	/* success */
+			spin_unlock(&core->cst.spin);
+			return(chain);
+		}
+		/* no chains left under us */
+
+		/*
+		 * We can't drop a live chain unless it is a the head
+		 * of its ownerq.  If we were to then the go-to chain
+		 * would revert to the prior deleted chain.
+		 */
+		if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
+		    TAILQ_FIRST(&core->ownerq) != chain) {
+			if (atomic_cmpset_int(&chain->refs, 1, 0))
+				chain = NULL;	/* success */
+			spin_unlock(&core->cst.spin);
+			return(chain);
 		}
 	}
+
 
 	hmp = chain->hmp;
 	pmp = chain->pmp;	/* can be NULL */
 	rdrop1 = NULL;
 	rdrop2 = NULL;
+	layer = NULL;
 
 	/*
 	 * Spinlock the parent and try to drop the last ref.  On success
-	 * remove chain from its parent.
+	 * remove chain from its parent, otherwise return NULL.
+	 *
+	 * (multiple spinlocks on core's are allowed in a bottom-up fashion).
 	 */
 	if ((above = chain->above) != NULL) {
 		spin_lock(&above->cst.spin);
@@ -355,74 +444,61 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 			spin_unlock(&above->cst.spin);
 			if (core)
 				spin_unlock(&core->cst.spin);
-			return(chain);
-			/* stop */
+			return(chain);	/* retry */
 		}
 
 		/*
-		 * 1->0 transition successful
+		 * 1->0 transition successful, remove chain from its
+		 * above core.  Track layer for removal/freeing.
 		 */
 		KKASSERT(chain->flags & HAMMER2_CHAIN_ONRBTREE);
-		RB_REMOVE(hammer2_chain_tree, &above->rbtree, chain);
+		layer = chain->inlayer;
+		RB_REMOVE(hammer2_chain_tree, &layer->rbtree, chain);
+		--above->chain_count;
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 		chain->above = NULL;
+		chain->inlayer = NULL;
+
+		if (RB_EMPTY(&layer->rbtree) && layer->refs == 0) {
+			TAILQ_REMOVE(&above->layerq, layer, entry);
+		} else {
+			layer = NULL;
+		}
 
 		/*
-		 * Calculate a chain to return for a recursive drop.
-		 *
-		 * XXX this needs help, we have a potential deep-recursion
-		 * problem which we try to address but sometimes we wind up
-		 * with two elements that have to be dropped.
-		 *
-		 * If the chain has an associated core with refs at 0
-		 * the chain must be the first in the core's linked list
-		 * by definition, and we will recursively drop the ref
-		 * implied by the chain->next_parent field.
-		 *
-		 * Otherwise if the rbtree containing chain is empty we try
-		 * to recursively drop our parent (only the first one could
-		 * possibly have refs == 0 since the rest are linked via
-		 * next_parent).
-		 *
-		 * Otherwise we try to recursively drop a sibling.
+		 * Removal of our chain might allow the parent chains
+		 * owning the above core to be freed if they are also
+		 * sitting at 0 refs.  Multi-homed above cores are flushed
+		 * in forward order (insertions during flushes are made
+		 * carefully).
 		 */
-		if (chain->next_parent) {
-			KKASSERT(core != NULL);
-			rdrop1 = chain->next_parent;
-		}
-		if (RB_EMPTY(&above->rbtree)) {
-			rdrop2 = above->first_parent;
-			if (rdrop2 == NULL || rdrop2->refs ||
-			    atomic_cmpset_int(&rdrop2->refs, 0, 1) == 0) {
-				rdrop2 = NULL;
+		if (above->chain_count == 0) {
+			rdrop1 = TAILQ_FIRST(&above->ownerq);
+			if (rdrop1 &&
+			    atomic_cmpset_int(&rdrop1->refs, 0, 1) == 0) {
+				rdrop1 = NULL;
 			}
-		} else {
-			rdrop2 = RB_ROOT(&above->rbtree);
-			if (atomic_cmpset_int(&rdrop2->refs, 0, 1) == 0)
-				rdrop2 = NULL;
 		}
 		spin_unlock(&above->cst.spin);
 		above = NULL;	/* safety */
-	} else {
-		if (chain->next_parent) {
-			KKASSERT(core != NULL);
-			rdrop1 = chain->next_parent;
-		}
 	}
 
 	/*
 	 * We still have the core spinlock (if core is non-NULL).  The
 	 * above spinlock is gone.
+	 *
+	 * Remove chain from ownerq.  This may change the first element of
+	 * ownerq to something we can remove.
 	 */
 	if (core) {
-		KKASSERT(core->first_parent == chain);
-		if (chain->next_parent) {
-			/* parent should already be set */
-			KKASSERT(rdrop1 == chain->next_parent);
-		}
-		core->first_parent = chain->next_parent;
-		chain->next_parent = NULL;
 		chain->core = NULL;
+
+		TAILQ_REMOVE(&core->ownerq, chain, core_entry);
+		rdrop2 = TAILQ_FIRST(&core->ownerq);
+		if (rdrop2 &&
+		    atomic_cmpset_int(&rdrop2->refs, 0, 1) == 0) {
+			rdrop2 = NULL;
+		}
 
 		if (atomic_fetchadd_int(&core->sharecnt, -1) == 1) {
 			/*
@@ -444,7 +520,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	 */
 	KKASSERT((chain->flags & (HAMMER2_CHAIN_MOVED |
 				  HAMMER2_CHAIN_MODIFIED)) == 0);
-
 	hammer2_chain_drop_data(chain, 1);
 
 	KKASSERT(chain->bp == NULL);
@@ -458,13 +533,15 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 			hammer2_chain_memory_wakeup(pmp);
 		}
 	}
-	if (rdrop1 && rdrop2) {
-		hammer2_chain_drop(rdrop1);
-		return(rdrop2);
-	} else if (rdrop1)
-		return(rdrop1);
-	else
-		return(rdrop2);
+
+	/*
+	 * Free saved empty layer and return chained drop.
+	 */
+	if (layer)
+		kfree(layer, hmp->mchain);
+	if (rdrop2)
+		hammer2_chain_drop(rdrop2);
+	return (rdrop1);
 }
 
 /*
@@ -498,7 +575,6 @@ hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
 		break;
 	}
 }
-
 
 /*
  * Ref and lock a chain element, acquiring its data with I/O if necessary,
@@ -659,7 +735,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	}
 
 	if (error) {
-		kprintf("hammer2_chain_get: I/O error %016jx: %d\n",
+		kprintf("hammer2_chain_lock: I/O error %016jx: %d\n",
 			(intmax_t)pbase, error);
 		bqrelse(chain->bp);
 		chain->bp = NULL;
@@ -1052,6 +1128,43 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 }
 
 /*
+ * This counts the number of live blockrefs in a block array and
+ * also calculates the point at which all remaining blockrefs are empty.
+ *
+ * NOTE: Flag is not set until after the count is complete, allowing
+ *	 callers to test the flag without holding the spinlock.
+ *
+ * NOTE: If base is NULL the related chain is still in the INITIAL
+ *	 state and there are no blockrefs to count.
+ *
+ * NOTE: live_count may already have some counts accumulated due to
+ *	 creation and deletion and could even be initially negative.
+ */
+void
+hammer2_chain_countbrefs(hammer2_chain_core_t *above,
+			 hammer2_blockref_t *base, int count)
+{
+	spin_lock(&above->cst.spin);
+        if ((above->flags & HAMMER2_CORE_COUNTEDBREFS) == 0) {
+		if (base) {
+			while (--count >= 0) {
+				if (base[count].type)
+					break;
+			}
+			above->live_zero = count + 1;
+			while (count >= 0) {
+				if (base[count].type)
+					atomic_add_int(&above->live_count, 1);
+				--count;
+			}
+		}
+		/* else do not modify live_count */
+		atomic_set_int(&above->flags, HAMMER2_CORE_COUNTEDBREFS);
+	}
+	spin_unlock(&above->cst.spin);
+}
+
+/*
  * Resize the chain's physical storage allocation in-place.  This may
  * replace the passed-in chain with a new chain.
  *
@@ -1210,12 +1323,13 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	size_t boff;
 	void *bdata;
 
+	chain = *chainp;
+	hmp = chain->hmp;
+
 	/*
 	 * Data must be resolved if already assigned unless explicitly
 	 * flagged otherwise.
 	 */
-	chain = *chainp;
-	hmp = chain->hmp;
 	if (chain->data == NULL && (flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
 	    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
 		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
@@ -1470,35 +1584,74 @@ hammer2_modify_volume(hammer2_mount_t *hmp)
 }
 
 /*
- * Locate an in-memory chain.  The parent must be locked.  The in-memory
- * chain is returned with a reference and without a lock, or NULL
- * if not found.
+ * This function returns the chain at the nearest key within the specified
+ * range with the highest delete_tid.  The core spinlock must be held on
+ * call and the returned chain will be referenced but not locked.
  *
- * This function returns the chain at the specified index with the highest
- * delete_tid.  The caller must check whether the chain is flagged
- * CHAIN_DELETED or not.  However, because chain iterations can be removed
- * from memory we must ALSO check that DELETED chains are not flushed.  A
- * DELETED chain which has been flushed must be ignored (the caller must
- * check the parent's blockref array).
+ * The returned chain may or may not be in a deleted state.  Note that
+ * live chains have a delete_tid = MAX_TID.
  *
- * NOTE: If no chain is found the caller usually must check the on-media
- *	 array to determine if a blockref exists at the index.
+ * This function will recurse through chain->rbtree as necessary and will
+ * return a *key_nextp suitable for iteration.  *key_nextp is only set if
+ * the iteration value is less than the current value of *key_nextp.
+ *
+ * The caller should use (*key_nextp) to calculate the actual range of
+ * the returned element, which will be (key_beg to *key_nextp - 1).
+ *
+ * (*key_nextp) can be passed as key_beg in an iteration only while non-NULL
+ * chains continue to be returned.  On EOF (*key_nextp) may overflow since
+ * it will wind up being (key_end + 1).
  */
 struct hammer2_chain_find_info {
-	hammer2_chain_t *best;
-	hammer2_tid_t	delete_tid;
-	int index;
+	hammer2_chain_t		*best;
+	hammer2_key_t		key_beg;
+	hammer2_key_t		key_end;
+	hammer2_key_t		key_next;
 };
+
+static int hammer2_chain_find_cmp(hammer2_chain_t *child, void *data);
+static int hammer2_chain_find_callback(hammer2_chain_t *child, void *data);
+
+static
+hammer2_chain_t *
+hammer2_chain_find(hammer2_chain_t *parent, hammer2_key_t *key_nextp,
+			  hammer2_key_t key_beg, hammer2_key_t key_end)
+{
+	struct hammer2_chain_find_info info;
+	hammer2_chain_layer_t *layer;
+
+	info.best = NULL;
+	info.key_beg = key_beg;
+	info.key_end = key_end;
+	info.key_next = key_end + 1;	/* can overflow to 0 */
+
+/*
+	kprintf("chain_find: %p %016jx %016jx\n", parent, key_beg, key_end);
+*/
+	TAILQ_FOREACH(layer, &parent->core->layerq, entry) {
+		RB_SCAN(hammer2_chain_tree, &layer->rbtree,
+			hammer2_chain_find_cmp, hammer2_chain_find_callback,
+			&info);
+	}
+	if (info.key_next && (*key_nextp > info.key_next || *key_nextp == 0))
+		*key_nextp = info.key_next;
+	return (info.best);
+}
 
 static
 int
 hammer2_chain_find_cmp(hammer2_chain_t *child, void *data)
 {
 	struct hammer2_chain_find_info *info = data;
+	hammer2_key_t child_beg;
+	hammer2_key_t child_end;
 
-	if (child->index < info->index)
+	child_beg = child->bref.key;
+	child_end = child_beg + ((hammer2_key_t)1 << child->bref.keybits) - 1;
+
+	if (child_end < info->key_beg)
 		return(-1);
-	if (child->index > info->index)
+	if (child_beg > info->key_end)
 		return(1);
 	return(0);
 }
@@ -1508,163 +1661,101 @@ int
 hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
 {
 	struct hammer2_chain_find_info *info = data;
+	hammer2_chain_t *best;
+	hammer2_key_t child_end;
 
-	if (info->delete_tid < child->delete_tid) {
+	/*
+	 * NOTE: Can overflow to 0
+	 */
+	child_end = child->bref.key + ((hammer2_key_t)1 << child->bref.keybits);
+
+	/*
+	 * Skip deleted chains which have been flushed (MOVED no longer set),
+	 * causes caller to check blockref array.
+	 */
+	if ((child->flags & (HAMMER2_CHAIN_DELETED | HAMMER2_CHAIN_MOVED)) ==
+	    HAMMER2_CHAIN_DELETED) {
+		/* continue scan */
+		return(0);
+	}
+
+	/*
+	 * General cases
+	 */
+	if ((best = info->best) == NULL) {
 		/*
-		 * Normally the child with the larger delete_tid (which would
-		 * be MAX_TID if the child is not deleted) wins.  However, if
-		 * the child was deleted AND flushed (DELETED set and MOVED
-		 * no longer set), the parent bref is now valid and we don't
-		 * want the child to improperly shadow it.
+		 * No previous best.  Assign best
 		 */
-		if ((child->flags &
-		     (HAMMER2_CHAIN_DELETED | HAMMER2_CHAIN_MOVED)) !=
-		    HAMMER2_CHAIN_DELETED) {
-			info->delete_tid = child->delete_tid;
+		info->best = best = child;
+		info->key_next = child_end;
+	} else if (best->bref.key > info->key_beg &&
+		   child->bref.key < best->bref.key) {
+		/*
+		 * Choose child because it has a nearer key.
+		 * Adjust key_next downward.
+		 */
+		info->best = child;
+		if (info->key_next > best->bref.key || info->key_next == 0)
+			info->key_next = best->bref.key;
+		if (child_end && (info->key_next > child_end ||
+				  info->key_next == 0)) {
+			info->key_next = child_end;
+		}
+	} else if (child->bref.key > best->bref.key &&
+		   child->bref.key > info->key_beg) {
+		/*
+		 * Child has a further key, adjust key_next downward if
+		 * it has the same or better delete_tid.  Keep current best.
+		 */
+		if (best->delete_tid <= child->delete_tid) {
+			if (info->key_next > child->bref.key ||
+			    info->key_next == 0)
+				info->key_next = child->bref.key;
+		}
+	} else if (best->delete_tid < child->delete_tid) {
+		/*
+		 * Child has the same key_beg (capped at key_beg).
+		 * Choose child if it has a better delete_tid and
+		 * adjust key_next downward.  Otherwise keep current
+		 * best.
+		 */
+		if (best->delete_tid < child->delete_tid) {
 			info->best = child;
+			if (child_end && (info->key_next > child_end ||
+					  info->key_next == 0)) {
+				info->key_next = child_end;
+			}
 		}
 	}
 	return(0);
 }
 
-static
-hammer2_chain_t *
-hammer2_chain_find_locked(hammer2_chain_t *parent, int index)
-{
-	struct hammer2_chain_find_info info;
-	hammer2_chain_t *child;
-
-	info.index = index;
-	info.delete_tid = 0;
-	info.best = NULL;
-
-	RB_SCAN(hammer2_chain_tree, &parent->core->rbtree,
-		hammer2_chain_find_cmp, hammer2_chain_find_callback,
-		&info);
-	child = info.best;
-
-	return (child);
-}
-
-hammer2_chain_t *
-hammer2_chain_find(hammer2_chain_t *parent, int index)
-{
-	hammer2_chain_t *child;
-
-	spin_lock(&parent->core->cst.spin);
-	child = hammer2_chain_find_locked(parent, index);
-	if (child)
-		hammer2_chain_ref(child);
-	spin_unlock(&parent->core->cst.spin);
-
-	return (child);
-}
-
 /*
- * Return a locked chain structure with all associated data acquired.
- * (if LOOKUP_NOLOCK is requested the returned chain is only referenced).
+ * Retrieve the specified chain from a media blockref, creating the
+ * in-memory chain structure and setting HAMMER2_CHAIN_REPLACE to
+ * indicate that modifications must replace an existing bref in the
+ * block table.
+ *
+ * NULL is returned if the insertion races.
  *
  * Caller must hold the parent locked shared or exclusive since we may
  * need the parent's bref array to find our block.
- *
- * The returned child is locked as requested.  If NOLOCK, the returned
- * child is still at least referenced.
  */
 hammer2_chain_t *
-hammer2_chain_get(hammer2_chain_t *parent, int index, int flags)
+hammer2_chain_get(hammer2_chain_t *parent, hammer2_blockref_t *bref)
 {
-	hammer2_blockref_t *bref;
 	hammer2_mount_t *hmp = parent->hmp;
 	hammer2_chain_core_t *above = parent->core;
 	hammer2_chain_t *chain;
-	hammer2_chain_t dummy;
-	int how;
-
-	/*
-	 * Figure out how to lock.  MAYBE can be used to optimized
-	 * the initial-create state for indirect blocks.
-	 */
-	if (flags & HAMMER2_LOOKUP_ALWAYS)
-		how = HAMMER2_RESOLVE_ALWAYS;
-	else if (flags & (HAMMER2_LOOKUP_NODATA | HAMMER2_LOOKUP_NOLOCK))
-		how = HAMMER2_RESOLVE_NEVER;
-	else
-		how = HAMMER2_RESOLVE_MAYBE;
-	if (flags & (HAMMER2_LOOKUP_SHARED | HAMMER2_LOOKUP_NOLOCK))
-		how |= HAMMER2_RESOLVE_SHARED;
-
-retry:
-	/*
-	 * First see if we have a (possibly modified) chain element cached
-	 * for this (parent, index).  Acquire the data if necessary.
-	 *
-	 * If chain->data is non-NULL the chain should already be marked
-	 * modified.
-	 */
-	dummy.flags = 0;
-	dummy.index = index;
-	dummy.delete_tid = HAMMER2_MAX_TID;
-	spin_lock(&above->cst.spin);
-	chain = RB_FIND(hammer2_chain_tree, &above->rbtree, &dummy);
-	if (chain) {
-		hammer2_chain_ref(chain);
-		spin_unlock(&above->cst.spin);
-		if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0)
-			hammer2_chain_lock(chain, how | HAMMER2_RESOLVE_NOREF);
-		return(chain);
-	}
-	spin_unlock(&above->cst.spin);
-
-	/*
-	 * The parent chain must not be in the INITIAL state.
-	 */
-	if (parent->flags & HAMMER2_CHAIN_INITIAL) {
-		panic("hammer2_chain_get: Missing bref(1)");
-		/* NOT REACHED */
-	}
-
-	/*
-	 * No RBTREE entry found, lookup the bref and issue I/O (switch on
-	 * the parent's bref to determine where and how big the array is).
-	 */
-	switch(parent->bref.type) {
-	case HAMMER2_BREF_TYPE_INODE:
-		KKASSERT(index >= 0 && index < HAMMER2_SET_COUNT);
-		bref = &parent->data->ipdata.u.blockset.blockref[index];
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		KKASSERT(parent->data != NULL);
-		KKASSERT(index >= 0 &&
-			 index < parent->bytes / sizeof(hammer2_blockref_t));
-		bref = &parent->data->npdata[index];
-		break;
-	case HAMMER2_BREF_TYPE_VOLUME:
-		KKASSERT(index >= 0 && index < HAMMER2_SET_COUNT);
-		bref = &hmp->voldata.sroot_blockset.blockref[index];
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP:
-		KKASSERT(index >= 0 && index < HAMMER2_SET_COUNT);
-		bref = &hmp->voldata.freemap_blockset.blockref[index];
-		break;
-	default:
-		bref = NULL;
-		panic("hammer2_chain_get: unrecognized blockref type: %d",
-		      parent->bref.type);
-	}
-	if (bref->type == 0) {
-		panic("hammer2_chain_get: Missing bref(2)");
-		/* NOT REACHED */
-	}
 
 	/*
 	 * Allocate a chain structure representing the existing media
 	 * entry.  Resulting chain has one ref and is not locked.
-	 *
-	 * The locking operation we do later will issue I/O to read it.
 	 */
 	chain = hammer2_chain_alloc(hmp, parent->pmp, NULL, bref);
-	hammer2_chain_core_alloc(chain, NULL);	/* ref'd chain returned */
+	hammer2_chain_core_alloc(NULL, chain, NULL);
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_REPLACE);
+	/* ref'd chain returned */
 
 	/*
 	 * Link the chain into its parent.  A spinlock is required to safely
@@ -1673,29 +1764,17 @@ retry:
 	 * a shared lock on the parent.
 	 */
 	KKASSERT(parent->refs > 0);
-	spin_lock(&above->cst.spin);
-	chain->above = above;
-	chain->index = index;
-	if (RB_INSERT(hammer2_chain_tree, &above->rbtree, chain)) {
-		chain->above = NULL;
-		chain->index = -1;
-		spin_unlock(&above->cst.spin);
+	hammer2_chain_insert(above, chain, HAMMER2_CHAIN_INSERT_SPIN |
+					   HAMMER2_CHAIN_INSERT_RACE);
+	if ((chain->flags & HAMMER2_CHAIN_ONRBTREE) == 0) {
+		kprintf("chain not on RBTREE\n");
 		hammer2_chain_drop(chain);
-		goto retry;
+		chain = NULL;
 	}
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
-	spin_unlock(&above->cst.spin);
 
 	/*
-	 * Our new chain is referenced but NOT locked.  Lock the chain
-	 * below.  The locking operation also resolves its data.
-	 *
-	 * If NOLOCK is set the release will release the one-and-only lock.
+	 * Return our new chain referenced but not locked.
 	 */
-	if ((flags & HAMMER2_LOOKUP_NOLOCK) == 0) {
-		hammer2_chain_lock(chain, how);	/* recusive lock */
-		hammer2_chain_drop(chain);	/* excess ref */
-	}
 	return (chain);
 }
 
@@ -1733,9 +1812,9 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 	above = oparent->above;
 
 	spin_lock(&above->cst.spin);
-	nparent = above->first_parent;
+	nparent = TAILQ_FIRST(&above->ownerq);
 	while (hammer2_chain_refactor_test(nparent, 1))
-		nparent = nparent->next_parent;
+		nparent = TAILQ_NEXT(nparent, core_entry);
 	hammer2_chain_ref(nparent);	/* protect nparent, use in lock */
 	spin_unlock(&above->cst.spin);
 
@@ -1747,15 +1826,10 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 }
 
 /*
- * Locate any key between key_beg and key_end inclusive.  (*parentp)
- * typically points to an inode but can also point to a related indirect
- * block and this function will recurse upwards and find the inode again.
- *
- * WARNING!  THIS DOES NOT RETURN KEYS IN LOGICAL KEY ORDER!  ANY KEY
- *	     WITHIN THE RANGE CAN BE RETURNED.  HOWEVER, AN ITERATION
- *	     WHICH PICKS UP WHERE WE LEFT OFF WILL CONTINUE THE SCAN
- *	     AND ALL IN-RANGE KEYS WILL EVENTUALLY BE RETURNED (NOT
- *	     NECESSARILY IN ORDER).
+ * Locate the first chain whos key range overlaps (key_beg, key_end) inclusive.
+ * (*parentp) typically points to an inode but can also point to a related
+ * indirect block and this function will recurse upwards and find the inode
+ * again.
  *
  * (*parentp) must be exclusively locked and referenced and can be an inode
  * or an existing indirect block within the inode.
@@ -1771,6 +1845,9 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
  * NULL is returned if no match was found, but (*parentp) will still
  * potentially be adjusted.
  *
+ * On return (*key_nextp) will point to an iterative value for key_beg.
+ * (If NULL is returned (*key_nextp) is set to key_end).
+ *
  * This function will also recurse up the chain if the key is not within the
  * current parent's range.  (*parentp) can never be set to NULL.  An iteration
  * can simply allow (*parentp) to float inside the loop.
@@ -1782,34 +1859,45 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
  *	  buffer).
  */
 hammer2_chain_t *
-hammer2_chain_lookup(hammer2_chain_t **parentp,
+hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		     hammer2_key_t key_beg, hammer2_key_t key_end,
-		     int flags)
+		     int *cache_indexp, int flags)
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
-	hammer2_chain_t *tmp;
 	hammer2_blockref_t *base;
-	hammer2_blockref_t *bref;
+	hammer2_blockref_t getref;
 	hammer2_key_t scan_beg;
 	hammer2_key_t scan_end;
+	hammer2_chain_core_t *above;
 	int count = 0;
 	int i;
 	int how_always = HAMMER2_RESOLVE_ALWAYS;
 	int how_maybe = HAMMER2_RESOLVE_MAYBE;
+	int how;
 
-	if (flags & HAMMER2_LOOKUP_ALWAYS)
+	if (flags & HAMMER2_LOOKUP_ALWAYS) {
 		how_maybe = how_always;
-
+		how = HAMMER2_RESOLVE_ALWAYS;
+	} else if (flags & (HAMMER2_LOOKUP_NODATA | HAMMER2_LOOKUP_NOLOCK)) {
+		how = HAMMER2_RESOLVE_NEVER;
+	} else {
+		how = HAMMER2_RESOLVE_MAYBE;
+	}
 	if (flags & (HAMMER2_LOOKUP_SHARED | HAMMER2_LOOKUP_NOLOCK)) {
 		how_maybe |= HAMMER2_RESOLVE_SHARED;
 		how_always |= HAMMER2_RESOLVE_SHARED;
+		how |= HAMMER2_RESOLVE_SHARED;
 	}
 
 	/*
 	 * Recurse (*parentp) upward if necessary until the parent completely
 	 * encloses the key range or we hit the inode.
+	 *
+	 * This function handles races against the flusher doing a delete-
+	 * duplicate above us and re-homes the parent to the duplicate in
+	 * that case, otherwise we'd wind up recursing down a stale chain.
 	 */
 	parent = *parentp;
 	hmp = parent->hmp;
@@ -1843,6 +1931,7 @@ again:
 				hammer2_chain_ref(parent);
 			else
 				hammer2_chain_lock(parent, how_always);
+			*key_nextp = key_end + 1;
 			return (parent);
 		}
 		base = &parent->data->ipdata.u.blockset.blockref[0];
@@ -1860,6 +1949,7 @@ again:
 			if (key_beg == scan_beg && key_end == scan_end) {
 				chain = parent;
 				hammer2_chain_lock(chain, how_maybe);
+				*key_nextp = scan_end + 1;
 				goto done;
 			}
 		}
@@ -1892,62 +1982,95 @@ again:
 	}
 
 	/*
-	 * If the element and key overlap we use the element.
+	 * Merged scan to find next candidate.
 	 *
-	 * NOTE! Deleted elements are effectively invisible.  Deletions
-	 *	 proactively clear the parent bref to the deleted child
-	 *	 so we do not try to shadow here to avoid parent updates
-	 *	 (which would be difficult since multiple deleted elements
-	 *	 might represent different flush synchronization points).
+	 * hammer2_base_*() functions require the above->live_* fields
+	 * to be synchronized.
+	 *
+	 * We need to hold the spinlock to access the block array and RB tree
+	 * and to interlock chain creation.
 	 */
-	bref = NULL;
-	scan_beg = 0;	/* avoid compiler warning */
-	scan_end = 0;	/* avoid compiler warning */
+	above = parent->core;
+	if ((above->flags & HAMMER2_CORE_COUNTEDBREFS) == 0)
+		hammer2_chain_countbrefs(above, base, count);
+	spin_lock(&above->cst.spin);
 
-	for (i = 0; i < count; ++i) {
-		tmp = hammer2_chain_find(parent, i);
-		if (tmp) {
-			if (tmp->flags & HAMMER2_CHAIN_DELETED) {
-				hammer2_chain_drop(tmp);
-				continue;
-			}
-			bref = &tmp->bref;
-			KKASSERT(bref->type != 0);
-		} else if (base == NULL || base[i].type == 0) {
-			continue;
-		} else {
-			bref = &base[i];
-		}
-		scan_beg = bref->key;
-		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
-		if (tmp)
-			hammer2_chain_drop(tmp);
-		if (key_beg <= scan_end && key_end >= scan_beg)
-			break;
-	}
+	/*
+	 * (i) is set to (count) on failure.  Otherwise the element at
+	 * base[i] points to an entry >= key_beg.
+	 */
+	*key_nextp = key_end + 1;
+	i = hammer2_base_find(base, count, above, cache_indexp,
+			      key_nextp, key_beg);
+	chain = hammer2_chain_find(parent, key_nextp, key_beg, key_end);
+
+	if (i != count && base[i].key > key_end)
+		i = count;
+
 	if (i == count) {
-		if (key_beg == key_end)
-			return (NULL);
-		return (hammer2_chain_next(parentp, NULL,
-					   key_beg, key_end, flags));
+		/*
+		 * Nothing in block array, select the chain
+		 */
+		if (chain)
+			hammer2_chain_ref(chain);
+		spin_unlock(&above->cst.spin);
+	} else if (chain == NULL || base[i].key < chain->bref.key) {
+		/*
+		 * RBTREE is empty or Nearest key is in block array.
+		 *
+		 * chain returns NULL on insertion race.
+		 */
+		getref = base[i];
+		spin_unlock(&above->cst.spin);
+		chain = hammer2_chain_get(parent, &getref);
+		if (chain == NULL)
+			goto again;	/* retry */
+		if (bcmp(&base[i], &getref, sizeof(getref)) != 0) {
+			hammer2_chain_drop(chain);
+			goto again;	/* retry */
+		}
+	} else {
+		/*
+		 * Chain overrides base[i] or nearest key is chain
+		 */
+		if (chain)
+			hammer2_chain_ref(chain);
+		spin_unlock(&above->cst.spin);
 	}
 
 	/*
-	 * Acquire the new chain element.  If the chain element is an
-	 * indirect block we must search recursively.
+	 * Exhausted parent chain, iterate.
 	 *
-	 * It is possible for the tmp chain above to be removed from
-	 * the RBTREE but the parent lock ensures it would not have been
-	 * destroyed from the media, so the chain_get() code will simply
-	 * reload it from the media in that case.
+	 * (cannot use *key_nextp on exhaustion, see special case in
+	 *  hammer2_chain_next())
 	 */
-	chain = hammer2_chain_get(parent, i, flags);
-	if (chain == NULL)
-		return (NULL);
+	if (chain == NULL) {
+		if (key_beg == key_end)	/* short cut single-key case */
+			return (NULL);
+		return (hammer2_chain_next(parentp, NULL, key_nextp,
+					   key_beg, key_end,
+					   cache_indexp, flags));
+	}
+
+	/*
+	 * Skip deleted chains (XXX cache 'i' end-of-block-array? XXX)
+	 *
+	 * NOTE: chain's key range is not relevant as there might be
+	 *	 one-offs within the range that are not deleted.
+	 */
+	if (chain->flags & HAMMER2_CHAIN_DELETED) {
+		hammer2_chain_drop(chain);
+		key_beg = *key_nextp;
+		if (key_beg == 0 || key_beg > key_end)
+			return(NULL);
+		goto again;
+	}
 
 	/*
 	 * If the chain element is an indirect block it becomes the new
-	 * parent and we loop on it.
+	 * parent and we loop on it.  We must maintain our top-down locks
+	 * to prevent the flusher from interfering (i.e. doing a
+	 * delete-duplicate and leaving us recursing down a deleted chain).
 	 *
 	 * The parent always has to be locked with at least RESOLVE_MAYBE
 	 * so we can access its data.  It might need a fixup if the caller
@@ -1961,22 +2084,18 @@ again:
 	 */
 	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
 	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
+		hammer2_chain_lock(chain, how_maybe | HAMMER2_RESOLVE_NOREF);
 		hammer2_chain_unlock(parent);
 		*parentp = parent = chain;
-		if (flags & HAMMER2_LOOKUP_NOLOCK) {
-			hammer2_chain_lock(chain,
-					   how_maybe |
-					   HAMMER2_RESOLVE_NOREF);
-		} else if ((flags & HAMMER2_LOOKUP_NODATA) &&
-			   chain->data == NULL) {
-			hammer2_chain_ref(chain);
-			hammer2_chain_unlock(chain);
-			hammer2_chain_lock(chain,
-					   how_maybe |
-					   HAMMER2_RESOLVE_NOREF);
-		}
+#if 0
+		hammer2_chain_unlock(parent);
+		*parentp = parent = chain;
+		hammer2_chain_lock(chain, how_maybe | HAMMER2_RESOLVE_NOREF);
+#endif
 		goto again;
 	}
+
+	hammer2_chain_lock(chain, how | HAMMER2_RESOLVE_NOREF);
 done:
 	/*
 	 * All done, return the chain
@@ -1999,38 +2118,28 @@ done:
  */
 hammer2_chain_t *
 hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
+		   hammer2_key_t *key_nextp,
 		   hammer2_key_t key_beg, hammer2_key_t key_end,
-		   int flags)
+		   int *cache_indexp, int flags)
 {
-	hammer2_mount_t *hmp;
 	hammer2_chain_t *parent;
-	hammer2_chain_t *tmp;
-	hammer2_blockref_t *base;
-	hammer2_blockref_t *bref;
-	hammer2_key_t scan_beg;
-	hammer2_key_t scan_end;
-	int i;
-	int how_maybe = HAMMER2_RESOLVE_MAYBE;
-	int count;
+	int how_maybe;
 
+	/*
+	 * Calculate locking flags for upward recursion.
+	 */
+	how_maybe = HAMMER2_RESOLVE_MAYBE;
 	if (flags & (HAMMER2_LOOKUP_SHARED | HAMMER2_LOOKUP_NOLOCK))
 		how_maybe |= HAMMER2_RESOLVE_SHARED;
 
 	parent = *parentp;
-	hmp = parent->hmp;
 
-again:
 	/*
 	 * Calculate the next index and recalculate the parent if necessary.
 	 */
 	if (chain) {
-		/*
-		 * Continue iteration within current parent.  If not NULL
-		 * the passed-in chain may or may not be locked, based on
-		 * the LOOKUP_NOLOCK flag (passed in as returned from lookup
-		 * or a prior next).
-		 */
-		i = chain->index + 1;
+		key_beg = chain->bref.key +
+			  ((hammer2_key_t)1 << chain->bref.keybits);
 		if (flags & HAMMER2_LOOKUP_NOLOCK)
 			hammer2_chain_drop(chain);
 		else
@@ -2041,6 +2150,8 @@ again:
 		 * in the inode has an invalid index and must terminate.
 		 */
 		if (chain == parent)
+			return(NULL);
+		if (key_beg == 0 || key_beg > key_end)
 			return(NULL);
 		chain = NULL;
 	} else if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT &&
@@ -2054,259 +2165,19 @@ again:
 		 * Continue iteration with next parent unless the current
 		 * parent covers the range.
 		 */
-		scan_beg = parent->bref.key;
-		scan_end = scan_beg +
-			    ((hammer2_key_t)1 << parent->bref.keybits) - 1;
-		if (key_beg >= scan_beg && key_end <= scan_end)
+		key_beg = parent->bref.key +
+			  ((hammer2_key_t)1 << parent->bref.keybits);
+		if (key_beg == 0 || key_beg > key_end)
 			return (NULL);
-
-		i = parent->index + 1;
 		parent = hammer2_chain_getparent(parentp, how_maybe);
 	}
 
-again2:
 	/*
-	 * Locate the blockref array.  Currently we do a fully associative
-	 * search through the array.
+	 * And execute
 	 */
-	switch(parent->bref.type) {
-	case HAMMER2_BREF_TYPE_INODE:
-		base = &parent->data->ipdata.u.blockset.blockref[0];
-		count = HAMMER2_SET_COUNT;
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		if (parent->flags & HAMMER2_CHAIN_INITIAL) {
-			base = NULL;
-		} else {
-			KKASSERT(parent->data != NULL);
-			base = &parent->data->npdata[0];
-		}
-		count = parent->bytes / sizeof(hammer2_blockref_t);
-		break;
-	case HAMMER2_BREF_TYPE_VOLUME:
-		base = &hmp->voldata.sroot_blockset.blockref[0];
-		count = HAMMER2_SET_COUNT;
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP:
-		base = &hmp->voldata.freemap_blockset.blockref[0];
-		count = HAMMER2_SET_COUNT;
-		break;
-	default:
-		panic("hammer2_chain_next: unrecognized blockref type: %d",
-		      parent->bref.type);
-		base = NULL;	/* safety */
-		count = 0;	/* safety */
-		break;
-	}
-	KKASSERT(i <= count);
-
-	/*
-	 * Look for the key.  If we are unable to find a match and an exact
-	 * match was requested we return NULL.  If a range was requested we
-	 * run hammer2_chain_next() to iterate.
-	 *
-	 * NOTE! Deleted elements are effectively invisible.  Deletions
-	 *	 proactively clear the parent bref to the deleted child
-	 *	 so we do not try to shadow here to avoid parent updates
-	 *	 (which would be difficult since multiple deleted elements
-	 *	 might represent different flush synchronization points).
-	 */
-	bref = NULL;
-	scan_beg = 0;	/* avoid compiler warning */
-	scan_end = 0;	/* avoid compiler warning */
-
-	while (i < count) {
-		tmp = hammer2_chain_find(parent, i);
-		if (tmp) {
-			if (tmp->flags & HAMMER2_CHAIN_DELETED) {
-				hammer2_chain_drop(tmp);
-				++i;
-				continue;
-			}
-			bref = &tmp->bref;
-		} else if (base == NULL || base[i].type == 0) {
-			++i;
-			continue;
-		} else {
-			bref = &base[i];
-		}
-		scan_beg = bref->key;
-		scan_end = scan_beg + ((hammer2_key_t)1 << bref->keybits) - 1;
-		if (tmp)
-			hammer2_chain_drop(tmp);
-		if (key_beg <= scan_end && key_end >= scan_beg)
-			break;
-		++i;
-	}
-
-	/*
-	 * If we couldn't find a match recurse up a parent to continue the
-	 * search.
-	 */
-	if (i == count)
-		goto again;
-
-	/*
-	 * Acquire the new chain element.  If the chain element is an
-	 * indirect block we must search recursively.
-	 */
-	chain = hammer2_chain_get(parent, i, flags);
-	if (chain == NULL)
-		return (NULL);
-
-	/*
-	 * If the chain element is an indirect block it becomes the new
-	 * parent and we loop on it.
-	 *
-	 * The parent always has to be locked with at least RESOLVE_MAYBE
-	 * so we can access its data.  It might need a fixup if the caller
-	 * passed incompatible flags.  Be careful not to cause a deadlock
-	 * as a data-load requires an exclusive lock.
-	 *
-	 * If HAMMER2_LOOKUP_MATCHIND is set and the indirect block's key
-	 * range is within the requested key range we return the indirect
-	 * block and do NOT loop.  This is usually only used to acquire
-	 * freemap nodes.
-	 */
-	if (chain->bref.type == HAMMER2_BREF_TYPE_INDIRECT ||
-	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
-		if ((flags & HAMMER2_LOOKUP_MATCHIND) == 0 ||
-		    key_beg > scan_beg || key_end < scan_end) {
-			hammer2_chain_unlock(parent);
-			*parentp = parent = chain;
-			chain = NULL;
-			if (flags & HAMMER2_LOOKUP_NOLOCK) {
-				hammer2_chain_lock(parent,
-						   how_maybe |
-						   HAMMER2_RESOLVE_NOREF);
-			} else if ((flags & HAMMER2_LOOKUP_NODATA) &&
-				   parent->data == NULL) {
-				hammer2_chain_ref(parent);
-				hammer2_chain_unlock(parent);
-				hammer2_chain_lock(parent,
-						   how_maybe |
-						   HAMMER2_RESOLVE_NOREF);
-			}
-			i = 0;
-			goto again2;
-		}
-	}
-
-	/*
-	 * All done, return chain
-	 */
-	return (chain);
-}
-
-/*
- * Loop on parent's children, issuing the callback for each child.
- *
- * Uses LOOKUP flags.
- */
-int
-hammer2_chain_iterate(hammer2_chain_t *parent,
-		      int (*callback)(hammer2_chain_t *parent,
-				      hammer2_chain_t **chainp,
-				      void *arg),
-		      void *arg, int flags)
-{
-	hammer2_chain_t *chain;
-	hammer2_blockref_t *base;
-	int count;
-	int i;
-	int res;
-
-	/*
-	 * Scan the children (if any)
-	 */
-	res = 0;
-	i = 0;
-	for (;;) {
-		/*
-		 * Calculate the blockref array on each loop in order
-		 * to allow the callback to temporarily unlock/relock
-		 * the parent.
-		 */
-		switch(parent->bref.type) {
-		case HAMMER2_BREF_TYPE_INODE:
-			base = &parent->data->ipdata.u.blockset.blockref[0];
-			count = HAMMER2_SET_COUNT;
-			break;
-		case HAMMER2_BREF_TYPE_INDIRECT:
-		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-			if (parent->flags & HAMMER2_CHAIN_INITIAL) {
-				base = NULL;
-			} else {
-				KKASSERT(parent->data != NULL);
-				base = &parent->data->npdata[0];
-			}
-			count = parent->bytes / sizeof(hammer2_blockref_t);
-			break;
-		case HAMMER2_BREF_TYPE_VOLUME:
-			base = &parent->hmp->voldata.sroot_blockset.blockref[0];
-			count = HAMMER2_SET_COUNT;
-			break;
-		case HAMMER2_BREF_TYPE_FREEMAP:
-			base = &parent->hmp->voldata.freemap_blockset.blockref[0];
-			count = HAMMER2_SET_COUNT;
-			break;
-		default:
-			/*
-			 * The function allows calls on non-recursive
-			 * chains and will effectively be a nop() in that
-			 * case.
-			 */
-			base = NULL;
-			count = 0;
-			break;
-		}
-
-		/*
-		 * Loop termination
-		 */
-		if (i >= count)
-			break;
-
-		/*
-		 * Lookup the child, properly overloading any elements
-		 * held in memory.
-		 *
-		 * NOTE: Deleted elements cover any underlying base[] entry
-		 *	 (which might not have been zero'd out yet).
-		 *
-		 * NOTE: The fact that there can be multiple stacked
-		 *	 deleted elements at the same index is hidden
-		 *	 by hammer2_chain_find().
-		 */
-		chain = hammer2_chain_find(parent, i);
-		if (chain) {
-			if (chain->flags & HAMMER2_CHAIN_DELETED) {
-				hammer2_chain_drop(chain);
-				++i;
-				continue;
-			}
-		} else if (base == NULL || base[i].type == 0) {
-			++i;
-			continue;
-		}
-		if (chain)
-			hammer2_chain_drop(chain);
-		chain = hammer2_chain_get(parent, i, flags);
-		if (chain) {
-			res = callback(parent, &chain, arg);
-			if (chain) {
-				if (flags & HAMMER2_LOOKUP_NOLOCK)
-					hammer2_chain_drop(chain);
-				else
-					hammer2_chain_unlock(chain);
-			}
-			if (res < 0)
-				break;
-		}
-		++i;
-	}
-	return res;
+	return (hammer2_chain_lookup(parentp, key_nextp,
+				     key_beg, key_end,
+				     cache_indexp, flags));
 }
 
 /*
@@ -2340,15 +2211,13 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *chain;
-	hammer2_chain_t *child;
 	hammer2_chain_t *parent = *parentp;
 	hammer2_chain_core_t *above;
-	hammer2_blockref_t dummy;
 	hammer2_blockref_t *base;
+	hammer2_blockref_t dummy;
 	int allocated = 0;
 	int error = 0;
 	int count;
-	int i;
 
 	above = parent->core;
 	KKASSERT(ccms_thread_lock_owned(&above->cst));
@@ -2368,7 +2237,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		dummy.data_off = hammer2_getradix(bytes);
 		dummy.methods = parent->bref.methods;
 		chain = hammer2_chain_alloc(hmp, parent->pmp, trans, &dummy);
-		hammer2_chain_core_alloc(chain, NULL);
+		hammer2_chain_core_alloc(trans, chain, NULL);
 
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 
@@ -2434,12 +2303,13 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		KKASSERT(chain->above == NULL);
 	}
 
+	/*
+	 * Calculate how many entries we have in the blockref array and
+	 * determine if an indirect block is required.
+	 */
 again:
 	above = parent->core;
 
-	/*
-	 * Locate a free blockref in the parent's array
-	 */
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
 		KKASSERT((parent->data->ipdata.op_flags &
@@ -2450,12 +2320,10 @@ again:
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-		if (parent->flags & HAMMER2_CHAIN_INITIAL) {
+		if (parent->flags & HAMMER2_CHAIN_INITIAL)
 			base = NULL;
-		} else {
-			KKASSERT(parent->data != NULL);
+		else
 			base = &parent->data->npdata[0];
-		}
 		count = parent->bytes / sizeof(hammer2_blockref_t);
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
@@ -2471,44 +2339,29 @@ again:
 	default:
 		panic("hammer2_chain_create: unrecognized blockref type: %d",
 		      parent->bref.type);
+		base = NULL;
 		count = 0;
 		break;
 	}
 
 	/*
-	 * Scan for an unallocated bref, also skipping any slots occupied
-	 * by in-memory chain elements that may not yet have been updated
-	 * in the parent's bref array.
-	 *
-	 * We don't have to hold the spinlock to save an empty slot as
-	 * new slots can only transition from empty if the parent is
-	 * locked exclusively.
+	 * Make sure we've counted the brefs
 	 */
-	spin_lock(&above->cst.spin);
-	for (i = 0; i < count; ++i) {
-		child = hammer2_chain_find_locked(parent, i);
-		if (child) {
-			if (child->flags & HAMMER2_CHAIN_DELETED)
-				break;
-			continue;
-		}
-		if (base == NULL)
-			break;
-		if (base[i].type == 0)
-			break;
-	}
-	spin_unlock(&above->cst.spin);
+	if ((above->flags & HAMMER2_CORE_COUNTEDBREFS) == 0)
+		hammer2_chain_countbrefs(above, base, count);
+
+	KKASSERT(above->live_count >= 0 && above->live_count <= count);
 
 	/*
 	 * If no free blockref could be found we must create an indirect
 	 * block and move a number of blockrefs into it.  With the parent
-	 * locked we can safely lock each child in order to move it without
-	 * causing a deadlock.
+	 * locked we can safely lock each child in order to delete+duplicate
+	 * it without causing a deadlock.
 	 *
 	 * This may return the new indirect block or the old parent depending
 	 * on where the key falls.  NULL is returned on error.
 	 */
-	if (i == count) {
+	if (above->live_count == count) {
 		hammer2_chain_t *nparent;
 
 		nparent = hammer2_chain_create_indirect(trans, parent,
@@ -2536,14 +2389,8 @@ again:
 		panic("hammer2: hammer2_chain_create: chain already connected");
 	KKASSERT(chain->above == NULL);
 	KKASSERT((chain->flags & HAMMER2_CHAIN_DELETED) == 0);
-
-	chain->above = above;
-	chain->index = i;
-	spin_lock(&above->cst.spin);
-	if (RB_INSERT(hammer2_chain_tree, &above->rbtree, chain))
-		panic("hammer2_chain_create: collision");
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
-	spin_unlock(&above->cst.spin);
+	hammer2_chain_insert(above, chain, HAMMER2_CHAIN_INSERT_SPIN |
+					   HAMMER2_CHAIN_INSERT_LIVE);
 
 	if (allocated) {
 		/*
@@ -2607,10 +2454,10 @@ done:
  * the new chain becoming the 'current' chain (meaning it is the first in
  * the linked list at core->chain_first).
  *
- * If (parent, i) then the new duplicated chain is inserted under the parent
- * at the specified index (the parent must not have a ref at that index).
+ * If (parent) is non-NULL then the new duplicated chain is inserted under
+ * the parent.
  *
- * If (NULL, -1) then the new duplicated chain is not inserted anywhere,
+ * If (parent) is NULL then the new duplicated chain is not inserted anywhere,
  * similar to if it had just been chain_alloc()'d (suitable for passing into
  * hammer2_chain_create() after this function returns).
  *
@@ -2623,14 +2470,13 @@ static void hammer2_chain_dup_fixup(hammer2_chain_t *ochain,
 				    hammer2_chain_t *nchain);
 
 void
-hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
+hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			hammer2_chain_t **chainp, hammer2_blockref_t *bref)
 {
 	hammer2_mount_t *hmp;
 	hammer2_blockref_t *base;
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *nchain;
-	hammer2_chain_t *scan;
 	hammer2_chain_core_t *above;
 	size_t bytes;
 	int count;
@@ -2647,18 +2493,20 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 	if (bref == NULL)
 		bref = &ochain->bref;
 	nchain = hammer2_chain_alloc(hmp, ochain->pmp, trans, bref);
-	hammer2_chain_core_alloc(nchain, ochain->core);
+	hammer2_chain_core_alloc(trans, nchain, ochain);
 	bytes = (hammer2_off_t)1 <<
 		(int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	nchain->bytes = bytes;
 	nchain->modify_tid = ochain->modify_tid;
 
-	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER);
+	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER |
+				   HAMMER2_RESOLVE_NOREF);
 	hammer2_chain_dup_fixup(ochain, nchain);
+	/* nchain has 1 ref */
 
 	/*
-	 * If parent is not NULL, insert into the parent at the requested
-	 * index.  The newly duplicated chain must be marked MOVED and
+	 * If parent is not NULL, insert the duplicated chain into the
+	 * parent.  The newly duplicated chain must be marked MOVED and
 	 * SUBMODIFIED set in its parent(s).
 	 *
 	 * Having both chains locked is extremely important for atomicy.
@@ -2705,24 +2553,11 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 			count = 0;
 			break;
 		}
-		KKASSERT(i >= 0 && i < count);
 
 		KKASSERT((nchain->flags & HAMMER2_CHAIN_DELETED) == 0);
 		KKASSERT(parent->refs > 0);
-
-		spin_lock(&above->cst.spin);
-		nchain->above = above;
-		nchain->index = i;
-		scan = hammer2_chain_find_locked(parent, i);
-		KKASSERT(base == NULL || base[i].type == 0 ||
-			 scan == NULL ||
-			 (scan->flags & HAMMER2_CHAIN_DELETED));
-		if (RB_INSERT(hammer2_chain_tree, &above->rbtree,
-			      nchain)) {
-			panic("hammer2_chain_duplicate: collision");
-		}
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_ONRBTREE);
-		spin_unlock(&above->cst.spin);
+		hammer2_chain_insert(above, nchain, HAMMER2_CHAIN_INSERT_SPIN |
+						    HAMMER2_CHAIN_INSERT_LIVE);
 
 		if ((nchain->flags & HAMMER2_CHAIN_MOVED) == 0) {
 			hammer2_chain_ref(nchain);
@@ -2751,6 +2586,10 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 	 *	     we currently do not have the logical buffer cache
 	 *	     buffer in-hand to fix its cached physical offset
 	 *	     we also force the modify code to not COW it. XXX
+	 *
+	 * WARNING!  nchain should have only one manual ref plus additional
+	 *	     refs related to flags or the hammer2_chain_modify()
+	 *	     replacement could leave a ref hanging.
 	 */
 	if (oflags & HAMMER2_CHAIN_MODIFIED) {
 		if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
@@ -2766,15 +2605,13 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 			hammer2_chain_modify(trans, &nchain,
 					     HAMMER2_MODIFY_ASSERTNOCOPY);
 		}
-		hammer2_chain_drop(nchain);
 	} else {
 		if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
-			hammer2_chain_drop(nchain);
+			;
 		} else if (oflags & HAMMER2_CHAIN_INITIAL) {
-			hammer2_chain_drop(nchain);
+			;
 		} else {
-			hammer2_chain_lock(nchain, HAMMER2_RESOLVE_ALWAYS |
-						   HAMMER2_RESOLVE_NOREF);
+			hammer2_chain_lock(nchain, HAMMER2_RESOLVE_ALWAYS);
 			hammer2_chain_unlock(nchain);
 		}
 	}
@@ -2783,6 +2620,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent, int i,
 }
 
 #if 0
+
 		/*
 		 * When the chain is in the INITIAL state we must still
 		 * ensure that a block has been assigned so MOVED processing
@@ -2826,8 +2664,8 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	hmp = ochain->hmp;
 
 	/*
-	 * Shortcut DELETED case if possible (only if delete_tid already matches the
-	 * transaction id).
+	 * Shortcut DELETED case if possible (only if delete_tid already
+	 * matches the transaction id).
 	 */
 	if ((oflags & HAMMER2_CHAIN_DELETED) &&
 	    ochain->delete_tid == trans->sync_tid) {
@@ -2835,13 +2673,14 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	}
 
 	/*
-	 * First create a duplicate of the chain structure
+	 * First create a duplicate of the chain structure.
+	 * (nchain is allocated with one ref).
 	 */
-	nchain = hammer2_chain_alloc(hmp, ochain->pmp, trans, &ochain->bref);    /* 1 ref */
+	nchain = hammer2_chain_alloc(hmp, ochain->pmp, trans, &ochain->bref);
 	if (flags & HAMMER2_DELDUP_RECORE)
-		hammer2_chain_core_alloc(nchain, NULL);
+		hammer2_chain_core_alloc(trans, nchain, NULL);
 	else
-		hammer2_chain_core_alloc(nchain, ochain->core);
+		hammer2_chain_core_alloc(trans, nchain, ochain);
 	above = ochain->above;
 
 	bytes = (hammer2_off_t)1 <<
@@ -2865,8 +2704,6 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	hammer2_chain_dup_fixup(ochain, nchain);
 	/* extra ref still present from original allocation */
 
-	nchain->index = ochain->index;
-
 	KKASSERT(ochain->flags & HAMMER2_CHAIN_ONRBTREE);
 	spin_lock(&above->cst.spin);
 	KKASSERT(ochain->flags & HAMMER2_CHAIN_ONRBTREE);
@@ -2874,19 +2711,17 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	if (oflags & HAMMER2_CHAIN_DELETED) {
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_DELETED);
 		nchain->delete_tid = trans->sync_tid;
+		/*nchain->delete_gen = ++trans->delete_gen;*/
 	} else {
-		RB_REMOVE(hammer2_chain_tree, &above->rbtree, ochain);
 		ochain->delete_tid = trans->sync_tid;
+		/*ochain->delete_gen = ++trans->delete_gen;*/
 		atomic_set_int(&ochain->flags, HAMMER2_CHAIN_DELETED);
-		if (RB_INSERT(hammer2_chain_tree, &above->rbtree, ochain))
-			panic("chain_delete: reinsertion failed %p", ochain);
+		atomic_add_int(&above->live_count, -1);
 	}
 
-	nchain->above = above;
-	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_ONRBTREE);
-	if (RB_INSERT(hammer2_chain_tree, &above->rbtree, nchain)) {
-		panic("hammer2_chain_delete_duplicate: collision");
-	}
+	hammer2_chain_insert(above, nchain,
+			     ((oflags & HAMMER2_CHAIN_DELETED) ?
+				0: HAMMER2_CHAIN_INSERT_LIVE));
 
 	if ((ochain->flags & HAMMER2_CHAIN_MOVED) == 0) {
 		hammer2_chain_ref(ochain);
@@ -3014,8 +2849,10 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	hammer2_chain_t *parent;
 	hammer2_inode_data_t *ipdata;
 	size_t name_len;
+	hammer2_key_t key_dummy;
 	hammer2_key_t lhc;
 	int error;
+	int cache_index = -1;
 
 	name_len = strlen(pfs->name);
 	lhc = hammer2_dirhash(pfs->name, name_len);
@@ -3029,7 +2866,7 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	KKASSERT((trans->flags & HAMMER2_TRANS_RESTRICTED) == 0);
 	nchain = ip->chain;
 	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_MAYBE);
-	hammer2_chain_duplicate(trans, NULL, -1, &nchain, NULL);
+	hammer2_chain_duplicate(trans, NULL, &nchain, NULL);
 	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_RECYCLE |
 				       HAMMER2_CHAIN_SNAPSHOT);
 
@@ -3039,7 +2876,8 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
         parent = hammer2_chain_lookup_init(hmp->schain, 0);
 	error = 0;
 	while (error == 0) {
-		chain = hammer2_chain_lookup(&parent, lhc, lhc, 0);
+		chain = hammer2_chain_lookup(&parent, &key_dummy,
+					     lhc, lhc, &cache_index, 0);
 		if (chain == NULL)
 			break;
 		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
@@ -3169,14 +3007,17 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	hammer2_blockref_t *base;
 	hammer2_blockref_t *bref;
 	hammer2_chain_t *chain;
-	hammer2_chain_t *child;
 	hammer2_chain_t *ichain;
 	hammer2_chain_t dummy;
 	hammer2_key_t key = create_key;
+	hammer2_key_t key_beg;
+	hammer2_key_t key_end;
+	hammer2_key_t key_next;
 	int keybits = create_bits;
 	int count;
 	int nbytes;
 	int i;
+	int cache_index;
 
 	/*
 	 * Calculate the base blockref pointer or NULL if the chain
@@ -3299,7 +3140,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 
 	ichain = hammer2_chain_alloc(hmp, parent->pmp, trans, &dummy.bref);
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);
-	hammer2_chain_core_alloc(ichain, NULL);
+	hammer2_chain_core_alloc(trans, ichain, NULL);
 	icore = ichain->core;
 	hammer2_chain_lock(ichain, HAMMER2_RESOLVE_MAYBE);
 	hammer2_chain_drop(ichain);	/* excess ref from alloc */
@@ -3318,34 +3159,55 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * Iterate the original parent and move the matching brefs into
 	 * the new indirect block.
 	 *
-	 * At the same time locate an empty slot (or what will become an
-	 * empty slot) and assign the new indirect block to that slot.
-	 *
 	 * XXX handle flushes.
 	 */
+	key_beg = 0;
+	key_end = HAMMER2_MAX_TID;
+	cache_index = 0;
 	spin_lock(&above->cst.spin);
-	for (i = 0; i < count; ++i) {
+
+	for (;;) {
 		/*
-		 * For keying purposes access the bref from the media or
-		 * from our in-memory cache.  In cases where the in-memory
-		 * cache overrides the media the keyrefs will be the same
-		 * anyway so we can avoid checking the cache when the media
-		 * has a key.
+		 * (i) is set to (count) on failure.  Otherwise the element at
+		 * base[i] points to an entry >= key_beg.
 		 */
-		child = hammer2_chain_find_locked(parent, i);
-		if (child) {
-			if (child->flags & HAMMER2_CHAIN_DELETED) {
-				if (ichain->index < 0)
-					ichain->index = i;
+		key_next = key_end + 1;
+		i = hammer2_base_find(base, count, above, &cache_index,
+				      &key_next, key_beg);
+		chain = hammer2_chain_find(parent, &key_next,
+					   key_beg, key_end);
+		if (i == count) {
+			/*
+			 * Nothing in block array, select the chain
+			 */
+			if (chain == NULL)
+				break;
+			if (chain->flags & HAMMER2_CHAIN_DELETED) {
+				if (key_next == 0)
+					break;
+				key_beg = key_next;
 				continue;
 			}
-			bref = &child->bref;
-		} else if (base && base[i].type) {
+			bref = &chain->bref;
+		} else if (chain == NULL || base[i].key < chain->bref.key) {
+			/*
+			 * RBTREE is empty or Nearest key is in block array.
+			 * Set chain to NULL so the code down below knows
+			 * where the bref is coming from.
+			 */
 			bref = &base[i];
+			chain = NULL;
 		} else {
-			if (ichain->index < 0)
-				ichain->index = i;
-			continue;
+			/*
+			 * Chain overrides base[i] or nearest key is chain
+			 */
+			if (chain->flags & HAMMER2_CHAIN_DELETED) {
+				if (key_next == 0)
+					break;
+				key_beg = key_next;
+				continue;
+			}
+			bref = &chain->bref;
 		}
 
 		/*
@@ -3354,40 +3216,51 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		 */
 		if ((~(((hammer2_key_t)1 << keybits) - 1) &
 		    (key ^ bref->key)) != 0) {
+			if (key_next == 0)
+				break;
+			key_beg = key_next;
 			continue;
 		}
 
 		/*
-		 * This element is being moved from the parent, its slot
-		 * is available for our new indirect block.
-		 */
-		if (ichain->index < 0)
-			ichain->index = i;
-
-		/*
 		 * Load the new indirect block by acquiring or allocating
-		 * the related chain entries, then move them to the new
-		 * parent (ichain) by deleting them from their old location
-		 * and inserting a duplicate of the chain and any modified
-		 * sub-chain in the new location.
-		 *
-		 * We must set MOVED in the chain being duplicated and
-		 * SUBMODIFIED in the parent(s) so the flush code knows
-		 * what is going on.  The latter is done after the loop.
+		 * the related chain, then move it to the new parent (ichain)
+		 * via DELETE-DUPLICATE.
 		 *
 		 * WARNING! above->cst.spin must be held when parent is
 		 *	    modified, even though we own the full blown lock,
 		 *	    to deal with setsubmod and rename races.
 		 *	    (XXX remove this req).
 		 */
-		spin_unlock(&above->cst.spin);
-		chain = hammer2_chain_get(parent, i, HAMMER2_LOOKUP_NODATA);
+		if (chain) {
+			/*
+			 * Use chain already present in the RBTREE
+			 */
+			hammer2_chain_ref(chain);
+			spin_unlock(&above->cst.spin);
+			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER |
+						  HAMMER2_RESOLVE_NOREF);
+		} else {
+			/*
+			 * Get chain for blockref element.  _get returns NULL
+			 * on insertion race.
+			 */
+			spin_unlock(&above->cst.spin);
+			chain = hammer2_chain_get(parent, bref);
+			if (chain == NULL)
+				continue;
+			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER |
+						  HAMMER2_RESOLVE_NOREF);
+		}
 		hammer2_chain_delete(trans, chain, HAMMER2_DELETE_WILLDUP);
-		hammer2_chain_duplicate(trans, ichain, i, &chain, NULL);
+		hammer2_chain_duplicate(trans, ichain, &chain, NULL);
 		hammer2_chain_unlock(chain);
 		KKASSERT(parent->refs > 0);
 		chain = NULL;
 		spin_lock(&above->cst.spin);
+		if (key_next == 0)
+			break;
+		key_beg = key_next;
 	}
 	spin_unlock(&above->cst.spin);
 
@@ -3403,17 +3276,9 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * The insertion shouldn't race as this is a completely new block
 	 * and the parent is locked.
 	 */
-	if (ichain->index < 0)
-		kprintf("indirect parent %p count %d key %016jx/%d\n",
-			parent, count, (intmax_t)key, keybits);
-	KKASSERT(ichain->index >= 0);
 	KKASSERT((ichain->flags & HAMMER2_CHAIN_ONRBTREE) == 0);
-	spin_lock(&above->cst.spin);
-	if (RB_INSERT(hammer2_chain_tree, &above->rbtree, ichain))
-		panic("hammer2_chain_create_indirect: ichain insertion");
-	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_ONRBTREE);
-	ichain->above = above;
-	spin_unlock(&above->cst.spin);
+	hammer2_chain_insert(above, ichain, HAMMER2_CHAIN_INSERT_SPIN |
+					    HAMMER2_CHAIN_INSERT_LIVE);
 
 	/*
 	 * Mark the new indirect block modified after insertion, which
@@ -3469,9 +3334,13 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 			     int keybits, hammer2_blockref_t *base, int count)
 {
 	hammer2_chain_core_t *above;
-	hammer2_chain_t *child;
+	hammer2_chain_t *chain;
 	hammer2_blockref_t *bref;
 	hammer2_key_t key;
+	hammer2_key_t key_beg;
+	hammer2_key_t key_end;
+	hammer2_key_t key_next;
+	int cache_index;
 	int locount;
 	int hicount;
 	int i;
@@ -3486,17 +3355,52 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	 * Calculate the range of keys in the array being careful to skip
 	 * slots which are overridden with a deletion.
 	 */
+	key_beg = 0;
+	key_end = HAMMER2_MAX_TID;
+	cache_index = 0;
 	spin_lock(&above->cst.spin);
-	for (i = 0; i < count; ++i) {
-		child = hammer2_chain_find_locked(parent, i);
-		if (child) {
-			if (child->flags & HAMMER2_CHAIN_DELETED)
+
+	for (;;) {
+		/*
+		 * (i) is set to (count) on failure.  Otherwise the element at
+		 * base[i] points to an entry >= key_beg.
+		 */
+		key_next = key_end + 1;
+		i = hammer2_base_find(base, count, above, &cache_index,
+				      &key_next, key_beg);
+		chain = hammer2_chain_find(parent, &key_next,
+					   key_beg, key_end);
+		if (i == count) {
+			/*
+			 * Nothing in block array, select the chain
+			 */
+			if (chain == NULL)
+				break;
+			if (chain->flags & HAMMER2_CHAIN_DELETED) {
+				if (key_next == 0)
+					break;
+				key_beg = key_next;
 				continue;
-			bref = &child->bref;
-		} else if (base && base[i].type) {
+			}
+			bref = &chain->bref;
+		} else if (chain == NULL || base[i].key < chain->bref.key) {
+			/*
+			 * RBTREE is empty or Nearest key is in block array.
+			 *
+			 * chain returns NULL on insertion race.
+			 */
 			bref = &base[i];
 		} else {
-			continue;
+			/*
+			 * Chain overrides base[i] or nearest key is chain
+			 */
+			if (chain->flags & HAMMER2_CHAIN_DELETED) {
+				if (key_next == 0)
+					break;
+				key_beg = key_next;
+				continue;
+			}
+			bref = &chain->bref;
 		}
 
 		if (keybits > bref->keybits) {
@@ -3505,6 +3409,9 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 		} else if (keybits == bref->keybits && bref->key < key) {
 			key = bref->key;
 		}
+		if (key_next == 0)
+			break;
+		key_beg = key_next;
 	}
 	spin_unlock(&above->cst.spin);
 
@@ -3546,12 +3453,16 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 			    int keybits, hammer2_blockref_t *base, int count)
 {
 	hammer2_chain_core_t *above;
-	hammer2_chain_t *child;
 	hammer2_blockref_t *bref;
+	hammer2_chain_t	*chain;
+	hammer2_key_t key_beg;
+	hammer2_key_t key_end;
+	hammer2_key_t key_next;
 	hammer2_key_t key;
 	int nkeybits;
 	int locount;
 	int hicount;
+	int cache_index;
 	int i;
 
 	key = *keyp;
@@ -3565,17 +3476,51 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	 * completes we will cut the key range in half and shift half the
 	 * range into the new indirect block.
 	 */
+	key_beg = 0;
+	key_end = HAMMER2_MAX_TID;
 	spin_lock(&above->cst.spin);
-	for (i = 0; i < count; ++i) {
-		child = hammer2_chain_find_locked(parent, i);
-		if (child) {
-			if (child->flags & HAMMER2_CHAIN_DELETED)
+
+	for (;;) {
+		/*
+		 * (i) is set to (count) on failure.  Otherwise the element at
+		 * base[i] points to an entry >= key_beg.
+		 */
+		key_next = key_end + 1;
+		i = hammer2_base_find(base, count, above, &cache_index,
+				      &key_next, key_beg);
+		chain = hammer2_chain_find(parent, &key_next,
+					   key_beg, key_end);
+		if (i == count) {
+			/*
+			 * Nothing in block array, select the chain
+			 */
+			if (chain == NULL)
+				break;
+			if (chain->flags & HAMMER2_CHAIN_DELETED) {
+				if (key_next == 0)
+					break;
+				key_beg = key_next;
 				continue;
-			bref = &child->bref;
-		} else if (base && base[i].type) {
+			}
+			bref = &chain->bref;
+		} else if (chain == NULL || base[i].key < chain->bref.key) {
+			/*
+			 * RBTREE is empty or Nearest key is in block array.
+			 *
+			 * chain returns NULL on insertion race.
+			 */
 			bref = &base[i];
 		} else {
-			continue;
+			/*
+			 * Chain overrides base[i] or nearest key is chain
+			 */
+			if (chain->flags & HAMMER2_CHAIN_DELETED) {
+				if (key_next == 0)
+					break;
+				key_beg = key_next;
+				continue;
+			}
+			bref = &chain->bref;
 		}
 
 		/*
@@ -3587,7 +3532,7 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 		if (nkeybits < bref->keybits) {
 			if (bref->keybits > 64) {
 				kprintf("bad bref index %d chain %p bref %p\n",
-					i, child, bref);
+					i, chain, bref);
 				Debugger("fubar");
 			}
 			nkeybits = bref->keybits;
@@ -3623,6 +3568,10 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 			++hicount;
 		else
 			++locount;
+
+		if (key_next == 0)
+			break;
+		key_beg = key_next;
 	}
 	spin_unlock(&above->cst.spin);
 	bref = NULL;	/* now invalid (safety) */
@@ -3717,11 +3666,10 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 	KKASSERT(chain->flags & HAMMER2_CHAIN_ONRBTREE);
 	spin_lock(&chain->above->cst.spin);
 
-	RB_REMOVE(hammer2_chain_tree, &chain->above->rbtree, chain);
 	chain->delete_tid = trans->sync_tid;
+	/*chain->delete_gen = ++trans->delete_gen;*/
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
-	if (RB_INSERT(hammer2_chain_tree, &chain->above->rbtree, chain))
-		panic("chain_delete: reinsertion failed %p", chain);
+	atomic_add_int(&chain->above->live_count, -1);
 
 	if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
 		hammer2_chain_ref(chain);
@@ -3739,6 +3687,343 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 	hammer2_chain_setsubmod(trans, chain);
 }
 
+/*
+ * Called with the core spinlock held to check for freeable layers.
+ * Used by the flush code.  Layers can wind up not being freed due
+ * to the temporary layer->refs count.  This function frees up any
+ * layers that were missed.
+ */
+void
+hammer2_chain_layer_check_locked(hammer2_mount_t *hmp,
+				 hammer2_chain_core_t *core)
+{
+	hammer2_chain_layer_t *layer;
+	hammer2_chain_layer_t *tmp;
+
+	tmp = TAILQ_FIRST(&core->layerq);
+	while ((layer = tmp) != NULL) {
+		tmp = TAILQ_NEXT(tmp, entry);
+		if (layer->refs == 0 && RB_EMPTY(&layer->rbtree)) {
+			TAILQ_REMOVE(&core->layerq, layer, entry);
+			if (tmp)
+				++tmp->refs;
+			spin_unlock(&core->cst.spin);
+			kfree(layer, hmp->mchain);
+			spin_lock(&core->cst.spin);
+			if (tmp)
+				--tmp->refs;
+		}
+	}
+}
+
+/*
+ * Returns the index of the nearest element in the blockref array >= elm.
+ * Returns (count) if no element could be found.
+ *
+ * Sets *key_nextp to the next key for loop purposes but does not modify
+ * it if the next key would be higher than the current value of *key_nextp.
+ * Note that *key_nexp can overflow to 0, which should be tested by the
+ * caller.
+ *
+ * (*cache_indexp) is a heuristic and can be any value without effecting
+ * the result.
+ *
+ * The spin lock on the related chain must be held.
+ */
+int
+hammer2_base_find(hammer2_blockref_t *base, int count,
+		  hammer2_chain_core_t *above, int *cache_indexp,
+		  hammer2_key_t *key_nextp, hammer2_key_t key)
+{
+	hammer2_blockref_t *scan;
+	hammer2_key_t scan_end;
+	int i;
+
+	/*
+	 * Degenerate case
+	 */
+        KKASSERT(above->flags & HAMMER2_CORE_COUNTEDBREFS);
+	if (count == 0 || base == NULL)
+		return(count);
+
+	/*
+	 * Sequential optimization
+	 */
+	i = *cache_indexp;
+	cpu_ccfence();
+	if (i >= above->live_zero)
+		i = above->live_zero - 1;
+	if (i < 0)
+		i = 0;
+
+	/*
+	 * Search backwards
+	 */
+	scan = &base[i];
+	while (i > 0 && (scan->type == 0 || scan->key > key)) {
+		--scan;
+		--i;
+	}
+	*cache_indexp = i;
+
+	/*
+	 * Search forwards, stop when we find a scan element which
+	 * enclosed the key or until we know that there are no further
+	 * elements.
+	 */
+	while (i < count) {
+		if (scan->type != 0) {
+			if (scan->key > key)
+				break;
+			scan_end = scan->key +
+				   ((hammer2_key_t)1 << scan->keybits) - 1;
+			if (scan_end >= key)
+				break;
+		}
+		if (i >= above->live_zero)
+			return (count);
+		++scan;
+		++i;
+	}
+	if (i != count) {
+		scan_end = scan->key + ((hammer2_key_t)1 << scan->keybits);
+		if (scan_end && (*key_nextp > scan_end || *key_nextp == 0))
+			*key_nextp = scan_end;
+		*cache_indexp = i;
+	}
+	return (i);
+}
+
+/*
+ * Locate the specified block array element and delete it.  The element
+ * must exist.
+ *
+ * The spin lock on the related chain must be held.
+ *
+ * NOTE: live_count was adjusted when the chain was deleted, so it does not
+ *	 need to be adjusted when we commit the media change.
+ */
+void
+hammer2_base_delete(hammer2_blockref_t *base, int count,
+		    hammer2_chain_core_t *above,
+		    int *cache_indexp, hammer2_blockref_t *elm)
+{
+	hammer2_key_t key_next;
+	int i;
+
+	/*
+	 * Delete element.  Expect the element to exist.
+	 *
+	 * XXX see caller, flush code not yet sophisticated enough to prevent
+	 *     re-flushed in some cases.
+	 */
+	key_next = 0; /* max range */
+	i = hammer2_base_find(base, count, above, cache_indexp,
+			      &key_next, elm->key);
+	if (i == count || base[i].type == 0 ||
+	    base[i].key != elm->key || base[i].keybits != elm->keybits) {
+		kprintf("hammer2_base_delete: duplicate key %016jx/%d\n",
+			elm->key, elm->keybits);
+		return;
+	}
+#if 0
+	KKASSERT(i != count);
+	KKASSERT(base[i].type &&
+		 base[i].key == elm->key && base[i].keybits == elm->keybits);
+#endif
+	bzero(&base[i], sizeof(*base));
+	if (above->live_zero == i + 1) {
+		while (--i >= 0 && base[i].type == 0)
+			;
+		above->live_zero = i + 1;
+	}
+}
+
+/*
+ * Insert the specified element.  The block array must have space and
+ * will be rearranged as necessary.
+ *
+ * The spin lock on the related chain must be held.
+ *
+ * Test (*flagsp) for HAMMER2_CHAIN_REPLACE.  If set an existing bref
+ * is replaced, otherwise a new bref is created.  The flag is then set
+ * prior to return indicating that a bref is now present in the block table.
+ *
+ * NOTE: live_count was adjusted when the chain was deleted, so it does not
+ *	 need to be adjusted when we commit the media change.
+ */
+void
+hammer2_base_insert(hammer2_blockref_t *base, int count,
+		    hammer2_chain_core_t *above,
+		    int *cache_indexp, hammer2_blockref_t *elm,
+		    int flags)
+{
+	hammer2_key_t key_next;
+	int i;
+	int j;
+	int k;
+
+	/*
+	 * Insert new element.  Expect the element to not already exist
+	 * unless we are replacing it.
+	 *
+	 * XXX see caller, flush code not yet sophisticated enough to prevent
+	 *     re-flushed in some cases.
+	 */
+	key_next = 0; /* max range */
+	i = hammer2_base_find(base, count, above, cache_indexp,
+			      &key_next, elm->key);
+
+	if (i != count && (flags & HAMMER2_CHAIN_REPLACE) == 0 &&
+	    base[i].type &&
+	    base[i].key == elm->key && base[i].keybits == elm->keybits) {
+		kprintf("hammer2_base_insert: duplicate key %016jx/%d\n",
+			elm->key, elm->keybits);
+		return;
+	}
+#if 0
+	KKASSERT(i == count || (flags & HAMMER2_CHAIN_REPLACE) ||
+		 base[i].type == 0 || base[i].key != elm->key ||
+		 base[i].keybits != elm->keybits);
+#endif
+
+	/*
+	 * Shortcut fill optimization, typical ordered insertion(s) may not
+	 * require a search.
+	 */
+	if (i == count && above->live_zero < count) {
+		i = above->live_zero++;
+		base[i] = *elm;
+		return;
+	}
+
+	if (i < count &&
+	    base[i].key == elm->key &&
+	    base[i].keybits == elm->keybits) {
+		base[i] = *elm;
+		return;
+	}
+
+	/*
+	 * Try to find an empty slot before or after.
+	 */
+	j = i;
+	k = i;
+	while (j > 0 || k < count) {
+		--j;
+		if (j >= 0 && base[j].type == 0) {
+			if (j == i - 1) {
+				base[j] = *elm;
+			} else {
+				bcopy(&base[j+1], &base[j],
+				      (i - j - 1) * sizeof(hammer2_blockref_t));
+				base[i - 1] = *elm;
+			}
+			return;
+		}
+		++k;
+		if (k < count && base[k].type == 0) {
+			bcopy(&base[i], &base[i+1],
+			      (k - i) * sizeof(hammer2_blockref_t));
+			base[i] = *elm;
+			if (above->live_zero <= k)
+				above->live_zero = k + 1;
+			return;
+		}
+	}
+	panic("hammer2_base_insert: no room!");
+}
+
+#if 0
+
+/*
+ * Sort the blockref array for the chain.  Used by the flush code to
+ * sort the blockref[] array.
+ *
+ * The chain must be exclusively locked AND spin-locked.
+ */
+typedef hammer2_blockref_t *hammer2_blockref_p;
+
+static
+int
+hammer2_base_sort_callback(const void *v1, const void *v2)
+{
+	hammer2_blockref_p bref1 = *(const hammer2_blockref_p *)v1;
+	hammer2_blockref_p bref2 = *(const hammer2_blockref_p *)v2;
+
+	/*
+	 * Make sure empty elements are placed at the end of the array
+	 */
+	if (bref1->type == 0) {
+		if (bref2->type == 0)
+			return(0);
+		return(1);
+	} else if (bref2->type == 0) {
+		return(-1);
+	}
+
+	/*
+	 * Sort by key
+	 */
+	if (bref1->key < bref2->key)
+		return(-1);
+	if (bref1->key > bref2->key)
+		return(1);
+	return(0);
+}
+
+void
+hammer2_base_sort(hammer2_chain_t *chain)
+{
+	hammer2_blockref_t *base;
+	int count;
+
+	switch(chain->bref.type) {
+	case HAMMER2_BREF_TYPE_INODE:
+		/*
+		 * Special shortcut for embedded data returns the inode
+		 * itself.  Callers must detect this condition and access
+		 * the embedded data (the strategy code does this for us).
+		 *
+		 * This is only applicable to regular files and softlinks.
+		 */
+		if (chain->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA)
+			return;
+		base = &chain->data->ipdata.u.blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		/*
+		 * Optimize indirect blocks in the INITIAL state to avoid
+		 * I/O.
+		 */
+		KKASSERT((chain->flags & HAMMER2_CHAIN_INITIAL) == 0);
+		base = &chain->data->npdata[0];
+		count = chain->bytes / sizeof(hammer2_blockref_t);
+		break;
+	case HAMMER2_BREF_TYPE_VOLUME:
+		base = &chain->hmp->voldata.sroot_blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+		base = &chain->hmp->voldata.freemap_blockset.blockref[0];
+		count = HAMMER2_SET_COUNT;
+		break;
+	default:
+		panic("hammer2_chain_lookup: unrecognized blockref type: %d",
+		      chain->bref.type);
+		base = NULL;	/* safety */
+		count = 0;	/* safety */
+	}
+	kqsort(base, count, sizeof(*base), hammer2_base_sort_callback);
+}
+
+#endif
+
+/*
+ * Chain memory management
+ */
 void
 hammer2_chain_wait(hammer2_chain_t *chain)
 {

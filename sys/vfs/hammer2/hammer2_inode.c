@@ -72,6 +72,7 @@ hammer2_chain_t *
 hammer2_inode_lock_ex(hammer2_inode_t *ip)
 {
 	hammer2_chain_t *chain;
+	hammer2_chain_core_t *core;
 
 	hammer2_inode_ref(ip);
 	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
@@ -83,20 +84,22 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 	 */
 again:
 	chain = ip->chain;
-	spin_lock(&chain->core->cst.spin);
+	core = chain->core;
+	spin_lock(&core->cst.spin);
 	if (hammer2_chain_refactor_test(chain, 1)) {
 		while (hammer2_chain_refactor_test(chain, 1))
-			chain = chain->next_parent;
+			chain = TAILQ_NEXT(chain, core_entry);
+		KKASSERT(chain->core == core);
 		if (ip->chain != chain) {
 			hammer2_chain_ref(chain);
-			spin_unlock(&chain->core->cst.spin);
+			spin_unlock(&core->cst.spin);
 			hammer2_inode_repoint(ip, NULL, chain);
 			hammer2_chain_drop(chain);
 		} else {
-			spin_unlock(&chain->core->cst.spin);
+			spin_unlock(&core->cst.spin);
 		}
 	} else {
-		spin_unlock(&chain->core->cst.spin);
+		spin_unlock(&core->cst.spin);
 	}
 
 	KKASSERT(chain != NULL);	/* for now */
@@ -553,6 +556,7 @@ hammer2_inode_create(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
 	hammer2_inode_t *nip;
+	hammer2_key_t key_dummy;
 	hammer2_key_t lhc;
 	int error;
 	uid_t xuid;
@@ -560,6 +564,7 @@ hammer2_inode_create(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	uuid_t dip_gid;
 	uint32_t dip_mode;
 	uint8_t dip_algo;
+	int cache_index = -1;
 
 	lhc = hammer2_dirhash(name, name_len);
 	*errorp = 0;
@@ -581,7 +586,8 @@ retry:
 
 	error = 0;
 	while (error == 0) {
-		chain = hammer2_chain_lookup(&parent, lhc, lhc, 0);
+		chain = hammer2_chain_lookup(&parent, &key_dummy,
+					     lhc, lhc, &cache_index, 0);
 		if (chain == NULL)
 			break;
 		if ((lhc & HAMMER2_DIRHASH_VISIBLE) == 0)
@@ -710,11 +716,12 @@ hammer2_chain_refactor(hammer2_chain_t **chainp)
 	core = chain->core;
 	spin_lock(&core->cst.spin);
 	while (hammer2_chain_refactor_test(chain, 1)) {
-		chain = chain->next_parent;
+		chain = TAILQ_NEXT(chain, core_entry);
 		while (hammer2_chain_refactor_test(chain, 1))
-			chain = chain->next_parent;
+			chain = TAILQ_NEXT(chain, core_entry);
 		hammer2_chain_ref(chain);
 		spin_unlock(&core->cst.spin);
+		KKASSERT(chain->core == core);
 
 		hammer2_chain_unlock(*chainp);
 		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
@@ -746,8 +753,10 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_chain_t **ochainp,
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *nchain;
 	hammer2_chain_t *tmp;
+	hammer2_key_t key_dummy;
 	hammer2_key_t lhc;
 	hammer2_blockref_t bref;
+	int cache_index = -1;
 
 	ochain = *ochainp;
 	*errorp = 0;
@@ -763,7 +772,8 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_chain_t **ochainp,
 	 */
 retry:
 	parent = hammer2_chain_lookup_init(dip->chain, 0);
-	nchain = hammer2_chain_lookup(&parent, lhc, lhc, 0);
+	nchain = hammer2_chain_lookup(&parent, &key_dummy,
+				      lhc, lhc, &cache_index, 0);
 	if (nchain) {
 		kprintf("X3 chain %p parent %p dip %p dip->chain %p\n",
 			nchain, parent, dip, dip->chain);
@@ -824,7 +834,7 @@ retry:
 	bref = tmp->bref;
 	bref.key = lhc;			/* invisible dir entry key */
 	bref.keybits = 0;
-	hammer2_chain_duplicate(trans, parent, nchain->index, &tmp, &bref);
+	hammer2_chain_duplicate(trans, parent, &tmp, &bref);
 	hammer2_chain_lookup_done(parent);
 	hammer2_chain_unlock(nchain);	/* no longer needed */
 
@@ -868,7 +878,9 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 	hammer2_chain_t *nchain;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *ochain;
+	hammer2_key_t key_dummy;
 	hammer2_key_t lhc;
+	int cache_index = -1;
 	int error;
 
 	ochain = *chainp;
@@ -889,7 +901,8 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 	 */
 	error = 0;
 	while (error == 0) {
-		nchain = hammer2_chain_lookup(&parent, lhc, lhc, 0);
+		nchain = hammer2_chain_lookup(&parent, &key_dummy,
+					      lhc, lhc, &cache_index, 0);
 		if (nchain == NULL)
 			break;
 		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
@@ -924,7 +937,7 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 			 */
 			nchain = ochain;
 			ochain = NULL;
-			hammer2_chain_duplicate(trans, NULL, -1, &nchain, NULL);
+			hammer2_chain_duplicate(trans, NULL, &nchain, NULL);
 			error = hammer2_chain_create(trans, &parent, &nchain,
 						     lhc, 0,
 						     HAMMER2_BREF_TYPE_INODE,
@@ -1092,8 +1105,11 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	hammer2_chain_t *chain;
 	hammer2_chain_t *dparent;
 	hammer2_chain_t *dchain;
+	hammer2_key_t key_dummy;
+	hammer2_key_t key_next;
 	hammer2_key_t lhc;
 	int error;
+	int cache_index = -1;
 	uint8_t type;
 
 	error = 0;
@@ -1106,18 +1122,19 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	if (hlinkp)
 		*hlinkp = 0;
 	parent = hammer2_inode_lock_ex(dip);
-	chain = hammer2_chain_lookup(&parent,
+	chain = hammer2_chain_lookup(&parent, &key_next,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-				     0);
+				     &cache_index, 0);
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		    name_len == chain->data->ipdata.name_len &&
 		    bcmp(name, chain->data->ipdata.filename, name_len) == 0) {
 			break;
 		}
-		chain = hammer2_chain_next(&parent, chain,
-					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-					   0);
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					   key_next,
+					   lhc + HAMMER2_DIRHASH_LOMASK,
+					   &cache_index, 0);
 	}
 	hammer2_inode_unlock_ex(dip, NULL);	/* retain parent */
 
@@ -1171,8 +1188,9 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	 */
 	if (type == HAMMER2_OBJTYPE_DIRECTORY && isdir == 1) {
 		dparent = hammer2_chain_lookup_init(chain, 0);
-		dchain = hammer2_chain_lookup(&dparent,
+		dchain = hammer2_chain_lookup(&dparent, &key_dummy,
 					      0, (hammer2_key_t)-1,
+					      &cache_index,
 					      HAMMER2_LOOKUP_NODATA);
 		if (dchain) {
 			hammer2_chain_unlock(dchain);
@@ -1436,7 +1454,9 @@ hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,
 	hammer2_chain_t *parent;
 	hammer2_inode_t *ip;
 	hammer2_inode_t *pip;
+	hammer2_key_t key_dummy;
 	hammer2_key_t lhc;
+	int cache_index = -1;
 
 	pip = dip;
 	hammer2_inode_ref(pip);		/* for loop */
@@ -1457,7 +1477,8 @@ hammer2_hardlink_find(hammer2_inode_t *dip, hammer2_chain_t **chainp,
 		parent = hammer2_inode_lock_ex(ip);
 		hammer2_inode_drop(ip);			/* loop */
 		KKASSERT(parent->bref.type == HAMMER2_BREF_TYPE_INODE);
-		chain = hammer2_chain_lookup(&parent, lhc, lhc, 0);
+		chain = hammer2_chain_lookup(&parent, &key_dummy,
+					     lhc, lhc, &cache_index, 0);
 		hammer2_chain_lookup_done(parent);	/* discard parent */
 		if (chain)
 			break;
@@ -1546,6 +1567,8 @@ hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_key_t lbase;
+	hammer2_key_t key_next;
+	int cache_index;
 
 	ipdata = &ip->chain->data->ipdata;
 
@@ -1566,8 +1589,9 @@ hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		lbase = (ipdata->size + HAMMER2_PBUFMASK64) &
 			~HAMMER2_PBUFMASK64;
 		parent = hammer2_chain_lookup_init(ip->chain, 0);
-		chain = hammer2_chain_lookup(&parent,
+		chain = hammer2_chain_lookup(&parent, &key_next,
 					     lbase, (hammer2_key_t)-1,
+					     &cache_index,
 					     HAMMER2_LOOKUP_NODATA);
 		while (chain) {
 			/*
@@ -1580,8 +1604,9 @@ hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
 				hammer2_chain_delete(trans, chain, 0);
 			}
-			chain = hammer2_chain_next(&parent, chain,
-						   lbase, (hammer2_key_t)-1,
+			chain = hammer2_chain_next(&parent, chain, &key_next,
+						   key_next, (hammer2_key_t)-1,
+						   &cache_index,
 						   HAMMER2_LOOKUP_NODATA);
 		}
 		hammer2_chain_lookup_done(parent);

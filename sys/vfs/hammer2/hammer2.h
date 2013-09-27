@@ -80,23 +80,25 @@ struct hammer2_state;
 struct hammer2_msg;
 
 /*
- * The chain structure tracks blockref recursions all the way to the root
- * volume.  These consist of indirect blocks, inodes, and eventually the
- * volume header itself.
+ * The chain structure tracks a portion of the media topology from the
+ * root (volume) down.  Chains represent volumes, inodes, indirect blocks,
+ * data blocks, and freemap nodes and leafs.
  *
- * In situations where a duplicate is needed to represent different snapshots
- * or flush points a new chain will be allocated but associated with the
- * same shared chain_core.  The RBTREE is contained in the shared chain_core
- * and entries in the RBTREE are versioned.
+ * The chain structure can be multi-homed and its topological recursion
+ * (chain->core) can be shared amongst several chains.  Chain structures
+ * are topologically stable once placed in the in-memory topology (they
+ * don't move around).  Modifications which cross flush synchronization
+ * boundaries, renames, resizing, or any move of the chain to elsewhere
+ * in the topology is accomplished via the DELETE-DUPLICATE mechanism.
  *
- * Duplication can occur whenever a chain must be modified.  Note that
- * a deletion is not considered a modification.
+ * DELETE-DUPLICATE allows HAMMER2 to track work across flush synchronization
+ * points without stalling the filesystem or corrupting the flush
+ * sychronization point.  When necessary a chain will be marked DELETED
+ * and a new, duplicate chain will be allocated.
  *
- *	(a) General modifications at data leafs
- *	(b) When a chain is resized
- *	(c) When a chain's blockref array is updated
- *	(d) When a chain is renamed
- *	(e) When a chain is moved (when an indirect block is split)
+ * This mechanism necessarily requires that we be able to overload chains
+ * at any given layer in the topology.  Overloading is accomplished via a
+ * RBTREE recursion through chain->rbtree.
  *
  * Advantages:
  *
@@ -115,35 +117,45 @@ struct hammer2_msg;
  *	A chain is ref-counted on a per-chain basis, but the chain's lock
  *	is associated with the shared chain_core and is not per-chain.
  *
- *	Each chain is representative of a filesystem topology.  Even
- *	though the shared chain_core's are effectively multi-homed, the
- *	chain structure is not.
- *
- *	chain->parent is a stable pointer and can be iterated without locking
- *	as long as either the chain or *any* deep child under the chain
- *	is held.
+ *	The power-of-2 nature of the media radix tree ensures that there
+ *	will be no overlaps which straddle edges.
  */
 RB_HEAD(hammer2_chain_tree, hammer2_chain);
-TAILQ_HEAD(flush_deferral_list, hammer2_chain);
+TAILQ_HEAD(h2_flush_deferral_list, hammer2_chain);
+TAILQ_HEAD(h2_core_list, hammer2_chain);
+TAILQ_HEAD(h2_layer_list, hammer2_chain_layer);
+
+struct hammer2_chain_layer {
+	TAILQ_ENTRY(hammer2_chain_layer) entry;
+	struct hammer2_chain_tree rbtree;
+	int	refs;		/* prevent destruction */
+};
+
+typedef struct hammer2_chain_layer hammer2_chain_layer_t;
 
 struct hammer2_chain_core {
 	struct ccms_cst	cst;
-	struct hammer2_chain_tree rbtree;
-	struct hammer2_chain	*first_parent;
+	struct h2_core_list ownerq;	/* chain's which own this core */
+	struct h2_layer_list layerq;
+	u_int		chain_count;	/* total chains in layers */
 	u_int		sharecnt;
 	u_int		flags;
+	u_int		live_count;	/* live (not deleted) chains in tree */
+	u_int		live_zero;	/* first empty blockref (index) */
 };
 
 typedef struct hammer2_chain_core hammer2_chain_core_t;
 
 #define HAMMER2_CORE_INDIRECT		0x0001
+#define HAMMER2_CORE_COUNTEDBREFS	0x0002
 
 struct hammer2_chain {
-	RB_ENTRY(hammer2_chain) rbnode;
+	RB_ENTRY(hammer2_chain) rbnode;		/* node */
+	TAILQ_ENTRY(hammer2_chain) core_entry;	/* contemporary chains */
+	hammer2_chain_layer_t	*inlayer;
 	hammer2_blockref_t	bref;
 	hammer2_chain_core_t	*core;
 	hammer2_chain_core_t	*above;
-	struct hammer2_chain	*next_parent;
 	struct hammer2_state	*state;		/* if active cache msg */
 	struct hammer2_mount	*hmp;
 	struct hammer2_pfsmount	*pmp;		/* can be NULL */
@@ -154,7 +166,6 @@ struct hammer2_chain {
 	hammer2_key_t   inode_count;		/* delta's to apply */
 	struct buf	*bp;			/* physical data buffer */
 	u_int		bytes;			/* physical data size */
-	int		index;			/* blockref index in parent */
 	u_int		flags;
 	u_int		refs;
 	u_int		lockcnt;
@@ -196,7 +207,8 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
-#define HAMMER2_CHAIN_HARDLINK		0x00020000	/* converted to hardlink */
+#define HAMMER2_CHAIN_HARDLINK		0x00020000	/* converted to hlink */
+#define HAMMER2_CHAIN_REPLACE		0x00040000	/* replace bref */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -544,16 +556,20 @@ static __inline
 int
 hammer2_chain_refactor_test(hammer2_chain_t *chain, int traverse_hlink)
 {
+	hammer2_chain_t *next;
+
+	next = TAILQ_NEXT(chain, core_entry);
+
 	if ((chain->flags & HAMMER2_CHAIN_DELETED) &&
-	    chain->next_parent &&
-	    (chain->next_parent->flags & HAMMER2_CHAIN_SNAPSHOT) == 0) {
+	    next &&
+	    (next->flags & HAMMER2_CHAIN_SNAPSHOT) == 0) {
 		return (1);
 	}
 	if (traverse_hlink &&
 	    chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 	    (chain->flags & HAMMER2_CHAIN_HARDLINK) &&
-	    chain->next_parent &&
-	    (chain->next_parent->flags & HAMMER2_CHAIN_SNAPSHOT) == 0) {
+	    next &&
+	    (next->flags & HAMMER2_CHAIN_SNAPSHOT) == 0) {
 		return(1);
 	}
 
@@ -629,7 +645,7 @@ hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
 int hammer2_getradix(size_t bytes);
 
 int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
-			 hammer2_key_t *lbasep, hammer2_key_t *leofp);
+			hammer2_key_t *lbasep, hammer2_key_t *leofp);
 int hammer2_calc_physical(hammer2_inode_t *ip, hammer2_key_t lbase);
 void hammer2_update_time(uint64_t *timep);
 
@@ -679,8 +695,8 @@ int hammer2_hardlink_find(hammer2_inode_t *dip,
 void hammer2_modify_volume(hammer2_mount_t *hmp);
 hammer2_chain_t *hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
 				hammer2_trans_t *trans, hammer2_blockref_t *bref);
-void hammer2_chain_core_alloc(hammer2_chain_t *chain,
-				hammer2_chain_core_t *core);
+void hammer2_chain_core_alloc(hammer2_trans_t *trans, hammer2_chain_t *nchain,
+				hammer2_chain_t *ochain);
 void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_chain_t *chain, int how);
@@ -700,23 +716,19 @@ void hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 				int nradix, int flags);
 void hammer2_chain_unlock(hammer2_chain_t *chain);
 void hammer2_chain_wait(hammer2_chain_t *chain);
-hammer2_chain_t *hammer2_chain_find(hammer2_chain_t *parent, int index);
-hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int index,
-				int flags);
+hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent,
+				hammer2_blockref_t *bref);
 hammer2_chain_t *hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags);
 void hammer2_chain_lookup_done(hammer2_chain_t *parent);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_chain_t **parentp,
+				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
-				int flags);
+				int *cache_indexp, int flags);
 hammer2_chain_t *hammer2_chain_next(hammer2_chain_t **parentp,
 				hammer2_chain_t *chain,
+				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
-				int flags);
-int hammer2_chain_iterate(hammer2_chain_t *parent,
-			  int (*callback)(hammer2_chain_t *parent,
-					  hammer2_chain_t **chainp,
-					  void *arg),
-			  void *arg, int flags);
+				int *cache_indexp, int flags);
 
 int hammer2_chain_create(hammer2_trans_t *trans,
 				hammer2_chain_t **parentp,
@@ -724,7 +736,6 @@ int hammer2_chain_create(hammer2_trans_t *trans,
 				hammer2_key_t key, int keybits,
 				int type, size_t bytes);
 void hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
-				int i,
 				hammer2_chain_t **chainp,
 				hammer2_blockref_t *bref);
 int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
@@ -739,6 +750,22 @@ void hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain);
 
 void hammer2_chain_memory_wait(hammer2_pfsmount_t *pmp);
 void hammer2_chain_memory_wakeup(hammer2_pfsmount_t *pmp);
+void hammer2_chain_countbrefs(hammer2_chain_core_t *above,
+				hammer2_blockref_t *base, int count);
+void hammer2_chain_layer_check_locked(hammer2_mount_t *hmp,
+				hammer2_chain_core_t *core);
+
+int hammer2_base_find(hammer2_blockref_t *base, int count,
+				hammer2_chain_core_t *above,
+				int *cache_indexp,
+				hammer2_key_t *key_nextp, hammer2_key_t key);
+void hammer2_base_delete(hammer2_blockref_t *base, int count,
+				hammer2_chain_core_t *above,
+				int *cache_indexp, hammer2_blockref_t *elm);
+void hammer2_base_insert(hammer2_blockref_t *base, int count,
+				hammer2_chain_core_t *above,
+				int *cache_indexp, hammer2_blockref_t *elm,
+				int flags);
 
 /*
  * hammer2_trans.c

@@ -355,7 +355,9 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *rchain;
+	hammer2_key_t key_next;
 	int error;
+	int cache_index = -1;
 
 	error = 0;
 	hmp = ip->pmp->mount_cluster->hmp;
@@ -368,20 +370,23 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	 * can be returned in any order.
 	 */
 	if (pfs->name_key == 0) {
-		chain = hammer2_chain_lookup(&parent,
-					     0, (hammer2_key_t)-1, 0);
+		chain = hammer2_chain_lookup(&parent, &key_next,
+					     0, (hammer2_key_t)-1,
+					     &cache_index, 0);
 	} else if (pfs->name_key == (hammer2_key_t)-1) {
-		chain = hammer2_chain_lookup(&parent,
+		chain = hammer2_chain_lookup(&parent, &key_next,
 					     rchain->data->ipdata.name_key,
 					     rchain->data->ipdata.name_key,
-					     0);
+					     &cache_index, 0);
 	} else {
-		chain = hammer2_chain_lookup(&parent,
-					     pfs->name_key, pfs->name_key, 0);
+		chain = hammer2_chain_lookup(&parent, &key_next,
+					     pfs->name_key, pfs->name_key,
+					     &cache_index, 0);
 	}
 	while (chain && chain->bref.type != HAMMER2_BREF_TYPE_INODE) {
-		chain = hammer2_chain_next(&parent, chain,
-					   0, (hammer2_key_t)-1, 0);
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					   key_next, (hammer2_key_t)-1,
+					   &cache_index, 0);
 	}
 	if (chain) {
 		/*
@@ -401,8 +406,9 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		 * Calculate the next field
 		 */
 		do {
-			chain = hammer2_chain_next(&parent, chain,
-						   0, (hammer2_key_t)-1, 0);
+			chain = hammer2_chain_next(&parent, chain, &key_next,
+						   0, (hammer2_key_t)-1,
+						   &cache_index, 0);
 		} while (chain && chain->bref.type != HAMMER2_BREF_TYPE_INODE);
 		if (chain) {
 			pfs->name_next = chain->data->ipdata.name_key;
@@ -430,8 +436,10 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	hammer2_ioc_pfs_t *pfs;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
 	hammer2_key_t lhc;
 	int error;
+	int cache_index = -1;
 	size_t len;
 
 	error = 0;
@@ -443,18 +451,19 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	len = strlen(pfs->name);
 	lhc = hammer2_dirhash(pfs->name, len);
 
-	chain = hammer2_chain_lookup(&parent,
+	chain = hammer2_chain_lookup(&parent, &key_next,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-				     HAMMER2_LOOKUP_SHARED);
+				     &cache_index, HAMMER2_LOOKUP_SHARED);
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		    len == chain->data->ipdata.name_len &&
 		    bcmp(pfs->name, chain->data->ipdata.filename, len) == 0) {
 			break;
 		}
-		chain = hammer2_chain_next(&parent, chain,
-					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-					   HAMMER2_LOOKUP_SHARED);
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					   key_next,
+					   lhc + HAMMER2_DIRHASH_LOMASK,
+					   &cache_index, HAMMER2_LOOKUP_SHARED);
 	}
 
 	/*

@@ -638,11 +638,13 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	hammer2_chain_t *chain;
 	hammer2_chain_t *xchain;
 	hammer2_tid_t inum;
+	hammer2_key_t key_next;
 	hammer2_key_t lkey;
 	struct uio *uio;
 	off_t *cookies;
 	off_t saveoff;
 	int cookie_index;
+	int cache_index = -1;
 	int ncookies;
 	int error;
 	int dtype;
@@ -736,11 +738,12 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	if (error) {
 		goto done;
 	}
-	chain = hammer2_chain_lookup(&parent, lkey, lkey,
-				     HAMMER2_LOOKUP_SHARED);
+	chain = hammer2_chain_lookup(&parent, &key_next, lkey, lkey,
+				     &cache_index, HAMMER2_LOOKUP_SHARED);
 	if (chain == NULL) {
-		chain = hammer2_chain_lookup(&parent,
+		chain = hammer2_chain_lookup(&parent, &key_next,
 					     lkey, (hammer2_key_t)-1,
+					     &cache_index,
 					     HAMMER2_LOOKUP_SHARED);
 	}
 	while (chain) {
@@ -769,10 +772,9 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 		 * placemarker (chain) the scan must allow the full range
 		 * or some entries will be missed.
 		 */
-		chain = hammer2_chain_next(&parent, chain,
-					   HAMMER2_DIRHASH_VISIBLE,
-					   (hammer2_key_t)-1,
-					   HAMMER2_LOOKUP_SHARED);
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					   key_next, (hammer2_key_t)-1,
+					   &cache_index, HAMMER2_LOOKUP_SHARED);
 		if (chain) {
 			saveoff = (chain->bref.key &
 				   HAMMER2_DIRHASH_USERMSK) + 1;
@@ -1198,11 +1200,13 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	hammer2_chain_t *chain;
 	hammer2_chain_t *ochain;
 	hammer2_trans_t trans;
+	hammer2_key_t key_next;
+	hammer2_key_t lhc;
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
-	hammer2_key_t lhc;
 	int error = 0;
+	int cache_index = -1;
 	struct vnode *vp;
 
 	dip = VTOI(ap->a_dvp);
@@ -1215,18 +1219,19 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 * Note: In DragonFly the kernel handles '.' and '..'.
 	 */
 	parent = hammer2_inode_lock_sh(dip);
-	chain = hammer2_chain_lookup(&parent,
+	chain = hammer2_chain_lookup(&parent, &key_next,
 				     lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-				     HAMMER2_LOOKUP_SHARED);
+				     &cache_index, HAMMER2_LOOKUP_SHARED);
 	while (chain) {
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		    name_len == chain->data->ipdata.name_len &&
 		    bcmp(name, chain->data->ipdata.filename, name_len) == 0) {
 			break;
 		}
-		chain = hammer2_chain_next(&parent, chain,
-					   lhc, lhc + HAMMER2_DIRHASH_LOMASK,
-					   HAMMER2_LOOKUP_SHARED);
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					   key_next,
+					   lhc + HAMMER2_DIRHASH_LOMASK,
+					   &cache_index, HAMMER2_LOOKUP_SHARED);
 	}
 	hammer2_inode_unlock_sh(dip, parent);
 
@@ -1400,6 +1405,7 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 	hammer2_inode_t *ip;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
+	hammer2_key_t key_next;
 	hammer2_key_t lbeg;
 	hammer2_key_t lend;
 	hammer2_off_t pbeg;
@@ -1407,6 +1413,7 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 	hammer2_off_t array[HAMMER2_BMAP_COUNT][2];
 	int loff;
 	int ai;
+	int cache_index;
 
 	/*
 	 * Only supported on regular files
@@ -1434,8 +1441,9 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 	loff = ap->a_loffset & HAMMER2_OFF_MASK_LO;
 
 	parent = hammer2_inode_lock_sh(ip);
-	chain = hammer2_chain_lookup(&parent,
+	chain = hammer2_chain_lookup(&parent, &key_next,
 				     lbeg, lend,
+				     &cache_index,
 				     HAMMER2_LOOKUP_NODATA |
 				     HAMMER2_LOOKUP_SHARED);
 	if (chain == NULL) {
@@ -1451,8 +1459,9 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 			array[ai][0] = chain->bref.data_off & HAMMER2_OFF_MASK;
 			array[ai][1] = chain->bytes;
 		}
-		chain = hammer2_chain_next(&parent, chain,
-					   lbeg, lend,
+		chain = hammer2_chain_next(&parent, chain, &key_next,
+					   key_next, lend,
+					   &cache_index,
 					   HAMMER2_LOOKUP_NODATA |
 					   HAMMER2_LOOKUP_SHARED);
 	}
@@ -1968,8 +1977,10 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	hammer2_inode_t *ip;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
+	hammer2_key_t key_dummy;
 	hammer2_key_t lbase;
 	int loff;
+	int cache_index = -1;
 
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
@@ -1980,13 +1991,10 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	chain = NULL;
 	KKASSERT(((int)lbase & HAMMER2_PBUFMASK) == 0);
 
-#if 0
-	kprintf("read lbase %jd cached %016jx\n",
-		lbase, nbio->bio_offset);
-#endif
-
 	parent = hammer2_inode_lock_sh(ip);
-	chain = hammer2_chain_lookup(&parent, lbase, lbase,
+	chain = hammer2_chain_lookup(&parent, &key_dummy,
+				     lbase, lbase,
+				     &cache_index,
 				     HAMMER2_LOOKUP_NODATA |
 				     HAMMER2_LOOKUP_SHARED);
 
