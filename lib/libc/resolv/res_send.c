@@ -700,7 +700,7 @@ send_vc(res_state statp,
 		 *
 		 * Push on even if setsockopt(SO_NOSIGPIPE) fails.
 		 */
-		(void)setsockopt(statp->_vcsock, SOL_SOCKET, SO_NOSIGPIPE, &on,
+		(void)_setsockopt(statp->_vcsock, SOL_SOCKET, SO_NOSIGPIPE, &on,
 			         sizeof(on));
 #endif
 		errno = 0;
