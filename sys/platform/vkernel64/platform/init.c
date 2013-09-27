@@ -369,7 +369,7 @@ int main(int ac, char **av) {
 			optcpus = strtol(tok, NULL, 0);
 			if (optcpus < 1 || optcpus > MAXCPU)
 				usage_err("Bad ncpus, valid range is 1-%d", MAXCPU);
-			
+
 			/* :lbits argument */
 			tok = strtok(NULL, ":");
 			if (tok != NULL) {
@@ -408,7 +408,6 @@ int main(int ac, char **av) {
 	if (vmm_enabled) {
 		/* use a MAP_ANON directly */
 		init_kern_memory_vmm();
-		printf("VKERNEL VMM BOOTSTRAP OK2!\n");
 	} else {
 		init_sys_memory(memImageFile);
 		init_kern_memory();
@@ -724,7 +723,7 @@ init_kern_memory_vmm(void)
 	if (vmm_guest_ctl(VMM_GUEST_RUN, &options)) {
 		err(1, "Unable to enter VMM mode.");
 	}
-	printf("VKERNEL VMM BOOTSTRAP OK!\n");
+
 	/*
 	 * phys_avail[] represents unallocated physical memory.  MI code
 	 * will use phys_avail[] to create the vm_page array.
@@ -773,6 +772,8 @@ init_kern_memory_vmm(void)
 	 */
 	ptvmmap = (caddr_t)virtual_start;
 	virtual_start += PAGE_SIZE;
+
+	printf("vmm: Hardware pagetable enabled for guest\n");
 }
 
 
