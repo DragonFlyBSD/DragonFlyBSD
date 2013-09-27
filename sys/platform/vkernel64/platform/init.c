@@ -120,8 +120,8 @@ int optcpus;		/* number of cpus - see mp_start() */
 int lwp_cpu_lock;	/* if/how to lock virtual CPUs to real CPUs */
 int real_ncpus;		/* number of real CPUs */
 int next_cpu;		/* next real CPU to lock a virtual CPU to */
-int vkernel_b_arg;	/* -b argument - no of logical CPU bits - only SMP */
-int vkernel_B_arg;	/* -B argument - no of core bits - only SMP */
+int vkernel_b_arg;	/* no of logical CPU bits - only SMP */
+int vkernel_B_arg;	/* no of core bits - only SMP */
 int vmm_enabled;	/* VMM HW assisted enable */
 struct privatespace *CPU_prvspace;
 
@@ -245,7 +245,7 @@ int main(int ac, char **av) {
 	if (ac < 2)
 		usage_help(false);
 
-	while ((c = getopt(ac, av, "c:hsvl:m:n:r:e:i:p:I:Ub:B:")) != -1) {
+	while ((c = getopt(ac, av, "c:hsvl:m:n:r:e:i:p:I:U")) != -1) {
 		switch(c) {
 		case 'e':
 			/*
