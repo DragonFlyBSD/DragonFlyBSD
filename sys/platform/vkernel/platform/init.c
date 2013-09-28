@@ -165,6 +165,7 @@ main(int ac, char **av)
 	int isq;
 	int pos;
 	int eflag;
+	int dflag = 0;          /* disable vmm */
 	int real_vkernel_enable;
 	int supports_sse;
 	size_t vsize;
@@ -202,8 +203,13 @@ main(int ac, char **av)
 	if (ac < 2)
 		usage_help(false);
 
-	while ((c = getopt(ac, av, "c:hsvl:m:n:r:e:i:p:I:U")) != -1) {
+	while ((c = getopt(ac, av, "c:hsvl:m:n:r:e:i:p:I:Ud")) != -1) {
 		switch(c) {
+		case 'd':
+			printf("vmm: No need to disable. Hardware pagetable "
+			    "is not available in vkernel32.\n");
+			dflag = 1;
+			break;
 		case 'e':
 			/*
 			 * name=value:name=value:name=value...

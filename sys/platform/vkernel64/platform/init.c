@@ -170,6 +170,7 @@ int main(int ac, char **av) {
 	int isq;
 	int pos;
 	int eflag;
+	int dflag = 0;		/* disable vmm */
 	int real_vkernel_enable;
 	int supports_sse;
 	size_t vsize;
@@ -245,8 +246,11 @@ int main(int ac, char **av) {
 	if (ac < 2)
 		usage_help(false);
 
-	while ((c = getopt(ac, av, "c:hsvl:m:n:r:e:i:p:I:U")) != -1) {
+	while ((c = getopt(ac, av, "c:hsvl:m:n:r:e:i:p:I:Ud")) != -1) {
 		switch(c) {
+		case 'd':
+			dflag = 1;
+			break;
 		case 'e':
 			/*
 			 * name=value:name=value:name=value...
@@ -402,6 +406,7 @@ int main(int ac, char **av) {
 	 */
 	vsize = sizeof(vmm_enabled);
 	sysctlbyname("hw.vmm.enable", &vmm_enabled, &vsize, NULL, 0);
+	vmm_enabled = (vmm_enabled && !dflag);
 
 	writepid();
 	cpu_disable_intr();
