@@ -118,7 +118,7 @@ OBJTREE?=		${MAKEOBJDIRPREFIX}
 
 # Used for stage installs and pathing
 #
-DESTDIRBASE?=		${OBJTREE}${.CURDIR}
+DESTDIRBASE:=		${OBJTREE}${.CURDIR}
 
 # Remove DESTDIR from MAKEFLAGS.  It is present in the environment
 # anyhow, and we need to be able to override it for stage installs
