@@ -1377,7 +1377,7 @@ static
 void
 usage_help(_Bool help)
 {
-	fprintf(stderr, "Usage: %s [-hsUv] [-c file] [-e name=value:name=value:...]\n"
+	fprintf(stderr, "Usage: %s [-hsUvd] [-c file] [-e name=value:name=value:...]\n"
 	    "\t[-i file] [-I interface[:address1[:address2][/netmask]]] [-l cpulock]\n"
 	    "\t[-m size] [-n numcpus[:lbits[:cbits]]]\n"
 	    "\t[-p file] [-r file]\n", save_av[0]);
