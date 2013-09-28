@@ -510,9 +510,11 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 		} else {
 			info->diddeferral = 0;
 			spin_lock(&core->cst.spin);
+			KKASSERT(core->good == 0x1234 && core->sharecnt > 0);
 			TAILQ_FOREACH_REVERSE(layer, &core->layerq,
 					      h2_layer_list, entry) {
 				++layer->refs;
+				KKASSERT(layer->good == 0xABCD);
 				RB_SCAN(hammer2_chain_tree, &layer->rbtree,
 					NULL, hammer2_chain_flush_scan1, info);
 				--layer->refs;
@@ -534,10 +536,12 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 			spin_lock(&core->cst.spin);
 		} else {
 			spin_lock(&core->cst.spin);
+			KKASSERT(core->good == 0x1234 && core->sharecnt > 0);
 			TAILQ_FOREACH_REVERSE(layer, &core->layerq,
 					      h2_layer_list, entry) {
 				info->pass = 1;
 				++layer->refs;
+				KKASSERT(layer->good == 0xABCD);
 				RB_SCAN(hammer2_chain_tree, &layer->rbtree,
 					NULL, hammer2_chain_flush_scan2, info);
 				info->pass = 2;
@@ -553,6 +557,7 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 		chain->bref.mirror_tid = info->mirror_tid;
 		info->mirror_tid = saved_mirror;
 		info->parent = saved_parent;
+		KKASSERT(chain->refs > 1);
 		hammer2_chain_drop(chain);
 	}
 
@@ -1161,8 +1166,8 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 */
 	if (parent->delete_tid <= trans->sync_tid)
 		base = NULL;
-	else if ((above->flags & HAMMER2_CORE_COUNTEDBREFS) == 0)
-		hammer2_chain_countbrefs(above, base, count);
+	else if ((parent->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0)
+		hammer2_chain_countbrefs(parent, base, count);
 
 	/*
 	 * Update the parent's blockref table and propagate mirror_tid.
@@ -1185,7 +1190,7 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 		if (base && (child->flags & HAMMER2_CHAIN_REPLACE)) {
 			hammer2_rollup_stats(parent, child, -1);
 			spin_lock(&above->cst.spin);
-			hammer2_base_delete(base, count, above,
+			hammer2_base_delete(parent, base, count,
 					    &info->cache_index, &child->bref);
 			if (TAILQ_NEXT(parent, core_entry) == NULL) {
 				atomic_clear_int(&child->flags,
@@ -1208,7 +1213,7 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 			else
 				hammer2_rollup_stats(parent, child, 1);
 			spin_lock(&above->cst.spin);
-			hammer2_base_insert(base, count, above,
+			hammer2_base_insert(parent, base, count,
 					    &info->cache_index, &child->bref,
 					    child->flags);
 			if (TAILQ_NEXT(parent, core_entry) == NULL) {

@@ -782,8 +782,8 @@ hammer2_write_thread(void *arg)
 }
 
 /* 
- * From hammer2_vnops.c. 
- * Physical block assignement function.
+ * Return a chain suitable for I/O, creating the chain if necessary
+ * and assigning its physical block.
  */
 static
 hammer2_chain_t *
@@ -805,6 +805,7 @@ hammer2_assign_physical(hammer2_trans_t *trans,
 	 * logical buffer cache buffer.
 	 */
 	*errorp = 0;
+	KKASSERT(pblksize >= HAMMER2_MIN_ALLOC);
 retry:
 	parent = *parentp;
 	hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS); /* extra lock */

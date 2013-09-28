@@ -106,11 +106,17 @@ again:
 	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
 
 	/*
-	 * Resolve duplication races
+	 * We aren't safe until we have the chain lock so check to
+	 * see if we raced someone.
 	 */
-	if (hammer2_chain_refactor_test(chain, 1)) {
-		hammer2_chain_unlock(chain);
-		goto again;
+	if (chain->flags & HAMMER2_CHAIN_DELETED) {
+		spin_lock(&core->cst.spin);
+		if (hammer2_chain_refactor_test(chain, 1)) {
+			spin_unlock(&core->cst.spin);
+			hammer2_chain_unlock(chain);
+			goto again;
+		}
+		spin_unlock(&core->cst.spin);
 	}
 	return (chain);
 }

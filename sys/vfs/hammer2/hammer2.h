@@ -126,6 +126,7 @@ TAILQ_HEAD(h2_core_list, hammer2_chain);
 TAILQ_HEAD(h2_layer_list, hammer2_chain_layer);
 
 struct hammer2_chain_layer {
+	int		good;
 	TAILQ_ENTRY(hammer2_chain_layer) entry;
 	struct hammer2_chain_tree rbtree;
 	int	refs;		/* prevent destruction */
@@ -134,6 +135,7 @@ struct hammer2_chain_layer {
 typedef struct hammer2_chain_layer hammer2_chain_layer_t;
 
 struct hammer2_chain_core {
+	int		good;
 	struct ccms_cst	cst;
 	struct h2_core_list ownerq;	/* chain's which own this core */
 	struct h2_layer_list layerq;
@@ -141,13 +143,11 @@ struct hammer2_chain_core {
 	u_int		sharecnt;
 	u_int		flags;
 	u_int		live_count;	/* live (not deleted) chains in tree */
-	u_int		live_zero;	/* first empty blockref (index) */
 };
 
 typedef struct hammer2_chain_core hammer2_chain_core_t;
 
 #define HAMMER2_CORE_INDIRECT		0x0001
-#define HAMMER2_CORE_COUNTEDBREFS	0x0002
 
 struct hammer2_chain {
 	RB_ENTRY(hammer2_chain) rbnode;		/* node */
@@ -169,6 +169,7 @@ struct hammer2_chain {
 	u_int		flags;
 	u_int		refs;
 	u_int		lockcnt;
+	int		live_zero;		/* blockref array opt */
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
 };
@@ -209,6 +210,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
 #define HAMMER2_CHAIN_HARDLINK		0x00020000	/* converted to hlink */
 #define HAMMER2_CHAIN_REPLACE		0x00040000	/* replace bref */
+#define HAMMER2_CHAIN_COUNTEDBREFS	0x00080000	/* counted brefs */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -750,20 +752,20 @@ void hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain);
 
 void hammer2_chain_memory_wait(hammer2_pfsmount_t *pmp);
 void hammer2_chain_memory_wakeup(hammer2_pfsmount_t *pmp);
-void hammer2_chain_countbrefs(hammer2_chain_core_t *above,
+void hammer2_chain_countbrefs(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count);
 void hammer2_chain_layer_check_locked(hammer2_mount_t *hmp,
 				hammer2_chain_core_t *core);
 
-int hammer2_base_find(hammer2_blockref_t *base, int count,
-				hammer2_chain_core_t *above,
-				int *cache_indexp,
-				hammer2_key_t *key_nextp, hammer2_key_t key);
-void hammer2_base_delete(hammer2_blockref_t *base, int count,
-				hammer2_chain_core_t *above,
+int hammer2_base_find(hammer2_chain_t *chain,
+				hammer2_blockref_t *base, int count,
+				int *cache_indexp, hammer2_key_t *key_nextp,
+				hammer2_key_t key_beg, hammer2_key_t key_end);
+void hammer2_base_delete(hammer2_chain_t *chain,
+				hammer2_blockref_t *base, int count,
 				int *cache_indexp, hammer2_blockref_t *elm);
-void hammer2_base_insert(hammer2_blockref_t *base, int count,
-				hammer2_chain_core_t *above,
+void hammer2_base_insert(hammer2_chain_t *chain,
+				hammer2_blockref_t *base, int count,
 				int *cache_indexp, hammer2_blockref_t *elm,
 				int flags);
 
