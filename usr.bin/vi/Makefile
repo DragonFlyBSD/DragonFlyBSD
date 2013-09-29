@@ -1,24 +1,21 @@
 #
-# $FreeBSD: src/usr.bin/vi/Makefile,v 1.27.2.7 2002/08/07 16:32:01 ru Exp $
+# $FreeBSD: head/usr.bin/vi/Makefile 254225 2013-08-11 20:03:12Z peter $
 #
 
+.include <bsd.own.mk>
+
 SRCDIR=		${.CURDIR}/../../contrib/nvi
-CONTRIBDIR=	${SRCDIR}
-CSTD?=	gnu89
-WARNS?=	0
+SUBDIR+=	catalog
 
-APISTUFF=	ex_tcl.c ex_perl.c
-
-CFLAGS+=	-DGTAGS
-
-#if using ncurses:
-CFLAGS+=	-DSYSV_CURSES
+WARNS?=	0	# some warn issues on 32 bit machines
 
 VI=	nvi
 EX=	nex
 VIEW=	nview
 
 PROG=	nvi
+
+CFLAGS+=	-D__REGEX_PRIVATE
 
 LINKS=	${BINDIR}/${VI} ${BINDIR}/${EX} ${BINDIR}/${VI} ${BINDIR}/${VIEW}
 LINKS+= ${BINDIR}/${VI} ${BINDIR}/vi ${BINDIR}/${EX} ${BINDIR}/ex
@@ -28,34 +25,29 @@ MAN=	${SRCDIR}/docs/USD.doc/vi.man/vi.1
 MLINKS+=vi.1 ex.1 vi.1 view.1
 MLINKS+=vi.1 nex.1 vi.1 nview.1 vi.1 nvi.1
 
-CATALOGS= dutch english french german polish ru_SU.KOI8-R spanish swedish \
-          uk_UA.KOI8-U
-NLLINKS= nl_NL
-ENLINKS= en_AU en_CA en_GB en_US
-FRLINKS= fr_BE fr_CA fr_CH fr_FR
-DELINKS= de_AT de_CH de_DE
-ESLINKS= es_ES
-SVLINKS= sv_SE
-PLLINKS= pl_PL
-
 .PATH:	${SRCDIR}/common
 .PATH:	${SRCDIR}/ex
 .PATH:	${SRCDIR}/cl
 .PATH:	${SRCDIR}/vi
+.PATH:	${SRCDIR}/regex
 
-CFLAGS+=-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/include -I${SRCDIR}/vi
+CFLAGS+=-I${.CURDIR} -I${SRCDIR} -I${SRCDIR}/regex -I${SRCDIR}/vi
 
-DPADD+=		${LIBNCURSES}
-LDADD+=		-lncurses
+DPADD=		${LIBUTIL}
+LDADD=		-lutil
+
+CFLAGS+=	-DUSE_WIDECHAR
+DPADD+=		${LIBNCURSESW}
+LDADD+=		-lncursesw
+CFLAGS+=	-DUSE_ICONV
 
 CLEANFILES+=${EX}
-
 # Vi curses sources
-SRCS+=	cl_bsd.c cl_funcs.c cl_main.c cl_read.c cl_screen.c cl_term.c
+SRCS+=	cl_funcs.c cl_main.c cl_read.c cl_screen.c cl_term.c
 
 # General sources.
-SRCS+=	cut.c delete.c exf.c key.c line.c log.c main.c mark.c msg.c options.c \
-	options_f.c put.c screen.c search.c seq.c recover.c util.c
+SRCS+=	conv.c cut.c delete.c encoding.c exf.c key.c line.c log.c main.c mark.c msg.c options.c \
+	options_f.c put.c recover.c screen.c search.c seq.c util.c
 
 # Ex source.
 SRCS+=	ex.c ex_abbrev.c ex_append.c ex_args.c ex_argv.c ex_at.c ex_bang.c \
@@ -66,7 +58,7 @@ SRCS+=	ex.c ex_abbrev.c ex_append.c ex_args.c ex_argv.c ex_at.c ex_bang.c \
 	ex_read.c ex_screen.c ex_script.c ex_set.c ex_shell.c \
 	ex_shift.c ex_source.c ex_stop.c ex_subst.c ex_tag.c \
 	ex_txt.c ex_undo.c ex_usage.c ex_util.c ex_version.c ex_visual.c \
-	ex_write.c ex_yank.c ex_z.c ${APISTUFF}
+	ex_write.c ex_yank.c ex_z.c
 
 # Vi source.
 SRCS+=	getc.c v_at.c v_ch.c v_cmd.c v_delete.c v_ex.c v_increment.c v_init.c \
@@ -78,71 +70,13 @@ SRCS+=	getc.c v_at.c v_ch.c v_cmd.c v_delete.c v_ex.c v_increment.c v_init.c \
 # Vi screen source.
 SRCS+=	vs_line.c vs_msg.c vs_refresh.c vs_relative.c vs_smap.c vs_split.c
 
-# unifdef has some *weird* exit codes, sigh!  RTFM unifdef(1)...
-ex_notcl.c: ex_tcl.c
-	-unifdef -UHAVE_TCL_INTERP ${SRCDIR}/ex/ex_tcl.c > ${.TARGET}
+# Wide char regex
+SRCS+=	regcomp.c regerror.c regexec.c regfree.c
 
-ex_noperl.c: ex_perl.c
-	-unifdef -UHAVE_PERL_INTERP ${SRCDIR}/ex/ex_perl.c > ${.TARGET}
 
-v_ex.c: ${CONTRIBDIR}/vi/v_ex.c ${.CURDIR}/patches/v_ex.c.patch
-	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/vi/${.TARGET}
-
-ex_write.c: ${CONTRIBDIR}/ex/ex_write.c ${.CURDIR}/patches/ex_write.c.patch
-	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/ex/${.TARGET}
-
-CLEANFILES+=	ex_notcl.c ex_noperl.c ex_write.c v_ex.c
-
-afterinstall:
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${CATALOGS:S;^;${SRCDIR}/catalog/;} \
-		${DESTDIR}/usr/share/vi/catalog
-	for l in ${NLLINKS}; do \
-		${LN} -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		${LN} -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		${LN} -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		${LN} -fs dutch ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
-	done
-	for l in ${ENLINKS}; do \
-		${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
-		${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/$$l.US-ASCII; \
-	done
-	${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/en_US.US-ASCII
-	${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/US-ASCII
-	${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/ASCII
-	${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/POSIX
-	${LN} -fs english ${DESTDIR}/usr/share/vi/catalog/C
-	for l in ${FRLINKS}; do \
-		${LN} -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		${LN} -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		${LN} -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		${LN} -fs french ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
-	done
-	for l in ${DELINKS}; do \
-		${LN} -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		${LN} -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		${LN} -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		${LN} -fs german ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
-	done
-	for l in ${ESLINKS}; do \
-		${LN} -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		${LN} -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		${LN} -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		${LN} -fs spanish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
-	done
-	for l in ${SVLINKS}; do \
-		${LN} -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-1; \
-		${LN} -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-1; \
-		${LN} -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-15; \
-		${LN} -fs swedish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-15; \
-	done
-	for l in ${PLLINKS}; do \
-		${LN} -fs polish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO8859-2; \
-		${LN} -fs polish ${DESTDIR}/usr/share/vi/catalog/$$l.ISO_8859-2; \
-	done
-	${LN} -fs ru_SU.KOI8-R ${DESTDIR}/usr/share/vi/catalog/ru_RU.KOI8-R
+# Clean up files from version 1.71 (remove at Release 3.8)
+# They will overwrite the versions in contrib, breaking the build
+beforedepend:
+	@rm -f ${.OBJDIR}/ex_write.c ${.OBJDIR}/v_ex.c
 
 .include <bsd.prog.mk>

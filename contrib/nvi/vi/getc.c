@@ -5,12 +5,13 @@
  *	Keith Bostic.  All rights reserved.
  *
  * See the LICENSE file for redistribution information.
- *
- * @(#)getc.c	10.10 (Berkeley) 3/6/96
- * $DragonFly: src/contrib/nvi/vi/getc.c,v 1.2 2003/06/17 04:24:04 dillon Exp $
  */
 
 #include "config.h"
+
+#ifndef lint
+static const char sccsid[] = "$Id: getc.c,v 10.13 2011/12/27 00:49:31 zy Exp $";
+#endif /* not lint */
 
 #include <sys/types.h>
 #include <sys/queue.h>
@@ -42,9 +43,7 @@
  * PUBLIC: int cs_init __P((SCR *, VCS *));
  */
 int
-cs_init(sp, csp)
-	SCR *sp;
-	VCS *csp;
+cs_init(SCR *sp, VCS *csp)
 {
 	int isempty;
 
@@ -70,11 +69,9 @@ cs_init(sp, csp)
  * PUBLIC: int cs_next __P((SCR *, VCS *));
  */
 int
-cs_next(sp, csp)
-	SCR *sp;
-	VCS *csp;
+cs_next(SCR *sp, VCS *csp)
 {
-	char *p;
+	CHAR_T *p;
 
 	switch (csp->cs_flags) {
 	case CS_EMP:				/* EMP; get next line. */
@@ -122,16 +119,14 @@ cs_next(sp, csp)
  * PUBLIC: int cs_fspace __P((SCR *, VCS *));
  */
 int
-cs_fspace(sp, csp)
-	SCR *sp;
-	VCS *csp;
+cs_fspace(SCR *sp, VCS *csp)
 {
-	if (csp->cs_flags != 0 || !isblank(csp->cs_ch))
+	if (csp->cs_flags != 0 || !ISBLANK(csp->cs_ch))
 		return (0);
 	for (;;) {
 		if (cs_next(sp, csp))
 			return (1);
-		if (csp->cs_flags != 0 || !isblank(csp->cs_ch))
+		if (csp->cs_flags != 0 || !ISBLANK(csp->cs_ch))
 			break;
 	}
 	return (0);
@@ -144,15 +139,13 @@ cs_fspace(sp, csp)
  * PUBLIC: int cs_fblank __P((SCR *, VCS *));
  */
 int
-cs_fblank(sp, csp)
-	SCR *sp;
-	VCS *csp;
+cs_fblank(SCR *sp, VCS *csp)
 {
 	for (;;) {
 		if (cs_next(sp, csp))
 			return (1);
 		if (csp->cs_flags == CS_EOL || csp->cs_flags == CS_EMP ||
-		    csp->cs_flags == 0 && isblank(csp->cs_ch))
+		    (csp->cs_flags == 0 && ISBLANK(csp->cs_ch)))
 			continue;
 		break;
 	}
@@ -166,9 +159,7 @@ cs_fblank(sp, csp)
  * PUBLIC: int cs_prev __P((SCR *, VCS *));
  */
 int
-cs_prev(sp, csp)
-	SCR *sp;
-	VCS *csp;
+cs_prev(SCR *sp, VCS *csp)
 {
 	switch (csp->cs_flags) {
 	case CS_EMP:				/* EMP; get previous line. */
@@ -217,15 +208,13 @@ cs_prev(sp, csp)
  * PUBLIC: int cs_bblank __P((SCR *, VCS *));
  */
 int
-cs_bblank(sp, csp)
-	SCR *sp;
-	VCS *csp;
+cs_bblank(SCR *sp, VCS *csp)
 {
 	for (;;) {
 		if (cs_prev(sp, csp))
 			return (1);
 		if (csp->cs_flags == CS_EOL || csp->cs_flags == CS_EMP ||
-		    csp->cs_flags == 0 && isblank(csp->cs_ch))
+		    (csp->cs_flags == 0 && ISBLANK(csp->cs_ch)))
 			continue;
 		break;
 	}
