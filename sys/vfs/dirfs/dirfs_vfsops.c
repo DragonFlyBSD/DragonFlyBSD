@@ -66,7 +66,7 @@ KTR_INFO(KTR_DIRFS, dirfs, root, 31,
     dirfs_node_t dnp, struct vnode *vp, char *hostdir, int fd, int error);
 
 /* System wide sysctl stuff */
-int debuglvl = 2;
+int debuglvl = 0;
 int dirfs_fd_limit = 100;
 int dirfs_fd_used = 0;
 long passive_fd_list_miss = 0;
