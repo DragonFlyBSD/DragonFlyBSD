@@ -183,13 +183,17 @@ dirfs_unmount(struct mount *mp, int mntflags)
 	}
 
 	/*
-	 * Cleanup root node
+	 * Cleanup root node. In the case the filesystem is mounted
+	 * but no operation is done on it, there will be no call to
+	 * VFS_ROOT() so better check dnp is not NULL before attempting
+	 * to release it.
 	 */
 	dnp = dmp->dm_root;
-	dirfs_close_helper(dnp);
-	debug_node2(dnp);
-	dirfs_node_drop(dmp, dnp);	/* last ref should free structure */
-
+	if (dnp != NULL) {
+		dirfs_close_helper(dnp);
+		debug_node2(dnp);
+		dirfs_node_drop(dmp, dnp);	/* last ref should free structure */
+	}
 	kfree(dmp, M_DIRFS);
 	mp->mnt_data = (qaddr_t) 0;
 
