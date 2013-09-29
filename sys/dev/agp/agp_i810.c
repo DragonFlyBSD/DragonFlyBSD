@@ -745,7 +745,7 @@ agp_i810_match(device_t dev)
 	if (pci_get_vendor(dev) != PCI_VENDOR_INTEL)
 		return (NULL);
 
-	devid = pci_get_subdevice(dev);
+	devid = pci_get_device(dev);
 	for (i = 0; agp_i810_matches[i].devid != 0; i++) {
 		if (agp_i810_matches[i].devid == devid)
 			break;
