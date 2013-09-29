@@ -53,6 +53,7 @@
 #include <sys/lock.h>
 #include <sys/rman.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 #include "agppriv.h"
@@ -507,227 +508,227 @@ static const struct agp_i810_match {
 	const struct agp_i810_driver *driver;
 } agp_i810_matches[] = {
 	{
-		.devid = 0x71218086,
+		.devid = 0x7121,
 		.name = "Intel 82810 (i810 GMCH) SVGA controller",
 		.driver = &agp_i810_i810_driver
 	},
 	{
-		.devid = 0x71238086,
+		.devid = 0x7123,
 		.name = "Intel 82810-DC100 (i810-DC100 GMCH) SVGA controller",
 		.driver = &agp_i810_i810_driver
 	},
 	{
-		.devid = 0x71258086,
+		.devid = 0x7125,
 		.name = "Intel 82810E (i810E GMCH) SVGA controller",
 		.driver = &agp_i810_i810_driver
 	},
 	{
-		.devid = 0x11328086,
+		.devid = 0x1132,
 		.name = "Intel 82815 (i815 GMCH) SVGA controller",
 		.driver = &agp_i810_i815_driver
 	},
 	{
-		.devid = 0x35778086,
+		.devid = 0x3577,
 		.name = "Intel 82830M (830M GMCH) SVGA controller",
 		.driver = &agp_i810_i830_driver
 	},
 	{
-		.devid = 0x25628086,
+		.devid = 0x2562,
 		.name = "Intel 82845M (845M GMCH) SVGA controller",
 		.driver = &agp_i810_i830_driver
 	},
 	{
-		.devid = 0x35828086,
+		.devid = 0x3582,
 		.name = "Intel 82852/855GM SVGA controller",
 		.driver = &agp_i810_i855_driver
 	},
 	{
-		.devid = 0x25728086,
+		.devid = 0x2572,
 		.name = "Intel 82865G (865G GMCH) SVGA controller",
 		.driver = &agp_i810_i865_driver
 	},
 	{
-		.devid = 0x25828086,
+		.devid = 0x2582,
 		.name = "Intel 82915G (915G GMCH) SVGA controller",
 		.driver = &agp_i810_i915_driver
 	},
 	{
-		.devid = 0x258A8086,
+		.devid = 0x258A,
 		.name = "Intel E7221 SVGA controller",
 		.driver = &agp_i810_i915_driver
 	},
 	{
-		.devid = 0x25928086,
+		.devid = 0x2592,
 		.name = "Intel 82915GM (915GM GMCH) SVGA controller",
 		.driver = &agp_i810_i915_driver
 	},
 	{
-		.devid = 0x27728086,
+		.devid = 0x2772,
 		.name = "Intel 82945G (945G GMCH) SVGA controller",
 		.driver = &agp_i810_i915_driver
 	},
 	{
-		.devid = 0x27A28086,
+		.devid = 0x27A2,
 		.name = "Intel 82945GM (945GM GMCH) SVGA controller",
 		.driver = &agp_i810_i915_driver
 	},
 	{
-		.devid = 0x27AE8086,
+		.devid = 0x27AE,
 		.name = "Intel 945GME SVGA controller",
 		.driver = &agp_i810_i915_driver
 	},
 	{
-		.devid = 0x29728086,
+		.devid = 0x2972,
 		.name = "Intel 946GZ SVGA controller",
 		.driver = &agp_i810_g965_driver
 	},
 	{
-		.devid = 0x29828086,
+		.devid = 0x2982,
 		.name = "Intel G965 SVGA controller",
 		.driver = &agp_i810_g965_driver
 	},
 	{
-		.devid = 0x29928086,
+		.devid = 0x2992,
 		.name = "Intel Q965 SVGA controller",
 		.driver = &agp_i810_g965_driver
 	},
 	{
-		.devid = 0x29A28086,
+		.devid = 0x29A2,
 		.name = "Intel G965 SVGA controller",
 		.driver = &agp_i810_g965_driver
 	},
 	{
-		.devid = 0x29B28086,
+		.devid = 0x29B2,
 		.name = "Intel Q35 SVGA controller",
 		.driver = &agp_i810_g33_driver
 	},
 	{
-		.devid = 0x29C28086,
+		.devid = 0x29C2,
 		.name = "Intel G33 SVGA controller",
 		.driver = &agp_i810_g33_driver
 	},
 	{
-		.devid = 0x29D28086,
+		.devid = 0x29D2,
 		.name = "Intel Q33 SVGA controller",
 		.driver = &agp_i810_g33_driver
 	},
 	{
-		.devid = 0xA0018086,
+		.devid = 0xA001,
 		.name = "Intel Pineview SVGA controller",
 		.driver = &agp_i810_igd_driver
 	},
 	{
-		.devid = 0xA0118086,
+		.devid = 0xA011,
 		.name = "Intel Pineview (M) SVGA controller",
 		.driver = &agp_i810_igd_driver
 	},
 	{
-		.devid = 0x2A028086,
+		.devid = 0x2A02,
 		.name = "Intel GM965 SVGA controller",
 		.driver = &agp_i810_g965_driver
 	},
 	{
-		.devid = 0x2A128086,
+		.devid = 0x2A12,
 		.name = "Intel GME965 SVGA controller",
 		.driver = &agp_i810_g965_driver
 	},
 	{
-		.devid = 0x2A428086,
+		.devid = 0x2A42,
 		.name = "Intel GM45 SVGA controller",
 		.driver = &agp_i810_g4x_driver
 	},
 	{
-		.devid = 0x2E028086,
+		.devid = 0x2E02,
 		.name = "Intel Eaglelake SVGA controller",
 		.driver = &agp_i810_g4x_driver
 	},
 	{
-		.devid = 0x2E128086,
+		.devid = 0x2E12,
 		.name = "Intel Q45 SVGA controller",
 		.driver = &agp_i810_g4x_driver
 	},
 	{
-		.devid = 0x2E228086,
+		.devid = 0x2E22,
 		.name = "Intel G45 SVGA controller",
 		.driver = &agp_i810_g4x_driver
 	},
 	{
-		.devid = 0x2E328086,
+		.devid = 0x2E32,
 		.name = "Intel G41 SVGA controller",
 		.driver = &agp_i810_g4x_driver
 	},
 	{
-		.devid = 0x00428086,
+		.devid = 0x0042,
 		.name = "Intel Ironlake (D) SVGA controller",
 		.driver = &agp_i810_g4x_driver
 	},
 	{
-		.devid = 0x00468086,
+		.devid = 0x0046,
 		.name = "Intel Ironlake (M) SVGA controller",
 		.driver = &agp_i810_g4x_driver
 	},
 	{
-		.devid = 0x01028086,
+		.devid = 0x0102,
 		.name = "SandyBridge desktop GT1 IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x01128086,
+		.devid = 0x0112,
 		.name = "SandyBridge desktop GT2 IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x01228086,
+		.devid = 0x0122,
 		.name = "SandyBridge desktop GT2+ IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x01068086,
+		.devid = 0x0106,
 		.name = "SandyBridge mobile GT1 IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x01168086,
+		.devid = 0x0116,
 		.name = "SandyBridge mobile GT2 IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x01268086,
+		.devid = 0x0126,
 		.name = "SandyBridge mobile GT2+ IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x010a8086,
+		.devid = 0x010a,
 		.name = "SandyBridge server IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x01528086,
+		.devid = 0x0152,
 		.name = "IvyBridge desktop GT1 IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x01628086,
+		.devid = 0x0162,
 		.name = "IvyBridge desktop GT2 IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x01568086,
+		.devid = 0x0156,
 		.name = "IvyBridge mobile GT1 IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x01668086,
+		.devid = 0x0166,
 		.name = "IvyBridge mobile GT2 IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x015a8086,
+		.devid = 0x015a,
 		.name = "IvyBridge server GT1 IG",
 		.driver = &agp_i810_sb_driver
 	},
 	{
-		.devid = 0x016a8086,
+		.devid = 0x016a,
 		.name = "IvyBridge server GT2 IG",
 		.driver = &agp_i810_sb_driver
 	},
@@ -741,10 +742,10 @@ agp_i810_match(device_t dev)
 {
 	int i, devid;
 
-	if (pci_get_class(dev) != PCIC_DISPLAY)
+	if (pci_get_vendor(dev) != PCI_VENDOR_INTEL)
 		return (NULL);
 
-	devid = pci_get_devid(dev);
+	devid = pci_get_subdevice(dev);
 	for (i = 0; agp_i810_matches[i].devid != 0; i++) {
 		if (agp_i810_matches[i].devid == devid)
 			break;
