@@ -63,6 +63,9 @@ hammer2_inode_cmp(hammer2_inode_t *ip1, hammer2_inode_t *ip2)
  * locked, and can be cleaned out at any time (become NULL) when an inode
  * is not locked.
  *
+ * This function handles duplication races which can cause ip's cached
+ * chain to become stale.
+ *
  * The underlying chain is also locked and returned.
  *
  * NOTE: We don't combine the inode/chain lock because putting away an
@@ -77,46 +80,22 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 	hammer2_inode_ref(ip);
 	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
 
-	/*
-	 * ip->chain fixup.  Certain duplications used to move inodes
-	 * into indirect blocks (for example) can cause ip->chain to
-	 * become stale.
-	 */
-again:
 	chain = ip->chain;
 	core = chain->core;
-	spin_lock(&core->cst.spin);
-	if (hammer2_chain_refactor_test(chain, 1)) {
-		while (hammer2_chain_refactor_test(chain, 1))
-			chain = TAILQ_NEXT(chain, core_entry);
-		KKASSERT(chain->core == core);
-		if (ip->chain != chain) {
+	for (;;) {
+		if (chain->flags & HAMMER2_CHAIN_DUPLICATED) {
+			spin_lock(&core->cst.spin);
+			while (chain->flags & HAMMER2_CHAIN_DUPLICATED)
+				chain = TAILQ_NEXT(chain, core_entry);
 			hammer2_chain_ref(chain);
 			spin_unlock(&core->cst.spin);
 			hammer2_inode_repoint(ip, NULL, chain);
 			hammer2_chain_drop(chain);
-		} else {
-			spin_unlock(&core->cst.spin);
 		}
-	} else {
-		spin_unlock(&core->cst.spin);
-	}
-
-	KKASSERT(chain != NULL);	/* for now */
-	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-
-	/*
-	 * We aren't safe until we have the chain lock so check to
-	 * see if we raced someone.
-	 */
-	if (chain->flags & HAMMER2_CHAIN_DELETED) {
-		spin_lock(&core->cst.spin);
-		if (hammer2_chain_refactor_test(chain, 1)) {
-			spin_unlock(&core->cst.spin);
-			hammer2_chain_unlock(chain);
-			goto again;
-		}
-		spin_unlock(&core->cst.spin);
+		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
+		if ((chain->flags & HAMMER2_CHAIN_DUPLICATED) == 0)
+			break;
+		hammer2_chain_unlock(chain);
 	}
 	return (chain);
 }
@@ -149,23 +128,23 @@ hammer2_inode_lock_sh(hammer2_inode_t *ip)
 	hammer2_chain_t *chain;
 
 	hammer2_inode_ref(ip);
-again:
-	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_SHARED);
+	for (;;) {
+		ccms_thread_lock(&ip->topo_cst, CCMS_STATE_SHARED);
 
-	chain = ip->chain;
-	KKASSERT(chain != NULL);	/* for now */
-	hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
-				  HAMMER2_RESOLVE_SHARED);
+		chain = ip->chain;
+		KKASSERT(chain != NULL);	/* for now */
+		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
+					  HAMMER2_RESOLVE_SHARED);
 
-	/*
-	 * Resolve duplication races
-	 */
-	if (hammer2_chain_refactor_test(chain, 1)) {
+		/*
+		 * Resolve duplication races
+		 */
+		if ((chain->flags & HAMMER2_CHAIN_DUPLICATED) == 0)
+			break;
 		hammer2_chain_unlock(chain);
 		ccms_thread_unlock(&ip->topo_cst);
 		chain = hammer2_inode_lock_ex(ip);
 		hammer2_inode_unlock_ex(ip, chain);
-		goto again;
 	}
 	return (chain);
 }
@@ -720,10 +699,10 @@ hammer2_chain_refactor(hammer2_chain_t **chainp)
 	hammer2_chain_core_t *core;
 
 	core = chain->core;
-	spin_lock(&core->cst.spin);
-	while (hammer2_chain_refactor_test(chain, 1)) {
+	while (chain->flags & HAMMER2_CHAIN_DUPLICATED) {
+		spin_lock(&core->cst.spin);
 		chain = TAILQ_NEXT(chain, core_entry);
-		while (hammer2_chain_refactor_test(chain, 1))
+		while (chain->flags & HAMMER2_CHAIN_DUPLICATED)
 			chain = TAILQ_NEXT(chain, core_entry);
 		hammer2_chain_ref(chain);
 		spin_unlock(&core->cst.spin);
@@ -733,9 +712,7 @@ hammer2_chain_refactor(hammer2_chain_t **chainp)
 		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
 					  HAMMER2_RESOLVE_NOREF); /* eat ref */
 		*chainp = chain;
-		spin_lock(&core->cst.spin);
 	}
-	spin_unlock(&core->cst.spin);
 }
 
 /*
@@ -775,9 +752,13 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_chain_t **ochainp,
 	 * no collision iteration.
 	 *
 	 * There should be no key collisions with invisible inode keys.
+	 *
+	 * WARNING! Must use inode_lock_ex() on dip to handle a stale
+	 *	    dip->chain cache.
 	 */
 retry:
-	parent = hammer2_chain_lookup_init(dip->chain, 0);
+	parent = hammer2_inode_lock_ex(dip);
+	/*parent = hammer2_chain_lookup_init(dip->chain, 0);*/
 	nchain = hammer2_chain_lookup(&parent, &key_dummy,
 				      lhc, lhc, &cache_index, 0);
 	if (nchain) {
@@ -810,7 +791,8 @@ retry:
 	 */
 	if (*errorp == EAGAIN) {
 		hammer2_chain_ref(parent);
-		hammer2_chain_lookup_done(parent);
+		/* hammer2_chain_lookup_done(parent); */
+		hammer2_inode_unlock_ex(dip, parent);
 		hammer2_chain_wait(parent);
 		hammer2_chain_drop(parent);
 		goto retry;
@@ -821,7 +803,8 @@ retry:
 	 */
 	if (*errorp) {
 		KKASSERT(nchain == NULL);
-		hammer2_chain_lookup_done(parent);
+		hammer2_inode_unlock_ex(dip, parent);
+		/*hammer2_chain_lookup_done(parent);*/
 		return (NULL);
 	}
 
@@ -841,7 +824,8 @@ retry:
 	bref.key = lhc;			/* invisible dir entry key */
 	bref.keybits = 0;
 	hammer2_chain_duplicate(trans, parent, &tmp, &bref);
-	hammer2_chain_lookup_done(parent);
+	hammer2_inode_unlock_ex(dip, parent);
+	/*hammer2_chain_lookup_done(parent);*/
 	hammer2_chain_unlock(nchain);	/* no longer needed */
 
 	/*
@@ -895,8 +879,12 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 	 * Since ochain is either disconnected from the topology or represents
 	 * a hardlink terminus which is always a parent of or equal to dip,
 	 * we should be able to safely lock dip->chain for our setup.
+	 *
+	 * WARNING! Must use inode_lock_ex() on dip to handle a stale
+	 *	    dip->chain cache.
 	 */
-	parent = hammer2_chain_lookup_init(dip->chain, 0);
+	parent = hammer2_inode_lock_ex(dip);
+	/*parent = hammer2_chain_lookup_init(dip->chain, 0);*/
 
 	lhc = hammer2_dirhash(name, name_len);
 
@@ -955,7 +943,8 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 	 * Unlock stuff.
 	 */
 	KKASSERT(error != EAGAIN);
-	hammer2_chain_lookup_done(parent);
+	hammer2_inode_unlock_ex(dip, parent);
+	/*hammer2_chain_lookup_done(parent);*/
 	parent = NULL;
 
 	/*
@@ -986,7 +975,6 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 				     HAMMER2_MODIFY_ASSERTNOCOPY);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		ipdata = &nchain->data->ipdata;
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_HARDLINK);
 		bcopy(name, ipdata->filename, name_len);
 		ipdata->name_key = lhc;
 		ipdata->name_len = name_len;
@@ -1068,12 +1056,6 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		hammer2_chain_ref(nchain);
 	if (ochain)
 		hammer2_chain_drop(ochain);
-
-	/*
-	 * Flag the chain for the refactor test
-	 */
-	if (nchain && nchain->data && nchain->data->ipdata.type == HAMMER2_OBJTYPE_HARDLINK)
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_HARDLINK);
 
 	/*
 	 * Repoint ip->pip if requested (non-NULL pip).
@@ -1358,11 +1340,14 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			 * set the DIRECTDATA flag to prevent sub-chains
 			 * from trying to synchronize to the inode if the
 			 * file is extended afterwords.
+			 *
+			 * DELDUP_RECORE causes the new chain to NOT inherit
+			 * the old chain's core (sub-tree).
 			 */
-			hammer2_chain_modify(trans, &chain, 0);
+			/*hammer2_chain_modify(trans, &chain, 0);*/
 			hammer2_chain_delete_duplicate(trans, &chain,
 						       HAMMER2_DELDUP_RECORE);
-			atomic_set_int(&chain->flags, HAMMER2_CHAIN_HARDLINK);
+			hammer2_chain_modify(trans, &chain, 0);
 			ipdata = &chain->data->ipdata;
 			ipdata->target_type = ipdata->type;
 			ipdata->type = HAMMER2_OBJTYPE_HARDLINK;

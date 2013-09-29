@@ -208,9 +208,10 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
-#define HAMMER2_CHAIN_HARDLINK		0x00020000	/* converted to hlink */
+#define HAMMER2_CHAIN_UNUSE20000	0x00020000
 #define HAMMER2_CHAIN_REPLACE		0x00040000	/* replace bref */
 #define HAMMER2_CHAIN_COUNTEDBREFS	0x00080000	/* counted brefs */
+#define HAMMER2_CHAIN_DUPLICATED	0x00100000	/* fwd delete-dup */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -552,30 +553,6 @@ hammer2_mount_t *
 MPTOHMP(struct mount *mp)
 {
 	return (((hammer2_pfsmount_t *)mp->mnt_data)->cluster->hmp);
-}
-
-static __inline
-int
-hammer2_chain_refactor_test(hammer2_chain_t *chain, int traverse_hlink)
-{
-	hammer2_chain_t *next;
-
-	next = TAILQ_NEXT(chain, core_entry);
-
-	if ((chain->flags & HAMMER2_CHAIN_DELETED) &&
-	    next &&
-	    (next->flags & HAMMER2_CHAIN_SNAPSHOT) == 0) {
-		return (1);
-	}
-	if (traverse_hlink &&
-	    chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
-	    (chain->flags & HAMMER2_CHAIN_HARDLINK) &&
-	    next &&
-	    (next->flags & HAMMER2_CHAIN_SNAPSHOT) == 0) {
-		return(1);
-	}
-
-	return (0);
 }
 
 extern struct vop_ops hammer2_vnode_vops;

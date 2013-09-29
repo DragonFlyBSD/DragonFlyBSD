@@ -134,8 +134,9 @@ hammer2_isclusterable(hammer2_chain_t *chain)
  * Recursively set the SUBMODIFIED flag up to the root starting at chain's
  * parent.  SUBMODIFIED is not set in chain itself.
  *
- * This function only operates on current-time transactions and is not
- * used during flushes.  Instead, the flush code manages the flag itself.
+ * This function always runs up the live tree.  The flush code can cause
+ * modifications under dead parents which are being flush synchronized
+ * and will handle this flag itself.
  */
 void
 hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain)
@@ -147,7 +148,7 @@ hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain)
 	while ((above = chain->above) != NULL) {
 		spin_lock(&above->cst.spin);
 		chain = TAILQ_FIRST(&above->ownerq);
-		while (hammer2_chain_refactor_test(chain, 1))
+		while (chain->flags & HAMMER2_CHAIN_DUPLICATED)
 			chain = TAILQ_NEXT(chain, core_entry);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_SUBMODIFIED);
 		spin_unlock(&above->cst.spin);
@@ -233,6 +234,10 @@ hammer2_chain_core_alloc(hammer2_trans_t *trans,
 	KKASSERT(nchain->core == NULL);
 
 	if (ochain == NULL) {
+		/*
+		 * Fresh core under nchain (no multi-homing of ochain's
+		 * sub-tree).
+		 */
 		core = kmalloc(sizeof(*core), nchain->hmp->mchain,
 			       M_WAITOK | M_ZERO);
 		TAILQ_INIT(&core->layerq);
@@ -243,13 +248,37 @@ hammer2_chain_core_alloc(hammer2_trans_t *trans,
 		ccms_cst_init(&core->cst, nchain);
 		TAILQ_INSERT_TAIL(&core->ownerq, nchain, core_entry);
 	} else {
+		/*
+		 * Multi-homing (delete-duplicate) sub-tree under ochain.
+		 * Set the DUPLICATED flag on ochain but only if this is
+		 * not a snapshot.  This flag governs forward iterations
+		 * for any refactor tests.
+		 *
+		 * It is not legal for the DUPLICATED flag to already be
+		 * set.  This indicates that the caller is trying to
+		 * delete-duplicate a stale chain.  The flusher can modify
+		 * a stale chain as part of its synchronization point handling
+		 * in order to update the block table (and it will
+		 * carry-forward such modifications automatically), but it
+		 * has no business delete-duplicating it.
+		 */
+		KKASSERT((ochain->flags & HAMMER2_CHAIN_DUPLICATED) == 0);
+		if ((nchain->flags & HAMMER2_CHAIN_SNAPSHOT) == 0) {
+			atomic_set_int(&ochain->flags,
+				       HAMMER2_CHAIN_DUPLICATED);
+		}
 		core = ochain->core;
 		atomic_add_int(&core->sharecnt, 1);
 
 		spin_lock(&core->cst.spin);
 		nchain->core = core;
+
+		/*
+		 * Maintain ordering for refactor test so we don't skip over
+		 * a snapshot.
+		 */
 #if 1
-		TAILQ_INSERT_TAIL(&core->ownerq, nchain, core_entry);
+		TAILQ_INSERT_AFTER(&core->ownerq, ochain, nchain, core_entry);
 #else
 		if (trans->flags & HAMMER2_TRANS_ISFLUSH) {
 			TAILQ_INSERT_AFTER(&core->ownerq, ochain, nchain,
@@ -1841,7 +1870,7 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 
 	for (;;) {
 		nparent = bparent;
-		while (hammer2_chain_refactor_test(nparent, 1))
+		while (nparent->flags & HAMMER2_CHAIN_DUPLICATED)
 			nparent = TAILQ_NEXT(nparent, core_entry);
 		hammer2_chain_ref(nparent);
 		spin_unlock(&above->cst.spin);
@@ -1854,12 +1883,11 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 		hammer2_chain_drop(bparent);
 
 		/*
-		 * We might have raced a delete-duplicate (though it's also
-		 * possible that the element is deleted for real)
+		 * We might have raced a delete-duplicate.
 		 */
-		if (nparent->flags & HAMMER2_CHAIN_DELETED) {
+		if (nparent->flags & HAMMER2_CHAIN_DUPLICATED) {
 			spin_lock(&above->cst.spin);
-			if (hammer2_chain_refactor_test(nparent, 1)) {
+			if (nparent->flags & HAMMER2_CHAIN_DUPLICATED) {
 				spin_unlock(&above->cst.spin);
 				hammer2_chain_ref(nparent);
 				hammer2_chain_unlock(nparent);
@@ -2878,9 +2906,9 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	KKASSERT((trans->flags & HAMMER2_TRANS_RESTRICTED) == 0);
 	nchain = ip->chain;
 	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_MAYBE);
-	hammer2_chain_duplicate(trans, NULL, &nchain, NULL);
 	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_RECYCLE |
 				       HAMMER2_CHAIN_SNAPSHOT);
+	hammer2_chain_duplicate(trans, NULL, &nchain, NULL);
 
 	/*
 	 * Create named entry in the super-root.
