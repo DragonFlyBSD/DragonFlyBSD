@@ -258,3 +258,18 @@ DF306.0 {
 	log2l;
 	logl;
 };
+
+/*
+ * Implemented as weak aliases for imprecise versions
+ */
+
+DF306.1 {
+	coshl;
+	erfcl;
+	erfl;
+	lgammal;
+	powl;
+	sinhl;
+	tanhl;
+	tgammal;
+};
