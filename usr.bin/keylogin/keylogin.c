@@ -30,7 +30,6 @@
  * @(#)keylogin.c 1.4 91/03/11 Copyr 1986 Sun Micro
  *
  * $FreeBSD: src/usr.bin/keylogin/keylogin.c,v 1.4 2002/06/30 05:25:01 obrien Exp $
- * $DragonFly: src/usr.bin/keylogin/keylogin.c,v 1.4 2007/11/25 01:28:23 swildner Exp $
  */
 
 /*
@@ -47,6 +46,8 @@
 #include <unistd.h>
 #include <rpc/rpc.h>
 #include <rpc/key_prot.h>
+
+extern int key_setnet(struct key_netstarg *);
 
 int
 main(void)
