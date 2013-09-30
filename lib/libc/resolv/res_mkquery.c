@@ -104,9 +104,9 @@ res_nmkquery(res_state statp,
 	     u_char *buf,		/*!< buffer to put query  */
 	     int buflen)		/*!< size of buffer  */
 {
-	register HEADER *hp;
-	register u_char *cp, *ep;
-	register int n;
+	HEADER *hp;
+	u_char *cp, *ep;
+	int n;
 	u_char *dnptrs[20], **dpp, **lastdnptr;
 
 	UNUSED(newrr_in);
@@ -211,8 +211,8 @@ res_nopt(res_state statp,
 	 int buflen,		/*%< size of buffer */
 	 int anslen)		/*%< UDP answer buffer size */
 {
-	register HEADER *hp;
-	register u_char *cp, *ep;
+	HEADER *hp;
+	u_char *cp, *ep;
 	u_int16_t flags = 0;
 
 #ifdef DEBUG
@@ -268,7 +268,7 @@ res_nopt_rdata(res_state statp,
 	  u_short len,		/*%< OPTION-LENGTH */
 	  u_char *data)		/*%< OPTION_DATA */
 {
-	register u_char *cp, *ep;
+	u_char *cp, *ep;
 
 #ifdef DEBUG
 	if ((statp->options & RES_DEBUG) != 0U)

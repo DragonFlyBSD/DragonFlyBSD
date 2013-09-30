@@ -115,13 +115,8 @@ strftime(char * __restrict s, size_t maxsize, const char * __restrict format,
 }
 
 static char *
-_fmt(format, t, pt, ptlim, warnp, loc)
-const char *		format;
-const struct tm * const	t;
-char *			pt;
-const char * const	ptlim;
-int *			warnp;
-locale_t	loc;
+_fmt(const char *format, const struct tm * const t, char *pt,
+    const char * const ptlim, int *warnp, locale_t loc)
 {
 	int Ealternative, Oalternative, PadIndex;
 	struct lc_time_T *tptr = __get_current_time_locale(loc);
@@ -512,11 +507,7 @@ label:
 				if (t->tm_isdst == 0)
 					diff = -timezone;
 				else
-#ifdef ALTZONE
-					diff = -altzone;
-#else /* !defined ALTZONE */
 					continue;
-#endif /* !defined ALTZONE */
 #endif /* !defined TM_GMTOFF */
 				if (diff < 0) {
 					sign = "-";
@@ -567,11 +558,8 @@ label:
 }
 
 static char *
-_conv(n, format, pt, ptlim)
-const int		n;
-const char * const	format;
-char * const		pt;
-const char * const	ptlim;
+_conv(const int n, const char * const format, char * const pt,
+    const char * const ptlim)
 {
 	char	buf[INT_STRLEN_MAXIMUM(int) + 1];
 
@@ -580,10 +568,7 @@ const char * const	ptlim;
 }
 
 static char *
-_add(str, pt, ptlim)
-const char *		str;
-char *			pt;
-const char * const	ptlim;
+_add(const char *str, char *pt, const char * const ptlim)
 {
 	while (pt < ptlim && (*pt = *str++) != '\0')
 		++pt;
@@ -599,16 +584,11 @@ const char * const	ptlim;
 */
 
 static char *
-_yconv(a, b, convert_top, convert_yy, pt, ptlim)
-const int		a;
-const int		b;
-const int		convert_top;
-const int		convert_yy;
-char *			pt;
-const char * const	ptlim;
+_yconv(const int a, const int b, const int convert_top, const int convert_yy,
+    char *pt, const char * const ptlim)
 {
-	register int	lead;
-	register int	trail;
+	int	lead;
+	int	trail;
 
 #define DIVISOR	100
 	trail = a % DIVISOR + b % DIVISOR;

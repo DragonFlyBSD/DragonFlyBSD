@@ -58,17 +58,6 @@
 			if (__isthreaded) _pthread_rwlock_unlock(x);	\
 		} while (0)
 
-/*
-** SunOS 4.1.1 headers lack O_BINARY.
-*/
-
-#ifdef O_BINARY
-#define OPEN_MODE	(O_RDONLY | O_BINARY)
-#endif /* defined O_BINARY */
-#ifndef O_BINARY
-#define OPEN_MODE	O_RDONLY
-#endif /* !defined O_BINARY */
-
 #ifndef WILDABBR
 /*
 ** Someone might make incorrect use of a time zone abbreviation:
@@ -93,11 +82,6 @@
 #endif /* !defined WILDABBR */
 
 static char		wildabbr[] = WILDABBR;
-
-/*
- * In June 2004 it was decided UTC was a more appropriate default time
- * zone than GMT.
- */
 
 static const char	gmt[] = "UTC";
 
@@ -212,17 +196,10 @@ static int		tzload(const char * name, struct state * sp,
 static int		tzparse(const char * name, struct state * sp,
 				int lastditch);
 
-#ifdef ALL_STATE
-static struct state *	lclptr;
-static struct state *	gmtptr;
-#endif /* defined ALL_STATE */
-
-#ifndef ALL_STATE
 static struct state	lclmem;
 static struct state	gmtmem;
 #define lclptr		(&lclmem)
 #define gmtptr		(&gmtmem)
-#endif /* State Farm */
 
 #ifndef TZ_STRLEN_MAX
 #define TZ_STRLEN_MAX 255
@@ -257,13 +234,8 @@ static struct tm	tm;
 time_t			timezone = 0;
 int			daylight = 0;
 
-#ifdef ALTZONE
-time_t			altzone = 0;
-#endif /* defined ALTZONE */
-
 static long
-detzcode(codep)
-const char * const	codep;
+detzcode(const char * const codep)
 {
 	long	result;
 	int	i;
@@ -275,11 +247,10 @@ const char * const	codep;
 }
 
 static time_t
-detzcode64(codep)
-const char * const	codep;
+detzcode64(const char * const codep)
 {
-	register time_t	result;
-	register int	i;
+	time_t	result;
+	int	i;
 
 	result = (codep[0] & 0x80) ?  (~(int_fast64_t) 0) : 0;
 	for (i = 0; i < 8; ++i)
@@ -297,15 +268,6 @@ settzname(void)
 	tzname[1] = wildabbr;
 	daylight = 0;
 	timezone = 0;
-#ifdef ALTZONE
-	altzone = 0;
-#endif /* defined ALTZONE */
-#ifdef ALL_STATE
-	if (sp == NULL) {
-		tzname[0] = tzname[1] = gmt;
-		return;
-	}
-#endif /* defined ALL_STATE */
 	/*
 	** And to get the latest zone names into tzname. . .
 	*/
@@ -318,10 +280,6 @@ settzname(void)
 			daylight = 1;
 		if (!ttisp->tt_isdst)
 			timezone = -(ttisp->tt_gmtoff);
-#ifdef ALTZONE
-		if (ttisp->tt_isdst)
-			altzone = -(ttisp->tt_gmtoff);
-#endif /* defined ALTZONE */
 	}
 	/*
 	** Finally, scrub the abbreviations.
@@ -334,8 +292,8 @@ settzname(void)
 	** Second, truncate long abbreviations.
 	*/
 	for (i = 0; i < sp->typecnt; ++i) {
-		register const struct ttinfo * const	ttisp = &sp->ttis[i];
-		register char *				cp = &sp->chars[ttisp->tt_abbrind];
+		const struct ttinfo * const	ttisp = &sp->ttis[i];
+		char *				cp = &sp->chars[ttisp->tt_abbrind];
 
 		if (strlen(cp) > TZ_ABBR_MAX_LEN &&
 			strcmp(cp, GRANDPARENTED) != 0)
@@ -344,9 +302,7 @@ settzname(void)
 }
 
 static int
-differ_by_repeat(t1, t0)
-const time_t	t1;
-const time_t	t0;
+differ_by_repeat(const time_t t1, const time_t t0)
 {
 	int_fast64_t _t0 = t0;
 	int_fast64_t _t1 = t1;
@@ -359,10 +315,7 @@ const time_t	t0;
 }
 
 static int
-tzload(name, sp, doextend)
-const char *		name;
-struct state * const	sp;
-register const int	doextend;
+tzload(const char *name, struct state * const sp, const int doextend)
 {
 	const char *	p;
 	int		i;
@@ -430,7 +383,7 @@ register const int	doextend;
 			free(fullname);
 		     	return -1;
 		}
-		if ((fid = _open(name, OPEN_MODE)) == -1) {
+		if ((fid = _open(name, O_RDONLY)) == -1) {
 			free(fullname);
 			return -1;
 		}
@@ -554,7 +507,7 @@ register const int	doextend;
 					/*
 					** Ignore the beginning (harder).
 					*/
-					register int	j;
+					int	j;
 
 					for (j = 0; j + i < sp->timecnt; ++j) {
 						sp->ats[j] = sp->ats[j + i];
@@ -582,7 +535,7 @@ register const int	doextend;
 		u->buf[0] == '\n' && u->buf[nread - 1] == '\n' &&
 		sp->typecnt + 2 <= TZ_MAX_TYPES) {
 			struct state	*ts;
-			register int	result;
+			int	result;
 
 			ts = malloc(sizeof(*ts));
 			if (ts == NULL)
@@ -640,20 +593,17 @@ out:
 }
 
 static int
-typesequiv(sp, a, b)
-const struct state * const	sp;
-const int			a;
-const int			b;
+typesequiv(const struct state * const sp, const int a, const int b)
 {
-	register int	result;
+	int	result;
 
 	if (sp == NULL ||
 		a < 0 || a >= sp->typecnt ||
 		b < 0 || b >= sp->typecnt)
 			result = FALSE;
 	else {
-		register const struct ttinfo *	ap = &sp->ttis[a];
-		register const struct ttinfo *	bp = &sp->ttis[b];
+		const struct ttinfo *	ap = &sp->ttis[a];
+		const struct ttinfo *	bp = &sp->ttis[b];
 		result = ap->tt_gmtoff == bp->tt_gmtoff &&
 			ap->tt_isdst == bp->tt_isdst &&
 			ap->tt_ttisstd == bp->tt_ttisstd &&
@@ -680,8 +630,7 @@ static const int	year_lengths[2] = {
 */
 
 static const char *
-getzname(strp)
-const char *	strp;
+getzname(const char *strp)
 {
 	char	c;
 
@@ -701,9 +650,9 @@ const char *	strp;
 */
 
 static const char *
-getqzname(register const char *strp, const int delim)
+getqzname(const char *strp, const int delim)
 {
-	register int	c;
+	int	c;
 
 	while ((c = *strp) != '\0' && c != delim)
 		++strp;
@@ -718,11 +667,7 @@ getqzname(register const char *strp, const int delim)
 */
 
 static const char *
-getnum(strp, nump, min, max)
-const char *	strp;
-int * const		nump;
-const int		min;
-const int		max;
+getnum(const char *strp, int * const nump, const int min, const int max)
 {
 	char	c;
 	int	num;
@@ -751,9 +696,7 @@ const int		max;
 */
 
 static const char *
-getsecs(strp, secsp)
-const char *	strp;
-long * const		secsp;
+getsecs(const char *strp, long * const secsp)
 {
 	int	num;
 
@@ -793,9 +736,7 @@ long * const		secsp;
 */
 
 static const char *
-getoffset(strp, offsetp)
-const char *	strp;
-long * const		offsetp;
+getoffset(const char *strp, long * const offsetp)
 {
 	int	neg = 0;
 
@@ -820,9 +761,7 @@ long * const		offsetp;
 */
 
 static const char *
-getrule(strp, rulep)
-const char *			strp;
-struct rule * const	rulep;
+getrule(const char *strp, struct rule * const rulep)
 {
 	if (*strp == 'J') {
 		/*
@@ -874,11 +813,8 @@ struct rule * const	rulep;
 */
 
 static time_t
-transtime(janfirst, year, rulep, offset)
-const time_t				janfirst;
-const int				year;
-const struct rule * const	rulep;
-const long				offset;
+transtime(const time_t janfirst, const int year,
+    const struct rule * const rulep, const long offset)
 {
 	int	leapyear;
 	time_t	value;
@@ -969,10 +905,7 @@ const long				offset;
 */
 
 static int
-tzparse(name, sp, lastditch)
-const char *			name;
-struct state * const	sp;
-const int			lastditch;
+tzparse(const char *name, struct state * const sp, const int lastditch)
 {
 	const char *			stdname;
 	const char *			dstname;
@@ -1206,8 +1139,7 @@ const int			lastditch;
 }
 
 static void
-gmtload(sp)
-struct state * const	sp;
+gmtload(struct state * const sp)
 {
 	if (tzload(gmt, sp, TRUE) != 0)
 		(void) tzparse(gmt, sp, TRUE);
@@ -1228,18 +1160,6 @@ tzsetwall_basic(int rdlocked)
 	_RWLOCK_WRLOCK(&lcl_rwlock);
 	lcl_is_set = -1;
 
-#ifdef ALL_STATE
-	if (lclptr == NULL) {
-		lclptr = (struct state *) calloc(1, sizeof *lclptr);
-		if (lclptr == NULL) {
-			settzname();	/* all we can do */
-			_RWLOCK_UNLOCK(&lcl_rwlock);
-			if (rdlocked)
-				_RWLOCK_RDLOCK(&lcl_rwlock);
-			return;
-		}
-	}
-#endif /* defined ALL_STATE */
 	if (tzload((char *) NULL, lclptr, TRUE) != 0)
 		gmtload(lclptr);
 	settzname();
@@ -1280,18 +1200,6 @@ tzset_basic(int rdlocked)
 	if (lcl_is_set)
 		(void) strcpy(lcl_TZname, name);
 
-#ifdef ALL_STATE
-	if (lclptr == NULL) {
-		lclptr = (struct state *) calloc(1, sizeof *lclptr);
-		if (lclptr == NULL) {
-			settzname();	/* all we can do */
-			_RWLOCK_UNLOCK(&lcl_rwlock);
-			if (rdlocked)
-				_RWLOCK_RDLOCK(&lcl_rwlock);
-			return;
-		}
-	}
-#endif /* defined ALL_STATE */
 	if (*name == '\0') {
 		/*
 		** User wants it fast rather than right.
@@ -1330,10 +1238,7 @@ tzset(void)
 
 /*ARGSUSED*/
 static struct tm *
-localsub(timep, offset, tmp)
-const time_t * const	timep;
-const long		offset;
-struct tm * const	tmp;
+localsub(const time_t * const timep, const long offset, struct tm * const tmp)
 {
 	struct state *		sp;
 	const struct ttinfo *	ttisp;
@@ -1342,16 +1247,12 @@ struct tm * const	tmp;
 	const time_t		t = *timep;
 
 	sp = lclptr;
-#ifdef ALL_STATE
-	if (sp == NULL)
-		return gmtsub(timep, offset, tmp);
-#endif /* defined ALL_STATE */
 	if ((sp->goback && t < sp->ats[0]) ||
 		(sp->goahead && t > sp->ats[sp->timecnt - 1])) {
 			time_t			newt = t;
-			register time_t		seconds;
-			register time_t		tcycles;
-			register int_fast64_t	icycles;
+			time_t		seconds;
+			time_t		tcycles;
+			int_fast64_t	icycles;
 
 			if (t < sp->ats[0])
 				seconds = sp->ats[0] - t;
@@ -1373,7 +1274,7 @@ struct tm * const	tmp;
 					return NULL;	/* "cannot happen" */
 			result = localsub(&newt, offset, tmp);
 			if (result == tmp) {
-				register time_t	newy;
+				time_t	newy;
 
 				newy = tmp->tm_year;
 				if (t < sp->ats[0])
@@ -1393,11 +1294,11 @@ struct tm * const	tmp;
 				break;
 			}
 	} else {
-		register int	lo = 1;
-		register int	hi = sp->timecnt;
+		int	lo = 1;
+		int	hi = sp->timecnt;
 
 		while (lo < hi) {
-			register int	mid = (lo + hi) >> 1;
+			int	mid = (lo + hi) >> 1;
 
 			if (t < sp->ats[mid])
 				hi = mid;
@@ -1429,8 +1330,7 @@ localtime_key_init(void)
 }
 
 struct tm *
-localtime(timep)
-const time_t * const	timep;
+localtime(const time_t * const timep)
 {
 	struct tm *p_tm;
 
@@ -1464,9 +1364,7 @@ const time_t * const	timep;
 */
 
 struct tm *
-localtime_r(timep, tmp)
-const time_t * const	timep;
-struct tm *		tmp;
+localtime_r(const time_t * const timep, struct tm *tmp)
 {
 	_RWLOCK_RDLOCK(&lcl_rwlock);
 	tzset_basic(1);
@@ -1478,11 +1376,6 @@ struct tm *		tmp;
 static void
 gmt_init(void)
 {
-
-#ifdef ALL_STATE
-	gmtptr = (struct state *) calloc(1, sizeof *gmtptr);
-	if (gmtptr != NULL)
-#endif /* defined ALL_STATE */
 		gmtload(gmtptr);
 }
 
@@ -1491,12 +1384,9 @@ gmt_init(void)
 */
 
 static struct tm *
-gmtsub(timep, offset, tmp)
-const time_t * const	timep;
-const long		offset;
-struct tm * const	tmp;
+gmtsub(const time_t * const timep, const long offset, struct tm * const tmp)
 {
-	register struct tm *	result;
+	struct tm *	result;
 
 	_once(&gmt_once, gmt_init);
 	result = timesub(timep, offset, gmtptr, tmp);
@@ -1509,14 +1399,7 @@ struct tm * const	tmp;
 	if (offset != 0)
 		tmp->TM_ZONE = wildabbr;
 	else {
-#ifdef ALL_STATE
-		if (gmtptr == NULL)
-			tmp->TM_ZONE = gmt;
-		else	tmp->TM_ZONE = gmtptr->chars;
-#endif /* defined ALL_STATE */
-#ifndef ALL_STATE
 		tmp->TM_ZONE = gmtptr->chars;
-#endif /* State Farm */
 	}
 #endif /* defined TM_ZONE */
 	return result;
@@ -1530,8 +1413,7 @@ gmtime_key_init(void)
 }
 
 struct tm *
-gmtime(timep)
-const time_t * const	timep;
+gmtime(const time_t * const timep)
 {
 	struct tm *p_tm;
 
@@ -1566,9 +1448,7 @@ const time_t * const	timep;
 */
 
 struct tm *
-gmtime_r(timep, tmp)
-const time_t * const	timep;
-struct tm *		tmp;
+gmtime_r(const time_t * const timep, struct tm *tmp)
 {
 	return gmtsub(timep, 0L, tmp);
 }
@@ -1576,9 +1456,7 @@ struct tm *		tmp;
 #ifdef STD_INSPIRED
 
 struct tm *
-offtime(timep, offset)
-const time_t * const	timep;
-const long		offset;
+offtime(const time_t * const timep, const long offset)
 {
 	return gmtsub(timep, offset, &tm);
 }
@@ -1591,19 +1469,15 @@ const long		offset;
 */
 
 static int
-leaps_thru_end_of(y)
-register const int	y;
+leaps_thru_end_of(const int y)
 {
 	return (y >= 0) ? (y / 4 - y / 100 + y / 400) :
 		-(leaps_thru_end_of(-(y + 1)) + 1);
 }
 
 static struct tm *
-timesub(timep, offset, sp, tmp)
-const time_t * const			timep;
-const long				offset;
-const struct state * const	sp;
-struct tm * const		tmp;
+timesub(const time_t * const timep, const long offset,
+    const struct state * const sp, struct tm * const tmp)
 {
 	const struct lsinfo *	lp;
 	time_t			tdays;
@@ -1617,12 +1491,7 @@ struct tm * const		tmp;
 
 	corr = 0;
 	hit = 0;
-#ifdef ALL_STATE
-	i = (sp == NULL) ? 0 : sp->leapcnt;
-#endif /* defined ALL_STATE */
-#ifndef ALL_STATE
 	i = sp->leapcnt;
-#endif /* State Farm */
 	while (--i >= 0) {
 		lp = &sp->lsis[i];
 		if (*timep >= lp->ls_trans) {
@@ -1648,9 +1517,9 @@ struct tm * const		tmp;
 	rem = *timep - tdays * SECSPERDAY;
 	while (tdays < 0 || tdays >= year_lengths[isleap(y)]) {
 		int		newy;
-		register time_t	tdelta;
-		register int	idelta;
-		register int	leapdays;
+		time_t	tdelta;
+		int	idelta;
+		int	leapdays;
 
 		tdelta = tdays / DAYSPERLYEAR;
 		idelta = tdelta;
@@ -1668,7 +1537,7 @@ struct tm * const		tmp;
 		y = newy;
 	}
 	{
-		register long	seconds;
+		long	seconds;
 
 		seconds = tdays * SECSPERDAY + 0.5;
 		tdays = seconds / SECSPERDAY;
@@ -1733,8 +1602,7 @@ struct tm * const		tmp;
 }
 
 char *
-ctime(timep)
-const time_t * const	timep;
+ctime(const time_t * const timep)
 {
 /*
 ** Section 4.12.3.2 of X3.159-1989 requires that
@@ -1746,9 +1614,7 @@ const time_t * const	timep;
 }
 
 char *
-ctime_r(timep, buf)
-const time_t * const	timep;
-char *			buf;
+ctime_r(const time_t * const timep, char *buf)
 {
 	struct tm	mytm;
 
@@ -1773,9 +1639,7 @@ char *			buf;
 */
 
 static int
-increment_overflow(number, delta)
-int *	number;
-int	delta;
+increment_overflow(int *number, int delta)
 {
 	int	number0;
 
@@ -1785,9 +1649,7 @@ int	delta;
 }
 
 static int
-long_increment_overflow(number, delta)
-long *	number;
-int	delta;
+long_increment_overflow(long *number, int delta)
 {
 	long	number0;
 
@@ -1797,10 +1659,7 @@ int	delta;
 }
 
 static int
-normalize_overflow(tensptr, unitsptr, base)
-int * const	tensptr;
-int * const	unitsptr;
-const int	base;
+normalize_overflow(int * const tensptr, int * const unitsptr, const int base)
 {
 	int	tensdelta;
 
@@ -1812,12 +1671,10 @@ const int	base;
 }
 
 static int
-long_normalize_overflow(tensptr, unitsptr, base)
-long * const	tensptr;
-int * const	unitsptr;
-const int	base;
+long_normalize_overflow(long * const tensptr, int * const unitsptr,
+    const int base)
 {
-	register int	tensdelta;
+	int	tensdelta;
 
 	tensdelta = (*unitsptr >= 0) ?
 		(*unitsptr / base) :
@@ -1827,9 +1684,7 @@ const int	base;
 }
 
 static int
-tmcomp(atmp, btmp)
-const struct tm * const atmp;
-const struct tm * const btmp;
+tmcomp(const struct tm * const atmp, const struct tm * const btmp)
 {
 	int	result;
 
@@ -1843,12 +1698,9 @@ const struct tm * const btmp;
 }
 
 static time_t
-time2sub(tmp, funcp, offset, okayp, do_norm_secs)
-struct tm * const	tmp;
-struct tm * (* const	funcp)(const time_t*, long, struct tm*);
-const long		offset;
-int * const		okayp;
-const int		do_norm_secs;
+time2sub(struct tm * const tmp,
+    struct tm * (* const funcp)(const time_t *, long, struct tm *),
+    const long offset, int * const okayp, const int do_norm_secs)
 {
 	const struct state *	sp;
 	int			dir;
@@ -1992,10 +1844,6 @@ const int		do_norm_secs;
 		*/
 		sp = (const struct state *)
 			((funcp == localsub) ? lclptr : gmtptr);
-#ifdef ALL_STATE
-		if (sp == NULL)
-			return WRONG;
-#endif /* defined ALL_STATE */
 		for (i = sp->typecnt - 1; i >= 0; --i) {
 			if (sp->ttis[i].tt_isdst != yourtm.tm_isdst)
 				continue;
@@ -2030,11 +1878,9 @@ label:
 }
 
 static time_t
-time2(tmp, funcp, offset, okayp)
-struct tm * const	tmp;
-struct tm * (* const	funcp)(const time_t*, long, struct tm*);
-const long		offset;
-int * const		okayp;
+time2(struct tm * const tmp,
+    struct tm * (* const funcp)(const time_t *, long, struct tm *),
+    const long offset, int * const okayp)
 {
 	time_t	t;
 
@@ -2048,10 +1894,9 @@ int * const		okayp;
 }
 
 static time_t
-time1(tmp, funcp, offset)
-struct tm * const	tmp;
-struct tm * (* const  funcp)(const time_t *, long, struct tm *);
-const long		offset;
+time1(struct tm *tmp,
+    struct tm * (* const funcp)(const time_t *, long, struct tm *),
+    const long offset)
 {
 	time_t			t;
 	const struct state *	sp;
@@ -2071,7 +1916,6 @@ const long		offset;
 	if (tmp->tm_isdst > 1)
 		tmp->tm_isdst = 1;
 	t = time2(tmp, funcp, offset, &okay);
-#ifdef PCTS
 	/*
 	** PCTS code courtesy Grant Sullivan.
 	*/
@@ -2079,11 +1923,6 @@ const long		offset;
 		return t;
 	if (tmp->tm_isdst < 0)
 		tmp->tm_isdst = 0;	/* reset to std and try again */
-#endif /* defined PCTS */
-#ifndef PCTS
-	if (okay || tmp->tm_isdst < 0)
-		return t;
-#endif /* !defined PCTS */
 	/*
 	** We're supposed to assume that somebody took a time of one type
 	** and did some math on it that yielded a "struct tm" that's bad.
@@ -2091,10 +1930,6 @@ const long		offset;
 	** type they need.
 	*/
 	sp = (const struct state *) ((funcp == localsub) ? lclptr : gmtptr);
-#ifdef ALL_STATE
-	if (sp == NULL)
-		return WRONG;
-#endif /* defined ALL_STATE */
 	for (i = 0; i < sp->typecnt; ++i)
 		seen[i] = FALSE;
 	nseen = 0;
@@ -2126,8 +1961,7 @@ const long		offset;
 }
 
 time_t
-mktime(tmp)
-struct tm * const	tmp;
+mktime(struct tm * const tmp)
 {
 	time_t mktime_return_value;
 	_RWLOCK_RDLOCK(&lcl_rwlock);
@@ -2140,8 +1974,7 @@ struct tm * const	tmp;
 #ifdef STD_INSPIRED
 
 time_t
-timelocal(tmp)
-struct tm * const	tmp;
+timelocal(struct tm * const tmp)
 {
 	if (tmp != NULL)
 		tmp->tm_isdst = -1;	/* in case it wasn't initialized */
@@ -2149,8 +1982,7 @@ struct tm * const	tmp;
 }
 
 time_t
-timegm(tmp)
-struct tm * const	tmp;
+timegm(struct tm * const tmp)
 {
 	if (tmp != NULL)
 		tmp->tm_isdst = 0;
@@ -2158,9 +1990,7 @@ struct tm * const	tmp;
 }
 
 time_t
-timeoff(tmp, offset)
-struct tm * const	tmp;
-const long		offset;
+timeoff(struct tm * const tmp, const long offset)
 {
 	if (tmp != NULL)
 		tmp->tm_isdst = 0;
@@ -2168,26 +1998,6 @@ const long		offset;
 }
 
 #endif /* defined STD_INSPIRED */
-
-#ifdef CMUCS
-
-/*
-** The following is supplied for compatibility with
-** previous versions of the CMUCS runtime library.
-*/
-
-long
-gtime(tmp)
-struct tm * const	tmp;
-{
-	const time_t	t = mktime(tmp);
-
-	if (t == WRONG)
-		return -1;
-	return t;
-}
-
-#endif /* defined CMUCS */
 
 /*
 ** XXX--is the below the right way to conditionalize??
@@ -2204,8 +2014,7 @@ struct tm * const	tmp;
 */
 
 static long
-leapcorr(timep)
-time_t *	timep;
+leapcorr(time_t *timep)
 {
 	struct state *		sp;
 	struct lsinfo *	lp;
@@ -2222,16 +2031,14 @@ time_t *	timep;
 }
 
 time_t
-time2posix(t)
-time_t	t;
+time2posix(time_t t)
 {
 	tzset();
 	return t - leapcorr(&t);
 }
 
 time_t
-posix2time(t)
-time_t	t;
+posix2time(time_t t)
 {
 	time_t	x;
 	time_t	y;

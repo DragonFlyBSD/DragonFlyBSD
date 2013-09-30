@@ -72,9 +72,7 @@ static char	buf_asctime[MAX_ASCTIME_BUF_SIZE];
 */
 
 char *
-asctime_r(timeptr, buf)
-const struct tm *	timeptr;
-char *			buf;
+asctime_r(const struct tm *timeptr, char *buf)
 {
 	static const char	wday_name[][3] = {
 		"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
@@ -117,11 +115,7 @@ char *			buf;
 	if (strlen(result) < STD_ASCTIME_BUF_SIZE || buf == buf_asctime)
 		return strcpy(buf, result);
 	else {
-#ifdef EOVERFLOW
 		errno = EOVERFLOW;
-#else /* !defined EOVERFLOW */
-		errno = EINVAL;
-#endif /* !defined EOVERFLOW */
 		return NULL;
 	}
 }
@@ -131,8 +125,7 @@ char *			buf;
 */
 
 char *
-asctime(timeptr)
-const struct tm *	timeptr;
+asctime(const struct tm *timeptr)
 {
 	return asctime_r(timeptr, buf_asctime);
 }

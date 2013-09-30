@@ -11,9 +11,7 @@
 #include "un-namespace.h"
 
 double
-difftime(time1, time0)
-const time_t	time1;
-const time_t	time0;
+difftime(const time_t time1, const time_t time0)
 {
 	/*
 	** If (sizeof (double) > sizeof (time_t)) simply convert and subtract
