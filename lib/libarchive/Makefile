@@ -8,6 +8,9 @@ CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive/libarchive
 SHLIB_MAJOR=	5
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR}
+# This can be changed back to CFLAGS once iconv works correctly with
+# statically linked libraries (iconv uses dynamic-only dlopen(3))
+SHARED_CFLAGS+=	-DHAVE_ICONV=1 -DHAVE_ICONV_H=1
 WARNS?=	2
 
 DPADD=	${LIBBZ2} ${LIBLZMA} ${LIBMD} ${LIBZ}

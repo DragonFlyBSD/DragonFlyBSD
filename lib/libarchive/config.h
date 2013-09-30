@@ -365,10 +365,16 @@
 #define HAVE_GRP_H 1
 
 /* Define if you have the iconv() function and it works. */
-#define HAVE_ICONV 1
+/*
+ * Shared libraries only
+ * #define HAVE_ICONV 1
+ */
 
 /* Define to 1 if you have the <iconv.h> header file. */
-#define HAVE_ICONV_H 1
+/*
+ * Shared libraries only
+ * #define HAVE_ICONV_H 1
+ */
 
 /* Define to 1 if the system has the type `intmax_t'. */
 #define HAVE_INTMAX_T 1
