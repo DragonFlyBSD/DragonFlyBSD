@@ -95,7 +95,7 @@
 #define HAVE_XDIALOG 1
 #define HAVE_XDIALOG2 1
 #define HAVE__NC_FREE_AND_EXIT 1
-#define ICONV_CONST 
+#define ICONV_CONST const
 #define MIXEDCASE_FILENAMES 1
 #define NCURSES 1
 #define NEED_WCHAR_H 1

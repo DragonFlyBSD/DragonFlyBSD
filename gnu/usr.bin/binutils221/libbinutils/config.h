@@ -147,7 +147,7 @@
 #define HAVE_ZLIB_H 1
 
 /* Define as const if the declaration of iconv() needs const. */
-#define ICONV_CONST
+#define ICONV_CONST const
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */

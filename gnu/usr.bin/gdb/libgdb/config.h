@@ -727,7 +727,7 @@
 /* #undef ICONV_BIN_RELOCATABLE */
 
 /* Define as const if the declaration of iconv() needs const. */
-#define ICONV_CONST 
+#define ICONV_CONST const
 
 /* directory to load the JIT readers from */
 #define JIT_READER_DIR "/usr/lib/gdb"
