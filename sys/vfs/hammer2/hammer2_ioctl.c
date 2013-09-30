@@ -154,7 +154,7 @@ hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data, int fflag,
 static int
 hammer2_ioctl_version_get(hammer2_inode_t *ip, void *data)
 {
-	hammer2_mount_t *hmp = ip->pmp->mount_cluster->hmp;
+	hammer2_mount_t *hmp = ip->pmp->cluster.chains[0]->hmp;
 	hammer2_ioc_version_t *version = data;
 
 	version->version = hmp->voldata.version;
@@ -183,7 +183,7 @@ hammer2_ioctl_recluster(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_remote_scan(hammer2_inode_t *ip, void *data)
 {
-	hammer2_mount_t *hmp = ip->pmp->mount_cluster->hmp;
+	hammer2_mount_t *hmp = ip->pmp->cluster.chains[0]->hmp;
 	hammer2_ioc_remote_t *remote = data;
 	int copyid = remote->copyid;
 
@@ -224,7 +224,7 @@ hammer2_ioctl_remote_add(hammer2_inode_t *ip, void *data)
 	if (copyid >= HAMMER2_COPYID_COUNT)
 		return (EINVAL);
 
-	hmp = pmp->mount_cluster->hmp;
+	hmp = pmp->cluster.chains[0]->hmp; /* XXX */
 	hammer2_voldata_lock(hmp);
 	if (copyid < 0) {
 		for (copyid = 1; copyid < HAMMER2_COPYID_COUNT; ++copyid) {
@@ -257,7 +257,7 @@ hammer2_ioctl_remote_del(hammer2_inode_t *ip, void *data)
 	int copyid = remote->copyid;
 	int error = 0;
 
-	hmp = pmp->mount_cluster->hmp;
+	hmp = pmp->cluster.chains[0]->hmp; /* XXX */
 	if (copyid >= HAMMER2_COPYID_COUNT)
 		return (EINVAL);
 	remote->copy1.path[sizeof(remote->copy1.path) - 1] = 0;
@@ -294,7 +294,7 @@ hammer2_ioctl_remote_rep(hammer2_inode_t *ip, void *data)
 	hammer2_mount_t *hmp;
 	int copyid = remote->copyid;
 
-	hmp = ip->pmp->mount_cluster->hmp;
+	hmp = ip->pmp->cluster.chains[0]->hmp; /* XXX */
 
 	if (copyid < 0 || copyid >= HAMMER2_COPYID_COUNT)
 		return (EINVAL);
@@ -325,7 +325,7 @@ hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data)
 	hammer2_mount_t *hmp;
 	int copyid = remote->copyid;
 
-	hmp = ip->pmp->mount_cluster->hmp;
+	hmp = ip->pmp->cluster.chains[0]->hmp; /* XXX */
 	if (copyid < 0 || copyid >= HAMMER2_COPYID_COUNT)
 		return (EINVAL);
 
@@ -360,10 +360,10 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	int cache_index = -1;
 
 	error = 0;
-	hmp = ip->pmp->mount_cluster->hmp;
+	hmp = ip->pmp->cluster.chains[0]->hmp; /* XXX */
 	pfs = data;
-	parent = hammer2_chain_lookup_init(hmp->schain, 0);
-	rchain = ip->pmp->mount_cluster->rchain;
+	parent = hammer2_inode_lock_ex(hmp->sroot);
+	rchain = ip->pmp->cluster.chains[0];	/* XXX */
 
 	/*
 	 * Search for the first key or specific key.  Remember that keys
@@ -420,7 +420,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		pfs->name_next = (hammer2_key_t)-1;
 		error = ENOENT;
 	}
-	hammer2_chain_lookup_done(parent);
+	hammer2_inode_unlock_ex(hmp->sroot, parent);
 
 	return (error);
 }
@@ -443,9 +443,9 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	size_t len;
 
 	error = 0;
-	hmp = ip->pmp->mount_cluster->hmp;
+	hmp = ip->pmp->cluster.chains[0]->hmp; /* XXX */
 	pfs = data;
-	parent = hammer2_chain_lookup_init(hmp->schain, HAMMER2_LOOKUP_SHARED);
+	parent = hammer2_inode_lock_sh(hmp->sroot);
 
 	pfs->name[sizeof(pfs->name) - 1] = 0;
 	len = strlen(pfs->name);
@@ -481,7 +481,8 @@ hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 	} else {
 		error = ENOENT;
 	}
-	hammer2_chain_lookup_done(parent);
+	hammer2_inode_unlock_sh(hmp->sroot, parent);
+
 	return (error);
 }
 
@@ -499,7 +500,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 	hammer2_trans_t trans;
 	int error;
 
-	hmp = ip->pmp->mount_cluster->hmp;
+	hmp = ip->pmp->cluster.chains[0]->hmp; /* XXX */
 	pfs = data;
 	nip = NULL;
 
@@ -541,7 +542,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	hammer2_trans_t trans;
 	int error;
 
-	hmp = ip->pmp->mount_cluster->hmp;
+	hmp = ip->pmp->cluster.chains[0]->hmp; /* XXX */
 	hammer2_trans_init(&trans, ip->pmp, 0);
 	error = hammer2_unlink_file(&trans, hmp->sroot,
 				    pfs->name, strlen(pfs->name),
@@ -566,7 +567,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 
 	hammer2_trans_init(&trans, ip->pmp, 0);
 	parent = hammer2_inode_lock_ex(ip);
-	error = hammer2_chain_snapshot(&trans, ip, pfs);
+	error = hammer2_chain_snapshot(&trans, parent, pfs);
 	hammer2_inode_unlock_ex(ip, parent);
 	hammer2_trans_done(&trans);
 

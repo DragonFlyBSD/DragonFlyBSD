@@ -212,6 +212,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_REPLACE		0x00040000	/* replace bref */
 #define HAMMER2_CHAIN_COUNTEDBREFS	0x00080000	/* counted brefs */
 #define HAMMER2_CHAIN_DUPLICATED	0x00100000	/* fwd delete-dup */
+#define HAMMER2_CHAIN_PFSROOT		0x00200000	/* in pfs->cluster */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -420,10 +421,9 @@ struct hammer2_mount {
 	struct malloc_type *mchain;
 	int		nipstacks;
 	int		maxipstacks;
-	hammer2_chain_t vchain;		/* anchor chain */
-	hammer2_chain_t fchain;		/* freemap chain special */
-	hammer2_chain_t *schain;	/* super-root */
-	hammer2_inode_t	*sroot;		/* super-root inode */
+	hammer2_chain_t vchain;		/* anchor chain (topology) */
+	hammer2_chain_t fchain;		/* anchor chain (freemap) */
+	hammer2_inode_t	*sroot;		/* super-root localized to media */
 	struct lock	alloclk;	/* lockmgr lock */
 	struct lock	voldatalk;	/* lockmgr lock */
 	struct hammer2_trans_queue transq; /* all in-progress transactions */
@@ -448,24 +448,34 @@ typedef struct hammer2_mount hammer2_mount_t;
  *
  * A PFS may have several hammer2_cluster's associated with it.
  */
+#define HAMMER2_MAXCLUSTER	8
+
 struct hammer2_cluster {
-	struct hammer2_mount	*hmp;		/* device global mount */
-	hammer2_chain_t 	*rchain;	/* PFS root chain */
+	int			nchains;
+	int			status;
+	hammer2_chain_t		*chains[HAMMER2_MAXCLUSTER];
 };
 
 typedef struct hammer2_cluster hammer2_cluster_t;
 
 /*
  * HAMMER2 PFS mount point structure (aka vp->v_mount->mnt_data).
+ * This has a 1:1 correspondence to struct mount (note that the
+ * hammer2_mount structure has a N:1 correspondence).
  *
  * This structure represents a cluster mount and not necessarily a
  * PFS under a specific device mount (HMP).  The distinction is important
  * because the elements backing a cluster mount can change on the fly.
+ *
+ * Usually the first element under the cluster represents the original
+ * user-requested mount that bootstraps the whole mess.  In significant
+ * setups the original is usually just a read-only media image (or
+ * representitive file) that simply contains a bootstrap volume header
+ * listing the configuration.
  */
 struct hammer2_pfsmount {
-	struct mount		*mp;		/* kernel mount */
-	hammer2_cluster_t	*mount_cluster;
-	hammer2_cluster_t	*cluster;
+	struct mount		*mp;
+	hammer2_cluster_t	cluster;
 	hammer2_inode_t		*iroot;		/* PFS root inode */
 	hammer2_off_t		inode_count;	/* copy of inode_count */
 	ccms_domain_t		ccms_dom;
@@ -546,13 +556,6 @@ hammer2_pfsmount_t *
 MPTOPMP(struct mount *mp)
 {
 	return ((hammer2_pfsmount_t *)mp->mnt_data);
-}
-
-static __inline
-hammer2_mount_t *
-MPTOHMP(struct mount *mp)
-{
-	return (((hammer2_pfsmount_t *)mp->mnt_data)->cluster->hmp);
 }
 
 extern struct vop_ops hammer2_vnode_vops;
@@ -716,8 +719,8 @@ int hammer2_chain_create(hammer2_trans_t *trans,
 				int type, size_t bytes);
 void hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
 				hammer2_chain_t **chainp,
-				hammer2_blockref_t *bref);
-int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
+				hammer2_blockref_t *bref, int snapshot);
+int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t *chain,
 				hammer2_ioc_pfs_t *pfs);
 void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain,
 				int flags);

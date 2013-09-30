@@ -249,6 +249,13 @@ hammer2_chain_core_alloc(hammer2_trans_t *trans,
 		TAILQ_INSERT_TAIL(&core->ownerq, nchain, core_entry);
 	} else {
 		/*
+		 * Propagate the PFSROOT flag which we set on all subdirs
+		 * under the super-root.
+		 */
+		atomic_set_int(&nchain->flags,
+			       ochain->flags & HAMMER2_CHAIN_PFSROOT);
+
+		/*
 		 * Multi-homing (delete-duplicate) sub-tree under ochain.
 		 * Set the DUPLICATED flag on ochain but only if this is
 		 * not a snapshot.  This flag governs forward iterations
@@ -2529,7 +2536,8 @@ static void hammer2_chain_dup_fixup(hammer2_chain_t *ochain,
 
 void
 hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
-			hammer2_chain_t **chainp, hammer2_blockref_t *bref)
+			hammer2_chain_t **chainp, hammer2_blockref_t *bref,
+			int snapshot)
 {
 	hammer2_mount_t *hmp;
 	hammer2_blockref_t *base;
@@ -2551,6 +2559,8 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	if (bref == NULL)
 		bref = &ochain->bref;
 	nchain = hammer2_chain_alloc(hmp, ochain->pmp, trans, bref);
+	if (snapshot)
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_SNAPSHOT);
 	hammer2_chain_core_alloc(trans, nchain, ochain);
 	bytes = (hammer2_off_t)1 <<
 		(int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
@@ -2868,52 +2878,49 @@ hammer2_chain_dup_fixup(hammer2_chain_t *ochain, hammer2_chain_t *nchain)
 
 /*
  * Create a snapshot of the specified {parent, chain} with the specified
- * label.
- *
- * (a) We create a duplicate connected to the super-root as the specified
- *     label.
- *
- * (b) We issue a restricted flush using the current transaction on the
- *     duplicate.
- *
- * (c) We disconnect and reallocate the duplicate's core.
+ * label.  The originating hammer2_inode must be exclusively locked for
+ * safety.
  */
 int
-hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
+hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t *ochain,
 		       hammer2_ioc_pfs_t *pfs)
 {
-	hammer2_cluster_t *cluster;
 	hammer2_mount_t *hmp;
-	hammer2_chain_t *chain;
 	hammer2_chain_t *nchain;
+	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
 	hammer2_inode_data_t *ipdata;
 	size_t name_len;
 	hammer2_key_t key_dummy;
 	hammer2_key_t lhc;
+	uuid_t opfs_clid;
 	int error;
 	int cache_index = -1;
 
 	name_len = strlen(pfs->name);
 	lhc = hammer2_dirhash(pfs->name, name_len);
-	cluster = ip->pmp->mount_cluster;
-	hmp = ip->chain->hmp;
-	KKASSERT(hmp == cluster->hmp);	/* XXX */
+
+	hmp = ochain->hmp;
+	opfs_clid = ochain->data->ipdata.pfs_clid;
+	KKASSERT((trans->flags & HAMMER2_TRANS_RESTRICTED) == 0);
 
 	/*
-	 * Create disconnected duplicate
+	 * Get second lock for duplication to replace, original lock
+	 * will be left intact (caller must unlock the original chain).
 	 */
-	KKASSERT((trans->flags & HAMMER2_TRANS_RESTRICTED) == 0);
-	nchain = ip->chain;
+	nchain = ochain;
 	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_MAYBE);
-	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_RECYCLE |
-				       HAMMER2_CHAIN_SNAPSHOT);
-	hammer2_chain_duplicate(trans, NULL, &nchain, NULL);
+
+	/*
+	 * Create disconnected duplicate flagged as a snapshot
+	 */
+	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_RECYCLE);
+	hammer2_chain_duplicate(trans, NULL, &nchain, NULL, 1);
 
 	/*
 	 * Create named entry in the super-root.
 	 */
-        parent = hammer2_chain_lookup_init(hmp->schain, 0);
+	parent = hammer2_inode_lock_ex(hmp->sroot);
 	error = 0;
 	while (error == 0) {
 		chain = hammer2_chain_lookup(&parent, &key_dummy,
@@ -2930,7 +2937,7 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			     HAMMER2_BREF_TYPE_INODE,
 			     HAMMER2_INODE_BYTES);
 	hammer2_chain_modify(trans, &nchain, HAMMER2_MODIFY_ASSERTNOCOPY);
-	hammer2_chain_lookup_done(parent);
+	hammer2_inode_unlock_ex(hmp->sroot, parent);
 	parent = NULL;	/* safety */
 
 	/*
@@ -2949,10 +2956,11 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 */
 	ipdata->pfs_type = HAMMER2_PFSTYPE_SNAPSHOT;
 	kern_uuidgen(&ipdata->pfs_fsid, 1);
-	if (ip->chain == cluster->rchain)
-		ipdata->pfs_clid = ip->chain->data->ipdata.pfs_clid;
+	if (ochain->flags & HAMMER2_CHAIN_PFSROOT)
+		ipdata->pfs_clid = opfs_clid;
 	else
 		kern_uuidgen(&ipdata->pfs_clid, 1);
+	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_PFSROOT);
 
 	/*
 	 * Issue a restricted flush of the snapshot.  This is a synchronous
@@ -3294,7 +3302,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 						  HAMMER2_RESOLVE_NOREF);
 		}
 		hammer2_chain_delete(trans, chain, HAMMER2_DELETE_WILLDUP);
-		hammer2_chain_duplicate(trans, ichain, &chain, NULL);
+		hammer2_chain_duplicate(trans, ichain, &chain, NULL, 0);
 		hammer2_chain_unlock(chain);
 		KKASSERT(parent->refs > 0);
 		chain = NULL;

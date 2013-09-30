@@ -120,14 +120,12 @@ hammer2_updatestats(hammer2_flush_info_t *info, hammer2_blockref_t *bref,
 void
 hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp, int flags)
 {
-	hammer2_cluster_t *cluster;
 	hammer2_mount_t *hmp;
 	hammer2_trans_t *scan;
 
 	bzero(trans, sizeof(*trans));
 	trans->pmp = pmp;
-	cluster = pmp->cluster;
-	hmp = cluster->hmp;
+	hmp = pmp->cluster.chains[0]->hmp;	/* XXX */
 
 	hammer2_voldata_lock(hmp);
 	trans->flags = flags;
@@ -235,12 +233,10 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp, int flags)
 void
 hammer2_trans_done(hammer2_trans_t *trans)
 {
-	hammer2_cluster_t *cluster;
 	hammer2_mount_t *hmp;
 	hammer2_trans_t *scan;
 
-	cluster = trans->pmp->cluster;
-	hmp = cluster->hmp;
+	hmp = trans->pmp->cluster.chains[0]->hmp;
 
 	hammer2_voldata_lock(hmp);
 	TAILQ_REMOVE(&hmp->transq, trans, entry);

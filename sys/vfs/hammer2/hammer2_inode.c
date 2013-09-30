@@ -823,7 +823,7 @@ retry:
 	bref = tmp->bref;
 	bref.key = lhc;			/* invisible dir entry key */
 	bref.keybits = 0;
-	hammer2_chain_duplicate(trans, parent, &tmp, &bref);
+	hammer2_chain_duplicate(trans, parent, &tmp, &bref, 0);
 	hammer2_inode_unlock_ex(dip, parent);
 	/*hammer2_chain_lookup_done(parent);*/
 	hammer2_chain_unlock(nchain);	/* no longer needed */
@@ -931,7 +931,7 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 			 */
 			nchain = ochain;
 			ochain = NULL;
-			hammer2_chain_duplicate(trans, NULL, &nchain, NULL);
+			hammer2_chain_duplicate(trans, NULL, &nchain, NULL, 0);
 			error = hammer2_chain_create(trans, &parent, &nchain,
 						     lhc, 0,
 						     HAMMER2_BREF_TYPE_INODE,
