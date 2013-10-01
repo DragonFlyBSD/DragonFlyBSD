@@ -34,13 +34,7 @@
 
 #include <sys/types.h>
 
-#if !defined(_KERNEL) && !defined(_STANDALONE)
-#include <stdbool.h>
-#else
-typedef int bool;
-#define      false   0
-#define      true    1
-#endif /* ! _KERNEL && ! _STANDALONE */
+#include <sys/stdbool.h>
 
 typedef void *prop_object_t;
 

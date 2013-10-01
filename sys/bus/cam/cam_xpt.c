@@ -6448,14 +6448,14 @@ xpt_find_quirk(struct cam_ed *device)
 static int
 sysctl_cam_search_luns(SYSCTL_HANDLER_ARGS)
 {
-	int error, bool;
+	int error, lbool;
 
-	bool = cam_srch_hi;
-	error = sysctl_handle_int(oidp, &bool, 0, req);
+	lbool = cam_srch_hi;
+	error = sysctl_handle_int(oidp, &lbool, 0, req);
 	if (error != 0 || req->newptr == NULL)
 		return (error);
-	if (bool == 0 || bool == 1) {
-		cam_srch_hi = bool;
+	if (lbool == 0 || lbool == 1) {
+		cam_srch_hi = lbool;
 		return (0);
 	} else {
 		return (EINVAL);
