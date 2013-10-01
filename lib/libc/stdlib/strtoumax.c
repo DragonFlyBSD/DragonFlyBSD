@@ -1,5 +1,3 @@
-/* $DragonFly: src/lib/libc/stdlib/strtoumax.c,v 1.2 2008/08/19 15:50:24 joerg Exp $ */
-
 /*-
  * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
  * Copyright (c) 2003 Citrus Project,
