@@ -1481,9 +1481,10 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			}
 
 			/*
-			 * Final drop of embedded freemap root chain to clean up
-			 * fchain.core (fchain structure is not flagged ALLOCATED
-			 * so it is cleaned out and then left to rot).
+			 * Final drop of embedded freemap root chain to
+			 * clean up fchain.core (fchain structure is not
+			 * flagged ALLOCATED so it is cleaned out and then
+			 * left to rot).
 			 */
 			hammer2_chain_drop(&hmp->fchain);
 
@@ -1657,6 +1658,9 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 
 	hammer2_trans_init(&info.trans, pmp, HAMMER2_TRANS_ISFLUSH);
 
+	/*
+	 * vfsync the vnodes. XXX
+	 */
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vmntvnodescan(mp, flags | VMSC_NOWAIT,
@@ -1681,6 +1685,15 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	for (i = 0; i < pmp->cluster.nchains; ++i) {
 		hmp = pmp->cluster.chains[i]->hmp;
 
+		/*
+		 * Media mounts have two 'roots', vchain for the topology
+		 * and fchain for the free block table.  Flush both.
+		 *
+		 * Note that the topology and free block table are handled
+		 * independently, so the free block table can wind up being
+		 * ahead of the topology.  We depend on the bulk free scan
+		 * code to deal with any loose ends.
+		 */
 		hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 		if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
 					  HAMMER2_CHAIN_SUBMODIFIED)) {
@@ -1688,19 +1701,13 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		}
 		hammer2_chain_unlock(&hmp->vchain);
 
-#if 1
-		/*
-		 * Rollup flush.  The fsyncs above basically just flushed
-		 * data blocks.  The flush below gets all the meta-data.
-		 */
 		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
 		if (hmp->fchain.flags & (HAMMER2_CHAIN_MODIFIED |
 					 HAMMER2_CHAIN_SUBMODIFIED)) {
-			/* this will modify vchain as a side effect */
+			/* this will also modify vchain as a side effect */
 			hammer2_chain_flush(&info.trans, &hmp->fchain);
 		}
 		hammer2_chain_unlock(&hmp->fchain);
-#endif
 
 		error = 0;
 

@@ -1019,10 +1019,10 @@ hammer2_write_file(hammer2_inode_t *ip,
 	while (uio->uio_resid > 0) {
 		hammer2_key_t lbase;
 		int trivial;
+		int endofblk;
 		int lblksize;
 		int loff;
 		int n;
-		int rem_size;
 
 		/*
 		 * Don't allow the buffer build to blow out the buffer
@@ -1041,13 +1041,6 @@ hammer2_write_file(hammer2_inode_t *ip,
 						&lbase, NULL);
 		loff = (int)(uio->uio_offset - lbase);
 		
-		if (uio->uio_resid < lblksize) {
-			rem_size = (int)uio->uio_resid;
-		}
-		else {
-			rem_size = 0;
-		}
-		
 		KKASSERT(lblksize <= 65536);
 
 		/*
@@ -1060,8 +1053,11 @@ hammer2_write_file(hammer2_inode_t *ip,
 			n = uio->uio_resid;
 			if (loff == lbase && uio->uio_offset + n == new_eof)
 				trivial = 1;
-		} else if (loff == 0) {
-			trivial = 1;
+			endofblk = 0;
+		} else {
+			if (loff == 0)
+				trivial = 1;
+			endofblk = 1;
 		}
 
 		/*
@@ -1117,9 +1113,21 @@ hammer2_write_file(hammer2_inode_t *ip,
 			brelse(bp);
 			break;
 		}
-		bdwrite(bp);
-		if (error)
-			break;
+
+		/*
+		 * WARNING: Pageout daemon will issue UIO_NOCOPY writes
+		 *	    with IO_SYNC or IO_ASYNC set.  These writes
+		 *	    must be handled as the pageout daemon expects.
+		 */
+		if (ap->a_ioflag & IO_SYNC) {
+			bwrite(bp);
+		} else if ((ap->a_ioflag & IO_DIRECT) && endofblk) {
+			bawrite(bp);
+		} else if (ap->a_ioflag & IO_ASYNC) {
+			bawrite(bp);
+		} else {
+			bdwrite(bp);
+		}
 	}
 
 	/*
@@ -1389,6 +1397,9 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
  * request, in bytes.
  *
  * (struct vnode *vp, off_t loffset, off_t *doffsetp, int *runp, int *runb)
+ *
+ * Basically disabled, the logical buffer write thread has to deal with
+ * buffers one-at-a-time.
  */
 static
 int
@@ -1400,100 +1411,6 @@ hammer2_vop_bmap(struct vop_bmap_args *ap)
 	if (ap->a_runb)
 		*ap->a_runb = 0;
 	return (EOPNOTSUPP);
-#if 0
-	struct vnode *vp;
-	hammer2_inode_t *ip;
-	hammer2_chain_t *parent;
-	hammer2_chain_t *chain;
-	hammer2_key_t key_next;
-	hammer2_key_t lbeg;
-	hammer2_key_t lend;
-	hammer2_off_t pbeg;
-	hammer2_off_t pbytes;
-	hammer2_off_t array[HAMMER2_BMAP_COUNT][2];
-	int loff;
-	int ai;
-	int cache_index;
-
-	/*
-	 * Only supported on regular files
-	 *
-	 * Only supported for read operations (required for cluster_read).
-	 * The block allocation is delayed for write operations.
-	 */
-	vp = ap->a_vp;
-	if (vp->v_type != VREG)
-		return (EOPNOTSUPP);
-	if (ap->a_cmd != BUF_CMD_READ)
-		return (EOPNOTSUPP);
-
-	ip = VTOI(vp);
-	bzero(array, sizeof(array));
-
-	/*
-	 * Calculate logical range
-	 */
-	KKASSERT((ap->a_loffset & HAMMER2_LBUFMASK64) == 0);
-	lbeg = ap->a_loffset & HAMMER2_OFF_MASK_HI;
-	lend = lbeg + HAMMER2_BMAP_COUNT * HAMMER2_PBUFSIZE - 1;
-	if (lend < lbeg)
-		lend = lbeg;
-	loff = ap->a_loffset & HAMMER2_OFF_MASK_LO;
-
-	parent = hammer2_inode_lock_sh(ip);
-	chain = hammer2_chain_lookup(&parent, &key_next,
-				     lbeg, lend,
-				     &cache_index,
-				     HAMMER2_LOOKUP_NODATA |
-				     HAMMER2_LOOKUP_SHARED);
-	if (chain == NULL) {
-		*ap->a_doffsetp = ZFOFFSET;
-		hammer2_inode_unlock_sh(ip, parent);
-		return (0);
-	}
-
-	while (chain) {
-		if (chain->bref.type == HAMMER2_BREF_TYPE_DATA) {
-			ai = (chain->bref.key - lbeg) / HAMMER2_PBUFSIZE;
-			KKASSERT(ai >= 0 && ai < HAMMER2_BMAP_COUNT);
-			array[ai][0] = chain->bref.data_off & HAMMER2_OFF_MASK;
-			array[ai][1] = chain->bytes;
-		}
-		chain = hammer2_chain_next(&parent, chain, &key_next,
-					   key_next, lend,
-					   &cache_index,
-					   HAMMER2_LOOKUP_NODATA |
-					   HAMMER2_LOOKUP_SHARED);
-	}
-	hammer2_inode_unlock_sh(ip, parent);
-
-	/*
-	 * If the requested loffset is not mappable physically we can't
-	 * bmap.  The caller will have to access the file data via a
-	 * device buffer.
-	 */
-	if (array[0][0] == 0 || array[0][1] < loff + HAMMER2_MINIOSIZE) {
-		*ap->a_doffsetp = NOOFFSET;
-		return (0);
-	}
-
-	/*
-	 * Calculate the physical disk offset range for array[0]
-	 */
-	pbeg = array[0][0] + loff;
-	pbytes = array[0][1] - loff;
-
-	for (ai = 1; ai < HAMMER2_BMAP_COUNT; ++ai) {
-		if (array[ai][0] != pbeg + pbytes)
-			break;
-		pbytes += array[ai][1];
-	}
-
-	*ap->a_doffsetp = pbeg;
-	if (ap->a_runp)
-		*ap->a_runp = pbytes;
-	return (0);
-#endif
 }
 
 static

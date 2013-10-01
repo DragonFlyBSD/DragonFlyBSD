@@ -137,7 +137,7 @@ typedef struct hammer2_chain_layer hammer2_chain_layer_t;
 struct hammer2_chain_core {
 	int		good;
 	struct ccms_cst	cst;
-	struct h2_core_list ownerq;	/* chain's which own this core */
+	struct h2_core_list ownerq;	/* all chains sharing this core */
 	struct h2_layer_list layerq;
 	u_int		chain_count;	/* total chains in layers */
 	u_int		sharecnt;
@@ -289,21 +289,57 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * HAMMER2 IN-MEMORY CACHE OF MEDIA STRUCTURES
  *
  * There is an in-memory representation of all on-media data structure.
+ * Basically everything is represented by a hammer2_chain structure
+ * in-memory and other higher-level structures map to chains.
  *
- * When accessed read-only the data will be mapped to the related buffer
- * cache buffer.
+ * A great deal of data is accessed simply via its buffer cache buffer,
+ * which is mapped for the duration of the chain's lock.  However, because
+ * chains may represent blocks smaller than the 16KB minimum we impose
+ * on buffer cache buffers, we cannot hold related buffer cache buffers
+ * locked for smaller blocks.  In these situations we kmalloc() a copy
+ * of the block.
  *
- * When accessed read-write (marked modified) a kmalloc()'d copy of the
- * is created which can then be modified.  The copy is destroyed when a
- * filesystem block is allocated to replace it.
- *
- * Active inodes (those with vnodes attached) will maintain the kmalloc()'d
- * copy for both the read-only and the read-write case.  The combination of
- * (bp) and (data) determines whether (data) was allocated or not.
+ * When modifications are made to a chain a new filesystem block must be
+ * allocated.  Multiple modifications do not necessarily allocate new
+ * blocks.  However, when a flush occurs a flush synchronization point
+ * is created and any new modifications made after this point will allocate
+ * a new block even if the chain is already in a modified state.
  *
  * The in-memory representation may remain cached (for example in order to
  * placemark clustering locks) even after the related data has been
  * detached.
+ *
+ *				CORE SHARING
+ *
+ * In order to support concurrent flushes a flush synchronization point
+ * is created represented by a transaction id.  Among other things,
+ * operations may move filesystem objects from one part of the topology
+ * to another (for example, if you rename a file or when indirect blocks
+ * are created or destroyed, and a few other things).  When this occurs
+ * across a flush synchronization point the flusher needs to be able to
+ * recurse down BOTH the 'before' version of the topology and the 'after'
+ * version.
+ *
+ * To facilitate this modifications to chains do what is called a
+ * DELETE-DUPLICATE operation.  Chains are not actually moved in-memory.
+ * Instead the chain we wish to move is deleted and a new chain is created
+ * at the target location in the topology.  ANY SUBCHAINS PLACED UNDER THE
+ * CHAIN BEING MOVED HAVE TO EXIST IN BOTH PLACES.  To make this work
+ * all sub-chains are managed by the hammer2_chain_core structure.  This
+ * structure can be multi-homed, meaning that it can have more than one
+ * chain as its parent.  When a chain is delete-duplicated the chain's core
+ * becomes shared under both the old and new chain.
+ *
+ *				STALE CHAINS
+ *
+ * When a chain is delete-duplicated the old chain typically becomes stale.
+ * This is detected via the HAMMER2_CHAIN_DUPLICATED flag in chain->flags.
+ * To avoid executing live filesystem operations on stale chains, the inode
+ * locking code will follow stale chains via core->ownerq until it finds
+ * the live chain.  The lock prevents ripups by other threads.  Lookups
+ * must properly order locking operations to prevent other threads from
+ * racing the lookup operation and will also follow stale chains when
+ * required.
  */
 
 RB_HEAD(hammer2_inode_tree, hammer2_inode);

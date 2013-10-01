@@ -674,13 +674,15 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 	    chain == &hmp->fchain) {
 		/*
 		 * Drop the ref from the MODIFIED bit we cleared.
+		 * Net is -0 or -1 ref depending.
 		 */
 		if (wasmodified)
 			hammer2_chain_drop(chain);
 	} else {
 		/*
-		 * If we were MODIFIED we inherit the ref from clearing
-		 * that bit, otherwise we need another ref.
+		 * Drop the ref from the MODIFIED bit we cleared and
+		 * set a ref for the MOVED bit we are setting.  Net
+		 * is +0 or +1 ref depending.
 		 */
 		if (wasmodified == 0)
 			hammer2_chain_ref(chain);
