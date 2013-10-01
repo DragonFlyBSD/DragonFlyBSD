@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 François Tigeot <ftigeot@wolfpond.org>
+ * Copyright (c) 2000 Jeroen Ruigrok van der Werven <asmodai@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,11 +23,26 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $FreeBSD: src/include/stdbool.h,v 1.4.2.2 2002/06/19 06:05:26 obrien Exp $
  */
 
-#ifndef _STDBOOL_H_
-#define	_STDBOOL_H_	
+#ifndef _SYS_STDBOOL_H_
+#define	_SYS_STDBOOL_H_
 
-#include <sys/stdbool.h>
+#define	__bool_true_false_are_defined	1
 
-#endif /* !_STDBOOL_H_ */
+#ifndef __cplusplus
+
+#include <sys/cdefs.h>
+
+#define	false	0
+#define	true	1
+
+#define	bool	_Bool
+#if __STDC_VERSION__ < 199901L && !__GNUC_PREREQ__(3, 0)
+typedef	int	_Bool;
+#endif
+
+#endif /* !__cplusplus */
+
+#endif /* !_SYS_STDBOOL_H_ */
