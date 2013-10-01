@@ -203,7 +203,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list */
 #define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying inode */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
-#define HAMMER2_CHAIN_RECYCLE		0x00001000	/* force recycle */
+#define HAMMER2_CHAIN_UNUSED1000	0x00001000
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */

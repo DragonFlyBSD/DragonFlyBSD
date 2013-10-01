@@ -363,7 +363,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 	hmp = ip->pmp->cluster.chains[0]->hmp; /* XXX */
 	pfs = data;
 	parent = hammer2_inode_lock_ex(hmp->sroot);
-	rchain = ip->pmp->cluster.chains[0];	/* XXX */
+	rchain = hammer2_inode_lock_ex(ip->pmp->iroot);
 
 	/*
 	 * Search for the first key or specific key.  Remember that keys
@@ -383,6 +383,8 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 					     pfs->name_key, pfs->name_key,
 					     &cache_index, 0);
 	}
+	hammer2_inode_unlock_ex(ip->pmp->iroot, rchain);
+
 	while (chain && chain->bref.type != HAMMER2_BREF_TYPE_INODE) {
 		chain = hammer2_chain_next(&parent, chain, &key_next,
 					   key_next, (hammer2_key_t)-1,

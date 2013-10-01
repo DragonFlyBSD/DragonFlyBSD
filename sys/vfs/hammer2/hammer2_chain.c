@@ -461,6 +461,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		 * would revert to the prior deleted chain.
 		 */
 		if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
+		    (chain->flags & HAMMER2_CHAIN_SNAPSHOT) == 0 &&
 		    TAILQ_FIRST(&core->ownerq) != chain) {
 			if (atomic_cmpset_int(&chain->refs, 1, 0))
 				chain = NULL;	/* success */
@@ -2558,9 +2559,12 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	hmp = ochain->hmp;
 	if (bref == NULL)
 		bref = &ochain->bref;
-	nchain = hammer2_chain_alloc(hmp, ochain->pmp, trans, bref);
-	if (snapshot)
+	if (snapshot) {
+		nchain = hammer2_chain_alloc(hmp, NULL, trans, bref);
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_SNAPSHOT);
+	} else {
+		nchain = hammer2_chain_alloc(hmp, ochain->pmp, trans, bref);
+	}
 	hammer2_chain_core_alloc(trans, nchain, ochain);
 	bytes = (hammer2_off_t)1 <<
 		(int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
@@ -2887,15 +2891,19 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t *ochain,
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *nchain;
+	hammer2_inode_data_t *ipdata;
+	hammer2_inode_t *nip;
+	size_t name_len;
+	hammer2_key_t lhc;
+#if 0
 	hammer2_chain_t *chain;
 	hammer2_chain_t *parent;
-	hammer2_inode_data_t *ipdata;
-	size_t name_len;
 	hammer2_key_t key_dummy;
-	hammer2_key_t lhc;
+	int cache_index = -1;
+#endif
+	struct vattr vat;
 	uuid_t opfs_clid;
 	int error;
-	int cache_index = -1;
 
 	name_len = strlen(pfs->name);
 	lhc = hammer2_dirhash(pfs->name, name_len);
@@ -2903,6 +2911,55 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t *ochain,
 	hmp = ochain->hmp;
 	opfs_clid = ochain->data->ipdata.pfs_clid;
 	KKASSERT((trans->flags & HAMMER2_TRANS_RESTRICTED) == 0);
+
+	/*
+	 * Issue a restricted flush of the original.  This is a synchronous
+	 * operation.  This will synchronize the blockrefs.
+	 */
+	/* trans->flags |= HAMMER2_TRANS_RESTRICTED; */
+	hammer2_chain_flush(trans, ochain);
+	/* trans->flags &= ~HAMMER2_TRANS_RESTRICTED; */
+	kprintf("snapshot %s ochain->refs %d ochain->flags %08x\n",
+		pfs->name, ochain->refs, ochain->flags);
+
+	/*
+	 * Create the snapshot directory under the super-root
+	 *
+	 * Set PFS type, generate a unique filesystem id, and generate
+	 * a cluster id.  Use the same clid when snapshotting a PFS root,
+	 * which theoretically allows the snapshot to be used as part of
+	 * the same cluster (perhaps as a cache).
+	 *
+	 * Copy the (flushed) ochain's blockref array.  Theoretically we
+	 * could use chain_duplicate() but it becomes difficult to disentangle
+	 * the shared core so for now just brute-force it.
+	 */
+	VATTR_NULL(&vat);
+	vat.va_type = VDIR;
+	vat.va_mode = 0755;
+	nchain = NULL;
+	nip = hammer2_inode_create(trans, hmp->sroot, &vat, proc0.p_ucred,
+				   pfs->name, name_len, &nchain, &error);
+
+	if (nip) {
+		ipdata = hammer2_chain_modify_ip(trans, nip, &nchain, 0);
+		ipdata->pfs_type = HAMMER2_PFSTYPE_SNAPSHOT;
+		kern_uuidgen(&ipdata->pfs_fsid, 1);
+		if (ochain->flags & HAMMER2_CHAIN_PFSROOT)
+			ipdata->pfs_clid = opfs_clid;
+		else
+			kern_uuidgen(&ipdata->pfs_clid, 1);
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_PFSROOT);
+		ipdata->u.blockset = ochain->data->ipdata.u.blockset;
+
+		hammer2_inode_unlock_ex(nip, nchain);
+	}
+	return (error);
+
+#if 0
+
+
+
 
 	/*
 	 * Get second lock for duplication to replace, original lock
@@ -2914,7 +2971,6 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t *ochain,
 	/*
 	 * Create disconnected duplicate flagged as a snapshot
 	 */
-	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_RECYCLE);
 	hammer2_chain_duplicate(trans, NULL, &nchain, NULL, 1);
 
 	/*
@@ -2949,51 +3005,15 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t *ochain,
 	ksnprintf(ipdata->filename, sizeof(ipdata->filename), "%s", pfs->name);
 
 	/*
-	 * Set PFS type, generate a unique filesystem id, and generate
-	 * a cluster id.  Use the same clid when snapshotting a PFS root,
-	 * which theoretically allows the snapshot to be used as part of
-	 * the same cluster (perhaps as a cache).
+	 * Unlock nchain.  This should cause nchain to be freed by virtue
+	 * of its SNAPSHOT flag, which serves to disconnect its core.  If
+	 * we were to retain nchain it would be a problem because the shared
+	 * core would pick up changes made in the original after the snapshot
+	 * operation has returned.
 	 */
-	ipdata->pfs_type = HAMMER2_PFSTYPE_SNAPSHOT;
-	kern_uuidgen(&ipdata->pfs_fsid, 1);
-	if (ochain->flags & HAMMER2_CHAIN_PFSROOT)
-		ipdata->pfs_clid = opfs_clid;
-	else
-		kern_uuidgen(&ipdata->pfs_clid, 1);
-	atomic_set_int(&nchain->flags, HAMMER2_CHAIN_PFSROOT);
-
-	/*
-	 * Issue a restricted flush of the snapshot.  This is a synchronous
-	 * operation.
-	 */
-	trans->flags |= HAMMER2_TRANS_RESTRICTED;
-	kprintf("SNAPSHOTA\n");
-	tsleep(trans, 0, "snapslp", hz*4);
-	kprintf("SNAPSHOTB\n");
-	hammer2_chain_flush(trans, nchain);
-	trans->flags &= ~HAMMER2_TRANS_RESTRICTED;
-
-#if 0
-	/*
-	 * Remove the link b/c nchain is a snapshot and snapshots don't
-	 * follow CHAIN_DELETED semantics ?
-	 */
-	chain = ip->chain;
-
-
-	KKASSERT(chain->duplink == nchain);
-	KKASSERT(chain->core == nchain->core);
-	KKASSERT(nchain->refs >= 2);
-	chain->duplink = nchain->duplink;
-	atomic_clear_int(&nchain->flags, HAMMER2_CHAIN_DUPTARGET);
-	hammer2_chain_drop(nchain);
-#endif
-
-	kprintf("snapshot %s nchain->refs %d nchain->flags %08x\n",
-		pfs->name, nchain->refs, nchain->flags);
+	kprintf("nchain refs %d %08x\n", nchain->refs, nchain->flags);
 	hammer2_chain_unlock(nchain);
-
-	return (error);
+#endif
 }
 
 /*

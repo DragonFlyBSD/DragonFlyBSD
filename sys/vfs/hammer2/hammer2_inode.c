@@ -644,7 +644,7 @@ retry:
 		nipdata->mode = vap->va_mode;
 	nipdata->nlinks = 1;
 	if (vap) {
-		if (dip) {
+		if (dip && dip->pmp) {
 			xuid = hammer2_to_unix_xid(&dip_uid);
 			xuid = vop_helper_create_uid(dip->pmp->mp,
 						     dip_mode,
@@ -652,6 +652,7 @@ retry:
 						     cred,
 						     &vap->va_mode);
 		} else {
+			/* super-root has no dip and/or pmp */
 			xuid = 0;
 		}
 		if (vap->va_vaflags & VA_UID_UUID_VALID)

@@ -392,7 +392,9 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 	hammer2_off_t pbase;
 	hammer2_off_t pmask;
 	hammer2_tid_t saved_sync;
+#if 0
 	hammer2_trans_t *trans = info->trans;
+#endif
 	hammer2_chain_core_t *core;
 	size_t psize;
 	size_t boff;
@@ -425,6 +427,7 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 	if (chain->modify_tid > info->sync_tid)
 		return;
 
+#if 0
 	/*
 	 * Deleted chains which have not been destroyed must be retained,
 	 * and we probably have to recurse to clean-up any sub-trees.
@@ -438,6 +441,7 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 		if (trans->flags & HAMMER2_TRANS_RESTRICTED)
 			return;
 	}
+#endif
 
 	saved_sync = info->sync_tid;
 	core = chain->core;

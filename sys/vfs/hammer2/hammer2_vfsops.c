@@ -623,20 +623,25 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	if (rchain == NULL) {
 		kprintf("hammer2_mount: PFS label not found\n");
+		--hmp->pmp_count;
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EINVAL;
 	}
 	if (rchain->flags & HAMMER2_CHAIN_MOUNTED) {
 		hammer2_chain_unlock(rchain);
 		kprintf("hammer2_mount: PFS label already mounted!\n");
+		--hmp->pmp_count;
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EBUSY;
 	}
+#if 0
 	if (rchain->flags & HAMMER2_CHAIN_RECYCLE) {
 		kprintf("hammer2_mount: PFS label currently recycling\n");
+		--hmp->pmp_count;
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EBUSY;
 	}
+#endif
 
 	atomic_set_int(&rchain->flags, HAMMER2_CHAIN_MOUNTED);
 
@@ -1371,6 +1376,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	ccms_domain_uninit(&pmp->ccms_dom);
 	kdmsg_iocom_uninit(&pmp->iocom);	/* XXX chain dependency */
 
+	lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
+
 	for (i = 0; i < pmp->cluster.nchains; ++i) {
 		hmp = pmp->cluster.chains[i]->hmp;
 
@@ -1390,10 +1397,9 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 
 		if (error) {
 			hammer2_mount_unlock(hmp);
-			return error;
+			goto failed;
 		}
 
-		lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
 		--hmp->pmp_count;
 		kprintf("hammer2_unmount hmp=%p pmpcnt=%d\n",
 			hmp, hmp->pmp_count);
@@ -1517,6 +1523,9 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	kmalloc_destroy(&pmp->minode);
 
 	kfree(pmp, M_HAMMER2);
+	error = 0;
+
+failed:
 	lockmgr(&hammer2_mntlk, LK_RELEASE);
 
 	return (error);
