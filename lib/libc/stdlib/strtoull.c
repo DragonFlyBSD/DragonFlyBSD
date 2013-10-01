@@ -33,6 +33,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "xlocale_private.h"
 
 #define	_FUNCNAME	strtoull
 #define	__UINT		unsigned long long int

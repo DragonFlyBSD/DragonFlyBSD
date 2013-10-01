@@ -30,6 +30,10 @@
  * $NetBSD: src/lib/libc/locale/_wcstoul.h,v 1.2 2003/08/07 16:43:03 agc Exp $
  */
 
+#define _LOCALE_NAME(func) func ## _l
+#define _MAKE_LOCALE_NAME(func) _LOCALE_NAME(func)
+#define _FUNCNAME_L _MAKE_LOCALE_NAME(_FUNCNAME)
+
 /*
  * function template for strtoul, strtoull and strtoumax.
  *
@@ -40,7 +44,8 @@
  */
 
 __UINT
-_FUNCNAME(const char *nptr, char **endptr, int base)
+_FUNCNAME_L(const char * __restrict nptr, char ** __restrict endptr, int base,
+		locale_t locale)
 {
 	const char *s;
 	__UINT acc, cutoff;
@@ -49,6 +54,8 @@ _FUNCNAME(const char *nptr, char **endptr, int base)
 
 	_DIAGASSERT(nptr != NULL);
 	/* endptr may be NULL */
+
+	FIX_LOCALE(locale);
 
 	/* check base value */
 	if (base && (base < 2 || base > 36)) {
@@ -64,7 +71,7 @@ _FUNCNAME(const char *nptr, char **endptr, int base)
 	s = nptr;
 	do {
 		c = *s++;
-	} while (isspace(c));
+	} while (isspace_l((unsigned char)c, locale));
 	if (c == '-') {
 		neg = 1;
 		c = *s++;
@@ -116,4 +123,11 @@ _FUNCNAME(const char *nptr, char **endptr, int base)
 		/* LINTED interface specification */
 		*endptr = __DECONST(char *, (any ? s - 1 : nptr));
 	return(acc);
+}
+
+
+__UINT
+_FUNCNAME(const char * __restrict nptr, char ** __restrict endptr, int base)
+{
+	return _FUNCNAME_L(nptr, endptr, base, __get_locale());
 }
