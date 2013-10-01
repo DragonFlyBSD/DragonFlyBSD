@@ -2243,12 +2243,12 @@ pmap_release_callback(pv_entry_t pv, void *data)
 	} else {
 		spin_unlock(&pmap->pm_spin);
 		pv_lock(pv);
-		if (pv->pv_pmap != pmap) {
-			pv_put(pv);
-			spin_lock(&pmap->pm_spin);
-			info->retry = 1;
-			return(-1);
-		}
+	}
+	if (pv->pv_pmap != pmap) {
+		pv_put(pv);
+		spin_lock(&pmap->pm_spin);
+		info->retry = 1;
+		return(-1);
 	}
 	r = pmap_release_pv(pv, NULL);
 	spin_lock(&pmap->pm_spin);
@@ -2829,11 +2829,10 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 		}
 		if (_pv_hold_try(pv PMAP_DEBUG_COPY)) {
 			spin_unlock(&pmap->pm_spin);
-			*isnew = 0;
-			return(pv);
+		} else {
+			spin_unlock(&pmap->pm_spin);
+			_pv_lock(pv PMAP_DEBUG_COPY);
 		}
-		spin_unlock(&pmap->pm_spin);
-		_pv_lock(pv PMAP_DEBUG_COPY);
 		if (pv->pv_pmap == pmap && pv->pv_pindex == pindex) {
 			*isnew = 0;
 			return(pv);
@@ -2841,8 +2840,6 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 		pv_put(pv);
 		spin_lock(&pmap->pm_spin);
 	}
-
-
 }
 
 /*
@@ -2868,14 +2865,15 @@ _pv_get(pmap_t pmap, vm_pindex_t pindex PMAP_DEBUG_DECL)
 			return NULL;
 		}
 		if (_pv_hold_try(pv PMAP_DEBUG_COPY)) {
-			pv_cache(pv, pindex);
 			spin_unlock(&pmap->pm_spin);
+		} else {
+			spin_unlock(&pmap->pm_spin);
+			_pv_lock(pv PMAP_DEBUG_COPY);
+		}
+		if (pv->pv_pmap == pmap && pv->pv_pindex == pindex) {
+			pv_cache(pv, pindex);
 			return(pv);
 		}
-		spin_unlock(&pmap->pm_spin);
-		_pv_lock(pv PMAP_DEBUG_COPY);
-		if (pv->pv_pmap == pmap && pv->pv_pindex == pindex)
-			return(pv);
 		pv_put(pv);
 		spin_lock(&pmap->pm_spin);
 	}
@@ -2910,6 +2908,7 @@ pv_get_try(pmap_t pmap, vm_pindex_t pindex, int *errorp)
 		pv_cache(pv, pindex);
 		spin_unlock_shared(&pmap->pm_spin);
 		*errorp = 0;
+		KKASSERT(pv->pv_pmap == pmap && pv->pv_pindex == pindex);
 		return(pv);	/* lock succeeded */
 	}
 	spin_unlock_shared(&pmap->pm_spin);
@@ -3643,11 +3642,11 @@ pmap_remove_all(vm_page_t m)
 		} else {
 			vm_page_spin_unlock(m);
 			pv_lock(pv);
-			if (pv->pv_m != m) {
-				pv_put(pv);
-				vm_page_spin_lock(m);
-				continue;
-			}
+		}
+		if (pv->pv_m != m) {
+			pv_put(pv);
+			vm_page_spin_lock(m);
+			continue;
 		}
 		/*
 		 * Holding no spinlocks, pv is locked.
@@ -4451,7 +4450,6 @@ pmap_clearbit(vm_page_t m, int bit_index)
 	pv_entry_t pv;
 	pt_entry_t *pte;
 	pt_entry_t pbits;
-	pmap_t save_pmap;
 	pmap_t pmap;
 
 	if (bit_index == PG_RW_IDX)
@@ -4529,28 +4527,30 @@ restart:
 		/*
 		 * Lock the PV
 		 */
-		if (pv_hold_try(pv) == 0) {
+		if (pv_hold_try(pv)) {
+			vm_page_spin_unlock(m);
+		} else {
 			vm_page_spin_unlock(m);
 			pv_lock(pv);	/* held, now do a blocking lock */
+		}
+		if (pv->pv_pmap != pmap || pv->pv_m != m) {
 			pv_put(pv);	/* and release */
 			goto restart;	/* anything could have happened */
 		}
-
-		save_pmap = pv->pv_pmap;
 		vm_page_spin_unlock(m);
-		pmap_inval_interlock(&info, save_pmap,
+		pmap_inval_interlock(&info, pmap,
 				     (vm_offset_t)pv->pv_pindex << PAGE_SHIFT);
-		KKASSERT(pv->pv_pmap == save_pmap);
+		KKASSERT(pv->pv_pmap == pmap);
 		for (;;) {
 			pbits = *pte;
 			cpu_ccfence();
 			if (atomic_cmpset_long(pte, pbits, pbits &
-			    ~(save_pmap->pmap_bits[PG_RW_IDX] |
-			    save_pmap->pmap_bits[PG_M_IDX]))) {
+			    ~(pmap->pmap_bits[PG_RW_IDX] |
+			    pmap->pmap_bits[PG_M_IDX]))) {
 				break;
 			}
 		}
-		pmap_inval_deinterlock(&info, save_pmap);
+		pmap_inval_deinterlock(&info, pmap);
 		vm_page_spin_lock(m);
 
 		/*
@@ -4558,7 +4558,7 @@ restart:
 		 * we also clear PG_M (done above) and mark the page dirty.
 		 * Callers expect this behavior.
 		 */
-		if (pbits & save_pmap->pmap_bits[PG_M_IDX])
+		if (pbits & pmap->pmap_bits[PG_M_IDX])
 			vm_page_dirty(m);
 		pv_put(pv);
 	}
