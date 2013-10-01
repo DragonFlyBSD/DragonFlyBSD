@@ -83,7 +83,8 @@ void agp_intel_gtt_insert_sg_entries(device_t dev, struct sglist *sg_list,
 void agp_intel_gtt_insert_pages(device_t dev, u_int first_entry,
     u_int num_entries, vm_page_t *pages, u_int flags);
 
-struct intel_gtt intel_gtt_get(void);
+const struct intel_gtt *intel_gtt_get(void);
+
 int intel_gtt_chipset_flush(void);
 void intel_gtt_unmap_memory(struct sglist *sg_list);
 void intel_gtt_clear_range(u_int first_entry, u_int num_entries);

@@ -514,6 +514,8 @@ typedef struct drm_i915_private {
 	u32 savePCH_PORT_HOTPLUG;
 
 	struct {
+		/** Bridge to intel-gtt-ko */
+		const struct intel_gtt *gtt;
 		/** Memory allocator for GTT stolen memory */
 		struct drm_mm stolen;
 		/** Memory allocator for GTT */
@@ -640,7 +642,6 @@ typedef struct drm_i915_private {
 		size_t object_memory;
 		u32 object_count;
 
-		struct intel_gtt gtt;
 		eventhandler_tag i915_lowmem;
 	} mm;
 

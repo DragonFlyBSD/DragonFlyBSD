@@ -98,7 +98,7 @@ i915_gem_init_aliasing_ppgtt(struct drm_device *dev)
 		}
 	}
 
-	ppgtt->scratch_page_dma_addr = dev_priv->mm.gtt.scratch_page_dma;
+	ppgtt->scratch_page_dma_addr = dev_priv->mm.gtt->scratch_page_dma;
 
 	i915_ppgtt_clear_range(ppgtt, 0, ppgtt->num_pd_entries *
 	    I915_PPGTT_PT_ENTRIES);
@@ -236,7 +236,7 @@ do_idling(struct drm_i915_private *dev_priv)
 {
 	bool ret = dev_priv->mm.interruptible;
 
-	if (dev_priv->mm.gtt.do_idle_maps) {
+	if (unlikely(dev_priv->mm.gtt->do_idle_maps)) {
 		dev_priv->mm.interruptible = false;
 		if (i915_gpu_idle(dev_priv->dev, false)) {
 			DRM_ERROR("Couldn't idle GPU\n");
@@ -252,7 +252,7 @@ static void
 undo_idling(struct drm_i915_private *dev_priv, bool interruptible)
 {
 
-	if (dev_priv->mm.gtt.do_idle_maps)
+	if (unlikely(dev_priv->mm.gtt->do_idle_maps))
 		dev_priv->mm.interruptible = interruptible;
 }
 

@@ -244,6 +244,10 @@ struct agp_i810_driver {
 	void (*chipset_flush)(device_t);
 };
 
+static struct {
+	struct intel_gtt base;
+} intel_private;
+
 static const struct agp_i810_driver agp_i810_i810_driver = {
 	.chiptype = CHIP_I810,
 	.gen = 1,
@@ -2558,11 +2562,10 @@ intel_gtt_insert_pages(u_int first_entry, u_int num_entries, vm_page_t *pages,
 	    pages, flags);
 }
 
-struct intel_gtt
-intel_gtt_get(void)
+const struct intel_gtt *intel_gtt_get(void)
 {
-
-	return (agp_intel_gtt_get(intel_agp));
+	intel_private.base = agp_intel_gtt_get(intel_agp);
+	return &intel_private.base;
 }
 
 int

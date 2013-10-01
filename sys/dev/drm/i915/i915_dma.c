@@ -926,9 +926,9 @@ i915_load_gem_init(struct drm_device *dev)
 	unsigned long prealloc_size, gtt_size, mappable_size;
 	int ret;
 
-	prealloc_size = dev_priv->mm.gtt.stolen_size;
-	gtt_size = dev_priv->mm.gtt.gtt_total_entries << PAGE_SHIFT;
-	mappable_size = dev_priv->mm.gtt.gtt_mappable_entries << PAGE_SHIFT;
+	prealloc_size = dev_priv->mm.gtt->stolen_size;
+	gtt_size = dev_priv->mm.gtt->gtt_total_entries << PAGE_SHIFT;
+	mappable_size = dev_priv->mm.gtt->gtt_mappable_entries << PAGE_SHIFT;
 
 	/* Basic memrange allocator for stolen space */
 	drm_mm_init(&dev_priv->mm.stolen, 0, prealloc_size);
