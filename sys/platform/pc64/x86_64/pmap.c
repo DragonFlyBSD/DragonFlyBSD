@@ -2930,7 +2930,7 @@ pv_find(pmap_t pmap, vm_pindex_t pindex)
 	if ((pv = pmap->pm_pvhint) == NULL || pv->pv_pindex != pindex)
 		pv = pv_entry_rb_tree_RB_LOOKUP(&pmap->pm_pvroot, pindex);
 	if (pv == NULL) {
-		spin_unlock(&pmap->pm_spin);
+		spin_unlock_shared(&pmap->pm_spin);
 		return NULL;
 	}
 	pv_hold(pv);
@@ -4537,7 +4537,6 @@ restart:
 			pv_put(pv);	/* and release */
 			goto restart;	/* anything could have happened */
 		}
-		vm_page_spin_unlock(m);
 		pmap_inval_interlock(&info, pmap,
 				     (vm_offset_t)pv->pv_pindex << PAGE_SHIFT);
 		KKASSERT(pv->pv_pmap == pmap);
