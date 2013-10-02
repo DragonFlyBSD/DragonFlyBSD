@@ -1119,11 +1119,11 @@ hammer2_write_file(hammer2_inode_t *ip,
 		 *	    with IO_SYNC or IO_ASYNC set.  These writes
 		 *	    must be handled as the pageout daemon expects.
 		 */
-		if (ap->a_ioflag & IO_SYNC) {
+		if (ioflag & IO_SYNC) {
 			bwrite(bp);
-		} else if ((ap->a_ioflag & IO_DIRECT) && endofblk) {
+		} else if ((ioflag & IO_DIRECT) && endofblk) {
 			bawrite(bp);
-		} else if (ap->a_ioflag & IO_ASYNC) {
+		} else if (ioflag & IO_ASYNC) {
 			bawrite(bp);
 		} else {
 			bdwrite(bp);
@@ -2039,16 +2039,7 @@ static
 int
 hammer2_strategy_write(struct vop_strategy_args *ap)
 {	
-	/*
-	 * XXX temporary because all write handling is currently
-	 * in the vop_write path (which is incorrect and won't catch
-	 * certain file modifications via mmap()).  What we need
-	 * to do is have the strategy_write code queue the bio to
-	 * one or more support threads which will do the complex
-	 * logical->physical work and have the vop_write path just do
-	 * normal operations on the logical buffer.
-	 */
-	hammer2_mount_t *hmp;
+	hammer2_pfsmount_t *pmp;
 	struct bio *bio;
 	struct buf *bp;
 	hammer2_inode_t *ip;
@@ -2056,12 +2047,13 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
 	ip = VTOI(ap->a_vp);
-	hmp = ip->pmp->cluster.chains[0]->hmp;
+	pmp = ip->pmp;
 	
-	mtx_lock(&hmp->wthread_mtx);
-	bioq_insert_tail(&hmp->wthread_bioq, ap->a_bio);
-	wakeup(&hmp->wthread_bioq);
-	mtx_unlock(&hmp->wthread_mtx);
+	mtx_lock(&pmp->wthread_mtx);
+	bioq_insert_tail(&pmp->wthread_bioq, ap->a_bio);
+	wakeup(&pmp->wthread_bioq);
+	mtx_unlock(&pmp->wthread_mtx);
+
 	return(0);
 }
 

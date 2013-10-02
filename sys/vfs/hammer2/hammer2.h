@@ -472,9 +472,6 @@ struct hammer2_mount {
 	int		volhdrno;	/* last volhdrno written */
 	hammer2_volume_data_t voldata;
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
-	struct bio_queue_head wthread_bioq; /* bio queue for write thread */
-	struct mtx wthread_mtx;     /* mutex for write thread */
-	int 	wthread_destroy;    /* to control the write thread */
 };
 
 typedef struct hammer2_mount hammer2_mount_t;
@@ -525,6 +522,10 @@ struct hammer2_pfsmount {
 	long			inmem_inodes;
 	long			inmem_chains;
 	int			inmem_waiting;
+	thread_t		wthread_td;	/* write thread td */
+	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
+	struct mtx		wthread_mtx;	/* interlock */
+	int			wthread_destroy;/* termination sequencing */
 };
 
 typedef struct hammer2_pfsmount hammer2_pfsmount_t;

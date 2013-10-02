@@ -544,16 +544,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hammer2_inode_unlock_ex(hmp->sroot, schain);
 		schain = NULL;
 		/* leave hmp->sroot with one ref */
-		
-		mtx_init(&hmp->wthread_mtx);
-		bioq_init(&hmp->wthread_bioq);
-		hmp->wthread_destroy = 0;
-	
-		/*
-		 * Launch threads.
-		 */
-		lwkt_create(hammer2_write_thread, hmp,
-				NULL, NULL, 0, -1, "hammer2-write");
 	}
 
 	/*
@@ -663,6 +653,16 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	kprintf("iroot %p\n", pmp->iroot);
 
 	/*
+	 * The logical file buffer bio write thread handles things
+	 * like physical block assignment and compression.
+	 */
+	mtx_init(&pmp->wthread_mtx);
+	bioq_init(&pmp->wthread_bioq);
+	pmp->wthread_destroy = 0;
+	lwkt_create(hammer2_write_thread, pmp,
+		    &pmp->wthread_td, NULL, 0, -1, "hwrite-%s", label);
+
+	/*
 	 * Ref the cluster management messaging descriptor.  The mount
 	 * program deals with the other end of the communications pipe.
 	 */
@@ -704,7 +704,7 @@ static
 void
 hammer2_write_thread(void *arg)
 {
-	hammer2_mount_t* hmp;
+	hammer2_pfsmount_t *pmp;
 	struct bio *bio;
 	struct buf *bp;
 	hammer2_trans_t trans;
@@ -719,20 +719,20 @@ hammer2_write_thread(void *arg)
 	int pblksize;
 	int error;
 	
-	hmp = arg;
+	pmp = arg;
 	
-	mtx_lock(&hmp->wthread_mtx);
-	while (hmp->wthread_destroy == 0) {
-		if (bioq_first(&hmp->wthread_bioq) == NULL) {
-			mtxsleep(&hmp->wthread_bioq, &hmp->wthread_mtx,
+	mtx_lock(&pmp->wthread_mtx);
+	while (pmp->wthread_destroy == 0) {
+		if (bioq_first(&pmp->wthread_bioq) == NULL) {
+			mtxsleep(&pmp->wthread_bioq, &pmp->wthread_mtx,
 				 0, "h2bioqw", 0);
 		}
 		last_ip = NULL;
 		parent = NULL;
 		parentp = &parent;
 
-		while ((bio = bioq_takefirst(&hmp->wthread_bioq)) != NULL) {
-			mtx_unlock(&hmp->wthread_mtx);
+		while ((bio = bioq_takefirst(&pmp->wthread_bioq)) != NULL) {
+			mtx_unlock(&pmp->wthread_mtx);
 			
 			error = 0;
 			bp = bio->bio_buf;
@@ -778,7 +778,7 @@ hammer2_write_thread(void *arg)
 				bp->b_error = EIO;
 			}
 			biodone(bio);
-			mtx_lock(&hmp->wthread_mtx);
+			mtx_lock(&pmp->wthread_mtx);
 		}
 
 		/*
@@ -787,10 +787,10 @@ hammer2_write_thread(void *arg)
 		if (last_ip)
 			hammer2_trans_done(&trans);
 	}
-	hmp->wthread_destroy = -1;
-	wakeup(&hmp->wthread_destroy);
+	pmp->wthread_destroy = -1;
+	wakeup(&pmp->wthread_destroy);
 	
-	mtx_unlock(&hmp->wthread_mtx);
+	mtx_unlock(&pmp->wthread_mtx);
 }
 
 /* 
@@ -1378,27 +1378,37 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 
 	lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
 
+	/*
+	 * If mount initialization proceeded far enough we must flush
+	 * its vnodes.
+	 */
+	if (mntflags & MNT_FORCE)
+		flags = FORCECLOSE;
+	else
+		flags = 0;
+	if (pmp->iroot) {
+		error = vflush(mp, 0, flags);
+		if (error)
+			goto failed;
+	}
+
+	if (pmp->wthread_td) {
+		mtx_lock(&pmp->wthread_mtx);
+		pmp->wthread_destroy = 1;
+		wakeup(&pmp->wthread_bioq);
+		while (pmp->wthread_destroy != -1) {
+			mtxsleep(&pmp->wthread_destroy,
+				&pmp->wthread_mtx, 0,
+				"umount-sleep",	0);
+		}
+		mtx_unlock(&pmp->wthread_mtx);
+		pmp->wthread_td = NULL;
+	}
+
 	for (i = 0; i < pmp->cluster.nchains; ++i) {
 		hmp = pmp->cluster.chains[i]->hmp;
 
-		flags = 0;
-
-		if (mntflags & MNT_FORCE)
-			flags |= FORCECLOSE;
-
 		hammer2_mount_exlock(hmp);
-
-		/*
-		 * If mount initialization proceeded far enough we must flush
-		 * its vnodes.
-		 */
-		if (pmp->iroot)
-			error = vflush(mp, 0, flags);
-
-		if (error) {
-			hammer2_mount_unlock(hmp);
-			goto failed;
-		}
 
 		--hmp->pmp_count;
 		kprintf("hammer2_unmount hmp=%p pmpcnt=%d\n",
@@ -1489,31 +1499,21 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			hammer2_chain_drop(&hmp->fchain);
 
 			/*
-			 * Final drop of embedded volume root chain to clean up
-			 * vchain.core (vchain structure is not flagged ALLOCATED
-			 * so it is cleaned out and then left to rot).
+			 * Final drop of embedded volume root chain to clean
+			 * up vchain.core (vchain structure is not flagged
+			 * ALLOCATED so it is cleaned out and then left to
+			 * rot).
 			 */
 			dumpcnt = 50;
 			hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt);
 			hammer2_mount_unlock(hmp);
 			hammer2_chain_drop(&hmp->vchain);
-		} else {
-			hammer2_mount_unlock(hmp);
-		}
-		if (hmp->pmp_count == 0) {
-			mtx_lock(&hmp->wthread_mtx);
-			hmp->wthread_destroy = 1;
-			wakeup(&hmp->wthread_bioq);
-			while (hmp->wthread_destroy != -1) {
-				mtxsleep(&hmp->wthread_destroy,
-					&hmp->wthread_mtx, 0,
-					"umount-sleep",	0);
-			}
-			mtx_unlock(&hmp->wthread_mtx);
 
 			TAILQ_REMOVE(&hammer2_mntlist, hmp, mntentry);
 			kmalloc_destroy(&hmp->mchain);
 			kfree(hmp, M_HAMMER2);
+		} else {
+			hammer2_mount_unlock(hmp);
 		}
 	}
 
