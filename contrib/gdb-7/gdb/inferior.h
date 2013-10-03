@@ -31,8 +31,6 @@ struct regcache;
 struct ui_out;
 struct terminal_info;
 
-#define FAKE_PROCESS_ID -777
-
 #include "ptid.h"
 
 /* For bpstat.  */

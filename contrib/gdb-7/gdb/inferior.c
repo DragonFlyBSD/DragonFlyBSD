@@ -139,7 +139,7 @@ add_inferior_silent (int pid)
 
   observer_notify_inferior_added (inf);
 
-  if (pid != FAKE_PROCESS_ID)
+  if (pid != 0)
     inferior_appeared (inf, pid);
 
   return inf;
@@ -275,7 +275,7 @@ exit_inferior_1 (struct inferior *inftoex, int silent)
      so that the observers have a chance to look it up.  */
   observer_notify_inferior_exit (inf);
 
-  inf->pid = FAKE_PROCESS_ID;
+  inf->pid = 0;
   if (inf->vfork_parent != NULL)
     {
       inf->vfork_parent->vfork_child = NULL;
@@ -339,7 +339,7 @@ discard_all_inferiors (void)
 
   for (inf = inferior_list; inf; inf = inf->next)
     {
-      if (inf->pid != FAKE_PROCESS_ID)
+      if (inf->pid != 0)
 	exit_inferior_silent (inf->pid);
     }
 }
@@ -361,10 +361,10 @@ find_inferior_pid (int pid)
 {
   struct inferior *inf;
 
-  /* Looking for a fake inferior pid is always wrong, and indicative of
-     a bug somewhere else.  There may be more than one with fake pid,
+  /* Looking for inferior pid == 0 is always wrong, and indicative of
+     a bug somewhere else.  There may be more than one with pid == 0,
      for instance.  */
-  gdb_assert (pid != FAKE_PROCESS_ID);
+  gdb_assert (pid != 0);
 
   for (inf = inferior_list; inf; inf = inf->next)
     if (inf->pid == pid)
@@ -457,7 +457,7 @@ have_inferiors (void)
   struct inferior *inf;
 
   for (inf = inferior_list; inf; inf = inf->next)
-    if (inf->pid != FAKE_PROCESS_ID)
+    if (inf->pid != 0)
       return 1;
 
   return 0;
@@ -469,7 +469,7 @@ have_live_inferiors (void)
   struct inferior *inf;
 
   for (inf = inferior_list; inf; inf = inf->next)
-    if (inf->pid != FAKE_PROCESS_ID)
+    if (inf->pid != 0)
       {
 	struct thread_info *tp;
 	
@@ -496,7 +496,7 @@ prune_inferiors (void)
     {
       if (ss == current
 	  || !ss->removable
-	  || ss->pid != FAKE_PROCESS_ID)
+	  || ss->pid != 0)
 	{
 	  ss_link = &ss->next;
 	  ss = *ss_link;
@@ -578,7 +578,7 @@ print_inferior (struct ui_out *uiout, char *requested_inferiors)
 
       ui_out_field_int (uiout, "number", inf->num);
 
-      if (kernel_debugger || (inf->pid != FAKE_PROCESS_ID))
+      if (inf->pid)
 	ui_out_field_string (uiout, "target-id",
 			     target_pid_to_str (pid_to_ptid (inf->pid)));
       else
@@ -704,7 +704,7 @@ inferior_command (char *args, int from_tty)
 		    ? bfd_get_filename (inf->pspace->ebfd)
 		    : _("<noexec>")));
 
-  if (inf->pid != FAKE_PROCESS_ID)
+  if (inf->pid != 0)
     {
       if (inf->pid != ptid_get_pid (inferior_ptid))
 	{
@@ -731,9 +731,9 @@ inferior_command (char *args, int from_tty)
       set_current_program_space (inf->pspace);
     }
 
-  if (inf->pid != FAKE_PROCESS_ID && is_running (inferior_ptid))
+  if (inf->pid != 0 && is_running (inferior_ptid))
     ui_out_text (current_uiout, "(running)\n");
-  else if (inf->pid != FAKE_PROCESS_ID)
+  else if (inf->pid != 0)
     {
       ui_out_text (current_uiout, "\n");
       print_stack_frame (get_selected_frame (NULL), 1, SRC_AND_LOC);
@@ -778,7 +778,7 @@ remove_inferior_command (char *args, int from_tty)
 	  continue;
 	}
     
-      if (inf->pid != FAKE_PROCESS_ID)
+      if (inf->pid != 0)
 	{
 	  warning (_("Can not remove active inferior %d."), num);
 	  continue;
@@ -1071,8 +1071,7 @@ initialize_inferiors (void)
      can only allocate an inferior when all those modules have done
      that.  Do this after initialize_progspace, due to the
      current_program_space reference.  */
-
-  current_inferior_ = add_inferior (FAKE_PROCESS_ID);
+  current_inferior_ = add_inferior (0);
   current_inferior_->pspace = current_program_space;
   current_inferior_->aspace = current_program_space->aspace;
 

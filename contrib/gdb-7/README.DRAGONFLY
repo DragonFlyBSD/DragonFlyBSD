@@ -21,20 +21,12 @@ Local modifications applied to following files:
 	gdb/amd64-tdep.h
 	gdb/configure.host
 	gdb/configure.tgt
-	gdb/corelow.c
 	gdb/defs.h
 	gdb/exec.c
 	gdb/i386-tdep.h
 	gdb/i386bsd-nat.c
 	gdb/i386fbsd-tdep.c
-	gdb/inf-ptrace.c
-	gdb/inferior.c
-	gdb/inferior.h
-	gdb/infrun.c
 	gdb/main.c
-	gdb/mi/mi-interp.c
-	gdb/mi/mi-main.c
 	gdb/osabi.c
-	gdb/top.c
 	include/elf/common.h
 	include/libiberty.h

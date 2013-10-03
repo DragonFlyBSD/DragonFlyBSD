@@ -314,7 +314,7 @@ inf_ptrace_kill (struct target_ops *ops)
   pid_t pid = ptid_get_pid (inferior_ptid);
   int status;
 
-  if (pid == FAKE_PROCESS_ID)
+  if (pid == 0)
     return;
 
   ptrace (PT_KILL, pid, (PTRACE_TYPE_ARG3)0, 0);

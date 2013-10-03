@@ -586,7 +586,7 @@ mi_output_running_pid (struct thread_info *info, void *arg)
 static int
 mi_inferior_count (struct inferior *inf, void *arg)
 {
-  if (inf->pid != FAKE_PROCESS_ID)
+  if (inf->pid != 0)
     {
       int *count_p = arg;
       (*count_p)++;

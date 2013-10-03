@@ -1181,7 +1181,7 @@ kill_or_detach (struct inferior *inf, void *args)
   struct qt_args *qt = args;
   struct thread_info *thread;
 
-  if (inf->pid == FAKE_PROCESS_ID)
+  if (inf->pid == 0)
     return 0;
 
   thread = any_thread_of_process (inf->pid);
@@ -1211,7 +1211,7 @@ print_inferior_quit_action (struct inferior *inf, void *arg)
 {
   struct ui_file *stb = arg;
 
-  if (inf->pid == FAKE_PROCESS_ID)
+  if (inf->pid == 0)
     return 0;
 
   if (inf->attach_flag)

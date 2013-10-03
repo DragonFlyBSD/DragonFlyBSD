@@ -361,7 +361,7 @@ mi_cmd_exec_interrupt (char *command, char **argv, int argc)
 static int
 run_one_inferior (struct inferior *inf, void *arg)
 {
-  if (inf->pid != FAKE_PROCESS_ID)
+  if (inf->pid != 0)
     {
       if (inf->pid != ptid_get_pid (inferior_ptid))
 	{
@@ -564,7 +564,7 @@ print_one_inferior (struct inferior *inferior, void *xdata)
 
       ui_out_field_fmt (uiout, "id", "i%d", inferior->num);
       ui_out_field_string (uiout, "type", "process");
-      if (inferior->pid != FAKE_PROCESS_ID)
+      if (inferior->pid != 0)
 	ui_out_field_int (uiout, "pid", inferior->pid);
 
       if (inferior->pspace->ebfd)
@@ -574,7 +574,7 @@ print_one_inferior (struct inferior *inferior, void *xdata)
 	}
 
       data.cores = 0;
-      if (inferior->pid != FAKE_PROCESS_ID)
+      if (inferior->pid != 0)
 	{
 	  data.pid = inferior->pid;
 	  iterate_over_threads (collect_cores, &data);
@@ -1796,7 +1796,7 @@ mi_cmd_remove_inferior (char *command, char **argv, int argc)
   if (!inf)
     error (_("the specified thread group does not exist"));
 
-  if (inf->pid != FAKE_PROCESS_ID)
+  if (inf->pid != 0)
     error (_("cannot remove an active inferior"));
 
   if (inf == current_inferior ())
@@ -1809,7 +1809,7 @@ mi_cmd_remove_inferior (char *command, char **argv, int argc)
 	error (_("Cannot remove last inferior"));
 
       set_current_inferior (new_inferior);
-      if (new_inferior->pid != FAKE_PROCESS_ID)
+      if (new_inferior->pid != 0)
 	tp = any_thread_of_process (new_inferior->pid);
       switch_to_thread (tp ? tp->ptid : null_ptid);
       set_current_program_space (new_inferior->pspace);
@@ -2064,7 +2064,7 @@ mi_cmd_execute (struct mi_parse *parse)
 	 an inferior with multiple threads, then a random one will be picked.
 	 This is not a problem -- frontend should always provide --thread if
 	 it wishes to operate on a specific thread.  */
-      if (inf->pid != FAKE_PROCESS_ID)
+      if (inf->pid != 0)
 	tp = any_live_thread_of_process (inf->pid);
       switch_to_thread (tp ? tp->ptid : null_ptid);
       set_current_program_space (inf->pspace);
