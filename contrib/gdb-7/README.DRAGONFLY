@@ -19,7 +19,6 @@ The following files were added:
 
 Local modifications applied to following files:
 	gdb/amd64-tdep.h
-	gdb/charset.c
 	gdb/configure.host
 	gdb/configure.tgt
 	gdb/corelow.c

@@ -464,38 +464,6 @@ cleanup_iconv (void *p)
   iconv_close (*descp);
 }
 
-static size_t
-convert_wchar (gdb_wchar_t **pinp, size_t *pinleft, char **poutp, size_t *poutleft)
-{
-  char tmp[MB_CUR_MAX];
-  int r;
-
-  while (*pinleft >= sizeof(gdb_wchar_t))
-    {
-      r = wctomb(tmp, **pinp);
-
-      if (r == -1)
-	perror_with_name ("Internal error while converting character sets");
-
-      if (*poutleft < r)
-	{
-	  errno = E2BIG;
-	  return (size_t) -1;
-	}
-
-      memcpy(*poutp, tmp, r);
-      *poutp += r;
-      *poutleft -= r;
-      ++*pinp;
-      *pinleft -= sizeof(gdb_wchar_t);
-    }
-
-  if (*pinleft != 0)
-    return EINVAL;
-
-  return 0;
-}
-
 void
 convert_between_encodings (const char *from, const char *to,
 			   const gdb_byte *bytes, unsigned int num_bytes,
@@ -507,7 +475,6 @@ convert_between_encodings (const char *from, const char *to,
   size_t inleft;
   char *inp;
   unsigned int space_request;
-  int use_wctomb = 0;
 
   /* Often, the host and target charsets will be the same.  */
   if (!strcmp (from, to))
@@ -516,20 +483,10 @@ convert_between_encodings (const char *from, const char *to,
       return;
     }
 
-  if (!strcmp (from, "wchar_t"))
-    {
-      if (strcmp (to, host_charset ()))
-	perror_with_name (_("Converting character sets"));
-      cleanups = NULL;	/* silence gcc complaints */
-      use_wctomb = 1;
-    }
-  else
-    {
-      desc = iconv_open (to, from);
-      if (desc == (iconv_t) -1)
-	perror_with_name (_("Converting character sets"));
-      cleanups = make_cleanup (cleanup_iconv, &desc);
-    }
+  desc = iconv_open (to, from);
+  if (desc == (iconv_t) -1)
+    perror_with_name (_("Converting character sets"));
+  cleanups = make_cleanup (cleanup_iconv, &desc);
 
   inleft = num_bytes;
   inp = (char *) bytes;
@@ -548,10 +505,7 @@ convert_between_encodings (const char *from, const char *to,
       outp = obstack_base (output) + old_size;
       outleft = space_request;
 
-      if (use_wctomb)
-	r = convert_wchar((gdb_wchar_t **)(void *)&inp, &inleft, &outp, &outleft);
-      else
-	r = iconv (desc, (ICONV_CONST char **) &inp, &inleft, &outp, &outleft);
+      r = iconv (desc, (ICONV_CONST char **) &inp, &inleft, &outp, &outleft);
 
       /* Now make sure that the object on the obstack only includes
 	 bytes we have converted.  */
@@ -604,8 +558,7 @@ convert_between_encodings (const char *from, const char *to,
 	}
     }
 
-  if (!use_wctomb)
-    do_cleanups (cleanups);
+  do_cleanups (cleanups);
 }
 
 
@@ -624,13 +577,9 @@ struct wchar_iterator
   /* The width of an input character.  */
   size_t width;
 
-  /* The intermediate buffer */
-  char *inter;
-  size_t inter_size;
-  size_t inter_len;
-
-  /* The output byte.  */
-  gdb_wchar_t out;
+  /* The output buffer and its size.  */
+  gdb_wchar_t *out;
+  size_t out_size;
 };
 
 /* Create a new iterator.  */
@@ -641,7 +590,7 @@ make_wchar_iterator (const gdb_byte *input, size_t bytes,
   struct wchar_iterator *result;
   iconv_t desc;
 
-  desc = iconv_open (host_charset (), charset);
+  desc = iconv_open (INTERMEDIATE_ENCODING, charset);
   if (desc == (iconv_t) -1)
     perror_with_name (_("Converting character sets"));
 
@@ -651,9 +600,8 @@ make_wchar_iterator (const gdb_byte *input, size_t bytes,
   result->bytes = bytes;
   result->width = width;
 
-  result->inter = XNEW (char);
-  result->inter_size = 1;
-  result->inter_len = 0;
+  result->out = XNEW (gdb_wchar_t);
+  result->out_size = 1;
 
   return result;
 }
@@ -664,7 +612,7 @@ do_cleanup_iterator (void *p)
   struct wchar_iterator *iter = p;
 
   iconv_close (iter->desc);
-  xfree (iter->inter);
+  xfree (iter->out);
   xfree (iter);
 }
 
@@ -682,99 +630,81 @@ wchar_iterate (struct wchar_iterator *iter,
 	       size_t *len)
 {
   size_t out_request;
-  char *orig_inptr = iter->input;
-  size_t orig_in = iter->bytes;
 
   /* Try to convert some characters.  At first we try to convert just
      a single character.  The reason for this is that iconv does not
      necessarily update its outgoing arguments when it encounters an
      invalid input sequence -- but we want to reliably report this to
      our caller so it can emit an escape sequence.  */
-  while (iter->inter_len == 0 && iter->bytes > 0)
+  out_request = 1;
+  while (iter->bytes > 0)
     {
-      out_request = 1;
-      while (iter->bytes > 0)
+      char *outptr = (char *) &iter->out[0];
+      char *orig_inptr = iter->input;
+      size_t orig_in = iter->bytes;
+      size_t out_avail = out_request * sizeof (gdb_wchar_t);
+      size_t num;
+      size_t r = iconv (iter->desc,
+			(ICONV_CONST char **) &iter->input, 
+			&iter->bytes, &outptr, &out_avail);
+
+      if (r == (size_t) -1)
 	{
-	  char *outptr = (char *) &iter->inter[iter->inter_len];
-	  size_t out_avail = out_request;
-
-	  size_t r = iconv (iter->desc,
-			    (ICONV_CONST char **) &iter->input, &iter->bytes,
-			    &outptr, &out_avail);
-	  if (r == (size_t) -1)
+	  switch (errno)
 	    {
-	      switch (errno)
+	    case EILSEQ:
+	      /* Invalid input sequence.  We still might have
+		 converted a character; if so, return it.  */
+	      if (out_avail < out_request * sizeof (gdb_wchar_t))
+		break;
+	      
+	      /* Otherwise skip the first invalid character, and let
+		 the caller know about it.  */
+	      *out_result = wchar_iterate_invalid;
+	      *ptr = iter->input;
+	      *len = iter->width;
+	      iter->input += iter->width;
+	      iter->bytes -= iter->width;
+	      return 0;
+
+	    case E2BIG:
+	      /* We ran out of space.  We still might have converted a
+		 character; if so, return it.  Otherwise, grow the
+		 buffer and try again.  */
+	      if (out_avail < out_request * sizeof (gdb_wchar_t))
+		break;
+
+	      ++out_request;
+	      if (out_request > iter->out_size)
 		{
-		case EILSEQ:
-		  /* Invalid input sequence.  Skip it, and let the caller
-		     know about it.  */
-		  *out_result = wchar_iterate_invalid;
-		  *ptr = iter->input;
-		  *len = iter->width;
-		  iter->input += iter->width;
-		  iter->bytes -= iter->width;
-		  return 0;
-
-		case E2BIG:
-		  /* We ran out of space.  We still might have converted a
-		     character; if so, return it.  Otherwise, grow the
-		     buffer and try again.  */
-		  if (out_avail < out_request)
-		    break;
-
-		  ++out_request;
-		  if (out_request > iter->inter_size)
-		    {
-		      iter->inter_size = out_request;
-		      iter->inter = xrealloc (iter->inter, out_request);
-		    }
-		  continue;
-
-		case EINVAL:
-		  /* Incomplete input sequence.  Let the caller know, and
-		     arrange for future calls to see EOF.  */
-		  *out_result = wchar_iterate_incomplete;
-		  *ptr = iter->input;
-		  *len = iter->bytes;
-		  iter->bytes = 0;
-		  return 0;
-
-		default:
-		  perror_with_name (_("Internal error while "
-				      "converting character sets"));
+		  iter->out_size = out_request;
+		  iter->out = xrealloc (iter->out,
+					out_request * sizeof (gdb_wchar_t));
 		}
+	      continue;
+
+	    case EINVAL:
+	      /* Incomplete input sequence.  Let the caller know, and
+		 arrange for future calls to see EOF.  */
+	      *out_result = wchar_iterate_incomplete;
+	      *ptr = iter->input;
+	      *len = iter->bytes;
+	      iter->bytes = 0;
+	      return 0;
+
+	    default:
+	      perror_with_name (_("Internal error while "
+				  "converting character sets"));
 	    }
-
-	  /* We converted something.  */
-	  iter->inter_len += out_request - out_avail;
-	  break;
 	}
-    }
 
-  if (iter->inter_len > 0)
-    {
-      int r;
-
-      /* Now convert from our charset to wchar_t */
-      r = mbtowc(&iter->out, &iter->inter[0], iter->inter_len);
-
-      /* This must never happen: we just converted to a valid charset! */
-      if (r < 0)
-	perror_with_name (_("Internal error while "
-			    "converting character sets"));
-
-      /* NUL bytes are alright */
-      if (r == 0)
-	  r = 1;
-
-      iter->inter_len -= r;
-      memmove(&iter->inter[0], &iter->inter[r], iter->inter_len);
-
+      /* We converted something.  */
+      num = out_request - out_avail / sizeof (gdb_wchar_t);
       *out_result = wchar_iterate_ok;
-      *out_chars = &iter->out;
+      *out_chars = iter->out;
       *ptr = orig_inptr;
       *len = orig_in - iter->bytes;
-      return 1;
+      return num;
     }
 
   /* Really done.  */

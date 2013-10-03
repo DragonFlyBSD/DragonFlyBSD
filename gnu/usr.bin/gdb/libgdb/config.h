@@ -202,7 +202,7 @@
 #define HAVE_ICONV 1
 
 /* Define to 1 if you have the `iconvlist' function. */
-/* #undef HAVE_ICONVLIST */
+#define HAVE_ICONVLIST 1
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
