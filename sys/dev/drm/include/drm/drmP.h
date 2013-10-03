@@ -574,9 +574,11 @@ typedef struct drm_sg_mem {
 
 #define DRM_MAP_HANDLE_BITS	(sizeof(void *) == 4 ? 4 : 24)
 #define DRM_MAP_HANDLE_SHIFT	(sizeof(void *) * 8 - DRM_MAP_HANDLE_BITS)
-typedef TAILQ_HEAD(drm_map_list, drm_local_map) drm_map_list_t;
 
-typedef struct drm_local_map {
+/**
+ * Kernel side of a mapping
+ */
+struct drm_local_map {
 	unsigned long offset;	  /* Physical address (0 for SAREA)       */
 	unsigned long size;	  /* Physical size (bytes)                */
 	enum drm_map_type type;	  /* Type of memory mapped                */
@@ -592,7 +594,21 @@ typedef struct drm_local_map {
 	bus_space_handle_t bsh;
 	drm_dma_handle_t *dmah;
 	TAILQ_ENTRY(drm_local_map) link;
-} drm_local_map_t;
+};
+
+typedef struct drm_local_map drm_local_map_t;
+
+/**
+ * Mappings list
+ */
+struct drm_map_list {
+	struct list_head head;		/**< list head */
+	struct drm_hash_item hash;
+	struct drm_local_map *map;	/**< mapping */
+	uint64_t user_token;
+	struct drm_master *master;
+	struct drm_mm_node *file_offset_node;	/**< fake offset */
+};
 
 struct drm_vblank_info {
 	wait_queue_head_t queue;	/* vblank wait queue */
@@ -913,8 +929,9 @@ struct drm_device {
 	drm_file_list_t   files;
 	drm_magic_head_t  magiclist[DRM_HASH_SIZE];
 
-	/* Linked list of mappable regions. Protected by dev_lock */
-	drm_map_list_t	  maplist;
+	/** \name Memory management */
+	/*@{ */
+	struct list_head maplist;	/**< Linked list of regions */
 	struct unrhdr	  *map_unrhdr;
 
 	drm_local_map_t	  **context_sareas;
@@ -1495,12 +1512,11 @@ drm_core_ioremapfree(struct drm_local_map *map, struct drm_device *dev)
 static __inline__ struct drm_local_map *
 drm_core_findmap(struct drm_device *dev, unsigned long offset)
 {
-	drm_local_map_t *map;
+	struct drm_map_list *_entry;
 
-	DRM_LOCK_ASSERT(dev);
-	TAILQ_FOREACH(map, &dev->maplist, link) {
-		if (offset == (unsigned long)map->handle)
-			return map;
+	list_for_each_entry(_entry, &dev->maplist, head) {
+		if (offset == (unsigned long)_entry->map->handle)
+			return _entry->map;
 	}
 	return NULL;
 }

@@ -175,84 +175,56 @@ done:
 	return retcode;
 }
 
+/**
+ * Called when "/proc/dri/.../vm" is read.
+ *
+ * Prints information about all mappings in drm_device::maplist.
+ */
 static int drm_vm_info DRM_SYSCTL_HANDLER_ARGS
 {
-	struct drm_device *dev = arg1;
-	drm_local_map_t *map, *tempmaps;
-	const char *types[] = {
-		[_DRM_FRAME_BUFFER] = "FB",
-		[_DRM_REGISTERS] = "REG",
-		[_DRM_SHM] = "SHM",
-		[_DRM_AGP] = "AGP",
-		[_DRM_SCATTER_GATHER] = "SG",
-		[_DRM_CONSISTENT] = "CONS",
-		[_DRM_GEM] = "GEM"
-	};
-	const char *type, *yesno;
-	int i, mapcount;
 	char buf[128];
 	int retcode;
+	struct drm_device *dev = arg1;
+	struct drm_local_map *map;
+	struct drm_map_list *r_list;
 
-	/* We can't hold the lock while doing SYSCTL_OUTs, so allocate a
-	 * temporary copy of all the map entries and then SYSCTL_OUT that.
-	 */
+	/* Hardcoded from _DRM_FRAME_BUFFER,
+	   _DRM_REGISTERS, _DRM_SHM, _DRM_AGP, and
+	   _DRM_SCATTER_GATHER and _DRM_CONSISTENT */
+	const char *types[] = { "FB", "REG", "SHM", "AGP", "SG", "PCI" };
+	const char *type;
+	int i;
+
 	DRM_LOCK(dev);
-
-	mapcount = 0;
-	TAILQ_FOREACH(map, &dev->maplist, link)
-		mapcount++;
-
-	tempmaps = kmalloc(sizeof(drm_local_map_t) * mapcount, DRM_MEM_DRIVER,
-	    M_NOWAIT);
-	if (tempmaps == NULL) {
-		DRM_UNLOCK(dev);
-		return ENOMEM;
-	}
-
-	i = 0;
-	TAILQ_FOREACH(map, &dev->maplist, link)
-		tempmaps[i++] = *map;
-
-	DRM_UNLOCK(dev);
-
 	DRM_SYSCTL_PRINT("\nslot offset	        size       "
 	    "type flags address            handle mtrr\n");
-
-	for (i = 0; i < mapcount; i++) {
-		map = &tempmaps[i];
-
-		switch(map->type) {
-		default:
+	i = 0;
+	list_for_each_entry(r_list, &dev->maplist, head) {
+		map = r_list->map;
+		if (!map)
+			continue;
+		if (map->type < 0 || map->type > 5)
 			type = "??";
-			break;
-		case _DRM_FRAME_BUFFER:
-		case _DRM_REGISTERS:
-		case _DRM_SHM:
-		case _DRM_AGP:
-		case _DRM_SCATTER_GATHER:
-		case _DRM_CONSISTENT:
-		case _DRM_GEM:
-			type = types[map->type];
-			break;
-		}
-
-		if (!map->mtrr)
-			yesno = "no";
 		else
-			yesno = "yes";
+			type = types[map->type];
 
-		DRM_SYSCTL_PRINT(
-		    "%4d 0x%016lx 0x%08lx %4.4s  0x%02x 0x%016lx %6d %s\n",
-		    i, map->offset, map->size, type, map->flags,
-		    (unsigned long)map->virtual,
-		    (unsigned int)((unsigned long)map->handle >>
-		    DRM_MAP_HANDLE_SHIFT), yesno);
+		DRM_SYSCTL_PRINT("%4d 0x%016llx 0x%08lx %4.4s  0x%02x 0x%08lx ",
+			   i,
+			   (unsigned long long)map->offset,
+			   map->size, type, map->flags,
+			   (unsigned long) r_list->user_token);
+		if (map->mtrr < 0)
+			DRM_SYSCTL_PRINT("none\n");
+		else
+			DRM_SYSCTL_PRINT("%4d\n", map->mtrr);
+		i++;
+
 	}
 	SYSCTL_OUT(req, "", 1);
+	DRM_UNLOCK(dev);
 
 done:
-	drm_free(tempmaps, DRM_MEM_DRIVER);
-	return retcode;
+	return 0;
 }
 
 static int drm_bufs_info DRM_SYSCTL_HANDLER_ARGS

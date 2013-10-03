@@ -428,10 +428,18 @@ static int drm_firstopen(struct drm_device *dev)
 	return 0;
 }
 
+/**
+ * Take down the DRM device.
+ *
+ * \param dev DRM device structure.
+ *
+ * Frees every resource in \p dev.
+ *
+ * \sa drm_device
+ */
 static int drm_lastclose(struct drm_device *dev)
 {
 	drm_magic_entry_t *pt, *next;
-	drm_local_map_t *map, *mapsave;
 	int i;
 
 	DRM_LOCK_ASSERT(dev);
@@ -490,11 +498,6 @@ static int drm_lastclose(struct drm_device *dev)
 		dev->sg = NULL;
 	}
 
-	TAILQ_FOREACH_MUTABLE(map, &dev->maplist, link, mapsave) {
-		if (!(map->flags & _DRM_DRIVER))
-			drm_rmmap(dev, map);
-	}
-
 	drm_dma_takedown(dev);
 	if (dev->lock.hw_lock) {
 		dev->lock.hw_lock = NULL; /* SHM removed */
@@ -511,7 +514,7 @@ static int drm_load(struct drm_device *dev)
 
 	DRM_DEBUG("\n");
 
-	TAILQ_INIT(&dev->maplist);
+	INIT_LIST_HEAD(&dev->maplist);
 	dev->map_unrhdr = new_unrhdr(1, ((1 << DRM_MAP_HANDLE_BITS) - 1), NULL);
 	if (dev->map_unrhdr == NULL) {
 		DRM_ERROR("Couldn't allocate map number allocator\n");
@@ -932,12 +935,13 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 
 drm_local_map_t *drm_getsarea(struct drm_device *dev)
 {
-	drm_local_map_t *map;
+	struct drm_map_list *entry;
 
-	DRM_LOCK_ASSERT(dev);
-	TAILQ_FOREACH(map, &dev->maplist, link) {
-		if (map->type == _DRM_SHM && (map->flags & _DRM_CONTAINS_LOCK))
-			return map;
+	list_for_each_entry(entry, &dev->maplist, head) {
+		if (entry->map && entry->map->type == _DRM_SHM &&
+		    (entry->map->flags & _DRM_CONTAINS_LOCK)) {
+			return entry->map;
+		}
 	}
 
 	return NULL;

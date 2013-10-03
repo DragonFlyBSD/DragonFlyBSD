@@ -141,38 +141,54 @@ drm_set_busid(struct drm_device *dev)
 	return 0;
 }
 
-int drm_getmap(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/**
+ * Get a mapping information.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument, pointing to a drm_map structure.
+ *
+ * \return zero on success or a negative number on failure.
+ *
+ * Searches for the mapping with the specified offset and copies its information
+ * into userspace
+ */
+int drm_getmap(struct drm_device *dev, void *data,
+	       struct drm_file *file_priv)
 {
-	struct drm_map     *map = data;
-	drm_local_map_t    *mapinlist;
-	int          idx;
-	int	     i = 0;
+	struct drm_map *map = data;
+	struct drm_map_list *r_list = NULL;
+	struct list_head *list;
+	int idx;
+	int i;
 
 	idx = map->offset;
-
-	DRM_LOCK(dev);
 	if (idx < 0) {
-		DRM_UNLOCK(dev);
 		return EINVAL;
 	}
 
-	TAILQ_FOREACH(mapinlist, &dev->maplist, link) {
+	i = 0;
+	DRM_LOCK(dev);
+	list_for_each(list, &dev->maplist) {
 		if (i == idx) {
-			map->offset = mapinlist->offset;
-			map->size   = mapinlist->size;
-			map->type   = mapinlist->type;
-			map->flags  = mapinlist->flags;
-			map->handle = mapinlist->handle;
-			map->mtrr   = mapinlist->mtrr;
+			r_list = list_entry(list, struct drm_map_list, head);
 			break;
 		}
 		i++;
 	}
+	if (!r_list || !r_list->map) {
+		DRM_UNLOCK(dev);
+		return -EINVAL;
+	}
 
+	map->offset = r_list->map->offset;
+	map->size = r_list->map->size;
+	map->type = r_list->map->type;
+	map->flags = r_list->map->flags;
+	map->handle = r_list->map->handle;
+	map->mtrr   = r_list->map->mtrr;
 	DRM_UNLOCK(dev);
-
- 	if (mapinlist == NULL)
-		return EINVAL;
 
 	return 0;
 }

@@ -40,7 +40,9 @@ int drm_mmap(struct dev_mmap_args *ap)
 	vm_offset_t offset = ap->a_offset;
 	struct drm_device *dev = drm_get_device_from_kdev(kdev);
 	struct drm_file *file_priv = NULL;
-	drm_local_map_t *map;
+	struct drm_local_map *map = NULL;
+	struct drm_map_list *r_list;
+
 	enum drm_map_type type;
 	vm_paddr_t phys;
 
@@ -89,18 +91,19 @@ int drm_mmap(struct dev_mmap_args *ap)
 	   bit longer.
 	*/
 	DRM_LOCK(dev);
-	TAILQ_FOREACH(map, &dev->maplist, link) {
-		if (offset >> DRM_MAP_HANDLE_SHIFT ==
-		    (unsigned long)map->handle >> DRM_MAP_HANDLE_SHIFT)
+	list_for_each_entry(r_list, &dev->maplist, head) {
+		if (r_list->map && r_list->map->offset >> DRM_MAP_HANDLE_SHIFT ==
+		    (unsigned long)r_list->map->handle >> DRM_MAP_HANDLE_SHIFT)
+			map = r_list->map;
 			break;
 	}
 
 	if (map == NULL) {
 		DRM_DEBUG("Can't find map, request offset = %016jx\n",
 		    (uintmax_t)offset);
-		TAILQ_FOREACH(map, &dev->maplist, link) {
+		list_for_each_entry(r_list, &dev->maplist, head) {
 			DRM_DEBUG("map offset = %016lx, handle = %016lx\n",
-			    map->offset, (unsigned long)map->handle);
+			    r_list->map->offset, (unsigned long)r_list->map->handle);
 		}
 		DRM_UNLOCK(dev);
 		return -1;

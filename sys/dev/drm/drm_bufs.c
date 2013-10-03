@@ -98,7 +98,8 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 	       unsigned long size,
     enum drm_map_type type, enum drm_map_flags flags, drm_local_map_t **map_ptr)
 {
-	drm_local_map_t *map;
+	struct drm_local_map *map;
+	struct drm_map_list *entry;
 	int align;
 	/*drm_agp_mem_t *entry;
 	int valid;*/
@@ -130,11 +131,11 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 	 */
 	if (type == _DRM_REGISTERS || type == _DRM_FRAME_BUFFER ||
 	    type == _DRM_SHM) {
-		TAILQ_FOREACH(map, &dev->maplist, link) {
-			if (map->type == type && (map->offset == offset ||
-			    (map->type == _DRM_SHM &&
-			    map->flags == _DRM_CONTAINS_LOCK))) {
-				map->size = size;
+		list_for_each_entry(entry, &dev->maplist, head) {
+			if (entry->map->type == type && (entry->map->offset == offset ||
+			    (entry->map->type == _DRM_SHM &&
+			    entry->map->flags == _DRM_CONTAINS_LOCK))) {
+				entry->map->size = size;
 				DRM_DEBUG("Found kernel map %d\n", type);
 				goto done;
 			}
@@ -255,7 +256,7 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 	}
 
 	DRM_LOCK(dev);
-	TAILQ_INSERT_TAIL(&dev->maplist, map, link);
+	list_add(&entry->head, &dev->maplist);
 
 done:
 	/* Jumped to, with lock held, when a kernel map is found. */
@@ -298,14 +299,28 @@ int drm_addmap_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
-void drm_rmmap(struct drm_device *dev, drm_local_map_t *map)
+void drm_rmmap(struct drm_device *dev, struct drm_local_map *map)
 {
+	struct drm_map_list *r_list = NULL, *list_t;
+	int found = 0;
+
 	DRM_LOCK_ASSERT(dev);
 
 	if (map == NULL)
 		return;
 
-	TAILQ_REMOVE(&dev->maplist, map, link);
+	/* Find the list entry for the map and remove it */
+	list_for_each_entry_safe(r_list, list_t, &dev->maplist, head) {
+		if (r_list->map == map) {
+			list_del(&r_list->head);
+			drm_free(r_list, DRM_MEM_DRIVER);
+			found = 1;
+			break;
+		}
+	}
+
+	if (!found)
+		return;
 
 	switch (map->type) {
 	case _DRM_REGISTERS:
@@ -349,27 +364,50 @@ void drm_rmmap(struct drm_device *dev, drm_local_map_t *map)
 	drm_free(map, DRM_MEM_MAPS);
 }
 
-/* Remove a map private from list and deallocate resources if the mapping
- * isn't in use.
+/* The rmmap ioctl appears to be unnecessary.  All mappings are torn down on
+ * the last close of the device, and this is necessary for cleanup when things
+ * exit uncleanly.  Therefore, having userland manually remove mappings seems
+ * like a pointless exercise since they're going away anyway.
+ *
+ * One use case might be after addmap is allowed for normal users for SHM and
+ * gets used by drivers that the server doesn't need to care about.  This seems
+ * unlikely.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg pointer to a struct drm_map structure.
+ * \return zero on success or a negative value on error.
  */
-
 int drm_rmmap_ioctl(struct drm_device *dev, void *data,
 		    struct drm_file *file_priv)
 {
-	drm_local_map_t *map;
 	struct drm_map *request = data;
+	struct drm_local_map *map = NULL;
+	struct drm_map_list *r_list;
 
 	DRM_LOCK(dev);
-	TAILQ_FOREACH(map, &dev->maplist, link) {
-		if (map->handle == request->handle &&
-		    map->flags & _DRM_REMOVABLE)
+	list_for_each_entry(r_list, &dev->maplist, head) {
+		if (r_list->map &&
+		    r_list->user_token == (unsigned long)request->handle &&
+		    r_list->map->flags & _DRM_REMOVABLE) {
+			map = r_list->map;
 			break;
+		}
 	}
 
-	/* No match found. */
-	if (map == NULL) {
+	/* List has wrapped around to the head pointer, or its empty we didn't
+	 * find anything.
+	 */
+	if (list_empty(&dev->maplist) || !map) {
 		DRM_UNLOCK(dev);
-		return EINVAL;
+		return -EINVAL;
+	}
+
+	/* Register and framebuffer maps are permanent */
+	if ((map->type == _DRM_REGISTERS) || (map->type == _DRM_FRAME_BUFFER)) {
+		DRM_UNLOCK(dev);
+		return 0;
 	}
 
 	drm_rmmap(dev, map);

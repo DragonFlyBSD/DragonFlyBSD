@@ -150,19 +150,34 @@ int drm_getsareactx(struct drm_device *dev, void *data,
 	return 0;
 }
 
+/**
+ * Set per-context SAREA.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument pointing to a drm_ctx_priv_map structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Searches the mapping specified in \p arg and update the entry in
+ * drm_device::ctx_idr with it.
+ */
 int drm_setsareactx(struct drm_device *dev, void *data,
 		    struct drm_file *file_priv)
 {
 	struct drm_ctx_priv_map *request = data;
-	drm_local_map_t *map = NULL;
+	struct drm_local_map *map = NULL;
+	struct drm_map_list *r_list = NULL;
 
 	DRM_LOCK(dev);
-	TAILQ_FOREACH(map, &dev->maplist, link) {
-		if (map->handle == request->handle) {
+	list_for_each_entry(r_list, &dev->maplist, head) {
+		if (r_list->map
+		    && r_list->map->handle == request->handle) {
 			if (dev->max_context < 0)
 				goto bad;
 			if (request->ctx_id >= (unsigned) dev->max_context)
 				goto bad;
+			map = r_list->map;
 			dev->context_sareas[request->ctx_id] = map;
 			DRM_UNLOCK(dev);
 			return 0;
