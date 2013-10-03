@@ -5,8 +5,7 @@ MAN=	mandoc.1 mandoc_char.7
 #MAN+=	eqn.7 man.7 mdoc.7 roff.7 tbl.7
 WARNS?=	3
 
-VERSION=1.12.1
-CFLAGS+=-DVERSION=\"${VERSION}\"
+CFLAGS+=-DHAVE_CONFIG_H
 
 SRCS=	eqn_html.c html.c man_html.c mdoc_html.c tbl_html.c
 SRCS+=	mdoc_man.c

@@ -11,7 +11,7 @@ SRCS+=	arch.c att.c lib.c mdoc.c mdoc_argv.c mdoc_hash.c mdoc_macro.c \
 SRCS+=	eqn.c roff.c tbl.c tbl_data.c tbl_layout.c tbl_opts.c
 SRCS+=	chars.c mandoc.c msec.c read.c
 
-CFLAGS+=-DHAVE_STRPTIME -DHAVE_MMAP
+CFLAGS+=-DHAVE_CONFIG_H
 
 INCS=	man.h mdoc.h mandoc.h
 
