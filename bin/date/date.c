@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1985, 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)date.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/date/date.c,v 1.47 2005/01/10 08:39:21 imp Exp $
- * $DragonFly: src/bin/date/date.c,v 1.14 2006/01/12 13:43:10 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -37,7 +36,6 @@
 
 #include <ctype.h>
 #include <err.h>
-#include <langinfo.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -135,7 +133,7 @@ main(int argc, char **argv)
 	if (!rflag && time(&tval) == -1)
 		err(1, "time");
 
-	format = nl_langinfo(D_T_FMT);
+	format = "%+";
 
 	/* allow the operands in any order */
 	if (*argv && **argv == '+') {
