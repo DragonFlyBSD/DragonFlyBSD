@@ -89,9 +89,12 @@ drm_gem_destroy(struct drm_device *dev)
 	drm_gem_names_fini(&dev->object_names);
 }
 
-int
-drm_gem_object_init(struct drm_device *dev, struct drm_gem_object *obj,
-    size_t size)
+/**
+ * Initialize an already allocated GEM object of the specified size with
+ * shmfs backing store.
+ */
+int drm_gem_object_init(struct drm_device *dev,
+			struct drm_gem_object *obj, size_t size)
 {
 
 	KASSERT((size & (PAGE_SIZE - 1)) == 0,
@@ -101,16 +104,20 @@ drm_gem_object_init(struct drm_device *dev, struct drm_gem_object *obj,
 	obj->vm_obj = default_pager_alloc(NULL, size,
 	    VM_PROT_READ | VM_PROT_WRITE, 0);
 
-	obj->refcount = 1;
+	kref_init(&obj->refcount);
 	obj->handle_count = 0;
 	obj->size = size;
 
 	return (0);
 }
 
-int
-drm_gem_private_object_init(struct drm_device *dev, struct drm_gem_object *obj,
-    size_t size)
+/**
+ * Initialize an already allocated GEM object of the specified size with
+ * no GEM provided backing store. Instead the caller is responsible for
+ * backing the object and handling it.
+ */
+int drm_gem_private_object_init(struct drm_device *dev,
+			struct drm_gem_object *obj, size_t size)
 {
 
 	KASSERT((size & (PAGE_SIZE - 1)) == 0,
@@ -119,7 +126,7 @@ drm_gem_private_object_init(struct drm_device *dev, struct drm_gem_object *obj,
 	obj->dev = dev;
 	obj->vm_obj = NULL;
 
-	obj->refcount = 1;
+	kref_init(&obj->refcount);
 	atomic_store_rel_int(&obj->handle_count, 0);
 	obj->size = size;
 
@@ -147,54 +154,21 @@ free:
 	return (NULL);
 }
 
+/**
+ * Called after the last reference to the object has been lost.
+ * Must be called holding struct_ mutex
+ *
+ * Frees the object
+ */
 void
-drm_gem_object_free(struct drm_gem_object *obj)
+drm_gem_object_free(struct kref *kref)
 {
-	struct drm_device *dev;
+	struct drm_gem_object *obj = (struct drm_gem_object *) kref;
+	struct drm_device *dev = obj->dev;
 
-	dev = obj->dev;
 	DRM_LOCK_ASSERT(dev);
 	if (dev->driver->gem_free_object != NULL)
 		dev->driver->gem_free_object(obj);
-}
-
-void
-drm_gem_object_reference(struct drm_gem_object *obj)
-{
-
-	KASSERT(obj->refcount > 0, ("Dangling obj %p", obj));
-	refcount_acquire(&obj->refcount);
-}
-
-void
-drm_gem_object_unreference(struct drm_gem_object *obj)
-{
-
-	if (obj == NULL)
-		return;
-	if (refcount_release(&obj->refcount))
-		drm_gem_object_free(obj);
-}
-
-void
-drm_gem_object_unreference_unlocked(struct drm_gem_object *obj)
-{
-	struct drm_device *dev;
-
-	if (obj == NULL)
-		return;
-	dev = obj->dev;
-	DRM_LOCK(dev);
-	drm_gem_object_unreference(obj);
-	DRM_UNLOCK(dev);
-}
-
-void
-drm_gem_object_handle_reference(struct drm_gem_object *obj)
-{
-
-	drm_gem_object_reference(obj);
-	atomic_add_rel_int(&obj->handle_count, 1);
 }
 
 void
@@ -209,32 +183,6 @@ drm_gem_object_handle_free(struct drm_gem_object *obj)
 		obj->name = 0;
 		drm_gem_object_unreference(obj1);
 	}
-}
-
-void
-drm_gem_object_handle_unreference(struct drm_gem_object *obj)
-{
-
-	if (obj == NULL ||
-	    atomic_load_acq_int(&obj->handle_count) == 0)
-		return;
-
-	if (atomic_fetchadd_int(&obj->handle_count, -1) == 1)
-		drm_gem_object_handle_free(obj);
-	drm_gem_object_unreference(obj);
-}
-
-void
-drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj)
-{
-
-	if (obj == NULL ||
-	    atomic_load_acq_int(&obj->handle_count) == 0)
-		return;
-
-	if (atomic_fetchadd_int(&obj->handle_count, -1) == 1)
-		drm_gem_object_handle_free(obj);
-	drm_gem_object_unreference_unlocked(obj);
 }
 
 int

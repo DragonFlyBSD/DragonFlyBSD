@@ -97,6 +97,8 @@
 #include "drm_linux_list.h"
 #include "drm_gem_names.h"
 
+#include <linux/kref.h>
+
 struct drm_file;
 struct drm_device;
 
@@ -655,7 +657,7 @@ struct drm_gem_mm {
 
 struct drm_gem_object {
 	/** Reference count of this object */
-	u_int refcount;
+	struct kref refcount;
 
 	/** Handle count of this object. Each handle also holds a reference */
 	u_int handle_count; /* number of handles on this object */
@@ -715,7 +717,7 @@ struct drm_gem_object {
 /* per-master structure */
 struct drm_master {
 
-	u_int refcount; /* refcount for this master */
+	struct kref refcount; /* refcount for this master */
 
 	struct list_head head; /**< each minor contains a list of masters */
 	struct drm_minor *minor; /**< link back to minor we are a master for */
@@ -1387,6 +1389,8 @@ void	drm_pci_free(struct drm_device *dev, drm_dma_handle_t *dmah);
 /* Graphics Execution Manager library functions (drm_gem.c) */
 int drm_gem_init(struct drm_device *dev);
 void drm_gem_destroy(struct drm_device *dev);
+void drm_gem_object_release(struct drm_gem_object *obj);
+void drm_gem_object_free(struct kref *kref);
 
 int drm_gem_close_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
@@ -1394,22 +1398,84 @@ int drm_gem_flink_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
 int drm_gem_open_ioctl(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv);
-int drm_gem_handle_create(struct drm_file *file_priv,
-			  struct drm_gem_object *obj,
-			  u32 *handlep);
-int drm_gem_handle_delete(struct drm_file *file_priv, uint32_t handle);
-void drm_gem_object_handle_reference(struct drm_gem_object *obj);
-void drm_gem_object_handle_unreference(struct drm_gem_object *obj);
-void drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj);
 void drm_gem_object_handle_free(struct drm_gem_object *obj);
 
 #include <drm/drm_global.h>
 
-void drm_gem_object_reference(struct drm_gem_object *obj);
-void drm_gem_object_unreference(struct drm_gem_object *obj);
-void drm_gem_object_unreference_unlocked(struct drm_gem_object *obj);
-void drm_gem_object_release(struct drm_gem_object *obj);
-void drm_gem_object_free(struct drm_gem_object *obj);
+static inline void
+drm_gem_object_reference(struct drm_gem_object *obj)
+{
+	kref_get(&obj->refcount);
+}
+
+static inline void
+drm_gem_object_unreference(struct drm_gem_object *obj)
+{
+	if (obj != NULL)
+		kref_put(&obj->refcount, drm_gem_object_free);
+}
+
+static inline void
+drm_gem_object_unreference_unlocked(struct drm_gem_object *obj)
+{
+	if (obj != NULL) {
+		struct drm_device *dev = obj->dev;
+		DRM_LOCK(dev);
+		kref_put(&obj->refcount, drm_gem_object_free);
+		DRM_UNLOCK(dev);
+	}
+}
+
+int drm_gem_handle_create(struct drm_file *file_priv,
+			  struct drm_gem_object *obj,
+			  u32 *handlep);
+int drm_gem_handle_delete(struct drm_file *filp, u32 handle);
+
+static inline void
+drm_gem_object_handle_reference(struct drm_gem_object *obj)
+{
+	drm_gem_object_reference(obj);
+	atomic_inc(&obj->handle_count);
+}
+
+static inline void
+drm_gem_object_handle_unreference(struct drm_gem_object *obj)
+{
+	if (obj == NULL)
+		return;
+
+	if (atomic_read(&obj->handle_count) == 0)
+		return;
+	/*
+	 * Must bump handle count first as this may be the last
+	 * ref, in which case the object would disappear before we
+	 * checked for a name
+	 */
+	if (atomic_dec_and_test(&obj->handle_count))
+		drm_gem_object_handle_free(obj);
+	drm_gem_object_unreference(obj);
+}
+
+static inline void
+drm_gem_object_handle_unreference_unlocked(struct drm_gem_object *obj)
+{
+	if (obj == NULL)
+		return;
+
+	if (atomic_read(&obj->handle_count) == 0)
+		return;
+
+	/*
+	* Must bump handle count first as this may be the last
+	* ref, in which case the object would disappear before we
+	* checked for a name
+	*/
+
+	if (atomic_dec_and_test(&obj->handle_count))
+		drm_gem_object_handle_free(obj);
+	drm_gem_object_unreference_unlocked(obj);
+}
+
 int drm_gem_object_init(struct drm_device *dev, struct drm_gem_object *obj,
     size_t size);
 int drm_gem_private_object_init(struct drm_device *dev,
