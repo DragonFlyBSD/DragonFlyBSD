@@ -1,4 +1,4 @@
-/* Copyright (C) 2011-2012 Free Software Foundation, Inc.
+/* Copyright (C) 2011-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -17,6 +17,8 @@
 
 #ifndef COMMON_LINUX_PTRACE_H
 #define COMMON_LINUX_PTRACE_H
+
+struct buffer;
 
 #include <sys/ptrace.h>
 
@@ -64,5 +66,8 @@
 #ifndef __WALL
 #define __WALL          0x40000000 /* Wait for any child.  */
 #endif
+
+extern void linux_ptrace_attach_warnings (pid_t pid, struct buffer *buffer);
+extern void linux_ptrace_init_warnings (void);
 
 #endif /* COMMON_LINUX_PTRACE_H */

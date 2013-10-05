@@ -1,6 +1,6 @@
 /* Target-dependent code for FreeBSD/i386.
 
-   Copyright (C) 2003-2005, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2003-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -86,7 +86,7 @@ static void
 i386fbsd_supply_uthread (struct regcache *regcache,
 			 int regnum, CORE_ADDR addr)
 {
-  char buf[4];
+  gdb_byte buf[4];
   int i;
 
   gdb_assert (regnum >= -1);
@@ -106,7 +106,7 @@ static void
 i386fbsd_collect_uthread (const struct regcache *regcache,
 			  int regnum, CORE_ADDR addr)
 {
-  char buf[4];
+  gdb_byte buf[4];
   int i;
 
   gdb_assert (regnum >= -1);

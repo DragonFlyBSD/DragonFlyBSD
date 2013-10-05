@@ -1,6 +1,6 @@
 /* CLI Definitions for GDB, the GNU debugger.
 
-   Copyright (c) 2002-2003, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2002-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -19,7 +19,6 @@
 
 #include "defs.h"
 #include "interps.h"
-#include "wrapper.h"
 #include "event-top.h"
 #include "ui-out.h"
 #include "cli-out.h"

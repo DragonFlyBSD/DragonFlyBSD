@@ -1,5 +1,5 @@
 /* Register protocol definition structures for the GNU Debugger
-   Copyright 2001-2002, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2001-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 

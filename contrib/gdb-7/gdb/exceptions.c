@@ -1,6 +1,6 @@
 /* Exception (throw catch) mechanism, for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988-2012 Free Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -65,6 +65,22 @@ struct catcher
 
 /* Where to go for throw_exception().  */
 static struct catcher *current_catcher;
+
+/* Return length of current_catcher list.  */
+
+static int
+catcher_list_size (void)
+{
+  int size;
+  struct catcher *catcher;
+
+  for (size = 0, catcher = current_catcher;
+       catcher != NULL;
+       catcher = catcher->prev)
+    ++size;
+
+  return size;
+}
 
 EXCEPTIONS_SIGJMP_BUF *
 exceptions_state_mc_init (volatile struct gdb_exception *exception,
@@ -205,10 +221,10 @@ exceptions_state_mc_action_iter_1 (void)
 void
 throw_exception (struct gdb_exception exception)
 {
-  quit_flag = 0;
+  clear_quit_flag ();
   immediate_quit = 0;
 
-  do_cleanups (ALL_CLEANUPS);
+  do_cleanups (all_cleanups ());
 
   /* Jump to the containing catch_errors() call, communicating REASON
      to that call via setjmp's return value.  Note that REASON can't
@@ -217,8 +233,6 @@ throw_exception (struct gdb_exception exception)
   *current_catcher->exception = exception;
   EXCEPTIONS_SIGLONGJMP (current_catcher->buf, exception.reason);
 }
-
-static char *last_message;
 
 void
 deprecated_throw_reason (enum return_reason reason)
@@ -357,23 +371,53 @@ print_any_exception (struct ui_file *file, const char *prefix,
     }
 }
 
+/* A stack of exception messages.
+   This is needed to handle nested calls to throw_it: we don't want to
+   xfree space for a message before it's used.
+   This can happen if we throw an exception during a cleanup:
+   An outer TRY_CATCH may have an exception message it wants to print,
+   but while doing cleanups further calls to throw_it are made.
+
+   This is indexed by the size of the current_catcher list.
+   It is a dynamically allocated array so that we don't care how deeply
+   GDB nests its TRY_CATCHs.  */
+static char **exception_messages;
+
+/* The number of currently allocated entries in exception_messages.  */
+static int exception_messages_size;
+
 static void ATTRIBUTE_NORETURN ATTRIBUTE_PRINTF (3, 0)
 throw_it (enum return_reason reason, enum errors error, const char *fmt,
 	  va_list ap)
 {
   struct gdb_exception e;
   char *new_message;
+  int depth = catcher_list_size ();
 
-  /* Save the message.  Create the new message before deleting the
-     old, the new message may include the old message text.  */
+  gdb_assert (depth > 0);
+
+  /* Note: The new message may use an old message's text.  */
   new_message = xstrvprintf (fmt, ap);
-  xfree (last_message);
-  last_message = new_message;
+
+  if (depth > exception_messages_size)
+    {
+      int old_size = exception_messages_size;
+
+      exception_messages_size = depth + 10;
+      exception_messages = (char **) xrealloc (exception_messages,
+					       exception_messages_size
+					       * sizeof (char *));
+      memset (exception_messages + old_size, 0,
+	      (exception_messages_size - old_size) * sizeof (char *));
+    }
+
+  xfree (exception_messages[depth - 1]);
+  exception_messages[depth - 1] = new_message;
 
   /* Create the exception.  */
   e.reason = reason;
   e.error = error;
-  e.message = last_message;
+  e.message = new_message;
 
   /* Throw the exception.  */
   throw_exception (e);

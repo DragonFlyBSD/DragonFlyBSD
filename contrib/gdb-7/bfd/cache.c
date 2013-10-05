@@ -198,7 +198,7 @@ bfd_cache_lookup_worker (bfd *abfd, enum cache_flag flag)
   if ((abfd->flags & BFD_IN_MEMORY) != 0)
     abort ();
 
-  if (abfd->my_archive)
+  while (abfd->my_archive)
     abfd = abfd->my_archive;
 
   if (abfd->iostream != NULL)
@@ -362,7 +362,7 @@ cache_bwrite (struct bfd *abfd, const void *where, file_ptr nbytes)
 static int
 cache_bclose (struct bfd *abfd)
 {
-  return bfd_cache_close (abfd);
+  return bfd_cache_close (abfd) - 1;
 }
 
 static int
@@ -437,7 +437,7 @@ cache_bmmap (struct bfd *abfd ATTRIBUTE_UNUSED,
         {
           *map_addr = ret;
           *map_len = pg_len;
-          ret += offset & pagesize_m1;
+          ret = (char *) ret + (offset & pagesize_m1);
         }
     }
 #endif
@@ -563,15 +563,15 @@ bfd_open_file (bfd *abfd)
     {
     case read_direction:
     case no_direction:
-      abfd->iostream = (PTR) real_fopen (abfd->filename, FOPEN_RB);
+      abfd->iostream = real_fopen (abfd->filename, FOPEN_RB);
       break;
     case both_direction:
     case write_direction:
       if (abfd->opened_once)
 	{
-	  abfd->iostream = (PTR) real_fopen (abfd->filename, FOPEN_RUB);
+	  abfd->iostream = real_fopen (abfd->filename, FOPEN_RUB);
 	  if (abfd->iostream == NULL)
-	    abfd->iostream = (PTR) real_fopen (abfd->filename, FOPEN_WUB);
+	    abfd->iostream = real_fopen (abfd->filename, FOPEN_WUB);
 	}
       else
 	{
@@ -601,7 +601,7 @@ bfd_open_file (bfd *abfd)
 	  if (stat (abfd->filename, &s) == 0 && s.st_size != 0)
 	    unlink_if_ordinary (abfd->filename);
 #endif
-	  abfd->iostream = (PTR) real_fopen (abfd->filename, FOPEN_WUB);
+	  abfd->iostream = real_fopen (abfd->filename, FOPEN_WUB);
 	  abfd->opened_once = TRUE;
 	}
       break;

@@ -1,6 +1,6 @@
 /* GDB CLI commands.
 
-   Copyright (C) 2000-2005, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2000-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -47,6 +47,7 @@
 #include "cli/cli-script.h"
 #include "cli/cli-setshow.h"
 #include "cli/cli-cmds.h"
+#include "cli/cli-utils.h"
 
 #include "python/python.h"
 
@@ -86,8 +87,6 @@ static void edit_command (char *, int);
 
 static void list_command (char *, int);
 
-void apropos_command (char *, int);
-
 /* Prototypes for local utility functions */
 
 static void ambiguous_line_spec (struct symtabs_and_lines *);
@@ -96,7 +95,7 @@ static void filter_sals (struct symtabs_and_lines *);
 
 
 /* Limit the call depth of user-defined commands */
-int max_user_call_depth;
+unsigned int max_user_call_depth;
 
 /* Define all cmd_list_elements.  */
 
@@ -135,10 +134,6 @@ struct cmd_list_element *detachlist;
 /* Chain containing all defined kill subcommands.  */
 
 struct cmd_list_element *killlist;
-
-/* Chain containing all defined "enable breakpoint" subcommands.  */
-
-struct cmd_list_element *enablebreaklist;
 
 /* Chain containing all defined set subcommands */
 
@@ -188,8 +183,6 @@ struct cmd_list_element *setchecklist;
 
 struct cmd_list_element *showchecklist;
 
-struct cmd_list_element *skiplist;
-
 /* Command tracing state.  */
 
 int source_verbose = 0;
@@ -201,7 +194,7 @@ static const char script_ext_off[] = "off";
 static const char script_ext_soft[] = "soft";
 static const char script_ext_strict[] = "strict";
 
-static const char *script_ext_enums[] = {
+static const char *const script_ext_enums[] = {
   script_ext_off,
   script_ext_soft,
   script_ext_strict,
@@ -254,7 +247,8 @@ static void
 complete_command (char *arg, int from_tty)
 {
   int argpoint;
-  char **completions, *point, *arg_prefix;
+  char *point, *arg_prefix;
+  VEC (char_ptr) *completions;
 
   dont_repeat ();
 
@@ -282,33 +276,28 @@ complete_command (char *arg, int from_tty)
 
   if (completions)
     {
-      int item, size;
+      int ix, size = VEC_length (char_ptr, completions);
+      char *item, *prev = NULL;
 
-      for (size = 0; completions[size]; ++size)
-	;
-      qsort (completions, size, sizeof (char *), compare_strings);
+      qsort (VEC_address (char_ptr, completions), size,
+	     sizeof (char *), compare_strings);
 
       /* We do extra processing here since we only want to print each
 	 unique item once.  */
-      item = 0;
-      while (item < size)
+      for (ix = 0; VEC_iterate (char_ptr, completions, ix, item); ++ix)
 	{
-	  int next_item;
-
-	  printf_unfiltered ("%s%s\n", arg_prefix, completions[item]);
-	  next_item = item + 1;
-	  while (next_item < size
-		 && ! strcmp (completions[item], completions[next_item]))
+	  if (prev == NULL || strcmp (item, prev) != 0)
 	    {
-	      xfree (completions[next_item]);
-	      ++next_item;
+	      printf_unfiltered ("%s%s\n", arg_prefix, item);
+	      xfree (prev);
+	      prev = item;
 	    }
-
-	  xfree (completions[item]);
-	  item = next_item;
+	  else
+	    xfree (item);
 	}
 
-      xfree (completions);
+      xfree (prev);
+      VEC_free (char_ptr, completions);
     }
 }
 
@@ -321,10 +310,8 @@ is_complete_command (struct cmd_list_element *c)
 static void
 show_version (char *args, int from_tty)
 {
-  immediate_quit++;
   print_gdb_version (gdb_stdout);
   printf_filtered ("\n");
-  immediate_quit--;
 }
 
 /* Handle the quit command.  */
@@ -369,7 +356,7 @@ cd_command (char *dir, int from_tty)
   dont_repeat ();
 
   if (dir == 0)
-    error_no_arg (_("new working directory"));
+    dir = "~";
 
   dir = tilde_expand (dir);
   make_cleanup (xfree, dir);
@@ -417,7 +404,7 @@ cd_command (char *dir, int from_tty)
     {
       if (IS_DIR_SEPARATOR (p[0]) && p[1] == '.'
 	  && (p[2] == 0 || IS_DIR_SEPARATOR (p[2])))
-	strcpy (p, p + 2);
+	memmove (p, p + 2, strlen (p + 2) + 1);
       else if (IS_DIR_SEPARATOR (p[0]) && p[1] == '.' && p[2] == '.'
 	       && (p[3] == 0 || IS_DIR_SEPARATOR (p[3])))
 	{
@@ -436,7 +423,7 @@ cd_command (char *dir, int from_tty)
 		++p;
 	      else
 		{
-		  strcpy (q - 1, p + 3);
+		  memmove (q - 1, p + 3, strlen (p + 3) + 1);
 		  p = q - 1;
 		}
 	    }
@@ -477,10 +464,7 @@ show_script_ext_mode (struct ui_file *file, int from_tty,
    we tried to open.
 
    If SEARCH_PATH is non-zero, and the file isn't found in cwd,
-   search for it in the source search path.
-
-   NOTE: This calls openp which uses xfullpath to compute the full path
-   instead of gdb_realpath.  Symbolic links are not resolved.  */
+   search for it in the source search path.  */
 
 int
 find_and_open_script (const char *script_file, int search_path,
@@ -513,11 +497,21 @@ find_and_open_script (const char *script_file, int search_path,
   do_cleanups (old_cleanups);
 
   *streamp = fdopen (fd, FOPEN_RT);
+  if (*streamp == NULL)
+    {
+      int save_errno = errno;
+
+      close (fd);
+      if (full_pathp)
+	xfree (*full_pathp);
+      errno = save_errno;
+      return 0;
+    }
+
   return 1;
 }
 
-/* Load script FILE, which has already been opened as STREAM.
-   STREAM is closed before we return.  */
+/* Load script FILE, which has already been opened as STREAM.  */
 
 static void
 source_script_from_stream (FILE *stream, const char *file)
@@ -529,9 +523,7 @@ source_script_from_stream (FILE *stream, const char *file)
 
       TRY_CATCH (e, RETURN_MASK_ERROR)
 	{
-          /* The python support reopens the file using python functions,
-             so there's no point in passing STREAM here.  */
-	  source_python_script (file);
+	  source_python_script (stream, file);
 	}
       if (e.reason < 0)
 	{
@@ -545,12 +537,9 @@ source_script_from_stream (FILE *stream, const char *file)
 	  else
 	    {
 	      /* Nope, just punt.  */
-	      fclose (stream);
 	      throw_exception (e);
 	    }
 	}
-      else
-	fclose (stream);
     }
   else
     script_from_file (stream, file);
@@ -584,6 +573,7 @@ source_script_with_search (const char *file, int from_tty, int search_path)
     }
 
   old_cleanups = make_cleanup (xfree, full_path);
+  make_cleanup_fclose (stream);
   /* The python support reopens the file, so we need to pass full_path here
      in case the file was found on the search path.  It's useful to do this
      anyway so that error messages show the actual file used.  But only do
@@ -635,8 +625,7 @@ source_command (char *args, int from_tty)
 	{
 	  /* Make sure leading white space does not break the
 	     comparisons.  */
-	  while (isspace(args[0]))
-	    args++;
+	  args = skip_spaces (args);
 
 	  if (args[0] != '-')
 	    break;
@@ -659,9 +648,7 @@ source_command (char *args, int from_tty)
 	    break;
 	}
 
-      while (isspace (args[0]))
-	args++;
-      file = args;
+      file = skip_spaces (args);
     }
 
   source_script_with_search (file, from_tty, search_path);
@@ -766,7 +753,8 @@ edit_command (char *arg, int from_tty)
   struct symbol *sym;
   char *arg1;
   char *editor;
-  char *p, *fn;
+  char *p;
+  const char *fn;
 
   /* Pull in the current default source line if necessary.  */
   if (arg == 0)
@@ -828,11 +816,13 @@ edit_command (char *arg, int from_tty)
 	    printf_filtered ("%s is in %s (%s:%d).\n",
 			     paddress (gdbarch, sal.pc),
 			     SYMBOL_PRINT_NAME (sym),
-			     sal.symtab->filename, sal.line);
+			     symtab_to_filename_for_display (sal.symtab),
+			     sal.line);
           else
 	    printf_filtered ("%s is at %s:%d.\n",
 			     paddress (gdbarch, sal.pc),
-			     sal.symtab->filename, sal.line);
+			     symtab_to_filename_for_display (sal.symtab),
+			     sal.line);
         }
 
       /* If what was given does not imply a symtab, it must be an
@@ -845,16 +835,7 @@ edit_command (char *arg, int from_tty)
   if ((editor = (char *) getenv ("EDITOR")) == NULL)
       editor = "/bin/ex";
 
-  /* If we don't already know the full absolute file name of the
-     source file, find it now.  */
-  if (!sal.symtab->fullname)
-    {
-      fn = symtab_to_fullname (sal.symtab);
-      if (!fn)
-	fn = "unknown";
-    }
-  else
-    fn = sal.symtab->fullname;
+  fn = symtab_to_fullname (sal.symtab);
 
   /* Quote the file name, in case it has whitespace or other special
      characters.  */
@@ -957,7 +938,7 @@ list_command (char *arg, int from_tty)
 	  else
 	    sals_end = decode_line_1 (&arg1, DECODE_LINE_LIST_MODE,
 				      sal.symtab, sal.line);
-	  filter_sals (&sals);
+	  filter_sals (&sals_end);
 	  if (sals_end.nelts == 0)
 	    return;
 	  if (sals_end.nelts > 1)
@@ -1000,11 +981,11 @@ list_command (char *arg, int from_tty)
 	printf_filtered ("%s is in %s (%s:%d).\n",
 			 paddress (gdbarch, sal.pc),
 			 SYMBOL_PRINT_NAME (sym),
-			 sal.symtab->filename, sal.line);
+			 symtab_to_filename_for_display (sal.symtab), sal.line);
       else
 	printf_filtered ("%s is at %s:%d.\n",
 			 paddress (gdbarch, sal.pc),
-			 sal.symtab->filename, sal.line);
+			 symtab_to_filename_for_display (sal.symtab), sal.line);
     }
 
   /* If line was not specified by just a line number, and it does not
@@ -1091,11 +1072,11 @@ disassemble_current_function (int flags)
   struct frame_info *frame;
   struct gdbarch *gdbarch;
   CORE_ADDR low, high, pc;
-  char *name;
+  const char *name;
 
   frame = get_selected_frame (_("No frame selected."));
   gdbarch = get_frame_arch (frame);
-  pc = get_frame_pc (frame);
+  pc = get_frame_address_in_block (frame);
   if (find_pc_partial_function (pc, &name, &low, &high) == 0)
     error (_("No function contains program counter for selected frame."));
 #if defined(TUI)
@@ -1129,23 +1110,25 @@ disassemble_command (char *arg, int from_tty)
 {
   struct gdbarch *gdbarch = get_current_arch ();
   CORE_ADDR low, high;
-  char *name;
+  const char *name;
   CORE_ADDR pc;
   int flags;
+  const char *p;
 
+  p = arg;
   name = NULL;
   flags = 0;
 
-  if (arg && *arg == '/')
+  if (p && *p == '/')
     {
-      ++arg;
+      ++p;
 
-      if (*arg == '\0')
+      if (*p == '\0')
 	error (_("Missing modifier."));
 
-      while (*arg && ! isspace (*arg))
+      while (*p && ! isspace (*p))
 	{
-	  switch (*arg++)
+	  switch (*p++)
 	    {
 	    case 'm':
 	      flags |= DISASSEMBLY_SOURCE;
@@ -1158,21 +1141,20 @@ disassemble_command (char *arg, int from_tty)
 	    }
 	}
 
-      while (isspace (*arg))
-	++arg;
+      p = skip_spaces_const (p);
     }
 
-  if (! arg || ! *arg)
+  if (! p || ! *p)
     {
       flags |= DISASSEMBLY_OMIT_FNAME;
       disassemble_current_function (flags);
       return;
     }
 
-  pc = value_as_address (parse_to_comma_and_eval (&arg));
-  if (arg[0] == ',')
-    ++arg;
-  if (arg[0] == '\0')
+  pc = value_as_address (parse_to_comma_and_eval (&p));
+  if (p[0] == ',')
+    ++p;
+  if (p[0] == '\0')
     {
       /* One argument.  */
       if (find_pc_partial_function (pc, &name, &low, &high) == 0)
@@ -1192,14 +1174,13 @@ disassemble_command (char *arg, int from_tty)
       /* Two arguments.  */
       int incl_flag = 0;
       low = pc;
-      while (isspace (*arg))
-	arg++;
-      if (arg[0] == '+')
+      p = skip_spaces_const (p);
+      if (p[0] == '+')
 	{
-	  ++arg;
+	  ++p;
 	  incl_flag = 1;
 	}
-      high = parse_and_eval_address (arg);
+      high = parse_and_eval_address (p);
       if (incl_flag)
 	high += low;
     }
@@ -1235,7 +1216,8 @@ show_user (char *args, int from_tty)
       char *comname = args;
 
       c = lookup_cmd (&comname, cmdlist, "", 0, 1);
-      if (c->class != class_user)
+      /* c->user_commands would be NULL if it's a python command.  */
+      if (c->class != class_user || !c->user_commands)
 	error (_("Not a user command."));
       show_user_1 (c, "", args, gdb_stdout);
     }
@@ -1252,7 +1234,7 @@ show_user (char *args, int from_tty)
 /* Search through names of commands and documentations for a certain
    regular expression.  */
 
-void 
+static void 
 apropos_command (char *searchstr, int from_tty)
 {
   regex_t pattern;
@@ -1336,7 +1318,6 @@ alias_command (char *args, int from_tty)
   char *args2, *equals, *alias, *command;
   char **alias_argv, **command_argv;
   dyn_string_t alias_dyn_string, command_dyn_string;
-  struct cmd_list_element *c;
   static const char usage[] = N_("Usage: alias [-a] [--] ALIAS = COMMAND");
 
   if (args == NULL || strchr (args, '=') == NULL)
@@ -1418,7 +1399,6 @@ alias_command (char *args, int from_tty)
     }
   else
     {
-      int i;
       dyn_string_t alias_prefix_dyn_string, command_prefix_dyn_string;
       char *alias_prefix, *command_prefix;
       struct cmd_list_element *c_alias, *c_command;
@@ -1465,7 +1445,8 @@ ambiguous_line_spec (struct symtabs_and_lines *sals)
 
   for (i = 0; i < sals->nelts; ++i)
     printf_filtered (_("file: \"%s\", line number: %d\n"),
-		     sals->sals[i].symtab->filename, sals->sals[i].line);
+		     symtab_to_filename_for_display (sals->sals[i].symtab),
+		     sals->sals[i].line);
 }
 
 /* Sort function for filter_sals.  */
@@ -1538,13 +1519,14 @@ filter_sals (struct symtabs_and_lines *sals)
 	  ++out;
 	}
     }
-  sals->nelts = out;
 
   if (sals->nelts == 0)
     {
       xfree (sals->sals);
       sals->sals = NULL;
     }
+  else
+    sals->nelts = out;
 }
 
 static void
@@ -1574,7 +1556,6 @@ init_cmd_lists (void)
   stoplist = NULL;
   deletelist = NULL;
   detachlist = NULL;
-  enablebreaklist = NULL;
   setlist = NULL;
   unsetlist = NULL;
   showlist = NULL;
@@ -1588,7 +1569,6 @@ init_cmd_lists (void)
   showprintlist = NULL;
   setchecklist = NULL;
   showchecklist = NULL;
-  skiplist = NULL;
 }
 
 static void
@@ -1647,11 +1627,13 @@ show_max_user_call_depth (struct ui_file *file, int from_tty,
 }
 
 
+
+initialize_file_ftype _initialize_cli_cmds;
+
 void
-init_cli_cmds (void)
+_initialize_cli_cmds (void)
 {
   struct cmd_list_element *c;
-  char *source_help_text;
 
   /* Define the classes of commands.
      They will appear in the help list in alphabetical order.  */
@@ -1707,30 +1689,6 @@ use \"\\n\" if you want a newline to be printed.\n\
 Since leading and trailing whitespace are ignored in command arguments,\n\
 if you want to print some you must use \"\\\" before leading whitespace\n\
 to be printed or after trailing whitespace."));
-  add_com ("document", class_support, document_command, _("\
-Document a user-defined command.\n\
-Give command name as argument.  Give documentation on following lines.\n\
-End with a line of just \"end\"."));
-  add_com ("define", class_support, define_command, _("\
-Define a new command name.  Command name is argument.\n\
-Definition appears on following lines, one command per line.\n\
-End with a line of just \"end\".\n\
-Use the \"document\" command to give documentation for the new command.\n\
-Commands defined in this way may have up to ten arguments."));
-
-  source_help_text = xstrprintf (_("\
-Read commands from a file named FILE.\n\
-\n\
-Usage: source [-s] [-v] FILE\n\
--s: search for the script in the source search path,\n\
-    even if FILE contains directories.\n\
--v: each command in FILE is echoed as it is executed.\n\
-\n\
-Note that the file \"%s\" is read automatically in this way\n\
-when GDB is started."), gdbinit);
-  c = add_cmd ("source", class_support, source_command,
-	       source_help_text, &cmdlist);
-  set_cmd_completer (c, filename_completer);
 
   add_setshow_enum_cmd ("script-extension", class_support,
 			script_ext_enums, &script_ext_mode, _("\
@@ -1798,19 +1756,6 @@ the previous command number shown."),
   add_cmd ("version", no_set_class, show_version,
 	   _("Show what version of GDB this is."), &showlist);
 
-  add_com ("while", class_support, while_command, _("\
-Execute nested commands WHILE the conditional expression is non zero.\n\
-The conditional expression must follow the word `while' and must in turn be\n\
-followed by a new line.  The nested commands must be entered one per line,\n\
-and should be terminated by the word `end'."));
-
-  add_com ("if", class_support, if_command, _("\
-Execute nested commands once IF the conditional expression is non zero.\n\
-The conditional expression must follow the word `if' and must in turn be\n\
-followed by a new line.  The nested commands must be entered one per line,\n\
-and should be terminated by the word 'else' or `end'.  If an else clause\n\
-is used, the same rules apply to its nested commands as to the first ones."));
-
   /* If target is open when baud changes, it doesn't take effect until
      the next open (I think, not sure).  */
   add_setshow_zinteger_cmd ("remotebaud", no_class, &baud_rate, _("\
@@ -1831,14 +1776,15 @@ is displayed."),
 			    show_remote_debug,
 			    &setdebuglist, &showdebuglist);
 
-  add_setshow_integer_cmd ("remotetimeout", no_class, &remote_timeout, _("\
+  add_setshow_zuinteger_unlimited_cmd ("remotetimeout", no_class,
+				       &remote_timeout, _("\
 Set timeout limit to wait for target to respond."), _("\
 Show timeout limit to wait for target to respond."), _("\
 This value is used to set the time limit for gdb to wait for a response\n\
 from the target."),
-			   NULL,
-			   show_remote_timeout,
-			   &setlist, &showlist);
+				       NULL,
+				       show_remote_timeout,
+				       &setlist, &showlist);
 
   add_prefix_cmd ("debug", no_class, set_debug,
 		  _("Generic command for setting gdb debugging flags"),
@@ -1895,7 +1841,12 @@ With a /m modifier, source lines are included (if available).\n\
 With a /r modifier, raw instructions in hex are included.\n\
 With a single argument, the function surrounding that address is dumped.\n\
 Two arguments (separated by a comma) are taken as a range of memory to dump,\n\
-  in the form of \"start,end\", or \"start,+length\"."));
+  in the form of \"start,end\", or \"start,+length\".\n\
+\n\
+Note that the address is interpreted as an expression, not as a location\n\
+like in the \"break\" command.\n\
+So, for example, if you want to disassemble function bar in file foo.c\n\
+you must type \"disassemble 'foo.c'::bar\" and not \"disassemble foo.c:bar\"."));
   set_cmd_completer (c, location_completer);
   if (xdb_commands)
     add_com_alias ("va", "disassemble", class_xdb, 0);
@@ -1906,19 +1857,19 @@ Two arguments (separated by a comma) are taken as a range of memory to dump,\n\
 Run the ``make'' program using the rest of the line as arguments."));
   set_cmd_completer (c, filename_completer);
   add_cmd ("user", no_class, show_user, _("\
-Show definitions of user defined commands.\n\
+Show definitions of non-python user defined commands.\n\
 Argument is the name of the user defined command.\n\
 With no argument, show definitions of all user defined commands."), &showlist);
   add_com ("apropos", class_support, apropos_command,
 	   _("Search for commands matching a REGEXP"));
 
-  add_setshow_integer_cmd ("max-user-call-depth", no_class,
+  add_setshow_uinteger_cmd ("max-user-call-depth", no_class,
 			   &max_user_call_depth, _("\
-Set the max call depth for user-defined commands."), _("\
-Show the max call depth for user-defined commands."), NULL,
-			   NULL,
-			   show_max_user_call_depth,
-			   &setlist, &showlist);
+Set the max call depth for non-python user-defined commands."), _("\
+Show the max call depth for non-python user-defined commands."), NULL,
+			    NULL,
+			    show_max_user_call_depth,
+			    &setlist, &showlist);
 
   add_setshow_boolean_cmd ("trace-commands", no_class, &trace_commands, _("\
 Set tracing of GDB CLI commands."), _("\
@@ -1941,4 +1892,25 @@ Make \"spe\" an alias of \"set print elements\":\n\
   alias spe = set print elements\n\
 Make \"elms\" an alias of \"elements\" in the \"set print\" command:\n\
   alias -a set print elms = set print elements"));
+}
+
+void
+init_cli_cmds (void)
+{
+  struct cmd_list_element *c;
+  char *source_help_text;
+
+  source_help_text = xstrprintf (_("\
+Read commands from a file named FILE.\n\
+\n\
+Usage: source [-s] [-v] FILE\n\
+-s: search for the script in the source search path,\n\
+    even if FILE contains directories.\n\
+-v: each command in FILE is echoed as it is executed.\n\
+\n\
+Note that the file \"%s\" is read automatically in this way\n\
+when GDB is started."), gdbinit);
+  c = add_cmd ("source", class_support, source_command,
+	       source_help_text, &cmdlist);
+  set_cmd_completer (c, filename_completer);
 }

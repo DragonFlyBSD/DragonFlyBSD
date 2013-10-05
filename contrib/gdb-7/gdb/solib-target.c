@@ -1,6 +1,6 @@
 /* Definitions for targets which report shared library events.
 
-   Copyright (C) 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2007-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -246,7 +246,8 @@ static struct so_list *
 solib_target_current_sos (void)
 {
   struct so_list *new_solib, *start = NULL, *last = NULL;
-  const char *library_document;
+  char *library_document;
+  struct cleanup *old_chain;
   VEC(lm_info_p) *library_list;
   struct lm_info *info;
   int ix;
@@ -258,8 +259,15 @@ solib_target_current_sos (void)
   if (library_document == NULL)
     return NULL;
 
+  /* solib_target_parse_libraries may throw, so we use a cleanup.  */
+  old_chain = make_cleanup (xfree, library_document);
+
   /* Parse the list.  */
   library_list = solib_target_parse_libraries (library_document);
+
+  /* library_document string is not needed behind this point.  */
+  do_cleanups (old_chain);
+
   if (library_list == NULL)
     return NULL;
 
@@ -325,7 +333,6 @@ static void
 solib_target_relocate_section_addresses (struct so_list *so,
 					 struct target_section *sec)
 {
-  int flags = bfd_get_section_flags (sec->bfd, sec->the_bfd_section);
   CORE_ADDR offset;
 
   /* Build the offset table only once per object file.  We can not do

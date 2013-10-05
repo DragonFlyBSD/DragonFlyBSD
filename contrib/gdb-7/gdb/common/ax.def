@@ -1,5 +1,5 @@
 /* Definition of agent opcode values.   -*- c -*-
-   Copyright (C) 1998-2000, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 1998-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -93,3 +93,5 @@ DEFOP (invalid2, 0, 0, 0, 0, 0x31)
    express the right thing.  */
 DEFOP (pick, 1, 0, 0, 1, 0x32)
 DEFOP (rot, 0, 0, 3, 3, 0x33)
+/* Both the argument and consumed numbers are dynamic for this one.  */
+DEFOP (printf, 0, 0, 0, 0, 0x34)

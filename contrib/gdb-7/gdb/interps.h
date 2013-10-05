@@ -1,7 +1,6 @@
 /* Manages interpreters for GDB, the GNU debugger.
 
-   Copyright (C) 2000, 2002-2003, 2007-2012 Free Software Foundation,
-   Inc.
+   Copyright (C) 2000-2013 Free Software Foundation, Inc.
 
    Written by Jim Ingham <jingham@apple.com> of Apple Computer, Inc.
 
@@ -45,6 +44,10 @@ typedef struct gdb_exception (interp_exec_ftype) (void *data,
 typedef void (interp_command_loop_ftype) (void *data);
 typedef struct ui_out *(interp_ui_out_ftype) (struct interp *self);
 
+typedef int (interp_set_logging_ftype) (struct interp *self, int start_log,
+					struct ui_file *out,
+					struct ui_file *logfile);
+
 struct interp_procs
 {
   interp_init_ftype *init_proc;
@@ -59,6 +62,11 @@ struct interp_procs
      formatter.  */
   interp_ui_out_ftype *ui_out_proc;
 
+  /* Provides a hook for interpreters to do any additional
+     setup/cleanup that they might need when logging is enabled or
+     disabled.  */
+  interp_set_logging_ftype *set_logging_proc;
+
   interp_command_loop_ftype *command_loop_proc;
 };
 
@@ -69,10 +77,22 @@ extern struct interp *interp_lookup (const char *name);
 extern struct ui_out *interp_ui_out (struct interp *interp);
 extern void *interp_data (struct interp *interp);
 extern const char *interp_name (struct interp *interp);
+extern struct interp *interp_set_temp (const char *name);
 
 extern int current_interp_named_p (const char *name);
 extern int current_interp_display_prompt_p (void);
 extern void current_interp_command_loop (void);
+
+/* Call this function to give the current interpreter an opportunity
+   to do any special handling of streams when logging is enabled or
+   disabled.  START_LOG is 1 when logging is starting, 0 when it ends,
+   and OUT is the stream for the log file; it will be NULL when
+   logging is ending.  LOGFILE is non-NULL if the output streams
+   are to be tees, with the log file as one of the outputs.  */
+
+extern int current_interp_set_logging (int start_log, struct ui_file *out,
+				       struct ui_file *logfile);
+
 /* Returns opaque data associated with the top-level interpreter.  */
 extern void *top_level_interpreter_data (void);
 extern struct interp *top_level_interpreter (void);

@@ -1,5 +1,5 @@
 /* Mach-O support for BFD.
-   Copyright 2011
+   Copyright 2011, 2012
    Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -116,12 +116,51 @@ struct mach_o_reloc_info_external
 };
 #define BFD_MACH_O_RELENT_SIZE 8
 
+/* Relocations are based on 'address' being a section offset and an assumption
+   that sections are never more than 2^24-1 bytes in size.  Relocation data
+   also carry information on type/size/PC-relative/extern and whether scattered
+   or not [stored in the MSB of the r_address].  */
+
+#define BFD_MACH_O_SR_SCATTERED		0x80000000
+
+/* For a non-scattered reloc, the relocation info is found in r_symbolnum.
+   Bytes 1 to 3 contain the symbol number (0xffffff, in a non-scattered PAIR).
+   Byte 4 contains the relocation info - but with differing bit-positions
+   dependent on target endian-ness - as below.  */
+
+#define BFD_MACH_O_LE_PCREL		0x01
+#define BFD_MACH_O_LE_LENGTH_SHIFT	1
+#define BFD_MACH_O_LE_EXTERN		0x08
+#define BFD_MACH_O_LE_TYPE_SHIFT	4
+
+#define BFD_MACH_O_BE_PCREL		0x80
+#define BFD_MACH_O_BE_LENGTH_SHIFT	5
+#define BFD_MACH_O_BE_EXTERN		0x10
+#define BFD_MACH_O_BE_TYPE_SHIFT	0
+
+/* The field sizes are the same for both BE and LE.  */
+#define BFD_MACH_O_LENGTH_MASK		0x03
+#define BFD_MACH_O_TYPE_MASK		0x0f
+
+/* For a scattered reloc entry the info is contained in r_address.  There
+   is no need to discriminate on target endian-ness, since the design was
+   arranged to produce the same layout on both.  Scattered relocations are
+   only used for local items, therefore there is no 'extern' field.  */
+
+#define BFD_MACH_O_SR_PCREL		0x40000000
+#define BFD_MACH_O_GET_SR_LENGTH(s)	(((s) >> 28) & 0x3)
+#define BFD_MACH_O_GET_SR_TYPE(s)	(((s) >> 24) & 0x0f)
+#define BFD_MACH_O_GET_SR_ADDRESS(s)	((s) & 0x00ffffff)
+#define BFD_MACH_O_SET_SR_LENGTH(l)	(((l) & 0x3) << 28)
+#define BFD_MACH_O_SET_SR_TYPE(t)	(((t) & 0xf) << 24)
+#define BFD_MACH_O_SET_SR_ADDRESS(s)	((s) & 0x00ffffff)
+
 struct mach_o_symtab_command_external
 {
-  unsigned char symoff[4];
-  unsigned char nsyms[4];
-  unsigned char stroff[4];
-  unsigned char strsize[4];
+  unsigned char symoff[4];	/* File offset of the symbol table.  */
+  unsigned char nsyms[4];	/* Number of symbols.  */
+  unsigned char stroff[4];	/* File offset of the string table.  */
+  unsigned char strsize[4];	/* String table size.  */
 };
 
 struct mach_o_nlist_external
@@ -253,6 +292,42 @@ struct mach_o_version_min_command_external
 {
   unsigned char version[4];
   unsigned char reserved[4];
+};
+
+struct mach_o_encryption_info_command_external
+{
+  unsigned char cryptoff[4];	/* File offset of the encrypted area.  */
+  unsigned char cryptsize[4];	/* Size of the encrypted area.  */
+  unsigned char cryptid[4];	/* Encryption method.  */
+};
+
+struct mach_o_fvmlib_command_external
+{
+  unsigned char name[4];	/* Offset of the name.  */
+  unsigned char minor_version[4];
+  unsigned char header_addr[4];
+};
+
+struct mach_o_entry_point_command_external
+{
+  unsigned char entryoff[8];	/* File offset of the entry point.  */
+  unsigned char stacksize[8];   /* Initial stack size, if no null.  */
+};
+
+struct mach_o_source_version_command_external
+{
+  unsigned char version[8];	/* Version A.B.C.D.E, with 10 bits for B-E,
+				   and 24 bits for A.  */
+};
+
+/* The LD_DATA_IN_CODE command use a linkedit_data_command that points to
+   a table of entries.  */
+
+struct mach_o_data_in_code_entry_external
+{
+  unsigned char offset[4];	/* Offset from the mach_header. */
+  unsigned char length[2];	/* Number of bytes.  */
+  unsigned char kind[2];	/* Kind.  See BFD_MACH_O_DICE_ values.  */
 };
 
 struct mach_o_fat_header_external

@@ -1,5 +1,4 @@
-/* Copyright (C) 1992-1994, 1997-2000, 2003-2005, 2007-2012 Free
-   Software Foundation, Inc.
+/* Copyright (C) 1992-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -214,6 +213,12 @@ struct ada_tasks_inferior_data
      The interpretation of this field depends on KNOWN_TASKS_KIND
      above.  */
   CORE_ADDR known_tasks_addr;
+
+  /* Type of elements of the known task.  Usually a pointer.  */
+  struct type *known_tasks_element;
+
+  /* Number of elements in the known tasks array.  */
+  unsigned int known_tasks_length;
 
   /* When nonzero, this flag indicates that the task_list field
      below is up to date.  When set to zero, the list has either
@@ -774,24 +779,21 @@ add_ada_task (CORE_ADDR task_id, struct inferior *inf)
    it in the current inferior's TASK_LIST.  Return non-zero upon success.  */
 
 static int
-read_known_tasks_array (CORE_ADDR known_tasks_addr)
+read_known_tasks_array (struct ada_tasks_inferior_data *data)
 {
-  const int target_ptr_byte =
-    gdbarch_ptr_bit (target_gdbarch) / TARGET_CHAR_BIT;
-  const int known_tasks_size = target_ptr_byte * MAX_NUMBER_OF_KNOWN_TASKS;
+  const int target_ptr_byte = TYPE_LENGTH (data->known_tasks_element);
+  const int known_tasks_size = target_ptr_byte * data->known_tasks_length;
   gdb_byte *known_tasks = alloca (known_tasks_size);
   int i;
 
   /* Build a new list by reading the ATCBs from the Known_Tasks array
      in the Ada runtime.  */
-  read_memory (known_tasks_addr, known_tasks, known_tasks_size);
-  for (i = 0; i < MAX_NUMBER_OF_KNOWN_TASKS; i++)
+  read_memory (data->known_tasks_addr, known_tasks, known_tasks_size);
+  for (i = 0; i < data->known_tasks_length; i++)
     {
-      struct type *data_ptr_type =
-        builtin_type (target_gdbarch)->builtin_data_ptr;
       CORE_ADDR task_id =
         extract_typed_address (known_tasks + i * target_ptr_byte,
-			       data_ptr_type);
+			       data->known_tasks_element);
 
       if (task_id != 0)
         add_ada_task (task_id, current_inferior ());
@@ -804,13 +806,10 @@ read_known_tasks_array (CORE_ADDR known_tasks_addr)
    the current inferior's TASK_LIST.  Return non-zero upon success.  */
 
 static int
-read_known_tasks_list (CORE_ADDR known_tasks_addr)
+read_known_tasks_list (struct ada_tasks_inferior_data *data)
 {
-  const int target_ptr_byte =
-    gdbarch_ptr_bit (target_gdbarch) / TARGET_CHAR_BIT;
+  const int target_ptr_byte = TYPE_LENGTH (data->known_tasks_element);
   gdb_byte *known_tasks = alloca (target_ptr_byte);
-  struct type *data_ptr_type =
-    builtin_type (target_gdbarch)->builtin_data_ptr;
   CORE_ADDR task_id;
   const struct ada_tasks_pspace_data *pspace_data
     = get_ada_tasks_pspace_data (current_program_space);
@@ -820,8 +819,8 @@ read_known_tasks_list (CORE_ADDR known_tasks_addr)
     return 0;
 
   /* Build a new list by reading the ATCBs.  Read head of the list.  */
-  read_memory (known_tasks_addr, known_tasks, target_ptr_byte);
-  task_id = extract_typed_address (known_tasks, data_ptr_type);
+  read_memory (data->known_tasks_addr, known_tasks, target_ptr_byte);
+  task_id = extract_typed_address (known_tasks, data->known_tasks_element);
   while (task_id != 0)
     {
       struct value *tcb_value;
@@ -841,50 +840,95 @@ read_known_tasks_list (CORE_ADDR known_tasks_addr)
   return 1;
 }
 
-/* Return the address of the variable NAME that contains all the known
-   tasks maintained in the Ada Runtime.  Return NULL if the variable
-   could not be found, meaning that the inferior program probably does
-   not use tasking.  */
-
-static CORE_ADDR
-get_known_tasks_addr (const char *name)
-{
-  struct minimal_symbol *msym;
-
-  msym = lookup_minimal_symbol (name, NULL, NULL);
-  if (msym == NULL)
-    return 0;
-
-  return SYMBOL_VALUE_ADDRESS (msym);
-}
-
-/* Assuming DATA is the ada-tasks' data for the current inferior,
-   set the known_tasks_kind and known_tasks_addr fields.  Do nothing
-   if those fields are already set and still up to date.  */
+/* Set all fields of the current inferior ada-tasks data pointed by DATA.
+   Do nothing if those fields are already set and still up to date.  */
 
 static void
-ada_set_current_inferior_known_tasks_addr (struct ada_tasks_inferior_data *data)
+ada_tasks_inferior_data_sniffer (struct ada_tasks_inferior_data *data)
 {
-  CORE_ADDR known_tasks_addr;
+  struct minimal_symbol *msym;
+  struct symbol *sym;
 
+  /* Return now if already set.  */
   if (data->known_tasks_kind != ADA_TASKS_UNKNOWN)
     return;
 
-  known_tasks_addr = get_known_tasks_addr (KNOWN_TASKS_NAME);
-  if (known_tasks_addr != 0)
+  /* Try array.  */
+
+  msym = lookup_minimal_symbol (KNOWN_TASKS_NAME, NULL, NULL);
+  if (msym != NULL)
     {
       data->known_tasks_kind = ADA_TASKS_ARRAY;
-      data->known_tasks_addr = known_tasks_addr;
+      data->known_tasks_addr = SYMBOL_VALUE_ADDRESS (msym);
+
+      /* Try to get pointer type and array length from the symtab.  */
+      sym = lookup_symbol_in_language (KNOWN_TASKS_NAME, NULL, VAR_DOMAIN,
+				       language_c, NULL);
+      if (sym != NULL)
+	{
+	  /* Validate.  */
+	  struct type *type = check_typedef (SYMBOL_TYPE (sym));
+	  struct type *eltype = NULL;
+	  struct type *idxtype = NULL;
+
+	  if (TYPE_CODE (type) == TYPE_CODE_ARRAY)
+	    eltype = check_typedef (TYPE_TARGET_TYPE (type));
+	  if (eltype != NULL
+	      && TYPE_CODE (eltype) == TYPE_CODE_PTR)
+	    idxtype = check_typedef (TYPE_INDEX_TYPE (type));
+	  if (idxtype != NULL
+	      && !TYPE_LOW_BOUND_UNDEFINED (idxtype)
+	      && !TYPE_HIGH_BOUND_UNDEFINED (idxtype))
+	    {
+	      data->known_tasks_element = eltype;
+	      data->known_tasks_length =
+		TYPE_HIGH_BOUND (idxtype) - TYPE_LOW_BOUND (idxtype) + 1;
+	      return;
+	    }
+	}
+
+      /* Fallback to default values.  The runtime may have been stripped (as
+	 in some distributions), but it is likely that the executable still
+	 contains debug information on the task type (due to implicit with of
+	 Ada.Tasking).  */
+      data->known_tasks_element =
+	builtin_type (target_gdbarch ())->builtin_data_ptr;
+      data->known_tasks_length = MAX_NUMBER_OF_KNOWN_TASKS;
       return;
     }
 
-  known_tasks_addr = get_known_tasks_addr (KNOWN_TASKS_LIST);
-  if (known_tasks_addr != 0)
+
+  /* Try list.  */
+
+  msym = lookup_minimal_symbol (KNOWN_TASKS_LIST, NULL, NULL);
+  if (msym != NULL)
     {
       data->known_tasks_kind = ADA_TASKS_LIST;
-      data->known_tasks_addr = known_tasks_addr;
+      data->known_tasks_addr = SYMBOL_VALUE_ADDRESS (msym);
+      data->known_tasks_length = 1;
+
+      sym = lookup_symbol_in_language (KNOWN_TASKS_LIST, NULL, VAR_DOMAIN,
+				       language_c, NULL);
+      if (sym != NULL && SYMBOL_VALUE_ADDRESS (sym) != 0)
+	{
+	  /* Validate.  */
+	  struct type *type = check_typedef (SYMBOL_TYPE (sym));
+
+	  if (TYPE_CODE (type) == TYPE_CODE_PTR)
+	    {
+	      data->known_tasks_element = type;
+	      return;
+	    }
+	}
+
+      /* Fallback to default values.  */
+      data->known_tasks_element =
+	builtin_type (target_gdbarch ())->builtin_data_ptr;
+      data->known_tasks_length = 1;
       return;
     }
+
+  /* Can't find tasks.  */
 
   data->known_tasks_kind = ADA_TASKS_NOT_FOUND;
   data->known_tasks_addr = 0;
@@ -909,7 +953,7 @@ read_known_tasks (void)
      return, as we don't want a stale task list to be used...  This can
      happen for instance when debugging a non-multitasking program after
      having debugged a multitasking one.  */
-  ada_set_current_inferior_known_tasks_addr (data);
+  ada_tasks_inferior_data_sniffer (data);
   gdb_assert (data->known_tasks_kind != ADA_TASKS_UNKNOWN);
 
   switch (data->known_tasks_kind)
@@ -917,9 +961,9 @@ read_known_tasks (void)
       case ADA_TASKS_NOT_FOUND: /* Tasking not in use in inferior.  */
         return 0;
       case ADA_TASKS_ARRAY:
-        return read_known_tasks_array (data->known_tasks_addr);
+        return read_known_tasks_array (data);
       case ADA_TASKS_LIST:
-        return read_known_tasks_list (data->known_tasks_addr);
+        return read_known_tasks_list (data);
     }
 
   /* Step 3: Set task_list_valid_p, to avoid re-reading the Known_Tasks
@@ -1128,7 +1172,7 @@ info_task (struct ui_out *uiout, char *taskno_str, struct inferior *inf)
 
   /* Print the Ada task ID.  */
   printf_filtered (_("Ada Task: %s\n"),
-		   paddress (target_gdbarch, task_info->task_id));
+		   paddress (target_gdbarch (), task_info->task_id));
 
   /* Print the name of the task.  */
   if (task_info->name[0] != '\0')

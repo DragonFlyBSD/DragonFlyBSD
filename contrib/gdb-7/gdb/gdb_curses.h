@@ -1,6 +1,6 @@
 /* Portable <curses.h>.
 
-   Copyright (C) 2004, 2006-2012 Free Software Foundation, Inc.
+   Copyright (C) 2004-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,13 +20,6 @@
 #ifndef GDB_CURSES_H
 #define GDB_CURSES_H 1
 
-#if defined (HAVE_NCURSES_NCURSES_H)
-#include <ncurses/ncurses.h>
-#elif defined (HAVE_NCURSES_H)
-#include <ncurses.h>
-#elif defined (HAVE_CURSESX_H)
-#include <cursesX.h>
-#elif defined (HAVE_CURSES_H)
 #ifdef __MINGW32__
 /* Windows API headers, included e.g. by serial.h, define MOUSE_MOVED,
    and so does PDCurses's curses.h, but for an entirely different
@@ -34,7 +27,18 @@
    anywhere, avoid compiler warnings by undefining MOUSE_MOVED before
    including curses.h.  */
 #undef MOUSE_MOVED
+/* Likewise, KEY_EVENT is defined by ncurses.h, but also by Windows
+   API headers.  */
+#undef KEY_EVENT
 #endif
+
+#if defined (HAVE_NCURSES_NCURSES_H)
+#include <ncurses/ncurses.h>
+#elif defined (HAVE_NCURSES_H)
+#include <ncurses.h>
+#elif defined (HAVE_CURSESX_H)
+#include <cursesX.h>
+#elif defined (HAVE_CURSES_H)
 #include <curses.h>
 #endif
 

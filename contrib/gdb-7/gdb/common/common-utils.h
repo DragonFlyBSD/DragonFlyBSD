@@ -1,6 +1,6 @@
 /* Shared general utility routines for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988-2012 Free Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -43,15 +43,14 @@ char *xstrprintf (const char *format, ...) ATTRIBUTE_PRINTF (1, 2);
 char *xstrvprintf (const char *format, va_list ap)
      ATTRIBUTE_PRINTF (1, 0);
 
-/* Like asprintf/vasprintf but get an internal_error if the call
-   fails.  */
-void xasprintf (char **ret, const char *format, ...)
-     ATTRIBUTE_PRINTF (2, 3);
-void xvasprintf (char **ret, const char *format, va_list ap)
-     ATTRIBUTE_PRINTF (2, 0);
-
 /* Like snprintf, but throw an error if the output buffer is too small.  */
 int xsnprintf (char *str, size_t size, const char *format, ...)
      ATTRIBUTE_PRINTF (3, 4);
+
+/* Make a copy of the string at PTR with LEN characters
+   (and add a null character at the end in the copy).
+   Uses malloc to get the space.  Returns the address of the copy.  */
+
+char *savestring (const char *ptr, size_t len);
 
 #endif

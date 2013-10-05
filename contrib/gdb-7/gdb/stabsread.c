@@ -1,6 +1,6 @@
 /* Support routines for decoding "stabs" debugging information format.
 
-   Copyright (C) 1986-2012 Free Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -98,7 +98,7 @@ static void
 patch_block_stabs (struct pending *, struct pending_stabs *,
 		   struct objfile *);
 
-static void fix_common_block (struct symbol *, int);
+static void fix_common_block (struct symbol *, CORE_ADDR);
 
 static int read_type_number (char **, int *);
 
@@ -387,8 +387,8 @@ patch_block_stabs (struct pending *symbols, struct pending_stabs *stabs,
 	      SYMBOL_DOMAIN (sym) = VAR_DOMAIN;
 	      SYMBOL_CLASS (sym) = LOC_OPTIMIZED_OUT;
 	      SYMBOL_SET_LINKAGE_NAME
-		(sym, obsavestring (name, pp - name,
-				    &objfile->objfile_obstack));
+		(sym, obstack_copy0 (&objfile->objfile_obstack,
+				     name, pp - name));
 	      pp += 2;
 	      if (*(pp - 1) == 'F' || *(pp - 1) == 'f')
 		{
@@ -1173,7 +1173,7 @@ define_symbol (CORE_ADDR valu, char *string, int desc, int type,
 					NULL, objfile);
 	  if (msym != NULL)
 	    {
-	      char *new_name = gdbarch_static_transform_name
+	      const char *new_name = gdbarch_static_transform_name
 		(gdbarch, SYMBOL_LINKAGE_NAME (sym));
 
 	      SYMBOL_SET_LINKAGE_NAME (sym, new_name);
@@ -1367,7 +1367,7 @@ define_symbol (CORE_ADDR valu, char *string, int desc, int type,
 					NULL, objfile);
 	  if (msym != NULL)
 	    {
-	      char *new_name = gdbarch_static_transform_name
+	      const char *new_name = gdbarch_static_transform_name
 		(gdbarch, SYMBOL_LINKAGE_NAME (sym));
 
 	      SYMBOL_SET_LINKAGE_NAME (sym, new_name);
@@ -1632,8 +1632,8 @@ again:
 	      new_name = cp_canonicalize_string (name);
 	      if (new_name != NULL)
 		{
-		  type_name = obsavestring (new_name, strlen (new_name),
-					    &objfile->objfile_obstack);
+		  type_name = obstack_copy0 (&objfile->objfile_obstack,
+					     new_name, strlen (new_name));
 		  xfree (new_name);
 		}
 	    }
@@ -2024,11 +2024,9 @@ again:
 	make_vector_type (type);
       break;
 
-    case 'S':			/* Set or bitstring  type */
+    case 'S':			/* Set type */
       type1 = read_type (pp, objfile);
       type = create_set_type ((struct type *) NULL, type1);
-      if (is_string)
-	TYPE_CODE (type) = TYPE_CODE_BITSTRING;
       if (typenums[0] != -1)
 	*dbx_lookup_type (typenums, objfile) = type;
       break;
@@ -2232,10 +2230,11 @@ rs6000_builtin_type (int typenum, struct objfile *objfile)
 
 /* This page contains subroutines of read_type.  */
 
-/* Replace *OLD_NAME with the method name portion of PHYSNAME.  */
+/* Wrapper around method_name_from_physname to flag a complaint
+   if there is an error.  */
 
-static void
-update_method_name_from_physname (char **old_name, const char *physname)
+static char *
+stabs_method_name_from_physname (const char *physname)
 {
   char *method_name;
 
@@ -2245,16 +2244,10 @@ update_method_name_from_physname (char **old_name, const char *physname)
     {
       complaint (&symfile_complaints,
 		 _("Method has bad physname %s\n"), physname);
-      return;
+      return NULL;
     }
 
-  if (strcmp (*old_name, method_name) != 0)
-    {
-      xfree (*old_name);
-      *old_name = method_name;
-    }
-  else
-    xfree (method_name);
+  return method_name;
 }
 
 /* Read member function stabs info for C++ classes.  The form of each member
@@ -2278,10 +2271,6 @@ read_member_functions (struct field_info *fip, char **pp, struct type *type,
 {
   int nfn_fields = 0;
   int length = 0;
-  /* Total number of member functions defined in this class.  If the class
-     defines two `f' functions, and one `g' function, then this will have
-     the value 3.  */
-  int total_length = 0;
   int i;
   struct next_fnfield
     {
@@ -2681,7 +2670,6 @@ read_member_functions (struct field_info *fip, char **pp, struct type *type,
 	      destr_fnlist->next = fip->fnlist;
 	      fip->fnlist = destr_fnlist;
 	      nfn_fields++;
-	      total_length += has_destructor;
 	      length -= has_destructor;
 	    }
 	  else if (is_v3)
@@ -2692,14 +2680,24 @@ read_member_functions (struct field_info *fip, char **pp, struct type *type,
 		 - in -gstabs instead of -gstabs+
 		 - or for static methods, which are output as a function type
 		   instead of a method type.  */
+	      char *new_method_name =
+		stabs_method_name_from_physname (sublist->fn_field.physname);
 
-	      update_method_name_from_physname (&new_fnlist->fn_fieldlist.name,
-						sublist->fn_field.physname);
+	      if (new_method_name != NULL
+		  && strcmp (new_method_name,
+			     new_fnlist->fn_fieldlist.name) != 0)
+		{
+		  new_fnlist->fn_fieldlist.name = new_method_name;
+		  xfree (main_fn_name);
+		}
+	      else
+		xfree (new_method_name);
 	    }
 	  else if (has_destructor && new_fnlist->fn_fieldlist.name[0] != '~')
 	    {
 	      new_fnlist->fn_fieldlist.name =
-		concat ("~", main_fn_name, (char *)NULL);
+		obconcat (&objfile->objfile_obstack,
+			  "~", main_fn_name, (char *)NULL);
 	      xfree (main_fn_name);
 	    }
 	  else if (!has_stub)
@@ -2714,8 +2712,9 @@ read_member_functions (struct field_info *fip, char **pp, struct type *type,
 					     dem_opname, 0);
 	      if (ret)
 		new_fnlist->fn_fieldlist.name
-		  = obsavestring (dem_opname, strlen (dem_opname),
-				  &objfile->objfile_obstack);
+		  = obstack_copy0 (&objfile->objfile_obstack,
+				   dem_opname, strlen (dem_opname));
+	      xfree (main_fn_name);
 	    }
 
 	  new_fnlist->fn_fieldlist.fn_fields = (struct fn_field *)
@@ -2732,7 +2731,6 @@ read_member_functions (struct field_info *fip, char **pp, struct type *type,
 	  new_fnlist->next = fip->fnlist;
 	  fip->fnlist = new_fnlist;
 	  nfn_fields++;
-	  total_length += length;
 	}
     }
 
@@ -2744,7 +2742,6 @@ read_member_functions (struct field_info *fip, char **pp, struct type *type,
       memset (TYPE_FN_FIELDLISTS (type), 0,
 	      sizeof (struct fn_fieldlist) * nfn_fields);
       TYPE_NFN_FIELDS (type) = nfn_fields;
-      TYPE_NFN_FIELDS_TOTAL (type) = total_length;
     }
 
   return 1;
@@ -2760,7 +2757,7 @@ read_cpp_abbrev (struct field_info *fip, char **pp, struct type *type,
 		 struct objfile *objfile)
 {
   char *p;
-  char *name;
+  const char *name;
   char cpp_abbrev;
   struct type *context;
 
@@ -2831,8 +2828,8 @@ read_cpp_abbrev (struct field_info *fip, char **pp, struct type *type,
       {
 	int nbits;
 
-	FIELD_BITPOS (fip->list->field) = read_huge_number (pp, ';', &nbits,
-                                                            0);
+	SET_FIELD_BITPOS (fip->list->field,
+			  read_huge_number (pp, ';', &nbits, 0));
 	if (nbits != 0)
 	  return 0;
       }
@@ -2858,7 +2855,7 @@ read_one_struct_field (struct field_info *fip, char **pp, char *p,
   struct gdbarch *gdbarch = get_objfile_arch (objfile);
 
   fip->list->field.name =
-    obsavestring (*pp, p - *pp, &objfile->objfile_obstack);
+    obstack_copy0 (&objfile->objfile_obstack, *pp, p - *pp);
   *pp = p + 1;
 
   /* This means we have a visibility for a field coming.  */
@@ -2908,7 +2905,8 @@ read_one_struct_field (struct field_info *fip, char **pp, char *p,
   {
     int nbits;
 
-    FIELD_BITPOS (fip->list->field) = read_huge_number (pp, ',', &nbits, 0);
+    SET_FIELD_BITPOS (fip->list->field,
+		      read_huge_number (pp, ',', &nbits, 0));
     if (nbits != 0)
       {
 	stabs_general_complaint ("bad structure-type format");
@@ -3188,7 +3186,7 @@ read_baseclasses (struct field_info *fip, char **pp, struct type *type,
 	   corresponding to this baseclass.  Always zero in the absence of
 	   multiple inheritance.  */
 
-	FIELD_BITPOS (new->field) = read_huge_number (pp, ',', &nbits, 0);
+	SET_FIELD_BITPOS (new->field, read_huge_number (pp, ',', &nbits, 0));
 	if (nbits != 0)
 	  return 0;
       }
@@ -3273,7 +3271,7 @@ read_tilde_fields (struct field_info *fip, char **pp, struct type *type,
 		   i >= TYPE_N_BASECLASSES (t);
 		   --i)
 		{
-		  char *name = TYPE_FIELD_NAME (t, i);
+		  const char *name = TYPE_FIELD_NAME (t, i);
 
 		  if (!strncmp (name, vptr_name, sizeof (vptr_name) - 2)
 		      && is_cplus_marker (name[sizeof (vptr_name) - 2]))
@@ -3413,8 +3411,8 @@ attach_fields_to_type (struct field_info *fip, struct type *type,
 static void 
 complain_about_struct_wipeout (struct type *type)
 {
-  char *name = "";
-  char *kind = "";
+  const char *name = "";
+  const char *kind = "";
 
   if (TYPE_TAG_NAME (type))
     {
@@ -3676,7 +3674,7 @@ read_enum_type (char **pp, struct type *type,
       p = *pp;
       while (*p != ':')
 	p++;
-      name = obsavestring (*pp, p - *pp, &objfile->objfile_obstack);
+      name = obstack_copy0 (&objfile->objfile_obstack, *pp, p - *pp);
       *pp = p + 1;
       n = read_huge_number (pp, ',', &nbits, 0);
       if (nbits != 0)
@@ -3731,7 +3729,7 @@ read_enum_type (char **pp, struct type *type,
 
 	  SYMBOL_TYPE (xsym) = type;
 	  TYPE_FIELD_NAME (type, n) = SYMBOL_LINKAGE_NAME (xsym);
-	  TYPE_FIELD_BITPOS (type, n) = SYMBOL_VALUE (xsym);
+	  SET_FIELD_ENUMVAL (TYPE_FIELD (type, n), SYMBOL_VALUE (xsym));
 	  TYPE_FIELD_BITSIZE (type, n) = 0;
 	}
       if (syms == osyms)
@@ -4330,8 +4328,8 @@ common_block_start (char *name, struct objfile *objfile)
     }
   common_block = local_symbols;
   common_block_i = local_symbols ? local_symbols->nsyms : 0;
-  common_block_name = obsavestring (name, strlen (name),
-				    &objfile->objfile_obstack);
+  common_block_name = obstack_copy0 (&objfile->objfile_obstack,
+				     name, strlen (name));
 }
 
 /* Process a N_ECOMM symbol.  */
@@ -4398,7 +4396,7 @@ common_block_end (struct objfile *objfile)
    the common block name).  */
 
 static void
-fix_common_block (struct symbol *sym, int valu)
+fix_common_block (struct symbol *sym, CORE_ADDR valu)
 {
   struct pending *next = (struct pending *) SYMBOL_TYPE (sym);
 
@@ -4552,7 +4550,7 @@ cleanup_undefined_types_1 (void)
 		struct pending *ppt;
 		int i;
 		/* Name of the type, without "struct" or "union".  */
-		char *typename = TYPE_TAG_NAME (*type);
+		const char *typename = TYPE_TAG_NAME (*type);
 
 		if (typename == NULL)
 		  {
@@ -4598,7 +4596,7 @@ cleanup_undefined_types_1 (void)
    this unit.  */
 
 void
-cleanup_undefined_types (struct objfile *objfile)
+cleanup_undefined_stabs_types (struct objfile *objfile)
 {
   cleanup_undefined_types_1 ();
   cleanup_undefined_types_noname (objfile);

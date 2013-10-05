@@ -1,6 +1,6 @@
 /* Python interface to blocks.
 
-   Copyright (C) 2008-2012 Free Software Foundation, Inc.
+   Copyright (C) 2008-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -41,10 +41,10 @@ typedef struct blpy_block_object {
 
 typedef struct {
   PyObject_HEAD
-  /* The block dictionary of symbols.  */
-  struct dictionary *dict;
-  /* The iterator for that dictionary.  */
-  struct dict_iterator iter;
+  /* The block.  */
+  const struct block *block;
+  /* The iterator for that block.  */
+  struct block_iterator iter;
   /* Has the iterator been initialized flag.  */
   int initialized_p;
   /* Pointer back to the original source block object.  Needed to
@@ -94,7 +94,7 @@ blpy_iter (PyObject *self)
   if (block_iter_obj == NULL)
       return NULL;
 
-  block_iter_obj->dict = BLOCK_DICT (block);
+  block_iter_obj->block = block;
   block_iter_obj->initialized_p = 0;
   Py_INCREF (self);
   block_iter_obj->source = (block_object *) self;
@@ -311,11 +311,11 @@ blpy_block_syms_iternext (PyObject *self)
 
   if (!iter_obj->initialized_p)
     {
-      sym = dict_iterator_first (iter_obj->dict,  &(iter_obj->iter));
+      sym = block_iterator_first (iter_obj->block,  &(iter_obj->iter));
       iter_obj->initialized_p = 1;
     }
   else
-    sym = dict_iterator_next (&(iter_obj->iter));
+    sym = block_iterator_next (&(iter_obj->iter));
 
   if (sym == NULL)
     {
@@ -370,7 +370,7 @@ PyObject *
 gdbpy_block_for_pc (PyObject *self, PyObject *args)
 {
   gdb_py_ulongest pc;
-  struct block *block;
+  struct block *block = NULL;
   struct obj_section *section = NULL;
   struct symtab *symtab = NULL;
   volatile struct gdb_exception except;
@@ -382,6 +382,9 @@ gdbpy_block_for_pc (PyObject *self, PyObject *args)
     {
       section = find_pc_mapped_section (pc);
       symtab = find_pc_sect_symtab (pc, section);
+
+      if (symtab != NULL && symtab->objfile != NULL)
+	block = block_for_pc (pc);
     }
   GDB_PY_HANDLE_EXCEPTION (except);
 
@@ -392,7 +395,6 @@ gdbpy_block_for_pc (PyObject *self, PyObject *args)
       return NULL;
     }
 
-  block = block_for_pc (pc);
   if (block)
     return block_to_block_object (block, symtab->objfile);
 
@@ -475,8 +477,7 @@ static PyGetSetDef block_object_getset[] = {
 };
 
 PyTypeObject block_object_type = {
-  PyObject_HEAD_INIT (NULL)
-  0,				  /*ob_size*/
+  PyVarObject_HEAD_INIT (NULL, 0)
   "gdb.Block",			  /*tp_name*/
   sizeof (block_object),	  /*tp_basicsize*/
   0,				  /*tp_itemsize*/
@@ -516,8 +517,7 @@ Return true if this block iterator is valid, false if not." },
 };
 
 static PyTypeObject block_syms_iterator_object_type = {
-  PyObject_HEAD_INIT (NULL)
-  0,				  /*ob_size*/
+  PyVarObject_HEAD_INIT (NULL, 0)
   "gdb.BlockIterator",		  /*tp_name*/
   sizeof (block_syms_iterator_object),	      /*tp_basicsize*/
   0,				  /*tp_itemsize*/

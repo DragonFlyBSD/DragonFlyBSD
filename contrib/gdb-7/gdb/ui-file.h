@@ -1,5 +1,5 @@
 /* UI_FILE - a generic STDIO like output stream.
-   Copyright (C) 1999-2000, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 1999-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -79,6 +79,11 @@ typedef void (ui_file_delete_ftype) (struct ui_file * stream);
 extern void set_ui_file_data (struct ui_file *stream, void *data,
 			      ui_file_delete_ftype *delete);
 
+typedef int (ui_file_fseek_ftype) (struct ui_file *stream, long offset,
+				   int whence);
+extern void set_ui_file_fseek (struct ui_file *stream,
+			       ui_file_fseek_ftype *fseek_ptr);
+
 extern void *ui_file_data (struct ui_file *file);
 
 
@@ -113,6 +118,8 @@ extern char *ui_file_obsavestring (struct ui_file *file,
 
 extern long ui_file_read (struct ui_file *file, char *buf, long length_buf);
 
+extern int ui_file_fseek (struct ui_file *file, long offset, int whence);
+
 /* Create/open a memory based file.  Can be used as a scratch buffer
    for collecting output.  */
 extern struct ui_file *mem_fileopen (void);
@@ -128,8 +135,8 @@ extern struct ui_file *gdb_fopen (char *name, char *mode);
 /* Create a file which writes to both ONE and TWO.  CLOSE_ONE
    and CLOSE_TWO indicate whether the original files should be
    closed when the new file is closed.  */
-struct ui_file *tee_file_new (struct ui_file *one,
-			      int close_one,
-			      struct ui_file *two,
-			      int close_two);
+extern struct ui_file *tee_file_new (struct ui_file *one,
+				     int close_one,
+				     struct ui_file *two,
+				     int close_two);
 #endif

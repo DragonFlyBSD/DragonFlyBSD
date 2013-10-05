@@ -91,7 +91,7 @@ make_a_section_from_file (bfd *abfd,
              don't know the length of the string table.  */
 	  strings += strindex;
 	  name = (char *) bfd_alloc (abfd,
-                                     (bfd_size_type) strlen (strings) + 1);
+                                     (bfd_size_type) strlen (strings) + 1 + 1);
 	  if (name == NULL)
 	    return FALSE;
 	  strcpy (name, strings);
@@ -102,7 +102,7 @@ make_a_section_from_file (bfd *abfd,
     {
       /* Assorted wastage to null-terminate the name, thanks AT&T! */
       name = (char *) bfd_alloc (abfd,
-                                 (bfd_size_type) sizeof (hdr->s_name) + 1);
+                                 (bfd_size_type) sizeof (hdr->s_name) + 1 + 1);
       if (name == NULL)
 	return FALSE;
       strncpy (name, (char *) &hdr->s_name[0], sizeof (hdr->s_name));
@@ -145,6 +145,76 @@ make_a_section_from_file (bfd *abfd,
   /* FIXME: should this check 'hdr->s_size > 0'.  */
   if (hdr->s_scnptr != 0)
     return_section->flags |= SEC_HAS_CONTENTS;
+
+  /* Compress/decompress DWARF debug sections with names: .debug_* and
+     .zdebug_*, after the section flags is set.  */
+  if ((flags & SEC_DEBUGGING)
+      && ((name[1] == 'd' && name[6] == '_')
+	  || (name[1] == 'z' && name[7] == '_')))
+    {
+      enum { nothing, compress, decompress } action = nothing;
+      char *new_name = NULL;
+
+      if (bfd_is_section_compressed (abfd, return_section))
+	{
+	  /* Compressed section.  Check if we should decompress.  */
+	  if ((abfd->flags & BFD_DECOMPRESS))
+	    action = decompress;
+	}
+      else if (!bfd_is_section_compressed (abfd, return_section))
+	{
+	  /* Normal section.  Check if we should compress.  */
+	  if ((abfd->flags & BFD_COMPRESS) && return_section->size != 0)
+	    action = compress;
+	}
+
+      switch (action)
+	{
+	case nothing:
+	  break;
+	case compress:
+	  if (!bfd_init_section_compress_status (abfd, return_section))
+	    {
+	      (*_bfd_error_handler)
+		(_("%B: unable to initialize compress status for section %s"),
+		 abfd, name);
+	      return FALSE;
+	    }
+	  if (name[1] != 'z')
+	    {
+	      unsigned int len = strlen (name);
+
+	      new_name = bfd_alloc (abfd, len + 2);
+	      if (new_name == NULL)
+		return FALSE;
+	      new_name[0] = '.';
+	      new_name[1] = 'z';
+	      memcpy (new_name + 2, name + 1, len);
+	    }
+	  break;
+	case decompress:
+	  if (!bfd_init_section_decompress_status (abfd, return_section))
+	    {
+	      (*_bfd_error_handler)
+		(_("%B: unable to initialize decompress status for section %s"),
+		 abfd, name);
+	      return FALSE;
+	    }
+	  if (name[1] == 'z')
+	    {
+	      unsigned int len = strlen (name);
+
+	      new_name = bfd_alloc (abfd, len);
+	      if (new_name == NULL)
+		return FALSE;
+	      new_name[0] = '.';
+	      memcpy (new_name + 1, name + 2, len - 1);
+	    }
+	  break;
+	}
+      if (new_name != NULL)
+	bfd_rename_section (abfd, return_section, new_name);
+    }
 
   return result;
 }
@@ -577,7 +647,7 @@ fixup_symbol_value (bfd *abfd,
 		    struct internal_syment *syment)
 {
   /* Normalize the symbol flags.  */
-  if (coff_symbol_ptr->symbol.section 
+  if (coff_symbol_ptr->symbol.section
       && bfd_is_com_section (coff_symbol_ptr->symbol.section))
     {
       /* A common symbol is undefined with a value.  */
@@ -1449,7 +1519,7 @@ coff_pointerize_aux (bfd *abfd,
   /* Otherwise patch up.  */
 #define N_TMASK coff_data  (abfd)->local_n_tmask
 #define N_BTSHFT coff_data (abfd)->local_n_btshft
-  
+
   if ((ISFCN (type) || ISTAG (n_sclass) || n_sclass == C_BLOCK
        || n_sclass == C_FCN)
       && auxent->u.auxent.x_sym.x_fcnary.x_fcn.x_endndx.l > 0)
@@ -1872,7 +1942,7 @@ coff_bfd_make_debug_symbol (bfd *abfd,
   new_symbol->lineno = NULL;
   new_symbol->done_lineno = FALSE;
   new_symbol->symbol.the_bfd = abfd;
-  
+
   return & new_symbol->symbol;
 }
 
@@ -2153,7 +2223,7 @@ coff_find_nearest_line_with_names (bfd *abfd,
   if (_bfd_dwarf2_find_nearest_line (abfd, debug_sections,
                                      section, symbols, offset,
 				     filename_ptr, functionname_ptr,
-				     line_ptr, 0,
+				     line_ptr, NULL, 0,
 				     &coff_data(abfd)->dwarf2_find_line_info))
     return TRUE;
 
@@ -2347,6 +2417,24 @@ coff_find_nearest_line (bfd *abfd,
                                             filename_ptr, functionname_ptr,
                                             line_ptr);
 }
+
+bfd_boolean
+coff_find_nearest_line_discriminator (bfd *abfd,
+				      asection *section,
+				      asymbol **symbols,
+				      bfd_vma offset,
+				      const char **filename_ptr,
+				      const char **functionname_ptr,
+				      unsigned int *line_ptr,
+				      unsigned int *discriminator)
+{
+  *discriminator = 0;
+  return coff_find_nearest_line_with_names (abfd, dwarf_debug_sections,
+                                            section, symbols, offset,
+                                            filename_ptr, functionname_ptr,
+                                            line_ptr);
+}
+
 
 bfd_boolean
 coff_find_inliner_info (bfd *abfd,

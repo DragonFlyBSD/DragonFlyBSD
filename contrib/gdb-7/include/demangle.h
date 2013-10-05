@@ -272,6 +272,9 @@ enum demangle_component_type
   /* A guard variable.  This has one subtree, the name for which this
      is a guard variable.  */
   DEMANGLE_COMPONENT_GUARD,
+  /* The init and wrapper functions for C++11 thread_local variables.  */
+  DEMANGLE_COMPONENT_TLS_INIT,
+  DEMANGLE_COMPONENT_TLS_WRAPPER,
   /* A reference temporary.  This has one subtree, the name for which
      this is a temporary.  */
   DEMANGLE_COMPONENT_REFTEMP,
@@ -344,6 +347,9 @@ enum demangle_component_type
      template argument, and the right subtree is either NULL or
      another TEMPLATE_ARGLIST node.  */
   DEMANGLE_COMPONENT_TEMPLATE_ARGLIST,
+  /* An initializer list.  The left subtree is either an explicit type or
+     NULL, and the right subtree is a DEMANGLE_COMPONENT_ARGLIST.  */
+  DEMANGLE_COMPONENT_INITIALIZER_LIST,
   /* An operator.  This holds information about a standard
      operator.  */
   DEMANGLE_COMPONENT_OPERATOR,
@@ -353,6 +359,8 @@ enum demangle_component_type
   /* A typecast, represented as a unary operator.  The one subtree is
      the type to which the argument should be cast.  */
   DEMANGLE_COMPONENT_CAST,
+  /* A nullary expression.  The left subtree is the operator.  */
+  DEMANGLE_COMPONENT_NULLARY,
   /* A unary expression.  The left subtree is the operator, and the
      right subtree is the single argument.  */
   DEMANGLE_COMPONENT_UNARY,
@@ -412,6 +420,8 @@ enum demangle_component_type
   DEMANGLE_COMPONENT_NONTRANSACTION_CLONE,
   /* A pack expansion.  */
   DEMANGLE_COMPONENT_PACK_EXPANSION,
+  /* A name with an ABI tag.  */
+  DEMANGLE_COMPONENT_TAGGED_NAME,
   /* A cloned function.  */
   DEMANGLE_COMPONENT_CLONE
 };

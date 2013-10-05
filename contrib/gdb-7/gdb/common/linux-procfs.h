@@ -1,5 +1,5 @@
 /* Linux-specific PROCFS manipulation routines.
-   Copyright (C) 2011-2012 Free Software Foundation, Inc.
+   Copyright (C) 2011-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -24,6 +24,20 @@
 /* Return the TGID of LWPID from /proc/pid/status.  Returns -1 if not
    found.  */
 
-extern int linux_proc_get_tgid (int lwpid);
+extern int linux_proc_get_tgid (pid_t lwpid);
+
+/* Return the TracerPid of LWPID from /proc/pid/status.  Returns -1 if not
+   found.  */
+
+extern pid_t linux_proc_get_tracerpid (pid_t lwpid);
+
+/* Detect `T (stopped)' in `/proc/PID/status'.
+   Other states including `T (tracing stop)' are reported as false.  */
+
+extern int linux_proc_pid_is_stopped (pid_t pid);
+
+/* Return non-zero if PID is a zombie.  */
+
+extern int linux_proc_pid_is_zombie (pid_t pid);
 
 #endif /* COMMON_LINUX_PROCFS_H */

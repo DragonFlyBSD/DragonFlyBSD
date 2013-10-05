@@ -1,6 +1,6 @@
 /* Remote File-I/O communications
 
-   Copyright (C) 2003, 2005-2012 Free Software Foundation, Inc.
+   Copyright (C) 2003-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -682,7 +682,7 @@ remote_fileio_func_read (char *buf)
   long target_fd, num;
   LONGEST lnum;
   CORE_ADDR ptrval;
-  int fd, ret, retlength;
+  int fd, ret;
   gdb_byte *buffer;
   size_t length;
   off_t old_offset, new_offset;
@@ -1133,7 +1133,7 @@ static void
 remote_fileio_func_fstat (char *buf)
 {
   CORE_ADDR ptrval;
-  int fd, ret, retlength;
+  int fd, ret;
   long target_fd;
   LONGEST lnum;
   struct stat st;
@@ -1212,7 +1212,7 @@ remote_fileio_func_gettimeofday (char *buf)
 {
   LONGEST lnum;
   CORE_ADDR ptrval;
-  int ret, retlength;
+  int ret;
   struct timeval tv;
   struct fio_timeval ftv;
 
@@ -1281,7 +1281,7 @@ static void
 remote_fileio_func_system (char *buf)
 {
   CORE_ADDR ptrval;
-  int ret, length, retlength;
+  int ret, length;
   char *cmdline = NULL;
 
   /* Parameter: Ptr to commandline / length incl. trailing zero */

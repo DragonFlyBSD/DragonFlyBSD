@@ -1,5 +1,5 @@
 /* Definitions used by the GDB event loop.
-   Copyright (C) 1999-2000, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 1999-2013 Free Software Foundation, Inc.
    Written by Elena Zannoni <ezannoni@cygnus.com> of Cygnus Solutions.
 
    This file is part of GDB.
@@ -75,20 +75,9 @@ typedef void (sig_handler_func) (gdb_client_data);
 typedef void (async_event_handler_func) (gdb_client_data);
 typedef void (timer_handler_func) (gdb_client_data);
 
-/* Where to add an event onto the event queue, by queue_event.  */
-typedef enum
-  {
-    /* Add at tail of queue.  It will be processed in first in first
-       out order.  */
-    TAIL,
-    /* Add at head of queue.  It will be processed in last in first
-       out order.  */
-    HEAD
-  }
-queue_position;
-
 /* Exported functions from event-loop.c */
 
+extern void initialize_event_loop (void);
 extern void start_event_loop (void);
 extern int gdb_do_one_event (void);
 extern void delete_file_handler (int fd);

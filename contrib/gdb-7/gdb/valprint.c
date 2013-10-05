@@ -1,6 +1,6 @@
 /* Print values for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988-2012 Free Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -39,6 +39,43 @@
 #include <ctype.h>
 
 #include <errno.h>
+
+/* Maximum number of wchars returned from wchar_iterate.  */
+#define MAX_WCHARS 4
+
+/* A convenience macro to compute the size of a wchar_t buffer containing X
+   characters.  */
+#define WCHAR_BUFLEN(X) ((X) * sizeof (gdb_wchar_t))
+
+/* Character buffer size saved while iterating over wchars.  */
+#define WCHAR_BUFLEN_MAX WCHAR_BUFLEN (MAX_WCHARS)
+
+/* A structure to encapsulate state information from iterated
+   character conversions.  */
+struct converted_character
+{
+  /* The number of characters converted.  */
+  int num_chars;
+
+  /* The result of the conversion.  See charset.h for more.  */
+  enum wchar_iterate_result result;
+
+  /* The (saved) converted character(s).  */
+  gdb_wchar_t chars[WCHAR_BUFLEN_MAX];
+
+  /* The first converted target byte.  */
+  const gdb_byte *buf;
+
+  /* The number of bytes converted.  */
+  size_t buflen;
+
+  /* How many times this character(s) is repeated.  */
+  int repeat_count;
+};
+
+typedef struct converted_character converted_character_d;
+DEF_VEC_O (converted_character_d);
+
 
 /* Prototypes for local functions */
 
@@ -79,13 +116,13 @@ struct value_print_options user_print_options =
   0,				/* output_format */
   0,				/* format */
   0,				/* stop_print_at_null */
-  0,				/* inspect_it */
   0,				/* print_array_indexes */
   0,				/* deref_ref */
   1,				/* static_field_print */
   1,				/* pascal_static_field_print */
   0,				/* raw */
-  0				/* summary */
+  0,				/* summary */
+  1				/* symbol_print */
 };
 
 /* Initialize *OPTS to be a copy of the user print options.  */
@@ -219,6 +256,16 @@ show_addressprint (struct ui_file *file, int from_tty,
 {
   fprintf_filtered (file, _("Printing of addresses is %s.\n"), value);
 }
+
+static void
+show_symbol_print (struct ui_file *file, int from_tty,
+		   struct cmd_list_element *c, const char *value)
+{
+  fprintf_filtered (file,
+		    _("Printing of symbols when printing pointers is %s.\n"),
+		    value);
+}
+
 
 
 /* A helper function for val_print.  When printing in "summary" mode,
@@ -241,24 +288,15 @@ scalar_type_p (struct type *type)
     case TYPE_CODE_UNION:
     case TYPE_CODE_SET:
     case TYPE_CODE_STRING:
-    case TYPE_CODE_BITSTRING:
       return 0;
     default:
       return 1;
     }
 }
 
-/* Helper function to check the validity of some bits of a value.
+/* See its definition in value.h.  */
 
-   If TYPE represents some aggregate type (e.g., a structure), return 1.
-   
-   Otherwise, any of the bytes starting at OFFSET and extending for
-   TYPE_LENGTH(TYPE) bytes are invalid, print a message to STREAM and
-   return 0.  The checking is done using FUNCS.
-   
-   Otherwise, return 1.  */
-
-static int
+int
 valprint_check_validity (struct ui_file *stream,
 			 struct type *type,
 			 int embedded_offset,
@@ -312,6 +350,360 @@ val_print_invalid_address (struct ui_file *stream)
   fprintf_filtered (stream, _("<invalid address>"));
 }
 
+/* A generic val_print that is suitable for use by language
+   implementations of the la_val_print method.  This function can
+   handle most type codes, though not all, notably exception
+   TYPE_CODE_UNION and TYPE_CODE_STRUCT, which must be implemented by
+   the caller.
+   
+   Most arguments are as to val_print.
+   
+   The additional DECORATIONS argument can be used to customize the
+   output in some small, language-specific ways.  */
+
+void
+generic_val_print (struct type *type, const gdb_byte *valaddr,
+		   int embedded_offset, CORE_ADDR address,
+		   struct ui_file *stream, int recurse,
+		   const struct value *original_value,
+		   const struct value_print_options *options,
+		   const struct generic_val_print_decorations *decorations)
+{
+  struct gdbarch *gdbarch = get_type_arch (type);
+  unsigned int i = 0;	/* Number of characters printed.  */
+  unsigned len;
+  struct type *elttype, *unresolved_elttype;
+  struct type *unresolved_type = type;
+  LONGEST val;
+  CORE_ADDR addr;
+
+  CHECK_TYPEDEF (type);
+  switch (TYPE_CODE (type))
+    {
+    case TYPE_CODE_ARRAY:
+      unresolved_elttype = TYPE_TARGET_TYPE (type);
+      elttype = check_typedef (unresolved_elttype);
+      if (TYPE_LENGTH (type) > 0 && TYPE_LENGTH (unresolved_elttype) > 0)
+	{
+          LONGEST low_bound, high_bound;
+
+          if (!get_array_bounds (type, &low_bound, &high_bound))
+            error (_("Could not determine the array high bound"));
+
+	  if (options->prettyprint_arrays)
+	    {
+	      print_spaces_filtered (2 + 2 * recurse, stream);
+	    }
+
+	  fprintf_filtered (stream, "{");
+	  val_print_array_elements (type, valaddr, embedded_offset,
+				    address, stream,
+				    recurse, original_value, options, 0);
+	  fprintf_filtered (stream, "}");
+	  break;
+	}
+      /* Array of unspecified length: treat like pointer to first
+	 elt.  */
+      addr = address + embedded_offset;
+      goto print_unpacked_pointer;
+
+    case TYPE_CODE_MEMBERPTR:
+      val_print_scalar_formatted (type, valaddr, embedded_offset,
+				  original_value, options, 0, stream);
+      break;
+
+    case TYPE_CODE_PTR:
+      if (options->format && options->format != 's')
+	{
+	  val_print_scalar_formatted (type, valaddr, embedded_offset,
+				      original_value, options, 0, stream);
+	  break;
+	}
+      unresolved_elttype = TYPE_TARGET_TYPE (type);
+      elttype = check_typedef (unresolved_elttype);
+	{
+	  addr = unpack_pointer (type, valaddr + embedded_offset);
+	print_unpacked_pointer:
+
+	  if (TYPE_CODE (elttype) == TYPE_CODE_FUNC)
+	    {
+	      /* Try to print what function it points to.  */
+	      print_function_pointer_address (options, gdbarch, addr, stream);
+	      return;
+	    }
+
+	  if (options->symbol_print)
+	    print_address_demangle (options, gdbarch, addr, stream, demangle);
+	  else if (options->addressprint)
+	    fputs_filtered (paddress (gdbarch, addr), stream);
+	}
+      break;
+
+    case TYPE_CODE_REF:
+      elttype = check_typedef (TYPE_TARGET_TYPE (type));
+      if (options->addressprint)
+	{
+	  CORE_ADDR addr
+	    = extract_typed_address (valaddr + embedded_offset, type);
+
+	  fprintf_filtered (stream, "@");
+	  fputs_filtered (paddress (gdbarch, addr), stream);
+	  if (options->deref_ref)
+	    fputs_filtered (": ", stream);
+	}
+      /* De-reference the reference.  */
+      if (options->deref_ref)
+	{
+	  if (TYPE_CODE (elttype) != TYPE_CODE_UNDEF)
+	    {
+	      struct value *deref_val;
+
+	      deref_val = coerce_ref_if_computed (original_value);
+	      if (deref_val != NULL)
+		{
+		  /* More complicated computed references are not supported.  */
+		  gdb_assert (embedded_offset == 0);
+		}
+	      else
+		deref_val = value_at (TYPE_TARGET_TYPE (type),
+				      unpack_pointer (type,
+						      (valaddr
+						       + embedded_offset)));
+
+	      common_val_print (deref_val, stream, recurse, options,
+				current_language);
+	    }
+	  else
+	    fputs_filtered ("???", stream);
+	}
+      break;
+
+    case TYPE_CODE_ENUM:
+      if (options->format)
+	{
+	  val_print_scalar_formatted (type, valaddr, embedded_offset,
+				      original_value, options, 0, stream);
+	  break;
+	}
+      len = TYPE_NFIELDS (type);
+      val = unpack_long (type, valaddr + embedded_offset);
+      for (i = 0; i < len; i++)
+	{
+	  QUIT;
+	  if (val == TYPE_FIELD_ENUMVAL (type, i))
+	    {
+	      break;
+	    }
+	}
+      if (i < len)
+	{
+	  fputs_filtered (TYPE_FIELD_NAME (type, i), stream);
+	}
+      else if (TYPE_FLAG_ENUM (type))
+	{
+	  int first = 1;
+
+	  /* We have a "flag" enum, so we try to decompose it into
+	     pieces as appropriate.  A flag enum has disjoint
+	     constants by definition.  */
+	  fputs_filtered ("(", stream);
+	  for (i = 0; i < len; ++i)
+	    {
+	      QUIT;
+
+	      if ((val & TYPE_FIELD_ENUMVAL (type, i)) != 0)
+		{
+		  if (!first)
+		    fputs_filtered (" | ", stream);
+		  first = 0;
+
+		  val &= ~TYPE_FIELD_ENUMVAL (type, i);
+		  fputs_filtered (TYPE_FIELD_NAME (type, i), stream);
+		}
+	    }
+
+	  if (first || val != 0)
+	    {
+	      if (!first)
+		fputs_filtered (" | ", stream);
+	      fputs_filtered ("unknown: ", stream);
+	      print_longest (stream, 'd', 0, val);
+	    }
+
+	  fputs_filtered (")", stream);
+	}
+      else
+	print_longest (stream, 'd', 0, val);
+      break;
+
+    case TYPE_CODE_FLAGS:
+      if (options->format)
+	val_print_scalar_formatted (type, valaddr, embedded_offset,
+				    original_value, options, 0, stream);
+      else
+	val_print_type_code_flags (type, valaddr + embedded_offset,
+				   stream);
+      break;
+
+    case TYPE_CODE_FUNC:
+    case TYPE_CODE_METHOD:
+      if (options->format)
+	{
+	  val_print_scalar_formatted (type, valaddr, embedded_offset,
+				      original_value, options, 0, stream);
+	  break;
+	}
+      /* FIXME, we should consider, at least for ANSI C language,
+         eliminating the distinction made between FUNCs and POINTERs
+         to FUNCs.  */
+      fprintf_filtered (stream, "{");
+      type_print (type, "", stream, -1);
+      fprintf_filtered (stream, "} ");
+      /* Try to print what function it points to, and its address.  */
+      print_address_demangle (options, gdbarch, address, stream, demangle);
+      break;
+
+    case TYPE_CODE_BOOL:
+      if (options->format || options->output_format)
+	{
+	  struct value_print_options opts = *options;
+	  opts.format = (options->format ? options->format
+			 : options->output_format);
+	  val_print_scalar_formatted (type, valaddr, embedded_offset,
+				      original_value, &opts, 0, stream);
+	}
+      else
+	{
+	  val = unpack_long (type, valaddr + embedded_offset);
+	  if (val == 0)
+	    fputs_filtered (decorations->false_name, stream);
+	  else if (val == 1)
+	    fputs_filtered (decorations->true_name, stream);
+	  else
+	    print_longest (stream, 'd', 0, val);
+	}
+      break;
+
+    case TYPE_CODE_RANGE:
+      /* FIXME: create_range_type does not set the unsigned bit in a
+         range type (I think it probably should copy it from the
+         target type), so we won't print values which are too large to
+         fit in a signed integer correctly.  */
+      /* FIXME: Doesn't handle ranges of enums correctly.  (Can't just
+         print with the target type, though, because the size of our
+         type and the target type might differ).  */
+
+      /* FALLTHROUGH */
+
+    case TYPE_CODE_INT:
+      if (options->format || options->output_format)
+	{
+	  struct value_print_options opts = *options;
+
+	  opts.format = (options->format ? options->format
+			 : options->output_format);
+	  val_print_scalar_formatted (type, valaddr, embedded_offset,
+				      original_value, &opts, 0, stream);
+	}
+      else
+	val_print_type_code_int (type, valaddr + embedded_offset, stream);
+      break;
+
+    case TYPE_CODE_CHAR:
+      if (options->format || options->output_format)
+	{
+	  struct value_print_options opts = *options;
+
+	  opts.format = (options->format ? options->format
+			 : options->output_format);
+	  val_print_scalar_formatted (type, valaddr, embedded_offset,
+				      original_value, &opts, 0, stream);
+	}
+      else
+	{
+	  val = unpack_long (type, valaddr + embedded_offset);
+	  if (TYPE_UNSIGNED (type))
+	    fprintf_filtered (stream, "%u", (unsigned int) val);
+	  else
+	    fprintf_filtered (stream, "%d", (int) val);
+	  fputs_filtered (" ", stream);
+	  LA_PRINT_CHAR (val, unresolved_type, stream);
+	}
+      break;
+
+    case TYPE_CODE_FLT:
+      if (options->format)
+	{
+	  val_print_scalar_formatted (type, valaddr, embedded_offset,
+				      original_value, options, 0, stream);
+	}
+      else
+	{
+	  print_floating (valaddr + embedded_offset, type, stream);
+	}
+      break;
+
+    case TYPE_CODE_DECFLOAT:
+      if (options->format)
+	val_print_scalar_formatted (type, valaddr, embedded_offset,
+				    original_value, options, 0, stream);
+      else
+	print_decimal_floating (valaddr + embedded_offset,
+				type, stream);
+      break;
+
+    case TYPE_CODE_VOID:
+      fputs_filtered (decorations->void_name, stream);
+      break;
+
+    case TYPE_CODE_ERROR:
+      fprintf_filtered (stream, "%s", TYPE_ERROR_NAME (type));
+      break;
+
+    case TYPE_CODE_UNDEF:
+      /* This happens (without TYPE_FLAG_STUB set) on systems which
+         don't use dbx xrefs (NO_DBX_XREFS in gcc) if a file has a
+         "struct foo *bar" and no complete type for struct foo in that
+         file.  */
+      fprintf_filtered (stream, _("<incomplete type>"));
+      break;
+
+    case TYPE_CODE_COMPLEX:
+      fprintf_filtered (stream, "%s", decorations->complex_prefix);
+      if (options->format)
+	val_print_scalar_formatted (TYPE_TARGET_TYPE (type),
+				    valaddr, embedded_offset,
+				    original_value, options, 0, stream);
+      else
+	print_floating (valaddr + embedded_offset,
+			TYPE_TARGET_TYPE (type),
+			stream);
+      fprintf_filtered (stream, "%s", decorations->complex_infix);
+      if (options->format)
+	val_print_scalar_formatted (TYPE_TARGET_TYPE (type),
+				    valaddr,
+				    embedded_offset
+				    + TYPE_LENGTH (TYPE_TARGET_TYPE (type)),
+				    original_value,
+				    options, 0, stream);
+      else
+	print_floating (valaddr + embedded_offset
+			+ TYPE_LENGTH (TYPE_TARGET_TYPE (type)),
+			TYPE_TARGET_TYPE (type),
+			stream);
+      fprintf_filtered (stream, "%s", decorations->complex_suffix);
+      break;
+
+    case TYPE_CODE_UNION:
+    case TYPE_CODE_STRUCT:
+    case TYPE_CODE_METHODPTR:
+    default:
+      error (_("Unhandled type code %d in symbol table."),
+	     TYPE_CODE (type));
+    }
+  gdb_flush (stream);
+}
+
 /* Print using the given LANGUAGE the data of type TYPE located at
    VALADDR + EMBEDDED_OFFSET (within GDB), which came from the
    inferior at address ADDRESS + EMBEDDED_OFFSET, onto stdio stream
@@ -330,12 +722,9 @@ val_print_invalid_address (struct ui_file *stream)
 
    RECURSE indicates the amount of indentation to supply before
    continuation lines; this amount is roughly twice the value of
-   RECURSE.
+   RECURSE.  */
 
-   If the data is printed as a string, returns the number of string
-   characters printed.  */
-
-int
+void
 val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 	   CORE_ADDR address, struct ui_file *stream, int recurse,
 	   const struct value *val,
@@ -361,11 +750,11 @@ val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
     {
       fprintf_filtered (stream, _("<incomplete type>"));
       gdb_flush (stream);
-      return (0);
+      return;
     }
 
   if (!valprint_check_validity (stream, real_type, embedded_offset, val))
-    return 0;
+    return;
 
   if (!options->raw)
     {
@@ -373,7 +762,7 @@ val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
 				      address, stream, recurse,
 				      val, options, language);
       if (ret)
-	return ret;
+	return;
     }
 
   /* Handle summary mode.  If the value is a scalar, print it;
@@ -381,19 +770,17 @@ val_print (struct type *type, const gdb_byte *valaddr, int embedded_offset,
   if (options->summary && !scalar_type_p (type))
     {
       fprintf_filtered (stream, "...");
-      return 0;
+      return;
     }
 
   TRY_CATCH (except, RETURN_MASK_ERROR)
     {
-      ret = language->la_val_print (type, valaddr, embedded_offset, address,
-				    stream, recurse, val,
-				    &local_opts);
+      language->la_val_print (type, valaddr, embedded_offset, address,
+			      stream, recurse, val,
+			      &local_opts);
     }
   if (except.reason < 0)
     fprintf_filtered (stream, _("<error reading variable>"));
-
-  return ret;
 }
 
 /* Check whether the value VAL is printable.  Return 1 if it is;
@@ -432,19 +819,16 @@ value_check_printable (struct value *val, struct ui_file *stream,
 /* Print using the given LANGUAGE the value VAL onto stream STREAM according
    to OPTIONS.
 
-   If the data are a string pointer, returns the number of string characters
-   printed.
-
    This is a preferable interface to val_print, above, because it uses
    GDB's value mechanism.  */
 
-int
+void
 common_val_print (struct value *val, struct ui_file *stream, int recurse,
 		  const struct value_print_options *options,
 		  const struct language_defn *language)
 {
   if (!value_check_printable (val, stream, options))
-    return 0;
+    return;
 
   if (language->la_language == language_ada)
     /* The value might have a dynamic type, which would cause trouble
@@ -453,24 +837,21 @@ common_val_print (struct value *val, struct ui_file *stream, int recurse,
        get a fixed representation of our value.  */
     val = ada_to_fixed_value (val);
 
-  return val_print (value_type (val), value_contents_for_printing (val),
-		    value_embedded_offset (val), value_address (val),
-		    stream, recurse,
-		    val, options, language);
+  val_print (value_type (val), value_contents_for_printing (val),
+	     value_embedded_offset (val), value_address (val),
+	     stream, recurse,
+	     val, options, language);
 }
 
 /* Print on stream STREAM the value VAL according to OPTIONS.  The value
-   is printed using the current_language syntax.
+   is printed using the current_language syntax.  */
 
-   If the object printed is a string pointer, return the number of string
-   bytes printed.  */
-
-int
+void
 value_print (struct value *val, struct ui_file *stream,
 	     const struct value_print_options *options)
 {
   if (!value_check_printable (val, stream, options))
-    return 0;
+    return;
 
   if (!options->raw)
     {
@@ -482,10 +863,10 @@ value_print (struct value *val, struct ui_file *stream,
 					val, options, current_language);
 
       if (r)
-	return r;
+	return;
     }
 
-  return LA_VALUE_PRINT (val, stream, options);
+  LA_VALUE_PRINT (val, stream, options);
 }
 
 /* Called by various <lang>_val_print routines to print
@@ -545,6 +926,7 @@ val_print_type_code_flags (struct type *type, const gdb_byte *valaddr,
 	}
     }
   fputs_filtered ("]", stream);
+}
 
 /* Print a scalar of data of type TYPE, pointed to in GDB by VALADDR,
    according to OPTIONS and SIZE on STREAM.  Format i is not supported
@@ -552,7 +934,6 @@ val_print_type_code_flags (struct type *type, const gdb_byte *valaddr,
 
    This is how the elements of an array or structure are printed
    with a format.  */
-}
 
 void
 val_print_scalar_formatted (struct type *type,
@@ -1161,6 +1542,31 @@ print_char_chars (struct ui_file *stream, struct type *type,
     }
 }
 
+/* Print function pointer with inferior address ADDRESS onto stdio
+   stream STREAM.  */
+
+void
+print_function_pointer_address (const struct value_print_options *options,
+				struct gdbarch *gdbarch,
+				CORE_ADDR address,
+				struct ui_file *stream)
+{
+  CORE_ADDR func_addr
+    = gdbarch_convert_from_func_ptr_addr (gdbarch, address,
+					  &current_target);
+
+  /* If the function pointer is represented by a description, print
+     the address of the description.  */
+  if (options->addressprint && func_addr != address)
+    {
+      fputs_filtered ("@", stream);
+      fputs_filtered (paddress (gdbarch, address), stream);
+      fputs_filtered (": ", stream);
+    }
+  print_address_demangle (options, gdbarch, func_addr, stream, demangle);
+}
+
+
 /* Print on STREAM using the given OPTIONS the index for the element
    at INDEX of an array whose index type is INDEX_TYPE.  */
     
@@ -1566,9 +1972,10 @@ print_wchar (gdb_wint_t w, const gdb_byte *orig,
 		/* If the value fits in 3 octal digits, print it that
 		   way.  Otherwise, print it as a hex escape.  */
 		if (value <= 0777)
-		  sprintf (octal, "\\%.3o", (int) (value & 0777));
+		  xsnprintf (octal, sizeof (octal), "\\%.3o",
+			     (int) (value & 0777));
 		else
-		  sprintf (octal, "\\x%lx", (long) value);
+		  xsnprintf (octal, sizeof (octal), "\\x%lx", (long) value);
 		append_string_as_wide (octal, output);
 	      }
 	    /* If we somehow have extra bytes, print them now.  */
@@ -1576,7 +1983,7 @@ print_wchar (gdb_wint_t w, const gdb_byte *orig,
 	      {
 		char octal[5];
 
-		sprintf (octal, "\\%.3o", orig[i] & 0xff);
+		xsnprintf (octal, sizeof (octal), "\\%.3o", orig[i] & 0xff);
 		append_string_as_wide (octal, output);
 		++i;
 	      }
@@ -1664,14 +2071,251 @@ generic_emit_char (int c, struct type *type, struct ui_file *stream,
   make_cleanup_obstack_free (&output);
 
   convert_between_encodings (INTERMEDIATE_ENCODING, host_charset (),
-			     obstack_base (&wchar_buf),
+			     (gdb_byte *) obstack_base (&wchar_buf),
 			     obstack_object_size (&wchar_buf),
-			     1, &output, translit_char);
+			     sizeof (gdb_wchar_t), &output, translit_char);
   obstack_1grow (&output, '\0');
 
   fputs_filtered (obstack_base (&output), stream);
 
   do_cleanups (cleanups);
+}
+
+/* Return the repeat count of the next character/byte in ITER,
+   storing the result in VEC.  */
+
+static int
+count_next_character (struct wchar_iterator *iter,
+		      VEC (converted_character_d) **vec)
+{
+  struct converted_character *current;
+
+  if (VEC_empty (converted_character_d, *vec))
+    {
+      struct converted_character tmp;
+      gdb_wchar_t *chars;
+
+      tmp.num_chars
+	= wchar_iterate (iter, &tmp.result, &chars, &tmp.buf, &tmp.buflen);
+      if (tmp.num_chars > 0)
+	{
+	  gdb_assert (tmp.num_chars < MAX_WCHARS);
+	  memcpy (tmp.chars, chars, tmp.num_chars * sizeof (gdb_wchar_t));
+	}
+      VEC_safe_push (converted_character_d, *vec, &tmp);
+    }
+
+  current = VEC_last (converted_character_d, *vec);
+
+  /* Count repeated characters or bytes.  */
+  current->repeat_count = 1;
+  if (current->num_chars == -1)
+    {
+      /* EOF  */
+      return -1;
+    }
+  else
+    {
+      gdb_wchar_t *chars;
+      struct converted_character d;
+      int repeat;
+
+      d.repeat_count = 0;
+
+      while (1)
+	{
+	  /* Get the next character.  */
+	  d.num_chars
+	    = wchar_iterate (iter, &d.result, &chars, &d.buf, &d.buflen);
+
+	  /* If a character was successfully converted, save the character
+	     into the converted character.  */
+	  if (d.num_chars > 0)
+	    {
+	      gdb_assert (d.num_chars < MAX_WCHARS);
+	      memcpy (d.chars, chars, WCHAR_BUFLEN (d.num_chars));
+	    }
+
+	  /* Determine if the current character is the same as this
+	     new character.  */
+	  if (d.num_chars == current->num_chars && d.result == current->result)
+	    {
+	      /* There are two cases to consider:
+
+		 1) Equality of converted character (num_chars > 0)
+		 2) Equality of non-converted character (num_chars == 0)  */
+	      if ((current->num_chars > 0
+		   && memcmp (current->chars, d.chars,
+			      WCHAR_BUFLEN (current->num_chars)) == 0)
+		  || (current->num_chars == 0
+		      && current->buflen == d.buflen
+		      && memcmp (current->buf, d.buf, current->buflen) == 0))
+		++current->repeat_count;
+	      else
+		break;
+	    }
+	  else
+	    break;
+	}
+
+      /* Push this next converted character onto the result vector.  */
+      repeat = current->repeat_count;
+      VEC_safe_push (converted_character_d, *vec, &d);
+      return repeat;
+    }
+}
+
+/* Print the characters in CHARS to the OBSTACK.  QUOTE_CHAR is the quote
+   character to use with string output.  WIDTH is the size of the output
+   character type.  BYTE_ORDER is the the target byte order.  OPTIONS
+   is the user's print options.  */
+
+static void
+print_converted_chars_to_obstack (struct obstack *obstack,
+				  VEC (converted_character_d) *chars,
+				  int quote_char, int width,
+				  enum bfd_endian byte_order,
+				  const struct value_print_options *options)
+{
+  unsigned int idx;
+  struct converted_character *elem;
+  enum {START, SINGLE, REPEAT, INCOMPLETE, FINISH} state, last;
+  gdb_wchar_t wide_quote_char = gdb_btowc (quote_char);
+  int need_escape = 0;
+
+  /* Set the start state.  */
+  idx = 0;
+  last = state = START;
+  elem = NULL;
+
+  while (1)
+    {
+      switch (state)
+	{
+	case START:
+	  /* Nothing to do.  */
+	  break;
+
+	case SINGLE:
+	  {
+	    int j;
+
+	    /* We are outputting a single character
+	       (< options->repeat_count_threshold).  */
+
+	    if (last != SINGLE)
+	      {
+		/* We were outputting some other type of content, so we
+		   must output and a comma and a quote.  */
+		if (last != START)
+		  obstack_grow_wstr (obstack, LCST (", "));
+		obstack_grow (obstack, &wide_quote_char, sizeof (gdb_wchar_t));
+	      }
+	    /* Output the character.  */
+	    for (j = 0; j < elem->repeat_count; ++j)
+	      {
+		if (elem->result == wchar_iterate_ok)
+		  print_wchar (elem->chars[0], elem->buf, elem->buflen, width,
+			       byte_order, obstack, quote_char, &need_escape);
+		else
+		  print_wchar (gdb_WEOF, elem->buf, elem->buflen, width,
+			       byte_order, obstack, quote_char, &need_escape);
+	      }
+	  }
+	  break;
+
+	case REPEAT:
+	  {
+	    int j;
+	    char *s;
+
+	    /* We are outputting a character with a repeat count
+	       greater than options->repeat_count_threshold.  */
+
+	    if (last == SINGLE)
+	      {
+		/* We were outputting a single string.  Terminate the
+		   string.  */
+		obstack_grow (obstack, &wide_quote_char, sizeof (gdb_wchar_t));
+	      }
+	    if (last != START)
+	      obstack_grow_wstr (obstack, LCST (", "));
+
+	    /* Output the character and repeat string.  */
+	    obstack_grow_wstr (obstack, LCST ("'"));
+	    if (elem->result == wchar_iterate_ok)
+	      print_wchar (elem->chars[0], elem->buf, elem->buflen, width,
+			   byte_order, obstack, quote_char, &need_escape);
+	    else
+	      print_wchar (gdb_WEOF, elem->buf, elem->buflen, width,
+			   byte_order, obstack, quote_char, &need_escape);
+	    obstack_grow_wstr (obstack, LCST ("'"));
+	    s = xstrprintf (_(" <repeats %u times>"), elem->repeat_count);
+	    for (j = 0; s[j]; ++j)
+	      {
+		gdb_wchar_t w = gdb_btowc (s[j]);
+		obstack_grow (obstack, &w, sizeof (gdb_wchar_t));
+	      }
+	    xfree (s);
+	  }
+	  break;
+
+	case INCOMPLETE:
+	  /* We are outputting an incomplete sequence.  */
+	  if (last == SINGLE)
+	    {
+	      /* If we were outputting a string of SINGLE characters,
+		 terminate the quote.  */
+	      obstack_grow (obstack, &wide_quote_char, sizeof (gdb_wchar_t));
+	    }
+	  if (last != START)
+	    obstack_grow_wstr (obstack, LCST (", "));
+
+	  /* Output the incomplete sequence string.  */
+	  obstack_grow_wstr (obstack, LCST ("<incomplete sequence "));
+	  print_wchar (gdb_WEOF, elem->buf, elem->buflen, width, byte_order,
+		       obstack, 0, &need_escape);
+	  obstack_grow_wstr (obstack, LCST (">"));
+
+	  /* We do not attempt to outupt anything after this.  */
+	  state = FINISH;
+	  break;
+
+	case FINISH:
+	  /* All done.  If we were outputting a string of SINGLE
+	     characters, the string must be terminated.  Otherwise,
+	     REPEAT and INCOMPLETE are always left properly terminated.  */
+	  if (last == SINGLE)
+	    obstack_grow (obstack, &wide_quote_char, sizeof (gdb_wchar_t));
+
+	  return;
+	}
+
+      /* Get the next element and state.  */
+      last = state;
+      if (state != FINISH)
+	{
+	  elem = VEC_index (converted_character_d, chars, idx++);
+	  switch (elem->result)
+	    {
+	    case wchar_iterate_ok:
+	    case wchar_iterate_invalid:
+	      if (elem->repeat_count > options->repeat_count_threshold)
+		state = REPEAT;
+	      else
+		state = SINGLE;
+	      break;
+
+	    case wchar_iterate_incomplete:
+	      state = INCOMPLETE;
+	      break;
+
+	    case wchar_iterate_eof:
+	      state = FINISH;
+	      break;
+	    }
+	}
+    }
 }
 
 /* Print the character string STRING, printing at most LENGTH
@@ -1693,16 +2337,13 @@ generic_printstr (struct ui_file *stream, struct type *type,
 {
   enum bfd_endian byte_order = gdbarch_byte_order (get_type_arch (type));
   unsigned int i;
-  unsigned int things_printed = 0;
-  int in_quotes = 0;
-  int need_comma = 0;
   int width = TYPE_LENGTH (type);
   struct obstack wchar_buf, output;
   struct cleanup *cleanup;
   struct wchar_iterator *iter;
   int finished = 0;
-  int need_escape = 0;
-  gdb_wchar_t wide_quote_char = gdb_btowc (quote_char);
+  struct converted_character *last;
+  VEC (converted_character_d) *converted_chars;
 
   if (length == -1)
     {
@@ -1736,166 +2377,46 @@ generic_printstr (struct ui_file *stream, struct type *type,
   /* Arrange to iterate over the characters, in wchar_t form.  */
   iter = make_wchar_iterator (string, length * width, encoding, width);
   cleanup = make_cleanup_wchar_iterator (iter);
+  converted_chars = NULL;
+  make_cleanup (VEC_cleanup (converted_character_d), &converted_chars);
+
+  /* Convert characters until the string is over or the maximum
+     number of printed characters has been reached.  */
+  i = 0;
+  while (i < options->print_max)
+    {
+      int r;
+
+      QUIT;
+
+      /* Grab the next character and repeat count.  */
+      r = count_next_character (iter, &converted_chars);
+
+      /* If less than zero, the end of the input string was reached.  */
+      if (r < 0)
+	break;
+
+      /* Otherwise, add the count to the total print count and get
+	 the next character.  */
+      i += r;
+    }
+
+  /* Get the last element and determine if the entire string was
+     processed.  */
+  last = VEC_last (converted_character_d, converted_chars);
+  finished = (last->result == wchar_iterate_eof);
+
+  /* Ensure that CONVERTED_CHARS is terminated.  */
+  last->result = wchar_iterate_eof;
 
   /* WCHAR_BUF is the obstack we use to represent the string in
      wchar_t form.  */
   obstack_init (&wchar_buf);
   make_cleanup_obstack_free (&wchar_buf);
 
-  while (!finished && things_printed < options->print_max)
-    {
-      int num_chars;
-      enum wchar_iterate_result result;
-      gdb_wchar_t *chars;
-      const gdb_byte *buf;
-      size_t buflen;
-
-      QUIT;
-
-      if (need_comma)
-	{
-	  obstack_grow_wstr (&wchar_buf, LCST (", "));
-	  need_comma = 0;
-	}
-
-      num_chars = wchar_iterate (iter, &result, &chars, &buf, &buflen);
-      /* We only look at repetitions when we were able to convert a
-	 single character in isolation.  This makes the code simpler
-	 and probably does the sensible thing in the majority of
-	 cases.  */
-      while (num_chars == 1 && things_printed < options->print_max)
-	{
-	  /* Count the number of repetitions.  */
-	  unsigned int reps = 0;
-	  gdb_wchar_t current_char = chars[0];
-	  const gdb_byte *orig_buf = buf;
-	  int orig_len = buflen;
-
-	  if (need_comma)
-	    {
-	      obstack_grow_wstr (&wchar_buf, LCST (", "));
-	      need_comma = 0;
-	    }
-
-	  while (num_chars == 1 && current_char == chars[0])
-	    {
-	      num_chars = wchar_iterate (iter, &result, &chars,
-					 &buf, &buflen);
-	      ++reps;
-	    }
-
-	  /* Emit CURRENT_CHAR according to the repetition count and
-	     options.  */
-	  if (reps > options->repeat_count_threshold)
-	    {
-	      if (in_quotes)
-		{
-		  if (options->inspect_it)
-		    obstack_grow_wstr (&wchar_buf, LCST ("\\"));
-		  obstack_grow (&wchar_buf, &wide_quote_char,
-				sizeof (gdb_wchar_t));
-		  obstack_grow_wstr (&wchar_buf, LCST (", "));
-		  in_quotes = 0;
-		}
-	      obstack_grow_wstr (&wchar_buf, LCST ("'"));
-	      need_escape = 0;
-	      print_wchar (current_char, orig_buf, orig_len, width,
-			   byte_order, &wchar_buf, '\'', &need_escape);
-	      obstack_grow_wstr (&wchar_buf, LCST ("'"));
-	      {
-		/* Painful gyrations.  */
-		int j;
-		char *s = xstrprintf (_(" <repeats %u times>"), reps);
-
-		for (j = 0; s[j]; ++j)
-		  {
-		    gdb_wchar_t w = gdb_btowc (s[j]);
-		    obstack_grow (&wchar_buf, &w, sizeof (gdb_wchar_t));
-		  }
-		xfree (s);
-	      }
-	      things_printed += options->repeat_count_threshold;
-	      need_comma = 1;
-	    }
-	  else
-	    {
-	      /* Saw the character one or more times, but fewer than
-		 the repetition threshold.  */
-	      if (!in_quotes)
-		{
-		  if (options->inspect_it)
-		    obstack_grow_wstr (&wchar_buf, LCST ("\\"));
-		  obstack_grow (&wchar_buf, &wide_quote_char,
-				sizeof (gdb_wchar_t));
-		  in_quotes = 1;
-		  need_escape = 0;
-		}
-
-	      while (reps-- > 0)
-		{
-		  print_wchar (current_char, orig_buf,
-			       orig_len, width,
-			       byte_order, &wchar_buf,
-			       quote_char, &need_escape);
-		  ++things_printed;
-		}
-	    }
-	}
-
-      /* NUM_CHARS and the other outputs from wchar_iterate are valid
-	 here regardless of which branch was taken above.  */
-      if (num_chars < 0)
-	{
-	  /* Hit EOF.  */
-	  finished = 1;
-	  break;
-	}
-
-      switch (result)
-	{
-	case wchar_iterate_invalid:
-	  if (!in_quotes)
-	    {
-	      if (options->inspect_it)
-		obstack_grow_wstr (&wchar_buf, LCST ("\\"));
-	      obstack_grow (&wchar_buf, &wide_quote_char,
-			    sizeof (gdb_wchar_t));
-	      in_quotes = 1;
-	    }
-	  need_escape = 0;
-	  print_wchar (gdb_WEOF, buf, buflen, width, byte_order,
-		       &wchar_buf, quote_char, &need_escape);
-	  break;
-
-	case wchar_iterate_incomplete:
-	  if (in_quotes)
-	    {
-	      if (options->inspect_it)
-		obstack_grow_wstr (&wchar_buf, LCST ("\\"));
-	      obstack_grow (&wchar_buf, &wide_quote_char,
-			    sizeof (gdb_wchar_t));
-	      obstack_grow_wstr (&wchar_buf, LCST (","));
-	      in_quotes = 0;
-	    }
-	  obstack_grow_wstr (&wchar_buf,
-			     LCST (" <incomplete sequence "));
-	  print_wchar (gdb_WEOF, buf, buflen, width,
-		       byte_order, &wchar_buf,
-		       0, &need_escape);
-	  obstack_grow_wstr (&wchar_buf, LCST (">"));
-	  finished = 1;
-	  break;
-	}
-    }
-
-  /* Terminate the quotes if necessary.  */
-  if (in_quotes)
-    {
-      if (options->inspect_it)
-	obstack_grow_wstr (&wchar_buf, LCST ("\\"));
-      obstack_grow (&wchar_buf, &wide_quote_char,
-		    sizeof (gdb_wchar_t));
-    }
+  /* Print the output string to the obstack.  */
+  print_converted_chars_to_obstack (&wchar_buf, converted_chars, quote_char,
+				    width, byte_order, options);
 
   if (force_ellipses || !finished)
     obstack_grow_wstr (&wchar_buf, LCST ("..."));
@@ -1905,9 +2426,9 @@ generic_printstr (struct ui_file *stream, struct type *type,
   make_cleanup_obstack_free (&output);
 
   convert_between_encodings (INTERMEDIATE_ENCODING, host_charset (),
-			     obstack_base (&wchar_buf),
+			     (gdb_byte *) obstack_base (&wchar_buf),
 			     obstack_object_size (&wchar_buf),
-			     1, &output, translit_char);
+			     sizeof (gdb_wchar_t), &output, translit_char);
   obstack_1grow (&output, '\0');
 
   fputs_filtered (obstack_base (&output), stream);
@@ -1991,10 +2512,6 @@ val_print_string (struct type *elttype, const char *encoding,
      and then the error message.  */
   if (errcode == 0 || bytes_read > 0)
     {
-      if (options->addressprint)
-	{
-	  fputs_filtered (" ", stream);
-	}
       LA_PRINT_STRING (stream, elttype, buffer, bytes_read / width,
 		       encoding, force_ellipsis, options);
     }
@@ -2003,13 +2520,13 @@ val_print_string (struct type *elttype, const char *encoding,
     {
       if (errcode == EIO)
 	{
-	  fprintf_filtered (stream, " <Address ");
+	  fprintf_filtered (stream, "<Address ");
 	  fputs_filtered (paddress (gdbarch, addr), stream);
 	  fprintf_filtered (stream, " out of bounds>");
 	}
       else
 	{
-	  fprintf_filtered (stream, " <Error reading address ");
+	  fprintf_filtered (stream, "<Error reading address ");
 	  fputs_filtered (paddress (gdbarch, addr), stream);
 	  fprintf_filtered (stream, ": %s>", safe_strerror (errcode));
 	}
@@ -2242,6 +2759,14 @@ Set printing of addresses."), _("\
 Show printing of addresses."), NULL,
 			   NULL,
 			   show_addressprint,
+			   &setprintlist, &showprintlist);
+
+  add_setshow_boolean_cmd ("symbol", class_support,
+			   &user_print_options.symbol_print, _("\
+Set printing of symbol names when printing pointers."), _("\
+Show printing of symbol names when printing pointers."),
+			   NULL, NULL,
+			   show_symbol_print,
 			   &setprintlist, &showprintlist);
 
   add_setshow_zuinteger_cmd ("input-radix", class_support, &input_radix_1,

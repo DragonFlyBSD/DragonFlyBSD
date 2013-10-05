@@ -1,7 +1,6 @@
 /* Shared library declarations for GDB, the GNU Debugger.
    
-   Copyright (C) 1992-1993, 1995, 1998-2001, 2003, 2005, 2007-2012 Free
-   Software Foundation, Inc.
+   Copyright (C) 1992-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -86,9 +85,9 @@ extern CORE_ADDR gdb_bfd_lookup_symbol (bfd *abfd,
 
 /* Look up symbol from symbol table.  */
 
-extern CORE_ADDR bfd_lookup_symbol_from_symtab (bfd *abfd,
-						int (*match_sym) (asymbol *,
-								  void *),
-						void *data);
+extern CORE_ADDR gdb_bfd_lookup_symbol_from_symtab (bfd *abfd,
+						    int (*match_sym) (asymbol *,
+								      void *),
+						    void *data);
 
 #endif /* SOLIB_H */

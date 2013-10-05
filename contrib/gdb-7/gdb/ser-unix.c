@@ -1,7 +1,6 @@
 /* Serial interface for local (hardwired) serial ports on Un*x like systems
 
-   Copyright (C) 1992-1996, 1998-2001, 2003-2005, 2007-2012 Free
-   Software Foundation, Inc.
+   Copyright (C) 1992-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 

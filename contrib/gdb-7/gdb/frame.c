@@ -1,7 +1,6 @@
 /* Cache and manage frames for GDB, the GNU debugger.
 
-   Copyright (C) 1986-1987, 1989, 1991, 1994-1996, 1998, 2000-2004,
-   2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -43,7 +42,7 @@
 #include "gdbthread.h"
 #include "block.h"
 #include "inline-frame.h"
-#include  "tracepoint.h"
+#include "tracepoint.h"
 
 static struct frame_info *get_prev_frame_1 (struct frame_info *this_frame);
 static struct frame_info *get_prev_frame_raw (struct frame_info *this_frame);
@@ -165,7 +164,7 @@ frame_stash_invalidate (void)
 
 /* Flag to control debugging.  */
 
-int frame_debug;
+unsigned int frame_debug;
 static void
 show_frame_debug (struct ui_file *file, int from_tty,
 		  struct cmd_list_element *c, const char *value)
@@ -196,7 +195,7 @@ show_backtrace_past_entry (struct ui_file *file, int from_tty,
 		    value);
 }
 
-static int backtrace_limit = INT_MAX;
+static unsigned int backtrace_limit = UINT_MAX;
 static void
 show_backtrace_limit (struct ui_file *file, int from_tty,
 		      struct cmd_list_element *c, const char *value)
@@ -226,8 +225,8 @@ fprint_frame_id (struct ui_file *file, struct frame_id id)
   fprint_field (file, "code", id.code_addr_p, id.code_addr);
   fprintf_unfiltered (file, ",");
   fprint_field (file, "special", id.special_addr_p, id.special_addr);
-  if (id.inline_depth)
-    fprintf_unfiltered (file, ",inlined=%d", id.inline_depth);
+  if (id.artificial_depth)
+    fprintf_unfiltered (file, ",artificial=%d", id.artificial_depth);
   fprintf_unfiltered (file, "}");
 }
 
@@ -303,13 +302,15 @@ fprint_frame (struct ui_file *file, struct frame_info *fi)
   fprintf_unfiltered (file, "}");
 }
 
-/* Given FRAME, return the enclosing normal frame for inlined
-   function frames.  Otherwise return the original frame.  */
+/* Given FRAME, return the enclosing frame as found in real frames read-in from
+   inferior memory.  Skip any previous frames which were made up by GDB.
+   Return the original frame if no immediate previous frames exist.  */
 
 static struct frame_info *
-skip_inlined_frames (struct frame_info *frame)
+skip_artificial_frames (struct frame_info *frame)
 {
-  while (get_frame_type (frame) == INLINE_FRAME)
+  while (get_frame_type (frame) == INLINE_FRAME
+	 || get_frame_type (frame) == TAILCALL_FRAME)
     frame = get_prev_frame (frame);
 
   return frame;
@@ -354,7 +355,7 @@ get_frame_id (struct frame_info *fi)
 struct frame_id
 get_stack_frame_id (struct frame_info *next_frame)
 {
-  return get_frame_id (skip_inlined_frames (next_frame));
+  return get_frame_id (skip_artificial_frames (next_frame));
 }
 
 struct frame_id
@@ -367,10 +368,10 @@ frame_unwind_caller_id (struct frame_info *next_frame)
      returning a null_frame_id (e.g., when a caller requests the frame
      ID of "main()"s caller.  */
 
-  next_frame = skip_inlined_frames (next_frame);
+  next_frame = skip_artificial_frames (next_frame);
   this_frame = get_prev_frame_1 (next_frame);
   if (this_frame)
-    return get_frame_id (skip_inlined_frames (this_frame));
+    return get_frame_id (skip_artificial_frames (this_frame));
   else
     return null_frame_id;
 }
@@ -435,12 +436,12 @@ frame_id_p (struct frame_id l)
 }
 
 int
-frame_id_inlined_p (struct frame_id l)
+frame_id_artificial_p (struct frame_id l)
 {
   if (!frame_id_p (l))
     return 0;
 
-  return (l.inline_depth != 0);
+  return (l.artificial_depth != 0);
 }
 
 int
@@ -472,8 +473,8 @@ frame_id_eq (struct frame_id l, struct frame_id r)
     /* An invalid special addr is a wild card (or unused).  Otherwise
        if special addresses are different, the frames are different.  */
     eq = 0;
-  else if (l.inline_depth != r.inline_depth)
-    /* If inline depths are different, the frames must be different.  */
+  else if (l.artificial_depth != r.artificial_depth)
+    /* If artifical depths are different, the frames must be different.  */
     eq = 0;
   else
     /* Frames are equal.  */
@@ -530,7 +531,7 @@ frame_id_inner (struct gdbarch *gdbarch, struct frame_id l, struct frame_id r)
   if (!l.stack_addr_p || !r.stack_addr_p)
     /* Like NaN, any operation involving an invalid ID always fails.  */
     inner = 0;
-  else if (l.inline_depth > r.inline_depth
+  else if (l.artificial_depth > r.artificial_depth
 	   && l.stack_addr == r.stack_addr
 	   && l.code_addr_p == r.code_addr_p
 	   && l.special_addr_p == r.special_addr_p
@@ -706,14 +707,14 @@ frame_unwind_pc (struct frame_info *this_frame)
 CORE_ADDR
 frame_unwind_caller_pc (struct frame_info *this_frame)
 {
-  return frame_unwind_pc (skip_inlined_frames (this_frame));
+  return frame_unwind_pc (skip_artificial_frames (this_frame));
 }
 
 int
 frame_unwind_caller_pc_if_available (struct frame_info *this_frame,
 				     CORE_ADDR *pc)
 {
-  return frame_unwind_pc_if_available (skip_inlined_frames (this_frame), pc);
+  return frame_unwind_pc_if_available (skip_artificial_frames (this_frame), pc);
 }
 
 int
@@ -774,7 +775,7 @@ get_frame_func (struct frame_info *this_frame)
 static enum register_status
 do_frame_register_read (void *src, int regnum, gdb_byte *buf)
 {
-  if (!frame_register_read (src, regnum, buf))
+  if (!deprecated_frame_register_read (src, regnum, buf))
     return REG_UNAVAILABLE;
   else
     return REG_VALID;
@@ -813,6 +814,11 @@ frame_pop (struct frame_info *this_frame)
 
   if (!prev_frame)
     error (_("Cannot pop the initial frame."));
+
+  /* Ignore TAILCALL_FRAME type frames, they were executed already before
+     entering THISFRAME.  */
+  while (get_frame_type (prev_frame) == TAILCALL_FRAME)
+    prev_frame = get_prev_frame (prev_frame);
 
   /* Make a copy of all the register values unwound from this frame.
      Save them in a scratch buffer so that there isn't a race between
@@ -1031,6 +1037,26 @@ get_frame_register_unsigned (struct frame_info *frame, int regnum)
   return frame_unwind_register_unsigned (frame->next, regnum);
 }
 
+int
+read_frame_register_unsigned (struct frame_info *frame, int regnum,
+			      ULONGEST *val)
+{
+  struct value *regval = get_frame_register_value (frame, regnum);
+
+  if (!value_optimized_out (regval)
+      && value_entirely_available (regval))
+    {
+      struct gdbarch *gdbarch = get_frame_arch (frame);
+      enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+      int size = register_size (gdbarch, VALUE_REGNUM (regval));
+
+      *val = extract_unsigned_integer (value_contents (regval), size, byte_order);
+      return 1;
+    }
+
+  return 0;
+}
+
 void
 put_frame_register (struct frame_info *frame, int regnum,
 		    const gdb_byte *buf)
@@ -1050,12 +1076,7 @@ put_frame_register (struct frame_info *frame, int regnum,
     {
     case lval_memory:
       {
-	/* FIXME: write_memory doesn't yet take constant buffers.
-           Arrrg!  */
-	gdb_byte tmp[MAX_REGISTER_SIZE];
-
-	memcpy (tmp, buf, register_size (gdbarch, regnum));
-	write_memory (addr, tmp, register_size (gdbarch, regnum));
+	write_memory (addr, buf, register_size (gdbarch, regnum));
 	break;
       }
     case lval_register:
@@ -1066,7 +1087,8 @@ put_frame_register (struct frame_info *frame, int regnum,
     }
 }
 
-/* frame_register_read ()
+/* This function is deprecated.  Use get_frame_register_value instead,
+   which provides more accurate information.
 
    Find and return the value of REGNUM for the specified stack frame.
    The number of bytes copied is REGISTER_SIZE (REGNUM).
@@ -1074,7 +1096,7 @@ put_frame_register (struct frame_info *frame, int regnum,
    Returns 0 if the register value could not be found.  */
 
 int
-frame_register_read (struct frame_info *frame, int regnum,
+deprecated_frame_register_read (struct frame_info *frame, int regnum,
 		     gdb_byte *myaddr)
 {
   int optimized;
@@ -1195,7 +1217,7 @@ put_frame_register_bytes (struct frame_info *frame, int regnum,
 	{
 	  gdb_byte buf[MAX_REGISTER_SIZE];
 
-	  frame_register_read (frame, regnum, buf);
+	  deprecated_frame_register_read (frame, regnum, buf);
 	  memcpy (buf + offset, myaddr, curr_len);
 	  put_frame_register (frame, regnum, buf);
 	}
@@ -2096,6 +2118,8 @@ find_frame_sal (struct frame_info *frame, struct symtab_and_line *sal)
 	   we can't do much better.  */
 	sal->pc = get_frame_pc (frame);
 
+      sal->pspace = get_frame_program_space (frame);
+
       return;
     }
 
@@ -2304,7 +2328,7 @@ frame_unwind_arch (struct frame_info *next_frame)
 struct gdbarch *
 frame_unwind_caller_arch (struct frame_info *next_frame)
 {
-  return frame_unwind_arch (skip_inlined_frames (next_frame));
+  return frame_unwind_arch (skip_artificial_frames (next_frame));
 }
 
 /* Stack pointer methods.  */
@@ -2466,23 +2490,23 @@ the rest of the stack trace."),
 			   &set_backtrace_cmdlist,
 			   &show_backtrace_cmdlist);
 
-  add_setshow_integer_cmd ("limit", class_obscure,
-			   &backtrace_limit, _("\
+  add_setshow_uinteger_cmd ("limit", class_obscure,
+			    &backtrace_limit, _("\
 Set an upper bound on the number of backtrace levels."), _("\
 Show the upper bound on the number of backtrace levels."), _("\
 No more than the specified number of frames can be displayed or examined.\n\
 Zero is unlimited."),
-			   NULL,
-			   show_backtrace_limit,
-			   &set_backtrace_cmdlist,
-			   &show_backtrace_cmdlist);
+			    NULL,
+			    show_backtrace_limit,
+			    &set_backtrace_cmdlist,
+			    &show_backtrace_cmdlist);
 
   /* Debug this files internals.  */
-  add_setshow_zinteger_cmd ("frame", class_maintenance, &frame_debug,  _("\
+  add_setshow_zuinteger_cmd ("frame", class_maintenance, &frame_debug,  _("\
 Set frame debugging."), _("\
 Show frame debugging."), _("\
 When non-zero, frame specific internal debugging is enabled."),
-			    NULL,
-			    show_frame_debug,
-			    &setdebuglist, &showdebuglist);
+			     NULL,
+			     show_frame_debug,
+			     &setdebuglist, &showdebuglist);
 }

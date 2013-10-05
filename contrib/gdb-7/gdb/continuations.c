@@ -1,6 +1,6 @@
 /* Continuations for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988-2012 Free Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -100,8 +100,6 @@ discard_my_continuations_1 (struct continuation **pmy_chain)
 static void
 discard_my_continuations (struct continuation **list)
 {
-  struct continuation *continuation_ptr = *list;
-
   discard_my_continuations_1 (list);
   *list = NULL;
 }

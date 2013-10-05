@@ -1,5 +1,5 @@
 /* Target signal numbers for GDB and the GDB remote protocol.
-   Copyright 1986, 1988-2002, 2007-2012 Free Software Foundation, Inc.
+   Copyright 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -45,9 +45,9 @@
    etc. are doing to address these issues.  */
 
 /* For an explanation of what each signal means, see
-   target_signal_to_string.  */
+   gdb_signal_to_string.  */
 
-enum target_signal
+enum gdb_signal
   {
 #define SET(symbol, constant, name, string) \
     symbol = constant,

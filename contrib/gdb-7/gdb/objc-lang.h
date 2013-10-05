@@ -1,6 +1,6 @@
 /* Objective-C language support definitions for GDB, the GNU debugger.
 
-   Copyright (C) 1992, 2005, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 1992-2013 Free Software Foundation, Inc.
 
    Contributed by Apple Computer, Inc.
 
@@ -27,10 +27,6 @@ struct stoken;
 struct value;
 struct block;
 
-extern int objc_parse (void);		/* Defined in c-exp.y */
-
-extern void objc_error (char *);	/* Defined in c-exp.y */
-
 extern CORE_ADDR lookup_objc_class     (struct gdbarch *gdbarch,
 					char *classname);
 extern CORE_ADDR lookup_child_selector (struct gdbarch *gdbarch,
@@ -50,7 +46,7 @@ extern void start_msglist (void);
 extern void add_msglist (struct stoken *str, int addcolon);
 extern int end_msglist (void);
 
-struct symbol *lookup_struct_typedef (char *name, struct block *block,
+struct symbol *lookup_struct_typedef (char *name, const struct block *block,
 				      int noerr);
 
 #endif

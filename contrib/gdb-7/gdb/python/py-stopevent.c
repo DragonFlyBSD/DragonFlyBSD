@@ -1,6 +1,6 @@
 /* Python interface to inferior stop events.
 
-   Copyright (C) 2009-2012 Free Software Foundation, Inc.
+   Copyright (C) 2009-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -17,6 +17,7 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+#include "defs.h"
 #include "py-stopevent.h"
 
 PyObject *
@@ -42,7 +43,7 @@ create_stop_event_object (PyTypeObject *py_type)
    returns -1.  */
 
 int
-emit_stop_event (struct bpstats *bs, enum target_signal stop_signal)
+emit_stop_event (struct bpstats *bs, enum gdb_signal stop_signal)
 {
   PyObject *stop_event_obj = NULL; /* Appease GCC warning.  */
   PyObject *list = NULL;
@@ -81,11 +82,12 @@ emit_stop_event (struct bpstats *bs, enum target_signal stop_signal)
       stop_event_obj = create_breakpoint_event_object (list, first_bp);
       if (!stop_event_obj)
         goto fail;
+      Py_DECREF (list);
     }
 
   /* Check if the signal is "Signal 0" or "Trace/breakpoint trap".  */
-  if (stop_signal != TARGET_SIGNAL_0
-      && stop_signal != TARGET_SIGNAL_TRAP)
+  if (stop_signal != GDB_SIGNAL_0
+      && stop_signal != GDB_SIGNAL_TRAP)
     {
       stop_event_obj =
 	  create_signal_event_object (stop_signal);

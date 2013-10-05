@@ -1,6 +1,6 @@
 /* General python/gdb code
 
-   Copyright (C) 2008-2012 Free Software Foundation, Inc.
+   Copyright (C) 2008-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -32,6 +32,7 @@
 #include "serial.h"
 #include "readline/tilde.h"
 #include "python.h"
+#include "cli/cli-utils.h"
 
 #include <ctype.h>
 
@@ -41,7 +42,7 @@ static const char python_excp_full[] = "full";
 static const char python_excp_message[] = "message";
 
 /* "set python print-stack" choices.  */
-static const char *python_excp_enums[] =
+static const char *const python_excp_enums[] =
   {
     python_excp_none,
     python_excp_full,
@@ -70,10 +71,16 @@ static const char *gdbpy_should_print_stack = python_excp_message;
 #include "gdbthread.h"
 #include "observer.h"
 #include "interps.h"
+#include "event-top.h"
 
 static PyMethodDef GdbMethods[];
 
+#ifdef IS_PY3K
+static struct PyModuleDef GdbModuleDef;
+#endif
+
 PyObject *gdb_module;
+PyObject *gdb_python_module;
 
 /* Some string constants we may wish to use.  */
 PyObject *gdbpy_to_string_cst;
@@ -151,34 +158,126 @@ ensure_python_env (struct gdbarch *gdbarch,
   return make_cleanup (restore_python_env, env);
 }
 
-/* A wrapper around PyRun_SimpleFile.  FILENAME is the name of
-   the Python script to run.
+/* Clear the quit flag.  */
 
-   One of the parameters of PyRun_SimpleFile is a FILE *.
-   The problem is that type FILE is extremely system and compiler
-   dependent.  So, unless the Python library has been compiled using
-   the same build environment as GDB, we run the risk of getting
-   a crash due to inconsistencies between the definition used by GDB,
-   and the definition used by Python.  A mismatch can very likely
-   lead to a crash.
+void
+clear_quit_flag (void)
+{
+  /* This clears the flag as a side effect.  */
+  PyOS_InterruptOccurred ();
+}
 
-   There is also the situation where the Python library and GDB
-   are using two different versions of the C runtime library.
-   This is particularly visible on Windows, where few users would
-   build Python themselves (this is no trivial task on this platform),
-   and thus use binaries built by someone else instead. Python,
-   being built with VC, would use one version of the msvcr DLL
-   (Eg. msvcr100.dll), while MinGW uses msvcrt.dll.  A FILE *
-   from one runtime does not necessarily operate correctly in
-   the other runtime.
+/* Set the quit flag.  */
 
-   To work around this potential issue, we create the FILE object
-   using Python routines, thus making sure that it is compatible
-   with the Python library.  */
+void
+set_quit_flag (void)
+{
+  PyErr_SetInterrupt ();
+}
+
+/* Return true if the quit flag has been set, false otherwise.  */
+
+int
+check_quit_flag (void)
+{
+  return PyOS_InterruptOccurred ();
+}
+
+/* Evaluate a Python command like PyRun_SimpleString, but uses
+   Py_single_input which prints the result of expressions, and does
+   not automatically print the stack on errors.  */
+
+static int
+eval_python_command (const char *command)
+{
+  PyObject *m, *d, *v;
+
+  m = PyImport_AddModule ("__main__");
+  if (m == NULL)
+    return -1;
+
+  d = PyModule_GetDict (m);
+  if (d == NULL)
+    return -1;
+  v = PyRun_StringFlags (command, Py_single_input, d, d, NULL);
+  if (v == NULL)
+    return -1;
+
+  Py_DECREF (v);
+#ifndef IS_PY3K
+  if (Py_FlushLine ())
+    PyErr_Clear ();
+#endif
+
+  return 0;
+}
+
+/* Implementation of the gdb "python-interactive" command.  */
 
 static void
-python_run_simple_file (const char *filename)
+python_interactive_command (char *arg, int from_tty)
 {
+  struct cleanup *cleanup;
+  int err;
+
+  cleanup = make_cleanup_restore_integer (&interpreter_async);
+  interpreter_async = 0;
+
+  arg = skip_spaces (arg);
+
+  ensure_python_env (get_current_arch (), current_language);
+
+  if (arg && *arg)
+    {
+      int len = strlen (arg);
+      char *script = xmalloc (len + 2);
+
+      strcpy (script, arg);
+      script[len] = '\n';
+      script[len + 1] = '\0';
+      err = eval_python_command (script);
+      xfree (script);
+    }
+  else
+    {
+      err = PyRun_InteractiveLoop (instream, "<stdin>");
+      dont_repeat ();
+    }
+
+  if (err)
+    {
+      gdbpy_print_stack ();
+      error (_("Error while executing Python code."));
+    }
+
+  do_cleanups (cleanup);
+}
+
+/* A wrapper around PyRun_SimpleFile.  FILE is the Python script to run
+   named FILENAME.
+
+   On Windows hosts few users would build Python themselves (this is no
+   trivial task on this platform), and thus use binaries built by
+   someone else instead.  There may happen situation where the Python
+   library and GDB are using two different versions of the C runtime
+   library.  Python, being built with VC, would use one version of the
+   msvcr DLL (Eg. msvcr100.dll), while MinGW uses msvcrt.dll.
+   A FILE * from one runtime does not necessarily operate correctly in
+   the other runtime.
+
+   To work around this potential issue, we create on Windows hosts the
+   FILE object using Python routines, thus making sure that it is
+   compatible with the Python library.  */
+
+static void
+python_run_simple_file (FILE *file, const char *filename)
+{
+#ifndef _WIN32
+
+  PyRun_SimpleFile (file, filename);
+
+#else /* _WIN32 */
+
   char *full_path;
   PyObject *python_file;
   struct cleanup *cleanup;
@@ -198,6 +297,8 @@ python_run_simple_file (const char *filename)
   make_cleanup_py_decref (python_file);
   PyRun_SimpleFile (PyFile_AsFile (python_file), filename);
   do_cleanups (cleanup);
+
+#endif /* _WIN32 */
 }
 
 /* Given a command_line, return a command string suitable for passing
@@ -266,8 +367,7 @@ python_command (char *arg, int from_tty)
   make_cleanup_restore_integer (&interpreter_async);
   interpreter_async = 0;
 
-  while (arg && *arg && isspace (*arg))
-    ++arg;
+  arg = skip_spaces (arg);
   if (arg && *arg)
     {
       if (PyRun_SimpleString (arg))
@@ -504,7 +604,7 @@ gdbpy_decode_line (PyObject *self, PyObject *args)
 						  appease gcc.  */
   struct symtab_and_line sal;
   const char *arg = NULL;
-  char *copy = NULL;
+  char *copy_to_free = NULL, *copy = NULL;
   struct cleanup *cleanups;
   PyObject *result = NULL;
   PyObject *return_result = NULL;
@@ -516,14 +616,14 @@ gdbpy_decode_line (PyObject *self, PyObject *args)
 
   cleanups = make_cleanup (null_cleanup, NULL);
 
+  sals.sals = NULL;
   TRY_CATCH (except, RETURN_MASK_ALL)
     {
       if (arg)
 	{
 	  copy = xstrdup (arg);
-	  make_cleanup (xfree, copy);
+	  copy_to_free = copy;
 	  sals = decode_line_1 (&copy, 0, 0, 0);
-	  make_cleanup (xfree, sals.sals);
 	}
       else
 	{
@@ -533,6 +633,13 @@ gdbpy_decode_line (PyObject *self, PyObject *args)
 	  sals.nelts = 1;
 	}
     }
+
+  if (sals.sals != NULL && sals.sals != &sal)
+    {
+      make_cleanup (xfree, copy_to_free);
+      make_cleanup (xfree, sals.sals);
+    }
+
   if (except.reason < 0)
     {
       do_cleanups (cleanups);
@@ -550,7 +657,6 @@ gdbpy_decode_line (PyObject *self, PyObject *args)
       for (i = 0; i < sals.nelts; ++i)
 	{
 	  PyObject *obj;
-	  char *str;
 
 	  obj = symtab_and_line_to_sal_object (sals.sals[i]);
 	  if (! obj)
@@ -576,7 +682,16 @@ gdbpy_decode_line (PyObject *self, PyObject *args)
     }
 
   if (copy && strlen (copy) > 0)
-    unparsed = PyString_FromString (copy);
+    {
+      unparsed = PyString_FromString (copy);
+      if (unparsed == NULL)
+	{
+	  Py_DECREF (result);
+	  Py_DECREF (return_result);
+	  return_result = NULL;
+	  goto error;
+	}
+    }
   else
     {
       unparsed = Py_None;
@@ -586,13 +701,10 @@ gdbpy_decode_line (PyObject *self, PyObject *args)
   PyTuple_SetItem (return_result, 0, unparsed);
   PyTuple_SetItem (return_result, 1, result);
 
+ error:
   do_cleanups (cleanups);
 
   return return_result;
-
- error:
-  do_cleanups (cleanups);
-  return NULL;
 }
 
 /* Parse a string and evaluate it as an expression.  */
@@ -608,29 +720,52 @@ gdbpy_parse_and_eval (PyObject *self, PyObject *args)
 
   TRY_CATCH (except, RETURN_MASK_ALL)
     {
-      char *copy = xstrdup (expr_str);
-      struct cleanup *cleanup = make_cleanup (xfree, copy);
-
-      result = parse_and_eval (copy);
-      do_cleanups (cleanup);
+      result = parse_and_eval (expr_str);
     }
   GDB_PY_HANDLE_EXCEPTION (except);
 
   return value_to_value_object (result);
 }
 
+/* Implementation of gdb.find_pc_line function.
+   Returns the gdb.Symtab_and_line object corresponding to a PC value.  */
+
+static PyObject *
+gdbpy_find_pc_line (PyObject *self, PyObject *args)
+{
+  gdb_py_ulongest pc_llu;
+  volatile struct gdb_exception except;
+  PyObject *result = NULL; /* init for gcc -Wall */
+
+  if (!PyArg_ParseTuple (args, GDB_PY_LLU_ARG, &pc_llu))
+    return NULL;
+
+  TRY_CATCH (except, RETURN_MASK_ALL)
+    {
+      struct symtab_and_line sal;
+      CORE_ADDR pc;
+
+      pc = (CORE_ADDR) pc_llu;
+      sal = find_pc_line (pc, 0);
+      result = symtab_and_line_to_sal_object (sal);
+    }
+  GDB_PY_HANDLE_EXCEPTION (except);
+
+  return result;
+}
+
 /* Read a file as Python code.
-   FILE is the name of the file.
+   FILE is the file to run.  FILENAME is name of the file FILE.
    This does not throw any errors.  If an exception occurs python will print
    the traceback and clear the error indicator.  */
 
 void
-source_python_script (const char *file)
+source_python_script (FILE *file, const char *filename)
 {
   struct cleanup *cleanup;
 
   cleanup = ensure_python_env (get_current_arch (), current_language);
-  python_run_simple_file (file);
+  python_run_simple_file (file, filename);
   do_cleanups (cleanup);
 }
 
@@ -664,7 +799,6 @@ static void
 gdbpy_run_events (struct serial *scb, void *context)
 {
   struct cleanup *cleanup;
-  int r;
 
   cleanup = ensure_python_env (get_current_arch (), current_language);
 
@@ -757,11 +891,12 @@ before_prompt_hook (const char *current_gdb_prompt)
 
   cleanup = ensure_python_env (get_current_arch (), current_language);
 
-  if (PyObject_HasAttrString (gdb_module, "prompt_hook"))
+  if (gdb_python_module
+      && PyObject_HasAttrString (gdb_python_module, "prompt_hook"))
     {
       PyObject *hook;
 
-      hook = PyObject_GetAttrString (gdb_module, "prompt_hook");
+      hook = PyObject_GetAttrString (gdb_python_module, "prompt_hook");
       if (hook == NULL)
 	goto fail;
 
@@ -834,26 +969,31 @@ gdbpy_write (PyObject *self, PyObject *args, PyObject *kw)
   const char *arg;
   static char *keywords[] = {"text", "stream", NULL };
   int stream_type = 0;
+  volatile struct gdb_exception except;
   
   if (! PyArg_ParseTupleAndKeywords (args, kw, "s|i", keywords, &arg,
 				     &stream_type))
     return NULL;
 
-  switch (stream_type)
+  TRY_CATCH (except, RETURN_MASK_ALL)
     {
-    case 1:
-      {
-	fprintf_filtered (gdb_stderr, "%s", arg);
-	break;
-      }
-    case 2:
-      {
-	fprintf_filtered (gdb_stdlog, "%s", arg);
-	break;
-      }
-    default:
-      fprintf_filtered (gdb_stdout, "%s", arg);
+      switch (stream_type)
+        {
+        case 1:
+          {
+	    fprintf_filtered (gdb_stderr, "%s", arg);
+	    break;
+          }
+        case 2:
+          {
+	    fprintf_filtered (gdb_stdlog, "%s", arg);
+	    break;
+          }
+        default:
+          fprintf_filtered (gdb_stdout, "%s", arg);
+        }
     }
+  GDB_PY_HANDLE_EXCEPTION (except);
      
   Py_RETURN_NONE;
 }
@@ -898,6 +1038,8 @@ gdbpy_flush (PyObject *self, PyObject *args, PyObject *kw)
 void
 gdbpy_print_stack (void)
 {
+  volatile struct gdb_exception except;
+
   /* Print "none", just clear exception.  */
   if (gdbpy_should_print_stack == python_excp_none)
     {
@@ -910,7 +1052,10 @@ gdbpy_print_stack (void)
       /* PyErr_Print doesn't necessarily end output with a newline.
 	 This works because Python's stdout/stderr is fed through
 	 printf_filtered.  */
-      begin_line ();
+      TRY_CATCH (except, RETURN_MASK_ALL)
+	{
+	  begin_line ();
+	}
     }
   /* Print "message", just error print message.  */
   else
@@ -923,17 +1068,21 @@ gdbpy_print_stack (void)
       /* Fetch the error message contained within ptype, pvalue.  */
       msg = gdbpy_exception_to_string (ptype, pvalue);
       type = gdbpy_obj_to_string (ptype);
-      if (msg == NULL)
+
+      TRY_CATCH (except, RETURN_MASK_ALL)
 	{
-	  /* An error occurred computing the string representation of the
-	     error message.  */
-	  fprintf_filtered (gdb_stderr,
-			    _("Error occurred computing Python error"	\
-			      "message.\n"));
+	  if (msg == NULL)
+	    {
+	      /* An error occurred computing the string representation of the
+		 error message.  */
+	      fprintf_filtered (gdb_stderr,
+				_("Error occurred computing Python error" \
+				  "message.\n"));
+	    }
+	  else
+	    fprintf_filtered (gdb_stderr, "Python Exception %s %s: \n",
+			      type, msg);
 	}
-      else
-	fprintf_filtered (gdb_stderr, "Python Exception %s %s: \n",
-			  type, msg);
 
       Py_XDECREF (ptype);
       Py_XDECREF (pvalue);
@@ -991,19 +1140,20 @@ gdbpy_progspaces (PyObject *unused1, PyObject *unused2)
    source_python_script_for_objfile; it is NULL at other times.  */
 static struct objfile *gdbpy_current_objfile;
 
-/* Set the current objfile to OBJFILE and then read FILE as Python code.
-   This does not throw any errors.  If an exception occurs python will print
-   the traceback and clear the error indicator.  */
+/* Set the current objfile to OBJFILE and then read FILE named FILENAME
+   as Python code.  This does not throw any errors.  If an exception
+   occurs python will print the traceback and clear the error indicator.  */
 
 void
-source_python_script_for_objfile (struct objfile *objfile, const char *file)
+source_python_script_for_objfile (struct objfile *objfile, FILE *file,
+                                  const char *filename)
 {
   struct cleanup *cleanups;
 
   cleanups = ensure_python_env (get_objfile_arch (objfile), current_language);
   gdbpy_current_objfile = objfile;
 
-  python_run_simple_file (file);
+  python_run_simple_file (file, filename);
 
   do_cleanups (cleanups);
   gdbpy_current_objfile = NULL;
@@ -1051,15 +1201,134 @@ gdbpy_objfiles (PyObject *unused1, PyObject *unused2)
   return list;
 }
 
+/* Compute the list of active type printers and return it.  The result
+   of this function can be passed to apply_type_printers, and should
+   be freed by free_type_printers.  */
+
+void *
+start_type_printers (void)
+{
+  struct cleanup *cleanups;
+  PyObject *type_module, *func, *result_obj = NULL;
+
+  cleanups = ensure_python_env (get_current_arch (), current_language);
+
+  type_module = PyImport_ImportModule ("gdb.types");
+  if (type_module == NULL)
+    {
+      gdbpy_print_stack ();
+      goto done;
+    }
+  make_cleanup_py_decref (type_module);
+
+  func = PyObject_GetAttrString (type_module, "get_type_recognizers");
+  if (func == NULL)
+    {
+      gdbpy_print_stack ();
+      goto done;
+    }
+  make_cleanup_py_decref (func);
+
+  result_obj = PyObject_CallFunctionObjArgs (func, (char *) NULL);
+  if (result_obj == NULL)
+    gdbpy_print_stack ();
+
+ done:
+  do_cleanups (cleanups);
+  return result_obj;
+}
+
+/* If TYPE is recognized by some type printer, return a newly
+   allocated string holding the type's replacement name.  The caller
+   is responsible for freeing the string.  Otherwise, return NULL.
+
+   This function has a bit of a funny name, since it actually applies
+   recognizers, but this seemed clearer given the start_type_printers
+   and free_type_printers functions.  */
+
+char *
+apply_type_printers (void *printers, struct type *type)
+{
+  struct cleanup *cleanups;
+  PyObject *type_obj, *type_module, *func, *result_obj;
+  PyObject *printers_obj = printers;
+  char *result = NULL;
+
+  if (printers_obj == NULL)
+    return NULL;
+
+  cleanups = ensure_python_env (get_current_arch (), current_language);
+
+  type_obj = type_to_type_object (type);
+  if (type_obj == NULL)
+    {
+      gdbpy_print_stack ();
+      goto done;
+    }
+  make_cleanup_py_decref (type_obj);
+
+  type_module = PyImport_ImportModule ("gdb.types");
+  if (type_module == NULL)
+    {
+      gdbpy_print_stack ();
+      goto done;
+    }
+  make_cleanup_py_decref (type_module);
+
+  func = PyObject_GetAttrString (type_module, "apply_type_recognizers");
+  if (func == NULL)
+    {
+      gdbpy_print_stack ();
+      goto done;
+    }
+  make_cleanup_py_decref (func);
+
+  result_obj = PyObject_CallFunctionObjArgs (func, printers_obj,
+					     type_obj, (char *) NULL);
+  if (result_obj == NULL)
+    {
+      gdbpy_print_stack ();
+      goto done;
+    }
+  make_cleanup_py_decref (result_obj);
+
+  if (result_obj != Py_None)
+    {
+      result = python_string_to_host_string (result_obj);
+      if (result == NULL)
+	gdbpy_print_stack ();
+    }
+
+ done:
+  do_cleanups (cleanups);
+  return result;
+}
+
+/* Free the result of start_type_printers.  */
+
+void
+free_type_printers (void *arg)
+{
+  struct cleanup *cleanups;
+  PyObject *printers = arg;
+
+  if (printers == NULL)
+    return;
+
+  cleanups = ensure_python_env (get_current_arch (), current_language);
+  Py_DECREF (printers);
+  do_cleanups (cleanups);
+}
+
 #else /* HAVE_PYTHON */
 
-/* Dummy implementation of the gdb "python" command.  */
+/* Dummy implementation of the gdb "python-interactive" and "python"
+   command. */
 
 static void
-python_command (char *arg, int from_tty)
+python_interactive_command (char *arg, int from_tty)
 {
-  while (arg && *arg && isspace (*arg))
-    ++arg;
+  arg = skip_spaces (arg);
   if (arg && *arg)
     error (_("Python scripting is not supported in this copy of GDB."));
   else
@@ -1072,6 +1341,12 @@ python_command (char *arg, int from_tty)
     }
 }
 
+static void
+python_command (char *arg, int from_tty)
+{
+  python_interactive_command (arg, from_tty);
+}
+
 void
 eval_python_from_control_command (struct command_line *cmd)
 {
@@ -1079,7 +1354,7 @@ eval_python_from_control_command (struct command_line *cmd)
 }
 
 void
-source_python_script (const char *file)
+source_python_script (FILE *file, const char *filename)
 {
   throw_error (UNSUPPORTED_ERROR,
 	       _("Python scripting is not supported in this copy of GDB."));
@@ -1101,59 +1376,24 @@ gdbpy_breakpoint_has_py_cond (struct breakpoint_object *bp_obj)
 		    "scripting is not supported."));
 }
 
+void *
+start_type_printers (void)
+{
+  return NULL;
+}
+
+char *
+apply_type_printers (void *ignore, struct type *type)
+{
+  return NULL;
+}
+
+void
+free_type_printers (void *arg)
+{
+}
+
 #endif /* HAVE_PYTHON */
-
-
-/* Support for "mt set python print-stack on|off" is present in gdb 7.4
-   to not break Eclipse.
-   ref: https://bugs.eclipse.org/bugs/show_bug.cgi?id=367788.  */
-
-/* Lists for 'maint set python' commands.  */
-
-static struct cmd_list_element *maint_set_python_list;
-static struct cmd_list_element *maint_show_python_list;
-
-/* Function for use by 'maint set python' prefix command.  */
-
-static void
-maint_set_python (char *args, int from_tty)
-{
-  help_list (maint_set_python_list, "maintenance set python ",
-	     class_deprecated, gdb_stdout);
-}
-
-/* Function for use by 'maint show python' prefix command.  */
-
-static void
-maint_show_python (char *args, int from_tty)
-{
-  cmd_show_list (maint_show_python_list, from_tty, "");
-}
-
-/* True if we should print the stack when catching a Python error,
-   false otherwise.  */
-static int gdbpy_should_print_stack_deprecated = 0;
-
-static void
-set_maint_python_print_stack (char *args, int from_tty,
-			      struct cmd_list_element *e)
-{
-  if (gdbpy_should_print_stack_deprecated)
-    gdbpy_should_print_stack = python_excp_full;
-  else
-    gdbpy_should_print_stack = python_excp_none;
-}
-
-static void
-show_maint_python_print_stack (struct ui_file *file, int from_tty,
-			       struct cmd_list_element *c, const char *value)
-{
-  fprintf_filtered (file,
-		    _("The mode of Python stack printing on error is"
-		      " \"%s\".\n"),
-		    gdbpy_should_print_stack == python_excp_full
-		    ? "on" : "off");
-}
 
 
 
@@ -1181,14 +1421,66 @@ user_show_python (char *args, int from_tty)
 
 /* Initialize the Python code.  */
 
+#ifdef HAVE_PYTHON
+
+/* This is installed as a final cleanup and cleans up the
+   interpreter.  This lets Python's 'atexit' work.  */
+
+static void
+finalize_python (void *ignore)
+{
+  /* We don't use ensure_python_env here because if we ever ran the
+     cleanup, gdb would crash -- because the cleanup calls into the
+     Python interpreter, which we are about to destroy.  It seems
+     clearer to make the needed calls explicitly here than to create a
+     cleanup and then mysteriously discard it.  */
+  (void) PyGILState_Ensure ();
+  python_gdbarch = target_gdbarch ();
+  python_language = current_language;
+
+  Py_Finalize ();
+}
+#endif
+
 /* Provide a prototype to silence -Wmissing-prototypes.  */
 extern initialize_file_ftype _initialize_python;
 
 void
 _initialize_python (void)
 {
-  char *cmd_name;
-  struct cmd_list_element *cmd;
+  char *progname;
+#ifdef IS_PY3K
+  int i;
+  size_t progsize, count;
+  char *oldloc;
+  wchar_t *progname_copy;
+#endif
+
+  add_com ("python-interactive", class_obscure,
+	   python_interactive_command,
+#ifdef HAVE_PYTHON
+	   _("\
+Start an interactive Python prompt.\n\
+\n\
+To return to GDB, type the EOF character (e.g., Ctrl-D on an empty\n\
+prompt).\n\
+\n\
+Alternatively, a single-line Python command can be given as an\n\
+argument, and if the command is an expression, the result will be\n\
+printed.  For example:\n\
+\n\
+    (gdb) python-interactive 2 + 3\n\
+    5\n\
+")
+#else /* HAVE_PYTHON */
+	   _("\
+Start a Python interactive prompt.\n\
+\n\
+Python scripting is not supported in this copy of GDB.\n\
+This command is only a placeholder.")
+#endif /* HAVE_PYTHON */
+	   );
+  add_com_alias ("pi", "python-interactive", class_obscure, 1);
 
   add_com ("python", class_obscure, python_command,
 #ifdef HAVE_PYTHON
@@ -1210,34 +1502,7 @@ Python scripting is not supported in this copy of GDB.\n\
 This command is only a placeholder.")
 #endif /* HAVE_PYTHON */
 	   );
-
-  add_prefix_cmd ("python", no_class, maint_show_python,
-		  _("Prefix command for python maintenance settings."),
-		  &maint_show_python_list, "maintenance show python ", 0,
-		  &maintenance_show_cmdlist);
-  add_prefix_cmd ("python", no_class, maint_set_python,
-		  _("Prefix command for python maintenance settings."),
-		  &maint_set_python_list, "maintenance set python ", 0,
-		  &maintenance_set_cmdlist);
-
-  add_setshow_boolean_cmd ("print-stack", class_maintenance,
-			   &gdbpy_should_print_stack_deprecated, _("\
-Enable or disable printing of Python stack dump on error."), _("\
-Show whether Python stack will be printed on error."), _("\
-Enables or disables printing of Python stack traces."),
-			   set_maint_python_print_stack,
-			   show_maint_python_print_stack,
-			   &maint_set_python_list,
-			   &maint_show_python_list);
-
-  /* Deprecate maint set/show python print-stack in favour of
-     non-maintenance alternatives.  */
-  cmd_name = "print-stack";
-  cmd = lookup_cmd (&cmd_name, maint_set_python_list, "", -1, 0);
-  deprecate_cmd (cmd, "set python print-stack");
-  cmd_name = "print-stack"; /* Reset name.  */
-  cmd = lookup_cmd (&cmd_name, maint_show_python_list, "", -1, 0);
-  deprecate_cmd (cmd, "show python print-stack");
+  add_com_alias ("py", "python", class_obscure, 1);
 
   /* Add set/show python print-stack.  */
   add_prefix_cmd ("python", no_class, user_show_python,
@@ -1269,14 +1534,50 @@ message == an error message without a stack will be printed."),
      /foo/bin/python
      /foo/lib/pythonX.Y/...
      This must be done before calling Py_Initialize.  */
-  Py_SetProgramName (concat (ldirname (python_libdir), SLASH_STRING, "bin",
-			     SLASH_STRING, "python", NULL));
+  progname = concat (ldirname (python_libdir), SLASH_STRING, "bin",
+		     SLASH_STRING, "python", NULL);
+#ifdef IS_PY3K
+  oldloc = setlocale (LC_ALL, NULL);
+  setlocale (LC_ALL, "");
+  progsize = strlen (progname);
+  if (progsize == (size_t) -1)
+    {
+      fprintf (stderr, "Could not convert python path to string\n");
+      return;
+    }
+  progname_copy = PyMem_Malloc ((progsize + 1) * sizeof (wchar_t));
+  if (!progname_copy)
+    {
+      fprintf (stderr, "out of memory\n");
+      return;
+    }
+  count = mbstowcs (progname_copy, progname, progsize + 1);
+  if (count == (size_t) -1)
+    {
+      fprintf (stderr, "Could not convert python path to string\n");
+      return;
+    }
+  setlocale (LC_ALL, oldloc);
+
+  /* Note that Py_SetProgramName expects the string it is passed to
+     remain alive for the duration of the program's execution, so
+     it is not freed after this call.  */
+  Py_SetProgramName (progname_copy);
+#else
+  Py_SetProgramName (progname);
+#endif
 #endif
 
   Py_Initialize ();
   PyEval_InitThreads ();
 
-  gdb_module = Py_InitModule ("gdb", GdbMethods);
+#ifdef IS_PY3K
+  gdb_module = PyModule_Create (&GdbModuleDef);
+  /* Add _gdb module to the list of known built-in modules.  */
+  _PyImport_FixupBuiltin (gdb_module, "_gdb");
+#else
+  gdb_module = Py_InitModule ("_gdb", GdbMethods);
+#endif
 
   /* The casts to (char*) are for python 2.4.  */
   PyModule_AddStringConstant (gdb_module, "VERSION", (char*) version);
@@ -1288,17 +1589,6 @@ message == an error message without a stack will be printed."),
   PyModule_AddIntConstant (gdb_module, "STDOUT", 0);
   PyModule_AddIntConstant (gdb_module, "STDERR", 1);
   PyModule_AddIntConstant (gdb_module, "STDLOG", 2);
-  
-  /* gdb.parameter ("data-directory") doesn't necessarily exist when the python
-     script below is run (depending on order of _initialize_* functions).
-     Define the initial value of gdb.PYTHONDIR here.  */
-  {
-    char *gdb_pythondir;
-
-    gdb_pythondir = concat (gdb_datadir, SLASH_STRING, "python", NULL);
-    PyModule_AddStringConstant (gdb_module, "PYTHONDIR", gdb_pythondir);
-    xfree (gdb_pythondir);
-  }
 
   gdbpy_gdb_error = PyErr_NewException ("gdb.error", PyExc_RuntimeError, NULL);
   PyModule_AddObject (gdb_module, "error", gdbpy_gdb_error);
@@ -1310,6 +1600,7 @@ message == an error message without a stack will be printed."),
   gdbpy_gdberror_exc = PyErr_NewException ("gdb.GdbError", NULL, NULL);
   PyModule_AddObject (gdb_module, "GdbError", gdbpy_gdberror_exc);
 
+  gdbpy_initialize_gdb_readline ();
   gdbpy_initialize_auto_load ();
   gdbpy_initialize_values ();
   gdbpy_initialize_frames ();
@@ -1339,11 +1630,9 @@ message == an error message without a stack will be printed."),
   gdbpy_initialize_exited_event ();
   gdbpy_initialize_thread_event ();
   gdbpy_initialize_new_objfile_event () ;
+  gdbpy_initialize_arch ();
 
   observer_attach_before_prompt (before_prompt_hook);
-
-  PyRun_SimpleString ("import gdb");
-  PyRun_SimpleString ("gdb.pretty_printers = []");
 
   gdbpy_to_string_cst = PyString_FromString ("to_string");
   gdbpy_children_cst = PyString_FromString ("children");
@@ -1356,6 +1645,7 @@ message == an error message without a stack will be printed."),
   PyThreadState_Swap (NULL);
   PyEval_ReleaseLock ();
 
+  make_final_cleanup (finalize_python, NULL);
 #endif /* HAVE_PYTHON */
 }
 
@@ -1369,85 +1659,81 @@ message == an error message without a stack will be printed."),
 void
 finish_python_initialization (void)
 {
+  PyObject *m;
+  char *gdb_pythondir;
+  PyObject *sys_path;
   struct cleanup *cleanup;
 
   cleanup = ensure_python_env (get_current_arch (), current_language);
 
-  PyRun_SimpleString ("\
-import os\n\
-import sys\n\
-\n\
-class GdbOutputFile:\n\
-  def close(self):\n\
-    # Do nothing.\n\
-    return None\n\
-\n\
-  def isatty(self):\n\
-    return False\n\
-\n\
-  def write(self, s):\n\
-    gdb.write(s, stream=gdb.STDOUT)\n   \
-\n\
-  def writelines(self, iterable):\n\
-    for line in iterable:\n\
-      self.write(line)\n\
-\n\
-  def flush(self):\n\
-    gdb.flush()\n\
-\n\
-sys.stdout = GdbOutputFile()\n\
-\n\
-class GdbOutputErrorFile:\n\
-  def close(self):\n\
-    # Do nothing.\n\
-    return None\n\
-\n\
-  def isatty(self):\n\
-    return False\n\
-\n\
-  def write(self, s):\n\
-    gdb.write(s, stream=gdb.STDERR)\n		\
-\n\
-  def writelines(self, iterable):\n\
-    for line in iterable:\n\
-      self.write(line)\n \
-\n\
-  def flush(self):\n\
-    gdb.flush()\n\
-\n\
-sys.stderr = GdbOutputErrorFile()\n\
-\n\
-# Ideally this would live in the gdb module, but it's intentionally written\n\
-# in python, and we need this to bootstrap the gdb module.\n\
-\n\
-def GdbSetPythonDirectory (dir):\n\
-  \"Set gdb.PYTHONDIR and update sys.path,etc.\"\n\
-  old_dir = gdb.PYTHONDIR\n\
-  gdb.PYTHONDIR = dir\n\
-  # GDB's python scripts are stored inside gdb.PYTHONDIR.  So insert\n\
-  # that directory name at the start of sys.path to allow the Python\n\
-  # interpreter to find them.\n\
-  if old_dir in sys.path:\n\
-    sys.path.remove (old_dir)\n\
-  sys.path.insert (0, gdb.PYTHONDIR)\n\
-\n\
-  # Tell python where to find submodules of gdb.\n\
-  gdb.__path__ = [os.path.join (gdb.PYTHONDIR, 'gdb')]\n\
-\n\
-  # The gdb module is implemented in C rather than in Python.  As a result,\n\
-  # the associated __init.py__ script is not not executed by default when\n\
-  # the gdb module gets imported.  Execute that script manually if it\n\
-  # exists.\n\
-  ipy = os.path.join (gdb.PYTHONDIR, 'gdb', '__init__.py')\n\
-  if os.path.exists (ipy):\n\
-    execfile (ipy)\n\
-\n\
-# Install the default gdb.PYTHONDIR.\n\
-GdbSetPythonDirectory (gdb.PYTHONDIR)\n\
-# Default prompt hook does nothing.\n\
-prompt_hook = None\n\
-");
+  /* Add the initial data-directory to sys.path.  */
 
+  gdb_pythondir = concat (gdb_datadir, SLASH_STRING, "python", NULL);
+  make_cleanup (xfree, gdb_pythondir);
+
+  sys_path = PySys_GetObject ("path");
+
+  /* If sys.path is not defined yet, define it first.  */
+  if (!(sys_path && PyList_Check (sys_path)))
+    {
+#ifdef IS_PY3K
+      PySys_SetPath (L"");
+#else
+      PySys_SetPath ("");
+#endif
+      sys_path = PySys_GetObject ("path");
+    }
+  if (sys_path && PyList_Check (sys_path))  
+    {
+      PyObject *pythondir;
+      int err;
+
+      pythondir = PyString_FromString (gdb_pythondir);
+      if (pythondir == NULL)
+	goto fail;
+
+      err = PyList_Insert (sys_path, 0, pythondir);
+      if (err)
+	goto fail;
+
+      Py_DECREF (pythondir);
+    }
+  else
+    goto fail;
+
+  /* Import the gdb module to finish the initialization, and
+     add it to __main__ for convenience.  */
+  m = PyImport_AddModule ("__main__");
+  if (m == NULL)
+    goto fail;
+
+  gdb_python_module = PyImport_ImportModule ("gdb");
+  if (gdb_python_module == NULL)
+    {
+      gdbpy_print_stack ();
+      /* This is passed in one call to warning so that blank lines aren't
+	 inserted between each line of text.  */
+      warning (_("\n"
+		 "Could not load the Python gdb module from `%s'.\n"
+		 "Limited Python support is available from the _gdb module.\n"
+		 "Suggest passing --data-directory=/path/to/gdb/data-directory.\n"),
+		 gdb_pythondir);
+      do_cleanups (cleanup);
+      return;
+    }
+
+  if (PyModule_AddObject (m, "gdb", gdb_python_module))
+    goto fail;
+
+  /* Keep the reference to gdb_python_module since it is in a global
+     variable.  */
+
+  do_cleanups (cleanup);
+  return;
+
+ fail:
+  gdbpy_print_stack ();
+  warning (_("internal error: Unhandled Python exception"));
   do_cleanups (cleanup);
 }
 
@@ -1522,6 +1808,9 @@ gdb.Symtab_and_line objects (or None)."},
     "parse_and_eval (String) -> Value.\n\
 Parse String as an expression, evaluate it, and return the result as a Value."
   },
+  { "find_pc_line", gdbpy_find_pc_line, METH_VARARGS,
+    "find_pc_line (pc) -> Symtab_and_line.\n\
+Return the gdb.Symtab_and_line object corresponding to the pc value." },
 
   { "post_event", gdbpy_post_event, METH_VARARGS,
     "Post an event into gdb's event loop." },
@@ -1554,4 +1843,18 @@ Return a tuple containing all inferiors." },
   {NULL, NULL, 0, NULL}
 };
 
+#ifdef IS_PY3K
+static struct PyModuleDef GdbModuleDef =
+{
+  PyModuleDef_HEAD_INIT,
+  "_gdb",
+  NULL,
+  -1, 
+  GdbMethods,
+  NULL,
+  NULL,
+  NULL,
+  NULL
+};
+#endif
 #endif /* HAVE_PYTHON */

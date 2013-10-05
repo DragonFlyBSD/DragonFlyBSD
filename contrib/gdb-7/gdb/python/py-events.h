@@ -1,6 +1,6 @@
 /* Python interface to inferior events.
 
-   Copyright (C) 2009-2012 Free Software Foundation, Inc.
+   Copyright (C) 2009-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,7 +20,6 @@
 #ifndef GDB_PY_EVENTS_H
 #define GDB_PY_EVENTS_H
 
-#include "defs.h"
 #include "command.h"
 #include "python-internal.h"
 #include "inferior.h"

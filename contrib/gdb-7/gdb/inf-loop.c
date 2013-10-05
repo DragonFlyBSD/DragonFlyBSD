@@ -1,5 +1,5 @@
 /* Handling of inferior events for the event loop for GDB, the GNU debugger.
-   Copyright (C) 1999, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 1999-2013 Free Software Foundation, Inc.
    Written by Elena Zannoni <ezannoni@cygnus.com> of Cygnus Solutions.
 
    This file is part of GDB.
@@ -29,6 +29,7 @@
 #include "gdbthread.h"
 #include "continuations.h"
 #include "interps.h"
+#include "top.h"
 
 static int fetch_inferior_event_wrapper (gdb_client_data client_data);
 
@@ -106,10 +107,7 @@ inferior_event_handler (enum inferior_event_type event_type,
 	{
 	  volatile struct gdb_exception e;
 
-	  if (info_verbose
-	      && current_language != expected_language
-	      && language_mode == language_mode_auto)
-	    language_info (1);	/* Print what changed.  */
+	  check_frame_language_change ();
 
 	  /* Don't propagate breakpoint commands errors.  Either we're
 	     stopping or some command resumes the inferior.  The user will

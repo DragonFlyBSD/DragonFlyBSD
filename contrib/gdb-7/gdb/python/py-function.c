@@ -1,6 +1,6 @@
 /* Convenience functions implemented in Python.
 
-   Copyright (C) 2008-2012 Free Software Foundation, Inc.
+   Copyright (C) 2008-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -208,8 +208,7 @@ gdbpy_initialize_functions (void)
 
 static PyTypeObject fnpy_object_type =
 {
-  PyObject_HEAD_INIT (NULL)
-  0,				  /*ob_size*/
+  PyVarObject_HEAD_INIT (NULL, 0)
   "gdb.Function",		  /*tp_name*/
   sizeof (PyObject),		  /*tp_basicsize*/
   0,				  /*tp_itemsize*/

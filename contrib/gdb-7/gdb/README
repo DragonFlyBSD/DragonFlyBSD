@@ -446,10 +446,10 @@ prefer; but you may abbreviate option names if you use `--'.
      Build GDB with the gdbtk GUI interface.  Requires TCL/Tk to be
      installed.
 
-`--with-libunwind'
-     Use the libunwind library for unwinding function call stack.  See
-     http://www.nongnu.org/libunwind/index.html fro details.
-     Supported only on some platforms.
+`--with-libunwind-ia64'
+     Use the libunwind library for unwinding function call stack on ia64
+     target platforms.
+     See http://www.nongnu.org/libunwind/index.html for details.
 
 `--with-curses'
      Use the curses library instead of the termcap library, for

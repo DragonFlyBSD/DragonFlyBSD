@@ -297,7 +297,7 @@ getsym (char *dstp, char **srcp, unsigned int *lenp)
   char *src = *srcp;
   unsigned int i;
   unsigned int len;
-  
+
   if (!ISHEX (*src))
     return FALSE;
 
