@@ -1,5 +1,5 @@
 /* Data structures associated with tracepoints in GDB.
-   Copyright (C) 1997-2000, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 1997-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -22,6 +22,7 @@
 #include "breakpoint.h"
 #include "target.h"
 #include "memrange.h"
+#include "gdb_vecs.h"
 
 /* A trace state variable is a value managed by a target being
    traced.  A trace state variable (or tsv for short) can be accessed
@@ -71,9 +72,9 @@ enum trace_stop_reason
 
 struct trace_status
 {
-  /* This is true if the status is coming from a file rather
-     than a live target.  */
-  int from_file;
+  /* If the status is coming from a file rather than a live target,
+     this points at the file's filename.  Otherwise, this is NULL.  */
+  const char *filename;
 
   /* This is true if the value of the running field is known.  */
   int running_known;
@@ -143,8 +144,6 @@ extern char *default_collect;
 
 /* Struct to collect random info about tracepoints on the target.  */
 
-DEF_VEC_P (char_ptr);
-
 struct uploaded_tp
 {
   int number;
@@ -210,6 +209,7 @@ extern void parse_static_tracepoint_marker_definition
   (char *line, char **pp,
    struct static_tracepoint_marker *marker);
 extern void release_static_tracepoint_marker (struct static_tracepoint_marker *);
+extern void free_current_marker (void *arg);
 
 /* A hook used to notify the UI of tracepoint operations.  */
 
@@ -239,10 +239,11 @@ void free_actions (struct breakpoint *);
 
 extern char *decode_agent_options (char *exp);
 
-extern void validate_actionline (char **, struct breakpoint *);
+extern void encode_actions (struct breakpoint *t, struct bp_location *tloc,
+			    char ***tdp_actions, char ***stepping_actions);
 
-extern void end_actions_pseudocommand (char *args, int from_tty);
-extern void while_stepping_pseudocommand (char *args, int from_tty);
+extern void validate_actionline (char **, struct breakpoint *);
+extern void validate_trace_state_variable_name (const char *name);
 
 extern struct trace_state_variable *find_trace_state_variable (const char *name);
 extern struct trace_state_variable *create_trace_state_variable (const char *name);

@@ -1,5 +1,5 @@
 /* Remote target communications for serial-line targets in custom GDB protocol
-   Copyright (C) 1999, 2003-2012 Free Software Foundation, Inc.
+   Copyright (C) 1999-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -19,6 +19,8 @@
 #ifndef REMOTE_H
 #define REMOTE_H
 
+#include "remote-notif.h"
+
 struct target_desc;
 
 /* Read a packet from the remote machine, with error checking, and
@@ -36,6 +38,10 @@ extern void getpkt (char **buf, long *sizeof_buf, int forever);
    as a string.  */
 
 extern int putpkt (char *buf);
+
+extern int hex2bin (const char *hex, gdb_byte *bin, int count);
+
+extern int bin2hex (const gdb_byte *bin, char *hex, int count);
 
 extern char *unpack_varlen_hex (char *buff, ULONGEST *result);
 
@@ -59,4 +65,5 @@ extern int remote_register_number_and_offset (struct gdbarch *gdbarch,
 					      int regnum, int *pnum,
 					      int *poffset);
 
+extern void remote_notif_get_pending_events (struct notif_client *np);
 #endif

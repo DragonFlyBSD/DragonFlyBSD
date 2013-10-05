@@ -1,6 +1,6 @@
 /* MI Command Set.
 
-   Copyright (C) 2000-2005, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2000-2013 Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions (a Red Hat company).
 
@@ -18,8 +18,6 @@
 
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
-
-/* Work in progress.  */
 
 #include "defs.h"
 #include "arch-utils.h"
@@ -71,18 +69,19 @@ enum
   };
 
 int mi_debug_p;
+
 struct ui_file *raw_stdout;
 
-/* This is used to pass the current command timestamp
-   down to continuation routines.  */
+/* This is used to pass the current command timestamp down to
+   continuation routines.  */
 static struct mi_timestamp *current_command_ts;
 
 static int do_timings = 0;
 
 char *current_token;
-/* Few commands would like to know if options like --thread-group
-   were explicitly specified.  This variable keeps the current
-   parsed command including all option, and make it possible.  */
+/* Few commands would like to know if options like --thread-group were
+   explicitly specified.  This variable keeps the current parsed
+   command including all option, and make it possible.  */
 static struct mi_parse *current_context;
 
 int running_result_record_printed = 1;
@@ -178,7 +177,7 @@ void
 mi_cmd_exec_return (char *command, char **argv, int argc)
 {
   /* This command doesn't really execute the target, it just pops the
-     specified number of frames. */
+     specified number of frames.  */
   if (argc)
     /* Call return_command with from_tty argument equal to 0 so as to
        avoid being queried.  */
@@ -211,9 +210,8 @@ proceed_thread (struct thread_info *thread, int pid)
 
   switch_to_thread (thread->ptid);
   clear_proceed_status ();
-  proceed ((CORE_ADDR) -1, TARGET_SIGNAL_DEFAULT, 0);
+  proceed ((CORE_ADDR) -1, GDB_SIGNAL_DEFAULT, 0);
 }
-
 
 static int
 proceed_thread_callback (struct thread_info *thread, void *arg)
@@ -229,9 +227,10 @@ exec_continue (char **argv, int argc)
 {
   if (non_stop)
     {
-      /* In non-stop mode, 'resume' always resumes a single thread.  Therefore,
-	 to resume all threads of the current inferior, or all threads in all
-	 inferiors, we need to iterate over threads.
+      /* In non-stop mode, 'resume' always resumes a single thread.
+	 Therefore, to resume all threads of the current inferior, or
+	 all threads in all inferiors, we need to iterate over
+	 threads.
 
 	 See comment on infcmd.c:proceed_thread_callback for rationale.  */
       if (current_context->all || current_context->thread_group != -1)
@@ -265,9 +264,10 @@ exec_continue (char **argv, int argc)
 	}
       else
 	{
-	  /* In all-stop mode, -exec-continue traditionally resumed either
-	     all threads, or one thread, depending on the 'scheduler-locking'
-	     variable.  Let's continue to do the same.  */
+	  /* In all-stop mode, -exec-continue traditionally resumed
+	     either all threads, or one thread, depending on the
+	     'scheduler-locking' variable.  Let's continue to do the
+	     same.  */
 	  continue_1 (1);
 	}
       do_cleanups (back_to);
@@ -322,11 +322,12 @@ interrupt_thread_callback (struct thread_info *thread, void *arg)
   return 0;
 }
 
-/* Interrupt the execution of the target.  Note how we must play around
-   with the token variables, in order to display the current token in
-   the result of the interrupt command, and the previous execution
-   token when the target finally stops.  See comments in
+/* Interrupt the execution of the target.  Note how we must play
+   around with the token variables, in order to display the current
+   token in the result of the interrupt command, and the previous
+   execution token when the target finally stops.  See comments in
    mi_cmd_execute.  */
+
 void
 mi_cmd_exec_interrupt (char *command, char **argv, int argc)
 {
@@ -507,6 +508,8 @@ mi_cmd_thread_info (char *command, char **argv, int argc)
   print_thread_info (current_uiout, argv[0], -1);
 }
 
+DEF_VEC_I(int);
+
 struct collect_cores_data
 {
   int pid;
@@ -567,10 +570,10 @@ print_one_inferior (struct inferior *inferior, void *xdata)
       if (inferior->pid != 0)
 	ui_out_field_int (uiout, "pid", inferior->pid);
 
-      if (inferior->pspace->ebfd)
+      if (inferior->pspace->pspace_exec_filename != NULL)
 	{
 	  ui_out_field_string (uiout, "executable",
-			       bfd_get_filename (inferior->pspace->ebfd));
+			       inferior->pspace->pspace_exec_filename);
 	}
 
       data.cores = 0;
@@ -609,8 +612,9 @@ print_one_inferior (struct inferior *inferior, void *xdata)
   return 0;
 }
 
-/* Output a field named 'cores' with a list as the value.  The elements of
-   the list are obtained by splitting 'cores' on comma.  */
+/* Output a field named 'cores' with a list as the value.  The
+   elements of the list are obtained by splitting 'cores' on
+   comma.  */
 
 static void
 output_cores (struct ui_out *uiout, const char *field_name, const char *xcores)
@@ -797,23 +801,23 @@ mi_cmd_list_thread_groups (char *command, char **argv, int argc)
   VEC (int) *ids = 0;
 
   enum opt
-    {
-      AVAILABLE_OPT, RECURSE_OPT
-    };
-  static const struct mi_opt opts[] =
   {
-    {"-available", AVAILABLE_OPT, 0},
-    {"-recurse", RECURSE_OPT, 1},
-    { 0, 0, 0 }
+    AVAILABLE_OPT, RECURSE_OPT
   };
+  static const struct mi_opt opts[] =
+    {
+      {"-available", AVAILABLE_OPT, 0},
+      {"-recurse", RECURSE_OPT, 1},
+      { 0, 0, 0 }
+    };
 
-  int optind = 0;
-  char *optarg;
+  int oind = 0;
+  char *oarg;
 
   while (1)
     {
       int opt = mi_getopt ("-list-thread-groups", argc, argv, opts,
-			   &optind, &optarg);
+			   &oind, &oarg);
 
       if (opt < 0)
 	break;
@@ -823,9 +827,9 @@ mi_cmd_list_thread_groups (char *command, char **argv, int argc)
 	  available = 1;
 	  break;
 	case RECURSE_OPT:
-	  if (strcmp (optarg, "0") == 0)
+	  if (strcmp (oarg, "0") == 0)
 	    ;
-	  else if (strcmp (optarg, "1") == 0)
+	  else if (strcmp (oarg, "1") == 0)
 	    recurse = 1;
 	  else
 	    error (_("only '0' and '1' are valid values "
@@ -834,18 +838,18 @@ mi_cmd_list_thread_groups (char *command, char **argv, int argc)
 	}
     }
 
-  for (; optind < argc; ++optind)
+  for (; oind < argc; ++oind)
     {
       char *end;
       int inf;
 
-      if (*(argv[optind]) != 'i')
-	error (_("invalid syntax of group id '%s'"), argv[optind]);
+      if (*(argv[oind]) != 'i')
+	error (_("invalid syntax of group id '%s'"), argv[oind]);
 
-      inf = strtoul (argv[optind] + 1, &end, 0);
+      inf = strtoul (argv[oind] + 1, &end, 0);
 
       if (*end != '\0')
-	error (_("invalid syntax of group id '%s'"), argv[optind]);
+	error (_("invalid syntax of group id '%s'"), argv[oind]);
       VEC_safe_push (int, ids, inf);
     }
   if (VEC_length (int, ids) > 1)
@@ -861,7 +865,7 @@ mi_cmd_list_thread_groups (char *command, char **argv, int argc)
     }
   else if (VEC_length (int, ids) == 1)
     {
-      /* Local thread groups, single id. */
+      /* Local thread groups, single id.  */
       int id = *VEC_address (int, ids);
       struct inferior *inf = find_inferior_id (id);
 
@@ -899,10 +903,11 @@ mi_cmd_data_list_register_names (char *command, char **argv, int argc)
   struct cleanup *cleanup;
 
   /* Note that the test for a valid register must include checking the
-     gdbarch_register_name because gdbarch_num_regs may be allocated for
-     the union of the register sets within a family of related processors.
-     In this case, some entries of gdbarch_register_name will change depending
-     upon the particular processor being debugged.  */
+     gdbarch_register_name because gdbarch_num_regs may be allocated
+     for the union of the register sets within a family of related
+     processors.  In this case, some entries of gdbarch_register_name
+     will change depending upon the particular processor being
+     debugged.  */
 
   gdbarch = get_current_arch ();
   numregs = gdbarch_num_regs (gdbarch) + gdbarch_num_pseudo_regs (gdbarch);
@@ -952,27 +957,30 @@ mi_cmd_data_list_changed_registers (char *command, char **argv, int argc)
   int i;
   struct cleanup *cleanup;
 
-  /* The last time we visited this function, the current frame's register
-     contents were saved in THIS_REGS.  Move THIS_REGS over to PREV_REGS,
-     and refresh THIS_REGS with the now-current register contents.  */
+  /* The last time we visited this function, the current frame's
+     register contents were saved in THIS_REGS.  Move THIS_REGS over
+     to PREV_REGS, and refresh THIS_REGS with the now-current register
+     contents.  */
 
   prev_regs = this_regs;
   this_regs = frame_save_as_regcache (get_selected_frame (NULL));
   cleanup = make_cleanup_regcache_xfree (prev_regs);
 
   /* Note that the test for a valid register must include checking the
-     gdbarch_register_name because gdbarch_num_regs may be allocated for
-     the union of the register sets within a family of related processors.
-     In this  case, some entries of gdbarch_register_name will change depending
-     upon the particular processor being debugged.  */
+     gdbarch_register_name because gdbarch_num_regs may be allocated
+     for the union of the register sets within a family of related
+     processors.  In this case, some entries of gdbarch_register_name
+     will change depending upon the particular processor being
+     debugged.  */
 
   gdbarch = get_regcache_arch (this_regs);
   numregs = gdbarch_num_regs (gdbarch) + gdbarch_num_pseudo_regs (gdbarch);
 
   make_cleanup_ui_out_list_begin_end (uiout, "changed-registers");
 
-  if (argc == 0)		/* No args, just do all the regs.  */
+  if (argc == 0)
     {
+      /* No args, just do all the regs.  */
       for (regnum = 0;
 	   regnum < numregs;
 	   regnum++)
@@ -1042,11 +1050,13 @@ register_changed_p (int regnum, struct regcache *prev_regs,
 
 /* Return a list of register number and value pairs.  The valid
    arguments expected are: a letter indicating the format in which to
-   display the registers contents.  This can be one of: x (hexadecimal), d
-   (decimal), N (natural), t (binary), o (octal), r (raw).  After the
-   format argumetn there can be a sequence of numbers, indicating which
-   registers to fetch the content of.  If the format is the only argument,
-   a list of all the registers with their values is returned.  */
+   display the registers contents.  This can be one of: x
+   (hexadecimal), d (decimal), N (natural), t (binary), o (octal), r
+   (raw).  After the format argument there can be a sequence of
+   numbers, indicating which registers to fetch the content of.  If
+   the format is the only argument, a list of all the registers with
+   their values is returned.  */
+
 void
 mi_cmd_data_list_register_values (char *command, char **argv, int argc)
 {
@@ -1058,10 +1068,11 @@ mi_cmd_data_list_register_values (char *command, char **argv, int argc)
   struct cleanup *list_cleanup, *tuple_cleanup;
 
   /* Note that the test for a valid register must include checking the
-     gdbarch_register_name because gdbarch_num_regs may be allocated for
-     the union of the register sets within a family of related processors.
-     In this case, some entries of gdbarch_register_name will change depending
-     upon the particular processor being debugged.  */
+     gdbarch_register_name because gdbarch_num_regs may be allocated
+     for the union of the register sets within a family of related
+     processors.  In this case, some entries of gdbarch_register_name
+     will change depending upon the particular processor being
+     debugged.  */
 
   if (argc == 0)
     error (_("-data-list-register-values: Usage: "
@@ -1075,8 +1086,9 @@ mi_cmd_data_list_register_values (char *command, char **argv, int argc)
 
   list_cleanup = make_cleanup_ui_out_list_begin_end (uiout, "register-values");
 
-  if (argc == 1)	    /* No args, beside the format: do all the regs.  */
+  if (argc == 1)
     {
+      /* No args, beside the format: do all the regs.  */
       for (regnum = 0;
 	   regnum < numregs;
 	   regnum++)
@@ -1113,17 +1125,13 @@ mi_cmd_data_list_register_values (char *command, char **argv, int argc)
 }
 
 /* Output one register's contents in the desired format.  */
+
 static void
 get_register (struct frame_info *frame, int regnum, int format)
 {
   struct gdbarch *gdbarch = get_frame_arch (frame);
   struct ui_out *uiout = current_uiout;
-  CORE_ADDR addr;
-  enum lval_type lval;
-  struct ui_stream *stb;
   struct value *val;
-
-  stb = ui_out_stream_new (uiout);
 
   if (format == 'N')
     format = 0;
@@ -1150,20 +1158,24 @@ get_register (struct frame_info *frame, int regnum, int format)
 	  ptr += 2;
 	}
       ui_out_field_string (uiout, "value", buf);
-      /*fputs_filtered (buf, gdb_stdout); */
     }
   else
     {
       struct value_print_options opts;
+      struct ui_file *stb;
+      struct cleanup *old_chain;
+
+      stb = mem_fileopen ();
+      old_chain = make_cleanup_ui_file_delete (stb);
 
       get_formatted_print_options (&opts, format);
       opts.deref_ref = 1;
       val_print (value_type (val),
 		 value_contents_for_printing (val),
 		 value_embedded_offset (val), 0,
-		 stb->stream, 0, val, &opts, current_language);
+		 stb, 0, val, &opts, current_language);
       ui_out_field_stream (uiout, "value", stb);
-      ui_out_stream_delete (stb);
+      do_cleanups (old_chain);
     }
 }
 
@@ -1177,13 +1189,13 @@ mi_cmd_data_write_register_values (char *command, char **argv, int argc)
   struct regcache *regcache;
   struct gdbarch *gdbarch;
   int numregs, i;
-  char format;
 
   /* Note that the test for a valid register must include checking the
-     gdbarch_register_name because gdbarch_num_regs may be allocated for
-     the union of the register sets within a family of related processors.
-     In this case, some entries of gdbarch_register_name will change depending
-     upon the particular processor being debugged.  */
+     gdbarch_register_name because gdbarch_num_regs may be allocated
+     for the union of the register sets within a family of related
+     processors.  In this case, some entries of gdbarch_register_name
+     will change depending upon the particular processor being
+     debugged.  */
 
   regcache = get_current_regcache ();
   gdbarch = get_regcache_arch (regcache);
@@ -1192,8 +1204,6 @@ mi_cmd_data_write_register_values (char *command, char **argv, int argc)
   if (argc == 0)
     error (_("-data-write-register-values: Usage: -data-write-register-"
 	     "values <format> [<regnum1> <value1>...<regnumN> <valueN>]"));
-
-  format = (int) argv[0][0];
 
   if (!target_has_registers)
     error (_("-data-write-register-values: No registers."));
@@ -1229,43 +1239,41 @@ mi_cmd_data_write_register_values (char *command, char **argv, int argc)
 /* Evaluate the value of the argument.  The argument is an
    expression. If the expression contains spaces it needs to be
    included in double quotes.  */
+
 void
 mi_cmd_data_evaluate_expression (char *command, char **argv, int argc)
 {
   struct expression *expr;
-  struct cleanup *old_chain = NULL;
+  struct cleanup *old_chain;
   struct value *val;
-  struct ui_stream *stb = NULL;
+  struct ui_file *stb;
   struct value_print_options opts;
   struct ui_out *uiout = current_uiout;
 
-  stb = ui_out_stream_new (uiout);
+  stb = mem_fileopen ();
+  old_chain = make_cleanup_ui_file_delete (stb);
 
   if (argc != 1)
-    {
-      ui_out_stream_delete (stb);
-      error (_("-data-evaluate-expression: "
-	       "Usage: -data-evaluate-expression expression"));
-    }
+    error (_("-data-evaluate-expression: "
+	     "Usage: -data-evaluate-expression expression"));
 
   expr = parse_expression (argv[0]);
 
-  old_chain = make_cleanup (free_current_contents, &expr);
+  make_cleanup (free_current_contents, &expr);
 
   val = evaluate_expression (expr);
 
   /* Print the result of the expression evaluation.  */
   get_user_print_options (&opts);
   opts.deref_ref = 0;
-  common_val_print (val, stb->stream, 0, &opts, current_language);
+  common_val_print (val, stb, 0, &opts, current_language);
 
   ui_out_field_stream (uiout, "value", stb);
-  ui_out_stream_delete (stb);
 
   do_cleanups (old_chain);
 }
 
-/* DATA-MEMORY-READ:
+/* This is the -data-read-memory command.
 
    ADDR: start address of data to be dumped.
    WORD-FORMAT: a char indicating format for the ``word''.  See 
@@ -1282,7 +1290,7 @@ mi_cmd_data_evaluate_expression (char *command, char **argv, int argc)
    {addr="...",rowN={wordN="..." ,... [,ascii="..."]}, ...}
 
    Returns: 
-   The number of bytes read is SIZE*ROW*COL. */
+   The number of bytes read is SIZE*ROW*COL.  */
 
 void
 mi_cmd_data_read_memory (char *command, char **argv, int argc)
@@ -1291,9 +1299,7 @@ mi_cmd_data_read_memory (char *command, char **argv, int argc)
   struct ui_out *uiout = current_uiout;
   struct cleanup *cleanups = make_cleanup (null_cleanup, NULL);
   CORE_ADDR addr;
-  long total_bytes;
-  long nr_cols;
-  long nr_rows;
+  long total_bytes, nr_cols, nr_rows;
   char word_format;
   struct type *word_type;
   long word_size;
@@ -1302,34 +1308,34 @@ mi_cmd_data_read_memory (char *command, char **argv, int argc)
   gdb_byte *mbuf;
   int nr_bytes;
   long offset = 0;
-  int optind = 0;
-  char *optarg;
+  int oind = 0;
+  char *oarg;
   enum opt
-    {
-      OFFSET_OPT
-    };
-  static const struct mi_opt opts[] =
   {
-    {"o", OFFSET_OPT, 1},
-    { 0, 0, 0 }
+    OFFSET_OPT
   };
+  static const struct mi_opt opts[] =
+    {
+      {"o", OFFSET_OPT, 1},
+      { 0, 0, 0 }
+    };
 
   while (1)
     {
       int opt = mi_getopt ("-data-read-memory", argc, argv, opts,
-			   &optind, &optarg);
+			   &oind, &oarg);
 
       if (opt < 0)
 	break;
       switch ((enum opt) opt)
 	{
 	case OFFSET_OPT:
-	  offset = atol (optarg);
+	  offset = atol (oarg);
 	  break;
 	}
     }
-  argv += optind;
-  argc -= optind;
+  argv += oind;
+  argc -= oind;
 
   if (argc < 5 || argc > 6)
     error (_("-data-read-memory: Usage: "
@@ -1340,7 +1346,7 @@ mi_cmd_data_read_memory (char *command, char **argv, int argc)
   /* Start address of the memory dump.  */
   addr = parse_and_eval_address (argv[0]) + offset;
   /* The format character to use when displaying a memory word.  See
-     the ``x'' command. */
+     the ``x'' command.  */
   word_format = argv[1][0];
   /* The size of the memory word.  */
   word_size = atol (argv[2]);
@@ -1408,12 +1414,15 @@ mi_cmd_data_read_memory (char *command, char **argv, int argc)
 
   /* Build the result as a two dimentional table.  */
   {
-    struct ui_stream *stream = ui_out_stream_new (uiout);
-    struct cleanup *cleanup_list_memory;
+    struct ui_file *stream;
+    struct cleanup *cleanup_stream;
     int row;
     int row_byte;
 
-    cleanup_list_memory = make_cleanup_ui_out_list_begin_end (uiout, "memory");
+    stream = mem_fileopen ();
+    cleanup_stream = make_cleanup_ui_file_delete (stream);
+
+    make_cleanup_ui_out_list_begin_end (uiout, "memory");
     for (row = 0, row_byte = 0;
 	 row < nr_rows;
 	 row++, row_byte += nr_cols * word_size)
@@ -1440,9 +1449,9 @@ mi_cmd_data_read_memory (char *command, char **argv, int argc)
 	      }
 	    else
 	      {
-		ui_file_rewind (stream->stream);
+		ui_file_rewind (stream);
 		print_scalar_formatted (mbuf + col_byte, word_type, &opts,
-					word_asize, stream->stream);
+					word_asize, stream);
 		ui_out_field_stream (uiout, NULL, stream);
 	      }
 	  }
@@ -1451,27 +1460,22 @@ mi_cmd_data_read_memory (char *command, char **argv, int argc)
 	  {
 	    int byte;
 
-	    ui_file_rewind (stream->stream);
+	    ui_file_rewind (stream);
 	    for (byte = row_byte;
 		 byte < row_byte + word_size * nr_cols; byte++)
 	      {
 		if (byte >= nr_bytes)
-		  {
-		    fputc_unfiltered ('X', stream->stream);
-		  }
+		  fputc_unfiltered ('X', stream);
 		else if (mbuf[byte] < 32 || mbuf[byte] > 126)
-		  {
-		    fputc_unfiltered (aschar, stream->stream);
-		  }
+		  fputc_unfiltered (aschar, stream);
 		else
-		  fputc_unfiltered (mbuf[byte], stream->stream);
+		  fputc_unfiltered (mbuf[byte], stream);
 	      }
 	    ui_out_field_stream (uiout, "ascii", stream);
 	  }
 	do_cleanups (cleanup_tuple);
       }
-    ui_out_stream_delete (stream);
-    do_cleanups (cleanup_list_memory);
+    do_cleanups (cleanup_stream);
   }
   do_cleanups (cleanups);
 }
@@ -1488,33 +1492,33 @@ mi_cmd_data_read_memory_bytes (char *command, char **argv, int argc)
   int ix;
   VEC(memory_read_result_s) *result;
   long offset = 0;
-  int optind = 0;
-  char *optarg;
+  int oind = 0;
+  char *oarg;
   enum opt
-    {
-      OFFSET_OPT
-    };
-  static const struct mi_opt opts[] =
   {
-    {"o", OFFSET_OPT, 1},
-    { 0, 0, 0 }
+    OFFSET_OPT
   };
+  static const struct mi_opt opts[] =
+    {
+      {"o", OFFSET_OPT, 1},
+      { 0, 0, 0 }
+    };
 
   while (1)
     {
       int opt = mi_getopt ("-data-read-memory-bytes", argc, argv, opts,
-			   &optind, &optarg);
+			   &oind, &oarg);
       if (opt < 0)
 	break;
       switch ((enum opt) opt)
 	{
 	case OFFSET_OPT:
-	  offset = atol (optarg);
+	  offset = atol (oarg);
 	  break;
 	}
     }
-  argv += optind;
-  argc -= optind;
+  argv += oind;
+  argc -= oind;
 
   if (argc != 2)
     error (_("Usage: [ -o OFFSET ] ADDR LENGTH."));
@@ -1558,8 +1562,7 @@ mi_cmd_data_read_memory_bytes (char *command, char **argv, int argc)
   do_cleanups (cleanups);
 }
 
-
-/* DATA-MEMORY-WRITE:
+/* Implementation of the -data-write_memory command.
 
    COLUMN_OFFSET: optional argument. Must be preceded by '-o'. The
    offset from the beginning of the memory grid row where the cell to
@@ -1575,13 +1578,13 @@ mi_cmd_data_read_memory_bytes (char *command, char **argv, int argc)
    Writes VALUE into ADDR + (COLUMN_OFFSET * WORD_SIZE).
 
    Prints nothing.  */
+
 void
 mi_cmd_data_write_memory (char *command, char **argv, int argc)
 {
   struct gdbarch *gdbarch = get_current_arch ();
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   CORE_ADDR addr;
-  char word_format;
   long word_size;
   /* FIXME: ezannoni 2000-02-17 LONGEST could possibly not be big
      enough when using a compiler other than GCC.  */
@@ -1589,34 +1592,34 @@ mi_cmd_data_write_memory (char *command, char **argv, int argc)
   void *buffer;
   struct cleanup *old_chain;
   long offset = 0;
-  int optind = 0;
-  char *optarg;
+  int oind = 0;
+  char *oarg;
   enum opt
-    {
-      OFFSET_OPT
-    };
-  static const struct mi_opt opts[] =
   {
-    {"o", OFFSET_OPT, 1},
-    { 0, 0, 0 }
+    OFFSET_OPT
   };
+  static const struct mi_opt opts[] =
+    {
+      {"o", OFFSET_OPT, 1},
+      { 0, 0, 0 }
+    };
 
   while (1)
     {
       int opt = mi_getopt ("-data-write-memory", argc, argv, opts,
-			   &optind, &optarg);
+			   &oind, &oarg);
 
       if (opt < 0)
 	break;
       switch ((enum opt) opt)
 	{
 	case OFFSET_OPT:
-	  offset = atol (optarg);
+	  offset = atol (oarg);
 	  break;
 	}
     }
-  argv += optind;
-  argc -= optind;
+  argv += oind;
+  argc -= oind;
 
   if (argc != 4)
     error (_("-data-write-memory: Usage: "
@@ -1625,10 +1628,7 @@ mi_cmd_data_write_memory (char *command, char **argv, int argc)
   /* Extract all the arguments.  */
   /* Start address of the memory dump.  */
   addr = parse_and_eval_address (argv[0]);
-  /* The format character to use when displaying a memory word.  See
-     the ``x'' command.  */
-  word_format = argv[1][0];
-  /* The size of the memory word. */
+  /* The size of the memory word.  */
   word_size = atol (argv[2]);
 
   /* Calculate the real address of the write destination.  */
@@ -1641,48 +1641,80 @@ mi_cmd_data_write_memory (char *command, char **argv, int argc)
   old_chain = make_cleanup (xfree, buffer);
   store_signed_integer (buffer, word_size, byte_order, value);
   /* Write it down to memory.  */
-  write_memory (addr, buffer, word_size);
+  write_memory_with_notification (addr, buffer, word_size);
   /* Free the buffer.  */
   do_cleanups (old_chain);
 }
 
-/* DATA-MEMORY-WRITE-RAW:
+/* Implementation of the -data-write-memory-bytes command.
 
    ADDR: start address
-   DATA: string of bytes to write at that address. */
+   DATA: string of bytes to write at that address
+   COUNT: number of bytes to be filled (decimal integer).  */
+
 void
 mi_cmd_data_write_memory_bytes (char *command, char **argv, int argc)
 {
   CORE_ADDR addr;
   char *cdata;
   gdb_byte *data;
-  int len, r, i;
+  gdb_byte *databuf;
+  size_t len, i, steps, remainder;
+  long int count, j;
   struct cleanup *back_to;
 
-  if (argc != 2)
-    error (_("Usage: ADDR DATA."));
+  if (argc != 2 && argc != 3)
+    error (_("Usage: ADDR DATA [COUNT]."));
 
   addr = parse_and_eval_address (argv[0]);
   cdata = argv[1];
-  len = strlen (cdata)/2;
+  if (strlen (cdata) % 2)
+    error (_("Hex-encoded '%s' must have an even number of characters."),
+	   cdata);
 
-  data = xmalloc (len);
-  back_to = make_cleanup (xfree, data);
+  len = strlen (cdata)/2;
+  if (argc == 3)
+    count = strtoul (argv[2], NULL, 10);
+  else
+    count = len;
+
+  databuf = xmalloc (len * sizeof (gdb_byte));
+  back_to = make_cleanup (xfree, databuf);
 
   for (i = 0; i < len; ++i)
     {
       int x;
-      sscanf (cdata + i * 2, "%02x", &x);
-      data[i] = (gdb_byte)x;
+      if (sscanf (cdata + i * 2, "%02x", &x) != 1)
+        error (_("Invalid argument"));
+      databuf[i] = (gdb_byte) x;
     }
 
-  r = target_write_memory (addr, data, len);
-  if (r != 0)
-    error (_("Could not write memory"));
+  if (len < count)
+    {
+      /* Pattern is made of less bytes than count: 
+         repeat pattern to fill memory.  */
+      data = xmalloc (count);
+      make_cleanup (xfree, data);
+    
+      steps = count / len;
+      remainder = count % len;
+      for (j = 0; j < steps; j++)
+        memcpy (data + j * len, databuf, len);
+
+      if (remainder > 0)
+        memcpy (data + steps * len, databuf, remainder);
+    }
+  else 
+    {
+      /* Pattern is longer than or equal to count: 
+         just copy len bytes.  */
+      data = databuf;
+    }
+
+  write_memory_with_notification (addr, data, count);
 
   do_cleanups (back_to);
 }
-
 
 void
 mi_cmd_enable_timings (char *command, char **argv, int argc)
@@ -1768,8 +1800,8 @@ mi_cmd_add_inferior (char *command, char **argv, int argc)
   ui_out_field_fmt (current_uiout, "inferior", "i%d", inf->num);
 }
 
-/* Callback used to find the first inferior other than the
-   current one. */
+/* Callback used to find the first inferior other than the current
+   one.  */
    
 static int
 get_other_inferior (struct inferior *inf, void *arg)
@@ -1825,7 +1857,7 @@ mi_cmd_remove_inferior (char *command, char **argv, int argc)
 
    args->action will tell mi_execute_command what action
    to perfrom after the given command has executed (display/suppress
-   prompt, display error). */
+   prompt, display error).  */
 
 static void
 captured_mi_execute_command (struct ui_out *uiout, struct mi_parse *context)
@@ -1849,15 +1881,14 @@ captured_mi_execute_command (struct ui_out *uiout, struct mi_parse *context)
 	fprintf_unfiltered (raw_stdout, " token=`%s' command=`%s' args=`%s'\n",
 			    context->token, context->command, context->args);
 
-
       mi_cmd_execute (context);
 
       /* Print the result if there were no errors.
 
 	 Remember that on the way out of executing a command, you have
-	 to directly use the mi_interp's uiout, since the command could 
-	 have reset the interpreter, in which case the current uiout 
-	 will most likely crash in the mi_out_* routines.  */
+	 to directly use the mi_interp's uiout, since the command
+	 could have reset the interpreter, in which case the current
+	 uiout will most likely crash in the mi_out_* routines.  */
       if (!running_result_record_printed)
 	{
 	  fputs_unfiltered (context->token, raw_stdout);
@@ -1871,9 +1902,9 @@ captured_mi_execute_command (struct ui_out *uiout, struct mi_parse *context)
 	  fputs_unfiltered ("\n", raw_stdout);
 	}
       else
-	    /* The command does not want anything to be printed.  In that
-	       case, the command probably should not have written anything
-	       to uiout, but in case it has written something, discard it.  */
+	/* The command does not want anything to be printed.  In that
+	   case, the command probably should not have written anything
+	   to uiout, but in case it has written something, discard it.  */
 	mi_out_rewind (uiout);
       break;
 
@@ -1911,12 +1942,9 @@ captured_mi_execute_command (struct ui_out *uiout, struct mi_parse *context)
 	  }
 	break;
       }
-
     }
 
   do_cleanups (cleanup);
-
-  return;
 }
 
 /* Print a gdb exception to the MI output stream.  */
@@ -1934,7 +1962,7 @@ mi_print_exception (const char *token, struct gdb_exception exception)
 }
 
 void
-mi_execute_command (char *cmd, int from_tty)
+mi_execute_command (const char *cmd, int from_tty)
 {
   char *token;
   struct mi_parse *command = NULL;
@@ -2025,11 +2053,6 @@ mi_execute_command (char *cmd, int from_tty)
 
       mi_parse_free (command);
     }
-
-  fputs_unfiltered ("(gdb) \n", raw_stdout);
-  gdb_flush (raw_stdout);
-  /* Print any buffered hook code.  */
-  /* ..... */
 }
 
 static void
@@ -2061,9 +2084,10 @@ mi_cmd_execute (struct mi_parse *parse)
 
       set_current_inferior (inf);
       /* This behaviour means that if --thread-group option identifies
-	 an inferior with multiple threads, then a random one will be picked.
-	 This is not a problem -- frontend should always provide --thread if
-	 it wishes to operate on a specific thread.  */
+	 an inferior with multiple threads, then a random one will be
+	 picked.  This is not a problem -- frontend should always
+	 provide --thread if it wishes to operate on a specific
+	 thread.  */
       if (inf->pid != 0)
 	tp = any_live_thread_of_process (inf->pid);
       switch_to_thread (tp ? tp->ptid : null_ptid);
@@ -2098,10 +2122,10 @@ mi_cmd_execute (struct mi_parse *parse)
 
   current_context = parse;
 
-  if (strncmp (parse->command, "break-", sizeof ("break-") - 1 ) == 0)
+  if (parse->cmd->suppress_notification != NULL)
     {
-      make_cleanup_restore_integer (&mi_suppress_breakpoint_notifications);
-      mi_suppress_breakpoint_notifications = 1;
+      make_cleanup_restore_integer (parse->cmd->suppress_notification);
+      *parse->cmd->suppress_notification = 1;
     }
 
   if (parse->cmd->argv_func != NULL)
@@ -2154,7 +2178,7 @@ mi_execute_cli_command (const char *cmd, int args_p, const char *args)
 	fprintf_unfiltered (gdb_stdout, "cli=%s run=%s\n",
 			    cmd, run);
       old_cleanups = make_cleanup (xfree, run);
-      execute_command ( /*ui */ run, 0 /*from_tty */ );
+      execute_command (run, 0 /* from_tty */ );
       do_cleanups (old_cleanups);
       return;
     }
@@ -2172,7 +2196,7 @@ mi_execute_async_cli_command (char *cli_command, char **argv, int argc)
     run = xstrprintf ("%s %s", cli_command, argc ? *argv : "");
   old_cleanups = make_cleanup (xfree, run);  
 
-  execute_command ( /*ui */ run, 0 /*from_tty */ );
+  execute_command (run, 0 /* from_tty */ );
 
   /* Do this before doing any printing.  It would appear that some
      print code leaves garbage around in the buffer.  */
@@ -2273,67 +2297,66 @@ mi_load_progress (const char *section_name,
 
 static void 
 timestamp (struct mi_timestamp *tv)
-  {
-    gettimeofday (&tv->wallclock, NULL);
+{
+  gettimeofday (&tv->wallclock, NULL);
 #ifdef HAVE_GETRUSAGE
-    getrusage (RUSAGE_SELF, &rusage);
-    tv->utime.tv_sec = rusage.ru_utime.tv_sec;
-    tv->utime.tv_usec = rusage.ru_utime.tv_usec;
-    tv->stime.tv_sec = rusage.ru_stime.tv_sec;
-    tv->stime.tv_usec = rusage.ru_stime.tv_usec;
+  getrusage (RUSAGE_SELF, &rusage);
+  tv->utime.tv_sec = rusage.ru_utime.tv_sec;
+  tv->utime.tv_usec = rusage.ru_utime.tv_usec;
+  tv->stime.tv_sec = rusage.ru_stime.tv_sec;
+  tv->stime.tv_usec = rusage.ru_stime.tv_usec;
 #else
-    {
-      long usec = get_run_time ();
+  {
+    long usec = get_run_time ();
 
-      tv->utime.tv_sec = usec/1000000L;
-      tv->utime.tv_usec = usec - 1000000L*tv->utime.tv_sec;
-      tv->stime.tv_sec = 0;
-      tv->stime.tv_usec = 0;
-    }
-#endif
+    tv->utime.tv_sec = usec/1000000L;
+    tv->utime.tv_usec = usec - 1000000L*tv->utime.tv_sec;
+    tv->stime.tv_sec = 0;
+    tv->stime.tv_usec = 0;
   }
+#endif
+}
 
 static void 
 print_diff_now (struct mi_timestamp *start)
-  {
-    struct mi_timestamp now;
+{
+  struct mi_timestamp now;
 
-    timestamp (&now);
-    print_diff (start, &now);
-  }
+  timestamp (&now);
+  print_diff (start, &now);
+}
 
 void
 mi_print_timing_maybe (void)
 {
-  /* If the command is -enable-timing then do_timings may be
-     true whilst current_command_ts is not initialized.  */
+  /* If the command is -enable-timing then do_timings may be true
+     whilst current_command_ts is not initialized.  */
   if (do_timings && current_command_ts)
     print_diff_now (current_command_ts);
 }
 
 static long 
 timeval_diff (struct timeval start, struct timeval end)
-  {
-    return ((end.tv_sec - start.tv_sec) * 1000000L)
-      + (end.tv_usec - start.tv_usec);
-  }
+{
+  return ((end.tv_sec - start.tv_sec) * 1000000L)
+    + (end.tv_usec - start.tv_usec);
+}
 
 static void 
 print_diff (struct mi_timestamp *start, struct mi_timestamp *end)
-  {
-    fprintf_unfiltered
-      (raw_stdout,
-       ",time={wallclock=\"%0.5f\",user=\"%0.5f\",system=\"%0.5f\"}", 
-       timeval_diff (start->wallclock, end->wallclock) / 1000000.0, 
-       timeval_diff (start->utime, end->utime) / 1000000.0, 
-       timeval_diff (start->stime, end->stime) / 1000000.0);
-  }
+{
+  fprintf_unfiltered
+    (raw_stdout,
+     ",time={wallclock=\"%0.5f\",user=\"%0.5f\",system=\"%0.5f\"}", 
+     timeval_diff (start->wallclock, end->wallclock) / 1000000.0, 
+     timeval_diff (start->utime, end->utime) / 1000000.0, 
+     timeval_diff (start->stime, end->stime) / 1000000.0);
+}
 
 void
 mi_cmd_trace_define_variable (char *command, char **argv, int argc)
 {
   struct expression *expr;
-  struct cleanup *back_to;
   LONGEST initval = 0;
   struct trace_state_variable *tsv;
   char *name = 0;
@@ -2341,19 +2364,11 @@ mi_cmd_trace_define_variable (char *command, char **argv, int argc)
   if (argc != 1 && argc != 2)
     error (_("Usage: -trace-define-variable VARIABLE [VALUE]"));
 
-  expr = parse_expression (argv[0]);
-  back_to = make_cleanup (xfree, expr);
+  name = argv[0];
+  if (*name++ != '$')
+    error (_("Name of trace variable should start with '$'"));
 
-  if (expr->nelts == 3 && expr->elts[0].opcode == OP_INTERNALVAR)
-    {
-      struct internalvar *intvar = expr->elts[1].internalvar;
-
-      if (intvar)
-	name = internalvar_name (intvar);
-    }
-
-  if (!name || *name == '\0')
-    error (_("Invalid name of trace variable"));
+  validate_trace_state_variable_name (name);
 
   tsv = find_trace_state_variable (name);
   if (!tsv)
@@ -2363,15 +2378,13 @@ mi_cmd_trace_define_variable (char *command, char **argv, int argc)
     initval = value_as_long (parse_and_eval (argv[1]));
 
   tsv->initial_value = initval;
-
-  do_cleanups (back_to);
 }
 
 void
 mi_cmd_trace_list_variables (char *command, char **argv, int argc)
 {
   if (argc != 0)
-    error (_("-trace-list-variables: no arguments are allowed"));
+    error (_("-trace-list-variables: no arguments allowed"));
 
   tvariables_info_1 ();
 }
@@ -2437,7 +2450,8 @@ mi_cmd_trace_find (char *command, char **argv, int argc)
       if (argc != 2)
 	error (_("Line is required"));
 
-      sals = decode_line_spec (argv[1], DECODE_LINE_FUNFIRSTLINE);
+      sals = decode_line_with_current_source (argv[1],
+					      DECODE_LINE_FUNFIRSTLINE);
       back_to = make_cleanup (xfree, sals.sals);
 
       sal = sals.sals[0];
@@ -2456,9 +2470,7 @@ mi_cmd_trace_find (char *command, char **argv, int argc)
     error (_("Invalid mode '%s'"), mode);
 
   if (has_stack_frames () || get_traceframe_number () >= 0)
-    {
-      print_stack_frame (get_selected_frame (NULL), 1, SRC_AND_LOC);
-    }
+    print_stack_frame (get_selected_frame (NULL), 1, SRC_AND_LOC);
 }
 
 void
@@ -2486,7 +2498,6 @@ mi_cmd_trace_save (char *command, char **argv, int argc)
   trace_save (filename, target_saves);
 }
 
-
 void
 mi_cmd_trace_start (char *command, char **argv, int argc)
 {
@@ -2506,7 +2517,7 @@ mi_cmd_trace_stop (char *command, char **argv, int argc)
   trace_status_mi (1);
 }
 
-/* Implement the "-ada-task-info" GDB/MI command.  */
+/* Implement the "-ada-task-info" command.  */
 
 void
 mi_cmd_ada_task_info (char *command, char **argv, int argc)

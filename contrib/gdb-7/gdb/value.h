@@ -1,6 +1,6 @@
 /* Definitions for values of C expressions, for GDB.
 
-   Copyright (C) 1986-2012 Free Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -74,6 +74,7 @@ extern void set_value_bitpos (struct value *, int bit);
    bitfields.  */
 
 struct value *value_parent (struct value *);
+extern void set_value_parent (struct value *value, struct value *parent);
 
 /* Describes offset of a value within lval of a structure in bytes.
    If lval == lval_memory, this is an offset to the address.  If lval
@@ -89,8 +90,6 @@ extern void set_value_offset (struct value *, int offset);
    not_lval and be done with it?  */
 
 extern int deprecated_value_modifiable (struct value *value);
-extern void deprecated_set_value_modifiable (struct value *value,
-					     int modifiable);
 
 /* If a value represents a C++ object, then the `type' field gives the
    object's compile-time type.  If the object actually belongs to some
@@ -136,6 +135,22 @@ extern void deprecated_set_value_modifiable (struct value *value,
 extern struct type *value_enclosing_type (struct value *);
 extern void set_value_enclosing_type (struct value *val,
 				      struct type *new_type);
+
+/* Returns value_type or value_enclosing_type depending on
+   value_print_options.objectprint.
+
+   If RESOLVE_SIMPLE_TYPES is 0 the enclosing type will be resolved
+   only for pointers and references, else it will be returned
+   for all the types (e.g. structures).  This option is useful
+   to prevent retrieving enclosing type for the base classes fields.
+
+   REAL_TYPE_FOUND is used to inform whether the real type was found
+   (or just static type was used).  The NULL may be passed if it is not
+   necessary. */
+
+extern struct type *value_actual_type (struct value *value,
+				       int resolve_simple_types,
+				       int *real_type_found);
 
 extern int value_pointed_to_offset (struct value *value);
 extern void set_value_pointed_to_offset (struct value *value, int val);
@@ -211,6 +226,20 @@ struct lval_funcs
 extern struct value *allocate_computed_value (struct type *type,
 					      const struct lval_funcs *funcs,
 					      void *closure);
+
+/* Helper function to check the validity of some bits of a value.
+
+   If TYPE represents some aggregate type (e.g., a structure), return 1.
+   
+   Otherwise, any of the bytes starting at OFFSET and extending for
+   TYPE_LENGTH(TYPE) bytes are invalid, print a message to STREAM and
+   return 0.  The checking is done using FUNCS.
+   
+   Otherwise, return 1.  */
+
+extern int valprint_check_validity (struct ui_file *stream, struct type *type,
+				    int embedded_offset,
+				    const struct value *val);
 
 extern struct value *allocate_optimized_out_value (struct type *type);
 
@@ -351,6 +380,19 @@ extern short *deprecated_value_regnum_hack (struct value *);
 
 extern struct value *coerce_ref_if_computed (const struct value *arg);
 
+/* Setup a new value type and enclosing value type for dereferenced value VALUE.
+   ENC_TYPE is the new enclosing type that should be set.  ORIGINAL_TYPE and
+   ORIGINAL_VAL are the type and value of the original reference or pointer.
+
+   Note, that VALUE is modified by this function.
+
+   It is a common implementation for coerce_ref and value_ind.  */
+
+extern struct value * readjust_indirect_value_type (struct value *value,
+						    struct type *enc_type,
+						    struct type *original_type,
+						    struct value *original_val);
+
 /* Convert a REF to the object referenced.  */
 
 extern struct value *coerce_ref (struct value *value);
@@ -421,7 +463,12 @@ extern void mark_value_bytes_unavailable (struct value *value,
    value_available_contents_eq(val, 4, val, 12, 2) => 1
    value_available_contents_eq(val, 4, val, 12, 4) => 0
    value_available_contents_eq(val, 3, val, 4, 4) => 0
-*/
+
+   We only know whether a value chunk is available if we've tried to
+   read it.  As this routine is used by printing routines, which may
+   be printing values in the value history, long after the inferior is
+   gone, it works with const values.  Therefore, this routine must not
+   be called with lazy values.  */
 
 extern int value_available_contents_eq (const struct value *val1, int offset1,
 					const struct value *val2, int offset2,
@@ -438,6 +485,12 @@ extern void read_value_memory (struct value *val, int embedded_offset,
 			       int stack, CORE_ADDR memaddr,
 			       gdb_byte *buffer, size_t length);
 
+/* Cast SCALAR_VALUE to the element type of VECTOR_TYPE, then replicate
+   into each element of a new vector value with VECTOR_TYPE.  */
+
+struct value *value_vector_widen (struct value *scalar_value,
+				  struct type *vector_type);
+
 
 
 #include "symtab.h"
@@ -447,8 +500,9 @@ extern void read_value_memory (struct value *val, int embedded_offset,
 struct frame_info;
 struct fn_field;
 
-extern void print_address_demangle (struct gdbarch *, CORE_ADDR,
-				    struct ui_file *, int);
+extern int print_address_demangle (const struct value_print_options *,
+				   struct gdbarch *, CORE_ADDR,
+				   struct ui_file *, int);
 
 extern LONGEST value_as_long (struct value *val);
 extern DOUBLEST value_as_double (struct value *val);
@@ -512,7 +566,8 @@ extern CORE_ADDR address_from_register (struct type *type, int regnum,
 extern struct value *value_of_variable (struct symbol *var,
 					const struct block *b);
 
-extern struct value *address_of_variable (struct symbol *var, struct block *b);
+extern struct value *address_of_variable (struct symbol *var,
+					  const struct block *b);
 
 extern struct value *value_of_register (int regnum, struct frame_info *frame);
 
@@ -522,6 +577,9 @@ extern int symbol_read_needs_frame (struct symbol *);
 
 extern struct value *read_var_value (struct symbol *var,
 				     struct frame_info *frame);
+
+extern struct value *default_read_var_value (struct symbol *var,
+					     struct frame_info *frame);
 
 extern struct value *allocate_value (struct type *type);
 extern struct value *allocate_value_lazy (struct type *type);
@@ -539,12 +597,10 @@ extern struct value *value_mark (void);
 
 extern void value_free_to_mark (struct value *mark);
 
-extern struct value *value_cstring (char *ptr, int len,
+extern struct value *value_cstring (char *ptr, ssize_t len,
 				    struct type *char_type);
-extern struct value *value_string (char *ptr, int len,
+extern struct value *value_string (char *ptr, ssize_t len,
 				   struct type *char_type);
-extern struct value *value_bitstring (char *ptr, int len,
-				      struct type *index_type);
 
 extern struct value *value_array (int lowbound, int highbound,
 				  struct value **elemvec);
@@ -594,16 +650,11 @@ extern struct value *value_aggregate_elt (struct type *curtype,
 
 extern struct value *value_static_field (struct type *type, int fieldno);
 
-extern struct fn_field *value_find_oload_method_list (struct value **,
-						      const char *,
-						      int, int *,
-						      struct type **, int *);
-
 enum oload_search_type { NON_METHOD, METHOD, BOTH };
 
 extern int find_overload_match (struct value **args, int nargs,
 				const char *name,
-				enum oload_search_type method, int lax,
+				enum oload_search_type method,
 				struct value **objp, struct symbol *fsym,
 				struct value **valp, struct symbol **symp,
 				int *staticp, const int no_adl);
@@ -615,13 +666,13 @@ extern struct value *value_primitive_field (struct value *arg1, int offset,
 					    struct type *arg_type);
 
 
-extern struct type *value_rtti_target_type (struct value *, int *, int *,
-					    int *);
+extern struct type *value_rtti_indirect_type (struct value *, int *, int *,
+					      int *);
 
 extern struct value *value_full_object (struct value *, struct type *, int,
 					int, int);
 
-extern struct value *value_cast_pointers (struct type *, struct value *);
+extern struct value *value_cast_pointers (struct type *, struct value *, int);
 
 extern struct value *value_cast (struct type *type, struct value *arg2);
 
@@ -650,8 +701,12 @@ extern int value_in (struct value *element, struct value *set);
 extern int value_bit_index (struct type *type, const gdb_byte *addr,
 			    int index);
 
+extern enum return_value_convention
+struct_return_convention (struct gdbarch *gdbarch, struct value *function,
+			  struct type *value_type);
+
 extern int using_struct_return (struct gdbarch *gdbarch,
-				struct type *func_type,
+				struct value *function,
 				struct type *value_type);
 
 extern struct value *evaluate_expression (struct expression *exp);
@@ -674,13 +729,13 @@ extern char *extract_field_op (struct expression *exp, int *subexp);
 extern struct value *evaluate_subexp_with_coercion (struct expression *,
 						    int *, enum noside);
 
-extern struct value *parse_and_eval (char *exp);
+extern struct value *parse_and_eval (const char *exp);
 
-extern struct value *parse_to_comma_and_eval (char **expp);
+extern struct value *parse_to_comma_and_eval (const char **expp);
 
 extern struct type *parse_and_eval_type (char *p, int length);
 
-extern CORE_ADDR parse_and_eval_address (char *exp);
+extern CORE_ADDR parse_and_eval_address (const char *exp);
 
 extern LONGEST parse_and_eval_long (char *exp);
 
@@ -717,10 +772,54 @@ extern struct internalvar *lookup_only_internalvar (const char *name);
 
 extern struct internalvar *create_internalvar (const char *name);
 
-typedef struct value * (*internalvar_make_value) (struct gdbarch *,
-						  struct internalvar *);
+extern VEC (char_ptr) *complete_internalvar (const char *name);
+
+/* An internalvar can be dynamically computed by supplying a vector of
+   function pointers to perform various operations.  */
+
+struct internalvar_funcs
+{
+  /* Compute the value of the variable.  The DATA argument passed to
+     the function is the same argument that was passed to
+     `create_internalvar_type_lazy'.  */
+
+  struct value *(*make_value) (struct gdbarch *arch,
+			       struct internalvar *var,
+			       void *data);
+
+  /* Update the agent expression EXPR with bytecode to compute the
+     value.  VALUE is the agent value we are updating.  The DATA
+     argument passed to this function is the same argument that was
+     passed to `create_internalvar_type_lazy'.  If this pointer is
+     NULL, then the internalvar cannot be compiled to an agent
+     expression.  */
+
+  void (*compile_to_ax) (struct internalvar *var,
+			 struct agent_expr *expr,
+			 struct axs_value *value,
+			 void *data);
+
+  /* If non-NULL, this is called to destroy DATA.  The DATA argument
+     passed to this function is the same argument that was passed to
+     `create_internalvar_type_lazy'.  */
+
+  void (*destroy) (void *data);
+};
+
 extern struct internalvar *
-  create_internalvar_type_lazy (char *name, internalvar_make_value fun);
+create_internalvar_type_lazy (const char *name,
+			      const struct internalvar_funcs *funcs,
+			      void *data);
+
+/* Compile an internal variable to an agent expression.  VAR is the
+   variable to compile; EXPR and VALUE are the agent expression we are
+   updating.  This will return 0 if there is no known way to compile
+   VAR, and 1 if VAR was successfully compiled.  It may also throw an
+   exception on error.  */
+
+extern int compile_internalvar_to_ax (struct internalvar *var,
+				      struct agent_expr *expr,
+				      struct axs_value *value);
 
 extern struct internalvar *lookup_internalvar (const char *name);
 
@@ -770,12 +869,14 @@ extern void free_value_chain (struct value *v);
 
 extern void release_value (struct value *val);
 
+extern void release_value_or_incref (struct value *val);
+
 extern int record_latest_value (struct value *val);
 
 extern void modify_field (struct type *type, gdb_byte *addr,
 			  LONGEST fieldval, int bitpos, int bitsize);
 
-extern void type_print (struct type *type, char *varstring,
+extern void type_print (struct type *type, const char *varstring,
 			struct ui_file *stream, int show);
 
 extern char *type_to_string (struct type *type);
@@ -793,8 +894,8 @@ extern void print_floating (const gdb_byte *valaddr, struct type *type,
 extern void print_decimal_floating (const gdb_byte *valaddr, struct type *type,
 				    struct ui_file *stream);
 
-extern int value_print (struct value *val, struct ui_file *stream,
-			const struct value_print_options *options);
+extern void value_print (struct value *val, struct ui_file *stream,
+			 const struct value_print_options *options);
 
 extern void value_print_array_elements (struct value *val,
 					struct ui_file *stream, int format,
@@ -802,17 +903,17 @@ extern void value_print_array_elements (struct value *val,
 
 extern struct value *value_release_to_mark (struct value *mark);
 
-extern int val_print (struct type *type, const gdb_byte *valaddr,
-		      int embedded_offset, CORE_ADDR address,
-		      struct ui_file *stream, int recurse,
-		      const struct value *val,
-		      const struct value_print_options *options,
-		      const struct language_defn *language);
+extern void val_print (struct type *type, const gdb_byte *valaddr,
+		       int embedded_offset, CORE_ADDR address,
+		       struct ui_file *stream, int recurse,
+		       const struct value *val,
+		       const struct value_print_options *options,
+		       const struct language_defn *language);
 
-extern int common_val_print (struct value *val,
-			     struct ui_file *stream, int recurse,
-			     const struct value_print_options *options,
-			     const struct language_defn *language);
+extern void common_val_print (struct value *val,
+			      struct ui_file *stream, int recurse,
+			      const struct value_print_options *options,
+			      const struct language_defn *language);
 
 extern int val_print_string (struct type *elttype, const char *encoding,
 			     CORE_ADDR addr, int len,
@@ -824,8 +925,6 @@ extern void print_variable_and_value (const char *name,
 				      struct frame_info *frame,
 				      struct ui_file *stream,
 				      int indent);
-
-extern int check_field (struct type *, const char *);
 
 extern void typedef_print (struct type *type, struct symbol *news,
 			   struct ui_file *stream);

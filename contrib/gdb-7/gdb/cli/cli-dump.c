@@ -1,6 +1,6 @@
 /* Dump-to-file commands, for GDB, the GNU debugger.
 
-   Copyright (c) 2002, 2005, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2002-2013 Free Software Foundation, Inc.
 
    Contributed by Red Hat.
 
@@ -32,6 +32,7 @@
 #include "readline/readline.h"
 #include "gdbcore.h"
 #include "cli/cli-utils.h"
+#include "gdb_bfd.h"
 
 #define XMALLOC(TYPE) ((TYPE*) xmalloc (sizeof (TYPE)))
 
@@ -111,12 +112,12 @@ bfd_openr_with_cleanup (const char *filename, const char *target)
 {
   bfd *ibfd;
 
-  ibfd = bfd_openr (filename, target);
+  ibfd = gdb_bfd_openr (filename, target);
   if (ibfd == NULL)
     error (_("Failed to open %s: %s."), filename, 
 	   bfd_errmsg (bfd_get_error ()));
 
-  make_cleanup_bfd_close (ibfd);
+  make_cleanup_bfd_unref (ibfd);
   if (!bfd_check_format (ibfd, bfd_object))
     error (_("'%s' is not a recognized file format."), filename);
 
@@ -131,11 +132,11 @@ bfd_openw_with_cleanup (const char *filename, const char *target,
 
   if (*mode == 'w')	/* Write: create new file */
     {
-      obfd = bfd_openw (filename, target);
+      obfd = gdb_bfd_openw (filename, target);
       if (obfd == NULL)
 	error (_("Failed to open %s: %s."), filename, 
 	       bfd_errmsg (bfd_get_error ()));
-      make_cleanup_bfd_close (obfd);
+      make_cleanup_bfd_unref (obfd);
       if (!bfd_set_format (obfd, bfd_object))
 	error (_("bfd_openw_with_cleanup: %s."), bfd_errmsg (bfd_get_error ()));
     }
@@ -149,13 +150,13 @@ bfd_openw_with_cleanup (const char *filename, const char *target,
   return obfd;
 }
 
-struct cmd_list_element *dump_cmdlist;
-struct cmd_list_element *append_cmdlist;
-struct cmd_list_element *srec_cmdlist;
-struct cmd_list_element *ihex_cmdlist;
-struct cmd_list_element *tekhex_cmdlist;
-struct cmd_list_element *binary_dump_cmdlist;
-struct cmd_list_element *binary_append_cmdlist;
+static struct cmd_list_element *dump_cmdlist;
+static struct cmd_list_element *append_cmdlist;
+static struct cmd_list_element *srec_cmdlist;
+static struct cmd_list_element *ihex_cmdlist;
+static struct cmd_list_element *tekhex_cmdlist;
+static struct cmd_list_element *binary_dump_cmdlist;
+static struct cmd_list_element *binary_append_cmdlist;
 
 static void
 dump_command (char *cmd, int from_tty)
@@ -485,10 +486,10 @@ restore_section_callback (bfd *ibfd, asection *isec, void *args)
 
   if (data->load_offset != 0 || data->load_start != 0 || data->load_end != 0)
     printf_filtered (" into memory (%s to %s)\n",
-		     paddress (target_gdbarch,
+		     paddress (target_gdbarch (),
 			       (unsigned long) sec_start
 			       + sec_offset + data->load_offset), 
-		     paddress (target_gdbarch,
+		     paddress (target_gdbarch (),
 			       (unsigned long) sec_start + sec_offset
 				+ data->load_offset + sec_load_count));
   else

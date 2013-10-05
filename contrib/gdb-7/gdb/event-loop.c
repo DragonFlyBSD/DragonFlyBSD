@@ -1,5 +1,5 @@
 /* Event loop machinery for GDB, the GNU debugger.
-   Copyright (C) 1999-2002, 2005-2012 Free Software Foundation, Inc.
+   Copyright (C) 1999-2013 Free Software Foundation, Inc.
    Written by Elena Zannoni <ezannoni@cygnus.com> of Cygnus Solutions.
 
    This file is part of GDB.
@@ -20,6 +20,7 @@
 #include "defs.h"
 #include "event-loop.h"
 #include "event-top.h"
+#include "queue.h"
 
 #ifdef HAVE_POLL
 #if defined (HAVE_POLL_H)
@@ -68,17 +69,14 @@ typedef void (event_handler_func) (event_data);
    case of async signal handlers, it is
    invoke_async_signal_handler.  */
 
-struct gdb_event
+typedef struct gdb_event
   {
     /* Procedure to call to service this event.  */
     event_handler_func *proc;
 
     /* Data to pass to the event handler.  */
     event_data data;
-
-    /* Next in list of events or NULL.  */
-    struct gdb_event *next_event;
-  };
+  } *gdb_event_p;
 
 /* Information about each file descriptor we register with the event
    loop.  */
@@ -140,26 +138,9 @@ typedef struct async_event_handler
   }
 async_event_handler;
 
-
-/* Event queue:  
-   - the first event in the queue is the head of the queue.
-   It will be the next to be serviced.
-   - the last event in the queue 
-
-   Events can be inserted at the front of the queue or at the end of
-   the queue.  Events will be extracted from the queue for processing
-   starting from the head.  Therefore, events inserted at the head of
-   the queue will be processed in a last in first out fashion, while
-   those inserted at the tail of the queue will be processed in a first
-   in first out manner.  All the fields are NULL if the queue is
-   empty.  */
-
-static struct
-  {
-    gdb_event *first_event;	/* First pending event.  */
-    gdb_event *last_event;	/* Last pending event.  */
-  }
-event_queue;
+DECLARE_QUEUE_P(gdb_event_p);
+DEFINE_QUEUE_P(gdb_event_p);
+static QUEUE(gdb_event_p) *event_queue = NULL;
 
 /* Gdb_notifier is just a list of file descriptors gdb is interested in.
    These are the input file descriptor, and the target file
@@ -274,41 +255,6 @@ static int gdb_wait_for_event (int);
 static void poll_timers (void);
 
 
-/* Insert an event object into the gdb event queue at 
-   the specified position.
-   POSITION can be head or tail, with values TAIL, HEAD.
-   EVENT_PTR points to the event to be inserted into the queue.
-   The caller must allocate memory for the event.  It is freed
-   after the event has ben handled.
-   Events in the queue will be processed head to tail, therefore,
-   events inserted at the head of the queue will be processed
-   as last in first out.  Event appended at the tail of the queue
-   will be processed first in first out.  */
-static void
-async_queue_event (gdb_event * event_ptr, queue_position position)
-{
-  if (position == TAIL)
-    {
-      /* The event will become the new last_event.  */
-
-      event_ptr->next_event = NULL;
-      if (event_queue.first_event == NULL)
-	event_queue.first_event = event_ptr;
-      else
-	event_queue.last_event->next_event = event_ptr;
-      event_queue.last_event = event_ptr;
-    }
-  else if (position == HEAD)
-    {
-      /* The event becomes the new first_event.  */
-
-      event_ptr->next_event = event_queue.first_event;
-      if (event_queue.first_event == NULL)
-	event_queue.last_event = event_ptr;
-      event_queue.first_event = event_ptr;
-    }
-}
-
 /* Create a generic event, to be enqueued in the event queue for
    processing.  PROC is the procedure associated to the event.  DATA
    is passed to PROC upon PROC invocation.  */
@@ -338,6 +284,23 @@ create_file_event (int fd)
   return create_event (handle_file_event, data);
 }
 
+
+/* Free EVENT.  */
+
+static void
+gdb_event_xfree (struct gdb_event *event)
+{
+  xfree (event);
+}
+
+/* Initialize the event queue.  */
+
+void
+initialize_event_loop (void)
+{
+  event_queue = QUEUE_alloc (gdb_event_p, gdb_event_xfree);
+}
+
 /* Process one event.
    The event can be the next one to be serviced in the event queue,
    or an asynchronous event handler can be invoked in response to
@@ -350,10 +313,6 @@ create_file_event (int fd)
 static int
 process_event (void)
 {
-  gdb_event *event_ptr, *prev_ptr;
-  event_handler_func *proc;
-  event_data data;
-
   /* First let's see if there are any asynchronous event handlers that
      are ready.  These would be the result of invoking any of the
      signal handlers.  */
@@ -364,38 +323,20 @@ process_event (void)
   /* Look in the event queue to find an event that is ready
      to be processed.  */
 
-  for (event_ptr = event_queue.first_event; event_ptr != NULL;
-       event_ptr = event_ptr->next_event)
+  if (!QUEUE_is_empty (gdb_event_p, event_queue))
     {
-      /* Call the handler for the event.  */
-
-      proc = event_ptr->proc;
-      data = event_ptr->data;
-
       /* Let's get rid of the event from the event queue.  We need to
-         do this now because while processing the event, the proc
-         function could end up calling 'error' and therefore jump out
-         to the caller of this function, gdb_do_one_event.  In that
-         case, we would have on the event queue an event wich has been
-         processed, but not deleted.  */
+	 do this now because while processing the event, the proc
+	 function could end up calling 'error' and therefore jump out
+	 to the caller of this function, gdb_do_one_event.  In that
+	 case, we would have on the event queue an event wich has been
+	 processed, but not deleted.  */
+      gdb_event *event_ptr = QUEUE_deque (gdb_event_p, event_queue);
+      /* Call the handler for the event.  */
+      event_handler_func *proc = event_ptr->proc;
+      event_data data = event_ptr->data;
 
-      if (event_queue.first_event == event_ptr)
-	{
-	  event_queue.first_event = event_ptr->next_event;
-	  if (event_ptr->next_event == NULL)
-	    event_queue.last_event = NULL;
-	}
-      else
-	{
-	  prev_ptr = event_queue.first_event;
-	  while (prev_ptr->next_event != event_ptr)
-	    prev_ptr = prev_ptr->next_event;
-
-	  prev_ptr->next_event = event_ptr->next_event;
-	  if (event_ptr->next_event == NULL)
-	    event_queue.last_event = prev_ptr;
-	}
-      xfree (event_ptr);
+      gdb_event_xfree (event_ptr);
 
       /* Now call the procedure associated with the event.  */
       (*proc) (data);
@@ -936,7 +877,7 @@ gdb_wait_for_event (int block)
 	      if (file_ptr->ready_mask == 0)
 		{
 		  file_event_ptr = create_file_event (file_ptr->fd);
-		  async_queue_event (file_event_ptr, TAIL);
+		  QUEUE_enque (gdb_event_p, event_queue, file_event_ptr);
 		}
 	      file_ptr->ready_mask = (gdb_notifier.poll_fds + i)->revents;
 	    }
@@ -972,7 +913,7 @@ gdb_wait_for_event (int block)
 	  if (file_ptr->ready_mask == 0)
 	    {
 	      file_event_ptr = create_file_event (file_ptr->fd);
-	      async_queue_event (file_event_ptr, TAIL);
+	      QUEUE_enque (gdb_event_p, event_queue, file_event_ptr);
 	    }
 	  file_ptr->ready_mask = mask;
 	}
@@ -1158,7 +1099,7 @@ check_async_event_handlers (void)
 	  data.ptr = hdata;
 
 	  event_ptr = create_event (invoke_async_event_handler, data);
-	  async_queue_event (event_ptr, TAIL);
+	  QUEUE_enque (gdb_event_p, event_queue, event_ptr);
 	}
     }
 }
@@ -1365,7 +1306,7 @@ poll_timers (void)
 	  event_ptr = (gdb_event *) xmalloc (sizeof (gdb_event));
 	  event_ptr->proc = handle_timer_event;
 	  event_ptr->data.integer = timer_list.first_timer->timer_id;
-	  async_queue_event (event_ptr, TAIL);
+	  QUEUE_enque (gdb_event_p, event_queue, event_ptr);
 	}
 
       /* Now we need to update the timeout for select/ poll, because

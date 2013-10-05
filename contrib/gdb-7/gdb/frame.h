@@ -1,7 +1,6 @@
 /* Definitions for dealing with stack frames, for GDB, the GNU debugger.
 
-   Copyright (C) 1986, 1988-1994, 1996-2004, 2007-2012 Free Software
-   Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -134,9 +133,11 @@ struct frame_id
   unsigned int code_addr_p : 1;
   unsigned int special_addr_p : 1;
 
-  /* The inline depth of this frame.  A frame representing a "called"
-     inlined function will have this set to a nonzero value.  */
-  int inline_depth;
+  /* It is non-zero for a frame made up by GDB without stack data
+     representation in inferior, such as INLINE_FRAME or TAILCALL_FRAME.
+     Caller of inlined function will have it zero, each more inner called frame
+     will have it increasingly one, two etc.  Similarly for TAILCALL_FRAME.  */
+  int artificial_depth;
 };
 
 /* Methods for constructing and comparing Frame IDs.  */
@@ -151,7 +152,7 @@ extern const struct frame_id outer_frame_id;
 
 /* Flag to control debugging.  */
 
-extern int frame_debug;
+extern unsigned int frame_debug;
 
 /* Construct a frame ID.  The first parameter is the frame's constant
    stack address (typically the outer-bound), and the second the
@@ -178,9 +179,10 @@ extern struct frame_id frame_id_build_wild (CORE_ADDR stack_addr);
    ID.  */
 extern int frame_id_p (struct frame_id l);
 
-/* Returns non-zero when L is a valid frame representing an inlined
-   function.  */
-extern int frame_id_inlined_p (struct frame_id l);
+/* Returns non-zero when L is a valid frame representing a frame made up by GDB
+   without stack data representation in inferior, such as INLINE_FRAME or
+   TAILCALL_FRAME.  */
+extern int frame_id_artificial_p (struct frame_id l);
 
 /* Returns non-zero when L and R identify the same frame, or, if
    either L or R have a zero .func, then the same frame base.  */
@@ -500,6 +502,13 @@ extern ULONGEST frame_unwind_register_unsigned (struct frame_info *frame,
 extern ULONGEST get_frame_register_unsigned (struct frame_info *frame,
 					     int regnum);
 
+/* Read a register from this, or unwind a register from the next
+   frame.  Note that the read_frame methods are wrappers to
+   get_frame_register_value, that do not throw if the result is
+   optimized out or unavailable.  */
+
+extern int read_frame_register_unsigned (struct frame_info *frame,
+					 int regnum, ULONGEST *val);
 
 /* Get the value of the register that belongs to this FRAME.  This
    function is a wrapper to the call sequence ``frame_register_unwind
@@ -661,21 +670,7 @@ extern void print_frame_info (struct frame_info *, int print_level,
 
 extern struct frame_info *block_innermost_frame (const struct block *);
 
-extern int deprecated_pc_in_call_dummy (struct gdbarch *gdbarch, CORE_ADDR pc);
-
-/* FIXME: cagney/2003-02-02: Should be deprecated or replaced with a
-   function called get_frame_register_p().  This slightly weird (and
-   older) variant of get_frame_register() returns zero (indicating the
-   register value is unavailable/invalid) if either: the register
-   isn't cached; or the register has been optimized out; or the
-   register contents are unavailable (because they haven't been
-   collected in a traceframe).  Problem is, neither check is exactly
-   correct.  A register can't be optimized out (it may not have been
-   saved as part of a function call); The fact that a register isn't
-   in the register cache doesn't mean that the register isn't
-   available (it could have been fetched from memory).  */
-
-extern int frame_register_read (struct frame_info *frame, int regnum,
+extern int deprecated_frame_register_read (struct frame_info *frame, int regnum,
 				gdb_byte *buf);
 
 /* From stack.c.  */
@@ -719,6 +714,8 @@ struct frame_arg
 extern void read_frame_arg (struct symbol *sym, struct frame_info *frame,
 			    struct frame_arg *argp,
 			    struct frame_arg *entryargp);
+extern void read_frame_local (struct symbol *sym, struct frame_info *frame,
+			      struct frame_arg *argp);
 
 extern void args_info (char *, int);
 

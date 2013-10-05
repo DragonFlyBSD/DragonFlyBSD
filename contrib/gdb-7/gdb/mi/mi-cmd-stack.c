@@ -1,6 +1,5 @@
 /* MI Command Set - stack commands.
-   Copyright (C) 2000, 2002-2005, 2007-2012 Free Software Foundation,
-   Inc.
+   Copyright (C) 2000-2013 Free Software Foundation, Inc.
    Contributed by Cygnus Solutions (a Red Hat company).
 
    This file is part of GDB.
@@ -39,11 +38,12 @@ static void list_args_or_locals (enum what_to_list what,
 				 enum print_values values,
 				 struct frame_info *fi);
 
-/* Print a list of the stack frames. Args can be none, in which case
+/* Print a list of the stack frames.  Args can be none, in which case
    we want to print the whole backtrace, or a pair of numbers
    specifying the frame numbers at which to start and stop the
-   display. If the two numbers are equal, a single frame will be
-   displayed. */
+   display.  If the two numbers are equal, a single frame will be
+   displayed.  */
+
 void
 mi_cmd_stack_list_frames (char *command, char **argv, int argc)
 {
@@ -64,14 +64,14 @@ mi_cmd_stack_list_frames (char *command, char **argv, int argc)
   else
     {
       /* Called with no arguments, it means we want the whole
-         backtrace. */
+         backtrace.  */
       frame_low = -1;
       frame_high = -1;
     }
 
   /* Let's position fi on the frame at which to start the
      display. Could be the innermost frame if the whole stack needs
-     displaying, or if frame_low is 0. */
+     displaying, or if frame_low is 0.  */
   for (i = 0, fi = get_current_frame ();
        fi && i < frame_low;
        i++, fi = get_prev_frame (fi));
@@ -81,15 +81,15 @@ mi_cmd_stack_list_frames (char *command, char **argv, int argc)
 
   cleanup_stack = make_cleanup_ui_out_list_begin_end (current_uiout, "stack");
 
-  /* Now let;s print the frames up to frame_high, or until there are
-     frames in the stack. */
+  /* Now let's print the frames up to frame_high, or until there are
+     frames in the stack.  */
   for (;
        fi && (i <= frame_high || frame_high == -1);
        i++, fi = get_prev_frame (fi))
     {
       QUIT;
       /* Print the location and the address always, even for level 0.
-         args == 0: don't print the arguments. */
+         If args is 0, don't print the arguments.  */
       print_frame_info (fi, 1, LOC_AND_ADDRESS, 0 /* args */ );
     }
 
@@ -110,7 +110,7 @@ mi_cmd_stack_info_depth (char *command, char **argv, int argc)
     frame_high = atoi (argv[0]);
   else
     /* Called with no arguments, it means we want the real depth of
-       the stack. */
+       the stack.  */
     frame_high = -1;
 
   for (i = 0, fi = get_current_frame ();
@@ -141,7 +141,8 @@ parse_print_values (char *name)
 
 /* Print a list of the locals for the current frame.  With argument of
    0, print only the names, with argument of 1 print also the
-   values. */
+   values.  */
+
 void
 mi_cmd_stack_list_locals (char *command, char **argv, int argc)
 {
@@ -157,7 +158,8 @@ mi_cmd_stack_list_locals (char *command, char **argv, int argc)
 
 /* Print a list of the arguments for the current frame.  With argument
    of 0, print only the names, with argument of 1 print also the
-   values. */
+   values.  */
+
 void
 mi_cmd_stack_list_args (char *command, char **argv, int argc)
 {
@@ -181,7 +183,7 @@ mi_cmd_stack_list_args (char *command, char **argv, int argc)
   else
     {
       /* Called with no arguments, it means we want args for the whole
-         backtrace. */
+         backtrace.  */
       frame_low = -1;
       frame_high = -1;
     }
@@ -190,7 +192,7 @@ mi_cmd_stack_list_args (char *command, char **argv, int argc)
 
   /* Let's position fi on the frame at which to start the
      display. Could be the innermost frame if the whole stack needs
-     displaying, or if frame_low is 0. */
+     displaying, or if frame_low is 0.  */
   for (i = 0, fi = get_current_frame ();
        fi && i < frame_low;
        i++, fi = get_prev_frame (fi));
@@ -202,7 +204,7 @@ mi_cmd_stack_list_args (char *command, char **argv, int argc)
     = make_cleanup_ui_out_list_begin_end (uiout, "stack-args");
 
   /* Now let's print the frames up to frame_high, or until there are
-     frames in the stack. */
+     frames in the stack.  */
   for (;
        fi && (i <= frame_high || frame_high == -1);
        i++, fi = get_prev_frame (fi))
@@ -223,6 +225,7 @@ mi_cmd_stack_list_args (char *command, char **argv, int argc)
    current frame.  ARGC must be 1 and ARGV[0] specify if only the names,
    or both names and values of the variables must be printed.  See 
    parse_print_value for possible values.  */
+
 void
 mi_cmd_stack_list_variables (char *command, char **argv, int argc)
 {
@@ -236,19 +239,23 @@ mi_cmd_stack_list_variables (char *command, char **argv, int argc)
   list_args_or_locals (all, parse_print_values (argv[0]), frame);
 }
 
-/* Print single local or argument.  ARG must be already read in.  For WHAT and
-   VALUES see list_args_or_locals.
+/* Print single local or argument.  ARG must be already read in.  For
+   WHAT and VALUES see list_args_or_locals.
 
-   Errors are printed as if they would be the parameter value.  Use zeroed ARG
-   iff it should not be printed accoring to VALUES.  */
+   Errors are printed as if they would be the parameter value.  Use
+   zeroed ARG iff it should not be printed according to VALUES.  */
 
 static void
 list_arg_or_local (const struct frame_arg *arg, enum what_to_list what,
 		   enum print_values values)
 {
+  struct cleanup *old_chain;
   struct cleanup *cleanup_tuple = NULL;
   struct ui_out *uiout = current_uiout;
-  struct ui_stream *stb = ui_out_stream_new (uiout);
+  struct ui_file *stb;
+
+  stb = mem_fileopen ();
+  old_chain = make_cleanup_ui_file_delete (stb);
 
   gdb_assert (!arg->val || !arg->error);
   gdb_assert ((values == PRINT_NO_VALUES && arg->val == NULL
@@ -263,9 +270,9 @@ list_arg_or_local (const struct frame_arg *arg, enum what_to_list what,
   if (values != PRINT_NO_VALUES || what == all)
     cleanup_tuple = make_cleanup_ui_out_tuple_begin_end (uiout, NULL);
 
-  fputs_filtered (SYMBOL_PRINT_NAME (arg->sym), stb->stream);
+  fputs_filtered (SYMBOL_PRINT_NAME (arg->sym), stb);
   if (arg->entry_kind == print_entry_values_only)
-    fputs_filtered ("@entry", stb->stream);
+    fputs_filtered ("@entry", stb);
   ui_out_field_stream (uiout, "name", stb);
 
   if (what == all && SYMBOL_IS_ARGUMENT (arg->sym))
@@ -274,7 +281,7 @@ list_arg_or_local (const struct frame_arg *arg, enum what_to_list what,
   if (values == PRINT_SIMPLE_VALUES)
     {
       check_typedef (arg->sym->type);
-      type_print (arg->sym->type, "", stb->stream, -1);
+      type_print (arg->sym->type, "", stb, -1);
       ui_out_field_stream (uiout, "type", stb);
     }
 
@@ -294,39 +301,37 @@ list_arg_or_local (const struct frame_arg *arg, enum what_to_list what,
 
 	      get_raw_print_options (&opts);
 	      opts.deref_ref = 1;
-	      common_val_print (arg->val, stb->stream, 0, &opts,
+	      common_val_print (arg->val, stb, 0, &opts,
 				language_def (SYMBOL_LANGUAGE (arg->sym)));
 	    }
 	}
       if (except.message)
-	fprintf_filtered (stb->stream, _("<error reading variable: %s>"),
+	fprintf_filtered (stb, _("<error reading variable: %s>"),
 			  except.message);
       ui_out_field_stream (uiout, "value", stb);
     }
 
-  ui_out_stream_delete (stb);
   if (values != PRINT_NO_VALUES || what == all)
     do_cleanups (cleanup_tuple);
+  do_cleanups (old_chain);
 }
 
 /* Print a list of the locals or the arguments for the currently
    selected frame.  If the argument passed is 0, printonly the names
    of the variables, if an argument of 1 is passed, print the values
-   as well. */
+   as well.  */
+
 static void
 list_args_or_locals (enum what_to_list what, enum print_values values,
 		     struct frame_info *fi)
 {
   struct block *block;
   struct symbol *sym;
-  struct dict_iterator iter;
+  struct block_iterator iter;
   struct cleanup *cleanup_list;
-  struct ui_stream *stb;
   struct type *type;
   char *name_of_result;
   struct ui_out *uiout = current_uiout;
-
-  stb = ui_out_stream_new (uiout);
 
   block = get_frame_block (fi, 0);
 
@@ -389,11 +394,12 @@ list_args_or_locals (enum what_to_list what, enum print_values values,
 	      struct frame_arg arg, entryarg;
 
 	      if (SYMBOL_IS_ARGUMENT (sym))
-		sym2 = lookup_symbol (SYMBOL_NATURAL_NAME (sym),
+		sym2 = lookup_symbol (SYMBOL_LINKAGE_NAME (sym),
 				      block, VAR_DOMAIN,
-				      (int *) NULL);
+				      NULL);
 	      else
 		sym2 = sym;
+	      gdb_assert (sym2 != NULL);
 
 	      memset (&arg, 0, sizeof (arg));
 	      arg.sym = sym2;
@@ -411,7 +417,10 @@ list_args_or_locals (enum what_to_list what, enum print_values values,
 		      && TYPE_CODE (type) != TYPE_CODE_UNION)
 		    {
 		case PRINT_ALL_VALUES:
-		      read_frame_arg (sym2, fi, &arg, &entryarg);
+		  if (SYMBOL_IS_ARGUMENT (sym))
+		    read_frame_arg (sym2, fi, &arg, &entryarg);
+		  else
+		    read_frame_local (sym2, fi, &arg);
 		    }
 		  break;
 		}
@@ -424,13 +433,13 @@ list_args_or_locals (enum what_to_list what, enum print_values values,
 	      xfree (entryarg.error);
 	    }
 	}
+
       if (BLOCK_FUNCTION (block))
 	break;
       else
 	block = BLOCK_SUPERBLOCK (block);
     }
   do_cleanups (cleanup_list);
-  ui_out_stream_delete (stb);
 }
 
 void
@@ -446,7 +455,7 @@ void
 mi_cmd_stack_info_frame (char *command, char **argv, int argc)
 {
   if (argc > 0)
-    error (_("-stack-info-frame: No arguments required"));
+    error (_("-stack-info-frame: No arguments allowed"));
 
   print_frame_info (get_selected_frame (NULL), 1, LOC_AND_ADDRESS, 0);
 }

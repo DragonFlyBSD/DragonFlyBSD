@@ -1,7 +1,6 @@
 /* Caching code for GDB, the GNU debugger.
 
-   Copyright (C) 1992-1993, 1995-1996, 1998-2001, 2003, 2007-2012 Free
-   Software Foundation, Inc.
+   Copyright (C) 1992-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -589,7 +588,7 @@ dcache_print_line (int index)
   db = (struct dcache_block *) n->value;
 
   printf_filtered (_("Line %d: address %s [%d hits]\n"),
-		   index, paddress (target_gdbarch, db->addr), db->refs);
+		   index, paddress (target_gdbarch (), db->addr), db->refs);
 
   for (j = 0; j < last_cache->line_size; j++)
     {
@@ -647,7 +646,7 @@ dcache_info (char *exp, int tty)
       struct dcache_block *db = (struct dcache_block *) n->value;
 
       printf_filtered (_("Line %d: address %s [%d hits]\n"),
-		       i, paddress (target_gdbarch, db->addr), db->refs);
+		       i, paddress (target_gdbarch (), db->addr), db->refs);
       i++;
       refcount += db->refs;
 

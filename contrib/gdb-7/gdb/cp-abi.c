@@ -1,6 +1,6 @@
 /* Generic code for supporting multiple C++ ABI's
 
-   Copyright (C) 2001-2003, 2005-2012 Free Software Foundation, Inc.
+   Copyright (C) 2001-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -111,7 +111,7 @@ value_rtti_type (struct value *v, int *full,
 		 int *top, int *using_enc)
 {
   struct type *ret = NULL;
-  struct gdb_exception e;
+  volatile struct gdb_exception e;
 
   if ((current_cp_abi.rtti_type) == NULL)
     return NULL;
@@ -167,6 +167,16 @@ cplus_method_ptr_to_value (struct value **this_p,
   if (current_cp_abi.method_ptr_to_value == NULL)
     error (_("GDB does not support pointers to methods on this target"));
   return (*current_cp_abi.method_ptr_to_value) (this_p, method_ptr);
+}
+
+/* See cp-abi.h.  */
+
+void
+cplus_print_vtable (struct value *value)
+{
+  if (current_cp_abi.print_vtable == NULL)
+    error (_("GDB cannot print the vtable on this target"));
+  (*current_cp_abi.print_vtable) (value);
 }
 
 int
@@ -304,6 +314,27 @@ set_cp_abi_cmd (char *args, int from_tty)
     error (_("Could not find \"%s\" in ABI list"), args);
 }
 
+/* A completion function for "set cp-abi".  */
+
+static VEC (char_ptr) *
+cp_abi_completer (struct cmd_list_element *ignore,
+		  char *text, char *word)
+{
+  static const char **cp_abi_names;
+
+  if (cp_abi_names == NULL)
+    {
+      int i;
+
+      cp_abi_names = XNEWVEC (const char *, num_cp_abis + 1);
+      for (i = 0; i < num_cp_abis; ++i)
+	cp_abi_names[i] = cp_abis[i]->shortname;
+      cp_abi_names[i] = NULL;
+    }
+
+  return complete_on_enum (cp_abi_names, text, word);
+}
+
 /* Show the currently selected C++ ABI.  */
 
 static void
@@ -324,13 +355,16 @@ extern initialize_file_ftype _initialize_cp_abi; /* -Wmissing-prototypes */
 void
 _initialize_cp_abi (void)
 {
+  struct cmd_list_element *c;
+
   register_cp_abi (&auto_cp_abi);
   switch_to_cp_abi ("auto");
 
-  add_cmd ("cp-abi", class_obscure, set_cp_abi_cmd, _("\
+  c = add_cmd ("cp-abi", class_obscure, set_cp_abi_cmd, _("\
 Set the ABI used for inspecting C++ objects.\n\
 \"set cp-abi\" with no arguments will list the available ABIs."),
-	   &setlist);
+	       &setlist);
+  set_cmd_completer (c, cp_abi_completer);
 
   add_cmd ("cp-abi", class_obscure, show_cp_abi_cmd,
 	   _("Show the ABI used for inspecting C++ objects."),

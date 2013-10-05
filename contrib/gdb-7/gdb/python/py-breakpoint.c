@@ -1,6 +1,6 @@
 /* Python interface to breakpoints
 
-   Copyright (C) 2008-2012 Free Software Foundation, Inc.
+   Copyright (C) 2008-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,6 +21,7 @@
 #include "value.h"
 #include "exceptions.h"
 #include "python-internal.h"
+#include "python.h"
 #include "charset.h"
 #include "breakpoint.h"
 #include "gdbcmd.h"
@@ -47,7 +48,7 @@ struct pybp_code
   /* The name.  */
   const char *name;
   /* The code.  */
-  enum type_code code;
+  int code;
 };
 
 /* Entries related to the type of user set breakpoints.  */
@@ -621,7 +622,7 @@ bppy_init (PyObject *self, PyObject *args, PyObject *kwargs)
 	case bp_breakpoint:
 	  {
 	    create_breakpoint (python_gdbarch,
-			       copy, NULL, -1,
+			       copy, NULL, -1, NULL,
 			       0,
 			       0, bp_breakpoint,
 			       0,
@@ -980,8 +981,7 @@ static PyMethodDef breakpoint_object_methods[] =
 
 PyTypeObject breakpoint_object_type =
 {
-  PyObject_HEAD_INIT (NULL)
-  0,				  /*ob_size*/
+  PyVarObject_HEAD_INIT (NULL, 0)
   "gdb.Breakpoint",		  /*tp_name*/
   sizeof (breakpoint_object),	  /*tp_basicsize*/
   0,				  /*tp_itemsize*/

@@ -1,8 +1,7 @@
 /* Variables that describe the inferior process running under GDB:
    Where it is, why it stopped, and how to step it.
 
-   Copyright (C) 1986, 1988-1996, 1998-2001, 2003-2012 Free Software
-   Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -30,19 +29,21 @@ struct gdbarch;
 struct regcache;
 struct ui_out;
 struct terminal_info;
+struct target_desc_info;
 
 #include "ptid.h"
 
 /* For bpstat.  */
 #include "breakpoint.h"
 
-/* For enum target_signal.  */
+/* For enum gdb_signal.  */
 #include "target.h"
 
 /* For struct frame_id.  */
 #include "frame.h"
 
 #include "progspace.h"
+#include "registry.h"
 
 struct infcall_suspend_state;
 struct infcall_control_state;
@@ -102,7 +103,7 @@ extern int sync_execution;
 
 extern void clear_proceed_status (void);
 
-extern void proceed (CORE_ADDR, enum target_signal, int);
+extern void proceed (CORE_ADDR, enum gdb_signal, int);
 
 extern int sched_multi;
 
@@ -154,14 +155,12 @@ extern void fetch_inferior_event (void *);
 
 extern void init_wait_for_inferior (void);
 
-extern void close_exec_file (void);
-
 extern void reopen_exec_file (void);
 
 /* The `resume' routine should only be called in special circumstances.
    Normally, use `proceed', which handles a lot of bookkeeping.  */
 
-extern void resume (int, enum target_signal);
+extern void resume (int, enum gdb_signal);
 
 extern ptid_t user_visible_resume_ptid (int step);
 
@@ -203,7 +202,7 @@ extern char *construct_inferior_arguments (int, char **);
 
 /* From infrun.c */
 
-extern int debug_infrun;
+extern unsigned int debug_infrun;
 
 extern int stop_on_solib_events;
 
@@ -228,12 +227,6 @@ extern void get_last_target_status(ptid_t *ptid,
 
 extern void follow_inferior_reset_breakpoints (void);
 
-/* Throw an error indicating the current thread is running.  */
-extern void error_is_running (void);
-
-/* Calls error_is_running if the current thread is running.  */
-extern void ensure_not_running (void);
-
 void set_step_info (struct frame_info *frame, struct symtab_and_line sal);
 
 /* From infcmd.c */
@@ -250,15 +243,7 @@ extern void set_inferior_args_vector (int, char **);
 
 extern void registers_info (char *, int);
 
-extern void nexti_command (char *, int);
-
-extern void stepi_command (char *, int);
-
 extern void continue_1 (int all_threads);
-
-extern void continue_command (char *, int);
-
-extern void interrupt_target_command (char *args, int from_tty);
 
 extern void interrupt_target_1 (int all_threads);
 
@@ -268,7 +253,7 @@ extern void detach_command (char *, int);
 
 extern void notice_new_inferior (ptid_t, int, int);
 
-extern struct value *get_return_value (struct type *func_type,
+extern struct value *get_return_value (struct value *function,
                                        struct type *value_type);
 
 /* Address at which inferior stopped.  */
@@ -359,7 +344,6 @@ struct displaced_step_closure *get_displaced_step_closure_by_addr (CORE_ADDR add
 /* Possible values for gdbarch_call_dummy_location.  */
 #define ON_STACK 1
 #define AT_ENTRY_POINT 4
-#define AT_SYMBOL 5
 
 /* If STARTUP_WITH_SHELL is set, GDB's "run"
    will attempts to start up the debugee under a shell.
@@ -398,9 +382,11 @@ struct inferior_control_state
 
    Inferior thread counterpart is `struct thread_suspend_state'.  */
 
+#if 0 /* Currently unused and empty structures are not valid C.  */
 struct inferior_suspend_state
 {
 };
+#endif
 
 /* GDB represents the state of each program execution with an object
    called an inferior.  An inferior typically corresponds to a process
@@ -423,6 +409,8 @@ struct inferior
   /* Actual target inferior id, usually, a process id.  This matches
      the ptid_t.pid member of threads of this inferior.  */
   int pid;
+  /* True if the PID was actually faked by GDB.  */
+  int fake_pid_p;
 
   /* State of GDB control of inferior process execution.
      See `struct inferior_control_state'.  */
@@ -430,7 +418,9 @@ struct inferior
 
   /* State of inferior process to restore after GDB is done with an inferior
      call.  See `struct inferior_suspend_state'.  */
+#if 0 /* Currently unused and empty structures are not valid C.  */
   struct inferior_suspend_state suspend;
+#endif
 
   /* True if this was an auto-created inferior, e.g. created from
      following a fork; false, if this inferior was manually added by
@@ -502,36 +492,36 @@ struct inferior
   int has_exit_code;
   LONGEST exit_code;
 
-  /* We keep a count of the number of times the user has requested a
-     particular syscall to be tracked, and pass this information to the
-     target.  This lets capable targets implement filtering directly.  */
+  /* Default flags to pass to the symbol reading functions.  These are
+     used whenever a new objfile is created.  The valid values come
+     from enum symfile_add_flags.  */
+  int symfile_flags;
 
-  /* Number of times that "any" syscall is requested.  */
-  int any_syscall_count;
+  /* Info about an inferior's target description (if it's fetched; the
+     user supplied description's filename, if any; etc.).  */
+  struct target_desc_info *tdesc_info;
 
-  /* Count of each system call.  */
-  VEC(int) *syscalls_counts;
+  /* The architecture associated with the inferior through the
+     connection to the target.
 
-  /* This counts all syscall catch requests, so we can readily determine
-     if any catching is necessary.  */
-  int total_syscalls_count;
+     The architecture vector provides some information that is really
+     a property of the inferior, accessed through a particular target:
+     ptrace operations; the layout of certain RSP packets; the
+     solib_ops vector; etc.  To differentiate architecture accesses to
+     per-inferior/target properties from
+     per-thread/per-frame/per-objfile properties, accesses to
+     per-inferior/target properties should be made through
+     this gdbarch.  */
+  struct gdbarch *gdbarch;
 
   /* Per inferior data-pointers required by other GDB modules.  */
-  void **data;
-  unsigned num_data;
+  REGISTRY_FIELDS;
 };
 
 /* Keep a registry of per-inferior data-pointers required by other GDB
    modules.  */
 
-extern const struct inferior_data *register_inferior_data (void);
-extern const struct inferior_data *register_inferior_data_with_cleanup
-  (void (*cleanup) (struct inferior *, void *));
-extern void clear_inferior_data (struct inferior *inf);
-extern void set_inferior_data (struct inferior *inf,
-			       const struct inferior_data *data, void *value);
-extern void *inferior_data (struct inferior *inf,
-			    const struct inferior_data *data);
+DECLARE_REGISTRY (inferior);
 
 /* Create an empty inferior list, or empty the existing one.  */
 extern void init_inferior_list (void);
@@ -639,5 +629,19 @@ extern int number_of_inferiors (void);
 extern struct inferior *add_inferior_with_spaces (void);
 
 extern void update_observer_mode (void);
+
+extern void update_signals_program_target (void);
+
+extern void signal_catch_update (const unsigned int *);
+
+/* In some circumstances we allow a command to specify a numeric
+   signal.  The idea is to keep these circumstances limited so that
+   users (and scripts) develop portable habits.  For comparison,
+   POSIX.2 `kill' requires that 1,2,3,6,9,14, and 15 work (and using a
+   numeric signal at all is obsolescent.  We are slightly more lenient
+   and allow 1-15 which should match host signal numbers on most
+   systems.  Use of symbolic signal names is strongly encouraged.  */
+
+enum gdb_signal gdb_signal_from_command (int num);
 
 #endif /* !defined (INFERIOR_H) */

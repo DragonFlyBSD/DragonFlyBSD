@@ -1,5 +1,5 @@
 /* Helper routines for C++ support in GDB.
-   Copyright (C) 2003-2004, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2003-2013 Free Software Foundation, Inc.
 
    Contributed by David Carlton and by Kealia, Inc.
 
@@ -42,7 +42,8 @@ static struct symbol *lookup_namespace_scope (const char *name,
 static struct symbol *lookup_symbol_file (const char *name,
 					  const struct block *block,
 					  const domain_enum domain,
-					  int anonymous_namespace);
+					  int anonymous_namespace,
+					  int search);
 
 static struct type *cp_lookup_transparent_type_loop (const char *name,
 						     const char *scope,
@@ -95,7 +96,7 @@ cp_scan_for_anonymous_namespaces (const struct symbol *const symbol,
 		 anonymous namespace.  So add symbols in it to the
 		 namespace given by the previous component if there is
 		 one, or to the global namespace if there isn't.  */
-	      cp_add_using_directive (dest, src, NULL, NULL, NULL,
+	      cp_add_using_directive (dest, src, NULL, NULL, NULL, 1,
 	                              &objfile->objfile_obstack);
 	    }
 	  /* The "+ 2" is for the "::".  */
@@ -116,9 +117,10 @@ cp_scan_for_anonymous_namespaces (const struct symbol *const symbol,
    in the current scope.  If ALIAS is NULL then the namespace is known
    by its original name.  DECLARATION is the name if the imported
    varable if this is a declaration import (Eg. using A::x), otherwise
-   it is NULL.  EXCLUDES is a list of names not to import from an imported
-   module or NULL.  The arguments are copied into newly allocated memory so
-   they can be temporaries.  For EXCLUDES the VEC pointers are copied but the
+   it is NULL.  EXCLUDES is a list of names not to import from an
+   imported module or NULL.  If COPY_NAMES is non-zero, then the
+   arguments are copied into newly allocated memory so they can be
+   temporaries.  For EXCLUDES the VEC pointers are copied but the
    pointed to characters are not copied.  */
 
 void
@@ -127,6 +129,7 @@ cp_add_using_directive (const char *dest,
 			const char *alias,
 			const char *declaration,
 			VEC (const_char_ptr) *excludes,
+			int copy_names,
                         struct obstack *obstack)
 {
   struct using_direct *current;
@@ -172,15 +175,27 @@ cp_add_using_directive (const char *dest,
 				    * sizeof (*new->excludes))));
   memset (new, 0, sizeof (*new));
 
-  new->import_src = obsavestring (src, strlen (src), obstack);
-  new->import_dest = obsavestring (dest, strlen (dest), obstack);
+  if (copy_names)
+    {
+      new->import_src = obstack_copy0 (obstack, src, strlen (src));
+      new->import_dest = obstack_copy0 (obstack, dest, strlen (dest));
+    }
+  else
+    {
+      new->import_src = src;
+      new->import_dest = dest;
+    }
 
-  if (alias != NULL)
-    new->alias = obsavestring (alias, strlen (alias), obstack);
+  if (alias != NULL && copy_names)
+    new->alias = obstack_copy0 (obstack, alias, strlen (alias));
+  else
+    new->alias = alias;
 
-  if (declaration != NULL)
-    new->declaration = obsavestring (declaration, strlen (declaration),
-                                     obstack);
+  if (declaration != NULL && copy_names)
+    new->declaration = obstack_copy0 (obstack,
+				      declaration, strlen (declaration));
+  else
+    new->declaration = declaration;
 
   memcpy (new->excludes, VEC_address (const_char_ptr, excludes),
 	  VEC_length (const_char_ptr, excludes) * sizeof (*new->excludes));
@@ -188,44 +203,6 @@ cp_add_using_directive (const char *dest,
 
   new->next = using_directives;
   using_directives = new;
-}
-
-/* Record the namespace that the function defined by SYMBOL was
-   defined in, if necessary.  BLOCK is the associated block; use
-   OBSTACK for allocation.  */
-
-void
-cp_set_block_scope (const struct symbol *symbol,
-		    struct block *block,
-		    struct obstack *obstack,
-		    const char *processing_current_prefix,
-		    int processing_has_namespace_info)
-{
-  if (processing_has_namespace_info)
-    {
-      block_set_scope
-	(block, obsavestring (processing_current_prefix,
-			      strlen (processing_current_prefix),
-			      obstack),
-	 obstack);
-    }
-  else if (SYMBOL_DEMANGLED_NAME (symbol) != NULL)
-    {
-      /* Try to figure out the appropriate namespace from the
-	 demangled name.  */
-
-      /* FIXME: carlton/2003-04-15: If the function in question is
-	 a method of a class, the name will actually include the
-	 name of the class as well.  This should be harmless, but
-	 is a little unfortunate.  */
-
-      const char *name = SYMBOL_DEMANGLED_NAME (symbol);
-      unsigned int prefix_len = cp_entire_prefix_len (name);
-
-      block_set_scope (block,
-		       obsavestring (name, prefix_len, obstack),
-		       obstack);
-    }
 }
 
 /* Test whether or not NAMESPACE looks like it mentions an anonymous
@@ -264,17 +241,18 @@ cp_lookup_symbol_nonlocal (const char *name,
 }
 
 /* Look up NAME in the C++ namespace NAMESPACE.  Other arguments are
-   as in cp_lookup_symbol_nonlocal.  */
+   as in cp_lookup_symbol_nonlocal.  If SEARCH is non-zero, search
+   through base classes for a matching symbol.  */
 
 static struct symbol *
 cp_lookup_symbol_in_namespace (const char *namespace,
                                const char *name,
                                const struct block *block,
-                               const domain_enum domain)
+                               const domain_enum domain, int search)
 {
   if (namespace[0] == '\0')
     {
-      return lookup_symbol_file (name, block, domain, 0);
+      return lookup_symbol_file (name, block, domain, 0, search);
     }
   else
     {
@@ -285,7 +263,7 @@ cp_lookup_symbol_in_namespace (const char *namespace,
       strcat (concatenated_name, "::");
       strcat (concatenated_name, name);
       return lookup_symbol_file (concatenated_name, block, domain,
-				 cp_is_anonymous (namespace));
+				 cp_is_anonymous (namespace), search);
     }
 }
 
@@ -341,7 +319,7 @@ cp_lookup_symbol_imports (const char *scope,
   /* First, try to find the symbol in the given namespace.  */
   if (!declaration_only)
     sym = cp_lookup_symbol_in_namespace (scope, name,
-					 block, domain);
+					 block, domain, 1);
   
   if (sym != NULL)
     return sym;
@@ -385,7 +363,7 @@ cp_lookup_symbol_imports (const char *scope,
 			 ? current->alias : current->declaration) == 0)
 	    sym = cp_lookup_symbol_in_namespace (current->import_src,
 						 current->declaration,
-						 block, domain);
+						 block, domain, 1);
 
 	  /* If this is a DECLARATION_ONLY search or a symbol was found
 	     or this import statement was an import declaration, the
@@ -419,7 +397,7 @@ cp_lookup_symbol_imports (const char *scope,
 	    {
 	      sym = cp_lookup_symbol_in_namespace (scope,
 						   current->import_src,
-						   block, domain);
+						   block, domain, 1);
 	    }
 	  else if (current->alias == NULL)
 	    {
@@ -473,10 +451,6 @@ cp_lookup_symbol_imports_or_template (const char *scope,
 
   if (function != NULL && SYMBOL_LANGUAGE (function) == language_cplus)
     {
-      int i;
-      struct cplus_specific *cps
-	= function->ginfo.language_specific.cplus_specific;
-
       /* Search the function's template parameters.  */
       if (SYMBOL_IS_CPLUS_TEMPLATE_FUNCTION (function))
 	{
@@ -550,7 +524,7 @@ cp_lookup_symbol_namespace (const char *scope,
   
   /* First, try to find the symbol in the given namespace.  */
   sym = cp_lookup_symbol_in_namespace (scope, name,
-				       block, domain);
+				       block, domain, 1);
   if (sym != NULL)
     return sym;
 
@@ -621,19 +595,20 @@ lookup_namespace_scope (const char *name,
   strncpy (namespace, scope, scope_len);
   namespace[scope_len] = '\0';
   return cp_lookup_symbol_in_namespace (namespace, name,
-					block, domain);
+					block, domain, 1);
 }
 
 /* Look up NAME in BLOCK's static block and in global blocks.  If
    ANONYMOUS_NAMESPACE is nonzero, the symbol in question is located
-   within an anonymous namespace.  Other arguments are as in
+   within an anonymous namespace.  If SEARCH is non-zero, search through
+   base classes for a matching symbol.  Other arguments are as in
    cp_lookup_symbol_nonlocal.  */
 
 static struct symbol *
 lookup_symbol_file (const char *name,
 		    const struct block *block,
 		    const domain_enum domain,
-		    int anonymous_namespace)
+		    int anonymous_namespace, int search)
 {
   struct symbol *sym = NULL;
 
@@ -657,17 +632,142 @@ lookup_symbol_file (const char *name,
       sym = lookup_symbol_global (name, block, domain);
     }
 
+  if (sym != NULL)
+    return sym;
+
+  if (search)
+    {
+      char *klass, *nested;
+      unsigned int prefix_len;
+      struct cleanup *cleanup;
+      struct symbol *klass_sym;
+
+      /* A simple lookup failed.  Check if the symbol was defined in
+	 a base class.  */
+
+      cleanup = make_cleanup (null_cleanup, NULL);
+
+      /* Find the name of the class and the name of the method,
+	 variable, etc.  */
+      prefix_len = cp_entire_prefix_len (name);
+
+      /* If no prefix was found, search "this".  */
+      if (prefix_len == 0)
+	{
+	  struct type *type;
+	  struct symbol *this;
+
+	  this = lookup_language_this (language_def (language_cplus), block);
+	  if (this == NULL)
+	    {
+	      do_cleanups (cleanup);
+	      return NULL;
+	    }
+
+	  type = check_typedef (TYPE_TARGET_TYPE (SYMBOL_TYPE (this)));
+	  klass = xstrdup (TYPE_NAME (type));
+	  nested = xstrdup (name);
+	}
+      else
+	{
+	  /* The class name is everything up to and including PREFIX_LEN.  */
+	  klass = savestring (name, prefix_len);
+
+	  /* The rest of the name is everything else past the initial scope
+	     operator.  */
+	  nested = xstrdup (name + prefix_len + 2);
+	}
+
+      /* Add cleanups to free memory for these strings.  */
+      make_cleanup (xfree, klass);
+      make_cleanup (xfree, nested);
+
+      /* Lookup a class named KLASS.  If none is found, there is nothing
+	 more that can be done.  */
+      klass_sym = lookup_symbol_global (klass, block, domain);
+      if (klass_sym == NULL)
+	{
+	  do_cleanups (cleanup);
+	  return NULL;
+	}
+
+      /* Look for a symbol named NESTED in this class.  */
+      sym = cp_lookup_nested_symbol (SYMBOL_TYPE (klass_sym), nested, block);
+      do_cleanups (cleanup);
+    }
+
   return sym;
 }
 
-/* Look up a type named NESTED_NAME that is nested inside the C++
+/* Search through the base classes of PARENT_TYPE for a symbol named
+   NAME in block BLOCK.  */
+
+static struct symbol *
+find_symbol_in_baseclass (struct type *parent_type, const char *name,
+			   const struct block *block)
+{
+  int i;
+  struct symbol *sym;
+  struct cleanup *cleanup;
+  char *concatenated_name;
+
+  sym = NULL;
+  concatenated_name = NULL;
+  cleanup = make_cleanup (free_current_contents, &concatenated_name);
+  for (i = 0; i < TYPE_N_BASECLASSES (parent_type); ++i)
+    {
+      size_t len;
+      struct type *base_type = TYPE_BASECLASS (parent_type, i);
+      const char *base_name = TYPE_BASECLASS_NAME (parent_type, i);
+
+      if (base_name == NULL)
+	continue;
+
+      /* Search this particular base class.  */
+      sym = cp_lookup_symbol_in_namespace (base_name, name, block,
+					   VAR_DOMAIN, 0);
+      if (sym != NULL)
+	break;
+
+      /* Now search all static file-level symbols.  We have to do this for
+	 things like typedefs in the class.  First search in this symtab,
+	 what we want is possibly there.  */
+      len = strlen (base_name) + 2 + strlen (name) + 1;
+      concatenated_name = xrealloc (concatenated_name, len);
+      xsnprintf (concatenated_name, len, "%s::%s", base_name, name);
+      sym = lookup_symbol_static (concatenated_name, block, VAR_DOMAIN);
+      if (sym != NULL)
+	break;
+
+      /* Nope.  We now have to search all static blocks in all objfiles,
+	 even if block != NULL, because there's no guarantees as to which
+	 symtab the symbol we want is in.  */
+      sym = lookup_static_symbol_aux (concatenated_name, VAR_DOMAIN);
+      if (sym != NULL)
+	break;
+
+      /* If this class has base classes, search them next.  */
+      CHECK_TYPEDEF (base_type);
+      if (TYPE_N_BASECLASSES (base_type) > 0)
+	{
+	  sym = find_symbol_in_baseclass (base_type, name, block);
+	  if (sym != NULL)
+	    break;
+	}
+    }
+
+  do_cleanups (cleanup);
+  return sym;
+}
+
+/* Look up a symbol named NESTED_NAME that is nested inside the C++
    class or namespace given by PARENT_TYPE, from within the context
    given by BLOCK.  Return NULL if there is no such nested type.  */
 
-struct type *
-cp_lookup_nested_type (struct type *parent_type,
-		       const char *nested_name,
-		       const struct block *block)
+struct symbol *
+cp_lookup_nested_symbol (struct type *parent_type,
+			 const char *nested_name,
+			 const struct block *block)
 {
   /* type_name_no_tag_required provides better error reporting using the
      original type.  */
@@ -688,35 +788,42 @@ cp_lookup_nested_type (struct type *parent_type,
 	   just like members of namespaces; in particular,
 	   lookup_symbol_namespace works when looking them up.  */
 
+	int size;
 	const char *parent_name = type_name_no_tag_or_error (saved_parent_type);
 	struct symbol *sym
 	  = cp_lookup_symbol_in_namespace (parent_name, nested_name,
-					   block, VAR_DOMAIN);
+					   block, VAR_DOMAIN, 0);
 	char *concatenated_name;
 
-	if (sym != NULL && SYMBOL_CLASS (sym) == LOC_TYPEDEF)
-	  return SYMBOL_TYPE (sym);
+	if (sym != NULL)
+	  return sym;
 
-	/* Now search all static file-level symbols.  Not strictly
-	   correct, but more useful than an error.  We do not try to
+	/* Now search all static file-level symbols.  We have to do this
+	   for things like typedefs in the class.  We do not try to
 	   guess any imported namespace as even the fully specified
-	   namespace seach is is already not C++ compliant and more
+	   namespace search is already not C++ compliant and more
 	   assumptions could make it too magic.  */
 
-	concatenated_name = alloca (strlen (parent_name) + 2
-				    + strlen (nested_name) + 1);
-	sprintf (concatenated_name, "%s::%s",
+	size = strlen (parent_name) + 2 + strlen (nested_name) + 1;
+	concatenated_name = alloca (size);
+	xsnprintf (concatenated_name, size, "%s::%s",
 		 parent_name, nested_name);
-	sym = lookup_static_symbol_aux (concatenated_name,
-					VAR_DOMAIN);
-	if (sym != NULL && SYMBOL_CLASS (sym) == LOC_TYPEDEF)
-	  return SYMBOL_TYPE (sym);
+	sym = lookup_static_symbol_aux (concatenated_name, VAR_DOMAIN);
+	if (sym != NULL)
+	  return sym;
 
-	return NULL;
+	/* If no matching symbols were found, try searching any
+	   base classes.  */
+	return find_symbol_in_baseclass (parent_type, nested_name, block);
       }
+
+    case TYPE_CODE_FUNC:
+    case TYPE_CODE_METHOD:
+      return NULL;
+
     default:
       internal_error (__FILE__, __LINE__,
-		      _("cp_lookup_nested_type called "
+		      _("cp_lookup_nested_symbol called "
 			"on a non-aggregate type."));
     }
 }

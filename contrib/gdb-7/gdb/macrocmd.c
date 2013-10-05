@@ -1,5 +1,5 @@
 /* C preprocessor macro expansion commands for GDB.
-   Copyright (C) 2002, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2002-2013 Free Software Foundation, Inc.
    Contributed by Red Hat, Inc.
 
    This file is part of GDB.
@@ -26,6 +26,7 @@
 #include "command.h"
 #include "gdbcmd.h"
 #include "gdb_string.h"
+#include "linespec.h"
 
 
 /* The `macro' prefix command.  */
@@ -48,9 +49,7 @@ macro_command (char *arg, int from_tty)
 /* Prints an informational message regarding the lack of macro information.  */
 static void macro_inform_no_debuginfo()
 {
-  fputs_filtered ("GDB has no preprocessor macro information for "
-                  "that code.",
-                  gdb_stdout);
+  puts_filtered ("GDB has no preprocessor macro information for that code.\n");
 }
 
 static void
@@ -130,13 +129,18 @@ show_pp_source_pos (struct ui_file *stream,
                     struct macro_source_file *file,
                     int line)
 {
-  fprintf_filtered (stream, "%s:%d\n", file->filename, line);
+  char *fullname;
+
+  fullname = macro_source_fullname (file);
+  fprintf_filtered (stream, "%s:%d\n", fullname, line);
+  xfree (fullname);
 
   while (file->included_by)
     {
-      fprintf_filtered (gdb_stdout, "  included at %s:%d\n",
-                        file->included_by->filename,
+      fullname = macro_source_fullname (file->included_by);
+      fprintf_filtered (gdb_stdout, "  included at %s:%d\n", fullname,
                         file->included_at_line);
+      xfree (fullname);
       file = file->included_by;
     }
 }
@@ -282,7 +286,8 @@ info_macros_command (char *args, int from_tty)
     ms = default_macro_scope ();
   else
     {
-      struct symtabs_and_lines sals = decode_line_spec (args, 0);
+      struct symtabs_and_lines sals =
+	decode_line_with_current_source (args, 0);
 
       if (sals.nelts)
         ms = sal_macro_scope (sals.sals[0]);

@@ -81,11 +81,6 @@ static void _win_get_screensize PARAMS((int *, int *));
 static void _emx_get_screensize PARAMS((int *, int *));
 #endif
 
-#if defined (__MINGW32__)
-# include <windows.h>
-# include <wincon.h>
-#endif
-
 #define CUSTOM_REDISPLAY_FUNC() (rl_redisplay_function != rl_redisplay)
 #define CUSTOM_INPUT_FUNC() (rl_getc_function != rl_getc)
 
@@ -249,20 +244,6 @@ _rl_get_screen_size (tty, ignore_env)
       wr = (int) window_size.ws_row;
     }
 #endif /* TIOCGWINSZ */
-
-  /* For MinGW, we get the console size from the Windows API.  */
-#if defined (__MINGW32__)
-  HANDLE hConOut = GetStdHandle (STD_OUTPUT_HANDLE);
-  if (hConOut != INVALID_HANDLE_VALUE)
-    {
-      CONSOLE_SCREEN_BUFFER_INFO scr;
-      if (GetConsoleScreenBufferInfo (hConOut, &scr))
-	{
-	  wc = scr.dwSize.X;
-	  wr = scr.srWindow.Bottom - scr.srWindow.Top + 1;
-	}
-    }
-#endif
 
 #if defined (__EMX__)
   _emx_get_screensize (&wc, &wr);

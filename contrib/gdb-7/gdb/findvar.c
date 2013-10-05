@@ -1,7 +1,6 @@
 /* Find a variable's value in memory, for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2001, 2003-2005, 2007-2012 Free Software
-   Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -34,6 +33,7 @@
 #include "user-regs.h"
 #include "block.h"
 #include "objfiles.h"
+#include "language.h"
 
 /* Basic byte-swapping routines.  All 'extract' functions return a
    host-format integer from a target-format integer at ADDR which is
@@ -405,18 +405,46 @@ symbol_read_needs_frame (struct symbol *sym)
   return 1;
 }
 
-/* Given a struct symbol for a variable,
-   and a stack frame id, read the value of the variable
-   and return a (pointer to a) struct value containing the value.
-   If the variable cannot be found, throw error.  */
+/* Private data to be used with minsym_lookup_iterator_cb.  */
+
+struct minsym_lookup_data
+{
+  /* The name of the minimal symbol we are searching for.  */
+  const char *name;
+
+  /* The field where the callback should store the minimal symbol
+     if found.  It should be initialized to NULL before the search
+     is started.  */
+  struct minimal_symbol *result;
+};
+
+/* A callback function for gdbarch_iterate_over_objfiles_in_search_order.
+   It searches by name for a minimal symbol within the given OBJFILE.
+   The arguments are passed via CB_DATA, which in reality is a pointer
+   to struct minsym_lookup_data.  */
+
+static int
+minsym_lookup_iterator_cb (struct objfile *objfile, void *cb_data)
+{
+  struct minsym_lookup_data *data = (struct minsym_lookup_data *) cb_data;
+
+  gdb_assert (data->result == NULL);
+
+  data->result = lookup_minimal_symbol (data->name, NULL, objfile);
+
+  /* The iterator should stop iff a match was found.  */
+  return (data->result != NULL);
+}
+
+/* A default implementation for the "la_read_var_value" hook in
+   the language vector which should work in most situations.  */
 
 struct value *
-read_var_value (struct symbol *var, struct frame_info *frame)
+default_read_var_value (struct symbol *var, struct frame_info *frame)
 {
   struct value *v;
   struct type *type = SYMBOL_TYPE (var);
   CORE_ADDR addr;
-  int len;
 
   /* Call check_typedef on our type to make sure that, if TYPE is
      a TYPE_CODE_TYPEDEF, its length is set to the length of the target type
@@ -424,8 +452,6 @@ read_var_value (struct symbol *var, struct frame_info *frame)
      target type, because we want to keep the typedef in order to be able to
      set the returned value type description correctly.  */
   check_typedef (type);
-
-  len = TYPE_LENGTH (type);
 
   if (symbol_read_needs_frame (var))
     gdb_assert (frame);
@@ -435,7 +461,7 @@ read_var_value (struct symbol *var, struct frame_info *frame)
     case LOC_CONST:
       /* Put the constant back in target format.  */
       v = allocate_value (type);
-      store_signed_integer (value_contents_raw (v), len,
+      store_signed_integer (value_contents_raw (v), TYPE_LENGTH (type),
 			    gdbarch_byte_order (get_type_arch (type)),
 			    (LONGEST) SYMBOL_VALUE (var));
       VALUE_LVAL (v) = not_lval;
@@ -460,7 +486,8 @@ read_var_value (struct symbol *var, struct frame_info *frame)
 
     case LOC_CONST_BYTES:
       v = allocate_value (type);
-      memcpy (value_contents_raw (v), SYMBOL_VALUE_BYTES (var), len);
+      memcpy (value_contents_raw (v), SYMBOL_VALUE_BYTES (var),
+	      TYPE_LENGTH (type));
       VALUE_LVAL (v) = not_lval;
       return v;
 
@@ -560,10 +587,19 @@ read_var_value (struct symbol *var, struct frame_info *frame)
 
     case LOC_UNRESOLVED:
       {
+	struct minsym_lookup_data lookup_data;
 	struct minimal_symbol *msym;
 	struct obj_section *obj_section;
 
-	msym = lookup_minimal_symbol (SYMBOL_LINKAGE_NAME (var), NULL, NULL);
+	memset (&lookup_data, 0, sizeof (lookup_data));
+	lookup_data.name = SYMBOL_LINKAGE_NAME (var);
+
+	gdbarch_iterate_over_objfiles_in_search_order
+	  (get_objfile_arch (SYMBOL_SYMTAB (var)->objfile),
+	   minsym_lookup_iterator_cb, &lookup_data,
+	   SYMBOL_SYMTAB (var)->objfile);
+	msym = lookup_data.result;
+
 	if (msym == NULL)
 	  error (_("No global symbol \"%s\"."), SYMBOL_LINKAGE_NAME (var));
 	if (overlay_debugging)
@@ -592,6 +628,19 @@ read_var_value (struct symbol *var, struct frame_info *frame)
   VALUE_LVAL (v) = lval_memory;
   set_value_address (v, addr);
   return v;
+}
+
+/* Calls VAR's language la_read_var_value hook with the given arguments.  */
+
+struct value *
+read_var_value (struct symbol *var, struct frame_info *frame)
+{
+  const struct language_defn *lang = language_def (SYMBOL_LANGUAGE (var));
+
+  gdb_assert (lang != NULL);
+  gdb_assert (lang->la_read_var_value != NULL);
+
+  return lang->la_read_var_value (var, frame);
 }
 
 /* Install default attributes for register values.  */
@@ -625,7 +674,10 @@ default_value_from_register (struct type *type, int regnum,
 /* VALUE must be an lval_register value.  If regnum is the value's
    associated register number, and len the length of the values type,
    read one or more registers in FRAME, starting with register REGNUM,
-   until we've read LEN bytes.  */
+   until we've read LEN bytes.
+
+   If any of the registers we try to read are optimized out, then mark the
+   complete resulting value as optimized out.  */
 
 void
 read_frame_register_value (struct value *value, struct frame_info *frame)
@@ -650,6 +702,12 @@ read_frame_register_value (struct value *value, struct frame_info *frame)
     {
       struct value *regval = get_frame_register_value (frame, regnum);
       int reg_len = TYPE_LENGTH (value_type (regval)) - reg_offset;
+
+      if (value_optimized_out (regval))
+	{
+	  set_value_optimized_out (value, 1);
+	  break;
+	}
 
       /* If the register length is larger than the number of bytes
          remaining to copy, then only copy the appropriate bytes.  */

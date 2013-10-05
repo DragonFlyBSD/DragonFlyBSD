@@ -1,5 +1,5 @@
 /* Definitions for expressions designed to be executed on the agent
-   Copyright (C) 1998-2000, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 1998-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,6 +20,7 @@
 #define AGENTEXPR_H
 
 #include "doublest.h"		/* For DOUBLEST.  */
+#include "vec.h"
 
 /* It's sometimes useful to be able to debug programs that you can't
    really stop for more than a fraction of a second.  To this end, the
@@ -144,6 +145,12 @@ struct agent_expr
     unsigned char *reg_mask;
   };
 
+/* Pointer to an agent_expr structure.  */
+typedef struct agent_expr *agent_expr_p;
+
+/* Vector of pointers to agent expressions.  */
+DEF_VEC_P (agent_expr_p);
+
 /* The actual values of the various bytecode operations.  */
 
 enum agent_op
@@ -212,6 +219,9 @@ extern void ax_reg_mask (struct agent_expr *ax, int reg);
 
 /* Assemble code to operate on a trace state variable.  */
 extern void ax_tsv (struct agent_expr *expr, enum agent_op op, int num);
+
+/* Append a string to the bytecode stream.  */
+extern void ax_string (struct agent_expr *x, const char *str, int slen);
 
 
 /* Functions for printing out expressions, and otherwise debugging

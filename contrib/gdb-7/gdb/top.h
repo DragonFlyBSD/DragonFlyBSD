@@ -1,7 +1,6 @@
 /* Top level stuff for GDB, the GNU debugger.
 
-   Copyright (C) 1986-1994, 1996-2000, 2005-2012 Free Software
-   Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -26,10 +25,9 @@ extern char *saved_command_line;
 extern int saved_command_line_size;
 extern FILE *instream;
 extern int in_user_command;
-extern int caution;
+extern int confirm;
 extern char gdb_dirbuf[1024];
 extern int inhibit_gdbinit;
-extern int epoch_interface;
 extern char gdbinit[];
 
 extern void print_gdb_version (struct ui_file *);
@@ -42,6 +40,8 @@ extern void quit_force (char *, int);
 extern void quit_command (char *, int);
 extern void quit_cover (void);
 extern void execute_command (char *, int);
+
+extern void check_frame_language_change (void);
 
 /* Prepare for execution of a command.
    Call this before every command, CLI or MI.

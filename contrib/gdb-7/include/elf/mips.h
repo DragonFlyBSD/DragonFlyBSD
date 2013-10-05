@@ -1,6 +1,6 @@
 /* MIPS ELF support for BFD.
    Copyright 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002,
-   2003, 2004, 2005, 2008, 2009, 2010
+   2003, 2004, 2005, 2008, 2009, 2010, 2013
    Free Software Foundation, Inc.
 
    By Ian Lance Taylor, Cygnus Support, <ian@cygnus.com>, from
@@ -98,7 +98,14 @@ START_RELOC_NUMBERS (elf_mips_reloc_type)
   RELOC_NUMBER (R_MIPS16_CALL16, 103)
   RELOC_NUMBER (R_MIPS16_HI16, 104)
   RELOC_NUMBER (R_MIPS16_LO16, 105)
-  FAKE_RELOC (R_MIPS16_max, 106)
+  RELOC_NUMBER (R_MIPS16_TLS_GD, 106)
+  RELOC_NUMBER (R_MIPS16_TLS_LDM, 107)
+  RELOC_NUMBER (R_MIPS16_TLS_DTPREL_HI16, 108)
+  RELOC_NUMBER (R_MIPS16_TLS_DTPREL_LO16, 109)
+  RELOC_NUMBER (R_MIPS16_TLS_GOTTPREL, 110)
+  RELOC_NUMBER (R_MIPS16_TLS_TPREL_HI16, 111)
+  RELOC_NUMBER (R_MIPS16_TLS_TPREL_LO16, 112)
+  FAKE_RELOC (R_MIPS16_max, 113)
   /* These relocations are specific to VxWorks.  */
   RELOC_NUMBER (R_MIPS_COPY, 126)
   RELOC_NUMBER (R_MIPS_JUMP_SLOT, 127)
@@ -180,6 +187,10 @@ END_RELOC_NUMBERS (R_MIPS_maxext)
 /* Process the .MIPS.options section first by ld */
 #define EF_MIPS_OPTIONS_FIRST	0x00000080
 
+/* Indicates code compiled for a 64-bit machine in 32-bit mode
+   (regs are 32-bits wide).  */
+#define EF_MIPS_32BITMODE	0x00000100
+
 /* Architectural Extensions used by this file */
 #define EF_MIPS_ARCH_ASE	0x0f000000
 
@@ -191,10 +202,6 @@ END_RELOC_NUMBERS (R_MIPS_maxext)
 
 /* Use MICROMIPS ISA extensions.  */
 #define EF_MIPS_ARCH_ASE_MICROMIPS	0x02000000
-
-/* Indicates code compiled for a 64-bit machine in 32-bit mode.
-   (regs are 32-bits wide.) */
-#define EF_MIPS_32BITMODE       0x00000100
 
 /* Four bit MIPS architecture field.  */
 #define EF_MIPS_ARCH		0xf0000000
@@ -263,6 +270,7 @@ END_RELOC_NUMBERS (R_MIPS_maxext)
 #define E_MIPS_MACH_XLR     	0x008c0000
 #define E_MIPS_MACH_OCTEON2	0x008d0000
 #define E_MIPS_MACH_5400	0x00910000
+#define E_MIPS_MACH_5900	0x00920000
 #define E_MIPS_MACH_5500	0x00980000
 #define E_MIPS_MACH_9000	0x00990000
 #define E_MIPS_MACH_LS2E        0x00A00000

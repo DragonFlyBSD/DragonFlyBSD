@@ -1,6 +1,6 @@
 /* Python interface to inferior events.
 
-   Copyright (C) 2009-2012 Free Software Foundation, Inc.
+   Copyright (C) 2009-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,7 +20,6 @@
 #ifndef GDB_PY_EVENT_H
 #define GDB_PY_EVENT_H
 
-#include "defs.h"
 #include "py-events.h"
 #include "command.h"
 #include "python-internal.h"
@@ -49,8 +48,7 @@
 \
     qual PyTypeObject name##_event_object_type = \
     { \
-      PyObject_HEAD_INIT (NULL) \
-      0,                                          /* ob_size */ \
+      PyVarObject_HEAD_INIT (NULL, 0)				\
       py_path,                                    /* tp_name */ \
       sizeof (event_object),                      /* tp_basicsize */ \
       0,                                          /* tp_itemsize */ \

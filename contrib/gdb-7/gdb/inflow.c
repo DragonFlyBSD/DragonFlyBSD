@@ -1,5 +1,5 @@
 /* Low level interface to ptrace, for GDB when running under Unix.
-   Copyright (C) 1986-1996, 1998-2012 Free Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -925,5 +925,5 @@ input settings."),
   observer_attach_inferior_exit (inflow_inferior_exit);
 
   inflow_inferior_data
-    = register_inferior_data_with_cleanup (inflow_inferior_data_cleanup);
+    = register_inferior_data_with_cleanup (NULL, inflow_inferior_data_cleanup);
 }

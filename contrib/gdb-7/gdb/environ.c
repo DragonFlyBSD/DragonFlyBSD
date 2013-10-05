@@ -1,7 +1,6 @@
 /* environ.c -- library for manipulating environments for GNU.
 
-   Copyright (C) 1986, 1989-1995, 2000, 2003, 2005, 2007-2012 Free
-   Software Foundation, Inc.
+   Copyright (C) 1986-2013 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by

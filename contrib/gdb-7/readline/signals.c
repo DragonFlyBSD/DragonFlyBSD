@@ -580,6 +580,7 @@ _rl_release_sigint ()
   sigint_blocked = 0;
 }
 
+#ifdef SIGWINCH
 /* Cause SIGWINCH to not be delivered until the corresponding call to
    release_sigwinch(). */
 void
@@ -627,6 +628,7 @@ _rl_release_sigwinch ()
 
   sigwinch_blocked = 0;
 }
+#endif /* SIGWINCH */
 
 /* **************************************************************** */
 /*								    */

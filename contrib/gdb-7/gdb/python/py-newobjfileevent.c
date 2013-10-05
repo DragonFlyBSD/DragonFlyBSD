@@ -1,6 +1,6 @@
 /* Python interface to new object file loading events.
 
-   Copyright (C) 2011-2012 Free Software Foundation, Inc.
+   Copyright (C) 2011-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -17,11 +17,12 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+#include "defs.h"
 #include "py-event.h"
 
 static PyTypeObject new_objfile_event_object_type;
 
-PyObject *
+static PyObject *
 create_new_objfile_event_object (struct objfile *objfile)
 {
   PyObject *objfile_event;
@@ -31,6 +32,8 @@ create_new_objfile_event_object (struct objfile *objfile)
   if (!objfile_event)
     goto fail;
 
+  /* Note that objfile_to_objfile_object returns a borrowed reference,
+     so we don't need a decref here.  */
   py_objfile = objfile_to_objfile_object (objfile);
   if (!py_objfile || evpy_add_attribute (objfile_event,
                                          "new_objfile",

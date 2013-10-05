@@ -1,6 +1,6 @@
 /* TUI support I/O functions.
 
-   Copyright (C) 1998-2004, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 1998-2013 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -211,8 +211,11 @@ tui_redisplay_readline (void)
 
   /* Detect when we temporarily left SingleKey and now the readline
      edit buffer is empty, automatically restore the SingleKey
-     mode.  */
-  if (tui_current_key_mode == TUI_ONE_COMMAND_MODE && rl_end == 0)
+     mode.  The restore must only be done if the command has finished.
+     The command could call prompt_for_continue and we must not
+     restore SingleKey so that the prompt and normal keymap are used.  */
+  if (tui_current_key_mode == TUI_ONE_COMMAND_MODE && rl_end == 0
+      && immediate_quit == 0)
     tui_set_key_mode (TUI_SINGLE_KEY_MODE);
 
   if (tui_current_key_mode == TUI_SINGLE_KEY_MODE)
@@ -416,7 +419,8 @@ tui_rl_display_match_list (char **matches, int len, int max)
     {
       char msg[256];
 
-      sprintf (msg, "\nDisplay all %d possibilities? (y or n)", len);
+      xsnprintf (msg, sizeof (msg),
+		 "\nDisplay all %d possibilities? (y or n)", len);
       tui_puts (msg);
       if (get_y_or_n () == 0)
 	{

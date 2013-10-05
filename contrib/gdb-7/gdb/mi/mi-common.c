@@ -1,5 +1,5 @@
 /* Interface for common GDB/MI data
-   Copyright (C) 2005, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2005-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -43,7 +43,8 @@ static const char * const async_reason_string_lookup[] =
   NULL
 };
 
-static_assert (ARRAY_SIZE (async_reason_string_lookup) == EXEC_ASYNC_LAST + 1);
+gdb_static_assert (ARRAY_SIZE (async_reason_string_lookup)
+		   == EXEC_ASYNC_LAST + 1);
 
 const char *
 async_reason_lookup (enum async_reply_reason reason)

@@ -1,6 +1,6 @@
 /* TUI display source/assembly window.
 
-   Copyright (C) 1998-2004, 2006-2012 Free Software Foundation, Inc.
+   Copyright (C) 1998-2013 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -59,9 +59,9 @@ tui_display_main (void)
 	  tui_update_source_windows_with_addr (gdbarch, addr);
 	  sal = find_pc_line (addr, 0);
           if (sal.symtab)
-             tui_update_locator_filename (sal.symtab->filename);
+             tui_update_locator_fullname (symtab_to_fullname (sal.symtab));
           else
-             tui_update_locator_filename ("??");
+             tui_update_locator_fullname ("??");
 	}
     }
 }
@@ -462,8 +462,9 @@ tui_update_breakpoint_info (struct tui_win_info *win,
 	  for (loc = bp->loc; loc != NULL; loc = loc->next)
 	    {
 	      if ((win == TUI_SRC_WIN
-		   && loc->source_file
-		   && (filename_cmp (src->filename, loc->source_file) == 0)
+		   && loc->symtab != NULL
+		   && filename_cmp (src->fullname,
+				    symtab_to_fullname (loc->symtab)) == 0
 		   && line->line_or_addr.loa == LOA_LINE
 		   && loc->line_number == line->line_or_addr.u.line_no)
 		  || (win == TUI_DISASM_WIN

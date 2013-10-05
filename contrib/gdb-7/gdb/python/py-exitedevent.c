@@ -1,6 +1,6 @@
 /* Python interface to inferior exit events.
 
-   Copyright (C) 2009-2012 Free Software Foundation, Inc.
+   Copyright (C) 2009-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -17,6 +17,7 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+#include "defs.h"
 #include "py-event.h"
 
 static PyTypeObject exited_event_object_type;
@@ -25,30 +26,41 @@ static PyObject *
 create_exited_event_object (const LONGEST *exit_code, struct inferior *inf)
 {
   PyObject *exited_event;
-  PyObject *inf_obj;
+  PyObject *inf_obj = NULL;
 
   exited_event = create_event_object (&exited_event_object_type);
 
   if (!exited_event)
     goto fail;
 
-  if (exit_code
-      && evpy_add_attribute (exited_event,
-			     "exit_code",
-			     PyLong_FromLongLong (*exit_code)) < 0)
-    goto fail;
+  if (exit_code)
+    {
+      PyObject *exit_code_obj = PyLong_FromLongLong (*exit_code);
+      int failed;
+
+      if (exit_code_obj == NULL)
+	goto fail;
+
+      failed = evpy_add_attribute (exited_event, "exit_code",
+				   exit_code_obj) < 0;
+      Py_DECREF (exit_code_obj);
+      if (failed)
+	goto fail;
+    }
 
   inf_obj = inferior_to_inferior_object (inf);
   if (!inf_obj || evpy_add_attribute (exited_event,
                                       "inferior",
                                       inf_obj) < 0)
     goto fail;
+  Py_DECREF (inf_obj);
 
   return exited_event;
 
-  fail:
-   Py_XDECREF (exited_event);
-   return NULL;
+ fail:
+  Py_XDECREF (inf_obj);
+  Py_XDECREF (exited_event);
+  return NULL;
 }
 
 /* Callback that is used when an exit event occurs.  This function

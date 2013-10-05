@@ -1,5 +1,5 @@
 /* Header for GDB line completion.
-   Copyright (C) 2000, 2007-2012 Free Software Foundation, Inc.
+   Copyright (C) 2000-2013 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -93,6 +93,8 @@ extern void destroy_linespec_result (struct linespec_result *);
 extern struct cleanup *
         make_cleanup_destroy_linespec_result (struct linespec_result *);
 
+/* Decode a linespec using the provided default symtab and line.  */
+
 extern struct symtabs_and_lines
 	decode_line_1 (char **argptr, int flags,
 		       struct symtab *default_symtab, int default_line);
@@ -138,5 +140,16 @@ extern void decode_line_full (char **argptr, int flags,
 			      struct linespec_result *canonical,
 			      const char *select_mode,
 			      const char *filter);
+
+/* Given a string, return the line specified by it, using the current
+   source symtab and line as defaults.
+   This is for commands like "list" and "breakpoint".  */
+
+extern struct symtabs_and_lines decode_line_with_current_source (char *, int);
+
+/* Given a string, return the line specified by it, using the last displayed
+   codepoint's values as defaults, or nothing if they aren't valid.  */
+
+extern struct symtabs_and_lines decode_line_with_last_displayed (char *, int);
 
 #endif /* defined (LINESPEC_H) */

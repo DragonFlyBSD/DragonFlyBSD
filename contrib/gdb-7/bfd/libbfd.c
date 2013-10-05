@@ -1118,6 +1118,19 @@ _bfd_generic_find_line (bfd *abfd ATTRIBUTE_UNUSED,
 }
 
 bfd_boolean
+_bfd_generic_find_nearest_line_discriminator (bfd *abfd ATTRIBUTE_UNUSED,
+                                              asection *section ATTRIBUTE_UNUSED,
+                                              asymbol **symbols ATTRIBUTE_UNUSED,
+                                              bfd_vma offset ATTRIBUTE_UNUSED,
+                                              const char **filename_ptr ATTRIBUTE_UNUSED,
+                                              const char **functionname_ptr ATTRIBUTE_UNUSED,
+                                              unsigned int *line_ptr ATTRIBUTE_UNUSED,
+                                              unsigned int *discriminator_ptr ATTRIBUTE_UNUSED)
+{
+  return FALSE;
+}
+
+bfd_boolean
 _bfd_generic_init_private_section_data (bfd *ibfd ATTRIBUTE_UNUSED,
 					asection *isec ATTRIBUTE_UNUSED,
 					bfd *obfd ATTRIBUTE_UNUSED,

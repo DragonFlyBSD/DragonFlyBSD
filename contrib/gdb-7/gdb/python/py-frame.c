@@ -1,6 +1,6 @@
 /* Python interface to stack frames
 
-   Copyright (C) 2008-2012 Free Software Foundation, Inc.
+   Copyright (C) 2008-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -53,8 +53,6 @@ typedef struct {
       if (frame == NULL)				\
 	error (_("Frame is invalid."));			\
     } while (0)
-
-static PyTypeObject frame_object_type;
 
 /* Returns the frame_info object corresponding to the given Python Frame
    object.  If the frame doesn't exist anymore (the frame id doesn't
@@ -124,7 +122,7 @@ static PyObject *
 frapy_name (PyObject *self, PyObject *args)
 {
   struct frame_info *frame;
-  char *name;
+  const char *name;
   enum language lang;
   PyObject *result;
   volatile struct gdb_exception except;
@@ -167,6 +165,25 @@ frapy_type (PyObject *self, PyObject *args)
   GDB_PY_HANDLE_EXCEPTION (except);
 
   return PyInt_FromLong (type);
+}
+
+/* Implementation of gdb.Frame.architecture (self) -> gdb.Architecture.
+   Returns the frame's architecture as a gdb.Architecture object.  */
+
+static PyObject *
+frapy_arch (PyObject *self, PyObject *args)
+{
+  struct frame_info *frame = NULL;    /* Initialize to appease gcc warning.  */
+  frame_object *obj = (frame_object *) self;
+  volatile struct gdb_exception except;
+
+  TRY_CATCH (except, RETURN_MASK_ALL)
+    {
+      FRAPY_REQUIRE_VALID (self, frame);
+    }
+  GDB_PY_HANDLE_EXCEPTION (except);
+
+  return gdbarch_to_arch_object (obj->gdbarch);
 }
 
 /* Implementation of gdb.Frame.unwind_stop_reason (self) -> Integer.
@@ -634,6 +651,9 @@ Return the function name of the frame, or None if it can't be determined." },
   { "type", frapy_type, METH_NOARGS,
     "type () -> Integer.\n\
 Return the type of the frame." },
+  { "architecture", frapy_arch, METH_NOARGS,
+    "architecture () -> gdb.Architecture.\n\
+Return the architecture of the frame." },
   { "unwind_stop_reason", frapy_unwind_stop_reason, METH_NOARGS,
     "unwind_stop_reason () -> Integer.\n\
 Return the reason why it's not possible to find frames older than this." },
@@ -663,9 +683,8 @@ Return the value of the variable in this frame." },
   {NULL}  /* Sentinel */
 };
 
-static PyTypeObject frame_object_type = {
-  PyObject_HEAD_INIT (NULL)
-  0,				  /* ob_size */
+PyTypeObject frame_object_type = {
+  PyVarObject_HEAD_INIT (NULL, 0)
   "gdb.Frame",			  /* tp_name */
   sizeof (frame_object),	  /* tp_basicsize */
   0,				  /* tp_itemsize */

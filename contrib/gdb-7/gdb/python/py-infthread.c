@@ -1,6 +1,6 @@
 /* Python interface to inferior threads.
 
-   Copyright (C) 2009-2012 Free Software Foundation, Inc.
+   Copyright (C) 2009-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -59,7 +59,7 @@ static void
 thpy_dealloc (PyObject *self)
 {
   Py_DECREF (((thread_object *) self)->inf_obj);
-  self->ob_type->tp_free (self);
+  Py_TYPE (self)->tp_free (self);
 }
 
 static PyObject *
@@ -162,7 +162,6 @@ static PyObject *
 thpy_switch (PyObject *self, PyObject *args)
 {
   thread_object *thread_obj = (thread_object *) self;
-  struct cleanup *cleanup;
   volatile struct gdb_exception except;
 
   THPY_REQUIRE_VALID (thread_obj);
@@ -302,8 +301,7 @@ Return whether the thread is exited." },
 
 static PyTypeObject thread_object_type =
 {
-  PyObject_HEAD_INIT (NULL)
-  0,				  /*ob_size*/
+  PyVarObject_HEAD_INIT (NULL, 0)
   "gdb.InferiorThread",		  /*tp_name*/
   sizeof (thread_object),	  /*tp_basicsize*/
   0,				  /*tp_itemsize*/
