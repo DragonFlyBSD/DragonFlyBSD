@@ -358,7 +358,7 @@ find_inferior_pid (int pid)
   /* Looking for inferior pid == 0 is always wrong, and indicative of
      a bug somewhere else.  There may be more than one with pid == 0,
      for instance.  */
-  gdb_assert (pid != 0);
+  gdb_assert (kernel_debugger || pid != 0);
 
   for (inf = inferior_list; inf; inf = inf->next)
     if (inf->pid == pid)
@@ -525,7 +525,7 @@ number_of_inferiors (void)
 static char *
 inferior_pid_to_str (int pid)
 {
-  if (pid != 0)
+  if (kernel_debugger || pid != 0)
     return target_pid_to_str (pid_to_ptid (pid));
   else
     return _("<null>");

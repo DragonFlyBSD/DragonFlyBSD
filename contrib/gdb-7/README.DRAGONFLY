@@ -1,13 +1,13 @@
-GNU GDB 7.4.1
+GNU GDB 7.6.1
 =============
 
 Original source can be downloaded from:
 http://ftp.gnu.org/gnu/gdb
 
-file = gdb-7.4.1.tar.bz2
-date = 26 April 2012
-size = 20619200
-sha1 = 1b0f8c3778d4b10c8d2be6922ac01a9900e8116c
+file = gdb-7.6.1.tar.bz2
+date = 30 August 2013
+size = 24338919
+sha1 = 0e38633b3902070d9c6755e4c54602148a094361
 
 A list of files and directories removed is in README.DELETED
 
@@ -19,6 +19,7 @@ The following files were added:
 
 Local modifications applied to following files:
 	gdb/amd64-tdep.h
+	gdb/common/ptid.h
 	gdb/configure.host
 	gdb/configure.tgt
 	gdb/defs.h
@@ -26,6 +27,7 @@ Local modifications applied to following files:
 	gdb/i386-tdep.h
 	gdb/i386bsd-nat.c
 	gdb/i386fbsd-tdep.c
+	gdb/inferiors.c
 	gdb/main.c
 	gdb/osabi.c
 	include/elf/common.h

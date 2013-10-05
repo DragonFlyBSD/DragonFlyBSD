@@ -492,7 +492,8 @@ generic_elf_osabi_sniff_abi_tag_sections (bfd *abfd, asection *sect, void *obj)
 	}
 
       /* DragonFly.  */
-      if (check_note (abfd, sect, note, "DragonFly", 4, NT_DRAGONFLY_ABI_TAG))
+      if (check_note (abfd, sect, note, &sectsize, "DragonFly", 4,
+		      NT_DRAGONFLY_ABI_TAG))
 	{
 	  /* There is no need to check the version yet.  */
 	  *osabi = GDB_OSABI_DRAGONFLY;

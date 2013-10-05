@@ -1,7 +1,6 @@
 /* Target-dependent code for DragonFly/i386.
 
-   Copyright (C) 2003, 2004, 2005, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 2003-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -28,7 +27,6 @@
 
 #include "i386-tdep.h"
 #include "i387-tdep.h"
-#include "bsd-uthread.h"
 #include "solib-svr4.h"
 
 static int i386dfly_r_reg_offset[] =
@@ -80,7 +78,7 @@ i386dfly_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
 
-  i386fbsd4_init_abi(info, gdbarch);
+  i386_elf_init_abi(info, gdbarch);
 
   tdep->gregset_reg_offset = i386dfly_r_reg_offset;
   tdep->gregset_num_regs = ARRAY_SIZE (i386dfly_r_reg_offset);
@@ -88,6 +86,9 @@ i386dfly_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 
   tdep->sc_reg_offset = i386dfly_sc_reg_offset;
   tdep->sc_num_regs = ARRAY_SIZE (i386dfly_sc_reg_offset);
+
+  set_solib_svr4_fetch_link_map_offsets
+    (gdbarch, svr4_ilp32_fetch_link_map_offsets);
 }
 
 

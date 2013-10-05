@@ -1,6 +1,6 @@
 /* Native-dependent code for DragonFly/amd64.
 
-   Copyright (C) 2003, 2004, 2007, 2008, 2009 Free Software Foundation, Inc.
+   Copyright (C) 2003-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,11 +21,13 @@
 #include "inferior.h"
 #include "regcache.h"
 #include "target.h"
+#include "gregset.h"
 
 #include "gdb_assert.h"
 #include <signal.h>
 #include <stddef.h>
 #include <sys/types.h>
+#include <sys/procfs.h>
 #include <sys/ptrace.h>
 #include <sys/sysctl.h>
 #include <machine/reg.h>
@@ -33,6 +35,8 @@
 #include "fbsd-nat.h"
 #include "amd64-tdep.h"
 #include "amd64-nat.h"
+#include "amd64bsd-nat.h"
+#include "i386-nat.h"
 
 
 /* Offset in `struct reg' where MEMBER is stored.  */
@@ -91,6 +95,108 @@ static int amd64dfly32_r_reg_offset[I386_NUM_GREGS] =
 };
 
 
+#ifdef DFLY_PCB_SUPPLY
+/* Transfering the registers between GDB, inferiors and core files.  */
+
+/* Fill GDB's register array with the general-purpose register values
+   in *GREGSETP.  */
+
+void
+supply_gregset (struct regcache *regcache, const gregset_t *gregsetp)
+{
+  amd64_supply_native_gregset (regcache, gregsetp, -1);
+}
+
+/* Fill register REGNUM (if it is a general-purpose register) in
+   *GREGSETPS with the value in GDB's register array.  If REGNUM is -1,
+   do this for all registers.  */
+
+void
+fill_gregset (const struct regcache *regcache, gdb_gregset_t *gregsetp, int regnum)
+{
+  amd64_collect_native_gregset (regcache, gregsetp, regnum);
+}
+
+/* Fill GDB's register array with the floating-point register values
+   in *FPREGSETP.  */
+
+void
+supply_fpregset (struct regcache *regcache, const fpregset_t *fpregsetp)
+{
+  amd64_supply_fxsave (regcache, -1, fpregsetp);
+}
+
+/* Fill register REGNUM (if it is a floating-point register) in
+   *FPREGSETP with the value in GDB's register array.  If REGNUM is -1,
+   do this for all registers.  */
+
+void
+fill_fpregset (const struct regcache *regcache, gdb_fpregset_t *fpregsetp, int regnum)
+{
+  amd64_collect_fxsave (regcache, regnum, fpregsetp);
+}
+
+/* Support for debugging kernel virtual memory images.  */
+
+#include <sys/types.h>
+#include <machine/pcb.h>
+#include <osreldate.h>
+
+#include "bsd-kvm.h"
+
+static int
+amd64dfly_supply_pcb (struct regcache *regcache, struct pcb *pcb)
+{
+  /* The following is true for FreeBSD 5.2:
+
+     The pcb contains %rip, %rbx, %rsp, %rbp, %r12, %r13, %r14, %r15,
+     %ds, %es, %fs and %gs.  This accounts for all callee-saved
+     registers specified by the psABI and then some.  Here %esp
+     contains the stack pointer at the point just after the call to
+     cpu_switch().  From this information we reconstruct the register
+     state as it would like when we just returned from cpu_switch().  */
+
+  /* The stack pointer shouldn't be zero.  */
+  if (pcb->pcb_rsp == 0)
+    return 0;
+
+  pcb->pcb_rsp += 8;
+  regcache_raw_supply (regcache, AMD64_RIP_REGNUM, &pcb->pcb_rip);
+  regcache_raw_supply (regcache, AMD64_RBX_REGNUM, &pcb->pcb_rbx);
+  regcache_raw_supply (regcache, AMD64_RSP_REGNUM, &pcb->pcb_rsp);
+  regcache_raw_supply (regcache, AMD64_RBP_REGNUM, &pcb->pcb_rbp);
+  regcache_raw_supply (regcache, 12, &pcb->pcb_r12);
+  regcache_raw_supply (regcache, 13, &pcb->pcb_r13);
+  regcache_raw_supply (regcache, 14, &pcb->pcb_r14);
+  regcache_raw_supply (regcache, 15, &pcb->pcb_r15);
+#if (__FreeBSD_version < 800075) && (__FreeBSD_kernel_version < 800075)
+  /* struct pcb provides the pcb_ds/pcb_es/pcb_fs/pcb_gs fields only
+     up until __FreeBSD_version 800074: The removal of these fields
+     occurred on 2009-04-01 while the __FreeBSD_version number was
+     bumped to 800075 on 2009-04-06.  So 800075 is the closest version
+     number where we should not try to access these fields.  */
+  regcache_raw_supply (regcache, AMD64_DS_REGNUM, &pcb->pcb_ds);
+  regcache_raw_supply (regcache, AMD64_ES_REGNUM, &pcb->pcb_es);
+  regcache_raw_supply (regcache, AMD64_FS_REGNUM, &pcb->pcb_fs);
+  regcache_raw_supply (regcache, AMD64_GS_REGNUM, &pcb->pcb_gs);
+#endif
+
+  return 1;
+}
+#endif /* DFLY_PCB_SUPPLY */
+
+
+static void (*super_mourn_inferior) (struct target_ops *ops);
+
+static void
+amd64dfly_mourn_inferior (struct target_ops *ops)
+{
+#ifdef HAVE_PT_GETDBREGS
+  i386_cleanup_dregs ();
+#endif
+  super_mourn_inferior (ops);
+}
+
 /* Provide a prototype to silence -Wmissing-prototypes.  */
 void _initialize_amd64dfly_nat (void);
 
@@ -105,10 +211,32 @@ _initialize_amd64dfly_nat (void)
 
   /* Add some extra features to the common *BSD/i386 target.  */
   t = amd64bsd_target ();
+
+#ifdef HAVE_PT_GETDBREGS
+
+  i386_use_watchpoints (t);
+
+  i386_dr_low.set_control = amd64bsd_dr_set_control;
+  i386_dr_low.set_addr = amd64bsd_dr_set_addr;
+  i386_dr_low.get_addr = amd64bsd_dr_get_addr;
+  i386_dr_low.get_status = amd64bsd_dr_get_status;
+  i386_dr_low.get_control = amd64bsd_dr_get_control;
+  i386_set_debug_register_length (8);
+
+#endif /* HAVE_PT_GETDBREGS */
+
+  super_mourn_inferior = t->to_mourn_inferior;
+  t->to_mourn_inferior = amd64dfly_mourn_inferior;
+
   t->to_pid_to_exec_file = fbsd_pid_to_exec_file;
   t->to_find_memory_regions = fbsd_find_memory_regions;
   t->to_make_corefile_notes = fbsd_make_corefile_notes;
   add_target (t);
+
+#ifdef DFLY_PCB_SUPPLY
+  /* Support debugging kernel virtual memory images.  */
+  bsd_kvm_add_target (amd64dfly_supply_pcb);
+#endif
 
   /* To support the recognition of signal handlers, i386bsd-tdep.c
      hardcodes some constants.  Inclusion of this file means that we

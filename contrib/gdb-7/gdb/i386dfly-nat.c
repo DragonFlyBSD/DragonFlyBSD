@@ -1,7 +1,6 @@
 /* Native-dependent code for DragonFly/i386.
 
-   Copyright (C) 2001, 2002, 2003, 2004, 2007, 2008, 2009
-   Free Software Foundation, Inc.
+   Copyright (C) 2001-2013 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -22,8 +21,10 @@
 #include "inferior.h"
 #include "regcache.h"
 #include "target.h"
+#include "gregset.h"
 
 #include <sys/types.h>
+#include <sys/procfs.h>
 #include <sys/ptrace.h>
 #include <sys/sysctl.h>
 
@@ -31,6 +32,136 @@
 #include "i386-tdep.h"
 #include "i386-nat.h"
 #include "i386bsd-nat.h"
+
+#ifdef DFLY_PCB_SUPPLY
+/* Resume execution of the inferior process.  If STEP is nonzero,
+   single-step it.  If SIGNAL is nonzero, give it that signal.  */
+
+static void
+i386dfly_resume (struct target_ops *ops,
+		 ptid_t ptid, int step, enum gdb_signal signal)
+{
+  pid_t pid = ptid_get_pid (ptid);
+  int request = PT_STEP;
+
+  if (pid == -1)
+    /* Resume all threads.  This only gets used in the non-threaded
+       case, where "resume all threads" and "resume inferior_ptid" are
+       the same.  */
+    pid = ptid_get_pid (inferior_ptid);
+
+  if (!step)
+    {
+      struct regcache *regcache = get_current_regcache ();
+      ULONGEST eflags;
+
+      /* Workaround for a bug in FreeBSD.  Make sure that the trace
+ 	 flag is off when doing a continue.  There is a code path
+ 	 through the kernel which leaves the flag set when it should
+ 	 have been cleared.  If a process has a signal pending (such
+ 	 as SIGALRM) and we do a PT_STEP, the process never really has
+ 	 a chance to run because the kernel needs to notify the
+ 	 debugger that a signal is being sent.  Therefore, the process
+ 	 never goes through the kernel's trap() function which would
+ 	 normally clear it.  */
+
+      regcache_cooked_read_unsigned (regcache, I386_EFLAGS_REGNUM,
+				     &eflags);
+      if (eflags & 0x0100)
+	regcache_cooked_write_unsigned (regcache, I386_EFLAGS_REGNUM,
+					eflags & ~0x0100);
+
+      request = PT_CONTINUE;
+    }
+
+  /* An addres of (caddr_t) 1 tells ptrace to continue from where it
+     was.  (If GDB wanted it to start some other way, we have already
+     written a new PC value to the child.)  */
+  if (ptrace (request, pid, (caddr_t) 1,
+	      gdb_signal_to_host (signal)) == -1)
+    perror_with_name (("ptrace"));
+}
+
+
+/* Transfering the registers between GDB, inferiors and core files.  */
+
+/* Fill GDB's register array with the general-purpose register values
+   in *GREGSETP.  */
+
+void
+supply_gregset (struct regcache *regcache, const gregset_t *gregsetp)
+{
+  i386bsd_supply_gregset (regcache, gregsetp);
+}
+
+/* Fill register REGNUM (if it is a general-purpose register) in
+   *GREGSETPS with the value in GDB's register array.  If REGNUM is -1,
+   do this for all registers.  */
+
+void
+fill_gregset (const struct regcache *regcache, gdb_gregset_t *gregsetp, int regnum)
+{
+  i386bsd_collect_gregset (regcache, gregsetp, regnum);
+}
+
+#include "i387-tdep.h"
+
+/* Fill GDB's register array with the floating-point register values
+   in *FPREGSETP.  */
+
+void
+supply_fpregset (struct regcache *regcache, const fpregset_t *fpregsetp)
+{
+  i387_supply_fsave (regcache, -1, fpregsetp);
+}
+
+/* Fill register REGNUM (if it is a floating-point register) in
+   *FPREGSETP with the value in GDB's register array.  If REGNUM is -1,
+   do this for all registers.  */
+
+void
+fill_fpregset (const struct regcache *regcache, gdb_fpregset_t *fpregsetp, int regnum)
+{
+  i387_collect_fsave (regcache, regnum, fpregsetp);
+}
+
+
+/* Support for debugging kernel virtual memory images.  */
+
+#include <sys/types.h>
+#include <machine/pcb.h>
+
+#include "bsd-kvm.h"
+
+static int
+i386dfly_supply_pcb (struct regcache *regcache, struct pcb *pcb)
+{
+  /* The following is true for FreeBSD 4.7:
+
+     The pcb contains %eip, %ebx, %esp, %ebp, %esi, %edi and %gs.
+     This accounts for all callee-saved registers specified by the
+     psABI and then some.  Here %esp contains the stack pointer at the
+     point just after the call to cpu_switch().  From this information
+     we reconstruct the register state as it would look when we just
+     returned from cpu_switch().  */
+
+  /* The stack pointer shouldn't be zero.  */
+  if (pcb->pcb_esp == 0)
+    return 0;
+
+  pcb->pcb_esp += 4;
+  regcache_raw_supply (regcache, I386_EDI_REGNUM, &pcb->pcb_edi);
+  regcache_raw_supply (regcache, I386_ESI_REGNUM, &pcb->pcb_esi);
+  regcache_raw_supply (regcache, I386_EBP_REGNUM, &pcb->pcb_ebp);
+  regcache_raw_supply (regcache, I386_ESP_REGNUM, &pcb->pcb_esp);
+  regcache_raw_supply (regcache, I386_EBX_REGNUM, &pcb->pcb_ebx);
+  regcache_raw_supply (regcache, I386_EIP_REGNUM, &pcb->pcb_eip);
+  regcache_raw_supply (regcache, I386_GS_REGNUM, &pcb->pcb_gs);
+
+  return 1;
+}
+#endif /* DFLY_PCB_SUPPLY */
+
 
 /* Prevent warning from -Wmissing-prototypes.  */
 void _initialize_i386dfly_nat (void);
@@ -49,8 +180,9 @@ _initialize_i386dfly_nat (void)
 
   i386_dr_low.set_control = i386bsd_dr_set_control;
   i386_dr_low.set_addr = i386bsd_dr_set_addr;
-  i386_dr_low.reset_addr = i386bsd_dr_reset_addr;
+  i386_dr_low.get_addr = i386bsd_dr_get_addr;
   i386_dr_low.get_status = i386bsd_dr_get_status;
+  i386_dr_low.get_control = i386bsd_dr_get_control;
   i386_set_debug_register_length (4);
 
 #endif /* HAVE_PT_GETDBREGS */
@@ -60,6 +192,11 @@ _initialize_i386dfly_nat (void)
   t->to_find_memory_regions = fbsd_find_memory_regions;
   t->to_make_corefile_notes = fbsd_make_corefile_notes;
   add_target (t);
+
+#ifdef DFLY_PCB_SUPPLY
+  /* Support debugging kernel virtual memory images.  */
+  bsd_kvm_add_target (i386dfly_supply_pcb);
+#endif
 
   /* DragonFly provides a kern.ps_strings sysctl that we can use to
      locate the sigtramp.  That way we can still recognize a sigtramp

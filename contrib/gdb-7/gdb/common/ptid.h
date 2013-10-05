@@ -47,7 +47,7 @@ struct ptid
     long lwp;
 
     /* Thread id */
-    long tid;
+    unsigned long tid;
   };
 
 typedef struct ptid ptid_t;
