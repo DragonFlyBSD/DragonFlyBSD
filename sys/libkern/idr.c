@@ -42,7 +42,7 @@
 #include <sys/spinlock2.h>
 #include <sys/limits.h>
 
-#define IDR_DEFAULT_SIZE    32
+#define IDR_DEFAULT_SIZE    256
 
 MALLOC_DEFINE(M_IDR, "idr", "Integer ID management");
 
