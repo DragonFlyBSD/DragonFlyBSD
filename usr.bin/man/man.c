@@ -536,10 +536,10 @@ manual(char *page, struct manstate *mp, glob_t *pg)
 	*eptr = '\0';
 
 	/*
-	 * If 'page' is given with a full or relative path
-	 * then interpret it as a file specification.
+	 * If 'page' contains a slash then it's
+	 * interpreted as a file specification.
 	 */
-	if ((page[0] == '/') || (page[0] == '.')) {
+	if (strchr(page, '/')) {
 		/* check if file actually exists */
 		(void)strlcpy(buf, escpage, sizeof(buf));
 		error = glob(buf, GLOB_APPEND | GLOB_BRACE | GLOB_NOSORT, NULL, pg);
