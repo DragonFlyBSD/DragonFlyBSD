@@ -219,13 +219,22 @@ char *drm_get_connector_status_name(enum drm_connector_status status)
 static int drm_mode_object_get(struct drm_device *dev,
 			       struct drm_mode_object *obj, uint32_t obj_type)
 {
-	int new_id;
+	int new_id = 0;
 	int ret;
 
-	new_id = 0;
-	ret = drm_gem_name_create(&dev->mode_config.crtc_names, obj, &new_id);
-	if (ret != 0)
-		return (ret);
+again:
+	if (idr_pre_get(&dev->mode_config.crtc_idr/*, GFP_KERNEL*/) == 0) {
+		DRM_ERROR("Ran out memory getting a mode number\n");
+		return -ENOMEM;
+	}
+
+	spin_lock(&dev->mode_config.idr_mutex);
+	ret = idr_get_new_above(&dev->mode_config.crtc_idr, obj, 1, &new_id);
+	spin_unlock(&dev->mode_config.idr_mutex);
+	if (ret == -EAGAIN)
+		goto again;
+	else if (ret)
+		return ret;
 
 	obj->id = new_id;
 	obj->type = obj_type;
@@ -245,18 +254,21 @@ static int drm_mode_object_get(struct drm_device *dev,
 static void drm_mode_object_put(struct drm_device *dev,
 				struct drm_mode_object *object)
 {
-
-	drm_gem_names_remove(&dev->mode_config.crtc_names, object->id);
+	spin_lock(&dev->mode_config.idr_mutex);
+	idr_remove(&dev->mode_config.crtc_idr, object->id);
+	spin_unlock(&dev->mode_config.idr_mutex);
 }
 
 struct drm_mode_object *drm_mode_object_find(struct drm_device *dev,
 		uint32_t id, uint32_t type)
 {
-	struct drm_mode_object *obj;
+	struct drm_mode_object *obj = NULL;
 
-	obj = drm_gem_name_ref(&dev->mode_config.crtc_names, id, NULL);
+	spin_lock(&dev->mode_config.idr_mutex);
+	obj = idr_find(&dev->mode_config.crtc_idr, id);
 	if (!obj || (obj->type != type) || (obj->id != id))
 		obj = NULL;
+	spin_unlock(&dev->mode_config.idr_mutex);
 
 	return obj;
 }
@@ -882,6 +894,7 @@ int drm_mode_create_dirty_info_property(struct drm_device *dev)
 void drm_mode_config_init(struct drm_device *dev)
 {
 	lockinit(&dev->mode_config.lock, "kmslk", 0, LK_CANRECURSE);
+	spin_init(&dev->mode_config.idr_mutex);
 	INIT_LIST_HEAD(&dev->mode_config.fb_list);
 	INIT_LIST_HEAD(&dev->mode_config.crtc_list);
 	INIT_LIST_HEAD(&dev->mode_config.connector_list);
@@ -889,7 +902,7 @@ void drm_mode_config_init(struct drm_device *dev)
 	INIT_LIST_HEAD(&dev->mode_config.property_list);
 	INIT_LIST_HEAD(&dev->mode_config.property_blob_list);
 	INIT_LIST_HEAD(&dev->mode_config.plane_list);
-	drm_gem_names_init(&dev->mode_config.crtc_names);
+	idr_init(&dev->mode_config.crtc_idr);
 
 	lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
 	drm_mode_create_standard_connector_properties(dev);
@@ -993,7 +1006,13 @@ void drm_mode_config_cleanup(struct drm_device *dev)
 				 head) {
 		plane->funcs->destroy(plane);
 	}
-	drm_gem_names_fini(&dev->mode_config.crtc_names);
+
+	list_for_each_entry_safe(crtc, ct, &dev->mode_config.crtc_list, head) {
+		crtc->funcs->destroy(crtc);
+	}
+
+	idr_remove_all(&dev->mode_config.crtc_idr);
+	idr_destroy(&dev->mode_config.crtc_idr);
 }
 
 /**
