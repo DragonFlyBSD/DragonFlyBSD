@@ -555,8 +555,9 @@ manual(char *page, struct manstate *mp, glob_t *pg)
 			goto notfound;
 
 		/* clip suffix for the suffix check below */
-		p = strrchr(escpage, '.');
-		if (p && p[0] == '.' && isdigit((unsigned char)p[1]))
+		p = strrchr(escpage, '/');
+		p = strchr(p, '.');
+		if (p)
 			p[0] = '\0';
 
 		found = 0;
