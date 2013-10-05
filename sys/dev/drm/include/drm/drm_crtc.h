@@ -29,7 +29,6 @@
 
 #include <linux/idr.h>
 
-#include "drm_gem_names.h"
 #include <uapi_drm/drm_fourcc.h>
 
 struct drm_device;

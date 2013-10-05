@@ -95,8 +95,8 @@
 
 #include <dev/drm/drm_atomic.h>
 #include "drm_linux_list.h"
-#include "drm_gem_names.h"
 
+#include <linux/idr.h>
 #include <linux/kref.h>
 
 struct drm_file;
@@ -499,8 +499,12 @@ struct drm_file {
 	drm_magic_t	  magic;
 	unsigned long	  ioctl_count;
 
+	/** Mapping of mm object handles to object pointers. */
+	struct idr object_idr;
+	/** Lock for synchronization of access to object_idr. */
+	struct spinlock table_lock;
+
 	void		 *driver_priv;
-	struct drm_gem_names object_names;
 
 	int		  is_master;
 	struct drm_master *masterp;
@@ -1009,10 +1013,13 @@ struct drm_device {
 
         struct drm_mode_config mode_config;	/**< Current mode config */
 
-	/* GEM part */
-	struct lock	object_name_lock;
-	struct drm_gem_names object_names;
-	void		 *mm_private;
+
+	/** \name GEM information */
+	/*@{ */
+	struct spinlock object_name_lock;
+	struct idr object_name_idr;
+	/*@} */
+	void             *mm_private;
 
 	void *sysctl_private;
 	char busid_str[128];
