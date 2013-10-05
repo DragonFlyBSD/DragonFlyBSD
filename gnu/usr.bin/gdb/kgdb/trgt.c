@@ -51,6 +51,7 @@
 #include <target.h>
 #include <ui-out.h>
 #include <observer.h>
+#include <arch-utils.h>
 
 #include "kgdb.h"
 
@@ -92,6 +93,8 @@ kgdb_trgt_open(char *filename, int from_tty)
 	kvm_t *nkvm;
 	char *temp;
 	int first_inferior = 1;
+	struct gdbarch_info info;
+	struct gdbarch *kgdbarch;
 
 	target_preopen (from_tty);
 	if (!filename)
@@ -126,6 +129,18 @@ kgdb_trgt_open(char *filename, int from_tty)
 
 	kgdb_dmesg();
 
+	gdbarch_info_init (&info);
+#if defined (__i386__)
+	info.bfd_arch_info = bfd_scan_arch ("i386");
+#elif defined (__x86_64__)
+	info.bfd_arch_info = bfd_scan_arch ("i386:x86-64");
+#else
+#error platform not recognized
+#endif
+	info.byte_order = BFD_ENDIAN_LITTLE;
+	gdbarch_info_fill (&info);
+	kgdbarch = gdbarch_find_by_info (info);
+
 	init_thread_list();
 	kt = kgdb_thr_init();
 	while (kt != NULL) {
@@ -134,33 +149,36 @@ kgdb_trgt_open(char *filename, int from_tty)
                        first_inferior = 0;
                        inf8 = current_inferior();
                        inf8->pid = kt->pid;
+                       inf8->attach_flag = 1;
                        inferior_appeared (inf8, kt->pid);
                        pspace = current_program_space;
                        pspace->ebfd = 0;
                        pspace->ebfd_mtime = 0;
                      } else {                    
                        inf8 = add_inferior(kt->pid);
+                       inf8->attach_flag = 0;
                        pspace = add_program_space(new_address_space());
                        pspace->symfile_object_file = symfile_objfile;
                        pspace->objfiles = object_files;
                      }
                      inf8->pspace = pspace;
                      inf8->aspace = pspace->aspace;
+                     inf8->fake_pid_p = 0;
+                     inf8->gdbarch = kgdbarch;
                 }
-		add_thread(ptid_build(kt->pid, 0, kt->tid));
+		add_thread(ptid_build(kt->pid, kt->lwpid, kt->tid));
 		kt = kgdb_thr_next(kt);
 	}
 	if (curkthr != 0)
-		inferior_ptid = ptid_build(curkthr->pid, 0, curkthr->tid);
+		inferior_ptid = ptid_build(curkthr->pid, curkthr->lwpid,
+			curkthr->tid);
 
-	frame_unwind_prepend_unwinder(get_frame_arch(get_current_frame()), &kgdb_trgt_trapframe_unwind);
+	frame_unwind_prepend_unwinder(kgdbarch, &kgdb_trgt_trapframe_unwind);
 
-	/* XXX: fetch registers? */
-	kld_init();
+	kld_init(kgdbarch);
 	reinit_frame_cache();
 	select_frame (get_current_frame());
-	print_stack_frame(get_selected_frame(NULL),
-	  frame_relative_level(get_selected_frame(NULL)), 1);
+	print_stack_frame(get_selected_frame(NULL), 0, SRC_AND_LOC);
 }
 
 static void
@@ -261,13 +279,13 @@ static void
 kgdb_switch_to_thread(struct kthr *thr)
 {
 	char buf[16];
-	int thread_id;
+	CORE_ADDR thread_id;
 	char *err;
 
-	thread_id = pid_to_thread_id(ptid_build(thr->pid, 0, thr->tid));
+	thread_id = thr->tid;
 	if (thread_id == 0)
 		error ("invalid tid");
-	snprintf(buf, sizeof(buf), "%d", thread_id);
+	snprintf(buf, sizeof(buf), "%lu", thread_id);
 	if (!gdb_thread_select(current_uiout, buf, &err))
 		error ("%s", err);
 }

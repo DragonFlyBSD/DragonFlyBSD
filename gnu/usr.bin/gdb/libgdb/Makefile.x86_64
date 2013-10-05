@@ -6,5 +6,5 @@ SRCS+=	amd64-tdep.c amd64dfly-tdep.c i386-tdep.c i387-tdep.c i386bsd-tdep.c \
 # NATDEPFILES
 SRCS+=	fork-child.c inf-ptrace.c \
 	fbsd-nat.c amd64-nat.c amd64bsd-nat.c amd64dfly-nat.c \
-	gcore.c
+	i386-nat.c gcore.c
 .endif

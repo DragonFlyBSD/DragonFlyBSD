@@ -47,10 +47,12 @@
 #include "kgdb.h"
 
 static CORE_ADDR dumppcb;
-static int dumptid;
+static CORE_ADDR dumptid;
 
 static struct kthr *first;
 struct kthr *curkthr;
+
+#define LIVESYS_DUMPTID	10
 
 CORE_ADDR
 kgdb_lookup(const char *sym)
@@ -111,7 +113,7 @@ kgdb_thr_init(void)
 		 * cpu0's curthread.
 		 *
 		 * Actually we don't even know if we were dumped
-		 * or if we are life.  Find out by querying "dumping".
+		 * or if we are live.  Find out by querying "dumping".
 		 */
 		int dumping = 0;
 
@@ -121,10 +123,10 @@ kgdb_thr_init(void)
 			kvm_read(kvm, prvspace +
 				 offsetof(struct privatespace, mdglobaldata),
 				 &gd, sizeof(struct mdglobaldata));
-			dumptid = (intptr_t)gd.mi.gd_curthread;
+			dumptid = (CORE_ADDR)gd.mi.gd_curthread;
 		} else {
 			/* We must be a live system */
-			dumptid = -1;
+			dumptid = LIVESYS_DUMPTID;
 		}
 	}
 
@@ -144,7 +146,7 @@ kgdb_thr_init(void)
 			kt = malloc(sizeof(*kt));
 			kt->next = first;
 			kt->kaddr = addr;
-			kt->tid = addr;		/* XXX do we have tids? */
+			kt->tid = addr;
 			kt->pcb = (kt->tid == dumptid) ? dumppcb :
 			    (uintptr_t)td.td_pcb;
 			kt->kstack = (uintptr_t)td.td_kstack;
@@ -188,7 +190,7 @@ kgdb_thr_init(void)
 }
 
 struct kthr *
-kgdb_thr_lookup_tid(int tid)
+kgdb_thr_lookup_tid(CORE_ADDR tid)
 {
 	struct kthr *kt;
 
@@ -248,17 +250,26 @@ kgdb_thr_select(struct kthr *kt)
 }
 
 char *
-kgdb_thr_extra_thread_info(int tid)
+kgdb_thr_extra_thread_info(CORE_ADDR tid)
 {
-#if 0  /* XXX: Doesn't do anything, obsolete? */
+#if 0 /* Information already provided */
 	struct kthr *kt;
 	static char buf[64];
+	struct proc *p;
+	char comm[MAXCOMLEN + 1];
 
 	kt = kgdb_thr_lookup_tid(tid);
 	if (kt == NULL)
 		return (NULL);
 
-	buf[0] = 0;
+	snprintf(buf, sizeof(buf), "PID=%d", kt->pid);
+	p = (struct proc *)kt->paddr;
+	if (kvm_read(kvm, (uintptr_t)&p->p_comm[0], &comm, sizeof(comm)) ==
+		sizeof(comm)) {
+		strlcat(buf, ": ", sizeof(buf));
+		strlcat(buf, comm, sizeof(buf));
+	}
+	return (buf);
 #endif
 	return (NULL);
 }
@@ -271,7 +282,7 @@ kgdb_thr_pid_to_str(ptid_t ptid)
 	struct proc *p;
 	struct thread *t;
 	static char buf[64];
-	int tid;
+	CORE_ADDR tid;
 
 	tid = ptid_get_tid(ptid);
 	if (tid == 0)
@@ -289,7 +300,7 @@ kgdb_thr_pid_to_str(ptid_t ptid)
 
 		if (tid != 0)
 			snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-				 "/%d", kt->lwpid);
+				 "/%ld", kt->lwpid);
 
 		p = (struct proc *)kt->paddr;
 		if (kvm_read(kvm, (uintptr_t)&p->p_comm[0], &comm, sizeof(comm)) !=

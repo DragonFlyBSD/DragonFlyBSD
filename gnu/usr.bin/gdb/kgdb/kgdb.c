@@ -62,7 +62,7 @@
 #include <ui-file.h>
 #include <bfd.h>
 #include <gdbcore.h>
-#include <wrapper.h>
+#include <exceptions.h>
 #include <observer.h>
 #include <arch-utils.h>
 
@@ -179,6 +179,38 @@ kgdb_new_objfile(struct objfile *objfile)
 	}
 }
 
+int
+gdb_parse_exp_1 (const char **stringptr, struct block *block, int comma,
+		 struct expression **expression)
+{
+  volatile struct gdb_exception except;
+  CORE_ADDR pc = 0;
+
+  TRY_CATCH (except, RETURN_MASK_ERROR)
+    {
+      *expression = parse_exp_1 (stringptr, pc ,block, comma);
+    }
+
+  if (except.reason < 0)
+    return 0;
+  return 1;
+}
+
+int
+gdb_evaluate_expression (struct expression *exp, struct value **value)
+{
+  volatile struct gdb_exception except;
+
+  TRY_CATCH (except, RETURN_MASK_ERROR)
+    {
+      *value = evaluate_expression(exp);
+    }
+
+  if (except.reason < 0)
+    return 0;
+  return 1;
+}
+
 /*
  * Parse an expression and return its value.  If 'quiet' is true, then
  * any error messages from the parser are masked.
@@ -190,7 +222,7 @@ kgdb_parse_1(const char *exp, int quiet)
 	struct cleanup *old_chain;
 	struct expression *expr;
 	struct value *val;
-	char *s;
+	const char *s;
 	CORE_ADDR n;
 
 	old_stderr = gdb_stderr;
@@ -198,7 +230,7 @@ kgdb_parse_1(const char *exp, int quiet)
 		gdb_stderr = parse_gdberr;
 	n = 0;
 	s = xstrdup(exp);
-	old_chain = make_cleanup(xfree, s);
+	old_chain = make_cleanup(xfree, (char*)s);
 	if (gdb_parse_exp_1(&s, NULL, 0, &expr) && *s == '\0') {
 		make_cleanup(free_current_contents, &expr);
 		if (gdb_evaluate_expression(expr, &val))

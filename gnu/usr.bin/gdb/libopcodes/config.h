@@ -1,6 +1,8 @@
 /* config.h.  Generated from config.in by configure.  */
 /* config.in.  Generated from configure.in by autoheader.  */
 
+#define __CONFIG_H__ 1
+
 /* Define to 1 if translation of program messages to the user's native
    language is requested. */
 /* #undef ENABLE_NLS */
@@ -74,6 +76,9 @@
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
+/* Define if you can safely include both <string.h> and <strings.h>. */
+#define STRING_WITH_STRINGS 1
+
 /* Enable extensions on AIX 3, Interix.  */
 #ifndef _ALL_SOURCE
 # define _ALL_SOURCE 1
@@ -97,7 +102,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.22.51"
+#define VERSION "2.23.52"
 
 /* Define to 1 if on MINIX. */
 /* #undef _MINIX */

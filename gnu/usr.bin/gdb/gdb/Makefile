@@ -7,14 +7,15 @@ CFLAGS+= -I${BASEDIR}/gdb/common -I${.CURDIR}/../libbfd
 CFLAGS+= -I${.OBJDIR}/../libbfd
 
 DPADD=  ${GDBLIBS}
-DPADD+= ${LIBNCURSES} ${LIBM} ${LIBZ} ${LIBKVM}
+DPADD+= ${LIBNCURSES} ${LIBM} ${LIBZ} ${LIBKVM} ${LIBLZMA}
 LDADD=  -L../libgdb -lgdb
 LDADD+= -L../libreadline -lreadline
 LDADD+= -L../libopcodes -lopcodes
 LDADD+= -L../libbfd -lbfd
 LDADD+= -L../libiberty -liberty
 LDADD+= -L../libdecnumber -ldecnumber
-LDADD+= -lncurses -lm -lz -lkvm
+LDADD+= -L../libgnu -lgnu
+LDADD+= -lncurses -lm -lz -lkvm -llzma
 
 SUBDIR=	doc
 

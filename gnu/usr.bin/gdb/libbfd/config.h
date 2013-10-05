@@ -1,6 +1,8 @@
 /* config.h.  Generated from config.in by configure.  */
 /* config.in.  Generated from configure.in by autoheader.  */
 
+#define __CONFIG_H__ 1
+
 /* Name of host specific core header file to include in elf.c. */
 /* #undef CORE_HEADER */
 
@@ -246,6 +248,9 @@
 /* Define if <sys/procfs.h> has win32_pstatus_t. */
 /* #undef HAVE_WIN32_PSTATUS_T */
 
+/* Define to 1 if you have the <windows.h> header file. */
+/* #undef HAVE_WINDOWS_H */
+
 /* Define to 1 if you have the <zlib.h> header file. */
 #define HAVE_ZLIB_H 1
 
@@ -260,19 +265,19 @@
 #define PACKAGE_BUGREPORT ""
 
 /* Define to the full name of this package. */
-#define PACKAGE_NAME ""
+#define PACKAGE_NAME "bfd"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING ""
+#define PACKAGE_STRING "bfd 2.23.52"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME ""
+#define PACKAGE_TARNAME "bfd"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION ""
+#define PACKAGE_VERSION "2.23.52"
 
 /* The size of `char', as computed by sizeof. */
 /* #undef SIZEOF_CHAR */
@@ -303,8 +308,6 @@
 #define SIZEOF_VOID_P 4
 #elif defined(__x86_64__)
 #define SIZEOF_VOID_P 8
-#else
-#error Unsupported platform
 #endif
 
 /* Define to 1 if you have the ANSI C header files. */
@@ -357,7 +360,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.22.51"
+#define VERSION "2.23.52"
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */

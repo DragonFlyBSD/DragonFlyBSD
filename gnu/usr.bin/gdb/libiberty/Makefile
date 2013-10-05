@@ -13,6 +13,7 @@ SRCS+=	./argv.c \
 	./cp-demint.c \
 	./cplus-dem.c \
 	./concat.c \
+	./dwarfnames.c \
 	./dyn-string.c \
 	./filename_cmp.c \
 	./floatformat.c \

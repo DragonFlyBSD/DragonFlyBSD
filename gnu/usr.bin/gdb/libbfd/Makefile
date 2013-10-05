@@ -15,7 +15,7 @@ SRCS=	archive.c archures.c bfd.c bfdio.c bfdwin.c \
 	opncls.c reloc.c section.c syms.c targets.c hash.c \
 	linker.c srec.c binary.c tekhex.c ihex.c stabs.c \
 	stab-syms.c merge.c dwarf2.c simple.c compress.c \
-	verilog.c
+	verilog.c elf-nacl.c
 
 SRCS+=		targmatch.h elf32-target.h elf64-target.h
 CLEANFILES+=	elf64-target.h elf32-target.h targmatch.h

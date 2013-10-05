@@ -238,7 +238,7 @@ load_kld (char *path, CORE_ADDR base_addr, int from_tty)
 	if (bfd == NULL)
 		error("\"%s\": can't open: %s", path,
 		    bfd_errmsg(bfd_get_error()));
-	cleanup = make_cleanup_bfd_close(bfd);
+	cleanup = make_cleanup_bfd_unref(bfd);
 
 	if (!bfd_check_format(bfd, bfd_object))
 		error("\%s\": not an object file", path);
@@ -488,10 +488,10 @@ load_klds_stub (void *arg)
 }
 
 void
-kld_init (void)
+kld_init (struct gdbarch *kgdbarch)
 {
 	/* XXX hack, needs to go into an abi init function */
-	set_solib_ops(get_current_arch(), &kld_so_ops);
+	set_solib_ops(kgdbarch, &kld_so_ops);
 
 	kld_new_objfile(NULL);
 	catch_errors(load_klds_stub, NULL, NULL, RETURN_MASK_ALL);

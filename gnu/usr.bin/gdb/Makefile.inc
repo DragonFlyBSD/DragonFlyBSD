@@ -6,5 +6,6 @@ GDBLIBS+=	${.OBJDIR}/../libbfd/libbfd.a
 GDBLIBS+=	${.OBJDIR}/../libiberty/libiberty.a
 GDBLIBS+=	${.OBJDIR}/../libdecnumber/libdecnumber.a
 GDBLIBS+=	${.OBJDIR}/../libgdb/libgdb.a
+GDBLIBS+=	${.OBJDIR}/../libgnu/libgnu.a
 
 .include "../Makefile.inc"

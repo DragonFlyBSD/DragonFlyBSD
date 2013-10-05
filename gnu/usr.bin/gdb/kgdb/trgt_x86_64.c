@@ -155,7 +155,7 @@ static struct kgdb_frame_cache *
 kgdb_trgt_frame_cache(struct frame_info *next_frame, void **this_cache)
 {
 	struct kgdb_frame_cache *cache;
-	char *pname;
+	const char *pname;
 
 	cache = *this_cache;
 	if (cache == NULL) {
@@ -249,7 +249,7 @@ kgdb_trgt_trapframe_sniffer(const struct frame_unwind *self,
 			    struct frame_info *next_frame,
 			    void **this_prologue_cache)
 {
-	char *pname;
+	const char *pname;
 	CORE_ADDR pc;
 
 	pc = get_frame_address_in_block(next_frame);

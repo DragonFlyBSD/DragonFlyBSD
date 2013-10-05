@@ -7,14 +7,15 @@ CFLAGS+= -I${.OBJDIR}/../libbfd -I${BASEDIR}/gdb/common
 CFLAGS+= -D_KERNEL_STRUCTURES
 
 DPADD=  ${GDBLIBS}
-DPADD+= ${LIBNCURSES} ${LIBM} ${LIBZ} ${LIBKVM}
+DPADD+= ${LIBNCURSES} ${LIBM} ${LIBZ} ${LIBKVM} ${LIBLZMA}
 LDADD=  -L../libgdb -lgdb
 LDADD+= -L../libreadline -lreadline
 LDADD+= -L../libopcodes -lopcodes
 LDADD+= -L../libbfd -lbfd
 LDADD+= -L../libiberty -liberty
 LDADD+= -L../libdecnumber -ldecnumber
-LDADD+= -lncurses -lm -lz -lkvm
+LDADD+= -L../libgnu -lgnu
+LDADD+= -lncurses -lm -lz -lkvm -llzma
 
 WARNS?=	2
 

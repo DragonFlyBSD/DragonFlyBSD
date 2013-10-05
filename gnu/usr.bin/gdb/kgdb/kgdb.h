@@ -40,9 +40,9 @@ struct kthr {
 	uintptr_t	kstack;
 	uintptr_t	pcb;
 	uintptr_t	gd;
-	int		tid;
+	CORE_ADDR	tid;
 	int		pid;
-	int		lwpid;
+	long		lwpid;
 };
 
 extern struct kthr *curkthr;
@@ -51,20 +51,20 @@ void initialize_kld_target(void);
 void initialize_kgdb_target(void);
 void kgdb_dmesg(void);
 void kgdb_trgt_fetch_registers(struct target_ops *, struct regcache *, int);
-void kld_init(void);
+void kld_init(struct gdbarch *);
 void kld_new_objfile(struct objfile *);
 
 extern const struct frame_unwind kgdb_trgt_trapframe_unwind;
 
 struct kthr *kgdb_thr_first(void);
 struct kthr *kgdb_thr_init(void);
-struct kthr *kgdb_thr_lookup_tid(int);
+struct kthr *kgdb_thr_lookup_tid(CORE_ADDR);
 struct kthr *kgdb_thr_lookup_pid(int);
 struct kthr *kgdb_thr_lookup_paddr(uintptr_t);
 struct kthr *kgdb_thr_lookup_taddr(uintptr_t);
 struct kthr *kgdb_thr_next(struct kthr *);
 struct kthr *kgdb_thr_select(struct kthr *);
-char        *kgdb_thr_extra_thread_info(int);
+char        *kgdb_thr_extra_thread_info(CORE_ADDR);
 char        *kgdb_thr_pid_to_str(ptid_t);
 
 CORE_ADDR kgdb_lookup(const char *sym);
