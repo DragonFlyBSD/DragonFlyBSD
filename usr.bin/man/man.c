@@ -114,10 +114,10 @@ static void	 cat(const char *);
 static const char	*check_pager(const char *);
 static int	 cleanup(void);
 static void	 how(const char *);
-static void	 jump(char **, const char *, const char *) __dead;
+static void	 jump(char **, const char *, const char *) __dead2;
 static int	 manual(char *, struct manstate *, glob_t *);
-static void	 onsig(int) __dead;
-static void	 usage(void) __dead;
+static void	 onsig(int);
+static void	 usage(void) __dead2;
 static void	 addpath(struct manstate *, const char *, size_t, const char *);
 static const char *getclass(const char *);
 static void printmanpath(struct manstate *);
@@ -905,7 +905,7 @@ jump(char **argv, const char *flag, const char *name)
 {
 	char **arg;
 
-	argv[0] = __UNCONST(name);
+	argv[0] = __DECONST(char *, name);
 	for (arg = argv + 1; *arg; ++arg)
 		if (!strcmp(*arg, flag))
 			break;
@@ -922,13 +922,9 @@ jump(char **argv, const char *flag, const char *name)
 static void
 onsig(int signo)
 {
-
 	(void)cleanup();
-
-	(void)raise_default_signal(signo);
-
-	/* NOTREACHED */
-	exit(EXIT_FAILURE);
+	signal(signo, SIG_DFL);
+	raise(signo);
 }
 
 /*
