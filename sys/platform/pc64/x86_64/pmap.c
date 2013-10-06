@@ -569,8 +569,9 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
  * Of all the layers (PTE, PT, PD, PDP, PML4) the best one to cache is
  * the PT layer.  This will speed up core pmap operations considerably.
  *
- * NOTE: Can be called with the pmap spin lock held shared.  pm_pvhint
- *	 race is ok.
+ * NOTE: The pmap spinlock does not need to be held but the passed-in pv
+ *	 must be in a known associated state (typically by being locked when
+ *	 the pmap spinlock isn't held).  We allow the race for that case.
  */
 static __inline
 void
@@ -1542,10 +1543,14 @@ pmap_init_proc(struct proc *p)
 }
 
 static void
-pmap_pinit_defaults(struct pmap *pmap) {
-	bcopy(pmap_bits_default, pmap->pmap_bits, sizeof(pmap_bits_default));
-	bcopy(protection_codes, pmap->protection_codes, sizeof(protection_codes));
-	bcopy(pat_pte_index, pmap->pmap_cache_bits, sizeof(pat_pte_index));
+pmap_pinit_defaults(struct pmap *pmap)
+{
+	bcopy(pmap_bits_default, pmap->pmap_bits,
+	      sizeof(pmap_bits_default));
+	bcopy(protection_codes, pmap->protection_codes,
+	      sizeof(protection_codes));
+	bcopy(pat_pte_index, pmap->pmap_cache_bits,
+	      sizeof(pat_pte_index));
 	pmap->pmap_cache_mask = X86_PG_NC_PWT | X86_PG_NC_PCD | X86_PG_PTE_PAT;
 	pmap->copyinstr = std_copyinstr;
 	pmap->copyin = std_copyin;
@@ -1693,6 +1698,7 @@ pmap_puninit(pmap_t pmap)
 	if ((pv = pmap->pm_pmlpv) != NULL) {
 		if (pv_hold_try(pv) == 0)
 			pv_lock(pv);
+		KKASSERT(pv == pmap->pm_pmlpv);
 		p = pmap_remove_pv_page(pv);
 		pv_free(pv);
 		pmap_kremove((vm_offset_t)pmap->pm_pml4);
@@ -1755,17 +1761,13 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 	/*
 	 * If the pv already exists and we aren't being asked for the
 	 * parent page table page we can just return it.  A locked+held pv
-	 * is returned.
+	 * is returned.  The pv will also have a second hold related to the
+	 * pmap association that we don't have to worry about.
 	 */
 	ispt = 0;
 	pv = pv_alloc(pmap, ptepindex, &isnew);
 	if (isnew == 0 && pvpp == NULL)
 		return(pv);
-
-	/*
-	 * This is a new PV, we have to resolve its parent page table and
-	 * add an additional wiring to the page if necessary.
-	 */
 
 	/*
 	 * Special case terminal PVs.  These are not page table pages so
@@ -2524,6 +2526,9 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 		pv_put(pvp);
 }
 
+/*
+ * Remove the vm_page association to a pv.  The pv must be locked.
+ */
 static
 vm_page_t
 pmap_remove_pv_page(pv_entry_t pv)
@@ -2723,7 +2728,11 @@ _pv_hold_try(pv_entry_t pv PMAP_DEBUG_DECL)
 {
 	u_int count;
 
-	if (atomic_cmpset_int(&pv->pv_hold, 0, PV_HOLD_LOCKED | 1)) {
+	/*
+	 * Critical path shortcut expects pv to already have one ref
+	 * (for the pv->pv_pmap).
+	 */
+	if (atomic_cmpset_int(&pv->pv_hold, 1, PV_HOLD_LOCKED | 2)) {
 #ifdef PMAP_DEBUG
 		pv->pv_func = func;
 		pv->pv_line = lineno;
@@ -2763,12 +2772,6 @@ pv_drop(pv_entry_t pv)
 {
 	u_int count;
 
-	if (atomic_cmpset_int(&pv->pv_hold, 1, 0)) {
-		if (pv->pv_pmap == NULL)
-			zfree(pvzone, pv);
-		return;
-	}
-
 	for (;;) {
 		count = pv->pv_hold;
 		cpu_ccfence();
@@ -2776,8 +2779,11 @@ pv_drop(pv_entry_t pv)
 		KKASSERT((count & (PV_HOLD_LOCKED | PV_HOLD_MASK)) !=
 			 (PV_HOLD_LOCKED | 1));
 		if (atomic_cmpset_int(&pv->pv_hold, count, count - 1)) {
-			if (count == 1 && pv->pv_pmap == NULL)
+			if ((count & PV_HOLD_MASK) == 1) {
+				KKASSERT(count == 1);
+				KKASSERT(pv->pv_pmap == NULL);
 				zfree(pvzone, pv);
+			}
 			return;
 		}
 		/* retry */
@@ -2785,7 +2791,15 @@ pv_drop(pv_entry_t pv)
 }
 
 /*
- * Find or allocate the requested PV entry, returning a locked pv
+ * Find or allocate the requested PV entry, returning a locked, held pv.
+ *
+ * If (*isnew) is non-zero, the returned pv will have two hold counts, one
+ * for the caller and one representing the pmap and vm_page association.
+ *
+ * If (*isnew) is zero, the returned pv will have only one hold count.
+ *
+ * Since both associations can only be adjusted while the pv is locked,
+ * together they represent just one additional hold.
  */
 static
 pv_entry_t
@@ -2809,12 +2823,13 @@ _pv_alloc(pmap_t pmap, vm_pindex_t pindex, int *isnew PMAP_DEBUG_DECL)
 			}
 			pnew->pv_pmap = pmap;
 			pnew->pv_pindex = pindex;
-			pnew->pv_hold = PV_HOLD_LOCKED | 1;
+			pnew->pv_hold = PV_HOLD_LOCKED | 2;
 #ifdef PMAP_DEBUG
 			pnew->pv_func = func;
 			pnew->pv_line = lineno;
 #endif
 			pv_entry_rb_tree_RB_INSERT(&pmap->pm_pvroot, pnew);
+			++pmap->pm_generation;
 			atomic_add_long(&pmap->pm_stats.resident_count, 1);
 			spin_unlock(&pmap->pm_spin);
 			*isnew = 1;
@@ -2984,13 +2999,10 @@ pv_unlock(pv_entry_t pv)
 {
 	u_int count;
 
-	if (atomic_cmpset_int(&pv->pv_hold, PV_HOLD_LOCKED | 1, 1))
-		return;
-
 	for (;;) {
 		count = pv->pv_hold;
 		cpu_ccfence();
-		KKASSERT((count & (PV_HOLD_LOCKED|PV_HOLD_MASK)) >=
+		KKASSERT((count & (PV_HOLD_LOCKED | PV_HOLD_MASK)) >=
 			 (PV_HOLD_LOCKED | 1));
 		if (atomic_cmpset_int(&pv->pv_hold, count,
 				      count &
@@ -3014,18 +3026,28 @@ static
 void
 pv_put(pv_entry_t pv)
 {
-	if (atomic_cmpset_int(&pv->pv_hold, PV_HOLD_LOCKED | 1, 0)) {
-		if (pv->pv_pmap == NULL)
-			zfree(pvzone, pv);
+	/*
+	 * Fast - shortcut most common condition
+	 */
+	if (atomic_cmpset_int(&pv->pv_hold, PV_HOLD_LOCKED | 2, 1))
 		return;
-	}
+
+	/*
+	 * Slow
+	 */
 	pv_unlock(pv);
 	pv_drop(pv);
 }
 
 /*
- * Unlock, drop, and free a pv, destroying it.  The pv is removed from its
- * pmap.  Any pte operations must have already been completed.
+ * Remove the pmap association from a pv, require that pv_m already be removed,
+ * then unlock and drop the pv.  Any pte operations must have already been
+ * completed.  This call may result in a last-drop which will physically free
+ * the pv.
+ *
+ * Removing the pmap association entails an additional drop.
+ *
+ * pv must be exclusively locked on call and will be disposed of on return.
  */
 static
 void
@@ -3034,15 +3056,28 @@ pv_free(pv_entry_t pv)
 	pmap_t pmap;
 
 	KKASSERT(pv->pv_m == NULL);
+	KKASSERT((pv->pv_hold & PV_HOLD_MASK) >= 2);
 	if ((pmap = pv->pv_pmap) != NULL) {
 		spin_lock(&pmap->pm_spin);
 		pv_entry_rb_tree_RB_REMOVE(&pmap->pm_pvroot, pv);
+		++pmap->pm_generation;
 		if (pmap->pm_pvhint == pv)
 			pmap->pm_pvhint = NULL;
 		atomic_add_long(&pmap->pm_stats.resident_count, -1);
 		pv->pv_pmap = NULL;
 		pv->pv_pindex = 0;
 		spin_unlock(&pmap->pm_spin);
+
+		/*
+		 * Try to shortcut three atomic ops, otherwise fall through
+		 * and do it normally.  Drop two refs and the lock all in
+		 * one go.
+		 */
+		if (atomic_cmpset_int(&pv->pv_hold, PV_HOLD_LOCKED | 2, 0)) {
+			zfree(pvzone, pv);
+			return;
+		}
+		pv_drop(pv);	/* ref for pv_pmap */
 	}
 	pv_put(pv);
 }
@@ -3124,7 +3159,9 @@ pmap_scan(struct pmap_scan_info *info)
 	pv_entry_t pt_pv;	/* A page table PV */
 	pv_entry_t pte_pv;	/* A page table entry PV */
 	pt_entry_t *ptep;
+	pt_entry_t oldpte;
 	struct pv_entry dummy_pv;
+	int generation;
 
 	if (pmap == NULL)
 		return;
@@ -3143,6 +3180,7 @@ pmap_scan(struct pmap_scan_info *info)
 
 	pmap_inval_init(&info->inval);
 
+again:
 	/*
 	 * Special handling for scanning one page, which is a very common
 	 * operation (it is?).
@@ -3150,6 +3188,7 @@ pmap_scan(struct pmap_scan_info *info)
 	 * NOTE: Locks must be ordered bottom-up. pte,pt,pd,pdp,pml4
 	 */
 	if (info->sva + PAGE_SIZE == info->eva) {
+		generation = pmap->pm_generation;
 		if (info->sva >= VM_MAX_USER_ADDRESS) {
 			/*
 			 * Kernel mappings do not track wire counts on
@@ -3187,7 +3226,20 @@ pmap_scan(struct pmap_scan_info *info)
 			}
 			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(info->sva));
 		}
-		if (*ptep == 0) {
+
+		/*
+		 * NOTE: *ptep can't be ripped out from under us if we hold
+		 *	 pte_pv locked, but bits can change.  However, there is
+		 *	 a race where another thread may be inserting pte_pv
+		 *	 and setting *ptep just after our pte_pv lookup fails.
+		 *
+		 *	 In this situation we can end up with a NULL pte_pv
+		 *	 but find that we have a managed *ptep.  We explicitly
+		 *	 check for this race.
+		 */
+		oldpte = *ptep;
+		cpu_ccfence();
+		if (oldpte == 0) {
 			/*
 			 * Unlike the pv_find() case below we actually
 			 * acquired a locked pv in this case so any
@@ -3196,17 +3248,44 @@ pmap_scan(struct pmap_scan_info *info)
 			 */
 			KKASSERT(pte_pv == NULL);
 		} else if (pte_pv) {
-			KASSERT((*ptep & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) ==
-			    (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX]),
-			    ("bad *ptep %016lx sva %016lx pte_pv %p",
-			    *ptep, info->sva, pte_pv));
+			KASSERT((oldpte & (pmap->pmap_bits[PG_MANAGED_IDX] |
+					   pmap->pmap_bits[PG_V_IDX])) ==
+				(pmap->pmap_bits[PG_MANAGED_IDX] |
+				 pmap->pmap_bits[PG_V_IDX]),
+			    ("badA *ptep %016lx/%016lx sva %016lx pte_pv %p"
+			     "generation %d/%d",
+			    *ptep, oldpte, info->sva, pte_pv,
+			    generation, pmap->pm_generation));
 			info->func(pmap, info, pte_pv, pt_pv, 0,
 				   info->sva, ptep, info->arg);
 		} else {
-			KASSERT((*ptep & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) ==
+			/*
+			 * Check for insertion race
+			 */
+			if ((oldpte & pmap->pmap_bits[PG_MANAGED_IDX]) &&
+			    pt_pv) {
+				pte_pv = pv_find(pmap,
+						 pmap_pte_pindex(info->sva));
+				if (pte_pv) {
+					pv_drop(pte_pv);
+					pv_put(pt_pv);
+					kprintf("pmap_scan: RACE1 "
+						"%016jx, %016lx\n",
+						info->sva, oldpte);
+					goto again;
+				}
+			}
+
+			/*
+			 * Didn't race
+			 */
+			KASSERT((oldpte & (pmap->pmap_bits[PG_MANAGED_IDX] |
+					   pmap->pmap_bits[PG_V_IDX])) ==
 			    pmap->pmap_bits[PG_V_IDX],
-			    ("bad *ptep %016lx sva %016lx pte_pv NULL",
-			    *ptep, info->sva));
+			    ("badB *ptep %016lx/%016lx sva %016lx pte_pv NULL"
+			     "generation %d/%d",
+			    *ptep, oldpte, info->sva,
+			    generation, pmap->pm_generation));
 			info->func(pmap, info, NULL, pt_pv, 0,
 			    info->sva, ptep, info->arg);
 		}
@@ -3280,11 +3359,13 @@ pmap_scan_callback(pv_entry_t pv, void *data)
 	pv_entry_t pt_pv;	/* A page table PV */
 	pv_entry_t pte_pv;	/* A page table entry PV */
 	pt_entry_t *ptep;
+	pt_entry_t oldpte;
 	vm_offset_t sva;
 	vm_offset_t eva;
 	vm_offset_t va_next;
 	vm_pindex_t pd_pindex;
 	int error;
+	int generation;
 
 	/*
 	 * Pull the PD pindex from the pv before releasing the spinlock.
@@ -3444,6 +3525,7 @@ kernel_skip:
 			 * backwards, so we have to be careful in aquiring
 			 * a properly locked pte_pv.
 			 */
+			generation = pmap->pm_generation;
 			if (pt_pv) {
 				pte_pv = pv_get_try(pmap, pmap_pte_pindex(sva),
 						    &error);
@@ -3474,11 +3556,13 @@ kernel_skip:
 			/*
 			 * Ok, if *ptep == 0 we had better NOT have a pte_pv.
 			 */
-			if (*ptep == 0) {
+			oldpte = *ptep;
+			if (oldpte == 0) {
 				if (pte_pv) {
 					kprintf("Unexpected non-NULL pte_pv "
-						"%p pt_pv %p *ptep = %016lx\n",
-						pte_pv, pt_pv, *ptep);
+						"%p pt_pv %p "
+						"*ptep = %016lx/%016lx\n",
+						pte_pv, pt_pv, *ptep, oldpte);
 					panic("Unexpected non-NULL pte_pv");
 				}
 				sva += PAGE_SIZE;
@@ -3493,19 +3577,51 @@ kernel_skip:
 			 * isn't.
 			 */
 			if (pte_pv) {
-				KASSERT((*ptep & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) ==
+				KASSERT((oldpte & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) ==
 				    (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX]),
-				    ("bad *ptep %016lx sva %016lx "
-				    "pte_pv %p",
-				    *ptep, sva, pte_pv));
+				    ("badC *ptep %016lx/%016lx sva %016lx "
+				    "pte_pv %p pm_generation %d/%d",
+				    *ptep, oldpte, sva, pte_pv,
+				    generation, pmap->pm_generation));
 				info->func(pmap, info, pte_pv, pt_pv, 0,
 				    sva, ptep, info->arg);
 			} else {
-				KASSERT((*ptep & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) ==
+				/*
+				 * Check for insertion race.  Since there is no
+				 * pte_pv to guard us it is possible for us
+				 * to race another thread doing an insertion.
+				 * Our lookup misses the pte_pv but our *ptep
+				 * check sees the inserted pte.
+				 *
+				 * XXX panic case seems to occur within a
+				 * vm_fork() of /bin/sh, which frankly
+				 * shouldn't happen since no other threads
+				 * should be inserting to our pmap in that
+				 * situation.  Removing, possibly.  Inserting,
+				 * shouldn't happen.
+				 */
+				if ((oldpte & pmap->pmap_bits[PG_MANAGED_IDX]) &&
+				    pt_pv) {
+					pte_pv = pv_find(pmap,
+							 pmap_pte_pindex(sva));
+					if (pte_pv) {
+						pv_drop(pte_pv);
+						kprintf("pmap_scan: RACE2 "
+							"%016jx, %016lx\n",
+							sva, oldpte);
+						continue;
+					}
+				}
+
+				/*
+				 * Didn't race
+				 */
+				KASSERT((oldpte & (pmap->pmap_bits[PG_MANAGED_IDX] | pmap->pmap_bits[PG_V_IDX])) ==
 				    pmap->pmap_bits[PG_V_IDX],
-				    ("bad *ptep %016lx sva %016lx "
-				    "pte_pv NULL",
-				     *ptep, sva));
+				    ("badD *ptep %016lx/%016lx sva %016lx "
+				    "pte_pv NULL pm_generation %d/%d",
+				     *ptep, oldpte, sva,
+				     generation, pmap->pm_generation));
 				info->func(pmap, info, NULL, pt_pv, 0,
 				    sva, ptep, info->arg);
 			}
@@ -3833,12 +3949,12 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * page tables.
 	 *
 	 * Kernel mapppings do not track page table pages (i.e. pt_pv).
-	 * pmap_allocpte() checks the
 	 */
 	if (pmap_initialized == FALSE) {
 		pte_pv = NULL;
 		pt_pv = NULL;
 		ptep = vtopte(va);
+		origpte = *ptep;
 	} else if (m->flags & (/*PG_FICTITIOUS |*/ PG_UNMANAGED)) { /* XXX */
 		pte_pv = NULL;
 		if (va >= VM_MAX_USER_ADDRESS) {
@@ -3849,7 +3965,10 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 						  NULL, entry, va);
 			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(va));
 		}
-		KKASSERT(*ptep == 0 || (*ptep & pmap->pmap_bits[PG_MANAGED_IDX]) == 0);
+		origpte = *ptep;
+		cpu_ccfence();
+		KKASSERT(origpte == 0 ||
+			 (origpte & pmap->pmap_bits[PG_MANAGED_IDX]) == 0);
 	} else {
 		if (va >= VM_MAX_USER_ADDRESS) {
 			/*
@@ -3866,15 +3985,17 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 						   &pt_pv, entry, va);
 			ptep = pv_pte_lookup(pt_pv, pmap_pte_index(va));
 		}
-		KKASSERT(*ptep == 0 || (*ptep & pmap->pmap_bits[PG_MANAGED_IDX]));
+		origpte = *ptep;
+		cpu_ccfence();
+		KKASSERT(origpte == 0 ||
+			 (origpte & pmap->pmap_bits[PG_MANAGED_IDX]));
 	}
 
 	pa = VM_PAGE_TO_PHYS(m);
-	origpte = *ptep;
 	opa = origpte & PG_FRAME;
 
 	newpte = (pt_entry_t)(pa | pte_prot(pmap, prot) |
-	    pmap->pmap_bits[PG_V_IDX] | pmap->pmap_bits[PG_A_IDX]);
+		 pmap->pmap_bits[PG_V_IDX] | pmap->pmap_bits[PG_A_IDX]);
 	if (wired)
 		newpte |= pmap->pmap_bits[PG_W_IDX];
 	if (va < VM_MAX_USER_ADDRESS)
@@ -3906,6 +4027,11 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * pte's this will also flush the modified state to the vm_page.
 	 * Atomic ops are mandatory in order to ensure that PG_M events are
 	 * not lost during any transition.
+	 *
+	 * WARNING: The caller has busied the new page but not the original
+	 *	    vm_page which we are trying to replace.  Because we hold
+	 *	    the pte_pv lock, but have not busied the page, PG bits
+	 *	    can be cleared out from under us.
 	 */
 	if (opa) {
 		if (pte_pv) {
@@ -4018,7 +4144,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	if ((prot & VM_PROT_NOSYNC) == 0 || pte_pv == NULL)
 		pmap_inval_done(&info);
 done:
-	KKASSERT((newpte & pmap->pmap_bits[PG_MANAGED_IDX]) == 0 || (m->flags & PG_MAPPED));
+	KKASSERT((newpte & pmap->pmap_bits[PG_MANAGED_IDX]) == 0 ||
+		 (m->flags & PG_MAPPED));
 
 	/*
 	 * Cleanup the pv entry, allowing other accessors.
@@ -4416,9 +4543,15 @@ pmap_testbit(vm_page_t m, int bit)
 		pmap = pv->pv_pmap;
 
 		/*
-		 * if the bit being tested is the modified bit, then
+		 * If the bit being tested is the modified bit, then
 		 * mark clean_map and ptes as never
 		 * modified.
+		 *
+		 * WARNING!  Because we do not lock the pv, *pte can be in a
+		 *	     state of flux.  Despite this the value of *pte
+		 *	     will still be related to the vm_page in some way
+		 *	     because the pv cannot be destroyed as long as we
+		 *	     hold the vm_page spin lock.
 		 */
 		if (bit == PG_A_IDX || bit == PG_M_IDX) {
 				//& (pmap->pmap_bits[PG_A_IDX] | pmap->pmap_bits[PG_M_IDX])) {
@@ -4472,17 +4605,24 @@ pmap_clearbit(vm_page_t m, int bit_index)
 	 *	 tables.
 	 *
 	 * NOTE: Does not re-dirty the page when clearing only PG_M.
+	 *
+	 * NOTE: Because we do not lock the pv, *pte can be in a state of
+	 *	 flux.  Despite this the value of *pte is still somewhat
+	 *	 related while we hold the vm_page spin lock.
+	 *
+	 *	 *pte can be zero due to this race.  Since we are clearing
+	 *	 bits we basically do no harm when this race  ccurs.
 	 */
 	if (bit_index != PG_RW_IDX) {
 		vm_page_spin_lock(m);
 		TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
-	#if defined(PMAP_DIAGNOSTIC)
+#if defined(PMAP_DIAGNOSTIC)
 			if (pv->pv_pmap == NULL) {
 				kprintf("Null pmap (cb) at pindex: %"PRIu64"\n",
 				    pv->pv_pindex);
 				continue;
 			}
-	#endif
+#endif
 			pmap = pv->pv_pmap;
 			pte = pmap_pte_quick(pv->pv_pmap,
 					     pv->pv_pindex << PAGE_SHIFT);
@@ -4568,7 +4708,8 @@ restart:
 /*
  * Lower the permission for all mappings to a given page.
  *
- * Page must be busied by caller.
+ * Page must be busied by caller.  Because page is busied by caller this
+ * should not be able to race a pmap_enter().
  */
 void
 pmap_page_protect(vm_page_t m, vm_prot_t prot)

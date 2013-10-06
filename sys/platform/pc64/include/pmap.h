@@ -334,7 +334,7 @@ typedef struct pv_entry {
 
 #define PV_HOLD_LOCKED		0x80000000U
 #define PV_HOLD_WAITING		0x40000000U
-#define PV_HOLD_DELETED		0x20000000U
+#define PV_HOLD_UNUSED2000	0x20000000U
 #define PV_HOLD_MASK		0x1FFFFFFFU
 
 #define PV_FLAG_VMOBJECT	0x00000001U	/* shared pt in VM obj */

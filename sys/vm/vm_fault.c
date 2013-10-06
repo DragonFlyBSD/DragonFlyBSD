@@ -537,6 +537,7 @@ quick:
 	 *
 	 * Enter the page into the pmap and do pmap-related adjustments.
 	 */
+	KKASSERT(fs.lookup_still_valid == TRUE);
 	vm_page_flag_set(fs.m, PG_REFERENCED);
 	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired, fs.entry);
 	mycpu->gd_cnt.v_vm_faults++;
