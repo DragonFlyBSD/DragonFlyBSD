@@ -13,8 +13,7 @@
 #define HAVE_MMAP
 #define HAVE_STRLCPY
 
-/* local DragonFly modifications */
-#define VERSION	"1.12.1"
+#define VERSION	"1.12.2"
 #define OSNAME	"DragonFly 3.5"
 
 #include <sys/types.h>
@@ -34,14 +33,13 @@
 #  endif
 #endif
 
-#if defined(__APPLE__)
-# define htobe32(x) OSSwapHostToBigInt32(x)
-# define betoh32(x) OSSwapBigToHostInt32(x)
-# define htobe64(x) OSSwapHostToBigInt64(x)
-# define betoh64(x) OSSwapBigToHostInt64(x)
-#elif defined(__linux__)
-# define betoh32(x) be32toh(x)
-# define betoh64(x) be64toh(x)
+#ifndef HAVE_BETOH64
+#  if defined(__APPLE__)
+#    define betoh64(x) OSSwapBigToHostInt64(x)
+#    define htobe64(x) OSSwapHostToBigInt64(x)
+#  else
+#    define betoh64(x) be64toh(x)
+#  endif
 #endif
 
 #ifndef HAVE_STRLCAT
