@@ -1,4 +1,4 @@
-/*	$Id: apropos_db.c,v 1.31 2012/03/24 01:46:25 kristaps Exp $ */
+/*	$Id: apropos_db.c,v 1.32.2.1 2013/10/02 21:03:26 schwarze Exp $ */
 /*
  * Copyright (c) 2011, 2012 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2011 Ingo Schwarze <schwarze@openbsd.org>
@@ -19,6 +19,8 @@
 #include "config.h"
 #endif
 
+#include <sys/param.h>
+
 #include <assert.h>
 #include <fcntl.h>
 #include <regex.h>
@@ -35,6 +37,7 @@
 # include <libkern/OSByteOrder.h>
 # include <db.h>
 #else
+# include <sys/endian.h>
 # include <db.h>
 #endif
 
@@ -426,6 +429,7 @@ apropos_search(int pathsz, char **paths, const struct opts *opts,
 	 */
 
 	for (i = 0; i < pathsz; i++) {
+		assert('/' == paths[i][0]);
 		if (chdir(paths[i]))
 			continue;
 		if (single_search(&tree, opts, expr, terms, mc, i))

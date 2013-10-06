@@ -1,4 +1,4 @@
-/*	$Id: term.h,v 1.90 2011/12/04 23:10:52 schwarze Exp $ */
+/*	$Id: term.h,v 1.94 2013/08/21 21:20:40 schwarze Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -37,6 +37,7 @@ enum	termfont {
 	TERMFONT_NONE = 0,
 	TERMFONT_BOLD,
 	TERMFONT_UNDER,
+	TERMFONT_BI,
 	TERMFONT__MAX
 };
 
@@ -57,12 +58,13 @@ struct	termp {
 	size_t		  defrmargin;	/* Right margin of the device. */
 	size_t		  rmargin;	/* Current right margin. */
 	size_t		  maxrmargin;	/* Max right margin. */
-	int		  maxcols;	/* Max size of buf. */
+	size_t		  maxcols;	/* Max size of buf. */
 	size_t		  offset;	/* Margin offest. */
 	size_t		  tabwidth;	/* Distance of tab positions. */
-	int		  col;		/* Bytes in buf. */
+	size_t		  col;		/* Bytes in buf. */
 	size_t		  viscol;	/* Chars on current line. */
 	int		  overstep;	/* See termp_flushln(). */
+	int		  skipvsp;	/* Vertical space to skip. */
 	int		  flags;
 #define	TERMP_SENTENCE	 (1 << 1)	/* Space before a sentence. */
 #define	TERMP_NOSPACE	 (1 << 2)	/* No space before words. */
@@ -77,6 +79,7 @@ struct	termp {
 #define	TERMP_ANPREC	 (1 << 13)	/* See termp_an_pre(). */
 #define	TERMP_KEEP	 (1 << 14)	/* Keep words together. */
 #define	TERMP_PREKEEP	 (1 << 15)	/* ...starting with the next one. */
+#define	TERMP_SKIPCHAR	 (1 << 16)	/* Skip the next character. */
 	int		 *buf;		/* Output buffer. */
 	enum termenc	  enc;		/* Type of encoding. */
 	struct mchars	 *symtab;	/* Encoded-symbol table. */

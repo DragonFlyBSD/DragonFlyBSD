@@ -1,4 +1,4 @@
-/*	$Id: libmdoc.h,v 1.78 2011/12/02 01:37:14 schwarze Exp $ */
+/*	$Id: libmdoc.h,v 1.81 2012/11/17 00:26:33 schwarze Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -24,6 +24,7 @@ enum	mdoc_next {
 
 struct	mdoc {
 	struct mparse	 *parse; /* parse pointer */
+	char		 *defos; /* default argument for .Os */
 	int		  flags; /* parse flags */
 #define	MDOC_HALT	 (1 << 0) /* error in parse: halt */
 #define	MDOC_LITERAL	 (1 << 1) /* in a literal scope */
@@ -42,7 +43,7 @@ struct	mdoc {
 	struct roff	 *roff;
 };
 
-#define	MACRO_PROT_ARGS	struct mdoc *m, \
+#define	MACRO_PROT_ARGS	struct mdoc *mdoc, \
 			enum mdoct tok, \
 			int line, \
 			int ppos, \
@@ -99,10 +100,10 @@ extern	const struct mdoc_macro *const mdoc_macros;
 
 __BEGIN_DECLS
 
-#define		  mdoc_pmsg(m, l, p, t) \
-		  mandoc_msg((t), (m)->parse, (l), (p), NULL)
-#define		  mdoc_nmsg(m, n, t) \
-		  mandoc_msg((t), (m)->parse, (n)->line, (n)->pos, NULL)
+#define		  mdoc_pmsg(mdoc, l, p, t) \
+		  mandoc_msg((t), (mdoc)->parse, (l), (p), NULL)
+#define		  mdoc_nmsg(mdoc, n, t) \
+		  mandoc_msg((t), (mdoc)->parse, (n)->line, (n)->pos, NULL)
 int		  mdoc_macro(MACRO_PROT_ARGS);
 int		  mdoc_word_alloc(struct mdoc *, 
 			int, int, const char *);
@@ -113,10 +114,10 @@ int		  mdoc_block_alloc(struct mdoc *, int, int,
 int		  mdoc_head_alloc(struct mdoc *, int, int, enum mdoct);
 int		  mdoc_tail_alloc(struct mdoc *, int, int, enum mdoct);
 int		  mdoc_body_alloc(struct mdoc *, int, int, enum mdoct);
-int		  mdoc_endbody_alloc(struct mdoc *m, int line, int pos,
-			enum mdoct tok, struct mdoc_node *body,
-			enum mdoc_endbody end);
+int		  mdoc_endbody_alloc(struct mdoc *, int, int, enum mdoct,
+			struct mdoc_node *, enum mdoc_endbody);
 void		  mdoc_node_delete(struct mdoc *, struct mdoc_node *);
+int		  mdoc_node_relink(struct mdoc *, struct mdoc_node *);
 void		  mdoc_hash_init(void);
 enum mdoct	  mdoc_hash_find(const char *);
 const char	 *mdoc_a2att(const char *);
