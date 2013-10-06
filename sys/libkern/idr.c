@@ -356,7 +356,6 @@ idr_find(struct idr *idp, int id)
 	} else if (idp->idr_nodes[id].allocated == 0) {
 		goto out;
 	}
-	KKASSERT(idp->idr_nodes[id].data != NULL);
 	ret = idp->idr_nodes[id].data;
 
 out:
