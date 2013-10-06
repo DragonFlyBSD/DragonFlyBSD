@@ -1,4 +1,4 @@
-.\"	$Id: roff.7,v 1.37 2011/12/11 00:38:11 schwarze Exp $
+.\"	$Id: roff.7,v 1.42 2013/08/08 20:07:47 schwarze Exp $
 .\"
 .\" Copyright (c) 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
 .\" Copyright (c) 2010, 2011 Ingo Schwarze <schwarze@openbsd.org>
@@ -15,7 +15,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: December 11 2011 $
+.Dd $Mdocdate: August 8 2013 $
 .Dt ROFF 7
 .Os
 .Sh NAME
@@ -83,7 +83,7 @@ depends on the respective processing context.
 .Nm
 documents may contain only graphable 7-bit ASCII characters, the space
 character, and, in certain circumstances, the tab character.
-The back-space character
+The backslash character
 .Sq \e
 indicates the start of an escape sequence for
 .Sx Comments ,
@@ -146,12 +146,19 @@ respectively) may be used instead.
 The indicator or numerical representative may be preceded by C
 (constant-width), which is ignored.
 .Pp
+The two-character indicator
+.Sq BI
+requests a font that is both bold and italic.
+It may not be portable to old roff implementations.
+.Pp
 Examples:
 .Bl -tag -width Ds -offset indent -compact
 .It Li \efBbold\efR
-Write in bold, then switch to regular font mode.
+Write in \fBbold\fP, then switch to regular font mode.
 .It Li \efIitalic\efP
-Write in italic, then return to previous font mode.
+Write in \fIitalic\fP, then return to previous font mode.
+.It Li \ef(BIbold italic\efP
+Write in \f(BIbold italic\fP, then return to previous font mode.
 .El
 .Pp
 Text decoration is
@@ -417,6 +424,18 @@ The syntax of this request is the same as that of
 It is currently ignored by
 .Xr mandoc 1 ,
 as are its children.
+.Ss \&cc
+Changes the control character.
+Its syntax is as follows:
+.Bd -literal -offset indent
+.Pf . Cm \&cc Op Ar c
+.Ed
+.Pp
+If
+.Ar c
+is not specified, the control character is reset to
+.Sq \&. .
+Trailing characters are ignored.
 .Ss \&de
 Define a
 .Nm
@@ -896,7 +915,7 @@ See
 .Xr tbl 7
 for a description of the tbl language.
 .Sh COMPATIBILITY
-This section documents compatibility between mandoc and other other
+This section documents compatibility between mandoc and other
 .Nm
 implementations, at this time limited to GNU troff
 .Pq Qq groff .
@@ -982,8 +1001,6 @@ In 1989, James Clarke re-implemented troff in C++, naming it groff.
 This
 .Nm
 reference was written by
-.An Kristaps Dzonsons ,
-.Mt kristaps@bsd.lv ;
+.An Kristaps Dzonsons Aq Mt kristaps@bsd.lv
 and
-.An Ingo Schwarze ,
-.Mt schwarze@openbsd.org .
+.An Ingo Schwarze Aq Mt schwarze@openbsd.org .

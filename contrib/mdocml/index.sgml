@@ -25,7 +25,7 @@
 			pages whilst providing token support for <I>man</I>.
 		</P>
 		<P>
-			Why?  groff amounts to over 5 MB of source code, most of which is C++ and all of which is GPL.  It runs slowly, produces
+			Why?  groff amounts to over 5 MB of source code, most of which is C++ and GPL version 3.  It runs slowly, produces
 			uncertain output, and varies in operation from system to system.  mdocml strives to fix this (respectively small, C, <A
 			CLASS="external" HREF="http://www.isc.org/software/license">ISC</A>-licensed, fast and regular).
 		</P>
@@ -56,15 +56,6 @@
 			usually taken by existing utilities.
 		</P>
 		<H2>
-			<A NAME="binaries">Binaries</A>
-		</H2>
-		<P>
-			Binary archives consist of pre-compiled binaries, manuals, and other necessary files.
-			Universal (Mac OS X) binaries are compiled for the PCC, i386, and x86_64 architectures.
-			Windows binaries are compiled with <A CLASS="external" HREF="http://www.mingw.org">MingW</A> for the 32-bit (i686) and
-			64-bit (x86_64) architectures.
-		</P>
-		<H2>
 			Downstream
 		</H2>
 		<P>
@@ -80,37 +71,52 @@
 				<TR>
 					<TD>DragonFly BSD</TD>
 					<TD>
-					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/usr.bin/mandoc" CLASS="external">usr.bin/mandoc</A>
+					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/contrib/mdocml" CLASS="external">contrib/mdocml</A> (1.12.1 sources)
+					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/lib/libmandoc" CLASS="external">lib/libmandoc</A>
+					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/usr.bin/mandoc" CLASS="external">usr.bin/mandoc</A> (build system)
 					</TD>
 				</TR>
 				<TR>
-					<TD>FreeBSD</TD>
+					<TD>FreeBSD 10.0, -CURRENT</TD>
 					<TD>
-					<A HREF="http://www.freebsd.org/cgi/cvsweb.cgi/ports/textproc/mdocml/" CLASS="external">ports/textproc/mdocml</A>
+					<A HREF="http://svnweb.freebsd.org/base/head/contrib/mdocml/" CLASS="external">contrib/mdocml</A> (1.12.1 sources)
+					<A HREF="http://svnweb.freebsd.org/base/head/usr.bin/mandoc/" CLASS="external">usr.bin/mandoc</A> (build system)
+					</TD>
+				</TR>
+				<TR>
+					<TD>FreeBSD 9.x, 8.x</TD>
+					<TD>
+					<A HREF="http://svnweb.freebsd.org/ports/textproc/mdocml/" CLASS="external">ports/textproc/mdocml</A> (1.12.1 port)
 					</TD>
 				</TR>
 				<TR>
 					<TD>NetBSD</TD>
 					<TD>
-					<A HREF="http://cvsweb.netbsd.org/bsdweb.cgi/src/external/bsd/mdocml/" CLASS="external">src/external/bsd/mdocml</A>
+					<A HREF="http://cvsweb.netbsd.org/bsdweb.cgi/src/external/bsd/mdocml/" CLASS="external">src/external/bsd/mdocml</A> (1.12.1 sources plus patches and build system)
 					</TD>
 				</TR>
 				<TR>
 					<TD>OpenBSD</TD>
 					<TD>
-					<A HREF="http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/mandoc/" CLASS="external">src/usr.bin/mandoc</A> 
+					<A HREF="http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/mandoc/" CLASS="external">src/usr.bin/mandoc</A> (1.12.2 sources and build system)
 					</TD>
 				</TR>
 				<TR>
 					<TD>pkgsrc</TD>
 					<TD>
-					<A HREF="http://pkgsrc.se/textproc/mdocml" CLASS="external">textproc/mdocml</A> 
+					<A HREF="http://pkgsrc.se/textproc/mdocml" CLASS="external">textproc/mdocml</A> (1.12.0 port)
 					</TD>
 				</TR>
 				<TR>
 					<TD>Minix3</TD>
 					<TD>
-					<A HREF="http://git.minix3.org/?p=minix.git;a=tree;f=external/bsd/mdocml" CLASS="external">external/bsd/mdocml</A>
+					<A HREF="http://git.minix3.org/?p=minix.git;a=tree;f=external/bsd/mdocml" CLASS="external">external/bsd/mdocml</A> (1.10.9 sources and build system)
+					</TD>
+				</TR>
+				<TR>
+					<TD>Alpine Linux</TD>
+					<TD>
+					<A HREF="http://git.alpinelinux.org/cgit/aports/tree/main/mdocml" CLASS="external">aports/main/mdocml</A> (1.12.1 port)
 					</TD>
 				</TR>
 			</TBODY>
@@ -131,150 +137,96 @@
 					<TD VALIGN="top"><A HREF="apropos.1.html">apropos(1)</A></TD>
 					<TD VALIGN="top">
 						search the manual page database
-							(<A HREF="apropos.1.txt">text</A> | 
-							<A HREF="apropos.1.xhtml">xhtml</A> |
-							<A HREF="apropos.1.pdf">pdf</A> |
-							<A HREF="apropos.1.ps">ps</A>)
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="demandoc.1.html">demandoc(1)</A></TD>
 					<TD VALIGN="top">
 						emit only text of UNIX manuals
-							(<A HREF="demandoc.1.txt">text</A> | 
-							<A HREF="demandoc.1.xhtml">xhtml</A> |
-							<A HREF="demandoc.1.pdf">pdf</A> |
-							<A HREF="demandoc.1.ps">ps</A>)
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="mandoc.1.html">mandoc(1)</A></TD>
 					<TD VALIGN="top">
 						format and display UNIX manuals
-							(<A HREF="mandoc.1.txt">text</A> | 
-							<A HREF="mandoc.1.xhtml">xhtml</A> |
-							<A HREF="mandoc.1.pdf">pdf</A> |
-							<A HREF="mandoc.1.ps">ps</A>)
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="preconv.1.html">preconv(1)</A></TD>
 					<TD VALIGN="top">
 						recode multibyte UNIX manuals
-							(<A HREF="preconv.1.txt">text</A> | 
-							<A HREF="preconv.1.xhtml">xhtml</A> |
-							<A HREF="preconv.1.pdf">pdf</A> |
-							<A HREF="preconv.1.ps">ps</A>)
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="whatis.1.html">whatis(1)</A></TD>
 					<TD VALIGN="top">
 						search the manual page database
-							(<A HREF="whatis.1.txt">text</A> | 
-							<A HREF="whatis.1.xhtml">xhtml</A> |
-							<A HREF="whatis.1.pdf">pdf</A> |
-							<A HREF="whatis.1.ps">ps</A>)
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="mandoc.3.html">mandoc(3)</A></TD>
 					<TD VALIGN="top">
 						mandoc macro compiler library
-							(<A HREF="mandoc.3.txt">text</A> | 
-							<A HREF="mandoc.3.xhtml">xhtml</A> |
-							<A HREF="mandoc.3.pdf">pdf</A> |
-							<A HREF="mandoc.3.ps">ps</A>)
 					</TD>
 				</TR>
 				<TR>
-					<TD VALIGN="top"><A HREF="man.7.html">man(7)</A></TD>
+					<TD VALIGN="top"><A HREF="tbl.3.html">tbl(3)</A></TD>
 					<TD VALIGN="top">
-						man language reference
-							(<A HREF="man.7.txt">text</A> | 
-							<A HREF="man.7.xhtml">xhtml</A> |
-							<A HREF="man.7.pdf">pdf</A> |
-							<A HREF="man.7.ps">ps</A>)
-					</TD>
-				</TR>
-				<TR>
-					<TD VALIGN="top"><A HREF="man.cgi.7.html">man.cgi(7)</A></TD>
-					<TD VALIGN="top">
-						cgi for manpage query and display
-							(<A HREF="man.cgi.7.txt">text</A> | 
-							<A HREF="man.cgi.7.xhtml">xhtml</A> |
-							<A HREF="man.cgi.7.pdf">pdf</A> |
-							<A HREF="man.cgi.7.ps">ps</A>)
+						roff table parser library for mandoc
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="eqn.7.html">eqn(7)</A></TD>
 					<TD VALIGN="top">
 						eqn-mandoc language reference
-							(<A HREF="eqn.7.txt">text</A> | 
-							<A HREF="eqn.7.xhtml">xhtml</A> |
-							<A HREF="eqn.7.pdf">pdf</A> |
-							<A HREF="eqn.7.ps">ps</A>)
+					</TD>
+				</TR>
+				<TR>
+					<TD VALIGN="top"><A HREF="man.7.html">man(7)</A></TD>
+					<TD VALIGN="top">
+						man language reference
+					</TD>
+				</TR>
+				<TR>
+					<TD VALIGN="top"><A HREF="man.cgi.7.html">man.cgi(7)</A></TD>
+					<TD VALIGN="top">
+						cgi for manpage query and display
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="mandoc_char.7.html">mandoc_char(7)</A></TD>
 					<TD VALIGN="top">
 						mandoc special characters
-							(<A HREF="mandoc_char.7.txt">text</A> | 
-							<A HREF="mandoc_char.7.xhtml">xhtml</A> |
-							<A HREF="mandoc_char.7.pdf">pdf</A> |
-							<A HREF="mandoc_char.7.ps">ps</A>)
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="mdoc.7.html">mdoc(7)</A></TD>
 					<TD VALIGN="top">
 						mdoc language reference
-							(<A HREF="mdoc.7.txt">text</A> | 
-							<A HREF="mdoc.7.xhtml">xhtml</A> |
-							<A HREF="mdoc.7.pdf">pdf</A> |
-							<A HREF="mdoc.7.ps">ps</A>)
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="roff.7.html">roff(7)</A></TD>
 					<TD VALIGN="top">
 						roff-mandoc language reference
-							(<A HREF="roff.7.txt">text</A> | 
-							<A HREF="roff.7.xhtml">xhtml</A> |
-							<A HREF="roff.7.pdf">pdf</A> |
-							<A HREF="roff.7.ps">ps</A>)
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="tbl.7.html">tbl(7)</A></TD>
 					<TD VALIGN="top">
 						tbl-mandoc language reference
-							(<A HREF="tbl.7.txt">text</A> | 
-							<A HREF="tbl.7.xhtml">xhtml</A> |
-							<A HREF="tbl.7.pdf">pdf</A> |
-							<A HREF="tbl.7.ps">ps</A>)
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="catman.8.html">catman(8)</A></TD>
 					<TD VALIGN="top">
 						update a man.cgi manpage cache
-							(<A HREF="catman.8.txt">text</A> | 
-							<A HREF="catman.8.xhtml">xhtml</A> |
-							<A HREF="catman.8.pdf">pdf</A> |
-							<A HREF="catman.8.ps">ps</A>)
 					</TD>
 				</TR>
 				<TR>
 					<TD VALIGN="top"><A HREF="mandocdb.8.html">mandocdb(8)</A></TD>
 					<TD VALIGN="top">
 						index UNIX manuals
-							(<A HREF="mandocdb.8.txt">text</A> | 
-							<A HREF="mandocdb.8.xhtml">xhtml</A> |
-							<A HREF="mandocdb.8.pdf">pdf</A> |
-							<A HREF="mandocdb.8.ps">ps</A>)
 					</TD>
 				</TR>
 			</TBODY>
@@ -326,6 +278,52 @@
 			<A NAME="news">News</A>
 		</H1>
 		<P CLASS="news">
+			02-10-2013: version 1.12.2
+		</P>
+		<P>
+			The <A HREF="mdoc.7.html">mdoc(7)</A> to <A HREF="man.7.html">man(7)</A> converter,
+			to be called as <CODE>mandoc -Tman</CODE>, is now fully functional.
+		</P>
+		<P>
+			The <A HREF="mandoc.1.html">mandoc(1)</A> utility now supports the <CODE>-Ios</CODE> (default operating system)
+			input option, and the <CODE>-Tutf8</CODE> output mode now actually works.
+		</P>
+		<P>
+			The <A HREF="mandocdb.8.html">mandocdb(8)</A> utility no longer truncates existing databases when starting to build new ones,
+			but only replaces them when the build actually succeeds.
+		</P>
+		<P>
+			The <A HREF="man.7.html">man(7)</A> parser now supports the <EM>PD</EM> macro (paragraph distance),
+			and (for GNU man-ext compatibility only) <EM>EX</EM> (example block) and <EM>EE</EM> (example end).
+			Plus several bugfixes regarding indentation, line breaks, and vertical spacing,
+			and regarding <EM>RS</EM> following <EM>TP</EM>.
+		</P>
+		<P>
+			The <A HREF="roff.7.html">roff(7)</A> parser now supports the <EM>\f(BI</EM> (bold+italic) font escape,
+			the <EM>\z</EM> (zero cursor advance) escape and the <EM>cc</EM> (change control character)
+			and <EM>it</EM> (input line trap) requests.
+			Plus bugfixes regarding the <EM>\t</EM> (tab) escape, nested escape sequences, and conditional requests.
+		</P>
+		<P>
+			In <A HREF="mdoc.7.html">mdoc(7)</A>, several bugs were fixed related to UTF-8 output of quoting enclosures,
+			delimiter handling, list indentation and horizontal and vertical spacing,
+			formatting of the <EM>Lk</EM>, <EM>%U</EM>, and <EM>%C</EM> macros,
+			plus some bugfixes related to the handling of syntax errors like badly nested font blocks,
+			stray <EM>Ta</EM> macros outside column lists, unterminated <EM>It Xo</EM> blocks,
+			and non-text children of <EM>Nm</EM> blocks.
+		</P>
+		<P>
+			In <A HREF="tbl.7.html">tbl(7)</A>, the width of horizontal spans and the vertical spacing around tables was corrected,
+			and in <A HREF="man.7.html">man(7)</A> files, a crash was fixed that was triggered by some particular unclosed <EM>T{</EM> macros.
+		</P>
+		<P>
+			For mandoc developers, we now provide a <A HREF="tbl.3.html">tbl(3)</A> library manual and <CODE>gmdiff</CODE>,
+			a very small, very simplistic groff-versus-mandoc output comparison tool.
+		</P>
+		<P>
+			See <A HREF="NEWS">NEWS</A> for historical notes.
+		</P>
+		<P CLASS="news">
 			23-03-2011: version 1.12.1
 		</P>
 		<P>
@@ -357,7 +355,8 @@
 			<SMALL>
 				Copyright &#169; 2008&#8211;2011 
 				<A CLASS="external" HREF="http://kristaps.bsd.lv">Kristaps Dzonsons</A>, 
-				$Date: 2012/03/24 02:07:32 $
+				&#169; 2013 Ingo Schwarze,
+				$Date: 2013/10/05 14:05:09 $
 			</SMALL>
 		</P>
 	</BODY>
