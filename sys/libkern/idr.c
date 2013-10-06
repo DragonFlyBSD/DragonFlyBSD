@@ -251,6 +251,8 @@ idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 		return (EAGAIN);
 	}
 
+	if (resid >= idp->idr_count)
+		idr_grow(idp, resid);
 	if (resid > idp->idr_lastindex)
 		idp->idr_lastindex = resid;
 	if (sid <= idp->idr_freeindex)
