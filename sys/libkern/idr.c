@@ -121,6 +121,7 @@ static int
 idr_find_free(struct idr *idp, int want, int lim)
 {
 	int id, rsum, rsize, node;
+
 	/*
 	 * Search for a free descriptor starting at the higher
 	 * of want or fd_freefile.  If that fails, consider
@@ -171,7 +172,6 @@ idr_pre_get1(struct idr *idp, int want, int lim)
 {
 	int id;
 
-	spin_lock(&idp->idr_spin);
 	if (want >= idp->idr_count)
 		idr_grow(idp, want);
 
@@ -184,21 +184,21 @@ retry:
 	 * No space in current array.  Expand?
 	 */
 	if (idp->idr_count >= lim) {
-		spin_unlock(&idp->idr_spin);
 		return (ENOSPC);
 	}
 	idr_grow(idp, want);
 	goto retry;
 
 found:
-	spin_unlock(&idp->idr_spin);
 	return (0);
 }
 
 int
 idr_pre_get(struct idr *idp)
 {
+	lwkt_gettoken(&idp->idr_token);
 	int error = idr_pre_get1(idp, idp->idr_maxwant, INT_MAX);
+	lwkt_reltoken(&idp->idr_token);
 	return (error == 0);
 }
 
@@ -210,9 +210,12 @@ idr_get_new(struct idr *idp, void *ptr, int *id)
 	if (ptr == NULL)
 		return (EINVAL);
 
+	lwkt_gettoken(&idp->idr_token);
 	resid = idr_find_free(idp, 0, INT_MAX);
-	if (resid == -1)
+	if (resid == -1) {
+		lwkt_reltoken(&idp->idr_token);
 		return (EAGAIN);
+	}
 
 	if (resid > idp->idr_lastindex)
 		idp->idr_lastindex = resid;
@@ -222,6 +225,8 @@ idr_get_new(struct idr *idp, void *ptr, int *id)
 	idp->idr_nodes[resid].reserved = 1;
 	idr_reserve(idp, resid, 1);
 	idr_set(idp, resid, ptr);
+
+	lwkt_reltoken(&idp->idr_token);
 	return (0);
 }
 
@@ -229,17 +234,22 @@ int
 idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 {
 	int resid;
-	if (sid >= idp->idr_count) {
-		idp->idr_maxwant = max(idp->idr_maxwant, sid);
-		return (EAGAIN);
-	}
 
 	if (ptr == NULL)
 		return (EINVAL);
 
-	resid = idr_find_free(idp, sid, INT_MAX);
-	if (resid == -1)
+	lwkt_gettoken(&idp->idr_token);
+	if (sid >= idp->idr_count) {
+		idp->idr_maxwant = max(idp->idr_maxwant, sid);
+		lwkt_reltoken(&idp->idr_token);
 		return (EAGAIN);
+	}
+
+	resid = idr_find_free(idp, sid, INT_MAX);
+	if (resid == -1) {
+		lwkt_reltoken(&idp->idr_token);
+		return (EAGAIN);
+	}
 
 	if (resid > idp->idr_lastindex)
 		idp->idr_lastindex = resid;
@@ -250,16 +260,13 @@ idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 	idp->idr_nodes[resid].reserved = 1;
 	idr_reserve(idp, resid, 1);
 	idr_set(idp, resid, ptr);
+
+	lwkt_reltoken(&idp->idr_token);
 	return (0);
 }
 
 /*
  * Grow the file table so it can hold through descriptor (want).
- *
- * The fdp's spinlock must be held exclusively on entry and may be held
- * exclusively on return.  The spinlock may be cycled by the routine.
- *
- * MPSAFE
  */
 static void
 idr_grow(struct idr *idp, int want)
@@ -274,20 +281,8 @@ idr_grow(struct idr *idp, int want)
 		nf = 2 * nf + 1;
 	} while (nf <= want);
 
-	spin_unlock(&idp->idr_spin);
 	newnodes = kmalloc(nf * sizeof(struct idr_node), M_IDR, M_WAITOK);
-	spin_lock(&idp->idr_spin);
 
-	/*
-	 * We could have raced another extend while we were not holding
-	 * the spinlock.
-	 */
-	if (idp->idr_count >= nf) {
-		spin_unlock(&idp->idr_spin);
-		kfree(newnodes, M_IDR);
-		spin_lock(&idp->idr_spin);
-		return;
-	}
 	/*
 	 * Copy the existing ofile and ofileflags arrays
 	 * and zero the new portion of each array.
@@ -302,9 +297,7 @@ idr_grow(struct idr *idp, int want)
 	idp->idr_count = nf;
 
 	if (oldnodes != NULL) {
-		spin_unlock(&idp->idr_spin);
 		kfree(oldnodes, M_IDR);
-		spin_lock(&idp->idr_spin);
 	}
 
 	idp->idr_nexpands++;
@@ -315,14 +308,19 @@ idr_remove(struct idr *idp, int id)
 {
 	void *ptr;
 
+	lwkt_gettoken(&idp->idr_token);
+
 	if (id >= idp->idr_count)
-		return;
+		goto out;
 	if ((ptr = idp->idr_nodes[id].data) == NULL)
-		return;
+		goto out;
 	idp->idr_nodes[id].data = NULL;
 
 	idr_reserve(idp, id, -1);
 	idrfixup(idp, id);
+
+out:
+	lwkt_reltoken(&idp->idr_token);
 }
 
 void
@@ -334,12 +332,12 @@ idr_remove_all(struct idr *idp)
 	idp->idr_freeindex = 0;
 	idp->idr_nexpands = 0;
 	idp->idr_maxwant = 0;
-	spin_init(&idp->idr_spin);
 }
 
 void
 idr_destroy(struct idr *idp)
 {
+	lwkt_token_uninit(&idp->idr_token);
 	kfree(idp->idr_nodes, M_IDR);
 	memset(idp, 0, sizeof(struct idr));
 }
@@ -347,13 +345,21 @@ idr_destroy(struct idr *idp)
 void *
 idr_find(struct idr *idp, int id)
 {
+	void * ret = NULL;
+
+	lwkt_gettoken(&idp->idr_token);
+
 	if (id > idp->idr_count) {
-		return (NULL);
+		goto out;
 	} else if (idp->idr_nodes[id].allocated == 0) {
-		return (NULL);
+		goto out;
 	}
 	KKASSERT(idp->idr_nodes[id].data != NULL);
-	return idp->idr_nodes[id].data;
+	ret = idp->idr_nodes[id].data;
+
+out:
+	lwkt_reltoken(&idp->idr_token);
+	return ret;
 }
 
 static void
@@ -374,32 +380,39 @@ idr_set(struct idr *idp, int id, void *ptr)
 int
 idr_for_each(struct idr *idp, int (*fn)(int id, void *p, void *data), void *data)
 {
-	int i, error;
+	int i, error = 0;
 	struct idr_node *nodes = idp->idr_nodes;
+
+	lwkt_gettoken(&idp->idr_token);
 	for (i = 0; i < idp->idr_count; i++) {
 		if (nodes[i].data != NULL && nodes[i].allocated > 0) {
 			error = fn(i, nodes[i].data, data);
 			if (error != 0)
-				return (error);
+				goto out;
 		}
 	}
-	return (0);
+out:
+	lwkt_reltoken(&idp->idr_token);
+	return error;
 }
 
 void *
 idr_replace(struct idr *idp, void *ptr, int id)
 {
 	struct idr_node *idrnp;
-	void *ret;
+	void *ret = NULL;
+
+	lwkt_gettoken(&idp->idr_token);
 
 	idrnp = idr_get_node(idp, id);
-
 	if (idrnp == NULL || ptr == NULL)
-		return (NULL);
+		goto out;
 
 	ret = idrnp->data;
 	idrnp->data = ptr;
 
+out:
+	lwkt_reltoken(&idp->idr_token);
 	return (ret);
 }
 
@@ -412,5 +425,5 @@ idr_init(struct idr *idp)
 	idp->idr_count = IDR_DEFAULT_SIZE;
 	idp->idr_lastindex = -1;
 	idp->idr_maxwant = 0;
-	spin_init(&idp->idr_spin);
+	lwkt_token_init(&idp->idr_token, "idr token");
 }

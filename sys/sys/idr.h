@@ -49,7 +49,7 @@
 
 #ifdef _KERNEL
 
-#include <sys/spinlock.h>
+#include <sys/thread.h>
 
 struct idr_node {
 	void	*data;
@@ -64,7 +64,7 @@ struct idr {
 	int	    idr_freeindex;
 	int	    idr_nexpands;
 	int	    idr_maxwant;
-	struct	    spinlock idr_spin;
+	struct	    lwkt_token idr_token;
 };
 
 void	*idr_find(struct idr *idp, int id);
