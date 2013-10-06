@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2005-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2005-2012 The DragonFly Project.
+ * Copyright (c) 2013 François Tigeot
+ * All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey Hsu.
@@ -405,18 +407,13 @@ idr_replace(struct idr *idp, void *ptr, int id)
 }
 
 void
-idr_init1(struct idr *idp, int size)
+idr_init(struct idr *idp)
 {
-	memset(idp, 0, sizeof(struct idr));
-	idp->idr_nodes = kmalloc(size * sizeof *idp, M_IDR, M_WAITOK | M_ZERO);
-	idp->idr_count = size;
+	bzero(idp, sizeof(struct idr));
+	idp->idr_nodes = kmalloc(IDR_DEFAULT_SIZE * sizeof(*idp),
+						M_IDR, M_WAITOK | M_ZERO);
+	idp->idr_count = IDR_DEFAULT_SIZE;
 	idp->idr_lastindex = -1;
 	idp->idr_maxwant = 0;
 	spin_init(&idp->idr_spin);
-}
-
-void
-idr_init(struct idr *idp)
-{
-	idr_init1(idp, IDR_DEFAULT_SIZE);
 }

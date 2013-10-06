@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2005-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2005-2012 The DragonFly Project.
+ * Copyright (c) 2013 François Tigeot
+ * All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey Hsu.
@@ -75,7 +77,6 @@ int	 idr_get_new(struct idr *idp, void *ptr, int *id);
 int	 idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id);
 int	 idr_pre_get(struct idr *idp);
 
-void	 idr_init1(struct idr *idp, int size);
 void	 idr_init(struct idr *idp);
 
 
