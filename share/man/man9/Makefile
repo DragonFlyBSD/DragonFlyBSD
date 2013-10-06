@@ -481,7 +481,6 @@ MLINKS+=idr.9 idr_destroy.9 \
 	idr.9 idr_get_new.9 \
 	idr.9 idr_get_new_above.9 \
 	idr.9 idr_init.9 \
-	idr.9 idr_init1.9 \
 	idr.9 idr_pre_get.9 \
 	idr.9 idr_remove.9 \
 	idr.9 idr_remove_all.9 \

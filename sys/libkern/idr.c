@@ -194,7 +194,7 @@ found:
 }
 
 int
-idr_pre_get(struct idr *idp)
+idr_pre_get(struct idr *idp, __unused unsigned gfp_mask)
 {
 	lwkt_gettoken(&idp->idr_token);
 	int error = idr_pre_get1(idp, idp->idr_maxwant, INT_MAX);

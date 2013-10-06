@@ -35,7 +35,6 @@
 .Nm idr_get_new ,
 .Nm idr_get_new_above ,
 .Nm idr_init ,
-.Nm idr_init1 ,
 .Nm idr_pre_get ,
 .Nm idr_remove ,
 .Nm idr_remove_all ,
@@ -55,10 +54,8 @@
 .Fn idr_get_new_above "struct idr *idp" "void *ptr" "int sid" "int *id"
 .Ft void
 .Fn idr_init "struct idr *idp"
-.Ft void
-.Fn idr_init1 "struct idr *idp" "int size"
 .Ft int
-.Fn idr_pre_get "struct idr *idp"
+.Fn idr_pre_get "struct idr *idp" "unsigned gfp_mask"
 .Ft void
 .Fn idr_remove "struct idr *idp" "int id"
 .Ft void
@@ -109,17 +106,9 @@ should be called to grow the tree.
 .Pp
 The
 .Fn idr_init
-and
-.Fn idr_init1
-functions initialize an
+function initialize an
 .Nm
 handle that will be used by other functions of the API.
-.Fn idr_init
-initializes a tree with a hard coded default initial capacity (32).
-.Fn idr_init1
-takes additional parameter
-.Fa size
-to set the initial capacity manually.
 The
 .Fn idr_pre_get
 function should be called prior to calling the
@@ -130,9 +119,12 @@ It preallocates enough memory for subsequent calls to
 functions.
 This function should be called without any locks held.
 It returns 0 if enough memory couldn't be allocated, otherwise 1.
-This function lacks the
-.Sq Vt gfp_t Va gfp_mask
-parameter that is found in Linux version of this API.
+The
+.Sq Va gfp_mask
+parameter is only present for compatibility with the Linux implementation of
+this API and is unused on
+.Dx .
+.
 .Pp
 The
 .Fn idr_remove

@@ -2154,6 +2154,7 @@ TO_REMOVE+=/usr/share/nls/fo_FO.ISO8859-1
 TO_REMOVE+=/usr/share/nls/fo_FO.UTF-8
 TO_REMOVE+=/usr/share/nls/hi_IN.UTF-8
 TO_REMOVE+=/usr/share/nls/la_LN.UTF-8
+TO_REMOVE+=/usr/share/man/man9/idr_init1.9.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

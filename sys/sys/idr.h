@@ -51,6 +51,11 @@
 
 #include <sys/thread.h>
 
+#ifndef GFP_KERNEL
+#include <sys/malloc.h>
+#define GFP_KERNEL	M_WAITOK
+#endif
+
 struct idr_node {
 	void	*data;
 	char	 reserved;
@@ -75,7 +80,7 @@ void	 idr_destroy(struct idr *idp);
 int	 idr_for_each(struct idr *idp, int (*fn)(int id, void *p, void *data), void *data);
 int	 idr_get_new(struct idr *idp, void *ptr, int *id);
 int	 idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id);
-int	 idr_pre_get(struct idr *idp);
+int	 idr_pre_get(struct idr *idp, unsigned gfp_mask);
 
 void	 idr_init(struct idr *idp);
 
