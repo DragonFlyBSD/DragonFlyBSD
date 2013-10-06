@@ -11,4 +11,6 @@ sha1 = 6a86cc4f373bcc51aa8bf1a7499db368e977a166
 
 Local modifications applied to the following files:
 	config.h
+	lib.in
 	msec.in
+	mandoc.3
