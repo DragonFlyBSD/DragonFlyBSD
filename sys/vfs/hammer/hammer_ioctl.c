@@ -48,6 +48,8 @@ static int hammer_ioc_set_version(hammer_transaction_t trans,
 				struct hammer_ioc_version *ver);
 static int hammer_ioc_get_info(hammer_transaction_t trans,
 				struct hammer_ioc_info *info);
+static int hammer_ioc_pfs_iterate(hammer_transaction_t trans,
+				struct hammer_ioc_pfs_iterate *pi);
 static int hammer_ioc_add_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_snapshot *snap);
 static int hammer_ioc_del_snapshot(hammer_transaction_t trans, hammer_inode_t ip,
@@ -226,6 +228,12 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		if (error == 0) {
 			error = hammer_ioc_get_data(
 					&trans, ip, (struct hammer_ioc_data *)data);
+		}
+		break;
+	case HAMMERIOC_PFS_ITERATE:
+		if (error == 0) {
+			error = hammer_ioc_pfs_iterate(
+				&trans, (struct hammer_ioc_pfs_iterate *)data);
 		}
 		break;
 	default:
@@ -1016,6 +1024,62 @@ again:
 	config->head.error = error;
 	hammer_done_cursor(&cursor);
 	return(0);
+}
+
+static
+int
+hammer_ioc_pfs_iterate(hammer_transaction_t trans,
+    struct hammer_ioc_pfs_iterate *pi)
+{
+	struct hammer_cursor cursor;
+	hammer_inode_t ip;
+	int error;
+
+	ip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT, HAMMER_MAX_TID,
+	    HAMMER_DEF_LOCALIZATION, 0, &error);
+
+	error = hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
+	if (error) {
+		hammer_done_cursor(&cursor);
+		return error;
+	}
+
+	pi->head.flags &= ~HAMMER_PFSD_DELETED;
+
+	cursor.key_beg.localization = HAMMER_DEF_LOCALIZATION +
+	    HAMMER_LOCALIZE_MISC;
+	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
+	cursor.key_beg.create_tid = 0;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_PFS;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_end = cursor.key_beg;
+	cursor.key_end.key = HAMMER_MAX_KEY;
+	cursor.asof = HAMMER_MAX_TID;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
+
+	if (pi->pos < 0)	/* Sanity check */
+		pi->pos = 0;
+
+	pi->pos <<= 16;
+	cursor.key_beg.key = pi->pos;
+	error = hammer_ip_lookup(&cursor);
+
+	if (error == 0) {
+		error = hammer_ip_resolve_data(&cursor);
+		if (error)
+			return error;
+		if (cursor.data->pfsd.mirror_flags & HAMMER_PFSD_DELETED)
+			pi->head.flags |= HAMMER_PFSD_DELETED;
+		else
+			copyout(cursor.data, pi->ondisk, cursor.leaf->data_len);
+		pi->pos = (u_int32_t)(cursor.leaf->base.key >> 16);
+	}
+
+	hammer_done_cursor(&cursor);
+	hammer_rel_inode(ip, 0);
+
+	return (error);
 }
 
 static
