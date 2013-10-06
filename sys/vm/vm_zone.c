@@ -643,8 +643,10 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 	lwkt_gettoken(&vm_token);
 	LIST_FOREACH(curzone, &zlist, zlink) {
 		int i;
+		int n;
 		int len;
 		int offset;
+		int freecnt;
 
 		len = strlen(curzone->zname);
 		if (len >= (sizeof(tmpname) - 1))
@@ -659,12 +661,15 @@ sysctl_vm_zone(SYSCTL_HANDLER_ARGS)
 			offset = 1;
 			tmpbuf[0] = '\n';
 		}
+		freecnt = curzone->zfreecnt;
+		for (n = 0; n < ncpus; ++n)
+			freecnt += curzone->zfreecnt_pcpu[n];
 
 		ksnprintf(tmpbuf + offset, sizeof(tmpbuf) - offset,
 			"%s %6.6u, %8.8u, %6.6u, %6.6u, %8.8u\n",
 			tmpname, curzone->zsize, curzone->zmax,
-			(curzone->ztotal - curzone->zfreecnt),
-			curzone->zfreecnt, curzone->znalloc);
+			(curzone->ztotal - freecnt),
+			freecnt, curzone->znalloc);
 
 		len = strlen((char *)tmpbuf);
 		if (LIST_NEXT(curzone, zlink) == NULL)
