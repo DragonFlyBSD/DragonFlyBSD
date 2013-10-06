@@ -17,7 +17,7 @@
 #ifndef LOCORE
 
 /* XXX wrong header */
-void	initializecpu(void);
+void	initializecpu(int cpu);
 
 #endif	/* LOCORE */
 

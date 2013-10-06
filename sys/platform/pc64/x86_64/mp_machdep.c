@@ -305,7 +305,7 @@ init_secondary(void)
 	cpu_setregs();
 
 	/* set up SSE/NX registers */
-	initializecpu();
+	initializecpu(myid);
 
 	/* set up FPU state on the AP */
 	npxinit(__INITIAL_FPUCW__);

@@ -150,7 +150,7 @@ init_via(void)
  * Initialize CPU control registers
  */
 void
-initializecpu(void)
+initializecpu(int cpu)
 {
 	uint64_t msr;
 
@@ -196,7 +196,9 @@ initializecpu(void)
 
 			msr = rdmsr(MSR_AMD_DE_CFG);
 			if ((msr & 1) == 0) {
-				kprintf("Errata 721 workaround installed\n");
+				if (cpu == 0)
+					kprintf("Errata 721 workaround "
+						"installed\n");
 				msr |= 1;
 				wrmsr(MSR_AMD_DE_CFG, msr);
 			}
