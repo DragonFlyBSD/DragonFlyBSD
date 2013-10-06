@@ -556,7 +556,8 @@ manual(char *page, struct manstate *mp, glob_t *pg)
 
 		/* clip suffix for the suffix check below */
 		p = strrchr(escpage, '/');
-		p = strchr(p, '.');
+		while ((p = strchr(p, '.')) && !isdigit(p[1]))
+			++p;
 		if (p)
 			p[0] = '\0';
 
