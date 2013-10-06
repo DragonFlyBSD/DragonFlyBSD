@@ -50,10 +50,9 @@ MALLOC_DEFINE(M_IDR, "idr", "Integer ID management");
 
 static void	idr_grow(struct idr *idp, int want);
 static void	idr_reserve(struct idr *idp, int id, int incr);
-int		idr_alloc(struct idr *idp, int want, int lim, int *result);
-void		idr_set(struct idr *idp, int id, void *ptr);
-int		idr_find_free(struct idr *idp, int want, int lim);
-int		idr_pre_get1(struct idr *idp, int want, int lim);
+static void	idr_set(struct idr *idp, int id, void *ptr);
+static int	idr_find_free(struct idr *idp, int want, int lim);
+static int	idr_pre_get1(struct idr *idp, int want, int lim);
 
 /*
  * Number of nodes in right subtree, including the root.
@@ -82,8 +81,7 @@ left_ancestor(int n)
 	return ((n & (n + 1)) - 1);
 }
 
-static __inline
-void
+static __inline void
 idrfixup(struct idr *idp, int id)
 {
 	if (id < idp->idr_freeindex) {
@@ -97,8 +95,7 @@ idrfixup(struct idr *idp, int id)
 	}
 }
 
-static __inline
-struct idr_node *
+static __inline struct idr_node *
 idr_get_node(struct idr *idp, int id)
 {
 	struct idr_node *idrnp;
@@ -120,7 +117,7 @@ idr_reserve(struct idr *idp, int id, int incr)
 	}
 }
 
-int
+static int
 idr_find_free(struct idr *idp, int want, int lim)
 {
 	int id, rsum, rsize, node;
@@ -169,7 +166,7 @@ idr_find_free(struct idr *idp, int want, int lim)
 	return (-1);
 }
 
-int
+static int
 idr_pre_get1(struct idr *idp, int want, int lim)
 {
 	int id;
@@ -359,7 +356,7 @@ idr_find(struct idr *idp, int id)
 	return idp->idr_nodes[id].data;
 }
 
-void
+static void
 idr_set(struct idr *idp, int id, void *ptr)
 {
 	KKASSERT(id < idp->idr_count);
