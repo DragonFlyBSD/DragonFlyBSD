@@ -73,7 +73,15 @@ SRCS=		argmatch.c \
 		openat-proc.c \
 		regex.c \
 		strerror.c \
-		strerror-override.c \
-		wcwidth.c
+		strerror-override.c
+
+.if defined(BOOTSTRAPPING)
+DFVER!=		file -b /bin/ls | awk -F, '{split($$5,arr,"."); print arr[3]}'
+.  if ${DFVER} < 503
+SRCS+=		wcwidth.c
+.  endif
+.else
+SRCS+=		wcwidth.c
+.endif
 
 .include <bsd.lib.mk>
