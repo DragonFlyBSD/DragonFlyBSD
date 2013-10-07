@@ -579,6 +579,9 @@ ulptclose(struct dev_close_args *ap)
 
 	sc = devclass_get_softc(ulpt_devclass, ULPTUNIT(dev));
 
+	if (sc == NULL)
+		return (0);
+
 	if (sc->sc_state != ULPT_OPEN)
 		/* We are being forced to close before the open completed. */
 		return (0);
