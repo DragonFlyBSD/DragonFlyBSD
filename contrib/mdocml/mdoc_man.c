@@ -442,7 +442,7 @@ print_offs(const char *v)
 	if (Bl_stack_len)
 		sz += Bl_stack[Bl_stack_len - 1];
 
-	snprintf(buf, sizeof(buf), "%ldn", sz);
+	snprintf(buf, sizeof(buf), "%zun", sz);
 	print_word(buf);
 	outflags |= MMAN_nl;
 }
@@ -495,7 +495,7 @@ print_width(const char *v, const struct mdoc_node *child, size_t defsz)
 		remain = sz + 2;
 	}
 	if (numeric) {
-		snprintf(buf, sizeof(buf), "%ldn", sz + 2);
+		snprintf(buf, sizeof(buf), "%zun", sz + 2);
 		print_word(buf);
 	} else
 		print_word(v);
@@ -1294,7 +1294,7 @@ mid_it(void)
 
 	/* Restore the indentation of the enclosing list. */
 	print_line(".RS", MMAN_Bk_susp);
-	snprintf(buf, sizeof(buf), "%ldn", Bl_stack[Bl_stack_len - 1]);
+	snprintf(buf, sizeof(buf), "%zun", Bl_stack[Bl_stack_len - 1]);
 	print_word(buf);
 
 	/* Remeber to close out this .RS block later. */
@@ -1419,7 +1419,7 @@ pre_nm(DECL_ARGS)
 		if (NULL == n->parent->prev)
 			outflags |= MMAN_sp;
 		print_block(".HP", 0);
-		printf(" %ldn", strlen(name) + 1);
+		printf(" %zun", strlen(name) + 1);
 		outflags |= MMAN_nl;
 	}
 	font_push('B');
