@@ -240,9 +240,11 @@ _maninstall: ${MAN}
 .endif
 
 manlint:
+mandiff:
 .if defined(MAN) && !empty(MAN)
 .for page in ${MAN}
 manlint: ${page}lint
+mandiff: ${page}diff
 ${page}lint: ${page}
 .if defined(MANFILTER)
 	@${MANFILTER} < ${.ALLSRC} | ${MROFF_CMD} -ww -z
@@ -251,5 +253,12 @@ ${page}lint: ${page}
 	@${MROFF_CMD} -ww -z ${.ALLSRC}
 	@-mandoc -Tlint ${.ALLSRC}
 .endif
+${page}.out.groff: ${page}
+	@-groff -mandoc -Tascii -P -c ${.ALLSRC} 2>&1 > ${.TARGET}
+${page}.out.mandoc: ${page}
+	@-mandoc -Werror ${.ALLSRC} 2>&1 > ${.TARGET}
+${page}diff: ${page}.out.groff ${page}.out.mandoc
+	@-diff -au ${.ALLSRC}
+	@rm ${.ALLSRC}
 .endfor
 .endif

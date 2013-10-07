@@ -86,6 +86,7 @@ TGTS=	all all-man buildkernel quickkernel nativekernel \
 	backup-clean backup-auto-clean \
 	_obj _includes _libraries _depend _worldtmp \
 	_bootstrap-tools _build-tools _cross-tools
+TGTS+=	mandiff # XXX temporary target
 
 BITGTS=	files includes
 BITGTS:=${BITGTS} ${BITGTS:S/^/build/} ${BITGTS:S/^/install/}
