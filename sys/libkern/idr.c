@@ -203,34 +203,6 @@ idr_pre_get(struct idr *idp, __unused unsigned gfp_mask)
 }
 
 int
-idr_get_new(struct idr *idp, void *ptr, int *id)
-{
-	int resid;
-
-	if (ptr == NULL)
-		return (EINVAL);
-
-	lwkt_gettoken(&idp->idr_token);
-	resid = idr_find_free(idp, 0, INT_MAX);
-	if (resid == -1) {
-		lwkt_reltoken(&idp->idr_token);
-		return (EAGAIN);
-	}
-
-	if (resid > idp->idr_lastindex)
-		idp->idr_lastindex = resid;
-	idp->idr_freeindex = resid;
-	*id = resid;
-	KKASSERT(idp->idr_nodes[resid].reserved == 0);
-	idp->idr_nodes[resid].reserved = 1;
-	idr_reserve(idp, resid, 1);
-	idr_set(idp, resid, ptr);
-
-	lwkt_reltoken(&idp->idr_token);
-	return (0);
-}
-
-int
 idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 {
 	int resid;
@@ -265,6 +237,12 @@ idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 
 	lwkt_reltoken(&idp->idr_token);
 	return (0);
+}
+
+int
+idr_get_new(struct idr *idp, void *ptr, int *id)
+{
+	return idr_get_new_above(idp, ptr, 0, id);
 }
 
 /*
