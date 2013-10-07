@@ -308,6 +308,34 @@ pv_entry_compare(pv_entry_t pv1, pv_entry_t pv2)
 RB_GENERATE2(pv_entry_rb_tree, pv_entry, pv_entry,
              pv_entry_compare, vm_pindex_t, pv_pindex);
 
+static __inline
+void
+pmap_page_stats_adding(vm_page_t m)
+{
+	globaldata_t gd = mycpu;
+
+	if (TAILQ_EMPTY(&m->md.pv_list)) {
+		++gd->gd_vmtotal.t_arm;
+	} else if (TAILQ_FIRST(&m->md.pv_list) ==
+		   TAILQ_LAST(&m->md.pv_list, md_page_pv_list)) {
+		++gd->gd_vmtotal.t_armshr;
+	}
+}
+
+static __inline
+void
+pmap_page_stats_deleting(vm_page_t m)
+{
+	globaldata_t gd = mycpu;
+
+	if (TAILQ_EMPTY(&m->md.pv_list)) {
+		--gd->gd_vmtotal.t_arm;
+	} else if (TAILQ_FIRST(&m->md.pv_list) ==
+		   TAILQ_LAST(&m->md.pv_list, md_page_pv_list)) {
+		--gd->gd_vmtotal.t_armshr;
+	}
+}
+
 /*
  * Move the kernel virtual free pointer to the next
  * 2MB.  This is used to help improve performance
@@ -1879,6 +1907,7 @@ pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, pv_entry_t *pvpp)
 		vm_wait(0);
 	}
 	vm_page_spin_lock(m);
+	pmap_page_stats_adding(m);
 	TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
 	pv->pv_m = m;
 	vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE);
@@ -2540,6 +2569,7 @@ pmap_remove_pv_page(pv_entry_t pv)
 	vm_page_spin_lock(m);
 	pv->pv_m = NULL;
 	TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
+	pmap_page_stats_deleting(m);
 	/*
 	if (m->object)
 		atomic_add_int(&m->object->agg_pv_list_count, -1);
@@ -4082,11 +4112,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		KKASSERT(pte_pv->pv_m == NULL);
 		vm_page_spin_lock(m);
 		pte_pv->pv_m = m;
+		pmap_page_stats_adding(m);
 		TAILQ_INSERT_TAIL(&m->md.pv_list, pte_pv, pv_list);
-		/*
-		if (m->object)
-			atomic_add_int(&m->object->agg_pv_list_count, 1);
-		*/
 		vm_page_flag_set(m, PG_MAPPED);
 		vm_page_spin_unlock(m);
 	} else if (pt_pv && opa == 0) {

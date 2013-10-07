@@ -90,114 +90,45 @@ static int
 do_vmtotal(SYSCTL_HANDLER_ARGS)
 {
 	struct vmtotal total;
-	struct vmtotal *totalp;
-	struct vm_object marker;
-	vm_object_t object;
-	long collisions;
-	int burst;
+	globaldata_t gd;
+	int n;
 
 	bzero(&total, sizeof(total));
-	totalp = &total;
-	bzero(&marker, sizeof(marker));
-	marker.type = OBJT_MARKER;
-	collisions = vmobj_token.t_collisions;
+	for (n = 0; n < ncpus; ++n) {
+		gd = globaldata_find(n);
 
-#if 0
-	/*
-	 * Mark all objects as inactive.
-	 */
-	lwkt_gettoken(&vmobj_token);
-	for (object = TAILQ_FIRST(&vm_object_list);
-	    object != NULL;
-	    object = TAILQ_NEXT(object,object_list)) {
-		if (object->type == OBJT_MARKER)
-			continue;
-		vm_object_clear_flag(object, OBJ_ACTIVE);
+		/* total.t_rq calculated separately */
+		/* total.t_dw calculated separately */
+		/* total.t_pw calculated separately */
+		/* total.t_sl calculated separately */
+		/* total.t_sw calculated separately */
+		total.t_vm += gd->gd_vmtotal.t_vm;
+		total.t_avm += gd->gd_vmtotal.t_avm;
+		total.t_rm += gd->gd_vmtotal.t_rm;
+		total.t_arm += gd->gd_vmtotal.t_arm;
+		total.t_vmshr += gd->gd_vmtotal.t_vmshr;
+		total.t_avmshr += gd->gd_vmtotal.t_avmshr;
+		total.t_rmshr += gd->gd_vmtotal.t_rmshr;
+		total.t_armshr += gd->gd_vmtotal.t_armshr;
+		/* total.t_free calculated separately */
 	}
-	lwkt_reltoken(&vmobj_token);
-#endif
 
 	/*
 	 * Calculate process statistics.
 	 */
-	allproc_scan(do_vmtotal_callback, totalp);
+	allproc_scan(do_vmtotal_callback, &total);
 
 	/*
-	 * Calculate object memory usage statistics.
+	 * Adjust for sysctl return.  Add real memory into virtual memory.
+	 * Set t_free.
+	 *
+	 * t_rm - Real memory
+	 * t_vm - Virtual memory (real + swap)
 	 */
-	lwkt_gettoken(&vmobj_token);
-	TAILQ_INSERT_HEAD(&vm_object_list, &marker, object_list);
-	burst = 0;
+	total.t_vm += total.t_rm;
+	total.t_free = vmstats.v_free_count + vmstats.v_cache_count;
 
-	for (object = TAILQ_FIRST(&vm_object_list);
-	    object != NULL;
-	    object = TAILQ_NEXT(object, object_list)) {
-		/*
-		 * devices, like /dev/mem, will badly skew our totals.
-		 * markers aren't real objects.
-		 */
-		if (object->type == OBJT_MARKER)
-			continue;
-		if (object->type == OBJT_DEVICE)
-			continue;
-		if (object->type == OBJT_MGTDEVICE)
-			continue;
-		if (object->size >= 0x7FFFFFFF) {
-			/*
-			 * Probably unbounded anonymous memory (really
-			 * bounded by related vm_map_entry structures which
-			 * we do not have access to in this loop).
-			 */
-			totalp->t_vm += object->resident_page_count;
-		} else {
-			/*
-			 * It's questionable how useful this is but...
-			 */
-			totalp->t_vm += object->size;
-		}
-		totalp->t_rm += object->resident_page_count;
-		if (object->flags & OBJ_ACTIVE) {
-			totalp->t_avm += object->size;
-			totalp->t_arm += object->resident_page_count;
-		}
-		if (object->shadow_count > 1) {
-			/* shared object */
-			totalp->t_vmshr += object->size;
-			totalp->t_rmshr += object->resident_page_count;
-			if (object->flags & OBJ_ACTIVE) {
-				totalp->t_avmshr += object->size;
-				totalp->t_armshr += object->resident_page_count;
-			}
-		}
-
-		/*
-		 * Don't waste time unnecessarily
-		 */
-		if (++burst < 25)
-			continue;
-		burst = 0;
-
-		/*
-		 * Don't hog the vmobj_token if someone else wants it.
-		 */
-		TAILQ_REMOVE(&vm_object_list, &marker, object_list);
-		TAILQ_INSERT_AFTER(&vm_object_list, object,
-				   &marker, object_list);
-		object = &marker;
-		if (collisions != vmobj_token.t_collisions) {
-			tsleep(&vm_object_list, 0, "breath", 1);
-			collisions = vmobj_token.t_collisions;
-		} else {
-			lwkt_yield();
-		}
-	}
-
-	TAILQ_REMOVE(&vm_object_list, &marker, object_list);
-	lwkt_reltoken(&vmobj_token);
-
-	totalp->t_free = vmstats.v_free_count + vmstats.v_cache_count;
-
-	return (sysctl_handle_opaque(oidp, totalp, sizeof total, req));
+	return (sysctl_handle_opaque(oidp, &total, sizeof(total), req));
 }
 
 /*

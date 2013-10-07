@@ -973,7 +973,8 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 		vm_page_spin_unlock(m);
 		return FALSE;
 	}
-	object->resident_page_count++;
+	++object->resident_page_count;
+	++mycpu->gd_vmtotal.t_rm;
 	/* atomic_add_int(&object->agg_pv_list_count, m->md.pv_list_count); */
 	vm_page_spin_unlock(m);
 
@@ -1027,7 +1028,8 @@ vm_page_remove(vm_page_t m)
 	 */
 	vm_page_spin_lock(m);
 	vm_page_rb_tree_RB_REMOVE(&object->rb_memq, m);
-	object->resident_page_count--;
+	--object->resident_page_count;
+	--mycpu->gd_vmtotal.t_rm;
 	/* atomic_add_int(&object->agg_pv_list_count, -m->md.pv_list_count); */
 	m->object = NULL;
 	vm_page_spin_unlock(m);

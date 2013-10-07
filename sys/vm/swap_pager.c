@@ -2185,14 +2185,17 @@ retry:
 		/* can block */
 		swp_pager_freeswapspace(object, v, 1);
 		--swap->swb_count;
+		--mycpu->gd_vmtotal.t_vm;
 	}
 
 	/*
 	 * Enter block into metadata
 	 */
 	swap->swb_pages[index] = swapblk;
-	if (swapblk != SWAPBLK_NONE)
+	if (swapblk != SWAPBLK_NONE) {
 		++swap->swb_count;
+		++mycpu->gd_vmtotal.t_vm;
+	}
 }
 
 /*
@@ -2279,6 +2282,7 @@ swp_pager_meta_free_callback(struct swblock *swap, void *data)
 			swap->swb_pages[index] = SWAPBLK_NONE;
 			/* can block */
 			swp_pager_freeswapspace(object, v, 1);
+			--mycpu->gd_vmtotal.t_vm;
 			if (--swap->swb_count == 0) {
 				swp_pager_remove(object, swap);
 				zfree(swap_zone, swap);
@@ -2322,6 +2326,7 @@ swp_pager_meta_free_all(vm_object_t object)
 				/* can block */
 				swp_pager_freeswapspace(object, v, 1);
 				--swap->swb_count;
+				--mycpu->gd_vmtotal.t_vm;
 			}
 		}
 		if (swap->swb_count != 0)
@@ -2374,6 +2379,7 @@ swp_pager_meta_ctl(vm_object_t object, vm_pindex_t index, int flags)
 		if (r1 != SWAPBLK_NONE) {
 			if (flags & (SWM_FREE|SWM_POP)) {
 				swap->swb_pages[index] = SWAPBLK_NONE;
+				--mycpu->gd_vmtotal.t_vm;
 				if (--swap->swb_count == 0) {
 					swp_pager_remove(object, swap);
 					zfree(swap_zone, swap);

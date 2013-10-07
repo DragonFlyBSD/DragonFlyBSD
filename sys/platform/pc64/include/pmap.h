@@ -214,11 +214,12 @@ struct vm_page;
 struct vm_object;
 struct vmspace;
 
+TAILQ_HEAD(md_page_pv_list, pv_entry);
 /*
  * vm_page structures embed a list of related pv_entry's
  */
 struct md_page {
-	TAILQ_HEAD(,pv_entry)	pv_list;
+	struct md_page_pv_list	pv_list;
 };
 
 /*

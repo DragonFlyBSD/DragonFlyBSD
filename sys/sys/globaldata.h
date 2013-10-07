@@ -133,6 +133,7 @@ struct globaldata {
 	struct timeval	gd_stattv;
 	int		gd_intr_nesting_level;	/* hard code, intrs, ipis */
 	struct vmmeter	gd_cnt;
+	struct vmtotal	gd_vmtotal;
 	cpumask_t	gd_ipimask;		/* pending ipis from cpus */
 	struct lwkt_ipiq *gd_ipiq;		/* array[ncpu] of ipiq's */
 	struct lwkt_ipiq gd_cpusyncq;		/* ipiq for cpu synchro */

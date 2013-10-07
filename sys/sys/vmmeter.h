@@ -142,8 +142,7 @@ extern struct vmstats vmstats;
 #endif
 
 /* systemwide totals computed every five seconds */
-struct vmtotal
-{
+struct vmtotal {
 	long	t_rq;		/* length of the run queue */
 	long	t_dw;		/* jobs in ``disk wait'' (neg priority) */
 	long	t_pw;		/* jobs in page wait */
