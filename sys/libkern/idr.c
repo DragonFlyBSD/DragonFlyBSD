@@ -273,26 +273,21 @@ idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 static void
 idr_grow(struct idr *idp, int want)
 {
-	struct idr_node *newnodes;
-	struct idr_node *oldnodes;
-	int nf, extra;
+	struct idr_node *oldnodes, *newnodes;
+	int nf;
 
+	/* We want 2^n descriptors */
 	nf = idp->idr_count;
 	do {
-		/* nf has to be of the form 2^n - 1 */
-		nf = 2 * nf + 1;
+		nf *= 2;
 	} while (nf <= want);
 
-	newnodes = kmalloc(nf * sizeof(struct idr_node), M_IDR, M_WAITOK);
+	/* Allocate a new zero'ed node array */
+	newnodes = kmalloc(nf * sizeof(struct idr_node), M_IDR, M_ZERO|M_WAITOK);
 
-	/*
-	 * Copy the existing ofile and ofileflags arrays
-	 * and zero the new portion of each array.
-	 */
-	extra = nf - idp->idr_count;
+	/* Copy the existing nodes at the beginning of the new array */
 	if (idp->idr_nodes != NULL)
 		bcopy(idp->idr_nodes, newnodes, idp->idr_count * sizeof(struct idr_node));
-	bzero(&newnodes[idp->idr_count], extra * sizeof(struct idr_node));
 
 	oldnodes = idp->idr_nodes;
 	idp->idr_nodes = newnodes;
