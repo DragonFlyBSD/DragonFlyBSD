@@ -11,10 +11,8 @@
 #define NETPERF_CMD	"netperf"
 #define NETPERF_PATH	"/usr/local/bin/" NETPERF_CMD
 
-#define TCP_STRM_FILENAME	"/tmp/tcp_strm.%d.%d"
-
 struct netperf_child {
-	int		fd;
+	int		pipes[2];
 };
 
 static void
@@ -36,7 +34,6 @@ main(int argc, char *argv[])
 	int opt, i, null_fd, set_minmax = 0;
 	volatile int reverse = 0, sfile = 0;
 	double result, res_max, res_min, jain;
-	pid_t mypid;
 
 	host = NULL;
 	ninst = 2;
@@ -73,8 +70,6 @@ main(int argc, char *argv[])
 	if (ninst <= 0 || host == NULL || len <= 0)
 		usage(argv[0]);
 
-	mypid = getpid();
-
 	snprintf(len_str, sizeof(len_str), "%d", len);
 
 	i = 0;
@@ -106,15 +101,8 @@ main(int argc, char *argv[])
 	}
 
 	for (i = 0; i < ninst; ++i) {
-		char filename[128];
-
-		snprintf(filename, sizeof(filename), TCP_STRM_FILENAME,
-		    (int)mypid, i);
-		instance[i].fd = open(filename, O_CREAT | O_TRUNC | O_RDWR,
-		    S_IWUSR | S_IRUSR);
-		if (instance[i].fd < 0) {
-			fprintf(stderr, "open %s failed: %d\n",
-			    filename, errno);
+		if (pipe(instance[i].pipes) < 0) {
+			fprintf(stderr, "pipe %dth failed: %d\n", i, errno);
 			exit(1);
 		}
 	}
@@ -126,7 +114,7 @@ main(int argc, char *argv[])
 		if (pid == 0) {
 			int ret;
 
-			dup2(instance[i].fd, STDOUT_FILENO);
+			dup2(instance[i].pipes[1], STDOUT_FILENO);
 			dup2(null_fd, STDERR_FILENO);
 			ret = execv(NETPERF_PATH, args);
 			if (ret < 0) {
@@ -140,6 +128,8 @@ main(int argc, char *argv[])
 			fprintf(stderr, "vfork %d failed: %d\n", i, errno);
 			exit(1);
 		}
+		close(instance[i].pipes[1]);
+		instance[i].pipes[1] = -1;
 	}
 
 	ninst_done = 0;
@@ -159,15 +149,12 @@ main(int argc, char *argv[])
 	jain = 0.0;
 	result = 0.0;
 	for (i = 0; i < ninst; ++i) {
-		char line[128], filename[128];
+		char line[128];
 		FILE *fp;
 
-		close(instance[i].fd);
-		snprintf(filename, sizeof(filename), TCP_STRM_FILENAME,
-		    (int)mypid, i);
-		fp = fopen(filename, "r");
+		fp = fdopen(instance[i].pipes[0], "r");
 		if (fp == NULL) {
-			fprintf(stderr, "fopen %s failed\n", filename);
+			fprintf(stderr, "fdopen %dth failed\n", i);
 			exit(1);
 		}
 
@@ -194,7 +181,6 @@ main(int argc, char *argv[])
 			}
 		}
 		fclose(fp);
-		unlink(filename);
 	}
 
 	jain *= ninst;
