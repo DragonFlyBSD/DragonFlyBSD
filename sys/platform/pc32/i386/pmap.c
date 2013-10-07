@@ -226,6 +226,40 @@ static void pmap_wait(pmap_t pmap, int count);
 
 static unsigned pdir4mb;
 
+static __inline
+void
+pmap_page_stats_adding(vm_page_t m)
+{
+	globaldata_t gd = mycpu;
+
+	if (TAILQ_EMPTY(&m->md.pv_list)) {
+		++gd->gd_vmtotal.t_arm;
+	} else if (TAILQ_FIRST(&m->md.pv_list) ==
+		   TAILQ_LAST(&m->md.pv_list, md_page_pv_list)) {
+		++gd->gd_vmtotal.t_armshr;
+		++gd->gd_vmtotal.t_avmshr;
+	} else {
+		++gd->gd_vmtotal.t_avmshr;
+	}
+}
+
+static __inline
+void
+pmap_page_stats_deleting(vm_page_t m)
+{
+	globaldata_t gd = mycpu;
+
+	if (TAILQ_EMPTY(&m->md.pv_list)) {
+		--gd->gd_vmtotal.t_arm;
+	} else if (TAILQ_FIRST(&m->md.pv_list) ==
+		   TAILQ_LAST(&m->md.pv_list, md_page_pv_list)) {
+		--gd->gd_vmtotal.t_armshr;
+		--gd->gd_vmtotal.t_avmshr;
+	} else {
+		--gd->gd_vmtotal.t_avmshr;
+	}
+}
+
 /*
  * Move the kernel virtual free pointer to the next
  * 4MB.  This is used to help improve performance
@@ -1914,6 +1948,7 @@ pmap_remove_entry(struct pmap *pmap, vm_page_t m,
 	 */
 	test_m_maps_pv(m, pv);
 	TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
+	pmap_page_stats_deleting(m);
 	m->md.pv_list_count--;
 	if (m->object)
 		atomic_add_int(&m->object->agg_pv_list_count, -1);
@@ -1948,6 +1983,7 @@ pmap_insert_entry(pmap_t pmap, pv_entry_t pv, vm_offset_t va,
 	pv->pv_pmap = pmap;
 	pv->pv_ptem = mpte;
 
+	pmap_page_stats_adding(m);
 	TAILQ_INSERT_TAIL(&pmap->pm_pvlist, pv, pv_plist);
 	TAILQ_INSERT_TAIL(&m->md.pv_list, pv, pv_list);
 	++pmap->pm_generation;
@@ -2211,6 +2247,7 @@ pmap_remove_all(vm_page_t m)
 		KKASSERT(pv == TAILQ_FIRST(&m->md.pv_list));
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
 		TAILQ_REMOVE(&pmap->pm_pvlist, pv, pv_plist);
+		pmap_page_stats_deleting(m);
 		++pmap->pm_generation;
 		m->md.pv_list_count--;
 		if (m->object)
@@ -3166,6 +3203,7 @@ pmap_remove_pages(pmap_t pmap, vm_offset_t sva, vm_offset_t eva)
 		if (m->object)
 			atomic_add_int(&m->object->agg_pv_list_count, -1);
 		TAILQ_REMOVE(&m->md.pv_list, pv, pv_list);
+		pmap_page_stats_deleting(m);
 		if (TAILQ_EMPTY(&m->md.pv_list))
 			vm_page_flag_clear(m, PG_MAPPED | PG_WRITEABLE);
 

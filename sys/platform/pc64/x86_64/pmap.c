@@ -319,6 +319,9 @@ pmap_page_stats_adding(vm_page_t m)
 	} else if (TAILQ_FIRST(&m->md.pv_list) ==
 		   TAILQ_LAST(&m->md.pv_list, md_page_pv_list)) {
 		++gd->gd_vmtotal.t_armshr;
+		++gd->gd_vmtotal.t_avmshr;
+	} else {
+		++gd->gd_vmtotal.t_avmshr;
 	}
 }
 
@@ -333,6 +336,9 @@ pmap_page_stats_deleting(vm_page_t m)
 	} else if (TAILQ_FIRST(&m->md.pv_list) ==
 		   TAILQ_LAST(&m->md.pv_list, md_page_pv_list)) {
 		--gd->gd_vmtotal.t_armshr;
+		--gd->gd_vmtotal.t_avmshr;
+	} else {
+		--gd->gd_vmtotal.t_avmshr;
 	}
 }
 

@@ -221,9 +221,11 @@ struct vm_page;
 struct vm_object;
 struct vmspace;
 
+TAILQ_HEAD(md_page_pv_list, pv_entry);
+
 struct md_page {
 	int pv_list_count;
-	TAILQ_HEAD(,pv_entry)	pv_list;
+	struct md_page_pv_list	pv_list;
 };
 
 struct md_object {
