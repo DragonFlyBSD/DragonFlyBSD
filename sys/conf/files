@@ -1911,7 +1911,6 @@ dev/drm/drm_edid.c			optional drm
 dev/drm/drm_fb_helper.c			optional drm
 dev/drm/drm_fops.c			optional drm
 dev/drm/drm_gem.c			optional drm
-dev/drm/drm_gem_names.c			optional drm
 dev/drm/drm_global.c			optional drm
 dev/drm/drm_hashtab.c			optional drm
 dev/drm/drm_ioctl.c			optional drm
