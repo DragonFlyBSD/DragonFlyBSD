@@ -1038,11 +1038,10 @@ hammer_ioc_pfs_iterate(hammer_transaction_t trans,
 	ip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT, HAMMER_MAX_TID,
 	    HAMMER_DEF_LOCALIZATION, 0, &error);
 
-	error = hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
-	if (error) {
-		hammer_done_cursor(&cursor);
-		return error;
-	}
+	error = hammer_init_cursor(trans, &cursor,
+	    (ip ? &ip->cache[1] : NULL), ip);
+	if (error)
+		goto out;
 
 	pi->head.flags &= ~HAMMER_PFSD_DELETED;
 
@@ -1068,7 +1067,7 @@ hammer_ioc_pfs_iterate(hammer_transaction_t trans,
 	if (error == 0) {
 		error = hammer_ip_resolve_data(&cursor);
 		if (error)
-			return error;
+			goto out;
 		if (cursor.data->pfsd.mirror_flags & HAMMER_PFSD_DELETED)
 			pi->head.flags |= HAMMER_PFSD_DELETED;
 		else
@@ -1076,8 +1075,10 @@ hammer_ioc_pfs_iterate(hammer_transaction_t trans,
 		pi->pos = (u_int32_t)(cursor.leaf->base.key >> 16);
 	}
 
+out:
 	hammer_done_cursor(&cursor);
-	hammer_rel_inode(ip, 0);
+	if (ip)
+		hammer_rel_inode(ip, 0);
 
 	return (error);
 }
