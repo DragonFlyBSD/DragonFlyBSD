@@ -1713,7 +1713,6 @@ mode, it simply means that the data you wrote and then
 .Fn fsync Ns 'd
 might not have made it to the media if the storage system crashes at a bad
 time.
-.Pp
 .It mode 2
 Full synchronous fsync semantics using REDO.
 NOTE: If not running a
@@ -1731,7 +1730,6 @@ and then followup with a disk sync command to guarantee the data
 is on the media before returning.
 This is slower than mode 3 and can result in significant disk or
 SSDs overheads, though not as bad as mode 0 or mode 1.
-.Pp
 .It mode 3
 Relaxed asynchronous fsync semantics using REDO.
 NOTE: If not running a
@@ -1761,7 +1759,6 @@ This mode is the fastest production fsyncing mode available.
 This mode is equivalent to how the UFS fsync in the
 .Bx Ns s
 operates.
-.Pp
 .It mode 4
 fsync is ignored.
 .Pp

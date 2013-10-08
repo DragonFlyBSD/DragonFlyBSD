@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)chpass.1	8.2 (Berkeley) 12/30/93
 .\" $FreeBSD: src/usr.bin/chpass/chpass.1,v 1.39 2005/08/02 21:38:02 seanc Exp $
-.\" $DragonFly: src/usr.bin/chpass/chpass.1,v 1.4 2006/02/17 19:38:58 swildner Exp $
 .\"
 .Dd December 30, 1993
 .Dt CHPASS 1
@@ -320,7 +319,6 @@ password -- see below) will be silently discarded.
 .Pp
 Exception: the super-user on the NIS master server is permitted to
 change any field.
-.Pp
 .It
 .Em "Password authentication is required" .
 The
@@ -436,7 +434,6 @@ option can be used in conjunction with the
 .Fl d
 option, in which case the user-specified hostname will override
 the default.
-.Pp
 .It Fl o
 Force the use of RPC-based updates when communicating with
 .Xr rpc.yppasswdd 8

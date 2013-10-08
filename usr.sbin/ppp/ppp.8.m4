@@ -1169,7 +1169,6 @@ Use Hardware Handshake (CTS/RTS) for flow control.
 .It
 Modem should be set to NO echo back (ATE0) and NO results string (ATQ1).
 .El
-.Pp
 .It
 Edit
 .Pa /etc/ttys
@@ -1777,7 +1776,6 @@ If no timeout is given, the default timeout (set using
 .Ic set timeout
 and defaulting to 180 seconds) is used.
 .El
-.Pp
 .It
 Each filter can hold up to 40 rules, starting from rule 0.
 The entire rule set is not effective until rule 0 is defined,
@@ -2191,7 +2189,6 @@ ISPs IP number would be:
 .Bd -literal -offset indent
 set ifaddr 10.0.0.1/0 10.0.0.2/0 0.0.0.0 0.0.0.0
 .Ed
-.Pp
 .It
 In most cases, your ISP will also be your default router.
 If this is the case, add the line
@@ -3129,7 +3126,6 @@ not to make any utmp or wtmp entries.
 This is usually only necessary if
 you require the user to both login and authenticate themselves.
 .El
-.Pp
 .It add Ns Xo
 .Op !\&
 .Ar dest Ns Op / Ns Ar nn
@@ -3283,7 +3279,6 @@ When running in multi-link mode, a section can be loaded if it allows
 .Em any
 of the currently existing line modes.
 .El
-.Pp
 .It nat Ar command Op Ar args
 This command allows the control of the network address translation (also
 known as masquerading or IP aliasing) facilities that are built into
@@ -3468,7 +3463,6 @@ are 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16.
 These commands are also discussed in the file
 .Pa README.nat
 which comes with the source distribution.
-.Pp
 .It Op !\& Ns Xo
 .No bg Ar command
 .Xc
@@ -3772,7 +3766,6 @@ mode, all interface addresses are deleted.
 .Pp
 If the INET or INET6 arguments are used, only addresses for that address
 family are cleared.
-.Pp
 .It iface delete Ns Xo
 .Op !\& Ns
 .No |rm Ns Op !\&
@@ -4268,7 +4261,6 @@ the connection.
 This is required (in addition to one or more other callback
 options) if you wish callback to be optional.
 .El
-.Pp
 .It set cbcp Oo
 .No *| Ns Ar number Ns Oo
 .No , Ns Ar number Ns ...\& Oc
@@ -5311,7 +5303,6 @@ This also applies for RADIUS routes that don't {include} the
 or
 .Dv HISADDR
 keywords.
-.Pp
 .It RAD_SESSION_TIMEOUT
 If supplied, the client connection is closed after the given number of
 seconds.
@@ -5639,7 +5630,6 @@ and
 .Ar 16
 inclusive.
 .El
-.Pp
 .It shell|! Op Ar command
 If
 .Ar command
@@ -5719,7 +5709,6 @@ Show the active alarm timers.
 Show the current version number of
 .Nm .
 .El
-.Pp
 .It term
 Go into terminal mode.
 Characters typed at the keyboard are sent to the device.

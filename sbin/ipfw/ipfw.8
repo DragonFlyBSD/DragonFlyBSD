@@ -1251,7 +1251,6 @@ A pipe emulates a link with given bandwidth, propagation delay,
 queue size and packet loss rate.
 Packets are queued in front of the pipe as they come out from the classifier,
 and then transferred to the pipe according to the pipe's parameters.
-.Pp
 .It Em queue
 A queue
 is an abstraction used to implement the WF2Q+
@@ -1650,7 +1649,6 @@ operator will make this rule into a pass-all.
 .Nm ipfw1
 does not supports address sets (those in the form
 .Ar addr/masklen{num,num,...} ) .
-.Pp
 .It Port specifications
 .Nm ipfw1
 only allows one port range when specifying TCP and UDP ports, and
