@@ -137,9 +137,9 @@ void drm_buffer_free(struct drm_buffer *buf)
 		int nr_pages = buf->size / PAGE_SIZE + 1;
 		int idx;
 		for (idx = 0; idx < nr_pages; ++idx)
-			kfree(buf->data[idx], DRM_MEM_DRIVER);
+			drm_free(buf->data[idx], DRM_MEM_DRIVER);
 
-		kfree(buf, DRM_MEM_DRIVER);
+		drm_free(buf, DRM_MEM_DRIVER);
 	}
 }
 

@@ -1,4 +1,5 @@
-/*-
+/* radeon_cp.c -- CP support for Radeon -*- linux-c -*- */
+/*
  * Copyright 2000 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Fremont, California.
  * Copyright 2007 Advanced Micro Devices, Inc.
@@ -26,17 +27,30 @@
  * Authors:
  *    Kevin E. Martin <martin@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
- * __FBSDID("$FreeBSD: src/sys/dev/drm/radeon_cp.c,v 1.36 2009/10/30 18:07:22 rnoland Exp $");
+ *
+ * $FreeBSD: head/sys/dev/drm2/radeon/radeon_cp.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/linker.h>
+#include <sys/firmware.h>
+
 #include <drm/drmP.h>
-#include "radeon_drm.h"
+#include <uapi_drm/radeon_drm.h>
 #include "radeon_drv.h"
 #include "r300_reg.h"
 
-#include "radeon_microcode.h"
-
 #define RADEON_FIFO_DEBUG	0
+
+/* Firmware Names */
+#define FIRMWARE_R100		"radeonkmsfw_R100_cp"
+#define FIRMWARE_R200		"radeonkmsfw_R200_cp"
+#define FIRMWARE_R300		"radeonkmsfw_R300_cp"
+#define FIRMWARE_R420		"radeonkmsfw_R420_cp"
+#define FIRMWARE_RS690		"radeonkmsfw_RS690_cp"
+#define FIRMWARE_RS600		"radeonkmsfw_RS600_cp"
+#define FIRMWARE_R520		"radeonkmsfw_R520_cp"
 
 static int radeon_do_cleanup_cp(struct drm_device * dev);
 static void radeon_do_cp_start(drm_radeon_private_t * dev_priv);
@@ -49,7 +63,7 @@ u32 radeon_read_ring_rptr(drm_radeon_private_t *dev_priv, u32 off)
 		val = DRM_READ32(dev_priv->ring_rptr, off);
 	} else {
 		val = *(((volatile u32 *)
-			 dev_priv->ring_rptr->virtual) +
+			 dev_priv->ring_rptr->handle) +
 			(off / sizeof(u32)));
 		val = le32_to_cpu(val);
 	}
@@ -73,7 +87,7 @@ void radeon_write_ring_rptr(drm_radeon_private_t *dev_priv, u32 off, u32 val)
 	if (dev_priv->flags & RADEON_IS_AGP)
 		DRM_WRITE32(dev_priv->ring_rptr, off, val);
 	else
-		*(((volatile u32 *) dev_priv->ring_rptr->virtual) +
+		*(((volatile u32 *) dev_priv->ring_rptr->handle) +
 		  (off / sizeof(u32))) = cpu_to_le32(val);
 }
 
@@ -97,20 +111,6 @@ u32 radeon_get_scratch(drm_radeon_private_t *dev_priv, int index)
 		else
 			return RADEON_READ(RADEON_SCRATCH_REG0 + 4*index);
 	}
-}
-
-u32 RADEON_READ_MM(drm_radeon_private_t *dev_priv, int addr)
-{
-	u32 ret;
-
-	if (addr < 0x10000)
-		ret = DRM_READ32(dev_priv->mmio, addr);
-	else {
-		DRM_WRITE32(dev_priv->mmio, RADEON_MM_INDEX, addr);
-		ret = DRM_READ32(dev_priv->mmio, RADEON_MM_DATA);
-	}
-
-	return ret;
 }
 
 static u32 R500_READ_MCIND(drm_radeon_private_t *dev_priv, int addr)
@@ -227,7 +227,7 @@ void radeon_write_agp_base(drm_radeon_private_t *dev_priv, u64 agp_base)
 	u32 agp_base_lo = agp_base & 0xffffffff;
 	u32 r6xx_agp_base = (agp_base >> 22) & 0x3ffff;
 
-	/* R6xx/R7xx must be aligned to a 4MB boundry */
+	/* R6xx/R7xx must be aligned to a 4MB boundary */
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_RV770)
 		RADEON_WRITE(R700_MC_VM_AGP_BASE, r6xx_agp_base);
 	else if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
@@ -400,8 +400,9 @@ static int radeon_do_wait_for_idle(drm_radeon_private_t * dev_priv)
 	return -EBUSY;
 }
 
-static void radeon_init_pipes(drm_radeon_private_t *dev_priv)
+static void radeon_init_pipes(struct drm_device *dev)
 {
+	drm_radeon_private_t *dev_priv = dev->dev_private;
 	uint32_t gb_tile_config, gb_pipe_sel = 0;
 
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV530) {
@@ -417,13 +418,19 @@ static void radeon_init_pipes(drm_radeon_private_t *dev_priv)
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R420) {
 		gb_pipe_sel = RADEON_READ(R400_GB_PIPE_SELECT);
 		dev_priv->num_gb_pipes = ((gb_pipe_sel >> 12) & 0x3) + 1;
+		/* SE cards have 1 pipe */
+		if ((dev->pci_device == 0x5e4c) ||
+		    (dev->pci_device == 0x5e4f))
+			dev_priv->num_gb_pipes = 1;
 	} else {
 		/* R3xx */
-		if (((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R300) ||
-		    ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R350)) {
+		if (((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R300 &&
+		     dev->pci_device != 0x4144) ||
+		    ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R350 &&
+		     dev->pci_device != 0x4148)) {
 			dev_priv->num_gb_pipes = 2;
 		} else {
-			/* R3Vxx */
+			/* RV3xx/R300 AD/R350 AH */
 			dev_priv->num_gb_pipes = 1;
 		}
 	}
@@ -458,73 +465,91 @@ static void radeon_init_pipes(drm_radeon_private_t *dev_priv)
  */
 
 /* Load the microcode for the CP */
-static void radeon_cp_load_microcode(drm_radeon_private_t * dev_priv)
+static int radeon_cp_init_microcode(drm_radeon_private_t *dev_priv)
 {
-	const u32 (*cp)[2];
-	int i;
+	const char *fw_name = NULL;
+	int err;
 
 	DRM_DEBUG("\n");
 
-	switch (dev_priv->flags & RADEON_FAMILY_MASK) {
-	case CHIP_R100:
-	case CHIP_RV100:
-	case CHIP_RV200:
-	case CHIP_RS100:
-	case CHIP_RS200:
+	if (((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R100) ||
+	    ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV100) ||
+	    ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV200) ||
+	    ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RS100) ||
+	    ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RS200)) {
 		DRM_INFO("Loading R100 Microcode\n");
-		cp = R100_cp_microcode;
-		break;
-	case CHIP_R200:
-	case CHIP_RV250:
-	case CHIP_RV280:
-	case CHIP_RS300:
+		fw_name = FIRMWARE_R100;
+	} else if (((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R200) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV250) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV280) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RS300)) {
 		DRM_INFO("Loading R200 Microcode\n");
-		cp = R200_cp_microcode;
-		break;
-	case CHIP_R300:
-	case CHIP_R350:
-	case CHIP_RV350:
-	case CHIP_RV380:
-	case CHIP_RS400:
-	case CHIP_RS480:
+		fw_name = FIRMWARE_R200;
+	} else if (((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R300) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R350) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV350) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV380) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RS400) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RS480)) {
 		DRM_INFO("Loading R300 Microcode\n");
-		cp = R300_cp_microcode;
-		break;
-	case CHIP_R420:
-	case CHIP_R423:
-	case CHIP_RV410:
+		fw_name = FIRMWARE_R300;
+	} else if (((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R420) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R423) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV410)) {
 		DRM_INFO("Loading R400 Microcode\n");
-		cp = R420_cp_microcode;
-		break;
-	case CHIP_RS690:
-	case CHIP_RS740:
+		fw_name = FIRMWARE_R420;
+	} else if (((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RS690) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RS740)) {
 		DRM_INFO("Loading RS690/RS740 Microcode\n");
-		cp = RS690_cp_microcode;
-		break;
-	case CHIP_RS600:
+		fw_name = FIRMWARE_RS690;
+	} else if ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RS600) {
 		DRM_INFO("Loading RS600 Microcode\n");
-		cp = RS600_cp_microcode;
-		break;
-	case CHIP_RV515:
-	case CHIP_R520:
-	case CHIP_RV530:
-	case CHIP_R580:
-	case CHIP_RV560:
-	case CHIP_RV570:
+		fw_name = FIRMWARE_RS600;
+	} else if (((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV515) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R520) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV530) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R580) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV560) ||
+		   ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_RV570)) {
 		DRM_INFO("Loading R500 Microcode\n");
-		cp = R520_cp_microcode;
-		break;
-	default:
-		return;
+		fw_name = FIRMWARE_R520;
 	}
+
+	err = 0;
+
+	dev_priv->me_fw = firmware_get(fw_name);
+	if (dev_priv->me_fw == NULL) {
+		err = -ENOENT;
+		DRM_ERROR("radeon_cp: Failed to load firmware \"%s\"\n",
+		       fw_name);
+	} else if (dev_priv->me_fw->datasize % 8) {
+		DRM_ERROR(
+		       "radeon_cp: Bogus length %zu in firmware \"%s\"\n",
+		       dev_priv->me_fw->datasize, fw_name);
+		err = -EINVAL;
+		firmware_put(dev_priv->me_fw, FIRMWARE_UNLOAD);
+		dev_priv->me_fw = NULL;
+	}
+	return err;
+}
+
+static void radeon_cp_load_microcode(drm_radeon_private_t *dev_priv)
+{
+	const __be32 *fw_data;
+	int i, size;
 
 	radeon_do_wait_for_idle(dev_priv);
 
-	RADEON_WRITE(RADEON_CP_ME_RAM_ADDR, 0);
-
-	for (i = 0; i != 256; i++) {
-		RADEON_WRITE(RADEON_CP_ME_RAM_DATAH, cp[i][1]);
-		RADEON_WRITE(RADEON_CP_ME_RAM_DATAL, cp[i][0]);
+	if (dev_priv->me_fw) {
+		size = dev_priv->me_fw->datasize / 4;
+		fw_data = (const __be32 *)dev_priv->me_fw->data;
+		RADEON_WRITE(RADEON_CP_ME_RAM_ADDR, 0);
+		for (i = 0; i < size; i += 2) {
+			RADEON_WRITE(RADEON_CP_ME_RAM_DATAH,
+				     be32_to_cpup(&fw_data[i]));
+			RADEON_WRITE(RADEON_CP_ME_RAM_DATAL,
+				     be32_to_cpup(&fw_data[i + 1]));
+		}
 	}
 }
 
@@ -575,6 +600,18 @@ static void radeon_do_cp_start(drm_radeon_private_t * dev_priv)
 
 	dev_priv->cp_running = 1;
 
+	/* on r420, any DMA from CP to system memory while 2D is active
+	 * can cause a hang.  workaround is to queue a CP RESYNC token
+	 */
+	if ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R420) {
+		BEGIN_RING(3);
+		OUT_RING(CP_PACKET0(R300_CP_RESYNC_ADDR, 1));
+		OUT_RING(5); /* scratch reg 5 */
+		OUT_RING(0xdeadbeef);
+		ADVANCE_RING();
+		COMMIT_RING();
+	}
+
 	BEGIN_RING(8);
 	/* isync can only be written through cp on r5xx write it here */
 	OUT_RING(CP_PACKET0(RADEON_ISYNC_CNTL, 0));
@@ -612,7 +649,18 @@ static void radeon_do_cp_reset(drm_radeon_private_t * dev_priv)
  */
 static void radeon_do_cp_stop(drm_radeon_private_t * dev_priv)
 {
+	RING_LOCALS;
 	DRM_DEBUG("\n");
+
+	/* finish the pending CP_RESYNC token */
+	if ((dev_priv->flags & RADEON_FAMILY_MASK) == CHIP_R420) {
+		BEGIN_RING(2);
+		OUT_RING(CP_PACKET0(R300_RB3D_DSTCACHE_CTLSTAT, 0));
+		OUT_RING(R300_RB3D_DC_FINISH);
+		ADVANCE_RING();
+		COMMIT_RING();
+		radeon_do_wait_for_idle(dev_priv);
+	}
 
 	RADEON_WRITE(RADEON_CP_CSQ_CNTL, RADEON_CSQ_PRIDIS_INDDIS);
 
@@ -672,7 +720,7 @@ static int radeon_do_engine_reset(struct drm_device * dev)
 
 	/* setup the raster pipes */
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R300)
-	    radeon_init_pipes(dev_priv);
+	    radeon_init_pipes(dev);
 
 	/* Reset the CP ring */
 	radeon_do_cp_reset(dev_priv);
@@ -690,6 +738,7 @@ static void radeon_cp_init_ring_buffer(struct drm_device * dev,
 				       drm_radeon_private_t *dev_priv,
 				       struct drm_file *file_priv)
 {
+	struct drm_radeon_master_private *master_priv;
 	u32 ring_start, cur_read_ptr;
 
 	/* Initialize the memory controller. With new memory map, the fb location
@@ -716,8 +765,9 @@ static void radeon_cp_init_ring_buffer(struct drm_device * dev,
 			      + dev_priv->gart_vm_start);
 	} else
 #endif
-		ring_start = (dev_priv->cp_ring->offset - dev->sg->vaddr +
-		    dev_priv->gart_vm_start);
+		ring_start = (dev_priv->cp_ring->offset
+			      - (unsigned long)dev->sg->vaddr
+			      + dev_priv->gart_vm_start);
 
 	RADEON_WRITE(RADEON_CP_RB_BASE, ring_start);
 
@@ -739,8 +789,9 @@ static void radeon_cp_init_ring_buffer(struct drm_device * dev,
 #endif
 	{
 		RADEON_WRITE(RADEON_CP_RB_RPTR_ADDR,
-		    dev_priv->ring_rptr->offset - dev->sg->vaddr +
-		    dev_priv->gart_vm_start);
+			     dev_priv->ring_rptr->offset
+			     - ((unsigned long) dev->sg->vaddr)
+			     + dev_priv->gart_vm_start);
 	}
 
 	/* Set ring buffer size */
@@ -782,10 +833,11 @@ static void radeon_cp_init_ring_buffer(struct drm_device * dev,
 	RADEON_WRITE(RADEON_LAST_CLEAR_REG, 0);
 
 	/* reset sarea copies of these */
-	if (dev_priv->sarea_priv) {
-		dev_priv->sarea_priv->last_frame = 0;
-		dev_priv->sarea_priv->last_dispatch = 0;
-		dev_priv->sarea_priv->last_clear = 0;
+	master_priv = file_priv->masterp->driver_priv;
+	if (master_priv->sarea_priv) {
+		master_priv->sarea_priv->last_frame = 0;
+		master_priv->sarea_priv->last_dispatch = 0;
+		master_priv->sarea_priv->last_clear = 0;
 	}
 
 	radeon_do_wait_for_idle(dev_priv);
@@ -1110,6 +1162,7 @@ static int radeon_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 			     struct drm_file *file_priv)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
+	struct drm_radeon_master_private *master_priv = file_priv->masterp->driver_priv;
 
 	DRM_DEBUG("\n");
 
@@ -1234,8 +1287,8 @@ static int radeon_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 	dev_priv->buffers_offset = init->buffers_offset;
 	dev_priv->gart_textures_offset = init->gart_textures_offset;
 
-	dev_priv->sarea = drm_getsarea(dev);
-	if (!dev_priv->sarea) {
+	master_priv->sarea = drm_getsarea(dev);
+	if (!master_priv->sarea) {
 		DRM_ERROR("could not find sarea!\n");
 		radeon_do_cleanup_cp(dev);
 		return -EINVAL;
@@ -1271,18 +1324,14 @@ static int radeon_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 		}
 	}
 
-	dev_priv->sarea_priv =
-	    (drm_radeon_sarea_t *) ((u8 *) dev_priv->sarea->virtual +
-				    init->sarea_priv_offset);
-
 #if __OS_HAS_AGP
 	if (dev_priv->flags & RADEON_IS_AGP) {
 		drm_core_ioremap_wc(dev_priv->cp_ring, dev);
 		drm_core_ioremap_wc(dev_priv->ring_rptr, dev);
 		drm_core_ioremap_wc(dev->agp_buffer_map, dev);
-		if (!dev_priv->cp_ring->virtual ||
-		    !dev_priv->ring_rptr->virtual ||
-		    !dev->agp_buffer_map->virtual) {
+		if (!dev_priv->cp_ring->handle ||
+		    !dev_priv->ring_rptr->handle ||
+		    !dev->agp_buffer_map->handle) {
 			DRM_ERROR("could not find ioremap agp regions!\n");
 			radeon_do_cleanup_cp(dev);
 			return -EINVAL;
@@ -1290,19 +1339,19 @@ static int radeon_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 	} else
 #endif
 	{
-		dev_priv->cp_ring->virtual =
+		dev_priv->cp_ring->handle =
 			(void *)(unsigned long)dev_priv->cp_ring->offset;
-		dev_priv->ring_rptr->virtual =
+		dev_priv->ring_rptr->handle =
 			(void *)(unsigned long)dev_priv->ring_rptr->offset;
-		dev->agp_buffer_map->virtual =
+		dev->agp_buffer_map->handle =
 			(void *)(unsigned long)dev->agp_buffer_map->offset;
 
-		DRM_DEBUG("dev_priv->cp_ring->virtual %p\n",
-			  dev_priv->cp_ring->virtual);
-		DRM_DEBUG("dev_priv->ring_rptr->virtual %p\n",
-			  dev_priv->ring_rptr->virtual);
-		DRM_DEBUG("dev->agp_buffer_map->virtual %p\n",
-			  dev->agp_buffer_map->virtual);
+		DRM_DEBUG("dev_priv->cp_ring->handle %p\n",
+			  dev_priv->cp_ring->handle);
+		DRM_DEBUG("dev_priv->ring_rptr->handle %p\n",
+			  dev_priv->ring_rptr->handle);
+		DRM_DEBUG("dev->agp_buffer_map->handle %p\n",
+			  dev->agp_buffer_map->handle);
 	}
 
 	dev_priv->fb_location = (radeon_read_fb_location(dev_priv) & 0xffff) << 16;
@@ -1371,16 +1420,17 @@ static int radeon_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 						 + dev_priv->gart_vm_start);
 	else
 #endif
-		dev_priv->gart_buffers_offset = dev->agp_buffer_map->offset -
-		    dev->sg->vaddr + dev_priv->gart_vm_start;
+		dev_priv->gart_buffers_offset = (dev->agp_buffer_map->offset
+					- (unsigned long)dev->sg->vaddr
+					+ dev_priv->gart_vm_start);
 
 	DRM_DEBUG("dev_priv->gart_size %d\n", dev_priv->gart_size);
 	DRM_DEBUG("dev_priv->gart_vm_start 0x%x\n", dev_priv->gart_vm_start);
 	DRM_DEBUG("dev_priv->gart_buffers_offset 0x%lx\n",
 		  dev_priv->gart_buffers_offset);
 
-	dev_priv->ring.start = (u32 *) dev_priv->cp_ring->virtual;
-	dev_priv->ring.end = ((u32 *) dev_priv->cp_ring->virtual
+	dev_priv->ring.start = (u32 *) dev_priv->cp_ring->handle;
+	dev_priv->ring.end = ((u32 *) dev_priv->cp_ring->handle
 			      + init->ring_size / sizeof(u32));
 	dev_priv->ring.size = init->ring_size;
 	dev_priv->ring.size_l2qw = drm_order(init->ring_size / 8);
@@ -1408,7 +1458,7 @@ static int radeon_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 		/* if we have an offset set from userspace */
 		if (dev_priv->pcigart_offset_set) {
 			dev_priv->gart_info.bus_addr =
-			    dev_priv->pcigart_offset + dev_priv->fb_location;
+				(resource_size_t)dev_priv->pcigart_offset + dev_priv->fb_location;
 			dev_priv->gart_info.mapping.offset =
 			    dev_priv->pcigart_offset + dev_priv->fb_aper_offset;
 			dev_priv->gart_info.mapping.size =
@@ -1416,7 +1466,7 @@ static int radeon_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 
 			drm_core_ioremap_wc(&dev_priv->gart_info.mapping, dev);
 			dev_priv->gart_info.addr =
-			    dev_priv->gart_info.mapping.virtual;
+			    dev_priv->gart_info.mapping.handle;
 
 			if (dev_priv->flags & RADEON_IS_PCIE)
 				dev_priv->gart_info.gart_reg_if = DRM_ATI_GART_PCIE;
@@ -1474,6 +1524,14 @@ static int radeon_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 		radeon_set_pcigart(dev_priv, 1);
 	}
 
+	if (!dev_priv->me_fw) {
+		int err = radeon_cp_init_microcode(dev_priv);
+		if (err) {
+			DRM_ERROR("Failed to load firmware!\n");
+			radeon_do_cleanup_cp(dev);
+			return err;
+		}
+	}
 	radeon_cp_load_microcode(dev_priv);
 	radeon_cp_init_ring_buffer(dev, dev_priv, file_priv);
 
@@ -1529,7 +1587,7 @@ static int radeon_do_cleanup_cp(struct drm_device * dev)
 		if (dev_priv->gart_info.gart_table_location == DRM_ATI_GART_FB)
 		{
 			drm_core_ioremapfree(&dev_priv->gart_info.mapping, dev);
-			dev_priv->gart_info.addr = 0;
+			dev_priv->gart_info.addr = NULL;
 		}
 	}
 	/* only clear to the start of flags */
@@ -1570,6 +1628,7 @@ static int radeon_do_resume_cp(struct drm_device *dev, struct drm_file *file_pri
 	radeon_cp_load_microcode(dev_priv);
 	radeon_cp_init_ring_buffer(dev, dev_priv, file_priv);
 
+	dev_priv->have_z_offset = 0;
 	radeon_do_engine_reset(dev);
 	radeon_irq_set_state(dev, RADEON_SW_INT_ENABLE, 1);
 
@@ -1595,6 +1654,7 @@ int radeon_cp_init(struct drm_device *dev, void *data, struct drm_file *file_pri
 		return radeon_do_init_cp(dev, init, file_priv);
 	case RADEON_INIT_R600_CP:
 		return r600_do_init_cp(dev, init, file_priv);
+		break;
 	case RADEON_CLEANUP_CP:
 		if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
 			return r600_do_cleanup_cp(dev);
@@ -1693,28 +1753,20 @@ void radeon_do_release(struct drm_device * dev)
 			if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600) {
 				while ((ret = r600_do_cp_idle(dev_priv)) != 0) {
 					DRM_DEBUG("radeon_do_cp_idle %d\n", ret);
-					tsleep_interlock(&dev->lock.lock_queue,
-							 PCATCH);
-                			DRM_UNLOCK(dev);
-					ret = tsleep(&dev->lock.lock_queue,
-						    PCATCH | PINTERLOCKED,
-						    "rdnrel", 0);
-                			DRM_LOCK(dev);
-/* DragonFly equivalent of
- *					mtx_sleep(&ret, &dev->dev_lock, 0,
- *					    "rdnrel", 1);
- */
+#ifdef __linux__
+					schedule();
+#else
+					tsleep(&ret, 0, "rdnrel", 1);
+#endif
 				}
 			} else {
 				while ((ret = radeon_do_cp_idle(dev_priv)) != 0) {
 					DRM_DEBUG("radeon_do_cp_idle %d\n", ret);
-					tsleep_interlock(&dev->lock.lock_queue,
-							 PCATCH);
-                			DRM_UNLOCK(dev);
-					ret = tsleep(&dev->lock.lock_queue,
-						    PCATCH | PINTERLOCKED,
-						    "rdnrel", 0);
-                			DRM_LOCK(dev);
+#ifdef __linux__
+					schedule();
+#else
+					tsleep(&ret, 0, "rdnrel", 1);
+#endif
 				}
 			}
 			if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600) {
@@ -1751,6 +1803,14 @@ void radeon_do_release(struct drm_device * dev)
 			r600_do_cleanup_cp(dev);
 		else
 			radeon_do_cleanup_cp(dev);
+		if (dev_priv->me_fw != NULL) {
+			firmware_put(dev_priv->me_fw, FIRMWARE_UNLOAD);
+			dev_priv->me_fw = NULL;
+		}
+		if (dev_priv->pfp_fw != NULL) {
+			firmware_put(dev_priv->pfp_fw, FIRMWARE_UNLOAD);
+			dev_priv->pfp_fw = NULL;
+		}
 	}
 }
 
@@ -1887,7 +1947,6 @@ struct drm_buf *radeon_freelist_get(struct drm_device * dev)
 		}
 	}
 
-	DRM_DEBUG("returning NULL!\n");
 	return NULL;
 }
 
@@ -2005,11 +2064,11 @@ int radeon_driver_load(struct drm_device *dev, unsigned long flags)
 	drm_radeon_private_t *dev_priv;
 	int ret = 0;
 
-	dev_priv = drm_alloc(sizeof(drm_radeon_private_t), DRM_MEM_DRIVER);
+	dev_priv = kmalloc(sizeof(drm_radeon_private_t), DRM_MEM_DRIVER,
+			   M_ZERO | M_WAITOK);
 	if (dev_priv == NULL)
 		return -ENOMEM;
 
-	memset(dev_priv, 0, sizeof(drm_radeon_private_t));
 	dev->dev_private = (void *)dev_priv;
 	dev_priv->flags = flags;
 
@@ -2033,6 +2092,8 @@ int radeon_driver_load(struct drm_device *dev, unsigned long flags)
 		break;
 	}
 
+	pci_enable_busmaster(dev->device);
+
 	if (drm_device_is_agp(dev))
 		dev_priv->flags |= RADEON_IS_AGP;
 	else if (drm_device_is_pcie(dev))
@@ -2040,29 +2101,73 @@ int radeon_driver_load(struct drm_device *dev, unsigned long flags)
 	else
 		dev_priv->flags |= RADEON_IS_PCI;
 
-	lockinit(&dev_priv->cs.cs_mutex, "cs_mtx", 0, LK_EXCLUSIVE);
-
 	ret = drm_addmap(dev, drm_get_resource_start(dev, 2),
 			 drm_get_resource_len(dev, 2), _DRM_REGISTERS,
 			 _DRM_READ_ONLY | _DRM_DRIVER, &dev_priv->mmio);
 	if (ret != 0)
-		goto error;
+		return ret;
 
 	ret = drm_vblank_init(dev, 2);
-	if (ret != 0)
-		goto error;
-
-	dev->max_vblank_count = 0x001fffff;
+	if (ret) {
+		radeon_driver_unload(dev);
+		return ret;
+	}
 
 	DRM_DEBUG("%s card detected\n",
-		  ((dev_priv->flags & RADEON_IS_AGP) ? "AGP" :
-		    (((dev_priv->flags & RADEON_IS_PCIE) ? "PCIE" : "PCI"))));
-
+		  ((dev_priv->flags & RADEON_IS_AGP) ? "AGP" : (((dev_priv->flags & RADEON_IS_PCIE) ? "PCIE" : "PCI"))));
 	return ret;
+}
 
-error:
-	radeon_driver_unload(dev);
-	return ret;
+int radeon_master_create(struct drm_device *dev, struct drm_master *master)
+{
+	struct drm_radeon_master_private *master_priv;
+	unsigned long sareapage;
+	int ret;
+
+	master_priv = kmalloc(sizeof(*master_priv), DRM_MEM_DRIVER,
+			      M_ZERO | M_WAITOK);
+	if (!master_priv)
+		return -ENOMEM;
+
+	/* prebuild the SAREA */
+	sareapage = max_t(unsigned long, SAREA_MAX, PAGE_SIZE);
+	ret = drm_addmap(dev, 0, sareapage, _DRM_SHM, _DRM_CONTAINS_LOCK,
+			 &master_priv->sarea);
+	if (ret) {
+		DRM_ERROR("SAREA setup failed\n");
+		drm_free(master_priv, DRM_MEM_DRIVER);
+		return ret;
+	}
+	master_priv->sarea_priv = (drm_radeon_sarea_t *)((char *)master_priv->sarea->handle) +
+	    sizeof(struct drm_sarea);
+	master_priv->sarea_priv->pfCurrentPage = 0;
+
+	master->driver_priv = master_priv;
+	return 0;
+}
+
+void radeon_master_destroy(struct drm_device *dev, struct drm_master *master)
+{
+	struct drm_radeon_master_private *master_priv = master->driver_priv;
+
+	if (!master_priv)
+		return;
+
+	if (master_priv->sarea_priv &&
+	    master_priv->sarea_priv->pfCurrentPage != 0)
+		radeon_cp_dispatch_flip(dev, master);
+
+	master_priv->sarea_priv = NULL;
+	if (master_priv->sarea)
+#ifdef __linux__
+		drm_rmmap_locked(dev, master_priv->sarea);
+#else
+		drm_rmmap(dev, master_priv->sarea);
+#endif
+
+	drm_free(master_priv, DRM_MEM_DRIVER);
+
+	master->driver_priv = NULL;
 }
 
 /* Create mappings for registers and framebuffer so userland doesn't necessarily
@@ -2094,8 +2199,6 @@ int radeon_driver_unload(struct drm_device *dev)
 
 	drm_rmmap(dev, dev_priv->mmio);
 
-	lockuninit(&dev_priv->cs.cs_mutex);
-
 	drm_free(dev_priv, DRM_MEM_DRIVER);
 
 	dev->dev_private = NULL;
@@ -2110,7 +2213,7 @@ void radeon_commit_ring(drm_radeon_private_t *dev_priv)
 
 	/* check if the ring is padded out to 16-dword alignment */
 
-	tail_aligned = dev_priv->ring.tail & (RADEON_RING_ALIGN - 1);
+	tail_aligned = dev_priv->ring.tail & (RADEON_RING_ALIGN-1);
 	if (tail_aligned) {
 		int num_p2 = RADEON_RING_ALIGN - tail_aligned;
 

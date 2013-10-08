@@ -99,7 +99,7 @@ static void ttm_agp_destroy(struct ttm_tt *ttm)
 	if (agp_be->mem)
 		ttm_agp_unbind(ttm);
 	ttm_tt_fini(ttm);
-	free(agp_be, M_TTM_AGP);
+	drm_free(agp_be, M_TTM_AGP);
 }
 
 static struct ttm_backend_func ttm_agp_func = {
@@ -115,7 +115,7 @@ struct ttm_tt *ttm_agp_tt_create(struct ttm_bo_device *bdev,
 {
 	struct ttm_agp_backend *agp_be;
 
-	agp_be = malloc(sizeof(*agp_be), M_TTM_AGP, M_WAITOK | M_ZERO);
+	agp_be = kmalloc(sizeof(*agp_be), M_TTM_AGP, M_WAITOK | M_ZERO);
 
 	agp_be->mem = NULL;
 	agp_be->bridge = bridge;

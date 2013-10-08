@@ -1,5 +1,5 @@
 /* radeon_irq.c -- IRQ handling for radeon -*- linux-c -*- */
-/*-
+/*
  * Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
  *
  * The Weather Channel (TM) funded Tungsten Graphics to develop the
@@ -28,11 +28,12 @@
  * Authors:
  *    Keith Whitwell <keith@tungstengraphics.com>
  *    Michel D�zer <michel@daenzer.net>
- * __FBSDID("$FreeBSD: src/sys/radeon_irq.c,v 1.16 2009/09/28 22:37:07 rnoland Exp $");
+ *
+ * $FreeBSD: head/sys/dev/drm2/radeon/radeon_irq.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #include <drm/drmP.h>
-#include "radeon_drm.h"
+#include <uapi_drm/radeon_drm.h>
 #include "radeon_drv.h"
 
 void radeon_irq_set_state(struct drm_device *dev, u32 mask, int state)
@@ -65,7 +66,7 @@ int radeon_enable_vblank(struct drm_device *dev, int crtc)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
 
-	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_RS600) {	
+	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_RS600) {
 		switch (crtc) {
 		case 0:
 			r500_vbl_irq_set_state(dev, R500_D1MODE_INT_MASK, 1);
@@ -76,7 +77,7 @@ int radeon_enable_vblank(struct drm_device *dev, int crtc)
 		default:
 			DRM_ERROR("tried to enable vblank on non-existent crtc %d\n",
 				  crtc);
-			return EINVAL;
+			return -EINVAL;
 		}
 	} else {
 		switch (crtc) {
@@ -89,7 +90,7 @@ int radeon_enable_vblank(struct drm_device *dev, int crtc)
 		default:
 			DRM_ERROR("tried to enable vblank on non-existent crtc %d\n",
 				  crtc);
-			return EINVAL;
+			return -EINVAL;
 		}
 	}
 
@@ -100,7 +101,7 @@ void radeon_disable_vblank(struct drm_device *dev, int crtc)
 {
 	drm_radeon_private_t *dev_priv = dev->dev_private;
 
-	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_RS600) {	
+	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_RS600) {
 		switch (crtc) {
 		case 0:
 			r500_vbl_irq_set_state(dev, R500_D1MODE_INT_MASK, 0);
@@ -129,7 +130,7 @@ void radeon_disable_vblank(struct drm_device *dev, int crtc)
 	}
 }
 
-static __inline__ u32 radeon_acknowledge_irqs(drm_radeon_private_t * dev_priv, u32 *r500_disp_int)
+static u32 radeon_acknowledge_irqs(drm_radeon_private_t *dev_priv, u32 *r500_disp_int)
 {
 	u32 irqs = RADEON_READ(RADEON_GEN_INT_STATUS);
 	u32 irq_mask = RADEON_SW_INT_TEST;
@@ -145,12 +146,10 @@ static __inline__ u32 radeon_acknowledge_irqs(drm_radeon_private_t * dev_priv, u
 			disp_irq = RADEON_READ(R500_DISP_INTERRUPT_STATUS);
 
 			*r500_disp_int = disp_irq;
-			if (disp_irq & R500_D1_VBLANK_INTERRUPT) {
+			if (disp_irq & R500_D1_VBLANK_INTERRUPT)
 				RADEON_WRITE(R500_D1MODE_VBLANK_STATUS, R500_VBLANK_ACK);
-			}
-			if (disp_irq & R500_D2_VBLANK_INTERRUPT) {
+			if (disp_irq & R500_D2_VBLANK_INTERRUPT)
 				RADEON_WRITE(R500_D2MODE_VBLANK_STATUS, R500_VBLANK_ACK);
-			}
 		}
 		irq_mask |= R500_DISPLAY_INT_STATUS;
 	} else
@@ -160,7 +159,7 @@ static __inline__ u32 radeon_acknowledge_irqs(drm_radeon_private_t * dev_priv, u
 
 	if (irqs)
 		RADEON_WRITE(RADEON_GEN_INT_STATUS, irqs);
-	
+
 	return irqs;
 }
 
@@ -189,7 +188,6 @@ irqreturn_t radeon_driver_irq_handler(DRM_IRQ_ARGS)
 	    (drm_radeon_private_t *) dev->dev_private;
 	u32 stat;
 	u32 r500_disp_int;
-	u32 tmp;
 
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
 		return IRQ_NONE;
@@ -218,34 +216,6 @@ irqreturn_t radeon_driver_irq_handler(DRM_IRQ_ARGS)
 			drm_handle_vblank(dev, 0);
 		if (stat & RADEON_CRTC2_VBLANK_STAT)
 			drm_handle_vblank(dev, 1);
-	}
-	if (dev->msi_enabled) {
-		switch(dev_priv->flags & RADEON_FAMILY_MASK) {
-			case CHIP_RS400:
-			case CHIP_RS480:
-				tmp = RADEON_READ(RADEON_AIC_CNTL) &
-				    ~RS400_MSI_REARM;
-				RADEON_WRITE(RADEON_AIC_CNTL, tmp);
-				RADEON_WRITE(RADEON_AIC_CNTL,
-				    tmp | RS400_MSI_REARM);
-				break;
-			case CHIP_RS600:
-			case CHIP_RS690:
-			case CHIP_RS740:
-				tmp = RADEON_READ(RADEON_BUS_CNTL) &
-				    ~RS600_MSI_REARM;
-				RADEON_WRITE(RADEON_BUS_CNTL, tmp);
-				RADEON_WRITE(RADEON_BUS_CNTL, tmp |
-				    RS600_MSI_REARM);
-				break;
-			 default:
-				tmp = RADEON_READ(RADEON_MSI_REARM_EN) &
-				    ~RV370_MSI_REARM_EN;
-				RADEON_WRITE(RADEON_MSI_REARM_EN, tmp);
-				RADEON_WRITE(RADEON_MSI_REARM_EN,
-				    tmp | RV370_MSI_REARM_EN);
-				break;
-		}
 	}
 	return IRQ_HANDLED;
 }
@@ -281,9 +251,6 @@ static int radeon_wait_irq(struct drm_device * dev, int swi_nr)
 
 	DRM_WAIT_ON(ret, dev_priv->swi_queue, 3 * DRM_HZ,
 		    RADEON_READ(RADEON_LAST_SWI_REG) >= swi_nr);
-
-	if (ret == -ERESTART)
-		DRM_DEBUG("restarting syscall");
 
 	return ret;
 }
@@ -323,15 +290,15 @@ int radeon_irq_emit(struct drm_device *dev, void *data, struct drm_file *file_pr
 	drm_radeon_irq_emit_t *emit = data;
 	int result;
 
-	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
-		return -EINVAL;
-
-	LOCK_TEST_WITH_RETURN(dev, file_priv);
-
 	if (!dev_priv) {
 		DRM_ERROR("called with no initialization\n");
 		return -EINVAL;
 	}
+
+	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
+		return -EINVAL;
+
+	LOCK_TEST_WITH_RETURN(dev, file_priv);
 
 	result = radeon_emit_irq(dev);
 
@@ -354,6 +321,9 @@ int radeon_irq_wait(struct drm_device *dev, void *data, struct drm_file *file_pr
 		DRM_ERROR("called with no initialization\n");
 		return -EINVAL;
 	}
+
+	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
+		return -EINVAL;
 
 	return radeon_wait_irq(dev, irqwait->irq_seq);
 }
@@ -378,13 +348,15 @@ void radeon_driver_irq_preinstall(struct drm_device * dev)
 	radeon_acknowledge_irqs(dev_priv, &dummy);
 }
 
-int radeon_driver_irq_postinstall(struct drm_device * dev)
+int radeon_driver_irq_postinstall(struct drm_device *dev)
 {
 	drm_radeon_private_t *dev_priv =
 	    (drm_radeon_private_t *) dev->dev_private;
 
 	atomic_set(&dev_priv->swi_emitted, 0);
 	DRM_INIT_WAITQUEUE(&dev_priv->swi_queue);
+
+	dev->max_vblank_count = 0x001fffff;
 
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
 		return 0;
@@ -400,8 +372,6 @@ void radeon_driver_irq_uninstall(struct drm_device * dev)
 	    (drm_radeon_private_t *) dev->dev_private;
 	if (!dev_priv)
 		return;
-
-	dev_priv->irq_enabled = 0;
 
 	if ((dev_priv->flags & RADEON_FAMILY_MASK) >= CHIP_R600)
 		return;

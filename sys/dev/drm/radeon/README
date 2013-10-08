@@ -1,0 +1,6 @@
+# $FreeBSD: head/sys/dev/drm2/radeon/README 254885 2013-08-25 19:37:15Z dumbbell $
+
+== Updates to reg_srcs/ files ==
+
+When a file in the "reg_srcs" subdirectory in updated, be sure to regen
+headers by running "make" in tools/tools/drm/radeon/mkregtable.

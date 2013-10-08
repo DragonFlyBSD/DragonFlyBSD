@@ -1,5 +1,5 @@
 /* radeon_mem.c -- Simple GART/fb memory manager for radeon -*- linux-c -*- */
-/*-
+/*
  * Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
  *
  * The Weather Channel (TM) funded Tungsten Graphics to develop the
@@ -27,10 +27,12 @@
  *
  * Authors:
  *    Keith Whitwell <keith@tungstengraphics.com>
+ *
+ * $FreeBSD: head/sys/dev/drm2/radeon/radeon_mem.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #include <drm/drmP.h>
-#include "radeon_drm.h"
+#include <uapi_drm/radeon_drm.h>
 #include "radeon_drv.h"
 
 /* Very simple allocator for GART memory, working on a static range
@@ -42,8 +44,8 @@ static struct mem_block *split_block(struct mem_block *p, int start, int size,
 {
 	/* Maybe cut off the start of an existing block */
 	if (start > p->start) {
-		struct mem_block *newblock =
-		    drm_alloc(sizeof(*newblock), DRM_MEM_BUFS);
+		struct mem_block *newblock = kmalloc(sizeof(*newblock),
+						     DRM_MEM_DRIVER, M_WAITOK);
 		if (!newblock)
 			goto out;
 		newblock->start = start;
@@ -59,8 +61,8 @@ static struct mem_block *split_block(struct mem_block *p, int start, int size,
 
 	/* Maybe cut off the end of an existing block */
 	if (size < p->size) {
-		struct mem_block *newblock =
-		    drm_alloc(sizeof(*newblock), DRM_MEM_BUFS);
+		struct mem_block *newblock = kmalloc(sizeof(*newblock),
+						     DRM_MEM_DRIVER, M_WAITOK);
 		if (!newblock)
 			goto out;
 		newblock->start = start + size;
@@ -99,8 +101,8 @@ static struct mem_block *find_block(struct mem_block *heap, int start)
 	struct mem_block *p;
 
 	list_for_each(p, heap)
-		if (p->start == start)
-			return p;
+	    if (p->start == start)
+		return p;
 
 	return NULL;
 }
@@ -117,7 +119,7 @@ static void free_block(struct mem_block *p)
 		p->size += q->size;
 		p->next = q->next;
 		p->next->prev = p;
-		drm_free(q, DRM_MEM_BUFS);
+		drm_free(q, DRM_MEM_DRIVER);
 	}
 
 	if (p->prev->file_priv == NULL) {
@@ -125,7 +127,7 @@ static void free_block(struct mem_block *p)
 		q->size += p->size;
 		q->next = p->next;
 		q->next->prev = q;
-		drm_free(p, DRM_MEM_BUFS);
+		drm_free(p, DRM_MEM_DRIVER);
 	}
 }
 
@@ -133,14 +135,15 @@ static void free_block(struct mem_block *p)
  */
 static int init_heap(struct mem_block **heap, int start, int size)
 {
-	struct mem_block *blocks = drm_alloc(sizeof(*blocks), DRM_MEM_BUFS);
+	struct mem_block *blocks = kmalloc(sizeof(*blocks), DRM_MEM_DRIVER,
+					   M_WAITOK);
 
 	if (!blocks)
 		return -ENOMEM;
 
-	*heap = drm_alloc(sizeof(**heap), DRM_MEM_BUFS);
+	*heap = kmalloc(sizeof(**heap), DRM_MEM_DRIVER, M_ZERO | M_WAITOK);
 	if (!*heap) {
-		drm_free(blocks, DRM_MEM_BUFS);
+		drm_free(blocks, DRM_MEM_DRIVER);
 		return -ENOMEM;
 	}
 
@@ -149,7 +152,6 @@ static int init_heap(struct mem_block **heap, int start, int size)
 	blocks->file_priv = NULL;
 	blocks->next = blocks->prev = *heap;
 
-	memset(*heap, 0, sizeof(**heap));
 	(*heap)->file_priv = (struct drm_file *) - 1;
 	(*heap)->next = (*heap)->prev = blocks;
 	return 0;
