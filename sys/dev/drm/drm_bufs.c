@@ -99,10 +99,23 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
     enum drm_map_type type, enum drm_map_flags flags, drm_local_map_t **map_ptr)
 {
 	struct drm_local_map *map;
-	struct drm_map_list *entry;
+	struct drm_map_list *entry = NULL;
 	int align;
-	/*drm_agp_mem_t *entry;
-	int valid;*/
+
+	/* Allocate a new map structure, fill it in, and do any type-specific
+	 * initialization necessary.
+	 */
+	map = kmalloc(sizeof(*map), DRM_MEM_MAPS, M_ZERO | M_NOWAIT);
+	if (!map) {
+		return ENOMEM;
+	}
+
+	map->offset = offset;
+	map->size = size;
+	map->type = type;
+	map->flags = flags;
+	map->handle = (void *)((unsigned long)alloc_unr(dev->map_unrhdr) <<
+	    DRM_MAP_HANDLE_SHIFT);
 
 	/* Only allow shared memory to be removable since we only keep enough
 	 * book keeping information about shared memory to allow for removal
@@ -110,16 +123,19 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 	 */
 	if ((flags & _DRM_REMOVABLE) && type != _DRM_SHM) {
 		DRM_ERROR("Requested removable map for non-DRM_SHM\n");
+		drm_free(map, DRM_MEM_MAPS);
 		return EINVAL;
 	}
 	if ((offset & PAGE_MASK) || (size & PAGE_MASK)) {
 		DRM_ERROR("offset/size not page aligned: 0x%lx/0x%lx\n",
 		    offset, size);
+		drm_free(map, DRM_MEM_MAPS);
 		return EINVAL;
 	}
 	if (offset + size < offset) {
 		DRM_ERROR("offset and size wrap around: 0x%lx/0x%lx\n",
 		    offset, size);
+		drm_free(map, DRM_MEM_MAPS);
 		return EINVAL;
 	}
 
@@ -141,23 +157,6 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 			}
 		}
 	}
-	DRM_UNLOCK(dev);
-
-	/* Allocate a new map structure, fill it in, and do any type-specific
-	 * initialization necessary.
-	 */
-	map = kmalloc(sizeof(*map), DRM_MEM_MAPS, M_ZERO | M_NOWAIT);
-	if (!map) {
-		DRM_LOCK(dev);
-		return ENOMEM;
-	}
-
-	map->offset = offset;
-	map->size = size;
-	map->type = type;
-	map->flags = flags;
-	map->handle = (void *)((unsigned long)alloc_unr(dev->map_unrhdr) <<
-	    DRM_MAP_HANDLE_SHIFT);
 
 	switch (map->type) {
 	case _DRM_REGISTERS:
@@ -175,7 +174,6 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 		    map->size, drm_order(map->size), map->virtual);
 		if (!map->virtual) {
 			drm_free(map, DRM_MEM_MAPS);
-			DRM_LOCK(dev);
 			return ENOMEM;
 		}
 		map->offset = (unsigned long)map->virtual;
@@ -216,14 +214,12 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 		}
 		if (!valid) {
 			drm_free(map, DRM_MEM_MAPS);
-			DRM_LOCK(dev);
 			return EACCES;
 		}*/
 		break;
 	case _DRM_SCATTER_GATHER:
 		if (!dev->sg) {
 			drm_free(map, DRM_MEM_MAPS);
-			DRM_LOCK(dev);
 			return EINVAL;
 		}
 		map->virtual = (void *)(dev->sg->vaddr + offset);
@@ -242,7 +238,6 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 		map->dmah = drm_pci_alloc(dev, map->size, align, 0xfffffffful);
 		if (map->dmah == NULL) {
 			drm_free(map, DRM_MEM_MAPS);
-			DRM_LOCK(dev);
 			return ENOMEM;
 		}
 		map->virtual = map->dmah->vaddr;
@@ -251,11 +246,9 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 	default:
 		DRM_ERROR("Bad map type %d\n", map->type);
 		drm_free(map, DRM_MEM_MAPS);
-		DRM_LOCK(dev);
 		return EINVAL;
 	}
 
-	DRM_LOCK(dev);
 	list_add(&entry->head, &dev->maplist);
 
 done:
