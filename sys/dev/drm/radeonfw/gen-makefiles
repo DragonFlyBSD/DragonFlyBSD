@@ -1,0 +1,30 @@
+#!/bin/sh
+# $FreeBSD: head/sys/modules/drm2/radeonkmsfw/gen-makefiles 254885 2013-08-25 19:37:15Z dumbbell $
+
+set -e
+
+scriptdir=$(cd $(dirname $0) && pwd)
+fwdir=$scriptdir/../../../contrib/dev/drm2/radeonkmsfw
+
+for dir in $scriptdir/*; do
+	if [ ! -d $dir ]; then
+		continue
+	fi
+	rm -rf $dir
+done
+
+for file in $fwdir/*.uu; do
+	img=$(basename $file)
+	img=${img%.bin.uu}
+	echo "Image: $img"
+
+	mkdir -p $scriptdir/$img
+	cat > $scriptdir/$img/Makefile <<EOF
+# \$FreeBSD: head/sys/modules/drm2/radeonkmsfw/gen-makefiles 254885 2013-08-25 19:37:15Z dumbbell $
+
+KMOD=	radeonkmsfw_$img
+IMG=	$img
+
+.include <bsd.kmod.mk>
+EOF
+done

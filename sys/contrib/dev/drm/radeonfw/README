@@ -1,0 +1,4 @@
+# $FreeBSD: head/sys/contrib/dev/drm2/radeonkmsfw/README 254885 2013-08-25 19:37:15Z dumbbell $
+
+Firmwares come from:
+  git://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git
