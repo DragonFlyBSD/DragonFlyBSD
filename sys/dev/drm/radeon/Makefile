@@ -1,7 +1,5 @@
 # $FreeBSD: head/sys/modules/drm2/radeonkms/Makefile 254885 2013-08-25 19:37:15Z dumbbell $
 
-.PATH:	${.CURDIR}/../../../dev/drm/radeon
-
 KMOD	= radeonkms
 SRCS	=								\
 	rn50_reg_safe.h							\
