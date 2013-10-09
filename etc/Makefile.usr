@@ -1,6 +1,6 @@
 # Makefile.usr - installed as /usr/Makefile
 #
-# Provides simple targets to download and maintain /usr/src, /usr/pkgsrc etc.
+# Provides simple targets to download and maintain /usr/src, /usr/dports etc.
 
 GITHOST?=git.dragonflybsd.org
 
@@ -14,10 +14,8 @@ PKGBOOT_x86_64=bootstrap_pkg_${PKGBOOT_VERSION}_x86-64.tar.xz
 PKGBOOT=http://mirror-master.dragonflybsd.org/dports/bootstraps/${PKGBOOT_${MACHINE_ARCH}}
 GITNFMSG="git must be present on the system to use this option."
 ABIVERS=`uname -P`
-ERRPS="Error: ${.CURDIR}/pkgsrc already exists"
 ERRDP="Error: ${.CURDIR}/dports already exists"
 ERRSR="Error: ${.CURDIR}/src already exists"
-ERRNPS="Error: ${.CURDIR}/pkgsrc does not exist"
 ERRNDP="Error: ${.CURDIR}/dports does not exist"
 ERRNSR="Error: ${.CURDIR}/src does not exist"
 ERRPKG="Error: Bootstrap not neccessary, ${.CURDIR}/local/sbin/pkg already exists"
@@ -27,17 +25,6 @@ LPATT="   make %-23s- %s\n"
 
 help all:
 	@echo "HELP:"
-.if exists(${.CURDIR}/pkgsrc/.git)
-.if exists(${.CURDIR}/pkgsrc/Makefile)
-	@printf ${LPATT} "pkgsrc-update"         "update your pkgsrc repo from the net"
-.else
-	@printf ${LPATT} "pkgsrc-checkout"       "Initial checkout of pkgsrc repository"
-.endif
-.else
-	@printf ${LPATT} "pkgsrc-create"         "fetch initial pkgsrc repository from the net"
-	@printf ${LPATT} "pkgsrc-create-shallow" "fetch initial history-free pkgsrc repository"
-	@printf ${LPATT} "pkgsrc-create-repo"    "fetch pkgsrc repository only, no checkout"
-.endif
 	@echo
 .if exists(${.CURDIR}/dports/.git)
 	@printf ${LPATT} "dports-update"         "update your dports repo from Github"
@@ -72,68 +59,6 @@ help all:
 .endif
 	@echo "If automating please feel free to run git pull's from cron."
 	@echo "We prefer once a day but you can run them more often if you desire"
-
-pkgsrc-create-repo:
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif exists (${.CURDIR}/pkgsrc)
-	@echo ${ERRPS}
-.else
-	@echo "If problems occur you may have to rm -rf pkgsrc and try again."
-	@echo
-	mkdir -p ${.CURDIR}/pkgsrc
-	cd ${.CURDIR}/pkgsrc && git init
-	cd ${.CURDIR}/pkgsrc && \
-		git remote add origin git://${GITHOST}/pkgsrcv2.git
-	cd ${.CURDIR}/pkgsrc && git fetch origin
-	cd ${.CURDIR}/pkgsrc && git branch master origin/master
-.endif
-
-pkgsrc-create: pkgsrc-create-repo
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif exists (${.CURDIR}/pkgsrc)
-	@echo ${ERRPS}
-.else
-	cd ${.CURDIR}/pkgsrc && git checkout master
-	cd ${.CURDIR}/pkgsrc && git pull
-.endif
-
-pkgsrc-create-shallow:
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif exists (${.CURDIR}/pkgsrc)
-	@echo ${ERRPS}
-.else
-	@echo "If problems occur you may have to rm -rf pkgsrc and try again."
-	@echo
-	mkdir -p ${.CURDIR}/pkgsrc
-	cd ${.CURDIR}/pkgsrc && git init
-	cd ${.CURDIR}/pkgsrc && \
-		git remote add origin git://${GITHOST}/pkgsrcv2.git
-	cd ${.CURDIR}/pkgsrc && git fetch --depth=1 origin
-	cd ${.CURDIR}/pkgsrc && git branch master origin/master
-	cd ${.CURDIR}/pkgsrc && git checkout master
-	cd ${.CURDIR}/pkgsrc && git pull
-.endif
-
-pkgsrc-checkout:
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif !exists (${.CURDIR}/pkgsrc)
-	@echo ${ERRNPS}
-.else
-	cd ${.CURDIR}/pkgsrc && git checkout master
-.endif
-
-pkgsrc-update:
-.if empty(THISGIT)
-	@echo ${GITNFMSG}
-.elif !exists (${.CURDIR}/pkgsrc)
-	@echo ${ERRNPS}
-.else
-	cd ${.CURDIR}/pkgsrc && git pull
-.endif
 
 src-create-repo:
 .if empty(THISGIT)
