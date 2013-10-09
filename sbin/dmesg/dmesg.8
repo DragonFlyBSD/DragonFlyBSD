@@ -42,6 +42,7 @@
 .Nm
 .Op Fl a
 .Op Fl c
+.Op Fl f
 .Op Fl M Ar core
 .Op Fl N Ar system
 .Sh DESCRIPTION
@@ -69,6 +70,12 @@ This includes any syslog records and
 output.
 .It Fl c
 Clear the kernel buffer after printing.
+.It Fl f
+After the initial message buffer dump
+.Nm
+monitors the kernel for additional data and displays it as it arrives.
+.Nm
+will not terminate until killed in this mode.
 .It Fl M
 Extract values associated with the name list from the specified core
 instead of the default

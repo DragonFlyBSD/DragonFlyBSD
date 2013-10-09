@@ -51,34 +51,43 @@ struct nlist nl[] = {
 	{ NULL,		0, 0, 0, 0 },
 };
 
+static void dumpbuf(char *bp, size_t bufpos, size_t buflen,
+		    int *newl, int *skip, int *pri);
 void usage(void);
 
 #define	KREAD(addr, var) \
 	kvm_read(kd, addr, &var, sizeof(var)) != sizeof(var)
 
+#define INCRBUFSIZE	65536
+
+int all_opt;
+
 int
 main(int argc, char **argv)
 {
-	int ch, newl, skip;
-	char *p, *ep;
+	int newl, skip;
 	struct msgbuf *bufp, cur;
 	char *bp, *memf, *nlistf;
 	kvm_t *kd;
-	char buf[5];
-	int all = 0;
+	int ch;
 	int clear = 0;
 	int pri = 0;
+	int tailmode = 0;
+	unsigned int rindex;
 	size_t buflen, bufpos;
 
 	setlocale(LC_CTYPE, "");
 	memf = nlistf = NULL;
-	while ((ch = getopt(argc, argv, "acM:N:")) != -1)
+	while ((ch = getopt(argc, argv, "acfM:N:")) != -1) {
 		switch(ch) {
 		case 'a':
-			all++;
+			all_opt++;
 			break;
 		case 'c':
 			clear = 1;
+			break;
+		case 'f':
+			tailmode = 1;
 			break;
 		case 'M':
 			memf = optarg;
@@ -90,10 +99,15 @@ main(int argc, char **argv)
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
-	if (memf == NULL && nlistf == NULL) {
+	newl = 0;
+	skip = 0;
+	pri = 0;
+
+	if (memf == NULL && nlistf == NULL && tailmode == 0) {
 		/* Running kernel. Use sysctl. */
 		if (sysctlbyname("kern.msgbuf", NULL, &buflen, NULL, 0) == -1)
 			err(1, "sysctl kern.msgbuf");
@@ -104,6 +118,7 @@ main(int argc, char **argv)
 			err(1, "sysctl kern.msgbuf");
 		/* We get a dewrapped buffer using sysctl. */
 		bufpos = 0;
+		dumpbuf(bp, bufpos, buflen, &newl, &skip, &pri);
 	} else {
 		/* Read in kernel message buffer, do sanity checks. */
 		kd = kvm_open(nlistf, memf, NULL, O_RDONLY, "dmesg");
@@ -114,23 +129,73 @@ main(int argc, char **argv)
 		if (nl[X_MSGBUF].n_type == 0)
 			errx(1, "%s: msgbufp not found",
 			    nlistf ? nlistf : "namelist");
-		if (KREAD(nl[X_MSGBUF].n_value, bufp) || KREAD((long)bufp, cur))
+		bp = malloc(INCRBUFSIZE);
+		if (!bp)
+			errx(1, "malloc failed");
+		if (KREAD(nl[X_MSGBUF].n_value, bufp))
+			errx(1, "kvm_read: %s", kvm_geterr(kd));
+		if (KREAD((long)bufp, cur))
 			errx(1, "kvm_read: %s", kvm_geterr(kd));
 		if (cur.msg_magic != MSG_MAGIC)
 			errx(1, "kernel message buffer has different magic "
 			    "number");
-		bp = malloc(cur.msg_size);
-		if (!bp)
-			errx(1, "malloc failed");
-		if (kvm_read(kd, (long)cur.msg_ptr, bp, cur.msg_size) !=
-		    (ssize_t)cur.msg_size)
-			errx(1, "kvm_read: %s", kvm_geterr(kd));
+
+		/*
+		 * Start point.  Use rindex == bufx as our end-of-buffer
+		 * indication but for the initial rindex from the kernel
+		 * this means the buffer has cycled and is 100% full.
+		 */
+		rindex = cur.msg_bufr;
+		if (rindex == cur.msg_bufx) {
+			if (++rindex >= cur.msg_size)
+				rindex = 0;
+		}
+
+		for (;;) {
+			if (cur.msg_bufx >= rindex)
+				buflen = cur.msg_bufx - rindex;
+			else
+				buflen = cur.msg_size - rindex;
+			if (buflen > INCRBUFSIZE)
+				buflen = INCRBUFSIZE;
+			if (kvm_read(kd, (long)cur.msg_ptr + rindex,
+				     bp, buflen) != (ssize_t)buflen) {
+				errx(1, "kvm_read: %s", kvm_geterr(kd));
+			}
+			if (buflen)
+				dumpbuf(bp, 0, buflen, &newl, &skip, &pri);
+			rindex += buflen;
+			if (rindex >= cur.msg_size)
+				rindex = 0;
+			if (rindex == cur.msg_bufx) {
+				if (tailmode == 0)
+					break;
+				sleep(1);
+			}
+			if (KREAD((long)bufp, cur))
+				errx(1, "kvm_read: %s", kvm_geterr(kd));
+		}
 		kvm_close(kd);
-		buflen = cur.msg_size;
-		bufpos = cur.msg_bufx;
-		if (bufpos >= buflen)
-			bufpos = 0;
 	}
+	if (!newl)
+		putchar('\n');
+	if (clear) {
+		if (sysctlbyname("kern.msgbuf_clear", NULL, NULL,
+				 &clear, sizeof(int)) != 0) {
+			err(1, "sysctl kern.msgbuf_clear");
+		}
+	}
+	return(0);
+}
+
+static
+void
+dumpbuf(char *bp, size_t bufpos, size_t buflen,
+	int *newl, int *skip, int *pri)
+{
+	int ch;
+	char *p, *ep;
+	char buf[5];
 
 	/*
 	 * The message buffer is circular.  If the buffer has wrapped, the
@@ -141,45 +206,38 @@ main(int argc, char **argv)
 	 */
 	p = bp + bufpos;
 	ep = (bufpos == 0 ? bp + buflen : p);
-	newl = skip = 0;
 	do {
 		if (p == bp + buflen)
 			p = bp;
 		ch = *p;
 		/* Skip "\n<.*>" syslog sequences. */
-		if (skip) {
+		if (*skip) {
 			if (ch == '\n') {
-				skip = 0;
-				newl = 1;
+				*skip = 0;
+				*newl = 1;
 			} if (ch == '>') {
-				if (LOG_FAC(pri) == LOG_KERN || all)
-					newl = skip = 0;
+				if (LOG_FAC(*pri) == LOG_KERN || all_opt)
+					*newl = *skip = 0;
 			} else if (ch >= '0' && ch <= '9') {
-				pri *= 10;
-				pri += ch - '0';
+				*pri *= 10;
+				*pri += ch - '0';
 			}
 			continue;
 		}
-		if (newl && ch == '<') {
-			pri = 0;
-			skip = 1;
+		if (*newl && ch == '<') {
+			*pri = 0;
+			*skip = 1;
 			continue;
 		}
 		if (ch == '\0')
 			continue;
-		newl = ch == '\n';
+		*newl = ch == '\n';
 		vis(buf, ch, 0, 0);
 		if (buf[1] == 0)
 			putchar(buf[0]);
 		else
 			printf("%s", buf);
 	} while (++p != ep);
-	if (!newl)
-		putchar('\n');
-	if (clear)
-		if (sysctlbyname("kern.msgbuf_clear", NULL, NULL, &clear, sizeof(int)) != 0)
-			err(1, "sysctl kern.msgbuf_clear");
-	exit(0);
 }
 
 void
