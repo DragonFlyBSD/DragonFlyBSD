@@ -71,7 +71,6 @@ SYSCTL_INT(_security, OID_AUTO, ps_showallthreads, CTLFLAG_RW,
     &ps_showallthreads, 0,
     "Unprivileged processes can see kernel threads");
 
-static void pgdelete(struct pgrp *);
 static void orphanpg(struct pgrp *pg);
 static pid_t proc_getnewpid_locked(int random_offset);
 
@@ -84,6 +83,7 @@ struct pgrphashhead *pgrphashtbl;
 u_long pgrphash;
 struct proclist allproc;
 struct proclist zombproc;
+struct spinlock pghash_spin = SPINLOCK_INITIALIZER(&pghash_spin);
 
 /*
  * Random component to nextpid generation.  We mix in a random factor to make
@@ -411,8 +411,43 @@ pgref(struct pgrp *pgrp)
 void
 pgrel(struct pgrp *pgrp)
 {
-	if (refcount_release(&pgrp->pg_refs))
-		pgdelete(pgrp);
+	int count;
+
+	for (;;) {
+		count = pgrp->pg_refs;
+		cpu_ccfence();
+		KKASSERT(count > 0);
+		if (count == 1) {
+			spin_lock(&pghash_spin);
+			if (atomic_cmpset_int(&pgrp->pg_refs, 1, 0))
+				break;
+			spin_unlock(&pghash_spin);
+			/* retry */
+		} else {
+			if (atomic_cmpset_int(&pgrp->pg_refs, count, count - 1))
+				return;
+			/* retry */
+		}
+	}
+
+	/*
+	 * Successful 1->0 transition, pghash_spin is held.
+	 */
+	LIST_REMOVE(pgrp, pg_hash);
+	spin_unlock(&pghash_spin);
+
+	/*
+	 * Reset any sigio structures pointing to us as a result of
+	 * F_SETOWN with our pgid.
+	 */
+	funsetownlst(&pgrp->pg_sigiolst);
+
+	if (pgrp->pg_session->s_ttyp != NULL &&
+	    pgrp->pg_session->s_ttyp->t_pgrp == pgrp) {
+		pgrp->pg_session->s_ttyp->t_pgrp = NULL;
+	}
+	sess_rele(pgrp->pg_session);
+	kfree(pgrp, M_PGRP);
 }
 
 /*
@@ -427,15 +462,15 @@ pgfind(pid_t pgid)
 {
 	struct pgrp *pgrp;
 
-	lwkt_gettoken(&proc_token);
+	spin_lock_shared(&pghash_spin);
 	LIST_FOREACH(pgrp, PGRPHASH(pgid), pg_hash) {
 		if (pgrp->pg_id == pgid) {
 			refcount_acquire(&pgrp->pg_refs);
-			lwkt_reltoken(&proc_token);
+			spin_unlock_shared(&pghash_spin);
 			return (pgrp);
 		}
 	}
-	lwkt_reltoken(&proc_token);
+	spin_unlock_shared(&pghash_spin);
 	return (NULL);
 }
 
@@ -498,36 +533,51 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 		}
 		pgrp->pg_id = pgid;
 		LIST_INIT(&pgrp->pg_members);
-		LIST_INSERT_HEAD(PGRPHASH(pgid), pgrp, pg_hash);
 		pgrp->pg_jobc = 0;
 		SLIST_INIT(&pgrp->pg_sigiolst);
 		lwkt_token_init(&pgrp->pg_token, "pgrp_token");
 		refcount_init(&pgrp->pg_refs, 1);
 		lockinit(&pgrp->pg_lock, "pgwt", 0, 0);
+		spin_lock(&pghash_spin);
+		LIST_INSERT_HEAD(PGRPHASH(pgid), pgrp, pg_hash);
+		spin_unlock(&pghash_spin);
 	} else if (pgrp == p->p_pgrp) {
 		pgrel(pgrp);
 		goto done;
 	} /* else pgfind() referenced the pgrp */
+
+	lwkt_gettoken(&pgrp->pg_token);
+	lwkt_gettoken(&p->p_token);
+
+	/*
+	 * Replace p->p_pgrp, handling any races that occur.
+	 */
+	while ((opgrp = p->p_pgrp) != NULL) {
+		pgref(opgrp);
+		lwkt_gettoken(&opgrp->pg_token);
+		if (opgrp != p->p_pgrp) {
+			lwkt_reltoken(&opgrp->pg_token);
+			pgrel(opgrp);
+			continue;
+		}
+		LIST_REMOVE(p, p_pglist);
+		break;
+	}
+	p->p_pgrp = pgrp;
+	LIST_INSERT_HEAD(&pgrp->pg_members, p, p_pglist);
 
 	/*
 	 * Adjust eligibility of affected pgrps to participate in job control.
 	 * Increment eligibility counts before decrementing, otherwise we
 	 * could reach 0 spuriously during the first call.
 	 */
-	lwkt_gettoken(&pgrp->pg_token);
-	lwkt_gettoken(&p->p_token);
 	fixjobc(p, pgrp, 1);
-	fixjobc(p, p->p_pgrp, 0);
-	while ((opgrp = p->p_pgrp) != NULL) {
-		opgrp = p->p_pgrp;
-		lwkt_gettoken(&opgrp->pg_token);
-		LIST_REMOVE(p, p_pglist);
-		p->p_pgrp = NULL;
+	if (opgrp) {
+		fixjobc(p, opgrp, 0);
 		lwkt_reltoken(&opgrp->pg_token);
-		pgrel(opgrp);
+		pgrel(opgrp);	/* manual pgref */
+		pgrel(opgrp);	/* p->p_pgrp ref */
 	}
-	p->p_pgrp = pgrp;
-	LIST_INSERT_HEAD(&pgrp->pg_members, p, p_pglist);
 	lwkt_reltoken(&p->p_token);
 	lwkt_reltoken(&pgrp->pg_token);
 done:
@@ -547,43 +597,24 @@ leavepgrp(struct proc *p)
 	struct pgrp *pg = p->p_pgrp;
 
 	lwkt_gettoken(&p->p_token);
-	pg = p->p_pgrp;
-	if (pg) {
+	while ((pg = p->p_pgrp) != NULL) {
 		pgref(pg);
 		lwkt_gettoken(&pg->pg_token);
-		if (p->p_pgrp == pg) {
-			p->p_pgrp = NULL;
-			LIST_REMOVE(p, p_pglist);
+		if (p->p_pgrp != pg) {
+			lwkt_reltoken(&pg->pg_token);
 			pgrel(pg);
+			continue;
 		}
+		p->p_pgrp = NULL;
+		LIST_REMOVE(p, p_pglist);
 		lwkt_reltoken(&pg->pg_token);
-		lwkt_reltoken(&p->p_token);	/* avoid chaining on rel */
-		pgrel(pg);
-	} else {
-		lwkt_reltoken(&p->p_token);
+		pgrel(pg);	/* manual pgref */
+		pgrel(pg);	/* p->p_pgrp ref */
+		break;
 	}
+	lwkt_reltoken(&p->p_token);
+
 	return (0);
-}
-
-/*
- * Delete a process group.  Must be called only after the last ref has been
- * released.
- */
-static void
-pgdelete(struct pgrp *pgrp)
-{
-	/*
-	 * Reset any sigio structures pointing to us as a result of
-	 * F_SETOWN with our pgid.
-	 */
-	funsetownlst(&pgrp->pg_sigiolst);
-
-	if (pgrp->pg_session->s_ttyp != NULL &&
-	    pgrp->pg_session->s_ttyp->t_pgrp == pgrp)
-		pgrp->pg_session->s_ttyp->t_pgrp = NULL;
-	LIST_REMOVE(pgrp, pg_hash);
-	sess_rele(pgrp->pg_session);
-	kfree(pgrp, M_PGRP);
 }
 
 /*
@@ -596,9 +627,7 @@ pgdelete(struct pgrp *pgrp)
 void
 sess_hold(struct session *sp)
 {
-	lwkt_gettoken(&tty_token);
-	++sp->s_count;
-	lwkt_reltoken(&tty_token);
+	atomic_add_int(&sp->s_count, 1);
 }
 
 /*
@@ -608,27 +637,44 @@ void
 sess_rele(struct session *sp)
 {
 	struct tty *tp;
+	int count;
 
-	KKASSERT(sp->s_count > 0);
-	lwkt_gettoken(&tty_token);
-	if (--sp->s_count == 0) {
-		if (sp->s_ttyp && sp->s_ttyp->t_session) {
-#ifdef TTY_DO_FULL_CLOSE
-			/* FULL CLOSE, see ttyclearsession() */
-			KKASSERT(sp->s_ttyp->t_session == sp);
-			sp->s_ttyp->t_session = NULL;
-#else
-			/* HALF CLOSE, see ttyclearsession() */
-			if (sp->s_ttyp->t_session == sp)
-				sp->s_ttyp->t_session = NULL;
-#endif
+	for (;;) {
+		count = sp->s_count;
+		cpu_ccfence();
+		KKASSERT(count > 0);
+		if (count == 1) {
+			lwkt_gettoken(&tty_token);
+			if (atomic_cmpset_int(&sp->s_count, 1, 0))
+				break;
+			lwkt_reltoken(&tty_token);
+			/* retry */
+		} else {
+			if (atomic_cmpset_int(&sp->s_count, count, count - 1))
+				return;
+			/* retry */
 		}
-		if ((tp = sp->s_ttyp) != NULL) {
-			sp->s_ttyp = NULL;
-			ttyunhold(tp);
-		}
-		kfree(sp, M_SESSION);
 	}
+
+	/*
+	 * Successful 1->0 transition and tty_token is held.
+	 */
+	if (sp->s_ttyp && sp->s_ttyp->t_session) {
+#ifdef TTY_DO_FULL_CLOSE
+		/* FULL CLOSE, see ttyclearsession() */
+		KKASSERT(sp->s_ttyp->t_session == sp);
+		sp->s_ttyp->t_session = NULL;
+#else
+		/* HALF CLOSE, see ttyclearsession() */
+		if (sp->s_ttyp->t_session == sp)
+			sp->s_ttyp->t_session = NULL;
+#endif
+	}
+	if ((tp = sp->s_ttyp) != NULL) {
+		sp->s_ttyp = NULL;
+		ttyunhold(tp);
+	}
+	kfree(sp, M_SESSION);
 	lwkt_reltoken(&tty_token);
 }
 
