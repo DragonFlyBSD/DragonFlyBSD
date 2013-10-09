@@ -2332,7 +2332,7 @@ device		pmtimer		# adjust the system clock after resume
 # mach64drm:	ATI Mach64 cards - Rage and 3D Rage series
 # mgadrm:	AGP Matrox G200, G400, G450, G550
 # r128drm:	ATI Rage 128 cards
-# radeondrm:	ATI Radeon cards
+# radeonkmsdrm:	ATI Radeon cards
 # savagedrm:	Savage cards
 # sisdrm:	Sis cards
 # tdfxdrm:	3dfx Voodoo 3/4/5 and Banshee
@@ -2346,7 +2346,7 @@ device		drm
 device		"mach64drm"
 device		mgadrm
 device		"r128drm"
-device		radeondrm
+#device		radeonkmsdrm	# breaks VGA console, disabled by default
 device		savagedrm
 device		sisdrm
 device		tdfxdrm
