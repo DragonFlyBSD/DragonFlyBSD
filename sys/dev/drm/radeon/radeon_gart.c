@@ -555,9 +555,9 @@ void radeon_vm_manager_fini(struct radeon_device *rdev)
 	lockmgr(&rdev->vm_manager.lock, LK_EXCLUSIVE);
 	/* free all allocated page tables */
 	list_for_each_entry_safe(vm, tmp, &rdev->vm_manager.lru_vm, list) {
-		spin_lock(&vm->mutex);
+		lockmgr(&vm->mutex, LK_EXCLUSIVE);
 		radeon_vm_free_pt(rdev, vm);
-		spin_lock(&vm->mutex);
+		lockmgr(&vm->mutex, LK_RELEASE);
 	}
 	for (i = 0; i < RADEON_NUM_VM; ++i) {
 		radeon_fence_unref(&rdev->vm_manager.active[i]);
@@ -593,9 +593,9 @@ static int radeon_vm_evict(struct radeon_device *rdev, struct radeon_vm *vm)
 	if (vm_evict == vm)
 		return -ENOMEM;
 
-	spin_lock(&vm_evict->mutex);
+	lockmgr(&vm_evict->mutex, LK_EXCLUSIVE);
 	radeon_vm_free_pt(rdev, vm_evict);
-	spin_unlock(&vm_evict->mutex);
+	lockmgr(&vm_evict->mutex, LK_RELEASE);
 	return 0;
 }
 
@@ -809,10 +809,10 @@ struct radeon_bo_va *radeon_vm_bo_add(struct radeon_device *rdev,
 	INIT_LIST_HEAD(&bo_va->bo_list);
 	INIT_LIST_HEAD(&bo_va->vm_list);
 
-	spin_lock(&vm->mutex);
+	lockmgr(&vm->mutex, LK_EXCLUSIVE);
 	list_add(&bo_va->vm_list, &vm->va);
 	list_add_tail(&bo_va->bo_list, &bo->va);
-	spin_unlock(&vm->mutex);
+	lockmgr(&vm->mutex, LK_RELEASE);
 
 	return bo_va;
 }
@@ -861,7 +861,7 @@ int radeon_vm_bo_set_addr(struct radeon_device *rdev,
 		eoffset = last_pfn = 0;
 	}
 
-	spin_lock(&vm->mutex);
+	lockmgr(&vm->mutex, LK_EXCLUSIVE);
 	head = &vm->va;
 	last_offset = 0;
 	list_for_each_entry(tmp, &vm->va, vm_list) {
@@ -879,7 +879,7 @@ int radeon_vm_bo_set_addr(struct radeon_device *rdev,
 			dev_err(rdev->dev, "bo %p va 0x%08X conflict with (bo %p 0x%08X 0x%08X)\n",
 				bo_va->bo, (unsigned)bo_va->soffset, tmp->bo,
 				(unsigned)tmp->soffset, (unsigned)tmp->eoffset);
-			spin_unlock(&vm->mutex);
+			lockmgr(&vm->mutex, LK_RELEASE);
 			return -EINVAL;
 		}
 		last_offset = tmp->eoffset;
@@ -892,7 +892,7 @@ int radeon_vm_bo_set_addr(struct radeon_device *rdev,
 	bo_va->valid = false;
 	list_move(&bo_va->vm_list, head);
 
-	spin_unlock(&vm->mutex);
+	lockmgr(&vm->mutex, LK_RELEASE);
 	return 0;
 }
 
@@ -1218,11 +1218,11 @@ int radeon_vm_bo_rmv(struct radeon_device *rdev,
 	int r;
 
 	lockmgr(&rdev->vm_manager.lock, LK_EXCLUSIVE);
-	spin_lock(&bo_va->vm->mutex);
+	lockmgr(&bo_va->vm->mutex, LK_EXCLUSIVE);
 	r = radeon_vm_bo_update_pte(rdev, bo_va->vm, bo_va->bo, NULL);
 	lockmgr(&rdev->vm_manager.lock, LK_RELEASE);
 	list_del(&bo_va->vm_list);
-	spin_unlock(&bo_va->vm->mutex);
+	lockmgr(&bo_va->vm->mutex, LK_RELEASE);
 	list_del(&bo_va->bo_list);
 
 	drm_free(bo_va, DRM_MEM_DRIVER);
@@ -1260,7 +1260,7 @@ void radeon_vm_init(struct radeon_device *rdev, struct radeon_vm *vm)
 {
 	vm->id = 0;
 	vm->fence = NULL;
-	spin_init(&vm->mutex);
+	lockinit(&vm->mutex, "rvmmtx", 0, LK_CANRECURSE);
 	INIT_LIST_HEAD(&vm->list);
 	INIT_LIST_HEAD(&vm->va);
 }
@@ -1280,7 +1280,7 @@ void radeon_vm_fini(struct radeon_device *rdev, struct radeon_vm *vm)
 	int r;
 
 	lockmgr(&rdev->vm_manager.lock, LK_EXCLUSIVE);
-	spin_lock(&vm->mutex);
+	lockmgr(&vm->mutex, LK_EXCLUSIVE);
 	radeon_vm_free_pt(rdev, vm);
 	lockmgr(&rdev->vm_manager.lock, LK_RELEASE);
 
@@ -1298,5 +1298,5 @@ void radeon_vm_fini(struct radeon_device *rdev, struct radeon_vm *vm)
 	}
 	radeon_fence_unref(&vm->fence);
 	radeon_fence_unref(&vm->last_flush);
-	spin_unlock(&vm->mutex);
+	lockmgr(&vm->mutex, LK_RELEASE);
 }

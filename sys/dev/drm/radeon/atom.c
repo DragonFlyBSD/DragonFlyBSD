@@ -1217,7 +1217,7 @@ int atom_execute_table(struct atom_context *ctx, int index, uint32_t * params)
 {
 	int r;
 
-	spin_lock(&ctx->mutex);
+	lockmgr(&ctx->mutex, LK_EXCLUSIVE);
 	/* reset reg block */
 	ctx->reg_block = 0;
 	/* reset fb window */
@@ -1225,7 +1225,7 @@ int atom_execute_table(struct atom_context *ctx, int index, uint32_t * params)
 	/* reset io mode */
 	ctx->io_mode = ATOM_IO_MM;
 	r = atom_execute_table_locked(ctx, index, params);
-	spin_unlock(&ctx->mutex);
+	lockmgr(&ctx->mutex, LK_RELEASE);
 	return r;
 }
 

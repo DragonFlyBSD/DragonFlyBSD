@@ -754,7 +754,8 @@ int radeon_atombios_init(struct radeon_device *rdev)
 	atom_card_info->pll_write = cail_pll_write;
 
 	rdev->mode_info.atom_context = atom_parse(atom_card_info, rdev->bios);
-	spin_init(&rdev->mode_info.atom_context->mutex);
+	lockinit(&rdev->mode_info.atom_context->mutex, "rmiacmtx", 0,
+		 LK_CANRECURSE);
 	radeon_atom_initialize_bios_scratch_regs(rdev->ddev);
 	atom_allocate_fb_scratch(rdev->mode_info.atom_context);
 	return 0;

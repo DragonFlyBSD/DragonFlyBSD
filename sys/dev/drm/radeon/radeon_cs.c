@@ -482,7 +482,7 @@ static int radeon_cs_ib_vm_chunk(struct radeon_device *rdev,
 	}
 
 	lockmgr(&rdev->vm_manager.lock, LK_EXCLUSIVE);
-	spin_lock(&vm->mutex);
+	lockmgr(&vm->mutex, LK_EXCLUSIVE);
 	r = radeon_vm_alloc_pt(rdev, vm);
 	if (r) {
 		goto out;
@@ -508,7 +508,7 @@ static int radeon_cs_ib_vm_chunk(struct radeon_device *rdev,
 
 out:
 	radeon_vm_add_to_lru(rdev, vm);
-	spin_unlock(&vm->mutex);
+	lockmgr(&vm->mutex, LK_RELEASE);
 	lockmgr(&rdev->vm_manager.lock, LK_RELEASE);
 	return r;
 }
