@@ -96,19 +96,34 @@ retry:
 	/*
 	 * Messy interlock, don't let the vnode go away while we try to
 	 * lock it and check for race after we might have blocked.
+	 *
+	 * WARNING! The device open (devfs_spec_open()) temporarily
+	 *	    releases the vnode lock on ttyvp when issuing the
+	 *	    dev_dopen(), which means that the VCTTYISOPEn flag
+	 *	    can race during the VOP_OPEN().
+	 *
+	 *	    If something does race we have to undo our potentially
+	 *	    extra open.
 	 */
 	vhold(ttyvp);
 	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
 	if (ttyvp != cttyvp(p) || (ttyvp->v_flag & VCTTYISOPEN)) {
-		kprintf("Warning: cttyopen: race avoided\n");
+		kprintf("Warning: cttyopen: race-1 avoided\n");
 		vn_unlock(ttyvp);
 		vdrop(ttyvp);
 		goto retry;
 	}
-	vsetflags(ttyvp, VCTTYISOPEN);
 	error = VOP_OPEN(ttyvp, FREAD|FWRITE, ap->a_cred, NULL);
-	if (error)
-		vclrflags(ttyvp, VCTTYISOPEN);
+	if (ttyvp != cttyvp(p) || (ttyvp->v_flag & VCTTYISOPEN)) {
+		kprintf("Warning: cttyopen: race-2 avoided\n");
+		if (error == 0)
+			VOP_CLOSE(ttyvp, FREAD|FWRITE);
+		vn_unlock(ttyvp);
+		vdrop(ttyvp);
+		goto retry;
+	}
+	if (error == 0)
+		vsetflags(ttyvp, VCTTYISOPEN);
 	vn_unlock(ttyvp);
 	vdrop(ttyvp);
 	return(error);
