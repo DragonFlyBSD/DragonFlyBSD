@@ -115,18 +115,20 @@ These interfaces are used by
 .Xr apm 8 .
 .It
 .Nm
-polls APM events and handles the following events.
-.Bl -column PMEV_POWERSTATECHANGEXXX "suspend system xxxxx"
-.It Sy "Name                  " "Action          " "Description"
-.It Dv "PMEV_STANDBYREQ       " No "suspend system  " "standby request"
-.It Dv "PMEV_SUSPENDREQ       " No "suspend system  " "suspend request"
-.It Dv "PMEV_USERSUSPENDREQ   " No "suspend system  " "user suspend request"
-.It Dv "PMEV_CRITSUSPEND      " No "suspend system  " "critical suspend request"
-.It Dv "PMEV_NORMRESUME       " No "resume system   " "normal resume"
-.It Dv "PMEV_CRITRESUME       " No "resume system   " "critical resume"
-.It Dv "PMEV_STANDBYRESUME    " No "resume system   " "standby resume"
-.It Dv "PMEV_BATTERYLOW       " No "notify message  " "battery low"
-.It Dv "PMEV_UPDATETIME       " No "adjust clock    " "update time"
+polls APM events and handles the following events:
+.Bl -column PMEV_USERSUSPENDREQ "suspend system" "critical suspend request"
+.It Sy Name                Ta Sy Action        Ta Sy Description
+.It Dv PMEV_STANDBYREQ     Ta "suspend system" Ta "standby request"
+.It Dv PMEV_SUSPENDREQ     Ta "suspend system" Ta "suspend request"
+.It Dv PMEV_USERSUSPENDREQ Ta "suspend system" Ta "user suspend"
+.It ""                     Ta ""               Ta "request"
+.It Dv PMEV_CRITSUSPEND    Ta "suspend system" Ta "critical suspend"
+.It ""                     Ta ""               Ta "request"
+.It Dv PMEV_NORMRESUME     Ta "resume system"  Ta "normal resume"
+.It Dv PMEV_CRITRESUME     Ta "resume system"  Ta "critical resume"
+.It Dv PMEV_STANDBYRESUME  Ta "resume system"  Ta "standby resume"
+.It Dv PMEV_BATTERYLOW     Ta "notify message" Ta "battery low"
+.It Dv PMEV_UPDATETIME     Ta "adjust clock"   Ta "update time"
 .El
 .El
 .Sh SEE ALSO

@@ -21,7 +21,6 @@
 .\" distributed with 4.3BSD Unix.
 .\"
 .\" $FreeBSD: src/share/man/man4/bpf.4,v 1.21.2.11 2002/04/07 04:57:13 dd Exp $
-.\" $DragonFly: src/share/man/man4/bpf.4,v 1.9 2008/05/02 02:05:05 swildner Exp $
 .\"
 .Dd March 14, 2008
 .Dt BPF 4
@@ -224,7 +223,6 @@ If the application does not need to send packets through
 it can open the device read-only to prevent writing.
 If sending packets is necessary, a write-filter can be set before locking the
 descriptor to prevent arbitrary packets from being sent out.
-.Pp
 .It Dv BIOCSETIF
 .Pq Li "struct ifreq"
 Sets the hardware interface associated with the file.
@@ -236,13 +234,11 @@ field of the
 structure.
 Additionally, performs the actions of
 .Dv BIOCFLUSH .
-.Pp
 .It Dv BIOCSETWF
 .Pq Li "struct bpf_program *"
 Sets the write filter program used by the kernel to filter the packets
 written to the descriptor before the packets are sent out on the
 network.
-.Pp
 .It Dv BIOCSRTIMEOUT
 .It Dv BIOCGRTIMEOUT
 .Pq Li "struct timeval"

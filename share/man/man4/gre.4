@@ -43,17 +43,14 @@
 .Nm gre
 .Nd encapsulating network device
 .Sh SYNOPSIS
-To compile the
-.Ns Nm
-device into the kernel, place the following line in the kernel
-configuration file:
+To compile this driver into the kernel, place the following line
+in the kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "pseudo-device gre"
 .Ed
 .Pp
-Alternatively, to load the
-.Ns Nm
-device as a module at boot time, place the following line in
+Alternatively, to load this driver as a module at boot time,
+place the following line in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
 if_gre_load="YES"

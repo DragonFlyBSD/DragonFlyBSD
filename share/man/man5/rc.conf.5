@@ -695,8 +695,6 @@ possible to use something like:
 wlans_wi0="wlan0"
 ifconfig_wlan0="up DHCP WPA mode 11b"
 .Ed
-.Pp
-.\"
 .It Va ifconfig_ Ns Ao Ar interface Ac Ns Va _alias Ns Aq Ar n
 .Pq Vt str
 Configuration to establish an additional network address for
@@ -726,8 +724,6 @@ ifconfig_ed0_alias4="inet 127.0.0.254 netmask 0xffffffff"
 Then note that alias4 would
 .Em not
 be added since the search would stop with the missing alias3 entry.
-.Pp
-.\"
 .It Va ifconfig_ Ns Ao Ar interface Ac Ns Va _name
 .Pq Vt str
 New name for
@@ -2338,7 +2334,6 @@ jail_vjail_hostname="jail.example.com"
 jail_vjail_ip="192.168.1.100"
 jail_vjail_rootdir="/var/jails/vjail/root"
 .Ed
-.Pp
 .It Va jail_flags
 .Pq Vt str
 Unset by default.
