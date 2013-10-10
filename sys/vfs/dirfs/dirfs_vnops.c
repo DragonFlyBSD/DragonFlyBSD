@@ -251,7 +251,7 @@ dirfs_ncreate(struct vop_ncreate_args *ap)
 	struct vnode *dvp;
 	struct vnode **vpp;
 	struct vattr *vap;
-	int canwrite = 0;
+	int perms = 0;
 	int error;
 
 	debug_called();
@@ -267,8 +267,8 @@ dirfs_ncreate(struct vop_ncreate_args *ap)
 
 	dirfs_mount_gettoken(dmp);
 
-	dirfs_node_getperms(pdnp, NULL, &canwrite, NULL);
-	if (!canwrite)
+	dirfs_node_getperms(pdnp, &perms);
+	if ((perms & DIRFS_NODE_WR) == 0)
 		error = EPERM;
 
 	error = dirfs_alloc_file(dmp, &dnp, pdnp, ncp, vpp, vap,

@@ -503,42 +503,45 @@ dirfs_dropfd(dirfs_mount_t dmp, dirfs_node_t dnp1, char *pathfree)
 }
 
 int
-dirfs_node_getperms(dirfs_node_t dnp, int *r, int *w, int *x)
+dirfs_node_getperms(dirfs_node_t dnp, int *flags)
 {
-	uid_t u;
-	gid_t g;
-	int isowner, isgroup;
+	dirfs_mount_t dmp;
+	struct vnode *vp = dnp->dn_vnode;
+	int isowner;
+	int isgroup;
 
-	u = getuid();	/* XXX What about EUID? */
-	g = getgid();	/* XXX What about EGID? */
-	isowner = (u == dnp->dn_uid);
-	isgroup = (g == dnp->dn_gid);
+	/*
+	 * There must be an active vnode anyways since that
+	 * would indicate the dirfs node has valid data for
+	 * for dnp->dn_mode (via lstat syscall).
+	 */
+	KKASSERT(vp);
+	dmp = VFS_TO_DIRFS(vp->v_mount);
 
-	if (r) {
-		if (isowner && (dnp->dn_mode & S_IRUSR))
-			*r = 1;
-		else if (isgroup && (dnp->dn_mode & S_IRGRP))
-			*r = 1;
-		else if (dnp->dn_mode & S_IROTH)
-			*r = 1;
-	}
+	isowner = (dmp->dm_uid == dnp->dn_uid);
+	isgroup = (dmp->dm_gid == dnp->dn_gid);
 
-	if (w) {
-		if (isowner && (dnp->dn_mode & S_IWUSR))
-			*w = 1;
-		else if (isgroup && (dnp->dn_mode & S_IWGRP))
-			*w = 1;
-		else if (dnp->dn_mode & S_IWOTH)
-			*w = 1;
-	}
-
-	if (x) {
-		if (isowner && (dnp->dn_mode & S_IXUSR))
-			*x = 1;
-		else if (isgroup && (dnp->dn_mode & S_IXGRP))
-			*x = 1;
-		else if (dnp->dn_mode & S_IXOTH)
-			*x = 1;
+	if (isowner) {
+		if (dnp->dn_mode & S_IRUSR)
+			*flags |= DIRFS_NODE_RD;
+		if (dnp->dn_mode & S_IWUSR)
+			*flags |= DIRFS_NODE_WR;
+		if (dnp->dn_mode & S_IXUSR)
+			*flags |= DIRFS_NODE_EXE;
+	} else if (isgroup) {
+		if (dnp->dn_mode & S_IRGRP)
+			*flags |= DIRFS_NODE_RD;
+		if (dnp->dn_mode & S_IWGRP)
+			*flags |= DIRFS_NODE_WR;
+		if (dnp->dn_mode & S_IXGRP)
+			*flags |= DIRFS_NODE_EXE;
+	} else {
+		if (dnp->dn_mode & S_IROTH)
+			*flags |= DIRFS_NODE_RD;
+		if (dnp->dn_mode & S_IWOTH)
+			*flags |= DIRFS_NODE_WR;
+		if (dnp->dn_mode & S_IXOTH)
+			*flags |= DIRFS_NODE_EXE;
 	}
 
 	return 0;
@@ -551,16 +554,16 @@ int
 dirfs_open_helper(dirfs_mount_t dmp, dirfs_node_t dnp, int parentfd,
 		  char *relpath)
 {
-	int canread, canwrite, canexec;
 	dirfs_node_t pathnp;
-	char *tmp;
 	char *pathfree;
-	int flags, error;
+	char *tmp;
+	int flags;
+	int perms;
+	int error;
 
 	debug_called();
 
-	canread = canwrite = canexec = 0;
-	flags = error = 0;
+	flags = error = perms = 0;
 	tmp = NULL;
 
 	KKASSERT(dnp);
@@ -572,12 +575,12 @@ dirfs_open_helper(dirfs_mount_t dmp, dirfs_node_t dnp, int parentfd,
 	 * Also, O_RDWR alone might not be the best mode to open
 	 * a file with, need to investigate which suits better.
 	 */
-	dirfs_node_getperms(dnp, &canread, &canwrite, &canexec);
+	dirfs_node_getperms(dnp, &perms);
 
 	if (dnp->dn_type & VDIR) {
 		flags |= O_DIRECTORY;
 	} else {
-		if (canwrite)
+		if (perms & DIRFS_NODE_WR)
 			flags |= O_RDWR;
 		else
 			flags |= O_RDONLY;
@@ -598,8 +601,8 @@ dirfs_open_helper(dirfs_mount_t dmp, dirfs_node_t dnp, int parentfd,
 		error = errno;
 
 	dbg(5, "dnp=%p tmp2=%s parentfd=%d flags=%d error=%d "
-	    "r=%d w=%d x=%d\n", dnp, tmp, parentfd, flags, error,
-	    canread, canwrite, canexec);
+	    "flags=%08x w=%d x=%d\n", dnp, tmp, parentfd, flags, error,
+	    perms);
 
 	if (pathnp)
 		dirfs_dropfd(dmp, pathnp, pathfree);

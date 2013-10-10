@@ -146,6 +146,10 @@ dirfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	vfs_add_vnodeops(mp, &dirfs_vnode_vops, &mp->mnt_vn_norm_ops);
 	vfs_getnewfsid(mp);
 
+	/* Who is running the vkernel */
+	dmp->dm_uid = getuid();
+	dmp->dm_gid = getgid();
+
 	TAILQ_INIT(&dmp->dm_fdlist);
 	RB_INIT(&dmp->dm_inotree);
 

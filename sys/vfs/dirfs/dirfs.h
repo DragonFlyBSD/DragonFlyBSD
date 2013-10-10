@@ -55,6 +55,9 @@ MALLOC_DECLARE(M_DIRFS_MISC);
 
 #define DIRFS_ROOT	0x00000001
 #define DIRFS_PASVFD	0x00000002
+#define DIRFS_NODE_RD	0x00000004
+#define DIRFS_NODE_WR	0x00000008
+#define DIRFS_NODE_EXE	0x00000010
 
 #define DIRFS_TXTFLG "pasvfd"
 
@@ -110,6 +113,9 @@ extern int statfs(const char *, struct statfs *);
 #define dirfs_mount_gettoken(m)	lwkt_gettoken(&(m)->dm_token)
 #define dirfs_mount_reltoken(m)	lwkt_reltoken(&(m)->dm_token)
 
+/*
+ * Misc macros
+ */
 #define dirfs_node_isroot(n)	(n->dn_state & DIRFS_ROOT)
 
 /*
@@ -176,6 +182,9 @@ struct dirfs_mount {
 
 	int			dm_fd_used;	/* Opened file descriptors */
 
+	uid_t			dm_uid;	/* User running the vkernel */
+	gid_t			dm_gid;
+
 	char			dm_path[MAXPATHLEN];
 };
 typedef struct dirfs_mount *dirfs_mount_t;
@@ -198,7 +207,7 @@ extern long passive_fd_list_hits;
 extern struct vop_ops dirfs_vnode_vops;
 
 /*
- * Misc functions for node flags and reference count
+ * Misc functions for node operations
  */
 static __inline void
 dirfs_node_ref(dirfs_node_t dnp)
@@ -254,7 +263,7 @@ int dirfs_open_helper(dirfs_mount_t, dirfs_node_t, int, char *);
 int dirfs_close_helper(dirfs_node_t);
 int dirfs_node_refcnt(dirfs_node_t);
 char *dirfs_flag2str(dirfs_node_t);
-int dirfs_node_getperms(dirfs_node_t, int *, int *, int *);
+int dirfs_node_getperms(dirfs_node_t, int *);
 int dirfs_node_chflags(dirfs_node_t, int, struct ucred *);
 int dirfs_node_chtimes(dirfs_node_t);
 int dirfs_node_chmod(dirfs_mount_t, dirfs_node_t, mode_t cur_mode);
