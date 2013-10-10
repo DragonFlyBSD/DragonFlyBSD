@@ -46,10 +46,11 @@
 The
 .Nm
 system provides a uniform and modular system for the implementation
-of kernel objects which perform various networking functions. The objects,
-known as
+of kernel objects which perform various networking functions.
+The objects, known as
 .Em nodes ,
-can be arranged into arbitrarily complicated graphs. Nodes have
+can be arranged into arbitrarily complicated graphs.
+Nodes have
 .Em hooks
 which are used to connect two nodes together, forming the edges in the graph.
 Nodes communicate along the edges to process data, implement protocols, etc.
@@ -57,7 +58,8 @@ Nodes communicate along the edges to process data, implement protocols, etc.
 The aim of
 .Nm
 is to supplement rather than replace the existing kernel networking
-infrastructure.  It provides:
+infrastructure.
+It provides:
 .Pp
 .Bl -bullet -compact -offset 2n
 .It
@@ -87,7 +89,8 @@ The type implies what the node does and how it may be connected
 to other nodes.
 .Pp
 In object-oriented language, types are classes and nodes are instances
-of their respective class. All node types are subclasses of the generic node
+of their respective class.
+All node types are subclasses of the generic node
 type, and hence inherit certain common functionality and capabilities
 (e.g., the ability to have an
 .Tn ASCII
@@ -107,16 +110,17 @@ characters (including NUL byte).
 .Pp
 Each node instance has a unique
 .Em ID number
-which is expressed as a 32-bit hex value. This value may be used to
-refer to a node when there is no
+which is expressed as a 32-bit hex value.
+This value may be used to refer to a node when there is no
 .Tn ASCII
 name assigned to it.
 .Sh Hooks
 Nodes are connected to other nodes by connecting a pair of
 .Em hooks ,
-one from each node. Data flows bidirectionally between nodes along
-connected pairs of hooks.  A node may have as many hooks as it
-needs, and may assign whatever meaning it wants to a hook.
+one from each node.
+Data flows bidirectionally between nodes along connected pairs of hooks.
+A node may have as many hooks as it needs,
+and may assign whatever meaning it wants to a hook.
 .Pp
 Hooks have these properties:
 .Pp
@@ -135,9 +139,9 @@ limited to
 .Dv "NG_HOOKSIZ"
 characters (including NUL byte).
 .It
-A hook is always connected to another hook. That is, hooks are
-created at the time they are connected, and breaking an edge by
-removing either hook destroys both hooks.
+A hook is always connected to another hook.
+That is, hooks are created at the time they are connected,
+and breaking an edge by removing either hook destroys both hooks.
 .El
 .Pp
 A node may decide to assign special meaning to some hooks.
@@ -147,65 +151,73 @@ might trigger
 the node to start sending debugging information to that hook.
 .Sh Data Flow
 Two types of information flow between nodes: data messages and
-control messages. Data messages are passed in mbuf chains along the edges
-in the graph, one edge at a time. The first mbuf in a chain must have the
+control messages.
+Data messages are passed in mbuf chains along the edges
+in the graph, one edge at a time.
+The first mbuf in a chain must have the
 .Dv M_PKTHDR
-flag set. Each node decides how to handle data coming in on its hooks.
+flag set.
+Each node decides how to handle data coming in on its hooks.
 .Pp
 Control messages are type-specific C structures sent from one node
-directly to some arbitrary other node.  Control messages have a common
-header format, followed by type-specific data, and are binary structures
-for efficiency.  However, node types also may support conversion of the
+directly to some arbitrary other node.
+Control messages have a common header format,
+followed by type-specific data, and are binary structures
+for efficiency.
+However, node types also may support conversion of the
 type specific data between binary and
 .Tn ASCII
 for debugging and human interface purposes (see the
 .Dv NGM_ASCII2BINARY
 and
 .Dv NGM_BINARY2ASCII
-generic control messages below).  Nodes are not required to support
-these conversions.
+generic control messages below).
+Nodes are not required to support these conversions.
 .Pp
-There are two ways to address a control message. If
-there is a sequence of edges connecting the two nodes, the message
-may be
+There are two ways to address a control message.
+If there is a sequence of edges connecting the two nodes,
+the message may be
 .Dq source routed
 by specifying the corresponding sequence
 of hooks as the destination address for the message (relative
-addressing).  Otherwise, the recipient node global
+addressing).
+Otherwise, the recipient node global
 .Tn ASCII
 name
 (or equivalent ID based name) is used as the destination address
-for the message (absolute addressing).  The two types of addressing
-may be combined, by specifying an absolute start node and a sequence
-of hooks.
+for the message (absolute addressing).
+The two types of addressing may be combined,
+by specifying an absolute start node and a sequence of hooks.
 .Pp
 Messages often represent commands that are followed by a reply message
-in the reverse direction. To facilitate this, the recipient of a
+in the reverse direction.
+To facilitate this, the recipient of a
 control message is supplied with a
 .Dq return address
 that is suitable for addressing a reply.
 .Pp
 Each control message contains a 32 bit value called a
 .Em typecookie
-indicating the type of the message, i.e., how to interpret it.
+indicating the type of the message, i.e. how to interpret it.
 Typically each type defines a unique typecookie for the messages
-that it understands.  However, a node may choose to recognize and
+that it understands.
+However, a node may choose to recognize and
 implement more than one type of message.
 .Sh Netgraph is Functional
 In order to minimize latency, most
 .Nm
 operations are functional.
 That is, data and control messages are delivered by making function
-calls rather than by using queues and mailboxes.  For example, if node
-A wishes to send a data mbuf to neighboring node B, it calls the
-generic
+calls rather than by using queues and mailboxes.
+For example, if node A wishes to send a data mbuf to neighboring node B,
+it calls the generic
 .Nm
-data delivery function. This function in turn locates
-node B and calls B's
+data delivery function.
+This function in turn locates node B and calls B's
 .Dq receive data
-method. While this mode of operation
-results in good performance, it has a few implications for node
-developers:
+method.
+While this mode of operation results in good performance,
+it has a few implications for node developers:
 .Pp
 .Bl -bullet -compact -offset 2n
 .It
@@ -216,9 +228,9 @@ message before the original delivery function call returns.
 Netgraph nodes and support routines generally run inside critical
 sections.
 However, some nodes may want to send data and control messages
-from a different priority level. Netgraph supplies queueing routines which
-utilize the NETISR system to move message delivery inside a critical
-section.
+from a different priority level.
+Netgraph supplies queueing routines which utilize the NETISR system to
+move message delivery inside a critical section.
 Note that messages are always received from inside a critical section.
 .It
 It's possible for an infinite loop to occur if the graph contains cycles.
@@ -229,8 +241,8 @@ So far, these issues have not proven problematical in practice.
 A node may have a hidden interaction with other components of the
 kernel outside of the
 .Nm
-subsystem, such as device hardware,
-kernel protocol stacks, etc.  In fact, one of the benefits of
+subsystem, such as device hardware, kernel protocol stacks, etc.
+In fact, one of the benefits of
 .Nm
 is the ability to join disparate kernel networking entities together in a
 consistent communication framework.
@@ -257,34 +269,39 @@ and may accept or reject that action (by returning the appropriate
 error code):
 .Bl -tag -width xxx
 .It Creation of a new node
-The constructor for the type is called. If creation of a new node is
-allowed, the constructor must call the generic node creation
+The constructor for the type is called.
+If creation of a new node is allowed,
+the constructor must call the generic node creation
 function (in object-oriented terms, the superclass constructor)
-and then allocate any special resources it needs. For nodes that
-correspond to hardware, this is typically done during the device
-attach routine. Often a global
+and then allocate any special resources it needs.
+For nodes that correspond to hardware, this is typically done during
+the device attach routine.
+Often a global
 .Tn ASCII
 name corresponding to the
 device name is assigned here as well.
 .It Creation of a new hook
 The hook is created and tentatively
 linked to the node, and the node is told about the name that will be
-used to describe this hook. The node sets up any special data structures
-it needs, or may reject the connection, based on the name of the hook.
+used to describe this hook.
+The node sets up any special data structures it needs,
+or may reject the connection, based on the name of the hook.
 .It Successful connection of two hooks
 After both ends have accepted their
 hooks, and the links have been made, the nodes get a chance to
 find out who their peer is across the link and can then decide to reject
-the connection. Tear-down is automatic.
+the connection.
+Tear-down is automatic.
 .It Destruction of a hook
-The node is notified of a broken connection. The node may consider some hooks
-to be critical to operation and others to be expendable: the disconnection
-of one hook may be an acceptable event while for another it
-may affect a total shutdown for the node.
+The node is notified of a broken connection.
+The node may consider some hooks to be critical to operation and others
+to be expendable: the disconnection of one hook may be an acceptable
+event while for another it may affect a total shutdown for the node.
 .It Shutdown of a node
 This method allows a node to clean up
 and to ensure that any actions that need to be performed
-at this time are taken. The method must call the generic (i.e., superclass)
+at this time are taken.
+The method must call the generic (i.e. superclass)
 node destructor to get rid of the generic components of the node.
 Some nodes (usually associated with a piece of hardware) may be
 .Em persistent
@@ -305,10 +322,11 @@ the mbuf chain on completion or error, or pass it on to another node
 .Pp
 In addition to the mbuf chain itself there is also a pointer to a
 structure describing meta-data about the message
-(e.g. priority information). This pointer may be
+(e.g. priority information).
+This pointer may be
 .Dv NULL
-if there is no additional information. The format for this information is
-described in
+if there is no additional information.
+The format for this information is described in
 .In netgraph/netgraph.h .
 The memory for meta-data must allocated via
 .Fn malloc
@@ -316,9 +334,9 @@ with type
 .Dv M_NETGRAPH .
 As with the data itself, it is the receiver's responsibility to
 .Fn free
-the meta-data. If the mbuf chain is freed the meta-data must
-be freed at the same time. If the meta-data is freed but the
-real data on is passed on, then a
+the meta-data.
+If the mbuf chain is freed the meta-data must be freed at the same time.
+If the meta-data is freed but the real data on is passed on, then a
 .Dv NULL
 pointer must be substituted.
 .Pp
@@ -329,9 +347,8 @@ NETISR system (see below).
 The structure and use of meta-data is still experimental, but is
 presently used in frame-relay to indicate that management packets
 should be queued for transmission
-at a higher priority than data packets. This is required for
-conformance with Frame Relay standards.
-.Pp
+at a higher priority than data packets.
+This is required for conformance with Frame Relay standards.
 .It Receive queued data message
 Usually this will be the same function as
 .Em Receive data message.
@@ -355,12 +372,12 @@ Then when the control message delivery function returns,
 the caller can check if this pointer has been made non-NULL,
 and if so then it points to the reply message allocated via
 .Fn malloc
-and containing the synchronous response. In both directions,
-(request and response) it is up to the
+and containing the synchronous response.
+In both directions, (request and response) it is up to the
 receiver of that message to
 .Fn free
-the control message buffer. All control messages and replies are
-allocated with
+the control message buffer.
+All control messages and replies are allocated with
 .Fn malloc
 type
 .Dv M_NETGRAPH .
@@ -376,15 +393,16 @@ writer to use.
 The
 .Nm
 framework provides an unambiguous and simple to use method of specifically
-addressing any single node in the graph. The naming of a node is
-independent of its type, in that another node, or external component
-need not know anything about the node's type in order to address it so as
-to send it a generic message type. Node and hook names should be
-chosen so as to make addresses meaningful.
+addressing any single node in the graph.
+The naming of a node is independent of its type, in that another node,
+or external component need not know anything about the node's type in
+order to address it so as to send it a generic message type.
+Node and hook names should be chosen so as to make addresses meaningful.
 .Pp
-Addresses are either absolute or relative. An absolute address begins
-with a node name, (or ID), followed by a colon, followed by a sequence of hook
-names separated by periods. This addresses the node reached by starting
+Addresses are either absolute or relative.
+An absolute address begins with a node name (or ID), followed by a colon,
+followed by a sequence of hook names separated by periods.
+This addresses the node reached by starting
 at the named node and following the specified sequence of hooks.
 A relative address includes only the sequence of hook names, implicitly
 starting hook traversal at the local node.
@@ -439,8 +457,8 @@ could be used by both nodes C and D to address a message to node A.
 Note that this is only for
 .Em control messages .
 Data messages are routed one hop at a time, by specifying the departing
-hook, with each node making the next routing decision. So when B
-receives a frame on hook
+hook, with each node making the next routing decision.
+So when B receives a frame on hook
 .Em data
 it decodes the frame relay header to determine the DLCI,
 and then forwards the unwrapped frame to either C or D.
@@ -548,10 +566,12 @@ struct ng_mesg {
 .Pp
 Control messages have the fixed header shown above, followed by a
 variable length data section which depends on the type cookie
-and the command. Each field is explained below:
+and the command.
+Each field is explained below:
 .Bl -tag -width xxx
 .It Dv version
-Indicates the version of netgraph itself. The current version is
+Indicates the version of netgraph itself.
+The current version is
 .Dv NG_VERSION .
 .It Dv arglen
 This is the length of any extra arguments, which begin at
@@ -563,7 +583,6 @@ The
 .Dv token
 is a means by which a sender can match a reply message to the
 corresponding command message; the reply always has the same token.
-.Pp
 .It Dv typecookie
 The corresponding node type's unique 32-bit value.
 If a node doesn't recognize the type cookie it must reject the message
@@ -580,7 +599,7 @@ the typecookie
 be changed.
 The de facto method for generating unique type cookies is to take the
 seconds from the epoch at the time the header file is written
-(i.e., the output of
+(i.e. the output of
 .Dv "date -u +'%s'" ) .
 .Pp
 There is a predefined typecookie
@@ -591,7 +610,8 @@ node type, and
 a corresponding set of generic messages which all nodes understand.
 The handling of these messages is automatic.
 .It Dv command
-The identifier for the message command. This is type specific,
+The identifier for the message command.
+This is type specific,
 and is defined in the same header file as the typecookie.
 .It Dv cmdstr
 Room for a short human readable version of
@@ -602,11 +622,13 @@ Room for a short human readable version of
 Some modules may choose to implement messages from more than one
 of the header files and thus recognize more than one type cookie.
 .Sh Control Message ASCII Form
-Control messages are in binary format for efficiency.  However, for
-debugging and human interface purposes, and if the node type supports
-it, control messages may be converted to and from an equivalent
+Control messages are in binary format for efficiency.
+However, for debugging and human interface purposes,
+and if the node type supports it,
+control messages may be converted to and from an equivalent
 .Tn ASCII
-form.  The
+form.
+The
 .Tn ASCII
 form is similar to the binary form, with two exceptions:
 .Pp
@@ -628,7 +650,8 @@ string version of the message arguments.
 .El
 .Pp
 In general, the arguments field of a control message can be any
-arbitrary C data type.  Netgraph includes parsing routines to support
+arbitrary C data type.
+Netgraph includes parsing routines to support
 some pre-defined datatypes in
 .Tn ASCII
 with this simple syntax:
@@ -643,10 +666,10 @@ C language backslash escapes.
 IP addresses have the obvious form.
 .It o
 Arrays are enclosed in square brackets, with the elements listed
-consecutively starting at index zero.  An element may have an optional
-index and equals sign preceding it.  Whenever an element
-does not have an explicit index, the index is implicitly the previous
-element's index plus one.
+consecutively starting at index zero.
+An element may have an optional index and equals sign preceding it.
+Whenever an element does not have an explicit index, the index is
+implicitly the previous element's index plus one.
 .It o
 Structures are enclosed in curly braces, and each field is specified
 in the form
@@ -654,8 +677,9 @@ in the form
 .It o
 Any array element or structure field whose value is equal to its
 .Dq default value
-may be omitted. For integer types, the default value
-is usually zero; for string types, the empty string.
+may be omitted.
+For integer types, the default value is usually zero;
+for string types, the empty string.
 .It o
 Array elements and structure fields may be specified in any order.
 .El
@@ -686,10 +710,12 @@ The node must disconnect all of its hooks.
 This may result in neighbors shutting themselves down, and possibly a
 cascading shutdown of the entire connected graph.
 .It Dv NGM_NAME
-Assign a name to a node. Nodes can exist without having a name, and this
+Assign a name to a node.
+Nodes can exist without having a name, and this
 is the default for nodes created using the
 .Dv NGM_MKPEER
-method. Such nodes can only be addressed relatively or by their ID number.
+method.
+Such nodes can only be addressed relatively or by their ID number.
 .It Dv NGM_RMHOOK
 Ask the node to break a hook connection to one of its neighbours.
 Both nodes will have their
@@ -697,9 +723,10 @@ Both nodes will have their
 method invoked.
 Either node may elect to totally shut down as a result.
 .It Dv NGM_NODEINFO
-Asks the target node to describe itself. The four returned fields
-are the node name (if named), the node type, the node ID and the
-number of hooks attached. The ID is an internal number unique to that node.
+Asks the target node to describe itself.
+The four returned fields are the node name (if named), the node type,
+the node ID and the number of hooks attached.
+The ID is an internal number unique to that node.
 .It Dv NGM_LISTHOOKS
 This returns the information given by
 .Dv NGM_NODEINFO ,
@@ -722,9 +749,11 @@ The node may return a text formatted status message.
 The status information is determined entirely by the node type.
 It is the only "generic" message
 that requires any support within the node itself and as such the node may
-elect to not support this message. The text response must be less than
+elect to not support this message.
+The text response must be less than
 .Dv NG_TEXTRESPONSE
-bytes in length (presently 1024). This can be used to return general
+bytes in length (presently 1024).
+This can be used to return general
 status information in human readable form.
 .It Dv NGM_BINARY2ASCII
 This message converts a binary control message to its
@@ -733,8 +762,8 @@ form.
 The entire control message to be converted is contained within the
 arguments field of the
 .Dv NGM_BINARY2ASCII
-message itself.  If successful, the reply will contain the same control
-message in
+message itself.
+If successful, the reply will contain the same control message in
 .Tn ASCII
 form.
 A node will typically only know how to translate messages that it
@@ -755,26 +784,30 @@ and need only have the
 and
 .Dv arglen
 header fields filled in, plus the NUL-terminated string version of
-the arguments in the arguments field.  If successful, the reply
+the arguments in the arguments field.
+If successful, the reply
 contains the binary version of the control message.
 .El
 .Sh Metadata
 Data moving through the
 .Nm
 system can be accompanied by meta-data that describes some
-aspect of that data. The form of the meta-data is a fixed header,
+aspect of that data.
+The form of the meta-data is a fixed header,
 which contains enough information for most uses, and can optionally
 be supplemented by trailing
 .Em option
 structures, which contain a
 .Em cookie
 (see the section on control messages), an identifier, a length and optional
-data. If a node does not recognize the cookie associated with an option,
+data.
+If a node does not recognize the cookie associated with an option,
 it should ignore that option.
 .Pp
 Meta data might include such things as priority, discard eligibility,
-or special processing requirements. It might also mark a packet for
-debug status, etc. The use of meta-data is still experimental.
+or special processing requirements.
+It might also mark a packet for debug status, etc.
+The use of meta-data is still experimental.
 .Sh INITIALIZATION
 The base
 .Nm
@@ -785,7 +818,8 @@ In the former case, include
 .Pp
 .D1 Cd options NETGRAPH
 .Pp
-in your kernel configuration file. You may also include selected
+in your kernel configuration file.
+You may also include selected
 node types in the kernel compilation, for example:
 .Bd -unfilled -offset indent
 .Cd options NETGRAPH
@@ -822,8 +856,8 @@ The
 .Fn NETGRAPH_INIT
 macro automates this process by using a linker set.
 .Sh EXISTING NODE TYPES
-Several node types currently exist. Each is fully documented
-in its own man page:
+Several node types currently exist.
+Each is fully documented in its own man page:
 .Bl -tag -width xxx
 .It SOCKET
 The socket type implements two new sockets in the new protocol domain
@@ -835,7 +869,8 @@ and
 both of type
 .Dv SOCK_DGRAM .
 Typically one of each is associated with a socket node.
-When both sockets have closed, the node will shut down. The
+When both sockets have closed, the node will shut down.
+The
 .Dv NG_DATA
 socket is used for sending and receiving data, while the
 .Dv NG_CONTROL
@@ -847,17 +882,17 @@ and
 calls, using a
 .Dv struct sockaddr_ng
 socket address.
-.Pp
 .It HOLE
 Responds only to generic messages and is a
 .Dq black hole
-for data, Useful for testing. Always accepts new hooks.
-.Pp
+for data, Useful for testing.
+Always accepts new hooks.
 .It ECHO
 Responds only to generic messages and always echoes data back through the
-hook from which it arrived. Returns any non generic messages as their
-own response. Useful for testing.  Always accepts new hooks.
-.Pp
+hook from which it arrived.
+Returns any non generic messages as their own response.
+Useful for testing.
+Always accepts new hooks.
 .It TEE
 This node is useful for
 .Dq snooping .
@@ -877,43 +912,40 @@ Data entering from
 is sent to the right and data from
 .Dv right2left
 to left.
-.Pp
 .It RFC1490 MUX
 Encapsulates/de-encapsulates frames encoded according to RFC 1490.
 Has a hook for the encapsulated packets
 .Pq Dq downstream
 and one hook
-for each protocol (i.e., IP, PPP, etc.).
-.Pp
+for each protocol (i.e. IP, PPP, etc.).
 .It FRAME RELAY MUX
 Encapsulates/de-encapsulates Frame Relay frames.
 Has a hook for the encapsulated packets
 .Pq Dq downstream
 and one hook
 for each DLCI.
-.Pp
 .It FRAME RELAY LMI
 Automatically handles frame relay
 .Dq LMI
 (link management interface) operations and packets.
 Automatically probes and detects which of several LMI standards
 is in use at the exchange.
-.Pp
 .It TTY
-This node is also a line discipline. It simply converts between mbuf
-frames and sequential serial data, allowing a tty to appear as a netgraph
-node. It has a programmable
+This node is also a line discipline.
+It simply converts between mbuf frames and sequential serial data,
+allowing a tty to appear as a netgraph node.
+It has a programmable
 .Dq hotkey
 character.
-.Pp
 .It ASYNC
 This node encapsulates and de-encapsulates asynchronous frames
-according to RFC 1662. This is used in conjunction with the TTY node
+according to RFC 1662.
+This is used in conjunction with the TTY node
 type for supporting PPP links over asynchronous serial lines.
-.Pp
 .It INTERFACE
-This node is also a system networking interface. It has hooks representing
-each protocol family (IP, AppleTalk, IPX, etc.) and appears in the output of
+This node is also a system networking interface.
+It has hooks representing each protocol family (IP, AppleTalk, IPX, etc.)
+and appears in the output of
 .Xr ifconfig 8 .
 The interfaces are named
 .Em ng0 ,
@@ -949,7 +981,8 @@ should be used if possible to free data and meta data (see
 .It 3
 Messages sent using
 .Fn ng_send_msg
-are freed by the callee. As in the case above, the addresses
+are freed by the callee.
+As in the case above, the addresses
 associated with the message are freed by whatever allocated them so the
 recipient should copy them if it wants to keep that information.
 .El
@@ -979,7 +1012,8 @@ Loadable KLD module for node type {type}.
 .El
 .Sh USER MODE SUPPORT
 There is a library for supporting user-mode programs that wish
-to interact with the netgraph system. See
+to interact with the netgraph system.
+See
 .Xr netgraph 3
 for details.
 .Pp
