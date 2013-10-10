@@ -465,6 +465,43 @@ main(int argc, char **argv)
 }
 
 static int
+manual_find_literalfile(struct manstate *mp, glob_t *pg, size_t cnt)
+{
+	ENTRY *suffix;
+	int found;
+	char buf[MAXPATHLEN];
+	const char *p;
+	int suflen;
+
+	found = 0;
+
+	/*
+	 * Expand both '*' and suffix to force an actual
+	 * match via fnmatch(3). Since the only match in pg
+	 * is the literal file, the match is genuine.
+	 */
+
+	TAILQ_FOREACH(suffix, &mp->buildlist->entrylist, q) {
+		for (p = suffix->s, suflen = 0;
+		    *p != '\0' && !isspace((unsigned char)*p);
+		    ++p)
+			++suflen;
+		if (*p == '\0')
+			continue;
+
+		(void)snprintf(buf, sizeof(buf), "*%.*s", suflen, suffix->s);
+		if (!fnmatch(buf, pg->gl_pathv[cnt], 0)) {
+			if (!mp->where)
+				build_page(p + 1, &pg->gl_pathv[cnt], mp);
+			found = 1;
+			break;
+		}
+	}
+
+	return found;
+}
+
+static int
 manual_find_buildkeyword(const char *prefix, const char *escpage,
 	struct manstate *mp, glob_t *pg, size_t cnt)
 {
@@ -554,30 +591,12 @@ manual(char *page, struct manstate *mp, glob_t *pg)
 		if (pg->gl_matchc == 0)
 			goto notfound;
 
-		/* clip suffix for the suffix check below */
-		p = strrchr(escpage, '/');
-		while ((p = strchr(p, '.')) && !isdigit(p[1]))
-			++p;
-		if (p)
-			p[0] = '\0';
+		/* literal file only yields one match */
+		cnt = pg->gl_pathc - pg->gl_matchc;
 
-		found = 0;
-		for (cnt = pg->gl_pathc - pg->gl_matchc;
-		    cnt < pg->gl_pathc; ++cnt)
-		{
-			found = manual_find_buildkeyword("", escpage,
-				mp, pg, cnt);
-			if (found) {
-				anyfound = 1;
-				if (!mp->all) {
-					/* Delete any other matches. */
-					while (++cnt< pg->gl_pathc)
-						*pg->gl_pathv[cnt] = '\0';
-					break;
-				}
-				continue;
-			}
-
+		if (manual_find_literalfile(mp, pg, cnt)) {
+			anyfound = 1;
+		} else {
 			/* It's not a man page, forget about it. */
 			*pg->gl_pathv[cnt] = '\0';
 		}
