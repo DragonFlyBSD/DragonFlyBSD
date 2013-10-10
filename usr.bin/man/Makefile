@@ -5,7 +5,4 @@ PROG=	man
 SRCS=	man.c manconf.c
 MAN=	man.1 man.conf.5
 
-DPADD+=	${LIBUTIL}
-LDADD+=	-lutil
-
 .include <bsd.prog.mk>
