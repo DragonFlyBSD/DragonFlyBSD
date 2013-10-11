@@ -35,7 +35,7 @@
 .\"
 .\" $FreeBSD: src/usr.bin/stat/stat.1,v 1.8 2005/06/14 11:50:53 ru Exp $
 .\"
-.Dd May 8, 2003
+.Dd October 11, 2013
 .Dt STAT 1
 .Os
 .Sh NAME
@@ -350,11 +350,10 @@ User ID and group ID of
 owner.
 .It Cm r
 Device number for character and block device special files.
-.It Cm a , m , c , B
+.It Cm a , m , c
 The time
 .Ar file
-was last accessed or modified, or when the inode was last changed, or
-the birth time of the inode.
+was last accessed or modified, or when the inode was last changed.
 .It Cm z
 The size of
 .Ar file
