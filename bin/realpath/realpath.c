@@ -37,6 +37,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,6 +52,14 @@ main(int argc, char *argv[])
 	int physical;
 	int ch;
 	char *p;
+	char buf[PATH_MAX];
+
+	if (argc != 2)
+		usage();
+	if ((p = realpath(argv[1], buf)) == NULL)
+		err(1, "%s", argv[1]);
+	printf("%s\n", p);
+	exit(0);
 
 	physical = 1;
 	while ((ch = getopt(argc, argv, "LP")) != -1)
@@ -87,7 +96,8 @@ main(int argc, char *argv[])
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: pwd [-LP]\n");
+	if (strcmp(getprogname(), "realpath") == 0)
+		fprintf(stderr, "usage: realpath [path]\n");
   	exit(1);
 }
 
