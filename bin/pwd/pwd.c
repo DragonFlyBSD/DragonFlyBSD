@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1991, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -26,24 +26,22 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pwd.c	8.3 (Berkeley) 4/1/94
- * $FreeBSD: src/bin/pwd/pwd.c,v 1.9.2.3 2002/06/17 11:04:22 tjr Exp $
+ * $FreeBSD: head/bin/pwd/pwd.c 141578 2005-02-09 17:37:39Z ru $
  */
 
 #include <sys/param.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <err.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
-static char	*getcwd_logical(void);
-static void	usage(void);
+static char *getcwd_logical(void);
+void usage(void);
 
 int
 main(int argc, char *argv[])
@@ -84,10 +82,11 @@ main(int argc, char *argv[])
 	exit(0);
 }
 
-static void
+void
 usage(void)
 {
-	fprintf(stderr, "usage: pwd [-LP]\n");
+
+	(void)fprintf(stderr, "usage: pwd [-L | -P]\n");
   	exit(1);
 }
 
