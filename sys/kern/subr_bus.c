@@ -2720,6 +2720,22 @@ bus_generic_delete_resource(device_t dev, device_t child, int type, int rid)
 		BUS_DELETE_RESOURCE(dev, child, type, rid);
 }
 
+/**
+ * @brief Helper function for implementing BUS_GET_DMA_TAG().
+ *
+ * This simple implementation of BUS_GET_DMA_TAG() simply calls the
+ * BUS_GET_DMA_TAG() method of the parent of @p dev.
+ */
+bus_dma_tag_t
+bus_generic_get_dma_tag(device_t dev, device_t child)
+{
+
+	/* Propagate up the bus hierarchy until someone handles it. */
+	if (dev->parent != NULL)
+		return (BUS_GET_DMA_TAG(dev->parent, child));
+	return (NULL);
+}
+
 int
 bus_generic_rl_get_resource(device_t dev, device_t child, int type, int rid,
     u_long *startp, u_long *countp)
@@ -3010,6 +3026,23 @@ bus_child_location_str(device_t child, char *buf, size_t buflen)
 		return (0);
 	}
 	return (BUS_CHILD_LOCATION_STR(parent, child, buf, buflen));
+}
+
+/**
+ * @brief Wrapper function for BUS_GET_DMA_TAG().
+ *
+ * This function simply calls the BUS_GET_DMA_TAG() method of the
+ * parent of @p dev.
+ */
+bus_dma_tag_t
+bus_get_dma_tag(device_t dev)
+{
+	device_t parent;
+
+	parent = device_get_parent(dev);
+	if (parent == NULL)
+		return (NULL);
+	return (BUS_GET_DMA_TAG(parent, dev));
 }
 
 static int

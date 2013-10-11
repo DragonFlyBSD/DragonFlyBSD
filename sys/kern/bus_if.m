@@ -24,7 +24,6 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/bus_if.m,v 1.16 1999/10/12 21:35:50 dfr Exp $
-# $DragonFly: src/sys/kern/bus_if.m,v 1.11 2006/10/25 20:56:02 dillon Exp $
 #
 
 #include <sys/bus.h>
@@ -327,3 +326,13 @@ METHOD int config_intr {
         enum intr_polarity _pol;
 } DEFAULT bus_generic_config_intr;
 
+/**
+ * @brief Returns bus_dma_tag_t for use w/ devices on the bus.
+ *
+ * @param _dev		the parent device of @p _child
+ * @param _child	the device to which the tag will belong
+ */
+METHOD bus_dma_tag_t get_dma_tag {
+	device_t	_dev;
+	device_t	_child;
+} DEFAULT bus_generic_get_dma_tag;

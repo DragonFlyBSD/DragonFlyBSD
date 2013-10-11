@@ -250,6 +250,8 @@ int	bus_generic_deactivate_resource(device_t dev, device_t child, int type,
 int	bus_generic_detach(device_t dev);
 int	bus_generic_disable_intr(device_t dev, device_t child, void *cookie);
 void	bus_generic_driver_added(device_t dev, driver_t *driver);
+bus_dma_tag_t
+	bus_generic_get_dma_tag(device_t dev, device_t child);
 void	bus_generic_enable_intr(device_t dev, device_t child, void *cookie);
 int	bus_print_child_header(device_t dev, device_t child);
 int	bus_print_child_footer(device_t dev, device_t child);
@@ -315,6 +317,7 @@ int	bus_activate_resource(device_t dev, int type, int rid,
 			      struct resource *r);
 int	bus_deactivate_resource(device_t dev, int type, int rid,
 				struct resource *r);
+bus_dma_tag_t bus_get_dma_tag(device_t dev);
 int	bus_disable_intr(device_t dev, void *cookie);
 void	bus_enable_intr(device_t dev, void *cookie);
 int	bus_release_resource(device_t dev, int type, int rid, 
