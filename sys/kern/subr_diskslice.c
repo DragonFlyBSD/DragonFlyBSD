@@ -816,11 +816,15 @@ dssize(cdev_t dev, struct diskslices **sspp)
 		ssp = *sspp;
 	}
 	lp = ssp->dss_slices[slice].ds_label;
-	if (lp.opaque == NULL)
-		return (-1);
-	ops = ssp->dss_slices[slice].ds_ops;
-	if (ops->op_getpartbounds(ssp, lp, part, &start, &blocks))
-		return (-1);
+	if (part == WHOLE_SLICE_PART) {
+		blocks = ssp->dss_slices[slice].ds_size;
+	} else if (lp.opaque == NULL) {
+		blocks = (u_int64_t)-1;
+	} else {
+		ops = ssp->dss_slices[slice].ds_ops;
+		if (ops->op_getpartbounds(ssp, lp, part, &start, &blocks))
+			return (-1);
+	}
 	return ((int64_t)blocks);
 }
 
