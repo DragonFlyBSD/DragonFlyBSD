@@ -1096,6 +1096,7 @@ void	hammer_scan_inode_snapshots(hammer_mount_t hmp,
 void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
 void	hammer_inode_waitreclaims(hammer_transaction_t trans);
+void	hammer_inode_dirty(struct hammer_inode *ip);
 
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused);

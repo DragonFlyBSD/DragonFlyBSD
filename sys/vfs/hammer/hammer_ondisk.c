@@ -1692,7 +1692,6 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
  * These functions do not start the flusher going, they simply
  * queue everything up to the flusher.
  */
-static int hammer_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
 int
@@ -1703,11 +1702,11 @@ hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor)
 	info.error = 0;
 	info.waitfor = waitfor;
 	if (waitfor == MNT_WAIT) {
-		vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_ONEPASS,
-			      hammer_sync_scan1, hammer_sync_scan2, &info);
+		vsyncscan(hmp->mp, VMSC_GETVP | VMSC_ONEPASS,
+			  hammer_sync_scan2, &info);
 	} else {
-		vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_ONEPASS|VMSC_NOWAIT,
-			      hammer_sync_scan1, hammer_sync_scan2, &info);
+		vsyncscan(hmp->mp, VMSC_GETVP | VMSC_ONEPASS | VMSC_NOWAIT,
+			  hammer_sync_scan2, &info);
 	}
 	return(info.error);
 }
@@ -1733,13 +1732,11 @@ hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
 
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
-	vmntvnodescan(hmp->mp, flags | VMSC_NOWAIT,
-		      hammer_sync_scan1, hammer_sync_scan2, &info);
+	vsyncscan(hmp->mp, flags | VMSC_NOWAIT, hammer_sync_scan2, &info);
 
 	if (info.error == 0 && (waitfor & MNT_WAIT)) {
 		info.waitfor = waitfor;
-		vmntvnodescan(hmp->mp, flags,
-			      hammer_sync_scan1, hammer_sync_scan2, &info);
+		vsyncscan(hmp->mp, flags, hammer_sync_scan2, &info);
 	}
         if (waitfor == MNT_WAIT) {
                 hammer_flusher_sync(hmp);
@@ -1752,20 +1749,6 @@ hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
 }
 
 static int
-hammer_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
-{
-	struct hammer_inode *ip;
-
-	ip = VTOI(vp);
-	if (vp->v_type == VNON || ip == NULL ||
-	    ((ip->flags & HAMMER_INODE_MODMASK) == 0 &&
-	     RB_EMPTY(&vp->v_rbdirty_tree))) {
-		return(-1);
-	}
-	return(0);
-}
-
-static int
 hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct hammer_sync_info *info = data;
@@ -1773,9 +1756,13 @@ hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	int error;
 
 	ip = VTOI(vp);
+	if (ip == NULL)
+		return(0);
 	if (vp->v_type == VNON || vp->v_type == VBAD ||
 	    ((ip->flags & HAMMER_INODE_MODMASK) == 0 &&
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
+		if ((ip->flags & HAMMER_INODE_MODMASK) == 0)
+			vclrflags(vp, VISDIRTY);
 		return(0);
 	}
 	error = VOP_FSYNC(vp, MNT_NOWAIT, 0);
@@ -1783,4 +1770,3 @@ hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 		info->error = error;
 	return(0);
 }
-

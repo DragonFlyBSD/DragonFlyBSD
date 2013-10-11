@@ -249,6 +249,24 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 }
 
 /*
+ * Inform the kernel that the inode is dirty.  This will be checked
+ * by vn_unlock().
+ */
+void
+hammer_inode_dirty(struct hammer_inode *ip)
+{
+	struct vnode *vp;
+
+	if ((ip->flags & HAMMER_INODE_MODMASK) &&
+	    (vp = ip->vp) != NULL) {
+		if ((vp->v_flag & VISDIRTY) == 0) {
+			vsetflags(vp, VISDIRTY);
+			vn_syncer_add(vp, syncdelay);
+		}
+	}
+}
+
+/*
  * Return a locked vnode for the specified inode.  The inode must be
  * referenced but NOT LOCKED on entry and will remain referenced on
  * return.
@@ -1630,7 +1648,8 @@ hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags)
 	    (flags & HAMMER_INODE_MODMASK)) {
 		trans->flags |= HAMMER_TRANSF_NEWINODE;
 	}
-
+	if (flags & HAMMER_INODE_MODMASK)
+		hammer_inode_dirty(ip);
 	ip->flags |= flags;
 }
 
@@ -2532,6 +2551,8 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 	} else {
 		ip->flags &= ~HAMMER_INODE_REFLUSH;
 	}
+	if (ip->flags & HAMMER_INODE_MODMASK)
+		hammer_inode_dirty(ip);
 
 	/*
 	 * Adjust the flush state.
@@ -3150,6 +3171,8 @@ defer_buffer_flush:
 		error = hammer_update_inode(&cursor, ip);
 	}
 done:
+	if (ip->flags & HAMMER_INODE_MODMASK)
+		hammer_inode_dirty(ip);
 	if (error) {
 		hammer_critical_error(ip->hmp, ip, error,
 				      "while syncing inode");
@@ -3202,6 +3225,8 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 		 */
 		if (ip->vp)
 			nvtruncbuf(ip->vp, 0, HAMMER_BUFSIZE, 0, 0);
+		if (ip->flags & HAMMER_INODE_MODMASK)
+			hammer_inode_dirty(ip);
 		if (getvp)
 			vput(vp);
 	}

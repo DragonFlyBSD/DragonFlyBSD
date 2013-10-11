@@ -262,6 +262,8 @@ mode1:
 			++hammer_count_fsyncs;
 			hammer_flusher_flush_undos(hmp, mode);
 			ip->redo_count = 0;
+			if (ip->vp && (ip->flags & HAMMER_INODE_MODMASK) == 0)
+				vclrflags(ip->vp, VISDIRTY);
 			lwkt_reltoken(&hmp->fs_token);
 			return(0);
 		}
@@ -301,6 +303,8 @@ skip:
 		if ((ap->a_vp->v_flag & VINACTIVE) == 0)
 			vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
 	}
+	if (ip->vp && (ip->flags & HAMMER_INODE_MODMASK) == 0)
+		vclrflags(ip->vp, VISDIRTY);
 	lwkt_reltoken(&hmp->fs_token);
 	return (ip->error);
 }
@@ -2361,6 +2365,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				if ((ip->flags & HAMMER_INODE_TRUNCATED) == 0) {
 					ip->flags |= HAMMER_INODE_TRUNCATED;
 					ip->trunc_off = vap->va_size;
+					hammer_inode_dirty(ip);
 #ifdef DEBUG_TRUNCATE
 					if (ip == HammerTruncIp)
 					kprintf("truncate1 %016llx\n",
@@ -2401,6 +2406,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			if ((ip->flags & HAMMER_INODE_TRUNCATED) == 0) {
 				ip->flags |= HAMMER_INODE_TRUNCATED;
 				ip->trunc_off = vap->va_size;
+				hammer_inode_dirty(ip);
 			} else if (ip->trunc_off > vap->va_size) {
 				ip->trunc_off = vap->va_size;
 			}
