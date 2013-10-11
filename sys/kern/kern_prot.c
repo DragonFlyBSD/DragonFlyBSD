@@ -68,9 +68,9 @@ sys_getpid(struct getpid_args *uap)
 
 	uap->sysmsg_fds[0] = p->p_pid;
 #if defined(COMPAT_43)
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken_shared(&p->p_token);
 	uap->sysmsg_fds[1] = p->p_pptr->p_pid;
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 #endif
 	return (0);
 }
@@ -80,9 +80,9 @@ sys_getppid(struct getppid_args *uap)
 {
 	struct proc *p = curproc;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken_shared(&p->p_token);
 	uap->sysmsg_result = p->p_pptr->p_pid;
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 
 	return (0);
 }
@@ -108,7 +108,10 @@ sys_getpgrp(struct getpgrp_args *uap)
 {
 	struct proc *p = curproc;
 
+	lwkt_gettoken_shared(&p->p_token);
 	uap->sysmsg_result = p->p_pgrp->pg_id;
+	lwkt_reltoken(&p->p_token);
+
 	return (0);
 }
 
@@ -133,8 +136,11 @@ sys_getpgid(struct getpgid_args *uap)
 			error = ESRCH;
 	}
 	/* XXX MPSAFE on pgrp? */
-	if (error == 0)
+	if (error == 0) {
+		lwkt_gettoken_shared(&pt->p_token);
 		uap->sysmsg_result = pt->p_pgrp->pg_id;
+		lwkt_reltoken(&pt->p_token);
+	}
 	if (pt)
 		PRELE(pt);
 	return (error);
@@ -816,8 +822,13 @@ sys_getresuid(struct getresuid_args *uap)
 	struct ucred *cr;
 	int error1 = 0, error2 = 0, error3 = 0;
 
-	lwkt_gettoken(&proc_token);
-	cr = p->p_ucred;
+	/*
+	 * copyout's can fault synchronously so we cannot use a shared
+	 * token here.
+	 */
+	lwkt_gettoken_shared(&p->p_token);
+	cr = crhold(p->p_ucred);
+	lwkt_reltoken(&p->p_token);
 	if (uap->ruid)
 		error1 = copyout((caddr_t)&cr->cr_ruid,
 		    (caddr_t)uap->ruid, sizeof(cr->cr_ruid));
@@ -827,7 +838,7 @@ sys_getresuid(struct getresuid_args *uap)
 	if (uap->suid)
 		error3 = copyout((caddr_t)&cr->cr_svuid,
 		    (caddr_t)uap->suid, sizeof(cr->cr_svuid));
-	lwkt_reltoken(&proc_token);
+	crfree(cr);
 	return error1 ? error1 : (error2 ? error2 : error3);
 }
 
@@ -1161,9 +1172,9 @@ sys_getlogin(struct getlogin_args *uap)
 	if (uap->namelen > MAXLOGNAME)		/* namelen is unsigned */
 		uap->namelen = MAXLOGNAME;
 	bzero(buf, sizeof(buf));
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken_shared(&p->p_token);
 	bcopy(p->p_pgrp->pg_session->s_login, buf, uap->namelen);
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 
 	error = copyout(buf, uap->namebuf, uap->namelen);
 	return (error);
@@ -1191,9 +1202,9 @@ sys_setlogin(struct setlogin_args *uap)
 	if (error == ENAMETOOLONG)
 		error = EINVAL;
 	if (error == 0) {
-		lwkt_gettoken(&proc_token);
+		lwkt_gettoken_shared(&p->p_token);
 		memcpy(p->p_pgrp->pg_session->s_login, buf, sizeof(buf));
-		lwkt_reltoken(&proc_token);
+		lwkt_reltoken(&p->p_token);
 	}
 	return (error);
 }

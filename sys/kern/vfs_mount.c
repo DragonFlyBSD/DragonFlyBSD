@@ -1029,7 +1029,8 @@ insmntque(struct vnode *vp, struct mount *mp)
  * NOTE: We hold vmobj_token to prevent a VM object from being destroyed
  *	 out from under the fastfunc()'s vnode test.  It will not prevent
  *	 v_object from getting NULL'd out but it will ensure that the
- *	 pointer (if we race) will remain stable.
+ *	 pointer (if we race) will remain stable.  Only needed when
+ *	 fastfunc is non-NULL.
  */
 int
 vmntvnodescan(
@@ -1047,7 +1048,8 @@ vmntvnodescan(
 	int count = 0;
 
 	lwkt_gettoken(&mp->mnt_token);
-	lwkt_gettoken(&vmobj_token);
+	if (fastfunc)
+		lwkt_gettoken(&vmobj_token);
 
 	/*
 	 * If asked to do one pass stop after iterating available vnodes.
@@ -1173,7 +1175,8 @@ next:
 	}
 
 	TAILQ_REMOVE(&mp->mnt_vnodescan_list, &info, entry);
-	lwkt_reltoken(&vmobj_token);
+	if (fastfunc)
+		lwkt_reltoken(&vmobj_token);
 	lwkt_reltoken(&mp->mnt_token);
 	return(r);
 }

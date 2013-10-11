@@ -1552,7 +1552,7 @@ proc_stop(struct proc *p)
 }
 
 /*
- * Caller must hold proc_token
+ * Caller must hold p_token
  */
 void
 proc_unstop(struct proc *p)

@@ -89,50 +89,51 @@ int
 sys_getpriority(struct getpriority_args *uap)
 {
 	struct getpriority_info info;
+	thread_t curtd = curthread;
 	struct proc *curp = curproc;
 	struct proc *p;
+	struct pgrp *pg;
 	int low = PRIO_MAX + 1;
 	int error;
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
 		if (uap->who == 0) {
-			p = curp;
-			PHOLD(p);
+			low = curp->p_nice;
 		} else {
 			p = pfind(uap->who);
-		}
-		if (p) {
-			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
-				low = p->p_nice;
+			if (p) {
+				lwkt_gettoken_shared(&p->p_token);
+				if (PRISON_CHECK(curtd->td_ucred, p->p_ucred))
+					low = p->p_nice;
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
 			}
-			PRELE(p);
 		}
 		break;
-
 	case PRIO_PGRP: 
-	{
-		struct pgrp *pg;
-
 		if (uap->who == 0) {
+			lwkt_gettoken_shared(&curp->p_token);
 			pg = curp->p_pgrp;
 			pgref(pg);
+			lwkt_reltoken(&curp->p_token);
 		} else if ((pg = pgfind(uap->who)) == NULL) {
 			break;
 		} /* else ref held from pgfind */
 
+		lwkt_gettoken_shared(&pg->pg_token);
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
-			if (PRISON_CHECK(curp->p_ucred, p->p_ucred) &&
+			if (PRISON_CHECK(curtd->td_ucred, p->p_ucred) &&
 			    p->p_nice < low) {
 				low = p->p_nice;
 			}
 		}
+		lwkt_reltoken(&pg->pg_token);
 		pgrel(pg);
 		break;
-	}
 	case PRIO_USER:
 		if (uap->who == 0)
-			uap->who = curp->p_ucred->cr_uid;
+			uap->who = curtd->td_ucred->cr_uid;
 		info.low = low;
 		info.who = uap->who;
 		allproc_scan(getpriority_callback, &info);
@@ -163,11 +164,13 @@ getpriority_callback(struct proc *p, void *data)
 {
 	struct getpriority_info *info = data;
 
-	if (PRISON_CHECK(curproc->p_ucred, p->p_ucred) &&
+	lwkt_gettoken_shared(&p->p_token);
+	if (PRISON_CHECK(curthread->td_ucred, p->p_ucred) &&
 	    p->p_ucred->cr_uid == info->who &&
 	    p->p_nice < info->low) {
 		info->low = p->p_nice;
 	}
+	lwkt_reltoken(&p->p_token);
 	return(0);
 }
 
@@ -187,52 +190,65 @@ int
 sys_setpriority(struct setpriority_args *uap)
 {
 	struct setpriority_info info;
+	thread_t curtd = curthread;
 	struct proc *curp = curproc;
 	struct proc *p;
+	struct pgrp *pg;
 	int found = 0, error = 0;
-
-	lwkt_gettoken(&proc_token);
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
 		if (uap->who == 0) {
-			p = curp;
-			PHOLD(p);
+			lwkt_gettoken(&curp->p_token);
+			error = donice(curp, uap->prio);
+			found++;
+			lwkt_reltoken(&curp->p_token);
 		} else {
 			p = pfind(uap->who);
-		}
-		if (p) {
-			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
-				error = donice(p, uap->prio);
-				found++;
+			if (p) {
+				lwkt_gettoken(&p->p_token);
+				if (PRISON_CHECK(curtd->td_ucred, p->p_ucred)) {
+					error = donice(p, uap->prio);
+					found++;
+				}
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
 			}
-			PRELE(p);
 		}
 		break;
-
 	case PRIO_PGRP: 
-	{
-		struct pgrp *pg;
-
 		if (uap->who == 0) {
+			lwkt_gettoken_shared(&curp->p_token);
 			pg = curp->p_pgrp;
 			pgref(pg);
+			lwkt_reltoken(&curp->p_token);
 		} else if ((pg = pgfind(uap->who)) == NULL) {
 			break;
 		} /* else ref held from pgfind */
 
+		lwkt_gettoken(&pg->pg_token);
+restart:
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
-			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
+			PHOLD(p);
+			lwkt_gettoken(&p->p_token);
+			if (p->p_pgrp == pg &&
+			    PRISON_CHECK(curtd->td_ucred, p->p_ucred)) {
 				error = donice(p, uap->prio);
 				found++;
 			}
+			lwkt_reltoken(&p->p_token);
+			if (p->p_pgrp != pg) {
+				PRELE(p);
+				goto restart;
+			}
+			PRELE(p);
 		}
+		lwkt_reltoken(&pg->pg_token);
 		pgrel(pg);
 		break;
-	}
 	case PRIO_USER:
 		if (uap->who == 0)
-			uap->who = curp->p_ucred->cr_uid;
+			uap->who = curtd->td_ucred->cr_uid;
 		info.prio = uap->prio;
 		info.who = uap->who;
 		info.error = 0;
@@ -241,14 +257,11 @@ sys_setpriority(struct setpriority_args *uap)
 		error = info.error;
 		found = info.found;
 		break;
-
 	default:
 		error = EINVAL;
 		found = 1;
 		break;
 	}
-
-	lwkt_reltoken(&proc_token);
 
 	if (found == 0)
 		error = ESRCH;
@@ -262,21 +275,25 @@ setpriority_callback(struct proc *p, void *data)
 	struct setpriority_info *info = data;
 	int error;
 
+	lwkt_gettoken(&p->p_token);
 	if (p->p_ucred->cr_uid == info->who &&
-	    PRISON_CHECK(curproc->p_ucred, p->p_ucred)) {
+	    PRISON_CHECK(curthread->td_ucred, p->p_ucred)) {
 		error = donice(p, info->prio);
 		if (error)
 			info->error = error;
 		++info->found;
 	}
+	lwkt_reltoken(&p->p_token);
 	return(0);
 }
 
+/*
+ * Caller must hold chgp->p_token
+ */
 static int
 donice(struct proc *chgp, int n)
 {
-	struct proc *curp = curproc;
-	struct ucred *cr = curp->p_ucred;
+	struct ucred *cr = curthread->td_ucred;
 	struct lwp *lp;
 
 	if (cr->cr_uid && cr->cr_ruid &&
@@ -313,56 +330,55 @@ int
 sys_ioprio_get(struct ioprio_get_args *uap)
 {
 	struct ioprio_get_info info;
+	thread_t curtd = curthread;
 	struct proc *curp = curproc;
 	struct proc *p;
+	struct pgrp *pg;
 	int high = IOPRIO_MIN-2;
 	int error;
-
-	lwkt_gettoken(&proc_token);
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
 		if (uap->who == 0) {
-			p = curp;
-			PHOLD(p);
+			high = curp->p_ionice;
 		} else {
 			p = pfind(uap->who);
-		}
-		if (p) {
-			if (PRISON_CHECK(curp->p_ucred, p->p_ucred))
-				high = p->p_ionice;
-			PRELE(p);
+			if (p) {
+				lwkt_gettoken_shared(&p->p_token);
+				if (PRISON_CHECK(curtd->td_ucred, p->p_ucred))
+					high = p->p_ionice;
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
+			}
 		}
 		break;
-
 	case PRIO_PGRP:
-	{
-		struct pgrp *pg;
-
 		if (uap->who == 0) {
+			lwkt_gettoken_shared(&curp->p_token);
 			pg = curp->p_pgrp;
 			pgref(pg);
+			lwkt_reltoken(&curp->p_token);
 		} else if ((pg = pgfind(uap->who)) == NULL) {
 			break;
 		} /* else ref held from pgfind */
 
+		lwkt_gettoken_shared(&pg->pg_token);
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
-			if (PRISON_CHECK(curp->p_ucred, p->p_ucred) &&
+			if (PRISON_CHECK(curtd->td_ucred, p->p_ucred) &&
 			    p->p_nice > high)
 				high = p->p_ionice;
 		}
+		lwkt_reltoken(&pg->pg_token);
 		pgrel(pg);
 		break;
-	}
 	case PRIO_USER:
 		if (uap->who == 0)
-			uap->who = curp->p_ucred->cr_uid;
+			uap->who = curtd->td_ucred->cr_uid;
 		info.high = high;
 		info.who = uap->who;
 		allproc_scan(ioprio_get_callback, &info);
 		high = info.high;
 		break;
-
 	default:
 		error = EINVAL;
 		goto done;
@@ -374,8 +390,6 @@ sys_ioprio_get(struct ioprio_get_args *uap)
 	uap->sysmsg_result = high;
 	error = 0;
 done:
-	lwkt_reltoken(&proc_token);
-
 	return (error);
 }
 
@@ -389,11 +403,13 @@ ioprio_get_callback(struct proc *p, void *data)
 {
 	struct ioprio_get_info *info = data;
 
-	if (PRISON_CHECK(curproc->p_ucred, p->p_ucred) &&
+	lwkt_gettoken_shared(&p->p_token);
+	if (PRISON_CHECK(curthread->td_ucred, p->p_ucred) &&
 	    p->p_ucred->cr_uid == info->who &&
 	    p->p_ionice > info->high) {
 		info->high = p->p_ionice;
 	}
+	lwkt_reltoken(&p->p_token);
 	return(0);
 }
 
@@ -414,52 +430,65 @@ int
 sys_ioprio_set(struct ioprio_set_args *uap)
 {
 	struct ioprio_set_info info;
+	thread_t curtd = curthread;
 	struct proc *curp = curproc;
 	struct proc *p;
+	struct pgrp *pg;
 	int found = 0, error = 0;
-
-	lwkt_gettoken(&proc_token);
 
 	switch (uap->which) {
 	case PRIO_PROCESS:
 		if (uap->who == 0) {
-			p = curp;
-			PHOLD(p);
+			lwkt_gettoken(&curp->p_token);
+			error = doionice(curp, uap->prio);
+			lwkt_reltoken(&curp->p_token);
+			found++;
 		} else {
 			p = pfind(uap->who);
-		}
-		if (p) {
-			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
-				error = doionice(p, uap->prio);
-				found++;
+			if (p) {
+				lwkt_gettoken(&p->p_token);
+				if (PRISON_CHECK(curtd->td_ucred, p->p_ucred)) {
+					error = doionice(p, uap->prio);
+					found++;
+				}
+				lwkt_reltoken(&p->p_token);
+				PRELE(p);
 			}
-			PRELE(p);
 		}
 		break;
-
 	case PRIO_PGRP:
-	{
-		struct pgrp *pg;
-
 		if (uap->who == 0) {
+			lwkt_gettoken_shared(&curp->p_token);
 			pg = curp->p_pgrp;
 			pgref(pg);
+			lwkt_reltoken(&curp->p_token);
 		} else if ((pg = pgfind(uap->who)) == NULL) {
 			break;
 		} /* else ref held from pgfind */
 
+		lwkt_gettoken(&pg->pg_token);
+restart:
 		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
-			if (PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
+			PHOLD(p);
+			lwkt_gettoken(&p->p_token);
+			if (p->p_pgrp == pg &&
+			    PRISON_CHECK(curtd->td_ucred, p->p_ucred)) {
 				error = doionice(p, uap->prio);
 				found++;
 			}
+			lwkt_reltoken(&p->p_token);
+			if (p->p_pgrp != pg) {
+				PRELE(p);
+				goto restart;
+			}
+			PRELE(p);
 		}
+		lwkt_reltoken(&pg->pg_token);
 		pgrel(pg);
 		break;
-	}
 	case PRIO_USER:
 		if (uap->who == 0)
-			uap->who = curp->p_ucred->cr_uid;
+			uap->who = curtd->td_ucred->cr_uid;
 		info.prio = uap->prio;
 		info.who = uap->who;
 		info.error = 0;
@@ -468,14 +497,11 @@ sys_ioprio_set(struct ioprio_set_args *uap)
 		error = info.error;
 		found = info.found;
 		break;
-
 	default:
 		error = EINVAL;
 		found = 1;
 		break;
 	}
-
-	lwkt_reltoken(&proc_token);
 
 	if (found == 0)
 		error = ESRCH;
@@ -489,21 +515,22 @@ ioprio_set_callback(struct proc *p, void *data)
 	struct ioprio_set_info *info = data;
 	int error;
 
+	lwkt_gettoken(&p->p_token);
 	if (p->p_ucred->cr_uid == info->who &&
-	    PRISON_CHECK(curproc->p_ucred, p->p_ucred)) {
+	    PRISON_CHECK(curthread->td_ucred, p->p_ucred)) {
 		error = doionice(p, info->prio);
 		if (error)
 			info->error = error;
 		++info->found;
 	}
+	lwkt_reltoken(&p->p_token);
 	return(0);
 }
 
 int
 doionice(struct proc *chgp, int n)
 {
-	struct proc *curp = curproc;
-	struct ucred *cr = curp->p_ucred;
+	struct ucred *cr = curthread->td_ucred;
 
 	if (cr->cr_uid && cr->cr_ruid &&
 	    cr->cr_uid != chgp->p_ucred->cr_uid &&
@@ -513,7 +540,8 @@ doionice(struct proc *chgp, int n)
 		n = IOPRIO_MAX;
 	if (n < IOPRIO_MIN)
 		n = IOPRIO_MIN;
-	if (n < chgp->p_ionice && priv_check_cred(cr, PRIV_SCHED_SETPRIORITY, 0))
+	if (n < chgp->p_ionice &&
+	    priv_check_cred(cr, PRIV_SCHED_SETPRIORITY, 0))
 		return (EACCES);
 	chgp->p_ionice = n;
 
@@ -527,10 +555,10 @@ doionice(struct proc *chgp, int n)
 int
 sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 {
+	struct ucred *cr = curthread->td_ucred;
 	struct proc *p;
 	struct lwp *lp;
 	struct rtprio rtp;
-	struct ucred *cr = curthread->td_ucred;
 	int error;
 
 	error = copyin(uap->rtp, &rtp, sizeof(struct rtprio));
@@ -539,19 +567,17 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 	if (uap->pid < 0)
 		return EINVAL;
 
-	lwkt_gettoken(&proc_token);
-
 	if (uap->pid == 0) {
 		p = curproc;
 		PHOLD(p);
 	} else {
 		p = pfind(uap->pid);
 	}
-
 	if (p == NULL) {
 		error = ESRCH;
 		goto done;
 	}
+	lwkt_gettoken(&p->p_token);
 
 	if (uap->tid < -1) {
 		error = EINVAL;
@@ -628,10 +654,10 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 	}
 
 done:
-	if (p)
+	if (p) {
+		lwkt_reltoken(&p->p_token);
 		PRELE(p);
-	lwkt_reltoken(&proc_token);
-
+	}
 	return (error);
 }
 
@@ -643,17 +669,15 @@ done:
 int
 sys_rtprio(struct rtprio_args *uap)
 {
+	struct ucred *cr = curthread->td_ucred;
 	struct proc *p;
 	struct lwp *lp;
-	struct ucred *cr = curthread->td_ucred;
 	struct rtprio rtp;
 	int error;
 
 	error = copyin(uap->rtp, &rtp, sizeof(struct rtprio));
 	if (error)
 		return (error);
-
-	lwkt_gettoken(&proc_token);
 
 	if (uap->pid == 0) {
 		p = curproc;
@@ -666,6 +690,7 @@ sys_rtprio(struct rtprio_args *uap)
 		error = ESRCH;
 		goto done;
 	}
+	lwkt_gettoken(&p->p_token);
 
 	/* XXX lwp */
 	lp = FIRST_LWP_IN_PROC(p);
@@ -725,9 +750,10 @@ sys_rtprio(struct rtprio_args *uap)
 		break;
 	}
 done:
-	if (p)
+	if (p) {
+		lwkt_reltoken(&p->p_token);
 		PRELE(p);
-	lwkt_reltoken(&proc_token);
+	}
 
 	return (error);
 }
@@ -838,29 +864,31 @@ calcru_proc(struct proc *p, struct rusage *ru)
 int
 sys_getrusage(struct getrusage_args *uap)
 {
+	struct proc *p = curproc;
 	struct rusage ru;
 	struct rusage *rup;
 	int error;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);
 
 	switch (uap->who) {
 	case RUSAGE_SELF:
 		rup = &ru;
-		calcru_proc(curproc, rup);
+		calcru_proc(p, rup);
 		error = 0;
 		break;
 	case RUSAGE_CHILDREN:
-		rup = &curproc->p_cru;
+		rup = &p->p_cru;
 		error = 0;
 		break;
 	default:
 		error = EINVAL;
 		break;
 	}
+	lwkt_reltoken(&p->p_token);
+
 	if (error == 0)
 		error = copyout(rup, uap->rusage, sizeof(struct rusage));
-	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
