@@ -1758,11 +1758,13 @@ hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	ip = VTOI(vp);
 	if (ip == NULL)
 		return(0);
-	if (vp->v_type == VNON || vp->v_type == VBAD ||
-	    ((ip->flags & HAMMER_INODE_MODMASK) == 0 &&
-	     RB_EMPTY(&vp->v_rbdirty_tree))) {
-		if ((ip->flags & HAMMER_INODE_MODMASK) == 0)
-			vclrisdirty(vp);
+	if (vp->v_type == VNON || vp->v_type == VBAD) {
+		vclrisdirty(vp);
+		return(0);
+	}
+	if ((ip->flags & HAMMER_INODE_MODMASK) == 0 &&
+	    RB_EMPTY(&vp->v_rbdirty_tree)) {
+		vclrisdirty(vp);
 		return(0);
 	}
 	error = VOP_FSYNC(vp, MNT_NOWAIT, 0);

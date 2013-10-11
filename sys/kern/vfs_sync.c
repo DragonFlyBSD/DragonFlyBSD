@@ -692,12 +692,13 @@ vsyncscan(
 		lkflags = 0;
 
 	/*
-	 * Syncer list context
+	 * Syncer list context.  This API requires a dedicated syncer thread.
+	 * (MNTK_THR_SYNC).
 	 */
-        if (mp)
-                ctx = mp->mnt_syncer_ctx;
-	else
-                ctx = &syncer_ctx0;
+	KKASSERT(mp->mnt_kern_flag & MNTK_THR_SYNC);
+	ctx = mp->mnt_syncer_ctx;
+	KKASSERT(ctx != &syncer_ctx0);
+
 	lwkt_gettoken(&ctx->sc_token);
 
 	/*
@@ -714,6 +715,7 @@ vsyncscan(
 		slp = &ctx->syncer_workitem_pending[i];
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
+			KKASSERT(vp->v_mount == mp);
 			if (vget(vp, LK_EXCLUSIVE | lkflags) == 0) {
 				slowfunc(mp, vp, data);
 				vput(vp);
