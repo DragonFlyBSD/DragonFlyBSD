@@ -242,6 +242,7 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 			ip->flags |= HAMMER_INODE_RECLAIM;
 		}
 		hammer_unlock(&ip->lock);
+		vclrisdirty(vp);
 		hammer_rel_inode(ip, 1);
 		lwkt_reltoken(&hmp->fs_token);
 	}
@@ -259,10 +260,7 @@ hammer_inode_dirty(struct hammer_inode *ip)
 
 	if ((ip->flags & HAMMER_INODE_MODMASK) &&
 	    (vp = ip->vp) != NULL) {
-		if ((vp->v_flag & VISDIRTY) == 0) {
-			vsetflags(vp, VISDIRTY);
-			vn_syncer_add(vp, syncdelay);
-		}
+		vsetisdirty(vp);
 	}
 }
 

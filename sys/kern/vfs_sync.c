@@ -252,12 +252,36 @@ vn_syncer_remove(struct vnode *vp)
 
 	lwkt_gettoken(&ctx->sc_token);
 
-	if ((vp->v_flag & VONWORKLST) && RB_EMPTY(&vp->v_rbdirty_tree)) {
+	if ((vp->v_flag & (VISDIRTY | VONWORKLST)) == VONWORKLST &&
+	    RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vclrflags(vp, VONWORKLST);
 		LIST_REMOVE(vp, v_synclist);
 	}
 
 	lwkt_reltoken(&ctx->sc_token);
+}
+
+/*
+ * vnode must be locked
+ */
+void
+vclrisdirty(struct vnode *vp)
+{
+	vclrflags(vp, VISDIRTY);
+	if (vp->v_flag & VONWORKLST)
+		vn_syncer_remove(vp);
+}
+
+/*
+ * vnode must be stable
+ */
+void
+vsetisdirty(struct vnode *vp)
+{
+	if ((vp->v_flag & VISDIRTY) == 0) {
+		vsetflags(vp, VISDIRTY);
+		vn_syncer_add(vp, syncdelay);
+	}
 }
 
 /*

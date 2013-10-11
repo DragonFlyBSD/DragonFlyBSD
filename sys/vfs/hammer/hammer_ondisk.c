@@ -1762,7 +1762,7 @@ hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	    ((ip->flags & HAMMER_INODE_MODMASK) == 0 &&
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		if ((ip->flags & HAMMER_INODE_MODMASK) == 0)
-			vclrflags(vp, VISDIRTY);
+			vclrisdirty(vp);
 		return(0);
 	}
 	error = VOP_FSYNC(vp, MNT_NOWAIT, 0);

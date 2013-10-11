@@ -263,7 +263,7 @@ mode1:
 			hammer_flusher_flush_undos(hmp, mode);
 			ip->redo_count = 0;
 			if (ip->vp && (ip->flags & HAMMER_INODE_MODMASK) == 0)
-				vclrflags(ip->vp, VISDIRTY);
+				vclrisdirty(ip->vp);
 			lwkt_reltoken(&hmp->fs_token);
 			return(0);
 		}
@@ -304,7 +304,7 @@ skip:
 			vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
 	}
 	if (ip->vp && (ip->flags & HAMMER_INODE_MODMASK) == 0)
-		vclrflags(ip->vp, VISDIRTY);
+		vclrisdirty(ip->vp);
 	lwkt_reltoken(&hmp->fs_token);
 	return (ip->error);
 }

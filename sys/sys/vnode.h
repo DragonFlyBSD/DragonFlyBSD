@@ -420,6 +420,8 @@ int	vmntvnodescan(struct mount *mp, int flags,
 int	vsyncscan(struct mount *mp, int flags,
 	    int (*slowfunc)(struct mount *mp, struct vnode *vp, void *data),
 	    void *data);
+void	vclrisdirty(struct vnode *vp);
+void	vsetisdirty(struct vnode *vp);
 
 void	insmntque(struct vnode *vp, struct mount *mp);
 
