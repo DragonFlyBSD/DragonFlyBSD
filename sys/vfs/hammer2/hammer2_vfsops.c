@@ -189,7 +189,6 @@ static int hammer2_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 				int *exflagsp, struct ucred **credanonp);
 
 static int hammer2_install_volume_header(hammer2_mount_t *hmp);
-static int hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
 static void hammer2_write_thread(void *arg);
@@ -574,6 +573,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	mp->mnt_flag = MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;	/* all entry pts are SMP */
+	mp->mnt_kern_flag |= MNTK_THR_SYNC;	/* private syncer thread */
 
 	/*
 	 * required mount structure initializations
@@ -1663,14 +1663,10 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 */
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
-	vmntvnodescan(mp, flags | VMSC_NOWAIT,
-		      hammer2_sync_scan1,
-		      hammer2_sync_scan2, &info);
+	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
 	if (info.error == 0 && (waitfor & MNT_WAIT)) {
 		info.waitfor = waitfor;
-		    vmntvnodescan(mp, flags,
-				  hammer2_sync_scan1,
-				  hammer2_sync_scan2, &info);
+		    vsyncscan(mp, flags, hammer2_sync_scan2, &info);
 
 	}
 #if 0
@@ -1782,19 +1778,6 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
  *	 won't flush on those flags.  The syncer code above will do a
  *	 general meta-data flush globally that will catch these flags.
  */
-static int
-hammer2_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
-{
-	hammer2_inode_t *ip;
-
-	ip = VTOI(vp);
-	if (vp->v_type == VNON || ip == NULL ||
-	    ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
-	     RB_EMPTY(&vp->v_rbdirty_tree))) {
-		return(-1);
-	}
-	return(0);
-}
 
 static int
 hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
@@ -1805,9 +1788,15 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	int error;
 
 	ip = VTOI(vp);
-	if (vp->v_type == VNON || vp->v_type == VBAD ||
-	    ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
-	     RB_EMPTY(&vp->v_rbdirty_tree))) {
+	if (ip == NULL)
+		return(0);
+	if (vp->v_type == VNON || vp->v_type == VBAD) {
+		vclrisdirty(vp);
+		return(0);
+	}
+	if ((ip->flags & HAMMER2_INODE_MODIFIED) == 0 &&
+	    RB_EMPTY(&vp->v_rbdirty_tree)) {
+		vclrisdirty(vp);
 		return(0);
 	}
 

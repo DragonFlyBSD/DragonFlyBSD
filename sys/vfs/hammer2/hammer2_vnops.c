@@ -355,6 +355,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		hammer2_trans_done(&trans);
 	}
 #endif
+	vclrisdirty(vp);
 	hammer2_inode_unlock_ex(ip, chain);		/* unlock */
 	hammer2_inode_drop(ip);				/* vp ref */
 	/* chain no longer referenced */
@@ -399,6 +400,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 */
 	chain = hammer2_inode_lock_ex(ip);
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
+	vclrisdirty(vp);
 	if (ip->flags & (HAMMER2_INODE_RESIZED|HAMMER2_INODE_MTIME))
 		hammer2_inode_fsync(&trans, ip, &chain);
 
@@ -599,6 +601,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 		ipdata = hammer2_chain_modify_ip(&trans, ip, &chain, 0);
 		ipdata->mtime = hammer2_timespec_to_time(&vap->va_mtime);
 		kflags |= NOTE_ATTRIB;
+		domtime = 0;
 	}
 	if (vap->va_mode != (mode_t)VNOVAL) {
 		mode_t cur_mode = ipdata->mode;
@@ -621,9 +624,22 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	 * cause havoc.
 	 */
 	hammer2_inode_fsync(&trans, ip, &chain);
+
+	/*
+	 * Cleanup.  If domtime is set an additional inode modification
+	 * must be flagged.  All other modifications will have already
+	 * set INODE_MODIFIED and called vsetisdirty().
+	 */
 done:
+	if (domtime) {
+		atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED |
+					   HAMMER2_INODE_MTIME);
+		vsetisdirty(ip->vp);
+	}
 	hammer2_inode_unlock_ex(ip, chain);
 	hammer2_trans_done(&trans);
+	hammer2_knote(ip->vp, kflags);
+
 	return (error);
 }
 
@@ -1144,12 +1160,15 @@ hammer2_write_file(hammer2_inode_t *ip,
 	}
 	atomic_set_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	hammer2_knote(ip->vp, kflags);
+	vsetisdirty(ip->vp);
 
 	return error;
 }
 
 /*
  * Truncate the size of a file.  The inode must not be locked.
+ *
+ * NOTE: Caller handles setting HAMMER2_INODE_MODIFIED
  */
 static
 void
@@ -1172,6 +1191,8 @@ hammer2_truncate_file(hammer2_inode_t *ip, hammer2_key_t nsize)
 
 /*
  * Extend the size of a file.  The inode must not be locked.
+ *
+ * NOTE: Caller handles setting HAMMER2_INODE_MODIFIED
  */
 static
 void

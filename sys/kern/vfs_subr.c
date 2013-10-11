@@ -958,7 +958,7 @@ brelvp(struct buf *bp)
 	 * Only remove from synclist when no dirty buffers are left AND
 	 * the VFS has not flagged the vnode's inode as being dirty.
 	 */
-	if ((vp->v_flag & (VONWORKLST | VISDIRTY)) == VONWORKLST &&
+	if ((vp->v_flag & (VONWORKLST | VISDIRTY | VOBJDIRTY)) == VONWORKLST &&
 	    RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vn_syncer_remove(vp);
 	}
@@ -1047,7 +1047,8 @@ reassignbuf(struct buf *bp)
 		 * AND the VFS has not flagged the vnode's inode as being
 		 * dirty.
 		 */
-		if ((vp->v_flag & (VONWORKLST | VISDIRTY)) == VONWORKLST &&
+		if ((vp->v_flag & (VONWORKLST | VISDIRTY | VOBJDIRTY)) ==
+		     VONWORKLST &&
 		    RB_EMPTY(&vp->v_rbdirty_tree)) {
 			vn_syncer_remove(vp);
 		}
@@ -2188,14 +2189,22 @@ vfs_msync(struct mount *mp, int flags)
 		return;
 
 	/*
-	 * Ok, scan the vnodes for work.
+	 * Ok, scan the vnodes for work.  If the filesystem is using the
+	 * syncer thread feature we can use vsyncscan() instead of
+	 * vmntvnodescan(), which is much faster.
 	 */
 	vmsc_flags = VMSC_GETVP;
 	if (flags != MNT_WAIT)
 		vmsc_flags |= VMSC_NOWAIT;
-	vmntvnodescan(mp, vmsc_flags,
-		      vfs_msync_scan1, vfs_msync_scan2,
-		      (void *)(intptr_t)flags);
+
+	if (mp->mnt_kern_flag & MNTK_THR_SYNC) {
+		vsyncscan(mp, vmsc_flags, vfs_msync_scan2,
+			  (void *)(intptr_t)flags);
+	} else {
+		vmntvnodescan(mp, vmsc_flags,
+			      vfs_msync_scan1, vfs_msync_scan2,
+			      (void *)(intptr_t)flags);
+	}
 }
 
 /*

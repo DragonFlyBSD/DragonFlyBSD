@@ -252,7 +252,7 @@ vn_syncer_remove(struct vnode *vp)
 
 	lwkt_gettoken(&ctx->sc_token);
 
-	if ((vp->v_flag & (VISDIRTY | VONWORKLST)) == VONWORKLST &&
+	if ((vp->v_flag & (VISDIRTY | VONWORKLST | VOBJDIRTY)) == VONWORKLST &&
 	    RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vclrflags(vp, VONWORKLST);
 		LIST_REMOVE(vp, v_synclist);

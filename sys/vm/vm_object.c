@@ -2513,8 +2513,13 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 /*
  * Make the object writable and flag is being possibly dirty.
  *
- * The caller must hold the object. XXX called from vm_page_dirty(),
- * There is currently no requirement to hold the object.
+ * The object might not be held, the related vnode is probably not
+ * held either.  Object and vnode are stable by virtue of the vm_page
+ * busied by the caller preventing destruction.
+ *
+ * If the related mount is flagged MNTK_THR_SYNC we need to call
+ * vsetisdirty().  Filesystems using this option usually shortcut
+ * synchronization by only scanning the syncer list.
  */
 void
 vm_object_set_writeable_dirty(vm_object_t object)
@@ -2534,6 +2539,10 @@ vm_object_set_writeable_dirty(vm_object_t object)
 	    (vp = (struct vnode *)object->handle) != NULL) {
 		if ((vp->v_flag & VOBJDIRTY) == 0) {
 			vsetflags(vp, VOBJDIRTY);
+			if (vp->v_mount &&
+			    (vp->v_mount->mnt_kern_flag & MNTK_THR_SYNC)) {
+				vsetisdirty(vp);
+			}
 		}
 	}
 }

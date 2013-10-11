@@ -1372,6 +1372,8 @@ hammer2_chain_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	hammer2_chain_modify(trans, chainp, flags);
 	if (ip->chain != *chainp)
 		hammer2_inode_repoint(ip, NULL, *chainp);
+	if (ip->vp)
+		vsetisdirty(ip->vp);
 	return(&ip->chain->data->ipdata);
 }
 
