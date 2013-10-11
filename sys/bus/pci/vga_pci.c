@@ -50,7 +50,24 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
+struct vga_resource {
+	struct resource	*vr_res;
+	int	vr_refs;
+};
+
+struct vga_pci_softc {
+	device_t	vga_msi_child;	/* Child driver using MSI. */
+	struct vga_resource vga_bars[PCIR_MAX_BAR_0 + 1];
+	struct vga_resource vga_bios;
+};
+
 SYSCTL_DECL(_hw_pci);
+
+static struct vga_resource *lookup_res(struct vga_pci_softc *sc, int rid);
+static struct resource *vga_pci_alloc_resource(device_t dev, device_t child,
+    int type, int *rid, u_long start, u_long end, u_long count, u_int flags);
+static int	vga_pci_release_resource(device_t dev, device_t child, int type,
+    int rid, struct resource *r);
 
 int vga_pci_default_unit = -1;
 TUNABLE_INT("hw.pci.default_vgapci_unit", &vga_pci_default_unit);
@@ -65,7 +82,6 @@ vga_pci_is_boot_display(device_t dev)
 	 * Return true if the given device is the default display used
 	 * at boot time.
 	 */
-
 	return (
 	    (pci_get_class(dev) == PCIC_DISPLAY ||
 	     (pci_get_class(dev) == PCIC_OLD &&
@@ -94,7 +110,8 @@ vga_pci_map_bios(device_t dev, size_t *size)
 	}
 
 	rid = PCIR_BIOS;
-	res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, RF_ACTIVE);
+	res = vga_pci_alloc_resource(dev, NULL, SYS_RES_MEMORY, &rid, 0ul,
+	    ~0ul, 1, RF_ACTIVE);
 	if (res == NULL) {
 		return (NULL);
 	}
@@ -106,8 +123,7 @@ vga_pci_map_bios(device_t dev, size_t *size)
 void
 vga_pci_unmap_bios(device_t dev, void *bios)
 {
-	int rid;
-	struct resource *res;
+	struct vga_resource *vr;
 
 	if (bios == NULL) {
 		return;
@@ -121,25 +137,15 @@ vga_pci_unmap_bios(device_t dev, void *bios)
 	}
 
 	/*
-	 * FIXME: We returned only the virtual address of the resource
-	 * to the caller. Now, to get the resource struct back, we
-	 * allocate it again: the struct exists once in memory in
-	 * device softc. Therefore, we release twice now to release the
-	 * reference we just obtained to get the structure back and the
-	 * caller's reference.
+	 * Look up the PCIR_BIOS resource in our softc.  It should match
+	 * the address we returned previously.
 	 */
-
-	rid = PCIR_BIOS;
-	res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, RF_ACTIVE);
-
-	KASSERT(res != NULL,
-	    ("%s: Can't get BIOS resource back", __func__));
-	KASSERT(bios == rman_get_virtual(res),
-	    ("%s: Given BIOS address doesn't match "
-	     "resource virtual address", __func__));
-
-	bus_release_resource(dev, SYS_RES_MEMORY, rid, bios);
-	bus_release_resource(dev, SYS_RES_MEMORY, rid, bios);
+	vr = lookup_res(device_get_softc(dev), PCIR_BIOS);
+	KASSERT(vr->vr_res != NULL, ("vga_pci_unmap_bios: bios not mapped"));
+	KASSERT(rman_get_virtual(vr->vr_res) == bios,
+	    ("vga_pci_unmap_bios: mismatch"));
+	vga_pci_release_resource(dev, NULL, SYS_RES_MEMORY, PCIR_BIOS,
+	    vr->vr_res);
 }
 
 static int
@@ -216,11 +222,42 @@ vga_pci_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
 	return (EINVAL);
 }
 
+static struct vga_resource *
+lookup_res(struct vga_pci_softc *sc, int rid)
+{
+	int bar;
+
+	if (rid == PCIR_BIOS)
+		return (&sc->vga_bios);
+	bar = PCI_RID2BAR(rid);
+	if (bar >= 0 && bar <= PCIR_MAX_BAR_0)
+		return (&sc->vga_bars[bar]);
+	return (NULL);
+}
+
 static struct resource *
 vga_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
-    u_long start, u_long end, u_long count, u_int flags, int cpuid __unused)
+    u_long start, u_long end, u_long count, u_int flags)
 {
+	struct vga_resource *vr;
 
+	switch (type) {
+	case SYS_RES_MEMORY:
+	case SYS_RES_IOPORT:
+		/*
+		 * For BARs, we cache the resource so that we only allocate it
+		 * from the PCI bus once.
+		 */
+		vr = lookup_res(device_get_softc(dev), *rid);
+		if (vr == NULL)
+			return (NULL);
+		if (vr->vr_res == NULL)
+			vr->vr_res = bus_alloc_resource(dev, type, rid, start,
+			    end, count, flags);
+		if (vr->vr_res != NULL)
+			vr->vr_refs++;
+		return (vr->vr_res);
+	}
 	return (bus_alloc_resource(dev, type, rid, start, end, count, flags));
 }
 
@@ -242,7 +279,7 @@ vga_pci_read_config(device_t dev, device_t child, int reg, int width)
 }
 
 static void
-vga_pci_write_config(device_t dev, device_t child, int reg, 
+vga_pci_write_config(device_t dev, device_t child, int reg,
     uint32_t val, int width)
 {
 
@@ -253,8 +290,6 @@ static int
 vga_pci_enable_busmaster(device_t dev, device_t child)
 {
 
-	device_printf(dev, "child %s requested pci_enable_busmaster\n",
-	    device_get_nameunit(child));
 	return (pci_enable_busmaster(dev));
 }
 
@@ -262,8 +297,6 @@ static int
 vga_pci_disable_busmaster(device_t dev, device_t child)
 {
 
-	device_printf(dev, "child %s requested pci_disable_busmaster\n",
-	    device_get_nameunit(child));
 	return (pci_disable_busmaster(dev));
 }
 
