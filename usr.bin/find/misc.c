@@ -30,8 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)misc.c	8.2 (Berkeley) 4/1/94
- * $FreeBSD: src/usr.bin/find/misc.c,v 1.7 2003/06/14 13:00:21 markm Exp $
- * $DragonFly: src/usr.bin/find/misc.c,v 1.5 2005/02/14 00:39:04 cpressey Exp $
+ * $FreeBSD: head/usr.bin/find/misc.c 216370 2010-12-11 08:32:16Z joel $
  */
 
 #include <sys/types.h>
@@ -73,33 +72,27 @@ brace_subst(char *orig, char **store, char *path, int len)
 /*
  * queryuser --
  *	print a message to standard error and then read input from standard
- *	input. If the input is 'y' then 1 is returned.
+ *	input. If the input is an affirmative response (according to the
+ *	current locale) then 1 is returned.
  */
 int
 queryuser(char *argv[])
 {
-	int ch, first, nl;
+	char *p, resp[256];
 
-	fprintf(stderr, "\"%s", *argv);
+	(void)fprintf(stderr, "\"%s", *argv);
 	while (*++argv)
-		fprintf(stderr, " %s", *argv);
-	fprintf(stderr, "\"? ");
-	fflush(stderr);
+		(void)fprintf(stderr, " %s", *argv);
+	(void)fprintf(stderr, "\"? ");
+	(void)fflush(stderr);
 
-	first = ch = getchar();
-	for (nl = 0;;) {
-		if (ch == '\n') {
-			nl = 1;
-			break;
-		}
-		if (ch == EOF)
-			break;
-		ch = getchar();
+	if (fgets(resp, sizeof(resp), stdin) == NULL)
+		*resp = '\0';
+	if ((p = strchr(resp, '\n')) != NULL)
+		*p = '\0';
+	else {
+		(void)fprintf(stderr, "\n");
+		(void)fflush(stderr);
 	}
-
-	if (!nl) {
-		fprintf(stderr, "\n");
-		fflush(stderr);
-	}
-        return (first == 'y');
+        return (rpmatch(resp) == 1);
 }

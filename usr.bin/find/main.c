@@ -31,7 +31,7 @@
  *
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 5/4/95
- * $FreeBSD: src/usr.bin/find/main.c,v 1.23 2011/12/10 18:11:06 ed Exp $
+ * $FreeBSD: head/usr.bin/find/main.c 246628 2013-02-10 18:56:37Z jilles $
  */
 
 #include <sys/types.h>
@@ -53,6 +53,7 @@
 time_t now;			/* time find was run */
 int dotfd;			/* starting directory */
 int ftsoptions;			/* options for the ftsopen(3) call */
+int ignore_readdir_race;	/* ignore readdir race */
 int isdeprecated;		/* using deprecated syntax */
 int isdepth;			/* do directories on post-order visit */
 int isoutput;			/* user specified output operator */
@@ -69,14 +70,14 @@ main(int argc, char *argv[])
 	char **p, **start;
 	int Hflag, Lflag, ch;
 
-	setlocale(LC_ALL, "");
+	(void)setlocale(LC_ALL, "");
 
-	time(&now);	/* initialize the time-of-day */
+	(void)time(&now);	/* initialize the time-of-day */
 
 	p = start = argv;
 	Hflag = Lflag = 0;
 	ftsoptions = FTS_NOSTAT | FTS_PHYSICAL;
-	while ((ch = getopt(argc, argv, "+EHLPXdf:sx")) != -1)
+	while ((ch = getopt(argc, argv, "EHLPXdf:sx")) != -1)
 		switch (ch) {
 		case 'E':
 			regexp_flags |= REG_EXTENDED;
@@ -139,8 +140,8 @@ main(int argc, char *argv[])
 		usage();
 	*p = NULL;
 
-	if ((dotfd = open(".", O_RDONLY, 0)) < 0)
-		err(1, ".");
+	if ((dotfd = open(".", O_RDONLY | O_CLOEXEC, 0)) < 0)
+		ftsoptions |= FTS_NOCHDIR;
 
 	exit(find_execute(find_formplan(argv), start));
 }
@@ -148,7 +149,7 @@ main(int argc, char *argv[])
 static void
 usage(void)
 {
-	fprintf(stderr, "%s\n%s\n",
+	(void)fprintf(stderr, "%s\n%s\n",
 "usage: find [-H | -L | -P] [-EXdsx] [-f path] path ... [expression]",
 "       find [-H | -L | -P] [-EXdsx] -f path [path ...] [expression]");
 	exit(1);

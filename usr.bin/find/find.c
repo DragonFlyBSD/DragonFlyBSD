@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)find.c	8.5 (Berkeley) 8/5/94
- * $FreeBSD: src/usr.bin/find/find.c,v 1.23 2010/12/11 08:32:16 joel Exp $
+ * $FreeBSD: head/usr.bin/find/find.c 238780 2012-07-25 21:59:10Z jilles $
  */
 
 #include <sys/types.h>
@@ -190,9 +190,13 @@ find_execute(PLAN *plan, char *paths[])
 				continue;
 			break;
 		case FTS_DNR:
-		case FTS_ERR:
 		case FTS_NS:
-			fflush(stdout);
+			if (ignore_readdir_race &&
+			    entry->fts_errno == ENOENT && entry->fts_level > 0)
+				continue;
+			/* FALLTHROUGH */
+		case FTS_ERR:
+			(void)fflush(stdout);
 			warnx("%s: %s",
 			    entry->fts_path, strerror(entry->fts_errno));
 			rval = 1;
@@ -204,7 +208,7 @@ find_execute(PLAN *plan, char *paths[])
 		}
 #define	BADCH	" \t\n\\'\""
 		if (isxargs && strpbrk(entry->fts_path, BADCH)) {
-			fflush(stdout);
+			(void)fflush(stdout);
 			warnx("%s: illegal path", entry->fts_path);
 			rval = 1;
 			continue;
@@ -221,7 +225,7 @@ find_execute(PLAN *plan, char *paths[])
 		for (p = plan; p && (p->execute)(p, entry); p = p->next);
 	}
 	finish_execplus();
-	if (errno)
+	if (errno && (!ignore_readdir_race || errno != ENOENT))
 		err(1, "fts_read");
 	return (rval);
 }

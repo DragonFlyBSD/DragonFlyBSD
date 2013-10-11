@@ -30,10 +30,11 @@
  * SUCH DAMAGE.
  *
  *	@(#)find.h	8.1 (Berkeley) 6/6/93
- *	$FreeBSD: src/usr.bin/find/find.h,v 1.21 2010/12/11 08:32:16 joel Exp $
+ *	$FreeBSD: head/usr.bin/find/find.h 248446 2013-03-17 22:51:58Z jilles $
  */
 
 #include <regex.h>
+#include <sys/time.h>
 
 /* forward declarations */
 struct _plandata;
@@ -68,6 +69,8 @@ typedef	struct _plandata *creat_f(struct _option *, char ***);
 #define	F_IGNCASE	0x00010000	/* iname ipath iregex */
 #define	F_EXACTTIME	F_IGNCASE	/* -[acm]time units syntax */
 #define F_EXECPLUS	0x00020000	/* -exec ... {} + */
+#define	F_TIME_B	0x00040000	/* one of -Btime, -Bnewer, -newerB* */
+#define	F_TIME2_B	0x00080000	/* one of -newer?B */
 #define F_LINK		0x00100000	/* lname or ilname */
 
 /* node definition */
@@ -86,7 +89,7 @@ typedef struct _plandata {
 		nlink_t _l_data;		/* link count */
 		short _d_data;			/* level depth (-1 to N) */
 		off_t _o_data;			/* file size */
-		time_t _t_data;			/* time value */
+		struct timespec _t_data;	/* time value */
 		uid_t _u_data;			/* uid */
 		short _mt_data;			/* mount flags */
 		struct _plandata *_p_data[2];	/* PLAN trees */
