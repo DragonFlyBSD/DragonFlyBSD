@@ -153,6 +153,7 @@ SUBDIR=	alias \
 	pr \
 	printenv \
 	printf \
+	pwait \
 	quota \
 	rdist \
 	relpath \
