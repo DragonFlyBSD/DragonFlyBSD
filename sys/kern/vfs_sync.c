@@ -81,10 +81,10 @@
  * The workitem queue.
  */
 #define SYNCER_MAXDELAY		32
-static int syncer_maxdelay = SYNCER_MAXDELAY;	/* maximum delay time */
+static int sysctl_kern_syncdelay(SYSCTL_HANDLER_ARGS);
 time_t syncdelay = 30;		/* max time to delay syncing data */
-SYSCTL_INT(_kern, OID_AUTO, syncdelay, CTLFLAG_RW,
-		&syncdelay, 0, "VFS data synchronization delay");
+SYSCTL_PROC(_kern, OID_AUTO, syncdelay, CTLTYPE_INT | CTLFLAG_RW, 0, 0,
+		sysctl_kern_syncdelay, "I", "VFS data synchronization delay");
 time_t filedelay = 30;		/* time to delay syncing files */
 SYSCTL_INT(_kern, OID_AUTO, filedelay, CTLFLAG_RW,
 		&filedelay, 0, "File synchronization delay");
@@ -114,6 +114,7 @@ struct syncer_ctx {
 	struct synclist 	*syncer_workitem_pending;
 	long			syncer_mask;
 	int 			syncer_delayno;
+	int			syncer_forced;
 };
 
 static struct syncer_ctx syncer_ctx0;
@@ -124,12 +125,11 @@ static void
 syncer_ctx_init(struct syncer_ctx *ctx, struct mount *mp)
 {
 	ctx->sc_mp = mp; 
-	lwkt_token_init(&ctx->sc_token, "syncer");
 	ctx->sc_flags = 0;
-
-	ctx->syncer_workitem_pending = hashinit(syncer_maxdelay, M_DEVBUF,
+	ctx->syncer_workitem_pending = hashinit(SYNCER_MAXDELAY, M_DEVBUF,
 						&ctx->syncer_mask);
 	ctx->syncer_delayno = 0;
+	lwkt_token_init(&ctx->sc_token, "syncer");
 }
 
 /*
@@ -139,25 +139,40 @@ void
 vfs_sync_init(void)
 {
 	syncer_ctx_init(&syncer_ctx0, NULL);
-	syncer_maxdelay = syncer_ctx0.syncer_mask + 1;
 	syncer_ctx0.sc_flags |= SC_FLAG_BIOOPS_ALL;
 	
 	/* Support schedcpu wakeup of syncer0 */
 	lbolt_syncer = &syncer_ctx0;
 }
 
+static int
+sysctl_kern_syncdelay(SYSCTL_HANDLER_ARGS)
+{
+	int error;
+	int v = syncdelay;
+
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || !req->newptr)
+		return (error);
+	if (v < 1)
+		v = 1;
+	if (v > SYNCER_MAXDELAY)
+		v = SYNCER_MAXDELAY;
+	syncdelay = v;
+
+	return(0);
+}
+
 static struct syncer_ctx *
-vn_get_syncer(struct vnode *vp) {
+vn_get_syncer(struct vnode *vp)
+{
 	struct mount *mp;
 	struct syncer_ctx *ctx;
 
-	ctx = NULL;
-	mp = vp->v_mount;
-	if (mp)
+	if ((mp = vp->v_mount) != NULL)
 		ctx = mp->mnt_syncer_ctx;
-	if (ctx == NULL)
+	else
 		ctx = &syncer_ctx0;
-
 	return (ctx);
 }
 
@@ -208,9 +223,13 @@ vn_syncer_add(struct vnode *vp, int delay)
 
 	if (vp->v_flag & VONWORKLST)
 		LIST_REMOVE(vp, v_synclist);
-	if (delay > syncer_maxdelay - 2)
-		delay = syncer_maxdelay - 2;
-	slot = (ctx->syncer_delayno + delay) & ctx->syncer_mask;
+	if (delay <= 0) {
+		slot = -delay & ctx->syncer_mask;
+	} else {
+		if (delay > SYNCER_MAXDELAY - 2)
+			delay = SYNCER_MAXDELAY - 2;
+		slot = (ctx->syncer_delayno + delay) & ctx->syncer_mask;
+	}
 
 	LIST_INSERT_HEAD(&ctx->syncer_workitem_pending[slot], vp, v_synclist);
 	vsetflags(vp, VONWORKLST);
@@ -251,30 +270,30 @@ vn_syncer_thr_create(struct mount *mp)
 	static int syncalloc = 0;
 	int rc;
 
-	ctx = kmalloc(sizeof(struct syncer_ctx), M_TEMP, M_WAITOK);
-
-	syncer_ctx_init(ctx, mp);
-	mp->mnt_syncer_ctx = ctx;
-
-	rc = kthread_create(syncer_thread, ctx, &ctx->sc_thread, 
-			    "syncer%d", ++syncalloc);
-}
-
-void *
-vn_syncer_thr_getctx(struct mount *mp)
-{
-	return (mp->mnt_syncer_ctx);
+	if (mp->mnt_kern_flag & MNTK_THR_SYNC) {
+		ctx = kmalloc(sizeof(struct syncer_ctx), M_TEMP,
+			      M_WAITOK | M_ZERO);
+		syncer_ctx_init(ctx, mp);
+		mp->mnt_syncer_ctx = ctx;
+		rc = kthread_create(syncer_thread, ctx, &ctx->sc_thread, 
+				    "syncer%d", ++syncalloc);
+	} else {
+		mp->mnt_syncer_ctx = &syncer_ctx0;
+	}
 }
 
 /*
  * Stop per-filesystem syncer process
  */
 void
-vn_syncer_thr_stop(void *ctxp)
+vn_syncer_thr_stop(struct mount *mp)
 {
 	struct syncer_ctx *ctx;
 
-	ctx = ctxp;
+	ctx = mp->mnt_syncer_ctx;
+	if (ctx == NULL || ctx == &syncer_ctx0)
+		return;
+	KKASSERT(mp->mnt_kern_flag & MNTK_THR_SYNC);
 
 	lwkt_gettoken(&ctx->sc_token);
 
@@ -286,8 +305,9 @@ vn_syncer_thr_stop(void *ctxp)
 	while ((ctx->sc_flags & SC_FLAG_DONE) == 0) 
 		tsleep(&ctx->sc_flags, 0, "syncexit", hz);
 
+	mp->mnt_syncer_ctx = NULL;
 	lwkt_reltoken(&ctx->sc_token);
-	
+
 	hashdestroy(ctx->syncer_workitem_pending, M_DEVBUF, ctx->syncer_mask);
 	kfree(ctx, M_TEMP);
 }
@@ -327,15 +347,22 @@ syncer_thread(void *_ctx)
 		 * of interrupt race on slp queue.
 		 */
 		slp = &ctx->syncer_workitem_pending[ctx->syncer_delayno];
-		ctx->syncer_delayno += 1;
-		if (ctx->syncer_delayno == syncer_maxdelay)
-			ctx->syncer_delayno = 0;
+		ctx->syncer_delayno = (ctx->syncer_delayno + 1) &
+				      ctx->syncer_mask;
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
-			if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
-				VOP_FSYNC(vp, MNT_LAZY, 0);
-				vput(vp);
-				vnodes_synced++;
+			if (ctx->syncer_forced) {
+				if (vget(vp, LK_EXCLUSIVE) == 0) {
+					VOP_FSYNC(vp, MNT_NOWAIT, 0);
+					vput(vp);
+					vnodes_synced++;
+				}
+			} else {
+				if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
+					VOP_FSYNC(vp, MNT_LAZY, 0);
+					vput(vp);
+					vnodes_synced++;
+				}
 			}
 
 			/*
@@ -415,7 +442,8 @@ syncer_thread(void *_ctx)
 }
 
 static void
-syncer_thread_start(void) {
+syncer_thread_start(void)
+{
 	syncer_thread(&syncer_ctx0);
 }
 
@@ -498,12 +526,12 @@ vfs_allocate_syncvnode(struct mount *mp)
 	 * are mounted at once.
 	 */
 	next += incr;
-	if (next == 0 || next > syncer_maxdelay) {
+	if (next == 0 || next > SYNCER_MAXDELAY) {
 		start /= 2;
 		incr /= 2;
 		if (start == 0) {
-			start = syncer_maxdelay / 2;
-			incr = syncer_maxdelay;
+			start = SYNCER_MAXDELAY / 2;
+			incr = SYNCER_MAXDELAY;
 		}
 		next = start;
 	}
@@ -609,6 +637,73 @@ sync_reclaim(struct vop_reclaim_args *ap)
 	lwkt_reltoken(&ctx->sc_token);
 
 	return (0);
+}
+
+/*
+ * This is very similar to vmntvnodescan() but it only scans the
+ * vnodes on the syncer list.  VFS's which support faster VFS_SYNC
+ * operations use the VISDIRTY flag on the vnode to ensure that vnodes
+ * with dirty inodes are added to the syncer in addition to vnodes
+ * with dirty buffers, and can use this function instead of nmntvnodescan().
+ * 
+ * This is important when a system has millions of vnodes.
+ */
+int
+vsyncscan(
+    struct mount *mp,
+    int vmsc_flags,
+    int (*slowfunc)(struct mount *mp, struct vnode *vp, void *data),
+    void *data
+) {
+	struct syncer_ctx *ctx;
+	struct synclist *slp;
+	struct vnode *vp;
+	int b;
+	int i;
+	int lkflags;
+
+	if (vmsc_flags & VMSC_NOWAIT)
+		lkflags = LK_NOWAIT;
+	else
+		lkflags = 0;
+
+	/*
+	 * Syncer list context
+	 */
+        if (mp)
+                ctx = mp->mnt_syncer_ctx;
+	else
+                ctx = &syncer_ctx0;
+	lwkt_gettoken(&ctx->sc_token);
+
+	/*
+	 * Setup for loop.  Allow races against the syncer thread but
+	 * require that the syncer thread no be lazy if we were told
+	 * not to be lazy.
+	 */
+	b = ctx->syncer_delayno & ctx->syncer_mask;
+	i = b;
+	if ((vmsc_flags & VMSC_NOWAIT) == 0)
+		++ctx->syncer_forced;
+
+	do {
+		slp = &ctx->syncer_workitem_pending[i];
+
+		while ((vp = LIST_FIRST(slp)) != NULL) {
+			if (vget(vp, LK_EXCLUSIVE | lkflags) == 0) {
+				slowfunc(mp, vp, data);
+				vput(vp);
+			}
+			if (LIST_FIRST(slp) == vp)
+				vn_syncer_add(vp, -(i + syncdelay));
+		}
+		i = (i + 1) & ctx->syncer_mask;
+	} while (i != b);
+
+	if ((vmsc_flags & VMSC_NOWAIT) == 0)
+		--ctx->syncer_forced;
+	lwkt_reltoken(&ctx->sc_token);
+	return(0);
 }
 
 /*

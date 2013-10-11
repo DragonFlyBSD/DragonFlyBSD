@@ -231,7 +231,7 @@ struct vnode {
 #define	VFREE		0x00080000	/* This vnode is on the freelist */
 #define VNOTSEEKABLE	0x00100000	/* rd/wr ignores file offset */
 #define	VONWORKLST	0x00200000	/* On syncer work-list */
-/* open for business	0x00400000 */
+#define VISDIRTY	0x00400000	/* inode dirty from VFS */
 #define	VOBJDIRTY	0x00800000	/* object might be dirty */
 #define VSWAPCACHE	0x01000000	/* enable swapcache */
 /* open for business	0x02000000 */
@@ -412,10 +412,15 @@ void	vfs_nrm_vnodeops_sysinit (void *);
 void	vfs_add_vnodeops(struct mount *, struct vop_ops *, struct vop_ops **);
 void	vfs_rm_vnodeops(struct mount *, struct vop_ops *, struct vop_ops **);
 int	vflush (struct mount *mp, int rootrefs, int flags);
+
 int	vmntvnodescan(struct mount *mp, int flags,
 	    int (*fastfunc)(struct mount *mp, struct vnode *vp, void *data),
 	    int (*slowfunc)(struct mount *mp, struct vnode *vp, void *data),
 	    void *data);
+int	vsyncscan(struct mount *mp, int flags,
+	    int (*slowfunc)(struct mount *mp, struct vnode *vp, void *data),
+	    void *data);
+
 void	insmntque(struct vnode *vp, struct mount *mp);
 
 void	vclean_vxlocked (struct vnode *vp, int flags);
@@ -542,8 +547,7 @@ void	mount_init(struct mount *mp);
 void	vn_syncer_add(struct vnode *, int);
 void	vn_syncer_remove(struct vnode *);
 void	vn_syncer_thr_create(struct mount *);
-void	*vn_syncer_thr_getctx(struct mount *);
-void	vn_syncer_thr_stop(void *);
+void	vn_syncer_thr_stop(struct mount *);
 
 extern	struct vop_ops default_vnode_vops;
 extern	struct vop_ops dead_vnode_vops;

@@ -953,8 +953,15 @@ brelvp(struct buf *bp)
 		buf_rb_hash_RB_REMOVE(&vp->v_rbhash_tree, bp);
 		bp->b_flags &= ~B_HASHED;
 	}
-	if ((vp->v_flag & VONWORKLST) && RB_EMPTY(&vp->v_rbdirty_tree))
+
+	/*
+	 * Only remove from synclist when no dirty buffers are left AND
+	 * the VFS has not flagged the vnode's inode as being dirty.
+	 */
+	if ((vp->v_flag & (VONWORKLST | VISDIRTY)) == VONWORKLST &&
+	    RB_EMPTY(&vp->v_rbdirty_tree)) {
 		vn_syncer_remove(vp);
+	}
 	bp->b_vp = NULL;
 
 	lwkt_reltoken(&vp->v_token);
@@ -1034,7 +1041,13 @@ reassignbuf(struct buf *bp)
 			}
 			bp->b_flags |= B_VNCLEAN;
 		}
-		if ((vp->v_flag & VONWORKLST) &&
+
+		/*
+		 * Only remove from synclist when no dirty buffers are left
+		 * AND the VFS has not flagged the vnode's inode as being
+		 * dirty.
+		 */
+		if ((vp->v_flag & (VONWORKLST | VISDIRTY)) == VONWORKLST &&
 		    RB_EMPTY(&vp->v_rbdirty_tree)) {
 			vn_syncer_remove(vp);
 		}

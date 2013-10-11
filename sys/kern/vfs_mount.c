@@ -132,6 +132,7 @@ vfs_mount_init(void)
 	mount_init(&dummymount);
 	dummymount.mnt_flag |= MNT_RDONLY;
 	dummymount.mnt_kern_flag |= MNTK_ALL_MPSAFE;
+	vn_syncer_thr_create(&dummymount);
 }
 
 /*
@@ -1146,7 +1147,10 @@ next:
 		 * now and then.
 		 */
 		if (++count == 10000) {
-			/* We really want to yield a bit, so we simply sleep a tick */
+			/*
+			 * We really want to yield a bit, so we simply
+			 * sleep a tick
+			 */
 			tsleep(mp, 0, "vnodescn", 1);
 			count = 0;
 		}
