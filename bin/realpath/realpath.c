@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1991, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -26,98 +26,57 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
- * @(#)pwd.c	8.3 (Berkeley) 4/1/94
- * $FreeBSD: src/bin/pwd/pwd.c,v 1.9.2.3 2002/06/17 11:04:22 tjr Exp $
+ * $FreeBSD: head/bin/realpath/realpath.c 223372 2011-06-21 19:34:57Z ru $
  */
 
+
 #include <sys/param.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 #include <err.h>
-#include <errno.h>
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
-static char	*getcwd_logical(void);
-static void	usage(void);
+static void usage(void) __dead2;
 
 int
 main(int argc, char *argv[])
 {
-	int physical;
-	int ch;
-	char *p;
 	char buf[PATH_MAX];
+	char *p;
+	const char *path;
+	int ch, qflag, rval;
 
-	if (argc != 2)
-		usage();
-	if ((p = realpath(argv[1], buf)) == NULL)
-		err(1, "%s", argv[1]);
-	printf("%s\n", p);
-	exit(0);
-
-	physical = 1;
-	while ((ch = getopt(argc, argv, "LP")) != -1)
+	qflag = 0;
+	while ((ch = getopt(argc, argv, "q")) != -1) {
 		switch (ch) {
-		case 'L':
-			physical = 0;
-			break;
-		case 'P':
-			physical = 1;
+		case 'q':
+			qflag = 1;
 			break;
 		case '?':
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
-
-	if (argc != 0)
-		usage();
-
-	/*
-	 * If we're trying to find the logical current directory and that
-	 * fails, behave as if -P was specified.
-	 */
-	if ((!physical && (p = getcwd_logical()) != NULL) ||
-	    (p = getcwd(NULL, 0)) != NULL)
-		printf("%s\n", p);
-	else
-		err(1, ".");
-
-	exit(0);
+	path = *argv != NULL ? *argv++ : ".";
+	rval  = 0;
+	do {
+		if ((p = realpath(path, buf)) == NULL) {
+			if (!qflag)
+				warn("%s", path);
+			rval = 1;
+		} else
+			(void)printf("%s\n", p);
+	} while ((path = *argv++) != NULL);
+	exit(rval);
 }
 
 static void
 usage(void)
 {
-	if (strcmp(getprogname(), "realpath") == 0)
-		fprintf(stderr, "usage: realpath [path]\n");
-  	exit(1);
-}
 
-static char *
-getcwd_logical(void)
-{
-	struct stat logic, phy;
-	char *pwd;
-
-	/*
-	 * Check that $PWD is an absolute logical pathname referring to
-	 * the current working directory.
-	 */
-	if ((pwd = getenv("PWD")) != NULL && *pwd == '/') {
-		if (stat(pwd, &logic) == -1 || stat(".", &phy) == -1)
-			return (NULL);
-		if (logic.st_dev == phy.st_dev && logic.st_ino == phy.st_ino)
-			return (pwd);
-	}
-
-	errno = ENOENT;
-	return (NULL);
+	(void)fprintf(stderr, "usage: realpath [-q] [path ...]\n");
+	exit(1);
 }
