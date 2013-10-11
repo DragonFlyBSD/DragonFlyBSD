@@ -1324,7 +1324,6 @@ struct scaninfo {
 	int allerror;
 };
 
-static int nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int nfs_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
 /*
@@ -1347,25 +1346,15 @@ nfs_sync(struct mount *mp, int waitfor)
 	 */
 	lwkt_gettoken(&nmp->nm_token);
 	error = 0;
-	while (error == 0 && scaninfo.rescan) {
-		scaninfo.rescan = 0;
-		error = vmntvnodescan(mp, VMSC_GETVP, nfs_sync_scan1,
-					nfs_sync_scan2, &scaninfo);
+	if ((waitfor & MNT_LAZY) == 0) {
+		while (error == 0 && scaninfo.rescan) {
+			scaninfo.rescan = 0;
+			error = vsyncscan(mp, VMSC_GETVP,
+					  nfs_sync_scan2, &scaninfo);
+		}
 	}
 	lwkt_reltoken(&nmp->nm_token);
 	return(error);
-}
-
-static int
-nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
-{
-    struct scaninfo *info = data;
-
-    if (vn_islocked(vp) || RB_EMPTY(&vp->v_rbdirty_tree))
-	return(-1);
-    if (info->waitfor & MNT_LAZY)
-	return(-1);
-    return(0);
 }
 
 static int
@@ -1374,6 +1363,8 @@ nfs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
     struct scaninfo *info = data;
     int error;
 
+    if (vp->v_type == VNON || vp->v_type == VBAD)
+	return(0);
     error = VOP_FSYNC(vp, info->waitfor, 0);
     if (error)
 	info->allerror = error;

@@ -1160,8 +1160,12 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 					     OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY);
 			if (object->type == OBJT_VNODE &&
 			    (vp = (struct vnode *)object->handle) != NULL) {
-				if (vp->v_flag & VOBJDIRTY) 
+				if (vp->v_mount &&
+				    (vp->v_mount->mnt_kern_flag & MNTK_THR_SYNC)) {
+					vclrobjdirty(vp);
+				} else {
 					vclrflags(vp, VOBJDIRTY);
+				}
 			}
 		}
 	}
@@ -2518,7 +2522,7 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
  * busied by the caller preventing destruction.
  *
  * If the related mount is flagged MNTK_THR_SYNC we need to call
- * vsetisdirty().  Filesystems using this option usually shortcut
+ * vsetobjdirty().  Filesystems using this option usually shortcut
  * synchronization by only scanning the syncer list.
  */
 void
@@ -2538,10 +2542,11 @@ vm_object_set_writeable_dirty(vm_object_t object)
 	if (object->type == OBJT_VNODE &&
 	    (vp = (struct vnode *)object->handle) != NULL) {
 		if ((vp->v_flag & VOBJDIRTY) == 0) {
-			vsetflags(vp, VOBJDIRTY);
 			if (vp->v_mount &&
 			    (vp->v_mount->mnt_kern_flag & MNTK_THR_SYNC)) {
-				vsetisdirty(vp);
+				vsetobjdirty(vp);
+			} else {
+				vsetflags(vp, VOBJDIRTY);
 			}
 		}
 	}

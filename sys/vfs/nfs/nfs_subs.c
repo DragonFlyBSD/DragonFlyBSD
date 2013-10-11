@@ -1427,19 +1427,18 @@ static int nfs_clearcommit_callback(struct mount *mp, struct vnode *vp,
 void
 nfs_clearcommit(struct mount *mp)
 {
-	vmntvnodescan(mp, VMSC_NOWAIT, nfs_clearcommit_callback, NULL, NULL);
+	vsyncscan(mp, VMSC_NOWAIT, nfs_clearcommit_callback, NULL);
 }
 
 static int
 nfs_clearcommit_callback(struct mount *mp, struct vnode *vp,
 			 void *data __unused)
 {
-	vhold(vp);
 	lwkt_gettoken(&vp->v_token);
 	RB_SCAN(buf_rb_tree, &vp->v_rbdirty_tree, NULL,
 		nfs_clearcommit_bp, NULL);
 	lwkt_reltoken(&vp->v_token);
-	vdrop(vp);
+
 	return(0);
 }
 

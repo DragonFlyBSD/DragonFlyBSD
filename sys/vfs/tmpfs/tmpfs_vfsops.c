@@ -281,6 +281,7 @@ tmpfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	mp->mnt_flag |= MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
 	mp->mnt_kern_flag |= MNTK_NOMSYNC;
+	mp->mnt_kern_flag |= MNTK_THR_SYNC;
 	mp->mnt_data = (qaddr_t)tmp;
 	vfs_getnewfsid(mp);
 

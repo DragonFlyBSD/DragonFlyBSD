@@ -272,15 +272,44 @@ vclrisdirty(struct vnode *vp)
 		vn_syncer_remove(vp);
 }
 
+void
+vclrobjdirty(struct vnode *vp)
+{
+	vclrflags(vp, VOBJDIRTY);
+	if (vp->v_flag & VONWORKLST)
+		vn_syncer_remove(vp);
+}
+
 /*
  * vnode must be stable
  */
 void
 vsetisdirty(struct vnode *vp)
 {
+	struct syncer_ctx *ctx;
+
 	if ((vp->v_flag & VISDIRTY) == 0) {
+		ctx = vn_get_syncer(vp);
 		vsetflags(vp, VISDIRTY);
-		vn_syncer_add(vp, syncdelay);
+		lwkt_gettoken(&ctx->sc_token);
+		if ((vp->v_flag & VONWORKLST) == 0)
+			vn_syncer_add(vp, syncdelay);
+		lwkt_reltoken(&ctx->sc_token);
+	}
+}
+
+void
+vsetobjdirty(struct vnode *vp)
+{
+	struct syncer_ctx *ctx;
+
+	if ((vp->v_flag & VOBJDIRTY) == 0) {
+		ctx = vn_get_syncer(vp);
+		vsetflags(vp, VOBJDIRTY);
+		lwkt_gettoken(&ctx->sc_token);
+		if ((vp->v_flag & VONWORKLST) == 0)
+			vn_syncer_add(vp, syncdelay);
+		lwkt_reltoken(&ctx->sc_token);
 	}
 }
 
@@ -716,9 +745,19 @@ vsyncscan(
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
 			KKASSERT(vp->v_mount == mp);
-			if (vget(vp, LK_EXCLUSIVE | lkflags) == 0) {
+			if (vmsc_flags & VMSC_GETVP) {
+				if (vget(vp, LK_EXCLUSIVE | lkflags) == 0) {
+					slowfunc(mp, vp, data);
+					vput(vp);
+				}
+			} else if (vmsc_flags & VMSC_GETVX) {
+				vx_get(vp);
 				slowfunc(mp, vp, data);
-				vput(vp);
+				vx_put(vp);
+			} else {
+				vhold(vp);
+				slowfunc(mp, vp, data);
+				vdrop(vp);
 			}
 			if (LIST_FIRST(slp) == vp)
 				vn_syncer_add(vp, -(i + syncdelay));

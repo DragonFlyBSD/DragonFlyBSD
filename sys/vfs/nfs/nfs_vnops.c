@@ -3167,7 +3167,13 @@ nfs_fsync(struct vop_fsync_args *ap)
 	int error;
 
 	lwkt_gettoken(&nmp->nm_token);
+
+	/*
+	 * NOTE: Because attributes are set synchronously we currently
+	 *	 do not have to implement vsetisdirty()/vclrisdirty().
+	 */
 	error = nfs_flush(ap->a_vp, ap->a_waitfor, curthread, 1);
+
 	lwkt_reltoken(&nmp->nm_token);
 
 	return error;
