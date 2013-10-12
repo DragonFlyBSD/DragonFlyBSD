@@ -1537,7 +1537,7 @@ retry:
 		 * that the object is associated with the vp.
 		 */
 		vm_object_hold(object);
-		object->ref_count--;
+		atomic_add_int(&object->ref_count, -1);
 		vrele(vp);
 	} else {
 		if (object->flags & OBJ_DEAD) {

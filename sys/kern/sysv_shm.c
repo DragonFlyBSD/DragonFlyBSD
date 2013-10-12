@@ -336,7 +336,7 @@ again:
 
 	shm_handle = shmseg->shm_internal;
 	vm_object_hold(shm_handle->shm_object);
-	vm_object_chain_wait(shm_handle->shm_object);
+	vm_object_chain_wait(shm_handle->shm_object, 0);
 	vm_object_reference_locked(shm_handle->shm_object);
 	rv = vm_map_find(&p->p_vmspace->vm_map, 
 			 shm_handle->shm_object, 0,

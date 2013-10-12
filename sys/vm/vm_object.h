@@ -127,15 +127,17 @@ enum obj_type {
 typedef u_char objtype_t;
 
 /*
- * vm_object		A VM object which represents an arbitrarily sized
- *			data store.
+ * A VM object which represents an arbitrarily sized data store.
  *
- * Locking requirements:
- *	vmobj_token for object_list
+ * NOTE:
+ *	shadow_head is only used by OBJT_DEFAULT or OBJT_SWAP objects.
+ *	OBJT_VNODE objects explicitly do not keep track of who is shadowing
+ *	them.
  *
+ * LOCKING:
+ *	vmobj_token for object_list.
  *	vm_object_hold/drop() for most vm_object related operations.
- *
- *	OBJ_CHAINLOCK to avoid chain/shadow object collisions
+ *	OBJ_CHAINLOCK to avoid chain/shadow object collisions.
  */
 struct vm_object {
 	TAILQ_ENTRY(vm_object) object_list; /* vmobj_token */
@@ -194,6 +196,7 @@ struct vm_object {
 	int	swblock_count;
 	struct	lwkt_token	token;
 	struct md_object	md;	/* machine specific (typ pmap) */
+	uint32_t		chainlk;/* chaining lock */
 };
 
 /*
@@ -201,10 +204,11 @@ struct vm_object {
  *
  * NOTE: OBJ_ONEMAPPING only applies to DEFAULT and SWAP objects.  It
  *	 may be gratuitously re-cleared in other cases but will already be
- *	 clear in those cases.
+ *	 clear in those cases.  It might not be set on other object types
+ *	 (particularly OBJT_VNODE).
  */
-#define OBJ_CHAINLOCK	0x0001		/* backing_object/shadow changing */
-#define OBJ_CHAINWANT	0x0002
+#define OBJ_UNUSED0001	0x0001		/* backing_object/shadow changing */
+#define OBJ_ONSHADOW	0x0002		/* backing_object on shadow list */
 #define OBJ_ACTIVE	0x0004		/* active objects */
 #define OBJ_DEAD	0x0008		/* dead objects (during rundown) */
 #define	OBJ_NOSPLIT	0x0010		/* dont split this object */
@@ -215,6 +219,11 @@ struct vm_object {
 #define OBJ_DEADWNT	0x1000		/* waiting because object is dead */
 #define	OBJ_ONEMAPPING	0x2000		/* flag single vm_map_entry mapping */
 #define OBJ_NOMSYNC	0x4000		/* disable msync() system call */
+
+#define CHAINLK_EXCL	0x80000000
+#define CHAINLK_WAIT	0x40000000
+#define CHAINLK_EXCLREQ	0x20000000
+#define CHAINLK_MASK	0x1FFFFFFF
 
 #define IDX_TO_OFF(idx) (((vm_ooffset_t)(idx)) << PAGE_SHIFT)
 #define OFF_TO_IDX(off) ((vm_pindex_t)(((vm_ooffset_t)(off)) >> PAGE_SHIFT))
@@ -307,16 +316,17 @@ void vm_object_page_remove (vm_object_t, vm_pindex_t, vm_pindex_t, boolean_t);
 void vm_object_pmap_copy (vm_object_t, vm_pindex_t, vm_pindex_t);
 void vm_object_pmap_copy_1 (vm_object_t, vm_pindex_t, vm_pindex_t);
 void vm_object_pmap_remove (vm_object_t, vm_pindex_t, vm_pindex_t);
+void vm_object_reference_quick (vm_object_t);
 void vm_object_reference_locked (vm_object_t);
-void vm_object_chain_wait (vm_object_t);
-void vm_object_chain_acquire(vm_object_t object);
+void vm_object_chain_wait (vm_object_t object, int shared);
+void vm_object_chain_acquire(vm_object_t object, int shared);
 void vm_object_chain_release(vm_object_t object);
 void vm_object_chain_release_all(vm_object_t object, vm_object_t stopobj);
 void vm_object_shadow (vm_object_t *, vm_ooffset_t *, vm_size_t, int);
 void vm_object_madvise (vm_object_t, vm_pindex_t, int, int);
 void vm_object_init2 (void);
 vm_page_t vm_fault_object_page(vm_object_t, vm_ooffset_t,
-				vm_prot_t, int, int, int *);
+				vm_prot_t, int, int *, int *);
 void vm_object_dead_sleep(vm_object_t, const char *);
 void vm_object_dead_wakeup(vm_object_t);
 void vm_object_lock_swap(void);
@@ -326,13 +336,9 @@ void vm_object_unlock(vm_object_t);
 
 #ifndef DEBUG_LOCKS
 void vm_object_hold(vm_object_t);
-int vm_object_hold_maybe_shared(vm_object_t);
 int vm_object_hold_try(vm_object_t);
 void vm_object_hold_shared(vm_object_t);
 #else
-#define vm_object_hold_maybe_shared(obj)		\
-	debugvm_object_hold_maybe_shared(obj, __FILE__, __LINE__)
-int debugvm_object_hold_maybe_shared(vm_object_t, char *, int);
 #define vm_object_hold(obj)		\
 	debugvm_object_hold(obj, __FILE__, __LINE__)
 void debugvm_object_hold(vm_object_t, char *, int);
@@ -343,6 +349,8 @@ int debugvm_object_hold_try(vm_object_t, char *, int);
 	debugvm_object_hold_shared(obj, __FILE__, __LINE__)
 void debugvm_object_hold_shared(vm_object_t, char *, int);
 #endif
+void vm_object_upgrade(vm_object_t);
+void vm_object_downgrade(vm_object_t);
 
 void vm_object_drop(vm_object_t);
 

@@ -178,7 +178,7 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 		if (vp->v_mount && (vp->v_mount->mnt_kern_flag & MNTK_NOMSYNC))
 			vm_object_set_flag(object, OBJ_NOMSYNC);
 	} else {
-		object->ref_count++;
+		atomic_add_int(&object->ref_count, 1);
 		if (object->size != lsize) {
 			kprintf("vnode_pager_alloc: Warning, objsize "
 				"mismatch %jd/%jd vp=%p obj=%p\n",
@@ -251,7 +251,7 @@ vnode_pager_reference(struct vnode *vp)
 	 * NULL returns if it does not.
 	 */
 	if (object) {
-		object->ref_count++;
+		atomic_add_int(&object->ref_count, 1);
 		vref(vp);
 	}
 

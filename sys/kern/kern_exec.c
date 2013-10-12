@@ -653,6 +653,27 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 	if (pageno >= object->size)
 		return (EIO);
 
+	/*
+	 * Shortcut using shared locks, improve concurrent execs.
+	 */
+	vm_object_hold_shared(object);
+	m = vm_page_lookup(object, pageno);
+	if (m) {
+		if ((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) {
+			vm_page_hold(m);
+			vm_page_sleep_busy(m, FALSE, "execpg");
+			if ((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) {
+				vm_object_drop(object);
+				goto done;
+			}
+		}
+		vm_page_unhold(m);
+	}
+	vm_object_drop(object);
+
+	/*
+	 * Do it the hard way
+	 */
 	vm_object_hold(object);
 	m = vm_page_grab(object, pageno, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 	while ((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
@@ -681,6 +702,7 @@ exec_map_page(struct image_params *imgp, vm_pindex_t pageno,
 	vm_page_wakeup(m);	/* unbusy the page */
 	vm_object_drop(object);
 
+done:
 	*plwb = lwbuf_alloc(m, *plwb);
 	*pdata = (void *)lwbuf_kva(*plwb);
 

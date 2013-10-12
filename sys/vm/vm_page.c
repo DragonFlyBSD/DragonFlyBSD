@@ -2628,10 +2628,11 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 {
 	vm_page_t m;
 	int error;
+	int shared = 1;
 
 	KKASSERT(allocflags &
 		(VM_ALLOC_NORMAL|VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
-	vm_object_hold(object);
+	vm_object_hold_shared(object);
 	for (;;) {
 		m = vm_page_lookup_busy_try(object, pindex, TRUE, &error);
 		if (error) {
@@ -2642,6 +2643,10 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 			}
 			/* retry */
 		} else if (m == NULL) {
+			if (shared) {
+				vm_object_upgrade(object);
+				shared = 0;
+			}
 			if (allocflags & VM_ALLOC_RETRY)
 				allocflags |= VM_ALLOC_NULL_OK;
 			m = vm_page_alloc(object, pindex,

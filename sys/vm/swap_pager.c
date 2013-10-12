@@ -143,6 +143,7 @@ struct swfreeinfo {
 struct swswapoffinfo {
 	vm_object_t	object;
 	int		devidx;
+	int		shared;
 };
 
 /*
@@ -1932,7 +1933,7 @@ swp_pager_async_iodone(struct bio *bio)
  * object must be held.
  */
 static __inline void
-swp_pager_fault_page(vm_object_t object, vm_pindex_t pindex)
+swp_pager_fault_page(vm_object_t object, int *sharedp, vm_pindex_t pindex)
 {
 	struct vnode *vp;
 	vm_page_t m;
@@ -1963,7 +1964,7 @@ swp_pager_fault_page(vm_object_t object, vm_pindex_t pindex)
 		m = vm_fault_object_page(object, IDX_TO_OFF(pindex),
 					 VM_PROT_NONE,
 					 VM_FAULT_DIRTY | VM_FAULT_UNSWAP,
-					 0, &error);
+					 sharedp, &error);
 		if (m)
 			vm_page_unhold(m);
 	}
@@ -1999,6 +2000,7 @@ swap_pager_swapoff(int devidx)
 			goto skip;
 		}
 		info.object = object;
+		info.shared = 0;
 		info.devidx = devidx;
 		swblock_rb_tree_RB_SCAN(&object->swblock_root,
 					NULL,
@@ -2051,7 +2053,8 @@ swp_pager_swapoff_callback(struct swblock *swap, void *data)
 		 */
 		v = swap->swb_pages[i];
 		if (v != SWAPBLK_NONE && BLK2DEVIDX(v) == info->devidx) {
-			swp_pager_fault_page(object, swap->swb_index + i);
+			swp_pager_fault_page(object, &info->shared,
+					     swap->swb_index + i);
 			/* swap ptr might go away */
 			if (RB_LOOKUP(swblock_rb_tree,
 				      &object->swblock_root, index) != swap) {

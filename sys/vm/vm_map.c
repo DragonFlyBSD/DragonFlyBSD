@@ -1032,7 +1032,7 @@ vm_map_insert(vm_map_t map, int *countp,
 			(prev_entry->end - prev_entry->start);
 		if (object) {
 			vm_object_hold(object);
-			vm_object_chain_wait(object);
+			vm_object_chain_wait(object, 0);
 			vm_object_reference_locked(object);
 			must_drop = 1;
 		}
@@ -1430,7 +1430,7 @@ _vm_map_clip_start(vm_map_t map, vm_map_entry_t entry, vm_offset_t start,
 	case VM_MAPTYPE_VPAGETABLE:
 		if (new_entry->object.vm_object) {
 			vm_object_hold(new_entry->object.vm_object);
-			vm_object_chain_wait(new_entry->object.vm_object);
+			vm_object_chain_wait(new_entry->object.vm_object, 0);
 			vm_object_reference_locked(new_entry->object.vm_object);
 			vm_object_drop(new_entry->object.vm_object);
 		}
@@ -1492,7 +1492,7 @@ _vm_map_clip_end(vm_map_t map, vm_map_entry_t entry, vm_offset_t end,
 	case VM_MAPTYPE_VPAGETABLE:
 		if (new_entry->object.vm_object) {
 			vm_object_hold(new_entry->object.vm_object);
-			vm_object_chain_wait(new_entry->object.vm_object);
+			vm_object_chain_wait(new_entry->object.vm_object, 0);
 			vm_object_reference_locked(new_entry->object.vm_object);
 			vm_object_drop(new_entry->object.vm_object);
 		}
@@ -2828,7 +2828,7 @@ again:
 			vm_object_drop(object);
 		} else if (object) {
 			vm_object_hold(object);
-			vm_object_chain_acquire(object);
+			vm_object_chain_acquire(object, 0);
 			pmap_remove(map->pmap, s, e);
 
 			if (object != NULL &&
@@ -2969,17 +2969,6 @@ vm_map_check_protection(vm_map_t map, vm_offset_t start, vm_offset_t end,
 static void
 vm_map_split(vm_map_entry_t entry)
 {
-#if 0
-	/* UNOPTIMIZED */
-	vm_object_t oobject;
-
-	oobject = entry->object.vm_object;
-	vm_object_hold(oobject);
-	vm_object_chain_wait(oobject);
-	vm_object_reference_locked(oobject);
-	vm_object_clear_flag(oobject, OBJ_ONEMAPPING);
-	vm_object_drop(oobject);
-#else
 	/* OPTIMIZED */
 	vm_object_t oobject, nobject, bobject;
 	vm_offset_t s, e;
@@ -2987,6 +2976,18 @@ vm_map_split(vm_map_entry_t entry)
 	vm_pindex_t offidxstart, offidxend, idx;
 	vm_size_t size;
 	vm_ooffset_t offset;
+	int useshadowlist;
+
+	/*
+	 * Optimize away object locks for vnode objects.  Important exit/exec
+	 * critical path.
+	 */
+	oobject = entry->object.vm_object;
+	if (oobject->type != OBJT_DEFAULT && oobject->type != OBJT_SWAP) {
+		vm_object_reference_quick(oobject);
+		vm_object_clear_flag(oobject, OBJ_ONEMAPPING);
+		return;
+	}
 
 	/*
 	 * Setup.  Chain lock the original object throughout the entire
@@ -2994,12 +2995,11 @@ vm_map_split(vm_map_entry_t entry)
 	 *
 	 * XXX can madvise WILLNEED interfere with us too?
 	 */
-	oobject = entry->object.vm_object;
 	vm_object_hold(oobject);
-	vm_object_chain_acquire(oobject);
+	vm_object_chain_acquire(oobject, 0);
 
 	/*
-	 * Original object cannot be split?
+	 * Original object cannot be split?  Might have also changed state.
 	 */
 	if (oobject->handle == NULL || (oobject->type != OBJT_DEFAULT &&
 					oobject->type != OBJT_SWAP)) {
@@ -3037,13 +3037,19 @@ vm_map_split(vm_map_entry_t entry)
 	 * Give bobject an additional ref count for when it will be shadowed
 	 * by nobject.
 	 */
+	useshadowlist = 0;
 	if ((bobject = oobject->backing_object) != NULL) {
-		vm_object_hold(bobject);
-		vm_object_chain_wait(bobject);
-		vm_object_reference_locked(bobject);
-		vm_object_chain_acquire(bobject);
-		KKASSERT(bobject->backing_object == bobject);
-		KKASSERT((bobject->flags & OBJ_DEAD) == 0);
+		if (bobject->type != OBJT_VNODE) {
+			useshadowlist = 1;
+			vm_object_hold(bobject);
+			vm_object_chain_wait(bobject, 0);
+			vm_object_reference_locked(bobject);
+			vm_object_chain_acquire(bobject, 0);
+			KKASSERT(bobject->backing_object == bobject);
+			KKASSERT((bobject->flags & OBJ_DEAD) == 0);
+		} else {
+			vm_object_reference_quick(bobject);
+		}
 	}
 
 	/*
@@ -3074,9 +3080,13 @@ vm_map_split(vm_map_entry_t entry)
 
 	if (nobject == NULL) {
 		if (bobject) {
-			vm_object_chain_release(bobject);
-			vm_object_deallocate(bobject);
-			vm_object_drop(bobject);
+			if (useshadowlist) {
+				vm_object_chain_release(bobject);
+				vm_object_deallocate(bobject);
+				vm_object_drop(bobject);
+			} else {
+				vm_object_deallocate(bobject);
+			}
 		}
 		vm_object_chain_release(oobject);
 		vm_object_reference_locked(oobject);
@@ -3091,7 +3101,7 @@ vm_map_split(vm_map_entry_t entry)
 	 */
 	vm_object_hold(nobject);
 	vm_object_reference_locked(nobject);
-	vm_object_chain_acquire(nobject);
+	vm_object_chain_acquire(nobject, 0);
 
 	/*
 	 * nobject shadows bobject (oobject already shadows bobject).
@@ -3100,12 +3110,16 @@ vm_map_split(vm_map_entry_t entry)
 		nobject->backing_object_offset =
 		    oobject->backing_object_offset + IDX_TO_OFF(offidxstart);
 		nobject->backing_object = bobject;
-		bobject->shadow_count++;
-		bobject->generation++;
-		LIST_INSERT_HEAD(&bobject->shadow_head, nobject, shadow_list);
-		vm_object_clear_flag(bobject, OBJ_ONEMAPPING); /* XXX? */
-		vm_object_chain_release(bobject);
-		vm_object_drop(bobject);
+		if (useshadowlist) {
+			bobject->shadow_count++;
+			bobject->generation++;
+			LIST_INSERT_HEAD(&bobject->shadow_head,
+					 nobject, shadow_list);
+			vm_object_clear_flag(bobject, OBJ_ONEMAPPING); /*XXX*/
+			vm_object_chain_release(bobject);
+			vm_object_drop(bobject);
+			vm_object_set_flag(nobject, OBJ_ONSHADOW);
+		}
 	}
 
 	/*
@@ -3170,7 +3184,7 @@ vm_map_split(vm_map_entry_t entry)
 	 */
 	vm_object_chain_release(nobject);
 	vm_object_drop(nobject);
-	if (bobject) {
+	if (bobject && useshadowlist) {
 		vm_object_chain_release(bobject);
 		vm_object_drop(bobject);
 	}
@@ -3178,7 +3192,6 @@ vm_map_split(vm_map_entry_t entry)
 	/*vm_object_clear_flag(oobject, OBJ_ONEMAPPING);*/
 	vm_object_deallocate_locked(oobject);
 	vm_object_drop(oobject);
-#endif
 }
 
 /*
@@ -3338,7 +3351,7 @@ vmspace_fork(struct vmspace *vm1)
 				if (old_entry->object.vm_object) {
 					object = old_entry->object.vm_object;
 					vm_object_hold(object);
-					vm_object_chain_wait(object);
+					vm_object_chain_wait(object, 0);
 					vm_object_reference_locked(object);
 					vm_object_clear_flag(object,
 							     OBJ_ONEMAPPING);

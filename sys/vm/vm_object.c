@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1991, 1993
+ * Copyright (c) 1991, 1993, 2013
  *	The Regents of the University of California.  All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -193,6 +193,20 @@ vm_object_unlock(vm_object_t obj)
 	lwkt_reltoken(&obj->token);
 }
 
+void
+vm_object_upgrade(vm_object_t obj)
+{
+	lwkt_reltoken(&obj->token);
+	lwkt_gettoken(&obj->token);
+}
+
+void
+vm_object_downgrade(vm_object_t obj)
+{
+	lwkt_reltoken(&obj->token);
+	lwkt_gettoken_shared(&obj->token);
+}
+
 static __inline void
 vm_object_assert_held(vm_object_t obj)
 {
@@ -335,6 +349,8 @@ debugvm_object_hold_shared(vm_object_t obj, char *file, int line)
 #endif
 }
 
+#if 0
+
 /*
  * Obtain either a shared or exclusive lock on VM object
  * based on whether this is a terminal vnode object or not.
@@ -357,8 +373,12 @@ debugvm_object_hold_maybe_shared(vm_object_t obj, char *file, int line)
 	}
 }
 
+#endif
+
 /*
  * Drop the token and hold_count on the object.
+ *
+ * WARNING! Token might be shared.
  */
 void
 vm_object_drop(vm_object_t obj)
@@ -532,12 +552,23 @@ vm_object_reference_locked(vm_object_t object)
 {
 	KKASSERT(object != NULL);
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
-	KKASSERT((object->flags & OBJ_CHAINLOCK) == 0);
+	KKASSERT((object->chainlk & (CHAINLK_EXCL | CHAINLK_MASK)) == 0);
 	atomic_add_int(&object->ref_count, 1);
 	if (object->type == OBJT_VNODE) {
 		vref(object->handle);
 		/* XXX what if the vnode is being destroyed? */
 	}
+}
+
+/*
+ * This version is only allowed for vnode objects.
+ */
+void
+vm_object_reference_quick(vm_object_t object)
+{
+	KKASSERT(object->type == OBJT_VNODE);
+	atomic_add_int(&object->ref_count, 1);
+	vref(object->handle);
 }
 
 /*
@@ -553,46 +584,159 @@ vm_object_reference_locked(vm_object_t object)
  * faults.
  *
  * The object must usually be held on entry, though intermediate
- * objects need not be held on release.
+ * objects need not be held on release.  The object must be held exclusively,
+ * NOT shared.  Note that the prefault path checks the shared state and
+ * avoids using the chain functions.
  */
 void
-vm_object_chain_wait(vm_object_t object)
+vm_object_chain_wait(vm_object_t object, int shared)
 {
 	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
-	while (object->flags & OBJ_CHAINLOCK) {
-		vm_object_set_flag(object, OBJ_CHAINWANT);
-		tsleep(object, 0, "objchain", 0);
+	for (;;) {
+		uint32_t chainlk = object->chainlk;
+
+		cpu_ccfence();
+		if (shared) {
+			if (chainlk & (CHAINLK_EXCL | CHAINLK_EXCLREQ)) {
+				tsleep_interlock(object, 0);
+				if (atomic_cmpset_int(&object->chainlk,
+						      chainlk,
+						      chainlk | CHAINLK_WAIT)) {
+					tsleep(object, PINTERLOCKED,
+					       "objchns", 0);
+				}
+				/* retry */
+			} else {
+				break;
+			}
+			/* retry */
+		} else {
+			if (chainlk & (CHAINLK_MASK | CHAINLK_EXCL)) {
+				tsleep_interlock(object, 0);
+				if (atomic_cmpset_int(&object->chainlk,
+						      chainlk,
+						      chainlk | CHAINLK_WAIT))
+				{
+					tsleep(object, PINTERLOCKED,
+					       "objchnx", 0);
+				}
+				/* retry */
+			} else {
+				if (atomic_cmpset_int(&object->chainlk,
+						      chainlk,
+						      chainlk & ~CHAINLK_WAIT))
+				{
+					if (chainlk & CHAINLK_WAIT)
+						wakeup(object);
+					break;
+				}
+				/* retry */
+			}
+		}
+		/* retry */
 	}
 }
 
 void
-vm_object_chain_acquire(vm_object_t object)
+vm_object_chain_acquire(vm_object_t object, int shared)
 {
-	if (object->type == OBJT_DEFAULT || object->type == OBJT_SWAP) {
-		vm_object_chain_wait(object);
-		vm_object_set_flag(object, OBJ_CHAINLOCK);
+	if (object->type != OBJT_DEFAULT && object->type != OBJT_SWAP)
+		return;
+	if (vm_shared_fault == 0)
+		shared = 0;
+
+	for (;;) {
+		uint32_t chainlk = object->chainlk;
+
+		cpu_ccfence();
+		if (shared) {
+			if (chainlk & (CHAINLK_EXCL | CHAINLK_EXCLREQ)) {
+				tsleep_interlock(object, 0);
+				if (atomic_cmpset_int(&object->chainlk,
+						      chainlk,
+						      chainlk | CHAINLK_WAIT)) {
+					tsleep(object, PINTERLOCKED,
+					       "objchns", 0);
+				}
+				/* retry */
+			} else if (atomic_cmpset_int(&object->chainlk,
+					      chainlk, chainlk + 1)) {
+				break;
+			}
+			/* retry */
+		} else {
+			if (chainlk & (CHAINLK_MASK | CHAINLK_EXCL)) {
+				tsleep_interlock(object, 0);
+				if (atomic_cmpset_int(&object->chainlk,
+						      chainlk,
+						      chainlk |
+						       CHAINLK_WAIT |
+						       CHAINLK_EXCLREQ)) {
+					tsleep(object, PINTERLOCKED,
+					       "objchnx", 0);
+				}
+				/* retry */
+			} else {
+				if (atomic_cmpset_int(&object->chainlk,
+						      chainlk,
+						      (chainlk | CHAINLK_EXCL) &
+						      ~(CHAINLK_EXCLREQ |
+							CHAINLK_WAIT))) {
+					if (chainlk & CHAINLK_WAIT)
+						wakeup(object);
+					break;
+				}
+				/* retry */
+			}
+		}
+		/* retry */
 	}
 }
 
 void
 vm_object_chain_release(vm_object_t object)
 {
-	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
-	if (object->type == OBJT_DEFAULT || object->type == OBJT_SWAP) {
-		KKASSERT(object->flags & OBJ_CHAINLOCK);
-		if (object->flags & OBJ_CHAINWANT) {
-			vm_object_clear_flag(object,
-					     OBJ_CHAINLOCK | OBJ_CHAINWANT);
-			wakeup(object);
+	/*ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));*/
+	if (object->type != OBJT_DEFAULT && object->type != OBJT_SWAP)
+		return;
+	KKASSERT(object->chainlk & (CHAINLK_MASK | CHAINLK_EXCL));
+	for (;;) {
+		uint32_t chainlk = object->chainlk;
+
+		cpu_ccfence();
+		if (chainlk & CHAINLK_MASK) {
+			if ((chainlk & CHAINLK_MASK) == 1 &&
+			    atomic_cmpset_int(&object->chainlk,
+					      chainlk,
+					      (chainlk - 1) & ~CHAINLK_WAIT)) {
+				if (chainlk & CHAINLK_WAIT)
+					wakeup(object);
+				break;
+			}
+			if ((chainlk & CHAINLK_MASK) > 1 &&
+			    atomic_cmpset_int(&object->chainlk,
+					      chainlk, chainlk - 1)) {
+				break;
+			}
+			/* retry */
 		} else {
-			vm_object_clear_flag(object, OBJ_CHAINLOCK);
+			KKASSERT(chainlk & CHAINLK_EXCL);
+			if (atomic_cmpset_int(&object->chainlk,
+					      chainlk,
+					      chainlk & ~(CHAINLK_EXCL |
+							  CHAINLK_WAIT))) {
+				if (chainlk & CHAINLK_WAIT)
+					wakeup(object);
+				break;
+			}
 		}
 	}
 }
 
 /*
- * This releases the entire chain of objects from first_object to and
- * including stopobj, flowing through object->backing_object.
+ * Release the chain from first_object through and including stopobj.
+ * The caller is typically holding the first and last object locked
+ * (shared or exclusive) to prevent destruction races.
  *
  * We release stopobj first as an optimization as this object is most
  * likely to be shared across multiple processes.
@@ -608,12 +752,17 @@ vm_object_chain_release_all(vm_object_t first_object, vm_object_t stopobj)
 
 	while (object != stopobj) {
 		KKASSERT(object);
+#if 0
+		/* shouldn't need this since chain is held */
 		if (object != first_object)
 			vm_object_hold(object);
+#endif
 		backing_object = object->backing_object;
 		vm_object_chain_release(object);
+#if 0
 		if (object != first_object)
 			vm_object_drop(object);
+#endif
 		object = backing_object;
 	}
 }
@@ -639,7 +788,7 @@ vm_object_vndeallocate(vm_object_t object)
 		panic("vm_object_vndeallocate: bad object reference count");
 	}
 #endif
-	object->ref_count--;
+	atomic_add_int(&object->ref_count, -1);
 	if (object->ref_count == 0)
 		vclrflags(vp, VTEXT);
 	vrele(vp);
@@ -659,10 +808,51 @@ vm_object_vndeallocate(vm_object_t object)
 void
 vm_object_deallocate(vm_object_t object)
 {
-	if (object) {
-		vm_object_hold(object);
-		vm_object_deallocate_locked(object);
-		vm_object_drop(object);
+	struct vnode *vp;
+	int count;
+
+	if (object == NULL)
+		return;
+	for (;;) {
+		count = object->ref_count;
+		cpu_ccfence();
+
+		/*
+		 * If decrementing the count enters into special handling
+		 * territory (0, 1, or 2) we have to do it the hard way.
+		 * Fortunate though, objects with only a few refs like this
+		 * are not likely to be heavily contended anyway.
+		 */
+		if (count <= 3) {
+			vm_object_hold(object);
+			vm_object_deallocate_locked(object);
+			vm_object_drop(object);
+			break;
+		}
+
+		/*
+		 * Try to decrement ref_count without acquiring a hold on
+		 * the object.  This is particularly important for the exec*()
+		 * and exit*() code paths because the program binary may
+		 * have a great deal of sharing and an exclusive lock will
+		 * crowbar performance in those circumstances.
+		 */
+		if (object->type == OBJT_VNODE) {
+			vp = (struct vnode *)object->handle;
+			if (atomic_cmpset_int(&object->ref_count,
+					      count, count - 1)) {
+				vrele(vp);
+				break;
+			}
+			/* retry */
+		} else {
+			if (atomic_cmpset_int(&object->ref_count,
+					      count, count - 1)) {
+				break;
+			}
+			/* retry */
+		}
+		/* retry */
 	}
 }
 
@@ -699,7 +889,7 @@ again:
 			      "too many times: %d", object->type);
 		}
 		if (object->ref_count > 2) {
-			object->ref_count--;
+			atomic_add_int(&object->ref_count, -1);
 			break;
 		}
 
@@ -717,7 +907,7 @@ again:
 			    object->type == OBJT_SWAP) {
 				vm_object_set_flag(object, OBJ_ONEMAPPING);
 			}
-			object->ref_count--;
+			atomic_add_int(&object->ref_count, -1);
 			break;
 		}
 
@@ -757,11 +947,11 @@ again:
 			 * otherwise we would be acquiring locks in the
 			 * wrong order and potentially deadlock.
 			 */
-			if (temp->flags & OBJ_CHAINLOCK) {
+			if (temp->chainlk & (CHAINLK_EXCL | CHAINLK_MASK)) {
 				vm_object_drop(temp);
 				goto skip;
 			}
-			vm_object_chain_acquire(temp);
+			vm_object_chain_acquire(temp, 0);
 
 			/*
 			 * Recheck/retry after the hold and the paging
@@ -782,7 +972,7 @@ again:
 			 * We can safely drop object's ref_count now.
 			 */
 			KKASSERT(object->ref_count == 2);
-			object->ref_count--;
+			atomic_add_int(&object->ref_count, -1);
 
 			/*
 			 * If our single parent is not collapseable just
@@ -807,7 +997,7 @@ again:
 			 * vm_object_reference_locked() because it asserts
 			 * that CHAINLOCK is not set).
 			 */
-			temp->ref_count++;
+			atomic_add_int(&temp->ref_count, 1);
 			KKASSERT(temp->ref_count > 1);
 
 			/*
@@ -832,7 +1022,7 @@ again:
 skip:
 		KKASSERT(object->ref_count != 0);
 		if (object->ref_count >= 2) {
-			object->ref_count--;
+			atomic_add_int(&object->ref_count, -1);
 			break;
 		}
 		KKASSERT(object->ref_count == 1);
@@ -863,16 +1053,19 @@ skip:
 		 * It shouldn't be possible for the object to be chain locked
 		 * if we're removing the last ref on it.
 		 */
-		KKASSERT((object->flags & OBJ_CHAINLOCK) == 0);
+		KKASSERT((object->chainlk & (CHAINLK_EXCL|CHAINLK_MASK)) == 0);
 
 		if (temp) {
-			LIST_REMOVE(object, shadow_list);
-			temp->shadow_count--;
-			temp->generation++;
+			if (object->flags & OBJ_ONSHADOW) {
+				LIST_REMOVE(object, shadow_list);
+				temp->shadow_count--;
+				temp->generation++;
+				vm_object_clear_flag(object, OBJ_ONSHADOW);
+			}
 			object->backing_object = NULL;
 		}
 
-		--object->ref_count;
+		atomic_add_int(&object->ref_count, -1);
 		if ((object->flags & OBJ_DEAD) == 0)
 			vm_object_terminate(object);
 		if (must_drop && temp)
@@ -1605,6 +1798,7 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 {
 	vm_object_t source;
 	vm_object_t result;
+	int useshadowlist;
 
 	source = *objectp;
 
@@ -1618,22 +1812,29 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 	 * addref is TRUE or not in this case because the original object
 	 * will be shadowed.
 	 */
+	useshadowlist = 0;
 	if (source) {
-		vm_object_hold(source);
-		vm_object_chain_wait(source);
-		if (source->ref_count == 1 &&
-		    source->handle == NULL &&
-		    (source->type == OBJT_DEFAULT ||
-		     source->type == OBJT_SWAP)) {
-			vm_object_drop(source);
-			if (addref) {
-				vm_object_reference_locked(source);
-				vm_object_clear_flag(source, OBJ_ONEMAPPING);
+		if (source->type != OBJT_VNODE) {
+			useshadowlist = 1;
+			vm_object_hold(source);
+			vm_object_chain_wait(source, 0);
+			if (source->ref_count == 1 &&
+			    source->handle == NULL &&
+			    (source->type == OBJT_DEFAULT ||
+			     source->type == OBJT_SWAP)) {
+				if (addref) {
+					vm_object_reference_locked(source);
+					vm_object_clear_flag(source, OBJ_ONEMAPPING);
+				}
+				vm_object_drop(source);
+				return;
 			}
-			return;
+			vm_object_reference_locked(source);
+			vm_object_clear_flag(source, OBJ_ONEMAPPING);
+		} else {
+			vm_object_reference_quick(source);
+			vm_object_clear_flag(source, OBJ_ONEMAPPING);
 		}
-		vm_object_reference_locked(source);
-		vm_object_clear_flag(source, OBJ_ONEMAPPING);
 	}
 
 	/*
@@ -1661,14 +1862,20 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 	 * Try to optimize the result object's page color when shadowing
 	 * in order to maintain page coloring consistency in the combined 
 	 * shadowed object.
+	 *
+	 * SHADOWING IS NOT APPLICABLE TO OBJT_VNODE OBJECTS
 	 */
 	KKASSERT(result->backing_object == NULL);
 	result->backing_object = source;
 	if (source) {
-		vm_object_chain_wait(source);
-		LIST_INSERT_HEAD(&source->shadow_head, result, shadow_list);
-		source->shadow_count++;
-		source->generation++;
+		if (useshadowlist) {
+			vm_object_chain_wait(source, 0);
+			LIST_INSERT_HEAD(&source->shadow_head,
+					 result, shadow_list);
+			source->shadow_count++;
+			source->generation++;
+			vm_object_set_flag(result, OBJ_ONSHADOW);
+		}
 		/* cpu localization twist */
 		result->pg_color = (int)(intptr_t)curthread;
 	}
@@ -1681,8 +1888,12 @@ vm_object_shadow(vm_object_t *objectp, vm_ooffset_t *offset, vm_size_t length,
 	vm_object_drop(result);
 	*offset = 0;
 	if (source) {
-		vm_object_deallocate_locked(source);
-		vm_object_drop(source);
+		if (useshadowlist) {
+			vm_object_deallocate_locked(source);
+			vm_object_drop(source);
+		} else {
+			vm_object_deallocate(source);
+		}
 	}
 
 	/*
@@ -1927,10 +2138,10 @@ static void
 vm_object_qcollapse(vm_object_t object, vm_object_t backing_object)
 {
 	if (backing_object->ref_count == 1) {
-		backing_object->ref_count += 2;
+		atomic_add_int(&backing_object->ref_count, 2);
 		vm_object_backing_scan(object, backing_object,
 				       OBSC_COLLAPSE_NOWAIT);
-		backing_object->ref_count -= 2;
+		atomic_add_int(&backing_object->ref_count, -2);
 	}
 }
 
@@ -1957,36 +2168,39 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 	 */
 	KKASSERT(object != NULL);
 	vm_object_assert_held(object);
-	KKASSERT(object->flags & OBJ_CHAINLOCK);
+	KKASSERT(object->chainlk & (CHAINLK_MASK | CHAINLK_EXCL));
 
 	for (;;) {
 		vm_object_t bbobj;
 		int dodealloc;
 
 		/*
-		 * We have to hold the backing object, check races.
+		 * We can only collapse a DEFAULT/SWAP object with a
+		 * DEFAULT/SWAP object.
 		 */
-		while ((backing_object = object->backing_object) != NULL) {
-			vm_object_hold(backing_object);
-			if (backing_object == object->backing_object)
-				break;
-			vm_object_drop(backing_object);
+		if (object->type != OBJT_DEFAULT && object->type != OBJT_SWAP) {
+			backing_object = NULL;
+			break;
+		}
+
+		backing_object = object->backing_object;
+		if (backing_object == NULL)
+			break;
+		if (backing_object->type != OBJT_DEFAULT &&
+		    backing_object->type != OBJT_SWAP) {
+			backing_object = NULL;
+			break;
 		}
 
 		/*
-		 * No backing object?  Nothing to collapse then.
+		 * Hold the backing_object and check for races
 		 */
-		if (backing_object == NULL)
-			break;
-
-		/*
-		 * You can't collapse with a non-default/non-swap object.
-		 */
-		if (backing_object->type != OBJT_DEFAULT &&
-		    backing_object->type != OBJT_SWAP) {
+		vm_object_hold(backing_object);
+		if (backing_object != object->backing_object ||
+		    (backing_object->type != OBJT_DEFAULT &&
+		     backing_object->type != OBJT_SWAP)) {
 			vm_object_drop(backing_object);
-			backing_object = NULL;
-			break;
+			continue;
 		}
 
 		/*
@@ -1996,7 +2210,7 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 		 * new backing_object.  Re-check that it is still our
 		 * backing object.
 		 */
-		vm_object_chain_acquire(backing_object);
+		vm_object_chain_acquire(backing_object, 0);
 		if (backing_object != object->backing_object) {
 			vm_object_chain_release(backing_object);
 			vm_object_drop(backing_object);
@@ -2074,33 +2288,52 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			 * Object now shadows whatever backing_object did.
 			 * Remove object from backing_object's shadow_list.
 			 */
-			LIST_REMOVE(object, shadow_list);
 			KKASSERT(object->backing_object == backing_object);
-			backing_object->shadow_count--;
-			backing_object->generation++;
+			if (object->flags & OBJ_ONSHADOW) {
+				LIST_REMOVE(object, shadow_list);
+				backing_object->shadow_count--;
+				backing_object->generation++;
+				vm_object_clear_flag(object, OBJ_ONSHADOW);
+			}
 
 			/*
 			 * backing_object->backing_object moves from within
 			 * backing_object to within object.
+			 *
+			 * OBJT_VNODE bbobj's should have empty shadow lists.
 			 */
 			while ((bbobj = backing_object->backing_object) != NULL) {
-				vm_object_hold(bbobj);
+				if (bbobj->type == OBJT_VNODE)
+					vm_object_hold_shared(bbobj);
+				else
+					vm_object_hold(bbobj);
 				if (bbobj == backing_object->backing_object)
 					break;
 				vm_object_drop(bbobj);
 			}
 			if (bbobj) {
-				LIST_REMOVE(backing_object, shadow_list);
-				bbobj->shadow_count--;
-				bbobj->generation++;
+				if (backing_object->flags & OBJ_ONSHADOW) {
+					/* not locked exclusively if vnode */
+					KKASSERT(bbobj->type != OBJT_VNODE);
+					LIST_REMOVE(backing_object,
+						    shadow_list);
+					bbobj->shadow_count--;
+					bbobj->generation++;
+					vm_object_clear_flag(backing_object,
+							     OBJ_ONSHADOW);
+				}
 				backing_object->backing_object = NULL;
 			}
 			object->backing_object = bbobj;
 			if (bbobj) {
-				LIST_INSERT_HEAD(&bbobj->shadow_head,
-						 object, shadow_list);
-				bbobj->shadow_count++;
-				bbobj->generation++;
+				if (bbobj->type != OBJT_VNODE) {
+					LIST_INSERT_HEAD(&bbobj->shadow_head,
+							 object, shadow_list);
+					bbobj->shadow_count++;
+					bbobj->generation++;
+					vm_object_set_flag(object,
+							   OBJ_ONSHADOW);
+				}
 			}
 
 			object->backing_object_offset +=
@@ -2134,7 +2367,7 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			 * XXX just fall through and dodealloc instead
 			 *     of forcing destruction?
 			 */
-			--backing_object->ref_count;
+			atomic_add_int(&backing_object->ref_count, -1);
 			if ((backing_object->flags & OBJ_DEAD) == 0)
 				vm_object_terminate(backing_object);
 			object_collapses++;
@@ -2153,9 +2386,15 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			 * bbobj is backing_object->backing_object.  Since
 			 * object completely shadows backing_object we can
 			 * bypass it and become backed by bbobj instead.
+			 *
+			 * The shadow list for vnode backing objects is not
+			 * used and a shared hold is allowed.
 			 */
 			while ((bbobj = backing_object->backing_object) != NULL) {
-				vm_object_hold(bbobj);
+				if (bbobj->type == OBJT_VNODE)
+					vm_object_hold_shared(bbobj);
+				else
+					vm_object_hold(bbobj);
 				if (bbobj == backing_object->backing_object)
 					break;
 				vm_object_drop(bbobj);
@@ -2169,9 +2408,12 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			 * it, since its reference count is at least 2.
 			 */
 			KKASSERT(object->backing_object == backing_object);
-			LIST_REMOVE(object, shadow_list);
-			backing_object->shadow_count--;
-			backing_object->generation++;
+			if (object->flags & OBJ_ONSHADOW) {
+				LIST_REMOVE(object, shadow_list);
+				backing_object->shadow_count--;
+				backing_object->generation++;
+				vm_object_clear_flag(object, OBJ_ONSHADOW);
+			}
 
 			/*
 			 * Add a ref to bbobj, bbobj now shadows object.
@@ -2184,12 +2426,18 @@ vm_object_collapse(vm_object_t object, struct vm_object_dealloc_list **dlistp)
 			 *	 only handle the all-shadowed bypass case).
 			 */
 			if (bbobj) {
-				vm_object_chain_wait(bbobj);
-				vm_object_reference_locked(bbobj);
-				LIST_INSERT_HEAD(&bbobj->shadow_head,
-						 object, shadow_list);
-				bbobj->shadow_count++;
-				bbobj->generation++;
+				if (bbobj->type != OBJT_VNODE) {
+					vm_object_chain_wait(bbobj, 0);
+					vm_object_reference_locked(bbobj);
+					LIST_INSERT_HEAD(&bbobj->shadow_head,
+							 object, shadow_list);
+					bbobj->shadow_count++;
+					bbobj->generation++;
+					vm_object_set_flag(object,
+							   OBJ_ONSHADOW);
+				} else {
+					vm_object_reference_quick(bbobj);
+				}
 				object->backing_object_offset +=
 					backing_object->backing_object_offset;
 				object->backing_object = bbobj;
@@ -2464,7 +2712,7 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 	/*
 	 * Try to collapse the object first
 	 */
-	vm_object_chain_acquire(prev_object);
+	vm_object_chain_acquire(prev_object, 0);
 	vm_object_collapse(prev_object, NULL);
 
 	/*
@@ -2517,9 +2765,10 @@ vm_object_coalesce(vm_object_t prev_object, vm_pindex_t prev_pindex,
 /*
  * Make the object writable and flag is being possibly dirty.
  *
- * The object might not be held, the related vnode is probably not
- * held either.  Object and vnode are stable by virtue of the vm_page
- * busied by the caller preventing destruction.
+ * The object might not be held (or might be held but held shared),
+ * the related vnode is probably not held either.  Object and vnode are
+ * stable by virtue of the vm_page busied by the caller preventing
+ * destruction.
  *
  * If the related mount is flagged MNTK_THR_SYNC we need to call
  * vsetobjdirty().  Filesystems using this option usually shortcut

@@ -259,7 +259,8 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 	 * object we are inserting into the map.  The lock will be
 	 * upgraded in situations where new VM pages must be allocated.
 	 */
-	shared = vm_object_hold_maybe_shared(object);
+	vm_object_hold_shared(object);
+	shared = 1;
 
 	/*
 	 * It's necessary to fail if the filsz + offset taken from the
@@ -364,7 +365,7 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 		vm_page_t m;
 
 		m = vm_fault_object_page(object, trunc_page(offset + filsz),
-					 VM_PROT_READ, 0, shared, &error);
+					 VM_PROT_READ, 0, &shared, &error);
 		if (m) {
 			lwb = lwbuf_alloc(m, &lwb_cache);
 			error = copyout((caddr_t)lwbuf_kva(lwb),
