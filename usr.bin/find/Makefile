@@ -6,4 +6,8 @@ SRCS=	find.c function.c ls.c main.c misc.c operator.c option.c \
 	getdate.y
 YFLAGS=
 
+.if defined(BOOTSTRAPPING)
+CFLAGS+= -DBOOTSTRAPPING=1
+.endif
+
 .include <bsd.prog.mk>
