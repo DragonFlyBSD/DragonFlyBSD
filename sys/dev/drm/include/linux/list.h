@@ -33,7 +33,7 @@
  * FreeBSD header which requires it here so it is resolved with the correct
  * definition prior to the undef.
  */
-#include <linux/types.h>
+#include <linux/compiler.h>
 
 #include <sys/param.h>
 #include <sys/kernel.h>
