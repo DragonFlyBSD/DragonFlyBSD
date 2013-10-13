@@ -352,4 +352,13 @@ hlist_move_list(struct hlist_head *old, struct hlist_head *new)
 void drm_list_sort(void *priv, struct list_head *head, int (*cmp)(void *priv,
     struct list_head *a, struct list_head *b));
 
+#define	hlist_for_each_entry_rcu(tp, p, head, field)	\
+		hlist_for_each_entry(tp, p, head, field)
+
+#define hlist_add_after_rcu(prev, n)	hlist_add_after(prev, n)
+
+#define hlist_add_head_rcu(n, h)	hlist_add_head(n, h)
+
+#define	hlist_del_init_rcu(n)		hlist_del_init(n)
+
 #endif /* _LINUX_LIST_H_ */
