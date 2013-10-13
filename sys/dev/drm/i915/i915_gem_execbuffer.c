@@ -210,54 +210,66 @@ i915_gem_object_set_to_gpu_domain(struct drm_i915_gem_object *obj,
 }
 
 struct eb_objects {
-	u_long hashmask;
-	LIST_HEAD(, drm_i915_gem_object) *buckets;
+	int and;
+	struct hlist_head buckets[0];
 };
 
 static struct eb_objects *
 eb_create(int size)
 {
 	struct eb_objects *eb;
+	int count = PAGE_SIZE / sizeof(struct hlist_head) / 2;
+	while (count > size)
+		count >>= 1;
+#if 0
+	eb = kzalloc(count*sizeof(struct hlist_head) +
+		     sizeof(struct eb_objects),
+		     GFP_KERNEL);
+#else
+	eb = kmalloc(count*sizeof(struct hlist_head) +
+		     sizeof(struct eb_objects),
+		     DRM_I915_GEM, M_WAITOK | M_ZERO);
+#endif
+	if (eb == NULL)
+		return eb;
 
-	eb = kmalloc(sizeof(*eb), DRM_I915_GEM, M_WAITOK | M_ZERO);
-	eb->buckets = hashinit(size, DRM_I915_GEM, &eb->hashmask);
-	return (eb);
+	eb->and = count - 1;
+	return eb;
 }
 
 static void
 eb_reset(struct eb_objects *eb)
 {
-	int i;
-
-	for (i = 0; i <= eb->hashmask; i++)
-		LIST_INIT(&eb->buckets[i]);
+	memset(eb->buckets, 0, (eb->and+1)*sizeof(struct hlist_head));
 }
 
 static void
 eb_add_object(struct eb_objects *eb, struct drm_i915_gem_object *obj)
 {
-
-	LIST_INSERT_HEAD(&eb->buckets[obj->exec_handle & eb->hashmask],
-	    obj, exec_node);
+	hlist_add_head(&obj->exec_node,
+		       &eb->buckets[obj->exec_handle & eb->and]);
 }
 
 static struct drm_i915_gem_object *
 eb_get_object(struct eb_objects *eb, unsigned long handle)
 {
+	struct hlist_head *head;
+	struct hlist_node *node;
 	struct drm_i915_gem_object *obj;
 
-	LIST_FOREACH(obj, &eb->buckets[handle & eb->hashmask], exec_node) {
+	head = &eb->buckets[handle & eb->and];
+	hlist_for_each(node, head) {
+		obj = hlist_entry(node, struct drm_i915_gem_object, exec_node);
 		if (obj->exec_handle == handle)
-			return (obj);
+			return obj;
 	}
-	return (NULL);
+
+	return NULL;
 }
 
 static void
 eb_destroy(struct eb_objects *eb)
 {
-
-	drm_free(eb->buckets, DRM_I915_GEM);
 	drm_free(eb, DRM_I915_GEM);
 }
 

@@ -843,7 +843,7 @@ struct drm_i915_gem_object {
 	/**
 	 * Used for performing relocations during execbuffer insertion.
 	 */
-	LIST_ENTRY(drm_i915_gem_object) exec_node;
+	struct hlist_node exec_node;
 	unsigned long exec_handle;
 	struct drm_i915_gem_exec_object2 *exec_entry;
 
