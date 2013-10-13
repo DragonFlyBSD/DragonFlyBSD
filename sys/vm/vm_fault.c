@@ -438,6 +438,12 @@ RetryFault:
 		fs.first_shared = 0;
 	}
 
+	/*
+	 * swap_pager_unswapped() needs an exclusive object
+	 */
+	if (fault_flags & (VM_FAULT_UNSWAP | VM_FAULT_DIRTY)) {
+		fs.first_shared = 0;
+	}
 
 	/*
 	 * Obtain a top-level object lock, shared or exclusive depending
@@ -648,6 +654,13 @@ vm_fault_page(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type,
 	fs.first_shared = vm_shared_fault;
 	fs.vp = NULL;
 	lwkt_gettoken(&map->token);
+
+	/*
+	 * swap_pager_unswapped() needs an exclusive object
+	 */
+	if (fault_flags & (VM_FAULT_UNSWAP | VM_FAULT_DIRTY)) {
+		fs.first_shared = 0;
+	}
 
 RetryFault:
 	/*
@@ -892,6 +905,17 @@ vm_fault_object_page(vm_object_t object, vm_ooffset_t offset,
 	fs.vp = NULL;
 	KKASSERT((fault_flags & VM_FAULT_WIRE_MASK) == 0);
 
+	/*
+	 * Might require swap block adjustments
+	 */
+	if (fs.first_shared && (fault_flags & (VM_FAULT_UNSWAP | VM_FAULT_DIRTY))) {
+		fs.first_shared = 0;
+		vm_object_upgrade(object);
+	}
+
+	/*
+	 * Retry loop as needed (typically for shared->exclusive transitions)
+	 */
 RetryFault:
 	*sharedp = fs.first_shared;
 	first_pindex = OFF_TO_IDX(offset);
