@@ -41,22 +41,19 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl v
-.Ar pid
-\&...
+.Ar pid ...
 .Sh DESCRIPTION
 The
 .Nm
 utility will wait until each of the given processes has terminated.
 .Pp
 The following option is available:
-.Bl -tag -width indent
+.Bl -tag -width ".Fl v"
 .It Fl v
 Print the exit status when each process terminates.
 .El
-.Sh DIAGNOSTICS
-The
-.Nm
-utility returns 0 on success, and >0 if an error occurs.
+.Sh EXIT STATUS
+.Ex -std
 .Pp
 Invalid pids elicit a warning message but are otherwise ignored.
 .Sh SEE ALSO
@@ -74,5 +71,8 @@ as it will not clean up any zombies or state in the parent process.
 .Sh HISTORY
 A
 .Nm
-command first appeared in SunOS 5.8.  It was introduced in 
-.Dx 3.5.
+command first appeared in SunOS 5.8.
+This implementation was imported from
+.Fx
+into
+.Dx 3.5 .
