@@ -35,7 +35,7 @@
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_crtc_helper.h>
 
-static DRM_LIST_HEAD(kernel_fb_helper_list);
+static LINUX_LIST_HEAD(kernel_fb_helper_list);
 
 /* simple single crtc case helper function */
 int drm_fb_helper_single_add_all_connectors(struct drm_fb_helper *fb_helper)

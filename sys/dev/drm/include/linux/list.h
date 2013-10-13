@@ -230,7 +230,7 @@ list_splice_tail_init(struct list_head *list, struct list_head *head)
 	INIT_LIST_HEAD(list);
 }
 
-#define DRM_LIST_HEAD(name)	struct list_head name = { &(name), &(name) }
+#define LINUX_LIST_HEAD(name)	struct list_head name = { &(name), &(name) }
 
 
 struct hlist_head {
