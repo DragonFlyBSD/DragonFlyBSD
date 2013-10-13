@@ -35,8 +35,8 @@
 #ifndef _DRM_MM_H_
 #define _DRM_MM_H_
 
-#include "drm_linux_list.h"
 #include <stdbool.h>
+#include <linux/list.h>
 
 struct drm_mm_node {
 	struct list_head node_list;

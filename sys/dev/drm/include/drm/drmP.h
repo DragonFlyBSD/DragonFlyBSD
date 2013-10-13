@@ -94,10 +94,10 @@
 #include <uapi_drm/drm_sarea.h>
 
 #include <dev/drm/drm_atomic.h>
-#include "drm_linux_list.h"
 
 #include <linux/idr.h>
 #include <linux/kref.h>
+#include <linux/list.h>
 
 struct drm_file;
 struct drm_device;
