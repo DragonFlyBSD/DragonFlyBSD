@@ -84,8 +84,6 @@ static void killlwps(struct lwp *lp);
 
 static MALLOC_DEFINE(M_ATEXIT, "atexit", "atexit callback");
 
-static struct lwkt_token deadlwp_token = LWKT_TOKEN_INITIALIZER(deadlwp_token);
-
 /*
  * callout list for things to do at exit time
  */
@@ -100,8 +98,9 @@ static struct exit_list_head exit_list = TAILQ_HEAD_INITIALIZER(exit_list);
 /*
  * LWP reaper data
  */
-struct task *deadlwp_task[MAXCPU];
-struct lwplist deadlwp_list[MAXCPU];
+static struct task *deadlwp_task[MAXCPU];
+static struct lwplist deadlwp_list[MAXCPU];
+static struct lwkt_token deadlwp_token[MAXCPU];
 
 /*
  * exit --
@@ -650,15 +649,16 @@ lwp_exit(int masterexit)
 	 * the lp (after calling lwp_wait()).
 	 */
 	if (masterexit == 0) {
+		int cpu = mycpuid;
+
 		lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
 		--p->p_nthreads;
 		if (p->p_nthreads <= 1)
 			dowake = 1;
-		lwkt_gettoken(&deadlwp_token);
-		LIST_INSERT_HEAD(&deadlwp_list[mycpuid], lp, u.lwp_reap_entry);
-		taskqueue_enqueue(taskqueue_thread[mycpuid],
-				  deadlwp_task[mycpuid]);
-		lwkt_reltoken(&deadlwp_token);
+		lwkt_gettoken(&deadlwp_token[cpu]);
+		LIST_INSERT_HEAD(&deadlwp_list[cpu], lp, u.lwp_reap_entry);
+		taskqueue_enqueue(taskqueue_thread[cpu], deadlwp_task[cpu]);
+		lwkt_reltoken(&deadlwp_token[cpu]);
 	} else {
 		--p->p_nthreads;
 		if (p->p_nthreads <= 1)
@@ -1203,13 +1203,14 @@ reaplwps(void *context, int dummy)
 {
 	struct lwplist *lwplist = context;
 	struct lwp *lp;
+	int cpu = mycpuid;
 
-	lwkt_gettoken(&deadlwp_token);
+	lwkt_gettoken(&deadlwp_token[cpu]);
 	while ((lp = LIST_FIRST(lwplist))) {
 		LIST_REMOVE(lp, u.lwp_reap_entry);
 		reaplwp(lp);
 	}
-	lwkt_reltoken(&deadlwp_token);
+	lwkt_reltoken(&deadlwp_token[cpu]);
 }
 
 static void
@@ -1226,6 +1227,7 @@ deadlwp_init(void)
 	int cpu;
 
 	for (cpu = 0; cpu < ncpus; cpu++) {
+		lwkt_token_init(&deadlwp_token[cpu], "deadlwpl");
 		LIST_INIT(&deadlwp_list[cpu]);
 		deadlwp_task[cpu] = kmalloc(sizeof(*deadlwp_task[cpu]),
 					    M_DEVBUF, M_WAITOK);
