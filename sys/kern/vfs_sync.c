@@ -628,14 +628,17 @@ sync_reclaim(struct vop_reclaim_args *ap)
 	struct syncer_ctx *ctx;
 
 	ctx = vp->v_mount->mnt_syncer_ctx;
-	lwkt_gettoken(&ctx->sc_token);
-
-	KKASSERT(vp->v_mount->mnt_syncer != vp);
-	if (vp->v_flag & VONWORKLST) {
-		LIST_REMOVE(vp, v_synclist);
-		vclrflags(vp, VONWORKLST);
+	if (ctx) {
+		lwkt_gettoken(&ctx->sc_token);
+		KKASSERT(vp->v_mount->mnt_syncer != vp);
+		if (vp->v_flag & VONWORKLST) {
+			LIST_REMOVE(vp, v_synclist);
+			vclrflags(vp, VONWORKLST);
+		}
+		lwkt_reltoken(&ctx->sc_token);
+	} else {
+		KKASSERT((vp->v_flag & VONWORKLST) == 0);
 	}
-	lwkt_reltoken(&ctx->sc_token);
 
 	return (0);
 }
