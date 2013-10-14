@@ -573,7 +573,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	mp->mnt_flag = MNT_LOCAL;
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;	/* all entry pts are SMP */
-	mp->mnt_kern_flag |= MNTK_THR_SYNC;	/* private syncer thread */
+	mp->mnt_kern_flag |= MNTK_THR_SYNC;	/* new vsyncscan semantics */
 
 	/*
 	 * required mount structure initializations

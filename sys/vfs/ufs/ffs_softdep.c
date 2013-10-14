@@ -915,11 +915,9 @@ inodedep_lookup(struct fs *fs, ino_t inum, int flags,
 {
 	struct inodedep *inodedep;
 	struct inodedep_hashhead *inodedephd;
-	int firsttry;
 
 	KKASSERT(lock_held(&lk) > 0);
 
-	firsttry = 1;
 	inodedephd = INODEDEP_HASH(fs, inum);
 top:
 	*inodedeppp = inodedep_find(inodedephd, fs, inum);
@@ -927,13 +925,15 @@ top:
 		return (1);
 	if ((flags & DEPALLOC) == 0)
 		return (0);
+
 	/*
 	 * If we are over our limit, try to improve the situation.
 	 */
-	if (num_inodedep > max_softdeps && firsttry && 
-	    speedup_syncer() == 0 && (flags & NODELAY) == 0 &&
+	if (num_inodedep > max_softdeps / 2)
+		speedup_syncer(NULL);
+	if (num_inodedep > max_softdeps &&
+	    (flags & NODELAY) == 0 &&
 	    request_cleanup(FLUSH_INODES)) {
-		firsttry = 0;
 		goto top;
 	}
 	if (sema_get(&inodedep_in_progress, &lk) == 0) 
@@ -2601,7 +2601,9 @@ newdirrem(struct buf *bp, struct inode *dp, struct inode *ip,
 	 * Limiting the number of dirrem structures will also limit
 	 * the number of freefile and freeblks structures.
 	 */
-	if (num_dirrem > max_softdeps / 2 && speedup_syncer() == 0) {
+	if (num_dirrem > max_softdeps / 4)
+		speedup_syncer(NULL);
+	if (num_dirrem > max_softdeps / 2) {
 		ACQUIRE_LOCK(&lk);
 		request_cleanup(FLUSH_REMOVE);
 		FREE_LOCK(&lk);

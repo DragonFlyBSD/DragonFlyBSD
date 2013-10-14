@@ -4205,7 +4205,7 @@ hammer2_chain_memory_wait(hammer2_pfsmount_t *pmp)
 	while (pmp->inmem_chains > desiredvnodes / 10 &&
 	       pmp->inmem_chains > pmp->mp->mnt_nvnodelistsize * 2) {
 		kprintf("w");
-		speedup_syncer();
+		speedup_syncer(pmp->mp);
 		pmp->inmem_waiting = 1;
 		tsleep(&pmp->inmem_waiting, 0, "chnmem", hz);
 	}
@@ -4213,7 +4213,7 @@ hammer2_chain_memory_wait(hammer2_pfsmount_t *pmp)
 #if 0
 	if (pmp->inmem_chains > desiredvnodes / 10 &&
 	    pmp->inmem_chains > pmp->mp->mnt_nvnodelistsize * 7 / 4) {
-		speedup_syncer();
+		speedup_syncer(pmp->mp);
 	}
 #endif
 }

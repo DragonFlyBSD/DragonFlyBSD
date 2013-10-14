@@ -213,11 +213,12 @@ vfsinit(void *dummy)
 	vfs_subr_init();
 	vfs_mount_init();
 	vfs_lock_init();
-	vfs_sync_init();
+
 	/*
 	 * Initialize the vnode name cache
 	 */
 	nchinit();
+
 	/*
 	 * Initialize each file system type.
 	 * Vfs type numbers must be distinct from VFS_GENERIC (and VFS_VFSCONF).

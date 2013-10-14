@@ -103,47 +103,20 @@ LIST_HEAD(synclist, vnode);
 
 #define	SC_FLAG_EXIT		(0x1)		/* request syncer exit */
 #define	SC_FLAG_DONE		(0x2)		/* syncer confirm exit */
-#define 	SC_FLAG_BIOOPS_ALL	(0x4)		/* do bufops_sync(NULL) */
 
 struct syncer_ctx {
 	struct mount		*sc_mp;
 	struct lwkt_token 	sc_token;
 	struct thread		*sc_thread;
 	int			sc_flags;
-
 	struct synclist 	*syncer_workitem_pending;
 	long			syncer_mask;
 	int 			syncer_delayno;
 	int			syncer_forced;
+	int			syncer_rushjob;
 };
 
-static struct syncer_ctx syncer_ctx0;
-
 static void syncer_thread(void *);
-
-static void
-syncer_ctx_init(struct syncer_ctx *ctx, struct mount *mp)
-{
-	ctx->sc_mp = mp; 
-	ctx->sc_flags = 0;
-	ctx->syncer_workitem_pending = hashinit(SYNCER_MAXDELAY, M_DEVBUF,
-						&ctx->syncer_mask);
-	ctx->syncer_delayno = 0;
-	lwkt_token_init(&ctx->sc_token, "syncer");
-}
-
-/*
- * Called from vfsinit()
- */
-void
-vfs_sync_init(void)
-{
-	syncer_ctx_init(&syncer_ctx0, NULL);
-	syncer_ctx0.sc_flags |= SC_FLAG_BIOOPS_ALL;
-	
-	/* Support schedcpu wakeup of syncer0 */
-	lbolt_syncer = &syncer_ctx0;
-}
 
 static int
 sysctl_kern_syncdelay(SYSCTL_HANDLER_ARGS)
@@ -161,19 +134,6 @@ sysctl_kern_syncdelay(SYSCTL_HANDLER_ARGS)
 	syncdelay = v;
 
 	return(0);
-}
-
-static struct syncer_ctx *
-vn_get_syncer(struct vnode *vp)
-{
-	struct mount *mp;
-	struct syncer_ctx *ctx;
-
-	if ((mp = vp->v_mount) != NULL)
-		ctx = mp->mnt_syncer_ctx;
-	else
-		ctx = &syncer_ctx0;
-	return (ctx);
 }
 
 /*
@@ -217,8 +177,7 @@ vn_syncer_add(struct vnode *vp, int delay)
 	struct syncer_ctx *ctx;
 	int slot;
 
-	ctx = vn_get_syncer(vp);
-
+	ctx = vp->v_mount->mnt_syncer_ctx;
 	lwkt_gettoken(&ctx->sc_token);
 
 	if (vp->v_flag & VONWORKLST)
@@ -248,8 +207,7 @@ vn_syncer_remove(struct vnode *vp)
 {
 	struct syncer_ctx *ctx;
 
-	ctx = vn_get_syncer(vp);
-
+	ctx = vp->v_mount->mnt_syncer_ctx;
 	lwkt_gettoken(&ctx->sc_token);
 
 	if ((vp->v_flag & (VISDIRTY | VONWORKLST | VOBJDIRTY)) == VONWORKLST &&
@@ -289,7 +247,7 @@ vsetisdirty(struct vnode *vp)
 	struct syncer_ctx *ctx;
 
 	if ((vp->v_flag & VISDIRTY) == 0) {
-		ctx = vn_get_syncer(vp);
+		ctx = vp->v_mount->mnt_syncer_ctx;
 		vsetflags(vp, VISDIRTY);
 		lwkt_gettoken(&ctx->sc_token);
 		if ((vp->v_flag & VONWORKLST) == 0)
@@ -304,7 +262,7 @@ vsetobjdirty(struct vnode *vp)
 	struct syncer_ctx *ctx;
 
 	if ((vp->v_flag & VOBJDIRTY) == 0) {
-		ctx = vn_get_syncer(vp);
+		ctx = vp->v_mount->mnt_syncer_ctx;
 		vsetflags(vp, VOBJDIRTY);
 		lwkt_gettoken(&ctx->sc_token);
 		if ((vp->v_flag & VONWORKLST) == 0)
@@ -321,18 +279,17 @@ vn_syncer_thr_create(struct mount *mp)
 {
 	struct syncer_ctx *ctx;
 	static int syncalloc = 0;
-	int rc;
 
-	if (mp->mnt_kern_flag & MNTK_THR_SYNC) {
-		ctx = kmalloc(sizeof(struct syncer_ctx), M_TEMP,
-			      M_WAITOK | M_ZERO);
-		syncer_ctx_init(ctx, mp);
-		mp->mnt_syncer_ctx = ctx;
-		rc = kthread_create(syncer_thread, ctx, &ctx->sc_thread, 
-				    "syncer%d", ++syncalloc);
-	} else {
-		mp->mnt_syncer_ctx = &syncer_ctx0;
-	}
+	ctx = kmalloc(sizeof(struct syncer_ctx), M_TEMP, M_WAITOK | M_ZERO);
+	ctx->sc_mp = mp;
+	ctx->sc_flags = 0;
+	ctx->syncer_workitem_pending = hashinit(SYNCER_MAXDELAY, M_DEVBUF,
+						&ctx->syncer_mask);
+	ctx->syncer_delayno = 0;
+	lwkt_token_init(&ctx->sc_token, "syncer");
+	mp->mnt_syncer_ctx = ctx;
+	kthread_create(syncer_thread, ctx, &ctx->sc_thread,
+		       "syncer%d", ++syncalloc & 0x7FFFFFFF);
 }
 
 /*
@@ -344,9 +301,8 @@ vn_syncer_thr_stop(struct mount *mp)
 	struct syncer_ctx *ctx;
 
 	ctx = mp->mnt_syncer_ctx;
-	if (ctx == NULL || ctx == &syncer_ctx0)
+	if (ctx == NULL)
 		return;
-	KKASSERT(mp->mnt_kern_flag & MNTK_THR_SYNC);
 
 	lwkt_gettoken(&ctx->sc_token);
 
@@ -373,7 +329,6 @@ struct  thread *updatethread;
 static void
 syncer_thread(void *_ctx)
 {
-	struct thread *td = curthread;
 	struct syncer_ctx *ctx = _ctx;
 	struct synclist *slp;
 	struct vnode *vp;
@@ -381,14 +336,9 @@ syncer_thread(void *_ctx)
 	int *sc_flagsp;
 	int sc_flags;
 	int vnodes_synced = 0;
+	int delta;
+	int dummy = 0;
 
-	/*
-	 * syncer0 runs till system shutdown; per-filesystem syncers are
-	 * terminated on filesystem unmount
-	 */
-	if (ctx == &syncer_ctx0) 
-		EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
-				      SHUTDOWN_PRI_LAST);
 	for (;;) {
 		kproc_suspend_loop();
 
@@ -454,7 +404,7 @@ syncer_thread(void *_ctx)
 		/*
 		 * Do sync processing for each mount.
 		 */
-		if (ctx->sc_mp || sc_flags & SC_FLAG_BIOOPS_ALL)
+		if (ctx->sc_mp)
 			bio_ops_sync(ctx->sc_mp);
 
 		/*
@@ -467,10 +417,18 @@ syncer_thread(void *_ctx)
 		 * ahead of the disk that the kernel memory pool is being
 		 * threatened with exhaustion.
 		 */
-		if (ctx == &syncer_ctx0 && rushjob > 0) {
-			atomic_subtract_int(&rushjob, 1);
+		delta = rushjob - ctx->syncer_rushjob;
+		if ((u_int)delta > syncdelay / 2) {
+			ctx->syncer_rushjob = rushjob - syncdelay / 2;
+			tsleep(&dummy, 0, "rush", 1);
 			continue;
 		}
+		if (delta) {
+			++ctx->syncer_rushjob;
+			tsleep(&dummy, 0, "rush", 1);
+			continue;
+		}
+
 		/*
 		 * If it has taken us less than a second to process the
 		 * current work, then wait. Otherwise start right over
@@ -494,38 +452,21 @@ syncer_thread(void *_ctx)
 	kthread_exit();
 }
 
-static void
-syncer_thread_start(void)
-{
-	syncer_thread(&syncer_ctx0);
-}
-
-static struct kproc_desc up_kp = {
-	"syncer0",
-	syncer_thread_start,
-	&updatethread
-};
-SYSINIT(syncer, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &up_kp)
-
 /*
- * Request the syncer daemon to speed up its work.
- * We never push it to speed up more than half of its
- * normal turn time, otherwise it could take over the cpu.
+ * Request that the syncer daemon for a specific mount speed up its work.
+ * If mp is NULL the caller generally wants to speed up all syncers.
  */
-int
-speedup_syncer(void)
+void
+speedup_syncer(struct mount *mp)
 {
 	/*
 	 * Don't bother protecting the test.  unsleep_and_wakeup_thread()
 	 * will only do something real if the thread is in the right state.
 	 */
-	wakeup(lbolt_syncer);
-	if (rushjob < syncdelay / 2) {
-		atomic_add_int(&rushjob, 1);
-		stat_rush_requests += 1;
-		return (1);
-	}
-	return(0);
+	atomic_add_int(&rushjob, 1);
+	++stat_rush_requests;
+	if (mp)
+		wakeup(mp->mnt_syncer_ctx);
 }
 
 /*
@@ -679,9 +620,9 @@ sync_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct syncer_ctx *ctx;
 
-	ctx = vn_get_syncer(vp);
-
+	ctx = vp->v_mount->mnt_syncer_ctx;
 	lwkt_gettoken(&ctx->sc_token);
+
 	KKASSERT(vp->v_mount->mnt_syncer != vp);
 	if (vp->v_flag & VONWORKLST) {
 		LIST_REMOVE(vp, v_synclist);
@@ -726,8 +667,6 @@ vsyncscan(
 	 */
 	KKASSERT(mp->mnt_kern_flag & MNTK_THR_SYNC);
 	ctx = mp->mnt_syncer_ctx;
-	KKASSERT(ctx != &syncer_ctx0);
-
 	lwkt_gettoken(&ctx->sc_token);
 
 	/*

@@ -1462,7 +1462,7 @@ vm_pageout_scan_cache(int avail_shortage, int vnodes_skipped, int recycle_count)
 	 */
 	if (vm_paging_target() > 0) {
 		if (vnodes_skipped && vm_page_count_min(0))
-			speedup_syncer();
+			speedup_syncer(NULL);
 #if !defined(NO_SWAPPING)
 		if (vm_swap_enabled && vm_page_count_target()) {
 			vm_req_vmdaemon();

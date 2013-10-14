@@ -91,12 +91,8 @@ vfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	VFS_MPLOCK1(mp);
 	error = (mp->mnt_op->vfs_mount)(mp, path, data, cred);
-	if (error == 0) {
-		/* Create per-filesystem syncer threads if requested */
-		if ((mp->mnt_flag & MNT_UPDATE) == 0)
-			vn_syncer_thr_create(mp);
-	}
 	VFS_MPUNLOCK(mp);
+
 	return (error);
 }
 

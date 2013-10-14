@@ -205,6 +205,11 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 * if the underlying filesystem is not.
 	 */
 	mp->mnt_kern_flag |= MNTK_NCALIASED | MNTK_ALL_MPSAFE;
+
+	/*
+	 * And we don't need a syncer thread
+	 */
+	vn_syncer_thr_stop(mp);
 	return (0);
 fail2:
 	nlookup_done(&nd);

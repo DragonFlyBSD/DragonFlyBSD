@@ -1046,7 +1046,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	vfs_getnewfsid(mp);
 	nmp->nm_mountp = mp;
 	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;
-	mp->mnt_kern_flag |= MNTK_THR_SYNC;
+	mp->mnt_kern_flag |= MNTK_THR_SYNC;	/* new vsyncscan semantics */
 
 	lwkt_gettoken(&nmp->nm_token);
 

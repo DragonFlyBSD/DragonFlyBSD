@@ -664,7 +664,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	mp->mnt_iosize_max = MAXPHYS;
 	mp->mnt_kern_flag |= MNTK_FSMID;
-	mp->mnt_kern_flag |= MNTK_THR_SYNC;	/* private syncer thread */
+	mp->mnt_kern_flag |= MNTK_THR_SYNC;	/* new vsyncscan semantics */
 
 	/*
 	 * MPSAFE code.  Note that VOPs and VFSops which are not MPSAFE

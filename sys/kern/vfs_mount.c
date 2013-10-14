@@ -132,7 +132,6 @@ vfs_mount_init(void)
 	mount_init(&dummymount);
 	dummymount.mnt_flag |= MNT_RDONLY;
 	dummymount.mnt_kern_flag |= MNTK_ALL_MPSAFE;
-	vn_syncer_thr_create(&dummymount);
 }
 
 /*
@@ -335,6 +334,7 @@ mount_init(struct mount *mp)
 	mp->mnt_nvnodelistsize = 0;
 	mp->mnt_flag = 0;
 	mp->mnt_iosize_max = MAXPHYS;
+	vn_syncer_thr_create(mp);
 }
 
 /*
