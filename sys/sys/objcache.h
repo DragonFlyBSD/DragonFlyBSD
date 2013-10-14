@@ -28,12 +28,10 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/sys/objcache.h,v 1.11 2008/10/26 04:29:20 sephe Exp $
  */
 
-#ifndef _OBJCACHE_H_
-#define _OBJCACHE_H_
+#ifndef _SYS_OBJCACHE_H_
+#define _SYS_OBJCACHE_H_
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -98,7 +96,7 @@ void	 objcache_malloc_free(void *obj, void *allocator_args);
 void	*objcache_nop_alloc(void *allocator_args, int ocflags);
 void	 objcache_nop_free(void *obj, void *allocator_args);
 
-#endif	/* !_KERNEL */
+#endif	/* _KERNEL */
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
-#endif	/* _SYS_OBJCACHE_H_ */
+#endif	/* !_SYS_OBJCACHE_H_ */

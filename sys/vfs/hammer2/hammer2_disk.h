@@ -32,8 +32,9 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef VFS_HAMMER2_DISK_H_
-#define VFS_HAMMER2_DISK_H_
+
+#ifndef _VFS_HAMMER2_DISK_H_
+#define _VFS_HAMMER2_DISK_H_
 
 #ifndef _SYS_UUID_H_
 #include <sys/uuid.h>
@@ -981,4 +982,4 @@ union hammer2_media_data {
 
 typedef union hammer2_media_data hammer2_media_data_t;
 
-#endif
+#endif /* !_VFS_HAMMER2_DISK_H_ */

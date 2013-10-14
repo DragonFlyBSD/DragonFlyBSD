@@ -40,7 +40,6 @@
  *	@(#)vnioctl.h	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/sys/vnioctl.h,v 1.4 1999/09/17 05:33:58 dillon Exp $
- * $DragonFly: src/sys/sys/vnioctl.h,v 1.4 2008/01/30 11:46:33 cat Exp $
  */
 
 #ifndef _SYS_VNIOCTL_H_
@@ -49,7 +48,7 @@
 #ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
 #endif
-#ifndef _SYS_PARAMH_H_
+#ifndef _SYS_PARAM_H_
 #include <sys/param.h>		/* PATH_MAX */
 #endif
 

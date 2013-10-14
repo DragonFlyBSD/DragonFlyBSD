@@ -26,11 +26,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam.h,v 1.6.2.1 2000/03/17 22:36:21 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam.h,v 1.7 2007/11/18 17:59:54 pavalos Exp $
  */
 
-#ifndef _CAM_CAM_H
-#define _CAM_CAM_H 1
+#ifndef _BUS_CAM_CAM_H_
+#define _BUS_CAM_CAM_H_ 1
 
 #ifdef _KERNEL
 #include <opt_cam.h>
@@ -234,4 +233,4 @@ cam_init_pinfo(cam_pinfo *pinfo)
 }
 #endif
 
-#endif /* _CAM_CAM_H */
+#endif /* !_BUS_CAM_CAM_H_ */

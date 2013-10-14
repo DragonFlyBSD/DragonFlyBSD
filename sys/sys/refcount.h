@@ -27,11 +27,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/refcount.h,v 1.1 2005/09/27 18:01:33 jhb Exp $
- * $DragonFly: src/sys/sys/refcount.h,v 1.1 2008/06/26 23:06:52 dillon Exp $
  */
 
-#ifndef __SYS_REFCOUNT_H__
-#define __SYS_REFCOUNT_H__
+#ifndef _SYS_REFCOUNT_H_
+#define _SYS_REFCOUNT_H_
 
 #include <machine/atomic.h>
 
@@ -112,4 +111,4 @@ refcount_wait(volatile u_int *countp, const char *wstr)
 		_refcount_wait(countp, wstr);
 }
 
-#endif	/* ! __SYS_REFCOUNT_H__ */
+#endif	/* ! _SYS_REFCOUNT_H_ */

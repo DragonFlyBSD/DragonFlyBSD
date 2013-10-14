@@ -77,13 +77,13 @@
 #ifndef _VM_VM_H_
 #include <vm/vm.h>		/* XXX */
 #endif
-#ifndef _VM_PARAM_H_
+#ifndef _VM_VM_PARAM_H_
 #include <vm/vm_param.h>	/* XXX */
 #endif
 #ifndef _VM_PMAP_H_
 #include <vm/pmap.h>		/* XXX */
 #endif
-#ifndef _VM_MAP_H_
+#ifndef _VM_VM_MAP_H_
 #include <vm/vm_map.h>		/* XXX */
 #endif
 #ifndef _SYS_RESOURCEVAR_H_

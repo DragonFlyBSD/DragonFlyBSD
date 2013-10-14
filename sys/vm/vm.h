@@ -60,11 +60,10 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm.h,v 1.16.2.1 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/vm/vm.h,v 1.7 2006/09/11 20:25:31 dillon Exp $
  */
 
-#ifndef VM_VM_H_
-#define VM_VM_H_
+#ifndef _VM_VM_H_
+#define _VM_VM_H_
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
@@ -133,4 +132,4 @@ typedef char vm_memattr_t;
 
 #define VM_MEMATTR_DEFAULT	VM_MEMATTR_WRITE_BACK
 
-#endif				/* VM_VM_H_ */
+#endif				/* _VM_VM_H_ */

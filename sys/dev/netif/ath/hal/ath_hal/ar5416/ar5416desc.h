@@ -16,8 +16,9 @@
  *
  * $FreeBSD: head/sys/dev/ath/ath_hal/ar5416/ar5416desc.h 203158 2010-01-29 10:07:17Z rpaulo $
  */
+
 #ifndef _ATH_AR5416_DESC_H_
-#define _ATH_AR5416_DESC_H
+#define _ATH_AR5416_DESC_H_
 
 /*
  * Hardware-specific descriptor structures.
@@ -394,4 +395,5 @@ struct ar5416_desc {
 	(AR_SREV_OWL_20_OR_LATER(ah) ?	\
 	 MS((ads)->ds_rxstatus3, AR_Parallel40) : \
 	 ((ads)->ds_rxstatus3 >> 10) & 0x1)
-#endif /* _ATH_AR5416_DESC_H_ */
+
+#endif /* !_ATH_AR5416_DESC_H_ */

@@ -26,11 +26,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/devicestat.h,v 1.9 1999/12/29 04:24:39 peter Exp $
- * $DragonFly: src/sys/sys/devicestat.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
  */
 
-#ifndef _DEVICESTAT_H
-#define _DEVICESTAT_H
+#ifndef _SYS_DEVICESTAT_H_
+#define _SYS_DEVICESTAT_H_
 
 #include <sys/queue.h>
 #include <sys/time.h>
@@ -221,4 +220,4 @@ void devstat_end_transaction(struct devstat *ds, u_int32_t bytes,
 void devstat_end_transaction_buf(struct devstat *ds, struct buf *);
 #endif
 
-#endif /* _DEVICESTAT_H */
+#endif /* !_SYS_DEVICESTAT_H_ */

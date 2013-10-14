@@ -31,10 +31,11 @@
  *
  * $FreeBSD: src/sys/nwfs/nwfs_mount.h,v 1.5.2.1 2000/04/17 08:34:19 bp Exp $
  */
+
 #ifndef _NWFS_MOUNT_H_
 #define	_NWFS_MOUNT_H_
 
-#ifndef _NCP_NCP_NLS_H_
+#ifndef _NETPROTO_NCP_NCP_NLS_H_
 #include <netproto/ncp/ncp_nls.h>
 #endif
 

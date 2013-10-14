@@ -7,8 +7,6 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/jail.h,v 1.8.2.2 2000/11/01 17:58:06 rwatson Exp $
- * $DragonFly: src/sys/sys/jail.h,v 1.12 2008/05/17 18:20:31 dillon Exp $
- *
  */
 
 #ifndef _SYS_JAIL_H_
@@ -26,7 +24,7 @@
 #ifndef _SYS_UCRED_H_
 #include <sys/ucred.h>
 #endif
-#ifndef _SYS_IF_H_
+#ifndef _NET_IF_H_
 #include <net/if.h>
 #endif
 

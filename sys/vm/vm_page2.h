@@ -32,7 +32,6 @@
  *
  *	@(#)vmmeter.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/vmmeter.h,v 1.21.2.2 2002/10/10 19:28:21 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page2.h,v 1.3 2008/04/14 20:00:29 dillon Exp $
  */
 
 #ifndef _VM_VM_PAGE2_H_
@@ -44,7 +43,7 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
-#ifndef _VM_PAGE_H_
+#ifndef _VM_VM_PAGE_H_
 #include <vm/vm_page.h>
 #endif
 #ifndef _SYS_SPINLOCK_H_

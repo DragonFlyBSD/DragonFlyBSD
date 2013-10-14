@@ -30,10 +30,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_nls.h,v 1.4.2.1 2002/04/30 08:18:25 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_nls.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
  */
-#ifndef _NETNCP_NCP_NLS_H_
-#define _NETNCP_NCP_NLS_H_
+
+#ifndef _NETPROTO_NCP_NCP_NLS_H_
+#define _NETPROTO_NCP_NCP_NLS_H_
 
 /* options for handle path & caseopt in mount struct */
 #define NWHP_HDB	0x01	/* have dir base */
@@ -90,4 +90,4 @@ void ncp_path2unix(char *src, char *dst, int len, struct ncp_nlstables *nt);
 
 #endif /* !_KERNEL */
 
-#endif /* _NCP_NCP_NLS_H_ */
+#endif /* !_NETPROTO_NCP_NCP_NLS_H_ */

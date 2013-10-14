@@ -32,8 +32,9 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef VFS_HAMMER2_IOCTL_H_
-#define VFS_HAMMER2_IOCTL_H_
+
+#ifndef _VFS_HAMMER2_IOCTL_H_
+#define _VFS_HAMMER2_IOCTL_H_
 
 #ifndef _SYS_IOCCOM_H_
 #include <sys/ioccom.h>
@@ -144,4 +145,4 @@ typedef struct hammer2_ioc_inode hammer2_ioc_inode_t;
 #define HAMMER2IOC_INODE_COMP_REC_SET	_IOWR('h', 89, struct hammer2_ioc_inode)
 #define HAMMER2IOC_INODE_COMP_REC_SET2	_IOWR('h', 90, struct hammer2_ioc_inode)*/
 
-#endif
+#endif /* !_VFS_HAMMER2_IOCTL_H_ */

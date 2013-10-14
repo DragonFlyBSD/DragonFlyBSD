@@ -31,6 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
 #ifndef _SYS_DSCHED_H_
 #define	_SYS_DSCHED_H_
 
@@ -57,7 +58,7 @@
 #ifndef _SYS_SYSCTL_H_
 #include <sys/sysctl.h>
 #endif
-#ifndef SYS_DISK_H_
+#ifndef _SYS_DISK_H_
 #include <sys/disk.h>
 #endif
 
@@ -325,4 +326,4 @@ struct dsched_stats {
 	int32_t	nprocs;
 };
 
-#endif /* _SYS_DSCHED_H_ */
+#endif /* !_SYS_DSCHED_H_ */

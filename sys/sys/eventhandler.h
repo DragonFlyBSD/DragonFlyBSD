@@ -24,13 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/eventhandler.h,v 1.5 2000/01/16 06:11:33 bde Exp $
- * $DragonFly: src/sys/sys/eventhandler.h,v 1.8 2007/07/11 23:46:54 dillon Exp $
  */
 
 #include <sys/queue.h>
 
-#ifndef SYS_EVENTHANDLER_H
-#define SYS_EVENTHANDLER_H
+#ifndef _SYS_EVENTHANDLER_H_
+#define _SYS_EVENTHANDLER_H_
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
 
@@ -185,5 +184,5 @@ EVENTHANDLER_DECLARE(shutdown_final, shutdown_fn);
 EVENTHANDLER_DECLARE(process_exec, execlist_fn);
 EVENTHANDLER_DECLARE(process_exit, exit_list_fn);
 
-#endif	/* _KERNEL */
-#endif	/* SYS_EVENTHANDLER_H */
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+#endif	/* !_SYS_EVENTHANDLER_H_ */
