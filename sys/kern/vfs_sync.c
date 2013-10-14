@@ -529,7 +529,14 @@ vfs_allocate_syncvnode(struct mount *mp)
 		}
 		next = start;
 	}
-	vn_syncer_add(vp, syncdelay > 0 ? next % syncdelay : 0);
+
+	/*
+	 * Only put the syncer vnode onto the syncer list if we have a
+	 * syncer thread.  Some VFS's (aka NULLFS) don't need a syncer
+	 * thread.
+	 */
+	if (mp->mnt_syncer_ctx)
+		vn_syncer_add(vp, syncdelay > 0 ? next % syncdelay : 0);
 
 	/*
 	 * The mnt_syncer field inherits the vnode reference, which is
