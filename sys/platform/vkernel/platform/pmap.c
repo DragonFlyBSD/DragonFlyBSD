@@ -109,8 +109,14 @@ static int pmap_release_free_page(struct pmap *pmap, vm_page_t p);
 void
 pmap_init(void)
 {
-	int i;
 	struct pv_entry *pvinit;
+	int i;
+	int npages;
+
+        npages = VPTE_PAGETABLE_SIZE +
+		 (VM_MAX_USER_ADDRESS / PAGE_SIZE) * sizeof(vpte_t);
+	npages = (npages + PAGE_MASK) / PAGE_SIZE;
+	kernel_pmap.pm_pteobj = vm_object_allocate(OBJT_DEFAULT, npages);
 
 	for (i = 0; i < vm_page_array_size; i++) {
 		vm_page_t m;
@@ -173,7 +179,7 @@ pmap_bootstrap(void)
 	kernel_pmap.pm_pdirpte = KernelPTA[i];
 	kernel_pmap.pm_count = 1;
 	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;
-	kernel_pmap.pm_pteobj = &kernel_object;
+	kernel_pmap.pm_pteobj = NULL;	/* see pmap_init */
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	TAILQ_INIT(&kernel_pmap.pm_pvlist_free);
 	spin_init(&kernel_pmap.pm_spin);

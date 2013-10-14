@@ -563,8 +563,9 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	 */
 	kernel_pmap.pm_pml4 = (pml4_entry_t *)PHYS_TO_DMAP(KPML4phys);
 	kernel_pmap.pm_count = 1;
-	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;	/* don't allow deactivation */
-	kernel_pmap.pm_pteobj = &kernel_object;
+	/* don't allow deactivation */
+	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;
+	kernel_pmap.pm_pteobj = NULL;	/* see pmap_init */
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	TAILQ_INIT(&kernel_pmap.pm_pvlist_free);
 	lwkt_token_init(&kernel_pmap.pm_token, "kpmap_tok");
@@ -631,12 +632,12 @@ pmap_init(void)
 	 */
 	/* JG I think the number can be arbitrary */
 	kptobj = vm_object_allocate(OBJT_DEFAULT, 5);
+	kernel_pmap.pm_pteobj = kptobj;
 
 	/*
 	 * Allocate memory for random pmap data structures.  Includes the
 	 * pv_head_table.
 	 */
-
 	for(i = 0; i < vm_page_array_size; i++) {
 		vm_page_t m;
 

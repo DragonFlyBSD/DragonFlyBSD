@@ -414,7 +414,7 @@ pmap_bootstrap(vm_paddr_t firstaddr, vm_paddr_t loadaddr)
 	kernel_pmap.pm_pdir = (pd_entry_t *)(KERNBASE + (u_int)IdlePTD);
 	kernel_pmap.pm_count = 1;
 	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;
-	kernel_pmap.pm_pteobj = &kernel_object;
+	kernel_pmap.pm_pteobj = NULL;	/* see pmap_init */
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	TAILQ_INIT(&kernel_pmap.pm_pvlist_free);
 	spin_init(&kernel_pmap.pm_spin);
@@ -619,6 +619,7 @@ pmap_init(void)
 	 * object for kernel page table pages
 	 */
 	kptobj = vm_object_allocate(OBJT_DEFAULT, NKPDE);
+	kernel_pmap.pm_pteobj = kptobj;
 
 	/*
 	 * Allocate memory for random pmap data structures.  Includes the
