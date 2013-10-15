@@ -1224,8 +1224,9 @@ determined_type: ;
 		 */
 		if (ret == 0 && unit == comconsole &&
 		    (break_to_debugger || alt_break_to_debugger)) {
-			outb(siocniobase + com_ier, IER_ERXRDY | IER_ERLS |
-			    IER_EMSC);
+			inb(siocniobase + com_data);
+			outb(siocniobase + com_ier,
+			     IER_ERXRDY | IER_ERLS | IER_EMSC);
 		}
 #endif
 	}
@@ -1942,7 +1943,7 @@ cont:
 		}
 
 		/* output queued and everything ready? */
-		if (line_status & LSR_TXRDY
+		if ((line_status & LSR_TXRDY)
 		    && com->state >= (CS_BUSY | CS_TTGO | CS_ODEVREADY)) {
 			ioptr = com->obufq.l_head;
 			if (com->tx_fifo_size > 1) {
@@ -1992,12 +1993,12 @@ cont:
 		}
 
 		/* finished? */
-#ifndef COM_MULTIPORT
-		if ((inb(com->int_id_port) & IIR_IMASK) == IIR_NOPEND)
-#endif /* COM_MULTIPORT */
-		{
+#ifdef COM_MULTIPORT
+		return;
+#else
+		if (inb(com->int_id_port) & IIR_NOPEND) 
 			return;
-		}
+#endif
 	}
 }
 
