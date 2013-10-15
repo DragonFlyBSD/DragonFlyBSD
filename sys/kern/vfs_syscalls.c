@@ -419,6 +419,7 @@ update:
 		error = VFS_START(mp, 0);
 		vrele(vp);
 	} else {
+		vn_syncer_thr_stop(mp);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_coherency_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_journal_ops);
 		vfs_rm_vnodeops(mp, NULL, &mp->mnt_vn_norm_ops);
