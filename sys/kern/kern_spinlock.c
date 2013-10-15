@@ -198,12 +198,15 @@ spin_lock_contested(struct spinlock *spin)
 	int i;
 
 	/*
-	 * Force any existing shared locks to exclusive so no new shared
-	 * locks can occur.  Transfer our count to the high bits, then
-	 * loop until we can acquire the low counter (== 1).
+	 * Transfer our count to the high bits, then loop until we can
+	 * acquire the low counter (== 1).  No new shared lock can be
+	 * acquired while we hold the EXCLWAIT bits.
+	 *
+	 * Force any existing shared locks to exclusive.  The shared unlock
+	 * understands that this may occur.
 	 */
-	atomic_clear_int(&spin->counta, SPINLOCK_SHARED);
 	atomic_add_int(&spin->counta, SPINLOCK_EXCLWAIT - 1);
+	atomic_clear_int(&spin->counta, SPINLOCK_SHARED);
 
 #ifdef DEBUG_LOCKS_LATENCY
 	long j;
@@ -259,15 +262,16 @@ spin_lock_contested(struct spinlock *spin)
 }
 
 /*
- * Shared spinlocks
+ * Shared spinlock attempt was contested.
+ *
+ * The caller has not modified counta.
  */
 void
-spin_lock_shared_contested(struct spinlock *spin)
+spin_lock_shared_contested2(struct spinlock *spin)
 {
 	struct indefinite_info info = { 0, 0 };
 	int i;
 
-	atomic_add_int(&spin->counta, -1);
 #ifdef DEBUG_LOCKS_LATENCY
 	long j;
 	for (j = spinlocks_add_latency; j > 0; --j)
@@ -287,6 +291,12 @@ spin_lock_shared_contested(struct spinlock *spin)
 	/*logspin(beg, spin, 'w');*/
 	for (;;) {
 		/*
+		 * Loop until we can acquire the shared spinlock.  Note that
+		 * the low bits can be zero while the high EXCLWAIT bits are
+		 * non-zero.  In this situation exclusive requesters have
+		 * priority (otherwise shared users on multiple cpus can hog
+		 * the spinlnock).
+		 *
 		 * NOTE: Reading spin->counta prior to the swap is extremely
 		 *	 important on multi-chip/many-core boxes.  On 48-core
 		 *	 this one change improves fully concurrent all-cores

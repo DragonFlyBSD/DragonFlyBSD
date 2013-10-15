@@ -55,7 +55,7 @@ extern struct spinlock pmap_spin;
 
 int spin_trylock_contested(struct spinlock *spin);
 void spin_lock_contested(struct spinlock *spin);
-void spin_lock_shared_contested(struct spinlock *spin);
+void spin_lock_shared_contested2(struct spinlock *spin);
 void _spin_pool_lock(void *chan);
 void _spin_pool_unlock(void *chan);
 
@@ -182,11 +182,8 @@ spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin)
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
 	++gd->gd_spinlocks;
-	atomic_add_int(&spin->counta, 1);
-	if (spin->counta == 1)
-		atomic_set_int(&spin->counta, SPINLOCK_SHARED);
-	if ((spin->counta & SPINLOCK_SHARED) == 0)
-		spin_lock_shared_contested(spin);
+	if (atomic_cmpset_int(&spin->counta, 0, SPINLOCK_SHARED | 1) == 0)
+		spin_lock_shared_contested2(spin);
 #ifdef DEBUG_LOCKS
 	int i;
 	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
