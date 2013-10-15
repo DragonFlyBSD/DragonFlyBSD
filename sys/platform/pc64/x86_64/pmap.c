@@ -2737,18 +2737,7 @@ pmap_reference(pmap_t pmap)
 static void
 pv_hold(pv_entry_t pv)
 {
-	u_int count;
-
-	if (atomic_cmpset_int(&pv->pv_hold, 0, 1))
-		return;
-
-	for (;;) {
-		count = pv->pv_hold;
-		cpu_ccfence();
-		if (atomic_cmpset_int(&pv->pv_hold, count, count + 1))
-			return;
-		/* retry */
-	}
+	atomic_add_int(&pv->pv_hold, 1);
 }
 
 /*
