@@ -1330,6 +1330,14 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 		if (error)
 			break;
 	}
+
+	/*
+	 * Userland scheduler expects us to return on the same cpu we
+	 * started on.
+	 */
+	if (mycpu->gd_cpuid != origcpu)
+		lwkt_setcpu_self(globaldata_find(origcpu));
+
 	kfree(marker, M_TEMP);
 
 post_threads:
