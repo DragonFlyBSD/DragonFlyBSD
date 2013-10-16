@@ -517,8 +517,6 @@
             ..
             fi_FI.UTF-8
             ..
-            fo_FO.ISO8859-1
-            ..
             fr_BE.ISO8859-1
             ..
             fr_BE.ISO8859-15
@@ -579,15 +577,9 @@
             ..
             it_IT.UTF-8
             ..
-            ja_JP.ISO2022-JP
-            ..
-            ja_JP.ISO2022-JP2
-            ..
             ja_JP.SJIS
             ..
             ja_JP.UTF-8
-            ..
-            ja_JP.ct
             ..
             ja_JP.eucJP
             ..
@@ -612,8 +604,6 @@
             la_LN.ISO8859-4
             ..
             la_LN.US-ASCII
-            ..
-            la_LN.UTF-8
             ..
             lt_LT.ISO8859-13
             ..
@@ -675,8 +665,6 @@
             ..
             ro_RO.UTF-8
             ..
-            ru_BY.CP1251
-            ..
             ru_RU.CP1251
             ..
             ru_RU.CP866
@@ -694,14 +682,6 @@
             sl_SI.ISO8859-2
             ..
             sl_SI.UTF-8
-            ..
-            sr_ME.ISO8859-2
-            ..
-            sr_ME.ISO8859-5
-            ..
-            sr_RS.ISO8859-2
-            ..
-            sr_RS.ISO8859-5
             ..
             sr_YU.ISO8859-2
             ..
@@ -744,8 +724,6 @@
             zh_TW.Big5
             ..
             zh_TW.UTF-8
-            ..
-            zh_TW.eucTW
             ..
         ..
         man
