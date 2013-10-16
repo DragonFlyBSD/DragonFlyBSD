@@ -91,7 +91,7 @@ static const char *getfmt (char **(*)(kvm_t *, const struct kinfo_proc *, int),
 		    KINFO *, char *, int);
 static char	*kludge_oldps_options (char *);
 static int	 pscomp (const void *, const void *);
-static void	 dochain (KINFO **ksort, int nentries);
+static void	 dochain (KINFO **ksort, int *nentriesp, pid_t pid);
 static void	 saveuser (KINFO *);
 static void	 scanvars (void);
 static void	 dynsizevars (KINFO *);
@@ -168,7 +168,7 @@ main(int argc, char **argv)
 	dropgid = 0;
 	memf = nlistf = _PATH_DEVNULL;
 
-	while ((ch = getopt(argc, argv, PS_ARGS)) != -1)
+	while ((ch = getopt(argc, argv, PS_ARGS)) != -1) {
 		switch((char)ch) {
 		case 'a':
 			all = 1;
@@ -303,6 +303,7 @@ main(int argc, char **argv)
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -384,7 +385,7 @@ main(int argc, char **argv)
 	} else if (ttydev != NODEV) {
 		what = KERN_PROC_TTY;
 		flag = ttydev;
-	} else if (pid != -1) {
+	} else if (pid != -1 && chainflg == 0) {
 		what = KERN_PROC_PID;
 		flag = pid;
 	} else {
@@ -431,7 +432,7 @@ main(int argc, char **argv)
 	 * at each level retain the above sort characteristics.
 	 */
 	if (chainflg)
-		dochain(KSort, nentries);
+		dochain(KSort, &nentries, pid);
 
 	/*
 	 * for each proc, call each variable output function.
@@ -636,8 +637,9 @@ pscomp(const void *arg_a, const void *arg_b)
 static int dochain_final(KINFO **kfinal, KINFO *base, int j);
 
 static void
-dochain (KINFO **ksort, int nentries)
+dochain (KINFO **ksort, int *nentriesp, pid_t pid)
 {
+	int nentries = *nentriesp;
 	int i;
 	int j;
 	int hi;
@@ -687,15 +689,26 @@ dochain (KINFO **ksort, int nentries)
 	 * Now regenerate the list starting at root entries, then copyback.
 	 */
 	for (i = j = 0; i < nentries; ++i) {
-		if (ksort[i]->ki_parent == NULL) {
+		if (pid != (pid_t)-1) {
+			if (KI_PROC(ksort[i], pid) == pid) {
+				ksort[i]->ki_indent = 0;
+				j = dochain_final(kfinal, ksort[i], j);
+			}
+		} else if (ksort[i]->ki_parent == NULL) {
 			ksort[i]->ki_indent = 0;
 			j = dochain_final(kfinal, ksort[i], j);
 		}
 	}
-	if (i != j)
-		errx(1, "dochain failed");
 
-	bcopy(kfinal, ksort, nentries * sizeof(kfinal[0]));
+	/*
+	 * There might be fewer entries if we restricted the chain to a
+	 * pid.
+	 */
+	nentries = j;
+	*nentriesp = nentries;
+
+	if (nentries)
+		bcopy(kfinal, ksort, nentries * sizeof(kfinal[0]));
 	free(kfinal);
 	free(khash);
 }
@@ -743,10 +756,12 @@ kludge_oldps_options(char *s)
 	 */
 	if (*s != '-')
 		*ns++ = '-';	/* add option flag */
+
 	/*
 	 * gaze to end of argv[1]
 	 */
 	cp = s + len - 1;
+
 	/*
 	 * if last letter is a 't' flag with no argument (in the context
 	 * of the oldps options -- option string NOT starting with a '-' --
@@ -756,9 +771,9 @@ kludge_oldps_options(char *s)
 	 * option string, the remainder of the string is the argument to
 	 * that flag; do not modify that argument.
 	 */
-	if (strcspn(s, "MNOoU") == len && *cp == 't' && *s != '-')
+	if (strcspn(s, "MNOoU") == len && *cp == 't' && *s != '-') {
 		*cp = 'T';
-	else {
+	} else {
 		/*
 		 * otherwise check for trailing number, which *may* be a
 		 * pid.
@@ -775,8 +790,9 @@ kludge_oldps_options(char *s)
 	 */
 	if (isdigit(*cp) &&
 	    (cp == s || (cp[-1] != 't' && cp[-1] != 'p')) &&
-	    (cp - 1 == s || cp[-2] != 't'))
+	    (cp - 1 == s || cp[-2] != 't')) {
 		*ns++ = 'p';
+	}
 	strcpy(ns, cp);		/* and append the number */
 
 	return (newopts);

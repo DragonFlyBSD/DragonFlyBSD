@@ -145,6 +145,10 @@ Sort by current CPU usage, instead of by process ID.
 .It Fl R
 Subsort by parent/child chain.  This very useful option makes
 the parent/child associations clear and understandable.
+If used in combination with
+.Fl p
+then all children of the specified process will be output
+recursively in addition to the process itself.
 .It Fl S
 Change the way the process time is calculated by summing all exited
 children to their parent process.
