@@ -2146,6 +2146,7 @@ TO_REMOVE+=/usr/share/man/cat4/uhidev.4.gz
 TO_REMOVE+=/usr/share/man/man4/uhidev.4.gz
 TO_REMOVE+=/boot/kernel/drmn.ko
 TO_REMOVE+=/boot/kernel/i915.ko
+TO_REMOVE+=/usr/share/man/cat4/i915drm.4.gz
 TO_REMOVE+=/usr/share/man/man4/i915drm.4.gz
 TO_REMOVE+=/usr/share/nls/eu_ES.ISO8859-1
 TO_REMOVE+=/usr/share/nls/eu_ES.ISO8859-15
@@ -2154,6 +2155,7 @@ TO_REMOVE+=/usr/share/nls/fo_FO.ISO8859-1
 TO_REMOVE+=/usr/share/nls/fo_FO.UTF-8
 TO_REMOVE+=/usr/share/nls/hi_IN.UTF-8
 TO_REMOVE+=/usr/share/nls/la_LN.UTF-8
+TO_REMOVE+=/usr/share/man/cat9/idr_init1.9.gz
 TO_REMOVE+=/usr/share/man/man9/idr_init1.9.gz
 TO_REMOVE+=/boot/kernel/radeon.ko
 
