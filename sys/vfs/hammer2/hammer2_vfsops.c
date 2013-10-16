@@ -108,12 +108,6 @@ MALLOC_DEFINE(C_BUFFER, "compbuffer", "Buffer used for compression.");
 MALLOC_DECLARE(D_BUFFER);
 MALLOC_DEFINE(D_BUFFER, "decompbuffer", "Buffer used for decompression.");
 
-MALLOC_DECLARE(W_BIOQUEUE);
-MALLOC_DEFINE(W_BIOQUEUE, "wbioqueue", "Writing bio queue.");
-
-MALLOC_DECLARE(W_MTX);
-MALLOC_DEFINE(W_MTX, "wmutex", "Mutex for write thread.");
-
 SYSCTL_NODE(_vfs, OID_AUTO, hammer2, CTLFLAG_RW, 0, "HAMMER2 filesystem");
 
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, debug, CTLFLAG_RW,
