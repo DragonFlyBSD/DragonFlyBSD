@@ -38,6 +38,7 @@
 #include "namespace.h"
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/sysctl.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -46,14 +47,9 @@
 #include "libc_private.h"
 #include "un-namespace.h"
 
-struct arc4_stream {
-	u_int8_t i;
-	u_int8_t j;
-	u_int8_t s[256];
-};
-
-static pthread_mutex_t	arc4random_mtx = PTHREAD_MUTEX_INITIALIZER;
-
+/*
+ * Misc constants
+ */
 #define	RANDOMDEV	"/dev/random"
 #define KEYSIZE		128
 #define	THREAD_LOCK()						\
@@ -68,6 +64,15 @@ static pthread_mutex_t	arc4random_mtx = PTHREAD_MUTEX_INITIALIZER;
 			_pthread_mutex_unlock(&arc4random_mtx);	\
 	} while (0)
 
+
+struct arc4_stream {
+	u_int8_t i;
+	u_int8_t j;
+	u_int8_t s[KEYSIZE * 2];
+};
+
+static pthread_mutex_t	arc4random_mtx = PTHREAD_MUTEX_INITIALIZER;
+
 static struct arc4_stream rs;
 static int rs_initialized;
 static int rs_stired;
@@ -81,7 +86,7 @@ arc4_init(void)
 {
 	int     n;
 
-	for (n = 0; n < 256; n++)
+	for (n = 0; n < KEYSIZE * 2; n++)
 		rs.s[n] = n;
 	rs.i = 0;
 	rs.j = 0;
@@ -94,7 +99,7 @@ arc4_addrandom(u_char *dat, size_t datlen)
 	u_int8_t si;
 
 	rs.i--;
-	for (n = 0; n < 256; n++) {
+	for (n = 0; n < KEYSIZE * 2; n++) {
 		rs.i = (rs.i + 1);
 		si = rs.s[rs.i];
 		rs.j = (rs.j + si + dat[n % datlen]);
@@ -104,30 +109,53 @@ arc4_addrandom(u_char *dat, size_t datlen)
 	rs.j = rs.i;
 }
 
+struct pray {
+	struct timeval	tv;
+	pid_t 		pid;
+};
+
 static void
 arc4_stir(void)
 {
-	int done, fd, n;
-	struct {
-		struct timeval	tv;
-		pid_t 		pid;
-		u_int8_t 	rnd[KEYSIZE];
-	} rdat;
+	u_int8_t rnd[KEYSIZE*2];
+	size_t n;
+	int fd;
 
+	/*
+	 * NOTE: Don't assume that the garbage on the stack is actually
+	 *	 random.
+	 */
+	n = 0;
 	fd = _open(RANDOMDEV, O_RDONLY, 0);
-	done = 0;
 	if (fd >= 0) {
-		if (_read(fd, &rdat, KEYSIZE) == KEYSIZE)
-			done = 1;
+		n = _read(fd, rnd, sizeof(rnd));
 		_close(fd);
-	}
-	if (!done) {
-		gettimeofday(&rdat.tv, NULL);
-		rdat.pid = getpid();
-		/* We'll just take whatever was on the stack too... */
+		if ((ssize_t)n < 0)
+			n = 0;
 	}
 
-	arc4_addrandom((u_char *)&rdat, KEYSIZE);
+	/*
+	 * Align for added entropy, sysctl back-off for chroots that might
+	 * not have access to /dev/random.
+	 */
+	n = n & ~15;	/* align for added entropy */
+	if (n < sizeof(rnd)) {
+		size_t r = sizeof(rnd) - n;
+		if (sysctlbyname("kern.random", rnd + n, &r, NULL, 0) == 0)
+			n += r;
+	}
+
+	/*
+	 * Pray if this code ever gets triggered.
+	 */
+	n = n & ~15;
+	if (n <= sizeof(rnd) - sizeof(struct pray)) {
+		struct pray *pray = (void *)(rnd + n);
+		gettimeofday(&pray->tv, NULL);
+		pray->pid = getpid();
+		n += sizeof(struct pray);
+	}
+	arc4_addrandom((u_char *)rnd, n);
 
 	/*
 	 * Throw away the first N bytes of output, as suggested in the
@@ -138,7 +166,13 @@ arc4_stir(void)
 	 */
 	for (n = 0; n < 1024; n++)
 		arc4_getbyte();
-	arc4_count = 1600000;
+
+	/*
+	 * Theoretically we can set arc4_count to 1600000.  Realistically,
+	 * it makes no sense to use a number that high.  Use something
+	 * reasonable.
+	 */
+	arc4_count = 65539;
 }
 
 static u_int8_t

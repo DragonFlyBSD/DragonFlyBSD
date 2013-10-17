@@ -33,6 +33,7 @@
 
 #include "namespace.h"
 #include <sys/time.h>          /* for srandomdev() */
+#include <sys/sysctl.h>
 #include <fcntl.h>             /* for srandomdev() */
 #include <stdint.h>
 #include <stdio.h>
@@ -291,31 +292,54 @@ srandom(unsigned long x)
  * state buffer are no longer derived from the LC algorithm applied to
  * a fixed seed.
  */
+
 void
 srandomdev(void)
 {
-	int fd, done;
 	size_t len;
+	size_t n;
+	int fd;
 
 	if (rand_type == TYPE_0)
 		len = sizeof state[0];
 	else
 		len = rand_deg * sizeof state[0];
 
-	done = 0;
+	/*
+	 * Standard
+	 */
 	fd = _open("/dev/random", O_RDONLY, 0);
 	if (fd >= 0) {
-		if (_read(fd, (void *) state, len) == (ssize_t) len)
-			done = 1;
+		n = _read(fd, (void *)state, len);
 		_close(fd);
+		if ((ssize_t)n < 0)
+			n = 0;
 	}
 
-	if (!done) {
+	/*
+	 * Back-off incase chroot has no access to /dev/random
+	 */
+	n = n & ~15;
+	if (n < len) {
+		size_t r = len - n;
+		if (sysctlbyname("kern.random", (char *)state + n,
+				 &r, NULL, 0) == 0) {
+			n += r;
+		}
+	}
+
+	/*
+	 * Pray
+	 *
+	 * NOTE: 'random' data on the stack is not random, don't try to
+	 *	 access it.
+	 */
+	n = n & ~15;
+	if (n < len) {
 		struct timeval tv;
-		unsigned long junk;	/* XXX left uninitialized on purpose */
 
 		gettimeofday(&tv, NULL);
-		srandom((getpid() << 16) ^ tv.tv_sec ^ tv.tv_usec ^ junk);
+		srandom((getpid() << 16) ^ tv.tv_sec ^ tv.tv_usec);
 		return;
 	}
 
