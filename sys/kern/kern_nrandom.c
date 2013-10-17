@@ -405,10 +405,14 @@ static void NANOUP_EVENT(void);
 static thread_t rand_td;
 static struct spinlock rand_spin;
 
+static int sysctl_kern_random(SYSCTL_HANDLER_ARGS);
+
 static int nrandevents;
 SYSCTL_INT(_kern, OID_AUTO, nrandevents, CTLFLAG_RD, &nrandevents, 0, "");
 static int seedenable;
 SYSCTL_INT(_kern, OID_AUTO, seedenable, CTLFLAG_RW, &seedenable, 0, "");
+SYSCTL_PROC(_kern, OID_AUTO, random, CTLFLAG_RD | CTLFLAG_ANYBODY, 0, 0,
+		sysctl_kern_random, "I", "Acquire random data");
 
 /*
  * Called from early boot
@@ -564,6 +568,33 @@ read_random_unlimited(void *buf, u_int nbytes)
 	spin_unlock(&rand_spin);
 	add_interrupt_randomness(0);
 	return (i);
+}
+
+/*
+ * Read random data via sysctl().
+ */
+static
+int
+sysctl_kern_random(SYSCTL_HANDLER_ARGS)
+{
+	char buf[64];
+	size_t n;
+	size_t r;
+	int error = 0;
+
+	n = req->oldlen;
+	if (n > 1024 * 1024)
+		n = 1024 * 1024;
+	while (n > 0) {
+		if ((r = n) > sizeof(buf))
+			r = sizeof(buf);
+		read_random_unlimited(buf, r);
+		error = SYSCTL_OUT(req, buf, r);
+		if (error)
+			break;
+		n -= r;
+	}
+	return(error);
 }
 
 /*
