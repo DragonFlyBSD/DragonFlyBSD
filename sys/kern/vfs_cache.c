@@ -1128,9 +1128,13 @@ _cache_lock_special(struct namecache *ncp)
 static int
 _cache_lock_shared_special(struct namecache *ncp)
 {
+	/*
+	 * Only honor a successful shared lock (returning 0) if there is
+	 * no exclusive request pending and the vnode, if present, is not
+	 * in a reclaimed state.
+	 */
 	if (_cache_lock_shared_nonblock(ncp) == 0) {
-		if ((ncp->nc_lockstatus &
-		     ~(NC_EXLOCK_REQ|NC_SHLOCK_REQ)) == (NC_SHLOCK_FLAG | 1)) {
+		if ((ncp->nc_lockstatus & NC_EXLOCK_REQ) == 0) {
 			if (ncp->nc_vp == NULL ||
 			    (ncp->nc_vp->v_flag & VRECLAIMED) == 0) {
 				return(0);
@@ -1139,6 +1143,12 @@ _cache_lock_shared_special(struct namecache *ncp)
 		_cache_unlock(ncp);
 		return(EWOULDBLOCK);
 	}
+
+	/*
+	 * Non-blocking shared lock failed.  If we already own the exclusive
+	 * lock just acquire another exclusive lock (instead of deadlocking).
+	 * Otherwise acquire a shared lock.
+	 */
 	if (ncp->nc_locktd == curthread) {
 		_cache_lock(ncp);
 		return(0);
