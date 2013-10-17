@@ -2013,11 +2013,11 @@ cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit,
 	 * Handle the makeit == 0 degenerate case
 	 */
 	if (makeit == 0) {
-		spin_lock(&dvp->v_spin);
+		spin_lock_shared(&dvp->v_spin);
 		nch->ncp = TAILQ_FIRST(&dvp->v_namecache);
 		if (nch->ncp)
 			cache_hold(nch);
-		spin_unlock(&dvp->v_spin);
+		spin_unlock_shared(&dvp->v_spin);
 	}
 
 	/*
@@ -2027,14 +2027,14 @@ cache_fromdvp(struct vnode *dvp, struct ucred *cred, int makeit,
 		/*
 		 * Break out if we successfully acquire a working ncp.
 		 */
-		spin_lock(&dvp->v_spin);
+		spin_lock_shared(&dvp->v_spin);
 		nch->ncp = TAILQ_FIRST(&dvp->v_namecache);
 		if (nch->ncp) {
 			cache_hold(nch);
-			spin_unlock(&dvp->v_spin);
+			spin_unlock_shared(&dvp->v_spin);
 			break;
 		}
-		spin_unlock(&dvp->v_spin);
+		spin_unlock_shared(&dvp->v_spin);
 
 		/*
 		 * If dvp is the root of its filesystem it should already
@@ -2174,14 +2174,14 @@ cache_fromdvp_try(struct vnode *dvp, struct ucred *cred,
 			break;
 		}
 		vn_unlock(pvp);
-		spin_lock(&pvp->v_spin);
+		spin_lock_shared(&pvp->v_spin);
 		if ((nch.ncp = TAILQ_FIRST(&pvp->v_namecache)) != NULL) {
 			_cache_hold(nch.ncp);
-			spin_unlock(&pvp->v_spin);
+			spin_unlock_shared(&pvp->v_spin);
 			vrele(pvp);
 			break;
 		}
-		spin_unlock(&pvp->v_spin);
+		spin_unlock_shared(&pvp->v_spin);
 		if (pvp->v_flag & VROOT) {
 			nch.ncp = _cache_get(pvp->v_mount->mnt_ncmountpt.ncp);
 			error = cache_resolve_mp(nch.mount);
@@ -2692,7 +2692,11 @@ cache_nlookup(struct nchandle *par_nch, struct nlcomponent *nlc)
 	new_ncp = NULL;
 	nchpp = NCHHASH(hash);
 restart:
-	spin_lock(&nchpp->spin);
+	if (new_ncp)
+		spin_lock(&nchpp->spin);
+	else
+		spin_lock_shared(&nchpp->spin);
+
 	LIST_FOREACH(ncp, &nchpp->list, nc_hash) {
 		numchecks++;
 
@@ -2707,7 +2711,10 @@ restart:
 		    (ncp->nc_flag & NCF_DESTROYED) == 0
 		) {
 			_cache_hold(ncp);
-			spin_unlock(&nchpp->spin);
+			if (new_ncp)
+				spin_unlock(&nchpp->spin);
+			else
+				spin_unlock_shared(&nchpp->spin);
 			if (par_locked) {
 				_cache_unlock(par_nch->ncp);
 				par_locked = 0;
@@ -2737,7 +2744,7 @@ restart:
 	 *	 mount case, in which case nc_name will be NULL.
 	 */
 	if (new_ncp == NULL) {
-		spin_unlock(&nchpp->spin);
+		spin_unlock_shared(&nchpp->spin);
 		new_ncp = cache_alloc(nlc->nlc_namelen);
 		if (nlc->nlc_namelen) {
 			bcopy(nlc->nlc_nameptr, new_ncp->nc_name,
@@ -2746,6 +2753,11 @@ restart:
 		}
 		goto restart;
 	}
+
+	/*
+	 * NOTE! The spinlock is held exclusively here because new_ncp
+	 *	 is non-NULL.
+	 */
 	if (par_locked == 0) {
 		spin_unlock(&nchpp->spin);
 		_cache_lock(par_nch->ncp);
@@ -2816,7 +2828,7 @@ cache_nlookup_maybe_shared(struct nchandle *par_nch, struct nlcomponent *nlc,
 	hash = fnv_32_buf(&par_nch->ncp, sizeof(par_nch->ncp), hash);
 	nchpp = NCHHASH(hash);
 
-	spin_lock(&nchpp->spin);
+	spin_lock_shared(&nchpp->spin);
 
 	LIST_FOREACH(ncp, &nchpp->list, nc_hash) {
 		numchecks++;
@@ -2832,7 +2844,7 @@ cache_nlookup_maybe_shared(struct nchandle *par_nch, struct nlcomponent *nlc,
 		    (ncp->nc_flag & NCF_DESTROYED) == 0
 		) {
 			_cache_hold(ncp);
-			spin_unlock(&nchpp->spin);
+			spin_unlock_shared(&nchpp->spin);
 			if (_cache_lock_shared_special(ncp) == 0) {
 				if ((ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
 				    (ncp->nc_flag & NCF_DESTROYED) == 0 &&
@@ -2842,7 +2854,7 @@ cache_nlookup_maybe_shared(struct nchandle *par_nch, struct nlcomponent *nlc,
 				_cache_unlock(ncp);
 			}
 			_cache_drop(ncp);
-			spin_lock(&nchpp->spin);
+			spin_lock_shared(&nchpp->spin);
 			break;
 		}
 	}
@@ -2850,7 +2862,7 @@ cache_nlookup_maybe_shared(struct nchandle *par_nch, struct nlcomponent *nlc,
 	/*
 	 * Failure
 	 */
-	spin_unlock(&nchpp->spin);
+	spin_unlock_shared(&nchpp->spin);
 	return(EWOULDBLOCK);
 
 	/*
@@ -3494,13 +3506,13 @@ _cache_cleanpos(int count)
 		cpu_ccfence();
 		nchpp = NCHHASH(rover_copy);
 
-		spin_lock(&nchpp->spin);
+		spin_lock_shared(&nchpp->spin);
 		ncp = LIST_FIRST(&nchpp->list);
 		while (ncp && (ncp->nc_flag & NCF_DESTROYED))
 			ncp = LIST_NEXT(ncp, nc_hash);
 		if (ncp)
 			_cache_hold(ncp);
-		spin_unlock(&nchpp->spin);
+		spin_unlock_shared(&nchpp->spin);
 
 		if (ncp) {
 			if (_cache_lock_special(ncp) == 0) {
@@ -4003,8 +4015,8 @@ done:
 }
 
 int
-vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf,
-    int guess)
+vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf,
+	    char **freebuf, int guess)
 {
 	struct namecache *ncp;
 	struct nchandle nch;
@@ -4023,17 +4035,17 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf,
 		if ((vn = p->p_textvp) == NULL)
 			return (EINVAL);
 	}
-	spin_lock(&vn->v_spin);
+	spin_lock_shared(&vn->v_spin);
 	TAILQ_FOREACH(ncp, &vn->v_namecache, nc_vnode) {
 		if (ncp->nc_nlen)
 			break;
 	}
 	if (ncp == NULL) {
-		spin_unlock(&vn->v_spin);
+		spin_unlock_shared(&vn->v_spin);
 		return (EINVAL);
 	}
 	_cache_hold(ncp);
-	spin_unlock(&vn->v_spin);
+	spin_unlock_shared(&vn->v_spin);
 
 	atomic_add_int(&numfullpathcalls, -1);
 	nch.ncp = ncp;
