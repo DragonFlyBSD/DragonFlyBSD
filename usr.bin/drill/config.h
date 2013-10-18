@@ -112,6 +112,9 @@
 /* Define to 1 if you have the <ws2tcpip.h> header file. */
 /* #undef HAVE_WS2TCPIP_H */
 
+/* Default trust anchor file */
+#define LDNS_TRUST_ANCHOR_FILE "/usr/local/etc/unbound/root.key"
+
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT "libdns@nlnetlabs.nl"
 
@@ -119,7 +122,7 @@
 #define PACKAGE_NAME "ldns"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "ldns 1.6.7"
+#define PACKAGE_STRING "ldns 1.6.16"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libdns"
@@ -128,7 +131,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.6.7"
+#define PACKAGE_VERSION "1.6.16"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1

@@ -34,13 +34,19 @@
 /* Define to 1 if you have the `ctime_r' function. */
 #define HAVE_CTIME_R 1
 
+/* Is a CAFILE given at configure time */
+#define HAVE_DANE_CA_FILE 0
+
+/* Is a CAPATH given at configure time */
+#define HAVE_DANE_CA_PATH 0
+
 /* Define to 1 if you have the declaration of `NID_secp384r1', and to 0 if you
    don't. */
-/* #undef HAVE_DECL_NID_SECP384R1 */
+#define HAVE_DECL_NID_SECP384R1 1
 
 /* Define to 1 if you have the declaration of `NID_X9_62_prime256v1', and to 0
    if you don't. */
-/* #undef HAVE_DECL_NID_X9_62_PRIME256V1 */
+#define HAVE_DECL_NID_X9_62_PRIME256V1 1
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
@@ -56,6 +62,9 @@
 
 /* Define to 1 if you have the `fcntl' function. */
 #define HAVE_FCNTL 1
+
+/* Define to 1 if you have the `fork' function. */
+#define HAVE_FORK 1
 
 /* Whether getaddrinfo is available */
 #define HAVE_GETADDRINFO 1
@@ -78,6 +87,9 @@
 /* Define to 1 if you have the `inet_pton' function. */
 #define HAVE_INET_PTON 1
 
+/* Define to 1 if the system has the type `intptr_t'. */
+#define HAVE_INTPTR_T 1
+
 /* define if you have inttypes.h */
 #define HAVE_INTTYPES_H 1
 
@@ -89,6 +101,12 @@
 
 /* Define to 1 if you have the `isblank' function. */
 #define HAVE_ISBLANK 1
+
+/* Define to 1 if you have the `pcap' library (-lpcap). */
+/* #undef HAVE_LIBPCAP */
+
+/* Define to 1 if you have the `localtime_r' function. */
+#define HAVE_LOCALTIME_R 1
 
 /* Define to 1 if your system has a GNU libc compatible `malloc' function, and
    to 0 otherwise. */
@@ -106,8 +124,35 @@
 /* Define to 1 if you have the <netdb.h> header file. */
 #define HAVE_NETDB_H 1
 
+/* Define to 1 if you have the <netinet/if_ether.h> header file. */
+/* #undef HAVE_NETINET_IF_ETHER_H */
+
+/* Define to 1 if you have the <netinet/igmp.h> header file. */
+/* #undef HAVE_NETINET_IGMP_H */
+
 /* Define to 1 if you have the <netinet/in.h> header file. */
 #define HAVE_NETINET_IN_H 1
+
+/* Define to 1 if you have the <netinet/in_systm.h> header file. */
+/* #undef HAVE_NETINET_IN_SYSTM_H */
+
+/* Define to 1 if you have the <netinet/ip6.h> header file. */
+/* #undef HAVE_NETINET_IP6_H */
+
+/* Define to 1 if you have the <netinet/ip_compat.h> header file. */
+/* #undef HAVE_NETINET_IP_COMPAT_H */
+
+/* Define to 1 if you have the <netinet/ip.h> header file. */
+/* #undef HAVE_NETINET_IP_H */
+
+/* Define to 1 if you have the <netinet/udp.h> header file. */
+/* #undef HAVE_NETINET_UDP_H */
+
+/* Define to 1 if you have the <net/ethernet.h> header file. */
+/* #undef HAVE_NET_ETHERNET_H */
+
+/* Define to 1 if you have the <net/if.h> header file. */
+/* #undef HAVE_NET_IF_H */
 
 /* Define to 1 if you have the <openssl/err.h> header file. */
 #define HAVE_OPENSSL_ERR_H 1
@@ -117,6 +162,9 @@
 
 /* Define to 1 if you have the <openssl/ssl.h> header file. */
 #define HAVE_OPENSSL_SSL_H 1
+
+/* Define to 1 if you have the <pcap.h> header file. */
+/* #undef HAVE_PCAP_H */
 
 /* If available, contains the Python version number currently in use. */
 /* #undef HAVE_PYTHON */
@@ -188,14 +236,35 @@
 /* define if you have unistd.h */
 #define HAVE_UNISTD_H 1
 
+/* Define to 1 if you have the `vfork' function. */
+#define HAVE_VFORK 1
+
+/* Define to 1 if you have the <vfork.h> header file. */
+/* #undef HAVE_VFORK_H */
+
 /* Define to 1 if you have the <winsock2.h> header file. */
 /* #undef HAVE_WINSOCK2_H */
+
+/* Define to 1 if `fork' works. */
+#define HAVE_WORKING_FORK 1
+
+/* Define to 1 if `vfork' works. */
+#define HAVE_WORKING_VFORK 1
 
 /* Define to 1 if you have the <ws2tcpip.h> header file. */
 /* #undef HAVE_WS2TCPIP_H */
 
 /* Define to 1 if the system has the type `_Bool'. */
 #define HAVE__BOOL 1
+
+/* Is a CAFILE given at configure time */
+/* #undef LDNS_DANE_CA_FILE */
+
+/* Is a CAPATH given at configure time */
+/* #undef LDNS_DANE_CA_PATH */
+
+/* Default trust anchor file */
+#define LDNS_TRUST_ANCHOR_FILE "/usr/local/etc/unbound/root.key"
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
@@ -208,7 +277,7 @@
 #define PACKAGE_NAME "ldns"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "ldns 1.6.11"
+#define PACKAGE_STRING "ldns 1.6.16"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libdns"
@@ -217,7 +286,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.6.11"
+#define PACKAGE_VERSION "1.6.16"
 
 /* The size of `time_t', as computed by sizeof. */
 #define SIZEOF_TIME_T 4
@@ -229,10 +298,10 @@
 #define SYSCONFDIR sysconfdir
 
 /* Define this to enable ECDSA support. */
-/* #undef USE_ECDSA */
+#define USE_ECDSA 1
 
 /* Define this to enable GOST support. */
-#define USE_GOST 1
+/* #undef USE_GOST */
 
 /* Define this to enable SHA256 and SHA512 support. */
 #define USE_SHA2 1
@@ -314,11 +383,21 @@
 /* Define to `char' if <sys/types.h> does not define. */
 /* #undef int8_t */
 
+/* Define to the type of a signed integer type wide enough to hold a pointer,
+   if such a type exists, and if the system does not define it. */
+/* #undef intptr_t */
+
 /* Define to rpl_malloc if the replacement function should be used. */
 /* #undef malloc */
 
+/* Define to `int' if <sys/types.h> does not define. */
+/* #undef pid_t */
+
 /* Define to rpl_realloc if the replacement function should be used. */
 /* #undef realloc */
+
+/* Define to `unsigned int' if <sys/types.h> does not define. */
+/* #undef size_t */
 
 /* Define to 'int' if not defined */
 /* #undef socklen_t */
@@ -340,6 +419,9 @@
 
 /* Define to `unsigned char' if <sys/types.h> does not define. */
 /* #undef uint8_t */
+
+/* Define as `fork' if `vfork' does not work. */
+/* #undef vfork */
 
 
 #include <stdio.h>
@@ -447,6 +529,9 @@ time_t timegm (struct tm *tm);
 #endif /* !TIMEGM */
 #ifndef HAVE_GMTIME_R
 struct tm *gmtime_r(const time_t *timep, struct tm *result);
+#endif
+#ifndef HAVE_LOCALTIME_R
+struct tm *localtime_r(const time_t *timep, struct tm *result);
 #endif
 #ifndef HAVE_ISBLANK
 int isblank(int c);

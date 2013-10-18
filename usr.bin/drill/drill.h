@@ -12,7 +12,7 @@
 
 #include "drill_util.h"
 
-#define DRILL_VERSION "1.6.11"
+#define DRILL_VERSION PACKAGE_VERSION
 
 /* what kind of stuff do we allow */
 #define DRILL_QUERY	0
@@ -84,13 +84,7 @@ ldns_status ldns_verify_denial(ldns_pkt *pkt,
 						 ldns_rr_type type,
 						 ldns_rr_list **nsec_rrs, 
 						 ldns_rr_list **nsec_rr_sigs);
-ldns_status ldns_verify_denial_wildcard(ldns_pkt *pkt,
-								ldns_rdf *name,
-								ldns_rr_type type,
-								ldns_rr_list **nsec_rrs,
-								ldns_rr_list **nsec_rr_sigs);
 
-ldns_status read_key_file(const char *filename, ldns_rr_list *key_list);
 ldns_pkt *read_hex_pkt(char *filename);
 ldns_buffer *read_hex_buffer(char *filename);
 void	init_root(void);

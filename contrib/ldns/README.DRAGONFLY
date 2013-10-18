@@ -1,9 +1,14 @@
+LDNS
+====
+
 Original source can be downloaded from:
-http://www.nlnetlabs.nl/projects/ldns/
+http://www.nlnetlabs.nl/downloads/ldns/
 
-    MD5 (ldns-1.6.11.tar.gz) = c55b592a679672281712c457fbb41eb5
-    SHA1 (ldns-1.6.11.tar.gz) = 2c4537eee39a1af63e8dde4f35498ce78c968c1f 
+file = ldns-1.6.16.tar.gz
+date = 13 November 2012
+size = 1109941
+sha1 = 5b4fc6c5c3078cd061905c47178478cb1015c62a
 
-A list of deleted files is in README.DELETED.
+A list of files and directories removed is in README.DELETED
+There are no local modifications.
 
-When Upgrading please stick to development(7).

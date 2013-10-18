@@ -95,10 +95,12 @@ Or you can just use the menu above to browse through the API docs.
 #include <ldns/util.h>
 #include <ldns/buffer.h>
 #include <ldns/common.h>
+#include <ldns/dane.h>
 #include <ldns/dname.h>
 #include <ldns/dnssec.h>
 #include <ldns/dnssec_verify.h>
 #include <ldns/dnssec_sign.h>
+#include <ldns/duration.h>
 #include <ldns/error.h>
 #include <ldns/higher.h>
 #include <ldns/host2str.h>

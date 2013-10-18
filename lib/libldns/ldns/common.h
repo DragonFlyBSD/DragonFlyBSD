@@ -20,10 +20,10 @@
  * as detected and determined by the auto configure script.
  */
 #define LDNS_BUILD_CONFIG_HAVE_SSL         1
-#define LDNS_BUILD_CONFIG_USE_ECDSA        0
 #define LDNS_BUILD_CONFIG_HAVE_INTTYPES_H  1
 #define LDNS_BUILD_CONFIG_HAVE_ATTR_FORMAT 1
 #define LDNS_BUILD_CONFIG_HAVE_ATTR_UNUSED 1
+#define LDNS_BUILD_CONFIG_HAVE_SOCKLEN_T   1
 
 /*
  * HAVE_STDBOOL_H is not available when distributed as a library, but no build 
@@ -65,5 +65,9 @@ typedef bool _Bool;
 #else /* !LDNS_BUILD_CONFIG_HAVE_ATTR_UNUSED */
 #define ATTR_UNUSED(x)  x
 #endif /* !LDNS_BUILD_CONFIG_HAVE_ATTR_UNUSED */
+
+#if !LDNS_BUILD_CONFIG_HAVE_SOCKLEN_T
+typedef int socklen_t;
+#endif
 
 #endif /* LDNS_COMMON_H */

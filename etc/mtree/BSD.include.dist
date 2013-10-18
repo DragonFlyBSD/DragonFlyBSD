@@ -165,6 +165,8 @@
             ..
         ..
     ..
+    ldns
+    ..
     libmilter
     ..
     libprop
