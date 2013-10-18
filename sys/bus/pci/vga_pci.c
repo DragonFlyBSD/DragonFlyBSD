@@ -266,7 +266,24 @@ static int
 vga_pci_release_resource(device_t dev, device_t child, int type, int rid,
     struct resource *r)
 {
+	struct vga_resource *vr;
 
+	switch (type) {
+	case SYS_RES_MEMORY:
+	case SYS_RES_IOPORT:
+		/*
+		 * Stop caching the resource when refs drops to 0
+		 */
+		vr = lookup_res(device_get_softc(dev), rid);
+		if (vr && vr->vr_refs > 0) {
+			if (--vr->vr_refs > 0)
+				return(0);
+			vr->vr_res = NULL;
+			/* fall through */
+		}
+		/* fall through */
+		break;
+	}
 	return (bus_release_resource(dev, type, rid, r));
 }
 
@@ -391,7 +408,7 @@ static device_method_t vga_pci_methods[] = {
 static driver_t vga_pci_driver = {
 	"vgapci",
 	vga_pci_methods,
-	1,
+	sizeof(struct vga_pci_softc),
 };
 
 static devclass_t vga_devclass;
