@@ -107,6 +107,10 @@ ldns_get_bit_r(uint8_t bits[], size_t index)
 void
 ldns_set_bit(uint8_t *byte, int bit_nr, bool value)
 {
+	/*
+	 * The bits are counted from right to left, so bit #0 is the
+	 * right most bit.
+	 */
 	if (bit_nr >= 0 && bit_nr < 8) {
 		if (value) {
 			*byte = *byte | (0x01 << bit_nr);
@@ -223,7 +227,7 @@ leap_days(int y1, int y2)
  * Code adapted from Python 2.4.1 sources (Lib/calendar.py).
  */
 time_t
-mktime_from_utc(const struct tm *tm)
+ldns_mktime_from_utc(const struct tm *tm)
 {
 	int year = 1900 + tm->tm_year;
 	time_t days = 365 * ((time_t) year - 1970) + leap_days(1970, year);
@@ -247,6 +251,12 @@ mktime_from_utc(const struct tm *tm)
 	return seconds;
 }
 
+time_t
+mktime_from_utc(const struct tm *tm)
+{
+	return ldns_mktime_from_utc(tm);
+}
+
 #if SIZEOF_TIME_T <= 4
 
 static void
@@ -256,10 +266,7 @@ ldns_year_and_yday_from_days_since_epoch(int64_t days, struct tm *result)
 	int new_year;
 
 	while (days < 0 || days >= (int64_t) (is_leap_year(year) ? 366 : 365)) {
-		new_year = year + (int) LDNS_DIV(days, 366);
-		if (year == new_year) {
-			year += days < 0 ? -1 : 1;
-		}
+		new_year = year + (int) LDNS_DIV(days, 365);
 		days -= (new_year - year) * 365;
 		days -= leap_days(year, new_year);
 		year  = new_year;
@@ -397,6 +404,7 @@ ldns_init_random(FILE *fd, unsigned int size)
 
 	if (read < size) {
 		LDNS_FREE(seed);
+		if (!fd) fclose(rand_f);
 		return 1;
 	} else {
 #ifdef HAVE_SSL

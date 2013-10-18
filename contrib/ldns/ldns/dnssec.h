@@ -198,6 +198,7 @@ RSA *ldns_key_buf2rsa_raw(unsigned char* key, size_t len);
  *
  * \param[in] *key the key to convert
  * \param[in] h the hash to use LDNS_SHA1/LDNS_SHA256
+ *
  * \return ldns_rr* a new rr pointer to a DS
  */
 ldns_rr *ldns_key_rr2ds(const ldns_rr *key, ldns_hash h);
@@ -395,6 +396,21 @@ bool ldns_nsec_covers_name(const ldns_rr *nsec, const ldns_rdf *name);
  * 
  */
 ldns_status ldns_pkt_verify(ldns_pkt *p, ldns_rr_type t, ldns_rdf *o, ldns_rr_list *k, ldns_rr_list *s, ldns_rr_list *good_keys);
+
+/**
+ * verify a packet 
+ * \param[in] p the packet
+ * \param[in] t the rr set type to check
+ * \param[in] o the rr set name to check
+ * \param[in] k list of keys
+ * \param[in] s list of sigs (may be null)
+ * \param[in] check_time the time for which the validation is performed
+ * \param[out] good_keys keys which validated the packet
+ * \return status 
+ * 
+ */
+ldns_status ldns_pkt_verify_time(ldns_pkt *p, ldns_rr_type t, ldns_rdf *o, ldns_rr_list *k, ldns_rr_list *s, time_t check_time, ldns_rr_list *good_keys);
+
 #endif
 
 /**

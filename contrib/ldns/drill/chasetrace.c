@@ -30,7 +30,6 @@ do_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 	ldns_rr_list *new_nss_aaaa;
 	ldns_rr_list *final_answer;
 	ldns_rr_list *new_nss;
-	ldns_rr_list *hostnames;
 	ldns_rr_list *ns_addr;
 	uint16_t loop_count;
 	ldns_rdf *pop; 
@@ -46,7 +45,15 @@ do_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 	p = ldns_pkt_new();
 	res = ldns_resolver_new();
 
-	if (!p || !res) {
+	if (!p) {
+		if (res) {
+			ldns_resolver_free(res);
+		}
+                error("Memory allocation failed");
+                return NULL;
+	}
+	if (!res) {
+		ldns_pkt_free(p);
                 error("Memory allocation failed");
                 return NULL;
         }
@@ -74,6 +81,8 @@ do_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 	if (status != LDNS_STATUS_OK) {
 		fprintf(stderr, "Error adding root servers to resolver: %s\n", ldns_get_errorstr_by_id(status));
 		ldns_rr_list_print(stdout, global_dns_root);
+		ldns_resolver_free(res);
+		ldns_pkt_free(p);
 		return NULL;
 	}
 
@@ -119,7 +128,7 @@ do_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 		drill_pkt_print_footer(stdout, local_res, p);
 		
 		/* remove the old nameserver from the resolver */
-		while((pop = ldns_resolver_pop_nameserver(res))) { /* do it */ }
+		while(ldns_resolver_pop_nameserver(res)) { /* do it */ }
 
 		/* also check for new_nss emptyness */
 
@@ -195,9 +204,6 @@ do_trace(ldns_resolver *local_res, ldns_rdf *name, ldns_rr_type t,
 		return NULL;
 	}
 
-	hostnames = ldns_get_rr_list_name_by_addr(local_res, 
-			ldns_pkt_answerfrom(p), 0, 0);
-
 	new_nss = ldns_pkt_authority(p);
 	final_answer = ldns_pkt_answer(p);
 
@@ -229,14 +235,13 @@ do_chase(ldns_resolver *res,
 	    ldns_rr_list *trusted_keys,
 	    ldns_pkt *pkt_o,
 	    uint16_t qflags,
-	    ldns_rr_list *prev_key_list,
+	    ldns_rr_list * ATTR_UNUSED(prev_key_list),
 	    int verbosity)
 {
 	ldns_rr_list *rrset = NULL;
 	ldns_status result;
 	ldns_rr *orig_rr = NULL;
 	
-	bool cname_followed = false;
 /*
 	ldns_rr_list *sigs;
 	ldns_rr *cur_sig;
@@ -290,7 +295,6 @@ do_chase(ldns_resolver *res,
 		/* answer might be a cname, chase that first, then chase
 		   cname target? (TODO) */
 		if (!rrset) {
-			cname_followed = true;
 			rrset = ldns_pkt_rr_list_by_name_and_type(pkt,
 					name,
 					LDNS_RR_TYPE_CNAME,

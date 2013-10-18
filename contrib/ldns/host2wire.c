@@ -113,6 +113,7 @@ ldns_rr2buffer_wire_canonical(ldns_buffer *buffer,
 	case LDNS_RR_TYPE_SRV:
 	case LDNS_RR_TYPE_DNAME:
 	case LDNS_RR_TYPE_A6:
+	case LDNS_RR_TYPE_RRSIG:
 		pre_rfc3597 = true;
 		break;
 	default:
@@ -205,7 +206,7 @@ ldns_rrsig2buffer_wire(ldns_buffer *buffer, const ldns_rr *rr)
 	/* Convert all the rdfs, except the actual signature data
 	 * rdf number 8  - the last, hence: -1 */
 	for (i = 0; i < ldns_rr_rd_count(rr) - 1; i++) {
-		(void) ldns_rdf2buffer_wire(buffer, ldns_rr_rdf(rr, i));
+		(void) ldns_rdf2buffer_wire_canonical(buffer, ldns_rr_rdf(rr, i));
 	}
 
 	return ldns_buffer_status(buffer);
@@ -340,7 +341,6 @@ ldns_status
 ldns_rdf2wire(uint8_t **dest, const ldns_rdf *rdf, size_t *result_size)
 {
 	ldns_buffer *buffer = ldns_buffer_new(LDNS_MAX_PACKETLEN);
-	uint8_t *result = NULL;
 	ldns_status status;
 	*result_size = 0;
 	*dest = NULL;
@@ -349,21 +349,8 @@ ldns_rdf2wire(uint8_t **dest, const ldns_rdf *rdf, size_t *result_size)
 	status = ldns_rdf2buffer_wire(buffer, rdf);
 	if (status == LDNS_STATUS_OK) {
 		*result_size =  ldns_buffer_position(buffer);
-		result = (uint8_t *) ldns_buffer_export(buffer);
-	} else {
-		ldns_buffer_free(buffer);
-		return status;
+		*dest = (uint8_t *) ldns_buffer_export(buffer);
 	}
-	
-	if (result) {
-		*dest = LDNS_XMALLOC(uint8_t, ldns_buffer_position(buffer));
-		if(!*dest) {
-			ldns_buffer_free(buffer);
-			return LDNS_STATUS_MEM_ERR;
-		}
-		memcpy(*dest, result, ldns_buffer_position(buffer));
-	}
-	
 	ldns_buffer_free(buffer);
 	return status;
 }
@@ -372,7 +359,6 @@ ldns_status
 ldns_rr2wire(uint8_t **dest, const ldns_rr *rr, int section, size_t *result_size)
 {
 	ldns_buffer *buffer = ldns_buffer_new(LDNS_MAX_PACKETLEN);
-	uint8_t *result = NULL;
 	ldns_status status;
 	*result_size = 0;
 	*dest = NULL;
@@ -381,21 +367,8 @@ ldns_rr2wire(uint8_t **dest, const ldns_rr *rr, int section, size_t *result_size
 	status = ldns_rr2buffer_wire(buffer, rr, section);
 	if (status == LDNS_STATUS_OK) {
 		*result_size =  ldns_buffer_position(buffer);
-		result = (uint8_t *) ldns_buffer_export(buffer);
-	} else {
-		ldns_buffer_free(buffer);
-		return status;
+		*dest = (uint8_t *) ldns_buffer_export(buffer);
 	}
-	
-	if (result) {
-		*dest = LDNS_XMALLOC(uint8_t, ldns_buffer_position(buffer));
-		if(!*dest) {
-			ldns_buffer_free(buffer);
-			return LDNS_STATUS_MEM_ERR;
-		}
-		memcpy(*dest, result, ldns_buffer_position(buffer));
-	}
-	
 	ldns_buffer_free(buffer);
 	return status;
 }
@@ -404,7 +377,6 @@ ldns_status
 ldns_pkt2wire(uint8_t **dest, const ldns_pkt *packet, size_t *result_size)
 {
 	ldns_buffer *buffer = ldns_buffer_new(LDNS_MAX_PACKETLEN);
-	uint8_t *result = NULL;
 	ldns_status status;
 	*result_size = 0;
 	*dest = NULL;
@@ -413,21 +385,8 @@ ldns_pkt2wire(uint8_t **dest, const ldns_pkt *packet, size_t *result_size)
 	status = ldns_pkt2buffer_wire(buffer, packet);
 	if (status == LDNS_STATUS_OK) {
 		*result_size =  ldns_buffer_position(buffer);
-		result = (uint8_t *) ldns_buffer_export(buffer);
-	} else {
-		ldns_buffer_free(buffer);
-		return status;
+		*dest = (uint8_t *) ldns_buffer_export(buffer);
 	}
-	
-	if (result) {
-		*dest = LDNS_XMALLOC(uint8_t, ldns_buffer_position(buffer));
-		if(!*dest) {
-			ldns_buffer_free(buffer);
-			return LDNS_STATUS_MEM_ERR;
-		}
-		memcpy(*dest, result, ldns_buffer_position(buffer));
-	}
-	
 	ldns_buffer_free(buffer);
 	return status;
 }
