@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2013.09.14
-#	Date:    2013-09-14 03:15:01
+#	Version: 2013.10.11
+#	Date:    2013-10-11 03:15:02
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -1417,25 +1417,27 @@
 	5e6d  RV410 [Radeon X700] (Secondary)
 		148c 2117  Bravo X700 (Secondary)
 	5f57  R423 [Radeon X800 XT]
-	6600  Mars [Radeon HD 8670A/8750M]
+	6600  Mars [Radeon HD 8670A/8670M/8750M]
 	6601  Mars [Radeon HD 8730M]
 	6602  Mars
 	6603  Mars
+	6604  Mars [Radeon R7 M265]
+	6605  Mars [Radeon R7 M260]
 	6606  Mars XTX [Radeon HD 8790M]
 	6607  Mars LE [Radeon HD 8530M]
-	6610  Oland [Radeon HD 8600 Series]
+	6610  Oland XT [Radeon HD 8670/R7 250]
 	6611  Oland [Radeon HD 8570]
-	6613  Oland [Radeon HD 8500 Series]
+	6613  Oland PRO [Radeon R7 240]
 	6620  Mars
 	6621  Mars PRO
 	6623  Mars
 	6631  Oland
-	6640  Saturn [Radeon HD 8950]
-	6641  Saturn PRO
+	6640  Saturn XT [Radeon HD 8950M]
+	6641  Saturn PRO [Radeon HD 8930M]
 	6649  Bonaire
 	6650  Bonaire
 	6651  Bonaire
-	6658  Bonaire
+	6658  Bonaire XTX [Radeon R7 260X]
 	665c  Bonaire XT [Radeon HD 7790/8770]
 		1043 0452  Radeon HD 7790 DirectCU II OC
 # R7790-1GD5/OC
@@ -1447,12 +1449,12 @@
 		174b e253  Radeon HD 7790 Dual-X OC
 		1787 2329  Radeon HD 7790 TurboDuo
 	665d  Bonaire
-	6660  Sun XT [Radeon HD 8670A]
-	6663  Sun PRO [Radeon HD 8500M Series]
-	6664  Sun [Radeon R5 M200 Series]
-	6665  Sun [Radeon R5 M200 Series]
-	6667  Sun [Radeon R5 M200 Series]
-	666f  Sun [Radeon HD 8500M]
+	6660  Sun XT [Radeon HD 8670A/8670M/8690M]
+	6663  Sun PRO [Radeon HD 8570M]
+	6664  Jet XT [Radeon R5 M200 Series]
+	6665  Jet PRO [Radeon R5 M200 Series]
+	6667  Jet ULT [Radeon R5 M200 Series]
+	666f  Sun LE [Radeon HD 8550M]
 	6670  Hainan
 	6704  Cayman PRO GL [FirePro V7900]
 	6707  Cayman LE GL [FirePro V5900]
@@ -1927,13 +1929,17 @@
 	678a  Tahiti PRO GL [FirePro Series]
 		1002 030c  FirePro W8000
 		1002 0310  FirePro S9000
+		1002 0420  Radeon Sky 700
+		1002 0422  Radeon Sky 900
+		1002 0b0e  FirePro S10000 Passive
 		1002 0b2a  FirePro S10000
 		1028 030c  FirePro W8000
 	6790  Tahiti
 	6791  Tahiti
 	6792  Tahiti
-	6798  Tahiti XT [Radeon HD 7970]
+	6798  Tahiti XT [Radeon HD 7970/R9 280X]
 		1002 3000  Tahiti XT2 [Radeon HD 7970 GHz Edition]
+		1002 3001  Tahiti XTL [Radeon R9 280X]
 		1002 4000  Radeon HD 8970 OEM
 		1043 041c  HD 7970 DirectCU II
 		1043 0420  HD 7970 DirectCU II TOP
@@ -1941,6 +1947,8 @@
 		1043 0448  HD 7970 DirectCU II TOP
 		1043 044a  Tahiti XT2 [Matrix HD 7970]
 		1043 044c  Tahiti XT2 [Matrix HD 7970 Platinum]
+		1043 3001  Tahiti XTL [ROG Matrix R9 280X]
+		1043 3006  Tahiti XTL [Radeon R9 280X DirectCU II TOP]
 		1043 9999  ARES II
 		1092 3000  Tahiti XT2 [Radeon HD 7970 GHz Edition]
 		1458 2261  Tahiti XT2 [Radeon HD 7970 GHz Edition OC]
@@ -1961,13 +1969,14 @@
 		1002 0b28  Radeon HD 8990 OEM
 		1002 0b2a  Radeon HD 7990
 		1462 8036  Radeon HD 8990 OEM
+		148c 8990  Radeon HD 8990 OEM
 	679e  Tahiti LE [Radeon HD 7870 XT]
 	679f  Tahiti
 	67a0  Hawaii XT GL
 	67a1  Hawaii GL
 	67a2  Hawaii GL
-	67b0  Hawaii XT [Radeon HD 8970]
-	67b1  Hawaii PRO
+	67b0  Hawaii XT [Radeon R9 290X]
+	67b1  Hawaii PRO [Radeon R9 290]
 	67b9  Vesuvius
 	67be  Hawaii LE
 	6800  Wimbledon XT [Radeon HD 7970M]
@@ -1982,9 +1991,10 @@
 	6806  Neptune
 	6808  Pitcairn XT GL [FirePro W7000]
 		1002 0310  FirePro S7000
+		1002 0420  Radeon Sky 500
 	6809  Pitcairn LE GL [FirePro W5000]
-	6810  Pitcairn
-	6811  Pitcairn [Radeon R9 200 Series]
+	6810  Curacao XT [Radeon R9 270X]
+	6811  Curacao PRO [Radeon R9 270]
 	6816  Pitcairn
 	6817  Pitcairn
 	6818  Pitcairn XT [Radeon HD 7870 GHz Edition]
@@ -1992,11 +2002,12 @@
 		174b 8b04  Radeon HD 8860
 	6819  Pitcairn PRO [Radeon HD 7850]
 		174b e221  Radeon HD 7850 2GB GDDR5 DVI-I/DVI-D/HDMI/DP
-	6820  Venus XTX [Radeon HD 8800M Series]
+	6820  Venus XTX [Radeon HD 8890M]
 		103c 1851  Radeon HD 7750M
-	6821  Venus XT [Radeon HD 8800M Series]
+	6821  Venus XT [Radeon HD 8870M]
+		1002 031e  FirePro SX4000
 	6822  Venus PRO
-	6823  Venus PRO [Radeon HD 8800M Series]
+	6823  Venus PRO [Radeon HD 8850M]
 	6825  Heathrow XT [Radeon HD 7870M]
 		8086 2111  Chelsea PRO
 	6826  Chelsea LP [Radeon HD 7700M Series]
@@ -2004,13 +2015,13 @@
 	6828  Cape Verde PRO [FirePro W600]
 	6829  Cape Verde
 	682a  Venus PRO
-	682b  Venus LE [Radeon HD 8800M Series]
+	682b  Venus LE [Radeon HD 8830M]
 	682d  Chelsea XT GL [FirePro M4000]
 	682f  Chelsea LP [Radeon HD 7730M]
 		103c 1851  Radeon HD 7750M
 	6830  Cape Verde [Radeon HD 7800M Series]
 	6831  Cape Verde [AMD Radeon HD 7700M Series]
-	6835  Cape Verde PRX [Radeon R7 200 Series]
+	6835  Cape Verde PRX [Radeon R7 260]
 	6837  Cape Verde LE [Radeon HD 7730/8730]
 		1462 2796  Radeon HD 8730
 		1462 8092  Radeon HD 8730
@@ -5559,6 +5570,8 @@
 		1077 0246  8300 Series Dual Port 10GbE Converged Network Adapter (TCP/IP Networking)
 	8031  8300 Series 10GbE Converged Network Adapter (FCoE)
 	8032  8300 Series 10GbE Converged Network Adapter (iSCSI)
+	8430  ISP8324 1/10GbE Converged Network Controller (NIC VF)
+	8431  8300 Series 10GbE Converged Network Adapter (FCoE VF)
 	8432  ISP2432M-based 10GbE Converged Network Adapter (CNA)
 1078  Cyrix Corporation
 	0000  5510 [Grappa]
@@ -8606,15 +8619,17 @@
 		17aa 3675  GeForce GT 745A
 	0fe4  GK107M [GeForce GT 750M]
 	0fe5  GK107 [GeForce K340 USM]
-	0fe6  GK107 [NVS K1 USM]
-	0fe7  GK107GL [GRID K1]
+	0fe6  GK107 [GRID K1 NVS USM]
+# GRID K1 USM
+	0fe7  GK107GL [GRID K100 vGPU]
 		10de 101e  GRID K100
 	0fef  GK107GL [GRID K340]
 	0ff1  GK107 [NVS 1000]
 	0ff2  GK107GL [GRID K1]
-	0ff5  GK107GL [Tesla K1 USM]
+	0ff5  GK107GL [GRID K1 Tesla USM]
 	0ff6  GK107GLM [Quadro K1100M]
-	0ff7  GK107GL [Quadro K1 USM]
+# GRID K1 Quadro USM
+	0ff7  GK107GL [GRID K140Q vGPU]
 		10de 1037  GRID K140Q
 	0ff8  GK107GLM [Quadro K500M]
 	0ff9  GK107GL [Quadro K2000D]
@@ -8646,6 +8661,7 @@
 	1022  GK110GL [Tesla K20c]
 	1026  GK110GL [Tesla K20s]
 	1028  GK110GL [Tesla K20m]
+	103a  GK110GL [Quadro K6000]
 	1040  GF119 [GeForce GT 520]
 	1042  GF119 [GeForce 510]
 	1048  GF119 [GeForce 605]
@@ -8824,6 +8840,7 @@
 		152d 0982  GeForce GT 630M
 		152d 0983  GeForce GT 630M
 		152d 1030  GeForce GT 630M
+		152d 1055  GeForce 710M
 		17aa 2200  NVS 5200M
 		17aa 3656  GeForce GT 620M
 		17aa 3800  GeForce GT 720M
@@ -8841,6 +8858,7 @@
 		17aa 3977  GeForce GT 720M
 		17aa 3983  GeForce 610M
 		17aa 5003  GeForce GT 720M
+		17aa 5005  GeForce 705M
 		17aa 500d  GeForce GT 620M
 		17aa 5014  GeForce 710M
 		17aa 5017  GeForce 710M
@@ -8870,12 +8888,14 @@
 	1189  GK104 [GeForce GTX 670]
 		10de 1074  GK104 [GeForce GTX 760 Ti OEM]
 	118a  GK104GL [GRID K520]
-	118b  GK104 [GeForce K2 USM]
-	118c  GK104 [NVS K2 USM]
-	118d  GK104GL [GRID K2]
+	118b  GK104GL [GRID K2 GeForce USM]
+	118c  GK104 [GRID K2 NVS USM]
+# GRID K2 USM
+	118d  GK104GL [GRID K200 vGPU]
 		10de 101d  GRID K200
 	118e  GK104 [GeForce GTX 760 OEM]
 	118f  GK104GL [Tesla K10]
+	1193  GK104 [GeForce GTX 760 Ti OEM]
 	119d  GK104M [GeForce GTX 775M]
 	119e  GK104M [GeForce GTX 780M]
 	119f  GK104M [GeForce GTX 780M]
@@ -8885,10 +8905,11 @@
 	11a3  GK104M [GeForce GTX 680MX]
 		106b 010d  iMac 13,2
 	11a7  GK104M [GeForce GTX 675MX]
-	11b0  GK104GL [Quadro K2 USM]
+# GRID K2 Quadro USM
+	11b0  GK104GL [GRID K240Q\K260Q vGPU]
 		10de 101a  GRID K240Q
 		10de 101b  GRID K260Q
-	11b1  GK104GL [Tesla K2 USM]
+	11b1  GK104GL [GRID K2 Tesla USM]
 	11b6  GK104GLM [Quadro K3100M]
 	11b7  GK104GLM [Quadro K4100M]
 	11b8  GK104GLM [Quadro K5100M]
@@ -8977,6 +8998,7 @@
 	1293  GK208M [GeForce GT 730M]
 	1294  GK208M [GeForce GT 740M]
 	1295  GK208M [GeForce 710M]
+	1298  GK208M [GeForce GT 720M]
 	12a0  GK208
 	12b9  GK208GLM [Quadro K610M]
 	12ba  GK208GLM [Quadro K510M]
@@ -10996,6 +11018,7 @@
 	0617  ToPIC100 PCI to Cardbus Bridge with ZV Support
 	0618  CPU to PCI and PCI to ISA bridge
 	0701  FIR Port Type-O
+	0803  TC6371AF SD Host Controller
 	0804  TC6371AF SmartMedia Controller
 	0805  SD TypA Controller
 	0d01  FIR Port Type-DO
@@ -15589,6 +15612,8 @@
 	1014  MT27621 Family
 	1015  MT27630 Family
 	1016  MT27631 Family
+	1017  MT27640 Family
+	1018  MT27641 Family
 	5274  MT21108 InfiniBridge
 	5a44  MT23108 InfiniHost
 	5a45  MT23108 [Infinihost HCA Flash Recovery]
@@ -17254,10 +17279,11 @@
 	9172  88SE9172 SATA 6Gb/s Controller
 	917a  88SE9172 SATA III 6Gb/s RAID Controller
 	9192  88SE9172 SATA III 6Gb/s RAID Controller
-	91a0  88SE91A0 SATA 6Gb/s Controller
+	91a0  88SE912x SATA 6Gb/s Controller [IDE mode]
 	91a4  88SE912x IDE Controller
 	9230  88SE9230 PCIe SATA 6Gb/s Controller
 	9480  88SE9480 SAS/SATA 6Gb/s RAID controller
+	9485  88SE9485 SAS/SATA 6Gb/s controller
 1b55  NetUP Inc.
 	2a2c  Dual DVB-S2-CI card
 	e2e4  Dual DVB-T/C-CI RF card
@@ -17320,6 +17346,9 @@
 1cb1  Collion UG & Co.KG
 1cc5  Embedded Intelligence, Inc.
 	0100  CAN-PCIe-02
+1ce4  Exablaze
+	0001  ExaNIC X4
+	0002  ExaNIC X2
 1d44  DPT
 	a400  PM2x24/PM3224
 1d5c  Fantasia Trading LLC
@@ -19048,6 +19077,7 @@
 		103c 17d3  Ethernet 10Gb 2-port 560SFP+ Adapter
 		103c 211b  Ethernet 10Gb 1-port P560FLR-SFP+ Adapter
 		103c 2147  Ethernet 10Gb 1-port 561i Adapter
+		103c 2159  Ethernet 10Gb 2-port 562i Adapter
 		108e 7b11  Ethernet Server Adapter X520-2
 		1734 11a9  10 Gigabit Dual Port Network Connection
 		8086 0002  Ethernet Server Adapter X520-DA2
@@ -19355,6 +19385,7 @@
 	1528  Ethernet Controller 10-Gigabit X540-AT2
 		1028 1f61  Ethernet 10G 4P X540/I350 rNDC
 		103c 192d  561FLR-T 2-port 10Gb Ethernet Adapter
+		103c 2004  Ethernet 10Gb 2-port 561i Adapter
 		103c 211a  Ethernet 10Gb 2-port 561T Adapter
 		108e 7b14  Sun Dual Port 10 GbE PCIe 2.0 ExpressModule, Base-T
 		108e 7b15  Sun Dual Port 10 GbE PCIe 2.0 Low Profile Adapter, Base-T
@@ -19397,6 +19428,7 @@
 		8086 0001  Ethernet Server Bypass Adapter X540-T2
 	155d  Ethernet Server Bypass Adapter
 		8086 0001  Ethernet Server Bypass Adapter X520-SR2
+		8086 0002  Ethernet Server Bypass Adapter X520-LR2
 	1560  Ethernet Controller X540
 	157b  I210 Gigabit Network Connection
 	15a0  Ethernet Connection (2) I218-LM
@@ -23519,7 +23551,7 @@
 		1028 0287  PowerEdge Expandable RAID Controller 320/DC
 		1028 0291  CERC SATA RAID 2 PCI SATA 6ch (DellCorsair)
 		103c 3227  AAR-2610SA
-		108e 0286  STK RAID INT
+		108e 0286  Sun StorageTek SAS RAID HBA, Internal
 		108e 0287  STK RAID EXT
 		108e 7aac  STK RAID REM
 		108e 7aae  STK RAID EX
