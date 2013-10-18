@@ -37,7 +37,7 @@ extern "C" {
 #define LDNS_RR_OVERHEAD	10
 
 /* The first fields are 'common' and can be referenced instantly */
-#define LDNS_RDATA_FIELD_DESCRIPTORS_COMMON 52
+#define LDNS_RDATA_FIELD_DESCRIPTORS_COMMON 53
 
 
 
@@ -166,18 +166,21 @@ enum ldns_enum_rr_type
 	/**  draft-ietf-dnsext-delegation */
 	LDNS_RR_TYPE_DS = 43,
 	/**  SSH Key Fingerprint */
-	LDNS_RR_TYPE_SSHFP = 44,
-	/**  draft-richardson-ipseckey-rr-11.txt */
-	LDNS_RR_TYPE_IPSECKEY = 45,
-	/**  draft-ietf-dnsext-dnssec-25 */
-	LDNS_RR_TYPE_RRSIG = 46,
-	LDNS_RR_TYPE_NSEC = 47,
-	LDNS_RR_TYPE_DNSKEY = 48,
-	LDNS_RR_TYPE_DHCID = 49,
+	LDNS_RR_TYPE_SSHFP = 44, /* RFC 4255 */
+	/**  IPsec Key */
+	LDNS_RR_TYPE_IPSECKEY = 45, /* RFC 4025 */
+	/**  DNSSEC */
+	LDNS_RR_TYPE_RRSIG = 46, /* RFC 4034 */
+	LDNS_RR_TYPE_NSEC = 47, /* RFC 4034 */
+	LDNS_RR_TYPE_DNSKEY = 48, /* RFC 4034 */
 
-	LDNS_RR_TYPE_NSEC3 = 50,
-	LDNS_RR_TYPE_NSEC3PARAM = 51,
+	LDNS_RR_TYPE_DHCID = 49, /* RFC 4701 */
+	/* NSEC3 */
+	LDNS_RR_TYPE_NSEC3 = 50, /* RFC 5155 */
+	LDNS_RR_TYPE_NSEC3PARAM = 51, /* RFC 5155 */
 	LDNS_RR_TYPE_NSEC3PARAMS = 51,
+	/** draft-ietf-dane-protocol */
+	LDNS_RR_TYPE_TLSA = 52,
 
         /** draft-ietf-dnsop-trust-history */
         LDNS_RR_TYPE_TALINK = 58,

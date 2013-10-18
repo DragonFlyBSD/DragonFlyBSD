@@ -56,6 +56,8 @@ ldns_fget_token_l(FILE *f, char *token, const char *delim, size_t limit, int *li
 		quoted = 1;
 	}
 	while ((c = getc(f)) != EOF) {
+		if (c == '\r') /* carriage return */
+			c = ' ';
 		if (c == '(' && prev_c != '\\' && !quoted) {
 			/* this only counts for non-comments */
 			if (com == 0) {
@@ -111,7 +113,6 @@ ldns_fget_token_l(FILE *f, char *token, const char *delim, size_t limit, int *li
 			continue;
 		}
 
-
 		if (c == '\n' && p != 0 && t > token) {
 			/* in parentheses */
 			if (line_nr) {
@@ -124,7 +125,7 @@ ldns_fget_token_l(FILE *f, char *token, const char *delim, size_t limit, int *li
 
 		/* check if we hit the delim */
 		for (d = del; *d; d++) {
-			if (c == *d && i > 0 && prev_c != '\\') {
+			if (c == *d && i > 0 && prev_c != '\\' && p == 0) {
 				if (c == '\n' && line_nr) {
 					*line_nr = *line_nr + 1;
 				}
@@ -160,7 +161,7 @@ ldns_fget_token_l(FILE *f, char *token, const char *delim, size_t limit, int *li
 	return (ssize_t)i;
 
 tokenread:
-	ldns_fskipcs_l(f, delim, line_nr);
+	ldns_fskipcs_l(f, del, line_nr);
 	*t = '\0';
 	if (p != 0) {
 		return -1;
@@ -242,6 +243,8 @@ ldns_bget_token(ldns_buffer *b, char *token, const char *delim, size_t limit)
 	}
 
 	while ((c = ldns_bgetc(b)) != EOF) {
+		if (c == '\r') /* carriage return */
+			c = ' ';
 		if (c == '(' && lc != '\\' && !quoted) {
 			/* this only counts for non-comments */
 			if (com == 0) {
@@ -299,7 +302,7 @@ ldns_bget_token(ldns_buffer *b, char *token, const char *delim, size_t limit)
 
 		/* check if we hit the delim */
 		for (d = del; *d; d++) {
-                        if (c == *d && lc != '\\') {
+                        if (c == *d && lc != '\\' && p == 0) {
 				goto tokenread;
                         }
 		}
@@ -328,7 +331,7 @@ ldns_bget_token(ldns_buffer *b, char *token, const char *delim, size_t limit)
 	return (ssize_t)i;
 
 tokenread:
-	ldns_bskipcs(b, delim);
+	ldns_bskipcs(b, del);
 	*t = '\0';
 
 	if (p != 0) {
@@ -374,10 +377,8 @@ ldns_bskipcs(ldns_buffer *buffer, const char *s)
 }
 
 void
-ldns_fskipc(FILE *fp, char c)
+ldns_fskipc(ATTR_UNUSED(FILE *fp), ATTR_UNUSED(char c))
 {
-	fp = fp;
-	c = c;
 }
 
 

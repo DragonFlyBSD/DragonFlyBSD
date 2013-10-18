@@ -96,7 +96,7 @@ ldns_str2rdf_time(ldns_rdf **rd, const char *time)
 			goto bad_format;
 		}
 
-		l = htonl(mktime_from_utc(&tm));
+		l = htonl(ldns_mktime_from_utc(&tm));
 		memcpy(r, &l, sizeof(uint32_t));
 		*rd = ldns_rdf_new_frm_data(
 			LDNS_RDF_TYPE_TIME, sizeof(uint32_t), r);
@@ -259,17 +259,21 @@ ldns_str2rdf_int8(ldns_rdf **rd, const char *bytestr)
  */
 static int
 parse_escape(uint8_t *s, uint8_t *q) {
-	uint8_t val;
+	uint16_t val;
 	if (strlen((char *)s) > 3 &&
 	    isdigit((int) s[1]) &&
 	    isdigit((int) s[2]) &&
 	    isdigit((int) s[3])) {
 		/* cast this so it fits */
-		val = (uint8_t) ldns_hexdigit_to_int((char) s[1]) * 100 +
+		val = (uint16_t) ldns_hexdigit_to_int((char) s[1]) * 100 +
 		                ldns_hexdigit_to_int((char) s[2]) * 10 +
 		                ldns_hexdigit_to_int((char) s[3]);
-		*q = val;
-		return 3;
+		if (val > 255) {
+			/* outside range */
+			return 0;
+		}
+		*q = (uint8_t) val;
+                return 3;
 	} else {
 		s++;
 		if (*s == '\0' || isdigit((int) *s)) {
@@ -530,6 +534,7 @@ ldns_str2rdf_apl(ldns_rdf **rd, const char *str)
 
 	data = LDNS_XMALLOC(uint8_t, 4 + afdlength);
         if(!data) {
+		LDNS_FREE(afdpart);
 		LDNS_FREE(my_ip_str);
 		return LDNS_STATUS_INVALID_STR;
         }
@@ -776,30 +781,30 @@ ldns_str2rdf_alg(ldns_rdf **rd, const char *str)
 }
 
 ldns_status
-ldns_str2rdf_unknown(ldns_rdf **rd, const char *str)
+ldns_str2rdf_unknown( ATTR_UNUSED(ldns_rdf **rd)
+		    , ATTR_UNUSED(const char *str)
+		    )
 {
 	/* this should be caught in an earlier time (general str2host for
 	   rr's */
-	rd = rd;
-	str = str;
 	return LDNS_STATUS_NOT_IMPL;
 }
 
 ldns_status
-ldns_str2rdf_tsig(ldns_rdf **rd, const char *str)
+ldns_str2rdf_tsig( ATTR_UNUSED(ldns_rdf **rd)
+		 , ATTR_UNUSED(const char *str)
+		 )
 {
-	/* there is no strign representation for TSIG rrs */
-	rd = rd;
-	str = str;
+	/* there is no string representation for TSIG rrs */
 	return LDNS_STATUS_NOT_IMPL;
 }
 
 ldns_status
-ldns_str2rdf_service(ldns_rdf **rd, const char *str)
+ldns_str2rdf_service( ATTR_UNUSED(ldns_rdf **rd)
+		    , ATTR_UNUSED(const char *str)
+		    )
 {
 	/* is this used? is this actually WKS? or SRV? */
-	rd = rd;
-	str = str;
 	return LDNS_STATUS_NOT_IMPL;
 }
 
@@ -1100,8 +1105,6 @@ ldns_str2rdf_wks(ldns_rdf **rd, const char *str)
 		data[0] = (uint8_t) proto->p_proto;
 	} else if (proto_str) {
 		data[0] = (uint8_t) atoi(proto_str);
-	} else {
-		data[0] = 0;
 	}
 	memcpy(data + 1, bitmap, (size_t) bm_len);
 
