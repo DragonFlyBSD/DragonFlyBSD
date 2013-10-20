@@ -65,7 +65,7 @@
 .Ft int
 .Fn iswcntrl_l "wint_t wc" "locale_t loc"
 .Ft int
-.Fn iswctype_l "wint_t wc" "locale_t loc"
+.Fn iswctype_l "wint_t wc" "wctype_t charclass" "locale_t loc"
 .Ft int
 .Fn iswdigit_l "wint_t wc" "locale_t loc"
 .Ft int
@@ -87,7 +87,7 @@
 .Ft wint_t
 .Fn towupper_l "wint_t wc" "locale_t loc"
 .Ft wctype_t
-.Fn wctype_l "wint_t wc" "locale_t loc"
+.Fn wctype_l "const char *property" "locale_t loc"
 .Ft int
 .Fn iswblank_l "wint_t wc" "locale_t loc"
 .Ft int
@@ -103,7 +103,7 @@
 .Ft int
 .Fn iswspecial_l "wint_t wc" "locale_t loc"
 .Ft wint_t
-.Fn nextwctype_l "wint_t wc" "locale_t loc"
+.Fn nextwctype_l "wint_t wc" "wctype_t wct" "locale_t loc"
 .Ft wint_t
 .Fn towctrans_l "wint_t wc" "wctrans_t" "locale_t loc"
 .Ft wctrans_t
