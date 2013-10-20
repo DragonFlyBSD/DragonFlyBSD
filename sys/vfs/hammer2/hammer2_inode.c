@@ -328,7 +328,7 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 			 * vget().  The vget() can still fail if we lost
 			 * a reclaim race on the vnode.
 			 */
-			vhold_interlocked(vp);
+			vhold(vp);
 			ostate = hammer2_inode_lock_temp_release(ip);
 			if (vget(vp, LK_EXCLUSIVE)) {
 				vdrop(vp);
@@ -413,8 +413,8 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 	 * Return non-NULL vp and *errorp == 0, or NULL vp and *errorp != 0.
 	 */
 	if (hammer2_debug & 0x0002) {
-		kprintf("igetv vp %p refs %d aux %d\n",
-			vp, vp->v_sysref.refcnt, vp->v_auxrefs);
+		kprintf("igetv vp %p refs 0x%08x aux 0x%08x\n",
+			vp, vp->v_refcnt, vp->v_auxrefs);
 	}
 	return (vp);
 }

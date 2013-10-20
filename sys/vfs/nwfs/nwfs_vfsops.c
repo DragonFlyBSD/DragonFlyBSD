@@ -213,7 +213,7 @@ nwfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 * Lose the lock but keep the ref.
 	 */
 	vn_unlock(vp);
-	NCPVODEBUG("rootvp.vrefcnt=%d\n",vp->v_sysref.refcnt);
+	NCPVODEBUG("rootvp.vrefcnt=0x%08x\n", vp->v_refcnt);
 	return error;
 bad:
         if (nmp)

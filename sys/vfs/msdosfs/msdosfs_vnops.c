@@ -230,7 +230,7 @@ msdosfs_close(struct vop_close_args *ap)
 	struct denode *dep = VTODE(vp);
 	struct timespec ts;
 
-	if (vp->v_sysref.refcnt > 1) {
+	if (VREFCNT(vp) > 1) {
 		getnanotime(&ts);
 		DETIMES(dep, &ts, &ts, &ts);
 	}
@@ -842,8 +842,8 @@ msdosfs_remove(struct vop_old_remove_args *ap)
 	else
 		error = removede(ddep, dep);
 #ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_remove(), dep %p, v_sysrefs %d\n",
-		dep, ap->a_vp->v_sysref.refcnt);
+	kprintf("msdosfs_remove(), dep %p, v_refcnt 0x%08x\n",
+		dep, ap->a_vp->v_refcnt);
 #endif
 	return (error);
 }

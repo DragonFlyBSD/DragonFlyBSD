@@ -1300,7 +1300,7 @@ ext2_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	if (vp->v_sysref.refcnt > 1)
+	if (VREFCNT(vp) > 1)
 		ext2_itimes(vp);
 	return (vop_stdclose(ap));
 }
@@ -1802,7 +1802,7 @@ ext2fifo_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	if (vp->v_sysref.refcnt > 1)
+	if (VREFCNT(vp) > 1)
 		ext2_itimes(vp);
 	return (VOCALL(&fifo_vnode_vops, &ap->a_head));
 }

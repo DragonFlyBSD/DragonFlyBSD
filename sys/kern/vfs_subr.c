@@ -151,7 +151,7 @@ vshouldmsync(struct vnode *vp)
 {
 	vm_object_t object;
 
-	if (vp->v_auxrefs != 0 || vp->v_sysref.refcnt > 0)
+	if (vp->v_auxrefs != 0 || VREFCNT(vp) > 0)
 		return (0);		/* other holders */
 	object = vp->v_object;
 	cpu_ccfence();
@@ -1143,12 +1143,15 @@ addaliasu(struct vnode *nvp, int x, int y)
  *
  * The filesystem can check whether its in-memory inode structure still
  * references the vp on return.
+ *
+ * May only be called if the vnode is in a known state (i.e. being prevented
+ * from being deallocated by some other condition such as a vfs inode hold).
  */
 void
 vclean_unlocked(struct vnode *vp)
 {
 	vx_get(vp);
-	if (sysref_isactive(&vp->v_sysref) == 0)
+	if (VREFCNT(vp) <= 0)
 		vgone_vxlocked(vp);
 	vx_put(vp);
 }
@@ -1195,7 +1198,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	 * before we clean it out so that its count cannot fall to zero and
 	 * generate a race against ourselves to recycle it.
 	 */
-	active = sysref_isactive(&vp->v_sysref);
+	active = (VREFCNT(vp) > 0);
 
 	/*
 	 * Clean out any buffers associated with the vnode and destroy its
@@ -1332,7 +1335,7 @@ restart:
 	if (vqn)
 		vhold(vqn);
 	while ((vq = vqn) != NULL) {
-		if (sysref_isactive(&vq->v_sysref)) {
+		if (VREFCNT(vq) > 0) {
 			vref(vq);
 			fdrevoke(vq, DTYPE_VNODE, cred);
 			/*v_release_rdev(vq);*/
@@ -1367,7 +1370,7 @@ restart:
 int
 vrecycle(struct vnode *vp)
 {
-	if (vp->v_sysref.refcnt <= 1 && (vp->v_flag & VRECLAIMED) == 0) {
+	if (VREFCNT(vp) <= 1 && (vp->v_flag & VRECLAIMED) == 0) {
 		if (cache_inval_vp_nonblock(vp))
 			return(0);
 		vgone_vxlocked(vp);
@@ -1401,7 +1404,8 @@ vmaxiosize(struct vnode *vp)
 }
 
 /*
- * Eliminate all activity associated with a vnode in preparation for reuse.
+ * Eliminate all activity associated with a vnode in preparation for
+ * destruction.
  *
  * The vnode must be VX locked and refd and will remain VX locked and refd
  * on return.  This routine may be called with the vnode in any state, as
@@ -1454,6 +1458,7 @@ vgone_vxlocked(struct vnode *vp)
 	 * Set us to VBAD
 	 */
 	vp->v_type = VBAD;
+	atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
 }
 
 /*
@@ -1572,9 +1577,9 @@ vprint(char *label, struct vnode *vp)
 		kprintf("%s: %p: ", label, (void *)vp);
 	else
 		kprintf("%p: ", (void *)vp);
-	kprintf("type %s, sysrefs %d, writecount %d, holdcnt %d,",
+	kprintf("type %s, refcnt %08x, writecount %d, holdcnt %d,",
 		typename[vp->v_type],
-		vp->v_sysref.refcnt, vp->v_writecount, vp->v_auxrefs);
+		vp->v_refcnt, vp->v_writecount, vp->v_auxrefs);
 	buf[0] = '\0';
 	if (vp->v_flag & VROOT)
 		strcat(buf, "|VROOT");
@@ -1584,8 +1589,6 @@ vprint(char *label, struct vnode *vp)
 		strcat(buf, "|VTEXT");
 	if (vp->v_flag & VSYSTEM)
 		strcat(buf, "|VSYSTEM");
-	if (vp->v_flag & VFREE)
-		strcat(buf, "|VFREE");
 	if (vp->v_flag & VOBJBUF)
 		strcat(buf, "|VOBJBUF");
 	if (buf[0] != '\0')

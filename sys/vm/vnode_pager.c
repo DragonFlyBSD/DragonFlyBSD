@@ -149,7 +149,7 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 		vm_object_drop(object);
 	}
 
-	if (vp->v_sysref.refcnt <= 0)
+	if (VREFCNT(vp) <= 0)
 		panic("vnode_pager_alloc: no vnode reference");
 
 	/*

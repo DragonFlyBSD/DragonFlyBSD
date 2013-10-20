@@ -511,7 +511,7 @@ fifo_close(struct vop_close_args *ap)
 		if (fip->fi_writers == 0)
 			soisdisconnected(fip->fi_readsock);
 	}
-	if (vp->v_sysref.refcnt > 1) {
+	if (VREFCNT(vp) > 1) {
 		vop_stdclose(ap);
 		lwkt_reltoken(&vp->v_token);
 		return (0);

@@ -90,7 +90,7 @@ loop:
 		if (pfs->pfs_pid == pid && pfs->pfs_type == pfs_type &&
 		    PFSTOV(pfs)->v_mount == mp) {
 			vp = PFSTOV(pfs);
-			vhold_interlocked(vp);
+			vhold(vp);
 			if (vget(vp, LK_EXCLUSIVE)) {
 				vdrop(vp);
 				goto loop;

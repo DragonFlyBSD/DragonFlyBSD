@@ -72,8 +72,9 @@ static struct Info {
 	long	*intrcnt;
 	long	bufspace;
 	int	desiredvnodes;
-	int	numvnodes;
-	int	freevnodes;
+	int	cachedvnodes;
+	int	inactivevnodes;
+	int	activevnodes;
 	long	dirtybufspace;
 } s, s1, s2, z;
 
@@ -137,11 +138,13 @@ static struct nlist namelist[] = {
 	{ .n_name = "_nchstats" },
 #define	X_DESIREDVNODES	2
 	{ .n_name = "_desiredvnodes" },
-#define	X_NUMVNODES	3
-	{ .n_name = "_numvnodes" },
-#define	X_FREEVNODES	4
-	{ .n_name = "_freevnodes" },
-#define X_NUMDIRTYBUFFERS 5
+#define	X_CACHEDVNODES	3
+	{ .n_name = "_cachedvnodes" },
+#define	X_INACTIVEVNODES 4
+	{ .n_name = "_inactivevnodes" },
+#define	X_ACTIVEVNODES	5
+	{ .n_name = "_activevnodes" },
+#define X_NUMDIRTYBUFFERS 6
 	{ .n_name = "_dirtybufspace" },
 	{ .n_name = "" },
 };
@@ -294,9 +297,9 @@ labelkre(void)
 	mvprintw(VMSTATROW + 13, VMSTATCOL + 8, "buf");
 	mvprintw(VMSTATROW + 14, VMSTATCOL + 8, "dirtybuf");
 
-	mvprintw(VMSTATROW + 15, VMSTATCOL + 8, "desiredvnodes");
-	mvprintw(VMSTATROW + 16, VMSTATCOL + 8, "numvnodes");
-	mvprintw(VMSTATROW + 17, VMSTATCOL + 8, "freevnodes");
+	mvprintw(VMSTATROW + 15, VMSTATCOL + 8, "activ-vp");
+	mvprintw(VMSTATROW + 16, VMSTATCOL + 8, "cachd-vp");
+	mvprintw(VMSTATROW + 17, VMSTATCOL + 8, "inact-vp");
 
 	mvprintw(GENSTATROW, GENSTATCOL, "  Csw  Trp  Sys  Int  Sof  Flt");
 
@@ -517,9 +520,9 @@ showkre(void)
 
 	put64(s.bufspace, VMSTATROW + 13, VMSTATCOL, 7, 0);
 	put64(s.dirtybufspace/1024, VMSTATROW + 14, VMSTATCOL, 7, 'k');
-	put64(s.desiredvnodes, VMSTATROW + 15, VMSTATCOL, 7, 'D');
-	put64(s.numvnodes, VMSTATROW + 16, VMSTATCOL, 7, 'D');
-	put64(s.freevnodes, VMSTATROW + 17, VMSTATCOL, 7, 'D');
+	put64(s.activevnodes, VMSTATROW + 15, VMSTATCOL, 7, 'D');
+	put64(s.cachedvnodes, VMSTATROW + 16, VMSTATCOL, 7, 'D');
+	put64(s.inactivevnodes, VMSTATROW + 17, VMSTATCOL, 7, 'D');
 	PUTRATE(Vmm.v_vnodein, PAGEROW + 2, PAGECOL + 6, 4);
 	PUTRATE(Vmm.v_vnodeout, PAGEROW + 2, PAGECOL + 11, 4);
 	PUTRATE(Vmm.v_swapin, PAGEROW + 2, PAGECOL + 18, 4);
@@ -817,8 +820,10 @@ getinfo(struct Info *ls)
 		err(1, "kinfo_get_sched_cputime");
 	NREAD(X_BUFFERSPACE, &ls->bufspace, sizeof(ls->bufspace));
 	NREAD(X_DESIREDVNODES, &ls->desiredvnodes, sizeof(ls->desiredvnodes));
-	NREAD(X_NUMVNODES, &ls->numvnodes, sizeof(ls->numvnodes));
-	NREAD(X_FREEVNODES, &ls->freevnodes, sizeof(ls->freevnodes));
+	NREAD(X_CACHEDVNODES, &ls->cachedvnodes, sizeof(ls->cachedvnodes));
+	NREAD(X_INACTIVEVNODES, &ls->inactivevnodes,
+						sizeof(ls->inactivevnodes));
+	NREAD(X_ACTIVEVNODES, &ls->activevnodes, sizeof(ls->activevnodes));
 	NREAD(X_NUMDIRTYBUFFERS, &ls->dirtybufspace, sizeof(ls->dirtybufspace));
 
 	if (nintr) {

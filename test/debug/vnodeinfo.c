@@ -73,7 +73,8 @@
 
 struct nlist Nl[] = {
     { "_mountlist" },
-    { "_vnode_free_list" },
+    { "_vnode_inactive_list" },
+    { "_vnode_active_list" },
     { NULL }
 };
 
@@ -140,8 +141,13 @@ main(int ac, char **av)
     kkread(kd, Nl[0].n_value, &mp, sizeof(mp));
     while (mp)
 	mp = dumpmount(kd, mp);
+    printf("INACTIVELIST {\n");
     kkread(kd, Nl[1].n_value, &vp, sizeof(vp));
-    printf("VNODEFREELIST {\n");
+    while (vp)
+	vp = dumpvp(kd, vp, 0);
+    printf("}\n");
+    printf("ACTIVELIST {\n");
+    kkread(kd, Nl[2].n_value, &vp, sizeof(vp));
     while (vp)
 	vp = dumpvp(kd, vp, 0);
     printf("}\n");
@@ -213,8 +219,8 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 
     kkread(kd, (u_long)vp, &vn, sizeof(vn));
 
-    printf("    vnode %p usecnt %08x holdcnt %d type=%s flags %08x",
-	vp, vn.v_sysref.refcnt, vn.v_auxrefs, vtype(vn.v_type), vn.v_flag);
+    printf("    vnode %p.%d refcnt %08x auxcnt %d type=%s flags %08x",
+	vp, vn.v_state, vn.v_refcnt, vn.v_auxrefs, vtype(vn.v_type), vn.v_flag);
 
     if ((vn.v_flag & VOBJBUF) && vn.v_object) {
 	int npages = getobjpages(kd, vn.v_object);
@@ -271,10 +277,6 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
     if (vn.v_flag & VDOOMED)
 	printf(" VDOOMED");
 #endif
-    if (vn.v_flag & VFREE)
-	printf(" VFREE");
-    if (vn.v_flag & VCACHED)
-	printf(" VCACHED");
 #ifdef VINFREE
     if (vn.v_flag & VINFREE)
 	printf(" VINFREE");
@@ -338,7 +340,7 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
     if (whichlist)
 	return(vn.v_nmntvnodes.tqe_next);
     else
-	return(vn.v_freelist.tqe_next);
+	return(vn.v_list.tqe_next);
 }
 
 static void

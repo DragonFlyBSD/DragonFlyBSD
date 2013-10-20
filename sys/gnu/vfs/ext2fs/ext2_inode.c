@@ -482,7 +482,7 @@ ext2_inactive(struct vop_inactive_args *ap)
 	int mode, error = 0;
 
 	ext2_discard_prealloc(ip);
-	if (prtactive && vp->v_sysref.refcnt > 1)
+	if (prtactive && VREFCNT(vp) > 1)
 		vprint("ext2_inactive: pushing active", vp);
 
 	/*
@@ -528,7 +528,7 @@ ext2_reclaim(struct vop_reclaim_args *ap)
 	int i;
 #endif
 
-	if (prtactive && vp->v_sysref.refcnt > 1)
+	if (prtactive && VREFCNT(vp) > 1)
 		vprint("ext2_reclaim: pushing active", vp);
 	ip = VTOI(vp);
 

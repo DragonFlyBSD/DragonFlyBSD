@@ -654,9 +654,10 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 		struct vnode *vp = pmp->pm_devvp;
 
 		kprintf("msdosfs_umount(): just before calling VOP_CLOSE()\n");
-		kprintf("flag %08x, sysrefs %d, writecount %d, auxrefs %d\n",
-		    vp->v_flag, vp->v_sysref.refcnt,
-		    vp->v_writecount, vp->v_auxrefs);
+		kprintf("flag %08x, refcnt 0x%08x, writecount %d, "
+			"auxrefs 0x%08x\n",
+			vp->v_flag, vp->v_refcnt,
+			vp->v_writecount, vp->v_auxrefs);
 		kprintf("mount %p, op %p\n", vp->v_mount, vp->v_ops);
 		kprintf("mount %p\n", vp->v_mount);
 		kprintf("cleanblkhd %p, dirtyblkhd %p, numoutput %d, type %d\n",

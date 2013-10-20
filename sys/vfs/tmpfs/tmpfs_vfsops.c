@@ -332,7 +332,7 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 		++node->tn_links;
 		while (node->tn_type == VREG && node->tn_vnode) {
 			vp = node->tn_vnode;
-			vhold_interlocked(vp);
+			vhold(vp);
 			lwkt_yield();
 
 			/*

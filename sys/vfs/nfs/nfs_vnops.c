@@ -1776,7 +1776,7 @@ nfsmout:
  * To try and make nfs semantics closer to ufs semantics, a file that has
  * other processes using the vnode is renamed instead of removed and then
  * removed later on the last close.
- * - If v_sysref.refcnt > 1
+ * - If v_refcnt > 1
  *	  If a rename is not already in the works
  *	     call nfs_sillyrename() to set it up
  *     else
@@ -1798,12 +1798,12 @@ nfs_remove(struct vop_old_remove_args *ap)
 
 	lwkt_gettoken(&nmp->nm_token);
 #ifndef DIAGNOSTIC
-	if (vp->v_sysref.refcnt < 1)
-		panic("nfs_remove: bad v_sysref.refcnt");
+	if (VREFCNT(vp) < 1)
+		panic("nfs_remove: bad v_refcnt");
 #endif
 	if (vp->v_type == VDIR) {
 		error = EPERM;
-	} else if (vp->v_sysref.refcnt == 1 || (np->n_sillyrename &&
+	} else if (VREFCNT(vp) == 1 || (np->n_sillyrename &&
 		   VOP_GETATTR(vp, &vattr) == 0 && vattr.va_nlink > 1)) {
 		/*
 		 * throw away biocache buffers, mainly to avoid
@@ -1926,7 +1926,7 @@ nfs_rename(struct vop_old_rename_args *ap)
 	 * routine.  The new API compat functions have access to the actual
 	 * namecache structures and will do it for us.
 	 */
-	if (tvp && tvp->v_sysref.refcnt > 1 && !VTONFS(tvp)->n_sillyrename &&
+	if (tvp && VREFCNT(tvp) > 1 && !VTONFS(tvp)->n_sillyrename &&
 		tvp->v_type != VDIR && !nfs_sillyrename(tdvp, tvp, tcnp)) {
 		vput(tvp);
 		tvp = NULL;
@@ -3616,7 +3616,7 @@ nfsfifo_close(struct vop_close_args *ap)
 		if (np->n_flag & NUPD)
 			np->n_mtim = ts;
 		np->n_flag |= NCHG;
-		if (vp->v_sysref.refcnt == 1 &&
+		if (VREFCNT(vp) == 1 &&
 		    (vp->v_mount->mnt_flag & MNT_RDONLY) == 0) {
 			VATTR_NULL(&vattr);
 			if (np->n_flag & NACC)

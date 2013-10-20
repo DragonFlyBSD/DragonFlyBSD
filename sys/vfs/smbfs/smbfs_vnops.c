@@ -502,7 +502,7 @@ smbfs_remove(struct vop_old_remove_args *ap)
 	struct smb_cred scred;
 	int error;
 
-	if (vp->v_type == VDIR || np->n_opencount || vp->v_sysref.refcnt > 1)
+	if (vp->v_type == VDIR || np->n_opencount || VREFCNT(vp) > 1)
 		return EPERM;
 	smb_makescred(&scred, cnp->cn_td, cnp->cn_cred);
 	error = smbfs_smb_delete(np, &scred);
@@ -536,7 +536,7 @@ smbfs_rename(struct vop_old_rename_args *ap)
 		goto out;
 	}
 
-	if (tvp && tvp->v_sysref.refcnt > 1) {
+	if (tvp && VREFCNT(tvp) > 1) {
 		error = EBUSY;
 		goto out;
 	}

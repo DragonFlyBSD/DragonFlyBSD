@@ -69,7 +69,7 @@ ufs_inactive(struct vop_inactive_args *ap)
 	struct inode *ip = VTOI(vp);
 	int mode, error = 0;
 
-	if (prtactive && vp->v_sysref.refcnt > 1)
+	if (prtactive && VREFCNT(vp) > 1)
 		vprint("ufs_inactive: pushing active", vp);
 
 	/*
@@ -119,7 +119,7 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 
 	ump = VFSTOUFS(vp->v_mount);
 
-	if (prtactive && vp->v_sysref.refcnt > 1)
+	if (prtactive && VREFCNT(vp) > 1)
 		vprint("ufs_reclaim: pushing active", vp);
 	ip = VTOI(vp);
 

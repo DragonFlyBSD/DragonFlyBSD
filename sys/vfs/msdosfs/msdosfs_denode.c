@@ -685,7 +685,7 @@ msdosfs_reclaim(struct vop_reclaim_args *ap)
 	    dep, dep ? (char *)dep->de_Name : "?", dep ? dep->de_refcnt : -1);
 #endif
 
-	if (prtactive && vp->v_sysref.refcnt > 1)
+	if (prtactive && VREFCNT(vp) > 1)
 		vprint("msdosfs_reclaim(): pushing active", vp);
 	/*
 	 * Remove the denode from its hash chain.
@@ -717,7 +717,7 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 		dep, (dep ? dep->de_Name[0] : 0));
 #endif
 
-	if (prtactive && vp->v_sysref.refcnt > 1)
+	if (prtactive && VREFCNT(vp) > 1)
 		vprint("msdosfs_inactive(): pushing active", vp);
 
 	/*
@@ -748,8 +748,8 @@ out:
 	 * so that it can be reused immediately.
 	 */
 #ifdef MSDOSFS_DEBUG
-	kprintf("msdosfs_inactive(): v_sysrefs %d, de_Name[0] %x\n",
-		vp->v_sysref.refcnt, (dep ? dep->de_Name[0] : 0));
+	kprintf("msdosfs_inactive(): v_refcnt 0x%08x, de_Name[0] %x\n",
+		vp->v_refcnt, (dep ? dep->de_Name[0] : 0));
 #endif
 	if (dep == NULL || dep->de_Name[0] == SLOT_DELETED)
 		vrecycle(vp);

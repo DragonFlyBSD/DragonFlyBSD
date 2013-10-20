@@ -1788,13 +1788,16 @@ _cache_unlink(struct namecache *ncp)
 	ncp->nc_flag |= NCF_DESTROYED;
 
 	/*
-	 * Attempt to trigger a deactivation.
+	 * Attempt to trigger a deactivation.  Set VAUX_FINALIZE to
+	 * force action on the 1->0 transition.
 	 */
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
-	    (vp = ncp->nc_vp) != NULL &&
-	    !sysref_isactive(&vp->v_sysref)) {
-		if (vget(vp, LK_SHARED) == 0)
-			vput(vp);
+	    (vp = ncp->nc_vp) != NULL) {
+		atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
+		if (VREFCNT(vp) <= 0) {
+			if (vget(vp, LK_SHARED) == 0)
+				vput(vp);
+		}
 	}
 }
 

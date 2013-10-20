@@ -437,11 +437,7 @@ vmightfree(struct vnode *vp, int page_count, int pass)
 {
 	if (vp->v_flag & VRECLAIMED)
 		return (0);
-#if 0
-	if ((vp->v_flag & VFREE) && TAILQ_EMPTY(&vp->v_namecache))
-		return (0);
-#endif
-	if (sysref_isactive(&vp->v_sysref))
+	if (VREFCNT(vp) > 0)
 		return (0);
 	if (vp->v_object && vp->v_object->resident_page_count >= page_count)
 		return (0);
@@ -509,17 +505,14 @@ visleaf(struct vnode *vp)
 /*
  * Try to clean up the vnode to the point where it can be vgone()'d, returning
  * 0 if it cannot be vgone()'d (or already has been), 1 if it can.  Unlike
- * vmightfree() this routine may flush the vnode and block.  Vnodes marked
- * VFREE are still candidates for vgone()ing because they may hold namecache
- * resources and could be blocking the namecache directory hierarchy (and
- * related vnodes) from being freed.
+ * vmightfree() this routine may flush the vnode and block.
  */
 static int
 vtrytomakegoneable(struct vnode *vp, int page_count)
 {
 	if (vp->v_flag & VRECLAIMED)
 		return (0);
-	if (vp->v_sysref.refcnt > 1)
+	if (VREFCNT(vp) > 1)
 		return (0);
 	if (vp->v_object && vp->v_object->resident_page_count >= page_count)
 		return (0);
@@ -542,11 +535,11 @@ vtrytomakegoneable(struct vnode *vp, int page_count)
 	 * held here).  Finally, we have to check for other references one
 	 * last time in case something snuck in during the inval.
 	 */
-	if (vp->v_sysref.refcnt > 1 || vp->v_auxrefs != 0)
+	if (VREFCNT(vp) > 1 || vp->v_auxrefs != 0)
 		return (0);
 	if (cache_inval_vp_nonblock(vp))
 		return (0);
-	return (vp->v_sysref.refcnt <= 1 && vp->v_auxrefs == 0);
+	return (VREFCNT(vp) <= 1 && vp->v_auxrefs == 0);
 }
 
 /*
@@ -712,11 +705,11 @@ vnlru_proc(void)
 		 * (long) -> deal with 64 bit machines, intermediate overflow
 		 */
 		if (numvnodes > desiredvnodes &&
-		    freevnodes > desiredvnodes * 2 / 10) {
+		    cachedvnodes > desiredvnodes * 2 / 10) {
 			int count = numvnodes - desiredvnodes;
 
-			if (count > freevnodes / 100)
-				count = freevnodes / 100;
+			if (count > cachedvnodes / 100)
+				count = cachedvnodes / 100;
 			if (count < 5)
 				count = 5;
 			freesomevnodes(count);
@@ -733,7 +726,7 @@ vnlru_proc(void)
 		 * Nothing to do if most of our vnodes are already on
 		 * the free list.
 		 */
-		if (numvnodes - freevnodes <= (long)desiredvnodes * 9 / 10) {
+		if (numvnodes - cachedvnodes <= (long)desiredvnodes * 9 / 10) {
 			tsleep(vnlruthread, 0, "vlruwt", hz);
 			continue;
 		}
@@ -1196,7 +1189,7 @@ next:
  *
  * `rootrefs' specifies the base reference count for the root vnode
  * of this filesystem. The root vnode is considered busy if its
- * v_sysref.refcnt exceeds this value. On a successful return, vflush()
+ * v_refcnt exceeds this value. On a successful return, vflush()
  * will call vrele() on the root vnode exactly rootrefs times.
  * If the SKIPSYSTEM or WRITECLOSE flags are specified, rootrefs must
  * be zero.
@@ -1250,8 +1243,8 @@ vflush(struct mount *mp, int rootrefs, int flags)
 		 * is equal to `rootrefs', then go ahead and kill it.
 		 */
 		KASSERT(vflush_info.busy > 0, ("vflush: not busy"));
-		KASSERT(rootvp->v_sysref.refcnt >= rootrefs, ("vflush: rootrefs"));
-		if (vflush_info.busy == 1 && rootvp->v_sysref.refcnt == rootrefs) {
+		KASSERT(VREFCNT(rootvp) >= rootrefs, ("vflush: rootrefs"));
+		if (vflush_info.busy == 1 && VREFCNT(rootvp) == rootrefs) {
 			vx_lock(rootvp);
 			vgone_vxlocked(rootvp);
 			vx_unlock(rootvp);
@@ -1274,6 +1267,11 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 	struct vflush_info *info = data;
 	struct vattr vattr;
 	int flags = info->flags;
+
+	/*
+	 * Generally speaking try to deactivate on 0 refs (catch-all)
+	 */
+	atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
 
 	/*
 	 * Skip over a vnodes marked VSYSTEM.
@@ -1305,7 +1303,7 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 	 * If we are the only holder (refcnt of 1) or the vnode is in
 	 * termination (refcnt < 0), we can vgone the vnode.
 	 */
-	if (vp->v_sysref.refcnt <= 1) {
+	if (VREFCNT(vp) <= 1) {
 		vgone_vxlocked(vp);
 		return(0);
 	}

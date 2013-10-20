@@ -360,7 +360,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			hammer_unlock(&ip->lock);
 			continue;
 		}
-		vhold_interlocked(vp);
+		vhold(vp);
 		hammer_unlock(&ip->lock);
 
 		/*

@@ -298,7 +298,7 @@ smbfs_reclaim(struct vop_reclaim_args *ap)
 	struct smbnode *np = VTOSMB(vp);
 	struct smbmount *smp = VTOSMBFS(vp);
 	
-	SMBVDEBUG("%s,%d\n", np->n_name, vp->v_sysref.refcnt);
+	SMBVDEBUG("%s,%08x\n", np->n_name, vp->v_refcnt);
 
 	smbfs_hash_lock(smp, td);
 
@@ -339,7 +339,7 @@ smbfs_inactive(struct vop_inactive_args *ap)
 	struct smb_cred scred;
 	int error;
 
-	SMBVDEBUG("%s: %d\n", VTOSMB(vp)->n_name, vp->v_sysref.refcnt);
+	SMBVDEBUG("%s: %08x\n", VTOSMB(vp)->n_name, vp->v_refcnt);
 	if (np->n_opencount) {
 		error = smbfs_vinvalbuf(vp, V_SAVE, 1);
 		cred = np->n_cached_cred;

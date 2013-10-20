@@ -155,18 +155,20 @@ struct vnode {
 	int	v_writecount;
 	int	v_opencount;			/* number of explicit opens */
 	int	v_auxrefs;			/* auxiliary references */
-	struct sysref v_sysref;			/* normal references */
+	int	v_refcnt;
 	struct bio_track v_track_read;		/* track I/O's in progress */
 	struct bio_track v_track_write;		/* track I/O's in progress */
 	struct mount *v_mount;			/* ptr to vfs we are in */
 	struct vop_ops **v_ops;			/* vnode operations vector */
-	TAILQ_ENTRY(vnode) v_freelist;		/* vnode freelist/cachelist */
+	TAILQ_ENTRY(vnode) v_list;		/* vnode act/inact/cache/free */
 	TAILQ_ENTRY(vnode) v_nmntvnodes;	/* vnodes for mount point */
+	LIST_ENTRY(vnode) v_synclist;		/* vnodes with dirty buffers */
 	struct buf_rb_tree v_rbclean_tree;	/* RB tree of clean bufs */
 	struct buf_rb_tree v_rbdirty_tree;	/* RB tree of dirty bufs */
 	struct buf_rb_hash v_rbhash_tree;	/* RB tree general lookup */
-	LIST_ENTRY(vnode) v_synclist;		/* vnodes with dirty buffers */
 	enum	vtype v_type;			/* vnode type */
+	int16_t		v_act;			/* use heuristic */
+	int16_t		v_state;		/* active/free/cached */
 	union {
 		struct socket	*vu_socket;	/* unix ipc (VSOCK) */
 		struct {
@@ -221,14 +223,14 @@ struct vnode {
 /* open for business    0x00000200 */
 #define VAGE0		0x00000400	/* Age count for recycling - 2 bits */
 #define VAGE1		0x00000800	/* Age count for recycling - 2 bits */
-#define VCACHED		0x00001000	/* No active references but has cache value */
+/* open for business	0x00001000 */
 #define	VOBJBUF		0x00002000	/* Allocate buffers in VM object */
-#define	VINACTIVE	0x00004000	/* The vnode is inactive (did VOP_INACTIVE) */
+#define	VINACTIVE	0x00004000	/* ran VOP_INACTIVE */
 /* open for business    0x00008000 */
-#define	VOLOCK		0x00010000	/* vnode is locked waiting for an object */
+#define	VOLOCK		0x00010000	/* vnode locked waiting for object */
 #define	VOWANT		0x00020000	/* a process is waiting for VOLOCK */
 #define	VRECLAIMED	0x00040000	/* This vnode has been destroyed */
-#define	VFREE		0x00080000	/* This vnode is on the freelist */
+/* open for business	0x00080000 */
 #define VNOTSEEKABLE	0x00100000	/* rd/wr ignores file offset */
 #define	VONWORKLST	0x00200000	/* On syncer work-list */
 #define VISDIRTY	0x00400000	/* inode dirty from VFS */
@@ -236,6 +238,30 @@ struct vnode {
 #define VSWAPCACHE	0x01000000	/* enable swapcache */
 /* open for business	0x02000000 */
 /* open for business	0x04000000 */
+
+/*
+ * v_state flags (v_state is interlocked by v_spin and vfs_spin)
+ */
+#define VS_CACHED	0
+#define VS_ACTIVE	1
+#define VS_INACTIVE	2
+#define VS_DYING	3
+
+/*
+ * v_refcnt uses bit 30 to flag that 1->0 transitions require finalization
+ * (actual deactivation) and bit 31 to indicate that deactivation is in
+ * progress.
+ *
+ * The VREFCNT() macro returns a negative number if the vnode is undergoing
+ * termination (value should not be interpreted beyond being negative),
+ * zero if it is cached and has no references, or a positive number
+ * indicating the number of refs.
+ */
+#define VREF_TERMINATE	0x80000000	/* termination in progress */
+#define VREF_FINALIZE	0x40000000	/* deactivate on last vrele */
+#define VREF_MASK	0xBFFFFFFF	/* includes VREF_TERMINATE */
+
+#define VREFCNT(vp)	((int)((vp)->v_refcnt & VREF_MASK))
 
 /*
  * vmntvnodescan() flags
@@ -335,7 +361,9 @@ extern	struct objcache *namei_oc;
 extern	int prtactive;			/* nonzero to call vprint() */
 extern	struct vattr va_null;		/* predefined null vattr structure */
 extern	int numvnodes;
-extern	int freevnodes;
+extern	int inactivevnodes;
+extern	int activevnodes;
+extern	int cachedvnodes;
 
 /*
  * This macro is very helpful in defining those offsets in the vdesc struct.
@@ -529,7 +557,6 @@ void	vx_put (struct vnode *vp);
 int	vget (struct vnode *vp, int lockflag);
 void	vput (struct vnode *vp);
 void	vhold (struct vnode *);
-void	vhold_interlocked (struct vnode *);
 void	vdrop (struct vnode *);
 void	vref (struct vnode *vp);
 void	vrele (struct vnode *vp);

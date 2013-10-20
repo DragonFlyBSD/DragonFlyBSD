@@ -609,7 +609,7 @@ hpfs_inactive(struct vop_inactive_args *ap)
 			return (error);
 	}
 
-	if (prtactive && vp->v_sysref.refcnt > 1)
+	if (prtactive && VREFCNT(vp) > 1)
 		vprint("hpfs_inactive: pushing active", vp);
 
 	if (hp->h_flag & H_INVAL) {

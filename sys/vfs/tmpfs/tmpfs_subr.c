@@ -372,7 +372,7 @@ loop:
 	TMPFS_NODE_LOCK(node);
 	if ((vp = node->tn_vnode) != NULL) {
 		KKASSERT((node->tn_vpstate & TMPFS_VNODE_DOOMED) == 0);
-		vhold_interlocked(vp);
+		vhold(vp);
 		TMPFS_NODE_UNLOCK(node);
 
 		if (vget(vp, lkflag | LK_EXCLUSIVE) != 0) {

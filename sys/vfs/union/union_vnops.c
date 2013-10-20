@@ -110,7 +110,8 @@ union_lock_upper(struct union_node *un, struct thread *td)
 		vref(uppervp);
 		vn_lock(uppervp, LK_EXCLUSIVE | LK_CANRECURSE | LK_RETRY);
 	}
-	KASSERT((uppervp == NULL || uppervp->v_sysref.refcnt > 0), ("uppervp usecount is 0"));
+	KASSERT((uppervp == NULL || VREFCNT(uppervp) > 0),
+		("uppervp usecount is 0"));
 	return(uppervp);
 }
 
@@ -366,10 +367,10 @@ union_lookup(struct vop_old_lookup_args *ap)
 		    "uerror %d upperdvp %p %d/%d, uppervp %p ref=%d/lck=%d\n",
 		    uerror,
 		    upperdvp,
-		    upperdvp->v_sysref.refcnt,
+		    VREFCNT(upperdvp),
 		    vn_islocked(upperdvp),
 		    uppervp,
-		    (uppervp ? uppervp->v_sysref.refcnt : -99),
+		    (uppervp ? VREFCNT(uppervp) : -99),
 		    (uppervp ? vn_islocked(uppervp) : -99)
 		));
 
@@ -546,7 +547,9 @@ union_lookup(struct vop_old_lookup_args *ap)
 	error = union_allocvp(ap->a_vpp, dvp->v_mount, dvp, upperdvp, cnp,
 			      uppervp, lowervp, 1);
 
-	UDEBUG(("Create %p = %p %p refs=%d\n", *ap->a_vpp, uppervp, lowervp, (*ap->a_vpp) ? ((*ap->a_vpp)->v_sysref.refcnt) : -99));
+	UDEBUG(("Create %p = %p %p refs=%d\n",
+		*ap->a_vpp, uppervp, lowervp,
+		(*ap->a_vpp) ? (VREFCNT(*ap->a_vpp)) : -99));
 
 	uppervp = NULL;
 	upperdvp = NULL;
@@ -586,7 +589,7 @@ out:
 		cnp->cn_flags &= ~CNP_LOCKPARENT;
 
 	UDEBUG(("Out %d vpp %p/%d lower %p upper %p\n", error, *ap->a_vpp,
-		((*ap->a_vpp) ? (*ap->a_vpp)->v_sysref.refcnt : -99),
+		((*ap->a_vpp) ? (*ap->a_vpp)->v_refcnt : -99),
 		lowervp, uppervp));
 
 	/*
@@ -648,10 +651,12 @@ union_create(struct vop_old_create_args *ap)
 		if (error == 0) {
 			mp = ap->a_dvp->v_mount;
 			vn_unlock(vp);
-			UDEBUG(("ALLOCVP-1 FROM %p REFS %d\n", vp, vp->v_sysref.refcnt));
+			UDEBUG(("ALLOCVP-1 FROM %p REFS %d\n",
+				vp, vp->v_refcnt));
 			error = union_allocvp(ap->a_vpp, mp, NULLVP, NULLVP,
 				cnp, vp, NULLVP, 1);
-			UDEBUG(("ALLOCVP-2B FROM %p REFS %d\n", *ap->a_vpp, vp->v_sysref.refcnt));
+			UDEBUG(("ALLOCVP-2B FROM %p REFS %d\n",
+				*ap->a_vpp, vp->v_refcnt));
 		}
 		union_unlock_upper(dvp, td);
 	}
@@ -1470,10 +1475,12 @@ union_mkdir(struct vop_old_mkdir_args *ap)
 
 		if (error == 0) {
 			vn_unlock(vp);
-			UDEBUG(("ALLOCVP-2 FROM %p REFS %d\n", vp, vp->v_sysref.refcnt));
+			UDEBUG(("ALLOCVP-2 FROM %p REFS %d\n",
+				vp, vp->v_refcnt));
 			error = union_allocvp(ap->a_vpp, ap->a_dvp->v_mount,
 				ap->a_dvp, NULLVP, cnp, vp, NULLVP, 1);
-			UDEBUG(("ALLOCVP-2B FROM %p REFS %d\n", *ap->a_vpp, vp->v_sysref.refcnt));
+			UDEBUG(("ALLOCVP-2B FROM %p REFS %d\n",
+				*ap->a_vpp, vp->v_refcnt));
 		}
 	}
 	return (error);

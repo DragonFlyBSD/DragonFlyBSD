@@ -195,7 +195,7 @@ cd9660_inactive(struct vop_inactive_args *ap)
 	struct iso_node *ip = VTOI(vp);
 	int error = 0;
 
-	if (prtactive && vp->v_sysref.refcnt > 1)
+	if (prtactive && VREFCNT(vp) > 1)
 		vprint("cd9660_inactive: pushing active", vp);
 
 	if (ip)
@@ -220,7 +220,7 @@ cd9660_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct iso_node *ip = VTOI(vp);
 
-	if (prtactive && vp->v_sysref.refcnt > 1)
+	if (prtactive && VREFCNT(vp) > 1)
 		vprint("cd9660_reclaim: pushing active", vp);
 	/*
 	 * Remove the inode from its hash chain.

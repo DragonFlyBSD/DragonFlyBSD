@@ -271,7 +271,7 @@ ufs_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	if (vp->v_sysref.refcnt > 1)
+	if (VREFCNT(vp) > 1)
 		ufs_itimes(vp);
 	return (vop_stdclose(ap));
 }
@@ -1880,7 +1880,7 @@ ufsfifo_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	if (vp->v_sysref.refcnt > 1)
+	if (VREFCNT(vp) > 1)
 		ufs_itimes(vp);
 	return (VOCALL(&fifo_vnode_vops, &ap->a_head));
 }

@@ -208,7 +208,7 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	if (error)
 		goto bad;
 	vn_unlock(vp);
-	SMBVDEBUG("root.v_sysrefs = %d\n", vp->v_sysref.refcnt);
+	SMBVDEBUG("root.v_refcnt = %08x\n", vp->v_refcnt);
 
 #ifdef DIAGNOSTICS
 	SMBERROR("mp=%p\n", mp);

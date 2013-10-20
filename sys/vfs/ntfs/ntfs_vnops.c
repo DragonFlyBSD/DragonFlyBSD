@@ -248,7 +248,7 @@ ntfs_inactive(struct vop_inactive_args *ap)
 
 	dprintf(("ntfs_inactive: vnode: %p, ntnode: %ju\n", vp, (uintmax_t)ip->i_number));
 
-	if (ntfs_prtactive && vp->v_sysref.refcnt > 1)
+	if (ntfs_prtactive && VREFCNT(vp) > 1)
 		vprint("ntfs_inactive: pushing active", vp);
 
 	/*
@@ -273,7 +273,7 @@ ntfs_reclaim(struct vop_reclaim_args *ap)
 
 	dprintf(("ntfs_reclaim: vnode: %p, ntnode: %ju\n", vp, (uintmax_t)ip->i_number));
 
-	if (ntfs_prtactive && vp->v_sysref.refcnt > 1)
+	if (ntfs_prtactive && VREFCNT(vp) > 1)
 		vprint("ntfs_reclaim: pushing active", vp);
 
 	if ((error = ntfs_ntget(ip)) != 0)

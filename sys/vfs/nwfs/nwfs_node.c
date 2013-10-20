@@ -100,8 +100,8 @@ nwfs_sysctl_vnprint(SYSCTL_HANDLER_ARGS)
 		LIST_FOREACH(np, nhpp, n_hash) {
 			vp = NWTOV(np);
 			vprint(NULL, vp);
-			kprintf("%s:%d:%d:%d:%d\n",
-				np->n_name, vp->v_sysref.refcnt, vp->v_auxrefs,
+			kprintf("%s:%08x:%08x:%d:%d\n",
+				np->n_name, vp->v_refcnt, vp->v_auxrefs,
 				np->n_fid.f_id, np->n_fid.f_parent);
 		}
 	}
@@ -221,7 +221,7 @@ nwfs_reclaim(struct vop_reclaim_args *ap)
 	struct nwmount *nmp = VTONWFS(vp);
 	struct thread *td = curthread;	/* XXX */
 	
-	NCPVNDEBUG("%s,%d\n", (np ? np->n_name : "?"), vp->v_sysref.refcnt);
+	NCPVNDEBUG("%s,%08x\n", (np ? np->n_name : "?"), vp->v_refcnt);
 	if (np && np->n_refparent) {
 		np->n_refparent = 0;
 		if (nwfs_lookupnp(nmp, np->n_parent, td, &dnp) == 0) {
@@ -260,7 +260,7 @@ nwfs_inactive(struct vop_inactive_args *ap)
 	KKASSERT(td->td_proc);		/* XXX */
 	cred = td->td_proc->p_ucred;	/* XXX */
 
-	NCPVNDEBUG("%s: %d\n", VTONW(vp)->n_name, vp->v_sysref.refcnt);
+	NCPVNDEBUG("%s: %08x\n", VTONW(vp)->n_name, vp->v_refcnt);
 	if (np && np->opened) {
 		error = nwfs_vinvalbuf(vp, V_SAVE, 1);
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, td, cred);

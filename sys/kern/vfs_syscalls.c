@@ -467,7 +467,7 @@ checkdirs(struct nchandle *old_nch, struct nchandle *new_nch)
 	 * being held as a descriptor anywhere.
 	 */
 	olddp = old_nch->ncp->nc_vp;
-	if (olddp == NULL || olddp->v_sysref.refcnt == 1)
+	if (olddp == NULL || VREFCNT(olddp) == 1)
 		return;
 
 	/*
@@ -743,6 +743,7 @@ dounmount(struct mount *mp, int flags)
 	 */
 	if ((vp = mp->mnt_syncer) != NULL) {
 		mp->mnt_syncer = NULL;
+		atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
 		vrele(vp);
 	}
 	if ((mp->mnt_flag & MNT_RDONLY) == 0)

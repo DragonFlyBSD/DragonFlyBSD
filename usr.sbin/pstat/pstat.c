@@ -447,9 +447,8 @@ vnode_print(struct vnode *avnode, struct vnode *vp)
 	 * Convert SYSREF ref counts into something more
 	 * human readable for display.
 	 */
-	if ((refs = vp->v_sysref.refcnt) < 0)
-		refs = -(refs + 0x40000001);
-	printf("%8lx %s %5s %4d %4d",
+	refs = vp->v_refcnt;
+	printf("%8lx %s %5s %08x %4d",
 	    (u_long)(void *)avnode, type, flags, refs, vp->v_auxrefs);
 }
 

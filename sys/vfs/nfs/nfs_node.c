@@ -379,7 +379,7 @@ nfs_inactive(struct vop_inactive_args *ap)
 	lwkt_gettoken(&nmp->nm_token);
 
 	np = VTONFS(ap->a_vp);
-	if (prtactive && ap->a_vp->v_sysref.refcnt > 1)
+	if (prtactive && VREFCNT(ap->a_vp) > 1)
 		vprint("nfs_inactive: pushing active", ap->a_vp);
 	if (ap->a_vp->v_type != VDIR) {
 		sp = np->n_sillyrename;
@@ -428,7 +428,7 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 	struct nfsdmap *dp, *dp2;
 /*	struct nfsmount *nmp = VFSTONFS(vp->v_mount);*/
 
-	if (prtactive && vp->v_sysref.refcnt > 1)
+	if (prtactive && VREFCNT(vp) > 1)
 		vprint("nfs_reclaim: pushing active", vp);
 
 
