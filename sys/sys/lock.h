@@ -1,6 +1,8 @@
 /* 
  * Copyright (c) 1995
  *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2013
+ *	The DragonFly Project.  All rights reserved.
  *
  * This code contains ideas from software contributed to Berkeley by
  * Avadis Tevanian, Jr., Michael Wayne Young, and the Mach Operating
@@ -33,9 +35,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	@(#)lock.h	8.12 (Berkeley) 5/19/95
- * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
  */
 
 #ifndef	_SYS_LOCK_H_
@@ -63,14 +62,10 @@
 struct thread;
 
 struct lock {
-	struct spinlock lk_spinlock;	/* lock on remaining fields */
 	u_int	lk_flags;		/* see below */
-	int	lk_sharecount;		/* # of accepted shared locks */
-	int	lk_waitcount;		/* # of processes sleeping for lock */
-	short	lk_exclusivecount;	/* # of recursive exclusive locks */
-	short	lk_unused1;
-	const char *lk_wmesg;		/* resource sleeping (for tsleep) */
+	int	lk_count;		/* -shared, +exclusive */
 	int	lk_timo;		/* maximum sleep time (for tsleep) */
+	const char *lk_wmesg;		/* resource sleeping (for tsleep) */
 	struct thread *lk_lockholder;	/* thread of excl lock holder */
 #ifdef	DEBUG_LOCKS
 	const char *lk_filename;
@@ -78,6 +73,7 @@ struct lock {
 	int     lk_lineno;
 #endif
 };
+
 /*
  * Lock request types:
  *   LK_SHARED - get one of many possible shared locks. If a process
@@ -117,8 +113,21 @@ struct lock {
 #define LK_EXCLUPGRADE	0x00000004	/* first shared-to-exclusive upgrade */
 #define LK_DOWNGRADE	0x00000005	/* exclusive-to-shared downgrade */
 #define LK_RELEASE	0x00000006	/* release any type of lock */
-#define LK_UNUSED07	0x00000007
+#define LK_WAITUPGRADE	0x00000007
 #define LK_EXCLOTHER	0x00000008	/* other process holds lock */
+
+/*
+ * lk_count bit fields.
+ *
+ * Positive count is exclusive, negative count is shared.
+ */
+#define LKC_EXREQ	0x80000000	/* waiting for exclusive lock */
+#define LKC_SHREQ	0x40000000	/* waiting for shared lock */
+#define LKC_UPREQ	0x20000000	/* waiting for upgrade */
+#define LKC_EXCL	0x10000000	/* exclusive (else shr or unlcoked) */
+#define LKC_UPGRANT	0x08000000	/* upgrade granted */
+#define LKC_MASK	0x07FFFFFF
+
 /*
  * External lock flags.
  *
@@ -133,16 +142,7 @@ struct lock {
 #define	LK_UNUSED0100x	0x01000000
 #define LK_TIMELOCK	0x02000000
 #define LK_PCATCH	0x04000000	/* timelocked with signal catching */
-/*
- * Internal lock flags.
- *
- * These flags are used internally to the lock manager.
- */
-#define LK_WANT_UPGRADE	0x00000100	/* waiting for share-to-excl upgrade */
-#define LK_WANT_EXCL	0x00000200	/* exclusive lock sought */
-#define LK_HAVE_EXCL	0x00000400	/* exclusive lock obtained */
-#define LK_UNUSED0800	0x00000800
-#define LK_UNUSED4000	0x00004000
+
 /*
  * Control flags
  *
@@ -152,12 +152,6 @@ struct lock {
 #define LK_RETRY	0x00020000 /* vn_lock: retry until locked */
 #define	LK_NOOBJ	0x00040000 /* vget: don't create object */
 #define	LK_THISLAYER	0x00080000 /* vn_lock: lock/unlock only current layer */
-
-/*
- * Internal state flags corresponding to lk_sharecount, and lk_waitcount
- */
-#define	LK_SHARE_NONZERO 0x00100000
-#define	LK_WAIT_NONZERO  0x00200000
 
 /*
  * Lock return status.

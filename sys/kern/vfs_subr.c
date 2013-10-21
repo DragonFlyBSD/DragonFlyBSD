@@ -1428,7 +1428,7 @@ vgone_vxlocked(struct vnode *vp)
 	 * assert that the VX lock is held.  This is an absolute requirement
 	 * now for vgone_vxlocked() to be called.
 	 */
-	KKASSERT(vp->v_lock.lk_exclusivecount == 1);
+	KKASSERT(lockcountnb(&vp->v_lock) == 1);
 
 	/*
 	 * Clean out the filesystem specific data and set the VRECLAIMED

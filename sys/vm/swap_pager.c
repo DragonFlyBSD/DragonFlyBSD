@@ -168,6 +168,8 @@ static int swap_async_max = 4;	/* maximum in-progress async I/O's	*/
 static int swap_burst_read = 0;	/* allow burst reading */
 static swblk_t swapiterator;	/* linearize allocations */
 
+static struct spinlock swapbp_spin = SPINLOCK_INITIALIZER(&swapbp_spin);
+
 /* from vm_swap.c */
 extern struct vnode *swapdev_vp;
 extern struct swdevt *swdevt;
@@ -1149,7 +1151,7 @@ swap_chain_iodone(struct bio *biox)
 	/*
 	 * Remove us from the chain.
 	 */
-	spin_lock(&bp->b_lock.lk_spinlock);
+	spin_lock(&swapbp_spin);
 	nextp = &nbio->bio_caller_info1.cluster_head;
 	while (*nextp != bufx) {
 		KKASSERT(*nextp != NULL);
@@ -1157,7 +1159,7 @@ swap_chain_iodone(struct bio *biox)
 	}
 	*nextp = bufx->b_cluster_next;
 	chain_empty = (nbio->bio_caller_info1.cluster_head == NULL);
-	spin_unlock(&bp->b_lock.lk_spinlock);
+	spin_unlock(&swapbp_spin);
 
 	/*
 	 * Clean up bufx.  If the chain is now empty we finish out

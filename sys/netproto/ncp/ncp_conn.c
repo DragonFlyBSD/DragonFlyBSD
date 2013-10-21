@@ -185,7 +185,7 @@ int
 ncp_conn_assert_locked(struct ncp_conn *conn, const char *checker,
 		       struct thread *td)
 {
-	if (conn->nc_lock.lk_flags & LK_HAVE_EXCL)
+	if (lockstatus(&conn->nc_lock, NULL) == LK_EXCLUSIVE)
 		return 0;
 	kprintf("%s: connection isn't locked!\n", checker);
 	return EIO;
