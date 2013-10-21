@@ -12,6 +12,6 @@ sha1 = 1a23e034d77459bc82e5259dea029514403ce484
 The file README.DELETED contains a list of deleted files and directories.
 
 The following files have been patched:
-make.1
+bmake.1
 meta.c
 suff.c
