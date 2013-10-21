@@ -47,10 +47,9 @@ struct mq_attr {
 
 #include <sys/types.h>
 #include <sys/lock.h>
-#include <sys/types.h>
 #include <sys/queue.h>
 #include <sys/event.h>
-#include <sys/types.h>
+#include <sys/signal.h>
 
 /*
  * Flags below are used in mq_flags for internal
