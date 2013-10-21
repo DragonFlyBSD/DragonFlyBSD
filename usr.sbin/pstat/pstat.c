@@ -428,8 +428,6 @@ vnode_print(struct vnode *avnode, struct vnode *vp)
 	if (flag & VDOOMED)
 		*fp++ = 'D';
 #endif
-	if (flag & VFREE)
-		*fp++ = 'F';
 	if (flag & VONWORKLST)
 		*fp++ = 'O';
 #ifdef VRECLAIMED
