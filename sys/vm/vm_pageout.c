@@ -2109,6 +2109,7 @@ vm_daemon(void)
 static int
 vm_daemon_callback(struct proc *p, void *data __unused)
 {
+	struct vmspace *vm;
 	vm_pindex_t limit, size;
 
 	/*
@@ -2139,12 +2140,13 @@ vm_daemon_callback(struct proc *p, void *data __unused)
 	if (p->p_flags & P_SWAPPEDOUT)
 		limit = 0;
 
-	lwkt_gettoken(&p->p_vmspace->vm_map.token);
-	size = vmspace_resident_count(p->p_vmspace);
+	vm = p->p_vmspace;
+	vmspace_hold(vm);
+	size = vmspace_resident_count(vm);
 	if (limit >= 0 && size >= limit) {
-		vm_pageout_map_deactivate_pages(&p->p_vmspace->vm_map, limit);
+		vm_pageout_map_deactivate_pages(&vm->vm_map, limit);
 	}
-	lwkt_reltoken(&p->p_vmspace->vm_map.token);
+	vmspace_drop(vm);
 	return (0);
 }
 
