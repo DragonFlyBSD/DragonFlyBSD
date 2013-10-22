@@ -70,7 +70,8 @@
 #include <sys/buf2.h>
 #include <sys/thread2.h>
 
-#define VACT_MAX	5
+#define VACT_MAX	10
+#define VACT_INC	2
 
 static void vnode_terminate(struct vnode *vp);
 
@@ -96,9 +97,6 @@ SYSCTL_INT(_debug, OID_AUTO, cachedvnodes, CTLFLAG_RD,
 int  inactivevnodes = 0;
 SYSCTL_INT(_debug, OID_AUTO, inactivevnodes, CTLFLAG_RD,
 	&inactivevnodes, 0, "Number of inactive nodes");
-static int wantfreevnodes = 25;
-SYSCTL_INT(_debug, OID_AUTO, wantfreevnodes, CTLFLAG_RW,
-	&wantfreevnodes, 0, "Desired number of free vnodes");
 static int batchfreevnodes = 5;
 SYSCTL_INT(_debug, OID_AUTO, batchfreevnodes, CTLFLAG_RW,
 	&batchfreevnodes, 0, "Number of vnodes to free at once");
@@ -419,37 +417,12 @@ vnode_terminate(struct vnode *vp)
  * These functions lock vnodes for reclamation and deactivation related
  * activities.  The caller must already be holding some sort of reference
  * on the vnode.
- *
- * MPSAFE
  */
 void
 vx_lock(struct vnode *vp)
 {
 	lockmgr(&vp->v_lock, LK_EXCLUSIVE);
 }
-
-/*
- * The non-blocking version also uses a slightly different mechanic.
- * This function will explicitly fail not only if it cannot acquire
- * the lock normally, but also if the caller already holds a lock.
- *
- * The adjusted mechanic is used to close a loophole where complex
- * VOP_RECLAIM code can circle around recursively and allocate the
- * same vnode it is trying to destroy from the freelist.
- *
- * Any filesystem (aka UFS) which puts LK_CANRECURSE in lk_flags can
- * cause the incorrect behavior to occur.  If not for that lockmgr()
- * would do the right thing.
- */
-#if 0
-static int
-vx_lock_nonblock(struct vnode *vp)
-{
-	if (lockcountnb(&vp->v_lock))
-		return(EBUSY);
-	return(lockmgr(&vp->v_lock, LK_EXCLUSIVE | LK_NOWAIT));
-}
-#endif
 
 void
 vx_unlock(struct vnode *vp)
@@ -523,7 +496,8 @@ vget(struct vnode *vp, int flags)
 		 *	 shared lock.  This race is allowed.
 		 */
 		_vclrflags(vp, VINACTIVE);	/* SMP race ok */
-		if (++vp->v_act > VACT_MAX)	/* SMP race ok */
+		vp->v_act += VACT_INC;
+		if (vp->v_act > VACT_MAX)	/* SMP race ok */
 			vp->v_act = VACT_MAX;
 		error = 0;
 	} else {
@@ -545,7 +519,8 @@ vget(struct vnode *vp, int flags)
 		 * not affect cachedvnodes.
 		 */
 		_vclrflags(vp, VINACTIVE);
-		if (++vp->v_act > VACT_MAX)	/* SMP race ok */
+		vp->v_act += VACT_INC;
+		if (vp->v_act > VACT_MAX)	/* SMP race ok */
 			vp->v_act = VACT_MAX;
 		spin_lock(&vp->v_spin);
 
@@ -588,9 +563,6 @@ debug_vput(struct vnode *vp, const char *filename, int line)
 
 #else
 
-/*
- * MPSAFE
- */
 void
 vput(struct vnode *vp)
 {
@@ -602,6 +574,18 @@ vput(struct vnode *vp)
 
 /*
  * Acquire the vnode lock unguarded.
+ *
+ * The non-blocking version also uses a slightly different mechanic.
+ * This function will explicitly fail not only if it cannot acquire
+ * the lock normally, but also if the caller already holds a lock.
+ *
+ * The adjusted mechanic is used to close a loophole where complex
+ * VOP_RECLAIM code can circle around recursively and allocate the
+ * same vnode it is trying to destroy from the freelist.
+ *
+ * Any filesystem (aka UFS) which puts LK_CANRECURSE in lk_flags can
+ * cause the incorrect behavior to occur.  If not for that lockmgr()
+ * would do the right thing.
  *
  * XXX The vx_*() locks should use auxrefs, not the main reference counter.
  */
@@ -653,8 +637,6 @@ vx_put(struct vnode *vp)
  * periods of extreme vnode use.
  *
  * NOTE: The returned vnode is not completely initialized.
- *
- * MPSAFE
  */
 static
 struct vnode *
@@ -662,6 +644,7 @@ cleanfreevnode(int maxcount)
 {
 	struct vnode *vp;
 	int count;
+	int trigger = (long)vmstats.v_page_count / (activevnodes * 2 + 1);
 
 	/*
 	 * Try to deactivate some vnodes cached on the active list.
@@ -681,12 +664,32 @@ cleanfreevnode(int maxcount)
 			TAILQ_INSERT_AFTER(&vnode_active_list, vp,
 					   &vnode_active_rover, v_list);
 		}
-		if (vp == NULL || (vp->v_refcnt & VREF_MASK) != 0) {
+		if (vp == NULL) {
 			spin_unlock(&vfs_spin);
 			continue;
 		}
+		if ((vp->v_refcnt & VREF_MASK) != 0) {
+			spin_unlock(&vfs_spin);
+			vp->v_act += VACT_INC;
+			if (vp->v_act > VACT_MAX)	/* SMP race ok */
+				vp->v_act = VACT_MAX;
+			continue;
+		}
+
+		/*
+		 * decrement by less if the vnode's object has a lot of
+		 * VM pages.  XXX possible SMP races.
+		 */
 		if (vp->v_act > 0) {
-			--vp->v_act;
+			vm_object_t obj;
+			if ((obj = vp->v_object) != NULL &&
+			    obj->resident_page_count >= trigger) {
+				vp->v_act -= 1;
+			} else {
+				vp->v_act -= VACT_INC;
+			}
+			if (vp->v_act < 0)
+				vp->v_act = 0;
 			spin_unlock(&vfs_spin);
 			continue;
 		}
@@ -843,15 +846,14 @@ allocvnode(int lktimeout, int lkflags)
 	struct vnode *vp;
 
 	/*
-	 * Do not flag for recyclement unless there are enough free vnodes
-	 * to recycle and the number of vnodes has exceeded our target.
-	 *
-	 * The vnlru tries to get to this before we are forced to do it
-	 * synchronously in userexit, using 2/10.
+	 * Do not flag for synchronous recyclement unless there are enough
+	 * freeable vnodes to recycle and the number of vnodes has
+	 * significantly exceeded our target.  We want the normal vnlru
+	 * process to handle the cleaning (at 9/10's) before we are forced
+	 * to flag it here at 11/10's for userexit path processing.
 	 */
-	if (numvnodes >= desiredvnodes &&
-	    cachedvnodes + inactivevnodes > desiredvnodes * 5 / 10 &&
-	    cachedvnodes + inactivevnodes > wantfreevnodes) {
+	if (numvnodes >= desiredvnodes * 11 / 10 &&
+	    cachedvnodes + inactivevnodes >= desiredvnodes * 5 / 10) {
 		struct thread *td = curthread;
 		if (td->td_lwp)
 			atomic_set_int(&td->td_lwp->lwp_mpflags, LWP_MP_VNLRU);
@@ -896,32 +898,31 @@ allocvnode(int lktimeout, int lkflags)
  * Called after a process has allocated a vnode via allocvnode()
  * and we detected that too many vnodes were present.
  *
- * Try to reuse vnodes if we hit the max.  This situation only
- * occurs in certain large-memory (2G+) situations on 32 bit systems,
- * or if kern.maxvnodes is set to very low values.
- *
  * This function is called just prior to a return to userland if the
  * process at some point had to allocate a new vnode during the last
  * system call and the vnode count was found to be excessive.
+ *
+ * This is a synchronous path that we do not normally want to execute.
+ *
+ * Flagged at >= 11/10's, runs if >= 10/10, vnlru runs at 9/10.
  *
  * WARNING: Sometimes numvnodes can blow out due to children being
  *	    present under directory vnodes in the namecache.  For the
  *	    moment use an if() instead of a while() and note that if
  *	    we were to use a while() we would still have to break out
- *	    if freesomevnodes() returned 0.
+ *	    if freesomevnodes() returned 0.  vnlru will also be trying
+ *	    hard to free vnodes at the same time (with a lower trigger
+ *	    pointer).
  */
 void
 allocvnode_gc(void)
 {
-	if (numvnodes > desiredvnodes &&
-	    cachedvnodes + inactivevnodes > wantfreevnodes) {
+	if (numvnodes >= desiredvnodes &&
+	    cachedvnodes + inactivevnodes >= desiredvnodes * 5 / 10) {
 		freesomevnodes(batchfreevnodes);
 	}
 }
 
-/*
- * MPSAFE
- */
 int
 freesomevnodes(int n)
 {

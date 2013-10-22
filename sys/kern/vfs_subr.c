@@ -1177,8 +1177,14 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	 */
 	if (vp->v_flag & VRECLAIMED)
 		return;
+
+	/*
+	 * Set flag to interlock operation, flag finalization to ensure
+	 * that the vnode winds up on the inactive list, and set v_act to 0.
+	 */
 	vsetflags(vp, VRECLAIMED);
 	atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
+	vp->v_act = 0;
 
 	if (verbose_reclaims) {
 		if ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL)

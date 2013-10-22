@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004,2013 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -428,249 +428,6 @@ vfs_setfsid(struct mount *mp, fsid_t *template)
  */
 
 /*
- * This is a quick non-blocking check to determine if the vnode is a good
- * candidate for being (eventually) vgone()'d.  Returns 0 if the vnode is
- * not a good candidate, 1 if it is.
- */
-static __inline int 
-vmightfree(struct vnode *vp, int page_count, int pass)
-{
-	if (vp->v_flag & VRECLAIMED)
-		return (0);
-	if (VREFCNT(vp) > 0)
-		return (0);
-	if (vp->v_object && vp->v_object->resident_page_count >= page_count)
-		return (0);
-
-	/*
-	 * XXX horrible hack.  Up to four passes will be taken.  Each pass
-	 * makes a larger set of vnodes eligible.  For now what this really
-	 * means is that we try to recycle files opened only once before
-	 * recycling files opened multiple times.
-	 */
-	switch(vp->v_flag & (VAGE0 | VAGE1)) {
-	case 0:
-		if (pass < 3)
-			return(0);
-		break;
-	case VAGE0:
-		if (pass < 2)
-			return(0);
-		break;
-	case VAGE1:
-		if (pass < 1)
-			return(0);
-		break;
-	case VAGE0 | VAGE1:
-		break;
-	}
-	return (1);
-}
-
-/*
- * The vnode was found to be possibly vgone()able and the caller has locked it
- * (thus the usecount should be 1 now).  Determine if the vnode is actually
- * vgone()able, doing some cleanups in the process.  Returns 1 if the vnode
- * can be vgone()'d, 0 otherwise.
- *
- * Note that v_auxrefs may be non-zero because (A) this vnode is not a leaf
- * in the namecache topology and (B) this vnode has buffer cache bufs.
- * We cannot remove vnodes with non-leaf namecache associations.  We do a
- * tentitive leaf check prior to attempting to flush out any buffers but the
- * 'real' test when all is said in done is that v_auxrefs must become 0 for
- * the vnode to be freeable.
- *
- * We could theoretically just unconditionally flush when v_auxrefs != 0,
- * but flushing data associated with non-leaf nodes (which are always
- * directories), just throws it away for no benefit.  It is the buffer 
- * cache's responsibility to choose buffers to recycle from the cached
- * data point of view.
- */
-static int
-visleaf(struct vnode *vp)
-{
-	struct namecache *ncp;
-
-	spin_lock(&vp->v_spin);
-	TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-		if (!TAILQ_EMPTY(&ncp->nc_list)) {
-			spin_unlock(&vp->v_spin);
-			return(0);
-		}
-	}
-	spin_unlock(&vp->v_spin);
-	return(1);
-}
-
-/*
- * Try to clean up the vnode to the point where it can be vgone()'d, returning
- * 0 if it cannot be vgone()'d (or already has been), 1 if it can.  Unlike
- * vmightfree() this routine may flush the vnode and block.
- */
-static int
-vtrytomakegoneable(struct vnode *vp, int page_count)
-{
-	if (vp->v_flag & VRECLAIMED)
-		return (0);
-	if (VREFCNT(vp) > 1)
-		return (0);
-	if (vp->v_object && vp->v_object->resident_page_count >= page_count)
-		return (0);
-	if (vp->v_auxrefs && visleaf(vp)) {
-		vinvalbuf(vp, V_SAVE, 0, 0);
-#if 0	/* DEBUG */
-		kprintf((vp->v_auxrefs ? "vrecycle: vp %p failed: %s\n" :
-			"vrecycle: vp %p succeeded: %s\n"), vp,
-			(TAILQ_FIRST(&vp->v_namecache) ? 
-			    TAILQ_FIRST(&vp->v_namecache)->nc_name : "?"));
-#endif
-	}
-
-	/*
-	 * This sequence may seem a little strange, but we need to optimize
-	 * the critical path a bit.  We can't recycle vnodes with other
-	 * references and because we are trying to recycle an otherwise
-	 * perfectly fine vnode we have to invalidate the namecache in a
-	 * way that avoids possible deadlocks (since the vnode lock is being
-	 * held here).  Finally, we have to check for other references one
-	 * last time in case something snuck in during the inval.
-	 */
-	if (VREFCNT(vp) > 1 || vp->v_auxrefs != 0)
-		return (0);
-	if (cache_inval_vp_nonblock(vp))
-		return (0);
-	return (VREFCNT(vp) <= 1 && vp->v_auxrefs == 0);
-}
-
-/*
- * Reclaim up to 1/10 of the vnodes associated with a mount point.  Try
- * to avoid vnodes which have lots of resident pages (we are trying to free
- * vnodes, not memory).  
- *
- * This routine is a callback from the mountlist scan.  The mount point
- * in question will be busied.
- *
- * NOTE: The 1/10 reclamation also ensures that the inactive data set
- *	 (the vnodes being recycled by the one-time use) does not degenerate
- *	 into too-small a set.  This is important because once a vnode is
- *	 marked as not being one-time-use (VAGE0/VAGE1 both 0) that vnode
- *	 will not be destroyed EXCEPT by this mechanism.  VM pages can still
- *	 be cleaned/freed by the pageout daemon.
- */
-static int
-vlrureclaim(struct mount *mp, void *data)
-{
-	struct vnlru_info *info = data;
-	struct vnode *vp;
-	int done;
-	int trigger;
-	int usevnodes;
-	int count;
-	int trigger_mult = vnlru_nowhere;
-
-	/*
-	 * Calculate the trigger point for the resident pages check.  The
-	 * minimum trigger value is approximately the number of pages in
-	 * the system divded by the number of vnodes.  However, due to
-	 * various other system memory overheads unrelated to data caching
-	 * it is a good idea to double the trigger (at least).  
-	 *
-	 * trigger_mult starts at 0.  If the recycler is having problems
-	 * finding enough freeable vnodes it will increase trigger_mult.
-	 * This should not happen in normal operation, even on machines with
-	 * low amounts of memory, but extraordinary memory use by the system
-	 * verses the amount of cached data can trigger it.
-	 *
-	 * (long) -> deal with 64 bit machines, intermediate overflow
-	 */
-	usevnodes = desiredvnodes;
-	if (usevnodes <= 0)
-		usevnodes = 1;
-	trigger = (long)vmstats.v_page_count * (trigger_mult + 2) / usevnodes;
-
-	done = 0;
-	lwkt_gettoken(&mp->mnt_token);
-	count = mp->mnt_nvnodelistsize / 10 + 1;
-
-	while (count && mp->mnt_syncer) {
-		/*
-		 * Next vnode.  Use the special syncer vnode to placemark
-		 * the LRU.  This way the LRU code does not interfere with
-		 * vmntvnodescan().
-		 */
-		vp = TAILQ_NEXT(mp->mnt_syncer, v_nmntvnodes);
-		TAILQ_REMOVE(&mp->mnt_nvnodelist, mp->mnt_syncer, v_nmntvnodes);
-		if (vp) {
-			TAILQ_INSERT_AFTER(&mp->mnt_nvnodelist, vp,
-					   mp->mnt_syncer, v_nmntvnodes);
-		} else {
-			TAILQ_INSERT_HEAD(&mp->mnt_nvnodelist, mp->mnt_syncer,
-					  v_nmntvnodes);
-			vp = TAILQ_NEXT(mp->mnt_syncer, v_nmntvnodes);
-			if (vp == NULL)
-				break;
-		}
-
-		/*
-		 * __VNODESCAN__
-		 *
-		 * The VP will stick around while we hold mnt_token,
-		 * at least until we block, so we can safely do an initial
-		 * check, and then must check again after we lock the vnode.
-		 */
-		if (vp->v_type == VNON ||	/* syncer or indeterminant */
-		    !vmightfree(vp, trigger, info->pass) /* critical path opt */
-		) {
-			--count;
-			continue;
-		}
-
-		/*
-		 * VX get the candidate vnode.  If the VX get fails the 
-		 * vnode might still be on the mountlist.  Our loop depends
-		 * on us at least cycling the vnode to the end of the
-		 * mountlist.
-		 */
-		if (vx_get_nonblock(vp) != 0) {
-			--count;
-			continue;
-		}
-		KKASSERT(lockcountnb(&vp->v_lock) == 1);
-
-		/*
-		 * Since we blocked locking the vp, make sure it is still
-		 * a candidate for reclamation.  That is, it has not already
-		 * been reclaimed and only has our VX reference associated
-		 * with it.
-		 */
-		if (vp->v_type == VNON ||	/* syncer or indeterminant */
-		    (vp->v_flag & VRECLAIMED) ||
-		    vp->v_mount != mp ||
-		    !vtrytomakegoneable(vp, trigger)	/* critical path opt */
-		) {
-			--count;
-			vx_put(vp);
-			continue;
-		}
-
-		/*
-		 * All right, we are good, move the vp to the end of the
-		 * mountlist and clean it out.  The vget will have returned
-		 * an error if the vnode was destroyed (VRECLAIMED set), so we
-		 * do not have to check again.  The vput() will move the 
-		 * vnode to the free list if the vgone() was successful.
-		 */
-		KKASSERT(vp->v_mount == mp);
-		vgone_vxlocked(vp);
-		vx_put(vp);
-		++done;
-		--count;
-	}
-	lwkt_reltoken(&mp->mnt_token);
-	return (done);
-}
-
-/*
  * Attempt to recycle vnodes in a context that is always safe to block.
  * Calling vlrurecycle() from the bowels of file system code has some
  * interesting deadlock problems.
@@ -681,8 +438,6 @@ static void
 vnlru_proc(void)
 {
 	struct thread *td = curthread;
-	struct vnlru_info info;
-	int done;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
 			      SHUTDOWN_PRI_FIRST);
@@ -691,16 +446,18 @@ vnlru_proc(void)
 		kproc_suspend_loop();
 
 		/*
-		 * Try to free some vnodes if we have too many
+		 * Try to free some vnodes if we have too many.  Trigger based
+		 * on potentially freeable vnodes but calculate the count
+		 * based on total vnodes.
 		 *
 		 * (long) -> deal with 64 bit machines, intermediate overflow
 		 */
-		if (numvnodes > desiredvnodes &&
-		    cachedvnodes + inactivevnodes > desiredvnodes * 2 / 10) {
-			int count = numvnodes - desiredvnodes;
+		if (numvnodes >= desiredvnodes * 9 / 10 &&
+		    cachedvnodes + inactivevnodes >= desiredvnodes * 5 / 10) {
+			int count = numvnodes - desiredvnodes * 9 / 10;
 
-			if (count > cachedvnodes / 100)
-				count = cachedvnodes / 100;
+			if (count > (cachedvnodes + inactivevnodes) / 100)
+				count = (cachedvnodes + inactivevnodes) / 100;
 			if (count < 5)
 				count = 5;
 			freesomevnodes(count);
@@ -717,41 +474,10 @@ vnlru_proc(void)
 		 * Nothing to do if most of our vnodes are already on
 		 * the free list.
 		 */
-		if (numvnodes - cachedvnodes <= (long)desiredvnodes * 9 / 10) {
+		if (numvnodes <= desiredvnodes * 9 / 10 ||
+		    cachedvnodes + inactivevnodes <= desiredvnodes * 5 / 10) {
 			tsleep(vnlruthread, 0, "vlruwt", hz);
 			continue;
-		}
-
-		/*
-		 * The pass iterates through the four combinations of
-		 * VAGE0/VAGE1.  We want to get rid of aged small files
-		 * first.
-		 */
-		info.pass = 0;
-		done = 0;
-		while (done == 0 && info.pass < 4) {
-			done = mountlist_scan(vlrureclaim, &info,
-					      MNTSCAN_FORWARD);
-			++info.pass;
-		}
-
-		/*
-		 * The vlrureclaim() call only processes 1/10 of the vnodes
-		 * on each mount.  If we couldn't find any repeat the loop
-		 * at least enough times to cover all available vnodes before
-		 * we start sleeping.  Complain if the failure extends past
-		 * 30 second, every 30 seconds.
-		 */
-		if (done == 0) {
-			++vnlru_nowhere;
-			if (vnlru_nowhere % 10 == 0)
-				tsleep(vnlruthread, 0, "vlrup", hz * 3);
-			if (vnlru_nowhere % 100 == 0)
-				kprintf("vnlru_proc: vnode recycler stopped working!\n");
-			if (vnlru_nowhere == 1000)
-				vnlru_nowhere = 900;
-		} else {
-			vnlru_nowhere = 0;
 		}
 	}
 }
@@ -951,8 +677,6 @@ SYSINIT(vnlru, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &vnlru_kp)
 
 /*
  * Move a vnode from one mount queue to another.
- *
- * MPSAFE
  */
 void
 insmntque(struct vnode *vp, struct mount *mp)
