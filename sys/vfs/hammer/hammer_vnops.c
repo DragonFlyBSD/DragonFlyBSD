@@ -292,16 +292,25 @@ skip:
 	 * Attempt to release the vnode while waiting for the inode to
 	 * finish flushing.  This can really mess up inactive->reclaim
 	 * sequences so only do it if the vnode is active.
+	 *
+	 * WARNING! The VX lock functions must be used.  vn_lock() will
+	 *	    fail when this is part of a VOP_RECLAIM sequence.
 	 */
 	++hammer_count_fsyncs;
 	vfsync(ap->a_vp, waitfor, 1, NULL, NULL);
 	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 	if (waitfor == MNT_WAIT) {
-		if ((ap->a_vp->v_flag & VINACTIVE) == 0)
-			vn_unlock(ap->a_vp);
+		int dorelock;
+
+		if ((ap->a_vp->v_flag & VRECLAIMED) == 0) {
+			vx_unlock(ap->a_vp);
+			dorelock = 1;
+		} else {
+			dorelock = 0;
+		}
 		hammer_wait_inode(ip);
-		if ((ap->a_vp->v_flag & VINACTIVE) == 0)
-			vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
+		if (dorelock)
+			vx_lock(ap->a_vp);
 	}
 	if (ip->vp && (ip->flags & HAMMER_INODE_MODMASK) == 0)
 		vclrisdirty(ip->vp);
