@@ -165,7 +165,7 @@ struct mxge_softc {
 	int media_flags;
 	int need_media_probe;
 	int num_slices;
-	int rx_ring_size;
+	int rx_intr_slots;
 	int dying;
 	int connector;
 	int current_media;

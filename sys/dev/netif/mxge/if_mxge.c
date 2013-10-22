@@ -1105,7 +1105,7 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 	mxge_rx_done_t *rx_done;
 	volatile uint32_t *irq_claim;
 	mxge_cmd_t cmd;
-	int slice, status;
+	int slice, status, rx_intr_size;
 
 	/*
 	 * Try to send a reset command to the card to see if it
@@ -1120,8 +1120,12 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 
 	mxge_dummy_rdma(sc, 1);
 
-	/* Set the intrq size */
-	cmd.data0 = sc->rx_ring_size;
+	/*
+	 * Set the intrq size
+	 * XXX assume 4byte mcp_slot
+	 */
+	rx_intr_size = sc->rx_intr_slots * sizeof(mcp_slot_t);
+	cmd.data0 = rx_intr_size;
 	status = mxge_send_cmd(sc, MXGEFW_CMD_SET_INTRQ_SIZE, &cmd);
 
 	/*
@@ -1164,7 +1168,7 @@ mxge_reset(mxge_softc_t *sc, int interrupts_setup)
 			ss = &sc->ss[slice];
 
 			rx_done = &ss->rx_data.rx_done;
-			memset(rx_done->entry, 0, sc->rx_ring_size);
+			memset(rx_done->entry, 0, rx_intr_size);
 
 			cmd.data0 =
 			    MXGE_LOWPART_TO_U32(ss->rx_done_dma.dmem_busaddr);
@@ -3076,7 +3080,7 @@ mxge_alloc_rings(mxge_softc_t *sc)
 	tx_ring_size = cmd.data0;
 
 	tx_ring_entries = tx_ring_size / sizeof(mcp_kreq_ether_send_t);
-	rx_ring_entries = sc->rx_ring_size / sizeof(mcp_dma_addr_t);
+	rx_ring_entries = sc->rx_intr_slots / 2;
 	ifq_set_maxlen(&sc->ifp->if_snd, tx_ring_entries - 1);
 	ifq_set_ready(&sc->ifp->if_snd);
 
@@ -3725,15 +3729,15 @@ mxge_alloc_slices(mxge_softc_t *sc)
 	mxge_cmd_t cmd;
 	struct mxge_slice_state *ss;
 	size_t bytes;
-	int err, i, max_intr_slots;
+	int err, i, rx_ring_size;
 
 	err = mxge_send_cmd(sc, MXGEFW_CMD_GET_RX_RING_SIZE, &cmd);
 	if (err != 0) {
 		device_printf(sc->dev, "Cannot determine rx ring size\n");
 		return err;
 	}
-	sc->rx_ring_size = cmd.data0;
-	max_intr_slots = 2 * (sc->rx_ring_size / sizeof (mcp_dma_addr_t));
+	rx_ring_size = cmd.data0;
+	sc->rx_intr_slots = 2 * (rx_ring_size / sizeof (mcp_dma_addr_t));
 
 	bytes = sizeof(*sc->ss) * sc->num_slices;
 	sc->ss = kmalloc_cachealign(bytes, M_DEVBUF, M_WAITOK | M_ZERO);
@@ -3748,8 +3752,9 @@ mxge_alloc_slices(mxge_softc_t *sc)
 
 		/*
 		 * Allocate per-slice rx interrupt queues
+		 * XXX assume 4bytes mcp_slot
 		 */
-		bytes = max_intr_slots * sizeof(*ss->rx_data.rx_done.entry);
+		bytes = sc->rx_intr_slots * sizeof(mcp_slot_t);
 		err = mxge_dma_alloc(sc, &ss->rx_done_dma, bytes, 4096);
 		if (err != 0) {
 			device_printf(sc->dev,
