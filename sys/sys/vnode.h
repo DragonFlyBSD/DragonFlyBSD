@@ -423,7 +423,6 @@ void	v_release_rdev(struct vnode *vp);
 int 	bdevvp (cdev_t dev, struct vnode **vpp);
 struct vnode *allocvnode(int lktimeout, int lkflags);
 void	allocvnode_gc(void);
-void	vnode_free_rover_scan(int count);
 int	freesomevnodes(int count);
 int	getnewvnode (enum vtagtype tag, struct mount *mp, 
 		    struct vnode **vpp, int timo, int lkflags);

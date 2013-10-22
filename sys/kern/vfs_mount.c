@@ -635,6 +635,7 @@ vlrureclaim(struct mount *mp, void *data)
 			--count;
 			continue;
 		}
+		KKASSERT(lockcountnb(&vp->v_lock) == 1);
 
 		/*
 		 * Since we blocked locking the vp, make sure it is still
@@ -690,22 +691,12 @@ vnlru_proc(void)
 		kproc_suspend_loop();
 
 		/*
-		 * Do some opportunistic roving.
-		 */
-		if (numvnodes > 100000)
-			vnode_free_rover_scan(50);
-		else if (numvnodes > 10000)
-			vnode_free_rover_scan(20);
-		else
-			vnode_free_rover_scan(5);
-
-		/*
 		 * Try to free some vnodes if we have too many
 		 *
 		 * (long) -> deal with 64 bit machines, intermediate overflow
 		 */
 		if (numvnodes > desiredvnodes &&
-		    cachedvnodes > desiredvnodes * 2 / 10) {
+		    cachedvnodes + inactivevnodes > desiredvnodes * 2 / 10) {
 			int count = numvnodes - desiredvnodes;
 
 			if (count > cachedvnodes / 100)

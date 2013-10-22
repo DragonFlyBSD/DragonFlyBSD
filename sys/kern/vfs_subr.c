@@ -1178,6 +1178,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	if (vp->v_flag & VRECLAIMED)
 		return;
 	vsetflags(vp, VRECLAIMED);
+	atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
 
 	if (verbose_reclaims) {
 		if ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL)
@@ -1205,6 +1206,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	 * object, if it has one. 
 	 */
 	vinvalbuf(vp, V_SAVE, 0, 0);
+	KKASSERT(lockcountnb(&vp->v_lock) == 1);
 
 	/*
 	 * If purging an active vnode (typically during a forced unmount
@@ -1244,6 +1246,7 @@ vclean_vxlocked(struct vnode *vp, int flags)
 			VOP_INACTIVE(vp);
 		vinvalbuf(vp, V_SAVE, 0, 0);
 	}
+	KKASSERT(lockcountnb(&vp->v_lock) == 1);
 
 	/*
 	 * If the vnode has an object, destroy it.
@@ -1458,7 +1461,6 @@ vgone_vxlocked(struct vnode *vp)
 	 * Set us to VBAD
 	 */
 	vp->v_type = VBAD;
-	atomic_set_int(&vp->v_refcnt, VREF_FINALIZE);
 }
 
 /*
