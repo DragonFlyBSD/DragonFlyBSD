@@ -97,7 +97,7 @@ struct mxge_rx_data {
 	mxge_rx_done_t rx_done;
 	mxge_rx_ring_t rx_small;
 	mxge_rx_ring_t rx_big;
-};
+} __cachealign;
 
 struct mxge_slice_state {
 	struct mxge_rx_data rx_data;
