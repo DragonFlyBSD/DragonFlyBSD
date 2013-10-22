@@ -163,9 +163,8 @@ dumpmount(kvm_t *kd, struct mount *mp)
     kkread(kd, (u_long)mp, &mnt, sizeof(mnt));
     printf("MOUNTPOINT %s on %s {\n", 
 	mnt.mnt_stat.f_mntfromname, mnt.mnt_stat.f_mntonname);
-    printf("    lk_flags %08x share %d wait %d excl %d holder = %p\n",
-	mnt.mnt_lock.lk_flags, mnt.mnt_lock.lk_sharecount,
-	mnt.mnt_lock.lk_waitcount, mnt.mnt_lock.lk_exclusivecount,
+    printf("    lk_flags %08x count %08x holder = %p\n",
+	mnt.mnt_lock.lk_flags, mnt.mnt_lock.lk_count,
 	mnt.mnt_lock.lk_lockholder);
     printf("    mnt_flag %08x mnt_kern_flag %08x\n", 
 	mnt.mnt_flag, mnt.mnt_kern_flag);
@@ -290,11 +289,9 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 
     printf("\n");
 
-    if (vn.v_lock.lk_sharecount || vn.v_lock.lk_waitcount || 
-	vn.v_lock.lk_exclusivecount || vn.v_lock.lk_lockholder != LK_NOTHREAD) {
-	printf("\tlk_flags %08x share %d wait %d excl %d holder = %p\n",
-	    vn.v_lock.lk_flags, vn.v_lock.lk_sharecount,
-	    vn.v_lock.lk_waitcount, vn.v_lock.lk_exclusivecount,
+    if (vn.v_lock.lk_count || vn.v_lock.lk_lockholder != LK_NOTHREAD) {
+	printf("\tlk_flags %08x count %08x holder = %p\n",
+	    vn.v_lock.lk_flags, vn.v_lock.lk_count,
 	    vn.v_lock.lk_lockholder);
     }
 
@@ -354,9 +351,8 @@ dumpbufs(kvm_t *kd, void *bufp, const char *id)
 		buf.b_bio1.bio_offset,
 		buf.b_bufsize,
 		buf.b_bio2.bio_offset);
-	printf(" q=%d lck=%d/%d flags=%08x refs=%d dep=%p",
-		buf.b_qindex, buf.b_lock.lk_sharecount,
-		buf.b_lock.lk_exclusivecount,
+	printf(" q=%d count=%08x flags=%08x refs=%08x dep=%p",
+		buf.b_qindex, buf.b_lock.lk_count,
 		buf.b_flags, buf.b_refs, buf.b_dep.lh_first);
 	printf("\n");
 
