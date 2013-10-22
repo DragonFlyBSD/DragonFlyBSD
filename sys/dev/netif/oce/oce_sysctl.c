@@ -93,7 +93,7 @@ oce_add_sysctls(POCE_SOFTC sc)
 			CTLTYPE_INT | CTLFLAG_RW,
 			&oce_max_rsp_handled,
 			sizeof(oce_max_rsp_handled),
-			"Maximum receive frames handled per interupt");
+			"Maximum receive frames handled per interrupt");
 
 	if ((sc->function_mode & FNM_FLEX10_MODE) ||
 	    (sc->function_mode & FNM_UMC_MODE))
@@ -597,7 +597,7 @@ oce_add_stats_sysctls_be3(POCE_SOFTC sc,
 			"Receive Packets");
 		SYSCTL_ADD_QUAD(ctx, queue_stats_list, OID_AUTO, "rx_bytes",
 			CTLFLAG_RD, &sc->rq[i]->rx_stats.rx_bytes, 0,
-			"Recived Bytes");
+			"Received Bytes");
 		SYSCTL_ADD_UINT(ctx, queue_stats_list, OID_AUTO, "rx_frags",
 			CTLFLAG_RD, &sc->rq[i]->rx_stats.rx_frags, 0,
 			"Received Fragments");
@@ -812,7 +812,7 @@ oce_add_stats_sysctls_xe201(POCE_SOFTC sc,
 			"Receive Packets");
 		SYSCTL_ADD_QUAD(ctx, queue_stats_list, OID_AUTO, "rx_bytes",
 			CTLFLAG_RD, &sc->rq[i]->rx_stats.rx_bytes, 0,
-			"Recived Bytes");
+			"Received Bytes");
 		SYSCTL_ADD_UINT(ctx, queue_stats_list, OID_AUTO, "rx_frags",
 			CTLFLAG_RD, &sc->rq[i]->rx_stats.rx_frags, 0,
 			"Received Fragments");

@@ -284,7 +284,7 @@ oce_hw_pci_alloc(POCE_SOFTC sc)
 		goto error;
 
 	if (intf.bits.sli_rev != OCE_INTF_SLI_REV4) {
-		device_printf(sc->dev, "Adapter doesnt support SLI4\n");
+		device_printf(sc->dev, "Adapter does not support SLI4\n");
 		goto error;
 	}
 

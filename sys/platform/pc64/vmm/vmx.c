@@ -674,7 +674,7 @@ static int vmx_set_guest_descriptor(descriptor_t type,
 			limit_enc = VMCS_GUEST_TR_LIMIT;
 			break;
 		default:
-			kprintf("VMM: vmx_set_guest_descriptor: unknown descripton\n");
+			kprintf("VMM: vmx_set_guest_descriptor: unknown descriptor\n");
 			err = -1;
 			goto error;
 			break;
