@@ -802,6 +802,8 @@ tmpfs_dir_lookupbycookie(struct tmpfs_node *node, off_t cookie)
  * The function returns 0 on success, -1 if there was not enough space
  * in the uio structure to hold the directory entry or an appropriate
  * error code if another error happens.
+ *
+ * Caller must hold the node locked (shared ok)
  */
 int
 tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
@@ -810,25 +812,23 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
 	off_t startcookie;
 	struct tmpfs_dirent *de;
 
-	TMPFS_NODE_LOCK_SH(node);
 	TMPFS_VALIDATE_DIR(node);
 
-	/* Locate the first directory entry we have to return.  We have cached
+	/*
+	 * Locate the first directory entry we have to return.  We have cached
 	 * the last readdir in the node, so use those values if appropriate.
-	 * Otherwise do a linear scan to find the requested entry. */
+	 * Otherwise do a linear scan to find the requested entry.
+	 */
 	startcookie = uio->uio_offset;
 	KKASSERT(startcookie != TMPFS_DIRCOOKIE_DOT);
 	KKASSERT(startcookie != TMPFS_DIRCOOKIE_DOTDOT);
-	if (startcookie == TMPFS_DIRCOOKIE_EOF) {
-		TMPFS_NODE_UNLOCK(node);
+
+	if (startcookie == TMPFS_DIRCOOKIE_EOF)
 		return 0;
-	} else {
-		de = tmpfs_dir_lookupbycookie(node, startcookie);
-	}
-	if (de == NULL) {
-		TMPFS_NODE_UNLOCK(node);
+
+	de = tmpfs_dir_lookupbycookie(node, startcookie);
+	if (de == NULL)
 		return EINVAL;
-	}
 
 	/* Read as much entries as possible; i.e., until we reach the end of
 	 * the directory or we exhaust uio space. */
@@ -902,7 +902,6 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
 		node->tn_dir.tn_readdir_lastn = uio->uio_offset = tmpfs_dircookie(de);
 		node->tn_dir.tn_readdir_lastp = de;
 	}
-	TMPFS_NODE_UNLOCK(node);
 
 	return error;
 }
@@ -1275,7 +1274,6 @@ tmpfs_itimes(struct vnode *vp, const struct timespec *acc,
 void
 tmpfs_update(struct vnode *vp)
 {
-
 	tmpfs_itimes(vp, NULL, NULL);
 }
 
