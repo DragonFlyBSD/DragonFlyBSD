@@ -1102,15 +1102,20 @@ procfs_readlink(struct vop_readlink_args *ap)
 		len = ksnprintf(buf, sizeof(buf), "%ld", (long)curproc->p_pid);
 
 		return (uiomove(buf, len, ap->a_uio));
-	/*
-	 * There _should_ be no way for an entire process to disappear
-	 * from under us...
-	 */
 	case Pfile:
+		/*
+		 * procfs's directory topology is somewhat asynchronous from
+		 * reality so it is possible for pid requests to race exiting
+		 * processes.  In this situation, bit 31 is set in
+		 * pfs->pfs_pid which guarantees that pfs_pfind() will return
+		 * NULL.
+		 *
+		 * It is also possible to catch a process in the middle of
+		 * an exit sequence so various fields might wind up being
+		 * NULL that are not normally NULL.
+		 */
 		procp = pfs_pfind(pfs->pfs_pid);
 		if (procp == NULL || procp->p_ucred == NULL) {
-			kprintf("procfs_readlink: pid %d disappeared\n",
-			    pfs->pfs_pid);
 			pfs_pdone(procp);
 			return (uiomove("unknown", sizeof("unknown") - 1,
 					ap->a_uio));
