@@ -1175,6 +1175,8 @@ tmpfs_nrename(struct vop_nrename_args *v)
 		TMPFS_NODE_LOCK(fdnode);
 		KKASSERT(de == tmpfs_dir_lookup(fdnode, fnode, fncp));
 		RB_REMOVE(tmpfs_dirtree, &fdnode->tn_dir.tn_dirtree, de);
+		RB_REMOVE(tmpfs_dirtree_cookie,
+			  &fdnode->tn_dir.tn_cookietree, de);
 		TMPFS_NODE_UNLOCK(fdnode);
 	}
 
@@ -1229,6 +1231,8 @@ tmpfs_nrename(struct vop_nrename_args *v)
 		TMPFS_NODE_LOCK(tdnode);
 		tdnode->tn_status |= TMPFS_NODE_MODIFIED;
 		RB_INSERT(tmpfs_dirtree, &tdnode->tn_dir.tn_dirtree, de);
+		RB_INSERT(tmpfs_dirtree_cookie,
+			  &tdnode->tn_dir.tn_cookietree, de);
 		TMPFS_NODE_UNLOCK(tdnode);
 	}
 
@@ -1500,14 +1504,17 @@ outok:
 				off = TMPFS_DIRCOOKIE_DOTDOT;
 			} else {
 				if (off == TMPFS_DIRCOOKIE_DOTDOT) {
-					de = RB_MIN(tmpfs_dirtree, &node->tn_dir.tn_dirtree);
+					de = RB_MIN(tmpfs_dirtree_cookie,
+						&node->tn_dir.tn_cookietree);
 				} else if (de != NULL) {
-					de = RB_NEXT(tmpfs_dirtree, &node->tn_dir.tn_dirtree, de);
+					de = RB_NEXT(tmpfs_dirtree_cookie,
+					       &node->tn_dir.tn_cookietree, de);
 				} else {
 					de = tmpfs_dir_lookupbycookie(node,
-					    off);
+								      off);
 					KKASSERT(de != NULL);
-					de = RB_NEXT(tmpfs_dirtree, &node->tn_dir.tn_dirtree, de);
+					de = RB_NEXT(tmpfs_dirtree_cookie,
+					       &node->tn_dir.tn_cookietree, de);
 				}
 				if (de == NULL)
 					off = TMPFS_DIRCOOKIE_EOF;

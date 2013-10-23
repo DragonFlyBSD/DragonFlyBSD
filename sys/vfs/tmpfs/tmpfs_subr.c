@@ -55,10 +55,15 @@
 #include <vfs/tmpfs/tmpfs_vnops.h>
 
 static ino_t tmpfs_fetch_ino(struct tmpfs_mount *);
+
 static int tmpfs_dirtree_compare(struct tmpfs_dirent *a,
 	struct tmpfs_dirent *b);
-
 RB_GENERATE(tmpfs_dirtree, tmpfs_dirent, rb_node, tmpfs_dirtree_compare);
+
+static int tmpfs_dirtree_compare_cookie(struct tmpfs_dirent *a,
+	struct tmpfs_dirent *b);
+RB_GENERATE(tmpfs_dirtree_cookie, tmpfs_dirent,
+	rb_cookienode, tmpfs_dirtree_compare_cookie);
 
 
 /* --------------------------------------------------------------------- */
@@ -133,8 +138,7 @@ tmpfs_alloc_node(struct tmpfs_mount *tmp, enum vtype type,
 
 	case VDIR:
 		RB_INIT(&nnode->tn_dir.tn_dirtree);
-		nnode->tn_dir.tn_readdir_lastn = 0;
-		nnode->tn_dir.tn_readdir_lastp = NULL;
+		RB_INIT(&nnode->tn_dir.tn_cookietree);
 		nnode->tn_size = 0;
 		break;
 
@@ -598,6 +602,7 @@ tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 		TMPFS_NODE_UNLOCK(node);
 	}
 	RB_INSERT(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
+	RB_INSERT(tmpfs_dirtree_cookie, &dnode->tn_dir.tn_cookietree, de);
 	dnode->tn_size += sizeof(struct tmpfs_dirent);
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
 			    TMPFS_NODE_MODIFIED;
@@ -617,11 +622,8 @@ tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 	struct tmpfs_node *node = de->td_node;
 
 	TMPFS_NODE_LOCK(dnode);
-	if (dnode->tn_dir.tn_readdir_lastp == de) {
-		dnode->tn_dir.tn_readdir_lastn = 0;
-		dnode->tn_dir.tn_readdir_lastp = NULL;
-	}
 	RB_REMOVE(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
+	RB_REMOVE(tmpfs_dirtree_cookie, &dnode->tn_dir.tn_cookietree, de);
 	dnode->tn_size -= sizeof(struct tmpfs_dirent);
 	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
 			    TMPFS_NODE_MODIFIED;
@@ -760,7 +762,8 @@ tmpfs_dir_getdotdotdent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 		if (error == 0) {
 			struct tmpfs_dirent *de;
 
-			de = RB_MIN(tmpfs_dirtree, &node->tn_dir.tn_dirtree);
+			de = RB_MIN(tmpfs_dirtree_cookie,
+				    &node->tn_dir.tn_cookietree);
 			if (de == NULL)
 				uio->uio_offset = TMPFS_DIRCOOKIE_EOF;
 			else
@@ -774,24 +777,49 @@ tmpfs_dir_getdotdotdent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 
 /*
  * Lookup a directory entry by its associated cookie.
+ *
+ * Must be called with the directory node locked (shared ok)
  */
+struct lubycookie_info {
+	off_t	cookie;
+	struct tmpfs_dirent *de;
+};
+
+static int
+lubycookie_cmp(struct tmpfs_dirent *de, void *arg)
+{
+	struct lubycookie_info *info = arg;
+	off_t cookie = tmpfs_dircookie(de);
+
+	if (cookie < info->cookie)
+		return(-1);
+	if (cookie > info->cookie)
+		return(1);
+	return(0);
+}
+
+static int
+lubycookie_callback(struct tmpfs_dirent *de, void *arg)
+{
+	struct lubycookie_info *info = arg;
+
+	if (tmpfs_dircookie(de) == info->cookie) {
+		info->de = de;
+		return(-1);
+	}
+	return(0);
+}
+
 struct tmpfs_dirent *
 tmpfs_dir_lookupbycookie(struct tmpfs_node *node, off_t cookie)
 {
-	struct tmpfs_dirent *de;
+	struct lubycookie_info info;
 
-	if (cookie == node->tn_dir.tn_readdir_lastn &&
-	    node->tn_dir.tn_readdir_lastp != NULL) {
-		return node->tn_dir.tn_readdir_lastp;
-	}
-
-	RB_FOREACH(de, tmpfs_dirtree, &node->tn_dir.tn_dirtree) {
-		if (tmpfs_dircookie(de) == cookie) {
-			break;
-		}
-	}
-
-	return de;
+	info.cookie = cookie;
+	info.de = NULL;
+	RB_SCAN(tmpfs_dirtree_cookie, &node->tn_dir.tn_cookietree,
+		lubycookie_cmp, lubycookie_callback, &info);
+	return (info.de);
 }
 
 /* --------------------------------------------------------------------- */
@@ -830,8 +858,10 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
 	if (de == NULL)
 		return EINVAL;
 
-	/* Read as much entries as possible; i.e., until we reach the end of
-	 * the directory or we exhaust uio space. */
+	/*
+	 * Read as much entries as possible; i.e., until we reach the end of
+	 * the directory or we exhaust uio space.
+	 */
 	do {
 		struct dirent d;
 		int reclen;
@@ -890,17 +920,15 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
 		error = uiomove((caddr_t)&d, reclen, uio);
 
 		(*cntp)++;
-		de = RB_NEXT(tmpfs_dirtree, node->tn_dir.tn_dirtree, de);
+		de = RB_NEXT(tmpfs_dirtree_cookie,
+			     node->tn_dir.tn_cookietree, de);
 	} while (error == 0 && uio->uio_resid > 0 && de != NULL);
 
 	/* Update the offset and cache. */
 	if (de == NULL) {
 		uio->uio_offset = TMPFS_DIRCOOKIE_EOF;
-		node->tn_dir.tn_readdir_lastn = 0;
-		node->tn_dir.tn_readdir_lastp = NULL;
 	} else {
-		node->tn_dir.tn_readdir_lastn = uio->uio_offset = tmpfs_dircookie(de);
-		node->tn_dir.tn_readdir_lastp = de;
+		uio->uio_offset = tmpfs_dircookie(de);
 	}
 
 	return error;
@@ -1336,4 +1364,14 @@ tmpfs_dirtree_compare(struct tmpfs_dirent *a, struct tmpfs_dirent *b)
 		return -1;
 	else
 		return strncmp(a->td_name, b->td_name, a->td_namelen);
+}
+
+static int
+tmpfs_dirtree_compare_cookie(struct tmpfs_dirent *a, struct tmpfs_dirent *b)
+{
+	if (a < b)
+		return(-1);
+	if (a > b)
+		return(1);
+	return 0;
 }

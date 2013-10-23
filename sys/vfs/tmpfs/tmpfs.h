@@ -65,6 +65,7 @@ MALLOC_DECLARE(M_TMPFSMNT);
  */
 struct tmpfs_dirent {
 	RB_ENTRY(tmpfs_dirent)	rb_node;
+	RB_ENTRY(tmpfs_dirent)	rb_cookienode;
 
 	/* Length of the name stored in this directory entry.  This avoids
 	 * the need to recalculate it every time the name is used. */
@@ -84,8 +85,13 @@ RB_HEAD(tmpfs_dirtree, tmpfs_dirent);
 RB_PROTOTYPE(tmpfs_dirtree, tmpfs_dirent, rb_node,
 	tmpfs_dirtree_compare);
 
+RB_HEAD(tmpfs_dirtree_cookie, tmpfs_dirent);
+RB_PROTOTYPE(tmpfs_dirtree_cookie, tmpfs_dirent, rb_cookienode,
+	tmpfs_dirtree_cookie_compare);
 
-/* A directory in tmpfs holds a set of directory entries, which in
+
+/*
+ * A directory in tmpfs holds a set of directory entries, which in
  * turn point to other files (which can be directories themselves).
  *
  * In tmpfs, this set is managed by a red-black tree, whose root is defined
@@ -96,9 +102,9 @@ RB_PROTOTYPE(tmpfs_dirtree, tmpfs_dirent, rb_node,
  * based on information available by other means, such as the pointer to
  * the node itself in the former case or the pointer to the parent directory
  * in the latter case.  This is done to simplify tmpfs's code and, more
- * importantly, to remove redundancy. */
-
-/* Each entry in a directory has a cookie that identifies it.  Cookies
+ * importantly, to remove redundancy.
+ *
+ * Each entry in a directory has a cookie that identifies it.  Cookies
  * supersede offsets within directories because, given how tmpfs stores
  * directories in memory, there is no such thing as an offset.  (Emulating
  * a real offset could be very difficult.)
@@ -108,62 +114,22 @@ RB_PROTOTYPE(tmpfs_dirtree, tmpfs_dirent, rb_node,
  * for the other entries are generated based on the memory address on which
  * stores their information is stored.
  *
- * Ideally, using the entry's memory pointer as the cookie would be enough
- * to represent it and it wouldn't cause collisions in any system.
- * Unfortunately, this results in "offsets" with very large values which
- * later raise problems in the Linux compatibility layer (and maybe in other
- * places) as described in PR kern/32034.  Hence we need to workaround this
- * with a rather ugly hack.
- *
- * Linux 32-bit binaries, unless built with _FILE_OFFSET_BITS=64, have off_t
- * set to 'long', which is a 32-bit *signed* long integer.  Regardless of
- * the macro value, GLIBC (2.3 at least) always uses the getdents64
- * system call (when calling readdir) which internally returns off64_t
- * offsets.  In order to make 32-bit binaries work, *GLIBC* converts the
- * 64-bit values returned by the kernel to 32-bit ones and aborts with
- * EOVERFLOW if the conversion results in values that won't fit in 32-bit
- * integers (which it assumes is because the directory is extremely large).
- * This wouldn't cause problems if we were dealing with unsigned integers,
- * but as we have signed integers, this check fails due to sign expansion.
- *
- * For example, consider that the kernel returns the 0xc1234567 cookie to
- * userspace in a off64_t integer.  Later on, GLIBC casts this value to
- * off_t (remember, signed) with code similar to:
- *     system call returns the offset in kernel_value;
- *     off_t casted_value = kernel_value;
- *     if (sizeof(off_t) != sizeof(off64_t) &&
- *         kernel_value != casted_value)
- *             error!
- * In this case, casted_value still has 0xc1234567, but when it is compared
- * for equality against kernel_value, it is promoted to a 64-bit integer and
- * becomes 0xffffffffc1234567, which is different than 0x00000000c1234567.
- * Then, GLIBC assumes this is because the directory is very large.
- *
- * Given that all the above happens in user-space, we have no control over
- * it; therefore we must workaround the issue here.  We do this by
- * truncating the pointer value to a 32-bit integer and hope that there
- * won't be collisions.  In fact, this will not cause any problems in
- * 32-bit platforms but some might arise in 64-bit machines (I'm not sure
- * if they can happen at all in practice).
- *
- * XXX A nicer solution shall be attempted. */
+ * DragonFly binaries use 64-bit cookies.  We mask-off the signed bit to
+ * ensure that cookie 'offsets' are positive.
+ */
 #ifdef _KERNEL
+
 #define	TMPFS_DIRCOOKIE_DOT	0
 #define	TMPFS_DIRCOOKIE_DOTDOT	1
 #define	TMPFS_DIRCOOKIE_EOF	2
+
 static __inline
 off_t
 tmpfs_dircookie(struct tmpfs_dirent *de)
 {
-	off_t cookie;
-
-	cookie = ((off_t)(uintptr_t)de >> 1) & 0x7FFFFFFF;
-	KKASSERT(cookie != TMPFS_DIRCOOKIE_DOT);
-	KKASSERT(cookie != TMPFS_DIRCOOKIE_DOTDOT);
-	KKASSERT(cookie != TMPFS_DIRCOOKIE_EOF);
-
-	return cookie;
+	return (((off_t)(uintptr_t)de >> 1) & 0x7FFFFFFFFFFFFFFFLLU);
 }
+
 #endif
 
 /* --------------------------------------------------------------------- */
@@ -249,27 +215,19 @@ struct tmpfs_node {
 
 		/* Valid when tn_type == VDIR. */
 		struct tn_dir {
-			/* Pointer to the parent directory.  The root
+			/*
+			 * Pointer to the parent directory.  The root
 			 * directory has a pointer to itself in this field;
-			 * this property identifies the root node. */
+			 * this property identifies the root node.
+			 */
 			struct tmpfs_node *	tn_parent;
 
-			/* Root of a red-black tree that links the contents of
-			 * the directory together.  See above for a
-			 * description of its contents. */
-			struct tmpfs_dirtree	tn_dirtree;
-
-			/* Number and pointer of the first directory entry
-			 * returned by the readdir operation if it were
-			 * called again to continue reading data from the
-			 * same directory as before.  This is used to speed
-			 * up reads of long directories, assuming that no
-			 * more than one read is in progress at a given time.
-			 * Otherwise, these values are discarded and a linear
-			 * scan is performed from the beginning up to the
-			 * point where readdir starts returning values. */
-			off_t			tn_readdir_lastn;
-			struct tmpfs_dirent *	tn_readdir_lastp;
+			/*
+			 * Directory entries are indexed by name and also
+			 * indexed by cookie.
+			 */
+			struct tmpfs_dirtree		tn_dirtree;
+			struct tmpfs_dirtree_cookie	tn_cookietree;
 		} tn_dir;
 
 		/* Valid when tn_type == VLNK. */
@@ -493,11 +451,10 @@ int	tmpfs_node_ctor(void *obj, void *privdata, int flags);
  * Ensures that the node pointed by 'node' is a directory and that its
  * contents are consistent with respect to directories.
  */
-#define TMPFS_VALIDATE_DIR(node) \
-    KKASSERT((node)->tn_type == VDIR); \
+#define TMPFS_VALIDATE_DIR(node) do {	\
+    KKASSERT((node)->tn_type == VDIR);	\
     KKASSERT((node)->tn_size % sizeof(struct tmpfs_dirent) == 0); \
-    KKASSERT((node)->tn_dir.tn_readdir_lastp == NULL || \
-	tmpfs_dircookie((node)->tn_dir.tn_readdir_lastp) == (node)->tn_dir.tn_readdir_lastn);
+} while(0)
 
 #endif
 
