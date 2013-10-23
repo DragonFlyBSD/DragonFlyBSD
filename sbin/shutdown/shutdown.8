@@ -29,11 +29,12 @@
 .\" $FreeBSD: src/sbin/shutdown/shutdown.8,v 1.12.2.5 2003/02/23 21:17:43 trhodes Exp $
 .\" $DragonFly: src/sbin/shutdown/shutdown.8,v 1.3 2006/02/17 19:33:33 swildner Exp $
 .\"
-.Dd December 11, 1998
+.Dd October 23, 2013
 .Dt SHUTDOWN 8
 .Os
 .Sh NAME
-.Nm shutdown
+.Nm shutdown ,
+.Nm poweroff
 .Nd "close down the system at a given time"
 .Sh SYNOPSIS
 .Nm
@@ -48,6 +49,7 @@
 .Oc
 .Ar time
 .Op Ar warning-message ...
+.Nm poweroff
 .Sh DESCRIPTION
 The
 .Nm
@@ -164,6 +166,13 @@ The
 file that
 .Nm
 created will be removed automatically.
+
+Calling
+.Dq Nm poweroff
+is equivalent to running:
+.Bd -literal -offset indent
+shutdown -p now
+.Ed
 .Sh FILES
 .Bl -tag -width /var/run/nologin -compact
 .It Pa /var/run/nologin
