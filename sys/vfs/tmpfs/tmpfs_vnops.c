@@ -1171,7 +1171,11 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	if (fdnode != tdnode) {
 		tmpfs_dir_detach(fdnode, de);
 	} else {
+		/* XXX depend on namecache lock */
+		TMPFS_NODE_LOCK(fdnode);
+		KKASSERT(de == tmpfs_dir_lookup(fdnode, fnode, fncp));
 		RB_REMOVE(tmpfs_dirtree, &fdnode->tn_dir.tn_dirtree, de);
+		TMPFS_NODE_UNLOCK(fdnode);
 	}
 
 	/*
