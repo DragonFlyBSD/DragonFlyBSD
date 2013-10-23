@@ -52,11 +52,6 @@
 
 #include <vm/vm_param.h>
 
-#include <sys/mplock2.h>
-
-/*
- * MPALMOSTSAFE
- */
 int
 sys_ogethostname(struct gethostname_args *uap)
 {
@@ -69,9 +64,7 @@ sys_ogethostname(struct gethostname_args *uap)
 	len = MIN(uap->len, MAXHOSTNAMELEN);
 	hostname = kmalloc(MAXHOSTNAMELEN, M_TEMP, M_WAITOK);
 
-	get_mplock();
 	error = kernel_sysctl(name, 2, hostname, &len, NULL, 0, NULL);
-	rel_mplock();
 
 	if (error == 0)
 		error = copyout(hostname, uap->hostname, len);
@@ -80,9 +73,6 @@ sys_ogethostname(struct gethostname_args *uap)
 	return (error);
 }
 
-/*
- * MPALMOSTSAFE
- */
 int
 sys_osethostname(struct sethostname_args *uap)
 {
@@ -106,9 +96,7 @@ sys_osethostname(struct sethostname_args *uap)
 		return (error);
 	}
 
-	get_mplock();
 	error = kernel_sysctl(name, 2, NULL, 0, hostname, len, NULL);
-	rel_mplock();
 
 	kfree(hostname, M_TEMP);
 	return (error);
@@ -213,8 +201,6 @@ sys_ogetkerninfo(struct getkerninfo_args *uap)
 	int error, name[6];
 	size_t size;
 	u_int needed = 0;
-
-	get_mplock();
 
 	switch (uap->op & 0xff00) {
 	case KINFO_RT:
@@ -339,7 +325,7 @@ sys_ogetkerninfo(struct getkerninfo_args *uap)
 		error = EOPNOTSUPP;
 		break;
 	}
-	rel_mplock();
+
 	if (error)
 		return (error);
 	uap->sysmsg_iresult = (int)size;

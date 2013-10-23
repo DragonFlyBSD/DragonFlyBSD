@@ -1271,14 +1271,13 @@ filter_attach(struct knote *kn)
 {
 	int ret;
 
-	if (!(kn->kn_fop->f_flags & FILTEROP_MPSAFE)) {
+	if (kn->kn_fop->f_flags & FILTEROP_MPSAFE) {
+		ret = kn->kn_fop->f_attach(kn);
+	} else {
 		get_mplock();
 		ret = kn->kn_fop->f_attach(kn);
 		rel_mplock();
-	} else {
-		ret = kn->kn_fop->f_attach(kn);
 	}
-
 	return (ret);
 }
 
