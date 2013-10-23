@@ -36,7 +36,8 @@
 .Dt TOUPPER 3
 .Os
 .Sh NAME
-.Nm toupper
+.Nm toupper ,
+.Nm toupper_l
 .Nd lower case to upper case letter conversion
 .Sh LIBRARY
 .Lb libc
@@ -44,6 +45,10 @@
 .In ctype.h
 .Ft int
 .Fn toupper "int c"
+.In ctype.h
+.In xlocale.h
+.Ft int
+.Fn toupper_l "int c" "locale_t loc"
 .Sh DESCRIPTION
 The
 .Fn toupper
@@ -53,6 +58,9 @@ The argument must be representable as an
 .Vt "unsigned char"
 or the value of
 .Dv EOF .
+.Pp
+The _l-suffixed version takes an explicit locale argument, whereas the
+non-suffixed version uses the current global or per-thread locale.
 .Sh RETURN VALUES
 If the argument is a lower-case letter, the
 .Fn toupper
@@ -70,8 +78,10 @@ The
 function should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
+.Xr ctype_l 3 ,
 .Xr isupper 3 ,
-.Xr towupper 3
+.Xr towupper 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn toupper

@@ -32,7 +32,8 @@
 .Dt ISBLANK 3
 .Os
 .Sh NAME
-.Nm isblank
+.Nm isblank ,
+.Nm isblank_l
 .Nd space or tab character test
 .Sh LIBRARY
 .Lb libc
@@ -40,6 +41,8 @@
 .In ctype.h
 .Ft int
 .Fn isblank "int c"
+.In ctype.h
+.In xlocale.h
 .Ft int
 .Fn isblank_l "int c" "locale_t loc"
 .Sh DESCRIPTION

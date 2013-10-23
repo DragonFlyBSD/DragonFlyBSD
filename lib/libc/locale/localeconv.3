@@ -36,7 +36,8 @@
 .Dt LOCALECONV 3
 .Os
 .Sh NAME
-.Nm localeconv
+.Nm localeconv ,
+.Nm localeconv_l
 .Nd natural language formatting for C
 .Sh LIBRARY
 .Lb libc
@@ -224,7 +225,8 @@ will remain valid until the locale is destroyed.
 No errors are defined.
 .Sh SEE ALSO
 .Xr setlocale 3 ,
-.Xr strfmon 3
+.Xr strfmon 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn localeconv

@@ -36,7 +36,8 @@
 .Dt ISALPHA 3
 .Os
 .Sh NAME
-.Nm isalpha
+.Nm isalpha ,
+.Nm isalpha_l
 .Nd alphabetic character test
 .Sh LIBRARY
 .Lb libc
@@ -44,6 +45,8 @@
 .In ctype.h
 .Ft int
 .Fn isalpha "int c"
+.In ctype.h
+.In xlocale.h
 .Ft int
 .Fn isalpha_l "int c" "locale_t loc"
 .Sh DESCRIPTION
@@ -97,6 +100,7 @@ The
 function should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
+.Xr ctype_l 3 ,
 .Xr islower 3 ,
 .Xr isupper 3 ,
 .Xr iswalpha 3 ,

@@ -29,7 +29,8 @@
 .Dt ISPHONOGRAM 3
 .Os
 .Sh NAME
-.Nm isphonogram
+.Nm isphonogram ,
+.Nm isphonogram_l
 .Nd phonographic character test
 .Sh LIBRARY
 .Lb libc
@@ -37,10 +38,17 @@
 .In ctype.h
 .Ft int
 .Fn isphonogram "int c"
+.In ctype.h
+.In xlocale.h
+.Ft int
+.Fn isphonogram_l "int c" "locale_t loc"
 .Sh DESCRIPTION
 The
 .Fn isphonogram
 function tests for a phonographic character.
+.Pp
+The _l-suffixed version takes an explicit locale argument, whereas the
+non-suffixed version uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn isphonogram
@@ -48,8 +56,10 @@ function returns zero if the character tests false and
 returns non-zero if the character tests true.
 .Sh SEE ALSO
 .Xr ctype 3 ,
+.Xr ctype_l 3 ,
 .Xr isideogram 3 ,
-.Xr iswphonogram 3
+.Xr iswphonogram 3 ,
+.Xr xlocale.3
 .Sh HISTORY
 The
 .Fn isphonogram

@@ -36,7 +36,8 @@
 .Dt ISUPPER 3
 .Os
 .Sh NAME
-.Nm isupper
+.Nm isupper ,
+.Nm isupper_l
 .Nd upper-case character test
 .Sh LIBRARY
 .Lb libc
@@ -44,6 +45,10 @@
 .In ctype.h
 .Ft int
 .Fn isupper "int c"
+.In ctype.h
+.In xlocale.h
+.Ft int
+.Ft isupper_l "int c" "locale_t loc"
 .Sh DESCRIPTION
 The
 .Fn isupper
@@ -63,6 +68,9 @@ In the ASCII character set, this includes the following characters
 .It "\&125\ ``U''" Ta "126\ ``V''" Ta "127\ ``W''" Ta "130\ ``X''" Ta "131\ ``Y''"
 .It "\&132\ ``Z''" Ta \& Ta \& Ta \& Ta \&
 .El
+.Pp
+The _l-suffixed version takes an explicit locale argument, whereas the
+non-suffixed version uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn isupper
@@ -80,8 +88,10 @@ The
 function should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
+.Xr ctype_l 3 ,
 .Xr iswupper 3 ,
 .Xr toupper 3 ,
+.Xr xlocale 3 ,
 .Xr ascii 7
 .Sh STANDARDS
 The

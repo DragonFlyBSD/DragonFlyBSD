@@ -36,7 +36,7 @@
 .Dt ISXDIGIT 3
 .Os
 .Sh NAME
-.Nm isxdigit , ishexnumber
+.Nm isxdigit , isxdigit_l , ishexnumber , ishexnumber_l
 .Nd hexadecimal-digit character test
 .Sh LIBRARY
 .Lb libc
@@ -46,6 +46,12 @@
 .Fn isxdigit "int c"
 .Ft int
 .Fn ishexnumber "int c"
+.In ctype.h
+.In xlocale.h
+.Ft int
+.Fn isxdigit_l "int c" "locale_t loc"
+.Ft int
+.Fn ishexnumber "int c" "locale_t loc"
 .Sh DESCRIPTION
 The
 .Fn isxdigit
@@ -70,6 +76,9 @@ The value of the argument must be representable as an
 .Vt "unsigned char"
 or the value of
 .Dv EOF .
+.Pp
+The _l-suffixed versions take an explicit locale argument, whereas the
+non-suffixed versions use the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn isxdigit
@@ -87,7 +96,9 @@ The
 function should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
+.Xr ctype_l 3 ,
 .Xr iswxdigit 3 ,
+.Xr xlocale.3 ,
 .Xr ascii 7
 .Sh STANDARDS
 The

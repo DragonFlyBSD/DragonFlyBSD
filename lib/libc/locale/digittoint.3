@@ -32,7 +32,8 @@
 .Dt DIGITTOINT 3
 .Os
 .Sh NAME
-.Nm digittoint
+.Nm digittoint ,
+.Nm digittoint_l
 .Nd convert a numeric character to its integer value
 .Sh LIBRARY
 .Lb libc
@@ -40,6 +41,8 @@
 .In ctype.h
 .Ft int
 .Fn digittoint "int c"
+.In ctype.h
+.In xlocale.h
 .Ft int
 .Fn digittoint_l "int c" "locale_t loc"
 .Sh DESCRIPTION
@@ -63,6 +66,7 @@ If the given character was not a digit as defined by
 the function will return 0.
 .Sh SEE ALSO
 .Xr ctype 3 ,
+.Xr ctype_l 3 ,
 .Xr isdigit 3 ,
 .Xr isxdigit 3,
 .Xr xlocale 3

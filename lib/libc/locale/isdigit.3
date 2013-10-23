@@ -36,7 +36,7 @@
 .Dt ISDIGIT 3
 .Os
 .Sh NAME
-.Nm isdigit , isnumber
+.Nm isdigit , isdigit_l , isnumber , isnumber_l
 .Nd decimal-digit character test
 .Sh LIBRARY
 .Lb libc
@@ -46,6 +46,8 @@
 .Fn isdigit "int c"
 .Ft int
 .Fn isnumber "int c"
+.In ctype.h
+.In xlocale.h
 .Ft int
 .Fn isdigit_l "int c" "locale_t loc"
 .Ft int
@@ -93,6 +95,7 @@ The
 function should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
+.Xr ctype_l 3 ,
 .Xr iswdigit 3 ,
 .Xr multibyte 3 ,
 .Xr xlocale 3 ,

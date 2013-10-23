@@ -36,7 +36,8 @@
 .Dt ISLOWER 3
 .Os
 .Sh NAME
-.Nm islower
+.Nm islower ,
+.Nm islower_l
 .Nd lower-case character test
 .Sh LIBRARY
 .Lb libc
@@ -89,8 +90,10 @@ The
 function should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
+.Xr ctype_l 3 ,
 .Xr iswlower 3 ,
 .Xr tolower 3 ,
+.Xr xlocale 3 ,
 .Xr ascii 7
 .Sh STANDARDS
 The

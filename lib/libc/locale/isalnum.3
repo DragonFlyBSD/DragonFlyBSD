@@ -36,7 +36,8 @@
 .Dt ISALNUM 3
 .Os
 .Sh NAME
-.Nm isalnum
+.Nm isalnum ,
+.Nm isalnum_l
 .Nd alphanumeric character test
 .Sh LIBRARY
 .Lb libc
@@ -44,6 +45,8 @@
 .In ctype.h
 .Ft int
 .Fn isalnum "int c"
+.In ctype.h
+.In xlocale.h
 .Ft int
 .Fn isalnum_l "int c" "locale_t loc"
 .Sh DESCRIPTION
@@ -99,6 +102,7 @@ The
 function should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
+.Xr ctype_l 3 ,
 .Xr isalpha 3 ,
 .Xr isdigit 3 ,
 .Xr iswalnum 3 ,
