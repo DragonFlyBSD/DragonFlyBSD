@@ -1146,4 +1146,3 @@ chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 	spin_unlock(&uip->ui_lock);
 	return (1);
 }
-

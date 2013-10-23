@@ -327,7 +327,7 @@ prelezomb(struct proc *p)
 int
 inferior(struct proc *p)
 {
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken_shared(&proc_token);
 	while (p != curproc) {
 		if (p->p_pid == 0) {
 			lwkt_reltoken(&proc_token);
@@ -361,7 +361,7 @@ pfind(pid_t pid)
 	/*
 	 * Otherwise find it in the hash table.
 	 */
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken_shared(&proc_token);
 	LIST_FOREACH(p, PIDHASH(pid), p_hash) {
 		if (p->p_pid == pid) {
 			PHOLD(p);
@@ -391,7 +391,7 @@ pfindn(pid_t pid)
 	if (p && p->p_pid == pid)
 		return (p);
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken_shared(&proc_token);
 	LIST_FOREACH(p, PIDHASH(pid), p_hash) {
 		if (p->p_pid == pid) {
 			lwkt_reltoken(&proc_token);
@@ -1012,11 +1012,13 @@ alllwp_scan(int (*callback)(struct lwp *, void *), void *data)
 	lwkt_gettoken(&proc_token);
 	LIST_FOREACH(p, &allproc, p_list) {
 		PHOLD(p);
+		lwkt_gettoken(&p->p_token);
 		FOREACH_LWP_IN_PROC(lp, p) {
 			LWPHOLD(lp);
 			r = callback(lp, data);
 			LWPRELE(lp);
 		}
+		lwkt_reltoken(&p->p_token);
 		PRELE(p);
 		if (r < 0)
 			break;
@@ -1094,7 +1096,7 @@ zpfind(pid_t pid)
 {
 	struct proc *p;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken_shared(&proc_token);
 	LIST_FOREACH(p, &zombproc, p_list) {
 		if (p->p_pid == pid) {
 			PHOLD(p);
@@ -1118,7 +1120,7 @@ sysctl_out_proc(struct proc *p, struct sysctl_req *req, int flags)
 	int error;
 
 	bzero(&ki, sizeof(ki));
-	lwkt_gettoken(&p->p_token);
+	lwkt_gettoken_shared(&p->p_token);
 	fill_kinfo_proc(p, &ki);
 	if ((flags & KERN_PROC_FLAG_LWP) == 0)
 		skp = 1;
@@ -1190,18 +1192,16 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	 * process from being removed from the allproc list or the zombproc
 	 * list.
 	 */
-	lwkt_gettoken(&proc_token);
 	if (oid == KERN_PROC_PID) {
-		p = pfindn((pid_t)name[0]);
-		if (p == NULL)
-			goto post_threads;
-		if (!PRISON_CHECK(cr1, p->p_ucred))
-			goto post_threads;
-		PHOLD(p);
-		error = sysctl_out_proc(p, req, flags);
-		PRELE(p);
+		p = pfind((pid_t)name[0]);
+		if (p) {
+			if (PRISON_CHECK(cr1, p->p_ucred))
+				error = sysctl_out_proc(p, req, flags);
+			PRELE(p);
+		}
 		goto post_threads;
 	}
+	p = NULL;
 
 	if (!req->oldptr) {
 		/* overestimate by 5 procs */
@@ -1214,6 +1214,9 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			plist = &zombproc;
 		else
 			plist = &allproc;
+
+		lwkt_gettoken_shared(&proc_token);
+
 		LIST_FOREACH(p, plist, p_list) {
 			/*
 			 * Show a user only their processes.
@@ -1264,9 +1267,12 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			PHOLD(p);
 			error = sysctl_out_proc(p, req, flags);
 			PRELE(p);
-			if (error)
+			if (error) {
+				lwkt_reltoken(&proc_token);
 				goto post_threads;
+			}
 		}
+		lwkt_reltoken(&proc_token);
 	}
 
 	/*
@@ -1341,7 +1347,6 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	kfree(marker, M_TEMP);
 
 post_threads:
-	lwkt_reltoken(&proc_token);
 	return (error);
 }
 
@@ -1440,7 +1445,7 @@ sysctl_kern_proc_cwd(SYSCTL_HANDLER_ARGS)
 	p = pfind((pid_t)name[0]);
 	if (p == NULL)
 		goto done;
-	lwkt_gettoken(&p->p_token);
+	lwkt_gettoken_shared(&p->p_token);
 
 	/*
 	 * If we are not allowed to see other args, we certainly shouldn't

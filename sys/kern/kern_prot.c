@@ -87,9 +87,6 @@ sys_getppid(struct getppid_args *uap)
 	return (0);
 }
 
-/*
- * MPSAFE
- */
 int
 sys_lwp_gettid(struct lwp_gettid_args *uap)
 {
@@ -100,8 +97,6 @@ sys_lwp_gettid(struct lwp_gettid_args *uap)
 
 /* 
  * Get process group ID; note that POSIX getpgrp takes no parameter 
- *
- * MPSAFE XXX pgrp
  */
 int
 sys_getpgrp(struct getpgrp_args *uap)
@@ -135,7 +130,6 @@ sys_getpgid(struct getpgid_args *uap)
 		if (pt == NULL)
 			error = ESRCH;
 	}
-	/* XXX MPSAFE on pgrp? */
 	if (error == 0) {
 		lwkt_gettoken_shared(&pt->p_token);
 		uap->sysmsg_result = pt->p_pgrp->pg_id;
@@ -176,8 +170,6 @@ sys_getsid(struct getsid_args *uap)
 
 /*
  * getuid()
- *
- * MPSAFE
  */
 int
 sys_getuid(struct getuid_args *uap)
@@ -193,8 +185,6 @@ sys_getuid(struct getuid_args *uap)
 
 /*
  * geteuid()
- *
- * MPSAFE
  */
 int
 sys_geteuid(struct geteuid_args *uap)
@@ -207,8 +197,6 @@ sys_geteuid(struct geteuid_args *uap)
 
 /*
  * getgid()
- *
- * MPSAFE
  */
 int
 sys_getgid(struct getgid_args *uap)
@@ -226,8 +214,6 @@ sys_getgid(struct getgid_args *uap)
  * Get effective group ID.  The "egid" is groups[0], and could be obtained
  * via getgroups.  This syscall exists because it is somewhat painful to do
  * correctly in a library function.
- *
- * MPSAFE
  */
 int
 sys_getegid(struct getegid_args *uap)
@@ -238,9 +224,6 @@ sys_getegid(struct getegid_args *uap)
 	return (0);
 }
 
-/*
- * MPSAFE
- */
 int
 sys_getgroups(struct getgroups_args *uap)
 {
@@ -377,7 +360,7 @@ sys_setuid(struct setuid_args *uap)
 	uid_t uid;
 	int error;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);
 	cr = p->p_ucred;
 
 	/*
@@ -451,7 +434,7 @@ sys_setuid(struct setuid_args *uap)
 	}
 	error = 0;
 done:
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 	return (error);
 }
 
@@ -463,13 +446,13 @@ sys_seteuid(struct seteuid_args *uap)
 	uid_t euid;
 	int error;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);
 	cr = p->p_ucred;
 	euid = uap->euid;
 	if (euid != cr->cr_ruid &&		/* allow seteuid(getuid()) */
 	    euid != cr->cr_svuid &&		/* allow seteuid(saved uid) */
 	    (error = priv_check_cred(cr, PRIV_CRED_SETEUID, 0))) {
-		lwkt_reltoken(&proc_token);
+		lwkt_reltoken(&p->p_token);
 		return (error);
 	}
 
@@ -481,7 +464,7 @@ sys_seteuid(struct seteuid_args *uap)
 		change_euid(euid);
 		setsugid();
 	}
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 	return (0);
 }
 
@@ -493,7 +476,7 @@ sys_setgid(struct setgid_args *uap)
 	gid_t gid;
 	int error;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);
 	cr = p->p_ucred;
 
 	/*
@@ -563,7 +546,7 @@ sys_setgid(struct setgid_args *uap)
 	}
 	error = 0;
 done:
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 	return (error);
 }
 
@@ -575,7 +558,7 @@ sys_setegid(struct setegid_args *uap)
 	gid_t egid;
 	int error;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);
 	cr = p->p_ucred;
 	egid = uap->egid;
 	if (egid != cr->cr_rgid &&		/* allow setegid(getgid()) */
@@ -590,7 +573,7 @@ sys_setegid(struct setegid_args *uap)
 	}
 	error = 0;
 done:
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 	return (error);
 }
 
@@ -602,7 +585,7 @@ sys_setgroups(struct setgroups_args *uap)
 	u_int ngrp;
 	int error;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);
 	cr = p->p_ucred;
 
 	if ((error = priv_check_cred(cr, PRIV_CRED_SETGROUPS, 0)))
@@ -635,7 +618,7 @@ sys_setgroups(struct setgroups_args *uap)
 	setsugid();
 	error = 0;
 done:
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 	return (error);
 }
 
@@ -647,7 +630,7 @@ sys_setreuid(struct setreuid_args *uap)
 	uid_t ruid, euid;
 	int error;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);
 	cr = p->p_ucred;
 
 	ruid = uap->ruid;
@@ -675,7 +658,7 @@ sys_setreuid(struct setreuid_args *uap)
 	}
 	error = 0;
 done:
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 	return (error);
 }
 
@@ -687,7 +670,7 @@ sys_setregid(struct setregid_args *uap)
 	gid_t rgid, egid;
 	int error;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);
 	cr = p->p_ucred;
 
 	rgid = uap->rgid;
@@ -717,7 +700,7 @@ sys_setregid(struct setregid_args *uap)
 	}
 	error = 0;
 done:
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 	return (error);
 }
 
@@ -733,7 +716,7 @@ sys_setresuid(struct setresuid_args *uap)
 	uid_t ruid, euid, suid;
 	int error;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);
 	cr = p->p_ucred;
 
 	ruid = uap->ruid;
@@ -763,7 +746,7 @@ sys_setresuid(struct setresuid_args *uap)
 	}
 	error = 0;
 done:
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 	return (error);
 }
 
@@ -779,7 +762,7 @@ sys_setresgid(struct setresgid_args *uap)
 	gid_t rgid, egid, sgid;
 	int error;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);
 	cr = p->p_ucred;
 	rgid = uap->rgid;
 	egid = uap->egid;
@@ -811,14 +794,13 @@ sys_setresgid(struct setresgid_args *uap)
 	}
 	error = 0;
 done:
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
 	return (error);
 }
 
 int
 sys_getresuid(struct getresuid_args *uap)
 {
-	struct proc *p = curproc;
 	struct ucred *cr;
 	int error1 = 0, error2 = 0, error3 = 0;
 
@@ -826,9 +808,7 @@ sys_getresuid(struct getresuid_args *uap)
 	 * copyout's can fault synchronously so we cannot use a shared
 	 * token here.
 	 */
-	lwkt_gettoken_shared(&p->p_token);
-	cr = crhold(p->p_ucred);
-	lwkt_reltoken(&p->p_token);
+	cr = curthread->td_ucred;
 	if (uap->ruid)
 		error1 = copyout((caddr_t)&cr->cr_ruid,
 		    (caddr_t)uap->ruid, sizeof(cr->cr_ruid));
@@ -838,13 +818,9 @@ sys_getresuid(struct getresuid_args *uap)
 	if (uap->suid)
 		error3 = copyout((caddr_t)&cr->cr_svuid,
 		    (caddr_t)uap->suid, sizeof(cr->cr_svuid));
-	crfree(cr);
 	return error1 ? error1 : (error2 ? error2 : error3);
 }
 
-/*
- * MPSAFE
- */
 int
 sys_getresgid(struct getresgid_args *uap)
 {
@@ -872,8 +848,6 @@ sys_getresgid(struct getresgid_args *uap)
  * This is significant for procs that start as root and "become"
  * a user without an exec - programs cannot know *everything*
  * that libc *might* have put in their data segment.
- *
- * MPSAFE
  */
 int
 sys_issetugid(struct issetugid_args *uap)
@@ -909,8 +883,6 @@ groupmember(gid_t gid, struct ucred *cred)
  * priv_check_cred() should be used instead of priv_check().
  *
  * Returns 0 or error.
- *
- * MPSAFE
  */
 int
 priv_check(struct thread *td, int priv)
@@ -924,8 +896,6 @@ priv_check(struct thread *td, int priv)
  * Check a credential for privilege.
  *
  * A non-null credential is expected unless NULL_CRED_OKAY is set.
- *
- * MPSAFE
  */
 int
 priv_check_cred(struct ucred *cred, int priv, int flags)
@@ -934,7 +904,7 @@ priv_check_cred(struct ucred *cred, int priv, int flags)
 
 	KASSERT(PRIV_VALID(priv), ("priv_check_cred: invalid privilege"));
 
-	KASSERT(cred != NULL || flags & NULL_CRED_OKAY,
+	KASSERT(cred != NULL || (flags & NULL_CRED_OKAY),
 		("priv_check_cred: NULL cred!"));
 
 	if (cred == NULL) {
@@ -977,18 +947,12 @@ p_trespass(struct ucred *cr1, struct ucred *cr2)
 	return (EPERM);
 }
 
-/*
- * MPSAFE
- */
 static __inline void
 _crinit(struct ucred *cr)
 {
 	cr->cr_ref = 1;
 }
 
-/*
- * MPSAFE
- */
 void
 crinit(struct ucred *cr)
 {
@@ -998,8 +962,6 @@ crinit(struct ucred *cr)
 
 /*
  * Allocate a zeroed cred structure.
- *
- * MPSAFE
  */
 struct ucred *
 crget(void)
@@ -1017,8 +979,6 @@ crget(void)
  *
  * It must be possible to call this routine with spinlocks held, meaning
  * that this routine itself cannot obtain a spinlock.
- *
- * MPSAFE
  */
 struct ucred *
 crhold(struct ucred *cr)
@@ -1035,8 +995,6 @@ crhold(struct ucred *cr)
  * NOTE: because we used atomic_add_int() above, without a spinlock, we
  * must also use atomic_subtract_int() below.  A spinlock is required
  * in crfree() to handle multiple callers racing the refcount to 0.
- *
- * MPSAFE
  */
 void
 crfree(struct ucred *cr)
@@ -1097,33 +1055,6 @@ cratom(struct ucred **pcr)
 	*pcr = newcr;
 	return (newcr);
 }
-
-#if 0	/* no longer used but keep around for a little while */
-/*
- * Copy cred structure to a new one and free the old one.
- *
- * MPSAFE (*cr must be stable)
- */
-struct ucred *
-crcopy(struct ucred *cr)
-{
-	struct ucred *newcr;
-
-	if (cr->cr_ref == 1)
-		return (cr);
-	newcr = crget();
-	*newcr = *cr;
-	if (newcr->cr_uidinfo)
-		uihold(newcr->cr_uidinfo);
-	if (newcr->cr_ruidinfo)
-		uihold(newcr->cr_ruidinfo);
-	if (jailed(newcr))
-		prison_hold(newcr->cr_prison);
-	newcr->cr_ref = 1;
-	crfree(cr);
-	return (newcr);
-}
-#endif
 
 /*
  * Dup cred struct to a new held one.
