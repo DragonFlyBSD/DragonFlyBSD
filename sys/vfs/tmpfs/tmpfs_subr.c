@@ -308,7 +308,7 @@ tmpfs_alloc_dirent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 	nde->td_node = node;
 
 	TMPFS_NODE_LOCK(node);
-	++node->tn_links;	/* also requires mnt_token protection */
+	++node->tn_links;
 	TMPFS_NODE_UNLOCK(node);
 
 	*de = nde;
@@ -337,7 +337,7 @@ tmpfs_free_dirent(struct tmpfs_mount *tmp, struct tmpfs_dirent *de)
 	TMPFS_NODE_LOCK(node);
 	TMPFS_ASSERT_ELOCKED(node);
 	KKASSERT(node->tn_links > 0);
-	node->tn_links--;	/* also requires mnt_token protection */
+	node->tn_links--;
 	TMPFS_NODE_UNLOCK(node);
 
 	kfree(de->td_name, tmp->tm_name_zone);
@@ -591,10 +591,10 @@ tmpfs_dir_attach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 	TMPFS_NODE_LOCK(dnode);
 	if (node && node->tn_type == VDIR) {
 		TMPFS_NODE_LOCK(node);
-		++node->tn_links;	/* also requires mnt_token protection */
+		++node->tn_links;
 		node->tn_status |= TMPFS_NODE_CHANGED;
 		node->tn_dir.tn_parent = dnode;
-		++dnode->tn_links;	/* also requires mnt_token protection */
+		++dnode->tn_links;
 		TMPFS_NODE_UNLOCK(node);
 	}
 	RB_INSERT(tmpfs_dirtree, &dnode->tn_dir.tn_dirtree, de);
@@ -642,8 +642,8 @@ tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
 		TMPFS_NODE_LOCK(dnode);
 		TMPFS_NODE_LOCK(node);
 		KKASSERT(node->tn_dir.tn_parent == dnode);
-		dnode->tn_links--;	/* also requires mnt_token protection */
-		node->tn_links--;	/* also requires mnt_token protection */
+		dnode->tn_links--;
+		node->tn_links--;
 		node->tn_dir.tn_parent = NULL;
 		TMPFS_NODE_UNLOCK(node);
 		TMPFS_NODE_UNLOCK(dnode);
@@ -659,6 +659,8 @@ tmpfs_dir_detach(struct tmpfs_node *dnode, struct tmpfs_dirent *de)
  * within directories.
  *
  * Returns a pointer to the entry when found, otherwise NULL.
+ *
+ * Caller must hold the node locked (shared ok)
  */
 struct tmpfs_dirent *
 tmpfs_dir_lookup(struct tmpfs_node *node, struct tmpfs_node *f,
@@ -676,10 +678,6 @@ tmpfs_dir_lookup(struct tmpfs_node *node, struct tmpfs_node *f,
 	de = RB_FIND(tmpfs_dirtree, &node->tn_dir.tn_dirtree, &wanted);
 
 	KKASSERT(f == NULL || f == de->td_node);
-
-	TMPFS_NODE_LOCK(node);
-	node->tn_status |= TMPFS_NODE_ACCESSED;
-	TMPFS_NODE_UNLOCK(node);
 
 	return de;
 }
@@ -717,11 +715,6 @@ tmpfs_dir_getdotdent(struct tmpfs_node *node, struct uio *uio)
 		if (error == 0)
 			uio->uio_offset = TMPFS_DIRCOOKIE_DOTDOT;
 	}
-
-	TMPFS_NODE_LOCK(node);
-	node->tn_status |= TMPFS_NODE_ACCESSED;
-	TMPFS_NODE_UNLOCK(node);
-
 	return error;
 }
 
@@ -774,11 +767,6 @@ tmpfs_dir_getdotdotdent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 				uio->uio_offset = tmpfs_dircookie(de);
 		}
 	}
-
-	TMPFS_NODE_LOCK(node);
-	node->tn_status |= TMPFS_NODE_ACCESSED;
-	TMPFS_NODE_UNLOCK(node);
-
 	return error;
 }
 
@@ -822,6 +810,7 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
 	off_t startcookie;
 	struct tmpfs_dirent *de;
 
+	TMPFS_NODE_LOCK_SH(node);
 	TMPFS_VALIDATE_DIR(node);
 
 	/* Locate the first directory entry we have to return.  We have cached
@@ -831,11 +820,13 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
 	KKASSERT(startcookie != TMPFS_DIRCOOKIE_DOT);
 	KKASSERT(startcookie != TMPFS_DIRCOOKIE_DOTDOT);
 	if (startcookie == TMPFS_DIRCOOKIE_EOF) {
+		TMPFS_NODE_UNLOCK(node);
 		return 0;
 	} else {
 		de = tmpfs_dir_lookupbycookie(node, startcookie);
 	}
 	if (de == NULL) {
+		TMPFS_NODE_UNLOCK(node);
 		return EINVAL;
 	}
 
@@ -911,7 +902,7 @@ tmpfs_dir_getdents(struct tmpfs_node *node, struct uio *uio, off_t *cntp)
 		node->tn_dir.tn_readdir_lastn = uio->uio_offset = tmpfs_dircookie(de);
 		node->tn_dir.tn_readdir_lastp = de;
 	}
-	node->tn_status |= TMPFS_NODE_ACCESSED;
+	TMPFS_NODE_UNLOCK(node);
 
 	return error;
 }
@@ -945,10 +936,13 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 	node = VP_TO_TMPFS_NODE(vp);
 	tmp = VFS_TO_TMPFS(vp->v_mount);
 
-	/* Convert the old and new sizes to the number of pages needed to
+	/*
+	 * Convert the old and new sizes to the number of pages needed to
 	 * store them.  It may happen that we do not need to do anything
 	 * because the last allocated page can accommodate the change on
-	 * its own. */
+	 * its own.
+	 */
+	TMPFS_NODE_LOCK(node);
 	oldsize = node->tn_size;
 	oldpages = round_page64(oldsize) / PAGE_SIZE;
 	KKASSERT(oldpages == node->tn_reg.tn_aobj_pages);
@@ -956,18 +950,17 @@ tmpfs_reg_resize(struct vnode *vp, off_t newsize, int trivial)
 
 	if (newpages > oldpages &&
 	   tmp->tm_pages_used + newpages - oldpages > tmp->tm_pages_max) {
+		TMPFS_NODE_UNLOCK(node);
 		error = ENOSPC;
 		goto out;
 	}
+	node->tn_reg.tn_aobj_pages = newpages;
+	node->tn_size = newsize;
+	TMPFS_NODE_UNLOCK(node);
 
 	TMPFS_LOCK(tmp);
 	tmp->tm_pages_used += (newpages - oldpages);
 	TMPFS_UNLOCK(tmp);
-
-	TMPFS_NODE_LOCK(node);
-	node->tn_reg.tn_aobj_pages = newpages;
-	node->tn_size = newsize;
-	TMPFS_NODE_UNLOCK(node);
 
 	/*
 	 * When adjusting the vnode filesize and its VM object we must

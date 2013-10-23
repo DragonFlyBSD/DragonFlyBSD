@@ -89,16 +89,15 @@ tmpfs_nresolve(struct vop_nresolve_args *v)
 	struct namecache *ncp = v->a_nch->ncp;
 	struct tmpfs_node *tnode;
 	struct mount *mp;
-
-	int error;
 	struct tmpfs_dirent *de;
 	struct tmpfs_node *dnode;
+	int error;
 
 	mp = dvp->v_mount;
-	lwkt_gettoken(&mp->mnt_token);
 
 	dnode = VP_TO_TMPFS_DIR(dvp);
 
+	TMPFS_NODE_LOCK_SH(dnode);
 	de = tmpfs_dir_lookup(dnode, NULL, ncp);
 	if (de == NULL) {
 		error = ENOENT;
@@ -115,6 +114,14 @@ tmpfs_nresolve(struct vop_nresolve_args *v)
 	}
 
 out:
+	TMPFS_NODE_UNLOCK(dnode);
+
+	if ((dnode->tn_status & TMPFS_NODE_ACCESSED) == 0) {
+		TMPFS_NODE_LOCK(dnode);
+		dnode->tn_status |= TMPFS_NODE_ACCESSED;
+		TMPFS_NODE_UNLOCK(dnode);
+	}
+
 	/*
 	 * Store the result of this lookup in the cache.  Avoid this if the
 	 * request was for creation, as it does not improve timings on
@@ -127,8 +134,6 @@ out:
 	} else if (error == ENOENT) {
 		cache_setvp(v->a_nch, NULL);
 	}
-
-	lwkt_reltoken(&mp->mnt_token);
 	return (error);
 }
 
@@ -145,14 +150,11 @@ tmpfs_nlookupdotdot(struct vop_nlookupdotdot_args *v)
 	*vpp = NULL;
 
 	mp = dvp->v_mount;
-	lwkt_gettoken(&mp->mnt_token);
 
 	/* Check accessibility of requested node as a first step. */
 	error = VOP_ACCESS(dvp, VEXEC, cred);
-	if (error != 0) {
-		lwkt_reltoken(&mp->mnt_token);
+	if (error != 0)
 		return error;
-	}
 
 	if (dnode->tn_dir.tn_parent != NULL) {
 		/* Allocate a new vnode on the matching entry. */
@@ -162,9 +164,6 @@ tmpfs_nlookupdotdot(struct vop_nlookupdotdot_args *v)
 		if (*vpp)
 			vn_unlock(*vpp);
 	}
-
-	lwkt_reltoken(&mp->mnt_token);
-
 	return (*vpp == NULL) ? ENOENT : 0;
 }
 
@@ -182,7 +181,6 @@ tmpfs_ncreate(struct vop_ncreate_args *v)
 	int error;
 
 	mp = dvp->v_mount;
-	lwkt_gettoken(&mp->mnt_token);
 
 	KKASSERT(vap->va_type == VREG || vap->va_type == VSOCK);
 
@@ -192,9 +190,6 @@ tmpfs_ncreate(struct vop_ncreate_args *v)
 		cache_setvp(v->a_nch, *vpp);
 		tmpfs_knote(dvp, NOTE_WRITE);
 	}
-
-	lwkt_reltoken(&mp->mnt_token);
-
 	return (error);
 }
 /* --------------------------------------------------------------------- */
@@ -207,14 +202,10 @@ tmpfs_nmknod(struct vop_nmknod_args *v)
 	struct namecache *ncp = v->a_nch->ncp;
 	struct vattr *vap = v->a_vap;
 	struct ucred *cred = v->a_cred;
-	struct mount *mp = dvp->v_mount;
 	int error;
-
-	lwkt_gettoken(&mp->mnt_token);
 
 	if (vap->va_type != VBLK && vap->va_type != VCHR &&
 	    vap->va_type != VFIFO) {
-		lwkt_reltoken(&mp->mnt_token);
 		return (EINVAL);
 	}
 
@@ -224,9 +215,6 @@ tmpfs_nmknod(struct vop_nmknod_args *v)
 		cache_setvp(v->a_nch, *vpp);
 		tmpfs_knote(dvp, NOTE_WRITE);
 	}
-
-	lwkt_reltoken(&mp->mnt_token);
-
 	return error;
 }
 
@@ -237,11 +225,9 @@ tmpfs_open(struct vop_open_args *v)
 {
 	struct vnode *vp = v->a_vp;
 	int mode = v->a_mode;
-	struct mount *mp = vp->v_mount;
 	struct tmpfs_node *node;
 	int error;
 
-	lwkt_gettoken(&mp->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 #if 0
@@ -260,7 +246,6 @@ tmpfs_open(struct vop_open_args *v)
 		error = (vop_stdopen(v));
 	}
 
-	lwkt_reltoken(&mp->mnt_token);
 	return (error);
 }
 
@@ -273,7 +258,6 @@ tmpfs_close(struct vop_close_args *v)
 	struct tmpfs_node *node;
 	int error;
 
-	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	if (node->tn_links > 0) {
@@ -285,8 +269,6 @@ tmpfs_close(struct vop_close_args *v)
 	}
 
 	error = vop_stdclose(v);
-
-	lwkt_reltoken(&vp->v_mount->mnt_token);
 
 	return (error);
 }
@@ -300,7 +282,6 @@ tmpfs_access(struct vop_access_args *v)
 	int error;
 	struct tmpfs_node *node;
 
-	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	switch (vp->v_type) {
@@ -337,9 +318,7 @@ tmpfs_access(struct vop_access_args *v)
 
 	error = vop_helper_access(v, node->tn_uid, node->tn_gid,
 			          node->tn_mode, 0);
-
 out:
-	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return error;
 }
 
@@ -352,11 +331,11 @@ tmpfs_getattr(struct vop_getattr_args *v)
 	struct vattr *vap = v->a_vap;
 	struct tmpfs_node *node;
 
-	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	tmpfs_update(vp);
 
+	TMPFS_NODE_LOCK_SH(node);
 	vap->va_type = vp->v_type;
 	vap->va_mode = node->tn_mode;
 	vap->va_nlink = node->tn_links;
@@ -374,15 +353,13 @@ tmpfs_getattr(struct vop_getattr_args *v)
 	vap->va_ctime.tv_nsec = node->tn_ctimensec;
 	vap->va_gen = node->tn_gen;
 	vap->va_flags = node->tn_flags;
-	if (vp->v_type == VBLK || vp->v_type == VCHR)
-	{
+	if (vp->v_type == VBLK || vp->v_type == VCHR) {
 		vap->va_rmajor = umajor(node->tn_rdev);
 		vap->va_rminor = uminor(node->tn_rdev);
 	}
 	vap->va_bytes = round_page(node->tn_size);
 	vap->va_filerev = 0;
-
-	lwkt_reltoken(&vp->v_mount->mnt_token);
+	TMPFS_NODE_UNLOCK(node);
 
 	return 0;
 }
@@ -399,7 +376,7 @@ tmpfs_setattr(struct vop_setattr_args *v)
 	int error = 0;
 	int kflags = 0;
 
-	lwkt_gettoken(&vp->v_mount->mnt_token);
+	TMPFS_NODE_LOCK(node);
 	if (error == 0 && (vap->va_flags != VNOVAL)) {
 		error = tmpfs_chflags(vp, vap->va_flags, cred);
 		kflags |= NOTE_ATTRIB;
@@ -433,13 +410,14 @@ tmpfs_setattr(struct vop_setattr_args *v)
 		kflags |= NOTE_ATTRIB;
 	}
 
-	/* Update the node times.  We give preference to the error codes
+	/*
+	 * Update the node times.  We give preference to the error codes
 	 * generated by this function rather than the ones that may arise
-	 * from tmpfs_update. */
+	 * from tmpfs_update.
+	 */
 	tmpfs_update(vp);
+	TMPFS_NODE_UNLOCK(node);
 	tmpfs_knote(vp, kflags);
-
-	lwkt_reltoken(&vp->v_mount->mnt_token);
 
 	return (error);
 }
@@ -456,7 +434,6 @@ tmpfs_fsync(struct vop_fsync_args *v)
 	struct tmpfs_node *node;
 	struct vnode *vp = v->a_vp;
 
-	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	tmpfs_update(vp);
@@ -468,8 +445,6 @@ tmpfs_fsync(struct vop_fsync_args *v)
 				vfsync(v->a_vp, v->a_waitfor, 1, NULL, NULL);
 		}
 	}
-
-	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return 0;
 }
 
@@ -523,15 +498,12 @@ tmpfs_read (struct vop_read_args *ap)
 		base_offset = (off_t)uio->uio_offset - offset;
 		bp = getcacheblk(vp, base_offset, TMPFS_BLKSIZE, 0);
 		if (bp == NULL) {
-			lwkt_gettoken(&vp->v_mount->mnt_token);
 			error = bread(vp, base_offset, TMPFS_BLKSIZE, &bp);
 			if (error) {
 				brelse(bp);
-				lwkt_reltoken(&vp->v_mount->mnt_token);
 				kprintf("tmpfs_read bread error %d\n", error);
 				break;
 			}
-			lwkt_reltoken(&vp->v_mount->mnt_token);
 
 			/*
 			 * tmpfs pretty much fiddles directly with the VM
@@ -565,10 +537,11 @@ tmpfs_read (struct vop_read_args *ap)
 	}
 
 finished:
-	TMPFS_NODE_LOCK(node);
-	node->tn_status |= TMPFS_NODE_ACCESSED;
-	TMPFS_NODE_UNLOCK(node);
-
+	if ((node->tn_status & TMPFS_NODE_ACCESSED) == 0) {
+		TMPFS_NODE_LOCK(node);
+		node->tn_status |= TMPFS_NODE_ACCESSED;
+		TMPFS_NODE_UNLOCK(node);
+	}
 	return (error);
 }
 
@@ -602,8 +575,6 @@ tmpfs_write (struct vop_write_args *ap)
 		return (EINVAL);
 	seqcount = ap->a_ioflag >> 16;
 
-	lwkt_gettoken(&vp->v_mount->mnt_token);
-
 	oldsize = node->tn_size;
 	if (ap->a_ioflag & IO_APPEND)
 		uio->uio_offset = node->tn_size;
@@ -613,7 +584,6 @@ tmpfs_write (struct vop_write_args *ap)
 	 */
 	if (uio->uio_offset + uio->uio_resid >
 	  VFS_TO_TMPFS(vp->v_mount)->tm_maxfilesize) {
-		lwkt_reltoken(&vp->v_mount->mnt_token);
 		return (EFBIG);
 	}
 
@@ -623,12 +593,10 @@ tmpfs_write (struct vop_write_args *ap)
 	if (vp->v_type == VREG && td != NULL && td->td_lwp != NULL) {
 		error = kern_getrlimit(RLIMIT_FSIZE, &limit);
 		if (error != 0) {
-			lwkt_reltoken(&vp->v_mount->mnt_token);
 			return error;
 		}
 		if (uio->uio_offset + uio->uio_resid > limit.rlim_cur) {
 			ksignal(td->td_proc, SIGXFSZ);
-			lwkt_reltoken(&vp->v_mount->mnt_token);
 			return (EFBIG);
 		}
 	}
@@ -792,10 +760,8 @@ tmpfs_write (struct vop_write_args *ap)
 	}
 	TMPFS_NODE_UNLOCK(node);
 done:
-
 	tmpfs_knote(vp, kflags);
 
-	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return(error);
 }
 
@@ -806,11 +772,8 @@ tmpfs_advlock (struct vop_advlock_args *ap)
 	struct vnode *vp = ap->a_vp;
 	int error;
 
-	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
-
 	error = (lf_advlock(ap, &node->tn_advlock, node->tn_size));
-	lwkt_reltoken(&vp->v_mount->mnt_token);
 
 	return (error);
 }
@@ -841,7 +804,6 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 		return(0);
 	}
 
-	lwkt_gettoken(&vp->v_mount->mnt_token);
 	node = VP_TO_TMPFS_NODE(vp);
 
 	uobj = node->tn_reg.tn_aobj;
@@ -864,8 +826,6 @@ tmpfs_strategy(struct vop_strategy_args *ap)
 		nbio->bio_offset = bio->bio_offset;
 		swap_pager_strategy(uobj, nbio);
 	}
-
-	lwkt_reltoken(&vp->v_mount->mnt_token);
 	return 0;
 }
 
@@ -931,8 +891,6 @@ tmpfs_nremove(struct vop_nremove_args *v)
 
 	mp = dvp->v_mount;
 
-	lwkt_gettoken(&mp->mnt_token);
-
 	/*
 	 * We have to acquire the vp from v->a_nch because we will likely
 	 * unresolve the namecache entry, and a vrele/vput is needed to
@@ -949,12 +907,14 @@ tmpfs_nremove(struct vop_nremove_args *v)
 
 	if (vp->v_type == VDIR) {
 		error = EISDIR;
-		goto out;
+		goto out2;
 	}
 
 	dnode = VP_TO_TMPFS_DIR(dvp);
 	node = VP_TO_TMPFS_NODE(vp);
 	tmp = VFS_TO_TMPFS(vp->v_mount);
+
+	TMPFS_NODE_LOCK(dnode);
 	de = tmpfs_dir_lookup(dnode, node, ncp);
 	if (de == NULL) {
 		error = ENOENT;
@@ -986,12 +946,14 @@ tmpfs_nremove(struct vop_nremove_args *v)
 
 	cache_unlink(v->a_nch);
 	tmpfs_knote(vp, NOTE_DELETE);
-	tmpfs_knote(dvp, NOTE_WRITE);
 	error = 0;
 
 out:
+	TMPFS_NODE_UNLOCK(dnode);
+	if (error == 0)
+		tmpfs_knote(dvp, NOTE_WRITE);
+out2:
 	vrele(vp);
-	lwkt_reltoken(&mp->mnt_token);
 
 	return error;
 }
@@ -1014,11 +976,11 @@ tmpfs_nlink(struct vop_nlink_args *v)
 		return(EXDEV);
 	mp = dvp->v_mount;
 
-	lwkt_gettoken(&mp->mnt_token);
 	KKASSERT(dvp != vp); /* XXX When can this be false? */
 
 	node = VP_TO_TMPFS_NODE(vp);
 	dnode = VP_TO_TMPFS_NODE(dvp);
+	TMPFS_NODE_LOCK(dnode);
 
 	/* XXX: Why aren't the following two tests done by the caller? */
 
@@ -1037,7 +999,7 @@ tmpfs_nlink(struct vop_nlink_args *v)
 	/* Ensure that we do not overflow the maximum number of links imposed
 	 * by the system. */
 	KKASSERT(node->tn_links <= LINK_MAX);
-	if (node->tn_links == LINK_MAX) {
+	if (node->tn_links >= LINK_MAX) {
 		error = EMLINK;
 		goto out;
 	}
@@ -1067,11 +1029,12 @@ tmpfs_nlink(struct vop_nlink_args *v)
 	tmpfs_knote(vp, NOTE_LINK);
 	cache_setunresolved(v->a_nch);
 	cache_setvp(v->a_nch, vp);
-	tmpfs_knote(dvp, NOTE_WRITE);
 	error = 0;
 
 out:
-	lwkt_reltoken(&mp->mnt_token);
+	TMPFS_NODE_UNLOCK(dnode);
+	if (error == 0)
+		tmpfs_knote(dvp, NOTE_WRITE);
 	return error;
 }
 
@@ -1100,7 +1063,6 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	mp = fdvp->v_mount;
 	KKASSERT(fdvp->v_mount == fvp->v_mount);
 
-	lwkt_gettoken(&mp->mnt_token);
 	/*
 	 * Because tvp can get overwritten we have to vget it instead of
 	 * just vref or use it, otherwise it's VINACTIVE flag may not get
@@ -1133,7 +1095,9 @@ tmpfs_nrename(struct vop_nrename_args *v)
 
 	fdnode = VP_TO_TMPFS_DIR(fdvp);
 	fnode = VP_TO_TMPFS_NODE(fvp);
+	TMPFS_NODE_LOCK(fdnode);
 	de = tmpfs_dir_lookup(fdnode, fnode, fncp);
+	TMPFS_NODE_UNLOCK(fdnode);	/* XXX depend on namecache lock */
 
 	/* Avoid manipulating '.' and '..' entries. */
 	if (de == NULL) {
@@ -1232,8 +1196,10 @@ tmpfs_nrename(struct vop_nrename_args *v)
 	 */
 	if (tvp != NULL) {
 		/* Remove the old entry from the target directory. */
+		TMPFS_NODE_LOCK(tdnode);
 		tde = tmpfs_dir_lookup(tdnode, tnode, tncp);
 		tmpfs_dir_detach(tdnode, tde);
+		TMPFS_NODE_UNLOCK(tdnode);
 		tmpfs_knote(tdnode->tn_vnode, NOTE_DELETE);
 
 		/*
@@ -1278,13 +1244,9 @@ tmpfs_nrename(struct vop_nrename_args *v)
 
 out_locked:
 	;
-
 out:
 	if (tvp)
 		vrele(tvp);
-
-	lwkt_reltoken(&mp->mnt_token);
-
 	return error;
 }
 
@@ -1303,7 +1265,6 @@ tmpfs_nmkdir(struct vop_nmkdir_args *v)
 
 	mp = dvp->v_mount;
 
-	lwkt_gettoken(&mp->mnt_token);
 	KKASSERT(vap->va_type == VDIR);
 
 	error = tmpfs_alloc_file(dvp, vpp, vap, ncp, cred, NULL);
@@ -1312,9 +1273,6 @@ tmpfs_nmkdir(struct vop_nmkdir_args *v)
 		cache_setvp(v->a_nch, *vpp);
 		tmpfs_knote(dvp, NOTE_WRITE | NOTE_LINK);
 	}
-
-	lwkt_reltoken(&mp->mnt_token);
-
 	return error;
 }
 
@@ -1334,7 +1292,6 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	int error;
 
 	mp = dvp->v_mount;
-	lwkt_gettoken(&mp->mnt_token);
 
 	/*
 	 * We have to acquire the vp from v->a_nch because we will likely
@@ -1361,12 +1318,14 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	dnode = VP_TO_TMPFS_DIR(dvp);
 	node = VP_TO_TMPFS_DIR(vp);
 
-	/* Directories with more than two entries ('.' and '..') cannot be
-	 * removed. */
-	 if (node->tn_size > 0) {
-		 error = ENOTEMPTY;
-		 goto out;
-	 }
+	/*
+	 * Directories with more than two entries ('.' and '..') cannot
+	 * be removed.
+	 */
+	if (node->tn_size > 0) {
+		error = ENOTEMPTY;
+		goto out;
+	}
 
 	if ((dnode->tn_flags & APPEND)
 	    || (node->tn_flags & (NOUNLINK | IMMUTABLE | APPEND))) {
@@ -1374,27 +1333,31 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 		goto out;
 	}
 
-	/* This invariant holds only if we are not trying to remove "..".
-	  * We checked for that above so this is safe now. */
+	/*
+	 * This invariant holds only if we are not trying to
+	 * remove "..".  We checked for that above so this is safe now.
+	 */
 	KKASSERT(node->tn_dir.tn_parent == dnode);
 
-	/* Get the directory entry associated with node (vp).  This was
-	 * filled by tmpfs_lookup while looking up the entry. */
+	/*
+	 * Get the directory entry associated with node (vp).  This
+	 * was filled by tmpfs_lookup while looking up the entry.
+	 */
+	TMPFS_NODE_LOCK(dnode);
 	de = tmpfs_dir_lookup(dnode, node, ncp);
-	KKASSERT(TMPFS_DIRENT_MATCHES(de,
-	    ncp->nc_name,
-	    ncp->nc_nlen));
+	KKASSERT(TMPFS_DIRENT_MATCHES(de, ncp->nc_name, ncp->nc_nlen));
 
 	/* Check flags to see if we are allowed to remove the directory. */
 	if ((dnode->tn_flags & APPEND) ||
 	    node->tn_flags & (NOUNLINK | IMMUTABLE | APPEND)) {
 		error = EPERM;
+		TMPFS_NODE_UNLOCK(dnode);
 		goto out;
 	}
 
-
 	/* Detach the directory entry from the directory (dnode). */
 	tmpfs_dir_detach(dnode, de);
+	TMPFS_NODE_UNLOCK(dnode);
 
 	/* No vnode should be allocated for this entry from this point */
 	TMPFS_NODE_LOCK(node);
@@ -1406,11 +1369,11 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 	 * Must set parent linkage to NULL (tested by ncreate to disallow
 	 * the creation of new files/dirs in a deleted directory)
 	 */
-	node->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED | \
-	    TMPFS_NODE_MODIFIED;
+	node->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
+			   TMPFS_NODE_MODIFIED;
 
-	dnode->tn_status |= TMPFS_NODE_ACCESSED | \
-	    TMPFS_NODE_CHANGED | TMPFS_NODE_MODIFIED;
+	dnode->tn_status |= TMPFS_NODE_ACCESSED | TMPFS_NODE_CHANGED |
+			    TMPFS_NODE_MODIFIED;
 
 	TMPFS_NODE_UNLOCK(dnode);
 	TMPFS_NODE_UNLOCK(node);
@@ -1435,8 +1398,6 @@ tmpfs_nrmdir(struct vop_nrmdir_args *v)
 out:
 	vrele(vp);
 
-	lwkt_reltoken(&mp->mnt_token);
-
 	return error;
 }
 
@@ -1451,10 +1412,8 @@ tmpfs_nsymlink(struct vop_nsymlink_args *v)
 	struct vattr *vap = v->a_vap;
 	struct ucred *cred = v->a_cred;
 	char *target = v->a_target;
-	struct mount *mp = dvp->v_mount;
 	int error;
 
-	lwkt_gettoken(&mp->mnt_token);
 	vap->va_type = VLNK;
 	error = tmpfs_alloc_file(dvp, vpp, vap, ncp, cred, target);
 	if (error == 0) {
@@ -1462,9 +1421,6 @@ tmpfs_nsymlink(struct vop_nsymlink_args *v)
 		cache_setunresolved(v->a_nch);
 		cache_setvp(v->a_nch, *vpp);
 	}
-
-	lwkt_reltoken(&mp->mnt_token);
-
 	return error;
 }
 
@@ -1483,13 +1439,9 @@ tmpfs_readdir(struct vop_readdir_args *v)
 	off_t startoff;
 	off_t cnt = 0;
 	struct tmpfs_node *node;
-	struct mount *mp = vp->v_mount;
-
-	lwkt_gettoken(&mp->mnt_token);
 
 	/* This operation only makes sense on directory nodes. */
 	if (vp->v_type != VDIR) {
-		lwkt_reltoken(&mp->mnt_token);
 		return ENOTDIR;
 	}
 
@@ -1499,18 +1451,24 @@ tmpfs_readdir(struct vop_readdir_args *v)
 
 	if (uio->uio_offset == TMPFS_DIRCOOKIE_DOT) {
 		error = tmpfs_dir_getdotdent(node, uio);
-		if (error != 0)
+		if (error != 0) {
+			TMPFS_NODE_LOCK_SH(node);
 			goto outok;
+		}
 		cnt++;
 	}
 
 	if (uio->uio_offset == TMPFS_DIRCOOKIE_DOTDOT) {
+		/* may lock parent, cannot hold node lock */
 		error = tmpfs_dir_getdotdotdent(tmp, node, uio);
-		if (error != 0)
+		if (error != 0) {
+			TMPFS_NODE_LOCK_SH(node);
 			goto outok;
+		}
 		cnt++;
 	}
 
+	TMPFS_NODE_LOCK_SH(node);
 	error = tmpfs_dir_getdents(node, uio, &cnt);
 
 outok:
@@ -1552,14 +1510,17 @@ outok:
 				else
 					off = tmpfs_dircookie(de);
 			}
-
 			(*cookies)[i] = off;
 		}
 		KKASSERT(uio->uio_offset == off);
 	}
+	TMPFS_NODE_UNLOCK(node);
 
-	lwkt_reltoken(&mp->mnt_token);
-
+	if ((node->tn_status & TMPFS_NODE_ACCESSED) == 0) {
+		TMPFS_NODE_LOCK(node);
+		node->tn_status |= TMPFS_NODE_ACCESSED;
+		TMPFS_NODE_UNLOCK(node);
+	}
 	return error;
 }
 
@@ -1570,25 +1531,22 @@ tmpfs_readlink(struct vop_readlink_args *v)
 {
 	struct vnode *vp = v->a_vp;
 	struct uio *uio = v->a_uio;
-	struct mount *mp = vp->v_mount;
 	int error;
 	struct tmpfs_node *node;
-
-	lwkt_gettoken(&mp->mnt_token);
 
 	KKASSERT(uio->uio_offset == 0);
 	KKASSERT(vp->v_type == VLNK);
 
 	node = VP_TO_TMPFS_NODE(vp);
-
-	error = uiomove(node->tn_link, MIN(node->tn_size, uio->uio_resid),
-	    uio);
-	TMPFS_NODE_LOCK(node);
-	node->tn_status |= TMPFS_NODE_ACCESSED;
+	TMPFS_NODE_LOCK_SH(node);
+	error = uiomove(node->tn_link,
+			MIN(node->tn_size, uio->uio_resid), uio);
 	TMPFS_NODE_UNLOCK(node);
-
-	lwkt_reltoken(&mp->mnt_token);
-
+	if ((node->tn_status & TMPFS_NODE_ACCESSED) == 0) {
+		TMPFS_NODE_LOCK(node);
+		node->tn_status |= TMPFS_NODE_ACCESSED;
+		TMPFS_NODE_UNLOCK(node);
+	}
 	return error;
 }
 
@@ -1797,11 +1755,14 @@ static int filt_tmpfswrite(struct knote *kn, long hint);
 static int filt_tmpfsvnode(struct knote *kn, long hint);
 
 static struct filterops tmpfsread_filtops =
-	{ FILTEROP_ISFD, NULL, filt_tmpfsdetach, filt_tmpfsread };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_tmpfsdetach, filt_tmpfsread };
 static struct filterops tmpfswrite_filtops =
-	{ FILTEROP_ISFD, NULL, filt_tmpfsdetach, filt_tmpfswrite };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_tmpfsdetach, filt_tmpfswrite };
 static struct filterops tmpfsvnode_filtops =
-	{ FILTEROP_ISFD, NULL, filt_tmpfsdetach, filt_tmpfsvnode };
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_tmpfsdetach, filt_tmpfsvnode };
 
 static int
 tmpfs_kqfilter (struct vop_kqfilter_args *ap)
@@ -1853,18 +1814,17 @@ filt_tmpfsread(struct knote *kn, long hint)
 	/*
 	 * Interlock against MP races when performing this function.
 	 */
-	lwkt_gettoken(&vp->v_mount->mnt_token);
+	TMPFS_NODE_LOCK_SH(node);
 	off = node->tn_size - kn->kn_fp->f_offset;
 	kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
 	if (kn->kn_sfflags & NOTE_OLDAPI) {
-		lwkt_reltoken(&vp->v_mount->mnt_token);
+		TMPFS_NODE_UNLOCK(node);
 		return(1);
 	}
-
 	if (kn->kn_data == 0) {
 		kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
 	}
-	lwkt_reltoken(&vp->v_mount->mnt_token);
+	TMPFS_NODE_UNLOCK(node);
 	return (kn->kn_data != 0);
 }
 

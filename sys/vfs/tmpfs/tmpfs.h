@@ -208,7 +208,7 @@ struct tmpfs_node {
 	gid_t			tn_gid;
 	mode_t			tn_mode;
 	int			tn_flags;
-	nlink_t			tn_links;   /* requires mnt_token protection */
+	nlink_t			tn_links;
 	int32_t			tn_atime;
 	int32_t			tn_atimensec;
 	int32_t			tn_mtime;
@@ -314,6 +314,7 @@ LIST_HEAD(tmpfs_node_list, tmpfs_node);
 #define tn_fifo tn_spec.tn_fifo
 
 #define TMPFS_NODE_LOCK(node) lockmgr(&(node)->tn_interlock, LK_EXCLUSIVE|LK_RETRY)
+#define TMPFS_NODE_LOCK_SH(node) lockmgr(&(node)->tn_interlock, LK_SHARED|LK_RETRY)
 #define TMPFS_NODE_UNLOCK(node) lockmgr(&(node)->tn_interlock, LK_RELEASE)
 #define TMPFS_NODE_MTX(node) (&(node)->tn_interlock)
 

@@ -329,7 +329,10 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 		/*
 		 * tn_links is mnt_token protected
 		 */
+		TMPFS_NODE_LOCK(node);
 		++node->tn_links;
+		TMPFS_NODE_UNLOCK(node);
+
 		while (node->tn_type == VREG && node->tn_vnode) {
 			vp = node->tn_vnode;
 			vhold(vp);
@@ -356,7 +359,10 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 				break;
 			/* retry */
 		}
+
+		TMPFS_NODE_LOCK(node);
 		--node->tn_links;
+		TMPFS_NODE_UNLOCK(node);
 	}
 
 	/*
@@ -380,10 +386,10 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	 * No vnodes should remain after the vflush above.
 	 */
 	LIST_FOREACH(node, &tmp->tm_nodes_used, tn_entries) {
-		++node->tn_links;	/* mnt_token protected */
 		lwkt_yield();
-		TMPFS_NODE_LOCK(node);
 
+		TMPFS_NODE_LOCK(node);
+		++node->tn_links;
 		if (node->tn_type == VDIR) {
 			struct tmpfs_dirent *de;
 
@@ -394,8 +400,8 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 		}
 		KKASSERT(node->tn_vnode == NULL);
 
+		--node->tn_links;
 		TMPFS_NODE_UNLOCK(node);
-		--node->tn_links;	/* mnt_token protected */
 	}
 
 	/*
@@ -403,7 +409,9 @@ tmpfs_unmount(struct mount *mp, int mntflags)
 	 * we bumped in the mount code.
 	 */
 	KKASSERT(tmp->tm_root);
-	--tmp->tm_root->tn_links;	/* mnt_token protected */
+	TMPFS_NODE_LOCK(tmp->tm_root);
+	--tmp->tm_root->tn_links;
+	TMPFS_NODE_UNLOCK(tmp->tm_root);
 
 	/*
 	 * At this point all nodes, including the root node, should have a
