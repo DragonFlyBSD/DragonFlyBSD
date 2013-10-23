@@ -46,6 +46,7 @@
 #include <sys/domain.h>
 #include <sys/protosw.h>
 #include <sys/errno.h>
+#include <sys/socketvar2.h>
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
@@ -413,6 +414,7 @@ key_attach(netmsg_t msg)
 	 */
 	lwkt_gettoken(&key_token);
 	so->so_pcb = (caddr_t)kp;
+	soreference(so);	/* so_pcb assignment */
 
 	netmsg_init(&smsg.base, so, &netisr_adone_rport, 0,
 		    raw_usrreqs.pru_attach);
@@ -426,6 +428,7 @@ key_attach(netmsg_t msg)
 	kp = (struct keycb *)sotorawcb(so);
 	if (error) {
 		kfree(kp, M_PCB);
+		atomic_add_int(&so->so_refs, -1);
 		so->so_pcb = (caddr_t) 0;
 		lwkt_reltoken(&key_token);
 		goto out;
