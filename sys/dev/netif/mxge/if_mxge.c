@@ -91,17 +91,18 @@ static int mxge_intr_coal_delay = MXGE_INTR_COAL_DELAY;
 static int mxge_deassert_wait = 1;
 static int mxge_flow_control = 1;
 static int mxge_ticks;
-static int mxge_max_slices = 1;
+static int mxge_num_slices = 1;
 static int mxge_always_promisc = 0;
 static int mxge_throttle = 0;
 static int mxge_msi_enable = 1;
+static int mxge_msix_enable = 1;
 
 static const char *mxge_fw_unaligned = "mxge_ethp_z8e";
 static const char *mxge_fw_aligned = "mxge_eth_z8e";
 static const char *mxge_fw_rss_aligned = "mxge_rss_eth_z8e";
 static const char *mxge_fw_rss_unaligned = "mxge_rss_ethp_z8e";
 
-TUNABLE_INT("hw.mxge.max_slices", &mxge_max_slices);
+TUNABLE_INT("hw.mxge.num_slices", &mxge_num_slices);
 TUNABLE_INT("hw.mxge.flow_control_enabled", &mxge_flow_control);
 TUNABLE_INT("hw.mxge.intr_coal_delay", &mxge_intr_coal_delay);	
 TUNABLE_INT("hw.mxge.nvidia_ecrc_enable", &mxge_nvidia_ecrc_enable);	
@@ -111,11 +112,17 @@ TUNABLE_INT("hw.mxge.ticks", &mxge_ticks);
 TUNABLE_INT("hw.mxge.always_promisc", &mxge_always_promisc);
 TUNABLE_INT("hw.mxge.throttle", &mxge_throttle);
 TUNABLE_INT("hw.mxge.msi.enable", &mxge_msi_enable);
+TUNABLE_INT("hw.mxge.msix.enable", &mxge_msix_enable);
 
 static int mxge_probe(device_t dev);
 static int mxge_attach(device_t dev);
 static int mxge_detach(device_t dev);
 static int mxge_shutdown(device_t dev);
+
+static int mxge_alloc_intr(struct mxge_softc *sc);
+static void mxge_free_intr(struct mxge_softc *sc);
+static int mxge_setup_intr(struct mxge_softc *sc);
+static void mxge_teardown_intr(struct mxge_softc *sc, int cnt);
 
 static device_method_t mxge_methods[] = {
 	/* Device interface */
@@ -2684,7 +2691,7 @@ mxge_legacy(void *arg)
 
 	/* Check to see if we have rx token to pass back */
 	if (valid & 0x1)
-	    *ss->irq_claim = be32toh(3);
+		*ss->irq_claim = be32toh(3);
 	*(ss->irq_claim + 1) = be32toh(3);
 }
 
@@ -2734,8 +2741,22 @@ mxge_msi(void *arg)
 
 	/* Check to see if we have rx token to pass back */
 	if (valid & 0x1)
-	    *ss->irq_claim = be32toh(3);
+		*ss->irq_claim = be32toh(3);
 	*(ss->irq_claim + 1) = be32toh(3);
+}
+
+static void
+mxge_msix_rx(void *arg)
+{
+	struct mxge_slice_state *ss = arg;
+	mxge_rx_done_t *rx_done = &ss->rx_data.rx_done;
+
+	ASSERT_SERIALIZED(&ss->rx_data.rx_serialize);
+
+	if (rx_done->entry[rx_done->idx].length != 0)
+		mxge_clean_rx_done(&ss->sc->arpcom.ac_if, &ss->rx_data);
+
+	*ss->irq_claim = be32toh(3);
 }
 
 static void
@@ -3226,7 +3247,8 @@ mxge_open(mxge_softc_t *sc)
 			itable[i] = (uint8_t)i;
 
 		cmd.data0 = 1;
-		cmd.data1 = MXGEFW_RSS_HASH_TYPE_TCP_IPV4;
+		cmd.data1 = MXGEFW_RSS_HASH_TYPE_IPV4 |
+		    MXGEFW_RSS_HASH_TYPE_TCP_IPV4;
 		err = mxge_send_cmd(sc, MXGEFW_CMD_SET_RSS_ENABLE, &cmd);
 		if (err != 0) {
 			if_printf(ifp, "failed to enable slices\n");
@@ -3749,9 +3771,10 @@ mxge_alloc_slices(mxge_softc_t *sc)
 
 		lwkt_serialize_init(&ss->rx_data.rx_serialize);
 		lwkt_serialize_init(&ss->tx.tx_serialize);
+		ss->intr_rid = -1;
 
 		/*
-		 * Allocate per-slice rx interrupt queues
+		 * Allocate per-slice rx interrupt queue
 		 * XXX assume 4bytes mcp_slot
 		 */
 		bytes = sc->rx_intr_slots * sizeof(mcp_slot_t);
@@ -3763,7 +3786,7 @@ mxge_alloc_slices(mxge_softc_t *sc)
 		}
 		ss->rx_data.rx_done.entry = ss->rx_done_dma.dmem_addr;
 
-		/* 
+		/*
 		 * Allocate the per-slice firmware stats
 		 */
 		bytes = sizeof(*ss->fw_stats);
@@ -3782,27 +3805,40 @@ mxge_alloc_slices(mxge_softc_t *sc)
 static void
 mxge_slice_probe(mxge_softc_t *sc)
 {
+	int status, max_intr_slots, max_slices, num_slices;
+	int msix_cnt, msix_enable, i;
 	mxge_cmd_t cmd;
 	const char *old_fw;
-	int msix_cnt, status, max_intr_slots;
 
 	sc->num_slices = 1;
 
-	/*
-	 * XXX
-	 *
-	 * Don't enable multiple slices if they are not enabled,
-	 * or if this is not an SMP system 
-	 */
-	if (mxge_max_slices == 0 || mxge_max_slices == 1 || ncpus < 2)
+	num_slices = device_getenv_int(sc->dev, "num_slices", mxge_num_slices);
+	if (num_slices == 1)
 		return;
 
-	/* see how many MSI-X interrupts are available */
+	if (ncpus2 == 1)
+		return;
+
+	msix_enable = device_getenv_int(sc->dev, "msix.enable",
+	    mxge_msix_enable);
+	if (!msix_enable)
+		return;
+
 	msix_cnt = pci_msix_count(sc->dev);
 	if (msix_cnt < 2)
 		return;
 
-	/* now load the slice aware firmware see what it supports */
+	/*
+	 * Round down MSI-X vector count to the nearest power of 2
+	 */
+	i = 0;
+	while ((1 << (i + 1)) <= msix_cnt)
+		++i;
+	msix_cnt = 1 << i;
+
+	/*
+	 * Now load the slice aware firmware see what it supports
+	 */
 	old_fw = sc->fw_name;
 	if (old_fw == mxge_fw_aligned)
 		sc->fw_name = mxge_fw_rss_aligned;
@@ -3813,251 +3849,74 @@ mxge_slice_probe(mxge_softc_t *sc)
 		device_printf(sc->dev, "Falling back to a single slice\n");
 		return;
 	}
-	
-	/* try to send a reset command to the card to see if it
-	   is alive */
-	memset(&cmd, 0, sizeof (cmd));
+
+	/*
+	 * Try to send a reset command to the card to see if it is alive
+	 */
+	memset(&cmd, 0, sizeof(cmd));
 	status = mxge_send_cmd(sc, MXGEFW_CMD_RESET, &cmd);
 	if (status != 0) {
 		device_printf(sc->dev, "failed reset\n");
 		goto abort_with_fw;
 	}
 
-	/* get rx ring size */
+	/*
+	 * Get rx ring size to calculate rx interrupt queue size
+	 */
 	status = mxge_send_cmd(sc, MXGEFW_CMD_GET_RX_RING_SIZE, &cmd);
 	if (status != 0) {
 		device_printf(sc->dev, "Cannot determine rx ring size\n");
 		goto abort_with_fw;
 	}
-	max_intr_slots = 2 * (cmd.data0 / sizeof (mcp_dma_addr_t));
+	max_intr_slots = 2 * (cmd.data0 / sizeof(mcp_dma_addr_t));
 
-	/* tell it the size of the interrupt queues */
-	cmd.data0 = max_intr_slots * sizeof (struct mcp_slot);
+	/*
+	 * Tell it the size of the rx interrupt queue
+	 */
+	cmd.data0 = max_intr_slots * sizeof(struct mcp_slot);
 	status = mxge_send_cmd(sc, MXGEFW_CMD_SET_INTRQ_SIZE, &cmd);
 	if (status != 0) {
 		device_printf(sc->dev, "failed MXGEFW_CMD_SET_INTRQ_SIZE\n");
 		goto abort_with_fw;
 	}
 
-	/* ask the maximum number of slices it supports */
+	/*
+	 * Ask the maximum number of slices it supports
+	 */
 	status = mxge_send_cmd(sc, MXGEFW_CMD_GET_MAX_RSS_QUEUES, &cmd);
 	if (status != 0) {
 		device_printf(sc->dev,
-			      "failed MXGEFW_CMD_GET_MAX_RSS_QUEUES\n");
+		    "failed MXGEFW_CMD_GET_MAX_RSS_QUEUES\n");
 		goto abort_with_fw;
 	}
-	sc->num_slices = cmd.data0;
-	if (sc->num_slices > msix_cnt)
-		sc->num_slices = msix_cnt;
+	max_slices = cmd.data0;
 
-	if (mxge_max_slices == -1) {
-		/* cap to number of CPUs in system */
-		if (sc->num_slices > ncpus)
-			sc->num_slices = ncpus;
-	} else {
-		if (sc->num_slices > mxge_max_slices)
-			sc->num_slices = mxge_max_slices;
+	/*
+	 * Round down max slices count to the nearest power of 2
+	 */
+	i = 0;
+	while ((1 << (i + 1)) <= max_slices)
+		++i;
+	max_slices = 1 << i;
+
+	if (max_slices > msix_cnt)
+		max_slices = msix_cnt;
+
+	sc->num_slices = num_slices;
+	sc->num_slices = if_ring_count2(sc->num_slices, max_slices);
+
+	if (bootverbose) {
+		device_printf(sc->dev, "using %d slices, max %d\n",
+		    sc->num_slices, max_slices);
 	}
-	/* make sure it is a power of two */
-	while (sc->num_slices & (sc->num_slices - 1))
-		sc->num_slices--;
 
-	if (bootverbose)
-		device_printf(sc->dev, "using %d slices\n",
-			      sc->num_slices);
-	
+	if (sc->num_slices == 1)
+		goto abort_with_fw;
 	return;
 
 abort_with_fw:
 	sc->fw_name = old_fw;
-	(void) mxge_load_firmware(sc, 0);
-}
-
-#if 0
-static int
-mxge_add_msix_irqs(mxge_softc_t *sc)
-{
-	size_t bytes;
-	int count, err, i, rid;
-
-	rid = PCIR_BAR(2);
-	sc->msix_table_res = bus_alloc_resource_any(sc->dev, SYS_RES_MEMORY,
-						    &rid, RF_ACTIVE);
-
-	if (sc->msix_table_res == NULL) {
-		device_printf(sc->dev, "couldn't alloc MSIX table res\n");
-		return ENXIO;
-	}
-
-	count = sc->num_slices;
-	err = pci_alloc_msix(sc->dev, &count);
-	if (err != 0) {
-		device_printf(sc->dev, "pci_alloc_msix: failed, wanted %d"
-			      "err = %d \n", sc->num_slices, err);
-		goto abort_with_msix_table;
-	}
-	if (count < sc->num_slices) {
-		device_printf(sc->dev, "pci_alloc_msix: need %d, got %d\n",
-			      count, sc->num_slices);
-		device_printf(sc->dev,
-			      "Try setting hw.mxge.max_slices to %d\n",
-			      count);
-		err = ENOSPC;
-		goto abort_with_msix;
-	}
-	bytes = sizeof (*sc->msix_irq_res) * sc->num_slices;
-	sc->msix_irq_res = kmalloc(bytes, M_DEVBUF, M_NOWAIT|M_ZERO);
-	if (sc->msix_irq_res == NULL) {
-		err = ENOMEM;
-		goto abort_with_msix;
-	}
-
-	for (i = 0; i < sc->num_slices; i++) {
-		rid = i + 1;
-		sc->msix_irq_res[i] = bus_alloc_resource_any(sc->dev,
-							  SYS_RES_IRQ,
-							  &rid, RF_ACTIVE);
-		if (sc->msix_irq_res[i] == NULL) {
-			device_printf(sc->dev, "couldn't allocate IRQ res"
-				      " for message %d\n", i);
-			err = ENXIO;
-			goto abort_with_res;
-		}
-	}
-
-	bytes = sizeof (*sc->msix_ih) * sc->num_slices;
-	sc->msix_ih =  kmalloc(bytes, M_DEVBUF, M_NOWAIT|M_ZERO);
-
-	for (i = 0; i < sc->num_slices; i++) {
-		err = bus_setup_intr(sc->dev, sc->msix_irq_res[i], 
-				     INTR_MPSAFE,
-				     mxge_intr, &sc->ss[i], &sc->msix_ih[i],
-				     sc->ifp->if_serializer);
-		if (err != 0) {
-			device_printf(sc->dev, "couldn't setup intr for "
-				      "message %d\n", i);
-			goto abort_with_intr;
-		}
-	}
-
-	if (bootverbose) {
-		device_printf(sc->dev, "using %d msix IRQs:",
-			      sc->num_slices);
-		for (i = 0; i < sc->num_slices; i++)
-			kprintf(" %ld",  rman_get_start(sc->msix_irq_res[i]));
-		kprintf("\n");
-	}
-	return (0);
-
-abort_with_intr:
-	for (i = 0; i < sc->num_slices; i++) {
-		if (sc->msix_ih[i] != NULL) {
-			bus_teardown_intr(sc->dev, sc->msix_irq_res[i],
-					  sc->msix_ih[i]);
-			sc->msix_ih[i] = NULL;
-		}
-	}
-	kfree(sc->msix_ih, M_DEVBUF);
-
-
-abort_with_res:
-	for (i = 0; i < sc->num_slices; i++) {
-		rid = i + 1;
-		if (sc->msix_irq_res[i] != NULL)
-			bus_release_resource(sc->dev, SYS_RES_IRQ, rid,
-					     sc->msix_irq_res[i]);
-		sc->msix_irq_res[i] = NULL;
-	}
-	kfree(sc->msix_irq_res, M_DEVBUF);
-
-
-abort_with_msix:
-	pci_release_msi(sc->dev);
-
-abort_with_msix_table:
-	bus_release_resource(sc->dev, SYS_RES_MEMORY, PCIR_BAR(2),
-			     sc->msix_table_res);
-
-	return err;
-}
-#endif
-
-static int
-mxge_add_single_irq(mxge_softc_t *sc)
-{
-	driver_intr_t *intr_func;
-	u_int irq_flags;
-
-	sc->irq_type = pci_alloc_1intr(sc->dev, mxge_msi_enable,
-	    &sc->irq_rid, &irq_flags);
-
-	sc->irq_res = bus_alloc_resource_any(sc->dev, SYS_RES_IRQ,
-	    &sc->irq_rid, irq_flags);
-	if (sc->irq_res == NULL) {
-		device_printf(sc->dev, "could not alloc interrupt\n");
-		return ENXIO;
-	}
-
-	if (sc->irq_type == PCI_INTR_TYPE_LEGACY)
-		intr_func = mxge_legacy;
-	else
-		intr_func = mxge_msi;
-
-	return bus_setup_intr(sc->dev, sc->irq_res, INTR_MPSAFE,
-	    intr_func, &sc->ss[0], &sc->ih, &sc->main_serialize);
-}
-
-#if 0
-static void
-mxge_rem_msix_irqs(mxge_softc_t *sc)
-{
-	int i, rid;
-
-	for (i = 0; i < sc->num_slices; i++) {
-		if (sc->msix_ih[i] != NULL) {
-			bus_teardown_intr(sc->dev, sc->msix_irq_res[i],
-					  sc->msix_ih[i]);
-			sc->msix_ih[i] = NULL;
-		}
-	}
-	kfree(sc->msix_ih, M_DEVBUF);
-
-	for (i = 0; i < sc->num_slices; i++) {
-		rid = i + 1;
-		if (sc->msix_irq_res[i] != NULL)
-			bus_release_resource(sc->dev, SYS_RES_IRQ, rid,
-					     sc->msix_irq_res[i]);
-		sc->msix_irq_res[i] = NULL;
-	}
-	kfree(sc->msix_irq_res, M_DEVBUF);
-
-	bus_release_resource(sc->dev, SYS_RES_MEMORY, PCIR_BAR(2),
-			     sc->msix_table_res);
-
-	pci_release_msi(sc->dev);
-	return;
-}
-#endif
-
-static int
-mxge_add_irq(mxge_softc_t *sc)
-{
-#if 0
-	int err;
-
-	if (sc->num_slices > 1)
-		err = mxge_add_msix_irqs(sc);
-	else
-		err = mxge_add_single_irq(sc);
-	
-	if (0 && err == 0 && sc->num_slices > 1) {
-		mxge_rem_msix_irqs(sc);
-		err = mxge_add_msix_irqs(sc);
-	}
-	return err;
-#else
-	return mxge_add_single_irq(sc);
-#endif
+	mxge_load_firmware(sc, 0);
 }
 
 static void
@@ -4248,6 +4107,12 @@ mxge_attach(device_t dev)
 		goto failed;
 	}
 
+	err = mxge_alloc_intr(sc);
+	if (err != 0) {
+		device_printf(dev, "alloc intr failed\n");
+		goto failed;
+	}
+
 	/* Setup serializes */
 	mxge_setup_serialize(sc);
 
@@ -4305,21 +4170,20 @@ mxge_attach(device_t dev)
 	    ETHER_HDR_LEN - EVL_ENCAPLEN - MXGEFW_PAD - 1;
 	sc->dying = 0;
 
-	/* must come after ether_ifattach() */
-	err = mxge_add_irq(sc);
+	err = mxge_setup_intr(sc);
 	if (err != 0) {
 		device_printf(dev, "alloc and setup intr failed\n");
 		ether_ifdetach(ifp);
 		goto failed;
 	}
 
-	ifq_set_cpuid(&ifp->if_snd, rman_get_cpuid(sc->irq_res));
+	ifq_set_cpuid(&ifp->if_snd, sc->ss[0].intr_cpuid);
 	ifq_set_hw_serialize(&ifp->if_snd, &sc->ss[0].tx.tx_serialize);
 
 	mxge_add_sysctls(sc);
 
 	callout_reset_bycpu(&sc->co_hdl, mxge_ticks, mxge_tick, sc,
-	    rman_get_cpuid(sc->irq_res));
+	    sc->ss[0].intr_cpuid);
 	return 0;
 
 failed:
@@ -4342,7 +4206,7 @@ mxge_detach(device_t dev)
 			mxge_close(sc, 1);
 		callout_stop(&sc->co_hdl);
 
-		bus_teardown_intr(sc->dev, sc->irq_res, sc->ih);
+		mxge_teardown_intr(sc, sc->num_slices);
 
 		ifnet_deserialize_all(ifp);
 
@@ -4356,10 +4220,11 @@ mxge_detach(device_t dev)
 	    sc->sram != NULL)
 		mxge_dummy_rdma(sc, 0);
 
+	mxge_free_intr(sc);
 	mxge_rem_sysctls(sc);
 	mxge_free_rings(sc);
 
-	/* MUST after sysctls and rings are freed */
+	/* MUST after sysctls, intr and rings are freed */
 	mxge_free_slices(sc);
 
 	if (sc->dmabench_dma.dmem_addr != NULL)
@@ -4369,13 +4234,10 @@ mxge_detach(device_t dev)
 	if (sc->cmd_dma.dmem_addr != NULL)
 		mxge_dma_free(&sc->cmd_dma);
 
-	if (sc->irq_res != NULL) {
-		bus_release_resource(dev, SYS_RES_IRQ, sc->irq_rid,
-		    sc->irq_res);
+	if (sc->msix_table_res != NULL) {
+		bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BAR(2),
+		    sc->msix_table_res);
 	}
-	if (sc->irq_type == PCI_INTR_TYPE_MSI)
-		pci_release_msi(dev);
-
 	if (sc->mem_res != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, PCIR_BARS,
 		    sc->mem_res);
@@ -4391,4 +4253,210 @@ static int
 mxge_shutdown(device_t dev)
 {
 	return 0;
+}
+
+static void
+mxge_free_msix(struct mxge_softc *sc, boolean_t setup)
+{
+	int i;
+
+	KKASSERT(sc->num_slices > 1);
+
+	for (i = 0; i < sc->num_slices; ++i) {
+		struct mxge_slice_state *ss = &sc->ss[i];
+
+		if (ss->intr_res != NULL) {
+			bus_release_resource(sc->dev, SYS_RES_IRQ,
+			    ss->intr_rid, ss->intr_res);
+		}
+		if (ss->intr_rid >= 0)
+			pci_release_msix_vector(sc->dev, ss->intr_rid);
+	}
+	if (setup)
+		pci_teardown_msix(sc->dev);
+}
+
+static int
+mxge_alloc_msix(struct mxge_softc *sc)
+{
+	struct mxge_slice_state *ss;
+	int offset, rid, error, i;
+	boolean_t setup = FALSE;
+
+	KKASSERT(sc->num_slices > 1);
+
+	if (sc->num_slices == ncpus2) {
+		offset = 0;
+	} else {
+		int offset_def;
+
+		offset_def = (sc->num_slices * device_get_unit(sc->dev)) %
+		    ncpus2;
+
+		offset = device_getenv_int(sc->dev, "msix.offset", offset_def);
+		if (offset >= ncpus2 ||
+		    offset % sc->num_slices != 0) {
+			device_printf(sc->dev, "invalid msix.offset %d, "
+			    "use %d\n", offset, offset_def);
+			offset = offset_def;
+		}
+	}
+
+	ss = &sc->ss[0];
+
+	ss->intr_serialize = &sc->main_serialize;
+	ss->intr_func = mxge_msi;
+	ksnprintf(ss->intr_desc0, sizeof(ss->intr_desc0),
+	    "%s comb", device_get_nameunit(sc->dev));
+	ss->intr_desc = ss->intr_desc0;
+	ss->intr_cpuid = offset;
+
+	for (i = 1; i < sc->num_slices; ++i) {
+		ss = &sc->ss[i];
+
+		ss->intr_serialize = &ss->rx_data.rx_serialize;
+		/* TODO multiple TX queues */
+		ss->intr_func = mxge_msix_rx;
+		ksnprintf(ss->intr_desc0, sizeof(ss->intr_desc0),
+		    "%s rx", device_get_nameunit(sc->dev));
+		ss->intr_desc = ss->intr_desc0;
+		ss->intr_cpuid = offset + i;
+	}
+
+	rid = PCIR_BAR(2);
+	sc->msix_table_res = bus_alloc_resource_any(sc->dev, SYS_RES_MEMORY,
+	    &rid, RF_ACTIVE);
+	if (sc->msix_table_res == NULL) {
+		device_printf(sc->dev, "couldn't alloc MSI-X table res\n");
+		return ENXIO;
+	}
+
+	error = pci_setup_msix(sc->dev);
+	if (error) {
+		device_printf(sc->dev, "could not setup MSI-X\n");
+		goto back;
+	}
+	setup = TRUE;
+
+	for (i = 0; i < sc->num_slices; ++i) {
+		ss = &sc->ss[i];
+
+		error = pci_alloc_msix_vector(sc->dev, i, &ss->intr_rid,
+		    ss->intr_cpuid);
+		if (error) {
+			device_printf(sc->dev, "could not alloc "
+			    "MSI-X %d on cpu%d\n", i, ss->intr_cpuid);
+			goto back;
+		}
+
+		ss->intr_res = bus_alloc_resource_any(sc->dev, SYS_RES_IRQ,
+		    &ss->intr_rid, RF_ACTIVE);
+		if (ss->intr_res == NULL) {
+			device_printf(sc->dev, "could not alloc "
+			    "MSI-X %d resource\n", i);
+			error = ENXIO;
+			goto back;
+		}
+	}
+
+	pci_enable_msix(sc->dev);
+	sc->intr_type = PCI_INTR_TYPE_MSIX;
+back:
+	if (error)
+		mxge_free_msix(sc, setup);
+	return error;
+}
+
+static int
+mxge_alloc_intr(struct mxge_softc *sc)
+{
+	struct mxge_slice_state *ss;
+	u_int irq_flags;
+
+	if (sc->num_slices > 1) {
+		int error;
+
+		error = mxge_alloc_msix(sc);
+		if (error)
+			return error;
+		KKASSERT(sc->intr_type == PCI_INTR_TYPE_MSIX);
+		return 0;
+	}
+
+	ss = &sc->ss[0];
+
+	sc->intr_type = pci_alloc_1intr(sc->dev, mxge_msi_enable,
+	    &ss->intr_rid, &irq_flags);
+
+	ss->intr_res = bus_alloc_resource_any(sc->dev, SYS_RES_IRQ,
+	    &ss->intr_rid, irq_flags);
+	if (ss->intr_res == NULL) {
+		device_printf(sc->dev, "could not alloc interrupt\n");
+		return ENXIO;
+	}
+
+	if (sc->intr_type == PCI_INTR_TYPE_LEGACY)
+		ss->intr_func = mxge_legacy;
+	else
+		ss->intr_func = mxge_msi;
+	ss->intr_serialize = &sc->main_serialize;
+	ss->intr_cpuid = rman_get_cpuid(ss->intr_res);
+
+	return 0;
+}
+
+static int
+mxge_setup_intr(struct mxge_softc *sc)
+{
+	int i;
+
+	for (i = 0; i < sc->num_slices; ++i) {
+		struct mxge_slice_state *ss = &sc->ss[i];
+		int error;
+
+		error = bus_setup_intr_descr(sc->dev, ss->intr_res,
+		    INTR_MPSAFE, ss->intr_func, ss, &ss->intr_hand,
+		    ss->intr_serialize, ss->intr_desc);
+		if (error) {
+			device_printf(sc->dev, "can't setup %dth intr\n", i);
+			mxge_teardown_intr(sc, i);
+			return error;
+		}
+	}
+	return 0;
+}
+
+static void
+mxge_teardown_intr(struct mxge_softc *sc, int cnt)
+{
+	int i;
+
+	if (sc->ss == NULL)
+		return;
+
+	for (i = 0; i < cnt; ++i) {
+		struct mxge_slice_state *ss = &sc->ss[i];
+
+		bus_teardown_intr(sc->dev, ss->intr_res, ss->intr_hand);
+	}
+}
+
+static void
+mxge_free_intr(struct mxge_softc *sc)
+{
+	if (sc->ss == NULL)
+		return;
+
+	if (sc->intr_type != PCI_INTR_TYPE_MSIX) {
+		struct mxge_slice_state *ss = &sc->ss[0];
+
+		if (ss->intr_res != NULL) {
+			bus_release_resource(sc->dev, SYS_RES_IRQ,
+			    ss->intr_rid, ss->intr_res);
+		}
+		if (sc->intr_type == PCI_INTR_TYPE_MSI)
+			pci_release_msi(sc->dev);
+	} else {
+		mxge_free_msix(sc, TRUE);
+	}
 }

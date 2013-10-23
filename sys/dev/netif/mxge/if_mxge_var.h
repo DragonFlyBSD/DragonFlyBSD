@@ -109,6 +109,15 @@ struct mxge_slice_state {
 	bus_dmamem_t rx_done_dma;
 	struct sysctl_oid *sysctl_tree;
 	struct sysctl_ctx_list sysctl_ctx;
+
+	struct lwkt_serialize *intr_serialize;
+	driver_intr_t *intr_func;
+	void *intr_hand;
+	struct resource *intr_res;
+	int intr_rid;
+	int intr_cpuid;
+	const char *intr_desc;
+	char intr_desc0[64];
 } __cachealign;
 
 struct mxge_softc {
@@ -127,8 +136,7 @@ struct mxge_softc {
 	bus_dmamem_t cmd_dma;
 	bus_dmamem_t zeropad_dma;
 	struct pci_dev *pdev;
-	int irq_rid;
-	int irq_type;
+	int intr_type;
 	int link_state;
 	unsigned int rdma_tags_available;
 	int intr_coal_delay;
@@ -140,12 +148,7 @@ struct mxge_softc {
 	int watchdog_resets;
 	int pause;
 	struct resource *mem_res;
-	struct resource *irq_res;
-	struct resource **msix_irq_res;
 	struct resource *msix_table_res;
-	struct resource *msix_pba_res;
-	void *ih; 
-	void **msix_ih;
 	const char *fw_name;
 	char eeprom_strings[MXGE_EEPROM_STRINGS_SIZE];
 	char fw_version[128];
