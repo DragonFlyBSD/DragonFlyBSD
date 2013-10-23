@@ -34,6 +34,7 @@ MLINKS+= libhammer_stats.3 libhammer_stats_btree_deletes.3
 MLINKS+= libhammer_stats.3 libhammer_stats_btree_inserts.3
 MLINKS+= libhammer_stats.3 libhammer_stats_btree_lookups.3
 MLINKS+= libhammer_stats.3 libhammer_stats_btree_searches.3
+MLINKS+= libhammer_stats.3 libhammer_btree_stats.3
 MLINKS+= libhammer_stats.3 libhammer_io_stats.3
 
 .PATH: ${.CURDIR}/../../sys/libkern
