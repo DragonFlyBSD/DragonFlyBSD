@@ -227,8 +227,8 @@ struct vnode {
 #define	VOBJBUF		0x00002000	/* Allocate buffers in VM object */
 #define	VINACTIVE	0x00004000	/* ran VOP_INACTIVE */
 /* open for business    0x00008000 */
-#define	VOLOCK		0x00010000	/* vnode locked waiting for object */
-#define	VOWANT		0x00020000	/* a process is waiting for VOLOCK */
+/* open for business    0x00010000 */
+/* open for business    0x00020000 */
 #define	VRECLAIMED	0x00040000	/* This vnode has been destroyed */
 /* open for business	0x00080000 */
 #define VNOTSEEKABLE	0x00100000	/* rd/wr ignores file offset */

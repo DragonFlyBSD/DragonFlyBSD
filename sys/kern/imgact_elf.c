@@ -366,6 +366,7 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 
 		m = vm_fault_object_page(object, trunc_page(offset + filsz),
 					 VM_PROT_READ, 0, &shared, &error);
+		vm_object_drop(object);
 		if (m) {
 			lwb = lwbuf_alloc(m, &lwb_cache);
 			error = copyout((caddr_t)lwbuf_kva(lwb),
@@ -373,20 +374,18 @@ __elfN(load_section)(struct proc *p, struct vmspace *vmspace, struct vnode *vp,
 			lwbuf_free(lwb);
 			vm_page_unhold(m);
 		}
-		if (error) {
-			vm_object_drop(object);
-			return (error);
-		}
+	} else {
+		vm_object_drop(object);
 	}
-
-	vm_object_drop(object);
 
 	/*
 	 * set it to the specified protection
 	 */
-	vm_map_protect(&vmspace->vm_map, map_addr, map_addr + map_len,
-		       prot, FALSE);
-
+	if (error == 0) {
+		vm_map_protect(&vmspace->vm_map,
+			       map_addr, map_addr + map_len,
+			       prot, FALSE);
+	}
 	return (error);
 }
 
@@ -1223,12 +1222,12 @@ each_segment(struct proc *p, segment_callback func, void *closure, int writable)
 		 * and the bottom-most object held (but only one hold
 		 * if they happen to be the same).
 		 */
-		vm_object_hold(obj);
+		vm_object_hold_shared(obj);
 
 		lobj = obj;
 		while (lobj && (tobj = lobj->backing_object) != NULL) {
 			KKASSERT(tobj != obj);
-			vm_object_hold(tobj);
+			vm_object_hold_shared(tobj);
 			if (tobj == lobj->backing_object) {
 				if (lobj != obj) {
 					vm_object_lock_swap();

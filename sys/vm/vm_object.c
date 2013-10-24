@@ -822,8 +822,10 @@ vm_object_deallocate(vm_object_t object)
 		 * territory (0, 1, or 2) we have to do it the hard way.
 		 * Fortunate though, objects with only a few refs like this
 		 * are not likely to be heavily contended anyway.
+		 *
+		 * For vnode objects we only care about 1->0 transitions.
 		 */
-		if (count <= 3) {
+		if (count <= 3 || (object->type == OBJT_VNODE && count <= 1)) {
 			vm_object_hold(object);
 			vm_object_deallocate_locked(object);
 			vm_object_drop(object);
@@ -1203,7 +1205,6 @@ vm_object_terminate(vm_object_t object)
 	TAILQ_REMOVE(&vm_object_list, object, object_list);
 	vm_object_count--;
 	lwkt_reltoken(&vmobj_token);
-	vm_object_dead_wakeup(object);
 
 	if (object->ref_count != 0) {
 		panic("vm_object_terminate2: object with references, "
@@ -1245,39 +1246,6 @@ vm_object_terminate_callback(vm_page_t p, void *data __unused)
 	}
 	lwkt_yield();
 	return(0);
-}
-
-/*
- * The object is dead but still has an object<->pager association.  Sleep
- * and return.  The caller typically retests the association in a loop.
- *
- * The caller must hold the object.
- */
-void
-vm_object_dead_sleep(vm_object_t object, const char *wmesg)
-{
-	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
-	if (object->handle) {
-		vm_object_set_flag(object, OBJ_DEADWNT);
-		tsleep(object, 0, wmesg, 0);
-		/* object may be invalid after this point */
-	}
-}
-
-/*
- * Wakeup anyone waiting for the object<->pager disassociation on
- * a dead object.
- *
- * The caller must hold the object.
- */
-void
-vm_object_dead_wakeup(vm_object_t object)
-{
-	ASSERT_LWKT_TOKEN_HELD(vm_object_token(object));
-	if (object->flags & OBJ_DEADWNT) {
-		vm_object_clear_flag(object, OBJ_DEADWNT);
-		wakeup(object);
-	}
 }
 
 /*
@@ -1945,7 +1913,6 @@ vm_object_backing_scan(vm_object_t object, vm_object_t backing_object, int op)
 		TAILQ_REMOVE(&vm_object_list, backing_object, object_list);
 		vm_object_count--;
 		lwkt_reltoken(&vmobj_token);
-		vm_object_dead_wakeup(backing_object);
 	}
 
 	/*

@@ -127,26 +127,13 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 	lwkt_gettoken(&vp->v_token);
 
 	/*
-	 * Prevent race condition when allocating the object. This
-	 * can happen with NFS vnodes since the nfsnode isn't locked.
-	 */
-	while (vp->v_flag & VOLOCK) {
-		vsetflags(vp, VOWANT);
-		tsleep(vp, 0, "vnpobj", 0);
-	}
-	vsetflags(vp, VOLOCK);
-	lwkt_reltoken(&vp->v_token);
-
-	/*
 	 * If the object is being terminated, wait for it to
 	 * go away.
 	 */
-	while ((object = vp->v_object) != NULL) {
+	object = vp->v_object;
+	if (object) {
 		vm_object_hold(object);
-		if ((object->flags & OBJ_DEAD) == 0)
-			break;
-		vm_object_dead_sleep(object, "vadead");
-		vm_object_drop(object);
+		KKASSERT((object->flags & OBJ_DEAD) == 0);
 	}
 
 	if (VREFCNT(vp) <= 0)
@@ -177,8 +164,9 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 		vp->v_filesize = length;
 		if (vp->v_mount && (vp->v_mount->mnt_kern_flag & MNTK_NOMSYNC))
 			vm_object_set_flag(object, OBJ_NOMSYNC);
+		vref(vp);
 	} else {
-		atomic_add_int(&object->ref_count, 1);
+		vm_object_reference_quick(object);	/* also vref's */
 		if (object->size != lsize) {
 			kprintf("vnode_pager_alloc: Warning, objsize "
 				"mismatch %jd/%jd vp=%p obj=%p\n",
@@ -194,17 +182,8 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
 				vp, object);
 		}
 	}
-
-	vref(vp);
-	lwkt_gettoken(&vp->v_token);
-	vclrflags(vp, VOLOCK);
-	if (vp->v_flag & VOWANT) {
-		vclrflags(vp, VOWANT);
-		wakeup(vp);
-	}
-	lwkt_reltoken(&vp->v_token);
-
 	vm_object_drop(object);
+	lwkt_reltoken(&vp->v_token);
 
 	return (object);
 }
@@ -214,57 +193,19 @@ vnode_pager_alloc(void *handle, off_t length, vm_prot_t prot, off_t offset,
  * NULL if the vnode did not have one.  This does not create the
  * object (we can't since we don't know what the proper blocksize/boff
  * is to match the VFS's use of the buffer cache).
+ *
+ * The vnode must be referenced and is typically open.  The object should
+ * be stable in this situation.
+ *
+ * Returns the object with an additional reference but not locked.
  */
 vm_object_t
 vnode_pager_reference(struct vnode *vp)
 {
 	vm_object_t object;
 
-	/*
-	 * Prevent race condition when allocating the object. This
-	 * can happen with NFS vnodes since the nfsnode isn't locked.
-	 *
-	 * Serialize potential vnode/object teardowns and interlocks
-	 */
-	lwkt_gettoken(&vp->v_token);
-	while (vp->v_flag & VOLOCK) {
-		vsetflags(vp, VOWANT);
-		tsleep(vp, 0, "vnpobj", 0);
-	}
-	vsetflags(vp, VOLOCK);
-	lwkt_reltoken(&vp->v_token);
-
-	/*
-	 * Prevent race conditions against deallocation of the VM
-	 * object.
-	 */
-	while ((object = vp->v_object) != NULL) {
-		vm_object_hold(object);
-		if ((object->flags & OBJ_DEAD) == 0)
-			break;
-		vm_object_dead_sleep(object, "vadead");
-		vm_object_drop(object);
-	}
-
-	/*
-	 * The object is expected to exist, the caller will handle
-	 * NULL returns if it does not.
-	 */
-	if (object) {
-		atomic_add_int(&object->ref_count, 1);
-		vref(vp);
-	}
-
-	lwkt_gettoken(&vp->v_token);
-	vclrflags(vp, VOLOCK);
-	if (vp->v_flag & VOWANT) {
-		vclrflags(vp, VOWANT);
-		wakeup(vp);
-	}
-	lwkt_reltoken(&vp->v_token);
-	if (object)
-		vm_object_drop(object);
-
+	if ((object = vp->v_object) != NULL)
+		vm_object_reference_quick(object); /* also vref's vnode */
 	return (object);
 }
 
@@ -358,14 +299,11 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 	vm_pindex_t oobjsize;
 	vm_object_t object;
 
-	while ((object = vp->v_object) != NULL) {
-		vm_object_hold(object);
-		if (vp->v_object == object)
-			break;
-		vm_object_drop(object);
-	}
+	object = vp->v_object;
 	if (object == NULL)
 		return;
+	vm_object_hold(object);
+	KKASSERT(vp->v_object == object);
 
 	/*
 	 * Hasn't changed size

@@ -1534,12 +1534,10 @@ vinitvmio(struct vnode *vp, off_t filesize, int blksize, int boff)
 	vm_object_t object;
 	int error = 0;
 
-retry:
-	while ((object = vp->v_object) != NULL) {
+	object = vp->v_object;
+	if (object) {
 		vm_object_hold(object);
-		if (object == vp->v_object)
-			break;
-		vm_object_drop(object);
+		KKASSERT(vp->v_object == object);
 	}
 
 	if (object == NULL) {
@@ -1547,20 +1545,15 @@ retry:
 
 		/*
 		 * Dereference the reference we just created.  This assumes
-		 * that the object is associated with the vp.
+		 * that the object is associated with the vp.  Allow it to
+		 * have zero refs.  It cannot be destroyed as long as it
+		 * is associated with the vnode.
 		 */
 		vm_object_hold(object);
 		atomic_add_int(&object->ref_count, -1);
 		vrele(vp);
 	} else {
-		if (object->flags & OBJ_DEAD) {
-			vn_unlock(vp);
-			if (vp->v_object == object)
-				vm_object_dead_sleep(object, "vodead");
-			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
-			vm_object_drop(object);
-			goto retry;
-		}
+		KKASSERT((object->flags & OBJ_DEAD) == 0);
 	}
 	KASSERT(vp->v_object != NULL, ("vinitvmio: NULL object"));
 	vsetflags(vp, VOBJBUF);

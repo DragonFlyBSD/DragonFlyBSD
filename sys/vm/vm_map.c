@@ -1275,7 +1275,7 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
 	if (object)
-		vm_object_hold(object);
+		vm_object_hold_shared(object);
 	if (fitit) {
 		if (vm_map_findspace(map, start, length, align, 0, addr)) {
 			if (object)
@@ -2981,6 +2981,9 @@ vm_map_split(vm_map_entry_t entry)
 	/*
 	 * Optimize away object locks for vnode objects.  Important exit/exec
 	 * critical path.
+	 *
+	 * OBJ_ONEMAPPING doesn't apply to vnode objects but clear the flag
+	 * anyway.
 	 */
 	oobject = entry->object.vm_object;
 	if (oobject->type != OBJT_DEFAULT && oobject->type != OBJT_SWAP) {
@@ -3340,16 +3343,25 @@ vmspace_fork(struct vmspace *vm1)
 				 * OBJ_ONEMAPPING.
 				 */
 				vm_map_entry_shadow(old_entry, 1);
-			} else {
+			} else if (old_entry->object.vm_object) {
 				/*
 				 * We will make a shared copy of the object,
 				 * and must clear OBJ_ONEMAPPING.
 				 *
+				 * Optimize vnode objects.  OBJ_ONEMAPPING
+				 * is non-applicable but clear it anyway,
+				 * and its terminal so we don'th ave to deal
+				 * with chains.  Reduces SMP conflicts.
+				 *
 				 * XXX assert that object.vm_object != NULL
 				 *     since we allocate it above.
 				 */
-				if (old_entry->object.vm_object) {
-					object = old_entry->object.vm_object;
+				object = old_entry->object.vm_object;
+				if (object->type == OBJT_VNODE) {
+					vm_object_reference_quick(object);
+					vm_object_clear_flag(object,
+							     OBJ_ONEMAPPING);
+				} else {
 					vm_object_hold(object);
 					vm_object_chain_wait(object, 0);
 					vm_object_reference_locked(object);
@@ -3380,9 +3392,9 @@ vmspace_fork(struct vmspace *vm1)
 			 * Update the physical map
 			 */
 			pmap_copy(new_map->pmap, old_map->pmap,
-			    new_entry->start,
-			    (old_entry->end - old_entry->start),
-			    old_entry->start);
+				  new_entry->start,
+				  (old_entry->end - old_entry->start),
+				  old_entry->start);
 			break;
 		case VM_INHERIT_COPY:
 			/*

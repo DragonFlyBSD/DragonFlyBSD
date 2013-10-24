@@ -664,6 +664,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	 */
 	td = lwkt_alloc_thread(NULL, LWKT_THREAD_STACK, gd->gd_cpuid, 0);
 	lp->lwp_thread = td;
+	td->td_ucred = crhold(destproc->p_ucred);
 	td->td_proc = destproc;
 	td->td_lwp = lp;
 	td->td_switch = cpu_heavy_switch;
@@ -783,8 +784,10 @@ start_forked_proc(struct lwp *lp1, struct proc *p2)
 	 *
 	 * We must hold our p_token to interlock the flag/tsleep
 	 */
-	lwkt_gettoken(&p2->p_token);
-	while (p2->p_flags & P_PPWAIT)
-		tsleep(lp1->lwp_proc, 0, "ppwait", 0);
-	lwkt_reltoken(&p2->p_token);
+	if (p2->p_flags & P_PPWAIT) {
+		lwkt_gettoken_shared(&p2->p_token);
+		while (p2->p_flags & P_PPWAIT)
+			tsleep(lp1->lwp_proc, 0, "ppwait", 0);
+		lwkt_reltoken(&p2->p_token);
+	}
 }
