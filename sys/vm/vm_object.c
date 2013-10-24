@@ -349,32 +349,6 @@ debugvm_object_hold_shared(vm_object_t obj, char *file, int line)
 #endif
 }
 
-#if 0
-
-/*
- * Obtain either a shared or exclusive lock on VM object
- * based on whether this is a terminal vnode object or not.
- */
-int
-#ifndef DEBUG_LOCKS
-vm_object_hold_maybe_shared(vm_object_t obj)
-#else
-debugvm_object_hold_maybe_shared(vm_object_t obj, char *file, int line)
-#endif
-{
-	if (vm_shared_fault &&
-	    obj->type == OBJT_VNODE &&
-	    obj->backing_object == NULL) {
-		vm_object_hold_shared(obj);
-		return(1);
-	} else {
-		vm_object_hold(obj);
-		return(0);
-	}
-}
-
-#endif
-
 /*
  * Drop the token and hold_count on the object.
  *
@@ -752,29 +726,23 @@ vm_object_chain_release_all(vm_object_t first_object, vm_object_t stopobj)
 
 	while (object != stopobj) {
 		KKASSERT(object);
-#if 0
-		/* shouldn't need this since chain is held */
-		if (object != first_object)
-			vm_object_hold(object);
-#endif
 		backing_object = object->backing_object;
 		vm_object_chain_release(object);
-#if 0
-		if (object != first_object)
-			vm_object_drop(object);
-#endif
 		object = backing_object;
 	}
 }
 
 /*
- * Dereference an object and its underlying vnode.
+ * Dereference an object and its underlying vnode.  The object may be
+ * held shared.  On return the object will remain held.
  *
- * The object must be held exclusively and will remain held on return.
- * (We don't need an atomic op due to the exclusivity).
+ * This function may return a vnode in *vpp which the caller must release
+ * after the caller drops its own lock.  If vpp is NULL, we assume that
+ * the caller was holding an exclusive lock on the object and we vrele()
+ * the vp ourselves.
  */
 static void
-vm_object_vndeallocate(vm_object_t object)
+vm_object_vndeallocate(vm_object_t object, struct vnode **vpp)
 {
 	struct vnode *vp = (struct vnode *) object->handle;
 
@@ -788,10 +756,39 @@ vm_object_vndeallocate(vm_object_t object)
 		panic("vm_object_vndeallocate: bad object reference count");
 	}
 #endif
-	atomic_add_int(&object->ref_count, -1);
-	if (object->ref_count == 0)
-		vclrflags(vp, VTEXT);
-	vrele(vp);
+	for (;;) {
+		int count = object->ref_count;
+		cpu_ccfence();
+		if (count == 1) {
+			vm_object_upgrade(object);
+			if (atomic_cmpset_int(&object->ref_count, count, 0)) {
+				vclrflags(vp, VTEXT);
+				break;
+			}
+		} else {
+			if (atomic_cmpset_int(&object->ref_count,
+					      count, count - 1)) {
+				break;
+			}
+		}
+		/* retry */
+	}
+
+	/*
+	 * vrele or return the vp to vrele.  We can only safely vrele(vp)
+	 * if the object was locked exclusively.  But there are two races
+	 * here.
+	 *
+	 * We had to upgrade the object above to safely clear VTEXT
+	 * but the alternative path where the shared lock is retained
+	 * can STILL race to 0 in other paths and cause our own vrele()
+	 * to terminate the vnode.  We can't allow that if the VM object
+	 * is still locked shared.
+	 */
+	if (vpp)
+		*vpp = vp;
+	else
+		vrele(vp);
 }
 
 /*
@@ -871,21 +868,37 @@ vm_object_deallocate_locked(vm_object_t object)
 	 * collect on the dlist which also have to be deallocated.  We
 	 * must avoid a recursion, vm_object chains can get deep.
 	 */
+
 again:
 	while (object != NULL) {
-		ASSERT_LWKT_TOKEN_HELD_EXCL(&object->token);
-#if 0
 		/*
-		 * Don't rip a ref_count out from under an object undergoing
-		 * collapse, it will confuse the collapse code.
+		 * vnode case, caller either locked the object exclusively
+		 * or this is a recursion with must_drop != 0 and the vnode
+		 * object will be locked shared.
+		 *
+		 * If locked shared we have to drop the object before we can
+		 * call vrele() or risk a shared/exclusive livelock.
 		 */
-		vm_object_chain_wait(object);
-#endif
 		if (object->type == OBJT_VNODE) {
-			vm_object_vndeallocate(object);
+			ASSERT_LWKT_TOKEN_HELD(&object->token);
+			if (must_drop) {
+				struct vnode *tmp_vp;
+
+				vm_object_vndeallocate(object, &tmp_vp);
+				vm_object_drop(object);
+				must_drop = 0;
+				object = NULL;
+				vrele(tmp_vp);
+			} else {
+				vm_object_vndeallocate(object, NULL);
+			}
 			break;
 		}
+		ASSERT_LWKT_TOKEN_HELD_EXCL(&object->token);
 
+		/*
+		 * Normal case (object is locked exclusively)
+		 */
 		if (object->ref_count == 0) {
 			panic("vm_object_deallocate: object deallocated "
 			      "too many times: %d", object->type);
@@ -1035,7 +1048,10 @@ skip:
 		 * then re-check.
 		 */
 		while ((temp = object->backing_object) != NULL) {
-			vm_object_hold(temp);
+			if (temp->type == OBJT_VNODE)
+				vm_object_hold_shared(temp);
+			else
+				vm_object_hold(temp);
 			if (temp == object->backing_object)
 				break;
 			vm_object_drop(temp);
@@ -1077,6 +1093,7 @@ skip:
 		object = temp;
 		must_drop = 1;
 	}
+
 	if (must_drop && object)
 		vm_object_drop(object);
 
@@ -2622,12 +2639,6 @@ vm_object_page_remove_callback(vm_page_t p, void *data)
 			vm_page_wakeup(p);
 			return(0);
 		}
-#if 0
-		if (p->hold_count) {
-			vm_page_wakeup(p);
-			return(0);
-		}
-#endif
 	}
 
 	/*
