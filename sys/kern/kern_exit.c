@@ -118,8 +118,6 @@ sys_exit(struct exit_args *uap)
 /*
  * Extended exit --
  *	Death of a lwp or process with optional bells and whistles.
- *
- * MPALMOSTSAFE
  */
 int
 sys_extexit(struct extexit_args *uap)
@@ -163,7 +161,7 @@ sys_extexit(struct extexit_args *uap)
 		 * SZOMB!
 		 */
 		if (p->p_nthreads > 1) {
-			lwp_exit(0);	/* called w/ p_token held */
+			lwp_exit(0, NULL);	/* called w/ p_token held */
 			/* NOT REACHED */
 		}
 		/* else last lwp in proc:  do the real thing */
@@ -253,9 +251,8 @@ killlwps(struct lwp *lp)
 	/*
 	 * Wait for everything to clear out.
 	 */
-	while (p->p_nthreads > 1) {
+	while (p->p_nthreads > 1)
 		tsleep(&p->p_nthreads, 0, "killlwps", 0);
-	}
 }
 
 /*
@@ -270,6 +267,7 @@ exit1(int rv)
 	struct proc *p = td->td_proc;
 	struct lwp *lp = td->td_lwp;
 	struct proc *q;
+	struct proc *pp;
 	struct vmspace *vm;
 	struct vnode *vtmp;
 	struct exitlist *ep;
@@ -292,7 +290,7 @@ exit1(int rv)
 	 */
 	error = killalllwps(0);
 	if (error) {
-		lwp_exit(0);
+		lwp_exit(0, NULL);
 		/* NOT REACHED */
 	}
 
@@ -355,7 +353,7 @@ exit1(int rv)
 	 */
 	fdfree(p, NULL);
 
-	if(p->p_leader->p_peers) {
+	if (p->p_leader->p_peers) {
 		q = p->p_leader;
 		while(q->p_peers != p)
 			q = q->p_peers;
@@ -462,9 +460,12 @@ exit1(int rv)
 	/*
 	 * We have to handle PPWAIT here or proc_move_allproc_zombie()
 	 * will block on the PHOLD() the parent is doing.
+	 *
+	 * We are using the flag as an interlock so an atomic op is
+	 * necessary to synchronize with the parent's cpu.
 	 */
 	if (p->p_flags & P_PPWAIT) {
-		p->p_flags &= ~P_PPWAIT;
+		atomic_clear_int(&p->p_flags, P_PPWAIT);
 		wakeup(p->p_pptr);
 	}
 
@@ -473,8 +474,18 @@ exit1(int rv)
 	 * until the process p_lock count reaches 0.  The process will
 	 * not be reaped until TDF_EXITING is set by cpu_thread_exit(),
 	 * which is called from cpu_proc_exit().
+	 *
+	 * Interlock against waiters using p_waitgen.  We increment
+	 * p_waitgen after completing the move of our process to the
+	 * zombie list.
+	 *
+	 * WARNING: pp becomes stale when we block, clear it now as a
+	 *	    reminder.
 	 */
 	proc_move_allproc_zombie(p);
+	pp = p->p_pptr;
+	atomic_add_long(&pp->p_waitgen, 1);
+	pp = NULL;
 
 	/*
 	 * Reparent all of this process's children to the init process.
@@ -529,26 +540,23 @@ exit1(int rv)
 	 * Notify parent that we're gone.  If parent has the PS_NOCLDWAIT
 	 * flag set, or if the handler is set to SIG_IGN, notify process 1
 	 * instead (and hope it will handle this situation).
+	 *
+	 * (must reload pp)
 	 */
 	if (p->p_pptr->p_sigacts->ps_flag & (PS_NOCLDWAIT | PS_CLDSIGIGN)) {
 		proc_reparent(p, initproc);
 	}
 
-	/* lwkt_gettoken(&proc_token); */
-	q = p->p_pptr;
-	PHOLD(q);
-	if (p->p_sigparent && q != initproc) {
-	        ksignal(q, p->p_sigparent);
+	pp = p->p_pptr;
+	PHOLD(pp);
+	if (p->p_sigparent && pp != initproc) {
+	        ksignal(pp, p->p_sigparent);
 	} else {
-	        ksignal(q, SIGCHLD);
+	        ksignal(pp, SIGCHLD);
 	}
-
 	p->p_flags &= ~P_TRACED;
-	wakeup(p->p_pptr);
+	PRELE(pp);
 
-	PRELE(q);
-	/* lwkt_reltoken(&proc_token); */
-	/* NOTE: p->p_pptr can get ripped out */
 	/*
 	 * cpu_exit is responsible for clearing curproc, since
 	 * it is heavily integrated with the thread/switching sequence.
@@ -560,8 +568,13 @@ exit1(int rv)
 	/*
 	 * Finally, call machine-dependent code to release as many of the
 	 * lwp's resources as we can and halt execution of this thread.
+	 *
+	 * pp is a wild pointer now but still the correct wakeup() target.
+	 * lwp_exit() only uses it to send the wakeup() signal to the likely
+	 * parent.  Any reparenting race that occurs will get a signal
+	 * automatically and not be an issue.
 	 */
-	lwp_exit(1);
+	lwp_exit(1, pp);
 }
 
 /*
@@ -570,7 +583,7 @@ exit1(int rv)
  * p->p_token must be held.  mplock may be held and will be released.
  */
 void
-lwp_exit(int masterexit)
+lwp_exit(int masterexit, void *waddr)
 {
 	struct thread *td = curthread;
 	struct lwp *lp = td->td_lwp;
@@ -653,7 +666,7 @@ lwp_exit(int masterexit)
 
 		lwp_rb_tree_RB_REMOVE(&p->p_lwp_tree, lp);
 		--p->p_nthreads;
-		if (p->p_nthreads <= 1)
+		if ((p->p_flags & P_MAYBETHREADED) && p->p_nthreads <= 1)
 			dowake = 1;
 		lwkt_gettoken(&deadlwp_token[cpu]);
 		LIST_INSERT_HEAD(&deadlwp_list[cpu], lp, u.lwp_reap_entry);
@@ -661,23 +674,27 @@ lwp_exit(int masterexit)
 		lwkt_reltoken(&deadlwp_token[cpu]);
 	} else {
 		--p->p_nthreads;
-		if (p->p_nthreads <= 1)
+		if ((p->p_flags & P_MAYBETHREADED) && p->p_nthreads <= 1)
 			dowake = 1;
 	}
 
 	/*
-	 * Release p_token.  Issue the wakeup() on p_nthreads if necessary,
-	 * as late as possible to give us a chance to actually deschedule and
-	 * switch away before another cpu core hits reaplwp().
-	 */
-	lwkt_reltoken(&p->p_token);
-	if (dowake)
-		wakeup(&p->p_nthreads);
-
-	/*
+	 * We no longer need p_token.
+	 *
 	 * Tell the userland scheduler that we are going away
 	 */
+	lwkt_reltoken(&p->p_token);
 	p->p_usched->heuristic_exiting(lp, p);
+
+	/*
+	 * Issue late wakeups after releasing our token to give us a chance
+	 * to deschedule and switch away before another cpu in a wait*()
+	 * reaps us.  This is done as late as possible to reduce contention.
+	 */
+	if (dowake)
+		wakeup(&p->p_nthreads);
+	if (waddr)
+		wakeup(waddr);
 
 	cpu_lwp_exit();
 }
@@ -784,9 +801,6 @@ lwp_dispose(struct lwp *lp)
 	kfree(lp, M_LWP);
 }
 
-/*
- * MPSAFE
- */
 int
 sys_wait4(struct wait_args *uap)
 {
@@ -808,8 +822,6 @@ sys_wait4(struct wait_args *uap)
  * wait1()
  *
  * wait_args(int pid, int *status, int options, struct rusage *rusage)
- *
- * MPALMOSTSAFE
  */
 int
 kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
@@ -821,12 +833,16 @@ kern_wait(pid_t pid, int *status, int options, struct rusage *rusage, int *res)
 	struct pargs *pa;
 	struct sigacts *ps;
 	int nfound, error;
+	long waitgen;
 
 	if (pid == 0)
 		pid = -q->p_pgid;
 	if (options &~ (WUNTRACED|WNOHANG|WCONTINUED|WLINUXCLONE))
 		return (EINVAL);
 
+	/*
+	 * Protect the q->p_children list
+	 */
 	lwkt_gettoken(&q->p_token);
 loop:
 	/*
@@ -857,6 +873,7 @@ loop:
 	 *	 case where no children are found or we risk breaking the
 	 *	 interlock between child and parent.
 	 */
+	waitgen = atomic_fetchadd_long(&q->p_waitgen, 0x80000000);
 	LIST_FOREACH(p, &q->p_children, p_sibling) {
 		if (pid != WAIT_ANY &&
 		    p->p_pid != pid && p->p_pgid != -pid) {
@@ -941,6 +958,7 @@ loop:
 				*status = p->p_xstat;
 			if (rusage)
 				*rusage = p->p_ru;
+
 			/*
 			 * If we got the child via a ptrace 'attach',
 			 * we need to give it back to the old parent.
@@ -1090,9 +1108,17 @@ loop:
 	}
 
 	/*
-	 * Wait for signal - interlocked using q->p_token.
+	 * Wait for signal - interlocked using q->p_waitgen.
 	 */
-	error = tsleep(q, PCATCH, "wait", 0);
+	error = 0;
+	while ((waitgen & 0x7FFFFFFF) == (q->p_waitgen & 0x7FFFFFFF)) {
+		tsleep_interlock(q, PCATCH);
+		waitgen = atomic_fetchadd_long(&q->p_waitgen, 0x80000000);
+		if ((waitgen & 0x7FFFFFFF) == (q->p_waitgen & 0x7FFFFFFF)) {
+			error = tsleep(q, PCATCH | PINTERLOCKED, "wait", 0);
+			break;
+		}
+	}
 	if (error) {
 done:
 		lwkt_reltoken(&q->p_token);

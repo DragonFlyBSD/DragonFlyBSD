@@ -239,7 +239,7 @@ struct	proc {
 	struct plimit	*p_limit;	/* Process limits. */
 	struct pstats	*p_stats;
 	u_int		p_mqueue_cnt;	/* Count of open mqueues. */
-	void		*p_pad0;
+	long		p_waitgen;	/* wait interlock allows late signal */
 	struct sigacts	*p_sigacts;
 #define p_sigignore	p_sigacts->ps_sigignore
 #define p_sigcatch	p_sigacts->ps_sigcatch
@@ -280,7 +280,7 @@ struct	proc {
 	unsigned int	p_stype;	/* procfs stop event type */
 	char		p_step;		/* procfs stop *once* flag */
 	unsigned char	p_pfsflags;	/* procfs flags */
-	char		p_pad2[2];	/* padding for alignment */
+	char		p_pad2[2];
 	struct		sigiolst p_sigiolst;	/* list of sigio sources */
 	int		p_sigparent;	/* signal to parent on exit */
 	struct klist	p_klist;	/* knotes attached to this process */
@@ -295,7 +295,7 @@ struct	proc {
 #define	p_startcopy	p_comm
 
 	char		p_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
-	char		p_pad3;		/* Process lock (prevent destruct) count. */
+	char		p_pad3;
 	char		p_nice;		/* Process "nice" value. */
 	char		p_pad4;
 	int		p_osrel;	/* release date for binary ELF note */
@@ -355,7 +355,7 @@ struct	proc {
 				/* was: Sleep is interruptible */
 #define	P_SUGID		0x00100	/* Had set id privileges since last exec */
 #define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping */
-#define	P_UNUSED10	0x00400	/* was: SIGSTOP status */
+#define	P_MAYBETHREADED	0x00400	/* might be threaded optimization */
 #define	P_TRACED	0x00800	/* Debugged process being traced */
 #define	P_WAITED	0x01000	/* SIGSTOP status was returned by wait3/4 */
 #define	P_WEXIT		0x02000	/* Working on exiting (master exit) */
@@ -485,10 +485,6 @@ extern void stopevent(struct proc*, unsigned int, unsigned int);
 #define LWPHOLD(lp)	atomic_add_int(&(lp)->lwp_lock, 1)
 #define LWPRELE(lp)	atomic_add_int(&(lp)->lwp_lock, -1)
 
-#define	PIDHASH(pid)	(&pidhashtbl[(pid) & pidhash])
-extern LIST_HEAD(pidhashhead, proc) *pidhashtbl;
-extern u_long pidhash;
-
 #define	PGRPHASH(pgid)	(&pgrphashtbl[(pgid) & pgrphash])
 extern LIST_HEAD(pgrphashhead, pgrp) *pgrphashtbl;
 extern u_long pgrphash;
@@ -558,7 +554,7 @@ thread_t cpu_lwkt_switch (struct thread *);
 
 void	cpu_lwp_exit (void) __dead2;
 void	cpu_thread_exit (void) __dead2;
-void	lwp_exit (int masterexit) __dead2;
+void	lwp_exit (int masterexit, void *waddr) __dead2;
 void	lwp_dispose (struct lwp *);
 int	killalllwps (int);
 void	exit1 (int) __dead2;

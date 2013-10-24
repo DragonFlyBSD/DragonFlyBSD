@@ -27,9 +27,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
- * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
  */
 
 #include <sys/param.h>
@@ -56,6 +53,10 @@
 #include <sys/spinlock2.h>
 #include <sys/mplock2.h>
 
+#define PIDHASH(pid)    (&pidhashtbl[(pid) & pidhash])
+#define PIDSPIN(pid)	(&pidspintbl[(pid) & pidhash])
+LIST_HEAD(pidhashhead, proc);
+
 static MALLOC_DEFINE(M_PGRP, "pgrp", "process group header");
 MALLOC_DEFINE(M_SESSION, "session", "session header");
 MALLOC_DEFINE(M_PROC, "proc", "Proc structures");
@@ -77,10 +78,13 @@ static pid_t proc_getnewpid_locked(int random_offset);
 /*
  * Other process lists
  */
-struct pidhashhead *pidhashtbl;
-u_long pidhash;
+static struct pidhashhead *pidhashtbl;
+static struct spinlock *pidspintbl;
+static u_long pidhash;
+
 struct pgrphashhead *pgrphashtbl;
 u_long pgrphash;
+
 struct proclist allproc;
 struct proclist zombproc;
 struct spinlock pghash_spin = SPINLOCK_INITIALIZER(&pghash_spin);
@@ -128,10 +132,17 @@ SYSCTL_PROC(_kern, OID_AUTO, randompid, CTLTYPE_INT|CTLFLAG_RW,
 void
 procinit(void)
 {
+	u_long i;
+
 	LIST_INIT(&allproc);
 	LIST_INIT(&zombproc);
 	lwkt_init();
 	pidhashtbl = hashinit(maxproc / 4, M_PROC, &pidhash);
+	pidspintbl = kmalloc(sizeof(*pidspintbl) * (pidhash + 1), M_PROC,
+			     M_WAITOK | M_ZERO);
+	for (i = 0; i <= pidhash; ++i)
+		spin_init(&pidspintbl[i]);
+
 	pgrphashtbl = hashinit(maxproc / 4, M_PROC, &pgrphash);
 	uihashinit();
 }
@@ -361,15 +372,15 @@ pfind(pid_t pid)
 	/*
 	 * Otherwise find it in the hash table.
 	 */
-	lwkt_gettoken_shared(&proc_token);
+	spin_lock_shared(PIDSPIN(pid));
 	LIST_FOREACH(p, PIDHASH(pid), p_hash) {
 		if (p->p_pid == pid) {
 			PHOLD(p);
-			lwkt_reltoken(&proc_token);
+			spin_unlock_shared(PIDSPIN(pid));
 			return (p);
 		}
 	}
-	lwkt_reltoken(&proc_token);
+	spin_unlock_shared(PIDSPIN(pid));
 
 	return (NULL);
 }
@@ -391,14 +402,15 @@ pfindn(pid_t pid)
 	if (p && p->p_pid == pid)
 		return (p);
 
-	lwkt_gettoken_shared(&proc_token);
+	spin_lock_shared(PIDSPIN(pid));
 	LIST_FOREACH(p, PIDHASH(pid), p_hash) {
 		if (p->p_pid == pid) {
-			lwkt_reltoken(&proc_token);
+			spin_unlock_shared(PIDSPIN(pid));
 			return (p);
 		}
 	}
-	lwkt_reltoken(&proc_token);
+	spin_unlock_shared(PIDSPIN(pid));
+
 	return (NULL);
 }
 
@@ -782,9 +794,14 @@ proc_add_allproc(struct proc *p)
 	}
 
 	lwkt_gettoken(&proc_token);
+
 	p->p_pid = proc_getnewpid_locked(random_offset);
 	LIST_INSERT_HEAD(&allproc, p, p_list);
+
+	spin_lock(PIDSPIN(p->p_pid));
 	LIST_INSERT_HEAD(PIDHASH(p->p_pid), p, p_hash);
+	spin_unlock(PIDSPIN(p->p_pid));
+
 	lwkt_reltoken(&proc_token);
 }
 
@@ -882,11 +899,18 @@ again:
 void
 proc_move_allproc_zombie(struct proc *p)
 {
-	lwkt_gettoken(&proc_token);
 	PSTALL(p, "reap1", 0);
+
+	lwkt_gettoken(&proc_token);
+	PSTALL(p, "reap1a", 0);
+
 	LIST_REMOVE(p, p_list);
 	LIST_INSERT_HEAD(&zombproc, p, p_list);
+
+	spin_lock(PIDSPIN(p->p_pid));
 	LIST_REMOVE(p, p_hash);
+	spin_unlock(PIDSPIN(p->p_pid));
+
 	p->p_stat = SZOMB;
 	lwkt_reltoken(&proc_token);
 	dsched_exit_proc(p);
@@ -904,8 +928,9 @@ proc_move_allproc_zombie(struct proc *p)
 void
 proc_remove_zombie(struct proc *p)
 {
-	lwkt_gettoken(&proc_token);
 	PSTALL(p, "reap2", 0);
+	lwkt_gettoken(&proc_token);
+	PSTALL(p, "reap2a", 0);
 	LIST_REMOVE(p, p_list); /* off zombproc */
 	LIST_REMOVE(p, p_sibling);
 	p->p_pptr = NULL;
@@ -927,7 +952,7 @@ lwpuserret(struct lwp *lp)
 	}
 	if (lp->lwp_mpflags & LWP_MP_WEXIT) {
 		lwkt_gettoken(&p->p_token);
-		lwp_exit(0);
+		lwp_exit(0, NULL);
 		lwkt_reltoken(&p->p_token);     /* NOT REACHED */
 	}
 }

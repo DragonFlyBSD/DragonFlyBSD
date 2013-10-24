@@ -101,9 +101,7 @@ rb_lwp_compare(struct lwp *lp1, struct lwp *lp2)
 RB_GENERATE2(lwp_rb_tree, lwp, u.lwp_rbnode, rb_lwp_compare, lwpid_t, lwp_tid);
 
 /*
- * Fork system call
- *
- * MPALMOSTSAFE
+ * fork() system call
  */
 int
 sys_fork(struct fork_args *uap)
@@ -124,7 +122,7 @@ sys_fork(struct fork_args *uap)
 }
 
 /*
- * MPALMOSTSAFE
+ * vfork() system call
  */
 int
 sys_vfork(struct vfork_args *uap)
@@ -154,8 +152,6 @@ sys_vfork(struct vfork_args *uap)
  * created.
  *
  * rfork { int flags }
- *
- * MPALMOSTSAFE
  */
 int
 sys_rfork(struct rfork_args *uap)
@@ -184,7 +180,7 @@ sys_rfork(struct rfork_args *uap)
 }
 
 /*
- * MPALMOSTSAFE
+ * Low level thread create used by pthreads.
  */
 int
 sys_lwp_create(struct lwp_create_args *uap)
@@ -694,6 +690,12 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	destproc->p_lasttid = lp->lwp_tid;
 	destproc->p_nthreads++;
 
+	/*
+	 * This flag is set and never cleared.  It means that the process
+	 * was threaded at some point.  Used to improve exit performance.
+	 */
+	destproc->p_flags |= P_MAYBETHREADED;
+
 	return (lp);
 }
 
@@ -753,6 +755,7 @@ void
 start_forked_proc(struct lwp *lp1, struct proc *p2)
 {
 	struct lwp *lp2 = ONLY_LWP_IN_PROC(p2);
+	int pflags;
 
 	/*
 	 * Move from SIDL to RUN queue, and activate the process's thread.
@@ -778,16 +781,20 @@ start_forked_proc(struct lwp *lp1, struct proc *p2)
 	PRELE(lp1->lwp_proc);
 
 	/*
-	 * Preserve synchronization semantics of vfork.  If waiting for
-	 * child to exec or exit, set P_PPWAIT on child, and sleep on our
-	 * proc (in case of exec or exit).
+	 * Preserve synchronization semantics of vfork.  P_PPWAIT is set in
+	 * the child until it has retired the parent's resources.  The parent
+	 * must wait for the flag to be cleared by the child.
 	 *
-	 * We must hold our p_token to interlock the flag/tsleep
+	 * Interlock the flag/tsleep with atomic ops to avoid unnecessary
+	 * p_token conflicts.
+	 *
+	 * XXX Is this use of an atomic op on a field that is not normally
+	 *     manipulated with atomic ops ok?
 	 */
-	if (p2->p_flags & P_PPWAIT) {
-		lwkt_gettoken_shared(&p2->p_token);
-		while (p2->p_flags & P_PPWAIT)
-			tsleep(lp1->lwp_proc, 0, "ppwait", 0);
-		lwkt_reltoken(&p2->p_token);
+	while ((pflags = p2->p_flags) & P_PPWAIT) {
+		cpu_ccfence();
+		tsleep_interlock(lp1->lwp_proc, 0);
+		if (atomic_cmpset_int(&p2->p_flags, pflags, pflags))
+			tsleep(lp1->lwp_proc, PINTERLOCKED, "ppwait", 0);
 	}
 }

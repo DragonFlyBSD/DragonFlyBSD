@@ -417,11 +417,14 @@ interpret:
 	/*
 	 * mark as execed, wakeup the process that vforked (if any) and tell
 	 * it that it now has its own resources back
+	 *
+	 * We are using the P_PPWAIT as an interlock so an atomic op is
+	 * necessary to synchronize with the parent's cpu.
 	 */
 	p->p_flags |= P_EXEC;
 	if (p->p_pptr && (p->p_flags & P_PPWAIT)) {
-		p->p_flags &= ~P_PPWAIT;
-		wakeup((caddr_t)p->p_pptr);
+		atomic_clear_int(&p->p_flags, P_PPWAIT);
+		wakeup(p->p_pptr);
 	}
 
 	/*
