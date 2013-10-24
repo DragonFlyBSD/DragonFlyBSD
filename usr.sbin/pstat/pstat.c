@@ -420,10 +420,6 @@ vnode_print(struct vnode *avnode, struct vnode *vp)
 		*fp++ = 'V';
 	if (flag & (VAGE0 | VAGE1))
 		*fp++ = 'a';
-	if (flag & VOLOCK)
-		*fp++ = 'l';
-	if (flag & VOWANT)
-		*fp++ = 'w';
 #ifdef VDOOMED
 	if (flag & VDOOMED)
 		*fp++ = 'D';
