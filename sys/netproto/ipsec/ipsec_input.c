@@ -223,18 +223,10 @@ ipsec_common_input(struct mbuf *m, int skip, int protoff, int af, int sproto)
  * Common input handler for IPv4 AH, ESP, and IPCOMP.
  */
 int
-ipsec4_common_input(struct mbuf *m, ...)
+ipsec4_common_input(struct mbuf **m, int *offp, int proto)
 {
-	__va_list ap;
-	int off, nxt;
-
-	__va_start(ap, m);
-	off = __va_arg(ap, int);
-	nxt = __va_arg(ap, int);
-	__va_end(ap);
-
-	return ipsec_common_input(m, off, offsetof(struct ip, ip_p),
-				  AF_INET, nxt);
+	return ipsec_common_input(*m, *offp, offsetof(struct ip, ip_p),
+				  AF_INET, proto);
 }
 
 /*
@@ -485,8 +477,12 @@ ipsec6_common_input(struct mbuf **mp, int *offp, int proto)
 }
 
 void
-esp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
+esp6_ctlinput(netmsg_t msg)
 {
+	int cmd = msg->ctlinput.nm_cmd;
+	struct sockaddr *sa = msg->ctlinput.nm_arg;
+	void *d = msg->ctlinput.nm_extra;
+
 	if (sa->sa_family != AF_INET6 ||
 	    sa->sa_len != sizeof(struct sockaddr_in6))
 		return;

@@ -53,6 +53,7 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <net/netisr.h>
+#include <net/raw_cb.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -109,7 +110,7 @@ static void _ipip_input(struct mbuf *m, int iphlen, struct ifnet *gifp);
  * Really only a wrapper for ipip_input(), for use with IPv6.
  */
 int
-ip4_input6(struct mbuf **m, int *offp, int proto)
+ip4_input6(struct mbuf **mp, int *offp, int proto)
 {
 #if 0
 	/* If we do not accept IP-in-IP explicitly, drop.  */
@@ -120,7 +121,7 @@ ip4_input6(struct mbuf **m, int *offp, int proto)
 		return IPPROTO_DONE;
 	}
 #endif
-	_ipip_input(*m, *offp, NULL);
+	_ipip_input(*mp, *offp, NULL);
 	return IPPROTO_DONE;
 }
 #endif /* INET6 */
@@ -129,12 +130,9 @@ ip4_input6(struct mbuf **m, int *offp, int proto)
 /*
  * Really only a wrapper for ipip_input(), for use with IPv4.
  */
-void
-ip4_input(struct mbuf *m, ...)
+int
+ip4_input(struct mbuf **mp, int *offp, int proto)
 {
-	__va_list ap;
-	int iphlen;
-
 #if 0
 	/* If we do not accept IP-in-IP explicitly, drop.  */
 	if (!ipip_allow && (m->m_flags & M_IPSEC) == 0) {
@@ -144,11 +142,8 @@ ip4_input(struct mbuf *m, ...)
 		return;
 	}
 #endif
-	__va_start(ap, m);
-	iphlen = __va_arg(ap, int);
-	__va_end(ap);
-
-	_ipip_input(m, iphlen, NULL);
+	_ipip_input(*mp, *offp, NULL);
+	return IPPROTO_DONE;
 }
 #endif /* INET */
 
@@ -313,7 +308,9 @@ _ipip_input(struct mbuf *m, int iphlen, struct ifnet *gifp)
 	    !(m->m_pkthdr.rcvif->if_flags & IFF_LOOPBACK)) &&
 	    ipip_allow != 2) {
 		TAILQ_FOREACH(ifp, &ifnet, if_link) {
-			TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_link) {
+			struct ifaddr_container *ifac;
+			TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+				ifa = ifac->ifa;
 #ifdef INET
 				if (ipo) {
 					if (ifa->ifa_addr->sa_family !=
@@ -637,21 +634,39 @@ static struct xformsw ipe4_xformsw = {
 };
 
 extern struct domain inetdomain;
+
 static struct protosw ipe4_protosw[] = {
-{ SOCK_RAW,	&inetdomain,	IPPROTO_IPV4,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
-  ip4_input,	0, 		0,		rip_ctloutput,
-  cpu0_soport,	NULL,
-  0,		0,		0,		0,
-  &rip_usrreqs
-},
+	{
+		.pr_type = SOCK_RAW,
+		.pr_domain = &inetdomain,
+		.pr_protocol = IPPROTO_IPV4,
+		.pr_flags = PR_ATOMIC|PR_ADDR,
+
+		.pr_input = ip4_input,
+		.pr_output = NULL,
+		.pr_ctlinput = NULL,
+		.pr_ctloutput = rip_ctloutput,
+
+		.pr_ctlport = cpu0_ctlport,
+		.pr_init = raw_init,
+		.pr_usrreqs = &rip_usrreqs
+	},
 #ifdef INET6
-{ SOCK_RAW,	&inetdomain,	IPPROTO_IPV6,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
-  ip4_input,
-		0,	 	0,		rip_ctloutput,
-  cpu0_soport,
-  0,		0,		0,		0,
-  &rip_usrreqs
-}
+	{
+		.pr_type = SOCK_RAW,
+		.pr_domain = &inetdomain,
+		.pr_protocol = IPPROTO_IPV6,
+		.pr_flags = PR_ATOMIC|PR_ADDR,
+
+		.pr_input = ip4_input6,
+		.pr_output = NULL,
+		.pr_ctlinput = NULL,
+		.pr_ctloutput = rip_ctloutput,
+
+		.pr_ctlport = cpu0_ctlport,
+		.pr_init = raw_init,
+		.pr_usrreqs = &rip_usrreqs
+	}
 #endif
 };
 

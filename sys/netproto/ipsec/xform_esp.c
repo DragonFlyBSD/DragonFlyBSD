@@ -519,13 +519,13 @@ esp_input_cb(struct cryptop *crp)
 		ahstat.ahs_hist[sav->alg_auth]++;
 		if (mtag == NULL) {
 			/* Copy the authenticator from the packet */
-			m_copydata(m, m->m_pkthdr.len - esph->authsize,
-				esph->authsize, aalg);
+			m_copydata(m, m->m_pkthdr.len - esph->blocksize,
+				esph->blocksize, aalg);
 
 			ptr = (caddr_t) (tc + 1);
 
 			/* Verify authenticator */
-			if (bcmp(ptr, aalg, esph->authsize) != 0) {
+			if (bcmp(ptr, aalg, esph->blocksize) != 0) {
 				DPRINTF(("esp_input_cb: "
 		    "authentication hash mismatch for packet in SA %s/%08lx\n",
 				    ipsec_address(&saidx->dst),
@@ -537,7 +537,7 @@ esp_input_cb(struct cryptop *crp)
 		}
 
 		/* Remove trailing authenticator */
-		m_adj(m, -(esph->authsize));
+		m_adj(m, -(esph->blocksize));
 	}
 
 	/* Release the crypto descriptors */

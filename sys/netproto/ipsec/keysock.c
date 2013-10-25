@@ -51,6 +51,7 @@
 
 #include <net/raw_cb.h>
 #include <net/route.h>
+#include <net/netmsg2.h>
 
 #include <net/pfkeyv2.h>
 #include <netproto/ipsec/key.h>
@@ -349,28 +350,31 @@ key_sendup_mbuf(struct socket *so, struct mbuf *m, int target)
  * key_abort()
  * derived from net/rtsock.c:rts_abort()
  */
-static int
-key_abort(struct socket *so)
+static void
+key_abort(netmsg_t msg)
 {
-	int error;
-
-	error = raw_usrreqs.pru_abort(so);
-
-	return error;
+	/* XXX needs token protection */
+	raw_usrreqs.pru_abort(msg);
 }
 
 /*
  * key_attach()
  * derived from net/rtsock.c:rts_attach()
  */
-static int
-key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+static void
+key_attach(netmsg_t msg)
 {
+	struct socket *so = msg->attach.base.nm_so;
+	int proto = msg->attach.nm_proto;
+	struct pru_attach_info *ai = msg->attach.nm_ai;
 	struct keycb *kp;
+	struct netmsg_pru_attach smsg;
 	int error;
 
-	if (sotorawcb(so) != NULL)
-		return EISCONN;	/* XXX panic? */
+	if (sotorawcb(so) != NULL) {
+		error = EISCONN;	/* XXX panic? */
+		goto out;
+	}
 	kp = (struct keycb *)kmalloc(sizeof *kp, M_PCB, M_WAITOK|M_ZERO); /* XXX */
 
 	/*
@@ -380,15 +384,25 @@ key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	 * Probably we should try to do more of this work beforehand and
 	 * eliminate the spl.
 	 */
+	/* XXX needs token protection */
 	crit_enter();
 	so->so_pcb = (caddr_t)kp;
-	error = raw_usrreqs.pru_attach(so, proto, ai);
+
+	netmsg_init(&smsg.base, so, &netisr_adone_rport, 0,
+	    raw_usrreqs.pru_attach);
+	smsg.base.lmsg.ms_flags &= ~(MSGF_REPLY | MSGF_DONE);
+	smsg.base.lmsg.ms_flags |= MSGF_SYNC;
+	smsg.nm_proto = proto;
+	smsg.nm_ai = ai;
+	raw_usrreqs.pru_attach((netmsg_t)&smsg);
+	error = smsg.base.lmsg.ms_error;
+
 	kp = (struct keycb *)sotorawcb(so);
 	if (error) {
 		kfree(kp, M_PCB);
 		so->so_pcb = (caddr_t) 0;
 		crit_exit();
-		return error;
+		goto out;
 	}
 
 	kp->kp_promisc = kp->kp_registered = 0;
@@ -402,48 +416,43 @@ key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	so->so_options |= SO_USELOOPBACK;
 
 	crit_exit();
-	return 0;
+out:
+	lwkt_replymsg(&msg->attach.base.lmsg, error);
 }
 
 /*
  * key_bind()
  * derived from net/rtsock.c:rts_bind()
  */
-static int
-key_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+key_bind(netmsg_t msg)
 {
-	int error;
-	crit_enter();
-	error = raw_usrreqs.pru_bind(so, nam, td); /* xxx just EINVAL */
-	crit_exit();
-	return error;
+	/* XXX needs token protection */
+	raw_usrreqs.pru_bind(msg);  /* XXX just EINVAL */
 }
 
 /*
  * key_connect()
  * derived from net/rtsock.c:rts_connect()
  */
-static int
-key_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
+static void
+key_connect(netmsg_t msg)
 {
-	int error;
-	crit_enter();
-	error = raw_usrreqs.pru_connect(so, nam, td); /* XXX just EINVAL */
-	crit_exit();
-	return error;
+	/* XXX needs token protection */
+	raw_usrreqs.pru_connect(msg); /* XXX just EINVAL */
 }
 
 /*
  * key_detach()
  * derived from net/rtsock.c:rts_detach()
  */
-static int
-key_detach(struct socket *so)
+static void
+key_detach(netmsg_t msg)
 {
+	struct socket *so = msg->detach.base.nm_so;
 	struct keycb *kp = (struct keycb *)sotorawcb(so);
-	int error;
 
-	crit_enter();
+	/* XXX needs token protection */
 	if (kp != NULL) {
 		if (kp->kp_raw.rcb_proto.sp_protocol
 		    == PF_KEY) /* XXX: AF_KEY */
@@ -452,96 +461,79 @@ key_detach(struct socket *so)
 
 		key_freereg(so);
 	}
-	error = raw_usrreqs.pru_detach(so);
-	crit_exit();
-	return error;
+	raw_usrreqs.pru_detach(msg);
+
 }
 
 /*
  * key_disconnect()
  * derived from net/rtsock.c:key_disconnect()
  */
-static int
-key_disconnect(struct socket *so)
+static void
+key_disconnect(netmsg_t msg)
 {
-	int error;
-	crit_enter();
-	error = raw_usrreqs.pru_disconnect(so);
-	crit_exit();
-	return error;
+	/* XXX needs token protection */
+	raw_usrreqs.pru_disconnect(msg);
 }
 
 /*
  * key_peeraddr()
  * derived from net/rtsock.c:rts_peeraddr()
  */
-static int
-key_peeraddr(struct socket *so, struct sockaddr **nam)
+static void
+key_peeraddr(netmsg_t msg)
 {
-	int error;
-	crit_enter();
-	error = raw_usrreqs.pru_peeraddr(so, nam);
-	crit_exit();
-	return error;
+	/* XXX needs token protection */
+	raw_usrreqs.pru_peeraddr(msg);
 }
 
 /*
  * key_send()
  * derived from net/rtsock.c:rts_send()
  */
-static int
-key_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	 struct mbuf *control, struct thread *td)
+static void
+key_send(netmsg_t msg)
 {
-	int error;
-	crit_enter();
-	error = raw_usrreqs.pru_send(so, flags, m, nam, control, td);
-	crit_exit();
-	return error;
+	/* XXX needs token protection */
+	raw_usrreqs.pru_send(msg);
 }
 
 /*
  * key_shutdown()
  * derived from net/rtsock.c:rts_shutdown()
  */
-static int
-key_shutdown(struct socket *so)
+static void
+key_shutdown(netmsg_t msg)
 {
-	int error;
-	crit_enter();
-	error = raw_usrreqs.pru_shutdown(so);
-	crit_exit();
-	return error;
+	/* XXX needs token protection */
+	raw_usrreqs.pru_shutdown(msg);
 }
 
 /*
  * key_sockaddr()
  * derived from net/rtsock.c:rts_sockaddr()
  */
-static int
-key_sockaddr(struct socket *so, struct sockaddr **nam)
+static void
+key_sockaddr(netmsg_t msg)
 {
-	int error;
-	crit_enter();
-	error = raw_usrreqs.pru_sockaddr(so, nam);
-	crit_exit();
-	return error;
+	/* XXX needs token protection */
+	raw_usrreqs.pru_sockaddr(msg);
 }
 
 struct pr_usrreqs key_usrreqs = {
 	.pru_abort = key_abort,
-	.pru_accept = pru_accept_notsupp,
+	.pru_accept = pr_generic_notsupp,
 	.pru_attach = key_attach,
 	.pru_bind = key_bind,
 	.pru_connect = key_connect,
-	.pru_connect2 = pru_connect2_notsupp,
-	.pru_control = pru_control_notsupp,
+	.pru_connect2 = pr_generic_notsupp,
+	.pru_control = pr_generic_notsupp,
 	.pru_detach = key_detach,
 	.pru_disconnect = key_disconnect,
-	.pru_listen = pru_listen_notsupp,
+	.pru_listen = pr_generic_notsupp,
 	.pru_peeraddr = key_peeraddr,
-	.pru_rcvd = pru_rcvd_notsupp,
-	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_rcvd = pr_generic_notsupp,
+	.pru_rcvoob = pr_generic_notsupp,
 	.pru_send = key_send,
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = key_shutdown,
@@ -560,12 +552,21 @@ SYSCTL_NODE(_net, PF_KEY, key, CTLFLAG_RW, 0, "Key Family");
 extern struct domain keydomain;
 
 struct protosw keysw[] = {
-{ SOCK_RAW,	&keydomain,	PF_KEY_V2,	PR_ATOMIC|PR_ADDR,
-  0,		key_output,	raw_ctlinput,	0,
-  cpu0_soport,	cpu0_ctlport,
-  raw_init,	0,		0,		0,
-  &key_usrreqs
-}
+	{
+		.pr_type = SOCK_RAW,
+		.pr_domain = &keydomain,
+		.pr_protocol = PF_KEY_V2,
+		.pr_flags = PR_ATOMIC|PR_ADDR,
+
+		.pr_input = NULL,
+		.pr_output = key_output,
+		.pr_ctlinput = raw_ctlinput,
+		.pr_ctloutput = NULL,
+
+		.pr_ctlport = cpu0_ctlport,
+		.pr_init = raw_init,
+		.pr_usrreqs = &key_usrreqs
+	}
 };
 
 static void

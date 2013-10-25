@@ -336,7 +336,7 @@ struct protosw inetsw[] = {
 	.pr_flags = PR_ATOMIC|PR_ADDR,
 
 	.pr_input = ipsec4_common_input,
-	.pr_output = NULL
+	.pr_output = NULL,
 	.pr_ctlinput = NULL,
 	.pr_ctloutput = NULL,
 

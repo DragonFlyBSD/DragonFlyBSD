@@ -71,6 +71,7 @@
 #include <netproto/ipsec/key_debug.h>
 
 #include <opencrypto/cryptodev.h>
+#include <opencrypto/xform.h>
 
 /*
  * Return header size in bytes.  The old protocol did not support
@@ -85,7 +86,7 @@
  * this size from the xform but is (currently) always 12.
  */
 #define	AUTHSIZE(sav) \
-	((sav->flags & SADB_X_EXT_OLD) ? 16 : (sav)->tdb_authalgxform->authsize)
+	((sav->flags & SADB_X_EXT_OLD) ? 16 : (sav)->tdb_authalgxform->blocksize)
 
 int	ah_enable = 1;			/* control flow of packets with AH */
 int	ah_cleartos = 1;		/* clear ip_tos when doing AH calc */
@@ -116,11 +117,11 @@ ah_algorithm_lookup(int alg)
 	case SADB_X_AALG_NULL:
 		return &auth_hash_null;
 	case SADB_AALG_MD5HMAC:
-		return &auth_hash_hmac_md5_96;
+		return &auth_hash_hmac_md5;
 	case SADB_AALG_SHA1HMAC:
-		return &auth_hash_hmac_sha1_96;
+		return &auth_hash_hmac_sha1;
 	case SADB_X_AALG_RIPEMD160HMAC:
-		return &auth_hash_hmac_ripemd_160_96;
+		return &auth_hash_hmac_ripemd_160;
 	case SADB_X_AALG_MD5:
 		return &auth_hash_key_md5;
 	case SADB_X_AALG_SHA:

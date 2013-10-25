@@ -362,7 +362,7 @@ extern const char *ipsec_logsastr (struct secasvar *);
 extern void ipsec_dumpmbuf (struct mbuf *);
 
 struct m_tag;
-extern int ipsec4_common_input(struct mbuf *m, ...);
+extern int ipsec4_common_input(struct mbuf **m, int *offp, int proto);
 extern int ipsec4_common_input_cb(struct mbuf *m, struct secasvar *sav,
 			int skip, int protoff, struct m_tag *mt);
 extern int ipsec4_process_packet (struct mbuf *, struct ipsecrequest *,
