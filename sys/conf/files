@@ -1821,7 +1821,7 @@ libkern/bcd.c				standard
 libkern/bsearch.c			standard
 libkern/crc32.c				standard
 libkern/icrc32.c			standard
-libkern/idr.c				standard
+libkern/linux_idr.c			standard
 libkern/index.c				standard
 libkern/inet_ntoa.c			standard
 libkern/mcount.c			optional	profiling-routine
