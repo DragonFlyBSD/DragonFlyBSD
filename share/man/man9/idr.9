@@ -98,8 +98,8 @@ functions allocate a new integer mapped with the specified pointer
 .Fa ptr .
 The new ID will be stored in
 .Fa id .
-If the tree becomes full, the functions function will return
-.Er EAGAIN .
+If the tree becomes full, these functions will return
+.Er -EAGAIN .
 In this case,
 .Fn idr_pre_get
 should be called to grow the tree.

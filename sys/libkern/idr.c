@@ -207,20 +207,19 @@ idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 {
 	int resid;
 
-	if (ptr == NULL)
-		return (EINVAL);
+	KKASSERT(ptr != NULL);
 
 	lwkt_gettoken(&idp->idr_token);
 	if (sid >= idp->idr_count) {
 		idp->idr_maxwant = max(idp->idr_maxwant, sid);
 		lwkt_reltoken(&idp->idr_token);
-		return (EAGAIN);
+		return -EAGAIN;
 	}
 
 	resid = idr_find_free(idp, sid, INT_MAX);
 	if (resid == -1) {
 		lwkt_reltoken(&idp->idr_token);
-		return (EAGAIN);
+		return -EAGAIN;
 	}
 
 	if (resid >= idp->idr_count)
