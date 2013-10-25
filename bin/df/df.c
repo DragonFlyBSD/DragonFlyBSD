@@ -70,19 +70,21 @@ struct maxwidths {
 	int ifree;
 };
 
-int	  bread(off_t, void *, int);
-int	  checkvfsname(const char *, char **);
-char	 *getmntpt(char *);
-int	  quadwidth(int64_t);
-char	 *makenetvfslist(void);
+/* vfslist.c */
 char	**makevfslist(char *);
-void	  prthuman(struct statvfs *, int64_t);
-void	  prthumanval(int64_t);
-void	  prtstat(struct statfs *, struct statvfs *, struct maxwidths *);
-long	  regetmntinfo(struct statfs **, struct statvfs **,  long, char **);
-int	  ufs_df(char *, struct maxwidths *);
-void	  update_maxwidths(struct maxwidths *, struct statfs *, struct statvfs *);
-void	  usage(void);
+int	  checkvfsname(const char *, char **);
+
+static int	 bread(off_t, void *, int);
+static char	*getmntpt(char *);
+static int	 quadwidth(int64_t);
+static char	*makenetvfslist(void);
+static void	 prthuman(struct statvfs *, int64_t);
+static void	 prthumanval(int64_t);
+static void	 prtstat(struct statfs *, struct statvfs *, struct maxwidths *);
+static long	 regetmntinfo(struct statfs **, struct statvfs **, long, char **);
+static int	 ufs_df(char *, struct maxwidths *);
+static void	 update_maxwidths(struct maxwidths *, struct statfs *, struct statvfs *);
+static void	 usage(void);
 
 int	aflag = 0, hflag, iflag, nflag;
 struct	ufs_args mdev;
@@ -267,7 +269,7 @@ main(int argc, char **argv)
 	return (rv);
 }
 
-char *
+static char *
 getmntpt(char *name)
 {
 	long mntsize, i;
@@ -287,7 +289,7 @@ getmntpt(char *name)
  * filesystem types not in vfslist and possibly re-stating to get
  * current (not cached) info.  Returns the new count of valid statfs bufs.
  */
-long
+static long
 regetmntinfo(struct statfs **mntbufp, struct statvfs **mntvbufp, long mntsize, char **vfslist)
 {
 	int i, j;
@@ -314,7 +316,7 @@ regetmntinfo(struct statfs **mntbufp, struct statvfs **mntvbufp, long mntsize, c
 	return (j);
 }
 
-void
+static void
 prthuman(struct statvfs *vsfsp, int64_t used)
 {
 	prthumanval(vsfsp->f_blocks * vsfsp->f_bsize);
@@ -322,7 +324,7 @@ prthuman(struct statvfs *vsfsp, int64_t used)
 	prthumanval(vsfsp->f_bavail * vsfsp->f_bsize);
 }
 
-void
+static void
 prthumanval(int64_t bytes)
 {
 	char buf[6];
@@ -354,7 +356,7 @@ fsbtoblk(int64_t num, uint64_t bsize, u_long reqbsize)
 /*
  * Print out status about a filesystem.
  */
-void
+static void
 prtstat(struct statfs *sfsp, struct statvfs *vsfsp, struct maxwidths *mwp)
 {
 	static long blocksize;
@@ -414,7 +416,7 @@ prtstat(struct statfs *sfsp, struct statvfs *vsfsp, struct maxwidths *mwp)
  * Update the maximum field-width information in `mwp' based on
  * the filesystem specified by `sfsp'.
  */
-void
+static void
 update_maxwidths(struct maxwidths *mwp, struct statfs *sfsp, struct statvfs *vsfsp)
 {
 	static long blocksize;
@@ -436,7 +438,7 @@ update_maxwidths(struct maxwidths *mwp, struct statfs *sfsp, struct statvfs *vsf
 }
 
 /* Return the width in characters of the specified long. */
-int
+static int
 quadwidth(int64_t val)
 {
 	int len;
@@ -467,7 +469,7 @@ union {
 
 int	rfd;
 
-int
+static int
 ufs_df(char *file, struct maxwidths *mwp)
 {
 	struct statfs statfsbuf;
@@ -513,7 +515,7 @@ ufs_df(char *file, struct maxwidths *mwp)
 	return (0);
 }
 
-int
+static int
 bread(off_t off, void *buf, int cnt)
 {
 	ssize_t nr;
@@ -529,7 +531,7 @@ bread(off_t off, void *buf, int cnt)
 	return (1);
 }
 
-void
+static void
 usage(void)
 {
 
@@ -538,7 +540,7 @@ usage(void)
 	exit(EX_USAGE);
 }
 
-char *
+static char *
 makenetvfslist(void)
 {
 	char *str, *strptr, **listptr;
