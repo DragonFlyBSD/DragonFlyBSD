@@ -341,6 +341,23 @@ prthumanval(int64_t bytes)
 }
 
 /*
+ * Print an inode count in "human-readable" format.
+ */
+static void
+prthumanvalinode(int64_t bytes)
+{
+	char buf[6];
+	int flags;
+
+	flags = HN_NOSPACE | HN_DECIMAL | HN_DIVISOR_1000;
+
+	humanize_number(buf, sizeof(buf) - (bytes < 0 ? 0 : 1),
+	    bytes, "", HN_AUTOSCALE, flags);
+
+	printf(" %5s", buf);
+}
+
+/*
  * Convert statfs returned filesystem size into BLOCKSIZE units.
  * Attempts to avoid overflow for large filesystems.
  */
@@ -404,8 +421,15 @@ prtstat(struct statfs *sfsp, struct statvfs *vsfsp, struct maxwidths *mwp)
 	if (iflag) {
 		inodes = vsfsp->f_files;
 		used = inodes - vsfsp->f_ffree;
-		printf(" %*jd %*jd %4.0f%% ", mwp->iused, (intmax_t)used,
-		    mwp->ifree, (intmax_t)vsfsp->f_ffree, inodes == 0 ? 100.0 :
+		if (hflag) {
+			printf("  ");
+			prthumanvalinode(used);
+			prthumanvalinode(vsfsp->f_ffree);
+		} else {
+			printf(" %*jd %*jd", mwp->iused, (intmax_t)used,
+			    mwp->ifree, (intmax_t)vsfsp->f_ffree);
+		}
+		printf(" %4.0f%% ", inodes == 0 ? 100.0 :
 		    (double)used / (double)inodes * 100.0);
 	} else
 		printf("  ");
