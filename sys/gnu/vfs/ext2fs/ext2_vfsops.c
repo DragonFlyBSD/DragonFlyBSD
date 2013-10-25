@@ -688,8 +688,8 @@ ext2_reload(struct mount *mountp, struct ucred *cred)
 	scaninfo.fs = fs;
 	while (error == 0 && scaninfo.rescan) {
 	    scaninfo.rescan = 0;
-	    error = vmntvnodescan(mountp, VMSC_GETVX, ext2_reload_scan1,
-				ext2_reload_scan2, &scaninfo);
+	    error = vmntvnodescan(mountp, VMSC_GETVX,
+				  NULL, ext2_reload_scan2, &scaninfo);
 	}
 	return(error);
 }
@@ -1043,7 +1043,7 @@ ext2_sync(struct mount *mp, int waitfor)
 	while (scaninfo.rescan) {
 		scaninfo.rescan = 0;
 		vmntvnodescan(mp, VMSC_GETVP|VMSC_NOWAIT,
-				NULL, ext2_sync_scan, &scaninfo);
+			      NULL, ext2_sync_scan, &scaninfo);
 	}
 
 	/*

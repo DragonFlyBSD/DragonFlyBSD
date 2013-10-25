@@ -136,7 +136,6 @@ struct lwkt_token kvm_token = LWKT_TOKEN_INITIALIZER(kvm_token);
 struct lwkt_token proc_token = LWKT_TOKEN_INITIALIZER(proc_token);
 struct lwkt_token tty_token = LWKT_TOKEN_INITIALIZER(tty_token);
 struct lwkt_token vnode_token = LWKT_TOKEN_INITIALIZER(vnode_token);
-struct lwkt_token vmobj_token = LWKT_TOKEN_INITIALIZER(vmobj_token);
 struct lwkt_token ifnet_token = LWKT_TOKEN_INITIALIZER(ifnet_token);
 
 static int lwkt_token_spin = 5;
@@ -952,7 +951,6 @@ DB_SHOW_COMMAND(tokens, db_tok_all)
 		&proc_token,
 		&tty_token,
 		&vnode_token,
-		&vmobj_token,
 		NULL
 	};
 

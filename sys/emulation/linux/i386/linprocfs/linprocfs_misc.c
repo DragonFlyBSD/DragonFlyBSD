@@ -100,7 +100,7 @@ linprocfs_domeminfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	unsigned long long swaptotal;	/* total swap space in bytes */
 	unsigned long long swapused;	/* used swap space in bytes */
 	unsigned long long swapfree;	/* free swap space in bytes */
-	vm_object_t object;
+	int n;
 
 	if (uio->uio_rw != UIO_READ)
 		return (EOPNOTSUPP);
@@ -128,16 +128,13 @@ linprocfs_domeminfo(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	swapused = swaptotal - swapfree;
 	memshared = 0;
 
-	lwkt_gettoken(&vmobj_token);
-	for (object = TAILQ_FIRST(&vm_object_list); object != NULL;
-	    object = TAILQ_NEXT(object, object_list)) {
-		if (object->type == OBJT_MARKER)
-			continue;
-		if (object->shadow_count > 1)
-			memshared += object->resident_page_count;
+	for (n = 0; n < ncpus; ++n) {
+		globaldata_t gd = globaldata_find(n);
+
+		memshared += gd->gd_vmtotal.t_arm;
 	}
-	lwkt_reltoken(&vmobj_token);
 	memshared *= PAGE_SIZE;
+
 	/*
 	 * We'd love to be able to write:
 	 *

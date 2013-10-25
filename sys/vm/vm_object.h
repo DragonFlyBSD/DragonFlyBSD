@@ -135,12 +135,13 @@ typedef u_char objtype_t;
  *	them.
  *
  * LOCKING:
- *	vmobj_token for object_list.
+ *	vmobj_tokens[n] for object_list, hashed by address.
+ *
  *	vm_object_hold/drop() for most vm_object related operations.
  *	OBJ_CHAINLOCK to avoid chain/shadow object collisions.
  */
 struct vm_object {
-	TAILQ_ENTRY(vm_object) object_list; /* vmobj_token */
+	TAILQ_ENTRY(vm_object) object_list; /* locked by vmobj_tokens[n] */
 	LIST_HEAD(, vm_object) shadow_head; /* objects we are a shadow for */
 	LIST_ENTRY(vm_object) shadow_list;  /* chain of shadow objects */
 	RB_HEAD(vm_page_rb_tree, vm_page) rb_memq;	/* resident pages */
@@ -244,7 +245,13 @@ struct vm_object_dealloc_list {
 
 TAILQ_HEAD(object_q, vm_object);
 
-extern struct object_q vm_object_list;	/* list of allocated objects */
+#define VMOBJ_HSIZE	64
+#define VMOBJ_HMASK	(VMOBJ_HSIZE - 1)
+#define VMOBJ_HASH(obj)	(((intptr_t)(obj) >> 8) & VMOBJ_HMASK)
+
+extern struct object_q vm_object_lists[VMOBJ_HSIZE];
+extern struct lwkt_token vmobj_tokens[VMOBJ_HSIZE];
+
 
  /* lock for object list and count */
 

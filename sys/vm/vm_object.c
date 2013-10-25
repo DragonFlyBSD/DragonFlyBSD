@@ -128,10 +128,9 @@ static void	vm_object_lock_init(vm_object_t);
  *
  */
 
-struct object_q vm_object_list;		/* locked by vmobj_token */
 struct vm_object kernel_object;
 
-static long vm_object_count;		/* locked by vmobj_token */
+static long vm_object_count;
 
 static long object_collapses;
 static long object_bypasses;
@@ -140,6 +139,9 @@ static vm_zone_t obj_zone;
 static struct vm_zone obj_zone_store;
 #define VM_OBJECTS_INIT 256
 static struct vm_object vm_objects_init[VM_OBJECTS_INIT];
+
+struct object_q vm_object_lists[VMOBJ_HSIZE];
+struct lwkt_token vmobj_tokens[VMOBJ_HSIZE];
 
 /*
  * Misc low level routines
@@ -408,6 +410,7 @@ void
 _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 {
 	int incr;
+	int n;
 
 	RB_INIT(&object->rb_memq);
 	LIST_INIT(&object->shadow_head);
@@ -443,10 +446,12 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 	pmap_object_init(object);
 
 	vm_object_hold(object);
-	lwkt_gettoken(&vmobj_token);
-	TAILQ_INSERT_TAIL(&vm_object_list, object, object_list);
-	vm_object_count++;
-	lwkt_reltoken(&vmobj_token);
+
+	n = VMOBJ_HASH(object);
+	atomic_add_long(&vm_object_count, 1);
+	lwkt_gettoken(&vmobj_tokens[n]);
+	TAILQ_INSERT_TAIL(&vm_object_lists[n], object, object_list);
+	lwkt_reltoken(&vmobj_tokens[n]);
 }
 
 /*
@@ -457,7 +462,12 @@ _vm_object_allocate(objtype_t type, vm_pindex_t size, vm_object_t object)
 void
 vm_object_init(void)
 {
-	TAILQ_INIT(&vm_object_list);
+	int i;
+
+	for (i = 0; i < VMOBJ_HSIZE; ++i) {
+		TAILQ_INIT(&vm_object_lists[i]);
+		lwkt_token_init(&vmobj_tokens[i], "vmobjlst");
+	}
 	
 	_vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(KvaEnd),
 			    &kernel_object);
@@ -1125,6 +1135,8 @@ static int vm_object_terminate_callback(vm_page_t p, void *data);
 void
 vm_object_terminate(vm_object_t object)
 {
+	int n;
+
 	/*
 	 * Make sure no one uses us.  Once we set OBJ_DEAD we should be
 	 * able to safely block.
@@ -1218,10 +1230,11 @@ vm_object_terminate(vm_object_t object)
 	/*
 	 * Remove the object from the global object list.
 	 */
-	lwkt_gettoken(&vmobj_token);
-	TAILQ_REMOVE(&vm_object_list, object, object_list);
-	vm_object_count--;
-	lwkt_reltoken(&vmobj_token);
+	n = VMOBJ_HASH(object);
+	lwkt_gettoken(&vmobj_tokens[n]);
+	TAILQ_REMOVE(&vm_object_lists[n], object, object_list);
+	lwkt_reltoken(&vmobj_tokens[n]);
+	atomic_add_long(&vm_object_count, -1);
 
 	if (object->ref_count != 0) {
 		panic("vm_object_terminate2: object with references, "
@@ -1900,6 +1913,7 @@ static __inline int
 vm_object_backing_scan(vm_object_t object, vm_object_t backing_object, int op)
 {
 	struct rb_vm_page_scan_info info;
+	int n;
 
 	vm_object_assert_held(object);
 	vm_object_assert_held(backing_object);
@@ -1926,10 +1940,12 @@ vm_object_backing_scan(vm_object_t object, vm_object_t backing_object, int op)
 	if (op & OBSC_COLLAPSE_WAIT) {
 		KKASSERT((backing_object->flags & OBJ_DEAD) == 0);
 		vm_object_set_flag(backing_object, OBJ_DEAD);
-		lwkt_gettoken(&vmobj_token);
-		TAILQ_REMOVE(&vm_object_list, backing_object, object_list);
-		vm_object_count--;
-		lwkt_reltoken(&vmobj_token);
+
+		n = VMOBJ_HASH(backing_object);
+		lwkt_gettoken(&vmobj_tokens[n]);
+		TAILQ_REMOVE(&vm_object_lists[n], backing_object, object_list);
+		lwkt_reltoken(&vmobj_tokens[n]);
+		atomic_add_long(&vm_object_count, -1);
 	}
 
 	/*
@@ -2906,30 +2922,36 @@ vm_object_in_map_callback(struct proc *p, void *data)
 DB_SHOW_COMMAND(vmochk, vm_object_check)
 {
 	vm_object_t object;
+	int n;
 
 	/*
 	 * make sure that internal objs are in a map somewhere
 	 * and none have zero ref counts.
 	 */
-	for (object = TAILQ_FIRST(&vm_object_list);
-			object != NULL;
-			object = TAILQ_NEXT(object, object_list)) {
-		if (object->type == OBJT_MARKER)
-			continue;
-		if (object->handle == NULL &&
-		    (object->type == OBJT_DEFAULT || object->type == OBJT_SWAP)) {
+	for (n = 0; n < VMOBJ_HSIZE; ++n) {
+		for (object = TAILQ_FIRST(&vm_object_lists[n]);
+				object != NULL;
+				object = TAILQ_NEXT(object, object_list)) {
+			if (object->type == OBJT_MARKER)
+				continue;
+			if (object->handle != NULL ||
+			    (object->type != OBJT_DEFAULT &&
+			     object->type != OBJT_SWAP)) {
+				continue;
+			}
 			if (object->ref_count == 0) {
-				db_printf("vmochk: internal obj has zero ref count: %ld\n",
-					(long)object->size);
+				db_printf("vmochk: internal obj has "
+					  "zero ref count: %ld\n",
+					  (long)object->size);
 			}
-			if (!vm_object_in_map(object)) {
-				db_printf(
-			"vmochk: internal obj is not in a map: "
-			"ref: %d, size: %lu: 0x%lx, backing_object: %p\n",
-				    object->ref_count, (u_long)object->size, 
-				    (u_long)object->size,
-				    (void *)object->backing_object);
-			}
+			if (vm_object_in_map(object))
+				continue;
+			db_printf("vmochk: internal obj is not in a map: "
+				  "ref: %d, size: %lu: 0x%lx, "
+				  "backing_object: %p\n",
+				  object->ref_count, (u_long)object->size,
+				  (u_long)object->size,
+				  (void *)object->backing_object);
 		}
 	}
 }
@@ -3014,36 +3036,68 @@ DB_SHOW_COMMAND(vmopag, vm_object_print_pages)
 	vm_object_t object;
 	int nl = 0;
 	int c;
-	for (object = TAILQ_FIRST(&vm_object_list);
-			object != NULL;
-			object = TAILQ_NEXT(object, object_list)) {
-		vm_pindex_t idx, fidx;
-		vm_pindex_t osize;
-		vm_paddr_t pa = -1, padiff;
-		int rcount;
-		vm_page_t m;
+	int n;
 
-		if (object->type == OBJT_MARKER)
-			continue;
-		db_printf("new object: %p\n", (void *)object);
-		if ( nl > 18) {
-			c = cngetc();
-			if (c != ' ')
-				return;
-			nl = 0;
-		}
-		nl++;
-		rcount = 0;
-		fidx = 0;
-		osize = object->size;
-		if (osize > 128)
-			osize = 128;
-		for (idx = 0; idx < osize; idx++) {
-			m = vm_page_lookup(object, idx);
-			if (m == NULL) {
+	for (n = 0; n < VMOBJ_HSIZE; ++n) {
+		for (object = TAILQ_FIRST(&vm_object_lists[n]);
+				object != NULL;
+				object = TAILQ_NEXT(object, object_list)) {
+			vm_pindex_t idx, fidx;
+			vm_pindex_t osize;
+			vm_paddr_t pa = -1, padiff;
+			int rcount;
+			vm_page_t m;
+
+			if (object->type == OBJT_MARKER)
+				continue;
+			db_printf("new object: %p\n", (void *)object);
+			if ( nl > 18) {
+				c = cngetc();
+				if (c != ' ')
+					return;
+				nl = 0;
+			}
+			nl++;
+			rcount = 0;
+			fidx = 0;
+			osize = object->size;
+			if (osize > 128)
+				osize = 128;
+			for (idx = 0; idx < osize; idx++) {
+				m = vm_page_lookup(object, idx);
+				if (m == NULL) {
+					if (rcount) {
+						db_printf(" index(%ld)run(%d)pa(0x%lx)\n",
+							(long)fidx, rcount, (long)pa);
+						if ( nl > 18) {
+							c = cngetc();
+							if (c != ' ')
+								return;
+							nl = 0;
+						}
+						nl++;
+						rcount = 0;
+					}
+					continue;
+				}
+
+				if (rcount &&
+					(VM_PAGE_TO_PHYS(m) == pa + rcount * PAGE_SIZE)) {
+					++rcount;
+					continue;
+				}
 				if (rcount) {
-					db_printf(" index(%ld)run(%d)pa(0x%lx)\n",
+					padiff = pa + rcount * PAGE_SIZE - VM_PAGE_TO_PHYS(m);
+					padiff >>= PAGE_SHIFT;
+					padiff &= PQ_L2_MASK;
+					if (padiff == 0) {
+						pa = VM_PAGE_TO_PHYS(m) - rcount * PAGE_SIZE;
+						++rcount;
+						continue;
+					}
+					db_printf(" index(%ld)run(%d)pa(0x%lx)",
 						(long)fidx, rcount, (long)pa);
+					db_printf("pd(%ld)\n", (long)padiff);
 					if ( nl > 18) {
 						c = cngetc();
 						if (c != ' ')
@@ -3051,29 +3105,14 @@ DB_SHOW_COMMAND(vmopag, vm_object_print_pages)
 						nl = 0;
 					}
 					nl++;
-					rcount = 0;
 				}
-				continue;
-			}
-
-				
-			if (rcount &&
-				(VM_PAGE_TO_PHYS(m) == pa + rcount * PAGE_SIZE)) {
-				++rcount;
-				continue;
+				fidx = idx;
+				pa = VM_PAGE_TO_PHYS(m);
+				rcount = 1;
 			}
 			if (rcount) {
-				padiff = pa + rcount * PAGE_SIZE - VM_PAGE_TO_PHYS(m);
-				padiff >>= PAGE_SHIFT;
-				padiff &= PQ_L2_MASK;
-				if (padiff == 0) {
-					pa = VM_PAGE_TO_PHYS(m) - rcount * PAGE_SIZE;
-					++rcount;
-					continue;
-				}
-				db_printf(" index(%ld)run(%d)pa(0x%lx)",
+				db_printf(" index(%ld)run(%d)pa(0x%lx)\n",
 					(long)fidx, rcount, (long)pa);
-				db_printf("pd(%ld)\n", (long)padiff);
 				if ( nl > 18) {
 					c = cngetc();
 					if (c != ' ')
@@ -3082,20 +3121,6 @@ DB_SHOW_COMMAND(vmopag, vm_object_print_pages)
 				}
 				nl++;
 			}
-			fidx = idx;
-			pa = VM_PAGE_TO_PHYS(m);
-			rcount = 1;
-		}
-		if (rcount) {
-			db_printf(" index(%ld)run(%d)pa(0x%lx)\n",
-				(long)fidx, rcount, (long)pa);
-			if ( nl > 18) {
-				c = cngetc();
-				if (c != ' ')
-					return;
-				nl = 0;
-			}
-			nl++;
 		}
 	}
 }

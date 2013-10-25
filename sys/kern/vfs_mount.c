@@ -726,6 +726,9 @@ insmntque(struct vnode *vp, struct mount *mp)
  * token is held.  A return value < 0 skips to the next vnode without calling
  * the slowfunc(), a return value > 0 terminates the loop.
  *
+ * WARNING! The fastfunc() should not indirect through vp->v_object, the vp
+ *	    data structure is unstable when called from fastfunc().
+ *
  * The slowfunc() callback is called after the vnode has been successfully
  * locked based on passed flags.  The vnode is skipped if it gets rearranged
  * or destroyed while blocking on the lock.  A non-zero return value from
@@ -733,12 +736,6 @@ insmntque(struct vnode *vp, struct mount *mp)
  * arbitrarily block.  The scanning code guarentees consistency of operation
  * even if the slow function deletes or moves the node, or blocks and some
  * other thread deletes or moves the node.
- *
- * NOTE: We hold vmobj_token to prevent a VM object from being destroyed
- *	 out from under the fastfunc()'s vnode test.  It will not prevent
- *	 v_object from getting NULL'd out but it will ensure that the
- *	 pointer (if we race) will remain stable.  Only needed when
- *	 fastfunc is non-NULL.
  */
 int
 vmntvnodescan(
@@ -756,8 +753,6 @@ vmntvnodescan(
 	int count = 0;
 
 	lwkt_gettoken(&mp->mnt_token);
-	if (fastfunc)
-		lwkt_gettoken(&vmobj_token);
 
 	/*
 	 * If asked to do one pass stop after iterating available vnodes.
@@ -883,8 +878,6 @@ next:
 	}
 
 	TAILQ_REMOVE(&mp->mnt_vnodescan_list, &info, entry);
-	if (fastfunc)
-		lwkt_reltoken(&vmobj_token);
 	lwkt_reltoken(&mp->mnt_token);
 	return(r);
 }

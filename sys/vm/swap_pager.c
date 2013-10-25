@@ -1981,43 +1981,48 @@ static int swp_pager_swapoff_callback(struct swblock *swap, void *data);
 int
 swap_pager_swapoff(int devidx)
 {
+	struct swswapoffinfo info;
 	struct vm_object marker;
 	vm_object_t object;
-	struct swswapoffinfo info;
+	int n;
 
 	bzero(&marker, sizeof(marker));
 	marker.type = OBJT_MARKER;
 
-	lwkt_gettoken(&vmobj_token);
-	TAILQ_INSERT_HEAD(&vm_object_list, &marker, object_list);
+	for (n = 0; n < VMOBJ_HSIZE; ++n) {
+		lwkt_gettoken(&vmobj_tokens[n]);
+		TAILQ_INSERT_HEAD(&vm_object_lists[n], &marker, object_list);
 
-	while ((object = TAILQ_NEXT(&marker, object_list)) != NULL) {
-		if (object->type == OBJT_MARKER)
-			goto skip;
-		if (object->type != OBJT_SWAP && object->type != OBJT_VNODE)
-			goto skip;
-		vm_object_hold(object);
-		if (object->type != OBJT_SWAP && object->type != OBJT_VNODE) {
+		while ((object = TAILQ_NEXT(&marker, object_list)) != NULL) {
+			if (object->type == OBJT_MARKER)
+				goto skip;
+			if (object->type != OBJT_SWAP &&
+			    object->type != OBJT_VNODE)
+				goto skip;
+			vm_object_hold(object);
+			if (object->type != OBJT_SWAP &&
+			    object->type != OBJT_VNODE) {
+				vm_object_drop(object);
+				goto skip;
+			}
+			info.object = object;
+			info.shared = 0;
+			info.devidx = devidx;
+			swblock_rb_tree_RB_SCAN(&object->swblock_root,
+					    NULL, swp_pager_swapoff_callback,
+					    &info);
 			vm_object_drop(object);
-			goto skip;
-		}
-		info.object = object;
-		info.shared = 0;
-		info.devidx = devidx;
-		swblock_rb_tree_RB_SCAN(&object->swblock_root,
-					NULL,
-					swp_pager_swapoff_callback,
-					&info);
-		vm_object_drop(object);
 skip:
-		if (object == TAILQ_NEXT(&marker, object_list)) {
-			TAILQ_REMOVE(&vm_object_list, &marker, object_list);
-			TAILQ_INSERT_AFTER(&vm_object_list, object,
-					   &marker, object_list);
+			if (object == TAILQ_NEXT(&marker, object_list)) {
+				TAILQ_REMOVE(&vm_object_lists[n],
+					     &marker, object_list);
+				TAILQ_INSERT_AFTER(&vm_object_lists[n], object,
+						   &marker, object_list);
+			}
 		}
+		TAILQ_REMOVE(&vm_object_lists[n], &marker, object_list);
+		lwkt_reltoken(&vmobj_tokens[n]);
 	}
-	TAILQ_REMOVE(&vm_object_list, &marker, object_list);
-	lwkt_reltoken(&vmobj_token);
 
 	/*
 	 * If we fail to locate all swblocks we just fail gracefully and
