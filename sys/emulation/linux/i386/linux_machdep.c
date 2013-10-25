@@ -394,6 +394,7 @@ int
 sys_linux_exit_group(struct linux_exit_group_args *args)
 {
 	struct linux_emuldata *em, *e;
+	struct proc *p;
 	int rval;
 
 	rval = args->rval;
@@ -420,10 +421,10 @@ sys_linux_exit_group(struct linux_exit_group_args *args)
 		LIST_INSERT_AFTER(e, em, threads);
 		if ((e->flags & EMUL_DIDKILL) == 0) {
 			e->flags |= EMUL_DIDKILL;
-			lwkt_gettoken(&proc_token);
-			KKASSERT(pfindn(e->proc->p_pid) == e->proc);
-			ksignal(e->proc, SIGKILL);
-			lwkt_reltoken(&proc_token);
+			p = e->proc;
+			PHOLD(p);
+			ksignal(p, SIGKILL);
+			PRELE(p);
 		}
 	}
 

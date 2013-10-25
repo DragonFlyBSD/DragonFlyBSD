@@ -381,18 +381,15 @@ loop:
 	 * XXX we need a heuristic to get a measure of system stress and
 	 * then adjust our stagger wakeup delay accordingly.
 	 */
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&p->p_token);
 	faultin(p);
 	p->p_swtime = 0;
+	lwkt_reltoken(&p->p_token);
 	PRELE(p);
-	lwkt_reltoken(&proc_token);
 	tsleep(&proc0, 0, "swapin", hz / 10);
 	goto loop;
 }
 
-/*
- * The caller must hold proc_token.
- */
 static int
 scheduler_callback(struct proc *p, void *data)
 {
@@ -498,9 +495,6 @@ swapout_procs(int action)
 	allproc_scan(swapout_procs_callback, &action);
 }
 
-/*
- * The caller must hold proc_token
- */
 static int
 swapout_procs_callback(struct proc *p, void *data)
 {
@@ -573,7 +567,7 @@ swapout_procs_callback(struct proc *p, void *data)
 }
 
 /*
- * The caller must hold proc_token and p->p_token
+ * The caller must hold p->p_token
  */
 static void
 swapout(struct proc *p)

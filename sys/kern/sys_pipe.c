@@ -178,9 +178,9 @@ static __inline void
 pipewakeup(struct pipe *cpipe, int dosigio)
 {
 	if (dosigio && (cpipe->pipe_state & PIPE_ASYNC) && cpipe->pipe_sigio) {
-		lwkt_gettoken(&proc_token);
+		lwkt_gettoken(&sigio_token);
 		pgsigio(cpipe->pipe_sigio, SIGIO, 0);
-		lwkt_reltoken(&proc_token);
+		lwkt_reltoken(&sigio_token);
 	}
 	KNOTE(&cpipe->pipe_kq.ki_note, 0);
 }

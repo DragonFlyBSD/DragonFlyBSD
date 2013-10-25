@@ -85,9 +85,10 @@ static u_long pidhash;
 struct pgrphashhead *pgrphashtbl;
 u_long pgrphash;
 
-struct proclist allproc;
-struct proclist zombproc;
-struct spinlock pghash_spin = SPINLOCK_INITIALIZER(&pghash_spin);
+static struct proclist allproc;
+static struct proclist zombproc;
+static struct spinlock pghash_spin = SPINLOCK_INITIALIZER(&pghash_spin);
+static struct lwkt_token proc_token = LWKT_TOKEN_INITIALIZER(proc_token);
 
 /*
  * Random component to nextpid generation.  We mix in a random factor to make
@@ -145,6 +146,12 @@ procinit(void)
 
 	pgrphashtbl = hashinit(maxproc / 4, M_PROC, &pgrphash);
 	uihashinit();
+}
+
+void
+procinsertinit(struct proc *p)
+{
+	LIST_INSERT_HEAD(&allproc, p, p_list);
 }
 
 /*
@@ -333,20 +340,29 @@ prelezomb(struct proc *p)
  * Is p an inferior of the current process?
  *
  * No requirements.
- * The caller must hold proc_token if the caller wishes a stable result.
  */
 int
 inferior(struct proc *p)
 {
-	lwkt_gettoken_shared(&proc_token);
+	struct proc *p2;
+
+	PHOLD(p);
+	lwkt_gettoken_shared(&p->p_token);
 	while (p != curproc) {
 		if (p->p_pid == 0) {
-			lwkt_reltoken(&proc_token);
+			lwkt_reltoken(&p->p_token);
 			return (0);
 		}
-		p = p->p_pptr;
+		p2 = p->p_pptr;
+		PHOLD(p2);
+		lwkt_reltoken(&p->p_token);
+		PRELE(p);
+		lwkt_gettoken_shared(&p2->p_token);
+		p = p2;
 	}
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&p->p_token);
+	PRELE(p);
+
 	return (1);
 }
 
@@ -387,7 +403,8 @@ pfind(pid_t pid)
 
 /*
  * Locate a process by number.  The returned process is NOT referenced.
- * The caller should hold proc_token if the caller wishes a stable result.
+ * The result will not be stable and is typically only used to validate
+ * against a process that the caller has in-hand.
  *
  * No requirements.
  */

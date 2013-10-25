@@ -1517,9 +1517,6 @@ vm_pageout_scan_cache(int avail_shortage, int vnodes_skipped, int recycle_count)
 	}
 }
 
-/*
- * The caller must hold proc_token.
- */
 static int
 vm_pageout_scan_callback(struct proc *p, void *data)
 {
@@ -1535,12 +1532,16 @@ vm_pageout_scan_callback(struct proc *p, void *data)
 		return (0);
 	}
 
+	lwkt_gettoken(&p->p_token);
+
 	/*
 	 * if the process is in a non-running type state,
 	 * don't touch it.
 	 */
-	if (p->p_stat != SACTIVE && p->p_stat != SSTOP)
+	if (p->p_stat != SACTIVE && p->p_stat != SSTOP) {
+		lwkt_reltoken(&p->p_token);
 		return (0);
+	}
 
 	/*
 	 * Get the approximate process size.  Note that anonymous pages
@@ -1562,7 +1563,9 @@ vm_pageout_scan_callback(struct proc *p, void *data)
 		info->bigproc = p;
 		info->bigsize = size;
 	}
+	lwkt_reltoken(&p->p_token);
 	lwkt_yield();
+
 	return(0);
 }
 
@@ -2103,9 +2106,6 @@ vm_daemon(void)
 	}
 }
 
-/*
- * Caller must hold proc_token.
- */
 static int
 vm_daemon_callback(struct proc *p, void *data __unused)
 {
@@ -2116,15 +2116,21 @@ vm_daemon_callback(struct proc *p, void *data __unused)
 	 * if this is a system process or if we have already
 	 * looked at this process, skip it.
 	 */
-	if (p->p_flags & (P_SYSTEM | P_WEXIT))
+	lwkt_gettoken(&p->p_token);
+
+	if (p->p_flags & (P_SYSTEM | P_WEXIT)) {
+		lwkt_reltoken(&p->p_token);
 		return (0);
+	}
 
 	/*
 	 * if the process is in a non-running type state,
 	 * don't touch it.
 	 */
-	if (p->p_stat != SACTIVE && p->p_stat != SSTOP)
+	if (p->p_stat != SACTIVE && p->p_stat != SSTOP) {
+		lwkt_reltoken(&p->p_token);
 		return (0);
+	}
 
 	/*
 	 * get a limit
@@ -2147,6 +2153,9 @@ vm_daemon_callback(struct proc *p, void *data __unused)
 		vm_pageout_map_deactivate_pages(&vm->vm_map, limit);
 	}
 	vmspace_drop(vm);
+
+	lwkt_reltoken(&p->p_token);
+
 	return (0);
 }
 

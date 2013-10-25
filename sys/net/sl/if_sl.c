@@ -1028,20 +1028,25 @@ static void
 sl_keepalive(void *chan)
 {
 	struct sl_softc *sc = chan;
+	struct pgrp *pg;
 
 	lwkt_gettoken(&tty_token);
-	lwkt_gettoken(&proc_token);
 	if (sc->sc_keepalive) {
-		if (sc->sc_flags & SC_KEEPALIVE)
-			pgsignal (sc->sc_ttyp->t_pgrp, SIGURG, 1);
-		else
+		if (sc->sc_flags & SC_KEEPALIVE) {
+			pg = sc->sc_ttyp->t_pgrp;
+			if (pg) {
+				pgref(pg);
+				pgsignal (pg, SIGURG, 1);
+				pgrel(pg);
+			}
+		} else {
 			sc->sc_flags |= SC_KEEPALIVE;
+		}
 		callout_reset(&sc->sc_katimeout, sc->sc_keepalive,
 				sl_keepalive, sc);
 	} else {
 		sc->sc_flags &= ~SC_KEEPALIVE;
 	}
-	lwkt_reltoken(&proc_token);
 	lwkt_reltoken(&tty_token);
 }
 

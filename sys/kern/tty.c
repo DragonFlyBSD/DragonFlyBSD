@@ -854,7 +854,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 
 	KKASSERT(p);
 	lwkt_gettoken(&tty_token);
-	lwkt_gettoken(&proc_token);
 	lwkt_gettoken(&p->p_token);
 
 	/* If the ioctl involves modification, hang if in the background. */
@@ -896,7 +895,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		    !SIGISMEMBER(lp->lwp_sigmask, SIGTTOU)) {
 			if (p->p_pgrp->pg_jobc == 0) {
 				lwkt_reltoken(&p->p_token);
-				lwkt_reltoken(&proc_token);
 				lwkt_reltoken(&tty_token);
 				return (EIO);
 			}
@@ -905,7 +903,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 					 0);
 			if (error) {
 				lwkt_reltoken(&p->p_token);
-				lwkt_reltoken(&proc_token);
 				lwkt_reltoken(&tty_token);
 				return (error);
 			}
@@ -935,7 +932,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		 */
 		if (tp->t_session != NULL && !isctty(p, tp)) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
@@ -943,7 +939,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		error = fsetown(*(int *)data, &tp->t_sigio);
 		if (error) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (error);
 		}
@@ -951,7 +946,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	case FIOGETOWN:
 		if (tp->t_session != NULL && !isctty(p, tp)) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
@@ -978,14 +972,12 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 			if (constty && constty != tp &&
 			    ISSET(constty->t_state, TS_CONNECTED)) {
 				lwkt_reltoken(&p->p_token);
-				lwkt_reltoken(&proc_token);
 				lwkt_reltoken(&tty_token);
 				return (EBUSY);
 			}
 #ifndef	UCONSOLE
 			if ((error = priv_check(td, PRIV_ROOT)) != 0) {
 				lwkt_reltoken(&p->p_token);
-				lwkt_reltoken(&proc_token);
 				lwkt_reltoken(&tty_token);
 				return (error);
 			}
@@ -998,7 +990,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		error = ttywait(tp);
 		if (error) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (error);
 		}
@@ -1018,7 +1009,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	case TIOCGPGRP:			/* get pgrp of tty */
 		if (!isctty(p, tp)) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
@@ -1027,7 +1017,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	case TIOCGSID:                  /* get sid of tty */
 		if (!isctty(p, tp)) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
@@ -1059,7 +1048,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 			t->c_ispeed = tp->t_ospeed;
 		if (t->c_ispeed == 0) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (EINVAL);
 		}
@@ -1069,7 +1057,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 			if (error) {
 				crit_exit();
 				lwkt_reltoken(&p->p_token);
-				lwkt_reltoken(&proc_token);
 				lwkt_reltoken(&tty_token);
 				return (error);
 			}
@@ -1083,7 +1070,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 			if (tp->t_param && (error = (*tp->t_param)(tp, t))) {
 				crit_exit();
 				lwkt_reltoken(&p->p_token);
-				lwkt_reltoken(&proc_token);
 				lwkt_reltoken(&tty_token);
 				return (error);
 			}
@@ -1161,7 +1147,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 
 		if ((u_int)t >= nlinesw) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (ENXIO);
 		}
@@ -1173,7 +1158,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 				(void)(*linesw[tp->t_line].l_open)(device, tp);
 				crit_exit();
 				lwkt_reltoken(&p->p_token);
-				lwkt_reltoken(&proc_token);
 				lwkt_reltoken(&tty_token);
 				return (error);
 			}
@@ -1195,13 +1179,11 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 	case TIOCSTI:			/* simulate terminal input */
 		if ((flag & FREAD) == 0 && priv_check(td, PRIV_ROOT)) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (EPERM);
 		}
 		if (!isctty(p, tp) && priv_check(td, PRIV_ROOT)) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (EACCES);
 		}
@@ -1223,7 +1205,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		    ((p->p_session->s_ttyvp || tp->t_session) &&
 		    (tp->t_session != p->p_session))) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (EPERM);
 		}
@@ -1247,13 +1228,11 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 
 		if (!isctty(p, tp)) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (ENOTTY);
 		}
 		else if (pgid < 1 || pgid > PID_MAX) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (EINVAL);
 		} else {
@@ -1262,7 +1241,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 				if (pgrp)
 					pgrel(pgrp);
 				lwkt_reltoken(&p->p_token);
-				lwkt_reltoken(&proc_token);
 				lwkt_reltoken(&tty_token);
 				return (EPERM);
 			}
@@ -1291,7 +1269,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		error = priv_check(td, PRIV_ROOT);
 		if (error) {
 			lwkt_reltoken(&p->p_token);
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&tty_token);
 			return (error);
 		}
@@ -1304,7 +1281,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		break;
 	default:
 		lwkt_reltoken(&p->p_token);
-		lwkt_reltoken(&proc_token);
 		lwkt_reltoken(&tty_token);
 #if defined(COMPAT_43)
 		return (ttcompat(tp, cmd, data, flag));
@@ -1313,7 +1289,6 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 #endif
 	}
 	lwkt_reltoken(&p->p_token);
-	lwkt_reltoken(&proc_token);
 	lwkt_reltoken(&tty_token);
 	return (0);
 }
@@ -1783,27 +1758,29 @@ loop:
 	/*
 	 * Hang process if it's in the background.
 	 */
-	lwkt_gettoken(&proc_token);
-	if ((pp = curproc) && isbackground(pp, tp)) {
+	if ((pp = curproc) != NULL)
+		lwkt_gettoken(&pp->p_token);
+	if (pp && isbackground(pp, tp)) {
 		crit_exit();
 		if (SIGISMEMBER(pp->p_sigignore, SIGTTIN) ||
 		    SIGISMEMBER(lp->lwp_sigmask, SIGTTIN) ||
 		    (pp->p_flags & P_PPWAIT) || pp->p_pgrp->pg_jobc == 0) {
-			lwkt_reltoken(&proc_token);
+			lwkt_reltoken(&pp->p_token);
 			lwkt_reltoken(&tty_token);
 			return (EIO);
 		}
 		pgsignal(pp->p_pgrp, SIGTTIN, 1);
 		error = ttysleep(tp, &lbolt, PCATCH, "ttybg2", 0);
 		if (error) {
-			lwkt_reltoken(&proc_token);
+			lwkt_reltoken(&pp->p_token);
 			lwkt_reltoken(&tty_token);
 			return (error);
 		}
-		lwkt_reltoken(&proc_token);
+		lwkt_reltoken(&pp->p_token);
 		goto loop;
 	}
-	lwkt_reltoken(&proc_token);
+	if (pp)
+		lwkt_reltoken(&pp->p_token);
 
 	if (ISSET(tp->t_state, TS_ZOMBIE)) {
 		crit_exit();
@@ -2115,24 +2092,26 @@ loop:
 	/*
 	 * Hang the process if it's in the background.
 	 */
-	lwkt_gettoken(&proc_token);
-	if ((pp = curproc) && isbackground(pp, tp) &&
+	if ((pp = curproc) != NULL)
+		lwkt_gettoken(&pp->p_token);
+	if (pp && isbackground(pp, tp) &&
 	    ISSET(tp->t_lflag, TOSTOP) && !(pp->p_flags & P_PPWAIT) &&
 	    !SIGISMEMBER(pp->p_sigignore, SIGTTOU) &&
 	    !SIGISMEMBER(lp->lwp_sigmask, SIGTTOU)) {
 		if (pp->p_pgrp->pg_jobc == 0) {
 			error = EIO;
-			lwkt_reltoken(&proc_token);
+			lwkt_reltoken(&pp->p_token);
 			goto out;
 		}
 		pgsignal(pp->p_pgrp, SIGTTOU, 1);
-		lwkt_reltoken(&proc_token);
+		lwkt_reltoken(&pp->p_token);
 		error = ttysleep(tp, &lbolt, PCATCH, "ttybg4", 0);
 		if (error)
 			goto out;
 		goto loop;
 	}
-	lwkt_reltoken(&proc_token);
+	if (pp)
+		lwkt_reltoken(&pp->p_token);
 	/*
 	 * Process the user's data in at most OBUFSIZ chunks.  Perform any
 	 * output translation.  Keep track of high water mark, sleep on
@@ -2586,7 +2565,7 @@ ttyinfo(struct tty *tp)
 		return;
 
 	lwkt_gettoken(&tty_token);
-	lwkt_gettoken(&proc_token);
+
 	/*
 	 * We always print the load average, then figure out what else to
 	 * print based on the state of the current process group.
@@ -2617,8 +2596,14 @@ ttyinfo(struct tty *tp)
 	for (p = LIST_FIRST(&pgrp->pg_members);
 	     p != NULL;
 	     p = LIST_NEXT(p, p_pglist)) {
-		if (proc_compare(pick, p))
+		PHOLD(p);
+		if (proc_compare(pick, p)) {
+			if (pick)
+				PRELE(pick);
 			pick = p;
+		} else {
+			PRELE(p);
+		}
 	}
 	if (pick == NULL) {
 		ttyprintf(tp, "empty foreground process group\n");
@@ -2627,8 +2612,9 @@ ttyinfo(struct tty *tp)
 
 	/*
 	 * Pick an interesting LWP (XXX)
+	 *
+	 * pick is held.
 	 */
-	PHOLD(pick);
 	lp = FIRST_LWP_IN_PROC(pick);
 	if (lp == NULL) {
 		PRELE(pick);
@@ -2699,7 +2685,6 @@ done1:
 	pgrel(pgrp);
 done2:
 	tp->t_rocount = 0;	/* so pending input will be retyped if BS */
-	lwkt_reltoken(&proc_token);
 	lwkt_reltoken(&tty_token);
 }
 
@@ -2716,7 +2701,7 @@ done2:
  *	   we pick out just "short-term" sleepers (LWP_SINTR == 0).
  *	4) Further ties are broken by picking the highest pid.
  *
- * NOTE: must be called with proc_token held.
+ * NOTE: must be called with p1 and p2 held.
  */
 #define ISRUN(lp)	((lp)->lwp_stat == LSRUN)
 #define TESTAB(a, b)    ((a)<<1 | (b))
@@ -2729,8 +2714,6 @@ proc_compare(struct proc *p1, struct proc *p2)
 {
 	struct lwp *lp1, *lp2;
 	int res;
-
-	ASSERT_LWKT_TOKEN_HELD(&proc_token);
 
 	if (p1 == NULL)
 		return (1);

@@ -970,14 +970,11 @@ scioctl(struct dev_ioctl_args *ap)
 	mode = (struct vt_mode *)data;
 	DPRINTF(5, ("sc%d: VT_SETMODE ", sc->unit));
 	if (scp->smode.mode == VT_PROCESS) {
-	    lwkt_gettoken(&proc_token);
 	    if (scp->proc == pfindn(scp->pid) && scp->proc != curproc) {
 		DPRINTF(5, ("error EPERM\n"));
-		lwkt_reltoken(&proc_token);
 		lwkt_reltoken(&tty_token);
 		return EPERM;
 	    }
-	    lwkt_reltoken(&proc_token);
 	}
 	syscons_lock();
 	if (mode->mode == VT_AUTO) {
@@ -1000,13 +997,9 @@ scioctl(struct dev_ioctl_args *ap)
 		return EINVAL;
 	    }
 	    DPRINTF(5, ("VT_PROCESS %d, ", curproc->p_pid));
-	    syscons_unlock();
-	    lwkt_gettoken(&proc_token);
-	    syscons_lock();
 	    bcopy(data, &scp->smode, sizeof(struct vt_mode));
 	    scp->proc = curproc;
 	    scp->pid = scp->proc->p_pid;
-	    lwkt_reltoken(&proc_token);
 	    if ((scp == sc->cur_scp) && (sc->unit == sc_console_unit))
 		cons_unavail = TRUE;
 	}
@@ -1139,24 +1132,20 @@ scioctl(struct dev_ioctl_args *ap)
 	    lwkt_reltoken(&tty_token);
 	    return EPERM;
 	}
-	lwkt_gettoken(&proc_token);
 #if defined(__i386__)
 	curthread->td_lwp->lwp_md.md_regs->tf_eflags |= PSL_IOPL;
 #elif defined(__x86_64__)
 	curthread->td_lwp->lwp_md.md_regs->tf_rflags |= PSL_IOPL;
 #endif
-        lwkt_reltoken(&proc_token);
 	lwkt_reltoken(&tty_token);
 	return 0;
 
     case KDDISABIO:     	/* disallow io operations (default) */
-        lwkt_gettoken(&proc_token);
 #if defined(__i386__)
 	curthread->td_lwp->lwp_md.md_regs->tf_eflags &= ~PSL_IOPL;
 #elif defined(__x86_64__)
 	curthread->td_lwp->lwp_md.md_regs->tf_rflags &= ~PSL_IOPL;
 #endif
-        lwkt_reltoken(&proc_token);
         lwkt_reltoken(&tty_token);
 	return 0;
 
@@ -2344,22 +2333,20 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
     /*
      * we are in the middle of the vty switching process...
      *
-     * This may be in the console path, we can only deal with this case
-     * if the proc_token is available non-blocking.
+     * This may be in the console path, be very careful.  pfindn() is
+     * still going to use a spinlock but it no longer uses tokens so
+     * we should be ok.
      */
     if (sc->switch_in_progress &&
 	(cur_scp->smode.mode == VT_PROCESS) &&
-	cur_scp->proc &&
-	lwkt_trytoken(&proc_token)) {
-
+	cur_scp->proc) {
 	if (cur_scp->proc != pfindn(cur_scp->pid)) {
 	    /* 
 	     * The controlling process has died!!.  Do some clean up.
 	     * NOTE:`cur_scp->proc' and `cur_scp->smode.mode' 
 	     * are not reset here yet; they will be cleared later.
 	     */
-	    DPRINTF(5, ("cur_scp controlling process %d died, ",
-	       cur_scp->pid));
+	    DPRINTF(5, ("cur_scp controlling process %d died, ", cur_scp->pid));
 	    if (cur_scp->status & SWITCH_WAIT_REL) {
 		/*
 		 * Force the previous switch to finish, but return now 
@@ -2369,7 +2356,6 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 		DPRINTF(5, ("reset WAIT_REL, "));
 		finish_vt_rel(cur_scp, TRUE);
 		DPRINTF(5, ("finishing previous switch\n"));
-		lwkt_reltoken(&proc_token);
 		return EINVAL;
 	    } else if (cur_scp->status & SWITCH_WAIT_ACQ) {
 		/* let's assume screen switch has been completed. */
@@ -2410,7 +2396,6 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 		    DPRINTF(5, ("force reset WAIT_REL, "));
 		    finish_vt_rel(cur_scp, FALSE);
 		    DPRINTF(5, ("act as if VT_FALSE was seen\n"));
-		    lwkt_reltoken(&proc_token);
 		    return EINVAL;
 		}
 	    } else if (cur_scp->status & SWITCH_WAIT_ACQ) {
@@ -2432,7 +2417,6 @@ sc_switch_scr(sc_softc_t *sc, u_int next_scr)
 		}
 	    }
 	}
-	lwkt_reltoken(&proc_token);
     }
 
     /*
@@ -2543,10 +2527,8 @@ static int
 vt_proc_alive(scr_stat *scp)
 {
     lwkt_gettoken(&tty_token);
-    lwkt_gettoken(&proc_token);
     if (scp->proc) {
 	if (scp->proc == pfindn(scp->pid)) {
-	    lwkt_reltoken(&proc_token);
 	    lwkt_reltoken(&tty_token);
 	    return TRUE;
 	}
@@ -2554,7 +2536,6 @@ vt_proc_alive(scr_stat *scp)
 	scp->smode.mode = VT_AUTO;
 	DPRINTF(5, ("vt controlling process %d died\n", scp->pid));
     }
-    lwkt_reltoken(&proc_token);
     lwkt_reltoken(&tty_token);
     return FALSE;
 }
@@ -2562,23 +2543,29 @@ vt_proc_alive(scr_stat *scp)
 static int
 signal_vt_rel(scr_stat *scp)
 {
+    struct proc *p;
+
     lwkt_gettoken(&tty_token);
     if (scp->smode.mode != VT_PROCESS) {
         lwkt_reltoken(&tty_token);
 	return FALSE;
     }
     scp->status |= SWITCH_WAIT_REL;
-    lwkt_gettoken(&proc_token);
-    ksignal(scp->proc, scp->smode.relsig);
-    lwkt_reltoken(&proc_token);
+    p = scp->proc;
+    PHOLD(p);
+    ksignal(p, scp->smode.relsig);
+    PRELE(p);
     DPRINTF(5, ("sending relsig to %d\n", scp->pid));
     lwkt_reltoken(&tty_token);
+
     return TRUE;
 }
 
 static int
 signal_vt_acq(scr_stat *scp)
 {
+    struct proc *p;
+
     lwkt_gettoken(&tty_token);
     if (scp->smode.mode != VT_PROCESS) {
         lwkt_reltoken(&tty_token);
@@ -2587,11 +2574,13 @@ signal_vt_acq(scr_stat *scp)
     if (scp->sc->unit == sc_console_unit)
 	cons_unavail = TRUE;
     scp->status |= SWITCH_WAIT_ACQ;
-    lwkt_gettoken(&proc_token);
-    ksignal(scp->proc, scp->smode.acqsig);
-    lwkt_reltoken(&proc_token);
+    p = scp->proc;
+    PHOLD(p);
+    ksignal(p, scp->smode.acqsig);
+    PRELE(p);
     DPRINTF(5, ("sending acqsig to %d\n", scp->pid));
     lwkt_reltoken(&tty_token);
+
     return TRUE;
 }
 

@@ -344,7 +344,6 @@ procfs_rw(struct vop_read_args *ap)
 	if ((curp = curtd->td_proc) == NULL)	/* XXX */
 		return (EINVAL);
 
-	lwkt_gettoken(&proc_token);
 	p = pfs_pfind(pfs->pfs_pid);
 	if (p == NULL) {
 		rtval = EINVAL;
@@ -420,7 +419,6 @@ procfs_rw(struct vop_read_args *ap)
 
 out:
 	pfs_pdone(p);
-	lwkt_reltoken(&proc_token);
 
 	return rtval;
 }

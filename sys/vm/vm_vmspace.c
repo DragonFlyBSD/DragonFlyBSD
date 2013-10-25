@@ -94,7 +94,7 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 	 */
 	if ((vkp = p->p_vkernel) == NULL) {
 		vkp = kmalloc(sizeof(*vkp), M_VKERNEL, M_WAITOK|M_ZERO);
-		lwkt_gettoken(&proc_token);
+		lwkt_gettoken(&p->p_token);
 		if (p->p_vkernel == NULL) {
 			vkp->refs = 1;
 			lwkt_token_init(&vkp->token, "vkernel");
@@ -104,7 +104,7 @@ sys_vmspace_create(struct vmspace_create_args *uap)
 			kfree(vkp, M_VKERNEL);
 			vkp = p->p_vkernel;
 		}
-		lwkt_reltoken(&proc_token);
+		lwkt_reltoken(&p->p_token);
 	}
 
 	if (curthread->td_vmm)

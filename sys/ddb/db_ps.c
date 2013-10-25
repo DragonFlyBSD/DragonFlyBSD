@@ -43,11 +43,10 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 	int np;
 	int cpuidx;
 	int nl = 0;
-	volatile struct proc *p, *pp;
-	struct lwp *lp;
 
 	np = nprocs;
 
+#if 0
 	if (allproc.lh_first != NULL)
 		p = allproc.lh_first;
 	else
@@ -97,6 +96,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 
 		lp = lwp_rb_tree_RB_NEXT(lp);
     	}
+#endif
 
 	/*
 	 * Dump running threads

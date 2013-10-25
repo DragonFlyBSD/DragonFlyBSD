@@ -684,11 +684,11 @@ funsetown(struct sigio **sigiop)
 	struct sigio *sigio;
 
 	if ((sigio = *sigiop) != NULL) {
-		lwkt_gettoken(&proc_token);	/* protect sigio */
+		lwkt_gettoken(&sigio_token);	/* protect sigio */
 		KKASSERT(sigiop == sigio->sio_myref);
 		sigio = *sigiop;
 		*sigiop = NULL;
-		lwkt_reltoken(&proc_token);
+		lwkt_reltoken(&sigio_token);
 	}
 	if (sigio == NULL)
 		return;
@@ -810,11 +810,11 @@ fsetown(pid_t pgid, struct sigio **sigiop)
 	sigio->sio_ruid = sigio->sio_ucred->cr_ruid;
 	sigio->sio_myref = sigiop;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&sigio_token);
 	while (*sigiop)
 		funsetown(sigiop);
 	*sigiop = sigio;
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&sigio_token);
 	error = 0;
 done:
 	if (pgrp)
@@ -835,10 +835,10 @@ fgetown(struct sigio **sigiop)
 	struct sigio *sigio;
 	pid_t own;
 
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken_shared(&sigio_token);
 	sigio = *sigiop;
 	own = (sigio != NULL ? sigio->sio_pgid : 0);
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&sigio_token);
 
 	return (own);
 }

@@ -1657,6 +1657,7 @@ mfi_aen_complete(struct mfi_command *cm)
 	struct mfi_softc *sc;
 	struct mfi_evt_detail *detail;
 	struct mfi_aen *mfi_aen_entry, *tmp;
+	struct proc *p;
 	int seq = 0, aborted = 0;
 
 	sc = cm->cm_sc;
@@ -1683,10 +1684,11 @@ mfi_aen_complete(struct mfi_command *cm)
 		TAILQ_FOREACH_MUTABLE(mfi_aen_entry, &sc->mfi_aen_pids,
 		    aen_link, tmp) {
 			TAILQ_REMOVE(&sc->mfi_aen_pids, mfi_aen_entry,
-			    aen_link);
-			lwkt_gettoken(&proc_token);
-			ksignal(mfi_aen_entry->p, SIGIO);
-			lwkt_reltoken(&proc_token);
+				     aen_link);
+			p = mfi_aen_entry->p;
+			PHOLD(p);
+			ksignal(p, SIGIO);
+			PRELE(p);
 			kfree(mfi_aen_entry, M_MFIBUF);
 		}
 	}

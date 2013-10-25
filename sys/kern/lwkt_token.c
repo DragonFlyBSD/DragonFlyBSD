@@ -133,7 +133,7 @@ struct lwkt_token dev_token = LWKT_TOKEN_INITIALIZER(dev_token);
 struct lwkt_token vm_token = LWKT_TOKEN_INITIALIZER(vm_token);
 struct lwkt_token vmspace_token = LWKT_TOKEN_INITIALIZER(vmspace_token);
 struct lwkt_token kvm_token = LWKT_TOKEN_INITIALIZER(kvm_token);
-struct lwkt_token proc_token = LWKT_TOKEN_INITIALIZER(proc_token);
+struct lwkt_token sigio_token = LWKT_TOKEN_INITIALIZER(sigio_token);
 struct lwkt_token tty_token = LWKT_TOKEN_INITIALIZER(tty_token);
 struct lwkt_token vnode_token = LWKT_TOKEN_INITIALIZER(vnode_token);
 struct lwkt_token ifnet_token = LWKT_TOKEN_INITIALIZER(ifnet_token);
@@ -162,8 +162,8 @@ SYSCTL_LONG(_lwkt, OID_AUTO, vmspace_collisions, CTLFLAG_RW,
     &vmspace_token.t_collisions, 0, "Collision counter of vmspace_token");
 SYSCTL_LONG(_lwkt, OID_AUTO, kvm_collisions, CTLFLAG_RW,
     &kvm_token.t_collisions, 0, "Collision counter of kvm_token");
-SYSCTL_LONG(_lwkt, OID_AUTO, proc_collisions, CTLFLAG_RW,
-    &proc_token.t_collisions, 0, "Collision counter of proc_token");
+SYSCTL_LONG(_lwkt, OID_AUTO, sigio_collisions, CTLFLAG_RW,
+    &sigio_token.t_collisions, 0, "Collision counter of sigio_token");
 SYSCTL_LONG(_lwkt, OID_AUTO, tty_collisions, CTLFLAG_RW,
     &tty_token.t_collisions, 0, "Collision counter of tty_token");
 SYSCTL_LONG(_lwkt, OID_AUTO, vnode_collisions, CTLFLAG_RW,
@@ -948,7 +948,7 @@ DB_SHOW_COMMAND(tokens, db_tok_all)
 		&vm_token,
 		&vmspace_token,
 		&kvm_token,
-		&proc_token,
+		&sigio_token,
 		&tty_token,
 		&vnode_token,
 		NULL

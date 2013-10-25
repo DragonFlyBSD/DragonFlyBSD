@@ -112,7 +112,6 @@ procfs_control(struct proc *curp, struct lwp *lp, int op)
 	int error;
 
 	ASSERT_LWKT_TOKEN_HELD(&p->p_token);
-	ASSERT_LWKT_TOKEN_HELD(&proc_token);
 
 	/* Can't trace a process that's currently exec'ing. */ 
 	if ((p->p_flags & P_INEXEC) != 0)
@@ -297,7 +296,6 @@ procfs_doctl(struct proc *curp, struct lwp *lp, struct pfsnode *pfs,
 	vfs_namemap_t *nm;
 
 	ASSERT_LWKT_TOKEN_HELD(&p->p_token);
-	ASSERT_LWKT_TOKEN_HELD(&proc_token);
 
 	if (uio->uio_rw != UIO_WRITE)
 		return (EOPNOTSUPP);

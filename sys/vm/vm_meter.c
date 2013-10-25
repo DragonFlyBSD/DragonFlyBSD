@@ -131,9 +131,6 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 	return (sysctl_handle_opaque(oidp, &total, sizeof(total), req));
 }
 
-/*
- * The caller must hold proc_token.
- */
 static int
 do_vmtotal_callback(struct proc *p, void *data)
 {
@@ -142,6 +139,8 @@ do_vmtotal_callback(struct proc *p, void *data)
 
 	if (p->p_flags & P_SYSTEM)
 		return(0);
+
+	lwkt_gettoken(&p->p_token);
 
 	FOREACH_LWP_IN_PROC(lp, p) {
 		switch (lp->lwp_stat) {
@@ -156,7 +155,7 @@ do_vmtotal_callback(struct proc *p, void *data)
 				totalp->t_sw++;
 			}
 			if (lp->lwp_slptime >= maxslp)
-				return(0);
+				goto out;
 			break;
 
 		case LSRUN:
@@ -165,11 +164,11 @@ do_vmtotal_callback(struct proc *p, void *data)
 			else
 				totalp->t_rq++;
 			if (p->p_stat == SIDL)
-				return(0);
+				goto out;
 			break;
 
 		default:
-			return (0);
+			goto out;
 		}
 
 		/*
@@ -178,6 +177,8 @@ do_vmtotal_callback(struct proc *p, void *data)
 		if (lp->lwp_flags & LWP_PAGING)
 			totalp->t_pw++;
 	}
+out:
+	lwkt_reltoken(&p->p_token);
 	return(0);
 }
 

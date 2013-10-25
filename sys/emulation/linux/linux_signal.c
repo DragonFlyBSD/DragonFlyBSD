@@ -408,7 +408,6 @@ linux_do_tkill(l_int tgid, l_int pid, l_int sig)
 	if (sig > 0 && sig <= LINUX_SIGTBLSZ)
 		sig = linux_to_bsd_signal[_SIG_IDX(sig)];
 
-	lwkt_gettoken(&proc_token);
 	if ((p = pfind(pid)) == NULL) {
 		if ((p = zpfind(pid)) == NULL) {
 			error = ESRCH;
@@ -437,8 +436,6 @@ linux_do_tkill(l_int tgid, l_int pid, l_int sig)
 done1:
 	PRELE(p);
 done2:
-	lwkt_reltoken(&proc_token);
-
 	return (error);
 }
 

@@ -284,21 +284,16 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 	int write, tmp;
 	int t;
 
-	lwkt_gettoken(&proc_token);
-
 	write = 0;
 	if (req == PT_TRACE_ME) {
 		p = curp;
 		PHOLD(p);
 	} else {
-		if ((p = pfind(pid)) == NULL) {
-			lwkt_reltoken(&proc_token);
+		if ((p = pfind(pid)) == NULL)
 			return ESRCH;
-		}
 	}
 	if (!PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
 		PRELE(p);
-		lwkt_reltoken(&proc_token);
 		return (ESRCH);
 	}
 
@@ -307,7 +302,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 	if ((p->p_flags & P_INEXEC) != 0) {
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);
-		lwkt_reltoken(&proc_token);
 		return EAGAIN;
 	}
 
@@ -324,7 +318,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		if (p->p_pid == curp->p_pid) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return EINVAL;
 		}
 
@@ -332,7 +325,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		if (p->p_flags & P_TRACED) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return EBUSY;
 		}
 
@@ -341,7 +333,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 				if (pp == p) {
 					lwkt_reltoken(&p->p_token);
 					PRELE(p);
-					lwkt_reltoken(&proc_token);
 					return (EINVAL);
 				}
 
@@ -351,7 +342,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 			if ((error = priv_check_cred(curp->p_ucred, PRIV_ROOT, 0)) != 0) {
 				lwkt_reltoken(&p->p_token);
 				PRELE(p);
-				lwkt_reltoken(&proc_token);
 				return error;
 			}
 		}
@@ -360,7 +350,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		if (securelevel > 0 && p->p_pid == 1) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return EPERM;
 		}
 
@@ -398,7 +387,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		if ((p->p_flags & P_TRACED) == 0) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return EPERM;
 		}
 
@@ -406,7 +394,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		if (p->p_pptr != curp) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return EBUSY;
 		}
 
@@ -415,7 +402,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		    (p->p_flags & P_WAITED) == 0) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return EBUSY;
 		}
 
@@ -425,7 +411,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 	default:
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);
-		lwkt_reltoken(&proc_token);
 		return EINVAL;
 	}
 
@@ -451,7 +436,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		p->p_oppid = p->p_pptr->p_pid;
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);
-		lwkt_reltoken(&proc_token);
 		return 0;
 
 	case PT_ATTACH:
@@ -469,7 +453,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		if (data < 0 || data > _SIG_MAXSIG) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return EINVAL;
 		}
 
@@ -480,7 +463,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 				LWPRELE(lp);
 				lwkt_reltoken(&p->p_token);
 				PRELE(p);
-				lwkt_reltoken(&proc_token);
 				return error;
 			}
 		}
@@ -491,7 +473,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 				LWPRELE(lp);
 				lwkt_reltoken(&p->p_token);
 				PRELE(p);
-				lwkt_reltoken(&proc_token);
 				return error;
 			}
 		}
@@ -530,7 +511,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		crit_exit();
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);
-		lwkt_reltoken(&proc_token);
 		return 0;
 
 	case PT_WRITE_I:
@@ -575,7 +555,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 			*res = tmp;
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);
-		lwkt_reltoken(&proc_token);
 		return (error);
 
 	case PT_IO:
@@ -606,14 +585,12 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		default:
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return (EINVAL);
 		}
 		error = procfs_domem(curp, lp, NULL, &uio);
 		piod->piod_len -= uio.uio_resid;
 		lwkt_reltoken(&p->p_token);
 		PRELE(p);
-		lwkt_reltoken(&proc_token);
 		return (error);
 
 	case PT_KILL:
@@ -633,7 +610,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		if (!procfs_validregs(lp)) {	/* no P_SYSTEM procs please */
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return EINVAL;
 		} else {
 			iov.iov_base = addr;
@@ -648,7 +624,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 			t = procfs_doregs(curp, lp, NULL, &uio);
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return t;
 		}
 #endif /* defined(PT_SETREGS) || defined(PT_GETREGS) */
@@ -666,7 +641,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		if (!procfs_validfpregs(lp)) {	/* no P_SYSTEM procs please */
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return EINVAL;
 		} else {
 			iov.iov_base = addr;
@@ -681,7 +655,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 			t = procfs_dofpregs(curp, lp, NULL, &uio);
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return t;
 		}
 #endif /* defined(PT_SETFPREGS) || defined(PT_GETFPREGS) */
@@ -699,7 +672,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		if (!procfs_validdbregs(lp)) {	/* no P_SYSTEM procs please */
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return EINVAL;
 		} else {
 			iov.iov_base = addr;
@@ -714,7 +686,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 			t = procfs_dodbregs(curp, lp, NULL, &uio);
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
-			lwkt_reltoken(&proc_token);
 			return t;
 		}
 #endif /* defined(PT_SETDBREGS) || defined(PT_GETDBREGS) */
@@ -725,7 +696,6 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 
 	lwkt_reltoken(&p->p_token);
 	PRELE(p);
-	lwkt_reltoken(&proc_token);
 
 	return 0;
 }

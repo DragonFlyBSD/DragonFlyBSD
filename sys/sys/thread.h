@@ -424,7 +424,7 @@ extern struct lwkt_token dev_token;
 extern struct lwkt_token vm_token;
 extern struct lwkt_token vmspace_token;
 extern struct lwkt_token kvm_token;
-extern struct lwkt_token proc_token;
+extern struct lwkt_token sigio_token;
 extern struct lwkt_token tty_token;
 extern struct lwkt_token vnode_token;
 extern struct lwkt_token ifnet_token;

@@ -267,7 +267,6 @@ filt_procdetach(struct knote *kn)
 
 	if (kn->kn_status & KN_DETACHED)
 		return;
-	/* XXX locking? take proc_token here? */
 	p = kn->kn_ptr.p_proc;
 	knote_remove(&p->p_klist, kn);
 }

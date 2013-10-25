@@ -907,19 +907,22 @@ mq_send1(struct lwp *l, mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 	/* Ready for receiving now */
 	KNOTE(&mq->mq_rkq.ki_note, 0);
 error:
-	lockmgr(&mq->mq_mtx, LK_RELEASE);
-	fdrop(fp);
-
 	if (error) {
+		lockmgr(&mq->mq_mtx, LK_RELEASE);
+		fdrop(fp);
 		mqueue_freemsg(msg, size);
 	} else if (notify) {
+		PHOLD(notify);
+		lockmgr(&mq->mq_mtx, LK_RELEASE);
+		fdrop(fp);
 		/* Send the notify, if needed */
-		lwkt_gettoken(&proc_token);
 		/*kpsignal(notify, &ksi, NULL);*/
 		ksignal(notify, mq->mq_sig_notify.sigev_signo);
-		lwkt_reltoken(&proc_token);
+		PRELE(notify);
+	} else {
+		lockmgr(&mq->mq_mtx, LK_RELEASE);
+		fdrop(fp);
 	}
-
 	return error;
 }
 

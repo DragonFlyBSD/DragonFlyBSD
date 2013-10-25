@@ -503,8 +503,6 @@ extern int nprocs, maxproc;		/* Current and max number of procs. */
 extern int maxprocperuid;		/* Max procs per uid. */
 extern int sched_quantum;		/* Scheduling quantum in ticks */
 
-extern struct proclist allproc;		/* List of all processes. */
-extern struct proclist zombproc;	/* List of zombie processes. */
 extern struct proc *initproc;		/* Process slot for init */
 extern struct thread *pagethread, *updatethread;
 
@@ -543,6 +541,7 @@ int	leavepgrp (struct proc *p);
 void	sess_hold(struct session *sp);
 void	sess_rele(struct session *sp);
 void	procinit (void);
+void	procinsertinit(struct proc *p);
 void	relscurproc(struct proc *curp);
 int	p_trespass (struct ucred *cr1, struct ucred *cr2);
 void	setrunnable (struct lwp *);

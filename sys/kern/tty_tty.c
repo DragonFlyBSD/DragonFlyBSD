@@ -232,10 +232,8 @@ cttyioctl(struct dev_ioctl_args *ap)
 
 	KKASSERT(p);
 	lwkt_gettoken(&p->p_token);
-	lwkt_gettoken(&proc_token);
 	ttyvp = cttyvp(p);
 	if (ttyvp == NULL) {
-		lwkt_reltoken(&proc_token);
 		lwkt_reltoken(&p->p_token);
 		return (EIO);
 	}
@@ -244,23 +242,19 @@ cttyioctl(struct dev_ioctl_args *ap)
 	 * (infinite recursion).
 	 */
 	if (ap->a_cmd == TIOCSCTTY) {
-		lwkt_reltoken(&proc_token);
 		lwkt_reltoken(&p->p_token);
 		return EINVAL;
 	}
 	if (ap->a_cmd == TIOCNOTTY) {
 		if (!SESS_LEADER(p)) {
 			p->p_flags &= ~P_CONTROLT;
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&p->p_token);
 			return (0);
 		} else {
-			lwkt_reltoken(&proc_token);
 			lwkt_reltoken(&p->p_token);
 			return (EINVAL);
 		}
 	}
-	lwkt_reltoken(&proc_token);
 	lwkt_reltoken(&p->p_token);
 
 	return (VOP_IOCTL(ttyvp, ap->a_cmd, ap->a_data, ap->a_fflag,

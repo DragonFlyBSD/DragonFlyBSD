@@ -371,7 +371,7 @@ proc0_init(void *dummy __unused)
 	/*
 	 * Create process 0 (the swapper).
 	 */
-	LIST_INSERT_HEAD(&allproc, p, p_list);
+	procinsertinit(p);
 	LIST_INSERT_HEAD(PGRPHASH(0), &pgrp0, pg_hash);
 	LIST_INIT(&pgrp0.pg_members);
 	lwkt_token_init(&pgrp0.pg_token, "pgrp0");
