@@ -127,7 +127,6 @@ int
 sys_linux_sysinfo(struct linux_sysinfo_args *args)
 {
 	struct l_sysinfo sysinfo;
-	vm_object_t object;
 	struct timespec ts;
 	int error;
 	int i;

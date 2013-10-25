@@ -630,8 +630,7 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
  *	5) invalidate all cached file data.
  *	6) re-read inode data for all active vnodes.
  */
-static int ext2_reload_scan1(struct mount *mp, struct vnode *vp, void *rescan);
-static int ext2_reload_scan2(struct mount *mp, struct vnode *vp, void *rescan);
+static int ext2_reload_scan(struct mount *mp, struct vnode *vp, void *rescan);
 
 struct scaninfo {
 	int rescan;
@@ -689,21 +688,13 @@ ext2_reload(struct mount *mountp, struct ucred *cred)
 	while (error == 0 && scaninfo.rescan) {
 	    scaninfo.rescan = 0;
 	    error = vmntvnodescan(mountp, VMSC_GETVX,
-				  NULL, ext2_reload_scan2, &scaninfo);
+				  NULL, ext2_reload_scan, &scaninfo);
 	}
 	return(error);
 }
 
 static int
-ext2_reload_scan1(struct mount *mp, struct vnode *vp, void *data)
-{
-	/*struct scaninfo *info = data;*/
-
-	return(0);
-}
-
-static int
-ext2_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
+ext2_reload_scan(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct scaninfo *info = data;
 	struct inode *ip;
