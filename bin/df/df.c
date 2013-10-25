@@ -600,6 +600,7 @@ makenetvfslist(void)
 			listptr[cnt++] = strdup(ptr->vfc_name);
 			if (listptr[cnt-1] == NULL) {
 				warnx("malloc failed");
+				free(listptr);
 				return (NULL);
 			}
 		}
