@@ -75,7 +75,14 @@
 #include <machine/atomic.h>		/* Machine-dependent proc substruct. */
 #include <sys/signalvar.h>
 
+struct proc;
+struct pgrp;
+struct session;
+struct lwp;
+
 LIST_HEAD(proclist, proc);
+LIST_HEAD(pgrplist, pgrp);
+LIST_HEAD(sesslist, session);
 LIST_HEAD(lwplist, lwp);
 
 struct lwp_rb_tree;
@@ -86,6 +93,7 @@ RB_PROTOTYPE2(lwp_rb_tree, lwp, u.lwp_rbnode, rb_lwp_compare, lwpid_t);
  * One structure allocated per session.
  */
 struct	session {
+	LIST_ENTRY(session) s_list;	/* Hash chain. */
 	int	s_count;		/* Ref cnt; pgrps in session. */
 	struct	proc *s_leader;		/* Session leader. */
 	struct	vnode *s_ttyvp;		/* Vnode of controlling terminal. */
@@ -98,7 +106,7 @@ struct	session {
  * One structure allocated per process group.
  */
 struct	pgrp {
-	LIST_ENTRY(pgrp) pg_hash;	/* Hash chain. */
+	LIST_ENTRY(pgrp) pg_list;	/* Hash chain. */
 	struct proclist pg_members;	/* Pointer to pgrp members. */
 	struct	session *pg_session;	/* Pointer to session. */
 	struct  sigiolst pg_sigiolst;	/* List of sigio sources. */
@@ -250,7 +258,6 @@ struct	proc {
 	char		p_pad1[3];
 
 	pid_t		p_pid;		/* Process identifier. */
-	LIST_ENTRY(proc) p_hash;	/* Hash chain. */
 	LIST_ENTRY(proc) p_pglist;	/* List of processes in pgrp. */
 	struct proc	*p_pptr;	/* Pointer to parent process. */
 	LIST_ENTRY(proc) p_sibling;	/* List of sibling processes. */
@@ -485,16 +492,6 @@ extern void stopevent(struct proc*, unsigned int, unsigned int);
 #define LWPHOLD(lp)	atomic_add_int(&(lp)->lwp_lock, 1)
 #define LWPRELE(lp)	atomic_add_int(&(lp)->lwp_lock, -1)
 
-#define	PGRPHASH(pgid)	(&pgrphashtbl[(pgid) & pgrphash])
-extern LIST_HEAD(pgrphashhead, pgrp) *pgrphashtbl;
-extern u_long pgrphash;
-
-#if 0
-#ifndef SET_CURPROC
-#define SET_CURPROC(p)	(curproc = (p))
-#endif
-#endif
-
 extern struct proc proc0;		/* Process slot for swapper. */
 extern struct lwp lwp0;			/* LWP slot for swapper. */
 extern struct thread thread0;		/* Thread slot for swapper. */
@@ -542,6 +539,8 @@ void	sess_hold(struct session *sp);
 void	sess_rele(struct session *sp);
 void	procinit (void);
 void	procinsertinit(struct proc *p);
+void	sessinsertinit(struct session *sess);
+void	pgrpinsertinit(struct pgrp *pg);
 void	relscurproc(struct proc *curp);
 int	p_trespass (struct ucred *cr1, struct ucred *cr2);
 void	setrunnable (struct lwp *);

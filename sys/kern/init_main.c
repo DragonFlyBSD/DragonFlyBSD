@@ -372,7 +372,7 @@ proc0_init(void *dummy __unused)
 	 * Create process 0 (the swapper).
 	 */
 	procinsertinit(p);
-	LIST_INSERT_HEAD(PGRPHASH(0), &pgrp0, pg_hash);
+	pgrpinsertinit(&pgrp0);
 	LIST_INIT(&pgrp0.pg_members);
 	lwkt_token_init(&pgrp0.pg_token, "pgrp0");
 	refcount_init(&pgrp0.pg_refs, 1);
@@ -382,6 +382,7 @@ proc0_init(void *dummy __unused)
 	pgrp0.pg_session = &session0;
 	session0.s_count = 1;
 	session0.s_leader = p;
+	sessinsertinit(&session0);
 
 	pgref(&pgrp0);
 	p->p_pgrp = &pgrp0;

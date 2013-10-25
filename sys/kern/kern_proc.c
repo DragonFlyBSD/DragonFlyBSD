@@ -1,6 +1,4 @@
 /*
- * (MPSAFE)
- *
  * Copyright (c) 1982, 1986, 1989, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -42,6 +40,7 @@
 #include <sys/dsched.h>
 #include <sys/signalvar.h>
 #include <sys/spinlock.h>
+#include <sys/random.h>
 #include <vm/vm.h>
 #include <sys/lock.h>
 #include <vm/pmap.h>
@@ -53,8 +52,18 @@
 #include <sys/spinlock2.h>
 #include <sys/mplock2.h>
 
-#define PIDHASH(pid)    (&pidhashtbl[(pid) & pidhash])
-#define PIDSPIN(pid)	(&pidspintbl[(pid) & pidhash])
+/*
+ * Hash table size must be a power of two and is not currently dynamically
+ * sized.  There is a trade-off between the linear scans which must iterate
+ * all HSIZE elements and the number of elements which might accumulate
+ * within each hash chain.
+ */
+#define ALLPROC_HSIZE	256
+#define ALLPROC_HMASK	(ALLPROC_HSIZE - 1)
+#define ALLPROC_HASH(pid)	(pid & ALLPROC_HMASK)
+#define PGRP_HASH(pid)	(pid & ALLPROC_HMASK)
+#define SESS_HASH(pid)	(pid & ALLPROC_HMASK)
+
 LIST_HEAD(pidhashhead, proc);
 
 static MALLOC_DEFINE(M_PGRP, "pgrp", "process group header");
@@ -73,22 +82,15 @@ SYSCTL_INT(_security, OID_AUTO, ps_showallthreads, CTLFLAG_RW,
     "Unprivileged processes can see kernel threads");
 
 static void orphanpg(struct pgrp *pg);
-static pid_t proc_getnewpid_locked(int random_offset);
+static void proc_makepid(struct proc *p, int random_offset);
 
 /*
  * Other process lists
  */
-static struct pidhashhead *pidhashtbl;
-static struct spinlock *pidspintbl;
-static u_long pidhash;
-
-struct pgrphashhead *pgrphashtbl;
-u_long pgrphash;
-
-static struct proclist allproc;
-static struct proclist zombproc;
-static struct spinlock pghash_spin = SPINLOCK_INITIALIZER(&pghash_spin);
-static struct lwkt_token proc_token = LWKT_TOKEN_INITIALIZER(proc_token);
+static struct lwkt_token proc_tokens[ALLPROC_HSIZE];
+static struct proclist allprocs[ALLPROC_HSIZE];	/* locked by proc_tokens */
+static struct pgrplist allpgrps[ALLPROC_HSIZE];	/* locked by proc_tokens */
+static struct sesslist allsessn[ALLPROC_HSIZE];	/* locked by proc_tokens */
 
 /*
  * Random component to nextpid generation.  We mix in a random factor to make
@@ -128,35 +130,45 @@ SYSCTL_PROC(_kern, OID_AUTO, randompid, CTLTYPE_INT|CTLFLAG_RW,
 /*
  * Initialize global process hashing structures.
  *
- * Called from the low level boot code only.
+ * These functions are ONLY called from the low level boot code and do
+ * not lock their operations.
  */
 void
 procinit(void)
 {
 	u_long i;
 
-	LIST_INIT(&allproc);
-	LIST_INIT(&zombproc);
+	for (i = 0; i < ALLPROC_HSIZE; ++i) {
+		LIST_INIT(&allprocs[i]);
+		LIST_INIT(&allsessn[i]);
+		LIST_INIT(&allpgrps[i]);
+		lwkt_token_init(&proc_tokens[i], "allproc");
+	}
 	lwkt_init();
-	pidhashtbl = hashinit(maxproc / 4, M_PROC, &pidhash);
-	pidspintbl = kmalloc(sizeof(*pidspintbl) * (pidhash + 1), M_PROC,
-			     M_WAITOK | M_ZERO);
-	for (i = 0; i <= pidhash; ++i)
-		spin_init(&pidspintbl[i]);
-
-	pgrphashtbl = hashinit(maxproc / 4, M_PROC, &pgrphash);
 	uihashinit();
 }
 
 void
 procinsertinit(struct proc *p)
 {
-	LIST_INSERT_HEAD(&allproc, p, p_list);
+	LIST_INSERT_HEAD(&allprocs[ALLPROC_HASH(p->p_pid)], p, p_list);
+}
+
+void
+pgrpinsertinit(struct pgrp *pg)
+{
+	LIST_INSERT_HEAD(&allpgrps[ALLPROC_HASH(pg->pg_id)], pg, pg_list);
+}
+
+void
+sessinsertinit(struct session *sess)
+{
+	LIST_INSERT_HEAD(&allsessn[ALLPROC_HASH(sess->s_sid)], sess, s_list);
 }
 
 /*
- * Process hold/release support functions.  These functions must be MPSAFE.
- * Called via the PHOLD(), PRELE(), and PSTALL() macros.
+ * Process hold/release support functions.  Called via the PHOLD(),
+ * PRELE(), and PSTALL() macros.
  *
  * p->p_lock is a simple hold count with a waiting interlock.  No wakeup()
  * is issued unless someone is actually waiting for the process.
@@ -376,6 +388,7 @@ struct proc *
 pfind(pid_t pid)
 {
 	struct proc *p = curproc;
+	int n;
 
 	/*
 	 * Shortcut the current process
@@ -388,15 +401,19 @@ pfind(pid_t pid)
 	/*
 	 * Otherwise find it in the hash table.
 	 */
-	spin_lock_shared(PIDSPIN(pid));
-	LIST_FOREACH(p, PIDHASH(pid), p_hash) {
+	n = ALLPROC_HASH(pid);
+
+	lwkt_gettoken_shared(&proc_tokens[n]);
+	LIST_FOREACH(p, &allprocs[n], p_list) {
+		if (p->p_stat == SZOMB)
+			continue;
 		if (p->p_pid == pid) {
 			PHOLD(p);
-			spin_unlock_shared(PIDSPIN(pid));
+			lwkt_reltoken(&proc_tokens[n]);
 			return (p);
 		}
 	}
-	spin_unlock_shared(PIDSPIN(pid));
+	lwkt_reltoken(&proc_tokens[n]);
 
 	return (NULL);
 }
@@ -412,6 +429,7 @@ struct proc *
 pfindn(pid_t pid)
 {
 	struct proc *p = curproc;
+	int n;
 
 	/*
 	 * Shortcut the current process
@@ -419,17 +437,66 @@ pfindn(pid_t pid)
 	if (p && p->p_pid == pid)
 		return (p);
 
-	spin_lock_shared(PIDSPIN(pid));
-	LIST_FOREACH(p, PIDHASH(pid), p_hash) {
+	/*
+	 * Otherwise find it in the hash table.
+	 */
+	n = ALLPROC_HASH(pid);
+
+	lwkt_gettoken_shared(&proc_tokens[n]);
+	LIST_FOREACH(p, &allprocs[n], p_list) {
+		if (p->p_stat == SZOMB)
+			continue;
 		if (p->p_pid == pid) {
-			spin_unlock_shared(PIDSPIN(pid));
+			lwkt_reltoken(&proc_tokens[n]);
 			return (p);
 		}
 	}
-	spin_unlock_shared(PIDSPIN(pid));
+	lwkt_reltoken(&proc_tokens[n]);
 
 	return (NULL);
 }
+
+/*
+ * Locate a process on the zombie list.  Return a process or NULL.
+ * The returned process will be referenced and the caller must release
+ * it with PRELE().
+ *
+ * No other requirements.
+ */
+struct proc *
+zpfind(pid_t pid)
+{
+	struct proc *p = curproc;
+	int n;
+
+	/*
+	 * Shortcut the current process
+	 */
+	if (p && p->p_pid == pid) {
+		PHOLD(p);
+		return (p);
+	}
+
+	/*
+	 * Otherwise find it in the hash table.
+	 */
+	n = ALLPROC_HASH(pid);
+
+	lwkt_gettoken_shared(&proc_tokens[n]);
+	LIST_FOREACH(p, &allprocs[n], p_list) {
+		if (p->p_stat != SZOMB)
+			continue;
+		if (p->p_pid == pid) {
+			PHOLD(p);
+			lwkt_reltoken(&proc_tokens[n]);
+			return (p);
+		}
+	}
+	lwkt_reltoken(&proc_tokens[n]);
+
+	return (NULL);
+}
+
 
 void
 pgref(struct pgrp *pgrp)
@@ -441,16 +508,18 @@ void
 pgrel(struct pgrp *pgrp)
 {
 	int count;
+	int n;
 
+	n = PGRP_HASH(pgrp->pg_id);
 	for (;;) {
 		count = pgrp->pg_refs;
 		cpu_ccfence();
 		KKASSERT(count > 0);
 		if (count == 1) {
-			spin_lock(&pghash_spin);
+			lwkt_gettoken(&proc_tokens[n]);
 			if (atomic_cmpset_int(&pgrp->pg_refs, 1, 0))
 				break;
-			spin_unlock(&pghash_spin);
+			lwkt_reltoken(&proc_tokens[n]);
 			/* retry */
 		} else {
 			if (atomic_cmpset_int(&pgrp->pg_refs, count, count - 1))
@@ -462,8 +531,7 @@ pgrel(struct pgrp *pgrp)
 	/*
 	 * Successful 1->0 transition, pghash_spin is held.
 	 */
-	LIST_REMOVE(pgrp, pg_hash);
-	spin_unlock(&pghash_spin);
+	LIST_REMOVE(pgrp, pg_list);
 
 	/*
 	 * Reset any sigio structures pointing to us as a result of
@@ -475,6 +543,8 @@ pgrel(struct pgrp *pgrp)
 	    pgrp->pg_session->s_ttyp->t_pgrp == pgrp) {
 		pgrp->pg_session->s_ttyp->t_pgrp = NULL;
 	}
+	lwkt_reltoken(&proc_tokens[n]);
+
 	sess_rele(pgrp->pg_session);
 	kfree(pgrp, M_PGRP);
 }
@@ -490,16 +560,19 @@ struct pgrp *
 pgfind(pid_t pgid)
 {
 	struct pgrp *pgrp;
+	int n;
 
-	spin_lock_shared(&pghash_spin);
-	LIST_FOREACH(pgrp, PGRPHASH(pgid), pg_hash) {
+	n = PGRP_HASH(pgid);
+	lwkt_gettoken_shared(&proc_tokens[n]);
+
+	LIST_FOREACH(pgrp, &allpgrps[n], pg_list) {
 		if (pgrp->pg_id == pgid) {
 			refcount_acquire(&pgrp->pg_refs);
-			spin_unlock_shared(&pghash_spin);
+			lwkt_reltoken(&proc_tokens[n]);
 			return (pgrp);
 		}
 	}
-	spin_unlock_shared(&pghash_spin);
+	lwkt_reltoken(&proc_tokens[n]);
 	return (NULL);
 }
 
@@ -525,16 +598,32 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 	if (pgrp == NULL) {
 		pid_t savepid = p->p_pid;
 		struct proc *np;
+		int n;
+
 		/*
 		 * new process group
 		 */
 		KASSERT(p->p_pid == pgid,
 			("enterpgrp: new pgrp and pid != pgid"));
+		pgrp = kmalloc(sizeof(struct pgrp), M_PGRP, M_WAITOK | M_ZERO);
+		pgrp->pg_id = pgid;
+		LIST_INIT(&pgrp->pg_members);
+		pgrp->pg_jobc = 0;
+		SLIST_INIT(&pgrp->pg_sigiolst);
+		lwkt_token_init(&pgrp->pg_token, "pgrp_token");
+		refcount_init(&pgrp->pg_refs, 1);
+		lockinit(&pgrp->pg_lock, "pgwt", 0, 0);
+
+		n = PGRP_HASH(pgid);
+
 		if ((np = pfindn(savepid)) == NULL || np != p) {
+			lwkt_reltoken(&proc_tokens[n]);
 			error = ESRCH;
+			kfree(pgrp, M_PGRP);
 			goto fatal;
 		}
-		pgrp = kmalloc(sizeof(struct pgrp), M_PGRP, M_WAITOK);
+
+		lwkt_gettoken(&proc_tokens[n]);
 		if (mksess) {
 			struct session *sess;
 
@@ -542,7 +631,8 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 			 * new session
 			 */
 			sess = kmalloc(sizeof(struct session), M_SESSION,
-				       M_WAITOK);
+				       M_WAITOK | M_ZERO);
+			lwkt_gettoken(&p->p_token);
 			sess->s_leader = p;
 			sess->s_sid = p->p_pid;
 			sess->s_count = 1;
@@ -553,23 +643,18 @@ enterpgrp(struct proc *p, pid_t pgid, int mksess)
 			pgrp->pg_session = sess;
 			KASSERT(p == curproc,
 				("enterpgrp: mksession and p != curproc"));
-			lwkt_gettoken(&p->p_token);
 			p->p_flags &= ~P_CONTROLT;
+			LIST_INSERT_HEAD(&allsessn[n], sess, s_list);
 			lwkt_reltoken(&p->p_token);
 		} else {
+			lwkt_gettoken(&p->p_token);
 			pgrp->pg_session = p->p_session;
 			sess_hold(pgrp->pg_session);
+			lwkt_reltoken(&p->p_token);
 		}
-		pgrp->pg_id = pgid;
-		LIST_INIT(&pgrp->pg_members);
-		pgrp->pg_jobc = 0;
-		SLIST_INIT(&pgrp->pg_sigiolst);
-		lwkt_token_init(&pgrp->pg_token, "pgrp_token");
-		refcount_init(&pgrp->pg_refs, 1);
-		lockinit(&pgrp->pg_lock, "pgwt", 0, 0);
-		spin_lock(&pghash_spin);
-		LIST_INSERT_HEAD(PGRPHASH(pgid), pgrp, pg_hash);
-		spin_unlock(&pghash_spin);
+		LIST_INSERT_HEAD(&allpgrps[n], pgrp, pg_list);
+
+		lwkt_reltoken(&proc_tokens[n]);
 	} else if (pgrp == p->p_pgrp) {
 		pgrel(pgrp);
 		goto done;
@@ -663,23 +748,27 @@ sess_hold(struct session *sp)
  * No requirements.
  */
 void
-sess_rele(struct session *sp)
+sess_rele(struct session *sess)
 {
 	struct tty *tp;
 	int count;
+	int n;
 
+	n = SESS_HASH(sess->s_sid);
 	for (;;) {
-		count = sp->s_count;
+		count = sess->s_count;
 		cpu_ccfence();
 		KKASSERT(count > 0);
 		if (count == 1) {
 			lwkt_gettoken(&tty_token);
-			if (atomic_cmpset_int(&sp->s_count, 1, 0))
+			lwkt_gettoken(&proc_tokens[n]);
+			if (atomic_cmpset_int(&sess->s_count, 1, 0))
 				break;
+			lwkt_reltoken(&proc_tokens[n]);
 			lwkt_reltoken(&tty_token);
 			/* retry */
 		} else {
-			if (atomic_cmpset_int(&sp->s_count, count, count - 1))
+			if (atomic_cmpset_int(&sess->s_count, count, count - 1))
 				return;
 			/* retry */
 		}
@@ -688,23 +777,27 @@ sess_rele(struct session *sp)
 	/*
 	 * Successful 1->0 transition and tty_token is held.
 	 */
-	if (sp->s_ttyp && sp->s_ttyp->t_session) {
+	LIST_REMOVE(sess, s_list);
+
+	if (sess->s_ttyp && sess->s_ttyp->t_session) {
 #ifdef TTY_DO_FULL_CLOSE
 		/* FULL CLOSE, see ttyclearsession() */
-		KKASSERT(sp->s_ttyp->t_session == sp);
-		sp->s_ttyp->t_session = NULL;
+		KKASSERT(sess->s_ttyp->t_session == sess);
+		sess->s_ttyp->t_session = NULL;
 #else
 		/* HALF CLOSE, see ttyclearsession() */
-		if (sp->s_ttyp->t_session == sp)
-			sp->s_ttyp->t_session = NULL;
+		if (sess->s_ttyp->t_session == sess)
+			sess->s_ttyp->t_session = NULL;
 #endif
 	}
-	if ((tp = sp->s_ttyp) != NULL) {
-		sp->s_ttyp = NULL;
+	if ((tp = sess->s_ttyp) != NULL) {
+		sess->s_ttyp = NULL;
 		ttyunhold(tp);
 	}
-	kfree(sp, M_SESSION);
+	lwkt_reltoken(&proc_tokens[n]);
 	lwkt_reltoken(&tty_token);
+
+	kfree(sess, M_SESSION);
 }
 
 /*
@@ -805,21 +898,10 @@ proc_add_allproc(struct proc *p)
 	int random_offset;
 
 	if ((random_offset = randompid) != 0) {
-		get_mplock();
-		random_offset = karc4random() % random_offset;
-		rel_mplock();
+		read_random(&random_offset, sizeof(random_offset));
+		random_offset = (random_offset & 0x7FFFFFFF) % randompid;
 	}
-
-	lwkt_gettoken(&proc_token);
-
-	p->p_pid = proc_getnewpid_locked(random_offset);
-	LIST_INSERT_HEAD(&allproc, p, p_list);
-
-	spin_lock(PIDSPIN(p->p_pid));
-	LIST_INSERT_HEAD(PIDHASH(p->p_pid), p, p_hash);
-	spin_unlock(PIDSPIN(p->p_pid));
-
-	lwkt_reltoken(&proc_token);
+	proc_makepid(p, random_offset);
 }
 
 /*
@@ -827,87 +909,75 @@ proc_add_allproc(struct proc *p)
  * proc_add_allproc() to guarentee that the new pid is not reused before
  * the new process can be added to the allproc list.
  *
- * The caller must hold proc_token.
+ * p_pid is assigned and the process is added to the allproc hash table
  */
 static
-pid_t
-proc_getnewpid_locked(int random_offset)
+void
+proc_makepid(struct proc *p, int random_offset)
 {
-	static pid_t nextpid;
-	static pid_t pidchecked;
-	struct proc *p;
+	static pid_t nextpid;	/* heuristic, allowed to race */
+	struct pgrp *pg;
+	struct proc *ps;
+	struct session *sess;
+	pid_t base;
+	int n;
 
 	/*
-	 * Find an unused process ID.  We remember a range of unused IDs
-	 * ready to use (from nextpid+1 through pidchecked-1).
+	 * Calculate a hash index and find an unused process id within
+	 * the table, looping if we cannot find one.
 	 */
-	nextpid = nextpid + 1 + random_offset;
+	if (random_offset)
+		atomic_add_int(&nextpid, random_offset);
 retry:
+	base = atomic_fetchadd_int(&nextpid, 1) + 1;
+	if (base >= PID_MAX) {
+		base = base % PID_MAX;
+		if (base < 100)
+			base += 100;
+	}
+	n = ALLPROC_HASH(base);
+	lwkt_gettoken(&proc_tokens[n]);
+
+	LIST_FOREACH(ps, &allprocs[n], p_list) {
+		if (ps->p_pid == base) {
+			base += ALLPROC_HSIZE;
+			if (base >= PID_MAX) {
+				lwkt_reltoken(&proc_tokens[n]);
+				goto retry;
+			}
+		}
+	}
+	LIST_FOREACH(pg, &allpgrps[n], pg_list) {
+		if (pg->pg_id == base) {
+			base += ALLPROC_HSIZE;
+			if (base >= PID_MAX) {
+				lwkt_reltoken(&proc_tokens[n]);
+				goto retry;
+			}
+		}
+	}
+	LIST_FOREACH(sess, &allsessn[n], s_list) {
+		if (sess->s_sid == base) {
+			base += ALLPROC_HSIZE;
+			if (base >= PID_MAX) {
+				lwkt_reltoken(&proc_tokens[n]);
+				goto retry;
+			}
+		}
+	}
+
 	/*
-	 * If the process ID prototype has wrapped around,
-	 * restart somewhat above 0, as the low-numbered procs
-	 * tend to include daemons that don't exit.
+	 * Assign the pid and insert the process.
 	 */
-	if (nextpid >= PID_MAX) {
-		nextpid = nextpid % PID_MAX;
-		if (nextpid < 100)
-			nextpid += 100;
-		pidchecked = 0;
-	}
-	if (nextpid >= pidchecked) {
-		int doingzomb = 0;
-
-		pidchecked = PID_MAX;
-
-		/*
-		 * Scan the active and zombie procs to check whether this pid
-		 * is in use.  Remember the lowest pid that's greater
-		 * than nextpid, so we can avoid checking for a while.
-		 *
-		 * NOTE: Processes in the midst of being forked may not
-		 *	 yet have p_pgrp and p_pgrp->pg_session set up
-		 *	 yet, so we have to check for NULL.
-		 *
-		 *	 Processes being torn down should be interlocked
-		 *	 with proc_token prior to the clearing of their
-		 *	 p_pgrp.
-		 */
-		p = LIST_FIRST(&allproc);
-again:
-		for (; p != NULL; p = LIST_NEXT(p, p_list)) {
-			while (p->p_pid == nextpid ||
-			    (p->p_pgrp && p->p_pgrp->pg_id == nextpid) ||
-			    (p->p_pgrp && p->p_session &&
-			     p->p_session->s_sid == nextpid)) {
-				nextpid++;
-				if (nextpid >= pidchecked)
-					goto retry;
-			}
-			if (p->p_pid > nextpid && pidchecked > p->p_pid)
-				pidchecked = p->p_pid;
-			if (p->p_pgrp &&
-			    p->p_pgrp->pg_id > nextpid &&
-			    pidchecked > p->p_pgrp->pg_id) {
-				pidchecked = p->p_pgrp->pg_id;
-			}
-			if (p->p_pgrp && p->p_session &&
-			    p->p_session->s_sid > nextpid &&
-			    pidchecked > p->p_session->s_sid) {
-				pidchecked = p->p_session->s_sid;
-			}
-		}
-		if (!doingzomb) {
-			doingzomb = 1;
-			p = LIST_FIRST(&zombproc);
-			goto again;
-		}
-	}
-	return(nextpid);
+	p->p_pid = base;
+	LIST_INSERT_HEAD(&allprocs[n], p, p_list);
+	lwkt_reltoken(&proc_tokens[n]);
 }
 
 /*
- * Called from exit1 to remove a process from the allproc
- * list and move it to the zombie list.
+ * Called from exit1 to place the process into a zombie state.
+ * The process is removed from the pid hash and p_stat is set
+ * to SZOMB.  Normal pfind[n]() calls will not find it any more.
  *
  * Caller must hold p->p_token.  We are required to wait until p_lock
  * becomes zero before we can manipulate the list, allowing allproc
@@ -916,20 +986,16 @@ again:
 void
 proc_move_allproc_zombie(struct proc *p)
 {
+	int n;
+
+	n = ALLPROC_HASH(p->p_pid);
 	PSTALL(p, "reap1", 0);
+	lwkt_gettoken(&proc_tokens[n]);
 
-	lwkt_gettoken(&proc_token);
 	PSTALL(p, "reap1a", 0);
-
-	LIST_REMOVE(p, p_list);
-	LIST_INSERT_HEAD(&zombproc, p, p_list);
-
-	spin_lock(PIDSPIN(p->p_pid));
-	LIST_REMOVE(p, p_hash);
-	spin_unlock(PIDSPIN(p->p_pid));
-
 	p->p_stat = SZOMB;
-	lwkt_reltoken(&proc_token);
+
+	lwkt_reltoken(&proc_tokens[n]);
 	dsched_exit_proc(p);
 }
 
@@ -945,13 +1011,17 @@ proc_move_allproc_zombie(struct proc *p)
 void
 proc_remove_zombie(struct proc *p)
 {
+	int n;
+
+	n = ALLPROC_HASH(p->p_pid);
+
 	PSTALL(p, "reap2", 0);
-	lwkt_gettoken(&proc_token);
+	lwkt_gettoken(&proc_tokens[n]);
 	PSTALL(p, "reap2a", 0);
-	LIST_REMOVE(p, p_list); /* off zombproc */
-	LIST_REMOVE(p, p_sibling);
+	LIST_REMOVE(p, p_list);		/* from remove master list */
+	LIST_REMOVE(p, p_sibling);	/* and from sibling list */
 	p->p_pptr = NULL;
-	lwkt_reltoken(&proc_token);
+	lwkt_reltoken(&proc_tokens[n]);
 }
 
 /*
@@ -996,6 +1066,7 @@ lwpkthreaddeferred(void)
 /*
  * Scan all processes on the allproc list.  The process is automatically
  * held for the callback.  A return value of -1 terminates the loop.
+ * Zombie procs are skipped.
  *
  * The callback is made with the process held and proc_token held.
  *
@@ -1009,26 +1080,39 @@ lwpkthreaddeferred(void)
 void
 allproc_scan(int (*callback)(struct proc *, void *), void *data)
 {
+	int limit = nprocs + ncpus;
 	struct proc *p;
 	int r;
-	int limit = nprocs + ncpus;
+	int n;
 
 	/*
-	 * proc_token protects the allproc list and PHOLD() prevents the
+	 * proc_tokens[n] protects the allproc list and PHOLD() prevents the
 	 * process from being removed from the allproc list or the zombproc
 	 * list.
 	 */
-	lwkt_gettoken(&proc_token);
-	LIST_FOREACH(p, &allproc, p_list) {
-		PHOLD(p);
-		r = callback(p, data);
-		PRELE(p);
-		if (r < 0)
-			break;
-		if (--limit < 0)
+	for (n = 0; n < ALLPROC_HSIZE; ++n) {
+		if (LIST_FIRST(&allprocs[n]) == NULL)
+			continue;
+		lwkt_gettoken(&proc_tokens[n]);
+		LIST_FOREACH(p, &allprocs[n], p_list) {
+			if (p->p_stat == SZOMB)
+				continue;
+			PHOLD(p);
+			r = callback(p, data);
+			PRELE(p);
+			if (r < 0)
+				break;
+			if (--limit < 0)
+				break;
+		}
+		lwkt_reltoken(&proc_tokens[n]);
+
+		/*
+		 * Check if asked to stop early
+		 */
+		if (p)
 			break;
 	}
-	lwkt_reltoken(&proc_token);
 }
 
 /*
@@ -1045,27 +1129,35 @@ alllwp_scan(int (*callback)(struct lwp *, void *), void *data)
 	struct proc *p;
 	struct lwp *lp;
 	int r = 0;
+	int n;
 
-	/*
-	 * proc_token protects the allproc list and PHOLD() prevents the
-	 * process from being removed from the allproc list or the zombproc
-	 * list.
-	 */
-	lwkt_gettoken(&proc_token);
-	LIST_FOREACH(p, &allproc, p_list) {
-		PHOLD(p);
-		lwkt_gettoken(&p->p_token);
-		FOREACH_LWP_IN_PROC(lp, p) {
-			LWPHOLD(lp);
-			r = callback(lp, data);
-			LWPRELE(lp);
+	for (n = 0; n < ALLPROC_HSIZE; ++n) {
+		if (LIST_FIRST(&allprocs[n]) == NULL)
+			continue;
+		lwkt_gettoken(&proc_tokens[n]);
+		LIST_FOREACH(p, &allprocs[n], p_list) {
+			if (p->p_stat == SZOMB)
+				continue;
+			PHOLD(p);
+			lwkt_gettoken(&p->p_token);
+			FOREACH_LWP_IN_PROC(lp, p) {
+				LWPHOLD(lp);
+				r = callback(lp, data);
+				LWPRELE(lp);
+			}
+			lwkt_reltoken(&p->p_token);
+			PRELE(p);
+			if (r < 0)
+				break;
 		}
-		lwkt_reltoken(&p->p_token);
-		PRELE(p);
-		if (r < 0)
+		lwkt_reltoken(&proc_tokens[n]);
+
+		/*
+		 * Asked to exit early
+		 */
+		if (p)
 			break;
 	}
-	lwkt_reltoken(&proc_token);
 }
 
 /*
@@ -1080,16 +1172,34 @@ zombproc_scan(int (*callback)(struct proc *, void *), void *data)
 {
 	struct proc *p;
 	int r;
+	int n;
 
-	lwkt_gettoken(&proc_token);
-	LIST_FOREACH(p, &zombproc, p_list) {
-		PHOLD(p);
-		r = callback(p, data);
-		PRELE(p);
-		if (r < 0)
+	/*
+	 * proc_tokens[n] protects the allproc list and PHOLD() prevents the
+	 * process from being removed from the allproc list or the zombproc
+	 * list.
+	 */
+	for (n = 0; n < ALLPROC_HSIZE; ++n) {
+		if (LIST_FIRST(&allprocs[n]) == NULL)
+			continue;
+		lwkt_gettoken(&proc_tokens[n]);
+		LIST_FOREACH(p, &allprocs[n], p_list) {
+			if (p->p_stat != SZOMB)
+				continue;
+			PHOLD(p);
+			r = callback(p, data);
+			PRELE(p);
+			if (r < 0)
+				break;
+		}
+		lwkt_reltoken(&proc_tokens[n]);
+
+		/*
+		 * Check if asked to stop early
+		 */
+		if (p)
 			break;
 	}
-	lwkt_reltoken(&proc_token);
 }
 
 #include "opt_ddb.h"
@@ -1105,50 +1215,26 @@ DB_SHOW_COMMAND(pgrpdump, pgrpdump)
 	struct proc *p;
 	int i;
 
-	for (i = 0; i <= pgrphash; i++) {
-		if (!LIST_EMPTY(&pgrphashtbl[i])) {
-			kprintf("\tindx %d\n", i);
-			LIST_FOREACH(pgrp, &pgrphashtbl[i], pg_hash) {
-				kprintf(
-			"\tpgrp %p, pgid %ld, sess %p, sesscnt %d, mem %p\n",
-				    (void *)pgrp, (long)pgrp->pg_id,
-				    (void *)pgrp->pg_session,
-				    pgrp->pg_session->s_count,
-				    (void *)LIST_FIRST(&pgrp->pg_members));
-				LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
-					kprintf("\t\tpid %ld addr %p pgrp %p\n", 
-					    (long)p->p_pid, (void *)p,
-					    (void *)p->p_pgrp);
-				}
+	for (i = 0; i < ALLPROC_HSIZE; ++i) {
+		if (LIST_EMPTY(&allpgrps[i]))
+			continue;
+		kprintf("\tindx %d\n", i);
+		LIST_FOREACH(pgrp, &allpgrps[i], pg_list) {
+			kprintf("\tpgrp %p, pgid %ld, sess %p, "
+				"sesscnt %d, mem %p\n",
+				(void *)pgrp, (long)pgrp->pg_id,
+				(void *)pgrp->pg_session,
+				pgrp->pg_session->s_count,
+				(void *)LIST_FIRST(&pgrp->pg_members));
+			LIST_FOREACH(p, &pgrp->pg_members, p_pglist) {
+				kprintf("\t\tpid %ld addr %p pgrp %p\n",
+					(long)p->p_pid, (void *)p,
+					(void *)p->p_pgrp);
 			}
 		}
 	}
 }
 #endif /* DDB */
-
-/*
- * Locate a process on the zombie list.  Return a process or NULL.
- * The returned process will be referenced and the caller must release
- * it with PRELE().
- *
- * No other requirements.
- */
-struct proc *
-zpfind(pid_t pid)
-{
-	struct proc *p;
-
-	lwkt_gettoken_shared(&proc_token);
-	LIST_FOREACH(p, &zombproc, p_list) {
-		if (p->p_pid == pid) {
-			PHOLD(p);
-			lwkt_reltoken(&proc_token);
-			return (p);
-		}
-	}
-	lwkt_reltoken(&proc_token);
-	return (NULL);
-}
 
 /*
  * The caller must hold proc_token.
@@ -1190,7 +1276,7 @@ sysctl_out_proc(struct proc *p, struct sysctl_req *req, int flags)
  * The caller must hold proc_token.
  */
 static int
-sysctl_out_proc_kthread(struct thread *td, struct sysctl_req *req, int flags)
+sysctl_out_proc_kthread(struct thread *td, struct sysctl_req *req)
 {
 	struct kinfo_proc ki;
 	int error;
@@ -1208,14 +1294,13 @@ sysctl_out_proc_kthread(struct thread *td, struct sysctl_req *req, int flags)
 static int
 sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 {
-	int *name = (int*) arg1;
+	int *name = (int *)arg1;
 	int oid = oidp->oid_number;
 	u_int namelen = arg2;
 	struct proc *p;
-	struct proclist *plist;
 	struct thread *td;
 	struct thread *marker;
-	int doingzomb, flags = 0;
+	int flags = 0;
 	int error = 0;
 	int n;
 	int origcpu;
@@ -1251,15 +1336,12 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 		if (error)
 			goto post_threads;
 	}
-	for (doingzomb = 0; doingzomb <= 1; doingzomb++) {
-		if (doingzomb)
-			plist = &zombproc;
-		else
-			plist = &allproc;
 
-		lwkt_gettoken_shared(&proc_token);
-
-		LIST_FOREACH(p, plist, p_list) {
+	for (n = 0; n < ALLPROC_HSIZE; ++n) {
+		if (LIST_EMPTY(&allprocs[n]))
+			continue;
+		lwkt_gettoken_shared(&proc_tokens[n]);
+		LIST_FOREACH(p, &allprocs[n], p_list) {
 			/*
 			 * Show a user only their processes.
 			 */
@@ -1310,11 +1392,11 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			error = sysctl_out_proc(p, req, flags);
 			PRELE(p);
 			if (error) {
-				lwkt_reltoken(&proc_token);
+				lwkt_reltoken(&proc_tokens[n]);
 				goto post_threads;
 			}
 		}
-		lwkt_reltoken(&proc_token);
+		lwkt_reltoken(&proc_tokens[n]);
 	}
 
 	/*
@@ -1363,8 +1445,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			case KERN_PROC_RUID:
 				break;
 			default:
-				error = sysctl_out_proc_kthread(td, req,
-								doingzomb);
+				error = sysctl_out_proc_kthread(td, req);
 				break;
 			}
 			lwkt_rele(td);
