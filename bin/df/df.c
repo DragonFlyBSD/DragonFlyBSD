@@ -63,6 +63,7 @@
 /* Maximum widths of various fields. */
 struct maxwidths {
 	int mntfrom;
+	int fstype;
 	int total;
 	int used;
 	int avail;
@@ -86,7 +87,7 @@ static int	 ufs_df(char *, struct maxwidths *);
 static void	 update_maxwidths(struct maxwidths *, struct statfs *, struct statvfs *);
 static void	 usage(void);
 
-int	aflag = 0, hflag, iflag, nflag;
+int	aflag = 0, hflag, iflag, nflag, Tflag;
 struct	ufs_args mdev;
 
 static __inline int
@@ -116,7 +117,7 @@ main(int argc, char **argv)
 	fstype = "ufs";
 
 	vfslist = NULL;
-	while ((ch = getopt(argc, argv, "abgHhiklmnPt:")) != -1)
+	while ((ch = getopt(argc, argv, "abgHhiklmnPt:T")) != -1)
 		switch (ch) {
 		case 'a':
 			aflag = 1;
@@ -165,6 +166,9 @@ main(int argc, char **argv)
 				errx(1, "only one -t option may be specified");
 			fstype = optarg;
 			vfslist = makevfslist(optarg);
+			break;
+		case 'T':
+			Tflag = 1;
 			break;
 		case '?':
 		default:
@@ -383,6 +387,7 @@ prtstat(struct statfs *sfsp, struct statvfs *vsfsp, struct maxwidths *mwp)
 
 	if (++timesthrough == 1) {
 		mwp->mntfrom = imax(mwp->mntfrom, strlen("Filesystem"));
+		mwp->fstype = imax(mwp->fstype, strlen("Type"));
 		if (hflag) {
 			header = "  Size";
 			mwp->total = mwp->used = mwp->avail = strlen(header);
@@ -393,9 +398,11 @@ prtstat(struct statfs *sfsp, struct statvfs *vsfsp, struct maxwidths *mwp)
 		mwp->used = imax(mwp->used, strlen("Used"));
 		mwp->avail = imax(mwp->avail, strlen("Avail"));
 
-		printf("%-*s %-*s %*s %*s Capacity", mwp->mntfrom,
-		    "Filesystem", mwp->total, header, mwp->used, "Used",
-		    mwp->avail, "Avail");
+		printf("%-*s", mwp->mntfrom, "Filesystem");
+		if (Tflag)
+			printf("  %-*s", mwp->fstype, "Type");
+		printf(" %-*s %*s %*s Capacity", mwp->total, header, mwp->used,
+		    "Used", mwp->avail, "Avail");
 		if (iflag) {
 			mwp->iused = imax(mwp->iused, strlen("  iused"));
 			mwp->ifree = imax(mwp->ifree, strlen("ifree"));
@@ -405,6 +412,8 @@ prtstat(struct statfs *sfsp, struct statvfs *vsfsp, struct maxwidths *mwp)
 		printf("  Mounted on\n");
 	}
 	printf("%-*s", mwp->mntfrom, sfsp->f_mntfromname);
+	if (Tflag)
+		printf("  %-*s", mwp->fstype, sfsp->f_fstypename);
 	used = vsfsp->f_blocks - vsfsp->f_bfree;
 	availblks = vsfsp->f_bavail + used;
 	if (hflag) {
@@ -450,6 +459,7 @@ update_maxwidths(struct maxwidths *mwp, struct statfs *sfsp, struct statvfs *vsf
 		getbsize(&dummy, &blocksize);
 
 	mwp->mntfrom = imax(mwp->mntfrom, strlen(sfsp->f_mntfromname));
+	mwp->fstype = imax(mwp->fstype, strlen(sfsp->f_fstypename));
 	mwp->total = imax(mwp->total, quadwidth(fsbtoblk(vsfsp->f_blocks,
 	    vsfsp->f_bsize, blocksize)));
 	mwp->used = imax(mwp->used, quadwidth(fsbtoblk(vsfsp->f_blocks -
@@ -560,7 +570,7 @@ usage(void)
 {
 
 	fprintf(stderr,
-	    "usage: df [-b | -H | -h | -k | -m | -P] [-ailn] [-t type] [file | filesystem ...]\n");
+	    "usage: df [-b | -H | -h | -k | -m | -P] [-ailnT] [-t type] [file | filesystem ...]\n");
 	exit(EX_USAGE);
 }
 

@@ -41,7 +41,7 @@
 .Fl b | h | H | k |
 .Fl m | P
 .Oc
-.Op Fl ailn
+.Op Fl ailnT
 .Op Fl t Ar type
 .Op Ar file | filesystem ...
 .Sh DESCRIPTION
@@ -140,6 +140,8 @@ The
 .Xr lsvfs 1
 command can be used to find out the types of file systems
 that are available on the system.
+.It Fl T
+Include file system type.
 .El
 .Sh ENVIRONMENT
 .Bl -tag -width BLOCKSIZE
