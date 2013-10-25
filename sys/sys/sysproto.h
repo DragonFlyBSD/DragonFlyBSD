@@ -2286,7 +2286,7 @@ struct	vmm_guest_ctl_args {
 	struct sysmsg sysmsg;
 #endif
 	int	op;	char op_[PAD_(int)];
-	struct guest_options *	options;	char options_[PAD_(struct guest_options *)];
+	struct vmm_guest_options *	options;	char options_[PAD_(struct vmm_guest_options *)];
 };
 struct	vmm_guest_sync_addr_args {
 #ifdef _KERNEL

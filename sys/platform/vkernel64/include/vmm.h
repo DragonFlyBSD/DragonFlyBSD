@@ -38,7 +38,7 @@
 #include <sys/vmm.h>
 
 static __inline
-int vmm_vminit(struct guest_options* opts) {
+int vmm_vminit(struct vmm_guest_options* opts) {
 	return 0;
 }
 

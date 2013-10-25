@@ -55,7 +55,7 @@ int
 sys_vmm_guest_ctl(struct vmm_guest_ctl_args *uap)
 {
 	int error = 0;
-	struct guest_options options;
+	struct vmm_guest_options options;
 	struct trapframe *tf = uap->sysmsg_frame;
 	unsigned long stack_limit = USRSTACK;
 	unsigned char stack_page[PAGE_SIZE];
@@ -64,9 +64,9 @@ sys_vmm_guest_ctl(struct vmm_guest_ctl_args *uap)
 
 	switch (uap->op) {
 		case VMM_GUEST_RUN:
-			error = copyin(uap->options, &options, sizeof(struct guest_options));
+			error = copyin(uap->options, &options, sizeof(struct vmm_guest_options));
 			if (error) {
-				kprintf("sys_vmm_guest: error copyin guest_options\n");
+				kprintf("sys_vmm_guest: error copyin vmm_guest_options\n");
 				goto out;
 			}
 

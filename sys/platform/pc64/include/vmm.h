@@ -37,7 +37,7 @@
 
 #include <sys/vmm.h>
 
-int vmm_vminit(struct guest_options*);
+int vmm_vminit(struct vmm_guest_options*);
 int vmm_vmdestroy(void);
 int vmm_vmrun(void);
 int vmm_vm_set_tls_area(void);

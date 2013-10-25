@@ -700,7 +700,7 @@ error:
  * - remove the old vmspace
  */
 static int
-vmx_vminit_master(struct guest_options *options)
+vmx_vminit_master(struct vmm_guest_options *options)
 {
 	struct vmspace *oldvmspace;
 	struct vmspace *newvmspace;
@@ -740,7 +740,7 @@ vmx_vminit_master(struct guest_options *options)
 }
 
 static int
-vmx_vminit(struct guest_options *options)
+vmx_vminit(struct vmm_guest_options *options)
 {
 	struct vmx_thread_info * vti;
 	int err;
@@ -1514,13 +1514,13 @@ error2:
 static void
 vmx_lwp_return(struct lwp *lp, struct trapframe *frame)
 {
-	struct guest_options options;
+	struct vmm_guest_options options;
 	int vmrun_err;
 	struct vmm_proc *p_vmm = (struct vmm_proc *)curproc->p_vmm;
 
 	dkprintf("VMM: vmx_lwp_return \n");
 
-	bzero(&options, sizeof(struct guest_options));
+	bzero(&options, sizeof(struct vmm_guest_options));
 
 	bcopy(frame, &options.tf, sizeof(struct trapframe));
 

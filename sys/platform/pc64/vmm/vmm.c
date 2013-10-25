@@ -139,7 +139,7 @@ SYSINIT(vmm_init, SI_BOOT2_CPU_TOPOLOGY, SI_ORDER_ANY, vmm_init, NULL);
 
 
 int
-vmm_vminit(struct guest_options *options)
+vmm_vminit(struct vmm_guest_options *options)
 {
 	if (!vmm_enabled) {
 		return ENODEV;

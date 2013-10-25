@@ -46,7 +46,7 @@
 #include <sys/types.h>
 #include <machine/frame.h>
 
-struct guest_options {
+struct vmm_guest_options {
 	register_t guest_cr3;
 	register_t vmm_cr3;
 	register_t new_stack;
@@ -55,7 +55,7 @@ struct guest_options {
 };
 
 
-int	vmm_guest_ctl (int, struct guest_options *);
+int	vmm_guest_ctl (int, struct vmm_guest_options *);
 
 int	vmm_guest_sync_addr (long *, long *);
 

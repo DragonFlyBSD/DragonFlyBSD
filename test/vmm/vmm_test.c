@@ -24,7 +24,7 @@
 int
 vmm_boostrap(void)
 {
-	struct guest_options options;
+	struct vmm_guest_options options;
 	uint64_t *ptr;
 	uint64_t stack_source;
 	uint64_t stack_size;

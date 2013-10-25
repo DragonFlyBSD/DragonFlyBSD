@@ -71,7 +71,7 @@ struct vmm_ctl {
 	int (*init)(void);
 	int (*enable)(void);
 	int (*disable)(void);
-	int (*vminit)(struct guest_options *);
+	int (*vminit)(struct vmm_guest_options *);
 	int (*vmdestroy)(void);
 	int (*vmrun)(void);
 	int (*vm_set_tls_area)(void);

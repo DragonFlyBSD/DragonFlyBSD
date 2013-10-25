@@ -668,7 +668,7 @@ init_kern_memory_vmm(void)
 {
 	int i;
 	void *firstfree;
-	struct guest_options options;
+	struct vmm_guest_options options;
 	void *dmap_address;
 
 	KvaStart = (vm_offset_t)KERNEL_KVA_START;
