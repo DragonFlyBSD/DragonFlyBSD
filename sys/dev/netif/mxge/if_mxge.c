@@ -3171,6 +3171,11 @@ mxge_alloc_rings(mxge_softc_t *sc)
 	tx_ring_entries = tx_ring_size / sizeof(mcp_kreq_ether_send_t);
 	rx_ring_entries = sc->rx_intr_slots / 2;
 
+	if (bootverbose) {
+		device_printf(sc->dev, "tx desc %d, rx desc %d\n",
+		    tx_ring_entries, rx_ring_entries);
+	}
+
 	ifq_set_maxlen(&sc->ifp->if_snd, tx_ring_entries - 1);
 	ifq_set_ready(&sc->ifp->if_snd);
 	ifq_set_subq_cnt(&sc->ifp->if_snd, sc->num_tx_rings);
