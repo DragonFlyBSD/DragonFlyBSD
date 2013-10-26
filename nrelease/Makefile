@@ -45,7 +45,7 @@ DPORTS_PACKAGES?=	devel/git \
 			net/isc-dhcp42-client \
 			net/isc-dhcp42-server \
 			sysutils/cdrtools \
-			${PKGSRC_EXTRA_PACKAGES}
+			${DPORTS_EXTRA_PACKAGES}
 
 # dports options to use when building packages
 #
@@ -315,7 +315,7 @@ customizeiso:
 	${CHROOT_CMD} /etc/periodic/weekly/310.locate
 	umount ${ISOROOT}/dev
 	#
-	# Recopy files that pkgsrc may have updated in /etc into /etc.hdd
+	# Recopy files that dports may have updated in /etc into /etc.hdd
 	#
 	cpdup ${ISOROOT}/etc/shells ${ISOROOT}/etc.hdd/shells
 	cpdup ${ISOROOT}/etc/group ${ISOROOT}/etc.hdd/group
