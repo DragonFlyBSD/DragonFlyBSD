@@ -91,7 +91,7 @@ static int mxge_intr_coal_delay = MXGE_INTR_COAL_DELAY;
 static int mxge_deassert_wait = 1;
 static int mxge_flow_control = 1;
 static int mxge_ticks;
-static int mxge_num_slices = 1;
+static int mxge_num_slices = 0;
 static int mxge_always_promisc = 0;
 static int mxge_throttle = 0;
 static int mxge_msi_enable = 1;
