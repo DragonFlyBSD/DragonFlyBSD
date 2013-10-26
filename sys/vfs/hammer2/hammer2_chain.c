@@ -340,14 +340,12 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_t *chain,
 		 * failed.  This is fatal if the conflicted xchain is not
 		 * flagged as deleted.  Caller may or may allow the failure.
 		 */
-		if (xchain && (xchain->flags & HAMMER2_CHAIN_DELETED) == 0) {
-			if (flags & HAMMER2_CHAIN_INSERT_RACE) {
-				chain->above = NULL;
-				chain->inlayer = NULL;
-				kprintf("insertion race against %p\n", xchain);
-				goto failed;
-			}
-			panic("hammer2_chain_insert: collision2 %p", xchain);
+		if ((flags & HAMMER2_CHAIN_INSERT_RACE) &&
+		    xchain && (xchain->flags & HAMMER2_CHAIN_DELETED) == 0) {
+			chain->above = NULL;
+			chain->inlayer = NULL;
+			kprintf("insertion race against %p\n", xchain);
+			goto failed;
 		}
 
 		/*
@@ -2538,12 +2536,13 @@ static void hammer2_chain_dup_fixup(hammer2_chain_t *ochain,
 				    hammer2_chain_t *nchain);
 
 void
-hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
+hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			hammer2_chain_t **chainp, hammer2_blockref_t *bref,
 			int snapshot)
 {
 	hammer2_mount_t *hmp;
 	hammer2_blockref_t *base;
+	hammer2_chain_t *parent;
 	hammer2_chain_t *ochain;
 	hammer2_chain_t *nchain;
 	hammer2_chain_core_t *above;
@@ -2585,7 +2584,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 *
 	 * Having both chains locked is extremely important for atomicy.
 	 */
-	if (parent) {
+	if (parentp && (parent = *parentp) != NULL) {
 		/*
 		 * Locate a free blockref in the parent's array
 		 */
@@ -2630,8 +2629,15 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
 
 		KKASSERT((nchain->flags & HAMMER2_CHAIN_DELETED) == 0);
 		KKASSERT(parent->refs > 0);
+
+		hammer2_chain_create(trans, parentp, &nchain,
+				     nchain->bref.key, nchain->bref.keybits,
+				     nchain->bref.type, nchain->bytes);
+		parent = NULL;
+#if 0
 		hammer2_chain_insert(above, nchain, HAMMER2_CHAIN_INSERT_SPIN |
 						    HAMMER2_CHAIN_INSERT_LIVE);
+#endif
 
 		if ((nchain->flags & HAMMER2_CHAIN_MOVED) == 0) {
 			hammer2_chain_ref(nchain);
@@ -2768,16 +2774,14 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_DELETED);
 		nchain->delete_tid = trans->sync_tid;
 		/*nchain->delete_gen = ++trans->delete_gen;*/
+		hammer2_chain_insert(above, nchain, 0);
 	} else {
 		ochain->delete_tid = trans->sync_tid;
 		/*ochain->delete_gen = ++trans->delete_gen;*/
 		atomic_set_int(&ochain->flags, HAMMER2_CHAIN_DELETED);
 		atomic_add_int(&above->live_count, -1);
+		hammer2_chain_insert(above, nchain, HAMMER2_CHAIN_INSERT_LIVE);
 	}
-
-	hammer2_chain_insert(above, nchain,
-			     ((oflags & HAMMER2_CHAIN_DELETED) ?
-				0: HAMMER2_CHAIN_INSERT_LIVE));
 
 	if ((ochain->flags & HAMMER2_CHAIN_MOVED) == 0) {
 		hammer2_chain_ref(ochain);
@@ -3324,7 +3328,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 						  HAMMER2_RESOLVE_NOREF);
 		}
 		hammer2_chain_delete(trans, chain, HAMMER2_DELETE_WILLDUP);
-		hammer2_chain_duplicate(trans, ichain, &chain, NULL, 0);
+		hammer2_chain_duplicate(trans, &ichain, &chain, NULL, 0);
 		hammer2_chain_unlock(chain);
 		KKASSERT(parent->refs > 0);
 		chain = NULL;

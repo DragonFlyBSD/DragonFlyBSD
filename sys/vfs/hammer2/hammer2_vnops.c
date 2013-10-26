@@ -53,6 +53,9 @@
 #include <sys/dirent.h>
 #include <sys/uio.h>
 #include <sys/objcache.h>
+#include <sys/event.h>
+#include <sys/file.h>
+#include <vfs/fifofs/fifo.h>
 
 #include "hammer2.h"
 #include "hammer2_lz4.h"
@@ -1583,6 +1586,50 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 }
 
 /*
+ *
+ */
+static
+int
+hammer2_vop_nmknod(struct vop_nmknod_args *ap)
+{
+	hammer2_inode_t *dip;
+	hammer2_inode_t *nip;
+	hammer2_trans_t trans;
+	hammer2_chain_t *nchain;
+	struct namecache *ncp;
+	const uint8_t *name;
+	size_t name_len;
+	int error;
+
+	dip = VTOI(ap->a_dvp);
+	if (dip->pmp->ronly)
+		return (EROFS);
+
+	ncp = ap->a_nch->ncp;
+	name = ncp->nc_name;
+	name_len = ncp->nc_nlen;
+	hammer2_chain_memory_wait(dip->pmp);
+	hammer2_trans_init(&trans, dip->pmp, 0);
+
+	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
+				   name, name_len, &nchain, &error);
+	if (error) {
+		KKASSERT(nip == NULL);
+		*ap->a_vpp = NULL;
+	} else {
+		*ap->a_vpp = hammer2_igetv(nip, &error);
+		hammer2_inode_unlock_ex(nip, nchain);
+	}
+	hammer2_trans_done(&trans);
+
+	if (error == 0) {
+		cache_setunresolved(ap->a_nch);
+		cache_setvp(ap->a_nch, *ap->a_vpp);
+	}
+	return error;
+}
+
+/*
  * hammer2_vop_nsymlink { nch, dvp, vpp, cred, vap, target }
  */
 static
@@ -1843,10 +1890,16 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * actually be moved, so this will duplicate the chain in the new
 	 * spot and assign it to the ip, replacing the old chain.
 	 *
-	 * WARNING: chain locks can lock buffer cache buffers, to avoid
+	 * WARNING: Because recursive locks are allowed and we unlinked the
+	 *	    file that we have a chain-in-hand for just above, the
+	 *	    chain might have been delete-duplicated.  We must refactor
+	 *	    the chain.
+	 *
+	 * WARNING: Chain locks can lock buffer cache buffers, to avoid
 	 *	    deadlocks we want to unlock before issuing a cache_*()
 	 *	    op (that might have to lock a vnode).
 	 */
+	hammer2_chain_refactor(&chain);
 	error = hammer2_inode_connect(&trans, hlink,
 				      tdip, &chain,
 				      tname, tname_len);
@@ -2121,6 +2174,133 @@ hammer2_vop_mountctl(struct vop_mountctl_args *ap)
 	return (rc);
 }
 
+/*
+ * KQFILTER
+ */
+static void filt_hammer2detach(struct knote *kn);
+static int filt_hammer2read(struct knote *kn, long hint);
+static int filt_hammer2write(struct knote *kn, long hint);
+static int filt_hammer2vnode(struct knote *kn, long hint);
+
+static struct filterops hammer2read_filtops =
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_hammer2detach, filt_hammer2read };
+static struct filterops hammer2write_filtops =
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_hammer2detach, filt_hammer2write };
+static struct filterops hammer2vnode_filtops =
+	{ FILTEROP_ISFD | FILTEROP_MPSAFE,
+	  NULL, filt_hammer2detach, filt_hammer2vnode };
+
+static
+int
+hammer2_vop_kqfilter(struct vop_kqfilter_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	struct knote *kn = ap->a_kn;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &hammer2read_filtops;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &hammer2write_filtops;
+		break;
+	case EVFILT_VNODE:
+		kn->kn_fop = &hammer2vnode_filtops;
+		break;
+	default:
+		return (EOPNOTSUPP);
+	}
+
+	kn->kn_hook = (caddr_t)vp;
+
+	knote_insert(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
+
+	return(0);
+}
+
+static void
+filt_hammer2detach(struct knote *kn)
+{
+	struct vnode *vp = (void *)kn->kn_hook;
+
+	knote_remove(&vp->v_pollinfo.vpi_kqinfo.ki_note, kn);
+}
+
+static int
+filt_hammer2read(struct knote *kn, long hint)
+{
+	struct vnode *vp = (void *)kn->kn_hook;
+	hammer2_inode_t *ip = VTOI(vp);
+	off_t off;
+
+	if (hint == NOTE_REVOKE) {
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
+		return(1);
+	}
+	off = ip->size - kn->kn_fp->f_offset;
+	kn->kn_data = (off < INTPTR_MAX) ? off : INTPTR_MAX;
+	if (kn->kn_sfflags & NOTE_OLDAPI)
+		return(1);
+	return (kn->kn_data != 0);
+}
+
+
+static int
+filt_hammer2write(struct knote *kn, long hint)
+{
+	if (hint == NOTE_REVOKE)
+		kn->kn_flags |= (EV_EOF | EV_NODATA | EV_ONESHOT);
+	kn->kn_data = 0;
+	return (1);
+}
+
+static int
+filt_hammer2vnode(struct knote *kn, long hint)
+{
+	if (kn->kn_sfflags & hint)
+		kn->kn_fflags |= hint;
+	if (hint == NOTE_REVOKE) {
+		kn->kn_flags |= (EV_EOF | EV_NODATA);
+		return (1);
+	}
+	return (kn->kn_fflags != 0);
+}
+
+/*
+ * FIFO VOPS
+ */
+static
+int
+hammer2_vop_markatime(struct vop_markatime_args *ap)
+{
+	hammer2_inode_t *ip;
+	struct vnode *vp;
+
+	vp = ap->a_vp;
+	ip = VTOI(vp);
+
+	if (ip->pmp->ronly)
+		return(EROFS);
+	return(0);
+}
+
+static
+int
+hammer2_vop_fifokqfilter(struct vop_kqfilter_args *ap)
+{
+	int error;
+
+	error = VOCALL(&fifo_vnode_vops, &ap->a_head);
+	if (error)
+		error = hammer2_vop_kqfilter(ap);
+	return(error);
+}
+
+/*
+ * VOPS vector
+ */
 struct vop_ops hammer2_vnode_vops = {
 	.vop_default	= vop_defaultop,
 	.vop_fsync	= hammer2_vop_fsync,
@@ -2149,17 +2329,44 @@ struct vop_ops hammer2_vnode_vops = {
 	.vop_nresolve	= hammer2_vop_nresolve,
 	.vop_nlookupdotdot = hammer2_vop_nlookupdotdot,
 	.vop_nmkdir 	= hammer2_vop_nmkdir,
+	.vop_nmknod 	= hammer2_vop_nmknod,
 	.vop_ioctl	= hammer2_vop_ioctl,
 	.vop_mountctl	= hammer2_vop_mountctl,
 	.vop_bmap	= hammer2_vop_bmap,
 	.vop_strategy	= hammer2_vop_strategy,
+        .vop_kqfilter	= hammer2_vop_kqfilter
 };
 
 struct vop_ops hammer2_spec_vops = {
-
+        .vop_default =          vop_defaultop,
+        .vop_fsync =            hammer2_vop_fsync,
+        .vop_read =             vop_stdnoread,
+        .vop_write =            vop_stdnowrite,
+        .vop_access =           hammer2_vop_access,
+        .vop_close =            hammer2_vop_close,
+        .vop_markatime =        hammer2_vop_markatime,
+        .vop_getattr =          hammer2_vop_getattr,
+        .vop_inactive =         hammer2_vop_inactive,
+        .vop_reclaim =          hammer2_vop_reclaim,
+        .vop_setattr =          hammer2_vop_setattr
 };
 
 struct vop_ops hammer2_fifo_vops = {
-
+        .vop_default =          fifo_vnoperate,
+        .vop_fsync =            hammer2_vop_fsync,
+#if 0
+        .vop_read =             hammer2_vop_fiforead,
+        .vop_write =            hammer2_vop_fifowrite,
+#endif
+        .vop_access =           hammer2_vop_access,
+#if 0
+        .vop_close =            hammer2_vop_fifoclose,
+#endif
+        .vop_markatime =        hammer2_vop_markatime,
+        .vop_getattr =          hammer2_vop_getattr,
+        .vop_inactive =         hammer2_vop_inactive,
+        .vop_reclaim =          hammer2_vop_reclaim,
+        .vop_setattr =          hammer2_vop_setattr,
+        .vop_kqfilter =         hammer2_vop_fifokqfilter
 };
 

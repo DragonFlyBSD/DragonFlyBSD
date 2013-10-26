@@ -393,7 +393,19 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 				  HAMMER2_LBUFSIZE,
 				  (int)ipdata->size & HAMMER2_LBUFMASK);
 			break;
-		/* XXX FIFO */
+		case HAMMER2_OBJTYPE_CDEV:
+			vp->v_type = VCHR;
+			/* fall through */
+		case HAMMER2_OBJTYPE_BDEV:
+			vp->v_ops = &pmp->mp->mnt_vn_spec_ops;
+			if (ipdata->type != HAMMER2_OBJTYPE_CDEV)
+				vp->v_type = VBLK;
+			addaliasu(vp, ipdata->rmajor, ipdata->rminor);
+			break;
+		case HAMMER2_OBJTYPE_FIFO:
+			vp->v_type = VFIFO;
+			vp->v_ops = &pmp->mp->mnt_vn_fifo_ops;
+			break;
 		default:
 			panic("hammer2: unhandled objtype %d", ipdata->type);
 			break;
@@ -629,6 +641,16 @@ retry:
 		nipdata->type = hammer2_get_obj_type(vap->va_type);
 		nipdata->inum = trans->sync_tid;
 		++trans->inodes_created;
+
+		switch (nipdata->type) {
+		case HAMMER2_OBJTYPE_CDEV:
+		case HAMMER2_OBJTYPE_BDEV:
+			nipdata->rmajor = vap->va_rmajor;
+			nipdata->rminor = vap->va_rminor;
+			break;
+		default:
+			break;
+		}
 	} else {
 		nipdata->type = HAMMER2_OBJTYPE_DIRECTORY;
 		nipdata->inum = 1;
@@ -692,7 +714,6 @@ retry:
 /*
  * chain may have been moved around by the create.
  */
-static
 void
 hammer2_chain_refactor(hammer2_chain_t **chainp)
 {
@@ -824,7 +845,7 @@ retry:
 	bref = tmp->bref;
 	bref.key = lhc;			/* invisible dir entry key */
 	bref.keybits = 0;
-	hammer2_chain_duplicate(trans, parent, &tmp, &bref, 0);
+	hammer2_chain_duplicate(trans, &parent, &tmp, &bref, 0);
 	hammer2_inode_unlock_ex(dip, parent);
 	/*hammer2_chain_lookup_done(parent);*/
 	hammer2_chain_unlock(nchain);	/* no longer needed */

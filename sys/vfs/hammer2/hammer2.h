@@ -641,6 +641,7 @@ hammer2_chain_t *hammer2_inode_lock_ex(hammer2_inode_t *ip);
 hammer2_chain_t *hammer2_inode_lock_sh(hammer2_inode_t *ip);
 void hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_chain_t *chain);
 void hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_chain_t *chain);
+void hammer2_chain_refactor(hammer2_chain_t **chainp);
 void hammer2_voldata_lock(hammer2_mount_t *hmp);
 void hammer2_voldata_unlock(hammer2_mount_t *hmp, int modify);
 ccms_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
@@ -754,7 +755,7 @@ int hammer2_chain_create(hammer2_trans_t *trans,
 				hammer2_chain_t **chainp,
 				hammer2_key_t key, int keybits,
 				int type, size_t bytes);
-void hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t *parent,
+void hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
 				hammer2_blockref_t *bref, int snapshot);
 int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t *chain,
