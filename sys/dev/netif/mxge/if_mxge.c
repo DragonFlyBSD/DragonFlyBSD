@@ -2418,22 +2418,22 @@ mxge_tx_done(struct ifnet *ifp, mxge_tx_ring_t *tx, uint32_t mcp_idx)
 		if (tx->req == tx->done) {
 			/* Reset watchdog */
 			tx->watchdog.wd_timer = 0;
-
-			/*
-			 * Let the NIC stop polling this queue, since
-			 * there are no more transmits pending
-			 */
-			if (tx->send_stop != NULL) {
-				*tx->send_stop = 1;
-				tx->queue_active = 0;
-				tx->deactivate++;
-				wmb();
-			}
 		}
 	}
 
 	if (!ifsq_is_empty(tx->ifsq))
 		ifsq_devstart(tx->ifsq);
+
+	if (tx->send_stop != NULL && tx->req == tx->done) {
+		/*
+		 * Let the NIC stop polling this queue, since there
+		 * are no more transmits pending
+		 */
+		*tx->send_stop = 1;
+		tx->queue_active = 0;
+		tx->deactivate++;
+		wmb();
+	}
 }
 
 static struct mxge_media_type mxge_xfp_media_types[] = {
