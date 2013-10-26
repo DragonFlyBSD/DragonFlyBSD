@@ -81,6 +81,8 @@ typedef struct {
 	bus_dma_segment_t *seg_list;
 	struct mxge_buffer_state *info;
 	bus_dma_tag_t dmat;
+	struct ifaltq_subque *ifsq;
+	struct ifsubq_watchdog watchdog;
 	int req;			/* transmits submitted	*/
 	int mask;			/* number of transmit slots -1 */
 	int done;			/* transmits completed	*/
@@ -168,6 +170,7 @@ struct mxge_softc {
 	int media_flags;
 	int need_media_probe;
 	int num_slices;
+	int num_tx_rings;
 	int rx_intr_slots;
 	int dying;
 	int connector;
