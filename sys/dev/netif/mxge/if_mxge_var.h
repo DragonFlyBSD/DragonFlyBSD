@@ -172,6 +172,7 @@ struct mxge_softc {
 	int num_slices;
 	int num_tx_rings;
 	int rx_intr_slots;
+	int use_rss;
 	int dying;
 	int connector;
 	int current_media;

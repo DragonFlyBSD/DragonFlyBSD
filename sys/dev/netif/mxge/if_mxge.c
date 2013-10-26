@@ -84,7 +84,7 @@ $FreeBSD: head/sys/dev/mxge/if_mxge.c 254263 2013-08-12 23:30:01Z scottl $
 
 #define MXGE_RX_SMALL_BUFLEN		(MHLEN - MXGEFW_PAD)
 
-/* tunable params */
+/* Tunable params */
 static int mxge_nvidia_ecrc_enable = 1;
 static int mxge_force_firmware = 0;
 static int mxge_intr_coal_delay = MXGE_INTR_COAL_DELAY;
@@ -97,6 +97,10 @@ static int mxge_throttle = 0;
 static int mxge_msi_enable = 1;
 static int mxge_msix_enable = 1;
 static int mxge_multi_tx = 1;
+/*
+ * Don't use RSS by default, its just too slow
+ */
+static int mxge_use_rss = 0;
 
 static const char *mxge_fw_unaligned = "mxge_ethp_z8e";
 static const char *mxge_fw_aligned = "mxge_eth_z8e";
@@ -113,6 +117,7 @@ TUNABLE_INT("hw.mxge.ticks", &mxge_ticks);
 TUNABLE_INT("hw.mxge.always_promisc", &mxge_always_promisc);
 TUNABLE_INT("hw.mxge.throttle", &mxge_throttle);
 TUNABLE_INT("hw.mxge.multi_tx", &mxge_multi_tx);
+TUNABLE_INT("hw.mxge.use_rss", &mxge_use_rss);
 TUNABLE_INT("hw.mxge.msi.enable", &mxge_msi_enable);
 TUNABLE_INT("hw.mxge.msix.enable", &mxge_msix_enable);
 
@@ -1273,6 +1278,33 @@ mxge_change_throttle(SYSCTL_HANDLER_ARGS)
 }
 
 static int
+mxge_change_use_rss(SYSCTL_HANDLER_ARGS)
+{
+	mxge_softc_t *sc;
+	int err, use_rss;
+
+	sc = arg1;
+	use_rss = sc->use_rss;
+	err = sysctl_handle_int(oidp, &use_rss, arg2, req);
+	if (err != 0)
+		return err;
+
+	if (use_rss == sc->use_rss)
+		return 0;
+
+	ifnet_serialize_all(sc->ifp);
+
+	sc->use_rss = use_rss;
+	if (sc->ifp->if_flags & IFF_RUNNING) {
+		mxge_close(sc, 0);
+		mxge_open(sc);
+	}
+
+	ifnet_deserialize_all(sc->ifp);
+	return err;
+}
+
+static int
 mxge_change_intr_coal(SYSCTL_HANDLER_ARGS)
 {
 	mxge_softc_t *sc;
@@ -1435,6 +1467,10 @@ mxge_add_sysctls(mxge_softc_t *sc)
 	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "flow_control_enabled",
 	    CTLTYPE_INT|CTLFLAG_RW, sc, 0, mxge_change_flow_control, "I",
 	    "Interrupt coalescing delay in usecs");
+
+	SYSCTL_ADD_PROC(ctx, children, OID_AUTO, "use_rss",
+	    CTLTYPE_INT|CTLFLAG_RW, sc, 0, mxge_change_use_rss, "I",
+	    "Use RSS");
 
 	SYSCTL_ADD_INT(ctx, children, OID_AUTO, "deassert_wait",
 	    CTLFLAG_RW, &mxge_deassert_wait, 0,
@@ -3348,8 +3384,16 @@ mxge_open(mxge_softc_t *sc)
 			itable[i] = (uint8_t)i;
 
 		cmd.data0 = 1;
-		cmd.data1 = MXGEFW_RSS_HASH_TYPE_IPV4 |
-		    MXGEFW_RSS_HASH_TYPE_TCP_IPV4;
+		if (sc->use_rss) {
+			if (bootverbose)
+				if_printf(ifp, "input hash: RSS\n");
+			cmd.data1 = MXGEFW_RSS_HASH_TYPE_IPV4 |
+			    MXGEFW_RSS_HASH_TYPE_TCP_IPV4;
+		} else {
+			if (bootverbose)
+				if_printf(ifp, "input hash: SRC_DST_PORT\n");
+			cmd.data1 = MXGEFW_RSS_HASH_TYPE_SRC_DST_PORT;
+		}
 		err = mxge_send_cmd(sc, MXGEFW_CMD_SET_RSS_ENABLE, &cmd);
 		if (err != 0) {
 			if_printf(ifp, "failed to enable slices\n");
@@ -3830,6 +3874,7 @@ mxge_fetch_tunables(mxge_softc_t *sc)
 		mxge_ticks = hz / 2;
 
 	sc->pause = mxge_flow_control;
+	sc->use_rss = mxge_use_rss;
 
 	sc->throttle = mxge_throttle;
 	if (sc->throttle && sc->throttle > MXGE_MAX_THROTTLE)
