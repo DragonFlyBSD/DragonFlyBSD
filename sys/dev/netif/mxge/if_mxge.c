@@ -1823,15 +1823,7 @@ mxge_encap_tso(mxge_tx_ring_t *tx, struct mxge_buffer_state *info_map,
 	info_last->m = m;
 
 	mxge_submit_req(tx, tx->req_list, cnt);
-#ifdef IFNET_BUF_RING
-	if ((ss->sc->num_slices > 1) && tx->queue_active == 0) {
-		/* tell the NIC to start polling this slice */
-		*tx->send_go = 1;
-		tx->queue_active = 1;
-		tx->activate++;
-		wmb();
-	}
-#endif
+
 	if (tx->send_go != NULL && tx->queue_active == 0) {
 		/* Tell the NIC to start polling this slice */
 		*tx->send_go = 1;
@@ -1968,15 +1960,7 @@ mxge_encap(mxge_tx_ring_t *tx, struct mbuf *m, bus_addr_t zeropad)
 	info_last->m = m;
 
 	mxge_submit_req(tx, tx->req_list, cnt);
-#ifdef IFNET_BUF_RING
-	if ((ss->sc->num_slices > 1) && tx->queue_active == 0) {
-		/* tell the NIC to start polling this slice */
-		*tx->send_go = 1;
-		tx->queue_active = 1;
-		tx->activate++;
-		wmb();
-	}
-#endif
+
 	if (tx->send_go != NULL && tx->queue_active == 0) {
 		/* Tell the NIC to start polling this slice */
 		*tx->send_go = 1;
@@ -2450,19 +2434,6 @@ mxge_tx_done(struct ifnet *ifp, mxge_tx_ring_t *tx, uint32_t mcp_idx)
 
 	if (!ifsq_is_empty(tx->ifsq))
 		ifsq_devstart(tx->ifsq);
-
-#ifdef IFNET_BUF_RING
-	if ((ss->sc->num_slices > 1) && (tx->req == tx->done)) {
-		/* let the NIC stop polling this queue, since there
-		 * are no more transmits pending */
-		if (tx->req == tx->done) {
-			*tx->send_stop = 1;
-			tx->queue_active = 0;
-			tx->deactivate++;
-			wmb();
-		}
-	}
-#endif
 }
 
 static struct mxge_media_type mxge_xfp_media_types[] = {
@@ -2700,16 +2671,6 @@ mxge_legacy(void *arg)
 	uint8_t valid;
 
 	ASSERT_SERIALIZED(&sc->main_serialize);
-
-#if 0
-	/* an interrupt on a non-zero slice is implicitly valid
-	   since MSI-X irqs are not shared */
-	if (ss != sc->ss) {
-		mxge_clean_rx_done(rx_done);
-		*ss->irq_claim = be32toh(3);
-		return;
-	}
-#endif
 
 	/* Make sure the DMA has finished */
 	if (!stats->valid)
@@ -3257,23 +3218,6 @@ mxge_slice_open(struct mxge_slice_state *ss, int cl_size)
 	 */
 	err = 0;
 
-#if 0
-#ifndef IFNET_BUF_RING
-	/* We currently only send from the first slice */
-	if (slice == 0) {
-#endif
-		cmd.data0 = slice;
-		err = mxge_send_cmd(ss->sc, MXGEFW_CMD_GET_SEND_OFFSET, &cmd);
-		ss->tx.lanai = (volatile mcp_kreq_ether_send_t *)
-		    (ss->sc->sram + cmd.data0);
-		ss->tx.send_go = (volatile uint32_t *)
-		    (ss->sc->sram + MXGEFW_ETH_SEND_GO + 64 * slice);
-		ss->tx.send_stop = (volatile uint32_t *)
-		    (ss->sc->sram + MXGEFW_ETH_SEND_STOP + 64 * slice);
-#ifndef IFNET_BUF_RING
-	}
-#endif
-#else
 	if (ss->sc->num_tx_rings == 1) {
 		if (slice == 0) {
 			cmd.data0 = slice;
@@ -3293,7 +3237,6 @@ mxge_slice_open(struct mxge_slice_state *ss, int cl_size)
 		ss->tx.send_stop = (volatile uint32_t *)
 		    (ss->sc->sram + MXGEFW_ETH_SEND_STOP + 64 * slice);
 	}
-#endif
 
 	cmd.data0 = slice;
 	err |= mxge_send_cmd(ss->sc, MXGEFW_CMD_GET_SMALL_RX_OFFSET, &cmd);
