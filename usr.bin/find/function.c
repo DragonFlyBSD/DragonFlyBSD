@@ -798,8 +798,7 @@ f_fstype(PLAN *plan, FTSENT *entry)
 	static dev_t curdev;	/* need a guaranteed illegal dev value */
 	static int first = 1;
 	struct statfs sb;
-	static int val_flags;
-	static char fstype[sizeof(sb.f_fstypename)];
+	static int val_type, val_flags;
 	char *p, save[2] = {0,0};
 
 	if ((plan->flags & F_MTMASK) == F_MTUNKNOWN)
@@ -826,8 +825,10 @@ f_fstype(PLAN *plan, FTSENT *entry)
 		} else
 			p = NULL;
 
-		if (statfs(entry->fts_accpath, &sb))
-			err(1, "%s", entry->fts_accpath);
+		if (statfs(entry->fts_accpath, &sb)) {
+			warn("%s", entry->fts_accpath);
+			return 0;
+		}
 
 		if (p) {
 			p[0] = save[0];
@@ -841,13 +842,13 @@ f_fstype(PLAN *plan, FTSENT *entry)
 		 * always copy both of them.
 		 */
 		val_flags = sb.f_flags;
-		strlcpy(fstype, sb.f_fstypename, sizeof(fstype));
+		val_type = sb.f_type;
 	}
 	switch (plan->flags & F_MTMASK) {
 	case F_MTFLAG:
 		return val_flags & plan->mt_data;
 	case F_MTTYPE:
-		return (strncmp(fstype, plan->c_data, sizeof(fstype)) == 0);
+		return val_type == plan->mt_data;
 	default:
 		abort();
 	}
@@ -858,11 +859,22 @@ c_fstype(OPTION *option, char ***argvp)
 {
 	char *fsname;
 	PLAN *new;
+	struct vfsconf vfc;
 
 	fsname = nextarg(option, argvp);
 	ftsoptions &= ~FTS_NOSTAT;
 
 	new = palloc(option);
+
+	/*
+	 * Check first for a filesystem name.
+	 */
+	if (getvfsbyname(fsname, &vfc) == 0) {
+		new->flags |= F_MTTYPE;
+		new->mt_data = vfc.vfc_typenum;
+		return new;
+	}
+
 	switch (*fsname) {
 	case 'l':
 		if (!strcmp(fsname, "local")) {
@@ -880,8 +892,12 @@ c_fstype(OPTION *option, char ***argvp)
 		break;
 	}
 
-	new->flags |= F_MTTYPE;
-	new->c_data = fsname;
+	/*
+	 * We need to make filesystem checks for filesystems
+	 * that exists but aren't in the kernel work.
+	 */
+	fprintf(stderr, "Warning: Unknown filesystem type %s\n", fsname);
+	new->flags |= F_MTUNKNOWN;
 	return new;
 }
 
