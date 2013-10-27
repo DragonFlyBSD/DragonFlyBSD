@@ -139,6 +139,7 @@ struct hammer2_chain_core {
 	struct ccms_cst	cst;
 	struct h2_core_list ownerq;	/* all chains sharing this core */
 	struct h2_layer_list layerq;
+	int		live_zero;	/* blockref array opt */
 	u_int		chain_count;	/* total chains in layers */
 	u_int		sharecnt;
 	u_int		flags;
@@ -148,6 +149,7 @@ struct hammer2_chain_core {
 typedef struct hammer2_chain_core hammer2_chain_core_t;
 
 #define HAMMER2_CORE_INDIRECT		0x0001
+#define HAMMER2_CORE_COUNTEDBREFS	0x0002
 
 struct hammer2_chain {
 	RB_ENTRY(hammer2_chain) rbnode;		/* node */
@@ -169,7 +171,6 @@ struct hammer2_chain {
 	u_int		flags;
 	u_int		refs;
 	u_int		lockcnt;
-	int		live_zero;		/* blockref array opt */
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
 };
@@ -210,7 +211,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
 #define HAMMER2_CHAIN_UNUSE20000	0x00020000
 #define HAMMER2_CHAIN_REPLACE		0x00040000	/* replace bref */
-#define HAMMER2_CHAIN_COUNTEDBREFS	0x00080000	/* counted brefs */
+#define HAMMER2_CHAIN_UNUSED80000	0x00080000
 #define HAMMER2_CHAIN_DUPLICATED	0x00100000	/* fwd delete-dup */
 #define HAMMER2_CHAIN_PFSROOT		0x00200000	/* in pfs->cluster */
 

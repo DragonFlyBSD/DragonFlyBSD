@@ -1644,6 +1644,10 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * called without the vnode locked (which it can in DragonFly).
 	 * Otherwise we'd have to implement a multi-pass or flag the lock
 	 * failures and retry.
+	 *
+	 * The reclamation code interlocks with the sync list's token
+	 * (by removing the vnode from the scan list) before unlocking
+	 * the inode, giving us time to ref the inode.
 	 */
 	/*flags = VMSC_GETVP;*/
 	flags = 0;
@@ -1781,6 +1785,9 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	hammer2_chain_t *parent;
 	int error;
 
+	/*
+	 *
+	 */
 	ip = VTOI(vp);
 	if (ip == NULL)
 		return(0);
@@ -1800,13 +1807,18 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	 *
 	 * WARNING: The vfsync interacts with the buffer cache and might
 	 *          block, we can't hold the inode lock at that time.
+	 *	    However, we MUST ref ip before blocking to ensure that
+	 *	    it isn't ripped out from under us (since we do not
+	 *	    hold a lock on the vnode).
 	 */
+	hammer2_inode_ref(ip);
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
-	if (ip->vp)
-		vfsync(ip->vp, MNT_NOWAIT, 1, NULL, NULL);
+	if (vp)
+		vfsync(vp, MNT_NOWAIT, 1, NULL, NULL);
 	parent = hammer2_inode_lock_ex(ip);
 	hammer2_chain_flush(&info->trans, parent);
 	hammer2_inode_unlock_ex(ip, parent);
+	hammer2_inode_drop(ip);
 	error = 0;
 #if 0
 	error = VOP_FSYNC(vp, MNT_NOWAIT, 0);

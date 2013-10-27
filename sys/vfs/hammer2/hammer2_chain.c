@@ -363,8 +363,10 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_t *chain,
 	chain->inlayer = layer;
 	++above->chain_count;
 
-	if (flags & HAMMER2_CHAIN_INSERT_LIVE)
+	if ((flags & HAMMER2_CHAIN_INSERT_LIVE) &&
+	    (chain->flags & HAMMER2_CHAIN_DELETED) == 0) {
 		atomic_add_int(&above->live_count, 1);
+	}
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 failed:
 	if (flags & HAMMER2_CHAIN_INSERT_SPIN)
@@ -1210,23 +1212,23 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
 	hammer2_chain_core_t *core = chain->core;
 
 	spin_lock(&core->cst.spin);
-        if ((chain->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0) {
+        if ((core->flags & HAMMER2_CORE_COUNTEDBREFS) == 0) {
 		if (base) {
 			while (--count >= 0) {
 				if (base[count].type)
 					break;
 			}
-			chain->live_zero = count + 1;
+			core->live_zero = count + 1;
 			while (count >= 0) {
 				if (base[count].type)
 					atomic_add_int(&core->live_count, 1);
 				--count;
 			}
 		} else {
-			chain->live_zero = 0;
+			core->live_zero = 0;
 		}
 		/* else do not modify live_count */
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_COUNTEDBREFS);
+		atomic_set_int(&core->flags, HAMMER2_CORE_COUNTEDBREFS);
 	}
 	spin_unlock(&core->cst.spin);
 }
@@ -2078,7 +2080,7 @@ again:
 	 * and to interlock chain creation.
 	 */
 	above = parent->core;
-	if ((parent->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0)
+	if ((parent->core->flags & HAMMER2_CORE_COUNTEDBREFS) == 0)
 		hammer2_chain_countbrefs(parent, base, count);
 
 	/*
@@ -2413,7 +2415,7 @@ again:
 	/*
 	 * Make sure we've counted the brefs
 	 */
-	if ((parent->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0)
+	if ((parent->core->flags & HAMMER2_CORE_COUNTEDBREFS) == 0)
 		hammer2_chain_countbrefs(parent, base, count);
 
 	KKASSERT(above->live_count >= 0 && above->live_count <= count);
@@ -3776,6 +3778,7 @@ hammer2_base_find(hammer2_chain_t *chain,
 		  int *cache_indexp, hammer2_key_t *key_nextp,
 		  hammer2_key_t key_beg, hammer2_key_t key_end)
 {
+	hammer2_chain_core_t *core = chain->core;
 	hammer2_blockref_t *scan;
 	hammer2_key_t scan_end;
 	int i;
@@ -3783,7 +3786,7 @@ hammer2_base_find(hammer2_chain_t *chain,
 	/*
 	 * Degenerate case
 	 */
-        KKASSERT(chain->flags & HAMMER2_CHAIN_COUNTEDBREFS);
+        KKASSERT(core->flags & HAMMER2_CORE_COUNTEDBREFS);
 	if (count == 0 || base == NULL)
 		return(count);
 
@@ -3792,8 +3795,8 @@ hammer2_base_find(hammer2_chain_t *chain,
 	 */
 	i = *cache_indexp;
 	cpu_ccfence();
-	if (i >= chain->live_zero)
-		i = chain->live_zero - 1;
+	if (i >= core->live_zero)
+		i = core->live_zero - 1;
 	if (i < 0)
 		i = 0;
 	KKASSERT(i < count);
@@ -3822,14 +3825,14 @@ hammer2_base_find(hammer2_chain_t *chain,
 			if (scan_end >= key_beg)
 				break;
 		}
-		if (i >= chain->live_zero)
+		if (i >= core->live_zero)
 			return (count);
 		++scan;
 		++i;
 	}
 	if (i != count) {
 		*cache_indexp = i;
-		if (i >= chain->live_zero) {
+		if (i >= core->live_zero) {
 			i = count;
 		} else {
 			scan_end = scan->key +
@@ -3941,6 +3944,7 @@ hammer2_base_delete(hammer2_chain_t *chain,
 		    hammer2_blockref_t *base, int count,
 		    int *cache_indexp, hammer2_blockref_t *elm)
 {
+	hammer2_chain_core_t *core = chain->core;
 	hammer2_key_t key_next;
 	int i;
 
@@ -3965,10 +3969,10 @@ hammer2_base_delete(hammer2_chain_t *chain,
 		 base[i].key == elm->key && base[i].keybits == elm->keybits);
 #endif
 	bzero(&base[i], sizeof(*base));
-	if (chain->live_zero == i + 1) {
+	if (core->live_zero == i + 1) {
 		while (--i >= 0 && base[i].type == 0)
 			;
-		chain->live_zero = i + 1;
+		core->live_zero = i + 1;
 	}
 }
 
@@ -3991,6 +3995,7 @@ hammer2_base_insert(hammer2_chain_t *chain,
 		    int *cache_indexp, hammer2_blockref_t *elm,
 		    int flags)
 {
+	hammer2_chain_core_t *core = chain->core;
 	hammer2_key_t key_next;
 	hammer2_key_t xkey;
 	int i;
@@ -4029,8 +4034,8 @@ hammer2_base_insert(hammer2_chain_t *chain,
 	 */
 	KKASSERT(i >= 0 && i <= count);
 
-	if (i == count && chain->live_zero < count) {
-		i = chain->live_zero++;
+	if (i == count && core->live_zero < count) {
+		i = core->live_zero++;
 		base[i] = *elm;
 		return;
 	}
@@ -4070,8 +4075,8 @@ hammer2_base_insert(hammer2_chain_t *chain,
 			bcopy(&base[i], &base[i+1],
 			      (k - i) * sizeof(hammer2_blockref_t));
 			base[i] = *elm;
-			if (chain->live_zero <= k)
-				chain->live_zero = k + 1;
+			if (core->live_zero <= k)
+				core->live_zero = k + 1;
 			u = 2;
 			goto validate;
 		}
@@ -4093,7 +4098,7 @@ validate:
 	while (++l < count) {
 		if (base[l].type) {
 			if (base[l].key <= key_next)
-				panic("base_insert%d %d,%d,%d fail %p:%d", u, i, j, k, base, l);
+				panic("base_insert %d %d,%d,%d fail %p:%d", u, i, j, k, base, l);
 			key_next = base[l].key +
 				   ((hammer2_key_t)1 << base[l].keybits) - 1;
 

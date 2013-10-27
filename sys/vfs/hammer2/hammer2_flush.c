@@ -1168,7 +1168,7 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 */
 	if (parent->delete_tid <= trans->sync_tid)
 		base = NULL;
-	else if ((parent->flags & HAMMER2_CHAIN_COUNTEDBREFS) == 0)
+	else if ((parent->core->flags & HAMMER2_CORE_COUNTEDBREFS) == 0)
 		hammer2_chain_countbrefs(parent, base, count);
 
 	/*
