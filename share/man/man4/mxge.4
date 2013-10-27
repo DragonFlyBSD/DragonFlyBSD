@@ -31,7 +31,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/mxge.4,v 1.7.4.2.4.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd July 13, 2009
+.Dd October 27, 2013
 .Dt MXGE 4
 .Os
 .Sh NAME
@@ -56,18 +56,26 @@ The
 .Nm
 driver provides support for PCI Express 10 Gigabit Ethernet adapters based on
 the Myricom LANai Z8E chip.
-The driver supports Transmit/Receive checksum offload and hardware vlan
-tagging.
-.\"Support for Jumbo frames is not yet implemented, while support for TCP
-.\"Segmentation Offload (TSO) as well as Large Receive Offload (LRO) is not
+The driver supports Transmit/Receive checksum offload,
+TCP Segementation Offload (TSO),
+multiple reception queues,
+multiple tranmission queues and
+multiple vector MSI-X.
+.\"Support for Jumbo frames is not yet implemented, while support for
+.\"as well as Large Receive Offload (LRO) is not
 .\"implemented in
-For further hardware information, see
-.Pa http://www.myri.com/ .
+Using multiple vector MSI-X requires that Myri10GE NIC be capable of MSI-X.
+Older Myri10GE NICs can be field upgraded to add MSI-X using the
+"Myri-10G Network Adapter Toolkit" for FreeBSD or Linux
+which is available from
+.Pa https://www.myricom.com/support/downloads/tools/myri-10g-toolkit.html .
 .Pp
 For questions related to hardware requirements,
 refer to the documentation supplied with your Myri10GE adapter.
 All hardware requirements listed apply to use with
 .Dx .
+For further hardware information, see
+.Pa http://www.myricom.com .
 .Sh HARDWARE
 The
 .Nm
@@ -82,76 +90,85 @@ Myricom 10GBase-R (10G-PCIE-8A-R, 10G-PCIE-8AL-R)
 .It
 Myricom 10G XAUI over ribbon fiber (10G-PCIE-8A-Q, 10G-PCIE-8AL-Q)
 .El
-.Sh LOADER TUNABLES
-Tunables can be set at the
-.Xr loader 8
-prompt before booting the kernel or stored in
-.Xr loader.conf 5 .
+.Sh TUNABLES
+.Em X
+is the device unit number.
 .Bl -tag -width indent
-.It Va hw.mxge.flow_control_enabled
-Whether or not hardware flow control is enabled on the adapter.
+.It Va hw.mxge.msix.enable Va hw.mxgeX.msix.enable
+By default,
+the driver will use MSI-X
+if it is supported.
+This behaviour can be turned off by setting this tunable to 0.
+.It Va hw.mxgeX.msix.offset
+If more than 1 slices are enabled,
+this tunable specifies the leading target CPU for slice's
+transmission and reception queues processing.
+The value specificed must be aligned to the number of slices enabled and
+must be less than the power of 2 number of CPUs.
+.It Va hw.mxge.msi.enable Va hw.mxgeX.msi.enable
+If MSI-X is disabled and MSI is supported,
+the driver will use MSI.
+This behavior can be turned off by setting this tunable to 0.
+.It Va hw.mxgeX.msi.cpu
+If MSI is used, it specifies the MSI's target CPU.
+.It Va hw.mxge.num_slices Va hw.mxgeX.num_slices
+If MSI-X is used,
+this value determines the maximum number of slices the driver
+will attempt to use.
+Setting this value to 0 allows driver to enable as many slices
+as allowed by the number of CPUs.
+Each slice is comprised of one reception queue and one transmission
+queue.
+The transmission queue of each slice,
+except the first slice,
+could be disabled.
+The default value is 0.
+.It Va hw.mxge.multi_tx Va hw.mxgeX.multi_tx
+If more then 1 slices are enabled,
+this tunable controls whether the tranmission queue of each
+slice should be enabled.
+Setting this tunable to 0 will only enable the transmission queue
+on the first slice.
 The default value is 1.
+.It Va hw.mxge.use_rss
+This tunable controls whether standard RSS input hash function or
+chip private input hash function should be used.
+Using standard RSS input hash function degenerates reception
+performance significantly.
+The default value is 0.
 .It Va hw.mxge.intr_coal_delay
 This value delays the generation of all interrupts in units of
 1 microsecond.
-The default value is 30.
-.It Va hw.mxge.skip_pio_read
-This value determines whether or not the driver may omit doing a
-PIO read in the interrupt handler which ensures that the interrupt
-line has been deasserted when using xPIC interrupts.
-A non-zero value
-may result in lower CPU overhead, however it may also result in
-spurious interrupts.
-The default value is 0.
-This tunable has no effect when the device is
-using MSI or MSI-X interrupts.
-.It Va hw.mxge.max_slices
-This value determines the maximum number of slices the driver
-will attempt to use.
+The default value is 150.
+.It Va hw.mxge.flow_control_enabled
+Whether or not hardware flow control is enabled on the adapter.
 The default value is 1.
-A slice is comprised
-of a set of receive queues and an associated interrupt thread.
-When using multiple slices, the NIC hashes traffic to different slices
-based on the value of
-.Va hw.mxge.rss_hash_type .
-Using multiple slices requires that your motherboard and Myri10GE NIC
-both be capable of MSI-X.
-Older Myri10GE NICs can be field upgraded to add
-MSI-X using the "10G NIC Tool Kit" for
-.Fx
-which is available from
-.Pa http://www.myri.com/scs/download-10g-tools.html .
-.It Va hw.mxge.rss_hash_type
-This value determines how incoming traffic is steered to different
-slices.
-This tunable is ignored when using just a single slice.
-The legal values for this tunable are:
-.Bl -tag -width "XXXX"
-.It 1
-Hash on the source and destination IPv4 addresses.
-.It 2
-Hash on source and destination IPv4 addresses and if the packet
-is TCP, then also hash on the TCP source and destination ports.
-.It 4
-Hash on the TCP or UDP source ports.
-This is the default value.
 .El
-.El
-.Sh DIAGNOSTICS
-.Bl -diag
-.It "mxge%d: Unable to allocate bus resource: memory"
-A fatal initialization error has occurred.
-.It "mxge%d: Unable to allocate bus resource: interrupt"
-A fatal initialization error has occurred.
-.It "mxge%d: Could not find firmware image %s"
-The appropriate firmware kld module was not installed.
-This is a non-fatal initialization error, but will
-result in running in a reduced performance mode.
+.Sh MIB Variables
+A number of per-interface variables are implemented in the
+.Va hw.mxge Ns Em X
+branch of the
+.Xr sysctl 3
+MIB.
+.Bl -tag -width "flow_control_enabled"
+.It Va firmware_version
+The version string of firmware that is currently loaded by the driver.
+It is read-only.
+.It Va use_rss
+See tunable
+.Va hw.mxge.use_rss .
+Flipping its value will cause chip reinitialization.
+.It Va intr_coal_delay
+See tunable
+.Va hw.mxge.intr_coal_delay .
+.It Va flow_control_enabled
+See tunable
+.Va hw.mxge.flow_control_enabled .
 .El
 .Sh SUPPORT
 For general information and support,
 go to the Myricom support website at:
-.Pa http://www.myri.com/scs/ .
+.Pa https://www.myricom.com/support.html .
 .Sh SEE ALSO
 .Xr altq 4 ,
 .Xr arp 4 ,
