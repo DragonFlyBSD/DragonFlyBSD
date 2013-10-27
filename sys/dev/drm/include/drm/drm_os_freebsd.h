@@ -28,17 +28,6 @@
 #define	be32_to_cpu(x)	be32toh(x)
 #define	be32_to_cpup(x)	be32toh(*x)
 
-typedef vm_paddr_t dma_addr_t;
-typedef uint64_t u64;
-typedef uint32_t u32;
-typedef uint16_t u16;
-typedef uint8_t u8;
-typedef int64_t s64;
-typedef int32_t s32;
-typedef int16_t s16;
-typedef int8_t s8;
-typedef int32_t __be32;
-
 #define	unlikely(x)            __builtin_expect(!!(x), 0)
 #define	likely(x)              __builtin_expect(!!(x), 1)
 #define	container_of(ptr, type, member) ({			\

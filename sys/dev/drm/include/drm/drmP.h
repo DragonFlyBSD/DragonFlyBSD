@@ -98,6 +98,7 @@
 #include <linux/idr.h>
 #include <linux/kref.h>
 #include <linux/list.h>
+#include <linux/types.h>
 
 struct drm_file;
 struct drm_device;
