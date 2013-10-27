@@ -741,9 +741,12 @@ tmpfs_dir_getdotdotdent(struct tmpfs_mount *tmp, struct tmpfs_node *node,
 	KKASSERT(uio->uio_offset == TMPFS_DIRCOOKIE_DOTDOT);
 
 	if (node->tn_dir.tn_parent) {
-		TMPFS_NODE_LOCK(node->tn_dir.tn_parent);
-		dent.d_ino = node->tn_dir.tn_parent->tn_id;
-		TMPFS_NODE_UNLOCK(node->tn_dir.tn_parent);
+		TMPFS_NODE_LOCK(node);
+		if (node->tn_dir.tn_parent)
+			dent.d_ino = node->tn_dir.tn_parent->tn_id;
+		else
+			dent.d_ino = tmp->tm_root->tn_id;
+		TMPFS_NODE_UNLOCK(node);
 	} else {
 		dent.d_ino = tmp->tm_root->tn_id;
 	}
