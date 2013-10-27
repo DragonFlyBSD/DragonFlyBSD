@@ -28,7 +28,7 @@
 #ifndef DRM_INTEL_DRV_H
 #define	DRM_INTEL_DRV_H
 
-#include "i915_drm.h"
+#include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>

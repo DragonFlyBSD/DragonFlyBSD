@@ -59,7 +59,7 @@
 #include <sys/mplock2.h>
 
 #include <drm/drmP.h>
-#include "i915_drm.h"
+#include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include "intel_drv.h"
 #include <bus/iicbus/iic.h>

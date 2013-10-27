@@ -27,7 +27,7 @@
  */
 
 #include <drm/drmP.h>
-#include "i915_drm.h"
+#include <drm/i915_drm.h>
 #include "intel_drv.h"
 
 static bool i915_pipe_enabled(struct drm_device *dev, enum i915_pipe pipe)

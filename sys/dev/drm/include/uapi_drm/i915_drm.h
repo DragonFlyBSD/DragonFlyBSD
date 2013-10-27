@@ -25,8 +25,8 @@
  * $FreeBSD: src/sys/dev/drm2/i915/i915_drm.h,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
-#ifndef _I915_DRM_H_
-#define _I915_DRM_H_
+#ifndef _UAPI_I915_DRM_H_
+#define _UAPI_I915_DRM_H_
 
 /* Please note that modifications to all structs defined here are
  * subject to backwards-compatibility constraints.
@@ -965,5 +965,4 @@ struct drm_intel_sprite_colorkey {
 	uint32_t max_value;
 	uint32_t flags;
 };
-
-#endif				/* _I915_DRM_H_ */
+#endif /* _UAPI_I915_DRM_H_ */

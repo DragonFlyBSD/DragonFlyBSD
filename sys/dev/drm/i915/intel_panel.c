@@ -31,7 +31,7 @@
  */
 
 #include <drm/drmP.h>
-#include "i915_drm.h"
+#include <drm/i915_drm.h>
 #include "intel_drv.h"
 
 #define PCI_LBPC 0xf4 /* legacy/combination backlight modes */
