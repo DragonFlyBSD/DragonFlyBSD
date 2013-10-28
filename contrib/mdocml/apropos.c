@@ -133,6 +133,11 @@ list(struct res *res, size_t sz, void *arg)
 {
 	size_t		 i;
 
+	if (!sz) {
+		printf("nothing appropriate\n");
+		return;
+	}
+
 	qsort(res, sz, sizeof(struct res), cmp);
 
 	for (i = 0; i < sz; i++) {

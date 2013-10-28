@@ -712,8 +712,10 @@ index_merge(const struct of *of, struct mparse *mp,
 
 		assert(of->title);
 		assert(mtitle);
+#if 0
 		if (strcasecmp(mtitle, of->title))
 			skip = 1;
+#endif
 
 		/*
 		 * Build a title string for the file.  If it matches
