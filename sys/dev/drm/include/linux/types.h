@@ -33,6 +33,8 @@
 #include <linux/compiler.h>
 #include <asm/types.h>
 
+typedef uint64_t u64;
+
 typedef __u16 __le16;
 typedef __u16 __be16;
 typedef __u32 __le32;

@@ -1055,11 +1055,6 @@ unsigned long i915_chipset_val(struct drm_i915_private *dev_priv);
 unsigned long i915_mch_val(struct drm_i915_private *dev_priv);
 void i915_update_gfx_val(struct drm_i915_private *dev_priv);
 unsigned long i915_gfx_val(struct drm_i915_private *dev_priv);
-unsigned long i915_read_mch_val(void);
-bool i915_gpu_raise(void);
-bool i915_gpu_lower(void);
-bool i915_gpu_busy(void);
-bool i915_gpu_turbo_disable(void);
 
 /* i915_irq.c */
 extern int i915_irq_emit(struct drm_device *dev, void *data,

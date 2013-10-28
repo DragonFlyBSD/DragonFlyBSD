@@ -56,7 +56,6 @@ typedef signed int s32;
 typedef unsigned int u32;
 
 typedef signed long long s64;
-typedef unsigned long long u64;
 
 /* DMA addresses come in generic and 64-bit flavours.  */
 typedef vm_paddr_t dma_addr_t;
