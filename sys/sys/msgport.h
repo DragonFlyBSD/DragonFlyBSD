@@ -206,8 +206,8 @@ void lwkt_initport_putonly(lwkt_port_t,
 				int (*pportfn)(lwkt_port_t, lwkt_msg_t));
 
 void lwkt_sendmsg(lwkt_port_t, lwkt_msg_t);
-void lwkt_sendmsg_stage1(lwkt_port_t, lwkt_msg_t);
-void lwkt_sendmsg_stage2(lwkt_port_t, lwkt_msg_t);
+void lwkt_sendmsg_prepare(lwkt_port_t, lwkt_msg_t);
+void lwkt_sendmsg_start(lwkt_port_t, lwkt_msg_t);
 int lwkt_domsg(lwkt_port_t, lwkt_msg_t, int);
 int lwkt_forwardmsg(lwkt_port_t, lwkt_msg_t);
 void lwkt_abortmsg(lwkt_msg_t);

@@ -368,9 +368,9 @@ so_pru_rcvd_async(struct socket *so)
 	spin_lock(&so->so_rcvd_spin);
 	if ((so->so_rcvd_msg.nm_pru_flags & PRUR_DEAD) == 0) {
 		if (lmsg->ms_flags & MSGF_DONE) {
-			lwkt_sendmsg_stage1(so->so_port, lmsg);
+			lwkt_sendmsg_prepare(so->so_port, lmsg);
 			spin_unlock(&so->so_rcvd_spin);
-			lwkt_sendmsg_stage2(so->so_port, lmsg);
+			lwkt_sendmsg_start(so->so_port, lmsg);
 		} else {
 			spin_unlock(&so->so_rcvd_spin);
 		}

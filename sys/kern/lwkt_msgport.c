@@ -74,6 +74,28 @@ MALLOC_DEFINE(M_LWKTMSG, "lwkt message", "lwkt message");
  *				MESSAGE FUNCTIONS			*
  ************************************************************************/
 
+static __inline void
+_lwkt_sendmsg_prepare(lwkt_port_t port, lwkt_msg_t msg)
+{
+    KKASSERT(msg->ms_reply_port != NULL &&
+	     (msg->ms_flags & (MSGF_DONE|MSGF_QUEUED)) == MSGF_DONE);
+    msg->ms_flags &= ~(MSGF_REPLY | MSGF_SYNC | MSGF_DONE);
+}
+
+static __inline void
+_lwkt_sendmsg_start(lwkt_port_t port, lwkt_msg_t msg)
+{
+    int error;
+
+    if ((error = lwkt_beginmsg(port, msg)) != EASYNC) {
+	/*
+	 * Target port opted to execute the message synchronously so
+	 * queue the response.
+	 */
+	lwkt_replymsg(msg, error);
+    }
+}
+
 /*
  * lwkt_sendmsg()
  *
@@ -92,40 +114,20 @@ MALLOC_DEFINE(M_LWKTMSG, "lwkt message", "lwkt message");
 void
 lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
-    int error;
-
-    KKASSERT(msg->ms_reply_port != NULL &&
-	     (msg->ms_flags & (MSGF_DONE|MSGF_QUEUED)) == MSGF_DONE);
-    msg->ms_flags &= ~(MSGF_REPLY | MSGF_SYNC | MSGF_DONE);
-    if ((error = lwkt_beginmsg(port, msg)) != EASYNC) {
-	/*
-	 * Target port opted to execute the message synchronously so
-	 * queue the response.
-	 */
-	lwkt_replymsg(msg, error);
-    }
+    _lwkt_sendmsg_prepare(port, msg);
+    _lwkt_sendmsg_start(port, msg);
 }
 
 void
-lwkt_sendmsg_stage1(lwkt_port_t port, lwkt_msg_t msg)
+lwkt_sendmsg_prepare(lwkt_port_t port, lwkt_msg_t msg)
 {
-    KKASSERT(msg->ms_reply_port != NULL &&
-	     (msg->ms_flags & (MSGF_DONE|MSGF_QUEUED)) == MSGF_DONE);
-    msg->ms_flags &= ~(MSGF_REPLY | MSGF_SYNC | MSGF_DONE);
+    _lwkt_sendmsg_prepare(port, msg);
 }
 
 void
-lwkt_sendmsg_stage2(lwkt_port_t port, lwkt_msg_t msg)
+lwkt_sendmsg_start(lwkt_port_t port, lwkt_msg_t msg)
 {
-    int error;
-
-    if ((error = lwkt_beginmsg(port, msg)) != EASYNC) {
-	/*
-	 * Target port opted to execute the message synchronously so
-	 * queue the response.
-	 */
-	lwkt_replymsg(msg, error);
-    }
+    _lwkt_sendmsg_start(port, msg);
 }
 
 /*
