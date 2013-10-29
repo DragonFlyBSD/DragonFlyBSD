@@ -274,6 +274,22 @@ TUNABLE_INT("net.ifpoll.pollhz", &ifpoll_pollhz);
 TUNABLE_INT("net.ifpoll.status_frac", &ifpoll_stfrac);
 TUNABLE_INT("net.ifpoll.tx_frac", &ifpoll_txfrac);
 
+#if !defined(KTR_IF_POLL)
+#define  KTR_IF_POLL		KTR_ALL
+#endif
+KTR_INFO_MASTER(if_poll);
+KTR_INFO(KTR_IF_POLL, if_poll, rx_start, 0, "rx start");
+KTR_INFO(KTR_IF_POLL, if_poll, rx_end, 1, "rx end");
+KTR_INFO(KTR_IF_POLL, if_poll, tx_start, 2, "tx start");
+KTR_INFO(KTR_IF_POLL, if_poll, tx_end, 3, "tx end");
+KTR_INFO(KTR_IF_POLL, if_poll, rx_mstart, 4, "rx more start");
+KTR_INFO(KTR_IF_POLL, if_poll, rx_mend, 5, "rx more end");
+KTR_INFO(KTR_IF_POLL, if_poll, tx_mstart, 6, "tx more start");
+KTR_INFO(KTR_IF_POLL, if_poll, tx_mend, 7, "tx more end");
+KTR_INFO(KTR_IF_POLL, if_poll, ioclock_start, 8, "ioclock start");
+KTR_INFO(KTR_IF_POLL, if_poll, ioclock_end, 9, "ioclock end");
+#define logpoll(name)	KTR_LOG(if_poll_ ## name)
+
 #define IFPOLL_FREQ_ADJ(comm)	(((comm)->poll_cpuid * 3) % 50)
 
 static __inline int
@@ -764,6 +780,8 @@ iopoll_clock(struct iopoll_ctx *io_ctx)
 	if (io_ctx->poll_handlers == 0)
 		return;
 
+	logpoll(ioclock_start);
+
 	ifpoll_time_get(&t);
 	delta = ifpoll_time_diff(&io_ctx->prev_t, &t);
 	if (delta * io_ctx->pollhz < 500000)
@@ -790,6 +808,8 @@ iopoll_clock(struct iopoll_ctx *io_ctx)
 	}
 	if (io_ctx->pending_polls++ > 0)
 		io_ctx->lost_polls++;
+
+	logpoll(ioclock_end);
 }
 
 /*
@@ -806,6 +826,8 @@ rxpoll_handler(netmsg_t msg)
 	struct thread *td = curthread;
 	int i, cycles;
 
+	logpoll(rx_start);
+
 	io_ctx = msg->lmsg.u.ms_resultp;
 	KKASSERT(&td->td_msgport == netisr_cpuport(io_ctx->poll_cpuid));
 
@@ -816,6 +838,7 @@ rxpoll_handler(netmsg_t msg)
 
 	if (io_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
+		logpoll(rx_end);
 		return;
 	}
 
@@ -854,6 +877,8 @@ rxpoll_handler(netmsg_t msg)
 	io_ctx->phase = 4;
 
 	crit_exit_quick(td);
+
+	logpoll(rx_end);
 }
 
 static void
@@ -862,6 +887,8 @@ txpoll_handler(netmsg_t msg)
 	struct iopoll_ctx *io_ctx;
 	struct thread *td = curthread;
 	int i;
+
+	logpoll(tx_start);
 
 	io_ctx = msg->lmsg.u.ms_resultp;
 	KKASSERT(&td->td_msgport == netisr_cpuport(io_ctx->poll_cpuid));
@@ -873,6 +900,7 @@ txpoll_handler(netmsg_t msg)
 
 	if (io_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
+		logpoll(tx_end);
 		return;
 	}
 
@@ -903,6 +931,8 @@ txpoll_handler(netmsg_t msg)
 	io_ctx->phase = 4;
 
 	crit_exit_quick(td);
+
+	logpoll(tx_end);
 }
 
 /*
@@ -927,6 +957,8 @@ rxpollmore_handler(netmsg_t msg)
 	int kern_load;
 	uint32_t pending_polls;
 
+	logpoll(rx_mstart);
+
 	io_ctx = msg->lmsg.u.ms_resultp;
 	KKASSERT(&td->td_msgport == netisr_cpuport(io_ctx->poll_cpuid));
 
@@ -937,6 +969,7 @@ rxpollmore_handler(netmsg_t msg)
 
 	if (io_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
+		logpoll(rx_mend);
 		return;
 	}
 
@@ -945,6 +978,7 @@ rxpollmore_handler(netmsg_t msg)
 		sched_iopoll(io_ctx);
 		crit_exit_quick(td);
 		/* Will run immediately on return, followed by netisrs */
+		logpoll(rx_mend);
 		return;
 	}
 
@@ -983,6 +1017,8 @@ rxpollmore_handler(netmsg_t msg)
 	}
 
 	crit_exit_quick(td);
+
+	logpoll(rx_mend);
 }
 
 static void
@@ -991,6 +1027,8 @@ txpollmore_handler(netmsg_t msg)
 	struct thread *td = curthread;
 	struct iopoll_ctx *io_ctx;
 	uint32_t pending_polls;
+
+	logpoll(tx_mstart);
 
 	io_ctx = msg->lmsg.u.ms_resultp;
 	KKASSERT(&td->td_msgport == netisr_cpuport(io_ctx->poll_cpuid));
@@ -1002,6 +1040,7 @@ txpollmore_handler(netmsg_t msg)
 
 	if (io_ctx->poll_handlers == 0) {
 		crit_exit_quick(td);
+		logpoll(tx_mend);
 		return;
 	}
 
@@ -1023,6 +1062,8 @@ txpollmore_handler(netmsg_t msg)
 	}
 
 	crit_exit_quick(td);
+
+	logpoll(tx_mend);
 }
 
 static void
