@@ -74,6 +74,18 @@ MALLOC_DEFINE(M_LWKTMSG, "lwkt message", "lwkt message");
  *				MESSAGE FUNCTIONS			*
  ************************************************************************/
 
+static __inline int
+lwkt_beginmsg(lwkt_port_t port, lwkt_msg_t msg)
+{
+    return port->mp_putport(port, msg);
+}
+
+static __inline int
+lwkt_beginmsg_oncpu(lwkt_port_t port, lwkt_msg_t msg)
+{
+    return port->mp_putport_oncpu(port, msg);
+}
+
 static __inline void
 _lwkt_sendmsg_prepare(lwkt_port_t port, lwkt_msg_t msg)
 {
@@ -88,6 +100,20 @@ _lwkt_sendmsg_start(lwkt_port_t port, lwkt_msg_t msg)
     int error;
 
     if ((error = lwkt_beginmsg(port, msg)) != EASYNC) {
+	/*
+	 * Target port opted to execute the message synchronously so
+	 * queue the response.
+	 */
+	lwkt_replymsg(msg, error);
+    }
+}
+
+static __inline void
+_lwkt_sendmsg_start_oncpu(lwkt_port_t port, lwkt_msg_t msg)
+{
+    int error;
+
+    if ((error = lwkt_beginmsg_oncpu(port, msg)) != EASYNC) {
 	/*
 	 * Target port opted to execute the message synchronously so
 	 * queue the response.
@@ -116,6 +142,13 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
     _lwkt_sendmsg_prepare(port, msg);
     _lwkt_sendmsg_start(port, msg);
+}
+
+void
+lwkt_sendmsg_oncpu(lwkt_port_t port, lwkt_msg_t msg)
+{
+    _lwkt_sendmsg_prepare(port, msg);
+    _lwkt_sendmsg_start_oncpu(port, msg);
 }
 
 void
@@ -229,6 +262,7 @@ static int lwkt_spin_waitmsg(lwkt_msg_t msg, int flags);
 static void *lwkt_spin_waitport(lwkt_port_t port, int flags);
 static void lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg);
 static int lwkt_spin_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_spin_putport_oncpu(lwkt_port_t port, lwkt_msg_t msg);
 
 static void *lwkt_serialize_getport(lwkt_port_t port);
 static int lwkt_serialize_putport(lwkt_port_t port, lwkt_msg_t msg);
@@ -243,6 +277,7 @@ static int lwkt_panic_waitmsg(lwkt_msg_t msg, int flags);
 static void *lwkt_panic_waitport(lwkt_port_t port, int flags);
 static void lwkt_panic_replyport(lwkt_port_t port, lwkt_msg_t msg);
 static int lwkt_panic_dropmsg(lwkt_port_t port, lwkt_msg_t msg);
+static int lwkt_panic_putport_oncpu(lwkt_port_t port, lwkt_msg_t msg);
 
 /*
  * Core port initialization (internal)
@@ -255,17 +290,20 @@ _lwkt_initport(lwkt_port_t port,
 	       int (*wmsgfn)(lwkt_msg_t, int),
 	       void *(*wportfn)(lwkt_port_t, int),
 	       void (*rportfn)(lwkt_port_t, lwkt_msg_t),
-	       int (*dmsgfn)(lwkt_port_t, lwkt_msg_t))
+	       int (*dmsgfn)(lwkt_port_t, lwkt_msg_t),
+	       int (*pportfn_oncpu)(lwkt_port_t, lwkt_msg_t))
 {
     bzero(port, sizeof(*port));
+    port->mp_cpuid = -1;
     TAILQ_INIT(&port->mp_msgq);
     TAILQ_INIT(&port->mp_msgq_prio);
     port->mp_getport = gportfn;
     port->mp_putport = pportfn;
-    port->mp_waitmsg =  wmsgfn;
-    port->mp_waitport =  wportfn;
+    port->mp_waitmsg = wmsgfn;
+    port->mp_waitport = wportfn;
     port->mp_replyport = rportfn;
     port->mp_dropmsg = dmsgfn;
+    port->mp_putport_oncpu = pportfn_oncpu;
 }
 
 /*
@@ -296,7 +334,8 @@ lwkt_initport_thread(lwkt_port_t port, thread_t td)
 		   lwkt_thread_waitmsg,
 		   lwkt_thread_waitport,
 		   lwkt_thread_replyport,
-		   lwkt_thread_dropmsg);
+		   lwkt_thread_dropmsg,
+		   lwkt_thread_putport);
     port->mpu_td = td;
 }
 
@@ -308,14 +347,20 @@ lwkt_initport_thread(lwkt_port_t port, thread_t td)
  *	overhead then thread ports.
  */
 void
-lwkt_initport_spin(lwkt_port_t port, thread_t td)
+lwkt_initport_spin(lwkt_port_t port, thread_t td, boolean_t fixed_cpuid)
 {
     int (*dmsgfn)(lwkt_port_t, lwkt_msg_t);
+    int (*pportfn_oncpu)(lwkt_port_t, lwkt_msg_t);
 
     if (td == NULL)
 	dmsgfn = lwkt_panic_dropmsg;
     else
 	dmsgfn = lwkt_spin_dropmsg;
+
+    if (fixed_cpuid)
+	pportfn_oncpu = lwkt_spin_putport_oncpu;
+    else
+	pportfn_oncpu = lwkt_panic_putport_oncpu;
 
     _lwkt_initport(port,
 		   lwkt_spin_getport,
@@ -323,9 +368,12 @@ lwkt_initport_spin(lwkt_port_t port, thread_t td)
 		   lwkt_spin_waitmsg,
 		   lwkt_spin_waitport,
 		   lwkt_spin_replyport,
-		   dmsgfn);
+		   dmsgfn,
+		   pportfn_oncpu);
     spin_init(&port->mpu_spin);
     port->mpu_td = td;
+    if (fixed_cpuid)
+	port->mp_cpuid = td->td_gd->gd_cpuid;
 }
 
 /*
@@ -344,7 +392,8 @@ lwkt_initport_serialize(lwkt_port_t port, struct lwkt_serialize *slz)
 		   lwkt_serialize_waitmsg,
 		   lwkt_serialize_waitport,
 		   lwkt_serialize_replyport,
-		   lwkt_panic_dropmsg);
+		   lwkt_panic_dropmsg,
+		   lwkt_panic_putport_oncpu);
     port->mpu_serialize = slz;
 }
 
@@ -361,7 +410,8 @@ lwkt_initport_replyonly_null(lwkt_port_t port)
 		   lwkt_panic_waitmsg,
 		   lwkt_panic_waitport,
 		   lwkt_null_replyport,
-		   lwkt_panic_dropmsg);
+		   lwkt_panic_dropmsg,
+		   lwkt_panic_putport_oncpu);
 }
 
 /*
@@ -374,7 +424,8 @@ lwkt_initport_replyonly(lwkt_port_t port,
 {
     _lwkt_initport(port, lwkt_panic_getport, lwkt_panic_putport,
 			 lwkt_panic_waitmsg, lwkt_panic_waitport,
-			 rportfn, lwkt_panic_dropmsg);
+			 rportfn, lwkt_panic_dropmsg,
+			 lwkt_panic_putport_oncpu);
 }
 
 void
@@ -383,7 +434,8 @@ lwkt_initport_putonly(lwkt_port_t port,
 {
     _lwkt_initport(port, lwkt_panic_getport, pportfn,
 			 lwkt_panic_waitmsg, lwkt_panic_waitport,
-			 lwkt_panic_replyport, lwkt_panic_dropmsg);
+			 lwkt_panic_replyport, lwkt_panic_dropmsg,
+			 lwkt_panic_putport_oncpu);
 }
 
 void
@@ -392,7 +444,8 @@ lwkt_initport_panic(lwkt_port_t port)
     _lwkt_initport(port,
 		   lwkt_panic_getport, lwkt_panic_putport,
 		   lwkt_panic_waitmsg, lwkt_panic_waitport,
-		   lwkt_panic_replyport, lwkt_panic_dropmsg);
+		   lwkt_panic_replyport, lwkt_panic_dropmsg,
+		   lwkt_panic_putport_oncpu);
 }
 
 static __inline
@@ -808,9 +861,8 @@ lwkt_spin_getport(lwkt_port_t port)
     return(msg);
 }
 
-static
-int
-lwkt_spin_putport(lwkt_port_t port, lwkt_msg_t msg)
+static __inline int
+lwkt_spin_putport_only(lwkt_port_t port, lwkt_msg_t msg)
 {
     int dowakeup;
 
@@ -825,8 +877,28 @@ lwkt_spin_putport(lwkt_port_t port, lwkt_msg_t msg)
 	dowakeup = 1;
     }
     spin_unlock(&port->mpu_spin);
-    if (dowakeup)
+
+    return dowakeup;
+}
+
+static
+int
+lwkt_spin_putport(lwkt_port_t port, lwkt_msg_t msg)
+{
+    if (lwkt_spin_putport_only(port, msg))
 	wakeup(port);
+    return (EASYNC);
+}
+
+static
+int
+lwkt_spin_putport_oncpu(lwkt_port_t port, lwkt_msg_t msg)
+{
+    KASSERT(port->mp_cpuid == mycpuid,
+        ("cpu mismatch, can't do oncpu putport; port cpu%d, curcpu cpu%d",
+	 port->mp_cpuid, mycpuid));
+    if (lwkt_spin_putport_only(port, msg))
+	wakeup_mycpu(port);
     return (EASYNC);
 }
 
@@ -1203,6 +1275,16 @@ int
 lwkt_panic_dropmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
     panic("lwkt_dropmsg() is illegal on port %p msg %p", port, msg);
+    /* NOT REACHED */
+    return (ENOENT);
+}
+
+static
+int
+lwkt_panic_putport_oncpu(lwkt_port_t port, lwkt_msg_t msg)
+{
+    panic("lwkt_begin_oncpu/sendmsg_oncpu() illegal on port %p msg %p",
+        port, msg);
     /* NOT REACHED */
     return (ENOENT);
 }

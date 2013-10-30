@@ -367,7 +367,7 @@ struct thread {
 #define TDF_USINGFP		0x00800000	/* thread using fp coproc */
 #define TDF_KERNELFP		0x01000000	/* kernel using fp coproc */
 #define TDF_DELAYED_WAKEUP	0x02000000
-#define TDF_UNUSED1		0x04000000	/* unused */
+#define TDF_FIXEDCPU		0x04000000	/* running cpu is fixed */
 #define TDF_USERMODE		0x08000000	/* in or entering user mode */
 #define TDF_NOFAULT		0x10000000	/* force onfault on fault */
 

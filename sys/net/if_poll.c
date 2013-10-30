@@ -308,7 +308,7 @@ static __inline void
 ifpoll_sendmsg_oncpu(netmsg_t msg)
 {
 	if (msg->lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg(netisr_cpuport(mycpuid), &msg->lmsg);
+		lwkt_sendmsg_oncpu(netisr_cpuport(mycpuid), &msg->lmsg);
 }
 
 static __inline void

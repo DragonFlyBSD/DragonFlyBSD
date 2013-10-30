@@ -46,13 +46,6 @@ lwkt_initmsg_abortable(lwkt_msg_t msg, lwkt_port_t rport, int flags,
 }
 
 static __inline
-int
-lwkt_beginmsg(lwkt_port_t port, lwkt_msg_t msg)
-{
-    return(port->mp_putport(port, msg));
-}
-
-static __inline
 void
 lwkt_replymsg(lwkt_msg_t msg, int error)
 {   

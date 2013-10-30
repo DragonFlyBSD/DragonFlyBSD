@@ -446,10 +446,12 @@ lwkt_init_thread(thread_t td, void *stack, int stksize, int flags,
     td->td_critcount = 1;
     td->td_toks_have = NULL;
     td->td_toks_stop = &td->td_toks_base;
-    if (lwkt_use_spin_port || (flags & TDF_FORCE_SPINPORT))
-	lwkt_initport_spin(&td->td_msgport, td);
-    else
+    if (lwkt_use_spin_port || (flags & TDF_FORCE_SPINPORT)) {
+	lwkt_initport_spin(&td->td_msgport, td,
+	    (flags & TDF_FIXEDCPU) ? TRUE : FALSE);
+    } else {
 	lwkt_initport_thread(&td->td_msgport, td);
+    }
     pmap_init_thread(td);
     /*
      * Normally initializing a thread for a remote cpu requires sending an

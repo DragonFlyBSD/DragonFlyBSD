@@ -158,6 +158,7 @@ typedef struct lwkt_port {
     lwkt_msg_queue	mp_msgq;
     lwkt_msg_queue	mp_msgq_prio;
     int			mp_flags;
+    int			mp_cpuid;
     union {
 	struct spinlock	spin;
 	struct lwkt_serialize *serialize;
@@ -170,6 +171,7 @@ typedef struct lwkt_port {
     void *		(*mp_waitport)(lwkt_port_t, int flags);
     void		(*mp_replyport)(lwkt_port_t, lwkt_msg_t);
     int			(*mp_dropmsg)(lwkt_port_t, lwkt_msg_t);
+    int			(*mp_putport_oncpu)(lwkt_port_t, lwkt_msg_t);
 } lwkt_port;
 
 #ifdef _KERNEL
@@ -196,7 +198,7 @@ typedef struct lwkt_port {
  */
 
 void lwkt_initport_thread(lwkt_port_t, struct thread *);
-void lwkt_initport_spin(lwkt_port_t, struct thread *);
+void lwkt_initport_spin(lwkt_port_t, struct thread *, boolean_t);
 void lwkt_initport_serialize(lwkt_port_t, struct lwkt_serialize *);
 void lwkt_initport_panic(lwkt_port_t);
 void lwkt_initport_replyonly_null(lwkt_port_t);
@@ -206,6 +208,7 @@ void lwkt_initport_putonly(lwkt_port_t,
 				int (*pportfn)(lwkt_port_t, lwkt_msg_t));
 
 void lwkt_sendmsg(lwkt_port_t, lwkt_msg_t);
+void lwkt_sendmsg_oncpu(lwkt_port_t, lwkt_msg_t);
 void lwkt_sendmsg_prepare(lwkt_port_t, lwkt_msg_t);
 void lwkt_sendmsg_start(lwkt_port_t, lwkt_msg_t);
 int lwkt_domsg(lwkt_port_t, lwkt_msg_t, int);
