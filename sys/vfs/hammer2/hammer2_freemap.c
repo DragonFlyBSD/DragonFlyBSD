@@ -212,6 +212,7 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	 * Normal allocations
 	 */
 	KKASSERT(bytes >= HAMMER2_MIN_ALLOC && bytes <= HAMMER2_MAX_ALLOC);
+	atomic_set_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
 
 	/*
 	 * Calculate the starting point for our allocation search.
@@ -272,6 +273,8 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	}
 	hmp->heur_freemap[hindex] = iter.bnext;
 	hammer2_chain_unlock(parent);
+
+	atomic_clear_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
 
 	return (error);
 }
@@ -757,6 +760,8 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 		return;
 	KKASSERT((data_off & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
 
+	atomic_set_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
+
 	/*
 	 * Lookup the level1 freemap chain.  The chain must exist.
 	 */
@@ -865,4 +870,6 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 
 	hammer2_chain_unlock(chain);
 	hammer2_chain_unlock(parent);
+
+	atomic_clear_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
 }

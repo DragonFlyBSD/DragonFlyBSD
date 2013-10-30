@@ -64,7 +64,7 @@ struct hammer2_flush_info {
 typedef struct hammer2_flush_info hammer2_flush_info_t;
 
 static void hammer2_chain_flush_core(hammer2_flush_info_t *info,
-				hammer2_chain_t *chain);
+				hammer2_chain_t **chainp);
 static int hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data);
 static int hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data);
 static void hammer2_rollup_stats(hammer2_chain_t *parent,
@@ -112,10 +112,6 @@ hammer2_updatestats(hammer2_flush_info_t *info, hammer2_blockref_t *bref,
  * WARNING! Modifications to the root volume cannot dup the root volume
  *	    header to handle synchronization points, so alloc_tid can
  *	    wind up (harmlessly) more advanced on flush.
- *
- * WARNING! Operations which might call inode_duplicate()/chain_duplicate()
- *	    depend heavily on having a unique sync_tid to avoid duplication
- *	    collisions (which key off of delete_tid).
  */
 void
 hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp, int flags)
@@ -165,12 +161,12 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp, int flags)
 
 		/*
 		 * don't assign sync_tid until we become the running
-		 * flush.  topo_flush_tid is used to control when
-		 * chain modifications in concurrent transactions are
-		 * required to delete-duplicate (so as not to disturb
-		 * the state of what is being currently flushed).
+		 * flush.  last_flush_tid and topo_flush_tid eare used
+		 * to determine when a copy-on-write (aka delete-duplicate)
+		 * is required.
 		 */
-		trans->sync_tid = hmp->voldata.alloc_tid++;
+		trans->sync_tid = hmp->voldata.alloc_tid;
+		hmp->voldata.alloc_tid += 2;
 		hmp->topo_flush_tid = trans->sync_tid;
 
 		/*
@@ -189,22 +185,28 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp, int flags)
 		}
 	} else if ((flags & HAMMER2_TRANS_BUFCACHE) && hmp->curflush) {
 		/*
-		 * We cannot block if we are the bioq thread.  When a
-		 * flush is not pending we can operate normally but
-		 * if a flush IS pending the bioq thread's transaction
-		 * must be placed either before or after curflush.
+		 * We cannot block if we are the bioq thread.
 		 *
-		 * If the current flush is waiting the bioq thread's
-		 * transaction is placed before.  If it is running the
-		 * bioq thread's transaction is placed after.
+		 * When possible we steal the flush's TID and flush buffers
+		 * as part of the larger filesystem flush.  The flush will
+		 * interlock against buffer cache transactions when INVFSYNC
+		 * is set.
+		 *
+		 * NOTE: Transactions are not ordered by sync_tid on the
+		 *	 transq.  Append to avoid confusion.  Other waiting
+		 *       flushes will have not added themselves to transq
+		 *	 yet.
 		 */
-		scan = TAILQ_FIRST(&hmp->transq);
-		if (scan != hmp->curflush) {
-			TAILQ_INSERT_BEFORE(hmp->curflush, trans, entry);
+		TAILQ_INSERT_TAIL(&hmp->transq, trans, entry);
+		if ((scan = hmp->curflush) != NULL) {
+			if (scan->flags & HAMMER2_TRANS_INVFSYNC) {
+				trans->sync_tid = scan->sync_tid;
+			} else {
+				trans->sync_tid = hmp->voldata.alloc_tid++;
+			}
 		} else {
-			TAILQ_INSERT_TAIL(&hmp->transq, trans, entry);
+			trans->sync_tid = hmp->voldata.alloc_tid++;
 		}
-		trans->sync_tid = hmp->voldata.alloc_tid++;
 	} else {
 		/*
 		 * If this is a normal transaction and not a flush, or
@@ -230,46 +232,74 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp, int flags)
 	hammer2_voldata_unlock(hmp, 0);
 }
 
+/*
+ * Clear the flag that allowed buffer cache flushes to steal the
+ * main flush's transaction id and wait for any in-progress BC flushes
+ * to finish.
+ */
+void
+hammer2_trans_clear_invfsync(hammer2_trans_t *trans)
+{
+	hammer2_mount_t *hmp = trans->pmp->cluster.chains[0]->hmp;
+
+        hammer2_bioq_sync(trans->pmp);
+	atomic_clear_int(&trans->flags, HAMMER2_TRANS_INVFSYNC);
+	if (TAILQ_FIRST(&hmp->transq) != trans) {
+		hammer2_voldata_lock(hmp);
+		while (TAILQ_FIRST(&hmp->transq) != trans) {
+			tsleep(&trans->sync_tid, 0, "h2flbw", 0);
+		}
+		hammer2_voldata_unlock(hmp, 0);
+	}
+	hammer2_bioq_sync(trans->pmp);
+	++trans->sync_tid;
+	hmp->topo_flush_tid = trans->sync_tid;
+}
+
 void
 hammer2_trans_done(hammer2_trans_t *trans)
 {
 	hammer2_mount_t *hmp;
 	hammer2_trans_t *scan;
+	int wasathead;
 
 	hmp = trans->pmp->cluster.chains[0]->hmp;
 
 	hammer2_voldata_lock(hmp);
+	wasathead = (TAILQ_FIRST(&hmp->transq) == trans);
 	TAILQ_REMOVE(&hmp->transq, trans, entry);
+
 	if (trans->flags & HAMMER2_TRANS_ISFLUSH) {
 		--hmp->flushcnt;
 		if (hmp->flushcnt) {
 			/*
 			 * If we were a flush then wakeup anyone waiting on
 			 * curflush (i.e. other flushes that want to run).
-			 * Leave topo_flush_id set (I think we could probably
-			 * clear it to zero here).
 			 */
 			hmp->curflush = NULL;
 			wakeup(&hmp->curflush);
 		} else {
 			/*
-			 * Theoretically we don't have to clear flush_tid
-			 * here since the flush will have synchronized
-			 * all operations <= flush_tid already.  But for
-			 * now zero-it.
+			 * Cycle the flush_tid.
 			 */
 			hmp->curflush = NULL;
-			hmp->topo_flush_tid = 0;
 		}
+		hmp->last_flush_tid = hmp->topo_flush_tid;
+		hmp->topo_flush_tid = HAMMER2_MAX_TID;
 	} else {
 		/*
 		 * If we are not a flush but a flush is now at the head
 		 * of the queue and we were previously blocking it,
 		 * we can now unblock it.
+		 *
+		 * Special case where sync_tid == scan->sync_tid occurs
+		 * when buffer flush is issued while a normal flush is
+		 * running (and in the correct stager), which is typically
+		 * semi-synchronous but not always.
 		 */
 		if (hmp->flushcnt &&
 		    (scan = TAILQ_FIRST(&hmp->transq)) != NULL &&
-		    trans->sync_tid < scan->sync_tid &&
+		    wasathead &&
 		    (scan->flags & HAMMER2_TRANS_ISFLUSH)) {
 			wakeup(&scan->sync_tid);
 		}
@@ -304,8 +334,9 @@ hammer2_trans_done(hammer2_trans_t *trans)
  * (which is not part of the flush) should be updated.
  */
 void
-hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
+hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t **chainp)
 {
+	hammer2_chain_t *chain = *chainp;
 	hammer2_chain_t *scan;
 	hammer2_chain_core_t *core;
 	hammer2_flush_info_t info;
@@ -327,6 +358,12 @@ hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
 
 	core = chain->core;
 
+	/*
+	 * Extra ref needed because flush_core expects it when replacing
+	 * chain.
+	 */
+	hammer2_chain_ref(chain);
+
 	for (;;) {
 		/*
 		 * Unwind deep recursions which had been deferred.  This
@@ -345,7 +382,7 @@ hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
 			if (hammer2_debug & 0x0040)
 				kprintf("defered flush %p\n", scan);
 			hammer2_chain_lock(scan, HAMMER2_RESOLVE_MAYBE);
-			hammer2_chain_flush(trans, scan);
+			hammer2_chain_flush(trans, &scan);
 			hammer2_chain_unlock(scan);
 			hammer2_chain_drop(scan);	/* ref from deferral */
 		}
@@ -354,7 +391,7 @@ hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
 		 * Flush pass1 on root.
 		 */
 		info.diddeferral = 0;
-		hammer2_chain_flush_core(&info, chain);
+		hammer2_chain_flush_core(&info, &chain);
 #if FLUSH_DEBUG
 		kprintf("flush_core_done parent=<base> chain=%p.%d %08x\n",
 			chain, chain->bref.type, chain->flags);
@@ -366,13 +403,17 @@ hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
 		if (TAILQ_EMPTY(&info.flush_list))
 			break;
 	}
+	hammer2_chain_drop(chain);
+	*chainp = chain;
 }
 
 /*
  * This is the core of the chain flushing code.  The chain is locked by the
- * caller and remains locked on return.  This function is keyed off of
- * the SUBMODIFIED bit but must make fine-grained choices based on the
- * synchronization point we are flushing to.
+ * caller and must also have an extra ref on it by the caller, and remains
+ * locked and will have an extra ref on return.
+ *
+ * This function is keyed off of the update_tid bit but must make
+ * fine-grained choices based on the synchronization point we are flushing to.
  *
  * If the flush accomplished any work chain will be flagged MOVED
  * indicating a copy-on-write propagation back up is required.
@@ -385,13 +426,13 @@ hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain)
  *	 including copy-on-write propagations.
  */
 static void
-hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
+hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp)
 {
+	hammer2_chain_t *chain = *chainp;
 	hammer2_mount_t *hmp;
 	hammer2_blockref_t *bref;
 	hammer2_off_t pbase;
 	hammer2_off_t pmask;
-	hammer2_tid_t saved_sync;
 #if 0
 	hammer2_trans_t *trans = info->trans;
 #endif
@@ -427,56 +468,45 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 	if (chain->modify_tid > info->sync_tid)
 		return;
 
-#if 0
-	/*
-	 * Deleted chains which have not been destroyed must be retained,
-	 * and we probably have to recurse to clean-up any sub-trees.
-	 * However, restricted flushes can stop processing here because
-	 * the chain cleanup will be handled by a later normal flush.
-	 *
-	 * The MODIFIED bit can likely be cleared in this situation and we
-	 * will do so later on in this procedure.
-	 */
-	if (chain->delete_tid <= info->sync_tid) {
-		if (trans->flags & HAMMER2_TRANS_RESTRICTED)
-			return;
-	}
-#endif
-
-	saved_sync = info->sync_tid;
 	core = chain->core;
 
+#if 0
+	kprintf("PUSH   %p.%d %08x mirror=%016jx\n", chain, chain->bref.type, chain->flags, chain->bref.mirror_tid);
+#endif
+
 	/*
-	 * If SUBMODIFIED is set we recurse the flush and adjust the
+	 * If update_tid triggers we recurse the flush and adjust the
 	 * blockrefs accordingly.
 	 *
-	 * NOTE: Looping on SUBMODIFIED can prevent a flush from ever
+	 * NOTE: Looping on update_tid can prevent a flush from ever
 	 *	 finishing in the face of filesystem activity.
+	 *
+	 * NOTE: We must recurse whether chain is flagged DELETED or not.
+	 *	 However, if it is flagged DELETED we limit sync_tid to
+	 *	 delete_tid to ensure that the chain's bref.mirror_tid is
+	 *	 not fully updated and causes it to miss the non-DELETED
+	 *	 path.
 	 */
-	if (chain->flags & HAMMER2_CHAIN_SUBMODIFIED) {
+	if (chain->bref.mirror_tid < core->update_tid) {
 		hammer2_chain_t *saved_parent;
 		hammer2_tid_t saved_mirror;
 		hammer2_chain_layer_t *layer;
 
 		/*
-		 * Clear SUBMODIFIED to catch races.  Note that any child
-		 * with MODIFIED, DELETED, or MOVED set during scan2, or
-		 * which tries to lastdrop but can't free its structures,
-		 * or which gets defered, will cause SUBMODIFIED to be set
-		 * again.
+		 * Races will bump update_tid above trans->sync_tid causing
+		 * us to catch the issue in a later flush.  We do not update
+		 * update_tid if a deferral (or error XXX) occurs.
 		 *
 		 * We don't want to set our chain to MODIFIED gratuitously.
 		 *
 		 * We need an extra ref on chain because we are going to
 		 * release its lock temporarily in our child loop.
 		 */
-		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_SUBMODIFIED);
-		hammer2_chain_ref(chain);
 
 		/*
 		 * Run two passes.  The first pass handles MODIFIED and
-		 * SUBMODIFIED chains and recurses while the second pass
-		 * handles MOVED chains on the way back up.
+		 * update_tid recursions while the second pass handles
+		 * MOVED chains on the way back up.
 		 *
 		 * If the stack gets too deep we defer scan1, but must
 		 * be sure to still run scan2 if on the next loop the
@@ -523,16 +553,19 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 			spin_unlock(&core->cst.spin);
 		}
 
+		KKASSERT(info->parent == chain);
+
 		/*
 		 * Handle successfully flushed children who are in the MOVED
 		 * state on the way back up the recursion.  This can have
 		 * the side-effect of clearing MOVED.
 		 *
+		 * Scan2 may replace info->parent.  If it does it will also
+		 * replace the extra ref we made.
+		 *
 		 * Scan2 is non-recursive.
 		 */
 		if (diddeferral) {
-			atomic_set_int(&chain->flags,
-				       HAMMER2_CHAIN_SUBMODIFIED);
 			spin_lock(&core->cst.spin);
 		} else {
 			spin_lock(&core->cst.spin);
@@ -547,24 +580,47 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 				info->pass = 2;
 				RB_SCAN(hammer2_chain_tree, &layer->rbtree,
 					NULL, hammer2_chain_flush_scan2, info);
-				/*diddeferral += info->diddeferral; n/a*/
 				--layer->refs;
+				KKASSERT(info->parent->core == core);
 			}
+
+			/*
+			 * Mirror_tid propagates all changes.  It is also used
+			 * in scan2 to determine when a chain must be applied
+			 * to the related block table.
+			 */
+#if 0
+			kprintf("chainA %p.%d set parent bref mirror_tid %016jx -> %016jx\n",
+				info->parent, info->parent->bref.type,
+				info->mirror_tid, info->parent->bref.mirror_tid);
+#endif
+			KKASSERT(info->parent->bref.mirror_tid <=
+				 info->mirror_tid);
+			info->parent->bref.mirror_tid = info->mirror_tid;
 		}
+
+		/*
+		 * chain may have been replaced.
+		 */
+#if 0
+		if (info->parent != *chainp)
+			kprintf("SWITCH PARENT %p->%p\n",
+				*chainp, info->parent);
+#endif
+		chain = info->parent;
+		*chainp = chain;
+
 		hammer2_chain_layer_check_locked(chain->hmp, core);
 		spin_unlock(&core->cst.spin);
 
-		chain->bref.mirror_tid = info->mirror_tid;
 		info->mirror_tid = saved_mirror;
 		info->parent = saved_parent;
 		KKASSERT(chain->refs > 1);
-		hammer2_chain_drop(chain);
 	}
 
-	/*
-	 * Restore sync_tid in case it was restricted by a delete/duplicate.
-	 */
-	info->sync_tid = saved_sync;
+#if 0
+	kprintf("POP    %p.%d\n", chain, chain->bref.type);
+#endif
 
 	/*
 	 * Rollup diddeferral for caller.  Note direct assignment, not +=.
@@ -590,8 +646,21 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 	 * destroyed or not.  We must make sure that the chain is flagged
 	 * MOVED in this situation so the parent picks up the deletion.
 	 *
-	 * Note that scan2 has already executed above so statistics have
-	 * already been rolled up.
+	 * Since this chain will now never be written to disk we need to
+	 * adjust bref.mirror_tid such that it does not prevent sub-chains
+	 * from clearing their MOVED bits.
+	 *
+	 * NOTE:  scan2 has already executed above so statistics have
+	 *	  already been rolled up.
+	 *
+	 * NOTE:  Deletions do not prevent flush recursion as a deleted
+	 *	  inode (removed file) which is still open may still require
+	 *	  on-media storage to be able to clean related pages out from
+	 *	  the system caches.
+	 *
+	 * NOTE:  Even though this chain will not issue write I/O, we must
+	 *	  still update chain->bref.mirror_tid for flush management
+	 *	  purposes.
 	 */
 	if (chain->delete_tid <= info->sync_tid) {
 		if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
@@ -605,8 +674,12 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 					       HAMMER2_CHAIN_MOVED);
 			}
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
+			if (chain->bref.mirror_tid < info->sync_tid)
+				chain->bref.mirror_tid = info->sync_tid;
 			hammer2_chain_drop(chain);
 		}
+		if (chain->bref.mirror_tid < info->sync_tid)
+			chain->bref.mirror_tid = info->sync_tid;
 		return;
 	}
 #if 0
@@ -641,8 +714,11 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 	 * to flush for synchronization point consistency.  Otherwise though
 	 * DELETED and MODIFIED are treated as separate flags.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0)
+	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+		if (chain->bref.mirror_tid < info->sync_tid)
+			chain->bref.mirror_tid = info->sync_tid;
 		return;
+	}
 
 	/*
 	 * Issue flush.
@@ -660,6 +736,15 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 	 * MOVED is never set on the volume root as there is no parent
 	 * to adjust.
 	 */
+	if (hammer2_debug & 0x1000) {
+		kprintf("Flush %p.%d %016jx/%d sync_tid %016jx\n",
+			chain, chain->bref.type,
+			chain->bref.key, chain->bref.keybits,
+			info->sync_tid);
+	}
+	if (hammer2_debug & 0x2000) {
+		Debugger("Flush hell");
+	}
 	if (chain->bref.mirror_tid < info->sync_tid)
 		chain->bref.mirror_tid = info->sync_tid;
 	wasmodified = (chain->flags & HAMMER2_CHAIN_MODIFIED) != 0;
@@ -710,10 +795,12 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 		 * voldata is copied to volsync.
 		 */
 		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
-		if (hmp->fchain.flags & (HAMMER2_CHAIN_MODIFIED |
-					 HAMMER2_CHAIN_SUBMODIFIED)) {
+		if ((hmp->fchain.flags & HAMMER2_CHAIN_MODIFIED) ||
+		    hmp->voldata.mirror_tid < hmp->fchain.core->update_tid) {
 			/* this will modify vchain as a side effect */
-			hammer2_chain_flush(info->trans, &hmp->fchain);
+			hammer2_chain_t *tmp = &hmp->fchain;
+			hammer2_chain_flush(info->trans, &tmp);
+			KKASSERT(tmp == &hmp->fchain);
 		}
 
 		/*
@@ -890,24 +977,15 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 	int diddeferral;
 
 	/*
-	 * We should only need to recurse if SUBMODIFIED is set, but as
-	 * a safety also recurse if MODIFIED is also set.
-	 *
-	 * Return early if neither bit is set.  We must re-assert the
-	 * SUBMODIFIED flag in the parent if any child covered by the
-	 * parent (via delete_tid) is skipped.
+	 * We only need to recurse if MODIFIED is set or
+	 * child->bref.mirror_tid has not caught up to update_tid.
 	 */
-	if ((child->flags & (HAMMER2_CHAIN_MODIFIED |
-			     HAMMER2_CHAIN_SUBMODIFIED)) == 0) {
+	if ((child->flags & HAMMER2_CHAIN_MODIFIED) == 0 &&
+	    child->bref.mirror_tid >= child->core->update_tid) {
 		return (0);
 	}
-	if (child->modify_tid > trans->sync_tid) {
-		if (parent->delete_tid > trans->sync_tid) {
-			atomic_set_int(&parent->flags,
-				       HAMMER2_CHAIN_SUBMODIFIED);
-		}
+	if (child->modify_tid > trans->sync_tid)
 		return (0);
-	}
 
 	hammer2_chain_ref(child);
 	spin_unlock(&parent->core->cst.spin);
@@ -920,8 +998,8 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 	hammer2_chain_unlock(parent);
 	hammer2_chain_lock(child, HAMMER2_RESOLVE_MAYBE);
 
-	if ((child->flags & (HAMMER2_CHAIN_MODIFIED |
-			     HAMMER2_CHAIN_SUBMODIFIED)) == 0) {
+	if ((child->flags & HAMMER2_CHAIN_MODIFIED) == 0 &&
+	    child->bref.mirror_tid >= child->core->update_tid) {
 		hammer2_chain_unlock(child);
 		hammer2_chain_drop(child);
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_MAYBE);
@@ -933,10 +1011,6 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 		hammer2_chain_drop(child);
 		hammer2_chain_lock(parent, HAMMER2_RESOLVE_MAYBE);
 		spin_lock(&parent->core->cst.spin);
-		if (parent->delete_tid > trans->sync_tid) {
-			atomic_set_int(&parent->flags,
-				       HAMMER2_CHAIN_SUBMODIFIED);
-		}
 		return (0);
 	}
 
@@ -958,8 +1032,22 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 	if ((parent->flags & HAMMER2_CHAIN_DESTROYED) &&
 	    (child->flags & HAMMER2_CHAIN_DELETED) &&
 	    (child->flags & HAMMER2_CHAIN_DESTROYED) == 0) {
-		atomic_set_int(&child->flags, HAMMER2_CHAIN_DESTROYED |
-					      HAMMER2_CHAIN_SUBMODIFIED);
+		atomic_set_int(&child->flags, HAMMER2_CHAIN_DESTROYED);
+		/*
+		 * Force downward recursion by bringing update_tid up to
+		 * at least sync_tid.  Parent's mirror_tid has not yet
+		 * been updated.
+		 *
+		 * Vnode reclamation may have forced update_tid to MAX_TID.
+		 * In this situation bring it down to something reasonable
+		 * so the elements being destroyed can be retired.
+		 */
+		spin_lock(&child->core->cst.spin);
+		if (child->core->update_tid < trans->sync_tid ||
+		    child->core->update_tid == HAMMER2_MAX_TID) {
+			child->core->update_tid = trans->sync_tid;
+		}
+		spin_unlock(&child->core->cst.spin);
 	}
 
 	/*
@@ -967,17 +1055,22 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 	 */
 	diddeferral = info->diddeferral;
 	++info->depth;
-	hammer2_chain_flush_core(info, child);
+	hammer2_chain_flush_core(info, &child);
 #if FLUSH_DEBUG
 	kprintf("flush_core_done parent=%p flags=%08x child=%p.%d %08x\n",
 		parent, parent->flags, child, child->bref.type, child->flags);
 #endif
+	/*
+	 * NOTE: If child failed to fully synchronize, child's bref.mirror_tid
+	 *	 will not have been updated.  Bumping diddeferral prevents
+	 *	 the parent chain from updating bref.mirror_tid on the way
+	 *	 back up in order to force a retry later.
+	 */
+	if (child->bref.mirror_tid < child->core->update_tid)
+		++diddeferral;
+
 	--info->depth;
 	info->diddeferral += diddeferral;
-
-	if (child->flags & HAMMER2_CHAIN_SUBMODIFIED)
-		atomic_set_int(&parent->flags, HAMMER2_CHAIN_SUBMODIFIED);
-
 	hammer2_chain_unlock(child);
 	hammer2_chain_drop(child);
 
@@ -1001,10 +1094,6 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
  * room for adding new elements in pass 2.
  *
  * This function also rolls up storage statistics.
- *
- * NOTE!  We must re-set SUBMODIFIED on the parent(s) as appropriate, and
- *	  due to the above conditions it is possible to do this and still
- *	  have some children flagged MOVED depending on the synchronization.
  *
  * NOTE!  A deletion is a visbility issue, there can still be references to
  *	  deleted elements (for example, to an unlinked file which is still
@@ -1044,12 +1133,16 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 * if they did not exist).  These children will not cause the parent
 	 * to be updated.
 	 *
+	 * Children deleted after our flush point are treated as having been
+	 * created for the purposes of the flush.  The parent's update_tid
+	 * will already be higher than our trans->sync_tid so the flush path
+	 * is left intact.
+	 *
 	 * When we encounter such children and the parent chain has not been
 	 * deleted, delete/duplicated, or delete/duplicated-for-move, then
 	 * the parent may be used to funnel through several flush points.
-	 * We must re-set the SUBMODIFIED flag in the parent to ensure that
-	 * those flushes have visbility.  A simple test of delete_tid suffices
-	 * to determine if the parent spans beyond our current flush.
+	 * These chains will still be visible to later flushes due to having
+	 * a higher update_tid than we can set in the current flush.
 	 */
 	if (child->modify_tid > trans->sync_tid) {
 		goto finalize;
@@ -1089,6 +1182,14 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 * This point is not reached on successful DESTROYED optimizations
 	 * but can be reached on recursive deletions and restricted flushes.
 	 *
+	 * The chain_modify here may delete-duplicate the block.  This can
+	 * cause a multitude of issues if the block was already modified
+	 * by a later (post-flush) transaction.  Primarily blockrefs in
+	 * the later block can be out-of-date, so if the situation occurs
+	 * we can't throw away the MOVED bit on the current blocks until
+	 * the later blocks are flushed (so as to be able to regenerate all
+	 * the changes that were made).
+	 *
 	 * Because flushes are ordered we do not have to make a
 	 * modify/duplicate of indirect blocks.  That is, the flush
 	 * code does not have to kmalloc or duplicate anything.  We
@@ -1100,9 +1201,13 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 *
 	 * XXX recursive deletions not optimized.
 	 */
-	hammer2_chain_modify(trans, &parent,
-			     HAMMER2_MODIFY_NO_MODIFY_TID |
-			     HAMMER2_MODIFY_ASSERTNOCOPY);
+	hammer2_chain_modify(trans, &parent, HAMMER2_MODIFY_NO_MODIFY_TID);
+	if (info->parent != parent) {
+		/* extra ref from flush_core */
+		hammer2_chain_drop(info->parent);
+		info->parent = parent;
+		hammer2_chain_ref(info->parent);
+	}
 
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
@@ -1180,48 +1285,83 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 *
 	 * NOTE! Updates to a parent's blockref table do not adjust the
 	 *	 parent's bref.modify_tid, only its bref.mirror_tid.
+	 *
+	 * NOTE! chain->modify_tid vs chain->bref.modify_tid.  The chain's
+	 *	 internal modify_tid is always updated based on creation
+	 *	 or delete-duplicate.  However, the bref.modify_tid is NOT
+	 *	 updated due to simple blockref updates.
 	 */
+#if 0
+	kprintf("chain %p->%p pass %d trans %016jx sync %p.%d %016jx/%d C=%016jx D=%016jx PMIRROR %016jx\n",
+		parent, child,
+		info->pass, trans->sync_tid,
+		child, child->bref.type,
+		child->bref.key, child->bref.keybits,
+		child->modify_tid, child->delete_tid, parent->bref.mirror_tid);
+#endif
+
 	if (info->pass == 1 && child->delete_tid <= trans->sync_tid) {
 		/*
-		 * Deleting.  Only adjust the block array if it contains
-		 * the child's entry (child's REPLACE flag is set).  Clear
-		 * the child's REPLACE flag only once all possible parent's
-		 * have been updated.
+		 * Deleting.  The block array is expected to contain the
+		 * child's entry if:
+		 *
+		 * (1) The deletion occurred after the parent's block table
+		 *     was last synchronized (delete_tid), and
+		 *
+		 * (2) The creation occurred before or during the parent's
+		 *     last block table synchronization.
 		 */
 		ok = 1;
-		if (base && (child->flags & HAMMER2_CHAIN_REPLACE)) {
+		if (base &&
+		    child->delete_tid > parent->bref.mirror_tid &&
+		    child->modify_tid <= parent->bref.mirror_tid) {
 			hammer2_rollup_stats(parent, child, -1);
 			spin_lock(&above->cst.spin);
+#if 0
+			kprintf("trans %jx parent %p.%d child %p.%d m/d %016jx/%016jx "
+				"flg=%08x %016jx/%d delete\n",
+				trans->sync_tid,
+				parent, parent->bref.type,
+				child, child->bref.type,
+				child->modify_tid, child->delete_tid,
+				child->flags,
+				child->bref.key, child->bref.keybits);
+#endif
 			hammer2_base_delete(parent, base, count,
-					    &info->cache_index, &child->bref);
-			if (TAILQ_NEXT(parent, core_entry) == NULL) {
-				atomic_clear_int(&child->flags,
-					       HAMMER2_CHAIN_REPLACE);
-			}
+					    &info->cache_index, child);
 			spin_unlock(&above->cst.spin);
 		}
 		if (info->mirror_tid < child->delete_tid)
 			info->mirror_tid = child->delete_tid;
 	} else if (info->pass == 2 && child->delete_tid > trans->sync_tid) {
 		/*
-		 * Inserting.  Only set the child's REPLACE flag indicating
-		 * that the parent's blockref array entry is valid once all
-		 * possible parent's have been updated.
+		 * Inserting.  The block array is expected to NOT contain
+		 * the child's entry if:
+		 *
+		 * (1) The creation occurred after the parent's block table
+		 *     was last synchronized (modify_tid), and
+		 *
+		 * (2) The child is not being deleted in the same
+		 *     transaction.
 		 */
 		ok = 1;
-		if (base) {
-			if (child->flags & HAMMER2_CHAIN_REPLACE)
-				hammer2_rollup_stats(parent, child, 0);
-			else
-				hammer2_rollup_stats(parent, child, 1);
+		if (base &&
+		    child->modify_tid > parent->bref.mirror_tid &&
+		    child->delete_tid > trans->sync_tid) {
+			hammer2_rollup_stats(parent, child, 1);
 			spin_lock(&above->cst.spin);
+#if 0
+			kprintf("trans %jx parent %p.%d child %p.%d m/d %016jx/%016jx "
+				"flg=%08x %016jx/%d insert\n",
+				trans->sync_tid,
+				parent, parent->bref.type,
+				child, child->bref.type,
+				child->modify_tid, child->delete_tid,
+				child->flags,
+				child->bref.key, child->bref.keybits);
+#endif
 			hammer2_base_insert(parent, base, count,
-					    &info->cache_index, &child->bref,
-					    child->flags);
-			if (TAILQ_NEXT(parent, core_entry) == NULL) {
-				atomic_set_int(&child->flags,
-					       HAMMER2_CHAIN_REPLACE);
-			}
+					    &info->cache_index, child);
 			spin_unlock(&above->cst.spin);
 		}
 		if (info->mirror_tid < child->modify_tid)
@@ -1249,31 +1389,46 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	 */
 	if (ok && (child->flags & HAMMER2_CHAIN_MOVED)) {
 		hammer2_chain_t *scan;
-		int ok = 1;
+
+		if (hammer2_debug & 0x4000)
+			kprintf("CHECKMOVED %p (parent=%p)", child, parent);
 
 		spin_lock(&above->cst.spin);
 		TAILQ_FOREACH(scan, &above->ownerq, core_entry) {
 			/*
-			 * XXX weird code also checked at the top of scan2,
-			 *     I would like to fix this by detaching the core
-			 *     on initial hardlink consolidation (1->2 nlinks).
+			 * Can't destroy the child until all parent's have
+			 * synchronized with its move.
+			 *
+			 * NOTE: A deleted parent will synchronize with a
+			 *	 child's move without bothering to update
+			 *	 its brefs.
 			 */
-#if 0
-			if (scan->bref.type == HAMMER2_BREF_TYPE_INODE &&
-			    (scan->data->ipdata.op_flags &
-			     HAMMER2_OPFLAG_DIRECTDATA)) {
+			if (scan == parent ||
+			    scan->delete_tid <= trans->sync_tid)
 				continue;
-			}
-#endif
-			if (scan->flags & HAMMER2_CHAIN_SUBMODIFIED) {
+			if (scan->bref.mirror_tid < child->modify_tid) {
+				if (hammer2_debug & 0x4000)
+					kprintf("(fail scan %p %016jx/%016jx)",
+						scan, scan->bref.mirror_tid,
+						child->modify_tid);
 				ok = 0;
-				break;
 			}
 		}
+		if (hammer2_debug & 0x4000)
+			kprintf("\n");
 		spin_unlock(&above->cst.spin);
 		if (ok) {
+			if (hammer2_debug & 0x4000)
+				kprintf("clear moved %p.%d %016jx/%d\n",
+					child, child->bref.type,
+					child->bref.key, child->bref.keybits);
 			atomic_clear_int(&child->flags, HAMMER2_CHAIN_MOVED);
 			hammer2_chain_drop(child);	/* flag */
+		} else {
+			if (hammer2_debug & 0x4000)
+				kprintf("keep  moved %p.%d %016jx/%d\n",
+					child, child->bref.type,
+					child->bref.key, child->bref.keybits);
 		}
 	}
 
@@ -1288,11 +1443,9 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	spin_lock(&above->cst.spin);
 
 	/*
-	 * The parent cleared SUBMODIFIED prior to the scan.  If the child
-	 * still requires a flush (possibly due to being outside the current
-	 * synchronization zone), we must re-set SUBMODIFIED on the way back
-	 * up.
+	 * The parent may have been delete-duplicated.
 	 */
+	info->parent = parent;
 finalize:
 	return (0);
 }

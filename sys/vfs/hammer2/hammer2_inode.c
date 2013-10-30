@@ -1024,6 +1024,8 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 		bcopy(name, ipdata->filename, name_len);
 		ipdata->name_key = lhc;
 		ipdata->name_len = name_len;
+		atomic_clear_int(&nchain->core->flags,
+				 HAMMER2_CORE_COUNTEDBREFS);
 		kprintf("created fake hardlink %*.*s\n",
 			(int)name_len, (int)name_len, name);
 	} else {
@@ -1364,12 +1366,12 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			 * file is extended afterwords.
 			 *
 			 * DELDUP_RECORE causes the new chain to NOT inherit
-			 * the old chain's core (sub-tree).
+			 * the old chain's core (sub-tree).  The new chain
+			 * will already be marked modified.
 			 */
 			/*hammer2_chain_modify(trans, &chain, 0);*/
 			hammer2_chain_delete_duplicate(trans, &chain,
 						       HAMMER2_DELDUP_RECORE);
-			hammer2_chain_modify(trans, &chain, 0);
 			ipdata = &chain->data->ipdata;
 			ipdata->target_type = ipdata->type;
 			ipdata->type = HAMMER2_OBJTYPE_HARDLINK;

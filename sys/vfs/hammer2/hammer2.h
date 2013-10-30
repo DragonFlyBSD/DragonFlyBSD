@@ -140,6 +140,7 @@ struct hammer2_chain_core {
 	struct h2_core_list ownerq;	/* all chains sharing this core */
 	struct h2_layer_list layerq;
 	int		live_zero;	/* blockref array opt */
+	hammer2_tid_t	update_tid;	/* check update against parent */
 	u_int		chain_count;	/* total chains in layers */
 	u_int		sharecnt;
 	u_int		flags;
@@ -195,7 +196,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
 #define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
-#define HAMMER2_CHAIN_SUBMODIFIED	0x00000008	/* recursive flush */
+#define HAMMER2_CHAIN_UNUSED00008	0x00000008
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
@@ -209,8 +210,8 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
-#define HAMMER2_CHAIN_UNUSE20000	0x00020000
-#define HAMMER2_CHAIN_REPLACE		0x00040000	/* replace bref */
+#define HAMMER2_CHAIN_UNUSED20000	0x00020000
+#define HAMMER2_CHAIN_UNUSED40000	0x00040000
 #define HAMMER2_CHAIN_UNUSED80000	0x00080000
 #define HAMMER2_CHAIN_DUPLICATED	0x00100000	/* fwd delete-dup */
 #define HAMMER2_CHAIN_PFSROOT		0x00200000	/* in pfs->cluster */
@@ -237,8 +238,9 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  */
 #define HAMMER2_MODIFY_OPTDATA		0x00000002	/* data can be NULL */
 #define HAMMER2_MODIFY_NO_MODIFY_TID	0x00000004
-#define HAMMER2_MODIFY_ASSERTNOCOPY	0x00000008
+#define HAMMER2_MODIFY_ASSERTNOCOPY	0x00000008	/* assert no del-dup */
 #define HAMMER2_MODIFY_NOREALLOC	0x00000010
+#define HAMMER2_MODIFY_INPLACE		0x00000020	/* don't del-dup */
 
 /*
  * Flags passed to hammer2_chain_lock()
@@ -438,6 +440,8 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_TRANS_ISFLUSH		0x0001	/* formal flush */
 #define HAMMER2_TRANS_RESTRICTED	0x0002	/* snapshot flush restrict */
 #define HAMMER2_TRANS_BUFCACHE		0x0004	/* from bioq strategy write */
+#define HAMMER2_TRANS_INVFSYNC		0x0008	/* with ISFLUSH */
+#define HAMMER2_TRANS_ISALLOCATING	0x0010	/* in allocator */
 
 #define HAMMER2_FREEMAP_HEUR_NRADIX	4	/* pwr 2 PBUFRADIX-MINIORADIX */
 #define HAMMER2_FREEMAP_HEUR_TYPES	8
@@ -466,6 +470,7 @@ struct hammer2_mount {
 	struct hammer2_trans_queue transq; /* all in-progress transactions */
 	hammer2_trans_t	*curflush;	/* current flush in progress */
 	hammer2_tid_t	topo_flush_tid;	/* currently synchronizing flush pt */
+	hammer2_tid_t	last_flush_tid;	/* previous synchronizing flush pt */
 	hammer2_tid_t	free_flush_tid;	/* currently synchronizing flush pt */
 	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR];
 	int		flushcnt;	/* #of flush trans on the list */
@@ -759,13 +764,13 @@ int hammer2_chain_create(hammer2_trans_t *trans,
 void hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
 				hammer2_blockref_t *bref, int snapshot);
-int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t *chain,
+int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 				hammer2_ioc_pfs_t *pfs);
 void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain,
 				int flags);
 void hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
 				hammer2_chain_t **chainp, int flags);
-void hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t *chain);
+void hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t **chainp);
 void hammer2_chain_commit(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain);
 
@@ -782,17 +787,17 @@ int hammer2_base_find(hammer2_chain_t *chain,
 				hammer2_key_t key_beg, hammer2_key_t key_end);
 void hammer2_base_delete(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
-				int *cache_indexp, hammer2_blockref_t *elm);
+				int *cache_indexp, hammer2_chain_t *child);
 void hammer2_base_insert(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
-				int *cache_indexp, hammer2_blockref_t *elm,
-				int flags);
+				int *cache_indexp, hammer2_chain_t *child);
 
 /*
  * hammer2_trans.c
  */
 void hammer2_trans_init(hammer2_trans_t *trans,
 			hammer2_pfsmount_t *pmp, int flags);
+void hammer2_trans_clear_invfsync(hammer2_trans_t *trans);
 void hammer2_trans_done(hammer2_trans_t *trans);
 
 /*
@@ -814,6 +819,8 @@ void hammer2_clusterctl_wakeup(kdmsg_iocom_t *iocom);
 void hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index);
 void hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp);
 void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp);
+void hammer2_bioq_sync(hammer2_pfsmount_t *pmp);
+int hammer2_vfs_sync(struct mount *mp, int waitflags);
 
 /*
  * hammer2_freemap.c

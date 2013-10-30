@@ -311,7 +311,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		return(0);
 
 	/*
-	 * Set SUBMODIFIED so we can detect and propagate the DESTROYED
+	 * Set update_tid so we can detect and propagate the DESTROYED
 	 * bit in the flush code.
 	 *
 	 * ip->chain might be stale, correct it before checking as older
@@ -342,22 +342,16 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	vp->v_data = NULL;
 	ip->vp = NULL;
 	if (chain->flags & HAMMER2_CHAIN_DELETED) {
-		KKASSERT(chain->flags & HAMMER2_CHAIN_DELETED);
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROYED |
-					      HAMMER2_CHAIN_SUBMODIFIED);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROYED);
+		spin_lock(&chain->core->cst.spin);
+		chain->core->update_tid = HAMMER2_MAX_TID; /* special case */
+		spin_unlock(&chain->core->cst.spin);
 	}
-#if 0
+
 	/*
-	 * XXX chains will be flushed on sync, no need to do it here.
+	 * NOTE! We do not attempt to flush chains here, flushing is
+	 *	 really fragile and could also deadlock.
 	 */
-	if (chain->flags & (HAMMER2_CHAIN_MODIFIED |
-			    HAMMER2_CHAIN_DELETED |
-			    HAMMER2_CHAIN_SUBMODIFIED)) {
-		hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_ISFLUSH);
-		hammer2_chain_flush(&trans, chain);
-		hammer2_trans_done(&trans);
-	}
-#endif
 	vclrisdirty(vp);
 	hammer2_inode_unlock_ex(ip, chain);		/* unlock */
 	hammer2_inode_drop(ip);				/* vp ref */
@@ -386,12 +380,17 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	ip = VTOI(vp);
 
 	/*
+	 * TRANS_ISFLUSH allocates two transaction ids, one for concurrent
+	 * buffer syncs, and one for our flush.
+	 *
 	 * WARNING: The vfsync interacts with the buffer cache and might
 	 *	    block, we can't hold the inode lock and we can't
 	 *	    have a flush transaction pending.
 	 */
-	hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_ISFLUSH);
+	hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_ISFLUSH |
+					    HAMMER2_TRANS_INVFSYNC);
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
+	hammer2_trans_clear_invfsync(&trans);
 
 	/*
 	 * Calling chain_flush here creates a lot of duplicative
@@ -408,7 +407,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 		hammer2_inode_fsync(&trans, ip, &chain);
 
 	if (ap->a_flags & VOP_FSYNC_SYSCALL) {
-		hammer2_chain_flush(&trans, chain);
+		hammer2_chain_flush(&trans, &chain);
 	}
 	hammer2_inode_unlock_ex(ip, chain);
 	hammer2_trans_done(&trans);
@@ -2124,8 +2123,12 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	pmp = ip->pmp;
 	
 	mtx_lock(&pmp->wthread_mtx);
-	bioq_insert_tail(&pmp->wthread_bioq, ap->a_bio);
-	wakeup(&pmp->wthread_bioq);
+	if (TAILQ_EMPTY(&pmp->wthread_bioq.queue)) {
+		bioq_insert_tail(&pmp->wthread_bioq, ap->a_bio);
+		wakeup(&pmp->wthread_bioq);
+	} else {
+		bioq_insert_tail(&pmp->wthread_bioq, ap->a_bio);
+	}
 	mtx_unlock(&pmp->wthread_mtx);
 
 	return(0);

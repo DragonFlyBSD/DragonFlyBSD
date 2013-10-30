@@ -567,9 +567,11 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 	if (pfs->name[sizeof(pfs->name)-1] != 0)
 		return(EINVAL);
 
+	hammer2_vfs_sync(ip->pmp->mp, MNT_WAIT);
+
 	hammer2_trans_init(&trans, ip->pmp, 0);
 	parent = hammer2_inode_lock_ex(ip);
-	error = hammer2_chain_snapshot(&trans, parent, pfs);
+	error = hammer2_chain_snapshot(&trans, &parent, pfs);
 	hammer2_inode_unlock_ex(ip, parent);
 	hammer2_trans_done(&trans);
 

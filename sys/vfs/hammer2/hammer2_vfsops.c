@@ -173,7 +173,6 @@ static int hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp,
 				struct ucred *cred);
 static int hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp,
 				struct ucred *cred);
-static int hammer2_vfs_sync(struct mount *mp, int waitfor);
 static int hammer2_vfs_vget(struct mount *mp, struct vnode *dvp,
 				ino_t ino, struct vnode **vpp);
 static int hammer2_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
@@ -458,6 +457,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
 		hmp->ronly = ronly;
 		hmp->devvp = devvp;
+		hmp->last_flush_tid = 0;
+		hmp->topo_flush_tid = HAMMER2_MAX_TID;
 		kmalloc_create(&hmp->mchain, "HAMMER2-chains");
 		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
 
@@ -703,7 +704,6 @@ hammer2_write_thread(void *arg)
 	struct buf *bp;
 	hammer2_trans_t trans;
 	struct vnode *vp;
-	hammer2_inode_t *last_ip;
 	hammer2_inode_t *ip;
 	hammer2_chain_t *parent;
 	hammer2_chain_t **parentp;
@@ -721,11 +721,24 @@ hammer2_write_thread(void *arg)
 			mtxsleep(&pmp->wthread_bioq, &pmp->wthread_mtx,
 				 0, "h2bioqw", 0);
 		}
-		last_ip = NULL;
 		parent = NULL;
 		parentp = &parent;
 
+		hammer2_trans_init(&trans, pmp, HAMMER2_TRANS_BUFCACHE);
+
 		while ((bio = bioq_takefirst(&pmp->wthread_bioq)) != NULL) {
+			/*
+			 * dummy bio for synchronization
+			 */
+			if (bio->bio_buf == NULL) {
+				bio->bio_flags |= BIO_DONE;
+				wakeup(bio);
+				continue;
+			}
+
+			/*
+			 * else normal bio processing
+			 */
 			mtx_unlock(&pmp->wthread_mtx);
 			
 			error = 0;
@@ -734,24 +747,11 @@ hammer2_write_thread(void *arg)
 			ip = VTOI(vp);
 
 			/*
-			 * Cache transaction for multi-buffer flush efficiency.
-			 * Lock the ip separately for each buffer to allow
-			 * interleaving with frontend writes.
-			 */
-			if (last_ip != ip) {
-				if (last_ip)
-					hammer2_trans_done(&trans);
-				hammer2_trans_init(&trans, ip->pmp,
-						   HAMMER2_TRANS_BUFCACHE);
-				last_ip = ip;
-			}
-			parent = hammer2_inode_lock_ex(ip);
-
-			/*
 			 * Inode is modified, flush size and mtime changes
 			 * to ensure that the file size remains consistent
 			 * with the buffers being flushed.
 			 */
+			parent = hammer2_inode_lock_ex(ip);
 			if (ip->flags & (HAMMER2_INODE_RESIZED |
 					 HAMMER2_INODE_MTIME)) {
 				hammer2_inode_fsync(&trans, ip, parentp);
@@ -774,16 +774,31 @@ hammer2_write_thread(void *arg)
 			biodone(bio);
 			mtx_lock(&pmp->wthread_mtx);
 		}
-
-		/*
-		 * Clean out transaction cache
-		 */
-		if (last_ip)
-			hammer2_trans_done(&trans);
+		hammer2_trans_done(&trans);
 	}
 	pmp->wthread_destroy = -1;
 	wakeup(&pmp->wthread_destroy);
 	
+	mtx_unlock(&pmp->wthread_mtx);
+}
+
+void
+hammer2_bioq_sync(hammer2_pfsmount_t *pmp)
+{
+	struct bio sync_bio;
+
+	bzero(&sync_bio, sizeof(sync_bio));	/* dummy with no bio_buf */
+	mtx_lock(&pmp->wthread_mtx);
+	if (pmp->wthread_destroy == 0) {
+		if (TAILQ_EMPTY(&pmp->wthread_bioq.queue)) {
+		       bioq_insert_tail(&pmp->wthread_bioq, &sync_bio);
+		       wakeup(&pmp->wthread_bioq);
+		} else {
+		       bioq_insert_tail(&pmp->wthread_bioq, &sync_bio);
+		}
+		while ((sync_bio.bio_flags & BIO_DONE) == 0)
+			mtxsleep(&sync_bio, &pmp->wthread_mtx, 0, "h2bioq", 0);
+	}
 	mtx_unlock(&pmp->wthread_mtx);
 }
 
@@ -1413,8 +1428,9 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		 * to synchronize against HAMMER2_CHAIN_MODIFIED_AUX.
 		 */
 		hammer2_voldata_lock(hmp);
-		if ((hmp->vchain.flags | hmp->fchain.flags) &
-		    (HAMMER2_CHAIN_MODIFIED | HAMMER2_CHAIN_SUBMODIFIED)) {
+		if (((hmp->vchain.flags | hmp->fchain.flags) &
+		     HAMMER2_CHAIN_MODIFIED) ||
+		    hmp->vchain.core->update_tid > hmp->voldata.mirror_tid) {
 			hammer2_voldata_unlock(hmp, 0);
 			hammer2_vfs_sync(mp, MNT_WAIT);
 			hammer2_vfs_sync(mp, MNT_WAIT);
@@ -1422,8 +1438,9 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			hammer2_voldata_unlock(hmp, 0);
 		}
 		if (hmp->pmp_count == 0) {
-			if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
-						 HAMMER2_CHAIN_SUBMODIFIED)) {
+			if ((hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) ||
+			    hmp->vchain.core->update_tid >
+			     hmp->voldata.mirror_tid) {
 				kprintf("hammer2_unmount: chains left over "
 					"after final sync\n");
 				if (hammer2_debug & 0x0010)
@@ -1500,6 +1517,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			 */
 			dumpcnt = 50;
 			hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt);
+			dumpcnt = 50;
+			hammer2_dump_chain(&hmp->fchain, 0, &dumpcnt);
 			hammer2_mount_unlock(hmp);
 			hammer2_chain_drop(&hmp->vchain);
 
@@ -1624,16 +1643,17 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
  *
  * THINKS: side A vs side B, to have sync not stall all I/O?
  */
-static
 int
 hammer2_vfs_sync(struct mount *mp, int waitfor)
 {
 	struct hammer2_sync_info info;
+	hammer2_chain_t *chain;
 	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
 	int flags;
 	int error;
 	int total_error;
+	int force_fchain;
 	int i;
 
 	pmp = MPTOPMP(mp);
@@ -1648,25 +1668,41 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * The reclamation code interlocks with the sync list's token
 	 * (by removing the vnode from the scan list) before unlocking
 	 * the inode, giving us time to ref the inode.
+	 *
+	 * INVFSYNC allows the bioq to drain using the flush transaction's
+	 * TID while the ISFLUSH transaction is active.
 	 */
 	/*flags = VMSC_GETVP;*/
 	flags = 0;
 	if (waitfor & MNT_LAZY)
 		flags |= VMSC_ONEPASS;
 
-	hammer2_trans_init(&info.trans, pmp, HAMMER2_TRANS_ISFLUSH);
+	hammer2_trans_init(&info.trans, pmp, HAMMER2_TRANS_ISFLUSH |
+					     HAMMER2_TRANS_INVFSYNC);
 
 	/*
-	 * vfsync the vnodes. XXX
+	 * vfsync the vnodes.  XXX This will also catch writes for
+	 * transactions beyond the current flush.  XXX
 	 */
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
+
 	if (info.error == 0 && (waitfor & MNT_WAIT)) {
 		info.waitfor = waitfor;
 		    vsyncscan(mp, flags, hammer2_sync_scan2, &info);
 
 	}
+
+	/*
+	 * Wait for pending work to complete, then clear INVFSYNC.  Further
+	 * buffer cache synchronization is allowed to run concurrently but
+	 * will use a higher sync_tid and is not part of the normal flush.
+	 *
+	 * These waits are important because
+	 */
+	hammer2_trans_clear_invfsync(&info.trans);
+
 #if 0
 	if (waitfor == MNT_WAIT) {
 		/* XXX */
@@ -1689,17 +1725,25 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		 * code to deal with any loose ends.
 		 */
 		hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
-		if (hmp->vchain.flags & (HAMMER2_CHAIN_MODIFIED |
-					  HAMMER2_CHAIN_SUBMODIFIED)) {
-			hammer2_chain_flush(&info.trans, &hmp->vchain);
+		if ((hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) ||
+		    hmp->vchain.core->update_tid > hmp->voldata.mirror_tid) {
+			chain = &hmp->vchain;
+			hammer2_chain_flush(&info.trans, &chain);
+			KKASSERT(chain == &hmp->vchain);
+			force_fchain = 1;
+		} else {
+			force_fchain = 0;
 		}
 		hammer2_chain_unlock(&hmp->vchain);
 
 		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
-		if (hmp->fchain.flags & (HAMMER2_CHAIN_MODIFIED |
-					 HAMMER2_CHAIN_SUBMODIFIED)) {
+		if ((hmp->fchain.flags & HAMMER2_CHAIN_MODIFIED) ||
+		    hmp->vchain.core->update_tid > hmp->voldata.mirror_tid ||
+		    force_fchain) {
 			/* this will also modify vchain as a side effect */
-			hammer2_chain_flush(&info.trans, &hmp->fchain);
+			chain = &hmp->fchain;
+			hammer2_chain_flush(&info.trans, &chain);
+			KKASSERT(chain == &hmp->fchain);
 		}
 		hammer2_chain_unlock(&hmp->fchain);
 
@@ -1772,7 +1816,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 /*
  * Sync passes.
  *
- * NOTE: We don't test SUBMODIFIED or MOVED here because the fsync code
+ * NOTE: We don't test update_tid or MOVED here because the fsync code
  *	 won't flush on those flags.  The syncer code above will do a
  *	 general meta-data flush globally that will catch these flags.
  */
@@ -1782,7 +1826,6 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct hammer2_sync_info *info = data;
 	hammer2_inode_t *ip;
-	hammer2_chain_t *parent;
 	int error;
 
 	/*
@@ -1815,9 +1858,18 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	atomic_clear_int(&ip->flags, HAMMER2_INODE_MODIFIED);
 	if (vp)
 		vfsync(vp, MNT_NOWAIT, 1, NULL, NULL);
+
+#if 0
+	/*
+	 * XXX this interferes with flush operations mainly because the
+	 *     same transaction id is being used by asynchronous buffer
+	 *     operations above and can be reordered after the flush
+	 *     below.
+	 */
 	parent = hammer2_inode_lock_ex(ip);
-	hammer2_chain_flush(&info->trans, parent);
+	hammer2_chain_flush(&info->trans, &parent);
 	hammer2_inode_unlock_ex(ip, parent);
+#endif
 	hammer2_inode_drop(ip);
 	error = 0;
 #if 0
@@ -2150,16 +2202,26 @@ hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp)
 	if (*countp < 0)
 		return;
 	first_parent = chain->core ? TAILQ_FIRST(&chain->core->ownerq) : NULL;
-	kprintf("%*.*schain %p.%d [%08x][core=%p fp=%p] (%s) np=%p dt=%s refs=%d",
+	kprintf("%*.*schain %p.%d %016jx/%d mir=%016jx\n",
 		tab, tab, "",
-		chain, chain->bref.type, chain->flags,
-		chain->core,
-		first_parent,
+		chain, chain->bref.type,
+		chain->bref.key, chain->bref.keybits,
+		chain->bref.mirror_tid);
+
+	kprintf("%*.*s      [%08x] (%s) dt=%016jx refs=%d\n",
+		tab, tab, "",
+		chain->flags,
 		((chain->bref.type == HAMMER2_BREF_TYPE_INODE &&
 		chain->data) ?  (char *)chain->data->ipdata.filename : "?"),
-		(first_parent ? TAILQ_NEXT(chain, core_entry) : NULL),
-		(chain->delete_tid == HAMMER2_MAX_TID ? "max" : "fls"),
+		chain->delete_tid,
 		chain->refs);
+
+	kprintf("%*.*s      core %p [%08x] fp=%p np=%p",
+		tab, tab, "",
+		chain->core, (chain->core ? chain->core->flags : 0),
+		first_parent,
+		(first_parent ? TAILQ_NEXT(chain, core_entry) : NULL));
+
 	if (first_parent)
 		kprintf(" [fpflags %08x fprefs %d\n",
 			first_parent->flags,
@@ -2168,9 +2230,11 @@ hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp)
 		kprintf("\n");
 	else
 		kprintf(" {\n");
-	TAILQ_FOREACH(layer, &chain->core->layerq, entry) {
-		RB_FOREACH(scan, hammer2_chain_tree, &layer->rbtree) {
-			hammer2_dump_chain(scan, tab + 4, countp);
+	if (chain->core) {
+		TAILQ_FOREACH(layer, &chain->core->layerq, entry) {
+			RB_FOREACH(scan, hammer2_chain_tree, &layer->rbtree) {
+				hammer2_dump_chain(scan, tab + 4, countp);
+			}
 		}
 	}
 	if (chain->core && !TAILQ_EMPTY(&chain->core->layerq)) {
