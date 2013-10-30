@@ -2,8 +2,6 @@
  * SYS/MSGPORT.H
  *
  *	Implements LWKT messages and ports.
- * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.32 2008/11/26 15:05:42 sephe Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -180,8 +178,6 @@ typedef struct lwkt_port {
 #define mpu_serialize	mp_u.serialize
 #define mpu_data	mp_u.data
 
-#endif
-
 /*
  * Port state flags.
  *
@@ -214,5 +210,7 @@ void lwkt_sendmsg_start(lwkt_port_t, lwkt_msg_t);
 int lwkt_domsg(lwkt_port_t, lwkt_msg_t, int);
 int lwkt_forwardmsg(lwkt_port_t, lwkt_msg_t);
 void lwkt_abortmsg(lwkt_msg_t);
+
+#endif /* _KERNEL */
 
 #endif
