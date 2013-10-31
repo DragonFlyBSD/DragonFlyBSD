@@ -2470,6 +2470,7 @@ options	KTR_VERBOSE=1
 #options KTR_IF_BGE
 #options KTR_IF_EM
 #options KTR_IF_EMX
+#options KTR_IF_POLL
 #options KTR_IF_START
 #options KTR_IPIQ
 #options KTR_KERNENTRY

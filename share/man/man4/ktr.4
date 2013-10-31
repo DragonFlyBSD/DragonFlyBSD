@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
 .\"
-.Dd September 18, 2012
+.Dd October 31, 2013
 .Dt KTR 4
 .Os
 .Sh NAME
@@ -42,6 +42,7 @@
 .Cd options KTR_IF_BGE
 .Cd options KTR_IF_EM
 .Cd options KTR_IF_EMX
+.Cd options KTR_IF_POLL
 .Cd options KTR_IF_START
 .Cd options KTR_IFQ
 .Cd options KTR_IPIQ
@@ -104,6 +105,9 @@ interrupts and sent/received packets
 interrupts and sent/received packets
 .It Dv KTR_IFQ
 classic ifq dequeue/enqueue operation
+.It Dv KTR_IF_POLL
+.Xr polling 4
+operation
 .It Dv KTR_IF_START
 running/avoiding/scheduling ifnet.if_start
 .It Dv KTR_IPIQ
