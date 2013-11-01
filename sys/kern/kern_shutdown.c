@@ -763,6 +763,9 @@ panic(const char *fmt, ...)
 	}
 	lwkt_relalltokens(td);
 	td->td_toks_stop = &td->td_toks_base;
+	if (gd->gd_spinlocks)
+		kprintf("panic with %d spinlocks held\n", gd->gd_spinlocks);
+	gd->gd_spinlocks = 0;
 
 	/*
 	 * Setup
