@@ -438,11 +438,14 @@ failed:
  *	    that chain->core->rbtree is empty.  There can still be a sharecnt
  *	    on chain->core and RBTREE entries that refer to different parents.
  */
-static hammer2_chain_t *hammer2_chain_lastdrop(hammer2_chain_t *chain);
+static hammer2_chain_t *hammer2_chain_lastdrop(hammer2_chain_t *chain,
+					       struct h2_core_list *delayq);
 
 void
 hammer2_chain_drop(hammer2_chain_t *chain)
 {
+	struct h2_core_list delayq;
+	hammer2_chain_t *scan;
 	u_int refs;
 	u_int need = 0;
 
@@ -452,17 +455,37 @@ hammer2_chain_drop(hammer2_chain_t *chain)
 		++need;
 	KKASSERT(chain->refs > need);
 
+	TAILQ_INIT(&delayq);
+
 	while (chain) {
 		refs = chain->refs;
 		cpu_ccfence();
 		KKASSERT(refs > 0);
 
 		if (refs == 1) {
-			chain = hammer2_chain_lastdrop(chain);
+			chain = hammer2_chain_lastdrop(chain, &delayq);
 		} else {
 			if (atomic_cmpset_int(&chain->refs, refs, refs - 1))
 				break;
 			/* retry the same chain */
+		}
+
+		/*
+		 * When we've exhausted lastdrop chaining pull off of delayq.
+		 * chains on delayq are dead but are used to placehold other
+		 * chains which we added a ref to for the purpose of dropping.
+		 */
+		if (chain == NULL) {
+			hammer2_mount_t *hmp;
+
+			if ((scan = TAILQ_FIRST(&delayq)) != NULL) {
+				chain = (void *)scan->data;
+				TAILQ_REMOVE(&delayq, scan, core_entry);
+				scan->flags &= ~HAMMER2_CHAIN_ALLOCATED;
+				hmp = scan->hmp;
+				scan->hmp = NULL;
+				kfree(scan, hmp->mchain);
+			}
 		}
 	}
 }
@@ -472,11 +495,16 @@ hammer2_chain_drop(hammer2_chain_t *chain)
  * recursive drop or NULL, possibly returning the same chain if the atomic
  * op fails.
  *
+ * Whem two chains need to be recursively dropped we use the chain
+ * we would otherwise free to placehold the additional chain.  It's a bit
+ * convoluted but we can't just recurse without potentially blowing out
+ * the kernel stack.
+ *
  * The cst spinlock is allowed nest child-to-parent (not parent-to-child).
  */
 static
 hammer2_chain_t *
-hammer2_chain_lastdrop(hammer2_chain_t *chain)
+hammer2_chain_lastdrop(hammer2_chain_t *chain, struct h2_core_list *delayq)
 {
 	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
@@ -496,8 +524,8 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		spin_lock(&core->cst.spin);
 
 		/*
-		 * We can't drop any chains if they have children because
-		 * there might be a flush dependency.
+		 * We can't free chains with children because there might
+		 * be a flush dependency.
 		 *
 		 * NOTE: We return (chain) on failure to retry.
 		 */
@@ -510,13 +538,16 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		/* no chains left under us */
 
 		/*
-		 * We can't drop a live chain unless it is a the head
+		 * Because various parts of the code, including the inode
+		 * structure, might be holding a stale chain and need to
+		 * iterate to a non-stale sibling, we cannot remove siblings
+		 * unless they are at the head of chain.
+		 *
+		 * We can't free a live chain unless it is a the head
 		 * of its ownerq.  If we were to then the go-to chain
 		 * would revert to the prior deleted chain.
 		 */
-		if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0 &&
-		    (chain->flags & HAMMER2_CHAIN_SNAPSHOT) == 0 &&
-		    TAILQ_FIRST(&core->ownerq) != chain) {
+		if (TAILQ_FIRST(&core->ownerq) != chain) {
 			if (atomic_cmpset_int(&chain->refs, 1, 0))
 				chain = NULL;	/* success */
 			spin_unlock(&core->cst.spin);
@@ -524,7 +555,12 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		}
 	}
 
-
+	/*
+	 * chain->core has no children left so no accessors can get to our
+	 * chain from there.  Now we have to lock the above core to interlock
+	 * remaining possible accessors that might bump chain's refs before
+	 * we can safely drop chain's refs with intent to free the chain.
+	 */
 	hmp = chain->hmp;
 	pmp = chain->pmp;	/* can be NULL */
 	rdrop1 = NULL;
@@ -532,14 +568,15 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	layer = NULL;
 
 	/*
-	 * Spinlock the parent and try to drop the last ref.  On success
-	 * remove chain from its parent, otherwise return NULL.
+	 * Spinlock the parent and try to drop the last ref on chain.
+	 * On success remove chain from its parent, otherwise return NULL.
 	 *
-	 * (multiple spinlocks on core's are allowed in a bottom-up fashion).
+	 * (normal core locks are top-down recursive but we define core
+	 *  spinlocks as bottom-up recursive, so this is safe).
 	 */
 	if ((above = chain->above) != NULL) {
 		spin_lock(&above->cst.spin);
-		if (!atomic_cmpset_int(&chain->refs, 1, 0)) {
+		if (atomic_cmpset_int(&chain->refs, 1, 0) == 0) {
 			/* 1->0 transition failed */
 			spin_unlock(&above->cst.spin);
 			if (core)
@@ -565,11 +602,11 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 			layer = NULL;
 		}
 
-#if 1
 		/*
 		 * If our chain was the last chain in the parent's core the
-		 * core is now empty.  Try to drop the first multi-homed
-		 * parent.
+		 * core is now empty and its parents might now be droppable.
+		 * Try to drop the first multi-homed parent by gaining a
+		 * ref on it here and then dropping it below.
 		 */
 		if (above->chain_count == 0) {
 			rdrop1 = TAILQ_FIRST(&above->ownerq);
@@ -578,27 +615,29 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 				rdrop1 = NULL;
 			}
 		}
-#endif
 		spin_unlock(&above->cst.spin);
 		above = NULL;	/* safety */
 	}
 
 	/*
-	 * We still have the core spinlock (if core is non-NULL).  The
-	 * above spinlock is gone.
+	 * Successful 1->0 transition and the chain can be destroyed now.
 	 *
-	 * Remove chain from ownerq.  This may change the first element of
-	 * ownerq to something we can remove.
+	 * We still have the core spinlock (if core is non-NULL), and core's
+	 * chain_count is 0.  The above spinlock is gone.
+	 *
+	 * Remove chain from ownerq.  Once core has no more owners (and no
+	 * children which is already the case) we can destroy core.
+	 *
+	 * If core has more owners we may be able to continue a bottom-up
+	 * drop with our next sibling.
 	 */
 	if (core) {
 		chain->core = NULL;
 
 		TAILQ_REMOVE(&core->ownerq, chain, core_entry);
 		rdrop2 = TAILQ_FIRST(&core->ownerq);
-		if (rdrop2 &&
-		    atomic_cmpset_int(&rdrop2->refs, 0, 1) == 0) {
+		if (rdrop2 && atomic_cmpset_int(&rdrop2->refs, 0, 1) == 0)
 			rdrop2 = NULL;
-		}
 		spin_unlock(&core->cst.spin);
 
 		/*
@@ -640,16 +679,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 	hammer2_chain_drop_data(chain, 1);
 
 	KKASSERT(chain->bp == NULL);
-	chain->hmp = NULL;
-
-	if (chain->flags & HAMMER2_CHAIN_ALLOCATED) {
-		chain->flags &= ~HAMMER2_CHAIN_ALLOCATED;
-		kfree(chain, hmp->mchain);
-		if (pmp) {
-			atomic_add_long(&pmp->inmem_chains, -1);
-			hammer2_chain_memory_wakeup(pmp);
-		}
-	}
 
 	/*
 	 * Free saved empty layer and return chained drop.
@@ -658,9 +687,31 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain)
 		layer->good = 0xEF02;
 		kfree(layer, hmp->mchain);
 	}
-	if (rdrop2)
-		hammer2_chain_drop(rdrop2);
-	return (rdrop1);
+
+	/*
+	 * Once chain resources are gone we can use the now dead chain
+	 * structure to placehold what might otherwise require a recursive
+	 * drop, because we have potentially two things to drop and can only
+	 * return one directly.
+	 */
+	if (rdrop1 && rdrop2) {
+		KKASSERT(chain->flags & HAMMER2_CHAIN_ALLOCATED);
+		chain->data = (void *)rdrop1;
+		TAILQ_INSERT_TAIL(delayq, chain, core_entry);
+		rdrop1 = NULL;
+	} else if (chain->flags & HAMMER2_CHAIN_ALLOCATED) {
+		chain->flags &= ~HAMMER2_CHAIN_ALLOCATED;
+		chain->hmp = NULL;
+		kfree(chain, hmp->mchain);
+	}
+	if (pmp) {
+		atomic_add_long(&pmp->inmem_chains, -1);
+		hammer2_chain_memory_wakeup(pmp);
+	}
+	if (rdrop1)
+		return(rdrop1);
+	else
+		return(rdrop2);
 }
 
 /*

@@ -250,7 +250,8 @@ hammer2_trans_done(hammer2_trans_t *trans)
  *
  * chain is locked on call and will remain locked on return.  If a flush
  * occured, the chain's MOVED bit will be set indicating that its parent
- * (which is not part of the flush) should be updated.
+ * (which is not part of the flush) should be updated.  The chain may be
+ * replaced by the call.
  */
 void
 hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t **chainp)
@@ -300,13 +301,15 @@ hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t **chainp)
 			/*
 			 * Now that we've popped back up we can do a secondary
 			 * recursion on the deferred elements.
+			 *
+			 * NOTE: hammer2_chain_flush() may replace scan.
 			 */
 			if (hammer2_debug & 0x0040)
-				kprintf("defered flush %p\n", scan);
+				kprintf("deferred flush %p\n", scan);
 			hammer2_chain_lock(scan, HAMMER2_RESOLVE_MAYBE);
+			hammer2_chain_drop(scan);	/* ref from deferral */
 			hammer2_chain_flush(trans, &scan);
 			hammer2_chain_unlock(scan);
-			hammer2_chain_drop(scan);	/* ref from deferral */
 		}
 
 		/*

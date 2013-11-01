@@ -288,7 +288,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 /*
  * Misc
  */
-#define HAMMER2_FLUSH_DEPTH_LIMIT	40	/* stack recursion limit */
+#define HAMMER2_FLUSH_DEPTH_LIMIT	10	/* stack recursion limit */
 
 /*
  * HAMMER2 IN-MEMORY CACHE OF MEDIA STRUCTURES
