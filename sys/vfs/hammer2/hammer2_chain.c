@@ -3629,12 +3629,15 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 
 /*
  * Sets CHAIN_DELETED and CHAIN_MOVED in the chain being deleted and
- * set chain->delete_tid.
+ * set chain->delete_tid.  The chain is not actually marked possibly-free
+ * in the freemap until the deletion is completely flushed out (because
+ * a flush which doesn't cover the entire deletion is flushing the deleted
+ * chain as if it were live).
  *
  * This function does NOT generate a modification to the parent.  It
  * would be nearly impossible to figure out which parent to modify anyway.
- * Such modifications are handled by the flush code and are properly merged
- * using the flush synchronization point.
+ * Such modifications are handled top-down by the flush code and are
+ * properly merged using the flush synchronization point.
  *
  * The find/get code will properly overload the RBTREE check on top of
  * the bref check to detect deleted entries.
@@ -3646,7 +3649,7 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
  *
  * NOTE: This function does NOT set chain->modify_tid, allowing future
  *	 code to distinguish between live and deleted chains by testing
- *	 sync_tid.
+ *	 trans->sync_tid vs chain->modify_tid and chain->delete_tid.
  *
  * NOTE: Deletions normally do not occur in the middle of a duplication
  *	 chain but we use a trick for hardlink migration that refactors
@@ -3665,10 +3668,6 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 		return;
 
 	/*
-	 * We must set MOVED along with DELETED for the flush code to
-	 * recognize the operation and properly disconnect the chain
-	 * in-memory.
-	 *
 	 * The setting of DELETED causes finds, lookups, and _next iterations
 	 * to no longer recognize the chain.  RB_SCAN()s will still have
 	 * visibility (needed for flush serialization points).
@@ -3685,6 +3684,11 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 	atomic_add_int(&chain->above->live_count, -1);
 	++chain->above->generation;
 
+	/*
+	 * We must set MOVED along with DELETED for the flush code to
+	 * recognize the operation and properly disconnect the chain
+	 * in-memory.
+	 */
 	if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
 		hammer2_chain_ref(chain);
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
@@ -3694,10 +3698,6 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 	if (flags & HAMMER2_DELETE_WILLDUP)
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_FORCECOW);
 
-	if ((chain->flags & HAMMER2_CHAIN_FORCECOW) == 0) {
-		hammer2_freemap_free(trans, chain->hmp, &chain->bref, 0);
-		chain->bref.data_off &= ~HAMMER2_OFF_MASK_RADIX;
-	}
 	hammer2_chain_setsubmod(trans, chain);
 }
 
