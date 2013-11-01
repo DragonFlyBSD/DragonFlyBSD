@@ -39,6 +39,8 @@ static u_int32_t ocp_allocbit(hammer_objid_cache_t ocp, u_int32_t n);
 
 /*
  * Start a standard transaction.
+ *
+ * May be called without fs_token
  */
 void
 hammer_start_transaction(struct hammer_transaction *trans,
@@ -62,6 +64,8 @@ hammer_start_transaction(struct hammer_transaction *trans,
 
 /*
  * Start a simple read-only transaction.  This will not stall.
+ *
+ * May be called without fs_token
  */
 void
 hammer_simple_transaction(struct hammer_transaction *trans,
@@ -113,6 +117,9 @@ hammer_start_transaction_fls(struct hammer_transaction *trans,
 	trans->time32 = (u_int32_t)tv.tv_sec;
 }
 
+/*
+ * May be called without fs_token
+ */
 void
 hammer_done_transaction(struct hammer_transaction *trans)
 {
@@ -124,12 +131,11 @@ hammer_done_transaction(struct hammer_transaction *trans)
 	KKASSERT(trans->sync_lock_refs == expected_lock_refs);
 	trans->sync_lock_refs = 0;
 	if (trans->type != HAMMER_TRANS_FLS) {
-		if (trans->flags & HAMMER_TRANSF_NEWINODE)
+		if (trans->flags & HAMMER_TRANSF_NEWINODE) {
+			lwkt_gettoken(&trans->hmp->fs_token);
 			hammer_inode_waitreclaims(trans);
-		/*
-		else if (trans->flags & HAMMER_TRANSF_DIDIO)
-			hammer_inode_waitreclaims(trans);
-		*/
+			lwkt_reltoken(&trans->hmp->fs_token);
+		}
 	}
 }
 

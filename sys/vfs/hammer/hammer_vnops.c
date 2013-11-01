@@ -339,7 +339,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	int ioseqcount;
 	int blksize;
 	int bigread;
-	int got_fstoken;
+	int got_trans;
 	size_t resid;
 
 	if (ap->a_vp->v_type != VREG)
@@ -347,7 +347,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	ip = VTOI(ap->a_vp);
 	hmp = ip->hmp;
 	error = 0;
-	got_fstoken = 0;
+	got_trans = 0;
 	uio = ap->a_uio;
 
 	/*
@@ -415,10 +415,9 @@ hammer_vop_read(struct vop_read_args *ap)
 		/*
 		 * MPUNSAFE
 		 */
-		if (got_fstoken == 0) {
-			lwkt_gettoken(&hmp->fs_token);
-			got_fstoken = 1;
+		if (got_trans == 0) {
 			hammer_start_transaction(&trans, ip->hmp);
+			got_trans = 1;
 		}
 
 		/*
@@ -464,8 +463,6 @@ skip:
 			n = uio->uio_resid;
 		if (n > ip->ino_data.size - uio->uio_offset)
 			n = (int)(ip->ino_data.size - uio->uio_offset);
-		if (got_fstoken)
-			lwkt_reltoken(&hmp->fs_token);
 
 		/*
 		 * Set B_AGE, data has a lower priority than meta-data.
@@ -477,9 +474,6 @@ skip:
 		bp->b_flags |= B_AGE;
 		error = uiomovebp(bp, (char *)bp->b_data + offset, n, uio);
 		bqrelse(bp);
-
-		if (got_fstoken)
-			lwkt_gettoken(&hmp->fs_token);
 
 		if (error)
 			break;
@@ -493,20 +487,22 @@ finished:
 	 * concurrency.  If we can't shortcut it we have to get the full
 	 * blown transaction.
 	 */
-	if (got_fstoken == 0 && hammer_update_atime_quick(ip) < 0) {
-		lwkt_gettoken(&hmp->fs_token);
-		got_fstoken = 1;
+	if (got_trans == 0 && hammer_update_atime_quick(ip) < 0) {
 		hammer_start_transaction(&trans, ip->hmp);
+		got_trans = 1;
 	}
 
-	if (got_fstoken) {
+	if (got_trans) {
 		if ((ip->flags & HAMMER_INODE_RO) == 0 &&
 		    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
+			lwkt_gettoken(&hmp->fs_token);
 			ip->ino_data.atime = trans.time;
 			hammer_modify_inode(&trans, ip, HAMMER_INODE_ATIME);
+			hammer_done_transaction(&trans);
+			lwkt_reltoken(&hmp->fs_token);
+		} else {
+			hammer_done_transaction(&trans);
 		}
-		hammer_done_transaction(&trans);
-		lwkt_reltoken(&hmp->fs_token);
 	}
 	return (error);
 }
@@ -548,7 +544,6 @@ hammer_vop_write(struct vop_write_args *ap)
 	/*
 	 * Create a transaction to cover the operations we perform.
 	 */
-	lwkt_gettoken(&hmp->fs_token);
 	hammer_start_transaction(&trans, hmp);
 	uio = ap->a_uio;
 
@@ -566,20 +561,17 @@ hammer_vop_write(struct vop_write_args *ap)
 	 */
 	if (uio->uio_offset < 0) {
 		hammer_done_transaction(&trans);
-		lwkt_reltoken(&hmp->fs_token);
 		return (EFBIG);
 	}
 	base_offset = uio->uio_offset + uio->uio_resid;	/* work around gcc-4 */
 	if (uio->uio_resid > 0 && base_offset <= uio->uio_offset) {
 		hammer_done_transaction(&trans);
-		lwkt_reltoken(&hmp->fs_token);
 		return (EFBIG);
 	}
 
 	if (uio->uio_resid > 0 && (td = uio->uio_td) != NULL && td->td_proc &&
 	    base_offset > td->td_proc->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
 		hammer_done_transaction(&trans);
-		lwkt_reltoken(&hmp->fs_token);
 		lwpsignal(td->td_proc, td->td_lwp, SIGXFSZ);
 		return (EFBIG);
 	}
@@ -591,6 +583,8 @@ hammer_vop_write(struct vop_write_args *ap)
 	 *
 	 * Preset redo_count so we stop generating REDOs earlier if the
 	 * limit is exceeded.
+	 *
+	 * redo_count is heuristical, SMP races are ok
 	 */
 	bigwrite = (uio->uio_resid > 100 * 1024 * 1024);
 	if ((ip->flags & HAMMER_INODE_REDO) &&
@@ -619,6 +613,26 @@ hammer_vop_write(struct vop_write_args *ap)
 		blksize = hammer_blocksize(uio->uio_offset);
 
 		/*
+		 * Control the number of pending records associated with
+		 * this inode.  If too many have accumulated start a
+		 * flush.  Try to maintain a pipeline with the flusher.
+		 *
+		 * NOTE: It is possible for other sources to grow the
+		 *	 records but not necessarily issue another flush,
+		 *	 so use a timeout and ensure that a re-flush occurs.
+		 */
+		if (ip->rsv_recs >= hammer_limit_inode_recs) {
+			lwkt_gettoken(&hmp->fs_token);
+			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+			while (ip->rsv_recs >= hammer_limit_inode_recs * 2) {
+				ip->flags |= HAMMER_INODE_RECSW;
+				tsleep(&ip->rsv_recs, 0, "hmrwww", hz);
+				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+			}
+			lwkt_reltoken(&hmp->fs_token);
+		}
+
+		/*
 		 * Do not allow HAMMER to blow out the buffer cache.  Very
 		 * large UIOs can lockout other processes due to bwillwrite()
 		 * mechanics.
@@ -635,66 +649,6 @@ hammer_vop_write(struct vop_write_args *ap)
 		 */
 		if ((ap->a_ioflag & IO_RECURSE) == 0)
 			bwillwrite(blksize);
-
-		/*
-		 * Control the number of pending records associated with
-		 * this inode.  If too many have accumulated start a
-		 * flush.  Try to maintain a pipeline with the flusher.
-		 *
-		 * NOTE: It is possible for other sources to grow the
-		 *	 records but not necessarily issue another flush,
-		 *	 so use a timeout and ensure that a re-flush occurs.
-		 */
-		if (ip->rsv_recs >= hammer_limit_inode_recs) {
-			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-			while (ip->rsv_recs >= hammer_limit_inode_recs * 2) {
-				ip->flags |= HAMMER_INODE_RECSW;
-				tsleep(&ip->rsv_recs, 0, "hmrwww", hz);
-				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-			}
-		}
-
-#if 0
-		/*
-		 * Do not allow HAMMER to blow out system memory by
-		 * accumulating too many records.   Records are so well
-		 * decoupled from the buffer cache that it is possible
-		 * for userland to push data out to the media via
-		 * direct-write, but build up the records queued to the
-		 * backend faster then the backend can flush them out.
-		 * HAMMER has hit its write limit but the frontend has
-		 * no pushback to slow it down.
-		 */
-		if (hmp->rsv_recs > hammer_limit_recs / 2) {
-			/*
-			 * Get the inode on the flush list
-			 */
-			if (ip->rsv_recs >= 64)
-				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-			else if (ip->rsv_recs >= 16)
-				hammer_flush_inode(ip, 0);
-
-			/*
-			 * Keep the flusher going if the system keeps
-			 * queueing records.
-			 */
-			delta = hmp->count_newrecords -
-				hmp->last_newrecords;
-			if (delta < 0 || delta > hammer_limit_recs / 2) {
-				hmp->last_newrecords = hmp->count_newrecords;
-				hammer_sync_hmp(hmp, MNT_NOWAIT);
-			}
-
-			/*
-			 * If we have gotten behind start slowing
-			 * down the writers.
-			 */
-			delta = (hmp->rsv_recs - hammer_limit_recs) *
-				hz / hammer_limit_recs;
-			if (delta > 0)
-				tsleep(&trans, 0, "hmrslo", delta);
-		}
-#endif
 
 		/*
 		 * Calculate the blocksize at the current offset and figure
@@ -769,11 +723,10 @@ hammer_vop_write(struct vop_write_args *ap)
 			if (error == 0)
 				bheavy(bp);
 		}
-		if (error == 0) {
-			lwkt_reltoken(&hmp->fs_token);
+		if (error == 0)
 			error = uiomovebp(bp, bp->b_data + offset, n, uio);
-			lwkt_gettoken(&hmp->fs_token);
-		}
+
+		lwkt_gettoken(&hmp->fs_token);
 
 		/*
 		 * Generate REDO records if enabled and redo_count will not
@@ -839,6 +792,8 @@ hammer_vop_write(struct vop_write_args *ap)
 		 */
 		bp->b_bio2.bio_offset = NOOFFSET;
 
+		lwkt_reltoken(&hmp->fs_token);
+
 		/*
 		 * Final buffer disposition.
 		 *
@@ -892,7 +847,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	}
 	hammer_done_transaction(&trans);
 	hammer_knote(ap->a_vp, kflags);
-	lwkt_reltoken(&hmp->fs_token);
+
 	return (error);
 }
 
@@ -2783,7 +2738,9 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 * by normal filesystem buffers) are legal.
 		 */
 		if (hammer_live_dedup == 0 && (bp->b_flags & B_PAGING) == 0) {
+			lwkt_gettoken(&hmp->fs_token);
 			error = hammer_io_indirect_read(hmp, nbio, NULL);
+			lwkt_reltoken(&hmp->fs_token);
 			return (error);
 		}
 	}

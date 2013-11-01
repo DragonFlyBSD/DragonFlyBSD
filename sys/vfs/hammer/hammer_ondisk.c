@@ -413,6 +413,9 @@ hammer_ref_volume(hammer_volume_t volume)
 	return (error);
 }
 
+/*
+ * May be called without fs_token
+ */
 hammer_volume_t
 hammer_get_root_volume(struct hammer_mount *hmp, int *errorp)
 {
@@ -426,7 +429,9 @@ hammer_get_root_volume(struct hammer_mount *hmp, int *errorp)
 	 * load its ondisk info.
 	 */
 	if (hammer_ref_interlock(&volume->io.lock)) {
+		lwkt_gettoken(&volume->io.hmp->fs_token);
 		*errorp = hammer_load_volume(volume);
+		lwkt_reltoken(&volume->io.hmp->fs_token);
 		if (*errorp)
 			volume = NULL;
 	} else {
@@ -465,6 +470,8 @@ hammer_load_volume(hammer_volume_t volume)
  * Release a previously acquired reference on the volume.
  *
  * Volumes are not unloaded from memory during normal operation.
+ *
+ * May be called without fs_token
  */
 void
 hammer_rel_volume(hammer_volume_t volume, int locked)
@@ -472,8 +479,10 @@ hammer_rel_volume(hammer_volume_t volume, int locked)
 	struct buf *bp;
 
 	if (hammer_rel_interlock(&volume->io.lock, locked)) {
+		lwkt_gettoken(&volume->io.hmp->fs_token);
 		volume->ondisk = NULL;
 		bp = hammer_io_release(&volume->io, locked);
+		lwkt_reltoken(&volume->io.hmp->fs_token);
 		hammer_rel_interlock_done(&volume->io.lock, locked);
 		if (bp)
 			brelse(bp);

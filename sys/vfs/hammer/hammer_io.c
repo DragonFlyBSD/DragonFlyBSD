@@ -58,9 +58,6 @@
 static void hammer_io_modify(hammer_io_t io, int count);
 static void hammer_io_deallocate(struct buf *bp);
 static void hammer_indirect_callback(struct bio *bio);
-#if 0
-static void hammer_io_direct_read_complete(struct bio *nbio);
-#endif
 static void hammer_io_direct_write_complete(struct bio *nbio);
 static int hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data);
 static void hammer_io_set_modlist(struct hammer_io *io);
@@ -1456,16 +1453,6 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 		nbio = push_bio(bio);
 		nbio->bio_offset = volume->ondisk->vol_buf_beg +
 				   (zone2_offset & HAMMER_OFF_SHORT_MASK);
-#if 0
-		/*
-		 * XXX disabled - our CRC check doesn't work if the OS
-		 * does bogus_page replacement on the direct-read.
-		 */
-		if (leaf && hammer_verify_data) {
-			nbio->bio_done = hammer_io_direct_read_complete;
-			nbio->bio_caller_info1.uvalue32 = leaf->data_crc;
-		}
-#endif
 		hammer_stats_disk_read += bp->b_bufsize;
 		vn_strategy(volume->devvp, nbio);
 	}
@@ -1621,38 +1608,6 @@ hammer_indirect_callback(struct bio *bio)
 	biodone(obio);
 	bqrelse(bp);
 }
-
-#if 0
-/*
- * On completion of the BIO this callback must check the data CRC
- * and chain to the previous bio.
- *
- * MPSAFE - since we do not modify and hammer_records we do not need
- *	    io_token.
- *
- * NOTE: MPSAFE callback
- */
-static
-void
-hammer_io_direct_read_complete(struct bio *nbio)
-{
-	struct bio *obio;
-	struct buf *bp;
-	u_int32_t rec_crc = nbio->bio_caller_info1.uvalue32;
-
-	bp = nbio->bio_buf;
-	if (crc32(bp->b_data, bp->b_bufsize) != rec_crc) {
-		kprintf("HAMMER: data_crc error @%016llx/%d\n",
-			nbio->bio_offset, bp->b_bufsize);
-		if (hammer_debug_critical)
-			Debugger("data_crc on read");
-		bp->b_flags |= B_ERROR;
-		bp->b_error = EIO;
-	}
-	obio = pop_bio(nbio);
-	biodone(obio);
-}
-#endif
 
 /*
  * Write a buffer associated with a front-end vnode directly to the
