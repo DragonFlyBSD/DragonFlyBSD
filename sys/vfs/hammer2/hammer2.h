@@ -129,7 +129,7 @@ struct hammer2_chain_layer {
 	int		good;
 	TAILQ_ENTRY(hammer2_chain_layer) entry;
 	struct hammer2_chain_tree rbtree;
-	int	refs;		/* prevent destruction */
+	int		refs;		/* prevent destruction */
 };
 
 typedef struct hammer2_chain_layer hammer2_chain_layer_t;
@@ -145,11 +145,12 @@ struct hammer2_chain_core {
 	u_int		sharecnt;
 	u_int		flags;
 	u_int		live_count;	/* live (not deleted) chains in tree */
+	int		generation;	/* generation number (inserts only) */
 };
 
 typedef struct hammer2_chain_core hammer2_chain_core_t;
 
-#define HAMMER2_CORE_INDIRECT		0x0001
+#define HAMMER2_CORE_UNUSED0001		0x0001
 #define HAMMER2_CORE_COUNTEDBREFS	0x0002
 
 struct hammer2_chain {
@@ -172,6 +173,7 @@ struct hammer2_chain {
 	u_int		flags;
 	u_int		refs;
 	u_int		lockcnt;
+	int		debug_reason;
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
 };
@@ -196,7 +198,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
 #define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
-#define HAMMER2_CHAIN_UNUSED00008	0x00000008
+#define HAMMER2_CHAIN_FORCECOW		0x00000008	/* force copy-on-wr */
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
 #define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
@@ -427,7 +429,9 @@ RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
 struct hammer2_trans {
 	TAILQ_ENTRY(hammer2_trans) entry;
 	struct hammer2_pfsmount *pmp;
+	hammer2_tid_t		real_tid;
 	hammer2_tid_t		sync_tid;
+	hammer2_tid_t		inode_tid;
 	thread_t		td;		/* pointer */
 	int			flags;
 	int			blocked;
@@ -440,7 +444,7 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_TRANS_ISFLUSH		0x0001	/* formal flush */
 #define HAMMER2_TRANS_RESTRICTED	0x0002	/* snapshot flush restrict */
 #define HAMMER2_TRANS_BUFCACHE		0x0004	/* from bioq strategy write */
-#define HAMMER2_TRANS_INVFSYNC		0x0008	/* with ISFLUSH */
+#define HAMMER2_TRANS_NEWINODE		0x0008	/* caller allocating inode */
 #define HAMMER2_TRANS_ISALLOCATING	0x0010	/* in allocator */
 
 #define HAMMER2_FREEMAP_HEUR_NRADIX	4	/* pwr 2 PBUFRADIX-MINIORADIX */
@@ -468,10 +472,6 @@ struct hammer2_mount {
 	struct lock	alloclk;	/* lockmgr lock */
 	struct lock	voldatalk;	/* lockmgr lock */
 	struct hammer2_trans_queue transq; /* all in-progress transactions */
-	hammer2_trans_t	*curflush;	/* current flush in progress */
-	hammer2_tid_t	topo_flush_tid;	/* currently synchronizing flush pt */
-	hammer2_tid_t	last_flush_tid;	/* previous synchronizing flush pt */
-	hammer2_tid_t	free_flush_tid;	/* currently synchronizing flush pt */
 	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR];
 	int		flushcnt;	/* #of flush trans on the list */
 

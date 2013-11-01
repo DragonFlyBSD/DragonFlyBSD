@@ -176,6 +176,12 @@ hammer2_freemap_reserve(hammer2_mount_t *hmp, hammer2_blockref_t *bref,
  *
  * ip and bpref are only used as a heuristic to determine locality of
  * reference.  bref->key may also be used heuristically.
+ *
+ * WARNING! When called from a flush we have to use the 'live' sync_tid
+ *	    and not the flush sync_tid.  The live sync_tid is the flush
+ *	    sync_tid + 1.  That is, freemap allocations which occur during
+ *	    a flush are not part of the flush.  Crash-recovery will restore
+ *	    any lost allocations.
  */
 int
 hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
@@ -209,10 +215,14 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 		hammer2_freemap_free(trans, hmp, bref, 0);
 
 	/*
-	 * Normal allocations
+	 * Setting ISALLOCATING ensures correct operation even when the
+	 * flusher itself is making allocations.
 	 */
 	KKASSERT(bytes >= HAMMER2_MIN_ALLOC && bytes <= HAMMER2_MAX_ALLOC);
+	KKASSERT((trans->flags & HAMMER2_TRANS_ISALLOCATING) == 0);
 	atomic_set_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
+	if (trans->flags & HAMMER2_TRANS_ISFLUSH)
+		++trans->sync_tid;
 
 	/*
 	 * Calculate the starting point for our allocation search.
@@ -275,6 +285,8 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	hammer2_chain_unlock(parent);
 
 	atomic_clear_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
+	if (trans->flags & HAMMER2_TRANS_ISFLUSH)
+		--trans->sync_tid;
 
 	return (error);
 }
@@ -718,6 +730,12 @@ hammer2_freemap_iterate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
  * the moment we depend on the bulk freescan to actually free blocks.  It
  * will still call this routine with a non-zero how to stage possible frees
  * and to do the actual free.
+ *
+ * WARNING! When called from a flush we have to use the 'live' sync_tid
+ *	    and not the flush sync_tid.  The live sync_tid is the flush
+ *	    sync_tid + 1.  That is, freemap allocations which occur during
+ *	    a flush are not part of the flush.  Crash-recovery will restore
+ *	    any lost allocations.
  */
 void
 hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
@@ -756,11 +774,14 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	 * We can't free data allocated by newfs_hammer2.
 	 * Assert validity.
 	 */
+	KKASSERT((data_off & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
 	if (data_off < hmp->voldata.allocator_beg)
 		return;
-	KKASSERT((data_off & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
 
+	KKASSERT((trans->flags & HAMMER2_TRANS_ISALLOCATING) == 0);
 	atomic_set_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
+	if (trans->flags & HAMMER2_TRANS_ISFLUSH)
+		++trans->sync_tid;
 
 	/*
 	 * Lookup the level1 freemap chain.  The chain must exist.
@@ -872,4 +893,6 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	hammer2_chain_unlock(parent);
 
 	atomic_clear_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
+	if (trans->flags & HAMMER2_TRANS_ISFLUSH)
+		--trans->sync_tid;
 }

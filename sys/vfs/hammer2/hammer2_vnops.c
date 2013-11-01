@@ -380,17 +380,15 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	ip = VTOI(vp);
 
 	/*
-	 * TRANS_ISFLUSH allocates two transaction ids, one for concurrent
-	 * buffer syncs, and one for our flush.
-	 *
-	 * WARNING: The vfsync interacts with the buffer cache and might
-	 *	    block, we can't hold the inode lock and we can't
-	 *	    have a flush transaction pending.
+	 * WARNING: Cannot use TRANS_ISFLUSH for partial syncs.
 	 */
-	hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_ISFLUSH |
-					    HAMMER2_TRANS_INVFSYNC);
+#if 0
+	hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_ISFLUSH);
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
 	hammer2_trans_clear_invfsync(&trans);
+#endif
+	hammer2_trans_init(&trans, ip->pmp, 0);
+	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
 
 	/*
 	 * Calling chain_flush here creates a lot of duplicative
@@ -406,9 +404,12 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	if (ip->flags & (HAMMER2_INODE_RESIZED|HAMMER2_INODE_MTIME))
 		hammer2_inode_fsync(&trans, ip, &chain);
 
+#if 0
+	/* XXX creates discontinuity w/modify_tid */
 	if (ap->a_flags & VOP_FSYNC_SYSCALL) {
 		hammer2_chain_flush(&trans, &chain);
 	}
+#endif
 	hammer2_inode_unlock_ex(ip, chain);
 	hammer2_trans_done(&trans);
 
@@ -1396,7 +1397,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	name_len = ncp->nc_nlen;
 
 	hammer2_chain_memory_wait(dip->pmp);
-	hammer2_trans_init(&trans, dip->pmp, 0);
+	hammer2_trans_init(&trans, dip->pmp, HAMMER2_TRANS_NEWINODE);
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &chain, &error);
 	if (error) {
@@ -1507,7 +1508,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	ip = VTOI(ap->a_vp);
 	hammer2_chain_memory_wait(ip->pmp);
-	hammer2_trans_init(&trans, ip->pmp, 0);
+	hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_NEWINODE);
 
 	chain = hammer2_inode_lock_ex(ip);
 	error = hammer2_hardlink_consolidate(&trans, ip, &chain, dip, 1);
@@ -1564,7 +1565,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 	hammer2_chain_memory_wait(dip->pmp);
-	hammer2_trans_init(&trans, dip->pmp, 0);
+	hammer2_trans_init(&trans, dip->pmp, HAMMER2_TRANS_NEWINODE);
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &nchain, &error);
@@ -1608,7 +1609,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 	hammer2_chain_memory_wait(dip->pmp);
-	hammer2_trans_init(&trans, dip->pmp, 0);
+	hammer2_trans_init(&trans, dip->pmp, HAMMER2_TRANS_NEWINODE);
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &nchain, &error);
@@ -1652,7 +1653,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 	hammer2_chain_memory_wait(dip->pmp);
-	hammer2_trans_init(&trans, dip->pmp, 0);
+	hammer2_trans_init(&trans, dip->pmp, HAMMER2_TRANS_NEWINODE);
 
 	ap->a_vap->va_type = VLNK;	/* enforce type */
 

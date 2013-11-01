@@ -866,9 +866,11 @@ struct hammer2_volume_data {
 	hammer2_off_t	allocator_size;		/* 0060 Total data space */
 	hammer2_off_t   allocator_free;		/* 0068	Free space */
 	hammer2_off_t	allocator_beg;		/* 0070 Initial allocations */
-	hammer2_tid_t	mirror_tid;		/* 0078 best committed tid */
+	hammer2_tid_t	mirror_tid;		/* 0078 committed tid (vol) */
 	hammer2_tid_t	alloc_tid;		/* 0080 Alloctable modify tid */
-	hammer2_blockref_t reserved0088;	/* 0088-00C7 */
+	hammer2_tid_t	inode_tid;		/* 0088 Inode allocator tid */
+	hammer2_tid_t	freemap_tid;		/* 0090 committed tid (fmap) */
+	hammer2_tid_t	reserved0090[6];	/* 0098-00C7 */
 
 	/*
 	 * Copyids are allocated dynamically from the copyexists bitmap.

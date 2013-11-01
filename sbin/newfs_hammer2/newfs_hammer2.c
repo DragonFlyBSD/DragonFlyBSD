@@ -646,7 +646,8 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 
 	vol->sroot_blockset.blockref[0] = sroot_blockref;
 	vol->mirror_tid = 0;
-	vol->alloc_tid = 16;
+	vol->alloc_tid = 16;	/* first transaction id */
+	vol->inode_tid = 16;	/* first allocatable inode number */
 	vol->icrc_sects[HAMMER2_VOL_ICRC_SECT1] =
 			hammer2_icrc32((char *)vol + HAMMER2_VOLUME_ICRC1_OFF,
 				       HAMMER2_VOLUME_ICRC1_SIZE);

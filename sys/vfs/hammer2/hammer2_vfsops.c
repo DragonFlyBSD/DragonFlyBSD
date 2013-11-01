@@ -457,8 +457,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER2, M_WAITOK | M_ZERO);
 		hmp->ronly = ronly;
 		hmp->devvp = devvp;
-		hmp->last_flush_tid = 0;
-		hmp->topo_flush_tid = HAMMER2_MAX_TID;
 		kmalloc_create(&hmp->mchain, "HAMMER2-chains");
 		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
 
@@ -510,6 +508,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return error;
 		}
+
+		hmp->vchain.bref.mirror_tid = hmp->voldata.mirror_tid;
+		hmp->fchain.bref.mirror_tid = hmp->voldata.freemap_tid;
 
 		/*
 		 * First locate the super-root inode, which is key 0
@@ -728,11 +729,15 @@ hammer2_write_thread(void *arg)
 
 		while ((bio = bioq_takefirst(&pmp->wthread_bioq)) != NULL) {
 			/*
-			 * dummy bio for synchronization
+			 * dummy bio for synchronization.  The transaction
+			 * must be reinitialized.
 			 */
 			if (bio->bio_buf == NULL) {
 				bio->bio_flags |= BIO_DONE;
 				wakeup(bio);
+				hammer2_trans_done(&trans);
+				hammer2_trans_init(&trans, pmp,
+						   HAMMER2_TRANS_BUFCACHE);
 				continue;
 			}
 
@@ -1430,7 +1435,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		hammer2_voldata_lock(hmp);
 		if (((hmp->vchain.flags | hmp->fchain.flags) &
 		     HAMMER2_CHAIN_MODIFIED) ||
-		    hmp->vchain.core->update_tid > hmp->voldata.mirror_tid) {
+		    hmp->vchain.core->update_tid > hmp->voldata.mirror_tid ||
+		    hmp->fchain.core->update_tid > hmp->voldata.freemap_tid) {
 			hammer2_voldata_unlock(hmp, 0);
 			hammer2_vfs_sync(mp, MNT_WAIT);
 			hammer2_vfs_sync(mp, MNT_WAIT);
@@ -1438,9 +1444,12 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			hammer2_voldata_unlock(hmp, 0);
 		}
 		if (hmp->pmp_count == 0) {
-			if ((hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) ||
-			    hmp->vchain.core->update_tid >
-			     hmp->voldata.mirror_tid) {
+			if (((hmp->vchain.flags | hmp->fchain.flags) &
+			     HAMMER2_CHAIN_MODIFIED) ||
+			    (hmp->vchain.core->update_tid >
+			     hmp->voldata.mirror_tid) ||
+			    (hmp->fchain.core->update_tid >
+			     hmp->voldata.freemap_tid)) {
 				kprintf("hammer2_unmount: chains left over "
 					"after final sync\n");
 				if (hammer2_debug & 0x0010)
@@ -1668,22 +1677,18 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * The reclamation code interlocks with the sync list's token
 	 * (by removing the vnode from the scan list) before unlocking
 	 * the inode, giving us time to ref the inode.
-	 *
-	 * INVFSYNC allows the bioq to drain using the flush transaction's
-	 * TID while the ISFLUSH transaction is active.
 	 */
 	/*flags = VMSC_GETVP;*/
 	flags = 0;
 	if (waitfor & MNT_LAZY)
 		flags |= VMSC_ONEPASS;
 
-	hammer2_trans_init(&info.trans, pmp, HAMMER2_TRANS_ISFLUSH |
-					     HAMMER2_TRANS_INVFSYNC);
-
 	/*
-	 * vfsync the vnodes.  XXX This will also catch writes for
-	 * transactions beyond the current flush.  XXX
+	 * Initialize a normal transaction and sync everything out, then
+	 * wait for pending I/O to finish (so it gets a transaction id
+	 * that the meta-data flush will catch).
 	 */
+	hammer2_trans_init(&info.trans, pmp, 0);
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
@@ -1693,23 +1698,13 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		    vsyncscan(mp, flags, hammer2_sync_scan2, &info);
 
 	}
+	hammer2_trans_done(&info.trans);
+	hammer2_bioq_sync(info.trans.pmp);
 
 	/*
-	 * Wait for pending work to complete, then clear INVFSYNC.  Further
-	 * buffer cache synchronization is allowed to run concurrently but
-	 * will use a higher sync_tid and is not part of the normal flush.
-	 *
-	 * These waits are important because
+	 * Start the flush transaction and flush all meta-data.
 	 */
-	hammer2_trans_clear_invfsync(&info.trans);
-
-#if 0
-	if (waitfor == MNT_WAIT) {
-		/* XXX */
-	} else {
-		/* XXX */
-	}
-#endif
+	hammer2_trans_init(&info.trans, pmp, HAMMER2_TRANS_ISFLUSH);
 
 	total_error = 0;
 	for (i = 0; i < pmp->cluster.nchains; ++i) {
@@ -1738,7 +1733,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 
 		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
 		if ((hmp->fchain.flags & HAMMER2_CHAIN_MODIFIED) ||
-		    hmp->vchain.core->update_tid > hmp->voldata.mirror_tid ||
+		    hmp->fchain.core->update_tid > hmp->voldata.freemap_tid ||
 		    force_fchain) {
 			/* this will also modify vchain as a side effect */
 			chain = &hmp->fchain;
@@ -1808,8 +1803,8 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		if (error)
 			total_error = error;
 	}
-
 	hammer2_trans_done(&info.trans);
+
 	return (total_error);
 }
 

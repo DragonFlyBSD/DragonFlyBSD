@@ -632,14 +632,14 @@ retry:
 	 *
 	 * NOTE: nipdata will have chain's blockset data.
 	 */
-	chain->data->ipdata.inum = trans->sync_tid;
+	chain->data->ipdata.inum = trans->inode_tid;
 	nip = hammer2_inode_get(dip->pmp, dip, chain);
 	nipdata = &chain->data->ipdata;
 
 	if (vap) {
 		KKASSERT(trans->inodes_created == 0);
 		nipdata->type = hammer2_get_obj_type(vap->va_type);
-		nipdata->inum = trans->sync_tid;
+		nipdata->inum = trans->inode_tid;
 		++trans->inodes_created;
 
 		switch (nipdata->type) {
@@ -747,6 +747,8 @@ hammer2_chain_refactor(hammer2_chain_t **chainp)
  * then delete it to placemark where the duplicate will go.  Both of
  * these use the inode number for (lhc) (the key), generating the
  * invisible filename.
+ *
+ * The original ochain is deleted.
  */
 static
 hammer2_chain_t *
@@ -789,7 +791,7 @@ retry:
 		hammer2_chain_unlock(nchain);
 		nchain = NULL;
 		*errorp = ENOSPC;
-#if 1
+#if 0
 		Debugger("X3");
 #endif
 	}
@@ -831,7 +833,7 @@ retry:
 	}
 
 	/*
-	 * Use chain as a placeholder for (lhc), delete it and replace
+	 * Use nchain as a placeholder for (lhc), delete it and replace
 	 * it with our duplication.
 	 *
 	 * Gain a second lock on ochain for the duplication function to
@@ -839,7 +841,7 @@ retry:
 	 *
 	 * This is a bit messy.
 	 */
-	hammer2_chain_delete(trans, nchain, HAMMER2_DELETE_WILLDUP);
+	hammer2_chain_delete(trans, nchain, 0);
 	hammer2_chain_lock(ochain, HAMMER2_RESOLVE_ALWAYS);
 	tmp = ochain;
 	bref = tmp->bref;
@@ -851,7 +853,8 @@ retry:
 	hammer2_chain_unlock(nchain);	/* no longer needed */
 
 	/*
-	 * Now set chain to our duplicate and modify it appropriately.
+	 * Now set nchain to our duplicate and modify it appropriately.
+	 * Note that this may result in a delete-duplicate.
 	 *
 	 * Directory entries are inodes but this is a hidden hardlink
 	 * target.  The name isn't used but to ease debugging give it
@@ -860,7 +863,7 @@ retry:
 	nchain = tmp;
 	tmp = NULL;	/* safety */
 
-	hammer2_chain_modify(trans, &nchain, HAMMER2_MODIFY_ASSERTNOCOPY);
+	hammer2_chain_modify(trans, &nchain, 0);
 	nipdata = &nchain->data->ipdata;
 	ksnprintf(nipdata->filename, sizeof(nipdata->filename),
 		  "0x%016jx", (intmax_t)nipdata->inum);
