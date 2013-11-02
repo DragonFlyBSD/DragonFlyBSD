@@ -61,9 +61,17 @@ MALLOC_DEFINE(M_DIRFS_MISC, "dirfs misc", "dirfs miscellaneous allocation");
  */
 KTR_INFO_MASTER(dirfs);
 
-KTR_INFO(KTR_DIRFS, dirfs, root, 31,
+KTR_INFO(KTR_DIRFS, dirfs, root, 20,
     "DIRFS(root dnp=%p vnode=%p hostdir=%s fd=%d error=%d)",
     dirfs_node_t dnp, struct vnode *vp, char *hostdir, int fd, int error);
+
+KTR_INFO(KTR_DIRFS, dirfs, mount, 21,
+    "DIRFS(mount path=%s dmp=%p mp=%p error=%d)",
+    char *path, dirfs_mount_t dmp, struct mount *mp, int error);
+
+KTR_INFO(KTR_DIRFS, dirfs, unmount, 22,
+    "DIRFS(unmount dmp=%p mp=%p error=%d)",
+    dirfs_mount_t dmp, struct mount *mp, int error);
 
 /* System wide sysctl stuff */
 int debuglvl = 0;
@@ -122,7 +130,7 @@ dirfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		error = copystr(data, &dmp->dm_path, MAXPATHLEN, &done);
 		if (error) {
 			kfree(dmp, M_DIRFS);
-			return error;
+			goto failure;
 		}
 	}
 
@@ -135,10 +143,12 @@ dirfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	if ((stat(dmp->dm_path, &st)) == 0) {
 		if (!S_ISDIR(st.st_mode)) {
 			kfree(dmp, M_DIRFS);
-			return EINVAL;
+			error = EINVAL;
+			goto failure;
 		}
 	} else {
-		return errno;
+		error = errno;
+		goto failure;
 	}
 
 	lockinit(&dmp->dm_lock, "dfsmnt", 0, LK_CANRECURSE);
@@ -157,9 +167,11 @@ dirfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 
 	dirfs_statfs(mp, &mp->mnt_stat, cred);
 
-	dbg(5, "%s mounted. dmp=%p mp=%p\n", dmp->dm_path, dmp, mp);
+failure:
+	KTR_LOG(dirfs_mount, (dmp->dm_path) ? dmp->dm_path : "NULL",
+	    dmp, mp, error);
 
-	return 0;
+	return error;
 }
 
 static int
@@ -176,7 +188,7 @@ dirfs_unmount(struct mount *mp, int mntflags)
 
 	error = vflush(mp, 0, 0);
 	if (error)
-		return error;
+		goto failure;
 
 	/*
 	 * Clean up dm_fdlist.  There should be no vnodes left so the
@@ -196,14 +208,15 @@ dirfs_unmount(struct mount *mp, int mntflags)
 	if (dnp != NULL) {
 		dirfs_close_helper(dnp);
 		debug_node2(dnp);
-		dirfs_node_drop(dmp, dnp);	/* last ref should free structure */
+		dirfs_node_drop(dmp, dnp); /* last ref should free structure */
 	}
 	kfree(dmp, M_DIRFS);
 	mp->mnt_data = (qaddr_t) 0;
 
-	dbg(5, "dirfs umounted successfully\n");
+failure:
+	KTR_LOG(dirfs_unmount, dmp, mp, error);
 
-	return 0;
+	return error;
 }
 
 static int
