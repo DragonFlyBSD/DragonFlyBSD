@@ -300,9 +300,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 {
 	hammer2_chain_t *chain;
 	hammer2_inode_t *ip;
-#if 0
 	hammer2_trans_t trans;
-#endif
 	struct vnode *vp;
 
 	vp = ap->a_vp;
@@ -311,7 +309,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		return(0);
 
 	/*
-	 * Set update_tid so we can detect and propagate the DESTROYED
+	 * Set update_hi so we can detect and propagate the DESTROYED
 	 * bit in the flush code.
 	 *
 	 * ip->chain might be stale, correct it before checking as older
@@ -343,9 +341,13 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	ip->vp = NULL;
 	if (chain->flags & HAMMER2_CHAIN_DELETED) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROYED);
+		hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_BUFCACHE);
+		hammer2_chain_setsubmod(&trans, chain);
 		spin_lock(&chain->core->cst.spin);
-		chain->core->update_tid = HAMMER2_MAX_TID; /* special case */
+		if (chain->core->update_hi < trans.sync_tid)
+			chain->core->update_hi = trans.sync_tid; /* needed? */
 		spin_unlock(&chain->core->cst.spin);
+		hammer2_trans_done(&trans);
 	}
 
 	/*
@@ -405,7 +407,9 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 		hammer2_inode_fsync(&trans, ip, &chain);
 
 #if 0
-	/* XXX creates discontinuity w/modify_tid */
+	/*
+	 * XXX creates discontinuity w/modify_tid
+	 */
 	if (ap->a_flags & VOP_FSYNC_SYSCALL) {
 		hammer2_chain_flush(&trans, &chain);
 	}

@@ -140,7 +140,8 @@ struct hammer2_chain_core {
 	struct h2_core_list ownerq;	/* all chains sharing this core */
 	struct h2_layer_list layerq;
 	int		live_zero;	/* blockref array opt */
-	hammer2_tid_t	update_tid;	/* check update against parent */
+	hammer2_tid_t	update_lo;	/* check update against parent */
+	hammer2_tid_t	update_hi;	/* check update against parent */
 	u_int		chain_count;	/* total chains in layers */
 	u_int		sharecnt;
 	u_int		flags;
@@ -207,13 +208,13 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list */
 #define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying inode */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
-#define HAMMER2_CHAIN_UNUSED1000	0x00001000
+#define HAMMER2_CHAIN_UNUSED01000	0x00001000
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
-#define HAMMER2_CHAIN_UNUSED20000	0x00020000
-#define HAMMER2_CHAIN_UNUSED40000	0x00040000
+#define HAMMER2_CHAIN_DEBUG1		0x00020000
+#define HAMMER2_CHAIN_DEBUG2		0x00040000
 #define HAMMER2_CHAIN_UNUSED80000	0x00080000
 #define HAMMER2_CHAIN_DUPLICATED	0x00100000	/* fwd delete-dup */
 #define HAMMER2_CHAIN_PFSROOT		0x00200000	/* in pfs->cluster */

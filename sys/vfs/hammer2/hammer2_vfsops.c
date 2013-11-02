@@ -1435,8 +1435,8 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		hammer2_voldata_lock(hmp);
 		if (((hmp->vchain.flags | hmp->fchain.flags) &
 		     HAMMER2_CHAIN_MODIFIED) ||
-		    hmp->vchain.core->update_tid > hmp->voldata.mirror_tid ||
-		    hmp->fchain.core->update_tid > hmp->voldata.freemap_tid) {
+		    hmp->vchain.core->update_hi > hmp->voldata.mirror_tid ||
+		    hmp->fchain.core->update_hi > hmp->voldata.freemap_tid) {
 			hammer2_voldata_unlock(hmp, 0);
 			hammer2_vfs_sync(mp, MNT_WAIT);
 			hammer2_vfs_sync(mp, MNT_WAIT);
@@ -1446,9 +1446,9 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		if (hmp->pmp_count == 0) {
 			if (((hmp->vchain.flags | hmp->fchain.flags) &
 			     HAMMER2_CHAIN_MODIFIED) ||
-			    (hmp->vchain.core->update_tid >
+			    (hmp->vchain.core->update_hi >
 			     hmp->voldata.mirror_tid) ||
-			    (hmp->fchain.core->update_tid >
+			    (hmp->fchain.core->update_hi >
 			     hmp->voldata.freemap_tid)) {
 				kprintf("hammer2_unmount: chains left over "
 					"after final sync\n");
@@ -1721,10 +1721,11 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		 */
 		hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 		if ((hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) ||
-		    hmp->vchain.core->update_tid > hmp->voldata.mirror_tid) {
+		    hmp->vchain.core->update_hi > hmp->voldata.mirror_tid) {
 			chain = &hmp->vchain;
 			hammer2_chain_flush(&info.trans, &chain);
 			KKASSERT(chain == &hmp->vchain);
+			hmp->voldata.mirror_tid = chain->bref.mirror_tid;
 			force_fchain = 1;
 		} else {
 			force_fchain = 0;
@@ -1733,12 +1734,13 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 
 		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
 		if ((hmp->fchain.flags & HAMMER2_CHAIN_MODIFIED) ||
-		    hmp->fchain.core->update_tid > hmp->voldata.freemap_tid ||
+		    hmp->fchain.core->update_hi > hmp->voldata.freemap_tid ||
 		    force_fchain) {
 			/* this will also modify vchain as a side effect */
 			chain = &hmp->fchain;
 			hammer2_chain_flush(&info.trans, &chain);
 			KKASSERT(chain == &hmp->fchain);
+			hmp->voldata.freemap_tid = chain->bref.mirror_tid;
 		}
 		hammer2_chain_unlock(&hmp->fchain);
 
@@ -1811,8 +1813,8 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 /*
  * Sync passes.
  *
- * NOTE: We don't test update_tid or MOVED here because the fsync code
- *	 won't flush on those flags.  The syncer code above will do a
+ * NOTE: We don't test update_lo/update_hi or MOVED here because the fsync
+ *	 code won't flush on those flags.  The syncer code above will do a
  *	 general meta-data flush globally that will catch these flags.
  */
 
@@ -2211,9 +2213,11 @@ hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp)
 		chain->delete_tid,
 		chain->refs);
 
-	kprintf("%*.*s      core %p [%08x] fp=%p np=%p",
+	kprintf("%*.*s      core %p [%08x] lo=%08jx hi=%08jx fp=%p np=%p",
 		tab, tab, "",
 		chain->core, (chain->core ? chain->core->flags : 0),
+		(chain->core ? chain->core->update_lo : -1),
+		(chain->core ? chain->core->update_hi : -1),
 		first_parent,
 		(first_parent ? TAILQ_NEXT(chain, core_entry) : NULL));
 
