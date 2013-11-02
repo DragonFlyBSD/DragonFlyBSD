@@ -344,6 +344,13 @@ dirfs_close(struct vop_close_args *ap)
 	}
 	vop_stdclose(ap);
 
+	/*
+	 * XXX - Currently VOP_INACTIVE() is not being called unless there is
+	 * vnode pressure so, by now, call inactive directly on last close.
+	 */
+	if (vp->v_opencount == 0 && vp->v_writecount == 0)
+		VOP_INACTIVE(vp);
+
 	KTR_LOG(dirfs_close, dnp, dnp->dn_fd, vp->v_opencount,
 	    vp->v_writecount, error);
 
