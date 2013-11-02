@@ -307,6 +307,22 @@ dirfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 }
 
 static int
+dirfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
+{
+	dirfs_mount_t dmp = VFS_TO_DIRFS(mp);
+	struct statvfs st;
+
+	debug_called();
+
+	if ((statvfs(dmp->dm_path, &st)) == -1)
+		return errno;
+
+	bcopy(&st, sbp, sizeof(st));
+
+	return 0;
+}
+
+static int
 dirfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	dirfs_node_t dnp;
@@ -333,6 +349,7 @@ static struct vfsops dirfs_vfsops = {
 	.vfs_root =			dirfs_root,
 	.vfs_vget =			vfs_stdvget,
 	.vfs_statfs =			dirfs_statfs,
+	.vfs_statvfs =			dirfs_statvfs,
 	.vfs_fhtovp =			dirfs_fhtovp,
 	.vfs_vptofh =			dirfs_vptofh,
 	.vfs_sync =			vfs_stdsync,
