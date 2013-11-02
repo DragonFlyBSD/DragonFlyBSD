@@ -93,8 +93,9 @@
 #include <uapi_drm/drm.h>
 #include <uapi_drm/drm_sarea.h>
 
-#include <linux/bitops.h>
+#include <linux/atomic.h>
 #include <linux/idr.h>
+#include <linux/kernel.h>
 #include <linux/kref.h>
 #include <linux/list.h>
 #include <linux/types.h>

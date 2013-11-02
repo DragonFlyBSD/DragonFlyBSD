@@ -30,9 +30,6 @@
 
 #define	unlikely(x)            __builtin_expect(!!(x), 0)
 #define	likely(x)              __builtin_expect(!!(x), 1)
-#define	container_of(ptr, type, member) ({			\
-	__typeof( ((type *)0)->member ) *__mptr = (ptr);	\
-	(type *)( (char *)__mptr - offsetof(type,member) );})
 
 #define DRM_HZ			hz
 #define DRM_UDELAY(udelay)	DELAY(udelay)
@@ -44,16 +41,6 @@
 
 #define	do_div(a, b)		((a) /= (b))
 #define	lower_32_bits(n)	((u32)(n))
-
-#define min_t(type, x, y) ({			\
-	type __min1 = (x);			\
-	type __min2 = (y);			\
-	__min1 < __min2 ? __min1 : __min2; })
-
-#define max_t(type, x, y) ({			\
-	type __max1 = (x);			\
-	type __max2 = (y);			\
-	__max1 > __max2 ? __max1 : __max2; })
 
 #define	memset_io(a, b, c)	memset((a), (b), (c))
 #define	memcpy_fromio(a, b, c)	memcpy((a), (b), (c))
@@ -78,7 +65,6 @@
 #define	PCI_VENDOR_ID_SONY		0x104d
 #define	PCI_VENDOR_ID_VIA		0x1106
 
-#define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
 #define	hweight32(i)	bitcount32(i)
 
 static inline unsigned long
