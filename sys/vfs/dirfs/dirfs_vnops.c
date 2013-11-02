@@ -46,10 +46,10 @@
  * dirfs_open		Y	Y	  Y	Y	open(2), openat(2)
  * dirfs_close		Y	Y	  Y	Y	close(2)
  * dirfs_access		-	-	  -	-	data from stat(2)
- * dirfs_getattr	Y	Y	  Y	Y	lstat(2), fstat(2), fstatat(2)
+ * dirfs_getattr	Y	Y	  Y	Y	lstat(2), fstatat(2)
  * dirfs_setattr	-	-	  -	-	-
- * dirfs_read		Y	-	  Y	-	read(2). relies on bufcache
- * dirfs_write		Y	-	  Y	-	write(2). relies on bufcache
+ * dirfs_read		Y	-	  Y	-	read(2).
+ * dirfs_write		Y	-	  Y	-	write(2).
  * dirfs_fsync		Y	-	  Y	-	fsync(2)
  * dirfs_mountctl	-	-	  -	-	-
  * dirfs_nremove	Y	-	  -	Y	unlink(2)
@@ -59,7 +59,7 @@
  * dirfs_nrmdir		Y	-	  -	Y	rmdir(2)
  * dirfs_nsymlink	Y	Y	  Y	Y	symlink(2), symlinkat(2)
  * dirfs_readdir	Y	-	  Y	-	getdirentries(2)
- * dirfs_readlink	Y	Y	  Y	Y	readlink(2), readlinkat(2)
+ * dirfs_readlink	Y	Y	  Y	Y	readlinkat(2)
  * dirfs_inactive	-	-	  -	-	-
  * dirfs_reclaim	-	-	  -	-	-
  * dirfs_print		-	-	  -	-	-
@@ -109,12 +109,12 @@ KTR_INFO(KTR_DIRFS, dirfs, ncreate, 1,
     dirfs_node_t dnp, char *name, dirfs_node_t pdnp, int pfd, int error);
 
 KTR_INFO(KTR_DIRFS, dirfs, open, 2,
-    "DIRFS(dnp=%p newfd?=%s)",
-    dirfs_node_t dnp, char *isnew);
+    "DIRFS(dnp=%p dn_name=%s nfd=%d)",
+    dirfs_node_t dnp, char *name, int fd);
 
 KTR_INFO(KTR_DIRFS, dirfs, close, 3,
-    "DIRFS(dnp=%p fd=%d vfsync error=%d)",
-    dirfs_node_t dnp, int fd, int error);
+    "DIRFS(dnp=%p fd=%d opencount=%d writecount=%d vfsync error=%d)",
+    dirfs_node_t dnp, int fd, int oc, int wc, int error);
 
 KTR_INFO(KTR_DIRFS, dirfs, readdir, 4,
     "DIRFS(dnp=%p fd=%d startoff=%jd uio_offset=%jd)",
@@ -301,7 +301,6 @@ dirfs_open(struct vop_open_args *ap)
 	dirfs_mount_t dmp;
 	struct vnode *vp;
 	int error;
-	int ofd, nfd;
 
 	debug_called();
 
@@ -309,7 +308,6 @@ dirfs_open(struct vop_open_args *ap)
 	dnp = VP_TO_NODE(vp);
 	dmp = VFS_TO_DIRFS(vp->v_mount);
 	error = 0;
-	ofd = nfd = dnp->dn_fd;
 
 	/*
 	 * Root inode has been allocated and opened in VFS_ROOT() so
@@ -319,10 +317,9 @@ dirfs_open(struct vop_open_args *ap)
 		error = dirfs_open_helper(dmp, dnp, DIRFS_NOFD, NULL);
 		if (error)
 			return error;
-		nfd = dnp->dn_fd;
 	}
 
-	KTR_LOG(dirfs_open, dnp, (ofd != nfd) ? "true" : "false");
+	KTR_LOG(dirfs_open, dnp, dnp->dn_name, dnp->dn_fd);
 
 	return vop_stdopen(ap);
 }
@@ -345,10 +342,12 @@ dirfs_close(struct vop_close_args *ap)
 		if (error)
 			dbg(5, "vfsync error=%d\n", error);
 	}
+	vop_stdclose(ap);
 
-	KTR_LOG(dirfs_close, dnp, dnp->dn_fd, error);
+	KTR_LOG(dirfs_close, dnp, dnp->dn_fd, vp->v_opencount,
+	    vp->v_writecount, error);
 
-	return vop_stdclose(ap);
+	return 0;
 }
 
 int
