@@ -201,8 +201,9 @@ struct ttm_buffer_object {
 	* Members not needing protection.
 	*/
 
-	u_int kref;
-	u_int list_kref;
+	struct kref kref;
+	struct kref list_kref;
+
 	/* wait_queue_head_t event_queue; */
 
 	/**
@@ -308,7 +309,7 @@ struct ttm_bo_kmap_obj {
 static inline struct ttm_buffer_object *
 ttm_bo_reference(struct ttm_buffer_object *bo)
 {
-	refcount_acquire(&bo->kref);
+	kref_get(&bo->kref);
 	return bo;
 }
 

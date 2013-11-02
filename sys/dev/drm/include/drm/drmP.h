@@ -665,7 +665,7 @@ struct drm_gem_object {
 	struct kref refcount;
 
 	/** Handle count of this object. Each handle also holds a reference */
-	u_int handle_count; /* number of handles on this object */
+	atomic_t handle_count; /* number of handles on this object */
 
 	/** Related drm device */
 	struct drm_device *dev;
@@ -951,7 +951,6 @@ struct drm_device {
 
 				/* Context support */
 	int		  irq;		/* Interrupt used by board	   */
-	int		  irq_enabled;	/* True if the irq handler is enabled */
 	int		  msi_enabled;	/* MSI enabled */
 	int		  irqrid;	/* Interrupt used by board */
 	struct resource   *irqr;	/* Resource for interrupt used by board	   */
@@ -966,8 +965,12 @@ struct drm_device {
 	int		  pci_slot;
 	int		  pci_func;
 
-	atomic_t	  context_flag;	/* Context swapping flag	   */
-	int		  last_context;	/* Last current context		   */
+	/** \name Context support */
+	/*@{ */
+	int irq_enabled;		/**< True if irq handler is enabled */
+	__volatile__ long context_flag;	/**< Context swapping flag */
+	int last_context;		/**< Last current context */
+	/*@} */
 
 	int		  num_crtcs;
 
@@ -1158,9 +1161,6 @@ void	*drm_ioremap(struct drm_device *dev, drm_local_map_t *map);
 void	drm_ioremapfree(drm_local_map_t *map);
 int	drm_mtrr_add(unsigned long offset, size_t size, int flags);
 int	drm_mtrr_del(int handle, unsigned long offset, size_t size, int flags);
-
-int	drm_context_switch(struct drm_device *dev, int old, int new);
-int	drm_context_switch_complete(struct drm_device *dev, int new);
 
 int	drm_ctxbitmap_init(struct drm_device *dev);
 void	drm_ctxbitmap_cleanup(struct drm_device *dev);

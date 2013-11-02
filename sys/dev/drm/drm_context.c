@@ -189,28 +189,51 @@ bad:
 	return EINVAL;
 }
 
-/* ================================================================
- * The actual DRM context handling routines
- */
+/*@}*/
 
-int drm_context_switch(struct drm_device *dev, int old, int new)
+/******************************************************************/
+/** \name The actual DRM context handling routines */
+/*@{*/
+
+/**
+ * Switch context.
+ *
+ * \param dev DRM device.
+ * \param old old context handle.
+ * \param new new context handle.
+ * \return zero on success or a negative number on failure.
+ *
+ * Attempt to set drm_device::context_flag.
+ */
+static int drm_context_switch(struct drm_device * dev, int old, int new)
 {
-	if (atomic_xchg(&dev->context_flag, 1) != 0) {
+	if (test_and_set_bit(0, &dev->context_flag)) {
 		DRM_ERROR("Reentering -- FIXME\n");
-		return EBUSY;
+		return -EBUSY;
 	}
 
 	DRM_DEBUG("Context switch from %d to %d\n", old, new);
 
 	if (new == dev->last_context) {
-		atomic_xchg(&dev->context_flag, 0);
+		clear_bit(0, &dev->context_flag);
 		return 0;
 	}
 
 	return 0;
 }
 
-int drm_context_switch_complete(struct drm_device *dev, int new)
+/**
+ * Complete context switch.
+ *
+ * \param dev DRM device.
+ * \param new new context handle.
+ * \return zero on success or a negative number on failure.
+ *
+ * Updates drm_device::last_context and drm_device::last_switch. Verifies the
+ * hardware lock is held, clears the drm_device::context_flag and wakes up
+ * drm_device::context_wait.
+ */
+static int drm_context_switch_complete(struct drm_device *dev, int new)
 {
 	dev->last_context = new;  /* PRE/POST: This is the _only_ writer. */
 
@@ -221,7 +244,7 @@ int drm_context_switch_complete(struct drm_device *dev, int new)
 	/* If a context switch is ever initiated
 	   when the kernel holds the lock, release
 	   that lock here. */
-	atomic_xchg(&dev->context_flag, 0);
+	clear_bit(0, &dev->context_flag);
 
 	return 0;
 }

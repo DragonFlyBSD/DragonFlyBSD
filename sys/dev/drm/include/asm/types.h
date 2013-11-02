@@ -41,7 +41,7 @@ typedef unsigned int __u32;
 
 #if defined(__GNUC__) // && !defined(__STRICT_ANSI__)
 typedef signed long long __s64;
-typedef unsigned long long __u64;
+typedef uint64_t __u64;
 #endif
 
 #ifdef _KERNEL

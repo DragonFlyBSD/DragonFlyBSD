@@ -313,7 +313,7 @@ ttm_bo_mmap_single(struct ttm_bo_device *bdev, vm_ooffset_t *offset, vm_size_t s
 	lockmgr(&bdev->vm_lock, LK_EXCLUSIVE);
 	bo = ttm_bo_vm_lookup_rb(bdev, OFF_TO_IDX(*offset), OFF_TO_IDX(size));
 	if (likely(bo != NULL))
-		refcount_acquire(&bo->kref);
+		kref_get(&bo->kref);
 	lockmgr(&bdev->vm_lock, LK_RELEASE);
 
 	if (unlikely(bo == NULL)) {

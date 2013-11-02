@@ -427,8 +427,8 @@ ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	else
 		fbo->sync_obj = NULL;
 	lockmgr(&bdev->fence_lock, LK_RELEASE);
-	refcount_init(&fbo->list_kref, 1);
-	refcount_init(&fbo->kref, 1);
+	kref_init(&fbo->list_kref);
+	kref_init(&fbo->kref);
 	fbo->destroy = &ttm_transfered_destroy;
 	fbo->acc_size = 0;
 

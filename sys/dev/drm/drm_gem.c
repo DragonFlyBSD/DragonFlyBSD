@@ -116,7 +116,7 @@ int drm_gem_object_init(struct drm_device *dev,
 	    VM_PROT_READ | VM_PROT_WRITE, 0);
 
 	kref_init(&obj->refcount);
-	obj->handle_count = 0;
+	atomic_set(&obj->handle_count, 0);
 	obj->size = size;
 
 	return (0);
@@ -138,7 +138,7 @@ int drm_gem_private_object_init(struct drm_device *dev,
 	obj->vm_obj = NULL;
 
 	kref_init(&obj->refcount);
-	atomic_store_rel_int(&obj->handle_count, 0);
+	atomic_set(&obj->handle_count, 0);
 	obj->size = size;
 
 	return (0);
