@@ -311,7 +311,7 @@ test_and_clear_bit(long bit, long *var)
 }
 
 static inline long
-test_and_set_bit(long bit, long *var)
+test_and_set_bit(long bit, volatile unsigned long *var)
 {
 	long val;
 
