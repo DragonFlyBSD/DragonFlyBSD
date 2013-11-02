@@ -2,6 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
+ * Copyright (c) 2013 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +38,10 @@ typedef struct {
 	volatile u_int counter;
 } atomic_t;
 
+typedef struct {
+	volatile u_long counter;
+} atomic64_t;
+
 #define	atomic_add(i, v)		atomic_add_return((i), (v))
 #define	atomic_sub(i, v)		atomic_sub_return((i), (v))
 #define	atomic_inc_return(v)		atomic_add_return(1, (v))
@@ -45,6 +50,9 @@ typedef struct {
 #define	atomic_dec_and_test(v)		(atomic_sub_return(1, (v)) == 0)
 #define	atomic_inc_and_test(v)		(atomic_add_return(1, (v)) == 0)
 #define atomic_dec_return(v)             atomic_sub_return(1, (v))
+
+#define atomic_xchg(p, v)		atomic_swap_int(&((p)->counter), v)
+#define atomic64_xchg(p, v)		atomic_swap_long(&((p)->counter), v)
 
 static inline int
 atomic_add_return(int i, atomic_t *v)
@@ -64,10 +72,22 @@ atomic_set(atomic_t *v, int i)
 	atomic_store_rel_int(&v->counter, i);
 }
 
+static inline void
+atomic64_set(atomic64_t *v, long i)
+{
+	atomic_store_rel_long(&v->counter, i);
+}
+
 static inline int
 atomic_read(atomic_t *v)
 {
 	return atomic_load_acq_int(&v->counter);
+}
+
+static inline int64_t
+atomic64_read(atomic64_t *v)
+{
+	return atomic_load_acq_long(&v->counter);
 }
 
 static inline int
