@@ -164,6 +164,7 @@ atomic_readandclear_int(volatile u_int *addr)
 #if defined(KLD_MODULE)
 
 extern int atomic_swap_int(volatile int *addr, int value);
+extern long atomic_swap_long(volatile long *addr, long value);
 extern void *atomic_swap_ptr(volatile void **addr, void *value);
 extern int atomic_poll_acquire_int(volatile u_int *p);
 extern void atomic_poll_release_int(volatile u_int *p);
@@ -176,6 +177,12 @@ atomic_swap_int(volatile int *addr, int value)
 	__asm __volatile("xchgl %0, %1" :
 	    "=r" (value), "=m" (*addr) : "0" (value) : "memory");
 	return (value);
+}
+
+static __inline long
+atomic_swap_long(volatile long *addr, long value)
+{
+	return (atomic_swap_int((volatile int *)addr, (int)value));
 }
 
 static __inline void *
