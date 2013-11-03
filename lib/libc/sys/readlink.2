@@ -39,10 +39,10 @@
 .Lb libc
 .Sh SYNOPSIS
 .In unistd.h
-.Ft int
-.Fn readlink "const char *path" "char *buf" "int bufsiz"
 .Ft ssize_t
-.Fn readlinkat "int fd" "const char *restrict path" "char *restrict buf" "size_t bufsize"
+.Fn readlink "const char * restrict path" "char * restrict buf" "size_t bufsiz"
+.Ft ssize_t
+.Fn readlinkat "int fd" "const char * restrict path" "char * restrict buf" "size_t bufsize"
 .Sh DESCRIPTION
 The
 .Fn readlink

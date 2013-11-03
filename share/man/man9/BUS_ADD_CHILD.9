@@ -37,8 +37,8 @@
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/bus.h
-.Ft int
-.Fn BUS_ADD_CHILD "device_t parent" "device_t child" "int order" "const char *name" "int unit"
+.Ft device_t
+.Fn BUS_ADD_CHILD "device_t bus" "device_t parent" "int order" "const char *name" "int unit"
 .Sh DESCRIPTION
 The
 .Fn BUS_ADD_CHILD
