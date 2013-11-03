@@ -283,7 +283,7 @@ FreeBSD 5.2           |      |                 |                       |
  |     |              |      |       |         |                       |
  |  FreeBSD           |      |    NetBSD 6.1.2 |                       |
  |    9.2          Mac OS X  |                 |                       |
- |                   10.9    |                 |                       |
+ |                   10.9    |            OpenBSD 5.4                  |
  |                    |      |                 |                       |
  |                    |      |                 |                       |
  |                    |      |                 |                       |
@@ -602,6 +602,7 @@ FreeBSD 9.2		2013-09-30 [FBD]
 NetBSD 6.0.3		2013-09-30 [NBD]
 NetBSD 6.1.2		2013-09-30 [NBD]
 Mac OS X 10.9		2013-10-22 [APL]
+OpenBSD 5.4		2013-11-01 [OBD]
 
 Bibliography
 ------------------------
@@ -662,4 +663,4 @@ Steven M. Schultz for providing 2.8BSD, 2.10BSD, 2.11BSD manual pages.
 Copyright (c) 1997-2012 Wolfram Schneider <wosch@FreeBSD.ORG>
 URL: http://svnweb.freebsd.org/base/head/share/misc/bsd-family-tree
 
-$FreeBSD: head/share/misc/bsd-family-tree 257340 2013-10-29 14:15:09Z pluknet $
+$FreeBSD: head/share/misc/bsd-family-tree 257516 2013-11-01 18:55:56Z pluknet $
