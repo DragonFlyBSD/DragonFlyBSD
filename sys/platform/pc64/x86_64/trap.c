@@ -858,8 +858,9 @@ trap_pfault(struct trapframe *frame, int usermode)
 		}
 
 		/*
-		 * Debugging, try to catch kernel faults on the user address space when not inside
-		 * on onfault (e.g. copyin/copyout) routine.
+		 * Debugging, try to catch kernel faults on the user address
+		 * space when not inside on onfault (e.g. copyin/copyout)
+		 * routine.
 		 */
 		if (usermode == 0 && (td->td_pcb == NULL ||
 		    td->td_pcb->pcb_onfault == NULL)) {
@@ -939,27 +940,15 @@ nogo:
 	 * kludge is needed to pass the fault address to signal handlers.
 	 */
 	p = td->td_proc;
+#ifdef DDB
 	if (td->td_lwp->lwp_vkernel == NULL) {
-#ifdef DDB
-		if (bootverbose || freeze_on_seg_fault || ddb_on_seg_fault) {
-#else
-		if (bootverbose) {
-#endif
-			kprintf("seg-fault ft=%04x ff=%04x addr=%p rip=%p "
-			    "pid=%d cpu=%d p_comm=%s\n",
-			    ftype, fault_flags,
-			    (void *)frame->tf_addr,
-			    (void *)frame->tf_rip,
-			    p->p_pid, mycpu->gd_cpuid, p->p_comm);
-		}
-#ifdef DDB
 		while (freeze_on_seg_fault) {
 			tsleep(p, 0, "freeze", hz * 20);
 		}
 		if (ddb_on_seg_fault)
 			Debugger("ddb_on_seg_fault");
-#endif
 	}
+#endif
 
 	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
 }
