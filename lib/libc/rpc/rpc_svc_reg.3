@@ -21,7 +21,7 @@
 .Sh SYNOPSIS
 .In rpc/rpc.h
 .Ft int
-.Fn rpc_reg "rpcprog_t prognum" "rpcvers_t versnum" "rpcproc_t procnum" "char *(*procname)()" "xdrproc_t inproc" "xdrproc_t outproc" "char *nettype"
+.Fn rpc_reg "rpcprog_t prognum" "rpcvers_t versnum" "rpcproc_t procnum" "char *(*procname)(char *)" "xdrproc_t inproc" "xdrproc_t outproc" "char *nettype"
 .Ft bool_t
 .Fn svc_reg "SVCXPRT *xprt" "const rpcprog_t prognum" "const rpcvers_t versnum" "void (*dispatch)(struct svc_req *, SVCXPRT *)" "const struct netconfig *netconf"
 .Ft void
