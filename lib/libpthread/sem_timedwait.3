@@ -45,7 +45,7 @@
 .Sh SYNOPSIS
 .In semaphore.h
 .Ft int
-.Fn sem_timedwait "sem_t *sem" "const struct timespec *abs_timeout"
+.Fn sem_timedwait "sem_t * restrict sem" "const struct timespec * restrict abs_timeout"
 .Sh DESCRIPTION
 The
 .Fn sem_timedwait
