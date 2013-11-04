@@ -213,8 +213,8 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
-#define HAMMER2_CHAIN_DEBUG1		0x00020000
-#define HAMMER2_CHAIN_DEBUG2		0x00040000
+#define HAMMER2_CHAIN_UNUSED20000	0x00020000
+#define HAMMER2_CHAIN_UNUSED40000	0x00040000
 #define HAMMER2_CHAIN_UNUSED80000	0x00080000
 #define HAMMER2_CHAIN_DUPLICATED	0x00100000	/* fwd delete-dup */
 #define HAMMER2_CHAIN_PFSROOT		0x00200000	/* in pfs->cluster */
@@ -443,7 +443,7 @@ struct hammer2_trans {
 typedef struct hammer2_trans hammer2_trans_t;
 
 #define HAMMER2_TRANS_ISFLUSH		0x0001	/* formal flush */
-#define HAMMER2_TRANS_RESTRICTED	0x0002	/* snapshot flush restrict */
+#define HAMMER2_TRANS_UNUSED0002	0x0002
 #define HAMMER2_TRANS_BUFCACHE		0x0004	/* from bioq strategy write */
 #define HAMMER2_TRANS_NEWINODE		0x0008	/* caller allocating inode */
 #define HAMMER2_TRANS_ISALLOCATING	0x0010	/* in allocator */

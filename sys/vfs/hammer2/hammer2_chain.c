@@ -2922,7 +2922,7 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	KKASSERT(ochain->flags & HAMMER2_CHAIN_ONRBTREE);
 
 	/*
-	 * Ultimate nchain->modify_tid will be set to trans->sync_tid,
+	 * Ultimately nchain->modify_tid will be set to trans->sync_tid,
 	 * but we can't do that here because we want to call
 	 * hammer2_chain_modify() to reallocate the block (if necessary).
 	 */
@@ -2956,18 +2956,19 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 			nchain->delete_tid = ochain->delete_tid;
 			ochain->delete_tid = trans->sync_tid;
 			KKASSERT(ochain->flags & HAMMER2_CHAIN_MOVED);
-			atomic_set_int(&ochain->flags, HAMMER2_CHAIN_DEBUG1);
-			atomic_set_int(&nchain->flags, HAMMER2_CHAIN_DEBUG2);
+		} else if (ochain->delete_tid == trans->sync_tid) {
+			/*
+			 * ochain was deleted in the current transaction
+			 */
+			nchain->delete_tid = trans->sync_tid;
 		} else {
 			/*
-			 * delete-duplicate a chain deleted in the current
-			 * transaction.  We cannot d-d a chain deleted in
-			 * a prior transaction.
+			 * ochain was deleted in a prior transaction.
+			 * create and delete nchain in the current
+			 * transaction.
 			 */
-			KKASSERT(ochain->delete_tid == trans->sync_tid);
 			nchain->delete_tid = trans->sync_tid;
 		}
-		nchain->modify_tid = ochain->modify_tid;
 		hammer2_chain_insert(above, ochain->inlayer, nchain, 0);
 	} else {
 		KKASSERT(trans->sync_tid >= ochain->modify_tid);
@@ -3100,7 +3101,6 @@ hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t **ochainp,
 
 	hmp = ochain->hmp;
 	opfs_clid = ochain->data->ipdata.pfs_clid;
-	KKASSERT((trans->flags & HAMMER2_TRANS_RESTRICTED) == 0);
 
 	*ochainp = ochain;
 
