@@ -92,10 +92,12 @@
 .ds doc-operating-system-DragonFly-3.5 3.5
 .
 .\" FreeBSD releases not found in doc-common.
+.ds doc-operating-system-FreeBSD-7.2  7.2
 .ds doc-operating-system-FreeBSD-7.3  7.3
 .ds doc-operating-system-FreeBSD-8.0  8.0
 .ds doc-operating-system-FreeBSD-8.1  8.1
 .ds doc-operating-system-FreeBSD-9.0  9.0
+.ds doc-operating-system-FreeBSD-9.1  9.1
 .ds doc-operating-system-FreeBSD-10.0 10.0
 .
 .\" NetBSD releases not found in doc-common.
