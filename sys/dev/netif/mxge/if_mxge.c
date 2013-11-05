@@ -29,6 +29,7 @@ $FreeBSD: head/sys/dev/mxge/if_mxge.c 254263 2013-08-12 23:30:01Z scottl $
 
 ***************************************************************************/
 
+#include "opt_ifpoll.h"
 #include "opt_inet.h"
 
 #include <sys/param.h>
@@ -52,6 +53,7 @@ $FreeBSD: head/sys/dev/mxge/if_mxge.c 254263 2013-08-12 23:30:01Z scottl $
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
+#include <net/if_poll.h>
 
 #include <net/bpf.h>
 
@@ -2358,11 +2360,11 @@ mxge_rx_done_small(struct ifnet *ifp, mxge_rx_ring_t *rx,
 }
 
 static __inline void
-mxge_clean_rx_done(struct ifnet *ifp, struct mxge_rx_data *rx_data)
+mxge_clean_rx_done(struct ifnet *ifp, struct mxge_rx_data *rx_data, int cycle)
 {
 	mxge_rx_done_t *rx_done = &rx_data->rx_done;
 
-	while (rx_done->entry[rx_done->idx].length != 0) {
+	while (rx_done->entry[rx_done->idx].length != 0 && cycle != 0) {
 		uint16_t length, checksum;
 
 		length = ntohs(rx_done->entry[rx_done->idx].length);
@@ -2380,6 +2382,7 @@ mxge_clean_rx_done(struct ifnet *ifp, struct mxge_rx_data *rx_data)
 
 		rx_done->idx++;
 		rx_done->idx &= rx_done->mask;
+		--cycle;
 	}
 }
 
@@ -2699,7 +2702,7 @@ mxge_legacy(void *arg)
 				mxge_tx_done(&sc->arpcom.ac_if, tx,
 				    (int)send_done_count);
 			}
-			mxge_clean_rx_done(&sc->arpcom.ac_if, &ss->rx_data);
+			mxge_clean_rx_done(&sc->arpcom.ac_if, &ss->rx_data, -1);
 			send_done_count = be32toh(stats->send_done_count);
 		}
 		if (mxge_deassert_wait)
@@ -2728,6 +2731,11 @@ mxge_msi(void *arg)
 	mxge_rx_done_t *rx_done = &ss->rx_data.rx_done;
 	uint32_t send_done_count;
 	uint8_t valid;
+#ifndef IFPOLL_ENABLE
+	const boolean_t polling = FALSE;
+#else
+	boolean_t polling = FALSE;
+#endif
 
 	ASSERT_SERIALIZED(&sc->main_serialize);
 
@@ -2738,11 +2746,18 @@ mxge_msi(void *arg)
 	valid = stats->valid;
 	stats->valid = 0;
 
-	/* Check for receives */
-	lwkt_serialize_enter(&ss->rx_data.rx_serialize);
-	if (rx_done->entry[rx_done->idx].length != 0)
-		mxge_clean_rx_done(&sc->arpcom.ac_if, &ss->rx_data);
-	lwkt_serialize_exit(&ss->rx_data.rx_serialize);
+#ifdef IFPOLL_ENABLE
+	if (sc->arpcom.ac_if.if_flags & IFF_NPOLLING)
+		polling = TRUE;
+#endif
+
+	if (!polling) {
+		/* Check for receives */
+		lwkt_serialize_enter(&ss->rx_data.rx_serialize);
+		if (rx_done->entry[rx_done->idx].length != 0)
+			mxge_clean_rx_done(&sc->arpcom.ac_if, &ss->rx_data, -1);
+		lwkt_serialize_exit(&ss->rx_data.rx_serialize);
+	}
 
 	/*
 	 * Check for transmit completes
@@ -2763,7 +2778,7 @@ mxge_msi(void *arg)
 		mxge_intr_status(sc, stats);
 
 	/* Check to see if we have rx token to pass back */
-	if (valid & 0x1)
+	if (!polling && (valid & 0x1))
 		*ss->irq_claim = be32toh(3);
 	*(ss->irq_claim + 1) = be32toh(3);
 }
@@ -2774,10 +2789,15 @@ mxge_msix_rx(void *arg)
 	struct mxge_slice_state *ss = arg;
 	mxge_rx_done_t *rx_done = &ss->rx_data.rx_done;
 
+#ifdef IFPOLL_ENABLE
+	if (ss->sc->arpcom.ac_if.if_flags & IFF_NPOLLING)
+		return;
+#endif
+
 	ASSERT_SERIALIZED(&ss->rx_data.rx_serialize);
 
 	if (rx_done->entry[rx_done->idx].length != 0)
-		mxge_clean_rx_done(&ss->sc->arpcom.ac_if, &ss->rx_data);
+		mxge_clean_rx_done(&ss->sc->arpcom.ac_if, &ss->rx_data, -1);
 
 	*ss->irq_claim = be32toh(3);
 }
@@ -2792,6 +2812,11 @@ mxge_msix_rxtx(void *arg)
 	mxge_rx_done_t *rx_done = &ss->rx_data.rx_done;
 	uint32_t send_done_count;
 	uint8_t valid;
+#ifndef IFPOLL_ENABLE
+	const boolean_t polling = FALSE;
+#else
+	boolean_t polling = FALSE;
+#endif
 
 	ASSERT_SERIALIZED(&ss->rx_data.rx_serialize);
 
@@ -2802,9 +2827,14 @@ mxge_msix_rxtx(void *arg)
 	valid = stats->valid;
 	stats->valid = 0;
 
+#ifdef IFPOLL_ENABLE
+	if (sc->arpcom.ac_if.if_flags & IFF_NPOLLING)
+		polling = TRUE;
+#endif
+
 	/* Check for receives */
-	if (rx_done->entry[rx_done->idx].length != 0)
-		mxge_clean_rx_done(&sc->arpcom.ac_if, &ss->rx_data);
+	if (!polling && rx_done->entry[rx_done->idx].length != 0)
+		mxge_clean_rx_done(&sc->arpcom.ac_if, &ss->rx_data, -1);
 
 	/*
 	 * Check for transmit completes
@@ -2822,7 +2852,7 @@ mxge_msix_rxtx(void *arg)
 	}
 
 	/* Check to see if we have rx token to pass back */
-	if (valid & 0x1)
+	if (!polling && (valid & 0x1))
 		*ss->irq_claim = be32toh(3);
 	*(ss->irq_claim + 1) = be32toh(3);
 }
@@ -4105,6 +4135,55 @@ mxge_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 
 #endif	/* INVARIANTS */
 
+#ifdef IFPOLL_ENABLE
+
+static void
+mxge_npoll_rx(struct ifnet *ifp, void *xss, int cycle)
+{
+	struct mxge_slice_state *ss = xss;
+	mxge_rx_done_t *rx_done = &ss->rx_data.rx_done;
+
+	ASSERT_SERIALIZED(&ss->rx_data.rx_serialize);
+
+	if (rx_done->entry[rx_done->idx].length != 0) {
+		mxge_clean_rx_done(&ss->sc->arpcom.ac_if, &ss->rx_data, cycle);
+	} else {
+		/*
+		 * XXX
+		 * This register writting obviously has cost,
+		 * however, if we don't hand back the rx token,
+		 * the upcoming packets may suffer rediculously
+		 * large delay, as observed on 8AL-C using ping(8).
+		 */
+		*ss->irq_claim = be32toh(3);
+	}
+}
+
+static void
+mxge_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct mxge_softc *sc = ifp->if_softc;
+	int i;
+
+	if (info == NULL)
+		return;
+
+	/*
+	 * Only poll rx; polling tx and status don't seem to work
+	 */
+	for (i = 0; i < sc->num_slices; ++i) {
+		struct mxge_slice_state *ss = &sc->ss[i];
+		int idx = ss->intr_cpuid;
+
+		KKASSERT(idx < ncpus2);
+		info->ifpi_rx[idx].poll_func = mxge_npoll_rx;
+		info->ifpi_rx[idx].arg = ss;
+		info->ifpi_rx[idx].serializer = &ss->rx_data.rx_serialize;
+	}
+}
+
+#endif	/* IFPOLL_ENABLE */
+
 static int 
 mxge_attach(device_t dev)
 {
@@ -4259,6 +4338,10 @@ mxge_attach(device_t dev)
 	ifp->if_init = mxge_init;
 	ifp->if_ioctl = mxge_ioctl;
 	ifp->if_start = mxge_start;
+#ifdef IFPOLL_ENABLE
+	if (sc->intr_type != PCI_INTR_TYPE_LEGACY)
+		ifp->if_npoll = mxge_npoll;
+#endif
 	ifp->if_serialize = mxge_serialize;
 	ifp->if_deserialize = mxge_deserialize;
 	ifp->if_tryserialize = mxge_tryserialize;
