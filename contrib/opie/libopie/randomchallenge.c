@@ -28,6 +28,7 @@ License Agreement applies to this software.
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "opie_cfg.h"
 #include "opie.h"
 

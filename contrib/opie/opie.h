@@ -38,7 +38,6 @@ License Agreement applies to this software.
 		(skey.h).
 
 $FreeBSD: src/contrib/opie/opie.h,v 1.4.6.4 2002/07/15 14:48:43 des Exp $
-$DragonFly: src/contrib/opie/opie.h,v 1.2 2003/06/17 04:24:04 dillon Exp $
 */
 #ifndef _OPIE_H
 #define _OPIE_H 1
@@ -129,6 +128,7 @@ void opieunlockaeh __P((void));
 void opiedisableaeh __P((void));
 int  opielookup __P((struct opie *,char *));
 int  opiepasscheck __P((char *));
+int  opienewseed __P((char *));
 void opierandomchallenge __P((char *));
 char * opieskipspace __P((register char *));
 void opiestripcrlf __P((char *));
@@ -140,6 +140,7 @@ const char *opie_get_algorithm __P((void));
 int  opie_haskey __P((char *username));
 char *opie_keyinfo __P((char *));
 int  opie_passverify __P((char *username, char *passwd));
+int  opieinsecure __P((void));
 __END_DECLS
 
 #if _OPIE
@@ -159,6 +160,7 @@ FILE *__opieopen __P((char *, int, int));
 int __opiereadrec __P((struct opie *));
 int __opiewriterec __P((struct opie *));
 int __opieparsechallenge __P((char *buffer, int *algorithm, int *sequence, char **seed, int *exts));
+void opiehashlen __P((int algorithm, void *in, struct opie_otpkey *out, int n));
 __END_DECLS
 
 #define opiestrncpy(dst, src, n) \
