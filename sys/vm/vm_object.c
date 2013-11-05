@@ -1351,12 +1351,14 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 					     OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY);
 			if (object->type == OBJT_VNODE &&
 			    (vp = (struct vnode *)object->handle) != NULL) {
-				if (vp->v_mount &&
-				    (vp->v_mount->mnt_kern_flag & MNTK_THR_SYNC)) {
-					vclrobjdirty(vp);
-				} else {
-					vclrflags(vp, VOBJDIRTY);
-				}
+				/*
+				 * Use new-style interface to clear VISDIRTY
+				 * because the vnode is not necessarily removed
+				 * from the syncer list(s) as often as it was
+				 * under the old interface, which can leave
+				 * the vnode on the syncer list after reclaim.
+				 */
+				vclrobjdirty(vp);
 			}
 		}
 	}
@@ -2787,8 +2789,17 @@ vm_object_set_writeable_dirty(vm_object_t object)
 		if ((vp->v_flag & VOBJDIRTY) == 0) {
 			if (vp->v_mount &&
 			    (vp->v_mount->mnt_kern_flag & MNTK_THR_SYNC)) {
+				/*
+				 * New style THR_SYNC places vnodes on the
+				 * syncer list more deterministically.
+				 */
 				vsetobjdirty(vp);
 			} else {
+				/*
+				 * Old style scan would not necessarily place
+				 * a vnode on the syncer list when possibly
+				 * modified via mmap.
+				 */
 				vsetflags(vp, VOBJDIRTY);
 			}
 		}
