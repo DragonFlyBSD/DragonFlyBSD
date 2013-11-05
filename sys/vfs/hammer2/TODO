@@ -1,4 +1,6 @@
 
+* make sure we aren't using a shared lock during RB_SCAN's?
+
 * overwrite in write_file case w/compression - if device block size changes
   the block has to be deleted and reallocated.  See hammer2_assign_physical()
   in vnops.

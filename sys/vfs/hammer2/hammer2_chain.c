@@ -711,7 +711,7 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, struct h2_core_list *delayq)
 				  HAMMER2_CHAIN_MODIFIED)) == 0);
 	hammer2_chain_drop_data(chain, 1);
 
-	KKASSERT(chain->bp == NULL);
+	KKASSERT(chain->dio == NULL);
 
 	/*
 	 * Free saved empty layer and return chained drop.
@@ -834,14 +834,9 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	hammer2_mount_t *hmp;
 	hammer2_chain_core_t *core;
 	hammer2_blockref_t *bref;
-	hammer2_off_t pbase;
-	hammer2_off_t pmask;
-	hammer2_off_t peof;
 	ccms_state_t ostate;
-	size_t boff;
-	size_t psize;
-	int error;
 	char *bdata;
+	int error;
 
 	/*
 	 * Ref and lock the element.  Recursive locks are allowed.
@@ -917,50 +912,34 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	 */
 	bref = &chain->bref;
 
-	psize = hammer2_devblksize(chain->bytes);
-	pmask = (hammer2_off_t)psize - 1;
-	pbase = bref->data_off & ~pmask;
-	boff = bref->data_off & (HAMMER2_OFF_MASK & pmask);
-	KKASSERT(pbase != 0);
-	peof = (pbase + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
-
 	/*
 	 * The getblk() optimization can only be used on newly created
 	 * elements if the physical block size matches the request.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_INITIAL) &&
-	    chain->bytes == psize) {
-		chain->bp = getblk(hmp->devvp, pbase, psize, 0, 0);
-		error = 0;
-	} else if (hammer2_isclusterable(chain)) {
-		error = cluster_read(hmp->devvp, peof, pbase, psize,
-				     psize, HAMMER2_PBUFSIZE*4,
-				     &chain->bp);
-		adjreadcounter(&chain->bref, chain->bytes);
+	if (chain->flags & HAMMER2_CHAIN_INITIAL) {
+		error = hammer2_io_new(hmp, bref->data_off, chain->bytes,
+					&chain->dio);
 	} else {
-		error = bread(hmp->devvp, pbase, psize, &chain->bp);
+		error = hammer2_io_bread(hmp, bref->data_off, chain->bytes,
+					 &chain->dio);
 		adjreadcounter(&chain->bref, chain->bytes);
 	}
 
 	if (error) {
 		kprintf("hammer2_chain_lock: I/O error %016jx: %d\n",
-			(intmax_t)pbase, error);
-		bqrelse(chain->bp);
-		chain->bp = NULL;
+			(intmax_t)bref->data_off, error);
+		hammer2_io_bqrelse(&chain->dio);
 		ccms_thread_lock_downgrade(&core->cst, ostate);
 		return (error);
 	}
 
 	/*
-	 * Zero the data area if the chain is in the INITIAL-create state.
-	 * Mark the buffer for bdwrite().  This clears the INITIAL state
-	 * but does not mark the chain modified.
+	 * We can clear the INITIAL state now, we've resolved the buffer
+	 * to zeros and marked it dirty with hammer2_io_new().
 	 */
-	bdata = (char *)chain->bp->b_data + boff;
+	bdata = hammer2_io_data(chain->dio, chain->bref.data_off);
 	if (chain->flags & HAMMER2_CHAIN_INITIAL) {
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
-		bzero(bdata, chain->bytes);
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
 	}
 
 	/*
@@ -979,19 +958,10 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		 * Copy data from bp to embedded buffer
 		 */
 		panic("hammer2_chain_lock: called on unresolved volume header");
-#if 0
-		/* NOT YET */
-		KKASSERT(pbase == 0);
-		KKASSERT(chain->bytes == HAMMER2_PBUFSIZE);
-		bcopy(bdata, &hmp->voldata, chain->bytes);
-		chain->data = (void *)&hmp->voldata;
-		bqrelse(chain->bp);
-		chain->bp = NULL;
-#endif
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		/*
-		 * Copy data from bp to embedded buffer, do not retain the
+		 * Copy data from dio to embedded buffer, do not retain the
 		 * device buffer.
 		 */
 		KKASSERT(chain->bytes == sizeof(chain->data->ipdata));
@@ -999,8 +969,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		chain->data = kmalloc(sizeof(chain->data->ipdata),
 				      hmp->mchain, M_WAITOK | M_ZERO);
 		bcopy(bdata, &chain->data->ipdata, chain->bytes);
-		bqrelse(chain->bp);
-		chain->bp = NULL;
+		hammer2_io_bqrelse(&chain->dio);
 		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		KKASSERT(chain->bytes == sizeof(chain->data->bmdata));
@@ -1008,8 +977,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		chain->data = kmalloc(sizeof(chain->data->bmdata),
 				      hmp->mchain, M_WAITOK | M_ZERO);
 		bcopy(bdata, &chain->data->bmdata, chain->bytes);
-		bqrelse(chain->bp);
-		chain->bp = NULL;
+		hammer2_io_bqrelse(&chain->dio);
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_DATA:
@@ -1021,48 +989,28 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		chain->data = (void *)bdata;
 		break;
 	}
-
-	/*
-	 * Make sure the bp is not specifically owned by this thread before
-	 * restoring to a possibly shared lock, so another hammer2 thread
-	 * can release it.
-	 */
-	if (chain->bp)
-		BUF_KERNPROC(chain->bp);
 	ccms_thread_lock_downgrade(&core->cst, ostate);
 	return (0);
 }
 
 /*
- * Asynchronously read the device buffer (dbp) and execute the specified
- * callback.  The caller should pass-in a locked chain (shared lock is ok).
- * The function is responsible for unlocking the chain and for disposing
- * of dbp.
- *
- * NOTE!  A NULL dbp (but non-NULL data) will be passed to the function
- *	  if the dbp is integrated into the chain, because we do not want
- *	  the caller to dispose of dbp in that situation.
+ * This basically calls hammer2_io_breadcb() but does some pre-processing
+ * of the chain first to handle certain cases.
  */
-static void hammer2_chain_load_async_callback(struct bio *bio);
-
 void
 hammer2_chain_load_async(hammer2_chain_t *chain,
-	void (*func)(hammer2_chain_t *, struct buf *, char *, void *),
-	void *arg)
+			 void (*callback)(hammer2_io_t *dio,
+					  hammer2_chain_t *chain,
+					  void *arg_p, off_t arg_o),
+			 void *arg_p, off_t arg_o)
 {
-	hammer2_cbinfo_t *cbinfo;
 	hammer2_mount_t *hmp;
+	struct hammer2_io *dio;
 	hammer2_blockref_t *bref;
-	hammer2_off_t pbase;
-	hammer2_off_t pmask;
-	hammer2_off_t peof;
-	struct buf *dbp;
-	size_t boff;
-	size_t psize;
-	char *bdata;
+	int error;
 
 	if (chain->data) {
-		func(chain, NULL, (char *)chain->data, arg);
+		callback(NULL, chain, arg_p, arg_o);
 		return;
 	}
 
@@ -1080,14 +1028,6 @@ hammer2_chain_load_async(hammer2_chain_t *chain,
 	 * block size.
 	 */
 	bref = &chain->bref;
-
-	psize = hammer2_devblksize(chain->bytes);
-	pmask = (hammer2_off_t)psize - 1;
-	pbase = bref->data_off & ~pmask;
-	boff = bref->data_off & (HAMMER2_OFF_MASK & pmask);
-	KKASSERT(pbase != 0);
-	peof = (pbase + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
-
 	hmp = chain->hmp;
 
 	/*
@@ -1095,72 +1035,25 @@ hammer2_chain_load_async(hammer2_chain_t *chain,
 	 * elements if the physical block size matches the request.
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_INITIAL) &&
-	    chain->bytes == psize) {
-		dbp = getblk(hmp->devvp, pbase, psize, 0, 0);
-		/*atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);*/
-		bdata = (char *)dbp->b_data + boff;
-		bzero(bdata, chain->bytes);
-		/*atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);*/
-		func(chain, dbp, bdata, arg);
-		bqrelse(dbp);
+	    chain->bytes == hammer2_devblksize(chain->bytes)) {
+		error = hammer2_io_new(hmp, bref->data_off, chain->bytes, &dio);
+		KKASSERT(error == 0);
+		callback(dio, chain, arg_p, arg_o);
 		return;
 	}
 
+	/*
+	 * Otherwise issue a read
+	 */
 	adjreadcounter(&chain->bref, chain->bytes);
-	cbinfo = kmalloc(sizeof(*cbinfo), hmp->mchain, M_INTWAIT | M_ZERO);
-	cbinfo->chain = chain;
-	cbinfo->func = func;
-	cbinfo->arg = arg;
-	cbinfo->boff = boff;
-
-	cluster_readcb(hmp->devvp, peof, pbase, psize,
-		HAMMER2_PBUFSIZE*4, HAMMER2_PBUFSIZE*4,
-		hammer2_chain_load_async_callback, cbinfo);
-}
-
-static void
-hammer2_chain_load_async_callback(struct bio *bio)
-{
-	hammer2_cbinfo_t *cbinfo;
-	hammer2_mount_t *hmp;
-	struct buf *dbp;
-	char *data;
-
-	/*
-	 * Nobody is waiting for bio/dbp to complete, we are
-	 * responsible for handling the biowait() equivalent
-	 * on dbp which means clearing BIO_DONE and BIO_SYNC
-	 * and calling bpdone() if it hasn't already been called
-	 * to restore any covered holes in the buffer's backing
-	 * store.
-	 */
-	dbp = bio->bio_buf;
-	if ((bio->bio_flags & BIO_DONE) == 0)
-		bpdone(dbp, 0);
-	bio->bio_flags &= ~(BIO_DONE | BIO_SYNC);
-
-	/*
-	 * Extract the auxillary info and issue the callback.
-	 * Finish up with the dbp after it returns.
-	 */
-	cbinfo = bio->bio_caller_info1.ptr;
-	/*ccms_thread_lock_setown(cbinfo->chain->core);*/
-	data = dbp->b_data + cbinfo->boff;
-	hmp = cbinfo->chain->hmp;
-
-	cbinfo = bio->bio_caller_info1.ptr;
-	if (cbinfo->chain->flags & HAMMER2_CHAIN_INITIAL)
-		bzero(data, cbinfo->chain->bytes);
-	cbinfo->func(cbinfo->chain, dbp, data, cbinfo->arg);
-	/* cbinfo->chain is stale now */
-	bqrelse(dbp);
-	kfree(cbinfo, hmp->mchain);
+	hammer2_io_breadcb(hmp, bref->data_off, chain->bytes,
+			   callback, chain, arg_p, arg_o);
 }
 
 /*
  * Unlock and deref a chain element.
  *
- * On the last lock release any non-embedded data (chain->bp) will be
+ * On the last lock release any non-embedded data (chain->dio) will be
  * retired.
  */
 void
@@ -1203,7 +1096,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	 * to exclusive for terminal processing.  If after upgrading we find
 	 * that lockcnt is non-zero, another thread is racing us and will
 	 * handle the unload for us later on, so just cleanup and return
-	 * leaving the data/bp intact
+	 * leaving the data/io intact
 	 *
 	 * Otherwise if lockcnt is still 0 it is possible for it to become
 	 * non-zero and race, but since we hold the core->cst lock
@@ -1222,12 +1115,8 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	 *
 	 * Do NOT NULL out chain->data (e.g. inode data), it might be
 	 * dirty.
-	 *
-	 * The DIRTYBP flag is non-applicable in this situation and can
-	 * be cleared to keep the flags state clean.
 	 */
-	if (chain->bp == NULL) {
-		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
+	if (chain->dio == NULL) {
 		if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0)
 			hammer2_chain_drop_data(chain, 0);
 		ccms_thread_unlock_upgraded(&core->cst, ostate);
@@ -1238,7 +1127,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	/*
 	 * Statistics
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_DIRTYBP) == 0) {
+	if (hammer2_io_isdirty(chain->dio) == 0) {
 		;
 	} else if (chain->flags & HAMMER2_CHAIN_IOFLUSH) {
 		switch(chain->bref.type) {
@@ -1283,7 +1172,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	}
 
 	/*
-	 * Clean out the bp.
+	 * Clean out the dio.
 	 *
 	 * If a device buffer was used for data be sure to destroy the
 	 * buffer when we are done to avoid aliases (XXX what about the
@@ -1291,46 +1180,20 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 	 *
 	 * NOTE: Freemap leaf's use reserved blocks and thus no aliasing
 	 *	 is possible.
-	 */
-#if 0
-	/*
-	 * XXX our primary cache is now the block device, not
-	 * the logical file. don't release the buffer.
-	 */
-	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA)
-		chain->bp->b_flags |= B_RELBUF;
-#endif
-
-	/*
-	 * The DIRTYBP flag tracks whether we have to bdwrite() the buffer
-	 * or not.  The flag will get re-set when chain_modify() is called,
-	 * even if MODIFIED is already set, allowing the OS to retire the
-	 * buffer independent of a hammer2 flus.
+	 *
+	 * NOTE: The isdirty check tracks whether we have to bdwrite() the
+	 *	 buffer or not.  The buffer might already be dirty.  The
+	 *	 flag is re-set when chain_modify() is called, even if
+	 *	 MODIFIED is already set, allowing the OS to retire the
+	 *	 buffer independent of a hammer2 flush.
 	 */
 	chain->data = NULL;
-	if (chain->flags & HAMMER2_CHAIN_DIRTYBP) {
-		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
-		if (chain->flags & HAMMER2_CHAIN_IOFLUSH) {
-			atomic_clear_int(&chain->flags,
-					 HAMMER2_CHAIN_IOFLUSH);
-			chain->bp->b_flags |= B_RELBUF;
-			cluster_awrite(chain->bp);
-		} else {
-			chain->bp->b_flags |= B_CLUSTEROK;
-			bdwrite(chain->bp);
-		}
+	if ((chain->flags & HAMMER2_CHAIN_IOFLUSH) &&
+	    hammer2_io_isdirty(chain->dio)) {
+		hammer2_io_bawrite(&chain->dio);
 	} else {
-		if (chain->flags & HAMMER2_CHAIN_IOFLUSH) {
-			atomic_clear_int(&chain->flags,
-					 HAMMER2_CHAIN_IOFLUSH);
-			chain->bp->b_flags |= B_RELBUF;
-			brelse(chain->bp);
-		} else {
-			/* bp might still be dirty */
-			bqrelse(chain->bp);
-		}
+		hammer2_io_bqrelse(&chain->dio);
 	}
-	chain->bp = NULL;
 	ccms_thread_unlock_upgraded(&core->cst, ostate);
 	hammer2_chain_drop(chain);
 }
@@ -1392,7 +1255,6 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
  * data buffer.  That is, the passed-in bp is a logical buffer, whereas
  * any chain-oriented bp would be a device buffer.
  *
- * XXX flags currently ignored, uses chain->bp to detect data/no-data.
  * XXX return error if cannot resize.
  */
 void
@@ -1402,11 +1264,8 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *chain;
-	hammer2_off_t pbase;
 	size_t obytes;
 	size_t nbytes;
-	size_t bbytes;
-	int boff;
 
 	chain = *chainp;
 	hmp = chain->hmp;
@@ -1452,17 +1311,10 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	/*ip->delta_dcount += (ssize_t)(nbytes - obytes);*/ /* XXX atomic */
 
 	/*
-	 * The device buffer may be larger than the allocation size.
-	 */
-	bbytes = hammer2_devblksize(chain->bytes);
-	pbase = chain->bref.data_off & ~(hammer2_off_t)(bbytes - 1);
-	boff = chain->bref.data_off & HAMMER2_OFF_MASK & (bbytes - 1);
-
-	/*
 	 * For now just support it on DATA chains (and not on indirect
 	 * blocks).
 	 */
-	KKASSERT(chain->bp == NULL);
+	KKASSERT(chain->dio == NULL);
 
 #if 0
 	/*
@@ -1515,15 +1367,10 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *chain;
-	hammer2_off_t pbase;
-	hammer2_off_t pmask;
-	hammer2_off_t peof;
-	struct buf *nbp;
+	hammer2_io_t *dio;
 	int error;
 	int wasinitial;
-	size_t psize;
-	size_t boff;
-	void *bdata;
+	char *bdata;
 
 	chain = *chainp;
 	hmp = chain->hmp;
@@ -1648,7 +1495,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		 * The data is embedded, no copy-on-write operation is
 		 * needed.
 		 */
-		KKASSERT(chain->bp == NULL);
+		KKASSERT(chain->dio == NULL);
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_INDIRECT:
@@ -1658,49 +1505,29 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		 */
 		KKASSERT(chain != &hmp->vchain && chain != &hmp->fchain);
 
-		psize = hammer2_devblksize(chain->bytes);
-		pmask = (hammer2_off_t)psize - 1;
-		pbase = chain->bref.data_off & ~pmask;
-		boff = chain->bref.data_off & (HAMMER2_OFF_MASK & pmask);
-		KKASSERT(pbase != 0);
-		peof = (pbase + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
-
-		/*
-		 * The getblk() optimization can only be used if the
-		 * chain element size matches the physical block size.
-		 */
-		if (chain->bp && chain->bp->b_loffset == pbase) {
-			nbp = chain->bp;
-			error = 0;
-		} else if (chain->bytes == psize) {
-			nbp = getblk(hmp->devvp, pbase, psize, 0, 0);
-			error = 0;
-		} else if (hammer2_isclusterable(chain)) {
-			error = cluster_read(hmp->devvp, peof, pbase, psize,
-					     psize, HAMMER2_PBUFSIZE*4,
-					     &nbp);
-			adjreadcounter(&chain->bref, chain->bytes);
+		if (wasinitial) {
+			error = hammer2_io_new(hmp, chain->bref.data_off,
+					       chain->bytes, &dio);
 		} else {
-			error = bread(hmp->devvp, pbase, psize, &nbp);
-			adjreadcounter(&chain->bref, chain->bytes);
+			error = hammer2_io_bread(hmp, chain->bref.data_off,
+						 chain->bytes, &dio);
 		}
+		adjreadcounter(&chain->bref, chain->bytes);
 		KKASSERT(error == 0);
-		bdata = (char *)nbp->b_data + boff;
+
+		bdata = hammer2_io_data(dio, chain->bref.data_off);
 
 		/*
 		 * Copy or zero-fill on write depending on whether
-		 * chain->data exists or not.  Retire the existing bp
-		 * based on the DIRTYBP flag.  Set the DIRTYBP flag to
-		 * indicate that retirement of nbp should use bdwrite().
+		 * chain->data exists or not and set the dirty state for
+		 * the new buffer.  Retire the existing buffer.
 		 */
 		if (chain->data) {
-			KKASSERT(chain->bp != NULL);
-			if (chain->data != bdata) {
+			KKASSERT(chain->dio != NULL);
+			if (chain->data != (void *)bdata) {
 				bcopy(chain->data, bdata, chain->bytes);
 			}
-		} else if (wasinitial) {
-			bzero(bdata, chain->bytes);
-		} else {
+		} else if (wasinitial == 0) {
 			/*
 			 * We have a problem.  We were asked to COW but
 			 * we don't have any data to COW with!
@@ -1708,21 +1535,10 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 			panic("hammer2_chain_modify: having a COW %p\n",
 			      chain);
 		}
-		if (chain->bp != nbp) {
-			if (chain->bp) {
-				if (chain->flags & HAMMER2_CHAIN_DIRTYBP) {
-					chain->bp->b_flags |= B_CLUSTEROK;
-					bdwrite(chain->bp);
-				} else {
-					chain->bp->b_flags |= B_RELBUF;
-					brelse(chain->bp);
-				}
-			}
-			chain->bp = nbp;
-			BUF_KERNPROC(chain->bp);
-		}
-		chain->data = bdata;
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DIRTYBP);
+		hammer2_io_brelse(&chain->dio);
+		chain->data = (void *)bdata;
+		chain->dio = dio;
+		hammer2_io_setdirty(dio);	/* modified by bcopy above */
 		break;
 	default:
 		panic("hammer2_chain_modify: illegal non-embedded type %d",

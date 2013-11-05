@@ -459,6 +459,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp->devvp = devvp;
 		kmalloc_create(&hmp->mchain, "HAMMER2-chains");
 		TAILQ_INSERT_TAIL(&hammer2_mntlist, hmp, mntentry);
+		RB_INIT(&hmp->iotree);
 
 		lockinit(&hmp->alloclk, "h2alloc", 0, 0);
 		lockinit(&hmp->voldatalk, "voldata", 0, LK_CANRECURSE);
@@ -1094,12 +1095,8 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 		KKASSERT(chain == NULL);
 	} else {
 		/* Get device offset */
-		hammer2_off_t pbase;
-		hammer2_off_t pmask;
-		hammer2_off_t peof;
-		size_t boff;
-		size_t psize;
-		struct buf *dbp;
+		hammer2_io_t *dio;
+		char *bdata;
 		int temp_check;
 
 		KKASSERT(chain->flags & HAMMER2_CHAIN_MODIFIED);
@@ -1113,31 +1110,23 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 			      HAMMER2_EMBEDDED_BYTES);
 			break;
 		case HAMMER2_BREF_TYPE_DATA:
-			psize = hammer2_devblksize(chain->bytes);
-			pmask = (hammer2_off_t)psize - 1;
-			pbase = chain->bref.data_off & ~pmask;
-			boff = chain->bref.data_off &
-			       (HAMMER2_OFF_MASK & pmask);
-			peof = (pbase + HAMMER2_SEGMASK64) &
-			       ~HAMMER2_SEGMASK64;
 			temp_check = HAMMER2_DEC_CHECK(chain->bref.methods);
 
 			/*
 			 * Optimize out the read-before-write
 			 * if possible.
 			 */
-			if (comp_block_size == psize) {
-				dbp = getblk(chain->hmp->devvp, pbase,
-					     psize, 0, 0);
-			} else {
-				*errorp = bread(chain->hmp->devvp,
-						pbase, psize, &dbp);
-				if (*errorp) {
-					kprintf("hammer2: WRITE PATH: "
-						"dbp bread error\n");
-					break;
-				}
+			*errorp = hammer2_io_newnz(chain->hmp,
+						   chain->bref.data_off,
+						   chain->bytes,
+						   &dio);
+			if (*errorp) {
+				hammer2_io_brelse(&dio);
+				kprintf("hammer2: WRITE PATH: "
+					"dbp bread error\n");
+				break;
 			}
+			bdata = hammer2_io_data(dio, chain->bref.data_off);
 
 			/*
 			 * When loading the block make sure we don't
@@ -1147,49 +1136,40 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 				chain->bref.methods =
 					HAMMER2_ENC_COMP(comp_algo) +
 					HAMMER2_ENC_CHECK(temp_check);
-				bcopy(comp_buffer, dbp->b_data + boff,
-				      comp_size);
+				bcopy(comp_buffer, bdata, comp_size);
 				if (comp_size != comp_block_size) {
-					bzero(dbp->b_data + boff +
-						comp_size,
-					      comp_block_size -
-						comp_size);
+					bzero(bdata + comp_size,
+					      comp_block_size - comp_size);
 				}
 			} else {
 				chain->bref.methods =
 					HAMMER2_ENC_COMP(
 						HAMMER2_COMP_NONE) +
 					HAMMER2_ENC_CHECK(temp_check);
-				bcopy(bp->b_data, dbp->b_data + boff,
-				      pblksize);
+				bcopy(bp->b_data, bdata, pblksize);
 			}
 
 			/*
 			 * Device buffer is now valid, chain is no
 			 * longer in the initial state.
 			 */
-			atomic_clear_int(&chain->flags,
-					 HAMMER2_CHAIN_INITIAL);
+			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_INITIAL);
 
 			/* Now write the related bdp. */
 			if (ioflag & IO_SYNC) {
 				/*
 				 * Synchronous I/O requested.
 				 */
-				bwrite(dbp);
+				hammer2_io_bwrite(&dio);
 			/*
 			} else if ((ioflag & IO_DIRECT) &&
 				   loff + n == pblksize) {
-				bdwrite(dbp);
+				hammer2_io_bdwrite(&dio);
 			*/
 			} else if (ioflag & IO_ASYNC) {
-				bawrite(dbp);
-			} else if (hammer2_cluster_enable) {
-				cluster_write(dbp, peof,
-					      HAMMER2_PBUFSIZE,
-					      4/*XXX*/);
+				hammer2_io_bawrite(&dio);
 			} else {
-				bdwrite(dbp);
+				hammer2_io_bdwrite(&dio);
 			}
 			break;
 		default:
@@ -1286,12 +1266,8 @@ void
 hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
 				int pblksize, int *errorp)
 {
-	hammer2_off_t pbase;
-	hammer2_off_t pmask;
-	hammer2_off_t peof;
-	struct buf *dbp;
-	size_t boff;
-	size_t psize;
+	hammer2_io_t *dio;
+	char *bdata;
 	int error;
 	int temp_check = HAMMER2_DEC_CHECK(chain->bref.methods);
 
@@ -1307,28 +1283,18 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
 		error = 0;
 		break;
 	case HAMMER2_BREF_TYPE_DATA:
-		psize = hammer2_devblksize(chain->bytes);
-		pmask = (hammer2_off_t)psize - 1;
-		pbase = chain->bref.data_off & ~pmask;
-		boff = chain->bref.data_off & (HAMMER2_OFF_MASK & pmask);
-		peof = (pbase + HAMMER2_SEGMASK64) & ~HAMMER2_SEGMASK64;
-
-		if (psize == pblksize) {
-			dbp = getblk(chain->hmp->devvp, pbase,
-				     psize, 0, 0);
-			error = 0;
-		} else {
-			error = bread(chain->hmp->devvp, pbase, psize, &dbp);
-			if (error) {
-				kprintf("hammer2: WRITE PATH: "
-					"dbp bread error\n");
-				break;
-			}
+		error = hammer2_io_newnz(chain->hmp, chain->bref.data_off,
+					 chain->bytes, &dio);
+		if (error) {
+			hammer2_io_bqrelse(&dio);
+			kprintf("hammer2: WRITE PATH: dbp bread error\n");
+			break;
 		}
+		bdata = hammer2_io_data(dio, chain->bref.data_off);
 
 		chain->bref.methods = HAMMER2_ENC_COMP(HAMMER2_COMP_NONE) +
 				      HAMMER2_ENC_CHECK(temp_check);
-		bcopy(bp->b_data, dbp->b_data + boff, chain->bytes);
+		bcopy(bp->b_data, bdata, chain->bytes);
 		
 		/*
 		 * Device buffer is now valid, chain is no
@@ -1340,17 +1306,15 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
 			/*
 			 * Synchronous I/O requested.
 			 */
-			bwrite(dbp);
+			hammer2_io_bwrite(&dio);
 		/*
 		} else if ((ioflag & IO_DIRECT) && loff + n == pblksize) {
-			bdwrite(dbp);
+			hammer2_io_bdwrite(&dio);
 		*/
 		} else if (ioflag & IO_ASYNC) {
-			bawrite(dbp);
-		} else if (hammer2_cluster_enable) {
-			cluster_write(dbp, peof, HAMMER2_PBUFSIZE, 4/*XXX*/);
+			hammer2_io_bawrite(&dio);
 		} else {
-			bdwrite(dbp);
+			hammer2_io_bdwrite(&dio);
 		}
 		break;
 	default:
@@ -1530,6 +1494,12 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			hammer2_dump_chain(&hmp->fchain, 0, &dumpcnt);
 			hammer2_mount_unlock(hmp);
 			hammer2_chain_drop(&hmp->vchain);
+
+			hammer2_io_cleanup(hmp, &hmp->iotree);
+			if (hmp->iofree_count) {
+				kprintf("io_cleanup: %d I/O's left hanging\n",
+					hmp->iofree_count);
+			}
 
 			TAILQ_REMOVE(&hammer2_mntlist, hmp, mntentry);
 			kmalloc_destroy(&hmp->mchain);

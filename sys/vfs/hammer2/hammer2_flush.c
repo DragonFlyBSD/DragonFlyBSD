@@ -371,16 +371,9 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp)
 	hammer2_chain_t *chain = *chainp;
 	hammer2_mount_t *hmp;
 	hammer2_blockref_t *bref;
-	hammer2_off_t pbase;
-	hammer2_off_t pmask;
-#if 0
-	hammer2_trans_t *trans = info->trans;
-#endif
 	hammer2_chain_core_t *core;
-	size_t psize;
-	size_t boff;
 	char *bdata;
-	struct buf *bp;
+	hammer2_io_t *dio;
 	int error;
 	int wasmodified;
 	int diddeferral;
@@ -466,10 +459,14 @@ retry:
 	    (chain->flags & HAMMER2_CHAIN_DUPLICATED)) {
 		chain->debug_reason = (chain->debug_reason & ~255) | 9;
 		if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
-			if (chain->bp) {
-				if (chain->bytes == chain->bp->b_bufsize)
-					chain->bp->b_flags |= B_INVAL|B_RELBUF;
+#if 1
+			/*
+			 * XXX what if we have a snapshot?
+			 */
+			if (chain->dio) {
+				hammer2_io_setinval(chain->dio, chain->bytes);
 			}
+#endif
 			if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
 				hammer2_chain_ref(chain);
 				atomic_set_int(&chain->flags,
@@ -770,14 +767,16 @@ retry:
 		}
 		chain->debug_reason = (chain->debug_reason & ~255) | 9;
 		if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
+#if 1
 			/*
+			 * XXX what if we have a snapshot?
 			 * Can only destroy the buffer if the chain represents
 			 * the entire contents of the buffer.
 			 */
-			if (chain->bp) {
-				if (chain->bytes == chain->bp->b_bufsize)
-					chain->bp->b_flags |= B_INVAL|B_RELBUF;
+			if (chain->dio) {
+				hammer2_io_setinval(chain->dio, chain->bytes);
 			}
+#endif
 			atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 			hammer2_chain_drop(chain);
 		}
@@ -897,7 +896,7 @@ retry:
 		 * here.  All we do is adjust the crc's.
 		 */
 		KKASSERT(chain->data != NULL);
-		KKASSERT(chain->bp == NULL);
+		KKASSERT(chain->dio == NULL);
 
 		hmp->voldata.icrc_sects[HAMMER2_VOL_ICRC_SECT1]=
 			hammer2_icrc32(
@@ -927,21 +926,10 @@ retry:
 		 * Make sure any device buffer(s) have been flushed out here.
 		 * (there aren't usually any to flush).
 		 */
-		psize = hammer2_devblksize(chain->bytes);
-		pmask = (hammer2_off_t)psize - 1;
-		pbase = chain->bref.data_off & ~pmask;
-		boff = chain->bref.data_off & (HAMMER2_OFF_MASK & pmask);
-
-		bp = getblk(hmp->devvp, pbase, psize, GETBLK_NOWAIT, 0);
-		if (bp) {
-			if ((bp->b_flags & (B_CACHE | B_DIRTY)) ==
-			    (B_CACHE | B_DIRTY)) {
-				cluster_awrite(bp);
-			} else {
-				bp->b_flags |= B_RELBUF;
-				brelse(bp);
-			}
-		}
+#if 0
+		/* XXX */
+		/* chain and chain->bref, NOWAIT operation */
+#endif
 		break;
 #if 0
 	case HAMMER2_BREF_TYPE_INDIRECT:
@@ -955,17 +943,10 @@ retry:
 		 * the operating system had already written out the buffer.
 		 */
 		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-		KKASSERT(chain->bp != NULL);
+		KKASSERT(chain->dio != NULL);
 
-		bp = chain->bp;
-		if ((chain->flags & HAMMER2_CHAIN_DIRTYBP) ||
-		    (bp->b_flags & B_DIRTY)) {
-			bdwrite(chain->bp);
-		} else {
-			brelse(chain->bp);
-		}
-		chain->bp = NULL;
 		chain->data = NULL;
+		hammer2_io_bqrelse(&chain->dio);
 		hammer2_chain_unlock(chain);
 		break;
 #endif
@@ -985,7 +966,7 @@ retry:
 		 */
 		KKASSERT(chain->flags & HAMMER2_CHAIN_EMBEDDED);
 		KKASSERT(chain->data != NULL);
-		KKASSERT(chain->bp == NULL);
+		KKASSERT(chain->dio == NULL);
 		bref = &chain->bref;
 
 		KKASSERT((bref->data_off & HAMMER2_OFF_MASK) != 0);
@@ -998,28 +979,17 @@ retry:
 		 * The data is embedded, we have to acquire the
 		 * buffer cache buffer and copy the data into it.
 		 */
-		psize = hammer2_devblksize(chain->bytes);
-		pmask = (hammer2_off_t)psize - 1;
-		pbase = bref->data_off & ~pmask;
-		boff = bref->data_off & (HAMMER2_OFF_MASK & pmask);
-
-		/*
-		 * The getblk() optimization can only be used if the
-		 * physical block size matches the request.
-		 */
-		error = bread(hmp->devvp, pbase, psize, &bp);
+		error = hammer2_io_bread(hmp, bref->data_off, chain->bytes,
+					 &dio);
 		KKASSERT(error == 0);
-
-		bdata = (char *)bp->b_data + boff;
+		bdata = hammer2_io_data(dio, bref->data_off);
 
 		/*
 		 * Copy the data to the buffer, mark the buffer
 		 * dirty, and convert the chain to unmodified.
 		 */
 		bcopy(chain->data, bdata, chain->bytes);
-		bp->b_flags |= B_CLUSTEROK;
-		bdwrite(bp);
-		bp = NULL;
+		hammer2_io_bdwrite(&dio);
 
 		switch(HAMMER2_DEC_CHECK(chain->bref.methods)) {
 		case HAMMER2_CHECK_FREEMAP:
@@ -1099,6 +1069,12 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 	hammer2_chain_unlock(parent);
 	hammer2_chain_lock(child, HAMMER2_RESOLVE_MAYBE);
 
+#if 0
+	/*
+	 * This isn't working atm, it seems to be causing necessary
+	 * updates to be thrown away, probably due to aliasing, resulting
+	 * base_insert/base_delete panics.
+	 */
 	/*
 	 * The DESTROYED flag can only be initially set on an unreferenced
 	 * deleted inode and will propagate downward via the mechanic below.
@@ -1138,6 +1114,7 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 			child->core->update_hi = trans->sync_tid;
 		spin_unlock(&child->core->cst.spin);
 	}
+#endif
 
 	/*
 	 * No recursion needed if neither the child or anything under it
@@ -1199,11 +1176,11 @@ skip:
 	     (parent->flags & HAMMER2_CHAIN_DESTROYED))) {
 		/*
 		 * Special optimization matching similar tests done in
-		 * flush_core and scan1, avoid updating the block table in
-		 * the parent if the parent is no longer visible.  A deleted
-		 * parent is no longer visible unless it's an inode (in which
-		 * case it might have an open fd).. the DESTROYED flag must
-		 * also be checked for inodes.
+		 * flush_core, scan1, and scan2.  Avoid updating the block
+		 * table in the parent if the parent is no longer visible.
+		 * A deleted parent is no longer visible unless it's an
+		 * inode (in which case it might have an open fd).. the
+		 * DESTROYED flag must also be checked for inodes.
 		 */
 		;
 	} else if (child->delete_tid <= trans->sync_tid &&

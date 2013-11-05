@@ -474,12 +474,13 @@ hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 		   hammer2_bmap_data_t *bmap,
 		   uint16_t class, int n, int radix, hammer2_key_t *basep)
 {
-	struct buf *bp;
+	hammer2_io_t *dio;
 	size_t size;
 	size_t bsize;
 	int bmradix;
 	uint32_t bmmask;
 	int offset;
+	int error;
 	int i;
 	int j;
 
@@ -569,6 +570,7 @@ success:
 		int pbmradix = 2 << (hammer2_devblkradix(radix) -
 				     HAMMER2_FREEMAP_BLOCK_RADIX);
 		uint32_t pbmmask;
+		int pradix = hammer2_getradix(psize);
 
 		pbmmask = (pbmradix == 32) ? 0xFFFFFFFFU : (1 << pbmradix) - 1;
 		while ((pbmmask & bmmask) == 0)
@@ -581,14 +583,11 @@ success:
 #endif
 
 		if ((bmap->bitmap[i] & pbmmask) == 0) {
-			bp = getblk(hmp->devvp, *basep + (offset & ~pmask),
-				    psize, GETBLK_NOWAIT, 0);
-			if (bp) {
-				if ((bp->b_flags & B_CACHE) == 0)
-					vfs_bio_clrbuf(bp);
-				bp->b_flags |= B_CACHE;
-				bqrelse(bp);
-			}
+			error = hammer2_io_newq(hmp,
+						(*basep + (offset & ~pmask)) |
+						 pradix,
+						psize, &dio);
+			hammer2_io_bqrelse(&dio);
 		}
 	}
 

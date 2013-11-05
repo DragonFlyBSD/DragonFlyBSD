@@ -154,6 +154,36 @@ typedef struct hammer2_chain_core hammer2_chain_core_t;
 #define HAMMER2_CORE_UNUSED0001		0x0001
 #define HAMMER2_CORE_COUNTEDBREFS	0x0002
 
+/*
+ * H2 is a copy-on-write filesystem.  In order to allow chains to allocate
+ * smaller blocks (down to 64-bytes), but improve performance and make
+ * clustered I/O possible using larger block sizes, the kernel buffer cache
+ * is abstracted via the hammer2_io structure.
+ */
+RB_HEAD(hammer2_io_tree, hammer2_io);
+
+struct hammer2_io {
+	RB_ENTRY(hammer2_io) rbnode;
+	struct spinlock spin;
+	struct hammer2_mount *hmp;
+	struct buf	*bp;
+	struct bio	*bio;
+	off_t		pbase;
+	int		psize;
+	void		(*callback)(struct hammer2_io *dio,
+				    struct hammer2_chain *chain,
+				    void *arg1, off_t arg2);
+	struct hammer2_chain *arg_c;		/* INPROG I/O only */
+	void		*arg_p;			/* INPROG I/O only */
+	off_t		arg_o;			/* INPROG I/O only */
+	int		refs;
+};
+
+typedef struct hammer2_io hammer2_io_t;
+
+/*
+ * Primary chain structure keeps track of the topology in-memory.
+ */
 struct hammer2_chain {
 	RB_ENTRY(hammer2_chain) rbnode;		/* node */
 	TAILQ_ENTRY(hammer2_chain) core_entry;	/* contemporary chains */
@@ -169,7 +199,7 @@ struct hammer2_chain {
 	hammer2_tid_t	delete_tid;
 	hammer2_key_t   data_count;		/* delta's to apply */
 	hammer2_key_t   inode_count;		/* delta's to apply */
-	struct buf	*bp;			/* physical data buffer */
+	hammer2_io_t	*dio;			/* physical data buffer */
 	u_int		bytes;			/* physical data size */
 	u_int		flags;
 	u_int		refs;
@@ -198,7 +228,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  */
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
-#define HAMMER2_CHAIN_DIRTYBP		0x00000004	/* dirty on unlock */
+#define HAMMER2_CHAIN_UNUSED0004	0x00000004
 #define HAMMER2_CHAIN_FORCECOW		0x00000008	/* force copy-on-wr */
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
@@ -467,6 +497,9 @@ struct hammer2_mount {
 	struct malloc_type *mchain;
 	int		nipstacks;
 	int		maxipstacks;
+	struct spinlock	io_spin;	/* iotree access */
+	struct hammer2_io_tree iotree;
+	int		iofree_count;
 	hammer2_chain_t vchain;		/* anchor chain (topology) */
 	hammer2_chain_t fchain;		/* anchor chain (freemap) */
 	hammer2_inode_t	*sroot;		/* super-root localized to media */
@@ -537,15 +570,6 @@ struct hammer2_pfsmount {
 
 typedef struct hammer2_pfsmount hammer2_pfsmount_t;
 
-struct hammer2_cbinfo {
-	hammer2_chain_t	*chain;
-	void (*func)(hammer2_chain_t *, struct buf *, char *, void *);
-	void *arg;
-	size_t boff;
-};
-
-typedef struct hammer2_cbinfo hammer2_cbinfo_t;
-
 #if defined(_KERNEL)
 
 MALLOC_DECLARE(M_HAMMER2);
@@ -564,22 +588,17 @@ static __inline
 int
 hammer2_devblkradix(int radix)
 {
-#if 1
 	if (radix <= HAMMER2_LBUFRADIX) {
 		return (HAMMER2_LBUFRADIX);
 	} else {
 		return (HAMMER2_PBUFRADIX);
 	}
-#else
-	return (HAMMER2_PBUFRADIX);
-#endif
 }
 
 static __inline
 size_t
 hammer2_devblksize(size_t bytes)
 {
-#if 1
 	if (bytes <= HAMMER2_LBUFSIZE) {
 		return(HAMMER2_LBUFSIZE);
 	} else {
@@ -587,11 +606,6 @@ hammer2_devblksize(size_t bytes)
 			 (bytes ^ (bytes - 1)) == ((bytes << 1) - 1));
 		return (HAMMER2_PBUFSIZE);
 	}
-#else
-	KKASSERT(bytes <= HAMMER2_PBUFSIZE &&
-		 (bytes ^ (bytes - 1)) == ((bytes << 1) - 1));
-	return(HAMMER2_PBUFSIZE);
-#endif
 }
 
 
@@ -720,17 +734,20 @@ int hammer2_hardlink_find(hammer2_inode_t *dip,
  * hammer2_chain.c
  */
 void hammer2_modify_volume(hammer2_mount_t *hmp);
-hammer2_chain_t *hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
-				hammer2_trans_t *trans, hammer2_blockref_t *bref);
+hammer2_chain_t *hammer2_chain_alloc(hammer2_mount_t *hmp,
+				hammer2_pfsmount_t *pmp,
+				hammer2_trans_t *trans,
+				hammer2_blockref_t *bref);
 void hammer2_chain_core_alloc(hammer2_trans_t *trans, hammer2_chain_t *nchain,
 				hammer2_chain_t *ochain);
 void hammer2_chain_ref(hammer2_chain_t *chain);
 void hammer2_chain_drop(hammer2_chain_t *chain);
 int hammer2_chain_lock(hammer2_chain_t *chain, int how);
 void hammer2_chain_load_async(hammer2_chain_t *chain,
-				void (*func)(hammer2_chain_t *, struct buf *,
-					     char *, void *),
-				void *arg);
+				void (*func)(hammer2_io_t *dio,
+					     hammer2_chain_t *chain,
+					     void *arg_p, off_t arg_o),
+				void *arg_p, off_t arg_o);
 void hammer2_chain_moved(hammer2_chain_t *chain);
 void hammer2_chain_modify(hammer2_trans_t *trans,
 				hammer2_chain_t **chainp, int flags);
@@ -806,6 +823,37 @@ void hammer2_trans_done(hammer2_trans_t *trans);
  */
 int hammer2_ioctl(hammer2_inode_t *ip, u_long com, void *data,
 				int fflag, struct ucred *cred);
+
+/*
+ * hammer2_io.c
+ */
+hammer2_io_t *hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase,
+				int lsize, int *ownerp);
+void hammer2_io_putblk(hammer2_io_t **diop);
+void hammer2_io_cleanup(hammer2_mount_t *hmp, struct hammer2_io_tree *tree);
+char *hammer2_io_data(hammer2_io_t *dio, off_t lbase);
+int hammer2_io_new(hammer2_mount_t *hmp, off_t lbase, int lsize,
+				hammer2_io_t **diop);
+int hammer2_io_newnz(hammer2_mount_t *hmp, off_t lbase, int lsize,
+				hammer2_io_t **diop);
+int hammer2_io_newq(hammer2_mount_t *hmp, off_t lbase, int lsize,
+				hammer2_io_t **diop);
+int hammer2_io_bread(hammer2_mount_t *hmp, off_t lbase, int lsize,
+				hammer2_io_t **diop);
+void hammer2_io_breadcb(hammer2_mount_t *hmp, off_t lbase, int lsize,
+				void (*callback)(hammer2_io_t *dio,
+						 hammer2_chain_t *arg_c,
+						 void *arg_p, off_t arg_o),
+				hammer2_chain_t *arg_c,
+				void *arg_p, off_t arg_o);
+void hammer2_io_bawrite(hammer2_io_t **diop);
+void hammer2_io_bdwrite(hammer2_io_t **diop);
+int hammer2_io_bwrite(hammer2_io_t **diop);
+void hammer2_io_setdirty(hammer2_io_t *dio);
+void hammer2_io_setinval(hammer2_io_t *dio, u_int bytes);
+void hammer2_io_brelse(hammer2_io_t **diop);
+void hammer2_io_bqrelse(hammer2_io_t **diop);
+int hammer2_io_isdirty(hammer2_io_t *dio);
 
 /*
  * hammer2_msgops.c
