@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kldconfig/kldconfig.c,v 1.3.2.1 2001/08/01 05:52:36 obrien Exp $
- * $DragonFly: src/sbin/kldconfig/kldconfig.c,v 1.4 2007/11/25 18:10:07 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -40,14 +39,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#if defined(__FreeBSD_version)
-#if __FreeBSD_version < 500000
 #define NEED_SLASHTERM
-#endif /* < 500000 */
-#else  /* defined(__FreeBSD_version) */
-/* just in case.. */
-#define NEED_SLASHTERM
-#endif /* defined(__FreeBSD_version) */
 
 /* the default sysctl name */
 #define PATHCTL	"kern.module_path"
