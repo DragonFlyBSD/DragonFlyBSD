@@ -200,6 +200,8 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	hammer2_io_t *dio;
 	struct buf *bp;
 	off_t peof;
+	off_t pbase;
+	int psize;
 	int refs;
 
 	dio = *diop;
@@ -227,20 +229,31 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	}
 
 	/*
-	 * Locked INPROG on 1->0 transition, dispose of the buffer
+	 * Locked INPROG on 1->0 transition and we cleared DIO_GOOD (which is
+	 * legal only on the last ref).  This allows us to dispose of the
+	 * buffer.  refs is now 0.
+	 *
+	 * The instant we call io_complete dio is a free agent again and
+	 * can be ripped out from under us.  Acquisition of the dio after
+	 * this point will require a shared or exclusive spinlock.
 	 */
 	hmp = dio->hmp;
 	bp = dio->bp;
 	dio->bp = NULL;
+	pbase = dio->pbase;
+	psize = dio->psize;
+	hammer2_io_complete(dio, HAMMER2_DIO_INPROG);	/* clears INPROG */
+	dio = NULL;	/* dio stale */
+
 	atomic_add_int(&hmp->iofree_count, 1);
-	hammer2_io_complete(dio, HAMMER2_DIO_INPROG);
+
 	if (refs & HAMMER2_DIO_GOOD) {
-		KKASSERT(bp != NULL && dio->bio == NULL);
+		KKASSERT(bp != NULL);
 		if (refs & HAMMER2_DIO_DIRTY) {
 			if (hammer2_cluster_enable) {
-				peof = (dio->pbase + HAMMER2_SEGMASK64) &
+				peof = (pbase + HAMMER2_SEGMASK64) &
 				       ~HAMMER2_SEGMASK64;
-				cluster_write(bp, peof, dio->psize, 4);
+				cluster_write(bp, peof, psize, 4);
 			} else {
 				bp->b_flags |= B_CLUSTEROK;
 				bdwrite(bp);
@@ -262,7 +275,7 @@ hammer2_io_putblk(hammer2_io_t **diop)
 		RB_INIT(&tmptree);
 		spin_lock(&hmp->io_spin);
 		if (hmp->iofree_count > 1000) {
-			RB_SCAN(hammer2_io_tree, &dio->hmp->iotree, NULL,
+			RB_SCAN(hammer2_io_tree, &hmp->iotree, NULL,
 				hammer2_io_cleanup_callback, &tmptree);
 		}
 		spin_unlock(&hmp->io_spin);
@@ -277,7 +290,7 @@ hammer2_io_cleanup_callback(hammer2_io_t *dio, void *arg)
 	struct hammer2_io_tree *tmptree = arg;
 	hammer2_io_t *xio;
 
-	if ((dio->refs & HAMMER2_DIO_MASK) == 0) {
+	if ((dio->refs & (HAMMER2_DIO_MASK | HAMMER2_DIO_INPROG)) == 0) {
 		RB_REMOVE(hammer2_io_tree, &dio->hmp->iotree, dio);
 		xio = RB_INSERT(hammer2_io_tree, tmptree, dio);
 		KKASSERT(xio == NULL);
@@ -293,7 +306,7 @@ hammer2_io_cleanup(hammer2_mount_t *hmp, struct hammer2_io_tree *tree)
 	while ((dio = RB_ROOT(tree)) != NULL) {
 		RB_REMOVE(hammer2_io_tree, tree, dio);
 		KKASSERT(dio->bp == NULL &&
-			 (dio->refs & HAMMER2_DIO_MASK) == 0);
+		    (dio->refs & (HAMMER2_DIO_MASK | HAMMER2_DIO_INPROG)) == 0);
 		kfree(dio, M_HAMMER2);
 		atomic_add_int(&hmp->iofree_count, -1);
 	}
