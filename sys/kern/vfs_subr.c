@@ -1421,8 +1421,12 @@ vgone_vxlocked(struct vnode *vp)
 	/*
 	 * Clean out the filesystem specific data and set the VRECLAIMED
 	 * bit.  Also deactivate the vnode if necessary. 
+	 *
+	 * The vnode should have automatically been removed from the syncer
+	 * list as syncer/dirty flags cleared during the cleaning.
 	 */
 	vclean_vxlocked(vp, DOCLOSE);
+	KKASSERT((vp->v_flag & VONWORKLST) == 0);
 
 	/*
 	 * Delete from old mount point vnode list, if on one.
