@@ -9,7 +9,6 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/rfc931.c,v 1.2.2.1 2000/07/18 16:41:11 dwmalone Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/rfc931.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
   */
 
 #ifndef lint
@@ -26,6 +25,7 @@ static char sccsid[] = "@(#) rfc931.c 1.10 95/01/02 16:11:34";
 #include <setjmp.h>
 #include <signal.h>
 #include <string.h>
+#include <unistd.h>
 
 #ifndef SEEK_SET
 #define SEEK_SET 0
