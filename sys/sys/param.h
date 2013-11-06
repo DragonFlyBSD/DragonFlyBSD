@@ -103,7 +103,7 @@
  * 300502 - GEM and i915 KMS support in kernel
  * 300503 - Upgrade libiconv, locales, and associated libc functions
  * 300600 - 3.6 release
- * 300700 - 3.5 master
+ * 300700 - 3.7 master
  */
 #undef __DragonFly_version
 #define __DragonFly_version 300700	/* propagated to newvers */
