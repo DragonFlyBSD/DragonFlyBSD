@@ -60,6 +60,7 @@ $FreeBSD: head/sys/dev/mxge/if_mxge.c 254263 2013-08-12 23:30:01Z scottl $
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/zlib.h>
+#include <net/toeplitz.h>
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
@@ -85,6 +86,7 @@ $FreeBSD: head/sys/dev/mxge/if_mxge.c 254263 2013-08-12 23:30:01Z scottl $
 #include <dev/netif/mxge/if_mxge_var.h>
 
 #define MXGE_RX_SMALL_BUFLEN		(MHLEN - MXGEFW_PAD)
+#define MXGE_HWRSS_KEYLEN		16
 
 /* Tunable params */
 static int mxge_nvidia_ecrc_enable = 1;
@@ -3360,6 +3362,33 @@ mxge_open(mxge_softc_t *sc)
 		itable = sc->sram + cmd.data0;
 		for (i = 0; i < sc->num_slices; i++)
 			itable[i] = (uint8_t)i;
+
+		if (sc->use_rss) {
+			volatile uint8_t *hwkey;
+			uint8_t swkey[MXGE_HWRSS_KEYLEN];
+
+			err = mxge_send_cmd(sc, MXGEFW_CMD_GET_RSS_KEY_OFFSET,
+			    &cmd);
+			if (err != 0) {
+				if_printf(ifp, "failed to get rsskey\n");
+				return err;
+			}
+			hwkey = sc->sram + cmd.data0;
+
+			toeplitz_get_key(swkey, MXGE_HWRSS_KEYLEN);
+			for (i = 0; i < MXGE_HWRSS_KEYLEN; ++i)
+				hwkey[i] = swkey[i];
+			wmb();
+
+			err = mxge_send_cmd(sc, MXGEFW_CMD_RSS_KEY_UPDATED,
+			    &cmd);
+			if (err != 0) {
+				if_printf(ifp, "failed to update rsskey\n");
+				return err;
+			}
+			if (bootverbose)
+				if_printf(ifp, "RSS key updated\n");
+		}
 
 		cmd.data0 = 1;
 		if (sc->use_rss) {
