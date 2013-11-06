@@ -34,6 +34,7 @@
 
 #include <sys/types.h>
 #include <sys/endian.h>
+#include <arpa/inet.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>

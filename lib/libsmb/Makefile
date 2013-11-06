@@ -2,8 +2,7 @@
 
 LIB=		smb
 
-CSTD?=		gnu89
-WARNS?=		0
+WARNS?=		1
 
 SHLIB_MAJOR=	2
 
