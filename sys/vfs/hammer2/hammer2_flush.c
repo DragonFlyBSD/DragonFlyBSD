@@ -1250,19 +1250,6 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	kprintf("SCAN2 %p.%d %08x mod=%016jx del=%016jx trans=%016jx\n", child, child->bref.type, child->flags, child->modify_tid, child->delete_tid, info->trans->sync_tid);
 #endif
 	/*
-	 * Inodes with stale children that have been converted to DIRECTDATA
-	 * mode (file extension or hardlink conversion typically) need to
-	 * skipped right now before we start messing with a non-existant
-	 * block table.
-	 */
-#if 0
-	if (parent->bref.type == HAMMER2_BREF_TYPE_INODE &&
-	    (parent->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA)) {
-		goto finalize;
-	}
-#endif
-
-	/*
 	 * Ignore children created after our flush point, treating them as
 	 * if they did not exist).  These children will not cause the parent
 	 * to be updated.
@@ -1343,20 +1330,19 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	switch(parent->bref.type) {
 	case HAMMER2_BREF_TYPE_INODE:
 		/*
-		 * XXX Should assert that OPFLAG_DIRECTDATA is 0 once we
-		 * properly duplicate the inode headers and do proper flush
-		 * range checks (all the children should be beyond the flush
-		 * point).  For now just don't sync the non-applicable
-		 * children.
-		 *
-		 * XXX Can also occur due to hardlink consolidation.  We
-		 * set OPFLAG_DIRECTDATA to prevent the indirect and data
-		 * blocks from syncing ot the hardlink pointer.
+		 * Access the inode's block array.  However, there is no
+		 * block array if the inode is flagged DIRECTDATA.  The
+		 * DIRECTDATA case typicaly only occurs when a hardlink has
+		 * been shifted up the tree and the original inode gets
+		 * replaced with an OBJTYPE_HARDLINK placeholding inode.
 		 */
-		if (parent->data)
+		if (parent->data &&
+		    (parent->data->ipdata.op_flags &
+		     HAMMER2_OPFLAG_DIRECTDATA) == 0) {
 			base = &parent->data->ipdata.u.blockset.blockref[0];
-		else
+		} else {
 			base = NULL;
+		}
 		count = HAMMER2_SET_COUNT;
 		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:

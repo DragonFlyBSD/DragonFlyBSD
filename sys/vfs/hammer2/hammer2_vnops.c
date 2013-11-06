@@ -2117,14 +2117,17 @@ hammer2_strategy_write(struct vop_strategy_args *ap)
 	ip = VTOI(ap->a_vp);
 	pmp = ip->pmp;
 	
+	hammer2_lwinprog_ref(pmp);
 	mtx_lock(&pmp->wthread_mtx);
 	if (TAILQ_EMPTY(&pmp->wthread_bioq.queue)) {
 		bioq_insert_tail(&pmp->wthread_bioq, ap->a_bio);
+		mtx_unlock(&pmp->wthread_mtx);
 		wakeup(&pmp->wthread_bioq);
 	} else {
 		bioq_insert_tail(&pmp->wthread_bioq, ap->a_bio);
+		mtx_unlock(&pmp->wthread_mtx);
 	}
-	mtx_unlock(&pmp->wthread_mtx);
+	hammer2_lwinprog_wait(pmp);
 
 	return(0);
 }

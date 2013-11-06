@@ -562,6 +562,7 @@ struct hammer2_pfsmount {
 	long			inmem_inodes;
 	long			inmem_chains;
 	int			inmem_waiting;
+	int			count_lwinprog;	/* logical write in prog */
 	thread_t		wthread_td;	/* write thread td */
 	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
 	struct mtx		wthread_mtx;	/* interlock */
@@ -569,6 +570,9 @@ struct hammer2_pfsmount {
 };
 
 typedef struct hammer2_pfsmount hammer2_pfsmount_t;
+
+#define HAMMER2_LWINPROG_WAITING	0x80000000
+#define HAMMER2_LWINPROG_MASK		0x7FFFFFFF
 
 #if defined(_KERNEL)
 
@@ -623,6 +627,7 @@ extern struct vop_ops hammer2_fifo_vops;
 extern int hammer2_debug;
 extern int hammer2_cluster_enable;
 extern int hammer2_hardlink_enable;
+extern int hammer2_flush_pipe;
 extern long hammer2_iod_file_read;
 extern long hammer2_iod_meta_read;
 extern long hammer2_iod_indr_read;
@@ -870,6 +875,9 @@ void hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp);
 void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp);
 void hammer2_bioq_sync(hammer2_pfsmount_t *pmp);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
+void hammer2_lwinprog_ref(hammer2_pfsmount_t *pmp);
+void hammer2_lwinprog_drop(hammer2_pfsmount_t *pmp);
+void hammer2_lwinprog_wait(hammer2_pfsmount_t *pmp);
 
 /*
  * hammer2_freemap.c

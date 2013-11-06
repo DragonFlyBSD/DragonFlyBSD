@@ -81,6 +81,7 @@ static struct lock hammer2_mntlk;
 int hammer2_debug;
 int hammer2_cluster_enable = 1;
 int hammer2_hardlink_enable = 1;
+int hammer2_flush_pipe = 100;
 long hammer2_iod_file_read;
 long hammer2_iod_meta_read;
 long hammer2_iod_indr_read;
@@ -116,6 +117,8 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, cluster_enable, CTLFLAG_RW,
 	   &hammer2_cluster_enable, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, hardlink_enable, CTLFLAG_RW,
 	   &hammer2_hardlink_enable, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, flush_pipe, CTLFLAG_RW,
+	   &hammer2_flush_pipe, 0, "");
 
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_read, CTLFLAG_RW,
 	   &hammer2_iod_file_read, 0, "");
@@ -746,6 +749,8 @@ hammer2_write_thread(void *arg)
 			 * else normal bio processing
 			 */
 			mtx_unlock(&pmp->wthread_mtx);
+
+			hammer2_lwinprog_drop(pmp);
 			
 			error = 0;
 			bp = bio->bio_buf;
@@ -2151,6 +2156,54 @@ hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
 		msg->any.lnk_volconf.mediaid = hmp->voldata.fsid;
 		msg->any.lnk_volconf.index = index;
 		kdmsg_msg_write(msg);
+	}
+}
+
+/*
+ * This handles hysteresis on regular file flushes.  Because the BIOs are
+ * routed to a thread it is possible for an excessive number to build up
+ * and cause long front-end stalls long before the runningbuffspace limit
+ * is hit, so we implement hammer2_flush_pipe to control the
+ * hysteresis.
+ *
+ * This is a particular problem when compression is used.
+ */
+void
+hammer2_lwinprog_ref(hammer2_pfsmount_t *pmp)
+{
+	atomic_add_int(&pmp->count_lwinprog, 1);
+}
+
+void
+hammer2_lwinprog_drop(hammer2_pfsmount_t *pmp)
+{
+	int lwinprog;
+
+	lwinprog = atomic_fetchadd_int(&pmp->count_lwinprog, -1);
+	if ((lwinprog & HAMMER2_LWINPROG_WAITING) &&
+	    (lwinprog & HAMMER2_LWINPROG_MASK) <= hammer2_flush_pipe * 2 / 3) {
+		atomic_clear_int(&pmp->count_lwinprog,
+				 HAMMER2_LWINPROG_WAITING);
+		wakeup(&pmp->count_lwinprog);
+	}
+}
+
+void
+hammer2_lwinprog_wait(hammer2_pfsmount_t *pmp)
+{
+	int lwinprog;
+
+	for (;;) {
+		lwinprog = pmp->count_lwinprog;
+		cpu_ccfence();
+		if ((lwinprog & HAMMER2_LWINPROG_MASK) < hammer2_flush_pipe)
+			break;
+		tsleep_interlock(&pmp->count_lwinprog, 0);
+		atomic_set_int(&pmp->count_lwinprog, HAMMER2_LWINPROG_WAITING);
+		lwinprog = pmp->count_lwinprog;
+		if ((lwinprog & HAMMER2_LWINPROG_MASK) < hammer2_flush_pipe)
+			break;
+		tsleep(&pmp->count_lwinprog, PINTERLOCKED, "h2wpipe", hz);
 	}
 }
 
