@@ -10,7 +10,6 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/tcpd.c,v 1.2 2000/02/03 10:26:59 shin Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/tcpd.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
   */
 
 #ifndef lint
@@ -27,6 +26,7 @@ static char sccsid[] = "@(#) tcpd.c 1.10 96/02/11 17:01:32";
 #include <stdio.h>
 #include <syslog.h>
 #include <string.h>
+#include <unistd.h>
 
 #ifndef MAXPATHNAMELEN
 #define MAXPATHNAMELEN	BUFSIZ
@@ -44,6 +44,7 @@ static char sccsid[] = "@(#) tcpd.c 1.10 96/02/11 17:01:32";
 int     allow_severity = SEVERITY;	/* run-time adjustable */
 int     deny_severity = LOG_WARNING;	/* ditto */
 
+int
 main(argc, argv)
 int     argc;
 char  **argv;

@@ -2,7 +2,6 @@
 
 PROG=	tcpd
 MAN=	tcpd.8
-CSTD?=	gnu89
 WARNS?=	1
 
 CFLAGS+=-DREAL_DAEMON_DIR=\"/usr/libexec\" \
