@@ -13,7 +13,6 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/tcpdmatch.c,v 1.2.2.1 2000/07/18 08:34:55 ume Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/tcpdmatch.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
   */
 
 #ifndef lint
@@ -32,6 +31,7 @@ static char sccsid[] = "@(#) tcpdmatch.c 1.5 96/02/11 17:01:36";
 #include <syslog.h>
 #include <setjmp.h>
 #include <string.h>
+#include <unistd.h>
 
 extern void exit();
 extern int optind;

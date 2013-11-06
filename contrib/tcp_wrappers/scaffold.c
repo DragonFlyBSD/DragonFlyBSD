@@ -4,7 +4,6 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/scaffold.c,v 1.2.2.1 2000/07/18 08:34:55 ume Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/scaffold.c,v 1.3 2005/09/04 01:53:07 sephe Exp $
   */
 
 #ifndef lint
@@ -23,6 +22,7 @@ static char sccs_id[] = "@(#) scaffold.c 1.6 97/03/21 19:27:24";
 #include <syslog.h>
 #include <setjmp.h>
 #include <string.h>
+#include <stdlib.h>
 
 #ifndef INADDR_NONE
 #define	INADDR_NONE	(-1)		/* XXX should be 0xffffffff */
