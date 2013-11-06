@@ -38,7 +38,6 @@ License Agreement applies to this software.
 		(skey.c).
 
 $FreeBSD: src/contrib/opie/opiekey.c,v 1.1.1.2.6.4 2002/07/15 14:48:43 des Exp $
-$DragonFly: src/contrib/opie/opiekey.c,v 1.2 2003/06/17 04:24:05 dillon Exp $
 
 */
 #include "opie_cfg.h"
@@ -46,6 +45,7 @@ $DragonFly: src/contrib/opie/opiekey.c,v 1.2 2003/06/17 04:24:05 dillon Exp $
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "opie.h"
 

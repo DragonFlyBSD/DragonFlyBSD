@@ -141,6 +141,7 @@ int  opie_haskey __P((char *username));
 char *opie_keyinfo __P((char *));
 int  opie_passverify __P((char *username, char *passwd));
 int  opieinsecure __P((void));
+void opieversion __P((void));
 __END_DECLS
 
 #if _OPIE
