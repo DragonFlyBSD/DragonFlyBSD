@@ -392,7 +392,7 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_layer_t *layer,
 		nlayer = TAILQ_PREV(layer, h2_layer_list, entry);
 		if (nlayer && RB_INSERT(hammer2_chain_tree,
 					&nlayer->rbtree, chain) == NULL) {
-			atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
+			layer = nlayer;
 			goto done;
 		}
 
@@ -406,7 +406,7 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_layer_t *layer,
 
 		TAILQ_INSERT_BEFORE(layer, nlayer, entry);
 		RB_INSERT(hammer2_chain_tree, &nlayer->rbtree, chain);
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
+		layer = nlayer;
 		goto done;
 	}
 
@@ -429,7 +429,7 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_layer_t *layer,
 			chain->above = NULL;
 			chain->inlayer = NULL;
 			kprintf("insertion race against %p\n", xchain);
-			goto done;
+			goto failed;
 		}
 
 		/*
@@ -444,6 +444,7 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_layer_t *layer,
 		TAILQ_INSERT_HEAD(&above->layerq, layer, entry);
 		RB_INSERT(hammer2_chain_tree, &layer->rbtree, chain);
 	}
+done:
 	chain->inlayer = layer;
 	++above->chain_count;
 	++above->generation;
@@ -453,7 +454,7 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_layer_t *layer,
 		atomic_add_int(&above->live_count, 1);
 	}
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
-done:
+failed:
 	if (flags & HAMMER2_CHAIN_INSERT_SPIN)
 		spin_unlock(&above->cst.spin);
 }
@@ -1814,6 +1815,16 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 	bparent = TAILQ_FIRST(&above->ownerq);
 	hammer2_chain_ref(bparent);
 
+	/*
+	 * Be careful of order, oparent must be unlocked before nparent
+	 * is locked below to avoid a deadlock.  We might as well delay its
+	 * unlocking until we conveniently no longer have the spinlock (instead
+	 * of cycling the spinlock).
+	 *
+	 * Theoretically our ref on bparent should prevent elements of the
+	 * following chain from going away and prevent above from going away,
+	 * but we still need the spinlock to safely scan the list.
+	 */
 	for (;;) {
 		nparent = bparent;
 		while (nparent->flags & HAMMER2_CHAIN_DUPLICATED)
@@ -1821,29 +1832,23 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 		hammer2_chain_ref(nparent);
 		spin_unlock(&above->cst.spin);
 
-		/*
-		 * Be careful of order
-		 */
-		hammer2_chain_unlock(oparent);
+		if (oparent) {
+			hammer2_chain_unlock(oparent);
+			oparent = NULL;
+		}
 		hammer2_chain_lock(nparent, how | HAMMER2_RESOLVE_NOREF);
 		hammer2_chain_drop(bparent);
 
 		/*
 		 * We might have raced a delete-duplicate.
 		 */
-		if (nparent->flags & HAMMER2_CHAIN_DUPLICATED) {
-			spin_lock(&above->cst.spin);
-			if (nparent->flags & HAMMER2_CHAIN_DUPLICATED) {
-				spin_unlock(&above->cst.spin);
-				hammer2_chain_ref(nparent);
-				hammer2_chain_unlock(nparent);
-				bparent = nparent;
-				spin_lock(&above->cst.spin);
-				continue;	/* retry */
-			}
-			spin_unlock(&above->cst.spin);
-		}
-		break;
+		if ((nparent->flags & HAMMER2_CHAIN_DUPLICATED) == 0)
+			break;
+		bparent = nparent;
+		hammer2_chain_ref(bparent);
+		hammer2_chain_unlock(nparent);
+		spin_lock(&above->cst.spin);
+		/* retry */
 	}
 	*parentp = nparent;
 
