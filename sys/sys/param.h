@@ -102,9 +102,11 @@
  * 300501 - Convert libm to FreeBSD's version
  * 300502 - GEM and i915 KMS support in kernel
  * 300503 - Upgrade libiconv, locales, and associated libc functions
+ * 300600 - 3.6 release
+ * 300700 - 3.5 master
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300503	/* propagated to newvers */
+#define __DragonFly_version 300700	/* propagated to newvers */
 
 #include <sys/_null.h>
 
