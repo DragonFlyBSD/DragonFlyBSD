@@ -477,6 +477,61 @@ zoneindex(unsigned long *bytes, unsigned long *align)
     return(0);
 }
 
+static __inline
+void
+clean_zone_rchunks(SLZone *z)
+{
+    SLChunk *bchunk;
+
+    while ((bchunk = z->z_RChunks) != NULL) {
+	cpu_ccfence();
+	if (atomic_cmpset_ptr(&z->z_RChunks, bchunk, NULL)) {
+	    *z->z_LChunksp = bchunk;
+	    while (bchunk) {
+		chunk_mark_free(z, bchunk);
+		z->z_LChunksp = &bchunk->c_Next;
+		bchunk = bchunk->c_Next;
+		++z->z_NFree;
+	    }
+	    break;
+	}
+	/* retry */
+    }
+}
+
+/*
+ * If the zone becomes totally free, and there are other zones we
+ * can allocate from, move this zone to the FreeZones list.  Since
+ * this code can be called from an IPI callback, do *NOT* try to mess
+ * with kernel_map here.  Hysteresis will be performed at malloc() time.
+ */
+static __inline
+SLZone *
+check_zone_free(SLGlobalData *slgd, SLZone *z)
+{
+    if (z->z_NFree == z->z_NMax &&
+	(z->z_Next || slgd->ZoneAry[z->z_ZoneIndex] != z) &&
+	z->z_RCount == 0
+    ) {
+	SLZone **pz;
+	int *kup;
+
+	for (pz = &slgd->ZoneAry[z->z_ZoneIndex]; z != *pz; pz = &(*pz)->z_Next)
+	    ;
+	*pz = z->z_Next;
+	z->z_Magic = -1;
+	z->z_Next = slgd->FreeZones;
+	slgd->FreeZones = z;
+	++slgd->NFreeZones;
+	kup = btokup(z);
+	*kup = 0;
+	z = *pz;
+    } else {
+	z = z->z_Next;
+    }
+    return z;
+}
+
 #ifdef SLAB_DEBUG
 /*
  * Used to debug memory corruption issues.  Record up to (typically 32)
@@ -544,7 +599,6 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 {
     SLZone *z;
     SLChunk *chunk;
-    SLChunk *bchunk;
     SLGlobalData *slgd;
     struct globaldata *gd;
     unsigned long align;
@@ -713,19 +767,8 @@ kmalloc(unsigned long size, struct malloc_type *type, int flags)
 	    if (z->z_RChunks == NULL)
 		atomic_swap_int(&z->z_RSignal, 1);
 
-	    while ((bchunk = z->z_RChunks) != NULL) {
-		cpu_ccfence();
-		if (atomic_cmpset_ptr(&z->z_RChunks, bchunk, NULL)) {
-		    *z->z_LChunksp = bchunk;
-		    while (bchunk) {
-			chunk_mark_free(z, bchunk);
-			z->z_LChunksp = &bchunk->c_Next;
-			bchunk = bchunk->c_Next;
-			++z->z_NFree;
-		    }
-		    break;
-		}
-	    }
+	    clean_zone_rchunks(z);
+
 	    /*
 	     * Remove from the zone list if no free chunks remain.
 	     * Clear RSignal
@@ -1022,7 +1065,6 @@ void
 kfree_remote(void *ptr)
 {
     SLGlobalData *slgd;
-    SLChunk *bchunk;
     SLZone *z;
     int nfree;
     int *kup;
@@ -1053,19 +1095,7 @@ kfree_remote(void *ptr)
      * cache mastership of the related data (not that it helps since
      * we are using c_Next).
      */
-    while ((bchunk = z->z_RChunks) != NULL) {
-	cpu_ccfence();
-	if (atomic_cmpset_ptr(&z->z_RChunks, bchunk, NULL)) {
-	    *z->z_LChunksp = bchunk;
-	    while (bchunk) {
-		    chunk_mark_free(z, bchunk);
-		    z->z_LChunksp = &bchunk->c_Next;
-		    bchunk = bchunk->c_Next;
-		    ++z->z_NFree;
-	    }
-	    break;
-	}
-    }
+    clean_zone_rchunks(z);
     if (z->z_NFree && nfree == 0) {
 	z->z_Next = slgd->ZoneAry[z->z_ZoneIndex];
 	slgd->ZoneAry[z->z_ZoneIndex] = z;
@@ -1101,7 +1131,7 @@ kfree_remote(void *ptr)
 	kup = btokup(z);
 	*kup = 0;
     }
-    logmemory(free_rem_end, z, bchunk, 0L, 0);
+    logmemory(free_rem_end, z, NULL, 0L, 0);
 }
 
 /*
@@ -1263,7 +1293,8 @@ kfree(void *ptr, struct malloc_type *type)
 	 * We can use a passive IPI to reduce overhead even further.
 	 */
 	if (bchunk == NULL && rsignal) {
-		logmemory(free_request, ptr, type, (unsigned long)z->z_ChunkSize, 0);
+		logmemory(free_request, ptr, type,
+			  (unsigned long)z->z_ChunkSize, 0);
 	    lwkt_send_ipiq_passive(z->z_CpuGd, kfree_remote, z);
 	    /* z can get ripped out from under us from this point on */
 	} else if (rsignal) {
@@ -1326,30 +1357,40 @@ kfree(void *ptr, struct malloc_type *type)
     --type->ks_inuse[z->z_Cpu];
     type->ks_memuse[z->z_Cpu] -= z->z_ChunkSize;
 
-    /*
-     * If the zone becomes totally free, and there are other zones we
-     * can allocate from, move this zone to the FreeZones list.  Since
-     * this code can be called from an IPI callback, do *NOT* try to mess
-     * with kernel_map here.  Hysteresis will be performed at malloc() time.
-     */
-    if (z->z_NFree == z->z_NMax && 
-	(z->z_Next || slgd->ZoneAry[z->z_ZoneIndex] != z) &&
-	z->z_RCount == 0
-    ) {
-	SLZone **pz;
-	int *kup;
-
-	for (pz = &slgd->ZoneAry[z->z_ZoneIndex]; z != *pz; pz = &(*pz)->z_Next)
-	    ;
-	*pz = z->z_Next;
-	z->z_Magic = -1;
-	z->z_Next = slgd->FreeZones;
-	slgd->FreeZones = z;
-	++slgd->NFreeZones;
-	kup = btokup(z);
-	*kup = 0;
-    }
+    check_zone_free(slgd, z);
     logmemory_quick(free_end);
+    crit_exit();
+}
+
+/*
+ * Cleanup slabs which are hanging around due to RChunks.  Called once every
+ * 10 seconds on all cpus.
+ */
+void
+slab_cleanup(void)
+{
+    SLGlobalData *slgd = &mycpu->gd_slab;
+    SLZone *z;
+    int i;
+
+    crit_enter();
+    for (i = 0; i < NZONES; ++i) {
+	if ((z = slgd->ZoneAry[i]) == NULL)
+		continue;
+	z = z->z_Next;
+
+	/*
+	 * Scan zones starting with the second zone in each list.
+	 */
+	while (z) {
+	    /*
+	     * Shift all RChunks to the end of the LChunks list.  This is
+	     * an O(1) operation.
+	     */
+	    clean_zone_rchunks(z);
+	    z = check_zone_free(slgd, z);
+	}
+    }
     crit_exit();
 }
 
