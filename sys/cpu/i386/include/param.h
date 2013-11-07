@@ -124,8 +124,15 @@
 #define MAXPHYS		(128 * 1024)	/* max raw I/O transfer size */
 #define MAXDUMPPGS	(MAXPHYS/PAGE_SIZE)
 
-#define IOPAGES	2		/* pages of i/o permission bitmap */
-#define UPAGES	4		/* pages of u-area */
+#define IOPAGES		2	/* pages of i/o permission bitmap */
+#define UPAGES		4	/* pages of u-area */
+
+/*
+ * 32-bit machines do not have enough KVA, improve buffer cache
+ * density at the cost of higher defragmentation and buffer_map
+ * handling overheads.
+ */
+#define BKVASIZE        16384	/* override 64K default */
 
 /*
  * Ceiling on amount of swblock kva space, can be changed via

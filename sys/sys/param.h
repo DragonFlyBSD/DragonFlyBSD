@@ -207,11 +207,16 @@
  *		the KVM memory reserved for the buffer cache and will wind 
  *		up with too-few buffers.
  *
- *		The default is 16384, roughly 2x the block size used by a
- *		normal UFS filesystem.
+ *		By default we now use maximally-sized reservations.  But on
+ *		32-bit machines we reduce this 16KB.  Maximally-sized
+ *		reservations greatly reduces defragmentation and buffer_map
+ *		messing around and is more SMP-friendly.
  */
-#define MAXBSIZE	65536	/* must be power of 2 */
-#define BKVASIZE	16384	/* must be power of 2 */
+#define MAXBSIZE	65536		/* must be power of 2 */
+#ifndef BKVASIZE
+#define BKVASIZE	MAXBSIZE	/* must be power of 2 */
+#endif
+
 #define BKVAMASK	(BKVASIZE-1)
 #define MAXFRAG 	8
 

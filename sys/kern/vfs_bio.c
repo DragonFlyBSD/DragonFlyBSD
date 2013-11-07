@@ -2141,12 +2141,16 @@ restart:
 		 * If we are overcomitted then recover the buffer and its
 		 * KVM space.  This occurs in rare situations when multiple
 		 * processes are blocked in getnewbuf() or allocbuf().
+		 *
+		 * (We don't have to recover the KVM space if
+		 *  BKVASIZE == MAXBSIZE)
 		 */
 		if (bufspace >= hibufspace)
 			flushingbufs = 1;
 		if (flushingbufs && bp->b_kvasize != 0) {
 			bp->b_flags |= B_INVAL;
-			bfreekva(bp);
+			if (BKVASIZE != MAXBSIZE)
+				bfreekva(bp);
 			brelse(bp);
 			goto restart;
 		}
@@ -2164,7 +2168,8 @@ restart:
 		 */
 		if (bp->b_refs) {
 			bp->b_flags |= B_INVAL;
-			bfreekva(bp);
+			if (BKVASIZE != MAXBSIZE)
+				bfreekva(bp);
 			brelse(bp);
 			goto restart;
 		}

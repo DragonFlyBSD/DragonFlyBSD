@@ -390,20 +390,18 @@ again:
 	 *
 	 * nbuf is an int, make sure we don't overflow the field.
 	 *
-	 * On 64-bit systems fragmentation can create serious performance
-	 * loss due to the large number of buffers the system is likely
-	 * going to maintain.  The easiest solution is to create a KVA
-	 * section that is twice as big as the nominal buffer cache size,
-	 * hence the multiplication by 2 below.
+	 * On 64-bit systems we always reserve maximal allocations for
+	 * buffer cache buffers and there are no fragmentation issues,
+	 * so the KVA segment does not have to be excessively oversized.
 	 */
 	if ((vm_size_t)(v - firstaddr) != size)
 		panic("startup: table size inconsistency");
 
 	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
-		      ((vm_offset_t)nbuf * BKVASIZE * 2) +
+		      ((vm_offset_t)(nbuf + 16) * BKVASIZE) +
 		      (nswbuf * MAXPHYS) + pager_map_size);
 	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
-		      ((vm_offset_t)nbuf * BKVASIZE * 2));
+		      ((vm_offset_t)(nbuf + 16) * BKVASIZE));
 	buffer_map.system_map = 1;
 	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
 		      ((vm_offset_t)nswbuf * MAXPHYS) + pager_map_size);
