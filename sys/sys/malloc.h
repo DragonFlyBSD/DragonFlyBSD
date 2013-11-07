@@ -209,6 +209,7 @@ void	*kmalloc_cachealign (unsigned long size, struct malloc_type *type,
 			   int flags);
 void	kfree (void *addr, struct malloc_type *type);
 long	kmalloc_limit (struct malloc_type *type);
+void	slab_cleanup(void);
 
 #endif /* _KERNEL */
 

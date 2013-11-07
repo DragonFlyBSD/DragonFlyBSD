@@ -132,6 +132,7 @@ static int callwheelmask;
 static struct softclock_pcpu softclock_pcpu_ary[MAXCPU];
 
 static void softclock_handler(void *arg);
+static void slotimer_callback(void *arg);
 
 static void
 swi_softclock_setup(void *arg)
@@ -245,9 +246,17 @@ softclock_handler(void *arg)
 	softclock_pcpu_t sc;
 	struct callout *c;
 	struct callout_tailq *bucket;
+	struct callout slotimer;
 	void (*c_func)(void *);
 	void *c_arg;
 	int mpsafe = 1;
+
+	/*
+	 * Setup pcpu slow clocks which we want to run from the callout
+	 * thread.
+	 */
+	callout_init(&slotimer);
+	callout_reset(&slotimer, hz * 10, slotimer_callback, &slotimer);
 
 	/*
 	 * Run the callout thread at the same priority as other kernel
@@ -308,6 +317,19 @@ loop:
 	lwkt_switch();
 	goto loop;
 	/* NOT REACHED */
+}
+
+/*
+ * A very slow system cleanup timer (10 second interval),
+ * per-cpu.
+ */
+void
+slotimer_callback(void *arg)
+{
+	struct callout *c = arg;
+
+	slab_cleanup();
+	callout_reset(c, hz * 10, slotimer_callback, c);
 }
 
 /*
