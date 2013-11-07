@@ -1202,6 +1202,7 @@ hammer2_chain_unlock(hammer2_chain_t *chain)
 /*
  * This counts the number of live blockrefs in a block array and
  * also calculates the point at which all remaining blockrefs are empty.
+ * This routine can only be called on a live chain (DUPLICATED flag not set).
  *
  * NOTE: Flag is not set until after the count is complete, allowing
  *	 callers to test the flag without holding the spinlock.
@@ -1217,6 +1218,8 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
 			 hammer2_blockref_t *base, int count)
 {
 	hammer2_chain_core_t *core = chain->core;
+
+	KKASSERT((chain->flags & HAMMER2_CHAIN_DUPLICATED) == 0);
 
 	spin_lock(&core->cst.spin);
         if ((core->flags & HAMMER2_CORE_COUNTEDBREFS) == 0) {
@@ -3727,21 +3730,36 @@ hammer2_base_find(hammer2_chain_t *chain,
 	hammer2_blockref_t *scan;
 	hammer2_key_t scan_end;
 	int i;
+	int limit;
+
+	/*
+	 * Require the live chain's already have their core's counted
+	 * so we can optimize operations.
+	 */
+        KKASSERT((chain->flags & HAMMER2_CHAIN_DUPLICATED) ||
+		 core->flags & HAMMER2_CORE_COUNTEDBREFS);
 
 	/*
 	 * Degenerate case
 	 */
-        KKASSERT(core->flags & HAMMER2_CORE_COUNTEDBREFS);
 	if (count == 0 || base == NULL)
 		return(count);
 
 	/*
-	 * Sequential optimization
+	 * Sequential optimization using *cache_indexp.  This is the most
+	 * likely scenario.
+	 *
+	 * We can avoid trailing empty entries on live chains, otherwise
+	 * we might have to check the whole block array.
 	 */
 	i = *cache_indexp;
 	cpu_ccfence();
-	if (i >= core->live_zero)
-		i = core->live_zero - 1;
+	if (chain->flags & HAMMER2_CHAIN_DUPLICATED)
+		limit = count;
+	else
+		limit = core->live_zero;
+	if (i >= limit)
+		i = limit - 1;
 	if (i < 0)
 		i = 0;
 	KKASSERT(i < count);
@@ -3770,14 +3788,14 @@ hammer2_base_find(hammer2_chain_t *chain,
 			if (scan_end >= key_beg)
 				break;
 		}
-		if (i >= core->live_zero)
+		if (i >= limit)
 			return (count);
 		++scan;
 		++i;
 	}
 	if (i != count) {
 		*cache_indexp = i;
-		if (i >= core->live_zero) {
+		if (i >= limit) {
 			i = count;
 		} else {
 			scan_end = scan->key +
@@ -3885,12 +3903,12 @@ found:
  *	 need to be adjusted when we commit the media change.
  */
 void
-hammer2_base_delete(hammer2_chain_t *chain,
+hammer2_base_delete(hammer2_chain_t *parent,
 		    hammer2_blockref_t *base, int count,
 		    int *cache_indexp, hammer2_chain_t *child)
 {
 	hammer2_blockref_t *elm = &child->bref;
-	hammer2_chain_core_t *core = chain->core;
+	hammer2_chain_core_t *core = parent->core;
 	hammer2_key_t key_next;
 	int i;
 
@@ -3901,7 +3919,7 @@ hammer2_base_delete(hammer2_chain_t *chain,
 	 *     re-flushed in some cases.
 	 */
 	key_next = 0; /* max range */
-	i = hammer2_base_find(chain, base, count, cache_indexp,
+	i = hammer2_base_find(parent, base, count, cache_indexp,
 			      &key_next, elm->key, elm->key);
 	if (i == count || base[i].type == 0 ||
 	    base[i].key != elm->key || base[i].keybits != elm->keybits) {
@@ -3910,10 +3928,16 @@ hammer2_base_delete(hammer2_chain_t *chain,
 		return;
 	}
 	bzero(&base[i], sizeof(*base));
-	if (core->live_zero == i + 1) {
-		while (--i >= 0 && base[i].type == 0)
-			;
-		core->live_zero = i + 1;
+
+	/*
+	 * We can only optimize core->live_zero for live chains.
+	 */
+	if ((parent->flags & HAMMER2_CHAIN_DUPLICATED) == 0) {
+		if (core->live_zero == i + 1) {
+			while (--i >= 0 && base[i].type == 0)
+				;
+			core->live_zero = i + 1;
+		}
 	}
 }
 
@@ -3958,10 +3982,15 @@ hammer2_base_insert(hammer2_chain_t *parent,
 	 */
 	KKASSERT(i >= 0 && i <= count);
 
+	/*
+	 * We can only optimize core->live_zero for live chains.
+	 */
 	if (i == count && core->live_zero < count) {
-		i = core->live_zero++;
-		base[i] = *elm;
-		return;
+		if ((parent->flags & HAMMER2_CHAIN_DUPLICATED) == 0) {
+			i = core->live_zero++;
+			base[i] = *elm;
+			return;
+		}
 	}
 
 	xkey = elm->key + ((hammer2_key_t)1 << elm->keybits) - 1;
@@ -3992,8 +4021,15 @@ hammer2_base_insert(hammer2_chain_t *parent,
 			bcopy(&base[i], &base[i+1],
 			      (k - i) * sizeof(hammer2_blockref_t));
 			base[i] = *elm;
-			if (core->live_zero <= k)
-				core->live_zero = k + 1;
+
+			/*
+			 * We can only update core->live_zero for live
+			 * chains.
+			 */
+			if ((parent->flags & HAMMER2_CHAIN_DUPLICATED) == 0) {
+				if (core->live_zero <= k)
+					core->live_zero = k + 1;
+			}
 			u = 2;
 			goto validate;
 		}

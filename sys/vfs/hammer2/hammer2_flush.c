@@ -1398,8 +1398,6 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	    ((parent->flags & HAMMER2_CHAIN_DESTROYED) ||
 	     parent->bref.type != HAMMER2_BREF_TYPE_INODE)) {
 		base = NULL;
-	} else if ((parent->core->flags & HAMMER2_CORE_COUNTEDBREFS) == 0) {
-		hammer2_chain_countbrefs(parent, base, count);
 	}
 
 	/*
