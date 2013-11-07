@@ -550,7 +550,7 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max, pmap_t pmap)
 	map->timestamp = 0;
 	map->flags = 0;
 	lwkt_token_init(&map->token, "vm_map");
-	lockinit(&map->lock, "thrd_sleep", (hz + 9) / 10, 0);
+	lockinit(&map->lock, "vm_maplk", (hz + 9) / 10, 0);
 	TUNABLE_INT("vm.cache_vmspaces", &vmspace_sysref_class.nom_cache);
 }
 
