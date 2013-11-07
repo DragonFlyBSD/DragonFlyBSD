@@ -246,11 +246,15 @@ main(int ac, char **av)
 		printf(" RAM");
 	    if (m.flags & PG_SWAPPED)
 		printf(" SWAPPED");
+#if 0
 	    if (m.flags & PG_SLAB)
 		printf(" SLAB");
+#endif
 	    printf("\n");
+#if 0
 	    if (m.flags & PG_SLAB)
 		addsltrack(&m);
+#endif
 	}
     }
     if (debugopt || verboseopt)

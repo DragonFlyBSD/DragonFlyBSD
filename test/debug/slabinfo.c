@@ -1,13 +1,13 @@
 /*
- * ZALLOCINFO.C
+ * SLABINFO.C
  *
- * cc -I/usr/src/sys zallocinfo.c -o /usr/local/bin/zallocinfo -lkvm
+ * cc -I/usr/src/sys slabinfo.c -o /usr/local/bin/slabinfo -lkvm
  *
- * zallocinfo
+ * slabinfo
  *
- * Print the slab structure and chains for all cpus.
+ * dump kernel slab allocator pcpu data and chains
  *
- * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2012 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -40,14 +40,16 @@
  * SUCH DAMAGE.
  */
 
-#define _KERNEL_STRUCTURES_
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/user.h>
 #include <sys/malloc.h>
-#include <sys/slaballoc.h>
 #include <sys/signalvar.h>
+#include <sys/vnode.h>
+#include <sys/namecache.h>
 #include <sys/globaldata.h>
 #include <machine/globaldata.h>
+#include <sys/slaballoc.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
@@ -60,7 +62,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
 #include <fcntl.h>
 #include <kvm.h>
 #include <nlist.h>
@@ -75,20 +76,22 @@ struct nlist Nl[] = {
 int debugopt;
 int verboseopt;
 
-static void dumpslab(kvm_t *kd, int cpu, struct SLGlobalData *slab);
-static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
+int slzonedump(kvm_t *kd, SLZone *kslz);
+void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 
 int
 main(int ac, char **av)
 {
     const char *corefile = NULL;
     const char *sysfile = NULL;
-    struct SLGlobalData slab;
     kvm_t *kd;
-    int offset;
-    int ncpus;
     int ch;
     int i;
+    int j;
+    int ncpus;
+    int totalzones;
+    int totalfree;
+    struct globaldata gd;
 
     while ((ch = getopt(ac, av, "M:N:dv")) != -1) {
 	switch(ch) {
@@ -121,83 +124,60 @@ main(int ac, char **av)
 	exit(1);
     }
 
-    kkread(kd, Nl[1].n_value, &ncpus, sizeof(ncpus));
-    offset = offsetof(struct privatespace, mdglobaldata.mi.gd_slab);
+    kkread(kd, Nl[1].n_value, &ncpus, sizeof(int));
+    totalzones = 0;
+    totalfree = 0;
     for (i = 0; i < ncpus; ++i) {
-	    kkread(kd, Nl[0].n_value + sizeof(struct privatespace) * i + offset, &slab, sizeof(slab));
-	    dumpslab(kd, i, &slab);
+	kkread(kd, Nl[0].n_value + i * sizeof(struct privatespace), &gd, sizeof(gd));
+	printf("CPU %02d (NFreeZones=%d) {\n",
+		i, gd.gd_slab.NFreeZones);
+	totalfree += gd.gd_slab.NFreeZones;
+
+	for (j = 0; j < NZONES; ++j) {
+		printf("    Zone %02d {\n", j);
+		totalzones += slzonedump(kd, gd.gd_slab.ZoneAry[j]);
+		printf("    }\n");
+	}
+
+	printf("    FreeZone {\n");
+	totalzones += slzonedump(kd, gd.gd_slab.FreeZones);
+	printf("    }\n");
+
+	printf("    FreeOVZon {\n");
+	totalzones += slzonedump(kd, gd.gd_slab.FreeOvZones);
+	printf("    }\n");
+
+	printf("}\n");
     }
-    printf("Done\n");
+    printf("TotalZones %d x 131072 = %jd\n",
+	totalzones, (intmax_t)totalzones * 131072LL);
+    printf("TotalFree  %d x 131072 = %jd\n",
+	totalfree, (intmax_t)totalfree * 131072LL);
     return(0);
 }
 
-static void
-dumpslab(kvm_t *kd, int cpu, struct SLGlobalData *slab)
+int
+slzonedump(kvm_t *kd, SLZone *kslz)
 {
-    struct SLZone *zonep;
-    struct SLZone zone;
-    SLChunk *chunkp;
-    SLChunk chunk;
-    int i;
-    int rcount;
-    int first;
-    int64_t save;
-    int64_t extra = 0;
+    SLZone slz;
+    int count = 0;
 
-    printf("cpu %d NFreeZones=%d\n", cpu, slab->NFreeZones);
-
-    for (i = 0; i < NZONES; ++i) {
-	if ((zonep = slab->ZoneAry[i]) == NULL)
-		continue;
-	printf("    zone %2d", i);
-	first = 1;
-	save = extra;
-	while (zonep) {
-		kkread(kd, (u_long)zonep, &zone, sizeof(zone));
-		if (first) {
-			printf(" chunk=%-5d elms=%-4d free:",
-				zone.z_ChunkSize, zone.z_NMax);
-		}
-		if (first == 0)
-			printf(",");
-		printf(" %d", zone.z_NFree);
-		extra += zone.z_NFree * zone.z_ChunkSize;
-		zonep = zone.z_Next;
-		first = 0;
-
-		chunkp = zone.z_RChunks;
-		rcount = 0;
-		while (chunkp) {
-			kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
-			chunkp = chunk.c_Next;
-			++rcount;
-		}
-		if (rcount) {
-			printf(" rchunks=%d", rcount);
-			extra += rcount * zone.z_ChunkSize;
-		}
-		chunkp = zone.z_LChunks;
-		rcount = 0;
-		while (chunkp) {
-			kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
-			chunkp = chunk.c_Next;
-			++rcount;
-		}
-		if (rcount) {
-			printf(" lchunks=%d", rcount);
-			extra += rcount * zone.z_ChunkSize;
-		}
-	}
-	printf(" (%jdK free)\n", (intmax_t)(extra - save) / 1024);
+    while (kslz) {
+	kkread(kd, (u_long)kslz, &slz, sizeof(slz));
+	printf("\t{ magic=%08x cpu=%d chunking=%d NFree=%d/%d RCnt=%d}\n",
+		slz.z_Magic, slz.z_Cpu, slz.z_ChunkSize,
+		slz.z_NFree, slz.z_NMax, slz.z_RCount);
+	kslz = slz.z_Next;
+	++count;
     }
-    printf("    TotalUnused %jdM\n", (intmax_t)extra / 1024 / 1024);
+    return(count);
 }
 
-static void
+void
 kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes)
 {
     if (kvm_read(kd, addr, buf, nbytes) != nbytes) {
-	    perror("kvm_read");
-	    exit(1);
+        perror("kvm_read");
+        exit(1);
     }
 }

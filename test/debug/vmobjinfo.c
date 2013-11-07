@@ -1,11 +1,9 @@
 /*
- * ZALLOCINFO.C
+ * VMOBJINFO.C
  *
- * cc -I/usr/src/sys zallocinfo.c -o /usr/local/bin/zallocinfo -lkvm
+ * cc -I/usr/src/sys vmobjinfo.c -o /usr/local/bin/vmobjinfo -lkvm
  *
- * zallocinfo
- *
- * Print the slab structure and chains for all cpus.
+ * Dump all vm_object's in the system
  *
  * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
  *
@@ -40,64 +38,56 @@
  * SUCH DAMAGE.
  */
 
-#define _KERNEL_STRUCTURES_
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/user.h>
 #include <sys/malloc.h>
-#include <sys/slaballoc.h>
 #include <sys/signalvar.h>
-#include <sys/globaldata.h>
-#include <machine/globaldata.h>
+#include <sys/namecache.h>
+#include <sys/mount.h>
+#include <sys/vnode.h>
+#include <sys/buf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
 #include <vm/vm_kern.h>
-#include <vm/vm_page.h>
 #include <vm/vm_object.h>
 #include <vm/swap_pager.h>
 #include <vm/vnode_pager.h>
 
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
 #include <fcntl.h>
 #include <kvm.h>
 #include <nlist.h>
 #include <getopt.h>
 
+TAILQ_HEAD(object_q, vm_object);
+
 struct nlist Nl[] = {
-    { "_CPU_prvspace" },
-    { "_ncpus" },
+    { "_vm_object_list" },
     { NULL }
 };
 
-int debugopt;
-int verboseopt;
-
-static void dumpslab(kvm_t *kd, int cpu, struct SLGlobalData *slab);
+static void scan_vmobjs(kvm_t *kd, struct object_q *obj_list);
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 
 int
 main(int ac, char **av)
 {
+    struct object_q obj_list;
+    kvm_t *kd;
+    int i;
+    int ch;
     const char *corefile = NULL;
     const char *sysfile = NULL;
-    struct SLGlobalData slab;
-    kvm_t *kd;
-    int offset;
-    int ncpus;
-    int ch;
-    int i;
 
-    while ((ch = getopt(ac, av, "M:N:dv")) != -1) {
+    while ((ch = getopt(ac, av, "M:N:")) != -1) {
 	switch(ch) {
-	case 'd':
-	    ++debugopt;
-	    break;
-	case 'v':
-	    ++verboseopt;
-	    break;
 	case 'M':
 	    corefile = optarg;
 	    break;
@@ -109,8 +99,6 @@ main(int ac, char **av)
 	    exit(1);
 	}
     }
-    ac -= optind;
-    av += optind;
 
     if ((kd = kvm_open(sysfile, corefile, NULL, O_RDONLY, "kvm:")) == NULL) {
 	perror("kvm_open");
@@ -120,84 +108,34 @@ main(int ac, char **av)
 	perror("kvm_nlist");
 	exit(1);
     }
-
-    kkread(kd, Nl[1].n_value, &ncpus, sizeof(ncpus));
-    offset = offsetof(struct privatespace, mdglobaldata.mi.gd_slab);
-    for (i = 0; i < ncpus; ++i) {
-	    kkread(kd, Nl[0].n_value + sizeof(struct privatespace) * i + offset, &slab, sizeof(slab));
-	    dumpslab(kd, i, &slab);
-    }
-    printf("Done\n");
+    kkread(kd, Nl[0].n_value, &obj_list, sizeof(obj_list));
+    scan_vmobjs(kd, &obj_list);
     return(0);
 }
 
 static void
-dumpslab(kvm_t *kd, int cpu, struct SLGlobalData *slab)
+scan_vmobjs(kvm_t *kd, struct object_q *obj_list)
 {
-    struct SLZone *zonep;
-    struct SLZone zone;
-    SLChunk *chunkp;
-    SLChunk chunk;
-    int i;
-    int rcount;
-    int first;
-    int64_t save;
-    int64_t extra = 0;
+    struct vm_object *op;
+    struct vm_object obj;
 
-    printf("cpu %d NFreeZones=%d\n", cpu, slab->NFreeZones);
+    op = TAILQ_FIRST(obj_list);
+    while (op) {
+	kkread(kd, (long)op, &obj, sizeof(obj));
 
-    for (i = 0; i < NZONES; ++i) {
-	if ((zonep = slab->ZoneAry[i]) == NULL)
-		continue;
-	printf("    zone %2d", i);
-	first = 1;
-	save = extra;
-	while (zonep) {
-		kkread(kd, (u_long)zonep, &zone, sizeof(zone));
-		if (first) {
-			printf(" chunk=%-5d elms=%-4d free:",
-				zone.z_ChunkSize, zone.z_NMax);
-		}
-		if (first == 0)
-			printf(",");
-		printf(" %d", zone.z_NFree);
-		extra += zone.z_NFree * zone.z_ChunkSize;
-		zonep = zone.z_Next;
-		first = 0;
+	printf("%p type=%d size=%016jx handle=%p swblocks=%d\n",
+		op, obj.type, (intmax_t)obj.size, obj.handle,
+		obj.swblock_count);
 
-		chunkp = zone.z_RChunks;
-		rcount = 0;
-		while (chunkp) {
-			kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
-			chunkp = chunk.c_Next;
-			++rcount;
-		}
-		if (rcount) {
-			printf(" rchunks=%d", rcount);
-			extra += rcount * zone.z_ChunkSize;
-		}
-		chunkp = zone.z_LChunks;
-		rcount = 0;
-		while (chunkp) {
-			kkread(kd, (u_long)chunkp, &chunk, sizeof(chunk));
-			chunkp = chunk.c_Next;
-			++rcount;
-		}
-		if (rcount) {
-			printf(" lchunks=%d", rcount);
-			extra += rcount * zone.z_ChunkSize;
-		}
-	}
-	printf(" (%jdK free)\n", (intmax_t)(extra - save) / 1024);
+	op = TAILQ_NEXT(&obj, object_list);
     }
-    printf("    TotalUnused %jdM\n", (intmax_t)extra / 1024 / 1024);
 }
 
 static void
 kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes)
 {
     if (kvm_read(kd, addr, buf, nbytes) != nbytes) {
-	    perror("kvm_read");
-	    exit(1);
+        perror("kvm_read");
+        exit(1);
     }
 }
