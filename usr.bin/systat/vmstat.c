@@ -170,6 +170,8 @@ static struct nlist namelist[] = {
 #define GRAPHCOL	 0
 #define NAMEIROW	14	/* uses 3 rows and 38 cols */
 #define NAMEICOL	 0
+#define EXECROW		14	/* uses 2 rows and 5 cols */
+#define EXECCOL		38
 #define DISKROW		17	/* uses 6 rows and 50 cols (for 9 drives) */
 #define DISKCOL		 0
 
@@ -305,11 +307,12 @@ labelkre(void)
 
 	mvprintw(GRAPHROW, GRAPHCOL,
 		"  . %%Sys    . %%Intr   . %%User   . %%Nice   . %%Idle");
-	mvprintw(PROCSROW, PROCSCOL, "  r  p  d  s  w");
+	mvprintw(PROCSROW, PROCSCOL, "   r   p   d   s");
 	mvprintw(GRAPHROW + 1, GRAPHCOL,
 		"|    |    |    |    |    |    |    |    |    |    |");
 
 	mvprintw(NAMEIROW, NAMEICOL, "Path-lookups   hits   %%    Components");
+	mvprintw(EXECROW, EXECCOL, "Execs");
 	mvprintw(DISKROW, DISKCOL, "Disks");
 	mvprintw(DISKROW + 1, DISKCOL, "KB/t");
 	mvprintw(DISKROW + 2, DISKCOL, "tpr/s");
@@ -487,11 +490,11 @@ showkre(void)
 	put64(pgtob(total.t_vm), MEMROW + 3, MEMCOL + 19, 6, 0);
 	put64(pgtob(total.t_vmshr), MEMROW + 3, MEMCOL + 26, 6, 0);
 	put64(pgtob(total.t_free), MEMROW + 2, MEMCOL + 34, 6, 0);
-	put64(total.t_rq - 1, PROCSROW + 1, PROCSCOL + 0, 3, 'D');
-	put64(total.t_pw, PROCSROW + 1, PROCSCOL + 3, 3, 'D');
-	put64(total.t_dw, PROCSROW + 1, PROCSCOL + 6, 3, 'D');
-	put64(total.t_sl, PROCSROW + 1, PROCSCOL + 9, 3, 'D');
-	put64(total.t_sw, PROCSROW + 1, PROCSCOL + 12, 3, 'D');
+	put64(total.t_rq - 1, PROCSROW + 1, PROCSCOL + 0, 4, 'D');
+	put64(total.t_pw, PROCSROW + 1, PROCSCOL + 4, 4, 'D');
+	put64(total.t_dw, PROCSROW + 1, PROCSCOL + 8, 4, 'D');
+	put64(total.t_sl, PROCSROW + 1, PROCSCOL + 12, 4, 'D');
+	/*put64(total.t_sw, PROCSROW + 1, PROCSCOL + 12, 3, 'D');*/
 	if (extended_vm_stats == 0) {
 		PUTRATE(Vmm.v_zfod, VMSTATROW + 0, VMSTATCOL, 7);
 	}
@@ -559,6 +562,7 @@ showkre(void)
 		}
 #define nz(x)	((x) ? (x) : 1)
 	put64(s.nchpathcount, NAMEIROW + 1, NAMEICOL + 6, 6, 'D');
+	PUTRATE(Vmm.v_exec, EXECROW + 1, EXECCOL, 5);
 	put64(nchtotal.ncs_longhits, NAMEIROW + 1, NAMEICOL + 13, 6, 'D');
 	putfloat(nchtotal.ncs_longhits * 100.0 / nz(s.nchpathcount),
 	    NAMEIROW + 1, NAMEICOL + 19, 4, 0, 0);
