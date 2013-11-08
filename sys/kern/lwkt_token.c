@@ -476,10 +476,11 @@ lwkt_getalltokens(thread_t td, int spinning)
 			 * Otherwise we failed to acquire all the tokens.
 			 * Release whatever we did get.
 			 */
-			KASSERT(tok->t_desc, ("token %p is not initialized", tok));
-			strncpy(td->td_gd->gd_cnt.v_token_name,
+			KASSERT(tok->t_desc,
+				("token %p is not initialized", tok));
+			strncpy(td->td_gd->gd_cnt.v_lock_name,
 				tok->t_desc,
-				sizeof(td->td_gd->gd_cnt.v_token_name) - 1);
+				sizeof(td->td_gd->gd_cnt.v_lock_name) - 1);
 
 			if (lwkt_sched_debug > 0) {
 				--lwkt_sched_debug;

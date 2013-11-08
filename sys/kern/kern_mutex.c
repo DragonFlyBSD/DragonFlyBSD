@@ -158,6 +158,12 @@ __mtx_lock_ex(mtx_t mtx, mtx_link_t link, const char *ident, int flags, int to)
 				atomic_clear_int(&mtx->mtx_lock, MTX_EXLINK);
 				--td->td_critcount;
 
+				mycpu->gd_cnt.v_lock_name[0] = 'X';
+				strncpy(mycpu->gd_cnt.v_lock_name + 1,
+					ident,
+					sizeof(mycpu->gd_cnt.v_lock_name) - 2);
+				++mycpu->gd_cnt.v_lock_colls;
+
 				error = tsleep(link, flags | PINTERLOCKED,
 					       ident, to);
 				++mtx_contention_count;
@@ -250,6 +256,13 @@ __mtx_lock_sh(mtx_t mtx, const char *ident, int flags, int to)
 			nlock = lock | MTX_SHWANTED;
 			tsleep_interlock(mtx, 0);
 			if (atomic_cmpset_int(&mtx->mtx_lock, lock, nlock)) {
+
+				mycpu->gd_cnt.v_lock_name[0] = 'S';
+				strncpy(mycpu->gd_cnt.v_lock_name + 1,
+					ident,
+					sizeof(mycpu->gd_cnt.v_lock_name) - 2);
+				++mycpu->gd_cnt.v_lock_colls;
+
 				error = tsleep(mtx, flags | PINTERLOCKED,
 					       ident, to);
 				if (error)

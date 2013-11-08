@@ -719,7 +719,7 @@ lwkt_switch(void)
 #ifdef	INVARIANTS
 	++ntd->td_contended;
 #endif
-	++gd->gd_cnt.v_token_colls;
+	++gd->gd_cnt.v_lock_colls;
 
 	if (fairq_bypass > 0)
 		goto skip;
@@ -749,7 +749,7 @@ lwkt_switch(void)
 #ifdef	INVARIANTS
 		++ntd->td_contended;
 #endif
-		++gd->gd_cnt.v_token_colls;
+		++gd->gd_cnt.v_lock_colls;
 	}
 
 skip:
