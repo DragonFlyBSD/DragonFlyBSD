@@ -181,6 +181,13 @@ again:
 					      count | LKC_SHREQ)) {
 				goto again;
 			}
+
+			mycpu->gd_cnt.v_lock_name[0] = 'S';
+			strncpy(mycpu->gd_cnt.v_lock_name + 1,
+				lkp->lk_wmesg,
+				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
+			++mycpu->gd_cnt.v_lock_colls;
+
 			error = tsleep(lkp, pflags | PINTERLOCKED,
 				       lkp->lk_wmesg, timo);
 			if (error)
@@ -254,6 +261,13 @@ again:
 				       count | LKC_EXREQ)) {
 			goto again;
 		}
+
+		mycpu->gd_cnt.v_lock_name[0] = 'X';
+		strncpy(mycpu->gd_cnt.v_lock_name + 1,
+			lkp->lk_wmesg,
+			sizeof(mycpu->gd_cnt.v_lock_name) - 2);
+		++mycpu->gd_cnt.v_lock_colls;
+
 		error = tsleep(lkp, pflags | PINTERLOCKED,
 			       lkp->lk_wmesg, timo);
 		if (error)
@@ -369,6 +383,13 @@ again:
 		if (atomic_cmpset_int(&lkp->lk_count, count,
 				      (count - 1) | wflags)) {
 			COUNT(td, -1);
+
+			mycpu->gd_cnt.v_lock_name[0] = 'U';
+			strncpy(mycpu->gd_cnt.v_lock_name + 1,
+				lkp->lk_wmesg,
+				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
+			++mycpu->gd_cnt.v_lock_colls;
+
 			error = tsleep(lkp, pflags | PINTERLOCKED,
 				       lkp->lk_wmesg, timo);
 			if (error)
@@ -412,6 +433,13 @@ again:
 			timo = (extflags & LK_TIMELOCK) ? lkp->lk_timo : 0;
 			tsleep_interlock(lkp, pflags);
 			if (atomic_cmpset_int(&lkp->lk_count, count, count)) {
+
+				mycpu->gd_cnt.v_lock_name[0] = 'U';
+				strncpy(mycpu->gd_cnt.v_lock_name + 1,
+					lkp->lk_wmesg,
+					sizeof(mycpu->gd_cnt.v_lock_name) - 2);
+				++mycpu->gd_cnt.v_lock_colls;
+
 				error = tsleep(lkp, pflags | PINTERLOCKED,
 					       lkp->lk_wmesg, timo);
 				if (error) {

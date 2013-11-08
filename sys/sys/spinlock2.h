@@ -54,10 +54,16 @@
 extern struct spinlock pmap_spin;
 
 int spin_trylock_contested(struct spinlock *spin);
-void spin_lock_contested(struct spinlock *spin);
-void spin_lock_shared_contested2(struct spinlock *spin);
-void _spin_pool_lock(void *chan);
+void _spin_lock_contested(struct spinlock *spin, const char *ident);
+void _spin_lock_shared_contested(struct spinlock *spin, const char *ident);
+void _spin_pool_lock(void *chan, const char *ident);
 void _spin_pool_unlock(void *chan);
+
+#define spin_lock(spin)			_spin_lock(spin, __func__)
+#define spin_lock_quick(spin)		_spin_lock_quick(spin, __func__)
+#define spin_lock_shared(spin)		_spin_lock_shared(spin, __func__)
+#define spin_lock_shared_quick(spin)	_spin_lock_shared_quick(spin, __func__)
+#define spin_pool_lock(chan)		_spin_pool_lock(chan, __func__)
 
 /*
  * Attempt to obtain an exclusive spinlock.  Returns FALSE on failure,
@@ -101,14 +107,14 @@ spin_held(struct spinlock *spin)
  * Obtain an exclusive spinlock and return.
  */
 static __inline void
-spin_lock_quick(globaldata_t gd, struct spinlock *spin)
+_spin_lock_quick(globaldata_t gd, struct spinlock *spin, const char *ident)
 {
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
 	++gd->gd_spinlocks;
 	atomic_add_int(&spin->counta, 1);
 	if (spin->counta != 1)
-		spin_lock_contested(spin);
+		_spin_lock_contested(spin, ident);
 #ifdef DEBUG_LOCKS
 	int i;
 	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
@@ -124,9 +130,9 @@ spin_lock_quick(globaldata_t gd, struct spinlock *spin)
 }
 
 static __inline void
-spin_lock(struct spinlock *spin)
+_spin_lock(struct spinlock *spin, const char *ident)
 {
-	spin_lock_quick(mycpu, spin);
+	_spin_lock_quick(mycpu, spin, ident);
 }
 
 /*
@@ -177,13 +183,14 @@ spin_unlock(struct spinlock *spin)
  * Shared spinlocks
  */
 static __inline void
-spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin)
+_spin_lock_shared_quick(globaldata_t gd, struct spinlock *spin,
+			const char *ident)
 {
 	++gd->gd_curthread->td_critcount;
 	cpu_ccfence();
 	++gd->gd_spinlocks;
 	if (atomic_cmpset_int(&spin->counta, 0, SPINLOCK_SHARED | 1) == 0)
-		spin_lock_shared_contested2(spin);
+		_spin_lock_shared_contested(spin, ident);
 #ifdef DEBUG_LOCKS
 	int i;
 	for (i = 0; i < SPINLOCK_DEBUG_ARRAY_SIZE; i++) {
@@ -238,21 +245,15 @@ spin_unlock_shared_quick(globaldata_t gd, struct spinlock *spin)
 }
 
 static __inline void
-spin_lock_shared(struct spinlock *spin)
+_spin_lock_shared(struct spinlock *spin, const char *ident)
 {
-	spin_lock_shared_quick(mycpu, spin);
+	_spin_lock_shared_quick(mycpu, spin, ident);
 }
 
 static __inline void
 spin_unlock_shared(struct spinlock *spin)
 {
 	spin_unlock_shared_quick(mycpu, spin);
-}
-
-static __inline void
-spin_pool_lock(void *chan)
-{
-	_spin_pool_lock(chan);
 }
 
 static __inline void

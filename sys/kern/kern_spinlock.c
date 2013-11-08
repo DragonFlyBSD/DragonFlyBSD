@@ -75,6 +75,7 @@ struct spinlock pmap_spin = SPINLOCK_INITIALIZER(pmap_spin);
 struct indefinite_info {
 	sysclock_t	base;
 	int		secs;
+	const char	*ident;
 };
 
 /*
@@ -98,16 +99,6 @@ KTR_INFO(KTR_SPIN_CONTENTION, spin, end, 1, SPIN_STRING, SPIN_ARG_SIZE);
 #ifdef INVARIANTS
 static int spin_lock_test_mode;
 #endif
-
-static int64_t spinlocks_contested1;
-SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested1, CTLFLAG_RD,
-    &spinlocks_contested1, 0,
-    "Spinlock contention count due to collisions with exclusive lock holders");
-
-static int64_t spinlocks_contested2;
-SYSCTL_QUAD(_debug, OID_AUTO, spinlocks_contested2, CTLFLAG_RD,
-    &spinlocks_contested2, 0,
-    "Serious spinlock contention count");
 
 #ifdef DEBUG_LOCKS_LATENCY
 
@@ -146,7 +137,6 @@ spin_trylock_contested(struct spinlock *spin)
 {
 	globaldata_t gd = mycpu;
 
-	/*++spinlocks_contested1;*/
 	/*atomic_add_int(&spin->counta, -1);*/
 	--gd->gd_spinlocks;
 	--gd->gd_curthread->td_critcount;
@@ -192,9 +182,9 @@ spin_trylock_contested(struct spinlock *spin)
  *	as well (no difference).
  */
 void
-spin_lock_contested(struct spinlock *spin)
+_spin_lock_contested(struct spinlock *spin, const char *ident)
 {
-	struct indefinite_info info = { 0, 0 };
+	struct indefinite_info info = { 0, 0, ident };
 	int i;
 
 	/*
@@ -248,6 +238,11 @@ spin_lock_contested(struct spinlock *spin)
 			break;
 		}
 		if ((++i & 0x7F) == 0x7F) {
+			mycpu->gd_cnt.v_lock_name[0] = 'X';
+			strncpy(mycpu->gd_cnt.v_lock_name + 1,
+				ident,
+				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
+			++mycpu->gd_cnt.v_lock_colls;
 #if defined(INVARIANTS)
 			++spin->countb;
 #endif
@@ -267,9 +262,9 @@ spin_lock_contested(struct spinlock *spin)
  * The caller has not modified counta.
  */
 void
-spin_lock_shared_contested2(struct spinlock *spin)
+_spin_lock_shared_contested(struct spinlock *spin, const char *ident)
 {
-	struct indefinite_info info = { 0, 0 };
+	struct indefinite_info info = { 0, 0, ident };
 	int i;
 
 #ifdef DEBUG_LOCKS_LATENCY
@@ -320,6 +315,11 @@ spin_lock_shared_contested2(struct spinlock *spin)
 				break;
 		}
 		if ((++i & 0x7F) == 0x7F) {
+			mycpu->gd_cnt.v_lock_name[0] = 'S';
+			strncpy(mycpu->gd_cnt.v_lock_name + 1,
+				ident,
+				sizeof(mycpu->gd_cnt.v_lock_name) - 2);
+			++mycpu->gd_cnt.v_lock_colls;
 #if defined(INVARIANTS)
 			++spin->countb;
 #endif
@@ -347,12 +347,12 @@ _spin_pool_hash(void *ptr)
 }
 
 void
-_spin_pool_lock(void *chan)
+_spin_pool_lock(void *chan, const char *ident)
 {
 	struct spinlock *sp;
 
 	sp = &pool_spinlocks[_spin_pool_hash(chan)].spin;
-	spin_lock(sp);
+	_spin_lock(sp, ident);
 }
 
 void
@@ -378,8 +378,8 @@ spin_indefinite_check(struct spinlock *spin, struct indefinite_info *info)
 		info->base = count;
 		++info->secs;
 	} else if (count - info->base > sys_cputimer->freq) {
-		kprintf("spin_lock: %p, indefinite wait (%d secs)!\n",
-			spin, info->secs);
+		kprintf("spin_lock: %s(%p), indefinite wait (%d secs)!\n",
+			info->ident, spin, info->secs);
 		info->base = count;
 		++info->secs;
 		if (panicstr)
@@ -395,7 +395,8 @@ spin_indefinite_check(struct spinlock *spin, struct indefinite_info *info)
 			print_backtrace(-1);
 #endif
 		if (info->secs == 60)
-			panic("spin_lock: %p, indefinite wait!", spin);
+			panic("spin_lock: %s(%p), indefinite wait!",
+			      info->ident, spin);
 	}
 	return (FALSE);
 }
@@ -449,7 +450,7 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 
 		spin_init(&spin);
 		for (i = spin_test_count; i > 0; --i) {
-		    spin_lock_quick(gd, &spin);
+		    _spin_lock_quick(gd, &spin, "test");
 		    spin_unlock_quick(gd, &spin);
 		}
 	}
