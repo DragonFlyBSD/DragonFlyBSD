@@ -927,13 +927,6 @@ int
 sys_sync(struct sync_args *uap)
 {
 	mountlist_scan(sync_callback, NULL, MNTSCAN_FORWARD);
-#ifdef DEBUG
-	/*
-	 * print out buffer pool stat information on each sync() call.
-	 */
-	if (syncprt)
-		vfs_bufstats();
-#endif /* DEBUG */
 	return (0);
 }
 

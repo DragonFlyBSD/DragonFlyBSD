@@ -87,9 +87,14 @@ typedef enum bufq_type bufq_type_t;
 #define BD_WAKE_SIZE	16384
 #define BD_WAKE_MASK	(BD_WAKE_SIZE - 1)
 
-TAILQ_HEAD(bqueues, buf) bufqueues[BUFFER_QUEUES];
-static struct spinlock bufqspin = SPINLOCK_INITIALIZER(&bufqspin);
-static struct spinlock bufcspin = SPINLOCK_INITIALIZER(&bufcspin);
+TAILQ_HEAD(bqueues, buf);
+
+struct bufpcpu {
+	struct spinlock spin;
+	struct bqueues bufqueues[BUFFER_QUEUES];
+} __cachealign;
+
+struct bufpcpu bufpcpu[MAXCPU];
 
 static MALLOC_DEFINE(M_BIOBUF, "BIO buffer", "BIO buffer");
 
@@ -129,22 +134,22 @@ long maxbufmallocspace, lobufspace, hibufspace;
 static long bufreusecnt, bufdefragcnt, buffreekvacnt;
 static long lorunningspace;
 static long hirunningspace;
-static long runningbufreq;		/* locked by bufcspin */
-static long dirtykvaspace;		/* locked by bufcspin */
-static long dirtybufspace;		/* locked by bufcspin */
-static long dirtybufcount;		/* locked by bufcspin */
-static long dirtybufspacehw;		/* locked by bufcspin */
-static long dirtybufcounthw;		/* locked by bufcspin */
-static long runningbufspace;		/* locked by bufcspin */
-static long runningbufcount;		/* locked by bufcspin */
+static long dirtykvaspace;		/* atomic */
+static long dirtybufspace;		/* atomic */
+static long dirtybufcount;		/* atomic */
+static long dirtybufspacehw;		/* atomic */
+static long dirtybufcounthw;		/* atomic */
+static long runningbufspace;		/* atomic */
+static long runningbufcount;		/* atomic */
 long lodirtybufspace;
 long hidirtybufspace;
 static int getnewbufcalls;
 static int getnewbufrestarts;
 static int recoverbufcalls;
-static int needsbuffer;		/* locked by bufcspin */
-static int bd_request;		/* locked by bufcspin */
-static int bd_request_hw;	/* locked by bufcspin */
+static int needsbuffer;			/* atomic */
+static int runningbufreq;		/* atomic */
+static int bd_request;			/* atomic */
+static int bd_request_hw;		/* atomic */
 static u_int bd_wake_ary[BD_WAKE_SIZE];
 static u_int bd_wake_index;
 static u_int vm_cycle_point = 40; /* 23-36 will migrate more act->inact */
@@ -242,13 +247,17 @@ bufspacewakeup(void)
 	 * though we haven't freed the kva space yet, the waiting
 	 * process will be able to now.
 	 */
-	spin_lock(&bufcspin);
-	if (needsbuffer & VFS_BIO_NEED_BUFSPACE) {
-		needsbuffer &= ~VFS_BIO_NEED_BUFSPACE;
-		spin_unlock(&bufcspin);
-		wakeup(&needsbuffer);
-	} else {
-		spin_unlock(&bufcspin);
+	for (;;) {
+		int flags = needsbuffer;
+		cpu_ccfence();
+		if ((flags & VFS_BIO_NEED_BUFSPACE) == 0)
+			break;
+		if (atomic_cmpset_int(&needsbuffer, flags,
+				      flags & ~VFS_BIO_NEED_BUFSPACE)) {
+			wakeup(&needsbuffer);
+			break;
+		}
+		/* retry */
 	}
 }
 
@@ -263,23 +272,27 @@ runningbufwakeup(struct buf *bp)
 {
 	long totalspace;
 	long limit;
+	long flags;
 
 	if ((totalspace = bp->b_runningbufspace) != 0) {
-		spin_lock(&bufcspin);
-		runningbufspace -= totalspace;
-		--runningbufcount;
+		atomic_add_long(&runningbufspace, -totalspace);
+		atomic_add_long(&runningbufcount, -1);
 		bp->b_runningbufspace = 0;
 
 		/*
 		 * see waitrunningbufspace() for limit test.
 		 */
 		limit = hirunningspace * 3 / 6;
-		if (runningbufreq && runningbufspace <= limit) {
-			runningbufreq = 0;
-			spin_unlock(&bufcspin);
-			wakeup(&runningbufreq);
-		} else {
-			spin_unlock(&bufcspin);
+		for (;;) {
+			flags = runningbufreq;
+			cpu_ccfence();
+			if (flags == 0)
+				break;
+			if (atomic_cmpset_int(&runningbufreq, flags, 0)) {
+				wakeup(&runningbufreq);
+				break;
+			}
+			/* retry */
 		}
 		bd_signal(totalspace);
 	}
@@ -292,19 +305,22 @@ runningbufwakeup(struct buf *bp)
  *	account for the buffer and to wakeup anyone waiting for free buffers.
  *	This typically occurs when large amounts of metadata are being handled
  *	by the buffer cache ( else buffer space runs out first, usually ).
- *
- * MPSAFE
  */
 static __inline void
 bufcountwakeup(void) 
 {
-	spin_lock(&bufcspin);
-	if (needsbuffer) {
-		needsbuffer &= ~VFS_BIO_NEED_ANY;
-		spin_unlock(&bufcspin);
-		wakeup(&needsbuffer);
-	} else {
-		spin_unlock(&bufcspin);
+	long flags;
+
+	for (;;) {
+		flags = needsbuffer;
+		if (flags == 0)
+			break;
+		if (atomic_cmpset_int(&needsbuffer, flags,
+				      (flags & ~VFS_BIO_NEED_ANY))) {
+			wakeup(&needsbuffer);
+			break;
+		}
+		/* retry */
 	}
 }
 
@@ -324,14 +340,13 @@ void
 waitrunningbufspace(void)
 {
 	long limit = hirunningspace * 4 / 6;
+	long flags;
 
-	if (runningbufspace > limit || runningbufreq) {
-		spin_lock(&bufcspin);
-		while (runningbufspace > limit || runningbufreq) {
-			runningbufreq = 1;
-			ssleep(&runningbufreq, &bufcspin, 0, "wdrn1", 0);
-		}
-		spin_unlock(&bufcspin);
+	while (runningbufspace > limit || runningbufreq) {
+		tsleep_interlock(&runningbufreq, 0);
+		flags = atomic_fetchadd_int(&runningbufreq, 0);
+		if (runningbufspace > limit || flags)
+			tsleep(&runningbufreq, PINTERLOCKED, "wdrn1", 0);
 	}
 }
 
@@ -386,8 +401,6 @@ vfs_buf_test_cache(struct buf *bp,
  *
  * Spank the buf_daemon[_hw] if the total dirty buffer space exceeds the
  * low water mark.
- *
- * MPSAFE
  */
 static __inline__
 void
@@ -399,18 +412,14 @@ bd_speedup(void)
 	if (bd_request == 0 &&
 	    (dirtykvaspace > lodirtybufspace / 2 ||
 	     dirtybufcount - dirtybufcounthw >= nbuf / 2)) {
-		spin_lock(&bufcspin);
-		bd_request = 1;
-		spin_unlock(&bufcspin);
-		wakeup(&bd_request);
+		if (atomic_fetchadd_int(&bd_request, 1) == 0)
+			wakeup(&bd_request);
 	}
 	if (bd_request_hw == 0 &&
 	    (dirtykvaspace > lodirtybufspace / 2 ||
 	     dirtybufcounthw >= nbuf / 2)) {
-		spin_lock(&bufcspin);
-		bd_request_hw = 1;
-		spin_unlock(&bufcspin);
-		wakeup(&bd_request_hw);
+		if (atomic_fetchadd_int(&bd_request_hw, 1) == 0)
+			wakeup(&bd_request_hw);
 	}
 }
 
@@ -422,8 +431,6 @@ bd_speedup(void)
  *
  *	Return the total number of dirty bytes past the second mid point
  *	as a measure of how much excess dirty data there is in the system.
- *
- * MPSAFE
  */
 long
 bd_heatup(void)
@@ -452,13 +459,13 @@ bd_heatup(void)
  *
  *	Regardless this function blocks while the number of dirty buffers
  *	exceeds hidirtybufspace.
- *
- * MPSAFE
  */
 void
 bd_wait(long totalspace)
 {
 	u_int i;
+	u_int j;
+	u_int mi;
 	int count;
 
 	if (curthread == bufdaemonhw_td || curthread == bufdaemon_td)
@@ -466,23 +473,32 @@ bd_wait(long totalspace)
 
 	while (totalspace > 0) {
 		bd_heatup();
+
+		/*
+		 * Order is important.  Suppliers adjust bd_wake_index after
+		 * updating runningbufspace/dirtykvaspace.  We want to fetch
+		 * bd_wake_index before accessing.  Any error should thus
+		 * be in our favor.
+		 */
+		i = atomic_fetchadd_int(&bd_wake_index, 0);
 		if (totalspace > runningbufspace + dirtykvaspace)
 			totalspace = runningbufspace + dirtykvaspace;
 		count = totalspace / BKVASIZE;
-		if (count >= BD_WAKE_SIZE)
-			count = BD_WAKE_SIZE - 1;
-
-		spin_lock(&bufcspin);
-		i = (bd_wake_index + count) & BD_WAKE_MASK;
-		++bd_wake_ary[i];
+		if (count >= BD_WAKE_SIZE / 2)
+			count = BD_WAKE_SIZE / 2;
+		i = i + count;
+		mi = i & BD_WAKE_MASK;
 
 		/*
 		 * This is not a strict interlock, so we play a bit loose
-		 * with locking access to dirtybufspace*
+		 * with locking access to dirtybufspace*.  We have to re-check
+		 * bd_wake_index to ensure that it hasn't passed us.
 		 */
-		tsleep_interlock(&bd_wake_ary[i], 0);
-		spin_unlock(&bufcspin);
-		tsleep(&bd_wake_ary[i], PINTERLOCKED, "flstik", hz);
+		tsleep_interlock(&bd_wake_ary[mi], 0);
+		atomic_add_int(&bd_wake_ary[mi], 1);
+		j = atomic_fetchadd_int(&bd_wake_index, 0);
+		if ((int)(i - j) >= 0)
+			tsleep(&bd_wake_ary[mi], PINTERLOCKED, "flstik", hz);
 
 		totalspace = runningbufspace + dirtykvaspace - hidirtybufspace;
 	}
@@ -494,8 +510,6 @@ bd_wait(long totalspace)
  *	This function is called whenever runningbufspace or dirtykvaspace
  *	is reduced.  Track threads waiting for run+dirty buffer I/O
  *	complete.
- *
- * MPSAFE
  */
 static void
 bd_signal(long totalspace)
@@ -505,19 +519,13 @@ bd_signal(long totalspace)
 	if (totalspace > 0) {
 		if (totalspace > BKVASIZE * BD_WAKE_SIZE)
 			totalspace = BKVASIZE * BD_WAKE_SIZE;
-		spin_lock(&bufcspin);
 		while (totalspace > 0) {
-			i = bd_wake_index++;
+			i = atomic_fetchadd_int(&bd_wake_index, 1);
 			i &= BD_WAKE_MASK;
-			if (bd_wake_ary[i]) {
-				bd_wake_ary[i] = 0;
-				spin_unlock(&bufcspin);
+			if (atomic_readandclear_int(&bd_wake_ary[i]))
 				wakeup(&bd_wake_ary[i]);
-				spin_lock(&bufcspin);
-			}
 			totalspace -= BKVASIZE;
 		}
-		spin_unlock(&bufcspin);
 	}
 }
 
@@ -527,8 +535,6 @@ bd_signal(long totalspace)
  * Release a ref on a bio_track.  Wakeup requests are atomically released
  * along with the last reference so bk_active will never wind up set to
  * only 0x80000000.
- *
- * MPSAFE
  */
 static
 void
@@ -571,8 +577,6 @@ bio_track_rel(struct bio_track *track)
  *
  * Use atomic ops such that the wait flag is only set atomically when
  * bk_active is non-zero.
- *
- * MPSAFE
  */
 int
 bio_track_wait(struct bio_track *track, int slp_flags, int slp_timo)
@@ -618,25 +622,40 @@ bio_track_wait(struct bio_track *track, int slp_flags, int slp_timo)
 void
 bufinit(void)
 {
+	struct bufpcpu *pcpu;
 	struct buf *bp;
 	vm_offset_t bogus_offset;
-	long i;
+	int i;
+	int j;
+	long n;
 
 	/* next, make a null set of free lists */
-	for (i = 0; i < BUFFER_QUEUES; i++)
-		TAILQ_INIT(&bufqueues[i]);
+	for (i = 0; i < ncpus; ++i) {
+		pcpu = &bufpcpu[i];
+		spin_init(&pcpu->spin);
+		for (j = 0; j < BUFFER_QUEUES; j++)
+			TAILQ_INIT(&pcpu->bufqueues[j]);
+	}
 
 	/* finally, initialize each buffer header and stick on empty q */
-	for (i = 0; i < nbuf; i++) {
-		bp = &buf[i];
+	i = 0;
+	pcpu = &bufpcpu[i];
+
+	for (n = 0; n < nbuf; n++) {
+		bp = &buf[n];
 		bzero(bp, sizeof *bp);
 		bp->b_flags = B_INVAL;	/* we're just an empty header */
 		bp->b_cmd = BUF_CMD_DONE;
 		bp->b_qindex = BQUEUE_EMPTY;
+		bp->b_qcpu = i;
 		initbufbio(bp);
 		xio_init(&bp->b_xio);
 		buf_dep_init(bp);
-		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_EMPTY], bp, b_freelist);
+		TAILQ_INSERT_TAIL(&pcpu->bufqueues[bp->b_qindex],
+				  bp, b_freelist);
+
+		i = (i + 1) % ncpus;
+		pcpu = &bufpcpu[i];
 	}
 
 	/*
@@ -808,8 +827,6 @@ clearbiocache(struct bio *bio)
  *	buffer_map.
  *
  *	Since this call frees up buffer space, we call bufspacewakeup().
- *
- * MPALMOSTSAFE
  */
 static void
 bfreekva(struct buf *bp)
@@ -835,17 +852,18 @@ bfreekva(struct buf *bp)
 }
 
 /*
- * bremfree:
- *
- *	Remove the buffer from the appropriate free list.
+ * Remove the buffer from the appropriate free list.
+ * (caller must be locked)
  */
 static __inline void
 _bremfree(struct buf *bp)
 {
+	struct bufpcpu *pcpu = &bufpcpu[bp->b_qcpu];
+
 	if (bp->b_qindex != BQUEUE_NONE) {
 		KASSERT(BUF_REFCNTNB(bp) == 1, 
-				("bremfree: bp %p not locked",bp));
-		TAILQ_REMOVE(&bufqueues[bp->b_qindex], bp, b_freelist);
+			("bremfree: bp %p not locked",bp));
+		TAILQ_REMOVE(&pcpu->bufqueues[bp->b_qindex], bp, b_freelist);
 		bp->b_qindex = BQUEUE_NONE;
 	} else {
 		if (BUF_REFCNTNB(bp) <= 1)
@@ -853,14 +871,22 @@ _bremfree(struct buf *bp)
 	}
 }
 
+/*
+ * bremfree() - must be called with a locked buffer
+ */
 void
 bremfree(struct buf *bp)
 {
-	spin_lock(&bufqspin);
+	struct bufpcpu *pcpu = &bufpcpu[bp->b_qcpu];
+
+	spin_lock(&pcpu->spin);
 	_bremfree(bp);
-	spin_unlock(&bufqspin);
+	spin_unlock(&pcpu->spin);
 }
 
+/*
+ * bremfree_locked - must be called with pcpu->spin locked
+ */
 static void
 bremfree_locked(struct buf *bp)
 {
@@ -1196,16 +1222,13 @@ bdirty(struct buf *bp)
 		reassignbuf(bp);
 		lwkt_reltoken(&bp->b_vp->v_token);
 
-		spin_lock(&bufcspin);
-		++dirtybufcount;
-		dirtykvaspace += bp->b_kvasize;
-		dirtybufspace += bp->b_bufsize;
+		atomic_add_long(&dirtybufcount, 1);
+		atomic_add_long(&dirtykvaspace, bp->b_kvasize);
+		atomic_add_long(&dirtybufspace, bp->b_bufsize);
 		if (bp->b_flags & B_HEAVY) {
-			++dirtybufcounthw;
-			dirtybufspacehw += bp->b_bufsize;
+			atomic_add_long(&dirtybufcounthw, 1);
+			atomic_add_long(&dirtybufspacehw, bp->b_bufsize);
 		}
-		spin_unlock(&bufcspin);
-
 		bd_heatup();
 	}
 }
@@ -1221,10 +1244,8 @@ bheavy(struct buf *bp)
 	if ((bp->b_flags & B_HEAVY) == 0) {
 		bp->b_flags |= B_HEAVY;
 		if (bp->b_flags & B_DELWRI) {
-			spin_lock(&bufcspin);
-			++dirtybufcounthw;
-			dirtybufspacehw += bp->b_bufsize;
-			spin_unlock(&bufcspin);
+			atomic_add_long(&dirtybufcounthw, 1);
+			atomic_add_long(&dirtybufspacehw, bp->b_bufsize);
 		}
 	}
 }
@@ -1239,8 +1260,6 @@ bheavy(struct buf *bp)
  *	The buffer is typically on BQUEUE_NONE but there is one case in 
  *	brelse() that calls this function after placing the buffer on
  *	a different queue.
- *
- * MPSAFE
  */
 void
 bundirty(struct buf *bp)
@@ -1251,16 +1270,13 @@ bundirty(struct buf *bp)
 		reassignbuf(bp);
 		lwkt_reltoken(&bp->b_vp->v_token);
 
-		spin_lock(&bufcspin);
-		--dirtybufcount;
-		dirtykvaspace -= bp->b_kvasize;
-		dirtybufspace -= bp->b_bufsize;
+		atomic_add_long(&dirtybufcount, -1);
+		atomic_add_long(&dirtykvaspace, -bp->b_kvasize);
+		atomic_add_long(&dirtybufspace, -bp->b_bufsize);
 		if (bp->b_flags & B_HEAVY) {
-			--dirtybufcounthw;
-			dirtybufspacehw -= bp->b_bufsize;
+			atomic_add_long(&dirtybufcounthw, -1);
+			atomic_add_long(&dirtybufspacehw, -bp->b_bufsize);
 		}
-		spin_unlock(&bufcspin);
-
 		bd_signal(bp->b_bufsize);
 	}
 	/*
@@ -1278,10 +1294,8 @@ bsetrunningbufspace(struct buf *bp, int bytes)
 {
 	bp->b_runningbufspace = bytes;
 	if (bytes) {
-		spin_lock(&bufcspin);
-		runningbufspace += bytes;
-		++runningbufcount;
-		spin_unlock(&bufcspin);
+		atomic_add_long(&runningbufspace, bytes);
+		atomic_add_long(&runningbufcount, 1);
 	}
 }
 
@@ -1291,17 +1305,17 @@ bsetrunningbufspace(struct buf *bp, int bytes)
  *	Release a busy buffer and, if requested, free its resources.  The
  *	buffer will be stashed in the appropriate bufqueue[] allowing it
  *	to be accessed later as a cache entity or reused for other purposes.
- *
- * MPALMOSTSAFE
  */
 void
 brelse(struct buf *bp)
 {
+	struct bufpcpu *pcpu;
 #ifdef INVARIANTS
 	int saved_flags = bp->b_flags;
 #endif
 
-	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)), ("brelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
+	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)),
+		("brelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
 
 	/*
 	 * If B_NOCACHE is set we are being asked to destroy the buffer and
@@ -1337,16 +1351,14 @@ brelse(struct buf *bp)
 		if (LIST_FIRST(&bp->b_dep) != NULL)
 			buf_deallocate(bp);
 		if (bp->b_flags & B_DELWRI) {
-			spin_lock(&bufcspin);
-			--dirtybufcount;
-			dirtykvaspace -= bp->b_kvasize;
-			dirtybufspace -= bp->b_bufsize;
+			atomic_add_long(&dirtybufcount, -1);
+			atomic_add_long(&dirtykvaspace, -bp->b_kvasize);
+			atomic_add_long(&dirtybufspace, -bp->b_bufsize);
 			if (bp->b_flags & B_HEAVY) {
-				--dirtybufcounthw;
-				dirtybufspacehw -= bp->b_bufsize;
+				atomic_add_long(&dirtybufcounthw, -1);
+				atomic_add_long(&dirtybufspacehw,
+						-bp->b_bufsize);
 			}
-			spin_unlock(&bufcspin);
-
 			bd_signal(bp->b_bufsize);
 		}
 		bp->b_flags &= ~(B_DELWRI | B_CACHE);
@@ -1556,15 +1568,20 @@ brelse(struct buf *bp)
 	 * Figure out the correct queue to place the cleaned up buffer on.
 	 * Buffers placed in the EMPTY or EMPTYKVA had better already be
 	 * disassociated from their vnode.
+	 *
+	 * Return the buffer to its original pcpu area
 	 */
-	spin_lock(&bufqspin);
+	pcpu = &bufpcpu[bp->b_qcpu];
+	spin_lock(&pcpu->spin);
+
 	if (bp->b_flags & B_LOCKED) {
 		/*
 		 * Buffers that are locked are placed in the locked queue
 		 * immediately, regardless of their state.
 		 */
 		bp->b_qindex = BQUEUE_LOCKED;
-		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_LOCKED], bp, b_freelist);
+		TAILQ_INSERT_TAIL(&pcpu->bufqueues[bp->b_qindex],
+				  bp, b_freelist);
 	} else if (bp->b_bufsize == 0) {
 		/*
 		 * Buffers with no memory.  Due to conditionals near the top
@@ -1572,24 +1589,32 @@ brelse(struct buf *bp)
 		 * marked B_INVAL and disassociated from their vnode.
 		 */
 		bp->b_flags |= B_INVAL;
-		KASSERT(bp->b_vp == NULL, ("bp1 %p flags %08x/%08x vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
+		KASSERT(bp->b_vp == NULL,
+			("bp1 %p flags %08x/%08x vnode %p "
+			 "unexpectededly still associated!",
+			bp, saved_flags, bp->b_flags, bp->b_vp));
 		KKASSERT((bp->b_flags & B_HASHED) == 0);
 		if (bp->b_kvasize) {
 			bp->b_qindex = BQUEUE_EMPTYKVA;
 		} else {
 			bp->b_qindex = BQUEUE_EMPTY;
 		}
-		TAILQ_INSERT_HEAD(&bufqueues[bp->b_qindex], bp, b_freelist);
+		TAILQ_INSERT_HEAD(&pcpu->bufqueues[bp->b_qindex],
+				  bp, b_freelist);
 	} else if (bp->b_flags & (B_INVAL | B_NOCACHE | B_RELBUF)) {
 		/*
 		 * Buffers with junk contents.   Again these buffers had better
 		 * already be disassociated from their vnode.
 		 */
-		KASSERT(bp->b_vp == NULL, ("bp2 %p flags %08x/%08x vnode %p unexpectededly still associated!", bp, saved_flags, bp->b_flags, bp->b_vp));
+		KASSERT(bp->b_vp == NULL,
+			("bp2 %p flags %08x/%08x vnode %p unexpectededly "
+			 "still associated!",
+			bp, saved_flags, bp->b_flags, bp->b_vp));
 		KKASSERT((bp->b_flags & B_HASHED) == 0);
 		bp->b_flags |= B_INVAL;
 		bp->b_qindex = BQUEUE_CLEAN;
-		TAILQ_INSERT_HEAD(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
+		TAILQ_INSERT_HEAD(&pcpu->bufqueues[bp->b_qindex],
+				  bp, b_freelist);
 	} else {
 		/*
 		 * Remaining buffers.  These buffers are still associated with
@@ -1597,30 +1622,32 @@ brelse(struct buf *bp)
 		 */
 		switch(bp->b_flags & (B_DELWRI|B_HEAVY)) {
 		case B_DELWRI:
-		    bp->b_qindex = BQUEUE_DIRTY;
-		    TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_DIRTY], bp, b_freelist);
-		    break;
+			bp->b_qindex = BQUEUE_DIRTY;
+			TAILQ_INSERT_TAIL(&pcpu->bufqueues[bp->b_qindex],
+					  bp, b_freelist);
+			break;
 		case B_DELWRI | B_HEAVY:
-		    bp->b_qindex = BQUEUE_DIRTY_HW;
-		    TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_DIRTY_HW], bp,
-				      b_freelist);
-		    break;
+			bp->b_qindex = BQUEUE_DIRTY_HW;
+			TAILQ_INSERT_TAIL(&pcpu->bufqueues[bp->b_qindex],
+					  bp, b_freelist);
+			break;
 		default:
-		    /*
-		     * NOTE: Buffers are always placed at the end of the
-		     * queue.  If B_AGE is not set the buffer will cycle
-		     * through the queue twice.
-		     */
-		    bp->b_qindex = BQUEUE_CLEAN;
-		    TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
-		    break;
+			/*
+			 * NOTE: Buffers are always placed at the end of the
+			 * queue.  If B_AGE is not set the buffer will cycle
+			 * through the queue twice.
+			 */
+			bp->b_qindex = BQUEUE_CLEAN;
+			TAILQ_INSERT_TAIL(&pcpu->bufqueues[bp->b_qindex],
+					  bp, b_freelist);
+			break;
 		}
 	}
-	spin_unlock(&bufqspin);
+	spin_unlock(&pcpu->spin);
 
 	/*
 	 * If B_INVAL, clear B_DELWRI.  We've already placed the buffer
-	 * on the correct queue.
+	 * on the correct queue but we have not yet unlocked it.
 	 */
 	if ((bp->b_flags & (B_INVAL|B_DELWRI)) == (B_INVAL|B_DELWRI))
 		bundirty(bp);
@@ -1660,13 +1687,14 @@ brelse(struct buf *bp)
  *	again soon.
  *
  *	XXX we should be able to leave the B_RELBUF hint set on completion.
- *
- * MPSAFE
  */
 void
 bqrelse(struct buf *bp)
 {
-	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)), ("bqrelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
+	struct bufpcpu *pcpu;
+
+	KASSERT(!(bp->b_flags & (B_CLUSTER|B_PAGING)),
+		("bqrelse: inappropriate B_PAGING or B_CLUSTER bp %p", bp));
 
 	if (bp->b_qindex != BQUEUE_NONE)
 		panic("bqrelse: free buffer onto another queue???");
@@ -1678,7 +1706,9 @@ bqrelse(struct buf *bp)
 
 	buf_act_advance(bp);
 
-	spin_lock(&bufqspin);
+	pcpu = &bufpcpu[bp->b_qcpu];
+	spin_lock(&pcpu->spin);
+
 	if (bp->b_flags & B_LOCKED) {
 		/*
 		 * Locked buffers are released to the locked queue.  However,
@@ -1687,26 +1717,33 @@ bqrelse(struct buf *bp)
 		 * will be released to the locked queue.
 		 */
 		bp->b_qindex = BQUEUE_LOCKED;
-		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_LOCKED], bp, b_freelist);
+		TAILQ_INSERT_TAIL(&pcpu->bufqueues[bp->b_qindex],
+				  bp, b_freelist);
 	} else if (bp->b_flags & B_DELWRI) {
 		bp->b_qindex = (bp->b_flags & B_HEAVY) ?
 			       BQUEUE_DIRTY_HW : BQUEUE_DIRTY;
-		TAILQ_INSERT_TAIL(&bufqueues[bp->b_qindex], bp, b_freelist);
+		TAILQ_INSERT_TAIL(&pcpu->bufqueues[bp->b_qindex],
+				  bp, b_freelist);
 	} else if (vm_page_count_min(0)) {
 		/*
 		 * We are too low on memory, we have to try to free the
 		 * buffer (most importantly: the wired pages making up its
 		 * backing store) *now*.
 		 */
-		spin_unlock(&bufqspin);
+		spin_unlock(&pcpu->spin);
 		brelse(bp);
 		return;
 	} else {
 		bp->b_qindex = BQUEUE_CLEAN;
-		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
+		TAILQ_INSERT_TAIL(&pcpu->bufqueues[bp->b_qindex],
+				  bp, b_freelist);
 	}
-	spin_unlock(&bufqspin);
+	spin_unlock(&pcpu->spin);
 
+	/*
+	 * We have now placed the buffer on the proper queue, but have yet
+	 * to unlock it.
+	 */
 	if ((bp->b_flags & B_LOCKED) == 0 &&
 	    ((bp->b_flags & B_INVAL) || (bp->b_flags & B_DELWRI) == 0)) {
 		bufcountwakeup();
@@ -1870,33 +1907,31 @@ vfs_vmio_release(struct buf *bp)
 }
 
 /*
- * getnewbuf:
+ * Find and initialize a new buffer header, freeing up existing buffers
+ * in the bufqueues as necessary.  The new buffer is returned locked.
  *
- *	Find and initialize a new buffer header, freeing up existing buffers 
- *	in the bufqueues as necessary.  The new buffer is returned locked.
+ * Important:  B_INVAL is not set.  If the caller wishes to throw the
+ * buffer away, the caller must set B_INVAL prior to calling brelse().
  *
- *	Important:  B_INVAL is not set.  If the caller wishes to throw the
- *	buffer away, the caller must set B_INVAL prior to calling brelse().
+ * We block if:
+ *	We have insufficient buffer headers
+ *	We have insufficient buffer space
+ *	buffer_map is too fragmented ( space reservation fails )
+ *	If we have to flush dirty buffers ( but we try to avoid this )
  *
- *	We block if:
- *		We have insufficient buffer headers
- *		We have insufficient buffer space
- *		buffer_map is too fragmented ( space reservation fails )
- *		If we have to flush dirty buffers ( but we try to avoid this )
- *
- *	To avoid VFS layer recursion we do not flush dirty buffers ourselves.
- *	Instead we ask the buf daemon to do it for us.  We attempt to
- *	avoid piecemeal wakeups of the pageout daemon.
- *
- * MPALMOSTSAFE
+ * To avoid VFS layer recursion we do not flush dirty buffers ourselves.
+ * Instead we ask the buf daemon to do it for us.  We attempt to
+ * avoid piecemeal wakeups of the pageout daemon.
  */
 struct buf *
 getnewbuf(int blkflags, int slptimeo, int size, int maxsize)
 {
+	struct bufpcpu *pcpu;
 	struct buf *bp;
 	struct buf *nbp;
 	int defrag = 0;
 	int nqindex;
+	int nqcpu;
 	int slpflags = (blkflags & GETBLK_PCATCH) ? PCATCH : 0;
 	static int flushingbufs;
 
@@ -1909,6 +1944,7 @@ getnewbuf(int blkflags, int slptimeo, int size, int maxsize)
 	
 	++getnewbufcalls;
 	--getnewbufrestarts;
+	nqcpu = mycpu->gd_cpuid;
 restart:
 	++getnewbufrestarts;
 
@@ -1924,9 +1960,11 @@ restart:
 	 * However, there are a number of cases (defragging, reusing, ...)
 	 * where we cannot backup.
 	 */
+	pcpu = &bufpcpu[nqcpu];
 	nqindex = BQUEUE_EMPTYKVA;
-	spin_lock(&bufqspin);
-	nbp = TAILQ_FIRST(&bufqueues[BQUEUE_EMPTYKVA]);
+	spin_lock(&pcpu->spin);
+
+	nbp = TAILQ_FIRST(&pcpu->bufqueues[BQUEUE_EMPTYKVA]);
 
 	if (nbp == NULL) {
 		/*
@@ -1937,7 +1975,7 @@ restart:
 		 */
 		if (defrag || bufspace >= lobufspace) {
 			nqindex = BQUEUE_CLEAN;
-			nbp = TAILQ_FIRST(&bufqueues[BQUEUE_CLEAN]);
+			nbp = TAILQ_FIRST(&pcpu->bufqueues[BQUEUE_CLEAN]);
 		}
 
 		/*
@@ -1949,7 +1987,7 @@ restart:
 		if (nbp == NULL && defrag == 0 &&
 		    bufspace + maxsize < hibufspace) {
 			nqindex = BQUEUE_EMPTY;
-			nbp = TAILQ_FIRST(&bufqueues[BQUEUE_EMPTY]);
+			nbp = TAILQ_FIRST(&pcpu->bufqueues[BQUEUE_EMPTY]);
 		}
 	}
 
@@ -1957,7 +1995,7 @@ restart:
 	 * Run scan, possibly freeing data and/or kva mappings on the fly
 	 * depending.
 	 *
-	 * WARNING!  bufqspin is held!
+	 * WARNING! spin is held!
 	 */
 	while ((bp = nbp) != NULL) {
 		int qindex = nqindex;
@@ -1971,8 +2009,10 @@ restart:
 		if (qindex == BQUEUE_CLEAN && 
 		    (bp->b_flags & B_AGE) == 0 && nbp) {
 			bp->b_flags |= B_AGE;
-			TAILQ_REMOVE(&bufqueues[qindex], bp, b_freelist);
-			TAILQ_INSERT_TAIL(&bufqueues[qindex], bp, b_freelist);
+			TAILQ_REMOVE(&pcpu->bufqueues[qindex],
+				     bp, b_freelist);
+			TAILQ_INSERT_TAIL(&pcpu->bufqueues[qindex],
+					  bp, b_freelist);
 			continue;
 		}
 
@@ -1984,12 +2024,12 @@ restart:
 			switch(qindex) {
 			case BQUEUE_EMPTY:
 				nqindex = BQUEUE_EMPTYKVA;
-				if ((nbp = TAILQ_FIRST(&bufqueues[BQUEUE_EMPTYKVA])))
+				if ((nbp = TAILQ_FIRST(&pcpu->bufqueues[BQUEUE_EMPTYKVA])))
 					break;
 				/* fall through */
 			case BQUEUE_EMPTYKVA:
 				nqindex = BQUEUE_CLEAN;
-				if ((nbp = TAILQ_FIRST(&bufqueues[BQUEUE_CLEAN])))
+				if ((nbp = TAILQ_FIRST(&pcpu->bufqueues[BQUEUE_CLEAN])))
 					break;
 				/* fall through */
 			case BQUEUE_CLEAN:
@@ -2052,17 +2092,17 @@ restart:
 		 * buffer and change its queue.
 		 */
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
-			spin_unlock(&bufqspin);
+			spin_unlock(&pcpu->spin);
 			tsleep(&bd_request, 0, "gnbxxx", (hz + 99) / 100);
 			goto restart;
 		}
 		if (bp->b_qindex != qindex || bp->b_refs) {
-			spin_unlock(&bufqspin);
+			spin_unlock(&pcpu->spin);
 			BUF_UNLOCK(bp);
 			goto restart;
 		}
 		bremfree_locked(bp);
-		spin_unlock(&bufqspin);
+		spin_unlock(&pcpu->spin);
 
 		/*
 		 * Dependancies must be handled before we disassociate the
@@ -2072,7 +2112,7 @@ restart:
 		 * be immediately disassociated.  HAMMER then becomes
 		 * responsible for releasing the buffer.
 		 *
-		 * NOTE: bufqspin is UNLOCKED now.
+		 * NOTE: spin is UNLOCKED now.
 		 */
 		if (LIST_FIRST(&bp->b_dep) != NULL) {
 			buf_deallocate(bp);
@@ -2174,22 +2214,28 @@ restart:
 			goto restart;
 		}
 		break;
-		/* NOT REACHED, bufqspin not held */
+		/* NOT REACHED, spin not held */
 	}
 
 	/*
-	 * If we exhausted our list, sleep as appropriate.  We may have to
-	 * wakeup various daemons and write out some dirty buffers.
+	 * If we exhausted our list, iterate other cpus.  If that fails,
+	 * sleep as appropriate.  We may have to wakeup various daemons
+	 * and write out some dirty buffers.
 	 *
 	 * Generally we are sleeping due to insufficient buffer space.
 	 *
-	 * NOTE: bufqspin is held if bp is NULL, else it is not held.
+	 * NOTE: spin is held if bp is NULL, else it is not held.
 	 */
 	if (bp == NULL) {
 		int flags;
 		char *waitmsg;
 
-		spin_unlock(&bufqspin);
+		spin_unlock(&pcpu->spin);
+
+		nqcpu = (nqcpu + 1) % ncpus;
+		if (nqcpu != mycpu->gd_cpuid)
+			goto restart;
+
 		if (defrag) {
 			flags = VFS_BIO_NEED_BUFSPACE;
 			waitmsg = "nbufkv";
@@ -2202,16 +2248,19 @@ restart:
 		}
 
 		bd_speedup();	/* heeeelp */
-		spin_lock(&bufcspin);
-		needsbuffer |= flags;
+		atomic_set_int(&needsbuffer, flags);
 		while (needsbuffer & flags) {
-			if (ssleep(&needsbuffer, &bufcspin,
-				   slpflags, waitmsg, slptimeo)) {
-				spin_unlock(&bufcspin);
-				return (NULL);
+			int value;
+
+			tsleep_interlock(&needsbuffer, 0);
+			value = atomic_fetchadd_int(&needsbuffer, 0);
+			if (value & flags) {
+				if (tsleep(&needsbuffer, PINTERLOCKED|slpflags,
+					   waitmsg, slptimeo)) {
+					return (NULL);
+				}
 			}
 		}
-		spin_unlock(&bufcspin);
 	} else {
 		/*
 		 * We finally have a valid bp.  We aren't quite out of the
@@ -2219,7 +2268,7 @@ restart:
 		 * to keep fragmentation sane we only allocate kva in
 		 * BKVASIZE chunks.
 		 *
-		 * (bufqspin is not held)
+		 * (spin is not held)
 		 */
 		maxsize = (maxsize + BKVAMASK) & ~BKVAMASK;
 
@@ -2268,136 +2317,6 @@ restart:
 	return(bp);
 }
 
-#if 0
-/*
- * This routine is called in an emergency to recover VM pages from the
- * buffer cache by cashing in clean buffers.  The idea is to recover
- * enough pages to be able to satisfy a stuck bio_page_alloc().
- *
- * XXX Currently not implemented.  This function can wind up deadlocking
- * against another thread holding one or more of the backing pages busy.
- */
-static int
-recoverbufpages(void)
-{
-	struct buf *bp;
-	int bytes = 0;
-
-	++recoverbufcalls;
-
-	spin_lock(&bufqspin);
-	while (bytes < MAXBSIZE) {
-		bp = TAILQ_FIRST(&bufqueues[BQUEUE_CLEAN]);
-		if (bp == NULL)
-			break;
-
-		/*
-		 * BQUEUE_CLEAN - B_AGE special case.  If not set the bp
-		 * cycles through the queue twice before being selected.
-		 */
-		if ((bp->b_flags & B_AGE) == 0 && TAILQ_NEXT(bp, b_freelist)) {
-			bp->b_flags |= B_AGE;
-			TAILQ_REMOVE(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
-			TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_CLEAN],
-					  bp, b_freelist);
-			continue;
-		}
-
-		/*
-		 * Sanity Checks
-		 */
-		KKASSERT(bp->b_qindex == BQUEUE_CLEAN);
-		KKASSERT((bp->b_flags & B_DELWRI) == 0);
-
-		/*
-		 * Start freeing the bp.  This is somewhat involved.
-		 *
-		 * Buffers on the clean list must be disassociated from
-		 * their current vnode
-		 */
-
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
-			kprintf("recoverbufpages: warning, locked buf %p, "
-				"race corrected\n",
-				bp);
-			ssleep(&bd_request, &bufqspin, 0, "gnbxxx", hz / 100);
-			continue;
-		}
-		if (bp->b_qindex != BQUEUE_CLEAN) {
-			kprintf("recoverbufpages: warning, BUF_LOCK blocked "
-				"unexpectedly on buf %p index %d, race "
-				"corrected\n",
-				bp, bp->b_qindex);
-			BUF_UNLOCK(bp);
-			continue;
-		}
-		bremfree_locked(bp);
-		spin_unlock(&bufqspin);
-
-		/*
-		 * Sanity check.  Only BQUEUE_DIRTY[_HW] employs markers.
-		 */
-		KKASSERT((bp->b_flags & B_MARKER) == 0);
-
-		/*
-		 * Dependancies must be handled before we disassociate the
-		 * vnode.
-		 *
-		 * NOTE: HAMMER will set B_LOCKED if the buffer cannot
-		 * be immediately disassociated.  HAMMER then becomes
-		 * responsible for releasing the buffer.
-		 */
-		if (LIST_FIRST(&bp->b_dep) != NULL) {
-			buf_deallocate(bp);
-			if (bp->b_flags & B_LOCKED) {
-				bqrelse(bp);
-				spin_lock(&bufqspin);
-				continue;
-			}
-			KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
-		}
-
-		bytes += bp->b_bufsize;
-
-		if (bp->b_flags & B_VMIO) {
-			bp->b_flags |= B_DIRECT;    /* try to free pages */
-			vfs_vmio_release(bp);
-		}
-		if (bp->b_vp)
-			brelvp(bp);
-
-		KKASSERT(bp->b_vp == NULL);
-		KKASSERT((bp->b_flags & B_HASHED) == 0);
-
-		/*
-		 * critical section protection is not required when
-		 * scrapping a buffer's contents because it is already 
-		 * wired.
-		 */
-		if (bp->b_bufsize)
-			allocbuf(bp, 0);
-
-		bp->b_flags = B_BNOCLIP;
-		bp->b_cmd = BUF_CMD_DONE;
-		bp->b_vp = NULL;
-		bp->b_error = 0;
-		bp->b_resid = 0;
-		bp->b_bcount = 0;
-		bp->b_xio.xio_npages = 0;
-		bp->b_dirtyoff = bp->b_dirtyend = 0;
-		reinitbufbio(bp);
-		KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
-		buf_dep_init(bp);
-		bp->b_flags |= B_INVAL;
-		/* bfreekva(bp); */
-		brelse(bp);
-		spin_lock(&bufqspin);
-	}
-	spin_unlock(&bufqspin);
-	return(bytes);
-}
-#endif
-
 /*
  * buf_daemon:
  *
@@ -2425,9 +2344,6 @@ static struct kproc_desc bufhw_kp = {
 SYSINIT(bufdaemon_hw, SI_SUB_KTHREAD_BUF, SI_ORDER_FIRST,
 	kproc_start, &bufhw_kp)
 
-/*
- * MPSAFE thread
- */
 static void
 buf_daemon1(struct thread *td, int queue, int (*buf_limit_fn)(long), 
 	    int *bd_req)
@@ -2438,6 +2354,7 @@ buf_daemon1(struct thread *td, int queue, int (*buf_limit_fn)(long),
 	marker = kmalloc(sizeof(*marker), M_BIOBUF, M_WAITOK | M_ZERO);
 	marker->b_flags |= B_MARKER;
 	marker->b_qindex = BQUEUE_NONE;
+	marker->b_qcpu = 0;
 
 	/*
 	 * This process needs to be suspended prior to shutdown sync.
@@ -2481,11 +2398,9 @@ buf_daemon1(struct thread *td, int queue, int (*buf_limit_fn)(long),
 		 * request and sleep until we are needed again.
 		 * The sleep is just so the suspend code works.
 		 */
-		spin_lock(&bufcspin);
 		if (*bd_req == 0)
-			ssleep(bd_req, &bufcspin, 0, "psleep", hz);
-		*bd_req = 0;
-		spin_unlock(&bufcspin);
+			tsleep(bd_req, 0, "psleep", hz);
+		atomic_clear_int(bd_req, -1);
 	}
 	/* NOT REACHED */
 	/*kfree(marker, M_BIOBUF);*/
@@ -2531,25 +2446,29 @@ buf_daemon_hw(void)
  *	due to the write load on the machine.
  *
  *	We must lock the buffer in order to check its validity before we
- *	can mess with its contents.  bufqspin isn't enough.
+ *	can mess with its contents.  spin isn't enough.
  */
 static int
 flushbufqueues(struct buf *marker, bufq_type_t q)
 {
+	struct bufpcpu *pcpu;
 	struct buf *bp;
 	int r = 0;
+	int lcpu = marker->b_qcpu;
 
 	KKASSERT(marker->b_qindex == BQUEUE_NONE);
 	KKASSERT(marker->b_flags & B_MARKER);
 
+again:
 	/*
 	 * Spinlock needed to perform operations on the queue and may be
 	 * held through a non-blocking BUF_LOCK(), but cannot be held when
 	 * BUF_UNLOCK()ing or through any other major operation.
 	 */
-	spin_lock(&bufqspin);
+	pcpu = &bufpcpu[marker->b_qcpu];
+	spin_lock(&pcpu->spin);
 	marker->b_qindex = q;
-	TAILQ_INSERT_HEAD(&bufqueues[q], marker, b_freelist);
+	TAILQ_INSERT_HEAD(&pcpu->bufqueues[q], marker, b_freelist);
 	bp = marker;
 
 	while ((bp = TAILQ_NEXT(bp, b_freelist)) != NULL) {
@@ -2564,7 +2483,7 @@ flushbufqueues(struct buf *marker, bufq_type_t q)
 		}
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
 			continue;
-		KKASSERT(bp->b_qindex == q);
+		KKASSERT(bp->b_qcpu == marker->b_qcpu && bp->b_qindex == q);
 
 		/*
 		 * Once the buffer is locked we will have no choice but to
@@ -2572,17 +2491,17 @@ flushbufqueues(struct buf *marker, bufq_type_t q)
 		 * bp = marker when looping.  Move the marker now to make
 		 * things easier.
 		 */
-		TAILQ_REMOVE(&bufqueues[q], marker, b_freelist);
-		TAILQ_INSERT_AFTER(&bufqueues[q], bp, marker, b_freelist);
+		TAILQ_REMOVE(&pcpu->bufqueues[q], marker, b_freelist);
+		TAILQ_INSERT_AFTER(&pcpu->bufqueues[q], bp, marker, b_freelist);
 
 		/*
 		 * Must recheck B_DELWRI after successfully locking
 		 * the buffer.
 		 */
 		if ((bp->b_flags & B_DELWRI) == 0) {
-			spin_unlock(&bufqspin);
+			spin_unlock(&pcpu->spin);
 			BUF_UNLOCK(bp);
-			spin_lock(&bufqspin);
+			spin_lock(&pcpu->spin);
 			bp = marker;
 			continue;
 		}
@@ -2597,9 +2516,9 @@ flushbufqueues(struct buf *marker, bufq_type_t q)
 		 * Disposing of an invalid buffer counts as a flush op
 		 */
 		if (bp->b_flags & B_INVAL) {
-			spin_unlock(&bufqspin);
+			spin_unlock(&pcpu->spin);
 			brelse(bp);
-			spin_lock(&bufqspin);
+			spin_lock(&pcpu->spin);
 			++r;
 			break;
 		}
@@ -2608,7 +2527,7 @@ flushbufqueues(struct buf *marker, bufq_type_t q)
 		 * Release the spinlock for the more complex ops we
 		 * are now going to do.
 		 */
-		spin_unlock(&bufqspin);
+		spin_unlock(&pcpu->spin);
 		lwkt_yield();
 
 		/*
@@ -2617,13 +2536,13 @@ flushbufqueues(struct buf *marker, bufq_type_t q)
 		if (LIST_FIRST(&bp->b_dep) != NULL &&
 		    (bp->b_flags & B_DEFERRED) == 0 &&
 		    buf_countdeps(bp, 0)) {
-			spin_lock(&bufqspin);
-			TAILQ_INSERT_TAIL(&bufqueues[q], bp, b_freelist);
+			spin_lock(&pcpu->spin);
+			TAILQ_INSERT_TAIL(&pcpu->bufqueues[q], bp, b_freelist);
 			bp->b_qindex = q;
 			bp->b_flags |= B_DEFERRED;
-			spin_unlock(&bufqspin);
+			spin_unlock(&pcpu->spin);
 			BUF_UNLOCK(bp);
-			spin_lock(&bufqspin);
+			spin_lock(&pcpu->spin);
 			bp = marker;
 			continue;
 		}
@@ -2636,8 +2555,6 @@ flushbufqueues(struct buf *marker, bufq_type_t q)
 		 *
 		 * If the buffer is flagged B_ERROR it may be requeued
 		 * over and over again, we try to avoid a live lock.
-		 *
-		 * NOTE: buf_checkwrite is MPSAFE.
 		 */
 		if (LIST_FIRST(&bp->b_dep) != NULL && buf_checkwrite(bp)) {
 			brelse(bp);
@@ -2649,13 +2566,23 @@ flushbufqueues(struct buf *marker, bufq_type_t q)
 			bp->b_flags |= B_AGE;
 			cluster_awrite(bp);
 		}
-		spin_lock(&bufqspin);
+		spin_lock(&pcpu->spin);
 		++r;
 		break;
 	}
-	TAILQ_REMOVE(&bufqueues[q], marker, b_freelist);
+
+	TAILQ_REMOVE(&pcpu->bufqueues[q], marker, b_freelist);
 	marker->b_qindex = BQUEUE_NONE;
-	spin_unlock(&bufqspin);
+	spin_unlock(&pcpu->spin);
+
+	/*
+	 * Advance the marker to be fair.
+	 */
+	marker->b_qcpu = (marker->b_qcpu + 1) % ncpus;
+	if (bp == NULL) {
+		if (marker->b_qcpu != lcpu)
+			goto again;
+	}
 
 	return (r);
 }
@@ -2734,8 +2661,6 @@ inmem(struct vnode *vp, off_t loffset)
  *			  against random (vp,loffset)s due to reassignment.
  *
  *	(0)		- Lock the buffer blocking.
- *
- * MPSAFE
  */
 struct buf *
 findblk(struct vnode *vp, off_t loffset, int flags)
@@ -2891,8 +2816,6 @@ getcacheblk(struct vnode *vp, off_t loffset, int blksize, int blkflags)
  *
  *	GETBLK_PCATCH - catch signal if blocked, can cause NULL return
  *	GETBLK_BHEAVY - heavy-weight buffer cache buffer
- *
- * MPALMOSTSAFE
  */
 struct buf *
 getblk(struct vnode *vp, off_t loffset, int size, int blkflags, int slptimeo)
@@ -3144,8 +3067,6 @@ loop:
  *
  * To this end, either B_LOCKED must be set or the dependancy list must be
  * non-empty.
- *
- * MPSAFE
  */
 void
 regetblk(struct buf *bp)
@@ -3163,8 +3084,6 @@ regetblk(struct buf *bp)
  *
  *	critical section protection is not required for the allocbuf()
  *	call because races are impossible here.
- *
- * MPALMOSTSAFE
  */
 struct buf *
 geteblk(int size)
@@ -3202,8 +3121,6 @@ geteblk(int size)
  *
  *	This routine does not need to be called from a critical section but you
  *	must own the buffer.
- *
- * MPSAFE
  */
 int
 allocbuf(struct buf *bp, int size)
@@ -3478,12 +3395,12 @@ allocbuf(struct buf *bp, int size)
 
 	/* adjust space use on already-dirty buffer */
 	if (bp->b_flags & B_DELWRI) {
-		spin_lock(&bufcspin);
 		/* dirtykvaspace unchanged */
-		dirtybufspace += newbsize - bp->b_bufsize;
-		if (bp->b_flags & B_HEAVY)
-			dirtybufspacehw += newbsize - bp->b_bufsize;
-		spin_unlock(&bufcspin);
+		atomic_add_long(&dirtybufspace, newbsize - bp->b_bufsize);
+		if (bp->b_flags & B_HEAVY) {
+			atomic_add_long(&dirtybufspacehw,
+					newbsize - bp->b_bufsize);
+		}
 	}
 	if (newbsize < bp->b_bufsize)
 		bufspacewakeup();
@@ -3508,8 +3425,6 @@ allocbuf(struct buf *bp, int size)
  *	NOTE!  This operation is on a BIO, not a BUF.
  *
  *	NOTE!  BIO_DONE is cleared by vn_strategy()
- *
- * MPSAFE
  */
 static __inline int
 _biowait(struct bio *bio, const char *wmesg, int to)
@@ -3775,7 +3690,7 @@ bpdone(struct buf *bp, int elseit)
 	 * a lot worse.  XXX - move this above the clearing of b_cmd
 	 */
 	if (LIST_FIRST(&bp->b_dep) != NULL)
-		buf_complete(bp);	/* MPSAFE */
+		buf_complete(bp);
 
 	/*
 	 * A failed write must re-dirty the buffer unless B_INVAL
@@ -4063,8 +3978,6 @@ vfs_unbusy_pages(struct buf *bp)
  *	Since I/O has not been initiated yet, certain buffer flags
  *	such as B_ERROR or B_INVAL may be in an inconsistant state
  *	and should be ignored.
- *
- * MPSAFE
  */
 void
 vfs_busy_pages(struct vnode *vp, struct buf *bp)
@@ -4467,8 +4380,6 @@ vfs_bio_clrbuf(struct buf *bp)
  *
  *	If a page cannot be allocated, the 'pagedaemon' is woken up to
  *	retrieve the full range (to - from) of pages.
- *
- * MPSAFE
  */
 void
 vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
@@ -4602,8 +4513,6 @@ bio_page_alloc(struct buf *bp, vm_object_t obj, vm_pindex_t pg, int deficit)
  *
  *	The range of pages underlying the buffer's address space will
  *	be unmapped and un-wired.
- *
- * MPSAFE
  */
 void
 vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
@@ -4905,43 +4814,6 @@ nestiobuf_add(struct bio *mbio, struct buf *bp, int offset, size_t size, struct 
 	bp->b_bio1.bio_caller_info1.ptr = mbio;
 	bp->b_bio1.bio_caller_info2.ptr = stats;
 }
-
-/*
- * print out statistics from the current status of the buffer pool
- * this can be toggeled by the system control option debug.syncprt
- */
-#ifdef DEBUG
-void
-vfs_bufstats(void)
-{
-        int i, j, count;
-        struct buf *bp;
-        struct bqueues *dp;
-        int counts[(MAXBSIZE / PAGE_SIZE) + 1];
-        static char *bname[3] = { "LOCKED", "LRU", "AGE" };
-
-        for (dp = bufqueues, i = 0; dp < &bufqueues[3]; dp++, i++) {
-                count = 0;
-                for (j = 0; j <= MAXBSIZE/PAGE_SIZE; j++)
-                        counts[j] = 0;
-
-		spin_lock(&bufqspin);
-                TAILQ_FOREACH(bp, dp, b_freelist) {
-			if (bp->b_flags & B_MARKER)
-				continue;
-                        counts[bp->b_bufsize/PAGE_SIZE]++;
-                        count++;
-                }
-		spin_unlock(&bufqspin);
-
-                kprintf("%s: total-%d", bname[i], count);
-                for (j = 0; j <= MAXBSIZE/PAGE_SIZE; j++)
-                        if (counts[j] != 0)
-                                kprintf(", %d-%d", j * PAGE_SIZE, counts[j]);
-                kprintf("\n");
-        }
-}
-#endif
 
 #ifdef DDB
 

@@ -705,7 +705,6 @@ int	vfs_lock (struct mount *);         /* lock a vfs */
 void	vfs_msync (struct mount *, int);
 void	vfs_unlock (struct mount *);       /* unlock a vfs */
 int	vfs_busy (struct mount *, int);
-void	vfs_bufstats(void);
 int	vfs_export			    /* process mount export info */
 	  (struct mount *, struct netexport *, const struct export_args *);
 struct	netcred *vfs_export_lookup	    /* lookup host in fs export list */

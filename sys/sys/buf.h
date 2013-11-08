@@ -161,7 +161,8 @@ struct buf {
 	struct vnode *b_vp;		/* (vp, loffset) index */
 	struct bio b_bio_array[NBUF_BIO]; /* BIO translation layers */ 
 	u_int32_t b_flags;		/* B_* flags. */
-	unsigned short b_qindex;	/* buffer queue index */
+	unsigned int b_qindex;		/* buffer queue index */
+	unsigned int b_qcpu;		/* buffer queue cpu */
 	unsigned char b_act_count;	/* similar to vm_page act_count */
 	unsigned char b_unused01;
 	struct lock b_lock;		/* Buffer lock */
