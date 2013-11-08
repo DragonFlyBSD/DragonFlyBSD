@@ -253,8 +253,6 @@ state(const KINFO *k, const struct varent *vent)
 		*cp++ = 'V';
 	if ((flag & P_SYSTEM) || KI_PROC(k, lock) > 0)
 		*cp++ = 'L';
-	if (numcpus > 1 && KI_LWP(k, mpcount) == 0)
-		*cp++ = 'M';
 	if (flag & P_JAILED)
 		*cp++ = 'J';
 	if (KI_PROC(k, auxflags) & KI_SLEADER)
