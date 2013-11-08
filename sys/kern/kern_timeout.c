@@ -255,7 +255,7 @@ softclock_handler(void *arg)
 	 * Setup pcpu slow clocks which we want to run from the callout
 	 * thread.
 	 */
-	callout_init(&slotimer);
+	callout_init_mp(&slotimer);
 	callout_reset(&slotimer, hz * 10, slotimer_callback, &slotimer);
 
 	/*
@@ -311,6 +311,14 @@ loop:
 			/* NOTE: list may have changed */
 		}
 		++sc->softticks;
+	}
+
+	/*
+	 * Don't leave us holding the MP lock when we deschedule ourselves.
+	 */
+	if (mpsafe == 0) {
+		mpsafe = 1;
+		rel_mplock();
 	}
 	sc->isrunning = 0;
 	lwkt_deschedule_self(&sc->thread);	/* == curthread */
