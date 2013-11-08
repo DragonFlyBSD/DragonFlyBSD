@@ -602,20 +602,40 @@ retry:
 		}
 
 		/*
-		 * Blockrefs are only updated on live chains.
+		 * If any deferral occurred we must set domodify to 0 to avoid
+		 * potentially modifying the parent twice (now and when we run
+		 * the deferral list), as doing so could cause the blockref
+		 * update to run on a block array which has already been
+		 * updated.
+		 */
+		if (info->domodify && diddeferral != info->diddeferral)
+			info->domodify = 0;
+
+		/*
+		 * We are responsible for setting the parent into a modified
+		 * state before we scan the children to update the parent's
+		 * block table.  This must essentially be done as an atomic
+		 * operation (the parent must remain locked throughout the
+		 * operation).
 		 *
-		 * We are possibly causing a delete-duplicate from inside the
-		 * flush itself.  The parent might be live or might have been
-		 * deleted concurrently in a post-flush transaction.  If
-		 * the parent was deleted our modified chain will also be
-		 * marked deleted, but since it inherits the parent's
-		 * delete_tid it will still appear to be 'live' for the
-		 * purposes of the flush.
+		 * Care must be taken to not try to update the parent twice
+		 * during the current flush cycle, which would likely
+		 * result in an assertion getting hit.  The MOVED bit on
+		 * the children does not add any measure of safety since it
+		 * cannot be immediately cleared (there might be other
+		 * parents that require action XXX).
 		 *
-		 * There may also be a side-effect due to the freemap
-		 * allocation when flushing the freemap.  See freemap_alloc(),
-		 * and it is also possible that a shared core causes parent
-		 * to have already been delete-duplicated.
+		 * NOTE: Blockrefs are only updated on live chains.
+		 *
+		 * NOTE: Modifying the parent generally causes a
+		 *	 delete-duplicate to occur from within the flush
+		 *	 itself, with an allocation from the freemap occuring
+		 *	 as an additional side-effect.
+		 *
+		 * NOTE: If the parent was deleted our modified chain will
+		 *	 also be marked deleted, but since it inherits the
+		 *	 parent's delete_tid it will still appear to be
+		 *	 'live' for the purposes of the flush.
 		 */
 		if (info->domodify && chain->delete_tid > info->sync_tid) {
 			hammer2_chain_modify(info->trans, &info->parent,
