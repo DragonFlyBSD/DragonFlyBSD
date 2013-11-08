@@ -283,9 +283,10 @@ The process is trying to exit.
 The process has pages locked in core (for example, for raw
 .Tn I/O ) .
 .It Li M
-The process or thread is
-.Em not
-holding the MP lock (the Big Giant Lock).
+This flag is deprecated.  It used to indicate that the
+process or thread was not holding the MP lock (the Big Giant Lock),
+but since that is the usual case now it just clutters the
+output.
 .It Li N
 The process has reduced CPU scheduling priority (see
 .Xr setpriority 2 ) .
