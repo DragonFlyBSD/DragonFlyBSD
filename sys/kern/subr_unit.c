@@ -488,8 +488,8 @@ alloc_unrl(struct unrhdr *uh)
 	struct unrb *ub;
 	u_int x;
 	int y;
-	struct lock *ml = uh->lock;
-	struct thread *td = curthread;
+	struct lock *ml __debugvar = uh->lock;
+	struct thread *td __debugvar = curthread;
 
 	KKASSERT(lockstatus(ml, td) != 0);
 	check_unrhdr(uh, __LINE__);
