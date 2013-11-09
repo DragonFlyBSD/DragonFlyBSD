@@ -312,7 +312,10 @@ main(int argc, char **argv)
 	if (kd == NULL)
 		errx(STATUS_ERROR, "Cannot open kernel files (%s)", buf);
 
-	plist = kvm_getprocs(kd, KERN_PROC_ALL, 0, &nproc);
+	if (pidfromfile >= 0)
+		plist = kvm_getprocs(kd, KERN_PROC_PID, pidfromfile, &nproc);
+	else
+		plist = kvm_getprocs(kd, KERN_PROC_ALL, 0, &nproc);
 	if (plist == NULL) {
 		errx(STATUS_ERROR, "Cannot get process list (%s)",
 		    kvm_geterr(kd));
