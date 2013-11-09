@@ -337,6 +337,9 @@ again:
 		 * threads.  LK_SLEEPFAIL or LK_NOWAIT may be used to detect
 		 * this case, or use LK_EXCLUPGRADE.
 		 *
+		 * If the lock is already exclusively owned by us, this
+		 * operation is a NOP.
+		 *
 		 * If we return an error (even NOWAIT), the current lock will
 		 * be released.
 		 *
@@ -380,9 +383,27 @@ again:
 		tsleep_interlock(lkp, pflags);
 		wflags = (count & LKC_UPREQ) ? LKC_EXREQ : LKC_UPREQ;
 
-		if (atomic_cmpset_int(&lkp->lk_count, count,
-				      (count - 1) | wflags)) {
+		/*
+		 * If someone else owns UPREQ and this transition would
+		 * allow it to be granted, we have to grant it.  Otherwise
+		 * we release the shared lock.
+		 */
+		if ((count & (LKC_UPREQ|LKC_MASK)) == (LKC_UPREQ | 1)) {
+			wflags |= LKC_EXCL | LKC_UPGRANT;
+			wflags |= count;
+			wflags &= ~LKC_UPREQ;
+		} else {
+			wflags |= (count - 1);
+		}
+
+		if (atomic_cmpset_int(&lkp->lk_count, count, wflags)) {
 			COUNT(td, -1);
+
+			/*
+			 * Must wakeup the thread granted the upgrade.
+			 */
+			if ((count & (LKC_UPREQ|LKC_MASK)) == (LKC_UPREQ | 1))
+				wakeup(lkp);
 
 			mycpu->gd_cnt.v_lock_name[0] = 'U';
 			strncpy(mycpu->gd_cnt.v_lock_name + 1,
