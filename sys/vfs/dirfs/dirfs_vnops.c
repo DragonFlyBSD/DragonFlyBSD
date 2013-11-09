@@ -348,6 +348,7 @@ dirfs_close(struct vop_close_args *ap)
 	 * XXX - Currently VOP_INACTIVE() is not being called unless there is
 	 * vnode pressure so, by now, call inactive directly on last close.
 	 */
+	vn_lock(vp, LK_UPGRADE | LK_RETRY);
 	if (vp->v_opencount == 0 && vp->v_writecount == 0)
 		VOP_INACTIVE(vp);
 

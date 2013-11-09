@@ -123,10 +123,11 @@ dead_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
+	vn_lock(vp, LK_UPGRADE | LK_RETRY);	/* safety */
 	if (vp->v_opencount > 0) {
 		if ((ap->a_fflag & FWRITE) && vp->v_writecount > 0)
-			--vp->v_writecount;
-		--vp->v_opencount;
+			atomic_add_int(&vp->v_writecount, -1);
+		atomic_add_int(&vp->v_opencount, -1);
 	}
 	return (0);
 }

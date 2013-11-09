@@ -165,7 +165,9 @@ iso_mountroot(struct mount *mp)
 
 	args.ssector = iso_get_ssector(rootdev);
 
+	vn_lock(rootvp, LK_EXCLUSIVE | LK_RETRY);
 	VOP_CLOSE(rootvp, FREAD);
+	vn_unlock(rootvp);
 
 	if (bootverbose)
 		kprintf("iso_mountroot(): using session at block %d\n",
@@ -535,8 +537,11 @@ out:
 		brelse(pribp);
 	if (supbp)
 		brelse(supbp);
-	if (needclose)
+	if (needclose) {
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 		VOP_CLOSE(devvp, FREAD);
+		vn_unlock(devvp);
+	}
 	if (isomp) {
 		kfree((caddr_t)isomp, M_ISOFSMNT);
 		mp->mnt_data = (qaddr_t)0;
@@ -573,7 +578,9 @@ cd9660_unmount(struct mount *mp, int mntflags)
         }
 
 	isomp->im_devvp->v_rdev->si_mountpoint = NULL;
+	vn_lock(isomp->im_devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_CLOSE(isomp->im_devvp, FREAD);
+	vn_unlock(isomp->im_devvp);
 	vrele(isomp->im_devvp);
 	kfree((caddr_t)isomp, M_ISOFSMNT);
 	mp->mnt_data = (qaddr_t)0;

@@ -279,9 +279,6 @@ void	dsched_thread_ctx_unref(struct dsched_thread_ctx *tdctx);
 
 void	dsched_new_policy_thread_tdio(struct dsched_disk_ctx *diskctx,
 			struct dsched_policy *pol);
-void	dsched_thread_io_alloc(struct disk *dp,
-			struct dsched_thread_ctx *tdctx,
-			struct dsched_policy *pol);
 struct dsched_disk_ctx *dsched_disk_ctx_alloc(struct disk *dp,
 			struct dsched_policy *pol);
 struct dsched_thread_ctx *dsched_thread_ctx_alloc(struct proc *p);

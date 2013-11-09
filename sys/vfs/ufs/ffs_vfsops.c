@@ -790,7 +790,9 @@ out:
 	dev->si_mountpoint = NULL;
 	if (bp)
 		brelse(bp);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
+	vn_unlock(devvp);
 	if (ump) {
 		ufs_ihashuninit(ump);
 		kfree(ump->um_fs, M_UFSMNT);
@@ -863,8 +865,10 @@ ffs_unmount(struct mount *mp, int mntflags)
 	}
 	ump->um_devvp->v_rdev->si_mountpoint = NULL;
 
+	vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
 	vinvalbuf(ump->um_devvp, V_SAVE, 0, 0);
 	error = VOP_CLOSE(ump->um_devvp, fs->fs_ronly ? FREAD : FREAD|FWRITE);
+	vn_unlock(ump->um_devvp);
 
 	vrele(ump->um_devvp);
 

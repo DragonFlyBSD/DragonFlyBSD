@@ -1471,10 +1471,12 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			 * Finish up with the device vnode
 			 */
 			if ((devvp = hmp->devvp) != NULL) {
+				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				vinvalbuf(devvp, (ronly ? 0 : V_SAVE), 0, 0);
 				hmp->devvp = NULL;
 				VOP_CLOSE(devvp,
 					  (ronly ? FREAD : FREAD|FWRITE));
+				vn_unlock(devvp);
 				vrele(devvp);
 				devvp = NULL;
 			}

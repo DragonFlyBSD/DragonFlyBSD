@@ -1803,7 +1803,8 @@ _cache_unlink(struct namecache *ncp)
 
 /*
  * vget the vnode associated with the namecache entry.  Resolve the namecache
- * entry if necessary.  The passed ncp must be referenced and locked.
+ * entry if necessary.  The passed ncp must be referenced and locked.  If
+ * the ncp is resolved it might be locked shared.
  *
  * lk_type may be LK_SHARED, LK_EXCLUSIVE.  A ref'd, possibly locked
  * (depending on the passed lk_type) will be returned in *vpp with an error
@@ -1847,6 +1848,9 @@ again:
 		if (error) {
 			/*
 			 * VRECLAIM race
+			 *
+			 * The ncp may have been locked shared, we must relock
+			 * it exclusively before we can set it to unresolved.
 			 */
 			if (error == ENOENT) {
 				kprintf("Warning: vnode reclaim race detected "

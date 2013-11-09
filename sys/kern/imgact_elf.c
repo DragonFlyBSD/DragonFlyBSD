@@ -439,7 +439,8 @@ __elfN(load_file)(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	if (error == 0)
 		error = nlookup(nd);
 	if (error == 0)
-		error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_EXCLUSIVE, &imgp->vp);
+		error = cache_vget(&nd->nl_nch, nd->nl_cred,
+				   LK_SHARED, &imgp->vp);
 	topmnt = nd->nl_nch.mount;
 	nlookup_done(nd);
 	if (error)

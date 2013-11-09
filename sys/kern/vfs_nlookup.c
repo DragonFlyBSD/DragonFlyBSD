@@ -380,6 +380,37 @@ nlookup_simple(const char *str, enum uio_seg seg,
 }
 
 /*
+ * Returns non-zero if the path element is the last element
+ */
+static
+int
+islastelement(const char *ptr)
+{
+	while (*ptr == '/')
+		++ptr;
+	return (*ptr == 0);
+}
+
+/*
+ * Returns non-zero if we need to lock the namecache element
+ * exclusively.  Unless otherwise requested by NLC_SHAREDLOCK,
+ * the last element of the namecache lookup will be locked
+ * exclusively.
+ *
+ * NOTE: Even if we return on-zero, an unresolved namecache record
+ *	 will always be locked exclusively.
+ */
+static __inline
+int
+wantsexcllock(struct nlookupdata *nd, const char *ptr)
+{
+	if ((nd->nl_flags & NLC_SHAREDLOCK) == 0)
+		return(islastelement(ptr));
+	return(0);
+}
+
+
+/*
  * Do a generic nlookup.  Note that the passed nd is not nlookup_done()'d
  * on return, even if an error occurs.  If no error occurs or NLC_CREATE
  * is flagged and ENOENT is returned, then the returned nl_nch is always
@@ -412,15 +443,6 @@ nlookup_simple(const char *str, enum uio_seg seg,
  *	 on any intermediate elements.  On success, the returned element
  *	 is ALWAYS locked exclusively.
  */
-static
-int
-islastelement(const char *ptr)
-{
-	while (*ptr == '/')
-		++ptr;
-	return (*ptr == 0);
-}
-
 int
 nlookup(struct nlookupdata *nd)
 {
@@ -467,7 +489,7 @@ nlookup(struct nlookupdata *nd)
 	 */
 	if ((nd->nl_flags & NLC_NCPISLOCKED) == 0) {
 		nd->nl_flags |= NLC_NCPISLOCKED;
-		cache_lock_maybe_shared(&nd->nl_nch, islastelement(ptr));
+		cache_lock_maybe_shared(&nd->nl_nch, wantsexcllock(nd, ptr));
 	}
 
 	/*
@@ -482,7 +504,7 @@ nlookup(struct nlookupdata *nd)
 	    } while (*ptr == '/');
 	    cache_unlock(&nd->nl_nch);
 	    cache_get_maybe_shared(&nd->nl_rootnch, &nch,
-				   islastelement(ptr));
+				   wantsexcllock(nd, ptr));
 	    cache_drop(&nd->nl_nch);
 	    nd->nl_nch = nch;		/* remains locked */
 
@@ -550,7 +572,7 @@ nlookup(struct nlookupdata *nd)
 	if (nlc.nlc_namelen == 1 && nlc.nlc_nameptr[0] == '.') {
 	    cache_unlock(&nd->nl_nch);
 	    nd->nl_flags &= ~NLC_NCPISLOCKED;
-	    cache_get_maybe_shared(&nd->nl_nch, &nch, islastelement(ptr));
+	    cache_get_maybe_shared(&nd->nl_nch, &nch, wantsexcllock(nd, ptr));
 	    wasdotordotdot = 1;
 	} else if (nlc.nlc_namelen == 2 && 
 		   nlc.nlc_nameptr[0] == '.' && nlc.nlc_nameptr[1] == '.') {
@@ -562,7 +584,8 @@ nlookup(struct nlookupdata *nd)
 		 */
 		cache_unlock(&nd->nl_nch);
 		nd->nl_flags &= ~NLC_NCPISLOCKED;
-		cache_get_maybe_shared(&nd->nl_nch, &nch, islastelement(ptr));
+		cache_get_maybe_shared(&nd->nl_nch, &nch,
+				       wantsexcllock(nd, ptr));
 	    } else {
 		/*
 		 * Locate the parent ncp.  If we are at the root of a
@@ -581,7 +604,7 @@ nlookup(struct nlookupdata *nd)
 		cache_hold(&nctmp);
 		cache_unlock(&nd->nl_nch);
 		nd->nl_flags &= ~NLC_NCPISLOCKED;
-		cache_get_maybe_shared(&nctmp, &nch, islastelement(ptr));
+		cache_get_maybe_shared(&nctmp, &nch, wantsexcllock(nd, ptr));
 		cache_drop(&nctmp);		/* NOTE: zero's nctmp */
 	    }
 	    wasdotordotdot = 2;
@@ -605,7 +628,7 @@ nlookup(struct nlookupdata *nd)
 	    cache_unlock(&nd->nl_nch);
 	    nd->nl_flags &= ~NLC_NCPISLOCKED;
 	    error = cache_nlookup_maybe_shared(&nd->nl_nch, &nlc,
-					       islastelement(ptr), &nch);
+					       wantsexcllock(nd, ptr), &nch);
 	    if (error == EWOULDBLOCK) {
 		    nch = cache_nlookup(&nd->nl_nch, &nlc);
 		    if (nch.ncp->nc_flag & NCF_UNRESOLVED)
@@ -640,7 +663,7 @@ nlookup(struct nlookupdata *nd)
 	    if ((par.ncp = nch.ncp->nc_parent) != NULL) {
 		par.mount = nch.mount;
 		cache_hold(&par);
-		cache_lock_maybe_shared(&par, islastelement(ptr));
+		cache_lock_maybe_shared(&par, wantsexcllock(nd, ptr));
 		error = naccess(&par, 0, nd->nl_cred, &dflags);
 		cache_put(&par);
 	    }
@@ -791,7 +814,7 @@ again:
 		}
 	    }
 	    cache_get_maybe_shared(&mp->mnt_ncmountpt, &nch,
-				   islastelement(ptr));
+				   wantsexcllock(nd, ptr));
 
 	    if (nch.ncp->nc_flag & NCF_UNRESOLVED) {
 		if (vfs_do_busy == 0) {

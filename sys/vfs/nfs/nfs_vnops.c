@@ -609,6 +609,7 @@ nfs_close(struct vop_close_args *ap)
 	int error = 0;
 	thread_t td = curthread;
 
+	vn_lock(vp, LK_UPGRADE | LK_RETRY); /* XXX */
 	lwkt_gettoken(&nmp->nm_token);
 
 	if (vp->v_type == VREG) {
@@ -3609,6 +3610,7 @@ nfsfifo_close(struct vop_close_args *ap)
 
 	/* no token access required */
 
+	vn_lock(vp, LK_UPGRADE | LK_RETRY); /* XXX */
 	if (np->n_flag & (NACC | NUPD)) {
 		getnanotime(&ts);
 		if (np->n_flag & NACC)

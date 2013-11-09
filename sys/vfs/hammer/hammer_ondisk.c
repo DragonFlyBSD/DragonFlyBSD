@@ -237,7 +237,9 @@ late_failure:
 		/*vinvalbuf(volume->devvp, V_SAVE, 0, 0);*/
 		if (setmp)
 			volume->devvp->v_rdev->si_mountpoint = NULL;
+		vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
 		VOP_CLOSE(volume->devvp, ronly ? FREAD : FREAD|FWRITE);
+		vn_unlock(volume->devvp);
 		hammer_free_volume(volume);
 	}
 	return (error);
@@ -324,15 +326,19 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 			 * (2).  Note that there may be dirty buffers in
 			 * normal read-only mode from crash recovery.
 			 */
+			vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
 			vinvalbuf(volume->devvp, 0, 0, 0);
 			VOP_CLOSE(volume->devvp, FREAD);
+			vn_unlock(volume->devvp);
 		} else {
 			/*
 			 * Normal termination, save any dirty buffers
 			 * (XXX there really shouldn't be any).
 			 */
+			vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
 			vinvalbuf(volume->devvp, V_SAVE, 0, 0);
 			VOP_CLOSE(volume->devvp, FREAD|FWRITE);
+			vn_unlock(volume->devvp);
 		}
 	}
 

@@ -395,6 +395,8 @@ puffs_vnop_close(struct vop_close_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct puffs_mount *pmp = MPTOPUFFSMP(vp->v_mount);
 
+	vn_lock(vp, LK_UPGRADE | LK_RETRY);
+
 	if (!EXISTSOP(pmp, CLOSE))
 		return vop_stdclose(ap);
 

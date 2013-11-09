@@ -227,6 +227,11 @@ procfs_close(struct vop_close_args *ap)
 	struct pfsnode *pfs = VTOPFS(ap->a_vp);
 	struct proc *p;
 
+	/*
+	 * Make sure the lock is exclusive for opencount tests
+	 */
+	vn_lock(ap->a_vp, LK_UPGRADE | LK_RETRY);
+
 	switch (pfs->pfs_type) {
 	case Pmem:
 		if ((ap->a_fflag & FWRITE) && (pfs->pfs_flags & O_EXCL))

@@ -1565,7 +1565,7 @@ sys_fchdir(struct fchdir_args *uap)
 	lwkt_gettoken(&p->p_token);
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+	vn_lock(vp, LK_SHARED | LK_RETRY);
 	if (fp->f_nchandle.ncp == NULL)
 		error = ENOTDIR;
 	else
@@ -1624,6 +1624,7 @@ kern_chdir(struct nlookupdata *nd)
 	struct nchandle onch;
 	int error;
 
+	nd->nl_flags |= NLC_SHAREDLOCK;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 	if ((vp = nd->nl_nch.ncp->nc_vp) == NULL)
@@ -1882,10 +1883,16 @@ kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 	 * file pointer.  vn_open() does not change the ref count on fp
 	 * and the vnode, on success, will be inherited by the file pointer
 	 * and unlocked.
+	 *
+	 * Request a shared lock on the vnode if possible.
 	 */
 	nd->nl_flags |= NLC_LOCKVP;
+	if ((flags & (O_CREAT|O_TRUNC)) == 0)
+		nd->nl_flags |= NLC_SHAREDLOCK;
+
 	error = vn_open(nd, fp, flags, cmode);
 	nlookup_done(nd);
+
 	if (error) {
 		/*
 		 * handle special fdopen() case.  bleh.  dupfdopen() is
@@ -2628,10 +2635,11 @@ kern_access(struct nlookupdata *nd, int amode, int flags)
 
 	if (flags & ~AT_EACCESS)
 		return (EINVAL);
+	nd->nl_flags |= NLC_SHAREDLOCK;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 retry:
-	error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_EXCLUSIVE, &vp);
+	error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_SHARED, &vp);
 	if (error)
 		return (error);
 
@@ -2725,13 +2733,13 @@ sys_faccessat(struct faccessat_args *uap)
 	return (error);
 }
 
-
 int
 kern_stat(struct nlookupdata *nd, struct stat *st)
 {
 	int error;
 	struct vnode *vp;
 
+	nd->nl_flags |= NLC_SHAREDLOCK;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 again:
@@ -2890,9 +2898,10 @@ kern_readlink(struct nlookupdata *nd, char *buf, int count, int *res)
 	struct uio auio;
 	int error;
 
+	nd->nl_flags |= NLC_SHAREDLOCK;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
-	error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_EXCLUSIVE, &vp);
+	error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_SHARED, &vp);
 	if (error)
 		return (error);
 	if (vp->v_type != VLNK) {
@@ -4709,7 +4718,7 @@ sys_extattr_get_file(struct extattr_get_file_args *uap)
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
-		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
+		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_SHARED, &vp);
 	if (error) {
 		nlookup_done(&nd);
 		return (error);

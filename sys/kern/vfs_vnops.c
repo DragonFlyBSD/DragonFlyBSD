@@ -87,8 +87,12 @@ struct fileops vnode_fileops = {
  * locked vnode.  A locked vnode is requested via NLC_LOCKVP.  If fp
  * is non-NULL the vnode will be installed in the file pointer.
  *
+ * NOTE: If the caller wishes the namecache entry to be operated with
+ *	 a shared lock it must use NLC_SHAREDLOCK.  If NLC_LOCKVP is set
+ *	 then the vnode lock will also be shared.
+ *
  * NOTE: The vnode is referenced just once on return whether or not it
- * is also installed in the file pointer.
+ *	 is also installed in the file pointer.
  */
 int
 vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
@@ -186,7 +190,12 @@ again:
 			fmode &= ~O_CREAT;
 		}
 	} else {
-		error = cache_vget(&nd->nl_nch, cred, LK_EXCLUSIVE, &vp);
+		if (nd->nl_flags & NLC_SHAREDLOCK) {
+			error = cache_vget(&nd->nl_nch, cred, LK_SHARED, &vp);
+		} else {
+			error = cache_vget(&nd->nl_nch, cred,
+					   LK_EXCLUSIVE, &vp);
+		}
 		if (error)
 			return (error);
 	}
@@ -222,8 +231,13 @@ again:
 				if (error == ESTALE) {
 					vput(vp);
 					vp = NULL;
+					if (nd->nl_flags & NLC_SHAREDLOCK) {
+						cache_unlock(&nd->nl_nch);
+						cache_lock(&nd->nl_nch);
+					}
 					cache_setunresolved(&nd->nl_nch);
-					error = cache_resolve(&nd->nl_nch, cred);
+					error = cache_resolve(&nd->nl_nch,
+							      cred);
 					if (error == 0)
 						goto again;
 				}
@@ -402,7 +416,7 @@ vn_close(struct vnode *vp, int flags)
 {
 	int error;
 
-	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+	error = vn_lock(vp, LK_SHARED | LK_RETRY);
 	if (error == 0) {
 		error = VOP_CLOSE(vp, flags);
 		vn_unlock(vp);

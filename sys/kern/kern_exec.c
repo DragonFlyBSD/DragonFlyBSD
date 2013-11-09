@@ -246,9 +246,10 @@ interpret:
 	 * Translate the file name to a vnode.  Unlock the cache entry to
 	 * improve parallelism for programs exec'd in parallel.
 	 */
+	nd->nl_flags |= NLC_SHAREDLOCK;
 	if ((error = nlookup(nd)) != 0)
 		goto exec_fail;
-	error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_EXCLUSIVE, &imgp->vp);
+	error = cache_vget(&nd->nl_nch, nd->nl_cred, LK_SHARED, &imgp->vp);
 	KKASSERT(nd->nl_flags & NLC_NCPISLOCKED);
 	nd->nl_flags &= ~NLC_NCPISLOCKED;
 	cache_unlock(&nd->nl_nch);

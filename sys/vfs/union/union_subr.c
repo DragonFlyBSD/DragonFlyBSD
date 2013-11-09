@@ -747,8 +747,8 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 		error = VOP_OPEN(lvp, FREAD, cred, NULL);
 		if (error == 0) {
 			error = union_copyfile(lvp, uvp, cred, td);
-			vn_unlock(lvp);
 			(void) VOP_CLOSE(lvp, FREAD);
+			vn_unlock(lvp);
 		}
 		if (error == 0)
 			UDEBUG(("union: copied up %s\n", un->un_path));
@@ -771,8 +771,12 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 		int i;
 
 		for (i = 0; i < un->un_openl; i++) {
+			vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY);
 			VOP_CLOSE(lvp, FREAD);
+			vn_unlock(lvp);
+			vn_lock(uvp, LK_EXCLUSIVE | LK_RETRY);
 			VOP_OPEN(uvp, FREAD, cred, NULL);
+			vn_unlock(uvp);
 		}
 		un->un_openl = 0;
 	}

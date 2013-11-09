@@ -67,6 +67,10 @@ static void dsched_disk_ctx_destroy(struct dsched_disk_ctx *diskctx);
 static void dsched_thread_io_destroy(struct dsched_thread_io *tdio);
 static void dsched_thread_ctx_destroy(struct dsched_thread_ctx *tdctx);
 
+static struct dsched_thread_io *dsched_thread_io_alloc(
+		struct disk *dp, struct dsched_thread_ctx *tdctx,
+		struct dsched_policy *pol, int tdctx_locked);
+
 static int	dsched_inited = 0;
 static int	default_set = 0;
 
@@ -85,9 +89,6 @@ struct objcache_malloc_args dsched_thread_ctx_malloc_args = {
 static struct objcache	*dsched_diskctx_cache;
 static struct objcache	*dsched_tdctx_cache;
 static struct objcache	*dsched_tdio_cache;
-
-TAILQ_HEAD(, dsched_thread_ctx)	dsched_tdctx_list =
-		TAILQ_HEAD_INITIALIZER(dsched_tdctx_list);
 
 struct lock	dsched_tdctx_lock;
 
@@ -256,15 +257,27 @@ dsched_disk_destroy_callback(struct disk *dp)
 }
 
 
+/*
+ * Caller must have dp->diskctx locked
+ */
 void
 dsched_queue(struct disk *dp, struct bio *bio)
 {
 	struct dsched_thread_ctx	*tdctx;
 	struct dsched_thread_io		*tdio;
 	struct dsched_disk_ctx		*diskctx;
+	int	found;
+	int	error;
 
-	int found = 0, error = 0;
+	if (dp->d_sched_policy == &dsched_noop_policy) {
+		dsched_clr_buf_priv(bio->bio_buf);
+		atomic_add_int(&dsched_stats.no_tdctx, 1);
+		dsched_strategy_raw(dp, bio);
+		return;
+	}
 
+	found = 0;
+	error = 0;
 	tdctx = dsched_get_buf_priv(bio->bio_buf);
 	if (tdctx == NULL) {
 		/* We don't handle this case, let dsched dispatch */
@@ -275,7 +288,6 @@ dsched_queue(struct disk *dp, struct bio *bio)
 
 	DSCHED_THREAD_CTX_LOCK(tdctx);
 
-	KKASSERT(!TAILQ_EMPTY(&tdctx->tdio_list));
 	/*
 	 * XXX:
 	 * iterate in reverse to make sure we find the most up-to-date
@@ -285,9 +297,12 @@ dsched_queue(struct disk *dp, struct bio *bio)
 	TAILQ_FOREACH_REVERSE(tdio, &tdctx->tdio_list, tdio_list_head, link) {
 		if (tdio->dp == dp) {
 			dsched_thread_io_ref(tdio);
-			found = 1;
 			break;
 		}
+	}
+	if (tdio == NULL) {
+		tdio = dsched_thread_io_alloc(dp, tdctx, dp->d_sched_policy, 1);
+		dsched_thread_io_ref(tdio);
 	}
 
 	DSCHED_THREAD_CTX_UNLOCK(tdctx);
@@ -419,10 +434,10 @@ dsched_set_policy(struct disk *dp, struct dsched_policy *new_policy)
 	policy_new(dp, new_policy);
 	new_policy->prepare(dsched_get_disk_priv(dp));
 	dp->d_sched_policy = new_policy;
+	atomic_add_int(&new_policy->ref_count, 1);
 
 	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
 
-	atomic_add_int(&new_policy->ref_count, 1);
 	kprintf("disk scheduler: set policy of %s to %s\n", dp->d_cdev->si_name,
 	    new_policy->name);
 
@@ -936,12 +951,6 @@ dsched_thread_ctx_destroy(struct dsched_thread_ctx *tdctx)
 {
 	struct dsched_thread_io	*tdio;
 
-#if 0
-	kprintf("tdctx (%p) destruction started, trace:\n", tdctx);
-	print_backtrace(8);
-#endif
-	DSCHED_GLOBAL_THREAD_CTX_LOCK();
-
 	lockmgr(&tdctx->lock, LK_EXCLUSIVE);
 
 	while ((tdio = TAILQ_FIRST(&tdctx->tdio_list)) != NULL) {
@@ -954,11 +963,8 @@ dsched_thread_ctx_destroy(struct dsched_thread_ctx *tdctx)
 		lockmgr(&tdctx->lock, LK_EXCLUSIVE);
 	}
 	KKASSERT(tdctx->refcount == 0x80000000);
-	TAILQ_REMOVE(&dsched_tdctx_list, tdctx, link);
 
 	lockmgr(&tdctx->lock, LK_RELEASE);
-
-	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
 
 	objcache_put(dsched_tdctx_cache, tdctx);
 	atomic_subtract_int(&dsched_stats.tdctx_allocations, 1);
@@ -967,15 +973,16 @@ dsched_thread_ctx_destroy(struct dsched_thread_ctx *tdctx)
 /*
  * Ensures that a tdio is assigned to tdctx and disk.
  */
-void
+static
+struct dsched_thread_io *
 dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
-		       struct dsched_policy *pol)
+		       struct dsched_policy *pol, int tdctx_locked)
 {
 	struct dsched_thread_io	*tdio;
 #if 0
 	dsched_disk_ctx_ref(dsched_get_disk_priv(dp));
 #endif
-	tdio = objcache_get(dsched_tdio_cache, M_WAITOK);
+	tdio = objcache_get(dsched_tdio_cache, M_INTWAIT);
 	bzero(tdio, DSCHED_THREAD_IO_MAX_SZ);
 
 	dsched_thread_io_ref(tdio);	/* prevent ripout */
@@ -993,19 +1000,20 @@ dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
 	lockmgr(&tdio->diskctx->lock, LK_EXCLUSIVE);
 	TAILQ_INSERT_TAIL(&tdio->diskctx->tdio_list, tdio, dlink);
 	atomic_set_int(&tdio->flags, DSCHED_LINKED_DISK_CTX);
-	lockmgr(&tdio->diskctx->lock, LK_RELEASE);
 
 	if (tdctx) {
 		/*
 		 * Put the tdio in the tdctx list.  Inherit the temporary
 		 * ref (one ref for each list).
 		 */
-		DSCHED_THREAD_CTX_LOCK(tdctx);
+		if (tdctx_locked == 0)
+			DSCHED_THREAD_CTX_LOCK(tdctx);
 		tdio->tdctx = tdctx;
 		tdio->p = tdctx->p;
 		TAILQ_INSERT_TAIL(&tdctx->tdio_list, tdio, link);
 		atomic_set_int(&tdio->flags, DSCHED_LINKED_THREAD_CTX);
-		DSCHED_THREAD_CTX_UNLOCK(tdctx);
+		if (tdctx_locked == 0)
+			DSCHED_THREAD_CTX_UNLOCK(tdctx);
 	} else {
 		dsched_thread_io_unref(tdio);
 	}
@@ -1014,6 +1022,8 @@ dsched_thread_io_alloc(struct disk *dp, struct dsched_thread_ctx *tdctx,
 	tdio->debug_inited = 0xF00F1234;
 
 	atomic_add_int(&dsched_stats.tdio_allocations, 1);
+
+	return(tdio);
 }
 
 
@@ -1047,8 +1057,6 @@ struct dsched_thread_ctx *
 dsched_thread_ctx_alloc(struct proc *p)
 {
 	struct dsched_thread_ctx	*tdctx;
-	struct disk marker;
-	struct disk *dp;
 
 	tdctx = objcache_get(dsched_tdctx_cache, M_WAITOK);
 	bzero(tdctx, DSCHED_THREAD_CTX_MAX_SZ);
@@ -1060,33 +1068,20 @@ dsched_thread_ctx_alloc(struct proc *p)
 	TAILQ_INIT(&tdctx->tdio_list);
 	tdctx->p = p;
 
-	DSCHED_GLOBAL_THREAD_CTX_LOCK();
-	dp = NULL;
-	while ((dp = disk_enumerate(&marker, dp)) != NULL)
-		dsched_thread_io_alloc(dp, tdctx, dp->d_sched_policy);
-
-	TAILQ_INSERT_TAIL(&dsched_tdctx_list, tdctx, link);
-	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
-
 	atomic_add_int(&dsched_stats.tdctx_allocations, 1);
 	/* XXX: no callback here */
+
 	return tdctx;
 }
 
 void
-policy_new(struct disk *dp, struct dsched_policy *pol) {
-	struct dsched_thread_ctx *tdctx;
+policy_new(struct disk *dp, struct dsched_policy *pol)
+{
 	struct dsched_disk_ctx *diskctx;
 
 	diskctx = dsched_disk_ctx_alloc(dp, pol);
 	dsched_disk_ctx_ref(diskctx);
 	dsched_set_disk_priv(dp, diskctx);
-
-	/*
-	 * XXX this is really really expensive!
-	 */
-	TAILQ_FOREACH(tdctx, &dsched_tdctx_list, link)
-		dsched_thread_io_alloc(dp, tdctx, pol);
 }
 
 void
@@ -1236,13 +1231,9 @@ dsched_new_policy_thread_tdio(struct dsched_disk_ctx *diskctx,
 {
 	struct dsched_thread_ctx *tdctx;
 
-	DSCHED_GLOBAL_THREAD_CTX_LOCK();
-
 	tdctx = dsched_get_thread_priv(curthread);
 	KKASSERT(tdctx != NULL);
-	dsched_thread_io_alloc(diskctx->dp, tdctx, pol);
-
-	DSCHED_GLOBAL_THREAD_CTX_UNLOCK();
+	dsched_thread_io_alloc(diskctx->dp, tdctx, pol, 0);
 }
 
 /* DEFAULT NOOP POLICY */
@@ -1267,7 +1258,7 @@ noop_cancel(struct dsched_disk_ctx *diskctx)
 
 static int
 noop_queue(struct dsched_disk_ctx *diskctx, struct dsched_thread_io *tdio,
-    struct bio *bio)
+	   struct bio *bio)
 {
 	dsched_strategy_raw(diskctx->dp, bio);
 #if 0

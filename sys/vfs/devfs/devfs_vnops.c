@@ -861,12 +861,15 @@ devfs_spec_open(struct vop_open_args *ap)
 	if ((dev = vp->v_rdev) == NULL)
 		return ENXIO;
 
+	vn_lock(vp, LK_UPGRADE | LK_RETRY);
+
 	if (node && ap->a_fp) {
 		devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_open: -1.1-\n");
 		lockmgr(&devfs_lock, LK_EXCLUSIVE);
 
-		ndev = devfs_clone(dev, node->d_dir.d_name, node->d_dir.d_namlen,
-						ap->a_mode, ap->a_cred);
+		ndev = devfs_clone(dev, node->d_dir.d_name,
+				   node->d_dir.d_namlen,
+				   ap->a_mode, ap->a_cred);
 		if (ndev != NULL) {
 			newnode = devfs_create_device_node(
 					DEVFS_MNTDATA(vp->v_mount)->root_node,
@@ -1003,7 +1006,6 @@ devfs_spec_open(struct vop_open_args *ap)
 	return 0;
 }
 
-
 static int
 devfs_spec_close(struct vop_close_args *ap)
 {
@@ -1013,6 +1015,12 @@ devfs_spec_close(struct vop_close_args *ap)
 	cdev_t dev = vp->v_rdev;
 	int error = 0;
 	int needrelock;
+
+	/*
+	 * We do special tests on the opencount so unfortunately we need
+	 * an exclusive lock.
+	 */
+	vn_lock(vp, LK_UPGRADE | LK_RETRY);
 
 	if (dev)
 		devfs_debug(DEVFS_DEBUG_DEBUG,

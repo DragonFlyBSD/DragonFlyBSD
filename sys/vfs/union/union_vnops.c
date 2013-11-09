@@ -791,6 +791,7 @@ union_close(struct vop_close_args *ap)
 	struct union_node *un = VTOUNION(ap->a_vp);
 	struct vnode *vp;
 
+	vn_lock(vp, LK_UPGRADE | LK_RETRY);
 	if ((vp = un->un_uppervp) == NULLVP) {
 #ifdef UNION_DIAGNOSTIC
 		if (un->un_openl <= 0)

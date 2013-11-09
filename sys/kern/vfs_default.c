@@ -1183,9 +1183,9 @@ vop_stdopen(struct vop_open_args *ap)
 		vref(vp);
 	}
 	if (ap->a_mode & FWRITE)
-		++vp->v_writecount;
+		atomic_add_int(&vp->v_writecount, 1);
 	KKASSERT(vp->v_opencount >= 0 && vp->v_opencount != INT_MAX);
-	++vp->v_opencount;
+	atomic_add_int(&vp->v_opencount, 1);
 	return (0);
 }
 
@@ -1208,9 +1208,9 @@ vop_stdclose(struct vop_close_args *ap)
 		KASSERT(vp->v_writecount > 0,
 			("VOP_STDCLOSE: BAD WRITECOUNT %p %d",
 			vp, vp->v_writecount));
-		--vp->v_writecount;
+		atomic_add_int(&vp->v_writecount, -1);
 	}
-	--vp->v_opencount;
+	atomic_add_int(&vp->v_opencount, -1);
 	return (0);
 }
 

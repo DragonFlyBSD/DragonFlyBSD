@@ -196,8 +196,10 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			error = vflush(mp, 0, flags);
 			if (error == 0) {
 				devvp = pmp->pm_devvp;
+				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				VOP_OPEN(devvp, FREAD, FSCRED, NULL);
 				VOP_CLOSE(devvp, FREAD|FWRITE);
+				vn_unlock(devvp);
 				pmp->pm_flags |= MSDOSFSMNT_RONLY;
 			}
 		}
@@ -612,7 +614,9 @@ error_exit:
 		bp->b_flags |= B_RELBUF;
 		brelse(bp);
 	}
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE);
+	vn_unlock(devvp);
 	if (pmp) {
 		if (pmp->pm_inusemap)
 			kfree(pmp->pm_inusemap, M_MSDOSFSFAT);
@@ -671,8 +675,10 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 		    ((u_int *)vp->v_data)[1]);
 	}
 #endif
+	vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_CLOSE(pmp->pm_devvp,
 		    (pmp->pm_flags&MSDOSFSMNT_RONLY) ? FREAD : FREAD | FWRITE);
+	vn_unlock(pmp->pm_devvp);
 	vrele(pmp->pm_devvp);
 	kfree(pmp->pm_inusemap, M_MSDOSFSFAT);
 	kfree(pmp, M_MSDOSFSMNT);

@@ -220,6 +220,7 @@ smbfs_closel(struct vop_close_args *ap)
 	int error;
 
 	SMBVDEBUG("name=%s, pid=%d, c=%d\n",np->n_name, p->p_pid, np->n_opencount);
+	vn_lock(vp, LK_UPGRADE | LK_RETRY);
 
 	smb_makescred(&scred, curthread, proc0.p_ucred);
 	error = 0;

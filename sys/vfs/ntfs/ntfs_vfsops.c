@@ -603,7 +603,9 @@ out:
 	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
 	VOP__UNLOCK(devvp, 0);
 #else
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
+	vn_unlock(devvp);
 #endif
 	
 	return (error);
@@ -659,9 +661,10 @@ ntfs_unmount(struct mount *mp, int mntflags)
 	if (ntmp->ntm_devvp->v_type != VBAD)
 		ntmp->ntm_devvp->v_rdev->si_mountpoint = NULL;
 
+	vn_lock(ntmp->ntm_devvp, LK_EXCLUSIVE | LK_RETRY);
 	vinvalbuf(ntmp->ntm_devvp, V_SAVE, 0, 0);
-
 	error = VOP_CLOSE(ntmp->ntm_devvp, ronly ? FREAD : FREAD|FWRITE);
+	vn_unlock(ntmp->ntm_devvp);
 
 	vrele(ntmp->ntm_devvp);
 

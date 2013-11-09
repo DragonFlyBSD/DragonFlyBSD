@@ -215,6 +215,8 @@ nwfs_close(struct vop_close_args *ap)
 
 	NCPVNDEBUG("name=%s,td=%p,c=%d\n",np->n_name,ap->a_td,np->opened);
 
+	vn_lock(vp, LK_UPGRADE | LK_RETRY);
+
 	error = 0;
 	if (vp->v_type == VDIR)
 		goto done;
