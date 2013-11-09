@@ -344,9 +344,9 @@ waitrunningbufspace(void)
 
 	while (runningbufspace > limit || runningbufreq) {
 		tsleep_interlock(&runningbufreq, 0);
-		flags = atomic_fetchadd_int(&runningbufreq, 0);
+		flags = atomic_fetchadd_int(&runningbufreq, 1);
 		if (runningbufspace > limit || flags)
-			tsleep(&runningbufreq, PINTERLOCKED, "wdrn1", 0);
+			tsleep(&runningbufreq, PINTERLOCKED, "wdrn1", hz);
 	}
 }
 
