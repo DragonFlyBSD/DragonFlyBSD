@@ -1,4 +1,4 @@
-/*	$FreeBSD$	*/
+/*	$FreeBSD: head/sys/dev/iwn/if_iwnreg.h 206444 2010-04-10 06:58:24Z bschmidt $	*/
 /*	$OpenBSD: if_iwnreg.h,v 1.37 2010/02/17 18:23:00 damien Exp $	*/
 
 /*-
