@@ -5666,19 +5666,17 @@ iwn_read_firmware(struct iwn_softc *sc)
 	const uint32_t *ptr;
 	uint32_t rev;
 	size_t size;
-	int wlan_serialized;
+
+	wlan_assert_serialized();
 
 	/*
 	 * Read firmware image from filesystem.  The firmware can block
 	 * in a taskq and deadlock against our serializer so unlock
 	 * while we do tihs.
 	 */
-	wlan_serialized = IS_SERIALIZED(&wlan_global_serializer);
-	if (wlan_serialized)
-		wlan_serialize_exit();
+	wlan_serialize_exit();
 	sc->fw_fp = firmware_get(sc->fwname);
-	if (wlan_serialized)
-		wlan_serialize_enter();
+	wlan_serialize_enter();
 	if (sc->fw_fp == NULL) {
 		device_printf(sc->sc_dev,
 		    "%s: could not load firmare image \"%s\"\n", __func__,
@@ -6125,19 +6123,12 @@ iwn_init_locked(struct iwn_softc *sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	int error;
-	int wlan_serializer_needed;
 
 	/*
-	 * The kernel generic firmware loader can wind up calling this
-	 * without the wlan serializer, while the wlan subsystem will
-	 * call it with the serializer.
-	 *
 	 * Make sure we hold the serializer or we will have timing issues
 	 * with the wlan subsystem.
 	 */
-	wlan_serializer_needed = !IS_SERIALIZED(&wlan_global_serializer);
-	if (wlan_serializer_needed)
-		wlan_serialize_enter();
+	wlan_assert_serialized();
 
 	error = iwn_hw_prepare(sc);
 	if (error != 0) {
@@ -6158,8 +6149,6 @@ iwn_init_locked(struct iwn_softc *sc)
 		/* Enable interrupts to get RF toggle notifications. */
 		IWN_WRITE(sc, IWN_INT, 0xffffffff);
 		IWN_WRITE(sc, IWN_INT_MASK, sc->int_mask);
-		if (wlan_serializer_needed)
-			wlan_serialize_exit();
 		return;
 	}
 
@@ -6194,14 +6183,10 @@ iwn_init_locked(struct iwn_softc *sc)
 
 	ifq_clr_oactive(&ifp->if_snd);
 	ifp->if_flags |= IFF_RUNNING;
-	if (wlan_serializer_needed)
-		wlan_serialize_exit();
 	return;
 
 fail:
 	iwn_stop_locked(sc);
-	if (wlan_serializer_needed)
-		wlan_serialize_exit();
 }
 
 static void
