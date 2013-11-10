@@ -94,6 +94,8 @@ void	callout_terminate (struct callout *);
 void	callout_reset_bycpu (struct callout *, int, void (*)(void *), void *,
 	    int);
 
+#define	callout_drain(x) callout_stop_sync(x)
+
 #endif
 
 #endif /* _SYS_CALLOUT_H_ */
