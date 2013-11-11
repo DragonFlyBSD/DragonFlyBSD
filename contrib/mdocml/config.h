@@ -14,7 +14,7 @@
 #define HAVE_STRLCPY
 
 #define VERSION	"1.12.2"
-#define OSNAME	"DragonFly 3.5"
+#define OSNAME	"DragonFly 3.7"
 
 #include <sys/types.h>
 
