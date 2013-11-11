@@ -3547,7 +3547,14 @@ retry:
 				if (error == 0 && vp) {
 					vn_unlock(vp);
 					hammer_knote(ip->vp, NOTE_DELETE);
+#if 0
+					/*
+					 * Don't do this, it can deadlock
+					 * on concurrent rm's of hardlinks.
+					 * Shouldn't be needed any more.
+					 */
 					cache_inval_vp(ip->vp, CINV_DESTROY);
+#endif
 					vrele(vp);
 					break;
 				}
