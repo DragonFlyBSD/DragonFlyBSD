@@ -921,7 +921,6 @@ struct drm_device {
 	struct lwkt_serialize irq_lock;	/* protects irq condition checks */
 	struct lock	  dev_lock;	/* protects everything else */
 	struct lock	  dev_struct_lock;
-	struct spinlock	  drw_lock;
 
 				/* Usage Counters */
 	int		  open_count;	/* Outstanding files open	   */
@@ -991,9 +990,6 @@ struct drm_device {
 	struct drm_minor *primary;		/**< render type primary screen head */
 
 	void		  *drm_ttm_bdev;
-	struct unrhdr	  *drw_unrhdr;
-	/* RB tree of drawable infos */
-	RB_HEAD(drawable_tree, bsd_drm_drawable_info) drw_head;
 
 	int vblank_disable_allowed;
 
@@ -1316,19 +1312,6 @@ int	drm_setsareactx(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
 int	drm_getsareactx(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
-
-/* Drawable IOCTL support (drm_drawable.c) */
-int	drm_adddraw(struct drm_device *dev, void *data,
-		    struct drm_file *file_priv);
-int	drm_rmdraw(struct drm_device *dev, void *data,
-		   struct drm_file *file_priv);
-int	drm_update_draw(struct drm_device *dev, void *data,
-			struct drm_file *file_priv);
-struct drm_drawable_info *drm_get_drawable_info(struct drm_device *dev,
-						int handle);
-
-/* Drawable support (drm_drawable.c) */
-void drm_drawable_free_all(struct drm_device *dev);
 
 /* Authentication IOCTL support (drm_auth.c) */
 int	drm_getmagic(struct drm_device *dev, void *data,

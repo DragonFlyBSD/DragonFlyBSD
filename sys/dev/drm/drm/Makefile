@@ -12,7 +12,6 @@ SRCS	= \
 	drm_dma.c \
 	drm_dp_helper.c \
 	drm_dp_iic_helper.c \
-	drm_drawable.c \
 	drm_drv.c \
 	drm_edid.c \
 	drm_fb_helper.c \

@@ -116,8 +116,8 @@ static drm_ioctl_desc_t		  drm_ioctls[256] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_NEW_CTX, drm_newctx, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_IOCTL_DEF(DRM_IOCTL_RES_CTX, drm_resctx, DRM_AUTH),
 
-	DRM_IOCTL_DEF(DRM_IOCTL_ADD_DRAW, drm_adddraw, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
-	DRM_IOCTL_DEF(DRM_IOCTL_RM_DRAW, drm_rmdraw, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
+	DRM_IOCTL_DEF(DRM_IOCTL_ADD_DRAW, drm_noop, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
+	DRM_IOCTL_DEF(DRM_IOCTL_RM_DRAW, drm_noop, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 
 	DRM_IOCTL_DEF(DRM_IOCTL_LOCK, drm_lock, DRM_AUTH),
 	DRM_IOCTL_DEF(DRM_IOCTL_UNLOCK, drm_unlock, DRM_AUTH),
@@ -146,7 +146,8 @@ static drm_ioctl_desc_t		  drm_ioctls[256] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_SG_FREE, drm_sg_free, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_IOCTL_DEF(DRM_IOCTL_WAIT_VBLANK, drm_wait_vblank, DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODESET_CTL, drm_modeset_ctl, 0),
-	DRM_IOCTL_DEF(DRM_IOCTL_UPDATE_DRAW, drm_update_draw, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
+
+	DRM_IOCTL_DEF(DRM_IOCTL_UPDATE_DRAW, drm_noop, DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 
 	DRM_IOCTL_DEF(DRM_IOCTL_GEM_CLOSE, drm_gem_close_ioctl, DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_GEM_FLINK, drm_gem_flink_ioctl, DRM_AUTH|DRM_UNLOCKED),
@@ -306,7 +307,6 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	lockinit(&dev->dev_lock, "drmdev", 0, LK_CANRECURSE);
 	lwkt_serialize_init(&dev->irq_lock);
 	lockinit(&dev->vbl_lock, "drmvbl", 0, LK_CANRECURSE);
-	spin_init(&dev->drw_lock);
 	lockinit(&dev->event_lock, "drmev", 0, LK_CANRECURSE);
 	lockinit(&dev->dev_struct_lock, "drmslk", 0, LK_CANRECURSE);
 
@@ -442,8 +442,6 @@ static int drm_lastclose(struct drm_device *dev)
 	drm_magic_entry_t *pt, *next;
 	int i;
 
-	DRM_LOCK_ASSERT(dev);
-
 	DRM_DEBUG("\n");
 
 	if (dev->driver->lastclose != NULL)
@@ -452,6 +450,7 @@ static int drm_lastclose(struct drm_device *dev)
 	if (!drm_core_check_feature(dev, DRIVER_MODESET) && dev->irq_enabled)
 		drm_irq_uninstall(dev);
 
+	DRM_LOCK(dev);
 	if (dev->unique) {
 		drm_free(dev->unique, DRM_MEM_DRIVER);
 		dev->unique = NULL;
@@ -465,10 +464,6 @@ static int drm_lastclose(struct drm_device *dev)
 		}
 		dev->magiclist[i].head = dev->magiclist[i].tail = NULL;
 	}
-
-	DRM_UNLOCK(dev);
-	drm_drawable_free_all(dev);
-	DRM_LOCK(dev);
 
 	/* Clear AGP information */
 	if (dev->agp) {
@@ -504,6 +499,7 @@ static int drm_lastclose(struct drm_device *dev)
 		dev->lock.file_priv = NULL;
 		DRM_WAKEUP_INT((void *)&dev->lock.lock_queue);
 	}
+	DRM_UNLOCK(dev);
 
 	return 0;
 }
@@ -562,13 +558,6 @@ static int drm_load(struct drm_device *dev)
 		goto error;
 	}
 
-	dev->drw_unrhdr = new_unrhdr(1, INT_MAX, NULL);
-	if (dev->drw_unrhdr == NULL) {
-		DRM_ERROR("Couldn't allocate drawable number allocator\n");
-		retcode = ENOMEM;
-		goto error;
-	}
-
 	if (dev->driver->driver_features & DRIVER_GEM) {
 		retcode = drm_gem_init(dev);
 		if (retcode != 0) {
@@ -600,7 +589,6 @@ static int drm_load(struct drm_device *dev)
 	return 0;
 
 error1:
-	delete_unrhdr(dev->drw_unrhdr);
 	drm_gem_destroy(dev);
 error:
 	drm_ctxbitmap_cleanup(dev);
@@ -611,7 +599,6 @@ error:
 	if (dev->devnode != NULL)
 		destroy_dev(dev->devnode);
 
-	spin_uninit(&dev->drw_lock);
 	lockuninit(&dev->vbl_lock);
 	lockuninit(&dev->dev_lock);
 	lockuninit(&dev->event_lock);
@@ -673,7 +660,6 @@ static void drm_unload(struct drm_device *dev)
 		DRM_UNLOCK(dev);
 	}
 
-	delete_unrhdr(dev->drw_unrhdr);
 	delete_unrhdr(dev->map_unrhdr);
 
 	drm_mem_uninit();
@@ -681,7 +667,6 @@ static void drm_unload(struct drm_device *dev)
 	if (pci_disable_busmaster(dev->device))
 		DRM_ERROR("Request to disable bus-master failed.\n");
 
-	spin_uninit(&dev->drw_lock);
 	lockuninit(&dev->vbl_lock);
 	lockuninit(&dev->dev_lock);
 	lockuninit(&dev->event_lock);
