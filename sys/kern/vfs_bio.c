@@ -2398,9 +2398,9 @@ buf_daemon1(struct thread *td, int queue, int (*buf_limit_fn)(long),
 		 * request and sleep until we are needed again.
 		 * The sleep is just so the suspend code works.
 		 */
-		if (*bd_req == 0)
-			tsleep(bd_req, 0, "psleep", hz);
-		atomic_clear_int(bd_req, -1);
+		tsleep_interlock(bd_req, 0);
+		if (atomic_swap_int(bd_req, 0) == 0)
+			tsleep(bd_req, PINTERLOCKED, "psleep", hz);
 	}
 	/* NOT REACHED */
 	/*kfree(marker, M_BIOBUF);*/
