@@ -225,6 +225,8 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * MOVED   - A modified chain becomes MOVED after it flushes.  A chain
  *	     can also become MOVED if it is moved within the topology
  *	     (even if not modified).
+ *
+ * MODIFIED- The chain's media data has been modified.
  */
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
@@ -232,7 +234,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_FORCECOW		0x00000008	/* force copy-on-wr */
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
-#define HAMMER2_CHAIN_FLUSHED		0x00000040	/* flush on unlock */
+#define HAMMER2_CHAIN_FLUSHED		0x00000040	/* blktable updated */
 #define HAMMER2_CHAIN_MOVED		0x00000080	/* bref changed */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list */

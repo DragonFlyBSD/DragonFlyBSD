@@ -638,6 +638,8 @@ retry:
 		 *	 'live' for the purposes of the flush.
 		 */
 		if (info->domodify && chain->delete_tid > info->sync_tid) {
+			KKASSERT(chain->modify_tid < info->sync_tid ||
+				 (chain->flags & HAMMER2_CHAIN_FLUSHED) == 0);
 			hammer2_chain_modify(info->trans, &info->parent,
 					     HAMMER2_MODIFY_NO_MODIFY_TID);
 			if (info->parent != chain) {
@@ -665,6 +667,10 @@ retry:
 		if (diddeferral != info->diddeferral) {
 			spin_lock(&core->cst.spin);
 		} else {
+			KKASSERT(chain == info->parent);
+			KKASSERT(info->domodify == 0 ||
+				 (chain->flags & HAMMER2_CHAIN_FLUSHED) == 0);
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_FLUSHED);
 			spin_lock(&core->cst.spin);
 			KKASSERT(core->good == 0x1234 && core->sharecnt > 0);
 			KKASSERT(info->parent->core == core);

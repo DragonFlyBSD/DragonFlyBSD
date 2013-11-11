@@ -1426,7 +1426,15 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 #endif
 			return;
 		}
-		/* fall through if fchain or vchain */
+
+		/*
+		 * Fall through if fchain or vchain, clearing the CHAIN_FLUSHED
+		 * flag.  Basically other chains are delete-duplicated and so
+		 * the duplicated chains of course will not have the FLUSHED
+		 * flag set, but fchain and vchain are special-cased and the
+		 * flag must be cleared when changing modify_tid.
+		 */
+		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_FLUSHED);
 	}
 
 	/*
@@ -3192,7 +3200,9 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 
 		/*
 		 * NOTE: spinlock stays intact, returned chain (if not NULL)
-		 *	 is not referenced or locked.
+		 *	 is not referenced or locked which means that we
+		 *	 cannot safely check its flagged / deletion status
+		 *	 until we lock it.
 		 */
 		chain = hammer2_combined_find(parent, base, count,
 					      &cache_index, &key_next,
@@ -3200,19 +3210,6 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 					      &bref);
 		if (bref == NULL)
 			break;
-		if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
-			if (key_next == 0 || key_next > key_end)
-				break;
-			key_beg = key_next;
-			continue;
-		}
-
-		/*
-		 * Use the full live (not deleted) element for the scan
-		 * iteration.  HAMMER2 does not allow partial replacements.
-		 *
-		 * XXX should be built into hammer2_combined_find().
-		 */
 		key_next = bref->key + ((hammer2_key_t)1 << bref->keybits);
 
 		/*
@@ -3221,21 +3218,14 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		 */
 		if ((~(((hammer2_key_t)1 << keybits) - 1) &
 		    (key ^ bref->key)) != 0) {
-			if (key_next == 0 || key_next > key_end)
-				break;
-			key_beg = key_next;
-			continue;
+			goto next_key_spinlocked;
 		}
 
 		/*
-		 * Load the new indirect block by acquiring or allocating
-		 * the related chain, then move it to the new parent (ichain)
+		 * Load the new indirect block by acquiring the related
+		 * chains (potentially from media as it might not be
+		 * in-memory).  Then move it to the new parent (ichain)
 		 * via DELETE-DUPLICATE.
-		 *
-		 * WARNING! above->cst.spin must be held when parent is
-		 *	    modified, even though we own the full blown lock,
-		 *	    to deal with setsubmod and rename races.
-		 *	    (XXX remove this req).
 		 */
 		if (chain) {
 			/*
@@ -3253,21 +3243,47 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			bcopy = *bref;
 			spin_unlock(&above->cst.spin);
 			chain = hammer2_chain_get(parent, bref);
-			if (chain == NULL)
+			if (chain == NULL) {
+				spin_lock(&above->cst.spin);
 				continue;
+			}
 			if (bcmp(&bcopy, bref, sizeof(bcopy))) {
 				hammer2_chain_drop(chain);
+				spin_lock(&above->cst.spin);
 				continue;
 			}
 			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER |
 						  HAMMER2_RESOLVE_NOREF);
 		}
+
+		/*
+		 * This is always live so if the chain has been delete-
+		 * duplicated we raced someone and we have to retry.
+		 *
+		 * If a terminal (i.e. not duplicated) chain has been
+		 * deleted we move on to the next key.
+		 */
+		if (chain->flags & HAMMER2_CHAIN_DUPLICATED) {
+			hammer2_chain_unlock(chain);
+			spin_lock(&above->cst.spin);
+			continue;
+		}
+		if (chain->flags & HAMMER2_CHAIN_DELETED) {
+			hammer2_chain_unlock(chain);
+			goto next_key;
+		}
+
+		/*
+		 * Shift the chain to the indirect block.
+		 */
 		hammer2_chain_delete(trans, chain, HAMMER2_DELETE_WILLDUP);
 		hammer2_chain_duplicate(trans, &ichain, &chain, NULL, 0);
 		hammer2_chain_unlock(chain);
 		KKASSERT(parent->refs > 0);
 		chain = NULL;
+next_key:
 		spin_lock(&above->cst.spin);
+next_key_spinlocked:
 		if (key_next == 0 || key_next > key_end)
 			break;
 		key_beg = key_next;
