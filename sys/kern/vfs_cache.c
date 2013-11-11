@@ -2727,12 +2727,22 @@ restart:
 				par_locked = 0;
 			}
 			if (_cache_lock_special(ncp) == 0) {
+				/*
+				 * Successfully locked but we must re-test
+				 * conditions that might have changed since
+				 * we did not have the lock before.
+				 */
+				if ((ncp->nc_flag & NCF_DESTROYED) ||
+				    ncp->nc_parent != par_nch->ncp) {
+					_cache_put(ncp);
+					goto restart;
+				}
 				_cache_auto_unresolve(mp, ncp);
 				if (new_ncp)
 					_cache_free(new_ncp);
 				goto found;
 			}
-			_cache_get(ncp);
+			_cache_get(ncp);	/* cycle the lock to block */
 			_cache_put(ncp);
 			_cache_drop(ncp);
 			goto restart;
