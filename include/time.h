@@ -153,6 +153,7 @@ time_t mktime(struct tm *);
 size_t strftime(char * __restrict, size_t, const char * __restrict,
     const struct tm * __restrict);
 time_t time(time_t *);
+#if 0 /* XXX missing */
 #if __POSIX_VISIBLE >= 200112
 struct sigevent;
 int timer_create(clockid_t, struct sigevent *__restrict, timer_t *__restrict);
@@ -161,6 +162,7 @@ int timer_gettime(timer_t, struct itimerspec *);
 int timer_getoverrun(timer_t);
 int timer_settime(timer_t, int, const struct itimerspec *__restrict,
 	struct itimerspec *__restrict);
+#endif
 #endif
 #if __POSIX_VISIBLE
 void tzset(void);
@@ -174,8 +176,10 @@ int clock_settime(clockid_t, const struct timespec *);
 int nanosleep(const struct timespec *, struct timespec *);
 #endif /* __POSIX_VISIBLE >= 199309 */
 
+#if 0 /* XXX missing */
 #if __POSIX_VISIBLE >= 200112
 int clock_getcpuclockid(pid_t, clockid_t *);
+#endif
 #endif
 
 #if __POSIX_VISIBLE >= 199506
