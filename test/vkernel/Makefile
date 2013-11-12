@@ -52,7 +52,7 @@ help:
 	@echo "    root              - create a new, empty root.img"
 	@echo "    install           - install a world & kernel"
 	@echo "                        into root.img"
-	@echo "    leaf		     - additional customizatio"
+	@echo "    leaf		     - additional customization"
 	@echo "    kernel   	     - build vkernel"
 	@echo "    quickworld        - incremental rebuild world"
 	@echo "    quickkernel       - incremental rebuild kernel"
@@ -142,6 +142,8 @@ leaf: mount
 	echo 'nameserver 10.0.0.25' >> ${VKDIR}/root/etc/resolv.conf
 	echo 'nameserver 10.0.0.2' >> ${VKDIR}/root/etc/resolv.conf
 	echo 'nameserver 8.8.8.8' >> ${VKDIR}/root/etc/resolv.conf
+	make umount
+	chmod 644 /build/vkernel/root.img
 
 # Quick reinstall - just install a new kernel on top of an existing image
 #
