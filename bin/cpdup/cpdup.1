@@ -278,6 +278,14 @@ while
 denotes the directory
 .Ql foo:bar
 on the local machine.
+.Pp
+.Nm
+also supports a
+.Ql localhost:
+prefix which is silently discarded but prevents any colons in the remainder
+of the path from being interpreted as a host:path form.
+this form can be used with relative filenames when you do not want colons in
+the filename to be misinterpreted.
 .Sh DIAGNOSTICS
 The
 .Nm

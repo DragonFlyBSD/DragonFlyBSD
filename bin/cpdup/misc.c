@@ -200,7 +200,7 @@ fatal(const char *ctl, ...)
 	     "    -VV         same as -V but ignore mtime entirely\n"
 	     "    -x          use .cpignore as exclusion file\n"
 	     "    -X file     specify exclusion file\n"
-	     " Version 1.18 by Matt Dillon, Dima Ruban, & Oliver Fromme\n"
+	     " Version 1.19 by Matt Dillon, Dima Ruban, & Oliver Fromme\n"
 	);
 	exit(0);
     } else {
