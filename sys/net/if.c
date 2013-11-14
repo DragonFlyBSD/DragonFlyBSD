@@ -225,7 +225,7 @@ ifsq_ifstart_ipifunc(void *arg)
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg(netisr_cpuport(mycpuid), lmsg);
+		lwkt_sendmsg_oncpu(netisr_cpuport(mycpuid), lmsg);
 	crit_exit();
 }
 
