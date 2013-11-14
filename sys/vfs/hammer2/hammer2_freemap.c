@@ -211,8 +211,15 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 		return(hammer2_freemap_reserve(hmp, bref, radix));
 	}
 
-	if (bref->data_off & ~HAMMER2_OFF_MASK_RADIX)
-		hammer2_freemap_free(trans, hmp, bref, 0);
+	/*
+	 * Mark previously allocated block as possibly freeable.  There might
+	 * be snapshots and other races so we can't just mark it fully free.
+	 * (XXX optimize this for the current-transaction create+delete case)
+	 */
+	if (bref->data_off & ~HAMMER2_OFF_MASK_RADIX) {
+		hammer2_freemap_adjust(trans, hmp, bref,
+				       HAMMER2_FREEMAP_DOMAYFREE);
+	}
 
 	/*
 	 * Setting ISALLOCATING ensures correct operation even when the
@@ -334,7 +341,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				     &cache_index,
 				     HAMMER2_LOOKUP_FREEMAP |
 				     HAMMER2_LOOKUP_ALWAYS |
-				     HAMMER2_LOOKUP_MATCHIND/*XXX*/);
+				     HAMMER2_LOOKUP_MATCHIND);
 	if (chain == NULL) {
 		/*
 		 * Create the missing leaf, be sure to initialize
@@ -381,6 +388,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		int start;
 		int n;
 
+		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_LEAF);
 		start = (int)((iter->bnext - key) >>
 			      HAMMER2_FREEMAP_LEVEL0_RADIX);
 		KKASSERT(start >= 0 && start < HAMMER2_FREEMAP_COUNT);
@@ -737,8 +745,8 @@ hammer2_freemap_iterate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
  *	    any lost allocations.
  */
 void
-hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
-		     hammer2_blockref_t *bref, int how)
+hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+		       hammer2_blockref_t *bref, int how)
 {
 	hammer2_off_t data_off = bref->data_off;
 	hammer2_chain_t *chain;
@@ -761,6 +769,7 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	int count;
 	int modified = 0;
 	int cache_index = -1;
+	int error;
 
 	radix = (int)data_off & HAMMER2_OFF_MASK_RADIX;
 	data_off &= ~HAMMER2_OFF_MASK_RADIX;
@@ -770,13 +779,13 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	class = (bref->type << 8) | hammer2_devblkradix(radix);
 
 	/*
-	 * We can't free data allocated by newfs_hammer2.
-	 * Assert validity.
+	 * We can't adjust thre freemap for data allocations made by
+	 * newfs_hammer2.
 	 */
-	KKASSERT((data_off & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
 	if (data_off < hmp->voldata.allocator_beg)
 		return;
 
+	KKASSERT((data_off & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
 	KKASSERT((trans->flags & HAMMER2_TRANS_ISALLOCATING) == 0);
 	atomic_set_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
 	if (trans->flags & HAMMER2_TRANS_ISFLUSH)
@@ -797,74 +806,143 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 				     &cache_index,
 				     HAMMER2_LOOKUP_FREEMAP |
 				     HAMMER2_LOOKUP_ALWAYS |
-				     HAMMER2_LOOKUP_MATCHIND/*XXX*/);
-	if (chain == NULL) {
-		kprintf("hammer2_freemap_free: %016jx: no chain\n",
+				     HAMMER2_LOOKUP_MATCHIND);
+
+	/*
+	 * Stop early if we are trying to free something but no leaf exists.
+	 */
+	if (chain == NULL && how != HAMMER2_FREEMAP_DORECOVER) {
+		kprintf("hammer2_freemap_adjust: %016jx: no chain\n",
 			(intmax_t)bref->data_off);
 		hammer2_chain_unlock(parent);
 		return;
 	}
-	KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_LEAF);
 
 	/*
-	 * Find the bmap entry (covering a 2MB swath)
-	 * Find the bitmap array index
-	 * Find the bitmap bit index (runs in 2-bit pairs)
+	 * Create any missing leaf(s) if we are doing a recovery (marking
+	 * the block(s) as being allocated instead of being freed).  Be sure
+	 * to initialize the auxillary freemap tracking info in the
+	 * bref.check.freemap structure.
 	 */
-	bmap = &chain->data->bmdata[(int)(data_off >> HAMMER2_SEGRADIX) &
-				    (HAMMER2_FREEMAP_COUNT - 1)];
-	bitmap = &bmap->bitmap[(int)(data_off >> (HAMMER2_SEGRADIX - 3)) & 7];
+	if (chain == NULL && how == HAMMER2_FREEMAP_DORECOVER) {
+		error = hammer2_chain_create(trans, &parent, &chain,
+				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
+				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
+				     HAMMER2_FREEMAP_LEVELN_PSIZE);
+		kprintf("fixup create chain %p %016jx:%d\n", chain, chain->bref.key, chain->bref.keybits);
 
+		if (error == 0) {
+			hammer2_chain_modify(trans, &chain, 0);
+			bzero(&chain->data->bmdata[0],
+			      HAMMER2_FREEMAP_LEVELN_PSIZE);
+			chain->bref.check.freemap.bigmask = (uint32_t)-1;
+			chain->bref.check.freemap.avail = l1size;
+			/* bref.methods should already be inherited */
+
+			hammer2_freemap_init(trans, hmp, key, chain);
+		}
+		/* XXX handle error */
+	}
+
+	/*
+	 * Calculate the bitmask (runs in 2-bit pairs).
+	 */
 	start = ((int)(data_off >> HAMMER2_FREEMAP_BLOCK_RADIX) & 15) * 2;
 	bmmask01 = 1 << start;
 	bmmask10 = 2 << start;
 	bmmask11 = 3 << start;
 
 	/*
-	 * Fixup the bitmap
+	 * Fixup the bitmap.  Partial blocks cannot be fully freed unless
+	 * a bulk scan is able to roll them up.
 	 */
 	if (radix < HAMMER2_FREEMAP_BLOCK_RADIX) {
 		count = 1;
-		how = 0;	/* partial block, cannot set to 00 */
+		if (how == HAMMER2_FREEMAP_DOREALFREE)
+			how = HAMMER2_FREEMAP_DOMAYFREE;
 	} else {
 		count = 1 << (radix - HAMMER2_FREEMAP_BLOCK_RADIX);
 	}
 
-	while (count) {
-		KKASSERT(bmmask11);
-		KKASSERT((*bitmap & bmmask11) != bmmask00);
-		if ((*bitmap & bmmask11) == bmmask11) {
-			if (!modified) {
-				hammer2_chain_modify(trans, &chain, 0);
-				modified = 1;
+	/*
+	 * [re]load the bmap and bitmap pointers.  Each bmap entry covers
+	 * a 2MB swath.  The bmap itself (LEVEL1) covers 2GB.
+	 */
+again:
 	bmap = &chain->data->bmdata[(int)(data_off >> HAMMER2_SEGRADIX) &
 				    (HAMMER2_FREEMAP_COUNT - 1)];
 	bitmap = &bmap->bitmap[(int)(data_off >> (HAMMER2_SEGRADIX - 3)) & 7];
+
+
+	while (count) {
+		KKASSERT(bmmask11);
+		if (how == HAMMER2_FREEMAP_DORECOVER) {
+			/*
+			 * Recovery request, mark as allocated.
+			 */
+			if ((*bitmap & bmmask11) != bmmask11) {
+				if (modified == 0) {
+					hammer2_chain_modify(trans, &chain, 0);
+					modified = 1;
+					goto again;
+				}
+				if ((*bitmap & bmmask11) == bmmask00)
+					bmap->avail -= 1 << radix;
+				if (bmap->class == 0)
+					bmap->class = class;
+				*bitmap |= bmmask11;
+				kprintf("hammer2_freemap_recover: fixup "
+					"type=%02x block=%016jx/%zd\n",
+					bref->type, data_off, bytes);
+			} else {
+				/*
+				kprintf("hammer2_freemap_recover:  good "
+					"type=%02x block=%016jx/%zd\n",
+					bref->type, data_off, bytes);
+				*/
 			}
-			if (how)
+		} else if ((*bitmap & bmmask11) == bmmask11) {
+			/*
+			 * Mayfree/Realfree request and bitmap is currently
+			 * marked as being fully allocated.
+			 */
+			if (!modified) {
+				hammer2_chain_modify(trans, &chain, 0);
+				modified = 1;
+				goto again;
+			}
+			if (how == HAMMER2_FREEMAP_DOREALFREE)
 				*bitmap &= ~bmmask11;
 			else
 				*bitmap = (*bitmap & ~bmmask11) | bmmask10;
 		} else if ((*bitmap & bmmask11) == bmmask10) {
-			if (how) {
+			/*
+			 * Mayfree/Realfree request and bitmap is currently
+			 * marked as being possibly freeable.
+			 */
+			if (how == HAMMER2_FREEMAP_DOREALFREE) {
 				if (!modified) {
 					hammer2_chain_modify(trans, &chain, 0);
 					modified = 1;
-	bmap = &chain->data->bmdata[(int)(data_off >> HAMMER2_SEGRADIX) &
-				    (HAMMER2_FREEMAP_COUNT - 1)];
-	bitmap = &bmap->bitmap[(int)(data_off >> (HAMMER2_SEGRADIX - 3)) & 7];
+					goto again;
 				}
 				*bitmap &= ~bmmask11;
 			}
-		} else if ((*bitmap & bmmask11) == bmmask01) {
-			KKASSERT(0);
+		} else {
+			/*
+			 * 01 - Not implemented, currently illegal state
+			 * 00 - Not allocated at all, illegal free.
+			 */
+			panic("hammer2_freemap_adjust: "
+			      "Illegal state %08x(%08x)",
+			      *bitmap, *bitmap & bmmask11);
 		}
 		--count;
 		bmmask01 <<= 2;
 		bmmask10 <<= 2;
 		bmmask11 <<= 2;
 	}
-	if (how && modified) {
+	if (how == HAMMER2_FREEMAP_DOREALFREE && modified) {
 		bmap->avail += 1 << radix;
 		KKASSERT(bmap->avail <= HAMMER2_SEGSIZE);
 		if (bmap->avail == HAMMER2_SEGSIZE &&
@@ -884,6 +962,11 @@ hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 
 	/*
 	 * chain->bref.check.freemap.bigmask (XXX)
+	 *
+	 * Setting bigmask is a hint to the allocation code that there might
+	 * be something allocatable.  We also set this in recovery... it
+	 * doesn't hurt and we might want to use the hint for other validation
+	 * operations later on.
 	 */
 	if (modified)
 		chain->bref.check.freemap.bigmask |= 1 << radix;

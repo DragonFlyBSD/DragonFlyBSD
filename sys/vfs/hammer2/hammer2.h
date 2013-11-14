@@ -205,6 +205,7 @@ struct hammer2_chain {
 	u_int		refs;
 	u_int		lockcnt;
 	int		debug_reason;
+	int		duplicate_reason;
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
 };
@@ -245,7 +246,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
-#define HAMMER2_CHAIN_UNUSED20000	0x00020000
+#define HAMMER2_CHAIN_RELEASE		0x00020000	/* don't keep around */
 #define HAMMER2_CHAIN_UNUSED40000	0x00040000
 #define HAMMER2_CHAIN_UNUSED80000	0x00080000
 #define HAMMER2_CHAIN_DUPLICATED	0x00100000	/* fwd delete-dup */
@@ -261,7 +262,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_LOOKUP_NOLOCK		0x00000001	/* ref only */
 #define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
 #define HAMMER2_LOOKUP_SHARED		0x00000100
-#define HAMMER2_LOOKUP_MATCHIND		0x00000200
+#define HAMMER2_LOOKUP_MATCHIND		0x00000200	/* return all chains */
 #define HAMMER2_LOOKUP_FREEMAP		0x00000400	/* freemap base */
 #define HAMMER2_LOOKUP_ALWAYS		0x00000800	/* resolve data */
 
@@ -322,6 +323,13 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  * Misc
  */
 #define HAMMER2_FLUSH_DEPTH_LIMIT	10	/* stack recursion limit */
+
+/*
+ * hammer2_freemap_adjust()
+ */
+#define HAMMER2_FREEMAP_DORECOVER	1
+#define HAMMER2_FREEMAP_DOMAYFREE	2
+#define HAMMER2_FREEMAP_DOREALFREE	3
 
 /*
  * HAMMER2 IN-MEMORY CACHE OF MEDIA STRUCTURES
@@ -461,7 +469,8 @@ RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
  */
 struct hammer2_trans {
 	TAILQ_ENTRY(hammer2_trans) entry;
-	struct hammer2_pfsmount *pmp;
+	struct hammer2_pfsmount *pmp;		/* might be NULL */
+	struct hammer2_mount	*hmp_single;	/* if single-targetted */
 	hammer2_tid_t		real_tid;
 	hammer2_tid_t		sync_tid;
 	hammer2_tid_t		inode_tid;
@@ -780,6 +789,9 @@ hammer2_chain_t *hammer2_chain_next(hammer2_chain_t **parentp,
 				hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end,
 				int *cache_indexp, int flags);
+hammer2_chain_t *hammer2_chain_scan(hammer2_chain_t *parent,
+				hammer2_chain_t *chain,
+				int *cache_indexp, int flags);
 
 int hammer2_chain_create(hammer2_trans_t *trans,
 				hammer2_chain_t **parentp,
@@ -788,7 +800,8 @@ int hammer2_chain_create(hammer2_trans_t *trans,
 				int type, size_t bytes);
 void hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
-				hammer2_blockref_t *bref, int snapshot);
+				hammer2_blockref_t *bref, int snapshot,
+				int duplicate_reason);
 int hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 				hammer2_ioc_pfs_t *pfs);
 void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain,
@@ -820,8 +833,8 @@ void hammer2_base_insert(hammer2_chain_t *chain,
 /*
  * hammer2_trans.c
  */
-void hammer2_trans_init(hammer2_trans_t *trans,
-			hammer2_pfsmount_t *pmp, int flags);
+void hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp,
+				hammer2_mount_t *hmp, int flags);
 void hammer2_trans_clear_invfsync(hammer2_trans_t *trans);
 void hammer2_trans_done(hammer2_trans_t *trans);
 
@@ -886,7 +899,7 @@ void hammer2_lwinprog_wait(hammer2_pfsmount_t *pmp);
  */
 int hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 				hammer2_blockref_t *bref, size_t bytes);
-void hammer2_freemap_free(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+void hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 				hammer2_blockref_t *bref, int how);
 
 

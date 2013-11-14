@@ -847,7 +847,7 @@ retry:
 	bref = tmp->bref;
 	bref.key = lhc;			/* invisible dir entry key */
 	bref.keybits = 0;
-	hammer2_chain_duplicate(trans, &parent, &tmp, &bref, 0);
+	hammer2_chain_duplicate(trans, &parent, &tmp, &bref, 0, 2);
 	hammer2_inode_unlock_ex(dip, parent);
 	/*hammer2_chain_lookup_done(parent);*/
 	hammer2_chain_unlock(nchain);	/* no longer needed */
@@ -956,7 +956,8 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 			 */
 			nchain = ochain;
 			ochain = NULL;
-			hammer2_chain_duplicate(trans, NULL, &nchain, NULL, 0);
+			hammer2_chain_duplicate(trans, NULL, &nchain, NULL,
+						0, 3);
 			error = hammer2_chain_create(trans, &parent, &nchain,
 						     lhc, 0,
 						     HAMMER2_BREF_TYPE_INODE,
@@ -996,8 +997,7 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 		 *
 		 * We will return ochain (the hardlink target).
 		 */
-		hammer2_chain_modify(trans, &nchain,
-				     HAMMER2_MODIFY_ASSERTNOCOPY);
+		hammer2_chain_modify(trans, &nchain, 0);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		ipdata = &nchain->data->ipdata;
 		bcopy(name, ipdata->filename, name_len);
@@ -1019,8 +1019,7 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 		 * Since this is a snapshot we return nchain in the fake
 		 * hardlink case.
 		 */
-		hammer2_chain_modify(trans, &nchain,
-				     HAMMER2_MODIFY_ASSERTNOCOPY);
+		hammer2_chain_modify(trans, &nchain, 0);
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);
 		ipdata = &nchain->data->ipdata;
 		*ipdata = ochain->data->ipdata;
@@ -1037,8 +1036,7 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 		 * We must fixup the name stored in oip.  The bref key
 		 * has already been set up.
 		 */
-		hammer2_chain_modify(trans, &nchain,
-				     HAMMER2_MODIFY_ASSERTNOCOPY);
+		hammer2_chain_modify(trans, &nchain, 0);
 		ipdata = &nchain->data->ipdata;
 
 		KKASSERT(name_len < HAMMER2_INODE_MAXNAME);

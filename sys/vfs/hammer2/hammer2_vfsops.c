@@ -168,8 +168,9 @@ static int hammer2_vfs_init(struct vfsconf *conf);
 static int hammer2_vfs_uninit(struct vfsconf *vfsp);
 static int hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 				struct ucred *cred);
-static int hammer2_remount(hammer2_mount_t *, char *, struct vnode *,
-				struct ucred *);
+static int hammer2_remount(hammer2_mount_t *, struct mount *, char *,
+				struct vnode *, struct ucred *);
+static int hammer2_recovery(hammer2_mount_t *hmp);
 static int hammer2_vfs_unmount(struct mount *mp, int mntflags);
 static int hammer2_vfs_root(struct mount *mp, struct vnode **vpp);
 static int hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp,
@@ -391,7 +392,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			for (i = 0; i < pmp->cluster.nchains; ++i) {
 				hmp = pmp->cluster.chains[i]->hmp;
 				devvp = hmp->devvp;
-				error = hammer2_remount(hmp, path, devvp, cred);
+				error = hammer2_remount(hmp, mp, path,
+							devvp, cred);
 				if (error)
 					break;
 			}
@@ -471,6 +473,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		/*
 		 * vchain setup. vchain.data is embedded.
 		 * vchain.refs is initialized and will never drop to 0.
+		 *
+		 * NOTE! voldata is not yet loaded.
 		 */
 		hmp->vchain.hmp = hmp;
 		hmp->vchain.refs = 1;
@@ -478,6 +482,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp->vchain.bref.type = HAMMER2_BREF_TYPE_VOLUME;
 		hmp->vchain.bref.data_off = 0 | HAMMER2_PBUFRADIX;
 		hmp->vchain.delete_tid = HAMMER2_MAX_TID;
+
 		hammer2_chain_core_alloc(NULL, &hmp->vchain, NULL);
 		/* hmp->vchain.u.xxx is left NULL */
 
@@ -505,7 +510,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		/* hmp->fchain.u.xxx is left NULL */
 
 		/*
-		 * Install the volume header
+		 * Install the volume header and initialize fields from
+		 * voldata.
 		 */
 		error = hammer2_install_volume_header(hmp);
 		if (error) {
@@ -514,7 +520,10 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		}
 
 		hmp->vchain.bref.mirror_tid = hmp->voldata.mirror_tid;
+		hmp->vchain.modify_tid = hmp->voldata.mirror_tid;
 		hmp->fchain.bref.mirror_tid = hmp->voldata.freemap_tid;
+		hmp->fchain.modify_tid = hmp->voldata.freemap_tid;
+
 
 		/*
 		 * First locate the super-root inode, which is key 0
@@ -543,6 +552,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hammer2_inode_unlock_ex(hmp->sroot, schain);
 		schain = NULL;
 		/* leave hmp->sroot with one ref */
+
+		if ((mp->mnt_flag & MNT_RDONLY) == 0) {
+			error = hammer2_recovery(hmp);
+			/* XXX do something with error */
+		}
 	}
 
 	/*
@@ -729,7 +743,7 @@ hammer2_write_thread(void *arg)
 		parent = NULL;
 		parentp = &parent;
 
-		hammer2_trans_init(&trans, pmp, HAMMER2_TRANS_BUFCACHE);
+		hammer2_trans_init(&trans, pmp, NULL, HAMMER2_TRANS_BUFCACHE);
 
 		while ((bio = bioq_takefirst(&pmp->wthread_bioq)) != NULL) {
 			/*
@@ -740,7 +754,7 @@ hammer2_write_thread(void *arg)
 				bio->bio_flags |= BIO_DONE;
 				wakeup(bio);
 				hammer2_trans_done(&trans);
-				hammer2_trans_init(&trans, pmp,
+				hammer2_trans_init(&trans, pmp, NULL,
 						   HAMMER2_TRANS_BUFCACHE);
 				continue;
 			}
@@ -1334,10 +1348,17 @@ hammer2_write_bp(hammer2_chain_t *chain, struct buf *bp, int ioflag,
 
 static
 int
-hammer2_remount(hammer2_mount_t *hmp, char *path, struct vnode *devvp,
-                struct ucred *cred)
+hammer2_remount(hammer2_mount_t *hmp, struct mount *mp, char *path,
+		struct vnode *devvp, struct ucred *cred)
 {
-	return (0);
+	int error;
+
+	if (hmp->ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
+		error = hammer2_recovery(hmp);
+	} else {
+		error = 0;
+	}
+	return error;
 }
 
 static
@@ -1400,6 +1421,12 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		/*
 		 * Flush any left over chains.  The voldata lock is only used
 		 * to synchronize against HAMMER2_CHAIN_MODIFIED_AUX.
+		 *
+		 * Flush twice to ensure that the freemap is completely
+		 * synchronized.  If we only do it once the next mount's
+		 * recovery scan will have to do some fixups (which isn't
+		 * bad, but we don't want it to have to do it except when
+		 * recovering from a crash).
 		 */
 		hammer2_voldata_lock(hmp);
 		if (((hmp->vchain.flags | hmp->fchain.flags) &
@@ -1408,7 +1435,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		    hmp->fchain.core->update_hi > hmp->voldata.freemap_tid) {
 			hammer2_voldata_unlock(hmp, 0);
 			hammer2_vfs_sync(mp, MNT_WAIT);
-			hammer2_vfs_sync(mp, MNT_WAIT);
+			/*hammer2_vfs_sync(mp, MNT_WAIT);*/
 		} else {
 			hammer2_voldata_unlock(hmp, 0);
 		}
@@ -1614,6 +1641,157 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 }
 
 /*
+ * Mount-time recovery (RW mounts)
+ *
+ * Updates to the free block table are allowed to lag flushes by one
+ * transaction.  In case of a crash, then on a fresh mount we must do an
+ * incremental scan of transaction id voldata.mirror_tid and make sure the
+ * related blocks have been marked allocated.
+ *
+ */
+struct hammer2_recovery_elm {
+	TAILQ_ENTRY(hammer2_recovery_elm) entry;
+	hammer2_chain_t *chain;
+};
+
+TAILQ_HEAD(hammer2_recovery_list, hammer2_recovery_elm);
+
+static int hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+			hammer2_chain_t *parent,
+			struct hammer2_recovery_list *list, int depth);
+
+#define HAMMER2_RECOVERY_MAXDEPTH	10
+
+static
+int
+hammer2_recovery(hammer2_mount_t *hmp)
+{
+	hammer2_trans_t trans;
+	struct hammer2_recovery_list list;
+	struct hammer2_recovery_elm *elm;
+	hammer2_chain_t *parent;
+	int error;
+	int cumulative_error = 0;
+
+	hammer2_trans_init(&trans, NULL, hmp, 0);
+
+	TAILQ_INIT(&list);
+	parent = hammer2_chain_lookup_init(&hmp->vchain, 0);
+	cumulative_error = hammer2_recovery_scan(&trans, hmp, parent, &list, 0);
+	hammer2_chain_lookup_done(parent);
+
+	while ((elm = TAILQ_FIRST(&list)) != NULL) {
+		TAILQ_REMOVE(&list, elm, entry);
+		parent = elm->chain;
+		kfree(elm, M_HAMMER2);
+
+		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS |
+					   HAMMER2_RESOLVE_NOREF);
+		error = hammer2_recovery_scan(&trans, hmp, parent, &list, 0);
+		hammer2_chain_unlock(parent);
+		if (error)
+			cumulative_error = error;
+	}
+	hammer2_trans_done(&trans);
+
+	return cumulative_error;
+}
+
+static
+int
+hammer2_recovery_scan(hammer2_trans_t *trans, hammer2_mount_t *hmp,
+		      hammer2_chain_t *parent,
+		      struct hammer2_recovery_list *list, int depth)
+{
+	hammer2_chain_t *chain;
+	int cache_index;
+	int cumulative_error = 0;
+	int error;
+
+	/*
+	 * Defer operation if depth limit reached.
+	 */
+	if (depth >= HAMMER2_RECOVERY_MAXDEPTH) {
+		struct hammer2_recovery_elm *elm;
+
+		elm = kmalloc(sizeof(*elm), M_HAMMER2, M_ZERO | M_WAITOK);
+		elm->chain = parent;
+		hammer2_chain_ref(parent);
+		TAILQ_INSERT_TAIL(list, elm, entry);
+		/* unlocked by caller */
+
+		return(0);
+	}
+
+	/*
+	 * Adjust freemap to ensure that the block(s) are marked allocated.
+	 */
+	if (parent->bref.type != HAMMER2_BREF_TYPE_VOLUME) {
+		hammer2_freemap_adjust(trans, hmp, &parent->bref,
+				       HAMMER2_FREEMAP_DORECOVER);
+	}
+
+	/*
+	 * Check type for recursive scan
+	 */
+	switch(parent->bref.type) {
+	case HAMMER2_BREF_TYPE_VOLUME:
+		/* data already instantiated */
+		break;
+	case HAMMER2_BREF_TYPE_INODE:
+		/*
+		 * Must instantiate data for DIRECTDATA test and also
+		 * for recursion.
+		 */
+		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_unlock(parent);
+		if (parent->data->ipdata.op_flags & HAMMER2_OPFLAG_DIRECTDATA) {
+			/* not applicable to recovery scan */
+			return 0;
+		}
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		/*
+		 * Must instantiate data for recursion
+		 */
+		hammer2_chain_lock(parent, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_unlock(parent);
+		break;
+	case HAMMER2_BREF_TYPE_DATA:
+	case HAMMER2_BREF_TYPE_FREEMAP:
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		/* not applicable to recovery scan */
+		return 0;
+		break;
+	default:
+		return EDOM;
+	}
+
+	/*
+	 * Recursive scan of the last flushed transaction only.  We are
+	 * doing this without pmp assignments so don't leave the chains
+	 * hanging around after we are done with them.
+	 */
+	cache_index = 0;
+	chain = hammer2_chain_scan(parent, NULL, &cache_index,
+				   HAMMER2_LOOKUP_NODATA);
+	while (chain) {
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_RELEASE);
+		if (chain->bref.mirror_tid >= hmp->voldata.mirror_tid) {
+			error = hammer2_recovery_scan(trans, hmp, chain,
+						      list, depth + 1);
+			if (error)
+				cumulative_error = error;
+		}
+		chain = hammer2_chain_scan(parent, chain, &cache_index,
+					   HAMMER2_LOOKUP_NODATA);
+	}
+
+	return cumulative_error;
+}
+
+/*
  * Sync the entire filesystem; this is called from the filesystem syncer
  * process periodically and whenever a user calls sync(1) on the hammer
  * mountpoint.
@@ -1665,7 +1843,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 * wait for pending I/O to finish (so it gets a transaction id
 	 * that the meta-data flush will catch).
 	 */
-	hammer2_trans_init(&info.trans, pmp, 0);
+	hammer2_trans_init(&info.trans, pmp, NULL, 0);
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
@@ -1681,7 +1859,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	/*
 	 * Start the flush transaction and flush all meta-data.
 	 */
-	hammer2_trans_init(&info.trans, pmp, HAMMER2_TRANS_ISFLUSH);
+	hammer2_trans_init(&info.trans, pmp, NULL, HAMMER2_TRANS_ISFLUSH);
 
 	total_error = 0;
 	for (i = 0; i < pmp->cluster.nchains; ++i) {
@@ -1696,19 +1874,31 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		 * ahead of the topology.  We depend on the bulk free scan
 		 * code to deal with any loose ends.
 		 */
+#if 1
+		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
+		if ((hmp->fchain.flags & HAMMER2_CHAIN_MODIFIED) ||
+		    hmp->fchain.core->update_hi > hmp->voldata.freemap_tid) {
+			/* this will also modify vchain as a side effect */
+			chain = &hmp->fchain;
+			hammer2_chain_flush(&info.trans, &chain);
+			KKASSERT(chain == &hmp->fchain);
+		}
+		hammer2_chain_unlock(&hmp->fchain);
+#endif
+
 		hammer2_chain_lock(&hmp->vchain, HAMMER2_RESOLVE_ALWAYS);
 		if ((hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) ||
 		    hmp->vchain.core->update_hi > hmp->voldata.mirror_tid) {
 			chain = &hmp->vchain;
 			hammer2_chain_flush(&info.trans, &chain);
 			KKASSERT(chain == &hmp->vchain);
-			hmp->voldata.mirror_tid = chain->bref.mirror_tid;
 			force_fchain = 1;
 		} else {
 			force_fchain = 0;
 		}
 		hammer2_chain_unlock(&hmp->vchain);
 
+#if 0
 		hammer2_chain_lock(&hmp->fchain, HAMMER2_RESOLVE_ALWAYS);
 		if ((hmp->fchain.flags & HAMMER2_CHAIN_MODIFIED) ||
 		    hmp->fchain.core->update_hi > hmp->voldata.freemap_tid ||
@@ -1717,9 +1907,9 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 			chain = &hmp->fchain;
 			hammer2_chain_flush(&info.trans, &chain);
 			KKASSERT(chain == &hmp->fchain);
-			hmp->voldata.freemap_tid = chain->bref.mirror_tid;
 		}
 		hammer2_chain_unlock(&hmp->fchain);
+#endif
 
 		error = 0;
 

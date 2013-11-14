@@ -337,7 +337,8 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	ip->vp = NULL;
 	if (chain->flags & HAMMER2_CHAIN_DELETED) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROYED);
-		hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_BUFCACHE);
+		hammer2_trans_init(&trans, ip->pmp, NULL,
+				   HAMMER2_TRANS_BUFCACHE);
 		hammer2_chain_setsubmod(&trans, chain);
 		spin_lock(&chain->core->cst.spin);
 		if (chain->core->update_hi < trans.sync_tid)
@@ -381,11 +382,11 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 * WARNING: Cannot use TRANS_ISFLUSH for partial syncs.
 	 */
 #if 0
-	hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_ISFLUSH);
+	hammer2_trans_init(&trans, ip->pmp, NULL, HAMMER2_TRANS_ISFLUSH);
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
 	hammer2_trans_clear_invfsync(&trans);
 #endif
-	hammer2_trans_init(&trans, ip->pmp, 0);
+	hammer2_trans_init(&trans, ip->pmp, NULL, 0);
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
 
 	/*
@@ -510,7 +511,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 		return(EROFS);
 
 	hammer2_chain_memory_wait(ip->pmp);
-	hammer2_trans_init(&trans, ip->pmp, 0);
+	hammer2_trans_init(&trans, ip->pmp, NULL, 0);
 	chain = hammer2_inode_lock_ex(ip);
 	ipdata = &chain->data->ipdata;
 	error = 0;
@@ -925,7 +926,7 @@ hammer2_vop_write(struct vop_write_args *ap)
 	 * The transaction interlocks against flushes initiations
 	 * (note: but will run concurrently with the actual flush).
 	 */
-	hammer2_trans_init(&trans, ip->pmp, 0);
+	hammer2_trans_init(&trans, ip->pmp, NULL, 0);
 	error = hammer2_write_file(ip, uio, ap->a_ioflag, seqcount);
 	hammer2_trans_done(&trans);
 
@@ -1301,7 +1302,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 		kprintf("hammer2: need to unconsolidate hardlink for %s\n",
 			chain->data->ipdata.filename);
 		/* XXX retain shared lock on dip? (currently not held) */
-		hammer2_trans_init(&trans, dip->pmp, 0);
+		hammer2_trans_init(&trans, dip->pmp, NULL, 0);
 		hammer2_hardlink_deconsolidate(&trans, dip, &chain, &ochain);
 		hammer2_trans_done(&trans);
 	}
@@ -1397,7 +1398,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	name_len = ncp->nc_nlen;
 
 	hammer2_chain_memory_wait(dip->pmp);
-	hammer2_trans_init(&trans, dip->pmp, HAMMER2_TRANS_NEWINODE);
+	hammer2_trans_init(&trans, dip->pmp, NULL, HAMMER2_TRANS_NEWINODE);
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &chain, &error);
 	if (error) {
@@ -1508,7 +1509,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	ip = VTOI(ap->a_vp);
 	hammer2_chain_memory_wait(ip->pmp);
-	hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_NEWINODE);
+	hammer2_trans_init(&trans, ip->pmp, NULL, HAMMER2_TRANS_NEWINODE);
 
 	chain = hammer2_inode_lock_ex(ip);
 	error = hammer2_hardlink_consolidate(&trans, ip, &chain, dip, 1);
@@ -1565,7 +1566,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 	hammer2_chain_memory_wait(dip->pmp);
-	hammer2_trans_init(&trans, dip->pmp, HAMMER2_TRANS_NEWINODE);
+	hammer2_trans_init(&trans, dip->pmp, NULL, HAMMER2_TRANS_NEWINODE);
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &nchain, &error);
@@ -1609,7 +1610,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 	hammer2_chain_memory_wait(dip->pmp);
-	hammer2_trans_init(&trans, dip->pmp, HAMMER2_TRANS_NEWINODE);
+	hammer2_trans_init(&trans, dip->pmp, NULL, HAMMER2_TRANS_NEWINODE);
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &nchain, &error);
@@ -1653,7 +1654,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 	hammer2_chain_memory_wait(dip->pmp);
-	hammer2_trans_init(&trans, dip->pmp, HAMMER2_TRANS_NEWINODE);
+	hammer2_trans_init(&trans, dip->pmp, NULL, HAMMER2_TRANS_NEWINODE);
 
 	ap->a_vap->va_type = VLNK;	/* enforce type */
 
@@ -1741,7 +1742,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 	hammer2_chain_memory_wait(dip->pmp);
-	hammer2_trans_init(&trans, dip->pmp, 0);
+	hammer2_trans_init(&trans, dip->pmp, NULL, 0);
 	error = hammer2_unlink_file(&trans, dip, name, name_len, 0, NULL);
 	hammer2_trans_done(&trans);
 	if (error == 0) {
@@ -1773,7 +1774,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	name_len = ncp->nc_nlen;
 
 	hammer2_chain_memory_wait(dip->pmp);
-	hammer2_trans_init(&trans, dip->pmp, 0);
+	hammer2_trans_init(&trans, dip->pmp, NULL, 0);
 	error = hammer2_unlink_file(&trans, dip, name, name_len, 1, NULL);
 	hammer2_trans_done(&trans);
 	if (error == 0) {
@@ -1823,7 +1824,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	tname_len = tncp->nc_nlen;
 
 	hammer2_chain_memory_wait(tdip->pmp);
-	hammer2_trans_init(&trans, tdip->pmp, 0);
+	hammer2_trans_init(&trans, tdip->pmp, NULL, 0);
 
 	/*
 	 * ip is the inode being renamed.  If this is a hardlink then

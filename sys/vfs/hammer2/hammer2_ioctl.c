@@ -510,7 +510,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		return(EINVAL);
 	pfs->name[sizeof(pfs->name) - 1] = 0;	/* ensure 0-termination */
 
-	hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_NEWINODE);
+	hammer2_trans_init(&trans, ip->pmp, NULL, HAMMER2_TRANS_NEWINODE);
 	nip = hammer2_inode_create(&trans, hmp->sroot, NULL, NULL,
 				     pfs->name, strlen(pfs->name),
 				     &nchain, &error);
@@ -545,7 +545,7 @@ hammer2_ioctl_pfs_delete(hammer2_inode_t *ip, void *data)
 	int error;
 
 	hmp = ip->pmp->cluster.chains[0]->hmp; /* XXX */
-	hammer2_trans_init(&trans, ip->pmp, 0);
+	hammer2_trans_init(&trans, ip->pmp, NULL, 0);
 	error = hammer2_unlink_file(&trans, hmp->sroot,
 				    pfs->name, strlen(pfs->name),
 				    2, NULL);
@@ -569,7 +569,7 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 
 	hammer2_vfs_sync(ip->pmp->mp, MNT_WAIT);
 
-	hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_NEWINODE);
+	hammer2_trans_init(&trans, ip->pmp, NULL, HAMMER2_TRANS_NEWINODE);
 	parent = hammer2_inode_lock_ex(ip);
 	error = hammer2_chain_snapshot(&trans, &parent, pfs);
 	hammer2_inode_unlock_ex(ip, parent);
@@ -608,7 +608,7 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 	hammer2_trans_t trans;
 	int error = 0;
 
-	hammer2_trans_init(&trans, ip->pmp, 0);
+	hammer2_trans_init(&trans, ip->pmp, NULL, 0);
 	chain = hammer2_inode_lock_ex(ip);
 
 	if (ino->ip_data.comp_algo != chain->data->ipdata.comp_algo) {
