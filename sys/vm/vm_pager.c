@@ -209,8 +209,9 @@ SYSINIT(vm_mem, SI_BOOT1_VM, SI_ORDER_SECOND, vm_pager_init, NULL)
 /*
  * Called from the low level boot code only.
  */
+static
 void
-vm_pager_bufferinit(void)
+vm_pager_bufferinit(void *dummy __unused)
 {
 	struct buf *bp;
 	long i;
@@ -256,6 +257,8 @@ vm_pager_bufferinit(void)
 	 */
 	cluster_pbuf_freecnt = nswbuf / 2;
 }
+
+SYSINIT(do_vmpg, SI_BOOT2_MACHDEP, SI_ORDER_FIRST, vm_pager_bufferinit, NULL);
 
 /*
  * No requirements.

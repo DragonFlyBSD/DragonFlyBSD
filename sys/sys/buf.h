@@ -395,7 +395,6 @@ extern int	bioq_reorder_minor_bytes;
 struct uio;
 struct devstat;
 
-void	bufinit (void);
 long	bd_heatup (void);
 void	bd_wait (long count);
 void	waitrunningbufspace(void);

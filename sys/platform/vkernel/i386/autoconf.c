@@ -179,8 +179,6 @@ cpu_startup(void *dummy)
 	kprintf("avail memory = %ju (%ju MB)\n",
 		(uintmax_t)ptoa(vmstats.v_free_count),
 		(uintmax_t)ptoa(vmstats.v_free_count) / 1024 / 1024);
-	bufinit();
-	vm_pager_bufferinit();
 	mp_start();
 	mp_announce();
 	cpu_setregs();

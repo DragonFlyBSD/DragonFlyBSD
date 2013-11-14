@@ -619,8 +619,9 @@ bio_track_wait(struct bio_track *track, int slp_flags, int slp_timo)
  *	Load time initialisation of the buffer cache, called from machine
  *	dependant initialization code. 
  */
+static
 void
-bufinit(void)
+bufinit(void *dummy __unused)
 {
 	struct bufpcpu *pcpu;
 	struct buf *bp;
@@ -722,6 +723,8 @@ bufinit(void)
 	vmstats.v_wire_count++;
 
 }
+
+SYSINIT(do_bufinit, SI_BOOT2_MACHDEP, SI_ORDER_FIRST, bufinit, NULL);
 
 /*
  * Initialize the embedded bio structures, typically used by

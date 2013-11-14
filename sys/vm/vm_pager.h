@@ -104,7 +104,6 @@ vm_object_t swap_pager_alloc(void *, off_t, vm_prot_t, off_t);
 vm_object_t vnode_pager_alloc (void *, off_t, vm_prot_t, off_t, int, int);
 vm_object_t vnode_pager_reference (struct vnode *);
 
-void vm_pager_bufferinit (void);
 void vm_pager_deallocate (vm_object_t);
 static __inline int vm_pager_get_page (vm_object_t, vm_page_t *, int);
 static __inline boolean_t vm_pager_has_page (vm_object_t, vm_pindex_t);

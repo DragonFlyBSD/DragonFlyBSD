@@ -362,12 +362,6 @@ again:
 		(intmax_t)ptoa(vmstats.v_free_count + vmstats.v_dma_pages),
 		(intmax_t)ptoa(vmstats.v_free_count + vmstats.v_dma_pages) /
 		1024 / 1024);
-
-	/*
-	 * Set up buffers, so they can be used to read disk labels.
-	 */
-	bufinit();
-	vm_pager_bufferinit();
 }
 
 static void
