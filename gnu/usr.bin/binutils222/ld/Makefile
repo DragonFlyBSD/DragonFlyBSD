@@ -34,6 +34,7 @@ CFLAGS+= -I${SRCDIR}/ld -I${SRCDIR}/bfd -I${.OBJDIR}/../libbfd
 CFLAGS+= -DBINDIR=\"${TOOLS_PREFIX}${LIBEXEC_BINUTILS}\"
 CFLAGS+= -DTOOLBINDIR=\"${TOOLS_PREFIX}${LIBEXEC_BINUTILS}\"
 CFLAGS+= -DENABLE_PLUGINS -DHAVE_CONFIG_H
+CFLAGS+= -DTARGET_SYSTEM_ROOT=\"${USRDATA_PREFIX}\"
 # link-time optimization requires dlopen() which means ld cannot be built
 # statically (e.g. NOSHARED=yes) and also support -plugin.
 #NOSHARED?= yes
