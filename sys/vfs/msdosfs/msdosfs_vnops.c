@@ -970,7 +970,7 @@ abortit:
 	 * fvp, fdvp are unlocked, tvp, tdvp are locked.  Lock fvp and note
 	 * that we have to unlock it to use the abortit target.
 	 */
-	error = vn_lock(fvp, LK_EXCLUSIVE);
+	error = vn_lock(fvp, LK_EXCLUSIVE | LK_FAILRECLAIM);
 	if (error)
 		goto abortit;
 	dp = VTODE(fdvp);
@@ -1516,7 +1516,8 @@ msdosfs_readdir(struct vop_readdir_args *ap)
 	char *d_name_storage = NULL;
 	char *d_name = NULL;
 
-	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+	error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return (error);
 
 	dep = VTODE(ap->a_vp);

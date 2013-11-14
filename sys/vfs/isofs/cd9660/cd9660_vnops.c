@@ -428,7 +428,8 @@ cd9660_readdir(struct vop_readdir_args *ap)
 	imp = dp->i_mnt;
 	bmask = imp->im_bmask;
 
-	if ((error = vn_lock(vdp, LK_EXCLUSIVE|LK_RETRY)) != 0)
+	error = vn_lock(vdp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return (error);
 
 	idp = kmalloc(sizeof(*idp), M_TEMP, M_WAITOK);

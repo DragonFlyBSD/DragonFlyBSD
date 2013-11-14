@@ -1031,7 +1031,7 @@ vm_pageout_scan_inactive(int pass, int q, int avail_shortage,
 				int flags;
 
 				vp = object->handle;
-				flags = LK_EXCLUSIVE | LK_NOOBJ;
+				flags = LK_EXCLUSIVE;
 				if (vp == vpfailed)
 					flags |= LK_NOWAIT;
 				else

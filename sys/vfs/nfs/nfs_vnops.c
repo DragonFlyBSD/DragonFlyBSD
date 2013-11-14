@@ -1169,7 +1169,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 		}
 		newvp = NFSTOV(np);
 		if (lockparent) {
-			error = vn_lock(dvp, LK_EXCLUSIVE);
+			error = vn_lock(dvp, LK_EXCLUSIVE | LK_FAILRECLAIM);
 			if (error) {
 				vput(newvp);
 				lwkt_reltoken(&nmp->nm_token);
@@ -2336,7 +2336,8 @@ nfs_readdir(struct vop_readdir_args *ap)
 	if (vp->v_type != VDIR)
 		return (EPERM);
 
-	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return (error);
 
 	lwkt_gettoken(&nmp->nm_token);

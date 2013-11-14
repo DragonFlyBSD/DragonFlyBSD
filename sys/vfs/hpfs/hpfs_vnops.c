@@ -788,7 +788,8 @@ hpfs_readdir(struct vop_readdir_args *ap)
 	 */
 	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
 		return(EINVAL);
-	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return (error);
 
 	num = uio->uio_offset;

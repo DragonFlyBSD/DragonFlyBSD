@@ -659,7 +659,8 @@ nwfs_readdir(struct vop_readdir_args *ap)
 		kprintf("nwfs_readdir: no support for cookies now...");
 		return (EOPNOTSUPP);
 	}
-	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return (error);
 	error = nwfs_readvnode(vp, uio, ap->a_cred);
 	vn_unlock(vp);
@@ -921,9 +922,12 @@ kprintf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_IS
 			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 			return (error);
 		}
-		if (lockparent && (error = vn_lock(dvp, LK_EXCLUSIVE))) {
-		    	vput(vp);
-			return (error);
+		if (lockparent) {
+			error = vn_lock(dvp, LK_EXCLUSIVE | LK_FAILRECLAIM);
+			if (error) {
+				vput(vp);
+				return (error);
+			}
 		}
 		*vpp = vp;
 	} else if (NWCMPF(&dnp->n_fid, &fid)) {

@@ -166,7 +166,8 @@ extern u_char *fragtbl[];
  * I think I'll try a vn_lock/vn_unlock on the device vnode
  */
 #define  DEVVP(inode)		(VFSTOEXT2(ITOV(inode)->v_mount)->um_devvp)
-#define  lock_super(devvp)   	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY)
+#define  lock_super(devvp)	\
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM)
 #define  unlock_super(devvp) 	vn_unlock(devvp)
 
 /*

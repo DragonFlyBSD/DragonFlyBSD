@@ -384,7 +384,7 @@ MALLOC_DECLARE(M_HPFSNO);
 #define	FID(f)		(*((lsn_t *)(f)->fid_data))
 #define dbtodoff(dbn)	((off_t)(dbn) << DEV_BSHIFT)
 
-#define VOP__LOCK(a, b)		vn_lock((a), (b))
+#define VOP__LOCK(a, b)		vn_lock((a), (b) | LK_FAILRECLAIM)
 #define VOP__UNLOCK(a, b)	vn_unlock((a))
 #define VGET(a, b, c)		vget((a), (b))
 #define VN_LOCK(a, b)		vn_lock((a), (b))

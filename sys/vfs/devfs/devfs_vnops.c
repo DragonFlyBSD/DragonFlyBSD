@@ -326,7 +326,8 @@ devfs_vop_readdir(struct vop_readdir_args *ap)
 
 	if (ap->a_uio->uio_offset < 0 || ap->a_uio->uio_offset > INT_MAX)
 		return (EINVAL);
-	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+	error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return (error);
 
 	if (!devfs_node_is_accessible(dnode)) {
@@ -1090,7 +1091,9 @@ devfs_spec_close(struct vop_close_args *ap)
 		/* node is now stale */
 
 		if (needrelock) {
-			if (vn_lock(vp, LK_EXCLUSIVE | LK_RETRY) != 0) {
+			if (vn_lock(vp, LK_EXCLUSIVE |
+					LK_RETRY |
+					LK_FAILRECLAIM) != 0) {
 				panic("devfs_spec_close: vnode %p "
 				      "unexpectedly could not be relocked",
 				      vp);

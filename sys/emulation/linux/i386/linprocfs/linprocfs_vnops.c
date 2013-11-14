@@ -976,7 +976,8 @@ linprocfs_readdir(struct vop_readdir_args *ap)
 		return (EINVAL);
 
 	pfs = VTOPFS(ap->a_vp);
-	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+	error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return (error);
 
 	switch (pfs->pfs_type) {

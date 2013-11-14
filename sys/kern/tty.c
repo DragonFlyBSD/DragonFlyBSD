@@ -340,7 +340,7 @@ retry:
 	 */
 	if ((vp->v_flag & VCTTYISOPEN) || dorevoke) {
 		vhold(vp);
-		if (vn_lock(vp, LK_EXCLUSIVE|LK_RETRY)) {
+		if (vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM)) {
 			vdrop(vp);
 			goto retry;
 		}

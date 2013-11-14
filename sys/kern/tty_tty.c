@@ -154,7 +154,8 @@ retry:
 		 * Avoid a nasty race if we block while getting the lock.
 		 */
 		vref(ttyvp);
-		error = vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
+		error = vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY |
+				       LK_FAILRECLAIM);
 		if (error) {
 			vrele(ttyvp);
 			goto retry;

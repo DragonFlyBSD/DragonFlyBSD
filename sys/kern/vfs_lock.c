@@ -471,7 +471,7 @@ vget(struct vnode *vp, int flags)
 	if ((atomic_fetchadd_int(&vp->v_refcnt, 1) & VREF_MASK) == 0)
 		atomic_add_int(&cachedvnodes, -1);
 
-	if ((error = vn_lock(vp, flags)) != 0) {
+	if ((error = vn_lock(vp, flags | LK_FAILRECLAIM)) != 0) {
 		/*
 		 * The lock failed, undo and return an error.  This will not
 		 * normally trigger a termination.

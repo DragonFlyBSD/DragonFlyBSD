@@ -889,7 +889,8 @@ procfs_readdir(struct vop_readdir_args *ap)
 
 	if (ap->a_uio->uio_offset < 0 || ap->a_uio->uio_offset > INT_MAX)
 		return (EINVAL);
-	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+	error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return (error);
 	pfs = VTOPFS(ap->a_vp);
 

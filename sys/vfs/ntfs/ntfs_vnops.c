@@ -555,7 +555,8 @@ ntfs_readdir(struct vop_readdir_args *ap)
 
 	if (uio->uio_offset < 0 || uio->uio_offset > INT_MAX)
 		return (EINVAL);
-	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return (error);
 
 	/*
@@ -726,13 +727,13 @@ ntfs_lookup(struct vop_old_lookup_args *ap)
 				 vap->va_a_name->n_pnumber,ap->a_vpp); 
 		ntfs_ntvattrrele(vap);
 		if (error) {
-			if (VN_LOCK(dvp, LK_EXCLUSIVE | LK_RETRY) == 0)
+			if (VOP_LOCK(dvp, LK_EXCLUSIVE | LK_RETRY) == 0)
 				cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error);
 		}
 
 		if (lockparent) {
-			error = VN_LOCK(dvp, LK_EXCLUSIVE);
+			error = VOP_LOCK(dvp, LK_EXCLUSIVE);
 			if (error) {
 				vput(*ap->a_vpp);
 				*ap->a_vpp = NULL;

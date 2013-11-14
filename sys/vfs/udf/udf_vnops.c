@@ -638,7 +638,8 @@ udf_readdir(struct vop_readdir_args *a)
 
 	vp = a->a_vp;
 
-	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return (error);
 
 	uio = a->a_uio;

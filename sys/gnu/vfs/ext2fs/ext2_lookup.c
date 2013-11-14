@@ -145,7 +145,8 @@ ext2_readdir(struct vop_readdir_args *ap)
 	int readcnt, retval;
 	off_t startoffset = uio->uio_offset;
 
-	if ((error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+	error = vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return(error);
 
 	count = uio->uio_resid;
@@ -643,13 +644,17 @@ found:
 	pdp = vdp;
 	if (flags & CNP_ISDOTDOT) {
 		vn_unlock(pdp);	/* race to get the inode */
-		if ((error = VFS_VGET(vdp->v_mount, NULL, dp->i_ino, &tdp)) != 0) {
+		error = VFS_VGET(vdp->v_mount, NULL, dp->i_ino, &tdp);
+		if (error) {
 			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY);
 			return (error);
 		}
-		if (lockparent && (error = vn_lock(pdp, LK_EXCLUSIVE))) {
-			vput(tdp);
-			return (error);
+		if (lockparent) {
+			error = vn_lock(pdp, LK_EXCLUSIVE | LK_FAILRECLAIM);
+			if (error) {
+				vput(tdp);
+				return (error);
+			}
 		}
 		*vpp = tdp;
 	} else if (dp->i_number == dp->i_ino) {

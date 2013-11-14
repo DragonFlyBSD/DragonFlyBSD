@@ -2304,7 +2304,8 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 		vrele(vp);
 		return (EEXIST);
 	}
-	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0) {
+	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error) {
 		vrele(vp);
 		return (error);
 	}
@@ -3539,7 +3540,8 @@ kern_truncate(struct nlookupdata *nd, off_t length)
 		return (error);
 	if ((error = cache_vref(&nd->nl_nch, nd->nl_cred, &vp)) != 0)
 		return (error);
-	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0) {
+	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error) {
 		vrele(vp);
 		return (error);
 	}

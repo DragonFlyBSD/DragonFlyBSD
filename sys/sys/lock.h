@@ -148,10 +148,10 @@ struct lock {
  *
  * Non-persistent external flags.
  */
-#define LK_UNUSED10000	0x00010000
+#define LK_FAILRECLAIM	0x00010000 /* vn_lock: allowed to fail on reclaim */
 #define LK_RETRY	0x00020000 /* vn_lock: retry until locked */
-#define	LK_NOOBJ	0x00040000 /* vget: don't create object */
-#define	LK_THISLAYER	0x00080000 /* vn_lock: lock/unlock only current layer */
+#define	LK_UNUSED40000	0x00040000
+#define	LK_UNUSED80000	0x00080000
 
 /*
  * Lock return status.

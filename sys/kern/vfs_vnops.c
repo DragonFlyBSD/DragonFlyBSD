@@ -416,7 +416,7 @@ vn_close(struct vnode *vp, int flags)
 {
 	int error;
 
-	error = vn_lock(vp, LK_SHARED | LK_RETRY);
+	error = vn_lock(vp, LK_SHARED | LK_RETRY | LK_FAILRECLAIM);
 	if (error == 0) {
 		error = VOP_CLOSE(vp, flags);
 		vn_unlock(vp);
@@ -978,8 +978,17 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred,
 }
 
 /*
- * Check that the vnode is still valid, and if so
- * acquire requested lock.
+ * Obtain the requested vnode lock
+ *
+ *	LK_RETRY	Automatically retry on timeout
+ *	LK_FAILRECLAIM	Fail if the vnode is being reclaimed
+ *
+ * Failures will occur if the vnode is undergoing recyclement, but not
+ * all callers expect that the function will fail so the caller must pass
+ * LK_FAILOK if it wants to process an error code.
+ *
+ * Errors can occur for other reasons if you pass in other LK_ flags,
+ * regardless of whether you pass in LK_FAILRECLAIM
  */
 int
 #ifndef	DEBUG_LOCKS
@@ -1009,8 +1018,10 @@ debug_vn_lock(struct vnode *vp, int flags, const char *filename, int line)
 	 * refs go away.  So we can just check the flag.
 	 */
 	if (error == 0 && (vp->v_flag & VRECLAIMED)) {
-		lockmgr(&vp->v_lock, LK_RELEASE);
-		error = ENOENT;
+		if (flags & LK_FAILRECLAIM) {
+			lockmgr(&vp->v_lock, LK_RELEASE);
+			error = ENOENT;
+		}
 	}
 	return (error);
 }

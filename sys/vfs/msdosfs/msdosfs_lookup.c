@@ -517,7 +517,7 @@ foundroot:
 			return (error);
 		}
 		if (lockparent) {
-			error = vn_lock(pdp, LK_EXCLUSIVE);
+			error = vn_lock(pdp, LK_EXCLUSIVE | LK_FAILRECLAIM);
 			if (error) {
 				vput(DETOV(tdp));
 				return (error);

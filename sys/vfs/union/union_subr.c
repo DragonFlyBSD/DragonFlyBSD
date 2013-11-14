@@ -427,20 +427,23 @@ loop:
 				 */
 				vref(dvp);
 				vn_unlock(dvp);
-				error = vn_lock(un->un_vnode, LK_EXCLUSIVE);
+				error = vn_lock(un->un_vnode, LK_EXCLUSIVE |
+							      LK_FAILRECLAIM);
 				vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY);
 				vrele(dvp);
 			} else {
 				/*
 				 * our new un is under dvp
 				 */
-				error = vn_lock(un->un_vnode, LK_EXCLUSIVE);
+				error = vn_lock(un->un_vnode, LK_EXCLUSIVE |
+							      LK_FAILRECLAIM);
 			}
 		} else if (dvp == NULLVP) {
 			/*
 			 * dvp is NULL, we need to lock un.
 			 */
-			error = vn_lock(un->un_vnode, LK_EXCLUSIVE);
+			error = vn_lock(un->un_vnode, LK_EXCLUSIVE |
+						      LK_FAILRECLAIM);
 		} else {
 			/*
 			 * dvp == un->un_vnode, we are already locked.

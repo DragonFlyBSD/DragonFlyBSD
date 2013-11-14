@@ -684,8 +684,10 @@ ufs_link(struct vop_old_link_args *ap)
 		error = EXDEV;
 		goto out2;
 	}
-	if (tdvp != vp && (error = vn_lock(vp, LK_EXCLUSIVE))) {
-		goto out2;
+	if (tdvp != vp) {
+		error = vn_lock(vp, LK_EXCLUSIVE | LK_FAILRECLAIM);
+		if (error)
+			goto out2;
 	}
 	ip = VTOI(vp);
 	if ((nlink_t)ip->i_nlink >= LINK_MAX) {
@@ -856,7 +858,8 @@ abortit:
 		goto abortit;
 	}
 
-	if ((error = vn_lock(fvp, LK_EXCLUSIVE)) != 0)
+	error = vn_lock(fvp, LK_EXCLUSIVE | LK_FAILRECLAIM);
+	if (error)
 		goto abortit;
 
 	/*
@@ -1225,7 +1228,7 @@ bad:
 out:
 	if (doingdirectory)
 		ip->i_flag &= ~IN_RENAME;
-	if (vn_lock(fvp, LK_EXCLUSIVE) == 0) {
+	if (vn_lock(fvp, LK_EXCLUSIVE | LK_FAILRECLAIM) == 0) {
 		ip->i_effnlink--;
 		ip->i_nlink--;
 		ip->i_flag |= IN_CHANGE;
@@ -1617,7 +1620,8 @@ ufs_readdir(struct vop_readdir_args *ap)
 	}
 	cookie_index = 0;
 
-	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) != 0)
+	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error)
 		return (error);
 
 	/*

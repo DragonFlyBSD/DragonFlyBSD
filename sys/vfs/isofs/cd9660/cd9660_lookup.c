@@ -354,7 +354,8 @@ found:
 			return (error);
 		}
 		if (lockparent) {
-			if ((error = vn_lock(pdp, LK_EXCLUSIVE)) != 0) {
+			error = vn_lock(pdp, LK_EXCLUSIVE | LK_FAILRECLAIM);
+			if (error) {
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 				vput(tdp);
 				return (error);

@@ -480,8 +480,10 @@ found:
 			vn_unlock(vdp);	/* race to get the inode */
 		error = VFS_VGET(vdp->v_mount, NULL, dp->i_ino, &tdp);
 		if (flags & CNP_ISDOTDOT) {
-			if (vn_lock(vdp, LK_EXCLUSIVE | LK_RETRY) != 0)
+			if (vn_lock(vdp, LK_EXCLUSIVE | LK_RETRY |
+					 LK_FAILRECLAIM) != 0) {
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
+			}
 		}
 		if (error)
 			return (error);
@@ -525,8 +527,10 @@ found:
 			vn_unlock(vdp);	/* race to get the inode */
 		error = VFS_VGET(vdp->v_mount, NULL, dp->i_ino, &tdp);
 		if (flags & CNP_ISDOTDOT) {
-			if (vn_lock(vdp, LK_EXCLUSIVE | LK_RETRY) != 0)
+			if (vn_lock(vdp, LK_EXCLUSIVE | LK_RETRY |
+					 LK_FAILRECLAIM) != 0) {
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
+			}
 		}
 		if (error)
 			return (error);
@@ -563,12 +567,15 @@ found:
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		error = VFS_VGET(vdp->v_mount, NULL, dp->i_ino, &tdp);
 		if (error) {
-			if (vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY) == 0)
+			if (vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY |
+					 LK_FAILRECLAIM) == 0) {
 				cnp->cn_flags &= ~CNP_PDIRUNLOCK;
+			}
 			return (error);
 		}
 		if (lockparent) {
-			if ((error = vn_lock(pdp, LK_EXCLUSIVE)) != 0) {
+			error = vn_lock(pdp, LK_EXCLUSIVE | LK_FAILRECLAIM);
+			if (error) {
 				vput(tdp);
 				return (error);
 			}

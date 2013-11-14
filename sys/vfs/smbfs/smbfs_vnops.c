@@ -219,7 +219,8 @@ smbfs_closel(struct vop_close_args *ap)
 	struct vattr vattr;
 	int error;
 
-	SMBVDEBUG("name=%s, pid=%d, c=%d\n",np->n_name, p->p_pid, np->n_opencount);
+	SMBVDEBUG("name=%s, pid=%d, c=%d\n",
+		  np->n_name, p->p_pid, np->n_opencount);
 	vn_lock(vp, LK_UPGRADE | LK_RETRY);
 
 	smb_makescred(&scred, curthread, proc0.p_ucred);
@@ -713,7 +714,8 @@ smbfs_readdir(struct vop_readdir_args *ap)
 		return (EOPNOTSUPP);
 	}
 #endif
-	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) == 0) {
+	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_FAILRECLAIM);
+	if (error) {
 		error = smbfs_readvnode(vp, uio, ap->a_cred);
 		vn_unlock(vp);
 	}
@@ -1132,7 +1134,7 @@ smbfs_lookup(struct vop_old_lookup_args *ap)
 			return error;
 		}
 		if (lockparent) {
-			error = vn_lock(dvp, LK_EXCLUSIVE);
+			error = vn_lock(dvp, LK_EXCLUSIVE | LK_FAILRECLAIM);
 			if (error) {
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 				vput(vp);

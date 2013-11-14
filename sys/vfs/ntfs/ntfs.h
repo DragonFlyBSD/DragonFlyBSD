@@ -306,6 +306,7 @@ MALLOC_DECLARE(M_NTFSNTHASH);
 #define VOP__UNLOCK(a, b)	vn_unlock((a))
 #define VGET(a, b)		vget((a), (b))
 #define VN_LOCK(a, b)		vn_lock((a), (b))
+#define VOP_LOCK(a, b)		vn_lock((a), (b) | LK_FAILRECLAIM)
 #define	LOCKMGR(a, b)		lockmgr((a), (b))
 
 #ifdef _KERNEL

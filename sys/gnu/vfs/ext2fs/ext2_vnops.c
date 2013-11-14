@@ -356,8 +356,10 @@ ext2_link(struct vop_old_link_args *ap)
 		error = EXDEV;
 		goto out2;
 	}
-	if (tdvp != vp && (error = vn_lock(vp, LK_EXCLUSIVE))) {
-		goto out2;
+	if (tdvp != vp) {
+		error = vn_lock(vp, LK_EXCLUSIVE | LK_FAILRECLAIM);
+		if (error)
+			goto out2;
 	}
 	ip = VTOI(vp);
 	if ((nlink_t)ip->i_nlink >= LINK_MAX) {
@@ -441,7 +443,8 @@ abortit:
 		goto abortit;
 	}
 
-	if ((error = vn_lock(fvp, LK_EXCLUSIVE)) != 0)
+	error = vn_lock(fvp, LK_EXCLUSIVE | LK_FAILRECLAIM);
+	if (error)
 		goto abortit;
 
 	/*
@@ -819,7 +822,9 @@ bad:
 out:
 	if (doingdirectory)
 		ip->i_flag &= ~IN_RENAME;
-	if (vn_lock(fvp, LK_EXCLUSIVE) == 0) {
+
+	error = vn_lock(fvp, LK_EXCLUSIVE);
+	if (error == 0) {
 		ip->i_nlink--;
 		ip->i_flag |= IN_CHANGE;
 		ip->i_flag &= ~IN_RENAME;
