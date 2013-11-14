@@ -111,7 +111,7 @@ static void ResetList(List *list);
 static Node *IterateList(List *list, Node *node, int n);
 static int AddList(List *list, const char *name, int n, struct stat *st);
 static int getbool(const char *str);
-static char *SplitRemote(char *path);
+static char *SplitRemote(char **pathp);
 static int ChgrpAllowed(gid_t g);
 static int OwnerMatch(struct stat *st1, struct stat *st2);
 #ifdef _ST_FLAGS_PRESENT_
@@ -309,7 +309,7 @@ main(int ac, char **av)
      * Extract the source and/or/neither target [user@]host and
      * make any required connections.
      */
-    if (src && (ptr = SplitRemote(src)) != NULL) {
+    if (src && (ptr = SplitRemote(&src)) != NULL) {
 	SrcHost.host = src;
 	src = ptr;
 	if (UseMD5Opt)
@@ -319,7 +319,7 @@ main(int ac, char **av)
     } else if (ReadOnlyOpt)
 	fatal("The -R option is only supported for remote sources");
 
-    if (dst && (ptr = SplitRemote(dst)) != NULL) {
+    if (dst && (ptr = SplitRemote(&dst)) != NULL) {
 	DstHost.host = dst;
 	dst = ptr;
 	if (UseFSMIDOpt)
@@ -428,15 +428,22 @@ getbool(const char *str)
  * If a remote path is detected, the colon is replaced with a null byte,
  * and the return value is a pointer to the next character.
  * Otherwise NULL is returned.
+ *
+ * A path prefix of localhost is the same as a locally specified file or
+ * directory path, but prevents any further interpretation of the path
+ * as being a remote hostname (for paths that have colons in them).
  */
 static char *
-SplitRemote(char *path)
+SplitRemote(char **pathp)
 {
     int cindex;
+    char *path = *pathp;
 
     if (path[(cindex = strcspn(path, ":/"))] == ':') {
 	path[cindex++] = 0;
-	return (path + cindex);
+	if (strcmp(path, "localhost") != 0)
+		return (path + cindex);
+	*pathp = path + cindex;
     }
     return (NULL);
 }
