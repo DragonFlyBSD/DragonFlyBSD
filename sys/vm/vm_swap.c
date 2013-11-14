@@ -302,14 +302,18 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	if (nblks == 0 && dev != NULL) {
 		dpsize = dev_dpsize(dev);
 		if (dpsize == -1) {
+			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 			VOP_CLOSE(vp, FREAD | FWRITE);
+			vn_unlock(vp);
 			error = ENXIO;
 			goto done;
 		}
 		nblks = (u_quad_t)dpsize;
 	}
 	if (nblks == 0) {
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 		VOP_CLOSE(vp, FREAD | FWRITE);
+		vn_unlock(vp);
 		error = ENXIO;
 		goto done;
 	}
@@ -335,7 +339,9 @@ swaponvp(struct thread *td, struct vnode *vp, u_quad_t nblks)
 	if (nblks > BLIST_MAXBLKS / nswdev) {
 		kprintf("exceeded maximum of %d blocks per swap unit\n",
 			(int)BLIST_MAXBLKS / nswdev);
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 		VOP_CLOSE(vp, FREAD | FWRITE);
+		vn_unlock(vp);
 		error = ENXIO;
 		goto done;
 	}
@@ -539,7 +545,9 @@ swapoff_one(int index)
 		return (EINTR);
 	}
 
+	vn_lock(sp->sw_vp, LK_EXCLUSIVE | LK_RETRY);
 	VOP_CLOSE(sp->sw_vp, FREAD | FWRITE);
+	vn_unlock(sp->sw_vp);
 	vrele(sp->sw_vp);
 	bzero(swdevt + index, sizeof(struct swdevt));
 
