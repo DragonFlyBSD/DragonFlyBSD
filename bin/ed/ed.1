@@ -1,5 +1,4 @@
-.\" $FreeBSD: src/bin/ed/ed.1,v 1.35 2005/01/16 16:41:56 ru Exp $
-.\" $DragonFly: src/bin/ed/ed.1,v 1.6 2007/10/20 17:56:46 swildner Exp $
+.\" $FreeBSD: head/bin/ed/ed.1 250582 2013-05-12 22:22:12Z joel $
 .Dd July 3, 2004
 .Dt ED 1
 .Os
@@ -232,7 +231,7 @@ The current line (address) in the buffer.
 The last line in the buffer.
 .It n
 The
-.Em n Ns th,
+.Em n Ns th
 line in the buffer
 where
 .Em n
@@ -651,7 +650,7 @@ The mark is not cleared until the line is
 deleted or otherwise modified.
 .It (.,.)l
 Print the addressed lines unambiguously.
-If a single line fills for than one screen (as might be the case
+If a single line fills more than one screen (as might be the case
 when viewing a binary file, for instance), a
 .Dq Li --More--
 prompt is printed on the last line.
@@ -915,10 +914,10 @@ Print the addressed line, and sets the current address to
 that line.
 .El
 .Sh FILES
-.Bl -tag -width /tmp/ed.* -compact
-.It /tmp/ed.*
+.Bl -tag -width ".Pa /tmp/ed.*" -compact
+.It Pa /tmp/ed.*
 buffer file
-.It ed.hup
+.It Pa ed.hup
 the file to which
 .Nm
 attempts to write the buffer if the terminal hangs up

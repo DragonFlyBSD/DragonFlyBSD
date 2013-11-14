@@ -25,8 +25,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)ed.h,v 1.5 1994/02/01 00:34:39 alm Exp
- * $FreeBSD: src/bin/ed/ed.h,v 1.20 2005/01/10 08:39:22 imp Exp $
- * $DragonFly: src/bin/ed/ed.h,v 1.9 2007/04/06 23:36:54 pavalos Exp $
+ * $FreeBSD: head/bin/ed/ed.h 241737 2012-10-19 14:49:42Z ed $
  */
 
 #include <sys/param.h>
@@ -193,8 +192,8 @@ void add_line_node(line_t *);
 int append_lines(long);
 int apply_subst_template(const char *, regmatch_t *, int, int);
 int build_active_list(int);
-int cbc_decode(char *, FILE *);
-int cbc_encode(char *, int, FILE *);
+int cbc_decode(unsigned char *, FILE *);
+int cbc_encode(unsigned char *, int, FILE *);
 int check_addr_range(long, long);
 void clear_active_list(void);
 void clear_undo_stack(void);
@@ -248,12 +247,12 @@ int search_and_replace(pattern_t *, int, int);
 int set_active_node(line_t *);
 void signal_hup(int);
 void signal_int(int);
-char *strip_escapes(const char *);
+char *strip_escapes(char *);
 int substitute_matching_text(pattern_t *, line_t *, int, int);
 char *translit_text(char *, int, int, int);
 void unmark_line_node(line_t *);
 void unset_active_nodes(line_t *, line_t *);
-long write_file(const char *, const char *, long, long);
+long write_file(char *, const char *, long, long);
 long write_stream(FILE *, long, long);
 
 /* global buffers */
@@ -278,3 +277,9 @@ extern int lineno;
 extern long second_addr;
 extern long u_addr_last;
 extern long u_current_addr;
+extern long rows;
+extern int cols;
+extern int newline_added;
+extern int des;
+extern int scripted;
+extern int patlock;

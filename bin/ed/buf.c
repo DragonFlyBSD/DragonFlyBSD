@@ -26,8 +26,7 @@
  * SUCH DAMAGE.
  *
  * @(#)buf.c,v 1.4 1994/02/01 00:34:35 alm Exp
- * $FreeBSD: src/bin/ed/buf.c,v 1.22 2002/06/30 05:13:53 obrien Exp $
- * $DragonFly: src/bin/ed/buf.c,v 1.4 2007/04/06 23:36:54 pavalos Exp $
+ * $FreeBSD: head/bin/ed/buf.c 241737 2012-10-19 14:49:42Z ed $
  */
 
 #include <sys/file.h>
@@ -36,10 +35,10 @@
 #include "ed.h"
 
 
-FILE *sfp;				/* scratch file pointer */
-off_t sfseek;				/* scratch file position */
-int seek_write;				/* seek before writing */
-line_t buffer_head;			/* incore buffer */
+static FILE *sfp;			/* scratch file pointer */
+static off_t sfseek;			/* scratch file position */
+static int seek_write;			/* seek before writing */
+static line_t buffer_head;		/* incore buffer */
 
 /* get_sbuf_line: get a line of text from the scratch file; return pointer
    to the text */
@@ -95,6 +94,7 @@ put_sbuf_line(const char *cs)
 		;
 	if (s - cs >= LINECHARS) {
 		errmsg = "line too long";
+		free(lp);
 		return NULL;
 	}
 	len = s - cs;
@@ -103,6 +103,7 @@ put_sbuf_line(const char *cs)
 		if (fseeko(sfp, (off_t)0, SEEK_END) < 0) {
 			fprintf(stderr, "%s\n", strerror(errno));
 			errmsg = "cannot seek temp file";
+			free(lp);
 			return NULL;
 		}
 		sfseek = ftello(sfp);
@@ -113,6 +114,7 @@ put_sbuf_line(const char *cs)
 		sfseek = -1;
 		fprintf(stderr, "%s\n", strerror(errno));
 		errmsg = "cannot write temp file";
+		free(lp);
 		return NULL;
 	}
 	lp->len = len;
@@ -183,10 +185,7 @@ get_addressed_line_node(long n)
 	return lp;
 }
 
-
-extern int newline_added;
-
-char sfn[15] = "";				/* scratch file name */
+static char sfn[15] = "";			/* scratch file name */
 
 /* open_sbuf: open scratch file */
 int
@@ -242,7 +241,7 @@ quit(int n)
 }
 
 
-unsigned char ctab[256];		/* character translation table */
+static unsigned char ctab[256];		/* character translation table */
 
 /* init_buffers: open scratch buffer; initialize line queue */
 void

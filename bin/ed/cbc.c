@@ -33,8 +33,7 @@
  *	from: @(#)bdes.c	5.5 (Berkeley) 6/27/91
  *
  * @(#)cbc.c,v 1.2 1994/02/01 00:34:36 alm Exp
- * $FreeBSD: src/bin/ed/cbc.c,v 1.20 2004/04/06 20:06:47 markm Exp $
- * $DragonFly: src/bin/ed/cbc.c,v 1.10 2007/04/06 23:36:54 pavalos Exp $
+ * $FreeBSD: head/bin/ed/cbc.c 248656 2013-03-23 19:04:57Z jmg $
  */
 
 #include <sys/types.h>
@@ -57,9 +56,10 @@
 #define	MEMZERO(dest,len)	memset((dest), 0, (len))
 
 /* Hide the calls to the primitive encryption routines. */
-#define	DES_XFORM(buf) \
-		DES_ecb_encrypt(buf, buf, &schedule,	\
+#define	DES_XFORM(buf)							\
+		DES_ecb_encrypt(buf, buf, &schedule, 			\
 		    inverse ? DES_DECRYPT : DES_ENCRYPT);
+
 /*
  * read/write - no error checking
  */
@@ -70,29 +70,22 @@
  * global variables and related macros
  */
 
-enum { 					/* encrypt, decrypt, authenticate */
-	MODE_ENCRYPT, MODE_DECRYPT, MODE_AUTHENTICATE
-} mode = MODE_ENCRYPT;
-
 #ifdef DES
-DES_cblock ivec;				/* initialization vector */
-DES_cblock pvec;				/* padding vector */
-#endif
+static DES_cblock ivec;			/* initialization vector */
+static DES_cblock pvec;			/* padding vector */
 
-char bits[] = {				/* used to extract bits from a char */
+static char bits[] = {			/* used to extract bits from a char */
 	'\200', '\100', '\040', '\020', '\010', '\004', '\002', '\001'
 };
 
-int pflag;				/* 1 to preserve parity bits */
+static int pflag;			/* 1 to preserve parity bits */
 
-#ifdef DES
-DES_key_schedule schedule;		/* expanded DES key */
+static DES_key_schedule schedule;	/* expanded DES key */
+
+static unsigned char des_buf[8];/* shared buffer for get_des_char/put_des_char */
+static int des_ct = 0;		/* count for get_des_char/put_des_char */
+static int des_n = 0;		/* index for put_des_char/get_des_char */
 #endif
-
-char des_buf[8];		/* shared buffer for get_des_char/put_des_char */
-int des_ct = 0;			/* count for get_des_char/put_des_char */
-int des_n = 0;			/* index for put_des_char/get_des_char */
-
 
 /* init_des_cipher: initialize DES */
 void
@@ -122,7 +115,7 @@ get_des_char(FILE *fp)
 		des_n = 0;
 		des_ct = cbc_decode(des_buf, fp);
 	}
-	return (des_ct > 0) ? (unsigned char)des_buf[des_n++] : EOF;
+	return (des_ct > 0) ? des_buf[des_n++] : EOF;
 #else
 	return (getc(fp));
 #endif
@@ -138,7 +131,7 @@ put_des_char(int c, FILE *fp)
 		des_ct = cbc_encode(des_buf, des_n, fp);
 		des_n = 0;
 	}
-	return (des_ct >= 0) ? (des_buf[des_n++] = (char)c) : EOF;
+	return (des_ct >= 0) ? (des_buf[des_n++] = c) : EOF;
 #else
 	return (fputc(c, fp));
 #endif
@@ -167,8 +160,8 @@ flush_des_file(FILE *fp)
 int
 get_keyword(void)
 {
-	char *p;		/* used to obtain the key */
-	DES_cblock msgbuf;	/* I/O buffer */
+	char *p;			/* used to obtain the key */
+	DES_cblock msgbuf;		/* I/O buffer */
 
 	/*
 	 * get the key
@@ -230,24 +223,24 @@ hex_to_binary(int c, int radix)
 /*
  * convert the key to a bit pattern
  *	obuf		bit pattern
- *	inbuf		the key itself
+ *	kbuf		the key itself
  */
 void
-expand_des_key(char *obuf, char *inbuf)
+expand_des_key(char *obuf, char *kbuf)
 {
-	int i, j;		/* counter in a for loop */
+	int i, j;			/* counter in a for loop */
 	int nbuf[64];			/* used for hex/key translation */
 
 	/*
 	 * leading '0x' or '0X' == hex key
 	 */
-	if (inbuf[0] == '0' && (inbuf[1] == 'x' || inbuf[1] == 'X')) {
-		inbuf = &inbuf[2];
+	if (kbuf[0] == '0' && (kbuf[1] == 'x' || kbuf[1] == 'X')) {
+		kbuf = &kbuf[2];
 		/*
 		 * now translate it, bombing on any illegal hex digit
 		 */
-		for (i = 0; inbuf[i] && i < 16; i++)
-			if ((nbuf[i] = hex_to_binary((int) inbuf[i], 16)) == -1)
+		for (i = 0; kbuf[i] && i < 16; i++)
+			if ((nbuf[i] = hex_to_binary((int) kbuf[i], 16)) == -1)
 				des_error("bad hex digit in key");
 		while (i < 16)
 			nbuf[i++] = 0;
@@ -261,13 +254,13 @@ expand_des_key(char *obuf, char *inbuf)
 	/*
 	 * leading '0b' or '0B' == binary key
 	 */
-	if (inbuf[0] == '0' && (inbuf[1] == 'b' || inbuf[1] == 'B')) {
-		inbuf = &inbuf[2];
+	if (kbuf[0] == '0' && (kbuf[1] == 'b' || kbuf[1] == 'B')) {
+		kbuf = &kbuf[2];
 		/*
 		 * now translate it, bombing on any illegal binary digit
 		 */
-		for (i = 0; inbuf[i] && i < 16; i++)
-			if ((nbuf[i] = hex_to_binary((int) inbuf[i], 2)) == -1)
+		for (i = 0; kbuf[i] && i < 16; i++)
+			if ((nbuf[i] = hex_to_binary((int) kbuf[i], 2)) == -1)
 				des_error("bad binary digit in key");
 		while (i < 64)
 			nbuf[i++] = 0;
@@ -281,7 +274,7 @@ expand_des_key(char *obuf, char *inbuf)
 	/*
 	 * no special leader -- ASCII
 	 */
-	strncpy(obuf, inbuf, 8);
+	strncpy(obuf, kbuf, 8);
 }
 
 /*****************
@@ -299,10 +292,10 @@ expand_des_key(char *obuf, char *inbuf)
  * DES ignores the low order bit of each character.
  */
 void
-set_des_key(DES_cblock *buf)		/* key block */
+set_des_key(DES_cblock *buf)			/* key block */
 {
-	int i, j;			/* counter in a for loop */
-	int par;			/* parity counter */
+	int i, j;				/* counter in a for loop */
+	int par;				/* parity counter */
 
 	/*
 	 * if the parity is not preserved, flip it
@@ -329,7 +322,7 @@ set_des_key(DES_cblock *buf)		/* key block */
  * This encrypts using the Cipher Block Chaining mode of DES
  */
 int
-cbc_encode(char *msgbuf, int n, FILE *fp)
+cbc_encode(unsigned char *msgbuf, int n, FILE *fp)
 {
 	int inverse = 0;	/* 0 to encrypt, 1 to decrypt */
 
@@ -367,22 +360,22 @@ cbc_encode(char *msgbuf, int n, FILE *fp)
  *	fp	input file descriptor
  */
 int
-cbc_decode(char *msgbuf, FILE *fp)
+cbc_decode(unsigned char *msgbuf, FILE *fp)
 {
-	DES_cblock inbuf;	/* temp buffer for initialization vector */
-	int n;		/* number of bytes actually read */
-	int c;		/* used to test for EOF */
+	DES_cblock tbuf;	/* temp buffer for initialization vector */
+	int n;			/* number of bytes actually read */
+	int c;			/* used to test for EOF */
 	int inverse = 1;	/* 0 to encrypt, 1 to decrypt */
 
 	if ((n = READ(msgbuf, 8, fp)) == 8) {
 		/*
 		 * do the transformation
 		 */
-		MEMCPY(inbuf, msgbuf, 8);
+		MEMCPY(tbuf, msgbuf, 8);
 		DES_XFORM((DES_cblock *)msgbuf);
 		for (c = 0; c < 8; c++)
 			msgbuf[c] ^= ivec[c];
-		MEMCPY(ivec, inbuf, 8);
+		MEMCPY(ivec, tbuf, 8);
 		/*
 		 * if the last one, handle it specially
 		 */

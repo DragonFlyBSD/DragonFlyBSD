@@ -26,14 +26,10 @@
  * SUCH DAMAGE.
  *
  * @(#)re.c,v 1.6 1994/02/01 00:34:43 alm Exp
- * $FreeBSD: src/bin/ed/re.c,v 1.20 2003/07/20 10:24:09 ru Exp $
- * $DragonFly: src/bin/ed/re.c,v 1.4 2007/04/06 23:36:54 pavalos Exp $
+ * $FreeBSD: head/bin/ed/re.c 252374 2013-06-29 15:49:26Z kientzle $
  */
 
 #include "ed.h"
-
-
-extern int patlock;
 
 const char *errmsg = "";
 
@@ -93,7 +89,7 @@ extract_pattern(int delimiter)
 		default:
 			break;
 		case '[':
-			if ((nd = parse_char_class(++nd)) == NULL) {
+			if ((nd = parse_char_class(nd + 1)) == NULL) {
 				errmsg = "unbalanced brackets ([])";
 				return NULL;
 			}

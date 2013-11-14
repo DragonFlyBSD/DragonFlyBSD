@@ -25,14 +25,10 @@
  * SUCH DAMAGE.
  *
  * @(#)io.c,v 1.1 1994/02/01 00:34:41 alm Exp
- * $FreeBSD: src/bin/ed/io.c,v 1.14 2003/01/01 18:48:39 schweikh Exp $
- * $DragonFly: src/bin/ed/io.c,v 1.6 2007/04/06 23:36:54 pavalos Exp $
+ * $FreeBSD: head/bin/ed/io.c 241737 2012-10-19 14:49:42Z ed $
  */
 
 #include "ed.h"
-
-
-extern int scripted;
 
 /* read_file: read a named file/pipe into the buffer; return line count */
 long
@@ -54,15 +50,13 @@ read_file(char *fn, long n)
 		errmsg = "cannot close input file";
 		return ERR;
 	}
-	fprintf(stdout, !scripted ? "%lu\n" : "", size);
+	if (!scripted)
+		fprintf(stdout, "%lu\n", size);
 	return current_addr - n;
 }
 
-
-extern int des;
-
-char *sbuf;			/* file i/o buffer */
-int sbufsz;			/* file i/o buffer size */
+static char *sbuf;		/* file i/o buffer */
+static int sbufsz;		/* file i/o buffer size */
 int newline_added;		/* if set, newline appended to input file */
 
 /* read_stream: read a stream into the editor buffer; return status */
@@ -145,7 +139,7 @@ get_stream_line(FILE *fp)
 
 /* write_file: write a range of lines to a named file/pipe; return line count */
 long
-write_file(const char *fn, const char *mode, long n, long m)
+write_file(char *fn, const char *mode, long n, long m)
 {
 	FILE *fp;
 	long size;
@@ -162,7 +156,8 @@ write_file(const char *fn, const char *mode, long n, long m)
 		errmsg = "cannot close output file";
 		return ERR;
 	}
-	fprintf(stdout, !scripted ? "%lu\n" : "", size);
+	if (!scripted)
+		fprintf(stdout, "%lu\n", size);
 	return n ? m - n + 1 : 0;
 }
 
@@ -296,9 +291,6 @@ get_tty_line(void)
 
 #define ESCAPES "\a\b\f\n\r\t\v\\"
 #define ESCCHARS "abfnrtv\\"
-
-extern int rows;
-extern int cols;
 
 /* put_tty_line: print text to stdout */
 int
