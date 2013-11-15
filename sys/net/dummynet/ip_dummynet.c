@@ -1877,7 +1877,7 @@ dummynet_clock(systimer_t info __unused, int in_ipi __unused,
 
     crit_enter();
     if (DUMMYNET_LOADED && (dn_netmsg.lmsg.ms_flags & MSGF_DONE))
-	lwkt_sendmsg(netisr_cpuport(mycpuid), &dn_netmsg.lmsg);
+	lwkt_sendmsg_oncpu(netisr_cpuport(mycpuid), &dn_netmsg.lmsg);
     crit_exit();
 }
 
