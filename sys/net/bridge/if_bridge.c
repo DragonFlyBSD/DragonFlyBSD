@@ -1931,7 +1931,7 @@ bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 	nmp->nm_packet = m;
 	nmp->base.lmsg.u.ms_resultp = dst_ifp;
 
-	lwkt_sendmsg(netisr_cpuport(mycpuid), &nmp->base.lmsg);
+	lwkt_sendmsg_oncpu(netisr_cpuport(mycpuid), &nmp->base.lmsg);
 }
 
 /*
@@ -3454,7 +3454,7 @@ bridge_timer(void *arg)
 
 	msg = &sc->sc_brtimemsg;
 	KKASSERT(msg->lmsg.ms_flags & MSGF_DONE);
-	lwkt_sendmsg(BRIDGE_CFGPORT, &msg->lmsg);
+	lwkt_sendmsg_oncpu(BRIDGE_CFGPORT, &msg->lmsg);
 
 	crit_exit();
 }

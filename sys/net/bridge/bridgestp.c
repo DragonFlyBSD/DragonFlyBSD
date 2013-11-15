@@ -1415,7 +1415,7 @@ bstp_tick(void *arg)
 
 	lmsg = &sc->sc_bstptimemsg.lmsg;
 	KKASSERT(lmsg->ms_flags & MSGF_DONE);
-	lwkt_sendmsg(BRIDGE_CFGPORT, lmsg);
+	lwkt_sendmsg_oncpu(BRIDGE_CFGPORT, lmsg);
 
 	crit_exit();
 }
