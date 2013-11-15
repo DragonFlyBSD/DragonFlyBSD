@@ -4089,7 +4089,7 @@ ipfw_tick(void *dummy __unused)
 
 	KKASSERT(lmsg->ms_flags & MSGF_DONE);
 	if (IPFW_LOADED) {
-		lwkt_sendmsg(IPFW_CFGPORT, lmsg);
+		lwkt_sendmsg_oncpu(IPFW_CFGPORT, lmsg);
 		/* ipfw_timeout_netmsg's handler reset this callout */
 	}
 
