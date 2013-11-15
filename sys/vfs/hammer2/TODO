@@ -1,4 +1,26 @@
 
+
+        * The block freeing code.  At the very least a bulk scan is needed
+          to implement freeing blocks.
+
+        * Crash stability.  Right now the allocation table on-media is not
+          properly synchronized with the flush.  This needs to be adjusted
+          such that H2 can do an incremental scan on mount to fixup
+          allocations on mount as part of its crash recovery mechanism.
+
+        * We actually have to start checking and acting upon the CRCs being
+          generated.
+
+        * Remaining known hardlink issues need to be addressed.
+
+        * Core 'copies' mechanism needs to be implemented to support multiple
+          copies on the same media.
+
+        * Core clustering mechanism needs to be implemented to support
+          mirroring and basic multi-master operation from a single host
+          (multi-host requires additional network protocols and won't
+          be as easy).
+
 * make sure we aren't using a shared lock during RB_SCAN's?
 
 * overwrite in write_file case w/compression - if device block size changes

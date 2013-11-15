@@ -378,10 +378,8 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 
-	/*
-	 * WARNING: Cannot use TRANS_ISFLUSH for partial syncs.
-	 */
 #if 0
+	/* XXX can't do this yet */
 	hammer2_trans_init(&trans, ip->pmp, NULL, HAMMER2_TRANS_ISFLUSH);
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
 	hammer2_trans_clear_invfsync(&trans);

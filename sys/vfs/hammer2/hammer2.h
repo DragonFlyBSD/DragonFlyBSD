@@ -194,6 +194,7 @@ struct hammer2_chain {
 	struct hammer2_state	*state;		/* if active cache msg */
 	struct hammer2_mount	*hmp;
 	struct hammer2_pfsmount	*pmp;		/* can be NULL */
+	struct hammer2_chain	*debug_previous;
 
 	hammer2_tid_t	modify_tid;		/* snapshot/flush filter */
 	hammer2_tid_t	delete_tid;
@@ -205,7 +206,8 @@ struct hammer2_chain {
 	u_int		refs;
 	u_int		lockcnt;
 	int		debug_reason;
-	int		duplicate_reason;
+	int		src_reason;
+	int		dst_reason;
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
 };
@@ -471,8 +473,8 @@ struct hammer2_trans {
 	TAILQ_ENTRY(hammer2_trans) entry;
 	struct hammer2_pfsmount *pmp;		/* might be NULL */
 	struct hammer2_mount	*hmp_single;	/* if single-targetted */
-	hammer2_tid_t		real_tid;
 	hammer2_tid_t		sync_tid;
+	hammer2_tid_t		real_tid;
 	hammer2_tid_t		inode_tid;
 	thread_t		td;		/* pointer */
 	int			flags;
@@ -777,7 +779,7 @@ void hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 void hammer2_chain_unlock(hammer2_chain_t *chain);
 void hammer2_chain_wait(hammer2_chain_t *chain);
 hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent,
-				hammer2_blockref_t *bref);
+				hammer2_blockref_t *bref, int generation);
 hammer2_chain_t *hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags);
 void hammer2_chain_lookup_done(hammer2_chain_t *parent);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_chain_t **parentp,
@@ -823,10 +825,10 @@ int hammer2_base_find(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
 				int *cache_indexp, hammer2_key_t *key_nextp,
 				hammer2_key_t key_beg, hammer2_key_t key_end);
-void hammer2_base_delete(hammer2_chain_t *chain,
+void hammer2_base_delete(hammer2_trans_t *trans, hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
 				int *cache_indexp, hammer2_chain_t *child);
-void hammer2_base_insert(hammer2_chain_t *chain,
+void hammer2_base_insert(hammer2_trans_t *trans, hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
 				int *cache_indexp, hammer2_chain_t *child);
 
@@ -897,8 +899,8 @@ void hammer2_lwinprog_wait(hammer2_pfsmount_t *pmp);
 /*
  * hammer2_freemap.c
  */
-int hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
-				hammer2_blockref_t *bref, size_t bytes);
+int hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
+				size_t bytes);
 void hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 				hammer2_blockref_t *bref, int how);
 

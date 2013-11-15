@@ -87,9 +87,10 @@ hammer2_freemapradix(int radix)
 
 static
 int
-hammer2_freemap_reserve(hammer2_mount_t *hmp, hammer2_blockref_t *bref,
+hammer2_freemap_reserve(hammer2_trans_t *trans, hammer2_chain_t *chain,
 			int radix)
 {
+	hammer2_blockref_t *bref = &chain->bref;
 	hammer2_off_t off;
 	size_t bytes;
 
@@ -106,6 +107,13 @@ hammer2_freemap_reserve(hammer2_mount_t *hmp, hammer2_blockref_t *bref,
 	 * Adjust by HAMMER2_ZONE_FREEMAP_{A,B,C,D} using the existing
 	 * offset as a basis.  Start in zone A if previously unallocated.
 	 */
+#if 0
+	kprintf("trans %04jx/%08x freemap chain %p.%d [%08x] %016jx/%d %016jx",
+		trans->sync_tid, trans->flags,
+		chain, chain->bref.type, chain->flags,
+		chain->bref.key, chain->bref.keybits,
+		bref->data_off);
+#endif
 	if ((bref->data_off & ~HAMMER2_OFF_MASK_RADIX) == 0) {
 		off = HAMMER2_ZONE_FREEMAP_A;
 	} else {
@@ -114,7 +122,35 @@ hammer2_freemap_reserve(hammer2_mount_t *hmp, hammer2_blockref_t *bref,
 		off = off / HAMMER2_PBUFSIZE;
 		KKASSERT(off >= HAMMER2_ZONE_FREEMAP_A);
 		KKASSERT(off < HAMMER2_ZONE_FREEMAP_D + 4);
+	}
 
+	if ((trans->flags &
+	     (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_ISALLOCATING)) ==
+	    HAMMER2_TRANS_ISFLUSH) {
+		/*
+		 * Delete-Duplicates while flushing the fchain topology
+		 * itself.
+		 */
+#if 0
+		kprintf(" flush ");
+#endif
+		if (off >= HAMMER2_ZONE_FREEMAP_D)
+			off = HAMMER2_ZONE_FREEMAP_B;
+		else if (off >= HAMMER2_ZONE_FREEMAP_C)
+			off = HAMMER2_ZONE_FREEMAP_A;
+		else if (off >= HAMMER2_ZONE_FREEMAP_B)
+			off = HAMMER2_ZONE_FREEMAP_D;
+		else
+			off = HAMMER2_ZONE_FREEMAP_C;
+	} else {
+		/*
+		 * Allocations from the freemap via a normal transaction
+		 * or a flush whos sync_tid has been bumped (so effectively
+		 * done as a normal transaction).
+		 */
+#if 0
+		kprintf(" alloc ");
+#endif
 		if (off >= HAMMER2_ZONE_FREEMAP_D)
 			off = HAMMER2_ZONE_FREEMAP_A;
 		else if (off >= HAMMER2_ZONE_FREEMAP_C)
@@ -124,6 +160,8 @@ hammer2_freemap_reserve(hammer2_mount_t *hmp, hammer2_blockref_t *bref,
 		else
 			off = HAMMER2_ZONE_FREEMAP_B;
 	}
+
+
 	off = off * HAMMER2_PBUFSIZE;
 
 	/*
@@ -163,6 +201,9 @@ hammer2_freemap_reserve(hammer2_mount_t *hmp, hammer2_blockref_t *bref,
 		break;
 	}
 	bref->data_off = off | radix;
+#if 0
+	kprintf("-> %016jx\n", bref->data_off);
+#endif
 	return (0);
 }
 
@@ -184,9 +225,11 @@ hammer2_freemap_reserve(hammer2_mount_t *hmp, hammer2_blockref_t *bref,
  *	    any lost allocations.
  */
 int
-hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
-		      hammer2_blockref_t *bref, size_t bytes)
+hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
+		      size_t bytes)
 {
+	hammer2_mount_t *hmp = chain->hmp;
+	hammer2_blockref_t *bref = &chain->bref;
 	hammer2_chain_t *parent;
 	int radix;
 	int error;
@@ -208,7 +251,7 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	 */
 	if (bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
 	    bref->type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
-		return(hammer2_freemap_reserve(hmp, bref, radix));
+		return (hammer2_freemap_reserve(trans, chain, radix));
 	}
 
 	/*
@@ -342,6 +385,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				     HAMMER2_LOOKUP_FREEMAP |
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_MATCHIND);
+
 	if (chain == NULL) {
 		/*
 		 * Create the missing leaf, be sure to initialize
@@ -814,8 +858,7 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	if (chain == NULL && how != HAMMER2_FREEMAP_DORECOVER) {
 		kprintf("hammer2_freemap_adjust: %016jx: no chain\n",
 			(intmax_t)bref->data_off);
-		hammer2_chain_unlock(parent);
-		return;
+		goto done;
 	}
 
 	/*
@@ -972,8 +1015,8 @@ again:
 		chain->bref.check.freemap.bigmask |= 1 << radix;
 
 	hammer2_chain_unlock(chain);
+done:
 	hammer2_chain_unlock(parent);
-
 	atomic_clear_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
 	if (trans->flags & HAMMER2_TRANS_ISFLUSH)
 		--trans->sync_tid;

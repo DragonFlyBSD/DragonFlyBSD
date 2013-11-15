@@ -190,6 +190,9 @@ static int hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
 static void hammer2_write_thread(void *arg);
 
+static void hammer2_vfs_unmount_hmp1(struct mount *mp, hammer2_mount_t *hmp);
+static void hammer2_vfs_unmount_hmp2(struct mount *mp, hammer2_mount_t *hmp);
+
 /* 
  * Functions for compression in threads,
  * from hammer2_vnops.c
@@ -515,6 +518,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		 */
 		error = hammer2_install_volume_header(hmp);
 		if (error) {
+			++hmp->pmp_count;
+			hammer2_vfs_unmount_hmp1(mp, hmp);
+			hammer2_vfs_unmount_hmp2(mp, hmp);
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return error;
 		}
@@ -523,7 +529,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hmp->vchain.modify_tid = hmp->voldata.mirror_tid;
 		hmp->fchain.bref.mirror_tid = hmp->voldata.freemap_tid;
 		hmp->fchain.modify_tid = hmp->voldata.freemap_tid;
-
 
 		/*
 		 * First locate the super-root inode, which is key 0
@@ -539,6 +544,9 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		hammer2_chain_lookup_done(parent);
 		if (schain == NULL) {
 			kprintf("hammer2_mount: invalid super-root\n");
+			++hmp->pmp_count;
+			hammer2_vfs_unmount_hmp1(mp, hmp);
+			hammer2_vfs_unmount_hmp2(mp, hmp);
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return EINVAL;
 		}
@@ -627,25 +635,32 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	if (rchain == NULL) {
 		kprintf("hammer2_mount: PFS label not found\n");
-		--hmp->pmp_count;
+		hammer2_vfs_unmount_hmp1(mp, hmp);
+		hammer2_vfs_unmount_hmp2(mp, hmp);
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EINVAL;
 	}
 	if (rchain->flags & HAMMER2_CHAIN_MOUNTED) {
 		hammer2_chain_unlock(rchain);
 		kprintf("hammer2_mount: PFS label already mounted!\n");
-		--hmp->pmp_count;
+		hammer2_vfs_unmount_hmp1(mp, hmp);
+		hammer2_vfs_unmount_hmp2(mp, hmp);
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EBUSY;
 	}
 #if 0
 	if (rchain->flags & HAMMER2_CHAIN_RECYCLE) {
 		kprintf("hammer2_mount: PFS label currently recycling\n");
-		--hmp->pmp_count;
+		hammer2_vfs_unmount_hmp1(mp, hmp);
+		hammer2_vfs_unmount_hmp2(mp, hmp);
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EBUSY;
 	}
 #endif
+	/*
+	 * After this point hammer2_vfs_unmount() has visibility on hmp
+	 * and manual hmp1/hmp2 calls are not needed on fatal errors.
+	 */
 
 	atomic_set_int(&rchain->flags, HAMMER2_CHAIN_MOUNTED);
 
@@ -1370,12 +1385,12 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	hammer2_chain_t *rchain;
 	int flags;
 	int error = 0;
-	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
-	int dumpcnt;
 	int i;
-	struct vnode *devvp;
 
 	pmp = MPTOPMP(mp);
+
+	if (pmp == NULL)
+		return(0);
 
 	ccms_domain_uninit(&pmp->ccms_dom);
 	kdmsg_iocom_uninit(&pmp->iocom);	/* XXX chain dependency */
@@ -1412,46 +1427,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	for (i = 0; i < pmp->cluster.nchains; ++i) {
 		hmp = pmp->cluster.chains[i]->hmp;
 
-		hammer2_mount_exlock(hmp);
-
-		--hmp->pmp_count;
-		kprintf("hammer2_unmount hmp=%p pmpcnt=%d\n",
-			hmp, hmp->pmp_count);
-
-		/*
-		 * Flush any left over chains.  The voldata lock is only used
-		 * to synchronize against HAMMER2_CHAIN_MODIFIED_AUX.
-		 *
-		 * Flush twice to ensure that the freemap is completely
-		 * synchronized.  If we only do it once the next mount's
-		 * recovery scan will have to do some fixups (which isn't
-		 * bad, but we don't want it to have to do it except when
-		 * recovering from a crash).
-		 */
-		hammer2_voldata_lock(hmp);
-		if (((hmp->vchain.flags | hmp->fchain.flags) &
-		     HAMMER2_CHAIN_MODIFIED) ||
-		    hmp->vchain.core->update_hi > hmp->voldata.mirror_tid ||
-		    hmp->fchain.core->update_hi > hmp->voldata.freemap_tid) {
-			hammer2_voldata_unlock(hmp, 0);
-			hammer2_vfs_sync(mp, MNT_WAIT);
-			/*hammer2_vfs_sync(mp, MNT_WAIT);*/
-		} else {
-			hammer2_voldata_unlock(hmp, 0);
-		}
-		if (hmp->pmp_count == 0) {
-			if (((hmp->vchain.flags | hmp->fchain.flags) &
-			     HAMMER2_CHAIN_MODIFIED) ||
-			    (hmp->vchain.core->update_hi >
-			     hmp->voldata.mirror_tid) ||
-			    (hmp->fchain.core->update_hi >
-			     hmp->voldata.freemap_tid)) {
-				kprintf("hammer2_unmount: chains left over "
-					"after final sync\n");
-				if (hammer2_debug & 0x0010)
-					Debugger("entered debugger");
-			}
-		}
+		hammer2_vfs_unmount_hmp1(mp, hmp);
 
 		/*
 		 * Cleanup the root and super-root chain elements
@@ -1484,63 +1460,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 			pmp->cluster.chains[i] = NULL;
 		}
 
-		/*
-		 * If no PFS's left drop the master hammer2_mount for the
-		 * device.
-		 */
-		if (hmp->pmp_count == 0) {
-			if (hmp->sroot) {
-				hammer2_inode_drop(hmp->sroot);
-				hmp->sroot = NULL;
-			}
-
-			/*
-			 * Finish up with the device vnode
-			 */
-			if ((devvp = hmp->devvp) != NULL) {
-				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-				vinvalbuf(devvp, (ronly ? 0 : V_SAVE), 0, 0);
-				hmp->devvp = NULL;
-				VOP_CLOSE(devvp,
-					  (ronly ? FREAD : FREAD|FWRITE));
-				vn_unlock(devvp);
-				vrele(devvp);
-				devvp = NULL;
-			}
-
-			/*
-			 * Final drop of embedded freemap root chain to
-			 * clean up fchain.core (fchain structure is not
-			 * flagged ALLOCATED so it is cleaned out and then
-			 * left to rot).
-			 */
-			hammer2_chain_drop(&hmp->fchain);
-
-			/*
-			 * Final drop of embedded volume root chain to clean
-			 * up vchain.core (vchain structure is not flagged
-			 * ALLOCATED so it is cleaned out and then left to
-			 * rot).
-			 */
-			dumpcnt = 50;
-			hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt);
-			dumpcnt = 50;
-			hammer2_dump_chain(&hmp->fchain, 0, &dumpcnt);
-			hammer2_mount_unlock(hmp);
-			hammer2_chain_drop(&hmp->vchain);
-
-			hammer2_io_cleanup(hmp, &hmp->iotree);
-			if (hmp->iofree_count) {
-				kprintf("io_cleanup: %d I/O's left hanging\n",
-					hmp->iofree_count);
-			}
-
-			TAILQ_REMOVE(&hammer2_mntlist, hmp, mntentry);
-			kmalloc_destroy(&hmp->mchain);
-			kfree(hmp, M_HAMMER2);
-		} else {
-			hammer2_mount_unlock(hmp);
-		}
+		hammer2_vfs_unmount_hmp2(mp, hmp);
 	}
 
 	pmp->mp = NULL;
@@ -1556,6 +1476,118 @@ failed:
 	lockmgr(&hammer2_mntlk, LK_RELEASE);
 
 	return (error);
+}
+
+static
+void
+hammer2_vfs_unmount_hmp1(struct mount *mp, hammer2_mount_t *hmp)
+{
+	hammer2_mount_exlock(hmp);
+	--hmp->pmp_count;
+
+	kprintf("hammer2_unmount hmp=%p pmpcnt=%d\n", hmp, hmp->pmp_count);
+
+	/*
+	 * Flush any left over chains.  The voldata lock is only used
+	 * to synchronize against HAMMER2_CHAIN_MODIFIED_AUX.
+	 *
+	 * Flush twice to ensure that the freemap is completely
+	 * synchronized.  If we only do it once the next mount's
+	 * recovery scan will have to do some fixups (which isn't
+	 * bad, but we don't want it to have to do it except when
+	 * recovering from a crash).
+	 */
+	hammer2_voldata_lock(hmp);
+	if (((hmp->vchain.flags | hmp->fchain.flags) &
+	     HAMMER2_CHAIN_MODIFIED) ||
+	    hmp->vchain.core->update_hi > hmp->voldata.mirror_tid ||
+	    hmp->fchain.core->update_hi > hmp->voldata.freemap_tid) {
+		hammer2_voldata_unlock(hmp, 0);
+		hammer2_vfs_sync(mp, MNT_WAIT);
+		/*hammer2_vfs_sync(mp, MNT_WAIT);*/
+	} else {
+		hammer2_voldata_unlock(hmp, 0);
+	}
+	if (hmp->pmp_count == 0) {
+		if (((hmp->vchain.flags | hmp->fchain.flags) &
+		     HAMMER2_CHAIN_MODIFIED) ||
+		    (hmp->vchain.core->update_hi >
+		     hmp->voldata.mirror_tid) ||
+		    (hmp->fchain.core->update_hi >
+		     hmp->voldata.freemap_tid)) {
+			kprintf("hammer2_unmount: chains left over "
+				"after final sync\n");
+			if (hammer2_debug & 0x0010)
+				Debugger("entered debugger");
+		}
+	}
+}
+
+static
+void
+hammer2_vfs_unmount_hmp2(struct mount *mp, hammer2_mount_t *hmp)
+{
+	struct vnode *devvp;
+	int dumpcnt;
+	int ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
+
+	/*
+	 * If no PFS's left drop the master hammer2_mount for the
+	 * device.
+	 */
+	if (hmp->pmp_count == 0) {
+		if (hmp->sroot) {
+			hammer2_inode_drop(hmp->sroot);
+			hmp->sroot = NULL;
+		}
+
+		/*
+		 * Finish up with the device vnode
+		 */
+		if ((devvp = hmp->devvp) != NULL) {
+			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
+			vinvalbuf(devvp, (ronly ? 0 : V_SAVE), 0, 0);
+			hmp->devvp = NULL;
+			VOP_CLOSE(devvp,
+				  (ronly ? FREAD : FREAD|FWRITE));
+			vn_unlock(devvp);
+			vrele(devvp);
+			devvp = NULL;
+		}
+
+		/*
+		 * Final drop of embedded freemap root chain to
+		 * clean up fchain.core (fchain structure is not
+		 * flagged ALLOCATED so it is cleaned out and then
+		 * left to rot).
+		 */
+		hammer2_chain_drop(&hmp->fchain);
+
+		/*
+		 * Final drop of embedded volume root chain to clean
+		 * up vchain.core (vchain structure is not flagged
+		 * ALLOCATED so it is cleaned out and then left to
+		 * rot).
+		 */
+		dumpcnt = 50;
+		hammer2_dump_chain(&hmp->vchain, 0, &dumpcnt);
+		dumpcnt = 50;
+		hammer2_dump_chain(&hmp->fchain, 0, &dumpcnt);
+		hammer2_mount_unlock(hmp);
+		hammer2_chain_drop(&hmp->vchain);
+
+		hammer2_io_cleanup(hmp, &hmp->iotree);
+		if (hmp->iofree_count) {
+			kprintf("io_cleanup: %d I/O's left hanging\n",
+				hmp->iofree_count);
+		}
+
+		TAILQ_REMOVE(&hammer2_mntlist, hmp, mntentry);
+		kmalloc_destroy(&hmp->mchain);
+		kfree(hmp, M_HAMMER2);
+	} else {
+		hammer2_mount_unlock(hmp);
+	}
 }
 
 static

@@ -428,6 +428,13 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 			uint64_t avail;		/* total available bytes */
 			uint64_t unused;	/* unused must be 0 */
 		} freemap;
+
+		/*
+		 * Debugging
+		 */
+		struct {
+			hammer2_tid_t sync_tid;
+		} debug;
 	} check;
 };
 
