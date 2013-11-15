@@ -154,6 +154,7 @@ static u_int bd_wake_ary[BD_WAKE_SIZE];
 static u_int bd_wake_index;
 static u_int vm_cycle_point = 40; /* 23-36 will migrate more act->inact */
 static int debug_commit;
+static int debug_bufbio;
 
 static struct thread *bufdaemon_td;
 static struct thread *bufdaemonhw_td;
@@ -221,6 +222,7 @@ SYSCTL_INT(_vfs, OID_AUTO, buffreekvacnt, CTLFLAG_RD, &buffreekvacnt, 0,
 SYSCTL_INT(_vfs, OID_AUTO, bufreusecnt, CTLFLAG_RD, &bufreusecnt, 0,
 	"Amount of time buffer re-use operations were successful");
 SYSCTL_INT(_vfs, OID_AUTO, debug_commit, CTLFLAG_RW, &debug_commit, 0, "");
+SYSCTL_INT(_vfs, OID_AUTO, debug_bufbio, CTLFLAG_RW, &debug_bufbio, 0, "");
 SYSCTL_INT(_debug_sizeof, OID_AUTO, buf, CTLFLAG_RD, 0, sizeof(struct buf),
 	"sizeof(struct buf)");
 
@@ -1936,6 +1938,9 @@ getnewbuf(int blkflags, int slptimeo, int size, int maxsize)
 	int nqindex;
 	int nqcpu;
 	int slpflags = (blkflags & GETBLK_PCATCH) ? PCATCH : 0;
+	int maxloops = 200000;
+	int restart_reason = 0;
+	struct buf *restart_bp = NULL;
 	static int flushingbufs;
 
 	/*
@@ -1950,6 +1955,10 @@ getnewbuf(int blkflags, int slptimeo, int size, int maxsize)
 	nqcpu = mycpu->gd_cpuid;
 restart:
 	++getnewbufrestarts;
+
+	if (debug_bufbio && --maxloops == 0)
+		panic("getnewbuf, excessive loops on cpu %d restart %d (%p)",
+			mycpu->gd_cpuid, restart_reason, restart_bp);
 
 	/*
 	 * Setup for scan.  If we do not have enough free buffers,
@@ -2097,11 +2106,15 @@ restart:
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
 			spin_unlock(&pcpu->spin);
 			tsleep(&bd_request, 0, "gnbxxx", (hz + 99) / 100);
+			restart_reason = 1;
+			restart_bp = bp;
 			goto restart;
 		}
 		if (bp->b_qindex != qindex || bp->b_refs) {
 			spin_unlock(&pcpu->spin);
 			BUF_UNLOCK(bp);
+			restart_reason = 2;
+			restart_bp = bp;
 			goto restart;
 		}
 		bremfree_locked(bp);
@@ -2121,6 +2134,8 @@ restart:
 			buf_deallocate(bp);
 			if (bp->b_flags & B_LOCKED) {
 				bqrelse(bp);
+				restart_reason = 3;
+				restart_bp = bp;
 				goto restart;
 			}
 			KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
@@ -2177,6 +2192,8 @@ restart:
 			bfreekva(bp);
 			brelse(bp);
 			defrag = 0;
+			restart_reason = 4;
+			restart_bp = bp;
 			goto restart;
 		}
 
@@ -2185,17 +2202,20 @@ restart:
 		 * KVM space.  This occurs in rare situations when multiple
 		 * processes are blocked in getnewbuf() or allocbuf().
 		 *
-		 * (We don't have to recover the KVM space if
-		 *  BKVASIZE == MAXBSIZE)
+		 * On 64-bit systems BKVASIZE == MAXBSIZE and overcommit
+		 * should not be possible.
 		 */
 		if (bufspace >= hibufspace)
 			flushingbufs = 1;
-		if (flushingbufs && bp->b_kvasize != 0) {
-			bp->b_flags |= B_INVAL;
-			if (BKVASIZE != MAXBSIZE)
+		if (BKVASIZE != MAXBSIZE) {
+			if (flushingbufs && bp->b_kvasize != 0) {
+				bp->b_flags |= B_INVAL;
 				bfreekva(bp);
-			brelse(bp);
-			goto restart;
+				brelse(bp);
+				restart_reason = 5;
+				restart_bp = bp;
+				goto restart;
+			}
 		}
 		if (bufspace < lobufspace)
 			flushingbufs = 0;
@@ -2214,6 +2234,8 @@ restart:
 			if (BKVASIZE != MAXBSIZE)
 				bfreekva(bp);
 			brelse(bp);
+			restart_reason = 6;
+			restart_bp = bp;
 			goto restart;
 		}
 		break;
@@ -2236,8 +2258,11 @@ restart:
 		spin_unlock(&pcpu->spin);
 
 		nqcpu = (nqcpu + 1) % ncpus;
-		if (nqcpu != mycpu->gd_cpuid)
+		if (nqcpu != mycpu->gd_cpuid) {
+			restart_reason = 7;
+			restart_bp = bp;
 			goto restart;
+		}
 
 		if (defrag) {
 			flags = VFS_BIO_NEED_BUFSPACE;
@@ -2297,6 +2322,8 @@ restart:
 				defrag = 1;
 				bp->b_flags |= B_INVAL;
 				brelse(bp);
+				restart_reason = 8;
+				restart_bp = bp;
 				goto restart;
 			}
 			if (addr) {
