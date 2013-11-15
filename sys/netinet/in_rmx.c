@@ -380,7 +380,7 @@ in_rtqtimo(void *arg __unused)
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg(netisr_cpuport(cpuid), lmsg);
+		lwkt_sendmsg_oncpu(netisr_cpuport(cpuid), lmsg);
 	crit_exit();
 }
 
