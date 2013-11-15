@@ -493,7 +493,7 @@ syncache_timer(void *p)
 {
 	struct netmsg_sc_timer *msg = p;
 
-	lwkt_sendmsg(msg->nm_mrec->port, &msg->base.lmsg);
+	lwkt_sendmsg_oncpu(msg->nm_mrec->port, &msg->base.lmsg);
 }
 
 /*
