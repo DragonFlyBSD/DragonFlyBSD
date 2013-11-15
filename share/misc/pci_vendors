@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2013.10.11
-#	Date:    2013-10-11 03:15:02
+#	Version: 2013.11.14
+#	Date:    2013-11-14 03:15:02
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -1432,7 +1432,7 @@
 	6621  Mars PRO
 	6623  Mars
 	6631  Oland
-	6640  Saturn XT [Radeon HD 8950M]
+	6640  Saturn XT [FirePro M6100]
 	6641  Saturn PRO [Radeon HD 8930M]
 	6649  Bonaire
 	6650  Bonaire
@@ -1448,7 +1448,7 @@
 # 100356OCL / 11210-01-20G
 		174b e253  Radeon HD 7790 Dual-X OC
 		1787 2329  Radeon HD 7790 TurboDuo
-	665d  Bonaire
+	665d  Bonaire [Radeon R7 200 Series]
 	6660  Sun XT [Radeon HD 8670A/8670M/8690M]
 	6663  Sun PRO [Radeon HD 8570M]
 	6664  Jet XT [Radeon R5 M200 Series]
@@ -1670,13 +1670,16 @@
 		1682 3300  Radeon HD 7670
 		174b 7670  Radeon HD 7670
 		174b e181  Radeon HD 6670
-	6759  Turks PRO [Radeon HD 6570/7570]
+		1787 2309  Radeon HD 6670
+	6759  Turks PRO [Radeon HD 6570/7570/8550]
 		103c 3130  Radeon HD 6570
+		1043 0403  Radeon HD 6570
 		1462 2500  Radeon HD 6570
 		1462 2509  Radeon HD 7570
 		148c 7570  Radeon HD 7570
 		1642 3a67  Radeon HD 6570
 		1682 3280  Radeon HD 7570
+		1682 3530  Radeon HD 8550
 		174b 7570  Radeon HD 7570
 		174b e142  Radeon HD 6570
 		174b e181  Radeon HD 6570
@@ -1897,6 +1900,7 @@
 		1028 2120  Radeon HD 6450
 		103c 2128  Radeon HD 6450
 		103c 2aee  Radeon HD 7450A
+		1462 2125  Radeon HD 6450
 		1462 2346  Radeon HD 7450
 		1462 2490  Radeon HD 6450
 		1462 2494  Radeon HD 6450
@@ -1975,9 +1979,14 @@
 	67a0  Hawaii XT GL
 	67a1  Hawaii GL
 	67a2  Hawaii GL
+	67a8  Hawaii
+	67a9  Hawaii
+	67aa  Hawaii
 	67b0  Hawaii XT [Radeon R9 290X]
 	67b1  Hawaii PRO [Radeon R9 290]
+	67b8  Hawaii
 	67b9  Vesuvius
+	67ba  Hawaii
 	67be  Hawaii LE
 	6800  Wimbledon XT [Radeon HD 7970M]
 		1002 0124  Radeon HD 7970M
@@ -2527,6 +2536,7 @@
 		103c 2aac  Radeon HD 5450
 		103c 2aae  Radeon HD 5450
 		103c 3580  Radeon HD 5450
+		1043 0386  Radeon HD 5450
 		1043 03c2  EAH5450 SILENT/DI/512MD2 (LP)
 		1462 2130  Radeon HD 5450
 		1462 2131  Radeon HD 5450
@@ -4590,22 +4600,14 @@
 		103c 3352  P421
 		103c 3354  P420i
 		103c 3355  P220i
-# New Smart Array controllers for Gen8+ servers
 	323c  Smart Array Gen8+ Controllers
-# Add marketing names for Gen8+ Smart Array
 		103c 1920  P430i
-# Add marketing names for Gen8+ Smart Array
 		103c 1921  P830i
-# Add marketing names for Gen8+ Smart Array
 		103c 1922  P430
-# Add marketing names for Gen8+ Smart Array
 		103c 1923  P431
-# Add marketing names for Gen8+ Smart Array
 		103c 1924  P830
 		103c 1925  Smart Array
-# Add marketing names for Gen8+ Smart Array
 		103c 1926  P731m
-# Add marketing names for Gen8+ Smart Array
 		103c 1928  P230i
 	3300  Integrated Lights-Out Standard Virtual USB Controller
 		103c 3304  iLO2
@@ -5782,6 +5784,8 @@
 	2880  DAQCard-6601
 	2890  PCI-6036E
 	28c0  PCI-6014
+	28d0  PCI-5122
+	28e0  PXI-5122
 	2a60  PCI-6023E
 	2a70  PCI-6024E
 	2a80  PCI-6025E
@@ -5811,13 +5815,38 @@
 	70bd  PCI-6281
 	70bf  PXI-6281
 	70c0  PCI-6143
+	70f0  PXI-5922
+	70f1  PCI-5922
 	70f2  PCI-6224
+	7121  PXI-5122EX
+	7122  PCI-5122EX
 	7144  PXI-5124 (12-bit 200 MS/s Digitizer)
+	7145  PCI-5124
+	714c  PXI-5114
+	714d  PCI-5114
 	716c  PCI-6225
 	717d  PCIE-6251
 	717f  PCIe-6259
 	71bc  PCI-6221 (37pin)
 	71d0  PXI-6143
+	7260  PXI-5142
+	7261  PCI-5142
+	72a8  PXI-5152
+	72a9  PCI-5152
+	72aa  PXI-5105
+	72ab  PCI-5105
+	730f  PXI-5922EX
+	7310  PCI-5922EX
+	7333  PXI-5900
+	7349  PXI-5154
+	734a  PCI-5154
+	737d  PXI-5124EX
+	73f0  PXI-5153
+	73f1  PCI-5153
+	745e  PXI-5153EX
+	745f  PCI-5153EX
+	7460  PXI-5154EX
+	7461  PCI-5154EX
 	b001  IMAQ-PCI-1408
 	b011  IMAQ-PXI-1408
 	b021  IMAQ-PCI-1424
@@ -5828,7 +5857,8 @@
 	b071  IMAQ-PCI-1422
 	b081  IMAQ-PXI-1422
 	b091  IMAQ-PXI-1411
-	c4c4  PXIe-4353
+	c4c4  PXIe-4353/5160
+		1093 76d0  PXIe-5160
 	c801  PCI-GPIB
 	c831  PCI-GPIB bridge
 1094  First International Computers [FIC]
@@ -7946,6 +7976,11 @@
 		1682 2490  GX-285N-ZDF
 	05e6  GT200b [GeForce GTX 275]
 	05e7  GT200GL [Tesla C1060 / M1060]
+		10de 0595  Tesla T10 Processor
+		10de 068f  Tesla T10 Processor
+		10de 0697  Tesla M1060
+		10de 0714  Tesla M1060
+		10de 0743  Tesla M1060
 	05ea  GT200 [GeForce GTX 260]
 	05eb  GT200 [GeForce GTX 295]
 	05ed  GT200GL [Quadro Plex 2200 D2]
@@ -7966,6 +8001,7 @@
 	0607  G92 [GeForce GTS 240]
 	0608  G92M [GeForce 9800M GTX]
 	0609  G92M [GeForce 8800M GTS]
+		106b 00a7  GeForce 8800 GS
 	060a  G92M [GeForce GTX 280M]
 	060b  G92M [GeForce 9800M GT]
 	060c  G92M [GeForce 8800M GTX]
@@ -8012,6 +8048,7 @@
 	062c  G94M [GeForce 9800M GTS]
 	062d  G94 [GeForce 9600 GT]
 	062e  G94 [GeForce 9600 GT]
+		106b 0605  GeForce GT 130
 	062f  G94 [GeForce 9800 S]
 	0630  G94 [GeForce 9600 GT]
 	0631  G94M [GeForce GTS 160M]
@@ -8031,6 +8068,7 @@
 	0647  G96M [GeForce 9600M GT]
 	0648  G96M [GeForce 9600M GS]
 	0649  G96M [GeForce 9600M GT]
+		1043 202d  GeForce GT 220M
 	064a  G96M [GeForce 9700M GT]
 	064b  G96M [GeForce 9500M G]
 	064c  G96M [GeForce 9650M GT]
@@ -8038,8 +8076,11 @@
 	064e  G96 [GeForce 9600 GT / 9800 GT]
 	0651  G96M [GeForce G 110M]
 	0652  G96M [GeForce GT 130M]
+		152d 0850  GeForce GT 240M LE
 	0653  G96M [GeForce GT 120M]
 	0654  G96M [GeForce GT 220M]
+		1043 14a2  GeForce GT 320M
+		1043 14d2  GeForce GT 320M
 	0655  G96 [GeForce GT 120]
 	0656  G96 [GeForce 9650 S]
 	0658  G96GL [Quadro FX 380]
@@ -8090,6 +8131,7 @@
 	06e6  G98 [GeForce G 100]
 	06e7  G98 [GeForce 9300 SE]
 	06e8  G98M [GeForce 9200M GS]
+		103c 360b  GeForce 9200M GE
 	06e9  G98M [GeForce 9300M GS]
 		1043 19b2  U6V laptop
 	06ea  G98M [Quadro NVS 150M]
@@ -8257,6 +8299,7 @@
 	07fe  GeForce 7100/nForce 630i USB
 		1019 297a  MCP73PVT-SM
 		1afa 7150  JW-IN7150-HD
+	0840  C77 [GeForce 8200M]
 	0844  C77 [GeForce 9100M G]
 	0845  C77 [GeForce 8200M G]
 	0846  C77 [GeForce 9200]
@@ -8280,6 +8323,7 @@
 	0864  C79 [GeForce 9300]
 	0865  C79 [GeForce 9300/ION]
 	0866  C79 [GeForce 9400M G]
+		106b 00b1  GeForce 9400M
 	0867  C79 [GeForce 9400]
 		106b 00ad  iMac 9,1
 	0868  C79 [nForce 760i SLI]
@@ -8307,9 +8351,11 @@
 		19da a123  IONITX-F-E
 	087e  ION LE VGA
 	087f  ION LE VGA
+	08a0  MCP89 [GeForce 320M]
 	08a2  MCP89 [GeForce 320M]
 	08a3  MCP89 [GeForce 320M]
 	08a4  MCP89 [GeForce 320M]
+	08a5  MCP89 [GeForce 320M]
 	0a20  GT216 [GeForce GT 220]
 		1043 8311  ENGT220/DI/1GD3(LP)/V2
 	0a21  GT216M [GeForce GT 330M]
@@ -8350,6 +8396,7 @@
 	0a72  GT218M [GeForce 310M]
 	0a73  GT218M [GeForce 305M]
 	0a74  GT218M [GeForce G210M]
+		1b0a 903a  GeForce G210
 	0a75  GT218M [GeForce 310M]
 	0a76  GT218 [ION 2]
 	0a78  GT218GL [Quadro FX 380 LP]
@@ -8387,9 +8434,11 @@
 		1462 ac81  GeForce 315M
 		1462 ac82  GeForce 405
 		1462 ae33  GeForce 405
+		1642 3980  GeForce 405
 		17aa 3950  GeForce 405M
 		17aa 397d  GeForce 405M
 		1b0a 2091  GeForce 315M
+		1b0a 90b4  GeForce 405
 		1bfd 0003  GeForce 405
 		1bfd 8006  GeForce 405
 		1bfd 8007  GeForce 315M
@@ -8480,7 +8529,7 @@
 		1043 82e8  M3N72-D
 		1849 0ad4  K10N78FullHD-hSLI R3.0 AHCI Controller
 	0ad8  MCP78S [GeForce 8200] SATA Controller (RAID mode)
-	0be2  High Definition Audio Controller
+	0be2  GT216 HDMI Audio Controller
 		1043 8311  ENGT220/DI/1GD3(LP)/V2
 	0be3  High Definition Audio Controller
 		1028 040b  Latitude E6510
@@ -8545,8 +8594,18 @@
 	0de3  GF108M [GeForce GT 635M]
 	0de4  GF108 [GeForce GT 520]
 	0de5  GF108 [GeForce GT 530]
+	0de7  GF108 [GeForce GT 610]
 	0de8  GF108M [GeForce GT 620M]
 	0de9  GF108M [GeForce GT 630M]
+		1025 0692  GeForce GT 620M
+		1025 0725  GeForce GT 620M
+		1025 0728  GeForce GT 620M
+		1025 072b  GeForce GT 620M
+		1025 072e  GeForce GT 620M
+		1025 0753  GeForce GT 620M
+		1025 0754  GeForce GT 620M
+		17aa 3977  GeForce GT 640M LE
+		1b0a 2210  GeForce GT 635M
 	0dea  GF108M [GeForce 610M]
 		17aa 365a  GeForce 615
 		17aa 365b  GeForce 615
@@ -8563,6 +8622,8 @@
 	0df2  GF108M [GeForce GT 435M]
 	0df3  GF108M [GeForce GT 420M]
 	0df4  GF108M [GeForce GT 540M]
+		152d 0952  GeForce GT 630M
+		152d 0953  GeForce GT 630M
 	0df5  GF108M [GeForce GT 525M]
 	0df6  GF108M [GeForce GT 550M]
 	0df7  GF108M [GeForce GT 520M]
@@ -8596,6 +8657,7 @@
 	0fc6  GK107 [GeForce GTX 650]
 		1043 8428  GTX650-DC-1GD5
 	0fcd  GK107M [GeForce GT 755M]
+	0fce  GK107M [GeForce GT 640M LE]
 	0fd1  GK107M [GeForce GT 650M]
 		1043 1597  GeForce GT 650M
 		1043 15a7  GeForce GT 650M
@@ -8615,6 +8677,7 @@
 	0fdf  GK107M [GeForce GT 740M]
 	0fe0  GK107M [GeForce GTX 660M Mac Edition]
 	0fe1  GK107M [GeForce GT 730M]
+	0fe2  GK107M [GeForce GT 745M]
 	0fe3  GK107M [GeForce GT 745M]
 		17aa 3675  GeForce GT 745A
 	0fe4  GK107M [GeForce GT 750M]
@@ -8623,6 +8686,8 @@
 # GRID K1 USM
 	0fe7  GK107GL [GRID K100 vGPU]
 		10de 101e  GRID K100
+	0fe9  GK107M [GeForce GT 750M]
+	0fea  GK107M [GeForce GT 755M]
 	0fef  GK107GL [GRID K340]
 	0ff1  GK107 [NVS 1000]
 	0ff2  GK107GL [GRID K1]
@@ -8641,6 +8706,9 @@
 	0fff  GK107GL [Quadro 410]
 	1003  GK110 [GeForce GTX Titan LE]
 	1004  GK110 [GeForce GTX 780]
+		3842 0784  GK110B [GeForce GTX 780 SC w/ ACX Cooler]
+		3842 1784  GK110B [GeForce GTX 780 Dual FTW w/ ACX Cooler]
+		3842 1788  GK110B [GeForce GTX 780 Dual Classified w/ ACX Cooler]
 	1005  GK110 [GeForce GTX Titan]
 		1043 8451  GTXTITAN-6GD5
 # Reference Model
@@ -8655,10 +8723,12 @@
 		3842 2794  GeForce GTX Titan SC Hydro Copper
 # 06G-P4-2795-KR
 		3842 2795  GeForce GTX Titan SC Hydro Copper Signature
+	100a  GK110B [GeForce GTX 780 Ti]
 	101f  GK110GL [Tesla K20]
 	1020  GK110GL [Tesla K20X]
 	1021  GK110GL [Tesla K20Xm]
 	1022  GK110GL [Tesla K20c]
+	1024  GK110GL [Tesla K40c]
 	1026  GK110GL [Tesla K20s]
 	1028  GK110GL [Tesla K20m]
 	103a  GK110GL [Quadro K6000]
@@ -8678,9 +8748,12 @@
 	1056  GF119M [NVS 4200M]
 	1057  GF119M [Quadro NVS 4200M]
 	1058  GF119M [GeForce 610M]
+		103c 2aed  GeForce 610
+		103c 2af1  GeForce 610
 		1043 10ac  GeForce GT 610M
 		1043 10bc  GeForce GT 610M
 		1043 1652  GeForce GT 610M
+	1059  GF119M [GeForce 610M]
 	105a  GF119M [GeForce 610M]
 		1043 2111  GeForce GT 610M
 		1043 2112  GeForce GT 610M
@@ -8702,6 +8775,8 @@
 	1091  GF110GL [Tesla M2090]
 		10de 088e  Tesla X2090
 		10de 0891  Tesla X2090
+		10de 0974  Tesla X2090
+		10de 098d  Tesla X2090
 	1094  GF110GL [Tesla M2075]
 		10de 0888  Tesla M2075
 	1096  GF110GL [Tesla C2050 / C2075]
@@ -8761,6 +8836,7 @@
 		1028 054e  GeForce GT 630M
 		1028 0554  GeForce GT 620M
 		1028 0557  GeForce GT 620M
+		1028 0562  GeForce GT 625M
 		1028 0565  GeForce GT 630M
 		1028 0568  GeForce GT 630M
 		1028 0590  GeForce GT 630M
@@ -8771,6 +8847,8 @@
 		1028 05b1  GeForce GT 625M
 		1028 05b3  GeForce GT 625M
 		1028 05da  GeForce GT 630M
+		1028 05de  GeForce GT 720M
+		1028 05e0  GeForce GT 720M
 		1028 05e8  GeForce GT 630M
 		1028 05f4  GeForce GT 720M
 		103c 18ef  GeForce GT 630M
@@ -8786,6 +8864,7 @@
 		1043 124d  GeForce GT 720M
 		1043 126d  GeForce GT 720M
 		1043 131d  GeForce GT 720M
+		1043 13fd  GeForce GT 720M
 		1043 14c7  GeForce GT 720M
 		1043 1507  GeForce GT 620M
 		1043 2132  GeForce GT 620M
@@ -8797,6 +8876,7 @@
 		1043 223a  GeForce GT 710M
 		1043 224a  GeForce GT 710M
 		1043 8595  GeForce GT 720M
+		1072 152d  GeForce GT 720M
 		10cf 17f5  GeForce GT 720M
 		1179 fa01  GeForce 710M
 		1179 fa02  GeForce 710M
@@ -8831,6 +8911,7 @@
 		144d c652  GeForce GT 620M
 		144d c709  GeForce 710M
 		144d c711  GeForce 710M
+		144d c736  GeForce 710M
 		1462 10b8  GeForce GT 710M
 		1462 10e9  GeForce GT 720M
 		1462 aa33  GeForce 720M
@@ -8839,9 +8920,13 @@
 		152d 0926  GeForce 620M
 		152d 0982  GeForce GT 630M
 		152d 0983  GeForce GT 630M
+		152d 1012  GeForce 710M
 		152d 1030  GeForce GT 630M
 		152d 1055  GeForce 710M
+		152d 1067  GeForce GT 720M
+		152d 1072  GeForce GT 720M
 		17aa 2200  NVS 5200M
+		17aa 2213  GeForce GT 720M
 		17aa 3656  GeForce GT 620M
 		17aa 3800  GeForce GT 720M
 		17aa 3801  GeForce GT 720M
@@ -8857,6 +8942,7 @@
 		17aa 3912  GeForce 720M
 		17aa 3977  GeForce GT 720M
 		17aa 3983  GeForce 610M
+		17aa 5001  GeForce 610M
 		17aa 5003  GeForce GT 720M
 		17aa 5005  GeForce 705M
 		17aa 500d  GeForce GT 620M
@@ -8874,8 +8960,11 @@
 		17aa 502f  GeForce GT 720M
 		1854 0177  GeForce 710M
 		1854 0180  GeForce 710M
+		1854 0190  GeForce GT 720M
+		1854 0192  GeForce GT 720M
 		1b0a 20dd  GeForce GT 620M
 		1b0a 20df  GeForce GT 620M
+		1b0a 2202  GeForce GT 720M
 	1180  GK104 [GeForce GTX 680]
 		3842 3682  GeForce GTX 680 Mac Edition
 	1182  GK104 [GeForce GTX 760 Ti]
@@ -9140,13 +9229,9 @@
 	0101  3GA
 	8111  Twist3 Frame Grabber
 10ec  Realtek Semiconductor Co., Ltd.
-	0139  Zonet Zen3200
-	0880  Realtek 880 High Definition Audio
-	0883  Realtek 883 High Definition Audio
-	0885  Realtek 885 High Definition Audio
-	0888  Realtek 888 High Definition Audio
-	0892  Realtek 892 High Definition Audio
+	0139  RTL-8139/8139C/8139C+ Ethernet Controller
 	5209  RTS5209 PCI Express Card Reader
+	5227  RTS5227 PCI Express Card Reader
 	5229  RTS5229 PCI Express Card Reader
 		1025 0813  Aspire R7-571
 	5288  Barossa PCI Express Card Reader
@@ -9220,6 +9305,7 @@
 		1462 236c  945P Neo3-F motherboard
 	8168  RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
 		1019 8168  RTL8111/8168 PCI Express Gigabit Ethernet controller
+		1028 0283  Vostro 220
 		1028 04b2  Vostro 3350
 		1028 04da  Vostro 3750
 		103c 1611  Pavilion DM1Z-3000
@@ -9276,6 +9362,7 @@
 	8199  RTL8187SE Wireless LAN Controller
 		1462 6894  MN54G2 / MS-6894 Wireless Mini PCIe Card
 	8723  RTL8723AE PCIe Wireless Network Adapter
+	b723  RTL8723BE PCIe Wireless Network Adapter
 10ed  Ascii Corporation
 	7310  V7310
 10ee  Xilinx Corporation
@@ -13508,6 +13595,7 @@
 		13f6 ffff  CMI8787-HG2PCI
 		14c3 1710  HiFier Fantasia
 		14c3 1711  HiFier Serenade
+		14c3 1713  HiFier Serenade III
 		1a58 0910  Barracuda AC-1
 		415a 5431  X-Meridian 7.1
 		5431 017a  X-Meridian 7.1 2G
@@ -14133,6 +14221,10 @@
 144b  Verint Systems Inc.
 144c  Catalina Research Inc
 144d  Samsung Electronics Co Ltd
+	a820  NVMe SSD Controller 171X
+		1028 1f95  Express Flash NVMe XS1715 SSD 400GB
+		1028 1f96  Express Flash NVMe XS1715 SSD 800GB
+		1028 1f97  Express Flash NVMe XS1715 SSD 1600GB
 144e  OLITEC
 144f  Askey Computer Corp.
 1450  Octave Communications Ind.
@@ -14301,6 +14393,7 @@
 		103c 1240  Myrinet M2L-PCI64/2-3.0 LANai 7.4 (HP OEM)
 14c2  DTK Computer
 14c3  MEDIATEK Corp.
+	7630  MT7630e 802.11bgn Wireless Network Adapter
 14c4  IWASAKI Information Systems Co Ltd
 14c5  Automation Products AB
 14c6  Data Race Inc
@@ -15580,6 +15673,7 @@
 	07a0  PCI Express Root Port
 	07b0  VMXNET3 Ethernet Controller
 	07c0  PVSCSI SCSI Controller
+	07e0  SATA AHCI controller
 	0801  Virtual Machine Interface
 		15ad 0800  Hypervisor ROM Interface
 	1977  HD Audio Controller
@@ -17126,7 +17220,8 @@
 	0001  TILE64 processor
 	0002  TILEPro processor
 	0200  TILE-Gx processor
-	2000  TILE-Gx PCI Express Bridge
+	0201  TILE-Gx Processor Virtual Function
+	2000  TILE-Gx PCI Express Root Port
 1a4a  SLAC National Accelerator Lab PPA-REG
 	1000  MCOR Power Supply Controller
 	1010  AMC EVR - Stockholm Timing Board
@@ -17331,8 +17426,14 @@
 1c1c  Symphony
 	0001  82C101
 1c2c  Fiberblaze
+	000a  Capture
+	000f  SmartNIC
+	00a0  FBC4G Capture 4x1Gb
+	00a1  FBC4XG Capture 4x10Gb
+	00a2  FBC8XG Capture 8x10Gb
 # Used on V120 VME Crate Controller
 1c32  Highland Technology, Inc.
+1c33  Daktronics, Inc
 1c3b  Accensus, LLC
 	0200  Telas2
 # http://www.accensusllc.com/accensustelas2.html
@@ -18331,6 +18432,8 @@
 		8086 0270  Dual Band Wireless-AC 3160
 # Wilkins Peak 1 1x1 80Mhz + BT - lenovo/HP
 		8086 8270  Dual Band Wireless AC 3160
+# PowerVR SGX 545
+	08cf  Atom Processor Z2760 Integrated Graphics Controller
 	0960  80960RP (i960RP) Microprocessor/Bridge
 	0962  80960RM (i960RM) Bridge
 	0964  80960RP (i960RP) Microprocessor/Bridge
@@ -19347,6 +19450,8 @@
 		1028 1f60  Intel GbE 4P I350crNDC
 		1028 1f62  Intel GbE 2P I350crNDC
 		103c 17d1  Ethernet 1Gb 4-port 366FLR Adapter
+		103c 2003  Ethernet 1Gb 2-port 367i Adapter
+		103c 2226  Ethernet 1Gb 1-port 364i Adapter
 		103c 337f  Ethernet 1Gb 2-port 361i Adapter
 		103c 3380  Ethernet 1Gb 4-port 366i Adapter
 		103c 339e  Ethernet 1Gb 2-port 361T Adapter
@@ -19372,6 +19477,7 @@
 	1523  I350 Gigabit Backplane Connection
 		103c 1784  Ethernet 1Gb 2-port 361FLB Adapter
 		103c 18d1  Ethernet 1Gb 2-port 361FLB Adapter
+		103c 1989  Ethernet 1Gb 2-port 363i Adapter
 		103c 339f  Ethernet 1Gb 4-port 366M Adapter
 		8086 1f52  1GbE 4P I350 Mezz
 	1524  I350 Gigabit Connection
@@ -19431,6 +19537,7 @@
 		8086 0002  Ethernet Server Bypass Adapter X520-LR2
 	1560  Ethernet Controller X540
 	157b  I210 Gigabit Network Connection
+	157c  I210 Gigabit Backplane Connection
 	15a0  Ethernet Connection (2) I218-LM
 	15a1  Ethernet Connection (2) I218-V
 	15a2  Ethernet Connection (3) I218-LM
@@ -19820,7 +19927,7 @@
 	1f3e  Atom processor C2000 RAID SATA3 Controller
 	1f3f  Atom processor C2000 RAID SATA3 Controller
 	1f40  Ethernet Connection I354 1.0 GbE Backplane
-		1028 10f1  Ethernet Connection I354 1.0 GbE Backplane
+		1028 05f1  Ethernet Connection I354 1.0 GbE Backplane
 	1f41  Ethernet Connection I354
 	1f42  Atom processor C2000 GbE
 	1f44  Atom processor C2000 GbE Virtual Function
@@ -21960,6 +22067,7 @@
 	2e16  4 Series Chipset PT IDER Controller
 	2e17  4 Series Chipset Serial KT Controller
 	2e20  4 Series Chipset DRAM Controller
+		1028 0283  Dell Vostro 220
 		1043 82d3  P5Q Deluxe Motherboard
 		1458 5000  GA-EP45-DS5/GA-EG45M-DS2H Motherboard
 	2e21  4 Series Chipset PCI Express Root Port
@@ -23297,6 +23405,41 @@
 	9c64  Lynx Point-LP UART Controller #1
 	9c65  Lynx Point-LP SPI Controller #0
 	9c66  Lynx Point-LP SPI Controller #1
+	9c83  Wildcat Point-LP SATA Controller [AHCI Mode]
+	9c85  Wildcat Point-LP SATA Controller [RAID Mode]
+	9c87  Wildcat Point-LP SATA Controller [RAID Mode]
+	9c8f  Wildcat Point-LP SATA Controller [RAID Mode]
+	9c90  Wildcat Point-LP PCI Express Root Port #1
+	9c92  Wildcat Point-LP PCI Express Root Port #2
+	9c94  Wildcat Point-LP PCI Express Root Port #3
+	9c96  Wildcat Point-LP PCI Express Root Port #4
+	9c98  Wildcat Point-LP PCI Express Root Port #5
+	9c9a  Wildcat Point-LP PCI Express Root Port #6
+	9ca0  Wildcat Point-LP High Definition Audio Controller
+	9ca2  Wildcat Point-LP SMBus Controller
+	9ca4  Wildcat Point-LP Thermal Management Controller
+	9ca6  Wildcat Point-LP USB EHCI Controller
+	9cb1  Wildcat Point-LP USB xHCI Controller
+	9cb5  Wildcat Point-LP Secure Digital IO Controller
+	9cb6  Wildcat Point-LP Smart Sound Technology Controller
+	9cba  Wildcat Point-LP MEI Controller #1
+	9cbb  Wildcat Point-LP MEI Controller #2
+	9cbc  Wildcat Point-LP IDE-r Controller
+	9cbd  Wildcat Point-LP KT Controller
+	9cc1  Wildcat Point-LP LPC Controller
+	9cc2  Wildcat Point-LP LPC Controller
+	9cc3  Wildcat Point-LP LPC Controller
+	9cc5  Wildcat Point-LP LPC Controller
+	9cc6  Wildcat Point-LP LPC Controller
+	9cc7  Wildcat Point-LP LPC Controller
+	9cc9  Wildcat Point-LP LPC Controller
+	9ce0  Wildcat Point-LP Serial IO DMA Controller
+	9ce1  Wildcat Point-LP Serial IO I2C Controller #0
+	9ce2  Wildcat Point-LP Serial IO I2C Controller #1
+	9ce3  Wildcat Point-LP Serial IO UART Controller #0
+	9ce4  Wildcat Point-LP Serial IO UART Controller #1
+	9ce5  Wildcat Point-LP Serial IO GSPI Controller #0
+	9ce6  Wildcat Point-LP Serial IO GSPI Controller #1
 	a000  Atom Processor D4xx/D5xx/N4xx/N5xx DMI Bridge
 		1458 5000  GA-D525TUD
 		8086 4f4d  DeskTop Board D510MO
@@ -23822,9 +23965,16 @@ bdbd  Blackmagic Design
 	a11d  DeckLink Studio
 	a11e  DeckLink Optical Fibre
 	a121  DeckLink HD Extreme 3D/3D+
+	a124  Intensity Extreme
+	a126  Intensity Shuttle
+	a127  UltraStudio Express
+	a129  UltraStudio Mini Monitor
+	a12a  UltraStudio Mini Recorder
+	a12d  UltraStudio 4K
 	a12e  DeckLink 4K Extreme
 	a12f  DeckLink Mini Monitor
 	a130  DeckLink Mini Recorder
+	a132  UltraStudio 4K
 c001  TSI Telsys
 c0a9  Micron/Crucial Technology
 c0de  Motorola
@@ -23878,11 +24028,13 @@ d84d  Exsys
 dada  Datapath Limited
 db10  Diablo Technologies
 dcba  Dynamic Engineering
-	0046  PCIeAlteraCycloneIV
+	0046  PCIe Altera Cyclone IV
 # VPX format Receiver Controller Board
 	0047  VPX-RCB
 # PMC Format FPGA design with 8 high speed UART channels
 	0048  PMC-Biserial-III-BAE9
+	004e  PC104p-Biserial-III-NVY5
+	004f  PC104p-Biserial-III-NVY6
 dd01  Digital Devices GmbH
 	0003  Octopus DVB Adapter
 		dd01 0001  Octopus DVB adapter
