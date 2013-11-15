@@ -224,7 +224,7 @@ tcp_send_timermsg(struct tcpcb *tp, uint32_t task)
 
 	tmsg->tt_tasks |= task;
 	if (tmsg->tt_msg.lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg(tmsg->tt_msgport, &tmsg->tt_msg.lmsg);
+		lwkt_sendmsg_oncpu(tmsg->tt_msgport, &tmsg->tt_msg.lmsg);
 }
 
 int	tcp_syn_backoff[TCP_MAXRXTSHIFT + 1] =
