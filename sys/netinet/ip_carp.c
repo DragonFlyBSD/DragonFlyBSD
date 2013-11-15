@@ -1294,7 +1294,7 @@ carp_send_ad_timeout(void *xsc)
 
 	crit_enter();
 	if (cmsg->base.lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg(netisr_cpuport(0), &cmsg->base.lmsg);
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), &cmsg->base.lmsg);
 	crit_exit();
 }
 
@@ -1712,7 +1712,7 @@ carp_master_down_timeout(void *xsc)
 
 	crit_enter();
 	if (cmsg->base.lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg(netisr_cpuport(0), &cmsg->base.lmsg);
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), &cmsg->base.lmsg);
 	crit_exit();
 }
 
