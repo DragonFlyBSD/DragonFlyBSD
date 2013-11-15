@@ -424,7 +424,7 @@ ipflow_timo_ipi(void *arg __unused)
 
 	crit_enter();
 	if (msg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg(netisr_cpuport(mycpuid), msg);
+		lwkt_sendmsg_oncpu(netisr_cpuport(mycpuid), msg);
 	crit_exit();
 }
 
