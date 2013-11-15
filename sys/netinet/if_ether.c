@@ -205,7 +205,7 @@ arptimer(void *arg __unused)
 
 	crit_enter();
 	if (lmsg->ms_flags & MSGF_DONE)
-		lwkt_sendmsg(netisr_cpuport(cpuid), lmsg);
+		lwkt_sendmsg_oncpu(netisr_cpuport(cpuid), lmsg);
 	crit_exit();
 }
 
@@ -484,7 +484,7 @@ arprequest_async(struct ifnet *ifp, const struct in_addr *sip,
 	pmsg->nm_packet = m;
 	pmsg->base.lmsg.u.ms_resultp = ifp;
 
-	lwkt_sendmsg(netisr_cpuport(mycpuid), &pmsg->base.lmsg);
+	lwkt_sendmsg_oncpu(netisr_cpuport(mycpuid), &pmsg->base.lmsg);
 }
 
 /*
