@@ -31,14 +31,20 @@
  *
  * @(#)vprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vprintf.c,v 1.11 2007/01/09 00:28:08 imp Exp $
- * $DragonFly: src/lib/libc/stdio/vprintf.c,v 1.3 2003/11/09 02:34:02 dillon Exp $
  */
 
 #include <stdio.h>
+#include <xlocale.h>
 
 int
 vprintf(const char * __restrict fmt, __va_list ap)
 {
 
 	return (vfprintf(stdout, fmt, ap));
+}
+
+int
+vprintf_l(locale_t locale, const char * __restrict fmt, __va_list ap)
+{
+	return (vfprintf_l(stdout, locale, fmt, ap));
 }
