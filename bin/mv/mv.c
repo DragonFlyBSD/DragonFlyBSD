@@ -58,7 +58,7 @@
 #endif
 
 static int	fflg, hflg, iflg, nflg, vflg;
-volatile sig_atomic_t info;
+static volatile sig_atomic_t info;
 
 static int	copy(const char *, const char *);
 static int	do_move(const char *, const char *);

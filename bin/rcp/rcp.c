@@ -57,6 +57,7 @@
 #include <paths.h>
 #include <pwd.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,7 +70,7 @@
 #include <krb.h>
 #include "bsd_locl.h"
 
-char	dst_realm_buf[REALM_SZ];
+static char	dst_realm_buf[REALM_SZ];
 char	*dest_realm = NULL;
 int	use_kerberos = 1;
 CREDENTIALS	cred;
@@ -85,18 +86,19 @@ int	doencrypt = 0;
 #define	OPTIONS "46dfprt"
 #endif
 
-struct passwd *pwd;
-u_short	port;
-uid_t	userid;
-int errs, rem;
-int pflag, iamremote, iamrecursive, targetshouldbedirectory;
-int family = PF_UNSPEC;
+static struct passwd *pwd;
+static u_short	port;
+static uid_t	userid;
+static int errs, rem;
+static int pflag, targetshouldbedirectory, iamrecursive;
+int iamremote;
+static int family = PF_UNSPEC;
 
 static int argc_copy;
 static char **argv_copy;
 
 #define	CMDNEEDS	64
-char cmd[CMDNEEDS];		/* must hold "rcp -r -p -d\0" */
+static char cmd[CMDNEEDS];		/* must hold "rcp -r -p -d\0" */
 
 #ifdef KERBEROS
 int	 kerberos(char **, char *, char *, char *);
