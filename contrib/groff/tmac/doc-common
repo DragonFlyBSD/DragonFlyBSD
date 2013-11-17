@@ -639,7 +639,9 @@
 .  ds doc-command-name
 .
 .  ie \n[.$] \{\
-.    ie (\n[.$] == 3) \
+.    ie "\$1"$Mdocdate:" \
+.      ds doc-date-string \$2\~\$3, \$4
+.    el .ie (\n[.$] == 3) \
 .      ds doc-date-string \$1\~\$2 \$3
 .    el \{\
 .      ds doc-date-string "\*[doc-date-\n[mo]]
