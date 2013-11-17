@@ -38,7 +38,8 @@ MAN+=	fclose.3 ferror.3 fflush.3 fgetln.3 fgets.3 fgetwln.3 fgetws.3 \
 	funopen.3 fwide.3 getc.3 getline.3 \
 	getwc.3 mktemp.3 open_memstream.3 \
 	printf.3 printf_l.3 putc.3 putwc.3 remove.3 \
-	scanf.3 setbuf.3 stdio.3 tmpnam.3 ungetc.3 ungetwc.3 wprintf.3 wscanf.3
+	scanf.3 scanf_l.3 setbuf.3 stdio.3 tmpnam.3 \
+	ungetc.3 ungetwc.3 wprintf.3 wscanf.3
 
 MLINKS+=fclose.3 fcloseall.3
 MLINKS+=ferror.3 clearerr.3 ferror.3 clearerr_unlocked.3 \
@@ -74,6 +75,8 @@ MLINKS+=putc.3 fputc.3 putc.3 putc_unlocked.3 putc.3 putchar_unlocked.3 \
 MLINKS+=putwc.3 fputwc.3 putwc.3 putwchar.3
 MLINKS+=scanf.3 fscanf.3 scanf.3 sscanf.3 scanf.3 vfscanf.3 scanf.3 vscanf.3 \
 	scanf.3 vsscanf.3
+MLINKS+=scanf_l.3 fscanf_l.3 scanf_l.3 sscanf_l.3 scanf_l.3 vfscanf_l.3 \
+	scanf_l.3 vscanf_l.3 scanf_l.3 vsscanf_l.3
 MLINKS+=setbuf.3 setbuffer.3 setbuf.3 setlinebuf.3 setbuf.3 setvbuf.3
 MLINKS+=tmpnam.3 tempnam.3 tmpnam.3 tmpfile.3
 MLINKS+=wprintf.3 fwprintf.3 wprintf.3 swprintf.3 wprintf.3 vwprintf.3 \
