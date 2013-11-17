@@ -25,8 +25,7 @@ SRCS+=	__fpending.c _flock_stub.c \
 	ungetc.c ungetwc.c vasprintf.c vdprintf.c \
 	vfprintf.c vfscanf.c vfwprintf.c \
 	vfwscanf.c vprintf.c vscanf.c vsnprintf.c vsprintf.c vsscanf.c \
-	vswprintf.c vswscanf.c vwprintf.c vwscanf.c \
-	wbuf.c wprintf.c wprintf_l.3 \
+	vswprintf.c vswscanf.c vwprintf.c vwscanf.c wbuf.c wprintf.c \
 	wscanf.c wsetup.c xprintf.c xprintf_errno.c xprintf_float.c \
 	xprintf_hexdump.c xprintf_int.c xprintf_quote.c xprintf_str.c \
 	xprintf_time.c xprintf_vis.c
@@ -39,7 +38,7 @@ MAN+=	fclose.3 ferror.3 fflush.3 fgetln.3 fgets.3 fgetwln.3 fgetws.3 \
 	getwc.3 mktemp.3 open_memstream.3 \
 	printf.3 printf_l.3 putc.3 putwc.3 remove.3 \
 	scanf.3 scanf_l.3 setbuf.3 stdio.3 tmpnam.3 \
-	ungetc.3 ungetwc.3 wprintf.3 wscanf.3 wscanf_l.3
+	ungetc.3 ungetwc.3 wprintf.3 wprintf_l.3 wscanf.3 wscanf_l.3
 
 MLINKS+=fclose.3 fcloseall.3
 MLINKS+=ferror.3 clearerr.3 ferror.3 clearerr_unlocked.3 \
