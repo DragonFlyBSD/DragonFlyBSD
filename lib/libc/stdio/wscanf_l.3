@@ -63,7 +63,9 @@
 .Ft int
 .Fn vfwscanf_l "FILE * restrict stream" "locale_t loc" "const wchar_t * restrict format" "va_list ap"
 .Sh DESCRIPTION
-The above functions are used to convert formatted output in the locale
+The above functions are used to scan input according to a
+.Fa format
+in the locale
 .Fa loc .
 They behave in the same way as the versions without the _l suffix, but use
 the specified locale rather than the global or per-thread locale.
