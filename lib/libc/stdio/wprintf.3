@@ -30,7 +30,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)printf.3	8.1 (Berkeley) 6/4/93
-.\" FreeBSD: src/lib/libc/stdio/printf.3,v 1.47 2002/09/06 11:23:55 tjr Exp
 .\" $FreeBSD: head/lib/libc/stdio/wprintf.3 208027 2010-05-13 12:07:55Z uqs $
 .\"
 .Dd July 5, 2003
@@ -53,7 +52,7 @@
 .Fn wprintf "const wchar_t * restrict format" ...
 .In stdarg.h
 .Ft int
-.Fn vfwprintf "FILE * restrict stream" "const wchar_t * restrict" "va_list ap"
+.Fn vfwprintf "FILE * restrict stream" "const wchar_t * restrict format" "va_list ap"
 .Ft int
 .Fn vswprintf "wchar_t * restrict ws" "size_t n" "const wchar_t *restrict format" "va_list ap"
 .Ft int
