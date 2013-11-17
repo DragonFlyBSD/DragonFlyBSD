@@ -25,7 +25,8 @@ SRCS+=	__fpending.c _flock_stub.c \
 	ungetc.c ungetwc.c vasprintf.c vdprintf.c \
 	vfprintf.c vfscanf.c vfwprintf.c \
 	vfwscanf.c vprintf.c vscanf.c vsnprintf.c vsprintf.c vsscanf.c \
-	vswprintf.c vswscanf.c vwprintf.c vwscanf.c wbuf.c wprintf.c \
+	vswprintf.c vswscanf.c vwprintf.c vwscanf.c \
+	wbuf.c wprintf.c wprintf_l.3 \
 	wscanf.c wsetup.c xprintf.c xprintf_errno.c xprintf_float.c \
 	xprintf_hexdump.c xprintf_int.c xprintf_quote.c xprintf_str.c \
 	xprintf_time.c xprintf_vis.c
@@ -77,6 +78,9 @@ MLINKS+=setbuf.3 setbuffer.3 setbuf.3 setlinebuf.3 setbuf.3 setvbuf.3
 MLINKS+=tmpnam.3 tempnam.3 tmpnam.3 tmpfile.3
 MLINKS+=wprintf.3 fwprintf.3 wprintf.3 swprintf.3 wprintf.3 vwprintf.3 \
 	wprintf.3 vfwprintf.3 wprintf.3 vswprintf.3
+MLINKS+=wprintf_l.3 fwprintf_l.3 wprintf_l.3 swprintf_l.3 \
+	wprintf_l.3 vfwprintf_l.3 wprintf_l.3 vswprintf_l.3 \
+	wprintf_l.3 vwprintf_l.3
 MLINKS+=wscanf.3 fwscanf.3 wscanf.3 swscanf.3 wscanf.3 vfwscanf.3 \
 	wscanf.3 vswscanf.3 wscanf.3 vwscanf.3
 .endif
