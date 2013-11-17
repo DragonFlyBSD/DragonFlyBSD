@@ -1,0 +1,76 @@
+.\" Copyright (c) 1990, 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" Chris Torek and the American National Standards Committee X3,
+.\" on Information Processing Systems.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 3. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)scanf.3	8.2 (Berkeley) 12/11/93
+.\" $FreeBSD: head/lib/libc/stdio/wscanf.3 235363 2012-05-12 20:27:13Z joel $
+.\"
+.Dd November 17, 2013
+.Dt WSCANF 3
+.Os
+.Sh NAME
+.Nm wscanf_l ,
+.Nm fwscanf_l ,
+.Nm swscanf_l ,
+.Nm vwscanf_l ,
+.Nm vswscanf_l ,
+.Nm vfwscanf_l
+.Nd wide character input format conversion
+.Sh LIBRARY
+.Lb libc
+.Sh SYNOPSIS
+.In stdio.h
+.In wchar.h
+.In xlocale.h
+.Ft int
+.Fn wscanf_l "locale_t loc" "const wchar_t * restrict format" ...
+.Ft int
+.Fn fwscanf_l "FILE * restrict stream" "locale_t loc" "const wchar_t * restrict format" ...
+.Ft int
+.Fn swscanf_l "const wchar_t * restrict str" "locale_t loc" "const wchar_t * restrict format" ...
+.In stdarg.h
+.Ft int
+.Fn vwscanf_l "locale_t loc" "const wchar_t * restrict format" "va_list ap"
+.Ft int
+.Fn vswscanf_l "const wchar_t * restrict str" "locale_t loc" "const wchar_t * restrict format" "va_list ap"
+.Ft int
+.Fn vfwscanf_l "FILE * restrict stream" "locale_t loc" "const wchar_t * restrict format" "va_list ap"
+.Sh DESCRIPTION
+The above functions are used to convert formatted output in the locale
+.Fa loc .
+They behave in the same way as the versions without the _l suffix, but use
+the specified locale rather than the global or per-thread locale.
+See the specific manual pages for more information.
+.Sh SEE ALSO
+.Xr wscanf 3 ,
+.Xr xlocale 3
+.Sh STANDARDS
+These functions do not conform to any specific standard so they should be
+considered as non-portable local extensions.
