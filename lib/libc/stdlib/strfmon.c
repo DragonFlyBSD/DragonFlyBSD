@@ -2,6 +2,11 @@
  * Copyright (c) 2001 Alexey Zelkin <phantom@FreeBSD.org>
  * All rights reserved.
  *
+ * Copyright (c) 2011 The FreeBSD Foundation
+ * All rights reserved.
+ * Portions of this software were developed by David Chisnall
+ * under sponsorship from the FreeBSD Foundation.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -23,9 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/strfmon.c,v 1.19 2008/04/24 07:49:00 ru Exp $
- * $NetBSD: strfmon.c,v 1.3 2005/12/02 14:19:43 yamt Exp $
- * $DragonFly: src/lib/libc/stdlib/strfmon.c,v 1.1 2008/10/06 21:01:37 swildner Exp $
+ * $FreeBSD: head/lib/libc/stdlib/strfmon.c 227753 2011-11-20 14:45:42Z theraven $
  */
 
 #include <sys/types.h>
@@ -38,6 +41,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "xlocale_private.h"
 
 /* internal flags */
 #define	NEED_GROUPING		0x01	/* print digits grouped (default) */
@@ -57,7 +61,7 @@
 } while (0)
 
 #define PRINTS(STR) do {					\
-	const char *tmps = STR;					\
+	char *tmps = STR;					\
 	while (*tmps != '\0')					\
 		PRINT(*tmps++);					\
 } while (0)
@@ -88,15 +92,14 @@
 	groups++;						\
 } while (0)
 
-static void __setup_vars(int, char *, char *, char *, const char **);
+static void __setup_vars(int, char *, char *, char *, char **);
 static int __calc_left_pad(int, char *);
 static char *__format_grouped_double(double, int *, int, int, int);
 
-ssize_t
-strfmon(char * __restrict s, size_t maxsize, const char * __restrict format,
-    ...)
+static ssize_t
+vstrfmon_l(char * __restrict s, size_t maxsize, locale_t loc,
+		const char * __restrict format, va_list ap)
 {
-	va_list		ap;
 	char 		*dst;		/* output destination pointer */
 	const char 	*fmt;		/* current format poistion pointer */
 	struct lconv 	*lc;		/* pointer to lconv structure */
@@ -114,14 +117,15 @@ strfmon(char * __restrict s, size_t maxsize, const char * __restrict format,
 	char		cs_precedes,	/* values gathered from struct lconv */
 			sep_by_space,
 			sign_posn,
+			*signstr,
 			*currency_symbol;
-	const char	*signstr;
+
 	char		*tmpptr;	/* temporary vars */
 	int		sverrno;
+	FIX_LOCALE(loc);
 
-        va_start(ap, format);
 
-	lc = localeconv();
+	lc = localeconv_l(loc);
 	dst = s;
 	fmt = format;
 	asciivalue = NULL;
@@ -379,7 +383,6 @@ strfmon(char * __restrict s, size_t maxsize, const char * __restrict format,
 	}
 
 	PRINT('\0');
-	va_end(ap);
 	free(asciivalue);
 	free(currency_symbol);
 	return (dst - s - 1);	/* return size of put data except trailing '\0' */
@@ -398,20 +401,44 @@ end_error:
 	if (currency_symbol != NULL)
 		free(currency_symbol);
 	errno = sverrno;
-	va_end(ap);
 	return (-1);
 }
+ssize_t
+strfmon_l(char * __restrict s, size_t maxsize, locale_t loc, const char * __restrict format,
+    ...)
+{
+	size_t ret;
+	va_list ap;
+	va_start(ap, format);
+	ret = vstrfmon_l(s, maxsize, loc, format, ap);
+	va_end(ap);
+	return ret;
+}
+
+ssize_t
+strfmon(char * __restrict s, size_t maxsize, const char * __restrict format,
+    ...)
+{
+	size_t ret;
+	va_list ap;
+	va_start(ap, format);
+	ret = vstrfmon_l(s, maxsize, __get_locale(), format, ap);
+	va_end(ap);
+	return ret;
+}
+
 
 static void
 __setup_vars(int flags, char *cs_precedes, char *sep_by_space,
-		char *sign_posn, const char **signstr) {
+		char *sign_posn, char **signstr) {
+
 	struct lconv *lc = localeconv();
 
 	if ((flags & IS_NEGATIVE) && (flags & USE_INTL_CURRENCY)) {
 		*cs_precedes = lc->int_n_cs_precedes;
 		*sep_by_space = lc->int_n_sep_by_space;
 		*sign_posn = (flags & PARENTH_POSN) ? 0 : lc->int_n_sign_posn;
-		*signstr = (lc->negative_sign == '\0') ? "-"
+		*signstr = (lc->negative_sign[0] == '\0') ? "-"
 		    : lc->negative_sign;
 	} else if (flags & USE_INTL_CURRENCY) {
 		*cs_precedes = lc->int_p_cs_precedes;
@@ -422,7 +449,7 @@ __setup_vars(int flags, char *cs_precedes, char *sep_by_space,
 		*cs_precedes = lc->n_cs_precedes;
 		*sep_by_space = lc->n_sep_by_space;
 		*sign_posn = (flags & PARENTH_POSN) ? 0 : lc->n_sign_posn;
-		*signstr = (lc->negative_sign == '\0') ? "-"
+		*signstr = (lc->negative_sign[0] == '\0') ? "-"
 		    : lc->negative_sign;
 	} else {
 		*cs_precedes = lc->p_cs_precedes;
@@ -443,8 +470,7 @@ __setup_vars(int flags, char *cs_precedes, char *sep_by_space,
 static int
 __calc_left_pad(int flags, char *cur_symb) {
 
-	char cs_precedes, sep_by_space, sign_posn;
-	const char *signstr;
+	char cs_precedes, sep_by_space, sign_posn, *signstr;
 	int left_chars = 0;
 
 	__setup_vars(flags, &cs_precedes, &sep_by_space, &sign_posn, &signstr);
