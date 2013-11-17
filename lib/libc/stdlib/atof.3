@@ -31,13 +31,13 @@
 .\"
 .\"     @(#)atof.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/atof.3,v 1.17 2007/01/09 00:28:09 imp Exp $
-.\" $DragonFly: src/lib/libc/stdlib/atof.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
-.Dd June 4, 1993
+.Dd November 17, 2013
 .Dt ATOF 3
 .Os
 .Sh NAME
-.Nm atof
+.Nm atof ,
+.Nm atof_l
 .Nd convert
 .Tn ASCII
 string to double
@@ -47,6 +47,9 @@ string to double
 .In stdlib.h
 .Ft double
 .Fn atof "const char *nptr"
+.In xlocale.h
+.Ft double
+.Fn atof_l "locale_t loc" "const char *nptr"
 .Sh DESCRIPTION
 The
 .Fn atof
@@ -64,6 +67,9 @@ strtod(nptr, NULL);
 The decimal point
 character is defined in the program's locale (category
 .Dv LC_NUMERIC ) .
+.Pp
+The _l-suffixed version takes an explicit locale argument, whereas the
+non-suffixed version use the current global or per-thread locale.
 .Sh IMPLEMENTATION NOTES
 The
 .Fn atof
@@ -85,7 +91,8 @@ on an error.
 .Xr atol 3 ,
 .Xr strtod 3 ,
 .Xr strtol 3 ,
-.Xr strtoul 3
+.Xr strtoul 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn atof

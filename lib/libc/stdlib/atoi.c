@@ -28,13 +28,19 @@
  *
  * @(#)atoi.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/atoi.c,v 1.6 2007/01/09 00:28:09 imp Exp $
- * $DragonFly: src/lib/libc/stdlib/atoi.c,v 1.3 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include <stdlib.h>
+#include <xlocale.h>
 
 int
 atoi(const char *str)
 {
 	return((int)strtol(str, NULL, 10));
+}
+
+int
+atoi_l(const char *str, locale_t locale)
+{
+	return (int)strtol_l(str, (char **)NULL, 10, locale);
 }

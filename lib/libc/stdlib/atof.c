@@ -28,13 +28,19 @@
  *
  * @(#)atof.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/atof.c,v 1.6 2007/01/09 00:28:09 imp Exp $
- * $DragonFly: src/lib/libc/stdlib/atof.c,v 1.3 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include <stdlib.h>
+#include <xlocale.h>
 
 double
 atof(const char *ascii)
 {
 	return(strtod(ascii, NULL));
+}
+
+double
+atof_l(const char *ascii, locale_t locale)
+{
+	return strtod_l(ascii, (char **)NULL, locale);
 }

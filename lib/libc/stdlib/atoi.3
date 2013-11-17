@@ -31,13 +31,13 @@
 .\"
 .\"     @(#)atoi.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/atoi.3,v 1.14 2007/10/19 06:23:39 davidxu Exp $
-.\" $DragonFly: src/lib/libc/stdlib/atoi.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
-.Dd June 4, 1993
+.Dd November 17, 2013
 .Dt ATOI 3
 .Os
 .Sh NAME
-.Nm atoi
+.Nm atoi ,
+.Nm atoi_l
 .Nd convert
 .Tn ASCII
 string to integer
@@ -47,6 +47,9 @@ string to integer
 .In stdlib.h
 .Ft int
 .Fn atoi "const char *nptr"
+.In xlocale.h
+.Ft int
+.Fn atoi_l "locale_t loc" "const char *nptr"
 .Sh DESCRIPTION
 The
 .Fn atoi
@@ -66,6 +69,9 @@ The
 function has been deprecated by
 .Fn strtol
 and should not be used in new code.
+.Pp
+The _l-suffixed version takes an explicit locale argument, whereas the
+non-suffixed version use the current global or per-thread locale.
 .Sh ERRORS
 The function
 .Fn atoi
@@ -77,7 +83,8 @@ on an error.
 .Xr atol 3 ,
 .Xr strtod 3 ,
 .Xr strtol 3 ,
-.Xr strtoul 3
+.Xr strtoul 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn atoi

@@ -45,7 +45,9 @@ MAN+=	a64l.3 abort.3 abs.3 alloca.3 atexit.3 atof.3 atoi.3 atol.3 \
 	tsearch.3
 
 MLINKS+=a64l.3 l64a.3 a64l.3 l64a_r.3
-MLINKS+=atol.3 atoll.3
+MLINKS+=atof.3 atof_l.3
+MLINKS+=atoi.3 atoi_l.3
+MLINKS+=atol.3 atol_l.3 atol.3 atoll.3 atol.3 atoll_l.3
 MLINKS+=exit.3 _Exit.3
 MLINKS+=getenv.3 putenv.3 getenv.3 setenv.3 getenv.3 unsetenv.3
 MLINKS+=getopt_long.3 getopt_long_only.3

@@ -31,14 +31,15 @@
 .\"
 .\"     @(#)atol.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/atol.3,v 1.14 2007/01/09 00:28:09 imp Exp $
-.\" $DragonFly: src/lib/libc/stdlib/atol.3,v 1.3 2005/11/01 18:16:52 swildner Exp $
 .\"
-.Dd November 28, 2001
+.Dd November 17, 2013
 .Dt ATOL 3
 .Os
 .Sh NAME
 .Nm atol ,
-.Nm atoll
+.Nm atoll ,
+.Nm atol_l ,
+.Nm atoll_l
 .Nd convert
 .Tn ASCII
 string to
@@ -54,6 +55,11 @@ integer
 .Fn atol "const char *nptr"
 .Ft "long long"
 .Fn atoll "const char *nptr"
+.In xlocale.h
+.Ft long
+.Fn atol_l "locale_t loc" "const char *nptr"
+.Ft "long long"
+.Fn atoll_l "locale_t loc" "const char *nptr"
 .Sh DESCRIPTION
 The
 .Fn atol
@@ -80,6 +86,9 @@ representation.
 It is equivalent to:
 .Pp
 .Dl "strtoll(nptr, NULL, 10);"
+.Pp
+The _l-suffixed versions take an explicit locale argument, whereas the
+non-suffixed versions use the current global or per-thread locale.
 .Sh ERRORS
 The functions
 .Fn atol
@@ -94,7 +103,8 @@ on an error.
 .Xr atoi 3 ,
 .Xr strtod 3 ,
 .Xr strtol 3 ,
-.Xr strtoul 3
+.Xr strtoul 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn atol

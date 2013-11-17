@@ -27,14 +27,19 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libc/stdlib/atoll.c,v 1.1 2005/11/01 16:34:58 joerg Exp $
  */
 
 #include <stdlib.h>
+#include <xlocale.h>
 
 long long int
 atoll(const char *str)
 {
 	return(strtoll(str, NULL, 10));
+}
+
+long long
+atoll_l(const char *str, locale_t locale)
+{
+	return strtoll_l(str, (char **)NULL, 10, locale);
 }

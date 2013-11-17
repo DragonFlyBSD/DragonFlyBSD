@@ -28,13 +28,19 @@
  *
  * @(#)atol.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/atol.c,v 1.5 2007/01/09 00:28:09 imp Exp $
- * $DragonFly: src/lib/libc/stdlib/atol.c,v 1.3 2005/11/20 12:37:48 swildner Exp $
  */
 
 #include <stdlib.h>
+#include <xlocale.h>
 
 long
 atol(const char *str)
 {
 	return(strtol(str, NULL, 10));
+}
+
+long
+atol_l(const char *str, locale_t locale)
+{
+	return strtol_l(str, (char **)NULL, 10, locale);
 }
