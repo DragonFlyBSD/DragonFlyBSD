@@ -24,16 +24,22 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/vwscanf.c,v 1.1 2002/09/23 12:40:06 tjr Exp $
- * $DragonFly: src/lib/libc/stdio/vwscanf.c,v 1.1 2005/07/25 00:37:41 joerg Exp $
  */
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <wchar.h>
+#include <xlocale.h>
 
 int
 vwscanf(const wchar_t * __restrict fmt, va_list ap)
 {
 
 	return (vfwscanf(stdin, fmt, ap));
+}
+
+int
+vwscanf_l(locale_t locale, const wchar_t * __restrict fmt, va_list ap)
+{
+	return (vfwscanf_l(stdin, locale, fmt, ap));
 }

@@ -24,12 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/swscanf.c,v 1.1 2002/09/23 12:40:06 tjr Exp $
- * $DragonFly: src/lib/libc/stdio/swscanf.c,v 1.1 2005/07/25 00:37:41 joerg Exp $
  */
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <wchar.h>
+#include <xlocale.h>
 
 int
 swscanf(const wchar_t * __restrict str, const wchar_t * __restrict fmt, ...)
@@ -39,6 +39,20 @@ swscanf(const wchar_t * __restrict str, const wchar_t * __restrict fmt, ...)
 
 	va_start(ap, fmt);
 	r = vswscanf(str, fmt, ap);
+	va_end(ap);
+
+	return (r);
+}
+
+int
+swscanf_l(const wchar_t * __restrict str, locale_t locale,
+		const wchar_t * __restrict fmt, ...)
+{
+	va_list ap;
+	int r;
+
+	va_start(ap, fmt);
+	r = vswscanf_l(str, locale, fmt, ap);
 	va_end(ap);
 
 	return (r);
