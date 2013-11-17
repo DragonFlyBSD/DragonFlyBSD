@@ -43,7 +43,7 @@ typedef struct	_xlocale *locale_t;
 #define _XLOCALE_LOCALE1_H
 
 size_t	 strftime_l(char * __restrict, size_t, const char * __restrict,
-	    const struct tm * __restrict, locale_t);
+	    const struct tm * __restrict, locale_t) __strftimelike(3, 0);
 
 #endif /* _XLOCALE_LOCALE1_H */
 
