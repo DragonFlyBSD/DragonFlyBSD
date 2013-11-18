@@ -39,13 +39,15 @@
 #include <err.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "extern.h"
 
-int	lflag, sflag, xflag, zflag;
+int	lflag, sflag, xflag;
+static int zflag;
 
 static void usage (void);
 
