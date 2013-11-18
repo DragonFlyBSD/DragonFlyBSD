@@ -333,6 +333,9 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 
 	ata_fix_identify(&at->at_identify);
 
+	if (at->at_type == ATA_PORT_T_DISK && at->at_identify.nomrota_rate == 1)
+		type = "SSD";
+
 	/*
 	 * Read capacity using SATA probe info.
 	 */

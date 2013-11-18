@@ -153,7 +153,9 @@ struct ata_identify {
 	u_int16_t	padding5[6];	/* 170 */
 	u_int16_t	curmedser[30];	/* 176 */
 	u_int16_t	sctsupport;	/* 206 */
-	u_int16_t	padding4[48];	/* 207 */
+	u_int16_t	padding4[10];	/* 207 */
+	u_int16_t	nomrota_rate;	/* 217 */
+	u_int16_t	padding6[37];	/* 218 */
 	u_int16_t	integrity;	/* 255 */
 } __packed;
 
