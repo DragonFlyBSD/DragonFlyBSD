@@ -450,7 +450,7 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 	}
 
 	kprintf("%s: Found %s \"%*.*s %*.*s\" serial=\"%*.*s\"\n"
-		"%s: tags=%d/%d satacap=%04x satafea=%04x NCQ=%s "
+		"%s: tags=%d/%d satacap=%04x satacap2=%04x satafea=%04x NCQ=%s "
 		"capacity=%lld.%02dMB\n",
 
 		ATANAME(ap, atx),
@@ -462,6 +462,7 @@ ahci_cam_probe(struct ahci_port *ap, struct ata_port *atx)
 		ATANAME(ap, atx),
 		devncqdepth, ap->ap_sc->sc_ncmds,
 		at->at_identify.satacap,
+		at->at_identify.satacap2,
 		at->at_identify.satafsup,
 		(at->at_ncqdepth > 1 ? "YES" : "NO"),
 		(long long)capacity_bytes / (1024 * 1024),
