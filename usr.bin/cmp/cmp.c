@@ -37,6 +37,7 @@
 #include <sys/stat.h>
 
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -56,11 +57,15 @@ main(int argc, char **argv)
 {
 	struct stat sb1, sb2;
 	off_t skip1, skip2;
-	int ch, fd1, fd2, special;
+	int ch, fd1, fd2, oflag, special;
 	const char *file1, *file2;
 
-	while ((ch = getopt(argc, argv, "-lsxz")) != -1)
+	oflag = O_RDONLY;
+	while ((ch = getopt(argc, argv, "-lhsxz")) != -1)
 		switch (ch) {
+		case 'h':		/* Don't follow symlinks */
+			oflag |= O_NOFOLLOW;
+			break;
 		case 'l':		/* print all differences */
 			lflag = 1;
 			break;
@@ -99,13 +104,13 @@ endargs:
 		fd1 = 0;
 		file1 = "stdin";
 	}
-	else if ((fd1 = open(file1, O_RDONLY, 0)) < 0) {
+	else if ((fd1 = open(file1, oflag, 0)) < 0 && errno != EMLINK) {
 		if (!sflag)
 			err(ERR_EXIT, "%s", file1);
 		else
 			exit(1);
 	}
-	if (strcmp(file2 = argv[1], "-") == 0) {
+	if (strcmp(file2 = argv[1], "-") == 0 && errno != EMLINK) {
 		if (special)
 			errx(ERR_EXIT,
 				"standard input may only be specified once");
@@ -113,7 +118,7 @@ endargs:
 		fd2 = 0;
 		file2 = "stdin";
 	}
-	else if ((fd2 = open(file2, O_RDONLY, 0)) < 0) {
+	else if ((fd2 = open(file2, oflag, 0)) < 0) {
 		if (!sflag)
 			err(ERR_EXIT, "%s", file2);
 		else
