@@ -2659,10 +2659,13 @@ retry:
 
 		/*
 		 * If the file handle is stale we have to re-resolve the
-		 * entry.  This is a hack at the moment.
+		 * entry with the ncp held exclusively.  This is a hack
+		 * at the moment.
 		 */
 		if (error == ESTALE) {
 			vput(vp);
+			cache_unlock(&nd->nl_nch);
+			cache_lock(&nd->nl_nch);
 			cache_setunresolved(&nd->nl_nch);
 			error = cache_resolve(&nd->nl_nch, nd->nl_cred);
 			if (error == 0) {
@@ -2752,11 +2755,14 @@ again:
 	error = vn_stat(vp, st, nd->nl_cred);
 
 	/*
-	 * If the file handle is stale we have to re-resolve the entry.  This
-	 * is a hack at the moment.
+	 * If the file handle is stale we have to re-resolve the
+	 * entry with the ncp held exclusively.  This is a hack
+	 * at the moment.
 	 */
 	if (error == ESTALE) {
 		vput(vp);
+		cache_unlock(&nd->nl_nch);
+		cache_lock(&nd->nl_nch);
 		cache_setunresolved(&nd->nl_nch);
 		error = cache_resolve(&nd->nl_nch, nd->nl_cred);
 		if (error == 0)
