@@ -26,8 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/cmp/misc.c,v 1.2.6.1 2001/11/21 10:47:54 dwmalone Exp $
- * $DragonFly: src/usr.bin/cmp/misc.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
+ * $FreeBSD: head/usr.bin/cmp/misc.c 216370 2010-12-11 08:32:16Z joel $
  *
  * @(#)misc.c	8.3 (Berkeley) 4/2/94
  */

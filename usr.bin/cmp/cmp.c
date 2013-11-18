@@ -26,8 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/cmp/cmp.c,v 1.6.6.4 2001/11/21 10:47:54 dwmalone Exp $
- * $DragonFly: src/usr.bin/cmp/cmp.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
+ * $FreeBSD: head/usr.bin/cmp/cmp.c 216370 2010-12-11 08:32:16Z joel $
  *
  * @(#) Copyright (c) 1987, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cmp.c	8.3 (Berkeley) 4/2/94
@@ -40,15 +39,13 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "extern.h"
 
-int	lflag, sflag, xflag;
-static int zflag;
+int	lflag, sflag, xflag, zflag;
 
 static void usage (void);
 
@@ -61,7 +58,7 @@ main(int argc, char **argv)
 	const char *file1, *file2;
 
 	oflag = O_RDONLY;
-	while ((ch = getopt(argc, argv, "-lhsxz")) != -1)
+	while ((ch = getopt(argc, argv, "hlsxz")) != -1)
 		switch (ch) {
 		case 'h':		/* Don't follow symlinks */
 			oflag |= O_NOFOLLOW;
@@ -80,14 +77,10 @@ main(int argc, char **argv)
 		case 'z':		/* compare size first */
 			zflag = 1;
 			break;
-		case '-':		/* stdin (must be after options) */
-			--optind;
-			goto endargs;
 		case '?':
 		default:
 			usage();
 		}
-endargs:
 	argv += optind;
 	argc -= optind;
 
@@ -108,9 +101,9 @@ endargs:
 		if (!sflag)
 			err(ERR_EXIT, "%s", file1);
 		else
-			exit(1);
+			exit(ERR_EXIT);
 	}
-	if (strcmp(file2 = argv[1], "-") == 0 && errno != EMLINK) {
+	if (strcmp(file2 = argv[1], "-") == 0) {
 		if (special)
 			errx(ERR_EXIT,
 				"standard input may only be specified once");
@@ -118,22 +111,37 @@ endargs:
 		fd2 = 0;
 		file2 = "stdin";
 	}
-	else if ((fd2 = open(file2, oflag, 0)) < 0) {
+	else if ((fd2 = open(file2, oflag, 0)) < 0 && errno != EMLINK) {
 		if (!sflag)
 			err(ERR_EXIT, "%s", file2);
 		else
-			exit(1);
+			exit(ERR_EXIT);
 	}
 
 	skip1 = argc > 2 ? strtol(argv[2], NULL, 0) : 0;
 	skip2 = argc == 4 ? strtol(argv[3], NULL, 0) : 0;
+
+	if (fd1 == -1) {
+		if (fd2 == -1) {
+			c_link(file1, skip1, file2, skip2);
+			exit(0);
+		} else if (!sflag)
+			errx(ERR_EXIT, "%s: Not a symbolic link", file2);
+		else
+			exit(ERR_EXIT);
+	} else if (fd2 == -1) {
+		if (!sflag)
+			errx(ERR_EXIT, "%s: Not a symbolic link", file1);
+		else
+			exit(ERR_EXIT);
+	}
 
 	if (!special) {
 		if (fstat(fd1, &sb1)) {
 			if (!sflag)
 				err(ERR_EXIT, "%s", file1);
 			else
-				exit(1);
+				exit(ERR_EXIT);
 		}
 		if (!S_ISREG(sb1.st_mode))
 			special = 1;
@@ -142,7 +150,7 @@ endargs:
 				if (!sflag)
 					err(ERR_EXIT, "%s", file2);
 				else
-					exit(1);
+					exit(ERR_EXIT);
 			}
 			if (!S_ISREG(sb2.st_mode))
 				special = 1;
@@ -169,6 +177,6 @@ usage(void)
 {
 
 	(void)fprintf(stderr,
-	    "usage: cmp [-l | -s | -x] [-z] file1 file2 [skip1 [skip2]]\n");
+	    "usage: cmp [-l | -s | -x] [-hz] file1 file2 [skip1 [skip2]]\n");
 	exit(ERR_EXIT);
 }

@@ -1,8 +1,7 @@
-# $FreeBSD: src/usr.bin/cmp/Makefile,v 1.2.6.1 2001/11/21 10:47:54 dwmalone Exp $
-# $DragonFly: src/usr.bin/cmp/Makefile,v 1.4 2007/08/27 16:50:52 pavalos Exp $
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
+# $FreeBSD: head/usr.bin/cmp/Makefile 149388 2005-08-23 13:13:13Z brian $
 
 PROG=	cmp
-SRCS=	cmp.c misc.c regular.c special.c
+SRCS=	cmp.c link.c misc.c regular.c special.c
 
 .include <bsd.prog.mk>

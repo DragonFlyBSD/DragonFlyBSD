@@ -28,18 +28,17 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  *
- * $FreeBSD: src/usr.bin/cmp/extern.h,v 1.1.1.1.14.2 2001/11/21 10:47:54 dwmalone Exp $
- * $DragonFly: src/usr.bin/cmp/extern.h,v 1.3 2003/11/03 19:31:28 eirikn Exp $
- *
+ * $FreeBSD: head/usr.bin/cmp/extern.h 227156 2011-11-06 08:14:16Z ed $
  */
 
 #define OK_EXIT		0
 #define DIFF_EXIT	1
 #define ERR_EXIT	2	/* error exit code */
 
+void	c_link(const char *, off_t, const char *, off_t);
 void	c_regular(int, const char *, off_t, off_t, int, const char *, off_t, off_t);
 void	c_special(int, const char *, off_t, int, const char *, off_t);
 void	diffmsg(const char *, const char *, off_t, off_t);
 void	eofmsg(const char *);
 
-extern int lflag, sflag, xflag;
+extern int lflag, sflag, xflag, zflag;

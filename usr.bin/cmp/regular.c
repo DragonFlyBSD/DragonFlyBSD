@@ -26,8 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/cmp/regular.c,v 1.7.2.3 2001/11/21 10:47:54 dwmalone Exp $
- * $DragonFly: src/usr.bin/cmp/regular.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
+ * $FreeBSD: head/usr.bin/cmp/regular.c 223376 2011-06-21 20:44:06Z delphij $
  *
  * @(#)regular.c	8.3 (Berkeley) 4/2/94
  */
@@ -38,28 +37,30 @@
 
 #include <err.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h>
 
 #include "extern.h"
 
 static u_char *remmap(u_char *, int, off_t);
+static void segv_handler(int);
 #define MMAP_CHUNK (8*1024*1024)
 
 #define ROUNDPAGE(i) ((i) & ~pagemask)
 
 void
-c_regular(int fd1, const char *file1, off_t skip1, off_t len1, int fd2,
-          const char *file2, off_t skip2, off_t len2)
+c_regular(int fd1, const char *file1, off_t skip1, off_t len1,
+    int fd2, const char *file2, off_t skip2, off_t len2)
 {
 	u_char ch, *p1, *p2, *m1, *m2, *e1, *e2;
 	off_t byte, length, line;
 	int dfound;
 	off_t pagemask, off1, off2;
 	size_t pagesize;
+	struct sigaction act, oact;
 
 	if (skip1 > len1)
 		eofmsg(file1);
@@ -70,6 +71,12 @@ c_regular(int fd1, const char *file1, off_t skip1, off_t len1, int fd2,
 
 	if (sflag && len1 != len2)
 		exit(DIFF_EXIT);
+
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_NODEFER;
+	act.sa_handler = segv_handler;
+	if (sigaction(SIGSEGV, &act, &oact))
+		err(ERR_EXIT, "sigaction()");
 
 	pagesize = getpagesize();
 	pagemask = (off_t)pagesize - 1;
@@ -100,15 +107,14 @@ c_regular(int fd1, const char *file1, off_t skip1, off_t len1, int fd2,
 			if (xflag) {
 				dfound = 1;
 				printf("%08jx %02x %02x\n",
-				       (intmax_t)byte - 1, ch, *p2);
+				    (intmax_t)byte - 1, ch, *p2);
 			} else if (lflag) {
 				dfound = 1;
 				printf("%6jd %3o %3o\n",
-				       (intmax_t)byte, ch, *p2);
-			} else {
+				    (intmax_t)byte, ch, *p2);
+			} else
 				diffmsg(file1, file2, byte, line);
 				/* NOTREACHED */
-			}
 		}
 		if (ch == '\n')
 			++line;
@@ -132,6 +138,9 @@ c_regular(int fd1, const char *file1, off_t skip1, off_t len1, int fd2,
 	munmap(m1, MMAP_CHUNK);
 	munmap(m2, MMAP_CHUNK);
 
+	if (sigaction(SIGSEGV, &oact, NULL))
+		err(ERR_EXIT, "sigaction()");
+
 	if (len1 != len2)
 		eofmsg (len1 > len2 ? file2 : file1);
 	if (dfound)
@@ -148,4 +157,12 @@ remmap(u_char *mem, int fd, off_t offset)
 		return (NULL);
 	madvise(mem, MMAP_CHUNK, MADV_SEQUENTIAL);
 	return (mem);
+}
+
+static void
+segv_handler(int sig __unused) {
+	static const char msg[] = "cmp: Input/output error (caught SIGSEGV)\n";
+
+	write(STDERR_FILENO, msg, sizeof(msg));
+	_exit(EXIT_FAILURE);
 }
