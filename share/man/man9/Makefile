@@ -581,6 +581,8 @@ MLINKS+=kenv.9 kfreeenv.9 \
 	kenv.9 kunsetenv.9
 MLINKS+=kernacc.9 useracc.9
 MLINKS+=kmalloc.9 kfree.9 \
+	kmalloc.9 kmalloc_cachealign.9 \
+	kmalloc.9 kmalloc_raise_limit.9 \
 	kmalloc.9 krealloc.9 \
 	kmalloc.9 MALLOC_DECLARE.9 \
 	kmalloc.9 MALLOC_DEFINE.9
