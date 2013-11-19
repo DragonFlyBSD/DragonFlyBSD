@@ -733,11 +733,11 @@ dastrategy(struct dev_strategy_args *ap)
 	 * Place it in the queue of disk activities for this disk
 	 */
 	if (bp->b_cmd == BUF_CMD_WRITE || bp->b_cmd == BUF_CMD_FLUSH)
-		bioq_insert_tail(&softc->bio_queue_wr, bio);
+		bioqdisksort(&softc->bio_queue_wr, bio);
 	else if (bp->b_cmd == BUF_CMD_FREEBLKS) 
-		bioq_insert_tail(&softc->bio_queue_trim, bio);
+		bioqdisksort(&softc->bio_queue_trim, bio);
 	else
-		bioq_insert_tail(&softc->bio_queue_rd, bio);
+		bioqdisksort(&softc->bio_queue_rd, bio);
 	
 	/*
 	 * Schedule ourselves for performing the work.
