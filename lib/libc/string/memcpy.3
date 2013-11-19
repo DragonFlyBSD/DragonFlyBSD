@@ -44,11 +44,15 @@
 .In string.h
 .Ft void *
 .Fn memcpy "void *dst" "const void *src" "size_t len"
+.Ft void *
+.Fn mempcpy "void *dst" "const void *src" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn memcpy
-function
-copies
+and
+.Fn mempcpy
+functions
+copy
 .Fa len
 bytes from string
 .Fa src
@@ -59,6 +63,11 @@ The
 .Fn memcpy
 function
 returns the original value of
+.Fa dst .
+The
+.Fn mempcpy
+function
+returns a pointer to the byte directly following the last byte written in
 .Fa dst .
 .Sh SEE ALSO
 .Xr bcopy 3 ,
