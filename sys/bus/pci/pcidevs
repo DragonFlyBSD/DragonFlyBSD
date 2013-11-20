@@ -94,6 +94,7 @@ vendor PLANEX		0x14ea	Planex Communications
 vendor DELTA		0x1500	Delta Electronics
 vendor TERRATEC		0x153b	TerraTec Electronic
 vendor BLUESTEEL	0x15ab	Bluesteel Networks
+vendor VMWARE		0x15ad	VMware
 vendor NETSEC		0x1660	NetSec
 vendor ATHEROS		0x168c	Atheros Communications, Inc.
 vendor LINKSYS		0x1737	Linksys
