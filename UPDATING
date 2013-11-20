@@ -12,6 +12,12 @@
 +         UPGRADING DRAGONFLY FROM 3.4 to later versions                +
 +-----------------------------------------------------------------------+
 
+ABI CHANGE
+----------
+
+Installed third-party software (dports) will have to be rebuilt after upgrade,
+or reinstalled from binary packages.
+
 UPDATING FROM 3.4 TO 3.6
 ------------------------
 
