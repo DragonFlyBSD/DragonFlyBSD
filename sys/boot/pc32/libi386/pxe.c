@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/pxe.c,v 1.20 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/pxe.c,v 1.8 2005/12/10 00:39:48 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -287,7 +286,7 @@ pxe_open(struct open_file *f, ...)
 		if (!rootpath[1])
 			strcpy(rootpath, PXENFSROOTPATH);
 
-		for (i = 0; rootpath[i] != '\0' && i < FNAME_SIZE; i++) {
+		for (i = 0; i < FNAME_SIZE && rootpath[i] != '\0'; i++) {
 			if (rootpath[i] == ':')
 				break;
 		}

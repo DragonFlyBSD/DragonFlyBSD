@@ -38,7 +38,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/dev_net.c,v 1.13 2003/11/03 19:45:05 iedowse Exp $
- * $DragonFly: src/sys/boot/common/dev_net.c,v 1.4 2003/11/10 06:08:31 dillon Exp $
  */
 
 /*-
@@ -275,7 +274,7 @@ net_getparams(sock)
      * before passing it along.  This allows us to be compatible with
      * the kernel's diskless (BOOTP_NFSROOT) booting conventions
      */
-    for (i = 0; rootpath[i] != '\0' && i < FNAME_SIZE; i++)
+    for (i = 0; i < FNAME_SIZE && rootpath[i] != '\0'; i++)
 	    if (rootpath[i] == ':')
 		    break;
     if (i && i != FNAME_SIZE && rootpath[i] == ':') {
