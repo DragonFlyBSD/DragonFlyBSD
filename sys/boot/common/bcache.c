@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/bcache.c,v 1.12 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/bcache.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
  */
 
 /*
@@ -341,7 +340,7 @@ command_bcache(int argc, char *argv[])
 	if (((i + 1) % 4) == 0)
 	    printf("\n");
     }
-    printf("\n%d ops  %d bypasses  %d hits  %d misses  %d flushes\n", bcache_ops, bcache_bypasses, bcache_hits, bcache_misses, bcache_flushes);
+    printf("\n%u ops  %u bypasses  %u hits  %u misses  %u flushes\n", bcache_ops, bcache_bypasses, bcache_hits, bcache_misses, bcache_flushes);
     return(CMD_OK);
 }
 

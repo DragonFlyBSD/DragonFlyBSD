@@ -1117,7 +1117,7 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	    }
 	}
 	
- 	DEBUG("%d sectors from %d/%d/%d to %p (0x%x) %s", x, cyl, hd, sec - 1, p, VTOP(p), result ? "failed" : "ok");
+ 	DEBUG("%u sectors from %u/%u/%d to %p (0x%x) %s", x, cyl, hd, sec - 1, p, VTOP(p), result ? "failed" : "ok");
 	/* BUG here, cannot use v86 in printf because putchar uses it too */
 	DEBUG("ax = 0x%04x cx = 0x%04x dx = 0x%04x status 0x%x", 
 	      0x200 | x, ((cyl & 0xff) << 8) | ((cyl & 0x300) >> 2) | sec, (hd << 8) | od->od_unit, (v86.eax >> 8) & 0xff);
@@ -1268,7 +1268,7 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	    }
 	}
 	
- 	DEBUG("%d sectors from %d/%d/%d to %p (0x%x) %s", x, cyl, hd, sec - 1, p, VTOP(p), result ? "failed" : "ok");
+ 	DEBUG("%u sectors from %u/%u/%d to %p (0x%x) %s", x, cyl, hd, sec - 1, p, VTOP(p), result ? "failed" : "ok");
 	/* BUG here, cannot use v86 in printf because putchar uses it too */
 	DEBUG("ax = 0x%04x cx = 0x%04x dx = 0x%04x status 0x%x", 
 	      0x200 | x, ((cyl & 0xff) << 8) | ((cyl & 0x300) >> 2) | sec, (hd << 8) | od->od_unit, (v86.eax >> 8) & 0xff);
