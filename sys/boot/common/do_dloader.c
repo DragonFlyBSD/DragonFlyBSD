@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/interp.c,v 1.29 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/interp.c,v 1.4 2008/09/02 17:21:12 dillon Exp $
  */
 
 /*
@@ -50,13 +49,12 @@ perform(int argc, char *argv[])
     struct bootblk_command	**cmdp;
     bootblk_cmd_t		*cmd;
     const char *av0;
-    char *ptr;
 
     if (argc < 1)
 	return(CMD_OK);
 
     av0 = argv[0];
-    if ((ptr = strchr(av0, '=')) != NULL)
+    if (strchr(av0, '=') != NULL)
 	av0 = "local";
 
     /* set return defaults; a successful command will override these */
