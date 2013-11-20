@@ -12,6 +12,22 @@
 +         UPGRADING DRAGONFLY FROM 3.4 to later versions                +
 +-----------------------------------------------------------------------+
 
+UPDATING FROM 3.4 TO 3.6
+------------------------
+
+This only applies for this specific upgrade due to locale changes; it is 
+not needed for upgrades after 3.6.  Please update in this order:
+
+make buildworld
+make buildkernel
+make installworld
+make installkernel
+*reboot*
+make upgrade
+
+See this mailing list post for details:
+http://lists.dragonflybsd.org/pipermail/users/2013-September/090163.html
+
 CYRIX OPTIONS REMOVED
 ---------------------
 
