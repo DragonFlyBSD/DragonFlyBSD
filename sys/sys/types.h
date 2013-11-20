@@ -49,9 +49,7 @@
 #include <stdint.h>
 #endif
 #include <machine/stdarg.h>
-#ifndef _MACHINE_ENDIANT_H_
 #include <machine/endian.h>
-#endif
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif
