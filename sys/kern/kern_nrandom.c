@@ -21,8 +21,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $DragonFly: src/sys/kern/kern_nrandom.c,v 1.7 2008/08/01 04:42:30 dillon Exp $
  */
 /*			   --- NOTES ---
  *
@@ -509,22 +507,6 @@ add_buffer_randomness(const char *buf, int bytes)
 		error = EPERM;
 	}
 	return (error);
-}
-
-/*
- * Poll (always succeeds)
- */
-int
-random_poll(cdev_t dev, int events)
-{
-	int revents = 0;
-
-	if (events & (POLLIN | POLLRDNORM))
-		revents |= events & (POLLIN | POLLRDNORM);
-	if (events & (POLLOUT | POLLWRNORM))
-		revents |= events & (POLLOUT | POLLWRNORM);
-
-	return (revents);
 }
 
 /*
