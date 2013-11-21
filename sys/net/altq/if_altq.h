@@ -173,7 +173,7 @@ struct	ifaltq {
 	int	altq_maxlen;
 };
 
-#ifdef _KERNRL
+#ifdef _KERNEL
 /* COMPAT */
 #define ALTQ_LOCK(ifq) \
 	ALTQ_SQ_LOCK(&(ifq)->altq_subq[ALTQ_SUBQ_INDEX_DEFAULT])

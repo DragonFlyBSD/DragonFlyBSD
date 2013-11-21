@@ -55,7 +55,7 @@ typedef __va_list	va_list;
 #define IFNET_RUNLOCK()	crit_exit()
 
 #define IFQ_LOCK(ifq)	ALTQ_LOCK((ifq))
-#define IFQ_UNLOCK(ifq)	ALTQ_unLOCK((ifq))
+#define IFQ_UNLOCK(ifq)	ALTQ_UNLOCK((ifq))
 
 #define printf		kprintf
 #define sprintf		ksprintf
