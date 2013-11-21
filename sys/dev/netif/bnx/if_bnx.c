@@ -5975,7 +5975,10 @@ bnx_alloc_msix(struct bnx_softc *sc)
 		}
 	}
 
-	sc->bnx_msix_mem_rid = PCIR_BAR(4);
+	if (BNX_IS_5717_PLUS(sc))
+		sc->bnx_msix_mem_rid = PCIR_BAR(4);
+	else
+		sc->bnx_msix_mem_rid = PCIR_BAR(2);
 	sc->bnx_msix_mem_res = bus_alloc_resource_any(sc->bnx_dev,
 	    SYS_RES_MEMORY, &sc->bnx_msix_mem_rid, RF_ACTIVE);
 	if (sc->bnx_msix_mem_res == NULL) {
