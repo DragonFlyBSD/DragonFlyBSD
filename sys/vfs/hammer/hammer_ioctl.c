@@ -231,10 +231,8 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		}
 		break;
 	case HAMMERIOC_PFS_ITERATE:
-		if (error == 0) {
 			error = hammer_ioc_pfs_iterate(
 				&trans, (struct hammer_ioc_pfs_iterate *)data);
-		}
 		break;
 	default:
 		error = EOPNOTSUPP;
