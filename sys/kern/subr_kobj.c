@@ -107,13 +107,9 @@ kobj_class_compile(kobj_class_t cls)
 		 * In case of preemption, another thread might have been faster,
 		 * but that's fine for us.
 		 */
-		if (ops)
-			kfree(ops, M_KOBJ);
+		kfree(ops, M_KOBJ);
 		return;
-	}	
-
-	if (!ops)
-		panic("kobj_compile_methods: out of memory");
+	}
 
 	ops->cls = cls;
 	cls->ops = ops;
