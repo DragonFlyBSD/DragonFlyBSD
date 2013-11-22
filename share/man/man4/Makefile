@@ -151,6 +151,7 @@ MAN=	aac.4 \
 	km.4 \
 	ktr.4 \
 	kue.4 \
+	lagg.4 \
 	lge.4 \
 	lgue.4 \
 	lm.4 \
@@ -455,6 +456,7 @@ MLINKS+=ix.4 if_ix.4 \
 	ix.4 if_ixgbe.4
 MLINKS+=jme.4 if_jme.4
 MLINKS+=kue.4 if_kue.4
+MLINKS+=lagg.4 if_lagg.4
 MLINKS+=lge.4 if_lge.4
 MLINKS+=lgue.4 if_lgue.4
 MLINKS+=lo.4 loop.4

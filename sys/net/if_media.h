@@ -160,6 +160,10 @@ uint64_t ifmedia_baudrate(int);
 #define IFM_10G_LRM	24		/* 10GBase-LRM 850nm Multi-mode */
 #define IFM_UNKNOWN	25		/* media types not defined yet */
 #define IFM_10G_T	26		/* 10GBase-T - RJ45 */
+#define IFM_40G_CR4     27              /* 40GBase-CR4 */
+#define IFM_40G_SR4     28              /* 40GBase-SR4 */
+#define IFM_40G_LR4     29              /* 40GBase-LR4 */
+
 
 #define	IFM_ETH_MASTER	0x00000100	/* master mode (1000baseT) */
 #define	IFM_ETH_RXPAUSE	0x00000200	/* receive PAUSE frames */
@@ -340,6 +344,9 @@ struct ifmedia_description {
 	{ IFM_10G_TWINAX_LONG,	"10Gbase-Twinax-Long" },		\
 	{ IFM_UNKNOWN,	"Unknown" },					\
 	{ IFM_10G_T,	"10Gbase-T" },					\
+	{ IFM_40G_CR4,  "40Gbase-CR4" },                                \
+	{ IFM_40G_SR4,  "40Gbase-SR4" },                                \
+	{ IFM_40G_LR4,  "40Gbase-LR4" },                                \
 	{ 0, NULL },							\
 }
 
@@ -550,6 +557,9 @@ struct ifmedia_baudrate {
 	{ IFM_ETHER|IFM_10G_TWINAX_LONG,IF_Gbps(10ULL) },		\
 	{ IFM_ETHER|IFM_10G_LRM,	IF_Gbps(10ULL) },		\
 	{ IFM_ETHER|IFM_10G_T,		IF_Gbps(10ULL) },		\
+	{ IFM_ETHER | IFM_40G_CR4,      IF_Gbps(40ULL) },               \
+	{ IFM_ETHER | IFM_40G_SR4,      IF_Gbps(40ULL) },               \
+	{ IFM_ETHER | IFM_40G_LR4,      IF_Gbps(40ULL) },               \
 									\
 	{ IFM_IEEE80211|IFM_IEEE80211_FH1, IF_Mbps(1) },		\
 	{ IFM_IEEE80211|IFM_IEEE80211_FH2, IF_Mbps(2) },		\

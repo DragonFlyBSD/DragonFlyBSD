@@ -97,3 +97,5 @@ pseudo-device	bpf		#Berkeley packet filter
 device		vkd
 device		vke
 device		vcd
+
+device lagg

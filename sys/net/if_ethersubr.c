@@ -116,6 +116,12 @@ struct ifnet *(*bridge_interface_p)(void *if_bridge);
 static int ether_resolvemulti(struct ifnet *, struct sockaddr **,
 			      struct sockaddr *);
 
+/*
+ * if_lagg(4) support
+ */
+void	(*lagg_input_p)(struct ifnet *, struct mbuf *); 
+int (*lagg_output_p)(struct ifnet *, struct mbuf *);
+
 const uint8_t etherbroadcastaddr[ETHER_ADDR_LEN] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 };
@@ -278,6 +284,13 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			("%s: if_bridge not loaded!", __func__));
 		return bridge_output_p(ifp, m);
 	}
+#if XXX
+	if (ifp->if_lagg) {
+		KASSERT(lagg_output_p != NULL,
+			("%s: if_lagg not loaded!", __func__));
+		return lagg_output_p(ifp, m);
+	}
+#endif
 
 	/*
 	 * If a simplex interface, and the packet is being sent to our
@@ -999,6 +1012,14 @@ post_stats:
 
 	ether_type = ntohs(eh->ether_type);
 	KKASSERT(ether_type != ETHERTYPE_VLAN);
+
+        /* Handle input from a lagg(4) port */
+        if (ifp->if_type == IFT_IEEE8023ADLAG) {
+                KASSERT(lagg_input_p != NULL,
+                    ("%s: if_lagg not loaded!", __func__));
+                (*lagg_input_p)(ifp, m);
+		return;
+        }
 
 	if (m->m_flags & M_VLANTAG) {
 		void (*vlan_input_func)(struct mbuf *);

@@ -2375,6 +2375,7 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 	case IFT_ETHER:			/* these types use struct arpcom */
 	case IFT_XETHER:
 	case IFT_L2VLAN:
+	case IFT_IEEE8023ADLAG:
 		bcopy(lladdr, ((struct arpcom *)ifp->if_softc)->ac_enaddr, len);
 		bcopy(lladdr, LLADDR(sdl), len);
 		break;

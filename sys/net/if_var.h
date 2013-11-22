@@ -395,6 +395,7 @@ struct ifnet {
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
 	void	*if_bridge;		/* bridge glue */
+	void	*if_lagg;		/* lagg glue */
 	void	*if_afdata[AF_MAX];
 	struct ifaddr	*if_lladdr;
 

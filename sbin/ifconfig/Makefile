@@ -17,6 +17,7 @@ SRCS+=	af_inet.c		# IPv4 support
 SRCS+=	af_inet6.c		# IPv6 support
 
 SRCS+=	ifclone.c		# clone device support
+SRCS+=  iflagg.c
 #SRCS+=	ifmac.c			# MAC support
 SRCS+=	ifmedia.c		# SIOC[GS]IFMEDIA support
 SRCS+=	ifvlan.c		# SIOC[GS]ETVLAN support

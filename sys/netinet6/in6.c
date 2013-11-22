@@ -1824,6 +1824,32 @@ in6ifa_ifpwithaddr(struct ifnet *ifp, struct in6_addr *addr)
 }
 
 /*
+ * Find a link-local scoped address on ifp and return it if any.
+ */
+struct in6_ifaddr *
+in6ifa_llaonifp(struct ifnet *ifp)
+{
+        struct sockaddr_in6 *sin6;
+        struct ifaddr_container *ifac;
+
+        TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		struct ifaddr *ifa = ifac->ifa;
+
+                if (ifa->ifa_addr->sa_family != AF_INET6)
+                        continue;
+                sin6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+                if (IN6_IS_SCOPE_LINKLOCAL(&sin6->sin6_addr) ||
+                    IN6_IS_ADDR_MC_INTFACELOCAL(&sin6->sin6_addr) ||
+                    IN6_IS_ADDR_MC_NODELOCAL(&sin6->sin6_addr))
+                        break;
+        }
+	if (ifac != NULL)
+		return ((struct in6_ifaddr *)(ifac->ifa));
+	else
+		return (NULL);
+}
+
+/*
  * find the internet address on a given interface corresponding to a neighbor's
  * address.
  */
