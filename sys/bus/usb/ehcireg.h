@@ -175,7 +175,7 @@
 #define  EHCI_PS_CS		0x00000001 /* RO connect status */
 #define  EHCI_PS_CLEAR		(EHCI_PS_OCC|EHCI_PS_PEC|EHCI_PS_CSC)
 
-#define EHCI_PORT_RESET_COMPLETE 2 /* ms */
+#define EHCI_PORT_RESET_COMPLETE 2	   /* in ms */
 
 #define EHCI_FLALIGN_ALIGN	0x1000
 

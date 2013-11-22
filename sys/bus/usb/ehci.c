@@ -1580,6 +1580,7 @@ ehci_root_ctrl_start(usbd_xfer_handle xfer)
 	usb_device_request_t *req;
 	void *buf = NULL;
 	int port, i;
+	int retries;
 	int len, value, index, l, totlen = 0;
 	usb_port_status_t ps;
 	usb_hub_descriptor_t hubd;
@@ -1868,39 +1869,68 @@ ehci_root_ctrl_start(usbd_xfer_handle xfer)
 			EOWRITE4(sc, port, v | EHCI_PS_SUSP);
 			break;
 		case UHF_PORT_RESET:
+			/*
+			 * Give up ownership if this is a low-speed port.
+			 */
 			DPRINTFN(5,("ehci_root_ctrl_start: reset port %d\n",
 				    index));
 			if (EHCI_PS_IS_LOWSPEED(v)) {
-				/* Low speed device, give up ownership. */
 				ehci_disown(sc, index, 1);
 				break;
 			}
-			/* Start reset sequence. */
-			v &= ~ (EHCI_PS_PE | EHCI_PS_PR);
-			EOWRITE4(sc, port, v | EHCI_PS_PR);
-			/* Wait for reset to complete. */
-			usb_delay_ms(&sc->sc_bus, USB_PORT_ROOT_RESET_DELAY);
-			if (sc->sc_dying) {
-				err = USBD_IOERROR;
-				goto ret;
+
+			/*
+			 * Issue a RESET sequence on the port.  Set PS_PR for
+			 * 2ms then clear it, then wait for it to read clear.
+			 *
+			 * Some devices, particularly smartphones, will not
+			 * properly reset on the first try.
+			 */
+			retries = 2;
+
+			while (retries) {
+				v &= ~(EHCI_PS_PE | EHCI_PS_PR);
+				EOWRITE4(sc, port, v | EHCI_PS_PR);
+				usb_delay_ms(&sc->sc_bus,
+					     USB_PORT_ROOT_RESET_DELAY);
+				if (sc->sc_dying) {
+					err = USBD_IOERROR;
+					goto ret;
+				}
+				EOWRITE4(sc, port, v);
+				usb_delay_ms(&sc->sc_bus,
+					     EHCI_PORT_RESET_COMPLETE);
+				if (sc->sc_dying) {
+					err = USBD_IOERROR;
+					goto ret;
+				}
+				v = EOREAD4(sc, port);
+				DPRINTF(("ehci after reset, status=0x%08x\n",
+					v));
+				if ((v & EHCI_PS_PR) == 0 || --retries == 0)
+					break;
 			}
-			/* Terminate reset sequence. */
-			EOWRITE4(sc, port, v);
-			/* Wait for HC to complete reset. */
-			usb_delay_ms(&sc->sc_bus, EHCI_PORT_RESET_COMPLETE);
-			if (sc->sc_dying) {
-				err = USBD_IOERROR;
-				goto ret;
+
+			/*
+			 * Wait up to 1 second for PR to clear.
+			 */
+			retries = 10;
+			while ((v & EHCI_PS_PR) && --retries > 0) {
+				usb_delay_ms(&sc->sc_bus, 100);
+				v = EOREAD4(sc, port);
 			}
-			v = EOREAD4(sc, port);
-			DPRINTF(("ehci after reset, status=0x%08x\n", v));
 			if (v & EHCI_PS_PR) {
 				device_printf(sc->sc_bus.bdev,
-				    "port reset timeout\n");
-				return (USBD_TIMEOUT);
+					      "port reset timeout\n");
+				err = USBD_TIMEOUT;
+				goto ret;
 			}
-			if (!(v & EHCI_PS_PE)) {
-				/* Not a high speed device, give up ownership.*/
+
+			/*
+			 * Give up ownership if this is not a high-speed
+			 * device after completing the reset sequence.
+			 */
+			if ((v & EHCI_PS_PE) == 0) {
 				ehci_disown(sc, index, 0);
 				break;
 			}
