@@ -27,9 +27,8 @@
 .\"
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.33.2.13 2002/04/07 04:57:14 dd Exp $
-.\" $DragonFly: src/lib/libc/gen/sysctl.3,v 1.10 2008/05/02 02:05:03 swildner Exp $
 .\"
-.Dd January 23, 2001
+.Dd November 24, 2013
 .Dt SYSCTL 3
 .Os
 .Sh NAME
@@ -43,9 +42,9 @@
 .In sys/types.h
 .In sys/sysctl.h
 .Ft int
-.Fn sysctl "int *name" "u_int namelen" "void *oldp" "size_t *oldlenp" "void *newp" "size_t newlen"
+.Fn sysctl "const int *name" "u_int namelen" "void *oldp" "size_t *oldlenp" "const void *newp" "size_t newlen"
 .Ft int
-.Fn sysctlbyname "const char *name" "void *oldp" "size_t *oldlenp" "void *newp" "size_t newlen"
+.Fn sysctlbyname "const char *name" "void *oldp" "size_t *oldlenp" "const void *newp" "size_t newlen"
 .Ft int
 .Fn sysctlnametomib "const char *name" "int *mibp" "size_t *sizep"
 .Sh DESCRIPTION

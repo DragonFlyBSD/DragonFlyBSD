@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
- * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
+ * $FreeBSD: head/sys/sys/sysctl.h 204170 2010-02-21 13:57:02Z ed $
  * $DragonFly: src/sys/sys/sysctl.h,v 1.29 2008/09/30 12:20:29 hasso Exp $
  */
 
@@ -660,8 +660,8 @@ int	sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high);
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	sysctl (int *, u_int, void *, size_t *, void *, size_t);
-int	sysctlbyname (const char *, void *, size_t *, void *, size_t);
+int	sysctl(const int *, u_int, void *, size_t *, const void *, size_t);
+int	sysctlbyname(const char *, void *, size_t *, const void *, size_t);
 int	sysctlnametomib (const char *, int *, size_t *);
 __END_DECLS
 

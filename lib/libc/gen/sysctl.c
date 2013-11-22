@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)sysctl.c	8.2 (Berkeley) 1/4/94
- * $FreeBSD: src/lib/libc/gen/sysctl.c,v 1.6 2007/01/09 00:27:55 imp Exp $
- * $DragonFly: src/lib/libc/gen/sysctl.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
+ * $FreeBSD: head/lib/libc/gen/sysctl.c 240176 2012-09-06 20:15:44Z trhodes $
  */
 
 #include <sys/param.h>
@@ -41,15 +40,18 @@
 #include <unistd.h>
 #include <string.h>
 
-extern int __sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
-		    void *newp, size_t newlen);
+extern int __sysctl(const int *name, u_int namelen, void *oldp,
+    size_t *oldlenp, const void *newp, size_t newlen);
 
 int
-sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
-       size_t newlen)
+sysctl(const int *name, u_int namelen, void *oldp, size_t *oldlenp,
+    const void *newp, size_t newlen)
 {
-	if (name[0] != CTL_USER)
-		return (__sysctl(name, namelen, oldp, oldlenp, newp, newlen));
+	int retval;
+
+	retval = __sysctl(name, namelen, oldp, oldlenp, newp, newlen);
+	if (retval != -1 || errno != ENOENT || name[0] != CTL_USER)
+		return (retval);
 
 	if (newp != NULL) {
 		errno = EPERM;
