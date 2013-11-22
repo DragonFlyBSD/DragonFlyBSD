@@ -922,7 +922,7 @@ main(int argc, char **argv)
 	    const int mib[2] = { CTL_HW, HW_MACHINE_ARCH };
 	    size_t len = sizeof(machine_arch_buf);
                 
-	    if (sysctl(mib, __arraycount(mib), machine_arch_buf,
+	    if (sysctl(__DECONST(int *, mib) /* XXX */, __arraycount(mib), machine_arch_buf,
 		    &len, NULL, 0) < 0) {
 		(void)fprintf(stderr, "%s: sysctl failed (%s).\n", progname,
 		    strerror(errno));

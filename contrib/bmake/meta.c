@@ -658,7 +658,7 @@ meta_job_start(Job *job, GNode *gn)
  * It does not disturb our state.
  */
 void
-meta_job_child(Job *job)
+meta_job_child(Job __unused *job)
 {
 #ifdef USE_FILEMON
     BuildMon *pbm;
@@ -743,7 +743,7 @@ meta_job_output(Job *job, char *cp, const char *nl)
 }
 
 void
-meta_cmd_finish(void *pbmp)
+meta_cmd_finish(void __unused *pbmp)
 {
 #ifdef USE_FILEMON
     BuildMon *pbm = pbmp;
