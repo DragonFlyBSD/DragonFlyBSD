@@ -1,7 +1,9 @@
-/*	$FreeBSD: head/sys/dev/iwn/if_iwnvar.h 210108 2010-07-15 08:05:20Z bschmidt $	*/
-/*	$OpenBSD: if_iwnvar.h,v 1.17 2010/02/17 18:23:00 damien Exp $	*/
+/*	$FreeBSD$	*/
+/*	$OpenBSD: if_iwnvar.h,v 1.18 2010/04/30 16:06:46 damien Exp $	*/
 
 /*-
+ * Copyright (c) 2013 Cedric GROSS <cg@cgross.info>
+ * Copyright (c) 2011 Intel Corporation
  * Copyright (c) 2007, 2008
  *	Damien Bergamini <damien.bergamini@free.fr>
  * Copyright (c) 2008 Sam Leffler, Errno Consulting
@@ -18,8 +20,38 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+enum iwn_rxon_ctx_id {
+		IWN_RXON_BSS_CTX,
+		IWN_RXON_PAN_CTX,
+		IWN_NUM_RXON_CTX
+};
 
-#include <netproto/802_11/ieee80211_amrr.h>
+struct iwn_pan_slot {
+	uint16_t	time;
+	uint8_t		type;
+	uint8_t		reserved;
+} __packed;
+
+struct iwn_pan_params_cmd {
+	uint16_t flags;
+#define	IWN_PAN_PARAMS_FLG_SLOTTED_MODE	(1 << 3)
+
+	uint8_t reserved;
+	uint8_t num_slots;
+	struct iwn_pan_slot slots[10];
+} __packed;
+
+struct iwn_led_mode
+{
+	uint8_t		led_cur_mode;
+	uint64_t	led_cur_bt;
+	uint64_t	led_last_bt;
+	uint64_t	led_cur_tpt;
+	uint64_t	led_last_tpt;
+	uint64_t	led_bt_diff;
+	int		led_cur_time;
+	int		led_last_time;
+};
 
 struct iwn_rx_radiotap_header {
 	struct ieee80211_radiotap_header wr_ihdr;
@@ -80,15 +112,7 @@ struct iwn_tx_ring {
 	int			qid;
 	int			queued;
 	int			cur;
-};
-
-struct iwn_amrr {
-	struct	ieee80211_node ni;	/* must be the first */
-	int	txcnt;
-	int	retrycnt;
-	int	success;
-	int	success_threshold;
-	int	recovery;
+	int			read;
 };
 
 struct iwn_softc;
@@ -112,8 +136,11 @@ struct iwn_node {
 	struct	ieee80211_node		ni;	/* must be the first */
 	uint16_t			disable_tid;
 	uint8_t				id;
-	uint8_t				ridx[IEEE80211_RATE_MAXSIZE];
-	struct	ieee80211_amrr_node	amn;
+	struct {
+		uint64_t		bitmap;
+		int			startidx;
+		int			nframes;
+	} agg[IEEE80211_TID_SIZE];
 };
 
 struct iwn_calib_state {
@@ -162,13 +189,14 @@ struct iwn_fw_part {
 };
 
 struct iwn_fw_info {
-	u_char			*data;
+	const uint8_t		*data;
+	size_t			size;
 	struct iwn_fw_part	init;
 	struct iwn_fw_part	main;
 	struct iwn_fw_part	boot;
 };
 
-struct iwn_hal {
+struct iwn_ops {
 	int		(*load_firmware)(struct iwn_softc *);
 	void		(*read_eeprom)(struct iwn_softc *);
 	int		(*post_alive)(struct iwn_softc *);
@@ -185,21 +213,10 @@ struct iwn_hal {
 			    int);
 	void		(*tx_done)(struct iwn_softc *, struct iwn_rx_desc *,
 			    struct iwn_rx_data *);
-#if 0	/* HT */
 	void		(*ampdu_tx_start)(struct iwn_softc *,
-			    struct ieee80211_node *, uint8_t, uint16_t);
-	void		(*ampdu_tx_stop)(struct iwn_softc *, uint8_t,
+			    struct ieee80211_node *, int, uint8_t, uint16_t);
+	void		(*ampdu_tx_stop)(struct iwn_softc *, int, uint8_t,
 			    uint16_t);
-#endif
-	int		ntxqs;
-	int		ndmachnls;
-	uint8_t		broadcast_id;
-	int		rxonsz;
-	int		schedsz;
-	uint32_t	fw_text_maxsz;
-	uint32_t	fw_data_maxsz;
-	uint32_t	fwsz;
-	bus_size_t	sched_txfact_addr;
 };
 
 struct iwn_vap {
@@ -208,38 +225,52 @@ struct iwn_vap {
 
 	int			(*iv_newstate)(struct ieee80211vap *,
 				    enum ieee80211_state, int);
-	struct ieee80211_amrr	iv_amrr;
+	int			ctx;
+	int			beacon_int;
+	uint8_t		macaddr[IEEE80211_ADDR_LEN];
+
 };
 #define	IWN_VAP(_vap)	((struct iwn_vap *)(_vap))
 
 struct iwn_softc {
-	struct arpcom           arpcom;
+	device_t		sc_dev;
+
 	struct ifnet		*sc_ifp;
 	int			sc_debug;
 
-	/* Locks */
 	struct mtx		sc_mtx;
 
-	/* Bus */
-	device_t 		sc_dev;
-	int			mem_rid;
-	int			irq_rid;
-	struct resource 	*mem;
-	struct resource		*irq;
-	bus_dma_tag_t		sc_dmat;
-
 	u_int			sc_flags;
-#define IWN_FLAG_HAS_5GHZ	(1 << 0)
 #define IWN_FLAG_HAS_OTPROM	(1 << 1)
 #define IWN_FLAG_CALIB_DONE	(1 << 2)
 #define IWN_FLAG_USE_ICT	(1 << 3)
 #define IWN_FLAG_INTERNAL_PA	(1 << 4)
+#define IWN_FLAG_HAS_11N	(1 << 6)
+#define IWN_FLAG_ENH_SENS	(1 << 7)
+#define IWN_FLAG_ADV_BTCOEX	(1 << 8)
+#define IWN_FLAG_PAN_SUPPORT	(1 << 9)
+#define IWN_FLAG_BTCOEX		(1 << 10)
 
 	uint8_t 		hw_type;
-	const struct iwn_hal	*sc_hal;
+	/* subdevice_id used to adjust configuration */
+	uint16_t		subdevice_id;
+
+	struct iwn_ops		ops;
 	const char		*fwname;
 	const struct iwn_sensitivity_limits
 				*limits;
+	int			ntxqs;
+	int			firstaggqueue;
+	int			ndmachnls;
+	uint8_t			broadcast_id;
+	int			rxonsz;
+	int			schedsz;
+	uint32_t		fw_text_maxsz;
+	uint32_t		fw_data_maxsz;
+	uint32_t		fwsz;
+	bus_size_t		sched_txfact_addr;
+	uint32_t		reset_noise_gain;
+	uint32_t		noise_gain;
 
 	/* TX scheduler rings. */
 	struct iwn_dma_info	sched_dma;
@@ -264,28 +295,39 @@ struct iwn_softc {
 	struct iwn_tx_ring	txq[IWN5000_NTXQUEUES];
 	struct iwn_rx_ring	rxq;
 
+	int			mem_rid;
+	struct resource		*mem;
 	bus_space_tag_t		sc_st;
 	bus_space_handle_t	sc_sh;
+	int			irq_rid;
+	struct resource		*irq;
 	void 			*sc_ih;
 	bus_size_t		sc_sz;
 	int			sc_cap_off;	/* PCIe Capabilities. */
 
 	/* Tasks used by the driver */
-	struct task             sc_reinit_task;
+	struct task		sc_reinit_task;
 	struct task		sc_radioon_task;
 	struct task		sc_radiooff_task;
 
+	struct callout		calib_to;
 	int			calib_cnt;
 	struct iwn_calib_state	calib;
-
+	struct callout		watchdog_to;
+	struct callout		ct_kill_exit_to;
 	struct iwn_fw_info	fw;
-	struct iwn_calib_info	calibcmd[5];
+	struct iwn_calib_info	calibcmd[IWN5000_PHY_CALIB_MAX_RESULT];
 	uint32_t		errptr;
 
 	struct iwn_rx_stat	last_rx_stat;
 	int			last_rx_valid;
 	struct iwn_ucode_info	ucode_info;
-	struct iwn_rxon		rxon;
+	struct iwn_rxon		rx_on[IWN_NUM_RXON_CTX];
+	struct iwn_rxon		*rxon;
+	int			ctx;
+	struct ieee80211vap	*ivap[IWN_NUM_RXON_CTX];
+
+	uint8_t			uc_scan_progress;
 	uint32_t		rawtemp;
 	int			temp;
 	int			noise;
@@ -299,11 +341,14 @@ struct iwn_softc {
 	uint8_t			calib_ver;
 	char			eeprom_domain[4];
 	uint32_t		eeprom_crystal;
+	int16_t			eeprom_temp;
+	int16_t			eeprom_temp_high;
 	int16_t			eeprom_voltage;
 	int8_t			maxpwr2GHz;
 	int8_t			maxpwr5GHz;
 	int8_t			maxpwr[IEEE80211_CHAN_MAX];
-	int8_t			enh_maxpwr[35];
+
+	uint32_t		tlv_feature_flags;
 
 	int32_t			temp_off;
 	uint32_t		int_mask;
@@ -313,12 +358,44 @@ struct iwn_softc {
 	uint8_t			rxchainmask;
 	uint8_t			chainmask;
 
-	struct callout		sc_timer_to;
 	int			sc_tx_timer;
+	int			sc_scan_timer;
+
+	struct ieee80211_tx_ampdu *qid2tap[IWN5000_NTXQUEUES];
+
+	int			(*sc_ampdu_rx_start)(struct ieee80211_node *,
+				    struct ieee80211_rx_ampdu *, int, int, int);
+	void			(*sc_ampdu_rx_stop)(struct ieee80211_node *,
+				    struct ieee80211_rx_ampdu *);
+	int			(*sc_addba_request)(struct ieee80211_node *,
+				    struct ieee80211_tx_ampdu *, int, int, int);
+	int			(*sc_addba_response)(struct ieee80211_node *,
+				    struct ieee80211_tx_ampdu *, int, int, int);
+	void			(*sc_addba_stop)(struct ieee80211_node *,
+				    struct ieee80211_tx_ampdu *);
+
+	struct	iwn_led_mode sc_led;
 
 	struct iwn_rx_radiotap_header sc_rxtap;
 	struct iwn_tx_radiotap_header sc_txtap;
 
-	struct sysctl_ctx_list	sc_sysctl_ctx;
-	struct sysctl_oid	*sc_sysctl_tree;
+	/* The power save level originally configured by user */
+	int			desired_pwrsave_level;
+
+	/*
+	 * The current power save level, this may differ from the
+	 * configured value due to thermal throttling etc.
+	 */
+	int			current_pwrsave_level;
+
+	/* For specific params */
+	const struct iwn_base_params *base_params;
 };
+
+#define IWN_LOCK_INIT(_sc) \
+	mtx_init(&(_sc)->sc_mtx, device_get_nameunit((_sc)->sc_dev), \
+	    MTX_NETWORK_LOCK, MTX_DEF)
+#define IWN_LOCK(_sc)			mtx_lock(&(_sc)->sc_mtx)
+#define IWN_LOCK_ASSERT(_sc)		mtx_assert(&(_sc)->sc_mtx, MA_OWNED)
+#define IWN_UNLOCK(_sc)			mtx_unlock(&(_sc)->sc_mtx)
+#define IWN_LOCK_DESTROY(_sc)		mtx_destroy(&(_sc)->sc_mtx)

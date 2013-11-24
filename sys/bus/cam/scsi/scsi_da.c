@@ -1047,9 +1047,12 @@ dasysctlinit(void *context, int pending)
 	}
 
 	softc = (struct da_softc *)periph->softc;
-	ksnprintf(tmpstr, sizeof(tmpstr), "CAM DA unit %d", periph->unit_number);
-	ksnprintf(tmpstr2, sizeof(tmpstr2), "%d", periph->unit_number);
+	ksnprintf(tmpstr, sizeof(tmpstr),
+		  "CAM DA unit %d", periph->unit_number);
+	ksnprintf(tmpstr2, sizeof(tmpstr2),
+		  "%d", periph->unit_number);
 
+	sysctl_ctx_free(&softc->sysctl_ctx);
 	sysctl_ctx_init(&softc->sysctl_ctx);
 	softc->flags |= DA_FLAG_SCTX_INIT;
 	softc->sysctl_tree = SYSCTL_ADD_NODE(&softc->sysctl_ctx,
@@ -1141,6 +1144,7 @@ daregister(struct cam_periph *periph, void *arg)
 	}
 
 	softc = kmalloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	sysctl_ctx_init(&softc->sysctl_ctx);
 	LIST_INIT(&softc->pending_ccbs);
 	softc->state = DA_STATE_PROBE;
 	bioq_init(&softc->bio_queue_trim);
