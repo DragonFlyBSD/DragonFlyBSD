@@ -140,7 +140,7 @@ MAN=	aac.4 \
 	iwifw.4 \
 	iwn.4 \
 	iwnfw.4 \
-	ixgbe.4 \
+	ix.4 \
 	jme.4 \
 	joy.4 \
 	kate.4 \
@@ -447,7 +447,9 @@ MLINKS+=igb.4 if_igb.4
 MLINKS+=iwi.4 if_iwi.4
 #MLINKS+=iwl.4 if_iwl.4
 MLINKS+=iwn.4 if_iwn.4
-MLINKS+=ixgbe.4 if_ixgbe.4
+MLINKS+=ix.4 if_ix.4 \
+	ix.4 ixgbe.4 \
+	ix.4 if_ixgbe.4
 MLINKS+=jme.4 if_jme.4
 MLINKS+=kue.4 if_kue.4
 MLINKS+=lge.4 if_lge.4

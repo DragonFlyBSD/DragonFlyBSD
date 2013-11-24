@@ -1,6 +1,6 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2012, Intel Corporation 
+  Copyright (c) 2001-2013, Intel Corporation 
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without 
@@ -30,7 +30,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
-/*$FreeBSD: src/sys/dev/ixgbe/ixgbe_osdep.h,v 1.13 2012/07/05 20:51:44 jfv Exp $*/
+/*$FreeBSD$*/
 
 #ifndef _IXGBE_OS_H_
 #define _IXGBE_OS_H_
@@ -59,7 +59,7 @@
 #define usec_delay(x) DELAY(x)
 #define msec_delay(x) DELAY(1000*(x))
 
-#define DBG 0
+#define DBG 0 
 #define MSGOUT(S, A, B)     kprintf(S "\n", A, B)
 #define DEBUGFUNC(F)        DEBUGOUT(F);
 #if DBG
@@ -71,6 +71,9 @@
 	#define DEBUGOUT5(S,A,B,C,D,E)  kprintf(S "\n",A,B,C,D,E)
 	#define DEBUGOUT6(S,A,B,C,D,E,F)  kprintf(S "\n",A,B,C,D,E,F)
 	#define DEBUGOUT7(S,A,B,C,D,E,F,G)  kprintf(S "\n",A,B,C,D,E,F,G)
+	#define ERROR_REPORT1(S,A)      kprintf(S "\n",A)
+	#define ERROR_REPORT2(S,A,B)    kprintf(S "\n",A,B)
+	#define ERROR_REPORT3(S,A,B,C)  kprintf(S "\n",A,B,C)
 #else
 	#define DEBUGOUT(S)
 	#define DEBUGOUT1(S,A)
@@ -80,6 +83,10 @@
 	#define DEBUGOUT5(S,A,B,C,D,E)
 	#define DEBUGOUT6(S,A,B,C,D,E,F)
 	#define DEBUGOUT7(S,A,B,C,D,E,F,G)
+
+	#define ERROR_REPORT1(S,A)
+	#define ERROR_REPORT2(S,A,B)
+	#define ERROR_REPORT3(S,A,B,C)
 #endif
 
 #define FALSE               0
@@ -88,6 +95,9 @@
 #define true                1
 #define CMD_MEM_WRT_INVALIDATE          0x0010  /* BIT_4 */
 #define PCI_COMMAND_REGISTER            PCIR_COMMAND
+
+/* Shared code dropped this define.. */
+#define IXGBE_VENDOR_ID			0x8086
 
 /* Bunch of defines for shared code bogosity */
 #define UNREFERENCED_PARAMETER(_p)
@@ -107,12 +117,11 @@
 typedef uint8_t		u8;
 typedef int8_t		s8;
 typedef uint16_t	u16;
+typedef int16_t		s16;
 typedef uint32_t	u32;
 typedef int32_t		s32;
 typedef uint64_t	u64;
-#ifndef __bool_true_false_are_defined
 typedef boolean_t	bool;
-#endif
 
 /* shared code requires this */
 #define __le16  u16
@@ -125,8 +134,12 @@ typedef boolean_t	bool;
 #define le16_to_cpu 
 
 #if defined(__i386__) || defined(__x86_64__)
+#define mb()	__asm volatile("mfence" ::: "memory")
 #define wmb()	__asm volatile("sfence" ::: "memory")
+#define rmb()	__asm volatile("lfence" ::: "memory")
 #else
+#define mb()
+#define rmb()
 #define wmb()
 #endif
 
@@ -140,11 +153,29 @@ void prefetch(void *x)
 #define prefetch(x)
 #endif
 
-struct ixgbe_osdep
+/*
+ * Optimized bcopy thanks to Luigi Rizzo's investigative work.  Assumes
+ * non-overlapping regions and 32-byte padding on both src and dst.
+ */
+static __inline int
+ixgbe_bcopy(void *_src, void *_dst, int l)
 {
-	bus_space_tag_t    mem_bus_space_tag;
-	bus_space_handle_t mem_bus_space_handle;
-	struct device     *dev;
+	uint64_t *src = _src;
+	uint64_t *dst = _dst;
+
+	for (; l > 0; l -= 32) {
+		*dst++ = *src++;
+		*dst++ = *src++;
+		*dst++ = *src++;
+		*dst++ = *src++;
+	}
+	return (0);
+}
+
+struct ixgbe_osdep {
+	bus_space_tag_t		mem_bus_space_tag;
+	bus_space_handle_t	mem_bus_space_handle;
+	device_t		dev;
 };
 
 /* These routines are needed by the shared code */
@@ -177,6 +208,5 @@ extern void ixgbe_write_pci_cfg(struct ixgbe_hw *, u32, u16);
       bus_space_write_4( ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_tag, \
                       ((struct ixgbe_osdep *)(a)->back)->mem_bus_space_handle, \
                       (reg + ((offset) << 2)), value))
-
 
 #endif /* _IXGBE_OS_H_ */

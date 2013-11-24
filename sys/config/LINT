@@ -1778,7 +1778,7 @@ device		emx		# Intel Pro/1000 (8257{1,2,3,4})
 device		igb		# Intel Pro/1000 (82575, 82576, 82580, i350)
 				# Requires ig_hal
 device		ig_hal		# Intel Pro/1000 hardware abstraction layer
-device		ixgbe		# Intel PRO/10GbE PCIE Ethernet Family
+device		ix		# Intel PRO/10GbE PCIE Ethernet Family
 device		et		# Agere ET1310 10/100/1000 Ethernet
 device		lge		# Level 1 LXT1001 (``Mercury'')
 device		mxge		# Myricom Myri-10G 10GbE NIC

@@ -211,7 +211,7 @@ device		em		# Intel PRO/1000 adapter Gigabit Ethernet Card (``Wiseman'')
 device		igb		# Intel Pro/1000 (82575, 82576, 82580, i350)
 				# Requires ig_hal
 device		ig_hal		# Intel PRO/1000 hardware abstraction layer
-device		ixgbe		# Intel PRO/10GbE PCIE Ethernet Family
+device		ix		# Intel PRO/10GbE PCIE Ethernet Family
 
 device		oce		# Emulex OneConnect 10Gb
 

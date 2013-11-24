@@ -31,31 +31,35 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ixgbe.4,v 1.2 2008/06/17 21:14:02 brueffer Exp $
 .\"
-.Dd June 30, 2012
-.Dt IXGBE 4
+.Dd December 30, 2013
+.Dt IX 4
 .Os
 .Sh NAME
-.Nm ixgbe
-.Nd "Intel(R) 10Gb Ethernet driver for the DragonFly BSD operating system"
+.Nm ix
+.Nd "Intel(R) 10Gb Ethernet driver"
 .Sh SYNOPSIS
 To compile this driver into the kernel,
 place the following line in your
 kernel configuration file:
 .Bd -ragged -offset indent
-.Cd "device ixgbe"
+.Cd "device ix"
 .Ed
 .Pp
 Alternatively, to load the driver as a
 module at boot time, place the following line in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
-if_ixgbe_load="YES"
+if_ix_load="YES"
 .Ed
 .Sh DESCRIPTION
 The
 .Nm
 driver provides support for PCI 10Gb Ethernet adapters based on
-the Intel 82598EB Intel(R) Network Connections.
+the Intel
+82598EB,
+82599 and
+X540
+Intel(R) Network Connections.
 The driver supports Jumbo Frames, MSIX, TSO, and RSS.
 .Pp
 For questions related to hardware requirements,
@@ -79,22 +83,44 @@ driver supports the following cards:
 .Pp
 .Bl -bullet -compact
 .It
-Intel(R) 10 Gigabit XF SR/AF Dual Port Server Adapter
+Intel 10 Gigabit AF DA Dual Port Server Adapter
 .It
-Intel(R) 10 Gigabit XF SR/LR Server Adapter
+Intel 10 Gigabit AT Server Adapter
 .It
-Intel(R) 82598EB 10 Gigabit AF Network Connection
+Intel 10 Gigabit AT2 Server Adapter
 .It
-Intel(R) 82598EB 10 Gigabit AT CX4 Network Connection
+Intel 10 Gigabit CX4 Dual Port Server Adapter
+.It
+Intel 10 Gigabit XF LR Server Adapter
+.It
+Intel 10 Gigabit XF SR Dual Port Server Adapter
+.It
+Intel 10 Gigabit XF SR Server Adapter
+.It
+Intel 82598 10 Gigabit Ethernet Controller
+.It
+Intel 82599 10 Gigabit Ethernet Controller
+.It
+Intel Ethernet Controller X540-AT2
+.It
+Intel Ethernet Converged Network Adapter X520 Series
+.It
+Intel Ethernet Converged Network Adapter X540-T1
+.It
+Intel Ethernet Converged Network Adapter X540-T2
+.It
+Intel Ethernet Server Adapter X520 Series
+.It
+Intel Ethernet Server Adapter X520-DA2
+.It
+Intel Ethernet Server Adapter X520-LR1
+.It
+Intel Ethernet Server Adapter X520-SR1
+.It
+Intel Ethernet Server Adapter X520-SR2
+.It
+Intel Ethernet Server Adapter X520-T2
 .El
-.Sh PERFORMANCE
-The default
-.Dx
-configuration may not give the best possible
-performance with single streams TCP connections.
-Increasing the value of the
-.Va net.inet.tcp.sosend_agglim
-sysctl to 12 or more will increase sending speeds.
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "ix%d: Unable to allocate bus resource: memory"

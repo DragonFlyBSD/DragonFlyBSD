@@ -636,6 +636,9 @@ IGB_RSS_DEBUG		opt_igb.h
 IGB_TSS_DEBUG		opt_igb.h
 IGB_MSIX_DEBUG		opt_igb.h
 
+# ix driver
+IX_RSS_DEBUG		opt_ix.h
+
 # Options for the Intel 802.11n wireless driver
 IWN_DEBUG		opt_iwn.h
 

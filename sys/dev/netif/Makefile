@@ -3,7 +3,7 @@ SUBDIR= an age alc ale ath bce bfe bge \
 	fwe fxp ic iwi iwn jme lge lnc \
 	mii_layer my msk mxge ndis nfe nge oce pcn \
 	ral re rl sbsh sf sis sk sln sr ste stge ti tl tx txp \
-	vge vr vx wb wi wpi xe xl ig_hal emx ae igb ixgbe bnx
+	vge vr vx wb wi wpi xe xl ig_hal emx ae igb ix bnx
 
 .if ${MACHINE_ARCH} == "i386"
 SUBDIR+=ar sbni
