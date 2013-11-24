@@ -134,6 +134,13 @@ ieee80211_ack_duration(const struct ieee80211_rate_table *rt,
 	}
 }
 
+static __inline__ uint8_t
+ieee80211_legacy_rate_lookup(const struct ieee80211_rate_table *rt,
+			     uint8_t rate)
+{
+	return (rt->rateCodeToIndex[rate & IEEE80211_RATE_VAL]);
+}
+
 /*
  * Compute the time to transmit a frame of length frameLen bytes
  * using the specified 802.11 rate code, phy, and short preamble

@@ -577,6 +577,17 @@ ieee80211_add_callback(struct mbuf *m,
 }
 
 void
+ieee80211_tx_complete(struct ieee80211_node *ni, struct mbuf *m, int status)
+{
+	if (ni != NULL) {
+		if (m->m_flags & M_TXCB)
+			ieee80211_process_callback(ni, m, status);
+		ieee80211_free_node(ni);
+	}
+	m_freem(m);
+}
+
+void
 ieee80211_process_callback(struct ieee80211_node *ni,
 	struct mbuf *m, int status)
 {

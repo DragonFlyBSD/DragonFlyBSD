@@ -88,6 +88,9 @@ int	ieee80211_send_probereq(struct ieee80211_node *ni,
 		const uint8_t da[IEEE80211_ADDR_LEN],
 		const uint8_t bssid[IEEE80211_ADDR_LEN],
 		const uint8_t *ssid, size_t ssidlen);
+void    ieee80211_tx_complete(struct ieee80211_node *,
+		struct mbuf *, int);
+
 /*
  * The formation of ProbeResponse frames requires guidance to
  * deal with legacy clients.  When the client is identified as
