@@ -1,4 +1,4 @@
-.\"     $NetBSD: nls.7,v 1.11 2003/06/26 11:55:56 wiz Exp $
+.\"     $NetBSD: nls.7,v 1.15 2009/04/09 02:51:54 joerg Exp $
 .\"
 .\" Copyright (c) 2003 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -14,13 +14,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"        This product includes software developed by the NetBSD
-.\"        Foundation, Inc. and its contributors.
-.\" 4. Neither the name of The NetBSD Foundation nor the names of its
-.\"    contributors may be used to endorse or promote products derived
-.\"    from this software without specific prior written permission.
 .\"
 .\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
 .\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -34,7 +27,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd May 17, 2003
+.Dd November 24, 2013
 .Dt NLS 7
 .Os
 .Sh NAME
@@ -102,18 +95,18 @@ as outlined in the list above.
 ISO C specifies the following six standard categories supported by
 .Dx :
 .Pp
-.Bl -tag -compact -width LC_MONETARYXX
-.It LC_COLLATE
+.Bl -tag -compact -width ".Ev LC_MONETARY"
+.It Ev LC_COLLATE
 string-collation order information
-.It LC_CTYPE
+.It Ev LC_CTYPE
 character classification, case conversion, and other character attributes
-.It LC_MESSAGES
+.It Ev LC_MESSAGES
 the format for affirmative and negative responses
-.It LC_MONETARY
+.It Ev LC_MONETARY
 rules and symbols for formatting monetary numeric information
-.It LC_NUMERIC
+.It Ev LC_NUMERIC
 rules and symbols for formatting nonmonetary numeric information
-.It LC_TIME
+.It Ev LC_TIME
 rules and symbols for formatting time and date information
 .El
 .Pp
@@ -145,156 +138,151 @@ The values of these environment variables contains a string format as:
 Valid values for the language field come from the ISO639 standard which
 defines two-character codes for many languages.
 Some common language codes are:
-.Pp
-.nf
-.ta \w'SERBO-CROATIAN'u+2n +\w'DE'u+5n +\w'OCEANIC/INDONESIAN'u+2nC
-\fILanguage Name\fP	\fICode\fP	\fILanguage Family\fP
-.ta \w'SERBO-CROATIAN'u+2n +\w'DE'u+5n +\w'OCEANIC/INDONESIAN'u+2nC
-.sp 5p
-ABKHAZIAN	AB	IBERO-CAUCASIAN
-AFAN (OROMO)	OM	HAMITIC
-AFAR	AA	HAMITIC
-AFRIKAANS	AF	GERMANIC
-ALBANIAN	SQ	INDO-EUROPEAN (OTHER)
-AMHARIC	AM	SEMITIC
-ARABIC	AR	SEMITIC
-ARMENIAN	HY	INDO-EUROPEAN (OTHER)
-ASSAMESE	AS	INDIAN
-AYMARA	AY	AMERINDIAN
-AZERBAIJANI	AZ	TURKIC/ALTAIC
-BASHKIR	BA	TURKIC/ALTAIC
-BASQUE	EU	BASQUE
-BENGALI	BN	INDIAN
-BHUTANI	DZ	ASIAN
-BIHARI	BH	INDIAN
-BISLAMA	BI
-BRETON	BR	CELTIC
-BULGARIAN	BG	SLAVIC
-BURMESE	MY	ASIAN
-BYELORUSSIAN	BE	SLAVIC
-CAMBODIAN	KM	ASIAN
-CATALAN	CA	ROMANCE
-CHINESE	ZH	ASIAN
-CORSICAN	CO	ROMANCE
-CROATIAN	HR	SLAVIC
-CZECH	CS	SLAVIC
-DANISH	DA	GERMANIC
-DUTCH	NL	GERMANIC
-ENGLISH	EN	GERMANIC
-ESPERANTO	EO	INTERNATIONAL AUX.
-ESTONIAN	ET	FINNO-UGRIC
-FAROESE	FO	GERMANIC
-FIJI	FJ	OCEANIC/INDONESIAN
-FINNISH	FI	FINNO-UGRIC
-FRENCH	FR	ROMANCE
-FRISIAN	FY	GERMANIC
-GALICIAN	GL	ROMANCE
-GEORGIAN	KA	IBERO-CAUCASIAN
-GERMAN	DE	GERMANIC
-GREEK	EL	LATIN/GREEK
-GREENLANDIC	KL	ESKIMO
-GUARANI	GN	AMERINDIAN
-GUJARATI	GU	INDIAN
-HAUSA	HA	NEGRO-AFRICAN
-HEBREW	HE	SEMITIC
-HINDI	HI	INDIAN
-HUNGARIAN	HU	FINNO-UGRIC
-ICELANDIC	IS	GERMANIC
-INDONESIAN	ID	OCEANIC/INDONESIAN
-INTERLINGUA	IA	INTERNATIONAL AUX.
-INTERLINGUE	IE	INTERNATIONAL AUX.
-INUKTITUT	IU
-INUPIAK	IK	ESKIMO
-IRISH	GA	CELTIC
-ITALIAN	IT	ROMANCE
-JAPANESE	JA	ASIAN
-JAVANESE	JV	OCEANIC/INDONESIAN
-KANNADA	KN	DRAVIDIAN
-KASHMIRI	KS	INDIAN
-KAZAKH	KK	TURKIC/ALTAIC
-KINYARWANDA	RW	NEGRO-AFRICAN
-KIRGHIZ	KY	TURKIC/ALTAIC
-KURUNDI	RN	NEGRO-AFRICAN
-KOREAN	KO	ASIAN
-KURDISH	KU	IRANIAN
-LAOTHIAN	LO	ASIAN
-LATIN	LA	LATIN/GREEK
-LATVIAN	LV	BALTIC
-LINGALA	LN	NEGRO-AFRICAN
-LITHUANIAN	LT	BALTIC
-MACEDONIAN	MK	SLAVIC
-MALAGASY	MG	OCEANIC/INDONESIAN
-MALAY	MS	OCEANIC/INDONESIAN
-MALAYALAM	ML	DRAVIDIAN
-MALTESE	MT	SEMITIC
-MAORI	MI	OCEANIC/INDONESIAN
-MARATHI	MR	INDIAN
-MOLDAVIAN	MO	ROMANCE
-MONGOLIAN	MN
-NAURU	NA
-NEPALI	NE	INDIAN
-NORWEGIAN	NO	GERMANIC
-OCCITAN	OC	ROMANCE
-ORIYA	OR	INDIAN
-PASHTO	PS	IRANIAN
-PERSIAN (farsi)	FA	IRANIAN
-POLISH	PL	SLAVIC
-PORTUGUESE	PT	ROMANCE
-PUNJABI	PA	INDIAN
-QUECHUA	QU	AMERINDIAN
-RHAETO-ROMANCE  RM	ROMANCE
-ROMANIAN	RO	ROMANCE
-RUSSIAN	RU	SLAVIC
-SAMOAN	SM	OCEANIC/INDONESIAN
-SANGHO	SG	NEGRO-AFRICAN
-SANSKRIT	SA	INDIAN
-SCOTS GAELIC	GD	CELTIC
-SERBIAN	SR	SLAVIC
-SERBO-CROATIAN  SH	SLAVIC
-SESOTHO	ST	NEGRO-AFRICAN
-SETSWANA	TN	NEGRO-AFRICAN
-SHONA	SN	NEGRO-AFRICAN
-SINDHI	SD	INDIAN
-SINGHALESE	SI	INDIAN
-SISWATI	SS	NEGRO-AFRICAN
-SLOVAK	SK	SLAVIC
-SLOVENIAN	SL	SLAVIC
-SOMALI	SO	HAMITIC
-SPANISH	ES	ROMANCE
-SUNDANESE	SU	OCEANIC/INDONESIAN
-SWAHILI	SW	NEGRO-AFRICAN
-SWEDISH	SV	GERMANIC
-TAGALOG	TL	OCEANIC/INDONESIAN
-TAJIK	TG	IRANIAN
-TAMIL	TA	DRAVIDIAN
-TATAR	TT	TURKIC/ALTAIC
-TELUGU	TE	DRAVIDIAN
-THAI	TH	ASIAN
-TIBETAN	BO	ASIAN
-TIGRINYA	TI	SEMITIC
-TONGA	TO	OCEANIC/INDONESIAN
-TSONGA	TS	NEGRO-AFRICAN
-TURKISH	TR	TURKIC/ALTAIC
-TURKMEN	TK	TURKIC/ALTAIC
-TWI	TW	NEGRO-AFRICAN
-UIGUR	UG
-UKRAINIAN	UK	SLAVIC
-URDU	UR	INDIAN
-UZBEK	UZ	TURKIC/ALTAIC
-VIETNAMESE	VI	ASIAN
-VOLAPUK	VO	INTERNATIONAL AUX.
-WELSH	CY	CELTIC
-WOLOF	WO	NEGRO-AFRICAN
-XHOSA	XH	NEGRO-AFRICAN
-YIDDISH	YI	GERMANIC
-YORUBA	YO	NEGRO-AFRICAN
-ZHUANG	ZA
-ZULU	ZU	NEGRO-AFRICAN
-.ta
-.fi
+.Bl -column "PERSIAN (farsi)" "Sy Code" "OCEANIC/INDONESIAN"
+.It Sy Language Name Ta Sy Code Ta Sy Language Family
+.It ABKHAZIAN	AB	IBERO-CAUCASIAN
+.It AFAN (OROMO)	OM	HAMITIC
+.It AFAR	AA	HAMITIC
+.It AFRIKAANS	AF	GERMANIC
+.It ALBANIAN	SQ	INDO-EUROPEAN (OTHER)
+.It AMHARIC	AM	SEMITIC
+.It ARABIC	AR	SEMITIC
+.It ARMENIAN	HY	INDO-EUROPEAN (OTHER)
+.It ASSAMESE	AS	INDIAN
+.It AYMARA	AY	AMERINDIAN
+.It AZERBAIJANI	AZ	TURKIC/ALTAIC
+.It BASHKIR	BA	TURKIC/ALTAIC
+.It BASQUE	EU	BASQUE
+.It BENGALI	BN	INDIAN
+.It BHUTANI	DZ	ASIAN
+.It BIHARI	BH	INDIAN
+.It BISLAMA     Ta BI   Ta ""
+.It BRETON	BR	CELTIC
+.It BULGARIAN	BG	SLAVIC
+.It BURMESE	MY	ASIAN
+.It BYELORUSSIAN	BE	SLAVIC
+.It CAMBODIAN	KM	ASIAN
+.It CATALAN	CA	ROMANCE
+.It CHINESE	ZH	ASIAN
+.It CORSICAN	CO	ROMANCE
+.It CROATIAN	HR	SLAVIC
+.It CZECH	CS	SLAVIC
+.It DANISH	DA	GERMANIC
+.It DUTCH	NL	GERMANIC
+.It ENGLISH	EN	GERMANIC
+.It ESPERANTO	EO	INTERNATIONAL AUX.
+.It ESTONIAN	ET	FINNO-UGRIC
+.It FAROESE	FO	GERMANIC
+.It FIJI	FJ	OCEANIC/INDONESIAN
+.It FINNISH	FI	FINNO-UGRIC
+.It FRENCH	FR	ROMANCE
+.It FRISIAN	FY	GERMANIC
+.It GALICIAN	GL	ROMANCE
+.It GEORGIAN	KA	IBERO-CAUCASIAN
+.It GERMAN	DE	GERMANIC
+.It GREEK	EL	LATIN/GREEK
+.It GREENLANDIC	KL	ESKIMO
+.It GUARANI	GN	AMERINDIAN
+.It GUJARATI	GU	INDIAN
+.It HAUSA	HA	NEGRO-AFRICAN
+.It HEBREW	HE	SEMITIC
+.It HINDI	HI	INDIAN
+.It HUNGARIAN	HU	FINNO-UGRIC
+.It ICELANDIC	IS	GERMANIC
+.It INDONESIAN	ID	OCEANIC/INDONESIAN
+.It INTERLINGUA	IA	INTERNATIONAL AUX.
+.It INTERLINGUE	IE	INTERNATIONAL AUX.
+.It INUKTITUT   Ta IU   Ta ""
+.It INUPIAK	IK	ESKIMO
+.It IRISH	GA	CELTIC
+.It ITALIAN	IT	ROMANCE
+.It JAPANESE	JA	ASIAN
+.It JAVANESE	JV	OCEANIC/INDONESIAN
+.It KANNADA	KN	DRAVIDIAN
+.It KASHMIRI	KS	INDIAN
+.It KAZAKH	KK	TURKIC/ALTAIC
+.It KINYARWANDA	RW	NEGRO-AFRICAN
+.It KIRGHIZ	KY	TURKIC/ALTAIC
+.It KURUNDI	RN	NEGRO-AFRICAN
+.It KOREAN	KO	ASIAN
+.It KURDISH	KU	IRANIAN
+.It LAOTHIAN	LO	ASIAN
+.It LATIN	LA	LATIN/GREEK
+.It LATVIAN	LV	BALTIC
+.It LINGALA	LN	NEGRO-AFRICAN
+.It LITHUANIAN	LT	BALTIC
+.It MACEDONIAN	MK	SLAVIC
+.It MALAGASY	MG	OCEANIC/INDONESIAN
+.It MALAY	MS	OCEANIC/INDONESIAN
+.It MALAYALAM	ML	DRAVIDIAN
+.It MALTESE	MT	SEMITIC
+.It MAORI	MI	OCEANIC/INDONESIAN
+.It MARATHI	MR	INDIAN
+.It MOLDAVIAN	MO	ROMANCE
+.It MONGOLIAN   Ta MN   Ta ""
+.It NAURU       Ta NA   Ta ""
+.It NEPALI	NE	INDIAN
+.It NORWEGIAN	NO	GERMANIC
+.It OCCITAN	OC	ROMANCE
+.It ORIYA	OR	INDIAN
+.It PASHTO	PS	IRANIAN
+.It PERSIAN (farsi)	FA	IRANIAN
+.It POLISH	PL	SLAVIC
+.It PORTUGUESE	PT	ROMANCE
+.It PUNJABI	PA	INDIAN
+.It QUECHUA	QU	AMERINDIAN
+.It RHAETO-ROMANCE	RM	ROMANCE
+.It ROMANIAN	RO	ROMANCE
+.It RUSSIAN	RU	SLAVIC
+.It SAMOAN	SM	OCEANIC/INDONESIAN
+.It SANGHO	SG	NEGRO-AFRICAN
+.It SANSKRIT	SA	INDIAN
+.It SCOTS GAELIC	GD	CELTIC
+.It SERBIAN	SR	SLAVIC
+.It SERBO-CROATIAN	SH	SLAVIC
+.It SESOTHO	ST	NEGRO-AFRICAN
+.It SETSWANA	TN	NEGRO-AFRICAN
+.It SHONA	SN	NEGRO-AFRICAN
+.It SINDHI	SD	INDIAN
+.It SINGHALESE	SI	INDIAN
+.It SISWATI	SS	NEGRO-AFRICAN
+.It SLOVAK	SK	SLAVIC
+.It SLOVENIAN	SL	SLAVIC
+.It SOMALI	SO	HAMITIC
+.It SPANISH	ES	ROMANCE
+.It SUNDANESE	SU	OCEANIC/INDONESIAN
+.It SWAHILI	SW	NEGRO-AFRICAN
+.It SWEDISH	SV	GERMANIC
+.It TAGALOG	TL	OCEANIC/INDONESIAN
+.It TAJIK	TG	IRANIAN
+.It TAMIL	TA	DRAVIDIAN
+.It TATAR	TT	TURKIC/ALTAIC
+.It TELUGU	TE	DRAVIDIAN
+.It THAI	TH	ASIAN
+.It TIBETAN	BO	ASIAN
+.It TIGRINYA	TI	SEMITIC
+.It TONGA	TO	OCEANIC/INDONESIAN
+.It TSONGA	TS	NEGRO-AFRICAN
+.It TURKISH	TR	TURKIC/ALTAIC
+.It TURKMEN	TK	TURKIC/ALTAIC
+.It TWI	TW	NEGRO-AFRICAN
+.It UIGUR       Ta UG   Ta ""
+.It UKRAINIAN	UK	SLAVIC
+.It URDU	UR	INDIAN
+.It UZBEK	UZ	TURKIC/ALTAIC
+.It VIETNAMESE	VI	ASIAN
+.It VOLAPUK	VO	INTERNATIONAL AUX.
+.It WELSH	CY	CELTIC
+.It WOLOF	WO	NEGRO-AFRICAN
+.It XHOSA	XH	NEGRO-AFRICAN
+.It YIDDISH	YI	GERMANIC
+.It YORUBA	YO	NEGRO-AFRICAN
+.It ZHUANG      Ta ZA   Ta ""
+.It ZULU	ZU	NEGRO-AFRICAN
+.El
 .Pp
 For example, the locale for the Danish language spoken in Denmark
-using the ISO8859-1 character set is da_DK.ISO8859-1.
+using the ISO 8859-1 character set is da_DK.ISO8859-1.
 The da stands for the Danish language and the DK stands for Denmark.
 The short form of da_DK is sufficient to indicate this locale.
 .Pp
@@ -334,7 +322,7 @@ environment variable is not set, and the value of the
 .Ev LANG
 environment variable is not set, the locale for that specific
 category defaults to the C locale.
-The C or POSIX locale assumes the 7-bit ASCII character set and defines
+The C or POSIX locale assumes the ASCII character set and defines
 information for the six categories.
 .El
 .Ss Character Sets
@@ -346,21 +334,33 @@ It is the encoding values in a character set that provide
 the interface between the system and its input and output devices.
 .Pp
 The following character sets are supported in
-.Dx
-.Bl -tag -width ISO8859_family
-.It ISO8859 family
-Industry-standard character sets are provided by means of the ISO8859
-family of character sets, which provide a range of single-byte character set
-support that includes Latin-1, Latin-2, Arabic, Cyrillic, Hebrew,
-Greek, and Turkish.
-The eucJP character set is the industry-standard character set used to support
-the Japanese locale.
+.Dx :
+.Bl -tag -width ISO_8859_family
+.It ASCII
+The American Standard Code for Information Exchange (ASCII) standard
+specifies 128 Roman characters and control codes, encoded in a 7-bit
+character encoding scheme.
+.It ISO 8859 family
+Industry-standard character sets specified by the ISO/IEC 8859
+standard.
+The standard is divided into 15 numbered parts, with each
+part specifying broad script similarities.
+Examples include Western European, Central European, Arabic, Cyrillic,
+Hebrew, Greek, and Turkish.
+The character sets use an 8-bit character encoding scheme which is
+compatible with the ASCII character set.
 .It Unicode
-A Unicode environment based on the UTF-8 character set is supported for all
-supported language/territories.
-UTF-8 provides character support for most of the major languages of the
-world and can be used in environments where multiple languages must be
-processed simultaneously.
+The Unicode character set is the full set of known abstract characters of
+all real-world scripts.  It can be used in environments where multiple
+scripts must be processed simultaneously.
+Unicode is compatible with ISO 8859-1 (Western European) and ASCII.
+Many character encoding schemes are available for Unicode, including UTF-8,
+UTF-16 and UTF-32.
+These encoding schemes are multi-byte encodings.
+The UTF-8 encoding scheme uses 8-bit, variable-width encodings which is
+compatible with ASCII.
+The UTF-16 encoding scheme uses 16-bit, variable-width encodings.
+The UTF-32 encoding scheme using 32-bit, fixed-width encodings.
 .El
 .Ss Font Sets
 A font set contains the glyphs to be displayed on the screen for a
@@ -369,7 +369,7 @@ A display must support a suitable font to display a character set.
 If suitable fonts are available to the X server, then X clients can
 include support for different character sets.
 .Xr xterm 1
-includes support for UTF-8 character sets.
+includes support for Unicode with UTF-8 encoding.
 .Xr xfd 1
 is useful for displaying all the characters in an X font.
 .Pp
@@ -418,14 +418,18 @@ interface has not been standardized yet, however it is being supported
 by an increasing number of systems.
 It also provides many additional tools which make programming and
 catalog maintenance much easier.
-.Ss Support for Multibyte Characters and Wide Characters
-Character sets with multibyte characters may be difficult to decode, or may
-contain state (i.e., adjacent characters are dependent).
+.Ss Support for Multi-byte Encodings
+Some character sets with multi-byte encodings may be difficult to decode,
+or may contain state (i.e., adjacent characters are dependent).
 ISO C specifies a set of functions using 'wide characters' which can handle
-multibyte characters properly.
+multi-byte encodings properly.
+The behaviour of these functions is affected
+by the
+.Ev LC_CTYPE
+category of the current locale.
+.Pp
 A wide character is specified in ISO C
 as being a fixed number of bits wide and is stateless.
-.Pp
 There are two types for wide characters:
 .Em wchar_t
 and
@@ -460,8 +464,8 @@ The two primary issues requiring special use of wide characters are:
 All I/O is performed using multibyte characters.
 Input data is converted into wide characters immediately after
 reading and data for output is converted from wide characters to
-multibyte characters immediately before writing.
-Conversion is achieved using
+multi-byte encoding immediately before writing.
+Conversion is controlled by the
 .Xr mbstowcs 3 ,
 .Xr mbsrtowcs 3 ,
 .Xr wcstombs 3 ,

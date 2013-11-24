@@ -26,10 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)environ.7	8.3 (Berkeley) 4/19/94
-.\" $FreeBSD: src/share/man/man7/environ.7,v 1.13.2.4 2001/08/17 13:08:49 ru Exp $
-.\" $DragonFly: src/share/man/man7/environ.7,v 1.4 2007/09/02 19:30:47 swildner Exp $
+.\" $FreeBSD: head/share/man/man7/environ.7 243117 2012-11-16 01:43:23Z grog $
 .\"
-.Dd April 19, 1994
+.Dd November 24, 2013
 .Dt ENVIRON 7
 .Os
 .Sh NAME
@@ -41,69 +40,111 @@
 An array of strings called the
 .Ar environment
 is made available by
-.Xr execve  2
-when a process begins.  By convention these strings have the form
+.Xr execve 2
+when a process begins.
+By convention these strings have the form
 .Dq Ar name=value .
 The following names are used by various commands:
-.Bl -tag -width BLOCKSIZE
+.Bl -tag -width ".Ev LC_MONETARY"
 .It Ev BLOCKSIZE
 The size of the block units used by several commands, most notably
 .Xr df 1 ,
 .Xr du 1
 and
 .Xr ls 1 .
-.Ev BLOCKSIZE
-may be specified in units of a byte by specifying a number,
-in units of a kilobyte by specifying a number followed by ``K'' or
-``k'', in units of a megabyte by specifying a number followed by ``M''
-or ``m'' and in units of a gigabyte by specifying a number followed
-by ``G'' or ``g''.
-Sizes less than 512 bytes or greater than a gigabyte are ignored.
+This variable is processed by the
+.Xr getbsize 3
+function.
+.It Ev COLUMNS
+The user's preferred width in column positions for the terminal.
+Utilities such as
+.Xr ls 1
+and
+.Xr who 1
+use this to format output into columns.
+If unset or empty, utilities will use an
+.Xr ioctl 2
+call to ask the terminal driver for the width.
 .It Ev EDITOR
 Default editor name.
 .It Ev EXINIT
 A startup list of commands read by
-.Xr ex  1
+.Xr ex 1
 and
-.Xr vi  1  .
+.Xr vi 1 .
 .It Ev HOME
 A user's login directory, set by
-.Xr login  1
+.Xr login 1
 from the password file
-.Xr passwd  5  .
+.Xr passwd 5 .
 .It Ev LANG
 This variable configures all programs which use
 .Xr setlocale 3
-to use the specified locale.
+to use the specified locale unless the
+.Ev LC_*
+variables are set.
+.It Ev LC_ALL
+Overrides the values of
+.Ev LC_COLLATE ,
+.Ev LC_CTYPE ,
+.Ev LC_MESSAGES ,
+.Ev LC_MONETARY ,
+.Ev LC_NUMERIC ,
+.Ev LC_TIME
+and
+.Ev LANG .
+.It Ev LC_COLLATE
+Locale to be used for ordering of strings.
+.It Ev LC_CTYPE
+Locale to be used for character classification
+(letter, space, digit, etc.) and for interpreting byte sequences as
+multibyte characters.
+.It Ev LC_MESSAGES
+Locale to be used for diagnostic messages.
+.It Ev LC_MONETARY
+Locale to be used for interpreting monetary input
+and formatting output.
+.It Ev LC_NUMERIC
+Locale to be used for interpreting numeric input and
+formatting output.
+.It Ev LC_TIME
+Locale to be used for interpreting dates input and
+for formatting output.
 .It Ev MAIL
 The location of the user's
 mailbox instead of the default in /var/mail,
 used by
-.Xr mail  1 ,
+.Xr mail 1 ,
 .Xr sh 1 ,
-and many other mailclients.
+and many other mail clients.
+.It Ev NLSPATH
+List of directories to be searched for the message catalog referred to by
+.Ev LC_MESSAGES .
+See
+.Xr catopen 3 .
 .It Ev PAGER
-Default paginator program.  The program specified by this variable is used by
+Default paginator program.
+The program specified by this variable is used by
 .Xr mail 1 ,
 .Xr man 1 ,
 .Xr ftp 1 ,
 etc, to display information which is longer than the current display.
 .It Ev PATH
 The sequence of directories, separated by colons, searched by
-.Xr csh  1  ,
-.Xr sh  1 ,
-.Xr system  3  ,
-.Xr execvp  3 ,
+.Xr csh 1 ,
+.Xr sh 1 ,
+.Xr system 3 ,
+.Xr execvp 3 ,
 etc, when looking for an executable file.
 .Ev PATH
 is set to ``/usr/bin:/bin'' initially by
-.Xr login  1  .
+.Xr login 1 .
 .It Ev PRINTER
 The name of the default printer to be used by
-.Xr lpr  1  ,
-.Xr lpq  1 ,
+.Xr lpr 1 ,
+.Xr lpq 1 ,
 and
-.Xr lprm  1  .
+.Xr lprm 1 .
 .It Ev PWD
 The current directory pathname.
 .It Ev SHELL
@@ -111,8 +152,9 @@ The full pathname of the user's login shell.
 .It Ev TERM
 The kind of terminal for which output is to be prepared.
 This information is used by commands, such as
-.Xr nroff  1
-which may exploit special terminal capabilities.  See
+.Xr nroff 1
+which may exploit special terminal capabilities.
+See
 .Pa /usr/share/misc/termcap
 .Pq Xr termcap 5
 for a list of terminal types.
@@ -124,10 +166,11 @@ it begins with a '/', the name of the termcap file.
 See
 .Ev TERMPATH
 below, and
-.Xr termcap  5 .
+.Xr termcap 5 .
 .It Ev TERMPATH
 A sequence of pathnames of termcap files, separated by colons or spaces,
-which are searched for terminal descriptions in the order listed.  Having
+which are searched for terminal descriptions in the order listed.
+Having
 no
 .Ev TERMPATH
 is equivalent to a
@@ -164,13 +207,13 @@ Further names may be placed in the environment by the
 command and
 .Ar name=value
 arguments in
-.Xr sh  1  ,
+.Xr sh 1 ,
 or by the
 .Xr setenv 1
 command if you use
-.Xr csh  1  .
+.Xr csh 1 .
 It is unwise to change certain
-.Xr sh  1
+.Xr sh 1
 variables that are frequently exported by
 .Pa .profile
 files, such as
@@ -180,20 +223,39 @@ files, such as
 and
 .Ev IFS ,
 unless you know what you are doing.
+.Pp
+The current environment variables can be printed with
+.Xr env 1 ,
+.Xr set 1
+or
+.Xr printenv 1
+in
+.Xr sh 1
+and
+.Xr env 1 ,
+.Xr printenv 1
+or the
+.Cm printenv
+built-in command in
+.Xr csh 1 .
 .Sh SEE ALSO
 .Xr cd 1 ,
 .Xr csh 1 ,
+.Xr env 1 ,
 .Xr ex 1 ,
 .Xr login 1 ,
+.Xr printenv 1 ,
 .Xr sh 1 ,
 .Xr execve 2 ,
 .Xr execle 3 ,
 .Xr getenv 3 ,
+.Xr getbsize 3 ,
 .Xr setenv 3 ,
 .Xr setlocale 3 ,
 .Xr system 3 ,
 .Xr termcap 3 ,
-.Xr termcap 5
+.Xr termcap 5 ,
+.Xr nls 7
 .Sh HISTORY
 The
 .Nm
