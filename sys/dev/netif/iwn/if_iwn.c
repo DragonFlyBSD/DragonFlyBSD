@@ -18,6 +18,8 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $FreeBSD: head/sys/dev/iwn/if_iwn.c 258118 2013-11-14 07:27:00Z adrian $
  */
 
 /*
@@ -25,10 +27,8 @@
  * adapters.
  */
 
-#if 0
 #include "opt_wlan.h"
 #include "opt_iwn.h"
-#endif
 
 #include <sys/param.h>
 #include <sys/sockio.h>

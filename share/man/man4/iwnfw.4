@@ -20,9 +20,9 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD$
+.\" $FreeBSD: head/share/man/man4/iwnfw.4 233648 2012-03-29 05:02:12Z eadler $
 .\"
-.Dd August 7, 2010
+.Dd November 23, 2013
 .Dt IWNFW 4
 .Os
 .Sh NAME
@@ -45,6 +45,9 @@ kernel configuration file:
 .\".Cd "device iwn5000fw"
 .\".Cd "device iwn5150fw"
 .\".Cd "device iwn6000fw"
+.\".Cd "device iwn6000g2afw"
+.\".Cd "device iwn6000g2bfw"
+.\".Cd "device iwn6050fw"
 .\".Ed
 .\".Pp
 Alternatively, to load the driver as a
@@ -56,11 +59,13 @@ iwn1000fw_load="YES"
 iwn5000fw_load="YES"
 iwn5150fw_load="YES"
 iwn6000fw_load="YES"
+iwn6000g2afw_load="YES"
+iwn6000g2bfw_load="YES"
 iwn6050fw_load="YES"
 .Ed
 .Sh DESCRIPTION
 This module provides access to firmware sets for the
-Intel Wireless WiFi Link 4965, 1000, 5000, 6000 and 6050 series of
+Intel Wireless WiFi Link 4965, 1000, 5000 and 6000 series of
 IEEE 802.11n adapters.
 It may be
 statically linked into the kernel, or loaded as a module.
