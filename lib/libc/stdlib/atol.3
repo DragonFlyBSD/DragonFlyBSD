@@ -57,9 +57,9 @@ integer
 .Fn atoll "const char *nptr"
 .In xlocale.h
 .Ft long
-.Fn atol_l "locale_t loc" "const char *nptr"
+.Fn atol_l "const char *nptr" "locale_t loc"
 .Ft "long long"
-.Fn atoll_l "locale_t loc" "const char *nptr"
+.Fn atoll_l "const char *nptr" "locale_t loc"
 .Sh DESCRIPTION
 The
 .Fn atol
