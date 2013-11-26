@@ -64,8 +64,6 @@
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
