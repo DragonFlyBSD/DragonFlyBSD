@@ -6,8 +6,6 @@
 #
 # The goal is that the only error reported should be a specific #error
 # indicating that particular support is not available.
-#
-# $DragonFly: src/test/debug/chkincludes,v 1.2 2006/10/24 17:09:46 swildner Exp $
 
 cd /usr/src/sys
 set files = ( sys/*.h vm/*.h net*/*.h ddb/*.h i386/include/*.h )
@@ -36,9 +34,6 @@ echo "#define INET 1" > opt_inet.h
 ln -s /usr/src/sys/arch/i386/include machine
 
 foreach i ( $files )
-    if ( "$i" == "sys/syscall-hide.h" ) then
-	continue
-    endif
     if ( "$i" == "sys/sysunion.h" ) then
 	continue
     endif
@@ -50,9 +45,6 @@ EOF
     cc -D_KERNEL -DKLD_MODULE -fno-builtin -I/usr/src/sys -I. -Wall -Wstrict-prototypes -c chkincl.c -o chkincl.o
 end
 foreach i ( $files )
-    if ( "$i" == "sys/syscall-hide.h" ) then
-	continue
-    endif
     if ( "$i" == "sys/sysunion.h" ) then
 	continue
     endif
@@ -65,9 +57,6 @@ EOF
 end
 
 foreach i ( $files )
-    if ( "$i" == "sys/syscall-hide.h" ) then
-	continue
-    endif
     if ( "$i" == "sys/sysunion.h" ) then
 	continue
     endif

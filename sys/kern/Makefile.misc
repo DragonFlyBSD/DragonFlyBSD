@@ -1,5 +1,3 @@
-# $DragonFly: src/sys/kern/Makefile.misc,v 1.7 2007/01/19 07:23:42 dillon Exp $
-#
 # Makefile for kernel tags files, init_sysent, etc.
 
 TAGARCH= i386 # luna68k news3400 pmax sparc tahoe vax
@@ -10,13 +8,11 @@ all:
 sysent:	${.CURDIR}/init_sysent.c
 
 ${.CURDIR}/init_sysent.c ${.CURDIR}/syscalls.c \
-${.CURDIR}/../sys/syscall.h ${.CURDIR}/../sys/syscall-hide.h \
 ${.CURDIR}/../sys/syscall.mk ${.CURDIR}/../sys/sysproto.h \
 ${.CURDIR}/../sys/sysunion.h: ${.CURDIR}/makesyscalls.sh ${.CURDIR}/syscalls.master
 	-mv -f ${.CURDIR}/init_sysent.c ${.CURDIR}/init_sysent.c.bak
 	-mv -f ${.CURDIR}/syscalls.c ${.CURDIR}/syscalls.c.bak
 	-mv -f ${.CURDIR}/../sys/syscall.h ${.CURDIR}/../sys/syscall.h.bak
-	-mv -f ${.CURDIR}/../sys/syscall-hide.h ${.CURDIR}/../sys/syscall-hide.h.bak
 	-mv -f ${.CURDIR}/../sys/syscall.mk ${.CURDIR}/../sys/syscall.mk.bak
 	-mv -f ${.CURDIR}/../sys/sysproto.h ${.CURDIR}/../sys/sysproto.h.bak
 	-mv -f ${.CURDIR}/../sys/sysunion.h ${.CURDIR}/../sys/sysunion.h.bak

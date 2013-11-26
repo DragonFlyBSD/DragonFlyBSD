@@ -17,7 +17,6 @@ sysproto_h=_SYS_SYSPROTO_H_
 syshdr="../sys/syscall.h"
 sysmk="../sys/syscall.mk"
 syssw="init_sysent.c"
-syshide="../sys/syscall-hide.h"
 syscallprefix="SYS_"
 switchname="sysent"
 namesname="syscallnames"
@@ -78,7 +77,6 @@ s/\$//g
 		sysmk = \"$sysmk\"
 		compat = \"$compat\"
 		compatdf12 = \"$compatdf12\"
-		syshide = \"$syshide\"
 		syscallprefix = \"$syscallprefix\"
 		switchname = \"$switchname\"
 		namesname = \"$namesname\"
@@ -124,11 +122,6 @@ s/\$//g
 		printf "#               by running make sysent in the same directory.\n" > sysmk
 		printf "MIASM = " > sysmk
 
-		printf "/*\n * System call hiders.\n *\n" > syshide
-		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > syshide
-		printf " *               by running make sysent in the same directory.\n" > syshide
-		printf " */\n\n" > syshide
-
 		printf "/*\n * Union of syscall args for messaging.\n *\n" > sysun
 		printf " * DO NOT EDIT-- To regenerate this file, edit syscalls.master followed\n" > sysun
 		printf " *               by running make sysent in the same directory.\n" > sysun
@@ -160,7 +153,6 @@ s/\$//g
 		print > syscompat
 		print > syscompatdf12
 		print > sysnames
-		print > syshide
 		print > sysun
 		savesyscall = syscall
 		next
@@ -173,7 +165,6 @@ s/\$//g
 		print > syscompat
 		print > syscompatdf12
 		print > sysnames
-		print > syshide
 		syscall = savesyscall
 		next
 	}
@@ -185,7 +176,6 @@ s/\$//g
 		print > syscompat
 		print > syscompatdf12
 		print > sysnames
-		print > syshide
 		next
 	}
 	syscall != $1 {
@@ -209,7 +199,7 @@ s/\$//g
 		exit 1
 	}
 	function parseline() {
-		f=4			# toss number and type
+		f=3			# toss number and type
 		argc= 0;
 		argssize = "0"
 		if ($NF != "}") {
@@ -224,8 +214,8 @@ s/\$//g
 			end=NF
 		}
 		if ($2 == "NODEF") {
-			funcname=$4
-			argssize = "AS(" $6 ")"
+			funcname=$3
+			argssize = "AS(" $5 ")"
 			return
 		}
 		if ($f != "{")
@@ -289,9 +279,9 @@ s/\$//g
 		if (argc != 0)
 			argssize = "AS(" argalias ")"
 	}
-	{	comment = $4
-		if (NF < 7)
-			for (i = 5; i <= NF; i++)
+	{	comment = $3
+		if (NF < 6)
+			for (i = 4; i <= NF; i++)
 				comment = comment " " $i
 	}
 	$2 == "STD" || $2 == "NODEF" || $2 == "NOARGS"  || $2 == "NOPROTO" \
@@ -352,8 +342,6 @@ s/\$//g
 		    	    funcalias, syscall) > syshdr
 			printf(" \\\n\t%s.o", funcalias) > sysmk
 		}
-		if ($3 != "NOHIDE")
-			printf("HIDE_%s(%s)\n", $3, funcname) > syshide
 		syscall++
 		next
 	}
@@ -394,8 +382,6 @@ s/\$//g
 		    funcalias, syscall, funcalias) > sysnames
 		printf("\t\t\t\t/* %d is old %s */\n",
 		    syscall, funcalias) > syshdr
-		if ($3 != "NOHIDE")
-			printf("HIDE_%s(%s)\n", $3, funcname) > syshide
 		syscall++
 		next
 	}
@@ -436,8 +422,6 @@ s/\$//g
 		    funcalias, syscall, funcalias) > sysnames
 		printf("\t\t\t\t/* %d is old %s */\n",
 		    syscall, funcalias) > syshdr
-		if ($3 != "NOHIDE")
-			printf("HIDE_%s(%s)\n", $3, funcname) > syshide
 		syscall++
 		next
 	}
@@ -455,8 +439,6 @@ s/\$//g
 		printf("#define\t%s%s\t%d\t/* compatibility; still used by libc */\n",
 		    syscallprefix, funcalias, syscall) > syshdr
 		printf(" \\\n\t%s.o", funcalias) > sysmk
-		if ($3 != "NOHIDE")
-			printf("HIDE_%s(%s)\n", $3, funcname) > syshide
 		syscall++
 		next
 	}
@@ -465,11 +447,9 @@ s/\$//g
 		align_sysent_comment(37)
 		printf("/* %d = obsolete %s */\n", syscall, comment) > sysent
 		printf("\t\"obs_%s\",\t\t\t/* %d = obsolete %s */\n",
-		    $4, syscall, comment) > sysnames
+		    $3, syscall, comment) > sysnames
 		printf("\t\t\t\t/* %d is obsolete %s */\n",
 		    syscall, comment) > syshdr
-		if ($3 != "NOHIDE")
-			printf("HIDE_%s(%s)\n", $3, $4) > syshide
 		syscall++
 		next
 	}
@@ -478,8 +458,6 @@ s/\$//g
 		    syscall, comment) > sysent
 		printf("\t\"#%d\",\t\t\t/* %d = %s */\n",
 		    syscall, syscall, comment) > sysnames
-		if ($3 != "NOHIDE")
-			printf("HIDE_%s(%s)\n", $3, $4) > syshide
 		syscall++
 		next
 	}
