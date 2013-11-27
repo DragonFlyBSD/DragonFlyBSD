@@ -27,14 +27,14 @@ help all:
 	@echo "HELP:"
 	@echo
 .if exists(${.CURDIR}/dports/.git)
-	@printf ${LPATT} "dports-update"         "update your dports repo from Github"
+	@printf ${LPATT} "dports-update"         "update your dports repository from the net"
 .else
 .  if exists(${.CURDIR}/dports)
-	@printf ${LPATT} "dports-replace"        "Replace dports with latest tarball from Github"
+	@printf ${LPATT} "dports-replace"        "Replace dports with latest tarball (Github)"
 .  else
-	@printf ${LPATT} "dports-create"         "fetch initial dports repository from Github"
+	@printf ${LPATT} "dports-create"         "fetch initial dports repository from the net"
 	@printf ${LPATT} "dports-create-shallow" "fetch initial history-free dports repository"
-	@printf ${LPATT} "dports-download"       "download & install dports tarball from Github"
+	@printf ${LPATT} "dports-download"       "download & install dports tarball (Github)"
 .  endif
 .endif
 	@printf ${LPATT} "pkg-bootstrap"	"Use pre-built pkg to install dports packages"
