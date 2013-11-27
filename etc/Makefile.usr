@@ -7,7 +7,7 @@ GITHOST?=git.dragonflybsd.org
 THISGIT!= which git 2>/dev/null; echo
 DPTBALL=/tmp/dports.tar.gz
 PKGBALL=/tmp/pkgboot.tar.xz
-DPDLURL=https://api.github.com/repos/jrmarino/DPorts/tarball/
+DPDLURL=https://api.github.com/repos/DragonFlyBSD/DPorts/tarball/
 PKGBOOT_VERSION=01
 PKGBOOT_i386=bootstrap_pkg_${PKGBOOT_VERSION}_x86-32.tar.xz
 PKGBOOT_x86_64=bootstrap_pkg_${PKGBOOT_VERSION}_x86-64.tar.xz
@@ -174,7 +174,7 @@ dports-download:
 	rm -f ${DPTBALL}
 	fetch -o ${DPTBALL} ${DPDLURL}
 	tar -xf ${DPTBALL} -C ${.CURDIR}
-	mv /usr/jrmarino-DPorts-* ${.CURDIR}/dports
+	mv /usr/DragonFlyBSD-DPorts-* ${.CURDIR}/dports
 	rm -f ${DPTBALL}
 .if exists(${.CURDIR}/pkg)
 	@echo ${WSTARS}
@@ -195,7 +195,7 @@ dports-replace:
 	fetch -o ${DPTBALL} ${DPDLURL}
 	rm -rf ${.CURDIR}/dports
 	tar -xf ${DPTBALL} -C ${.CURDIR}
-	mv /usr/jrmarino-DPorts-* ${.CURDIR}/dports
+	mv /usr/DragonFlyBSD-DPorts-* ${.CURDIR}/dports
 	rm -f ${DPTBALL}
 .endif
 
