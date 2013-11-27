@@ -2355,6 +2355,9 @@ TO_REMOVE+=/usr/share/man/cat9/idr_init1.9.gz
 TO_REMOVE+=/usr/share/man/man9/idr_init1.9.gz
 TO_REMOVE+=/boot/kernel/radeon.ko
 TO_REMOVE+=/usr/include/sys/syscall-hide.h
+TO_REMOVE+=/usr/include/bus/pccard/pccarddevs.h
+TO_REMOVE+=/usr/include/bus/pci/pcidevs.h
+TO_REMOVE+=/usr/include/bus/u4b/usbdevs.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
