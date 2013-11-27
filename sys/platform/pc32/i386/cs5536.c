@@ -60,7 +60,7 @@
 #include <sys/module.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 #include <bus/pci/pcib_private.h>
 #include <dev/misc/gpio/gpio.h>
 #include <machine/pc/bios.h>

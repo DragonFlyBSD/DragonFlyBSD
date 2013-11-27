@@ -38,7 +38,7 @@
 
 #include <sys/event.h>
 
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 
 #define bswap32(X) ntohl(X)
 

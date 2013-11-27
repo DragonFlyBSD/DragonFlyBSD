@@ -37,7 +37,8 @@
 #include <bus/pccard/pccard_cis.h>
 #include <bus/pccard/pccardreg.h>
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/pccarddevs.h>
+
+#include "pccarddevs.h"
 
 #include "ata-all.h"
 #include "ata_if.h"

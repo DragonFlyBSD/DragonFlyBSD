@@ -59,7 +59,7 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 
 #include <dev/netif/bwi/if_bwireg.h>
 #include <dev/netif/bwi/if_bwivar.h>

@@ -40,10 +40,10 @@
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
-#include <dev/netif/mii_layer/miidevs.h>
 #include <dev/netif/mii_layer/atphyreg.h>
 
 #include "miibus_if.h"
+#include "miidevs.h"
 
 static int	atphy_probe(device_t);
 static int	atphy_attach(device_t);

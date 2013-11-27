@@ -1,8 +1,7 @@
 # $FreeBSD: src/sys/modules/rl/Makefile,v 1.6 2000/01/28 11:26:34 bde Exp $
-# $DragonFly: src/sys/dev/netif/rl/Makefile,v 1.5 2006/06/25 11:02:39 corecode Exp $
 
 KMOD	= if_rl
-SRCS	= if_rl.c device_if.h bus_if.h pci_if.h
+SRCS	= if_rl.c device_if.h bus_if.h pci_if.h pcidevs.h
 SRCS	+= opt_ifpoll.h
 SRCS	+= miibus_if.h
 

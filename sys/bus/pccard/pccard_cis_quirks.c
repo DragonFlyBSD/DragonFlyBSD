@@ -39,7 +39,8 @@
 
 #include <bus/pccard/pccard_cis.h>
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/pccarddevs.h>
+
+#include "pccarddevs.h"
 
 /* There are cards out there whose CIS flat-out lies.  This file
    contains struct pccard_function chains for those devices. */

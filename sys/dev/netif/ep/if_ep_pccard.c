@@ -57,9 +57,9 @@
 #include "if_epvar.h"
 
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/pccarddevs.h>
 
 #include "card_if.h"
+#include "pccarddevs.h"
 
 static const char *ep_pccard_identify(u_short id);
 

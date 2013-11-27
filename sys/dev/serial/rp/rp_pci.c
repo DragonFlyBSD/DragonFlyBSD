@@ -48,7 +48,7 @@
 #include "rpreg.h"
 #include "rpvar.h"
 
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 

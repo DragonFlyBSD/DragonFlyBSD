@@ -35,9 +35,9 @@
 #include "aicvar.h"
 
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/pccarddevs.h>
 
 #include "card_if.h"
+#include "pccarddevs.h"
 
 struct aic_pccard_softc {
 	struct	aic_softc sc_aic;

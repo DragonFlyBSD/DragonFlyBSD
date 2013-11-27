@@ -71,7 +71,7 @@
 #include <dev/netif/mii_layer/miivar.h>
 #include <dev/netif/mii_layer/brgphyreg.h>
 
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 

@@ -61,13 +61,13 @@
 #define PCCARD_API_LEVEL 6
 #include <bus/pccard/pccardvar.h>
 #include <bus/pccard/pccard_cis.h>
-#include <bus/pccard/pccarddevs.h>
 
 #include <dev/netif/wi/if_wavelan_ieee.h>
 #include <dev/netif/wi/if_wireg.h>
 #include <dev/netif/wi/if_wivar.h>
 
 #include "card_if.h"
+#include "pccarddevs.h"
 
 static int wi_pccard_probe(device_t);
 static int wi_pccard_attach(device_t);

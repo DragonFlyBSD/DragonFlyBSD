@@ -349,6 +349,36 @@ ${_src}: @/tools/makeobjops.awk @/${_srcsrc}
 #.endif
 #.endfor
 
+.if !empty(SRCS:Mmiidevs.h)
+CLEANFILES+=	miidevs.h
+.if !exists(@)
+miidevs.h: @
+.else
+miidevs.h: @/tools/miidevs2h.awk @/dev/netif/mii_layer/miidevs
+.endif
+	${AWK} -f @/tools/miidevs2h.awk @/dev/netif/mii_layer/miidevs
+.endif
+
+.if !empty(SRCS:Mpccarddevs.h)
+CLEANFILES+=	pccarddevs.h
+.if !exists(@)
+pccarddevs.h: @
+.else
+pccarddevs.h: @/tools/pccarddevs2h.awk @/bus/pccard/pccarddevs
+.endif
+	${AWK} -f @/tools/pccarddevs2h.awk @/bus/pccard/pccarddevs
+.endif
+
+.if !empty(SRCS:Mpcidevs.h)
+CLEANFILES+=	pcidevs.h
+.if !exists(@)
+pcidevs.h: @
+.else
+pcidevs.h: @/tools/pcidevs2h.awk @/bus/pci/pcidevs
+.endif
+	${AWK} -f @/tools/pcidevs2h.awk @/bus/pci/pcidevs
+.endif
+
 .if !empty(SRCS:Musbdevs.h)
 CLEANFILES+=	usbdevs.h
 .if !exists(@)

@@ -60,7 +60,7 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 
 #include <dev/netif/ale/if_alereg.h>
 #include <dev/netif/ale/if_alevar.h>

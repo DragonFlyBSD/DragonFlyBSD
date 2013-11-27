@@ -45,7 +45,8 @@
 #include "if_exvar.h"
 
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/pccarddevs.h>
+
+#include "pccarddevs.h"
 
 static const struct pccard_product ex_pccard_products[] = {
 	PCMCIA_CARD(OLICOM, OC2220, 0),

@@ -629,6 +629,11 @@ dev/raid/mfi/mfi_syspd.c	optional mfi
 dev/raid/mfi/mfi_tbolt.c	optional mfi
 dev/raid/mfi/mfi_linux.c	optional mfi compat_linux
 dev/raid/mfi/mfi_cam.c		optional mfip scbus
+miidevs.h				optional miibus \
+	dependency		"$S/tools/miidevs2h.awk $S/dev/netif/mii_layer/miidevs" \
+	compile-with		"${AWK} -f $S/tools/miidevs2h.awk $S/dev/netif/mii_layer/miidevs" \
+	no-obj no-implicit-rule before-depend \
+	clean "miidevs.h"
 dev/netif/mii_layer/mii.c		optional miibus
 dev/netif/mii_layer/mii_physubr.c	optional miibus
 dev/netif/mii_layer/ukphy.c		optional miibus
@@ -1557,6 +1562,11 @@ vfs/nwfs/nwfs_subr.c		optional nwfs
 vfs/nwfs/nwfs_vfsops.c		optional nwfs
 vfs/nwfs/nwfs_vnops.c		optional nwfs
 bus/pccard/card_if.m		standard
+pccarddevs.h			optional pccard \
+	dependency		"$S/tools/pccarddevs2h.awk $S/bus/pccard/pccarddevs" \
+	compile-with		"${AWK} -f $S/tools/pccarddevs2h.awk $S/bus/pccard/pccarddevs" \
+	no-obj no-implicit-rule before-depend \
+	clean "pccarddevs.h"
 bus/pccard/pccard.c		optional pccard
 bus/pccard/pccard_cis.c		optional pccard
 bus/pccard/pccard_cis_quirks.c	optional pccard
@@ -1615,6 +1625,11 @@ dev/powermng/viapm/viapm.c	optional viapm pci
 dev/disk/ncr/ncr.c		optional ncr
 dev/disk/sym/sym_hipd.c		optional sym				\
 	dependency	"$S/dev/disk/sym/sym_{conf,defs}.h"
+pcidevs.h			optional pci \
+	dependency		"$S/tools/pcidevs2h.awk $S/bus/pci/pcidevs" \
+	compile-with		"${AWK} -f $S/tools/pcidevs2h.awk $S/bus/pci/pcidevs" \
+	no-obj no-implicit-rule before-depend \
+	clean "pcidevs.h"
 bus/pci/fixup_pci.c		optional pci
 bus/pci/hostb_pci.c		optional pci
 bus/pci/ignore_pci.c		optional pci

@@ -53,8 +53,9 @@
 #include <sys/rman.h>
 #include <sys/device_port.h>
 
-#include <bus/pccard/pccarddevs.h>
 #include <bus/pccard/pccardvar.h>
+
+#include "pccarddevs.h"
 
 #include <bus/cam/scsi/scsi_low.h>
 #include <bus/cam/scsi/scsi_low_pisa.h>

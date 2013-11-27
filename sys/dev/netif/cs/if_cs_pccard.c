@@ -38,9 +38,9 @@
 
 #include "if_csvar.h"
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/pccarddevs.h>
 
 #include "card_if.h"
+#include "pccarddevs.h"
 
 static const struct pccard_product cs_pccard_products[] = {
 	PCMCIA_CARD(IBM, ETHERJET, 0),

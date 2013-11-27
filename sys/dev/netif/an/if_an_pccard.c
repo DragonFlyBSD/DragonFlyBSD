@@ -64,8 +64,9 @@
 #include <net/ifq_var.h>
 
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/pccarddevs.h>
+
 #include "card_if.h"
+#include "pccarddevs.h"
 
 #include "if_aironet_ieee.h"
 #include "if_anreg.h"

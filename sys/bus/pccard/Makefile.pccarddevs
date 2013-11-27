@@ -1,9 +1,0 @@
-#	$NetBSD: Makefile.pcmciadevs,v 1.1 1998/07/19 17:28:15 christos Exp $
-# $FreeBSD: src/sys/dev/pccard/Makefile.pccarddevs,v 1.3 2003/03/28 06:44:57 imp Exp $
-# $DragonFly: src/sys/bus/pccard/Makefile.pccarddevs,v 1.1 2004/02/10 07:55:45 joerg Exp $
-
-AWK=	awk
-
-pccarddevs.h: pccarddevs devlist2h.awk
-	/bin/rm -f pccarddevs.h
-	${AWK} -f devlist2h.awk pccarddevs

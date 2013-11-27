@@ -46,9 +46,9 @@
 #include "if_fevar.h"
 
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/pccarddevs.h>
 
 #include "card_if.h"
+#include "pccarddevs.h"
 
 /*
  *	PC-Card (PCMCIA) specific code.

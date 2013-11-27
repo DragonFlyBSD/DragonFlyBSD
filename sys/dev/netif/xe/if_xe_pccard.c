@@ -43,8 +43,9 @@
 #include <net/if_mib.h>
 
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/pccarddevs.h>
+
 #include "card_if.h"
+#include "pccarddevs.h"
 
 #include "if_xereg.h"
 #include "if_xevar.h"

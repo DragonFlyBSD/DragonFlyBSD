@@ -53,12 +53,12 @@
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
-#include <dev/netif/mii_layer/miidevs.h>
 
 #include <dev/netif/re/if_rereg.h>
 #include <dev/netif/mii_layer/rgephyreg.h>
 
 #include "miibus_if.h"
+#include "miidevs.h"
 
 static int rgephy_probe(device_t);
 static int rgephy_attach(device_t);

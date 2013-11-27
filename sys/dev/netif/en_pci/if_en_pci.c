@@ -61,7 +61,7 @@
 
 #include <net/if.h>
 
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 

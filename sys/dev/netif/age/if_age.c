@@ -57,7 +57,7 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 
 #include <dev/netif/age/if_agereg.h>
 #include <dev/netif/age/if_agevar.h>

@@ -66,7 +66,7 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 
 #include <dev/netif/jme/if_jmereg.h>
 #include <dev/netif/jme/if_jmevar.h>

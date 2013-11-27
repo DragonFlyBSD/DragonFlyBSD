@@ -112,7 +112,7 @@
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
 
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 

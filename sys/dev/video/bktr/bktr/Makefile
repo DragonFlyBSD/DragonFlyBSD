@@ -6,7 +6,7 @@
 KMOD=	bktr 
 SRCS=	bktr_core.c bktr_os.c bktr_audio.c bktr_tuner.c bktr_card.c \
 	use_bktr.h opt_bktr.h use_smbus.h bus_if.h device_if.h \
-	pci_if.h
+	pci_if.h pcidevs.h
 
 use_bktr.h:
 	echo "#define NBKTR 1" > use_bktr.h

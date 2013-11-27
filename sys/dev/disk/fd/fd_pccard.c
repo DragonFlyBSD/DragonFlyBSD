@@ -62,9 +62,9 @@
 #include "fdreg.h"
 
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/pccarddevs.h>
 
 #include "card_if.h"
+#include "pccarddevs.h"
 
 static const struct pccard_product fdc_products[] = {
   	PCMCIA_CARD(YEDATA, EXTERNAL_FDD, 0),

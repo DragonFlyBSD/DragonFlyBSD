@@ -52,7 +52,7 @@
 #include <sys/device.h>
 #include <sys/thread2.h>
 
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>

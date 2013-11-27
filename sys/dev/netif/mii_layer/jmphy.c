@@ -40,10 +40,10 @@
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
-#include <dev/netif/mii_layer/miidevs.h>
 #include <dev/netif/mii_layer/jmphyreg.h>
 
 #include "miibus_if.h"
+#include "miidevs.h"
 
 static int	jmphy_service(struct mii_softc *, struct mii_data *, int);
 static void	jmphy_status(struct mii_softc *);

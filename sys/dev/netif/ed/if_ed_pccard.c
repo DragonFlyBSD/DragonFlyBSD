@@ -51,13 +51,13 @@
 #include "if_edvar.h"
 #include <bus/pccard/pccard_cis.h>
 #include <bus/pccard/pccardvar.h>
-#include <bus/pccard/pccarddevs.h>
 #ifndef ED_NO_MIIBUS
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
 #endif
 
 #include "card_if.h"
+#include "pccarddevs.h"
 #ifndef ED_NO_MIIBUS
 /* "device miibus" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"

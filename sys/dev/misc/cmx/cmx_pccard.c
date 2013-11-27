@@ -43,7 +43,8 @@
 
 #include <bus/pccard/pccardvar.h>
 #include <bus/pccard/pccard_cis.h>
-#include <bus/pccard/pccarddevs.h>
+
+#include "pccarddevs.h"
 
 static const struct pccard_product cmx_pccard_products[] = {
 	PCMCIA_CARD(OMNIKEY, CM4040, 0),

@@ -45,9 +45,10 @@
 #include "sio_private.h"
 
 #include <bus/pccard/pccard_cis.h>
-#include <bus/pccard/pccarddevs.h>
 #include <bus/pccard/pccardreg.h>
 #include <bus/pccard/pccardvar.h>
+
+#include "pccarddevs.h"
 
 static	int	sio_pccard_attach(device_t dev);
 static	int	sio_pccard_match(device_t self);

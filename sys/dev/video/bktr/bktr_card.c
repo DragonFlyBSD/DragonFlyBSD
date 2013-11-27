@@ -63,7 +63,7 @@
 #include <dev/video/bktr/bktr_card.h>
 #include <dev/video/bktr/bktr_audio.h>
 
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 #include <bus/pci/pcireg.h>
 
 /* Various defines */

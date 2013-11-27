@@ -118,7 +118,7 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 
 #include <dev/netif/sk/if_skreg.h>
 #include <dev/netif/sk/yukonreg.h>

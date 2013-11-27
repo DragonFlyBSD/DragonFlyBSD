@@ -66,7 +66,7 @@
 #include <bus/cam/cam_debug.h>
 #include <bus/cam/scsi/scsi_all.h>
 #include <bus/cam/scsi/scsi_message.h>
-#include <bus/pci/pcidevs.h>
+#include "pcidevs.h"
 
 #include <dev/raid/iir/iir.h>
 
