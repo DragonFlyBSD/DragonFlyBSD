@@ -260,7 +260,7 @@ static	const struct mdocarg mdocargs[MDOC_MAX] = {
 	{ ARGSFL_NONE, NULL }, /* %C */
 	{ ARGSFL_NONE, NULL }, /* Es */
 	{ ARGSFL_NONE, NULL }, /* En */
-	{ ARGSFL_NONE, NULL }, /* Dx */
+	{ ARGSFL_DELIM, NULL }, /* Dx */
 	{ ARGSFL_NONE, NULL }, /* %Q */
 	{ ARGSFL_NONE, NULL }, /* br */
 	{ ARGSFL_NONE, NULL }, /* sp */
