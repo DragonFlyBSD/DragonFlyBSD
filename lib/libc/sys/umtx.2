@@ -51,7 +51,7 @@ The
 .Fn umtx_sleep
 system call will put the calling process to sleep for
 .Fa timeout
-microseconds if the contents of the specified point matches
+microseconds if the contents of the specified pointer matches
 the specified value.
 Specifying a timeout of 0 indicates an indefinite timeout.
 The comparison is not atomic with the sleep but is properly
@@ -65,7 +65,7 @@ after releasing the contended mutex.
 .Pp
 The
 .Fa timeout
-is not specific limitation other than what fits in the signed integer.
+has no specific limitation other than what fits in the signed integer.
 A negative timeout will return
 .Er EINVAL .
 .Pp
