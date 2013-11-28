@@ -206,10 +206,10 @@ main(int argc, char **argv)
 		opts = argv[0];
 	if (!strcmp(opts,"swapinfo")) {
 		swapflag = 1;
-		opts = "kM:N:";
-		usagestr = "swapinfo [-k] [-M core] [-N system]";
+		opts = "ghkmM:N:";
+		usagestr = "swapinfo [-gkm] [-M core] [-N system]";
 	} else {
-		opts = "TM:N:fiknstv";
+		opts = "TM:N:fhiknstv";
 		usagestr = "pstat [-Tfknst] [-M core] [-N system]";
 	}
 
@@ -218,8 +218,16 @@ main(int argc, char **argv)
 		case 'f':
 			fileflag = 1;
 			break;
+		case 'g':
+			if (setenv("BLOCKSIZE", "1G", 1) == -1)
+				warn("setenv: cannot set BLOCKSIZE=1K");
+			break;
 		case 'k':
 			if (setenv("BLOCKSIZE", "1K", 1) == -1)
+				warn("setenv: cannot set BLOCKSIZE=1K");
+			break;
+		case 'm':
+			if (setenv("BLOCKSIZE", "1M", 1) == -1)
 				warn("setenv: cannot set BLOCKSIZE=1K");
 			break;
 		case 'M':
@@ -494,7 +502,7 @@ ufs_print(struct vnode *vp)
 		else
 			printf(" %7s", name);
 	else
-		printf(" %7qd", ip->i_size);
+		printf(" %7ju", (uintmax_t)ip->i_size);
 	return (0);
 }
 
@@ -551,7 +559,7 @@ nfs_print(struct vnode *vp)
 		else
 			printf(" %7s", name);
 	else
-		printf(" %7qd", np->n_size);
+		printf(" %7ju", (uintmax_t)np->n_size);
 	return (0);
 }
 
@@ -819,9 +827,11 @@ ttyprt(struct tty *tp, int line)
 	int i, j;
 	pid_t pgid;
 	char *name, state[20];
+	dev_t dev;
 
-	if (usenumflag || tp->t_dev == 0 ||
-	   (name = devname(tp->t_dev, S_IFCHR)) == NULL)
+	dev = (uintptr_t)tp->t_dev & 0xffff; /* XXX t_dev is really dev_t */
+
+	if (usenumflag || dev == 0 || (name = devname(dev, S_IFCHR)) == NULL)
 		printf("%7d ", line);
 	else
 		printf("%7s ", name);
@@ -880,7 +890,7 @@ filemode(void)
 		err(1, "kinfo_get_files");
 	ofp = fp;
 	
-	printf("%d/%d open files\n", len, maxfile);
+	printf("%zu/%d open files\n", len, maxfile);
 	printf("   LOC   TYPE    FLG     CNT  MSG    DATA    OFFSET\n");
 	for (; len-- > 0; fp++) {
 		if ((unsigned)fp->f_type > DTYPE_SOCKET)
@@ -907,9 +917,9 @@ filemode(void)
 		printf("  %3d", fp->f_msgcount);
 		printf("  %8lx", (u_long)(void *)fp->f_data);
 		if (fp->f_offset < 0)
-			printf("  %qx\n", fp->f_offset);
+			printf("  %jx\n", (uintmax_t)fp->f_offset);
 		else
-			printf("  %qd\n", fp->f_offset);
+			printf("  %jd\n", (intmax_t)fp->f_offset);
 	}
 	free(ofp);
 }

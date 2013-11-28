@@ -12,6 +12,5 @@ LDADD=	-lkcore -lkinfo -lkvm
 MAN=	pstat.8
 LINKS=	${BINDIR}/pstat ${BINDIR}/swapinfo
 MLINKS=	pstat.8 swapinfo.8
-WARNS?=	0
 
 .include <bsd.prog.mk>
