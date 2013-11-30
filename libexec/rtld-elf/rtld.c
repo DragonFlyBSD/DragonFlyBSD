@@ -2707,9 +2707,14 @@ rtld_exit(void)
     lock_release(rtld_bind_lock, &lockstate);
 }
 
+/*
+ * Iterate over a search path, translate each element, and invoke the
+ * callback on the result.
+ */
 static void *
 path_enumerate(const char *path, path_enum_proc callback, void *arg)
 {
+    const char *trans;
     if (path == NULL)
 	return (NULL);
 
@@ -2719,7 +2724,11 @@ path_enumerate(const char *path, path_enum_proc callback, void *arg)
 	char  *res;
 
 	len = strcspn(path, ":;");
-	res = callback(path, len, arg);
+	trans = lm_findn(NULL, path, len);
+	if (trans)
+	    res = callback(trans, strlen(trans), arg);
+	else
+	    res = callback(path, len, arg);
 
 	if (res != NULL)
 	    return (res);

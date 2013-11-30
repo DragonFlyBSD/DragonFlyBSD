@@ -296,7 +296,7 @@ lmc_parse(char *lm_p, size_t lm_len)
 		else if (strcmp(f, "include") == 0)
 			lmc_parse_file(t);
 		else
-		lm_add(p, f, t);
+			lm_add(p, f, t);
 	}
 }
 
@@ -387,6 +387,25 @@ lm_find (const char *p, const char *f)
 		return (lml_find(lml, f));
 	else
 		return (NULL);
+}
+
+/* Given a libmap translation list and a library name, return the
+   replacement library, or NULL */
+char *
+lm_findn (const char *p, const char *f, const int n)
+{
+	char pathbuf[64], *s, *t;
+
+	if (n < sizeof(pathbuf) - 1)
+		s = pathbuf;
+	else
+		s = xmalloc(n + 1);
+	memcpy(s, f, n);
+	s[n] = '\0';
+	t = lm_find(p, s);
+	if (s != pathbuf)
+		free(s);
+	return (t);
 }
 
 static char *
