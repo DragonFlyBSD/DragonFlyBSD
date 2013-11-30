@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wump.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/wump/wump.c,v 1.13.2.1 2000/08/17 06:24:54 jhb Exp $
- * $DragonFly: src/games/wump/wump.c,v 1.6 2007/04/18 18:32:12 swildner Exp $
  */
 
 /*
@@ -416,7 +415,7 @@ shoot(char *room_list)
 		}
 		if (roomcnt > 5) {
 			(void)printf(
-"The arrow wavers in its flight and and can go no further!\n");
+"The arrow wavers in its flight and can go no further!\n");
 			break;
 		}
 		next = atoi(p);
@@ -460,7 +459,7 @@ The arrow is weakly shot and can go no further!\n");
 			break;
 		} else if (roomcnt == 4 && chance < 6) {
 			(void)printf(
-"The arrow wavers in its flight and and can go no further!\n");
+"The arrow wavers in its flight and can go no further!\n");
 			break;
 		}
 	}

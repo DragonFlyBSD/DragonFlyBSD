@@ -8937,7 +8937,7 @@ void ironlake_enable_rc6(struct drm_device *dev)
 	 */
 	ret = intel_wait_ring_idle(LP_RING(dev_priv));
 	if (ret) {
-		DRM_ERROR("failed to enable ironlake power power savings\n");
+		DRM_ERROR("failed to enable ironlake power savings\n");
 		ironlake_teardown_rc6(dev);
 		DRM_UNLOCK(dev);
 		return;
