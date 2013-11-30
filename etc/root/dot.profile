@@ -6,5 +6,5 @@ HOME=/root
 export HOME
 TERM=${TERM:-cons25}
 export TERM
-PAGER=more
+PAGER=less
 export PAGER

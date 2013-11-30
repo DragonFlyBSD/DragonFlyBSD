@@ -17,7 +17,7 @@ umask 22
 set path = (/sbin /bin /usr/sbin /usr/bin /usr/local/sbin /usr/local/bin /usr/pkg/bin /usr/pkg/sbin /usr/games $HOME/bin)
 
 setenv	EDITOR	vi
-setenv	PAGER	more
+setenv	PAGER	less
 setenv	BLOCKSIZE	K
 
 if ($?prompt) then
