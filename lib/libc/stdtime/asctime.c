@@ -81,10 +81,10 @@ asctime_r(const struct tm *timeptr, char *buf)
 		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 	};
+	char		year[INT_STRLEN_MAXIMUM(int) + 2];
+	char		result[MAX_ASCTIME_BUF_SIZE];
 	const char *	wn;
 	const char *	mn;
-	char			year[INT_STRLEN_MAXIMUM(int) + 2];
-	char			result[MAX_ASCTIME_BUF_SIZE];
 
 	if (timeptr == NULL) {
 		errno = EINVAL;
@@ -102,19 +102,16 @@ asctime_r(const struct tm *timeptr, char *buf)
 	** Assume that strftime is unaffected by other out-of-range members
 	** (e.g., timeptr->tm_mday) when processing "%Y".
 	*/
-	(void) strftime(year, sizeof year, "%Y", timeptr);
-	/*
-	** We avoid using snprintf since it's not available on all systems.
-	*/
-	(void) sprintf(result,
+	strftime(year, sizeof year, "%Y", timeptr);
+	snprintf(result, sizeof result,
 		((strlen(year) <= 4) ? ASCTIME_FMT : ASCTIME_FMT_B),
 		wn, mn,
 		timeptr->tm_mday, timeptr->tm_hour,
 		timeptr->tm_min, timeptr->tm_sec,
 		year);
-	if (strlen(result) < STD_ASCTIME_BUF_SIZE || buf == buf_asctime)
+	if (strlen(result) < STD_ASCTIME_BUF_SIZE || buf == buf_asctime) {
 		return strcpy(buf, result);
-	else {
+	} else {
 		errno = EOVERFLOW;
 		return NULL;
 	}

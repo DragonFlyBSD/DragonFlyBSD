@@ -11,7 +11,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -30,7 +30,7 @@
 .\"     From: @(#)ctime.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/contrib/tzcode/stdtime/ctime.3 165903 2007-01-09 00:28:16Z imp $
 .\"
-.Dd January 2, 1999
+.Dd November 19, 2013
 .Dt CTIME 3
 .Os
 .Sh NAME
@@ -129,12 +129,21 @@ The
 function
 adjusts the time value for the current time zone in the same manner as
 .Fn localtime ,
-and returns a pointer to a 26-character string of the form:
+and returns a pointer to a string of the form:
 .Bd -literal -offset indent
 Thu Nov 24 18:22:48 1986\en\e0
 .Ed
 .Pp
-All the fields have constant width.
+Years requiring fewer than four characters are padded with leading zeroes.
+For years longer than four characters, the string is of the form
+.Bd -literal -offset indent
+Thu Nov 24 18:22:48     81986\en\e0
+.Ed
+.Pp
+with five spaces before the year.
+These unusual formats are designed to make it less likely that older
+software that expects exactly 26 bytes of output will mistakenly output
+misleading values for out-of-range years.
 .Pp
 The
 .Fn ctime_r
@@ -225,7 +234,9 @@ A negative value for
 causes the
 .Fn mktime
 function to attempt to divine whether summer time is in effect for the
-specified time.
+specified time; in this case it does not use a consistent
+rule and may give a different answer when later
+presented with the same argument.
 The
 .Fa tm_isdst
 and
@@ -276,7 +287,7 @@ int tm_wday;	/\(** day of week (Sunday = 0) \(**/
 int tm_yday;	/\(** day of year (0 - 365) \(**/
 int tm_isdst;	/\(** is summer time in effect? \(**/
 char \(**tm_zone;	/\(** abbreviation of timezone name \(**/
-long tm_gmtoff;	/\(** offset from UTC in seconds \(**/
+long tm_gmtoff;	/\(** offset from UT in seconds \(**/
 .Ed
 .Pp
 The
@@ -287,13 +298,31 @@ is non-zero if summer time is in effect.
 The field
 .Fa tm_gmtoff
 is the offset (in seconds) of the time represented from
-.Tn UTC ,
+.Tn UT ,
 with positive
 values indicating east of the Prime Meridian.
+The field's name is derived from Greenwich Mean Time, a precursor of UT.
+.Sh COMPATIBILITY
+The
+.Fn asctime
+and
+.Fn ctime
+functions
+behave strangely for years before 1000 or after 9999.
+The 1989 and 1999 editions of the C Standard say
+that years from -99 through 999 are converted without
+extra spaces, but this conflicts with longstanding
+tradition and with this implementation.
+Traditional implementations of these two functions are
+restricted to years in the range 1900 through 2099.
+To avoid this portability mess, new programs should use
+.Xr strftime 3
+instead.
 .Sh SEE ALSO
 .Xr date 1 ,
 .Xr gettimeofday 2 ,
 .Xr getenv 3 ,
+.Xr strftime 3 ,
 .Xr time 3 ,
 .Xr tzset 3 ,
 .Xr tzfile 5

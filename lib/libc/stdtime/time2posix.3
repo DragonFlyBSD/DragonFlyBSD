@@ -1,6 +1,6 @@
 .\" $FreeBSD: head/contrib/tzcode/stdtime/time2posix.3 192890 2009-05-27 12:18:39Z edwin $
 .\"
-.Dd September 11, 2005
+.Dd October 19, 2008
 .Dt TIME2POSIX 3
 .Os
 .Sh NAME
@@ -18,7 +18,7 @@
 .Sh DESCRIPTION
 .St -p1003.1-88
 legislates that a time_t value of
-536457599 shall correspond to "Wed Dec 31 23:59:59 GMT 1986."
+536457599 shall correspond to "Wed Dec 31 23:59:59 UTC 1986."
 This effectively implies that POSIX time_t's cannot include leap
 seconds and,
 therefore,
@@ -118,6 +118,5 @@ degenerate to the identity function.
 .Xr localtime 3 ,
 .Xr mktime 3 ,
 .Xr time 3
-.\" @(#)time2posix.3  8.2
 .\" This file is in the public domain, so clarified as of
 .\" 1996-06-05 by Arthur David Olson.
