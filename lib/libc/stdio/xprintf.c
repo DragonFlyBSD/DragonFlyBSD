@@ -43,7 +43,6 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stdarg.h>
-#include <namespace.h>
 #include <string.h>
 #include <wchar.h>
 #include "un-namespace.h"

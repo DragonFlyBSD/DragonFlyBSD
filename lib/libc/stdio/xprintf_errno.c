@@ -26,7 +26,7 @@
  * $FreeBSD: src/lib/libc/stdio/xprintf_errno.c,v 1.1 2006/01/25 12:45:24 phk Exp $
  */
 
-#include <namespace.h>
+#include "namespace.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -34,6 +34,8 @@
 #include <vis.h>
 #include <assert.h>
 #include <sys/time.h>
+#include "un-namespace.h"
+
 #include "printf.h"
 
 int
