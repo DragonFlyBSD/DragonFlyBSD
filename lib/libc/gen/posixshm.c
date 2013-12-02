@@ -46,8 +46,10 @@ shm_open(const char *path, int flags, mode_t mode)
 	int fd;
 	struct stat stab;
 
-	if ((flags & O_ACCMODE) == O_WRONLY)
-		return (EINVAL);
+	if ((flags & O_ACCMODE) == O_WRONLY) {
+		errno = EINVAL;
+		return (-1);
+	}
 
 	fd = _open(path, flags, mode);
 	if (fd != -1) {
