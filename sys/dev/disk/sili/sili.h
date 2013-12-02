@@ -810,6 +810,7 @@ struct sili_softc {
 	bus_space_tag_t		sc_piot;	/* split from sc_pregs */
 	bus_space_handle_t	sc_pioh;	/* split from sc_pregs */
 
+	int			sc_irq_type;
 	int			sc_rid_irq;	/* saved bus RIDs */
 	int			sc_rid_regs;
 	int			sc_rid_pregs;

@@ -77,6 +77,13 @@ static const struct sili_device sili_devices[] = {
 };
 
 /*
+ * Don't enable MSI by default; it does not seem to
+ * work at all on Silicon Image 3132.
+ */
+static int sili_msi_enable = 0;
+TUNABLE_INT("hw.sili.msi.enable", &sili_msi_enable);
+
+/*
  * Match during probe and attach.  The device does not yet have a softc.
  */
 const struct sili_device *
@@ -116,17 +123,28 @@ sili_pci_attach(device_t dev)
 	const char *gen;
 	u_int32_t nports, reg;
 	bus_addr_t addr;
-	int i;
-	int error;
+	int i, error, msi_enable;
+	u_int irq_flags;
 
 	/*
 	 * Map the SILI controller's IRQ, BAR(0) (global regs),
 	 * and BAR(1) (port regs and lram).
 	 */
+
+	msi_enable = sili_msi_enable;
+	if (!pci_is_pcie(dev)) {
+		/*
+		 * Don't enable MSI on PCI devices by default;
+		 * well, this may cause less trouble.
+		 */
+		msi_enable = 0;
+	}
+	sc->sc_irq_type = pci_alloc_1intr(dev, msi_enable, &sc->sc_rid_irq,
+	    &irq_flags);
+
 	sc->sc_dev = dev;
-	sc->sc_rid_irq = SILI_IRQ_RID;
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &sc->sc_rid_irq,
-					    RF_SHAREABLE | RF_ACTIVE);
+	    irq_flags);
 	if (sc->sc_irq == NULL) {
 		device_printf(dev, "unable to map interrupt\n");
 		sili_pci_detach(dev);
@@ -350,6 +368,9 @@ sili_pci_detach(device_t dev)
 				     sc->sc_rid_irq, sc->sc_irq);
 		sc->sc_irq = NULL;
 	}
+	if (sc->sc_irq_type == PCI_INTR_TYPE_MSI)
+		pci_release_msi(dev);
+
 	if (sc->sc_regs) {
 		bus_release_resource(dev, SYS_RES_MEMORY,
 				     sc->sc_rid_regs, sc->sc_regs);
