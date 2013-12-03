@@ -214,6 +214,7 @@ struct bge_softc {
 #define BGE_FLAG_TSO		0x00000008
 #define BGE_FLAG_MII_SERDES	0x00000010
 #define	BGE_FLAG_CPMU		0x00000020
+#define BGE_FLAG_APE		0x00000040
 #define BGE_FLAG_PCIX		0x00000200
 #define BGE_FLAG_PCIE		0x00000400
 #define BGE_FLAG_5700_FAMILY	0x00001000
@@ -229,6 +230,11 @@ struct bge_softc {
 #define BGE_FLAG_STATUS_TAG	0x80000000
 
 	uint32_t		bge_chipid;
+	uint8_t			bge_asf_mode;
+#define ASF_ENABLE		0x01
+#define ASF_NEW_HANDSHAKE	0x02
+#define ASF_STACKUP		0x04
+	uint8_t			bge_asf_count;
 	uint32_t		bge_asicrev;
 	uint32_t		bge_chiprev;
 	struct ifpoll_compat	bge_npoll;	/* polling */

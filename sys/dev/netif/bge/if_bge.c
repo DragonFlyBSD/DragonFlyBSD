@@ -118,6 +118,10 @@
 
 #define BGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP)
 
+#define	BGE_RESET_SHUTDOWN	0
+#define	BGE_RESET_START		1
+#define	BGE_RESET_SUSPEND	2
+
 static const struct bge_type {
 	uint16_t		bge_vid;
 	uint16_t		bge_did;
@@ -406,6 +410,12 @@ static int	bge_sysctl_tx_coal_bds_int(SYSCTL_HANDLER_ARGS);
 static int	bge_sysctl_coal_chg(SYSCTL_HANDLER_ARGS, uint32_t *,
 		    int, int, uint32_t);
 
+static void	bge_sig_post_reset(struct bge_softc *, int);
+static void	bge_sig_legacy(struct bge_softc *, int);
+static void	bge_sig_pre_reset(struct bge_softc *, int);
+static void	bge_stop_fw(struct bge_softc *);
+static void	bge_asf_driver_up(struct bge_softc *);
+
 /*
  * Set following tunable to 1 for some IBM blade servers with the DNLK
  * switch module. Auto negotiation is broken for those configurations.
@@ -415,6 +425,9 @@ TUNABLE_INT("hw.bge.fake_autoneg", &bge_fake_autoneg);
 
 static int	bge_msi_enable = 1;
 TUNABLE_INT("hw.bge.msi.enable", &bge_msi_enable);
+
+static int	bge_allow_asf = 1;
+TUNABLE_INT("hw.bge.allow_asf", &bge_allow_asf);
 
 #if !defined(KTR_IF_BGE)
 #define KTR_IF_BGE	KTR_ALL
@@ -758,6 +771,9 @@ bge_miibus_statchg(device_t dev)
 	struct mii_data *mii;
 
 	sc = device_get_softc(dev);
+	if ((sc->arpcom.ac_if.if_flags & IFF_RUNNING) == 0)
+		return;
+
 	mii = device_get_softc(sc->bge_miibus);
 
 	if ((mii->mii_media_status & (IFM_ACTIVE | IFM_AVALID)) ==
@@ -1253,7 +1269,7 @@ static int
 bge_chipinit(struct bge_softc *sc)
 {
 	int i;
-	uint32_t dma_rw_ctl;
+	uint32_t dma_rw_ctl, mode_ctl;
 	uint16_t val;
 
 	/* Set endian type before we access any non-PCI registers. */
@@ -1349,9 +1365,9 @@ bge_chipinit(struct bge_softc *sc)
 	/*
 	 * Set up general mode register.
 	 */
-	CSR_WRITE_4(sc, BGE_MODE_CTL, BGE_DMA_SWAP_OPTIONS|
+	mode_ctl = BGE_DMA_SWAP_OPTIONS|
 	    BGE_MODECTL_MAC_ATTN_INTR|BGE_MODECTL_HOST_SEND_BDS|
-	    BGE_MODECTL_TX_NO_PHDR_CSUM);
+	    BGE_MODECTL_TX_NO_PHDR_CSUM;
 
 	/*
 	 * BCM5701 B5 have a bug causing data corruption when using
@@ -1361,7 +1377,15 @@ bge_chipinit(struct bge_softc *sc)
 	 */
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5701 &&
 	    sc->bge_chipid == BGE_CHIPID_BCM5701_B5)
-		BGE_SETBIT(sc, BGE_MODE_CTL, BGE_MODECTL_FORCE_PCI32);
+		mode_ctl |= BGE_MODECTL_FORCE_PCI32;
+
+	/*
+	 * Tell the firmware the driver is running
+	 */
+	if (sc->bge_asf_mode & ASF_STACKUP)
+		mode_ctl |= BGE_MODECTL_STACKUP;
+
+	CSR_WRITE_4(sc, BGE_MODE_CTL, mode_ctl);
 
 	/*
 	 * Disable memory write invalidate.  Apparently it is not supported
@@ -2079,6 +2103,9 @@ bge_attach(device_t dev)
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5906)
 		sc->bge_flags |= BGE_FLAG_NO_EEPROM;
 
+	if (sc->bge_asicrev == BGE_ASICREV_BCM5761)
+		sc->bge_flags |= BGE_FLAG_APE;
+
 	misccfg = CSR_READ_4(sc, BGE_MISC_CFG) & BGE_MISCCFG_BOARD_ID_MASK;
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5705 &&
 	    (misccfg == BGE_MISCCFG_BOARD_ID_5788 ||
@@ -2287,8 +2314,29 @@ bge_attach(device_t dev)
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
-	/* Try to reset the chip. */
+	sc->bge_asf_mode = 0;
+	/* No ASF if APE present. */
+	if ((sc->bge_flags & BGE_FLAG_APE) == 0) {
+		if (bge_allow_asf && (bge_readmem_ind(sc, BGE_SRAM_DATA_SIG) ==
+		    BGE_SRAM_DATA_SIG_MAGIC)) {
+			if (bge_readmem_ind(sc, BGE_SRAM_DATA_CFG) &
+			    BGE_HWCFG_ASF) {
+				sc->bge_asf_mode |= ASF_ENABLE;
+				sc->bge_asf_mode |= ASF_STACKUP;
+				if (BGE_IS_575X_PLUS(sc))
+					sc->bge_asf_mode |= ASF_NEW_HANDSHAKE;
+			}
+		}
+	}
+
+	/*
+	 * Try to reset the chip.
+	 */
+	bge_stop_fw(sc);
+	bge_sig_pre_reset(sc, BGE_RESET_SHUTDOWN);
 	bge_reset(sc);
+	bge_sig_legacy(sc, BGE_RESET_SHUTDOWN);
+	bge_sig_post_reset(sc, BGE_RESET_SHUTDOWN);
 
 	if (bge_chipinit(sc)) {
 		device_printf(dev, "chip initialization failed\n");
@@ -2450,6 +2498,19 @@ bge_attach(device_t dev)
 		sc->bge_ifmedia.ifm_media = sc->bge_ifmedia.ifm_cur->ifm_media;
 	} else {
 		struct mii_probe_args mii_args;
+		int tries;
+
+		/*
+		 * Do transceiver setup and tell the firmware the
+		 * driver is down so we can try to get access the
+		 * probe if ASF is running.  Retry a couple of times
+		 * if we get a conflict with the ASF firmware accessing
+		 * the PHY.
+		 */
+		tries = 0;
+		BGE_CLRBIT(sc, BGE_MODE_CTL, BGE_MODECTL_STACKUP);
+again:
+		bge_asf_driver_up(sc);
 
 		mii_probe_args_init(&mii_args, bge_ifmedia_upd, bge_ifmedia_sts);
 		mii_args.mii_probemask = 1 << sc->bge_phyno;
@@ -2459,9 +2520,21 @@ bge_attach(device_t dev)
 
 		error = mii_probe(dev, &sc->bge_miibus, &mii_args);
 		if (error) {
+			if (tries++ < 4) {
+				device_printf(sc->bge_dev, "Probe MII again\n");
+				bge_miibus_writereg(sc->bge_dev,
+				    sc->bge_phyno, MII_BMCR, BMCR_RESET);
+				goto again;
+			}
 			device_printf(dev, "MII without any PHY!\n");
 			goto fail;
 		}
+
+		/*
+		 * Now tell the firmware we are going up after probing the PHY
+		 */
+		if (sc->bge_asf_mode & ASF_STACKUP)
+			BGE_SETBIT(sc, BGE_MODE_CTL, BGE_MODECTL_STACKUP);
 	}
 
 	/*
@@ -2611,7 +2684,6 @@ bge_detach(device_t dev)
 
 		lwkt_serialize_enter(ifp->if_serializer);
 		bge_stop(sc);
-		bge_reset(sc);
 		bus_teardown_intr(dev, sc->bge_irq, sc->bge_intrhand);
 		lwkt_serialize_exit(ifp->if_serializer);
 
@@ -3308,6 +3380,8 @@ bge_tick(void *xsc)
 		mii_tick(device_get_softc(sc->bge_miibus));
 	}
 
+	bge_asf_driver_up(sc);
+
 	callout_reset(&sc->bge_stat_timer, hz, bge_tick, sc);
 
 	lwkt_serialize_exit(ifp->if_serializer);
@@ -3611,7 +3685,13 @@ bge_init(void *xsc)
 
 	/* Cancel pending I/O and flush buffers. */
 	bge_stop(sc);
+
+	bge_stop_fw(sc);
+	bge_sig_pre_reset(sc, BGE_RESET_START);
 	bge_reset(sc);
+	bge_sig_legacy(sc, BGE_RESET_START);
+	bge_sig_post_reset(sc, BGE_RESET_START);
+
 	bge_chipinit(sc);
 
 	/*
@@ -3730,10 +3810,10 @@ bge_init(void *xsc)
 #endif
 	bge_enable_intr(sc);
 
-	bge_ifmedia_upd(ifp);
-
 	ifp->if_flags |= IFF_RUNNING;
 	ifq_clr_oactive(&ifp->if_snd);
+
+	bge_ifmedia_upd(ifp);
 
 	callout_reset(&sc->bge_stat_timer, hz, bge_tick, sc);
 }
@@ -3828,6 +3908,9 @@ static void
 bge_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct bge_softc *sc = ifp->if_softc;
+
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
+		return;
 
 	if (sc->bge_flags & BGE_FLAG_TBI) {
 		ifmr->ifm_status = IFM_AVALID;
@@ -3971,6 +4054,15 @@ bge_stop(struct bge_softc *sc)
 
 	callout_stop(&sc->bge_stat_timer);
 
+	/* Disable host interrupts. */
+	bge_disable_intr(sc);
+
+	/*
+	 * Tell firmware we're shutting down.
+	 */
+	bge_stop_fw(sc);
+	bge_sig_pre_reset(sc, BGE_RESET_SHUTDOWN);
+
 	/*
 	 * Disable all of the receiver blocks
 	 */
@@ -4010,13 +4102,17 @@ bge_stop(struct bge_softc *sc)
 		BGE_CLRBIT(sc, BGE_MARB_MODE, BGE_MARBMODE_ENABLE);
 	}
 
-	/* Disable host interrupts. */
-	bge_disable_intr(sc);
+	bge_reset(sc);
+	bge_sig_legacy(sc, BGE_RESET_SHUTDOWN);
+	bge_sig_post_reset(sc, BGE_RESET_SHUTDOWN);
 
 	/*
-	 * Tell firmware we're shutting down.
+	 * Keep the ASF firmware running if up.
 	 */
-	BGE_CLRBIT(sc, BGE_MODE_CTL, BGE_MODECTL_STACKUP);
+	if (sc->bge_asf_mode & ASF_STACKUP)
+		BGE_SETBIT(sc, BGE_MODE_CTL, BGE_MODECTL_STACKUP);
+	else
+		BGE_CLRBIT(sc, BGE_MODE_CTL, BGE_MODECTL_STACKUP);
 
 	/* Free the RX lists. */
 	bge_free_rx_ring_std(sc);
@@ -4976,4 +5072,115 @@ bge_setup_tso(struct bge_softc *sc, struct mbuf **mp,
 	*flags0 = flags;
 
 	return 0;
+}
+
+static void
+bge_stop_fw(struct bge_softc *sc)
+{
+	int i;
+
+	if (sc->bge_asf_mode) {
+		bge_writemem_ind(sc, BGE_SRAM_FW_CMD_MB, BGE_FW_CMD_PAUSE);
+		CSR_WRITE_4(sc, BGE_RX_CPU_EVENT,
+		    CSR_READ_4(sc, BGE_RX_CPU_EVENT) | BGE_RX_CPU_DRV_EVENT);
+
+		for (i = 0; i < 100; i++ ) {
+			if (!(CSR_READ_4(sc, BGE_RX_CPU_EVENT) &
+			    BGE_RX_CPU_DRV_EVENT))
+				break;
+			DELAY(10);
+		}
+	}
+}
+
+static void
+bge_sig_pre_reset(struct bge_softc *sc, int type)
+{
+	/*
+	 * Some chips don't like this so only do this if ASF is enabled
+	 */
+	if (sc->bge_asf_mode)
+		bge_writemem_ind(sc, BGE_SRAM_FW_MB, BGE_SRAM_FW_MB_MAGIC);
+
+	if (sc->bge_asf_mode & ASF_NEW_HANDSHAKE) {
+		switch (type) {
+		case BGE_RESET_START:
+			bge_writemem_ind(sc, BGE_SRAM_FW_DRV_STATE_MB,
+			    BGE_FW_DRV_STATE_START);
+			break;
+		case BGE_RESET_SHUTDOWN:
+			bge_writemem_ind(sc, BGE_SRAM_FW_DRV_STATE_MB,
+			    BGE_FW_DRV_STATE_UNLOAD);
+			break;
+		case BGE_RESET_SUSPEND:
+			bge_writemem_ind(sc, BGE_SRAM_FW_DRV_STATE_MB,
+			    BGE_FW_DRV_STATE_SUSPEND);
+			break;
+		}
+	}
+
+#ifdef notyet
+	if (type == BGE_RESET_START || type == BGE_RESET_SUSPEND)
+		bge_ape_driver_state_change(sc, type);
+#endif
+}
+
+static void
+bge_sig_legacy(struct bge_softc *sc, int type)
+{
+	if (sc->bge_asf_mode) {
+		switch (type) {
+		case BGE_RESET_START:
+			bge_writemem_ind(sc, BGE_SRAM_FW_DRV_STATE_MB,
+			    BGE_FW_DRV_STATE_START);
+			break;
+		case BGE_RESET_SHUTDOWN:
+			bge_writemem_ind(sc, BGE_SRAM_FW_DRV_STATE_MB,
+			    BGE_FW_DRV_STATE_UNLOAD);
+			break;
+		}
+	}
+}
+
+static void
+bge_sig_post_reset(struct bge_softc *sc, int type)
+{
+	if (sc->bge_asf_mode & ASF_NEW_HANDSHAKE) {
+		switch (type) {
+		case BGE_RESET_START:
+			bge_writemem_ind(sc, BGE_SRAM_FW_DRV_STATE_MB,
+			    BGE_FW_DRV_STATE_START_DONE);
+			/* START DONE */
+			break;
+		case BGE_RESET_SHUTDOWN:
+			bge_writemem_ind(sc, BGE_SRAM_FW_DRV_STATE_MB,
+			    BGE_FW_DRV_STATE_UNLOAD_DONE);
+			break;
+		}
+	}
+#ifdef notyet
+	if (type == BGE_RESET_SHUTDOWN)
+		bge_ape_driver_state_change(sc, type);
+#endif
+}
+
+static void
+bge_asf_driver_up(struct bge_softc *sc)
+{
+	if (sc->bge_asf_mode & ASF_STACKUP) {
+		/* Send ASF heartbeat aprox. every 2s */
+		if (sc->bge_asf_count)
+			sc->bge_asf_count --;
+		else {
+			sc->bge_asf_count = 2;
+			bge_writemem_ind(sc, BGE_SRAM_FW_CMD_MB,
+			    BGE_FW_CMD_DRV_ALIVE);
+			bge_writemem_ind(sc, BGE_SRAM_FW_CMD_LEN_MB, 4);
+			bge_writemem_ind(sc, BGE_SRAM_FW_CMD_DATA_MB,
+			    BGE_FW_HB_TIMEOUT_SEC);
+			CSR_WRITE_4(sc, BGE_RX_CPU_EVENT,
+			    CSR_READ_4(sc, BGE_RX_CPU_EVENT) |
+			    BGE_RX_CPU_DRV_EVENT);
+		}
+	}
 }
