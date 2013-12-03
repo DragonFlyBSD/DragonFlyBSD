@@ -4147,7 +4147,6 @@ bge_shutdown(device_t dev)
 
 	lwkt_serialize_enter(ifp->if_serializer);
 	bge_stop(sc);
-	bge_reset(sc);
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
