@@ -378,9 +378,10 @@ int
 idr_for_each(struct idr *idp, int (*fn)(int id, void *p, void *data), void *data)
 {
 	int i, error = 0;
-	struct idr_node *nodes = idp->idr_nodes;
+	struct idr_node *nodes;
 
 	lwkt_gettoken(&idp->idr_token);
+	nodes = idp->idr_nodes;
 	for (i = 0; i < idp->idr_count; i++) {
 		if (nodes[i].data != NULL && nodes[i].allocated > 0) {
 			error = fn(i, nodes[i].data, data);
