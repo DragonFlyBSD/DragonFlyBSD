@@ -314,7 +314,7 @@ idr_remove_all(struct idr *idp)
 
 retry:
 	oldnodes = idp->idr_nodes;
-	newnodes = kmalloc(idp->idr_count * sizeof *idp, M_IDR, M_WAITOK | M_ZERO);
+	newnodes = kmalloc(idp->idr_count * sizeof(struct idr_node), M_IDR, M_WAITOK | M_ZERO);
 
 	if (idp->idr_nodes != oldnodes) {
 		kfree(newnodes, M_IDR);
@@ -417,7 +417,7 @@ void
 idr_init(struct idr *idp)
 {
 	bzero(idp, sizeof(struct idr));
-	idp->idr_nodes = kmalloc(IDR_DEFAULT_SIZE * sizeof(*idp),
+	idp->idr_nodes = kmalloc(IDR_DEFAULT_SIZE * sizeof(struct idr_node),
 						M_IDR, M_WAITOK | M_ZERO);
 	idp->idr_count = IDR_DEFAULT_SIZE;
 	idp->idr_lastindex = -1;
