@@ -44,7 +44,8 @@
 #include <sys/spinlock2.h>
 #include <sys/limits.h>
 
-#define IDR_DEFAULT_SIZE    256
+/* Must be 2^n - 1 */
+#define IDR_DEFAULT_SIZE    255
 
 MALLOC_DEFINE(M_IDR, "idr", "Integer ID management");
 
@@ -253,14 +254,20 @@ idr_grow(struct idr *idp, int want)
 	struct idr_node *oldnodes, *newnodes;
 	int nf;
 
-	/* We want 2^n descriptors */
+	/* We want 2^n - 1 descriptors */
 	nf = idp->idr_count;
 	do {
-		nf *= 2;
+		nf = 2 * nf + 1;
 	} while (nf <= want);
 
 	/* Allocate a new zero'ed node array */
 	newnodes = kmalloc(nf * sizeof(struct idr_node), M_IDR, M_ZERO|M_WAITOK);
+	
+	/* We might race another grow */
+	if (nf <= idp->idr_count) {
+		kfree(newnodes, M_IDR);
+		return;
+	}
 
 	/* Copy the existing nodes at the beginning of the new array */
 	if (idp->idr_nodes != NULL)
@@ -300,12 +307,29 @@ out:
 void
 idr_remove_all(struct idr *idp)
 {
-	kfree(idp->idr_nodes, M_IDR);
-	idp->idr_nodes = kmalloc(idp->idr_count * sizeof *idp, M_IDR, M_WAITOK | M_ZERO);
+	struct      idr_node *oldnodes;
+	struct      idr_node *newnodes;
+
+	lwkt_gettoken(&idp->idr_token);
+
+retry:
+	oldnodes = idp->idr_nodes;
+	newnodes = kmalloc(idp->idr_count * sizeof *idp, M_IDR, M_WAITOK | M_ZERO);
+
+	if (idp->idr_nodes != oldnodes) {
+		kfree(newnodes, M_IDR);
+		goto retry;
+	}
+
+	idp->idr_nodes = newnodes;
 	idp->idr_lastindex = -1;
 	idp->idr_freeindex = 0;
 	idp->idr_nexpands = 0;
 	idp->idr_maxwant = 0;
+	lwkt_reltoken(&idp->idr_token);
+
+	kfree(idp->idr_nodes, M_IDR);
+
 }
 
 void
