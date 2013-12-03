@@ -328,7 +328,7 @@ retry:
 	idp->idr_maxwant = 0;
 	lwkt_reltoken(&idp->idr_token);
 
-	kfree(idp->idr_nodes, M_IDR);
+	kfree(oldnodes, M_IDR);
 
 }
 
