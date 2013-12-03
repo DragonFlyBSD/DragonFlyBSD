@@ -7,10 +7,10 @@ through the console output.  Press "Scroll Lock" again to turn it off.
 Want colour in your directory listings?  Use "ls -G".  "ls -F" is also useful,
 and they can be combined as "ls -FG".
 %
-If you'd like to keep track of applications in the pkgsrc tree, take a look
-at pkgsrc.se;
+If you'd like to keep track of applications in the port tree, take a look
+at freshports.org;
 
-	http://www.pkgsrc.se/
+	http://www.freshports.org/
 %
 To search for files that match a particular name, use find(1); for example
 
@@ -182,21 +182,21 @@ without doing this.)
 
 Note: This tip may not work in all configurations.
 %
-You can install extra packages for DragonFly BSD by using the pkgsrc system.
+You can install extra packages for DragonFly BSD by using the dports system.
 If you have installed it, you can download, compile, and install software by
 just typing
 
-	# cd /usr/pkgsrc/<category>/<package name>
-	# bmake install clean
+	# cd /usr/dports/<category>/<package name>
+	# make install clean
 
-as root.   The pkgsrc infrastructure will download the software, change it so
+as root.   The dports infrastructure will download the software, change it so
 it works on DragonFly BSD, compile it, install it, register the installation
 so it will be possible to automatically uninstall it, and clean out the
 temporary working space it used.  You can remove an installed package you
 decide you do not want after all by typing
 
-	# cd /usr/pkgsrc/<category>/<package name>
-	# bmake deinstall
+	# cd /usr/dports/<category>/<package name>
+	# make deinstall
 
 as root.
 %
@@ -209,7 +209,7 @@ been replaced with other messages, look at /var/run/dmesg.boot.
 %
 You can use "whereis" to locate standard binary, manual page and source
 directories for the specified programs.  This can be particularly handy
-when you are trying to find where in the pkgsrc tree an application is.
+when you are trying to find where in the dports tree an application is.
 
 Try "whereis netscape" and "whereis whereis".
 		-- Konstantinos Konstantinidis <kkonstan@duth.gr>
@@ -218,7 +218,7 @@ You can press Ctrl-D to quickly exit from a shell, or logout from a
 login shell.
 		-- Konstantinos Konstantinidis <kkonstan@duth.gr>
 %
-You can use "pkg_info" to see a list of packages you have installed.
+You can use "pkg info" to see a list of packages you have installed.
 		-- Konstantinos Konstantinidis <kkonstan@duth.gr>
 %
 You can change the video mode on all consoles by adding something like
@@ -262,11 +262,10 @@ adjust, just type 'mixer'.
 %
 You can automatically download and install binary packages by doing
 
-	pkg_add <URL>
+	pkg install <name>
 
-where you replace <URL> with the URL to the package.  This will also
-automatically install the packages the package you download is dependent on
-(ie, the packages it needs in order to work.)
+This will also automatically install the packages the package you download
+is dependent on (ie, the packages it needs in order to work.)
 %
 You can make a log of your terminal session with script(1).
 %
@@ -276,7 +275,7 @@ DragonFly BSD system.
 Want to see how much virtual memory you're using?  Just type "swapinfo" to
 be shown information about the usage of your swap partitions.
 %
-pkgsrc/net/netcat package is useful not only for redirecting input/output
+dports/net/netcat package is useful not only for redirecting input/output
 to TCP or UDP connections, but also for proxying them.  See inetd(8) for
 details.
 %
@@ -401,7 +400,7 @@ Need to see which daemons are listening for connection requests?  Use
 "sockstat -4l" for IPv4, and "sockstat -l" for IPv4 and IPv6.
 		-- Dru <genesis@istar.ca>
 %
-Can't remember if you've installed a certain package or not?  Try "pkg_info |
+Can't remember if you've installed a certain package or not?  Try "pkg info |
 grep package_name".
 		-- Dru <genesis@istar.ca>
 %
@@ -447,12 +446,6 @@ write
 This won't work if you don't have write permissions to the directory
 and probably won't be suitable if you're editing through a symbolic link.
 %
-If you want to quickly check for duplicate package/port installations,
-try the following pkg_info command.
-
-	pkg_info | sort | sed -e 's/-[0-9].*$//' | \
-	uniq -c | grep -v '^[[:space:]]*1'
-%
 Want to use sed(1) to edit a file in place?  Well, to replace every 'e' with
 an 'o', in a file named 'foo', you can do:
 
@@ -463,49 +456,34 @@ want no backup:
 
 	sed -i '' s/e/o/g foo
 %
-You can automatically install binary packages from a random DragonFly BSD
-mirror with the following command:
+By default pkg-install(1) downloads all packages from a random DragonFly BSD mirror.
+To use a particular mirror set the mirror,
 
-	pkg_radd <package>
+	cp /usr/local/etc/pkg/repos/df-latest.conf.sample \
+		/usr/local/etc/pkg/repos/df-latest.conf
 
-This command also takes care about possible dependencies.  See the man page
-for further information.
+and choose the mirror you want to use.
+
+You can also use the file df-release.conf.sample is you prefer to use the
+RELEASE repository instead.
 %
-By default pkg_radd(1) downloads all packages from a random DragonFly BSD mirror.
-To use a particular mirror set the BINPKG_SITES environment variable
-accordingly.
+If you want to search for a particular package, use pkg-search(1):
 
-Example:
-
-	setenv BINPKG_SITES ftp://<mirror>/pub/DragonFly/packages
-
-or if you use a bourne compatible shell:
-
-	export BINPKG_SITES=ftp://<mirror>/pub/DragonFly/packages
-
+	pkg search <package>
 %
-If you want to search for a particular package, use pkg_search(1):
+To get a detailed description of a particular dports package:
 
-	pkg_search <package>
-
-If you do not have a pkgsrc tree installed, pkg_search(1) will automatically
-fetch a list of available binary packages for you.
+	pkg search -f <package>
 %
-To get a detailed description of a particular pkgsrc package:
-
-	pkg_search -s <package>
-
-Note: You need a full installation of the pkgsrc tree to make this work.
-%
-Getting the latest pkgsrc tree in DragonFly BSD is fairly simple:
+Getting the latest dports tree in DragonFly BSD is fairly simple:
 
 	cd /usr
-	make pkgsrc-create
+	make dports-create
 
-If you want to update your pkgsrc installation issue:
+If you want to update your dports installation issue:
 
 	cd /usr
-	make pkgsrc-update
+	make dports-update
 %
 To download the DragonFly BSD git repository into /usr/src, issue:
 
