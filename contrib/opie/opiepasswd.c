@@ -45,7 +45,6 @@ License Agreement applies to this software.
 		(skeyinit.c).
 
  $FreeBSD: src/contrib/opie/opiepasswd.c,v 1.1.1.2.6.3 2002/07/15 14:48:43 des Exp $
- $DragonFly: src/contrib/opie/opiepasswd.c,v 1.3 2006/03/22 21:22:39 drhodus Exp $
 */
 #include "opie_cfg.h"
 
@@ -251,7 +250,7 @@ int main FUNCTION((argc, argv), int argc AND char *argv[])
 	on = opiegetsequence(&opie);
 	{
 	  char *c;
-	  if (c = strrchr(tmp, ' '))
+	  if ((c = strrchr(tmp, ' ')) != NULL)
 	    opiestrncpy(oseed, c + 1, sizeof(oseed));
 	  else {
 #if DEBUG
@@ -287,7 +286,7 @@ int main FUNCTION((argc, argv), int argc AND char *argv[])
 	  nn = opiegetsequence(&opie);
 	  {
 	    char *c;
-	    if (c = strrchr(tmp, ' '))
+	    if ((c = strrchr(tmp, ' ')) != NULL)
 	      opiestrncpy(nseed, c + 1, sizeof(nseed));
 	    else {
 #if DEBUG

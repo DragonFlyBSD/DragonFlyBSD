@@ -145,7 +145,7 @@ int main FUNCTION((argc, argv), int argc AND char *argv[])
   int type = RESPONSE_STANDARD;
   int force = 0;
 
-  if (slash = strchr(argv[0], '/'))
+  if ((slash = strchr(argv[0], '/')) != 0)
     slash++;
   else
     slash = argv[0];
@@ -293,7 +293,6 @@ int main FUNCTION((argc, argv), int argc AND char *argv[])
 
   {
     char buf[OPIE_SEED_MAX + 48 + 1];
-    char *c;
 
     for (; i <= keynum; i++) {
       if (count > 1)
