@@ -57,8 +57,8 @@
 
 struct nlist nl[] = {
 #define	N_NFSSTAT	0
-	{ "_nfsstats" },
-	"",
+	{ .n_name = "_nfsstats" },
+	{ .n_name = "" },
 };
 kvm_t *kd;
 
