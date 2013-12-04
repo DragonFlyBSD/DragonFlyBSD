@@ -64,7 +64,6 @@ static void	expsh(char *);
 static void	expstr(char *);
 static int	match(char *, char *);
 static void	matchdir(char *);
-static int	smatch(char *, char *);
 
 /*
  * Take a list of names and expand any macros, etc.
@@ -504,63 +503,6 @@ slash:
 			pathp = spathp;
 			*pathp = '\0';
 			return (0);
-		}
-	}
-}
-
-static int
-smatch(char *s, char *p)
-{
-	int scc;
-	int ok, lc, c, cc;
-
-	for (;;) {
-		scc = *s++ & TRIM;
-		switch (c = *p++) {
-
-		case '[':
-			ok = 0;
-			lc = 077777;
-			while ((cc = *p++)) {
-				if (cc == ']') {
-					if (ok)
-						break;
-					return (0);
-				}
-				if (cc == '-') {
-					if (lc <= scc && scc <= *p++)
-						ok++;
-				} else
-					if (scc == (lc = cc))
-						ok++;
-			}
-			if (cc == 0) {
-				yyerror("Missing ']'");
-				return (0);
-			}
-			continue;
-
-		case '*':
-			if (!*p)
-				return (1);
-			for (s--; *s; s++)
-				if (smatch(s, p))
-					return (1);
-			return (0);
-
-		case '\0':
-			return (scc == '\0');
-
-		default:
-			if ((c & TRIM) != scc)
-				return (0);
-			continue;
-
-		case '?':
-			if (scc == 0)
-				return (0);
-			continue;
-
 		}
 	}
 }

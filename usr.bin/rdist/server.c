@@ -371,14 +371,14 @@ sendf(char *rname, int opts)
 			dolog(lfp, "%s: no password entry for uid %d \n",
 				target, stb.st_uid);
 			pw = NULL;
-			snprintf(user, sizeof(user), ":%lu", stb.st_uid);
+			snprintf(user, sizeof(user), ":%u", stb.st_uid);
 		}
 	if (gr == NULL || gr->gr_gid != stb.st_gid)
 		if ((gr = getgrgid(stb.st_gid)) == NULL) {
 			dolog(lfp, "%s: no name for group %d\n",
 				target, stb.st_gid);
 			gr = NULL;
-			snprintf(group, sizeof(group), ":%lu", stb.st_gid);
+			snprintf(group, sizeof(group), ":%u", stb.st_gid);
 		}
 	if (u == 1) {
 		if (opts & VERIFY) {
@@ -447,8 +447,8 @@ sendf(char *rname, int opts)
 			}
 		}
 		snprintf(buf, sizeof(buf),
-			"K%o %o %qd %ld %s %s %s\n", opts,
-			stb.st_mode & 07777, stb.st_size, stb.st_mtime,
+			"K%o %o %jd %ld %s %s %s\n", opts,
+			stb.st_mode & 07777, (intmax_t)stb.st_size, stb.st_mtime,
 			protoname(), protogroup(), rname);
 		if (debug)
 			printf("buf = %s", buf);
@@ -490,8 +490,8 @@ sendf(char *rname, int opts)
 		error("%s: %s\n", target, strerror(errno));
 		return;
 	}
-	snprintf(buf, sizeof(buf), "R%o %o %qd %ld %s %s %s\n", opts,
-		stb.st_mode & 07777, stb.st_size, stb.st_mtime,
+	snprintf(buf, sizeof(buf), "R%o %o %jd %ld %s %s %s\n", opts,
+		stb.st_mode & 07777, (intmax_t)stb.st_size, stb.st_mtime,
 		protoname(), protogroup(), rname);
 	if (debug)
 		printf("buf = %s", buf);
@@ -689,7 +689,7 @@ query(char *name)
 
 	switch (stb.st_mode & S_IFMT) {
 	case S_IFREG:
-		snprintf(buf, sizeof(buf), "Y%qd %ld\n", stb.st_size,
+		snprintf(buf, sizeof(buf), "Y%jd %ld\n", (intmax_t)stb.st_size,
 		    stb.st_mtime);
 		write(rem, buf, strlen(buf));
 		break;
