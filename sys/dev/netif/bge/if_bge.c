@@ -821,6 +821,7 @@ bge_miibus_statchg(device_t dev)
 		mac_mode |= BGE_MACMODE_HALF_DUPLEX;
 
 	CSR_WRITE_4(sc, BGE_MAC_MODE, mac_mode);
+	DELAY(40);
 }
 
 /*
@@ -1285,6 +1286,7 @@ bge_chipinit(struct bge_softc *sc)
 
 	/* Clear the MAC control register */
 	CSR_WRITE_4(sc, BGE_MAC_MODE, 0);
+	DELAY(40);
 
 	/*
 	 * Clear the MAC statistics block in the NIC's
@@ -1837,6 +1839,7 @@ bge_blockinit(struct bge_softc *sc)
 
 	/* Turn on DMA, clear stats */
 	CSR_WRITE_4(sc, BGE_MAC_MODE, val);
+	DELAY(40);
 
 	/* Set misc. local control, enable interrupts on attentions */
 	CSR_WRITE_4(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_ONATTN);
@@ -2946,6 +2949,7 @@ bge_reset(struct bge_softc *sc)
 	    BGE_MODECTL_BYTESWAP_DATA);
 
 	CSR_WRITE_4(sc, BGE_MAC_MODE, 0);
+	DELAY(40);
 
 	/*
 	 * The 5704 in TBI mode apparently needs some special
@@ -3870,6 +3874,7 @@ bge_ifmedia_upd(struct ifnet *ifp)
 				BGE_SETBIT(sc, BGE_MAC_MODE,
 				    BGE_MACMODE_HALF_DUPLEX);
 			}
+			DELAY(40);
 			break;
 		default:
 			return(EINVAL);
@@ -4545,6 +4550,7 @@ bge_tbi_link_upd(struct bge_softc *sc, uint32_t status)
 			if (sc->bge_asicrev == BGE_ASICREV_BCM5704) {
 				BGE_CLRBIT(sc, BGE_MAC_MODE,
 				    BGE_MACMODE_TBI_SEND_CFGS);
+				DELAY(40);
 			}
 			CSR_WRITE_4(sc, BGE_MAC_STS, 0xFFFFFFFF);
 
