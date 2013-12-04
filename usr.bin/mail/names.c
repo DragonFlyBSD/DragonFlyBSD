@@ -28,7 +28,6 @@
  *
  * @(#)names.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/names.c,v 1.4.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/names.c,v 1.5 2004/09/08 03:01:11 joerg Exp $
  */
 
 /*
@@ -258,7 +257,7 @@ yanklogin(char *ap, char *wbuf)
 	/* Finally, grab the word forward. */
 	cp2 = wbuf;
 	while (n >= 0) {
-		*cp++ = *cp++;
+		*cp2++ = *cp++;
 		n--;
 	}
 
