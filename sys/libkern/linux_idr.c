@@ -100,7 +100,7 @@ static __inline struct idr_node *
 idr_get_node(struct idr *idp, int id)
 {
 	struct idr_node *idrnp;
-	if (id >= idp->idr_count)
+	if (id < 0 || id >= idp->idr_count)
 		return (NULL);
 	idrnp = &idp->idr_nodes[id];
 	if (idrnp->allocated == 0)
@@ -291,7 +291,7 @@ idr_remove(struct idr *idp, int id)
 
 	lwkt_gettoken(&idp->idr_token);
 
-	if (id >= idp->idr_count)
+	if (id < 0 || id >= idp->idr_count)
 		goto out;
 	if ((ptr = idp->idr_nodes[id].data) == NULL)
 		goto out;
@@ -347,7 +347,7 @@ idr_find(struct idr *idp, int id)
 
 	lwkt_gettoken(&idp->idr_token);
 
-	if (id > idp->idr_count) {
+	if (id < 0 || id >= idp->idr_count) {
 		goto out;
 	} else if (idp->idr_nodes[id].allocated == 0) {
 		goto out;
