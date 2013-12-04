@@ -639,7 +639,7 @@ unix2doschr(const u_char **instr, size_t *ilen, struct msdosfsmount *pmp)
                 wc = 0;
                 while(len--)
                         wc |= (*(outp - len - 1) & 0xff) << (len << 3);
- return (wc);
+		return (wc);
         }
         (*ilen)--;
         c = *(*instr)++;
