@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ldd/sods.c,v 1.9.2.2 2001/07/11 23:59:11 obrien Exp $
- * $DragonFly: src/usr.bin/ldd/sods.c,v 1.5 2004/08/19 23:40:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -190,7 +189,7 @@ dump_file(const char *fname)
     ex = (const struct exec *) file_base;
 
     printf("%s: a_midmag = 0x%lx\n", fname, ex->a_midmag);
-    printf("  magic = 0x%lx = 0%lo, netmagic = 0x%lx = 0%lo\n",
+    printf("  magic = 0x%lx = 0%lo, netmagic = 0x%x = 0%o\n",
 	N_GETMAGIC(*ex), N_GETMAGIC(*ex),
 	N_GETMAGIC_NET(*ex), N_GETMAGIC_NET(*ex));
 
