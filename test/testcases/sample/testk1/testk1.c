@@ -1,8 +1,8 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
-#include "../../../framework/tbridge.h"
-#include "../../../framework/dfregress.h"
+#include <sys/tbridge.h>
+#include <dfregress.h>
 
 static void
 testk1_run(void *arg __unused)
