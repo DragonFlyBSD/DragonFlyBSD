@@ -2429,8 +2429,8 @@ bge_attach(device_t dev)
 	 * by its PCI subsystem ID, as we do below for the SysKonnect
 	 * SK-9D41.
 	 */
-	if (bge_readmem_ind(sc, BGE_SOFTWARE_GENCOMM_SIG) == BGE_MAGIC_NUMBER) {
-		hwcfg = bge_readmem_ind(sc, BGE_SOFTWARE_GENCOMM_NICCFG);
+	if (bge_readmem_ind(sc, BGE_SRAM_DATA_SIG) == BGE_SRAM_DATA_SIG_MAGIC) {
+		hwcfg = bge_readmem_ind(sc, BGE_SRAM_DATA_CFG);
 	} else {
 		if (bge_read_eeprom(sc, (caddr_t)&hwcfg, BGE_EE_HWCFG_OFFSET,
 				    sizeof(hwcfg))) {
@@ -2757,9 +2757,9 @@ bge_reset(struct bge_softc *sc)
 	/*
 	 * Write the magic number to SRAM at offset 0xB50.
 	 * When firmware finishes its initialization it will
-	 * write ~BGE_MAGIC_NUMBER to the same location.
+	 * write ~BGE_SRAM_FW_MB_MAGIC to the same location.
 	 */
-	bge_writemem_ind(sc, BGE_SOFTWARE_GENCOMM, BGE_MAGIC_NUMBER);
+	bge_writemem_ind(sc, BGE_SRAM_FW_MB, BGE_SRAM_FW_MB_MAGIC);
 
 	reset = BGE_MISCCFG_RESET_CORE_CLOCKS|(65<<1);
 
@@ -2909,8 +2909,8 @@ bge_reset(struct bge_softc *sc)
 		 * is complete.
 		 */
 		for (i = 0; i < BGE_FIRMWARE_TIMEOUT; i++) {
-			val = bge_readmem_ind(sc, BGE_SOFTWARE_GENCOMM);
-			if (val == ~BGE_MAGIC_NUMBER)
+			val = bge_readmem_ind(sc, BGE_SRAM_FW_MB);
+			if (val == ~BGE_SRAM_FW_MB_MAGIC)
 				break;
 			DELAY(10);
 		}

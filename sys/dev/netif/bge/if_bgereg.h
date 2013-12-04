@@ -75,9 +75,6 @@
 #define BGE_STATS_BLOCK_END		0x00000AFF
 #define BGE_STATUS_BLOCK		0x00000B00
 #define BGE_STATUS_BLOCK_END		0x00000B4F
-#define BGE_SOFTWARE_GENCOMM		0x00000B50
-#define BGE_SOFTWARE_GENCOMM_SIG	0x00000B54
-#define BGE_SOFTWARE_GENCOMM_NICCFG	0x00000B58
 #define	BGE_SRAM_FW_MB			0x00000B50
 #define	BGE_SRAM_DATA_SIG		0x00000B54
 #define	BGE_SRAM_DATA_CFG		0x00000B58
@@ -2116,11 +2113,10 @@
  * This magic number is written to the firmware mailbox at 0xb50
  * before a software reset is issued.  After the internal firmware
  * has completed its initialization it will write the opposite of 
- * this value, ~BGE_MAGIC_NUMBER, to the same location, allowing the
- * driver to synchronize with the firmware.
+ * this value, ~BGE_SRAM_FW_MB_MAGIC, to the same location, allowing
+ * the driver to synchronize with the firmware.
  */
-#define BGE_MAGIC_NUMBER                0x4B657654
-#define BGE_SRAM_FW_MB_MAGIC		BGE_MAGIC_NUMBER
+#define BGE_SRAM_FW_MB_MAGIC		0x4B657654
 
 typedef struct {
 	uint32_t		bge_addr_hi;
