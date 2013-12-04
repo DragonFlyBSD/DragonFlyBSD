@@ -2836,9 +2836,9 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 	char *cp, *cp2, *lsrp, *ep;
 	struct sockaddr_in *_sin;
 #ifdef INET6
-	struct sockaddr_in6 *sin6;
+#ifdef COMPAT_RFC1883		/* XXX */
 	struct cmsghdr *cmsg;
-	struct ip6_rthdr *rth;
+#endif
 #endif
 	struct addrinfo hints, *res;
 	int error;
