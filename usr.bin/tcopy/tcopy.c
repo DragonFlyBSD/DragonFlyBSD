@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1985, 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tcopy.c	8.2 (Berkeley) 4/17/94
  * $FreeBSD: src/usr.bin/tcopy/tcopy.c,v 1.7.2.1 2002/11/07 17:54:42 imp Exp $
- * $DragonFly: src/usr.bin/tcopy/tcopy.c,v 1.4 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -143,16 +142,20 @@ main(int argc, char **argv)
 				if (nread >= 0)
 					goto r1;
 			}
-			err(1, "read error, file %d, record %qu", filen, record);
+			err(1, "read error, file %d, record %ju", filen,
+			    (uintmax_t)record);
 		} else if (nread != lastnread) {
 			if (lastnread != 0 && lastnread != NOCOUNT) {
 				if (lastrec == 0 && nread == 0)
-					fprintf(msg, "%qu records\n", record);
+					fprintf(msg, "%ju records\n",
+					    (uintmax_t)record);
 				else if (record - lastrec > 1)
-					fprintf(msg, "records %qu to %qu\n",
-					    lastrec, record);
+					fprintf(msg, "records %ju to %ju\n",
+					    (uintmax_t)lastrec,
+					    (uintmax_t)record);
 				else
-					fprintf(msg, "record %qu\n", lastrec);
+					fprintf(msg, "record %ju\n",
+					    (uintmax_t)lastrec);
 			}
 			if (nread != 0)
 				fprintf(msg, "file %d: block size %d: ",
@@ -170,9 +173,11 @@ r1:		guesslen = 0;
 				nw = write(outp, buff, nread);
 				if (nw != nread) {
 					if (nw == -1) {
-					warn("write error, file %d, record %qu", filen, record);
+					warn("write error, file %d, record %ju",
+					    filen, (uintmax_t)record);
 					} else {
-					warnx("write error, file %d, record %qu", filen, record);
+					warnx("write error, file %d, record %ju",
+					    filen, (uintmax_t)record);
 					warnx("write (%d) != read (%d)", nw, nread);
 					}
 					errx(5, "copy aborted");
@@ -186,8 +191,8 @@ r1:		guesslen = 0;
 				break;
 			}
 			fprintf(msg,
-			    "file %d: eof after %qu records: %qu bytes\n",
-			    filen, record, size);
+			    "file %d: eof after %ju records: %ju bytes\n",
+			    filen, (uintmax_t)record, (uintmax_t)size);
 			needeof = 1;
 			filen++;
 			tsize += size;
@@ -196,7 +201,7 @@ r1:		guesslen = 0;
 		}
 		lastnread = nread;
 	}
-	fprintf(msg, "total length: %qu bytes\n", tsize);
+	fprintf(msg, "total length: %ju bytes\n", (uintmax_t)tsize);
 	(void)signal(SIGINT, oldsig);
 	if (op == COPY || op == COPYVERIFY) {
 		writeop(outp, MTWEOF);
@@ -267,12 +272,14 @@ intr(int signo)
 {
 	if (record) {
 		if (record - lastrec > 1)
-			fprintf(msg, "records %qu to %qu\n", lastrec, record);
+			fprintf(msg, "records %ju to %ju\n",
+			    (uintmax_t)lastrec, (uintmax_t)record);
 		else
-			fprintf(msg, "record %qu\n", lastrec);
+			fprintf(msg, "record %ju\n", (uintmax_t)lastrec);
 	}
-	fprintf(msg, "interrupt at file %d: record %qu\n", filen, record);
-	fprintf(msg, "total length: %ld bytes\n", tsize + size);
+	fprintf(msg, "interrupt at file %d: record %ju\n", filen,
+	    (uintmax_t)record);
+	fprintf(msg, "total length: %ju bytes\n", (uintmax_t)tsize + size);
 	exit(1);
 }
 
