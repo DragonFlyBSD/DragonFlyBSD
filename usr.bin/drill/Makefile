@@ -3,7 +3,7 @@ LDNS=	${.CURDIR}/../../contrib/ldns
 LDNSBASE=	${.CURDIR}/../../lib/libldns
 SRCS=	chasetrace.c dnssec.c drill.c drill_util.c \
 	error.c root.c securetrace.c work.c
-WARNS?= 1
+WARNS?= 2
 
 .PATH:	${.CURDIR}/../../contrib/ldns/drill
 
