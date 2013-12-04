@@ -810,10 +810,12 @@ retry:
 	 */
 	if (*errorp == 0) {
 		KKASSERT(xchain == NULL);
+#if 0
 		*errorp = hammer2_chain_create(trans, &parent, &xchain,
 					       lhc, 0,
 					       HAMMER2_BREF_TYPE_INODE,/* n/a */
 					       HAMMER2_INODE_BYTES);   /* n/a */
+#endif
 		/*XXX this somehow isn't working on chain XXX*/
 		/*KKASSERT(xxx)*/
 	}
@@ -853,14 +855,20 @@ retry:
 	bref = chain->bref;
 	bref.key = lhc;			/* invisible dir entry key */
 	bref.keybits = 0;
+#if 0
 	hammer2_chain_delete(trans, xchain, 0);
+#endif
 	hammer2_chain_duplicate(trans, &parent, &chain, &bref, 0, 2);
+#if 0
 	hammer2_chain_refactor(&xchain);
 	/*hammer2_chain_delete(trans, xchain, 0);*/
+#endif
 
 	hammer2_inode_unlock_ex(dip, parent);
 	/*hammer2_chain_lookup_done(parent);*/
+#if 0
 	hammer2_chain_unlock(xchain);	/* no longer needed */
+#endif
 
 	/*
 	 * chain is now 'live' again.. adjust the filename.

@@ -377,7 +377,6 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_layer_t *layer,
 
 	if (flags & HAMMER2_CHAIN_INSERT_SPIN)
 		spin_lock(&above->cst.spin);
-	hammer2_chain_assert_not_present(above, chain);
 
 	/*
 	 * Special case, place the chain in the next most-recent layer as the
@@ -399,6 +398,9 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_layer_t *layer,
 		RB_INIT(&nlayer->rbtree);
 		nlayer->good = 0xABCD;
 		spin_lock(&above->cst.spin);
+
+		if ((chain->flags & HAMMER2_CHAIN_DELETED) == 0)
+			hammer2_chain_assert_not_present(above, chain);
 
 		TAILQ_INSERT_BEFORE(layer, nlayer, entry);
 		RB_INSERT(hammer2_chain_tree, &nlayer->rbtree, chain);
@@ -444,6 +446,7 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_layer_t *layer,
 			error = EAGAIN;
 			goto failed;
 		}
+		hammer2_chain_assert_not_present(above, chain);
 
 		TAILQ_INSERT_HEAD(&above->layerq, layer, entry);
 		RB_INSERT(hammer2_chain_tree, &layer->rbtree, chain);
@@ -471,13 +474,9 @@ failed:
 
 /*
  * Drop the caller's reference to the chain.  When the ref count drops to
- * zero this function will disassociate the chain from its parent and
+ * zero this function will try to disassociate the chain from its parent and
  * deallocate it, then recursely drop the parent using the implied ref
  * from the chain's chain->parent.
- *
- * WARNING! Just because we are able to deallocate a chain doesn't mean
- *	    that chain->core->rbtree is empty.  There can still be a sharecnt
- *	    on chain->core and RBTREE entries that refer to different parents.
  */
 static hammer2_chain_t *hammer2_chain_lastdrop(hammer2_chain_t *chain,
 					       struct h2_core_list *delayq);
@@ -543,6 +542,9 @@ hammer2_chain_drop(hammer2_chain_t *chain)
  * we would otherwise free to placehold the additional chain.  It's a bit
  * convoluted but we can't just recurse without potentially blowing out
  * the kernel stack.
+ *
+ * The chain cannot be freed if it has a non-empty core (children) or
+ * it is not at the head of ownerq.
  *
  * The cst spinlock is allowed nest child-to-parent (not parent-to-child).
  */
@@ -4274,23 +4276,45 @@ hammer2_combined_find(hammer2_chain_t *parent,
 	}
 
 	/*
-	 * Both in-memory and blockref match.
+	 * Both in-memory and blockref match.  Select the nearer element.
+	 * If both are flush with the left-hand side they are considered
+	 * to be the same distance.
 	 *
-	 * If they are both flush with the left hand side select the chain.
-	 * If their starts match select the chain.
-	 * Otherwise the nearer element wins.
+	 * When both are the same distance away select the chain if it is
+	 * live or if it's delete_tid is greater than the parent's
+	 * synchronized bref.mirror_tid (a single test suffices for both
+	 * conditions), otherwise select the element.
+	 *
+	 * (It is possible for an old deletion to linger after a rename-over
+	 *  and flush, which would make the media copy the correct choice).
 	 */
-	if (chain->bref.key <= key_beg && base[i].key <= key_beg) {
-		bref = &chain->bref;
+
+	/*
+	 * Either both are flush with the left-hand side or they are the
+	 * same distance away.  Select the chain if it is not deleted
+	 * or it has a higher delete_tid, else select the media.
+	 */
+	if ((chain->bref.key <= key_beg && base[i].key <= key_beg) ||
+	    chain->bref.key == base[i].key) {
+		if (chain->delete_tid > base[i].mirror_tid) {
+			bref = &chain->bref;
+		} else {
+			KKASSERT(chain->flags & HAMMER2_CHAIN_DELETED);
+			bref = &base[i];
+			chain = NULL;
+		}
 		goto found;
 	}
-	if (chain->bref.key <= base[i].key) {
+
+	/*
+	 * Select the nearer key.
+	 */
+	if (chain->bref.key < base[i].key) {
 		bref = &chain->bref;
-		goto found;
-		return(chain);
+	} else {
+		bref = &base[i];
+		chain = NULL;
 	}
-	bref = &base[i];
-	chain = NULL;
 
 	/*
 	 * If the bref is out of bounds we've exhausted our search.

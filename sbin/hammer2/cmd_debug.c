@@ -442,6 +442,7 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	bscan = NULL;
 	bcount = 0;
 	didnl = 1;
+	namelen = 0;
 
 	switch(bref->type) {
 	case HAMMER2_BREF_TYPE_EMPTY:
@@ -481,8 +482,13 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 			  hammer2_uuid_to_str(&media.ipdata.uid, &str));
 		tabprintf(tab, "gid      %s\n",
 			  hammer2_uuid_to_str(&media.ipdata.gid, &str));
-		tabprintf(tab, "type     %s\n",
-			  hammer2_iptype_to_str(media.ipdata.type));
+		if (media.ipdata.type == HAMMER2_OBJTYPE_HARDLINK)
+			tabprintf(tab, "type     %s (%s)\n",
+			      hammer2_iptype_to_str(media.ipdata.type),
+			      hammer2_iptype_to_str(media.ipdata.target_type));
+		else
+			tabprintf(tab, "type     %s\n",
+				  hammer2_iptype_to_str(media.ipdata.type));
 		tabprintf(tab, "opflgs   0x%02x\n",
 			  media.ipdata.op_flags);
 		tabprintf(tab, "capflgs  0x%04x\n",
@@ -606,8 +612,9 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 	tab -= SHOW_TAB;
 	if (obrace) {
 		if (bref->type == HAMMER2_BREF_TYPE_INODE)
-			tabprintf(tab, "} (%s.%d, \"%s\")\n",
-				  type_str, bi, media.ipdata.filename);
+			tabprintf(tab, "} (%s.%d, \"%*.*s\")\n",
+				  type_str, bi,
+				  namelen, namelen, media.ipdata.filename);
 		else
 			tabprintf(tab, "} (%s.%d)\n", type_str,bi);
 	}

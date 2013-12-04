@@ -748,6 +748,8 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 	}
 
 	lkey = saveoff | HAMMER2_DIRHASH_VISIBLE;
+	if (hammer2_debug & 0x0020)
+		kprintf("readdir: lkey %016jx\n", lkey);
 
 	/*
 	 * parent is the inode chain, already locked for us.  Don't
@@ -765,6 +767,9 @@ hammer2_vop_readdir(struct vop_readdir_args *ap)
 					     HAMMER2_LOOKUP_SHARED);
 	}
 	while (chain) {
+		if (hammer2_debug & 0x0020)
+			kprintf("readdir: p=%p chain=%p %016jx (next %016jx)\n",
+				parent, chain, chain->bref.key, key_next);
 		if (chain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 			dtype = hammer2_get_dtype(chain);
 			saveoff = chain->bref.key & HAMMER2_DIRHASH_USERMSK;
@@ -808,6 +813,8 @@ done:
 	hammer2_inode_unlock_sh(ip, parent);
 	if (ap->a_eofflag)
 		*ap->a_eofflag = (chain == NULL);
+	if (hammer2_debug & 0x0020)
+		kprintf("readdir: done at %016jx\n", saveoff);
 	uio->uio_offset = saveoff & ~HAMMER2_DIRHASH_VISIBLE;
 	if (error && cookie_index == 0) {
 		if (cookies) {

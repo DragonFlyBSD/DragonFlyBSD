@@ -871,7 +871,11 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
 				     HAMMER2_FREEMAP_LEVELN_PSIZE);
-		kprintf("fixup create chain %p %016jx:%d\n", chain, chain->bref.key, chain->bref.keybits);
+
+		if (hammer2_debug & 0x0040) {
+			kprintf("fixup create chain %p %016jx:%d\n",
+				chain, chain->bref.key, chain->bref.keybits);
+		}
 
 		if (error == 0) {
 			hammer2_chain_modify(trans, &chain, 0);
@@ -933,9 +937,12 @@ again:
 				if (bmap->class == 0)
 					bmap->class = class;
 				*bitmap |= bmmask11;
-				kprintf("hammer2_freemap_recover: fixup "
-					"type=%02x block=%016jx/%zd\n",
-					bref->type, data_off, bytes);
+				if (hammer2_debug & 0x0040) {
+					kprintf("hammer2_freemap_recover: "
+						"fixup type=%02x "
+						"block=%016jx/%zd\n",
+						bref->type, data_off, bytes);
+				}
 			} else {
 				/*
 				kprintf("hammer2_freemap_recover:  good "
