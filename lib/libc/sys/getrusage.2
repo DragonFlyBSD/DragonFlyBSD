@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)getrusage.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/getrusage.2,v 1.10.2.5 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getrusage.2,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt GETRUSAGE 2
@@ -41,8 +40,8 @@
 .In sys/types.h
 .In sys/time.h
 .In sys/resource.h
-.Fd "#define	RUSAGE_SELF	 0"
-.Fd "#define	RUSAGE_CHILDREN	-1"
+.Fd "#define   RUSAGE_SELF       0"
+.Fd "#define   RUSAGE_CHILDREN  -1"
 .Ft int
 .Fn getrusage "int who" "struct rusage *rusage"
 .Sh DESCRIPTION

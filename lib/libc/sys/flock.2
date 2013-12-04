@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)flock.2	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: src/lib/libc/sys/flock.2,v 1.8.2.8 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/flock.2,v 1.3 2007/12/03 20:13:10 swildner Exp $
 .\"
 .Dd December 11, 1993
 .Dt FLOCK 2
@@ -39,10 +38,10 @@
 .Lb libc
 .Sh SYNOPSIS
 .In sys/file.h
-.Fd "#define	LOCK_SH		0x01		/* shared file lock */"
-.Fd "#define	LOCK_EX		0x02		/* exclusive file lock */"
-.Fd "#define	LOCK_NB		0x04		/* don't block when locking */"
-.Fd "#define	LOCK_UN		0x08		/* unlock file */"
+.Fd "#define   LOCK_SH        0x01      /* shared file lock */"
+.Fd "#define   LOCK_EX        0x02      /* exclusive file lock */"
+.Fd "#define   LOCK_NB        0x04      /* don't block when locking */"
+.Fd "#define   LOCK_UN        0x08      /* unlock file */"
 .Ft int
 .Fn flock "int fd" "int operation"
 .Sh DESCRIPTION
