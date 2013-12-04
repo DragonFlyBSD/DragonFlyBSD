@@ -236,17 +236,16 @@ __BEGIN_DECLS
 int	adjtime(const struct timeval *, struct timeval *);
 int	futimes(int, const struct timeval *);
 int	lutimes(const char *, const struct timeval *);
-int	setitimer(int, const struct itimerval *, struct itimerval *);
 int	settimeofday(const struct timeval *, const struct timezone *);
-int	utimes(const char *, const struct timeval *);
 #endif
 
 #if __XSI_VISIBLE
 int	getitimer(int, struct itimerval *);
 int	gettimeofday(struct timeval *, struct timezone *);
+int	setitimer(int, const struct itimerval *, struct itimerval *);
+int	utimes(const char *, const struct timeval *);
 #endif
 
 __END_DECLS
-
 
 #endif /* !_SYS_TIME_H_ */
