@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vfontedpr.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vgrind/vfontedpr.c,v 1.12 1999/08/28 01:07:21 peter Exp $
- * $DragonFly: src/usr.bin/vgrind/vfontedpr.c,v 1.4 2008/10/16 01:52:34 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -696,7 +695,7 @@ iskw(char *s)
 
 	while (++cp, isidchr(*cp))
 		i++;
-	while (cp = *ss++)
+	while ((cp = *ss++) != NULL)
 		if (!STRNCMP(s,cp,i) && !isidchr(cp[i]))
 			return (i);
 	return (0);
