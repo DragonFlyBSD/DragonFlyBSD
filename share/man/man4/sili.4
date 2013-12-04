@@ -14,7 +14,7 @@
 .\" TORTIOUS ACTION, ARISING OUT OF
 .\" PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd June 23, 2009
+.Dd December 4, 2013
 .Dt SILI 4
 .Os
 .Sh NAME
@@ -88,6 +88,14 @@ some devices might not properly implement.
 hint.sili.force150=1
 hint.sili.nofeatures=1
 .Ed
+.Pp
+The
+.Nm
+driver supports MSI but support is turned off by default.
+It can be enabled by setting the
+.Va hw.sili.msi.enable
+tunable to 1.
+.El
 .Sh SEE ALSO
 .Xr ahci 4 ,
 .Xr intro 4 ,
