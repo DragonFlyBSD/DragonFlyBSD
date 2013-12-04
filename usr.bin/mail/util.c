@@ -28,7 +28,6 @@
  *
  * @(#)aux.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/aux.c,v 1.4.6.4 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/aux.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include <sys/time.h>
@@ -229,10 +228,9 @@ ishfield(char *linebuf, char *colon, const char *field)
 void
 istrncpy(char *dest, const char *src, size_t dsize)
 {
-
 	strlcpy(dest, src, dsize);
-	while (*dest)
-		*dest++ = tolower((unsigned char)*dest);
+	for (; *dest; dest++)
+		*dest = tolower((unsigned char)*dest);
 }
 
 /*

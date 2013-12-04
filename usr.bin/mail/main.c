@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/main.c,v 1.6.2.5 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/main.c,v 1.6 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -200,7 +199,7 @@ main(int argc, char **argv)
 "       %s [-EHiInNv] [-F] -f [name]\n"
 "       %s [-EHiInNv] [-F] [-u user]\n"
 "       %s -e [-f name]\n"
-"       %s -H\n", progname, strlen(progname), "",
+"       %s -H\n", progname, (int)strlen(progname), "",
 			    progname, progname, progname, progname);
 			exit(1);
 		}

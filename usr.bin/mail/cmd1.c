@@ -28,7 +28,6 @@
  *
  * @(#)cmd1.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/cmd1.c,v 1.3.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/cmd1.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -206,7 +205,7 @@ printhead(int mesg)
 int
 pdot(void)
 {
-	printf("%d\n", dot - &message[0] + 1);
+	printf("%td\n", dot - &message[0] + 1);
 	return (0);
 }
 
