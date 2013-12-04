@@ -177,7 +177,6 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred)
 	if (error)
 		return (error);
 #endif
-	ovp->v_lasta = ovp->v_clen = ovp->v_cstart = ovp->v_lastw = 0;
 	if (DOINGSOFTDEP(ovp)) {
 		if (length > 0 || softdep_slowdown(ovp)) {
 			/*

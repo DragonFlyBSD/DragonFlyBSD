@@ -3,6 +3,7 @@
  *	The Regents of the University of California.  All rights reserved.
  * Modifications/enhancements:
  * 	Copyright (c) 1995 John S. Dyson.  All rights reserved.
+ *	Copyright (c) 2012-2013 Matthew Dillon.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,10 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
- * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.40 2008/07/14 03:09:00 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -55,6 +52,42 @@
 
 #include <machine/limits.h>
 
+/*
+ * Cluster tracking cache - replaces the original vnode v_* fields which had
+ * limited utility and were not MP safe.
+ *
+ * The cluster tracking cache is a simple 4-way set-associative non-chained
+ * cache.  It is capable of tracking up to four zones separated by 1MB or
+ * more per vnode.
+ *
+ * NOTE: We want this structure to be cache-line friendly so the iterator
+ *	 is embedded rather than in a separate array.
+ *
+ * NOTE: A cluster cache entry can become stale when a vnode is recycled.
+ *	 For now we treat the values as heuristical but also self-consistent.
+ *	 i.e. the values cannot be completely random and cannot be SMP unsafe
+ *	 or the cluster code might end-up clustering non-contiguous buffers
+ *	 at the wrong offsets.
+ */
+struct cluster_cache {
+	struct vnode *vp;
+	u_int	locked;
+	off_t	v_lastw;		/* last write (write cluster) */
+	off_t	v_cstart;		/* start block of cluster */
+	off_t	v_lasta;		/* last allocation */
+	u_int	v_clen;			/* length of current cluster */
+	u_int	iterator;
+} __cachealign;
+
+typedef struct cluster_cache cluster_cache_t;
+
+#define CLUSTER_CACHE_SIZE	512
+#define CLUSTER_CACHE_MASK	(CLUSTER_CACHE_SIZE - 1)
+
+#define CLUSTER_ZONE		((off_t)(1024 * 1024))
+
+cluster_cache_t cluster_array[CLUSTER_CACHE_SIZE];
+
 #if defined(CLUSTERDEBUG)
 #include <sys/sysctl.h>
 static int	rcluster= 0;
@@ -64,8 +97,8 @@ SYSCTL_INT(_debug, OID_AUTO, rcluster, CTLFLAG_RW, &rcluster, 0, "");
 static MALLOC_DEFINE(M_SEGMENT, "cluster_save", "cluster_save buffer");
 
 static struct cluster_save *
-	cluster_collectbufs (struct vnode *vp, struct buf *last_bp,
-			    int blksize);
+	cluster_collectbufs (cluster_cache_t *cc, struct vnode *vp,
+				struct buf *last_bp, int blksize);
 static struct buf *
 	cluster_rbuild (struct vnode *vp, off_t filesize, off_t loffset,
 			    off_t doffset, int blksize, int run, 
@@ -88,6 +121,71 @@ SYSCTL_INT(_vfs, OID_AUTO, max_readahead, CTLFLAG_RW, &max_readahead, 0,
 extern vm_page_t	bogus_page;
 
 extern int cluster_pbuf_freecnt;
+
+/*
+ * Acquire/release cluster cache (can return dummy entry)
+ */
+static
+cluster_cache_t *
+cluster_getcache(cluster_cache_t *dummy, struct vnode *vp, off_t loffset)
+{
+	cluster_cache_t *cc;
+	size_t hv;
+	int i;
+	int xact;
+
+	hv = (size_t)(intptr_t)vp ^ (size_t)(intptr_t)vp / sizeof(*vp);
+	hv &= CLUSTER_CACHE_MASK & ~3;
+	cc = &cluster_array[hv];
+
+	xact = -1;
+	for (i = 0; i < 4; ++i) {
+		if (cc[i].vp != vp)
+			continue;
+		if (((cc[i].v_cstart ^ loffset) & ~(CLUSTER_ZONE - 1)) == 0) {
+			xact = i;
+			break;
+		}
+	}
+	if (xact >= 0 && atomic_swap_int(&cc[xact].locked, 1) == 0) {
+		if (cc[xact].vp == vp &&
+		    ((cc[i].v_cstart ^ loffset) & ~(CLUSTER_ZONE - 1)) == 0) {
+			return(&cc[xact]);
+		}
+		atomic_swap_int(&cc[xact].locked, 0);
+	}
+
+	/*
+	 * New entry.  If we can't acquire the cache line then use the
+	 * passed-in dummy element and reset all fields.
+	 *
+	 * When we are able to acquire the cache line we only clear the
+	 * fields if the vp does not match.  This allows us to multi-zone
+	 * a vp and for excessive zones / partial clusters to be retired.
+	 */
+	i = cc->iterator++ & 3;
+	cc += i;
+	if (atomic_swap_int(&cc->locked, 1) != 0) {
+		cc = dummy;
+		cc->locked = 1;
+		cc->vp = NULL;
+	}
+	if (cc->vp != vp) {
+		cc->vp = vp;
+		cc->v_lasta = 0;
+		cc->v_clen = 0;
+		cc->v_cstart = 0;
+		cc->v_lastw = 0;
+	}
+	return(cc);
+}
+
+static
+void
+cluster_putcache(cluster_cache_t *cc)
+{
+	atomic_swap_int(&cc->locked, 0);
+}
 
 /*
  * This replaces bread(), providing a synchronous read of the requested
@@ -1006,6 +1104,8 @@ cluster_wbuild_wb(struct vnode *vp, int blksize, off_t start_loffset, int len)
  *	2.	beginning of cluster - begin cluster
  *	3.	middle of a cluster - add to cluster
  *	4.	end of a cluster - asynchronously write cluster
+ *
+ * WARNING! vnode fields are not locked and must ONLY be used heuristically.
  */
 void
 cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
@@ -1014,6 +1114,8 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 	off_t loffset;
 	int maxclen, cursize;
 	int async;
+	cluster_cache_t dummy;
+	cluster_cache_t *cc;
 
 	vp = bp->b_vp;
 	if (vp->v_type == VREG)
@@ -1024,15 +1126,19 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 	KASSERT(bp->b_loffset != NOOFFSET, 
 		("cluster_write: no buffer offset"));
 
-	/* Initialize vnode to beginning of file. */
-	if (loffset == 0)
-		vp->v_lasta = vp->v_clen = vp->v_cstart = vp->v_lastw = 0;
+	cc = cluster_getcache(&dummy, vp, loffset);
 
-	if (vp->v_clen == 0 || loffset != vp->v_lastw + blksize ||
+	/*
+	 * Initialize vnode to beginning of file.
+	 */
+	if (loffset == 0)
+		cc->v_lasta = cc->v_clen = cc->v_cstart = cc->v_lastw = 0;
+
+	if (cc->v_clen == 0 || loffset != cc->v_lastw + blksize ||
 	    bp->b_bio2.bio_offset == NOOFFSET ||
-	    (bp->b_bio2.bio_offset != vp->v_lasta + blksize)) {
+	    (bp->b_bio2.bio_offset != cc->v_lasta + blksize)) {
 		maxclen = vmaxiosize(vp);
-		if (vp->v_clen != 0) {
+		if (cc->v_clen != 0) {
 			/*
 			 * Next block is not sequential.
 			 *
@@ -1049,18 +1155,20 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 			 * later on in the buf_daemon or update daemon
 			 * flush.
 			 */
-			cursize = vp->v_lastw - vp->v_cstart + blksize;
+			cursize = cc->v_lastw - cc->v_cstart + blksize;
 			if (bp->b_loffset + blksize < filesize ||
-			    loffset != vp->v_lastw + blksize || vp->v_clen <= cursize) {
+			    loffset != cc->v_lastw + blksize ||
+			    cc->v_clen <= cursize) {
 				if (!async && seqcount > 0) {
 					cluster_wbuild_wb(vp, blksize,
-						vp->v_cstart, cursize);
+						cc->v_cstart, cursize);
 				}
 			} else {
 				struct buf **bpp, **endbp;
 				struct cluster_save *buflist;
 
-				buflist = cluster_collectbufs(vp, bp, blksize);
+				buflist = cluster_collectbufs(cc, vp,
+							      bp, blksize);
 				endbp = &buflist->bs_children
 				    [buflist->bs_nchildren - 1];
 				if (VOP_REALLOCBLKS(vp, buflist)) {
@@ -1071,6 +1179,10 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 					 * otherwise delay it in the hopes that
 					 * the low level disk driver can
 					 * optimize the write ordering.
+					 *
+					 * NOTE: We do not brelse the last
+					 *	 element which is bp, and we
+					 *	 do not return here.
 					 */
 					for (bpp = buflist->bs_children;
 					     bpp < endbp; bpp++)
@@ -1078,7 +1190,7 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 					kfree(buflist, M_SEGMENT);
 					if (seqcount > 1) {
 						cluster_wbuild_wb(vp, 
-						    blksize, vp->v_cstart, 
+						    blksize, cc->v_cstart,
 						    cursize);
 					}
 				} else {
@@ -1089,8 +1201,9 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 					     bpp <= endbp; bpp++)
 						bdwrite(*bpp);
 					kfree(buflist, M_SEGMENT);
-					vp->v_lastw = loffset;
-					vp->v_lasta = bp->b_bio2.bio_offset;
+					cc->v_lastw = loffset;
+					cc->v_lasta = bp->b_bio2.bio_offset;
+					cluster_putcache(cc);
 					return;
 				}
 			}
@@ -1106,24 +1219,25 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 		    (VOP_BMAP(vp, loffset, &bp->b_bio2.bio_offset, &maxclen, NULL, BUF_CMD_WRITE) ||
 		     bp->b_bio2.bio_offset == NOOFFSET)) {
 			bdwrite(bp);
-			vp->v_clen = 0;
-			vp->v_lasta = bp->b_bio2.bio_offset;
-			vp->v_cstart = loffset + blksize;
-			vp->v_lastw = loffset;
+			cc->v_clen = 0;
+			cc->v_lasta = bp->b_bio2.bio_offset;
+			cc->v_cstart = loffset + blksize;
+			cc->v_lastw = loffset;
+			cluster_putcache(cc);
 			return;
 		}
 		if (maxclen > blksize)
-			vp->v_clen = maxclen - blksize;
+			cc->v_clen = maxclen - blksize;
 		else
-			vp->v_clen = 0;
-		if (!async && vp->v_clen == 0) { /* I/O not contiguous */
-			vp->v_cstart = loffset + blksize;
+			cc->v_clen = 0;
+		if (!async && cc->v_clen == 0) { /* I/O not contiguous */
+			cc->v_cstart = loffset + blksize;
 			bdwrite(bp);
 		} else {	/* Wait for rest of cluster */
-			vp->v_cstart = loffset;
+			cc->v_cstart = loffset;
 			bdwrite(bp);
 		}
-	} else if (loffset == vp->v_cstart + vp->v_clen) {
+	} else if (loffset == cc->v_cstart + cc->v_clen) {
 		/*
 		 * At end of cluster, write it out if seqcount tells us we
 		 * are operating sequentially, otherwise let the buf or
@@ -1131,10 +1245,10 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 		 */
 		bdwrite(bp);
 		if (seqcount > 1)
-			cluster_wbuild_wb(vp, blksize, vp->v_cstart,
-					  vp->v_clen + blksize);
-		vp->v_clen = 0;
-		vp->v_cstart = loffset + blksize;
+			cluster_wbuild_wb(vp, blksize, cc->v_cstart,
+					  cc->v_clen + blksize);
+		cc->v_clen = 0;
+		cc->v_cstart = loffset + blksize;
 	} else if (vm_page_count_severe() &&
 		   bp->b_loffset + blksize < filesize) {
 		/*
@@ -1149,8 +1263,9 @@ cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 		 */
 		bdwrite(bp);
 	}
-	vp->v_lastw = loffset;
-	vp->v_lasta = bp->b_bio2.bio_offset;
+	cc->v_lastw = loffset;
+	cc->v_lasta = bp->b_bio2.bio_offset;
+	cluster_putcache(cc);
 }
 
 /*
@@ -1437,7 +1552,8 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
  * want to override its choices).
  */
 static struct cluster_save *
-cluster_collectbufs(struct vnode *vp, struct buf *last_bp, int blksize)
+cluster_collectbufs(cluster_cache_t *cc, struct vnode *vp,
+		    struct buf *last_bp, int blksize)
 {
 	struct cluster_save *buflist;
 	struct buf *bp;
@@ -1446,12 +1562,13 @@ cluster_collectbufs(struct vnode *vp, struct buf *last_bp, int blksize)
 	int j;
 	int k;
 
-	len = (int)(vp->v_lastw - vp->v_cstart + blksize) / blksize;
+	len = (int)(cc->v_lastw - cc->v_cstart + blksize) / blksize;
+	KKASSERT(len > 0);
 	buflist = kmalloc(sizeof(struct buf *) * (len + 1) + sizeof(*buflist),
 			 M_SEGMENT, M_WAITOK);
 	buflist->bs_nchildren = 0;
 	buflist->bs_children = (struct buf **) (buflist + 1);
-	for (loffset = vp->v_cstart, i = 0, j = 0;
+	for (loffset = cc->v_cstart, i = 0, j = 0;
 	     i < len;
 	     (loffset += blksize), i++) {
 		bp = getcacheblk(vp, loffset,

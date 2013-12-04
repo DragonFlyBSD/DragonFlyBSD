@@ -181,10 +181,6 @@ struct vnode {
 	} v_un;
 	off_t	v_filesize;			/* file EOF or NOOFFSET */
 	off_t	v_lazyw;			/* lazy write iterator */
-	off_t	v_lastw;			/* last write (write cluster) */
-	off_t	v_cstart;			/* start block of cluster */
-	off_t	v_lasta;			/* last allocation */
-	int	v_clen;				/* length of current cluster */
 	struct vm_object *v_object;		/* Place to store VM object */
 	struct	lock v_lock;			/* file/dir ops lock */
 	struct	lwkt_token v_token;		/* (see above) */
