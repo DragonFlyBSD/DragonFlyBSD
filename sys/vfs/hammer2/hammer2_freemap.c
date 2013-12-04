@@ -382,7 +382,6 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 
 	chain = hammer2_chain_lookup(parentp, &key_dummy, key, key + l1mask,
 				     &cache_index,
-				     HAMMER2_LOOKUP_FREEMAP |
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_MATCHIND);
 
@@ -400,6 +399,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
 				     HAMMER2_FREEMAP_LEVELN_PSIZE);
+		KKASSERT(error == 0);
 		if (error == 0) {
 			hammer2_chain_modify(trans, &chain, 0);
 			bzero(&chain->data->bmdata[0],
@@ -848,7 +848,6 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 
 	chain = hammer2_chain_lookup(&parent, &key_dummy, key, key + l1mask,
 				     &cache_index,
-				     HAMMER2_LOOKUP_FREEMAP |
 				     HAMMER2_LOOKUP_ALWAYS |
 				     HAMMER2_LOOKUP_MATCHIND);
 

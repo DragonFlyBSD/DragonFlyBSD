@@ -82,6 +82,7 @@ int hammer2_debug;
 int hammer2_cluster_enable = 1;
 int hammer2_hardlink_enable = 1;
 int hammer2_flush_pipe = 100;
+long hammer2_limit_dirty_chains;
 long hammer2_iod_file_read;
 long hammer2_iod_meta_read;
 long hammer2_iod_indr_read;
@@ -119,6 +120,8 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, hardlink_enable, CTLFLAG_RW,
 	   &hammer2_hardlink_enable, 0, "");
 SYSCTL_INT(_vfs_hammer2, OID_AUTO, flush_pipe, CTLFLAG_RW,
 	   &hammer2_flush_pipe, 0, "");
+SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_dirty_chains, CTLFLAG_RW,
+	   &hammer2_limit_dirty_chains, 0, "");
 
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_read, CTLFLAG_RW,
 	   &hammer2_iod_file_read, 0, "");
@@ -288,6 +291,8 @@ hammer2_vfs_init(struct vfsconf *conf)
 
 	lockinit(&hammer2_mntlk, "mntlk", 0, 0);
 	TAILQ_INIT(&hammer2_mntlist);
+
+	hammer2_limit_dirty_chains = desiredvnodes / 10;
 
 	return (error);
 }
@@ -675,7 +680,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	KKASSERT(rchain->pmp == NULL);		/* tracking pmp for rchain */
 	rchain->pmp = pmp;
-	atomic_add_long(&pmp->inmem_chains, 1);
 
 	hammer2_inode_unlock_ex(pmp->iroot, rchain);
 
@@ -1517,6 +1521,15 @@ hammer2_vfs_unmount_hmp1(struct mount *mp, hammer2_mount_t *hmp)
 		     hmp->voldata.freemap_tid)) {
 			kprintf("hammer2_unmount: chains left over "
 				"after final sync\n");
+			kprintf("    vchain %08x update_hi %jx/%jx\n",
+				hmp->vchain.flags,
+				hmp->voldata.mirror_tid,
+				hmp->vchain.core->update_hi);
+			kprintf("    fchain %08x update_hi %jx/%jx\n",
+				hmp->fchain.flags,
+				hmp->voldata.freemap_tid,
+				hmp->fchain.core->update_hi);
+
 			if (hammer2_debug & 0x0010)
 				Debugger("entered debugger");
 		}

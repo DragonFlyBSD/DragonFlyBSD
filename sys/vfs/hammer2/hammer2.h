@@ -163,7 +163,7 @@ typedef struct hammer2_chain_core hammer2_chain_core_t;
 RB_HEAD(hammer2_io_tree, hammer2_io);
 
 struct hammer2_io {
-	RB_ENTRY(hammer2_io) rbnode;
+	RB_ENTRY(hammer2_io) rbnode;	/* indexed by device offset */
 	struct spinlock spin;
 	struct hammer2_mount *hmp;
 	struct buf	*bp;
@@ -177,6 +177,7 @@ struct hammer2_io {
 	void		*arg_p;			/* INPROG I/O only */
 	off_t		arg_o;			/* INPROG I/O only */
 	int		refs;
+	int		act;			/* activity */
 };
 
 typedef struct hammer2_io hammer2_io_t;
@@ -194,7 +195,6 @@ struct hammer2_chain {
 	struct hammer2_state	*state;		/* if active cache msg */
 	struct hammer2_mount	*hmp;
 	struct hammer2_pfsmount	*pmp;		/* can be NULL */
-	struct hammer2_chain	*debug_previous;
 
 	hammer2_tid_t	modify_tid;		/* snapshot/flush filter */
 	hammer2_tid_t	delete_tid;
@@ -205,11 +205,10 @@ struct hammer2_chain {
 	u_int		flags;
 	u_int		refs;
 	u_int		lockcnt;
-	int		debug_reason;
-	int		src_reason;
-	int		dst_reason;
 	hammer2_media_data_t *data;		/* data pointer shortcut */
 	TAILQ_ENTRY(hammer2_chain) flush_node;	/* flush deferral list */
+
+	int		inode_reason;
 };
 
 typedef struct hammer2_chain hammer2_chain_t;
@@ -265,7 +264,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_LOOKUP_NODATA		0x00000002	/* data left NULL */
 #define HAMMER2_LOOKUP_SHARED		0x00000100
 #define HAMMER2_LOOKUP_MATCHIND		0x00000200	/* return all chains */
-#define HAMMER2_LOOKUP_FREEMAP		0x00000400	/* freemap base */
+#define HAMMER2_LOOKUP_UNUSED0400	0x00000400
 #define HAMMER2_LOOKUP_ALWAYS		0x00000800	/* resolve data */
 
 /*
@@ -294,7 +293,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 /*
  * Flags passed to hammer2_chain_delete()
  */
-#define HAMMER2_DELETE_WILLDUP		0x0001	/* no blk free, will be dup */
+#define HAMMER2_DELETE_UNUSED0001	0x0001
 
 /*
  * Flags passed to hammer2_chain_delete_duplicate()
@@ -573,8 +572,7 @@ struct hammer2_pfsmount {
 	struct spinlock		inum_spin;	/* inumber lookup */
 	struct hammer2_inode_tree inum_tree;
 	long			inmem_inodes;
-	long			inmem_chains;
-	int			inmem_waiting;
+	long			inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */
 	thread_t		wthread_td;	/* write thread td */
 	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
@@ -583,6 +581,9 @@ struct hammer2_pfsmount {
 };
 
 typedef struct hammer2_pfsmount hammer2_pfsmount_t;
+
+#define HAMMER2_DIRTYCHAIN_WAITING	0x80000000
+#define HAMMER2_DIRTYCHAIN_MASK		0x7FFFFFFF
 
 #define HAMMER2_LWINPROG_WAITING	0x80000000
 #define HAMMER2_LWINPROG_MASK		0x7FFFFFFF
@@ -641,6 +642,7 @@ extern int hammer2_debug;
 extern int hammer2_cluster_enable;
 extern int hammer2_hardlink_enable;
 extern int hammer2_flush_pipe;
+extern long hammer2_limit_dirty_chains;
 extern long hammer2_iod_file_read;
 extern long hammer2_iod_meta_read;
 extern long hammer2_iod_indr_read;
@@ -815,6 +817,7 @@ void hammer2_chain_commit(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain);
 
 void hammer2_chain_memory_wait(hammer2_pfsmount_t *pmp);
+void hammer2_chain_memory_inc(hammer2_pfsmount_t *pmp);
 void hammer2_chain_memory_wakeup(hammer2_pfsmount_t *pmp);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count);

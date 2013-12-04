@@ -58,6 +58,12 @@ RB_PROTOTYPE2(hammer2_io_tree, hammer2_io, rbnode, hammer2_io_cmp, off_t);
 RB_GENERATE2(hammer2_io_tree, hammer2_io, rbnode, hammer2_io_cmp,
 		off_t, pbase);
 
+struct hammer2_cleanupcb_info {
+	struct hammer2_io_tree tmptree;
+	int	count;
+};
+
+
 #define HAMMER2_DIO_INPROG	0x80000000
 #define HAMMER2_DIO_GOOD	0x40000000
 #define HAMMER2_DIO_WAITING	0x20000000
@@ -93,8 +99,10 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize, int *ownerp)
 	spin_lock_shared(&hmp->io_spin);
 	dio = RB_LOOKUP(hammer2_io_tree, &hmp->iotree, pbase);
 	if (dio) {
-		if (atomic_fetchadd_int(&dio->refs, 1) == 0)
+		if ((atomic_fetchadd_int(&dio->refs, 1) &
+		     HAMMER2_DIO_MASK) == 0) {
 			atomic_add_int(&dio->hmp->iofree_count, -1);
+		}
 		spin_unlock_shared(&hmp->io_spin);
 	} else {
 		spin_unlock_shared(&hmp->io_spin);
@@ -108,8 +116,10 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize, int *ownerp)
 		if (xio == NULL) {
 			spin_unlock(&hmp->io_spin);
 		} else {
-			if (atomic_fetchadd_int(&xio->refs, 1) == 0)
+			if ((atomic_fetchadd_int(&xio->refs, 1) &
+			     HAMMER2_DIO_MASK) == 0) {
 				atomic_add_int(&xio->hmp->iofree_count, -1);
+			}
 			spin_unlock(&hmp->io_spin);
 			kfree(dio, M_HAMMER2);
 			dio = xio;
@@ -129,7 +139,7 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize, int *ownerp)
 		 */
 		if (refs & HAMMER2_DIO_GOOD) {
 			*ownerp = 0;
-			return dio;
+			goto done;
 		}
 
 		/*
@@ -155,7 +165,9 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize, int *ownerp)
 	 * We need to do more work before the buffer is usable
 	 */
 	*ownerp = HAMMER2_DIO_INPROG;
-
+done:
+	if (dio->act < 5)
+		++dio->act;
 	return(dio);
 }
 
@@ -242,10 +254,9 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	dio->bp = NULL;
 	pbase = dio->pbase;
 	psize = dio->psize;
+	atomic_add_int(&hmp->iofree_count, 1);
 	hammer2_io_complete(dio, HAMMER2_DIO_INPROG);	/* clears INPROG */
 	dio = NULL;	/* dio stale */
-
-	atomic_add_int(&hmp->iofree_count, 1);
 
 	if (refs & HAMMER2_DIO_GOOD) {
 		KKASSERT(bp != NULL);
@@ -270,30 +281,41 @@ hammer2_io_putblk(hammer2_io_t **diop)
 	 * if too many build up we have to clean them out.
 	 */
 	if (hmp->iofree_count > 1000) {
-		struct hammer2_io_tree tmptree;
+		struct hammer2_cleanupcb_info info;
 
-		RB_INIT(&tmptree);
+		RB_INIT(&info.tmptree);
 		spin_lock(&hmp->io_spin);
 		if (hmp->iofree_count > 1000) {
+			info.count = hmp->iofree_count / 2;
 			RB_SCAN(hammer2_io_tree, &hmp->iotree, NULL,
-				hammer2_io_cleanup_callback, &tmptree);
+				hammer2_io_cleanup_callback, &info);
 		}
 		spin_unlock(&hmp->io_spin);
-		hammer2_io_cleanup(hmp, &tmptree);
+		hammer2_io_cleanup(hmp, &info.tmptree);
 	}
 }
 
+/*
+ * Cleanup any dio's with no references which are not in-progress.
+ */
 static
 int
 hammer2_io_cleanup_callback(hammer2_io_t *dio, void *arg)
 {
-	struct hammer2_io_tree *tmptree = arg;
+	struct hammer2_cleanupcb_info *info = arg;
 	hammer2_io_t *xio;
 
 	if ((dio->refs & (HAMMER2_DIO_MASK | HAMMER2_DIO_INPROG)) == 0) {
+		if (dio->act > 0) {
+			--dio->act;
+			return 0;
+		}
+		KKASSERT(dio->bp == NULL);
 		RB_REMOVE(hammer2_io_tree, &dio->hmp->iotree, dio);
-		xio = RB_INSERT(hammer2_io_tree, tmptree, dio);
+		xio = RB_INSERT(hammer2_io_tree, &info->tmptree, dio);
 		KKASSERT(xio == NULL);
+		if (--info->count <= 0)	/* limit scan */
+			return(-1);
 	}
 	return 0;
 }
@@ -464,6 +486,11 @@ hammer2_io_callback(struct bio *bio)
 	dio->bp = bio->bio_buf;
 	KKASSERT((dio->bp->b_flags & B_ERROR) == 0); /* XXX */
 	hammer2_io_complete(dio, HAMMER2_DIO_INPROG);
+
+	/*
+	 * We still have the ref and DIO_GOOD is now set so nothing else
+	 * should mess with the callback fields until we release the dio.
+	 */
 	dio->callback(dio, dio->arg_c, dio->arg_p, dio->arg_o);
 	hammer2_io_bqrelse(&dio);
 	/* TODO: async load meta-data and assign chain->dio */

@@ -93,7 +93,11 @@ static hammer2_chain_t *hammer2_combined_find(
 		int *cache_indexp, hammer2_key_t *key_nextp,
 		hammer2_key_t key_beg, hammer2_key_t key_end,
 		hammer2_blockref_t **bresp);
+static void hammer2_chain_assert_not_present(hammer2_chain_core_t *above,
+				 hammer2_chain_t *chain);
 
+hammer2_chain_t *XXChain;
+int XXChainWhy;
 /*
  * Basic RBTree for chains.  Chains cannot overlap within any given
  * core->rbtree without recursing through chain->rbtree.  We effectively
@@ -213,10 +217,8 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
 		 * purposes.  The pmp can be NULL.
 		 */
 		chain = kmalloc(sizeof(*chain), hmp->mchain, M_WAITOK | M_ZERO);
-		if (pmp) {
+		if (pmp)
 			chain->pmp = pmp;
-			atomic_add_long(&pmp->inmem_chains, 1);
-		}
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 	case HAMMER2_BREF_TYPE_FREEMAP:
@@ -375,7 +377,7 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_layer_t *layer,
 
 	if (flags & HAMMER2_CHAIN_INSERT_SPIN)
 		spin_lock(&above->cst.spin);
-        chain->above = above;
+	hammer2_chain_assert_not_present(above, chain);
 
 	/*
 	 * Special case, place the chain in the next most-recent layer as the
@@ -447,15 +449,20 @@ hammer2_chain_insert(hammer2_chain_core_t *above, hammer2_chain_layer_t *layer,
 		RB_INSERT(hammer2_chain_tree, &layer->rbtree, chain);
 	}
 done:
+	chain->above = above;
 	chain->inlayer = layer;
 	++above->chain_count;
 	++above->generation;
+	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 
+	/*
+	 * We have to keep track of the effective live-view blockref count
+	 * so the create code knows when to push an indirect block.
+	 */
 	if ((flags & HAMMER2_CHAIN_INSERT_LIVE) &&
 	    (chain->flags & HAMMER2_CHAIN_DELETED) == 0) {
 		atomic_add_int(&above->live_count, 1);
 	}
-	atomic_set_int(&chain->flags, HAMMER2_CHAIN_ONRBTREE);
 failed:
 	if (flags & HAMMER2_CHAIN_INSERT_SPIN)
 		spin_unlock(&above->cst.spin);
@@ -561,12 +568,19 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, struct h2_core_list *delayq)
 		spin_lock(&core->cst.spin);
 
 		/*
-		 * We can't free chains with children because there might
-		 * be a flush dependency.
+		 * We can't free non-stale chains with children until we are
+		 * able to free the children because there might be a flush
+		 * dependency.  Flushes of stale children (which should also
+		 * have their deleted flag set) short-cut recursive flush
+		 * dependencies and can be freed here.  Any flushes which run
+		 * through stale children due to the flush synchronization
+		 * point should have the MOVED bit set in the chain and not
+		 * reach lastdrop at this time.
 		 *
 		 * NOTE: We return (chain) on failure to retry.
 		 */
-		if (core->chain_count) {
+		if (core->chain_count &&
+		    (chain->flags & HAMMER2_CHAIN_DUPLICATED) == 0) {
 			if (atomic_cmpset_int(&chain->refs, 1, 0))
 				chain = NULL;	/* success */
 			spin_unlock(&core->cst.spin);
@@ -575,16 +589,26 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, struct h2_core_list *delayq)
 		/* no chains left under us */
 
 		/*
-		 * Because various parts of the code, including the inode
-		 * structure, might be holding a stale chain and need to
-		 * iterate to a non-stale sibling, we cannot remove siblings
-		 * unless they are at the head of chain.
+		 * Various parts of the code might be holding a ref on a
+		 * stale chain as a placemarker which must be iterated to
+		 * locate a later non-stale (live) chain.  We must be sure
+		 * NOT to free the later non-stale chain (which might have
+		 * no refs).  Otherwise mass confusion may result.
 		 *
-		 * We can't free a live chain unless it is a the head
-		 * of its ownerq.  If we were to then the go-to chain
-		 * would revert to the prior deleted chain.
+		 * The DUPLICATED flag tells us whether the chain is stale
+		 * or not, so the rule is that any chain whos DUPLICATED flag
+		 * is NOT set must also be at the head of the ownerq.
+		 *
+		 * Note that the DELETED flag is not involved.  That is, a
+		 * live chain can represent a deletion that has not yet been
+		 * flushed (or still has refs).
 		 */
-		if (TAILQ_FIRST(&core->ownerq) != chain) {
+#if 0
+		if (TAILQ_NEXT(chain, core_entry) == NULL &&
+		    TAILQ_FIRST(&core->ownerq) != chain) {
+#endif
+		if ((chain->flags & HAMMER2_CHAIN_DUPLICATED) == 0 &&
+		    TAILQ_FIRST(&core->ownerq) != chain) {
 			if (atomic_cmpset_int(&chain->refs, 1, 0))
 				chain = NULL;	/* success */
 			spin_unlock(&core->cst.spin);
@@ -740,10 +764,6 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, struct h2_core_list *delayq)
 		chain->flags &= ~HAMMER2_CHAIN_ALLOCATED;
 		chain->hmp = NULL;
 		kfree(chain, hmp->mchain);
-	}
-	if (pmp) {
-		atomic_add_long(&pmp->inmem_chains, -1);
-		hammer2_chain_memory_wakeup(pmp);
 	}
 
 	/*
@@ -1382,6 +1402,8 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	chain = *chainp;
 	hmp = chain->hmp;
 
+	KKASSERT(chain->bref.mirror_tid != trans->sync_tid ||
+		 (chain->flags & HAMMER2_CHAIN_MODIFIED));
 #if 0
 	if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP ||
 	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
@@ -1463,7 +1485,15 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		hammer2_chain_ref(chain);
+		hammer2_chain_memory_inc(chain->pmp);
 	}
+#if 0
+	/* shouldn't be needed */
+	if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
+		hammer2_chain_ref(chain);
+		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
+	}
+#endif
 
 	/*
 	 * The modification or re-modification requires an allocation and
@@ -1640,6 +1670,37 @@ struct hammer2_chain_find_info {
 static int hammer2_chain_find_cmp(hammer2_chain_t *child, void *data);
 static int hammer2_chain_find_callback(hammer2_chain_t *child, void *data);
 
+/*
+ * DEBUGGING - Assert that the chain will not collide.
+ */
+static
+void
+hammer2_chain_assert_not_present(hammer2_chain_core_t *core,
+				 hammer2_chain_t *chain)
+{
+	struct hammer2_chain_find_info info;
+	hammer2_chain_layer_t *layer;
+
+	if (chain->flags & HAMMER2_CHAIN_DELETED)
+		return;
+
+	info.best = NULL;
+	info.key_beg = chain->bref.key;
+	info.key_end = chain->bref.key +
+		       ((hammer2_key_t)1 << chain->bref.keybits) - 1;
+	info.key_next = HAMMER2_MAX_KEY;
+
+	TAILQ_FOREACH(layer, &core->layerq, entry) {
+		KKASSERT(layer->good == 0xABCD);
+		RB_SCAN(hammer2_chain_tree, &layer->rbtree,
+			hammer2_chain_find_cmp, hammer2_chain_find_callback,
+			&info);
+	}
+	if (info.best && (info.best->flags & HAMMER2_CHAIN_DELETED) == 0)
+		panic("hammer2_chain_assert_not_present: %p/%p\n",
+			chain, info.best);
+}
+
 static
 hammer2_chain_t *
 hammer2_chain_find(hammer2_chain_t *parent, hammer2_key_t *key_nextp,
@@ -1791,7 +1852,6 @@ hammer2_chain_get(hammer2_chain_t *parent, hammer2_blockref_t *bref,
 	 * entry.  Resulting chain has one ref and is not locked.
 	 */
 	chain = hammer2_chain_alloc(hmp, parent->pmp, NULL, bref);
-	chain->dst_reason = 100;
 	hammer2_chain_core_alloc(NULL, chain, NULL);
 	/* ref'd chain returned */
 	chain->modify_tid = chain->bref.mirror_tid;
@@ -1954,6 +2014,9 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	int how;
 	int generation;
 	int maxloops = 300000;
+	int wasdup;
+	hammer2_chain_t * volatile xxchain = NULL;
+	volatile int xxchainwhy;
 
 	if (flags & HAMMER2_LOOKUP_ALWAYS) {
 		how_maybe = how_always;
@@ -2108,11 +2171,15 @@ again:
 			goto again;
 		}
 		if (bcmp(&bcopy, bref, sizeof(bcopy))) {
+			xxchain = chain;
+			xxchainwhy = 1;
 			hammer2_chain_drop(chain);
 			goto again;
 		}
+		wasdup = 0;
 	} else {
 		hammer2_chain_ref(chain);
+		wasdup = ((chain->flags & HAMMER2_CHAIN_DUPLICATED) != 0);
 		spin_unlock(&above->cst.spin);
 	}
 
@@ -2133,15 +2200,22 @@ again:
 	 * NOTE: Chain's key range is not relevant as there might be
 	 *	 one-offs within the range that are not deleted.
 	 *
-	 * NOTE: Ignore the DUPLICATED flag, the lock above resolves
-	 *	 the chain's terminal state so if it is duplicated it
-	 *	 is virtually certain to be either deleted or live.
+	 * NOTE: Lookups can race delete-duplicate because
+	 *	 delete-duplicate does not lock the parent's core
+	 *	 (they just use the spinlock on the core).  We must
+	 *	 check for races by comparing the DUPLICATED flag before
+	 *	 releasing the spinlock with the flag after locking the
+	 *	 chain.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_DELETED) {
 		hammer2_chain_unlock(chain);
-		key_beg = *key_nextp;
-		if (key_beg == 0 || key_beg > key_end)
-			return(NULL);
+		if ((chain->flags & HAMMER2_CHAIN_DUPLICATED) == 0 || wasdup) {
+			key_beg = *key_nextp;
+			if (key_beg == 0 || key_beg > key_end)
+				return(NULL);
+		}
+		xxchain = chain;
+			xxchainwhy = 2;
 		goto again;
 	}
 
@@ -2165,12 +2239,16 @@ again:
 	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
 		hammer2_chain_unlock(parent);
 		*parentp = parent = chain;
+		xxchain = chain;
+			xxchainwhy = 3;
 		goto again;
 	}
 done:
 	/*
 	 * All done, return the chain
 	 */
+	XXChain = chain;
+	XXChainWhy = xxchainwhy;
 	return (chain);
 }
 
@@ -2276,6 +2354,7 @@ hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t *chain,
 	int how;
 	int generation;
 	int maxloops = 300000;
+	int wasdup;
 
 	hmp = parent->hmp;
 
@@ -2404,8 +2483,10 @@ again:
 			chain = NULL;
 			goto again;
 		}
+		wasdup = 0;
 	} else {
 		hammer2_chain_ref(chain);
+		wasdup = ((chain->flags & HAMMER2_CHAIN_DUPLICATED) != 0);
 		spin_unlock(&above->cst.spin);
 	}
 
@@ -2424,17 +2505,22 @@ again:
 	 * NOTE: XXX this could create problems with scans used in
 	 *	 situations other than mount-time recovery.
 	 *
-	 * NOTE: Ignore the DUPLICATED flag, the lock above resolves
-	 *	 the chain's terminal state so if it is duplicated it
-	 *	 is virtually certain to be either deleted or live.
+	 * NOTE: Lookups can race delete-duplicate because
+	 *	 delete-duplicate does not lock the parent's core
+	 *	 (they just use the spinlock on the core).  We must
+	 *	 check for races by comparing the DUPLICATED flag before
+	 *	 releasing the spinlock with the flag after locking the
+	 *	 chain.
 	 */
 	if (chain->flags & HAMMER2_CHAIN_DELETED) {
 		hammer2_chain_unlock(chain);
 		chain = NULL;
 
-		key = next_key;
-		if (key == 0)
-			goto done;
+		if ((chain->flags & HAMMER2_CHAIN_DUPLICATED) == 0 || wasdup) {
+			key = next_key;
+			if (key == 0)
+				goto done;
+		}
 		goto again;
 	}
 
@@ -2504,7 +2590,6 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		dummy.data_off = hammer2_getradix(bytes);
 		dummy.methods = parent->bref.methods;
 		chain = hammer2_chain_alloc(hmp, parent->pmp, trans, &dummy);
-		chain->dst_reason = 101;
 		hammer2_chain_core_alloc(trans, chain, NULL);
 
 		/*
@@ -2740,20 +2825,23 @@ done:
  * the same core and media state as the orignal.  The original *chainp is
  * unlocked and the replacement will be returned locked.
  *
- * The old chain may or may not be in a DELETED state.  This new chain will
- * be live (not deleted).
+ * The old chain must be in a DELETED state unless snapshot is non-zero.
  *
- * The new chain will be marked modified for the current transaction.
+ * The new chain will be live (i.e. not deleted), and modified.
  *
  * If (parent) is non-NULL then the new duplicated chain is inserted under
  * the parent.
  *
- * If (parent) is NULL then the new duplicated chain is not inserted anywhere,
- * similar to if it had just been chain_alloc()'d (suitable for passing into
- * hammer2_chain_create() after this function returns).
+ * If (parent) is NULL then the newly duplicated chain is not inserted
+ * anywhere, similar to if it had just been chain_alloc()'d (suitable for
+ * passing into hammer2_chain_create() after this function returns).
  *
- * WARNING! This is not a snapshot.  Changes made underneath either the old
- *	    or new chain will affect both.
+ * WARNING! This function cannot take snapshots all by itself.  The caller
+ *	    needs to do other massaging for snapshots.
+ *
+ * WARNING! This function calls create which means it can insert indirect
+ *	    blocks.  Callers may have to refactor locked chains held across
+ *	    the call (other than the ones passed into the call).
  */
 static void hammer2_chain_dup_fixup(hammer2_chain_t *ochain,
 				    hammer2_chain_t *nchain);
@@ -2776,6 +2864,10 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	 * Force any further modifications of ochain to do another COW
 	 * operation even if modify_tid indicates that one is not needed.
 	 *
+	 * We don't want to set FORCECOW on nchain simply as an optimization,
+	 * as many duplication calls simply move chains into ichains and
+	 * then delete the original.
+	 *
 	 * WARNING!  We should never resolve DATA to device buffers
 	 *	     (XXX allow it if the caller did?), and since
 	 *	     we currently do not have the logical buffer cache
@@ -2784,11 +2876,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	 */
 	ochain = *chainp;
 	hmp = ochain->hmp;
-	if (parentp)
-		ochain->debug_reason += 0x10000;
-	else
-		ochain->debug_reason += 0x100000;
-	ochain->src_reason = duplicate_reason;
+	KKASSERT(snapshot == 1 || (ochain->flags & HAMMER2_CHAIN_DELETED));
 
 	atomic_set_int(&ochain->flags, HAMMER2_CHAIN_FORCECOW);
 
@@ -2808,18 +2896,16 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		bref = &ochain->bref;
 	if (snapshot) {
 		nchain = hammer2_chain_alloc(hmp, NULL, trans, bref);
-		nchain->dst_reason = 102;
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_SNAPSHOT);
 	} else {
 		nchain = hammer2_chain_alloc(hmp, ochain->pmp, trans, bref);
-		nchain->dst_reason = 103;
 	}
-	nchain->debug_previous = ochain;
 	hammer2_chain_core_alloc(trans, nchain, ochain);
 	bytes = (hammer2_off_t)1 <<
 		(int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	nchain->bytes = bytes;
 	nchain->modify_tid = ochain->modify_tid;
+	nchain->inode_reason = ochain->inode_reason + 0x100000;
 	if (ochain->flags & HAMMER2_CHAIN_INITIAL)
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_INITIAL);
 
@@ -2935,12 +3021,6 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	ochain = *chainp;
 	hmp = ochain->hmp;
 
-	ochain->debug_reason += 0x1000;
-	ochain->src_reason = 99;
-	if ((ochain->debug_reason & 0xF000) > 0x4000) {
-		kprintf("ochain %p\n", ochain);
-		Debugger("shit2");
-	}
 	if (ochain->bref.type == HAMMER2_BREF_TYPE_INODE) {
 		KKASSERT(ochain->data);
 	}
@@ -2954,8 +3034,6 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 * core), until we can give nchain its own official ock.
 	 */
 	nchain = hammer2_chain_alloc(hmp, ochain->pmp, trans, &ochain->bref);
-	nchain->dst_reason = 104;
-	nchain->debug_previous = ochain;
 	if (flags & HAMMER2_DELDUP_RECORE)
 		hammer2_chain_core_alloc(trans, nchain, NULL);
 	else
@@ -2975,7 +3053,9 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 * The caller isn't expected to make further modifications of ochain
 	 * but set the FORCECOW bit anyway, just in case it does.  If ochain
 	 * was previously marked FORCECOW we also flag nchain FORCECOW
-	 * (used during hardlink splits).
+	 * (used during hardlink splits).  FORCECOW forces a reallocation
+	 * of the block when we modify the chain a little later, it does
+	 * not force another delete-duplicate.
 	 *
 	 * NOTE: bref.mirror_tid duplicated by virtue of bref copy in
 	 *	 hammer2_chain_alloc()
@@ -2986,6 +3066,7 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		       ochain->flags & (HAMMER2_CHAIN_INITIAL |
 					HAMMER2_CHAIN_FORCECOW));
 	atomic_set_int(&ochain->flags, HAMMER2_CHAIN_FORCECOW);
+	nchain->inode_reason = ochain->inode_reason + 0x1000;
 
 	/*
 	 * Lock nchain so both chains are now locked (extremely important
@@ -3318,6 +3399,9 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	int reason;
 	int generation;
 	int maxloops = 300000;
+	int retry_same;
+	int wasdup;
+	hammer2_chain_t * volatile xxchain = NULL;
 
 	/*
 	 * Calculate the base blockref pointer or NULL if the chain
@@ -3439,7 +3523,6 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	dummy.bref.methods = parent->bref.methods;
 
 	ichain = hammer2_chain_alloc(hmp, parent->pmp, trans, &dummy.bref);
-	ichain->dst_reason = 105;
 	atomic_set_int(&ichain->flags, HAMMER2_CHAIN_INITIAL);
 	hammer2_chain_core_alloc(trans, ichain, NULL);
 	icore = ichain->core;
@@ -3468,6 +3551,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	spin_lock(&above->cst.spin);
 	loops = 0;
 	reason = 0;
+	retry_same = 0;
 
 	for (;;) {
 		if (++loops > 100000) {
@@ -3514,6 +3598,8 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			 * Use chain already present in the RBTREE
 			 */
 			hammer2_chain_ref(chain);
+			wasdup = ((chain->flags &
+				   HAMMER2_CHAIN_DUPLICATED) != 0);
 			spin_unlock(&above->cst.spin);
 			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER |
 						  HAMMER2_RESOLVE_NOREF);
@@ -3538,25 +3624,40 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			}
 			hammer2_chain_lock(chain, HAMMER2_RESOLVE_NEVER |
 						  HAMMER2_RESOLVE_NOREF);
+			wasdup = 0;
 		}
 
 		/*
 		 * This is always live so if the chain has been delete-
 		 * duplicated we raced someone and we have to retry.
 		 *
-		 * NOTE: Ignore the DUPLICATED flag, the lock above resolves
-		 *	 the chain's terminal state so if it is duplicated it
-		 *	 is virtually certain to be either deleted or live.
+		 * NOTE: Lookups can race delete-duplicate because
+		 *	 delete-duplicate does not lock the parent's core
+		 *	 (they just use the spinlock on the core).  We must
+		 *	 check for races by comparing the DUPLICATED flag before
+		 *	 releasing the spinlock with the flag after locking the
+		 *	 chain.
+		 *
+		 *	 (note reversed logic for this one)
 		 */
 		if (chain->flags & HAMMER2_CHAIN_DELETED) {
 			hammer2_chain_unlock(chain);
+			if ((chain->flags & HAMMER2_CHAIN_DUPLICATED) &&
+			    wasdup == 0) {
+				retry_same = 1;
+				xxchain = chain;
+			}
 			goto next_key;
 		}
 
 		/*
 		 * Shift the chain to the indirect block.
+		 *
+		 * WARNING! Can cause held-over chains to require a refactor.
+		 *	    Fortunately we have none (our locked chains are
+		 *	    passed into and modified by the call).
 		 */
-		hammer2_chain_delete(trans, chain, HAMMER2_DELETE_WILLDUP);
+		hammer2_chain_delete(trans, chain, 0);
 		hammer2_chain_duplicate(trans, &ichain, &chain, NULL, 0, 1);
 		hammer2_chain_unlock(chain);
 		KKASSERT(parent->refs > 0);
@@ -3567,9 +3668,12 @@ next_key_spinlocked:
 		if (--maxloops == 0)
 			panic("hammer2_chain_create_indirect: maxloops");
 		reason = 4;
-		if (key_next == 0 || key_next > key_end)
-			break;
-		key_beg = key_next;
+		if (retry_same == 0) {
+			if (key_next == 0 || key_next > key_end)
+				break;
+			key_beg = key_next;
+		}
+		/* loop */
 	}
 	spin_unlock(&above->cst.spin);
 
@@ -3629,6 +3733,7 @@ next_key_spinlocked:
 		 */
 		parent = ichain;
 	}
+	XXChain = xxchain;
 
 	return(parent);
 }
@@ -3690,6 +3795,11 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 		 */
 		if (bref == NULL)
 			break;
+
+		/*
+		 * NOTE: No need to check DUPLICATED here because we do
+		 *	 not release the spinlock.
+		 */
 		if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
 			if (key_next == 0 || key_next > key_end)
 				break;
@@ -3797,6 +3907,11 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 		 */
 		if (bref == NULL)
 			break;
+
+		/*
+		 * NOTE: No need to check DUPLICATED here because we do
+		 *	 not release the spinlock.
+		 */
 		if (chain && (chain->flags & HAMMER2_CHAIN_DELETED)) {
 			if (key_next == 0 || key_next > key_end)
 				break;
@@ -3970,9 +4085,6 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain, int flags)
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MOVED);
 	}
 	spin_unlock(&chain->above->cst.spin);
-
-	if (flags & HAMMER2_DELETE_WILLDUP)
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_FORCECOW);
 
 	hammer2_chain_setsubmod(trans, chain);
 }
@@ -4228,9 +4340,9 @@ hammer2_base_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		return;
 	}
 	bzero(&base[i], sizeof(*base));
-	base[i].mirror_tid = (intptr_t)parent;
-	base[i].modify_tid = (intptr_t)child;
-	base[i].check.debug.sync_tid = trans->sync_tid;
+	base[i].mirror_tid = (intptr_t)parent;		/* debug */
+	base[i].modify_tid = (intptr_t)child;		/* debug */
+	base[i].check.debug.sync_tid = trans->sync_tid;	/* debug */
 
 	/*
 	 * We can only optimize core->live_zero for live chains.
@@ -4466,33 +4578,83 @@ hammer2_chain_wait(hammer2_chain_t *chain)
 void
 hammer2_chain_memory_wait(hammer2_pfsmount_t *pmp)
 {
-#if 0
-	while (pmp->inmem_chains > desiredvnodes / 10 &&
-	       pmp->inmem_chains > pmp->mp->mnt_nvnodelistsize * 2) {
-		kprintf("w");
-		speedup_syncer(pmp->mp);
-		pmp->inmem_waiting = 1;
-		tsleep(&pmp->inmem_waiting, 0, "chnmem", hz);
+	long waiting;
+	long count;
+	long limit;
+	static int zzticks;
+
+	/*
+	 * Atomic check condition and wait.  Also do an early speedup of
+	 * the syncer to try to avoid hitting the wait.
+	 */
+	for (;;) {
+		waiting = pmp->inmem_dirty_chains;
+		cpu_ccfence();
+		count = waiting & HAMMER2_DIRTYCHAIN_MASK;
+
+		limit = pmp->mp->mnt_nvnodelistsize / 10;
+		if (limit < hammer2_limit_dirty_chains)
+			limit = hammer2_limit_dirty_chains;
+		if (limit < 1000)
+			limit = 1000;
+
+		if ((int)(ticks - zzticks) > hz) {
+			zzticks = ticks;
+			kprintf("count %ld %ld\n", count, limit);
+		}
+
+		/*
+		 * Block if there are too many dirty chains present, wait
+		 * for the flush to clean some out.
+		 */
+		if (count > limit) {
+			tsleep_interlock(&pmp->inmem_dirty_chains, 0);
+			if (atomic_cmpset_long(&pmp->inmem_dirty_chains,
+					       waiting,
+				       waiting | HAMMER2_DIRTYCHAIN_WAITING)) {
+				speedup_syncer(pmp->mp);
+				tsleep(&pmp->inmem_dirty_chains, PINTERLOCKED,
+				       "chnmem", hz);
+			}
+			continue;	/* loop on success or fail */
+		}
+
+		/*
+		 * Try to start an early flush before we are forced to block.
+		 */
+		if (count > limit * 7 / 10)
+			speedup_syncer(pmp->mp);
+		break;
 	}
-#endif
-#if 0
-	if (pmp->inmem_chains > desiredvnodes / 10 &&
-	    pmp->inmem_chains > pmp->mp->mnt_nvnodelistsize * 7 / 4) {
-		speedup_syncer(pmp->mp);
-	}
-#endif
+}
+
+void
+hammer2_chain_memory_inc(hammer2_pfsmount_t *pmp)
+{
+	if (pmp)
+		atomic_add_long(&pmp->inmem_dirty_chains, 1);
 }
 
 void
 hammer2_chain_memory_wakeup(hammer2_pfsmount_t *pmp)
 {
-	if (pmp->inmem_waiting &&
-	    (pmp->inmem_chains <= desiredvnodes / 10 ||
-	     pmp->inmem_chains <= pmp->mp->mnt_nvnodelistsize * 2)) {
-		kprintf("s");
-		pmp->inmem_waiting = 0;
-		wakeup(&pmp->inmem_waiting);
+	long waiting;
+
+	if (pmp == NULL)
+		return;
+
+	for (;;) {
+		waiting = pmp->inmem_dirty_chains;
+		cpu_ccfence();
+		if (atomic_cmpset_long(&pmp->inmem_dirty_chains,
+				       waiting,
+				       (waiting - 1) &
+					~HAMMER2_DIRTYCHAIN_WAITING)) {
+			break;
+		}
 	}
+	if (waiting & HAMMER2_DIRTYCHAIN_WAITING)
+		wakeup(&pmp->inmem_dirty_chains);
 }
 
 static

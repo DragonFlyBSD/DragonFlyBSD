@@ -1,4 +1,6 @@
 
+cpdup /build/boomdata/jails/bleeding-edge/usr/share/man/man4 /mnt/x3
+
 
         * The block freeing code.  At the very least a bulk scan is needed
           to implement freeing blocks.

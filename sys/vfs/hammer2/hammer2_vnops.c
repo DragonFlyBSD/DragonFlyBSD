@@ -1399,6 +1399,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	hammer2_trans_init(&trans, dip->pmp, NULL, HAMMER2_TRANS_NEWINODE);
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &chain, &error);
+	chain->inode_reason = 1;
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1522,6 +1523,9 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * (which may be different from dip where we created our hardlink
 	 * entry. ip->chain always represents the actual hardlink and not
 	 * any of the pointers to the actual hardlink).
+	 *
+	 * WARNING! chain can get moved by the connect (indirectly due to
+	 *	    potential indirect block creation).
 	 */
 	error = hammer2_inode_connect(&trans, 1,
 				      dip, &chain,
@@ -1568,6 +1572,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &nchain, &error);
+	nchain->inode_reason = 2;
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1612,6 +1617,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &nchain, &error);
+	nchain->inode_reason = 3;
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1658,6 +1664,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &nparent, &error);
+	nparent->inode_reason = 4;
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1902,6 +1909,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	error = hammer2_inode_connect(&trans, hlink,
 				      tdip, &chain,
 				      tname, tname_len);
+	chain->inode_reason = 5;
 	if (error == 0) {
 		KKASSERT(chain != NULL);
 		hammer2_inode_repoint(ip, (hlink ? ip->pip : tdip), chain);
