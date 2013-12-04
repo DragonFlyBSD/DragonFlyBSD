@@ -667,7 +667,7 @@ st_status(struct mtget *bp)
 	    bp->mt_blkno == (daddr_t) -1)
 		return;
 	printf("---------------------------------\n");
-	printf("File Number: %ld\tRecord Number: %ld\tResidual Count %d\n",
+	printf("File Number: %u\tRecord Number: %u\tResidual Count %d\n",
 	    bp->mt_fileno, bp->mt_blkno, bp->mt_resid);
 }
 
