@@ -3775,9 +3775,11 @@ bge_init(void *xsc)
 		mode |= BGE_TXMODE_MBUF_LOCKUP_FIX;
 	/* Turn on transmitter */
 	CSR_WRITE_4(sc, BGE_TX_MODE, mode | BGE_TXMODE_ENABLE);
+	DELAY(100);
 
 	/* Turn on receiver */
 	BGE_SETBIT(sc, BGE_RX_MODE, BGE_RXMODE_ENABLE);
+	DELAY(10);
 
 	/*
 	 * Set the number of good frames to receive after RX MBUF
