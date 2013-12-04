@@ -769,6 +769,7 @@ bge_miibus_statchg(device_t dev)
 {
 	struct bge_softc *sc;
 	struct mii_data *mii;
+	uint32_t mac_mode;
 
 	sc = device_get_softc(dev);
 	if ((sc->arpcom.ac_if.if_flags & IFF_RUNNING) == 0)
@@ -801,19 +802,25 @@ bge_miibus_statchg(device_t dev)
 	if (sc->bge_link == 0)
 		return;
 
-	BGE_CLRBIT(sc, BGE_MAC_MODE, BGE_MACMODE_PORTMODE);
-	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T ||
-	    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX) {
-		BGE_SETBIT(sc, BGE_MAC_MODE, BGE_PORTMODE_GMII);
-	} else {
-		BGE_SETBIT(sc, BGE_MAC_MODE, BGE_PORTMODE_MII);
-	}
+	/*
+	 * APE firmware touches these registers to keep the MAC
+	 * connected to the outside world.  Try to keep the
+	 * accesses atomic.
+	 */
 
-	if ((mii->mii_media_active & IFM_GMASK) == IFM_FDX) {
-		BGE_CLRBIT(sc, BGE_MAC_MODE, BGE_MACMODE_HALF_DUPLEX);
-	} else {
-		BGE_SETBIT(sc, BGE_MAC_MODE, BGE_MACMODE_HALF_DUPLEX);
-	}
+	mac_mode = CSR_READ_4(sc, BGE_MAC_MODE) &
+	    ~(BGE_MACMODE_PORTMODE | BGE_MACMODE_HALF_DUPLEX);
+
+	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T ||
+	    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX)
+		mac_mode |= BGE_PORTMODE_GMII;
+	else
+		mac_mode |= BGE_PORTMODE_MII;
+
+	if ((mii->mii_media_active & IFM_GMASK) != IFM_FDX)
+		mac_mode |= BGE_MACMODE_HALF_DUPLEX;
+
+	CSR_WRITE_4(sc, BGE_MAC_MODE, mac_mode);
 }
 
 /*
