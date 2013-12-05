@@ -1704,9 +1704,9 @@ bge_blockinit(struct bge_softc *sc)
 
 	/* Set random backoff seed for TX */
 	CSR_WRITE_4(sc, BGE_TX_RANDOM_BACKOFF,
-	    sc->arpcom.ac_enaddr[0] + sc->arpcom.ac_enaddr[1] +
-	    sc->arpcom.ac_enaddr[2] + sc->arpcom.ac_enaddr[3] +
-	    sc->arpcom.ac_enaddr[4] + sc->arpcom.ac_enaddr[5] +
+	    (sc->arpcom.ac_enaddr[0] + sc->arpcom.ac_enaddr[1] +
+	     sc->arpcom.ac_enaddr[2] + sc->arpcom.ac_enaddr[3] +
+	     sc->arpcom.ac_enaddr[4] + sc->arpcom.ac_enaddr[5]) &
 	    BGE_TX_BACKOFF_SEED_MASK);
 
 	/* Set inter-packet gap */
