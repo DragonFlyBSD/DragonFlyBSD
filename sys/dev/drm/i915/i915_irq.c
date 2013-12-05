@@ -315,14 +315,14 @@ i915_hotplug_work_func(void *context, int pending)
 
 	mode_config = &dev->mode_config;
 
-	lockmgr(&mode_config->lock, LK_EXCLUSIVE);
+	lockmgr(&mode_config->mutex, LK_EXCLUSIVE);
 	DRM_DEBUG_KMS("running encoder hotplug functions\n");
 
 	list_for_each_entry(encoder, &mode_config->encoder_list, base.head)
 		if (encoder->hot_plug)
 			encoder->hot_plug(encoder);
 
-	lockmgr(&mode_config->lock, LK_RELEASE);
+	lockmgr(&mode_config->mutex, LK_RELEASE);
 
 	/* Just fire off a uevent and let userspace tell us what to do */
 #if 0

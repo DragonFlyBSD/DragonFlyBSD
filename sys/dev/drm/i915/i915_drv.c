@@ -306,15 +306,15 @@ static int i915_drm_thaw(struct drm_device *dev)
 			ironlake_init_pch_refclk(dev);
 
 		DRM_UNLOCK(dev);
-		lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
+		lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
 		drm_mode_config_reset(dev);
-		lockmgr(&dev->mode_config.lock, LK_RELEASE);
+		lockmgr(&dev->mode_config.mutex, LK_RELEASE);
 		drm_irq_install(dev);
 
-		lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
+		lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
 		/* Resume the modeset for every activated CRTC */
 		drm_helper_resume_force_mode(dev);
-		lockmgr(&dev->mode_config.lock, LK_RELEASE);
+		lockmgr(&dev->mode_config.mutex, LK_RELEASE);
 
 		if (IS_IRONLAKE_M(dev))
 			ironlake_enable_rc6(dev);
@@ -761,9 +761,9 @@ i915_reset(struct drm_device *dev, u8 flags)
 	DRM_UNLOCK(dev);
 
 	if (need_display) {
-		lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
+		lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
 		drm_helper_resume_force_mode(dev);
-		lockmgr(&dev->mode_config.lock, LK_RELEASE);
+		lockmgr(&dev->mode_config.mutex, LK_RELEASE);
 	}
 
 	return (0);

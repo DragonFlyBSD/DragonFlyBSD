@@ -32,6 +32,7 @@
  * $FreeBSD: src/sys/dev/drm2/drm_modes.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
+#include <linux/export.h>
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 
@@ -47,7 +48,7 @@
  *
  * Describe @mode using DRM_DEBUG.
  */
-void drm_mode_debug_printmodeline(struct drm_display_mode *mode)
+void drm_mode_debug_printmodeline(const struct drm_display_mode *mode)
 {
 	DRM_DEBUG_KMS("Modeline %d:\"%s\" %d %d %d %d %d %d %d %d %d %d "
 			"0x%x 0x%x\n",
@@ -57,6 +58,7 @@ void drm_mode_debug_printmodeline(struct drm_display_mode *mode)
 		mode->vdisplay, mode->vsync_start,
 		mode->vsync_end, mode->vtotal, mode->type, mode->flags);
 }
+EXPORT_SYMBOL(drm_mode_debug_printmodeline);
 
 /**
  * drm_cvt_mode -create a modeline based on CVT algorithm
@@ -553,11 +555,12 @@ void drm_mode_list_concat(struct list_head *head, struct list_head *new)
  * RETURNS:
  * @mode->hdisplay
  */
-int drm_mode_width(struct drm_display_mode *mode)
+int drm_mode_width(const struct drm_display_mode *mode)
 {
 	return mode->hdisplay;
 
 }
+EXPORT_SYMBOL(drm_mode_width);
 
 /**
  * drm_mode_height - get the height of a mode
@@ -573,10 +576,11 @@ int drm_mode_width(struct drm_display_mode *mode)
  * RETURNS:
  * @mode->vdisplay
  */
-int drm_mode_height(struct drm_display_mode *mode)
+int drm_mode_height(const struct drm_display_mode *mode)
 {
 	return mode->vdisplay;
 }
+EXPORT_SYMBOL(drm_mode_height);
 
 /** drm_mode_hsync - get the hsync of a mode
  * @mode: mode
@@ -676,8 +680,6 @@ void drm_mode_set_crtcinfo(struct drm_display_mode *p, int adjust_flags)
 			p->crtc_vsync_end /= 2;
 			p->crtc_vtotal /= 2;
 		}
-
-		p->crtc_vtotal |= 1;
 	}
 
 	if (p->flags & DRM_MODE_FLAG_DBLSCAN) {
@@ -698,11 +700,8 @@ void drm_mode_set_crtcinfo(struct drm_display_mode *p, int adjust_flags)
 	p->crtc_vblank_end = max(p->crtc_vsync_end, p->crtc_vtotal);
 	p->crtc_hblank_start = min(p->crtc_hsync_start, p->crtc_hdisplay);
 	p->crtc_hblank_end = max(p->crtc_hsync_end, p->crtc_htotal);
-
-	p->crtc_hadjusted = false;
-	p->crtc_vadjusted = false;
 }
-
+EXPORT_SYMBOL(drm_mode_set_crtcinfo);
 
 /**
  * drm_mode_duplicate - allocate and duplicate an existing mode
@@ -742,9 +741,9 @@ struct drm_display_mode *drm_mode_duplicate(struct drm_device *dev,
  * Check to see if @mode1 and @mode2 are equivalent.
  *
  * RETURNS:
- * true if the modes are equal, false otherwise.
+ * True if the modes are equal, false otherwise.
  */
-bool drm_mode_equal(struct drm_display_mode *mode1, struct drm_display_mode *mode2)
+bool drm_mode_equal(const struct drm_display_mode *mode1, const struct drm_display_mode *mode2)
 {
 	/* do clock check convert to PICOS so fb modes get matched
 	 * the same */
@@ -769,6 +768,7 @@ bool drm_mode_equal(struct drm_display_mode *mode1, struct drm_display_mode *mod
 
 	return false;
 }
+EXPORT_SYMBOL(drm_mode_equal);
 
 /**
  * drm_mode_validate_size - make sure modes adhere to size constraints

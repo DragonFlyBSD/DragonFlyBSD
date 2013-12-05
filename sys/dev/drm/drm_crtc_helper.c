@@ -939,7 +939,7 @@ static void output_poll_execute(void *ctx, int pending)
 
 	dev = ctx;
 
-	lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
+	lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
 	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
 
 		/* if this is HPD or polled don't check it -
@@ -968,7 +968,7 @@ static void output_poll_execute(void *ctx, int pending)
 			changed = true;
 	}
 
-	lockmgr(&dev->mode_config.lock, LK_RELEASE);
+	lockmgr(&dev->mode_config.mutex, LK_RELEASE);
 
 	if (changed) {
 #if 0

@@ -405,11 +405,9 @@ struct edid *drm_get_edid(struct drm_connector *connector,
 	if (drm_probe_ddc(adapter))
 		edid = (struct edid *)drm_do_get_edid(connector, adapter);
 
-	connector->display_info.raw_edid = (char *)edid;
-
 	return edid;
-
 }
+EXPORT_SYMBOL(drm_get_edid);
 
 /*** EDID parsing ***/
 
@@ -503,6 +501,17 @@ static void edid_fixup_preferred(struct drm_connector *connector,
 	preferred_mode->type |= DRM_MODE_TYPE_PREFERRED;
 }
 
+/*
+ * drm_mode_find_dmt - Create a copy of a mode if present in DMT
+ * @dev: Device to duplicate against
+ * @hsize: Mode width
+ * @vsize: Mode height
+ * @fresh: Mode refresh rate
+ * @rb: Mode reduced-blanking-ness
+ *
+ * Walk the DMT mode list looking for a match for the given parameters.
+ * Return a newly allocated copy of the mode, or NULL if not found.
+ */
 struct drm_display_mode *drm_mode_find_dmt(struct drm_device *dev,
 					   int hsize, int vsize, int fresh)
 {
@@ -521,6 +530,7 @@ struct drm_display_mode *drm_mode_find_dmt(struct drm_device *dev,
 	}
 	return mode;
 }
+EXPORT_SYMBOL(drm_mode_find_dmt);
 
 typedef void detailed_cb(struct detailed_timing *timing, void *closure);
 

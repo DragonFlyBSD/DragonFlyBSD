@@ -289,7 +289,6 @@ static bool intel_crt_detect_ddc(struct drm_connector *connector)
 		 */
 		if (edid != NULL) {
 			is_digital = edid->input & DRM_EDID_INPUT_DIGITAL;
-			connector->display_info.raw_edid = NULL;
 			drm_free(edid, DRM_MEM_KMS);
 		}
 

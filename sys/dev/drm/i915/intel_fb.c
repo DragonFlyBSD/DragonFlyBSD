@@ -257,7 +257,7 @@ void intel_fb_restore_mode(struct drm_device *dev)
 	struct drm_mode_config *config = &dev->mode_config;
 	struct drm_plane *plane;
 
-	lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
+	lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
 
 	ret = drm_fb_helper_restore_fbdev_mode(&dev_priv->fbdev->helper);
 	if (ret)
@@ -267,5 +267,5 @@ void intel_fb_restore_mode(struct drm_device *dev)
 	list_for_each_entry(plane, &config->plane_list, head)
 		plane->funcs->disable_plane(plane);
 
-	lockmgr(&dev->mode_config.lock, LK_RELEASE);
+	lockmgr(&dev->mode_config.mutex, LK_RELEASE);
 }

@@ -1051,9 +1051,9 @@ static void ironlake_panel_vdd_work(void *arg, int pending __unused)
 	struct intel_dp *intel_dp = arg;
 	struct drm_device *dev = intel_dp->base.base.dev;
 
-	lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE);
+	lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
 	ironlake_panel_vdd_off_sync(intel_dp);
-	lockmgr(&dev->mode_config.lock, LK_RELEASE);
+	lockmgr(&dev->mode_config.mutex, LK_RELEASE);
 }
 
 static void ironlake_edp_panel_vdd_off(struct intel_dp *intel_dp, bool sync)
@@ -2117,7 +2117,6 @@ intel_dp_detect(struct drm_connector *connector, bool force)
 		edid = intel_dp_get_edid(connector, intel_dp->adapter);
 		if (edid) {
 			intel_dp->has_audio = drm_detect_monitor_audio(edid);
-			connector->display_info.raw_edid = NULL;
 			drm_free(edid, DRM_MEM_KMS);
 		}
 	}
@@ -2183,7 +2182,6 @@ intel_dp_detect_audio(struct drm_connector *connector)
 	if (edid) {
 		has_audio = drm_detect_monitor_audio(edid);
 
-		connector->display_info.raw_edid = NULL;
 		drm_free(edid, DRM_MEM_KMS);
 	}
 

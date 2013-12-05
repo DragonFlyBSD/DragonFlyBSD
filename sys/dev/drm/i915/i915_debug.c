@@ -1298,7 +1298,7 @@ i915_context_status(struct drm_device *dev, struct sbuf *m, void *data)
 		return (0);
 
 	dev_priv = dev->dev_private;
-	ret = lockmgr(&dev->mode_config.lock, LK_EXCLUSIVE|LK_SLEEPFAIL);
+	ret = lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE|LK_SLEEPFAIL);
 	if (ret != 0)
 		return (EINTR);
 
@@ -1314,7 +1314,7 @@ i915_context_status(struct drm_device *dev, struct sbuf *m, void *data)
 		sbuf_printf(m, "\n");
 	}
 
-	lockmgr(&dev->mode_config.lock, LK_RELEASE);
+	lockmgr(&dev->mode_config.mutex, LK_RELEASE);
 
 	return (0);
 }
