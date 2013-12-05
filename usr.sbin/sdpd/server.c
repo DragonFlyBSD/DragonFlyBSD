@@ -88,10 +88,10 @@ static int32_t	server_process_request		(server_p srv, int32_t fd);
 static int32_t	server_send_error_response	(server_p srv, int32_t fd,
 						 uint16_t error);
 static void	server_close_fd			(server_p srv, int32_t fd);
-#if 0
+#if 0 /* XXX */
 static int	server_auth_check		(server_p srv, struct sockcred *cred);
-#endif
 static int 	server_auth_check		(server_p srv, struct cmsgcred *cred);
+#endif
 
 /*
  * Initialize server
@@ -427,7 +427,9 @@ server_process_request(server_p srv, int32_t fd)
 	struct msghdr	msg;
 	struct iovec	iov;
 	int32_t		len, error;
+#if 0 /* XXX */
 	struct cmsghdr	*cmsg;
+#endif
 
 	assert(srv->imtu > 0);
 	assert(srv->req != NULL);
@@ -464,7 +466,7 @@ server_process_request(server_p srv, int32_t fd)
 		return (-1);
 	}
 
-#if XXX
+#if 0 /* XXX */
 	if ((cmsg = CMSG_FIRSTHDR(&msg)) != NULL
 	    && cmsg->cmsg_level == SOL_SOCKET
 	    && cmsg->cmsg_type == SCM_CREDS
@@ -478,7 +480,7 @@ server_process_request(server_p srv, int32_t fd)
 		    server_auth_check(srv, (struct sockcred *)CMSG_DATA(cmsg));
 #endif
 #else
-srv->fdidx[fd].priv = 1;
+	srv->fdidx[fd].priv = 1;
 #endif
 
 	if (len >= sizeof(*pdu)
@@ -636,6 +638,7 @@ server_close_fd(server_p srv, int32_t fd)
 	}
 }
 
+#if 0 /* XXX */
 static int
 /*server_auth_check(server_p srv, struct sockcred *cred)*/
 server_auth_check(server_p srv, struct cmsgcred *cred)
@@ -670,3 +673,4 @@ server_auth_check(server_p srv, struct cmsgcred *cred)
 
 	return 0;
 }
+#endif
