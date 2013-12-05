@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2005-2012 The DragonFly Project.
  * Copyright (c) 2013 François Tigeot
+ * Copyright (c) 2013 Matthew Dillon
  * All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -32,8 +33,88 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
+
+#ifdef USERLAND_TEST
+/*
+ * Testing:
+ *
+ * cc -I. -DUSERLAND_TEST libkern/linux_idr.c -o /tmp/idr -g
+ */
+
+#define _KERNEL
+#define _KERNEL_STRUCTURES
+#define KLD_MODULE
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <limits.h>
+#include <assert.h>
+#include <sys/idr.h>
+#include <sys/errno.h>
+
+#undef MALLOC_DEFINE
+#define MALLOC_DEFINE(a, b, c)
+#define lwkt_gettoken(x)
+#define lwkt_reltoken(x)
+#define kmalloc(bytes, zone, flags)	calloc(bytes, 1)
+#define lwkt_token_init(a, b)
+#define lwkt_token_uninit(a)
+#define kfree(ptr, flags)		free(ptr)
+#define KKASSERT(a)
+#define panic(str, ...)			assert(0)
+#define min(a, b)	(((a) < (b)) ? (a) : (b))
+#define max(a, b)	(((a) > (b)) ? (a) : (b))
+
+int
+main(int ac, char **av)
+{
+	char buf[256];
+	struct idr idr;
+	intptr_t generation = 0x10000000;
+	int error;
+	int id;
+
+	idr_init(&idr);
+
+	printf("cmd> ");
+	fflush(stdout);
+	while (fgets(buf, sizeof(buf), stdin) != NULL) {
+		if (sscanf(buf, "a %d", &id) == 1) {
+			for (;;) {
+				if (idr_pre_get(&idr, 0) == 0) {
+					fprintf(stderr, "pre_get failed\n");
+					exit(1);
+				}
+				error = idr_get_new_above(&idr,
+							  (void *)generation,
+							  id, &id);
+				if (error == -EAGAIN)
+					continue;
+				if (error) {
+					fprintf(stderr, "get_new err %d\n",
+						error);
+					exit(1);
+				}
+				printf("allocated %d value %08x\n",
+					id, (int)generation);
+				++generation;
+				break;
+			}
+		} else if (sscanf(buf, "f %d", &id) == 1) {
+			idr_remove(&idr, id);
+		} else if (sscanf(buf, "g %d", &id) == 1) {
+			void *res = idr_find(&idr, id);
+			printf("find %d res %p\n", id, res);
+		}
+		printf("cmd> ");
+		fflush(stdout);
+	}
+	return 0;
+}
+
+#else
 
 #include <sys/idr.h>
 #include <sys/kernel.h>
@@ -44,6 +125,8 @@
 #include <sys/spinlock2.h>
 #include <sys/limits.h>
 
+#endif
+
 /* Must be 2^n - 1 */
 #define IDR_DEFAULT_SIZE    255
 
@@ -51,9 +134,7 @@ MALLOC_DEFINE(M_IDR, "idr", "Integer ID management");
 
 static void	idr_grow(struct idr *idp, int want);
 static void	idr_reserve(struct idr *idp, int id, int incr);
-static void	idr_set(struct idr *idp, int id, void *ptr);
 static int	idr_find_free(struct idr *idp, int want, int lim);
-static int	idr_pre_get1(struct idr *idp, int want, int lim);
 
 /*
  * Number of nodes in right subtree, including the root.
@@ -89,8 +170,7 @@ idrfixup(struct idr *idp, int id)
 		idp->idr_freeindex = id;
 	}
 	while (idp->idr_lastindex >= 0 &&
-		idp->idr_nodes[idp->idr_lastindex].data == NULL &&
-		idp->idr_nodes[idp->idr_lastindex].reserved == 0
+		idp->idr_nodes[idp->idr_lastindex].data == NULL
 	) {
 		--idp->idr_lastindex;
 	}
@@ -168,41 +248,71 @@ idr_find_free(struct idr *idp, int want, int lim)
 	return (-1);
 }
 
-static int
-idr_pre_get1(struct idr *idp, int want, int lim)
-{
-	int id;
-
-	if (want >= idp->idr_count)
-		idr_grow(idp, want);
-
-retry:
-	id = idr_find_free(idp, want, lim);
-	if (id > -1)
-		goto found;
-
-	/*
-	 * No space in current array.  Expand?
-	 */
-	if (idp->idr_count >= lim) {
-		return (ENOSPC);
-	}
-	idr_grow(idp, want);
-	goto retry;
-
-found:
-	return (0);
-}
-
+/*
+ * Blocking pre-get support, allows callers to use idr_pre_get() in
+ * combination with idr_get_new_above() such that idr_get_new_above()
+ * can be called safely with a spinlock held.
+ *
+ * Returns 0 on failure, 1 on success.
+ *
+ * Caller must hold a blockable lock.
+ */
 int
 idr_pre_get(struct idr *idp, __unused unsigned gfp_mask)
 {
+	int want = idp->idr_maxwant;
+	int lim = INT_MAX;
+	int result = 1;				/* success */
+	int id;
+
+	KKASSERT(mycpu->gd_spinlocks == 0);
 	lwkt_gettoken(&idp->idr_token);
-	int error = idr_pre_get1(idp, idp->idr_maxwant, INT_MAX);
+	for (;;) {
+		/*
+		 * Grow if necessary (or if forced by the loop)
+		 */
+		if (want >= idp->idr_count)
+			idr_grow(idp, want);
+
+		/*
+		 * Check if a spot is available, break and return 0 if true,
+		 * unless the available spot is beyond our limit.  It is
+		 * possible to exceed the limit due to the way array growth
+		 * works.
+		 *
+		 * XXX we assume that the caller uses a consistent <sid> such
+		 *     that the idr_maxwant field is correct, otherwise we
+		 *     may believe that a slot is available but the caller then
+		 *     fails in idr_get_new_above() and loops.
+		 */
+		id = idr_find_free(idp, idp->idr_maxwant, lim);
+		if (id != -1) {
+			if (id >= lim)
+				result = 0;	/* failure */
+			break;
+		}
+
+		/*
+		 * Return ENOSPC if our limit has been reached, otherwise
+		 * loop and force growth.
+		 */
+		if (idp->idr_count >= lim) {
+			result = 0;		/* failure */
+			break;
+		}
+		want = idp->idr_count;
+	}
 	lwkt_reltoken(&idp->idr_token);
-	return (error == 0);
+	return result;
 }
 
+/*
+ * Allocate an integer.  If -EAGAIN is returned the caller should loop
+ * and call idr_pre_get() with no locks held, and then retry the call
+ * to idr_get_new_above().
+ *
+ * Can be safely called with spinlocks held.
+ */
 int
 idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 {
@@ -210,8 +320,13 @@ idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 
 	KKASSERT(ptr != NULL);
 
+	/*
+	 * NOTE! Because the idp is initialized with a non-zero count,
+	 *	 sid might be < idp->idr_count but idr_maxwant might not
+	 *	 yet be initialized.  So check both cases.
+	 */
 	lwkt_gettoken(&idp->idr_token);
-	if (sid >= idp->idr_count) {
+	if (sid >= idp->idr_count || idp->idr_maxwant < sid) {
 		idp->idr_maxwant = max(idp->idr_maxwant, sid);
 		lwkt_reltoken(&idp->idr_token);
 		return -EAGAIN;
@@ -224,16 +339,14 @@ idr_get_new_above(struct idr *idp, void *ptr, int sid, int *id)
 	}
 
 	if (resid >= idp->idr_count)
-		idr_grow(idp, resid);
+		panic("idr_get_new_above(): illegal resid %d", resid);
 	if (resid > idp->idr_lastindex)
 		idp->idr_lastindex = resid;
 	if (sid <= idp->idr_freeindex)
 		idp->idr_freeindex = resid;
 	*id = resid;
-	KKASSERT(idp->idr_nodes[resid].reserved == 0);
-	idp->idr_nodes[resid].reserved = 1;
 	idr_reserve(idp, resid, 1);
-	idr_set(idp, resid, ptr);
+	idp->idr_nodes[resid].data = ptr;
 
 	lwkt_reltoken(&idp->idr_token);
 	return (0);
@@ -247,6 +360,8 @@ idr_get_new(struct idr *idp, void *ptr, int *id)
 
 /*
  * Grow the file table so it can hold through descriptor (want).
+ *
+ * Caller must hold a blockable lock.
  */
 static void
 idr_grow(struct idr *idp, int want)
@@ -260,27 +375,34 @@ idr_grow(struct idr *idp, int want)
 		nf = 2 * nf + 1;
 	} while (nf <= want);
 
+#ifdef USERLAND_TEST
+	printf("idr_grow: %d -> %d\n", idp->idr_count, nf);
+#endif
+
 	/* Allocate a new zero'ed node array */
-	newnodes = kmalloc(nf * sizeof(struct idr_node), M_IDR, M_ZERO|M_WAITOK);
-	
+	newnodes = kmalloc(nf * sizeof(struct idr_node),
+			   M_IDR, M_ZERO | M_WAITOK);
+
 	/* We might race another grow */
 	if (nf <= idp->idr_count) {
 		kfree(newnodes, M_IDR);
 		return;
 	}
 
-	/* Copy the existing nodes at the beginning of the new array */
-	if (idp->idr_nodes != NULL)
-		bcopy(idp->idr_nodes, newnodes, idp->idr_count * sizeof(struct idr_node));
-
+	/*
+	 * Copy existing nodes to the beginning of the new array
+	 */
 	oldnodes = idp->idr_nodes;
+	if (oldnodes) {
+		bcopy(oldnodes, newnodes,
+		      idp->idr_count * sizeof(struct idr_node));
+	}
 	idp->idr_nodes = newnodes;
 	idp->idr_count = nf;
 
-	if (oldnodes != NULL) {
+	if (oldnodes) {
 		kfree(oldnodes, M_IDR);
 	}
-
 	idp->idr_nexpands++;
 }
 
@@ -290,107 +412,79 @@ idr_remove(struct idr *idp, int id)
 	void *ptr;
 
 	lwkt_gettoken(&idp->idr_token);
-
-	if (id < 0 || id >= idp->idr_count)
-		goto out;
-	if ((ptr = idp->idr_nodes[id].data) == NULL)
-		goto out;
+	if (id < 0 || id >= idp->idr_count) {
+		lwkt_reltoken(&idp->idr_token);
+		return;
+	}
+	if ((ptr = idp->idr_nodes[id].data) == NULL) {
+		lwkt_reltoken(&idp->idr_token);
+		return;
+	}
 	idp->idr_nodes[id].data = NULL;
-
 	idr_reserve(idp, id, -1);
 	idrfixup(idp, id);
-
-out:
 	lwkt_reltoken(&idp->idr_token);
 }
 
+/*
+ * Remove all int allocations, leave array intact.
+ *
+ * Caller must hold a blockable lock (or be in a context where holding
+ * the spinlock is not relevant).
+ */
 void
 idr_remove_all(struct idr *idp)
 {
-	struct      idr_node *oldnodes;
-	struct      idr_node *newnodes;
-
 	lwkt_gettoken(&idp->idr_token);
-
-retry:
-	oldnodes = idp->idr_nodes;
-	newnodes = kmalloc(idp->idr_count * sizeof(struct idr_node), M_IDR, M_WAITOK | M_ZERO);
-
-	if (idp->idr_nodes != oldnodes) {
-		kfree(newnodes, M_IDR);
-		goto retry;
-	}
-
-	idp->idr_nodes = newnodes;
+	bzero(idp->idr_nodes, idp->idr_count * sizeof(struct idr_node));
 	idp->idr_lastindex = -1;
 	idp->idr_freeindex = 0;
 	idp->idr_nexpands = 0;
 	idp->idr_maxwant = 0;
 	lwkt_reltoken(&idp->idr_token);
-
-	kfree(oldnodes, M_IDR);
-
 }
 
 void
 idr_destroy(struct idr *idp)
 {
 	lwkt_token_uninit(&idp->idr_token);
-	kfree(idp->idr_nodes, M_IDR);
-	memset(idp, 0, sizeof(struct idr));
+	if (idp->idr_nodes) {
+		kfree(idp->idr_nodes, M_IDR);
+		idp->idr_nodes = NULL;
+	}
+	bzero(idp, sizeof(*idp));
 }
 
 void *
 idr_find(struct idr *idp, int id)
 {
-	void * ret = NULL;
-
-	lwkt_gettoken(&idp->idr_token);
+	void *ret;
 
 	if (id < 0 || id >= idp->idr_count) {
-		goto out;
+		ret = NULL;
 	} else if (idp->idr_nodes[id].allocated == 0) {
-		goto out;
+		ret = NULL;
+	} else {
+		ret = idp->idr_nodes[id].data;
 	}
-	ret = idp->idr_nodes[id].data;
-
-out:
-	lwkt_reltoken(&idp->idr_token);
 	return ret;
 }
 
-static void
-idr_set(struct idr *idp, int id, void *ptr)
-{
-	KKASSERT(id < idp->idr_count);
-	KKASSERT(idp->idr_nodes[id].reserved != 0);
-	if (ptr) {
-		idp->idr_nodes[id].data = ptr;
-		idp->idr_nodes[id].reserved = 0;
-	} else {
-		idp->idr_nodes[id].reserved = 0;
-		idr_reserve(idp, id, -1);
-		idrfixup(idp, id);
-	}
-}
-
 int
-idr_for_each(struct idr *idp, int (*fn)(int id, void *p, void *data), void *data)
+idr_for_each(struct idr *idp, int (*fn)(int id, void *p, void *data),
+	     void *data)
 {
 	int i, error = 0;
 	struct idr_node *nodes;
 
-	lwkt_gettoken(&idp->idr_token);
 	nodes = idp->idr_nodes;
 	for (i = 0; i < idp->idr_count; i++) {
 		if (nodes[i].data != NULL && nodes[i].allocated > 0) {
 			error = fn(i, nodes[i].data, data);
 			if (error != 0)
-				goto out;
+				break;
 		}
 	}
-out:
-	lwkt_reltoken(&idp->idr_token);
 	return error;
 }
 
@@ -398,18 +492,16 @@ void *
 idr_replace(struct idr *idp, void *ptr, int id)
 {
 	struct idr_node *idrnp;
-	void *ret = NULL;
+	void *ret;
 
 	lwkt_gettoken(&idp->idr_token);
-
 	idrnp = idr_get_node(idp, id);
-	if (idrnp == NULL || ptr == NULL)
-		goto out;
-
-	ret = idrnp->data;
-	idrnp->data = ptr;
-
-out:
+	if (idrnp == NULL || ptr == NULL) {
+		ret = NULL;
+	} else {
+		ret = idrnp->data;
+		idrnp->data = ptr;
+	}
 	lwkt_reltoken(&idp->idr_token);
 	return (ret);
 }
