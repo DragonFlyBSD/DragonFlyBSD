@@ -166,10 +166,7 @@ main(int argc, char *argv[])
 
 	while ((nconf = getnetconfig(nc_handle))) {
 	    if (nconf->nc_flag & NC_VISIBLE)
-		if (ipv6_only == 1 && strcmp(nconf->nc_protofmly,
-		    "inet") == 0) {
-		    /* DO NOTHING */
-		} else
+		if (ipv6_only != 1 || strcmp(nconf->nc_protofmly, "inet") != 0)
 		    init_transport(nconf);
 	}
 	endnetconfig(nc_handle);
