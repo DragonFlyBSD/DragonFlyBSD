@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sbin/fsck/main.c,v 1.21.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/main.c,v 1.10 2007/04/20 22:20:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -203,7 +202,7 @@ checkfilesys(char *filesys, char *mntpt, long auxdata, int child)
 			pfatal("CAN'T CHECK FILE SYSTEM.");
 		return (0);
 	case -1:
-		pwarn("clean, %ld free ", sblock.fs_cstotal.cs_nffree +
+		pwarn("clean, %d free ", sblock.fs_cstotal.cs_nffree +
 		    sblock.fs_frag * sblock.fs_cstotal.cs_nbfree);
 		printf("(%d frags, %d blocks, %.1f%% fragmentation)\n",
 		    sblock.fs_cstotal.cs_nffree, sblock.fs_cstotal.cs_nbfree,
@@ -281,7 +280,7 @@ checkfilesys(char *filesys, char *mntpt, long auxdata, int child)
 	 */
 	n_ffree = sblock.fs_cstotal.cs_nffree;
 	n_bfree = sblock.fs_cstotal.cs_nbfree;
-	pwarn("%ld files, %ld used, %ld free ",
+	pwarn("%d files, %d used, %d free ",
 	    n_files, n_blks, n_ffree + sblock.fs_frag * n_bfree);
 	printf("(%d frags, %d blocks, %.1f%% fragmentation)\n",
 	    n_ffree, n_bfree, n_ffree * 100.0 / sblock.fs_dsize);

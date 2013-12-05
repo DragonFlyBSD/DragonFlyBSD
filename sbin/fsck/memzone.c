@@ -83,7 +83,7 @@ mzalloc(struct memzone *zone, int bytes)
 /*
  * Free memory in bulk
  */
-void *
+void
 mzpurge(struct memzone *zone)
 {
 	struct memchunk *chunk;

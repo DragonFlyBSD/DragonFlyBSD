@@ -28,7 +28,6 @@
  *
  * @(#)setup.c	8.10 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/setup.c,v 1.17.2.4 2002/06/24 05:10:41 dillon Exp $
- * $DragonFly: src/sbin/fsck/setup.c,v 1.8 2007/05/20 20:29:01 dillon Exp $
  */
 
 #define DKTYPENAMES
@@ -62,11 +61,10 @@ static int readsb(int listerr);
 int
 setup(char *dev)
 {
-	long cg, size, asked, i, j;
+	long size, asked, i, j;
 	long skipclean, bmapsize;
 	off_t sizepb;
 	struct stat statb;
-	struct fs proto;
 
 	havesb = 0;
 	fswritefd = -1;

@@ -28,7 +28,6 @@
  *
  * @(#)pass1.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass1.c,v 1.16.2.5 2002/06/23 22:34:58 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass1.c,v 1.9 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -185,7 +184,7 @@ checkinode(ufs1_ino_t inumber, struct inodesc *idesc)
 		    memcmp(dp->di_ib, zino.di_ib,
 			NIADDR * sizeof(ufs_daddr_t)) ||
 		    dp->di_mode || dp->di_size) {
-			pfatal("PARTIALLY ALLOCATED INODE I=%lu", inumber);
+			pfatal("PARTIALLY ALLOCATED INODE I=%u", inumber);
 			if (reply("CLEAR") == 1) {
 				dp = ginode(inumber);
 				clearinode(dp);
@@ -204,7 +203,7 @@ checkinode(ufs1_ino_t inumber, struct inodesc *idesc)
 	    dp->di_size > sblock.fs_maxfilesize ||
 	    (mode == IFDIR && dp->di_size > MAXDIRSIZE)) {
 		if (debug)
-			printf("bad size %qu:", dp->di_size);
+			printf("bad size %ju:", (uintmax_t)dp->di_size);
 		goto unknown;
 	}
 	if (!preen && mode == IFMT && reply("HOLD BAD BLOCK") == 1) {
@@ -216,14 +215,14 @@ checkinode(ufs1_ino_t inumber, struct inodesc *idesc)
 	if ((mode == IFBLK || mode == IFCHR || mode == IFIFO ||
 	     mode == IFSOCK) && dp->di_size != 0) {
 		if (debug)
-			printf("bad special-file size %qu:", dp->di_size);
+			printf("bad special-file size %ju:", (uintmax_t)dp->di_size);
 		goto unknown;
 	}
 	ndb = howmany(dp->di_size, sblock.fs_bsize);
 	if (ndb < 0) {
 		if (debug)
-			printf("bad size %qu ndb %d:",
-				dp->di_size, ndb);
+			printf("bad size %ju ndb %d:",
+				(uintmax_t)dp->di_size, ndb);
 		goto unknown;
 	}
 	if (mode == IFBLK || mode == IFCHR)
@@ -319,7 +318,7 @@ checkinode(ufs1_ino_t inumber, struct inodesc *idesc)
 	ckinode(dp, idesc);
 	idesc->id_entryno *= btodb(sblock.fs_fsize);
 	if (dp->di_blocks != idesc->id_entryno) {
-		pwarn("INCORRECT BLOCK COUNT I=%lu (%ld should be %ld)",
+		pwarn("INCORRECT BLOCK COUNT I=%u (%d should be %d)",
 		    inumber, dp->di_blocks, idesc->id_entryno);
 		if (preen)
 			printf(" (CORRECTED)\n");
@@ -331,7 +330,7 @@ checkinode(ufs1_ino_t inumber, struct inodesc *idesc)
 	}
 	return;
 unknown:
-	pfatal("UNKNOWN FILE TYPE I=%lu", inumber);
+	pfatal("UNKNOWN FILE TYPE I=%u", inumber);
 	inoinfo(inumber)->ino_state = FCLEAR;
 	if (reply("CLEAR") == 1) {
 		inoinfo(inumber)->ino_state = USTATE;
@@ -353,7 +352,7 @@ pass1check(struct inodesc *idesc)
 	if ((anyout = chkrange(blkno, idesc->id_numfrags)) != 0) {
 		blkerror(idesc->id_number, "BAD", blkno);
 		if (badblk++ >= MAXBAD) {
-			pwarn("EXCESSIVE BAD BLKS I=%lu",
+			pwarn("EXCESSIVE BAD BLKS I=%u",
 				idesc->id_number);
 			if (preen)
 				printf(" (SKIPPING)\n");
@@ -373,7 +372,7 @@ pass1check(struct inodesc *idesc)
 		} else {
 			blkerror(idesc->id_number, "DUP", blkno);
 			if (dupblk++ >= MAXDUP) {
-				pwarn("EXCESSIVE DUP BLKS I=%lu",
+				pwarn("EXCESSIVE DUP BLKS I=%u",
 					idesc->id_number);
 				if (preen)
 					printf(" (SKIPPING)\n");

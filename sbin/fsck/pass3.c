@@ -28,7 +28,6 @@
  *
  * @(#)pass3.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/sbin/fsck/pass3.c,v 1.7.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass3.c,v 1.6 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -92,7 +91,7 @@ pass3(void)
 			propagate();
 			continue;
 		}
-		pfatal("ORPHANED DIRECTORY LOOP DETECTED I=%lu", orphan);
+		pfatal("ORPHANED DIRECTORY LOOP DETECTED I=%u", orphan);
 		if (reply("RECONNECT") == 0)
 			continue;
 		memset(&idesc, 0, sizeof(struct inodesc));

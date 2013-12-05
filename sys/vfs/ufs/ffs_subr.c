@@ -35,7 +35,7 @@
 #ifndef _KERNEL
 #include "dinode.h"
 #include "fs.h"
-extern void panic(const char *, ...);
+extern void panic(const char *, ...) __printflike(1, 2) __dead2;
 #else
 #include <sys/systm.h>
 #include <sys/lock.h>

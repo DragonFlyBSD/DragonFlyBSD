@@ -29,18 +29,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsck/fsutil.h,v 1.3.2.1 2001/08/01 05:47:55 obrien Exp $
- * $DragonFly: src/sbin/fsck/fsutil.h,v 1.4 2006/10/12 04:04:03 dillon Exp $
  */
 
 void perror(const char *);
-void errexit(const char *, ...)
-    __attribute__((__noreturn__,__format__(__printf__,1,2)));  
-void pfatal(const char *, ...)
-    __attribute__((__format__(__printf__,1,2)));  
-void pwarn(const char *, ...)
-    __attribute__((__format__(__printf__,1,2)));  
-void panic(const char *, ...)
-    __attribute__((__noreturn__,__format__(__printf__,1,2)));  
+void errexit(const char *, ...) __printflike(1, 2) __dead2;
+void pfatal(const char *, ...) __printflike(1, 2);
+void pwarn(const char *, ...) __printflike(1, 2);
+void panic(const char *, ...) __printflike(1, 2) __dead2;
 const char *rawname(const char *);
 const char *unrawname(const char *);
 #if 0

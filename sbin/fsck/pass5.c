@@ -321,7 +321,7 @@ pass5(void)
 						continue;
 					if (cg_inosused(cg)[i] & (1 << k))
 						continue;
-					pwarn("ALLOCATED INODE %d MARKED FREE\n",
+					pwarn("ALLOCATED INODE %ld MARKED FREE\n",
 					    c * fs->fs_ipg + i * NBBY + k);
 				}
 			}
@@ -334,7 +334,7 @@ pass5(void)
 						continue;
 					if (cg_blksfree(newcg)[i] & (1 << k))
 						continue;
-					pwarn("ALLOCATED FRAG %d MARKED FREE\n",
+					pwarn("ALLOCATED FRAG %ld MARKED FREE\n",
 					    c * fs->fs_fpg + i * NBBY + k);
 				}
 			}

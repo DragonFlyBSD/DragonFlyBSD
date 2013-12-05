@@ -235,7 +235,7 @@ rwerror(char *mesg, ufs_daddr_t blk)
 
 	if (preen == 0)
 		printf("\n");
-	pfatal("CANNOT %s: BLK %ld", mesg, blk);
+	pfatal("CANNOT %s: BLK %d", mesg, blk);
 	if (reply("CONTINUE") == 0)
 		exit(EEXIT);
 }

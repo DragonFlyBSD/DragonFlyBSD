@@ -420,8 +420,6 @@ getinoinfo(ufs1_ino_t inumber)
 void
 inocleanup(void)
 {
-	struct inoinfo **inpp;
-
 	if (inphead == NULL)
 		return;
 	mzpurge(&inoinfo_zone);
@@ -520,7 +518,7 @@ pinode(ufs1_ino_t ino)
 	printf("MODE=%o\n", dp->di_mode);
 	if (preen)
 		printf("%s: ", cdevname);
-	printf("SIZE=%qu ", dp->di_size);
+	printf("SIZE=%ju ", (uintmax_t)dp->di_size);
 	t = dp->di_mtime;
 	p = ctime(&t);
 	printf("MTIME=%12.12s %4.4s ", &p[4], &p[20]);
@@ -530,7 +528,7 @@ void
 blkerror(ufs1_ino_t ino, char *type, ufs_daddr_t blk)
 {
 
-	pfatal("%ld %s I=%lu", blk, type, ino);
+	pfatal("%d %s I=%u", blk, type, ino);
 	printf("\n");
 	switch (inoinfo(ino)->ino_state) {
 

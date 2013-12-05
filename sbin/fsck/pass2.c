@@ -28,7 +28,6 @@
  *
  * @(#)pass2.c	8.9 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass2.c,v 1.10.2.2 2001/11/24 15:14:59 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass2.c,v 1.11 2006/10/12 04:04:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +135,7 @@ pass2(void)
 	for (inpp = inpsort; inpp < inpend; inpp++) {
 		if (got_siginfo) {
 			printf("%s: phase 2: dir %d of %ld (%d%%)\n", cdevname,
-			    inpp - inpsort, inplast, (int)((inpp - inpsort) * 100 /
+			    (int)(inpp - inpsort), inplast, (int)((inpp - inpsort) * 100 /
 			    inplast));
 			got_siginfo = 0;
 		}
@@ -155,11 +154,11 @@ pass2(void)
 		} else if ((inp->i_isize & (DIRBLKSIZ - 1)) != 0) {
 			getpathname(pathbuf, inp->i_number, inp->i_number);
 			if (usedsoftdep)
-				pfatal("%s %s: LENGTH %d NOT MULTIPLE OF %d",
+				pfatal("%s %s: LENGTH %zu NOT MULTIPLE OF %d",
 					"DIRECTORY", pathbuf, inp->i_isize,
 					DIRBLKSIZ);
 			else
-				pwarn("%s %s: LENGTH %d NOT MULTIPLE OF %d",
+				pwarn("%s %s: LENGTH %zu NOT MULTIPLE OF %d",
 					"DIRECTORY", pathbuf, inp->i_isize,
 					DIRBLKSIZ);
 			if (preen)

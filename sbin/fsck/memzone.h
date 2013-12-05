@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sbin/fsck/memzone.h,v 1.1 2006/10/12 04:04:03 dillon Exp $
  */
 
 struct memchunk {
@@ -49,5 +47,5 @@ struct memzone {
 #define MEMZONE_CHUNK	(1024*1024)
 
 void *mzalloc(struct memzone *zone, int bytes);
-void *mzpurge(struct memzone *zone);
+void mzpurge(struct memzone *zone);
 

@@ -28,7 +28,6 @@
  *
  * @(#)dir.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/dir.c,v 1.15 1999/08/28 00:12:45 peter Exp $
- * $DragonFly: src/sbin/fsck/dir.c,v 1.11 2006/10/19 21:11:13 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -496,7 +495,7 @@ linkup(ufs1_ino_t orphan, ufs1_ino_t parentdir, char *name)
 		dp->di_nlink++;
 		inodirty();
 		inoinfo(lfdir)->ino_linkcnt++;
-		pwarn("DIR I=%lu CONNECTED. ", orphan);
+		pwarn("DIR I=%u CONNECTED. ", orphan);
 		if (parentdir != (ufs1_ino_t)-1) {
 			printf("PARENT WAS I=%lu\n", (u_long)parentdir);
 			/*
