@@ -15,7 +15,6 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/entry.c,v 1.9.2.5 2001/08/18 04:20:31 mikeh Exp $
- * $DragonFly: src/usr.sbin/cron/lib/entry.c,v 1.6 2004/07/05 15:29:49 dillon Exp $
  */
 
 /* vix 26jan87 [RCS'd; rest of log is in RCS file]
@@ -258,7 +257,7 @@ load_entry(FILE *file, void (*error_func)(), struct passwd *pw, char **envp)
 
 	if (!pw) {
 		char		*username = cmd;	/* temp buffer */
-		char            *s, *group;
+		char            *s;
 		struct group    *grp;
 #ifdef LOGIN_CAP
 		login_cap_t *lc;
@@ -405,7 +404,7 @@ load_entry(FILE *file, void (*error_func)(), struct passwd *pw, char **envp)
 	 */
 	e->cmd = strdup(cmd);
 	if (e->cmd == NULL) {
-		warn("strdup(\"%d\")", cmd);
+		warn("strdup(\"%s\")", cmd);
 		ecode = e_mem;
 		goto eof;
 	}
