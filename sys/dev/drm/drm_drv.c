@@ -41,10 +41,10 @@
 #include <drm/drm_core.h>
 
 #ifdef DRM_DEBUG_DEFAULT_ON
-int drm_debug_flag = (DRM_DEBUGBITS_DEBUG | DRM_DEBUGBITS_KMS |
+int drm_debug = (DRM_DEBUGBITS_DEBUG | DRM_DEBUGBITS_KMS |
     DRM_DEBUGBITS_FAILED_IOCTL);
 #else
-int drm_debug_flag = 0;
+int drm_debug = 0;
 #endif
 int drm_notyet_flag = 0;
 
@@ -65,7 +65,7 @@ drm_modevent(module_t mod, int type, void *data)
 
 	switch (type) {
 	case MOD_LOAD:
-		TUNABLE_INT_FETCH("drm.debug", &drm_debug_flag);
+		TUNABLE_INT_FETCH("drm.debug", &drm_debug);
 		TUNABLE_INT_FETCH("drm.notyet", &drm_notyet_flag);
 		break;
 	}
@@ -908,7 +908,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	if (retcode != 0)
 		DRM_DEBUG("    returning %d\n", retcode);
 	if (retcode != 0 &&
-	    (drm_debug_flag & DRM_DEBUGBITS_FAILED_IOCTL) != 0) {
+	    (drm_debug & DRM_DEBUGBITS_FAILED_IOCTL) != 0) {
 		kprintf(
 "pid %d, cmd 0x%02lx, nr 0x%02x/%1d, dev 0x%lx, auth %d, res %d\n",
 		    DRM_CURRENTPID, cmd, nr, is_driver_ioctl, (long)dev->device,

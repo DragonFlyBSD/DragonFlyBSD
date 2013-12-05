@@ -107,6 +107,11 @@ struct drm_device;
 #include "drm_hashtab.h"
 #include "drm_mm.h"
 
+#define DRM_UT_CORE 		0x01
+#define DRM_UT_DRIVER		0x02
+#define DRM_UT_KMS		0x04
+#define DRM_UT_PRIME		0x08
+
 #ifdef DRM_DEBUG
 #undef DRM_DEBUG
 #define DRM_DEBUG_DEFAULT_ON 1
@@ -338,19 +343,19 @@ vm_page_t vm_phys_fictitious_to_vm_page(vm_paddr_t pa);
 #define DRM_INFO(fmt, ...)  kprintf("info: [" DRM_NAME "] " fmt , ##__VA_ARGS__)
 
 #define DRM_DEBUG(fmt, ...) do {					\
-	if ((drm_debug_flag & DRM_DEBUGBITS_DEBUG) != 0)		\
+	if ((drm_debug & DRM_DEBUGBITS_DEBUG) != 0)		\
 		kprintf("[" DRM_NAME ":pid%d:%s] " fmt, DRM_CURRENTPID,	\
 			__func__ , ##__VA_ARGS__);			\
 } while (0)
 
 #define DRM_DEBUG_KMS(fmt, ...) do {					\
-	if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0)			\
+	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)			\
 		kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
 			__func__ , ##__VA_ARGS__);			\
 } while (0)
 
 #define DRM_DEBUG_DRIVER(fmt, ...) do {					\
-	if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0)			\
+	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)			\
 		kprintf("[" DRM_NAME ":KMS:pid%d:%s] " fmt, DRM_CURRENTPID,\
 			__func__ , ##__VA_ARGS__);			\
 } while (0)
@@ -362,7 +367,7 @@ vm_page_t vm_phys_fictitious_to_vm_page(vm_paddr_t pa);
 #define	dev_info(dev, fmt, ...)						\
 	device_printf((dev), "info: " fmt, ## __VA_ARGS__)
 #define	dev_dbg(dev, fmt, ...) do {					\
-	if ((drm_debug_flag& DRM_DEBUGBITS_KMS) != 0) {			\
+	if ((drm_debug& DRM_DEBUGBITS_KMS) != 0) {			\
 		device_printf((dev), "debug: " fmt, ## __VA_ARGS__);	\
 	}								\
 } while (0)
@@ -1082,8 +1087,9 @@ struct dmi_system_id {
 #define	DMI_MATCH(a, b) {(a), (b)}
 bool dmi_check_system(const struct dmi_system_id *);
 
-extern int	drm_debug_flag;
 extern int	drm_notyet_flag;
+extern int	drm_debug;
+
 extern unsigned int drm_vblank_offdelay;
 extern unsigned int drm_timestamp_precision;
 

@@ -414,7 +414,7 @@ intel_sdvo_debug_write(struct intel_sdvo *intel_sdvo, u8 cmd,
 {
 	int i;
 
-	if ((drm_debug_flag & DRM_DEBUGBITS_KMS) == 0)
+	if ((drm_debug & DRM_DEBUGBITS_KMS) == 0)
 		return;
 	DRM_DEBUG_KMS("%s: W: %02X ", SDVO_NAME(intel_sdvo), cmd);
 	for (i = 0; i < args_len; i++)
@@ -523,7 +523,7 @@ intel_sdvo_read_response(struct intel_sdvo *intel_sdvo, void *response,
 			goto log_fail;
 	}
 
-	if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0) {
+	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0) {
 		if (status <= SDVO_CMD_STATUS_SCALING_NOT_SUPP)
 			kprintf("(%s)", cmd_status_names[status]);
 		else
@@ -539,15 +539,15 @@ intel_sdvo_read_response(struct intel_sdvo *intel_sdvo, void *response,
 					  SDVO_I2C_RETURN_0 + i,
 					  &((u8 *)response)[i]))
 			goto log_fail;
-		if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0)
+		if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)
 			kprintf(" %02X", ((u8 *)response)[i]);
 	}
-	if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0)
+	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)
 		kprintf("\n");
 	return (true);
 
 log_fail:
-	if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0)
+	if ((drm_debug & DRM_DEBUGBITS_KMS) != 0)
 		kprintf("... failed\n");
 	return (false);
 }

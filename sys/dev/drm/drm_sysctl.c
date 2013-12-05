@@ -108,10 +108,10 @@ int drm_sysctl_init(struct drm_device *dev)
 			return 1;
 	}
 	SYSCTL_ADD_INT(&info->ctx, SYSCTL_CHILDREN(drioid), OID_AUTO, "debug",
-	    CTLFLAG_RW, &drm_debug_flag, sizeof(drm_debug_flag),
+	    CTLFLAG_RW, &drm_debug, sizeof(drm_debug),
 	    "Enable debugging output");
 	SYSCTL_ADD_INT(&info->ctx, SYSCTL_CHILDREN(drioid), OID_AUTO, "notyet",
-	    CTLFLAG_RW, &drm_notyet_flag, sizeof(drm_debug_flag),
+	    CTLFLAG_RW, &drm_notyet_flag, sizeof(drm_debug),
 	    "Enable notyet reminders");
 
 	if (dev->driver->sysctl_init != NULL)

@@ -198,7 +198,7 @@ drm_edid_block_valid(u8 *raw_edid)
 bad:
 	if (raw_edid) {
 		DRM_DEBUG_KMS("Raw EDID:\n");
-		if ((drm_debug_flag & DRM_DEBUGBITS_KMS) != 0) {
+		if ((drm_debug & DRM_DEBUGBITS_KMS) != 0) {
 			for (i = 0; i < EDID_LENGTH; ) {
 				kprintf("%02x", raw_edid[i]);
 				i++;

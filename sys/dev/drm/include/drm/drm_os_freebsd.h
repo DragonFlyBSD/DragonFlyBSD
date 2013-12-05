@@ -119,6 +119,6 @@ static inline u32 get_unaligned_le32(const void *p)
 
 #define KIB_NOTYET()							\
 do {									\
-	if (drm_debug_flag && drm_notyet_flag)				\
+	if (drm_debug && drm_notyet_flag)				\
 		kprintf("NOTYET: %s at %s:%d\n", __func__, __FILE__, __LINE__); \
 } while (0)
