@@ -4,7 +4,6 @@
  * and possibly others.
  *
  * $FreeBSD: src/lib/libopie/opieextra.c,v 1.1.2.2 2002/07/15 14:17:08 des Exp $
- * $DragonFly: src/lib/libopie/opieextra.c,v 1.4 2008/09/30 16:57:05 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -81,7 +80,7 @@ struct opie_algorithm_table {
 };
 
 static struct opie_algorithm_table opie_algorithm_table[] = {
-	"md4", "md5"
+	{ "md4" }, { "md5" }
 };
 
 /* Get current hash type */

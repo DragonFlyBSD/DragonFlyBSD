@@ -48,8 +48,6 @@ static struct _rtrans rtrans[] = {
   { RESPONSE_UNKNOWN, NULL }
 };
 
-static char *algids[] = { NULL, NULL, NULL, "sha1", "md4", "md5" };
-
 static int changed FUNCTION((opie), struct opie *opie)
 {
   struct opie opie2;
@@ -71,7 +69,6 @@ int opieverify FUNCTION((opie, response), struct opie *opie AND char *response)
   int i, rval = -1;
   char *c;
   struct opie_otpkey key, fkey, lastkey;
-  struct opie nopie;
 
   if (!opie || !response)
     goto verret;
@@ -93,7 +90,7 @@ int opieverify FUNCTION((opie, response), struct opie *opie AND char *response)
   if (opie->opie_n <= 0)
     goto verret;
 
-  if (c = strchr(response, ':')) {
+  if ((c = strchr(response, ':')) != NULL) {
     *(c++) = 0;
     {
       struct _rtrans *r;

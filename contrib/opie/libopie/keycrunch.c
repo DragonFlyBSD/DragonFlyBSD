@@ -41,7 +41,7 @@ struct opie_otpkey *result AND char *seed AND char *secret)
     char *c2 = c;
 
     if (algorithm & 0x10)
-      while(*c2 = *(secret++)) c2++;
+      while((*c2 = *(secret++)) != '\0') c2++;
 
     while(*seed)
       if (isspace(*(c2++) = tolower(*(seed++))))

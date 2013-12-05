@@ -29,7 +29,6 @@ License Agreement applies to this software.
              assignment that should have been a comparison.
 
 $FreeBSD: src/contrib/opie/libopie/insecure.c,v 1.1.1.2.6.2 2002/07/15 14:48:47 des Exp $
-$DragonFly: src/contrib/opie/libopie/insecure.c,v 1.2 2003/06/17 04:24:05 dillon Exp $
 
 */
 #include "opie_cfg.h"
@@ -77,7 +76,7 @@ int opieinsecure FUNCTION_NOARGS
 
   if (display_name) {
     insecure = 1;
-    if (s = strchr(display_name, ':')) {
+    if ((s = strchr(display_name, ':')) != NULL) {
       int n = s - display_name;
       if (!n)
 	insecure = 0;
@@ -97,7 +96,7 @@ int opieinsecure FUNCTION_NOARGS
 	    if (!strncmp(utsname.nodename, display_name, n))
 	      insecure = 0;
 	    else {
-	      if (s = strchr(display_name, '.')) {
+	      if ((s = strchr(display_name, '.')) != NULL) {
 		int n2 = s - display_name;
                 if (n < n2)
                   n2 = n;
@@ -138,7 +137,7 @@ int opieinsecure FUNCTION_NOARGS
 	strncpy(host, utmp.ut_host, sizeof(utmp.ut_host));
 	host[sizeof(utmp.ut_host)] = 0;
 
-	if (s = strchr(host, ':')) {
+	if ((s = strchr(host, ':')) != NULL) {
 	  int n = s - host;
 	  if (!n)
 	    insecure = 0;
@@ -148,9 +147,9 @@ int opieinsecure FUNCTION_NOARGS
 		insecure = 0;
 #if 1 /* def SOLARIS */
 	      else
-		if (s = strchr(host, ' ')) {
+		if ((s = strchr(host, ' ')) != NULL) {
 		  *s = ':';
-		  if (s = strchr(s + 1, ' '))
+		  if ((s = strchr(s + 1, ' ')) != NULL)
 		    *s = '.';
 		  if (!strncmp(host, display_name, n))
 		    insecure = 0; 

@@ -39,14 +39,14 @@ char *__opienone = "****************";
 
 int __opiewriterec FUNCTION((opie), struct opie *opie)
 {
-  char buf[17], buf2[64];
+  char buf[64];
   time_t now;
-  FILE *f, *f2 = NULL;
+  FILE *f;
   int i = 0;
   char *c;
 
   time(&now);
-  if (strftime(buf2, sizeof(buf2), " %b %d,%Y %T", localtime(&now)) < 1)
+  if (strftime(buf, sizeof(buf), " %b %d,%Y %T", localtime(&now)) < 1)
     return -1;
 
   if (!(opie->opie_flags & __OPIE_FLAGS_READ)) {
@@ -78,7 +78,7 @@ int __opiewriterec FUNCTION((opie), struct opie *opie)
     return -1;
   }
 
-  if (fprintf(f, "%s %04d %-16s %s %-21s\n", opie->opie_principal, opie->opie_n, opie->opie_seed, opie->opie_val ? opie->opie_val : __opienone, buf2) < 1)
+  if (fprintf(f, "%s %04d %-16s %s %-21s\n", opie->opie_principal, opie->opie_n, opie->opie_seed, opie->opie_val ? opie->opie_val : __opienone, buf) < 1)
     return -1;
 
   fclose(f);

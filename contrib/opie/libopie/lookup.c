@@ -23,7 +23,7 @@ int opielookup FUNCTION((opie, principal), struct opie *opie AND char *principal
   memset(opie, 0, sizeof(struct opie));
   opie->opie_principal = principal;
 
-  if (i = __opiereadrec(opie))
+  if ((i = __opiereadrec(opie)) != 0)
     return i;
 
   return (opie->opie_flags & __OPIE_FLAGS_RW) ? 0 : 2;

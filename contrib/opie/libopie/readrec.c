@@ -135,9 +135,8 @@ int __opiereadrec FUNCTION((opie), struct opie *opie)
 
   {
     char *c, principal[OPIE_PRINCIPAL_MAX];
-    int i;
     
-    if (c = strchr(opie->opie_principal, ':'))
+    if ((c = strchr(opie->opie_principal, ':')) != NULL)
       *c = 0;
     
     strlcpy(principal, opie->opie_principal, sizeof(principal));

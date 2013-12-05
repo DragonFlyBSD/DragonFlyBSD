@@ -30,7 +30,6 @@ you didn't get a copy, you may request one from <license@inner.net>.
 	Created at NRL for OPIE 2.2.
 
 $FreeBSD: src/contrib/opie/libopie/generator.c,v 1.3.6.2 2002/07/15 14:48:47 des Exp $
-$DragonFly: src/contrib/opie/libopie/generator.c,v 1.2 2003/06/17 04:24:05 dillon Exp $
 */
 
 #include "opie_cfg.h"
@@ -165,7 +164,7 @@ int opiegenerator FUNCTION((challenge, secret, response), char *challenge AND ch
     if (opiepasscheck(secret))
       return -2;
 
-    if (i = opiekeycrunch(algorithm, &key, seed, secret))
+    if ((i = opiekeycrunch(algorithm, &key, seed, secret)) != 0)
       return i;
 
     if (sequence <= OPIE_SEQUENCE_RESTRICT) {
@@ -175,7 +174,6 @@ int opiegenerator FUNCTION((challenge, secret, response), char *challenge AND ch
       {
 	char newseed[OPIE_SEED_MAX + 1];
 	struct opie_otpkey newkey;
-	char *c;
 	char buf[OPIE_SEED_MAX + 48 + 1];
 
 	while (sequence-- != 0)

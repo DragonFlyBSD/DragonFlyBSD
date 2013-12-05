@@ -74,7 +74,7 @@ int opienewseed FUNCTION((seed), char *seed)
 			 * seed which is at least as long as the previous one
 			 * was.  snprintf() will add a NUL character as well.
 			 */
-			snprintf(c, slen + 1, "%0*d", slen, i);
+			snprintf(c, slen + 1, "%0*d", (int)slen, i);
 			seed[OPIE_SEED_MAX] = 0;
 			return 0;
 		}

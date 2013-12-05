@@ -58,8 +58,7 @@ int opieaccessfile FUNCTION((host), char *host)
  */
   long n;
   struct hostent *hp;
-  FILE *fp;
-  char buf[128], **lp;
+  char **lp;
 
 #ifdef DEBUG
   syslog(LOG_DEBUG, "accessfile: host=%s", host);
