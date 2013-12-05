@@ -2358,6 +2358,10 @@ TO_REMOVE+=/usr/include/sys/syscall-hide.h
 TO_REMOVE+=/usr/include/bus/pccard/pccarddevs.h
 TO_REMOVE+=/usr/include/bus/pci/pcidevs.h
 TO_REMOVE+=/usr/include/bus/u4b/usbdevs.h
+TO_REMOVE+=/usr/lib/libxpg4.a
+TO_REMOVE+=/usr/lib/libxpg4.so
+TO_REMOVE+=/usr/lib/libxpg4.so.4
+TO_REMOVE+=/usr/lib/profile/libxpg4.a
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

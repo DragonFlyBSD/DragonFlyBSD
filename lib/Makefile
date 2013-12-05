@@ -91,7 +91,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	${_libusbhid} \
 	libvgl \
 	libwrap \
-	libxpg4 \
 	liby \
 	libypclnt \
 	libz \
