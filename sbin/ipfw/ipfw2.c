@@ -820,8 +820,8 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 	printf("%05u ", rule->rulenum);
 
 	if (do_acct)
-		printf("%*llu %*llu ", pcwidth, rule->pcnt, bcwidth,
-		    rule->bcnt);
+		printf("%*ju %*ju ", pcwidth, (uintmax_t)rule->pcnt, bcwidth,
+		    (uintmax_t)rule->bcnt);
 
 	if (do_time) {
 		char timestr[30];
@@ -1128,11 +1128,11 @@ show_ipfw(struct ipfw_ioc_rule *rule, int pcwidth, int bcwidth)
 				break;
 
 			case O_TCPACK:
-				printf(" tcpack %ld", ntohl(cmd32->d[0]));
+				printf(" tcpack %u", ntohl(cmd32->d[0]));
 				break;
 
 			case O_TCPSEQ:
-				printf(" tcpseq %ld", ntohl(cmd32->d[0]));
+				printf(" tcpseq %u", ntohl(cmd32->d[0]));
 				break;
 
 			case O_UID:
@@ -1208,8 +1208,8 @@ show_dyn_ipfw(struct ipfw_ioc_state *d, int pcwidth, int bcwidth)
 			return;
 	}
 
-	printf("%05u %*llu %*llu (%ds)", d->rulenum, pcwidth, d->pcnt,
-	    bcwidth, d->bcnt, d->expire);
+	printf("%05u %*ju %*ju (%ds)", d->rulenum, pcwidth, (uintmax_t)d->pcnt,
+	    bcwidth, (uintmax_t)d->bcnt, d->expire);
 	switch (d->dyn_type) {
 	case O_LIMIT_PARENT:
 		printf(" PARENT %d", d->count);
@@ -1299,12 +1299,12 @@ list_queues(struct dn_ioc_flowset *fs, struct dn_ioc_flowqueue *q)
 		ina.s_addr = htonl(q[l].id.u.ip.dst_ip);
 		printf("%15s/%-5d ",
 		    inet_ntoa(ina), q[l].id.u.ip.dst_port);
-		printf("%4qu %8qu %2u %4u %3u\n",
-		    q[l].tot_pkts, q[l].tot_bytes,
+		printf("%4ju %8ju %2u %4u %3u\n",
+		    (uintmax_t)q[l].tot_pkts, (uintmax_t)q[l].tot_bytes,
 		    q[l].len, q[l].len_bytes, q[l].drops);
 		if (verbose)
-			printf("   S %20qd  F %20qd\n",
-			    q[l].S, q[l].F);
+			printf("   S %20ju  F %20ju\n",
+			    (uintmax_t)q[l].S, (uintmax_t)q[l].F);
 	}
 }
 
@@ -1391,7 +1391,7 @@ list_pipes(void *data, int nbytes, int ac, char *av[])
 		    p->pipe_nr, buf, p->delay);
 		print_flowset_parms(&p->fs, prefix);
 		if (verbose)
-			printf("   V %20qd\n", p->V >> MY_M);
+			printf("   V %20ju\n", (uintmax_t)p->V >> MY_M);
 
 		q = (struct dn_ioc_flowqueue *)(p+1);
 		list_queues(&p->fs, q);
@@ -1607,23 +1607,23 @@ list(int ac, char *av[])
 		for (n = 0, r = data; n < nstat;
 		    n++, r = (void *)r + IOC_RULESIZE(r)) {
 			/* packet counter */
-			width = snprintf(NULL, 0, "%llu", r->pcnt);
+			width = snprintf(NULL, 0, "%ju", (uintmax_t)r->pcnt);
 			if (width > pcwidth)
 				pcwidth = width;
 
 			/* byte counter */
-			width = snprintf(NULL, 0, "%llu", r->bcnt);
+			width = snprintf(NULL, 0, "%ju", (uintmax_t)r->bcnt);
 			if (width > bcwidth)
 				bcwidth = width;
 		}
 	}
 	if (do_dynamic && ndyn) {
 		for (n = 0, d = dynrules; n < ndyn; n++, d++) {
-			width = snprintf(NULL, 0, "%llu", d->pcnt);
+			width = snprintf(NULL, 0, "%ju", (uintmax_t)d->pcnt);
 			if (width > pcwidth)
 				pcwidth = width;
 
-			width = snprintf(NULL, 0, "%llu", d->bcnt);
+			width = snprintf(NULL, 0, "%ju", (uintmax_t)d->bcnt);
 			if (width > bcwidth)
 				bcwidth = width;
 		}
