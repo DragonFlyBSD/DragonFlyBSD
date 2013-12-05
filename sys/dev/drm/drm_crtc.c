@@ -228,9 +228,9 @@ again:
 		return -ENOMEM;
 	}
 
-	spin_lock(&dev->mode_config.idr_mutex);
+	lockmgr(&dev->mode_config.idr_mutex, LK_EXCLUSIVE);
 	ret = idr_get_new_above(&dev->mode_config.crtc_idr, obj, 1, &new_id);
-	spin_unlock(&dev->mode_config.idr_mutex);
+	lockmgr(&dev->mode_config.idr_mutex, LK_RELEASE);
 	if (ret == -EAGAIN)
 		goto again;
 	else if (ret)
@@ -254,9 +254,9 @@ again:
 static void drm_mode_object_put(struct drm_device *dev,
 				struct drm_mode_object *object)
 {
-	spin_lock(&dev->mode_config.idr_mutex);
+	lockmgr(&dev->mode_config.idr_mutex, LK_EXCLUSIVE);
 	idr_remove(&dev->mode_config.crtc_idr, object->id);
-	spin_unlock(&dev->mode_config.idr_mutex);
+	lockmgr(&dev->mode_config.idr_mutex, LK_RELEASE);
 }
 
 struct drm_mode_object *drm_mode_object_find(struct drm_device *dev,
@@ -264,11 +264,11 @@ struct drm_mode_object *drm_mode_object_find(struct drm_device *dev,
 {
 	struct drm_mode_object *obj = NULL;
 
-	spin_lock(&dev->mode_config.idr_mutex);
+	lockmgr(&dev->mode_config.idr_mutex, LK_EXCLUSIVE);
 	obj = idr_find(&dev->mode_config.crtc_idr, id);
 	if (!obj || (obj->type != type) || (obj->id != id))
 		obj = NULL;
-	spin_unlock(&dev->mode_config.idr_mutex);
+	lockmgr(&dev->mode_config.idr_mutex, LK_RELEASE);
 
 	return obj;
 }
@@ -894,7 +894,7 @@ int drm_mode_create_dirty_info_property(struct drm_device *dev)
 void drm_mode_config_init(struct drm_device *dev)
 {
 	lockinit(&dev->mode_config.mutex, "kmslk", 0, LK_CANRECURSE);
-	spin_init(&dev->mode_config.idr_mutex);
+	lockinit(&dev->mode_config.idr_mutex, "mcfgidr", 0, LK_CANRECURSE);
 	INIT_LIST_HEAD(&dev->mode_config.fb_list);
 	INIT_LIST_HEAD(&dev->mode_config.crtc_list);
 	INIT_LIST_HEAD(&dev->mode_config.connector_list);

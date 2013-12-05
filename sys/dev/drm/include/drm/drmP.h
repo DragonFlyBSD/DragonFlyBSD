@@ -507,7 +507,7 @@ struct drm_file {
 	/** Mapping of mm object handles to object pointers. */
 	struct idr object_idr;
 	/** Lock for synchronization of access to object_idr. */
-	struct spinlock table_lock;
+	struct lock table_lock;
 
 	void		 *driver_priv;
 
@@ -1020,7 +1020,7 @@ struct drm_device {
 
 	/** \name GEM information */
 	/*@{ */
-	struct spinlock object_name_lock;
+	struct lock object_name_lock;
 	struct idr object_name_idr;
 	/*@} */
 	void             *mm_private;

@@ -768,7 +768,7 @@ struct drm_mode_group {
  */
 struct drm_mode_config {
 	struct lock mutex; /* protects configuration (mode lists etc.) */
-	struct spinlock idr_mutex; /* for IDR management */
+	struct lock idr_mutex; /* for IDR management */
 	struct idr crtc_idr; /* use this idr for all IDs, fb, crtc, connector, modes - just makes life easier */
 	/* this is limited to one for now */
 	int num_fb;
