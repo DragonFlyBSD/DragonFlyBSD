@@ -5,10 +5,6 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   */
 
-#ifndef lint
-static char sccsid[] = "@(#) inetcf.c 1.7 97/02/12 02:13:23";
-#endif
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>

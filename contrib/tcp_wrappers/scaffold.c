@@ -6,10 +6,6 @@
   * $FreeBSD: src/contrib/tcp_wrappers/scaffold.c,v 1.2.2.1 2000/07/18 08:34:55 ume Exp $
   */
 
-#ifndef lint
-static char sccs_id[] = "@(#) scaffold.c 1.6 97/03/21 19:27:24";
-#endif
-
 /* System libraries. */
 
 #include <sys/types.h>
@@ -111,7 +107,7 @@ char   *host;
     }
     if (!res->ai_canonname) {
 	tcpd_warn("%s: hostname alias", host);
-	tcpd_warn("(cannot obtain official name)", res->ai_canonname);
+	tcpd_warn("(cannot obtain official name)");
     } else if (STR_NE(host, res->ai_canonname)) {
 	tcpd_warn("%s: hostname alias", host);
 	tcpd_warn("(official name: %.*s)", STRING_LENGTH, res->ai_canonname);
@@ -175,9 +171,9 @@ char   *host;
 #else
     struct sockaddr_in sin;
     struct hostent *hp;
+    char   *addr;
 #endif
     int     count;
-    char   *addr;
 
     if ((hp = find_inet_addr(host)) == 0)
 	return (0);

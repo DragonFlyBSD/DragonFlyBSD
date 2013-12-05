@@ -16,10 +16,6 @@
   * $FreeBSD: src/contrib/tcp_wrappers/tcpdchk.c,v 1.3.2.1 2000/07/18 08:34:55 ume Exp $
   */
 
-#ifndef lint
-static char sccsid[] = "@(#) tcpdchk.c 1.8 97/02/12 02:13:25";
-#endif
-
 /* System libraries. */
 
 #include <sys/types.h>
@@ -201,17 +197,18 @@ char   *table;
 struct request_info *request;
 {
     FILE   *fp;
-    int     real_verdict;
     char    sv_list[BUFLEN];		/* becomes list of daemons */
     char   *cl_list;			/* becomes list of requests */
     char   *sh_cmd;			/* becomes optional shell command */
     char    buf[BUFSIZ];
-    int     verdict;
+#ifdef PROCESS_OPTIONS
+    int     real_verdict, verdict;
+#endif
     struct tcpd_context saved_context;
 
     saved_context = tcpd_context;		/* stupid compilers */
 
-    if (fp = fopen(table, "r")) {
+    if ((fp = fopen(table, "r")) != NULL) {
 	tcpd_context.file = table;
 	tcpd_context.line = 0;
 	while (xgets(sv_list, sizeof(sv_list), fp)) {
@@ -337,7 +334,7 @@ char   *list;
 	    clients = 0;
 	} else {
 	    clients++;
-	    if (host = split_at(cp + 1, '@')) {	/* user@host */
+	    if ((host = split_at(cp + 1, '@')) != NULL) {	/* user@host */
 		check_user(cp);
 		check_host(host);
 	    } else {
@@ -477,7 +474,7 @@ char   *pat;
 	} else if (errno != ENOENT) {
 	    tcpd_warn("open %s: %m", pat);
 	}
-    } else if (mask = split_at(pat, '/')) {	/* network/netmask */
+    } else if ((mask = split_at(pat, '/')) != NULL) {	/* network/netmask */
 #ifdef INET6
 	int mask_len;
 

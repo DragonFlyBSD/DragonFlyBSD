@@ -5,10 +5,6 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   */
 
-#ifndef lint
-static char sccsid[] = "@(#) fakelog.c 1.3 94/12/28 17:42:21";
-#endif
-
 #include <stdio.h>
 
 #include "mystdarg.h"

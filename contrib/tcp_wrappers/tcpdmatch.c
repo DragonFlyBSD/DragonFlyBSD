@@ -15,10 +15,6 @@
   * $FreeBSD: src/contrib/tcp_wrappers/tcpdmatch.c,v 1.2.2.1 2000/07/18 08:34:55 ume Exp $
   */
 
-#ifndef lint
-static char sccsid[] = "@(#) tcpdmatch.c 1.5 96/02/11 17:01:36";
-#endif
-
 /* System libraries. */
 
 #include <sys/types.h>
@@ -28,6 +24,7 @@ static char sccsid[] = "@(#) tcpdmatch.c 1.5 96/02/11 17:01:36";
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <syslog.h>
 #include <setjmp.h>
 #include <string.h>
@@ -68,7 +65,6 @@ char  **argv;
     char   *myname = argv[0];
     char   *client;
     char   *server;
-    char   *addr;
     char   *user;
     char   *daemon;
     struct request_info request;
@@ -79,6 +75,7 @@ char  **argv;
     struct sockaddr_storage server_sin;
     struct sockaddr_storage client_sin;
 #else
+    char   *addr;
     struct sockaddr_in server_sin;
     struct sockaddr_in client_sin;
 #endif

@@ -4,13 +4,13 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/tcpd.h,v 1.2 2000/02/03 10:26:59 shin Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/tcpd.h,v 1.5 2005/09/24 02:34:11 sephe Exp $
   */
 
 #ifndef _LIBWRAP_TCPD_H
 #define _LIBWRAP_TCPD_H
 
 #include <sys/cdefs.h>
+#include <sys/socket.h>
 #include <stdio.h>
 
 /* Structure to describe one communications endpoint. */
