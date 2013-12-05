@@ -58,7 +58,6 @@
 
 struct idr_node {
 	void	*data;
-	char	 reserved;
 	int	 allocated;
 };
 
@@ -69,7 +68,7 @@ struct idr {
 	int	    idr_freeindex;
 	int	    idr_nexpands;
 	int	    idr_maxwant;
-	struct	    lwkt_token idr_token;
+	struct lwkt_token idr_token;
 };
 
 void	*idr_find(struct idr *idp, int id);
