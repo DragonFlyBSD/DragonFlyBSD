@@ -1284,10 +1284,6 @@ bge_chipinit(struct bge_softc *sc)
 	pci_write_config(sc->bge_dev, BGE_PCI_MISC_CTL,
 	    BGE_INIT | sc->bge_pci_miscctl, 4);
 
-	/* Clear the MAC control register */
-	CSR_WRITE_4(sc, BGE_MAC_MODE, 0);
-	DELAY(40);
-
 	/*
 	 * Clear the MAC statistics block in the NIC's
 	 * internal memory.
@@ -2729,12 +2725,13 @@ bge_detach(device_t dev)
 static void
 bge_reset(struct bge_softc *sc)
 {
-	device_t dev;
-	uint32_t cachesize, command, pcistate, reset;
+	device_t dev = sc->bge_dev;
+	uint32_t cachesize, command, reset, mac_mode, mac_mode_mask;
 	void (*write_op)(struct bge_softc *, uint32_t, uint32_t);
 	int i, val = 0;
 
-	dev = sc->bge_dev;
+	mac_mode_mask = BGE_MACMODE_HALF_DUPLEX | BGE_MACMODE_PORTMODE;
+	mac_mode = CSR_READ_4(sc, BGE_MAC_MODE) & mac_mode_mask;
 
 	if (BGE_IS_575X_PLUS(sc) && !BGE_IS_5714_FAMILY(sc) &&
 	    sc->bge_asicrev != BGE_ASICREV_BCM5906) {
@@ -2749,7 +2746,6 @@ bge_reset(struct bge_softc *sc)
 	/* Save some important PCI state. */
 	cachesize = pci_read_config(dev, BGE_PCI_CACHESZ, 4);
 	command = pci_read_config(dev, BGE_PCI_CMD, 4);
-	pcistate = pci_read_config(dev, BGE_PCI_PCISTATE, 4);
 
 	pci_write_config(dev, BGE_PCI_MISC_CTL,
 	    BGE_PCIMISCCTL_INDIRECT_ACCESS|BGE_PCIMISCCTL_MASK_PCI_INTR|
@@ -2811,7 +2807,10 @@ bge_reset(struct bge_softc *sc)
 	/* Issue global reset */
 	write_op(sc, BGE_MISC_CFG, reset);
 
-	DELAY(1000);
+	if (sc->bge_flags & BGE_FLAG_PCIE)
+		DELAY(100 * 1000);
+	else
+		DELAY(1000);
 
 	/* XXX: Broadcom Linux driver. */
 	if (sc->bge_flags & BGE_FLAG_PCIE) {
@@ -2853,9 +2852,13 @@ bge_reset(struct bge_softc *sc)
 	    BGE_PCIMISCCTL_INDIRECT_ACCESS|BGE_PCIMISCCTL_MASK_PCI_INTR|
 	    BGE_HIF_SWAP_OPTIONS|BGE_PCIMISCCTL_PCISTATE_RW|
 	    sc->bge_pci_miscctl, 4);
+	val = BGE_PCISTATE_ROM_ENABLE | BGE_PCISTATE_ROM_RETRY_ENABLE;
+	if (sc->bge_chipid == BGE_CHIPID_BCM5704_A0 &&
+	    (sc->bge_flags & BGE_FLAG_PCIX))
+		val |= BGE_PCISTATE_RETRY_SAME_DMA;
+	pci_write_config(dev, BGE_PCI_PCISTATE, val, 4);
 	pci_write_config(dev, BGE_PCI_CACHESZ, cachesize, 4);
 	pci_write_config(dev, BGE_PCI_CMD, command, 4);
-	write_op(sc, BGE_MISC_CFG, (65 << 1));
 
 	/*
 	 * Disable PCI-X relaxed ordering to ensure status block update
@@ -2901,6 +2904,15 @@ bge_reset(struct bge_softc *sc)
 		CSR_WRITE_4(sc, BGE_MARB_MODE, BGE_MARBMODE_ENABLE);
 	}
 
+	/* Fix up byte swapping. */
+	CSR_WRITE_4(sc, BGE_MODE_CTL, BGE_DMA_SWAP_OPTIONS |
+	    BGE_MODECTL_BYTESWAP_DATA);
+
+	val = CSR_READ_4(sc, BGE_MAC_MODE);
+	val = (val & ~mac_mode_mask) | mac_mode;
+	CSR_WRITE_4(sc, BGE_MAC_MODE, val);
+	DELAY(40);
+
 	if (sc->bge_asicrev == BGE_ASICREV_BCM5906) {
 		for (i = 0; i < BGE_TIMEOUT; i++) {
 			val = CSR_READ_4(sc, BGE_VCPU_STATUS);
@@ -2929,27 +2941,6 @@ bge_reset(struct bge_softc *sc)
 				  "timed out, found 0x%08x\n", val);
 		}
 	}
-
-	/*
-	 * XXX Wait for the value of the PCISTATE register to
-	 * return to its original pre-reset state. This is a
-	 * fairly good indicator of reset completion. If we don't
-	 * wait for the reset to fully complete, trying to read
-	 * from the device's non-PCI registers may yield garbage
-	 * results.
-	 */
-	for (i = 0; i < BGE_TIMEOUT; i++) {
-		if (pci_read_config(dev, BGE_PCI_PCISTATE, 4) == pcistate)
-			break;
-		DELAY(10);
-	}
-
-	/* Fix up byte swapping */
-	CSR_WRITE_4(sc, BGE_MODE_CTL, BGE_DMA_SWAP_OPTIONS |
-	    BGE_MODECTL_BYTESWAP_DATA);
-
-	CSR_WRITE_4(sc, BGE_MAC_MODE, 0);
-	DELAY(40);
 
 	/*
 	 * The 5704 in TBI mode apparently needs some special
