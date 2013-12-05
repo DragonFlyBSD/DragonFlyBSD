@@ -1,5 +1,5 @@
 /* @(#)s_expm1.c 5.1 93/09/24 */
-/* $FreeBSD: head/lib/msun/src/s_expm1.c 251343 2013-06-03 19:51:32Z kargl $
+/* $FreeBSD: head/lib/msun/src/s_expm1.c 251343 2013-06-03 19:51:32Z kargl $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.

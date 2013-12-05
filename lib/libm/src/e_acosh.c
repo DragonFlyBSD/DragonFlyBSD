@@ -1,6 +1,6 @@
 
 /* @(#)e_acosh.c 1.3 95/01/18 */
-/* $FreeBSD: head/lib/msun/src/e_acosh.c 251599 2013-06-10 06:04:58Z das $
+/* $FreeBSD: head/lib/msun/src/e_acosh.c 251599 2013-06-10 06:04:58Z das $ */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
