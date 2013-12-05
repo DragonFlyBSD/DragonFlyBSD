@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.3.2.2 2001/07/03 11:02:06 ume Exp $
- * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.9 2008/03/07 11:34:21 sephe Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -59,8 +58,8 @@ kvm_t	*kvmd;
 
 struct	nlist nl[] = {
 #define	N_IFNET	0
-	{ "_ifnet" },
-	{ "" },
+	{ .n_name = "_ifnet" },
+	{ .n_name = "" },
 };
 
 const char *inet6_n2a(struct in6_addr *);
@@ -118,7 +117,6 @@ main(int argc __unused, char **argv __unused)
 {
 	char	buf[_POSIX2_LINE_MAX], ifname[IFNAMSIZ];
 	struct	ifnet	*ifp, *nifp, ifnet;
-	struct	arpcom	arpcom;
 
 	if ((kvmd = kvm_openfiles(NULL, NULL, NULL, O_RDONLY, buf)) == NULL) {
 		perror("kvm_openfiles");
@@ -186,7 +184,6 @@ if6_addrlist(struct ifaddr_container *ifac)
 	struct ifaddr ifa;
 	struct sockaddr sa;
 	struct in6_ifaddr if6a;
-	struct in6_multi *mc = 0;
 	struct ifaddr *ifap0;
 
 	if (ifac != NULL)
@@ -216,10 +213,7 @@ if6_addrlist(struct ifaddr_container *ifac)
 	if (ifap0) {
 		struct ifnet ifnet;
 		struct ifmultiaddr ifm, *ifmp = 0;
-		struct sockaddr_in6 sin6;
-		struct in6_multi in6m;
 		struct sockaddr_dl sdl;
-		int in6_multilist_done = 0;
 
 		KREAD(ifap0, &ifa, struct ifaddr);
 		KREAD(ifa.ifa_ifp, &ifnet, struct ifnet);

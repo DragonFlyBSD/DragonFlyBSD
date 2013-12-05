@@ -1,10 +1,9 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/usr.sbin/ifmcstat/Makefile,v 1.1.2.2 2001/07/10 10:00:34 ume Exp $
-# $DragonFly: src/usr.sbin/ifmcstat/Makefile,v 1.2 2003/06/17 04:29:55 dillon Exp $
 
 PROG=	ifmcstat
 MAN=	ifmcstat.8
-WARNS?=	1
+WARNS?=	3
 
 BINMODE=550
 LDADD=	-lkvm
