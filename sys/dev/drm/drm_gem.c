@@ -69,7 +69,7 @@ drm_gem_init(struct drm_device *dev)
 {
 	struct drm_gem_mm *mm;
 
-	spin_init(&dev->object_name_lock);
+	lockinit(&dev->object_name_lock, "objnam", 0, LK_CANRECURSE);
 	idr_init(&dev->object_name_idr);
 
 	mm = kmalloc(sizeof(*mm), DRM_MEM_DRIVER, M_WAITOK);
@@ -199,11 +199,11 @@ void drm_gem_object_handle_free(struct drm_gem_object *obj)
 	struct drm_device *dev = obj->dev;
 
 	/* Remove any name for this object */
-	spin_lock(&dev->object_name_lock);
+	lockmgr(&dev->object_name_lock, LK_EXCLUSIVE);
 	if (obj->name) {
 		idr_remove(&dev->object_name_idr, obj->name);
 		obj->name = 0;
-		spin_unlock(&dev->object_name_lock);
+		lockmgr(&dev->object_name_lock, LK_RELEASE);
 		/*
 		 * The object name held a reference to this object, drop
 		 * that now.
@@ -212,7 +212,7 @@ void drm_gem_object_handle_free(struct drm_gem_object *obj)
 		 */
 		kref_put(&obj->refcount, drm_gem_object_ref_bug);
 	} else
-		spin_unlock(&dev->object_name_lock);
+		lockmgr(&dev->object_name_lock, LK_RELEASE);
 
 }
 
@@ -234,19 +234,19 @@ drm_gem_handle_delete(struct drm_file *filp, u32 handle)
 	 * we may want to use ida for number allocation and a hash table
 	 * for the pointers, anyway.
 	 */
-	spin_lock(&filp->table_lock);
+	lockmgr(&filp->table_lock, LK_EXCLUSIVE);
 
 	/* Check if we currently have a reference on the object */
 	obj = idr_find(&filp->object_idr, handle);
 	if (obj == NULL) {
-		spin_unlock(&filp->table_lock);
+		lockmgr(&filp->table_lock, LK_RELEASE);
 		return -EINVAL;
 	}
 	dev = obj->dev;
 
 	/* Release reference and decrement refcount. */
 	idr_remove(&filp->object_idr, handle);
-	spin_unlock(&filp->table_lock);
+	lockmgr(&filp->table_lock, LK_RELEASE);
 
 	if (dev->driver->gem_close_object)
 		dev->driver->gem_close_object(obj, filp);
@@ -277,9 +277,9 @@ again:
 		return -ENOMEM;
 
 	/* do the allocation under our spinlock */
-	spin_lock(&file_priv->table_lock);
+	lockmgr(&file_priv->table_lock, LK_EXCLUSIVE);
 	ret = idr_get_new_above(&file_priv->object_idr, obj, 1, (int *)handlep);
-	spin_unlock(&file_priv->table_lock);
+	lockmgr(&file_priv->table_lock, LK_RELEASE);
 	if (ret == -EAGAIN)
 		goto again;
 	else if (ret)
@@ -305,18 +305,18 @@ drm_gem_object_lookup(struct drm_device *dev, struct drm_file *filp,
 {
 	struct drm_gem_object *obj;
 
-	spin_lock(&filp->table_lock);
+	lockmgr(&filp->table_lock, LK_EXCLUSIVE);
 
 	/* Check if we currently have a reference on the object */
 	obj = idr_find(&filp->object_idr, handle);
 	if (obj == NULL) {
-		spin_unlock(&filp->table_lock);
+		lockmgr(&filp->table_lock, LK_RELEASE);
 		return NULL;
 	}
 
 	drm_gem_object_reference(obj);
 
-	spin_unlock(&filp->table_lock);
+	lockmgr(&filp->table_lock, LK_RELEASE);
 
 	return obj;
 }
@@ -361,12 +361,12 @@ again:
 		goto err;
 	}
 
-	spin_lock(&dev->object_name_lock);
+	lockmgr(&dev->object_name_lock, LK_EXCLUSIVE);
 	if (!obj->name) {
 		ret = idr_get_new_above(&dev->object_name_idr, obj, 1,
 					&obj->name);
 		args->name = (uint64_t) obj->name;
-		spin_unlock(&dev->object_name_lock);
+		lockmgr(&dev->object_name_lock, LK_RELEASE);
 
 		if (ret == -EAGAIN)
 			goto again;
@@ -377,7 +377,7 @@ again:
 		drm_gem_object_reference(obj);
 	} else {
 		args->name = (uint64_t) obj->name;
-		spin_unlock(&dev->object_name_lock);
+		lockmgr(&dev->object_name_lock, LK_RELEASE);
 		ret = 0;
 	}
 
@@ -407,11 +407,11 @@ drm_gem_open_ioctl(struct drm_device *dev, void *data,
 	if (!(dev->driver->driver_features & DRIVER_GEM))
 		return -ENODEV;
 
-	spin_lock(&dev->object_name_lock);
+	lockmgr(&dev->object_name_lock, LK_EXCLUSIVE);
 	obj = idr_find(&dev->object_name_idr, (int) args->name);
 	if (obj)
 		drm_gem_object_reference(obj);
-	spin_unlock(&dev->object_name_lock);
+	lockmgr(&dev->object_name_lock, LK_RELEASE);
 	if (!obj)
 		return -ENOENT;
 
@@ -434,7 +434,7 @@ void
 drm_gem_open(struct drm_device *dev, struct drm_file *file_private)
 {
 	idr_init(&file_private->object_idr);
-	spin_init(&file_private->table_lock);
+	lockinit(&file_private->table_lock, "fptab", 0, LK_CANRECURSE);
 }
 
 /**
