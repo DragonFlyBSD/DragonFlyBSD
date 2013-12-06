@@ -1141,8 +1141,7 @@ General_options::finalize()
 	       || this->user_set_sysroot()
 	       || *TARGET_SYSTEM_ROOT != '\0')
 	{
-	  this->add_to_library_path_with_sysroot("/lib");
-	  this->add_to_library_path_with_sysroot("/usr/lib");
+	  this->add_to_library_path_with_sysroot(USRDATA_PREFIX "/usr/lib");
 	}
       else
 	this->add_to_library_path_with_sysroot(TOOLLIBDIR);
