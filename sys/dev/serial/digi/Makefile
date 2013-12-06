@@ -1,5 +1,5 @@
 KMOD=	digi
-SRCS=	digi.c digi_pci.c digi_isa.c digi_bios.c
+SRCS=	digi.c digi_pci.c digi_bios.c
 SRCS+=	bus_if.h pci_if.h device_if.h
 SRCS+=	opt_compat.h
 

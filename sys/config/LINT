@@ -1126,7 +1126,7 @@ device		npx0	at nexus? port IO_NPX flags 0x0 irq 13
 #
 
 device		bt
-device		adv0	at isa?
+device		adv
 device		adw
 device		aic
 device		ncv
@@ -1311,17 +1311,17 @@ device		puc
 #     PCI and ISA varieties.
 # xe: Xircom/Intel EtherExpress Pro100/16 PC Card ethernet controller.
 #
-device ar0 at isa? port 0x300 irq 10 iomem 0xd0000
-device cs0 at isa? port 0x300
-device ed0 at isa? port 0x280 irq 5 iomem 0xd8000
+device ar
+device cs
+device ed
 device ep
 device ex
-device fe0 at isa? port 0x300
-device lnc0 at isa? port 0x280 irq 10 drq 0
-device sbni0 at isa? port 0x210 irq 5 flags 0xefdead
+device fe
+device lnc
+device sbni
 device sln
 device sr
-device sn0 at isa? port 0x300 irq 10
+device sn
 
 # Wlan support is mandatory for some wireless LAN devices.
 options 	IEEE80211_DEBUG		#enable debugging msgs
@@ -1458,7 +1458,7 @@ device		ecc
 device		joy0	at isa? port IO_GAME
 device		cy
 device		nrp
-device		si0	at isa? iomem 0xd0000 irq 12
+device		si
 device		spic0	at isa? irq 0 port 0x10a0
 device		stl
 # nullmodem terminal driver

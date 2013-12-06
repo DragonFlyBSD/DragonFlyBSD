@@ -2,8 +2,7 @@
  * Generic driver for the Advanced Systems Inc. SCSI controllers
  * Product specific probe and attach routines can be found in:
  * 
- * i386/isa/adv_isa.c	ABP5140, ABP542, ABP5150, ABP842, ABP852
- * pci/adv_pci.c	ABP920, ABP930, ABP930U, ABP930UA, ABP940, ABP940U,
+ * adv_pci.c		ABP920, ABP930, ABP930U, ABP930UA, ABP940, ABP940U,
  *			ABP940UA, ABP950, ABP960, ABP960U, ABP960UA,
  *			ABP970, ABP970U
  *

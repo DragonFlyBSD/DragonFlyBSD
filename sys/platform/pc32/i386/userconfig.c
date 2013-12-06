@@ -309,7 +309,6 @@ typedef struct
 
 static DEVCLASS_INFO devclass_names[] = {
 {	"Storage :        ",	CLS_STORAGE},
-{	"Network :        ",	CLS_NETWORK},
 {	"Communications : ",	CLS_COMMS},
 {	"Input :          ",	CLS_INPUT},
 {	"Miscellaneous :  ",	CLS_MISC},
@@ -328,25 +327,12 @@ static DEVCLASS_INFO devclass_names[] = {
 
 static DEV_INFO device_info[] = {
 /*---Name-----   ---Description---------------------------------------------- */
-{"adv",         "AdvanSys SCSI narrow controller",	0,		CLS_STORAGE},
-{"stg",         "TMC 18C30/18C50 based SCSI cards",	0,		CLS_STORAGE},
 {"ata",		"ATA/ATAPI compatible disk controller",	0,		CLS_STORAGE},
 {"fdc",         "Floppy disk controller",		FLG_FIXED,	CLS_STORAGE},
 {"ad",		"ATA/ATAPI compatible storage device",	FLG_INVISIBLE,	CLS_STORAGE},	
 {"fd",		"Floppy disk device",			FLG_INVISIBLE,	CLS_STORAGE},
 
-{"cs",          "IBM EtherJet, CS89x0-based Ethernet adapters",0,	CLS_NETWORK},
-{"ed",          "NE1000,NE2000,3C503,WD/SMC80xx Ethernet adapters",0,	CLS_NETWORK},
-{"ep",          "3C509 Ethernet adapter",		0,		CLS_NETWORK},
-{"ex",          "Intel EtherExpress Pro/10 Ethernet adapter",	0,	CLS_NETWORK},
-{"fe",          "Fujitsu MB86960A/MB86965A Ethernet adapters",	0,	CLS_NETWORK},
-{"lnc",         "Isolan, Novell NE2100/NE32-VL Ethernet adapters",	0,CLS_NETWORK},
-{"sn",          "SMC/Megahertz Ethernet adapters",			0,CLS_NETWORK},
-{"xe",          "Xircom PC Card Ethernet adapter",		0,	CLS_NETWORK},
-{"sbni",	"Granch SBNI12-xx adapters",		0,		CLS_NETWORK},
-
 {"sio",         "8250/16450/16550 Serial port",		0,		CLS_COMMS},
-{"si",          "Specialix SI/XIO/SX async adapter",	0,		CLS_COMMS},
 {"ppc",         "Parallel Port chipset",		0,		CLS_COMMS},
 
 {"atkbdc",      "Keyboard controller",			FLG_INVISIBLE,	CLS_INPUT},

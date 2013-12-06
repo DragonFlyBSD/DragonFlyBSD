@@ -1004,7 +1004,7 @@ options 	SC_TWOBUTTON_MOUSE
 #
 
 device		bt
-device		adv0	at isa?
+device		adv
 device		adw
 device		aic
 device		ncv
@@ -1180,13 +1180,13 @@ device		puc
 #     PCI and ISA varieties.
 # xe: Xircom/Intel EtherExpress Pro100/16 PC Card ethernet controller.
 #
-device cs0 at isa? port 0x300
-device ed0 at isa? port 0x280 irq 5 iomem 0xd8000
+device cs
+device ed
 device ep
 device ex
-device lnc0 at isa? port 0x280 irq 10 drq 0
+device lnc
 device sln
-device sn0 at isa? port 0x300 irq 10
+device sn
 
 # Wlan support is mandatory for some wireless LAN devices.
 options 	IEEE80211_DEBUG		#enable debugging msgs
@@ -1308,7 +1308,7 @@ device		"snd_uaudio"
 device		ecc
 device		joy0	at isa? port IO_GAME
 device		nrp
-device		si0	at isa? iomem 0xd0000 irq 12
+device		si
 # nullmodem terminal driver
 device		nmdm
 device		tpm

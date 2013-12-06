@@ -7,16 +7,12 @@
 .Nd "driver for Specialix International SI/XIO or SX intelligent serial card"
 .Sh SYNOPSIS
 .Cd "device si"
-.Cd "device si0 at isa? irq 12 iomem 0xd0000"
 .Sh DESCRIPTION
 The Specialix SI/XIO and SX hardware makes up an 8 to 32 port RS-232 serial
 multiplexor.
 .Pp
-The first instance of the device lines above is for PCI host cards,
-the second is for ISA host cards.
-.Pp
 The system uses two components:  A "Host adapter", which is plugged into
-an ISA or PCI slot and provides intelligence and buffering/processing
+a PCI slot and provides intelligence and buffering/processing
 capabilities, as well as an external bus in the form of a 37 pin cable.
 .Pp
 On this cable, "modules" are connected.  The "SI" module comes in a 4 and 8
@@ -36,18 +32,6 @@ The SX modules can operate each of their
 SX modules are only supported when connected to an SX host card.
 SI or
 XIO modules are supported on any host card.
-.Pp
-The host adapter uses a shared memory block in the traditional ISA bus
-"hole" between 0xA0000 and 0xEFFFF.  The adapter can be configured outside
-range, but requires the memory range to be explicitly non-cached.  The
-driver does not yet support this mode of operation.
-.Pp
-SX ISA Host cards have an 8/16 bit mode switch or jumper on them.
-This switch
-or jumper MUST be set for 8 bit mode.
-.Pp
-The ISA adapters can use Irq's 11, 12 or 15 (and 9 and 10 in the case of
-SX host cards).
 .Pp
 The si device driver may have some of its configuration settings changed
 at run-time with the
@@ -79,8 +63,6 @@ CLOCAL is honored.  An open on a cua port will always succeed, but DCD
 transitions will be honored after DCD rises for the first time.
 .Pp
 Up to four SI/XIO host cards may be controlled by the si driver.
-Due to the lack of available interrupts, only 3 ISA SI/XIO host cards can be
-used at once.
 .Pp
 The lowest 5 bits of the minor device number are used to select the port
 number on the module cluster.
@@ -167,9 +149,6 @@ The poll frequency is set by
 .Pp
 The driver does not yet support baud rates higher than 115,200 on SX
 modules.
-.Pp
-Operation outside the traditional ISA "hole" is not yet supported, although it
-should work if the test is removed from the probe routine.
 .Pp
 Multiple host cards are supported although combinations of hosts on
 different bus types have not been tested - device numbering is known to

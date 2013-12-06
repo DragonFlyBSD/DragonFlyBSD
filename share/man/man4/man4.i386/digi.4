@@ -43,34 +43,13 @@
 To compile this driver into the kernel, place the following line in your
 kernel configuration file:
 .Bd -ragged -offset indent
-.Cd "device digi0 at isa? port 0x220 iomem 0xfc0000 iosiz ? flags 0x0"
+.Cd "device digi"
 .Ed
-All values are just examples.
 .Pp
 To load this driver as a module at boot time, place the following line in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
 digi_load="YES"
-.Ed
-.Pp
-Meaning of
-.Cm flags :
-.Bl -tag -width indent -compact
-.It 0x0001
-use alternate pinout (exchange DCD and DSR lines)
-.It 0x0002
-don't use 8K window mode of PC/Xe
-.El
-.Pp
-Device numbering:
-.Bd -literal -compact
-0b\fICC\fPmmmmmmmm\fIOLIPPPPP\fP
-  \fBCC\fPard number
-    \fRmmmmmmmm\fPajor number
-            call\fBO\fPut
-             \fBL\fPock
-              \fBI\fPnitial
-               \fBPPPPP\fPort number
 .Ed
 .Sh DESCRIPTION
 The
@@ -103,65 +82,6 @@ Each line in the kernel configuration file describes one card, not one port
 as in the
 .Xr sio 4
 driver.
-.Pp
-The
-.Cm flags
-keyword may be used on each
-.Dq Li "device digi"
-line in the kernel configuration file
-to change the pinout of the interface or to use new PC/Xe cards
-which can work with an 8K memory window in compatibility mode
-(with a 64K memory window).
-Note
-that using 8K memory window doesn't mean shorter input/output buffers, it means
-only that all buffers will be mapped to the same memory address and switched as
-needed.
-.Pp
-The
-.Cm port
-value must be the same
-as the
-port
-set on the card by jumpers.
-For PC/Xi cards the same rule is applicable to the
-.Cm iomem
-value.
-It must be the same as the memory address set on the card
-by jumpers.
-.\"Some documentation gives the address as a ``paragraph'' or ``segment'';
-.\"you can get the value of address by adding the digit "0" at end of
-.\"paragraph value, e.g., 0xfc000 -> 0xfc0000.
-For PC/Xe cards there is no need to use jumpers for this purpose.
-In fact there are no jumpers to do it.
-Just
-write the address you want as the
-.Cm iomem
-value in kernel config file and the card will be programmed
-to use this address.
-.Pp
-The same range of memory addresses may be used
-for all the DigiBoards installed
-(but not for any other card or real memory).
-DigiBoards
-with a large amount of memory (256K or 512K and perhaps
-even 128K) must be mapped
-to memory addresses outside of the first megabyte.
-If the computer
-has more than 15 megabytes of memory then there is no free address space
-outside of the first megabyte where such DigiBoards can be mapped.
-In this case you
-may need to reduce the amount of memory in the computer.
-But many machines provide a better solution.
-They have the ability to
-.Dq "turn off"
-the memory in the 16th megabyte (addresses 0xF00000 - 0xFFFFFF)
-using the
-BIOS setup.
-Then the DigiBoard's address space can be set to this
-.Dq hole .
-.\" XXX the following should be true for all serial drivers and
-.\" should not be repeated in the man pages for all serial drivers.
-.\" It was copied from sio.4.  The only changes were s/sio/digi/g.
 .Pp
 Serial ports controlled by the
 .Nm

@@ -24,7 +24,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/cs.4,v 1.6.2.5 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/cs.4,v 1.4 2007/02/25 12:03:07 swildner Exp $
 .\"
 .Dd July 20, 1998
 .Dt CS 4 i386
@@ -33,34 +32,28 @@
 .Nm cs
 .Nd Crystal Semiconductor CS8900 and CS8920 ethernet device driver
 .Sh SYNOPSIS
-.Cd "device cs0 at isa? port 0x300 irq ?"
-.Cd "device cs1 at isa? port 0x300 irq 10 iomem 0xd0000"
+.Cd "device cs"
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for ISA ethernet adapters based on the
+driver provides support for ethernet adapters based on the
 .Tn Crystal Semiconductor CS8900
 and
 .Tn CS8920
 NICs.  These devices are used on the
-.Tn IBM EtherJet ISA
+.Tn IBM EtherJet PCMCIA
 adapters and in many embedded applications where the high integration, small
 size and low cost of the CS89x0 family compensate for their drawbacks.
 .Pp
 The
 .Nm
-driver will obtain configuration parameters either from the configuration entry
-or from the card.  Parameters specified in the configuration entry will be
+driver will obtain configuration parameters from the card.
+Parameters specified in the configuration entry will be
 used if present; the card may be soft-configured so these may be any valid
-value.  Adapters based on the CS8920 normally offer PnP configuration and the driver
-will detect the
+value.
+The driver will detect the
 .Tn IBM EtherJet
-and the
-.Tn CSC6040
 adapters automatically.
-.Pp
-Note that the CS8900 is limited to 4 IRQ values; these are normally implemented
-as 5, 10, 11 and 12.  The CS8920 has no such limitation.
 .Pp
 Memory-mapped and DMA operation are not supported at this time.
 .Sh DIAGNOSTICS

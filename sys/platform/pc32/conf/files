@@ -93,8 +93,6 @@ bf_enc.o				optional	crypto		\
 crypto/des/arch/i386/des_enc.S		optional	crypto
 crypto/des/des_ecb.c			optional	crypto
 crypto/des/des_setkey.c			optional	crypto
-dev/disk/advansys/adv_isa.c		optional	adv isa
-dev/netif/ar/if_ar_isa.c		optional	ar isa
 
 ${OSACPI_MD_DIR}/OsdEnvironment.c	optional        acpi
 ${OSACPI_MD_DIR}/acpi_cpu_machdep.c	optional	acpi
@@ -130,7 +128,6 @@ dev/crypto/padlock/padlock_rng.c	optional	padlock
 dev/crypto/padlock/rng_harvest_i386.S	optional	padlock
 dev/crypto/rdrand/rdrand.c		optional	rdrand
 dev/crypto/rdrand/rdrand_harvest_i386.S	optional	rdrand
-dev/netif/ed/if_ed_isa.c		optional	ed isa
 dev/video/fb/fb.c			optional	fb
 dev/video/fb/fb.c			optional	vga
 dev/video/fb/splash.c			optional	splash
@@ -138,7 +135,6 @@ dev/video/fb/vga.c			optional	vga
 dev/powermng/est/est.c			optional	cpu_enable_est
 dev/powermng/longrun/longrun.c		optional	cpu_enable_longrun
 dev/netif/fe/if_fe.c			optional	fe
-dev/netif/fe/if_fe_isa.c		optional	fe isa
 dev/netif/fe/if_fe_pccard.c		optional	fe pccard
 dev/netif/ndis/if_ndis.c		optional 	ndis
 dev/netif/ndis/if_ndis_pccard.c		optional 	ndis pccard

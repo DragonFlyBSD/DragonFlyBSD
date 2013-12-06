@@ -22,7 +22,6 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/stg.4,v 1.8 2006/06/18 09:53:00 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/stg.4,v 1.1 2008/07/27 18:42:15 thomas Exp $
 .\"
 .Dd August 8, 2004
 .Dt STG 4
@@ -35,18 +34,9 @@ To compile this driver into the kernel,
 place the following lines in your
 kernel configuration file:
 .Bd -ragged -offset indent
+.Cd "device pci"
 .Cd "device scbus"
 .Cd "device stg"
-.Pp
-For one or more ISA cards:
-.Cd "device isa"
-.Pp
-In
-.Pa /boot/device.hints :
-.Cd hint.stg.0.at="isa"
-.Pp
-For one or more PCI cards:
-.Cd "device pci"
 .Ed
 .Pp
 Alternatively, to load the driver as a
@@ -58,7 +48,7 @@ stg_load="YES"
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for ISA, PCCARD and PCI controllers based on
+driver provides support for PCCARD and PCI controllers based on
 Future Domain SCSI controller chips including the TMC-16C30, 16C50 and 32C60.
 .Sh HARDWARE
 Controllers supported by the

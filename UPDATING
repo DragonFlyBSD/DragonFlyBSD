@@ -9,6 +9,17 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 3.6 to later versions                +
++-----------------------------------------------------------------------+
+
+MORE ISA SUPPORT DROPPED
+------------------------
+
+ISA support has been dropped from the following drivers: adv(4), an(4),
+ar(4), cs(4), digi(4), ed(4), ep(4), ex(4), fe(4), lnc(4), sbni(4),
+si(4), sn(4), and stg(4).
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.4 to later versions                +
 +-----------------------------------------------------------------------+
 

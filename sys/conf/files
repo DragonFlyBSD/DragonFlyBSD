@@ -136,7 +136,6 @@ dev/disk/advansys/adwmcode.c		optional adw
 dev/netif/ae/if_ae.c			optional ae
 dev/netif/age/if_age.c			optional age
 dev/netif/an/if_an.c			optional an
-dev/netif/an/if_an_isa.c		optional an isa
 dev/netif/an/if_an_pci.c		optional an pci
 dev/netif/an/if_an_pccard.c		optional an pccard
 dev/netif/ar/if_ar.c			optional ar
@@ -285,7 +284,6 @@ dev/disk/buslogic/bt_pci.c		optional bt pci
 dev/disk/ccd/ccd.c			optional ccd
 dev/raid/ciss/ciss.c			optional ciss
 dev/netif/cs/if_cs.c			optional cs
-dev/netif/cs/if_cs_isa.c		optional cs isa
 dev/netif/cs/if_cs_pccard.c	optional cs pccard
 dev/misc/dcons/dcons.c		optional dcons
 dev/misc/dcons/dcons_crom.c	optional dcons_crom
@@ -296,7 +294,6 @@ dev/netif/ed/if_ed.c		optional nowerror ed
 dev/netif/ed/if_ed_pccard.c	optional ed pccard
 dev/netif/ed/if_ed_pci.c	optional ed pci
 dev/netif/ep/if_ep.c		optional ep
-dev/netif/ep/if_ep_isa.c	optional ep isa
 dev/netif/ep/if_ep_pccard.c	optional ep pccard
 dev/netif/em/if_em.c		optional em
 dev/netif/emx/if_emx.c		optional emx
@@ -330,7 +327,6 @@ dev/netif/ig_hal/e1000_vf.c	optional ig_hal
 dev/atm/en/midway.c		optional en
 dev/netif/et/if_et.c		optional et
 dev/netif/ex/if_ex.c		optional ex
-dev/netif/ex/if_ex_isa.c	optional ex isa
 dev/netif/ex/if_ex_pccard.c	optional ex pccard
 bus/firewire/firewire.c		optional firewire
 bus/firewire/fwcrom.c		optional firewire
@@ -738,17 +734,14 @@ bus/smbus/smb.c			optional smb
 dev/serial/si/si.c		optional si
 dev/serial/si/si2_z280.c	optional si
 dev/serial/si/si3_t225.c	optional si
-dev/serial/si/si_isa.c		optional si isa
 dev/serial/si/si_pci.c		optional si pci
 dev/netif/sln/if_sln.c		optional sln pci
 dev/netif/sn/if_sn.c		optional sn
-dev/netif/sn/if_sn_isa.c	optional sn isa
 dev/netif/sn/if_sn_pccard.c	optional sn pccard
 dev/misc/snp/snp.c		optional snp
 dev/netif/sr/if_sr.c		optional sr
 dev/netif/sr/if_sr_pci.c	optional sr pci
-dev/disk/stg/tmc18c30.c	optional stg
-dev/disk/stg/tmc18c30_isa.c	optional stg isa
+dev/disk/stg/tmc18c30.c		optional stg
 dev/disk/stg/tmc18c30_pccard.c	optional stg pccard
 dev/crypto/tpm/tpm.c		optional tpm
 dev/crypto/tpm/tpm_acpi.c	optional tpm acpi
@@ -1786,7 +1779,6 @@ dev/netif/lgue/if_lgue.c	optional lgue usb
 dev/netif/rue/if_rue.c		optional rue usb
 dev/netif/lnc/am7990.c		optional lnc
 dev/netif/lnc/am79900.c		optional lnc
-dev/netif/lnc/if_lnc_isa.c	optional lnc isa
 dev/netif/lnc/if_lnc_pci.c	optional lnc pci
 dev/netif/lnc/lance.c		optional lnc
 bus/isa/isa_if.m		optional isa

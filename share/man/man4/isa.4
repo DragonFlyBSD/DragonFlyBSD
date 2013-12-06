@@ -56,13 +56,6 @@ devices instead.
 .Dx
 provides support for the following devices.
 Note that not all architectures support all devices.
-.Ss SCSI controllers
-.Bl -tag -width 12n -offset indent -compact
-.It Xr adv 4
-Advansys SCSI host adapter driver
-.It Xr stg 4
-Future Domain based SCSI controller driver
-.El
 .Ss Disk and tape controllers
 .Bl -tag -width 12n -offset indent -compact
 .It Xr fdc 4
@@ -72,37 +65,10 @@ Generic ATA/ATAPI disk controller driver
 .El
 .Ss Serial and parallel interfaces
 .Bl -tag -width 12n -offset indent -compact
-.It Xr digi 4
-DigiBoard intelligent serial cards driver
 .It Xr lpt 4
 Generic printer device driver
-.It Xr si 4
-Specialix International SI/XIO or SX serial card driver
 .It Xr sio 4
 Generic serial controller driver
-.El
-.Ss Network interfaces
-.Bl -tag -width 12n -offset indent -compact
-.It Xr an 4
-Aironet Communications 4500/4800 wireless network adapter driver
-.It Xr ar 4
-Digi/Arnet SYNC/570i device driver
-.It Xr cs 4
-Crystal Semiconductor CS8900 and CS8920 ethernet adapter driver
-.It Xr ed 4
-Novell NE1000/NE2000 and WD-80x3 ethenet adapter driver
-.It Xr ep 4
-3Com Etherlink III (3C5x9) ethernet adapter driver
-.It Xr ex 4
-Intel EtherExpress Pro/10 and Pro/10+ ethernet adapter driver
-.It Xr fe 4
-Fujitsu MB86960A and MB86965A ethernet adapter driver
-.It Xr lnc 4
-AMD Am7900 LANCE and Am79C9xx PCnet ethernet adapter driver
-.It Xr sn 4
-SMC91Cxx ethernet adapter driver
-.It Xr sr 4
-RISCom/N2 device driver
 .El
 .Ss Hardware Sensors & Watchdog Timers
 .Bl -tag -width 12n -offset indent -compact
