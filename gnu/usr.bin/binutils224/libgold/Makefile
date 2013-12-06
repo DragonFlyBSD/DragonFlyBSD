@@ -20,6 +20,7 @@ SRCS+=	archive.cc		\
 	expression.cc		\
 	fileread.cc		\
 	gc.cc			\
+	gdb-index.cc		\
 	gold-threads.cc		\
 	gold.cc			\
 	icf.cc			\
@@ -28,6 +29,7 @@ SRCS+=	archive.cc		\
 	layout.cc		\
 	mapfile.cc		\
 	merge.cc		\
+	nacl.cc			\
 	object.cc		\
 	options.cc		\
 	output.cc		\
@@ -58,6 +60,7 @@ CFLAGS+= -DGOLD_DEFAULT_MACHINE=${GOLD_DEFAULT_MACHINE}
 CFLAGS+= -DGOLD_DEFAULT_SIZE=${GOLD_DEFAULT_SIZE}
 CFLAGS+= -DBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
 CFLAGS+= -DTOOLBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
+CFLAGS+= -DTOOLLIBDIR="\"${TOOLS_PREFIX}${LIBDIR}\""
 CFLAGS+= -DUSRDATA_PREFIX="\"${USRDATA_PREFIX}\""
 CFLAGS+= -I. -I${.CURDIR}
 CFLAGS+= -I${SRCDIR}/gold

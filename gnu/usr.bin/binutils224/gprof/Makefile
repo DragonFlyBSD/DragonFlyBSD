@@ -25,6 +25,7 @@ SRCS=   basic_blocks.c	\
 	tahoe.c		\
 	sparc.c		\
 	mips.c		\
+	aarch64.c	\
 	flat_bl.c	\
 	bsd_callg_bl.c	\
 	fsf_callg_bl.c

@@ -10,6 +10,7 @@ SRCS=	argv.c			\
 	cp-demint.c		\
 	cplus-dem.c		\
 	crc32.c			\
+	dwarfnames.c		\
 	dyn-string.c		\
 	filename_cmp.c		\
 	floatformat.c		\
@@ -34,7 +35,9 @@ SRCS=	argv.c			\
 	simple-object-coff.c	\
 	simple-object-elf.c	\
 	simple-object-mach-o.c	\
+	simple-object-xcoff.c	\
 	stpcpy.c		\
+	timeval-utils.c		\
 	unlink-if-ordinary.c	\
 	xatexit.c		\
 	xexit.c			\

@@ -10,8 +10,12 @@ SRCS+=	main.cc			\
 	sparc.cc		\
 	powerpc.cc		\
 	arm.cc			\
-	arm-reloc-property.cc
+	arm-reloc-property.cc	\
+	tilegx.cc
+
+# standalone programs:
 #	incremental-dump.cc
+#	dwp.cc
 
 WARNS=	1
 CFLAGS=	 -DHAVE_CONFIG_H
@@ -21,6 +25,7 @@ CFLAGS+= -DGOLD_DEFAULT_MACHINE=${GOLD_DEFAULT_MACHINE}
 CFLAGS+= -DGOLD_DEFAULT_SIZE=${GOLD_DEFAULT_SIZE}
 CFLAGS+= -DBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
 CFLAGS+= -DTOOLBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
+CFLAGS+= -DTOOLLIBDIR="\"${TOOLS_PREFIX}${LIBDIR}\""
 CFLAGS+= -I. -I${.CURDIR}
 CFLAGS+= -I${SRCDIR}/include -I${SRCDIR}/elfcpp
 CFLAGS+= -I${.CURDIR}/../libgold

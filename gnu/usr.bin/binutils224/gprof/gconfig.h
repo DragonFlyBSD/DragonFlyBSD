@@ -51,11 +51,8 @@
 /* Name of package */
 #define PACKAGE "gprof"
 
-/* Define to the address where bug reports for this package should be sent.
- * This definition redefines the libbfd config.h version, so it's disabled
- * to silent the error messages seeing during buildworld.
- * #define PACKAGE_BUGREPORT "<http://bugs.dragonflybsd.org>"
- */
+/* Define to the address where bug reports for this package should be sent. */
+#define PACKAGE_BUGREPORT ""
 
 /* Define to the full name of this package. */
 #define PACKAGE_NAME ""
@@ -98,7 +95,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.21.1"
+#define VERSION "2.24"
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */

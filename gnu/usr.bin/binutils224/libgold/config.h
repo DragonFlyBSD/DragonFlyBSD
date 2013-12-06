@@ -1,6 +1,13 @@
 /* config.h.  Generated from config.in by configure.  */
 /* config.in.  Generated from configure.ac by autoheader.  */
 
+/* Check that config.h is #included before system headers
+   (this works only for glibc, but that should be enough).  */
+#if defined(__GLIBC__) && !defined(__FreeBSD_kernel__) && !defined(__CONFIG_H__)
+#  error config.h must be #included before system headers
+#endif
+#define __CONFIG_H__ 1
+
 /* Define if building universal (internal helper macro) */
 /* #undef AC_APPLE_UNIVERSAL_BUILD */
 
@@ -18,13 +25,13 @@
 #define GOLD_DEFAULT_BIG_ENDIAN false
 
 /* Default machine code */
-/* #define GOLD_DEFAULT_MACHINE EM_386 */
+/* #define GOLD_DEFAULT_MACHINE EM_X86_64 */
 
 /* Default OSABI code */
 #define GOLD_DEFAULT_OSABI ELFOSABI_NONE
 
 /* Default size (32 or 64) */
-/* #define GOLD_DEFAULT_SIZE 32 */
+/* #define GOLD_DEFAULT_SIZE 64 */
 
 /* Define to 1 if you have the <byteswap.h> header file. */
 /* #undef HAVE_BYTESWAP_H */
@@ -67,11 +74,17 @@
    don't. */
 #define HAVE_DECL_VSNPRINTF 1
 
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#define HAVE_DLFCN_H 1
+
 /* Define to 1 if you have the <ext/hash_map> header file. */
 #define HAVE_EXT_HASH_MAP 1
 
 /* Define to 1 if you have the <ext/hash_set> header file. */
 #define HAVE_EXT_HASH_SET 1
+
+/* Define to 1 if you have the `fallocate' function. */
+/* #undef HAVE_FALLOCATE */
 
 /* Define to 1 if you have the `ffsll' function. */
 #define HAVE_FFSLL 1
@@ -82,17 +95,26 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
+/* Define if your <locale.h> file defines LC_MESSAGES. */
+#define HAVE_LC_MESSAGES 1
+
+/* Define to 1 if you have the <locale.h> header file. */
+#define HAVE_LOCALE_H 1
+
 /* Define to 1 if you have the `mallinfo' function. */
 /* #undef HAVE_MALLINFO */
 
 /* Define to 1 if you have the <memory.h> header file. */
 #define HAVE_MEMORY_H 1
 
-/* Define to 1 if you have the `mremap' function. */
+/* Define to 1 if you have the `mmap' function. */
+#define HAVE_MMAP 1
+
+/* Define to 1 if you have the mremap function with MREMAP_MAYMOVE support */
 /* #undef HAVE_MREMAP */
 
 /* Define if compiler supports #pragma omp threadprivate */
-/* #undef HAVE_OMP_SUPPORT */
+#define HAVE_OMP_SUPPORT 1
 
 /* Define to 1 if you have the `posix_fallocate' function. */
 /* #undef HAVE_POSIX_FALLOCATE */
@@ -102,6 +124,9 @@
 
 /* Define to 1 if you have the `readv' function. */
 #define HAVE_READV 1
+
+/* Define to 1 if you have the `setlocale' function. */
+#define HAVE_SETLOCALE 1
 
 /* Define if struct stat has a field st_mtim with timespec for mtime */
 #define HAVE_STAT_ST_MTIM 1
@@ -120,6 +145,9 @@
 
 /* Define to 1 if you have the `sysconf' function. */
 #define HAVE_SYSCONF 1
+
+/* Define to 1 if you have the <sys/mman.h> header file. */
+#define HAVE_SYS_MMAN_H 1
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1
@@ -145,6 +173,9 @@
 /* Define to 1 if you have the `times' function. */
 #define HAVE_TIMES 1
 
+/* Define if std::tr1::hash<off_t> is usable */
+#define HAVE_TR1_HASH_OFF_T 1
+
 /* Define to 1 if you have the <tr1/unordered_map> header file. */
 #define HAVE_TR1_UNORDERED_MAP 1
 
@@ -157,8 +188,17 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
 
+/* Define to 1 if you have the <windows.h> header file. */
+/* #undef HAVE_WINDOWS_H */
+
 /* Define to 1 if you have the <zlib.h> header file. */
 #define HAVE_ZLIB_H 1
+
+/* Default library search path */
+#define LIB_PATH "::DEFAULT::"
+
+/* Whether configured as a native linker */
+#define NATIVE_LINKER 1
 
 /* Name of package */
 #define PACKAGE "gold"

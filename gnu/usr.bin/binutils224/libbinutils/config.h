@@ -1,6 +1,13 @@
 /* config.h.  Generated from config.in by configure.  */
 /* config.in.  Generated from configure.in by autoheader.  */
 
+/* Check that config.h is #included before system headers
+   (this works only for glibc, but that should be enough).  */
+#if defined(__GLIBC__) && !defined(__FreeBSD_kernel__) && !defined(__CONFIG_H__)
+#  error config.h must be #included before system headers
+#endif
+#define __CONFIG_H__ 1
+
 /* Define to one of `_getb67', `GETB67', `getb67' for Cray-2 and Cray-YMP
    systems. This function is required for `alloca.c' support on those systems.
    */
@@ -8,6 +15,9 @@
 
 /* Define to 1 if using `alloca.c'. */
 /* #undef C_ALLOCA */
+
+/* Should ar and ranlib use -D behavior by default? */
+#define DEFAULT_AR_DETERMINISTIC 0
 
 /* Define to 1 if translation of program messages to the user's native
    language is requested. */
@@ -54,6 +64,10 @@
    */
 #define HAVE_DECL_STPCPY 1
 
+/* Define to 1 if you have the declaration of `strnlen', and to 0 if you
+   don't. */
+#define HAVE_DECL_STRNLEN 1
+
 /* Define to 1 if you have the declaration of `strstr', and to 0 if you don't.
    */
 #define HAVE_DECL_STRSTR 1
@@ -83,8 +97,17 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
+/* Define if your <locale.h> file defines LC_MESSAGES. */
+#define HAVE_LC_MESSAGES 1
+
 /* Define to 1 if you have the <limits.h> header file. */
 #define HAVE_LIMITS_H 1
+
+/* Define to 1 if you have the <locale.h> header file. */
+#define HAVE_LOCALE_H 1
+
+/* Define if mbstate_t exists in wchar.h. */
+#define HAVE_MBSTATE_T 1
 
 /* Define to 1 if you have the <memory.h> header file. */
 #define HAVE_MEMORY_H 1
@@ -97,6 +120,9 @@
 
 /* Define to 1 if you have the `sbrk' function. */
 #define HAVE_SBRK 1
+
+/* Define to 1 if you have the `setlocale' function. */
+#define HAVE_SETLOCALE 1
 
 /* Define to 1 if you have the `setmode' function. */
 #define HAVE_SETMODE 1
@@ -143,6 +169,9 @@
 /* Define to 1 if you have the `utimes' function. */
 #define HAVE_UTIMES 1
 
+/* Define to 1 if you have the <wchar.h> header file. */
+#define HAVE_WCHAR_H 1
+
 /* Define to 1 if you have the <zlib.h> header file. */
 #define HAVE_ZLIB_H 1
 
@@ -185,8 +214,11 @@
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
+/* Define if you can safely include both <string.h> and <strings.h>. */
+#define STRING_WITH_STRINGS 1
+
 /* Configured target name. */
-/* #define TARGET "i386-unknown-dragonfly2.9" */
+/* #define TARGET "x86_64-unknown-dragonfly3.7" */
 
 /* Define to 1 if user symbol names have a leading underscore, 0 if not. */
 #define TARGET_PREPENDS_UNDERSCORE 0
@@ -217,7 +249,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.21.1"
+#define VERSION "2.24"
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */

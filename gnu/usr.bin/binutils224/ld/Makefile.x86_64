@@ -27,6 +27,7 @@ e${NATIVE_EMULATION}.c ${LDSCRIPTS_${NATIVE_EMULATION}}: \
 		${NATIVE_EMULATION:Q} \
 		"" \
 		no \
+		yes \
 		${NATIVE_EMULATION:Q} \
 		${TARGET_TUPLE:Q}
 
@@ -44,7 +45,17 @@ CLEANFILES+=	e${X86_EMULATION}.c
 e${X86_EMULATION}.c ${LDSCRIPTS_${X86_EMULATION}}: \
     emulparams/${X86_EMULATION}.sh emultempl/elf32.em \
     scripttempl/elf.sc genscripts.sh stringify.sed
-	sh ${SRCDIR}/ld/genscripts.sh ${SRCDIR:Q}/ld ${_i386_path:Q} \
-	    "" "" \
-	    ${HOST} ${TARGET_TUPLE:Q} ${TARGET_TUPLE:Q} \
-	    ${X86_EMULATION:Q} "" no ${X86_EMULATION:Q} ${TARGET_TUPLE:Q}
+	sh ${SRCDIR}/ld/genscripts.sh \
+		${SRCDIR:Q}/ld \
+		${_i386_path:Q} \
+		"" \
+		"" \
+		${HOST} \
+		${TARGET_TUPLE:Q} \
+		${TARGET_TUPLE:Q} \
+		${X86_EMULATION:Q} \
+		"" \
+		no \
+		yes \
+		${X86_EMULATION:Q} \
+		${TARGET_TUPLE:Q}

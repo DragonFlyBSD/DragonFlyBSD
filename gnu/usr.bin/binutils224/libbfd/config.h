@@ -1,6 +1,13 @@
 /* config.h.  Generated from config.in by configure.  */
 /* config.in.  Generated from configure.in by autoheader.  */
 
+/* Check that config.h is #included before system headers
+    (this works only for glibc, but that should be enough).  */
+#if defined(__GLIBC__) && !defined(__FreeBSD_kernel__) && !defined(__CONFIG_H__)
+#  error config.h must be #included before system headers
+#endif
+#define __CONFIG_H__ 1
+
 /* Name of host specific core header file to include in elf.c. */
 /* #undef CORE_HEADER */
 
@@ -105,6 +112,9 @@
 
 /* Define to 1 if you have the `getpagesize' function. */
 #define HAVE_GETPAGESIZE 1
+
+/* Define to 1 if you have the `getrlimit' function. */
+#define HAVE_GETRLIMIT 1
 
 /* Define to 1 if you have the `getuid' function. */
 #define HAVE_GETUID 1
@@ -228,6 +238,9 @@
 /* Define to 1 if you have the <sys/procfs.h> header file. */
 #define HAVE_SYS_PROCFS_H 1
 
+/* Define to 1 if you have the <sys/resource.h> header file. */
+#define HAVE_SYS_RESOURCE_H 1
+
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1
 
@@ -246,6 +259,9 @@
 /* Define if <sys/procfs.h> has win32_pstatus_t. */
 /* #undef HAVE_WIN32_PSTATUS_T */
 
+/* Define to 1 if you have the <windows.h> header file. */
+/* #undef HAVE_WINDOWS_H */
+
 /* Define to 1 if you have the <zlib.h> header file. */
 #define HAVE_ZLIB_H 1
 
@@ -260,19 +276,19 @@
 #define PACKAGE_BUGREPORT ""
 
 /* Define to the full name of this package. */
-#define PACKAGE_NAME ""
+#define PACKAGE_NAME "bfd"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING ""
+#define PACKAGE_STRING "bfd 2.24"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME ""
+#define PACKAGE_TARNAME "bfd"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION ""
+#define PACKAGE_VERSION "2.24"
 
 /* The size of `char', as computed by sizeof. */
 /* #undef SIZEOF_CHAR */
@@ -281,7 +297,7 @@
 /* #undef SIZEOF_INT */
 
 /* The size of `long', as computed by sizeof. */
-/* #define SIZEOF_LONG 4 */
+/* #undef SIZEOF_LONG */
 
 /* The size of `long long', as computed by sizeof. */
 #define SIZEOF_LONG_LONG 8
@@ -293,7 +309,7 @@
 /* #undef SIZEOF_SHORT */
 
 /* The size of `void *', as computed by sizeof. */
-/* #define SIZEOF_VOID_P 4 */
+/* #undef SIZEOF_VOID_P */
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -305,7 +321,7 @@
 #define TIME_WITH_SYS_TIME 1
 
 /* Name of host specific header file to include in trad-core.c. */
-/* #define TRAD_HEADER "hosts/i386bsd.h" */
+/* #undef TRAD_HEADER */
 
 /* Use b modifier when opening binary files? */
 /* #undef USE_BINARY_FOPEN */
@@ -345,7 +361,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.21.1"
+#define VERSION "2.24"
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 /* #undef _FILE_OFFSET_BITS */

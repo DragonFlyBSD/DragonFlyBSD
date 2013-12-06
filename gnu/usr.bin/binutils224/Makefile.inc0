@@ -10,7 +10,7 @@ BINUTIL_ARCH=	${TARGET_ARCH}
 # added to it as we descend into subdirectories.
 RELTOP:= ..
 
-RELSRC=	${RELTOP}/../../../contrib/binutils-2.21
+RELSRC=	${RELTOP}/../../../contrib/binutils-2.24
 SRCDIR=	${.CURDIR}/${RELSRC}
 
 CFLAGS+= -I.
