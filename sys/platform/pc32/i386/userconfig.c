@@ -312,7 +312,6 @@ static DEVCLASS_INFO devclass_names[] = {
 {	"Network :        ",	CLS_NETWORK},
 {	"Communications : ",	CLS_COMMS},
 {	"Input :          ",	CLS_INPUT},
-{	"Multimedia :     ",	CLS_MMEDIA},
 {	"Miscellaneous :  ",	CLS_MISC},
 {	"",0}};
 
@@ -330,13 +329,9 @@ static DEVCLASS_INFO devclass_names[] = {
 static DEV_INFO device_info[] = {
 /*---Name-----   ---Description---------------------------------------------- */
 {"adv",         "AdvanSys SCSI narrow controller",	0,		CLS_STORAGE},
-{"nca",         "ProAudio Spectrum SCSI and compatibles",	0,	CLS_STORAGE},
-{"sea",         "Seagate ST01/ST02 SCSI and compatibles",	0,	CLS_STORAGE},
 {"stg",         "TMC 18C30/18C50 based SCSI cards",	0,		CLS_STORAGE},
-{"wdc",         "IDE/ESDI/MFM disk controller",		0,		CLS_STORAGE},
 {"ata",		"ATA/ATAPI compatible disk controller",	0,		CLS_STORAGE},
 {"fdc",         "Floppy disk controller",		FLG_FIXED,	CLS_STORAGE},
-{"wd",		"IDE or ST506 compatible storage device", FLG_INVISIBLE, CLS_STORAGE},
 {"ad",		"ATA/ATAPI compatible storage device",	FLG_INVISIBLE,	CLS_STORAGE},	
 {"fd",		"Floppy disk device",			FLG_INVISIBLE,	CLS_STORAGE},
 
@@ -351,7 +346,6 @@ static DEV_INFO device_info[] = {
 {"sbni",	"Granch SBNI12-xx adapters",		0,		CLS_NETWORK},
 
 {"sio",         "8250/16450/16550 Serial port",		0,		CLS_COMMS},
-{"cx",          "Cronyx/Sigma multiport sync/async adapter",0,		CLS_COMMS},
 {"si",          "Specialix SI/XIO/SX async adapter",	0,		CLS_COMMS},
 {"ppc",         "Parallel Port chipset",		0,		CLS_COMMS},
 
@@ -360,22 +354,6 @@ static DEV_INFO device_info[] = {
 {"psm",         "PS/2 Mouse",				FLG_FIXED,	CLS_INPUT},
 {"joy",         "Joystick",				FLG_FIXED,	CLS_INPUT},
 {"sc",          "Syscons console driver",		FLG_IMMUTABLE,	CLS_INPUT},
-
-{"pcm",         "PCM Generic soundcard support",		0,		CLS_MMEDIA},
-{"sb",          "VOXWARE Soundblaster PCM (SB/Pro/16, ProAudio Spectrum)",0,CLS_MMEDIA},
-{"sbxvi",       "VOXWARE Soundblaster 16",		0,		CLS_MMEDIA},
-{"sbmidi",      "VOXWARE Soundblaster MIDI interface",	0,		CLS_MMEDIA},
-{"pas",         "VOXWARE ProAudio Spectrum PCM and MIDI",	0,	CLS_MMEDIA},
-{"gus",         "VOXWARE Gravis Ultrasound, Ultrasound 16 and Ultrasound MAX",0,CLS_MMEDIA},
-{"gusxvi",      "VOXWARE Gravis Ultrasound 16-bit PCM",	0,		CLS_MMEDIA},
-{"gusmax",      "VOXWARE Gravis Ultrasound MAX",	0,		CLS_MMEDIA},
-{"opl",         "VOXWARE OPL-2/3 FM, SB/Pro/16, ProAudio Spectrum",0,CLS_MMEDIA},
-{"mpu",         "VOXWARE Roland MPU401 MIDI",		0,		CLS_MMEDIA},
-{"sscape",      "VOXWARE Ensoniq Soundscape MIDI interface",	0,	CLS_MMEDIA},
-{"sscape_mss",  "VOXWARE Ensoniq Soundscape PCM",	0,		CLS_MMEDIA},
-{"uart",        "VOXWARE 6850 MIDI UART",		0,		CLS_MMEDIA},
-{"pca",         "PC speaker PCM audio driver",		FLG_FIXED,	CLS_MMEDIA},
-{"scc",         "IBM Smart Capture Card",		0,		CLS_MMEDIA},
 
 {"apm",         "Advanced Power Management",		FLG_FIXED,	CLS_MISC},
 {"pcic",        "PC-card controller",			0,		CLS_MISC},
