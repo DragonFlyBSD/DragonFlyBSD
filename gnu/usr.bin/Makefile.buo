@@ -9,8 +9,8 @@
 # Ideally in the future the Makefiles are generic and only have to be
 # copied over in most cases.
 
-BU_PRIMARY=	binutils222
-BU_BACKUP=	binutils224
+BU_PRIMARY=	binutils224
+BU_BACKUP=	binutils222
 
 .if defined(BUVERSION)
 .if (${BUVERSION} == ${BU_PRIMARY})

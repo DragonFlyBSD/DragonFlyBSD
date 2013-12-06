@@ -127,7 +127,7 @@ DESTDIRBASE:=		${OBJTREE}${.CURDIR}
 # This section sets the tools used to build the world/kernel
 WORLD_CCVER?=		gcc47
 WORLD_LDVER?=		ld.bfd
-WORLD_BINUTILSVER?=	binutils222
+WORLD_BINUTILSVER?=	binutils224
 
 # Set the backup parameters if they are not already defined
 #
