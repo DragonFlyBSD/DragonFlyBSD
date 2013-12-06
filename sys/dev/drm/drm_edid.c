@@ -30,7 +30,9 @@
  * $FreeBSD: head/sys/dev/drm2/drm_edid.c 249041 2013-04-03 08:27:35Z dumbbell $
  */
 
+#include <linux/export.h>
 #include <drm/drmP.h>
+#include <drm/drm_crtc.h>
 #include <drm/drm_edid.h>
 #include "drm_edid_modes.h"
 #include <bus/iicbus/iic.h>

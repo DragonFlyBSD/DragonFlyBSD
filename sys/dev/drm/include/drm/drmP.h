@@ -1519,9 +1519,6 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 struct drm_display_mode *drm_mode_create_from_cmdline_mode(
     struct drm_device *dev, struct drm_cmdline_mode *cmd);
 
-/* drm_edid.c */
-u8 *drm_find_cea_extension(struct edid *edid);
-
 /* Inline replacements for drm_alloc and friends */
 static __inline__ void *
 drm_alloc(size_t size, struct malloc_type *area)
