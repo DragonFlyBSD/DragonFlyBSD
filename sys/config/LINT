@@ -1119,7 +1119,7 @@ device		npx0	at nexus? port IO_NPX flags 0x0 irq 13
 # bt: Most Buslogic controllers
 # ncv: NCR 53C500 based SCSI host adapters.
 # nsp: Workbit Ninja SCSI-3 based PC Card SCSI host adapters.
-# stg: TMC 18C30, 18C50 based ISA/PC Card SCSI host adapters.
+# stg: TMC 18C30, 18C50 based PC Card SCSI host adapters.
 #
 # Note that the order is important in order for Buslogic cards to be
 # probed correctly.
@@ -1131,7 +1131,7 @@ device		adw
 device		aic
 device		ncv
 device		nsp
-device		stg0	at isa? port 0x140 irq 11
+device		stg
 
 #
 # Adaptec FSA RAID controllers, including integrated DELL controller,
