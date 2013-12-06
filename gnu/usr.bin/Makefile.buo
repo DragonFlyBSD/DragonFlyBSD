@@ -1,23 +1,24 @@
-# DragonFly maintains two sets of binutils.  The last time it was necessary to swap the primary and
-# backup status between them, 37 files had to be changed.  This makefile include aims to make that process
-# much simpler by having common variables located in one place to control the state.
+# DragonFly maintains two sets of binutils.  The last time it was
+# necessary to swap the primary and backup status between them, 37 files
+# had to be changed.  This makefile include aims to make that process much
+# simpler by having common variables located in one place to control the
+# state.
 #
-# Additionally, with each new import or upgrade of binutils, dozens of Makefiles have to be individually
-# customized over the previous version.  Ideally in the future the Makefiles are generic and only have to be
+# Additionally, with each new import or upgrade of binutils, dozens of
+# Makefiles have to be individually customized over the previous version.
+# Ideally in the future the Makefiles are generic and only have to be
 # copied over in most cases.
 
 BU_PRIMARY=	binutils222
-BU_BACKUP=	binutils221
+BU_BACKUP=	binutils224
 
 .if defined(BUVERSION)
 .if (${BUVERSION} == ${BU_PRIMARY})
 IS_PRIMARY=	1
-MANPAGEVER=	222
-.else
+MANPAGEVER=	${BU_PRIMARY:S/binutils//}
 .endif
 
 .if (${BUVERSION} == ${BU_BACKUP})
-MANPAGEVER=	221
-.else
+MANPAGEVER=	${BU_BACKUP:S/binutils//}
 .endif
 .endif

@@ -13,7 +13,7 @@ SUBDIR+=gdb
 .endif
 
 SUBDIR+= ${BU_PRIMARY}
-.if !defined(NO_BINUTILS221)
+.if !defined(NO_ALTBINUTILS)
 SUBDIR+= ${BU_BACKUP}
 .endif
 
