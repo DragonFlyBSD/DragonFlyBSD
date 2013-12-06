@@ -1428,6 +1428,7 @@ device		"snd_uaudio"
 # apm: Laptop Advanced Power Management (experimental)
 # bktr: Brooktree bt848/848a/849a/878/879 video capture and TV Tuner board
 # cy: Cyclades serial driver
+# digi: DigiBoard intelligent serial cards
 # ecc: ECC memory controller
 # joy: joystick
 # nrp: Comtrol Rocketport
@@ -1454,6 +1455,7 @@ device		"snd_uaudio"
 #  This is version 2.0.0, unsupported by Stallion.
 
 device		apm0
+device		digi
 device		ecc
 device		joy0	at isa? port IO_GAME
 device		cy

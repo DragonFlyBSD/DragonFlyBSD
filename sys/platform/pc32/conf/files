@@ -254,6 +254,9 @@ platform/pc32/acpica/acpi_madt.c	standard
 platform/pc32/isa/clock.c		standard
 dev/serial/cy/cy.c			optional	cy
 dev/serial/cy/cy_pci.c			optional	cy pci
+dev/serial/digi/digi.c			optional	digi
+dev/serial/digi/digi_bios.c		optional	digi
+dev/serial/digi/digi_pci.c		optional	digi pci
 dev/netif/elink_layer/elink.c		optional	ep
 dev/disk/fd/fd.c			optional	fd
 dev/disk/fd/fd_pccard.c			optional	fd pccard
