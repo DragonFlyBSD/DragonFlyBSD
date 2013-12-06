@@ -11,10 +11,6 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   */
 
-#ifndef lint
-static char sccsid[] = "@(#) hosts_ctl.c 1.4 94/12/28 17:42:27";
-#endif
-
 #include <stdio.h>
 
 #include "tcpd.h"

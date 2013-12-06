@@ -18,10 +18,6 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   */
 
-#ifndef lint
-static char sccsid[] = "@(#) eval.c 1.3 95/01/30 19:51:45";
-#endif
-
 /* System libraries. */
 
 #include <stdio.h>

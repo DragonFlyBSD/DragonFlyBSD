@@ -10,10 +10,6 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   */
 
-#ifndef lint
-static char sccsid[] = "@(#) percent_x.c 1.4 94/12/28 17:42:37";
-#endif
-
 /* System libraries. */
 
 #include <stdio.h>

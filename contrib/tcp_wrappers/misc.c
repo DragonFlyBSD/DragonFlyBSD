@@ -4,12 +4,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
   * $FreeBSD: src/contrib/tcp_wrappers/misc.c,v 1.2 2000/02/03 10:26:58 shin Exp $
-  * $DragonFly: src/contrib/tcp_wrappers/misc.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
   */
-
-#ifndef lint
-static char sccsic[] = "@(#) misc.c 1.2 96/02/11 17:01:29";
-#endif
 
 #include <sys/types.h>
 #include <sys/param.h>

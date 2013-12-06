@@ -6,7 +6,7 @@ SHLIB_MAJOR= 4
 INCS=	tcpd.h
 MAN=	hosts_access.3
 MAN+=	hosts_access.5 hosts_options.5
-WARNS?=	1
+WARNS?=	2
 
 .PATH:	${.CURDIR}/../../contrib/tcp_wrappers
 

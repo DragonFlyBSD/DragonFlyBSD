@@ -11,10 +11,6 @@
   * $FreeBSD: src/contrib/tcp_wrappers/rfc931.c,v 1.2.2.1 2000/07/18 16:41:11 dwmalone Exp $
   */
 
-#ifndef lint
-static char sccsid[] = "@(#) rfc931.c 1.10 95/01/02 16:11:34";
-#endif
-
 /* System libraries. */
 
 #include <stdio.h>
@@ -220,7 +216,7 @@ char   *dest;
 		     * protocol, not part of the data.
 		     */
 
-		    if (cp = strchr(user, '\r'))
+		    if ((cp = strchr(user, '\r')) != NULL)
 			*cp = 0;
 		    result = user;
 		}

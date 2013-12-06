@@ -151,7 +151,7 @@ void	sock_hostaddr(struct host_info *);	/* address to printable address */
   */
 
 void	tcpd_warn(const char *, ...) __printflike(1, 2);/* report problem and proceed */
-void	tcpd_jump(const char *, ...) __printflike(1, 2);/* report problem and jump */
+void	tcpd_jump(const char *, ...) __printflike(1, 2) __dead2;/* report problem and jump */
 __END_DECLS
 
 struct tcpd_context {

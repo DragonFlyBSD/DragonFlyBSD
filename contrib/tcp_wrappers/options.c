@@ -28,10 +28,6 @@
   * course of action.
   */
 
-#ifndef lint
-static char sccsid[] = "@(#) options.c 1.17 96/02/11 17:01:31";
-#endif
-
 /* System libraries. */
 
 #include <sys/types.h>
@@ -111,21 +107,21 @@ struct option {
 /* List of known keywords. Add yours here. */
 
 static struct option option_table[] = {
-    "user", user_option, NEED_ARG,
-    "group", group_option, NEED_ARG,
-    "umask", umask_option, NEED_ARG,
-    "linger", linger_option, NEED_ARG,
-    "keepalive", keepalive_option, 0,
-    "spawn", spawn_option, NEED_ARG | EXPAND_ARG,
-    "twist", twist_option, NEED_ARG | EXPAND_ARG | USE_LAST,
-    "rfc931", rfc931_option, OPT_ARG,
-    "setenv", setenv_option, NEED_ARG | EXPAND_ARG,
-    "nice", nice_option, OPT_ARG,
-    "severity", severity_option, NEED_ARG,
-    "allow", allow_option, USE_LAST,
-    "deny", deny_option, USE_LAST,
-    "banners", banners_option, NEED_ARG,
-    0,
+    { "user", user_option, NEED_ARG },
+    { "group", group_option, NEED_ARG },
+    { "umask", umask_option, NEED_ARG },
+    { "linger", linger_option, NEED_ARG },
+    { "keepalive", keepalive_option, 0 },
+    { "spawn", spawn_option, NEED_ARG | EXPAND_ARG },
+    { "twist", twist_option, NEED_ARG | EXPAND_ARG | USE_LAST },
+    { "rfc931", rfc931_option, OPT_ARG },
+    { "setenv", setenv_option, NEED_ARG | EXPAND_ARG },
+    { "nice", nice_option, OPT_ARG },
+    { "severity", severity_option, NEED_ARG },
+    { "allow", allow_option, USE_LAST },
+    { "deny", deny_option, USE_LAST },
+    { "banners", banners_option, NEED_ARG },
+    { .name = NULL },
 };
 
 /* process_options - process access control options */
@@ -496,7 +492,7 @@ char   *string;
     if (src[0] == 0)
 	return (0);
 
-    while (ch = *src) {
+    while ((ch = *src) != 0) {
 	if (ch == ':') {
 	    if (*++src == 0)
 		tcpd_warn("rule ends in \":\"");

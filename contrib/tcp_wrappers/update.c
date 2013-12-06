@@ -15,10 +15,6 @@
   * $FreeBSD: src/contrib/tcp_wrappers/update.c,v 1.2 2000/02/03 10:27:00 shin Exp $
   */
 
-#ifndef lint
-static char sccsid[] = "@(#) update.c 1.1 94/12/28 17:42:56";
-#endif
-
 /* System libraries */
 
 #include <stdio.h>

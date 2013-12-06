@@ -4,10 +4,6 @@
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   */
 
-#ifndef lint
-static char sccsid[] = "@(#) percent_m.c 1.1 94/12/28 17:42:37";
-#endif
-
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -26,7 +22,7 @@ char   *ibuf;
     char   *bp = obuf;
     char   *cp = ibuf;
 
-    while (*bp = *cp)
+    while ((*bp = *cp) != 0)
 	if (*cp == '%' && cp[1] == 'm') {
 	    if (errno < sys_nerr && errno > 0) {
 		strcpy(bp, sys_errlist[errno]);
