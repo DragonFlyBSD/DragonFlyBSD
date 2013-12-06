@@ -1,8 +1,9 @@
-.include "../Makefile.inc0"
+.include "../Makefile.gld"
 
-.PATH: ${SRCDIR}/gold
+LIB=		gold
+WARNS=		1
+INTERNALLIB=	true
 
-LIB=	gold
 SRCS+=	archive.cc		\
 	attributes.cc		\
 	binary.cc		\
@@ -51,24 +52,5 @@ SRCS+=	archive.cc		\
 	workqueue.cc		\
 	yyscript.c		\
 	mremap.c
-
-WARNS=	1
-CFLAGS=  -DHAVE_CONFIG_H
-CFLAGS+= -DLARGEFILE_SOURCE
-CFLAGS+= -D_FILE_OFFSET_BITS=64
-CFLAGS+= -DGOLD_DEFAULT_MACHINE=${GOLD_DEFAULT_MACHINE}
-CFLAGS+= -DGOLD_DEFAULT_SIZE=${GOLD_DEFAULT_SIZE}
-CFLAGS+= -DBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
-CFLAGS+= -DTOOLBINDIR="\"${TOOLS_PREFIX}${BINDIR}\""
-CFLAGS+= -DTOOLLIBDIR="\"${TOOLS_PREFIX}${LIBDIR}\""
-CFLAGS+= -DUSRDATA_PREFIX="\"${USRDATA_PREFIX}\""
-CFLAGS+= -I. -I${.CURDIR}
-CFLAGS+= -I${SRCDIR}/gold
-CFLAGS+= -I${SRCDIR}/include -I${SRCDIR}/elfcpp
-
-INTERNALLIB=	true
-
-DPADD=
-LDADD=
 
 .include <bsd.lib.mk>

@@ -1,7 +1,7 @@
 .include "../Makefile.gld"
 
-PROG_CXX= ld.gold
-SRCS+=	main.cc			\
+PROG_CXX= incremental-dump
+SRCS+=	incremental-dump.cc	\
 	i386.cc			\
 	x86_64.cc		\
 	sparc.cc		\
