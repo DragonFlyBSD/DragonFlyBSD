@@ -9,7 +9,7 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
-+         UPGRADING DRAGONFLY FROM 3.6 to later versions                +
++         UPGRADING DRAGONFLY FROM 3.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
 MORE ISA SUPPORT DROPPED
@@ -20,7 +20,7 @@ ar(4), cs(4), digi(4), ed(4), ep(4), ex(4), fe(4), lnc(4), sbni(4),
 si(4), sn(4), and stg(4).
 
 +-----------------------------------------------------------------------+
-+         UPGRADING DRAGONFLY FROM 3.4 to later versions                +
++         UPGRADING DRAGONFLY FROM 3.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
 ABI CHANGE
@@ -59,7 +59,7 @@ ISA SUPPORT REMOVED FROM RP(4)
 ISA support has been removed from the rp(4) driver. It is now PCI only.
 
 +-----------------------------------------------------------------------+
-+         UPGRADING DRAGONFLY FROM 3.2 to later versions                +
++         UPGRADING DRAGONFLY FROM 3.2 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
 COMPAT_SUNOS OPTION REMOVED
@@ -122,7 +122,7 @@ The i386 specific COMPAT_OLDISA kernel option has been removed, since
 nothing needs it anymore.
 
 +-----------------------------------------------------------------------+
-+         UPGRADING DRAGONFLY FROM 3.0 to later versions                +
++         UPGRADING DRAGONFLY FROM 3.0 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
 APIC_IO OPTION REMOVED
@@ -176,7 +176,7 @@ ISA SUPPORT REMOVED FROM AIC-6260/6360 DRIVER
 ISA adapter support was dropped from the aic(4) driver.
 
 +-----------------------------------------------------------------------+
-+         UPGRADING DRAGONFLY FROM 2.10 to later versions               +
++         UPGRADING DRAGONFLY FROM 2.10 TO LATER VERSIONS               +
 +-----------------------------------------------------------------------+
 
 SEVERAL ISA DRIVERS REMOVED
@@ -232,7 +232,7 @@ with the MASQUERADE keyword and the EMAIL environment variable (see
 the dma(8) manual page).
 
 +-----------------------------------------------------------------------+
-+         UPGRADING DRAGONFLY FROM 2.8 to later versions                +
++         UPGRADING DRAGONFLY FROM 2.8 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
 GCC 4.4 & BINUTILS 2.21
