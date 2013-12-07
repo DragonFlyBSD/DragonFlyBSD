@@ -31,7 +31,6 @@
  *
  * @(#)inventory.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/inventory.c,v 1.4 1999/11/30 03:49:23 billf Exp $
- * $DragonFly: src/games/rogue/inventory.c,v 1.4 2006/09/02 19:31:07 pavalos Exp $
  */
 
 /*
@@ -389,6 +388,7 @@ pr_motion_char(int ch)
 		char until[18], buf[DCOLS];
 		int n;
 
+		n = 0;
 		if (ch <= '\031') {
 			ch += 96;
 			strcpy(until, "until adjascent");
