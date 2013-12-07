@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/usr.sbin/acpi/acpidb/acpidb.c,v 1.1 2003/08/07 16:51:50 njl Exp $
- *	$DragonFly: src/usr.sbin/acpi/acpidb/acpidb.c,v 1.2 2007/01/17 17:31:19 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -43,12 +42,7 @@
 #include <unistd.h>
 
 #include <acpi.h>
-#include <acconfig.h>
-#include <aclocal.h>
-#include <acobject.h>
-#include <acstruct.h>
-#include <acnamesp.h>
-#include <acglobal.h>
+#include <accommon.h>
 #include <acdebug.h>
 
 /*
@@ -167,8 +161,8 @@ aml_simulate_prompt(char *msg, ACPI_INTEGER def_val)
 	if (msg != NULL) {
 		printf("%s", msg);
 	}
-	printf("(default: 0x%x ", val);
-	printf(" / %u) >>", val);
+	printf("(default: 0x%jx ", (uintmax_t)val);
+	printf(" / %ju) >>", (uintmax_t)val);
 	fflush(stdout);
 
 	bzero(buf, sizeof buf);
@@ -246,8 +240,8 @@ aml_simulation_regdump(const char *dumpfile)
 	}
 	while (!TAILQ_EMPTY(&RegionContentList)) {
 		rc = TAILQ_FIRST(&RegionContentList);
-		fprintf(fp, "%d	0x%x	0x%x\n",
-		    rc->regtype, rc->addr, rc->value);
+		fprintf(fp, "%d	0x%jx	0x%x\n",
+		    rc->regtype, (uintmax_t)rc->addr, rc->value);
 		TAILQ_REMOVE(&RegionContentList, rc, links);
 		free(rc);
 	}
@@ -290,8 +284,9 @@ aml_vm_space_handler(
 		}
 		*Value = value;
 		if (Prompt) {
-			sprintf(msg, "[read (%s, %2d, 0x%x)]",
-				space_names[SpaceID], BitWidth, Address);
+			sprintf(msg, "[read (%s, %2d, 0x%jx)]",
+				space_names[SpaceID], BitWidth,
+				(uintmax_t)Address);
 			*Value = aml_simulate_prompt(msg, value);
 			if (*Value != value) {
 				return(aml_vm_space_handler(SpaceID,
@@ -304,8 +299,9 @@ aml_vm_space_handler(
 	case ACPI_WRITE:
 		value = *Value;
 		if (Prompt) {
-			sprintf(msg, "[write(%s, %2d, 0x%x)]",
-				space_names[SpaceID], BitWidth, Address);
+			sprintf(msg, "[write(%s, %2d, 0x%jx)]",
+				space_names[SpaceID], BitWidth,
+				(uintmax_t)Address);
 			value = aml_simulate_prompt(msg, *Value);
 		}
 		*Value = value;
@@ -346,8 +342,6 @@ DECLARE_VM_SPACE_HANDLER(cmos,		ACPI_ADR_SPACE_CMOS);
 DECLARE_VM_SPACE_HANDLER(pci_bar_target,ACPI_ADR_SPACE_PCI_BAR_TARGET);
 
 static u_int8_t *mapped_rsdp;
-#define ACPI_MAX_INIT_TABLES (16)
-static ACPI_TABLE_DESC		Tables[ACPI_MAX_INIT_TABLES];
 
 /*
  * Load DSDT data file and invoke debugger
@@ -357,11 +351,10 @@ static int
 load_dsdt(const char *dsdtfile)
 {
 	char			filetmp[PATH_MAX];
-	u_int8_t		*code, *amlptr;
+	u_int8_t		*code;
 	struct stat		 sb;
 	int			 fd, fd2;
 	int			 error;
-	ACPI_TABLE_HEADER	*Table;
 
 	fd = open(dsdtfile, O_RDONLY, 0);
 	if (fd == -1) {
@@ -456,22 +449,7 @@ load_dsdt(const char *dsdtfile)
 		return (-1);
 	}
 
-	AcpiGbl_GlobalLockPresent = TRUE;
-
-	error = AcpiDbReadTableFromFile (filetmp, &Table);
-	if (ACPI_FAILURE(error)) {
-		fprintf(stderr, "AcpiDbReadTableFromFile failed: %s\n",
-			AcpiFormatException(error));
-		return (-1);
-	}
-	AeBuildLocalTables(Table);
-	if (ACPI_FAILURE(error = AeInstallTables())) {
-		fprintf(stderr, "AeInstallTables failed: %s\n",
-			AcpiFormatException(error));
-		return (-1);
-	}
-
-	AcpiUtSetIntegerWidth (Table->Revision);
+	AcpiDbGetTableFromFile(filetmp, NULL);
 
 	AcpiDbInitialize();
 	AcpiGbl_DebuggerConfiguration = 0;
