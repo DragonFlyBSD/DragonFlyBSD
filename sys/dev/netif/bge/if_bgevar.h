@@ -67,8 +67,9 @@ struct bge_gib {
 #define BGE_INC(x, y)		(x) = ((x) + 1) % (y)
 
 /*
- * Register access macros. The Tigon always uses memory mapped register
- * accesses and all registers must be accessed with 32 bit operations.
+ * BAR0 MAC register access macros.  The Tigon always uses memory mapped
+ * register accesses and all registers must be accessed with 32 bit
+ * operations.
  */
 
 #define CSR_WRITE_4(sc, reg, val)	\
@@ -82,6 +83,18 @@ struct bge_gib {
 
 #define BGE_CLRBIT(sc, reg, x)	\
 	CSR_WRITE_4(sc, reg, (CSR_READ_4(sc, reg) & ~x))
+
+/* BAR2 APE register access macros. */
+#define	APE_WRITE_4(sc, reg, val)	\
+	bus_write_4(sc->bge_res2, reg, val)
+
+#define	APE_READ_4(sc, reg)		\
+	bus_read_4(sc->bge_res2, reg)
+
+#define	APE_SETBIT(sc, reg, x)	\
+	APE_WRITE_4(sc, reg, (APE_READ_4(sc, reg) | (x)))
+#define	APE_CLRBIT(sc, reg, x)	\
+	APE_WRITE_4(sc, reg, (APE_READ_4(sc, reg) & ~(x)))
 
 #define BGE_MEMWIN_READ(sc, x, val)				\
 do {								\
@@ -200,7 +213,8 @@ struct bge_softc {
 	struct resource		*bge_irq;
 	int			bge_irq_type;
 	int			bge_irq_rid;
-	struct resource		*bge_res;
+	struct resource		*bge_res;	/* MAC mapped I/O */
+	struct resource		*bge_res2;	/* APE mapped I/O */
 	struct ifmedia		bge_ifmedia;	/* TBI media info */
 	int			bge_pcixcap;
 	int			bge_pciecap;
@@ -228,6 +242,14 @@ struct bge_softc {
 #define BGE_FLAG_5788		0x20000000
 #define BGE_FLAG_SHORTDMA	0x40000000
 #define BGE_FLAG_STATUS_TAG	0x80000000
+
+	uint32_t		bge_mfw_flags;	/* Management F/W flags */
+#define	BGE_MFW_ON_RXCPU	0x00000001
+#define	BGE_MFW_ON_APE		0x00000002
+#define	BGE_MFW_TYPE_NCSI	0x00000004
+#define	BGE_MFW_TYPE_DASH	0x00000008
+	int			bge_phy_ape_lock;
+	int			bge_func_addr;
 
 	uint32_t		bge_chipid;
 	uint8_t			bge_asf_mode;
