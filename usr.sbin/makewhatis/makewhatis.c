@@ -70,7 +70,7 @@ struct page_info {
 	ino_t inode;
 };
 
-RB_HEAD(page_info_tree, page_info) page_head = RB_INITIALIZER(&page_head);
+static RB_HEAD(page_info_tree, page_info) page_head = RB_INITIALIZER(&page_head);
 
 /*
  * Sorts page info by inode number.
