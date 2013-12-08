@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2002 John Rochester
+ * Copyright (c) 2013 Franco Fichtner <franco@lastsummer.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +29,7 @@
  * $FreeBSD: src/usr.bin/makewhatis/makewhatis.c,v 1.9 2002/09/04 23:29:04 dwmalone Exp $
  */
 
+#include <sys/tree.h>
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -49,15 +51,55 @@
 static char blank[] = 		"";
 
 /*
- * Information collected about each man page in a section.
+ * Information collected about each man page alias.
+ */
+struct page_alias {
+	RB_ENTRY(page_alias) entry;
+	char *filename;
+	char *name;
+	char *suffix;
+	int gzipped;
+};
+
+/*
+ * Information collected about each unique man page.
  */
 struct page_info {
-	char *	filename;
-	char *	name;
-	char *	suffix;
-	int	gzipped;
-	ino_t	inode;
+	RB_HEAD(page_alias_tree, page_alias) head;
+	RB_ENTRY(page_info) entry;
+	ino_t inode;
 };
+
+RB_HEAD(page_info_tree, page_info) page_head = RB_INITIALIZER(&page_head);
+
+/*
+ * Sorts page info by inode number.
+ */
+static int
+infosort(const struct page_info *a, const struct page_info *b)
+{
+	return (memcmp(&a->inode, &b->inode, sizeof(a->inode)));
+}
+
+RB_PROTOTYPE(page_info_tree, page_info, entry, infosort);
+RB_GENERATE(page_info_tree, page_info, entry, infosort);
+
+/*
+ * Sorts page alias first by suffix, then name.
+ */
+static int
+aliassort(const struct page_alias *a, const struct page_alias *b)
+{
+	int ret = strcmp(a->suffix, b->suffix);
+	if (ret) {
+		return (ret);
+	}
+
+	return (strcmp(a->name, b->name));
+}
+
+RB_PROTOTYPE(page_alias_tree, page_alias, entry, aliassort);
+RB_GENERATE(page_alias_tree, page_alias, entry, aliassort);
 
 /*
  * An entry kept for each visited directory.
@@ -129,64 +171,66 @@ static char mdoc_commands[] = "ArDvErEvFlLiNmPa";
 static void
 free_page_info(struct page_info *info)
 {
-	free(info->filename);
-	free(info->name);
-	free(info->suffix);
+	struct page_alias *alias;
+
+	while ((alias = RB_ROOT(&info->head))) {
+		RB_REMOVE(page_alias_tree, &info->head, alias);
+		free(alias->filename);
+		free(alias->suffix);
+		free(alias->name);
+		free(alias);
+	}
+
 	free(info);
 }
 
 /*
- * Allocates and fills in a new struct page_info given the
- * name of the man section directory and the dirent of the file.
- * If the file is not a man page, returns NULL.
+ * Allocates and fills in a new struct page_alias given the
+ * full file name of the man page hand its dirent.
+ * If the file is not a man page, nothing is added.
  */
-static struct page_info *
-new_page_info(char *dir, struct dirent *dirent)
+static void
+new_page_alias(struct page_info *info, char *filename, struct dirent *dirent)
 {
-	struct page_info *info;
-	int basename_length;
+	int gzipped, basename_length;
+	struct page_alias *alias;
 	char *suffix;
-	struct stat st;
 
-	info = malloc(sizeof(struct page_info));
-	if (info == NULL)
-		err(1, "malloc");
 	basename_length = strlen(dirent->d_name);
 	suffix = &dirent->d_name[basename_length];
-	asprintf(&info->filename, "%s/%s", dir, dirent->d_name);
-	if ((info->gzipped = basename_length >= 4 &&
-	    strcmp(&dirent->d_name[basename_length - 3], ".gz") == 0)) {
+
+	gzipped = basename_length >= 4 &&
+	    strcmp(&dirent->d_name[basename_length - 3], ".gz") == 0;
+	if (gzipped) {
 		suffix -= 3;
 		*suffix = '\0';
 	}
+
 	for (;;) {
 		if (--suffix == dirent->d_name || !isalnum(*suffix)) {
-			if (*suffix == '.')
+			if (*suffix == '.') {
 				break;
-			if (verbose)
-				warnx("%s: invalid man page name",
-				      info->filename);
-			free(info->filename);
-			free(info);
-			return(NULL);
+			}
+			if (verbose) {
+				warnx("%s: invalid man page name", filename);
+			}
+			return;
 		}
 	}
+
 	*suffix++ = '\0';
-	info->name = strdup(dirent->d_name);
-	info->suffix = strdup(suffix);
-	if (stat(info->filename, &st) < 0) {
-		warn("%s", info->filename);
-		free_page_info(info);
-		return(NULL);
+
+	alias = malloc(sizeof(*alias));
+	if (alias == NULL) {
+		err(1, "malloc");
 	}
-	if (!S_ISREG(st.st_mode)) {
-		if (verbose && !S_ISDIR(st.st_mode))
-			warnx("%s: not a regular file", info->filename);
-		free_page_info(info);
-		return(NULL);
-	}
-	info->inode = st.st_ino;
-	return(info);
+
+	alias->name = strdup(dirent->d_name);	/* XXX unsafe */
+	alias->filename = strdup(filename);	/* XXX unsafe */
+	alias->suffix = strdup(suffix);		/* XXX unsafe */
+	alias->gzipped = gzipped;
+
+	RB_INSERT(page_alias_tree, &info->head, alias);
 }
 
 /*
@@ -288,28 +332,6 @@ sbuf_content(struct sbuf *sbuf)
 {
 	*sbuf->end = '\0';
 	return(sbuf->content);
-}
-
-/*
- * Returns true if no man page exists in the directory with
- * any of the names in the StringList.
- */
-static int
-no_page_exists(char *dir, StringList *names, char *suffix)
-{
-	char path[MAXPATHLEN];
-	size_t i;
-
-	for (i = 0; i < names->sl_cur; i++) {
-		snprintf(path, sizeof path, "%s/%s.%s.gz", dir, names->sl_str[i], suffix);
-		if (access(path, F_OK) < 0) {
-			path[strlen(path) - 3] = '\0';
-			if (access(path, F_OK) < 0)
-				continue;
-		}
-		return(0);
-	}
-	return(1);
 }
 
 static void
@@ -664,27 +686,6 @@ process_mdoc_line(char *line)
 		sbuf_append(whatis_proto, " ", 1);
 }
 
-/*
- * Collects a list of comma-separated names from the text.
- */
-static void
-collect_names(StringList *names, char *text)
-{
-	char *arg;
-
-	for (;;) {
-		arg = text;
-		text = strchr(text, ',');
-		if (text != NULL)
-			*text++ = '\0';
-		sl_add(names, arg);
-		if (text == NULL)
-			return;
-		if (*text == ' ')
-			text++;
-	}
-}
-
 enum { STATE_UNKNOWN, STATE_MANSTYLE, STATE_MDOCNAME, STATE_MDOCDESC };
 
 /*
@@ -692,23 +693,31 @@ enum { STATE_UNKNOWN, STATE_MANSTYLE, STATE_MDOCNAME, STATE_MDOCDESC };
  * to whatis_lines.
  */
 static void
-process_page(struct page_info *page, char *section_dir)
+process_page(struct page_info *info)
 {
-	gzFile in;
-	char buffer[4096];
-	char *line;
-	StringList *names;
-	char *descr;
 	int state = STATE_UNKNOWN;
-	size_t i;
+	struct page_alias *alias;
+	char *line, *descr;
+	char buffer[4096];
+	gzFile in;
+
+	/*
+	 * Only read the page once for each inode.  It's
+	 * safe to assume that page->list is set.
+	 */
+	alias = RB_MIN(page_alias_tree, &info->head);
+
+	if (verbose) {
+		fprintf(stderr, "\treading %s\n", alias->filename);
+	}
 
 	sbuf_clear(whatis_proto);
-	if ((in = gzopen(page->filename, "r")) == NULL) {
-		warn("%s", page->filename);
+	if ((in = gzopen(alias->filename, "r")) == NULL) {
+		warn("%s", alias->filename);
 		exit_code = 1;
 		return;
 	}
-	while (gzgets(in, buffer, sizeof buffer) != NULL) {
+	while (gzgets(in, buffer, sizeof(buffer)) != NULL) {
 		line = buffer;
 		if (strncmp(line, ".\\\"", 3) == 0)	/* ignore comments */
 			continue;
@@ -788,20 +797,16 @@ process_page(struct page_info *page, char *section_dir)
 		*descr = '\0';
 		descr += 3;
 	}
-	names = sl_init();
-	collect_names(names, line);
 	sbuf_clear(whatis_final);
-	if (!sl_find(names, page->name) &&
-	    no_page_exists(section_dir, names, page->suffix)) {
+	RB_FOREACH(alias, page_alias_tree, &info->head) {
 		/*
-		 * Add the page name since that's the only thing that
-		 * man(1) will find.
+		 * This won't append names stored in `line'.
+		 * The reason for that is that we cannot be sure
+		 * which section they belong to unless we have
+		 * a real alias (via MLINKS) in this list.
 		 */
-		add_whatis_name(page->name, page->suffix);
+		add_whatis_name(alias->name, alias->suffix);
 	}
-	for (i = 0; i < names->sl_cur; i++)
-		add_whatis_name(names->sl_str[i], page->suffix);
-	sl_free(names, 0);
 	sbuf_retract(whatis_final, 2);		/* remove last ", " */
 	while (sbuf_length(whatis_final) < indent)
 		sbuf_append(whatis_final, " ", 1);
@@ -811,72 +816,74 @@ process_page(struct page_info *page, char *section_dir)
 }
 
 /*
- * Sorts pages first by inode number, then by name.
- */
-static int
-pagesort(const void *a, const void *b)
-{
-	const struct page_info *p1 = *(const struct page_info * const *)a;
-	const struct page_info *p2 = *(const struct page_info * const *)b;
-	if (p1->inode == p2->inode)
-		return(strcmp(p1->name, p2->name));
-	return(p1->inode - p2->inode);
-}
-
-/*
  * Processes a single man section.
  */
 static void
 process_section(char *section_dir)
 {
 	struct dirent **entries;
+	struct page_info *info;
 	int nentries;
-	struct page_info **pages;
-	int npages = 0;
 	int i;
-	ino_t prev_inode = 0;
 
-	if (verbose)
+	if (verbose) {
 		fprintf(stderr, "  %s\n", section_dir);
+	}
 
-	/*
-	 * scan the man section directory for pages
-	 */
+	/* scan the man section directory for pages */
 	nentries = scandir(section_dir, &entries, NULL, alphasort);
 	if (nentries < 0) {
 		warn("%s", section_dir);
 		exit_code = 1;
 		return;
 	}
-	/*
-	 * collect information about man pages
-	 */
-	pages = calloc(nentries, sizeof(struct page_info *));
+
+	/* collect information about man pages */
 	for (i = 0; i < nentries; i++) {
-		struct page_info *info = new_page_info(section_dir, entries[i]);
-		if (info != NULL)
-			pages[npages++] = info;
+		struct page_info ref;
+		char *filename;
+		struct stat st;
+
+		if (asprintf(&filename, "%s/%s", section_dir,
+		    entries[i]->d_name) < 0) {
+			err(1, "malloc");
+		}
+
+		if (stat(filename, &st) < 0) {
+			warn("%s", filename);
+			goto process_section_next;
+		}
+
+		if (!S_ISREG(st.st_mode)) {
+			if (verbose && !S_ISDIR(st.st_mode))
+			    warnx("%s: not a regular file", filename);
+			goto process_section_next;
+		}
+
+		ref.inode = st.st_ino;
+
+		info = RB_FIND(page_info_tree, &page_head, &ref);
+		if (info == NULL) {
+			info = malloc(sizeof(*info));
+			if (info == NULL) {
+				err(1, "malloc");
+			}
+
+			bzero(info, sizeof(*info));
+			info->inode = st.st_ino;
+			RB_INIT(&info->head);
+
+			RB_INSERT(page_info_tree, &page_head, info);
+		}
+
+		new_page_alias(info, filename, entries[i]);
+
+process_section_next:
+
 		free(entries[i]);
+		free(filename);
 	}
 	free(entries);
-	qsort(pages, npages, sizeof(struct page_info *), pagesort);
-	/*
-	 * process each unique page
-	 */
-	for (i = 0; i < npages; i++) {
-		struct page_info *page = pages[i];
-		if (page->inode != prev_inode) {
-			prev_inode = page->inode;
-			if (verbose)
-				fprintf(stderr, "\treading %s\n",
-					page->filename);
-			process_page(page, section_dir);
-		} else if (verbose)
-			fprintf(stderr, "\tskipping %s, duplicate\n",
-				page->filename);
-		free_page_info(page);
-	}
-	free(pages);
 }
 
 /*
@@ -904,6 +911,7 @@ static void
 process_mandir(char *dir_name)
 {
 	struct dirent **entries;
+	struct page_info *info;
 	int nsections;
 	FILE *fp = NULL;
 	int i;
@@ -933,6 +941,18 @@ process_mandir(char *dir_name)
 		free(entries[i]);
 	}
 	free(entries);
+
+	/* process each page */
+	RB_FOREACH(info, page_info_tree, &page_head) {
+		process_page(info);
+	}
+
+	/* free all pages */
+	while ((info = RB_ROOT(&page_head))) {
+		RB_REMOVE(page_info_tree, &page_head, info);
+		free_page_info(info);
+	}
+
 	if (common_output == NULL)
 		finish_whatis(fp, dir_name);
 }
