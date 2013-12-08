@@ -83,6 +83,10 @@
 
 #define BNX_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 
+#define	BNX_RESET_SHUTDOWN	0
+#define	BNX_RESET_START		1
+#define	BNX_RESET_SUSPEND	2
+
 #define BNX_INTR_CKINTVL	((10 * hz) / 1000)	/* 10ms */
 
 #ifdef BNX_RSS_DEBUG
@@ -309,6 +313,9 @@ static int	bnx_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
 static int	bnx_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
 #endif
 static int	bnx_sysctl_std_refill(SYSCTL_HANDLER_ARGS);
+
+static void	bnx_sig_post_reset(struct bnx_softc *, int);
+static void	bnx_sig_pre_reset(struct bnx_softc *, int);
 
 static int	bnx_msi_enable = 1;
 static int	bnx_msix_enable = 1;
@@ -552,8 +559,12 @@ bnx_miibus_statchg(device_t dev)
 {
 	struct bnx_softc *sc;
 	struct mii_data *mii;
+	uint32_t mac_mode;
 
 	sc = device_get_softc(dev);
+	if ((sc->arpcom.ac_if.if_flags & IFF_RUNNING) == 0)
+		return;
+
 	mii = device_get_softc(sc->bnx_miibus);
 
 	if ((mii->mii_media_status & (IFM_ACTIVE | IFM_AVALID)) ==
@@ -578,19 +589,26 @@ bnx_miibus_statchg(device_t dev)
 	if (sc->bnx_link == 0)
 		return;
 
-	BNX_CLRBIT(sc, BGE_MAC_MODE, BGE_MACMODE_PORTMODE);
-	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T ||
-	    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX) {
-		BNX_SETBIT(sc, BGE_MAC_MODE, BGE_PORTMODE_GMII);
-	} else {
-		BNX_SETBIT(sc, BGE_MAC_MODE, BGE_PORTMODE_MII);
-	}
+	/*
+	 * APE firmware touches these registers to keep the MAC
+	 * connected to the outside world.  Try to keep the
+	 * accesses atomic.
+	 */
 
-	if ((mii->mii_media_active & IFM_GMASK) == IFM_FDX) {
-		BNX_CLRBIT(sc, BGE_MAC_MODE, BGE_MACMODE_HALF_DUPLEX);
-	} else {
-		BNX_SETBIT(sc, BGE_MAC_MODE, BGE_MACMODE_HALF_DUPLEX);
-	}
+	mac_mode = CSR_READ_4(sc, BGE_MAC_MODE) &
+	    ~(BGE_MACMODE_PORTMODE | BGE_MACMODE_HALF_DUPLEX);
+
+	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T ||
+	    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX)
+		mac_mode |= BGE_PORTMODE_GMII;
+	else
+		mac_mode |= BGE_PORTMODE_MII;
+
+	if ((mii->mii_media_active & IFM_GMASK) != IFM_FDX)
+		mac_mode |= BGE_MACMODE_HALF_DUPLEX;
+
+	CSR_WRITE_4(sc, BGE_MAC_MODE, mac_mode);
+	DELAY(40);
 }
 
 /*
@@ -1065,9 +1083,6 @@ bnx_chipinit(struct bnx_softc *sc)
 	pci_write_config(sc->bnx_dev, BGE_PCI_MISC_CTL,
 	    BGE_INIT | BGE_PCIMISCCTL_TAGGED_STATUS, 4);
 
-	/* Clear the MAC control register */
-	CSR_WRITE_4(sc, BGE_MAC_MODE, 0);
-
 	/*
 	 * Clear the MAC statistics block in the NIC's
 	 * internal memory.
@@ -1461,9 +1476,9 @@ bnx_blockinit(struct bnx_softc *sc)
 
 	/* Set random backoff seed for TX */
 	CSR_WRITE_4(sc, BGE_TX_RANDOM_BACKOFF,
-	    sc->arpcom.ac_enaddr[0] + sc->arpcom.ac_enaddr[1] +
-	    sc->arpcom.ac_enaddr[2] + sc->arpcom.ac_enaddr[3] +
-	    sc->arpcom.ac_enaddr[4] + sc->arpcom.ac_enaddr[5] +
+	    (sc->arpcom.ac_enaddr[0] + sc->arpcom.ac_enaddr[1] +
+	     sc->arpcom.ac_enaddr[2] + sc->arpcom.ac_enaddr[3] +
+	     sc->arpcom.ac_enaddr[4] + sc->arpcom.ac_enaddr[5]) &
 	    BGE_TX_BACKOFF_SEED_MASK);
 
 	/* Set inter-packet gap */
@@ -1568,9 +1583,10 @@ bnx_blockinit(struct bnx_softc *sc)
 
 	/* Turn on DMA, clear stats */
 	CSR_WRITE_4(sc, BGE_MAC_MODE, val);
+	DELAY(40);
 
 	/* Set misc. local control, enable interrupts on attentions */
-	CSR_WRITE_4(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_ONATTN);
+	BNX_SETBIT(sc, BGE_MISC_LOCAL_CTL, BGE_MLC_INTR_ONATTN);
 
 #ifdef notdef
 	/* Assert GPIO pins for PHY reset */
@@ -1918,6 +1934,12 @@ bnx_attach(device_t dev)
 		break;
 	}
 
+	if (sc->bnx_asicrev == BGE_ASICREV_BCM5717 ||
+	    sc->bnx_asicrev == BGE_ASICREV_BCM5719 ||
+	    sc->bnx_asicrev == BGE_ASICREV_BCM5720 ||
+	    sc->bnx_asicrev == BGE_ASICREV_BCM5762)
+		sc->bnx_flags |= BNX_FLAG_APE;
+
 	sc->bnx_flags |= BNX_FLAG_TSO;
 	if (sc->bnx_asicrev == BGE_ASICREV_BCM5719 &&
 	    sc->bnx_chipid == BGE_CHIPID_BCM5719_A0)
@@ -1972,8 +1994,12 @@ bnx_attach(device_t dev)
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
-	/* Try to reset the chip. */
+	/*
+	 * Try to reset the chip.
+	 */
+	bnx_sig_pre_reset(sc, BNX_RESET_SHUTDOWN);
 	bnx_reset(sc);
+	bnx_sig_post_reset(sc, BNX_RESET_SHUTDOWN);
 
 	if (bnx_chipinit(sc)) {
 		device_printf(dev, "chip initialization failed\n");
@@ -2480,7 +2506,6 @@ bnx_detach(device_t dev)
 
 		ifnet_serialize_all(ifp);
 		bnx_stop(sc);
-		bnx_reset(sc);
 		bnx_teardown_intr(sc, sc->bnx_intr_cnt);
 		ifnet_deserialize_all(ifp);
 
@@ -2537,20 +2562,20 @@ bnx_detach(device_t dev)
 static void
 bnx_reset(struct bnx_softc *sc)
 {
-	device_t dev;
-	uint32_t cachesize, command, pcistate, reset;
+	device_t dev = sc->bnx_dev;
+	uint32_t cachesize, command, reset, mac_mode, mac_mode_mask;
 	void (*write_op)(struct bnx_softc *, uint32_t, uint32_t);
 	int i, val = 0;
 	uint16_t devctl;
 
-	dev = sc->bnx_dev;
+	mac_mode_mask = BGE_MACMODE_HALF_DUPLEX | BGE_MACMODE_PORTMODE;
+	mac_mode = CSR_READ_4(sc, BGE_MAC_MODE) & mac_mode_mask;
 
 	write_op = bnx_writemem_direct;
 
 	/* Save some important PCI state. */
 	cachesize = pci_read_config(dev, BGE_PCI_CACHESZ, 4);
 	command = pci_read_config(dev, BGE_PCI_CMD, 4);
-	pcistate = pci_read_config(dev, BGE_PCI_PCISTATE, 4);
 
 	pci_write_config(dev, BGE_PCI_MISC_CTL,
 	    BGE_PCIMISCCTL_INDIRECT_ACCESS|BGE_PCIMISCCTL_MASK_PCI_INTR|
@@ -2596,7 +2621,7 @@ bnx_reset(struct bnx_softc *sc)
 	/* Issue global reset */
 	write_op(sc, BGE_MISC_CFG, reset);
 
-	DELAY(1000);
+	DELAY(100 * 1000);
 
 	/* XXX: Broadcom Linux driver. */
 	if (sc->bnx_chipid == BGE_CHIPID_BCM5750_A0) {
@@ -2633,12 +2658,21 @@ bnx_reset(struct bnx_softc *sc)
 	    BGE_PCIMISCCTL_INDIRECT_ACCESS|BGE_PCIMISCCTL_MASK_PCI_INTR|
 	    BGE_HIF_SWAP_OPTIONS|BGE_PCIMISCCTL_PCISTATE_RW|
 	    BGE_PCIMISCCTL_TAGGED_STATUS, 4);
+	val = BGE_PCISTATE_ROM_ENABLE | BGE_PCISTATE_ROM_RETRY_ENABLE;
+	pci_write_config(dev, BGE_PCI_PCISTATE, val, 4);
 	pci_write_config(dev, BGE_PCI_CACHESZ, cachesize, 4);
 	pci_write_config(dev, BGE_PCI_CMD, command, 4);
-	write_op(sc, BGE_MISC_CFG, (65 << 1));
 
 	/* Enable memory arbiter */
 	CSR_WRITE_4(sc, BGE_MARB_MODE, BGE_MARBMODE_ENABLE);
+
+	/* Fix up byte swapping */
+	CSR_WRITE_4(sc, BGE_MODE_CTL, bnx_dma_swap_options(sc));
+
+	val = CSR_READ_4(sc, BGE_MAC_MODE);
+	val = (val & ~mac_mode_mask) | mac_mode;
+	CSR_WRITE_4(sc, BGE_MAC_MODE, val);
+	DELAY(40);
 
 	/*
 	 * Poll until we see the 1's complement of the magic number.
@@ -2658,25 +2692,6 @@ bnx_reset(struct bnx_softc *sc)
 	/* BCM57765 A0 needs additional time before accessing. */
 	if (sc->bnx_chipid == BGE_CHIPID_BCM57765_A0)
 		DELAY(10 * 1000);
-
-	/*
-	 * XXX Wait for the value of the PCISTATE register to
-	 * return to its original pre-reset state. This is a
-	 * fairly good indicator of reset completion. If we don't
-	 * wait for the reset to fully complete, trying to read
-	 * from the device's non-PCI registers may yield garbage
-	 * results.
-	 */
-	for (i = 0; i < BNX_TIMEOUT; i++) {
-		if (pci_read_config(dev, BGE_PCI_PCISTATE, 4) == pcistate)
-			break;
-		DELAY(10);
-	}
-
-	/* Fix up byte swapping */
-	CSR_WRITE_4(sc, BGE_MODE_CTL, bnx_dma_swap_options(sc));
-
-	CSR_WRITE_4(sc, BGE_MAC_MODE, 0);
 
 	/*
 	 * The 5704 in TBI mode apparently needs some special
@@ -3524,7 +3539,11 @@ bnx_init(void *xsc)
 
 	/* Cancel pending I/O and flush buffers. */
 	bnx_stop(sc);
+
+	bnx_sig_pre_reset(sc, BNX_RESET_START);
 	bnx_reset(sc);
+	bnx_sig_post_reset(sc, BNX_RESET_START);
+
 	bnx_chipinit(sc);
 
 	/*
@@ -3591,6 +3610,7 @@ bnx_init(void *xsc)
 	}
 	/* Turn on transmitter */
 	CSR_WRITE_4(sc, BGE_TX_MODE, mode | BGE_TXMODE_ENABLE);
+	DELAY(100);
 
 	/* Initialize RSS */
 	mode = BGE_RXMODE_ENABLE;
@@ -3603,6 +3623,7 @@ bnx_init(void *xsc)
 	}
 	/* Turn on receiver */
 	BNX_SETBIT(sc, BGE_RX_MODE, mode);
+	DELAY(10);
 
 	/*
 	 * Set the number of good frames to receive after RX MBUF
@@ -3640,8 +3661,6 @@ bnx_init(void *xsc)
 		bnx_enable_intr(sc);
 	bnx_set_tick_cpuid(sc, polling);
 
-	bnx_ifmedia_upd(ifp);
-
 	ifp->if_flags |= IFF_RUNNING;
 	for (i = 0; i < sc->bnx_tx_ringcnt; ++i) {
 		struct bnx_tx_ring *txr = &sc->bnx_tx_ring[i];
@@ -3649,6 +3668,8 @@ bnx_init(void *xsc)
 		ifsq_clr_oactive(txr->bnx_ifsq);
 		ifsq_watchdog_start(&txr->bnx_tx_watchdog);
 	}
+
+	bnx_ifmedia_upd(ifp);
 
 	callout_reset_bycpu(&sc->bnx_tick_timer, hz, bnx_tick, sc,
 	    sc->bnx_tick_cpuid);
@@ -3681,6 +3702,7 @@ bnx_ifmedia_upd(struct ifnet *ifp)
 				BNX_SETBIT(sc, BGE_MAC_MODE,
 				    BGE_MACMODE_HALF_DUPLEX);
 			}
+			DELAY(40);
 			break;
 		default:
 			return(EINVAL);
@@ -3723,6 +3745,9 @@ static void
 bnx_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct bnx_softc *sc = ifp->if_softc;
+
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
+		return;
 
 	if (sc->bnx_flags & BNX_FLAG_TBI) {
 		ifmr->ifm_status = IFM_AVALID;
@@ -3873,6 +3898,14 @@ bnx_stop(struct bnx_softc *sc)
 
 	callout_stop(&sc->bnx_tick_timer);
 
+	/* Disable host interrupts. */
+	bnx_disable_intr(sc);
+
+	/*
+	 * Tell firmware we're shutting down.
+	 */
+	bnx_sig_pre_reset(sc, BNX_RESET_SHUTDOWN);
+
 	/*
 	 * Disable all of the receiver blocks
 	 */
@@ -3902,8 +3935,8 @@ bnx_stop(struct bnx_softc *sc)
 	CSR_WRITE_4(sc, BGE_FTQ_RESET, 0xFFFFFFFF);
 	CSR_WRITE_4(sc, BGE_FTQ_RESET, 0);
 
-	/* Disable host interrupts. */
-	bnx_disable_intr(sc);
+	bnx_reset(sc);
+	bnx_sig_post_reset(sc, BNX_RESET_SHUTDOWN);
 
 	/*
 	 * Tell firmware we're shutting down.
@@ -3953,7 +3986,6 @@ bnx_shutdown(device_t dev)
 
 	ifnet_serialize_all(ifp);
 	bnx_stop(sc);
-	bnx_reset(sc);
 	ifnet_deserialize_all(ifp);
 }
 
@@ -4304,6 +4336,7 @@ bnx_tbi_link_upd(struct bnx_softc *sc, uint32_t status)
 			if (sc->bnx_asicrev == BGE_ASICREV_BCM5704) {
 				BNX_CLRBIT(sc, BGE_MAC_MODE,
 				    BGE_MACMODE_TBI_SEND_CFGS);
+				DELAY(40);
 			}
 			CSR_WRITE_4(sc, BGE_MAC_STS, 0xFFFFFFFF);
 
@@ -6151,4 +6184,22 @@ bnx_rss_info(struct pktinfo *pi, const struct bge_rx_bd *cur_rx)
 	pi->pi_flags = 0;
 
 	return pi;
+}
+
+static void
+bnx_sig_pre_reset(struct bnx_softc *sc, int type)
+{
+#if 0
+	if (type == BNX_RESET_START || type == BNX_RESET_SUSPEND)
+		bnx_ape_driver_state_change(sc, type);
+#endif
+}
+
+static void
+bnx_sig_post_reset(struct bnx_softc *sc, int type)
+{
+#if 0
+	if (type == BNX_RESET_SHUTDOWN)
+		bnx_ape_driver_state_change(sc, type);
+#endif
 }
