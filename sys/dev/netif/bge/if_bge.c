@@ -3005,6 +3005,11 @@ bge_reset(struct bge_softc *sc)
 			return;
 		}
 	} else {
+		int delay_us = 10;
+
+		if (sc->bge_asicrev == BGE_ASICREV_BCM5761)
+			delay_us = 100;
+
 		/*
 		 * Poll until we see the 1's complement of the magic number.
 		 * This indicates that the firmware initialization
@@ -3014,7 +3019,7 @@ bge_reset(struct bge_softc *sc)
 			val = bge_readmem_ind(sc, BGE_SRAM_FW_MB);
 			if (val == ~BGE_SRAM_FW_MB_MAGIC)
 				break;
-			DELAY(10);
+			DELAY(delay_us);
 		}
 		if (i == BGE_FIRMWARE_TIMEOUT) {
 			if_printf(&sc->arpcom.ac_if, "firmware handshake "
