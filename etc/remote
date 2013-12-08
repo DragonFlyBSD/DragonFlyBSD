@@ -1,23 +1,23 @@
-# $FreeBSD: src/etc/remote,v 1.10.2.1 2001/03/06 02:22:39 obrien Exp $
-# $DragonFly: src/etc/remote,v 1.2 2003/06/17 04:24:45 dillon Exp $
+# $FreeBSD: head/etc/remote 184352 2008-10-27 17:19:14Z thompsa $
 #
 #	@(#)remote	5.2 (Berkeley) 6/30/90
 #
 # remote -- remote host description file
 # see tip(1), remote(5)
 #
+# at	ACU type
+# br	bit rate (defaults to 9600)
+# cu	call unit (default is dv)
+# du	make a call flag (dial up)
 # dv	device to use for the tty
 # el	EOL marks (default is NULL)
-# du	make a call flag (dial up)
-# pn	phone numbers (@ =>'s search phones file; possibly taken from
-#	PHONES environment variable)
-# at	ACU type
-# ie	input EOF marks (default is NULL)
-# oe	output EOF string (default is NULL)
-# cu	call unit (default is dv)
-# br	baud rate (defaults to 300)
 # fs	frame size (default is BUFSIZ) -- used in buffering writes on
 #	receive operations
+# ie	input EOF marks (default is NULL)
+# oe	output EOF string (default is NULL)
+# pa	The parity type to use: even, odd, none, zero, one (default even)
+# pn	phone numbers (@ =>'s search phones file; possibly taken from
+#	PHONES environment variable)
 # tc	to continue a capability
 
 # Systems definitions
