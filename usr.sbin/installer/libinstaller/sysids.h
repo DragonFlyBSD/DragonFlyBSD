@@ -41,7 +41,7 @@
  * $Id: sysids.h,v 1.2 2005/02/06 21:05:18 cpressey Exp $
  */
 
-struct part_type
+static struct part_type
 {
 	unsigned char type;
 	const char *name;
