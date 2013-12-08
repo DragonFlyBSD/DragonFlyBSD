@@ -2393,6 +2393,7 @@ TO_REMOVE+=/usr/share/man/cat1/strings221.1.gz
 TO_REMOVE+=/usr/share/man/man1/strings221.1.gz
 TO_REMOVE+=/usr/share/man/cat1/strip221.1.gz
 TO_REMOVE+=/usr/share/man/man1/strip221.1.gz
+TO_REMOVE+=/usr/include/tzfile.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats

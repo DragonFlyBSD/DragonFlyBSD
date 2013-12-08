@@ -3,6 +3,6 @@
 
 PROG=	last
 
-CFLAGS+=-DSUPPORT_UTMP -DSUPPORT_UTMPX
+CFLAGS+=-DSUPPORT_UTMP -DSUPPORT_UTMPX -I${.CURDIR}/../../lib/libc/stdtime
 
 .include <bsd.prog.mk>
