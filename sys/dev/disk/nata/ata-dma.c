@@ -35,6 +35,7 @@
 #include <sys/endian.h>
 #include <sys/malloc.h>
 #include <sys/nata.h>
+#include <sys/resourcevar.h>
 
 #include <machine/bus_dma.h>
 
@@ -219,6 +220,7 @@ ata_dmaload(device_t dev, caddr_t data, int32_t count, int dir,
 {
     struct ata_channel *ch = device_get_softc(dev);
     struct ata_dmasetprd_args cba;
+    static struct krate krate_nata_ovdma = { .freq = 1 };
     int error;
 
     if (ch->dma->flags & ATA_DMA_LOADED) {
@@ -236,8 +238,10 @@ ata_dmaload(device_t dev, caddr_t data, int32_t count, int dir,
 	return EIO;
     }
     if (count > ch->dma->max_iosize) {
-	device_printf(dev, "FAILURE - oversized DMA transfer attempt %d > %d\n",
-		      count, ch->dma->max_iosize);
+	krateprintf(&krate_nata_ovdma,
+		    "%s: FAILURE - oversized DMA transfer "
+		    "attempt %d > %d\n",
+		    device_get_nameunit(dev), count, ch->dma->max_iosize);
 	return EIO;
     }
 
