@@ -244,21 +244,64 @@
  * dead areas are reserved for future use and MUST NOT BE USED for other
  * purposes.
  *
- * The freemap is arranged into four groups.  Modifications rotate through
- * the groups on a block by block basis (so all the blocks are not necessarily
- * synchronized to the same group).  Because the freemap is flushed
- * independent of the main filesystem, the freemap only really needs two
- * groups to operate efficiently.
+ * The freemap is arranged into 15 groups of 4x64KB each.  The 4 sub-groups
+ * are labeled ZONEFM1..4 and representing HAMMER2_FREEMAP_LEVEL{1-4}_RADIX,
+ * for the up to 4 levels of radix tree representing the freemap.  For
+ * simplicity we are reserving all four radix tree layers even though the
+ * higher layers do not require teh reservation at each 2GB mark.  That
+ * space is reserved for future use.
  *
+ * Freemap blocks are not allocated dynamically but instead rotate through
+ * one of 15 possible copies.  We require 15 copies for several reasons:
  *
+ * (1) For distinguishing freemap 'allocations' made by the current flush
+ *     verses the concurrently running front-end (at flush_tid + 1).  This
+ *     theoretically requires two copies but the algorithm is greatly
+ *     simplified if we use three.
  *
+ * (2) There are up to 4 copies of the volume header (iterated on each flush),
+ *     and if the mount code is forced to use an older copy due to corruption
+ *     we must be sure that the state of the freemap AS-OF the earlier copy
+ *     remains valid.
+ *
+ *     This means 3 copies x 4 flushes = 12 copies to be able to mount any
+ *     of the four volume header backups after on boot or after a crash.
+ *
+ * (3) Freemap recovery on-mount eats a copy.  We don't want freemap recovery
+ *     to blow away the copy used by some other volume header in case H2
+ *     crashes during the recovery.  Total is now 13.
+ *
+ * (4) And I want some breathing room to ensure that complex flushes do not
+ *     cause problems.  Also note that bulk block freeing itself must be
+ *     careful so even on a live system, post-mount, the four volume header
+ *     backups effectively represent short-lived snapshots.  And I only
+ *     have room for 15 copies so it works out.
+ *
+ * Preferably I would like to improve the algorithm to only use 2 copies per
+ * volume header (which would be a total of 2 x 4 = 8 + 1 for freemap recovery
+ * + 1 for breathing room = 10 total instead of 15).  For now we use 15.
  */
 #define HAMMER2_ZONE_VOLHDR		0	/* volume header or backup */
-#define HAMMER2_ZONE_FREEMAP_A		1	/* freemap layer group A */
-#define HAMMER2_ZONE_FREEMAP_B		5	/* freemap layer group B */
-#define HAMMER2_ZONE_FREEMAP_C		9	/* freemap layer group C */
-#define HAMMER2_ZONE_FREEMAP_D		13	/* freemap layer group D */
+#define HAMMER2_ZONE_FREEMAP_00		1
+#define HAMMER2_ZONE_FREEMAP_01		5
+#define HAMMER2_ZONE_FREEMAP_02		9
+#define HAMMER2_ZONE_FREEMAP_03		13
+#define HAMMER2_ZONE_FREEMAP_04		17
+#define HAMMER2_ZONE_FREEMAP_05		21
+#define HAMMER2_ZONE_FREEMAP_06		25
+#define HAMMER2_ZONE_FREEMAP_07		29
+#define HAMMER2_ZONE_FREEMAP_08		33
+#define HAMMER2_ZONE_FREEMAP_09		37
+#define HAMMER2_ZONE_FREEMAP_10		41
+#define HAMMER2_ZONE_FREEMAP_11		45
+#define HAMMER2_ZONE_FREEMAP_12		49
+#define HAMMER2_ZONE_FREEMAP_13		53
+#define HAMMER2_ZONE_FREEMAP_14		57
+#define HAMMER2_ZONE_FREEMAP_END	61	/* (non-inclusive) */
+#define HAMMER2_ZONE_UNUSED62		62
+#define HAMMER2_ZONE_UNUSED63		63
 
+#define HAMMER2_ZONE_FREEMAP_COPIES	15
 						/* relative to FREEMAP_x */
 #define HAMMER2_ZONEFM_LEVEL1		0	/* 2GB leafmap */
 #define HAMMER2_ZONEFM_LEVEL2		1	/* 2TB indmap */

@@ -92,6 +92,7 @@ hammer2_freemap_reserve(hammer2_trans_t *trans, hammer2_chain_t *chain,
 {
 	hammer2_blockref_t *bref = &chain->bref;
 	hammer2_off_t off;
+	int index;
 	size_t bytes;
 
 	/*
@@ -104,65 +105,61 @@ hammer2_freemap_reserve(hammer2_trans_t *trans, hammer2_chain_t *chain,
 	bytes = 1 << radix;
 
 	/*
-	 * Adjust by HAMMER2_ZONE_FREEMAP_{A,B,C,D} using the existing
-	 * offset as a basis.  Start in zone A if previously unallocated.
+	 * Calculate block selection index 0..7 of current block.
 	 */
-#if 0
-	kprintf("trans %04jx/%08x freemap chain %p.%d [%08x] %016jx/%d %016jx",
-		trans->sync_tid, trans->flags,
-		chain, chain->bref.type, chain->flags,
-		chain->bref.key, chain->bref.keybits,
-		bref->data_off);
-#endif
 	if ((bref->data_off & ~HAMMER2_OFF_MASK_RADIX) == 0) {
-		off = HAMMER2_ZONE_FREEMAP_A;
+		index = 0;
 	} else {
 		off = bref->data_off & ~HAMMER2_OFF_MASK_RADIX &
 		      (((hammer2_off_t)1 << HAMMER2_FREEMAP_LEVEL1_RADIX) - 1);
 		off = off / HAMMER2_PBUFSIZE;
-		KKASSERT(off >= HAMMER2_ZONE_FREEMAP_A);
-		KKASSERT(off < HAMMER2_ZONE_FREEMAP_D + 4);
+		KKASSERT(off >= HAMMER2_ZONE_FREEMAP_00 &&
+			 off < HAMMER2_ZONE_FREEMAP_END);
+		index = (int)(off - HAMMER2_ZONE_FREEMAP_00) / 4;
+		KKASSERT(index >= 0 && index < HAMMER2_ZONE_FREEMAP_COPIES);
 	}
 
-	if ((trans->flags &
-	     (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_ISALLOCATING)) ==
-	    HAMMER2_TRANS_ISFLUSH) {
+	/*
+	 * Calculate new index (our 'allocation').  We have to be careful
+	 * here as there can be two different transaction ids running
+	 * concurrently when a flush is in-progress.
+	 *
+	 * We also want to make sure, for algorithmic repeatability, that
+	 * the index sequences are monotonic with transaction ids.  Some
+	 * skipping is allowed as long as we ensure that all four volume
+	 * header backups have consistent freemaps.
+	 *
+	 * FLUSH  NORMAL FLUSH  NORMAL FLUSH  NORMAL FLUSH  NORMAL
+	 * N+=1   N+=2
+	 * (0->1) (1->3) (3->4) (4->6) (6->7) (7->9) (9->10) (10->12)
+	 *
+	 * [-concurrent-][-concurrent-][-concurrent-][-concurrent-]
+	 *
+	 * (alternative first NORMAL might be 0->2 if flush had not yet
+	 *  modified the chain, this is the worst case).
+	 */
+	if ((trans->flags & HAMMER2_TRANS_ISFLUSH) == 0) {
 		/*
-		 * Delete-Duplicates while flushing the fchain topology
-		 * itself.
+		 * Normal transactions always run with the highest TID.
+		 * But if a flush is in-progress we want to reserve a slot
+		 * for the flush with a lower TID running concurrently to
+		 * do a delete-duplicate.
 		 */
-#if 0
-		kprintf(" flush ");
-#endif
-		if (off >= HAMMER2_ZONE_FREEMAP_D)
-			off = HAMMER2_ZONE_FREEMAP_B;
-		else if (off >= HAMMER2_ZONE_FREEMAP_C)
-			off = HAMMER2_ZONE_FREEMAP_A;
-		else if (off >= HAMMER2_ZONE_FREEMAP_B)
-			off = HAMMER2_ZONE_FREEMAP_D;
-		else
-			off = HAMMER2_ZONE_FREEMAP_C;
+		index = (index + 2) % HAMMER2_ZONE_FREEMAP_COPIES;
+	} else if (trans->flags & HAMMER2_TRANS_ISALLOCATING) {
+		/*
+		 * Flush transaction, hammer2_freemap.c itself is doing a
+		 * delete-duplicate during an allocation within the freemap.
+		 */
+		index = (index + 1) % HAMMER2_ZONE_FREEMAP_COPIES;
 	} else {
 		/*
-		 * Allocations from the freemap via a normal transaction
-		 * or a flush whos sync_tid has been bumped (so effectively
-		 * done as a normal transaction).
+		 * Flush transaction, hammer2_flush.c is doing a
+		 * delete-duplicate on the freemap while flushing
+		 * hmp->fchain.
 		 */
-#if 0
-		kprintf(" alloc ");
-#endif
-		if (off >= HAMMER2_ZONE_FREEMAP_D)
-			off = HAMMER2_ZONE_FREEMAP_A;
-		else if (off >= HAMMER2_ZONE_FREEMAP_C)
-			off = HAMMER2_ZONE_FREEMAP_D;
-		else if (off >= HAMMER2_ZONE_FREEMAP_B)
-			off = HAMMER2_ZONE_FREEMAP_C;
-		else
-			off = HAMMER2_ZONE_FREEMAP_B;
+		index = (index + 1) % HAMMER2_ZONE_FREEMAP_COPIES;
 	}
-
-
-	off = off * HAMMER2_PBUFSIZE;
 
 	/*
 	 * Calculate the block offset of the reserved block.  This will
@@ -174,30 +171,31 @@ hammer2_freemap_reserve(hammer2_trans_t *trans, hammer2_chain_t *chain,
 	case HAMMER2_FREEMAP_LEVEL4_RADIX:	/* 2EB */
 		KKASSERT(bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE);
 		KKASSERT(bytes == HAMMER2_FREEMAP_LEVELN_PSIZE);
-		off += H2FMBASE(bref->key, HAMMER2_FREEMAP_LEVEL4_RADIX) +
-		       HAMMER2_ZONEFM_LEVEL4 * HAMMER2_PBUFSIZE;
+		off = H2FMBASE(bref->key, HAMMER2_FREEMAP_LEVEL4_RADIX) +
+		      (index * 4 + HAMMER2_ZONEFM_LEVEL4) * HAMMER2_PBUFSIZE;
 		break;
 	case HAMMER2_FREEMAP_LEVEL3_RADIX:	/* 2PB */
 		KKASSERT(bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE);
 		KKASSERT(bytes == HAMMER2_FREEMAP_LEVELN_PSIZE);
-		off += H2FMBASE(bref->key, HAMMER2_FREEMAP_LEVEL3_RADIX) +
-		       HAMMER2_ZONEFM_LEVEL3 * HAMMER2_PBUFSIZE;
+		off = H2FMBASE(bref->key, HAMMER2_FREEMAP_LEVEL3_RADIX) +
+		      (index * 4 + HAMMER2_ZONEFM_LEVEL3) * HAMMER2_PBUFSIZE;
 		break;
 	case HAMMER2_FREEMAP_LEVEL2_RADIX:	/* 2TB */
 		KKASSERT(bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE);
 		KKASSERT(bytes == HAMMER2_FREEMAP_LEVELN_PSIZE);
-		off += H2FMBASE(bref->key, HAMMER2_FREEMAP_LEVEL2_RADIX) +
-		       HAMMER2_ZONEFM_LEVEL2 * HAMMER2_PBUFSIZE;
+		off = H2FMBASE(bref->key, HAMMER2_FREEMAP_LEVEL2_RADIX) +
+		      (index * 4 + HAMMER2_ZONEFM_LEVEL2) * HAMMER2_PBUFSIZE;
 		break;
 	case HAMMER2_FREEMAP_LEVEL1_RADIX:	/* 2GB */
 		KKASSERT(bref->type == HAMMER2_BREF_TYPE_FREEMAP_LEAF);
 		KKASSERT(bytes == HAMMER2_FREEMAP_LEVELN_PSIZE);
-		off += H2FMBASE(bref->key, HAMMER2_FREEMAP_LEVEL1_RADIX) +
-		       HAMMER2_ZONEFM_LEVEL1 * HAMMER2_PBUFSIZE;
+		off = H2FMBASE(bref->key, HAMMER2_FREEMAP_LEVEL1_RADIX) +
+		      (index * 4 + HAMMER2_ZONEFM_LEVEL1) * HAMMER2_PBUFSIZE;
 		break;
 	default:
 		panic("freemap: bad radix(2) %p %d\n", bref, bref->keybits);
 		/* NOT REACHED */
+		off = (hammer2_off_t)-1;
 		break;
 	}
 	bref->data_off = off | radix;
