@@ -617,6 +617,38 @@ process_man_line(char *line)
 	}
 }
 
+struct mdoc_text {
+	const char *mdoc;
+	const char *text;
+};
+
+static int
+process_mdoc_macro(char *line)
+{
+	static const struct mdoc_text list[] = {
+		{ ".At", "AT&T UNIX" },
+		{ ".Bsx", "BSD/OS" },
+		{ ".Bx", "BSD" },
+		{ ".Dx", "DragonFly" },
+		{ ".Fx", "FreeBSD" },
+		{ ".Nx", "NetBSD" },
+		{ ".Ox", "OpenBSD" },
+		{ ".Ux", "UNIX" },
+	};
+	unsigned int i;
+
+	for (i = 0; i < sizeof(list) / sizeof(list[0]); ++i) {
+		if (!strcmp(line, list[i].mdoc)) {
+			sbuf_append(whatis_proto, list[i].text,
+			    strlen(list[i].text));
+			sbuf_append(whatis_proto, " ", 1);
+			return (1);
+		}
+	}
+
+	return (0);
+}
+
 /*
  * Processes a new-style mdoc(7) line.
  */
@@ -634,6 +666,9 @@ process_mdoc_line(char *line)
 	if (line[0] != '.' || !isupper(line[1]) || !islower(line[2])) {
 		add_nroff(skip_spaces(line));
 		sbuf_append(whatis_proto, " ", 1);
+		return;
+	}
+	if (process_mdoc_macro(line)) {
 		return;
 	}
 	xref = strncmp(line, ".Xr", 3) == 0;
