@@ -186,7 +186,7 @@ free_page_info(struct page_info *info)
 
 /*
  * Allocates and fills in a new struct page_alias given the
- * full file name of the man page hand its dirent.
+ * full file name of the man page and its dirent.
  * If the file is not a man page, nothing is added.
  */
 static void
@@ -737,6 +737,8 @@ process_page(struct page_info *info)
 		case STATE_MANSTYLE:
 			if (strncmp(line, ".SH", 3) == 0)
 				break;
+			if (strncmp(line, ".SS", 3) == 0)
+				break;
 			trim_rhs(line);
 			if (strcmp(line, ".") == 0)
 				continue;
@@ -830,7 +832,9 @@ process_section(char *section_dir)
 		fprintf(stderr, "  %s\n", section_dir);
 	}
 
-	/* scan the man section directory for pages */
+	/*
+	 * scan the man section directory for pages
+	 */
 	nentries = scandir(section_dir, &entries, NULL, alphasort);
 	if (nentries < 0) {
 		warn("%s", section_dir);
@@ -838,7 +842,9 @@ process_section(char *section_dir)
 		return;
 	}
 
-	/* collect information about man pages */
+	/*
+	 * collect information about man pages
+	 */
 	for (i = 0; i < nentries; i++) {
 		struct page_info ref;
 		char *filename;
@@ -942,14 +948,12 @@ process_mandir(char *dir_name)
 	}
 	free(entries);
 
-	/* process each page */
-	RB_FOREACH(info, page_info_tree, &page_head) {
-		process_page(info);
-	}
-
-	/* free all pages */
+	/*
+	 * process and free all pages
+	 */
 	while ((info = RB_ROOT(&page_head))) {
 		RB_REMOVE(page_info_tree, &page_head, info);
+		process_page(info);
 		free_page_info(info);
 	}
 
