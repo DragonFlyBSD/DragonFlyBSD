@@ -16,7 +16,7 @@
 /* #undef ENABLE_NLS */
 
 /* Define to enable linker plugins */
-/* #undef ENABLE_PLUGINS */
+#define ENABLE_PLUGINS 1
 
 /* Define to do multi-threaded linking */
 /* #undef ENABLE_THREADS */

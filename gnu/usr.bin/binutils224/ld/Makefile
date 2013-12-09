@@ -23,7 +23,8 @@ SRCS+=	ldgram.y	\
 	ldver.c		\
 	ldmisc.c	\
 	ldfile.c	\
-	ldcref.c
+	ldcref.c	\
+	plugin.c
 
 SRCS+=	ldemul-list.h
 
@@ -32,8 +33,11 @@ CFLAGS+= -DSCRIPTDIR=\"${TOOLS_PREFIX}${LIBEXEC_BINUTILS}\"
 CFLAGS+= -I${SRCDIR}/ld -I${SRCDIR}/bfd -I${.OBJDIR}/../libbfd
 CFLAGS+= -DBINDIR=\"${TOOLS_PREFIX}${LIBEXEC_BINUTILS}\"
 CFLAGS+= -DTOOLBINDIR=\"${TOOLS_PREFIX}${LIBEXEC_BINUTILS}\"
+CFLAGS+= -DENABLE_PLUGINS -DHAVE_CONFIG_H
 CFLAGS+= -DTARGET_SYSTEM_ROOT=\"${USRDATA_PREFIX}\"
-NOSHARED?= yes
+# link-time optimization requires dlopen() which means ld cannot be built
+# statically (e.g. NOSHARED=yes) and also support -plugin.
+#NOSHARED?= yes
 
 CLEANDIRS+=	ldscripts tmpdir
 CLEANFILES+=	ldemul-list.h stringify.sed
