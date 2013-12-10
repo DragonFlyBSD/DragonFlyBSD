@@ -583,10 +583,12 @@ callout_terminate(struct callout *c)
 
 	if (c->c_flags & CALLOUT_DID_INIT) {
 		callout_stop(c);
-		sc = &softclock_pcpu_ary[c->c_gd->gd_cpuid];
-		if (sc->running == c) {
-			while (sc->running == c)
-				tsleep(&sc->running, 0, "crace", 1);
+		if (c->c_gd) {
+			sc = &softclock_pcpu_ary[c->c_gd->gd_cpuid];
+			if (sc->running == c) {
+				while (sc->running == c)
+					tsleep(&sc->running, 0, "crace", 1);
+			}
 		}
 		KKASSERT((c->c_flags & (CALLOUT_PENDING|CALLOUT_ACTIVE)) == 0);
 		c->c_flags &= ~CALLOUT_DID_INIT;
