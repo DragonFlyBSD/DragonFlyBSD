@@ -67,8 +67,9 @@ struct bnx_gib {
 #define BNX_INC(x, y)		(x) = ((x) + 1) % (y)
 
 /*
- * Register access macros. The Tigon always uses memory mapped register
- * accesses and all registers must be accessed with 32 bit operations.
+ * BAR0 MAC register access macros. The Tigon always uses memory mapped
+ * register accesses and all registers must be accessed with 32 bit
+ * operations.
  */
 
 #define CSR_WRITE_4(sc, reg, val)	\
@@ -82,6 +83,18 @@ struct bnx_gib {
 
 #define BNX_CLRBIT(sc, reg, x)	\
 	CSR_WRITE_4(sc, reg, (CSR_READ_4(sc, reg) & ~x))
+
+/* BAR2 APE register access macros. */
+#define	APE_WRITE_4(sc, reg, val)	\
+	bus_write_4(sc->bnx_res2, reg, val)
+
+#define	APE_READ_4(sc, reg)		\
+	bus_read_4(sc->bnx_res2, reg)
+
+#define	APE_SETBIT(sc, reg, x)	\
+	APE_WRITE_4(sc, reg, (APE_READ_4(sc, reg) | (x)))
+#define	APE_CLRBIT(sc, reg, x)	\
+	APE_WRITE_4(sc, reg, (APE_READ_4(sc, reg) & ~(x)))
 
 #define BNX_MEMWIN_READ(sc, x, val)				\
 do {								\
@@ -293,7 +306,8 @@ struct bnx_softc {
 	device_t		bnx_miibus;
 	bus_space_handle_t	bnx_bhandle;
 	bus_space_tag_t		bnx_btag;
-	struct resource		*bnx_res;
+	struct resource		*bnx_res;	/* MAC mapped I/O */
+	struct resource		*bnx_res2;	/* APE mapped I/O */
 	struct ifmedia		bnx_ifmedia;	/* TBI media info */
 	int			bnx_pciecap;
 	uint32_t		bnx_flags;	/* BNX_FLAG_ */
@@ -311,6 +325,14 @@ struct bnx_softc {
 #define BNX_FLAG_RXTX_BUNDLE	0x20000000
 #define BNX_FLAG_STD_THREAD	0x40000000
 #define BNX_FLAG_STATUS_HASTAG	0x80000000
+
+	uint32_t		bnx_mfw_flags;	/* Management F/W flags */
+#define	BNX_MFW_ON_RXCPU	0x00000001
+#define	BNX_MFW_ON_APE		0x00000002
+#define	BNX_MFW_TYPE_NCSI	0x00000004
+#define	BNX_MFW_TYPE_DASH	0x00000008
+	int			bnx_phy_ape_lock;
+	int			bnx_func_addr;
 
 	uint32_t		bnx_chipid;
 	uint32_t		bnx_asicrev;
