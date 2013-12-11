@@ -277,7 +277,7 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	/*
 	 * Check for deleted inodes and recycle immediately.
 	 */
-	if (parent->flags & HAMMER2_CHAIN_DELETED) {
+	if (parent->flags & HAMMER2_CHAIN_UNLINKED) {
 		hammer2_inode_unlock_ex(ip, parent);
 		vrecycle(vp);
 	} else {
@@ -305,7 +305,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		return(0);
 
 	/*
-	 * Set update_hi so we can detect and propagate the DESTROYED
+	 * Set update_hi so we can detect and propagate the DELETED
 	 * bit in the flush code.
 	 *
 	 * ip->chain might be stale, correct it before checking as older
@@ -322,7 +322,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 
 	/*
 	 * The final close of a deleted file or directory marks it for
-	 * destruction.  The DESTROYED flag allows the flusher to shortcut
+	 * destruction.  The DELETED flag allows the flusher to shortcut
 	 * any modified blocks still unflushed (that is, just ignore them).
 	 *
 	 * HAMMER2 usually does not try to optimize the freemap by returning
@@ -335,10 +335,11 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 */
 	vp->v_data = NULL;
 	ip->vp = NULL;
-	if (chain->flags & HAMMER2_CHAIN_DELETED) {
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_DESTROYED);
+	if (chain->flags & HAMMER2_CHAIN_UNLINKED) {
+		kprintf("unlink on reclaim: %s\n", chain->data->ipdata.filename);
 		hammer2_trans_init(&trans, ip->pmp, NULL,
 				   HAMMER2_TRANS_BUFCACHE);
+		hammer2_chain_delete(&trans, chain, 0);
 		hammer2_chain_setsubmod(&trans, chain);
 		spin_lock(&chain->core->cst.spin);
 		if (chain->core->update_hi < trans.sync_tid)
@@ -1536,7 +1537,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 */
 	error = hammer2_inode_connect(&trans, 1,
 				      dip, &chain,
-				      name, name_len);
+				      name, name_len, 0);
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, ap->a_vp);
@@ -1753,11 +1754,14 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
+
 	hammer2_chain_memory_wait(dip->pmp);
 	hammer2_trans_init(&trans, dip->pmp, NULL, 0);
-	error = hammer2_unlink_file(&trans, dip, name, name_len, 0, NULL);
+	error = hammer2_unlink_file(&trans, dip, name, name_len,
+				    0, NULL, ap->a_nch);
 	hammer2_trans_done(&trans);
 	if (error == 0) {
+		kprintf("cache_unlink\n");
 		cache_unlink(ap->a_nch);
 	}
 	return (error);
@@ -1787,7 +1791,8 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 
 	hammer2_chain_memory_wait(dip->pmp);
 	hammer2_trans_init(&trans, dip->pmp, NULL, 0);
-	error = hammer2_unlink_file(&trans, dip, name, name_len, 1, NULL);
+	error = hammer2_unlink_file(&trans, dip, name, name_len,
+				    1, NULL, ap->a_nch);
 	hammer2_trans_done(&trans);
 	if (error == 0) {
 		cache_unlink(ap->a_nch);
@@ -1859,7 +1864,8 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	/*
 	 * Remove target if it exists
 	 */
-	error = hammer2_unlink_file(&trans, tdip, tname, tname_len, -1, NULL);
+	error = hammer2_unlink_file(&trans, tdip, tname, tname_len,
+				    -1, NULL, ap->a_tnch);
 	if (error && error != ENOENT)
 		goto done;
 	cache_setunresolved(ap->a_tnch);
@@ -1890,10 +1896,15 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * a hardlink the HARDLINK pointer object will be removed but the
 	 * hardlink will stay intact.
 	 *
+	 * Always pass nch as NULL because we intend to reconnect the inode,
+	 * so we don't want hammer2_unlink_file() to rename it to the hidden
+	 * open-but-unlinked directory.
+	 *
 	 * The target chain may be marked DELETED but will not be destroyed
 	 * since we retain our hold on ip and chain.
 	 */
-	error = hammer2_unlink_file(&trans, fdip, fname, fname_len, -1, &hlink);
+	error = hammer2_unlink_file(&trans, fdip, fname, fname_len,
+				    -1, &hlink, NULL);
 	KKASSERT(error != EAGAIN);
 	if (error)
 		goto done;
@@ -1915,7 +1926,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	hammer2_chain_refactor(&chain);
 	error = hammer2_inode_connect(&trans, hlink,
 				      tdip, &chain,
-				      tname, tname_len);
+				      tname, tname_len, 0);
 	chain->inode_reason = 5;
 	if (error == 0) {
 		KKASSERT(chain != NULL);

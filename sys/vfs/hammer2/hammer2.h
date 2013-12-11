@@ -240,7 +240,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_MOVED		0x00000080	/* bref changed */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list */
-#define HAMMER2_CHAIN_DESTROYED		0x00000400	/* destroying inode */
+#define HAMMER2_CHAIN_UNLINKED		0x00000400	/* delete on reclaim */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
 #define HAMMER2_CHAIN_UNUSED01000	0x00001000
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
@@ -562,6 +562,8 @@ struct hammer2_pfsmount {
 	struct mount		*mp;
 	hammer2_cluster_t	cluster;
 	hammer2_inode_t		*iroot;		/* PFS root inode */
+	hammer2_inode_t		*ihidden;	/* PFS hidden directory */
+	struct lock		lock;		/* PFS lock for certain ops */
 	hammer2_off_t		inode_count;	/* copy of inode_count */
 	ccms_domain_t		ccms_dom;
 	struct netexport	export;		/* nfs export */
@@ -734,14 +736,15 @@ hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
 			hammer2_chain_t **chainp, int *errorp);
 int hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 			hammer2_inode_t *dip, hammer2_chain_t **chainp,
-			const uint8_t *name, size_t name_len);
+			const uint8_t *name, size_t name_len,
+			hammer2_key_t key);
 hammer2_inode_t *hammer2_inode_common_parent(hammer2_inode_t *fdip,
 			hammer2_inode_t *tdip);
 void hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			hammer2_chain_t **parentp);
 int hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len, int isdir,
-			int *hlinkp);
+			int *hlinkp, struct nchandle *nch);
 int hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			hammer2_chain_t **chainp,
 			hammer2_inode_t *tdip, int linkcnt);
@@ -749,6 +752,7 @@ int hammer2_hardlink_deconsolidate(hammer2_trans_t *trans, hammer2_inode_t *dip,
 			hammer2_chain_t **chainp, hammer2_chain_t **ochainp);
 int hammer2_hardlink_find(hammer2_inode_t *dip,
 			hammer2_chain_t **chainp, hammer2_chain_t **ochainp);
+void hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp);
 
 /*
  * hammer2_chain.c

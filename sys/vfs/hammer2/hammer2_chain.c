@@ -2910,6 +2910,8 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	nchain->inode_reason = ochain->inode_reason + 0x100000;
 	if (ochain->flags & HAMMER2_CHAIN_INITIAL)
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_INITIAL);
+	if (ochain->flags & HAMMER2_CHAIN_UNLINKED)
+		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_UNLINKED);
 
 	/*
 	 * Fixup (copy) any embedded data.  Non-embedded data relies on the
@@ -3066,7 +3068,8 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	nchain->inode_count += ochain->inode_count;
 	atomic_set_int(&nchain->flags,
 		       ochain->flags & (HAMMER2_CHAIN_INITIAL |
-					HAMMER2_CHAIN_FORCECOW));
+					HAMMER2_CHAIN_FORCECOW |
+					HAMMER2_CHAIN_UNLINKED));
 	atomic_set_int(&ochain->flags, HAMMER2_CHAIN_FORCECOW);
 	nchain->inode_reason = ochain->inode_reason + 0x1000;
 

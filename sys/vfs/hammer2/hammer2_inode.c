@@ -41,6 +41,10 @@
 
 #include "hammer2.h"
 
+static void hammer2_inode_move_to_hidden(hammer2_trans_t *trans,
+					 hammer2_chain_t **chainp,
+					 hammer2_tid_t inum);
+
 RB_GENERATE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
 	     hammer2_tid_t, inum);
 
@@ -902,18 +906,16 @@ retry:
 int
 hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 		      hammer2_inode_t *dip, hammer2_chain_t **chainp,
-		      const uint8_t *name, size_t name_len)
+		      const uint8_t *name, size_t name_len,
+		      hammer2_key_t lhc)
 {
 	hammer2_inode_data_t *ipdata;
 	hammer2_chain_t *nchain;
 	hammer2_chain_t *parent;
 	hammer2_chain_t *ochain;
 	hammer2_key_t key_dummy;
-	hammer2_key_t lhc;
 	int cache_index = -1;
 	int error;
-
-	ochain = *chainp;
 
 	/*
 	 * Since ochain is either disconnected from the topology or represents
@@ -923,27 +925,37 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 	 * WARNING! Must use inode_lock_ex() on dip to handle a stale
 	 *	    dip->chain cache.
 	 */
+	ochain = *chainp;
 	parent = hammer2_inode_lock_ex(dip);
 	/*parent = hammer2_chain_lookup_init(dip->chain, 0);*/
 
-	lhc = hammer2_dirhash(name, name_len);
-
 	/*
-	 * Locate the inode or indirect block to create the new
-	 * entry in.  At the same time check for key collisions
-	 * and iterate until we don't get one.
+	 * If name is non-NULL we calculate lhc, else we use the passed-in
+	 * lhc.
 	 */
-	error = 0;
-	while (error == 0) {
-		nchain = hammer2_chain_lookup(&parent, &key_dummy,
-					      lhc, lhc, &cache_index, 0);
-		if (nchain == NULL)
-			break;
-		if ((lhc & HAMMER2_DIRHASH_LOMASK) == HAMMER2_DIRHASH_LOMASK)
-			error = ENOSPC;
-		hammer2_chain_unlock(nchain);
-		nchain = NULL;
-		++lhc;
+	if (name) {
+		lhc = hammer2_dirhash(name, name_len);
+
+		/*
+		 * Locate the inode or indirect block to create the new
+		 * entry in.  At the same time check for key collisions
+		 * and iterate until we don't get one.
+		 */
+		error = 0;
+		while (error == 0) {
+			nchain = hammer2_chain_lookup(&parent, &key_dummy,
+						      lhc, lhc,
+						      &cache_index, 0);
+			if (nchain == NULL)
+				break;
+			if ((lhc & HAMMER2_DIRHASH_LOMASK) ==
+			    HAMMER2_DIRHASH_LOMASK) {
+				error = ENOSPC;
+			}
+			hammer2_chain_unlock(nchain);
+			nchain = NULL;
+			++lhc;
+		}
 	}
 
 	if (error == 0) {
@@ -1125,6 +1137,14 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
  * isdir determines whether a directory/non-directory check should be made.
  * No check is made if isdir is set to -1.
  *
+ * isopen specifies whether special unlink-with-open-descriptor handling
+ * must be performed.  If set to -1 the caller is deleting a PFS and we
+ * check whether the chain is mounted or not (chain->pmp != NULL).  1 is
+ * implied if it is mounted.
+ *
+ * If isopen is 1 and nlinks drops to 0 this function must move the chain
+ * to a special hidden directory until last-close occurs on the file.
+ *
  * NOTE!  The underlying file can still be active with open descriptors
  *	  or if the chain is being manually held (e.g. for rename).
  *
@@ -1134,7 +1154,7 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 int
 hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		    const uint8_t *name, size_t name_len,
-		    int isdir, int *hlinkp)
+		    int isdir, int *hlinkp, struct nchandle *nch)
 {
 	hammer2_inode_data_t *ipdata;
 	hammer2_chain_t *parent;
@@ -1254,7 +1274,9 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	 */
 	if (ochain) {
 		/*
-		 * Delete the original hardlink pointer.
+		 * Delete the original hardlink pointer unconditionally.
+		 * (any open descriptors will migrate to the hardlink
+		 * target and have no affect on this operation).
 		 *
 		 * NOTE: parent from above is NULL when ochain != NULL
 		 *	 so we can reuse it.
@@ -1262,28 +1284,42 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		hammer2_chain_lock(ochain, HAMMER2_RESOLVE_ALWAYS);
 		hammer2_chain_delete(trans, ochain, 0);
 		hammer2_chain_unlock(ochain);
-
-		/*
-		 * Then decrement nlinks on hardlink target, deleting
-		 * the target when nlinks drops to 0.
-		 */
-		hammer2_chain_modify(trans, &chain, 0);
-		--chain->data->ipdata.nlinks;
-		if (chain->data->ipdata.nlinks == 0)
-			hammer2_chain_delete(trans, chain, 0);
-	} else {
-		/*
-		 * Otherwise this was not a hardlink and we can just
-		 * remove the entry and decrement nlinks.
-		 *
-		 * NOTE: *_get() integrates chain's lock into the inode lock.
-		 */
-		hammer2_chain_modify(trans, &chain, 0);
-		ipdata = &chain->data->ipdata;
-		--ipdata->nlinks;
-		hammer2_chain_delete(trans, chain, 0);
 	}
 
+	/*
+	 * Decrement nlinks on the hardlink target (or original file if
+	 * there it was not hardlinked).  Delete the target when nlinks
+	 * reaches 0 with special handling if (isopen) is set.
+	 *
+	 * NOTE! In DragonFly the vnops function calls cache_unlink() after
+	 *	 calling us here to clean out the namecache association,
+	 *	 (which does not represent a ref for the open-test), and to
+	 *	 force finalization of the vnode if/when the last ref gets
+	 *	 dropped.
+	 */
+	hammer2_chain_modify(trans, &chain, 0);
+	ipdata = &chain->data->ipdata;
+	--ipdata->nlinks;
+	kprintf("file %s nlinks %ld\n", ipdata->filename, ipdata->nlinks);
+	if ((int64_t)ipdata->nlinks < 0)	/* XXX debugging */
+		ipdata->nlinks = 0;
+	if (ipdata->nlinks == 0) {
+		if ((chain->flags & HAMMER2_CHAIN_PFSROOT) && chain->pmp) {
+			error = EINVAL;
+			kprintf("hammer2: PFS \"%s\" cannot be deleted "
+				"while still mounted\n",
+				ipdata->filename);
+			goto done;
+		}
+		if (nch && cache_isopen(nch)) {
+			kprintf("WARNING: unlinking open file\n");
+			atomic_set_int(&chain->flags, HAMMER2_CHAIN_UNLINKED);
+			hammer2_inode_move_to_hidden(trans, &chain,
+						     ipdata->inum);
+		} else {
+			hammer2_chain_delete(trans, chain, 0);
+		}
+	}
 	error = 0;
 done:
 	if (chain)
@@ -1294,6 +1330,119 @@ done:
 		hammer2_chain_drop(ochain);
 
 	return error;
+}
+
+/*
+ * This is called from the mount code to initialize pmp->ihidden
+ */
+void
+hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp)
+{
+	hammer2_trans_t trans;
+	hammer2_chain_t *parent;
+	hammer2_chain_t *chain;
+	hammer2_chain_t *scan;
+	hammer2_inode_data_t *ipdata;
+	hammer2_key_t key_dummy;
+	hammer2_key_t key_next;
+	int cache_index;
+	int error;
+	int count;
+
+	if (pmp->ihidden)
+		return;
+
+	/*
+	 * Find the hidden directory
+	 */
+	bzero(&key_dummy, sizeof(key_dummy));
+	hammer2_trans_init(&trans, pmp, NULL, 0);
+
+	parent = hammer2_inode_lock_ex(pmp->iroot);
+	chain = hammer2_chain_lookup(&parent, &key_dummy,
+				     HAMMER2_INODE_HIDDENDIR,
+				     HAMMER2_INODE_HIDDENDIR,
+				     &cache_index, 0);
+	if (chain) {
+		pmp->ihidden = hammer2_inode_get(pmp, pmp->iroot, chain);
+		hammer2_inode_ref(pmp->ihidden);
+
+		/*
+		 * Remove any unlinked files which were left open as-of
+		 * any system crash.
+		 */
+		count = 0;
+		scan = hammer2_chain_lookup(&chain, &key_next,
+					    0, HAMMER2_MAX_TID,
+					    &cache_index,
+					    HAMMER2_LOOKUP_NODATA);
+		while (scan) {
+			if (scan->bref.type == HAMMER2_BREF_TYPE_INODE) {
+				hammer2_chain_delete(&trans, scan, 0);
+				++count;
+			}
+			scan = hammer2_chain_next(&chain, scan, &key_next,
+						   0, HAMMER2_MAX_TID,
+						   &cache_index,
+						   HAMMER2_LOOKUP_NODATA);
+		}
+
+		hammer2_inode_unlock_ex(pmp->ihidden, chain);
+		hammer2_inode_unlock_ex(pmp->iroot, parent);
+		hammer2_trans_done(&trans);
+		kprintf("hammer2: PFS loaded hidden dir, "
+			"removed %d dead entries\n", count);
+		return;
+	}
+
+	/*
+	 * Create the hidden directory
+	 */
+	error = hammer2_chain_create(&trans, &parent, &chain,
+				     HAMMER2_INODE_HIDDENDIR, 0,
+				     HAMMER2_BREF_TYPE_INODE,
+				     HAMMER2_INODE_BYTES);
+	hammer2_inode_unlock_ex(pmp->iroot, parent);
+	hammer2_chain_modify(&trans, &chain, 0);
+	ipdata = &chain->data->ipdata;
+	ipdata->type = HAMMER2_OBJTYPE_DIRECTORY;
+	ipdata->inum = HAMMER2_INODE_HIDDENDIR;
+	ipdata->nlinks = 1;
+	kprintf("hammer2: PFS root missing hidden directory, creating\n");
+
+	pmp->ihidden = hammer2_inode_get(pmp, pmp->iroot, chain);
+	hammer2_inode_ref(pmp->ihidden);
+	hammer2_inode_unlock_ex(pmp->ihidden, chain);
+	hammer2_trans_done(&trans);
+}
+
+/*
+ * If an open file is unlinked H2 needs to retain the file in the topology
+ * to ensure that its backing store is not recovered by the bulk free scan.
+ * This also allows us to avoid having to special-case the CHAIN_DELETED flag.
+ *
+ * To do this the file is moved to a hidden directory in the PFS root and
+ * renamed.  The hidden directory must be created if it does not exist.
+ */
+static
+void
+hammer2_inode_move_to_hidden(hammer2_trans_t *trans, hammer2_chain_t **chainp,
+			     hammer2_tid_t inum)
+{
+	hammer2_chain_t *chain;
+	hammer2_pfsmount_t *pmp;
+	int error;
+
+	chain = *chainp;
+	pmp = chain->pmp;
+	KKASSERT(pmp != NULL);
+	KKASSERT(pmp->ihidden != NULL);
+
+	hammer2_chain_delete(trans, chain, 0);
+        error = hammer2_inode_connect(trans, 0,
+                                      pmp->ihidden, chainp,
+				      NULL, 0, inum);
+	KKASSERT(error == 0);
 }
 
 /*

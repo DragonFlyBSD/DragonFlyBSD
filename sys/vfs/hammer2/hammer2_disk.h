@@ -682,6 +682,9 @@ typedef struct hammer2_bmap_data hammer2_bmap_data_t;
 #define HAMMER2_INODE_MAXNAME		256	/* maximum name in bytes */
 #define HAMMER2_INODE_VERSION_ONE	1
 
+#define HAMMER2_INODE_HIDDENDIR		16	/* special inode */
+#define HAMMER2_INODE_START		1024	/* dynamically allocated */
+
 struct hammer2_inode_data {
 	uint16_t	version;	/* 0000 inode data version */
 	uint16_t	reserved02;	/* 0002 */

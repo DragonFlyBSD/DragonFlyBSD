@@ -78,28 +78,16 @@ static void hammer2_rollup_stats(hammer2_chain_t *parent,
  * Can we ignore a chain for the purposes of flushing modifications
  * to the media?
  *
- * Normally we don't bother to flush deleted chains.  However, a chain
- * associated with a deleted inode may still be active due to open
- * descriptors.  A flush is needed in this situation to prevent unbounded
- * memory use by the filesystem.
- *
- * This test is fragile as active inodes can still be delete-duplicated and
- * the older deleted chains are, in fact, actual deletions.  These will be
- * flagged DUPLICATED.  The live inode at the end of the del-dup chain
- * will be marked destroyed on last close.
- *
- * XXX inode deletions need to be deleted normally and then duplicated to
- *     a special 'live-but-unlinked' spot somewhere until last-close.
- * XXX bulk free code has a conniption fit too.
+ * This code is no degenerate.  We used to have to distinguish between
+ * deleted chains and deleted chains associated with inodes that were
+ * still open.  This mechanic has been fixed so the function is now
+ * a simple test.
  */
 static __inline
 int
 h2ignore_deleted(hammer2_flush_info_t *info, hammer2_chain_t *chain)
 {
-	return (chain->delete_tid <= info->sync_tid &&
-		(chain->bref.type != HAMMER2_BREF_TYPE_INODE ||
-		 (chain->flags & HAMMER2_CHAIN_DUPLICATED) ||
-		 (chain->flags & HAMMER2_CHAIN_DESTROYED)));
+	return (chain->delete_tid <= info->sync_tid);
 }
 
 #if 0
@@ -236,8 +224,11 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp,
 			}
 		}
 	}
-	if (flags & HAMMER2_TRANS_NEWINODE)
+	if (flags & HAMMER2_TRANS_NEWINODE) {
+		if (hmp->voldata.inode_tid < HAMMER2_INODE_START)
+			hmp->voldata.inode_tid = HAMMER2_INODE_START;
 		trans->inode_tid = hmp->voldata.inode_tid++;
+	}
 	hammer2_voldata_unlock(hmp, 0);
 }
 
@@ -919,7 +910,7 @@ retry:
 	/*
 	 * Issue flush.
 	 *
-	 * A DESTROYED node that reaches this point must be flushed for
+	 * A DELETED node that reaches this point must be flushed for
 	 * synchronization point consistency.
 	 *
 	 * Update bref.mirror_tid, clear MODIFIED, and set MOVED.
@@ -1178,53 +1169,6 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 	hammer2_chain_unlock(parent);
 	hammer2_chain_lock(child, HAMMER2_RESOLVE_MAYBE);
 
-#if 0
-	/*
-	 * This isn't working atm, it seems to be causing necessary
-	 * updates to be thrown away, probably due to aliasing, resulting
-	 * base_insert/base_delete panics.
-	 */
-	/*
-	 * The DESTROYED flag can only be initially set on an unreferenced
-	 * deleted inode and will propagate downward via the mechanic below.
-	 * Such inode chains have been deleted for good and should no longer
-	 * be subject to delete/duplication.
-	 *
-	 * This optimization allows the inode reclaim (destroy unlinked file
-	 * on vnode reclamation after last close) to be flagged by just
-	 * setting HAMMER2_CHAIN_DESTROYED at the top level and then will
-	 * cause the chains to be terminated and related buffers to be
-	 * invalidated and not flushed out.
-	 *
-	 * We have to be careful not to propagate the DESTROYED flag if
-	 * the destruction occurred after our flush sync_tid.
-	 */
-	if (parent->delete_tid <= trans->sync_tid &&
-	    (parent->flags & HAMMER2_CHAIN_DESTROYED) &&
-	    (child->flags & HAMMER2_CHAIN_DESTROYED) == 0) {
-		/*
-		 * Force downward recursion by bringing update_hi up to
-		 * at least sync_tid, and setting the DESTROYED flag.
-		 * Parent's mirror_tid has not yet been updated.
-		 *
-		 * We do not mark the child DELETED because this would
-		 * cause unnecessary modifications/updates.  Instead, the
-		 * DESTROYED flag propagates downward and causes the flush
-		 * to ignore any pre-existing modified chains.
-		 *
-		 * Vnode reclamation may have forced update_hi to MAX_TID
-		 * (we do this because there was no transaction at the time).
-		 * In this situation bring it down to something reasonable
-		 * so the elements being destroyed can be retired.
-		 */
-		atomic_set_int(&child->flags, HAMMER2_CHAIN_DESTROYED);
-		spin_lock(&child->core->cst.spin);
-		if (child->core->update_hi < trans->sync_tid)
-			child->core->update_hi = trans->sync_tid;
-		spin_unlock(&child->core->cst.spin);
-	}
-#endif
-
 	/*
 	 * No recursion needed if neither the child or anything under it
 	 * was messed with.
@@ -1236,6 +1180,12 @@ hammer2_chain_flush_scan1(hammer2_chain_t *child, void *data)
 			child->bref.mirror_tid = info->sync_tid;
 		goto skip;
 	}
+
+	/*
+	 * XXX delete child if parent is deleted.  Propagate deletion
+	 *     downward.  TODO
+	 */
+
 
 	/*
 	 * Re-check original pre-lock conditions after locking.
@@ -1283,9 +1233,6 @@ skip:
 		 * Special optimization matching similar tests done in
 		 * flush_core, scan1, and scan2.  Avoid updating the block
 		 * table in the parent if the parent is no longer visible.
-		 * A deleted parent is no longer visible unless it's an
-		 * inode (in which case it might have an open fd).. the
-		 * DESTROYED flag must also be checked for inodes.
 		 */
 		;
 	} else if (child->delete_tid <= trans->sync_tid &&
@@ -1409,7 +1356,7 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	/*
 	 * The parent's blockref to the child must be deleted or updated.
 	 *
-	 * This point is not reached on successful DESTROYED optimizations
+	 * This point is not reached on successful DELETED optimizations
 	 * but can be reached on recursive deletions and restricted flushes.
 	 *
 	 * The chain_modify here may delete-duplicate the block.  This can
@@ -1475,24 +1422,12 @@ hammer2_chain_flush_scan2(hammer2_chain_t *child, void *data)
 	}
 
 	/*
-	 * Don't bother updating a deleted + destroyed parent's blockrefs.
-	 * We MUST update deleted + non-destroyed parent's blockrefs since
-	 * they could represent an open file.
+	 * Don't bother updating a deleted parent's blockrefs.
 	 *
 	 * Otherwise, we need to be COUNTEDBREFS synchronized for the
 	 * hammer2_base_*() functions.
 	 *
-	 * NOTE: We optimize this by noting that only 'inode' chains require
-	 *	 this treatment.  When a file with an open descriptor is
-	 *	 deleted only its inode is marked deleted.  Other deletions,
-	 *	 such as indirect block deletions, will no longer be visible
-	 *	 to the live filesystem and do not need to be updated.
-	 *
-	 *	 rm -rf's generally wind up setting DESTROYED on the way down
-	 *	 and the result is typically that no disk I/O is needed at all
-	 *	 when rm -rf'ing an entire directory topology.
-	 *
-	 *	 This test must match the similar one in flush_core.
+	 * This test must match the similar one in flush_core.
 	 */
 #if FLUSH_DEBUG
 	kprintf("SCAN2 base=%p pass=%d PARENT %p.%d DTID=%016jx SYNC=%016jx\n",

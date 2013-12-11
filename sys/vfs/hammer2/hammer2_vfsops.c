@@ -405,6 +405,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 				if (error)
 					break;
 			}
+			hammer2_inode_install_hidden(pmp);
+
 			return error;
 		}
 	}
@@ -582,7 +584,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 
 	kmalloc_create(&pmp->minode, "HAMMER2-inodes");
 	kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
-
+	lockinit(&pmp->lock, "pfslk", 0, 0);
 	spin_init(&pmp->inum_spin);
 	RB_INIT(&pmp->inum_tree);
 
@@ -706,6 +708,11 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		return EBADF;
 	}
 	hammer2_cluster_reconnect(pmp, fp);
+
+	/*
+	 * With the cluster operational install ihidden.
+	 */
+	hammer2_inode_install_hidden(pmp);
 
 	/*
 	 * Finish setup
@@ -1428,27 +1435,35 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		pmp->wthread_td = NULL;
 	}
 
+	/*
+	 * Cleanup our reference on ihidden.
+	 */
+	if (pmp->ihidden) {
+		hammer2_inode_drop(pmp->ihidden);
+		pmp->ihidden = NULL;
+	}
+
+	/*
+	 * Cleanup our reference on iroot.  iroot is (should) not be needed
+	 * by the flush code.
+	 */
+	if (pmp->iroot) {
+#if REPORT_REFS_ERRORS
+		if (pmp->iroot->refs != 1)
+			kprintf("PMP->IROOT %p REFS WRONG %d\n",
+				pmp->iroot, pmp->iroot->refs);
+#else
+		KKASSERT(pmp->iroot->refs == 1);
+#endif
+		/* ref for pmp->iroot */
+		hammer2_inode_drop(pmp->iroot);
+		pmp->iroot = NULL;
+	}
+
 	for (i = 0; i < pmp->cluster.nchains; ++i) {
 		hmp = pmp->cluster.chains[i]->hmp;
 
 		hammer2_vfs_unmount_hmp1(mp, hmp);
-
-		/*
-		 * Cleanup the root and super-root chain elements
-		 * (which should be clean).
-		 */
-		if (pmp->iroot) {
-#if REPORT_REFS_ERRORS
-			if (pmp->iroot->refs != 1)
-				kprintf("PMP->IROOT %p REFS WRONG %d\n",
-					pmp->iroot, pmp->iroot->refs);
-#else
-			KKASSERT(pmp->iroot->refs == 1);
-#endif
-			/* ref for pmp->iroot */
-			hammer2_inode_drop(pmp->iroot);
-			pmp->iroot = NULL;
-		}
 
 		rchain = pmp->cluster.chains[i];
 		if (rchain) {
