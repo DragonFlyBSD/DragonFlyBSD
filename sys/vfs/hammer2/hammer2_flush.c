@@ -899,12 +899,14 @@ retry:
 	 * resulting in a parent which effectively needs no modification.
 	 */
 	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+#if 0
 		kprintf("chain %p.%d %08x recursed but wasn't "
 			"modified mirr=%016jx "
 			"update_lo=%016jx synctid=%016jx\n",
 			chain, chain->bref.type, chain->flags,
 			chain->bref.mirror_tid,
 			core->update_lo, info->sync_tid);
+#endif
 #if 0
 		if ((chain->flags & HAMMER2_CHAIN_MOVED) == 0) {
 			hammer2_chain_ref(chain);
