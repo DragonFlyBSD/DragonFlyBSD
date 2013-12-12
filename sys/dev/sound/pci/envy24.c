@@ -34,8 +34,8 @@
 #include <dev/sound/pci/spicds.h>
 #include <dev/sound/pci/envy24.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include "mixer_if.h"
 
@@ -116,7 +116,7 @@ struct cfg_info {
 /* device private data */
 struct sc_info {
 	device_t	dev;
-	struct mtx	*lock;
+	struct lock	*lock;
 
 	/* Control/Status registor */
 	struct resource *cs;
@@ -591,7 +591,7 @@ envy24_rom2cfg(struct sc_info *sc)
 #endif
 		return NULL;
 	}
-	buff = malloc(sizeof(*buff), M_ENVY24, M_NOWAIT);
+	buff = kmalloc(sizeof(*buff), M_ENVY24, M_NOWAIT);
 	if (buff == NULL) {
 #if(0)
 		device_printf(sc->dev, "envy24_rom2cfg(): malloc()\n");
@@ -627,7 +627,7 @@ envy24_cfgfree(struct cfg_info *cfg) {
 	if (cfg == NULL)
 		return;
 	if (cfg->free)
-		free(cfg, M_ENVY24);
+		kfree(cfg, M_ENVY24);
 	return;
 }
 
@@ -935,7 +935,7 @@ envy24_delta_ak4524_create(device_t dev, void *info, int dir, int num)
 	device_printf(sc->dev, "envy24_delta_ak4524_create(dev, sc, %d, %d)\n", dir, num);
 #endif
 	
-	buff = malloc(sizeof(*buff), M_ENVY24, M_NOWAIT);
+	buff = kmalloc(sizeof(*buff), M_ENVY24, M_NOWAIT);
 	if (buff == NULL)
 		return NULL;
 
@@ -946,7 +946,7 @@ envy24_delta_ak4524_create(device_t dev, void *info, int dir, int num)
 	else
 		buff->info = spicds_create(dev, buff, num, envy24_delta_ak4524_ctl);
 	if (buff->info == NULL) {
-		free(buff, M_ENVY24);
+		kfree(buff, M_ENVY24);
 		return NULL;
 	}
 
@@ -976,7 +976,7 @@ envy24_delta_ak4524_destroy(void *codec)
 			spicds_destroy(ptr->info);
 	}
 
-	free(codec, M_ENVY24);
+	kfree(codec, M_ENVY24);
 }
 
 static void
@@ -1587,7 +1587,7 @@ envy24chan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channe
 
 	ch = &sc->chan[num];
 	ch->size = 8 * ENVY24_SAMPLE_NUM;
-	ch->data = malloc(ch->size, M_ENVY24, M_NOWAIT);
+	ch->data = kmalloc(ch->size, M_ENVY24, M_NOWAIT);
 	if (ch->data == NULL) {
 		ch->size = 0;
 		ch = NULL;
@@ -1622,7 +1622,7 @@ envy24chan_free(kobj_t obj, void *data)
 #endif
 	snd_mtxlock(sc->lock);
 	if (ch->data != NULL) {
-		free(ch->data, M_ENVY24);
+		kfree(ch->data, M_ENVY24);
 		ch->data = NULL;
 	}
 	snd_mtxunlock(sc->lock);
@@ -2298,84 +2298,84 @@ static void
 envy24_putcfg(struct sc_info *sc)
 {
 	device_printf(sc->dev, "system configuration\n");
-	printf("  SubVendorID: 0x%04x, SubDeviceID: 0x%04x\n",
+	kprintf("  SubVendorID: 0x%04x, SubDeviceID: 0x%04x\n",
 	    sc->cfg->subvendor, sc->cfg->subdevice);
-	printf("  XIN2 Clock Source: ");
+	kprintf("  XIN2 Clock Source: ");
 	switch (sc->cfg->scfg & PCIM_SCFG_XIN2) {
 	case 0x00:
-		printf("22.5792MHz(44.1kHz*512)\n");
+		kprintf("22.5792MHz(44.1kHz*512)\n");
 		break;
 	case 0x40:
-		printf("16.9344MHz(44.1kHz*384)\n");
+		kprintf("16.9344MHz(44.1kHz*384)\n");
 		break;
 	case 0x80:
-		printf("from external clock synthesizer chip\n");
+		kprintf("from external clock synthesizer chip\n");
 		break;
 	default:
-		printf("illeagal system setting\n");
+		kprintf("illeagal system setting\n");
 	}
-	printf("  MPU-401 UART(s) #: ");
+	kprintf("  MPU-401 UART(s) #: ");
 	if (sc->cfg->scfg & PCIM_SCFG_MPU)
-		printf("2\n");
+		kprintf("2\n");
 	else
-		printf("1\n");
-	printf("  AC'97 codec: ");
+		kprintf("1\n");
+	kprintf("  AC'97 codec: ");
 	if (sc->cfg->scfg & PCIM_SCFG_AC97)
-		printf("not exist\n");
+		kprintf("not exist\n");
 	else
-		printf("exist\n");
-	printf("  ADC #: ");
-	printf("%d\n", sc->adcn);
-	printf("  DAC #: ");
-	printf("%d\n", sc->dacn);
-	printf("  Multi-track converter type: ");
+		kprintf("exist\n");
+	kprintf("  ADC #: ");
+	kprintf("%d\n", sc->adcn);
+	kprintf("  DAC #: ");
+	kprintf("%d\n", sc->dacn);
+	kprintf("  Multi-track converter type: ");
 	if ((sc->cfg->acl & PCIM_ACL_MTC) == 0) {
-		printf("AC'97(SDATA_OUT:");
+		kprintf("AC'97(SDATA_OUT:");
 		if (sc->cfg->acl & PCIM_ACL_OMODE)
-			printf("packed");
+			kprintf("packed");
 		else
-			printf("split");
-		printf("|SDATA_IN:");
+			kprintf("split");
+		kprintf("|SDATA_IN:");
 		if (sc->cfg->acl & PCIM_ACL_IMODE)
-			printf("packed");
+			kprintf("packed");
 		else
-			printf("split");
-		printf(")\n");
+			kprintf("split");
+		kprintf(")\n");
 	}
 	else {
-		printf("I2S(");
+		kprintf("I2S(");
 		if (sc->cfg->i2s & PCIM_I2S_VOL)
-			printf("with volume, ");
+			kprintf("with volume, ");
 		if (sc->cfg->i2s & PCIM_I2S_96KHZ)
-			printf("96KHz support, ");
+			kprintf("96KHz support, ");
 		switch (sc->cfg->i2s & PCIM_I2S_RES) {
 		case PCIM_I2S_16BIT:
-			printf("16bit resolution, ");
+			kprintf("16bit resolution, ");
 			break;
 		case PCIM_I2S_18BIT:
-			printf("18bit resolution, ");
+			kprintf("18bit resolution, ");
 			break;
 		case PCIM_I2S_20BIT:
-			printf("20bit resolution, ");
+			kprintf("20bit resolution, ");
 			break;
 		case PCIM_I2S_24BIT:
-			printf("24bit resolution, ");
+			kprintf("24bit resolution, ");
 			break;
 		}
-		printf("ID#0x%x)\n", sc->cfg->i2s & PCIM_I2S_ID);
+		kprintf("ID#0x%x)\n", sc->cfg->i2s & PCIM_I2S_ID);
 	}
-	printf("  S/PDIF(IN/OUT): ");
+	kprintf("  S/PDIF(IN/OUT): ");
 	if (sc->cfg->spdif & PCIM_SPDIF_IN)
-		printf("1/");
+		kprintf("1/");
 	else
-		printf("0/");
+		kprintf("0/");
 	if (sc->cfg->spdif & PCIM_SPDIF_OUT)
-		printf("1 ");
+		kprintf("1 ");
 	else
-		printf("0 ");
+		kprintf("0 ");
 	if (sc->cfg->spdif & (PCIM_SPDIF_IN | PCIM_SPDIF_OUT))
-		printf("ID# 0x%02x\n", (sc->cfg->spdif & PCIM_SPDIF_ID) >> 2);
-	printf("  GPIO(mask/dir/state): 0x%02x/0x%02x/0x%02x\n",
+		kprintf("ID# 0x%02x\n", (sc->cfg->spdif & PCIM_SPDIF_ID) >> 2);
+	kprintf("  GPIO(mask/dir/state): 0x%02x/0x%02x/0x%02x\n",
 	    sc->cfg->gpiomask, sc->cfg->gpiodir, sc->cfg->gpiostate);
 }
 
@@ -2554,7 +2554,7 @@ envy24_pci_attach(device_t dev)
 	device_printf(dev, "envy24_pci_attach()\n");
 #endif
 	/* get sc_info data area */
-	if ((sc = malloc(sizeof(*sc), M_ENVY24, M_NOWAIT)) == NULL) {
+	if ((sc = kmalloc(sizeof(*sc), M_ENVY24, M_NOWAIT)) == NULL) {
 		device_printf(dev, "cannot allocate softc\n");
 		return ENXIO;
 	}
@@ -2598,7 +2598,7 @@ envy24_pci_attach(device_t dev)
 	}
 
 	/* set status iformation */
-	snprintf(status, SND_STATUSLEN,
+	ksnprintf(status, SND_STATUSLEN,
 	    "at io 0x%lx:%ld,0x%lx:%ld,0x%lx:%ld,0x%lx:%ld irq %ld",
 	    rman_get_start(sc->cs),
 	    rman_get_end(sc->cs) - rman_get_start(sc->cs) + 1,
@@ -2638,7 +2638,7 @@ bad:
 		bus_release_resource(dev, SYS_RES_IOPORT, sc->mtid, sc->mt);
 	if (sc->lock)
 		snd_mtxfree(sc->lock);
-	free(sc, M_ENVY24);
+	kfree(sc, M_ENVY24);
 	return err;
 }
 
@@ -2675,7 +2675,7 @@ envy24_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IOPORT, sc->dsid, sc->ds);
 	bus_release_resource(dev, SYS_RES_IOPORT, sc->mtid, sc->mt);
 	snd_mtxfree(sc->lock);
-	free(sc, M_ENVY24);
+	kfree(sc, M_ENVY24);
 	return 0;
 }
 

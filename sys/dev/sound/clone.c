@@ -178,7 +178,7 @@ snd_clone_create(int typemask, int maxunit, int deadline, uint32_t flags)
 	SND_CLONE_ASSERT(!(flags & ~SND_CLONE_MASK),
 	    ("invalid clone flags=0x%08x", flags));
 
-	c = malloc(sizeof(*c), M_DEVBUF, M_WAITOK | M_ZERO);
+	c = kmalloc(sizeof(*c), M_DEVBUF, M_WAITOK | M_ZERO);
 	c->refcount = 0;
 	c->size = 0;
 	c->typemask = typemask;
@@ -203,8 +203,7 @@ snd_clone_busy(struct snd_clone *c)
 		return (0);
 
 	TAILQ_FOREACH(ce, &c->head, link) {
-		if ((ce->flags & SND_CLONE_BUSY) ||
-		    (ce->devt != NULL && ce->devt->si_threadcount != 0))
+		if (ce->flags & SND_CLONE_BUSY)
 			return (EBUSY);
 	}
 
@@ -426,18 +425,17 @@ snd_clone_gc(struct snd_clone *c)
 	 * and either revoke its clone invocation status or mercilessly
 	 * throw it away.
 	 */
-	TAILQ_FOREACH_REVERSE_SAFE(ce, &c->head, link_head, link, tce) {
+	TAILQ_FOREACH_REVERSE_MUTABLE(ce, &c->head, link_head, link, tce) {
 		if (!(ce->flags & SND_CLONE_BUSY) &&
 		    (!(ce->flags & SND_CLONE_INVOKE) ||
 		    SND_CLONE_EXPIRED(c, &now, &ce->tsp))) {
-			if ((c->flags & SND_CLONE_GC_REVOKE) ||
-			    ce->devt->si_threadcount != 0) {
+			if (c->flags & SND_CLONE_GC_REVOKE) {
 				ce->flags &= ~SND_CLONE_INVOKE;
 				ce->pid = -1;
 			} else {
 				TAILQ_REMOVE(&c->head, ce, link);
 				destroy_dev(ce->devt);
-				free(ce, M_DEVBUF);
+				kfree(ce, M_DEVBUF);
 				c->size--;
 			}
 			pruned++;
@@ -460,11 +458,11 @@ snd_clone_destroy(struct snd_clone *c)
 		tmp = TAILQ_NEXT(ce, link);
 		if (ce->devt != NULL)
 			destroy_dev(ce->devt);
-		free(ce, M_DEVBUF);
+		kfree(ce, M_DEVBUF);
 		ce = tmp;
 	}
 
-	free(c, M_DEVBUF);
+	kfree(c, M_DEVBUF);
 }
 
 /*
@@ -740,7 +738,7 @@ snd_clone_alloc_new:
 	 *
 	 * That said, go figure.
 	 */
-	ce = malloc(sizeof(*ce), M_DEVBUF,
+	ce = kmalloc(sizeof(*ce), M_DEVBUF,
 	    ((c->flags & SND_CLONE_WAITOK) ? M_WAITOK : M_NOWAIT) | M_ZERO);
 	if (ce == NULL) {
 		if (*unit != -1)

@@ -172,7 +172,7 @@ snd_unit_init(void)
 
 	snd_unit_initialized = 1;
 
-	if (getenv_int("hw.snd.maxunit", &i) != 0) {
+	if (kgetenv_int("hw.snd.maxunit", &i) != 0) {
 		if (i < SND_UNIT_UMIN)
 			i = SND_UNIT_UMIN;
 		else if (i > SND_UNIT_UMAX)
@@ -192,7 +192,7 @@ snd_unit_init(void)
 	}
 
 	if (bootverbose != 0)
-		printf("%s() u=0x%08x [%d] d=0x%08x [%d] c=0x%08x [%d]\n",
+		kprintf("%s() u=0x%08x [%d] d=0x%08x [%d] c=0x%08x [%d]\n",
 		    __func__, SND_U_MASK, snd_max_u() + 1,
 		    SND_D_MASK, snd_max_d() + 1, SND_C_MASK, snd_max_c() + 1);
 }

@@ -354,7 +354,7 @@ feed_eq_init(struct pcm_feeder *f)
 	if (biquad_op == NULL)
 		return (EINVAL);
 
-	info = malloc(sizeof(*info), M_DEVBUF, M_NOWAIT | M_ZERO);
+	info = kmalloc(sizeof(*info), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (info == NULL)
 		return (ENOMEM);
 
@@ -433,7 +433,7 @@ feed_eq_free(struct pcm_feeder *f)
 
 	info = f->data;
 	if (info != NULL)
-		free(info, M_DEVBUF);
+		kfree(info, M_DEVBUF);
 
 	f->data = NULL;
 
@@ -508,16 +508,16 @@ feed_eq_scan_preamp_arg(const char *s)
 
 	/* XXX kind of ugly, but works for now.. */
 
-	r = sscanf(s, "%d.%d", &i, &f);
+	r = ksscanf(s, "%d.%d", &i, &f);
 
 	if (r == 1 && !(i < FEEDEQ_PREAMP_IMIN || i > FEEDEQ_PREAMP_IMAX)) {
-		snprintf(buf, sizeof(buf), "%c%d",
+		ksnprintf(buf, sizeof(buf), "%c%d",
 		    FEEDEQ_PREAMP_SIGNMARK(i), abs(i));
 		f = 0;
 	} else if (r == 2 &&
 	    !(i < FEEDEQ_PREAMP_IMIN || i > FEEDEQ_PREAMP_IMAX ||
 	    f < FEEDEQ_PREAMP_FMIN || f > FEEDEQ_PREAMP_FMAX))
-		snprintf(buf, sizeof(buf), "%c%d.%d",
+		ksnprintf(buf, sizeof(buf), "%c%d.%d",
 		    FEEDEQ_PREAMP_SIGNMARK(i), abs(i), f);
 	else
 		return (FEEDEQ_PREAMP_INVALID);
@@ -616,7 +616,7 @@ sysctl_dev_pcm_eq_preamp(SYSCTL_HANDLER_ARGS)
 	PCM_WAIT(d);
 	val = d->eqpreamp;
 	bzero(buf, sizeof(buf));
-	(void)snprintf(buf, sizeof(buf), "%c%d.%ddB",
+	(void)ksnprintf(buf, sizeof(buf), "%c%d.%ddB",
 	    FEEDEQ_PREAMP_SIGNMARK(val), FEEDEQ_PREAMP_IPART(val),
 	    FEEDEQ_PREAMP_FPART(val));
 	PCM_ACQUIRE(d);
@@ -688,7 +688,7 @@ feeder_eq_initsys(device_t dev)
 
 	bzero(buf, sizeof(buf));
 
-	(void)snprintf(buf, sizeof(buf), "Bass/Treble Equalizer Preamp "
+	(void)ksnprintf(buf, sizeof(buf), "Bass/Treble Equalizer Preamp "
 	    "(-/+ %d.0dB , %d.%ddB step)",
 	    FEEDEQ_GAIN_MAX, FEEDEQ_GAIN_STEP / FEEDEQ_GAIN_DIV,
 	    FEEDEQ_GAIN_STEP - ((FEEDEQ_GAIN_STEP / FEEDEQ_GAIN_DIV) *

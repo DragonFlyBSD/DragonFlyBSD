@@ -31,8 +31,8 @@
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 #include <sys/sysctl.h>
 
 #include <dev/sound/pci/via82c686.h>
@@ -90,7 +90,7 @@ struct via_info {
 	struct via_chinfo pch, rch;
 	struct via_dma_op *sgd_table;
 	u_int16_t codec_caps;
-	struct mtx *lock;
+	struct lock *lock;
 };
 
 static u_int32_t via_fmt[] = {
@@ -150,7 +150,7 @@ via_waitready_codec(struct via_info *via)
 	    (via_rd(via, VIA_CODEC_CTL, 4) & VIA_CODEC_BUSY); i++)
 		DELAY(1);
 	if (i >= TIMEOUT) {
-		printf("via: codec busy\n");
+		kprintf("via: codec busy\n");
 		return 1;
 	}
 
@@ -168,7 +168,7 @@ via_waitvalid_codec(struct via_info *via)
 	    !(via_rd(via, VIA_CODEC_CTL, 4) & VIA_CODEC_PRIVALID); i++)
 		    DELAY(1);
 	if (i >= TIMEOUT) {
-		printf("via: codec invalid\n");
+		kprintf("via: codec invalid\n");
 		return 1;
 	}
 
@@ -481,7 +481,7 @@ via_attach(device_t dev)
 	char status[SND_STATUSLEN];
 	u_int32_t data, cnt;
 
-	via = malloc(sizeof(*via), M_DEVBUF, M_WAITOK | M_ZERO);
+	via = kmalloc(sizeof(*via), M_DEVBUF, M_WAITOK | M_ZERO);
 	via->lock = snd_mtxcreate(device_get_nameunit(dev),
 	    "snd_via82c686 softc");
 
@@ -590,7 +590,7 @@ via_attach(device_t dev)
 	    NSEGS * sizeof(struct via_dma_op), dma_cb, via, 0) != 0)
 		goto bad;
 
-	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
 		 rman_get_start(via->reg), rman_get_start(via->irq),
 		 PCM_KLDSTRING(snd_via82c686));
 
@@ -610,7 +610,7 @@ bad:
 	if (via->sgd_table) bus_dmamem_free(via->sgd_dmat, via->sgd_table, via->sgd_dmamap);
 	if (via->sgd_dmat) bus_dma_tag_destroy(via->sgd_dmat);
 	if (via->lock) snd_mtxfree(via->lock);
-	if (via) free(via, M_DEVBUF);
+	if (via) kfree(via, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -633,7 +633,7 @@ via_detach(device_t dev)
 	bus_dmamem_free(via->sgd_dmat, via->sgd_table, via->sgd_dmamap);
 	bus_dma_tag_destroy(via->sgd_dmat);
 	snd_mtxfree(via->lock);
-	free(via, M_DEVBUF);
+	kfree(via, M_DEVBUF);
 	return 0;
 }
 

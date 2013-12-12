@@ -38,8 +38,8 @@
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <dev/sound/pci/cs4281.h>
 
@@ -762,7 +762,7 @@ cs4281_pci_attach(device_t dev)
     struct ac97_info *codec = NULL;
     char status[SND_STATUSLEN];
 
-    sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+    sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
     sc->dev = dev;
     sc->type = pci_get_devid(dev);
 
@@ -850,7 +850,7 @@ cs4281_pci_attach(device_t dev)
     pcm_addchan(dev, PCMDIR_PLAY, &cs4281chan_class, sc);
     pcm_addchan(dev, PCMDIR_REC, &cs4281chan_class, sc);
 
-    snprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld %s",
+    ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld %s",
 	     (sc->regtype == SYS_RES_IOPORT)? "io" : "memory",
 	     rman_get_start(sc->reg), rman_get_start(sc->irq),PCM_KLDSTRING(snd_cs4281));
     pcm_setstatus(dev, status);
@@ -870,7 +870,7 @@ cs4281_pci_attach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
     if (sc->parent_dmat)
 	bus_dma_tag_destroy(sc->parent_dmat);
-    free(sc, M_DEVBUF);
+    kfree(sc, M_DEVBUF);
 
     return ENXIO;
 }
@@ -895,7 +895,7 @@ cs4281_pci_detach(device_t dev)
     bus_teardown_intr(dev, sc->irq, sc->ih);
     bus_release_resource(dev, SYS_RES_IRQ, sc->irqid, sc->irq);
     bus_dma_tag_destroy(sc->parent_dmat);
-    free(sc, M_DEVBUF);
+    kfree(sc, M_DEVBUF);
 
     return 0;
 }

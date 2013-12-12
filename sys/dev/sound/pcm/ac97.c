@@ -32,7 +32,7 @@
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pcm/ac97_patch.h>
 
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcivar.h>
 
 #include "mixer_if.h"
 
@@ -64,7 +64,7 @@ struct ac97_info {
 	u_int32_t flags;
 	struct ac97mixtable_entry mix[AC97_MIXER_SIZE];
 	char name[16];
-	struct mtx *lock;
+	struct lock *lock;
 };
 
 struct ac97_vendorid {
@@ -580,16 +580,16 @@ static const char*
 ac97_hw_desc(u_int32_t id, const char* vname, const char* cname, char* buf)
 {
 	if (cname == NULL) {
-		sprintf(buf, "Unknown AC97 Codec (id = 0x%08x)", id);
+		ksprintf(buf, "Unknown AC97 Codec (id = 0x%08x)", id);
 		return buf;
 	}
 
 	if (vname == NULL) vname = "Unknown";
 
 	if (bootverbose) {
-		sprintf(buf, "%s %s AC97 Codec (id = 0x%08x)", vname, cname, id);
+		ksprintf(buf, "%s %s AC97 Codec (id = 0x%08x)", vname, cname, id);
 	} else {
-		sprintf(buf, "%s %s AC97 Codec", vname, cname);
+		ksprintf(buf, "%s %s AC97 Codec", vname, cname);
 	}
 	return buf;
 }
@@ -761,19 +761,19 @@ ac97_initmixer(struct ac97_info *codec)
 		device_printf(codec->dev, "Codec features ");
 		for (i = j = 0; i < 10; i++)
 			if (codec->caps & (1 << i))
-				printf("%s%s", j++? ", " : "", ac97feature[i]);
-		printf("%s%d bit master volume", j++? ", " : "", codec->mix[SOUND_MIXER_VOLUME].bits);
-		printf("%s%s\n", j? ", " : "", ac97enhancement[codec->se]);
+				kprintf("%s%s", j++? ", " : "", ac97feature[i]);
+		kprintf("%s%d bit master volume", j++? ", " : "", codec->mix[SOUND_MIXER_VOLUME].bits);
+		kprintf("%s%s\n", j? ", " : "", ac97enhancement[codec->se]);
 
 		if (codec->extcaps != 0 || codec->extid) {
 			device_printf(codec->dev, "%s codec",
 				      codec->extid? "Secondary" : "Primary");
 			if (codec->extcaps)
-				printf(" extended features ");
+				kprintf(" extended features ");
 			for (i = j = 0; i < 14; i++)
 				if (codec->extcaps & (1 << i))
-					printf("%s%s", j++? ", " : "", ac97extfeature[i]);
-			printf("\n");
+					kprintf("%s%s", j++? ", " : "", ac97extfeature[i]);
+			kprintf("\n");
 		}
 	}
 
@@ -828,8 +828,8 @@ ac97_create(device_t dev, void *devinfo, kobj_class_t cls)
 	struct ac97_info *codec;
 	int i;
 
-	codec = malloc(sizeof(*codec), M_AC97, M_WAITOK | M_ZERO);
-	snprintf(codec->name, sizeof(codec->name), "%s:ac97",
+	codec = kmalloc(sizeof(*codec), M_AC97, M_WAITOK | M_ZERO);
+	ksnprintf(codec->name, sizeof(codec->name), "%s:ac97",
 	    device_get_nameunit(dev));
 	codec->lock = snd_mtxcreate(codec->name, "ac97 codec");
 	codec->methods = kobj_create(cls, M_AC97, M_WAITOK | M_ZERO);
@@ -855,7 +855,7 @@ ac97_destroy(struct ac97_info *codec)
 	if (codec->methods != NULL)
 		kobj_delete(codec->methods, M_AC97);
 	snd_mtxfree(codec->lock);
-	free(codec, M_AC97);
+	kfree(codec, M_AC97);
 }
 
 void

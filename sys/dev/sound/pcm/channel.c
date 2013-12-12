@@ -27,8 +27,6 @@
  * SUCH DAMAGE.
  */
 
-#include "opt_isa.h"
-
 #ifdef HAVE_KERNEL_OPTION_HEADERS
 #include "opt_snd.h"
 #endif
@@ -210,8 +208,9 @@ SYSCTL_INT(_hw_snd, OID_AUTO, syncdelay, CTLFLAG_RW,
  * Clients should acquire this lock @b without holding any channel locks
  * before touching syncgroups or the main syncgroup list.
  */
-struct mtx snd_pcm_syncgroups_mtx;
-MTX_SYSINIT(pcm_syncgroup, &snd_pcm_syncgroups_mtx, "PCM channel sync group lock", MTX_DEF);
+struct lock snd_pcm_syncgroups_mtx;
+LOCK_SYSINIT(pcm_syncgroup, &snd_pcm_syncgroups_mtx,
+	"PCM channel sync group lock", LK_CANRECURSE);
 /**
  * @brief syncgroups' master list
  *
@@ -966,7 +965,7 @@ chn_flush(struct pcm_channel *c)
 
 	CHN_LOCKASSERT(c);
 	KASSERT(c->direction == PCMDIR_PLAY, ("chn_flush on bad channel"));
-    	DEB(printf("chn_flush: c->flags 0x%08x\n", c->flags));
+    	DEB(kprintf("chn_flush: c->flags 0x%08x\n", c->flags));
 
 	c->flags |= CHN_F_CLOSING;
 	chn_sync(c, 0);
@@ -1055,7 +1054,7 @@ snd_str2afmt(const char *req)
 	int matrix_id;
 	char b1[8], b2[8];
 
-	i = sscanf(req, "%5[^:]:%6s", b1, b2);
+	i = ksscanf(req, "%5[^:]:%6s", b1, b2);
 
 	if (i == 1) {
 		if (strlen(req) != strlen(b1))
@@ -1277,7 +1276,7 @@ chn_init(struct pcm_channel *c, void *devinfo, int dir, int direction)
 	 */
 	if (c->direction == PCMDIR_PLAY) {
 		bs->sl = sndbuf_getmaxsize(bs);
-		bs->shadbuf = malloc(bs->sl, M_DEVBUF, M_NOWAIT);
+		bs->shadbuf = kmalloc(bs->sl, M_DEVBUF, M_NOWAIT);
 		if (bs->shadbuf == NULL) {
 			ret = ENOMEM;
 			goto out;
@@ -1699,7 +1698,7 @@ chn_calclatency(int dir, int latency, int bps, u_int32_t datarate,
 			*rblksz = CHN_2NDBUFMAXSIZE >> 1;
 		if (rblkcnt != NULL)
 			*rblkcnt = 2;
-		printf("%s(): FAILED dir=%d latency=%d bps=%d "
+		kprintf("%s(): FAILED dir=%d latency=%d bps=%d "
 		    "datarate=%u max=%u\n",
 		    __func__, dir, latency, bps, datarate, max);
 		return CHN_2NDBUFMAXSIZE;
@@ -2514,7 +2513,7 @@ chn_syncdestroy(struct pcm_channel *c)
 
 	sg_id = 0;
 
-	PCM_SG_LOCKASSERT(MA_OWNED);
+	PCM_SG_ASSERTOWNED;
 
 	if (c->sm != NULL) {
 		sm = c->sm;
@@ -2524,12 +2523,12 @@ chn_syncdestroy(struct pcm_channel *c)
 		KASSERT(sg != NULL, ("syncmember has null parent"));
 
 		SLIST_REMOVE(&sg->members, sm, pcmchan_syncmember, link);
-		free(sm, M_DEVBUF);
+		kfree(sm, M_DEVBUF);
 
 		if (SLIST_EMPTY(&sg->members)) {
 			SLIST_REMOVE(&snd_pcm_syncgroups, sg, pcmchan_syncgroup, link);
 			sg_id = sg->id;
-			free(sg, M_DEVBUF);
+			kfree(sg, M_DEVBUF);
 		}
 	}
 

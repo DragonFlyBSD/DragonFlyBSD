@@ -30,8 +30,8 @@
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/fm801.c 254263 2013-08-12 23:30:01Z scottl $");
 
@@ -103,7 +103,7 @@ SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/fm801.c 254263 2013-08-12 23:
 #define FM801_DEFAULT_BUFSZ	4096	/* Other values do not work!!! */
 
 /* debug purposes */
-#define DPRINT	 if(0) printf
+#define DPRINT	 if(0) kprintf
 
 /*
 static int fm801ch_setup(struct pcm_channel *c);
@@ -218,7 +218,7 @@ fm801_rdcd(kobj_t obj, void *devinfo, int regno)
 		DPRINT("fm801 rdcd: 1 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		printf("fm801 rdcd: codec busy\n");
+		kprintf("fm801 rdcd: codec busy\n");
 		return 0;
 	}
 
@@ -230,7 +230,7 @@ fm801_rdcd(kobj_t obj, void *devinfo, int regno)
 		DPRINT("fm801 rdcd: 2 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		printf("fm801 rdcd: write codec invalid\n");
+		kprintf("fm801 rdcd: write codec invalid\n");
 		return 0;
 	}
 
@@ -253,7 +253,7 @@ fm801_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		DPRINT("fm801 rdcd: 1 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		printf("fm801 wrcd: read codec busy\n");
+		kprintf("fm801 wrcd: read codec busy\n");
 		return -1;
 	}
 
@@ -266,7 +266,7 @@ fm801_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		DPRINT("fm801 wrcd: 2 - DELAY\n");
 	}
 	if (i >= TIMO) {
-		printf("fm801 wrcd: read codec busy\n");
+		kprintf("fm801 wrcd: read codec busy\n");
 		return -1;
 	}
 	DPRINT("fm801 wrcd release reg 0x%x val 0x%x\n",regno, data);
@@ -579,7 +579,7 @@ fm801_pci_attach(device_t dev)
 	int 			mapped = 0;
 	char 			status[SND_STATUSLEN];
 
-	fm801 = malloc(sizeof(*fm801), M_DEVBUF, M_WAITOK | M_ZERO);
+	fm801 = kmalloc(sizeof(*fm801), M_DEVBUF, M_WAITOK | M_ZERO);
 	fm801->type = pci_get_devid(dev);
 
 	pci_enable_busmaster(dev);
@@ -639,7 +639,7 @@ fm801_pci_attach(device_t dev)
 		goto oops;
 	}
 
-	snprintf(status, 64, "at %s 0x%lx irq %ld %s",
+	ksnprintf(status, 64, "at %s 0x%lx irq %ld %s",
 		(fm801->regtype == SYS_RES_IOPORT)? "io" : "memory",
 		rman_get_start(fm801->reg), rman_get_start(fm801->irq),PCM_KLDSTRING(snd_fm801));
 
@@ -660,7 +660,7 @@ oops:
 	if (fm801->ih) bus_teardown_intr(dev, fm801->irq, fm801->ih);
 	if (fm801->irq) bus_release_resource(dev, SYS_RES_IRQ, fm801->irqid, fm801->irq);
 	if (fm801->parent_dmat) bus_dma_tag_destroy(fm801->parent_dmat);
-	free(fm801, M_DEVBUF);
+	kfree(fm801, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -692,7 +692,7 @@ fm801_pci_detach(device_t dev)
 	bus_teardown_intr(dev, fm801->irq, fm801->ih);
 	bus_release_resource(dev, SYS_RES_IRQ, fm801->irqid, fm801->irq);
 	bus_dma_tag_destroy(fm801->parent_dmat);
-	free(fm801, M_DEVBUF);
+	kfree(fm801, M_DEVBUF);
 	return 0;
 }
 

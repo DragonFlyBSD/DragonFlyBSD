@@ -33,8 +33,8 @@
 #include <dev/sound/pci/hdspe.h>
 #include <dev/sound/chip.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <mixer_if.h>
 
@@ -207,7 +207,7 @@ hdspe_running(struct sc_info *sc)
 		}
 	}
 
-	free(devlist, M_TEMP);
+	kfree(devlist, M_TEMP);
 	return 0;
 bad:
 
@@ -215,7 +215,7 @@ bad:
 	device_printf(sc->dev,"hdspe is running\n");
 #endif
 
-	free(devlist, M_TEMP);
+	kfree(devlist, M_TEMP);
 	return 1;
 }
 
@@ -326,7 +326,7 @@ hdspechan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b,
 	ch->rvol = 0;
 
 	ch->size = HDSPE_CHANBUF_SIZE * 2 /* slots */;
-	ch->data = malloc(ch->size, M_HDSPE, M_NOWAIT);
+	ch->data = kmalloc(ch->size, M_HDSPE, M_NOWAIT);
 
 	ch->buffer = b;
 	ch->channel = c;
@@ -414,7 +414,7 @@ hdspechan_free(kobj_t obj, void *data)
 #endif
 	snd_mtxlock(sc->lock);
 	if (ch->data != NULL) {
-		free(ch->data, M_HDSPE);
+		kfree(ch->data, M_HDSPE);
 		ch->data = NULL;
 	}
 	snd_mtxunlock(sc->lock);
@@ -642,7 +642,7 @@ hdspe_pcm_attach(device_t dev)
 	scp->ih = &hdspe_pcm_intr;
 
 	bzero(desc, sizeof(desc));
-	snprintf(desc, sizeof(desc), "HDSPe AIO [%s]", scp->hc->descr);
+	ksnprintf(desc, sizeof(desc), "HDSPe AIO [%s]", scp->hc->descr);
 	device_set_desc_copy(dev, desc);
 
 	/*
@@ -668,7 +668,7 @@ hdspe_pcm_attach(device_t dev)
 		scp->chnum++;
 	}
 
-	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
 	    rman_get_start(scp->sc->cs),
 	    rman_get_start(scp->sc->irq),
 	    PCM_KLDSTRING(snd_hdspe));

@@ -30,7 +30,6 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/systm.h>
 #include <sys/sbuf.h>
@@ -38,10 +37,9 @@
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/sysctl.h>
-#include <sys/kdb.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <machine/clock.h>	/* for DELAY */
 
@@ -292,7 +290,7 @@ struct emu_mem {
 /* rm */
 struct emu_rm {
 	struct emu_sc_info *card;
-	struct mtx	gpr_lock;
+	struct lock	gpr_lock;
 	signed int	allocmap[EMU_MAX_GPR];
 	int		num_gprs;
 	int		last_free_gpr;
@@ -307,8 +305,8 @@ struct emu_intr_handler {
 };
 
 struct emu_sc_info {
-	struct mtx	lock;
-	struct mtx	rw;		/* Hardware exclusive access lock */
+	struct lock	lock;
+	struct lock	rw;		/* Hardware exclusive access lock */
 
 	/* Hardware and subdevices */
 	device_t	dev;
@@ -321,7 +319,7 @@ struct emu_sc_info {
 	bus_space_handle_t sh;
 
 	struct cdev	*cdev;		/* /dev/emu10k character device */
-	struct mtx	emu10kx_lock;
+	struct lock	emu10kx_lock;
 	int		emu10kx_isopen;
 	struct sbuf	emu10kx_sbuf;
 	int		emu10kx_bufptr;
@@ -447,11 +445,11 @@ static int	emu_modevent(module_t mod __unused, int cmd, void *data __unused);
 
 #define EMU_RWLOCK() do {		\
 	EMU_MTX_DEBUG();		\
-	mtx_lock(&(sc->rw));		\
+	lockmgr(&(sc->rw), LK_EXCLUSIVE);		\
 	} while (0)
 
 #define EMU_RWUNLOCK() do {		\
-	mtx_unlock(&(sc->rw));		\
+	lockmgr(&(sc->rw), LK_RELEASE);		\
 	EMU_MTX_DEBUG();		\
 	} while (0)
 
@@ -818,15 +816,15 @@ emu_timer_create(struct emu_sc_info *sc)
 
 	timer = -1;
 
-	mtx_lock(&sc->lock);
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	for (i = 0; i < EMU_MAX_IRQ_CONSUMERS; i++)
 		if (sc->timer[i] == 0) {
 			sc->timer[i] = -1;	/* disable it */
 			timer = i;
-			mtx_unlock(&sc->lock);
+			lockmgr(&sc->lock, LK_RELEASE);
 			return (timer);
 		}
-	mtx_unlock(&sc->lock);
+	lockmgr(&sc->lock, LK_RELEASE);
 
 	return (-1);
 }
@@ -842,7 +840,7 @@ emu_timer_set(struct emu_sc_info *sc, int timer, int delay)
 	RANGE(delay, 16, 1024);
 	RANGE(timer, 0, EMU_MAX_IRQ_CONSUMERS-1);
 
-	mtx_lock(&sc->lock);
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	sc->timer[timer] = delay;
 	for (i = 0; i < EMU_MAX_IRQ_CONSUMERS; i++)
 		if (sc->timerinterval > sc->timer[i])
@@ -850,7 +848,7 @@ emu_timer_set(struct emu_sc_info *sc, int timer, int delay)
 
 	/* XXX */
 	emu_wr(sc, EMU_TIMER, sc->timerinterval & 0x03ff, 2);
-	mtx_unlock(&sc->lock);
+	lockmgr(&sc->lock, LK_RELEASE);
 
 	return (timer);
 }
@@ -867,7 +865,7 @@ emu_timer_enable(struct emu_sc_info *sc, int timer, int go)
 
 	RANGE(timer, 0, EMU_MAX_IRQ_CONSUMERS-1);
 
-	mtx_lock(&sc->lock);
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 
 	if ((go == 1) && (sc->timer[timer] < 0))
 		sc->timer[timer] = -sc->timer[timer];
@@ -893,7 +891,7 @@ emu_timer_enable(struct emu_sc_info *sc, int timer, int go)
 		x &= ~EMU_INTE_INTERTIMERENB;
 		emu_wr(sc, EMU_INTE, x, 4);
 	}
-	mtx_unlock(&sc->lock);
+	lockmgr(&sc->lock, LK_RELEASE);
 	return (0);
 }
 
@@ -907,10 +905,10 @@ emu_timer_clear(struct emu_sc_info *sc, int timer)
 
 	emu_timer_enable(sc, timer, 0);
 
-	mtx_lock(&sc->lock);
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	if (sc->timer[timer] != 0)
 		sc->timer[timer] = 0;
-	mtx_unlock(&sc->lock);
+	lockmgr(&sc->lock, LK_RELEASE);
 
 	return (timer);
 }
@@ -924,7 +922,7 @@ emu_intr_register(struct emu_sc_info *sc, uint32_t inte_mask, uint32_t intr_mask
 	int i;
 	uint32_t x;
 
-	mtx_lock(&sc->lock);
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	for (i = 0; i < EMU_MAX_IRQ_CONSUMERS; i++)
 		if (sc->ihandler[i].inte_mask == 0) {
 			sc->ihandler[i].inte_mask = inte_mask;
@@ -934,13 +932,13 @@ emu_intr_register(struct emu_sc_info *sc, uint32_t inte_mask, uint32_t intr_mask
 			x = emu_rd(sc, EMU_INTE, 4);
 			x |= inte_mask;
 			emu_wr(sc, EMU_INTE, x, 4);
-			mtx_unlock(&sc->lock);
+			lockmgr(&sc->lock, LK_RELEASE);
 			if (sc->dbg_level > 1)
 				device_printf(sc->dev, "ihandle %d registered\n", i);
 
 			return (i);
 		}
-	mtx_unlock(&sc->lock);
+	lockmgr(&sc->lock, LK_RELEASE);
 	if (sc->dbg_level > 1)
 		device_printf(sc->dev, "ihandle not registered\n");
 
@@ -953,10 +951,10 @@ emu_intr_unregister(struct emu_sc_info *sc, int hnumber)
 	uint32_t x;
 	int i;
 
-	mtx_lock(&sc->lock);
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 
 	if (sc->ihandler[hnumber].inte_mask == 0) {
-		mtx_unlock(&sc->lock);
+		lockmgr(&sc->lock, LK_RELEASE);
 		return (-1);
 	}
 
@@ -975,7 +973,7 @@ emu_intr_unregister(struct emu_sc_info *sc, int hnumber)
 
 	emu_wr(sc, EMU_INTE, x, 4);
 
-	mtx_unlock(&sc->lock);
+	lockmgr(&sc->lock, LK_RELEASE);
 	return (hnumber);
 }
 
@@ -1053,7 +1051,7 @@ emu_setmap(void *arg, bus_dma_segment_t * segs, int nseg, int error)
 	*phys = error ? 0 : (bus_addr_t) segs->ds_addr;
 
 	if (bootverbose) {
-		printf("emu10kx: setmap (%lx, %lx), nseg=%d, error=%d\n",
+		kprintf("emu10kx: setmap (%lx, %lx), nseg=%d, error=%d\n",
 		    (unsigned long)segs->ds_addr, (unsigned long)segs->ds_len,
 		    nseg, error);
 	}
@@ -1119,7 +1117,7 @@ emu_memalloc(struct emu_mem *mem, uint32_t sz, bus_addr_t * addr, const char *ow
 			device_printf(mem->card->dev, "emu_memalloc: no free space in bitmap\n");
 		return (NULL);
 		}
-	blk = malloc(sizeof(*blk), M_DEVBUF, M_NOWAIT);
+	blk = kmalloc(sizeof(*blk), M_DEVBUF, M_NOWAIT);
 	if (blk == NULL) {
 		if (mem->card->dbg_level > 2)
 			device_printf(mem->card->dev, "emu_memalloc: buffer allocation failed\n");
@@ -1131,7 +1129,7 @@ emu_memalloc(struct emu_mem *mem, uint32_t sz, bus_addr_t * addr, const char *ow
 	if (membuf == NULL) {
 		if (mem->card->dbg_level > 2)
 			device_printf(mem->card->dev, "emu_memalloc: can't setup HW memory\n");
-		free(blk, M_DEVBUF);
+		kfree(blk, M_DEVBUF);
 		return (NULL);
 	}
 	blk->buf = membuf;
@@ -1170,7 +1168,7 @@ emu_memfree(struct emu_mem *mem, void *membuf)
 		mem->bmap[idx >> 3] &= ~(1 << (idx & 7));
 		mem->ptb_pages[idx] = tmp | idx;
 	}
-	free(blk, M_DEVBUF);
+	kfree(blk, M_DEVBUF);
 	return (0);
 }
 
@@ -1261,13 +1259,13 @@ emu_valloc(struct emu_sc_info *sc)
 	int i;
 
 	v = NULL;
-	mtx_lock(&sc->lock);
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	for (i = 0; i < NUM_G && sc->voice[i].busy; i++);
 	if (i < NUM_G) {
 		v = &sc->voice[i];
 		v->busy = 1;
 	}
-	mtx_unlock(&sc->lock);
+	lockmgr(&sc->lock, LK_RELEASE);
 	return (v);
 }
 
@@ -1276,7 +1274,7 @@ emu_vfree(struct emu_sc_info *sc, struct emu_voice *v)
 {
 	int i, r;
 
-	mtx_lock(&sc->lock);
+	lockmgr(&sc->lock, LK_EXCLUSIVE);
 	for (i = 0; i < NUM_G; i++) {
 		if (v == &sc->voice[i] && sc->voice[i].busy) {
 			v->busy = 0;
@@ -1289,7 +1287,7 @@ emu_vfree(struct emu_sc_info *sc, struct emu_voice *v)
 				r = emu_memfree(&sc->mem, v->vbuf);
 		}
 	}
-	mtx_unlock(&sc->lock);
+	lockmgr(&sc->lock, LK_RELEASE);
 }
 
 int
@@ -1576,7 +1574,7 @@ emu_addefxmixer(struct emu_sc_info *sc, const char *mix_name, const int mix_id, 
 		 * see freebsd-current mailing list, emu10kx driver
 		 * discussion around 2006-05-24.
 		 */
-		snprintf(sysctl_name, 32, "_%s", mix_name);
+		ksnprintf(sysctl_name, 32, "_%s", mix_name);
 		SYSCTL_ADD_PROC(sc->ctx,
 			SYSCTL_CHILDREN(sc->root),
 			OID_AUTO, sysctl_name,
@@ -2205,13 +2203,13 @@ emu10kx_open(struct cdev *i_dev, int flags __unused, int mode __unused, struct t
 	struct emu_sc_info *sc;
 
 	sc = i_dev->si_drv1;
-	mtx_lock(&sc->emu10kx_lock);
+	lockmgr(&sc->emu10kx_lock, LK_EXCLUSIVE);
 	if (sc->emu10kx_isopen) {
-		mtx_unlock(&sc->emu10kx_lock);
+		lockmgr(&sc->emu10kx_lock, LK_RELEASE);
 		return (EBUSY);
 	}
 	sc->emu10kx_isopen = 1;
-	mtx_unlock(&sc->emu10kx_lock);
+	lockmgr(&sc->emu10kx_lock, LK_RELEASE);
 	if (sbuf_new(&sc->emu10kx_sbuf, NULL, 4096, 0) == NULL) {
 		error = ENXIO;
 		goto out;
@@ -2220,9 +2218,9 @@ emu10kx_open(struct cdev *i_dev, int flags __unused, int mode __unused, struct t
 	error = (emu10kx_prepare(sc, &sc->emu10kx_sbuf) > 0) ? 0 : ENOMEM;
 out:
 	if (error) {
-		mtx_lock(&sc->emu10kx_lock);
+		lockmgr(&sc->emu10kx_lock, LK_EXCLUSIVE);
 		sc->emu10kx_isopen = 0;
-		mtx_unlock(&sc->emu10kx_lock);
+		lockmgr(&sc->emu10kx_lock, LK_RELEASE);
 	}
 	return (error);
 }
@@ -2234,14 +2232,14 @@ emu10kx_close(struct cdev *i_dev, int flags __unused, int mode __unused, struct 
 
 	sc = i_dev->si_drv1;
 
-	mtx_lock(&sc->emu10kx_lock);
+	lockmgr(&sc->emu10kx_lock, LK_EXCLUSIVE);
 	if (!(sc->emu10kx_isopen)) {
-		mtx_unlock(&sc->emu10kx_lock);
+		lockmgr(&sc->emu10kx_lock, LK_RELEASE);
 		return (EBADF);
 	}
 	sbuf_delete(&sc->emu10kx_sbuf);
 	sc->emu10kx_isopen = 0;
-	mtx_unlock(&sc->emu10kx_lock);
+	lockmgr(&sc->emu10kx_lock, LK_RELEASE);
 
 	return (0);
 }
@@ -2253,12 +2251,12 @@ emu10kx_read(struct cdev *i_dev, struct uio *buf, int flag __unused)
 	struct emu_sc_info *sc;
 
 	sc = i_dev->si_drv1;
-	mtx_lock(&sc->emu10kx_lock);
+	lockmgr(&sc->emu10kx_lock, LK_EXCLUSIVE);
 	if (!(sc->emu10kx_isopen)) {
-		mtx_unlock(&sc->emu10kx_lock);
+		lockmgr(&sc->emu10kx_lock, LK_RELEASE);
 		return (EBADF);
 	}
-	mtx_unlock(&sc->emu10kx_lock);
+	lockmgr(&sc->emu10kx_lock, LK_RELEASE);
 
 	l = min(buf->uio_resid, sbuf_len(&sc->emu10kx_sbuf) - sc->emu10kx_bufptr);
 	err = (l > 0) ? uiomove(sbuf_data(&sc->emu10kx_sbuf) + sc->emu10kx_bufptr, l, buf) : 0;
@@ -2330,7 +2328,8 @@ emu10kx_dev_init(struct emu_sc_info *sc)
 {
 	int unit;
 
-	mtx_init(&sc->emu10kx_lock, device_get_nameunit(sc->dev), "kxdevlock", 0);
+	lockinit(&sc->emu10kx_lock, device_get_nameunit(sc->dev), 0,
+		 LK_CANRECURSE);
 	unit = device_get_unit(sc->dev);
 
 	sc->cdev = make_dev(&emu10kx_cdevsw, PCMMINOR(unit), UID_ROOT, GID_WHEEL, 0640, "emu10kx%d", unit);
@@ -2344,16 +2343,16 @@ emu10kx_dev_init(struct emu_sc_info *sc)
 static int
 emu10kx_dev_uninit(struct emu_sc_info *sc)
 {
-	mtx_lock(&sc->emu10kx_lock);
+	lockmgr(&sc->emu10kx_lock, LK_EXCLUSIVE);
 	if (sc->emu10kx_isopen) {
-		mtx_unlock(&sc->emu10kx_lock);
+		lockmgr(&sc->emu10kx_lock, LK_RELEASE);
 		return (EBUSY);
 	}
 	if (sc->cdev)
 		destroy_dev(sc->cdev);
 	sc->cdev = 0;
 
-	mtx_destroy(&sc->emu10kx_lock);
+	lockuninit(&sc->emu10kx_lock);
 	return (0);
 }
 
@@ -2365,7 +2364,7 @@ emu_rm_init(struct emu_sc_info *sc)
 	int maxcount;
 	struct emu_rm *rm;
 
-	rm = malloc(sizeof(struct emu_rm), M_DEVBUF, M_NOWAIT | M_ZERO);
+	rm = kmalloc(sizeof(struct emu_rm), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (rm == NULL) {
 		return (ENOMEM);
 	}
@@ -2373,7 +2372,8 @@ emu_rm_init(struct emu_sc_info *sc)
 	rm->card = sc;
 	maxcount = sc->num_gprs;
 	rm->num_used = 0;
-	mtx_init(&(rm->gpr_lock), device_get_nameunit(sc->dev), "gpr alloc", MTX_DEF);
+	lockinit(&(rm->gpr_lock), device_get_nameunit(sc->dev), 0,
+		 LK_CANRECURSE);
 	rm->num_gprs = (maxcount < EMU_MAX_GPR ? maxcount : EMU_MAX_GPR);
 	for (i = 0; i < rm->num_gprs; i++)
 		rm->allocmap[i] = 0;
@@ -2390,15 +2390,15 @@ emu_rm_uninit(struct emu_sc_info *sc)
 	int i;
 
 	if (sc->dbg_level > 1) {
-		mtx_lock(&(sc->rm->gpr_lock));
+		lockmgr(&(sc->rm->gpr_lock), LK_EXCLUSIVE);
 		for (i = 1; i < sc->rm->last_free_gpr; i++)
 			if (sc->rm->allocmap[i] > 0)
 				device_printf(sc->dev, "rm: gpr %d not free before uninit\n", i);
-		mtx_unlock(&(sc->rm->gpr_lock));
+		lockmgr(&(sc->rm->gpr_lock), LK_RELEASE);
 	}
 
-	mtx_destroy(&(sc->rm->gpr_lock));
-	free(sc->rm, M_DEVBUF);
+	lockuninit(&(sc->rm->gpr_lock));
+	kfree(sc->rm, M_DEVBUF);
 	return (0);
 }
 
@@ -2410,7 +2410,7 @@ emu_rm_gpr_alloc(struct emu_rm *rm, int count)
 
 	allocated_gpr = rm->num_gprs;
 	/* try fast way first */
-	mtx_lock(&(rm->gpr_lock));
+	lockmgr(&(rm->gpr_lock), LK_EXCLUSIVE);
 	if (rm->last_free_gpr + count <= rm->num_gprs) {
 		allocated_gpr = rm->last_free_gpr;
 		rm->last_free_gpr += count;
@@ -2445,7 +2445,7 @@ emu_rm_gpr_alloc(struct emu_rm *rm, int count)
 		allocated_gpr = (-1);
 	if (allocated_gpr >= 0)
 		rm->num_used += count;
-	mtx_unlock(&(rm->gpr_lock));
+	lockmgr(&(rm->gpr_lock), LK_RELEASE);
 	return (allocated_gpr);
 }
 
@@ -2883,7 +2883,7 @@ emu_init(struct emu_sc_info *sc)
 			tmp = emu_rd(sc, EMU_A_IOCFG, 2);
 			device_printf(sc->dev, "Audigy Card Configuration (    0x%04x )\n", tmp);
 			device_printf(sc->dev, "Audigy Card Configuration (  & 0xff00 )");
-			printf(" : %s%s%s%s%s%s%s%s\n",
+			kprintf(" : %s%s%s%s%s%s%s%s\n",
 			    (tmp & 0x8000 ? "[Rear Speakers] " : ""),
 			    (tmp & 0x4000 ? "[Front Speakers] " : ""),
 			    (tmp & 0x2000 ? "[0x20] " : ""),
@@ -2893,7 +2893,7 @@ emu_init(struct emu_sc_info *sc)
 			    (tmp & 0x0200 ? "[0x02] " : ""),
 			    (tmp & 0x0100 ? "[AudigyDrive Phones]" : " "));
 			device_printf(sc->dev, "Audigy Card Configuration (  & 0x00ff )");
-			printf(" : %s%s%s%s%s%s%s%s\n",
+			kprintf(" : %s%s%s%s%s%s%s%s\n",
 			    (tmp & 0x0080 ? "[0x80] " : ""),
 			    (tmp & 0x0040 ? "[Mute AnalogOut] " : ""),
 			    (tmp & 0x0020 ? "[0x20] " : ""),
@@ -3082,8 +3082,8 @@ emu_pci_attach(device_t dev)
             OID_AUTO, "debug", CTLFLAG_RW, &(sc->dbg_level), 0, "Debug level");
 
 	/* Fill in the softc. */
-	mtx_init(&sc->lock, device_get_nameunit(dev), "bridge conf", MTX_DEF);
-	mtx_init(&sc->rw, device_get_nameunit(dev), "exclusive io", MTX_DEF);
+	lockinit(&sc->lock, device_get_nameunit(dev), 0, LK_CANRECURSE);
+	lockinit(&sc->rw, device_get_nameunit(dev), 0, LK_CANRECURSE);
 	sc->dev = dev;
 	sc->type = pci_get_devid(dev);
 	sc->rev = pci_get_revid(dev);
@@ -3202,9 +3202,8 @@ emu_pci_attach(device_t dev)
 
 	i = 0;
 	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &i, RF_ACTIVE | RF_SHAREABLE);
-	if ((sc->irq == NULL) || bus_setup_intr(dev, sc->irq, INTR_MPSAFE | INTR_TYPE_AV,
-	    NULL,
-	    emu_intr, sc, &sc->ih)) {
+	if ((sc->irq == NULL) || bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
+	    emu_intr, sc, &sc->ih, NULL)) {
 		device_printf(dev, "unable to map interrupt\n");
 		goto bad;
 	}
@@ -3225,7 +3224,7 @@ emu_pci_attach(device_t dev)
 		device_printf(dev, "unable to create control device\n");
 		goto bad;
 	}
-	snprintf(status, 255, "rev %d at io 0x%lx irq %ld", sc->rev, rman_get_start(sc->reg), rman_get_start(sc->irq));
+	ksnprintf(status, 255, "rev %d at io 0x%lx irq %ld", sc->rev, rman_get_start(sc->reg), rman_get_start(sc->irq));
 
 	/* Voices */
 	for (i = 0; i < NUM_G; i++) {
@@ -3246,12 +3245,14 @@ emu_pci_attach(device_t dev)
 		sc->pcm[i] = NULL;
 
 	/* FRONT */
-	func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+	func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
+		       M_NOWAIT | M_ZERO);
 	if (func == NULL) {
 		error = ENOMEM;
 		goto bad;
 	}
-	pcminfo = malloc(sizeof(struct emu_pcminfo), M_DEVBUF, M_NOWAIT | M_ZERO);
+	pcminfo = kmalloc(sizeof(struct emu_pcminfo), M_DEVBUF,
+			  M_NOWAIT | M_ZERO);
 	if (pcminfo == NULL) {
 		error = ENOMEM;
 		goto bad;
@@ -3266,12 +3267,14 @@ emu_pci_attach(device_t dev)
 
 	if (!(sc->mch_disabled)) {
 		/* REAR */
-		func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
+			       M_NOWAIT | M_ZERO);
 		if (func == NULL) {
 			error = ENOMEM;
 			goto bad;
 		}
-		pcminfo = malloc(sizeof(struct emu_pcminfo), M_DEVBUF, M_NOWAIT | M_ZERO);
+		pcminfo = kmalloc(sizeof(struct emu_pcminfo), M_DEVBUF,
+				  M_NOWAIT | M_ZERO);
 		if (pcminfo == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -3285,12 +3288,14 @@ emu_pci_attach(device_t dev)
 		device_set_ivars(sc->pcm[RT_REAR], func);
 		if (sc->has_51) {
 			/* CENTER */
-			func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+			func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
+				       M_NOWAIT | M_ZERO);
 			if (func == NULL) {
 				error = ENOMEM;
 				goto bad;
 			}
-			pcminfo = malloc(sizeof(struct emu_pcminfo), M_DEVBUF, M_NOWAIT | M_ZERO);
+			pcminfo = kmalloc(sizeof(struct emu_pcminfo),
+					  M_DEVBUF, M_NOWAIT | M_ZERO);
 			if (pcminfo == NULL) {
 				error = ENOMEM;
 				goto bad;
@@ -3303,12 +3308,14 @@ emu_pci_attach(device_t dev)
 			sc->pcm[RT_CENTER] = device_add_child(dev, "pcm", -1);
 			device_set_ivars(sc->pcm[RT_CENTER], func);
 			/* SUB */
-			func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+			func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
+				       M_NOWAIT | M_ZERO);
 			if (func == NULL) {
 				error = ENOMEM;
 				goto bad;
 			}
-			pcminfo = malloc(sizeof(struct emu_pcminfo), M_DEVBUF, M_NOWAIT | M_ZERO);
+			pcminfo = kmalloc(sizeof(struct emu_pcminfo),
+					  M_DEVBUF, M_NOWAIT | M_ZERO);
 			if (pcminfo == NULL) {
 				error = ENOMEM;
 				goto bad;
@@ -3323,12 +3330,14 @@ emu_pci_attach(device_t dev)
 		}
 		if (sc->has_71) {
 			/* SIDE */
-			func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+			func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
+				       M_NOWAIT | M_ZERO);
 			if (func == NULL) {
 				error = ENOMEM;
 				goto bad;
 			}
-			pcminfo = malloc(sizeof(struct emu_pcminfo), M_DEVBUF, M_NOWAIT | M_ZERO);
+			pcminfo = kmalloc(sizeof(struct emu_pcminfo),
+					  M_DEVBUF, M_NOWAIT | M_ZERO);
 			if (pcminfo == NULL) {
 				error = ENOMEM;
 				goto bad;
@@ -3344,12 +3353,14 @@ emu_pci_attach(device_t dev)
 	} /* mch_disabled */
 
 	if (sc->mch_rec) {
-		func = malloc(sizeof(struct sndcard_func), M_DEVBUF, M_NOWAIT | M_ZERO);
+		func = kmalloc(sizeof(struct sndcard_func), M_DEVBUF,
+			       M_NOWAIT | M_ZERO);
 		if (func == NULL) {
 			error = ENOMEM;
 			goto bad;
 		}
-		pcminfo = malloc(sizeof(struct emu_pcminfo), M_DEVBUF, M_NOWAIT | M_ZERO);
+		pcminfo = kmalloc(sizeof(struct emu_pcminfo), M_DEVBUF,
+				  M_NOWAIT | M_ZERO);
 		if (pcminfo == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -3431,8 +3442,8 @@ bad:
 		bus_teardown_intr(dev, sc->irq, sc->ih);
 	if (sc->irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
-	mtx_destroy(&sc->rw);
-	mtx_destroy(&sc->lock);
+	lockuninit(&sc->rw);
+	lockuninit(&sc->lock);
 	return (error);
 }
 
@@ -3452,8 +3463,8 @@ emu_pci_detach(device_t dev)
 			func = device_get_ivars(sc->pcm[i]);
 			if (func != NULL && func->func == SCF_PCM) {
 				device_set_ivars(sc->pcm[i], NULL);
-				free(func->varinfo, M_DEVBUF);
-				free(func, M_DEVBUF);
+				kfree(func->varinfo, M_DEVBUF);
+				kfree(func, M_DEVBUF);
 			}
 			r = device_delete_child(dev, sc->pcm[i]);
 			if (r)	return (r);
@@ -3464,8 +3475,8 @@ emu_pci_detach(device_t dev)
 		func = device_get_ivars(sc->midi[0]);
 		if (func != NULL && func->func == SCF_MIDI) {
 			device_set_ivars(sc->midi[0], NULL);
-			free(func->varinfo, M_DEVBUF);
-			free(func, M_DEVBUF);
+			kfree(func->varinfo, M_DEVBUF);
+			kfree(func, M_DEVBUF);
 		}
 		r = device_delete_child(dev, sc->midi[0]);
 		if (r)	return (r);
@@ -3475,8 +3486,8 @@ emu_pci_detach(device_t dev)
 		func = device_get_ivars(sc->midi[1]);
 		if (func != NULL && func->func == SCF_MIDI) {
 			device_set_ivars(sc->midi[1], NULL);
-			free(func->varinfo, M_DEVBUF);
-			free(func, M_DEVBUF);
+			kfree(func->varinfo, M_DEVBUF);
+			kfree(func, M_DEVBUF);
 		}
 		r = device_delete_child(dev, sc->midi[1]);
 		if (r)	return (r);
@@ -3488,13 +3499,13 @@ emu_pci_detach(device_t dev)
 			func = device_get_ivars(childlist[i]);
 			if (func != NULL && (func->func == SCF_MIDI || func->func == SCF_PCM)) {
 				device_set_ivars(childlist[i], NULL);
-				free(func->varinfo, M_DEVBUF);
-				free(func, M_DEVBUF);
+				kfree(func->varinfo, M_DEVBUF);
+				kfree(func, M_DEVBUF);
 			}
 			device_delete_child(dev, childlist[i]);
 		}
 	if (childlist != NULL)
-		free(childlist, M_TEMP);
+		kfree(childlist, M_TEMP);
 
 	r = emu10kx_dev_uninit(sc);
 	if (r)
@@ -3511,8 +3522,8 @@ emu_pci_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_IOPORT, PCIR_BAR(0), sc->reg);
 	bus_teardown_intr(dev, sc->irq, sc->ih);
 	bus_release_resource(dev, SYS_RES_IRQ, 0, sc->irq);
-	mtx_destroy(&sc->rw);
-	mtx_destroy(&sc->lock);
+	lockuninit(&sc->rw);
+	lockuninit(&sc->lock);
 
 	return (bus_generic_detach(dev));
 }

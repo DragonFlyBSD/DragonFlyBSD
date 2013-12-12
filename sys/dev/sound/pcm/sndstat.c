@@ -32,7 +32,7 @@
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/pcm.h>
 #include <dev/sound/version.h>
-#include <sys/sx.h>
+#include <sys/device.h>
 
 SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pcm/sndstat.c 248381 2013-03-16 17:57:00Z joel $");
 
@@ -64,7 +64,7 @@ struct sndstat_entry {
 	int type, unit;
 };
 
-static struct sx sndstat_lock;
+static struct lock sndstat_lock;
 static struct sbuf sndstat_sbuf;
 static struct cdev *sndstat_dev = NULL;
 static int sndstat_bufptr = -1;
@@ -94,14 +94,14 @@ sysctl_hw_snd_sndstat_pid(SYSCTL_HANDLER_ARGS)
 	if (sndstat_dev == NULL)
 		return (EINVAL);
 
-	sx_xlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	val = (int)SNDSTAT_PID(sndstat_dev);
 	err = sysctl_handle_int(oidp, &val, 0, req);
 	if (err == 0 && req->newptr != NULL && val == 0) {
 		SNDSTAT_FLUSH();
 		SNDSTAT_PID_SET(sndstat_dev, 0);
 	}
-	sx_unlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_RELEASE);
 	return (err);
 }
 SYSCTL_PROC(_hw_snd, OID_AUTO, sndstat_pid, CTLTYPE_INT | CTLFLAG_RW,
@@ -134,19 +134,19 @@ sndstat_open(struct cdev *i_dev, int flags, int mode, struct thread *td)
 	if (sndstat_dev == NULL || i_dev != sndstat_dev)
 		return EBADF;
 
-	sx_xlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	if (SNDSTAT_PID(i_dev) != 0) {
-		sx_unlock(&sndstat_lock);
+		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBUSY;
 	}
-	SNDSTAT_PID_SET(i_dev, td->td_proc->p_pid);
+	SNDSTAT_PID_SET(i_dev, curproc->p_pid);
 	if (sbuf_new(&sndstat_sbuf, NULL, 4096, SBUF_AUTOEXTEND) == NULL) {
 		SNDSTAT_PID_SET(i_dev, 0);
-		sx_unlock(&sndstat_lock);
+		lockmgr(&sndstat_lock, LK_RELEASE);
 		return ENXIO;
 	}
 	sndstat_bufptr = 0;
-	sx_unlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_RELEASE);
 	return 0;
 }
 
@@ -156,16 +156,16 @@ sndstat_close(struct cdev *i_dev, int flags, int mode, struct thread *td)
 	if (sndstat_dev == NULL || i_dev != sndstat_dev)
 		return EBADF;
 
-	sx_xlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	if (SNDSTAT_PID(i_dev) == 0) {
-		sx_unlock(&sndstat_lock);
+		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBADF;
 	}
 
 	SNDSTAT_FLUSH();
 	SNDSTAT_PID_SET(i_dev, 0);
 
-	sx_unlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -178,10 +178,10 @@ sndstat_read(struct cdev *i_dev, struct uio *buf, int flag)
 	if (sndstat_dev == NULL || i_dev != sndstat_dev)
 		return EBADF;
 
-	sx_xlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	if (SNDSTAT_PID(i_dev) != buf->uio_td->td_proc->p_pid ||
 	    sndstat_bufptr == -1) {
-		sx_unlock(&sndstat_lock);
+		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBADF;
 	}
 
@@ -189,7 +189,7 @@ sndstat_read(struct cdev *i_dev, struct uio *buf, int flag)
 		err = (sndstat_prepare(&sndstat_sbuf) > 0) ? 0 : ENOMEM;
 		if (err) {
 			SNDSTAT_FLUSH();
-			sx_unlock(&sndstat_lock);
+			lockmgr(&sndstat_lock, LK_RELEASE);
 			return err;
 		}
 	}
@@ -197,7 +197,7 @@ sndstat_read(struct cdev *i_dev, struct uio *buf, int flag)
     	l = min(buf->uio_resid, sbuf_len(&sndstat_sbuf) - sndstat_bufptr);
 	err = (l > 0)? uiomove(sbuf_data(&sndstat_sbuf) + sndstat_bufptr, l, buf) : 0;
 	sndstat_bufptr += l;
-	sx_unlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_RELEASE);
 
 	return err;
 }
@@ -223,13 +223,13 @@ sndstat_acquire(struct thread *td)
 	if (sndstat_dev == NULL)
 		return EBADF;
 
-	sx_xlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	if (SNDSTAT_PID(sndstat_dev) != 0) {
-		sx_unlock(&sndstat_lock);
+		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBUSY;
 	}
 	SNDSTAT_PID_SET(sndstat_dev, td->td_proc->p_pid);
-	sx_unlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_RELEASE);
 	return 0;
 }
 
@@ -239,13 +239,13 @@ sndstat_release(struct thread *td)
 	if (sndstat_dev == NULL)
 		return EBADF;
 
-	sx_xlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	if (SNDSTAT_PID(sndstat_dev) != td->td_proc->p_pid) {
-		sx_unlock(&sndstat_lock);
+		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBADF;
 	}
 	SNDSTAT_PID_SET(sndstat_dev, 0);
-	sx_unlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_RELEASE);
 	return 0;
 }
 
@@ -272,19 +272,19 @@ sndstat_register(device_t dev, char *str, sndstat_handler handler)
 		unit = -1;
 	}
 
-	ent = malloc(sizeof *ent, M_DEVBUF, M_WAITOK | M_ZERO);
+	ent = kmalloc(sizeof *ent, M_DEVBUF, M_WAITOK | M_ZERO);
 	ent->dev = dev;
 	ent->str = str;
 	ent->type = type;
 	ent->unit = unit;
 	ent->handler = handler;
 
-	sx_xlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	SLIST_INSERT_HEAD(&sndstat_devlist, ent, link);
 	if (type == SS_TYPE_MODULE)
 		sndstat_files++;
 	sndstat_maxunit = (unit > sndstat_maxunit)? unit : sndstat_maxunit;
-	sx_unlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_RELEASE);
 
 	return 0;
 }
@@ -300,17 +300,17 @@ sndstat_unregister(device_t dev)
 {
 	struct sndstat_entry *ent;
 
-	sx_xlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	SLIST_FOREACH(ent, &sndstat_devlist, link) {
 		if (ent->dev == dev) {
 			SLIST_REMOVE(&sndstat_devlist, ent, sndstat_entry, link);
-			sx_unlock(&sndstat_lock);
-			free(ent, M_DEVBUF);
+			lockmgr(&sndstat_lock, LK_RELEASE);
+			kfree(ent, M_DEVBUF);
 
 			return 0;
 		}
 	}
-	sx_unlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_RELEASE);
 
 	return ENXIO;
 }
@@ -320,18 +320,18 @@ sndstat_unregisterfile(char *str)
 {
 	struct sndstat_entry *ent;
 
-	sx_xlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	SLIST_FOREACH(ent, &sndstat_devlist, link) {
 		if (ent->dev == NULL && ent->str == str) {
 			SLIST_REMOVE(&sndstat_devlist, ent, sndstat_entry, link);
 			sndstat_files--;
-			sx_unlock(&sndstat_lock);
-			free(ent, M_DEVBUF);
+			lockmgr(&sndstat_lock, LK_RELEASE);
+			kfree(ent, M_DEVBUF);
 
 			return 0;
 		}
 	}
-	sx_unlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_RELEASE);
 
 	return ENXIO;
 }
@@ -398,7 +398,7 @@ sndstat_init(void)
 {
 	if (sndstat_dev != NULL)
 		return EINVAL;
-	sx_init(&sndstat_lock, "sndstat lock");
+	lockinit(&sndstat_lock, "sndstat lock", 0, LK_CANRECURSE);
 	sndstat_dev = make_dev(&sndstat_cdevsw, SND_DEV_STATUS,
 	    UID_ROOT, GID_WHEEL, 0444, "sndstat");
 	return 0;
@@ -410,9 +410,9 @@ sndstat_uninit(void)
 	if (sndstat_dev == NULL)
 		return EINVAL;
 
-	sx_xlock(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_EXCLUSIVE);
 	if (SNDSTAT_PID(sndstat_dev) != curthread->td_proc->p_pid) {
-		sx_unlock(&sndstat_lock);
+		lockmgr(&sndstat_lock, LK_RELEASE);
 		return EBUSY;
 	}
 
@@ -422,8 +422,8 @@ sndstat_uninit(void)
 
 	SNDSTAT_FLUSH();
 
-	sx_unlock(&sndstat_lock);
-	sx_destroy(&sndstat_lock);
+	lockmgr(&sndstat_lock, LK_RELEASE);
+	lockuninit(&sndstat_lock);
 	return 0;
 }
 

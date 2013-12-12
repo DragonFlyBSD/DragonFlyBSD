@@ -33,8 +33,8 @@
 #include <dev/sound/pci/hdspe.h>
 #include <dev/sound/chip.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <mixer_if.h>
 
@@ -107,7 +107,7 @@ hdspe_intr(void *p)
 		}
 
 		hdspe_write_1(sc, HDSPE_INTERRUPT_ACK, 0);
-		free(devlist, M_TEMP);
+		kfree(devlist, M_TEMP);
 	}
 
 	snd_mtxunlock(sc->lock);
@@ -145,8 +145,8 @@ hdspe_alloc_resources(struct sc_info *sc)
 	    0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
 
 	if (!sc->irq ||
-	    bus_setup_intr(sc->dev, sc->irq, INTR_MPSAFE | INTR_TYPE_AV,
-		NULL, hdspe_intr, sc, &sc->ih)) {
+	    bus_setup_intr(sc->dev, sc->irq, INTR_MPSAFE,
+		hdspe_intr, sc, &sc->ih, NULL)) {
 		device_printf(sc->dev, "Unable to alloc interrupt resource.\n");
 		return (ENXIO);
 	}
@@ -163,8 +163,6 @@ hdspe_alloc_resources(struct sc_info *sc)
 		/*nsegments*/2,
 		/*maxsegsz*/HDSPE_DMASEGSIZE,
 		/*flags*/0,
-		/*lockfunc*/busdma_lock_mutex,
-		/*lockarg*/&Giant,
 		/*dmatag*/&sc->dmat) != 0) {
 		device_printf(sc->dev, "Unable to create dma tag.\n");
 		return (ENXIO);
@@ -324,7 +322,7 @@ hdspe_attach(device_t dev)
 		return ENXIO;
 
 	for (i = 0; i < HDSPE_MAX_CHANS && chan_map[i].descr != NULL; i++) {
-		scp = malloc(sizeof(struct sc_pcminfo), M_DEVBUF, M_NOWAIT | M_ZERO);
+		scp = kmalloc(sizeof(struct sc_pcminfo), M_DEVBUF, M_NOWAIT | M_ZERO);
 		scp->hc = &chan_map[i];
 		scp->sc = sc;
 		scp->dev = device_add_child(dev, "pcm", -1);

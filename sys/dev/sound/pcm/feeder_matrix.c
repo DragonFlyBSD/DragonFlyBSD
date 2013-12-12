@@ -403,7 +403,7 @@ feed_matrix_init(struct pcm_feeder *f)
 	if (AFMT_ENCODING(f->desc->in) != AFMT_ENCODING(f->desc->out))
 		return (EINVAL);
 
-	info = malloc(sizeof(*info), M_DEVBUF, M_NOWAIT | M_ZERO);
+	info = kmalloc(sizeof(*info), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (info == NULL)
 		return (ENOMEM);
 
@@ -425,12 +425,12 @@ feed_matrix_init(struct pcm_feeder *f)
 		info->rd = feeder_format_read_op(info->in);
 		info->wr = feeder_format_write_op(info->out);
 		if (info->rd == NULL || info->wr == NULL) {
-			free(info, M_DEVBUF);
+			kfree(info, M_DEVBUF);
 			return (EINVAL);
 		}
 		info->apply = feed_matrix_apply_generic;
 #else
-		free(info, M_DEVBUF);
+		kfree(info, M_DEVBUF);
 		return (EINVAL);
 #endif
 	}
@@ -440,7 +440,7 @@ feed_matrix_init(struct pcm_feeder *f)
 
 	ret = feed_matrix_setup(info, m_in, m_out);
 	if (ret != 0) {
-		free(info, M_DEVBUF);
+		kfree(info, M_DEVBUF);
 		return (ret);
 	}
 
@@ -456,7 +456,7 @@ feed_matrix_free(struct pcm_feeder *f)
 
 	info = f->data;
 	if (info != NULL)
-		free(info, M_DEVBUF);
+		kfree(info, M_DEVBUF);
 
 	f->data = NULL;
 

@@ -144,13 +144,13 @@ feed_format_init(struct pcm_feeder *f)
 	}
 
 	if (rd_op == NULL || wr_op == NULL) {
-		printf("%s(): failed to initialize io ops "
+		kprintf("%s(): failed to initialize io ops "
 		    "in=0x%08x out=0x%08x\n",
 		    __func__, f->desc->in, f->desc->out);
 		return (EINVAL);
 	}
 
-	info = malloc(sizeof(*info), M_DEVBUF, M_NOWAIT | M_ZERO);
+	info = kmalloc(sizeof(*info), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (info == NULL)
 		return (ENOMEM);
 
@@ -176,7 +176,7 @@ feed_format_free(struct pcm_feeder *f)
 
 	info = f->data;
 	if (info != NULL)
-		free(info, M_DEVBUF);
+		kfree(info, M_DEVBUF);
 
 	f->data = NULL;
 

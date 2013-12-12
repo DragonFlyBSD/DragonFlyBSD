@@ -56,7 +56,6 @@ struct snd_dbuf {
 	bus_dma_tag_t dmatag;
 	bus_addr_t buf_addr;
 	int dmaflags;
-	struct selinfo sel;
 	struct pcm_channel *channel;
 	char name[SNDBUF_NAMELEN];
 };

@@ -41,8 +41,8 @@
 #include <dev/sound/pci/sb.h>
 #include <dev/sound/pci/als4000.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include "mixer_if.h"
 
@@ -79,7 +79,7 @@ struct sc_info {
 	struct resource		*reg, *irq;
 	int			regid, irqid;
 	void			*ih;
-	struct mtx		*lock;
+	struct lock		*lock;
 
 	unsigned int		bufsz;
 	struct sc_chinfo	pch, rch;
@@ -319,7 +319,9 @@ struct playback_command {
 	u_int8_t  format_val;	/* sb16 format value */
 	u_int8_t  dma_prog;	/* sb16 dma program */
 	u_int8_t  dma_stop;	/* sb16 stop register */
-} static const playback_cmds[] = {
+};
+
+static const struct playback_command playback_cmds[] = {
 	ALS_8BIT_CMD(SND_FORMAT(AFMT_U8, 1, 0), DSP_MODE_U8MONO),
 	ALS_8BIT_CMD(SND_FORMAT(AFMT_U8, 2, 0), DSP_MODE_U8STEREO),
 	ALS_16BIT_CMD(SND_FORMAT(AFMT_S16_LE, 1, 0), DSP_MODE_S16MONO),
@@ -534,7 +536,9 @@ struct sb16props {
 	u_int8_t bits;
 	u_int8_t oselect;
 	u_int8_t iselect; /* left input mask */
-} static const amt[SOUND_MIXER_NRDEVICES] = {
+};
+
+static const struct sb16props amt[SOUND_MIXER_NRDEVICES] = {
 	[SOUND_MIXER_VOLUME]  = { 0x30, 0x31, 5, 0x00, 0x00 },
 	[SOUND_MIXER_PCM]     = { 0x32, 0x33, 5, 0x00, 0x00 },
 	[SOUND_MIXER_SYNTH]   = { 0x34, 0x35, 5, 0x60, 0x40 },
@@ -808,7 +812,7 @@ als_pci_attach(device_t dev)
 	struct sc_info *sc;
 	char status[SND_STATUSLEN];
 
-	sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->lock = snd_mtxcreate(device_get_nameunit(dev), "snd_als4000 softc");
 	sc->dev = dev;
 
@@ -848,14 +852,14 @@ als_pci_attach(device_t dev)
 	pcm_addchan(dev, PCMDIR_PLAY, &alspchan_class, sc);
 	pcm_addchan(dev, PCMDIR_REC,  &alsrchan_class, sc);
 
-	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
 		 rman_get_start(sc->reg), rman_get_start(sc->irq),PCM_KLDSTRING(snd_als4000));
 	pcm_setstatus(dev, status);
 	return 0;
 
  bad_attach:
 	als_resource_free(dev, sc);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -872,7 +876,7 @@ als_pci_detach(device_t dev)
 	sc = pcm_getdevinfo(dev);
 	als_uninit(sc);
 	als_resource_free(dev, sc);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return 0;
 }
 

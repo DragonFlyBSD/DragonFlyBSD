@@ -70,7 +70,7 @@ vchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b,
 	KASSERT(c != NULL && c->parentchannel != NULL,
 	    ("vchan_init: bad channels"));
 
-	info = malloc(sizeof(*info), M_DEVBUF, M_WAITOK | M_ZERO);
+	info = kmalloc(sizeof(*info), M_DEVBUF, M_WAITOK | M_ZERO);
 	info->channel = c;
 	info->trigger = PCMTRIG_STOP;
 	p = c->parentchannel;
@@ -100,7 +100,7 @@ static int
 vchan_free(kobj_t obj, void *data)
 {
 
-	free(data, M_DEVBUF);
+	kfree(data, M_DEVBUF);
 
 	return (0);
 }

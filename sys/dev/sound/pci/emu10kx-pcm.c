@@ -30,7 +30,6 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/bus.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/systm.h>
 #include <sys/sbuf.h>
@@ -91,7 +90,7 @@ struct emu_pcm_rchinfo {
 #endif
 
 struct emu_pcm_info {
-	struct mtx		*lock;
+	struct lock		*lock;
 	device_t		dev;		/* device information */
 	struct emu_sc_info 	*card;
 	struct emu_pcm_pchinfo	pch[MAX_CHANNELS];	/* hardware channels */
@@ -1332,7 +1331,7 @@ emu_pcm_probe(device_t dev)
 		break;
 	}
 
-	snprintf(buffer, 255, "EMU10Kx DSP %s PCM interface", rt);
+	ksnprintf(buffer, 255, "EMU10Kx DSP %s PCM interface", rt);
 	device_set_desc_copy(dev, buffer);
 	return (0);
 }
@@ -1346,11 +1345,11 @@ emu_pcm_attach(device_t dev)
 	uint32_t inte, ipr;
 	uintptr_t route, r, ivar;
 
-	sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->card = (struct emu_sc_info *)(device_get_softc(device_get_parent(dev)));
 	if (sc->card == NULL) {
 		device_printf(dev, "cannot get bridge conf\n");
-		free(sc, M_DEVBUF);
+		kfree(sc, M_DEVBUF);
 		return (ENXIO);
 	}
 
@@ -1481,7 +1480,8 @@ emu_pcm_attach(device_t dev)
 	if (route == RT_MCHRECORD)
 		pcm_addchan(dev, PCMDIR_REC, &emufxrchan_class, sc);
 
-	snprintf(status, SND_STATUSLEN, "on %s", device_get_nameunit(device_get_parent(dev)));
+	ksnprintf(status, SND_STATUSLEN, "on %s",
+		  device_get_nameunit(device_get_parent(dev)));
 	pcm_setstatus(dev, status);
 
 	return (0);
@@ -1491,7 +1491,7 @@ bad:
 		ac97_destroy(sc->codec);
 	if (sc->lock)
 		snd_mtxfree(sc->lock);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return (ENXIO);
 }
 
@@ -1511,7 +1511,7 @@ emu_pcm_detach(device_t dev)
 
 	if (sc->lock)
 		snd_mtxfree(sc->lock);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 
 	return (0);
 }

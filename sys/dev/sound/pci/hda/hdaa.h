@@ -186,7 +186,7 @@ struct hdaa_pcm_devinfo {
 
 struct hdaa_devinfo {
 	device_t		dev;
-	struct mtx		*lock;
+	struct lock		*lock;
 	nid_t			nid;
 	nid_t			startnode, endnode;
 	uint32_t		outamp_cap;

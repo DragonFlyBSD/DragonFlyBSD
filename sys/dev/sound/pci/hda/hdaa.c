@@ -162,7 +162,7 @@ static const struct {
 };
 #define HDA_RATE_TAB_LEN (sizeof(hda_rate_tab) / sizeof(hda_rate_tab[0]))
 
-const static char *ossnames[] = SOUND_DEVICE_NAMES;
+static const char *ossnames[] = SOUND_DEVICE_NAMES;
 
 /****************************************************************************
  * Function prototypes
@@ -344,8 +344,8 @@ hdaa_channels_handler(struct hdaa_audio_as *as)
 			    as->dir == HDAA_CTL_OUT ? "Playback" : "Recording");
 			for (i = 0; i < SND_CHN_T_MAX; i++)
 				if (channels & (1 << i))
-					printf("%s, ", channel_names[i]);
-			printf("\n");
+					kprintf("%s, ", channel_names[i]);
+			kprintf("\n");
 		);
 		/* Look for maximal fitting matrix. */
 		for (i = 0; i < sizeof(matrixes) / sizeof(struct matrix); i++) {
@@ -659,7 +659,7 @@ hdaa_eld_dump(struct hdaa_widget *w)
 		    sad[1], "\020\007192\006176\00596\00488\00348\00244\00132");
 		switch (fmt) {
 		case HDA_HDMI_CODING_TYPE_LPCM:
-			printf(" sizes=0x%b",
+			kprintf(" sizes=0x%b",
 			    sad[2] & 0x07, "\020\00324\00220\00116");
 			break;
 		case HDA_HDMI_CODING_TYPE_AC3:
@@ -669,13 +669,13 @@ hdaa_eld_dump(struct hdaa_widget *w)
 		case HDA_HDMI_CODING_TYPE_AACLC:
 		case HDA_HDMI_CODING_TYPE_DTS:
 		case HDA_HDMI_CODING_TYPE_ATRAC:
-			printf(" max_bitrate=%d", sad[2] * 8000);
+			kprintf(" max_bitrate=%d", sad[2] * 8000);
 			break;
 		case HDA_HDMI_CODING_TYPE_WMAPRO:
-			printf(" profile=%d", sad[2] & 0x07);
+			kprintf(" profile=%d", sad[2] & 0x07);
 			break;
 		}
-		printf("\n");
+		kprintf("\n");
 	}
 }
 
@@ -699,7 +699,7 @@ hdaa_eld_handler(struct hdaa_widget *w)
 		return;
 	if (w->eld != NULL) {
 		w->eld_len = 0;
-		free(w->eld, M_HDAA);
+		kfree(w->eld, M_HDAA);
 		w->eld = NULL;
 	}
 	HDA_BOOTVERBOSE(
@@ -719,7 +719,7 @@ hdaa_eld_handler(struct hdaa_widget *w)
 		return;
 	w->eld_len = res & 0xff;
 	if (w->eld_len != 0)
-		w->eld = malloc(w->eld_len, M_HDAA, M_ZERO | M_NOWAIT);
+		w->eld = kmalloc(w->eld_len, M_HDAA, M_ZERO | M_NOWAIT);
 	if (w->eld == NULL) {
 		w->eld_len = 0;
 		return;
@@ -946,7 +946,7 @@ hdaa_local_patch_pin(struct hdaa_widget *w)
 	char buf[32];
 
 	config = orig = w->wclass.pin.config;
-	snprintf(buf, sizeof(buf), "cad%u.nid%u.config",
+	ksnprintf(buf, sizeof(buf), "cad%u.nid%u.config",
 	    hda_get_codec_id(dev), w->nid);
 	if (resource_string_value(device_get_name(
 	    device_get_parent(device_get_parent(dev))),
@@ -958,7 +958,7 @@ hdaa_local_patch_pin(struct hdaa_widget *w)
 			config = hdaa_widget_pin_patch(config, res);
 		}
 	}
-	snprintf(buf, sizeof(buf), "nid%u.config", w->nid);
+	ksnprintf(buf, sizeof(buf), "nid%u.config", w->nid);
 	if (resource_string_value(device_get_name(dev), device_get_unit(dev),
 	    buf, &res) == 0) {
 		if (strncmp(res, "0x", 2) == 0) {
@@ -1230,7 +1230,7 @@ hdaa_sysctl_config(SYSCTL_HANDLER_ARGS)
 	uint32_t conf;
 
 	conf = *(uint32_t *)oidp->oid_arg1;
-	snprintf(buf, sizeof(buf), "0x%08x as=%d seq=%d "
+	ksnprintf(buf, sizeof(buf), "0x%08x as=%d seq=%d "
 	    "device=%s conn=%s ctype=%s loc=%s color=%s misc=%d",
 	    conf,
 	    HDA_CONFIG_DEFAULTCONF_ASSOCIATION(conf),
@@ -1302,7 +1302,7 @@ hdaa_sysctl_quirks(SYSCTL_HANDLER_ARGS)
 	buf[0] = 0;
 	for (i = 0; i < nitems(hdaa_quirks_tab); i++) {
 		if ((quirks & hdaa_quirks_tab[i].value) != 0)
-			n += snprintf(buf + n, sizeof(buf) - n, "%s%s",
+			n += ksnprintf(buf + n, sizeof(buf) - n, "%s%s",
 			    n != 0 ? "," : "", hdaa_quirks_tab[i].key);
 	}
 	error = sysctl_handle_string(oidp, buf, sizeof(buf), req);
@@ -1371,9 +1371,9 @@ hdaa_local_patch(struct hdaa_devinfo *devinfo)
 		for (i = 0; i < 7; i++) {
 			x = (devinfo->gpio & HDAA_GPIO_MASK(i)) >> HDAA_GPIO_SHIFT(i);
 			if (x != 0)
-				printf(" %d=%s", i, HDA_GPIO_ACTIONS[x]);
+				kprintf(" %d=%s", i, HDA_GPIO_ACTIONS[x]);
 		}
-		printf("\n");
+		kprintf("\n");
 	);
 }
 
@@ -1549,22 +1549,22 @@ hdaa_widget_parse(struct hdaa_widget *w)
 	w->unsol = -1;
 
 	hdaa_unlock(w->devinfo);
-	snprintf(buf, sizeof(buf), "nid%d", w->nid);
+	ksnprintf(buf, sizeof(buf), "nid%d", w->nid);
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
-	    buf, CTLTYPE_STRING | CTLFLAG_RD | CTLFLAG_MPSAFE,
+	    buf, CTLTYPE_STRING | CTLFLAG_RD,
 	    w, sizeof(w), hdaa_sysctl_caps, "A", "Node capabilities");
 	if (w->type == HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_PIN_COMPLEX) {
-		snprintf(buf, sizeof(buf), "nid%d_config", w->nid);
+		ksnprintf(buf, sizeof(buf), "nid%d_config", w->nid);
 		SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 		    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
-		    buf, CTLTYPE_STRING | CTLFLAG_RW | CTLFLAG_MPSAFE,
+		    buf, CTLTYPE_STRING | CTLFLAG_RW,
 		    &w->wclass.pin.newconf, sizeof(&w->wclass.pin.newconf),
 		    hdaa_sysctl_config, "A", "Current pin configuration");
-		snprintf(buf, sizeof(buf), "nid%d_original", w->nid);
+		ksnprintf(buf, sizeof(buf), "nid%d_original", w->nid);
 		SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 		    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
-		    buf, CTLTYPE_STRING | CTLFLAG_RD | CTLFLAG_MPSAFE,
+		    buf, CTLTYPE_STRING | CTLFLAG_RD,
 		    &w->wclass.pin.original, sizeof(&w->wclass.pin.original),
 		    hdaa_sysctl_config, "A", "Original pin configuration");
 	}
@@ -1844,17 +1844,17 @@ hdaa_audio_setup(struct hdaa_chan *ch)
 	int i, j, k, chn, cchn, totalchn, totalextchn, c;
 	uint16_t fmt, dfmt;
 	/* Mapping channel pairs to codec pins/converters. */
-	const static uint16_t convmap[2][5] =
+	static const uint16_t convmap[2][5] =
 	    /*  1.0     2.0     4.0     5.1     7.1  */
 	    {{ 0x0010, 0x0001, 0x0201, 0x0231, 0x4231 },	/* no dup. */
 	     { 0x0010, 0x0001, 0x2201, 0x2231, 0x4231 }};	/* side dup. */
 	/* Mapping formats to HDMI channel allocations. */
-	const static uint8_t hdmica[2][8] =
+	static const uint8_t hdmica[2][8] =
 	    /*  1     2     3     4     5     6     7     8  */
 	    {{ 0x02, 0x00, 0x04, 0x08, 0x0a, 0x0e, 0x12, 0x12 }, /* x.0 */
 	     { 0x01, 0x03, 0x01, 0x03, 0x09, 0x0b, 0x0f, 0x13 }}; /* x.1 */
 	/* Mapping formats to HDMI channels order. */
-	const static uint32_t hdmich[2][8] =
+	static const uint32_t hdmich[2][8] =
 	    /*  1  /  5     2  /  6     3  /  7     4  /  8  */
 	    {{ 0xFFFF0F00, 0xFFFFFF10, 0xFFF2FF10, 0xFF32FF10,
 	       0xFF324F10, 0xF5324F10, 0x54326F10, 0x54326F10 }, /* x.0 */
@@ -2884,17 +2884,17 @@ hdaa_dump_gpio(struct hdaa_devinfo *devinfo)
 		for (i = 0; i < HDA_PARAM_GPIO_COUNT_NUM_GPIO(devinfo->gpio_cap); i++) {
 			device_printf(dev, " GPIO%d: ", i);
 			if ((enable & (1 << i)) == 0) {
-				printf("disabled\n");
+				kprintf("disabled\n");
 				continue;
 			}
 			if ((dir & (1 << i)) == 0) {
-				printf("input%s%s%s",
+				kprintf("input%s%s%s",
 				    (sticky & (1 << i)) ? " sticky" : "",
 				    (unsol & (1 << i)) ? " unsol" : "",
 				    (wake & (1 << i)) ? " wake" : "");
 			} else
-				printf("output");
-			printf(" state=%d\n", (data >> i) & 1);
+				kprintf("output");
+			kprintf(" state=%d\n", (data >> i) & 1);
 		}
 	}
 }
@@ -3031,7 +3031,7 @@ hdaa_audio_ctl_parse(struct hdaa_devinfo *devinfo)
 	if (max < 1)
 		return;
 
-	ctls = (struct hdaa_audio_ctl *)malloc(
+	ctls = (struct hdaa_audio_ctl *)kmalloc(
 	    sizeof(*ctls) * max, M_HDAA, M_ZERO | M_NOWAIT);
 
 	if (ctls == NULL) {
@@ -3184,7 +3184,7 @@ hdaa_audio_as_parse(struct hdaa_devinfo *devinfo)
 	if (max < 1)
 		return;
 
-	as = (struct hdaa_audio_as *)malloc(
+	as = (struct hdaa_audio_as *)kmalloc(
 	    sizeof(*as) * max, M_HDAA, M_ZERO | M_NOWAIT);
 
 	if (as == NULL) {
@@ -3569,8 +3569,8 @@ hdaa_audio_trace_as_out(struct hdaa_devinfo *devinfo, int as, int seq)
 			    " Tracing pin %d with min nid %d",
 			    ases[as].pins[i], min);
 			if (hpredir >= 0)
-				printf(" and hpredir %d", hpredir);
-			printf("\n");
+				kprintf(" and hpredir %d", hpredir);
+			kprintf("\n");
 		);
 		/* Trace this pin taking min nid into account. */
 		res = hdaa_audio_trace_dac(devinfo, as, i,
@@ -3583,8 +3583,8 @@ hdaa_audio_trace_as_out(struct hdaa_devinfo *devinfo, int as, int seq)
 				    "nid %d",
 				    ases[as].pins[i], i, min);
 				if (hpredir >= 0)
-					printf(" and hpredir %d", hpredir);
-				printf("\n");
+					kprintf(" and hpredir %d", hpredir);
+				kprintf("\n");
 			);
 			return (0);
 		}
@@ -3593,10 +3593,10 @@ hdaa_audio_trace_as_out(struct hdaa_devinfo *devinfo, int as, int seq)
 			    " Pin %d traced to DAC %d",
 			    ases[as].pins[i], res);
 			if (hpredir >= 0)
-				printf(" and hpredir %d", hpredir);
+				kprintf(" and hpredir %d", hpredir);
 			if (ases[as].fakeredir)
-				printf(" with fake redirection");
-			printf("\n");
+				kprintf(" with fake redirection");
+			kprintf("\n");
 		);
 		/* Trace again to mark the path */
 		hdaa_audio_trace_dac(devinfo, as, i,
@@ -3846,7 +3846,7 @@ hdaa_audio_trace_as_in_mch(struct hdaa_devinfo *devinfo, int as, int seq)
 			device_printf(devinfo->dev,
 			    " Tracing pin %d with min nid %d",
 			    ases[as].pins[i], min);
-			printf("\n");
+			kprintf("\n");
 		);
 		/* Trace this pin taking min nid into account. */
 		res = hdaa_audio_trace_adc(devinfo, as, i,
@@ -3858,7 +3858,7 @@ hdaa_audio_trace_as_in_mch(struct hdaa_devinfo *devinfo, int as, int seq)
 				    " Unable to trace pin %d seq %d with min "
 				    "nid %d",
 				    ases[as].pins[i], i, min);
-				printf("\n");
+				kprintf("\n");
 			);
 			return (0);
 		}
@@ -4075,7 +4075,7 @@ hdaa_audio_bind_as(struct hdaa_devinfo *devinfo)
 			cnt += as[j].num_chans;
 	}
 	if (devinfo->num_chans == 0) {
-		devinfo->chans = (struct hdaa_chan *)malloc(
+		devinfo->chans = (struct hdaa_chan *)kmalloc(
 		    sizeof(struct hdaa_chan) * cnt,
 		    M_HDAA, M_ZERO | M_NOWAIT);
 		if (devinfo->chans == NULL) {
@@ -4084,7 +4084,7 @@ hdaa_audio_bind_as(struct hdaa_devinfo *devinfo)
 			return;
 		}
 	} else {
-		devinfo->chans = (struct hdaa_chan *)realloc(devinfo->chans,
+		devinfo->chans = (struct hdaa_chan *)krealloc(devinfo->chans,
 		    sizeof(struct hdaa_chan) * (devinfo->num_chans + cnt),
 		    M_HDAA, M_ZERO | M_NOWAIT);
 		if (devinfo->chans == NULL) {
@@ -5488,7 +5488,7 @@ hdaa_prepare_pcms(struct hdaa_devinfo *devinfo)
 	devinfo->num_devs =
 	    max(ardev, apdev) + max(drdev, dpdev);
 	devinfo->devs =
-	    (struct hdaa_pcm_devinfo *)malloc(
+	    (struct hdaa_pcm_devinfo *)kmalloc(
 	    devinfo->num_devs * sizeof(struct hdaa_pcm_devinfo),
 	    M_HDAA, M_ZERO | M_NOWAIT);
 	if (devinfo->devs == NULL) {
@@ -5583,32 +5583,32 @@ hdaa_dump_ctls(struct hdaa_pcm_devinfo *pdevinfo, const char *banner, uint32_t f
 				} else {
 					device_printf(pdevinfo->dev, "Unknown Ctl");
 				}
-				printf(" (OSS: %s)",
+				kprintf(" (OSS: %s)",
 				    hdaa_audio_ctl_ossmixer_mask2allname(1 << j,
 				    buf, sizeof(buf)));
 				if (pdevinfo->ossmask & (1 << j)) {
-					printf(": %+d/%+ddB\n",
+					kprintf(": %+d/%+ddB\n",
 					    pdevinfo->minamp[j] / 4,
 					    pdevinfo->maxamp[j] / 4);
 				} else
-					printf("\n");
+					kprintf("\n");
 				printed = 1;
 			}
 			device_printf(pdevinfo->dev, "   +- ctl %2d (nid %3d %s", i,
 				ctl->widget->nid,
 				(ctl->ndir == HDAA_CTL_IN)?"in ":"out");
 			if (ctl->ndir == HDAA_CTL_IN && ctl->ndir == ctl->dir)
-				printf(" %2d): ", ctl->index);
+				kprintf(" %2d): ", ctl->index);
 			else
-				printf("):    ");
+				kprintf("):    ");
 			if (ctl->step > 0) {
-				printf("%+d/%+ddB (%d steps)%s\n",
+				kprintf("%+d/%+ddB (%d steps)%s\n",
 				    MINQDB(ctl) / 4,
 				    MAXQDB(ctl) / 4,
 				    ctl->step + 1,
 				    ctl->mute?" + mute":"");
 			} else
-				printf("%s\n", ctl->mute?"mute":"");
+				kprintf("%s\n", ctl->mute?"mute":"");
 		}
 	}
 	if (printed)
@@ -5624,49 +5624,49 @@ hdaa_dump_audio_formats(device_t dev, uint32_t fcap, uint32_t pcmcap)
 	if (cap != 0) {
 		device_printf(dev, "     Stream cap: 0x%08x", cap);
 		if (HDA_PARAM_SUPP_STREAM_FORMATS_AC3(cap))
-			printf(" AC3");
+			kprintf(" AC3");
 		if (HDA_PARAM_SUPP_STREAM_FORMATS_FLOAT32(cap))
-			printf(" FLOAT32");
+			kprintf(" FLOAT32");
 		if (HDA_PARAM_SUPP_STREAM_FORMATS_PCM(cap))
-			printf(" PCM");
-		printf("\n");
+			kprintf(" PCM");
+		kprintf("\n");
 	}
 	cap = pcmcap;
 	if (cap != 0) {
 		device_printf(dev, "        PCM cap: 0x%08x", cap);
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_8BIT(cap))
-			printf(" 8");
+			kprintf(" 8");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_16BIT(cap))
-			printf(" 16");
+			kprintf(" 16");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_20BIT(cap))
-			printf(" 20");
+			kprintf(" 20");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_24BIT(cap))
-			printf(" 24");
+			kprintf(" 24");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_32BIT(cap))
-			printf(" 32");
-		printf(" bits,");
+			kprintf(" 32");
+		kprintf(" bits,");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_8KHZ(cap))
-			printf(" 8");
+			kprintf(" 8");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_11KHZ(cap))
-			printf(" 11");
+			kprintf(" 11");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_16KHZ(cap))
-			printf(" 16");
+			kprintf(" 16");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_22KHZ(cap))
-			printf(" 22");
+			kprintf(" 22");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_32KHZ(cap))
-			printf(" 32");
+			kprintf(" 32");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_44KHZ(cap))
-			printf(" 44");
-		printf(" 48");
+			kprintf(" 44");
+		kprintf(" 48");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_88KHZ(cap))
-			printf(" 88");
+			kprintf(" 88");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_96KHZ(cap))
-			printf(" 96");
+			kprintf(" 96");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_176KHZ(cap))
-			printf(" 176");
+			kprintf(" 176");
 		if (HDA_PARAM_SUPP_PCM_SIZE_RATE_192KHZ(cap))
-			printf(" 192");
-		printf(" KHz\n");
+			kprintf(" 192");
+		kprintf(" KHz\n");
 	}
 }
 
@@ -5679,64 +5679,64 @@ hdaa_dump_pin(struct hdaa_widget *w)
 
 	device_printf(w->devinfo->dev, "        Pin cap: 0x%08x", pincap);
 	if (HDA_PARAM_PIN_CAP_IMP_SENSE_CAP(pincap))
-		printf(" ISC");
+		kprintf(" ISC");
 	if (HDA_PARAM_PIN_CAP_TRIGGER_REQD(pincap))
-		printf(" TRQD");
+		kprintf(" TRQD");
 	if (HDA_PARAM_PIN_CAP_PRESENCE_DETECT_CAP(pincap))
-		printf(" PDC");
+		kprintf(" PDC");
 	if (HDA_PARAM_PIN_CAP_HEADPHONE_CAP(pincap))
-		printf(" HP");
+		kprintf(" HP");
 	if (HDA_PARAM_PIN_CAP_OUTPUT_CAP(pincap))
-		printf(" OUT");
+		kprintf(" OUT");
 	if (HDA_PARAM_PIN_CAP_INPUT_CAP(pincap))
-		printf(" IN");
+		kprintf(" IN");
 	if (HDA_PARAM_PIN_CAP_BALANCED_IO_PINS(pincap))
-		printf(" BAL");
+		kprintf(" BAL");
 	if (HDA_PARAM_PIN_CAP_HDMI(pincap))
-		printf(" HDMI");
+		kprintf(" HDMI");
 	if (HDA_PARAM_PIN_CAP_VREF_CTRL(pincap)) {
-		printf(" VREF[");
+		kprintf(" VREF[");
 		if (HDA_PARAM_PIN_CAP_VREF_CTRL_50(pincap))
-			printf(" 50");
+			kprintf(" 50");
 		if (HDA_PARAM_PIN_CAP_VREF_CTRL_80(pincap))
-			printf(" 80");
+			kprintf(" 80");
 		if (HDA_PARAM_PIN_CAP_VREF_CTRL_100(pincap))
-			printf(" 100");
+			kprintf(" 100");
 		if (HDA_PARAM_PIN_CAP_VREF_CTRL_GROUND(pincap))
-			printf(" GROUND");
+			kprintf(" GROUND");
 		if (HDA_PARAM_PIN_CAP_VREF_CTRL_HIZ(pincap))
-			printf(" HIZ");
-		printf(" ]");
+			kprintf(" HIZ");
+		kprintf(" ]");
 	}
 	if (HDA_PARAM_PIN_CAP_EAPD_CAP(pincap))
-		printf(" EAPD");
+		kprintf(" EAPD");
 	if (HDA_PARAM_PIN_CAP_DP(pincap))
-		printf(" DP");
+		kprintf(" DP");
 	if (HDA_PARAM_PIN_CAP_HBR(pincap))
-		printf(" HBR");
-	printf("\n");
+		kprintf(" HBR");
+	kprintf("\n");
 	device_printf(w->devinfo->dev, "     Pin config: 0x%08x\n",
 	    w->wclass.pin.config);
 	device_printf(w->devinfo->dev, "    Pin control: 0x%08x", w->wclass.pin.ctrl);
 	if (w->wclass.pin.ctrl & HDA_CMD_SET_PIN_WIDGET_CTRL_HPHN_ENABLE)
-		printf(" HP");
+		kprintf(" HP");
 	if (w->wclass.pin.ctrl & HDA_CMD_SET_PIN_WIDGET_CTRL_IN_ENABLE)
-		printf(" IN");
+		kprintf(" IN");
 	if (w->wclass.pin.ctrl & HDA_CMD_SET_PIN_WIDGET_CTRL_OUT_ENABLE)
-		printf(" OUT");
+		kprintf(" OUT");
 	if (HDA_PARAM_AUDIO_WIDGET_CAP_DIGITAL(w->param.widget_cap)) {
 		if ((w->wclass.pin.ctrl &
 		    HDA_CMD_SET_PIN_WIDGET_CTRL_VREF_ENABLE_MASK) == 0x03)
-			printf(" HBR");
+			kprintf(" HBR");
 		else if ((w->wclass.pin.ctrl &
 		    HDA_CMD_SET_PIN_WIDGET_CTRL_VREF_ENABLE_MASK) != 0)
-			printf(" EPTs");
+			kprintf(" EPTs");
 	} else {
 		if ((w->wclass.pin.ctrl &
 		    HDA_CMD_SET_PIN_WIDGET_CTRL_VREF_ENABLE_MASK) != 0)
-			printf(" VREFs");
+			kprintf(" VREFs");
 	}
-	printf("\n");
+	kprintf("\n");
 }
 
 static void
@@ -5820,25 +5820,25 @@ hdaa_dump_nodes(struct hdaa_devinfo *devinfo)
 		    w->param.widget_cap);
 		if (w->param.widget_cap & 0x0ee1) {
 			if (HDA_PARAM_AUDIO_WIDGET_CAP_LR_SWAP(w->param.widget_cap))
-			    printf(" LRSWAP");
+			    kprintf(" LRSWAP");
 			if (HDA_PARAM_AUDIO_WIDGET_CAP_POWER_CTRL(w->param.widget_cap))
-			    printf(" PWR");
+			    kprintf(" PWR");
 			if (HDA_PARAM_AUDIO_WIDGET_CAP_DIGITAL(w->param.widget_cap))
-			    printf(" DIGITAL");
+			    kprintf(" DIGITAL");
 			if (HDA_PARAM_AUDIO_WIDGET_CAP_UNSOL_CAP(w->param.widget_cap))
-			    printf(" UNSOL");
+			    kprintf(" UNSOL");
 			if (HDA_PARAM_AUDIO_WIDGET_CAP_PROC_WIDGET(w->param.widget_cap))
-			    printf(" PROC");
+			    kprintf(" PROC");
 			if (HDA_PARAM_AUDIO_WIDGET_CAP_STRIPE(w->param.widget_cap))
-			    printf(" STRIPE(x%d)",
+			    kprintf(" STRIPE(x%d)",
 				1 << (fls(w->wclass.conv.stripecap) - 1));
 			j = HDA_PARAM_AUDIO_WIDGET_CAP_CC(w->param.widget_cap);
 			if (j == 1)
-			    printf(" STEREO");
+			    kprintf(" STEREO");
 			else if (j > 1)
-			    printf(" %dCH", j + 1);
+			    kprintf(" %dCH", j + 1);
 		}
-		printf("\n");
+		kprintf("\n");
 		if (w->bindas != -1) {
 			device_printf(devinfo->dev, "    Association: %d (0x%04x)\n",
 			    w->bindas, w->bindseqmask);
@@ -5847,8 +5847,8 @@ hdaa_dump_nodes(struct hdaa_devinfo *devinfo)
 			device_printf(devinfo->dev, "            OSS: %s",
 			    hdaa_audio_ctl_ossmixer_mask2allname(w->ossmask, buf, sizeof(buf)));
 			if (w->ossdev >= 0)
-			    printf(" (%s)", ossnames[w->ossdev]);
-			printf("\n");
+			    kprintf(" (%s)", ossnames[w->ossdev]);
+			kprintf("\n");
 		}
 		if (w->type == HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_AUDIO_OUTPUT ||
 		    w->type == HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_AUDIO_INPUT) {
@@ -5875,13 +5875,13 @@ hdaa_dump_nodes(struct hdaa_devinfo *devinfo)
 			    (w->connsenable[j] == 0)?"[DISABLED] ":"",
 			    w->conns[j], (cw == NULL) ? "GHOST!" : cw->name);
 			if (cw == NULL)
-				printf(" [UNKNOWN]");
+				kprintf(" [UNKNOWN]");
 			else if (cw->enable == 0)
-				printf(" [DISABLED]");
+				kprintf(" [DISABLED]");
 			if (w->nconns > 1 && w->selconn == j && w->type !=
 			    HDA_PARAM_AUDIO_WIDGET_CAP_TYPE_AUDIO_MIXER)
-				printf(" (selected)");
-			printf("\n");
+				kprintf(" (selected)");
+			kprintf("\n");
 		}
 	}
 
@@ -5906,22 +5906,22 @@ hdaa_dump_dst_nid(struct hdaa_pcm_devinfo *pdevinfo, nid_t nid, int depth)
 		device_printf(pdevinfo->dev, "%*s", 4, "");
 	else
 		device_printf(pdevinfo->dev, "%*s  + <- ", 4 + (depth - 1) * 7, "");
-	printf("nid=%d [%s]", w->nid, w->name);
+	kprintf("nid=%d [%s]", w->nid, w->name);
 
 	if (depth > 0) {
 		if (w->ossmask == 0) {
-			printf("\n");
+			kprintf("\n");
 			return;
 		}
-		printf(" [src: %s]", 
+		kprintf(" [src: %s]", 
 		    hdaa_audio_ctl_ossmixer_mask2allname(
 			w->ossmask, buf, sizeof(buf)));
 		if (w->ossdev >= 0) {
-			printf("\n");
+			kprintf("\n");
 			return;
 		}
 	}
-	printf("\n");
+	kprintf("\n");
 
 	for (i = 0; i < w->nconns; i++) {
 		if (w->connsenable[i] == 0)
@@ -5956,8 +5956,8 @@ hdaa_dump_dac(struct hdaa_pcm_devinfo *pdevinfo)
 		chid = devinfo->as[pdevinfo->playas].chans[i];
 		device_printf(pdevinfo->dev, "            DAC:");
 		for (nids = devinfo->chans[chid].io; *nids != -1; nids++)
-			printf(" %d", *nids);
-		printf("\n");
+			kprintf(" %d", *nids);
+		kprintf("\n");
 	}
 
 	as = &devinfo->as[pdevinfo->playas];
@@ -5994,8 +5994,8 @@ hdaa_dump_adc(struct hdaa_pcm_devinfo *pdevinfo)
 		chid = devinfo->as[pdevinfo->recas].chans[i];
 		device_printf(pdevinfo->dev, "            ADC:");
 		for (nids = devinfo->chans[chid].io; *nids != -1; nids++)
-			printf(" %d", *nids);
-		printf("\n");
+			kprintf(" %d", *nids);
+		kprintf("\n");
 	}
 
 	for (i = devinfo->startnode; i < devinfo->endnode; i++) {
@@ -6081,16 +6081,16 @@ hdaa_pindump(device_t dev)
 				res = hda_command(dev, HDA_CMD_GET_PIN_SENSE(0,
 				    w->nid));
 			}
-			printf(" Sense: 0x%08x (%sconnected%s)", res,
+			kprintf(" Sense: 0x%08x (%sconnected%s)", res,
 			    (res & HDA_CMD_GET_PIN_SENSE_PRESENCE_DETECT) ?
 			     "" : "dis",
 			    (HDA_PARAM_AUDIO_WIDGET_CAP_DIGITAL(w->param.widget_cap) &&
 			     (res & HDA_CMD_GET_PIN_SENSE_ELD_VALID)) ?
 			      ", ELD valid" : "");
 			if (delay > 0)
-				printf(" delay %dus", delay * 10);
+				kprintf(" delay %dus", delay * 10);
 		}
-		printf("\n");
+		kprintf("\n");
 	}
 	device_printf(dev,
 	    "NumGPIO=%d NumGPO=%d NumGPI=%d GPIWake=%d GPIUnsol=%d\n",
@@ -6211,9 +6211,9 @@ hdaa_configure(device_t dev)
 				if ((devinfo->quirks &
 				    hdaa_quirks_tab[i].value) ==
 				    hdaa_quirks_tab[i].value)
-					printf(" %s", hdaa_quirks_tab[i].key);
+					kprintf(" %s", hdaa_quirks_tab[i].key);
 			}
-			printf("\n");
+			kprintf("\n");
 		}
 	);
 
@@ -6237,10 +6237,10 @@ hdaa_configure(device_t dev)
 			    (ctl->dir == HDAA_CTL_IN)?"in ":"out",
 			    ctl->index);
 			if (ctl->childwidget != NULL)
-				printf(" cnid %3d", ctl->childwidget->nid);
+				kprintf(" cnid %3d", ctl->childwidget->nid);
 			else
-				printf("         ");
-			printf(" ossmask=0x%08x\n",
+				kprintf("         ");
+			kprintf(" ossmask=0x%08x\n",
 			    ctl->ossmask);
 			device_printf(dev, 
 			    "       mute: %d step: %3d size: %3d off: %3d%s\n",
@@ -6263,16 +6263,16 @@ hdaa_unconfigure(device_t dev)
 		device_printf(dev, "Pin sense deinit...\n");
 	);
 	hdaa_sense_deinit(devinfo);
-	free(devinfo->ctl, M_HDAA);
+	kfree(devinfo->ctl, M_HDAA);
 	devinfo->ctl = NULL;
 	devinfo->ctlcnt = 0;
-	free(devinfo->as, M_HDAA);
+	kfree(devinfo->as, M_HDAA);
 	devinfo->as = NULL;
 	devinfo->ascnt = 0;
-	free(devinfo->devs, M_HDAA);
+	kfree(devinfo->devs, M_HDAA);
 	devinfo->devs = NULL;
 	devinfo->num_devs = 0;
-	free(devinfo->chans, M_HDAA);
+	kfree(devinfo->chans, M_HDAA);
 	devinfo->chans = NULL;
 	devinfo->num_chans = 0;
 	for (i = devinfo->startnode; i < devinfo->endnode; i++) {
@@ -6292,7 +6292,7 @@ hdaa_unconfigure(device_t dev)
 			w->wclass.pin.config = w->wclass.pin.newconf;
 		if (w->eld != NULL) {
 			w->eld_len = 0;
-			free(w->eld, M_HDAA);
+			kfree(w->eld, M_HDAA);
 			w->eld = NULL;
 		}
 	}
@@ -6316,7 +6316,7 @@ hdaa_sysctl_gpi_state(SYSCTL_HANDLER_ARGS)
 	}
 	hdaa_unlock(devinfo);
 	for (i = 0; i < numgpi; i++) {
-		n += snprintf(buf + n, sizeof(buf) - n, "%s%d=%d",
+		n += ksnprintf(buf + n, sizeof(buf) - n, "%s%d=%d",
 		    n != 0 ? " " : "", i, ((data >> i) & 1));
 	}
 	return (sysctl_handle_string(oidp, buf, sizeof(buf), req));
@@ -6344,13 +6344,13 @@ hdaa_sysctl_gpio_state(SYSCTL_HANDLER_ARGS)
 	}
 	hdaa_unlock(devinfo);
 	for (i = 0; i < numgpio; i++) {
-		n += snprintf(buf + n, sizeof(buf) - n, "%s%d=",
+		n += ksnprintf(buf + n, sizeof(buf) - n, "%s%d=",
 		    n != 0 ? " " : "", i);
 		if ((enable & (1 << i)) == 0) {
-			n += snprintf(buf + n, sizeof(buf) - n, "disabled");
+			n += ksnprintf(buf + n, sizeof(buf) - n, "disabled");
 			continue;
 		}
-		n += snprintf(buf + n, sizeof(buf) - n, "%sput(%d)",
+		n += ksnprintf(buf + n, sizeof(buf) - n, "%sput(%d)",
 		    ((dir >> i) & 1) ? "out" : "in", ((data >> i) & 1));
 	}
 	return (sysctl_handle_string(oidp, buf, sizeof(buf), req));
@@ -6369,7 +6369,7 @@ hdaa_sysctl_gpio_config(SYSCTL_HANDLER_ARGS)
 	buf[0] = 0;
 	for (i = 0; i < numgpio; i++) {
 		x = (gpio & HDAA_GPIO_MASK(i)) >> HDAA_GPIO_SHIFT(i);
-		n += snprintf(buf + n, sizeof(buf) - n, "%s%d=%s",
+		n += ksnprintf(buf + n, sizeof(buf) - n, "%s%d=%s",
 		    n != 0 ? " " : "", i, HDA_GPIO_ACTIONS[x]);
 	}
 	error = sysctl_handle_string(oidp, buf, sizeof(buf), req);
@@ -6404,7 +6404,7 @@ hdaa_sysctl_gpo_state(SYSCTL_HANDLER_ARGS)
 	}
 	hdaa_unlock(devinfo);
 	for (i = 0; i < numgpo; i++) {
-		n += snprintf(buf + n, sizeof(buf) - n, "%s%d=%d",
+		n += ksnprintf(buf + n, sizeof(buf) - n, "%s%d=%d",
 		    n != 0 ? " " : "", i, ((data >> i) & 1));
 	}
 	return (sysctl_handle_string(oidp, buf, sizeof(buf), req));
@@ -6423,7 +6423,7 @@ hdaa_sysctl_gpo_config(SYSCTL_HANDLER_ARGS)
 	buf[0] = 0;
 	for (i = 0; i < numgpo; i++) {
 		x = (gpo & HDAA_GPIO_MASK(i)) >> HDAA_GPIO_SHIFT(i);
-		n += snprintf(buf + n, sizeof(buf) - n, "%s%d=%s",
+		n += ksnprintf(buf + n, sizeof(buf) - n, "%s%d=%s",
 		    n != 0 ? " " : "", i, HDA_GPIO_ACTIONS[x]);
 	}
 	error = sysctl_handle_string(oidp, buf, sizeof(buf), req);
@@ -6573,7 +6573,7 @@ hdaa_probe(device_t dev)
 	if (hda_get_node_type(dev) != HDA_PARAM_FCT_GRP_TYPE_NODE_TYPE_AUDIO)
 		return (ENXIO);
 	pdesc = device_get_desc(device_get_parent(dev));
-	snprintf(buf, sizeof(buf), "%.*s Audio Function Group",
+	ksnprintf(buf, sizeof(buf), "%.*s Audio Function Group",
 	    (int)(strlen(pdesc) - 10), pdesc);
 	device_set_desc_copy(dev, buf);
 	return (BUS_PROBE_DEFAULT);
@@ -6592,7 +6592,7 @@ hdaa_attach(device_t dev)
 	devinfo->newquirks = -1;
 	devinfo->newgpio = -1;
 	devinfo->newgpo = -1;
-	callout_init(&devinfo->poll_jack, CALLOUT_MPSAFE);
+	callout_init_mp(&devinfo->poll_jack);
 	devinfo->poll_ival = hz;
 
 	hdaa_lock(devinfo);
@@ -6616,7 +6616,7 @@ hdaa_attach(device_t dev)
 	);
 
 	if (devinfo->nodecnt > 0)
-		devinfo->widget = (struct hdaa_widget *)malloc(
+		devinfo->widget = (struct hdaa_widget *)kmalloc(
 		    sizeof(*(devinfo->widget)) * devinfo->nodecnt, M_HDAA,
 		    M_WAITOK | M_ZERO);
 	else
@@ -6640,32 +6640,32 @@ hdaa_attach(device_t dev)
 
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
-	    "config", CTLTYPE_STRING | CTLFLAG_RW | CTLFLAG_MPSAFE,
+	    "config", CTLTYPE_STRING | CTLFLAG_RW,
 	    &devinfo->newquirks, sizeof(&devinfo->newquirks),
 	    hdaa_sysctl_quirks, "A", "Configuration options");
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
-	    "gpi_state", CTLTYPE_STRING | CTLFLAG_RD | CTLFLAG_MPSAFE,
+	    "gpi_state", CTLTYPE_STRING | CTLFLAG_RD,
 	    devinfo, sizeof(devinfo),
 	    hdaa_sysctl_gpi_state, "A", "GPI state");
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
-	    "gpio_state", CTLTYPE_STRING | CTLFLAG_RD | CTLFLAG_MPSAFE,
+	    "gpio_state", CTLTYPE_STRING | CTLFLAG_RD,
 	    devinfo, sizeof(devinfo),
 	    hdaa_sysctl_gpio_state, "A", "GPIO state");
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
-	    "gpio_config", CTLTYPE_STRING | CTLFLAG_RW | CTLFLAG_MPSAFE,
+	    "gpio_config", CTLTYPE_STRING | CTLFLAG_RW,
 	    devinfo, sizeof(devinfo),
 	    hdaa_sysctl_gpio_config, "A", "GPIO configuration");
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
-	    "gpo_state", CTLTYPE_STRING | CTLFLAG_RD | CTLFLAG_MPSAFE,
+	    "gpo_state", CTLTYPE_STRING | CTLFLAG_RD,
 	    devinfo, sizeof(devinfo),
 	    hdaa_sysctl_gpo_state, "A", "GPO state");
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO,
-	    "gpo_config", CTLTYPE_STRING | CTLFLAG_RW | CTLFLAG_MPSAFE,
+	    "gpo_config", CTLTYPE_STRING | CTLFLAG_RW,
 	    devinfo, sizeof(devinfo),
 	    hdaa_sysctl_gpo_config, "A", "GPO configuration");
 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(dev),
@@ -6693,7 +6693,7 @@ hdaa_detach(device_t dev)
 	hdaa_unlock(devinfo);
 	callout_drain(&devinfo->poll_jack);
 
-	free(devinfo->widget, M_HDAA);
+	kfree(devinfo->widget, M_HDAA);
 	return (0);
 }
 
@@ -6707,26 +6707,26 @@ hdaa_print_child(device_t dev, device_t child)
 	int retval, first = 1, i;
 
 	retval = bus_print_child_header(dev, child);
-	retval += printf(" at nid ");
+	retval += kprintf(" at nid ");
 	if (pdevinfo->playas >= 0) {
 		as = &devinfo->as[pdevinfo->playas];
 		for (i = 0; i < 16; i++) {
 			if (as->pins[i] <= 0)
 				continue;
-			retval += printf("%s%d", first ? "" : ",", as->pins[i]);
+			retval += kprintf("%s%d", first ? "" : ",", as->pins[i]);
 			first = 0;
 		}
 	}
 	if (pdevinfo->recas >= 0) {
 		if (pdevinfo->playas >= 0) {
-			retval += printf(" and ");
+			retval += kprintf(" and ");
 			first = 1;
 		}
 		as = &devinfo->as[pdevinfo->recas];
 		for (i = 0; i < 16; i++) {
 			if (as->pins[i] <= 0)
 				continue;
-			retval += printf("%s%d", first ? "" : ",", as->pins[i]);
+			retval += kprintf("%s%d", first ? "" : ",", as->pins[i]);
 			first = 0;
 		}
 	}
@@ -6745,13 +6745,13 @@ hdaa_child_location_str(device_t dev, device_t child, char *buf,
 	struct hdaa_audio_as *as;
 	int first = 1, i, len = 0;
 
-	len += snprintf(buf + len, buflen - len, "nid=");
+	len += ksnprintf(buf + len, buflen - len, "nid=");
 	if (pdevinfo->playas >= 0) {
 		as = &devinfo->as[pdevinfo->playas];
 		for (i = 0; i < 16; i++) {
 			if (as->pins[i] <= 0)
 				continue;
-			len += snprintf(buf + len, buflen - len,
+			len += ksnprintf(buf + len, buflen - len,
 			    "%s%d", first ? "" : ",", as->pins[i]);
 			first = 0;
 		}
@@ -6761,7 +6761,7 @@ hdaa_child_location_str(device_t dev, device_t child, char *buf,
 		for (i = 0; i < 16; i++) {
 			if (as->pins[i] <= 0)
 				continue;
-			len += snprintf(buf + len, buflen - len,
+			len += ksnprintf(buf + len, buflen - len,
 			    "%s%d", first ? "" : ",", as->pins[i]);
 			first = 0;
 		}
@@ -6855,22 +6855,22 @@ hdaa_chan_formula(struct hdaa_devinfo *devinfo, int asid,
 	as = &devinfo->as[asid];
 	c = devinfo->chans[as->chans[0]].channels;
 	if (c == 1)
-		snprintf(buf, buflen, "mono");
+		ksnprintf(buf, buflen, "mono");
 	else if (c == 2) {
 		if (as->hpredir < 0)
 			buf[0] = 0;
 		else
-			snprintf(buf, buflen, "2.0");
+			ksnprintf(buf, buflen, "2.0");
 	} else if (as->pinset == 0x0003)
-		snprintf(buf, buflen, "3.1");
+		ksnprintf(buf, buflen, "3.1");
 	else if (as->pinset == 0x0005 || as->pinset == 0x0011)
-		snprintf(buf, buflen, "4.0");
+		ksnprintf(buf, buflen, "4.0");
 	else if (as->pinset == 0x0007 || as->pinset == 0x0013)
-		snprintf(buf, buflen, "5.1");
+		ksnprintf(buf, buflen, "5.1");
 	else if (as->pinset == 0x0017)
-		snprintf(buf, buflen, "7.1");
+		ksnprintf(buf, buflen, "7.1");
 	else
-		snprintf(buf, buflen, "%dch", c);
+		ksnprintf(buf, buflen, "%dch", c);
 	if (as->hpredir >= 0)
 		strlcat(buf, "+HP", buflen);
 }
@@ -6967,9 +6967,9 @@ hdaa_pcm_probe(device_t dev)
 	}
 	if (chans1[0] != 0 || chans2[0] != 0) {
 		if (chans1[0] == 0 && pdevinfo->playas >= 0)
-			snprintf(chans1, sizeof(chans1), "2.0");
+			ksnprintf(chans1, sizeof(chans1), "2.0");
 		else if (chans2[0] == 0 && pdevinfo->recas >= 0)
-			snprintf(chans2, sizeof(chans2), "2.0");
+			ksnprintf(chans2, sizeof(chans2), "2.0");
 		if (strcmp(chans1, chans2) == 0)
 			chans2[0] = 0;
 	}
@@ -6982,7 +6982,7 @@ hdaa_pcm_probe(device_t dev)
 	if (pdevinfo->digital)
 		t1 = -2;
 	pdesc = device_get_desc(device_get_parent(dev));
-	snprintf(buf, sizeof(buf), "%.*s (%s%s%s%s%s%s%s%s%s)",
+	ksnprintf(buf, sizeof(buf), "%.*s (%s%s%s%s%s%s%s%s%s)",
 	    (int)(strlen(pdesc) - 21), pdesc,
 	    loc1 >= 0 ? HDA_LOCS[loc1] : "", loc1 >= 0 ? " " : "",
 	    (pdevinfo->digital == 0x7)?"HDMI/DP":
@@ -7073,7 +7073,7 @@ hdaa_pcm_attach(device_t dev)
 			    &devinfo->chans[as->chans[i]]);
 		SYSCTL_ADD_PROC(&d->play_sysctl_ctx,
 		    SYSCTL_CHILDREN(d->play_sysctl_tree), OID_AUTO,
-		    "32bit", CTLTYPE_INT | CTLFLAG_RW | CTLFLAG_MPSAFE,
+		    "32bit", CTLTYPE_INT | CTLFLAG_RW,
 		    as, sizeof(as), hdaa_sysctl_32bit, "I",
 		    "Resolution of 32bit samples (20/24/32bit)");
 	}
@@ -7084,7 +7084,7 @@ hdaa_pcm_attach(device_t dev)
 			    &devinfo->chans[as->chans[i]]);
 		SYSCTL_ADD_PROC(&d->rec_sysctl_ctx,
 		    SYSCTL_CHILDREN(d->rec_sysctl_tree), OID_AUTO,
-		    "32bit", CTLTYPE_INT | CTLFLAG_RW | CTLFLAG_MPSAFE,
+		    "32bit", CTLTYPE_INT | CTLFLAG_RW,
 		    as, sizeof(as), hdaa_sysctl_32bit, "I",
 		    "Resolution of 32bit samples (20/24/32bit)");
 		pdevinfo->autorecsrc = 2;
@@ -7112,7 +7112,7 @@ hdaa_pcm_attach(device_t dev)
 		hdaa_unlock(devinfo);
 	}
 
-	snprintf(status, SND_STATUSLEN, "on %s %s",
+	ksnprintf(status, SND_STATUSLEN, "on %s %s",
 	    device_get_nameunit(device_get_parent(dev)),
 	    PCM_KLDSTRING(snd_hda));
 	pcm_setstatus(dev, status);

@@ -31,6 +31,7 @@
 #endif
 
 #include <dev/sound/pcm/sound.h>
+#include <sys/eventhandler.h>
 
 #include "feeder_if.h"
 #include "mixer_if.h"
@@ -63,7 +64,7 @@ struct snd_mixer {
 	u_int32_t child[32];
 	u_int8_t realdev[32];
 	char name[MIXER_NAMELEN];
-	struct mtx *lock;
+	struct lock *lock;
 	oss_mixer_enuminfo enuminfo;
 	/** 
 	 * Counter is incremented when applications change any of this
@@ -154,12 +155,12 @@ mixer_set_softpcmvol(struct snd_mixer *m, struct snddev_info *d,
 	if (!PCM_REGISTERED(d))
 		return (EINVAL);
 
-	if (mtx_owned(m->lock))
+	if (lockstatus(m->lock, curthread))
 		dropmtx = 1;
 	else
 		dropmtx = 0;
 	
-	if (!(d->flags & SD_F_MPSAFE) || mtx_owned(d->lock) != 0)
+	if (!(d->flags & SD_F_MPSAFE) || lockstatus(d->lock, curthread) == 0)
 		acquiremtx = 0;
 	else
 		acquiremtx = 1;
@@ -207,12 +208,12 @@ mixer_set_eq(struct snd_mixer *m, struct snddev_info *d,
 	if (!PCM_REGISTERED(d))
 		return (EINVAL);
 
-	if (mtx_owned(m->lock))
+	if (lockstatus(m->lock, curthread))
 		dropmtx = 1;
 	else
 		dropmtx = 0;
 	
-	if (!(d->flags & SD_F_MPSAFE) || mtx_owned(d->lock) != 0)
+	if (!(d->flags & SD_F_MPSAFE) || lockstatus(d->lock, curthread) == 0)
 		acquiremtx = 0;
 	else
 		acquiremtx = 1;
@@ -263,7 +264,7 @@ mixer_set(struct snd_mixer *m, u_int dev, u_int lev)
 		return -1;
 
 	/* It is safe to drop this mutex due to Giant. */
-	if (!(d->flags & SD_F_MPSAFE) && mtx_owned(m->lock) != 0)
+	if (!(d->flags & SD_F_MPSAFE) && lockstatus(m->lock, curthread) == 0)
 		dropmtx = 1;
 	else
 		dropmtx = 0;
@@ -345,7 +346,7 @@ mixer_setrecsrc(struct snd_mixer *mixer, u_int32_t src)
 	d = device_get_softc(mixer->dev);
 	if (d == NULL)
 		return -1;
-	if (!(d->flags & SD_F_MPSAFE) && mtx_owned(mixer->lock) != 0)
+	if (!(d->flags & SD_F_MPSAFE) && lockstatus(mixer->lock, curthread) == 0)
 		dropmtx = 1;
 	else
 		dropmtx = 0;
@@ -621,7 +622,7 @@ mixer_obj_create(device_t dev, kobj_class_t cls, void *devinfo,
 	    ("invalid mixer type=%d", type));
 
 	m = (struct snd_mixer *)kobj_create(cls, M_MIXER, M_WAITOK | M_ZERO);
-	snprintf(m->name, sizeof(m->name), "%s:mixer",
+	ksnprintf(m->name, sizeof(m->name), "%s:mixer",
 	    device_get_nameunit(dev));
 	if (desc != NULL) {
 		strlcat(m->name, ":", sizeof(m->name));
@@ -746,11 +747,11 @@ mixer_init(device_t dev, kobj_class_t cls, void *devinfo)
 				    snd_mixernames[i]);
 			}
 			if (m->parent[i] < SOUND_MIXER_NRDEVICES)
-				printf(" parent=\"%s\"",
+				kprintf(" parent=\"%s\"",
 				    snd_mixernames[m->parent[i]]);
 			if (m->child[i] != 0)
-				printf(" child=0x%08x", m->child[i]);
-			printf("\n");
+				kprintf(" child=0x%08x", m->child[i]);
+			kprintf("\n");
 		}
 		if (snddev->flags & SD_F_SOFTPCMVOL)
 			device_printf(dev, "Soft PCM mixer ENABLED\n");
@@ -1328,7 +1329,6 @@ done:
 
 static void
 mixer_clone(void *arg,
-    struct ucred *cred,
     char *name, int namelen, struct cdev **dev)
 {
 	struct snddev_info *d;
@@ -1421,7 +1421,7 @@ mixer_oss_mixerinfo(struct cdev *i_dev, oss_mixerinfo *mi)
 		    ((mi->dev == -1 && d->mixer_dev == i_dev) ||
 		    mi->dev == nmix)) {
 			m = d->mixer_dev->si_drv1;
-			mtx_lock(m->lock);
+			lockmgr(m->lock, LK_EXCLUSIVE);
 
 			/*
 			 * At this point, the following synchronization stuff
@@ -1432,7 +1432,7 @@ mixer_oss_mixerinfo(struct cdev *i_dev, oss_mixerinfo *mi)
 			 */
 			bzero((void *)mi, sizeof(*mi));
 			mi->dev = nmix;
-			snprintf(mi->id, sizeof(mi->id), "mixer%d", i);
+			ksnprintf(mi->id, sizeof(mi->id), "mixer%d", i);
 			strlcpy(mi->name, m->name, sizeof(mi->name));
 			mi->modify_counter = m->modify_counter;
 			mi->card_number = i;
@@ -1494,7 +1494,7 @@ mixer_oss_mixerinfo(struct cdev *i_dev, oss_mixerinfo *mi)
 			sizeof(mi->devnode));
 			mi->legacy_device = i;
 			 */
-			mtx_unlock(m->lock);
+			lockmgr(m->lock, LK_RELEASE);
 		} else
 			++nmix;
 
@@ -1511,12 +1511,10 @@ mixer_oss_mixerinfo(struct cdev *i_dev, oss_mixerinfo *mi)
  * Allow the sound driver to use the mixer lock to protect its mixer
  * data:
  */
-struct mtx *
+struct lock *
 mixer_get_lock(struct snd_mixer *m)
 {
-	if (m->lock == NULL) {
-		return (&Giant);
-	}
+	KASSERT(m->lock != NULL, ("mixer_get_lock() called with NULL parameter"));
 	return (m->lock);
 }
 

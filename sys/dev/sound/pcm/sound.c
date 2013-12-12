@@ -87,30 +87,28 @@ sndstat_prepare_pcm(SNDSTAT_PREPARE_PCM_ARGS)
 void *
 snd_mtxcreate(const char *desc, const char *type)
 {
-	struct mtx *m;
+	struct lock *m;
 
-	m = malloc(sizeof(*m), M_DEVBUF, M_WAITOK | M_ZERO);
-	mtx_init(m, desc, type, MTX_DEF);
+	m = kmalloc(sizeof(*m), M_DEVBUF, M_WAITOK | M_ZERO);
+	lockinit(m, desc, 0, LK_CANRECURSE);
 	return m;
 }
 
 void
 snd_mtxfree(void *m)
 {
-	struct mtx *mtx = m;
+	struct lock *mtx = m;
 
-	mtx_destroy(mtx);
-	free(mtx, M_DEVBUF);
+	lockuninit(mtx);
+	kfree(mtx, M_DEVBUF);
 }
 
 void
 snd_mtxassert(void *m)
 {
-#ifdef INVARIANTS
-	struct mtx *mtx = m;
+	struct lock *lk = m;
 
-	mtx_assert(mtx, MA_OWNED);
-#endif
+	KKASSERT(lockstatus(lk, curthread) != 0);
 }
 
 int
@@ -119,12 +117,11 @@ snd_setup_intr(device_t dev, struct resource *res, int flags, driver_intr_t hand
 	struct snddev_info *d;
 
 	flags &= INTR_MPSAFE;
-	flags |= INTR_TYPE_AV;
 	d = device_get_softc(dev);
 	if (d != NULL && (flags & INTR_MPSAFE))
 		d->flags |= SD_F_MPSAFE;
 
-	return bus_setup_intr(dev, res, flags, NULL, hand, param, cookiep);
+	return bus_setup_intr(dev, res, flags, hand, param, cookiep, NULL);
 }
 
 static void
@@ -566,7 +563,7 @@ pcm_chn_create(struct snddev_info *d, struct pcm_channel *parent, kobj_class_t c
 	}
 
 	PCM_UNLOCK(d);
-	ch = malloc(sizeof(*ch), M_DEVBUF, M_WAITOK | M_ZERO);
+	ch = kmalloc(sizeof(*ch), M_DEVBUF, M_WAITOK | M_ZERO);
 	ch->methods = kobj_create(cls, M_DEVBUF, M_WAITOK | M_ZERO);
 	ch->unit = udc;
 	ch->pid = -1;
@@ -575,7 +572,7 @@ pcm_chn_create(struct snddev_info *d, struct pcm_channel *parent, kobj_class_t c
 	ch->parentchannel = parent;
 	ch->dev = d->dev;
 	ch->trigger = PCMTRIG_STOP;
-	snprintf(ch->name, sizeof(ch->name), "%s:%s:%s",
+	ksnprintf(ch->name, sizeof(ch->name), "%s:%s:%s",
 	    device_get_nameunit(ch->dev), dirs, devname);
 
 	err = chn_init(ch, devinfo, dir, direction);
@@ -584,7 +581,7 @@ pcm_chn_create(struct snddev_info *d, struct pcm_channel *parent, kobj_class_t c
 		device_printf(d->dev, "chn_init(%s) failed: err = %d\n",
 		    ch->name, err);
 		kobj_delete(ch->methods, M_DEVBUF);
-		free(ch, M_DEVBUF);
+		kfree(ch, M_DEVBUF);
 		return (NULL);
 	}
 
@@ -608,7 +605,7 @@ pcm_chn_destroy(struct pcm_channel *ch)
 	}
 
 	kobj_delete(ch->methods, M_DEVBUF);
-	free(ch, M_DEVBUF);
+	kfree(ch, M_DEVBUF);
 
 	return (0);
 }

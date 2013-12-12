@@ -49,7 +49,7 @@ struct spicds_info {
 	unsigned int dvc;    /* De-emphasis and Volume Control */
 	unsigned int left, right;
 	char name[SPICDS_NAMELEN];
-	struct mtx *lock;
+	struct lock *lock;
 };
 
 static void
@@ -144,11 +144,11 @@ spicds_create(device_t dev, void *devinfo, int num, spicds_ctrl ctrl)
 #if(0)
 	device_printf(dev, "spicds_create(dev, devinfo, %d, ctrl)\n", num);
 #endif
-	codec = (struct spicds_info *)malloc(sizeof *codec, M_SPICDS, M_NOWAIT);
+	codec = (struct spicds_info *)kmalloc(sizeof *codec, M_SPICDS, M_NOWAIT);
 	if (codec == NULL)
 		return NULL;
 
-	snprintf(codec->name, SPICDS_NAMELEN, "%s:spicds%d", device_get_nameunit(dev), num);
+	ksnprintf(codec->name, SPICDS_NAMELEN, "%s:spicds%d", device_get_nameunit(dev), num);
 	codec->lock = snd_mtxcreate(codec->name, codec->name);
 	codec->dev = dev;
 	codec->ctrl = ctrl;
@@ -166,7 +166,7 @@ void
 spicds_destroy(struct spicds_info *codec)
 {
 	snd_mtxfree(codec->lock);
-	free(codec, M_SPICDS);
+	kfree(codec, M_SPICDS);
 }
 
 void

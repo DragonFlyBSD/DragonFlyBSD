@@ -42,7 +42,6 @@
 #include <sys/filio.h>
 #include <sys/sockio.h>
 #include <sys/fcntl.h>
-#include <sys/selinfo.h>
 #include <sys/proc.h>
 #include <sys/kernel.h> /* for DATA_SET */
 #include <sys/module.h>
@@ -53,8 +52,6 @@
 #include <sys/errno.h>
 #include <sys/malloc.h>
 #include <sys/bus.h>
-#include <machine/resource.h>
-#include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/limits.h>
 #include <sys/mman.h>
@@ -67,6 +64,7 @@
 #include <vm/pmap.h>
 
 #include <sys/lock.h>
+#include <sys/mplock2.h>
 #include <sys/mutex.h>
 #include <sys/condvar.h>
 
@@ -344,8 +342,8 @@ int snd_setup_intr(device_t dev, struct resource *res, int flags,
 void *snd_mtxcreate(const char *desc, const char *type);
 void snd_mtxfree(void *m);
 void snd_mtxassert(void *m);
-#define	snd_mtxlock(m) mtx_lock(m)
-#define	snd_mtxunlock(m) mtx_unlock(m)
+#define	snd_mtxlock(m) lockmgr(m, LK_EXCLUSIVE)
+#define	snd_mtxunlock(m) lockmgr(m, LK_RELEASE)
 
 typedef int (*sndstat_handler)(struct sbuf *s, device_t dev, int verbose);
 int sndstat_acquire(struct thread *td);
@@ -401,7 +399,7 @@ struct snddev_info {
 	void *devinfo;
 	device_t dev;
 	char status[SND_STATUSLEN];
-	struct mtx *lock;
+	struct lock *lock;
 	struct cdev *mixer_dev;
 	uint32_t pvchanrate, pvchanformat;
 	uint32_t rvchanrate, rvchanformat;
@@ -414,12 +412,12 @@ struct snddev_info {
 void	sound_oss_sysinfo(oss_sysinfo *);
 int	sound_oss_card_info(oss_card_info *);
 
-#define PCM_LOCKOWNED(d)	mtx_owned((d)->lock)
-#define	PCM_LOCK(d)		mtx_lock((d)->lock)
-#define	PCM_UNLOCK(d)		mtx_unlock((d)->lock)
-#define PCM_TRYLOCK(d)		mtx_trylock((d)->lock)
-#define PCM_LOCKASSERT(d)	mtx_assert((d)->lock, MA_OWNED)
-#define PCM_UNLOCKASSERT(d)	mtx_assert((d)->lock, MA_NOTOWNED)
+#define PCM_LOCKOWNED(d)	lockstatus((d)->lock, curthread)
+#define PCM_LOCK(d)		lockmgr((d)->lock, LK_EXCLUSIVE)
+#define PCM_UNLOCK(d)		lockmgr((d)->lock, LK_RELEASE)
+#define PCM_TRYLOCK(d)		lockmgr((d)->lock, LK_EXCLUSIVE|LK_NOWAIT)
+#define PCM_LOCKASSERT(d)	KKASSERT(lockstatus((d)->lock, curthread) != 0)
+#define PCM_UNLOCKASSERT(d)	KKASSERT(lockstatus((d)->lock, curthread) == 0)
 
 /*
  * For PCM_[WAIT | ACQUIRE | RELEASE], be sure to surround these
@@ -582,34 +580,17 @@ int	sound_oss_card_info(oss_card_info *);
 				    __func__, __LINE__, x))
 
 #define PCM_GIANT_ENTER(x)	do {					\
-	int _pcm_giant = 0;						\
-	PCM_UNLOCKASSERT(x);						\
-	if (!((x)->flags & SD_F_MPSAFE) && mtx_owned(&Giant) == 0)	\
-		do {							\
-			mtx_lock(&Giant);				\
-			_pcm_giant = 1;					\
-		} while (0)
+	if (!((x)->flags & SD_F_MPSAFE))				\
+		get_mplock();						\
+} while (0)
 
 #define PCM_GIANT_EXIT(x)	do {					\
-	PCM_UNLOCKASSERT(x);						\
-	KASSERT(_pcm_giant == 0 || _pcm_giant == 1,			\
-	    ("%s(%d): [GIANT EXIT] _pcm_giant screwed!",		\
-	    __func__, __LINE__));					\
-	KASSERT(!((x)->flags & SD_F_MPSAFE) ||				\
-	    (((x)->flags & SD_F_MPSAFE) && _pcm_giant == 0),		\
-	    ("%s(%d): [GIANT EXIT] MPSAFE Giant?",			\
-	    __func__, __LINE__));					\
-	if (_pcm_giant != 0) {						\
-		mtx_assert(&Giant, MA_OWNED);				\
-		_pcm_giant = 0;						\
-		mtx_unlock(&Giant);					\
-	}								\
+	if (!((x)->flags & SD_F_MPSAFE))				\
+		rel_mplock();						\
 } while (0)
 #endif /* !SND_DIAGNOSTIC */
 
-#define PCM_GIANT_LEAVE(x)						\
-	PCM_GIANT_EXIT(x);						\
-} while (0)
+#define PCM_GIANT_LEAVE(x)	PCM_GIANT_EXIT(x)
 
 #ifdef KLD_MODULE
 #define PCM_KLDSTRING(a) ("kld " # a)

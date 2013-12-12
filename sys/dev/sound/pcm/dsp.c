@@ -32,8 +32,9 @@
 
 #include <dev/sound/pcm/sound.h>
 #include <sys/ctype.h>
+#include <sys/device.h>
+#include <sys/eventhandler.h>
 #include <sys/lock.h>
-#include <sys/rwlock.h>
 #include <sys/sysent.h>
 
 #include <vm/vm.h>
@@ -253,7 +254,7 @@ dsp_cdevinfo_alloc(struct cdev *dev,
 		return;
 	}
 	PCM_UNLOCK(d);
-	cdi = malloc(sizeof(*cdi), M_DEVBUF, M_WAITOK | M_ZERO);
+	cdi = kmalloc(sizeof(*cdi), M_DEVBUF, M_WAITOK | M_ZERO);
 	PCM_LOCK(d);
 	cdi->rdch = rdch;
 	cdi->wrch = wrch;
@@ -302,7 +303,7 @@ dsp_cdevinfo_free(struct cdev *dev)
 	 */
 	flags = dsp_get_flags(dev) & ~SD_F_PRIO_SET;
 	i = DSP_CDEVINFO_CACHESIZE;
-	TAILQ_FOREACH_SAFE(cdi, &d->dsp_cdevinfo_pool, link, tmp) {
+	TAILQ_FOREACH_MUTABLE(cdi, &d->dsp_cdevinfo_pool, link, tmp) {
 		if (cdi->busy != 0) {
 			if (cdi->simplex == 0) {
 				if (cdi->rdch != NULL)
@@ -313,7 +314,7 @@ dsp_cdevinfo_free(struct cdev *dev)
 		} else {
 			if (i == 0) {
 				TAILQ_REMOVE(&d->dsp_cdevinfo_pool, cdi, link);
-				free(cdi, M_DEVBUF);
+				kfree(cdi, M_DEVBUF);
 			} else
 				i--;
 		}
@@ -333,7 +334,7 @@ dsp_cdevinfo_init(struct snddev_info *d)
 
 	TAILQ_INIT(&d->dsp_cdevinfo_pool);
 	for (i = 0; i < DSP_CDEVINFO_CACHESIZE; i++) {
-		cdi = malloc(sizeof(*cdi), M_DEVBUF, M_WAITOK | M_ZERO);
+		cdi = kmalloc(sizeof(*cdi), M_DEVBUF, M_WAITOK | M_ZERO);
 		TAILQ_INSERT_HEAD(&d->dsp_cdevinfo_pool, cdi, link);
 	}
 }
@@ -350,7 +351,7 @@ dsp_cdevinfo_flush(struct snddev_info *d)
 	cdi = TAILQ_FIRST(&d->dsp_cdevinfo_pool);
 	while (cdi != NULL) {
 		tmp = TAILQ_NEXT(cdi, link);
-		free(cdi, M_DEVBUF);
+		kfree(cdi, M_DEVBUF);
 		cdi = tmp;
 	}
 	TAILQ_INIT(&d->dsp_cdevinfo_pool);
@@ -1299,13 +1300,13 @@ dsp_ioctl(struct cdev *i_dev, u_long cmd, caddr_t arg, int mode,
 			*arg_i = chn_abort(rdch);
 			CHN_UNLOCK(rdch);
 		} else {
-	   	 	printf("AIOSTOP: bad channel 0x%x\n", *arg_i);
+	   	 	kprintf("AIOSTOP: bad channel 0x%x\n", *arg_i);
 	    		*arg_i = 0;
 		}
 		break;
 
     	case AIOSYNC:
-		printf("AIOSYNC chan 0x%03lx pos %lu unimplemented\n",
+		kprintf("AIOSYNC chan 0x%03lx pos %lu unimplemented\n",
 	    		((snd_sync_parm *)arg)->chan, ((snd_sync_parm *)arg)->pos);
 		break;
 #endif
@@ -1327,7 +1328,7 @@ dsp_ioctl(struct cdev *i_dev, u_long cmd, caddr_t arg, int mode,
 		break;
 
     	case FIOASYNC: /*set/clear async i/o */
-		DEB( printf("FIOASYNC\n") ; )
+		DEB( kprintf("FIOASYNC\n") ; )
 		break;
 
     	case SNDCTL_DSP_NONBLOCK: /* set non-blocking i/o */
@@ -1384,7 +1385,7 @@ dsp_ioctl(struct cdev *i_dev, u_long cmd, caddr_t arg, int mode,
 		break;
 
     	case SNDCTL_DSP_RESET:
-		DEB(printf("dsp reset\n"));
+		DEB(kprintf("dsp reset\n"));
 		if (wrch) {
 			CHN_LOCK(wrch);
 			chn_abort(wrch);
@@ -1400,7 +1401,7 @@ dsp_ioctl(struct cdev *i_dev, u_long cmd, caddr_t arg, int mode,
 		break;
 
     	case SNDCTL_DSP_SYNC:
-		DEB(printf("dsp sync\n"));
+		DEB(kprintf("dsp sync\n"));
 		/* chn_sync may sleep */
 		if (wrch) {
 			CHN_LOCK(wrch);
@@ -1568,7 +1569,7 @@ dsp_ioctl(struct cdev *i_dev, u_long cmd, caddr_t arg, int mode,
 		break;
 
     	case SNDCTL_DSP_SETFRAGMENT:
-		DEB(printf("SNDCTL_DSP_SETFRAGMENT 0x%08x\n", *(int *)arg));
+		DEB(kprintf("SNDCTL_DSP_SETFRAGMENT 0x%08x\n", *(int *)arg));
 		{
 			uint32_t fragln = (*arg_i) & 0x0000ffff;
 			uint32_t maxfrags = ((*arg_i) & 0xffff0000) >> 16;
@@ -1585,7 +1586,7 @@ dsp_ioctl(struct cdev *i_dev, u_long cmd, caddr_t arg, int mode,
 			if (maxfrags * fragsz > CHN_2NDBUFMAXSIZE)
 				maxfrags = CHN_2NDBUFMAXSIZE / fragsz;
 
-			DEB(printf("SNDCTL_DSP_SETFRAGMENT %d frags, %d sz\n", maxfrags, fragsz));
+			DEB(kprintf("SNDCTL_DSP_SETFRAGMENT %d frags, %d sz\n", maxfrags, fragsz));
 			PCM_ACQUIRE_QUICK(d);
 		    	if (rdch) {
 				CHN_LOCK(rdch);
@@ -2145,7 +2146,7 @@ dsp_ioctl(struct cdev *i_dev, u_long cmd, caddr_t arg, int mode,
 		/* dunno what these do, don't sound important */
 
     	default:
-		DEB(printf("default ioctl fn 0x%08lx fail\n", cmd));
+		DEB(kprintf("default ioctl fn 0x%08lx fail\n", cmd));
 		ret = EINVAL;
 		break;
     	}
@@ -2260,8 +2261,7 @@ dsp_mmap_single(struct cdev *i_dev, vm_ooffset_t *offset,
 
 	*offset = (uintptr_t)sndbuf_getbufofs(c->bufsoft, *offset);
 	relchns(i_dev, rdch, wrch, SD_F_PRIO_RD | SD_F_PRIO_WR);
-	*object = vm_pager_allocate(OBJT_DEVICE, i_dev,
-	    size, nprot, *offset, curthread->td_ucred);
+	*object = dev_pager_alloc(i_dev, size, nprot, *offset);
 
 	PCM_GIANT_LEAVE(d);
 
@@ -2272,7 +2272,7 @@ dsp_mmap_single(struct cdev *i_dev, vm_ooffset_t *offset,
 
 /* So much for dev_stdclone() */
 static int
-dsp_stdclone(char *name, char *namep, char *sep, int use_sep, int *u, int *c)
+dsp_stdclone(const char *name, char *namep, char *sep, int use_sep, int *u, int *c)
 {
 	size_t len;
 
@@ -2324,7 +2324,6 @@ dsp_stdclone(char *name, char *namep, char *sep, int use_sep, int *u, int *c)
 
 static void
 dsp_clone(void *arg,
-    struct ucred *cred,
     char *name, int namelen, struct cdev **dev)
 {
 	struct snddev_info *d;
@@ -2456,8 +2455,10 @@ dsp_clone_alloc:
 
 	PCM_RELEASE_QUICK(d);
 
+#if 0
 	if (*dev != NULL)
 		dev_ref(*dev);
+#endif
 }
 
 static void
@@ -2497,7 +2498,7 @@ dsp_unit2name(char *buf, size_t len, int unit)
 	for (i = 0; i < (sizeof(dsp_cdevs) / sizeof(dsp_cdevs[0])); i++) {
 		if (dtype != dsp_cdevs[i].type || dsp_cdevs[i].alias != NULL)
 			continue;
-		snprintf(buf, len, "%s%d%s%d", dsp_cdevs[i].name,
+		ksnprintf(buf, len, "%s%d%s%d", dsp_cdevs[i].name,
 		    snd_unit2u(unit), dsp_cdevs[i].sep, snd_unit2c(unit));
 		return (buf);
 	}
@@ -2818,7 +2819,7 @@ dsp_oss_syncgroup(struct pcm_channel *wrch, struct pcm_channel *rdch, oss_syncgr
 	 * syncgroup.
 	 */
 	if (group->id == 0) {
-		sg = (struct pcmchan_syncgroup *)malloc(sizeof(*sg), M_DEVBUF, M_NOWAIT);
+		sg = (struct pcmchan_syncgroup *)kmalloc(sizeof(*sg), M_DEVBUF, M_NOWAIT);
 		if (sg != NULL) {
 			SLIST_INIT(&sg->members);
 			sg->id = alloc_unr(pcmsg_unrhdr);
@@ -2845,7 +2846,7 @@ dsp_oss_syncgroup(struct pcm_channel *wrch, struct pcm_channel *rdch, oss_syncgr
 	 * insert into syncgroup.
 	 */
 	if (group->mode & PCM_ENABLE_INPUT) {
-		smrd = (struct pcmchan_syncmember *)malloc(sizeof(*smrd), M_DEVBUF, M_NOWAIT);
+		smrd = (struct pcmchan_syncmember *)kmalloc(sizeof(*smrd), M_DEVBUF, M_NOWAIT);
 		if (smrd == NULL) {
 			ret = ENOMEM;
 			goto out;
@@ -2861,7 +2862,7 @@ dsp_oss_syncgroup(struct pcm_channel *wrch, struct pcm_channel *rdch, oss_syncgr
 	}
 
 	if (group->mode & PCM_ENABLE_OUTPUT) {
-		smwr = (struct pcmchan_syncmember *)malloc(sizeof(*smwr), M_DEVBUF, M_NOWAIT);
+		smwr = (struct pcmchan_syncmember *)kmalloc(sizeof(*smwr), M_DEVBUF, M_NOWAIT);
 		if (smwr == NULL) {
 			ret = ENOMEM;
 			goto out;
@@ -2880,11 +2881,11 @@ dsp_oss_syncgroup(struct pcm_channel *wrch, struct pcm_channel *rdch, oss_syncgr
 out:
 	if (ret != 0) {
 		if (smrd != NULL)
-			free(smrd, M_DEVBUF);
+			kfree(smrd, M_DEVBUF);
 		if ((sg != NULL) && SLIST_EMPTY(&sg->members)) {
 			sg_ids[2] = sg->id;
 			SLIST_REMOVE(&snd_pcm_syncgroups, sg, pcmchan_syncgroup, link);
-			free(sg, M_DEVBUF);
+			kfree(sg, M_DEVBUF);
 		}
 
 		if (wrch)
@@ -2973,8 +2974,8 @@ dsp_oss_syncstart(int sg_id)
 				}
 
 				/** @todo Is PRIBIO correct/ */
-				ret = msleep(sm, &snd_pcm_syncgroups_mtx,
-				    PRIBIO | PCATCH, "pcmsg", timo);
+				ret = lksleep(sm, &snd_pcm_syncgroups_mtx,
+				    PCATCH, "pcmsg", timo);
 				if (ret == EINTR || ret == ERESTART)
 					break;
 
@@ -2996,11 +2997,11 @@ dsp_oss_syncstart(int sg_id)
 			c->flags &= ~CHN_F_NOTRIGGER;
 			CHN_UNLOCK(c);
 
-			free(sm, M_DEVBUF);
+			kfree(sm, M_DEVBUF);
 		}
 
 		SLIST_REMOVE(&snd_pcm_syncgroups, sg, pcmchan_syncgroup, link);
-		free(sg, M_DEVBUF);
+		kfree(sg, M_DEVBUF);
 	}
 
 	PCM_SG_UNLOCK();

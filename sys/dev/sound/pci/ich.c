@@ -33,8 +33,8 @@
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pci/ich.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/ich.c 216518 2010-12-18 14:21:28Z tijl $");
 
@@ -196,7 +196,7 @@ struct sc_info {
 	uint16_t vendor;
 	uint16_t devid;
 	uint32_t flags;
-	struct mtx *ich_lock;
+	struct lock *ich_lock;
 };
 
 /* -------------------------------------------------------------------- */
@@ -686,7 +686,7 @@ ich_setstatus(struct sc_info *sc)
 {
 	char status[SND_STATUSLEN];
 
-	snprintf(status, SND_STATUSLEN,
+	ksnprintf(status, SND_STATUSLEN,
 	    "at io 0x%lx, 0x%lx irq %ld bufsz %u %s",
 	    rman_get_start(sc->nambar), rman_get_start(sc->nabmbar),
 	    rman_get_start(sc->irq), sc->bufsz,PCM_KLDSTRING(snd_ich));
@@ -801,8 +801,8 @@ ich_calibrate(void *arg)
 	if (bootverbose || sc->ac97rate != 48000) {
 		device_printf(sc->dev, "measured ac97 link rate at %d Hz", actual_48k_rate);
 		if (sc->ac97rate != actual_48k_rate)
-			printf(", will use %d Hz", sc->ac97rate);
-	 	printf("\n");
+			kprintf(", will use %d Hz", sc->ac97rate);
+	 	kprintf("\n");
 	}
 	sc->flags |= ICH_CALIBRATE_DONE;
 	ICH_UNLOCK(sc);
@@ -887,7 +887,7 @@ ich_pci_attach(device_t dev)
 	struct sc_info 		*sc;
 	int			i;
 
-	sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->ich_lock = snd_mtxcreate(device_get_nameunit(dev), "snd_ich softc");
 	sc->dev = dev;
 
@@ -1114,7 +1114,7 @@ bad:
 		bus_dma_tag_destroy(sc->dmat);
 	if (sc->ich_lock)
 		snd_mtxfree(sc->ich_lock);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return (ENXIO);
 }
 
@@ -1138,7 +1138,7 @@ ich_pci_detach(device_t dev)
 	bus_dma_tag_destroy(sc->chan_dmat);
 	bus_dma_tag_destroy(sc->dmat);
 	snd_mtxfree(sc->ich_lock);
-	free(sc, M_DEVBUF);
+	kfree(sc, M_DEVBUF);
 	return (0);
 }
 
@@ -1161,7 +1161,7 @@ ich_pci_codec_reset(struct sc_info *sc)
 	}
 
 	if (i <= 0)
-		printf("%s: time out\n", __func__);
+		kprintf("%s: time out\n", __func__);
 }
 
 static int

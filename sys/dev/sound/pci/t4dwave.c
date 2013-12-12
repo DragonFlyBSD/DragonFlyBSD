@@ -32,8 +32,8 @@
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pci/t4dwave.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 SND_DECLARE_FILE("$FreeBSD: head/sys/dev/sound/pci/t4dwave.c 254263 2013-08-12 23:30:01Z scottl $");
 
@@ -99,7 +99,7 @@ struct tr_info {
 	int regtype, regid, irqid;
 	void *ih;
 
-	struct mtx *lock;
+	struct lock *lock;
 
 	u_int32_t hwchns;
 	u_int32_t playchns;
@@ -202,7 +202,7 @@ tr_rdcd(kobj_t obj, void *devinfo, int regno)
 		trw=TNX_CDC_RWSTAT;
 		break;
 	default:
-		printf("!!! tr_rdcd defaulted !!!\n");
+		kprintf("!!! tr_rdcd defaulted !!!\n");
 		return -1;
 	}
 
@@ -230,7 +230,7 @@ tr_rdcd(kobj_t obj, void *devinfo, int regno)
 		       	j=tr_rd(tr, treg, 4);
 	}
 	snd_mtxunlock(tr->lock);
-	if (i == 0) printf("codec timeout during read of register %x\n", regno);
+	if (i == 0) kprintf("codec timeout during read of register %x\n", regno);
 	return (j >> TR_CDC_DATA) & 0xffff;
 }
 
@@ -255,7 +255,7 @@ tr_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 		trw=TNX_CDC_RWSTAT | ((regno & 0x100)? TNX_CDC_SEC : 0);
 		break;
 	default:
-		printf("!!! tr_wrcd defaulted !!!");
+		kprintf("!!! tr_wrcd defaulted !!!");
 		return -1;
 	}
 
@@ -291,7 +291,7 @@ tr_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 	printf(" - wrote %x, now %x\n", data, tr_rdcd(devinfo, regno));
 #endif
 	snd_mtxunlock(tr->lock);
-	if (i==0) printf("codec timeout writing %x, data %x\n", regno, data);
+	if (i==0) kprintf("codec timeout writing %x, data %x\n", regno, data);
 	return (i > 0)? 0 : -1;
 }
 
@@ -833,7 +833,7 @@ tr_pci_attach(device_t dev)
 	u_int32_t	data;
 #endif
 
-	tr = malloc(sizeof(*tr), M_DEVBUF, M_WAITOK | M_ZERO);
+	tr = kmalloc(sizeof(*tr), M_DEVBUF, M_WAITOK | M_ZERO);
 	tr->type = pci_get_devid(dev);
 	tr->rev = pci_get_revid(dev);
 	tr->lock = snd_mtxcreate(device_get_nameunit(dev), "snd_t4dwave softc");
@@ -917,14 +917,14 @@ tr_pci_attach(device_t dev)
 						    data);
 					data |= 0x1;
 					if (bootverbose)
-						printf("0x%x\n", data);
+						kprintf("0x%x\n", data);
 					pci_write_config(children[i], 0x7e,
 					    data, 1);
 					break;
 				}
 			}
 		}
-		free(children, M_TEMP);
+		kfree(children, M_TEMP);
 #endif
 		tr->hwchns = ALI_MAXHWCH;
 		tr->bufsz = ALI_BUFSZ;
@@ -948,7 +948,7 @@ tr_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	snprintf(status, 64, "at io 0x%lx irq %ld %s",
+	ksnprintf(status, 64, "at io 0x%lx irq %ld %s",
 		 rman_get_start(tr->reg), rman_get_start(tr->irq),PCM_KLDSTRING(snd_t4dwave));
 
 	if (pcm_register(dev, tr, dacn, 1))
@@ -967,7 +967,7 @@ bad:
 	if (tr->irq) bus_release_resource(dev, SYS_RES_IRQ, tr->irqid, tr->irq);
 	if (tr->parent_dmat) bus_dma_tag_destroy(tr->parent_dmat);
 	if (tr->lock) snd_mtxfree(tr->lock);
-	free(tr, M_DEVBUF);
+	kfree(tr, M_DEVBUF);
 	return ENXIO;
 }
 
@@ -987,7 +987,7 @@ tr_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_IRQ, tr->irqid, tr->irq);
 	bus_dma_tag_destroy(tr->parent_dmat);
 	snd_mtxfree(tr->lock);
-	free(tr, M_DEVBUF);
+	kfree(tr, M_DEVBUF);
 
 	return 0;
 }

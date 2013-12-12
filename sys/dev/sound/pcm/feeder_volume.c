@@ -151,7 +151,7 @@ feed_volume_init(struct pcm_feeder *f)
 	for (i = 0; i < FEEDVOLUME_TAB_SIZE; i++) {
 		if (AFMT_ENCODING(f->desc->in) ==
 		    feed_volume_info_tab[i].format) {
-			info = malloc(sizeof(*info), M_DEVBUF,
+			info = kmalloc(sizeof(*info), M_DEVBUF,
 			    M_NOWAIT | M_ZERO);
 			if (info == NULL)
 				return (ENOMEM);
@@ -165,13 +165,13 @@ feed_volume_init(struct pcm_feeder *f)
 			f->data = info;
 			m = feeder_matrix_default_channel_map(info->channels);
 			if (m == NULL) {
-				free(info, M_DEVBUF);
+				kfree(info, M_DEVBUF);
 				return (EINVAL);
 			}
 
 			ret = feeder_volume_apply_matrix(f, m);
 			if (ret != 0)
-				free(info, M_DEVBUF);
+				kfree(info, M_DEVBUF);
 
 			return (ret);
 		}
@@ -187,7 +187,7 @@ feed_volume_free(struct pcm_feeder *f)
 
 	info = f->data;
 	if (info != NULL)
-		free(info, M_DEVBUF);
+		kfree(info, M_DEVBUF);
 
 	f->data = NULL;
 

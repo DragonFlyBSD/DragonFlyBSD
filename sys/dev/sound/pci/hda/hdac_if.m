@@ -28,7 +28,7 @@
 
 INTERFACE hdac;
 
-METHOD struct mtx * get_mtx {
+METHOD struct lock * get_mtx {
     device_t    dev;
     device_t    child;
 };

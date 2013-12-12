@@ -42,8 +42,8 @@
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/ac97.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 #include <sys/sysctl.h>
 
 #include <dev/sound/pci/via8233.h>
@@ -121,7 +121,7 @@ struct via_info {
 	uint16_t codec_caps;
 	uint16_t n_dxs_registered;
 	int play_num, rec_num;
-	struct mtx *lock;
+	struct lock *lock;
 	struct callout poll_timer;
 	int poll_ticks, polling;
 };
@@ -912,10 +912,10 @@ via8233chan_trigger(kobj_t obj, void* data, int go)
 			    pollticks < via->poll_ticks) {
 			    	if (bootverbose) {
 					if (via_chan_active(via) == 0)
-						printf("%s: pollticks=%d\n",
+						kprintf("%s: pollticks=%d\n",
 						    __func__, pollticks);
 					else
-						printf("%s: "
+						kprintf("%s: "
 						    "pollticks %d -> %d\n",
 						    __func__, via->poll_ticks,
 						    pollticks);
@@ -945,7 +945,7 @@ via8233chan_trigger(kobj_t obj, void* data, int go)
 				pollticks = via_poll_ticks(via);
 				if (pollticks > via->poll_ticks) {
 					if (bootverbose)
-						printf("%s: pollticks "
+						kprintf("%s: pollticks "
 						    "%d -> %d\n",
 						    __func__, via->poll_ticks,
 						    pollticks);
@@ -1170,12 +1170,12 @@ via_attach(device_t dev)
 	int nsegs;
 	uint32_t revid;
 
-	via = malloc(sizeof *via, M_DEVBUF, M_WAITOK | M_ZERO);
+	via = kmalloc(sizeof *via, M_DEVBUF, M_WAITOK | M_ZERO);
 	via->lock = snd_mtxcreate(device_get_nameunit(dev),
 	    "snd_via8233 softc");
 	via->dev = dev;
 
-	callout_init(&via->poll_timer, CALLOUT_MPSAFE);
+	callout_init_mp(&via->poll_timer);
 	via->poll_ticks = 1;
 
 	if (resource_int_value(device_get_name(dev),
@@ -1348,7 +1348,7 @@ via_attach(device_t dev)
 		ac97_setextmode(via->codec, ext);
 	}
 
-	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
+	ksnprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld %s",
 	    rman_get_start(via->reg), rman_get_start(via->irq),
 	    PCM_KLDSTRING(snd_via8233));
 
@@ -1390,7 +1390,7 @@ bad:
 	if (via->lock)
 		snd_mtxfree(via->lock);
 	if (via)
-		free(via, M_DEVBUF);
+		kfree(via, M_DEVBUF);
 	return (ENXIO);
 }
 
@@ -1422,7 +1422,7 @@ via_detach(device_t dev)
 	bus_dmamem_free(via->sgd_dmat, via->sgd_table, via->sgd_dmamap);
 	bus_dma_tag_destroy(via->sgd_dmat);
 	snd_mtxfree(via->lock);
-	free(via, M_DEVBUF);
+	kfree(via, M_DEVBUF);
 	return (0);
 }
 

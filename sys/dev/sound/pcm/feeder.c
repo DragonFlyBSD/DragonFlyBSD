@@ -64,9 +64,9 @@ feeder_register(void *p)
 		KASSERT(fc->desc == NULL, ("first feeder not root: %s", fc->name));
 
 		SLIST_INIT(&feedertab);
-		fte = malloc(sizeof(*fte), M_FEEDER, M_NOWAIT | M_ZERO);
+		fte = kmalloc(sizeof(*fte), M_FEEDER, M_NOWAIT | M_ZERO);
 		if (fte == NULL) {
-			printf("can't allocate memory for root feeder: %s\n",
+			kprintf("can't allocate memory for root feeder: %s\n",
 			    fc->name);
 
 			return;
@@ -113,7 +113,7 @@ feeder_register(void *p)
 			feeder_rate_round = FEEDRATE_ROUNDHZ;
 
 		if (bootverbose)
-			printf("%s: snd_unit=%d snd_maxautovchans=%d "
+			kprintf("%s: snd_unit=%d snd_maxautovchans=%d "
 			    "latency=%d "
 			    "feeder_rate_min=%d feeder_rate_max=%d "
 			    "feeder_rate_round=%d\n",
@@ -134,9 +134,9 @@ feeder_register(void *p)
 	i = 0;
 	while ((feedercnt < MAXFEEDERS) && (fc->desc[i].type > 0)) {
 		/* printf("adding feeder %s, %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out); */
-		fte = malloc(sizeof(*fte), M_FEEDER, M_NOWAIT | M_ZERO);
+		fte = kmalloc(sizeof(*fte), M_FEEDER, M_NOWAIT | M_ZERO);
 		if (fte == NULL) {
-			printf("can't allocate memory for feeder '%s', %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out);
+			kprintf("can't allocate memory for feeder '%s', %x -> %x\n", fc->name, fc->desc[i].in, fc->desc[i].out);
 
 			return;
 		}
@@ -149,7 +149,7 @@ feeder_register(void *p)
 	}
 	feedercnt++;
 	if (feedercnt >= MAXFEEDERS)
-		printf("MAXFEEDERS (%d >= %d) exceeded\n", feedercnt, MAXFEEDERS);
+		kprintf("MAXFEEDERS (%d >= %d) exceeded\n", feedercnt, MAXFEEDERS);
 }
 
 static void
@@ -161,7 +161,7 @@ feeder_unregisterall(void *p)
 	while (next != NULL) {
 		fte = next;
 		next = SLIST_NEXT(fte, link);
-		free(fte, M_FEEDER);
+		kfree(fte, M_FEEDER);
 	}
 }
 
@@ -209,7 +209,7 @@ feeder_create(struct feeder_class *fc, struct pcm_feederdesc *desc)
 
 	err = FEEDER_INIT(f);
 	if (err) {
-		printf("feeder_init(%p) on %s returned %d\n", f, fc->name, err);
+		kprintf("feeder_init(%p) on %s returned %d\n", f, fc->name, err);
 		feeder_destroy(f);
 
 		return NULL;
@@ -441,13 +441,13 @@ feeder_printchain(struct pcm_feeder *head)
 {
 	struct pcm_feeder *f;
 
-	printf("feeder chain (head @%p)\n", head);
+	kprintf("feeder chain (head @%p)\n", head);
 	f = head;
 	while (f != NULL) {
-		printf("%s/%d @ %p\n", f->class->name, f->desc->idx, f);
+		kprintf("%s/%d @ %p\n", f->class->name, f->desc->idx, f);
 		f = f->source;
 	}
-	printf("[end]\n\n");
+	kprintf("[end]\n\n");
 }
 
 /*****************************************************************************/
@@ -476,7 +476,7 @@ feed_root(struct pcm_feeder *feeder, struct pcm_channel *ch, u_int8_t *buffer, u
 
 	if (offset > 0) {
 		if (snd_verbose > 3)
-			printf("%s: (%s) %spending %d bytes "
+			kprintf("%s: (%s) %spending %d bytes "
 			    "(count=%d l=%d feed=%d)\n",
 			    __func__,
 			    (ch->flags & CHN_F_VIRTUAL) ? "virtual" : "hardware",

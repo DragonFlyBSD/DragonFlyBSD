@@ -44,8 +44,8 @@ sndbuf_create(device_t dev, char *drv, char *desc, struct pcm_channel *channel)
 {
 	struct snd_dbuf *b;
 
-	b = malloc(sizeof(*b), M_DEVBUF, M_WAITOK | M_ZERO);
-	snprintf(b->name, SNDBUF_NAMELEN, "%s:%s", drv, desc);
+	b = kmalloc(sizeof(*b), M_DEVBUF, M_WAITOK | M_ZERO);
+	ksnprintf(b->name, SNDBUF_NAMELEN, "%s:%s", drv, desc);
 	b->dev = dev;
 	b->channel = channel;
 
@@ -56,7 +56,7 @@ void
 sndbuf_destroy(struct snd_dbuf *b)
 {
 	sndbuf_free(b);
-	free(b, M_DEVBUF);
+	kfree(b, M_DEVBUF);
 }
 
 bus_addr_t
@@ -73,7 +73,7 @@ sndbuf_setmap(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 	if (snd_verbose > 3) {
 		device_printf(b->dev, "sndbuf_setmap %lx, %lx; ",
 		    (u_long)segs[0].ds_addr, (u_long)segs[0].ds_len);
-		printf("%p -> %lx\n", b->buf, (u_long)segs[0].ds_addr);
+		kprintf("%p -> %lx\n", b->buf, (u_long)segs[0].ds_addr);
 	}
 	if (error == 0)
 		b->buf_addr = segs[0].ds_addr;
@@ -132,10 +132,10 @@ void
 sndbuf_free(struct snd_dbuf *b)
 {
 	if (b->tmpbuf)
-		free(b->tmpbuf, M_DEVBUF);
+		kfree(b->tmpbuf, M_DEVBUF);
 
 	if (b->shadbuf)
-		free(b->shadbuf, M_DEVBUF);
+		kfree(b->shadbuf, M_DEVBUF);
 
 	if (b->buf) {
 		if (b->flags & SNDBUF_F_MANAGED) {
@@ -144,7 +144,7 @@ sndbuf_free(struct snd_dbuf *b)
 			if (b->dmatag)
 				bus_dmamem_free(b->dmatag, b->buf, b->dmamap);
 		} else
-			free(b->buf, M_DEVBUF);
+			kfree(b->buf, M_DEVBUF);
 	}
 
 	b->tmpbuf = NULL;
@@ -183,18 +183,18 @@ sndbuf_resize(struct snd_dbuf *b, unsigned int blkcnt, unsigned int blksz)
 	    bufsize < (b->allocsize >> SNDBUF_CACHE_SHIFT)) {
 		allocsize = round_page(bufsize);
 		CHN_UNLOCK(b->channel);
-		tmpbuf = malloc(allocsize, M_DEVBUF, M_WAITOK);
+		tmpbuf = kmalloc(allocsize, M_DEVBUF, M_WAITOK);
 		CHN_LOCK(b->channel);
 		if (snd_verbose > 3)
-			printf("%s(): b=%p %p -> %p [%d -> %d : %d]\n",
+			kprintf("%s(): b=%p %p -> %p [%d -> %d : %d]\n",
 			    __func__, b, b->tmpbuf, tmpbuf,
 			    b->allocsize, allocsize, bufsize);
 		if (b->tmpbuf != NULL)
-			free(b->tmpbuf, M_DEVBUF);
+			kfree(b->tmpbuf, M_DEVBUF);
 		b->tmpbuf = tmpbuf;
 		b->allocsize = allocsize;
 	} else if (snd_verbose > 3)
-		printf("%s(): b=%p %d [%d] NOCHANGE\n",
+		kprintf("%s(): b=%p %d [%d] NOCHANGE\n",
 		    __func__, b, b->allocsize, b->bufsize);
 
 	b->blkcnt = blkcnt;
@@ -222,25 +222,25 @@ sndbuf_remalloc(struct snd_dbuf *b, unsigned int blkcnt, unsigned int blksz)
 	    bufsize < (b->allocsize >> SNDBUF_CACHE_SHIFT)) {
 		allocsize = round_page(bufsize);
 		CHN_UNLOCK(b->channel);
-		buf = malloc(allocsize, M_DEVBUF, M_WAITOK);
-		tmpbuf = malloc(allocsize, M_DEVBUF, M_WAITOK);
-		shadbuf = malloc(allocsize, M_DEVBUF, M_WAITOK);
+		buf = kmalloc(allocsize, M_DEVBUF, M_WAITOK);
+		tmpbuf = kmalloc(allocsize, M_DEVBUF, M_WAITOK);
+		shadbuf = kmalloc(allocsize, M_DEVBUF, M_WAITOK);
 		CHN_LOCK(b->channel);
 		if (b->buf != NULL)
-			free(b->buf, M_DEVBUF);
+			kfree(b->buf, M_DEVBUF);
 		b->buf = buf;
 		if (b->tmpbuf != NULL)
-			free(b->tmpbuf, M_DEVBUF);
+			kfree(b->tmpbuf, M_DEVBUF);
 		b->tmpbuf = tmpbuf;
 		if (b->shadbuf != NULL)
-			free(b->shadbuf, M_DEVBUF);
+			kfree(b->shadbuf, M_DEVBUF);
 		b->shadbuf = shadbuf;
 		if (snd_verbose > 3)
-			printf("%s(): b=%p %d -> %d [%d]\n",
+			kprintf("%s(): b=%p %d -> %d [%d]\n",
 			    __func__, b, b->allocsize, allocsize, bufsize);
 		b->allocsize = allocsize;
 	} else if (snd_verbose > 3)
-		printf("%s(): b=%p %d [%d] NOCHANGE\n",
+		kprintf("%s(): b=%p %d [%d] NOCHANGE\n",
 		    __func__, b, b->allocsize, b->bufsize);
 
 	b->blkcnt = blkcnt;
@@ -729,18 +729,18 @@ sndbuf_feed(struct snd_dbuf *from, struct snd_dbuf *to, struct pcm_channel *chan
 void
 sndbuf_dump(struct snd_dbuf *b, char *s, u_int32_t what)
 {
-	printf("%s: [", s);
+	kprintf("%s: [", s);
 	if (what & 0x01)
-		printf(" bufsize: %d, maxsize: %d", b->bufsize, b->maxsize);
+		kprintf(" bufsize: %d, maxsize: %d", b->bufsize, b->maxsize);
 	if (what & 0x02)
-		printf(" dl: %d, rp: %d, rl: %d, hp: %d", b->dl, b->rp, b->rl, b->hp);
+		kprintf(" dl: %d, rp: %d, rl: %d, hp: %d", b->dl, b->rp, b->rl, b->hp);
 	if (what & 0x04)
-		printf(" total: %ju, prev_total: %ju, xrun: %d", (uintmax_t)b->total, (uintmax_t)b->prev_total, b->xrun);
+		kprintf(" total: %ju, prev_total: %ju, xrun: %d", (uintmax_t)b->total, (uintmax_t)b->prev_total, b->xrun);
    	if (what & 0x08)
-		printf(" fmt: 0x%x, spd: %d", b->fmt, b->spd);
+		kprintf(" fmt: 0x%x, spd: %d", b->fmt, b->spd);
 	if (what & 0x10)
-		printf(" blksz: %d, blkcnt: %d, flags: 0x%x", b->blksz, b->blkcnt, b->flags);
-	printf(" ]\n");
+		kprintf(" blksz: %d, blkcnt: %d, flags: 0x%x", b->blksz, b->blkcnt, b->flags);
+	kprintf(" ]\n");
 }
 
 /************************************************************/

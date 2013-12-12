@@ -81,8 +81,8 @@
 #include <dev/sound/pcm/ac97.h>
 #include <dev/sound/pci/es137x.h>
 
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
 
 #include <sys/sysctl.h>
 
@@ -224,7 +224,7 @@ struct es_info {
 	uint32_t	sctrl;
 	uint32_t	escfg;
 	struct es_chinfo ch[ES_NCHANS];
-	struct mtx	*lock;
+	struct lock	*lock;
 	struct callout	poll_timer;
 	int poll_ticks, polling;
 };
@@ -1711,7 +1711,7 @@ es_pci_attach(device_t dev)
 	kobj_class_t    ct = NULL;
 	uint32_t devid;
 
-	es = malloc(sizeof *es, M_DEVBUF, M_WAITOK | M_ZERO);
+	es = kmalloc(sizeof *es, M_DEVBUF, M_WAITOK | M_ZERO);
 	es->lock = snd_mtxcreate(device_get_nameunit(dev), "snd_es137x softc");
 	es->dev = dev;
 	es->escfg = 0;
@@ -1741,7 +1741,7 @@ es_pci_attach(device_t dev)
 
 	es->st = rman_get_bustag(es->reg);
 	es->sh = rman_get_bushandle(es->reg);
-	callout_init(&es->poll_timer, CALLOUT_MPSAFE);
+	callout_init_mp(&es->poll_timer);
 	es->poll_ticks = 1;
 
 	if (resource_int_value(device_get_name(dev),
@@ -1856,7 +1856,7 @@ es_pci_attach(device_t dev)
 		goto bad;
 	}
 
-	snprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld %s",
+	ksnprintf(status, SND_STATUSLEN, "at %s 0x%lx irq %ld %s",
 	    (es->regtype == SYS_RES_IOPORT)? "io" : "memory",
 	    rman_get_start(es->reg), rman_get_start(es->irq),
 	    PCM_KLDSTRING(snd_es137x));
@@ -1891,7 +1891,7 @@ bad:
 	if (es->lock)
 		snd_mtxfree(es->lock);
 	if (es)
-		free(es, M_DEVBUF);
+		kfree(es, M_DEVBUF);
 	return (ENXIO);
 }
 
@@ -1920,7 +1920,7 @@ es_pci_detach(device_t dev)
 	bus_release_resource(dev, es->regtype, es->regid, es->reg);
 	bus_dma_tag_destroy(es->parent_dmat);
 	snd_mtxfree(es->lock);
-	free(es, M_DEVBUF);
+	kfree(es, M_DEVBUF);
 
 	return (0);
 }

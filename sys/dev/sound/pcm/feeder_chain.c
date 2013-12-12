@@ -628,8 +628,8 @@ feeder_chain(struct pcm_channel *c)
 			{
 				int i;
 				for (i = 0; caps->fmtlist[i] != 0; i++)
-					printf("0x%08x\n", caps->fmtlist[i]);
-				printf("Req: 0x%08x\n", c->format);
+					kprintf("0x%08x\n", caps->fmtlist[i]);
+				kprintf("Req: 0x%08x\n", c->format);
 			}
 			return (ENODEV);
 		}

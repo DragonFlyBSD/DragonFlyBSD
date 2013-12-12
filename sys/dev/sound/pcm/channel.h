@@ -50,13 +50,14 @@ struct pcm_channel;
 struct pcmchan_syncgroup;
 struct pcmchan_syncmember;
 
-extern struct mtx snd_pcm_syncgroups_mtx;
+extern struct lock snd_pcm_syncgroups_mtx;
 extern SLIST_HEAD(pcm_synclist, pcmchan_syncgroup) snd_pcm_syncgroups;
 
-#define PCM_SG_LOCK()	    mtx_lock(&snd_pcm_syncgroups_mtx)
+#define PCM_SG_LOCK()	    lockmgr(&snd_pcm_syncgroups_mtx, LK_EXCLUSIVE)
 #define PCM_SG_TRYLOCK()    mtx_trylock(&snd_pcm_syncgroups_mtx)
-#define PCM_SG_UNLOCK()	    mtx_unlock(&snd_pcm_syncgroups_mtx)
-#define PCM_SG_LOCKASSERT(arg)	mtx_assert(&snd_pcm_syncgroups_mtx, arg)
+#define PCM_SG_UNLOCK()	    lockmgr(&snd_pcm_syncgroups_mtx, LK_RELEASE)
+#define PCM_SG_ASSERTOWNED     KKASSERT(lockstatus(&snd_pcm_syncgroups_mtx, curthread) != 0)
+#define PCM_SG_ASSERTNOTOWNED  KKASSERT(lockstatus(&snd_pcm_syncgroups_mtx, curthread) == 0)
 
 /**
  * @brief Specifies an audio device sync group
@@ -106,7 +107,7 @@ struct pcm_channel {
 	int unit;
 	char name[CHN_NAMELEN];
 	char comm[MAXCOMLEN + 1];
-	struct mtx *lock;
+	struct lock *lock;
 	int trigger;
 	/**
 	 * For interrupt manipulations.
@@ -178,7 +179,7 @@ struct pcm_channel {
 	SLIST_FOREACH(x, CHN_HEAD(y, z), CHN_LINK(z))
 
 #define CHN_FOREACH_SAFE(w, x, y, z)					\
-	SLIST_FOREACH_SAFE(w, CHN_HEAD(x, z), CHN_LINK(z), y)
+	SLIST_FOREACH_MUTABLE(w, CHN_HEAD(x, z), CHN_LINK(z), y)
 
 #define CHN_INSERT_HEAD(x, y, z)					\
 	SLIST_INSERT_HEAD(CHN_HEAD(x, z), y, CHN_LINK(z))
@@ -308,12 +309,12 @@ int chn_syncdestroy(struct pcm_channel *c);
 int chn_getpeaks(struct pcm_channel *c, int *lpeak, int *rpeak);
 #endif
 
-#define CHN_LOCKOWNED(c)	mtx_owned((c)->lock)
-#define CHN_LOCK(c)		mtx_lock((c)->lock)
-#define CHN_UNLOCK(c)		mtx_unlock((c)->lock)
-#define CHN_TRYLOCK(c)		mtx_trylock((c)->lock)
-#define CHN_LOCKASSERT(c)	mtx_assert((c)->lock, MA_OWNED)
-#define CHN_UNLOCKASSERT(c)	mtx_assert((c)->lock, MA_NOTOWNED)
+#define CHN_LOCKOWNED(c)	lockstatus((c)->lock, curthread)
+#define CHN_LOCK(c)		lockmgr((c)->lock, LK_EXCLUSIVE)
+#define CHN_UNLOCK(c)		lockmgr((c)->lock, LK_RELEASE)
+#define CHN_TRYLOCK(c)		lockmgr((c)->lock, LK_EXCLUSIVE|LK_NOWAIT)
+#define CHN_LOCKASSERT(c)	KKASSERT(lockstatus((c)->lock, curthread) != 0)
+#define CHN_UNLOCKASSERT(c)	KKASSERT(lockstatus((c)->lock, curthread) == 0)
 
 int snd_fmtvalid(uint32_t fmt, uint32_t *fmtlist);
 
