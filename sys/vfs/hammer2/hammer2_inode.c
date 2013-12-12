@@ -103,7 +103,8 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 			break;
 		hammer2_chain_unlock(chain);
 	}
-	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_HARDLINK) {
+	if (chain->data->ipdata.type == HAMMER2_OBJTYPE_HARDLINK &&
+	    (chain->flags & HAMMER2_CHAIN_DELETED) == 0) {
 		error = hammer2_hardlink_find(ip->pip, &chain, &ochain);
 		hammer2_chain_drop(ochain);
 		KKASSERT(error == 0);
@@ -763,10 +764,10 @@ hammer2_chain_refactor(hammer2_chain_t **chainp)
 static
 void
 hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_chain_t **chainp,
-			hammer2_inode_t *dip, int nlinks, int *errorp)
+			hammer2_inode_t *dip, hammer2_chain_t **dchainp,
+			int nlinks, int *errorp)
 {
 	hammer2_inode_data_t *nipdata;
-	hammer2_chain_t *parent;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *xchain;
 	hammer2_key_t key_dummy;
@@ -790,13 +791,11 @@ hammer2_hardlink_shiftup(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 */
 retry:
 	*errorp = 0;
-	parent = hammer2_inode_lock_ex(dip);
-	/*parent = hammer2_chain_lookup_init(dip->chain, 0);*/
-	xchain = hammer2_chain_lookup(&parent, &key_dummy,
+	xchain = hammer2_chain_lookup(dchainp, &key_dummy,
 				      lhc, lhc, &cache_index, 0);
 	if (xchain) {
-		kprintf("X3 chain %p parent %p dip %p dip->chain %p\n",
-			xchain, parent, dip, dip->chain);
+		kprintf("X3 chain %p dip %p dchain %p dip->chain %p\n",
+			xchain, dip, *dchainp, dip->chain);
 		hammer2_chain_unlock(xchain);
 		xchain = NULL;
 		*errorp = ENOSPC;
@@ -815,7 +814,7 @@ retry:
 	if (*errorp == 0) {
 		KKASSERT(xchain == NULL);
 #if 0
-		*errorp = hammer2_chain_create(trans, &parent, &xchain,
+		*errorp = hammer2_chain_create(trans, dchainp, &xchain,
 					       lhc, 0,
 					       HAMMER2_BREF_TYPE_INODE,/* n/a */
 					       HAMMER2_INODE_BYTES);   /* n/a */
@@ -828,11 +827,9 @@ retry:
 	 * Cleanup and handle retries.
 	 */
 	if (*errorp == EAGAIN) {
-		hammer2_chain_ref(parent);
-		/* hammer2_chain_lookup_done(parent); */
-		hammer2_inode_unlock_ex(dip, parent);
-		hammer2_chain_wait(parent);
-		hammer2_chain_drop(parent);
+		kprintf("R");
+		hammer2_chain_wait(*dchainp);
+		hammer2_chain_drop(*dchainp);
 		goto retry;
 	}
 
@@ -842,8 +839,6 @@ retry:
 	if (*errorp) {
 		panic("error2");
 		KKASSERT(xchain == NULL);
-		hammer2_inode_unlock_ex(dip, parent);
-		/*hammer2_chain_lookup_done(parent);*/
 		return;
 	}
 
@@ -859,20 +854,7 @@ retry:
 	bref = chain->bref;
 	bref.key = lhc;			/* invisible dir entry key */
 	bref.keybits = 0;
-#if 0
-	hammer2_chain_delete(trans, xchain, 0);
-#endif
-	hammer2_chain_duplicate(trans, &parent, &chain, &bref, 0, 2);
-#if 0
-	hammer2_chain_refactor(&xchain);
-	/*hammer2_chain_delete(trans, xchain, 0);*/
-#endif
-
-	hammer2_inode_unlock_ex(dip, parent);
-	/*hammer2_chain_lookup_done(parent);*/
-#if 0
-	hammer2_chain_unlock(xchain);	/* no longer needed */
-#endif
+	hammer2_chain_duplicate(trans, dchainp, &chain, &bref, 0, 2);
 
 	/*
 	 * chain is now 'live' again.. adjust the filename.
@@ -904,14 +886,14 @@ retry:
  * by the caller in this case (e.g. rename).
  */
 int
-hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
-		      hammer2_inode_t *dip, hammer2_chain_t **chainp,
+hammer2_inode_connect(hammer2_trans_t *trans,
+		      hammer2_chain_t **chainp, int hlink,
+		      hammer2_inode_t *dip, hammer2_chain_t **dchainp,
 		      const uint8_t *name, size_t name_len,
 		      hammer2_key_t lhc)
 {
 	hammer2_inode_data_t *ipdata;
 	hammer2_chain_t *nchain;
-	hammer2_chain_t *parent;
 	hammer2_chain_t *ochain;
 	hammer2_key_t key_dummy;
 	int cache_index = -1;
@@ -926,8 +908,6 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 	 *	    dip->chain cache.
 	 */
 	ochain = *chainp;
-	parent = hammer2_inode_lock_ex(dip);
-	/*parent = hammer2_chain_lookup_init(dip->chain, 0);*/
 
 	/*
 	 * If name is non-NULL we calculate lhc, else we use the passed-in
@@ -943,7 +923,7 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 		 */
 		error = 0;
 		while (error == 0) {
-			nchain = hammer2_chain_lookup(&parent, &key_dummy,
+			nchain = hammer2_chain_lookup(dchainp, &key_dummy,
 						      lhc, lhc,
 						      &cache_index, 0);
 			if (nchain == NULL)
@@ -969,7 +949,7 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 			 * create.
 			 */
 			KKASSERT(nchain == NULL);
-			error = hammer2_chain_create(trans, &parent, &nchain,
+			error = hammer2_chain_create(trans, dchainp, &nchain,
 						     lhc, 0,
 						     HAMMER2_BREF_TYPE_INODE,
 						     HAMMER2_INODE_BYTES);
@@ -994,7 +974,7 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 			ochain = NULL;
 			hammer2_chain_duplicate(trans, NULL, &nchain, NULL,
 						0, 3);
-			error = hammer2_chain_create(trans, &parent, &nchain,
+			error = hammer2_chain_create(trans, dchainp, &nchain,
 						     lhc, 0,
 						     HAMMER2_BREF_TYPE_INODE,
 						     HAMMER2_INODE_BYTES);
@@ -1005,9 +985,6 @@ hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
 	 * Unlock stuff.
 	 */
 	KKASSERT(error != EAGAIN);
-	hammer2_inode_unlock_ex(dip, parent);
-	/*hammer2_chain_lookup_done(parent);*/
-	parent = NULL;
 
 	/*
 	 * nchain should be NULL on error, leave ochain (== *chainp) alone.
@@ -1219,8 +1196,8 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	}
 
 	/*
-	 * Hardlink must be resolved.  We can't hold parent locked while we
-	 * do this or we could deadlock.
+	 * Hardlink must be resolved.  We can't hold the parent locked
+	 * while we do this or we could deadlock.
 	 *
 	 * On success chain will be adjusted to point at the hardlink target
 	 * and ochain will point to the hardlink pointer in the original
@@ -1296,11 +1273,15 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 	 *	 (which does not represent a ref for the open-test), and to
 	 *	 force finalization of the vnode if/when the last ref gets
 	 *	 dropped.
+	 *
+	 * NOTE! Files are unlinked by rename and then relinked.  nch will be
+	 *	 passed as NULL in this situation.  hammer2_inode_connect()
+	 *	 will bump nlinks.
 	 */
+	KKASSERT(chain != NULL);
 	hammer2_chain_modify(trans, &chain, 0);
 	ipdata = &chain->data->ipdata;
 	--ipdata->nlinks;
-	kprintf("file %s nlinks %ld\n", ipdata->filename, ipdata->nlinks);
 	if ((int64_t)ipdata->nlinks < 0)	/* XXX debugging */
 		ipdata->nlinks = 0;
 	if (ipdata->nlinks == 0) {
@@ -1430,6 +1411,7 @@ hammer2_inode_move_to_hidden(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 			     hammer2_tid_t inum)
 {
 	hammer2_chain_t *chain;
+	hammer2_chain_t *dchain;
 	hammer2_pfsmount_t *pmp;
 	int error;
 
@@ -1439,9 +1421,11 @@ hammer2_inode_move_to_hidden(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	KKASSERT(pmp->ihidden != NULL);
 
 	hammer2_chain_delete(trans, chain, 0);
-        error = hammer2_inode_connect(trans, 0,
-                                      pmp->ihidden, chainp,
+	dchain = hammer2_inode_lock_ex(pmp->ihidden);
+        error = hammer2_inode_connect(trans, chainp, 0,
+                                      pmp->ihidden, &dchain,
 				      NULL, 0, inum);
+	hammer2_inode_unlock_ex(pmp->ihidden, dchain);
 	KKASSERT(error == 0);
 }
 
@@ -1456,13 +1440,12 @@ hammer2_inode_move_to_hidden(hammer2_trans_t *trans, hammer2_chain_t **chainp,
  * NOTE!  This function will also replace ip->chain.
  */
 int
-hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
-			     hammer2_chain_t **chainp,
-			     hammer2_inode_t *tdip, int nlinks)
+hammer2_hardlink_consolidate(hammer2_trans_t *trans,
+			     hammer2_inode_t *ip, hammer2_chain_t **chainp,
+			     hammer2_inode_t *cdip, hammer2_chain_t **cdchainp,
+			     int nlinks)
 {
 	hammer2_inode_data_t *ipdata;
-	hammer2_inode_t *fdip;
-	hammer2_inode_t *cdip;
 	hammer2_chain_t *chain;
 	hammer2_chain_t *nchain;
 	int error;
@@ -1483,21 +1466,11 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	}
 
 	/*
-	 * cdip will be returned with a ref, but not locked.
-	 */
-	fdip = ip->pip;
-	cdip = hammer2_inode_common_parent(fdip, tdip);
-
-	/*
 	 * If no change in the hardlink's target directory is required and
 	 * this is already a hardlink target, all we need to do is adjust
 	 * the link count.
-	 *
-	 * XXX The common parent is a big wiggly due to duplication from
-	 *     renames.  Compare the core (RBTREE) pointer instead of the
-	 *     ip's.
 	 */
-	if (cdip == fdip &&
+	if (cdip == ip->pip &&
 	    (chain->data->ipdata.name_key & HAMMER2_DIRHASH_VISIBLE) == 0) {
 		if (nlinks) {
 			hammer2_chain_modify(trans, &chain, 0);
@@ -1573,7 +1546,7 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	 *	    to the older/original version.
 	 */
 	KKASSERT(chain->flags & HAMMER2_CHAIN_DELETED);
-	hammer2_hardlink_shiftup(trans, &chain, cdip, nlinks, &error);
+	hammer2_hardlink_shiftup(trans, &chain, cdip, cdchainp, nlinks, &error);
 
 	if (error == 0)
 		hammer2_inode_repoint(ip, cdip, chain);

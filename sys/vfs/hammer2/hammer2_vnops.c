@@ -336,7 +336,8 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	vp->v_data = NULL;
 	ip->vp = NULL;
 	if (chain->flags & HAMMER2_CHAIN_UNLINKED) {
-		kprintf("unlink on reclaim: %s\n", chain->data->ipdata.filename);
+		kprintf("unlink on reclaim: %s\n",
+			chain->data->ipdata.filename);
 		hammer2_trans_init(&trans, ip->pmp, NULL,
 				   HAMMER2_TRANS_BUFCACHE);
 		hammer2_chain_delete(&trans, chain, 0);
@@ -1486,17 +1487,22 @@ static
 int
 hammer2_vop_nlink(struct vop_nlink_args *ap)
 {
-	hammer2_inode_t *dip;	/* target directory to create link in */
+	hammer2_inode_t *fdip;	/* target directory to create link in */
+	hammer2_inode_t *tdip;	/* target directory to create link in */
+	hammer2_inode_t *cdip;	/* common parent directory */
 	hammer2_inode_t *ip;	/* inode we are hardlinking to */
 	hammer2_chain_t *chain;
+	hammer2_chain_t *fdchain;
+	hammer2_chain_t *tdchain;
+	hammer2_chain_t *cdchain;
 	hammer2_trans_t trans;
 	struct namecache *ncp;
 	const uint8_t *name;
 	size_t name_len;
 	int error;
 
-	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly)
+	tdip = VTOI(ap->a_dvp);
+	if (tdip->pmp->ronly)
 		return (EROFS);
 
 	ncp = ap->a_nch->ncp;
@@ -1510,7 +1516,7 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * of the hardlinked target, NOT the location of the hardlink pointer.
 	 *
 	 * Bump nlinks and potentially also create or move the hardlink
-	 * target in the parent directory common to (ip) and (dip).  The
+	 * target in the parent directory common to (ip) and (tdip).  The
 	 * consolidation code can modify ip->chain and ip->pip.  The
 	 * returned chain is locked.
 	 */
@@ -1518,8 +1524,18 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	hammer2_chain_memory_wait(ip->pmp);
 	hammer2_trans_init(&trans, ip->pmp, NULL, HAMMER2_TRANS_NEWINODE);
 
+	/*
+	 * The common parent directory must be locked first to avoid deadlocks.
+	 * Also note that fdip and/or tdip might match cdip.
+	 */
+	fdip = ip->pip;
+	cdip = hammer2_inode_common_parent(fdip, tdip);
+	cdchain = hammer2_inode_lock_ex(cdip);
+	fdchain = hammer2_inode_lock_ex(fdip);
+	tdchain = hammer2_inode_lock_ex(tdip);
 	chain = hammer2_inode_lock_ex(ip);
-	error = hammer2_hardlink_consolidate(&trans, ip, &chain, dip, 1);
+	error = hammer2_hardlink_consolidate(&trans, ip, &chain,
+					     cdip, &cdchain, 1);
 	if (error)
 		goto done;
 
@@ -1535,8 +1551,8 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	 * WARNING! chain can get moved by the connect (indirectly due to
 	 *	    potential indirect block creation).
 	 */
-	error = hammer2_inode_connect(&trans, 1,
-				      dip, &chain,
+	error = hammer2_inode_connect(&trans, &chain, 1,
+				      tdip, &tdchain,
 				      name, name_len, 0);
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
@@ -1544,6 +1560,9 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	}
 done:
 	hammer2_inode_unlock_ex(ip, chain);
+	hammer2_inode_unlock_ex(tdip, tdchain);
+	hammer2_inode_unlock_ex(fdip, fdchain);
+	hammer2_inode_unlock_ex(cdip, cdchain);
 	hammer2_trans_done(&trans);
 
 	return error;
@@ -1760,10 +1779,8 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	error = hammer2_unlink_file(&trans, dip, name, name_len,
 				    0, NULL, ap->a_nch);
 	hammer2_trans_done(&trans);
-	if (error == 0) {
-		kprintf("cache_unlink\n");
+	if (error == 0)
 		cache_unlink(ap->a_nch);
-	}
 	return (error);
 }
 
@@ -1794,9 +1811,8 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	error = hammer2_unlink_file(&trans, dip, name, name_len,
 				    1, NULL, ap->a_nch);
 	hammer2_trans_done(&trans);
-	if (error == 0) {
+	if (error == 0)
 		cache_unlink(ap->a_nch);
-	}
 	return (error);
 }
 
@@ -1809,10 +1825,14 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 {
 	struct namecache *fncp;
 	struct namecache *tncp;
+	hammer2_inode_t *cdip;
 	hammer2_inode_t *fdip;
 	hammer2_inode_t *tdip;
 	hammer2_inode_t *ip;
 	hammer2_chain_t *chain;
+	hammer2_chain_t *fdchain;
+	hammer2_chain_t *tdchain;
+	hammer2_chain_t *cdchain;
 	hammer2_trans_t trans;
 	const uint8_t *fname;
 	size_t fname_len;
@@ -1850,6 +1870,27 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	ip = VTOI(fncp->nc_vp);
 	chain = NULL;
 
+
+	/*
+	 * The common parent directory must be locked first to avoid deadlocks.
+	 * Also note that fdip and/or tdip might match cdip.
+	 *
+	 * WARNING! fdip may not match ip->pip.  That is, if the source file
+	 *	    is already a hardlink then what we are renaming is the
+	 *	    hardlink pointer, not the hardlink itself.  The hardlink
+	 *	    directory (ip->pip) will already be at a common parent
+	 *	    of fdrip.
+	 *
+	 *	    Be sure to use ip->pip when finding the common parent
+	 *	    against tdip or we might accidently move the hardlink
+	 *	    target into a subdirectory that makes it inaccessible to
+	 *	    other pointers.
+	 */
+	cdip = hammer2_inode_common_parent(ip->pip, tdip);
+	cdchain = hammer2_inode_lock_ex(cdip);
+	fdchain = hammer2_inode_lock_ex(fdip);
+	tdchain = hammer2_inode_lock_ex(tdip);
+
 	/*
 	 * Keep a tight grip on the inode so the temporary unlinking from
 	 * the source location prior to linking to the target location
@@ -1872,8 +1913,8 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 
 	/*
 	 * When renaming a hardlinked file we may have to re-consolidate
-	 * the location of the hardlink target.  Since the element is simply
-	 * being moved, nlinks is not modified in this case.
+	 * the location of the hardlink target.  Also adjust nlinks by +1
+	 * to counter-act the unlink below.
 	 *
 	 * If ip represents a regular file the consolidation code essentially
 	 * does nothing other than return the same locked chain that was
@@ -1886,7 +1927,8 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *	     on any modification to the inode, including connects.
 	 */
 	chain = hammer2_inode_lock_ex(ip);
-	error = hammer2_hardlink_consolidate(&trans, ip, &chain, tdip, 0);
+	error = hammer2_hardlink_consolidate(&trans, ip, &chain,
+					     cdip, &cdchain, 1);
 	if (error)
 		goto done;
 
@@ -1924,19 +1966,28 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *	    op (that might have to lock a vnode).
 	 */
 	hammer2_chain_refactor(&chain);
-	error = hammer2_inode_connect(&trans, hlink,
-				      tdip, &chain,
+	error = hammer2_inode_connect(&trans, &chain, hlink,
+				      tdip, &tdchain,
 				      tname, tname_len, 0);
 	chain->inode_reason = 5;
 	if (error == 0) {
 		KKASSERT(chain != NULL);
 		hammer2_inode_repoint(ip, (hlink ? ip->pip : tdip), chain);
-		cache_rename(ap->a_fnch, ap->a_tnch);
 	}
 done:
 	hammer2_inode_unlock_ex(ip, chain);
+	hammer2_inode_unlock_ex(tdip, tdchain);
+	hammer2_inode_unlock_ex(fdip, fdchain);
+	hammer2_inode_unlock_ex(cdip, cdchain);
 	hammer2_inode_drop(ip);
 	hammer2_trans_done(&trans);
+
+	/*
+	 * Issue the namecache update after unlocking all the internal
+	 * hammer structures, otherwise we might deadlock.
+	 */
+	if (error == 0)
+		cache_rename(ap->a_fnch, ap->a_tnch);
 
 	return (error);
 }

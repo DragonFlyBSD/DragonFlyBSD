@@ -4608,7 +4608,9 @@ hammer2_chain_memory_wait(hammer2_pfsmount_t *pmp)
 	long waiting;
 	long count;
 	long limit;
+#if 0
 	static int zzticks;
+#endif
 
 	/*
 	 * Atomic check condition and wait.  Also do an early speedup of
@@ -4625,10 +4627,12 @@ hammer2_chain_memory_wait(hammer2_pfsmount_t *pmp)
 		if (limit < 1000)
 			limit = 1000;
 
+#if 0
 		if ((int)(ticks - zzticks) > hz) {
 			zzticks = ticks;
 			kprintf("count %ld %ld\n", count, limit);
 		}
+#endif
 
 		/*
 		 * Block if there are too many dirty chains present, wait

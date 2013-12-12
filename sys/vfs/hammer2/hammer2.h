@@ -734,8 +734,9 @@ hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
 			struct vattr *vap, struct ucred *cred,
 			const uint8_t *name, size_t name_len,
 			hammer2_chain_t **chainp, int *errorp);
-int hammer2_inode_connect(hammer2_trans_t *trans, int hlink,
-			hammer2_inode_t *dip, hammer2_chain_t **chainp,
+int hammer2_inode_connect(hammer2_trans_t *trans,
+			hammer2_chain_t **chainp, int hlink,
+			hammer2_inode_t *dip, hammer2_chain_t **dchainp,
 			const uint8_t *name, size_t name_len,
 			hammer2_key_t key);
 hammer2_inode_t *hammer2_inode_common_parent(hammer2_inode_t *fdip,
@@ -745,9 +746,10 @@ void hammer2_inode_fsync(hammer2_trans_t *trans, hammer2_inode_t *ip,
 int hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 			const uint8_t *name, size_t name_len, int isdir,
 			int *hlinkp, struct nchandle *nch);
-int hammer2_hardlink_consolidate(hammer2_trans_t *trans, hammer2_inode_t *ip,
-			hammer2_chain_t **chainp,
-			hammer2_inode_t *tdip, int linkcnt);
+int hammer2_hardlink_consolidate(hammer2_trans_t *trans,
+			hammer2_inode_t *ip, hammer2_chain_t **chainp,
+			hammer2_inode_t *cdip, hammer2_chain_t **cdchainp,
+			int nlinks);
 int hammer2_hardlink_deconsolidate(hammer2_trans_t *trans, hammer2_inode_t *dip,
 			hammer2_chain_t **chainp, hammer2_chain_t **ochainp);
 int hammer2_hardlink_find(hammer2_inode_t *dip,
