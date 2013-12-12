@@ -1788,7 +1788,7 @@ _cache_unlink(struct namecache *ncp)
 	ncp->nc_flag |= NCF_DESTROYED;
 
 	/*
-	 * Attempt to trigger a deactivation.  Set VAUX_FINALIZE to
+	 * Attempt to trigger a deactivation.  Set VREF_FINALIZE to
 	 * force action on the 1->0 transition.
 	 */
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
@@ -1800,6 +1800,27 @@ _cache_unlink(struct namecache *ncp)
 		}
 	}
 }
+
+/*
+ * Return non-zero if the nch might be associated with an open and/or mmap()'d
+ * file.  The easy solution is to just return non-zero if the vnode has refs.
+ * Used to interlock hammer2 reclaims (VREF_FINALIZE should already be set to
+ * force the reclaim).
+ */
+int
+cache_isopen(struct nchandle *nch)
+{
+	struct vnode *vp;
+	struct namecache *ncp = nch->ncp;
+
+	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
+	    (vp = ncp->nc_vp) != NULL &&
+	    VREFCNT(vp)) {
+		return 1;
+	}
+	return 0;
+}
+
 
 /*
  * vget the vnode associated with the namecache entry.  Resolve the namecache
