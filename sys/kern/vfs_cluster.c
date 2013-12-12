@@ -1550,6 +1550,9 @@ cluster_wbuild(struct vnode *vp, struct buf **bpp,
  * Only pre-existing buffers whos block size matches blksize are collected.
  * (this is primarily because HAMMER1 uses varying block sizes and we don't
  * want to override its choices).
+ *
+ * This code will not try to collect buffers that it cannot lock, otherwise
+ * it might deadlock against SMP-friendly filesystems.
  */
 static struct cluster_save *
 cluster_collectbufs(cluster_cache_t *cc, struct vnode *vp,
@@ -1572,7 +1575,8 @@ cluster_collectbufs(cluster_cache_t *cc, struct vnode *vp,
 	     i < len;
 	     (loffset += blksize), i++) {
 		bp = getcacheblk(vp, loffset,
-				 last_bp->b_bcount, GETBLK_SZMATCH);
+				 last_bp->b_bcount, GETBLK_SZMATCH |
+						    GETBLK_NOWAIT);
 		buflist->bs_children[i] = bp;
 		if (bp == NULL) {
 			j = i + 1;

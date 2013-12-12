@@ -2755,7 +2755,8 @@ findblk(struct vnode *vp, off_t loffset, int flags)
  *
  *	Similar to getblk() except only returns the buffer if it is
  *	B_CACHE and requires no other manipulation.  Otherwise NULL
- *	is returned.
+ *	is returned.  NULL is also returned if GETBLK_NOWAIT is set
+ *	and the getblk() would block.
  *
  *	If B_RAM is set the buffer might be just fine, but we return
  *	NULL anyway because we want the code to fall through to the
