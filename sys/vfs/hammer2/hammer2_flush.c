@@ -419,11 +419,13 @@ hammer2_chain_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp)
 	hammer2_chain_t *chain = *chainp;
 	hammer2_chain_t *saved_parent;
 	hammer2_mount_t *hmp;
-	hammer2_blockref_t *bref;
 	hammer2_chain_core_t *core;
+#if 0
+	hammer2_blockref_t *bref;
 	char *bdata;
 	hammer2_io_t *dio;
 	int error;
+#endif
 	int diddeferral;
 
 	hmp = chain->hmp;
@@ -1049,14 +1051,20 @@ retry:
 #endif
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+	case HAMMER2_BREF_TYPE_INODE:
 		/*
 		 * Device-backed.  Buffer will be flushed by the sync
 		 * code XXX.
 		 */
 		KKASSERT((chain->flags & HAMMER2_CHAIN_EMBEDDED) == 0);
 		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 	default:
+		KKASSERT(chain->flags & HAMMER2_CHAIN_EMBEDDED);
+		panic("hammer2_chain_flush_core: unsupported embedded bref %d",
+		      chain->bref.type);
+		/* NOT REACHED */
+#if 0
 		/*
 		 * Embedded elements have to be flushed out.
 		 * (Basically just BREF_TYPE_INODE).
@@ -1105,6 +1113,7 @@ retry:
 			++hammer2_iod_meta_write;
 		else
 			++hammer2_iod_indr_write;
+#endif
 	}
 }
 

@@ -784,25 +784,13 @@ hammer2_chain_lastdrop(hammer2_chain_t *chain, struct h2_core_list *delayq)
 static void
 hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop)
 {
-	hammer2_mount_t *hmp = chain->hmp;
+	/*hammer2_mount_t *hmp = chain->hmp;*/
 
 	switch(chain->bref.type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
 	case HAMMER2_BREF_TYPE_FREEMAP:
 		if (lastdrop)
 			chain->data = NULL;
-		break;
-	case HAMMER2_BREF_TYPE_INODE:
-		if (chain->data) {
-			kfree(chain->data, hmp->mchain);
-			chain->data = NULL;
-		}
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		if (chain->data) {
-			kfree(chain->data, hmp->mchain);
-			chain->data = NULL;
-		}
 		break;
 	default:
 		KKASSERT(chain->data == NULL);
@@ -986,31 +974,13 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 		panic("hammer2_chain_lock: called on unresolved volume header");
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
-		/*
-		 * Copy data from dio to embedded buffer, do not retain the
-		 * device buffer.
-		 */
-		KKASSERT(chain->bytes == sizeof(chain->data->ipdata));
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_EMBEDDED);
-		chain->data = kmalloc(sizeof(chain->data->ipdata),
-				      hmp->mchain, M_WAITOK | M_ZERO);
-		bcopy(bdata, &chain->data->ipdata, chain->bytes);
-		hammer2_io_bqrelse(&chain->dio);
-		break;
 	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		KKASSERT(chain->bytes == sizeof(chain->data->bmdata));
-		atomic_set_int(&chain->flags, HAMMER2_CHAIN_EMBEDDED);
-		chain->data = kmalloc(sizeof(chain->data->bmdata),
-				      hmp->mchain, M_WAITOK | M_ZERO);
-		bcopy(bdata, &chain->data->bmdata, chain->bytes);
-		hammer2_io_bqrelse(&chain->dio);
-		break;
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 	default:
 		/*
-		 * Point data at the device buffer and leave bp intact.
+		 * Point data at the device buffer and leave dio intact.
 		 */
 		chain->data = (void *)bdata;
 		break;
@@ -1406,30 +1376,6 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 
 	KKASSERT(chain->bref.mirror_tid != trans->sync_tid ||
 		 (chain->flags & HAMMER2_CHAIN_MODIFIED));
-#if 0
-	if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP ||
-	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
-	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
-		kprintf("trans %04jx/%08x MODIFY1 %p.%d [%08x] %016jx/%d %016jx C/D %016jx/%016jx\n",
-			trans->sync_tid, trans->flags,
-			chain, chain->bref.type, chain->flags,
-			chain->bref.key, chain->bref.keybits,
-			chain->bref.data_off,
-			chain->modify_tid, chain->delete_tid);
-	}
-#endif
-#if 0
-	kprintf("MODIFY %p.%d flags %08x mod=%016jx del=%016jx\n", chain, chain->bref.type, chain->flags, chain->modify_tid, chain->delete_tid);
-#endif
-	/*
-	 * Data must be resolved if already assigned unless explicitly
-	 * flagged otherwise.
-	 */
-	if (chain->data == NULL && (flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
-	    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
-		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
-		hammer2_chain_unlock(chain);
-	}
 
 	/*
 	 * data is not optional for freemap chains (we must always be sure
@@ -1457,18 +1403,6 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 			KKASSERT((flags & HAMMER2_MODIFY_ASSERTNOCOPY) == 0);
 			hammer2_chain_delete_duplicate(trans, chainp, 0);
 			chain = *chainp;
-#if 0
-	if (chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP ||
-	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
-	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
-		kprintf("trans %04jx/%08x MODIFY2 %p.%d [%08x] %016jx/%d %016jx\n",
-			trans->sync_tid, trans->flags,
-			chain, chain->bref.type, chain->flags,
-			chain->bref.key, chain->bref.keybits,
-			chain->bref.data_off);
-			return;
-		}
-#endif
 		}
 
 		/*
@@ -1479,6 +1413,16 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		 * flag must be cleared when changing modify_tid.
 		 */
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_FLUSHED);
+	}
+
+	/*
+	 * Data must be resolved if already assigned unless explicitly
+	 * flagged otherwise.
+	 */
+	if (chain->data == NULL && (flags & HAMMER2_MODIFY_OPTDATA) == 0 &&
+	    (chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX)) {
+		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
+		hammer2_chain_unlock(chain);
 	}
 
 	/*
@@ -1535,12 +1479,18 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		chain->bref.modify_tid = trans->sync_tid;
 
 	/*
-	 * Do not COW if OPTDATA is set.  INITIAL flag remains unchanged.
-	 * (OPTDATA does not prevent [re]allocation of storage, only the
-	 * related copy-on-write op).
+	 * Do not COW BREF_TYPE_DATA when OPTDATA is set.  This is because
+	 * data modifications are done via the logical buffer cache so COWing
+	 * it here would result in unnecessary extra copies (and possibly extra
+	 * block reallocations).  The INITIAL flag remains unchanged in this
+	 * situation.
+	 *
+	 * (This is a bit of a hack).
 	 */
-	if (flags & HAMMER2_MODIFY_OPTDATA)
+	if (chain->bref.type == HAMMER2_BREF_TYPE_DATA &&
+	    (flags & HAMMER2_MODIFY_OPTDATA)) {
 		goto skip2;
+	}
 
 	/*
 	 * Clearing the INITIAL flag (for indirect blocks) indicates that
@@ -1563,19 +1513,24 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	switch(chain->bref.type) {
 	case HAMMER2_BREF_TYPE_VOLUME:
 	case HAMMER2_BREF_TYPE_FREEMAP:
-	case HAMMER2_BREF_TYPE_INODE:
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		/*
 		 * The data is embedded, no copy-on-write operation is
 		 * needed.
 		 */
 		KKASSERT(chain->dio == NULL);
 		break;
+	case HAMMER2_BREF_TYPE_INODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 	case HAMMER2_BREF_TYPE_DATA:
 	case HAMMER2_BREF_TYPE_INDIRECT:
 	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
 		/*
 		 * Perform the copy-on-write operation
+		 *
+		 * zero-fill or copy-on-write depending on whether
+		 * chain->data exists or not and set the dirty state for
+		 * the new buffer.  hammer2_io_new() will handle the
+		 * zero-fill.
 		 */
 		KKASSERT(chain != &hmp->vchain && chain != &hmp->fchain);
 
@@ -1591,11 +1546,6 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 
 		bdata = hammer2_io_data(dio, chain->bref.data_off);
 
-		/*
-		 * Copy or zero-fill on write depending on whether
-		 * chain->data exists or not and set the dirty state for
-		 * the new buffer.  Retire the existing buffer.
-		 */
 		if (chain->data) {
 			KKASSERT(chain->dio != NULL);
 			if (chain->data != (void *)bdata) {
@@ -1609,7 +1559,12 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 			panic("hammer2_chain_modify: having a COW %p\n",
 			      chain);
 		}
-		hammer2_io_brelse(&chain->dio);
+
+		/*
+		 * Retire the old buffer, replace with the new
+		 */
+		if (chain->dio)
+			hammer2_io_brelse(&chain->dio);
 		chain->data = (void *)bdata;
 		chain->dio = dio;
 		hammer2_io_setdirty(dio);	/* modified by bcopy above */
@@ -1621,9 +1576,6 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 
 	}
 skip2:
-#if 0
-	kprintf("RET2 %p.%d flags %08x mod=%016jx del=%016jx\n", chain, chain->bref.type, chain->flags, chain->modify_tid, chain->delete_tid);
-#endif
 	hammer2_chain_setsubmod(trans, chain);
 }
 
@@ -2619,12 +2571,6 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		case HAMMER2_BREF_TYPE_FREEMAP:
 			panic("hammer2_chain_create: called with volume type");
 			break;
-		case HAMMER2_BREF_TYPE_INODE:
-			KKASSERT(bytes == HAMMER2_INODE_BYTES);
-			atomic_set_int(&chain->flags, HAMMER2_CHAIN_EMBEDDED);
-			chain->data = kmalloc(sizeof(chain->data->ipdata),
-					      hmp->mchain, M_WAITOK | M_ZERO);
-			break;
 		case HAMMER2_BREF_TYPE_INDIRECT:
 			panic("hammer2_chain_create: cannot be used to"
 			      "create indirect block");
@@ -2635,10 +2581,8 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			break;
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 			KKASSERT(bytes == sizeof(chain->data->bmdata));
-			atomic_set_int(&chain->flags, HAMMER2_CHAIN_EMBEDDED);
-			chain->data = kmalloc(sizeof(chain->data->bmdata),
-					      hmp->mchain, M_WAITOK | M_ZERO);
-			break;
+			/* fall through */
+		case HAMMER2_BREF_TYPE_INODE:
 		case HAMMER2_BREF_TYPE_DATA:
 		default:
 			/*
@@ -2783,13 +2727,10 @@ again:
 		 */
 		switch(chain->bref.type) {
 		case HAMMER2_BREF_TYPE_DATA:
-			hammer2_chain_modify(trans, &chain,
-					     HAMMER2_MODIFY_OPTDATA |
-					     HAMMER2_MODIFY_ASSERTNOCOPY);
-			break;
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		case HAMMER2_BREF_TYPE_INODE:
 			hammer2_chain_modify(trans, &chain,
+					     HAMMER2_MODIFY_OPTDATA |
 					     HAMMER2_MODIFY_ASSERTNOCOPY);
 			break;
 		default:
@@ -2845,9 +2786,6 @@ done:
  *	    blocks.  Callers may have to refactor locked chains held across
  *	    the call (other than the ones passed into the call).
  */
-static void hammer2_chain_dup_fixup(hammer2_chain_t *ochain,
-				    hammer2_chain_t *nchain);
-
 void
 hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 			hammer2_chain_t **chainp, hammer2_blockref_t *bref,
@@ -2914,18 +2852,12 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_UNLINKED);
 
 	/*
-	 * Fixup (copy) any embedded data.  Non-embedded data relies on the
-	 * media block.  We must unlock ochain before we can access nchain's
-	 * media block because they might share the same bp and deadlock if
-	 * we don't.
+	 * Switch from ochain to nchain
 	 */
 	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER |
 				   HAMMER2_RESOLVE_NOREF);
-	hammer2_chain_dup_fixup(ochain, nchain);
 	/* nchain has 1 ref */
 	hammer2_chain_unlock(ochain);
-	KKASSERT((ochain->flags & HAMMER2_CHAIN_EMBEDDED) ||
-		 ochain->data == NULL);
 
 	/*
 	 * Place nchain in the modified state, instantiate media data
@@ -3092,7 +3024,6 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 * chains and will re-apply them to successive copies.
 	 */
 	hammer2_chain_lock(nchain, HAMMER2_RESOLVE_NEVER);
-	hammer2_chain_dup_fixup(ochain, nchain);
 	/* extra ref still present from original allocation */
 
 	KKASSERT(ochain->flags & HAMMER2_CHAIN_ONRBTREE);
@@ -3223,43 +3154,6 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 #endif
 	hammer2_chain_setsubmod(trans, nchain);
 	*chainp = nchain;
-}
-
-/*
- * Helper function to fixup inodes.  The caller procedure stack may hold
- * multiple locks on ochain if it represents an inode, preventing our
- * unlock from retiring its state to the buffer cache.
- *
- * In this situation any attempt to access the buffer cache could result
- * either in stale data or a deadlock.  Work around the problem by copying
- * the embedded data directly.
- */
-static
-void
-hammer2_chain_dup_fixup(hammer2_chain_t *ochain, hammer2_chain_t *nchain)
-{
-	if (ochain->data == NULL)
-		return;
-	switch(ochain->bref.type) {
-	case HAMMER2_BREF_TYPE_INODE:
-		KKASSERT(nchain->data == NULL);
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_EMBEDDED);
-		nchain->data = kmalloc(sizeof(nchain->data->ipdata),
-				       ochain->hmp->mchain, M_WAITOK | M_ZERO);
-		nchain->data->ipdata = ochain->data->ipdata;
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		KKASSERT(nchain->data == NULL);
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_EMBEDDED);
-		nchain->data = kmalloc(sizeof(nchain->data->bmdata),
-				       ochain->hmp->mchain, M_WAITOK | M_ZERO);
-		bcopy(ochain->data->bmdata,
-		      nchain->data->bmdata,
-		      sizeof(nchain->data->bmdata));
-		break;
-	default:
-		break;
-	}
 }
 
 /*
