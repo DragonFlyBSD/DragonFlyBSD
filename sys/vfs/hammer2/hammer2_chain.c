@@ -2491,6 +2491,11 @@ done:
  * insertion, based on the supplied key/keybits, and may involve creating
  * indirect blocks and moving other chains around via delete/duplicate.
  *
+ * THE CALLER MUST HAVE ALREADY PROPERLY SEEKED (*parentp) TO THE INSERTION
+ * POINT SANS ANY REQUIRED INDIRECT BLOCK CREATIONS DUE TO THE ARRAY BEING
+ * FULL.  This typically means that the caller is creating the chain after
+ * doing a hammer2_chain_lookup().
+ *
  * (*parentp) must be exclusive locked and may be replaced on return
  * depending on how much work the function had to do.
  *
@@ -2766,7 +2771,13 @@ done:
 /*
  * Replace (*chainp) with a duplicate in-memory chain structure which shares
  * the same core and media state as the orignal.  The original *chainp is
- * unlocked and the replacement will be returned locked.
+ * unlocked and the replacement will be returned locked.  The duplicated
+ * chain is inserted under (*parentp).
+ *
+ * THE CALLER MUST HAVE ALREADY PROPERLY SEEKED (*parentp) TO THE INSERTION
+ * POINT SANS ANY REQUIRED INDIRECT BLOCK CREATIONS DUE TO THE ARRAY BEING
+ * FULL.  This typically means that the caller is creating the chain after
+ * doing a hammer2_chain_lookup().
  *
  * The old chain must be in a DELETED state unless snapshot is non-zero.
  *

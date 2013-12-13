@@ -78,7 +78,7 @@ static void hammer2_rollup_stats(hammer2_chain_t *parent,
  * Can we ignore a chain for the purposes of flushing modifications
  * to the media?
  *
- * This code is no degenerate.  We used to have to distinguish between
+ * This code is now degenerate.  We used to have to distinguish between
  * deleted chains and deleted chains associated with inodes that were
  * still open.  This mechanic has been fixed so the function is now
  * a simple test.

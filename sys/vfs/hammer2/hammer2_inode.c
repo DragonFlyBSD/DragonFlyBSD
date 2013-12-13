@@ -876,7 +876,9 @@ retry:
 
 /*
  * Connect the target inode represented by (*chainp) to the media topology
- * at (dip, name, len).
+ * at (dip, name, len).  The caller can pass a rough *chainp, this function
+ * will issue lookup()s to position the parent chain properly for the
+ * chain insertion.
  *
  * If hlink is TRUE this function creates an OBJTYPE_HARDLINK directory
  * entry instead of connecting (*chainp).
@@ -936,6 +938,14 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 			nchain = NULL;
 			++lhc;
 		}
+	} else {
+		/*
+		 * Reconnect to specific key (used when moving
+		 * unlinked-but-open files into the hidden directory).
+		 */
+		nchain = hammer2_chain_lookup(dchainp, &key_dummy,
+					      lhc, lhc, &cache_index, 0);
+		KKASSERT(nchain == NULL);
 	}
 
 	if (error == 0) {
@@ -1419,8 +1429,8 @@ hammer2_inode_move_to_hidden(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	pmp = chain->pmp;
 	KKASSERT(pmp != NULL);
 	KKASSERT(pmp->ihidden != NULL);
-
 	hammer2_chain_delete(trans, chain, 0);
+
 	dchain = hammer2_inode_lock_ex(pmp->ihidden);
         error = hammer2_inode_connect(trans, chainp, 0,
                                       pmp->ihidden, &dchain,
