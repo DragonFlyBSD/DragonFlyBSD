@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2013.11.14
-#	Date:    2013-11-14 03:15:02
+#	Version: 2013.12.10
+#	Date:    2013-12-10 03:15:02
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -334,6 +334,7 @@
 		1028 1f35  PERC H710 Adapter
 		1028 1f37  PERC H710 Mini (for blades)
 		1028 1f38  PERC H710 Mini (for monolithics)
+		8086 3510  RMS25PB080 RAID Controller
 		8086 3513  RMS25CB080 RAID Controller
 	005c  SAS1064A PCI-X Fusion-MPT SAS
 	005d  MegaRAID SAS-3 3108 [Invader]
@@ -1450,7 +1451,8 @@
 		1787 2329  Radeon HD 7790 TurboDuo
 	665d  Bonaire [Radeon R7 200 Series]
 	6660  Sun XT [Radeon HD 8670A/8670M/8690M]
-	6663  Sun PRO [Radeon HD 8570M]
+	6663  Sun PRO [Radeon HD 8570A/8570M]
+		1025 0846  Radeon HD 8570A
 	6664  Jet XT [Radeon R5 M200 Series]
 	6665  Jet PRO [Radeon R5 M200 Series]
 	6667  Jet ULT [Radeon R5 M200 Series]
@@ -1984,9 +1986,7 @@
 	67aa  Hawaii
 	67b0  Hawaii XT [Radeon R9 290X]
 	67b1  Hawaii PRO [Radeon R9 290]
-	67b8  Hawaii
 	67b9  Vesuvius
-	67ba  Hawaii
 	67be  Hawaii LE
 	6800  Wimbledon XT [Radeon HD 7970M]
 		1002 0124  Radeon HD 7970M
@@ -3001,7 +3001,10 @@
 # AMD A10-5800K CPU
 	9901  Trinity [Radeon HD 7660D]
 	9902  Trinity HDMI Audio Controller
+		103c 194e  ProBook 455 G1 Notebook
 	9903  Trinity [Radeon HD 7640G]
+		103c 194e  ProBook 455 G1 Notebook
+		103c 1952  ProBook 455 G1 Notebook
 	9904  Trinity [Radeon HD 7560D]
 	9905  Trinity [FirePro A300 Series Graphics]
 	9906  Trinity [FirePro A300 Series Graphics]
@@ -3715,25 +3718,42 @@
 	7800  FCH SATA Controller [IDE mode]
 	7801  FCH SATA Controller [AHCI mode]
 		103c 168b  ProBook 4535s Notebook
+		103c 194e  ProBook 455 G1 Notebook
 	7802  FCH SATA Controller [RAID mode]
 	7803  FCH SATA Controller [RAID mode]
 	7804  FCH SATA Controller [AHCI mode]
 	7805  FCH SATA Controller [RAID mode]
 	7806  FCH SD Flash Controller
 	7807  FCH USB OHCI Controller
+		103c 194e  ProBook 455 G1 Notebook
 	7808  FCH USB EHCI Controller
+		103c 194e  ProBook 455 G1 Notebook
 	7809  FCH USB OHCI Controller
+		103c 194e  ProBook 455 G1 Notebook
 	780b  FCH SMBus Controller
+		103c 194e  ProBook 455 G1 Notebook
 	780c  FCH IDE Controller
 	780d  FCH Azalia Controller
+		103c 194e  ProBook 455 G1 Notebook
 		1043 8444  F2A85-M Series
 	780e  FCH LPC Bridge
+		103c 194e  ProBook 455 G1 Notebook
 	780f  FCH PCI Bridge
 	7812  FCH USB XHCI Controller
 	7813  FCH SD Flash Controller
 	7814  FCH USB XHCI Controller
-	7900  CZ SATA Controller [IDE mode]
-	790b  CZ SMBus Controller
+		103c 194e  ProBook 455 G1 Notebook
+	7900  FCH SATA Controller [IDE mode]
+	7901  FCH SATA Controller [AHCI mode]
+	7902  FCH SATA Controller [RAID mode]
+	7903  FCH SATA Controller [RAID mode]
+	7904  FCH SATA Controller [AHCI mode]
+	7906  FCH SD Flash Controller
+	7908  FCH USB EHCI Controller
+	790b  FCH SMBus Controller
+	790e  FCH LPC Bridge
+	790f  FCH PCI Bridge
+	7914  FCH USB XHCI Controller
 	9600  RS780 Host Bridge
 		1043 82f1  M3A78-EH Motherboard
 	9601  RS880 Host Bridge
@@ -8686,8 +8706,8 @@
 # GRID K1 USM
 	0fe7  GK107GL [GRID K100 vGPU]
 		10de 101e  GRID K100
-	0fe9  GK107M [GeForce GT 750M]
-	0fea  GK107M [GeForce GT 755M]
+	0fe9  GK107M [GeForce GT 750M Mac Edition]
+	0fea  GK107M [GeForce GT 755M Mac Edition]
 	0fef  GK107GL [GRID K340]
 	0ff1  GK107 [NVS 1000]
 	0ff2  GK107GL [GRID K1]
@@ -8728,9 +8748,12 @@
 	1020  GK110GL [Tesla K20X]
 	1021  GK110GL [Tesla K20Xm]
 	1022  GK110GL [Tesla K20c]
-	1024  GK110GL [Tesla K40c]
+	1023  GK110BGL [Tesla K40m]
+	1024  GK110BGL [Tesla K40c]
 	1026  GK110GL [Tesla K20s]
+	1027  GK110BGL [Tesla K40st]
 	1028  GK110GL [Tesla K20m]
+	1029  GK110BGL [Tesla K40s]
 	103a  GK110GL [Quadro K6000]
 	1040  GF119 [GeForce GT 520]
 	1042  GF119 [GeForce 510]
@@ -8789,7 +8812,7 @@
 	10c3  GT218 [GeForce 8400 GS Rev. 3]
 	10c5  GT218 [GeForce 405]
 	10d8  GT218 [NVS 300]
-	1140  GF117M [GeForce 610M/710M / GT 620M/625M/630M/720M]
+	1140  GF117M [GeForce 610M/710M/820M / GT 620M/625M/630M/720M]
 		1025 0600  GeForce GT 620M
 		1025 0606  GeForce GT 620M
 		1025 064a  GeForce GT 620M
@@ -8916,6 +8939,7 @@
 		1462 10e9  GeForce GT 720M
 		1462 aa33  GeForce 720M
 		1462 aaa2  GeForce GT 720M
+		1462 aaa3  GeForce 820M
 		1462 ae71  GeForce GT 720M
 		152d 0926  GeForce 620M
 		152d 0982  GeForce GT 630M
@@ -8927,6 +8951,7 @@
 		152d 1072  GeForce GT 720M
 		17aa 2200  NVS 5200M
 		17aa 2213  GeForce GT 720M
+		17aa 2220  GeForce GT 720M
 		17aa 3656  GeForce GT 620M
 		17aa 3800  GeForce GT 720M
 		17aa 3801  GeForce GT 720M
@@ -8958,6 +8983,8 @@
 		17aa 502d  GeForce 710M
 		17aa 502e  GeForce GT 720M
 		17aa 502f  GeForce GT 720M
+		17aa 503e  GeForce 710M
+		17aa 503f  GeForce 820M
 		1854 0177  GeForce 710M
 		1854 0180  GeForce 710M
 		1854 0190  GeForce GT 720M
@@ -8985,8 +9012,8 @@
 	118e  GK104 [GeForce GTX 760 OEM]
 	118f  GK104GL [Tesla K10]
 	1193  GK104 [GeForce GTX 760 Ti OEM]
-	119d  GK104M [GeForce GTX 775M]
-	119e  GK104M [GeForce GTX 780M]
+	119d  GK104M [GeForce GTX 775M Mac Edition]
+	119e  GK104M [GeForce GTX 780M Mac Edition]
 	119f  GK104M [GeForce GTX 780M]
 	11a0  GK104M [GeForce GTX 680M]
 	11a1  GK104M [GeForce GTX 670MX]
@@ -9234,6 +9261,7 @@
 	5227  RTS5227 PCI Express Card Reader
 	5229  RTS5229 PCI Express Card Reader
 		1025 0813  Aspire R7-571
+		103c 194e  ProBook 455 G1 Notebook
 	5288  Barossa PCI Express Card Reader
 	8029  RTL-8029(AS)
 		10b8 2011  EZ-Card (SMC1208)
@@ -9309,6 +9337,7 @@
 		1028 04b2  Vostro 3350
 		1028 04da  Vostro 3750
 		103c 1611  Pavilion DM1Z-3000
+		103c 1950  ProBook 450/455
 		1043 11f5  A6J-Q008
 		1043 16d5  U6V/U31J laptop
 		1043 81aa  P5B
@@ -10697,26 +10726,35 @@
 	0041  VIC PCIe Downstream Port
 	0042  VIC Management Controller
 		1137 0047  VIC P81E PCIe Management Controller
+		1137 0085  VIC 1225 PCIe Management Controller
+		1137 00cd  VIC 1285 PCIe Management Controller
+		1137 00ce  VIC 1225T PCIe Management Controller
 	0043  VIC Ethernet NIC
 		1137 0047  VIC P81E PCIe Ethernet NIC
 		1137 0048  VIC M81KR Mezzanine Ethernet NIC
 		1137 004f  VIC 1280 Mezzanine Ethernet NIC
 		1137 0084  VIC 1240 MLOM Ethernet NIC
 		1137 0085  VIC 1225 PCIe Ethernet NIC
+		1137 00cd  VIC 1285 PCIe Ethernet NIC
+		1137 00ce  VIC 1225T PCIe Ethernet NIC
 	0044  VIC Ethernet NIC Dynamic
 		1137 0047  VIC P81E PCIe Ethernet NIC Dynamic
 		1137 0048  VIC M81KR Mezzanine Ethernet NIC Dynamic
 		1137 004f  VIC 1280 Mezzanine Ethernet NIC Dynamic
 		1137 0084  VIC 1240 MLOM Ethernet NIC Dynamic
 		1137 0085  VIC 1225 PCIe Ethernet NIC Dynamic
+		1137 00cd  VIC 1285 PCIe Ethernet NIC Dynamic
+		1137 00ce  VIC 1225T PCIe Ethernet NIC Dynamic
 	0045  VIC FCoE HBA
 		1137 0047  VIC P81E PCIe FCoE HBA
 		1137 0048  VIC M81KR Mezzanine FCoE HBA
 		1137 004f  VIC 1280 Mezzanine FCoE HBA
+		1137 0084  VIC 1240 MLOM FCoE HBA
+		1137 0085  VIC 1225 PCIe FCoE HBA
+		1137 00cd  VIC 1285 PCIe FCoE HBA
+		1137 00ce  VIC 1225T PCIe FCoE HBA
 	004e  VIC 82 PCIe Upstream Port
 	0071  VIC SR-IOV VF
-	0084  VIC 1240 MLOM FCoE HBA
-	0085  VIC 1225 PCIe FCOE HBA
 	00cf  VIC Userspace NIC
 1138  Ziatech Corporation
 	8905  8905 [STD 32 Bridge]
@@ -11883,6 +11921,9 @@
 	7375  PM7375 [LASAR-155 ATM SAR]
 	7384  PM7384 [FREEDM - 84P672 Frm Engine & Datalink Mgr]
 	8000  PM8000  [SPC - SAS Protocol Controller]
+	8032  ATTO Celerity FC8xEN
+		117c 003b  Celerity FC-82EN Fibre Channel Adapter
+		117c 003c  Celerity FC-84EN Fibre Channel Adapter
 11f9  I-Cube Inc
 11fa  Kasan Electronics Company, Ltd.
 11fb  Datel Inc
@@ -14221,6 +14262,8 @@
 144b  Verint Systems Inc.
 144c  Catalina Research Inc
 144d  Samsung Electronics Co Ltd
+	1600  Apple PCIe SSD
+	a800  XP941 PCIe SSD
 	a820  NVMe SSD Controller 171X
 		1028 1f95  Express Flash NVMe XS1715 SSD 400GB
 		1028 1f96  Express Flash NVMe XS1715 SSD 800GB
@@ -15770,8 +15813,10 @@
 15bc  Agilent Technologies
 	0100  HPFC-5600 Tachyon DX2+ FC
 	0103  QX4 PCI Express quad 4-gigabit Fibre Channel controller
-	0105  Celerity FC-42XS Fibre Channel Adapter
+	0105  Celerity FC-44XS/FC-42XS/FC-41XS/FC-44ES/FC-42ES/FC-41ES
 		117c 0022  Celerity FC-42XS Fibre Channel Adapter
+		117c 0025  Celerity FC-44ES Fibre Channel Adapter
+		117c 0026  Celerity FC-42ES Fibre Channel Adapter
 	1100  E8001-66442 PCI Express CIC
 	2922  64 Bit, 133MHz PCI-X Exerciser & Protocol Checker
 	2928  64 Bit, 66MHz PCI Exerciser & Analyzer
@@ -16312,6 +16357,7 @@
 	0100  NSP2000-SSL crypto accelerator
 170c  YottaYotta Inc.
 1719  EZChip Technologies
+	1000  NPA Access Network Processor Family
 # Seems to be a 2nd ID for Vitesse Semiconductor
 1725  Vitesse Semiconductor
 	7174  VSC7174 PCI/PCI-X Serial ATA Host Bus Controller
@@ -16593,7 +16639,9 @@
 	3091  RT3091 Wireless 802.11n 1T/2R PCIe
 	3092  RT3092 Wireless 802.11n 2T/2R PCIe
 	3290  RT3290 Wireless 802.11n 1T/1R PCIe
+		103c 18ec  Ralink RT3290LE 802.11bgn 1x1 Wi-Fi and Bluetooth 4.0 Combo Adapter
 	3298  RT3290 Bluetooth
+		103c 18ec  Ralink RT3290LE 802.11bgn 1x1 Wi-Fi and Bluetooth 4.0 Combo Adapter
 	3592  RT3592 Wireless 802.11abgn 2T/2R PCIe
 	5360  RT5360 Wireless 802.11n 1T/1R
 		1186 3c05  DWA-525 Wireless N 150 Desktop Adapter (rev.A2)
@@ -17373,6 +17421,7 @@
 		1043 8438  P8P67 Deluxe Motherboard
 	9172  88SE9172 SATA 6Gb/s Controller
 	917a  88SE9172 SATA III 6Gb/s RAID Controller
+	9183  88SS9183 PCIe SSD Controller
 	9192  88SE9172 SATA III 6Gb/s RAID Controller
 	91a0  88SE912x SATA 6Gb/s Controller [IDE mode]
 	91a4  88SE912x IDE Controller
@@ -17450,6 +17499,7 @@
 1ce4  Exablaze
 	0001  ExaNIC X4
 	0002  ExaNIC X2
+1cf7  Subspace Dynamics
 1d44  DPT
 	a400  PM2x24/PM3224
 1d5c  Fantasia Trading LLC
@@ -18434,11 +18484,58 @@
 		8086 8270  Dual Band Wireless AC 3160
 # PowerVR SGX 545
 	08cf  Atom Processor Z2760 Integrated Graphics Controller
+	095a  Wireless 7265
+# Stone Peak 2 AC
+		8086 1010  Dual Band Wireless-AC 7265
+# Stone Peak 2 AGN
+		8086 5000  Dual Band Wireless-N 7265
+# Stone Peak 2 BGN
+		8086 5002  Wireless-N 7265
+# Stone Peak 2 AC
+		8086 5010  Dual Band Wireless-AC 7265
+# Stone Peak 2 AGN
+		8086 5020  Dual Band Wireless-N 7265
+# Stone Peak 2 AGN
+		8086 502a  Dual Band Wireless-N 7265
+# Stone Peak 2 AC
+		8086 5090  Dual Band Wireless-AC 7265
+# Stone Peak 2 AC
+		8086 5110  Dual Band Wireless-AC 7265
+# Stone Peak 2 AC
+		8086 5410  Dual Band Wireless-AC 7265
+# Stone Peak 2 AGN
+		8086 5420  Dual Band Wireless-N 7265
+# Stone Peak 2 AC
+		8086 5490  Dual Band Wireless-AC 7265
+# Stone Peak 2 AC
+		8086 9010  Dual Band Wireless-AC 7265
+# Stone Peak 2 AC
+		8086 9210  Dual Band Wireless-AC 7265
+# Stone Peak 2 AC
+		8086 9410  Dual Band Wireless-AC 7265
+	095b  Wireless 7265
+# Stone Peak 2 AGN
+		8086 500a  Dual Band Wireless-AC 7265
+# Stone Peak 2 AC
+		8086 5012  Dual Band Wireless-AC 7265
+# Stone Peak 2 AGN
+		8086 5200  Dual Band Wireless-N 7265
+# Stone Peak 2 BGN
+		8086 5202  Wireless-N 7265
+# Stone Peak 2 AC
+		8086 5210  Dual Band Wireless-AC 7265
+# Stone Peak 2 AC
+		8086 5290  Dual Band Wireless-AC 7265
+# Stone Peak 2 BGN
+		8086 5302  Dual Band Wireless-AC 7265
+# Stone Peak 2 AC
+		8086 5310  Dual Band Wireless-AC 7265
 	0960  80960RP (i960RP) Microprocessor/Bridge
 	0962  80960RM (i960RM) Bridge
 	0964  80960RP (i960RP) Microprocessor/Bridge
 	0a04  Haswell-ULT DRAM Controller
 	0a06  Haswell-ULT Integrated Graphics Controller
+	0a0c  Haswell-ULT HD Audio Controller
 	0a16  Haswell-ULT Integrated Graphics Controller
 	0a22  Haswell-ULT Integrated Graphics Controller
 	0a26  Haswell-ULT Integrated Graphics Controller
@@ -19827,6 +19924,7 @@
 		1043 84ca  P8H77-I Motherboard
 		1849 1e2d  Motherboard
 	1e31  7 Series/C210 Series Chipset Family USB xHCI Host Controller
+		103c 17ab  ProBook 6570b
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 		1043 84ca  P8H77-I Motherboard
