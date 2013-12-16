@@ -3088,7 +3088,7 @@ Disabling this option will prevent the re-application of sticky routes,
 although the
 .Sq stick route
 list will still be maintained.
-.It Op tcp Ns Xo
+.It Oo tcp Oc Ns Xo
 .No mssfixup
 .Xc
 Default: Enabled.
@@ -3463,7 +3463,7 @@ are 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16.
 These commands are also discussed in the file
 .Pa README.nat
 which comes with the source distribution.
-.It Op !\& Ns Xo
+.It Oo !\& Oc Ns Xo
 .No bg Ar command
 .Xc
 The given
@@ -3663,8 +3663,10 @@ command is used
 .Dq !\& ) ,
 .Nm
 will not complain if the route does not already exist.
-.It dial|call Op Ar label Ns Xo
-.No ...
+.It Xo
+.Ic dial No \&|
+.Ic call
+.Op Ar label ...
 .Xc
 This command is the equivalent of
 .Dq load label
@@ -3792,8 +3794,8 @@ When invoked with
 .Ar sub-command ,
 only the synopsis for the given sub-command is shown.
 .El
-.It Op data Ns Xo
-.No link
+.It Oo Ic data Oc Ns Xo
+.Ic link
 .Ar name Ns Op , Ns Ar name Ns
 .No ... Ar command Op Ar args
 .Xc
@@ -3817,7 +3819,7 @@ is
 .Dq * ,
 .Ar command
 is executed on all links.
-.It load Op Ar label Ns Xo
+.It Ic load Oo Ar label Oc Ns Xo
 .No ...
 .Xc
 Load the given
@@ -4043,8 +4045,8 @@ certain characters from end to end (such as XON/XOFF etc).
 .Pp
 For the XON/XOFF scenario, use
 .Dq set accmap 000a0000 .
-.It set Op auth Ns Xo
-.No key Ar value
+.It Ic set Oo Ic auth Oc Ns Xo
+.Ic key Ar value
 .Xc
 This sets the authentication key (or password) used in client mode
 PAP or CHAP negotiation to the given value.
@@ -4840,11 +4842,10 @@ If you wish to assign a dynamic IP number to the peer,
 .Ar hisaddr
 may also be specified as a range of IP numbers in the format
 .Bd -ragged -offset indent
-.Ar \&IP Ns Oo \&- Ns Ar \&IP Ns Xo
-.Oc Ns Oo , Ns Ar \&IP Ns
-.Op \&- Ns Ar \&IP Ns
-.Oc Ns ...
-.Xc
+.Sm off
+.Ar \&IP Oo \&- Ar \&IP Oc Oo ,
+.Ar \&IP Oo \&- Ar \&IP Oc Oc ...
+.Sm on
 .Ed
 .Pp
 for example:
@@ -5183,8 +5184,8 @@ below.
 In
 .Fl background
 mode, each number is attempted at most once.
-.It set Op proc Ns Xo
-.No title Op Ar value
+.It Ic set Oo Ic proc Oc Ns Xo
+.Ic title Op Ar value
 .Xc
 The current process title as displayed by
 .Xr ps 1
@@ -5681,8 +5682,8 @@ Show the current IPCP statistics.
 Show the protocol layers currently in use.
 .It show lcp
 Show the current LCP statistics.
-.It show Op data Ns Xo
-.No link
+.It Ic show Oo Ic data Oc Ns Xo
+.Ic link
 .Xc
 Show high level link information.
 .It show links
