@@ -57,14 +57,14 @@
 The
 .Fn nsdispatch
 function invokes the methods specified in
-.Va dtab
+.Fa dtab
 in the order given by
 .Xr nsswitch.conf 5
 for the database
-.Va database
+.Fa database
 until a successful entry is found.
 .Pp
-.Va retval
+.Fa retval
 is passed to each method to modify as necessary, to pass back results to
 the caller of
 .Fn nsdispatch .
@@ -73,39 +73,42 @@ Each method has the function signature described by the typedef:
 .Pp
 .Ft typedef int
 .Fn \*(lp*nss_method\*(rp "void *retval" "void *mdata" "va_list *ap" ;
-.Pp
-.Va dtab
+.Bl -item
+.It
+.Fa dtab
 is an array of
-.Va ns_dtab
+.Vt ns_dtab
 structures, which have the following format:
-.Bd -literal -offset indent
+.Bl -item -offset indent
+.It
+.Bd -literal
 typedef struct _ns_dtab {
 	const char	*src;
 	nss_method	 method;
 	void		*mdata;
 } ns_dtab;
 .Ed
-.Bd -ragged -offset indent
+.It
 The
 .Fa dtab
 array should consist of one entry for each source type that is
 implemented, with
-.Va src
+.Fa src
 as the name of the source,
-.Va method
+.Fa method
 as a function which handles that source, and
-.Va mdata
+.Fa mdata
 as a handle on arbitrary data to be passed to the method.
 The last entry in
-.Va dtab
+.Fa dtab
 should contain
 .Dv NULL
 values for
-.Va src ,
-.Va method ,
+.Fa src ,
+.Fa method ,
 and
-.Va mdata .
-.Ed
+.Fa mdata .
+.El
 .Pp
 Additionally, methods may be implemented in NSS modules, in
 which case they are selected using the
@@ -117,29 +120,31 @@ arguments along with the configured source.
 .Fa dtab
 take priority over those implemented in NSS modules in the event
 of a conflict.)
-.Pp
-.Va defaults
+.It
+.Fa defaults
 contains a list of default sources to try if
 .Xr nsswitch.conf 5
 is missing or corrupted, or if there is no relevant entry for
-.Va database .
+.Fa database .
 It is an array of
-.Va ns_src
+.Vt ns_src
 structures, which have the following format:
-.Bd -literal -offset indent
+.Bl -item -offset indent
+.It
+.Bd -literal
 typedef struct _ns_src {
 	const char	*src;
 	u_int32_t	 flags;
 } ns_src;
 .Ed
-.Bd -ragged -offset indent
+.It
 The
 .Fa defaults
 array should consist of one entry for each source to be configured by
 default indicated by
-.Va src ,
+.Fa src ,
 and
-.Va flags
+.Fa flags
 set to the criterion desired
 (usually
 .Dv NS_SUCCESS ;
@@ -147,27 +152,28 @@ refer to
 .Sx Method return values
 for more information).
 The last entry in
-.Va defaults
+.Fa defaults
 should have
-.Va src
+.Fa src
 set to
 .Dv NULL
 and
-.Va flags
+.Fa flags
 set to 0.
-.Pp
+.It
 For convenience, a global variable defined as:
 .Dl extern const ns_src __nsdefaultsrc[];
 exists which contains a single default entry for the source
 .Sq files
 that may be used by callers which do not require complicated default
 rules.
-.Ed
-.Pp
-.Sq Va ...
+.El
+.It
+.Sq Fa ...
 are optional extra arguments, which are passed to the appropriate method
 as a variable argument list of the type
 .Vt va_list .
+.El
 .Ss Valid source types
 While there is support for arbitrary sources, the following
 #defines for commonly implemented sources are available:
