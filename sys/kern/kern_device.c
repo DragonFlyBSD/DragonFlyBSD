@@ -133,7 +133,7 @@ dev_needmplock(cdev_t dev)
  * The MPSAFEness of these depends on dev->si_ops->head.flags
  */
 int
-dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred)
+dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred, struct file *fp)
 {
 	struct dev_open_args ap;
 	int needmplock = dev_needmplock(dev);
@@ -144,6 +144,7 @@ dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred)
 	ap.a_oflags = oflags;
 	ap.a_devtype = devtype;
 	ap.a_cred = cred;
+	ap.a_fp = fp;
 
 	if (needmplock)
 		get_mplock();
@@ -174,7 +175,7 @@ dev_dclose(cdev_t dev, int fflag, int devtype)
 }
 
 int
-dev_dread(cdev_t dev, struct uio *uio, int ioflag)
+dev_dread(cdev_t dev, struct uio *uio, int ioflag, struct file *fp)
 {
 	struct dev_read_args ap;
 	int needmplock = dev_needmplock(dev);
@@ -184,6 +185,7 @@ dev_dread(cdev_t dev, struct uio *uio, int ioflag)
 	ap.a_head.a_dev = dev;
 	ap.a_uio = uio;
 	ap.a_ioflag = ioflag;
+	ap.a_fp = fp;
 
 	if (needmplock) {
 		get_mplock();
@@ -200,7 +202,7 @@ dev_dread(cdev_t dev, struct uio *uio, int ioflag)
 }
 
 int
-dev_dwrite(cdev_t dev, struct uio *uio, int ioflag)
+dev_dwrite(cdev_t dev, struct uio *uio, int ioflag, struct file *fp)
 {
 	struct dev_write_args ap;
 	int needmplock = dev_needmplock(dev);
@@ -211,6 +213,7 @@ dev_dwrite(cdev_t dev, struct uio *uio, int ioflag)
 	ap.a_head.a_dev = dev;
 	ap.a_uio = uio;
 	ap.a_ioflag = ioflag;
+	ap.a_fp = fp;
 
 	if (needmplock) {
 		get_mplock();
@@ -226,7 +229,7 @@ dev_dwrite(cdev_t dev, struct uio *uio, int ioflag)
 
 int
 dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred,
-	   struct sysmsg *msg)
+	   struct sysmsg *msg, struct file *fp)
 {
 	struct dev_ioctl_args ap;
 	int needmplock = dev_needmplock(dev);
@@ -239,6 +242,7 @@ dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred,
 	ap.a_fflag = fflag;
 	ap.a_cred = cred;
 	ap.a_sysmsg = msg;
+	ap.a_fp = fp;
 
 	if (needmplock)
 		get_mplock();
@@ -249,7 +253,7 @@ dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag, struct ucred *cred,
 }
 
 int
-dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot)
+dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot, struct file *fp)
 {
 	struct dev_mmap_args ap;
 	int needmplock = dev_needmplock(dev);
@@ -259,6 +263,7 @@ dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot)
 	ap.a_head.a_dev = dev;
 	ap.a_offset = offset;
 	ap.a_nprot = nprot;
+	ap.a_fp = fp;
 
 	if (needmplock)
 		get_mplock();
@@ -273,7 +278,7 @@ dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot)
 
 int
 dev_dmmap_single(cdev_t dev, vm_ooffset_t *offset, vm_size_t size,
-                 struct vm_object **object, int nprot)
+                 struct vm_object **object, int nprot, struct file *fp)
 {
 	struct dev_mmap_single_args ap;
 	int needmplock = dev_needmplock(dev);
@@ -285,6 +290,7 @@ dev_dmmap_single(cdev_t dev, vm_ooffset_t *offset, vm_size_t size,
 	ap.a_size = size;
 	ap.a_object = object;
 	ap.a_nprot = nprot;
+	ap.a_fp = fp;
 
 	if (needmplock)
 		get_mplock();
@@ -451,7 +457,7 @@ dev_dpsize(cdev_t dev)
  *	 which return 0 do not have to bother setting a_result.
  */
 int
-dev_dkqfilter(cdev_t dev, struct knote *kn)
+dev_dkqfilter(cdev_t dev, struct knote *kn, struct file *fp)
 {
 	struct dev_kqfilter_args ap;
 	int needmplock = dev_needmplock(dev);
@@ -461,6 +467,7 @@ dev_dkqfilter(cdev_t dev, struct knote *kn)
 	ap.a_head.a_dev = dev;
 	ap.a_kn = kn;
 	ap.a_result = 0;
+	ap.a_fp = fp;
 
 	if (needmplock)
 		get_mplock();

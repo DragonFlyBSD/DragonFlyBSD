@@ -314,7 +314,7 @@ old_dev_pager_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
 	 */
 	npages = OFF_TO_IDX(size);
 	for (off = foff; npages--; off += PAGE_SIZE) {
-		if (dev_dmmap(dev, off, (int)prot) == -1)
+		if (dev_dmmap(dev, off, (int)prot, NULL) == -1)
 			return (EINVAL);
 	}
 
@@ -344,7 +344,7 @@ static int old_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
 	dev = object->handle;
 
 	paddr = pmap_phys_address(
-		    dev_dmmap(dev, offset, prot));
+		    dev_dmmap(dev, offset, prot, NULL));
 	KASSERT(paddr != -1,("dev_pager_getpage: map function returns error"));
 	KKASSERT(object->type == OBJT_DEVICE);
 

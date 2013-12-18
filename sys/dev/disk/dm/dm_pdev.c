@@ -157,7 +157,7 @@ dm_pdev_insert(const char *dev_name)
 	 */
 	bzero(&dmp->pdev_pinfo, sizeof(dmp->pdev_pinfo));
 	error = dev_dioctl(dmp->pdev_vnode->v_rdev, DIOCGPART,
-	    (void *)&dmp->pdev_pinfo, 0, proc0.p_ucred, NULL);
+	    (void *)&dmp->pdev_pinfo, 0, proc0.p_ucred, NULL, NULL);
 
 	lockmgr(&dm_pdev_mutex, LK_EXCLUSIVE);
 	SLIST_INSERT_HEAD(&dm_pdev_list, dmp, next_pdev);

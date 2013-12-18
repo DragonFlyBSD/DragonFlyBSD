@@ -836,7 +836,7 @@ disk_dumpcheck(cdev_t dev, u_int64_t *size,
 
 	bzero(&pinfo, sizeof(pinfo));
 	error = dev_dioctl(dev, DIOCGPART, (void *)&pinfo, 0,
-			   proc0.p_ucred, NULL);
+			   proc0.p_ucred, NULL, NULL);
 	if (error)
 		return (error);
 
@@ -1033,7 +1033,7 @@ diskopen(struct dev_open_args *ap)
 			pdev->si_iosize_max = dev->si_iosize_max;
 #endif
 		error = dev_dopen(dp->d_rawdev, ap->a_oflags,
-				  ap->a_devtype, ap->a_cred);
+				  ap->a_devtype, ap->a_cred, NULL);
 	}
 
 	if (error)
@@ -1141,7 +1141,7 @@ diskioctl(struct dev_ioctl_args *ap)
 
 	if (error == ENOIOCTL) {
 		error = dev_dioctl(dp->d_rawdev, ap->a_cmd, ap->a_data,
-				   ap->a_fflag, ap->a_cred, NULL);
+				   ap->a_fflag, ap->a_cred, NULL, NULL);
 	}
 	return (error);
 }

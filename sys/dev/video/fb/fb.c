@@ -445,7 +445,7 @@ fbopen(struct dev_open_args *ap)
 		return ENXIO;
 	if ((fdev = vidcdevsw[unit]) == NULL)
 		return ENXIO;
-	return dev_dopen(fdev, ap->a_oflags, ap->a_devtype, ap->a_cred);
+	return dev_dopen(fdev, ap->a_oflags, ap->a_devtype, ap->a_cred, NULL);
 }
 
 static int

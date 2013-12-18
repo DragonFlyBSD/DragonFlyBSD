@@ -67,6 +67,7 @@ struct dev_open_args {
 	int		a_oflags;
 	int		a_devtype;
 	struct ucred	*a_cred;
+	struct file	*a_fp;
 };
 
 /*
@@ -85,6 +86,7 @@ struct dev_read_args {
 	struct dev_generic_args	a_head;
 	struct uio	*a_uio;
 	int		a_ioflag;
+	struct file	*a_fp;
 };
 
 /*
@@ -94,6 +96,7 @@ struct dev_write_args {
 	struct dev_generic_args a_head;
 	struct uio 	*a_uio;
 	int		a_ioflag;
+	struct file	*a_fp;
 };
 
 /*
@@ -107,6 +110,7 @@ struct dev_ioctl_args {
 	int		a_fflag;
 	struct ucred	*a_cred;
 	struct sysmsg	*a_sysmsg;
+	struct file	*a_fp;
 };
 
 /*
@@ -117,6 +121,7 @@ struct dev_mmap_args {
 	vm_offset_t	a_offset;
 	int		a_nprot;
 	int		a_result;	/* page number */
+	struct file	*a_fp;
 };
 
 /*
@@ -129,6 +134,7 @@ struct dev_mmap_single_args {
 	vm_size_t		a_size;
 	struct vm_object **a_object;
 	int		a_nprot;
+	struct file	*a_fp;
 };
 
 /*
@@ -169,6 +175,7 @@ struct dev_kqfilter_args {
 	struct dev_generic_args a_head;
 	struct knote	*a_kn;
 	int		a_result;
+	struct file     *a_fp;
 };
 
 /*
@@ -308,21 +315,21 @@ extern struct dev_ops dead_dev_ops;
 struct disk;
 struct sysmsg;
 
-int dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred);
+int dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred, struct file *fp);
 int dev_dclose(cdev_t dev, int fflag, int devtype);
 void dev_dstrategy(cdev_t dev, struct bio *bio);
 void dev_dstrategy_chain(cdev_t dev, struct bio *bio);
-int dev_dioctl(cdev_t dev, u_long cmd, caddr_t data, int fflag,
-		struct ucred *cred, struct sysmsg *msg);
+int dev_dioctl(cdev_t dev, u_long cmd, caddr_t data,
+		int fflag, struct ucred *cred, struct sysmsg *msg, struct file *fp);
 int dev_ddump(cdev_t dev, void *virtual, vm_offset_t physical, off_t offset,
     size_t length);
 int64_t dev_dpsize(cdev_t dev);
-int dev_dread(cdev_t dev, struct uio *uio, int ioflag);
-int dev_dwrite(cdev_t dev, struct uio *uio, int ioflag);
-int dev_dkqfilter(cdev_t dev, struct knote *kn);
-int dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot);
+int dev_dread(cdev_t dev, struct uio *uio, int ioflag, struct file *fp);
+int dev_dwrite(cdev_t dev, struct uio *uio, int ioflag, struct file *fp);
+int dev_dkqfilter(cdev_t dev, struct knote *kn, struct file *fp);
+int dev_dmmap(cdev_t dev, vm_offset_t offset, int nprot, struct file *fp);
 int dev_dmmap_single(cdev_t dev, vm_ooffset_t *offset, vm_size_t size,
-			struct vm_object **object, int nprot);
+			struct vm_object **object, int nprot, struct file *fp);
 int dev_dclone(cdev_t dev);
 int dev_drevoke(cdev_t dev);
 

@@ -123,14 +123,14 @@ iso_get_ssector(cdev_t dev)
 	int i;
 
 	if (dev_dioctl(dev, CDIOREADTOCHEADER, (caddr_t)&h, FREAD,
-		       proc0.p_ucred, NULL) != 0)
+		       proc0.p_ucred, NULL, NULL) != 0)
 		return 0;
 
 	for (i = h.ending_track; i >= 0; i--) {
 		t.address_format = CD_LBA_FORMAT;
 		t.track = i;
 		if (dev_dioctl(dev, CDIOREADTOCENTRY, (caddr_t)&t, FREAD,
-			       proc0.p_ucred, NULL) != 0) {
+			       proc0.p_ucred, NULL, NULL) != 0) {
 			return 0;
 		}
 		if ((t.entry.control & 4) != 0)

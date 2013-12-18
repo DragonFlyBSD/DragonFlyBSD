@@ -588,7 +588,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	info.d_ncylinders = vn->sc_size / info.d_secpercyl;
 	disk_setdiskinfo_sync(&vn->sc_disk, &info);
 
-	error = dev_dopen(dev, flag, S_IFCHR, cred);
+	error = dev_dopen(dev, flag, S_IFCHR, cred, NULL);
 	if (error)
 		vnclear(vn);
 
@@ -665,7 +665,7 @@ vniocattach_swap(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 		info.d_ncylinders = vn->sc_size / info.d_secpercyl;
 		disk_setdiskinfo_sync(&vn->sc_disk, &info);
 
-		error = dev_dopen(dev, flag, S_IFCHR, cred);
+		error = dev_dopen(dev, flag, S_IFCHR, cred, NULL);
 	}
 	if (error == 0) {
 		IFOPT(vn, VN_FOLLOW) {

@@ -806,7 +806,7 @@ dssize(cdev_t dev, struct diskslices **sspp)
 	ssp = *sspp;
 	if (ssp == NULL || slice >= ssp->dss_nslices
 	    || !dschkmask(&ssp->dss_slices[slice], part)) {
-		if (dev_dopen(dev, FREAD, S_IFCHR, proc0.p_ucred) != 0)
+		if (dev_dopen(dev, FREAD, S_IFCHR, proc0.p_ucred, NULL) != 0)
 			return (-1);
 		dev_dclose(dev, FREAD, S_IFCHR);
 		ssp = *sspp;

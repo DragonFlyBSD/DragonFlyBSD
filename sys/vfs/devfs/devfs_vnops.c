@@ -590,7 +590,7 @@ devfs_vop_getattr(struct vop_getattr_args *ap)
 	if ((node->d_dev) && (dev_dflags(node->d_dev) & D_DISK)) {
 		bzero(&pinfo, sizeof(pinfo));
 		error = dev_dioctl(node->d_dev, DIOCGPART, (void *)&pinfo,
-				   0, proc0.p_ucred, NULL);
+				   0, proc0.p_ucred, NULL, NULL);
 		if ((error == 0) && (pinfo.media_blksize != 0)) {
 			vap->va_size = pinfo.media_size;
 		} else {
@@ -920,7 +920,7 @@ devfs_spec_open(struct vop_open_args *ap)
 	 * Open underlying device
 	 */
 	vn_unlock(vp);
-	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_cred);
+	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_cred, ap->a_fp);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
 	/*
@@ -1125,6 +1125,7 @@ devfs_fo_close(struct file *fp)
 	struct vnode *vp = (struct vnode *)fp->f_data;
 	int error;
 
+	devfs_clear_cdevpriv(fp);
 	fp->f_ops = &badfileops;
 	error = vn_close(vp, fp->f_flag);
 
@@ -1187,7 +1188,7 @@ devfs_fo_read(struct file *fp, struct uio *uio,
 	}
 	ioflag |= sequential_heuristic(uio, fp);
 
-	error = dev_dread(dev, uio, ioflag);
+	error = dev_dread(dev, uio, ioflag, fp);
 
 	release_dev(dev);
 	if (node)
@@ -1264,7 +1265,7 @@ devfs_fo_write(struct file *fp, struct uio *uio,
 		ioflag |= IO_SYNC;
 	ioflag |= sequential_heuristic(uio, fp);
 
-	error = dev_dwrite(dev, uio, ioflag);
+	error = dev_dwrite(dev, uio, ioflag, fp);
 
 	release_dev(dev);
 	if (node) {
@@ -1402,7 +1403,7 @@ devfs_fo_kqfilter(struct file *fp, struct knote *kn)
 	}
 	reference_dev(dev);
 
-	error = dev_dkqfilter(dev, kn);
+	error = dev_dkqfilter(dev, kn, fp);
 
 	release_dev(dev);
 
@@ -1465,7 +1466,7 @@ devfs_fo_ioctl(struct file *fp, u_long com, caddr_t data,
 		goto out;
 	}
 
-	error = dev_dioctl(dev, com, data, fp->f_flag, ucred, msg);
+	error = dev_dioctl(dev, com, data, fp->f_flag, ucred, msg, fp);
 
 #if 0
 	if (node) {
@@ -1552,7 +1553,7 @@ devfs_spec_read(struct vop_read_args *ap)
 		return (0);
 
 	vn_unlock(vp);
-	error = dev_dread(dev, uio, ap->a_ioflag);
+	error = dev_dread(dev, uio, ap->a_ioflag, NULL);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
 	if (node)
@@ -1587,7 +1588,7 @@ devfs_spec_write(struct vop_write_args *ap)
 		return (EBADF);
 
 	vn_unlock(vp);
-	error = dev_dwrite(dev, uio, ap->a_ioflag);
+	error = dev_dwrite(dev, uio, ap->a_ioflag, NULL);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 
 	if (node) {
@@ -1625,7 +1626,7 @@ devfs_spec_ioctl(struct vop_ioctl_args *ap)
 #endif
 
 	return (dev_dioctl(dev, ap->a_command, ap->a_data, ap->a_fflag,
-			   ap->a_cred, ap->a_sysmsg));
+			   ap->a_cred, ap->a_sysmsg, NULL));
 }
 
 /*
@@ -1650,7 +1651,7 @@ devfs_spec_kqfilter(struct vop_kqfilter_args *ap)
 		nanotime(&node->atime);
 #endif
 
-	return (dev_dkqfilter(dev, ap->a_kn));
+	return (dev_dkqfilter(dev, ap->a_kn, NULL));
 }
 
 /*
