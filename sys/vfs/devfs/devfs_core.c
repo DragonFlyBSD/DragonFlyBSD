@@ -38,6 +38,7 @@
 #include <sys/vnode.h>
 #include <sys/types.h>
 #include <sys/lock.h>
+#include <sys/file.h>
 #include <sys/msgport.h>
 #include <sys/sysctl.h>
 #include <sys/ucred.h>
@@ -2717,6 +2718,71 @@ wildCaseCmp(const char **mary, int d, const char *w, const char *s)
     }
     /* not reached */
     return(-1);
+}
+
+struct cdev_privdata {
+	void		*cdpd_data;
+	cdevpriv_dtr_t	cdpd_dtr;
+};
+
+int devfs_get_cdevpriv(struct file *fp, void **datap)
+{
+	struct cdev_privdata *p;
+	int error;
+
+	if (fp == NULL)
+		return(EBADF);
+	p  = (struct cdev_privdata*) fp->f_data1;
+	if (p != NULL) {
+		error = 0;
+		*datap = p->cdpd_data;
+	} else
+		error = ENOENT;
+	return (error);
+}
+
+int devfs_set_cdevpriv(struct file *fp, void *priv, cdevpriv_dtr_t dtr)
+{
+	struct cdev_privdata *p;
+	int error;
+
+	if (fp == NULL)
+		return (ENOENT);
+
+	p = kmalloc(sizeof(struct cdev_privdata), M_DEVFS, M_WAITOK);
+	p->cdpd_data = priv;
+	p->cdpd_dtr = dtr;
+
+	spin_lock(&fp->f_spin);
+	if (fp->f_data1 == NULL) {
+		fp->f_data1 = p;
+		error = 0;
+	} else
+		error = EBUSY;
+	spin_unlock(&fp->f_spin);
+
+	if (error)
+		kfree(p, M_DEVFS);
+
+	return error;
+}
+
+void devfs_clear_cdevpriv(struct file *fp)
+{
+	struct cdev_privdata *p;
+
+	if (fp == NULL)
+		return;
+
+	spin_lock(&fp->f_spin);
+	p = fp->f_data1;
+	fp->f_data1 = NULL;
+	spin_unlock(&fp->f_spin);
+
+	if (p != NULL) {
+		(p->cdpd_dtr)(p->cdpd_data);
+		kfree(p, M_DEVFS);
+	}
 }
 
 int

@@ -117,6 +117,7 @@ struct file {
 				 */
 	off_t	f_offset;
 	void   *f_data;		/* vnode, pipe, socket, or kqueue */
+	void   *f_data1;	/* devfs per-file data */
 	int	f_count;	/* reference count */
 	int	f_msgcount;	/* (U) reference count from message queue */
 	struct nchandle f_nchandle; /* namecache reference */

@@ -432,6 +432,10 @@ void *devfs_iterate_topology(struct devfs_node *node,
 
 void *devfs_find_device_node_callback(struct devfs_node *, cdev_t);
 
+typedef void (*cdevpriv_dtr_t)(void *data);
+int devfs_get_cdevpriv(struct file *file, void **datap);
+int devfs_set_cdevpriv(struct file *file, void *priv, cdevpriv_dtr_t dtr);
+void devfs_clear_cdevpriv(struct file *file);
 
 int devfs_WildCmp(const char *w, const char *s);
 int devfs_WildCaseCmp(const char *w, const char *s);
