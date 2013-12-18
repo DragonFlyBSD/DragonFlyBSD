@@ -296,6 +296,10 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		PRELE(p);
 		return (ESRCH);
 	}
+	if (p->p_flags & P_SYSTEM) {
+		PRELE(p);
+		return EINVAL;
+	}
 
 	lwkt_gettoken(&p->p_token);
 	/* Can't trace a process that's currently exec'ing. */
@@ -607,7 +611,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		/* write = 0 above */
 #endif /* PT_SETREGS */
 #if defined(PT_SETREGS) || defined(PT_GETREGS)
-		if (!procfs_validregs(lp)) {	/* no P_SYSTEM procs please */
+		if (!procfs_validregs(lp)) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			return EINVAL;
@@ -638,7 +642,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		/* write = 0 above */
 #endif /* PT_SETFPREGS */
 #if defined(PT_SETFPREGS) || defined(PT_GETFPREGS)
-		if (!procfs_validfpregs(lp)) {	/* no P_SYSTEM procs please */
+		if (!procfs_validfpregs(lp)) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			return EINVAL;
@@ -669,7 +673,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr,
 		/* write = 0 above */
 #endif /* PT_SETDBREGS */
 #if defined(PT_SETDBREGS) || defined(PT_GETDBREGS)
-		if (!procfs_validdbregs(lp)) {	/* no P_SYSTEM procs please */
+		if (!procfs_validdbregs(lp)) {
 			lwkt_reltoken(&p->p_token);
 			PRELE(p);
 			return EINVAL;

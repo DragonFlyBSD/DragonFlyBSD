@@ -3,7 +3,7 @@
 .\"	$NetBSD: ptrace.2,v 1.2 1995/02/27 12:35:37 cgd Exp $
 .\"
 .\" This file is in the public domain.
-.Dd January 20, 1996
+.Dd December 18, 2013
 .Dt PTRACE 2
 .Os
 .Sh NAME
@@ -234,6 +234,10 @@ The signal number (in
 to
 .Dv PT_CONTINUE
 was neither 0 nor a legal signal number.
+.It
+The
+.Fa pid
+represents a system process.
 .It
 .Dv PT_GETREGS ,
 .Dv PT_SETREGS ,
