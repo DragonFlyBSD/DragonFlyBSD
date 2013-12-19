@@ -108,6 +108,8 @@ libhammer_get_volinfo(const char *path)
 			pfstmp->version = hvi->version;
 			pfstmp->pfs_id = pi.pos;
 			pfstmp->mirror_flags = pfs_od->mirror_flags;
+			pfstmp->beg_tid = pfs_od->sync_beg_tid;
+			pfstmp->end_tid = pfs_od->sync_end_tid;
 			pfstmp->snapcount = count_snapshots(hvi->version,
 			    pfstmp->snapshots, pfstmp->mountedon,
 			    &pfstmp->head.error);

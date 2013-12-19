@@ -93,6 +93,11 @@ typedef struct libhammer_pfsinfo {
 	char      snapshots[64];    /* softlink dir for pruning */
 	uuid_t    unique_uuid;      /* unique uuid of this master/slave */
 	TAILQ_ENTRY(libhammer_pfsinfo) entries;
+
+	hammer_tid_t beg_tid;       /* Earliest TID with full history */
+	hammer_tid_t end_tid;       /* Current synchronisation TID */
+
+	uint64_t rsv[4];
 } *libhammer_pfsinfo_t;
 
 typedef struct libhammer_volinfo {
