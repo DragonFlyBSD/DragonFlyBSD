@@ -83,7 +83,7 @@ usage(void)
 {
 
 	fprintf(stderr,
-	    "usage: %s [-afqtv] [-d crashdir] [-c core | -n dumpnr | -r device]\n"
+	    "usage: %s [-afqtvw] [-d crashdir] [-c core | -n dumpnr | -r device]\n"
 	    "\t[kernel [core]]\n", getprogname());
 	exit(1);
 }
