@@ -1,7 +1,7 @@
 .\"
 .\" $FreeBSD: src/usr.sbin/zic/zdump.8,v 1.7.2.2 2003/03/11 22:31:35 trhodes Exp $
 .\"
-.Dd October 19, 2008
+.Dd December 8, 2013
 .Dt ZDUMP 8
 .Os
 .Sh NAME
@@ -9,8 +9,9 @@
 .Nd timezone dumper
 .Sh SYNOPSIS
 .Nm
-.Op Fl v
+.Op Fl vV
 .Op Fl c Bo Ar loyear Ns , Bc Ns Ar hiyear
+.Op Fl t Bo Ar lotime Ns , Bc Ns Ar hitime
 .Op Ar zonename ...
 .Sh DESCRIPTION
 The
@@ -36,10 +37,19 @@ Each line ends with
 if the given time is Daylight Saving Time or
 .Em isdst=0
 otherwise.
+.It Fl V
+Like
+.Fl v ,
+except omit the times relative to the extreme time values.
+This generates output that is easier to compare to that of implementations
+with different time representations.
 .It Fl c Bo Ar loyear Ns , Bc Ns Ar hiyear
 Cut off verbose output near the start of the given year(s).
 By default,
 the program cuts off verbose output near the starts of the years -500 and 2500.
+.It Fl t Bo Ar lotime Ns , Bc Ns Ar hitime
+Cut off verbose output at the start of the given time(s), given in decimal
+seconds since 1970-01-01 00:00:00 UTC.
 .El
 .Sh LIMITATIONS
 The
@@ -53,6 +63,19 @@ Time discontinuities are found by sampling the results returned by
 at twelve-hour intervals.
 This works in all real-world cases;
 one can construct artificial time zones for which this fails.
+.Pp
+In the output,
+.Dq UT
+denotes the value returned by
+.Xr gmtime 3 ,
+which uses UTC for modern time stamps and some other UT flavor for time
+stamps that predate the introduction of UTC.
+No attempt is currently made to have the output use
+.Dq UTC
+for newer and
+.Dq UT
+for older time stamps, partly because the exact date of the introduction of
+UTC is problematic.
 .Sh SEE ALSO
 .Xr ctime 3 ,
 .Xr tzfile 5 ,
