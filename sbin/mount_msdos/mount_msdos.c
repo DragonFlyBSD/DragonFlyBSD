@@ -261,8 +261,8 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n", 
-	"usage: mount_msdos [-o options] [-u user] [-g group] [-m mask]",
-	"                   [-s] [-l] [-9] [-L locale] [-D codepage] bdev dir");
+	    "usage: mount_msdos [-9ls] [-D DOS_codepage] [-g gid] [-L locale]",
+	    "                   [-m mask] [-o options] [-u uid] special node");
 	exit(EX_USAGE);
 }
 
