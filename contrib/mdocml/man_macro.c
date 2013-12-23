@@ -425,6 +425,15 @@ in_line_eoln(MACRO_PROT_ARGS)
 	}
 
 	/*
+	 * Append MAN_EOS in case the last snipped argument
+	 * ends with a dot, e.g. `.IR syslog (3).'
+	 */
+
+	if (n != man->last &&
+	    mandoc_eos(man->last->string, strlen(man->last->string), 0))
+		man->last->flags |= MAN_EOS;
+
+	/*
 	 * If no arguments are specified and this is MAN_SCOPED (i.e.,
 	 * next-line scoped), then set our mode to indicate that we're
 	 * waiting for terms to load into our context.

@@ -14,6 +14,7 @@ Local modifications applied to the following files:
 	config.h
 	lib.in		(upstream sync)
 	msec.in
+	man_macro.c	(upstream sync)
 	mandoc.3	(upstream sync)
 	mandocdb.c
 	mdoc.7		(upstream sync)
