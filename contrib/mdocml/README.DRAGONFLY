@@ -10,13 +10,11 @@ size = 286400
 sha1 = 6a86cc4f373bcc51aa8bf1a7499db368e977a166
 
 Local modifications applied to the following files:
-	apropos.c
 	config.h
 	lib.in		(upstream sync)
 	msec.in
 	man_macro.c	(upstream sync)
 	mandoc.3	(upstream sync)
-	mandocdb.c
 	mdoc.7		(upstream sync)
 	mdoc_man.c	(upstream sync)
 	mdoc_validate.c	(upstream sync)
