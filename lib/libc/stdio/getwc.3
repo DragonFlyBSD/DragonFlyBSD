@@ -33,15 +33,17 @@
 .\"
 .\"     @(#)getc.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdio/getwc.3,v 1.8 2007/01/09 00:28:06 imp Exp $
-.\" $DragonFly: src/lib/libc/stdio/getwc.3,v 1.1 2005/07/25 00:37:41 joerg Exp $
 .\"
-.Dd March 3, 2004
+.Dd December 25, 2013
 .Dt GETWC 3
 .Os
 .Sh NAME
 .Nm fgetwc ,
+.Nm fgetwc_l ,
 .Nm getwc ,
-.Nm getwchar
+.Nm getwc_l ,
+.Nm getwchar ,
+.Nm getwchar_l
 .Nd get next wide character from input stream
 .Sh LIBRARY
 .Lb libc
@@ -54,28 +56,59 @@
 .Fn getwc "FILE *stream"
 .Ft wint_t
 .Fn getwchar void
+.In xlocale.h
+.Ft wint_t
+.Fn fgetwc_l "FILE *stream" "locale_t locale"
+.Ft wint_t
+.Fn getwc_l "FILE *stream" "locate_t locale"
+.Ft wint_t
+.Fn getwchar_l "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn fgetwc
-function
-obtains the next input wide character (if present) from the stream pointed at by
+and
+.Fn fgetwc_l
+functions
+obtain the next input wide character (if present) from the stream pointed at by
 .Fa stream ,
 or the next character pushed back on the stream via
-.Xr ungetwc 3 .
+.Xr ungetwc 3
+or
+.Xr ungetwc_l 3 .
 .Pp
 The
 .Fn getwc
-function
-acts essentially identically to
-.Fn fgetwc .
+and
+.Fn getwc_l
+functions act essentially identically to
+.Fn fgetwc
+and
+.Fn fgetwc_l .
 .Pp
 The
 .Fn getwchar
-function
-is equivalent to
+and
+.Fn getwchar_l
+functions are equivalent to
 .Fn getwc
+and
+.Fn getwc_l
 with the argument
 .Dv stdin .
+.Pp
+The
+.Fn fgetwc_l ,
+.Fn getwc_l ,
+and
+.Fn getwchar_l
+functions take an explicit
+.Fa locale
+argument, whereas the
+.Fn fgetwc ,
+.Fn getwc ,
+and
+.Fn getwchar
+functions use the current global or per-thread locale.
 .Sh RETURN VALUES
 If successful, these routines return the next wide character
 from the

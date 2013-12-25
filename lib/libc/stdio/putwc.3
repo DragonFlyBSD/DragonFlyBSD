@@ -33,15 +33,17 @@
 .\"
 .\"     @(#)putc.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdio/putwc.3,v 1.8 2007/01/09 00:28:07 imp Exp $
-.\" $DragonFly: src/lib/libc/stdio/putwc.3,v 1.1 2005/07/25 00:37:41 joerg Exp $
 .\"
-.Dd March 3, 2004
+.Dd December 25, 2013
 .Dt PUTWC 3
 .Os
 .Sh NAME
 .Nm fputwc ,
+.Nm fputwc_l ,
 .Nm putwc ,
-.Nm putwchar
+.Nm putwc_l ,
+.Nm putwchar ,
+.Nm putwchar_l
 .Nd output a wide character to a stream
 .Sh LIBRARY
 .Lb libc
@@ -54,34 +56,65 @@
 .Fn putwc "wchar_t wc" "FILE *stream"
 .Ft wint_t
 .Fn putwchar "wchar_t wc"
+.In xlocale.h
+.Ft wint_t
+.Fn fputwc_l "wchar_t wc" "FILE *stream" "locale_t locale"
+.Ft wint_t
+.Fn putwc_l "wchar_t wc" "FILE *stream" "locale_t locale"
+.Ft wint_t
+.Fn putwchar_l "wchar_t wc" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn fputwc
-function
-writes the wide character
+and
+.Fn fputwc_l
+functions write the wide character
 .Fa wc
 to the output stream pointed to by
 .Fa stream .
 .Pp
 The
 .Fn putwc
-function
-acts essentially identically to
-.Fn fputwc .
+and
+.Fn putwc_l
+functions act essentially identically to
+.Fn fputwc
+and
+.Fn fputwc_l .
 .Pp
 The
 .Fn putwchar
-function
-is identical to
+and
+.Fn putwchar_l
+functions are identical to
 .Fn putwc
+and
+.Fn putwc_l
 with an output stream of
 .Dv stdout .
-.Sh RETURN VALUES
+.Pp
 The
+.Fn fputwc_l ,
+.Fn putwc_l ,
+and
+.Fn putwchar_l
+functions take an explicit
+.Fa locale
+argument, whereas the
 .Fn fputwc ,
 .Fn putwc ,
 and
 .Fn putwchar
+functions use the current global or per-thread locale.
+.Sh RETURN VALUES
+The
+.Fn fputwc ,
+.Fn fputwc_l ,
+.Fn putwc ,
+.Fn putwc_l ,
+.Fn putwchar ,
+and
+.Fn putwchar_l
 functions
 return the wide character written.
 If an error occurs, the value
