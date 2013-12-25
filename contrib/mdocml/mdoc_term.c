@@ -1,4 +1,4 @@
-/*	$Id: mdoc_term.c,v 1.251 2013/12/23 02:20:09 schwarze Exp $ */
+/*	$Id: mdoc_term.c,v 1.255 2013/12/25 00:39:31 schwarze Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010, 2012, 2013 Ingo Schwarze <schwarze@openbsd.org>
@@ -100,7 +100,6 @@ static	int	  termp_fl_pre(DECL_ARGS);
 static	int	  termp_fn_pre(DECL_ARGS);
 static	int	  termp_fo_pre(DECL_ARGS);
 static	int	  termp_ft_pre(DECL_ARGS);
-static	int	  termp_igndelim_pre(DECL_ARGS);
 static	int	  termp_in_pre(DECL_ARGS);
 static	int	  termp_it_pre(DECL_ARGS);
 static	int	  termp_li_pre(DECL_ARGS);
@@ -194,12 +193,12 @@ static	const struct termact termacts[MDOC_MAX] = {
 	{ termp_quote_pre, termp_quote_post }, /* Eo */
 	{ termp_xx_pre, NULL }, /* Fx */
 	{ termp_bold_pre, NULL }, /* Ms */
-	{ termp_igndelim_pre, NULL }, /* No */
+	{ NULL, NULL }, /* No */
 	{ termp_ns_pre, NULL }, /* Ns */
 	{ termp_xx_pre, NULL }, /* Nx */
 	{ termp_xx_pre, NULL }, /* Ox */
 	{ NULL, NULL }, /* Pc */
-	{ termp_igndelim_pre, termp_pf_post }, /* Pf */
+	{ NULL, termp_pf_post }, /* Pf */
 	{ termp_quote_pre, termp_quote_post }, /* Po */
 	{ termp_quote_pre, termp_quote_post }, /* Pq */
 	{ NULL, NULL }, /* Qc */
@@ -307,28 +306,15 @@ print_mdoc_node(DECL_ARGS)
 	/*
 	 * Keeps only work until the end of a line.  If a keep was
 	 * invoked in a prior line, revert it to PREKEEP.
-	 *
-	 * Also let SYNPRETTY sections behave as if they were wrapped
-	 * in a `Bk' block.
 	 */
 
-	if (TERMP_KEEP & p->flags || MDOC_SYNPRETTY & n->flags) {
-		if (n->prev ? (n->prev->line != n->line) :
+	if (TERMP_KEEP & p->flags) {
+		if (n->prev ? (n->prev->lastline != n->line) :
 		    (n->parent && n->parent->line != n->line)) {
 			p->flags &= ~TERMP_KEEP;
 			p->flags |= TERMP_PREKEEP;
 		}
 	}
-
-	/*
-	 * Since SYNPRETTY sections aren't "turned off" with `Ek',
-	 * we have to intuit whether we should disable formatting.
-	 */
-
-	if ( ! (MDOC_SYNPRETTY & n->flags) &&
-	    ((n->prev   && MDOC_SYNPRETTY & n->prev->flags) ||
-	     (n->parent && MDOC_SYNPRETTY & n->parent->flags)))
-		p->flags &= ~(TERMP_KEEP | TERMP_PREKEEP);
 
 	/*
 	 * After the keep flags have been set up, we may now
@@ -1010,8 +996,10 @@ static int
 termp_nm_pre(DECL_ARGS)
 {
 
-	if (MDOC_BLOCK == n->type)
+	if (MDOC_BLOCK == n->type) {
+		p->flags |= TERMP_PREKEEP;
 		return(1);
+	}
 
 	if (MDOC_BODY == n->type) {
 		if (NULL == n->child)
@@ -1060,7 +1048,9 @@ static void
 termp_nm_post(DECL_ARGS)
 {
 
-	if (MDOC_HEAD == n->type && n->next->child) {
+	if (MDOC_BLOCK == n->type) {
+		p->flags &= ~(TERMP_KEEP | TERMP_PREKEEP);
+	} else if (MDOC_HEAD == n->type && n->next->child) {
 		term_flushln(p);
 		p->flags &= ~(TERMP_NOBREAK | TERMP_HANG);
 		p->trailspace = 0;
@@ -1574,6 +1564,8 @@ termp_fn_pre(DECL_ARGS)
 	for (n = n->next; n; n = n->next) {
 		assert(MDOC_TEXT == n->type);
 		term_fontpush(p, TERMFONT_UNDER);
+		if (pretty)
+			p->flags |= TERMP_NBRWORD;
 		term_word(p, n->string);
 		term_fontpop(p);
 
@@ -1793,16 +1785,6 @@ termp_xx_pre(DECL_ARGS)
 		p->flags = flags;
 	}
 	return(0);
-}
-
-
-/* ARGSUSED */
-static int
-termp_igndelim_pre(DECL_ARGS)
-{
-
-	p->flags |= TERMP_IGNDELIM;
-	return(1);
 }
 
 
@@ -2240,7 +2222,7 @@ static void
 termp_bk_post(DECL_ARGS)
 {
 
-	if (MDOC_BODY == n->type && ! (MDOC_SYNPRETTY & n->flags))
+	if (MDOC_BODY == n->type)
 		p->flags &= ~(TERMP_KEEP | TERMP_PREKEEP);
 }
 
