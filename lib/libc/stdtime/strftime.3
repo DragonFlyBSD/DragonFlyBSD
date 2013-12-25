@@ -32,11 +32,12 @@
 .\"     @(#)strftime.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/stdtime/strftime.3 237573 2012-06-25 21:51:40Z issyl0 $
 .\"
-.Dd June 25, 2012
+.Dd December 25, 2013
 .Dt STRFTIME 3
 .Os
 .Sh NAME
-.Nm strftime
+.Nm strftime ,
+.Nm strftime_l
 .Nd format date and time
 .Sh LIBRARY
 .Lb libc
@@ -50,7 +51,7 @@
 .Fa "const struct tm * restrict timeptr"
 .Fc
 .Ft size_t
-.Fn strftime_l "char *restrict buf" "size_t maxsize" "const char * restrict format" "const struct tm *restrict timeptr" "locale_t loc"
+.Fn strftime_l "char *restrict buf" "size_t maxsize" "const char * restrict format" "const struct tm *restrict timeptr" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn strftime
@@ -64,7 +65,9 @@ The function
 .Fn strftime_l
 does the same as
 .Fn strftime
-but takes an explicit locale rather than using the current locale.
+but takes an explicit
+.Fa locale
+rather than using the current locale.
 .Pp
 The
 .Fa format
@@ -82,7 +85,9 @@ If the total number of resulting characters, including the terminating
 NUL character, is not more than
 .Fa maxsize ,
 .Fn strftime
-returns the number of characters in the array, not counting the
+and
+.Fn strftime_l
+return the number of characters in the array, not counting the
 terminating NUL.
 Otherwise, zero is returned and the buffer contents are indeterminate.
 .Pp
@@ -286,6 +291,8 @@ There is no conversion specification for the phase of the moon.
 .Pp
 The
 .Fn strftime
-function does not correctly handle multibyte characters in the
+and
+.Fn strftime_l
+functions do not correctly handle multibyte characters in the
 .Fa format
 argument.

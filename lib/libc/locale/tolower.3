@@ -32,7 +32,7 @@
 .\"	@(#)tolower.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/locale/tolower.3 210468 2010-07-25 13:32:19Z bcr $
 .\"
-.Dd July 25, 2010
+.Dd December 25, 2013
 .Dt TOLOWER 3
 .Os
 .Sh NAME
@@ -45,26 +45,30 @@
 .In ctype.h
 .Ft int
 .Fn tolower "int c"
-.In ctype.h
-.In xlocale.h
 .Ft int
-.Fn tolower_l "int c" "locale_t loc"
+.Fn tolower_l "int c" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn tolower
-function converts an upper-case letter to the corresponding lower-case
+and
+.Fn tolower_l
+functions convert an upper-case letter to the corresponding lower-case
 letter.
 The argument must be representable as an
 .Vt "unsigned char"
 or the value of
 .Dv EOF .
 .Pp
-The _l-suffixed version takes an explicit locale argument, whereas the
+The _l-suffixed version takes an explicit
+.Fa locale
+argument, whereas the
 non-suffixed version uses the current global or per-thread locale.
 .Sh RETURN VALUES
 If the argument is an upper-case letter, the
 .Fn tolower
-function returns the corresponding lower-case letter if there is
+and
+.Fn tolower_l
+functions return the corresponding lower-case letter if there is
 one; otherwise, the argument is returned unchanged.
 .Sh COMPATIBILITY
 The
@@ -75,15 +79,22 @@ type in locales with large character sets is considered obsolete
 and may not be supported in future releases.
 The
 .Fn towlower
-function should be used instead.
+and
+.Fn towlower_l
+functions should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
 .Xr ctype_l 3 ,
 .Xr islower 3 ,
 .Xr towlower 3 ,
+.Xr towlower_l 3 ,
 .Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn tolower
 function conforms to
 .St -isoC .
+The
+.Fn tolower_l
+function conforms to
+.St -p1003.1-2008 .

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: head/lib/libc/stdlib/strfmon.3 237591 2012-06-26 05:34:31Z joel $
 .\"
-.Dd November 17, 2013
+.Dd December 25, 2013
 .Dt STRFMON 3
 .Os
 .Sh NAME
@@ -37,9 +37,8 @@
 .In monetary.h
 .Ft ssize_t
 .Fn strfmon "char * restrict s" "size_t maxsize" "const char * restrict format" "..."
-.In xlocale.h
 .Ft ssize_t
-.Fn strfmon_l "char * restrict s" "size_t maxsize" "locale_t loc" "const char * restrict format" "..."
+.Fn strfmon_l "char * restrict s" "size_t maxsize" "locale_t locale" "const char * restrict format" "..."
 .Sh DESCRIPTION
 The
 .Fn strfmon
@@ -55,7 +54,9 @@ The
 .Fn strfmon_l
 function does the same as
 .Fn strfmon
-but takes an explicit locale rather than using the current locale.
+but takes an explicit
+.Fa locale
+rather than using the current locale.
 .Pp
 The format string is composed of zero or more directives:
 ordinary characters (not
@@ -147,7 +148,9 @@ function returns the same values as
 .Sh ERRORS
 The
 .Fn strfmon
-function will fail if:
+and
+.Fn strfmon_l
+functions will fail if:
 .Bl -tag -width Er
 .It Bq Er E2BIG
 Conversion stopped due to lack of space in the buffer.
@@ -181,6 +184,8 @@ based on the standard's text.
 .Sh BUGS
 The
 .Fn strfmon
-function does not correctly handle multibyte characters in the
+and
+.Fn strfmon_l
+functions do not correctly handle multibyte characters in the
 .Fa format
 argument.
