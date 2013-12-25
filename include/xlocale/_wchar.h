@@ -36,10 +36,12 @@ typedef struct	_xlocale *locale_t;
 
 #ifndef _XLOCALE_WCHAR1_H
 #define _XLOCALE_WCHAR1_H
+#if 0 /* not implemented */
 int			 wcscasecmp_l(const wchar_t *, const wchar_t *,
 			   locale_t);
 int			 wcsncasecmp_l(const wchar_t *, const wchar_t *, size_t,
 			   locale_t);
+#endif
 int			 wcscoll_l(const wchar_t *, const wchar_t *, locale_t);
 size_t			 wcsxfrm_l(wchar_t * __restrict,
 			   const wchar_t * __restrict, size_t, locale_t);
