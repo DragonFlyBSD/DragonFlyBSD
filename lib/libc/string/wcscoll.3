@@ -30,14 +30,14 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strcoll.3	8.1 (Berkeley) 6/4/93
-.\" FreeBSD: src/lib/libc/string/strcoll.3,v 1.11 2001/10/01 16:09:00 ru Exp
 .\" $FreeBSD: head/lib/libc/string/wcscoll.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd October 4, 2002
+.Dd December 25, 2013
 .Dt WCSCOLL 3
 .Os
 .Sh NAME
-.Nm wcscoll
+.Nm wcscoll ,
+.Nm wcscoll_l
 .Nd compare wide strings according to current collation
 .Sh LIBRARY
 .Lb libc
@@ -45,6 +45,8 @@
 .In wchar.h
 .Ft int
 .Fn wcscoll "const wchar_t *s1" "const wchar_t *s2"
+.Ft int
+.Fn wcscoll_l "const wchar_t *s1" "const wchar_t *s2" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn wcscoll
@@ -59,11 +61,22 @@ locale,
 .Fn wcscoll
 is equivalent to
 .Fn wcscmp .
+.Pp
+The
+.Fn wcsxfrm_l
+function is identical to
+.Fn wcsxfrm
+but takes an explicit
+.Fa locale
+argument, whereas
+.Fn wcsxfrm
+uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn wcscoll
-function
-returns an integer greater than, equal to, or less than 0,
+and
+.Fn wcscoll_l
+functions return an integer greater than, equal to, or less than 0,
 if
 .Fa s1
 is greater than, equal to, or less than
@@ -80,7 +93,9 @@ an error has occurred.
 .Sh ERRORS
 The
 .Fn wcscoll
-function will fail if:
+and
+.Fn wcscoll_l
+functions will fail if:
 .Bl -tag -width Er
 .It Bq Er EILSEQ
 An invalid wide character code was specified.
@@ -98,9 +113,15 @@ The
 function
 conforms to
 .St -isoC-99 .
++The
++.Fn wcscoll_l
++function conforms to
++.St -p1003.1-2008 .
 .Sh BUGS
 The current implementation of
 .Fn wcscoll
+and
+.Fn wcscoll_l
 only works in single-byte
 .Dv LC_CTYPE
 locales, and falls back to using

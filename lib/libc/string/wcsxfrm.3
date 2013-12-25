@@ -30,14 +30,14 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strxfrm.3	8.1 (Berkeley) 6/4/93
-.\" FreeBSD: src/lib/libc/string/strxfrm.3,v 1.16 2002/09/06 11:24:06 tjr Exp
 .\" $FreeBSD: head/lib/libc/string/wcsxfrm.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd October 4, 2002
+.Dd December 25, 2013
 .Dt WCSXFRM 3
 .Os
 .Sh NAME
-.Nm wcsxfrm
+.Nm wcsxfrm ,
+.Nm wcsxfrm_l
 .Nd transform a wide string under locale
 .Sh LIBRARY
 .Lb libc
@@ -45,6 +45,8 @@
 .In wchar.h
 .Ft size_t
 .Fn wcsxfrm "wchar_t * restrict dst" "const wchar_t * restrict src" "size_t n"
+.Ft size_t
+.Fn wcsxfrm_l "wchar_t * restrict dst" "const wchar_t * restrict src" "size_t n" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn wcsxfrm
@@ -76,10 +78,22 @@ after
 is equivalent to comparing
 two original strings with
 .Fn wcscoll .
+.Pp
+The
+.Fn wcsxfrm_l
+function is identical to
+.Fn wcsxfrm
+but takes an explicit
+.Fa locale
+argument, whereas
+.Fn wcsxfrm
+uses the current global or per-thread locale.
 .Sh RETURN VALUES
 Upon successful completion,
 .Fn wcsxfrm
-returns the length of the transformed string not including
+and
+.Fn wcsxfrm_l
+return the length of the transformed string not including
 the terminating null character.
 If this value is
 .Fa n
@@ -97,9 +111,15 @@ The
 function
 conforms to
 .St -isoC-99 .
+The
+.Fn wcsxfrm_l
+function conforms to
+.St -p1003.1-2008 .
 .Sh BUGS
 The current implementation of
 .Fn wcsxfrm
+and
+.Fn wcsxfrm_l
 only works in single-byte
 .Dv LC_CTYPE
 locales, and falls back to using
