@@ -31,15 +31,17 @@
 .\"
 .\"     @(#)strtod.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/strtod.3,v 1.21 2007/01/09 00:28:10 imp Exp $
-.\" $DragonFly: src/lib/libc/stdlib/strtod.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
-.Dd March 2, 2003
+.Dd December 25, 2013
 .Dt STRTOD 3
 .Os
 .Sh NAME
 .Nm strtod ,
+.Nm strtod_l ,
 .Nm strtof ,
-.Nm strtold
+.Nm strtof_l ,
+.Nm strtold ,
+.Nm strtold_l
 .Nd convert
 .Tn ASCII
 string to floating point
@@ -53,6 +55,13 @@ string to floating point
 .Fn strtof "const char * restrict nptr" "char ** restrict endptr"
 .Ft "long double"
 .Fn strtold "const char * restrict nptr" "char ** restrict endptr"
+.In xlocale.h
+.Ft double
+.Fn strtod_l "const char * restrict nptr" "char ** restrict endptr" "locale_t locale"
+.Ft float
+.Fn strtof_l "const char * restrict nptr" "char ** restrict endptr" "locale_t locale"
+.Ft "long double"
+.Fn strtold_l "const char * restrict nptr" "char ** restrict endptr" "locale_t locale"
 .Sh DESCRIPTION
 These conversion
 functions convert the initial portion of the string
@@ -95,16 +104,35 @@ case, it is interpreted as an infinity or a quiet NaN, respectively.
 In any of the above cases, leading white-space characters in the
 string (as defined by the
 .Xr isspace 3
-function) are skipped.
+or
+.Xr isspace_l 3
+functions) are skipped.
 The decimal point
 character is defined in the program's locale (category
 .Dv LC_NUMERIC ) .
-.Sh RETURN VALUES
+.Pp
 The
+.Fn strtod_l ,
+.Fn strtof_l ,
+and
+.Fn strtold_l
+functions take an explicit
+.Fa locale
+argument, whereas the
 .Fn strtod ,
 .Fn strtof ,
 and
 .Fn strtold
+functions use the current global or per-thread locale.
+.Sh RETURN VALUES
+The
+.Fn strtod ,
+.Fn strtod_l ,
+.Fn strtof ,
+.Fn strtof_l ,
+.Fn strtold ,
+and
+.Fn strtold_l
 functions return the converted value, if any.
 .Pp
 If

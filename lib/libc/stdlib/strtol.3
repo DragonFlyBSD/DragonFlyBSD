@@ -31,13 +31,19 @@
 .\"
 .\"     @(#)strtol.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/strtol.3,v 1.23 2007/04/10 11:17:00 ru Exp $
-.\" $DragonFly: src/lib/libc/stdlib/strtol.3,v 1.5 2007/04/10 21:09:00 swildner Exp $
 .\"
-.Dd November 2, 2006
+.Dd December 25, 2013
 .Dt STRTOL 3
 .Os
 .Sh NAME
-.Nm strtol , strtoll , strtoimax , strtoq
+.Nm strtol ,
+.Nm strtol_l ,
+.Nm strtoll ,
+.Nm strtoll_l ,
+.Nm strtoimax ,
+.Nm strtoimax_l ,
+.Nm strtoq ,
+.Nm strtoq_l
 .Nd "convert a string value to a"
 .Vt long , "long long" , intmax_t
 or
@@ -56,39 +62,50 @@ integer
 .Ft intmax_t
 .Fn strtoimax "const char * restrict nptr" "char ** restrict endptr" "int base"
 .In sys/types.h
-.In stdlib.h
-.In limits.h
 .Ft quad_t
 .Fn strtoq "const char *nptr" "char **endptr" "int base"
+.In xlocale.h
+.Ft long
+.Fn strtol_l "const char * restrict nptr" "char ** restrict endptr" "int base" "locale_t locale"
+.Ft long long
+.Fn strtoll_l "const char * restrict nptr" "char ** restrict endptr" "int base" "locale_t locale"
+.Ft intmax_t
+.Fn strtoimax_l "const char * restrict nptr" "char ** restrict endptr" "int base" "locale_t locale"
+.Ft quad_t
+.Fn strtoq_l "const char *nptr" "char **endptr" "int base" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn strtol
-function
-converts the string in
+and
+.Fn strtol_l
+functions convert the string in
 .Fa nptr
 to a
 .Vt long
 value.
 The
 .Fn strtoll
-function
-converts the string in
+and
+.Fn strtoll_l
+functions convert the string in
 .Fa nptr
 to a
 .Vt "long long"
 value.
 The
 .Fn strtoimax
-function
-converts the string in
+and
+.Fn strtoimax_l
+functions convert the string in
 .Fa nptr
 to an
 .Vt intmax_t
 value.
 The
 .Fn strtoq
-function
-converts the string in
+and
+.Fn strtoq_l
+functions convert the string in
 .Fa nptr
 to a
 .Vt quad_t
@@ -100,7 +117,9 @@ or be the special value 0.
 .Pp
 The string may begin with an arbitrary amount of white space
 (as determined by
-.Xr isspace 3 )
+.Xr isspace 3
+or
+.Xr isspace_l 3 )
 followed by a single optional
 .Ql +
 or
@@ -139,11 +158,15 @@ If
 is not
 .Dv NULL ,
 .Fn strtol
-stores the address of the first invalid character in
+and
+.Fn strtol_l
+store the address of the first invalid character in
 .Fa *endptr .
 If there were no digits at all, however,
 .Fn strtol
-stores the original value of
+and
+.Fn strtol_l
+store the original value of
 .Fa nptr
 in
 .Fa *endptr .
@@ -156,13 +179,33 @@ but
 is
 .Ql \e0
 on return, the entire string was valid.)
+.Pp
+The
+.Fn strtol_l ,
+.Fn strtoll_l ,
+.Fn strtoimax_l ,
+and
+.Fn strtoq_l
+functions take an explicit
+.Fa locale
+argument, whereas the
+.Fn strtol ,
+.Fn strtoll ,
+.Fn strtoimax ,
+and
+.Fn strtoq
+functions use the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn strtol ,
+.Fn strtol_l ,
 .Fn strtoll ,
-.Fn strtoimax
+.Fn strtoll_l ,
+.Fn strtoimax ,
+.Fn strtoimax_l ,
+.Fn strtoq ,
 and
-.Fn strtoq
+.Fn strtoq_l
 functions
 return the result of the conversion,
 unless the value would underflow or overflow.
@@ -178,12 +221,16 @@ is set to
 .Er ERANGE
 and the function return value is clamped according
 to the following table.
-.Bl -column -offset indent ".Fn strtoimax" ".Sy underflow" ".Sy overflow"
+.Bl -column -offset indent ".Fn strtoimax_l" ".Sy underflow" ".Sy overflow"
 .It Sy Function Ta Sy underflow Ta Sy overflow
 .It Fn strtol Ta Dv LONG_MIN Ta Dv LONG_MAX
+.It Fn strtol_l Ta Dv LONG_MIN Ta Dv LONG_MAX
 .It Fn strtoll Ta Dv LLONG_MIN Ta Dv LLONG_MAX
+.It Fn strtoll_l Ta Dv LLONG_MIN Ta Dv LLONG_MAX
 .It Fn strtoimax Ta Dv INTMAX_MIN Ta Dv INTMAX_MAX
+.It Fn strtoimax_l Ta Dv INTMAX_MIN Ta Dv INTMAX_MAX
 .It Fn strtoq Ta Dv LLONG_MIN Ta Dv LLONG_MAX
+.It Fn strtoq_l Ta Dv LLONG_MIN Ta Dv LLONG_MAX
 .El
 .Sh ERRORS
 .Bl -tag -width Er
@@ -220,4 +267,6 @@ conform to
 The
 .Bx
 .Fn strtoq
-function is deprecated.
+and
+.Fn strtoq_l
+functions are deprecated.

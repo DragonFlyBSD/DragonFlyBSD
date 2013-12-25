@@ -31,16 +31,19 @@
 .\"
 .\"     @(#)strtoul.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdlib/strtoul.3,v 1.23 2007/01/09 00:28:10 imp Exp $
-.\" $DragonFly: src/lib/libc/stdlib/strtoul.3,v 1.4 2006/11/02 19:48:55 swildner Exp $
 .\"
-.Dd November 2, 2006
+.Dd December 25, 2013
 .Dt STRTOUL 3
 .Os
 .Sh NAME
 .Nm strtoul ,
+.Nm strtoul_l ,
 .Nm strtoull ,
+.Nm strtoull_l ,
 .Nm strtoumax ,
-.Nm strtouq
+.Nm strtoumax_l ,
+.Nm strtouq ,
+.Nm strtouq_l
 .Nd "convert a string to an"
 .Vt "unsigned long" , "unsigned long long" , uintmax_t ,
 or
@@ -59,39 +62,50 @@ integer
 .Ft uintmax_t
 .Fn strtoumax "const char * restrict nptr" "char ** restrict endptr" "int base"
 .In sys/types.h
-.In stdlib.h
-.In limits.h
 .Ft u_quad_t
 .Fn strtouq "const char *nptr" "char **endptr" "int base"
+.In xlocale.h
+.Ft "unsigned long"
+.Fn strtoul_l "const char * restrict nptr" "char ** restrict endptr" "int base" "locale_t locale"
+.Ft "unsigned long long"
+.Fn strtoull_l "const char * restrict nptr" "char ** restrict endptr" "int base" "locale_t locale"
+.Ft uintmax_t
+.Fn strtoumax_l "const char * restrict nptr" "char ** restrict endptr" "int base" "locale_t locale"
+.Ft u_quad_t
+.Fn strtouq_l "const char *nptr" "char **endptr" "int base" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn strtoul
-function
-converts the string in
+and
+.Fn strtoul_l
+functions convert the string in
 .Fa nptr
 to an
 .Vt "unsigned long"
 value.
 The
 .Fn strtoull
-function
-converts the string in
+and
+.Fn strtoull_l
+functions convert the string in
 .Fa nptr
 to an
 .Vt "unsigned long long"
 value.
 The
 .Fn strtoumax
-function
-converts the string in
+and
+.Fn strtoumax_l
+functions convert the string in
 .Fa nptr
 to an
 .Vt uintmax_t
 value.
 The
 .Fn strtouq
-function
-converts the string in
+and
+.Fn strtouq_l
+functions convert the string in
 .Fa nptr
 to a
 .Vt u_quad_t
@@ -103,7 +117,9 @@ or be the special value 0.
 .Pp
 The string may begin with an arbitrary amount of white space
 (as determined by
-.Xr isspace 3 )
+.Xr isspace 3
+or
+.Xr isspace_l 3 )
 followed by a single optional
 .Ql +
 or
@@ -141,11 +157,15 @@ If
 is not
 .Dv NULL ,
 .Fn strtoul
-stores the address of the first invalid character in
+and
+.Fn strtoul_l
+store the address of the first invalid character in
 .Fa *endptr .
 If there were no digits at all, however,
 .Fn strtoul
-stores the original value of
+and
+.Fn strtoul_l
+store the original value of
 .Fa nptr
 in
 .Fa *endptr .
@@ -158,13 +178,33 @@ but
 is
 .Ql \e0
 on return, the entire string was valid.)
+.Pp
+The
+.Fn strtoul_l ,
+.Fn strtoull_l ,
+.Fn strtoumax_l ,
+and
+.Fn strtouq_l
+functions take an explicit
+.Fa locale
+argument, whereas the
+.Fn strtoul ,
+.Fn strtoull ,
+.Fn strtoumax ,
+and
+.Fn strtouq
+functions use the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn strtoul ,
+.Fn strtoul_l ,
 .Fn strtoull ,
-.Fn strtoumax
+.Fn strtoull_l ,
+.Fn strtoumax ,
+.Fn strtoumax_l ,
+.Fn strtouq ,
 and
-.Fn strtouq
+.Fn strtouq_l
 functions
 return either the result of the conversion
 or, if there was a leading minus sign,
@@ -172,17 +212,25 @@ the negation of the result of the conversion,
 unless the original (non-negated) value would overflow;
 in the latter case,
 .Fn strtoul
-returns
+and
+.Fn strtoul_l
+return
 .Dv ULONG_MAX ,
 .Fn strtoull
-returns
+and
+.Fn strtoull_l
+return
 .Dv ULLONG_MAX ,
 .Fn strtoumax
-returns
+and
+.Fn strtoumax_l
+return
 .Dv UINTMAX_MAX ,
 and
 .Fn strtouq
-returns
+and
+.Fn strtouq_l
+return
 .Dv ULLONG_MAX .
 In all cases,
 .Va errno
@@ -225,4 +273,6 @@ conform to
 The
 .Bx
 .Fn strtouq
-function is deprecated.
+and
+.Fn strtouq_l
+functions are deprecated.
