@@ -28,7 +28,7 @@
 .\"     @(#)isblank.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/locale/isblank.3 248803 2013-03-27 21:31:40Z jilles $
 .\"
-.Dd July 17, 2005
+.Dd December 25, 2013
 .Dt ISBLANK 3
 .Os
 .Sh NAME
@@ -41,14 +41,14 @@
 .In ctype.h
 .Ft int
 .Fn isblank "int c"
-.In ctype.h
-.In xlocale.h
 .Ft int
-.Fn isblank_l "int c" "locale_t loc"
+.Fn isblank_l "int c" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn isblank
-function tests for a space or tab character.
+and
+.Fn isblank_l
+functions test for a space or tab character.
 For any locale, this includes the following standard characters:
 .Bl -column XXXX
 .It Do \et Dc Ta Dq " "
@@ -64,13 +64,17 @@ or the value of
 .Pp
 The
 .Fn isblank_l
-function takes an explicit locale argument, whereas the
+function takes an explicit
+.Fa locale
+argument, whereas the
 .Fn isblank
 function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn isblank
-function returns zero if the character tests false and
+and
+.Fn isblank_l
+functions return zero if the character tests false and
 returns non-zero if the character tests true.
 .Sh COMPATIBILITY
 The
@@ -81,10 +85,13 @@ type in locales with large character sets is considered obsolete
 and may not be supported in future releases.
 The
 .Fn iswblank
+and
+.Fn iswblank_l
 function should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
 .Xr iswblank 3 ,
+.Xr iswblank_l 3 ,
 .Xr xlocale 3 ,
 .Xr ascii 7
 .Sh STANDARDS

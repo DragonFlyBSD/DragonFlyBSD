@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/lib/libc/locale/isspecial.3 196820 2009-09-04 07:44:58Z des $
 .\"
-.Dd March 30, 2004
+.Dd December 25, 2013
 .Dt ISSPECIAL 3
 .Os
 .Sh NAME
@@ -38,21 +38,26 @@
 .In ctype.h
 .Ft int
 .Fn isspecial "int c"
-.In ctype.h
 .In xlocale.h
 .Ft int
-.Fn isspecial_l "int c" "locale_t loc"
+.Fn isspecial_l "int c" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn isspecial
-function tests for a special character.
+and
+.Fn isspecial_l
+functions test for a special character.
 .Pp
-The _l-suffixed version takes an explicit locale argument, whereas the
+The _l-suffixed version takes an explicit
+.Fa locale
+argument, whereas the
 non-suffixed version uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn isspecial
-function returns zero if the character tests false and
+and
+.Fn isspecial_l
+functions return zero if the character tests false and
 returns non-zero if the character tests true.
 .Sh SEE ALSO
 .Xr ctype 3 ,

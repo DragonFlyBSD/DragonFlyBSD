@@ -32,7 +32,7 @@
 .\"     @(#)islower.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/locale/islower.3 238920 2012-07-30 21:02:44Z joel $
 .\"
-.Dd July 30, 2012
+.Dd December 25, 2013
 .Dt ISLOWER 3
 .Os
 .Sh NAME
@@ -46,11 +46,13 @@
 .Ft int
 .Fn islower "int c"
 .Ft int
-.Fn islower_l "int c" "locale_t loc"
+.Fn islower_l "int c" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn islower
-function tests for any lower-case letters.
+and
+.Fn islower_l
+functions test for any lower-case letters.
 The value of the argument must be representable as an
 .Vt "unsigned char"
 or the value of
@@ -68,7 +70,9 @@ In the ASCII character set, this includes the following characters
 .El
 The
 .Fn islower_l
-function takes an explicit locale argument, whereas the
+function takes an explicit
+.Fa locale
+argument, whereas the
 .Fn islower
 function uses the current global or per-thread locale.
 .Sh RETURN VALUES
@@ -87,11 +91,14 @@ type in locales with large character sets is considered obsolete
 and may not be supported in future releases.
 The
 .Fn iswlower
-function should be used instead.
+and
+.Fn iswlower_l
+functions should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
 .Xr ctype_l 3 ,
 .Xr iswlower 3 ,
+.Xr iswlower_l 3 ,
 .Xr tolower 3 ,
 .Xr xlocale 3 ,
 .Xr ascii 7

@@ -32,7 +32,7 @@
 .\"     @(#)isxdigit.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/locale/isxdigit.3 233992 2012-04-07 09:05:30Z joel $
 .\"
-.Dd July 17, 2005
+.Dd December 25, 2013
 .Dt ISXDIGIT 3
 .Os
 .Sh NAME
@@ -45,17 +45,18 @@
 .Ft int
 .Fn isxdigit "int c"
 .Ft int
-.Fn ishexnumber "int c"
-.In ctype.h
+.Fn isxdigit_l "int c" "locale_t locale"
 .In xlocale.h
 .Ft int
-.Fn isxdigit_l "int c" "locale_t loc"
+.Fn ishexnumber "int c"
 .Ft int
-.Fn ishexnumber_l "int c" "locale_t loc"
+.Fn ishexnumber_l "int c" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn isxdigit
-function tests for any hexadecimal-digit character.
+and
+.Fn isxdigit_l
+functions test for any hexadecimal-digit character.
 Regardless of locale, this includes the following characters only:
 .Bl -column \&``0''______ \&``0''______ \&``0''______ \&``0''______ \&``0''______
 .It "\&``0''" Ta "``1''" Ta "``2''" Ta "``3''" Ta "``4''"
@@ -67,8 +68,12 @@ Regardless of locale, this includes the following characters only:
 .Pp
 The
 .Fn ishexnumber
-function behaves similarly to
-.Fn isxdigit ,
+and
+.Fn ishexnumber_l
+functions behave similarly to
+.Fn isxdigit
+and
+.Fn isxdigit_l ,
 but may recognize additional characters,
 depending on the current locale setting.
 .Pp
@@ -77,12 +82,18 @@ The value of the argument must be representable as an
 or the value of
 .Dv EOF .
 .Pp
-The _l-suffixed versions take an explicit locale argument, whereas the
+The _l-suffixed versions take an explicit
+.Fa locale
+argument, whereas the
 non-suffixed versions use the current global or per-thread locale.
 .Sh RETURN VALUES
 The
-.Fn isxdigit
-function returns zero if the character tests false and
+.Fn isxdigit ,
+.Fn isxdigit_l ,
+.Fn ishexnumber ,
+and
+.Fn ishexnumber_l
+functions return zero if the character tests false and
 returns non-zero if the character tests true.
 .Sh COMPATIBILITY
 The
@@ -92,12 +103,17 @@ extension of accepting arguments outside of the range of the
 type in locales with large character sets is considered obsolete
 and may not be supported in future releases.
 The
-.Fn iswxdigit
-function should be used instead.
+.Fn iswxdigit ,
+.Fn iswxdigit_l ,
+.Fn iswhexnumber ,
+and
+.Fn iswhexnumber_l
+functions should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
 .Xr ctype_l 3 ,
 .Xr iswxdigit 3 ,
+.Xr iswxdigit_l 3 ,
 .Xr xlocale 3 ,
 .Xr ascii 7
 .Sh STANDARDS
@@ -105,6 +121,10 @@ The
 .Fn isxdigit
 function conforms to
 .St -isoC .
+The
+.Fn isxdigit_l
+function conforms to
+.St -p1003.1-2008 .
 .Sh HISTORY
 The
 .Fn ishexnumber

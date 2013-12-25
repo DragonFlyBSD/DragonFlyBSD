@@ -32,7 +32,7 @@
 .\"     @(#)isalpha.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/locale/isalpha.3 233992 2012-04-07 09:05:30Z joel $
 .\"
-.Dd July 17, 2005
+.Dd December 25, 2013
 .Dt ISALPHA 3
 .Os
 .Sh NAME
@@ -45,14 +45,14 @@
 .In ctype.h
 .Ft int
 .Fn isalpha "int c"
-.In ctype.h
-.In xlocale.h
 .Ft int
-.Fn isalpha_l "int c" "locale_t loc"
+.Fn isalpha_l "int c" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn isalpha
-function tests for any character for which
+and
+.Fn isalpha_l
+functions test for any character for which
 .Xr isupper 3
 or
 .Xr islower 3
@@ -80,13 +80,17 @@ In the ASCII character set, this includes the following characters
 .Pp
 The
 .Fn isalpha_l
-function takes an explicit locale argument, whereas the
+function takes an explicit
+.Fa locale
+argument, whereas the
 .Fn isalpha
 function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn isalpha
-function returns zero if the character tests false and
+and
+.Fn isalpha_l
+functions return zero if the character tests false and
 returns non-zero if the character tests true.
 .Sh COMPATIBILITY
 The
@@ -97,13 +101,16 @@ type in locales with large character sets is considered obsolete
 and may not be supported in future releases.
 The
 .Fn iswalpha
-function should be used instead.
+and
+.Fn iswalpha_l
+functions should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
 .Xr ctype_l 3 ,
 .Xr islower 3 ,
 .Xr isupper 3 ,
 .Xr iswalpha 3 ,
+.Xr iswalpha_l 3 ,
 .Xr xlocale 3 ,
 .Xr ascii 7
 .Sh STANDARDS

@@ -32,7 +32,7 @@
 .\"     @(#)isprint.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/locale/isprint.3 233992 2012-04-07 09:05:30Z joel $
 .\"
-.Dd July 17, 2005
+.Dd December 25, 2013
 .Dt ISPRINT 3
 .Os
 .Sh NAME
@@ -45,14 +45,14 @@
 .In ctype.h
 .Ft int
 .Fn isprint "int c"
-.In ctype.h
-.In xlocale.h
 .Ft int
-.Fn isprint_l "int c" "locale_t loc"
+.Fn isprint_l "int c" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn isprint
-function tests for any printing character, including space
+and
+.Fn isprint_l
+functions test for any printing character, including space
 .Pq Ql "\ " .
 The value of the argument must be representable as an
 .Vt "unsigned char"
@@ -83,12 +83,16 @@ In the ASCII character set, this includes the following characters
 .It "\&172\ ``z''" Ta "173\ ``{''" Ta "174\ ``|''" Ta "175\ ``}''" Ta "176\ ``~''"
 .El
 .Pp
-The _l-suffixed version takes an explicit locale argument, whereas the
+The _l-suffixed version takes an explicit
+.Fa locale
+argument, whereas the
 non-suffixed version uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn isprint
-function returns zero if the character tests false and
+and
+.Fn isprint_l
+functions return zero if the character tests false and
 returns non-zero if the character tests true.
 .Sh COMPATIBILITY
 The
@@ -99,11 +103,14 @@ type in locales with large character sets is considered obsolete
 and may not be supported in future releases.
 The
 .Fn iswprint
-function should be used instead.
+and
+.Fn iswprint_l
+functions should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
 .Xr ctype_l 3 ,
 .Xr iswprint 3 ,
+.Xr iswprint_l 3 ,
 .Xr xlocale 3 ,
 .Xr ascii 7
 .Sh STANDARDS
@@ -111,3 +118,7 @@ The
 .Fn isprint
 function conforms to
 .St -isoC .
+The
+.Fn isprint_l
+function conforms to
+.St -p1003.1-2008 .

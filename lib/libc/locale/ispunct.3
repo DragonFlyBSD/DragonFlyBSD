@@ -32,7 +32,7 @@
 .\"	@(#)ispunct.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/locale/ispunct.3 238919 2012-07-30 20:56:19Z issyl0 $
 .\"
-.Dd July 30, 2012
+.Dd December 25, 2013
 .Dt ISPUNCT 3
 .Os
 .Sh NAME
@@ -45,14 +45,14 @@
 .In ctype.h
 .Ft int
 .Fn ispunct "int c"
-.In ctype.h
-.In xlocale.h
 .Ft int
-.Fn ispunct_l "int c" "locale_t loc"
+.Fn ispunct_l "int c" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn ispunct
-function tests for any printing character except for space
+and
+.Fn ispunct_l
+functions test for any printing character except for space
 .Pq Ql "\ "
 or a
 character for which
@@ -77,7 +77,9 @@ In the ASCII character set, this includes the following characters
 .Pp
 The
 .Fn ispunct_l
-function takes an explicit locale argument, whereas the
+function takes an explicit
+.Fa locale
+argument, whereas the
 .Fn ispunct
 function uses the current global or per-thread locale.
 .Sh RETURN VALUES
@@ -96,11 +98,14 @@ type in locales with large character sets is considered obsolete
 and may not be supported in future releases.
 The
 .Fn iswpunct
-function should be used instead.
+and
+.Fn iswpunct_l
+functions should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
 .Xr ctype_l 3 ,
 .Xr iswpunct 3 ,
+.Xr iswpunct_l 3 ,
 .Xr xlocale 3 ,
 .Xr ascii 7
 .Sh STANDARDS

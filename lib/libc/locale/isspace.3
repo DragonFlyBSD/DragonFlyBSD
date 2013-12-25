@@ -32,7 +32,7 @@
 .\"     @(#)isspace.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/locale/isspace.3 238919 2012-07-30 20:56:19Z issyl0 $
 .\"
-.Dd July 30, 2012
+.Dd December 25, 2013
 .Dt ISSPACE 3
 .Os
 .Sh NAME
@@ -45,14 +45,14 @@
 .In ctype.h
 .Ft int
 .Fn isspace "int c"
-.In ctype.h
-.In xlocale.h
 .Ft int
-.Fn isspace_l "int c" "locale_t loc"
+.Fn isspace_l "int c" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn isspace
-function tests for white-space characters.
+and
+.Fn isspace_l
+functions test for white-space characters.
 For any locale, this includes the following standard characters:
 .Bl -column \&`\et''___ \&``\et''___ \&``\et''___ \&``\et''___ \&``\et''___ \&``\et''___
 .It "\&``\et''" Ta "``\en''" Ta "``\ev''" Ta "``\ef''" Ta "``\er''" Ta "`` ''"
@@ -60,7 +60,9 @@ For any locale, this includes the following standard characters:
 .Pp
 In the "C" locale,
 .Fn isspace
-returns non-zero for these characters only.
+and
+.Fn isspace_l
+return non-zero for these characters only.
 The value of the argument must be representable as an
 .Vt "unsigned char"
 or the value of
@@ -68,7 +70,9 @@ or the value of
 .Pp
 The
 .Fn isspace_l
-function takes an explicit locale argument, whereas the
+function takes an explicit
+.Fa locale
+argument, whereas the
 .Fn isspace
 function uses the current global or per-thread locale.
 .Sh RETURN VALUES
@@ -87,11 +91,14 @@ type in locales with large character sets is considered obsolete
 and may not be supported in future releases.
 The
 .Fn iswspace
-function should be used instead.
+and
+.Fn iswspace_l
+functions should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
 .Xr ctype_l 3 ,
 .Xr iswspace 3 ,
+.Xr iswspace_l 3 ,
 .Xr multibyte 3 ,
 .Xr xlocale 3 ,
 .Xr ascii 7

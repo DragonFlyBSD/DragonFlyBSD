@@ -32,7 +32,7 @@
 .\"     @(#)isgraph.3	8.2 (Berkeley) 12/11/93
 .\" $FreeBSD: head/lib/libc/locale/isgraph.3 238919 2012-07-30 20:56:19Z issyl0 $
 .\"
-.Dd July 30, 2012
+.Dd December 25, 2013
 .Dt ISGRAPH 3
 .Os
 .Sh NAME
@@ -45,14 +45,14 @@
 .In ctype.h
 .Ft int
 .Fn isgraph "int c"
-.In ctype.h
-.In xlocale.h
 .Ft int
-.Fn isgraph_l "int c" "locale_t loc"
+.Fn isgraph_l "int c" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn isgraph
-function tests for any printing character except space
+and
+.Fn isgraph_l
+functions test for any printing character except space
 .Pq Ql "\~"
 and other
 locale-specific space-like characters.
@@ -87,7 +87,9 @@ In the ASCII character set, this includes the following characters
 .Pp
 The
 .Fn isgraph_l
-function takes an explicit locale argument, whereas the
+function takes an explicit
+.Fa locale
+argument, whereas the
 .Fn isgraph
 function uses the current global or per-thread locale.
 .Sh RETURN VALUES
@@ -106,11 +108,14 @@ type in locales with large character sets is considered obsolete
 and may not be supported in future releases.
 The
 .Fn iswgraph
-function should be used instead.
+and
+.Fn iswgraph_l
+functions should be used instead.
 .Sh SEE ALSO
 .Xr ctype 3 ,
 .Xr ctype_l 3 ,
 .Xr iswgraph 3 ,
+.Xr iswgraph_l 3 ,
 .Xr xlocale 3 ,
 .Xr ascii 7
 .Sh STANDARDS

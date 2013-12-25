@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: head/lib/libc/locale/isphonogram.3 196820 2009-09-04 07:44:58Z des $
 .\"
-.Dd March 30, 2004
+.Dd December 25, 2013
 .Dt ISPHONOGRAM 3
 .Os
 .Sh NAME
@@ -38,21 +38,26 @@
 .In ctype.h
 .Ft int
 .Fn isphonogram "int c"
-.In ctype.h
 .In xlocale.h
 .Ft int
-.Fn isphonogram_l "int c" "locale_t loc"
+.Fn isphonogram_l "int c" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn isphonogram
-function tests for a phonographic character.
+and
+.Fn isphonogram_l
+functions test for a phonographic character.
 .Pp
-The _l-suffixed version takes an explicit locale argument, whereas the
+The _l-suffixed version takes an explicit
+.Fa locale
+argument, whereas the
 non-suffixed version uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn isphonogram
-function returns zero if the character tests false and
+and
+.Fn isphonogram_l
+functions return zero if the character tests false and
 returns non-zero if the character tests true.
 .Sh SEE ALSO
 .Xr ctype 3 ,
