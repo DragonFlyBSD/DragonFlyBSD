@@ -29,7 +29,7 @@ PATCHES!=	echo ${.CURDIR}/patches/*.patch
 .for file in ${patch:R:T}
 CLEANFILES+=	${file}
 ${file}: ${SENDMAIL_DIR}/smrsh/${file} ${patch}
-	patch -o ${.TARGET} -i ${patch} ${SENDMAIL_DIR}/smrsh/${file}
+	patch -s -o ${.TARGET} -i ${patch} ${SENDMAIL_DIR}/smrsh/${file}
 .endfor
 .endfor
 
