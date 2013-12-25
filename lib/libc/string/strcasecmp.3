@@ -30,7 +30,7 @@
 .\"     @(#)strcasecmp.3	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: head/lib/libc/string/strcasecmp.3 251069 2013-05-28 20:57:40Z emaste $
 .\"
-.Dd June 9, 1993
+.Dd December 25, 2013
 .Dt STRCASECMP 3
 .Os
 .Sh NAME
@@ -45,17 +45,17 @@
 .Fn strcasecmp "const char *s1" "const char *s2"
 .Ft int
 .Fn strncasecmp "const char *s1" "const char *s2" "size_t len"
-.In string.h
-.In xlocale.h
 .Ft int
-.Fn strcasecmp_l "const char *s1" "const char *s2" "locale_t loc"
+.Fn strcasecmp_l "const char *s1" "const char *s2" "locale_t locale"
 .Ft int
-.Fn strncasecmp_l "const char *s1" "const char *s2" "size_t len" "locale_t loc"
+.Fn strncasecmp_l "const char *s1" "const char *s2" "size_t len" "locale_t locale"
 .Sh DESCRIPTION
 The
-.Fn strcasecmp
+.Fn strcasecmp ,
+.Fn strcasecmp_l ,
+.Fn strncasecmp ,
 and
-.Fn strncasecmp
+.Fn strncasecmp_l
 functions
 compare the null-terminated strings
 .Fa s1
@@ -72,7 +72,9 @@ The
 and
 .Fn strncasecmp_l
 functions do the same as their non-locale versions above, but take an
-explicit locale rather than using the current locale.
+explicit
+.Fa locale
+rather than using the current locale.
 .Sh RETURN VALUES
 The functions
 .Fn strcasecmp
@@ -116,3 +118,10 @@ before they were moved to
 for
 .St -p1003.1-2001
 compliance.
+.Pp
+The
+.Fn strcasecmp_l
+and
+.Fn strncasecmp_l
+functions conform to
+.St -p1003.1-2008 .
