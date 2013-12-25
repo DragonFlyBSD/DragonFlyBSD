@@ -31,7 +31,7 @@ STATIC		 = -static
 # Linux requires -pthread to statically link with libdb.
 #STATIC		+= -pthread
 
-CFLAGS		+= -g -DHAVE_CONFIG_H -DVERSION="\"$(VERSION)\""
+CFLAGS		+= -g -DHAVE_CONFIG_H
 CFLAGS     	+= -W -Wall -Wstrict-prototypes -Wno-unused-parameter -Wwrite-strings
 PREFIX		 = /usr/local
 WWWPREFIX	 = /var/www
@@ -309,7 +309,7 @@ clean:
 	rm -f catman $(CATMAN_OBJS)
 	rm -f demandoc $(DEMANDOC_OBJS)
 	rm -f mandoc $(MANDOC_OBJS)
-	rm -f config.h config.log $(COMPAT_OBJS)
+	rm -f config.log $(COMPAT_OBJS)
 	rm -f mdocml.tar.gz
 	rm -f index.html $(INDEX_OBJS)
 	rm -rf *.dSYM
@@ -390,31 +390,32 @@ config.h: config.h.pre config.h.post
 	rm -f config.log
 	( cat config.h.pre; \
 	  echo; \
-	  if $(CC) $(CFLAGS) -Werror -o test-fgetln test-fgetln.c >> config.log 2>&1; then \
+	  echo '#define VERSION "$(VERSION)"'; \
+	  if $(CC) $(CFLAGS) -Werror -Wno-unused -o test-fgetln test-fgetln.c >> config.log 2>&1; then \
 		echo '#define HAVE_FGETLN'; \
 		rm test-fgetln; \
 	  fi; \
-	  if $(CC) $(CFLAGS) -Werror -o test-strptime test-strptime.c >> config.log 2>&1; then \
+	  if $(CC) $(CFLAGS) -Werror -Wno-unused -o test-strptime test-strptime.c >> config.log 2>&1; then \
 		echo '#define HAVE_STRPTIME'; \
 		rm test-strptime; \
 	  fi; \
-	  if $(CC) $(CFLAGS) -Werror -o test-getsubopt test-getsubopt.c >> config.log 2>&1; then \
+	  if $(CC) $(CFLAGS) -Werror -Wno-unused -o test-getsubopt test-getsubopt.c >> config.log 2>&1; then \
 		echo '#define HAVE_GETSUBOPT'; \
 		rm test-getsubopt; \
 	  fi; \
-	  if $(CC) $(CFLAGS) -Werror -o test-strlcat test-strlcat.c >> config.log 2>&1; then \
+	  if $(CC) $(CFLAGS) -Werror -Wno-unused -o test-strlcat test-strlcat.c >> config.log 2>&1; then \
 		echo '#define HAVE_STRLCAT'; \
 		rm test-strlcat; \
 	  fi; \
-	  if $(CC) $(CFLAGS) -Werror -o test-mmap test-mmap.c >> config.log 2>&1; then \
+	  if $(CC) $(CFLAGS) -Werror -Wno-unused -o test-mmap test-mmap.c >> config.log 2>&1; then \
 		echo '#define HAVE_MMAP'; \
 		rm test-mmap; \
 	  fi; \
-	  if $(CC) $(CFLAGS) -Werror -o test-strlcpy test-strlcpy.c >> config.log 2>&1; then \
+	  if $(CC) $(CFLAGS) -Werror -Wno-unused -o test-strlcpy test-strlcpy.c >> config.log 2>&1; then \
 		echo '#define HAVE_STRLCPY'; \
 		rm test-strlcpy; \
 	  fi; \
-	  if $(CC) $(CFLAGS) -Werror -o test-betoh64 test-betoh64.c >> config.log 2>&1; then \
+	  if $(CC) $(CFLAGS) -Werror -Wno-unused -o test-betoh64 test-betoh64.c >> config.log 2>&1; then \
 		echo '#define HAVE_BETOH64'; \
 		rm test-betoh64; \
 	  fi; \

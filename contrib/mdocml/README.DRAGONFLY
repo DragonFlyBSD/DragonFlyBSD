@@ -11,11 +11,8 @@ sha1 = 6a86cc4f373bcc51aa8bf1a7499db368e977a166
 
 Local modifications applied to the following files:
 	config.h
-	lib.in		(upstream sync)
+	Makefile
 	msec.in
-	man_macro.c	(upstream sync)
-	mandoc.3	(upstream sync)
-	mdoc.7		(upstream sync)
-	mdoc_man.c	(upstream sync)
-	mdoc_validate.c	(upstream sync)
-	st.in		(upstream sync)
+
+The source code is currently kept in sync with the stable branch of
+the upstream CVS for collaboration purposes.

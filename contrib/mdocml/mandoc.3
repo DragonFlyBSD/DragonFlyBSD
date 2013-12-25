@@ -1,4 +1,4 @@
-.\"	$Id: mandoc.3,v 1.20 2013/09/16 22:54:38 schwarze Exp $
+.\"	$Id: mandoc.3,v 1.22 2013/10/06 17:01:52 schwarze Exp $
 .\"
 .\" Copyright (c) 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
 .\" Copyright (c) 2010 Ingo Schwarze <schwarze@openbsd.org>
@@ -15,7 +15,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 16 2013 $
+.Dd $Mdocdate: October 5 2013 $
 .Dt MANDOC 3
 .Os
 .Sh NAME
@@ -50,8 +50,8 @@
 .In mandoc.h
 .Ft "enum mandoc_esc"
 .Fo mandoc_escape
-.Fa "const char **end"
-.Fa "const char **start"
+.Fa "const char const **end"
+.Fa "const char const **start"
 .Fa "int *sz"
 .Fc
 .Ft "const struct man_meta *"

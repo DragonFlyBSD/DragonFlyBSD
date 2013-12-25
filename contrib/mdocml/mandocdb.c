@@ -1,4 +1,4 @@
-/*	$Id: mandocdb.c,v 1.49.2.7 2013/10/02 21:03:26 schwarze Exp $ */
+/*	$Id: mandocdb.c,v 1.49.2.10 2013/11/21 01:53:48 schwarze Exp $ */
 /*
  * Copyright (c) 2011, 2012 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2011, 2012 Ingo Schwarze <schwarze@openbsd.org>
@@ -34,19 +34,21 @@
 #include <string.h>
 #include <unistd.h>
 
-#if defined(__linux__) || defined(__sun)
-# include <endian.h>
-# include <db_185.h>
-#elif defined(__APPLE__)
+#if defined(__APPLE__)
 # include <libkern/OSByteOrder.h>
-# include <db.h>
+#elif defined(__linux__)
+# include <endian.h>
+#elif defined(__sun)
+# include <sys/byteorder.h>
+# include <sys/stat.h>
 #else
 # include <sys/endian.h>
-# include <db.h>
 #endif
 
-#if defined(__sun)
-#include <sys/stat.h>
+#if defined(__linux__) || defined(__sun)
+# include <db_185.h>
+#else
+# include <db.h>
 #endif
 
 #include "man.h"
@@ -620,6 +622,8 @@ index_merge(const struct of *of, struct mparse *mp,
 	uint64_t	 vbuf[2];
 	char		 type;
 
+	static char	 emptystring[] = "";
+
 	if (warnings) {
 		files = NULL;
 		hash_reset(&files);
@@ -732,13 +736,13 @@ index_merge(const struct of *of, struct mparse *mp,
 			}
 			buf_appendb(buf, ")", 2);
 			for (p = buf->cp; '\0' != *p; p++)
-				*p = tolower(*p);
+				*p = tolower((unsigned char)*p);
 			key.data = buf->cp;
 			key.size = buf->len;
 			val.data = NULL;
 			val.size = 0;
 			if (0 == skip)
-				val.data = "";
+				val.data = emptystring;
 			else {
 				ch = (*files->get)(files, &key, &val, 0);
 				if (ch < 0) {

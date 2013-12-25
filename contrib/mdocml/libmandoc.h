@@ -1,6 +1,7 @@
-/*	$Id: libmandoc.h,v 1.32 2012/11/19 17:57:23 schwarze Exp $ */
+/*	$Id: libmandoc.h,v 1.35 2013/12/15 21:23:52 schwarze Exp $ */
 /*
  * Copyright (c) 2009, 2010, 2011, 2012 Kristaps Dzonsons <kristaps@bsd.lv>
+ * Copyright (c) 2013 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -27,11 +28,6 @@ enum	rofferr {
 	ROFF_TBL, /* a table row was successfully parsed */
 	ROFF_EQN, /* an equation was successfully parsed */
 	ROFF_ERR /* badness: puke and stop */
-};
-
-enum	regs {
-	REG_nS = 0, /* nS register */
-	REG__MAX
 };
 
 __BEGIN_DECLS
@@ -72,9 +68,8 @@ void		 roff_reset(struct roff *);
 enum rofferr	 roff_parseln(struct roff *, int, 
 			char **, size_t *, int, int *);
 void		 roff_endparse(struct roff *);
-int		 roff_regisset(const struct roff *, enum regs);
-unsigned int	 roff_regget(const struct roff *, enum regs);
-void		 roff_regunset(struct roff *, enum regs);
+void		 roff_setreg(struct roff *, const char *, int, char sign);
+int		 roff_getreg(const struct roff *, const char *);
 char		*roff_strdup(const struct roff *, const char *);
 int		 roff_getcontrol(const struct roff *, 
 			const char *, int *);

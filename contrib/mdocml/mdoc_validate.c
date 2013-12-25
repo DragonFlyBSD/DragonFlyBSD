@@ -1,7 +1,7 @@
-/*	$Id: mdoc_validate.c,v 1.193 2013/09/16 00:25:07 schwarze Exp $ */
+/*	$Id: mdoc_validate.c,v 1.198 2013/12/15 21:23:52 schwarze Exp $ */
 /*
  * Copyright (c) 2008-2012 Kristaps Dzonsons <kristaps@bsd.lv>
- * Copyright (c) 2010, 2011, 2012 Ingo Schwarze <schwarze@openbsd.org>
+ * Copyright (c) 2010, 2011, 2012, 2013 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -889,8 +889,6 @@ pre_sh(PRE_ARGS)
 
 	if (MDOC_BLOCK != n->type)
 		return(1);
-
-	roff_regunset(mdoc->roff, REG_nS);
 	return(check_parent(mdoc, n, MDOC_MAX, MDOC_ROOT));
 }
 
@@ -1676,10 +1674,16 @@ ebool(struct mdoc *mdoc)
 
 	assert(MDOC_TEXT == mdoc->last->child->type);
 
-	if (0 == strcmp(mdoc->last->child->string, "on"))
+	if (0 == strcmp(mdoc->last->child->string, "on")) {
+		if (MDOC_Sm == mdoc->last->tok)
+			mdoc->flags &= ~MDOC_SMOFF;
 		return(1);
-	if (0 == strcmp(mdoc->last->child->string, "off"))
+	}
+	if (0 == strcmp(mdoc->last->child->string, "off")) {
+		if (MDOC_Sm == mdoc->last->tok)
+			mdoc->flags |= MDOC_SMOFF;
 		return(1);
+	}
 
 	mdoc_nmsg(mdoc, mdoc->last, MANDOCERR_BADBOOL);
 	return(1);
@@ -1986,10 +1990,13 @@ post_sh_head(POST_ARGS)
 
 	/* The SYNOPSIS gets special attention in other areas. */
 
-	if (SEC_SYNOPSIS == sec)
+	if (SEC_SYNOPSIS == sec) {
+		roff_setreg(mdoc->roff, "nS", 1, '=');
 		mdoc->flags |= MDOC_SYNOPSIS;
-	else
+	} else {
+		roff_setreg(mdoc->roff, "nS", 0, '=');
 		mdoc->flags &= ~MDOC_SYNOPSIS;
+	}
 
 	/* Mark our last section. */
 

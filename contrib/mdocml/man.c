@@ -1,4 +1,4 @@
-/*	$Id: man.c,v 1.119 2012/11/17 00:26:33 schwarze Exp $ */
+/*	$Id: man.c,v 1.121 2013/11/10 22:54:40 schwarze Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  *
@@ -40,7 +40,8 @@ const	char *const __man_macronames[MAN_MAX] = {
 	"RI",		"na",		"sp",		"nf",
 	"fi",		"RE",		"RS",		"DT",
 	"UC",		"PD",		"AT",		"in",
-	"ft",		"OP",		"EX",		"EE"
+	"ft",		"OP",		"EX",		"EE",
+	"UR",		"UE"
 	};
 
 const	char * const *man_macronames = __man_macronames;
@@ -428,16 +429,22 @@ man_ptext(struct man *man, int line, char *buf, int offs)
 		return(man_descope(man, line, offs));
 	}
 
-	/* Pump blank lines directly into the backend. */
-
 	for (i = offs; ' ' == buf[i]; i++)
 		/* Skip leading whitespace. */ ;
 
+	/*
+	 * Blank lines are ignored right after headings
+	 * but add a single vertical space elsewhere.
+	 */
+
 	if ('\0' == buf[i]) {
 		/* Allocate a blank entry. */
-		if ( ! man_elem_alloc(man, line, offs, MAN_sp))
-			return(0);
-		man->next = MAN_NEXT_SIBLING;
+		if (MAN_SH != man->last->tok &&
+		    MAN_SS != man->last->tok) {
+			if ( ! man_elem_alloc(man, line, offs, MAN_sp))
+				return(0);
+			man->next = MAN_NEXT_SIBLING;
+		}
 		return(1);
 	}
 

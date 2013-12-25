@@ -7,13 +7,14 @@
 
 #include <stdio.h>
 
+#define VERSION "1.12.2"
+#define HAVE_FGETLN
 #define HAVE_STRPTIME
 #define HAVE_GETSUBOPT
 #define HAVE_STRLCAT
 #define HAVE_MMAP
 #define HAVE_STRLCPY
 
-#define VERSION	"1.12.2"
 #define OSNAME	"DragonFly 3.7"
 
 #include <sys/types.h>
@@ -37,6 +38,9 @@
 #  if defined(__APPLE__)
 #    define betoh64(x) OSSwapBigToHostInt64(x)
 #    define htobe64(x) OSSwapHostToBigInt64(x)
+#  elif defined(__sun)
+#    define betoh64(x) BE_64(x)
+#    define htobe64(x) BE_64(x)
 #  else
 #    define betoh64(x) be64toh(x)
 #  endif
