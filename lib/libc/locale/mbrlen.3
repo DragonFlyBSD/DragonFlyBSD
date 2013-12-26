@@ -24,11 +24,12 @@
 .\"
 .\" $FreeBSD: head/lib/libc/locale/mbrlen.3 131360 2004-06-30 19:32:41Z ru $
 .\"
-.Dd April 7, 2004
+.Dd December 26, 2013
 .Dt MBRLEN 3
 .Os
 .Sh NAME
-.Nm mbrlen
+.Nm mbrlen ,
+.Nm mbrlen_l
 .Nd "get number of bytes in a character (restartable)"
 .Sh LIBRARY
 .Lb libc
@@ -36,10 +37,15 @@
 .In wchar.h
 .Ft size_t
 .Fn mbrlen "const char * restrict s" "size_t n" "mbstate_t * restrict ps"
+.In xlocale.h
+.Ft size_t
+.Fn mbrlen_l "const char * restrict s" "size_t n" "mbstate_t * restrict ps" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn mbrlen
-function inspects at most
+and
+.Fn mbrlen_l
+functions inspect at most
 .Fa n
 bytes pointed to by
 .Fa s
@@ -54,7 +60,9 @@ is used to keep track of the shift state.
 If it is
 .Dv NULL ,
 .Fn mbrlen
-uses an internal, static
+and
+.Fn mbrlen_l
+use an internal, static
 .Vt mbstate_t
 object, which is initialized to the initial conversion state
 at program startup.
@@ -69,13 +77,25 @@ is a
 .Dv NULL
 pointer,
 .Fn mbrlen
-uses its own static, internal
+and
+.Fn mbrlen_l
+use their own static, internal
 .Vt mbstate_t
 object to keep track of the shift state.
+.Pp
+The
+.Fn mbrlen_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn mbrlen
+function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn mbrlen
-functions returns:
+and
+.Fn mbrlen_l
+functions return:
 .Bl -tag -width indent
 .It 0
 The next
@@ -89,7 +109,9 @@ The next
 or fewer bytes
 represent a valid character,
 .Fn mbrlen
-returns the number of bytes used to complete the multibyte character.
+and
+.Fn mbrlen_l
+return the number of bytes used to complete the multibyte character.
 .It Po Vt size_t Pc Ns \-2
 The next
 .Fa n
@@ -127,7 +149,9 @@ nchars(const char *s)
 .Sh ERRORS
 The
 .Fn mbrlen
-function will fail if:
+and
+.Fn mbrlen_l
+functions will fail if:
 .Bl -tag -width Er
 .It Bq Er EILSEQ
 An invalid multibyte sequence was detected.
@@ -137,7 +161,8 @@ The conversion state is invalid.
 .Sh SEE ALSO
 .Xr mblen 3 ,
 .Xr mbrtowc 3 ,
-.Xr multibyte 3
+.Xr multibyte 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn mbrlen

@@ -33,11 +33,12 @@
 .\" From FreeBSD: src/lib/libc/locale/multibyte.3,v 1.22 2003/11/08 03:23:11 tjr Exp
 .\" $FreeBSD: head/lib/libc/locale/mblen.3 165903 2007-01-09 00:28:16Z imp $
 .\"
-.Dd April 11, 2004
+.Dd December 26, 2013
 .Dt MBLEN 3
 .Os
 .Sh NAME
-.Nm mblen
+.Nm mblen ,
+.Nm mblen_l
 .Nd get number of bytes in a character
 .Sh LIBRARY
 .Lb libc
@@ -45,22 +46,35 @@
 .In stdlib.h
 .Ft int
 .Fn mblen "const char *mbchar" "size_t nbytes"
+.In xlocale.h
+.Ft int
+.Fn mblen_l "const char *mbchar" "size_t nbytes" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn mblen
-function computes the length in bytes
+and
+.Fn mblen_l
+functions compute the length in bytes
 of a multibyte character
 .Fa mbchar
-according to the current conversion state.
+according to a conversion state.
 Up to
 .Fa nbytes
 bytes are examined.
 .Pp
 A call with a null
 .Fa mbchar
-pointer returns nonzero if the current locale requires shift states,
+pointer returns nonzero if the locale requires shift states,
 zero otherwise;
 if shift states are required, the shift state is reset to the initial state.
+.Pp
+The
+.Fn mblen_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn mblen
+function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 If
 .Fa mbchar
@@ -68,27 +82,35 @@ is
 .Dv NULL ,
 the
 .Fn mblen
-function returns nonzero if shift states are supported,
+and
+.Fn mblen_l
+functions return nonzero if shift states are supported,
 zero otherwise.
 .Pp
 Otherwise, if
 .Fa mbchar
 is not a null pointer,
 .Fn mblen
-either returns 0 if
+and
+.Fn mblen_l
+either return 0 if
 .Fa mbchar
-represents the null wide character, or returns
+represents the null wide character, or return
 the number of bytes processed in
 .Fa mbchar ,
-or returns \-1 if no multibyte character
+or return \-1 if no multibyte character
 could be recognized or converted.
 In this case,
 .Fn mblen Ns 's
-internal conversion state is undefined.
+and
+.Fn mblen_l Ns 's
+internal conversion states are undefined.
 .Sh ERRORS
 The
 .Fn mblen
-function will fail if:
+and
+.Fn mblen_l
+functions will fail if:
 .Bl -tag -width Er
 .It Bq Er EILSEQ
 An invalid multibyte sequence was detected.
@@ -98,7 +120,8 @@ The internal conversion state is not valid.
 .Sh SEE ALSO
 .Xr mbrlen 3 ,
 .Xr mbtowc 3 ,
-.Xr multibyte 3
+.Xr multibyte 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn mblen

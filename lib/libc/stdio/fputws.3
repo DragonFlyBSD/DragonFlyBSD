@@ -30,14 +30,14 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)fputs.3	8.1 (Berkeley) 6/4/93
-.\" FreeBSD: src/lib/libc/stdio/fputs.3,v 1.8 2001/10/01 16:08:59 ru Exp
 .\" $FreeBSD: head/lib/libc/stdio/fputws.3 165903 2007-01-09 00:28:16Z imp $
 .\"
-.Dd August 6, 2002
+.Dd December 26, 2013
 .Dt FPUTWS 3
 .Os
 .Sh NAME
-.Nm fputws
+.Nm fputws ,
+.Nm fputws_l
 .Nd output a line of wide characters to a stream
 .Sh LIBRARY
 .Lb libc
@@ -46,22 +46,38 @@
 .In wchar.h
 .Ft int
 .Fn fputws "const wchar_t * restrict ws" "FILE * restrict fp"
+.In xlocale.h
+.Ft int
+.Fn fputws_l "const wchar_t * restrict ws" "FILE * restrict fp" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn fputws
-function writes the wide character string pointed to by
+and
+.Fn fputws_l
+functions write the wide character string pointed to by
 .Fa ws
 to the stream pointed to by
 .Fa fp .
+.Pp
+The
+.Fn fputws_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn fputws
+function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn fputws
-function
-returns 0 on success and \-1 on error.
+and
+.Fn fputws_l
+functions return 0 on success and \-1 on error.
 .Sh ERRORS
 The
 .Fn fputws
-function will fail if:
+and
+.Fn fputws_l
+functions will fail if:
 .Bl -tag -width Er
 .It Bq Er EBADF
 The
@@ -72,7 +88,9 @@ is not a writable stream.
 .Pp
 The
 .Fn fputws
-function may also fail and set
+and
+.Fn fputws_l
+functions may also fail and set
 .Va errno
 for any of the errors specified for the routine
 .Xr write 2 .
@@ -80,7 +98,8 @@ for any of the errors specified for the routine
 .Xr ferror 3 ,
 .Xr fputs 3 ,
 .Xr putwc 3 ,
-.Xr stdio 3
+.Xr stdio 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn fputws

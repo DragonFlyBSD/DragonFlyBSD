@@ -46,10 +46,12 @@ MLINKS+=ferror.3 clearerr.3 ferror.3 clearerr_unlocked.3 \
 	ferror.3 fileno.3 ferror.3 fileno_unlocked.3
 MLINKS+=fflush.3 fpurge.3
 MLINKS+=fgets.3 gets.3
+MLINKS+=fgetws.3 fgetws_l.3
 MLINKS+=flockfile.3 funlockfile.3 \
 	flockfile.3 ftrylockfile.3
 MLINKS+=fopen.3 fdopen.3 fopen.3 freopen.3
 MLINKS+=fputs.3 puts.3
+MLINKS+=fputws.3 fputws_l.3
 MLINKS+=fread.3 fwrite.3
 MLINKS+=fseek.3 fgetpos.3 fseek.3 fseeko.3 fseek.3 fsetpos.3 fseek.3 ftell.3 \
 	fseek.3 ftello.3 fseek.3 rewind.3

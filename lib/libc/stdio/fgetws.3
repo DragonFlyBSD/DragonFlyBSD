@@ -30,14 +30,14 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)fgets.3	8.1 (Berkeley) 6/4/93
-.\" FreeBSD: src/lib/libc/stdio/fgets.3,v 1.16 2002/05/31 05:01:17 archie Exp
 .\" $FreeBSD: head/lib/libc/stdio/fgetws.3 165903 2007-01-09 00:28:16Z imp $
 .\"
-.Dd August 6, 2002
+.Dd December 26, 2013
 .Dt FGETWS 3
 .Os
 .Sh NAME
-.Nm fgetws
+.Nm fgetws ,
+.Nm fgetws_l
 .Nd get a line of wide characters from a stream
 .Sh LIBRARY
 .Lb libc
@@ -46,15 +46,19 @@
 .In wchar.h
 .Ft "wchar_t *"
 .Fn fgetws "wchar_t * restrict ws" "int n" "FILE * restrict fp"
+.In xlocale.h
+.Ft "wchar_t *"
+.Fn fgetws_l "wchar_t * restrict ws" "int n" "FILE * restrict fp" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn fgetws
-function
-reads at most one less than the number of characters specified by
+and
+.Fn fgetws_l
+functions read at most one less than the number of characters specified by
 .Fa n
 from the given
 .Fa fp
-and stores them in the wide character string
+and store them in the wide character string
 .Fa ws .
 Reading stops when a newline character is found,
 at end-of-file or error.
@@ -62,25 +66,41 @@ The newline, if any, is retained.
 If any characters are read and there is no error, a
 .Ql \e0
 character is appended to end the string.
+.Pp
+The
+.Fn fgetws_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn fgetws
+function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 Upon successful completion,
 .Fn fgetws
-returns
+and
+.Fn fgetws_l
+return
 .Fa ws .
 If end-of-file occurs before any characters are read,
 .Fn fgetws
-returns
+and
+.Fn fgetws_l
+return
 .Dv NULL
 and the buffer contents remain unchanged.
 If an error occurs,
 .Fn fgetws
-returns
+and
+.Fn fgetws_l
+return
 .Dv NULL
 and the buffer contents are indeterminate.
 The
 .Fn fgetws
-function
-does not distinguish between end-of-file and error, and callers must use
+and
+.Fn fgetws_l
+functions
+do not distinguish between end-of-file and error, and callers must use
 .Xr feof 3
 and
 .Xr ferror 3
@@ -88,7 +108,9 @@ to determine which occurred.
 .Sh ERRORS
 The
 .Fn fgetws
-function will fail if:
+and
+.Fn fgetws_l
+functions will fail if:
 .Bl -tag -width Er
 .It Bq Er EBADF
 The given
@@ -99,8 +121,10 @@ The data obtained from the input stream does not form a valid
 multibyte character.
 .El
 .Pp
-The function
+The functions
 .Fn fgetws
+and
+.Fn fgetws_l
 may also fail and set
 .Va errno
 for any of the errors specified for the routines
@@ -112,7 +136,8 @@ or
 .Sh SEE ALSO
 .Xr feof 3 ,
 .Xr ferror 3 ,
-.Xr fgets 3
+.Xr fgets 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn fgetws
