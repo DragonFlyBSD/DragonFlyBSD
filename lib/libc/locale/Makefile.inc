@@ -89,12 +89,14 @@ MLINKS+=localeconv.3 localeconv_l.3
 MLINKS+=mblen.3 mblen_l.3
 MLINKS+=mbrlen.3 mbrlen_l.3
 MLINKS+=mbrtowc.3 mbrtoc16.3 mbrtowc.3 mbrtoc32.3
-MLINKS+=mbsrtowcs.3 mbsnrtowcs.3
+MLINKS+=mbsrtowcs.3 mbsnrtowcs.3 mbsrtowcs.3 mbsnrtowcs_l.3 \
+	mbsrtowcs.3 mbsrtowcs_l.3 
 MLINKS+=nl_langinfo.3 nl_langinfo_l.3
 MLINKS+=tolower.3 tolower_l.3
 MLINKS+=toupper.3 toupper_l.3
 MLINKS+=wcrtomb.3 c16rtomb.3 wcrtomb.3 c32rtomb.3
-MLINKS+=wcsrtombs.3 wcsnrtombs.3
+MLINKS+=wcsrtombs.3 wcsnrtombs.3 wcsrtombs.3 wcsnrtombs_l.3 \
+	wcsrtombs.3 wcsrtombs_l.3
 MLINKS+=wcstod.3 wcstod_l.3 wcstod.3 wcstof.3 wcstod.3 wcstof_l.3 \
 	wcstod.3 wcstold.3 wcstod.3 wcstold_l.3
 MLINKS+=wcstol.3 wcstol_l.3 wcstol.3 wcstoul.3 wcstol.3 wcstoul_l.3 \
