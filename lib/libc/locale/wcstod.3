@@ -24,13 +24,16 @@
 .\"
 .\" $FreeBSD: head/lib/libc/locale/wcstod.3 115225 2003-05-22 13:02:28Z ru $
 .\"
-.Dd February 22, 2003
+.Dd December 25, 2013
 .Dt WCSTOD 3
 .Os
 .Sh NAME
 .Nm wcstof ,
+.Nm wcstof_l ,
 .Nm wcstod ,
-.Nm wcstold
+.Nm wcstod_l ,
+.Nm wcstold ,
+.Nm wcstold_l
 .Nd convert string to
 .Vt float , double
 or
@@ -45,17 +48,30 @@ or
 .Fn wcstold "const wchar_t * restrict nptr" "wchar_t ** restrict endptr"
 .Ft double
 .Fn wcstod "const wchar_t * restrict nptr" "wchar_t ** restrict endptr"
+.In xlocale.h
+.Ft float
+.Fn wcstof_l "const wchar_t * restrict nptr" "wchar_t ** restrict endptr" "locale_t locale"
+.Ft "long double"
+.Fn wcstold_l "const wchar_t * restrict nptr" "wchar_t ** restrict endptr" "locale_t locale"
+.Ft double
+.Fn wcstod_l "const wchar_t * restrict nptr" "wchar_t ** restrict endptr" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn wcstof ,
-.Fn wcstod
+.Fn wcstof_l ,
+.Fn wcstod ,
+.Fn wcstod_l ,
+.Fn wcstold ,
 and
-.Fn wcstold
+.Fn wcstold_l
 functions are the wide-character versions of the
 .Fn strtof ,
-.Fn strtod
+.Fn strtof_l ,
+.Fn strtod ,
+.Fn strtod_l ,
+.Fn strtold ,
 and
-.Fn strtold
+.Fn strtold_l
 functions.
 Refer to
 .Xr strtod 3

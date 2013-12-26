@@ -24,13 +24,22 @@
 .\"
 .\" $FreeBSD: head/lib/libc/locale/wcstol.3 107392 2002-11-29 17:35:09Z ru $
 .\"
-.Dd September 7, 2002
+.Dd December 25, 2013
 .Dt WCSTOL 3
 .Os
 .Sh NAME
-.Nm wcstol , wcstoul ,
-.Nm wcstoll , wcstoull ,
-.Nm wcstoimax , wcstoumax
+.Nm wcstol ,
+.Nm wcstol_l ,
+.Nm wcstoul ,
+.Nm wcstoul_l ,
+.Nm wcstoll ,
+.Nm wcstoll_l ,
+.Nm wcstoull ,
+.Nm wcstoull_l ,
+.Nm wcstoimax ,
+.Nm wcstoimax_l ,
+.Nm wcstoumax ,
+.Nm wcstoumax_l
 .Nd "convert a wide character string value to a"
 .Vt long ,
 .Vt "unsigned long" ,
@@ -57,23 +66,48 @@ integer
 .Fn wcstoimax "const wchar_t * restrict nptr" "wchar_t ** restrict endptr" "int base"
 .Ft uintmax_t
 .Fn wcstoumax "const wchar_t * restrict nptr" "wchar_t ** restrict endptr" "int base"
+.In xlocale.h
+.Ft long
+.Fn wcstol_l "const wchar_t * restrict nptr" "wchar_t ** restrict endptr" "int base" "locale_t locale"
+.Ft "unsigned long"
+.Fn wcstoul_l "const wchar_t * restrict nptr" "wchar_t ** restrict endptr" "int base" "locale_t locale"
+.Ft "long long"
+.Fn wcstoll_l "const wchar_t * restrict nptr" "wchar_t ** restrict endptr" "int base" "locale_t locale"
+.Ft "unsigned long long"
+.Fn wcstoull_l "const wchar_t * restrict nptr" "wchar_t ** restrict endptr" "int base" "locale_t locale"
+.Ft intmax_t
+.Fn wcstoimax_l "const wchar_t * restrict nptr" "wchar_t ** restrict endptr" "int base" "locale_t locale"
+.Ft uintmax_t
+.Fn wcstoumax_l "const wchar_t * restrict nptr" "wchar_t ** restrict endptr" "int base" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn wcstol ,
+.Fn wcstol_l ,
 .Fn wcstoul ,
+.Fn wcstoul_l ,
 .Fn wcstoll ,
+.Fn wcstoll_l ,
 .Fn wcstoull ,
-.Fn wcstoimax
+.Fn wcstoull_l ,
+.Fn wcstoimax ,
+.Fn wcstoimax_l ,
+.Fn wcstoumax ,
 and
-.Fn wcstoumax
+.Fn wcstoumax_l
 functions are wide-character versions of the
 .Fn strtol ,
+.Fn strtol_l ,
 .Fn strtoul ,
+.Fn strtoul_l ,
 .Fn strtoll ,
+.Fn strtoll_l ,
 .Fn strtoull ,
-.Fn strtoimax
+.Fn strtoull_l ,
+.Fn strtoimax ,
+.Fn strtoimax_l ,
+.Fn strtoumax ,
 and
-.Fn strtoumax
+.Fn strtoumax_l
 functions, respectively.
 Refer to their manual pages (for example
 .Xr strtol 3 )

@@ -93,9 +93,12 @@ MLINKS+=tolower.3 tolower_l.3
 MLINKS+=toupper.3 toupper_l.3
 MLINKS+=wcrtomb.3 c16rtomb.3 wcrtomb.3 c32rtomb.3
 MLINKS+=wcsrtombs.3 wcsnrtombs.3
-MLINKS+=wcstod.3 wcstof.3 wcstod.3 wcstold.3
-MLINKS+=wcstol.3 wcstoul.3 wcstol.3 wcstoll.3 wcstol.3 wcstoull.3 \
-	wcstol.3 wcstoimax.3 wcstol.3 wcstoumax.3
+MLINKS+=wcstod.3 wcstod_l.3 wcstod.3 wcstof.3 wcstod.3 wcstof_l.3 \
+	wcstod.3 wcstold.3 wcstod.3 wcstold_l.3
+MLINKS+=wcstol.3 wcstol_l.3 wcstol.3 wcstoul.3 wcstol.3 wcstoul_l.3 \
+	wcstol.3 wcstoll.3 wcstol.3 wcstoll_l.3 wcstol.3 wcstoull.3 \
+	wcstol.3 wcstoull_l.3 wcstol.3 wcstoimax.3 wcstol.3 wcstoimax_l.3 \
+	wcstol.3 wcstoumax.3 wcstol.3 wcstoumax_l.3
 MLINKS+=wctrans.3 towctrans.3
 MLINKS+=wctype.3 iswctype.3
 .endif
