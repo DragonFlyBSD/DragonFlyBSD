@@ -88,13 +88,17 @@ MLINKS+=isxdigit.3 ishexnumber.3 isxdigit.3 ishexnumber_l.3 \
 MLINKS+=localeconv.3 localeconv_l.3
 MLINKS+=mblen.3 mblen_l.3
 MLINKS+=mbrlen.3 mbrlen_l.3
-MLINKS+=mbrtowc.3 mbrtoc16.3 mbrtowc.3 mbrtoc32.3
+MLINKS+=mbrtowc.3 mbrtoc16.3 mbrtowc.3 mbrtoc32.3 mbrtowc.3 mbrtowc_l.3
+MLINKS+=mbsinit.3 mbsinit_l.3
 MLINKS+=mbsrtowcs.3 mbsnrtowcs.3 mbsrtowcs.3 mbsnrtowcs_l.3 \
 	mbsrtowcs.3 mbsrtowcs_l.3 
+MLINKS+=mbstowcs.3 mbstowcs_l.3
+MLINKS+=mbtowc.3 mbtowc_l.3
 MLINKS+=nl_langinfo.3 nl_langinfo_l.3
 MLINKS+=tolower.3 tolower_l.3
 MLINKS+=toupper.3 toupper_l.3
-MLINKS+=wcrtomb.3 c16rtomb.3 wcrtomb.3 c32rtomb.3
+MLINKS+=wcrtomb.3 c16rtomb.3 wcrtomb.3 c32rtomb.3 wcrtomb.3 wcrtomb_l.3
+MLINKS+=wcsftime.3 wcsftime_l.3
 MLINKS+=wcsrtombs.3 wcsnrtombs.3 wcsrtombs.3 wcsnrtombs_l.3 \
 	wcsrtombs.3 wcsrtombs_l.3
 MLINKS+=wcstod.3 wcstod_l.3 wcstod.3 wcstof.3 wcstod.3 wcstof_l.3 \
@@ -103,6 +107,9 @@ MLINKS+=wcstol.3 wcstol_l.3 wcstol.3 wcstoul.3 wcstol.3 wcstoul_l.3 \
 	wcstol.3 wcstoll.3 wcstol.3 wcstoll_l.3 wcstol.3 wcstoull.3 \
 	wcstol.3 wcstoull_l.3 wcstol.3 wcstoimax.3 wcstol.3 wcstoimax_l.3 \
 	wcstol.3 wcstoumax.3 wcstol.3 wcstoumax_l.3
+MLINKS+=wcstombs.3 wcstombs_l.3
+MLINKS+=wctomb.3 wctomb_l.3
 MLINKS+=wctrans.3 towctrans.3
 MLINKS+=wctype.3 iswctype.3
+MLINKS+=wcwidth.3 wcwidth_l.3
 .endif

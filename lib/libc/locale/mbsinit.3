@@ -24,11 +24,12 @@
 .\"
 .\" $FreeBSD: head/lib/libc/locale/mbsinit.3 128032 2004-04-08 09:59:02Z tjr $
 .\"
-.Dd April 8, 2004
+.Dd December 26, 2013
 .Dt MBSINIT 3
 .Os
 .Sh NAME
-.Nm mbsinit
+.Nm mbsinit ,
+.Nm mbsinit_l
 .Nd "determine conversion object status"
 .Sh LIBRARY
 .Lb libc
@@ -36,18 +37,33 @@
 .In wchar.h
 .Ft int
 .Fn mbsinit "const mbstate_t *ps"
+.In xlocale.h
+.Ft int
+.Fn mbsinit_l "const mbstate_t *ps" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn mbsinit
-function determines whether the
+and
+.Fn mbsinit_l
+functions determine whether the
 .Vt mbstate_t
 object pointed to by
 .Fa ps
 describes an initial conversion state.
+.Pp
+The
+.Fn mbsinit_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn mbsinit
+function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn mbsinit
-function returns non-zero if
+and
+.Fn mbsinit_l
+functions return non-zero if
 .Fa ps
 is
 .Dv NULL
@@ -59,7 +75,8 @@ otherwise it returns zero.
 .Xr mbsrtowcs 3 ,
 .Xr multibyte 3 ,
 .Xr wcrtomb 3 ,
-.Xr wcsrtombs 3
+.Xr wcsrtombs 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn mbsinit

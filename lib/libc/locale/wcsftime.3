@@ -24,11 +24,12 @@
 .\"
 .\" $FreeBSD: head/lib/libc/locale/wcsftime.3 107392 2002-11-29 17:35:09Z ru $
 .\"
-.Dd September 8, 2002
+.Dd December 26, 2013
 .Dt WCSFTIME 3
 .Os
 .Sh NAME
-.Nm wcsftime
+.Nm wcsftime ,
+.Nm wcsftime_l
 .Nd "convert date and time to a wide-character string"
 .Sh LIBRARY
 .Lb libc
@@ -39,15 +40,34 @@
 .Fa "wchar_t * restrict wcs" "size_t maxsize"
 .Fa "const wchar_t * restrict format" "const struct tm * restrict timeptr"
 .Fc
+.In xlocale.h
+.Ft size_t
+.Fo wcsftime_l
+.Fa "wchar_t * restrict wcs" "size_t maxsize"
+.Fa "const wchar_t * restrict format" "const struct tm * restrict timeptr"
+.Fa "locale_t locale"
+.Fc
 .Sh DESCRIPTION
 The
 .Fn wcsftime
-function is equivalent to the
+and
+.Fn wcsftime_l
+functions are equivalent to the
 .Fn strftime
-function except for the types of its arguments.
+and
+.Fn strftime_l
+functions except for the types of their arguments.
 Refer to
 .Xr strftime 3
 for a detailed description.
+.Pp
+The
+.Fn wcsftime_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn wcsftime
+function uses the current global or per-thread locale.
 .Sh COMPATIBILITY
 Some early implementations of
 .Fn wcsftime
@@ -58,7 +78,8 @@ argument with type
 instead of
 .Vt "const wchar_t *" .
 .Sh SEE ALSO
-.Xr strftime 3
+.Xr strftime 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn wcsftime

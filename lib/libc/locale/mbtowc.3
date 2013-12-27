@@ -33,11 +33,12 @@
 .\" From FreeBSD: src/lib/libc/locale/multibyte.3,v 1.22 2003/11/08 03:23:11 tjr Exp
 .\" $FreeBSD: head/lib/libc/locale/mbtowc.3 165903 2007-01-09 00:28:16Z imp $
 .\"
-.Dd April 11, 2004
+.Dd December 26, 2013
 .Dt MBTOWC 3
 .Os
 .Sh NAME
-.Nm mbtowc
+.Nm mbtowc ,
+.Nm mbtowc_l
 .Nd convert a character to a wide-character code
 .Sh LIBRARY
 .Lb libc
@@ -48,10 +49,18 @@
 .Fa "wchar_t * restrict wcharp" "const char * restrict mbchar"
 .Fa "size_t nbytes"
 .Fc
+.In xlocale.h
+.Ft int
+.Fo mbtowc_l
+.Fa "wchar_t * restrict wcharp" "const char * restrict mbchar"
+.Fa "size_t nbytes" "locale_t locale"
+.Fc
 .Sh DESCRIPTION
 The
 .Fn mbtowc
-function converts a multibyte character
+and
+.Fn mbtowc_l
+functions convert a multibyte character
 .Fa mbchar
 into a wide character according to the current conversion state,
 and stores the result
@@ -66,6 +75,14 @@ A call with a null
 pointer returns nonzero if the current encoding requires shift states,
 zero otherwise;
 if shift states are required, the shift state is reset to the initial state.
+.Pp
+The
+.Fn mbtowc_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn mbtowc
+function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 If
 .Fa mbchar
@@ -73,27 +90,35 @@ is
 .Dv NULL ,
 the
 .Fn mbtowc
-function returns nonzero if shift states are supported,
+and
+.Fn mbtowc_l
+functions return nonzero if shift states are supported,
 zero otherwise.
 .Pp
 Otherwise, if
 .Fa mbchar
 is not a null pointer,
 .Fn mbtowc
-either returns 0 if
+and
+.Fn mbtowc_l
+either return 0 if
 .Fa mbchar
-represents the null wide character, or returns
+represents the null wide character, or return
 the number of bytes processed in
 .Fa mbchar ,
-or returns \-1 if no multibyte character
+or return \-1 if no multibyte character
 could be recognized or converted.
 In this case,
 .Fn mbtowc Ns 's
-internal conversion state is undefined.
+and
+.Fn mbtowc_l Ns 's
+internal conversion states are undefined.
 .Sh ERRORS
 The
 .Fn mbtowc
-function will fail if:
+and
+.Fn mbtowc_l
+functions will fail if:
 .Bl -tag -width Er
 .It Bq Er EILSEQ
 An invalid multibyte sequence was detected.
@@ -106,7 +131,8 @@ The internal conversion state is invalid.
 .Xr mbrtowc 3 ,
 .Xr mbstowcs 3 ,
 .Xr multibyte 3 ,
-.Xr wctomb 3
+.Xr wctomb 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn mbtowc

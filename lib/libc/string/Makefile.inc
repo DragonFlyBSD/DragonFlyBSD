@@ -69,6 +69,7 @@ MLINKS+=strstr.3 strcasestr.3 \
 MLINKS+=strtok.3 strtok_r.3
 MLINKS+=strxfrm.3 strxfrm_l.3
 MLINKS+=wcscoll.3 wcscoll_l.3
+MLINKS+=wcswidth.3 wcswidth_l.3
 MLINKS+=wcsxfrm.3 wcsxfrm_l.3
 MLINKS+=wmemchr.3 wcpcpy.3 \
 	wmemchr.3 wcpncpy.3 \

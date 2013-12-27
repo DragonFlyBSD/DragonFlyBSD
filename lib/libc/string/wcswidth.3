@@ -24,11 +24,12 @@
 .\"
 .\" $FreeBSD: head/lib/libc/string/wcswidth.3 107706 2002-12-09 14:04:05Z ru $
 .\"
-.Dd August 20, 2002
+.Dd December 27, 2013
 .Dt WCSWIDTH 3
 .Os
 .Sh NAME
-.Nm wcswidth
+.Nm wcswidth ,
+.Nm wcswidth_l
 .Nd "number of column positions in wide-character string"
 .Sh LIBRARY
 .Lb libc
@@ -36,25 +37,41 @@
 .In wchar.h
 .Ft int
 .Fn wcswidth "const wchar_t *pwcs" "size_t n"
+.In xlocale.h
+.Ft int
+.Fn wcswidth_l "const wchar_t *pwcs" "size_t n" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn wcswidth
-function determines the number of column positions required for the first
+and
+.Fn wcswidth_l
+functions determine the number of column positions required for the first
 .Fa n
 characters of
 .Fa pwcs ,
 or until a null wide character (L'\e0') is encountered.
+.Pp
+The
+.Fn wcswidth_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn wcswidth
+function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn wcswidth
-function returns 0 if
+and
+.Fn wcswidth_l
+functions return 0 if
 .Fa pwcs
 is an empty string (L""),
 \-1 if a non-printing wide character is encountered,
-otherwise it returns the number of column positions occupied.
+otherwise they return the number of column positions occupied.
 .Sh SEE ALSO
 .Xr iswprint 3 ,
-.Xr wcwidth 3
+.Xr wcwidth 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn wcswidth

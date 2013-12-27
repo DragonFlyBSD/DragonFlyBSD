@@ -24,11 +24,12 @@
 .\"
 .\" $FreeBSD: head/lib/libc/locale/mbrtowc.3 250883 2013-05-21 19:59:37Z ed $
 .\"
-.Dd May 21, 2013
+.Dd December 26, 2013
 .Dt MBRTOWC 3
 .Os
 .Sh NAME
 .Nm mbrtowc ,
+.Nm mbrtowc_l ,
 .Nm mbrtoc16 ,
 .Nm mbrtoc32
 .Nd "convert a character to a wide-character code (restartable)"
@@ -52,9 +53,16 @@
 .Fa "char32_t * restrict pc" "const char * restrict s" "size_t n"
 .Fa "mbstate_t * restrict ps"
 .Fc
+.In xlocale.h
+.Ft size_t
+.Fo mbrtowc_l
+.Fa "wchar_t * restrict pc" "const char * restrict s" "size_t n"
+.Fa "mbstate_t * restrict ps" "locale_t locale"
+.Fc
 .Sh DESCRIPTION
 The
 .Fn mbrtowc ,
+.Fn mbrtowc_l ,
 .Fn mbrtoc16
 and
 .Fn mbrtoc32
@@ -110,9 +118,18 @@ is not large enough to represent certain multibyte characters, the
 .Fn mbrtoc16
 function may need to be invoked multiple times to convert a single
 multibyte character sequence.
+.Pp
+The
+.Fn mbrtowc_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn mbrtowc
+function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn mbrtowc ,
+.Fn mbrtowc_l ,
 .Fn mbrtoc16
 and
 .Fn mbrtoc32
@@ -154,6 +171,7 @@ No bytes from the input have been consumed.
 .Sh ERRORS
 The
 .Fn mbrtowc ,
+.Fn mbrtowc_l ,
 .Fn mbrtoc16
 and
 .Fn mbrtoc32
@@ -168,7 +186,8 @@ The conversion state is invalid.
 .Xr mbtowc 3 ,
 .Xr multibyte 3 ,
 .Xr setlocale 3 ,
-.Xr wcrtomb 3
+.Xr wcrtomb 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn mbrtowc ,

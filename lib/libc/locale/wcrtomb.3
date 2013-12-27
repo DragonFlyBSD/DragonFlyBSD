@@ -24,11 +24,12 @@
 .\"
 .\" $FreeBSD: head/lib/libc/locale/wcrtomb.3 250883 2013-05-21 19:59:37Z ed $
 .\"
-.Dd May 21, 2013
+.Dd December 26, 2013
 .Dt WCRTOMB 3
 .Os
 .Sh NAME
 .Nm wcrtomb ,
+.Nm wcrtomb_l ,
 .Nm c16rtomb ,
 .Nm c32rtomb
 .Nd "convert a wide-character code to a character (restartable)"
@@ -43,9 +44,13 @@
 .Fn c16rtomb "char * restrict s" "char16_t c" "mbstate_t * restrict ps"
 .Ft size_t
 .Fn c32rtomb "char * restrict s" "char32_t c" "mbstate_t * restrict ps"
+.In xlocale.h
+.Ft size_t
+.Fn wcrtomb_l "char * restrict s" "wchar_t c" "mbstate_t * restrict ps" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn wcrtomb ,
+.Fn wcrtomb_l ,
 .Fn c16rtomb
 and
 .Fn c32rtomb
@@ -86,6 +91,14 @@ As certain multibyte characters may only be represented by a series of
 .Fn c16rtomb
 may need to invoked multiple times before a multibyte sequence is
 returned.
+.Pp
+The
+.Fn wcrtomb_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn wcrtomb
+function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 These functions return the length (in bytes) of the multibyte sequence
 needed to represent
@@ -98,6 +111,7 @@ is not a valid wide character code.
 .Sh ERRORS
 The
 .Fn wcrtomb ,
+.Fn wcrtomb_l ,
 .Fn c16rtomb
 and
 .Fn c32rtomb
@@ -112,7 +126,8 @@ The conversion state is invalid.
 .Xr mbrtowc 3 ,
 .Xr multibyte 3 ,
 .Xr setlocale 3 ,
-.Xr wctomb 3
+.Xr wctomb 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn wcrtomb ,

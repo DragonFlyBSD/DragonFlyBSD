@@ -33,11 +33,12 @@
 .\" From FreeBSD: src/lib/libc/locale/multibyte.3,v 1.22 2003/11/08 03:23:11 tjr Exp
 .\" $FreeBSD: head/lib/libc/locale/mbstowcs.3 165903 2007-01-09 00:28:16Z imp $
 .\"
-.Dd April 8, 2004
+.Dd December 26, 2013
 .Dt MBSTOWCS 3
 .Os
 .Sh NAME
-.Nm mbstowcs
+.Nm mbstowcs ,
+.Nm mbstowcs_l
 .Nd convert a character string to a wide-character string
 .Sh LIBRARY
 .Lb libc
@@ -48,10 +49,18 @@
 .Fa "wchar_t * restrict wcstring" "const char * restrict mbstring"
 .Fa "size_t nwchars"
 .Fc
+.In xlocale.h
+.Ft size_t
+.Fo mbstowcs_l
+.Fa "wchar_t * restrict wcstring" "const char * restrict mbstring"
+.Fa "size_t nwchars" "locale_t locale"
+.Fc
 .Sh DESCRIPTION
 The
 .Fn mbstowcs
-function converts a multibyte character string
+and
+.Fn mbstowcs_l
+functions convert a multibyte character string
 .Fa mbstring
 beginning in the initial conversion state
 into a wide character string
@@ -60,16 +69,28 @@ No more than
 .Fa nwchars
 wide characters are stored.
 A terminating null wide character is appended if there is room.
+.Pp
+The
+.Fn mbstowcs_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn mbstowcs
+function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn mbstowcs
-function returns the number of wide characters converted,
+and
+.Fn mbstowcs_l
+functions return the number of wide characters converted,
 not counting any terminating null wide character, or \-1
 if an invalid multibyte character was encountered.
 .Sh ERRORS
 The
 .Fn mbstowcs
-function will fail if:
+and
+.Fn mbstowcs_l
+functions will fail if:
 .Bl -tag -width Er
 .It Bq Er EILSEQ
 An invalid multibyte sequence was detected.
@@ -79,7 +100,8 @@ The conversion state is invalid.
 .Sh SEE ALSO
 .Xr mbsrtowcs 3 ,
 .Xr mbtowc 3 ,
-.Xr multibyte 3
+.Xr multibyte 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn mbstowcs

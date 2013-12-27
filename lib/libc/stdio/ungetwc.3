@@ -34,11 +34,12 @@
 .\"     @(#)ungetc.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: head/lib/libc/stdio/ungetwc.3 165903 2007-01-09 00:28:16Z imp $
 .\"
-.Dd March 3, 2004
+.Dd December 26, 2013
 .Dt UNGETWC 3
 .Os
 .Sh NAME
-.Nm ungetwc
+.Nm ungetwc ,
+.Nm ungetwc_l
 .Nd un-get wide character from input stream
 .Sh LIBRARY
 .Lb libc
@@ -47,10 +48,15 @@
 .In wchar.h
 .Ft wint_t
 .Fn ungetwc "wint_t wc" "FILE *stream"
+.In xlocale.h
+.Ft wint_t
+.Fn ungetwc_l "wint_t wc" "FILE *stream" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn ungetwc
-function pushes the wide character
+and
+.Fn ungetwc_l
+functions push the wide character
 .Fa wc
 (converted to an
 .Vt wchar_t )
@@ -72,12 +78,20 @@ sufficient memory, an effectively infinite amount of pushback is allowed.
 .Pp
 If a character is successfully pushed-back,
 the end-of-file indicator for the stream is cleared.
+.Pp
+The
+.Fn ungetwc_l
+function takes an explicit
+.Fa locale
+argument, whereas the
+.Fn ungetwc
+function uses the current global or per-thread locale.
 .Sh RETURN VALUES
 The
 .Fn ungetwc
-function
-returns
-the wide character pushed-back after the conversion, or
+and
+.Fn ungetwc_l
+functions return the wide character pushed-back after the conversion, or
 .Dv WEOF
 if the operation fails.
 If the value of the argument
@@ -87,7 +101,8 @@ character equals
 the operation will fail and the stream will remain unchanged.
 .Sh SEE ALSO
 .Xr fseek 3 ,
-.Xr getwc 3
+.Xr getwc 3 ,
+.Xr xlocale 3
 .Sh STANDARDS
 The
 .Fn ungetwc
