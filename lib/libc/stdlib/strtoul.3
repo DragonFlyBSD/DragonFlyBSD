@@ -42,8 +42,7 @@
 .Nm strtoull_l ,
 .Nm strtoumax ,
 .Nm strtoumax_l ,
-.Nm strtouq ,
-.Nm strtouq_l
+.Nm strtouq
 .Nd "convert a string to an"
 .Vt "unsigned long" , "unsigned long long" , uintmax_t ,
 or
@@ -71,8 +70,6 @@ integer
 .Fn strtoull_l "const char * restrict nptr" "char ** restrict endptr" "int base" "locale_t locale"
 .Ft uintmax_t
 .Fn strtoumax_l "const char * restrict nptr" "char ** restrict endptr" "int base" "locale_t locale"
-.Ft u_quad_t
-.Fn strtouq_l "const char *nptr" "char **endptr" "int base" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn strtoul
@@ -103,9 +100,8 @@ to an
 value.
 The
 .Fn strtouq
-and
-.Fn strtouq_l
-functions convert the string in
+function
+converts the string in
 .Fa nptr
 to a
 .Vt u_quad_t
@@ -182,9 +178,8 @@ on return, the entire string was valid.)
 The
 .Fn strtoul_l ,
 .Fn strtoull_l ,
-.Fn strtoumax_l ,
 and
-.Fn strtouq_l
+.Fn strtoumax_l
 functions take an explicit
 .Fa locale
 argument, whereas the
@@ -202,9 +197,8 @@ The
 .Fn strtoull_l ,
 .Fn strtoumax ,
 .Fn strtoumax_l ,
-.Fn strtouq ,
 and
-.Fn strtouq_l
+.Fn strtouq
 functions
 return either the result of the conversion
 or, if there was a leading minus sign,
@@ -228,9 +222,7 @@ return
 .Dv UINTMAX_MAX ,
 and
 .Fn strtouq
-and
-.Fn strtouq_l
-return
+returns
 .Dv ULLONG_MAX .
 In all cases,
 .Va errno
@@ -274,6 +266,4 @@ conform to
 The
 .Bx
 .Fn strtouq
-and
-.Fn strtouq_l
-functions are deprecated.
+function is deprecated.

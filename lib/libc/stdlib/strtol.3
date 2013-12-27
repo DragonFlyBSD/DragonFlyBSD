@@ -42,8 +42,7 @@
 .Nm strtoll_l ,
 .Nm strtoimax ,
 .Nm strtoimax_l ,
-.Nm strtoq ,
-.Nm strtoq_l
+.Nm strtoq
 .Nd "convert a string value to a"
 .Vt long , "long long" , intmax_t
 or
@@ -71,8 +70,6 @@ integer
 .Fn strtoll_l "const char * restrict nptr" "char ** restrict endptr" "int base" "locale_t locale"
 .Ft intmax_t
 .Fn strtoimax_l "const char * restrict nptr" "char ** restrict endptr" "int base" "locale_t locale"
-.Ft quad_t
-.Fn strtoq_l "const char *nptr" "char **endptr" "int base" "locale_t locale"
 .Sh DESCRIPTION
 The
 .Fn strtol
@@ -103,9 +100,8 @@ to an
 value.
 The
 .Fn strtoq
-and
-.Fn strtoq_l
-functions convert the string in
+function
+converts the string in
 .Fa nptr
 to a
 .Vt quad_t
@@ -183,9 +179,8 @@ on return, the entire string was valid.)
 The
 .Fn strtol_l ,
 .Fn strtoll_l ,
-.Fn strtoimax_l ,
 and
-.Fn strtoq_l
+.Fn strtoimax_l
 functions take an explicit
 .Fa locale
 argument, whereas the
@@ -203,9 +198,8 @@ The
 .Fn strtoll_l ,
 .Fn strtoimax ,
 .Fn strtoimax_l ,
-.Fn strtoq ,
 and
-.Fn strtoq_l
+.Fn strtoq
 functions
 return the result of the conversion,
 unless the value would underflow or overflow.
@@ -230,7 +224,6 @@ to the following table.
 .It Fn strtoimax Ta Dv INTMAX_MIN Ta Dv INTMAX_MAX
 .It Fn strtoimax_l Ta Dv INTMAX_MIN Ta Dv INTMAX_MAX
 .It Fn strtoq Ta Dv LLONG_MIN Ta Dv LLONG_MAX
-.It Fn strtoq_l Ta Dv LLONG_MIN Ta Dv LLONG_MAX
 .El
 .Sh ERRORS
 .Bl -tag -width Er
@@ -268,6 +261,4 @@ conform to
 The
 .Bx
 .Fn strtoq
-and
-.Fn strtoq_l
-functions are deprecated.
+-function is deprecated.

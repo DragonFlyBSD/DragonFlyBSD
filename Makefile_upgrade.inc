@@ -2396,6 +2396,10 @@ TO_REMOVE+=/usr/share/man/man1/strip221.1.gz
 TO_REMOVE+=/usr/include/tzfile.h
 TO_REMOVE+=/usr/share/zoneinfo/America/Shiprock
 TO_REMOVE+=/usr/share/zoneinfo/Antarctica/South_Pole
+TO_REMOVE+=/usr/share/man/cat3/strtoq_l.3.gz
+TO_REMOVE+=/usr/share/man/man3/strtoq_l.3.gz
+TO_REMOVE+=/usr/share/man/cat3/strtouq_l.3.gz
+TO_REMOVE+=/usr/share/man/man3/strtouq_l.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
