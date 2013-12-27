@@ -98,22 +98,17 @@ functions perform the same operations in
 .Fa float
 precision.
 .Pp
-.ie '\*[.T]'utf8'
-.  ds Un \[cu]
-.el
-.  ds Un U
-.
 There is no universal convention for defining the principal values of
 these functions. The following table gives the branch cuts, and the
 corresponding ranges for the return values, adopted by the C language.
-.Bl -column ".Sy Function" ".Sy (-\*(If*I, -I) \*(Un (I, \*(If*I)" ".Sy [-\*(Pi/2*I, \*(Pi/2*I]"
+.Bl -column ".Sy Function" ".Sy (-\*(If*I, -I) \(cu (I, \*(If*I)" ".Sy [-\*(Pi/2*I, \*(Pi/2*I]"
 .It Sy Function Ta Sy Branch Cut(s) Ta Sy Range
-.It cacos Ta (-\*(If, -1) \*(Un (1, \*(If) Ta [0, \*(Pi]
-.It casin Ta (-\*(If, -1) \*(Un (1, \*(If) Ta [-\*(Pi/2, \*(Pi/2]
-.It catan Ta (-\*(If*I, -i) \*(Un (I, \*(If*I) Ta [-\*(Pi/2, \*(Pi/2]
+.It cacos Ta (-\*(If, -1) \(cu (1, \*(If) Ta [0, \*(Pi]
+.It casin Ta (-\*(If, -1) \(cu (1, \*(If) Ta [-\*(Pi/2, \*(Pi/2]
+.It catan Ta (-\*(If*I, -i) \(cu (I, \*(If*I) Ta [-\*(Pi/2, \*(Pi/2]
 .It cacosh Ta (-\*(If, 1) Ta [-\*(Pi*I, \*(Pi*I]
-.It casinh Ta (-\*(If*I, -i) \*(Un (I, \*(If*I) Ta [-\*(Pi/2*I, \*(Pi/2*I]
-.It catanh Ta (-\*(If, -1) \*(Un (1, \*(If) Ta [-\*(Pi/2*I, \*(Pi/2*I]
+.It casinh Ta (-\*(If*I, -i) \(cu (I, \*(If*I) Ta [-\*(Pi/2*I, \*(Pi/2*I]
+.It catanh Ta (-\*(If, -1) \(cu (1, \*(If) Ta [-\*(Pi/2*I, \*(Pi/2*I]
 .El
 .Sh SEE ALSO
 .Xr ccos 3 ,
