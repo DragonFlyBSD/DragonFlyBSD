@@ -254,7 +254,7 @@ ${page}lint: ${page}
 	@-mandoc -Tlint ${.ALLSRC}
 .endif
 ${page}.out.groff: ${page}
-	@-groff -mandoc -Tascii -P -c ${.ALLSRC} 2>&1 > ${.TARGET}
+	@-nroff -man -t ${.ALLSRC} 2>&1 > ${.TARGET}
 ${page}.out.mandoc: ${page}
 	@-mandoc -Werror ${.ALLSRC} 2>&1 > ${.TARGET}
 ${page}diff: ${page}.out.groff ${page}.out.mandoc
