@@ -1,4 +1,4 @@
-/*	$Id: mdoc_man.c,v 1.56 2013/12/25 00:39:31 schwarze Exp $ */
+/*	$Id: mdoc_man.c,v 1.57 2013/12/25 22:00:45 schwarze Exp $ */
 /*
  * Copyright (c) 2011, 2012, 2013 Ingo Schwarze <schwarze@openbsd.org>
  *
@@ -1030,13 +1030,16 @@ post_eo(DECL_ARGS)
 static int
 pre_fa(DECL_ARGS)
 {
+	int	 am_Fa;
 
-	if (MDOC_Fa == n->tok)
+	am_Fa = MDOC_Fa == n->tok;
+
+	if (am_Fa)
 		n = n->child;
 
 	while (NULL != n) {
 		font_push('I');
-		if (MDOC_SYNPRETTY & n->flags)
+		if (am_Fa || MDOC_SYNPRETTY & n->flags)
 			outflags |= MMAN_nbrword;
 		print_node(meta, n);
 		font_pop();
@@ -1137,6 +1140,8 @@ pre_fo(DECL_ARGS)
 		pre_syn(n);
 		break;
 	case (MDOC_HEAD):
+		if (MDOC_SYNPRETTY & n->flags)
+			print_block(".HP 4n", MMAN_nl);
 		font_push('B');
 		break;
 	case (MDOC_BODY):
@@ -1149,7 +1154,7 @@ pre_fo(DECL_ARGS)
 	}
 	return(1);
 }
-		
+
 static void
 post_fo(DECL_ARGS)
 {

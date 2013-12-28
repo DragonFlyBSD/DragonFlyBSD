@@ -1,4 +1,4 @@
-/*	$Id: mdoc_term.c,v 1.256 2013/12/25 14:40:34 schwarze Exp $ */
+/*	$Id: mdoc_term.c,v 1.258 2013/12/25 21:24:12 schwarze Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010, 2012, 2013 Ingo Schwarze <schwarze@openbsd.org>
@@ -1529,7 +1529,7 @@ termp_ft_pre(DECL_ARGS)
 static int
 termp_fn_pre(DECL_ARGS)
 {
-	size_t		 width, rmargin = 0;
+	size_t		 rmargin = 0;
 	int		 pretty;
 
 	pretty = MDOC_SYNPRETTY & n->flags;
@@ -1540,9 +1540,8 @@ termp_fn_pre(DECL_ARGS)
 		return(0);
 
 	if (pretty) {
-		width = term_len(p, 4);
 		rmargin = p->rmargin;
-		p->rmargin = p->offset + width;
+		p->rmargin = p->offset + term_len(p, 4);
 		p->flags |= TERMP_NOBREAK | TERMP_HANG;
 	}
 
@@ -1602,8 +1601,7 @@ termp_fa_pre(DECL_ARGS)
 
 	for (nn = n->child; nn; nn = nn->next) {
 		term_fontpush(p, TERMFONT_UNDER);
-		if (MDOC_SYNPRETTY & n->flags)
-			p->flags |= TERMP_NBRWORD;
+		p->flags |= TERMP_NBRWORD;
 		term_word(p, nn->string);
 		term_fontpop(p);
 
@@ -2034,7 +2032,7 @@ termp_quote_post(DECL_ARGS)
 static int
 termp_fo_pre(DECL_ARGS)
 {
-	size_t		 width, rmargin = 0;
+	size_t		 rmargin = 0;
 	int		 pretty;
 
 	pretty = MDOC_SYNPRETTY & n->flags;
@@ -2044,9 +2042,8 @@ termp_fo_pre(DECL_ARGS)
 		return(1);
 	} else if (MDOC_BODY == n->type) {
 		if (pretty) {
-			width = term_len(p, 4);
 			rmargin = p->rmargin;
-			p->rmargin = p->offset + width;
+			p->rmargin = p->offset + term_len(p, 4);
 			p->flags |= TERMP_NOBREAK | TERMP_HANG;
 		}
 		p->flags |= TERMP_NOSPACE;

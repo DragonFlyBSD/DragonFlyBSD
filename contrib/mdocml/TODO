@@ -1,6 +1,6 @@
 ************************************************************************
 * Official mandoc TODO.
-* $Id: TODO,v 1.160 2013/12/15 21:30:13 schwarze Exp $
+* $Id: TODO,v 1.162 2013/12/25 14:40:34 schwarze Exp $
 ************************************************************************
 
 ************************************************************************
@@ -203,11 +203,6 @@ None known.
 - a column list with blank `Ta' cells triggers a spurrious
   start-with-whitespace printing of a newline
 
-- double quotes inside double quotes are escaped by doubling them
-  implement this in mdoc(7), too
-  so far, we only have it in roff(7) and man(7)
-  reminded by millert@  Thu, 09 Dec 2010 17:29:52 -0500
-
 - In .Bl -column,
   .It Em Authentication<tab>Key Length
   ought to render "Key Length" with emphasis, too,
@@ -290,13 +285,6 @@ None known.
 - The \& zero-width character counts as output.
   That is, when it is alone on a line between two .Pp,
   we want three blank lines, not two as in mandoc.
-
-- When .Fn arguments exceed one output line, all but the first
-  should be indented, see e.g. rpc(3);
-  reported by jmc@ on discuss@  Fri, 29 Oct 2010 13:48:33 +0100
-  reported again by Nicolas Joly via wiz@  Sun, 18 Sep 2011 18:24:40 +0200
-  Also, we don't want to break the line within the argument of:
-  .Fa "chtype tl"
 
 - Header lines of excessive length:
   Port OpenBSD man_term.c rev. 1.25 to mdoc_term.c

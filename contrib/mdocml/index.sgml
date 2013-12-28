@@ -40,8 +40,8 @@
 			and is both an <A CLASS="external" HREF="http://www.openbsd.org/">OpenBSD</A>
 			and a <A CLASS="external" HREF="http://bsd.lv/">BSD.lv</A> project.  
 			We strive to support all interested free operating systems, in particular
-			<A CLASS="external" HREF="http://www.netbsd.org/">NetBSD</A>,
 			<A CLASS="external" HREF="http://www.dragonflybsd.org/">DragonFly</A>,
+			<A CLASS="external" HREF="http://www.netbsd.org/">NetBSD</A>,
 			<A CLASS="external" HREF="http://www.freebsd.org/">FreeBSD</A>,
 			<A CLASS="external" HREF="http://www.minix3.org/">Minix 3</A>,
 			and <A CLASS="external" HREF="http://www.gnu.org/">GNU</A>/Linux,
@@ -78,7 +78,7 @@
 				<TR>
 					<TD>DragonFly BSD</TD>
 					<TD>
-					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/contrib/mdocml" CLASS="external">contrib/mdocml</A> (1.12.2 sources)
+					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/contrib/mdocml" CLASS="external">contrib/mdocml</A> (post-1.12.2 sources)
 					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/lib/libmandoc" CLASS="external">lib/libmandoc</A>
 					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/usr.bin/mandoc" CLASS="external">usr.bin/mandoc</A> (build system)
 					</TD>
@@ -93,7 +93,7 @@
 				<TR>
 					<TD>FreeBSD 9.x, 8.x</TD>
 					<TD>
-					<A HREF="http://svnweb.freebsd.org/ports/head/textproc/mdocml/" CLASS="external">ports/textproc/mdocml</A> (1.12.1 port)
+					<A HREF="http://svnweb.freebsd.org/ports/head/textproc/mdocml/" CLASS="external">ports/textproc/mdocml</A> (1.12.2 port)
 					</TD>
 				</TR>
 				<TR>
@@ -105,7 +105,7 @@
 				<TR>
 					<TD>OpenBSD</TD>
 					<TD>
-					<A HREF="http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/mandoc/" CLASS="external">src/usr.bin/mandoc</A> (1.12.2 sources and build system)
+					<A HREF="http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/mandoc/" CLASS="external">src/usr.bin/mandoc</A> (post-1.12.2 sources under active development and build system)
 					</TD>
 				</TR>
 				<TR>
@@ -405,7 +405,7 @@
 				Copyright &#169; 2008&#8211;2011 
 				<A CLASS="external" HREF="http://kristaps.bsd.lv">Kristaps Dzonsons</A>, 
 				&#169; 2013 Ingo Schwarze,
-				$Date: 2013/11/07 22:09:54 $
+				$Date: 2013/12/26 14:30:10 $
 			</SMALL>
 		</P>
 	</BODY>
