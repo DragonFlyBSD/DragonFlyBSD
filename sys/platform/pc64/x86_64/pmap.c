@@ -230,6 +230,11 @@ uint64_t pmap_bits_default[] = {
 static pt_entry_t *pt_crashdumpmap;
 static caddr_t crashdumpmap;
 
+#ifdef PMAP_DEBUG2
+static int pmap_enter_debug = 0;
+SYSCTL_INT(_machdep, OID_AUTO, pmap_enter_debug, CTLFLAG_RW,
+    &pmap_enter_debug, 0, "Debug pmap_enter's");
+#endif
 static int pmap_yield_count = 64;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_yield_count, CTLFLAG_RW,
     &pmap_yield_count, 0, "Yield during init_pt/release");
@@ -617,7 +622,10 @@ pv_cache(pv_entry_t pv, vm_pindex_t pindex)
 
 
 /*
- * KVM - return address of PT slot in PD
+ * Return address of PT slot in PD (KVM only)
+ *
+ * Cannot be used for user page tables because it might interfere with
+ * the shared page-table-page optimization (pmap_mmu_optimize).
  */
 static __inline
 pd_entry_t *
@@ -2026,7 +2034,7 @@ retry:
 	 * alignment and type for the vm_map_entry, require that the
 	 * underlying object already be allocated.
 	 *
-	 * We currently allow any type of object to use this optimization.
+	 * We allow almost any type of object to use this optimization.
 	 * The object itself does NOT have to be sized to a multiple of the
 	 * segment size, but the memory mapping does.
 	 *
@@ -2035,7 +2043,7 @@ retry:
 	 */
 	if (entry == NULL ||
 	    pmap_mmu_optimize == 0 ||			/* not enabled */
-	    ptepindex >= pmap_pd_pindex(0) ||		/* not terminal */
+	    ptepindex >= pmap_pd_pindex(0) ||		/* not terminal or pt */
 	    entry->inheritance != VM_INHERIT_SHARE ||	/* not shared */
 	    entry->maptype != VM_MAPTYPE_NORMAL ||	/* weird map type */
 	    entry->object.vm_object == NULL ||		/* needs VM object */
@@ -2050,7 +2058,7 @@ retry:
 	 * Make sure the full segment can be represented.
 	 */
 	b = va & ~(vm_offset_t)SEG_MASK;
-	if (b < entry->start && b + SEG_SIZE > entry->end)
+	if (b < entry->start || b + SEG_SIZE > entry->end)
 		return(pmap_allocpte(pmap, ptepindex, pvpp));
 
 	/*
@@ -2063,6 +2071,18 @@ retry:
 		obpmapp = &object->md.pmap_rw;
 	else
 		obpmapp = &object->md.pmap_ro;
+
+#ifdef PMAP_DEBUG2
+	if (pmap_enter_debug > 0) {
+		--pmap_enter_debug;
+		kprintf("pmap_allocpte_seg: va=%jx prot %08x o=%p "
+			"obpmapp %p %p\n",
+			va, entry->protection, object,
+			obpmapp, *obpmapp);
+		kprintf("pmap_allocpte_seg: entry %p %jx-%jx\n",
+			entry, entry->start, entry->end);
+	}
+#endif
 
 	/*
 	 * We allocate what appears to be a normal pmap but because portions
@@ -2086,6 +2106,7 @@ retry:
 			pmap_release(obpmap);
 			pmap_puninit(obpmap);
 			kfree(obpmap, M_OBJPMAP);
+			obpmap = *obpmapp; /* safety */
 		} else {
 			obpmap->pm_active = smp_active_mask;
 			*obpmapp = obpmap;
@@ -2120,10 +2141,20 @@ retry:
 	 */
 	proc_pt_pv = pv_get(pmap, pmap_pt_pindex(b));
 	proc_pd_pv = pmap_allocpte(pmap, pmap_pd_pindex(b), NULL);
+#ifdef PMAP_DEBUG2
+	if (pmap_enter_debug > 0) {
+		--pmap_enter_debug;
+		kprintf("proc_pt_pv %p (wc %d) pd_pv %p va=%jx\n",
+			proc_pt_pv,
+			(proc_pt_pv ? proc_pt_pv->pv_m->wire_count : -1),
+			proc_pd_pv,
+			va);
+	}
+#endif
 
 	/*
 	 * xpv is the page table page pv from the shared object
-	 * (for convenience).
+	 * (for convenience), from above.
 	 *
 	 * Calculate the pte value for the PT to load into the process PD.
 	 * If we have to change it we must properly dispose of the previous
@@ -2805,6 +2836,12 @@ pv_drop(pv_entry_t pv)
 			 (PV_HOLD_LOCKED | 1));
 		if (atomic_cmpset_int(&pv->pv_hold, count, count - 1)) {
 			if ((count & PV_HOLD_MASK) == 1) {
+#ifdef PMAP_DEBUG2
+				if (pmap_enter_debug > 0) {
+					--pmap_enter_debug;
+					kprintf("pv_drop: free pv %p\n", pv);
+				}
+#endif
 				KKASSERT(count == 1);
 				KKASSERT(pv->pv_pmap == NULL);
 				zfree(pvzone, pv);
@@ -3051,6 +3088,13 @@ static
 void
 pv_put(pv_entry_t pv)
 {
+#ifdef PMAP_DEBUG2
+	if (pmap_enter_debug > 0) {
+		--pmap_enter_debug;
+		kprintf("pv_put pv=%p hold=%08x\n", pv, pv->pv_hold);
+	}
+#endif
+
 	/*
 	 * Fast - shortcut most common condition
 	 */
@@ -3099,6 +3143,12 @@ pv_free(pv_entry_t pv)
 		 * one go.
 		 */
 		if (atomic_cmpset_int(&pv->pv_hold, PV_HOLD_LOCKED | 2, 0)) {
+#ifdef PMAP_DEBUG2
+			if (pmap_enter_debug > 0) {
+				--pmap_enter_debug;
+				kprintf("pv_free: free pv %p\n", pv);
+			}
+#endif
 			zfree(pvzone, pv);
 			return;
 		}
@@ -3878,7 +3928,7 @@ again:
 	} else if (sharept) {
 		/*
 		 * Unmanaged page table, pt_pv is actually the pd_pv
-		 * for our pmap (not the share object pmap).
+		 * for our pmap (not the object's shared pmap).
 		 *
 		 * When asked to protect something in a shared page table
 		 * page we just unmap the page table page.  We have to
@@ -3900,6 +3950,16 @@ again:
 
 	if (ptep) {
 		cbits &= ~pmap->pmap_bits[PG_RW_IDX];
+#ifdef PMAP_DEBUG2
+		if (pmap_enter_debug > 0) {
+			--pmap_enter_debug;
+			kprintf("pmap_protect va=%lx ptep=%p pte_pv=%p "
+				"pt_pv=%p cbits=%08lx\n",
+				va, ptep, pte_pv,
+				pt_pv, cbits
+			);
+		}
+#endif
 		if (pbits != cbits && !atomic_cmpset_long(ptep, pbits, cbits)) {
 			goto again;
 		}
@@ -4098,6 +4158,17 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 		}
 		KKASSERT(*ptep == 0);
 	}
+
+#ifdef PMAP_DEBUG2
+	if (pmap_enter_debug > 0) {
+		--pmap_enter_debug;
+		kprintf("pmap_enter: va=%lx m=%p origpte=%lx newpte=%lx ptep=%p"
+			" pte_pv=%p pt_pv=%p opa=%lx prot=%02x\n",
+			va, m,
+			origpte, newpte, ptep,
+			pte_pv, pt_pv, opa, prot);
+	}
+#endif
 
 	if (pte_pv) {
 		/*
