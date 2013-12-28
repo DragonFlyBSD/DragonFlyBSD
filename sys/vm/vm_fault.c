@@ -120,6 +120,8 @@ struct faultstate {
 	struct vnode *vp;
 };
 
+static int debug_fault = 0;
+SYSCTL_INT(_vm, OID_AUTO, debug_fault, CTLFLAG_RW, &debug_fault, 0, "");
 static int debug_cluster = 0;
 SYSCTL_INT(_vm, OID_AUTO, debug_cluster, CTLFLAG_RW, &debug_cluster, 0, "");
 int vm_shared_fault = 1;
@@ -497,6 +499,14 @@ RetryFault:
 	 * we must not try to burst (we can't allocate VM pages).
 	 */
 	result = vm_fault_object(&fs, first_pindex, fault_type, 1);
+
+	if (debug_fault > 0) {
+		--debug_fault;
+		kprintf("VM_FAULT result %d addr=%jx type=%02x flags=%02x fs.m=%p fs.prot=%02x fs.wired=%02x fs.entry=%p\n",
+			result, vaddr, fault_type, fault_flags,
+			fs.m, fs.prot, fs.wired, fs.entry);
+	}
+
 	if (result == KERN_TRY_AGAIN) {
 		vm_object_drop(fs.first_object);
 		++retry;

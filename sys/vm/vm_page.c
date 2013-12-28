@@ -2229,7 +2229,6 @@ vm_page_wire(vm_page_t m)
  * be placed in the cache - for example, just after dirtying a page.
  * dirty pages in the cache are not allowed.
  *
- * The page queues must be locked.
  * This routine may not block.
  */
 void
@@ -2294,6 +2293,7 @@ _vm_page_deactivate_locked(vm_page_t m, int athead)
 		if (athead == 0)
 			++vm_swapcache_inactive_heuristic;
 	}
+	/* NOTE: PQ_NONE if condition not taken */
 	_vm_page_queue_spin_unlock(m);
 	/* leaves vm_page spinlocked */
 }
