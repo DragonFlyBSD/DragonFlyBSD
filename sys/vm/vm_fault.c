@@ -502,8 +502,9 @@ RetryFault:
 
 	if (debug_fault > 0) {
 		--debug_fault;
-		kprintf("VM_FAULT result %d addr=%jx type=%02x flags=%02x fs.m=%p fs.prot=%02x fs.wired=%02x fs.entry=%p\n",
-			result, vaddr, fault_type, fault_flags,
+		kprintf("VM_FAULT result %d addr=%jx type=%02x flags=%02x "
+			"fs.m=%p fs.prot=%02x fs.wired=%02x fs.entry=%p\n",
+			result, (intmax_t)vaddr, fault_type, fault_flags,
 			fs.m, fs.prot, fs.wired, fs.entry);
 	}
 
