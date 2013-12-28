@@ -128,10 +128,7 @@ ports attached to the switch)
  * is present in netmap_kern.h
  */
 
-#if defined(__FreeBSD__)
-#include <sys/cdefs.h> /* prerequisite */
-__FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257176 2013-10-26 17:58:36Z glebius $");
-
+/* __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257176 2013-10-26 17:58:36Z glebius $"); */
 #include <sys/types.h>
 #include <sys/errno.h>
 #include <sys/param.h>	/* defines used in kernel.h */
@@ -140,49 +137,31 @@ __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257176 2013-10-26 17:58:36Z gle
 #include <sys/sockio.h>
 #include <sys/socketvar.h>	/* struct socket */
 #include <sys/malloc.h>
+#include <sys/kernel.h>
+#include <sys/queue.h>
+#include <sys/taskqueue.h>
 #include <sys/poll.h>
-#include <sys/rwlock.h>
+#include <sys/lock.h>
 #include <sys/socket.h> /* sockaddrs */
-#include <sys/selinfo.h>
 #include <sys/sysctl.h>
+#include <sys/bus.h>	/* bus_dmamap_* */
+#include <sys/endian.h>
+#include <sys/refcount.h>
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/bpf.h>		/* BIOCIMMEDIATE */
-#include <machine/bus.h>	/* bus_dmamap_* */
-#include <sys/endian.h>
-#include <sys/refcount.h>
-
-//#define prefetch(x)	__builtin_prefetch(x)
 
 /* reduce conditional code */
 #define init_waitqueue_head(x)	// only needed in linux
 
-
 extern struct cdevsw netmap_cdevsw;
-
-#elif defined(linux)
-
-#include "bsd_glue.h"
-
-
-
-#elif defined(__APPLE__)
-
-#warning OSX support is only partial
-#include "osx_glue.h"
-
-#else
-
-#error	Unsupported platform
-
-#endif /* unsupported */
 
 /*
  * common headers
  */
 #include <net/netmap.h>
-#include <dev/netmap/netmap_kern.h>
-#include <dev/netmap/netmap_mem2.h>
+#include "netmap_kern.h"
+#include "netmap_mem2.h"
 
 
 MALLOC_DEFINE(M_NETMAP, "netmap", "Network memory map");
@@ -258,8 +237,8 @@ netmap_disable_ring(struct netmap_kring *kr)
 {
 	kr->nkr_stopped = 1;
 	nm_kr_get(kr);
-	mtx_lock(&kr->q_lock);
-	mtx_unlock(&kr->q_lock);
+	lockmgr(&kr->q_lock, LK_EXCLUSIVE);
+	lockmgr(&kr->q_lock, LK_RELEASE);
 	nm_kr_put(kr);
 }
 
@@ -330,7 +309,7 @@ nm_bound_var(u_int *v, u_int dflt, u_int lo, u_int hi, const char *msg)
 		op = "Clamp";
 	}
 	if (op && msg)
-		printf("%s %s to %d (was %d)\n", op, msg, *v, oldv);
+		kprintf("%s %s to %d (was %d)\n", op, msg, *v, oldv);
 	return *v;
 }
 
@@ -355,11 +334,11 @@ nm_dump_buf(char *p, int len, int lim, char *dst)
 	if (lim <= 0 || lim > len)
 		lim = len;
 	o = dst;
-	sprintf(o, "buf 0x%p len %d lim %d\n", p, len, lim);
+	ksprintf(o, "buf 0x%p len %d lim %d\n", p, len, lim);
 	o += strlen(o);
 	/* hexdump routine */
 	for (i = 0; i < lim; ) {
-		sprintf(o, "%5d: ", i);
+		ksprintf(o, "%5d: ", i);
 		o += strlen(o);
 		memset(o, ' ', 48);
 		i0 = i;
@@ -435,7 +414,7 @@ netmap_krings_create(struct netmap_adapter *na, u_int ntx, u_int nrx, u_int tail
 
 	len = (ntx + nrx) * sizeof(struct netmap_kring) + tailroom;
 
-	na->tx_rings = malloc((size_t)len, M_DEVBUF, M_NOWAIT | M_ZERO);
+	na->tx_rings = kmalloc((size_t)len, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (na->tx_rings == NULL) {
 		D("Cannot allocate krings");
 		return ENOMEM;
@@ -455,7 +434,7 @@ netmap_krings_create(struct netmap_adapter *na, u_int ntx, u_int nrx, u_int tail
 		 * the same only if there are no new transmissions).
 		 */
 		kring->nr_hwavail = ndesc - 1;
-		mtx_init(&kring->q_lock, "nm_txq_lock", NULL, MTX_DEF);
+		lockinit(&kring->q_lock, "nm_txq_lock", 0, 0);
 		init_waitqueue_head(&kring->si);
 	}
 
@@ -465,7 +444,7 @@ netmap_krings_create(struct netmap_adapter *na, u_int ntx, u_int nrx, u_int tail
 		bzero(kring, sizeof(*kring));
 		kring->na = na;
 		kring->nkr_num_slots = ndesc;
-		mtx_init(&kring->q_lock, "nm_rxq_lock", NULL, MTX_DEF);
+		lockinit(&kring->q_lock, "nm_rxq_lock", 0, 0);
 		init_waitqueue_head(&kring->si);
 	}
 	init_waitqueue_head(&na->tx_si);
@@ -484,12 +463,12 @@ netmap_krings_delete(struct netmap_adapter *na)
 	int i;
 
 	for (i = 0; i < na->num_tx_rings + 1; i++) {
-		mtx_destroy(&na->tx_rings[i].q_lock);
+		lockuninit(&na->tx_rings[i].q_lock);
 	}
 	for (i = 0; i < na->num_rx_rings + 1; i++) {
-		mtx_destroy(&na->rx_rings[i].q_lock);
+		lockuninit(&na->rx_rings[i].q_lock);
 	}
-	free(na->tx_rings, M_DEVBUF);
+	kfree(na->tx_rings, M_DEVBUF);
 	na->tx_rings = na->rx_rings = na->tailroom = NULL;
 }
 
@@ -660,7 +639,6 @@ netmap_dtor_locked(struct netmap_priv_d *priv)
 {
 	struct netmap_adapter *na = priv->np_na;
 
-#ifdef __FreeBSD__
 	/*
 	 * np_refcount is the number of active mmaps on
 	 * this file descriptor
@@ -668,7 +646,6 @@ netmap_dtor_locked(struct netmap_priv_d *priv)
 	if (--priv->np_refcount > 0) {
 		return 0;
 	}
-#endif /* __FreeBSD__ */
 	if (!na) {
 	    return 1; //XXX is it correct?
 	}
@@ -694,7 +671,7 @@ netmap_dtor(void *data)
 	NMG_UNLOCK();
 	if (last_instance) {
 		bzero(priv, sizeof(*priv));	/* for safety */
-		free(priv, M_DEVBUF);
+		kfree(priv, M_DEVBUF);
 	}
 }
 
@@ -809,7 +786,7 @@ netmap_sw_to_nic(struct netmap_adapter *na)
 	if (kring->nkr_stopped)
 		return;
 
-	mtx_lock(&kring->q_lock);
+	lockmgr(&kring->q_lock, LK_EXCLUSIVE);
 
 	if (kring->nkr_stopped)
 		goto out;
@@ -845,7 +822,7 @@ netmap_sw_to_nic(struct netmap_adapter *na)
 		k1++; // XXX why?
 	}
 out:
-	mtx_unlock(&kring->q_lock);
+	lockmgr(&kring->q_lock, LK_RELEASE);
 }
 
 
@@ -916,7 +893,7 @@ netmap_rxsync_from_host(struct netmap_adapter *na, struct thread *td, void *pwai
 	if (kring->nkr_stopped) /* check a first time without lock */
 		return;
 
-	mtx_lock(&kring->q_lock);
+	lockmgr(&kring->q_lock, LK_EXCLUSIVE);
 
 	if (kring->nkr_stopped)  /* check again with lock held */
 		goto unlock_out;
@@ -947,7 +924,7 @@ netmap_rxsync_from_host(struct netmap_adapter *na, struct thread *td, void *pwai
 		D("%d pkts from stack", k);
 unlock_out:
 
-	mtx_unlock(&kring->q_lock);
+	lockmgr(&kring->q_lock, LK_RELEASE);
 }
 
 
@@ -1315,20 +1292,6 @@ netmap_ioctl(struct cdev *dev, u_long cmd, caddr_t data,
 
 	(void)dev;	/* UNUSED */
 	(void)fflag;	/* UNUSED */
-#ifdef linux
-#define devfs_get_cdevpriv(pp)				\
-	({ *(struct netmap_priv_d **)pp = ((struct file *)td)->private_data; 	\
-		(*pp ? 0 : ENOENT); })
-
-/* devfs_set_cdevpriv cannot fail on linux */
-#define devfs_set_cdevpriv(p, fn)				\
-	({ ((struct file *)td)->private_data = p; (p ? 0 : EINVAL); })
-
-
-#define devfs_clear_cdevpriv()	do {				\
-		netmap_dtor(priv); ((struct file *)td)->private_data = 0;	\
-	} while (0)
-#endif /* linux */
 
 	CURVNET_SET(TD_TO_VNET(td));
 
@@ -1519,8 +1482,6 @@ netmap_ioctl(struct cdev *dev, u_long cmd, caddr_t data,
 		}
 
 		break;
-
-#ifdef __FreeBSD__
 	case BIOCIMMEDIATE:
 	case BIOCGHDRCMPLT:
 	case BIOCSHDRCMPLT:
@@ -1548,11 +1509,6 @@ netmap_ioctl(struct cdev *dev, u_long cmd, caddr_t data,
 		NMG_UNLOCK();
 		break;
 	    }
-
-#else /* linux */
-	default:
-		error = EOPNOTSUPP;
-#endif /* linux */
 	}
 out:
 
@@ -1887,7 +1843,7 @@ netmap_detach_common(struct netmap_adapter *na)
 	if (na->na_flags & NAF_MEM_OWNER)
 		netmap_mem_private_delete(na->nm_mem);
 	bzero(na, sizeof(*na));
-	free(na, M_DEVBUF);
+	kfree(na, M_DEVBUF);
 }
 
 
@@ -1914,27 +1870,15 @@ netmap_attach(struct netmap_adapter *arg)
 
 	if (arg == NULL || ifp == NULL)
 		goto fail;
-	hwna = malloc(sizeof(*hwna), M_DEVBUF, M_NOWAIT | M_ZERO);
+	hwna = kmalloc(sizeof(*hwna), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (hwna == NULL)
 		goto fail;
 	hwna->up = *arg;
 	if (netmap_attach_common(&hwna->up)) {
-		free(hwna, M_DEVBUF);
+		kfree(hwna, M_DEVBUF);
 		goto fail;
 	}
 	netmap_adapter_get(&hwna->up);
-
-#ifdef linux
-	if (ifp->netdev_ops) {
-		/* prepare a clone of the netdev ops */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 28)
-		hwna->nm_ndo.ndo_start_xmit = ifp->netdev_ops;
-#else
-		hwna->nm_ndo = *ifp->netdev_ops;
-#endif
-	}
-	hwna->nm_ndo.ndo_start_xmit = linux_netmap_start_xmit;
-#endif /* linux */
 
 	D("success for %s", NM_IFPNAME(ifp));
 	return 0;
@@ -2050,7 +1994,7 @@ netmap_transmit(struct ifnet *ifp, struct mbuf *m)
 	// XXX [Linux] there can be no other instances of netmap_transmit
 	// on this same ring, but we still need this lock to protect
 	// concurrent access from netmap_sw_to_nic() -gl
-	mtx_lock(&kring->q_lock);
+	lockmgr(&kring->q_lock, LK_EXCLUSIVE);
 	if (kring->nr_hwavail >= lim) {
 		if (netmap_verbose)
 			D("stack ring %s full\n", NM_IFPNAME(ifp));
@@ -2067,7 +2011,7 @@ netmap_transmit(struct ifnet *ifp, struct mbuf *m)
 		na->nm_notify(na, na->num_rx_rings, NR_RX, 0);
 		error = 0;
 	}
-	mtx_unlock(&kring->q_lock);
+	lockmgr(&kring->q_lock, LK_RELEASE);
 
 done:
 	// mtx_unlock(&na->core_lock);
@@ -2137,16 +2081,6 @@ netmap_reset(struct netmap_adapter *na, enum txrx tx, u_int n,
 		kring->nr_hwavail = lim;
 	kring->nr_hwreserved = 0;
 
-#if 0 // def linux
-	/* XXX check that the mappings are correct */
-	/* need ring_nr, adapter->pdev, direction */
-	buffer_info->dma = dma_map_single(&pdev->dev, addr, adapter->rx_buffer_len, DMA_FROM_DEVICE);
-	if (dma_mapping_error(&adapter->pdev->dev, buffer_info->dma)) {
-		D("error mapping rx netmap buffer %d", i);
-		// XXX fix error handling
-	}
-
-#endif /* linux */
 	/*
 	 * Wakeup on the individual and global selwait
 	 * We do the wakeup here, but the ring is not yet reconfigured.
@@ -2265,10 +2199,10 @@ netmap_init(void)
 
 	error = netmap_mem_init();
 	if (error != 0) {
-		printf("netmap: unable to initialize the memory allocator.\n");
+		kprintf("netmap: unable to initialize the memory allocator.\n");
 		return (error);
 	}
-	printf("netmap: loaded module\n");
+	kprintf("netmap: loaded module\n");
 	netmap_dev = make_dev(&netmap_cdevsw, 0, UID_ROOT, GID_WHEEL, 0660,
 			      "netmap");
 
@@ -2288,5 +2222,5 @@ netmap_fini(void)
 	destroy_dev(netmap_dev);
 	netmap_mem_fini();
 	NMG_LOCK_DESTROY();
-	printf("netmap: unloaded module.\n");
+	kprintf("netmap: unloaded module.\n");
 }

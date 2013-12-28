@@ -37,12 +37,7 @@
  * variants (mbq_safe_*) also handle the lock.
  */
 
-/* XXX probably rely on a previous definition of SPINLOCK_T */
-#ifdef linux
-#define SPINLOCK_T  safe_spinlock_t
-#else
-#define SPINLOCK_T  struct mtx
-#endif
+#define SPINLOCK_T  struct lock
 
 /* A FIFO queue of mbufs with an optional lock. */
 struct mbq {

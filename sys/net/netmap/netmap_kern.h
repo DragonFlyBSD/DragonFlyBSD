@@ -36,21 +36,19 @@
 
 #define WITH_VALE	// comment out to disable VALE support
 
-#if defined(__FreeBSD__)
-
 #define likely(x)	__builtin_expect((long)!!(x), 1L)
 #define unlikely(x)	__builtin_expect((long)!!(x), 0L)
 
-#define	NM_LOCK_T	struct mtx
-#define	NMG_LOCK_T	struct mtx
-#define NMG_LOCK_INIT()	mtx_init(&netmap_global_lock, \
-				"netmap global lock", NULL, MTX_DEF)
-#define NMG_LOCK_DESTROY()	mtx_destroy(&netmap_global_lock)
-#define NMG_LOCK()	mtx_lock(&netmap_global_lock)
-#define NMG_UNLOCK()	mtx_unlock(&netmap_global_lock)
-#define NMG_LOCK_ASSERT()	mtx_assert(&netmap_global_lock, MA_OWNED)
+#define	NM_LOCK_T	struct lock
+#define	NMG_LOCK_T	struct lock
+#define NMG_LOCK_INIT()	lockinit(&netmap_global_lock, \
+				"netmap global lock", 0, 0)
+#define NMG_LOCK_DESTROY()	lockuninit(&netmap_global_lock)
+#define NMG_LOCK()	lockmgr(&netmap_global_lock, LK_EXCLUSIVE)
+#define NMG_UNLOCK()	lockmgr(&netmap_global_lock, LK_RELEASE)
+#define NMG_LOCK_ASSERT()	KKASSERT(lockcountnb(&netmap_global_lock))
 
-#define	NM_SELINFO_T	struct selinfo
+#define	NM_SELINFO_T	struct taskqueue *
 #define	MBUF_LEN(m)	((m)->m_pkthdr.len)
 #define	MBUF_IFP(m)	((m)->m_pkthdr.rcvif)
 #define	NM_SEND_UP(ifp, m)	((ifp)->if_input)(ifp, m)
@@ -71,62 +69,14 @@ struct net_device_ops {
 struct hrtimer {
 };
 
-#elif defined (linux)
-
-#define	NM_LOCK_T	safe_spinlock_t	// see bsd_glue.h
-#define	NM_SELINFO_T	wait_queue_head_t
-#define	MBUF_LEN(m)	((m)->len)
-#define	MBUF_IFP(m)	((m)->dev)
-#define	NM_SEND_UP(ifp, m)	netif_rx(m)
-
-#define NM_ATOMIC_T	volatile long unsigned int
-
-// XXX a mtx would suffice here too 20130404 gl
-#define NMG_LOCK_T		struct semaphore
-#define NMG_LOCK_INIT()		sema_init(&netmap_global_lock, 1)
-#define NMG_LOCK_DESTROY()
-#define NMG_LOCK()		down(&netmap_global_lock)
-#define NMG_UNLOCK()		up(&netmap_global_lock)
-#define NMG_LOCK_ASSERT()	//	XXX to be completed
-
-#ifndef DEV_NETMAP
-#define DEV_NETMAP
-#endif /* DEV_NETMAP */
-
-/*
- * IFCAP_NETMAP goes into net_device's priv_flags (if_capenable).
- * This was 16 bits up to linux 2.6.36, so we need a 16 bit value on older
- * platforms and tolerate the clash with IFF_DYNAMIC and IFF_BRIDGE_PORT.
- * For the 32-bit value, 0x100000 has no clashes until at least 3.5.1
- */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,37)
-#define IFCAP_NETMAP	0x8000
-#else
-#define IFCAP_NETMAP	0x200000
-#endif
-
-#elif defined (__APPLE__)
-
-#warning apple support is incomplete.
-#define likely(x)	__builtin_expect(!!(x), 1)
-#define unlikely(x)	__builtin_expect(!!(x), 0)
-#define	NM_LOCK_T	IOLock *
-#define	NM_SELINFO_T	struct selinfo
-#define	MBUF_LEN(m)	((m)->m_pkthdr.len)
-#define	NM_SEND_UP(ifp, m)	((ifp)->if_input)(ifp, m)
-
-#else
-
-#error unsupported platform
-
-#endif /* end - platform-specific code */
+#define IFCAP_NETMAP	0x8000	/* XXX move to <net/if.h> */
 
 #define ND(format, ...)
 #define D(format, ...)						\
 	do {							\
 		struct timeval __xxts;				\
 		microtime(&__xxts);				\
-		printf("%03d.%06d %s [%d] " format "\n",	\
+		kprintf("%03d.%06d %s [%d] " format "\n",	\
 		(int)__xxts.tv_sec % 1000, (int)__xxts.tv_usec,	\
 		__FUNCTION__, __LINE__, ##__VA_ARGS__);		\
 	} while (0)
@@ -349,8 +299,8 @@ struct netmap_adapter {
 	void *tailroom;		       /* space below the rings array */
 				       /* (used for leases) */
 
-
-	NM_SELINFO_T tx_si, rx_si;	/* global wait queues */
+	NM_SELINFO_T tx_si;		/* global tx wait queue */
+	NM_SELINFO_T rx_si;		/* global rx wait queue */
 
 	/* copy of if_qflush and if_transmit pointers, to intercept
 	 * packets from the network stack when netmap is active.
@@ -785,7 +735,7 @@ extern int netmap_generic_ringsize;
  * WNA is used to write it.
  */
 #ifndef WNA
-#define	WNA(_ifp)	(_ifp)->if_pspare[0]
+#define	WNA(_ifp)	(_ifp)->if_unused7	/* XXX better name ;) */
 #endif
 #define	NA(_ifp)	((struct netmap_adapter *)WNA(_ifp))
 
@@ -793,7 +743,6 @@ extern int netmap_generic_ringsize;
  * Macros to determine if an interface is netmap capable or netmap enabled.
  * See the magic field in struct netmap_adapter.
  */
-#ifdef __FreeBSD__
 /*
  * on FreeBSD just use if_capabilities and if_capenable.
  */
@@ -802,25 +751,6 @@ extern int netmap_generic_ringsize;
 
 #define	NETMAP_SET_CAPABLE(ifp)				\
 	(ifp)->if_capabilities |= IFCAP_NETMAP
-
-#else	/* linux */
-
-/*
- * on linux:
- * we check if NA(ifp) is set and its first element has a related
- * magic value. The capenable is within the struct netmap_adapter.
- */
-#define	NETMAP_MAGIC	0x52697a7a
-
-#define NETMAP_CAPABLE(ifp)	(NA(ifp) &&		\
-	((uint32_t)(uintptr_t)NA(ifp) ^ NA(ifp)->magic) == NETMAP_MAGIC )
-
-#define	NETMAP_SET_CAPABLE(ifp)				\
-	NA(ifp)->magic = ((uint32_t)(uintptr_t)NA(ifp)) ^ NETMAP_MAGIC
-
-#endif	/* linux */
-
-#ifdef __FreeBSD__
 
 /* Callback invoked by the dma machinery after a successfull dmamap_load */
 static void netmap_dmamap_cb(__unused void *arg,
@@ -849,50 +779,6 @@ netmap_reload_map(bus_dma_tag_t tag, bus_dmamap_t map, void *buf)
 		    netmap_dmamap_cb, NULL, BUS_DMA_NOWAIT);
 	}
 }
-
-#else /* linux */
-
-/*
- * XXX How do we redefine these functions:
- *
- * on linux we need
- *	dma_map_single(&pdev->dev, virt_addr, len, direction)
- *	dma_unmap_single(&adapter->pdev->dev, phys_addr, len, direction
- * The len can be implicit (on netmap it is NETMAP_BUF_SIZE)
- * unfortunately the direction is not, so we need to change
- * something to have a cross API
- */
-#define netmap_load_map(_t, _m, _b)
-#define netmap_reload_map(_t, _m, _b)
-#if 0
-	struct e1000_buffer *buffer_info =  &tx_ring->buffer_info[l];
-	/* set time_stamp *before* dma to help avoid a possible race */
-	buffer_info->time_stamp = jiffies;
-	buffer_info->mapped_as_page = false;
-	buffer_info->length = len;
-	//buffer_info->next_to_watch = l;
-	/* reload dma map */
-	dma_unmap_single(&adapter->pdev->dev, buffer_info->dma,
-			NETMAP_BUF_SIZE, DMA_TO_DEVICE);
-	buffer_info->dma = dma_map_single(&adapter->pdev->dev,
-			addr, NETMAP_BUF_SIZE, DMA_TO_DEVICE);
-
-	if (dma_mapping_error(&adapter->pdev->dev, buffer_info->dma)) {
-		D("dma mapping error");
-		/* goto dma_error; See e1000_put_txbuf() */
-		/* XXX reset */
-	}
-	tx_desc->buffer_addr = htole64(buffer_info->dma); //XXX
-
-#endif
-
-/*
- * The bus_dmamap_sync() can be one of wmb() or rmb() depending on direction.
- */
-#define bus_dmamap_sync(_a, _b, _c)
-
-#endif /* linux */
-
 
 /*
  * functions to map NIC to KRING indexes (n2k) and vice versa (k2n)

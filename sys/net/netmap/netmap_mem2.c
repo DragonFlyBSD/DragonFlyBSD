@@ -23,49 +23,30 @@
  * SUCH DAMAGE.
  */
 
-#ifdef linux
-#include "bsd_glue.h"
-#endif /* linux */
-
-#ifdef __APPLE__
-#include "osx_glue.h"
-#endif /* __APPLE__ */
-
-#ifdef __FreeBSD__
-#include <sys/cdefs.h> /* prerequisite */
-__FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 241723 2012-10-19 09:41:45Z glebius $");
+/* __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 241723 2012-10-19 09:41:45Z glebius $"); */
 
 #include <sys/types.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/socket.h> /* sockaddrs */
+#include <sys/sysctl.h>
+#include <sys/bus.h>	/* bus_dmamap_* */
+
 #include <vm/vm.h>	/* vtophys */
 #include <vm/pmap.h>	/* vtophys */
-#include <sys/socket.h> /* sockaddrs */
-#include <sys/selinfo.h>
-#include <sys/sysctl.h>
+
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/vnet.h>
-#include <machine/bus.h>	/* bus_dmamap_* */
-
-#endif /* __FreeBSD__ */
-
 #include <net/netmap.h>
-#include <dev/netmap/netmap_kern.h>
+
+#include "netmap_kern.h"
 #include "netmap_mem2.h"
 
-#ifdef linux
-#define NMA_LOCK_INIT(n)	sema_init(&(n)->nm_mtx, 1)
-#define NMA_LOCK_DESTROY(n)
-#define NMA_LOCK(n)		down(&(n)->nm_mtx)
-#define NMA_UNLOCK(n)		up(&(n)->nm_mtx)
-#else /* !linux */
-#define NMA_LOCK_INIT(n)	mtx_init(&(n)->nm_mtx, "netmap memory allocator lock", NULL, MTX_DEF)
-#define NMA_LOCK_DESTROY(n)	mtx_destroy(&(n)->nm_mtx)
-#define NMA_LOCK(n)		mtx_lock(&(n)->nm_mtx)
-#define NMA_UNLOCK(n)		mtx_unlock(&(n)->nm_mtx)
-#endif /* linux */
-
+#define NMA_LOCK_INIT(n)	lockinit(&(n)->nm_mtx, "netmap memory allocator lock", 0, 0)
+#define NMA_LOCK_DESTROY(n)	lockuninit(&(n)->nm_mtx)
+#define NMA_LOCK(n)		lockmgr(&(n)->nm_mtx, LK_EXCLUSIVE)
+#define NMA_UNLOCK(n)		lockmgr(&(n)->nm_mtx, LK_RELEASE)
 
 struct netmap_obj_params netmap_params[NETMAP_POOLS_NR] = {
 	[NETMAP_IF_POOL] = {
@@ -449,7 +430,7 @@ netmap_reset_obj_allocator(struct netmap_obj_pool *p)
 	if (p == NULL)
 		return;
 	if (p->bitmap)
-		free(p->bitmap, M_NETMAP);
+		kfree(p->bitmap, M_NETMAP);
 	p->bitmap = NULL;
 	if (p->lut) {
 		u_int i;
@@ -460,11 +441,7 @@ netmap_reset_obj_allocator(struct netmap_obj_pool *p)
 				contigfree(p->lut[i].vaddr, sz, M_NETMAP);
 		}
 		bzero(p->lut, sizeof(struct lut_entry) * p->objtotal);
-#ifdef linux
-		vfree(p->lut);
-#else
-		free(p->lut, M_NETMAP);
-#endif
+		kfree(p->lut, M_NETMAP);
 	}
 	p->lut = NULL;
 	p->objtotal = 0;
@@ -588,11 +565,7 @@ netmap_finalize_obj_allocator(struct netmap_obj_pool *p)
 	p->objtotal = p->_objtotal;
 
 	n = sizeof(struct lut_entry) * p->objtotal;
-#ifdef linux
-	p->lut = vmalloc(n);
-#else
-	p->lut = malloc(n, M_NETMAP, M_NOWAIT | M_ZERO);
-#endif
+	p->lut = kmalloc(n, M_NETMAP, M_NOWAIT | M_ZERO);
 	if (p->lut == NULL) {
 		D("Unable to create lookup table (%d bytes) for '%s'", (int)n, p->name);
 		goto clean;
@@ -600,7 +573,7 @@ netmap_finalize_obj_allocator(struct netmap_obj_pool *p)
 
 	/* Allocate the bitmap */
 	n = (p->objtotal + 31) / 32;
-	p->bitmap = malloc(sizeof(uint32_t) * n, M_NETMAP, M_NOWAIT | M_ZERO);
+	p->bitmap = kmalloc(sizeof(uint32_t) * n, M_NETMAP, M_NOWAIT | M_ZERO);
 	if (p->bitmap == NULL) {
 		D("Unable to create bitmap (%d entries) for allocator '%s'", (int)n,
 		    p->name);
@@ -733,7 +706,7 @@ netmap_mem_private_delete(struct netmap_mem_d *nmd)
 		D("bug: deleting mem allocator with refcount=%d!", nmd->refcount);
 	D("done deleting %p", nmd);
 	NMA_LOCK_DESTROY(nmd);
-	free(nmd, M_DEVBUF);
+	kfree(nmd, M_DEVBUF);
 }
 
 static int
@@ -774,7 +747,7 @@ netmap_mem_private_new(const char *name, u_int txr, u_int txd, u_int rxr, u_int 
 	int i;
 	u_int maxd;
 
-	d = malloc(sizeof(struct netmap_mem_d),
+	d = kmalloc(sizeof(struct netmap_mem_d),
 			M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (d == NULL)
 		return NULL;
@@ -803,7 +776,7 @@ netmap_mem_private_new(const char *name, u_int txr, u_int txd, u_int rxr, u_int 
 			p[NETMAP_BUF_POOL].size);
 
 	for (i = 0; i < NETMAP_POOLS_NR; i++) {
-		snprintf(d->pools[i].name, NETMAP_POOL_MAX_NAMSZ,
+		ksnprintf(d->pools[i].name, NETMAP_POOL_MAX_NAMSZ,
 				nm_blueprint.pools[i].name,
 				name);
 		if (netmap_config_obj_allocator(&d->pools[i],

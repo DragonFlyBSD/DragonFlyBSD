@@ -149,12 +149,7 @@ struct netmap_obj_pool {
 	u_int r_objsize;
 };
 
-#ifdef linux
-// XXX a mtx would suffice here 20130415 lr
-#define NMA_LOCK_T		struct semaphore
-#else /* !linux */
-#define NMA_LOCK_T		struct mtx
-#endif /* linux */
+#define NMA_LOCK_T		struct lock
 
 typedef int (*netmap_mem_config_t)(struct netmap_mem_d*);
 typedef int (*netmap_mem_finalize_t)(struct netmap_mem_d*);

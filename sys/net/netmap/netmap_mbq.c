@@ -23,20 +23,11 @@
  * SUCH DAMAGE.
  */
 
-/*
- * $FreeBSD$
- */
-
-
-#ifdef linux
-#include "bsd_glue.h"
-#else   /* __FreeBSD__ */
 #include <sys/param.h>
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
-#endif  /* __FreeBSD__ */
 
 #include "netmap_mbq.h"
 
@@ -49,7 +40,7 @@ static inline void __mbq_init(struct mbq *q)
 
 void mbq_safe_init(struct mbq *q)
 {
-    mtx_init(&q->lock, "mbq", NULL, MTX_SPIN);
+    lockinit(&q->lock, "mbq", 0, 0);
     __mbq_init(q);
 }
 
@@ -72,9 +63,9 @@ static inline void __mbq_enqueue(struct mbq *q, struct mbuf *m)
 
 void mbq_safe_enqueue(struct mbq *q, struct mbuf *m)
 {
-    mtx_lock(&q->lock);
+    lockmgr(&q->lock, LK_EXCLUSIVE);
     __mbq_enqueue(q, m);
-    mtx_unlock(&q->lock);
+    lockmgr(&q->lock, LK_RELEASE);
 }
 
 void mbq_enqueue(struct mbq *q, struct mbuf *m)
@@ -103,9 +94,9 @@ struct mbuf *mbq_safe_dequeue(struct mbq *q)
 {
     struct mbuf *ret;
 
-    mtx_lock(&q->lock);
+    lockmgr(&q->lock, LK_EXCLUSIVE);
     ret =  __mbq_dequeue(q);
-    mtx_unlock(&q->lock);
+    lockmgr(&q->lock, LK_RELEASE);
 
     return ret;
 }
@@ -142,7 +133,7 @@ void mbq_safe_purge(struct mbq *q)
 
 void mbq_safe_destroy(struct mbq *q)
 {
-    mtx_destroy(&q->lock);
+    lockuninit(&q->lock);
 }
 
 

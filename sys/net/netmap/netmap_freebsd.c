@@ -29,8 +29,9 @@
 #include <sys/param.h>  /* defines used in kernel.h */
 #include <sys/kernel.h> /* types used in module initialization */
 #include <sys/conf.h>	/* DEV_MODULE */
-
-#include <sys/rwlock.h>
+#include <sys/bus.h>	/* bus_dmamap_* */
+#include <sys/malloc.h>
+#include <sys/socket.h> /* sockaddrs */
 
 #include <vm/vm.h>      /* vtophys */
 #include <vm/pmap.h>    /* vtophys */
@@ -40,17 +41,12 @@
 #include <vm/vm_pager.h>
 #include <vm/uma.h>
 
-
-#include <sys/malloc.h>
-#include <sys/socket.h> /* sockaddrs */
-#include <sys/selinfo.h>
 #include <net/if.h>
 #include <net/if_var.h>
-#include <machine/bus.h>        /* bus_dmamap_* */
-
 #include <net/netmap.h>
-#include <dev/netmap/netmap_kern.h>
-#include <dev/netmap/netmap_mem2.h>
+
+#include "netmap_kern.h"
+#include "netmap_mem2.h"
 
 
 /* ======================== FREEBSD-SPECIFIC ROUTINES ================== */
@@ -213,7 +209,7 @@ netmap_dev_pager_dtor(void *handle)
 	struct netmap_priv_d *priv = vmh->priv;
 	D("handle %p", handle);
 	netmap_dtor(priv);
-	free(vmh, M_DEVBUF);
+	kfree(vmh, M_DEVBUF);
 	dev_rel(dev);
 }
 
@@ -286,7 +282,7 @@ netmap_mmap_single(struct cdev *cdev, vm_ooffset_t *foff,
 	D("cdev %p foff %jd size %jd objp %p prot %d", cdev,
 	    (intmax_t )*foff, (intmax_t )objsize, objp, prot);
 
-	vmh = malloc(sizeof(struct netmap_vm_handle_t), M_DEVBUF,
+	vmh = kmalloc(sizeof(struct netmap_vm_handle_t), M_DEVBUF,
 			      M_NOWAIT | M_ZERO);
 	if (vmh == NULL)
 		return ENOMEM;
@@ -322,7 +318,7 @@ err_deref:
 err_unlock:
 	NMG_UNLOCK();
 // err:
-	free(vmh, M_DEVBUF);
+	kfree(vmh, M_DEVBUF);
 	return error;
 }
 
@@ -350,7 +346,7 @@ netmap_open(struct cdev *dev, int oflags, int devtype, struct thread *td)
 	(void)td;
 
 	// XXX wait or nowait ?
-	priv = malloc(sizeof(struct netmap_priv_d), M_DEVBUF,
+	priv = kmalloc(sizeof(struct netmap_priv_d), M_DEVBUF,
 			      M_NOWAIT | M_ZERO);
 	if (priv == NULL)
 		return ENOMEM;

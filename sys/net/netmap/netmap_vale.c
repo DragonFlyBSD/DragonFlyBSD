@@ -55,9 +55,7 @@ ports attached to the switch)
  * is present in netmap_kern.h
  */
 
-#if defined(__FreeBSD__)
-#include <sys/cdefs.h> /* prerequisite */
-__FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257176 2013-10-26 17:58:36Z glebius $");
+/* __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257176 2013-10-26 17:58:36Z glebius $"); */
 
 #include <sys/types.h>
 #include <sys/errno.h>
@@ -93,29 +91,14 @@ __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257176 2013-10-26 17:58:36Z gle
 #define BDG_RUNLOCK(b)		rw_runlock(&(b)->bdg_lock)
 #define BDG_RWDESTROY(b)	rw_destroy(&(b)->bdg_lock)
 
-
-#elif defined(linux)
-
-#include "bsd_glue.h"
-
-#elif defined(__APPLE__)
-
-#warning OSX support is only partial
-#include "osx_glue.h"
-
-#else
-
-#error	Unsupported platform
-
-#endif /* unsupported */
-
 /*
  * common headers
  */
 
 #include <net/netmap.h>
-#include <dev/netmap/netmap_kern.h>
-#include <dev/netmap/netmap_mem2.h>
+
+#include "netmap_kern.h"
+#include "netmap_mem2.h"
 
 #ifdef WITH_VALE
 
@@ -399,7 +382,7 @@ nm_free_bdgfwd(struct netmap_adapter *na)
 	kring = nma_is_vp(na) ? na->tx_rings : na->rx_rings;
 	for (i = 0; i < nrings; i++) {
 		if (kring[i].nkr_ft) {
-			free(kring[i].nkr_ft, M_DEVBUF);
+			kfree(kring[i].nkr_ft, M_DEVBUF);
 			kring[i].nkr_ft = NULL; /* protect from freeing twice */
 		}
 	}
@@ -429,7 +412,7 @@ nm_alloc_bdgfwd(struct netmap_adapter *na)
 		struct nm_bdg_q *dstq;
 		int j;
 
-		ft = malloc(l, M_DEVBUF, M_NOWAIT | M_ZERO);
+		ft = kmalloc(l, M_DEVBUF, M_NOWAIT | M_ZERO);
 		if (!ft) {
 			nm_free_bdgfwd(na);
 			return ENOMEM;
@@ -518,7 +501,7 @@ netmap_adapter_vp_dtor(struct netmap_adapter *na)
 	}
 
 	bzero(ifp, sizeof(*ifp));
-	free(ifp, M_DEVBUF);
+	kfree(ifp, M_DEVBUF);
 	na->ifp = NULL;
 }
 
@@ -619,7 +602,7 @@ netmap_get_bdg_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 	 	/* create a struct ifnet for the new port.
 		 * need M_NOWAIT as we are under nma_lock
 		 */
-		ifp = malloc(sizeof(*ifp), M_DEVBUF, M_NOWAIT | M_ZERO);
+		ifp = kmalloc(sizeof(*ifp), M_DEVBUF, M_NOWAIT | M_ZERO);
 		if (!ifp)
 			return ENOMEM;
 
@@ -629,7 +612,7 @@ netmap_get_bdg_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 		error = bdg_netmap_attach(&tmp_na);
 		if (error) {
 			D("error %d", error);
-			free(ifp, M_DEVBUF);
+			kfree(ifp, M_DEVBUF);
 			return error;
 		}
 		ret = NA(ifp);
@@ -649,7 +632,7 @@ netmap_get_bdg_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 			goto out;
 		}
 		/* create a fake interface */
-		fake_ifp = malloc(sizeof(*ifp), M_DEVBUF, M_NOWAIT | M_ZERO);
+		fake_ifp = kmalloc(sizeof(*ifp), M_DEVBUF, M_NOWAIT | M_ZERO);
 		if (!fake_ifp) {
 			error = ENOMEM;
 			goto out;
@@ -657,7 +640,7 @@ netmap_get_bdg_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 		strcpy(fake_ifp->if_xname, name);
 		error = netmap_bwrap_attach(fake_ifp, ifp);
 		if (error) {
-			free(fake_ifp, M_DEVBUF);
+			kfree(fake_ifp, M_DEVBUF);
 			goto out;
 		}
 		ret = NA(fake_ifp);
@@ -706,7 +689,7 @@ nm_bdg_attach(struct nmreq *nmr)
 	struct netmap_bwrap_adapter *bna;
 	int error;
 
-	npriv = malloc(sizeof(*npriv), M_DEVBUF, M_NOWAIT|M_ZERO);
+	npriv = kmalloc(sizeof(*npriv), M_DEVBUF, M_NOWAIT|M_ZERO);
 	if (npriv == NULL)
 		return ENOMEM;
 	NMG_LOCK();
@@ -746,7 +729,7 @@ unref_exit:
 unlock_exit:
 	NMG_UNLOCK();
 	bzero(npriv, sizeof(*npriv));
-	free(npriv, M_DEVBUF);
+	kfree(npriv, M_DEVBUF);
 	return error;
 }
 
@@ -788,7 +771,7 @@ nm_bdg_detach(struct nmreq *nmr)
 		D("deleting priv");
 
 		bzero(npriv, sizeof(*npriv));
-		free(npriv, M_DEVBUF);
+		kfree(npriv, M_DEVBUF);
 	}
 
 unref_exit:
@@ -1297,9 +1280,9 @@ retry:
 		 * to report completion, and drop lock.
 		 * XXX this might become a helper function.
 		 */
-		mtx_lock(&kring->q_lock);
+		lockmgr(&kring->q_lock, LK_EXCLUSIVE);
 		if (kring->nkr_stopped) {
-			mtx_unlock(&kring->q_lock);
+			lockmgr(&kring->q_lock, LK_RELEASE);
 			goto cleanup;
 		}
 		if (dst_na->retry) {
@@ -1310,7 +1293,7 @@ retry:
 		if (needed < howmany)
 			howmany = needed;
 		lease_idx = nm_kr_lease(kring, howmany, 1);
-		mtx_unlock(&kring->q_lock);
+		lockmgr(&kring->q_lock, LK_RELEASE);
 
 		/* only retry if we need more than available slots */
 		if (retry && needed <= howmany)
@@ -1378,7 +1361,7 @@ retry:
 		    uint32_t update_pos;
 		    int still_locked = 1;
 
-		    mtx_lock(&kring->q_lock);
+		    lockmgr(&kring->q_lock, LK_EXCLUSIVE);
 		    if (unlikely(howmany > 0)) {
 			/* not used all bufs. If i am the last one
 			 * i can recover the slots, otherwise must
@@ -1427,13 +1410,13 @@ retry:
 				}
 				dst_na->up.nm_notify(&dst_na->up, dst_nr, NR_RX, 0);
 				still_locked = 0;
-				mtx_unlock(&kring->q_lock);
+				lockmgr(&kring->q_lock, LK_RELEASE);
 				if (dst_na->retry && retry--)
 					goto retry;
 			}
 		    }
 		    if (still_locked)
-			mtx_unlock(&kring->q_lock);
+			lockmgr(&kring->q_lock, LK_RELEASE);
 		}
 cleanup:
 		d->bq_head = d->bq_tail = NM_FT_NULL; /* cleanup */
@@ -1507,7 +1490,7 @@ bdg_netmap_rxsync(struct netmap_adapter *na, u_int ring_nr, int flags)
 	u_int k = ring->cur, resvd = ring->reserved;
 	int n;
 
-	mtx_lock(&kring->q_lock);
+	lockmgr(&kring->q_lock, LK_EXCLUSIVE);
 	if (k > lim) {
 		D("ouch dangerous reset!!!");
 		n = netmap_ring_reinit(kring);
@@ -1547,7 +1530,7 @@ bdg_netmap_rxsync(struct netmap_adapter *na, u_int ring_nr, int flags)
 	ring->avail = kring->nr_hwavail - resvd;
 	n = 0;
 done:
-	mtx_unlock(&kring->q_lock);
+	lockmgr(&kring->q_lock, LK_RELEASE);
 	return n;
 }
 
@@ -1558,7 +1541,7 @@ bdg_netmap_attach(struct netmap_adapter *arg)
 	struct netmap_adapter *na;
 	int error;
 
-	vpna = malloc(sizeof(*vpna), M_DEVBUF, M_NOWAIT | M_ZERO);
+	vpna = kmalloc(sizeof(*vpna), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (vpna == NULL)
 		return ENOMEM;
  	na = &vpna->up;
@@ -1576,7 +1559,7 @@ bdg_netmap_attach(struct netmap_adapter *arg)
 	/* other nmd fields are set in the common routine */
 	error = netmap_attach_common(na);
 	if (error) {
-		free(vpna, M_DEVBUF);
+		kfree(vpna, M_DEVBUF);
 		return error;
 	}
 	return 0;
@@ -1602,7 +1585,7 @@ netmap_bwrap_dtor(struct netmap_adapter *na)
 	netmap_adapter_put(hwna);
 
 	bzero(ifp, sizeof(*ifp));
-	free(ifp, M_DEVBUF);
+	kfree(ifp, M_DEVBUF);
 	na->ifp = NULL;
 
 }
@@ -1870,7 +1853,7 @@ netmap_bwrap_attach(struct ifnet *fake, struct ifnet *real)
 	int error;
 
 
-	bna = malloc(sizeof(*bna), M_DEVBUF, M_NOWAIT | M_ZERO);
+	bna = kmalloc(sizeof(*bna), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (bna == NULL)
 		return ENOMEM;
 
@@ -1919,7 +1902,7 @@ netmap_bwrap_attach(struct ifnet *fake, struct ifnet *real)
 	error = netmap_attach_common(na);
 	if (error) {
 		netmap_adapter_put(hwna);
-		free(bna, M_DEVBUF);
+		kfree(bna, M_DEVBUF);
 		return error;
 	}
 	return 0;

@@ -60,10 +60,7 @@
  *
  */
 
-#ifdef __FreeBSD__
-
-#include <sys/cdefs.h> /* prerequisite */
-__FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257666 2013-11-05 01:06:22Z luigi $");
+/* __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257666 2013-11-05 01:06:22Z luigi $"); */
 
 #include <sys/types.h>
 #include <sys/errno.h>
@@ -74,12 +71,13 @@ __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257666 2013-11-05 01:06:22Z lui
 #include <sys/selinfo.h>
 #include <net/if.h>
 #include <net/if_var.h>
-#include <machine/bus.h>        /* bus_dmamap_* in netmap_kern.h */
+#include <sys/bus.h>        /* bus_dmamap_* in netmap_kern.h */
 
 // XXX temporary - D() defined here
 #include <net/netmap.h>
-#include <dev/netmap/netmap_kern.h>
-#include <dev/netmap/netmap_mem2.h>
+
+#include "netmap_kern.h"
+#include "netmap_mem2.h"
 
 #define rtnl_lock() D("rtnl_lock called");
 #define rtnl_unlock() D("rtnl_lock called");
@@ -107,30 +105,6 @@ __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257666 2013-11-05 01:06:22Z lui
 
 
 #define GET_MBUF_REFCNT(m)	((m)->m_ext.ref_cnt ? *(m)->m_ext.ref_cnt : -1)
-
-
-
-#else /* linux */
-
-#include "bsd_glue.h"
-
-#include <linux/rtnetlink.h>    /* rtnl_[un]lock() */
-#include <linux/ethtool.h>      /* struct ethtool_ops, get_ringparam */
-#include <linux/hrtimer.h>
-
-//#define RATE  /* Enables communication statistics. */
-
-//#define REG_RESET
-
-#endif /* linux */
-
-
-/* Common headers. */
-#include <net/netmap.h>
-#include <dev/netmap/netmap_kern.h>
-#include <dev/netmap/netmap_mem2.h>
-
-
 
 /* ======================== usage stats =========================== */
 
@@ -237,7 +211,7 @@ int generic_netmap_register(struct netmap_adapter *na, int enable)
 	 */
         for (r=0; r<na->num_tx_rings; r++) {
             na->tx_rings[r].nr_ntc = 0;
-            na->tx_rings[r].tx_pool = malloc(na->num_tx_desc * sizeof(struct mbuf *),
+            na->tx_rings[r].tx_pool = kmalloc(na->num_tx_desc * sizeof(struct mbuf *),
 				    M_DEVBUF, M_NOWAIT | M_ZERO);
             if (!na->tx_rings[r].tx_pool) {
                 D("tx_pool allocation failed");
@@ -305,7 +279,7 @@ int generic_netmap_register(struct netmap_adapter *na, int enable)
             for (i=0; i<na->num_tx_desc; i++) {
                 m_freem(na->tx_rings[r].tx_pool[i]);
             }
-            free(na->tx_rings[r].tx_pool, M_DEVBUF);
+            kfree(na->tx_rings[r].tx_pool, M_DEVBUF);
         }
 
 #ifdef RATE
@@ -336,7 +310,7 @@ free_mbufs:
         for (; i>=0; i--) {
             m_freem(na->tx_rings[r].tx_pool[i]);
         }
-        free(na->tx_rings[r].tx_pool, M_DEVBUF);
+        kfree(na->tx_rings[r].tx_pool, M_DEVBUF);
         i = na->num_tx_desc - 1;
     }
 
@@ -354,13 +328,11 @@ generic_mbuf_destructor(struct mbuf *m)
     if (netmap_verbose)
 	    D("Tx irq (%p) queue %d", m, MBUF_TXQ(m));
     netmap_generic_irq(MBUF_IFP(m), MBUF_TXQ(m), NULL);
-#ifdef __FreeBSD__
     m->m_ext.ext_type = EXT_PACKET;
     m->m_ext.ext_free = NULL;
     if (*(m->m_ext.ref_cnt) == 0)
 	*(m->m_ext.ref_cnt) = 1;
     uma_zfree(zone_pack, m);
-#endif /* __FreeBSD__ */
     IFRATE(rate_ctx.new.txirq++);
 }
 
@@ -783,7 +755,7 @@ generic_netmap_attach(struct ifnet *ifp)
     generic_find_num_desc(ifp, &num_tx_desc, &num_rx_desc);
     ND("Netmap ring size: TX = %d, RX = %d", num_tx_desc, num_rx_desc);
 
-    gna = malloc(sizeof(*gna), M_DEVBUF, M_NOWAIT | M_ZERO);
+    gna = kmalloc(sizeof(*gna), M_DEVBUF, M_NOWAIT | M_ZERO);
     if (gna == NULL) {
         D("no memory on attach, give up");
         return ENOMEM;
@@ -811,7 +783,7 @@ generic_netmap_attach(struct ifnet *ifp)
 
     retval = netmap_attach_common(na);
     if (retval) {
-        free(gna, M_DEVBUF);
+        kfree(gna, M_DEVBUF);
     }
 
     return retval;
