@@ -46,9 +46,9 @@
 .In pthread.h
 .Ft int
 .Fo pthread_atfork
-.Fa "void \*[lp]*prepare\*[rp]\*[lp]void\*[rp]"
-.Fa "void \*[lp]*parent\*[rp]\*[lp]void\*[rp]"
-.Fa "void \*[lp]*child\*[rp]\*[lp]void\*[rp]"
+.Fa "void (*prepare)(void)"
+.Fa "void (*parent)(void)"
+.Fa "void (*child)(void)"
 .Fc
 .Sh DESCRIPTION
 The

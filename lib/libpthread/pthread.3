@@ -75,7 +75,7 @@ Cleanup Routines
 .Ft int
 .Fo pthread_create
 .Fa "pthread_t *thread" "const pthread_attr_t *attr"
-.Fa "void *\*[lp]*start_routine\*[rp]\*[lp]void *\*[rp]" "void *arg"
+.Fa "void *(*start_routine)(void *)" "void *arg"
 .Fc
 .Xc
 Creates a new thread of execution.
@@ -111,7 +111,7 @@ Causes the calling thread to wait for the termination of the specified thread.
 Delivers a signal to a specified thread.
 .It Xo
 .Ft int
-.Fn pthread_once "pthread_once_t *once_control" "void \*[lp]*init_routine\*[rp]\*[lp]void\*[rp]"
+.Fn pthread_once "pthread_once_t *once_control" "void (*init_routine)(void)"
 .Xc
 Calls an initialization routine once.
 .It Xo
@@ -463,7 +463,7 @@ Set the process-shared attribute in a barrier attribute object.
 .Bl -tag -width indent
 .It Xo
 .Ft int
-.Fn pthread_key_create "pthread_key_t *key" "void \*[lp]*routine\*[rp]\*[lp]void *\*[rp]"
+.Fn pthread_key_create "pthread_key_t *key" "void (*routine)(void *)"
 .Xc
 Create a thread-specific data key.
 .It Xo
@@ -487,9 +487,9 @@ Set the thread-specific value for the specified key.
 .It Xo
 .Ft int
 .Fo pthread_atfork
-.Fa "void \*[lp]*prepare\*[rp]\*[lp]void\*[rp]"
-.Fa "void \*[lp]*parent\*[rp]\*[lp]void\*[rp]"
-.Fa "void \*[lp]*child\*[rp]\*[lp]void\*[rp]"
+.Fa "void (*prepare)(void)"
+.Fa "void (*parent)(void)"
+.Fa "void (*child)(void)"
 .Fc
 .Xc
 Register fork handlers
@@ -501,7 +501,7 @@ Remove the routine at the top of the calling thread's cancellation cleanup
 stack and optionally invoke it.
 .It Xo
 .Ft void
-.Fn pthread_cleanup_push "void \*[lp]*routine\*[rp]\*[lp]void *\*[rp]" "void *routine_arg"
+.Fn pthread_cleanup_push "void (*routine)(void *)" "void *routine_arg"
 .Xc
 Push the specified cancellation cleanup handler onto the calling thread's
 cancellation stack.
