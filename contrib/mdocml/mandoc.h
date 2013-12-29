@@ -65,7 +65,7 @@ enum	mandocerr {
 	MANDOCERR_BADNAMESEC, /* bad NAME section contents */
 	MANDOCERR_SECOOO, /* sections out of conventional order */
 	MANDOCERR_SECREP, /* duplicate section name */
-	MANDOCERR_SECMSEC, /* section header suited to sections ... */
+	MANDOCERR_SECMSEC, /* section header not suited to manual section */
 
 	/* related to macros and nesting */
 	MANDOCERR_MACROOBS, /* skipping obsolete macro */

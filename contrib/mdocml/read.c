@@ -106,7 +106,7 @@ static	const char * const	mandocerrs[MANDOCERR_MAX] = {
 	"bad NAME section contents",
 	"sections out of conventional order",
 	"duplicate section name",
-	"section header suited to sections 2, 3, and 9 only",
+	"section header not suited to manual section",
 
 	/* related to macros and nesting */
 	"skipping obsolete macro",

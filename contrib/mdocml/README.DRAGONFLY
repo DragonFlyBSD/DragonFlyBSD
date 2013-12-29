@@ -13,7 +13,10 @@ Local modifications applied to the following files:
 	config.h
 	lib.in
 	Makefile
+	mandoc.h
+	mdoc_validate.c
 	msec.in
+	read.c
 
 The source code is currently kept in sync with the stable branch of
 the upstream CVS for collaboration purposes.
