@@ -14,7 +14,6 @@ MAN=	acct.5 \
 	disktab.5 \
 	elf.5 \
 	ethers.5 \
-	euc.5 \
 	eui64.5 \
 	fbtab.5 \
 	fdesc.5 \
@@ -22,8 +21,6 @@ MAN=	acct.5 \
 	forward.5 \
 	fs.5 \
 	fstab.5 \
-	gb18030.5 \
-	gbk.5 \
 	group.5 \
 	hammer.5 \
 	hosts.5 \
@@ -59,8 +56,6 @@ MAN=	acct.5 \
 	stab.5 \
 	sysctl.conf.5 \
 	tmpfs.5 \
-	utf2.5 \
-	utf8.5 \
 	utmp.5 \
 	utmpx.5 \
 	uuids.5 \
