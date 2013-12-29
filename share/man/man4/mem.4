@@ -27,7 +27,6 @@
 .\"
 .\"	@(#)mem.4	5.3 (Berkeley) 5/2/91
 .\" $FreeBSD: src/share/man/man4/mem.4,v 1.7.2.5 2002/02/27 03:39:23 dd Exp $
-.\" $DragonFly: src/share/man/man4/mem.4,v 1.8 2007/05/17 08:19:01 swildner Exp $
 .\"
 .Dd May 2, 1991
 .Dt MEM 4
@@ -158,7 +157,12 @@ should be set to
 to update an existing or establish a new range, or to
 .Dv MEMRANGE_SET_REMOVE
 to remove a range.
-.Sh RETURN VALUES
+.Sh FILES
+.Bl -tag -width /dev/kmem -compact
+.It Pa /dev/mem
+.It Pa /dev/kmem
+.El
+.Sh ERRORS
 .Bl -tag -width Er
 .It Bq Er EOPNOTSUPP
 Memory range operations are not supported on this architecture.
@@ -179,11 +183,6 @@ base/length supplied.
 .It Bq Er EPERM
 An attempt to remove a range failed because the range is permanently
 enabled.
-.El
-.Sh FILES
-.Bl -tag -width /dev/kmem -compact
-.It Pa /dev/mem
-.It Pa /dev/kmem
 .El
 .Sh SEE ALSO
 .Xr memcontrol 8
