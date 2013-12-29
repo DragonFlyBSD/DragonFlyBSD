@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/monetary.h,v 1.7 2002/09/20 08:22:48 mike Exp $
- * $DragonFly: src/include/monetary.h,v 1.1 2008/10/06 21:01:37 swildner Exp $
  */
 
 #ifndef _MONETARY_H_
@@ -45,6 +44,10 @@ typedef	__ssize_t	ssize_t;
 
 __BEGIN_DECLS
 ssize_t	strfmon(char * __restrict, size_t, const char * __restrict, ...);
+
+#if __POSIX_VISIBLE >= 200809 || defined(_XLOCALE_H_)
+#include <xlocale/_monetary.h>
+#endif
 __END_DECLS
 
 #endif /* !_MONETARY_H_ */
