@@ -57,24 +57,24 @@
 .Ft int
 .Fo devinfo_foreach_device_child
 .Fa "struct devinfo_dev *parent"
-.Fa "int \*[lp]*fn\*[rp]\*[lp]struct devinfo_dev *child, void *arg\*[rp]"
+.Fa "int (*fn)(struct devinfo_dev *child, void *arg)"
 .Fa "void *arg"
 .Fc
 .Ft int
 .Fo devinfo_foreach_device_resource
 .Fa "struct devinfo_dev *dev"
-.Fa "int \*[lp]*fn\*[rp]\*[lp]struct devinfo_dev *dev, \:struct devinfo_res *res, void *arg\*[rp]"
+.Fa "int (*fn)(struct devinfo_dev *dev, \:struct devinfo_res *res, \:void *arg)"
 .Fa "void *arg"
 .Fc
 .Ft int
 .Fo devinfo_foreach_rman_resource
 .Fa "struct devinfo_rman *rman"
-.Fa "int \*[lp]*fn\*[rp]\*[lp]struct devinfo_res *res, void *arg\*[rp]"
+.Fa "int (*fn)(struct devinfo_res *res, void *arg)"
 .Fa "void *arg"
 .Fc
 .Ft int
 .Fo devinfo_foreach_rman
-.Fa "int \*[lp]*fn\*[rp]\*[lp]struct devinfo_rman *rman, void *arg\*[rp]"
+.Fa "int (*fn)(struct devinfo_rman *rman, void *arg)"
 .Fa "void *arg"
 .Fc
 .Sh DESCRIPTION

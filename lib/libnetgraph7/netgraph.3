@@ -92,8 +92,8 @@
 .Fn NgSetDebug "int level"
 .Ft void
 .Fo NgSetErrLog
-.Fa "void \*[lp]*log\*[rp]\*[lp]const char *fmt, ...\*[rp]"
-.Fa "void \*[lp]*logx\*[rp]\*[lp]const char *fmt, ...\*[rp]"
+.Fa "void (*log)(const char *fmt, ...)"
+.Fa "void (*logx)(const char *fmt, ...)"
 .Fc
 .Sh DESCRIPTION
 These functions facilitate user-mode program participation in the kernel
