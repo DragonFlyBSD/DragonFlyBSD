@@ -36,7 +36,7 @@
 .In sys/types.h
 .In sys/systm.h
 .Ft "typedef void"
-.Fn \*[lp]*forklist_fn\*[rp] "struct proc *" "struct proc *" int
+.Fn (*forklist_fn) "struct proc *" "struct proc *" int
 .Pp
 .Ft int
 .Fn at_fork "forklist_fn func"

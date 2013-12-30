@@ -542,16 +542,16 @@ The calling convention for the three driver-supplied routines is:
 .Bl -item -compact
 .It
 .Ft int
-.Fn \*[lp]*newsession\*[rp] "void *" "u_int32_t *" "struct cryptoini *" ;
+.Fn (*newsession) "void *" "u_int32_t *" "struct cryptoini *" ;
 .It
 .Ft int
-.Fn \*[lp]*freesession\*[rp] "void *" "u_int64_t" ;
+.Fn (*freesession) "void *" "u_int64_t" ;
 .It
 .Ft int
-.Fn \*[lp]*process\*[rp] "void *" "struct cryptop *" ;
+.Fn (*process) "void *" "struct cryptop *" ;
 .It
 .Ft int
-.Fn \*[lp]*kprocess\*[rp] "void *" "struct cryptkop *" ;
+.Fn (*kprocess) "void *" "struct cryptkop *" ;
 .El
 .Pp
 On invocation, the first argument to

@@ -84,31 +84,31 @@
 .\"
 .Ss "struct ifnet Member Functions"
 .Ft int
-.Fo \*(lp*if_output\*(rp
+.Fo (*if_output)
 .Fa "struct ifnet *ifp" "struct mbuf *m"
 .Fa "struct sockaddr *dst" "struct rtentry *rt"
 .Fc
 .Ft void
-.Fn \*(lp*if_input\*(rp "struct ifnet *ifp" "struct mbuf *m"
+.Fn (*if_input) "struct ifnet *ifp" "struct mbuf *m"
 .Ft void
-.Fn \*(lp*if_start\*(rp "struct ifnet *ifp"
+.Fn (*if_start) "struct ifnet *ifp"
 .Ft int
-.Fo \*(lp*if_ioctl\*(rp
+.Fo (*if_ioctl)
 .Fa "struct ifnet *ifp" "u_long command" "caddr_t data" "struct ucred *cr"
 .Fc
 .Ft void
-.Fn \*(lp*if_watchdog\*(rp "struct ifnet *ifp"
+.Fn (*if_watchdog) "struct ifnet *ifp"
 .Ft void
-.Fn \*(lp*if_init\*(rp "void *if_softc"
+.Fn (*if_init) "void *if_softc"
 .Ft int
-.Fo \*(lp*if_resolvemulti\*(rp
+.Fo (*if_resolvemulti)
 .Fa "struct ifnet *ifp" "struct sockaddr **retsa" "struct sockaddr *addr"
 .Fc
 .Ft void
-.Fn \*(lp*if_poll\*(rp "struct ifnet *ifp" "enum poll_cmd cmd" "int count"
+.Fn (*if_poll) "struct ifnet *ifp" "enum poll_cmd cmd" "int count"
 .Ss "struct ifaddr member function"
 .Ft void
-.Fo \*(lp*ifa_rtrequest\*(rp
+.Fo (*ifa_rtrequest)
 .Fa "int cmd" "struct rtentry *rt" "struct sockaddr *dst"
 .Fc
 .\"
