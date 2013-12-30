@@ -26,10 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)colcrt.1	8.1 (Berkeley) 6/30/93
-.\" $FreeBSD: src/usr.bin/colcrt/colcrt.1,v 1.4.2.6 2003/02/24 23:04:38 trhodes Exp $
-.\" $DragonFly: src/usr.bin/colcrt/colcrt.1,v 1.3 2006/02/17 19:38:58 swildner Exp $
+.\" $FreeBSD: head/usr.bin/colcrt/colcrt.1 216370 2010-12-11 08:32:16Z joel $
 .\"
-.Dd June 30, 1993
+.Dd December 30, 2013
 .Dt COLCRT 1
 .Os
 .Sh NAME
@@ -67,6 +66,17 @@ The
 option is useful for sending output to the line printer when the output
 contains superscripts and subscripts which would otherwise be invisible.
 .El
+.Sh ENVIRONMENT
+The
+.Ev LANG , LC_ALL
+and
+.Ev LC_CTYPE
+environment variables affect the execution of
+.Nm
+as described in
+.Xr environ 7 .
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 A typical use of
 .Nm
@@ -91,7 +101,7 @@ Should fold underlines onto blanks even with the
 option so that
 a true underline character would show.
 .Pp
-Can't back up more than 102 lines.
+Cannot back up more than 102 lines.
 .Pp
 General overstriking is lost;
 as a special case
@@ -105,3 +115,6 @@ Lines are trimmed to 132 characters.
 .Pp
 Some provision should be made for processing superscripts and subscripts
 in documents which are already double-spaced.
+.Pp
+Characters that take up more than one column position may not be
+underlined correctly.
