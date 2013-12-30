@@ -26,10 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)ul.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.bin/ul/ul.1,v 1.6.2.4 2002/06/21 15:29:52 charnier Exp $
-.\" $DragonFly: src/usr.bin/ul/ul.1,v 1.4 2006/04/17 18:01:38 swildner Exp $
+.\" $FreeBSD: head/usr.bin/ul/ul.1 216370 2010-12-11 08:32:16Z joel $
 .\"
-.Dd June 6, 1993
+.Dd December 30, 2013
 .Dt UL 1
 .Os
 .Sh NAME
@@ -39,7 +38,7 @@
 .Nm
 .Op Fl i
 .Op Fl t Ar terminal
-.Op Ar name Ar ...
+.Op Ar
 .Sh DESCRIPTION
 The
 .Nm
@@ -61,35 +60,30 @@ degenerates to
 If the terminal cannot underline, underlining is ignored.
 .Pp
 The following options are available:
-.Bl -tag -width Ds
+.Bl -tag -width indent
 .It Fl i
 Underlining is indicated by a separate line containing appropriate
-dashes `\-'; this is useful when you want to look at the underlining
+dashes
+.Ql \- ;
+this is useful when you want to look at the underlining
 which is present in an
 .Xr nroff 1
-output stream on a crt-terminal.
+output stream on a CRT-terminal.
 .It Fl t Ar terminal
 Overrides the terminal type specified in the environment with
 .Ar terminal .
 .El
 .Sh ENVIRONMENT
-The following environment variable is used:
-.Bl -tag -width TERM
-.It Ev TERM
 The
+.Ev LANG , LC_ALL , LC_CTYPE
+and
 .Ev TERM
-variable is used to relate a tty device
-with its device capability description (see
-.Xr termcap 5 ) .
-.Ev TERM
-is set at login time, either by the default terminal type
-specified in
-.Pa /etc/ttys
-or as set during the login process by the user in their
-.Pa login
-file (see
-.Xr environ 7 ) .
-.El
+environment variables affect the execution of
+.Nm
+as described in
+.Xr environ 7 .
+.Sh EXIT STATUS
+.Ex -std
 .Sh SEE ALSO
 .Xr colcrt 1 ,
 .Xr man 1 ,
@@ -103,5 +97,6 @@ command appeared in
 The
 .Xr nroff 1
 command usually outputs a series of backspaces and underlines intermixed
-with the text to indicate underlining.  No attempt is made to optimize
+with the text to indicate underlining.
+No attempt is made to optimize
 the backward motion.
