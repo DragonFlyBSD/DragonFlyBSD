@@ -31,8 +31,7 @@
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)paste.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/paste/paste.c,v 1.6.2.2 2002/07/14 15:16:00 tjr Exp $
- * $DragonFly: src/usr.bin/paste/paste.c,v 1.3 2004/12/15 23:11:06 cpressey Exp $
+ * $FreeBSD: head/usr.bin/paste/paste.c 227242 2011-11-06 18:49:53Z ed $
  */
 
 #include <sys/types.h>
@@ -40,31 +39,49 @@
 #include <err.h>
 #include <errno.h>
 #include <limits.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wchar.h>
 
-char *delim;
-int delimcnt;
+static wchar_t *delim;
+static int delimcnt;
 
-int parallel(char **);
-int sequential(char **);
-int tr(char *);
+static int parallel(char **);
+static int sequential(char **);
+static int tr(wchar_t *);
 static void usage(void);
 
-char tab[] = "\t";
+static wchar_t tab[] = L"\t";
 
 int
 main(int argc, char *argv[])
 {
 	int ch, rval, seq;
+	wchar_t *warg;
+	const char *arg;
+	size_t len;
+
+	setlocale(LC_CTYPE, "");
 
 	seq = 0;
 	while ((ch = getopt(argc, argv, "d:s")) != -1)
 		switch(ch) {
 		case 'd':
-			delimcnt = tr(delim = optarg);
+			arg = optarg;
+			len = mbsrtowcs(NULL, &arg, 0, NULL);
+			if (len == (size_t)-1)
+				err(1, "delimiters");
+			warg = malloc((len + 1) * sizeof(*warg));
+			if (warg == NULL)
+				err(1, NULL);
+			arg = optarg;
+			len = mbsrtowcs(warg, &arg, len + 1, NULL);
+			if (len == (size_t)-1)
+				err(1, "delimiters");
+			delimcnt = tr(delim = warg);
 			break;
 		case 's':
 			seq = 1;
@@ -97,18 +114,18 @@ typedef struct _list {
 	char *name;
 } LIST;
 
-int
+static int
 parallel(char **argv)
 {
 	LIST *lp;
 	int cnt;
-	char ch, *buf, *p;
+	wint_t ich;
+	wchar_t ch;
+	char *p;
 	LIST *head, *tmp;
 	int opencnt, output;
-	size_t len;
 
-	tmp = NULL;
-	for (cnt = 0, head = NULL; (p = *argv); ++argv, ++cnt) {
+	for (cnt = 0, head = tmp = NULL; (p = *argv); ++argv, ++cnt) {
 		if ((lp = malloc(sizeof(LIST))) == NULL)
 			err(1, NULL);
 		if (p[0] == '-' && !p[1])
@@ -131,16 +148,16 @@ parallel(char **argv)
 			if (!lp->fp) {
 				if (output && lp->cnt &&
 				    (ch = delim[(lp->cnt - 1) % delimcnt]))
-					putchar(ch);
+					putwchar(ch);
 				continue;
 			}
-			if ((buf = fgetln(lp->fp, &len)) == NULL) {
+			if ((ich = getwc(lp->fp)) == WEOF) {
 				if (!--opencnt)
 					break;
 				lp->fp = NULL;
 				if (output && lp->cnt &&
 				    (ch = delim[(lp->cnt - 1) % delimcnt]))
-					putchar(ch);
+					putwchar(ch);
 				continue;
 			}
 			/*
@@ -151,27 +168,29 @@ parallel(char **argv)
 				output = 1;
 				for (cnt = 0; cnt < lp->cnt; ++cnt)
 					if ((ch = delim[cnt % delimcnt]))
-						putchar(ch);
+						putwchar(ch);
 			} else if ((ch = delim[(lp->cnt - 1) % delimcnt]))
-				putchar(ch);
-			if (buf[len - 1] == '\n')
-				len--;
-			fwrite(buf, 1, len, stdout);
+				putwchar(ch);
+			if (ich == '\n')
+				continue;
+			do {
+				putwchar(ich);
+			} while ((ich = getwc(lp->fp)) != WEOF && ich != '\n');
 		}
 		if (output)
-			putchar('\n');
+			putwchar('\n');
 	}
 
 	return (0);
 }
 
-int
+static int
 sequential(char **argv)
 {
 	FILE *fp;
 	int cnt, failed, needdelim;
-	char *buf, *p;
-	size_t len;
+	wint_t ch;
+	char *p;
 
 	failed = 0;
 	for (; (p = *argv); ++argv) {
@@ -183,21 +202,21 @@ sequential(char **argv)
 			continue;
 		}
 		cnt = needdelim = 0;
-		while ((buf = fgetln(fp, &len)) != NULL) {
+		while ((ch = getwc(fp)) != WEOF) {
 			if (needdelim) {
 				needdelim = 0;
 				if (delim[cnt] != '\0')
-					putchar(delim[cnt]);
+					putwchar(delim[cnt]);
 				if (++cnt == delimcnt)
 					cnt = 0;
 			}
-			if (buf[len - 1] == '\n')
-				len--;
-			fwrite(buf, 1, len, stdout);
-			needdelim = 1;
+			if (ch != '\n')
+				putwchar(ch);
+			else
+				needdelim = 1;
 		}
 		if (needdelim)
-			putchar('\n');
+			putwchar('\n');
 		if (fp != stdin)
 			(void)fclose(fp);
 	}
@@ -205,11 +224,11 @@ sequential(char **argv)
 	return (failed != 0);
 }
 
-int
-tr(char *arg)
+static int
+tr(wchar_t *arg)
 {
 	int cnt;
-	char ch, *p;
+	wchar_t ch, *p;
 
 	for (p = arg, cnt = 0; (ch = *p++); ++arg, ++cnt)
 		if (ch == '\\')

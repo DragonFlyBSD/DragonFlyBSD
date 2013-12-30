@@ -30,10 +30,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)paste.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.bin/paste/paste.1,v 1.4.2.8 2003/02/24 23:04:39 trhodes Exp $
-.\" $DragonFly: src/usr.bin/paste/paste.1,v 1.2 2003/06/17 04:29:30 dillon Exp $
+.\" $FreeBSD: head/usr.bin/paste/paste.1 216370 2010-12-11 08:32:16Z joel $
 .\"
-.Dd September 20, 2001
+.Dd December 30, 2013
 .Dt PASTE 1
 .Os
 .Sh NAME
@@ -56,7 +55,7 @@ of empty lines.
 .Pp
 The options are as follows:
 .Bl -tag -width Fl
-.It Fl d  Ar list
+.It Fl d Ar list
 Use one or more of the provided characters to replace the newline
 characters instead of the default tab.
 The characters in
@@ -107,6 +106,15 @@ is specified for one or more of the input files, the standard
 input is used; standard input is read one line at a time, circularly,
 for each instance of
 .Sq Fl .
+.Sh ENVIRONMENT
+The
+.Ev LANG , LC_ALL
+and
+.Ev LC_CTYPE
+environment variables affect the execution of
+.Nm
+as described in
+.Xr environ 7 .
 .Sh EXIT STATUS
 .Ex -std
 .Sh EXAMPLES
@@ -145,7 +153,3 @@ A
 .Nm
 command appeared in
 .At 32v .
-.Sh BUGS
-Multibyte character delimiters cannot be specified with the
-.Fl d
-option.
