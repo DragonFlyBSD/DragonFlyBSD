@@ -147,6 +147,7 @@ SUBDIR=	alias \
 	patch \
 	pathchk \
 	pctrack \
+	perror \
 	pkg_radd \
 	pkg_search \
 	pkill \
