@@ -28,15 +28,16 @@
  *
  * @(#) Copyright (c) 1987, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rev.c	8.3 (Berkeley) 5/4/95
- * $DragonFly: src/usr.bin/rev/rev.c,v 1.8 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/types.h>
 
 #include <err.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <wchar.h>
 
 static void	usage(void);
 static int	dorev(FILE *, const char *);
@@ -48,6 +49,8 @@ main(int argc, char **argv)
 	int ch, i, rval;
 
 	rval = 0;
+
+	setlocale(LC_ALL, "");
 
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch(ch) {
@@ -85,15 +88,15 @@ usage(void)
 static int 
 dorev(FILE *fp, const char *filepath)
 {
-	const char *p, *t;
+	const wchar_t *p, *t;
 	size_t len;
 	
-	while ((p = fgetln(fp, &len)) != NULL) {
+	while ((p = fgetwln(fp, &len)) != NULL) {
 			if (p[len - 1] == '\n')
 				--len;
 			for (t = p + len - 1; t >= p; --t)
-				putchar(*t);
-			putchar('\n');
+				putwchar(*t);
+			putwchar('\n');
 	}
 	
 	if (ferror(fp)) {
