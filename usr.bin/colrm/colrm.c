@@ -26,34 +26,36 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/colrm/colrm.c,v 1.7.2.1 2001/08/02 01:33:29 obrien Exp $
- * $DragonFly: src/usr.bin/colrm/colrm.c,v 1.5 2005/08/04 17:31:22 drhodus Exp $
+ * $FreeBSD: head/usr.bin/colrm/colrm.c 216370 2010-12-11 08:32:16Z joel $
  *
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)colrm.c	8.2 (Berkeley) 5/4/95
  */
 
 #include <sys/types.h>
-#include <limits.h>
 #include <err.h>
 #include <errno.h>
+#include <limits.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wchar.h>
 
 #define	TAB	8
 
-int main(int, char *[]);
 void check(FILE *);
 static void usage(void);
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	u_long column, start, stop;
-	int ch;
+	int ch, width;
 	char *p;
+
+	setlocale(LC_ALL, "");
 
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch(ch) {
@@ -86,8 +88,8 @@ main(int argc, char **argv)
 		errx(1, "illegal start and stop columns");
 
 	for (column = 0;;) {
-		switch (ch = getchar()) {
-		case EOF:
+		switch (ch = getwchar()) {
+		case WEOF:
 			check(stdin);
 			break;
 		case '\b':
@@ -101,12 +103,13 @@ main(int argc, char **argv)
 			column = (column + TAB) & ~(TAB - 1);
 			break;
 		default:
-			++column;
+			if ((width = wcwidth(ch)) > 0)
+				column += width;
 			break;
 		}
 
 		if ((!start || column < start || (stop && column > stop)) &&
-		    putchar(ch) == EOF)
+		    putwchar(ch) == WEOF)
 			check(stdout);
 	}
 }
