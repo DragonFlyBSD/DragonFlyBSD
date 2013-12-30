@@ -26,9 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)column.1	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.bin/column/column.1,v 1.5.2.4 2001/08/16 13:16:46 ru Exp $
+.\" $FreeBSD: head/usr.bin/column/column.1 216370 2010-12-11 08:32:16Z joel $
 .\"
-.Dd June 6, 1993
+.Dd December 30, 2013
 .Dt COLUMN 1
 .Os
 .Sh NAME
@@ -71,13 +71,14 @@ Useful for pretty-printing displays.
 Fill columns before filling rows.
 .El
 .Sh ENVIRONMENT
-.Bl -tag -width COLUMNS
-.It Ev COLUMNS
-The environment variable
-.Ev COLUMNS
-is used to determine the size of
-the screen if no other information is available.
-.El
+The
+.Ev COLUMNS , LANG , LC_ALL
+and
+.Ev LC_CTYPE
+environment variables affect the execution of
+.Nm
+as described in
+.Xr environ 7 .
 .Sh EXIT STATUS
 .Ex -std
 .Sh EXAMPLES
@@ -94,3 +95,7 @@ The
 .Nm
 command appeared in
 .Bx 4.3 Reno .
+.Sh BUGS
+Input lines are limited to
+.Dv LINE_MAX
+(2048) bytes in length.
