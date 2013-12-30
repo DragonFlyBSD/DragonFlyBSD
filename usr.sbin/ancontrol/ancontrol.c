@@ -82,7 +82,6 @@ static void an_enable_tx_key(const char *, char *);
 static void an_enable_leap_mode(const char *, char *);
 static void usage	(char *);
 static void 		an_dumprssimap(const char *);
-int main		(int, char **);
 
 #define ACT_DUMPSTATS 1
 #define ACT_DUMPCONFIG 2

@@ -120,7 +120,6 @@ void	MCAddMsg(int, const char *);
 void	MCAddSet(int);
 void	MCDelSet(int);
 void	usage(void);
-int	main(int, char **);
 
 void
 usage(void)

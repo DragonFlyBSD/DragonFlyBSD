@@ -107,7 +107,6 @@ static void	 cleanup(int _signo);
 static void	 copy(const struct printer *_pp, int _f, const char _n[]);
 static char	*itoa(int _i);
 static const char  *linked(const char *_file);
-int		 main(int _argc, char *_argv[]);
 static char	*lmktemp(const struct printer *_pp, const char *_id,
 		    int _num, int len);
 static void	 mktemps(const struct printer *_pp);

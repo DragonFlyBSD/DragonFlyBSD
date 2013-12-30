@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/usr.sbin/setkey/setkey.c,v 1.1.2.3 2003/04/26 23:53:54 sumikawa Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/setkey.c,v 1.6 2005/12/05 02:40:28 swildner Exp $	*/
 /*	$KAME: setkey.c,v 1.18 2001/05/08 04:36:39 itojun Exp $	*/
 
 /*
@@ -55,7 +54,6 @@
 #include "libpfkey.h"
 
 void Usage(void);
-int main(int, char **);
 int get_supported(void);
 void sendkeyshort(u_int);
 void promisc(void);

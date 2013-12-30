@@ -34,7 +34,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pac.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/lpr/pac/pac.c,v 1.10.2.4 2002/04/26 18:17:52 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/pac/pac.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -86,7 +85,6 @@ struct hent {
 
 static struct	hent	*hashtab[HSHSIZE];	/* Hash table proper */
 
-int		 main(int argc, char **_argv);
 static void	 account(FILE *_acctf);
 static int	 any(int _ch, const char _str[]);
 static int	 chkprinter(const char *_ptrname);

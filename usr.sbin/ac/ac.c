@@ -13,7 +13,6 @@
  *      other than his own.
  *
  * $FreeBSD: src/usr.sbin/ac/ac.c,v 1.14.2.2 2002/03/12 19:55:04 phantom Exp $
- * $DragonFly: src/usr.sbin/ac/ac.c,v 1.6 2004/03/20 17:46:47 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -81,7 +80,6 @@ static struct tty_list *Ttys = NULL;
 static int Debug = 0;
 #endif
 
-int			main(int, char **);
 int			ac(FILE *);
 struct tty_list		*add_tty(char *);
 int			do_tty(char *);

@@ -45,8 +45,6 @@
 #include <unistd.h>
 #include <paths.h>
 
-int main(int, char *[]);
-
 int
 main(int argc, char *argv[])
 {

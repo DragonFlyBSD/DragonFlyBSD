@@ -149,7 +149,6 @@ Hash_Entry *make_fake_provision(filenode *);
 void crunch_all_files(void);
 void initialize(void);
 void generate_ordering(void);
-int main(int, char *[]);
 
 int
 main(int argc, char **argv)

@@ -126,7 +126,6 @@ static void pr_log(void *, char *, ...);
 
 extern	char	*ttyname(int);
 extern	char	*getlogin(void);
-int main(int, char *[]);
 
 #ifdef ultrix
 #undef	O_NONBLOCK

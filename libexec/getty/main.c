@@ -131,8 +131,6 @@ static void	setttymode (const char *, int);
 static void	setdefttymode (const char *);
 static int	opentty (const char *, int);
 
-int		main (int, char **);
-
 jmp_buf timeout;
 
 static void

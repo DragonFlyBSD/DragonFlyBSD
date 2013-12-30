@@ -109,7 +109,6 @@ void flushi(void);
 void home(void);
 void length(int);
 void logit(const char *);
-int main(int, char **);
 void mainloop(void) __attribute__((__noreturn__));
 struct point *point(struct point *, int, int);
 int post(int, int);

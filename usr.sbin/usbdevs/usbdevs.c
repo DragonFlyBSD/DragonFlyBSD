@@ -61,7 +61,6 @@ void usage(void);
 void usbdev(int f, int a, int rec);
 void usbdump(int f);
 void dumpone(char *name, int f, int addr);
-int main(int, char **);
 
 void
 usage(void)

@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)talk.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/talk.c,v 1.7 1999/08/28 01:06:15 peter Exp $
- * $DragonFly: src/usr.bin/talk/talk.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include "talk.h"
@@ -49,8 +48,6 @@
  *		Modified to run under 4.1c by Peter Moore 3/17/83
  *		Fixed to not run with unwriteable terminals MRVM 28/12/94
  */
-
-int main(int, char **);
 
 int
 main(int argc, char **argv)

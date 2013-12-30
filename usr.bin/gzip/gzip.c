@@ -225,8 +225,6 @@ static	off_t	zuncompress(FILE *, FILE *, char *, size_t, off_t *);
 static	off_t	unpack(int, int, char *, size_t, off_t *);
 #endif
 
-int main(int, char *p[]);
-
 #ifdef SMALL
 #define getopt_long(a,b,c,d,e) getopt(a,b,c)
 #else

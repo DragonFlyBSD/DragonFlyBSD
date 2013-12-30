@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/usr.sbin/ndp/ndp.c,v 1.2.2.6 2003/08/12 16:27:57 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/ndp/ndp.c,v 1.6 2004/12/30 02:35:24 hsu Exp $	*/
 /*	$KAME: ndp.c,v 1.65 2001/05/08 04:36:34 itojun Exp $	*/
 
 /*
@@ -131,7 +130,6 @@ char ntop_buf[INET6_ADDRSTRLEN];	/* inet_ntop() */
 char host_buf[NI_MAXHOST];		/* getnameinfo() */
 char ifix_buf[IFNAMSIZ];		/* if_indextoname() */
 
-int main(int, char **);
 int file(char *);
 void getsocket(void);
 int set(int, char **);

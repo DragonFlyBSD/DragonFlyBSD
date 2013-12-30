@@ -76,7 +76,6 @@ vifi_t  numvifs;		/* to keep loader happy */
 Node *			find_node(u_int32 addr, Node **ptr);
 Interface *		find_interface(u_int32 addr, Node *node);
 Neighbor *		find_neighbor(u_int32 addr, Node *node);
-int			main(int argc, char **argv);
 void			ask(u_int32 dst);
 void			ask2(u_int32 dst);
 int			retry_requests(Node *node);

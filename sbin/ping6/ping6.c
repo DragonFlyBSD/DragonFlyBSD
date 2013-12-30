@@ -235,7 +235,6 @@ volatile sig_atomic_t seenint;
 volatile sig_atomic_t seeninfo;
 #endif
 
-int	 main(int, char *[]);
 void	 fill(char *, char *);
 int	 get_hoplim(struct msghdr *);
 #ifdef IPV6_RECVPATHMTU

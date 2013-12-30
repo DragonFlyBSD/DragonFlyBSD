@@ -36,7 +36,6 @@ volatile sig_atomic_t	quit = 0;
 
 void	usage(void);
 void	sighdlr(int);
-int	main(int, char *[]);
 
 void
 usage(void)

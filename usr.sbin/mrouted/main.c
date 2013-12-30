@@ -114,9 +114,6 @@ static void cleanup(void);
 static void resetlogging(void *);
 static void usage(void);
 
-/* To shut up gcc -Wstrict-prototypes */
-int main(int argc, char **argv);
-
 int
 register_input_handler(int fd, ihfunc_t func)
 {

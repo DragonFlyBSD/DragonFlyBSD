@@ -45,7 +45,6 @@
 #include "char.h"
 #include "local.h"
 
-int	main(int, char **);
 void	usage(void);
 
 int

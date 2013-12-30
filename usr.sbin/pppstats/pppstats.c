@@ -31,7 +31,6 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppstats/pppstats.c,v 1.13 1999/08/28 01:19:11 peter Exp $
- * $DragonFly: src/usr.sbin/pppstats/pppstats.c,v 1.7 2005/11/24 23:42:54 swildner Exp $
  */
 
 #include <stdio.h>
@@ -81,8 +80,6 @@ static void catchalarm(int);
 static void get_ppp_stats(struct ppp_stats *);
 static void get_ppp_cstats(struct ppp_comp_stats *);
 static void intpr(void);
-
-int main(int, char *argv[]);
 
 static void
 usage(void)

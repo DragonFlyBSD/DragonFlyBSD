@@ -35,7 +35,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Obtained from: $NetBSD: semtest.c,v 1.4 2002/07/20 08:36:25 grant Exp $
- * $DragonFly: src/tools/regression/sysvsem/semtest.c,v 1.1 2003/10/18 12:13:01 hmp Exp $
  */
 
 /*
@@ -56,7 +55,6 @@
 #include <time.h>
 #include <unistd.h>
 
-int	main (int, char *[]);
 void	print_semid_ds (struct semid_ds *, mode_t);
 void	sigsys_handler (int);
 void	sigchld_handler(int);

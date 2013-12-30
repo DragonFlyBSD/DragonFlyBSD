@@ -98,8 +98,6 @@ static time_t	currentout;		/* current logout value */
 static long	maxrec;			/* records to display */
 static int	fulltime = 0;		/* Display seconds? */
 
-int	 main(int, char *[]);
-
 static void	 addarg(int, char *);
 static TTY	*addtty(const char *);
 static void	 hostconv(char *);

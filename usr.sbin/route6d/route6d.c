@@ -203,7 +203,6 @@ volatile sig_atomic_t seenusr1;
 #define RRTF_SENDANYWAY		0x40000000
 #define	RRTF_CHANGED		0x80000000
 
-int main(int, char **);
 void sighandler(int);
 void ripalarm(void);
 void riprecv(void);

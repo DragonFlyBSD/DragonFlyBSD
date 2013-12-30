@@ -32,7 +32,6 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)col.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/col/col.c,v 1.6.6.4 2001/08/02 01:27:12 obrien Exp $
- * $DragonFly: src/usr.bin/col/col.c,v 1.5 2006/08/03 16:40:48 swildner Exp $
  */
 
 #include <ctype.h>
@@ -86,7 +85,6 @@ void	flush_line(LINE *);
 void	flush_lines(int);
 void	flush_blanks(void);
 void	free_line(LINE *);
-int	main(int, char **);
 void	usage(void);
 
 CSET	last_set;		/* char_set of last char printed */

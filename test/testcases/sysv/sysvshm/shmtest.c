@@ -35,7 +35,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Obtained from: $NetBSD: shmtest.c,v 1.3 2002/07/20 08:36:26 grant Exp $
- * $DragonFly: src/tools/regression/sysvshm/shmtest.c,v 1.2 2003/11/14 03:54:33 dillon Exp $
  */
 
 /*
@@ -56,7 +55,6 @@
 #include <time.h>
 #include <unistd.h>
 
-int	main (int, char *[]);
 void	print_shmid_ds (struct shmid_ds *, mode_t);
 void	sigsys_handler (int);
 void	sigchld_handler (int);

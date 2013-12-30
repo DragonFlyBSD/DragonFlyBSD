@@ -34,7 +34,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lprm.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/lpr/lprm/lprm.c,v 1.6.2.3 2001/06/25 01:01:04 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lprm/lprm.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
  */
 
 /*
@@ -73,7 +72,6 @@ uid_t	 uid, euid;		/* real and effective user id's */
 
 static char	luser[16];	/* buffer for person */
 
-int		 main(int argc, char *_argv[]);
 static void	 usage(void);
 
 int

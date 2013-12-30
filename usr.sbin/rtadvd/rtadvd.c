@@ -124,7 +124,6 @@ u_int32_t ndopt_flags[] = {
 	NDOPT_FLAG_PREFIXINFO, NDOPT_FLAG_RDHDR, NDOPT_FLAG_MTU
 };
 
-int main(int, char *[]);
 static void set_die(int);
 static void die(void);
 static void sock_open(void);

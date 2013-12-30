@@ -33,7 +33,6 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dd.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/dd.c,v 1.27.2.3 2001/08/01 01:37:35 obrien Exp $
- * $DragonFly: src/bin/dd/dd.c,v 1.9 2008/01/28 16:08:02 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +57,6 @@
 
 static void dd_close (void);
 static void dd_in (void);
-int main (int, char *[]);
 static void getfdtype (IO *);
 static void setup (void);
 

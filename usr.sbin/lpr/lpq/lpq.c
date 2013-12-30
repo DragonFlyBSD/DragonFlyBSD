@@ -34,7 +34,6 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lpq.c	8.3 (Berkeley) 5/10/95
  * $FreeBSD: src/usr.sbin/lpr/lpq/lpq.c,v 1.7.2.4 2001/07/22 02:51:53 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpq/lpq.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
  */
 
 /*
@@ -70,7 +69,6 @@ uid_t	uid, euid;
 
 static int	 ckqueue(const struct printer *_pp);
 static void	 usage(void);
-int 		 main(int _argc, char **_argv);
 
 int
 main(int argc, char **argv)

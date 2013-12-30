@@ -60,7 +60,6 @@
  *
  * @(#) Header: mrinfo.c,v 1.6 93/04/08 15:14:16 van Exp
  * $FreeBSD: src/usr.sbin/mrouted/mrinfo.c,v 1.17.2.1 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/mrinfo.c,v 1.4 2004/03/15 18:10:28 dillon Exp $
  */
 
 #include <err.h>
@@ -89,10 +88,6 @@ int			get_number(int *var, int deflt, char ***pargv,
 					int *pargc);
 u_int32			host_addr(char *name);
 static void		usage(void);
-
-/* to shut up -Wstrict-prototypes */
-int			main(int argc, char **argv);
-
 
 char *
 inet_name(u_int32 addr)

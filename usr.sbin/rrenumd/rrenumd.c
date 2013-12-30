@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rrenumd/rrenumd.c,v 1.1.2.4 2001/07/09 09:49:49 ume Exp $
- * $DragonFly: src/usr.sbin/rrenumd/rrenumd.c,v 1.6 2005/12/05 02:40:28 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -118,7 +117,6 @@ static void rrenum_snd_eachdst(struct payload_list *);
 static void rrenum_snd_fullsequence(void);
 #endif
 static void rrenum_input(int);
-int main(int, char *[]);
 
 
 /* Print usage. Don't call this after daemonized. */

@@ -104,7 +104,6 @@ static int pflag = 0;
 static int inetd = 0;
 static char *configfile = NULL;
 
-int main(int, char **);
 static int inetd_main(int, char **);
 static int daemon_main(int, char **);
 static void play_service(int);

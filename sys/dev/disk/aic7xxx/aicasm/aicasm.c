@@ -112,8 +112,6 @@ extern FILE *yyin;
 extern int yyparse(void);
 extern int yylineno;
 
-int main(int argc, char *argv[]);
-
 int
 main(int argc, char *argv[])
 {

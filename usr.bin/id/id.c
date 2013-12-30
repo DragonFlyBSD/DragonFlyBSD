@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)id.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/usr.bin/id/id.c,v 1.12.2.3 2001/12/20 12:09:03 ru Exp $
- * $DragonFly: src/usr.bin/id/id.c,v 1.6 2004/12/31 20:58:17 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -42,7 +41,6 @@
 #include <string.h>
 #include <unistd.h>
 
-int		main(int, char *[]);
 static void	current(void);
 static void	pline(struct passwd *);
 static void	pretty(struct passwd *);

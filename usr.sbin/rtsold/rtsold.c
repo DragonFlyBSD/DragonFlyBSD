@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/rtsold.c,v 1.1.2.4 2002/04/04 11:07:19 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/rtsold.c,v 1.7 2005/12/05 00:56:37 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -82,8 +81,6 @@ static int fflag = 0;
 
 /* a == b */
 #define TIMEVAL_EQ(a, b) (((a).tv_sec==(b).tv_sec) && ((a).tv_usec==(b).tv_usec))
-
-int main(int argc, char *argv[]);
 
 /* static variables and functions */
 static int mobile_node = 0;

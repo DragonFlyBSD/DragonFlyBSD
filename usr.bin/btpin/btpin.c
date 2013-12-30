@@ -1,5 +1,4 @@
 /* $NetBSD: btpin.c,v 1.3 2007/04/14 09:28:39 plunky Exp $ */
-/* $DragonFly: src/usr.bin/btpin/btpin.c,v 1.2 2008/07/10 18:29:51 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -41,7 +40,6 @@
 #include <time.h>
 #include <unistd.h>
 
-int  main(int, char *[]);
 void usage(void);
 
 int

@@ -34,7 +34,6 @@
  * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)lpd.c	8.7 (Berkeley) 5/10/95
  * $FreeBSD: src/usr.sbin/lpr/lpd/lpd.c,v 1.12.2.22 2002/06/30 04:09:11 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpd/lpd.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -98,7 +97,6 @@ int	lflag;				/* log requests flag */
 int	sflag;				/* no incoming port flag */
 int	from_remote;			/* from remote socket */
 
-int		 main(int argc, char **_argv);
 static void	 reapchild(int _signo);
 static void	 mcleanup(int _signo);
 static void	 doit(void);

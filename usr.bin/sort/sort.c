@@ -106,8 +106,6 @@ static void cleanup(void);
 static void onsignal(int);
 static void usage(const char *);
 
-int main(int argc, char **argv);
-
 int
 main(int argc, char *argv[])
 {

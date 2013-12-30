@@ -59,7 +59,6 @@ struct result {
 	int8_t		rssi;
 };
 
-int main(int, char *[]);
 void badarg(const char *);
 void badparam(const char *);
 void usage(void);

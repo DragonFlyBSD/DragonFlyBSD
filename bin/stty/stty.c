@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1989, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)stty.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/stty.c,v 1.13.2.2 2001/07/04 22:40:00 kris Exp $
- * $DragonFly: src/bin/stty/stty.c,v 1.5 2004/11/07 20:54:52 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -45,8 +44,6 @@
 
 #include "stty.h"
 #include "extern.h"
-
-int main (int, char *[]);
 
 int
 main(int argc, char **argv)

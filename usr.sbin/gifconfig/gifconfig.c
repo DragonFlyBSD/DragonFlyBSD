@@ -125,7 +125,6 @@ static struct	cmd {
  * XNS support liberally adapted from code written at the University of
  * Maryland principally by James O'Toole and Chris Torek.
  */
-int main(int, char *[]);
 void status(void);
 void phys_status(int);
 void in_status(int);

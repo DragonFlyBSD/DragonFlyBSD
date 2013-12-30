@@ -72,7 +72,6 @@ static int	margc;
 static char	*margv[MAX_MARGV];
 uid_t		uid, euid;
 
-int			 main(int _argc, char **_argv);
 static void		 cmdscanner(void);
 static struct cmd	*getcmd(const char *_name);
 static void		 intr(int _signo);

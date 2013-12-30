@@ -63,7 +63,6 @@ struct	nlist nl[] = {
 };
 
 const char *inet6_n2a(struct in6_addr *);
-int main(int, char **);
 char *ifname(struct ifnet *);
 void kread(u_long, void *, int);
 void if6_addrlist(struct ifaddr_container *);

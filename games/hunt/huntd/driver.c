@@ -30,7 +30,6 @@
  *
  * $OpenBSD: driver.c,v 1.17 2007/04/02 14:55:16 jmc Exp $
  * $NetBSD: driver.c,v 1.5 1997/10/20 00:37:16 lukem Exp $
- * $DragonFly: src/games/hunt/huntd/driver.c,v 1.3 2008/11/10 15:28:13 swildner Exp $
  */
 
 #include <sys/ioctl.h>
@@ -68,7 +67,6 @@ in_addr_t Server_addr = INADDR_ANY;	/* address to bind to */
 static	void	clear_scores(void);
 static	int	havechar(PLAYER *);
 static	void	init(void);
-	int	main(int, char *[]);
 static	void	makeboots(void);
 static	void	send_stats(void);
 static	void	zap(PLAYER *, FLAG);

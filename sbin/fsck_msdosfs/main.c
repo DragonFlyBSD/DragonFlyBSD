@@ -50,7 +50,6 @@ int preen;		/* set when preening */
 int rdonly;		/* device is opened read only (supersedes above) */
 
 static void usage(void);
-int main(int, char **);
 
 static void
 usage(void)

@@ -54,7 +54,6 @@ static int docheck(struct fstab *fsp);
 static int checkfilesys(char *filesys, char *mntpt, long auxdata,
 		int child);
 static struct statfs *getmntpt(const char *);
-int main(int argc, char *argv[]);
 
 int
 main(int argc, char **argv)
