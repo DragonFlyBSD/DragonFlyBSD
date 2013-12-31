@@ -153,6 +153,10 @@ acpi_sony_attach(device_t dev)
 static int 
 acpi_sony_detach(device_t dev)
 {
+	struct acpi_sony_softc *sc;
+
+	sc = device_get_softc(dev);
+	sysctl_ctx_free(&sc->sysctl_ctx);
 	return (0);
 }
 
