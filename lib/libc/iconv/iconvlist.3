@@ -47,7 +47,7 @@
 .In iconv.h
 .Ft void
 .Fo iconvlist
-.Fa "int \*[lp]*do_one\*[rp]\*[lp]unsigned int *count, const char * const *names, void *arg\*[rp]"
+.Fa "int (*do_one)(unsigned int *count, const char * const *names, void *arg)"
 .Fa "void *arg"
 .Fc
 .Sh DESCRIPTION

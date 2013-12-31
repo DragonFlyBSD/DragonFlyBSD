@@ -33,13 +33,13 @@
 .Ft int
 .Fo ftw
 .Fa "const char *path"
-.Fa "int \*[lp]*fn\*[rp]\*[lp]const char *, const struct stat *, int\*[rp]"
+.Fa "int (*fn)(const char *, const struct stat *, int)"
 .Fa "int maxfds"
 .Fc
 .Ft int
 .Fo nftw
 .Fa "const char *path"
-.Fa "int \*[lp]*fn\*[rp]\*[lp]const char *, const struct stat *, int, struct FTW *\*[rp]"
+.Fa "int (*fn)(const char *, const struct stat *, int, struct FTW *)"
 .Fa "int maxfds"
 .Fa "int flags"
 .Fc

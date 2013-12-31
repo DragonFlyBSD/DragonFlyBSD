@@ -97,7 +97,7 @@ structures:
 .Fn setcontext "const ucontext_t *" ;
 .It
 .Ft void
-.Fn makecontext "ucontext_t *" "void \*[lp]*\*[rp]\*[lp]void\*[rp]" int ... ;
+.Fn makecontext "ucontext_t *" "void (*func)(void)" int ... ;
 .It
 .Ft int
 .Fn swapcontext "ucontext_t *" "const ucontext_t *" ;

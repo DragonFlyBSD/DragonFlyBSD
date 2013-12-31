@@ -51,7 +51,7 @@
 .Fa "void *base"
 .Fa "size_t nmemb"
 .Fa "size_t size"
-.Fa "int \*[lp]*compar\*[rp]\*[lp]const void *, const void *\*[rp]"
+.Fa "int (*compar)(const void *, const void *)"
 .Fc
 .Ft void
 .Fo qsort_r
@@ -59,21 +59,21 @@
 .Fa "size_t nmemb"
 .Fa "size_t size"
 .Fa "void *thunk"
-.Fa "int \*[lp]*compar\*[rp]\*[lp]void *, const void *, const void *\*[rp]"
+.Fa "int (*compar)(void *, const void *, const void *)"
 .Fc
 .Ft int
 .Fo heapsort
 .Fa "void *base"
 .Fa "size_t nmemb"
 .Fa "size_t size"
-.Fa "int \*[lp]*compar\*[rp]\*[lp]const void *, const void *\*[rp]"
+.Fa "int (*compar)(const void *, const void *)"
 .Fc
 .Ft int
 .Fo mergesort
 .Fa "void *base"
 .Fa "size_t nmemb"
 .Fa "size_t size"
-.Fa "int \*[lp]*compar\*[rp]\*[lp]const void *, const void *\*[rp]"
+.Fa "int (*compar)(const void *, const void *)"
 .Fc
 .Sh DESCRIPTION
 The

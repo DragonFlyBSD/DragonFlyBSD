@@ -41,7 +41,12 @@
 .In sys/types.h
 .In dirent.h
 .Ft int
-.Fn scandir "const char *dirname" "struct dirent ***namelist" "int \\*(lp*select\\*(rp\\*(lpconst struct dirent *\\*(rp" "int \\*(lp*compar\\*(rp\\*(lpconst struct dirent **, const struct dirent **\\*(rp"
+.Fo scandir
+.Fa "const char *dirname"
+.Fa "struct dirent ***namelist"
+.Fa "int (*select)(const struct dirent *)"
+.Fa "int (*compar)(const struct dirent **, \:const struct dirent **)"
+.Fc
 .Ft int
 .Fn alphasort "const struct dirent **d1" "const struct dirent **d2"
 .Sh DESCRIPTION

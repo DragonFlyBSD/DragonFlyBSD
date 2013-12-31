@@ -42,7 +42,11 @@
 .Sh SYNOPSIS
 .In glob.h
 .Ft int
-.Fn glob "const char * restrict pattern" "int flags" "int (*errfunc)(const char *, int)" "glob_t * restrict pglob"
+.Fo glob
+.Fa "const char * restrict pattern" "int flags"
+.Fa "int (*errfunc)(const char *, int)"
+.Fa "glob_t * restrict pglob"
+.Fc
 .Ft void
 .Fn globfree "glob_t *pglob"
 .Sh DESCRIPTION
@@ -275,7 +279,7 @@ is
 .Pf non- Dv NULL ,
 .Fn glob
 calls
-.Fa \*(lp*errfunc\*(rp Ns ( Fa path , errno ) .
+.Fn errfunc path errno .
 This may be unintuitive: a pattern like
 .Ql */Makefile
 will try to
@@ -285,7 +289,7 @@ even if
 .Ql foo
 is not a directory, resulting in a
 call to
-.Fa errfunc .
+.Fn errfunc .
 The error routine can suppress this action by testing for
 .Er ENOENT
 and
@@ -386,7 +390,7 @@ or more patterns were matched.
 The scan was stopped because an error was encountered and either
 .Dv GLOB_ERR
 was set or
-.Fa \*(lp*errfunc\*(rp\*(lp\*(rp
+.Fn errfunc
 returned non-zero.
 .It Dv GLOB_NOMATCH
 The pattern did not match a pathname and

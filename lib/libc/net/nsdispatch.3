@@ -72,7 +72,7 @@ the caller of
 Each method has the function signature described by the typedef:
 .Pp
 .Ft typedef int
-.Fn \*(lp*nss_method\*(rp "void *retval" "void *mdata" "va_list *ap" ;
+.Fn (*nss_method) "void *retval" "void *mdata" "va_list *ap" ;
 .Bl -item
 .It
 .Fa dtab

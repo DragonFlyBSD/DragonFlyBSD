@@ -49,7 +49,7 @@
 .Ft void
 .Fo makecontext
 .Fa "ucontext_t *ucp"
-.Fa "void \*[lp]*func\*[rp]\*[lp]void\*[rp]"
+.Fa "void (*func)(void)"
 .Fa "int argc" ...
 .Fc
 .Ft int
