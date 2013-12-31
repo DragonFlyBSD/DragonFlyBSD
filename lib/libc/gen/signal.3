@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)signal.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/signal.3,v 1.17.2.9 2003/03/13 18:05:37 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/signal.3,v 1.6 2007/09/08 20:50:49 swildner Exp $
 .\"
 .Dd April 19, 1994
 .Dt SIGNAL 3
@@ -41,13 +40,13 @@
 .In signal.h
 .\" The following is Quite Ugly, but syntactically correct.  Don't try to
 .\" fix it.
-.Ft void \*(lp*
-.Fn signal "int sig" "void \*(lp*func\*(rp\*(lpint\*(rp\*(rp\*(rp\*(lpint"
+.Ft void
+.Fn (*signal "int sig" "void (*func)(int)))(int"
 .Pp
 or in
 .Dx Ns 's
 equivalent but easier to read typedef'd version:
-.Ft typedef "void \*(lp*sig_t\*(rp \*(lpint\*(rp" ;
+.Ft typedef "void (*sig_t) (int)" ;
 .Ft sig_t
 .Fn signal "int sig" "sig_t func"
 .Sh DESCRIPTION
