@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-#define VERSION "1.12.2"
+#define VERSION "1.12.3"
 #define HAVE_FGETLN
 #define HAVE_STRPTIME
 #define HAVE_GETSUBOPT
@@ -15,7 +15,7 @@
 #define HAVE_MMAP
 #define HAVE_STRLCPY
 
-#define OSNAME	"DragonFly 3.7"
+#define OSNAME "DragonFly 3.7"
 
 #include <sys/types.h>
 

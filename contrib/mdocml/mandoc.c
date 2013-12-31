@@ -40,7 +40,7 @@ static	char	*time2a(time_t);
 
 
 enum mandoc_esc
-mandoc_escape(const char const **end, const char const **start, int *sz)
+mandoc_escape(const char **end, const char **start, int *sz)
 {
 	const char	*local_start;
 	int		 local_sz;

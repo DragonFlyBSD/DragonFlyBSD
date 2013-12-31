@@ -400,8 +400,7 @@ struct	man;
 __BEGIN_DECLS
 
 void		 *mandoc_calloc(size_t, size_t);
-enum mandoc_esc	  mandoc_escape(const char const **,
-			const char const **, int *);
+enum mandoc_esc	  mandoc_escape(const char **, const char **, int *);
 void		 *mandoc_malloc(size_t);
 void		 *mandoc_realloc(void *, size_t);
 char		 *mandoc_strdup(const char *);
