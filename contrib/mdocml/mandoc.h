@@ -1,4 +1,4 @@
-/*	$Id: mandoc.h,v 1.111 2013/10/05 20:30:05 schwarze Exp $ */
+/*	$Id: mandoc.h,v 1.112 2013/12/30 18:30:32 schwarze Exp $ */
 /*
  * Copyright (c) 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2012, 2013 Ingo Schwarze <schwarze@openbsd.org>

@@ -78,7 +78,7 @@
 				<TR>
 					<TD>DragonFly BSD</TD>
 					<TD>
-					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/contrib/mdocml" CLASS="external">contrib/mdocml</A> (post-1.12.2 sources)
+					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/contrib/mdocml" CLASS="external">contrib/mdocml</A> (1.12.3 sources)
 					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/lib/libmandoc" CLASS="external">lib/libmandoc</A>
 					<A HREF="http://gitweb.dragonflybsd.org/dragonfly.git/tree/HEAD:/usr.bin/mandoc" CLASS="external">usr.bin/mandoc</A> (build system)
 					</TD>
@@ -105,7 +105,7 @@
 				<TR>
 					<TD>OpenBSD</TD>
 					<TD>
-					<A HREF="http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/mandoc/" CLASS="external">src/usr.bin/mandoc</A> (post-1.12.2 sources under active development and build system)
+					<A HREF="http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/mandoc/" CLASS="external">src/usr.bin/mandoc</A> (1.12.3 sources under active development and build system)
 					</TD>
 				</TR>
 				<TR>
@@ -304,6 +304,56 @@
 			<A NAME="news">News</A>
 		</H1>
 		<P CLASS="news">
+			31-12-2013: version 1.12.3
+		</P>
+		<P>
+			In the <A HREF="mdoc.7.html">mdoc(7)</A> SYNOPSIS, line breaks and hanging indentation
+			now work correctly for .Fo/.Fa/.Fc and .Fn blocks.
+			Thanks to Franco Fichtner for doing part of the work.
+		</P>
+		<P>
+			The <A HREF="mdoc.7.html">mdoc(7)</A> .Bk macro got some addititonal bugfixes.
+		</P>
+		<P>
+			In <A HREF="mdoc.7.html">mdoc(7)</A> macro arguments, double quotes can now be quoted 
+			by doubling them, just like in <A HREF="man.7.html">man(7)</A>.  
+			Thanks to Tsugutomo ENAMI for the patch.
+		</P>
+		<P>
+			At the end of <A HREF="man.7.html">man(7)</A> macro lines, end-of-sentence spacing
+			now works.  Thanks to Franco Fichtner for the patch.
+		</P>
+		<P>
+			For backward compatibility, the <A HREF="man.7.html">man(7)</A> parser now supports the
+			man-ext .UR/.UE (uniform resource identifier) block macros.
+		</P>
+		<P>
+			The <A HREF="man.7.html">man(7)</A> parser now handles closing blocks that are not open
+			more gracefully.
+		</P>
+		<P>
+			The <A HREF="man.7.html">man(7)</A> parser now ignores blank lines right after .SH and .SS.
+		</P>
+		<P>
+			In the <A HREF="man.7.html">man(7)</A> formatter, reset indentation when leaving a block,
+			not just when entering the next one.
+		</P>
+		<P>
+			The <A HREF="roff.7.html">roff(7)</A> .nr request now supports incrementing and decrementing
+			number registers and stops parsing the number right before the first non-digit character.
+		</P>
+		<P>
+			The <A HREF="roff.7.html">roff(7)</A> parser now supports the alternative escape sequence
+			syntax \C'uXXXX' for Unicode characters.
+		</P>
+		<P>
+			The <A HREF="roff.7.html">roff(7)</A> parser now parses and ignores the .fam (font family) 
+			and .hw (hyphenation points) requests and the \d and \u escape sequences.                  
+		</P>
+		<P>
+			The <A HREF="roff.7.html">roff(7)</A> manual got a new ESCAPE SEQUENCE REFERENCE.
+		</P>
+		<P CLASS="news">
 			05-10-2013: version 1.12.2
 		</P>
 		<P>
@@ -346,30 +396,6 @@
 			For mandoc developers, we now provide a <A HREF="tbl.3.html">tbl(3)</A> library manual and <CODE>gmdiff</CODE>,
 			a very small, very simplistic groff-versus-mandoc output comparison tool.
 		</P>
-		<P CLASS="news">
-			23-03-2012: version 1.12.1
-		</P>
-		<P>
-			Significant work on <A HREF="apropos.1.html">apropos</A> and <A HREF="mandocdb.8.html">mandocdb</A>.  These tools are
-			now much more robust.  
-			A <A HREF="whatis.1.html">whatis</A> implementation is now handled as an <A HREF="apropos.1.html">apropos</A> mode.
-			These tools are also able to minimally handle pre-formatted pages, that is, those already formatted by another utility
-			such as GNU troff.
-		</P>
-		<P>
-			The <A HREF="man.cgi.7.html">man.cgi</A> script is also now available for wider testing.  It interfaces with <A
-			HREF="mandocdb.8.html">mandocdb</A> manuals cached by <A HREF="catman.8.html">catman</A>.  HTML output is generated
-			on-the-fly by <A HREF="mandoc.3.html">libmandoc</A> or internal methods to convert pre-formatted pages.
-		</P>
-		<P>
-			The mailing list archive for the discuss and tech lists are being hosted by <A CLASS="external"
-			HREF="http://www.gmane.org">Gmane</A> at <A HREF="http://dir.gmane.org/gmane.comp.tools.mdocml.user"
-			CLASS="external">gmane.comp.tools.mdocml.user</A> and <A HREF="http://dir.gmane.org/gmane.comp.tools.mdocml.devel"
-			CLASS="external">gmane.comp.tools.mdocml.devel</A>, respectively.
-		</P>
-		<P>
-			Lastly, I'm no longer providing binaries, as nobody has asked for them.
-		</P>
 		<H2>
 			<A>History</A>
 		</H2>
@@ -405,7 +431,7 @@
 				Copyright &#169; 2008&#8211;2011 
 				<A CLASS="external" HREF="http://kristaps.bsd.lv">Kristaps Dzonsons</A>, 
 				&#169; 2013 Ingo Schwarze,
-				$Date: 2013/12/26 14:30:10 $
+				$Date: 2013/12/31 $
 			</SMALL>
 		</P>
 	</BODY>
