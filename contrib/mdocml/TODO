@@ -1,19 +1,13 @@
 ************************************************************************
 * Official mandoc TODO.
-* $Id: TODO,v 1.157 2013/09/27 21:12:34 schwarze Exp $
+* $Id: TODO,v 1.162 2013/12/25 14:40:34 schwarze Exp $
 ************************************************************************
 
 ************************************************************************
 * crashes
 ************************************************************************
 
-- .Bl -tag followed by a text node preceding the first .It should not
-  throw a FATAL error, but only a normal ERROR.  Putting this into the
-  HEAD of an implicit .It might be cleanest, inserting an implicit .Pp
-  or just dumping the orphan stuff directly into the BODY of the .Bl
-  might be easier to implement, and all options can no doubt be made
-  to yield correct (i.e. groff bug-compatible) rendering.
-  Anthony J. Bentley on discuss@  Sun, 22 Sep 2013 16:33:21 -0600
+None known.
 
 ************************************************************************
 * missing features
@@ -46,6 +40,12 @@
 - .fc (field control)
   found by naddy@ in xloadimage(1)
   
+- .ll (line length)
+  found by naddy@ in textproc/enchant(1)  Sat, 12 Oct 2013 03:27:10 +0200
+
+- .nr third argument (auto-increment step size, requires \n+)
+  found by bentley@ in sbcl(1)  Mon, 9 Dec 2013 18:36:57 -0700
+
 - .ns (no-space mode) occurs in xine-config(1)
   reported by brad@  Sat, 15 Jan 2011 15:45:23 -0500
 
@@ -66,6 +66,9 @@
 - \h horizontal move
   found in cclive(1) DocBook output
   Anthony J. Bentley on discuss@  Sat, 21 Sep 2013 22:29:34 -0600
+
+- \n+ and \n- numerical register increment and decrement
+  found by bentley@ in sbcl(1)  Mon, 9 Dec 2013 18:36:57 -0700
 
 - using undefined strings or macros defines them to be empty
   wl@  Mon, 14 Nov 2011 14:37:01 +0000
@@ -159,6 +162,9 @@
 
 --- missing misc features ----------------------------------------------
 
+- italic correction (\/) in PostScript mode
+  Werner LEMBERG on groff at gnu dot org  Sun, 10 Nov 2013 12:47:46
+
 - The whatis(1) utility looks for whole words in Nm.
   If the file name of a page does not agree with the contents of any
   of its Nm macros (e.g. pool(9)), add the file name as an Nm entry
@@ -182,6 +188,9 @@
   noted by stsp@  Sat, 24 Apr 2010 09:17:55 +0200
   reminded by nicm@  Mon, 3 May 2010 09:52:41 +0100
 
+- look at pages generated from Texinfo source by yat2m, e.g. security/gnupg
+  First impression is not that bad.
+
 - check compatibility with Plan9:
   http://swtch.com/usr/local/plan9/tmac/tmac.an
   http://swtch.com/plan9port/man/man7/man.html
@@ -193,11 +202,6 @@
 
 - a column list with blank `Ta' cells triggers a spurrious
   start-with-whitespace printing of a newline
-
-- double quotes inside double quotes are escaped by doubling them
-  implement this in mdoc(7), too
-  so far, we only have it in roff(7) and man(7)
-  reminded by millert@  Thu, 09 Dec 2010 17:29:52 -0500
 
 - In .Bl -column,
   .It Em Authentication<tab>Key Length
@@ -281,13 +285,6 @@
 - The \& zero-width character counts as output.
   That is, when it is alone on a line between two .Pp,
   we want three blank lines, not two as in mandoc.
-
-- When .Fn arguments exceed one output line, all but the first
-  should be indented, see e.g. rpc(3);
-  reported by jmc@ on discuss@  Fri, 29 Oct 2010 13:48:33 +0100
-  reported again by Nicolas Joly via wiz@  Sun, 18 Sep 2011 18:24:40 +0200
-  Also, we don't want to break the line within the argument of:
-  .Fa "chtype tl"
 
 - Header lines of excessive length:
   Port OpenBSD man_term.c rev. 1.25 to mdoc_term.c

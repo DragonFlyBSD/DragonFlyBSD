@@ -1,7 +1,7 @@
-.\"	$Id: mdoc.7,v 1.220 2013/08/14 15:08:31 schwarze Exp $
+.\"	$Id: mdoc.7,v 1.223 2013/12/25 14:09:32 schwarze Exp $
 .\"
 .\" Copyright (c) 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
-.\" Copyright (c) 2010, 2011 Ingo Schwarze <schwarze@openbsd.org>
+.\" Copyright (c) 2010, 2011, 2013 Ingo Schwarze <schwarze@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 14 2013 $
+.Dd $Mdocdate: December 25 2013 $
 .Dt MDOC 7
 .Os
 .Sh NAME
@@ -477,6 +477,7 @@ in the alphabetical
 .Bl -column "Brq, Bro, Brc" description
 .It Sx \&Lb Ta function library (one argument)
 .It Sx \&In Ta include file (one argument)
+.It Sx \&Fd Ta other preprocessor directive (>0 arguments)
 .It Sx \&Ft Ta function type (>0 arguments)
 .It Sx \&Fo , \&Fc Ta function block: Ar funcname
 .It Sx \&Fn Ta function name:
@@ -1407,9 +1408,12 @@ See also
 .Sx \&Er
 and
 .Sx \&Ev
-for special-purpose constants and
+for special-purpose constants,
 .Sx \&Va
-for variable symbols.
+for variable symbols, and
+.Sx \&Fd
+for listing preprocessor variable definitions in the
+.Em SYNOPSIS .
 .Ss \&Dx
 Format the
 .Dx
@@ -1570,15 +1574,32 @@ See also
 End a function context started by
 .Sx \&Fo .
 .Ss \&Fd
-Historically used to document include files.
-This usage has been deprecated in favour of
+Preprocessor directive, in particular for listing it in the
+.Em SYNOPSIS .
+Historically, it was also used to document include files.
+The latter usage has been deprecated in favour of
 .Sx \&In .
-Do not use this macro.
+.Pp
+Its syntax is as follows:
+.Bd -ragged -offset indent
+.Pf \. Sx \&Fd
+.Li # Ns Ar directive
+.Op Ar argument ...
+.Ed
+.Pp
+Examples:
+.Dl \&.Fd #define sa_handler __sigaction_u.__sa_handler
+.Dl \&.Fd #define SIO_MAXNFDS
+.Dl \&.Fd #ifdef FS_DEBUG
+.Dl \&.Ft void
+.Dl \&.Fn dbg_open \(dqconst char *\(dq
+.Dl \&.Fd #endif
 .Pp
 See also
-.Sx MANUAL STRUCTURE
+.Sx MANUAL STRUCTURE ,
+.Sx \&In ,
 and
-.Sx \&In .
+.Sx \&Dv .
 .Ss \&Fl
 Command-line flag or option.
 Used when listing arguments to command-line utilities.
@@ -1859,7 +1880,7 @@ section as described in
 .Pp
 Examples:
 .Dl \&.Lb libz
-.Dl \&.Lb mdoc
+.Dl \&.Lb libmandoc
 .Ss \&Li
 Denotes text that should be in a
 .Li literal
@@ -2422,6 +2443,8 @@ The following standards are recognised:
 .St -xbd5
 .It \-xcu5
 .St -xcu5
+.It \-xsh4.2
+.St -xsh4.2
 .It \-xsh5
 .St -xsh5
 .It \-xns5

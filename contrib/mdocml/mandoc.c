@@ -1,4 +1,4 @@
-/*	$Id: mandoc.c,v 1.68 2013/08/08 20:07:47 schwarze Exp $ */
+/*	$Id: mandoc.c,v 1.74 2013/12/30 18:30:32 schwarze Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2011, 2012, 2013 Ingo Schwarze <schwarze@openbsd.org>
@@ -93,10 +93,21 @@ mandoc_escape(const char **end, const char **start, int *sz)
 	case ('C'):
 		if ('\'' != **start)
 			return(ESCAPE_ERROR);
-		gly = ESCAPE_SPECIAL;
 		*start = ++*end;
+		if ('u' == (*start)[0] && '\'' != (*start)[1])
+			gly = ESCAPE_UNICODE;
+		else
+			gly = ESCAPE_SPECIAL;
 		term = '\'';
 		break;
+
+	/*
+	 * Escapes taking no arguments at all.
+	 */
+	case ('d'):
+		/* FALLTHROUGH */
+	case ('u'):
+		return(ESCAPE_IGNORE);
 
 	/*
 	 * The \z escape is supposed to output the following
@@ -154,11 +165,15 @@ mandoc_escape(const char **end, const char **start, int *sz)
 		/* FALLTHROUGH */
 	case ('b'):
 		/* FALLTHROUGH */
+	case ('B'):
+		/* FALLTHROUGH */
 	case ('D'):
 		/* FALLTHROUGH */
 	case ('o'):
 		/* FALLTHROUGH */
 	case ('R'):
+		/* FALLTHROUGH */
+	case ('w'):
 		/* FALLTHROUGH */
 	case ('X'):
 		/* FALLTHROUGH */
@@ -174,8 +189,6 @@ mandoc_escape(const char **end, const char **start, int *sz)
 	 * These escapes are of the form \X'N', where 'X' is the trigger
 	 * and 'N' resolves to a numerical expression.
 	 */
-	case ('B'):
-		/* FALLTHROUGH */
 	case ('h'):
 		/* FALLTHROUGH */
 	case ('H'):
@@ -183,19 +196,15 @@ mandoc_escape(const char **end, const char **start, int *sz)
 	case ('L'):
 		/* FALLTHROUGH */
 	case ('l'):
-		gly = ESCAPE_NUMBERED;
 		/* FALLTHROUGH */
 	case ('S'):
 		/* FALLTHROUGH */
 	case ('v'):
 		/* FALLTHROUGH */
-	case ('w'):
-		/* FALLTHROUGH */
 	case ('x'):
 		if ('\'' != **start)
 			return(ESCAPE_ERROR);
-		if (ESCAPE_ERROR == gly)
-			gly = ESCAPE_IGNORE;
+		gly = ESCAPE_IGNORE;
 		*start = ++*end;
 		term = '\'';
 		break;
@@ -416,10 +425,10 @@ mandoc_strdup(const char *ptr)
  * Parse a quoted or unquoted roff-style request or macro argument.
  * Return a pointer to the parsed argument, which is either the original
  * pointer or advanced by one byte in case the argument is quoted.
- * Null-terminate the argument in place.
+ * NUL-terminate the argument in place.
  * Collapse pairs of quotes inside quoted arguments.
  * Advance the argument pointer to the next argument,
- * or to the null byte terminating the argument line.
+ * or to the NUL byte terminating the argument line.
  */
 char *
 mandoc_getarg(struct mparse *parse, char **cpp, int ln, int *pos)
@@ -490,7 +499,7 @@ mandoc_getarg(struct mparse *parse, char **cpp, int ln, int *pos)
 	if (1 == quoted)
 		mandoc_msg(MANDOCERR_BADQUOTE, parse, ln, *pos, NULL);
 
-	/* Null-terminate this argument and move to the next one. */
+	/* NUL-terminate this argument and move to the next one. */
 	if (pairs)
 		cp[-pairs] = '\0';
 	if ('\0' != *cp) {

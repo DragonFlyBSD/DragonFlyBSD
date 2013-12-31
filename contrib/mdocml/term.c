@@ -1,4 +1,4 @@
-/*	$Id: term.c,v 1.210 2013/08/21 21:20:40 schwarze Exp $ */
+/*	$Id: term.c,v 1.214 2013/12/25 00:39:31 schwarze Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2010, 2011, 2012, 2013 Ingo Schwarze <schwarze@openbsd.org>
@@ -83,9 +83,8 @@ term_end(struct termp *p)
  *  - TERMP_NOBREAK: this is the most important and is used when making
  *    columns.  In short: don't print a newline and instead expect the
  *    next call to do the padding up to the start of the next column.
- *
- *  - TERMP_TWOSPACE: make sure there is room for at least two space
- *    characters of padding.  Otherwise, rather break the line.
+ *    p->trailspace may be set to 0, 1, or 2, depending on how many
+ *    space characters are required at the end of the column.
  *
  *  - TERMP_DANGLE: don't newline when TERMP_NOBREAK is specified and
  *    the line is overrun, and don't pad-right if it's underrun.
@@ -121,7 +120,12 @@ term_flushln(struct termp *p)
 	 * First, establish the maximum columns of "visible" content.
 	 * This is usually the difference between the right-margin and
 	 * an indentation, but can be, for tagged lists or columns, a
-	 * small set of values. 
+	 * small set of values.
+	 *
+	 * The following unsigned-signed subtractions look strange,
+	 * but they are actually correct.  If the int p->overstep
+	 * is negative, it gets sign extended.  Subtracting that
+	 * very large size_t effectively adds a small number to dv.
 	 */
 	assert  (p->rmargin >= p->offset);
 	dv     = p->rmargin - p->offset;
@@ -200,7 +204,11 @@ term_flushln(struct termp *p)
 			if (0 < ntab)
 				vbl += ntab * p->tabwidth;
 
-			/* Remove the p->overstep width. */
+			/*
+			 * Remove the p->overstep width.
+			 * Again, if p->overstep is negative,
+			 * sign extension does the right thing.
+			 */
 
 			bp += (size_t)p->overstep;
 			p->overstep = 0;
@@ -269,15 +277,17 @@ term_flushln(struct termp *p)
 	}
 
 	if (TERMP_HANG & p->flags) {
-		/* We need one blank after the tag. */
-		p->overstep = (int)(vis - maxvis + (*p->width)(p, ' '));
+		p->overstep = (int)(vis - maxvis +
+				p->trailspace * (*p->width)(p, ' '));
 
 		/*
 		 * If we have overstepped the margin, temporarily move
 		 * it to the right and flag the rest of the line to be
 		 * shorter.
+		 * If there is a request to keep the columns together,
+		 * allow negative overstep when the column is not full.
 		 */
-		if (p->overstep < 0)
+		if (p->trailspace && p->overstep < 0)
 			p->overstep = 0;
 		return;
 
@@ -285,8 +295,7 @@ term_flushln(struct termp *p)
 		return;
 
 	/* If the column was overrun, break the line. */
-	if (maxvis <= vis +
-	    ((TERMP_TWOSPACE & p->flags) ? (*p->width)(p, ' ') : 0)) {
+	if (maxvis < vis + p->trailspace * (*p->width)(p, ' ')) {
 		(*p->endline)(p);
 		p->viscol = 0;
 	}
@@ -398,6 +407,7 @@ term_fontpop(struct termp *p)
 void
 term_word(struct termp *p, const char *word)
 {
+	const char	 nbrsp[2] = { ASCII_NBRSP, 0 };
 	const char	*seq, *cp;
 	char		 c;
 	int		 sz, uc;
@@ -420,7 +430,7 @@ term_word(struct termp *p, const char *word)
 	else
 		p->flags |= TERMP_NOSPACE;
 
-	p->flags &= ~(TERMP_SENTENCE | TERMP_IGNDELIM);
+	p->flags &= ~TERMP_SENTENCE;
 
 	while ('\0' != *word) {
 		if ('\\' != *word) {
@@ -429,7 +439,15 @@ term_word(struct termp *p, const char *word)
 				word++;
 				continue;
 			}
-			ssz = strcspn(word, "\\");
+			if (TERMP_NBRWORD & p->flags) {
+				if (' ' == *word) {
+					encode(p, nbrsp, 1);
+					word++;
+					continue;
+				}
+				ssz = strcspn(word, "\\ ");
+			} else
+				ssz = strcspn(word, "\\");
 			encode(p, word, ssz);
 			word += (int)ssz;
 			continue;
@@ -504,6 +522,7 @@ term_word(struct termp *p, const char *word)
 			break;
 		}
 	}
+	p->flags &= ~TERMP_NBRWORD;
 }
 
 static void

@@ -1,7 +1,7 @@
-/*	$Id: mdoc_macro.c,v 1.122 2013/09/15 18:26:46 schwarze Exp $ */
+/*	$Id: mdoc_macro.c,v 1.125 2013/12/24 20:45:27 schwarze Exp $ */
 /*
  * Copyright (c) 2008-2012 Kristaps Dzonsons <kristaps@bsd.lv>
- * Copyright (c) 2010, 2012 Ingo Schwarze <schwarze@openbsd.org>
+ * Copyright (c) 2010, 2012, 2013 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -51,8 +51,8 @@ static	int	  	in_line(MACRO_PROT_ARGS);
 static	int	  	obsolete(MACRO_PROT_ARGS);
 static	int	  	phrase_ta(MACRO_PROT_ARGS);
 
-static	int		dword(struct mdoc *, int, int, 
-				const char *, enum mdelim);
+static	int		dword(struct mdoc *, int, int, const char *,
+				 enum mdelim, int);
 static	int	  	append_delims(struct mdoc *, 
 				int, int *, char *);
 static	enum mdoct	lookup(enum mdoct, const char *);
@@ -70,128 +70,147 @@ static	int	  	rew_sub(enum mdoc_type, struct mdoc *,
 				enum mdoct, int, int);
 
 const	struct mdoc_macro __mdoc_macros[MDOC_MAX] = {
-	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* Ap */
+	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Ap */
 	{ in_line_eoln, MDOC_PROLOGUE }, /* Dd */
 	{ in_line_eoln, MDOC_PROLOGUE }, /* Dt */
 	{ in_line_eoln, MDOC_PROLOGUE }, /* Os */
-	{ blk_full, MDOC_PARSED }, /* Sh */
-	{ blk_full, MDOC_PARSED }, /* Ss */ 
-	{ in_line_eoln, 0 }, /* Pp */ 
-	{ blk_part_imp, MDOC_PARSED }, /* D1 */
-	{ blk_part_imp, MDOC_PARSED }, /* Dl */
+	{ blk_full, MDOC_PARSED | MDOC_JOIN }, /* Sh */
+	{ blk_full, MDOC_PARSED | MDOC_JOIN }, /* Ss */
+	{ in_line_eoln, 0 }, /* Pp */
+	{ blk_part_imp, MDOC_PARSED | MDOC_JOIN }, /* D1 */
+	{ blk_part_imp, MDOC_PARSED | MDOC_JOIN }, /* Dl */
 	{ blk_full, MDOC_EXPLICIT }, /* Bd */
-	{ blk_exp_close, MDOC_EXPLICIT }, /* Ed */
+	{ blk_exp_close, MDOC_EXPLICIT | MDOC_JOIN }, /* Ed */
 	{ blk_full, MDOC_EXPLICIT }, /* Bl */
-	{ blk_exp_close, MDOC_EXPLICIT }, /* El */
-	{ blk_full, MDOC_PARSED }, /* It */
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Ad */ 
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* An */
+	{ blk_exp_close, MDOC_EXPLICIT | MDOC_JOIN }, /* El */
+	{ blk_full, MDOC_PARSED | MDOC_JOIN }, /* It */
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Ad */
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* An */
 	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Ar */
 	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Cd */
 	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Cm */
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Dv */ 
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Er */ 
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Ev */ 
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Dv */
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Er */
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Ev */
 	{ in_line_eoln, 0 }, /* Ex */
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Fa */ 
-	{ in_line_eoln, 0 }, /* Fd */ 
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Fa */
+	{ in_line_eoln, 0 }, /* Fd */
 	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Fl */
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Fn */ 
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Ft */ 
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Ic */ 
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Fn */
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Ft */
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Ic */
 	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* In */
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Li */
-	{ blk_full, 0 }, /* Nd */ 
-	{ ctx_synopsis, MDOC_CALLABLE | MDOC_PARSED }, /* Nm */ 
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Li */
+	{ blk_full, MDOC_JOIN }, /* Nd */
+	{ ctx_synopsis, MDOC_CALLABLE | MDOC_PARSED }, /* Nm */
 	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED }, /* Op */
 	{ obsolete, 0 }, /* Ot */
 	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Pa */
 	{ in_line_eoln, 0 }, /* Rv */
-	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* St */ 
+	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* St */
 	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Va */
-	{ ctx_synopsis, MDOC_CALLABLE | MDOC_PARSED }, /* Vt */ 
+	{ ctx_synopsis, MDOC_CALLABLE | MDOC_PARSED }, /* Vt */
 	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* Xr */
-	{ in_line_eoln, 0 }, /* %A */
-	{ in_line_eoln, 0 }, /* %B */
-	{ in_line_eoln, 0 }, /* %D */
-	{ in_line_eoln, 0 }, /* %I */
-	{ in_line_eoln, 0 }, /* %J */
+	{ in_line_eoln, MDOC_JOIN }, /* %A */
+	{ in_line_eoln, MDOC_JOIN }, /* %B */
+	{ in_line_eoln, MDOC_JOIN }, /* %D */
+	{ in_line_eoln, MDOC_JOIN }, /* %I */
+	{ in_line_eoln, MDOC_JOIN }, /* %J */
 	{ in_line_eoln, 0 }, /* %N */
-	{ in_line_eoln, 0 }, /* %O */
+	{ in_line_eoln, MDOC_JOIN }, /* %O */
 	{ in_line_eoln, 0 }, /* %P */
-	{ in_line_eoln, 0 }, /* %R */
-	{ in_line_eoln, 0 }, /* %T */
+	{ in_line_eoln, MDOC_JOIN }, /* %R */
+	{ in_line_eoln, MDOC_JOIN }, /* %T */
 	{ in_line_eoln, 0 }, /* %V */
-	{ blk_exp_close, MDOC_EXPLICIT | MDOC_CALLABLE | MDOC_PARSED }, /* Ac */
-	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED | MDOC_EXPLICIT }, /* Ao */
-	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED }, /* Aq */
+	{ blk_exp_close, MDOC_CALLABLE | MDOC_PARSED |
+			 MDOC_EXPLICIT | MDOC_JOIN }, /* Ac */
+	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED |
+			MDOC_EXPLICIT | MDOC_JOIN }, /* Ao */
+	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Aq */
 	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* At */
-	{ blk_exp_close, MDOC_EXPLICIT | MDOC_CALLABLE | MDOC_PARSED }, /* Bc */
-	{ blk_full, MDOC_EXPLICIT }, /* Bf */ 
-	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED | MDOC_EXPLICIT }, /* Bo */
-	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED }, /* Bq */
+	{ blk_exp_close, MDOC_CALLABLE | MDOC_PARSED |
+			 MDOC_EXPLICIT | MDOC_JOIN }, /* Bc */
+	{ blk_full, MDOC_EXPLICIT }, /* Bf */
+	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED |
+			MDOC_EXPLICIT | MDOC_JOIN }, /* Bo */
+	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Bq */
 	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* Bsx */
 	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* Bx */
 	{ in_line_eoln, 0 }, /* Db */
-	{ blk_exp_close, MDOC_EXPLICIT | MDOC_CALLABLE | MDOC_PARSED }, /* Dc */
-	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED | MDOC_EXPLICIT }, /* Do */
-	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED }, /* Dq */
-	{ blk_exp_close, MDOC_EXPLICIT | MDOC_CALLABLE | MDOC_PARSED }, /* Ec */
-	{ blk_exp_close, MDOC_EXPLICIT }, /* Ef */
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Em */ 
+	{ blk_exp_close, MDOC_CALLABLE | MDOC_PARSED |
+			 MDOC_EXPLICIT | MDOC_JOIN }, /* Dc */
+	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED |
+			MDOC_EXPLICIT | MDOC_JOIN }, /* Do */
+	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Dq */
+	{ blk_exp_close, MDOC_CALLABLE | MDOC_PARSED | MDOC_EXPLICIT }, /* Ec */
+	{ blk_exp_close, MDOC_EXPLICIT | MDOC_JOIN }, /* Ef */
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Em */
 	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED | MDOC_EXPLICIT }, /* Eo */
 	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* Fx */
 	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Ms */
-	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED | MDOC_IGNDELIM }, /* No */
-	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED | MDOC_IGNDELIM }, /* Ns */
+	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED |
+			MDOC_IGNDELIM | MDOC_JOIN }, /* No */
+	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED |
+			MDOC_IGNDELIM | MDOC_JOIN }, /* Ns */
 	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* Nx */
 	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* Ox */
-	{ blk_exp_close, MDOC_EXPLICIT | MDOC_CALLABLE | MDOC_PARSED }, /* Pc */
+	{ blk_exp_close, MDOC_CALLABLE | MDOC_PARSED |
+			 MDOC_EXPLICIT | MDOC_JOIN }, /* Pc */
 	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED | MDOC_IGNDELIM }, /* Pf */
-	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED | MDOC_EXPLICIT }, /* Po */
-	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED }, /* Pq */
-	{ blk_exp_close, MDOC_EXPLICIT | MDOC_CALLABLE | MDOC_PARSED }, /* Qc */
-	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED }, /* Ql */
-	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED | MDOC_EXPLICIT }, /* Qo */
-	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED }, /* Qq */
-	{ blk_exp_close, MDOC_EXPLICIT }, /* Re */
+	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED |
+			MDOC_EXPLICIT | MDOC_JOIN }, /* Po */
+	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Pq */
+	{ blk_exp_close, MDOC_CALLABLE | MDOC_PARSED |
+			 MDOC_EXPLICIT | MDOC_JOIN }, /* Qc */
+	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Ql */
+	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED |
+			MDOC_EXPLICIT | MDOC_JOIN }, /* Qo */
+	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Qq */
+	{ blk_exp_close, MDOC_EXPLICIT | MDOC_JOIN }, /* Re */
 	{ blk_full, MDOC_EXPLICIT }, /* Rs */
-	{ blk_exp_close, MDOC_EXPLICIT | MDOC_CALLABLE | MDOC_PARSED }, /* Sc */
-	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED | MDOC_EXPLICIT }, /* So */
-	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED }, /* Sq */
+	{ blk_exp_close, MDOC_CALLABLE | MDOC_PARSED |
+			 MDOC_EXPLICIT | MDOC_JOIN }, /* Sc */
+	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED |
+			MDOC_EXPLICIT | MDOC_JOIN }, /* So */
+	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Sq */
 	{ in_line_eoln, 0 }, /* Sm */
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Sx */
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Sy */
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Sx */
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Sy */
 	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Tn */
-	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* Ux */
+	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Ux */
 	{ blk_exp_close, MDOC_EXPLICIT | MDOC_CALLABLE | MDOC_PARSED }, /* Xc */
 	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED | MDOC_EXPLICIT }, /* Xo */
-	{ blk_full, MDOC_EXPLICIT | MDOC_CALLABLE }, /* Fo */ 
-	{ blk_exp_close, MDOC_EXPLICIT | MDOC_CALLABLE | MDOC_PARSED }, /* Fc */ 
-	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED | MDOC_EXPLICIT }, /* Oo */
-	{ blk_exp_close, MDOC_EXPLICIT | MDOC_CALLABLE | MDOC_PARSED }, /* Oc */
+	{ blk_full, MDOC_EXPLICIT | MDOC_CALLABLE }, /* Fo */
+	{ blk_exp_close, MDOC_CALLABLE | MDOC_PARSED |
+			 MDOC_EXPLICIT | MDOC_JOIN }, /* Fc */
+	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED |
+			MDOC_EXPLICIT | MDOC_JOIN }, /* Oo */
+	{ blk_exp_close, MDOC_CALLABLE | MDOC_PARSED |
+			 MDOC_EXPLICIT | MDOC_JOIN }, /* Oc */
 	{ blk_full, MDOC_EXPLICIT }, /* Bk */
-	{ blk_exp_close, MDOC_EXPLICIT }, /* Ek */
+	{ blk_exp_close, MDOC_EXPLICIT | MDOC_JOIN }, /* Ek */
 	{ in_line_eoln, 0 }, /* Bt */
 	{ in_line_eoln, 0 }, /* Hf */
 	{ obsolete, 0 }, /* Fr */
 	{ in_line_eoln, 0 }, /* Ud */
 	{ in_line, 0 }, /* Lb */
-	{ in_line_eoln, 0 }, /* Lp */ 
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Lk */ 
-	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Mt */ 
-	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED }, /* Brq */
-	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED | MDOC_EXPLICIT }, /* Bro */
-	{ blk_exp_close, MDOC_EXPLICIT | MDOC_CALLABLE | MDOC_PARSED }, /* Brc */
-	{ in_line_eoln, 0 }, /* %C */
+	{ in_line_eoln, 0 }, /* Lp */
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Lk */
+	{ in_line, MDOC_CALLABLE | MDOC_PARSED }, /* Mt */
+	{ blk_part_imp, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Brq */
+	{ blk_part_exp, MDOC_CALLABLE | MDOC_PARSED |
+			MDOC_EXPLICIT | MDOC_JOIN }, /* Bro */
+	{ blk_exp_close, MDOC_CALLABLE | MDOC_PARSED |
+			 MDOC_EXPLICIT | MDOC_JOIN }, /* Brc */
+	{ in_line_eoln, MDOC_JOIN }, /* %C */
 	{ obsolete, 0 }, /* Es */
 	{ obsolete, 0 }, /* En */
 	{ in_line_argn, MDOC_CALLABLE | MDOC_PARSED }, /* Dx */
-	{ in_line_eoln, 0 }, /* %Q */
+	{ in_line_eoln, MDOC_JOIN }, /* %Q */
 	{ in_line_eoln, 0 }, /* br */
 	{ in_line_eoln, 0 }, /* sp */
 	{ in_line_eoln, 0 }, /* %U */
-	{ phrase_ta, MDOC_CALLABLE | MDOC_PARSED }, /* Ta */
+	{ phrase_ta, MDOC_CALLABLE | MDOC_PARSED | MDOC_JOIN }, /* Ta */
 };
 
 const	struct mdoc_macro * const mdoc_macros = __mdoc_macros;
@@ -542,6 +561,9 @@ rew_sub(enum mdoc_type t, struct mdoc *mdoc,
 		case (REWIND_NONE):
 			return(1);
 		case (REWIND_THIS):
+			n->lastline = line -
+			    (MDOC_NEWLINE & mdoc->flags &&
+			     ! (MDOC_EXPLICIT & mdoc_macros[tok].flags));
 			break;
 		case (REWIND_FORCE):
 			mandoc_vmsg(MANDOCERR_SCOPEBROKEN, mdoc->parse, 
@@ -550,6 +572,8 @@ rew_sub(enum mdoc_type t, struct mdoc *mdoc,
 					mdoc_macronames[n->tok]);
 			/* FALLTHROUGH */
 		case (REWIND_MORE):
+			n->lastline = line -
+			    (MDOC_NEWLINE & mdoc->flags ? 1 : 0);
 			n = n->parent;
 			continue;
 		case (REWIND_LATER):
@@ -588,12 +612,20 @@ rew_sub(enum mdoc_type t, struct mdoc *mdoc,
  * Punctuation consists of those tokens found in mdoc_isdelim().
  */
 static int
-dword(struct mdoc *mdoc, int line, 
-		int col, const char *p, enum mdelim d)
+dword(struct mdoc *mdoc, int line, int col, const char *p,
+		enum mdelim d, int may_append)
 {
 	
 	if (DELIM_MAX == d)
 		d = mdoc_isdelim(p);
+
+	if (may_append &&
+	    ! ((MDOC_SYNOPSIS | MDOC_KEEP | MDOC_SMOFF) & mdoc->flags) &&
+	    DELIM_NONE == d && MDOC_TEXT == mdoc->last->type &&
+	    DELIM_NONE == mdoc_isdelim(mdoc->last->string)) {
+		mdoc_word_append(mdoc, p);
+		return(1);
+	}
 
 	if ( ! mdoc_word_alloc(mdoc, line, col, p))
 		return(0);
@@ -638,7 +670,7 @@ append_delims(struct mdoc *mdoc, int line, int *pos, char *buf)
 		else if (ARGS_EOLN == ac)
 			break;
 
-		dword(mdoc, line, la, p, DELIM_MAX);
+		dword(mdoc, line, la, p, DELIM_MAX, 1);
 
 		/*
 		 * If we encounter end-of-sentence symbols, then trigger
@@ -680,6 +712,8 @@ blk_exp_close(MACRO_PROT_ARGS)
 	case (MDOC_Ec):
 		maxargs = 1;
 		break;
+	case (MDOC_Ek):
+		mdoc->flags &= ~MDOC_KEEP;
 	default:
 		maxargs = 0;
 		break;
@@ -782,7 +816,8 @@ blk_exp_close(MACRO_PROT_ARGS)
 		ntok = ARGS_QWORD == ac ? MDOC_MAX : lookup(tok, p);
 
 		if (MDOC_MAX == ntok) {
-			if ( ! dword(mdoc, line, lastarg, p, DELIM_MAX))
+			if ( ! dword(mdoc, line, lastarg, p, DELIM_MAX,
+			    MDOC_JOIN & mdoc_macros[tok].flags))
 				return(0);
 			continue;
 		}
@@ -948,7 +983,8 @@ in_line(MACRO_PROT_ARGS)
 		if (DELIM_NONE == d)
 			cnt++;
 
-		if ( ! dword(mdoc, line, la, p, d))
+		if ( ! dword(mdoc, line, la, p, d,
+		    MDOC_JOIN & mdoc_macros[tok].flags))
 			return(0);
 
 		/*
@@ -1067,7 +1103,10 @@ blk_full(MACRO_PROT_ARGS)
 		if ( ! mdoc_body_alloc(mdoc, line, ppos, tok))
 			return(0);
 		body = mdoc->last;
-	} 
+	}
+
+	if (MDOC_Bk == tok)
+		mdoc->flags |= MDOC_KEEP;
 
 	ac = ARGS_ERROR;
 
@@ -1112,7 +1151,7 @@ blk_full(MACRO_PROT_ARGS)
 				ARGS_PPHRASE != ac &&
 				ARGS_QWORD != ac &&
 				DELIM_OPEN == mdoc_isdelim(p)) {
-			if ( ! dword(mdoc, line, la, p, DELIM_OPEN))
+			if ( ! dword(mdoc, line, la, p, DELIM_OPEN, 0))
 				return(0);
 			continue;
 		}
@@ -1165,7 +1204,8 @@ blk_full(MACRO_PROT_ARGS)
 			MDOC_MAX : lookup(tok, p);
 
 		if (MDOC_MAX == ntok) {
-			if ( ! dword(mdoc, line, la, p, DELIM_MAX))
+			if ( ! dword(mdoc, line, la, p, DELIM_MAX,
+			    MDOC_JOIN & mdoc_macros[tok].flags))
 				return(0);
 			continue;
 		}
@@ -1276,10 +1316,10 @@ blk_part_imp(MACRO_PROT_ARGS)
 
 		if (NULL == body && ARGS_QWORD != ac &&
 				DELIM_OPEN == mdoc_isdelim(p)) {
-			if ( ! dword(mdoc, line, la, p, DELIM_OPEN))
+			if ( ! dword(mdoc, line, la, p, DELIM_OPEN, 0))
 				return(0);
 			continue;
-		} 
+		}
 
 		if (NULL == body) {
 		       if ( ! mdoc_body_alloc(mdoc, line, ppos, tok))
@@ -1290,7 +1330,8 @@ blk_part_imp(MACRO_PROT_ARGS)
 		ntok = ARGS_QWORD == ac ? MDOC_MAX : lookup(tok, p);
 
 		if (MDOC_MAX == ntok) {
-			if ( ! dword(mdoc, line, la, p, DELIM_MAX))
+			if ( ! dword(mdoc, line, la, p, DELIM_MAX,
+			    MDOC_JOIN & mdoc_macros[tok].flags))
 				return(0);
 			continue;
 		}
@@ -1416,10 +1457,10 @@ blk_part_exp(MACRO_PROT_ARGS)
 		if (NULL == head && ARGS_QWORD != ac &&
 				DELIM_OPEN == mdoc_isdelim(p)) {
 			assert(NULL == body);
-			if ( ! dword(mdoc, line, la, p, DELIM_OPEN))
+			if ( ! dword(mdoc, line, la, p, DELIM_OPEN, 0))
 				return(0);
 			continue;
-		} 
+		}
 
 		if (NULL == head) {
 			assert(NULL == body);
@@ -1437,7 +1478,7 @@ blk_part_exp(MACRO_PROT_ARGS)
 			assert(head);
 			/* No check whether it's a macro! */
 			if (MDOC_Eo == tok)
-				if ( ! dword(mdoc, line, la, p, DELIM_MAX))
+				if ( ! dword(mdoc, line, la, p, DELIM_MAX, 0))
 					return(0);
 
 			if ( ! rew_sub(MDOC_HEAD, mdoc, tok, line, ppos))
@@ -1455,7 +1496,8 @@ blk_part_exp(MACRO_PROT_ARGS)
 		ntok = ARGS_QWORD == ac ? MDOC_MAX : lookup(tok, p);
 
 		if (MDOC_MAX == ntok) {
-			if ( ! dword(mdoc, line, la, p, DELIM_MAX))
+			if ( ! dword(mdoc, line, la, p, DELIM_MAX,
+			    MDOC_JOIN & mdoc_macros[tok].flags))
 				return(0);
 			continue;
 		}
@@ -1559,7 +1601,7 @@ in_line_argn(MACRO_PROT_ARGS)
 		if ( ! (MDOC_IGNDELIM & mdoc_macros[tok].flags) && 
 				ARGS_QWORD != ac && 0 == j && 
 				DELIM_OPEN == mdoc_isdelim(p)) {
-			if ( ! dword(mdoc, line, la, p, DELIM_OPEN))
+			if ( ! dword(mdoc, line, la, p, DELIM_OPEN, 0))
 				return(0);
 			continue;
 		} else if (0 == j)
@@ -1593,7 +1635,8 @@ in_line_argn(MACRO_PROT_ARGS)
 			flushed = 1;
 		}
 
-		if ( ! dword(mdoc, line, la, p, DELIM_MAX))
+		if ( ! dword(mdoc, line, la, p, DELIM_MAX,
+		    MDOC_JOIN & mdoc_macros[tok].flags))
 			return(0);
 		j++;
 	}
@@ -1664,7 +1707,8 @@ in_line_eoln(MACRO_PROT_ARGS)
 		ntok = ARGS_QWORD == ac ? MDOC_MAX : lookup(tok, p);
 
 		if (MDOC_MAX == ntok) {
-			if ( ! dword(mdoc, line, la, p, DELIM_MAX))
+			if ( ! dword(mdoc, line, la, p, DELIM_MAX,
+			    MDOC_JOIN & mdoc_macros[tok].flags))
 				return(0);
 			continue;
 		}
@@ -1744,7 +1788,7 @@ phrase(struct mdoc *mdoc, int line, int ppos, char *buf)
 		ntok = ARGS_QWORD == ac ? MDOC_MAX : lookup_raw(p);
 
 		if (MDOC_MAX == ntok) {
-			if ( ! dword(mdoc, line, la, p, DELIM_MAX))
+			if ( ! dword(mdoc, line, la, p, DELIM_MAX, 1))
 				return(0);
 			continue;
 		}
@@ -1795,7 +1839,8 @@ phrase_ta(MACRO_PROT_ARGS)
 		ntok = ARGS_QWORD == ac ? MDOC_MAX : lookup_raw(p);
 
 		if (MDOC_MAX == ntok) {
-			if ( ! dword(mdoc, line, la, p, DELIM_MAX))
+			if ( ! dword(mdoc, line, la, p, DELIM_MAX,
+			    MDOC_JOIN & mdoc_macros[tok].flags))
 				return(0);
 			continue;
 		}

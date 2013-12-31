@@ -1,4 +1,4 @@
-/*	$Id: mdoc_argv.c,v 1.86 2012/11/18 00:05:35 schwarze Exp $ */
+/*	$Id: mdoc_argv.c,v 1.89 2013/12/25 00:50:05 schwarze Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
  * Copyright (c) 2012 Ingo Schwarze <schwarze@openbsd.org>
@@ -260,7 +260,7 @@ static	const struct mdocarg mdocargs[MDOC_MAX] = {
 	{ ARGSFL_NONE, NULL }, /* %C */
 	{ ARGSFL_NONE, NULL }, /* Es */
 	{ ARGSFL_NONE, NULL }, /* En */
-	{ ARGSFL_NONE, NULL }, /* Dx */
+	{ ARGSFL_DELIM, NULL }, /* Dx */
 	{ ARGSFL_NONE, NULL }, /* %Q */
 	{ ARGSFL_NONE, NULL }, /* br */
 	{ ARGSFL_NONE, NULL }, /* sp */
@@ -447,6 +447,7 @@ args(struct mdoc *mdoc, int line, int *pos,
 		char *buf, enum argsflag fl, char **v)
 {
 	char		*p, *pp;
+	int		 pairs;
 	enum margserr	 rc;
 
 	if ('\0' == buf[*pos]) {
@@ -535,11 +536,13 @@ args(struct mdoc *mdoc, int line, int *pos,
 			/* Skip ahead. */ ;
 
 		return(rc);
-	} 
+	}
 
-	/* 
+	/*
 	 * Process a quoted literal.  A quote begins with a double-quote
 	 * and ends with a double-quote NOT preceded by a double-quote.
+	 * NUL-terminate the literal in place.
+	 * Collapse pairs of quotes inside quoted literals.
 	 * Whitespace is NOT involved in literal termination.
 	 */
 
@@ -550,13 +553,22 @@ args(struct mdoc *mdoc, int line, int *pos,
 		if (MDOC_PPHRASE & mdoc->flags)
 			mdoc->flags |= MDOC_PHRASELIT;
 
+		pairs = 0;
 		for ( ; buf[*pos]; (*pos)++) {
+			/* Move following text left after quoted quotes. */
+			if (pairs)
+				buf[*pos - pairs] = buf[*pos];
 			if ('\"' != buf[*pos])
 				continue;
+			/* Unquoted quotes end quoted args. */
 			if ('\"' != buf[*pos + 1])
 				break;
+			/* Quoted quotes collapse. */
+			pairs++;
 			(*pos)++;
 		}
+		if (pairs)
+			buf[*pos - pairs] = '\0';
 
 		if ('\0' == buf[*pos]) {
 			if (MDOC_PPHRASE & mdoc->flags)

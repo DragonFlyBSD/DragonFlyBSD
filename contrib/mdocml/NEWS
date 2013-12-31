@@ -1,6 +1,34 @@
-$Id: NEWS,v 1.2 2013/10/05 13:15:51 schwarze Exp $
+$Id: NEWS,v 1.3 2013/10/13 16:06:50 schwarze Exp $
 
 This file lists the most important changes in the mdocml.bsd.lv distribution.
+
+Changes in version 1.12.3, released on December 31, 2013
+
+ * In the mdoc(7) SYNOPSIS, line breaks and hanging indentation
+   now work correctly for .Fo/.Fa/.Fc and .Fn blocks.
+   Thanks to Franco Fichtner for doing part of the work.
+ * The mdoc(7) .Bk macro got some addititonal bugfixes.
+ * In mdoc(7) macro arguments, double quotes can now be quoted
+   by doubling them, just like in man(7).
+   Thanks to Tsugutomo ENAMI for the patch.
+ * At the end of man(7) macro lines, end-of-sentence spacing
+   now works.  Thanks to Franco Fichtner for the patch.
+ * For backward compatibility, the man(7) parser now supports the
+   man-ext .UR/.UE (uniform resource identifier) block macros.
+ * The man(7) parser now handles closing blocks that are not open
+   more gracefully.
+ * The man(7) parser now ignores blank lines right after .SH and .SS.
+ * In the man(7) formatter, reset indentation when leaving a block,
+   not just when entering the next one.
+ * The roff(7) .nr request now supports incrementing and decrementing
+   number registers and stops parsing the number right before the
+   first non-digit character.
+ * The roff(7) parser now supports the alternative escape sequence
+   syntax \C'uXXXX' for Unicode characters.
+ * The roff(7) parser now parses and ignores the .fam (font family)
+   and .hw (hyphenation points) requests and the \d and \u escape
+   sequences.
+ * The roff(7) manual got a new ESCAPE SEQUENCE REFERENCE.
 
 Changes in version 1.12.2, released on Oktober 5, 2013
 
@@ -130,13 +158,16 @@ Changes in version 1.11.1, released on April 4, 2011
  * The earlier libroff, libmdoc, and libman soup have been merged into
    a single library, libmandoc, which manages all aspects of parsing
    real manuals, from line-handling to tbl(7) parsing.
- * Beyond this structural change, initial eqn(7) functionality is in
-   place.  For the time being, this is limited to the recognition of
-   equation blocks; future version of mdocml will expand upon this
-   framework.
  * As usual, many general fixes and improvements have also occurred.
    In particular, a great deal of redundancy and superfluous code has
    been removed with the merging of the backend libraries.
+ * see also the changes in 1.10.10
+
+Changes in version 1.10.10, March 20, 2011, NOT released
+
+ * Initial eqn(7) functionality is in place.  For the time being,
+   this is limited to the recognition of equation blocks;
+   future version of mdocml will expand upon this framework.
 
 Changes in version 1.10.9, released on January 7, 2011
 
@@ -150,19 +181,23 @@ Changes in version 1.10.9, released on January 7, 2011
 
 Changes in version 1.10.8, released on December 24, 2010
 
- * Significant improvements merged from OpenBSD downstream, including
-    - many new roff(7) components,
-    - in-line implementation of troff's soelim(1),
-    - broken-block handling,
-    - overhauled error classifications, and
-    - cleaned up handling of error conditions.
- * Also overhauled the -Thtml and -Txhtml output modes.  They now display
+ * Overhauled the -Thtml and -Txhtml output modes.  They now display
    readable output in arbitrary browsers, including text-based ones like
    lynx(1).  See HTML and XHTML manuals in the DOCUMENTATION section
    for examples.  Attention: available style-sheet classes have been
    considerably changed!  See the example.style.css file for details.
    Lastly, libmdoc and libman have been cleaned up and reduced in size
    and complexity.
+ * see also the changes in 1.10.7
+
+Changes in version 1.10.7, December 6, 2010, NOT released
+
+ Significant improvements merged from OpenBSD downstream, including:
+ * many new roff(7) components,
+ * in-line implementation of troff's soelim(1),
+ * broken-block handling,
+ * overhauled error classifications, and
+ * cleaned up handling of error conditions.
 
 Changes in version 1.10.6, released on September 27, 2010
 
@@ -194,12 +229,16 @@ Changes in version 1.10.4, released on July 12, 2010
  * Lots of features developed during both "Summer of Code" and the
    OpenBSD c2k10 hackathon:
  * minimal "ds" roff(7) symbols are supported
- * "Bk" mdoc(7) support
  * beautified SYNOPSIS section output
- * variable font-width and paper-size support in mandoc(1) -Tps output
  * acceptance of scope-block breakage in mdoc(7)
  * clarify error message status
  * many minor bug-fixes and formatting issues resolved
+ * see also changes in 1.10.3
+
+Changes in version 1.10.3, June 29, 2010, NOT released
+
+ * variable font-width and paper-size support in mandoc(1) -Tps output
+ * "Bk" mdoc(7) support
 
 Changes in version 1.10.2, released on June 19, 2010
 

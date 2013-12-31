@@ -1,7 +1,7 @@
-/*	$Id: mdoc.c,v 1.203 2012/11/17 00:26:33 schwarze Exp $ */
+/*	$Id: mdoc.c,v 1.206 2013/12/24 19:11:46 schwarze Exp $ */
 /*
  * Copyright (c) 2008, 2009, 2010, 2011 Kristaps Dzonsons <kristaps@bsd.lv>
- * Copyright (c) 2010, 2012 Ingo Schwarze <schwarze@openbsd.org>
+ * Copyright (c) 2010, 2012, 2013 Ingo Schwarze <schwarze@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -295,12 +295,10 @@ mdoc_parseln(struct mdoc *mdoc, int ln, char *buf, int offs)
 	 * whether this mode is on or off.
 	 * Note that this mode is also switched by the Sh macro.
 	 */
-	if (roff_regisset(mdoc->roff, REG_nS)) {
-		if (roff_regget(mdoc->roff, REG_nS))
-			mdoc->flags |= MDOC_SYNOPSIS;
-		else
-			mdoc->flags &= ~MDOC_SYNOPSIS;
-	}
+	if (roff_getreg(mdoc->roff, "nS"))
+		mdoc->flags |= MDOC_SYNOPSIS;
+	else
+		mdoc->flags &= ~MDOC_SYNOPSIS;
 
 	return(roff_getcontrol(mdoc->roff, buf, &offs) ?
 			mdoc_pmacro(mdoc, ln, buf, offs) :
@@ -436,6 +434,7 @@ node_alloc(struct mdoc *mdoc, int line, int pos,
 	p->sec = mdoc->lastsec;
 	p->line = line;
 	p->pos = pos;
+	p->lastline = line;
 	p->tok = tok;
 	p->type = type;
 
@@ -584,6 +583,23 @@ mdoc_word_alloc(struct mdoc *mdoc, int line, int pos, const char *p)
 	return(1);
 }
 
+void
+mdoc_word_append(struct mdoc *mdoc, const char *p)
+{
+	struct mdoc_node	*n;
+	char			*addstr, *newstr;
+
+	n = mdoc->last;
+	addstr = roff_strdup(mdoc->roff, p);
+	if (-1 == asprintf(&newstr, "%s %s", n->string, addstr)) {
+		perror(NULL);
+		exit((int)MANDOCLEVEL_SYSERR);
+	}
+	free(addstr);
+	free(n->string);
+	n->string = newstr;
+	mdoc->next = MDOC_NEXT_SIBLING;
+}
 
 static void
 mdoc_node_free(struct mdoc_node *p)

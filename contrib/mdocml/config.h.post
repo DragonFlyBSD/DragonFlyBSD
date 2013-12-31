@@ -19,6 +19,9 @@
 #  if defined(__APPLE__)
 #    define betoh64(x) OSSwapBigToHostInt64(x)
 #    define htobe64(x) OSSwapHostToBigInt64(x)
+#  elif defined(__sun)
+#    define betoh64(x) BE_64(x)
+#    define htobe64(x) BE_64(x)
 #  else
 #    define betoh64(x) be64toh(x)
 #  endif
