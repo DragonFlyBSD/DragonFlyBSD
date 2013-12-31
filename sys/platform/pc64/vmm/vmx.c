@@ -440,7 +440,7 @@ vmx_init(void)
 		return (EINVAL);
 	}
 	if (!(feature_control & BIT(FEATURE_CONTROL_VMX_BIOS_ENABLED))) {
-		kprintf("VMM: VMX is disable by the BIOS\n");
+		kprintf("VMM: VMX is disabled by the BIOS\n");
 		return (EINVAL);
 	}
 
