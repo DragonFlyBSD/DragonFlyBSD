@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/vale.4 228017 2011-11-27 06:55:57Z gjb $
 .\"
-.Dd July 27, 2012
+.Dd December 26, 2013
 .Dt VALE 4
 .Os
 .Sh NAME
@@ -38,18 +38,18 @@
 .Sh DESCRIPTION
 .Nm
 is a feature of the
-.Nm netmap
-module that implements multiple Virtual switches that can
-be used to interconnect netmap clients, including traffic
-sources and sinks, packet forwarders, userspace firewalls,
-and so on.
+.Xr netmap 4
+module that implements multiple virtual switches that can
+be used to interconnect
+.Xr netmap 4
+clients, including traffic sources and sinks, packet forwarders,
+userspace firewalls, and so on.
 .Pp
 .Nm
 is implemented completely in software, and is extremely fast.
 On a modern machine it can move almost 20 Million packets per
 second (Mpps) per core with small frames, and about 70 Gbit/s
 with 1500 byte frames.
-.Pp
 .Sh OPERATION
 .Nm
 dynamically creates switches and ports as client connect
@@ -73,105 +73,106 @@ constraint being that the full name must fit within 16
 characters.
 .Pp
 .Nm
-ports can be physical network interfaces that support
+ports can be physical network interfaces that support the
 .Xr netmap 4
 API
 by specifying the interface name for
-.Pa [port].
+.Pa [port] .
 See
-.Nm OPERATION
-section in
 .Xr netmap 4
 for details of the naming rule.
 .Pp
-Physical interfaces are attached using
-.Pa NIOCGREGIF
+Physical interfaces are attached using the
+.Dv NIOCGREGIF
 command of
-.Pa ioctl(),
+.Xr ioctl 2 ,
 and
-.Pa NETMAP_BDG_ATTACH
-at
-.Em nr_cmd
+.Dv NETMAP_BDG_ATTACH
+for the
+.Va nr_cmd
 field in
-.Em struct nmreq .
+.Vt struct nmreq .
 The corresponding host stack can also be attached to the bridge, specifying
-.Pa NETMAP_BDG_HOST
+.Dv NETMAP_BDG_HOST
 in
-.Em nr_arg1 .
+.Va nr_arg1 .
 To detach the interface from the bridge,
-.Pa NETMAP_BDG_DETACH
-is used instead of NETMAP_BDG_ATTACH.
+.Dv NETMAP_BDG_DETACH
+is used instead of
+.Dv NETMAP_BDG_ATTACH .
 The host stack is also detached from the bridge at the same
-time if it has been attached.
+time if it had been attached.
 .Pp
-Physical interfaces are treated as system configuration;
-they are kept being attached even after the configuring process dies,
-and detached by any process.
+Physical interfaces are treated as a system configuration;
+they remain attached even after the configuring process died,
+and can be detached by any other process.
 .Pp
 Once a physical interface is attached, this interface is no longer
-available to be directly accessed by netmap clients (user processes) or to be
-attached by another bridge.
-On the other hand, when any netmap client holds the physical interface,
+available to be directly accessed by
+.Xr netmap 4
+clients (user processes) or to be attached by another bridge.
+On the other hand, when a
+.Xr netmap 4
+client holds the physical interface,
 this interface cannot be attached to a bridge.
 .Pp
-.Pa NETMAP_BDG_LIST
-subcommand in nr_cmd of
-.Em struct nmreq
-is used to obtain bridge and port
-information.  There are two modes of how it works;
+.Va NETMAP_BDG_LIST
+subcommand in
+.Va nr_cmd
+of
+.Vt struct nmreq
+is used to obtain bridge and port information.
+There are two modes of how this works.
 If any
-.Em nr_name
+.Va nr_name
 starting from non '\\0' is provided,
-.Pa ioctl()
-returning
-indicates the position of
-the named interface.
-This position is represented by an index of the bridge and the port, and
-put in
-.Em nr_arg1
+.Xr ioctl 2
+returning indicates the position of the named interface.
+This position is represented by an index of the bridge and the port,
+and put into the
+.Va nr_arg1
 and
-.Em nr_arg2
-fields, respectively.  If the named interface does not exist,
-.Pa ioctl()
+.Va nr_arg2
+fields, respectively.
+If the named interface does not exist,
+.Xr ioctl 2
 returns
-.Pa EINVAL .
+.Dv EINVAL .
 .Pp
 If
-.Em nr_name
+.Va nr_name
 starting from '\\0' is provided,
-.Pa ioctl()
+.Xr ioctl 2
 returning indicates the
 first existing interface on and after the position specified in
-.Em nr_arg1
+.Va nr_arg1
 and
-.Em nr_arg2.
+.Va nr_arg2 .
 If the caller specified a port index greater than the highest
 index of the ports, it is recognized as port index 0 of the
-next bridge
-(
-.Em nr_arg1
+next bridge (
+.Va nr_arg1
 + 1,
-.Em nr_arg2
+.Va nr_arg2
 = 0).
-.Pa ioctl()
+.Xr ioctl 2
 returns
-.Pa EINVAL
+.Dv EINVAL
 if the given position is higher than that of
 any existing interface.
 On successful return of
-.Pa ioctl() ,
+.Xr ioctl 2 ,
 the interface name is also stored in
-.Em nr_name .
-.Pa NETMAP_BDG_LIST
-is always used with
-.Pa NIOCGINFO
+.Va nr_name .
+.Dv NETMAP_BDG_LIST
+is always used with the
+.Dv NIOCGINFO
 command of
-.Pa ioctl()
+.Xr ioctl 2 .
 .Pp
 Below is an example of printing all the existing ports walking through
 all the bridges.
-
-.Bd -literal -compact
+.Bd -literal
 struct nmreq nmr;
 int fd = open("/dev/netmap", O_RDWR);
 
@@ -185,39 +186,39 @@ for (; !ioctl(fd, NIOCGINFO, &nmr); nmr.nr_arg2++) {
 	nmr.nr_name[0] = '\\0';
 }
 .Ed
-.Pp
-See
-.Xr netmap 4
-for details on the API.
 .Ss LIMITS
 .Nm
 currently supports up to 8 switches, 254 ports per switch,
-1024 buffers per port. These hard limits will be
-changed to sysctl variables in future releases.
+1024 buffers per port.
+These hard limits will be changed to
+.Xr sysctl 8
+variables in future releases.
 .Pp
 Attaching the host stack to the bridge imposes significant performance
-degradation when many packets are forwarded to the host stack by either
-unicast or broadcast.
-This is because every single packet going to the host stack causes mbuf
-allocation in the same thread context as one forwarding packets.
-.Pp
+degradation when many packets are forwarded to the host stack.
+This is because each packet forwarded to the host stack causes
+.Xr mbuf 9
+allocation in the same thread context.
 .Sh SYSCTL VARIABLES
 .Nm
-uses the following sysctl variables to control operation:
-.Bl -tag -width 12
+uses the following
+.Xr sysctl 8
+variables to control operation:
+.Bl -tag -width "dev.netmap.verbose"
 .It dev.netmap.bridge
 The maximum number of packets processed internally
 in each iteration.
 Defaults to 1024, use lower values to trade latency
 with throughput.
-.Pp
 .It dev.netmap.verbose
 Set to non-zero values to enable in-kernel diagnostics.
 .El
-.Pp
 .Sh EXAMPLES
 Create one switch, with a traffic generator connected to one
-port, and a netmap-enabled tcpdump instance on another port:
+port, and a
+.Xr netmap 4 Ns -enabled
+.Xr tcpdump 1
+instance on another port:
 .Bd -literal -offset indent
 tcpdump -ni vale-a:1 &
 pkt-gen  -i vale-a:0 -f tx &
@@ -233,21 +234,23 @@ qemu -net nic -net netmap,ifname=vale-2:d ... &
 .Ed
 .Sh SEE ALSO
 .Xr netmap 4
-.Pp
-.Xr http://info.iet.unipi.it/~luigi/vale/
-.Pp
-Luigi Rizzo, Giuseppe Lettieri: VALE, a switched ethernet for virtual machines,
-June 2012, http://info.iet.unipi.it/~luigi/vale/
+.Rs
+.%A Luigi Rizzo
+.%A Giuseppe Lettieri
+.%T VALE, a switched ethernet for virtual machines
+.%J http://info.iet.unipi.it/~luigi/vale/
+.%D June 2012
+.Re
 .Sh AUTHORS
 .An -nosplit
 The
 .Nm
-switch  has been designed and implemented in 2012 by
+switch has been designed and implemented in 2012 by
 .An Luigi Rizzo
 and
 .An Giuseppe Lettieri
 at the Universita` di Pisa.
 .Pp
 .Nm
-has been funded by the European Commission within FP7 Projects
+has been funded by the European Commission within the FP7 Projects
 CHANGE (257422) and OPENLAB (287581).
