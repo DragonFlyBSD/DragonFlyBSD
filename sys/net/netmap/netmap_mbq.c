@@ -24,8 +24,8 @@
  */
 
 #include <sys/param.h>
-#include <sys/lock.h>
-#include <sys/mutex.h>
+#include <sys/spinlock.h>
+#include <sys/spinlock2.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 
@@ -40,7 +40,7 @@ static inline void __mbq_init(struct mbq *q)
 
 void mbq_safe_init(struct mbq *q)
 {
-    lockinit(&q->lock, "mbq", 0, 0);
+    spin_init(&q->lock);
     __mbq_init(q);
 }
 
@@ -63,9 +63,9 @@ static inline void __mbq_enqueue(struct mbq *q, struct mbuf *m)
 
 void mbq_safe_enqueue(struct mbq *q, struct mbuf *m)
 {
-    lockmgr(&q->lock, LK_EXCLUSIVE);
+    spin_lock(&q->lock);
     __mbq_enqueue(q, m);
-    lockmgr(&q->lock, LK_RELEASE);
+    spin_unlock(&q->lock);
 }
 
 void mbq_enqueue(struct mbq *q, struct mbuf *m)
@@ -94,9 +94,9 @@ struct mbuf *mbq_safe_dequeue(struct mbq *q)
 {
     struct mbuf *ret;
 
-    lockmgr(&q->lock, LK_EXCLUSIVE);
+    spin_lock(&q->lock);
     ret =  __mbq_dequeue(q);
-    lockmgr(&q->lock, LK_RELEASE);
+    spin_unlock(&q->lock);
 
     return ret;
 }
@@ -133,7 +133,7 @@ void mbq_safe_purge(struct mbq *q)
 
 void mbq_safe_destroy(struct mbq *q)
 {
-    lockuninit(&q->lock);
+    spin_uninit(&q->lock);
 }
 
 

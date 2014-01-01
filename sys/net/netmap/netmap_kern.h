@@ -42,13 +42,13 @@
 #define	NM_LOCK_T	struct lock
 #define	NMG_LOCK_T	struct lock
 #define NMG_LOCK_INIT()	lockinit(&netmap_global_lock, \
-				"netmap global lock", 0, 0)
+				"netmap global lock", 0, LK_CANRECURSE)
 #define NMG_LOCK_DESTROY()	lockuninit(&netmap_global_lock)
 #define NMG_LOCK()	lockmgr(&netmap_global_lock, LK_EXCLUSIVE)
 #define NMG_UNLOCK()	lockmgr(&netmap_global_lock, LK_RELEASE)
-#define NMG_LOCK_ASSERT()	KKASSERT(lockcountnb(&netmap_global_lock))
+#define NMG_LOCK_ASSERT()	KKASSERT(lockstatus(&netmap_global_lock, NULL) != 0)
 
-#define	NM_SELINFO_T	struct taskqueue *
+#define	NM_SELINFO_T	struct kqinfo
 #define	MBUF_LEN(m)	((m)->m_pkthdr.len)
 #define	MBUF_IFP(m)	((m)->m_pkthdr.rcvif)
 #define	NM_SEND_UP(ifp, m)	((ifp)->if_input)(ifp, m)
@@ -60,6 +60,10 @@
 #define NM_ATOMIC_CLEAR(p)              atomic_store_rel_int((p), 0)
 
 #define prefetch(x)     __builtin_prefetch(x)
+
+#define mb()	cpu_mfence()
+#define rmb()	cpu_lfence()
+#define wmb()	cpu_sfence()
 
 MALLOC_DECLARE(M_NETMAP);
 

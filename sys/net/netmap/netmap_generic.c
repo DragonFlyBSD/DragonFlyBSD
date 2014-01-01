@@ -65,10 +65,9 @@
 #include <sys/types.h>
 #include <sys/errno.h>
 #include <sys/malloc.h>
+#include <sys/event.h>
 #include <sys/lock.h>   /* PROT_EXEC */
-#include <sys/rwlock.h>
 #include <sys/socket.h> /* sockaddrs */
-#include <sys/selinfo.h>
 #include <net/if.h>
 #include <net/if_var.h>
 #include <sys/bus.h>        /* bus_dmamap_* in netmap_kern.h */
@@ -81,7 +80,7 @@
 
 #define rtnl_lock() D("rtnl_lock called");
 #define rtnl_unlock() D("rtnl_lock called");
-#define MBUF_TXQ(m)	((m)->m_pkthdr.flowid)
+#define MBUF_TXQ(m)	((m)->m_pkthdr.hash)
 #define smp_mb()
 
 /*
@@ -91,7 +90,7 @@
 /*
  * we allocate an EXT_PACKET
  */
-#define netmap_get_mbuf(len) m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR|M_NOFREE)
+#define netmap_get_mbuf(len) m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR)
 
 /* mbuf destructor, also need to change the type to EXT_EXTREF,
  * add an M_NOFREE flag, and then clear the flag and
@@ -100,7 +99,7 @@
  */
 #define SET_MBUF_DESTRUCTOR(m, fn)	do {		\
 		(m)->m_ext.ext_free = (void *)fn;	\
-		(m)->m_ext.ext_type = EXT_EXTREF;	\
+		/* (m)->m_ext.ext_type = EXT_EXTREF; */	\
 	} while (0)
 
 
@@ -328,11 +327,15 @@ generic_mbuf_destructor(struct mbuf *m)
     if (netmap_verbose)
 	    D("Tx irq (%p) queue %d", m, MBUF_TXQ(m));
     netmap_generic_irq(MBUF_IFP(m), MBUF_TXQ(m), NULL);
+#if 0
     m->m_ext.ext_type = EXT_PACKET;
+#endif
     m->m_ext.ext_free = NULL;
+#if 0
     if (*(m->m_ext.ref_cnt) == 0)
 	*(m->m_ext.ref_cnt) = 1;
     uma_zfree(zone_pack, m);
+#endif
     IFRATE(rate_ctx.new.txirq++);
 }
 
@@ -363,8 +366,10 @@ generic_netmap_tx_clean(struct netmap_kring *kring)
 		// XXX how do we proceed ? break ?
                 return -ENOMEM;
             }
+#if 0
 	} else if (GET_MBUF_REFCNT(m) != 1) {
 	    break; /* This mbuf is still busy: its refcnt is 2. */
+#endif
 	}
         if (unlikely(++ntc == num_slots)) {
             ntc = 0;
@@ -721,7 +726,9 @@ generic_netmap_dtor(struct netmap_adapter *na)
 
     if (prev_na != NULL) {
         D("Released generic NA %p", gna);
+#if 0
 	if_rele(na->ifp);
+#endif
         netmap_adapter_put(prev_na);
     }
     if (ifp != NULL) {

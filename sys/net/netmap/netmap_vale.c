@@ -66,30 +66,27 @@ ports attached to the switch)
 #include <sys/socketvar.h>	/* struct socket */
 #include <sys/malloc.h>
 #include <sys/poll.h>
-#include <sys/rwlock.h>
+#include <sys/lock.h>
 #include <sys/socket.h> /* sockaddrs */
-#include <sys/selinfo.h>
 #include <sys/sysctl.h>
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/bpf.h>		/* BIOCIMMEDIATE */
-#include <machine/bus.h>	/* bus_dmamap_* */
+#include <sys/bus.h>	/* bus_dmamap_* */
 #include <sys/endian.h>
 #include <sys/refcount.h>
 
-// #define prefetch(x)	__builtin_prefetch(x)
 
-
-#define BDG_RWLOCK_T		struct rwlock // struct rwlock
+#define BDG_RWLOCK_T		struct lock
 
 #define	BDG_RWINIT(b)		\
-	rw_init_flags(&(b)->bdg_lock, "bdg lock", RW_NOWITNESS)
-#define BDG_WLOCK(b)		rw_wlock(&(b)->bdg_lock)
-#define BDG_WUNLOCK(b)		rw_wunlock(&(b)->bdg_lock)
-#define BDG_RLOCK(b)		rw_rlock(&(b)->bdg_lock)
-#define BDG_RTRYLOCK(b)		rw_try_rlock(&(b)->bdg_lock)
-#define BDG_RUNLOCK(b)		rw_runlock(&(b)->bdg_lock)
-#define BDG_RWDESTROY(b)	rw_destroy(&(b)->bdg_lock)
+	lockinit(&(b)->bdg_lock, "bdg lock", 0, LK_CANRECURSE)
+#define BDG_WLOCK(b)		lockmgr(&(b)->bdg_lock, LK_EXCLUSIVE)
+#define BDG_WUNLOCK(b)		lockmgr(&(b)->bdg_lock, LK_RELEASE)
+#define BDG_RLOCK(b)		lockmgr(&(b)->bdg_lock, LK_SHARED)
+#define BDG_RTRYLOCK(b)		lockmgr(&(b)->bdg_lock, LK_SHARED|LK_NOWAIT)
+#define BDG_RUNLOCK(b)		lockmgr(&(b)->bdg_lock, LK_RELEASE)
+#define BDG_RWDESTROY(b)	lockuninit(&(b)->bdg_lock)
 
 /*
  * common headers
@@ -572,7 +569,7 @@ netmap_get_bdg_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 	 * try see if there is a matching NIC with this name
 	 * (after the bridge's name)
 	 */
-	ifp = ifunit_ref(name + b->bdg_namelen + 1);
+	ifp = ifunit(name + b->bdg_namelen + 1);
 	if (!ifp) { /* this is a virtual port */
 		/* Create a temporary NA with arguments, then
 		 * bdg_netmap_attach() will allocate the real one
@@ -646,7 +643,9 @@ netmap_get_bdg_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 		ret = NA(fake_ifp);
 		if (nmr->nr_arg1 != NETMAP_BDG_HOST)
 			cand2 = -1; /* only need one port */
+#if 0
 		if_rele(ifp);
+#endif
 	}
 	vpna = (struct netmap_vp_adapter *)ret;
 
@@ -673,7 +672,9 @@ netmap_get_bdg_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 	return 0;
 
 out:
+#if 0
 	if_rele(ifp);
+#endif
 
 	return error;
 }

@@ -37,13 +37,12 @@
 
 #include <net/if.h>
 #include <net/if_var.h>
-#include <net/vnet.h>
 #include <net/netmap.h>
 
 #include "netmap_kern.h"
 #include "netmap_mem2.h"
 
-#define NMA_LOCK_INIT(n)	lockinit(&(n)->nm_mtx, "netmap memory allocator lock", 0, 0)
+#define NMA_LOCK_INIT(n)	lockinit(&(n)->nm_mtx, "netmap memory allocator lock", 0, LK_CANRECURSE)
 #define NMA_LOCK_DESTROY(n)	lockuninit(&(n)->nm_mtx)
 #define NMA_LOCK(n)		lockmgr(&(n)->nm_mtx, LK_EXCLUSIVE)
 #define NMA_UNLOCK(n)		lockmgr(&(n)->nm_mtx, LK_RELEASE)

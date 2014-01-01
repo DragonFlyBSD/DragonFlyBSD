@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <sys/module.h>
 #include <sys/errno.h>
+#include <sys/devfs.h>
 #include <sys/param.h>  /* defines used in kernel.h */
 #include <sys/kernel.h> /* types used in module initialization */
 #include <sys/conf.h>	/* DEV_MODULE */
@@ -38,8 +39,8 @@
 #include <vm/vm_param.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
+#include <vm/vm_page2.h>
 #include <vm/vm_pager.h>
-#include <vm/uma.h>
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -121,10 +122,12 @@ generic_xmit_frame(struct ifnet *ifp, struct mbuf *m,
 	// copy data to the mbuf
 	m_copyback(m, 0, len, addr);
 
+#if 0
 	// inc refcount. We are alone, so we can skip the atomic
 	atomic_fetchadd_int(m->m_ext.ref_cnt, 1);
 	m->m_flags |= M_FLOWID;
-	m->m_pkthdr.flowid = ring_nr;
+#endif
+	m->m_pkthdr.hash = ring_nr;	/* XXX probably not accurate */
 	m->m_pkthdr.rcvif = ifp; /* used for tx notification */
 	ret = ifp->if_transmit(ifp, m);
 	return ret;
@@ -194,9 +197,12 @@ netmap_dev_pager_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
     vm_ooffset_t foff, struct ucred *cred, u_short *color)
 {
 	struct netmap_vm_handle_t *vmh = handle;
+	(void)vmh;
 	D("handle %p size %jd prot %d foff %jd",
 		handle, (intmax_t)size, prot, (intmax_t)foff);
+#if 0
 	dev_ref(vmh->dev);
+#endif
 	return 0;
 }
 
@@ -207,10 +213,13 @@ netmap_dev_pager_dtor(void *handle)
 	struct netmap_vm_handle_t *vmh = handle;
 	struct cdev *dev = vmh->dev;
 	struct netmap_priv_d *priv = vmh->priv;
+	(void)dev;
 	D("handle %p", handle);
 	netmap_dtor(priv);
 	kfree(vmh, M_DEVBUF);
+#if 0
 	dev_rel(dev);
+#endif
 }
 
 static int
@@ -252,9 +261,7 @@ netmap_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
 		VM_OBJECT_WUNLOCK(object);
 		page = vm_page_getfake(paddr, memattr);
 		VM_OBJECT_WLOCK(object);
-		vm_page_lock(*mres);
 		vm_page_free(*mres);
-		vm_page_unlock(*mres);
 		*mres = page;
 		vm_page_insert(page, object, pidx);
 	}
@@ -289,9 +296,11 @@ netmap_mmap_single(struct cdev *cdev, vm_ooffset_t *foff,
 	vmh->dev = cdev;
 
 	NMG_LOCK();
+#if 0
 	error = devfs_get_cdevpriv((void**)&priv);
 	if (error)
 		goto err_unlock;
+#endif
 	vmh->priv = priv;
 	priv->np_refcount++;
 	NMG_UNLOCK();
@@ -315,7 +324,9 @@ netmap_mmap_single(struct cdev *cdev, vm_ooffset_t *foff,
 err_deref:
 	NMG_LOCK();
 	priv->np_refcount--;
+#if 0
 err_unlock:
+#endif
 	NMG_UNLOCK();
 // err:
 	kfree(vmh, M_DEVBUF);
@@ -338,7 +349,9 @@ static int
 netmap_open(struct cdev *dev, int oflags, int devtype, struct thread *td)
 {
 	struct netmap_priv_d *priv;
+#if 0
 	int error;
+#endif
 
 	(void)dev;
 	(void)oflags;
@@ -351,9 +364,11 @@ netmap_open(struct cdev *dev, int oflags, int devtype, struct thread *td)
 	if (priv == NULL)
 		return ENOMEM;
 
+#if 0
 	error = devfs_set_cdevpriv(priv, netmap_dtor);
 	if (error)
 	        return error;
+#endif
 
 	priv->np_refcount = 1;
 
@@ -361,7 +376,8 @@ netmap_open(struct cdev *dev, int oflags, int devtype, struct thread *td)
 }
 
 
-struct cdevsw netmap_cdevsw = {
+struct dev_ops netmap_cdevsw = {
+#if 0
 	.d_version = D_VERSION,
 	.d_name = "netmap",
 	.d_open = netmap_open,
@@ -369,6 +385,7 @@ struct cdevsw netmap_cdevsw = {
 	.d_ioctl = netmap_ioctl,
 	.d_poll = netmap_poll,
 	.d_close = netmap_close,
+#endif
 };
 
 

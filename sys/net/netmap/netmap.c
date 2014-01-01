@@ -134,12 +134,13 @@ ports attached to the switch)
 #include <sys/param.h>	/* defines used in kernel.h */
 #include <sys/kernel.h>	/* types used in module initialization */
 #include <sys/conf.h>	/* cdevsw struct, UID, GID */
+#include <sys/devfs.h>
 #include <sys/sockio.h>
 #include <sys/socketvar.h>	/* struct socket */
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/queue.h>
-#include <sys/taskqueue.h>
+#include <sys/event.h>
 #include <sys/poll.h>
 #include <sys/lock.h>
 #include <sys/socket.h> /* sockaddrs */
@@ -154,7 +155,7 @@ ports attached to the switch)
 /* reduce conditional code */
 #define init_waitqueue_head(x)	// only needed in linux
 
-extern struct cdevsw netmap_cdevsw;
+extern struct dev_ops netmap_cdevsw;
 
 /*
  * common headers
@@ -163,6 +164,8 @@ extern struct cdevsw netmap_cdevsw;
 #include "netmap_kern.h"
 #include "netmap_mem2.h"
 
+#define selwakeuppri(x, y) do { } while (0)	/* XXX porting in progress */
+#define selrecord(x, y) do { } while (0)	/* XXX porting in progress */
 
 MALLOC_DEFINE(M_NETMAP, "netmap", "Network memory map");
 
@@ -180,18 +183,18 @@ int netmap_verbose;
 
 static int netmap_no_timestamp; /* don't timestamp on rxsync */
 
-SYSCTL_NODE(_dev, OID_AUTO, netmap, CTLFLAG_RW, 0, "Netmap args");
-SYSCTL_INT(_dev_netmap, OID_AUTO, verbose,
+SYSCTL_NODE(_net, OID_AUTO, netmap, CTLFLAG_RW, 0, "Netmap args");
+SYSCTL_INT(_net_netmap, OID_AUTO, verbose,
     CTLFLAG_RW, &netmap_verbose, 0, "Verbose mode");
-SYSCTL_INT(_dev_netmap, OID_AUTO, no_timestamp,
+SYSCTL_INT(_net_netmap, OID_AUTO, no_timestamp,
     CTLFLAG_RW, &netmap_no_timestamp, 0, "no_timestamp");
 int netmap_mitigate = 1;
-SYSCTL_INT(_dev_netmap, OID_AUTO, mitigate, CTLFLAG_RW, &netmap_mitigate, 0, "");
+SYSCTL_INT(_net_netmap, OID_AUTO, mitigate, CTLFLAG_RW, &netmap_mitigate, 0, "");
 int netmap_no_pendintr = 1;
-SYSCTL_INT(_dev_netmap, OID_AUTO, no_pendintr,
+SYSCTL_INT(_net_netmap, OID_AUTO, no_pendintr,
     CTLFLAG_RW, &netmap_no_pendintr, 0, "Always look for new received packets.");
 int netmap_txsync_retry = 2;
-SYSCTL_INT(_dev_netmap, OID_AUTO, txsync_retry, CTLFLAG_RW,
+SYSCTL_INT(_net_netmap, OID_AUTO, txsync_retry, CTLFLAG_RW,
     &netmap_txsync_retry, 0 , "Number of txsync loops in bridge's flush.");
 
 int netmap_flags = 0;	/* debug flags */
@@ -214,12 +217,12 @@ static int netmap_admode = NETMAP_ADMODE_BEST;
 int netmap_generic_mit = 100*1000;   /* Generic mitigation interval in nanoseconds. */
 int netmap_generic_ringsize = 1024;   /* Generic ringsize. */
 
-SYSCTL_INT(_dev_netmap, OID_AUTO, flags, CTLFLAG_RW, &netmap_flags, 0 , "");
-SYSCTL_INT(_dev_netmap, OID_AUTO, fwd, CTLFLAG_RW, &netmap_fwd, 0 , "");
-SYSCTL_INT(_dev_netmap, OID_AUTO, mmap_unreg, CTLFLAG_RW, &netmap_mmap_unreg, 0, "");
-SYSCTL_INT(_dev_netmap, OID_AUTO, admode, CTLFLAG_RW, &netmap_admode, 0 , "");
-SYSCTL_INT(_dev_netmap, OID_AUTO, generic_mit, CTLFLAG_RW, &netmap_generic_mit, 0 , "");
-SYSCTL_INT(_dev_netmap, OID_AUTO, generic_ringsize, CTLFLAG_RW, &netmap_generic_ringsize, 0 , "");
+SYSCTL_INT(_net_netmap, OID_AUTO, flags, CTLFLAG_RW, &netmap_flags, 0 , "");
+SYSCTL_INT(_net_netmap, OID_AUTO, fwd, CTLFLAG_RW, &netmap_fwd, 0 , "");
+SYSCTL_INT(_net_netmap, OID_AUTO, mmap_unreg, CTLFLAG_RW, &netmap_mmap_unreg, 0, "");
+SYSCTL_INT(_net_netmap, OID_AUTO, admode, CTLFLAG_RW, &netmap_admode, 0 , "");
+SYSCTL_INT(_net_netmap, OID_AUTO, generic_mit, CTLFLAG_RW, &netmap_generic_mit, 0 , "");
+SYSCTL_INT(_net_netmap, OID_AUTO, generic_ringsize, CTLFLAG_RW, &netmap_generic_ringsize, 0 , "");
 
 NMG_LOCK_T	netmap_global_lock;
 
@@ -434,7 +437,7 @@ netmap_krings_create(struct netmap_adapter *na, u_int ntx, u_int nrx, u_int tail
 		 * the same only if there are no new transmissions).
 		 */
 		kring->nr_hwavail = ndesc - 1;
-		lockinit(&kring->q_lock, "nm_txq_lock", 0, 0);
+		lockinit(&kring->q_lock, "nm_txq_lock", 0, LK_CANRECURSE);
 		init_waitqueue_head(&kring->si);
 	}
 
@@ -444,7 +447,7 @@ netmap_krings_create(struct netmap_adapter *na, u_int ntx, u_int nrx, u_int tail
 		bzero(kring, sizeof(*kring));
 		kring->na = na;
 		kring->nkr_num_slots = ndesc;
-		lockinit(&kring->q_lock, "nm_rxq_lock", 0, 0);
+		lockinit(&kring->q_lock, "nm_rxq_lock", 0, LK_CANRECURSE);
 		init_waitqueue_head(&kring->si);
 	}
 	init_waitqueue_head(&na->tx_si);
@@ -1016,7 +1019,7 @@ netmap_get_hw_na(struct ifnet *ifp, struct netmap_adapter **na)
 	gna = (struct netmap_generic_adapter*)NA(ifp);
 	gna->prev = prev_na; /* save old na */
 	if (prev_na != NULL) {
-		ifunit_ref(ifp->if_xname);
+		ifunit(ifp->if_xname);	/* XXX huh? */
 		// XXX add a refcount ?
 		netmap_adapter_get(prev_na);
 	}
@@ -1062,7 +1065,7 @@ netmap_get_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 	if (error || *na != NULL) /* valid match in netmap_get_bdg_na() */
 		return error;
 
-	ifp = ifunit_ref(nmr->nr_name);
+	ifp = ifunit(nmr->nr_name);
 	if (ifp == NULL) {
 	        return ENXIO;
 	}
@@ -1082,7 +1085,9 @@ netmap_get_na(struct nmreq *nmr, struct netmap_adapter **na, int create)
 		netmap_adapter_get(ret);
 	}
 out:
+#if 0
 	if_rele(ifp);
+#endif
 
 	return error;
 }
@@ -1293,15 +1298,14 @@ netmap_ioctl(struct cdev *dev, u_long cmd, caddr_t data,
 	(void)dev;	/* UNUSED */
 	(void)fflag;	/* UNUSED */
 
-	CURVNET_SET(TD_TO_VNET(td));
-
+#if 0
 	error = devfs_get_cdevpriv((void **)&priv);
 	if (error) {
-		CURVNET_RESTORE();
 		/* XXX ENOENT should be impossible, since the priv
 		 * is now created in the open */
 		return (error == ENOENT ? ENXIO : error);
 	}
+#endif
 
 	nmr->nr_name[sizeof(nmr->nr_name) - 1] = '\0';	/* truncate name */
 	switch (cmd) {
@@ -1502,7 +1506,6 @@ netmap_ioctl(struct cdev *dev, u_long cmd, caddr_t data,
 			break;
 		}
 		ifp = na->ifp;
-		so.so_vnet = ifp->if_vnet;
 		// so->so_proto not null.
 		error = ifioctl(&so, cmd, data, td);
 		netmap_adapter_put(na);
@@ -1512,7 +1515,6 @@ netmap_ioctl(struct cdev *dev, u_long cmd, caddr_t data,
 	}
 out:
 
-	CURVNET_RESTORE();
 	return (error);
 }
 
@@ -1553,8 +1555,10 @@ netmap_poll(struct cdev *dev, int events, struct thread *td)
 	(void)pwait;
 	mbq_init(&q);
 
+#if 0
 	if (devfs_get_cdevpriv((void **)&priv) != 0 || priv == NULL)
 		return POLLERR;
+#endif
 
 	if (priv->np_nifp == NULL) {
 		D("No if registered");
