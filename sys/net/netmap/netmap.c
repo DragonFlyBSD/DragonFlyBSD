@@ -162,7 +162,6 @@ extern struct dev_ops netmap_cdevsw;
 #include "netmap_kern.h"
 #include "netmap_mem2.h"
 
-#define selwakeuppri(x, y) do { } while (0)	/* XXX porting in progress */
 #define selrecord(x, y) do { } while (0)	/* XXX porting in progress */
 
 MALLOC_DEFINE(M_NETMAP, "netmap", "Network memory map");
@@ -1513,6 +1512,40 @@ out:
 	return (error);
 }
 
+static int
+netmap_kqfilter_event(struct knote *kn, long hint)
+{
+	return (0);
+}
+
+static void
+netmap_kqfilter_detach(struct knote *kn)
+{
+}
+
+static struct filterops netmap_kqfilter_ops = {
+	FILTEROP_ISFD, NULL, netmap_kqfilter_detach, netmap_kqfilter_event,
+};
+
+int
+netmap_kqfilter(struct dev_kqfilter_args *ap)
+{
+	struct knote *kn = ap->a_kn;
+
+	ap->a_result = 0;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+	case EVFILT_WRITE:
+		kn->kn_fop = &netmap_kqfilter_ops;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
+
+	return (0);
+}
 
 /*
  * select(2) and poll(2) handlers for the "netmap" device.
@@ -1528,7 +1561,7 @@ out:
  * The first one is remapped to pwait as selrecord() uses the name as an
  * hidden argument.
  */
-int
+static int
 netmap_poll(struct cdev *dev, int events, struct thread *td)
 {
 	struct netmap_priv_d *priv = NULL;
@@ -1789,14 +1822,16 @@ netmap_notify(struct netmap_adapter *na, u_int n_ring, enum txrx tx, int flags)
 
 	if (tx == NR_TX) {
 		kring = na->tx_rings + n_ring;
-		selwakeuppri(&kring->si, PI_NET);
+		KNOTE(&kring->si.ki_note, 0);
+		wakeup(&kring->si.ki_note);
 		if (flags & NAF_GLOBAL_NOTIFY)
-			selwakeuppri(&na->tx_si, PI_NET);
+			wakeup(&na->tx_si.ki_note);
 	} else {
 		kring = na->rx_rings + n_ring;
-		selwakeuppri(&kring->si, PI_NET);
+		KNOTE(&kring->si.ki_note, 0);
+		wakeup(&kring->si.ki_note);
 		if (flags & NAF_GLOBAL_NOTIFY)
-			selwakeuppri(&na->rx_si, PI_NET);
+			wakeup(&na->rx_si.ki_note);
 	}
 	return 0;
 }

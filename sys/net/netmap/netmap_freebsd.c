@@ -384,9 +384,7 @@ struct dev_ops netmap_cdevsw = {
 	.d_open = netmap_open,
 	.d_mmap_single = netmap_mmap_single,
 	.d_ioctl = netmap_ioctl,
-#if 0
-	.d_poll = netmap_poll,
-#endif
+	.d_kqfilter = netmap_kqfilter,
 	.d_close = netmap_close,
 };
 

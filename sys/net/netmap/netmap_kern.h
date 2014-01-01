@@ -664,7 +664,8 @@ int netmap_bdg_ctl(struct nmreq *nmr, bdg_lookup_fn_t func);
 #endif /* !WITH_VALE */
 
 /* Various prototypes */
-int netmap_poll(struct cdev *dev, int events, struct thread *td);
+struct dev_kfilter_args;	/* XXX this shouldn't be here */
+int netmap_kqfilter(struct dev_kqfilter_args *ap);
 
 
 int netmap_init(void);
