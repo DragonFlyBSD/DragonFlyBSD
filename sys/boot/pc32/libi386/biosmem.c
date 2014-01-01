@@ -49,6 +49,7 @@ static struct smap smap;
 void
 bios_getmem(void)
 {
+    int64_t v;
 
     /* Parse system memory map */
     v86.ebx = 0;
@@ -100,7 +101,11 @@ bios_getmem(void)
 	v86.eax = 0xe801;
 	v86int();
 	if (!(v86.efl & 1)) {
-	    bios_extmem = ((v86.ecx & 0xffff) + ((v86.edx & 0xffff) * 64)) * 1024;
+	    v = ((v86.ecx & 0xffff) +
+		((int64_t)(v86.edx & 0xffff) * 64)) * 1024;
+	    if (v > 0x40000000)
+		v = 0x40000000;
+	    bios_extmem = v;
 	}
     }
     if (bios_extmem == 0) {
@@ -111,8 +116,16 @@ bios_getmem(void)
 	bios_extmem = (v86.eax & 0xffff) * 1024;
     }
 
-    /* Set memtop to actual top of memory */
-    memtop = 0x100000 + bios_extmem;
-
+    /*
+     * Set memtop to actual top of memory
+     *
+     * This is broken because the boot loader generally needs more than 16MB
+     * now but the extmem usually calculates to ~14-16MB (which is the fully
+     * segmented limit).  Disk I/O will use bounce buffers.
+     *
+     * Hack it for now.
+     */
+    memtop = 0x100000 + bios_extmem;	/* XXX ignored */
+    memtop = 64 * 1024 * 1024;
 }    
 

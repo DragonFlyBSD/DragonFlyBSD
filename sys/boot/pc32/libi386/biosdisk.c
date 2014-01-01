@@ -1015,24 +1015,32 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
     resid = blks;
     p = dest;
 
-    /* Decide whether we have to bounce */
+    /*
+     * Decide whether we have to bounce.
+     *
+     * We have to bounce if the destination buffer is not segment addressable
+     * or if it crosses a 64KB boundary.
+     */
     if ((od->od_unit < 0x80) && 
-	((VTOP(dest) >> 16) != (VTOP(dest + blks * BIOSDISK_SECSIZE) >> 16))) {
+	(VTOP(dest + blks * BIOSDISK_SECSIZE) >= 16384 * 1024 ||
+	 ((VTOP(dest) >> 16) != (VTOP(dest + blks * BIOSDISK_SECSIZE) >> 16)))
+     ) {
 
 	/* 
-	 * There is a 64k physical boundary somewhere in the destination buffer, so we have
-	 * to arrange a suitable bounce buffer.  Allocate a buffer twice as large as we
-	 * need to.  Use the bottom half unless there is a break there, in which case we
-	 * use the top half.
+	 * There is a 64k physical boundary somewhere in the destination
+	 * buffer, so we have to arrange a suitable bounce buffer.  Allocate
+	 * a buffer twice as large as we need to.  Use the bottom half unless
+	 * there is a break there, in which case we use the top half.
 	 */
 	x = min(FLOPPY_BOUNCEBUF, (unsigned)blks);
 	bbuf = malloc(x * 2 * BIOSDISK_SECSIZE);
-	if (((u_int32_t)VTOP(bbuf) & 0xffff0000) == ((u_int32_t)VTOP(bbuf + x * BIOSDISK_SECSIZE) & 0xffff0000)) {
+	if (((u_int32_t)VTOP(bbuf) & 0xffff0000) ==
+	    ((u_int32_t)VTOP(bbuf + x * BIOSDISK_SECSIZE) & 0xffff0000)) {
 	    breg = bbuf;
 	} else {
 	    breg = bbuf + x * BIOSDISK_SECSIZE;
 	}
-	maxfer = x;			/* limit transfers to bounce region size */
+	maxfer = x;		/* limit transfers to bounce region size */
     } else {
 	breg = bbuf = NULL;
 	maxfer = 0;
@@ -1159,10 +1167,10 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	((VTOP(dest) >> 16) != (VTOP(dest + blks * BIOSDISK_SECSIZE) >> 16))) {
 
 	/* 
-	 * There is a 64k physical boundary somewhere in the destination buffer, so we have
-	 * to arrange a suitable bounce buffer.  Allocate a buffer twice as large as we
-	 * need to.  Use the bottom half unless there is a break there, in which case we
-	 * use the top half.
+	 * There is a 64k physical boundary somewhere in the destination
+	 * buffer, so we have to arrange a suitable bounce buffer.  Allocate
+	 * a buffer twice as large as we need to.  Use the bottom half
+	 * unless there is a break there, in which case we use the top half.
 	 */
 
 	x = min(FLOPPY_BOUNCEBUF, (unsigned)blks);
