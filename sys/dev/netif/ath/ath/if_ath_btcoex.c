@@ -29,7 +29,6 @@
  * $FreeBSD$
  */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 /*
  * This implements some very basic bluetooth coexistence methods for
