@@ -222,7 +222,7 @@ struct rue_softc {
 
 #define GET_MII(sc)	(device_get_softc((sc)->rue_miibus))
 
-#define RUE_LOCK(_sc)	crit_enter()
-#define RUE_UNLOCK(_sc)	crit_exit()
+#define RUE_LOCK(_sc)	lwkt_serialize_enter((_sc)->arpcom.ac_if.if_serializer)
+#define RUE_UNLOCK(_sc)	lwkt_serialize_exit((_sc)->arpcom.ac_if.if_serializer)
 
 #endif /* _IF_RUEREG_H_ */

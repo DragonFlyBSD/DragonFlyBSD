@@ -211,8 +211,6 @@ rue_read_mem(struct rue_softc *sc, u_int16_t addr, void *buf, u_int16_t len)
 	if (sc->rue_dying)
 		return (0);
 
-	RUE_LOCK(sc);
-
 	req.bmRequestType = UT_READ_VENDOR_DEVICE;
 	req.bRequest = UR_SET_ADDRESS;
 	USETW(req.wValue, addr);
@@ -220,8 +218,6 @@ rue_read_mem(struct rue_softc *sc, u_int16_t addr, void *buf, u_int16_t len)
 	USETW(req.wLength, len);
 
 	err = usbd_do_request(sc->rue_udev, &req, buf);
-
-	RUE_UNLOCK(sc);
 
 	if (err) {
 		if_printf(&sc->arpcom.ac_if, "control pipe read failed: %s\n",
@@ -241,8 +237,6 @@ rue_write_mem(struct rue_softc *sc, u_int16_t addr, void *buf, u_int16_t len)
 	if (sc->rue_dying)
 		return (0);
 
-	RUE_LOCK(sc);
-
 	req.bmRequestType = UT_WRITE_VENDOR_DEVICE;
 	req.bRequest = UR_SET_ADDRESS;
 	USETW(req.wValue, addr);
@@ -250,8 +244,6 @@ rue_write_mem(struct rue_softc *sc, u_int16_t addr, void *buf, u_int16_t len)
 	USETW(req.wLength, len);
 
 	err = usbd_do_request(sc->rue_udev, &req, buf);
-
-	RUE_UNLOCK(sc);
 
 	if (err) {
 		if_printf(&sc->arpcom.ac_if, "control pipe write failed: %s\n",
@@ -375,7 +367,14 @@ rue_miibus_readreg(device_t dev, int phy, int reg)
 		return (0);
 	}
 
-	rval = rue_csr_read_2(sc, ruereg);
+	if (sc->arpcom.ac_if.if_serializer &&
+	    IS_SERIALIZED(sc->arpcom.ac_if.if_serializer)) {
+		RUE_UNLOCK(sc);
+		rval = rue_csr_read_2(sc, ruereg);
+		RUE_LOCK(sc);
+	} else {
+		rval = rue_csr_read_2(sc, ruereg);
+	}
 
 	return (rval);
 }
@@ -417,7 +416,14 @@ rue_miibus_writereg(device_t dev, int phy, int reg, int data)
 		if_printf(&sc->arpcom.ac_if, "bad phy register\n");
 		return (0);
 	}
-	rue_csr_write_2(sc, ruereg, data);
+	if (sc->arpcom.ac_if.if_serializer &&
+	    IS_SERIALIZED(sc->arpcom.ac_if.if_serializer)) {
+		RUE_UNLOCK(sc);
+		rue_csr_write_2(sc, ruereg, data);
+		RUE_LOCK(sc);
+	} else {
+		rue_csr_write_2(sc, ruereg, data);
+	}
 
 	return (0);
 }
@@ -760,12 +766,10 @@ rue_rxstart(struct ifnet *ifp)
 	struct rue_chain	*c;
 
 	sc = ifp->if_softc;
-	RUE_LOCK(sc);
 	c = &sc->rue_cdata.rue_rx_chain[sc->rue_cdata.rue_rx_prod];
 
 	if (rue_newbuf(sc, c, NULL) == ENOBUFS) {
 		IFNET_STAT_INC(ifp, ierrors, 1);
-		RUE_UNLOCK(sc);
 		return;
 	}
 
@@ -774,8 +778,6 @@ rue_rxstart(struct ifnet *ifp)
 		c, mtod(c->rue_mbuf, char *), RUE_BUFSZ, USBD_SHORT_XFER_OK,
 		USBD_NO_TIMEOUT, rue_rxeof);
 	usbd_transfer(c->rue_xfer);
-
-	RUE_UNLOCK(sc);
 }
 
 /*
@@ -843,7 +845,6 @@ rue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	/* Put the packet on the special USB input queue. */
 	usb_ether_input(m);
 	rue_rxstart(ifp);
-
 	RUE_UNLOCK(sc);
 	return;
 
@@ -924,8 +925,15 @@ rue_tick(void *xsc)
 		return;
 	}
 
+	/*
+	 * USB mii functions make usb calls, we must unlock to avoid
+	 * deadlocking on the usb bus if the request queue is full.
+	 */
+	RUE_UNLOCK(sc);
 	mii_tick(mii);
-	if (!sc->rue_link && mii->mii_media_status & IFM_ACTIVE &&
+	RUE_LOCK(sc);
+
+	if (!(sc->rue_link && mii->mii_media_status & IFM_ACTIVE) &&
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		sc->rue_link++;
 		if (!ifq_is_empty(&ifp->if_snd))
@@ -986,29 +994,23 @@ rue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 
 	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
 
-	RUE_LOCK(sc);
-
 	if (!sc->rue_link) {
 		ifq_purge(&ifp->if_snd);
-		RUE_UNLOCK(sc);
 		return;
 	}
 
 	if (ifq_is_oactive(&ifp->if_snd)) {
-		RUE_UNLOCK(sc);
 		return;
 	}
 
 	m_head = ifq_dequeue(&ifp->if_snd);
 	if (m_head == NULL) {
-		RUE_UNLOCK(sc);
 		return;
 	}
 
 	if (rue_encap(sc, m_head, 0)) {
 		/* rue_encap() will free m_head, if we reach here */
 		ifq_set_oactive(&ifp->if_snd);
-		RUE_UNLOCK(sc);
 		return;
 	}
 
@@ -1024,8 +1026,6 @@ rue_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-
-	RUE_UNLOCK(sc);
 }
 
 static void
@@ -1039,10 +1039,7 @@ rue_init(void *xsc)
 	int			i;
 	int			rxcfg;
 
-	RUE_LOCK(sc);
-
 	if (ifp->if_flags & IFF_RUNNING) {
-		RUE_UNLOCK(sc);
 		return;
 	}
 
@@ -1057,14 +1054,12 @@ rue_init(void *xsc)
 	/* Init TX ring. */
 	if (rue_tx_list_init(sc) == ENOBUFS) {
 		if_printf(ifp, "tx list init failed\n");
-		RUE_UNLOCK(sc);
 		return;
 	}
 
 	/* Init RX ring. */
 	if (rue_rx_list_init(sc) == ENOBUFS) {
 		if_printf(ifp, "rx list init failed\n");
-		RUE_UNLOCK(sc);
 		return;
 	}
 
@@ -1106,14 +1101,12 @@ rue_init(void *xsc)
 			     USBD_EXCLUSIVE_USE, &sc->rue_ep[RUE_ENDPT_RX]);
 	if (err) {
 		if_printf(ifp, "open rx pipe failed: %s\n", usbd_errstr(err));
-		RUE_UNLOCK(sc);
 		return;
 	}
 	err = usbd_open_pipe(sc->rue_iface, sc->rue_ed[RUE_ENDPT_TX],
 			     USBD_EXCLUSIVE_USE, &sc->rue_ep[RUE_ENDPT_TX]);
 	if (err) {
 		if_printf(ifp, "open tx pipe failed: %s\n", usbd_errstr(err));
-		RUE_UNLOCK(sc);
 		return;
 	}
 
@@ -1125,7 +1118,6 @@ rue_init(void *xsc)
 				  rue_intr, RUE_INTR_INTERVAL);
 	if (err) {
 		if_printf(ifp, "open intr pipe failed: %s\n", usbd_errstr(err));
-		RUE_UNLOCK(sc);
 		return;
 	}
 #endif
@@ -1143,8 +1135,6 @@ rue_init(void *xsc)
 	ifq_clr_oactive(&ifp->if_snd);
 
 	callout_reset(&sc->rue_stat_ch, hz, rue_tick, sc);
-
-	RUE_UNLOCK(sc);
 }
 
 /*
@@ -1191,8 +1181,6 @@ rue_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct mii_data		*mii;
 	int			error = 0;
 
-	RUE_LOCK(sc);
-
 	switch (command) {
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
@@ -1224,6 +1212,10 @@ rue_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 	case SIOCGIFMEDIA:
 	case SIOCSIFMEDIA:
+		/*
+		 * mii calls unfortunately issue usb commands which can
+		 * deadlock against usb completions.
+		 */
 		mii = GET_MII(sc);
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
@@ -1231,8 +1223,6 @@ rue_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ether_ioctl(ifp, command, data);
 		break;
 	}
-
-	RUE_UNLOCK(sc);
 
 	return (error);
 }
@@ -1244,19 +1234,18 @@ rue_watchdog(struct ifnet *ifp)
 	struct rue_chain	*c;
 	usbd_status		stat;
 
-	RUE_LOCK(sc);
-
 	IFNET_STAT_INC(ifp, oerrors, 1);
 	if_printf(ifp, "watchdog timeout\n");
 
 	c = &sc->rue_cdata.rue_tx_chain[0];
 	usbd_get_xfer_status(c->rue_xfer, NULL, NULL, NULL, &stat);
+
+	RUE_UNLOCK(sc);
 	rue_txeof(c->rue_xfer, c, stat);
+	RUE_LOCK(sc);
 
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
-
-	RUE_UNLOCK(sc);
 }
 
 /*
@@ -1271,8 +1260,6 @@ rue_stop(struct rue_softc *sc)
 	struct ifnet	*ifp;
 	int		i;
 
-	RUE_LOCK(sc);
-
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 
@@ -1282,6 +1269,7 @@ rue_stop(struct rue_softc *sc)
 	callout_stop(&sc->rue_stat_ch);
 
 	/* Stop transfers. */
+	RUE_UNLOCK(sc);
 	if (sc->rue_ep[RUE_ENDPT_RX] != NULL) {
 		err = usbd_abort_pipe(sc->rue_ep[RUE_ENDPT_RX]);
 		if (err) {
@@ -1325,6 +1313,7 @@ rue_stop(struct rue_softc *sc)
 		sc->rue_ep[RUE_ENDPT_INTR] = NULL;
 	}
 #endif
+	RUE_LOCK(sc);
 
 	/* Free RX resources. */
 	for (i = 0; i < RUE_RX_LIST_CNT; i++) {
@@ -1369,8 +1358,6 @@ rue_stop(struct rue_softc *sc)
 
 	ifp->if_flags &= ~IFF_RUNNING;
 	ifq_clr_oactive(&ifp->if_snd);
-
-	RUE_UNLOCK(sc);
 }
 
 /*
