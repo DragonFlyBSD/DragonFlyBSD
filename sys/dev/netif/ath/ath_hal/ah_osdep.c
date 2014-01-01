@@ -46,8 +46,8 @@
 
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
 
-#include <dev/ath/ath_hal/ah.h>
-#include <dev/ath/ath_hal/ah_debug.h>
+#include <dev/netif/ath/ath_hal/ah.h>
+#include <dev/netif/ath/ath_hal/ah_debug.h>
 
 /*
  * WiSoC boards overload the bus tag with information about the
@@ -169,7 +169,7 @@ DO_HALDEBUG(struct ath_hal *ah, u_int mask, const char* fmt, ...)
  */
 #include <sys/alq.h>
 #include <sys/pcpu.h>
-#include <dev/ath/ath_hal/ah_decode.h>
+#include <dev/netif/ath/ath_hal/ah_decode.h>
 
 static	struct alq *ath_hal_alq;
 static	int ath_hal_alq_emitdev;	/* need to emit DEVICE record */

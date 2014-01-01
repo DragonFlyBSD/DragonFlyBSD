@@ -19,7 +19,7 @@
 #ifndef _DEV_ATH_AR5416REG_H
 #define	_DEV_ATH_AR5416REG_H
 
-#include <dev/ath/ath_hal/ar5212/ar5212reg.h>
+#include <dev/netif/ath/ath_hal/ar5212/ar5212reg.h>
 
 /*
  * Register added starting with the AR5416

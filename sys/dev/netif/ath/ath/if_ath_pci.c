@@ -43,8 +43,6 @@
 #include <sys/mutex.h>
 #include <sys/errno.h>
 
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 
@@ -55,9 +53,11 @@
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 
-#include <net80211/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_var.h>
 
-#include <dev/ath/if_athvar.h>
+#include <machine/resource.h>
+
+#include <dev/netif/ath/ath/if_athvar.h>
 
 #include <dev/pci/pcivar.h>
 #include <dev/pci/pcireg.h>

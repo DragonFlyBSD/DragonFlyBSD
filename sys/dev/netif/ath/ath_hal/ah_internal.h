@@ -27,7 +27,7 @@
 #define	AH_MIN(a,b)	((a)<(b)?(a):(b))
 #define	AH_MAX(a,b)	((a)>(b)?(a):(b))
 
-#include <net80211/_ieee80211.h>
+#include <netproto/802_11/_ieee80211.h>
 #include "opt_ah.h"			/* needed for AH_SUPPORT_AR5416 */
 
 #ifndef	AH_SUPPORT_AR5416

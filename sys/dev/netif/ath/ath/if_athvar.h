@@ -37,13 +37,13 @@
 
 #include <machine/atomic.h>
 
-#include <dev/ath/ath_hal/ah.h>
-#include <dev/ath/ath_hal/ah_desc.h>
-#include <net80211/ieee80211_radiotap.h>
-#include <dev/ath/if_athioctl.h>
-#include <dev/ath/if_athrate.h>
+#include <dev/netif/ath/ath_hal/ah.h>
+#include <dev/netif/ath/ath_hal/ah_desc.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
+#include <dev/netif/ath/ath/if_athioctl.h>
+#include <dev/netif/ath/ath/if_athrate.h>
 #ifdef	ATH_DEBUG_ALQ
-#include <dev/ath/if_ath_alq.h>
+#include <dev/netif/ath/ath/if_ath_alq.h>
 #endif
 
 #define	ATH_TIMEOUT		1000

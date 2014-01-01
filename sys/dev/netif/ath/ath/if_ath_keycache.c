@@ -58,8 +58,6 @@
 #include <sys/taskqueue.h>
 #include <sys/priv.h>
 
-#include <machine/bus.h>
-
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_dl.h>
@@ -69,14 +67,14 @@
 #include <net/ethernet.h>
 #include <net/if_llc.h>
 
-#include <net80211/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_var.h>
 
 #include <net/bpf.h>
 
-#include <dev/ath/if_athvar.h>
+#include <dev/netif/ath/ath/if_athvar.h>
 
-#include <dev/ath/if_ath_debug.h>
-#include <dev/ath/if_ath_keycache.h>
+#include <dev/netif/ath/ath/if_ath_debug.h>
+#include <dev/netif/ath/ath/if_ath_keycache.h>
 
 #ifdef ATH_DEBUG
 static void

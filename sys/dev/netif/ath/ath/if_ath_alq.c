@@ -46,7 +46,7 @@
 #include <sys/endian.h>
 #include <sys/time.h>
 
-#include <dev/ath/if_ath_alq.h>
+#include <dev/netif/ath/ath/if_ath_alq.h>
 
 #ifdef	ATH_DEBUG_ALQ
 static struct ale *

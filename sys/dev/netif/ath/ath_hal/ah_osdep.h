@@ -39,8 +39,6 @@
 #include <sys/endian.h>
 #include <sys/linker_set.h>
 
-#include <machine/bus.h>
-
 /*
  * Bus i/o type definitions.
  */

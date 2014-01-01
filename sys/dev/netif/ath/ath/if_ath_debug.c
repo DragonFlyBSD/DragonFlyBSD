@@ -51,8 +51,6 @@
 #include <sys/taskqueue.h>
 #include <sys/priv.h>
 
-#include <machine/bus.h>
-
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
@@ -61,13 +59,13 @@
 #include <net/ethernet.h>
 #include <net/if_llc.h>
 
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_regdomain.h>
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_regdomain.h>
 #ifdef IEEE80211_SUPPORT_SUPERG
-#include <net80211/ieee80211_superg.h>
+#include <netproto/802_11/ieee80211_superg.h>
 #endif
 #ifdef IEEE80211_SUPPORT_TDMA
-#include <net80211/ieee80211_tdma.h>
+#include <netproto/802_11/ieee80211_tdma.h>
 #endif
 
 #include <net/bpf.h>
@@ -77,16 +75,16 @@
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/ath/if_athvar.h>
-#include <dev/ath/ath_hal/ah_devid.h>		/* XXX for softled */
-#include <dev/ath/ath_hal/ah_diagcodes.h>
+#include <dev/netif/ath/ath/if_athvar.h>
+#include <dev/netif/ath/ath_hal/ah_devid.h>		/* XXX for softled */
+#include <dev/netif/ath/ath_hal/ah_diagcodes.h>
 
 #ifdef ATH_TX99_DIAG
-#include <dev/ath/ath_tx99/ath_tx99.h>
+#include <dev/netif/ath/ath_tx99/ath_tx99.h>
 #endif
 
 #ifdef ATH_DEBUG
-#include <dev/ath/if_ath_debug.h>
+#include <dev/netif/ath/ath/if_ath_debug.h>
 
 uint64_t ath_debug = 0;
 

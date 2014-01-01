@@ -43,11 +43,7 @@
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/errno.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/bus.h>
-
 #include <sys/socket.h>
  
 #include <net/if.h>
@@ -55,7 +51,7 @@
 #include <net/if_arp.h>
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
 
-#include <net80211/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_var.h>
 
 #include <net/bpf.h>
 
@@ -64,9 +60,11 @@
 #include <netinet/if_ether.h>
 #endif
 
-#include <dev/ath/if_athvar.h>
-#include <dev/ath/ath_rate/onoe/onoe.h>
-#include <dev/ath/ath_hal/ah_desc.h>
+#include <machine/resource.h>
+
+#include <dev/netif/ath/ath/if_athvar.h>
+#include <dev/netif/ath/ath_rate/onoe/onoe.h>
+#include <dev/netif/ath/ath_hal/ah_desc.h>
 
 /*
  * Default parameters for the rate control algorithm.  These are

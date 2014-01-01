@@ -21,8 +21,8 @@
 
 #include "ah.h"
 
-#include <net80211/_ieee80211.h>
-#include <net80211/ieee80211_regdomain.h>
+#include <netproto/802_11/_ieee80211.h>
+#include <netproto/802_11/ieee80211_regdomain.h>
 
 #include "ah_internal.h"
 #include "ah_eeprom.h"
