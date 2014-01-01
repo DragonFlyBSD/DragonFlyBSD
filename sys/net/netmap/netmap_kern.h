@@ -303,8 +303,7 @@ struct netmap_adapter {
 	void *tailroom;		       /* space below the rings array */
 				       /* (used for leases) */
 
-	NM_SELINFO_T tx_si;		/* global tx wait queue */
-	NM_SELINFO_T rx_si;		/* global rx wait queue */
+	NM_SELINFO_T tx_si, rx_si;	/* global wait queues */
 
 	/* copy of if_qflush and if_transmit pointers, to intercept
 	 * packets from the network stack when netmap is active.
@@ -674,7 +673,8 @@ int netmap_get_memory(struct netmap_priv_d* p);
 void netmap_dtor(void *data);
 int netmap_dtor_locked(struct netmap_priv_d *priv);
 
-int netmap_ioctl(struct cdev *dev, u_long cmd, caddr_t data, int fflag, struct thread *td);
+struct dev_ioctl_args;	/* XXX this shouldn't be here */
+int netmap_ioctl(struct dev_ioctl_args *ap);
 
 /* netmap_adapter creation/destruction */
 #define NM_IFPNAME(ifp) ((ifp) ? (ifp)->if_xname : "zombie")

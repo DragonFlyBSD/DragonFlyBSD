@@ -26,13 +26,10 @@
 #include <sys/types.h>
 #include <sys/module.h>
 #include <sys/errno.h>
-#include <sys/devfs.h>
 #include <sys/param.h>  /* defines used in kernel.h */
 #include <sys/kernel.h> /* types used in module initialization */
 #include <sys/conf.h>	/* DEV_MODULE */
-#include <sys/bus.h>	/* bus_dmamap_* */
-#include <sys/malloc.h>
-#include <sys/socket.h> /* sockaddrs */
+#include <sys/devfs.h>
 
 #include <vm/vm.h>      /* vtophys */
 #include <vm/pmap.h>    /* vtophys */
@@ -42,10 +39,15 @@
 #include <vm/vm_page2.h>
 #include <vm/vm_pager.h>
 
+
+#include <sys/malloc.h>
+#include <sys/socket.h> /* sockaddrs */
+#include <sys/event.h>
 #include <net/if.h>
 #include <net/if_var.h>
-#include <net/netmap.h>
+#include <sys/bus.h>	/* bus_dmamap_* */
 
+#include <net/netmap.h>
 #include "netmap_kern.h"
 #include "netmap_mem2.h"
 
@@ -278,12 +280,16 @@ static struct cdev_pager_ops netmap_cdev_pager_ops = {
 
 
 static int
-netmap_mmap_single(struct cdev *cdev, vm_ooffset_t *foff,
-	vm_size_t objsize,  vm_object_t *objp, int prot)
+netmap_mmap_single(struct dev_mmap_single_args *ap)
 {
 	int error;
+	struct cdev *cdev = ap->a_head.a_dev;
+	vm_ooffset_t *foff = ap->a_offset;
+	vm_object_t *objp = ap->a_object;
+	vm_size_t objsize = ap->a_size;
 	struct netmap_vm_handle_t *vmh;
 	struct netmap_priv_d *priv;
+	int prot = ap->a_nprot;
 	vm_object_t obj;
 
 	D("cdev %p foff %jd size %jd objp %p prot %d", cdev,
@@ -336,27 +342,24 @@ err_unlock:
 
 // XXX can we remove this ?
 static int
-netmap_close(struct cdev *dev, int fflag, int devtype, struct thread *td)
+netmap_close(struct dev_close_args *ap)
 {
 	if (netmap_verbose)
-		D("dev %p fflag 0x%x devtype %d td %p",
-			dev, fflag, devtype, td);
+		D("dev %p fflag 0x%x devtype %d",
+			ap->a_head.a_dev, ap->a_fflag, ap->a_devtype);
 	return 0;
 }
 
 
 static int
-netmap_open(struct cdev *dev, int oflags, int devtype, struct thread *td)
+netmap_open(struct dev_open_args *ap)
 {
 	struct netmap_priv_d *priv;
 #if 0
 	int error;
 #endif
 
-	(void)dev;
-	(void)oflags;
-	(void)devtype;
-	(void)td;
+	(void)ap;
 
 	// XXX wait or nowait ?
 	priv = kmalloc(sizeof(struct netmap_priv_d), M_DEVBUF,
@@ -377,15 +380,14 @@ netmap_open(struct cdev *dev, int oflags, int devtype, struct thread *td)
 
 
 struct dev_ops netmap_cdevsw = {
-#if 0
-	.d_version = D_VERSION,
-	.d_name = "netmap",
+	{ "netmap", 0, 0 },
 	.d_open = netmap_open,
 	.d_mmap_single = netmap_mmap_single,
 	.d_ioctl = netmap_ioctl,
+#if 0
 	.d_poll = netmap_poll,
-	.d_close = netmap_close,
 #endif
+	.d_close = netmap_close,
 };
 
 

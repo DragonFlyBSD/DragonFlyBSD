@@ -65,16 +65,15 @@
 #include <sys/types.h>
 #include <sys/errno.h>
 #include <sys/malloc.h>
-#include <sys/event.h>
 #include <sys/lock.h>   /* PROT_EXEC */
 #include <sys/socket.h> /* sockaddrs */
+#include <sys/event.h>
 #include <net/if.h>
 #include <net/if_var.h>
 #include <sys/bus.h>        /* bus_dmamap_* in netmap_kern.h */
 
 // XXX temporary - D() defined here
 #include <net/netmap.h>
-
 #include "netmap_kern.h"
 #include "netmap_mem2.h"
 

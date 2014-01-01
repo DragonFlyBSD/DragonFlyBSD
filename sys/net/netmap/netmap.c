@@ -138,19 +138,17 @@ ports attached to the switch)
 #include <sys/sockio.h>
 #include <sys/socketvar.h>	/* struct socket */
 #include <sys/malloc.h>
-#include <sys/kernel.h>
-#include <sys/queue.h>
-#include <sys/event.h>
 #include <sys/poll.h>
 #include <sys/lock.h>
 #include <sys/socket.h> /* sockaddrs */
+#include <sys/event.h>
 #include <sys/sysctl.h>
-#include <sys/bus.h>	/* bus_dmamap_* */
-#include <sys/endian.h>
-#include <sys/refcount.h>
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/bpf.h>		/* BIOCIMMEDIATE */
+#include <sys/bus.h>	/* bus_dmamap_* */
+#include <sys/endian.h>
+#include <sys/refcount.h>
 
 /* reduce conditional code */
 #define init_waitqueue_head(x)	// only needed in linux
@@ -1283,20 +1281,17 @@ out:
  * Return 0 on success, errno otherwise.
  */
 int
-netmap_ioctl(struct cdev *dev, u_long cmd, caddr_t data,
-	int fflag, struct thread *td)
+netmap_ioctl(struct dev_ioctl_args *ap)
 {
 	struct netmap_priv_d *priv = NULL;
 	struct ifnet *ifp = NULL;
-	struct nmreq *nmr = (struct nmreq *) data;
+	struct nmreq *nmr = (struct nmreq *) ap->a_data;
 	struct netmap_adapter *na = NULL;
 	int error;
 	u_int i, lim;
 	struct netmap_if *nifp;
 	struct netmap_kring *krings;
-
-	(void)dev;	/* UNUSED */
-	(void)fflag;	/* UNUSED */
+	u_long cmd = ap->a_cmd;
 
 #if 0
 	error = devfs_get_cdevpriv((void **)&priv);
@@ -1507,7 +1502,7 @@ netmap_ioctl(struct cdev *dev, u_long cmd, caddr_t data,
 		}
 		ifp = na->ifp;
 		// so->so_proto not null.
-		error = ifioctl(&so, cmd, data, td);
+		error = ifioctl(&so, cmd, ap->a_data, ap->a_cred);
 		netmap_adapter_put(na);
 		NMG_UNLOCK();
 		break;
