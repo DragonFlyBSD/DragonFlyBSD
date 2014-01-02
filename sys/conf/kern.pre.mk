@@ -49,8 +49,8 @@ INCLUDES+= -I/usr/include
 .include "$S/conf/acpi.mk"
 INCLUDES+= -I${.OBJDIR} -I"$S/${OSACPI_MI_DIR}" -I"$S/${ACPICA_DIR}/include"
 
-# ... and the same for Atheros HAL
-INCLUDES+= -I$S/dev/netif/ath/hal -I$S/dev/netif/ath/hal/ath_hal
+## ... and the same for Atheros HAL
+##INCLUDES+= -I$S/dev/netif/ath/ath_hal
 
 # Same thing for drm includes
 INCLUDES+= -I$S/dev/drm/include
