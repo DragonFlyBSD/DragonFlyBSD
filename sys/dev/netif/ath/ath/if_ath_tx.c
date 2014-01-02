@@ -239,10 +239,13 @@ ath_txfrag_cleanup(struct ath_softc *sc,
 	ath_bufhead *frags, struct ieee80211_node *ni)
 {
 	struct ath_buf *bf;
+	struct ath_buf *next;
 
 	ATH_TXBUF_LOCK_ASSERT(sc);
 
-	while ((bf = TAILQ_FIRST(frags)) != NULL) {
+	next = TAILQ_FIRST(frags);
+	while ((bf = next) != NULL) {
+		next = TAILQ_NEXT(bf, bf_list);
 		/* NB: bf assumed clean */
 		TAILQ_REMOVE(frags, bf, bf_list);
 		ath_returnbuf_head(sc, bf);
@@ -299,57 +302,25 @@ ath_freetx(struct mbuf *m)
 static int
 ath_tx_dmasetup(struct ath_softc *sc, struct ath_buf *bf, struct mbuf *m0)
 {
-	struct mbuf *m;
 	int error;
 
 	/*
 	 * Load the DMA map so any coalescing is done.  This
 	 * also calculates the number of descriptors we need.
 	 */
-	error = bus_dmamap_load_mbuf_segment(sc->sc_dmat, bf->bf_dmamap, m0,
-				     bf->bf_segs, 1, &bf->bf_nseg,
+	error = bus_dmamap_load_mbuf_defrag(sc->sc_dmat, bf->bf_dmamap, &m0,
+				     bf->bf_segs, ATH_TXDESC, &bf->bf_nseg,
 				     BUS_DMA_NOWAIT);
-	if (error == EFBIG) {
-		/* XXX packet requires too many descriptors */
-		bf->bf_nseg = ATH_MAX_SCATTER + 1;
-	} else if (error != 0) {
+	if (error != 0) {
 		sc->sc_stats.ast_tx_busdma++;
 		ath_freetx(m0);
 		return error;
 	}
+
 	/*
-	 * Discard null packets and check for packets that
-	 * require too many TX descriptors.  We try to convert
-	 * the latter to a cluster.
+	 * Discard null packets.
 	 */
-	if (bf->bf_nseg > ATH_MAX_SCATTER) {		/* too many desc's, linearize */
-		sc->sc_stats.ast_tx_linear++;
-
-		/* scrap for now */
-#if 0
-		m = m_collapse(m0, M_NOWAIT, ATH_MAX_SCATTER);
-#else
-		m = NULL;
-#endif
-
-		if (m == NULL) {
-			ath_freetx(m0);
-			sc->sc_stats.ast_tx_nombuf++;
-			return ENOMEM;
-		}
-		m0 = m;
-		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
-					     bf->bf_dmamap, m0,
-					     bf->bf_segs, 1, &bf->bf_nseg,
-					     BUS_DMA_NOWAIT);
-		if (error != 0) {
-			sc->sc_stats.ast_tx_busdma++;
-			ath_freetx(m0);
-			return error;
-		}
-		KASSERT(bf->bf_nseg <= ATH_MAX_SCATTER,
-		    ("too many segments after defrag; nseg %u", bf->bf_nseg));
-	} else if (bf->bf_nseg == 0) {		/* null packet, discard */
+	if (bf->bf_nseg == 0) {
 		sc->sc_stats.ast_tx_nodata++;
 		ath_freetx(m0);
 		return EIO;
@@ -5501,6 +5472,8 @@ ath_txq_sched(struct ath_softc *sc, struct ath_txq *txq)
 		 * a frame; be careful.
 		 */
 		if (! ath_tx_tid_can_tx_or_sched(sc, tid)) {
+			if (tid == last)
+				break;
 			continue;
 		}
 		if (ath_tx_ampdu_running(sc, tid->an, tid->tid))

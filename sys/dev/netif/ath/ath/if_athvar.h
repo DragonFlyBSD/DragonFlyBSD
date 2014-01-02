@@ -57,6 +57,15 @@
 #define	ATH_MGMT_TXBUF		32
 
 /*
+ * Newer chipsets probe far bigger fifos,
+ * a default of 40 RXBUFs is not enough.
+ */
+#ifdef __DragonFly__
+#define	ATH_TXBUF	256
+#define	ATH_RXBUF	256
+#endif
+
+/*
  * 802.11n requires more TX and RX buffers to do AMPDU.
  */
 #ifdef	ATH_ENABLE_11N

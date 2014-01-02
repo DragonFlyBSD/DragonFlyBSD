@@ -613,7 +613,7 @@ ath_sysctl_forcebstuck(SYSCTL_HANDLER_ARGS)
 	if (val == 0)
 		goto done;
 
-	taskqueue_enqueue_fast(sc->sc_tq, &sc->sc_bstucktask);
+	taskqueue_enqueue(sc->sc_tq, &sc->sc_bstucktask);
 	val = 0;
 done:
 	wlan_serialize_exit();

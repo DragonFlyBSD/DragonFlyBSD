@@ -30,6 +30,8 @@
 #define AH_5212_COMMON
 #include "ar5212/ar5212.ini"
 
+#ifdef AH_SUPPORT_AR5312
+
 static  HAL_BOOL ar5312GetMacAddr(struct ath_hal *ah);
 
 static void
@@ -333,3 +335,5 @@ ar5312Probe(uint16_t vendorid, uint16_t devid)
 	return AH_NULL;
 }
 AH_CHIP(AR5312, ar5312Probe, ar5312Attach);
+
+#endif

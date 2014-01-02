@@ -8,6 +8,9 @@ KMOD=	ath_hal
 .PATH: ${.CURDIR}/ar5211 ${.CURDIR}/ar5416 ${.CURDIR}/ar5312
 .PATH: ${.CURDIR}/ar5212 ${.CURDIR}/ar9003 ${.CURDIR}/ar9002
 .PATH: ${.CURDIR}/ar9001 ${.CURDIR}/ar5210
+.PATH: ${.CURDIR}/../../../../contrib/dev/ath/ath_hal/ar9300/
+
+HALCONTRIB= ${.CURDIR}/../../../../contrib/dev/ath/ath_hal
 
 SRCS=	ah_eeprom_9287.c ah_eeprom_v4k.c ah_regdomain.c
 SRCS+=	ah_eeprom_v1.c ah_eeprom_v3.c ah_osdep.c ah.c ah_eeprom_v14.c
@@ -64,6 +67,15 @@ SRCS+=	ar5210_misc.c ar5210_xmit.c ar5210_power.c ar5210_keycache.c
 SRCS+=	ar5210_beacon.c ar5210_reset.c ar5210_interrupts.c ar5210_attach.c
 SRCS+=	ar5210_recv.c ar5210_phy.c
 
-CFLAGS+=  -I. -I${HAL}
+# AR9300
+#
+SRCS+=	ar9300_ani.c ar9300_attach.c ar9300_beacon.c ar9300_eeprom.c
+SRCS+=	ar9300_freebsd.c ar9300_gpio.c ar9300_interrupts.c ar9300_keycache.c
+SRCS+=	ar9300_mci.c ar9300_misc.c ar9300_paprd.c ar9300_phy.c ar9300_power.c
+SRCS+=	ar9300_radar.c ar9300_radio.c ar9300_recv.c ar9300_recv_ds.c
+SRCS+=	ar9300_reset.c ar9300_stub.c ar9300_stub_funcs.c ar9300_timer.c
+SRCS+=	ar9300_xmit.c ar9300_xmit_ds.c
+
+CFLAGS+=  -I. -I${HAL} -I${HALCONTRIB}
 
 .include <bsd.kmod.mk>

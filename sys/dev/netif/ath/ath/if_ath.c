@@ -157,12 +157,13 @@ static void	ath_init(void *);
 static void	ath_stop_locked(struct ifnet *);
 static void	ath_stop(struct ifnet *);
 static int	ath_reset_vap(struct ieee80211vap *, u_long);
-#if 0
 static int	ath_transmit(struct ifnet *ifp, struct mbuf *m);
+#if 0
 static void	ath_qflush(struct ifnet *ifp);
 #endif
 static int	ath_media_change(struct ifnet *);
 static void	ath_watchdog(void *);
+static void	ath_start(struct ifnet *, struct ifaltq_subque *);
 static int	ath_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	ath_fatal_proc(void *, int);
 static void	ath_bmiss_vap(struct ieee80211vap *);
@@ -447,7 +448,7 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 
 	ATH_TXBUF_LOCK_INIT(sc);
 
-	sc->sc_tq = taskqueue_create("ath_taskq", M_NOWAIT,
+	sc->sc_tq = taskqueue_create("ath_taskq", M_INTWAIT,
 		taskqueue_thread_enqueue, &sc->sc_tq);
 	taskqueue_start_threads(&sc->sc_tq, 1, TDPRI_KERN_DAEMON, -1,
 		"%s taskq", ifp->if_xname);
@@ -597,6 +598,7 @@ ath_attach(u_int16_t devid, struct ath_softc *sc)
 	ifp->if_transmit = ath_transmit;
 	ifp->if_qflush = ath_qflush;
 #endif
+	ifp->if_start = ath_start;
 	ifp->if_ioctl = ath_ioctl;
 	ifp->if_init = ath_init;
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
@@ -2527,6 +2529,8 @@ ath_reset(struct ifnet *ifp, ATH_RESET_TYPE reset_type)
 		}
 	}
 
+#if 0
+	/* remove, DragonFly uses OACTIVE to control if_start calls */
 	/*
 	 * This may have been set during an ath_start() call which
 	 * set this once it detected a concurrent TX was going on.
@@ -2535,6 +2539,7 @@ ath_reset(struct ifnet *ifp, ATH_RESET_TYPE reset_type)
 	IF_LOCK(&ifp->if_snd);
 	ifq_clr_oactive(&ifp->if_snd);
 	IF_UNLOCK(&ifp->if_snd);
+#endif
 
 	/* Handle any frames in the TX queue */
 	/*
@@ -2728,20 +2733,26 @@ ath_getbuf(struct ath_softc *sc, ath_buf_type_t btype)
 
 		DPRINTF(sc, ATH_DEBUG_XMIT, "%s: stop queue\n", __func__);
 		sc->sc_stats.ast_tx_qstop++;
+#if 0
+		/* remove, DragonFly uses OACTIVE to control if_start calls */
 		IF_LOCK(&ifp->if_snd);
 		ifq_set_oactive(&ifp->if_snd);
 		IF_UNLOCK(&ifp->if_snd);
+#endif
 	}
 	return bf;
 }
 
 #if 0
+
 static void
 ath_qflush(struct ifnet *ifp)
 {
 
 	/* XXX TODO */
 }
+
+#endif
 
 /*
  * Transmit a single frame.
@@ -2770,9 +2781,14 @@ ath_transmit(struct ifnet *ifp, struct mbuf *m)
 		ATH_PCU_UNLOCK(sc);
 		IF_LOCK(&ifp->if_snd);
 		sc->sc_stats.ast_tx_qstop++;
+#if 0
+		/* remove, DragonFly uses OACTIVE to control if_start calls */
 		ifq_set_oactive(&ifp->if_snd);
+#endif
 		IF_UNLOCK(&ifp->if_snd);
 		ATH_KTR(sc, ATH_KTR_TX, 0, "ath_start_task: OACTIVE, finish");
+		m_freem(m);
+		m = NULL;
 		return (ENOBUFS);	/* XXX should be EINVAL or? */
 	}
 	sc->sc_txstart_cnt++;
@@ -2860,9 +2876,12 @@ ath_transmit(struct ifnet *ifp, struct mbuf *m)
 		 * above.
 		 */
 		sc->sc_stats.ast_tx_nobuf++;
+#if 0
+		/* remove, DragonFly uses OACTIVE to control if_start calls */
 		IF_LOCK(&ifp->if_snd);
 		ifq_set_oactive(&ifp->if_snd);
 		IF_UNLOCK(&ifp->if_snd);
+#endif
 		m_freem(m);
 		m = NULL;
 		retval = ENOBUFS;
@@ -3015,7 +3034,6 @@ finish:
 	
 	return (retval);
 }
-#endif
 
 static int
 ath_media_change(struct ifnet *ifp)
@@ -4317,9 +4335,12 @@ ath_tx_proc_q0(void *arg, int npending)
 		sc->sc_lastrx = ath_hal_gettsf64(sc->sc_ah);
 	if (TXQACTIVE(txqs, sc->sc_cabq->axq_qnum))
 		ath_tx_processq(sc, sc->sc_cabq, 1);
+#if 0
+	/* remove, DragonFly uses OACTIVE to control if_start calls */
 	IF_LOCK(&ifp->if_snd);
 	ifq_clr_oactive(&ifp->if_snd);
 	IF_UNLOCK(&ifp->if_snd);
+#endif
 	sc->sc_wd_timer = 0;
 
 	if (sc->sc_softled)
@@ -4372,9 +4393,12 @@ ath_tx_proc_q0123(void *arg, int npending)
 	if (nacked)
 		sc->sc_lastrx = ath_hal_gettsf64(sc->sc_ah);
 
+#if 0
+	/* remove, DragonFly uses OACTIVE to control if_start calls */
 	IF_LOCK(&ifp->if_snd);
 	ifq_clr_oactive(&ifp->if_snd);
 	IF_UNLOCK(&ifp->if_snd);
+#endif
 	sc->sc_wd_timer = 0;
 
 	if (sc->sc_softled)
@@ -4418,10 +4442,13 @@ ath_tx_proc(void *arg, int npending)
 	if (nacked)
 		sc->sc_lastrx = ath_hal_gettsf64(sc->sc_ah);
 
+#if 0
+	/* remove, DragonFly uses OACTIVE to control if_start calls */
 	/* XXX check this inside of IF_LOCK? */
 	IF_LOCK(&ifp->if_snd);
 	ifq_clr_oactive(&ifp->if_snd);
 	IF_UNLOCK(&ifp->if_snd);
+#endif
 	sc->sc_wd_timer = 0;
 
 	if (sc->sc_softled)
@@ -4445,6 +4472,8 @@ ath_txq_sched_tasklet(void *arg, int npending)
 	struct ath_softc *sc = arg;
 	int i;
 
+	wlan_serialize_enter();
+
 	/* XXX is skipping ok? */
 	ATH_PCU_LOCK(sc);
 #if 0
@@ -4452,6 +4481,7 @@ ath_txq_sched_tasklet(void *arg, int npending)
 		device_printf(sc->sc_dev,
 		    "%s: sc_inreset_cnt > 0; skipping\n", __func__);
 		ATH_PCU_UNLOCK(sc);
+		wlan_serialize_exit();
 		return;
 	}
 #endif
@@ -4469,6 +4499,7 @@ ath_txq_sched_tasklet(void *arg, int npending)
 	ATH_PCU_LOCK(sc);
 	sc->sc_txproc_cnt--;
 	ATH_PCU_UNLOCK(sc);
+	wlan_serialize_exit();
 }
 
 void
@@ -4926,9 +4957,12 @@ ath_legacy_tx_drain(struct ath_softc *sc, ATH_RESET_TYPE reset_type)
 		}
 	}
 #endif /* ATH_DEBUG */
+#if 0
+	/* remove, DragonFly uses OACTIVE to control if_start calls */
 	IF_LOCK(&ifp->if_snd);
 	ifq_clr_oactive(&ifp->if_snd);
 	IF_UNLOCK(&ifp->if_snd);
+#endif
 	sc->sc_wd_timer = 0;
 }
 
@@ -5089,9 +5123,12 @@ finish:
 	ath_hal_intrset(ah, sc->sc_imask);
 	ATH_PCU_UNLOCK(sc);
 
+#if 0
+	/* remove, DragonFly uses OACTIVE to control if_start calls */
 	IF_LOCK(&ifp->if_snd);
 	ifq_clr_oactive(&ifp->if_snd);
 	IF_UNLOCK(&ifp->if_snd);
+#endif
 	ath_txrx_start(sc);
 	/* XXX ath_start? */
 
@@ -5371,7 +5408,9 @@ ath_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	if (vap->iv_state == IEEE80211_S_CSA && nstate == IEEE80211_S_RUN)
 		csa_run_transition = 1;
 
+	wlan_serialize_exit();
 	callout_drain(&sc->sc_cal_ch);
+	wlan_serialize_enter();
 	ath_hal_setledstate(ah, leds[nstate]);	/* set LED */
 
 	if (nstate == IEEE80211_S_SCAN) {
@@ -5896,6 +5935,32 @@ ath_watchdog(void *arg)
 
 	callout_reset(&sc->sc_wd_ch, hz, ath_watchdog, sc);
 	wlan_serialize_exit();
+}
+
+/*
+ * (DragonFly network start)
+ */
+static void
+ath_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
+{
+	struct ath_softc *sc = ifp->if_softc;
+	struct mbuf *m;
+
+	wlan_assert_serialized();
+	ASSERT_ALTQ_SQ_DEFAULT(ifp, ifsq);
+
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || sc->sc_invalid) {
+		ifq_purge(&ifp->if_snd);
+		return;
+	}
+	ifq_set_oactive(&ifp->if_snd);
+	for (;;) {
+		m = ifq_dequeue(&ifp->if_snd);
+		if (m == NULL)
+			break;
+		ath_transmit(ifp, m);
+	}
+	ifq_clr_oactive(&ifp->if_snd);
 }
 
 /*

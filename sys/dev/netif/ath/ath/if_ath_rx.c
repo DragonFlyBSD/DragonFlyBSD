@@ -239,7 +239,7 @@ ath_legacy_rxbuf_init(struct ath_softc *sc, struct ath_buf *bf)
 		 * multiple of the cache line size.  Not doing this
 		 * causes weird stuff to happen (for the 5210 at least).
 		 */
-		m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL) {
 			DPRINTF(sc, ATH_DEBUG_ANY,
 				"%s: no mbuf/cluster\n", __func__);
@@ -1088,6 +1088,7 @@ ath_legacy_rx_tasklet(void *arg, int npending)
 {
 	struct ath_softc *sc = arg;
 
+	wlan_serialize_enter();
 	ATH_KTR(sc, ATH_KTR_RXPROC, 1, "ath_rx_proc: pending=%d", npending);
 	DPRINTF(sc, ATH_DEBUG_RX_PROC, "%s: pending %u\n", __func__, npending);
 	ATH_PCU_LOCK(sc);
@@ -1095,11 +1096,13 @@ ath_legacy_rx_tasklet(void *arg, int npending)
 		device_printf(sc->sc_dev,
 		    "%s: sc_inreset_cnt > 0; skipping\n", __func__);
 		ATH_PCU_UNLOCK(sc);
+		wlan_serialize_exit();
 		return;
 	}
 	ATH_PCU_UNLOCK(sc);
 
 	ath_rx_proc(sc, 1);
+	wlan_serialize_exit();
 }
 
 static void

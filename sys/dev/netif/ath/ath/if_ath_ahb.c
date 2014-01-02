@@ -244,7 +244,9 @@ ath_ahb_attach(device_t dev)
 	ATH_TX_IC_LOCK_INIT(sc);
 	ATH_TXSTATUS_LOCK_INIT(sc);
 
+	wlan_serialize_enter();
 	error = ath_attach(device_id, sc);
+	wlan_serialize_exit();
 	if (error == 0)					/* success */
 		return 0;
 

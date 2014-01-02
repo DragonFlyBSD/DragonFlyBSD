@@ -534,7 +534,9 @@ ath_edma_dma_txteardown(struct ath_softc *sc)
 static void
 ath_edma_tx_drain(struct ath_softc *sc, ATH_RESET_TYPE reset_type)
 {
+#if 0
 	struct ifnet *ifp = sc->sc_ifp;
+#endif
 	int i;
 
 	DPRINTF(sc, ATH_DEBUG_RESET, "%s: called\n", __func__);
@@ -576,9 +578,12 @@ ath_edma_tx_drain(struct ath_softc *sc, ATH_RESET_TYPE reset_type)
 
 	/* XXX dump out the frames */
 
+#if 0
+	/* remove, DragonFly uses OACTIVE to control if_start calls */
 	IF_LOCK(&ifp->if_snd);
 	ifq_clr_oactive(&ifp->if_snd);
 	IF_UNLOCK(&ifp->if_snd);
+#endif
 	sc->sc_wd_timer = 0;
 }
 
@@ -595,7 +600,9 @@ ath_edma_tx_proc(void *arg, int npending)
 	DPRINTF(sc, ATH_DEBUG_TX_PROC, "%s: called, npending=%d\n",
 	    __func__, npending);
 #endif
+	wlan_serialize_enter();
 	ath_edma_tx_processq(sc, 1);
+	wlan_serialize_exit();
 }
 
 /*
@@ -831,11 +838,14 @@ ath_edma_tx_processq(struct ath_softc *sc, int dosched)
 
 	sc->sc_wd_timer = 0;
 
+#if 0
+	/* remove, DragonFly uses OACTIVE to control if_start calls */
 	if (idx > 0) {
 		IF_LOCK(&sc->sc_ifp->if_snd);
 		ifq_clr_oactive(&sc->sc_ifp->if_snd);
 		IF_UNLOCK(&sc->sc_ifp->if_snd);
 	}
+#endif
 
 	/* Kick software scheduler */
 	/*

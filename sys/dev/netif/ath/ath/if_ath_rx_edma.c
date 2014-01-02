@@ -469,6 +469,7 @@ ath_edma_recv_proc_deferred_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 	int ngood = 0;
 	uint64_t tsf;
 	struct ath_buf *bf;
+	struct ath_buf *next;
 	struct ath_rx_status *rs;
 	int16_t nf;
 	ath_bufhead rxlist;
@@ -490,7 +491,7 @@ ath_edma_recv_proc_deferred_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 	ATH_RX_UNLOCK(sc);
 
 	/* Handle the completed descriptors */
-	TAILQ_FOREACH(bf, &rxlist, bf_list) {
+	TAILQ_FOREACH_MUTABLE(bf, &rxlist, bf_list, next) {
 		/*
 		 * Skip the RX descriptor status - start at the data offset
 		 */
@@ -539,11 +540,13 @@ ath_edma_recv_tasklet(void *arg, int npending)
 	    __func__,
 	    npending);
 
+	wlan_serialize_enter();
 	ATH_PCU_LOCK(sc);
 	if (sc->sc_inreset_cnt > 0) {
 		device_printf(sc->sc_dev, "%s: sc_inreset_cnt > 0; skipping\n",
 		    __func__);
 		ATH_PCU_UNLOCK(sc);
+		wlan_serialize_exit();
 		return;
 	}
 	sc->sc_rxproc_cnt++;
@@ -569,6 +572,7 @@ ath_edma_recv_tasklet(void *arg, int npending)
 	ATH_PCU_LOCK(sc);
 	sc->sc_rxproc_cnt--;
 	ATH_PCU_UNLOCK(sc);
+	wlan_serialize_exit();
 }
 
 /*
@@ -589,7 +593,9 @@ ath_edma_rxbuf_init(struct ath_softc *sc, struct ath_buf *bf)
 
 	ATH_RX_LOCK_ASSERT(sc);
 
-	m = m_getm(NULL, sc->sc_edma_bufsize, M_NOWAIT, MT_DATA);
+	m = m_getjcl(MB_DONTWAIT, MT_DATA, M_PKTHDR, sc->sc_edma_bufsize);
+/*	m = m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);*/
+/*	m = m_getm(NULL, sc->sc_edma_bufsize, MB_WAIT, MT_DATA);*/
 	if (! m)
 		return (ENOBUFS);		/* XXX ?*/
 

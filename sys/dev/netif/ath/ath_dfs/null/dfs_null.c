@@ -288,3 +288,41 @@ ath_dfs_get_thresholds(struct ath_softc *sc, HAL_PHYERR_PARAM *param)
 	ath_hal_getdfsthresh(sc->sc_ah, param);
 	return (1);
 }
+
+/*
+ * Module glue.
+ */
+static int
+null_dfs_modevent(module_t mod, int type, void *unused)
+{
+        int error;
+
+        wlan_serialize_enter();
+
+        switch (type) {
+        case MOD_LOAD:
+                if (bootverbose) {
+                        kprintf("ath_dfs: WTF module\n");
+                }
+                error = 0;
+                break;
+        case MOD_UNLOAD:
+                error = 0;
+                break;
+        default:
+                error = EINVAL;
+                break;
+        }
+        wlan_serialize_exit();
+
+        return error;
+}
+
+static moduledata_t null_dfs_mod = {
+        "ath_dfs",
+        null_dfs_modevent,
+        0
+};
+
+DECLARE_MODULE(ath_dfs, null_dfs_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
+MODULE_VERSION(ath_dfs, 1);
