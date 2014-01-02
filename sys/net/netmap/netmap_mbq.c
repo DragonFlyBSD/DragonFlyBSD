@@ -29,7 +29,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 
-#include "netmap_mbq.h"
+#include <net/netmap/netmap_mbq.h>
 
 
 static inline void __mbq_init(struct mbq *q)

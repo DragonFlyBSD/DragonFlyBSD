@@ -60,7 +60,6 @@
  *
  */
 
-/* __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257666 2013-11-05 01:06:22Z luigi $"); */
 
 #include <sys/types.h>
 #include <sys/errno.h>
@@ -74,8 +73,8 @@
 
 // XXX temporary - D() defined here
 #include <net/netmap.h>
-#include "netmap_kern.h"
-#include "netmap_mem2.h"
+#include <net/netmap/netmap_kern.h>
+#include <net/netmap/netmap_mem2.h>
 
 #define rtnl_lock() D("rtnl_lock called");
 #define rtnl_unlock() D("rtnl_lock called");

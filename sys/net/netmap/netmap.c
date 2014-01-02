@@ -128,7 +128,6 @@ ports attached to the switch)
  * is present in netmap_kern.h
  */
 
-/* __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257176 2013-10-26 17:58:36Z glebius $"); */
 #include <sys/types.h>
 #include <sys/errno.h>
 #include <sys/param.h>	/* defines used in kernel.h */
@@ -159,10 +158,8 @@ extern struct dev_ops netmap_cdevsw;
  * common headers
  */
 #include <net/netmap.h>
-#include "netmap_kern.h"
-#include "netmap_mem2.h"
-
-#define selrecord(x, y) do { } while (0)	/* XXX porting in progress */
+#include <net/netmap/netmap_kern.h>
+#include <net/netmap/netmap_mem2.h>
 
 MALLOC_DEFINE(M_NETMAP, "netmap", "Network memory map");
 
@@ -919,7 +916,7 @@ netmap_rxsync_from_host(struct netmap_adapter *na, struct thread *td, void *pwai
 	}
 	k = ring->avail = kring->nr_hwavail - resvd;
 	if (k == 0 && td)
-		selrecord(td, &kring->si);
+		KNOTE(&kring->si.ki_note, 0);
 	if (k && (netmap_verbose & NM_VERB_HOST))
 		D("%d pkts from stack", k);
 unlock_out:
@@ -1737,8 +1734,8 @@ flush_tx:
 			nm_kr_put(kring);
 		}
 		if (want_tx && retry_tx) {
-			selrecord(td, check_all_tx ?
-			    &na->tx_si : &na->tx_rings[priv->np_qfirst].si);
+			KNOTE(check_all_tx ? &na->tx_si.ki_note :
+			    &na->tx_rings[priv->np_qfirst].si.ki_note, 0);
 			retry_tx = 0;
 			goto flush_tx;
 		}
@@ -1783,8 +1780,8 @@ do_retry_rx:
 		}
 		if (retry_rx) {
 			retry_rx = 0;
-			selrecord(td, check_all_rx ?
-			    &na->rx_si : &na->rx_rings[priv->np_qfirst].si);
+			KNOTE(check_all_rx ? &na->rx_si.ki_note :
+			    &na->rx_rings[priv->np_qfirst].si.ki_note, 0);
 			goto do_retry_rx;
 		}
 	}

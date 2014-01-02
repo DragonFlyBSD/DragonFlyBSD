@@ -55,7 +55,6 @@ ports attached to the switch)
  * is present in netmap_kern.h
  */
 
-/* __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257176 2013-10-26 17:58:36Z glebius $"); */
 
 #include <sys/types.h>
 #include <sys/errno.h>
@@ -94,8 +93,8 @@ ports attached to the switch)
 
 #include <net/netmap.h>
 
-#include "netmap_kern.h"
-#include "netmap_mem2.h"
+#include <net/netmap/netmap_kern.h>
+#include <net/netmap/netmap_mem2.h>
 
 #ifdef WITH_VALE
 

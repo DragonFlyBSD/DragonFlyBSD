@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  */
 
-/* __FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 241723 2012-10-19 09:41:45Z glebius $"); */
 
 #include <sys/types.h>
 #include <sys/malloc.h>
@@ -39,8 +38,8 @@
 #include <net/if_var.h>
 #include <net/netmap.h>
 
-#include "netmap_kern.h"
-#include "netmap_mem2.h"
+#include <net/netmap/netmap_kern.h>
+#include <net/netmap/netmap_mem2.h>
 
 #define NMA_LOCK_INIT(n)	lockinit(&(n)->nm_mtx, "netmap memory allocator lock", 0, LK_CANRECURSE)
 #define NMA_LOCK_DESTROY(n)	lockuninit(&(n)->nm_mtx)

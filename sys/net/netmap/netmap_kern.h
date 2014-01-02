@@ -104,7 +104,7 @@ struct netmap_priv_d;
 
 const char *nm_dump_buf(char *p, int len, int lim, char *dst);
 
-#include "netmap_mbq.h"
+#include <net/netmap/netmap_mbq.h>
 
 extern NMG_LOCK_T	netmap_global_lock;
 
@@ -664,7 +664,7 @@ int netmap_bdg_ctl(struct nmreq *nmr, bdg_lookup_fn_t func);
 #endif /* !WITH_VALE */
 
 /* Various prototypes */
-struct dev_kfilter_args;	/* XXX this shouldn't be here */
+struct dev_kqfilter_args;	/* XXX this shouldn't be here */
 int netmap_kqfilter(struct dev_kqfilter_args *ap);
 
 

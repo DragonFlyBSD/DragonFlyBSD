@@ -48,8 +48,8 @@
 #include <sys/bus.h>	/* bus_dmamap_* */
 
 #include <net/netmap.h>
-#include "netmap_kern.h"
-#include "netmap_mem2.h"
+#include <net/netmap/netmap_kern.h>
+#include <net/netmap/netmap_mem2.h>
 
 
 /* ======================== FREEBSD-SPECIFIC ROUTINES ================== */
