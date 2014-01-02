@@ -167,6 +167,9 @@ struct acpicache;
 
 #define ACPI_CAST_PTHREAD_T(pthread)    ((ACPI_THREAD_ID) ACPI_TO_INTEGER (pthread))
 
+/* Always use DragonFly code over our local versions */
+#define ACPI_USE_SYSTEM_CLIBRARY
+
 /* Not building kernel code, so use libc */
 #define ACPI_USE_STANDARD_HEADERS
 #define ACPI_FLUSH_CPU_CACHE()
@@ -174,9 +177,6 @@ struct acpicache;
 #define __sti()
 
 #endif /* _KERNEL */
-
-/* Always use DragonFly code over our local versions */
-#define ACPI_USE_SYSTEM_CLIBRARY
 
 #ifdef _KERNEL
 
@@ -199,7 +199,6 @@ strstr(char *s, char *find)
     }
     return (s);
 }
-
 #endif /* _KERNEL */
 
 #define inline		__inline

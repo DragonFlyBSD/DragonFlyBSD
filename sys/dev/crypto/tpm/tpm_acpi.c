@@ -38,8 +38,8 @@
 #include "tpmvar.h"
 
 #include "opt_acpi.h"
-#include <contrib/dev/acpica-unix/include/acpi.h>
-#include <contrib/dev/acpica-unix/include/accommon.h>
+#include <contrib/dev/acpica/source/include/acpi.h>
+#include <contrib/dev/acpica/source/include/accommon.h>
 #include <dev/acpica/acpivar.h>
 
 

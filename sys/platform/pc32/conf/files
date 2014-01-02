@@ -99,16 +99,6 @@ ${OSACPI_MD_DIR}/acpi_cpu_machdep.c	optional	acpi
 ${OSACPI_MD_DIR}/acpi_machdep.c		optional        acpi
 ${OSACPI_MD_DIR}/acpi_pstate_machdep.c	optional	acpi
 ${OSACPI_MD_DIR}/acpi_wakeup.c		optional        acpi
-acpi.h					optional	acpi		\
-	dependency	"$S/${ACPICA_DIR}/include/acpi.h"		\
-	compile-with	"cp $S/${ACPICA_DIR}/include/acpi.h ${.OBJDIR}/"	\
-	no-obj no-implicit-rule before-depend				\
-	clean		"acpi.h"
-platform/acenv.h			optional	acpi		\
-	dependency	"$S/${ACPICA_DIR}/include/platform/acenv.h"	\
-	compile-with	"mkdir -p ${.OBJDIR}/platform; cat ${.ALLSRC} | sed -e 's/__FreeBSD__/__DragonFly__/' -e 's/acfreebsd.h/acdragonfly.h/' > ${.TARGET}" \
-	no-obj no-implicit-rule before-depend				\
-	clean		"acenv.h"
 acpi_wakecode.h				optional        acpi		\
 	dependency	"$S/${OSACPI_MD_DIR}/acpi_wakecode.S"		\
 	compile-with	"${MAKE} -f $S/${OSACPI_MD_DIR}/Makefile MAKESRCPATH=$S/${OSACPI_MD_DIR}" \

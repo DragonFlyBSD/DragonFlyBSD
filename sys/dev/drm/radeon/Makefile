@@ -100,7 +100,7 @@ SRCS	+=								\
 	pci_if.h
 
 CFLAGS+= -I${.CURDIR}/../../../dev/drm/radeon -fms-extensions
-CFLAGS+= -I${SYSDIR}/contrib/dev/acpica-unix/include
+CFLAGS+= -I${SYSDIR}/contrib/dev/acpica/source/include
 
 CFLAGS+= -I${SYSDIR}/dev/drm/include
 

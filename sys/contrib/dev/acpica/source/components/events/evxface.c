@@ -283,7 +283,7 @@ AcpiRemoveNotifyHandler (
 
     /* Make sure all deferred notify tasks are completed */
 
-    AcpiOsWaitEventsComplete ();
+//    AcpiOsWaitEventsComplete ();
 
     Status = AcpiUtAcquireMutex (ACPI_MTX_NAMESPACE);
     if (ACPI_FAILURE (Status))
@@ -972,7 +972,7 @@ AcpiRemoveGpeHandler (
 
     /* Make sure all deferred GPE tasks are completed */
 
-    AcpiOsWaitEventsComplete ();
+//    AcpiOsWaitEventsComplete ();
 
     Status = AcpiUtAcquireMutex (ACPI_MTX_EVENTS);
     if (ACPI_FAILURE (Status))

@@ -6,6 +6,6 @@ SRCS=	tpm.c bus_if.h device_if.h
 SRCS+=	tpm_isa.c tpm_acpi.c isa_if.h opt_acpi.h acpi_if.h
 
 CFLAGS+=-I${.CURDIR}/../../acpica
-CFLAGS+=-I${.CURDIR}/../../../contrib/dev/acpica-unix/include
+CFLAGS+=-I${.CURDIR}/../../../contrib/dev/acpica/source/include
 
 .include <bsd.kmod.mk>

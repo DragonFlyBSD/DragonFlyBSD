@@ -69,7 +69,7 @@
 #include <sys/linker.h>
 #include <sys/firmware.h>
 
-#include <contrib/dev/acpica-unix/include/acpi.h>
+#include <contrib/dev/acpica/source/include/acpi.h>
 #include <dev/acpica/acpivar.h>
 
 #include <dev/drm/ttm/ttm_bo_api.h>

@@ -305,8 +305,7 @@ AcpiTbTableOverride (
 
     /* (2) Attempt physical override (returns a physical address) */
 
-    Status = AcpiOsPhysicalTableOverride (TableHeader,
-        &NewAddress, &NewTableLength);
+    Status = AE_SUPPORT;
     if (ACPI_SUCCESS (Status) && NewAddress && NewTableLength)
     {
         /* Map the entire new table */

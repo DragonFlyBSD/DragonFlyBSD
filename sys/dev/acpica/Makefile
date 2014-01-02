@@ -30,34 +30,39 @@ CFLAGS+=	-DACPI_DEBUG_CACHE
 KMOD	= acpi
 
 # ACPI CA sources
-SRCS+=	dbcmds.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
+SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
 SRCS+=	dbinput.c dbstats.c dbutils.c dbxface.c
 SRCS+=	dbmethod.c dbnames.c
-SRCS+=	dmbuffer.c dmnames.c dmobject.c dmopcode.c dmresrc.c dmresrcl.c
-SRCS+=	dmresrcs.c dmutils.c dmwalk.c
+SRCS+=	dmbuffer.c dmdeferred.c dmnames.c dmobject.c dmopcode.c
+SRCS+=	dmresrc.c dmresrcl.c dmresrcl2.c dmresrcs.c dmutils.c dmwalk.c
 SRCS+=	dsfield.c dsinit.c dsmethod.c dsmthdat.c
 SRCS+=	dsobject.c dsopcode.c dsutils.c dswexec.c dswload.c
 SRCS+=	dswscope.c dswstate.c dsargs.c dscontrol.c dswload2.c
-SRCS+=	evevent.c evglock.c evgpe.c evgpeblk.c evgpeinit.c evgpeutil.c evxfgpe.c
-SRCS+=	evmisc.c evregion.c evrgnini.c evsci.c evxface.c
+SRCS+=	evevent.c evglock.c evgpe.c evgpeblk.c evgpeinit.c evgpeutil.c
+SRCS+=	evhandler.c evmisc.c evregion.c evrgnini.c evsci.c evxface.c evxfgpe.c
 SRCS+=	evxfevnt.c evxfregn.c exconfig.c exconvrt.c excreate.c
 SRCS+=	exdump.c exfield.c exfldio.c exmisc.c exmutex.c
 SRCS+=	exnames.c exoparg1.c exoparg2.c exoparg3.c exoparg6.c
 SRCS+=	exprep.c exregion.c exresnte.c exresolv.c exresop.c
 SRCS+=	exstore.c exstoren.c exstorob.c exsystem.c exutils.c exdebug.c
-SRCS+=	hwacpi.c hwgpe.c hwregs.c hwsleep.c hwtimer.c hwvalid.c hwxface.c hwpci.c
-SRCS+=	nsaccess.c nsalloc.c nsdump.c nseval.c nsinit.c nsrepair.c nsrepair2.c
-SRCS+=	nsload.c nsnames.c nsobject.c nsparse.c nssearch.c nspredef.c
+SRCS+=	hwacpi.c hwesleep.c hwgpe.c hwregs.c hwsleep.c
+SRCS+=	hwtimer.c hwvalid.c hwxface.c hwpci.c hwxfsleep.c
+SRCS+=	nsarguments.c nsaccess.c nsalloc.c nsconvert.c nsdump.c nseval.c
+SRCS+=	nsinit.c nsload.c nsnames.c nsobject.c nsparse.c nspredef.c nsprepkg.c
+SRCS+=	nsrepair.c nsrepair2.c nssearch.c
 SRCS+=	nsutils.c nswalk.c nsxfeval.c nsxfname.c nsxfobj.c
-SRCS+=	psargs.c psloop.c psopcode.c psparse.c psscope.c
+SRCS+=	psargs.c psloop.c psobject.c psopcode.c psopinfo.c psparse.c psscope.c
 SRCS+=	pstree.c psutils.c pswalk.c psxface.c
-SRCS+=	rsaddr.c rscalc.c rscreate.c rsdump.c rsinfo.c rsio.c
-SRCS+=	rsirq.c rslist.c rsmemory.c rsmisc.c rsutils.c
-SRCS+=	rsxface.c tbfadt.c tbfind.c tbinstal.c
-SRCS+=	tbutils.c tbxface.c tbxfroot.c utalloc.c
-SRCS+=	utclib.c utcopy.c utdebug.c utdelete.c uteval.c utlock.c
-SRCS+=	utglobal.c utinit.c utmath.c utmisc.c utmutex.c utobject.c
-SRCS+=	utresrc.c utstate.c utxface.c utdecode.c utids.c utosi.c utxferror.c
+SRCS+=	rsaddr.c rscalc.c rscreate.c rsdump.c rsdumpinfo.c rsinfo.c rsio.c
+SRCS+=	rsirq.c rslist.c rsmemory.c rsmisc.c rsserial.c rsutils.c
+SRCS+=	rsxface.c tbfadt.c tbfind.c tbinstal.c tbprint.c
+SRCS+=	tbutils.c tbxface.c tbxfload.c tbxfroot.c utalloc.c utbuffer.c
+SRCS+=	utaddress.c utclib.c utcopy.c
+SRCS+=	utdebug.c utdelete.c uterror.c uteval.c utexcep.c
+SRCS+=	utlock.c utglobal.c utinit.c utmath.c utmisc.c utmutex.c
+SRCS+=	utobject.c utownerid.c utpredef.c
+SRCS+=	utresrc.c utstate.c utstring.c utxface.c utdecode.c utids.c utosi.c
+SRCS+=	utxferror.c utxfinit.c
 
 # OSD layer
 #
@@ -107,7 +112,6 @@ SRCS+=	acpi_wakeup.c
 SRCS+=	pmtimer.c
 .endif
 CLEANFILES+=	acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin ${DBSRC}
-CLEANFILES+=	platform/acenv.h
 
 acpi_wakecode.h: acpi_wakecode.S
 	${MAKE} -f ${SYSDIR}/${OSACPI_MD_DIR}/Makefile \

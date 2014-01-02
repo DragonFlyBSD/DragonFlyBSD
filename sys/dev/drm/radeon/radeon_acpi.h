@@ -25,7 +25,7 @@
 #ifndef RADEON_ACPI_H
 #define RADEON_ACPI_H
 
-#include <contrib/dev/acpica-unix/include/acpi.h>
+#include <contrib/dev/acpica/source/include/acpi.h>
 
 struct radeon_device;
 
