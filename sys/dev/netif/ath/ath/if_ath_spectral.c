@@ -63,8 +63,6 @@
 #include <netinet/if_ether.h>
 #endif
 
-#include <machine/resource.h>
-
 #include <dev/netif/ath/ath/if_athvar.h>
 #include <dev/netif/ath/ath/if_ath_spectral.h>
 
@@ -108,7 +106,7 @@ ath_spectral_attach(struct ath_softc *sc)
 	if (! ath_hal_spectral_supported(sc->sc_ah))
 		return (0);
 
-	ss = malloc(sizeof(struct ath_spectral_state),
+	ss = kmalloc(sizeof(struct ath_spectral_state),
 	    M_TEMP, M_WAITOK | M_ZERO);
 
 	if (ss == NULL) {
@@ -135,7 +133,7 @@ ath_spectral_detach(struct ath_softc *sc)
 		return (0);
 
 	if (sc->sc_spectral != NULL) {
-		free(sc->sc_spectral, M_TEMP);
+		kfree(sc->sc_spectral, M_TEMP);
 	}
 	return (0);
 }
@@ -192,7 +190,7 @@ ath_ioctl_spectral(struct ath_softc *sc, struct ath_diag *ad)
 		/*
 		 * Copy in data.
 		 */
-		indata = malloc(insize, M_TEMP, M_NOWAIT);
+		indata = kmalloc(insize, M_TEMP, M_INTWAIT);
 		if (indata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -209,7 +207,7 @@ ath_ioctl_spectral(struct ath_softc *sc, struct ath_diag *ad)
 		 * pointer for us to use below in reclaiming the buffer;
 		 * may want to be more defensive.
 		 */
-		outdata = malloc(outsize, M_TEMP, M_NOWAIT);
+		outdata = kmalloc(outsize, M_TEMP, M_INTWAIT);
 		if (outdata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -279,9 +277,9 @@ ath_ioctl_spectral(struct ath_softc *sc, struct ath_diag *ad)
 		error = EFAULT;
 bad:
 	if ((ad->ad_id & ATH_DIAG_IN) && indata != NULL)
-		free(indata, M_TEMP);
+		kfree(indata, M_TEMP);
 	if ((ad->ad_id & ATH_DIAG_DYN) && outdata != NULL)
-		free(outdata, M_TEMP);
+		kfree(outdata, M_TEMP);
 	return (error);
 }
 

@@ -60,8 +60,6 @@
 #include <netinet/if_ether.h>
 #endif
 
-#include <machine/resource.h>
-
 #include <dev/netif/ath/ath/if_athvar.h>
 #include <dev/netif/ath/ath_rate/onoe/onoe.h>
 #include <dev/netif/ath/ath_hal/ah_desc.h>
@@ -389,8 +387,8 @@ ath_rate_ctl(void *arg, struct ieee80211_node *ni)
 static void
 ath_rate_sysctlattach(struct ath_softc *sc)
 {
-	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
-	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
+	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
+	struct sysctl_oid *tree = sc->sc_sysctl_tree;
 
 	SYSCTL_ADD_INT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		"rate_interval", CTLFLAG_RW, &ath_rateinterval, 0,
@@ -417,7 +415,7 @@ ath_rate_attach(struct ath_softc *sc)
 {
 	struct onoe_softc *osc;
 
-	osc = malloc(sizeof(struct onoe_softc), M_DEVBUF, M_NOWAIT|M_ZERO);
+	osc = kmalloc(sizeof(struct onoe_softc), M_DEVBUF, M_INTWAIT|M_ZERO);
 	if (osc == NULL)
 		return NULL;
 	osc->arc.arc_space = sizeof(struct onoe_node);
@@ -431,5 +429,46 @@ ath_rate_detach(struct ath_ratectrl *arc)
 {
 	struct onoe_softc *osc = (struct onoe_softc *) arc;
 
-	free(osc, M_DEVBUF);
+	kfree(osc, M_DEVBUF);
 }
+
+/*
+ * Module glue.
+ */
+static int
+onoe_modevent(module_t mod, int type, void *unused)
+{
+	int error;
+
+	wlan_serialize_enter();
+
+	switch (type) {
+	case MOD_LOAD:
+		if (bootverbose) {
+			kprintf("ath_rate: <Atsushi Onoe's rate "
+				"control algorithm>\n");
+		}
+		error = 0;
+		break;
+	case MOD_UNLOAD:
+		error = 0;
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+	wlan_serialize_exit();
+
+	return error;
+}
+
+static moduledata_t onoe_mod = {
+	"ath_rate",
+	onoe_modevent,
+	0
+};
+
+DECLARE_MODULE(ath_rate, onoe_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
+MODULE_VERSION(ath_rate, 1);
+MODULE_DEPEND(ath_rate, ath_hal, 1, 1, 1);
+MODULE_DEPEND(ath_rate, wlan, 1, 1, 1);

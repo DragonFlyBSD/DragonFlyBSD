@@ -64,8 +64,6 @@
 #include <netinet/if_ether.h>
 #endif
 
-#include <machine/resource.h>
-
 #include <dev/netif/ath/ath/if_athvar.h>
 #include <dev/netif/ath/ath/if_ath_debug.h>
 #include <dev/netif/ath/ath/if_ath_lna_div.h>
@@ -93,8 +91,8 @@ ath_lna_div_attach(struct ath_softc *sc)
 	if (! ath_hal_hasdivantcomb(sc->sc_ah))
 		return (0);
 
-	ss = malloc(sizeof(struct if_ath_ant_comb_state),
-	    M_TEMP, M_WAITOK | M_ZERO);
+	ss = kmalloc(sizeof(struct if_ath_ant_comb_state),
+		     M_TEMP, M_WAITOK | M_ZERO);
 	if (ss == NULL) {
 		device_printf(sc->sc_dev, "%s: failed to allocate\n",
 		    __func__);
@@ -128,7 +126,7 @@ int
 ath_lna_div_detach(struct ath_softc *sc)
 {
 	if (sc->sc_lna_div != NULL) {
-		free(sc->sc_lna_div, M_TEMP);
+		kfree(sc->sc_lna_div, M_TEMP);
 		sc->sc_lna_div = NULL;
 	}
 	sc->sc_dolnadiv = 0;
@@ -167,7 +165,7 @@ ath_lna_div_ioctl(struct ath_softc *sc, struct ath_diag *ad)
 		/*
 		 * Copy in data.
 		 */
-		indata = malloc(insize, M_TEMP, M_NOWAIT);
+		indata = kmalloc(insize, M_TEMP, M_INTWAIT);
 		if (indata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -184,7 +182,7 @@ ath_lna_div_ioctl(struct ath_softc *sc, struct ath_diag *ad)
 		 * pointer for us to use below in reclaiming the buffer;
 		 * may want to be more defensive.
 		 */
-		outdata = malloc(outsize, M_TEMP, M_NOWAIT);
+		outdata = kmalloc(outsize, M_TEMP, M_INTWAIT);
 		if (outdata == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -200,9 +198,9 @@ ath_lna_div_ioctl(struct ath_softc *sc, struct ath_diag *ad)
 		error = EFAULT;
 bad:
 	if ((ad->ad_id & ATH_DIAG_IN) && indata != NULL)
-		free(indata, M_TEMP);
+		kfree(indata, M_TEMP);
 	if ((ad->ad_id & ATH_DIAG_DYN) && outdata != NULL)
-		free(outdata, M_TEMP);
+		kfree(outdata, M_TEMP);
 	return (error);
 }
 

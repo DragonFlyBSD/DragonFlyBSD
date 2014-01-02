@@ -103,7 +103,7 @@ ath_printrxbuf(struct ath_softc *sc, const struct ath_buf *bf,
 	int i;
 
 	for (i = 0, ds = bf->bf_desc; i < bf->bf_nseg; i++, ds++) {
-		printf("R[%2u] (DS.V:%p DS.P:%p) L:%08x D:%08x%s\n"
+		kprintf("R[%2u] (DS.V:%p DS.P:%p) L:%08x D:%08x%s\n"
 		       "      %08x %08x %08x %08x\n",
 		    ix, ds, (const struct ath_desc *)bf->bf_daddr + i,
 		    ds->ds_link, ds->ds_data,
@@ -111,17 +111,17 @@ ath_printrxbuf(struct ath_softc *sc, const struct ath_buf *bf,
 		    ds->ds_ctl0, ds->ds_ctl1,
 		    ds->ds_hw[0], ds->ds_hw[1]);
 		if (ah->ah_magic == 0x20065416) {
-			printf("        %08x %08x %08x %08x %08x %08x %08x\n",
+			kprintf("        %08x %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_hw[2], ds->ds_hw[3], ds->ds_hw[4],
 			    ds->ds_hw[5], ds->ds_hw[6], ds->ds_hw[7],
 			    ds->ds_hw[8]);
 		} else if (ah->ah_magic == 0x19741014) {
-			printf("        %08x %08x %08x %08x %08x %08x %08x\n",
+			kprintf("        %08x %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_hw[2], ds->ds_hw[3], ds->ds_hw[4],
 			    ds->ds_hw[5], ds->ds_hw[6], ds->ds_hw[7],
 			    ds->ds_hw[8]);
 
-			printf("        %08x %08x %08x %08x %08x %08x %08x\n",
+			kprintf("        %08x %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_hw[9], ds->ds_hw[10], ds->ds_hw[11],
 			    ds->ds_hw[12], ds->ds_hw[13], ds->ds_hw[14],
 			    ds->ds_hw[15]);
@@ -140,7 +140,7 @@ ath_printtxbuf_edma(struct ath_softc *sc, const struct ath_buf *first_bf,
 	const struct ath_desc_txedma *eds;
 	int i, n;
 
-	printf("Q%u[%3u] (nseg=%d)", qnum, ix, bf->bf_nseg);
+	kprintf("Q%u[%3u] (nseg=%d)", qnum, ix, bf->bf_nseg);
 	while (bf != NULL) {
 		/*
 		 * XXX For now, assume the txmap size is 4.
@@ -156,38 +156,38 @@ ath_printtxbuf_edma(struct ath_softc *sc, const struct ath_buf *first_bf,
 		    i < n;
 		    i ++, ds += sc->sc_tx_desclen) {
 			eds = (const struct ath_desc_txedma *) ds;
-			printf(" (DS.V:%p DS.P:%p) I: %08x L:%08x F:%04x%s\n",
+			kprintf(" (DS.V:%p DS.P:%p) I: %08x L:%08x F:%04x%s\n",
 			    eds, (const struct ath_desc *)bf->bf_daddr + i,
 			    eds->ds_info, eds->ds_link,
 			    bf->bf_state.bfs_txflags,
 			    !done ? "" : (ts->ts_status == 0) ? " *" : " !");
-			printf(" (D[0] = %08x(%08x), D[1] = %08x(%08x)\n",
+			kprintf(" (D[0] = %08x(%08x), D[1] = %08x(%08x)\n",
 			    eds->ds_hw[0], eds->ds_hw[1],
 			    eds->ds_hw[2], eds->ds_hw[3]);
-			printf(" (D[2] = %08x(%08x), D[3] = %08x(%08x)\n",
+			kprintf(" (D[2] = %08x(%08x), D[3] = %08x(%08x)\n",
 			    eds->ds_hw[4], eds->ds_hw[5],
 			    eds->ds_hw[6], eds->ds_hw[7]);
-			printf("        Seq: %d swtry: %d ADDBAW?: %d DOBAW?: %d\n",
+			kprintf("        Seq: %d swtry: %d ADDBAW?: %d DOBAW?: %d\n",
 			    bf->bf_state.bfs_seqno,
 			    bf->bf_state.bfs_retries,
 			    bf->bf_state.bfs_addedbaw,
 			    bf->bf_state.bfs_dobaw);
-			printf("        %08x %08x %08x %08x %08x %08x\n",
+			kprintf("        %08x %08x %08x %08x %08x %08x\n",
 			    eds->ds_hw[8], eds->ds_hw[9],
 			    eds->ds_hw[10], eds->ds_hw[11],
 			    eds->ds_hw[12], eds->ds_hw[13]);
-			printf("        %08x %08x %08x %08x %08x %08x %08x\n",
+			kprintf("        %08x %08x %08x %08x %08x %08x %08x\n",
 			    eds->ds_hw[14], eds->ds_hw[15], eds->ds_hw[16],
 			    eds->ds_hw[17], eds->ds_hw[18], eds->ds_hw[19],
 			    eds->ds_hw[20]);
 #if 0
-			printf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
+			kprintf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_hw[22],ds->ds_hw[23],ds->ds_hw[24],
 			    ds->ds_hw[25],ds->ds_hw[26],ds->ds_hw[27],
 			    ds->ds_hw[28], ds->ds_hw[29]);
 #endif
 		}
-		printf("  [end]\n");
+		kprintf("  [end]\n");
 		bf = bf->bf_next;
 	}
 }
@@ -202,35 +202,35 @@ ath_printtxbuf_legacy(struct ath_softc *sc, const struct ath_buf *first_bf,
 	const struct ath_desc *ds;
 	int i;
 
-	printf("Q%u[%3u]", qnum, ix);
+	kprintf("Q%u[%3u]", qnum, ix);
 	while (bf != NULL) {
-		printf("    (bf=%p, lastds=%p)\n", bf, first_bf->bf_lastds);
-		printf("        Seq: %d swtry: %d ADDBAW?: %d DOBAW?: %d\n",
+		kprintf("    (bf=%p, lastds=%p)\n", bf, first_bf->bf_lastds);
+		kprintf("        Seq: %d swtry: %d ADDBAW?: %d DOBAW?: %d\n",
 		    bf->bf_state.bfs_seqno,
 		    bf->bf_state.bfs_retries,
 		    bf->bf_state.bfs_addedbaw,
 		    bf->bf_state.bfs_dobaw);
 		for (i = 0, ds = bf->bf_desc; i < bf->bf_nseg; i++, ds++) {
-			printf(" (DS.V:%p DS.P:%p) L:%08x D:%08x F:%04x%s\n",
+			kprintf(" (DS.V:%p DS.P:%p) L:%08x D:%08x F:%04x%s\n",
 			    ds, (const struct ath_desc *)bf->bf_daddr + i,
 			    ds->ds_link, ds->ds_data, bf->bf_state.bfs_txflags,
 			    !done ? "" : (ts->ts_status == 0) ? " *" : " !");
-			printf("        %08x %08x %08x %08x %08x %08x\n",
+			kprintf("        %08x %08x %08x %08x %08x %08x\n",
 			    ds->ds_ctl0, ds->ds_ctl1,
 			    ds->ds_hw[0], ds->ds_hw[1],
 			    ds->ds_hw[2], ds->ds_hw[3]);
 			if (ah->ah_magic == 0x20065416) {
-				printf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
+				kprintf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
 				    ds->ds_hw[4], ds->ds_hw[5], ds->ds_hw[6],
 				    ds->ds_hw[7], ds->ds_hw[8], ds->ds_hw[9],
 				    ds->ds_hw[10],ds->ds_hw[11]);
-				printf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
+				kprintf("        %08x %08x %08x %08x %08x %08x %08x %08x\n",
 				    ds->ds_hw[12],ds->ds_hw[13],ds->ds_hw[14],
 				    ds->ds_hw[15],ds->ds_hw[16],ds->ds_hw[17],
 				    ds->ds_hw[18], ds->ds_hw[19]);
 			}
 		}
-		printf("  [end]\n");
+		kprintf("  [end]\n");
 		bf = bf->bf_next;
 	}
 }
@@ -250,10 +250,10 @@ ath_printtxstatbuf(struct ath_softc *sc, const struct ath_buf *first_bf,
 	const uint32_t *ds, u_int qnum, u_int ix, int done)
 {
 
-	printf("Q%u[%3u] ", qnum, ix);
-	printf("        %08x %08x %08x %08x %08x %08x\n",
+	kprintf("Q%u[%3u] ", qnum, ix);
+	kprintf("        %08x %08x %08x %08x %08x %08x\n",
 	    ds[0], ds[1], ds[2], ds[3], ds[4], ds[5]);
-	printf("        %08x %08x %08x %08x %08x\n",
+	kprintf("        %08x %08x %08x %08x %08x\n",
 	    ds[6], ds[7], ds[8], ds[9], ds[10]);
 }
 

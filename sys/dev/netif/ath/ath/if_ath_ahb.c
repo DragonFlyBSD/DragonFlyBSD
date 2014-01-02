@@ -59,11 +59,12 @@
 
 #include <dev/netif/ath/ath/if_athvar.h>
 
-#include <mips/atheros/ar71xxreg.h>
-#include <mips/atheros/ar91xxreg.h>
-#include <mips/atheros/ar71xx_cpudef.h>
+#define MIPS_KSEG1_START                ((intptr_t)(int32_t)0xa0000000)
+#define MIPS_PHYS_TO_KSEG1(x)           ((uintptr_t)(x) | MIPS_KSEG1_START)
 
-#include <machine/resource.h>
+#include <dev/netif/ath/ath_hal/ar71xx/ar71xxreg.h>
+#include <dev/netif/ath/ath_hal/ar91xx/ar91xxreg.h>
+#include <dev/netif/ath/ath_hal/ar71xx/ar71xx_cpudef.h>
 
 /*
  * bus glue.
@@ -173,7 +174,7 @@ ath_ahb_attach(device_t dev)
 	sc->sc_invalid = 1;
 
 	/* Copy the EEPROM data out */
-	sc->sc_eepromdata = malloc(eepromsize, M_TEMP, M_NOWAIT | M_ZERO);
+	sc->sc_eepromdata = kmalloc(eepromsize, M_TEMP, M_INTWAIT | M_ZERO);
 	if (sc->sc_eepromdata == NULL) {
 		device_printf(dev, "cannot allocate memory for eeprom data\n");
 		goto bad1;
@@ -199,8 +200,9 @@ ath_ahb_attach(device_t dev)
 		goto bad1;
 	}
 	if (bus_setup_intr(dev, psc->sc_irq,
-			   INTR_TYPE_NET | INTR_MPSAFE,
-			   NULL, ath_intr, sc, &psc->sc_ih)) {
+			   INTR_MPSAFE, ath_intr,
+			   sc, &psc->sc_ih,
+			   &wlan_global_serializer)) {
 		device_printf(dev, "could not establish interrupt\n");
 		goto bad2;
 	}
@@ -209,7 +211,7 @@ ath_ahb_attach(device_t dev)
 	 * Setup DMA descriptor area.
 	 */
 	if (bus_dma_tag_create(bus_get_dma_tag(dev),	/* parent */
-			       1, 0,			/* alignment, bounds */
+			       4, 0,			/* alignment, bounds */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
 			       NULL, NULL,		/* filter, filterarg */
@@ -217,8 +219,6 @@ ath_ahb_attach(device_t dev)
 			       ATH_MAX_SCATTER,		/* nsegments */
 			       0x3ffff,			/* maxsegsize XXX */
 			       BUS_DMA_ALLOCNOW,	/* flags */
-			       NULL,			/* lockfunc */
-			       NULL,			/* lockarg */
 			       &sc->sc_dmat)) {
 		device_printf(dev, "cannot allocate DMA tag\n");
 		goto bad3;
@@ -266,7 +266,7 @@ bad0:
 bad:
 	/* XXX?! */
 	if (sc->sc_eepromdata)
-		free(sc->sc_eepromdata, M_TEMP);
+		kfree(sc->sc_eepromdata, M_TEMP);
 	return (error);
 }
 
@@ -290,7 +290,7 @@ ath_ahb_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_MEMORY, 0, psc->sc_eeprom);
 	/* XXX?! */
 	if (sc->sc_eepromdata)
-		free(sc->sc_eepromdata, M_TEMP);
+		kfree(sc->sc_eepromdata, M_TEMP);
 
 	ATH_TXSTATUS_LOCK_DESTROY(sc);
 	ATH_RX_LOCK_DESTROY(sc);
@@ -348,7 +348,10 @@ static driver_t ath_ahb_driver = {
 	sizeof (struct ath_ahb_softc)
 };
 static	devclass_t ath_devclass;
-DRIVER_MODULE(ath, nexus, ath_ahb_driver, ath_devclass, 0, 0);
-MODULE_VERSION(ath, 1);
-MODULE_DEPEND(ath, wlan, 1, 1, 1);		/* 802.11 media layer */
-MODULE_DEPEND(ath, if_ath, 1, 1, 1);		/* if_ath driver */
+DRIVER_MODULE(ath_ahb, nexus, ath_ahb_driver, ath_devclass, 0, 0);
+MODULE_VERSION(ath_ahb, 1);
+MODULE_DEPEND(ath_ahb, wlan, 1, 1, 1);          /* 802.11 media layer */
+MODULE_DEPEND(ath_ahb, if_ath, 1, 1, 1);        /* if_ath driver */
+MODULE_DEPEND(ath_ahb, ath_hal, 1, 1, 1);       /* Atheros HAL */
+MODULE_DEPEND(ath_ahb, ath_rate, 1, 1, 1);      /* rate control alg */
+MODULE_DEPEND(ath_ahb, ath_dfs, 1, 1, 1);	/* wtf */

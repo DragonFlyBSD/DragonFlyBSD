@@ -76,6 +76,7 @@
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_llc.h>
+#include <net/ifq_var.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
@@ -463,9 +464,9 @@ ath_edma_setup_txfifo(struct ath_softc *sc, int qnum)
 {
 	struct ath_tx_edma_fifo *te = &sc->sc_txedma[qnum];
 
-	te->m_fifo = malloc(sizeof(struct ath_buf *) * HAL_TXFIFO_DEPTH,
+	te->m_fifo = kmalloc(sizeof(struct ath_buf *) * HAL_TXFIFO_DEPTH,
 	    M_ATHDEV,
-	    M_NOWAIT | M_ZERO);
+	    M_INTWAIT | M_ZERO);
 	if (te->m_fifo == NULL) {
 		device_printf(sc->sc_dev, "%s: malloc failed\n",
 		    __func__);
@@ -486,7 +487,7 @@ ath_edma_free_txfifo(struct ath_softc *sc, int qnum)
 	struct ath_tx_edma_fifo *te = &sc->sc_txedma[qnum];
 
 	/* XXX TODO: actually deref the ath_buf entries? */
-	free(te->m_fifo, M_ATHDEV);
+	kfree(te->m_fifo, M_ATHDEV);
 	return (0);
 }
 
@@ -576,7 +577,7 @@ ath_edma_tx_drain(struct ath_softc *sc, ATH_RESET_TYPE reset_type)
 	/* XXX dump out the frames */
 
 	IF_LOCK(&ifp->if_snd);
-	ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+	ifq_clr_oactive(&ifp->if_snd);
 	IF_UNLOCK(&ifp->if_snd);
 	sc->sc_wd_timer = 0;
 }
@@ -832,7 +833,7 @@ ath_edma_tx_processq(struct ath_softc *sc, int dosched)
 
 	if (idx > 0) {
 		IF_LOCK(&sc->sc_ifp->if_snd);
-		sc->sc_ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
+		ifq_clr_oactive(&sc->sc_ifp->if_snd);
 		IF_UNLOCK(&sc->sc_ifp->if_snd);
 	}
 

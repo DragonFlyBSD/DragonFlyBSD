@@ -105,51 +105,66 @@ static int
 ath_sysctl_slottime(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int slottime = ath_hal_getslottime(sc->sc_ah);
+	u_int slottime;
 	int error;
 
+	wlan_serialize_enter();
+	slottime = ath_hal_getslottime(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &slottime, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_setslottime(sc->sc_ah, slottime) ? EINVAL : 0;
+	if (error == 0 && req->newptr)
+		error = !ath_hal_setslottime(sc->sc_ah, slottime) ? EINVAL : 0;
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
 ath_sysctl_acktimeout(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int acktimeout = ath_hal_getacktimeout(sc->sc_ah);
+	u_int acktimeout;
 	int error;
 
+	wlan_serialize_enter();
+	acktimeout = ath_hal_getacktimeout(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &acktimeout, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_setacktimeout(sc->sc_ah, acktimeout) ? EINVAL : 0;
+	if (error == 0 && req->newptr) {
+		error = !ath_hal_setacktimeout(sc->sc_ah, acktimeout) ?
+			EINVAL : 0;
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
 ath_sysctl_ctstimeout(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int ctstimeout = ath_hal_getctstimeout(sc->sc_ah);
+	u_int ctstimeout;
 	int error;
 
+	wlan_serialize_enter();
+	ctstimeout = ath_hal_getctstimeout(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &ctstimeout, 0, req);
-	if (error || !req->newptr)
-		return error;
-	return !ath_hal_setctstimeout(sc->sc_ah, ctstimeout) ? EINVAL : 0;
+	if (error == 0 && req->newptr) {
+		error = !ath_hal_setctstimeout(sc->sc_ah, ctstimeout) ?
+			EINVAL : 0;
+	}
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
 ath_sysctl_softled(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	int softled = sc->sc_softled;
+	int softled;
 	int error;
 
+	wlan_serialize_enter();
+	softled = sc->sc_softled;
 	error = sysctl_handle_int(oidp, &softled, 0, req);
 	if (error || !req->newptr)
-		return error;
+		goto done;
 	softled = (softled != 0);
 	if (softled != sc->sc_softled) {
 		if (softled) {
@@ -158,38 +173,48 @@ ath_sysctl_softled(SYSCTL_HANDLER_ARGS)
 		}
 		sc->sc_softled = softled;
 	}
-	return 0;
+	error = 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
 ath_sysctl_ledpin(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	int ledpin = sc->sc_ledpin;
+	int ledpin;
 	int error;
 
+	wlan_serialize_enter();
+	ledpin = sc->sc_ledpin;
 	error = sysctl_handle_int(oidp, &ledpin, 0, req);
 	if (error || !req->newptr)
-		return error;
+		goto done;
 	if (ledpin != sc->sc_ledpin) {
 		sc->sc_ledpin = ledpin;
 		if (sc->sc_softled) {
 			ath_led_config(sc);
 		}
 	}
-	return 0;
+	error = 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
 ath_sysctl_hardled(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	int hardled = sc->sc_hardled;
+	int hardled;
 	int error;
 
+	wlan_serialize_enter();
+	hardled = sc->sc_hardled;
 	error = sysctl_handle_int(oidp, &hardled, 0, req);
 	if (error || !req->newptr)
-		return error;
+		goto done;
 	hardled = (hardled != 0);
 	if (hardled != sc->sc_hardled) {
 		if (hardled) {
@@ -198,21 +223,29 @@ ath_sysctl_hardled(SYSCTL_HANDLER_ARGS)
 		}
 		sc->sc_hardled = hardled;
 	}
-	return 0;
+	error = 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
 ath_sysctl_txantenna(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int txantenna = ath_hal_getantennaswitch(sc->sc_ah);
+	u_int txantenna;
 	int error;
 
+	wlan_serialize_enter();
+	txantenna = ath_hal_getantennaswitch(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &txantenna, 0, req);
 	if (!error && req->newptr) {
 		/* XXX assumes 2 antenna ports */
-		if (txantenna < HAL_ANT_VARIABLE || txantenna > HAL_ANT_FIXED_B)
-			return EINVAL;
+		if (txantenna < HAL_ANT_VARIABLE ||
+		    txantenna > HAL_ANT_FIXED_B) {
+			error = EINVAL;
+			goto done;
+		}
 		ath_hal_setantennaswitch(sc->sc_ah, txantenna);
 		/*
 		 * NB: with the switch locked this isn't meaningful,
@@ -221,6 +254,9 @@ ath_sysctl_txantenna(SYSCTL_HANDLER_ARGS)
 		 */
 		sc->sc_txantenna = txantenna;
 	}
+	error = 0;
+done:
+	wlan_serialize_exit();
 	return error;
 }
 
@@ -228,12 +264,15 @@ static int
 ath_sysctl_rxantenna(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int defantenna = ath_hal_getdefantenna(sc->sc_ah);
+	u_int defantenna;
 	int error;
 
+	wlan_serialize_enter();
+	defantenna = ath_hal_getdefantenna(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &defantenna, 0, req);
 	if (!error && req->newptr)
 		ath_hal_setdefantenna(sc->sc_ah, defantenna);
+	wlan_serialize_exit();
 	return error;
 }
 
@@ -241,16 +280,23 @@ static int
 ath_sysctl_diversity(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int diversity = ath_hal_getdiversity(sc->sc_ah);
+	u_int diversity;
 	int error;
 
+	wlan_serialize_enter();
+	diversity = ath_hal_getdiversity(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &diversity, 0, req);
 	if (error || !req->newptr)
-		return error;
-	if (!ath_hal_setdiversity(sc->sc_ah, diversity))
-		return EINVAL;
+		goto done;
+	if (!ath_hal_setdiversity(sc->sc_ah, diversity)) {
+		error = EINVAL;
+		goto done;
+	}
 	sc->sc_diversity = diversity;
-	return 0;
+	error = 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -260,12 +306,18 @@ ath_sysctl_diag(SYSCTL_HANDLER_ARGS)
 	u_int32_t diag;
 	int error;
 
-	if (!ath_hal_getdiag(sc->sc_ah, &diag))
-		return EINVAL;
+	wlan_serialize_enter();
+	if (!ath_hal_getdiag(sc->sc_ah, &diag)) {
+		error = EINVAL;
+		goto done;
+	}
 	error = sysctl_handle_int(oidp, &diag, 0, req);
 	if (error || !req->newptr)
-		return error;
-	return !ath_hal_setdiag(sc->sc_ah, diag) ? EINVAL : 0;
+		goto done;
+	error = !ath_hal_setdiag(sc->sc_ah, diag) ? EINVAL : 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -276,26 +328,35 @@ ath_sysctl_tpscale(SYSCTL_HANDLER_ARGS)
 	u_int32_t scale;
 	int error;
 
+	wlan_serialize_enter();
 	(void) ath_hal_gettpscale(sc->sc_ah, &scale);
 	error = sysctl_handle_int(oidp, &scale, 0, req);
 	if (error || !req->newptr)
-		return error;
-	return !ath_hal_settpscale(sc->sc_ah, scale) ? EINVAL :
-	    (ifp->if_drv_flags & IFF_DRV_RUNNING) ?
+		goto done;
+	error = !ath_hal_settpscale(sc->sc_ah, scale) ? EINVAL :
+	    (ifp->if_flags & IFF_RUNNING) ?
 	      ath_reset(ifp, ATH_RESET_NOLOSS) : 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
 ath_sysctl_tpc(SYSCTL_HANDLER_ARGS)
 {
 	struct ath_softc *sc = arg1;
-	u_int tpc = ath_hal_gettpc(sc->sc_ah);
+	u_int tpc;
 	int error;
 
+	wlan_serialize_enter();
+	tpc = ath_hal_gettpc(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &tpc, 0, req);
 	if (error || !req->newptr)
-		return error;
-	return !ath_hal_settpc(sc->sc_ah, tpc) ? EINVAL : 0;
+		goto done;
+	error = !ath_hal_settpc(sc->sc_ah, tpc) ? EINVAL : 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -304,18 +365,29 @@ ath_sysctl_rfkill(SYSCTL_HANDLER_ARGS)
 	struct ath_softc *sc = arg1;
 	struct ifnet *ifp = sc->sc_ifp;
 	struct ath_hal *ah = sc->sc_ah;
-	u_int rfkill = ath_hal_getrfkill(ah);
+	u_int rfkill;
 	int error;
 
+	wlan_serialize_enter();
+	rfkill = ath_hal_getrfkill(ah);
 	error = sysctl_handle_int(oidp, &rfkill, 0, req);
 	if (error || !req->newptr)
-		return error;
-	if (rfkill == ath_hal_getrfkill(ah))	/* unchanged */
-		return 0;
-	if (!ath_hal_setrfkill(ah, rfkill))
-		return EINVAL;
-	return (ifp->if_drv_flags & IFF_DRV_RUNNING) ?
-	    ath_reset(ifp, ATH_RESET_FULL) : 0;
+		goto done;
+	if (rfkill == ath_hal_getrfkill(ah)) {	/* unchanged */
+		error = 0;
+		goto done;
+	}
+	if (!ath_hal_setrfkill(ah, rfkill)) {
+		error = EINVAL;
+		goto done;
+	}
+	if (ifp->if_flags & IFF_RUNNING)
+		error = ath_reset(ifp, ATH_RESET_FULL);
+	else
+		error = 0;
+done:
+	wlan_serialize_exit();
+	return 0;
 }
 
 static int
@@ -333,33 +405,34 @@ ath_sysctl_txagg(SYSCTL_HANDLER_ARGS)
 	if (param != 1)
 		return 0;
 
-	printf("no tx bufs (empty list): %d\n", sc->sc_stats.ast_tx_getnobuf);
-	printf("no tx bufs (was busy): %d\n", sc->sc_stats.ast_tx_getbusybuf);
+	kprintf("no tx bufs (empty list): %d\n", sc->sc_stats.ast_tx_getnobuf);
+	kprintf("no tx bufs (was busy): %d\n", sc->sc_stats.ast_tx_getbusybuf);
 
-	printf("aggr single packet: %d\n",
+	kprintf("aggr single packet: %d\n",
 	    sc->sc_aggr_stats.aggr_single_pkt);
-	printf("aggr single packet w/ BAW closed: %d\n",
+	kprintf("aggr single packet w/ BAW closed: %d\n",
 	    sc->sc_aggr_stats.aggr_baw_closed_single_pkt);
-	printf("aggr non-baw packet: %d\n",
+	kprintf("aggr non-baw packet: %d\n",
 	    sc->sc_aggr_stats.aggr_nonbaw_pkt);
-	printf("aggr aggregate packet: %d\n",
+	kprintf("aggr aggregate packet: %d\n",
 	    sc->sc_aggr_stats.aggr_aggr_pkt);
-	printf("aggr single packet low hwq: %d\n",
+	kprintf("aggr single packet low hwq: %d\n",
 	    sc->sc_aggr_stats.aggr_low_hwq_single_pkt);
-	printf("aggr single packet RTS aggr limited: %d\n",
+	kprintf("aggr single packet RTS aggr limited: %d\n",
 	    sc->sc_aggr_stats.aggr_rts_aggr_limited);
-	printf("aggr sched, no work: %d\n",
+	kprintf("aggr sched, no work: %d\n",
 	    sc->sc_aggr_stats.aggr_sched_nopkt);
 	for (i = 0; i < 64; i++) {
-		printf("%2d: %10d ", i, sc->sc_aggr_stats.aggr_pkts[i]);
+		kprintf("%2d: %10d ", i, sc->sc_aggr_stats.aggr_pkts[i]);
 		if (i % 4 == 3)
-			printf("\n");
+			kprintf("\n");
 	}
-	printf("\n");
+	kprintf("\n");
 
+	wlan_serialize_enter();
 	for (i = 0; i < HAL_NUM_TX_QUEUES; i++) {
 		if (ATH_TXQ_SETUP(sc, i)) {
-			printf("HW TXQ %d: axq_depth=%d, axq_aggr_depth=%d, "
+			kprintf("HW TXQ %d: axq_depth=%d, axq_aggr_depth=%d, "
 			    "axq_fifo_depth=%d, holdingbf=%p\n",
 			    i,
 			    sc->sc_txq[i].axq_depth,
@@ -373,31 +446,31 @@ ath_sysctl_txagg(SYSCTL_HANDLER_ARGS)
 	ATH_TXBUF_LOCK(sc);
 	TAILQ_FOREACH(bf, &sc->sc_txbuf, bf_list) {
 		if (bf->bf_flags & ATH_BUF_BUSY) {
-			printf("Busy: %d\n", t);
+			kprintf("Busy: %d\n", t);
 			i++;
 		}
 		t++;
 	}
 	ATH_TXBUF_UNLOCK(sc);
-	printf("Total TX buffers: %d; Total TX buffers busy: %d (%d)\n",
+	kprintf("Total TX buffers: %d; Total TX buffers busy: %d (%d)\n",
 	    t, i, sc->sc_txbuf_cnt);
 
 	i = t = 0;
 	ATH_TXBUF_LOCK(sc);
 	TAILQ_FOREACH(bf, &sc->sc_txbuf_mgmt, bf_list) {
 		if (bf->bf_flags & ATH_BUF_BUSY) {
-			printf("Busy: %d\n", t);
+			kprintf("Busy: %d\n", t);
 			i++;
 		}
 		t++;
 	}
 	ATH_TXBUF_UNLOCK(sc);
-	printf("Total mgmt TX buffers: %d; Total mgmt TX buffers busy: %d\n",
+	kprintf("Total mgmt TX buffers: %d; Total mgmt TX buffers busy: %d\n",
 	    t, i);
 
 	ATH_RX_LOCK(sc);
 	for (i = 0; i < 2; i++) {
-		printf("%d: fifolen: %d/%d; head=%d; tail=%d\n",
+		kprintf("%d: fifolen: %d/%d; head=%d; tail=%d\n",
 		    i,
 		    sc->sc_rxedma[i].m_fifo_depth,
 		    sc->sc_rxedma[i].m_fifolen,
@@ -408,9 +481,10 @@ ath_sysctl_txagg(SYSCTL_HANDLER_ARGS)
 	TAILQ_FOREACH(bf, &sc->sc_rxbuf, bf_list) {
 		i++;
 	}
-	printf("Total RX buffers in free list: %d buffers\n",
+	kprintf("Total RX buffers in free list: %d buffers\n",
 	    i);
 	ATH_RX_UNLOCK(sc);
+	wlan_serialize_exit();
 
 	return 0;
 }
@@ -422,15 +496,20 @@ ath_sysctl_rfsilent(SYSCTL_HANDLER_ARGS)
 	u_int rfsilent;
 	int error;
 
+	wlan_serialize_enter();
 	(void) ath_hal_getrfsilent(sc->sc_ah, &rfsilent);
 	error = sysctl_handle_int(oidp, &rfsilent, 0, req);
 	if (error || !req->newptr)
-		return error;
-	if (!ath_hal_setrfsilent(sc->sc_ah, rfsilent))
-		return EINVAL;
+		goto done;
+	if (!ath_hal_setrfsilent(sc->sc_ah, rfsilent)) {
+		error = EINVAL;
+		goto done;
+	}
 	sc->sc_rfsilentpin = rfsilent & 0x1c;
 	sc->sc_rfsilentpol = (rfsilent & 0x2) != 0;
-	return 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -440,11 +519,15 @@ ath_sysctl_tpack(SYSCTL_HANDLER_ARGS)
 	u_int32_t tpack;
 	int error;
 
+	wlan_serialize_enter();
 	(void) ath_hal_gettpack(sc->sc_ah, &tpack);
 	error = sysctl_handle_int(oidp, &tpack, 0, req);
 	if (error || !req->newptr)
-		return error;
-	return !ath_hal_settpack(sc->sc_ah, tpack) ? EINVAL : 0;
+		goto done;
+	error = !ath_hal_settpack(sc->sc_ah, tpack) ? EINVAL : 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -454,11 +537,15 @@ ath_sysctl_tpcts(SYSCTL_HANDLER_ARGS)
 	u_int32_t tpcts;
 	int error;
 
+	wlan_serialize_enter();
 	(void) ath_hal_gettpcts(sc->sc_ah, &tpcts);
 	error = sysctl_handle_int(oidp, &tpcts, 0, req);
 	if (error || !req->newptr)
-		return error;
-	return !ath_hal_settpcts(sc->sc_ah, tpcts) ? EINVAL : 0;
+		goto done;
+	error = !ath_hal_settpcts(sc->sc_ah, tpcts) ? EINVAL : 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -467,25 +554,30 @@ ath_sysctl_intmit(SYSCTL_HANDLER_ARGS)
 	struct ath_softc *sc = arg1;
 	int intmit, error;
 
+	wlan_serialize_enter();
 	intmit = ath_hal_getintmit(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &intmit, 0, req);
 	if (error || !req->newptr)
-		return error;
+		goto done;
 
 	/* reusing error; 1 here means "good"; 0 means "fail" */
 	error = ath_hal_setintmit(sc->sc_ah, intmit);
-	if (! error)
-		return EINVAL;
+	if (!error) {
+		error = EINVAL;
+		goto done;
+	}
 
 	/*
 	 * Reset the hardware here - disabling ANI in the HAL
 	 * doesn't reset ANI related registers, so it'll leave
 	 * things in an inconsistent state.
 	 */
-	if (sc->sc_ifp->if_drv_flags & IFF_DRV_RUNNING)
+	if (sc->sc_ifp->if_flags & IFF_RUNNING)
 		ath_reset(sc->sc_ifp, ATH_RESET_NOLOSS);
-
-	return 0;
+	error = 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 #ifdef IEEE80211_SUPPORT_TDMA
@@ -495,12 +587,15 @@ ath_sysctl_setcca(SYSCTL_HANDLER_ARGS)
 	struct ath_softc *sc = arg1;
 	int setcca, error;
 
+	wlan_serialize_enter();
 	setcca = sc->sc_setcca;
 	error = sysctl_handle_int(oidp, &setcca, 0, req);
 	if (error || !req->newptr)
-		return error;
+		goto done;
 	sc->sc_setcca = (setcca != 0);
-	return 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 #endif /* IEEE80211_SUPPORT_TDMA */
 
@@ -511,15 +606,18 @@ ath_sysctl_forcebstuck(SYSCTL_HANDLER_ARGS)
 	int val = 0;
 	int error;
 
+	wlan_serialize_enter();
 	error = sysctl_handle_int(oidp, &val, 0, req);
 	if (error || !req->newptr)
-		return error;
+		goto done;
 	if (val == 0)
-		return 0;
+		goto done;
 
 	taskqueue_enqueue_fast(sc->sc_tq, &sc->sc_bstucktask);
 	val = 0;
-	return 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 static int
@@ -540,14 +638,19 @@ ath_sysctl_hangcheck(SYSCTL_HANDLER_ARGS)
 		return 0;
 
 	/* Do a hang check */
+	wlan_serialize_enter();
 	if (!ath_hal_getdiagstate(ah, HAL_DIAG_CHECK_HANGS,
 	    &mask, sizeof(mask),
-	    (void *) &sp, &rsize))
-		return (0);
+	    (void *) &sp, &rsize)) {
+		goto done;
+	}
 	device_printf(sc->sc_dev, "%s: sp=0x%08x\n", __func__, *sp);
 
 	val = 0;
-	return 0;
+	error = 0;
+done:
+	wlan_serialize_exit();
+	return error;
 }
 
 #ifdef ATH_DEBUG_ALQ
@@ -557,15 +660,17 @@ ath_sysctl_alq_log(SYSCTL_HANDLER_ARGS)
 	struct ath_softc *sc = arg1;
 	int error, enable;
 
+	wlan_serialize_enter();
 	enable = (sc->sc_alq.sc_alq_isactive);
-
 	error = sysctl_handle_int(oidp, &enable, 0, req);
 	if (error || !req->newptr)
-		return (error);
-	else if (enable)
+		goto done;
+	if (enable)
 		error = if_ath_alq_start(&sc->sc_alq);
 	else
 		error = if_ath_alq_stop(&sc->sc_alq);
+done:
+	wlan_serialize_exit();
 	return (error);
 }
 
@@ -575,8 +680,8 @@ ath_sysctl_alq_log(SYSCTL_HANDLER_ARGS)
 static void
 ath_sysctl_alq_attach(struct ath_softc *sc)
 {
-	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
-	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
+	struct sysctl_oid *tree = sc->sc_sysctl_tree;
+	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
 	struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
 
 	tree = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, "alq", CTLFLAG_RD,
@@ -603,8 +708,8 @@ ath_sysctl_alq_attach(struct ath_softc *sc)
 void
 ath_sysctlattach(struct ath_softc *sc)
 {
-	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
-	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
+	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
+	struct sysctl_oid *tree = sc->sc_sysctl_tree;
 	struct ath_hal *ah = sc->sc_ah;
 
 	SYSCTL_ADD_UINT(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
@@ -804,9 +909,11 @@ ath_sysctl_clearstats(SYSCTL_HANDLER_ARGS)
 		return error;
 	if (val == 0)
 		return 0;       /* Not clearing the stats is still valid */
+	wlan_serialize_enter();
 	memset(&sc->sc_stats, 0, sizeof(sc->sc_stats));
 	memset(&sc->sc_aggr_stats, 0, sizeof(sc->sc_aggr_stats));
 	memset(&sc->sc_intr_stats, 0, sizeof(sc->sc_intr_stats));
+	wlan_serialize_exit();
 
 	val = 0;
 	return 0;
@@ -815,8 +922,8 @@ ath_sysctl_clearstats(SYSCTL_HANDLER_ARGS)
 static void
 ath_sysctl_stats_attach_rxphyerr(struct ath_softc *sc, struct sysctl_oid_list *parent)
 {
-	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
-	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
+	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
+	struct sysctl_oid *tree = sc->sc_sysctl_tree;
 	struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
 	int i;
 	char sn[8];
@@ -824,7 +931,7 @@ ath_sysctl_stats_attach_rxphyerr(struct ath_softc *sc, struct sysctl_oid_list *p
 	tree = SYSCTL_ADD_NODE(ctx, parent, OID_AUTO, "rx_phy_err", CTLFLAG_RD, NULL, "Per-code RX PHY Errors");
 	child = SYSCTL_CHILDREN(tree);
 	for (i = 0; i < 64; i++) {
-		snprintf(sn, sizeof(sn), "%d", i);
+		ksnprintf(sn, sizeof(sn), "%d", i);
 		SYSCTL_ADD_UINT(ctx, child, OID_AUTO, sn, CTLFLAG_RD, &sc->sc_stats.ast_rx_phy[i], 0, "");
 	}
 }
@@ -833,8 +940,8 @@ static void
 ath_sysctl_stats_attach_intr(struct ath_softc *sc,
     struct sysctl_oid_list *parent)
 {
-	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
-	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
+	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
+	struct sysctl_oid *tree = sc->sc_sysctl_tree;
 	struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
 	int i;
 	char sn[8];
@@ -843,7 +950,7 @@ ath_sysctl_stats_attach_intr(struct ath_softc *sc,
 	    CTLFLAG_RD, NULL, "Sync interrupt statistics");
 	child = SYSCTL_CHILDREN(tree);
 	for (i = 0; i < 32; i++) {
-		snprintf(sn, sizeof(sn), "%d", i);
+		ksnprintf(sn, sizeof(sn), "%d", i);
 		SYSCTL_ADD_UINT(ctx, child, OID_AUTO, sn, CTLFLAG_RD,
 		    &sc->sc_intr_stats.sync_intr[i], 0, "");
 	}
@@ -852,8 +959,8 @@ ath_sysctl_stats_attach_intr(struct ath_softc *sc,
 void
 ath_sysctl_stats_attach(struct ath_softc *sc)
 {
-	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
-	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
+	struct sysctl_oid *tree = sc->sc_sysctl_tree;
+	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
 	struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
  
 	/* Create "clear" node */
@@ -1095,8 +1202,8 @@ ath_sysctl_stats_attach(struct ath_softc *sc)
 void
 ath_sysctl_hal_attach(struct ath_softc *sc)
 {
-	struct sysctl_oid *tree = device_get_sysctl_tree(sc->sc_dev);
-	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(sc->sc_dev);
+	struct sysctl_oid *tree = sc->sc_sysctl_tree;
+	struct sysctl_ctx_list *ctx = &sc->sc_sysctl_ctx;
 	struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
 
 	tree = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, "hal", CTLFLAG_RD,

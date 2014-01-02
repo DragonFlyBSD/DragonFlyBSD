@@ -5,11 +5,13 @@ ATH_RATE?=	sample		# tx rate control algorithm
 
 KMOD=	ath_hal
 
-.PATH: ar5211 ar5416 ar5312 ar5212 ar9003 ar9002 ar9001 ar5210
+.PATH: ${.CURDIR}/ar5211 ${.CURDIR}/ar5416 ${.CURDIR}/ar5312
+.PATH: ${.CURDIR}/ar5212 ${.CURDIR}/ar9003 ${.CURDIR}/ar9002
+.PATH: ${.CURDIR}/ar9001 ${.CURDIR}/ar5210
 
-SRCS=	ah_eeprom_9287.c ah_eeprom_v4k.c ah_regdomain.c \
+SRCS=	ah_eeprom_9287.c ah_eeprom_v4k.c ah_regdomain.c
 SRCS+=	ah_eeprom_v1.c ah_eeprom_v3.c ah_osdep.c ah.c ah_eeprom_v14.c
-SRCS+=	device_if.h bus_if.h pci_if.h opt_inet.h opt_ath.h opt_ah.h
+SRCS+=	device_if.h bus_if.h pci_if.h opt_wlan.h opt_inet.h opt_ath.h opt_ah.h
 
 # AR5211
 #
@@ -33,11 +35,16 @@ SRCS+=	ar5312_gpio.c ar5315_gpio.c ar5312_power.c ar5312_attach.c
 
 # AR5212
 #
-SRCS+=	ar5212_rfgain.c ar5212_interrupts.c ar5212_ani.c ar2316.c
-SRCS+=	ar2317.c ar2413.c ar5413.c ar5212_power.c ar2425.c ar5212_recv.c
+SRCS+=	ar5212_rfgain.c ar5212_interrupts.c ar5212_ani.c
+SRCS+=	ar2413.c ar5413.c ar5212_power.c ar2425.c ar5212_recv.c
 SRCS+=	ar5212_gpio.c ar5212_beacon.c ar5212_misc.c ar5212_xmit.c
 SRCS+=	ar5212_eeprom.c ar5212_keycache.c ar5212_phy.c ar5212_attach.c
 SRCS+=	ar5212_reset.c ar5111.c ar5112.c
+
+# AR2316, AR2317
+#
+#SRCS+=	ar2316.c
+#SRCS+=	ar2317.c
 
 # AR9002
 #

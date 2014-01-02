@@ -238,11 +238,11 @@ void
 ath_txfrag_cleanup(struct ath_softc *sc,
 	ath_bufhead *frags, struct ieee80211_node *ni)
 {
-	struct ath_buf *bf, *next;
+	struct ath_buf *bf;
 
 	ATH_TXBUF_LOCK_ASSERT(sc);
 
-	TAILQ_FOREACH_SAFE(bf, frags, bf_list, next) {
+	while ((bf = TAILQ_FIRST(frags)) != NULL) {
 		/* NB: bf assumed clean */
 		TAILQ_REMOVE(frags, bf, bf_list);
 		ath_returnbuf_head(sc, bf);
@@ -306,8 +306,8 @@ ath_tx_dmasetup(struct ath_softc *sc, struct ath_buf *bf, struct mbuf *m0)
 	 * Load the DMA map so any coalescing is done.  This
 	 * also calculates the number of descriptors we need.
 	 */
-	error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m0,
-				     bf->bf_segs, &bf->bf_nseg,
+	error = bus_dmamap_load_mbuf_segment(sc->sc_dmat, bf->bf_dmamap, m0,
+				     bf->bf_segs, 1, &bf->bf_nseg,
 				     BUS_DMA_NOWAIT);
 	if (error == EFBIG) {
 		/* XXX packet requires too many descriptors */
@@ -324,15 +324,23 @@ ath_tx_dmasetup(struct ath_softc *sc, struct ath_buf *bf, struct mbuf *m0)
 	 */
 	if (bf->bf_nseg > ATH_MAX_SCATTER) {		/* too many desc's, linearize */
 		sc->sc_stats.ast_tx_linear++;
+
+		/* scrap for now */
+#if 0
 		m = m_collapse(m0, M_NOWAIT, ATH_MAX_SCATTER);
+#else
+		m = NULL;
+#endif
+
 		if (m == NULL) {
 			ath_freetx(m0);
 			sc->sc_stats.ast_tx_nombuf++;
 			return ENOMEM;
 		}
 		m0 = m;
-		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m0,
-					     bf->bf_segs, &bf->bf_nseg,
+		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
+					     bf->bf_dmamap, m0,
+					     bf->bf_segs, 1, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
 		if (error != 0) {
 			sc->sc_stats.ast_tx_busdma++;
@@ -1213,7 +1221,7 @@ ath_tx_calc_ctsduration(struct ath_hal *ah, int rix, int cix,
 
 	/* This mustn't be called for HT modes */
 	if (rt->info[cix].phy == IEEE80211_T_HT) {
-		printf("%s: HT rate where it shouldn't be (0x%x)\n",
+		kprintf("%s: HT rate where it shouldn't be (0x%x)\n",
 		    __func__, rt->info[cix].rateCode);
 		return (-1);
 	}
@@ -2358,9 +2366,9 @@ ath_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
 
 	ATH_TX_LOCK(sc);
 
-	if ((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0 || sc->sc_invalid) {
+	if ((ifp->if_flags & IFF_RUNNING) == 0 || sc->sc_invalid) {
 		DPRINTF(sc, ATH_DEBUG_XMIT, "%s: discard frame, %s", __func__,
-		    (ifp->if_drv_flags & IFF_DRV_RUNNING) == 0 ?
+		    (ifp->if_flags & IFF_RUNNING) == 0 ?
 			"!running" : "invalid");
 		m_freem(m);
 		error = ENETDOWN;
@@ -4681,7 +4689,7 @@ ath_tx_aggr_comp_aggr(struct ath_softc *sc, struct ath_buf *bf_first,
 		ath_tx_tid_filt_comp_aggr(sc, atid, bf_first, &bf_cq);
 
 		/* Remove from BAW */
-		TAILQ_FOREACH_SAFE(bf, &bf_cq, bf_list, bf_next) {
+		TAILQ_FOREACH(bf, &bf_cq, bf_list) {
 			if (bf->bf_state.bfs_addedbaw)
 				drops++;
 			if (bf->bf_state.bfs_dobaw) {
@@ -5456,7 +5464,7 @@ ath_tx_tid_hw_queue_norm(struct ath_softc *sc, struct ath_node *an,
 void
 ath_txq_sched(struct ath_softc *sc, struct ath_txq *txq)
 {
-	struct ath_tid *tid, *next, *last;
+	struct ath_tid *tid, *last;
 
 	ATH_TX_LOCK_ASSERT(sc);
 
@@ -5480,7 +5488,7 @@ ath_txq_sched(struct ath_softc *sc, struct ath_txq *txq)
 
 	last = TAILQ_LAST(&txq->axq_tidq, axq_t_s);
 
-	TAILQ_FOREACH_SAFE(tid, &txq->axq_tidq, axq_qelem, next) {
+	while ((tid = TAILQ_FIRST(&txq->axq_tidq)) != NULL) {
 		/*
 		 * Suspend paused queues here; they'll be resumed
 		 * once the addba completes or times out.
@@ -5606,7 +5614,7 @@ ath_addba_request(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
     int dialogtoken, int baparamset, int batimeout)
 {
 	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
-	int tid = tap->txa_tid;
+	int tid = tap->txa_ac;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
 
@@ -5684,7 +5692,7 @@ ath_addba_response(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
     int status, int code, int batimeout)
 {
 	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
-	int tid = tap->txa_tid;
+	int tid = tap->txa_ac;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
 	int r;
@@ -5731,7 +5739,7 @@ void
 ath_addba_stop(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap)
 {
 	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
-	int tid = tap->txa_tid;
+	int tid = tap->txa_ac;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
 	ath_bufhead bf_cq;
@@ -5846,7 +5854,7 @@ ath_bar_response(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
     int status)
 {
 	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
-	int tid = tap->txa_tid;
+	int tid = tap->txa_ac;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
 	int attempts = tap->txa_attempts;
@@ -5856,7 +5864,7 @@ ath_bar_response(struct ieee80211_node *ni, struct ieee80211_tx_ampdu *tap,
 	    __func__,
 	    ni->ni_macaddr,
 	    ":",
-	    tap->txa_tid,
+	    tap->txa_ac,
 	    atid->tid,
 	    status,
 	    attempts);
@@ -5895,7 +5903,7 @@ ath_addba_response_timeout(struct ieee80211_node *ni,
     struct ieee80211_tx_ampdu *tap)
 {
 	struct ath_softc *sc = ni->ni_ic->ic_ifp->if_softc;
-	int tid = tap->txa_tid;
+	int tid = tap->txa_ac;
 	struct ath_node *an = ATH_NODE(ni);
 	struct ath_tid *atid = &an->an_tid[tid];
 

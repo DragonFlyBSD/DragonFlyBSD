@@ -149,7 +149,7 @@ static unsigned calc_usecs_unicast_packet(struct ath_softc *sc,
 	KASSERT(rt != NULL, ("no rate table, mode %u", sc->sc_curmode));
 
 	if (rix >= rt->rateCount) {
-		printf("bogus rix %d, max %u, mode %u\n",
+		kprintf("bogus rix %d, max %u, mode %u\n",
 		       rix, rt->rateCount, sc->sc_curmode);
 		return 0;
 	}

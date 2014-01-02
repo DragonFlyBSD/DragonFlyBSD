@@ -201,8 +201,8 @@ ath_beacon_alloc(struct ath_softc *sc, struct ieee80211_node *ni)
 		sc->sc_stats.ast_be_nombuf++;
 		return ENOMEM;
 	}
-	error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
-				     bf->bf_segs, &bf->bf_nseg,
+	error = bus_dmamap_load_mbuf_segment(sc->sc_dmat, bf->bf_dmamap, m,
+				     bf->bf_segs, 1, &bf->bf_nseg,
 				     BUS_DMA_NOWAIT);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
@@ -712,8 +712,9 @@ ath_beacon_generate(struct ath_softc *sc, struct ieee80211vap *vap)
 	if (ieee80211_beacon_update(bf->bf_node, &avp->av_boff, m, nmcastq)) {
 		/* XXX too conservative? */
 		bus_dmamap_unload(sc->sc_dmat, bf->bf_dmamap);
-		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
-					     bf->bf_segs, &bf->bf_nseg,
+		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
+					     bf->bf_dmamap, m,
+					     bf->bf_segs, 1, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
 		if (error != 0) {
 			if_printf(vap->iv_ifp,
@@ -823,8 +824,9 @@ ath_beacon_start_adhoc(struct ath_softc *sc, struct ieee80211vap *vap)
 	if (ieee80211_beacon_update(bf->bf_node, &avp->av_boff, m, 0)) {
 		/* XXX too conservative? */
 		bus_dmamap_unload(sc->sc_dmat, bf->bf_dmamap);
-		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
-					     bf->bf_segs, &bf->bf_nseg,
+		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
+					     bf->bf_dmamap, m,
+					     bf->bf_segs, 1, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
 		if (error != 0) {
 			if_printf(vap->iv_ifp,

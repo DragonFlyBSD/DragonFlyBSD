@@ -342,7 +342,7 @@ ar9280SetPowerCalTable(struct ath_hal *ah, struct ar5416eeprom *pEepData,
 	for (i = 0; i < AR5416_MAX_CHAINS; i++) {
 		regChainOffset = ar5416GetRegChainOffset(ah, i);
 		if (pEepData->baseEepHeader.txMask & (1 << i)) {
-			uint16_t diff;
+			uint16_t diff = 0;
 
 			if (IEEE80211_IS_CHAN_2GHZ(chan)) {
 				pRawDataset = pEepData->calPierData2G[i];

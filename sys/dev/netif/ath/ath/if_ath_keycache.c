@@ -91,21 +91,21 @@ ath_keyprint(struct ath_softc *sc, const char *tag, u_int ix,
 	};
 	int i, n;
 
-	printf("%s: [%02u] %-7s ", tag, ix, ciphers[hk->kv_type]);
+	kprintf("%s: [%02u] %-7s ", tag, ix, ciphers[hk->kv_type]);
 	for (i = 0, n = hk->kv_len; i < n; i++)
-		printf("%02x", hk->kv_val[i]);
-	printf(" mac %s", ether_sprintf(mac));
+		kprintf("%02x", hk->kv_val[i]);
+	kprintf(" mac %s", ath_hal_ether_sprintf(mac));
 	if (hk->kv_type == HAL_CIPHER_TKIP) {
-		printf(" %s ", sc->sc_splitmic ? "mic" : "rxmic");
+		kprintf(" %s ", sc->sc_splitmic ? "mic" : "rxmic");
 		for (i = 0; i < sizeof(hk->kv_mic); i++)
-			printf("%02x", hk->kv_mic[i]);
+			kprintf("%02x", hk->kv_mic[i]);
 		if (!sc->sc_splitmic) {
-			printf(" txmic ");
+			kprintf(" txmic ");
 			for (i = 0; i < sizeof(hk->kv_txmic); i++)
-				printf("%02x", hk->kv_txmic[i]);
+				kprintf("%02x", hk->kv_txmic[i]);
 		}
 	}
-	printf("\n");
+	kprintf("\n");
 }
 #endif
 

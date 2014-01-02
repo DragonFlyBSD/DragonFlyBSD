@@ -76,6 +76,7 @@
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_llc.h>
+#include <net/ifq_var.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
@@ -247,9 +248,9 @@ ath_legacy_rxbuf_init(struct ath_softc *sc, struct ath_buf *bf)
 		}
 		m->m_pkthdr.len = m->m_len = m->m_ext.ext_size;
 
-		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat,
+		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
 					     bf->bf_dmamap, m,
-					     bf->bf_segs, &bf->bf_nseg,
+					     bf->bf_segs, 1, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
 		if (error != 0) {
 			DPRINTF(sc, ATH_DEBUG_ANY,
@@ -1052,11 +1053,11 @@ rx_proc_next:
 	}
 
 	/* XXX check this inside of IF_LOCK? */
-	if (resched && (ifp->if_drv_flags & IFF_DRV_OACTIVE) == 0) {
+	if (resched && !ifq_is_oactive(&ifp->if_snd)) {
 #ifdef IEEE80211_SUPPORT_SUPERG
 		ieee80211_ff_age_all(ic, 100);
 #endif
-		if (!IFQ_IS_EMPTY(&ifp->if_snd))
+		if (!ifq_is_empty(&ifp->if_snd))
 			ath_tx_kick(sc);
 	}
 #undef PA2DESC

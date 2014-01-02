@@ -55,12 +55,10 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 
-#include <machine/resource.h>
-
 #include <dev/netif/ath/ath/if_athvar.h>
 
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
 /* For EEPROM firmware */
 #ifdef	ATH_EEPROM_FIRMWARE
@@ -192,8 +190,9 @@ ath_pci_attach(device_t dev)
 		goto bad1;
 	}
 	if (bus_setup_intr(dev, psc->sc_irq,
-			   INTR_TYPE_NET | INTR_MPSAFE,
-			   NULL, ath_intr, sc, &psc->sc_ih)) {
+			   INTR_MPSAFE,
+			   ath_intr, sc, &psc->sc_ih,
+			   &wlan_global_serializer)) {
 		device_printf(dev, "could not establish interrupt\n");
 		goto bad2;
 	}
@@ -202,7 +201,7 @@ ath_pci_attach(device_t dev)
 	 * Setup DMA descriptor area.
 	 */
 	if (bus_dma_tag_create(bus_get_dma_tag(dev),	/* parent */
-			       1, 0,			/* alignment, bounds */
+			       4, 0,			/* alignment, bounds */
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
 			       NULL, NULL,		/* filter, filterarg */
@@ -210,8 +209,6 @@ ath_pci_attach(device_t dev)
 			       ATH_MAX_SCATTER,		/* nsegments */
 			       0x3ffff,			/* maxsegsize XXX */
 			       BUS_DMA_ALLOCNOW,	/* flags */
-			       NULL,			/* lockfunc */
-			       NULL,			/* lockarg */
 			       &sc->sc_dmat)) {
 		device_printf(dev, "cannot allocate DMA tag\n");
 		goto bad3;
@@ -237,7 +234,7 @@ ath_pci_attach(device_t dev)
 		device_printf(dev, "%s: EEPROM firmware @ %p\n",
 		    __func__, fw->data);
 		sc->sc_eepromdata =
-		    malloc(fw->datasize, M_TEMP, M_WAITOK | M_ZERO);
+		    kmalloc(fw->datasize, M_TEMP, M_WAITOK | M_ZERO);
 		if (! sc->sc_eepromdata) {
 			device_printf(dev, "%s: can't malloc eepromdata\n",
 			    __func__);
@@ -300,7 +297,7 @@ ath_pci_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_MEMORY, BS_BAR, psc->sc_sr);
 
 	if (sc->sc_eepromdata)
-		free(sc->sc_eepromdata, M_TEMP);
+		kfree(sc->sc_eepromdata, M_TEMP);
 
 	ATH_TXSTATUS_LOCK_DESTROY(sc);
 	ATH_PCU_LOCK_DESTROY(sc);
@@ -367,3 +364,6 @@ DRIVER_MODULE(ath_pci, pci, ath_pci_driver, ath_devclass, 0, 0);
 MODULE_VERSION(ath_pci, 1);
 MODULE_DEPEND(ath_pci, wlan, 1, 1, 1);		/* 802.11 media layer */
 MODULE_DEPEND(ath_pci, if_ath, 1, 1, 1);	/* if_ath driver */
+MODULE_DEPEND(ath_pci, ath_hal, 1, 1, 1);	/* Atheros HAL */
+MODULE_DEPEND(ath_pci, ath_rate, 1, 1, 1);	/* rate control alg */
+MODULE_DEPEND(ath_pci, ath_dfs, 1, 1, 1);	/* wtf */

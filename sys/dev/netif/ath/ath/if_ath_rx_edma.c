@@ -76,6 +76,7 @@
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_llc.h>
+#include <net/ifq_var.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
@@ -446,19 +447,17 @@ ath_edma_recv_proc_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 static void
 ath_edma_flush_deferred_queue(struct ath_softc *sc)
 {
-	struct ath_buf *bf, *next;
+	struct ath_buf *bf;
 
 	ATH_RX_LOCK_ASSERT(sc);
 
 	/* Free in one set, inside the lock */
-	TAILQ_FOREACH_SAFE(bf,
-	    &sc->sc_rx_rxlist[HAL_RX_QUEUE_LP], bf_list, next) {
-		/* Free the buffer/mbuf */
+	while ((bf = TAILQ_FIRST(&sc->sc_rx_rxlist[HAL_RX_QUEUE_LP])) != NULL) {
+		TAILQ_REMOVE(&sc->sc_rx_rxlist[HAL_RX_QUEUE_LP], bf, bf_list);
 		ath_edma_rxbuf_free(sc, bf);
 	}
-	TAILQ_FOREACH_SAFE(bf,
-	    &sc->sc_rx_rxlist[HAL_RX_QUEUE_HP], bf_list, next) {
-		/* Free the buffer/mbuf */
+	while ((bf = TAILQ_FIRST(&sc->sc_rx_rxlist[HAL_RX_QUEUE_HP])) != NULL) {
+		TAILQ_REMOVE(&sc->sc_rx_rxlist[HAL_RX_QUEUE_HP], bf, bf_list);
 		ath_edma_rxbuf_free(sc, bf);
 	}
 }
@@ -469,7 +468,7 @@ ath_edma_recv_proc_deferred_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 {
 	int ngood = 0;
 	uint64_t tsf;
-	struct ath_buf *bf, *next;
+	struct ath_buf *bf;
 	struct ath_rx_status *rs;
 	int16_t nf;
 	ath_bufhead rxlist;
@@ -491,7 +490,7 @@ ath_edma_recv_proc_deferred_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 	ATH_RX_UNLOCK(sc);
 
 	/* Handle the completed descriptors */
-	TAILQ_FOREACH_SAFE(bf, &rxlist, bf_list, next) {
+	TAILQ_FOREACH(bf, &rxlist, bf_list) {
 		/*
 		 * Skip the RX descriptor status - start at the data offset
 		 */
@@ -516,8 +515,10 @@ ath_edma_recv_proc_deferred_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
 
 	/* Free in one set, inside the lock */
 	ATH_RX_LOCK(sc);
-	TAILQ_FOREACH_SAFE(bf, &rxlist, bf_list, next) {
+
+	while ((bf = TAILQ_FIRST(&rxlist)) != NULL) {
 		/* Free the buffer/mbuf */
+		TAILQ_REMOVE(&rxlist, bf, bf_list);
 		ath_edma_rxbuf_free(sc, bf);
 	}
 	ATH_RX_UNLOCK(sc);
@@ -555,11 +556,11 @@ ath_edma_recv_tasklet(void *arg, int npending)
 	ath_edma_recv_proc_deferred_queue(sc, HAL_RX_QUEUE_LP, 1);
 
 	/* XXX inside IF_LOCK ? */
-	if ((ifp->if_drv_flags & IFF_DRV_OACTIVE) == 0) {
+	if (!ifq_is_oactive(&ifp->if_snd)) {
 #ifdef	IEEE80211_SUPPORT_SUPERG
 		ieee80211_ff_age_all(ic, 100);
 #endif
-		if (! IFQ_IS_EMPTY(&ifp->if_snd))
+		if (!ifq_is_empty(&ifp->if_snd))
 			ath_tx_kick(sc);
 	}
 	if (ath_dfs_tasklet_needed(sc, sc->sc_curchan))
@@ -624,8 +625,8 @@ ath_edma_rxbuf_init(struct ath_softc *sc, struct ath_buf *bf)
 	/*
 	 * Create DMA mapping.
 	 */
-	error = bus_dmamap_load_mbuf_sg(sc->sc_dmat,
-	    bf->bf_dmamap, m, bf->bf_segs, &bf->bf_nseg, BUS_DMA_NOWAIT);
+	error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
+	    bf->bf_dmamap, m, bf->bf_segs, 1, &bf->bf_nseg, BUS_DMA_NOWAIT);
 
 	if (error != 0) {
 		device_printf(sc->sc_dev, "%s: failed; error=%d\n",
@@ -838,9 +839,9 @@ ath_edma_setup_rxfifo(struct ath_softc *sc, HAL_RX_QUEUE qtype)
 	    re->m_fifolen);
 
 	/* Allocate ath_buf FIFO array, pre-zero'ed */
-	re->m_fifo = malloc(sizeof(struct ath_buf *) * re->m_fifolen,
+	re->m_fifo = kmalloc(sizeof(struct ath_buf *) * re->m_fifolen,
 	    M_ATHDEV,
-	    M_NOWAIT | M_ZERO);
+	    M_INTWAIT | M_ZERO);
 	if (re->m_fifo == NULL) {
 		device_printf(sc->sc_dev, "%s: malloc failed\n",
 		    __func__);
@@ -865,7 +866,7 @@ ath_edma_rxfifo_free(struct ath_softc *sc, HAL_RX_QUEUE qtype)
 	    __func__,
 	    qtype);
 	
-	free(re->m_fifo, M_ATHDEV);
+	kfree(re->m_fifo, M_ATHDEV);
 
 	return (0);
 }

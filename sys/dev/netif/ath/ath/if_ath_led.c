@@ -147,7 +147,9 @@ ath_led_done(void *arg)
 {
 	struct ath_softc *sc = arg;
 
+	wlan_serialize_enter();
 	sc->sc_blinking = 0;
+	wlan_serialize_exit();
 }
 
 /*
@@ -159,8 +161,10 @@ ath_led_off(void *arg)
 {
 	struct ath_softc *sc = arg;
 
+	wlan_serialize_enter();
 	ath_hal_gpioset(sc->sc_ah, sc->sc_ledpin, !sc->sc_ledon);
 	callout_reset(&sc->sc_ledtimer, sc->sc_ledoff, ath_led_done, sc);
+	wlan_serialize_exit();
 }
 
 /*
@@ -170,10 +174,12 @@ static void
 ath_led_blink(struct ath_softc *sc, int on, int off)
 {
 	DPRINTF(sc, ATH_DEBUG_LED, "%s: on %u off %u\n", __func__, on, off);
+	wlan_serialize_enter();
 	ath_hal_gpioset(sc->sc_ah, sc->sc_ledpin, sc->sc_ledon);
 	sc->sc_blinking = 1;
 	sc->sc_ledoff = off;
 	callout_reset(&sc->sc_ledtimer, on, ath_led_off, sc);
+	wlan_serialize_exit();
 }
 
 void

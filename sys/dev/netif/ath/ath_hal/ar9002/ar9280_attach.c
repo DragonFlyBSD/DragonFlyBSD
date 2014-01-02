@@ -315,7 +315,7 @@ ar9280Attach(uint16_t devid, HAL_SOFTC sc,
 	 */
 	ecode = ath_hal_eepromGet(ah, AR_EEP_PWDCLKIND, &pwr);
 	if (AR_SREV_MERLIN_20_OR_LATER(ah) && ecode == HAL_OK && pwr == 0) {
-		printf("[ath] enabling AN_TOP2_FIXUP\n");
+		kprintf("[ath] enabling AN_TOP2_FIXUP\n");
 		AH5416(ah)->ah_need_an_top2_fixup = 1;
 	}
 

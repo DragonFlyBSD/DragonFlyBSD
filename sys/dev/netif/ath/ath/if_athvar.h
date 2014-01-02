@@ -178,7 +178,9 @@ struct ath_node {
 	struct ath_buf	*an_ff_buf[WME_NUM_AC]; /* ff staging area */
 	struct ath_tid	an_tid[IEEE80211_TID_SIZE];	/* per-TID state */
 	char		an_name[32];	/* eg "wlan0_a1" */
+#if 0
 	struct mtx	an_mtx;		/* protecting the rate control state */
+#endif
 	uint32_t	an_swq_depth;	/* how many SWQ packets for this
 					   node */
 	int			clrdmask;	/* has clrdmask been set */
@@ -335,7 +337,7 @@ struct ath_txq {
 	u_int			axq_intrcnt;	/* interrupt count */
 	u_int32_t		*axq_link;	/* link ptr in last TX desc */
 	TAILQ_HEAD(axq_q_s, ath_buf)	axq_q;		/* transmit queue */
-	struct mtx		axq_lock;	/* lock on q and link */
+	struct lock		axq_lock;	/* lock on q and link */
 
 	/*
 	 * This is the FIFO staging buffer when doing EDMA.
@@ -375,24 +377,26 @@ struct ath_txq {
 	TAILQ_HEAD(axq_t_s,ath_tid)	axq_tidq;
 };
 
-#define	ATH_TXQ_LOCK_INIT(_sc, _tq) do { \
-	    snprintf((_tq)->axq_name, sizeof((_tq)->axq_name), "%s_txq%u", \
-	      device_get_nameunit((_sc)->sc_dev), (_tq)->axq_qnum); \
-	    mtx_init(&(_tq)->axq_lock, (_tq)->axq_name, NULL, MTX_DEF); \
-	} while (0)
-#define	ATH_TXQ_LOCK_DESTROY(_tq)	mtx_destroy(&(_tq)->axq_lock)
-#define	ATH_TXQ_LOCK(_tq)		mtx_lock(&(_tq)->axq_lock)
-#define	ATH_TXQ_UNLOCK(_tq)		mtx_unlock(&(_tq)->axq_lock)
-#define	ATH_TXQ_LOCK_ASSERT(_tq)	mtx_assert(&(_tq)->axq_lock, MA_OWNED)
-#define	ATH_TXQ_UNLOCK_ASSERT(_tq)	mtx_assert(&(_tq)->axq_lock,	\
-					    MA_NOTOWNED)
+#ifdef __DragonFly__
+/* already serialized by wlan_serializer */
+#define IF_LOCK(ifp)
+#define IF_UNLOCK(ifp)
+#define IEEE80211_LOCK_ASSERT(ic)
+#define IEEE80211_LOCK(ic)
+#define IEEE80211_UNLOCK(ic)
+#endif
 
+#define	ATH_TXQ_LOCK_INIT(_sc, _tq)
+#define	ATH_TXQ_LOCK_DESTROY(_tq)
+#define	ATH_TXQ_LOCK(_tq)
+#define	ATH_TXQ_UNLOCK(_tq)
+#define	ATH_TXQ_LOCK_ASSERT(_tq)
+#define	ATH_TXQ_UNLOCK_ASSERT(_tq)
 
-#define	ATH_NODE_LOCK(_an)		mtx_lock(&(_an)->an_mtx)
-#define	ATH_NODE_UNLOCK(_an)		mtx_unlock(&(_an)->an_mtx)
-#define	ATH_NODE_LOCK_ASSERT(_an)	mtx_assert(&(_an)->an_mtx, MA_OWNED)
-#define	ATH_NODE_UNLOCK_ASSERT(_an)	mtx_assert(&(_an)->an_mtx,	\
-					    MA_NOTOWNED)
+#define	ATH_NODE_LOCK(_an)
+#define	ATH_NODE_UNLOCK(_an)
+#define	ATH_NODE_LOCK_ASSERT(_an)
+#define	ATH_NODE_UNLOCK_ASSERT(_an)
 
 /*
  * These are for the hardware queue.
@@ -538,6 +542,8 @@ struct ath_softc {
 	struct ath_stats	sc_stats;	/* interface statistics */
 	struct ath_tx_aggr_stats	sc_aggr_stats;
 	struct ath_intr_stats	sc_intr_stats;
+	struct sysctl_ctx_list	sc_sysctl_ctx;
+	struct sysctl_oid	*sc_sysctl_tree;
 	uint64_t		sc_debug;
 	uint64_t		sc_ktrdebug;
 	int			sc_nvaps;	/* # vaps */
@@ -572,6 +578,7 @@ struct ath_softc {
 	HAL_BUS_TAG		sc_st;		/* bus space tag */
 	HAL_BUS_HANDLE		sc_sh;		/* bus space handle */
 	bus_dma_tag_t		sc_dmat;	/* bus DMA tag */
+#if 0
 	struct mtx		sc_mtx;		/* master lock (recursive) */
 	struct mtx		sc_pcu_mtx;	/* PCU access mutex */
 	char			sc_pcu_mtx_name[32];
@@ -581,6 +588,7 @@ struct ath_softc {
 	char			sc_tx_mtx_name[32];
 	struct mtx		sc_tx_ic_mtx;	/* TX queue mutex */
 	char			sc_tx_ic_mtx_name[32];
+#endif
 	struct taskqueue	*sc_tq;		/* private task queue */
 	struct ath_hal		*sc_ah;		/* Atheros HAL */
 	struct ath_ratectrl	*sc_rc;		/* tx rate control support */
@@ -727,8 +735,10 @@ struct ath_softc {
 	struct ath_descdma	sc_txdma_mgmt;	/* mgmt TX descriptors */
 	ath_bufhead		sc_txbuf_mgmt;	/* mgmt transmit buffer */
 	struct ath_descdma	sc_txsdma;	/* EDMA TX status desc's */
+#if 0
 	struct mtx		sc_txbuflock;	/* txbuf lock */
 	char			sc_txname[12];	/* e.g. "ath0_buf" */
+#endif
 	u_int			sc_txqsetup;	/* h/w queues setup */
 	u_int			sc_txintrperiod;/* tx interrupt batching */
 	struct ath_txq		sc_txq[HAL_NUM_TX_QUEUES];
@@ -737,8 +747,10 @@ struct ath_softc {
 	struct task		sc_txqtask;	/* tx proc processing */
 
 	struct ath_descdma	sc_txcompdma;	/* TX EDMA completion */
+#if 0
 	struct mtx		sc_txcomplock;	/* TX EDMA completion lock */
 	char			sc_txcompname[12];	/* eg ath0_txcomp */
+#endif
 
 	int			sc_wd_timer;	/* count down for wd timer */
 	struct callout		sc_wd_ch;	/* tx watchdog timer */
@@ -866,56 +878,35 @@ struct ath_softc {
 				    int status);
 };
 
-#define	ATH_LOCK_INIT(_sc) \
-	mtx_init(&(_sc)->sc_mtx, device_get_nameunit((_sc)->sc_dev), \
-		 NULL, MTX_DEF | MTX_RECURSE)
-#define	ATH_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->sc_mtx)
-#define	ATH_LOCK(_sc)		mtx_lock(&(_sc)->sc_mtx)
-#define	ATH_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
-#define	ATH_LOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_mtx, MA_OWNED)
-#define	ATH_UNLOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_mtx, MA_NOTOWNED)
+#define	ATH_LOCK_INIT(_sc)
+#define	ATH_LOCK_DESTROY(_sc)
+#define	ATH_LOCK(_sc)
+#define	ATH_UNLOCK(_sc)
+#define	ATH_LOCK_ASSERT(_sc)
+#define	ATH_UNLOCK_ASSERT(_sc)
 
 /*
  * The TX lock is non-reentrant and serialises the TX frame send
  * and completion operations.
  */
-#define	ATH_TX_LOCK_INIT(_sc) do {\
-	snprintf((_sc)->sc_tx_mtx_name,				\
-	    sizeof((_sc)->sc_tx_mtx_name),				\
-	    "%s TX lock",						\
-	    device_get_nameunit((_sc)->sc_dev));			\
-	mtx_init(&(_sc)->sc_tx_mtx, (_sc)->sc_tx_mtx_name,		\
-		 NULL, MTX_DEF);					\
-	} while (0)
-#define	ATH_TX_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->sc_tx_mtx)
-#define	ATH_TX_LOCK(_sc)		mtx_lock(&(_sc)->sc_tx_mtx)
-#define	ATH_TX_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_tx_mtx)
-#define	ATH_TX_LOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_tx_mtx,	\
-		MA_OWNED)
-#define	ATH_TX_UNLOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_tx_mtx,	\
-		MA_NOTOWNED)
-#define	ATH_TX_TRYLOCK(_sc)	(mtx_owned(&(_sc)->sc_tx_mtx) != 0 &&	\
-					mtx_trylock(&(_sc)->sc_tx_mtx))
+#define	ATH_TX_LOCK_INIT(_sc)
+#define	ATH_TX_LOCK_DESTROY(_sc)
+#define	ATH_TX_LOCK(_sc)
+#define	ATH_TX_UNLOCK(_sc)
+#define	ATH_TX_LOCK_ASSERT(_sc)
+#define	ATH_TX_UNLOCK_ASSERT(_sc)
+/* #define ATH_TX_TRYLOCK(_sc) removed */
 
 /*
  * The IC TX lock is non-reentrant and serialises packet queuing from
  * the upper layers.
  */
-#define	ATH_TX_IC_LOCK_INIT(_sc) do {\
-	snprintf((_sc)->sc_tx_ic_mtx_name,				\
-	    sizeof((_sc)->sc_tx_ic_mtx_name),				\
-	    "%s IC TX lock",						\
-	    device_get_nameunit((_sc)->sc_dev));			\
-	mtx_init(&(_sc)->sc_tx_ic_mtx, (_sc)->sc_tx_ic_mtx_name,	\
-		 NULL, MTX_DEF);					\
-	} while (0)
-#define	ATH_TX_IC_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->sc_tx_ic_mtx)
-#define	ATH_TX_IC_LOCK(_sc)		mtx_lock(&(_sc)->sc_tx_ic_mtx)
-#define	ATH_TX_IC_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_tx_ic_mtx)
-#define	ATH_TX_IC_LOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_tx_ic_mtx,	\
-		MA_OWNED)
-#define	ATH_TX_IC_UNLOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_tx_ic_mtx,	\
-		MA_NOTOWNED)
+#define	ATH_TX_IC_LOCK_INIT(_sc)
+#define	ATH_TX_IC_LOCK_DESTROY(_sc)
+#define	ATH_TX_IC_LOCK(_sc)
+#define	ATH_TX_IC_UNLOCK(_sc)
+#define	ATH_TX_IC_LOCK_ASSERT(_sc)
+#define	ATH_TX_IC_UNLOCK_ASSERT(_sc)
 
 /*
  * The PCU lock is non-recursive and should be treated as a spinlock.
@@ -934,21 +925,12 @@ struct ath_softc {
  * (which only acquires ATH_LOCK when recycling buffers to the free list),
  * ath_set_channel, the channel scanning API and perhaps quite a bit more.
  */
-#define	ATH_PCU_LOCK_INIT(_sc) do {\
-	snprintf((_sc)->sc_pcu_mtx_name,				\
-	    sizeof((_sc)->sc_pcu_mtx_name),				\
-	    "%s PCU lock",						\
-	    device_get_nameunit((_sc)->sc_dev));			\
-	mtx_init(&(_sc)->sc_pcu_mtx, (_sc)->sc_pcu_mtx_name,		\
-		 NULL, MTX_DEF);					\
-	} while (0)
-#define	ATH_PCU_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->sc_pcu_mtx)
-#define	ATH_PCU_LOCK(_sc)		mtx_lock(&(_sc)->sc_pcu_mtx)
-#define	ATH_PCU_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_pcu_mtx)
-#define	ATH_PCU_LOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_pcu_mtx,	\
-		MA_OWNED)
-#define	ATH_PCU_UNLOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_pcu_mtx,	\
-		MA_NOTOWNED)
+#define	ATH_PCU_LOCK_INIT(_sc)
+#define	ATH_PCU_LOCK_DESTROY(_sc)
+#define	ATH_PCU_LOCK(_sc)
+#define	ATH_PCU_UNLOCK(_sc)
+#define	ATH_PCU_LOCK_ASSERT(_sc)
+#define	ATH_PCU_UNLOCK_ASSERT(_sc)
 
 /*
  * The RX lock is primarily a(nother) workaround to ensure that the
@@ -956,49 +938,27 @@ struct ath_softc {
  * Even though RX occurs in a single context (the ath taskqueue), the
  * RX path can be executed via various reset/channel change paths.
  */
-#define	ATH_RX_LOCK_INIT(_sc) do {\
-	snprintf((_sc)->sc_rx_mtx_name,					\
-	    sizeof((_sc)->sc_rx_mtx_name),				\
-	    "%s RX lock",						\
-	    device_get_nameunit((_sc)->sc_dev));			\
-	mtx_init(&(_sc)->sc_rx_mtx, (_sc)->sc_rx_mtx_name,		\
-		 NULL, MTX_DEF);					\
-	} while (0)
-#define	ATH_RX_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->sc_rx_mtx)
-#define	ATH_RX_LOCK(_sc)		mtx_lock(&(_sc)->sc_rx_mtx)
-#define	ATH_RX_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_rx_mtx)
-#define	ATH_RX_LOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_rx_mtx,	\
-		MA_OWNED)
-#define	ATH_RX_UNLOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_rx_mtx,	\
-		MA_NOTOWNED)
+#define	ATH_RX_LOCK_INIT(_sc)
+#define	ATH_RX_LOCK_DESTROY(_sc)
+#define	ATH_RX_LOCK(_sc)
+#define	ATH_RX_UNLOCK(_sc)
+#define	ATH_RX_LOCK_ASSERT(_sc)
+#define	ATH_RX_UNLOCK_ASSERT(_sc)
 
 #define	ATH_TXQ_SETUP(sc, i)	((sc)->sc_txqsetup & (1<<i))
 
-#define	ATH_TXBUF_LOCK_INIT(_sc) do { \
-	snprintf((_sc)->sc_txname, sizeof((_sc)->sc_txname), "%s_buf", \
-		device_get_nameunit((_sc)->sc_dev)); \
-	mtx_init(&(_sc)->sc_txbuflock, (_sc)->sc_txname, NULL, MTX_DEF); \
-} while (0)
-#define	ATH_TXBUF_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->sc_txbuflock)
-#define	ATH_TXBUF_LOCK(_sc)		mtx_lock(&(_sc)->sc_txbuflock)
-#define	ATH_TXBUF_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_txbuflock)
-#define	ATH_TXBUF_LOCK_ASSERT(_sc) \
-	mtx_assert(&(_sc)->sc_txbuflock, MA_OWNED)
-#define	ATH_TXBUF_UNLOCK_ASSERT(_sc) \
-	mtx_assert(&(_sc)->sc_txbuflock, MA_NOTOWNED)
+#define	ATH_TXBUF_LOCK_INIT(_sc)
+#define	ATH_TXBUF_LOCK_DESTROY(_sc)
+#define	ATH_TXBUF_LOCK(_sc)
+#define	ATH_TXBUF_UNLOCK(_sc)
+#define	ATH_TXBUF_LOCK_ASSERT(_sc)
+#define	ATH_TXBUF_UNLOCK_ASSERT(_sc)
 
-#define	ATH_TXSTATUS_LOCK_INIT(_sc) do { \
-	snprintf((_sc)->sc_txcompname, sizeof((_sc)->sc_txcompname), \
-		"%s_buf", \
-		device_get_nameunit((_sc)->sc_dev)); \
-	mtx_init(&(_sc)->sc_txcomplock, (_sc)->sc_txcompname, NULL, \
-		MTX_DEF); \
-} while (0)
-#define	ATH_TXSTATUS_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->sc_txcomplock)
-#define	ATH_TXSTATUS_LOCK(_sc)		mtx_lock(&(_sc)->sc_txcomplock)
-#define	ATH_TXSTATUS_UNLOCK(_sc)	mtx_unlock(&(_sc)->sc_txcomplock)
-#define	ATH_TXSTATUS_LOCK_ASSERT(_sc) \
-	mtx_assert(&(_sc)->sc_txcomplock, MA_OWNED)
+#define	ATH_TXSTATUS_LOCK_INIT(_sc)
+#define	ATH_TXSTATUS_LOCK_DESTROY(_sc)
+#define	ATH_TXSTATUS_LOCK(_sc)
+#define	ATH_TXSTATUS_UNLOCK(_sc)
+#define	ATH_TXSTATUS_LOCK_ASSERT(_sc)
 
 int	ath_attach(u_int16_t, struct ath_softc *);
 int	ath_detach(struct ath_softc *);
