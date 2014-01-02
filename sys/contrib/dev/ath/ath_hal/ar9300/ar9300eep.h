@@ -203,7 +203,7 @@ typedef enum targetPowerHTRates {
     HT_TARGET_RATE_23
 }TARGET_POWER_HT_RATES;
 
-const static int mapRate2Index[24]=
+static const int mapRate2Index[24]=
 {
     0,1,1,1,2,
     3,4,5,0,1,

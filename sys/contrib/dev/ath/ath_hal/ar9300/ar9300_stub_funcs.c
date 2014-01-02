@@ -861,7 +861,7 @@ int16_t
 ar9300_Stub_GetNfHistMid(const int16_t calData[])
 {
 
-	printf("%s: called\n", __func__);
+	kprintf("%s: called\n", __func__);
 	return (0);
 }
 
