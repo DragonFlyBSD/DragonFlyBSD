@@ -302,11 +302,7 @@ netmap_mmap_single(struct dev_mmap_single_args *ap)
 	vmh->dev = cdev;
 
 	NMG_LOCK();
-#if 0
-	error = devfs_get_cdevpriv((void**)&priv);
-	if (error)
-		goto err_unlock;
-#endif
+	priv = cdev->si_drv1;
 	vmh->priv = priv;
 	priv->np_refcount++;
 	NMG_UNLOCK();
@@ -330,9 +326,6 @@ netmap_mmap_single(struct dev_mmap_single_args *ap)
 err_deref:
 	NMG_LOCK();
 	priv->np_refcount--;
-#if 0
-err_unlock:
-#endif
 	NMG_UNLOCK();
 // err:
 	kfree(vmh, M_DEVBUF);
@@ -340,13 +333,13 @@ err_unlock:
 }
 
 
-// XXX can we remove this ?
 static int
 netmap_close(struct dev_close_args *ap)
 {
 	if (netmap_verbose)
 		D("dev %p fflag 0x%x devtype %d",
 			ap->a_head.a_dev, ap->a_fflag, ap->a_devtype);
+	netmap_dtor(ap->a_head.a_dev->si_drv1);
 	return 0;
 }
 
@@ -354,12 +347,8 @@ netmap_close(struct dev_close_args *ap)
 static int
 netmap_open(struct dev_open_args *ap)
 {
+	struct cdev *cdev = ap->a_head.a_dev;
 	struct netmap_priv_d *priv;
-#if 0
-	int error;
-#endif
-
-	(void)ap;
 
 	// XXX wait or nowait ?
 	priv = kmalloc(sizeof(struct netmap_priv_d), M_DEVBUF,
@@ -367,11 +356,7 @@ netmap_open(struct dev_open_args *ap)
 	if (priv == NULL)
 		return ENOMEM;
 
-#if 0
-	error = devfs_set_cdevpriv(priv, netmap_dtor);
-	if (error)
-	        return error;
-#endif
+	cdev->si_drv1 = priv;
 
 	priv->np_refcount = 1;
 
