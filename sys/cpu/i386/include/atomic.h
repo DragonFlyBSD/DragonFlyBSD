@@ -274,6 +274,8 @@ int atomic_intr_cond_test(__atomic_intr_t *p);
 int atomic_intr_cond_try(__atomic_intr_t *p);
 void atomic_intr_cond_enter(__atomic_intr_t *p, void (*func)(void *), void *arg);
 void atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg);
+void atomic_intr_cond_inc(__atomic_intr_t *p);
+void atomic_intr_cond_dec(__atomic_intr_t *p);
 uint64_t atomic_load_acq_64_i586(volatile uint64_t *p);
 
 #else
@@ -313,6 +315,18 @@ atomic_intr_handler_is_enabled(__atomic_intr_t *p)
 	__asm __volatile("movl %1,%%eax; andl $0x40000000,%%eax" \
 			 : "=a"(data) : "m"(*p));
 	return(data);
+}
+
+static __inline void
+atomic_intr_cond_inc(__atomic_intr_t *p)
+{
+	__asm __volatile(MPLOCKED "incl %0" : "+m" (*p));
+}
+
+static __inline void
+atomic_intr_cond_dec(__atomic_intr_t *p)
+{
+	__asm __volatile(MPLOCKED "decl %0" : "+m" (*p));
 }
 
 static __inline

@@ -56,19 +56,18 @@
 #include <machine/cpu.h>
 #include <machine/cpufunc.h>
 #include <machine/specialreg.h>
+#include <machine/clock.h>
 #include <sys/lock.h>
 
-struct exp_backoff {
-	int backoff;
-	int round;
-	lwkt_serialize_t s;
-};
+#ifndef SLZ_ADAPTIVE_SPINMAX
+#define SLZ_ADAPTIVE_SPINMAX	4096
+#endif
 
 #define SLZ_KTR_STRING		"slz=%p"
 #define SLZ_KTR_ARGS		lwkt_serialize_t slz
 
 #ifndef KTR_SERIALIZER
-#define KTR_SERIALIZER	KTR_ALL
+#define KTR_SERIALIZER		KTR_ALL
 #endif
 
 KTR_INFO_MASTER(slz);
@@ -81,31 +80,20 @@ KTR_INFO(KTR_SERIALIZER, slz, wakeup_end, 5, SLZ_KTR_STRING, SLZ_KTR_ARGS);
 KTR_INFO(KTR_SERIALIZER, slz, try, 6, SLZ_KTR_STRING, SLZ_KTR_ARGS);
 KTR_INFO(KTR_SERIALIZER, slz, tryfail, 7, SLZ_KTR_STRING, SLZ_KTR_ARGS);
 KTR_INFO(KTR_SERIALIZER, slz, tryok, 8, SLZ_KTR_STRING, SLZ_KTR_ARGS);
-KTR_INFO(KTR_SERIALIZER, slz, spinbo, 9,
-	 "slz=%p bo1=%d bo=%d", lwkt_serialize_t slz, int backoff1, int backoff);
-KTR_INFO(KTR_SERIALIZER, slz, enter_end, 10, SLZ_KTR_STRING, SLZ_KTR_ARGS);
-KTR_INFO(KTR_SERIALIZER, slz, exit_beg, 11, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, enter_end, 9, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, exit_beg, 10, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, adapt_beg, 11, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, adapt_end, 12, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, adapt_spinend, 13, "slz=%p try=%d",
+    lwkt_serialize_t slz, int try);
+KTR_INFO(KTR_SERIALIZER, slz, adapt_sleepb, 14, SLZ_KTR_STRING, SLZ_KTR_ARGS);
+KTR_INFO(KTR_SERIALIZER, slz, adapt_sleepe, 15, SLZ_KTR_STRING, SLZ_KTR_ARGS);
 
 #define logslz(name, slz)		KTR_LOG(slz_ ## name, slz)
-#define logslz_spinbo(slz, bo1, bo)	KTR_LOG(slz_spinbo, slz, bo1, bo)
+#define logslz_spinend(slz, try)	KTR_LOG(slz_adapt_spinend, slz, try)
 
 static void lwkt_serialize_sleep(void *info);
 static void lwkt_serialize_wakeup(void *info);
-static void lwkt_serialize_adaptive_sleep(void *bo);
-
-static int slz_backoff_limit = 128;
-SYSCTL_INT(_debug, OID_AUTO, serialize_bolimit, CTLFLAG_RW,
-    &slz_backoff_limit, 0, "Backoff limit");
-
-static int slz_backoff_shift = 1;
-SYSCTL_INT(_debug, OID_AUTO, serialize_boshift, CTLFLAG_RW,
-    &slz_backoff_shift, 0, "Backoff shift");
-
-static int slz_backoff_round;
-TUNABLE_INT("debug.serialize_boround", &slz_backoff_round);
-SYSCTL_INT(_debug, OID_AUTO, serialize_boround, CTLFLAG_RW,
-    &slz_backoff_round, 0,
-    "Backoff rounding");
 
 void
 lwkt_serialize_init(lwkt_serialize_t s)
@@ -113,25 +101,6 @@ lwkt_serialize_init(lwkt_serialize_t s)
     atomic_intr_init(&s->interlock);
 #ifdef INVARIANTS
     s->last_td = (void *)-4;
-#endif
-}
-
-void
-lwkt_serialize_adaptive_enter(lwkt_serialize_t s)
-{
-    struct exp_backoff bo;
-
-    bo.backoff = 1;
-    bo.round = 0;
-    bo.s = s;
-
-    ASSERT_NOT_SERIALIZED(s);
-
-    logslz(enter_beg, s);
-    atomic_intr_cond_enter(&s->interlock, lwkt_serialize_adaptive_sleep, &bo);
-    logslz(enter_end, s);
-#ifdef INVARIANTS
-    s->last_td = curthread;
 #endif
 }
 
@@ -284,49 +253,59 @@ lwkt_serialize_sleep(void *info)
     }
 }
 
-static void
-lwkt_serialize_adaptive_sleep(void *arg)
+void
+lwkt_serialize_adaptive_enter(lwkt_serialize_t s)
 {
-    struct exp_backoff *bo = arg;
-    lwkt_serialize_t s = bo->s;
-    int backoff;
+    int try;
 
-    /*
-     * Randomize backoff value
-     */
-#ifdef _RDTSC_SUPPORTED_
-    if (cpu_feature & CPUID_TSC) {
-	backoff =
-	(((u_long)rdtsc() ^ (((u_long)curthread) >> 5)) &
-	 (bo->backoff - 1)) + 1;
-    } else
+    ASSERT_NOT_SERIALIZED(s);
+    logslz(adapt_beg, s);
+
+    if (atomic_intr_cond_try(&s->interlock) == 0) {
+#ifdef INVARIANTS
+	s->last_td = curthread;
 #endif
-	backoff = bo->backoff;
-
-    logslz_spinbo(s, bo->backoff, backoff);
-
-    /*
-     * Quick backoff
-     */
-    for (; backoff; --backoff)
-	cpu_pause();
-    if (bo->backoff < slz_backoff_limit) {
-	bo->backoff <<= slz_backoff_shift;
+	logslz(adapt_end, s);
 	return;
-    } else {
-	bo->backoff = 1;
-	bo->round++;
-	if (bo->round >= slz_backoff_round)
-	    bo->round = 0;
-    	else
-	    return;
     }
 
+restart:
+    /*
+     * Spinning a little bit, before going to sleep
+     *
+     * See the comment before kern/kern_spinlock.c
+     * _spin_lock_contested() about why atomic_intr_cond_test()
+     * is called first.  atomic_intr_cond_test() contains
+     * _no_ MPLOCKED intruction.
+     */
+    for (try = SLZ_ADAPTIVE_SPINMAX; try; --try) {
+	if (atomic_intr_cond_test(&s->interlock) == 0 &&
+	    atomic_intr_cond_try(&s->interlock) == 0) {
+#ifdef INVARIANTS
+	    s->last_td = curthread;
+#endif
+	    logslz_spinend(s, try);
+	    return;
+	}
+    }
+
+    atomic_intr_cond_inc(&s->interlock);
+
     tsleep_interlock(s, 0);
-    if (atomic_intr_cond_test(&s->interlock) != 0) {
-	logslz(sleep_beg, s);
-	tsleep(s, PINTERLOCKED, "slize", 0);
-	logslz(sleep_end, s);
+    if (atomic_intr_cond_try(&s->interlock) == 0) {
+	atomic_intr_cond_dec(&s->interlock);
+#ifdef INVARIANTS
+	s->last_td = curthread;
+#endif
+	logslz_spinend(s, 0);
+	return;
+    } else {
+	logslz(adapt_sleepb, s);
+	tsleep(s, PINTERLOCKED, "aslize", 0);
+	logslz(adapt_sleepe, s);
+
+	atomic_intr_cond_dec(&s->interlock);
+	goto restart;
     }
 }
 
@@ -337,12 +316,3 @@ lwkt_serialize_wakeup(void *info)
     wakeup(info);
     logslz(wakeup_end, info);
 }
-
-static void
-lwkt_serialize_sysinit(void *dummy __unused)
-{
-	if (slz_backoff_round <= 0)
-		slz_backoff_round = ncpus * 2;
-}
-SYSINIT(lwkt_serialize, SI_SUB_PRE_DRIVERS, SI_ORDER_SECOND,
-	lwkt_serialize_sysinit, NULL);
