@@ -223,3 +223,11 @@
 * kern_psignal()
 
   Replace by ksignal()
+
+* devfs_get_cdevpriv(), devfs_set_cdevpriv() and devfs_clear_cdevpriv()
+
+  The get and set functions are replaced by directly assigning or
+  retrieving struct cdev's `si_drv1' pointer, respectively.  The clear
+  function is equivalent to the call of the destructor function passed
+  to the initial set function.  (A second private pointer `si_drv2' is
+  also available.)
