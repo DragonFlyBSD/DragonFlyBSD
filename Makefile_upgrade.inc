@@ -2402,6 +2402,7 @@ TO_REMOVE+=/usr/share/man/cat3/strtouq_l.3.gz
 TO_REMOVE+=/usr/share/man/man3/strtouq_l.3.gz
 TO_REMOVE+=/usr/share/man/cat5/utf2.5.gz
 TO_REMOVE+=/usr/share/man/man5/utf2.5.gz
+TO_REMOVE+=/boot/kernel/if_ixgbe.ko
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
