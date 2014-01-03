@@ -342,12 +342,15 @@ static __inline
 void
 atomic_intr_cond_enter(__atomic_intr_t *p, void (*func)(void *), void *arg)
 {
-	__asm __volatile(MPLOCKED "incl %0; " \
+	__asm __volatile(MPLOCKED "btsl $31,%0; jnc 3f; " \
+			 MPLOCKED "incl %0; " \
 			 "1: ;" \
 			 MPLOCKED "btsl $31,%0; jnc 2f; " \
 			 "movq %2,%%rdi; call *%1; " \
 			 "jmp 1b; " \
 			 "2: ;" \
+			 MPLOCKED "decl %0; " \
+			 "3: ;" \
 			 : "+m" (*p) \
 			 : "r"(func), "m"(arg) \
 			 : "ax", "cx", "dx", "rsi", "rdi", "r8", "r9", "r10", "r11");
@@ -364,11 +367,8 @@ atomic_intr_cond_try(__atomic_intr_t *p)
 {
 	int ret;
 
-	__asm __volatile(MPLOCKED "incl %0; "			\
-			 "1: ;"					\
-			 "subl %%eax,%%eax; "			\
+	__asm __volatile("subl %%eax,%%eax; "			\
 			 MPLOCKED "btsl $31,%0; jnc 2f; "	\
-			 MPLOCKED "decl %0; "			\
 			 "movl $1,%%eax;"			\
 			 "2: ;"
 			 : "+m" (*p), "=&a"(ret)
@@ -388,9 +388,8 @@ static __inline
 void
 atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
 {
-	__asm __volatile(MPLOCKED "decl %0; " \
-			MPLOCKED "btrl $31,%0; " \
-			"testl $0x3FFFFFFF,%0; jz 1f; " \
+	__asm __volatile(MPLOCKED "btrl $31,%0; " \
+			 "testl $0x3FFFFFFF,%0; jz 1f; " \
 			 "movq %2,%%rdi; call *%1; " \
 			 "1: ;" \
 			 : "+m" (*p) \
