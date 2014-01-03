@@ -45,6 +45,9 @@
 					 * and mouse command port 
 					 */
 
+/* misc */
+#define KBD_NUM_MUX_PORTS	4
+
 /* controller commands (sent to KBD_COMMAND_PORT) */
 #define KBDC_SET_COMMAND_BYTE 	0x0060
 #define KBDC_GET_COMMAND_BYTE 	0x0020
@@ -56,6 +59,9 @@
 #define KBDC_TEST_KBD_PORT   	0x00ab
 #define KBDC_DISABLE_KBD_PORT 	0x00ad
 #define KBDC_ENABLE_KBD_PORT 	0x00ae
+#define KBDC_AUX_LOOP		0x00d3	/* mux test w+1, r+1 */
+#define KBDC_MUX_PFX		0x0090
+#define KBDC_MUX_SEND		0x0090
 
 /* controller command byte (set by KBDC_SET_COMMAND_BYTE) */
 #define KBD_TRANSLATION		0x0040
@@ -82,6 +88,22 @@
 #define KBDC_ECHO		0x00ee
 #define KBDC_SET_SCANCODE_SET	0x00f0
 #define KBDC_SET_TYPEMATIC	0x00f3
+
+#define ATKBD_CMD_SETLEDS       0x10ed
+#define ATKBD_CMD_GSCANSET      0x11f0
+#define ATKBD_CMD_SSCANSET      0x10f0
+#define ATKBD_CMD_GETID         0x02f2
+#define ATKBD_CMD_SETREP        0x10f3
+#define ATKBD_CMD_ENABLE        0x00f4
+#define ATKBD_CMD_RESET_DIS     0x00f5  /* Reset to defaults and disable */
+#define ATKBD_CMD_RESET_DEF     0x00f6  /* Reset to defaults */
+#define ATKBD_CMD_SETALL_MB     0x00f8  /* Set all keys to give break codes */
+#define ATKBD_CMD_SETALL_MBR    0x00fa  /* ... and repeat */
+#define ATKBD_CMD_RESET_BAT     0x02ff
+#define ATKBD_CMD_RESEND        0x00fe
+#define ATKBD_CMD_EX_ENABLE     0x10ea
+#define ATKBD_CMD_EX_SETLEDS    0x20eb
+#define ATKBD_CMD_OK_GETID      0x02e8
 
 /* aux device commands (sent to KBD_DATA_PORT) */
 #define PSMC_RESET_DEV	     	0x00ff
@@ -110,10 +132,22 @@
 
 /* status bits (KBD_STATUS_PORT) */
 #define KBDS_BUFFER_FULL	0x0021
-#define KBDS_ANY_BUFFER_FULL	0x0001
-#define KBDS_KBD_BUFFER_FULL	0x0001
-#define KBDS_AUX_BUFFER_FULL	0x0021
-#define KBDS_INPUT_BUFFER_FULL	0x0002
+#define KBDS_ANY_BUFFER_FULL	0x0001	/* (data from controller pending) */
+#define KBDS_KBD_BUFFER_FULL	0x0001	/* mask/match KBDS_BUFFER_FULL */
+#define KBDS_AUX_BUFFER_FULL	0x0021	/* mask/match KBDS_BUFFER_FULL */
+#define KBDS_INPUT_BUFFER_FULL	0x0002	/* (cmd/data to controller pending) */
+
+#define I8042_STR_PARITY	0x80	/* Also MUX data address bit */
+#define I8042_STR_TIMEOUT	0x40	/* Also MUX data address bit */
+#define I8042_STR_AUXDATA	0x20
+#define I8042_STR_KEYLOCK	0x10
+#define I8042_STR_CMDDAT	0x08
+#define I8042_STR_MUXERR	0x04
+#define I8042_STR_IBF		0x02	/* write pending (outgoing) */
+#define I8042_STR_OBF		0x01	/* read pending (incoming) */
+
+#define I8042_STR_MUX_SHIFT	6
+#define I8042_STR_MUX_MASK	3
 
 /* return code */
 #define KBD_ACK 		0x00fa
@@ -196,6 +230,7 @@ typedef struct atkbdc_softc {
     bus_space_handle_t ioh1;
     int command_byte;		/* current command byte value */
     int command_mask;		/* command byte mask bits for kbd/aux devices */
+    int mux_active;		/* multiplexer is active */
     int lock;			/* FIXME: XXX not quite a semaphore... */
     kbdkqueue kbd;		/* keyboard data queue */
     kbdkqueue aux;		/* auxiliary data queue */
@@ -210,7 +245,7 @@ enum kbdc_device_ivar {
 	KBDC_IVAR_COMPATID, 
 };
 
-typedef caddr_t KBDC;
+typedef struct atkbdc_softc *KBDC;
 
 #define KBDC_RID_KBD	 0
 #define KBDC_RID_AUX	 1
@@ -228,7 +263,8 @@ int kbdc_lock(KBDC kbdc, int lock);
 int kbdc_data_ready(KBDC kbdc);
 
 int write_controller_command(KBDC kbdc,int c);
-int write_controller_data(KBDC kbdc,int c);
+int write_controller_data(KBDC kbdc, int c);
+int write_controller_w1r1(KBDC kbdc, int c, int d);
 
 int write_kbd_command(KBDC kbdc,int c);
 int write_aux_command(KBDC kbdc,int c);

@@ -335,14 +335,17 @@ wait_while_controller_busy(struct atkbdc_softc *kbdc)
     /* CPU will stay inside the loop for 100msec at most */
     TOTALDELAY retry = { .us = 70000, .last_clock =0 };	/* 70ms */
     int f;
+    unsigned char c;
 
     while ((f = read_status(kbdc)) & KBDS_INPUT_BUFFER_FULL) {
 	if ((f & KBDS_BUFFER_FULL) == KBDS_KBD_BUFFER_FULL) {
 	    DELAY(KBDD_DELAYTIME);
-	    addq(&kbdc->kbd, read_data(kbdc));
+	    c = read_data(kbdc);
+	    addq(&kbdc->kbd, c);
 	} else if ((f & KBDS_BUFFER_FULL) == KBDS_AUX_BUFFER_FULL) {
 	    DELAY(KBDD_DELAYTIME);
-	    addq(&kbdc->aux, read_data(kbdc));
+	    c = read_data(kbdc);
+	    addq(&kbdc->aux, c);
 	}
         DELAY(KBDC_DELAYTIME);
 	if (CHECKTIMEOUT(&retry))
@@ -378,12 +381,14 @@ wait_for_kbd_data(struct atkbdc_softc *kbdc)
     /* CPU will stay inside the loop for 200msec at most */
     TOTALDELAY retry = { 200000, 0 };	/* 200ms */
     int f;
+    unsigned char c;
 
     while ((f = read_status(kbdc) & KBDS_BUFFER_FULL)
 	    != KBDS_KBD_BUFFER_FULL) {
         if (f == KBDS_AUX_BUFFER_FULL) {
 	    DELAY(KBDD_DELAYTIME);
-	    addq(&kbdc->aux, read_data(kbdc));
+	    c = read_data(kbdc);
+	    addq(&kbdc->aux, c);
 	}
         DELAY(KBDC_DELAYTIME);
         if (CHECKTIMEOUT(&retry))
@@ -430,12 +435,14 @@ wait_for_aux_data(struct atkbdc_softc *kbdc)
     /* CPU will stay inside the loop for 200msec at most */
     TOTALDELAY retry = { 200000, 0 };	/* 200ms */
     int f;
+    unsigned char b;
 
     while ((f = read_status(kbdc) & KBDS_BUFFER_FULL)
 	    != KBDS_AUX_BUFFER_FULL) {
         if (f == KBDS_KBD_BUFFER_FULL) {
 	    DELAY(KBDD_DELAYTIME);
-	    addq(&kbdc->kbd, read_data(kbdc));
+	    b = read_data(kbdc);
+	    addq(&kbdc->kbd, b);
 	}
         DELAY(KBDC_DELAYTIME);
 	if (CHECKTIMEOUT(&retry))
@@ -473,6 +480,19 @@ wait_for_aux_ack(struct atkbdc_softc *kbdc)
         DELAY(KBDC_DELAYTIME);
     }
     return -1;
+}
+
+/*
+ * Returns read-back data or -1 on failure
+ */
+int
+write_controller_w1r1(KBDC p, int c, int d)
+{
+    if (!write_controller_command(p, c))
+	return(-1);
+    if (!write_controller_data(p, d))
+	return(-1);
+    return (read_controller_data(p));
 }
 
 /* write a one byte command to the controller */
@@ -641,6 +661,8 @@ static int call = 0;
 int
 read_kbd_data(KBDC p)
 {
+    unsigned char b;
+
 #if KBDIO_DEBUG >= 2
     if (++call > 2000) {
 	call = 0;
@@ -655,7 +677,8 @@ read_kbd_data(KBDC p)
         return removeq(&kbdcp(p)->kbd);
     if (!wait_for_kbd_data(kbdcp(p)))
         return -1;		/* timeout */
-    return read_data(kbdcp(p));
+    b = read_data(kbdcp(p));
+    return b;
 }
 
 /* read one byte from the keyboard, but return immediately if 
@@ -665,6 +688,7 @@ int
 read_kbd_data_no_wait(KBDC p)
 {
     int f;
+    unsigned char b;
 
 #if KBDIO_DEBUG >= 2
     if (++call > 2000) {
@@ -679,14 +703,16 @@ read_kbd_data_no_wait(KBDC p)
     if (availq(&kbdcp(p)->kbd)) 
         return removeq(&kbdcp(p)->kbd);
     f = read_status(kbdcp(p)) & KBDS_BUFFER_FULL;
-    if (f == KBDS_AUX_BUFFER_FULL) {
+    while (f == KBDS_AUX_BUFFER_FULL) {
         DELAY(KBDD_DELAYTIME);
-        addq(&kbdcp(p)->aux, read_data(kbdcp(p)));
+	b = read_data(kbdcp(p));
+        addq(&kbdcp(p)->aux, b);
         f = read_status(kbdcp(p)) & KBDS_BUFFER_FULL;
     }
     if (f == KBDS_KBD_BUFFER_FULL) {
         DELAY(KBDD_DELAYTIME);
-        return read_data(kbdcp(p));
+	b = read_data(kbdcp(p));
+        return (int)b;
     }
     return -1;		/* no data */
 }
@@ -695,11 +721,13 @@ read_kbd_data_no_wait(KBDC p)
 int
 read_aux_data(KBDC p)
 {
+    unsigned char b;
     if (availq(&kbdcp(p)->aux)) 
         return removeq(&kbdcp(p)->aux);
     if (!wait_for_aux_data(kbdcp(p)))
         return -1;		/* timeout */
-    return read_data(kbdcp(p));
+    b = read_data(kbdcp(p));
+    return b;
 }
 
 /* read one byte from the aux device, but return immediately if 
@@ -708,19 +736,22 @@ read_aux_data(KBDC p)
 int
 read_aux_data_no_wait(KBDC p)
 {
+    unsigned char b;
     int f;
 
     if (availq(&kbdcp(p)->aux)) 
         return removeq(&kbdcp(p)->aux);
     f = read_status(kbdcp(p)) & KBDS_BUFFER_FULL;
-    if (f == KBDS_KBD_BUFFER_FULL) {
+    while (f == KBDS_KBD_BUFFER_FULL) {
         DELAY(KBDD_DELAYTIME);
-        addq(&kbdcp(p)->kbd, read_data(kbdcp(p)));
+	b = read_data(kbdcp(p));
+        addq(&kbdcp(p)->kbd, b);
         f = read_status(kbdcp(p)) & KBDS_BUFFER_FULL;
     }
     if (f == KBDS_AUX_BUFFER_FULL) {
         DELAY(KBDD_DELAYTIME);
-        return read_data(kbdcp(p));
+	b = read_data(kbdcp(p));
+        return b;
     }
     return -1;		/* no data */
 }
@@ -1043,14 +1074,26 @@ set_controller_command_byte(KBDC p, int mask, int command)
 	return FALSE;
 
     command = (kbdcp(p)->command_byte & ~mask) | (command & mask);
-    if (command & KBD_DISABLE_KBD_PORT) {
-	if (!write_controller_command(p, KBDC_DISABLE_KBD_PORT))
-	    return FALSE;
+#if 1
+    if (mask & KBD_DISABLE_KBD_PORT) {
+	    if (command & KBD_DISABLE_KBD_PORT) {
+		if (!write_controller_command(p, KBDC_DISABLE_KBD_PORT))
+		    return FALSE;
+	    }
     }
+#endif
     if (!write_controller_command(p, KBDC_SET_COMMAND_BYTE))
 	return FALSE;
     if (!write_controller_data(p, command))
 	return FALSE;
+#if 0
+    if (mask & KBD_DISABLE_KBD_PORT) {
+	    if ((command & KBD_DISABLE_KBD_PORT) == 0) {
+		if (!write_controller_command(p, KBDC_ENABLE_KBD_PORT))
+		    return FALSE;
+	    }
+    }
+#endif
     kbdcp(p)->command_byte = command;
 
     if (verbose)

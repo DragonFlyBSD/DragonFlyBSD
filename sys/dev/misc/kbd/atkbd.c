@@ -61,6 +61,10 @@
 
 static timeout_t	atkbd_timeout;
 
+#if 0
+static int atkbd_setmuxmode(KBDC kbdc, int value, int *mux_version);
+#endif
+
 int
 atkbd_probe_unit(int unit, int ctlr, int irq, int flags)
 {
@@ -244,7 +248,7 @@ static int		get_kbd_echo(KBDC kbdc);
 static int		probe_keyboard(KBDC kbdc, int flags);
 static int		init_keyboard(KBDC kbdc, int *type, int flags);
 static int		write_kbd(KBDC kbdc, int command, int data);
-static int		get_kbd_id(KBDC kbdc);
+static int		get_kbd_id(KBDC kbdc, int cmd);
 static int		typematic(int delay, int rate);
 static int		typematic_delay(int delay);
 static int		typematic_rate(int rate);
@@ -419,7 +423,7 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 	}
 	if (!KBD_IS_INITIALIZED(kbd) && !(flags & KB_CONF_PROBE_ONLY)) {
 		kbd->kb_config = flags & ~KB_CONF_PROBE_ONLY;
-		if (KBD_HAS_DEVICE(kbd)
+		if (!KBD_HAS_DEVICE(kbd)
 	    	    && init_keyboard(state->kbdc, &kbd->kb_type, kbd->kb_config)
 	    	    && (kbd->kb_config & KB_CONF_FAIL_IF_NO_KBD)) {
 			return ENXIO;
@@ -429,6 +433,7 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		delay[0] = kbd->kb_delay1;
 		delay[1] = kbd->kb_delay2;
 		atkbd_ioctl(kbd, KDSETREPEAT, (caddr_t)delay);
+		KBD_FOUND_DEVICE(kbd);
 		KBD_INIT_DONE(kbd);
 	}
 	if (!KBD_IS_CONFIGURED(kbd)) {
@@ -551,7 +556,6 @@ static int
 atkbd_check(keyboard_t *kbd)
 {
 	int ret;
-
 
 	if (!KBD_IS_ACTIVE(kbd)) {
 		return FALSE;
@@ -1158,6 +1162,9 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	int codeset;
 	int id;
 	int c;
+	int mux_version;
+	int mux_mask;
+	int mux_val;
 
 	if (!kbdc_lock(kbdc, TRUE)) {
 		/* driver error? */
@@ -1166,6 +1173,17 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 
 	/* temporarily block data transmission from the keyboard */
 	write_controller_command(kbdc, KBDC_DISABLE_KBD_PORT);
+
+#if 0
+	if (atkbd_setmuxmode(kbdc, 1, &mux_version)) {
+		kprintf("atkbd: no mux\n");
+		mux_version = -1;
+	} else {
+		kprintf("atkbd: mux present version %d\n", mux_version);
+	}
+#else
+	mux_version = -1;
+#endif
 
 	/* save the current controller command byte */
 	empty_both_buffers(kbdc, 200);
@@ -1192,6 +1210,37 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 		return EIO;
 	}
 
+	/* default codeset */
+	codeset = -1;
+
+	/* reset keyboard hardware */
+	if (!(flags & KB_CONF_NO_RESET) && !reset_kbd(kbdc)) {
+		/*
+		 * KEYBOARD ERROR
+		 * Keyboard reset may fail either because the keyboard
+		 * doen't exist, or because the keyboard doesn't pass
+		 * the self-test, or the keyboard controller on the
+		 * motherboard and the keyboard somehow fail to shake hands.
+		 * It is just possible, particularly in the last case,
+		 * that the keyoard controller may be left in a hung state.
+		 * test_controller() and test_kbd_port() appear to bring
+		 * the keyboard controller back (I don't know why and how,
+		 * though.)
+		 */
+		empty_both_buffers(kbdc, 10);
+		test_controller(kbdc);
+		test_kbd_port(kbdc);
+		/*
+		 * We could disable the keyboard port and interrupt... but,
+		 * the keyboard may still exist (see above).
+		 */
+		set_controller_command_byte(kbdc, 0xff, c);
+		kbdc_lock(kbdc, FALSE);
+		if (bootverbose)
+			kprintf("atkbd: failed to reset the keyboard.\n");
+		return EIO;
+	}
+
 	/* 
 	 * Check if we have an XT keyboard before we attempt to reset it. 
 	 * The procedure assumes that the keyboard and the controller have 
@@ -1209,12 +1258,15 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 			== KBD_ACK) 
 			codeset = read_kbd_data(kbdc);
 	}
+#endif /* KBD_DETECT_XT_KEYBOARD */
 	if (bootverbose)
 		kprintf("atkbd: scancode set %d\n", codeset);
-#endif /* KBD_DETECT_XT_KEYBOARD */
  
+	/*
+	 * Get the keyboard id.
+	 */
 	*type = KB_OTHER;
-	id = get_kbd_id(kbdc);
+	id = get_kbd_id(kbdc, ATKBD_CMD_GETID);
 	switch(id) {
 	case 0x41ab:	/* 101/102/... Enhanced */
 	case 0x83ab:	/* ditto */
@@ -1235,34 +1287,6 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	}
 	if (bootverbose)
 		kprintf("atkbd: keyboard ID 0x%x (%d)\n", id, *type);
-
-	/* reset keyboard hardware */
-	if (!(flags & KB_CONF_NO_RESET) && !reset_kbd(kbdc)) {
-		/*
-		 * KEYBOARD ERROR
-		 * Keyboard reset may fail either because the keyboard
-		 * doen't exist, or because the keyboard doesn't pass
-		 * the self-test, or the keyboard controller on the
-		 * motherboard and the keyboard somehow fail to shake hands.
-		 * It is just possible, particularly in the last case,
-		 * that the keyoard controller may be left in a hung state.
-		 * test_controller() and test_kbd_port() appear to bring
-		 * the keyboard controller back (I don't know why and how,
-		 * though.)
-		 */
-		empty_both_buffers(kbdc, 10);
-		test_controller(kbdc);
-		test_kbd_port(kbdc);
-		/*
-		 * We could disable the keyboard port and interrupt... but, 
-		 * the keyboard may still exist (see above). 
-		 */
-		set_controller_command_byte(kbdc, 0xff, c);
-		kbdc_lock(kbdc, FALSE);
-		if (bootverbose)
-			kprintf("atkbd: failed to reset the keyboard.\n");
-		return EIO;
-	}
 
 	/*
 	 * Allow us to set the XT_KEYBD flag in UserConfig so that keyboards
@@ -1287,11 +1311,71 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 		}
 	}
 
+#if 0
+	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_EX_ENABLE, 0x71) != KBD_ACK)
+		kprintf("atkbd: can't CMD_EX_ENABLE\n");
+
+	if (send_kbd_command(kbdc, ATKBD_CMD_SETALL_MB) != KBD_ACK)
+		kprintf("atkbd: can't SETALL_MB\n");
+	if (send_kbd_command(kbdc, ATKBD_CMD_SETALL_MBR) != KBD_ACK)
+		kprintf("atkbd: can't SETALL_MBR\n");
+#endif
+#if 0
+	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_SSCANSET, 2) != KBD_ACK)
+		kprintf("atkbd: can't SSCANSET\n");
+	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_GSCANSET, 0) != KBD_ACK)
+		kprintf("atkbd: can't SSCANSET\n");
+	else
+		kprintf("atkbd: scanset %d\n", read_kbd_data(kbdc));
+#endif
+#if 0
+	kprintf("atkbd: id %04x\n", get_kbd_id(kbdc, ATKBD_CMD_OK_GETID));
+	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_SETLEDS, 0) != KBD_ACK)
+		kprintf("atkbd: setleds failed\n");
+	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_SETREP, 255) != KBD_ACK)
+		kprintf("atkbd: setrep failed\n");
+	if (send_kbd_command(kbdc, ATKBD_CMD_RESEND) != KBD_ACK)
+		kprintf("atkbd: resend failed\n");
+#endif
+	/*
+	 * Some keyboards require a SETLEDS command to be sent after
+	 * the reset command before they will send keystrokes to us
+	 * (Acer C720).
+	 */
+	if (send_kbd_command_and_data(kbdc, ATKBD_CMD_SETLEDS, 0) != KBD_ACK)
+		kprintf("atkbd: setleds failed\n");
+	send_kbd_command(kbdc, ATKBD_CMD_ENABLE);
+
+#if 0
+	/* DEBUGGING */
+	{
+		int retry;
+		int c;
+		kprintf("atkbd: waiting for keypress");
+		for (retry = 0; retry < 10; ++retry) {
+			c = read_kbd_data_no_wait(kbdc);
+			kprintf(" %d", c);
+			tsleep(&c, 0, "wait", hz);
+		}
+		kprintf("\n");
+	}
+#endif
+
+	if (mux_version == -1) {
+		mux_mask = 0;
+		mux_val = 0;
+	} else {
+		mux_mask = KBD_AUX_CONTROL_BITS;
+		mux_val = 0;
+		kprintf("atkbd: setaux for multiplexer\n");
+	}
+
 	/* enable the keyboard port and intr. */
 	if (!set_controller_command_byte(kbdc, 
-		KBD_KBD_CONTROL_BITS | KBD_TRANSLATION | KBD_OVERRIDE_KBD_LOCK,
+		KBD_KBD_CONTROL_BITS | KBD_TRANSLATION |
+		KBD_OVERRIDE_KBD_LOCK | mux_mask,
 		(c & (KBD_TRANSLATION | KBD_OVERRIDE_KBD_LOCK))
-		    | KBD_ENABLE_KBD_PORT | KBD_ENABLE_KBD_INT)) {
+		    | KBD_ENABLE_KBD_PORT | KBD_ENABLE_KBD_INT | mux_val)) {
 		/*
 		 * CONTROLLER ERROR 
 		 * This is serious; we are left with the disabled
@@ -1306,6 +1390,54 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 	kbdc_lock(kbdc, FALSE);
 	return 0;
 }
+
+#if 0
+
+static
+int
+atkbd_setmuxmode(KBDC kbdc, int enable, int *mux_version)
+{
+	int param;
+	int val;
+	int i;
+
+	kbdc->mux_active = 0;
+	empty_both_buffers(kbdc, 100);
+	val = 0xf0;
+	if ((param = write_controller_w1r1(kbdc, KBDC_AUX_LOOP, val)) != val) {
+		kprintf("setmuxmode: fail1\n");
+		return(-1);
+	}
+	val = enable ? 0x56 : 0xf6;
+	if ((param = write_controller_w1r1(kbdc, KBDC_AUX_LOOP, val)) != val) {
+		kprintf("setmuxmode: fail2\n");
+		return(-1);
+	}
+	val = enable ? 0xa4 : 0xa5;
+	if ((param = write_controller_w1r1(kbdc, KBDC_AUX_LOOP, val)) != val) {
+		kprintf("setmuxmode: fail3\n");
+		return(-1);
+	}
+	kprintf("mux version %02x\n", param);
+	if (param == 0xac) {
+		kprintf("setmuxmode: fail4\n");
+		return(-1);
+	}
+
+	if (enable) {
+		for (i = 0; i < KBD_NUM_MUX_PORTS; ++i) {
+			write_controller_command(kbdc, KBDC_MUX_PFX + i);
+			write_controller_command(kbdc, KBDC_ENABLE_AUX_PORT);
+
+		}
+	}
+	kbdc->mux_active = 1;
+	if (mux_version)
+		*mux_version = param;
+	return 0;
+}
+
+#endif
 
 static int
 write_kbd(KBDC kbdc, int command, int data)
@@ -1357,13 +1489,13 @@ write_kbd(KBDC kbdc, int command, int data)
 }
 
 static int
-get_kbd_id(KBDC kbdc)
+get_kbd_id(KBDC kbdc, int cmd)
 {
 	int id1, id2;
 
 	empty_both_buffers(kbdc, 10);
 	id1 = id2 = -1;
-	if (send_kbd_command(kbdc, KBDC_SEND_DEV_ID) != KBD_ACK)
+	if (send_kbd_command(kbdc, cmd) != KBD_ACK)
 		return -1;
 
 	DELAY(10000); 	/* 10 msec delay */
