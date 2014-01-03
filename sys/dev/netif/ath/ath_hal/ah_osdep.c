@@ -92,7 +92,8 @@ extern	void ath_hal_assert_failed(const char* filename,
 		int lineno, const char* msg);
 #endif
 #ifdef AH_DEBUG
-extern	void DO_HALDEBUG(struct ath_hal *ah, u_int mask, const char* fmt, ...);
+extern	void DO_HALDEBUG(struct ath_hal *ah, u_int mask, const char* fmt, ...)
+		 __printflike(3, 4);
 #endif /* AH_DEBUG */
 
 /* NB: put this here instead of the driver to avoid circular references */
