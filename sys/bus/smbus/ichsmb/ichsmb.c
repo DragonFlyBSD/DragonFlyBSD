@@ -59,8 +59,8 @@
 
 #include <bus/smbus/smbconf.h>
 
-#include <dev/powermng/ichsmb/ichsmb_var.h>
-#include <dev/powermng/ichsmb/ichsmb_reg.h>
+#include "ichsmb_var.h"
+#include "ichsmb_reg.h"
 
 /*
  * Enable debugging by defining ICHSMB_DEBUG to a non-zero value.
@@ -180,7 +180,7 @@ ichsmb_quick(device_t dev, u_char slave, int how)
 		sc->ich_cmd = ICH_HST_CNT_SMB_CMD_QUICK;
 		bus_write_1(sc->io_res, ICH_XMIT_SLVA,
 		    slave | (how == SMB_QREAD ?
-	    		ICH_XMIT_SLVA_READ : ICH_XMIT_SLVA_WRITE));
+			ICH_XMIT_SLVA_READ : ICH_XMIT_SLVA_WRITE));
 		bus_write_1(sc->io_res, ICH_HST_CNT,
 		    ICH_HST_CNT_START | ICH_HST_CNT_INTREN | sc->ich_cmd);
 		smb_error = ichsmb_wait(sc);

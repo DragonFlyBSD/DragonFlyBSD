@@ -1,5 +1,5 @@
-SUBDIR=	alpm amdpm amdsmb aps coretemp est
-SUBDIR+=ichsmb intpm kate km lm powernow uguru
+SUBDIR=	alpm amdpm aps coretemp est
+SUBDIR+=intpm kate km lm powernow uguru
 SUBDIR+=viapm wbsio
 
 .include <bsd.subdir.mk>

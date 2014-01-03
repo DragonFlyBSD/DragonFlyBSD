@@ -88,4 +88,3 @@
 #define ICH_BLOCK_DB			0x07	/* block data byte */
 
 #endif /* _DEV_ICHSMB_ICHSMB_REG_H_ */
-
