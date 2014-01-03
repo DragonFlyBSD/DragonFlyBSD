@@ -76,6 +76,8 @@
 #include <dev/netif/ath/ath/if_ath_debug.h>
 #include <dev/netif/ath/ath/if_ath_keycache.h>
 
+extern  const char* ath_hal_ether_sprintf(const uint8_t *mac);
+
 #ifdef ATH_DEBUG
 static void
 ath_keyprint(struct ath_softc *sc, const char *tag, u_int ix,

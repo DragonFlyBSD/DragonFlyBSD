@@ -139,7 +139,7 @@ ath_hal_printf(struct ath_hal *ah, const char* fmt, ...)
 const char*
 ath_hal_ether_sprintf(const u_int8_t *mac)
 {
-	static char etherbuf[18];
+	static char etherbuf[ETHER_ADDRSTRLEN + 1];
 
 	kether_ntoa(mac, etherbuf);
 

@@ -1089,8 +1089,8 @@ ath_rate_ctl_reset(struct ath_softc *sc, struct ieee80211_node *ni)
 	if (ieee80211_msg(ni->ni_vap, IEEE80211_MSG_RATECTL)) {
 		uint64_t mask;
 
-		ieee80211_note(ni->ni_vap, "[%6D] %s: size 1600 rate/tt",
-		    ni->ni_macaddr, ":", __func__);
+		ieee80211_note(ni->ni_vap, "[%s] %s: size 1600 rate/tt",
+		    ath_hal_ether_sprintf(ni->ni_macaddr), __func__);
 		for (mask = sn->ratemask, rix = 0; mask != 0; mask >>= 1, rix++) {
 			if ((mask & 1) == 0)
 				continue;

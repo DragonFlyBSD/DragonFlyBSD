@@ -56,28 +56,23 @@
  */
 #define	ATH_MGMT_TXBUF		32
 
-/*
- * Newer chipsets probe far bigger fifos,
- * a default of 40 RXBUFs is not enough.
- */
-#ifdef __DragonFly__
-#define	ATH_TXBUF	256
-#define	ATH_RXBUF	256
-#endif
-
-/*
- * 802.11n requires more TX and RX buffers to do AMPDU.
- */
-#ifdef	ATH_ENABLE_11N
-#define	ATH_TXBUF	512
-#define	ATH_RXBUF	512
-#endif
-
 #ifndef ATH_RXBUF
+#ifdef	ATH_ENABLE_11N
+#define	ATH_RXBUF	512		/* 802.11n requires more buffers to do AMPDU. */
+#elif defined(__DragonFly__)
+#define	ATH_RXBUF	256		/* a default of 40 RXBUFs is not enough */
+#else
 #define	ATH_RXBUF	40		/* number of RX buffers */
 #endif
+#endif
 #ifndef ATH_TXBUF
+#ifdef	ATH_ENABLE_11N
+#define	ATH_TXBUF	512		/* 802.11n requires more buffers to do AMPDU. */
+#elif defined(__DragonFly__)
+#define	ATH_TXBUF	256		/* a default of 40 RXBUFs is not enough */
+#else
 #define	ATH_TXBUF	200		/* number of TX buffers */
+#endif
 #endif
 #define	ATH_BCBUF	4		/* number of beacon buffers */
 
@@ -1270,7 +1265,7 @@ void	ath_intr(void *);
 	== HAL_OK)
 #define	ath_hal_setrxbufsize(_ah, _req) \
 	(ath_hal_setcapability(_ah, HAL_CAP_RXBUFSIZE, 0, _req, NULL)	\
-	== HAL_OK)
+	== AH_TRUE)
 
 #define	ath_hal_getchannoise(_ah, _c) \
 	((*(_ah)->ah_getChanNoise)((_ah), (_c)))

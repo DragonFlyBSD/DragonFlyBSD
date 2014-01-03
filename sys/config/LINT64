@@ -1202,13 +1202,28 @@ device		wlan_xauth	# 802.11 WPA or 802.1x authentication for AP
 device		wlan_amrr	# 802.11 AMRR TX rate control algorithm
 device		an		# Aironet Communications 4500/4800
 device		ath		# Atheros AR521x
-options 	AH_SUPPORT_AR5416
+options		AH_AR5416_INTERRUPT_MITIGATION
+options		AH_ASSERT
+options		AH_DEBUG
+options		AH_INTERRUPT_DEBUGGING
+options		AH_MAXCHAN=96
+options		AH_NEED_DESC_SWAP
+options		AH_PRIVATE_DIAG
+options		AH_REGOPS_FUNC
+options		AH_RXCFG_SDMAMW_4BYTES
+options		AH_SUPPORT_AR5416
+options		AH_SUPPORT_AR9130
+options		AH_SUPPORT_AR9330
+options		AH_SUPPORT_AR9340
+options		AH_USE_INIPDGAIN
 device		ath_hal		# Atheros Hardware Access Layer
 #device		ath_rate_amrr	# Atheros AMRR TX rate control algorithm
 #device		ath_rate_onoe	# Atheros Onoe TX rate control algorithm
 device		ath_rate_sample	# Atheros Sample TX rate control algorithm
 options		ATH_DEBUG	# turn on debugging output (see hw.ath.debug)
 options		ATH_DIAGAPI	# diagnostic interface to the HAL
+options		ATH_ENABLE_DFS
+options		ATH_KTR_INTR_DEBUG
 options		ATH_RXBUF=80	# number of RX buffers to allocate
 options		ATH_TXBUF=400	# number of TX buffers to allocate
 #device		iwl		# Intel PRO/Wireless 2100

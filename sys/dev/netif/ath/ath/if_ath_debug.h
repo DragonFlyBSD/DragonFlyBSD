@@ -83,10 +83,14 @@ enum {
 	ATH_KTR_TX		= 0x00000080,
 };
 
+#ifdef __DragonFly__		/* XXX: port to our ktr */
+#define	ATH_KTR(_sc, _km, _kf, ...)	do { } while (0)
+#else
 #define	ATH_KTR(_sc, _km, _kf, ...)	do {	\
 	if (sc->sc_ktrdebug & (_km))		\
 		CTR##_kf(KTR_DEV, __VA_ARGS__);	\
 	} while (0)
+#endif
 
 extern uint64_t ath_debug;
 

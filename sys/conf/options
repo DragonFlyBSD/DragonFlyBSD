@@ -604,12 +604,36 @@ NTFS_DEBUG			opt_ntfs.h
 
 # options for the Atheros driver
 ATH_DEBUG		opt_ath.h
+#ATH_DEBUG_ALQ		opt_ath.h
 ATH_DIAGAPI		opt_ath.h
+#ATH_EEPROM_FIRMWARE	opt_ath.h
+#ATH_ENABLE_11N		opt_ath.h
+ATH_ENABLE_DFS		opt_ath.h
+#ATH_ENABLE_RADIOTAP_VENDOR_EXT opt_ath.h
+ATH_KTR_INTR_DEBUG	opt_ath.h
 ATH_RXBUF		opt_ath.h
+#ATH_TX99_DIAG		opt_ath.h
 ATH_TXBUF		opt_ath.h
 
 # ...and its HAL
+AH_AR5416_INTERRUPT_MITIGATION opt_ah.h
+AH_ASSERT		opt_ah.h
+AH_DEBUG		opt_ah.h
+#AH_DEBUG_ALQ		opt_ah.h
+#AH_DEBUG_COUNTRY	opt_ah.h
+AH_INTERRUPT_DEBUGGING	opt_ah.h
+AH_MAXCHAN		opt_ah.h
+AH_NEED_DESC_SWAP	opt_ah.h
+AH_PRIVATE_DIAG		opt_ah.h
+AH_REGOPS_FUNC		opt_ah.h
+AH_RXCFG_SDMAMW_4BYTES	opt_ah.h
 AH_SUPPORT_AR5416	opt_ah.h
+AH_SUPPORT_AR9130	opt_ah.h
+AH_SUPPORT_AR9330	opt_ah.h
+AH_SUPPORT_AR9340	opt_ah.h
+AH_USE_INIPDGAIN	opt_ah.h
+#AH_WRITE_EEPROM		opt_ah.h
+#AH_WRITE_REGDOMAIN	opt_ah.h
 
 # bce driver
 BCE_RSS_DEBUG		opt_bce.h

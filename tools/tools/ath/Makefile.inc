@@ -10,4 +10,4 @@ CFLAGS+=-I${.CURDIR}
 CFLAGS+=-I${.CURDIR}/../common
 CFLAGS+=-I${.CURDIR}/../../../../sys
 CFLAGS+=-I${.CURDIR}/../../../../sys/dev/netif/ath/ath
-CFLAGS+=-I${.CURDIR}/../../../../sys/dev/netif/ath/hal/ath_hal
+CFLAGS+=-I${.CURDIR}/../../../../sys/dev/netif/ath/ath_hal

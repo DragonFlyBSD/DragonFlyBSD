@@ -471,19 +471,19 @@ ath_tdma_update(struct ieee80211_node *ni,
 	tsfdelta = (int32_t)((nextslot % TU_TO_TSF(HAL_BEACON_PERIOD + 1)) - nexttbtt);
 
 	DPRINTF(sc, ATH_DEBUG_TDMA_TIMER,
-	    "rs->rstamp %llu rstamp %llu tsf %llu txtime %d, nextslot %llu, "
+	    "rs->rstamp %ju rstamp %ju tsf %ju txtime %d, nextslot %ju, "
 	    "nextslottu %d, nextslottume %d\n",
-	    (unsigned long long) rs->rs_tstamp, rstamp, tsf, txtime,
-	    nextslot, nextslottu, TSF_TO_TU(nextslot >> 32, nextslot));
+	    (uintmax_t)rs->rs_tstamp, (uintmax_t)rstamp, (uintmax_t)tsf, txtime,
+	    (uintmax_t)nextslot, nextslottu, TSF_TO_TU(nextslot >> 32, nextslot));
 	DPRINTF(sc, ATH_DEBUG_TDMA,
-	    "  beacon tstamp: %llu (0x%016llx)\n",
-	    le64toh(ni->ni_tstamp.tsf),
-	    le64toh(ni->ni_tstamp.tsf));
+	    "  beacon tstamp: %ju (0x%016jx)\n",
+	    (uintmax_t)le64toh(ni->ni_tstamp.tsf),
+	    (uintmax_t)le64toh(ni->ni_tstamp.tsf));
 
 	DPRINTF(sc, ATH_DEBUG_TDMA_TIMER,
-	    "nexttbtt %llu (0x%08llx) tsfdelta %d avg +%d/-%d\n",
-	    nexttbtt,
-	    (long long) nexttbtt,
+	    "nexttbtt %ju (0x%08jx) tsfdelta %d avg +%d/-%d\n",
+	    (uintmax_t)nexttbtt,
+	    (uintmax_t)nexttbtt,
 	    tsfdelta,
 	    TDMA_AVG(sc->sc_avgtsfdeltap), TDMA_AVG(sc->sc_avgtsfdeltam));
 
@@ -574,9 +574,9 @@ ath_tdma_update(struct ieee80211_node *ni,
 		tsf = ath_hal_gettsf64(ah);
 		ath_hal_settsf64(ah, tsf + tsfdelta);
 		DPRINTF(sc, ATH_DEBUG_TDMA_TIMER,
-		    "%s: calling ath_hal_adjusttsf: TSF=%llu, tsfdelta=%d\n",
+		    "%s: calling ath_hal_adjusttsf: TSF=%ju, tsfdelta=%d\n",
 		    __func__,
-		    tsf,
+		    (uintmax_t)tsf,
 		    tsfdelta);
 
 #ifdef	ATH_DEBUG_ALQ

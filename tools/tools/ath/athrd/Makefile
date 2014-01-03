@@ -1,6 +1,6 @@
 # $FreeBSD: src/tools/tools/ath/athrd/Makefile,v 1.1 2009/01/15 23:38:21 sam Exp $
 
-.PATH:	${.CURDIR}/../../../../sys/dev/netif/ath/hal/ath_hal
+.PATH:	${.CURDIR}/../../../../sys/dev/netif/ath/ath_hal
 
 PROG=	athrd
 

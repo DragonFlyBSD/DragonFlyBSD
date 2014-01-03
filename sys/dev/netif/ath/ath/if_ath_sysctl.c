@@ -720,12 +720,12 @@ ath_sysctlattach(struct ath_softc *sc)
 		"EEPROM regdomain code");
 #ifdef	ATH_DEBUG
 	SYSCTL_ADD_QUAD(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
-		"debug", CTLFLAG_RW, &sc->sc_debug,
+		"debug", CTLFLAG_RW, &sc->sc_debug, 0,
 		"control debugging printfs");
 #endif
 #ifdef	ATH_DEBUG_ALQ
 	SYSCTL_ADD_QUAD(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
-		"ktrdebug", CTLFLAG_RW, &sc->sc_ktrdebug,
+		"ktrdebug", CTLFLAG_RW, &sc->sc_ktrdebug, 0,
 		"control debugging KTR");
 #endif /* ATH_DEBUG_ALQ */
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,

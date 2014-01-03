@@ -229,6 +229,8 @@ static int	ath_node_set_tim(struct ieee80211_node *, int);
 #include <dev/netif/ath/ath/if_ath_tdma.h>
 #endif
 
+extern	const char* ath_hal_ether_sprintf(const u_int8_t *mac);
+
 SYSCTL_DECL(_hw_ath);
 
 /* XXX validate sysctl values */
@@ -2729,7 +2731,9 @@ ath_getbuf(struct ath_softc *sc, ath_buf_type_t btype)
 		bf = _ath_getbuf_locked(sc, ATH_BUFTYPE_NORMAL);
 	ATH_TXBUF_UNLOCK(sc);
 	if (bf == NULL) {
+#if 0
 		struct ifnet *ifp = sc->sc_ifp;
+#endif
 
 		DPRINTF(sc, ATH_DEBUG_XMIT, "%s: stop queue\n", __func__);
 		sc->sc_stats.ast_tx_qstop++;
@@ -3138,12 +3142,14 @@ ath_mode_init(struct ath_softc *sc)
 	/* configure operational mode */
 	ath_hal_setopmode(ah);
 
+#if 0
 	DPRINTF(sc, ATH_DEBUG_STATE | ATH_DEBUG_MODE,
 	    "%s: ah=%p, ifp=%p, if_addr=%p\n",
 	    __func__,
 	    ah,
 	    ifp,
 	    (ifp == NULL) ? NULL : ifp->if_addr);
+#endif
 
 	/* handle any link-level address change */
 	ath_hal_setmac(ah, IF_LLADDR(ifp));
@@ -3658,7 +3664,8 @@ ath_node_alloc(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	/* XXX setup ath_tid */
 	ath_tx_tid_init(sc, an);
 
-	DPRINTF(sc, ATH_DEBUG_NODE, "%s: %6D: an %p\n", __func__, mac, ":", an);
+	DPRINTF(sc, ATH_DEBUG_NODE, "%s: %s: an %p\n", __func__,
+	    ath_hal_ether_sprintf(mac), an);
 	return &an->an_node;
 }
 
@@ -3668,8 +3675,8 @@ ath_node_cleanup(struct ieee80211_node *ni)
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ath_softc *sc = ic->ic_ifp->if_softc;
 
-	DPRINTF(sc, ATH_DEBUG_NODE, "%s: %6D: an %p\n", __func__,
-	    ni->ni_macaddr, ":", ATH_NODE(ni));
+	DPRINTF(sc, ATH_DEBUG_NODE, "%s: %s: an %p\n", __func__,
+	    ath_hal_ether_sprintf(ni->ni_macaddr), ATH_NODE(ni));
 
 	/* Cleanup ath_tid, free unused bufs, unlink bufs in TXQ */
 	ath_tx_node_flush(sc, ATH_NODE(ni));
@@ -3683,8 +3690,8 @@ ath_node_free(struct ieee80211_node *ni)
 	struct ieee80211com *ic = ni->ni_ic;
 	struct ath_softc *sc = ic->ic_ifp->if_softc;
 
-	DPRINTF(sc, ATH_DEBUG_NODE, "%s: %6D: an %p\n", __func__,
-	    ni->ni_macaddr, ":", ATH_NODE(ni));
+	DPRINTF(sc, ATH_DEBUG_NODE, "%s: %s: an %p\n", __func__,
+	    ath_hal_ether_sprintf(ni->ni_macaddr), ATH_NODE(ni));
 #if 0
 	mtx_destroy(&ATH_NODE(ni)->an_mtx);
 #endif
@@ -4317,7 +4324,9 @@ static void
 ath_tx_proc_q0(void *arg, int npending)
 {
 	struct ath_softc *sc = arg;
+#if 0
 	struct ifnet *ifp = sc->sc_ifp;
+#endif
 	uint32_t txqs;
 
 	wlan_serialize_enter();
@@ -4362,7 +4371,9 @@ static void
 ath_tx_proc_q0123(void *arg, int npending)
 {
 	struct ath_softc *sc = arg;
+#if 0
 	struct ifnet *ifp = sc->sc_ifp;
+#endif
 	int nacked;
 	uint32_t txqs;
 
@@ -4419,7 +4430,9 @@ static void
 ath_tx_proc(void *arg, int npending)
 {
 	struct ath_softc *sc = arg;
+#if 0
 	struct ifnet *ifp = sc->sc_ifp;
+#endif
 	int i, nacked;
 	uint32_t txqs;
 
@@ -4897,7 +4910,9 @@ void
 ath_legacy_tx_drain(struct ath_softc *sc, ATH_RESET_TYPE reset_type)
 {
 	struct ath_hal *ah = sc->sc_ah;
+#ifdef ATH_DEBUG
 	struct ifnet *ifp = sc->sc_ifp;
+#endif
 	int i;
 	struct ath_buf *bf_last;
 
@@ -5685,10 +5700,9 @@ ath_newassoc(struct ieee80211_node *ni, int isnew)
 	 */
 	if (! isnew) {
 		DPRINTF(sc, ATH_DEBUG_NODE,
-		    "%s: %6D: reassoc; is_powersave=%d\n",
+		    "%s: %s: reassoc; is_powersave=%d\n",
 		    __func__,
-		    ni->ni_macaddr,
-		    ":",
+		    ath_hal_ether_sprintf(ni->ni_macaddr),
 		    an->an_is_powersave);
 
 		/* XXX for now, we can't hold the lock across assoc */
@@ -6244,10 +6258,9 @@ ath_node_powersave(struct ieee80211_node *ni, int enable)
 
 	/* XXX and no TXQ locks should be held here */
 
-	DPRINTF(sc, ATH_DEBUG_NODE_PWRSAVE, "%s: %6D: enable=%d\n",
+	DPRINTF(sc, ATH_DEBUG_NODE_PWRSAVE, "%s: %6s: enable=%d\n",
 	    __func__,
-	    ni->ni_macaddr,
-	    ":",
+	    ath_hal_ether_sprintf(ni->ni_macaddr),
 	    !! enable);
 
 	/* Suspend or resume software queue handling */
@@ -6346,18 +6359,16 @@ ath_node_set_tim(struct ieee80211_node *ni, int enable)
 	 */
 	if (enable && an->an_tim_set == 1) {
 		DPRINTF(sc, ATH_DEBUG_NODE_PWRSAVE,
-		    "%s: %6D: enable=%d, tim_set=1, ignoring\n",
+		    "%s: %s: enable=%d, tim_set=1, ignoring\n",
 		    __func__,
-		    ni->ni_macaddr,
-		    ":",
+		    ath_hal_ether_sprintf(ni->ni_macaddr),
 		    enable);
 		ATH_TX_UNLOCK(sc);
 	} else if (enable) {
 		DPRINTF(sc, ATH_DEBUG_NODE_PWRSAVE,
-		    "%s: %6D: enable=%d, enabling TIM\n",
+		    "%s: %s: enable=%d, enabling TIM\n",
 		    __func__,
-		    ni->ni_macaddr,
-		    ":",
+		    ath_hal_ether_sprintf(ni->ni_macaddr),
 		    enable);
 		an->an_tim_set = 1;
 		ATH_TX_UNLOCK(sc);
@@ -6365,10 +6376,9 @@ ath_node_set_tim(struct ieee80211_node *ni, int enable)
 	} else if (an->an_swq_depth == 0) {
 		/* disable */
 		DPRINTF(sc, ATH_DEBUG_NODE_PWRSAVE,
-		    "%s: %6D: enable=%d, an_swq_depth == 0, disabling\n",
+		    "%s: %s: enable=%d, an_swq_depth == 0, disabling\n",
 		    __func__,
-		    ni->ni_macaddr,
-		    ":",
+		    ath_hal_ether_sprintf(ni->ni_macaddr),
 		    enable);
 		an->an_tim_set = 0;
 		ATH_TX_UNLOCK(sc);
@@ -6378,10 +6388,9 @@ ath_node_set_tim(struct ieee80211_node *ni, int enable)
 		 * disable regardless; the node isn't in powersave now
 		 */
 		DPRINTF(sc, ATH_DEBUG_NODE_PWRSAVE,
-		    "%s: %6D: enable=%d, an_pwrsave=0, disabling\n",
+		    "%s: %s: enable=%d, an_pwrsave=0, disabling\n",
 		    __func__,
-		    ni->ni_macaddr,
-		    ":",
+		    ath_hal_ether_sprintf(ni->ni_macaddr),
 		    enable);
 		an->an_tim_set = 0;
 		ATH_TX_UNLOCK(sc);
@@ -6394,10 +6403,9 @@ ath_node_set_tim(struct ieee80211_node *ni, int enable)
 		 */
 		ATH_TX_UNLOCK(sc);
 		DPRINTF(sc, ATH_DEBUG_NODE_PWRSAVE,
-		    "%s: %6D: enable=%d, an_swq_depth > 0, ignoring\n",
+		    "%s: %s: enable=%d, an_swq_depth > 0, ignoring\n",
 		    __func__,
-		    ni->ni_macaddr,
-		    ":",
+		    ath_hal_ether_sprintf(ni->ni_macaddr),
 		    enable);
 		changed = 0;
 	}
@@ -6467,10 +6475,9 @@ ath_tx_update_tim(struct ath_softc *sc, struct ieee80211_node *ni,
 		    an->an_tim_set == 0 &&
 		    an->an_swq_depth != 0) {
 			DPRINTF(sc, ATH_DEBUG_NODE_PWRSAVE,
-			    "%s: %6D: swq_depth>0, tim_set=0, set!\n",
+			    "%s: %s: swq_depth>0, tim_set=0, set!\n",
 			    __func__,
-			    ni->ni_macaddr,
-			    ":");
+			    ath_hal_ether_sprintf(ni->ni_macaddr));
 			an->an_tim_set = 1;
 			(void) avp->av_set_tim(ni, 1);
 		}
@@ -6486,11 +6493,10 @@ ath_tx_update_tim(struct ath_softc *sc, struct ieee80211_node *ni,
 		    an->an_tim_set == 1 &&
 		    an->an_swq_depth == 0) {
 			DPRINTF(sc, ATH_DEBUG_NODE_PWRSAVE,
-			    "%s: %6D: swq_depth=0, tim_set=1, psq_set=0,"
+			    "%s: %s: swq_depth=0, tim_set=1, psq_set=0,"
 			    " clear!\n",
 			    __func__,
-			    ni->ni_macaddr,
-			    ":");
+			    ath_hal_ether_sprintf(ni->ni_macaddr));
 			an->an_tim_set = 0;
 			(void) avp->av_set_tim(ni, 0);
 		}
