@@ -26,9 +26,9 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" THE POSSIBILITY OF SUCH DAMAGES.
 .\"
-.\" $FreeBSD: src/share/man/man4/ath.4,v 1.52 2010/03/21 17:53:54 sam Exp $
+.\" $FreeBSD: head/share/man/man4/ath.4 235317 2012-05-12 03:25:46Z gjb $
 .\"
-.Dd April 27, 2010
+.Dd January 2, 2014
 .Dt ATH 4
 .Os
 .Sh NAME
@@ -63,6 +63,19 @@ a PCI and/or CardBus interface are supported.
 Supported features include 802.11 and 802.3 frames, power management, BSS,
 IBSS, MBSS, TDMA, and host-based access point operation modes.
 All host/device interaction is via DMA.
+.\".Pp
+.\"Please note that from FreeBSD-9.0, the
+.\".Nm
+.\"driver does not include the PCI/PCIe bus glue.
+.\"The same driver supports multiple underlying bus types, including PCI/PCIe,
+.\"but also embedded (AHB) and USB in the future.
+.\".Pp
+.\"To enable use for PCI/PCIe systems, see the
+.\".Xr ath_pci 4
+.\"driver.
+.\"For embedded systems which use the AHB to connect the wireless MAC, see the
+.\".Xr ath_ahb 4
+.\"driver.
 .Pp
 The
 .Nm
@@ -80,8 +93,8 @@ with transmit speeds appropriate to each.
 AR5416-class devices are capable of 802.11n operation
 but are supported only in legacy modes (802.11a, 11b, 11g).
 Most chips also support an Atheros Turbo Mode (TM) that operates in
-the 5Ghz frequency range with 2x the transmit speeds.
-Some chips also support Turbo mode in the 2.4Ghz range with 802.11g
+the 5GHz frequency range with 2x the transmit speeds.
+Some chips also support Turbo mode in the 2.4GHz range with 802.11g
 though this support is not presently available due to regulatory requirements.
 (Note that Turbo modes are, however,
 only interoperable with other Atheros-based devices.)
@@ -141,9 +154,6 @@ The
 .Nm
 driver supports all Atheros Cardbus and PCI cards,
 except those that are based on the AR5005VL chipset.
-.Pp
-A list of cards that are supported can be found at
-.Pa http://customerproducts.atheros.com/customerproducts/default.asp .
 .Sh EXAMPLES
 Join a specific BSS network with WEP encryption:
 .Bd -literal -offset indent
@@ -198,7 +208,7 @@ ifconfig wlan0 create wlandev ath0 wlanmode tdma \e
 The Atheros Hardware Access Layer was unable to configure the hardware
 as requested.
 The status code is explained in the HAL include file
-.Pa sys/contrib/dev/ath/ah.h .
+.Pa sys/dev/netif/ath/ath_hal/ah.h .
 .It "ath%d: failed to allocate descriptors: %d"
 The driver was unable to allocate contiguous memory for the transmit
 and receive descriptors.
@@ -208,8 +218,8 @@ The request to the HAL to set up the transmit queue for normal
 data frames failed.
 This should not happen.
 .It "ath%d: unable to setup a beacon xmit queue!"
-The request to the HAL to set up the transmit queue for 802.11 beacon
-frames failed.
+The request to the HAL to set up the transmit queue for 802.11 beacon frames
+failed.
 This should not happen.
 .It "ath%d: 802.11 address: %s"
 The MAC address programmed in the EEPROM is displayed.
@@ -227,7 +237,7 @@ The driver will reset the hardware and continue.
 The Atheros Hardware Access Layer was unable to reset the hardware
 as requested.
 The status code is explained in the HAL include file
-.Pa sys/contrib/dev/ath/ah.h .
+.Pa sys/dev/netif/ath/ath_hal/ah.h .
 This should not happen.
 .It "ath%d: unable to start recv logic"
 The driver was unable to restart frame reception.
