@@ -9,8 +9,6 @@
   files' IDs manually, either in the files themselves or in the commit message.
   The general idea is that it must not get lost.
 
-* Remove FBSDID declaration and '#include <sys/cdefs.h>' as well.
-
 * Driver local #include's probably use a <dev/blah/blah.h> path.  These
   need to be changed to "blah.h".   '.' is not included in the #include
   path in FreeBSD builds, but it is in DragonFly builds.
