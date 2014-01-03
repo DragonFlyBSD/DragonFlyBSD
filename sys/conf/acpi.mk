@@ -1,4 +1,4 @@
-ACPICA_DIR?=		contrib/dev/acpica-unix
+ACPICA_DIR?=		contrib/dev/acpica/source
 OSACPI_MI_DIR?=		dev/acpica
 OSACPI_MD_DIR?=		platform/${MACHINE_PLATFORM}/acpica
 
@@ -20,10 +20,19 @@ ACPICA_KERN_PATHS = \
 	${SYSDIR}/${ACPICA_DIR}/disassembler
 
 ACPICA_UTIL_PATHS = \
-	${ACPICA_KERN_PATHS}				\
-	${SYSDIR}/${ACPICA_DIR}				\
-	${SYSDIR}/${ACPICA_DIR}/compiler		\
-	${SYSDIR}/${ACPICA_DIR}/common
+	${SYSDIR}/${ACPICA_DIR}/common			\
+	${SYSDIR}/${ACPICA_DIR}/components/debugger	\
+	${SYSDIR}/${ACPICA_DIR}/components/disassembler	\
+	${SYSDIR}/${ACPICA_DIR}/components/dispatcher	\
+	${SYSDIR}/${ACPICA_DIR}/components/events	\
+	${SYSDIR}/${ACPICA_DIR}/components/executer	\
+	${SYSDIR}/${ACPICA_DIR}/components/hardware	\
+	${SYSDIR}/${ACPICA_DIR}/components/namespace	\
+	${SYSDIR}/${ACPICA_DIR}/components/parser	\
+	${SYSDIR}/${ACPICA_DIR}/components/resources	\
+	${SYSDIR}/${ACPICA_DIR}/components/tables	\
+	${SYSDIR}/${ACPICA_DIR}/components/utilities	\
+	${SYSDIR}/${ACPICA_DIR}/os_specific/service_layers
 
 ${.OBJDIR}/acpi.h: ${SYSDIR}/${ACPICA_DIR}/include/acpi.h
 	cp ${.ALLSRC} ${.TARGET}

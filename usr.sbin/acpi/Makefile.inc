@@ -7,15 +7,12 @@ SYSDIR?= ${.CURDIR}/../../../sys
 .PATH:		${.OBJDIR}				\
 		${ACPICA_UTIL_PATHS}
 
-CFLAGS+=	-I${.OBJDIR}				\
+CFLAGS+=	\
+		-I${.OBJDIR}				\
 		-I${SYSDIR}/${OSACPI_MI_DIR}		\
 		-I${SYSDIR}/${ACPICA_DIR}/include	\
-		-I${SYSDIR}/${ACPICA_DIR}/compiler
-
-SRCS+=		${.OBJDIR}/acpi.h ${.OBJDIR}/platform/acenv.h
-
-CLEANFILES+=	${.OBJDIR}/acpi.h
-CLEANDIRS+=	${.OBJDIR}/platform
+		-I${SYSDIR}/${ACPICA_DIR}/compiler	\
+		-I${SYSDIR}
 
 WARNS?=		2
 

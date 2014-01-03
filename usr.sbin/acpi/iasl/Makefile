@@ -1,53 +1,189 @@
-# $FreeBSD: src/usr.sbin/acpi/iasl/Makefile,v 1.5 2004/01/13 20:53:56 ru Exp $
-# $DragonFly: src/usr.sbin/acpi/iasl/Makefile,v 1.2 2007/01/17 17:31:20 y0netan1 Exp $
+#
+# iASL compiler/disassembler
+#
+
+UTILDIR=${.CURDIR}/../../../sys/contrib/dev/acpica/source/compiler
+
+.PATH:	${UTILDIR}
 
 PROG=	iasl
-SRCS=	aslcompiler.y.h aslcompilerlex.c aslcompilerparse.c \
-	aslanalyze.c aslbtypes.c aslwalks.c aslcodegen.c \
-	aslcompile.c aslerror.c aslfiles.c asllength.c \
-	asllisting.c aslload.c asllookup.c aslmain.c \
-	aslmap.c aslopcodes.c asloperands.c aslstartup.c aslresource.c \
-	aslrestype1.c aslrestype2.c asltree.c aslutils.c \
-	asltransform.c aslfold.c aslstubs.c aslopt.c \
-	aslpredef.c asluuid.c aslrestype1i.c aslrestype2d.c aslrestype2e.c \
-	aslrestype2q.c aslrestype2w.c
-
-SRCS+=	adisasm.c getopt.c osunixxf.c
-SRCS+=	dbfileio.c dmbuffer.c dmnames.c dmopcode.c dmobject.c \
-        dmresrc.c dmresrcl.c dmresrcs.c dmutils.c dmwalk.c dmextern.c \
-        dsopcode.c dsargs.c dscontrol.c dsutils.c dswexec.c dswload.c \
-	dswscope.c dswstate.c dsfield.c dsobject.c dswload2.c \
-        exconvrt.c excreate.c exdump.c exmisc.c \
-        exmutex.c exnames.c exoparg1.c exoparg2.c \
-        exoparg3.c exoparg6.c exprep.c exregion.c \
-        exresnte.c exresolv.c exresop.c exstore.c \
-        exstoren.c exstorob.c exsystem.c exutils.c \
-        nsaccess.c nsalloc.c nsdump.c nsnames.c nsobject.c \
-	nsparse.c nssearch.c nsutils.c nswalk.c nsxfobj.c \
-        psargs.c psopcode.c psparse.c psscope.c \
-        pstree.c psutils.c pswalk.c \
-        tbfadt.c tbinstal.c tbutils.c tbxface.c \
-	utalloc.c utcopy.c utdebug.c utdelete.c utinit.c \
-        utglobal.c utobject.c utlock.c utmisc.c utmath.c utdecode.c \
-		utxface.c utxferror.c \
-	dttemplate.c dtcompile.c dtsubtable.c dtutils.c dtfield.c dtio.c dttable.c dtexpress.c \
-	dtparser.y.h dtparserlex.c dtparserparse.c
-
-SRCS+=	adfile.c adwalk.c dmrestag.c dmtbdump.c dmtbinfo.c dmtable.c psloop.c utcache.c utmutex.c utresrc.c utstate.c
-
 MAN=	iasl.8
 
-CFLAGS+= -DACPI_ASL_COMPILER -I.
-LFLAGS= -i -s
-YFLAGS= -d
+SRCS=	\
+	aslcompiler.y.h \
+	aslcompilerlex.c \
+	aslcompilerparse.c \
+	dtparser.y.h \
+	dtparserlex.c \
+	dtparserparse.c \
+	prparser.y.h \
+	prparserlex.c \
+	prparserparse.c \
+	adfile.c \
+	adisasm.c \
+	adwalk.c \
+	ahpredef.c \
+	aslanalyze.c \
+	aslbtypes.c \
+	aslcodegen.c \
+	aslcompile.c \
+	aslerror.c \
+	aslfiles.c \
+	aslfileio.c \
+	aslfold.c \
+	aslhex.c \
+	asllength.c \
+	asllisting.c \
+	asllistsup.c \
+	aslload.c \
+	asllookup.c \
+	aslmain.c \
+	aslmap.c \
+	aslmethod.c \
+	aslnamesp.c \
+	asloffset.c \
+	aslopcodes.c \
+	asloperands.c \
+	aslopt.c \
+	asloptions.c \
+	aslpredef.c \
+	aslprepkg.c \
+	aslresource.c \
+	aslrestype1.c \
+	aslrestype1i.c \
+	aslrestype2.c \
+	aslrestype2d.c \
+	aslrestype2e.c \
+	aslrestype2q.c \
+	aslrestype2s.c \
+	aslrestype2w.c \
+	aslstartup.c \
+	aslstubs.c \
+	asltransform.c \
+	asltree.c \
+	aslutils.c \
+	asluuid.c \
+	aslwalks.c \
+	aslxref.c \
+	dtcompile.c \
+	dtexpress.c \
+	dtfield.c \
+	dtio.c \
+	dtsubtable.c \
+	dttable.c \
+	dttemplate.c \
+	dtutils.c \
+	dbfileio.c \
+	dmbuffer.c \
+	dmdeferred.c \
+	dmextern.c \
+	dmnames.c \
+	dmobject.c \
+	dmopcode.c \
+	dmresrc.c \
+	dmresrcl.c \
+	dmresrcl2.c \
+	dmresrcs.c \
+	dmrestag.c \
+	dmtable.c \
+	dmtbdump.c \
+	dmtbinfo.c \
+	dmutils.c \
+	dmwalk.c \
+	dsargs.c \
+	dscontrol.c \
+	dsfield.c \
+	dsobject.c \
+	dsopcode.c \
+	dsutils.c \
+	dswexec.c \
+	dswload.c \
+	dswload2.c \
+	dswscope.c \
+	dswstate.c \
+	exconvrt.c \
+	excreate.c \
+	exdump.c \
+	exmisc.c \
+	exmutex.c \
+	exnames.c \
+	exoparg1.c \
+	exoparg2.c \
+	exoparg3.c \
+	exoparg6.c \
+	exprep.c \
+	exregion.c \
+	exresnte.c \
+	exresolv.c \
+	exresop.c \
+	exstore.c \
+	exstoren.c \
+	exstorob.c \
+	exsystem.c \
+	exutils.c \
+	getopt.c \
+	nsaccess.c \
+	nsalloc.c \
+	nsdump.c \
+	nsnames.c \
+	nsobject.c \
+	nsparse.c \
+	nssearch.c \
+	nsutils.c \
+	nswalk.c \
+	nsxfobj.c \
+	osunixxf.c \
+	prexpress.c \
+	prmacros.c \
+	prscan.c \
+	prutils.c \
+	psargs.c \
+	psloop.c \
+	psobject.c \
+	psopcode.c \
+	psopinfo.c \
+	psparse.c \
+	psscope.c \
+	pstree.c \
+	psutils.c \
+	pswalk.c \
+	tbfadt.c \
+	tbinstal.c \
+	tbprint.c \
+	tbutils.c \
+	tbxface.c \
+	utaddress.c \
+	utalloc.c \
+	utbuffer.c \
+	utcache.c \
+	utcopy.c \
+	utdebug.c \
+	utdecode.c \
+	utdelete.c \
+	uterror.c \
+	utexcep.c \
+	utglobal.c \
+	utinit.c \
+	utlock.c \
+	utmath.c \
+	utmisc.c \
+	utmutex.c \
+	utobject.c \
+	utownerid.c \
+	utpredef.c \
+	utresrc.c \
+	utstate.c \
+	utstring.c \
+	utxface.c \
+	utxferror.c
 
-CFLAGS+= -D_USE_BERKELEY_YACC
-LDADD= -lpthread
-DPADD= ${LIBPTHREAD}
+CFLAGS+= \
+	-DACPI_ASL_COMPILER \
+	-I${UTILDIR} \
+	-I${.CURDIR}
 
-CLEANFILES= aslcompiler.y.h aslcompilerlex.c aslcompilerparse.c	\
-	aslcompilerparse.h dtparser.y.h dtparserlex.c				\
-	dtparserparse.c dtparserparse.h
+LFLAGS=	-i -s
+YFLAGS=	-d
 
 aslcompilerlex.c: aslcompiler.l
 	${LEX} ${LFLAGS} -PAslCompiler -o${.TARGET} ${.ALLSRC}
@@ -66,5 +202,25 @@ dtparserparse.c: dtparser.y
 
 dtparser.y.h: dtparserparse.c
 	mv -f dtparserparse.h ${.TARGET}
+
+prparserlex.c: prparser.l
+	${LEX} ${LFLAGS} -PPrParser -o${.TARGET} ${.ALLSRC}
+
+prparserparse.c: prparser.y
+	${YACC} ${YFLAGS} -pPrParser -o${.TARGET} ${.ALLSRC}
+
+prparser.y.h: prparserparse.c
+	mv -f prparserparse.h ${.TARGET}
+
+CLEANFILES+=	\
+		aslcompilerlex.c \
+		aslcompilerparse.c \
+		aslcompiler.y.h \
+		dtparserlex.c \
+		dtparserparse.c \
+		dtparser.y.h \
+		prparserlex.c \
+		prparserparse.c \
+		prparser.y.h
 
 .include <bsd.prog.mk>

@@ -1,8 +1,37 @@
-# $FreeBSD: src/usr.sbin/acpi/acpidump/Makefile,v 1.7 2003/08/28 03:33:07 njl Exp $
-# $DragonFly: src/usr.sbin/acpi/acpidump/Makefile,v 1.1 2004/07/05 00:22:43 dillon Exp $
+#
+# acpidump - ACPI table dump utility (binary to ascii hex)
+#
+
+UTILDIR=${.CURDIR}/../../../sys/contrib/dev/acpica/source/tools/acpidump
+
+.PATH:	${UTILDIR}
 
 PROG=	acpidump
 MAN=	acpidump.8
-SRCS=	acpi.c acpi_user.c acpidump.c
+
+SRCS=	\
+	apdump.c \
+	apfiles.c \
+	apmain.c
+
+SRCS+=	\
+	osunixdir.c \
+	osunixmap.c \
+	tbprint.c \
+	tbxfroot.c \
+	utbuffer.c \
+	utexcep.c \
+	utmath.c \
+	utstring.c \
+	utxferror.c \
+	getopt.c
+
+SRCS+=	\
+	osdragonflytbl.c
+
+CFLAGS+= \
+	-DACPI_DUMP_APP \
+	-I${UTILDIR} \
+	-D_FreeBSD
 
 .include <bsd.prog.mk>

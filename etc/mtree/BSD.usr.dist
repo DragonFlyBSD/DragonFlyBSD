@@ -133,6 +133,8 @@
         examples
             IPv6
             ..
+            acpica
+            ..
             atm
             ..
             cvs
