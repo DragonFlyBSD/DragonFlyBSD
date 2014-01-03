@@ -303,6 +303,7 @@ struct netmap_adapter {
 	void *tailroom;		       /* space below the rings array */
 				       /* (used for leases) */
 
+
 	NM_SELINFO_T tx_si, rx_si;	/* global wait queues */
 
 	/* copy of if_qflush and if_transmit pointers, to intercept

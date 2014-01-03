@@ -23,21 +23,21 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/cdefs.h> /* prerequisite */
+__FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 241723 2012-10-19 09:41:45Z glebius $");
 
 #include <sys/types.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/socket.h> /* sockaddrs */
-#include <sys/sysctl.h>
-#include <sys/bus.h>	/* bus_dmamap_* */
-
 #include <vm/vm.h>	/* vtophys */
 #include <vm/pmap.h>	/* vtophys */
-
+#include <sys/socket.h> /* sockaddrs */
+#include <sys/sysctl.h>
 #include <net/if.h>
 #include <net/if_var.h>
-#include <net/netmap.h>
+#include <sys/bus.h>	/* bus_dmamap_* */
 
+#include <net/netmap.h>
 #include <net/netmap/netmap_kern.h>
 #include <net/netmap/netmap_mem2.h>
 

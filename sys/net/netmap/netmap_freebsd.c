@@ -29,6 +29,7 @@
 #include <sys/param.h>  /* defines used in kernel.h */
 #include <sys/kernel.h> /* types used in module initialization */
 #include <sys/conf.h>	/* DEV_MODULE */
+
 #include <sys/devfs.h>
 
 #include <vm/vm.h>      /* vtophys */

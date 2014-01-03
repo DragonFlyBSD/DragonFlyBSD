@@ -61,6 +61,9 @@
  */
 
 
+#include <sys/cdefs.h> /* prerequisite */
+__FBSDID("$FreeBSD: head/sys/dev/netmap/netmap.c 257666 2013-11-05 01:06:22Z luigi $");
+
 #include <sys/types.h>
 #include <sys/errno.h>
 #include <sys/malloc.h>
