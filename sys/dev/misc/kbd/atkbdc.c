@@ -202,7 +202,6 @@ atkbdc_setup(atkbdc_softc_t *sc, bus_space_tag_t tag, bus_space_handle_t h0,
 {
 	if (sc->ioh0 == 0) {	/* XXX */
 	    sc->command_byte = -1;
-	    sc->command_mask = 0;
 	    sc->lock = FALSE;
 	    sc->kbd.head = sc->kbd.tail = 0;
 	    sc->aux.head = sc->aux.tail = 0;
@@ -1043,19 +1042,6 @@ test_aux_port(KBDC p)
 }
 
 int
-kbdc_get_device_mask(KBDC p)
-{
-    return kbdcp(p)->command_mask;
-}
-
-void
-kbdc_set_device_mask(KBDC p, int mask)
-{
-    kbdcp(p)->command_mask = 
-	mask & (KBD_KBD_CONTROL_BITS | KBD_AUX_CONTROL_BITS);
-}
-
-int
 get_controller_command_byte(KBDC p)
 {
     if (kbdcp(p)->command_byte != -1)
@@ -1074,7 +1060,7 @@ set_controller_command_byte(KBDC p, int mask, int command)
 	return FALSE;
 
     command = (kbdcp(p)->command_byte & ~mask) | (command & mask);
-#if 1
+#if 0
     if (mask & KBD_DISABLE_KBD_PORT) {
 	    if (command & KBD_DISABLE_KBD_PORT) {
 		if (!write_controller_command(p, KBDC_DISABLE_KBD_PORT))

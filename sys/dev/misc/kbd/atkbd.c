@@ -1054,8 +1054,8 @@ setup_kbd_port(KBDC kbdc, int port, int intr)
 {
 	if (!set_controller_command_byte(kbdc,
 		KBD_KBD_CONTROL_BITS,
-		((port) ? KBD_ENABLE_KBD_PORT : KBD_DISABLE_KBD_PORT)
-		    | ((intr) ? KBD_ENABLE_KBD_INT : KBD_DISABLE_KBD_INT)))
+		((port) ? KBD_ENABLE_KBD_PORT : KBD_DISABLE_KBD_PORT) |
+		((intr) ? KBD_ENABLE_KBD_INT : KBD_DISABLE_KBD_INT)))
 		return 1;
 	return 0;
 }
@@ -1098,25 +1098,26 @@ probe_keyboard(KBDC kbdc, int flags)
 	 */
 	int err;
 	int c;
-	int m;
 
 	if (!kbdc_lock(kbdc, TRUE)) {
 		/* driver error? */
 		return ENXIO;
 	}
 
-	/* temporarily block data transmission from the keyboard */
+	/*
+	 * XXX block data transmission from the keyboard.  This can cause
+	 * the keyboard to stop sending keystrokes even when re-enabled
+	 * under certain circumstances if not followed by a full reset.
+	 */
 	write_controller_command(kbdc, KBDC_DISABLE_KBD_PORT);
 
 	/* flush any noise in the buffer */
 	empty_both_buffers(kbdc, 100);
 
 	/* save the current keyboard controller command byte */
-	m = kbdc_get_device_mask(kbdc) & ~KBD_KBD_CONTROL_BITS;
 	c = get_controller_command_byte(kbdc);
 	if (c == -1) {
 		/* CONTROLLER ERROR */
-		kbdc_set_device_mask(kbdc, m);
 		kbdc_lock(kbdc, FALSE);
 		return ENXIO;
 	}
@@ -1140,15 +1141,11 @@ probe_keyboard(KBDC kbdc, int flags)
 	 * to the system later.  It is NOT recommended to hot-plug
 	 * the AT keyboard, but many people do so...
 	 */
-	kbdc_set_device_mask(kbdc, m | KBD_KBD_CONTROL_BITS);
 	setup_kbd_port(kbdc, TRUE, TRUE);
 #if 0
-	if (err == 0) {
-		kbdc_set_device_mask(kbdc, m | KBD_KBD_CONTROL_BITS);
-	} else {
+	if (err) {
 		/* try to restore the command byte as before */
-		set_controller_command_byte(kbdc, 0xff, c);
-		kbdc_set_device_mask(kbdc, m);
+		set_controller_command_byte(kbdc, KBD_KBD_CONTROL_BITS, c);
 	}
 #endif
 
@@ -1171,7 +1168,11 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 		return EIO;
 	}
 
-	/* temporarily block data transmission from the keyboard */
+	/*
+	 * XXX block data transmission from the keyboard.  This can cause
+	 * the keyboard to stop sending keystrokes even when re-enabled
+	 * under certain circumstances if not followed by a full reset.
+	 */
 	write_controller_command(kbdc, KBDC_DISABLE_KBD_PORT);
 
 #if 0
@@ -1234,7 +1235,7 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 		 * We could disable the keyboard port and interrupt... but,
 		 * the keyboard may still exist (see above).
 		 */
-		set_controller_command_byte(kbdc, 0xff, c);
+		set_controller_command_byte(kbdc, KBD_KBD_CONTROL_BITS, c);
 		kbdc_lock(kbdc, FALSE);
 		if (bootverbose)
 			kprintf("atkbd: failed to reset the keyboard.\n");
@@ -1304,7 +1305,8 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 			 * The XT kbd isn't usable unless the proper scan
 			 * code set is selected. 
 			 */
-			set_controller_command_byte(kbdc, 0xff, c);
+			set_controller_command_byte(kbdc,
+						    KBD_KBD_CONTROL_BITS, c);
 			kbdc_lock(kbdc, FALSE);
 			kprintf("atkbd: unable to set the XT keyboard mode.\n");
 			return EIO;
@@ -1381,7 +1383,10 @@ init_keyboard(KBDC kbdc, int *type, int flags)
 		 * This is serious; we are left with the disabled
 		 * keyboard intr. 
 		 */
-		set_controller_command_byte(kbdc, 0xff, c);
+		set_controller_command_byte(kbdc,
+				KBD_KBD_CONTROL_BITS | KBD_TRANSLATION |
+				KBD_OVERRIDE_KBD_LOCK | mux_mask,
+				c);
 		kbdc_lock(kbdc, FALSE);
 		kprintf("atkbd: unable to enable the keyboard port and intr.\n");
 		return EIO;
@@ -1448,13 +1453,18 @@ write_kbd(KBDC kbdc, int command, int data)
 
     /* disable the keyboard and mouse interrupt */
     crit_enter();
+
 #if 0
+    /*
+     * XXX NOTE: We can't just disable the KBD port any more, even
+     * 	         temporarily, without blowing up some BIOS emulations
+     *		 if not followed by a full reset.
+     */
     c = get_controller_command_byte(kbdc);
-    if ((c == -1) 
-	|| !set_controller_command_byte(kbdc, 
-            kbdc_get_device_mask(kbdc),
-            KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT
-                | KBD_DISABLE_AUX_PORT | KBD_DISABLE_AUX_INT)) {
+    if ((c == -1) ||
+	!set_controller_command_byte(kbdc,
+		KBD_KBD_CONTROL_BITS,
+		KBD_DISABLE_KBD_PORT | KBD_DISABLE_KBD_INT)) {
 	/* CONTROLLER ERROR */
         kbdc_lock(kbdc, FALSE);
 	crit_exit();
@@ -1475,9 +1485,7 @@ write_kbd(KBDC kbdc, int command, int data)
 
 #if 0
     /* restore the interrupts */
-    if (!set_controller_command_byte(kbdc,
-            kbdc_get_device_mask(kbdc),
-	    c & (KBD_KBD_CONTROL_BITS | KBD_AUX_CONTROL_BITS))) { 
+    if (!set_controller_command_byte(kbdc, KBD_KBD_CONTROL_BITS, c)) {
 	/* CONTROLLER ERROR */
     }
 #else
