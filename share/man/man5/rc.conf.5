@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\"
-.Dd February 18, 2013
+.Dd January 4, 2014
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -205,6 +205,22 @@ a sensors monitoring and logging daemon.
 Empty by default.
 Additional flags passed to the
 .Xr sensorsd 8
+program.
+.It Va sysvipcd_enable
+.Pq Vt bool
+Set to
+.Dq Li NO
+by default.
+Setting this to
+.Dq Li YES
+enables
+.Xr sysvipcd 8 ,
+a sensors monitoring and logging daemon.
+.It Va sysvipcd_flags
+.Pq Vt str
+Empty by default.
+Additional flags passed to the
+.Xr sysvipcd 8
 program.
 .It Va hotplugd_enable
 .Pq Vt bool
@@ -2758,6 +2774,7 @@ if it is not set.
 .Xr savecore 8 ,
 .Xr sdpd 8 ,
 .Xr sensorsd 8 ,
+.Xr sysvipcd 8 ,
 .Xr sshd 8 ,
 .Xr swapon 8 ,
 .Xr sysctl 8 ,
