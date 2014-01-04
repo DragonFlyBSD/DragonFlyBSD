@@ -46,6 +46,7 @@
 #include <sys/priv.h>
 #include <sys/sysproto.h>
 #include <sys/lock.h>
+#include <sys/sbuf.h>
 
 #include <sys/mplock2.h>
 
@@ -1333,4 +1334,29 @@ sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high)
 		return (EINVAL);
 	*(int *)arg1 = value;
 	return (0);
+}
+
+/*
+ * Drain into a sysctl struct.  The user buffer should be wired if a page
+ * fault would cause issue.
+ */
+static int
+sbuf_sysctl_drain(void *arg, const char *data, int len)
+{
+	struct sysctl_req *req = arg;
+	int error;
+
+	error = SYSCTL_OUT(req, data, len);
+	KASSERT(error >= 0, ("Got unexpected negative value %d", error));
+	return (error == 0 ? len : -error);
+}
+
+struct sbuf *
+sbuf_new_for_sysctl(struct sbuf *s, char *buf, int length,
+    struct sysctl_req *req)
+{
+
+	s = sbuf_new(s, buf, length, SBUF_FIXEDLEN);
+	sbuf_set_drain(s, sbuf_sysctl_drain, req);
+	return (s);
 }

@@ -653,6 +653,10 @@ int	sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
 
 int	sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high);
 
+struct sbuf;
+struct sbuf *sbuf_new_for_sysctl(struct sbuf *, char *, int,
+	    struct sysctl_req *);
+
 #endif	/* _KERNEL */
 
 #if !defined(_KERNEL) || defined(_KERNEL_VIRTUAL)
