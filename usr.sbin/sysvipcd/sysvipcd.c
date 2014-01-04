@@ -337,7 +337,7 @@ main(int argc, char *argv[])
 	sysvd_debug = 0;
 	sysvd_daemon = 1;
 
-	while ((c = getopt(argc,argv,"df:p")) !=-1) {
+	while ((c = getopt(argc,argv,"dfp:")) !=-1) {
 		switch(c) {
 		case 'd':
 			sysvd_debug = 1;
