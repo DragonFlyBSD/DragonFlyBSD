@@ -41,6 +41,7 @@
 #include <sys/signalvar.h>
 #include <sys/spinlock.h>
 #include <sys/random.h>
+#include <sys/vnode.h>
 #include <vm/vm.h>
 #include <sys/lock.h>
 #include <vm/pmap.h>
@@ -1598,6 +1599,44 @@ done:
 	return (error);
 }
 
+/*
+ * This sysctl allows a process to retrieve the path of the executable for
+ * itself or another process.
+ */
+static int
+sysctl_kern_proc_pathname(SYSCTL_HANDLER_ARGS)
+{
+	pid_t *pidp = (pid_t *)arg1;
+	unsigned int arglen = arg2;
+	struct proc *p;
+	struct vnode *vp;
+	char *retbuf, *freebuf;
+	int error;
+
+	if (arglen != 1)
+		return (EINVAL);
+	if (*pidp == -1) {	/* -1 means this process */
+		p = curproc;
+	} else {
+		p = pfind(*pidp);
+		if (p == NULL)
+			return (ESRCH);
+	}
+
+	vp = p->p_textvp;
+	if (vp == NULL) {
+		return (0);
+	}
+	vref(vp);
+	error = vn_fullpath(p, vp, &retbuf, &freebuf, 0);
+	vrele(vp);
+	if (error)
+		return (error);
+	error = SYSCTL_OUT(req, retbuf, strlen(retbuf) + 1);
+	kfree(freebuf, M_TEMP);
+	return (error);
+}
+
 SYSCTL_NODE(_kern, KERN_PROC, proc, CTLFLAG_RD,  0, "Process table");
 
 SYSCTL_PROC(_kern_proc, KERN_PROC_ALL, all, CTLFLAG_RD|CTLTYPE_STRUCT,
@@ -1641,3 +1680,6 @@ SYSCTL_NODE(_kern_proc, KERN_PROC_ARGS, args, CTLFLAG_RW | CTLFLAG_ANYBODY,
 
 SYSCTL_NODE(_kern_proc, KERN_PROC_CWD, cwd, CTLFLAG_RD | CTLFLAG_ANYBODY,
 	sysctl_kern_proc_cwd, "Process argument list");
+
+static SYSCTL_NODE(_kern_proc, KERN_PROC_PATHNAME, pathname, CTLFLAG_RD,
+	sysctl_kern_proc_pathname, "Process executable path");

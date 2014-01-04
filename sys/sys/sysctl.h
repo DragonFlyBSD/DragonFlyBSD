@@ -35,7 +35,6 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: head/sys/sys/sysctl.h 204170 2010-02-21 13:57:02Z ed $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.29 2008/09/30 12:20:29 hasso Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -433,6 +432,8 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	KERN_PROC_RUID		6	/* by real uid */
 #define	KERN_PROC_ARGS		7	/* get/set arguments/proctitle */
 #define	KERN_PROC_CWD		8	/* get cwd */
+#define KERN_PROC_PATHNAME      9	/* path to executable */
+
 
 #define KERN_PROC_FLAGMASK	0x10
 #define KERN_PROC_FLAG_LWP	0x10
