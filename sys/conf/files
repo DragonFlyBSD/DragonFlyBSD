@@ -441,8 +441,6 @@ dev/raid/hptmv/ioctl.c		optional hptmv
 dev/raid/hptrr/hptrr_os_bsd.c	optional hptrr
 dev/raid/hptrr/hptrr_osm_bsd.c	optional hptrr
 dev/raid/hptrr/hptrr_config.c	optional hptrr
-dev/powermng/ichsmb/ichsmb.c	optional ichsmb
-dev/powermng/ichsmb/ichsmb_pci.c	optional ichsmb pci
 dev/powermng/coretemp/coretemp.c	optional coretemp
 dev/powermng/kate/kate.c	optional kate pci
 dev/powermng/km/km.c		optional km pci
@@ -798,6 +796,9 @@ bus/smbus/smbus_if.m		optional smbus
 bus/smbus/smbconf.c		optional smbus
 bus/smbus/smbus.c		optional smbus
 bus/smbus/smb.c			optional smb
+bus/smbus/amdsmb/amdsmb.c	optional amdsmb pci
+bus/smbus/ichsmb/ichsmb.c	optional ichsmb
+bus/smbus/ichsmb/ichsmb_pci.c	optional ichsmb pci
 dev/serial/si/si.c		optional si
 dev/serial/si/si2_z280.c	optional si
 dev/serial/si/si3_t225.c	optional si
@@ -1679,7 +1680,6 @@ dev/netif/wb/if_wb.c		optional wb
 dev/netif/xl/if_xl.c		optional xl
 dev/powermng/alpm/alpm.c	optional alpm pci
 dev/powermng/amdpm/amdpm.c	optional amdpm pci
-dev/powermng/amdsmb/amdsmb.c	optional amdsmb pci
 dev/powermng/intpm/intpm.c	optional intpm pci
 dev/powermng/viapm/viapm.c	optional viapm pci
 dev/disk/ncr/ncr.c		optional ncr
