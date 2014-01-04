@@ -325,7 +325,8 @@ daemon_func(void)
 void
 usage(void)
 {
-	return;
+	fprintf(stderr, "sysvipcd [-df] [-p pidfile]\n");
+	exit(EX_USAGE);
 }
 
 int
@@ -341,6 +342,7 @@ main(int argc, char *argv[])
 		switch(c) {
 		case 'd':
 			sysvd_debug = 1;
+			sysvd_daemon = 0;
 			break;
 		case 'f':
 			sysvd_daemon = 0;
