@@ -321,17 +321,19 @@ ifsq_ifstart_dispatch(netmsg_t msg)
 	struct lwkt_msg *lmsg = &msg->base.lmsg;
 	struct ifaltq_subque *ifsq = lmsg->u.ms_resultp;
 	struct ifnet *ifp = ifsq_get_ifp(ifsq);
+	struct globaldata *gd = mycpu;
 	int running = 0, need_sched;
 
-	crit_enter();
-	lwkt_replymsg(lmsg, 0);	/* reply ASAP */
-	crit_exit();
+	crit_enter_gd(gd);
 
-	if (mycpuid != ifsq_get_cpuid(ifsq)) {
+	lwkt_replymsg(lmsg, 0);	/* reply ASAP */
+
+	if (gd->gd_cpuid != ifsq_get_cpuid(ifsq)) {
 		/*
 		 * We need to chase the subqueue owner CPU change.
 		 */
 		ifsq_ifstart_schedule(ifsq, 1);
+		crit_exit_gd(gd);
 		return;
 	}
 
@@ -352,6 +354,8 @@ ifsq_ifstart_dispatch(netmsg_t msg)
 		 */
 		ifsq_ifstart_schedule(ifsq, 0);
 	}
+
+	crit_exit_gd(gd);
 }
 
 /* Device driver ifnet.if_start helper function */
@@ -2744,15 +2748,19 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	int error, start = 0, len, mcast = 0, avoid_start = 0;
 	struct ifsubq_stage_head *head = NULL;
 	struct ifsubq_stage *stage = NULL;
+	struct globaldata *gd = mycpu;
+	struct thread *td = gd->gd_curthread;
 
-	ifsq = ifq_map_subq(ifq, mycpuid);
+	crit_enter_quick(td);
+
+	ifsq = ifq_map_subq(ifq, gd->gd_cpuid);
 	ASSERT_ALTQ_SQ_NOT_SERIALIZED_HW(ifsq);
 
 	len = m->m_pkthdr.len;
 	if (m->m_flags & M_MCAST)
 		mcast = 1;
 
-	if (curthread->td_type == TD_TYPE_NETISR) {
+	if (td->td_type == TD_TYPE_NETISR) {
 		head = &ifsubq_stage_heads[mycpuid];
 		stage = ifsq_get_stage(ifsq, mycpuid);
 
@@ -2768,6 +2776,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	if (error) {
 		if (!ifsq_data_ready(ifsq)) {
 			ALTQ_SQ_UNLOCK(ifsq);
+			crit_exit_quick(td);
 			return error;
 		}
 		avoid_start = 0;
@@ -2783,6 +2792,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 			IFNET_STAT_INC(ifp, obytes, len);
 			if (mcast)
 				IFNET_STAT_INC(ifp, omcasts, 1);
+			crit_exit_quick(td);
 			return error;
 		}
 
@@ -2807,6 +2817,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 				ifsq_stage_remove(head, stage);
 				ifsq_ifstart_schedule(ifsq, 1);
 			}
+			crit_exit_quick(td);
 			return error;
 		}
 
@@ -2818,10 +2829,14 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 		}
 	}
 
-	if (!start)
+	if (!start) {
+		crit_exit_quick(td);
 		return error;
+	}
 
 	ifsq_ifstart_try(ifsq, 0);
+
+	crit_exit_quick(td);
 	return error;
 }
 
@@ -3032,6 +3047,8 @@ if_start_rollup(void)
 	struct ifsubq_stage_head *head = &ifsubq_stage_heads[mycpuid];
 	struct ifsubq_stage *stage;
 
+	crit_enter();
+
 	while ((stage = TAILQ_FIRST(&head->stg_head)) != NULL) {
 		struct ifaltq_subque *ifsq = stage->stg_subq;
 		int is_sched = 0;
@@ -3062,6 +3079,8 @@ if_start_rollup(void)
 		KKASSERT((stage->stg_flags &
 		    (IFSQ_STAGE_FLAG_QUED | IFSQ_STAGE_FLAG_SCHED)) == 0);
 	}
+
+	crit_exit();
 }
 
 static void
