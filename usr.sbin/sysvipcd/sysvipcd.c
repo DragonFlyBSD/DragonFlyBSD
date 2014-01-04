@@ -35,6 +35,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <sysexits.h>
+#include <libutil.h>
 
 #include "sysvipc_hash.h"
 #include "sysvipc_sockets.h"
@@ -54,7 +56,6 @@ struct hashtable *clientshash = NULL;
 
 int sysvd_debug;
 int sysvd_daemon;
-const char *pidfile = "/var/run/sysvpicd.pid";
 
 static int
 remove_sysv_dir(void) 
@@ -334,6 +335,7 @@ main(int argc, char *argv[])
 {
 	int c;
 	int error;
+	char *pidfilename = NULL;
 
 	sysvd_debug = 0;
 	sysvd_daemon = 1;
@@ -348,7 +350,7 @@ main(int argc, char *argv[])
 			sysvd_daemon = 0;
 			break;
 		case 'p':
-			pidfile = optarg;
+			pidfilename = optarg;
 			break;
 		default:
 			usage();
@@ -371,6 +373,7 @@ main(int argc, char *argv[])
 		
 	if (sysvd_daemon == 1) {
 		daemon(1,0);
+		pidfile(pidfilename);
 	}
 
 	daemon_func();

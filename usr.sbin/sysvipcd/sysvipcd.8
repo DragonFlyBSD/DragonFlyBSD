@@ -35,6 +35,10 @@
 .Sh NAME
 .Nm sysvipcd
 .Nd SysV IPC daemon
+.Sh SYNOPSIS
+.Nm
+.Op Fl df
+.Op Fl p Ar pidfile
 .Sh DESCRIPTION
 The
 .Nm
@@ -54,7 +58,11 @@ implementation automatically connect to the daemon too.
 The following options are available:
 .Bl -tag -width indent
 .It Fl d
-run in debugging mode (prints debug messages)
+run in debugging mode (prints debug messages and implies
+.Fl f )
+.It Fl f
+do not go to the background
+.It Fl p Ar pidfile
 .El
 .Sh ENVIRONMENT
 If the
