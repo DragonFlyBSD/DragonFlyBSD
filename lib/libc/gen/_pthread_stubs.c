@@ -43,8 +43,7 @@
     __weak_reference(f, _ ## n);	\
     __weak_reference(f, n)
 
-
-WR(stub_zero, pthread_atfork);
+WR(__atfork, pthread_atfork);
 WR(stub_zero, pthread_attr_destroy);
 WR(stub_zero, pthread_attr_get_np);
 WR(stub_zero, pthread_attr_getdetachstate);
@@ -238,4 +237,21 @@ void
 _pthread_init(void)
 {
 	_pthread_init_early();
+}
+
+extern void (*cb_prepare)(void);
+extern void (*cb_parent)(void);
+extern void (*cb_child)(void);
+extern int __isthreaded;
+
+int
+__atfork(void (*prepare)(void), void (*parent)(void),
+    void (*child)(void))
+{
+	if (__isthreaded)
+		return (-1);
+	cb_prepare = prepare;
+	cb_parent = parent;
+	cb_child = child;
+	return (0);
 }

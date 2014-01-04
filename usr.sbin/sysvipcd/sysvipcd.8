@@ -1,0 +1,89 @@
+.\"
+.\" Copyright (c) 2013
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd September 26, 2013
+.Dt SYSVIPCD 8
+.Os
+.Sh NAME
+.Nm sysvipcd
+.Nd SysV IPC daemon
+.Sh DESCRIPTION
+The
+.Nm
+daemon handles the resource management for the userspace implementation of
+the XSI Interprocess Communication functions.
+It is responsible for mapping shared memory, semaphores and message queues
+into the clients' address spaces and it has to be running for the
+userspace implementation to work.
+.Pp
+Clients connect to it through a
+.Ux socket .
+The daemon also monitors the
+.Xr fork 2
+system call and any children of a process using the userspace
+implementation automatically connect to the daemon too.
+.Pp
+The following options are available:
+.Bl -tag -width indent
+.It Fl d
+run in debugging mode (prints debug messages)
+.El
+.Sh ENVIRONMENT
+If the
+.Ev USR_SYSVIPC
+variable is set in a process' environment, the process and its children
+will use the userspace implementation of the XSI Interprocess Communication
+functions.
+.Sh FILES
+.Bl -tag -width ".Pa /var/run/sysvipc/sysvipc_socket" -compact
+.It Pa /var/run/sysvipc/sysvipc_socket
+name of the
+.Ux
+domain stream socket for client communication
+.El
+.Sh SEE ALSO
+.Xr msgctl 2 ,
+.Xr msgget 2 ,
+.Xr msgrcv 2 ,
+.Xr msgsnd 2 ,
+.Xr semctl 2 ,
+.Xr semget 2 ,
+.Xr semop 2 ,
+.Xr shmat 2 ,
+.Xr shmctl 2 ,
+.Xr shmget 2
+.Sh HISTORY
+The
+.Nm
+daemon was added in
+.Dx 3.5
+.Sh AUTHORS
+.An Larisa Grigore

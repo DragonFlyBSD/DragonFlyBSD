@@ -20,7 +20,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	dntpd othermta pf pflog powerd ppp ppp-user pppoed pwcheck \
 	quota random rarpd rcconf resident rndcontrol root route6d routed \
 	routing rpcbind rtadvd rtsold rwho sysdb savecore sdpd securelevel \
-	sendmail sensorsd serial sppp sshd statd swap1 syscons sysctl syslogd \
+	sendmail sensorsd serial sppp sshd statd swap1 syscons sysctl syslogd sysvipcd \
 	timed ttys udevd udevd_early usbd \
 	varsym vfs_quota vinum virecover vkernel vknetd \
 	watchdogd wpa_supplicant \

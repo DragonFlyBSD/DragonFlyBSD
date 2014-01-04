@@ -116,6 +116,7 @@ SUBDIR= 802_11 \
 	slstat \
 	spray \
 	syslogd \
+	sysvipcd \
 	tcpdchk \
 	tcpdmatch \
 	tcpdump \

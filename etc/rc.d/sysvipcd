@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# $DragonFly: src/etc/rc.d/sysvipcd,v 1.0 2013/11/15 21:03:32 markusp Exp $
+#
+
+# PROVIDE: sysvipcd
+# REQUIRE: DAEMON
+# BEFORE: LOGIN
+
+. /etc/rc.subr
+
+name="sysvipcd"
+rcvar=`set_rcvar`
+command="/usr/sbin/${name}"
+
+load_rc_config $name
+run_rc_command "$1"

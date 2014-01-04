@@ -33,12 +33,18 @@
 
 #define MSG_NOERROR	010000		/* don't complain about too long msgs */
 
+/*!!! In the kernel implementation, both msg_first and msg_last
+ * have 'struct msg*' type.
+ * In the userland implementation, a pointer to a msg is useless
+ * because each message queue is mapped at different addresses in
+ * the process space address so my choice was to use indexes.
+ */
 struct msg;
 
 struct msqid_ds {
 	struct	ipc_perm msg_perm;	/* msg queue permission bits */
-	struct	msg *msg_first;	/* first message in the queue */
-	struct	msg *msg_last;	/* last message in the queue */
+	struct	msg *msg_first;	/* first message in the queue. */
+	struct	msg *msg_last;	/* last message in the queue. */
 	u_long	msg_cbytes;	/* number of bytes in use on the queue */
 	u_long	msg_qnum;	/* number of msgs in the queue */
 	u_long	msg_qbytes;	/* max # of bytes on the queue */

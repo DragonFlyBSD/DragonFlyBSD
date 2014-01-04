@@ -17,6 +17,8 @@ CMAPS+=	${.CURDIR}/sys/Symbol.map
 #
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/sys/Makefile.inc"
 
+SRCS+= fork.c
+
 # Sources common to both syscall interfaces:
 SRCS+=	ftruncate.c lseek.c mmap.c truncate.c
 SRCS+=	pread.c pwrite.c preadv.c pwritev.c
@@ -76,7 +78,9 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	madvise.2 mincore.2 minherit.2 mkdir.2 mkfifo.2 mknod.2 mlock.2 \
 	mlockall.2 mmap.2 \
 	modfind.2 modnext.2 modstat.2 \
-	mount.2 mountctl.2 mprotect.2 msync.2 munmap.2 nanosleep.2 \
+	mount.2 mountctl.2 mprotect.2 \
+	msgctl.2 msgget.2 msgrcv.2 msgsnd.3 \
+	msync.2 munmap.2 nanosleep.2 \
 	nfssvc.2 ntp_adjtime.2 ntp_gettime.2 \
 	open.2 pathconf.2 pipe.2 poll.2 profil.2 pselect.2 ptrace.2 quotactl.2 \
 	read.2 readlink.2 reboot.2 recv.2 rename.2 revoke.2 rfork.2 rmdir.2 \
@@ -140,6 +144,10 @@ MLINKS+=mlock.2 munlock.2
 MLINKS+=mlockall.2 munlockall.2
 MLINKS+=modnext.2 modfnext.2
 MLINKS+=mount.2 unmount.2
+MLINKS+=msgctl.2 msgctl.3
+MLINKS+=msgget.2 msgget.3
+MLINKS+=msgrcv.2 msgrcv.3
+MLINKS+=msgsnd.2 msgsnd.3
 MLINKS+=open.2 openat.2
 MLINKS+=pathconf.2 fpathconf.2 pathconf.2 lpathconf.2
 MLINKS+=read.2 pread.2 read.2 preadv.2 read.2 readv.2
@@ -157,11 +165,17 @@ MLINKS+=select.2 FD_CLR.2 \
 	select.2 FD_ISSET.2 \
 	select.2 FD_SET.2 \
 	select.2 FD_ZERO.2
+MLINKS+=semctl.2 semctl.3
+MLINKS+=semget.2 semget.3
+MLINKS+=semop.2 semop.3
 MLINKS+=send.2 sendmsg.2 send.2 sendto.2
 MLINKS+=setpgid.2 setpgrp.2
 MLINKS+=setresuid.2 getresgid.2 setresuid.2 getresuid.2 setresuid.2 setresgid.2
 MLINKS+=setuid.2 setegid.2 setuid.2 seteuid.2 setuid.2 setgid.2
-MLINKS+=shmat.2 shmdt.2
+MLINKS+=shmat.2 shmat.3 \
+	shmat.2 shmdt.2
+MLINKS+=shmctl.2 shmctl.3
+MLINKS+=shmget.2 shmget.3
 MLINKS+=stat.2 fstat.2 stat.2 fstatat.2 stat.2 lstat.2
 MLINKS+=statfs.2 fstatfs.2
 MLINKS+=statvfs.2 fstatvfs.2

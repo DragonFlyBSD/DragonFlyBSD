@@ -19,6 +19,7 @@ WARNS=2
 .include "${.CURDIR}/../libc/compat-43/Makefile.inc"
 .include "${.CURDIR}/../libc/gdtoa/Makefile.inc"
 .include "${.CURDIR}/../libc/gen/Makefile.inc"
+.include "${.CURDIR}/../libc/sysvipc/Makefile.inc"
 .include "${.CURDIR}/../libc/gmon/Makefile.inc"
 .include "${.CURDIR}/../libc/iconv/Makefile.inc"
 .include "${.CURDIR}/../libc/locale/Makefile.inc"

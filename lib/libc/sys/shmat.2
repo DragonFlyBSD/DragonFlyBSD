@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/sys/shmat.2,v 1.8.2.6 2001/12/14 18:34:01 ru Exp $
 .\"
-.Dd October 29, 2011
+.Dd September 28, 2013
 .Dt SHMAT 2
 .Os
 .Sh NAME
@@ -86,6 +86,17 @@ is returned and
 is set to indicate the error.
 .Pp
 .Rv -std shmdt
+.Sh ENVIRONMENT
+The XSI Interprocess Communication family of functions is also available
+as an implementation in userspace.
+To use it, the
+.Xr sysvipcd 8
+daemon has to be running.
+.Pp
+If the
+.Ev USR_SYSVIPC
+variable is set in a process' environment, the process and its children
+will use the userspace implementation.
 .Sh ERRORS
 .Fn Shmat
 will fail if:
@@ -108,3 +119,11 @@ does not point to a shared memory segment.
 .Sh "SEE ALSO"
 .Xr shmctl 2 ,
 .Xr shmget 2
+.Sh AUTHORS
+.An -nosplit
+The
+.Dx
+specific userspace implementation (see
+.Sx ENVIRONMENT )
+was written by
+.An Larisa Grigore .

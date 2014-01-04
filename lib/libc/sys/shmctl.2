@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/sys/shmctl.2,v 1.9.2.4 2001/12/14 18:34:01 ru Exp $
 .\"
-.Dd October 29, 2011
+.Dd September 28, 2013
 .Dt SHMCTL 2
 .Os
 .Sh NAME
@@ -112,6 +112,17 @@ struct shmid_ds {
 .Ed
 .Sh RETURN VALUES
 .Rv -std shmctl
+.Sh ENVIRONMENT
+The XSI Interprocess Communication family of functions is also available
+as an implementation in userspace.
+To use it, the
+.Xr sysvipcd 8
+daemon has to be running.
+.Pp
+If the
+.Ev USR_SYSVIPC
+variable is set in a process' environment, the process and its children
+will use the userspace implementation.
 .Sh ERRORS
 .Fn Shmctl
 will fail if:
@@ -136,3 +147,11 @@ shared memory segment.
 .Xr shmdt 2 ,
 .Xr shmget 2 ,
 .Xr ftok 3
+.Sh AUTHORS
+.An -nosplit
+The
+.Dx
+specific userspace implementation (see
+.Sx ENVIRONMENT )
+was written by
+.An Larisa Grigore .

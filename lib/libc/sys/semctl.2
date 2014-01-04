@@ -24,9 +24,8 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/semctl.2,v 1.9.2.6 2002/03/11 08:37:47 maxim Exp $
-.\" $DragonFly: src/lib/libc/sys/semctl.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd September 12, 1995
+.Dd September 28, 2013
 .Dt SEMCTL 2
 .Os
 .Sh NAME
@@ -162,6 +161,17 @@ returns the corresponding value; otherwise, 0 is returned.
 On failure, -1 is returned, and
 .Va errno
 is set to indicate the error.
+.Sh ENVIRONMENT
+The XSI Interprocess Communication family of functions is also available
+as an implementation in userspace.
+To use it, the
+.Xr sysvipcd 8
+daemon has to be running.
+.Pp
+If the
+.Ev USR_SYSVIPC
+variable is set in a process' environment, the process and its children
+will use the userspace implementation.
 .Sh ERRORS
 .Fn Semctl
 will fail if:
@@ -182,3 +192,11 @@ semaphore set.
 .Sh SEE ALSO
 .Xr semget 2 ,
 .Xr semop 2
+.Sh AUTHORS
+.An -nosplit
+The
+.Dx
+specific userspace implementation (see
+.Sx ENVIRONMENT )
+was written by
+.An Larisa Grigore .

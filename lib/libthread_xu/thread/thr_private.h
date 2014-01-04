@@ -754,7 +754,6 @@ int	__sys_nanosleep(const struct timespec *, struct timespec *);
 #ifdef  _UNISTD_H_
 int     __sys_close(int);
 int     __sys_execve(const char *, char * const *, char * const *);
-int	__sys_fork(void);
 int	__sys_fsync(int);
 pid_t	__sys_getpid(void);
 int     __sys_select(int, fd_set *, fd_set *, fd_set *, struct timeval *);

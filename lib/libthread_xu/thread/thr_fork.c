@@ -58,6 +58,8 @@
  */
 
 #include "namespace.h"
+#include <sys/syscall.h>
+
 #include <machine/tls.h>
 
 #include <errno.h>
@@ -139,7 +141,7 @@ _fork(void)
 #endif
 
 	if (!_thr_is_inited())
-		return (__sys_fork());
+		return (__syscall(SYS_fork));
 
 	curthread = tls_get_curthread();
 
@@ -182,7 +184,7 @@ _fork(void)
 	_thr_signal_block(curthread);
 
 	/* Fork a new process: */
-	if ((ret = __sys_fork()) == 0) {
+	if ((ret = __syscall(SYS_fork)) == 0) {
 		/* Child process */
 		errsave = errno;
 		inprogress = 0;

@@ -24,9 +24,8 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/sys/semget.2,v 1.7.2.5 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/semget.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd September 12, 1995
+.Dd September 28, 2013
 .Dt SEMGET 2
 .Os
 .Sh NAME
@@ -107,6 +106,17 @@ returns the id of a semaphore set if successful; otherwise, -1
 is returned and
 .Va errno
 is set to indicate the error.
+.Sh ENVIRONMENT
+The XSI Interprocess Communication family of functions is also available
+as an implementation in userspace.
+To use it, the
+.Xr sysvipcd 8
+daemon has to be running.
+.Pp
+If the
+.Ev USR_SYSVIPC
+variable is set in a process' environment, the process and its children
+will use the userspace implementation.
 .Sh ERRORS
 .Fn Semget
 will fail if:

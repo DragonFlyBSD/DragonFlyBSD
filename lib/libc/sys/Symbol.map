@@ -864,4 +864,5 @@ DFprivate_1.0 {
     _wait4;
     _write;
     _writev;
+    __fork;
 };

@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/sys/shmget.2,v 1.8.2.6 2001/12/14 18:34:01 ru Exp $
 .\"
-.Dd October 29, 2011
+.Dd September 28, 2013
 .Dt SHMGET 2
 .Os
 .Sh NAME
@@ -110,6 +110,17 @@ returns the positive integer identifier of a shared memory segment.
 Otherwise, -1 is returned and
 .Va errno
 set to indicate the error.
+.Sh ENVIRONMENT
+The XSI Interprocess Communication family of functions is also available
+as an implementation in userspace.
+To use it, the
+.Xr sysvipcd 8
+daemon has to be running.
+.Pp
+If the
+.Ev USR_SYSVIPC
+variable is set in a process' environment, the process and its children
+will use the userspace implementation.
 .Sh ERRORS
 .Fn Shmget
 will fail if:
@@ -139,3 +150,11 @@ already exists.
 .Xr shmctl 2 ,
 .Xr shmdt 2 ,
 .Xr ftok 3
+.Sh AUTHORS
+.An -nosplit
+The
+.Dx
+specific userspace implementation (see
+.Sx ENVIRONMENT )
+was written by
+.An Larisa Grigore .

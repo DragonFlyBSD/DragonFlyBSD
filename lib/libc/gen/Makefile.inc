@@ -4,6 +4,8 @@
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
 
+CFLAGS+=-I${.CURDIR}/../libc/sysvipc
+
 CMAPS+=	${.CURDIR}/gen/Symbol.map
 
 SRCS+=  _once_stub.c _pthread_stubs.c _rand48.c _spinlock_stub.c \
@@ -21,13 +23,15 @@ SRCS+=  _once_stub.c _pthread_stubs.c _rand48.c _spinlock_stub.c \
 	getusershell.c getvfsbyname.c getvfsent.c glob.c \
 	initgroups.c isatty.c isinf.c isnan.c \
 	jrand48.c lcong48.c ldexp.c libc_dlopen.c \
-	lockf.c lrand48.c modf.c mrand48.c msgctl.c \
-	msgget.c msgrcv.c msgsnd.c nftw.c nice.c \
+	lockf.c lrand48.c modf.c mrand48.c sysvipc_msgctl.c \
+	sysvipc_msgget.c sysvipc_msgrcv.c sysvipc_msgsnd.c nftw.c nice.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
 	pause.c pmadvise.c popen.c posix_spawn.c posixshm.c \
 	psignal.c pw_scan.c pwcache.c \
 	raise.c readdir.c readpassphrase.c rewinddir.c \
-	scandir.c seed48.c seekdir.c semconfig.c semctl.c semget.c semop.c \
+	sysvipc.c sysvipc_shmget.c sysvipc_shmctl.c \
+	sysvipc_shmdt.c sysvipc_shmat.c\
+	scandir.c seed48.c seekdir.c semconfig.c sysvipc_semctl.c sysvipc_semget.c sysvipc_semop.c \
 	setdomainname.c sethostname.c setjmperr.c setmode.c setprogname.c \
 	setproctitle.c \
 	siginterrupt.c siglist.c signal.c \
@@ -64,7 +68,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	getttyent.3 getusershell.3 getvfsbyname.3 getvfsent.3 \
 	glob.3 initgroups.3 \
 	isgreater.3 \
-	ldexp.3 lockf.3 makecontext.3 modf.3 msgctl.3 msgget.3 msgrcv.3 msgsnd.3 \
+	ldexp.3 lockf.3 makecontext.3 modf.3 \
 	nice.3 nlist.3 pause.3 popen.3 posix_spawn.3 \
 	posix_spawn_file_actions_addopen.3 posix_spawn_file_actions_init.3 \
 	posix_spawnattr_getflags.3 posix_spawnattr_getpgroup.3 \
