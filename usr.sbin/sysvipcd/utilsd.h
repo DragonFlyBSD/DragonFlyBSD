@@ -81,7 +81,7 @@ struct shm_handle {
 };
 
 /* Print wrappers. */
-void sysvd_print_err(const char *fmt, ...);
-void sysvd_print(const char *fmt, ...);
+void sysvd_print_err(const char *fmt, ...) __printflike(1, 2);
+void sysvd_print(const char *fmt, ...) __printflike(1, 2);
 
 #endif
