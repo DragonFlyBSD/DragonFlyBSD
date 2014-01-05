@@ -57,6 +57,8 @@ SYSCTL_NODE(_hw, OID_AUTO, bus, CTLFLAG_RW, NULL, NULL);
 
 MALLOC_DEFINE(M_BUS, "bus", "Bus data structures");
 
+static struct lwkt_token devattach_token = LWKT_TOKEN_INITIALIZER(devattach_token);
+
 #ifdef BUS_DEBUG
 #define PDEBUG(a)	(kprintf("%s:%d: ", __func__, __LINE__), kprintf a, kprintf("\n"))
 #define DEVICENAME(d)	((d)? device_get_name(d): "no device")
@@ -1706,11 +1708,11 @@ device_attach_thread(void *arg)
 {
 	device_t dev = arg;
 
-	get_mplock();	/* XXX replace with devattach_token later */
+	lwkt_gettoken(&devattach_token);
 	(void)device_doattach(dev);
 	atomic_subtract_int(&numasyncthreads, 1);
 	wakeup(&numasyncthreads);
-	rel_mplock();	/* XXX replace with devattach_token later */
+	lwkt_reltoken(&devattach_token);
 }
 
 /*
