@@ -359,9 +359,7 @@ devctl_queue_data(char *data)
 	TAILQ_INSERT_TAIL(&devsoftc.devq, n1, dei_link);
 	wakeup(&devsoftc);
 	lockmgr(&devsoftc.lock, LK_RELEASE);
-	get_mplock();	/* XXX */
 	KNOTE(&devsoftc.kq.ki_note, 0);
-	rel_mplock();	/* XXX */
 	p = devsoftc.async_proc;
 	if (p != NULL)
 		ksignal(p, SIGIO);
