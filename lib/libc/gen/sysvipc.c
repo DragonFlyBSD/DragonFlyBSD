@@ -5,11 +5,11 @@
 
 static void sysvipc_init(void) __attribute__ ((constructor));
 
-char use_userland_impl = 0;
+char sysvipc_userland = 0;
 
 static void
 sysvipc_init(void)
 {
 	if (getenv("USR_SYSVIPC") != NULL)
-		use_userland_impl = 1;
+		sysvipc_userland = 1;
 }
