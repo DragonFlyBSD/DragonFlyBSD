@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2002 John Rochester
- * Copyright (c) 2013 Franco Fichtner <franco@lastsummer.de>
+ * Copyright (c) 2013-2014 Franco Fichtner <franco@lastsummer.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -192,28 +192,26 @@ free_page_info(struct page_info *info)
 static void
 new_page_alias(struct page_info *info, char *filename, struct dirent *dirent)
 {
-	int gzipped, basename_length;
+	int basename_length;
 	struct page_alias *alias;
 	char *suffix;
+	int gzipped;
 
 	basename_length = strlen(dirent->d_name);
 	suffix = &dirent->d_name[basename_length];
-
 	gzipped = basename_length >= 4 &&
 	    strcmp(&dirent->d_name[basename_length - 3], ".gz") == 0;
 	if (gzipped) {
 		suffix -= 3;
 		*suffix = '\0';
 	}
-
 	for (;;) {
 		if (--suffix == dirent->d_name || !isalnum(*suffix)) {
-			if (*suffix == '.') {
+			if (*suffix == '.')
 				break;
-			}
-			if (verbose) {
-				warnx("%s: invalid man page name", filename);
-			}
+			if (verbose)
+				warnx("%s: invalid man page name",
+				    filename);
 			return;
 		}
 	}
@@ -225,10 +223,14 @@ new_page_alias(struct page_info *info, char *filename, struct dirent *dirent)
 		err(1, "malloc");
 	}
 
-	alias->name = strdup(dirent->d_name);	/* XXX unsafe */
-	alias->filename = strdup(filename);	/* XXX unsafe */
-	alias->suffix = strdup(suffix);		/* XXX unsafe */
+	alias->name = strdup(dirent->d_name);
+	alias->filename = strdup(filename);
+	alias->suffix = strdup(suffix);
 	alias->gzipped = gzipped;
+
+	if (!alias->name || !alias->filename || !alias->suffix) {
+		err(1, "strdup");
+	}
 
 	RB_INSERT(page_alias_tree, &info->head, alias);
 }
@@ -730,11 +732,13 @@ enum { STATE_UNKNOWN, STATE_MANSTYLE, STATE_MDOCNAME, STATE_MDOCDESC };
 static void
 process_page(struct page_info *info)
 {
+	gzFile in;
+	char buffer[4096];
+	char *line;
+	StringList *names;
+	char *descr;
 	int state = STATE_UNKNOWN;
 	struct page_alias *alias;
-	char *line, *descr;
-	char buffer[4096];
-	gzFile in;
 
 	/*
 	 * Only read the page once for each inode.  It's
@@ -752,7 +756,7 @@ process_page(struct page_info *info)
 		exit_code = 1;
 		return;
 	}
-	while (gzgets(in, buffer, sizeof(buffer)) != NULL) {
+	while (gzgets(in, buffer, sizeof buffer) != NULL) {
 		line = buffer;
 		if (strncmp(line, ".\\\"", 3) == 0)	/* ignore comments */
 			continue;
@@ -834,6 +838,7 @@ process_page(struct page_info *info)
 		*descr = '\0';
 		descr += 3;
 	}
+	names = sl_init();
 	sbuf_clear(whatis_final);
 	RB_FOREACH(alias, page_alias_tree, &info->head) {
 		/*
@@ -843,7 +848,32 @@ process_page(struct page_info *info)
 		 * a real alias (via MLINKS) in this list.
 		 */
 		add_whatis_name(alias->name, alias->suffix);
+		sl_add(names, alias->name);
 	}
+	if (verbose) {
+		char *arg, *text = line;
+
+		/*
+		 * See if there are names in the manual that
+		 * are not in the alias list provided by the
+		 * MLINKS.  We may want to add those as well.
+		 */
+		for (;;) {
+			arg = text;
+			text = strchr(text, ',');
+			if (text != NULL)
+				*text++ = '\0';
+			if (!sl_find(names, arg)) {
+				fprintf(stderr, "\tpage alias \"%s\" "
+				    "may be missing\n", arg);
+			}
+			if (text  == NULL)
+				break;
+			if (*text == ' ')
+				text++;
+		}
+	}
+	sl_free(names, 0);
 	sbuf_retract(whatis_final, 2);		/* remove last ", " */
 	while (sbuf_length(whatis_final) < indent)
 		sbuf_append(whatis_final, " ", 1);
@@ -863,9 +893,8 @@ process_section(char *section_dir)
 	int nentries;
 	int i;
 
-	if (verbose) {
+	if (verbose)
 		fprintf(stderr, "  %s\n", section_dir);
-	}
 
 	/*
 	 * scan the man section directory for pages
