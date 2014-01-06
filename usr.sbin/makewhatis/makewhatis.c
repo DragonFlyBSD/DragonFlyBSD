@@ -735,7 +735,6 @@ process_page(struct page_info *info)
 	gzFile in;
 	char buffer[4096];
 	char *line;
-	StringList *names;
 	char *descr;
 	int state = STATE_UNKNOWN;
 	struct page_alias *alias;
@@ -838,7 +837,6 @@ process_page(struct page_info *info)
 		*descr = '\0';
 		descr += 3;
 	}
-	names = sl_init();
 	sbuf_clear(whatis_final);
 	RB_FOREACH(alias, page_alias_tree, &info->head) {
 		/*
@@ -848,16 +846,21 @@ process_page(struct page_info *info)
 		 * a real alias (via MLINKS) in this list.
 		 */
 		add_whatis_name(alias->name, alias->suffix);
-		sl_add(names, alias->name);
 	}
 	if (verbose) {
 		char *arg, *text = line;
+		StringList *names;
+
+		names = sl_init();
 
 		/*
 		 * See if there are names in the manual that
 		 * are not in the alias list provided by the
 		 * MLINKS.  We may want to add those as well.
 		 */
+		RB_FOREACH(alias, page_alias_tree, &info->head)
+			sl_add(names, alias->name);
+
 		for (;;) {
 			arg = text;
 			text = strchr(text, ',');
@@ -872,8 +875,9 @@ process_page(struct page_info *info)
 			if (*text == ' ')
 				text++;
 		}
+
+		sl_free(names, 0);
 	}
-	sl_free(names, 0);
 	sbuf_retract(whatis_final, 2);		/* remove last ", " */
 	while (sbuf_length(whatis_final) < indent)
 		sbuf_append(whatis_final, " ", 1);
