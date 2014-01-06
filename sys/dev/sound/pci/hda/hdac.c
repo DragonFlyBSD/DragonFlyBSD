@@ -5854,7 +5854,7 @@ hdac_release_resources(struct hdac_softc *sc)
 static void
 hdac_config_fetch(struct hdac_softc *sc, uint32_t *on, uint32_t *off)
 {
-	char *res = NULL;
+	const char *res = NULL;
 	int i = 0, j, k, len, inv;
 
 	if (on != NULL)

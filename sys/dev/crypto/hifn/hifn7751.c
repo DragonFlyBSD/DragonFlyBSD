@@ -302,7 +302,7 @@ checkmaxmin(device_t dev, const char *what, u_int v, u_int min, u_int max)
 static void
 hifn_getpllconfig(device_t dev, u_int *pll)
 {
-	char *pllspec;
+	const char *pllspec;
 	u_int freq, mul, fl, fh;
 	u_int32_t pllconfig;
 	char *nxt;
