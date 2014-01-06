@@ -42,19 +42,22 @@
 #include "smb.h"
 
 #include "smbus_if.h"
+#include "bus_if.h"
+#include "device_if.h"
 
 #define BUFSIZE 1024
 
 struct smb_softc {
-
+	device_t sc_dev;
 	int sc_count;			/* >0 if device opened */
+	int sc_unit;
 	cdev_t sc_devnode;
 };
 
-#define IIC_SOFTC(unit) \
+#define SMB_SOFTC(unit) \
 	((struct smb_softc *)devclass_get_softc(smb_devclass, (unit)))
 
-#define IIC_DEVICE(unit) \
+#define SMB_DEVICE(unit) \
 	(devclass_get_device(smb_devclass, (unit)))
 
 static void smb_identify(driver_t *driver, device_t parent);
@@ -70,6 +73,12 @@ static device_method_t smb_methods[] = {
 	DEVMETHOD(device_probe,		smb_probe),
 	DEVMETHOD(device_attach,	smb_attach),
 	DEVMETHOD(device_detach,	smb_detach),
+
+#if 0
+	/* bus interface */
+	DEVMETHOD(bus_driver_added,     bus_generic_driver_added),
+	DEVMETHOD(bus_print_child,      bus_generic_print_child),
+#endif
 
 	/* smbus interface */
 	DEVMETHOD(smbus_intr,		smbus_generic_intr),
@@ -106,22 +115,32 @@ smb_probe(device_t dev)
 {
 	device_set_desc(dev, "SMBus generic I/O");
 
-	return (0);
+	/* Allow other subclasses to override this driver. */
+	return (BUS_PROBE_GENERIC);
 }
 
 static int
 smb_attach(device_t dev)
 {
 	struct smb_softc *sc = (struct smb_softc *)device_get_softc(dev);
+	int unit;
 
 	if (!sc)
 		return (ENOMEM);
 
 	bzero(sc, sizeof(struct smb_softc *));
+	unit = device_get_unit(dev);
+	sc->sc_dev = dev;
+	sc->sc_unit = unit;
 
-	sc->sc_devnode = make_dev(&smb_ops, device_get_unit(dev),
-			UID_ROOT, GID_WHEEL,
-			0600, "smb%d", device_get_unit(dev));
+	if (unit & 0x0400) {
+		sc->sc_devnode = make_dev(&smb_ops, unit,
+				UID_ROOT, GID_WHEEL, 0600,
+				"smb%d-%02x", unit >> 11, unit & 1023);
+	} else {
+		sc->sc_devnode = make_dev(&smb_ops, unit,
+				UID_ROOT, GID_WHEEL, 0600, "smb%d", unit);
+	}
 
 	return (0);
 }
@@ -141,7 +160,7 @@ static int
 smbopen (struct dev_open_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct smb_softc *sc = IIC_SOFTC(minor(dev));
+	struct smb_softc *sc = SMB_SOFTC(minor(dev));
 
 	if (sc == NULL)
 		return (ENXIO);
@@ -158,7 +177,7 @@ static int
 smbclose(struct dev_close_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
-	struct smb_softc *sc = IIC_SOFTC(minor(dev));
+	struct smb_softc *sc = SMB_SOFTC(minor(dev));
 
 	if (sc == NULL)
 		return (ENXIO);
@@ -190,120 +209,153 @@ static int
 smbioctl(struct dev_ioctl_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
+	device_t bus;		/* smbbus */
 	char buf[SMB_MAXBLOCKSIZE];
-	device_t parent;
 	struct smbcmd *s = (struct smbcmd *)ap->a_data;
-	struct smb_softc *sc = IIC_SOFTC(minor(dev));
-	device_t smbdev = IIC_DEVICE(minor(dev));
+	struct smb_softc *sc = SMB_SOFTC(minor(dev));
+	device_t smbdev = SMB_DEVICE(minor(dev));
 	int error;
-	short w;
-	u_char count;
-	char c;
+	int unit;
+	u_char bcount;
 
 	if (sc == NULL)
 		return (ENXIO);
 	if (s == NULL)
 		return (EINVAL);
 
-	parent = device_get_parent(smbdev);
+	/*
+	 * If a specific slave device is being used, override any passed-in
+	 * slave.
+	 */
+	unit = sc->sc_unit;
+	if (unit & 0x0400) {
+		s->slave = unit & 1023;
+	}
+
+	/*
+	 * NOTE: smbus_*() functions automatically recurse the parent to
+	 *	 get to the actual device driver.
+	 */
+	bus = device_get_parent(smbdev);	/* smbus */
 
 	/* Allocate the bus. */
-	if ((error = smbus_request_bus(parent, smbdev,
-			(ap->a_fflag & O_NONBLOCK) ? SMB_DONTWAIT : (SMB_WAIT | SMB_INTR))))
+	if ((error = smbus_request_bus(bus, smbdev,
+			(ap->a_fflag & O_NONBLOCK) ?
+			SMB_DONTWAIT : (SMB_WAIT | SMB_INTR))))
 		return (error);
 
 	switch (ap->a_cmd) {
 	case SMB_QUICK_WRITE:
-		error = smbus_error(smbus_quick(parent, s->slave, SMB_QWRITE));
+		error = smbus_error(smbus_quick(bus, s->slave, SMB_QWRITE));
 		break;
 
 	case SMB_QUICK_READ:
-		error = smbus_error(smbus_quick(parent, s->slave, SMB_QREAD));
+		error = smbus_error(smbus_quick(bus, s->slave, SMB_QREAD));
 		break;
 
 	case SMB_SENDB:
-		error = smbus_error(smbus_sendb(parent, s->slave, s->cmd));
+		error = smbus_error(smbus_sendb(bus, s->slave, s->cmd));
 		break;
 
 	case SMB_RECVB:
-		error = smbus_error(smbus_recvb(parent, s->slave, &s->cmd));
+		error = smbus_error(smbus_recvb(bus, s->slave, &s->cmd));
 		break;
 
 	case SMB_WRITEB:
-		error = smbus_error(smbus_writeb(parent, s->slave, s->cmd,
-						s->data.byte));
+		error = smbus_error(smbus_writeb(bus, s->slave, s->cmd,
+						s->wdata.byte));
 		break;
 
 	case SMB_WRITEW:
-		error = smbus_error(smbus_writew(parent, s->slave,
-						s->cmd, s->data.word));
+		error = smbus_error(smbus_writew(bus, s->slave, s->cmd,
+						s->wdata.word));
 		break;
 
 	case SMB_READB:
-		if (s->data.byte_ptr) {
-			error = smbus_error(smbus_readb(parent, s->slave,
-						s->cmd, &c));
-			if (error)
-				break;
-			error = copyout(&c, s->data.byte_ptr,
-					sizeof(*(s->data.byte_ptr)));
+		error = smbus_error(smbus_readb(bus, s->slave, s->cmd,
+						&s->rdata.byte));
+		if (s->rbuf && s->rcount >= 1) {
+			error = copyout(&s->rdata.byte, s->rbuf, 1);
+			s->rcount = 1;
 		}
 		break;
 
 	case SMB_READW:
-		if (s->data.word_ptr) {
-			error = smbus_error(smbus_readw(parent, s->slave,
-						s->cmd, &w));
-			if (error == 0) {
-				error = copyout(&w, s->data.word_ptr,
-						sizeof(*(s->data.word_ptr)));
-			}
+		error = smbus_error(smbus_readw(bus, s->slave, s->cmd,
+						&s->rdata.word));
+		if (s->rbuf && s->rcount >= 2) {
+			buf[0] = (u_char)s->rdata.word;
+			buf[1] = (u_char)(s->rdata.word >> 8);
+			error = copyout(buf, s->rbuf, 2);
+			s->rcount = 2;
 		}
 		break;
 
 	case SMB_PCALL:
-		if (s->data.process.rdata) {
-			error = smbus_error(smbus_pcall(parent, s->slave, s->cmd,
-				s->data.process.sdata, &w));
-			if (error)
-				break;
-			error = copyout(&w, s->data.process.rdata,
-					sizeof(*(s->data.process.rdata)));
+		error = smbus_error(smbus_pcall(bus, s->slave, s->cmd,
+						s->wdata.word, &s->rdata.word));
+		if (s->rbuf && s->rcount >= 2) {
+			char buf[2];
+			buf[0] = (u_char)s->rdata.word;
+			buf[1] = (u_char)(s->rdata.word >> 8);
+			error = copyout(buf, s->rbuf, 2);
+			s->rcount = 2;
 		}
 
 		break;
 
 	case SMB_BWRITE:
-		if (s->count && s->data.byte_ptr) {
-			if (s->count > SMB_MAXBLOCKSIZE)
-				s->count = SMB_MAXBLOCKSIZE;
-			error = copyin(s->data.byte_ptr, buf, s->count);
-			if (error)
-				break;
-			error = smbus_error(smbus_bwrite(parent, s->slave,
-						s->cmd, s->count, buf));
-		}
+		if (s->wcount < 0)
+			s->wcount = 0;
+		if (s->wcount > SMB_MAXBLOCKSIZE)
+			s->wcount = SMB_MAXBLOCKSIZE;
+		if (s->wcount)
+			error = copyin(s->wbuf, buf, s->wcount);
+		if (error)
+			break;
+		error = smbus_error(smbus_bwrite(bus, s->slave, s->cmd,
+						 s->wcount, buf));
 		break;
 
-	case SMB_OLD_BREAD:
 	case SMB_BREAD:
-		if (s->count && s->data.byte_ptr) {
-			count = min(s->count, SMB_MAXBLOCKSIZE);
-			error = smbus_error(smbus_bread(parent, s->slave,
-						s->cmd, &count, buf));
-			if (error)
-				break;
-			error = copyout(buf, s->data.byte_ptr,
-			    min(count, s->count));
-			s->count = count;
-		}
+		if (s->rcount < 0)
+			s->rcount = 0;
+		if (s->rcount > SMB_MAXBLOCKSIZE)
+			s->rcount = SMB_MAXBLOCKSIZE;
+		error = smbus_bread(bus, s->slave, s->cmd, &bcount, buf);
+		error = smbus_error(error);
+		if (error)
+			break;
+		if (s->rcount > bcount)
+			s->rcount = bcount;
+		error = copyout(buf, s->rbuf, s->rcount);
 		break;
 
+	case SMB_TRANS:
+		if (s->rcount < 0)
+			s->rcount = 0;
+		if (s->rcount > SMB_MAXBLOCKSIZE)
+			s->rcount = SMB_MAXBLOCKSIZE;
+		if (s->wcount < 0)
+			s->wcount = 0;
+		if (s->wcount > SMB_MAXBLOCKSIZE)
+			s->wcount = SMB_MAXBLOCKSIZE;
+		if (s->wcount)
+			error = copyin(s->wbuf, buf, s->wcount);
+		if (error)
+			break;
+		error = smbus_trans(bus, s->slave, s->cmd, s->op,
+				    buf, s->wcount, buf, s->rcount, &s->rcount);
+		error = smbus_error(error);
+		if (error == 0)
+			error = copyout(buf, s->rbuf, s->rcount);
+		break;
 	default:
 		error = ENOTTY;
+		break;
 	}
 
-	smbus_release_bus(parent, smbdev);
+	smbus_release_bus(bus, smbdev);
 
 	return (error);
 }

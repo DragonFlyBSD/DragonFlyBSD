@@ -128,14 +128,16 @@ smbus_request_bus(device_t bus, device_t dev, int how)
 		if (sc->owner && sc->owner != dev) {
 			crit_exit();
 			error = smbus_poll(sc, how);
+			if (error == EWOULDBLOCK)
+				error = 0;
 		} else {
 			sc->owner = dev;
 			crit_exit();
 		}
-
+		if (error == 0)
+			break;
 		/* free any allocated resource */
-		if (error)
-			SMBUS_CALLBACK(parent, SMB_RELEASE_BUS, &how);
+		SMBUS_CALLBACK(parent, SMB_RELEASE_BUS, &how);
 	}
 
 	return (error);
@@ -150,10 +152,12 @@ int
 smbus_release_bus(device_t bus, device_t dev)
 {
 	struct smbus_softc *sc = (struct smbus_softc *)device_get_softc(bus);
+	device_t parent;
 	int error;
 
+	parent = device_get_parent(bus);
 	/* first, ask the underlying layers if the release is ok */
-	error = SMBUS_CALLBACK(device_get_parent(bus), SMB_RELEASE_BUS, NULL);
+	error = SMBUS_CALLBACK(parent, SMB_RELEASE_BUS, NULL);
 
 	if (error)
 		return (error);
