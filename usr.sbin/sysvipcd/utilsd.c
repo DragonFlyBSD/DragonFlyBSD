@@ -37,30 +37,32 @@
 extern int sysvd_debug;
 
 void
-sysvd_print(const char *fmt, ...) {
+sysvd_print(const char *fmt, ...)
+{
 	va_list ap;
-	char format[50];
+	char format[1024];
 
 	if(!sysvd_debug)
 		return;
 
-	sprintf(format, "[sysvd %d] %s",
-			getpid(), fmt);
+	snprintf(format, sizeof(format), "[sysvd %d] %s",
+	    getpid(), fmt);
 	va_start(ap, fmt);
 //	vsyslog(LOG_DEBUG, format, ap);
-	vprintf(format, ap);
+	vfprintf(stderr, format, ap);
 	va_end(ap);
 }
 
 void
-sysvd_print_err(const char *fmt, ...) {
+sysvd_print_err(const char *fmt, ...)
+{
 	va_list ap;
-	char format[50];
+	char format[1024];
 
-	sprintf(format, "[sysvd %d] error(%d): %s",
-			getpid(), errno, fmt);
+	snprintf(format, sizeof(format), "[sysvd %d] error(%d): %s",
+	    getpid(), errno, fmt);
 	va_start(ap, fmt);
 //	vsyslog(LOG_ERR, format, ap);
-	vprintf(format, ap);
+	vfprintf(stderr, format, ap);
 	va_end(ap);
 }
