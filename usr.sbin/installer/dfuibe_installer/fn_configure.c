@@ -210,7 +210,7 @@ fn_add_user(struct i_fn_args *a)
 			    strlen(home) == 0 ? "" : "-d ", home,
 			    shell,
 			    strlen(groups) == 0 ? "" : "-G ", groups,
-			    (strlen(home) == 0 || !is_dir(home)) ?
+			    (strlen(home) == 0 || !is_dir("%s", home)) ?
 			    "-m -k /usr/share/skel" : "");
 
 			cmd = command_add(cmds, "%s%s '%s' | "
@@ -678,7 +678,7 @@ fn_set_kbdmap(struct i_fn_args *a)
 		    s);
 		if (commands_execute(a, cmds)) {
 			snprintf(filename, 256, "/usr/share/syscons/keymaps/%s", s);
-			snprintf(keymapname, 256, filename_noext(basename(filename)));
+			snprintf(keymapname, 256, "%s", filename_noext(basename(filename)));
 			config_var_set(rc_conf, "keymap", keymapname);
 		} else {
 			inform(a->c, _("Keyboard map not successfully set."));
@@ -719,7 +719,7 @@ fn_set_vidfont(struct i_fn_args *a)
 
 			snprintf(variable, 256, "font8x%d", by);
 			snprintf(filename, 256, "/usr/share/syscons/fonts/%s", s);
-			snprintf(fontname, 256, filename_noext(basename(filename)));
+			snprintf(fontname, 256, "%s", filename_noext(basename(filename)));
 			config_var_set(rc_conf, variable, fontname);
 
 		} else {
@@ -752,7 +752,7 @@ fn_set_scrnmap(struct i_fn_args *a)
 		    s);
 		if (commands_execute(a, cmds)) {
 			snprintf(filename, 256, "/usr/share/syscons/scrnmaps/%s", s);
-			snprintf(scrnmapname, 256, filename_noext(basename(filename)));
+			snprintf(scrnmapname, 256, "%s", filename_noext(basename(filename)));
 			config_var_set(rc_conf, "scrnmap", scrnmapname);
 		} else {
 			inform(a->c, _("Video font not successfully set."));

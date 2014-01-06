@@ -339,7 +339,7 @@ not_recovered:
 		}
 		if (multi < 0) {
 			if (!++multi) {
-				pline(nomovemsg ? nomovemsg :
+				pline("%s", nomovemsg ? nomovemsg :
 				      "You can move again.");
 				nomovemsg = 0;
 				if (afternmv)

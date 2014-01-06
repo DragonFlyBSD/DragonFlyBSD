@@ -281,7 +281,7 @@ print_pd(struct mfi_pd_info *info, int state_len)
 	if (state_len > 0)
 		printf("%-*s", state_len, s);
 	else
-		printf(s);
+		printf("%s", s);
 	s = mfi_pd_inq_string(info);
 	if (s != NULL)
 		printf(" %s", s);

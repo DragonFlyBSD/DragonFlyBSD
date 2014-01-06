@@ -593,7 +593,7 @@ askchain(struct obj *objchn, char *olets, int allflag,
 		if (ckfn && !(*ckfn)(otmp))
 			continue;
 		if (!allflag) {
-			pline(xprname(otmp, ilet));
+			pline("%s", xprname(otmp, ilet));
 			addtopl(" [nyaq]? ");
 			sym = readchar();
 		} else
@@ -637,7 +637,7 @@ obj_to_let(struct obj *obj)
 void
 prinv(struct obj *obj)
 {
-	pline(xprname(obj, obj_to_let(obj)));
+	pline("%s", xprname(obj, obj_to_let(obj)));
 }
 
 static char *

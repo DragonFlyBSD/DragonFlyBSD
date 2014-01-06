@@ -350,7 +350,7 @@ read_passphrase(const char *prompt, char *pass, size_t passlen, time_t timeout)
 		cfd = 1;
 	}
 
-	printf(prompt);
+	printf("%s", prompt);
 	fflush(stdout);
 
 	memset(pass, 0, passlen);

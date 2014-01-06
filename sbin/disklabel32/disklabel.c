@@ -408,7 +408,7 @@ writelabel(int f, const char *boot, struct disklabel32 *lp)
 				warn("ioctl DIOCWLABEL");
 			msg = fixlabel(f, lp, 1);
 			if (msg) {
-				warn(msg);
+				warn("%s", msg);
 				return (1);
 			}
 			r = write(f, boot, lp->d_bbsize);
@@ -506,7 +506,7 @@ readlabel(int f)
 				"or pack is unlabeled)");
 		}
 		if ((msg = fixlabel(f, lp, 0)) != NULL)
-			errx(1, msg);
+			errx(1, "%s", msg);
 	} else {
 		lp = &lab;
 		if (ioctl(f, DIOCGDINFO32, lp) < 0) {

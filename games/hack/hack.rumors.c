@@ -52,7 +52,7 @@ outline(FILE *rumf)
 	if ((ep = strchr(line, '\n')) != NULL)
 		*ep = 0;
 	pline("This cookie has a scrap of paper inside! It reads: ");
-	pline(line);
+	pline("%s", line);
 }
 
 void

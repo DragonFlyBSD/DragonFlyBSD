@@ -484,12 +484,12 @@ fn_install_bootblocks(struct i_fn_args *a, const char *device)
 				    strcasecmp(packet, "Y") == 0 ? "" : "no",
 				    disk);
 				command_set_failure_mode(cmd, COMMAND_FAILURE_WARN);
-				command_set_tag(cmd, disk);
+				command_set_tag(cmd, "%s", disk);
 				cmd = command_add(cmds, "%s%s -v %s",
 				    a->os_root, cmd_name(a, "BOOT0CFG"),
 				    disk);
 				command_set_failure_mode(cmd, COMMAND_FAILURE_WARN);
-				command_set_tag(cmd, disk);
+				command_set_tag(cmd, "%s", disk);
 			}
 		}
 
@@ -558,7 +558,7 @@ fn_create_cdboot_floppy(struct i_fn_args *a)
 
 	switch (dfui_be_present_dialog(a->c, _("Create CDBoot Floppy"),
 	    _("Create CDBoot Floppy|Return to Utilities Menu"),
-	    msg_buf[0])) {
+	    "%s", msg_buf[0])) {
 	case 1:
 		cmds = commands_new();
 		command_add(cmds, "%s%s -c %sboot/cdboot.flp.bz2 | "

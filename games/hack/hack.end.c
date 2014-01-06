@@ -468,7 +468,7 @@ outentry(int rank, struct toptenentry *t1, int so)
 		if (t1->maxlvl != t1->level)
 			Sprintf(eos(linebuf), " [max %d]", t1->maxlvl);
 		if (quit && t1->death[4])
-			Sprintf(eos(linebuf), t1->death + 4);
+			Sprintf(eos(linebuf), "%s", t1->death + 4);
 	}
 	if (dead) {
 		Sprintf(eos(linebuf), " by %s%s",
@@ -484,7 +484,7 @@ outentry(int rank, struct toptenentry *t1, int so)
 		char hpbuf[10];
 		int hppos;
 
-		Sprintf(hpbuf, (t1->hp > 0) ? itoa(t1->hp) : "-");
+		Sprintf(hpbuf, "%s", (t1->hp > 0) ? itoa(t1->hp) : "-");
 		hppos = COLNO - 7 - strlen(hpbuf);
 		if (bp <= linebuf + hppos) {
 			while (bp < linebuf + hppos)

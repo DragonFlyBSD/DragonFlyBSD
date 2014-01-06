@@ -33,7 +33,6 @@
  * @(#)factor.c	8.4 (Berkeley) 5/4/95
  * $NetBSD: factor.c,v 1.13 2002/06/18 23:07:36 simonb Exp $
  * $FreeBSD: src/games/factor/factor.c,v 1.9.2.2 2002/10/23 14:59:14 fanf Exp $
- * $DragonFly: src/games/factor/factor.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
  */
 
 /*
@@ -293,7 +292,7 @@ BN_print_dec_fp(FILE *fp, const BIGNUM *num)
 	buf = BN_bn2dec(num);
 	if (buf == NULL)
 		return;	/* XXX do anything here? */
-	fprintf(fp, buf);
+	fprintf(fp, "%s", buf);
 	free(buf);
 }
 

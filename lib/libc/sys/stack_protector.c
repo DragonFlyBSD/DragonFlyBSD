@@ -88,7 +88,7 @@ __fail(const char *msg)
     _sigprocmask(SIG_BLOCK, &mask, NULL);
 
     /* This may fail on a chroot jail... */
-    syslog(LOG_CRIT, msg);
+    syslog(LOG_CRIT, "%s", msg);
 
     bzero(&sa, sizeof(struct sigaction));
     sigemptyset(&sa.sa_mask);

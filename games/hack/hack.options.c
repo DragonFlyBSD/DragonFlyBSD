@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.options.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.options.c,v 1.5 1999/11/16 02:57:08 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.options.c,v 1.3 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
@@ -210,7 +209,7 @@ doset(void)
 			if (*--eop == ',')
 				*eop = 0;
 		}
-		pline(buf);
+		pline("%s", buf);
 	} else
 		parseoptions(buf, FALSE);
 

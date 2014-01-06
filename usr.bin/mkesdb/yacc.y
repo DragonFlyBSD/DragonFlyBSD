@@ -324,7 +324,7 @@ main(int argc, char **argv)
 	case 1:
 		in = fopen(argv[0], "r");
 		if (!in)
-			err(EXIT_FAILURE, argv[0]);
+			err(EXIT_FAILURE, "%s", argv[0]);
 		break;
 	default:
 		usage();

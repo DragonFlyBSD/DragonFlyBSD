@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.timeout.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.timeout.c,v 1.3 1999/11/16 02:57:12 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.timeout.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 
@@ -65,7 +64,7 @@ stoned_dialogue(void)
 	long i = (Stoned & TIMEOUT);
 
 	if (i > 0 && i <= SIZE(stoned_texts))
-		pline(stoned_texts[SIZE(stoned_texts) - i]);
+		pline("%s", stoned_texts[SIZE(stoned_texts) - i]);
 	if (i == 5)
 		Fast = 0;
 	if (i == 3)

@@ -296,7 +296,7 @@ pipe_loop(struct i_fn_args *a, struct dfui_progress *pr,
 
 	asprintf(&command, "(%s) 2>&1 </dev/null", cmd->cmdline);
 	fflush(stdout);
-	cmdout = aura_popen(command, "r");
+	cmdout = aura_popen("%s", command, "r");
 	free(command);
 
 	if (cmdout == NULL) {

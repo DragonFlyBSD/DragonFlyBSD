@@ -2052,10 +2052,10 @@ get_options(int numargs, char **arguments)
 		else if (!strcmp("-?", buff))
 		{
 			fprintf(stderr, usage0, arguments[0]);
-			fprintf(stderr, usage1);
-			fprintf(stderr, usage2);
-			fprintf(stderr, usage3);
-			fprintf(stderr, usage4);
+			fprintf(stderr, "%s", usage1);
+			fprintf(stderr, "%s", usage2);
+			fprintf(stderr, "%s", usage3);
+			fprintf(stderr, "%s", usage4);
 			exit(1);
 		}
 		else if (*buff == '+')

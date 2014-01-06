@@ -375,7 +375,7 @@ dump_devinfo(struct devinfo_dev *dev, void *arg)
 	ev.fmtdatalen = sizeof(fmtdatabuf);
 
 	if (evtr_dump_event(evtr, &ev)) {
-		err(1, evtr_errmsg(evtr));
+		err(1, "%s", evtr_errmsg(evtr));
 	}
 
 	return devinfo_foreach_device_child(dev, dump_devinfo, evtr);
@@ -407,7 +407,7 @@ dump_machine_info(evtr_t evtr)
 	ev.ncpus = ncpus;
 	evtr_dump_event(evtr, &ev);
 	if (evtr_error(evtr)) {
-		err(1, evtr_errmsg(evtr));
+		err(1, "%s", evtr_errmsg(evtr));
 	}
 
 	for (i = 0; i < ncpus; ++i) {
@@ -417,7 +417,7 @@ dump_machine_info(evtr_t evtr)
 		ev.cpuinfo.freq = tsc_frequency;
 		evtr_dump_event(evtr, &ev);
 		if (evtr_error(evtr)) {
-			err(1, evtr_errmsg(evtr));
+			err(1, "%s", evtr_errmsg(evtr));
 		}
 	}
 }
@@ -666,7 +666,7 @@ dump_callback(void *ctx, int n, int row __unused, struct ktr_entry *entry,
 		ev.fmtdatalen = 0;
 	}
 	if (evtr_dump_event(evtr, &ev)) {
-		err(1, evtr_errmsg(evtr));
+		err(1, "%s", evtr_errmsg(evtr));
 	}
 	if (ev.fmtdata && conv) {
 		mangle_string_ptrs(ev.fmt, __DECONST(uint8_t *, ev.fmtdata),

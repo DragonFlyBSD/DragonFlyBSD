@@ -448,7 +448,7 @@ S_sensor(int l2, void *p)
 				name = "unknown";
 				break;
 			}
-			printf(name);
+			printf("%s", name);
 			break;
 		}
 		case SENSOR_TIMEDELTA:

@@ -28,7 +28,6 @@
  *
  * @(#)rpc_hout.c	1.16	94/04/25 SMI; 1.12 89/02/22 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_hout.c,v 1.15 2005/11/13 21:17:24 dwmalone Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_hout.c,v 1.5 2004/06/19 16:40:36 joerg Exp $
  */
 
 /*
@@ -480,7 +479,7 @@ pdeclaration(const char *name, declaration *dec, int tab, const char *separator)
 			break;
 		}
 	}
-	f_print(fout, separator);
+	f_print(fout, "%s", separator);
 }
 
 static int

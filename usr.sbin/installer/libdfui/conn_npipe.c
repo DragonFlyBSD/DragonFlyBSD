@@ -280,8 +280,8 @@ dfui_npipe_fe_connect(struct dfui_connection *c)
 	/*
 	 * Wait for named pipes to be created.
 	 */
-	if (!is_named_pipe(T_NPIPE(c)->in_pipename)) {
-		while (!is_named_pipe(T_NPIPE(c)->in_pipename)) {
+	if (!is_named_pipe("%s", T_NPIPE(c)->in_pipename)) {
+		while (!is_named_pipe("%s", T_NPIPE(c)->in_pipename)) {
 			sleep(1);
 		}
 		sleep(1);

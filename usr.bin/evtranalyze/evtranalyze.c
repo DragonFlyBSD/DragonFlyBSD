@@ -523,7 +523,7 @@ do_pass(struct pass_hook *hooks, int nhooks)
 		}
 	}
 	if (evtr_query_error(q)) {
-		err(1, evtr_query_errmsg(q));
+		err(1, "%s", evtr_query_errmsg(q));
 	}
 	evtr_query_destroy(q);
 
@@ -1054,7 +1054,7 @@ cmd_show(int argc, char **argv)
 		last_ts = ev.ts;
 	}
 	if (evtr_query_error(q)) {
-		err(1, evtr_query_errmsg(q));
+		err(1, "%s", evtr_query_errmsg(q));
 	}
 	evtr_query_destroy(q);
 	return 0;
@@ -1412,7 +1412,7 @@ cmd_stats(int argc, char **argv)
 		last_ts = ev.ts;
 	}
 	if (evtr_query_error(q)) {
-		err(1, evtr_query_errmsg(q));
+		err(1, "%s", evtr_query_errmsg(q));
 	}
 	evtr_query_destroy(q);
 	statsops->report(statctx);
@@ -1453,7 +1453,7 @@ cmd_summary(int argc, char **argv)
 		c->firstlast.end = ev.ts;
 	}
 	if (evtr_query_error(q)) {
-		err(1, evtr_query_errmsg(q));
+		err(1, "%s", evtr_query_errmsg(q));
 	}
 	evtr_query_destroy(q);
 

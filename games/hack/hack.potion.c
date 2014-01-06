@@ -1,7 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.potion.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.potion.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.potion.c,v 1.4 2006/08/21 19:45:32 pavalos Exp $ */
 
 #include "hack.h"
 extern struct monst youmonst;
@@ -223,7 +222,7 @@ strange_feeling(struct obj *obj, const char *txt)
 	if (flags.beginner)
 		pline("You have a strange feeling for a moment, then it passes.");
 	else
-		pline(txt);
+		pline("%s", txt);
 	if (!objects[obj->otyp].oc_name_known && !objects[obj->otyp].oc_uname)
 		docall(obj);
 	useup(obj);

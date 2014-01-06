@@ -158,7 +158,7 @@ yppasswd_local(ypclnt_t *ypclnt, const struct passwd *pwd)
 	    (yppwd.newpw.pw_gecos = strdup(pwd->pw_gecos)) == NULL ||
 	    (yppwd.newpw.pw_dir = strdup(pwd->pw_dir)) == NULL ||
 	    (yppwd.newpw.pw_shell = strdup(pwd->pw_shell)) == NULL) {
-		ypclnt_error(ypclnt, __func__, strerror(errno));
+		ypclnt_error(ypclnt, __func__, "%s", strerror(errno));
 		ret = -1;
 		goto done;
 	}
@@ -251,7 +251,7 @@ yppasswd_remote(ypclnt_t *ypclnt, const struct passwd *pwd, const char *passwd)
 	    (yppwd.newpw.pw_dir = strdup(pwd->pw_dir)) == NULL ||
 	    (yppwd.newpw.pw_shell = strdup(pwd->pw_shell)) == NULL ||
 	    (yppwd.oldpass = strdup(passwd ? passwd : "")) == NULL) {
-		ypclnt_error(ypclnt, __func__, strerror(errno));
+		ypclnt_error(ypclnt, __func__, "%s", strerror(errno));
 		ret = -1;
 		goto done;
 	}

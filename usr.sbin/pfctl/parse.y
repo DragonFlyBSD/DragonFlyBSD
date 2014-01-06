@@ -4412,7 +4412,7 @@ disallow_urpf_failed(struct node_host *h, const char *fmt)
 {
 	for (; h != NULL; h = h->next)
 		if (h->addr.type == PF_ADDR_URPFFAILED) {
-			yyerror(fmt);
+			yyerror("%s", fmt);
 			return (1);
 		}
 	return (0);

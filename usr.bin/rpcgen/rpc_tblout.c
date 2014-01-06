@@ -28,7 +28,6 @@
  *
  * @(#)rpc_tblout.c	1.11	93/07/05 SMI; 1.4 89/02/22 (C) 1988 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_tblout.c,v 1.12 2005/11/13 21:17:24 dwmalone Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_tblout.c,v 1.4 2004/06/19 16:40:36 joerg Exp $
  */
 
 /*
@@ -97,7 +96,7 @@ write_table(definition *def)
 			expected = 0;
 		} else {
 			expected = 1;
-			f_print(fout, null_entry);
+			f_print(fout, "%s", null_entry);
 		}
 		for (proc = vp->procs; proc != NULL; proc = proc->next) {
 			current = atoi(proc->proc_num);
@@ -139,7 +138,7 @@ write_table(definition *def)
 		}
 
 		/* print the table trailer */
-		f_print(fout, tbl_end);
+		f_print(fout, "%s", tbl_end);
 		f_print(fout, tbl_nproc, progvers, progvers, progvers);
 	}
 }

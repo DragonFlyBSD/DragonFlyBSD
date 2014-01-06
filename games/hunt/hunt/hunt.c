@@ -30,7 +30,6 @@
  *
  * $OpenBSD: hunt.c,v 1.13 2008/03/17 09:17:56 sobrado Exp $
  * $NetBSD: hunt.c,v 1.8 1998/09/13 15:27:28 hubertf Exp $
- * $DragonFly: src/games/hunt/hunt/hunt.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <ctype.h>
@@ -517,9 +516,9 @@ leave(int eval, const char *mesg)
 	errno = saved_errno;
 
 	if (errno == 0 && mesg != NULL)
-		errx(eval, mesg);
+		errx(eval, "%s", mesg);
 	else if (mesg != NULL)
-		err(eval, mesg);
+		err(eval, "%s", mesg);
 	exit(eval);
 }
 
