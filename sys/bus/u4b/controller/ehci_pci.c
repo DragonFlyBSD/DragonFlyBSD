@@ -105,19 +105,21 @@ ehci_pci_match(device_t self)
 		return "AMD 8111 USB 2.0 controller";
 
 	case 0x20951022:
-		return "AMD CS5536 (Geode) USB 2.0 controller";
+		return ("AMD CS5536 (Geode) USB 2.0 controller");
 
 	case 0x43451002:
 		return "ATI SB200 USB 2.0 controller";
 	case 0x43731002:
 		return "ATI SB400 USB 2.0 controller";
 	case 0x43961002:
-		return "AMD SB7x0/SB8x0/SB9x0 USB 2.0 controller";
+		return ("AMD SB7x0/SB8x0/SB9x0 USB 2.0 controller");
 
 	case 0x1e268086:
-		return "Intel Panther Point USB 2.0 controller";
+		return ("Intel Panther Point USB 2.0 controller");
 	case 0x1e2d8086:
-		return "Intel Panther Point USB 2.0 controller";
+		return ("Intel Panther Point USB 2.0 controller");
+	case 0x1f2c8086:
+		return ("Intel Avoton USB 2.0 controller");
 	case 0x25ad8086:
 		return "Intel 6300ESB USB 2.0 controller";
 	case 0x24cd8086:
@@ -127,7 +129,7 @@ ehci_pci_match(device_t self)
 	case 0x265c8086:
 		return "Intel 82801FB (ICH6) USB 2.0 controller";
 	case 0x268c8086:
-		return "Intel 63XXESB USB 2.0 controller";
+		return ("Intel 63XXESB USB 2.0 controller");
 	case 0x27cc8086:
 		return "Intel 82801GB/R (ICH7) USB 2.0 controller";
 	case 0x28368086:
@@ -146,6 +148,10 @@ ehci_pci_match(device_t self)
 		return ("Intel PCH USB 2.0 controller USB-A");
 	case 0x3b3c8086:
 		return ("Intel PCH USB 2.0 controller USB-B");
+	case 0x8c268086:
+		return ("Intel Lynx Point USB 2.0 controller USB-A");
+	case 0x8c2d8086:
+		return ("Intel Lynx Point USB 2.0 controller USB-B");
 
 	case 0x00e01033:
 		return ("NEC uPD 720100 USB 2.0 controller");
@@ -159,7 +165,7 @@ ehci_pci_match(device_t self)
 	case 0x00e810de:
 		return "NVIDIA nForce3 250 USB 2.0 controller";
 	case 0x005b10de:
-		return "NVIDIA nForce4 USB 2.0 controller";
+		return "NVIDIA nForce CK804 USB 2.0 controller";
 	case 0x036d10de:
 		return "NVIDIA nForce MCP55 USB 2.0 controller";
 	case 0x03f210de:
