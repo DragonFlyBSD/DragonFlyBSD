@@ -797,6 +797,8 @@ bus/smbus/smbconf.c		optional smbus
 bus/smbus/smbus.c		optional smbus
 bus/smbus/smb.c			optional smb
 bus/smbus/amdsmb/amdsmb.c	optional amdsmb pci
+bus/smbus/ichiic/ig4_iic.c	optional ichiic
+bus/smbus/ichiic/ig4_pci.c	optional ichiic pci
 bus/smbus/ichsmb/ichsmb.c	optional ichsmb
 bus/smbus/ichsmb/ichsmb_pci.c	optional ichsmb pci
 dev/serial/si/si.c		optional si

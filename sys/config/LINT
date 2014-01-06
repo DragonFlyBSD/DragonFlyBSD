@@ -1867,6 +1867,7 @@ device		sdhci
 # bktr		brooktree848 I2C hardware interface
 # intpm		Intel PIIX4 (82371AB, 82443MX) Power Management Unit
 # alpm		Acer Aladdin-IV/V/Pro2 Power Management Unit
+# ichiic	Intel generation 4 I2C controller
 # ichsmb	Intel ICH SMBus controller chips (82801AA, 82801AB, 82801BA)
 # viapm		VIA VT82C586B,596,686A and VT8233 SMBus controllers
 # amdpm		AMD 756 Power Management Unit
@@ -1876,6 +1877,7 @@ device		smbus		# Bus support, required for smb below.
 
 device		intpm
 device		alpm
+device		ichiic
 device		ichsmb
 device		viapm
 device		amdpm
