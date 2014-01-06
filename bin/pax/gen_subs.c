@@ -32,7 +32,6 @@
  *
  * @(#)gen_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/gen_subs.c,v 1.12.2.4 2002/03/12 17:49:17 phantom Exp $
- * $DragonFly: src/bin/pax/gen_subs.c,v 1.6 2006/09/27 19:18:00 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -40,7 +39,6 @@
 #include <sys/stat.h>
 #include <langinfo.h>
 #include <stdio.h>
-#include <utmp.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,10 +59,6 @@
 #define OLDFRMTM	"%b %e  %Y"
 #define CURFRMTD	"%e %b %H:%M"
 #define OLDFRMTD	"%e %b  %Y"
-#ifndef UT_NAMESIZE
-#define UT_NAMESIZE	8
-#endif
-#define UT_GRPSIZE	6
 
 static int d_first = -1;
 
@@ -111,8 +105,8 @@ ls_list(ARCHD *arcn, time_t now, FILE *fp)
 	 */
 	if (strftime(f_date,DATELEN,timefrmt,localtime(&(sbp->st_mtime))) == 0)
 		f_date[0] = '\0';
-	fprintf(fp, "%s%2u %-*s %-*s ", f_mode, sbp->st_nlink,
-		UT_NAMESIZE, name_uid(sbp->st_uid, 1), UT_GRPSIZE,
+	fprintf(fp, "%s%2u %-16s %-6s ", f_mode, sbp->st_nlink,
+		name_uid(sbp->st_uid, 1),
 		name_gid(sbp->st_gid, 1));
 
 	/*
