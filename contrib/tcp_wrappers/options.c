@@ -396,7 +396,7 @@ struct request_info *request;
 
 	/* Something went wrong: we MUST terminate the process. */
 
-	tcpd_warn(error);
+	tcpd_warn("%s", error);
 	clean_exit(request);
     }
 }

@@ -86,6 +86,6 @@ char   *command;
 
     /* Something went wrong. We MUST terminate the child process. */
 
-    tcpd_warn(error);
+    tcpd_warn("%s", error);
     _exit(0);
 }
