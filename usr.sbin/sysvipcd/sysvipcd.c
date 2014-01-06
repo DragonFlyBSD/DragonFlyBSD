@@ -359,12 +359,15 @@ main(int argc, char *argv[])
 	}
 
 #ifdef SYSV_SEMS
-	sysvd_print_err("SYSV_SEMS defined (used for sysv sems; a group of semaphores is protected)"
-			"by a rwlock and each semaphore is protected by a mutex\n");
+	sysvd_print("SYSV_SEMS defined (used for sysv sems); "
+	    "a group of semaphores is protected)\n"
+	    "by a rwlock and each semaphore is protected by a mutex\n");
 #else
-	sysvd_print_err("SYSV_SEMS not defined (used for sysv sems; a group of semaphores is protected)"
-			"by a rwlock\n");
+	sysvd_print("SYSV_SEMS not defined (used for sysv sems); "
+	    "a group of semaphores is protected)\n"
+	    "by a rwlock\n");
 #endif
+	}
 
 	sysvd_print("daemon starting\n");
 	error = daemon_init();
