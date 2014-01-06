@@ -470,7 +470,8 @@ MLINKS+=nfe.4 if_nfe.4
 MLINKS+=nge.4 if_nge.4
 MLINKS+=oce.4 if_oce.4
 MLINKS+=pccbb.4 cbb.4
-MLINKS+=pcm.4 sound.4
+MLINKS+=pcm.4 snd.4 \
+	pcm.4 sound.4
 MLINKS+=pcn.4 if_pcn.4
 MLINKS+=ppp.4 if_ppp.4
 MLINKS+=ral.4 if_ral.4

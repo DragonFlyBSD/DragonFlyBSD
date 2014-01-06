@@ -243,6 +243,15 @@ MLINKS+=altq.9 ifq_classify.9 \
 	altq.9 ifq_set_ready.9
 MLINKS+=at_exit.9 rm_at_exit.9
 MLINKS+=at_fork.9 rm_at_fork.9
+MLINKS+=atomic.9 atomic_add.9 \
+	atomic.9 atomic_clear.9 \
+	atomic.9 atomic_cmpset.9 \
+	atomic.9 atomic_fetchadd.9 \
+	atomic.9 atomic_load.9 \
+	atomic.9 atomic_readandclear.9 \
+	atomic.9 atomic_set.9 \
+	atomic.9 atomic_subtract.9 \
+	atomic.9 atomic_store.9
 MLINKS+=bios.9 bios32.9 \
 	bios.9 bios32_SDlookup.9 \
 	bios.9 BIOS_PADDRTOVADDR.9 \

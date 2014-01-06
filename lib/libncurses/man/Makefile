@@ -1,5 +1,3 @@
-# $DragonFly: src/lib/libncurses/man/Makefile,v 1.3 2005/07/02 00:11:03 swildner Exp $
-
 MAN=	\
 	clear.1 \
 	curs_add_wch.3 \
@@ -392,6 +390,7 @@ MLINKS+=	curs_kernel.3 ripoffline.3
 MLINKS+=	curs_kernel.3 savetty.3
 MLINKS+=	curs_kernel.3 setsyx.3
 MLINKS+=	curs_mouse.3 getmouse.3
+MLINKS+=	curs_mouse.3 has_mouse.3
 MLINKS+=	curs_mouse.3 mouse_trafo.3
 MLINKS+=	curs_mouse.3 mouseinterval.3
 MLINKS+=	curs_mouse.3 mousemask.3
@@ -461,6 +460,7 @@ MLINKS+=	curs_slk.3 slk_refresh.3
 MLINKS+=	curs_slk.3 slk_restore.3
 MLINKS+=	curs_slk.3 slk_set.3
 MLINKS+=	curs_slk.3 slk_touch.3
+MLINKS+=	curs_slk.3 slk_wset.3
 MLINKS+=	curs_termattrs.3 baudrate.3
 MLINKS+=	curs_termattrs.3 erasechar.3
 MLINKS+=	curs_termattrs.3 erasewchar.3
@@ -489,6 +489,7 @@ MLINKS+=	curs_terminfo.3 setupterm.3
 MLINKS+=	curs_terminfo.3 tigetflag.3
 MLINKS+=	curs_terminfo.3 tigetnum.3
 MLINKS+=	curs_terminfo.3 tigetstr.3
+MLINKS+=	curs_terminfo.3 tiparm.3
 MLINKS+=	curs_terminfo.3 tparm.3
 MLINKS+=	curs_terminfo.3 tputs.3
 MLINKS+=	curs_terminfo.3 vid_attr.3
@@ -517,6 +518,7 @@ MLINKS+=	curs_util.3 flushinp.3
 MLINKS+=	curs_util.3 getwin.3
 MLINKS+=	curs_util.3 key_name.3
 MLINKS+=	curs_util.3 keyname.3
+MLINKS+=	curs_util.3 nofilter.3
 MLINKS+=	curs_util.3 putwin.3
 MLINKS+=	curs_util.3 unctrl.3
 MLINKS+=	curs_util.3 use_env.3
