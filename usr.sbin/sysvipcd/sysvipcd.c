@@ -367,7 +367,6 @@ main(int argc, char *argv[])
 	    "a group of semaphores is protected)\n"
 	    "by a rwlock\n");
 #endif
-	}
 
 	sysvd_print("daemon starting\n");
 	error = daemon_init();
