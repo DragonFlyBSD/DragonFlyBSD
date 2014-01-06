@@ -95,27 +95,27 @@ MALLOC_DECLARE(M_USBHC);
 
 /* These are the values from the USB specification. */
 #define	USB_PORT_RESET_DELAY_SPEC	10	/* ms */
-#define	USB_PORT_ROOT_RESET_DELAY_SPEC  50	/* ms */
+#define	USB_PORT_ROOT_RESET_DELAY_SPEC	50	/* ms */
 #define	USB_PORT_RESET_RECOVERY_SPEC	10	/* ms */
 #define	USB_PORT_POWERUP_DELAY_SPEC	100	/* ms */
 #define	USB_PORT_RESUME_DELAY_SPEC	20	/* ms */
 #define	USB_SET_ADDRESS_SETTLE_SPEC	2	/* ms */
-#define	USB_RESUME_DELAY_SPEC	        (20*5)	/* ms */
+#define	USB_RESUME_DELAY_SPEC		(20*5)	/* ms */
 #define	USB_RESUME_WAIT_SPEC		10	/* ms */
 #define	USB_RESUME_RECOVERY_SPEC	10	/* ms */
 #define	USB_EXTRA_POWER_UP_TIME_SPEC	0	/* ms */
 
 /* Allow for marginal and non-conforming devices. */
-#define	USB_PORT_RESET_DELAY    	50	/* ms */
-#define	USB_PORT_ROOT_RESET_DELAY       250	/* ms */
-#define	USB_PORT_RESET_RECOVERY  	250	/* ms */
-#define	USB_PORT_POWERUP_DELAY  	300	/* ms */
-#define	USB_PORT_RESUME_DELAY   	(20*2)	/* ms */
-#define	USB_SET_ADDRESS_SETTLE  	10	/* ms */
-#define	USB_RESUME_DELAY        	(50*5)	/* ms */
-#define	USB_RESUME_WAIT		        50	/* ms */
-#define	USB_RESUME_RECOVERY	        50	/* ms */
-#define	USB_EXTRA_POWER_UP_TIME	        20	/* ms */
+#define	USB_PORT_RESET_DELAY		50	/* ms */
+#define	USB_PORT_ROOT_RESET_DELAY	250	/* ms */
+#define	USB_PORT_RESET_RECOVERY		250	/* ms */
+#define	USB_PORT_POWERUP_DELAY		300	/* ms */
+#define	USB_PORT_RESUME_DELAY		(20*2)	/* ms */
+#define	USB_SET_ADDRESS_SETTLE		10	/* ms */
+#define	USB_RESUME_DELAY		(50*5)	/* ms */
+#define	USB_RESUME_WAIT			50	/* ms */
+#define	USB_RESUME_RECOVERY		50	/* ms */
+#define	USB_EXTRA_POWER_UP_TIME		20	/* ms */
 
 #define	USB_MIN_POWER		100	/* mA */
 #define	USB_MAX_POWER		500	/* mA */
@@ -223,8 +223,8 @@ typedef struct usb_device_request usb_device_request_t;
 #define	UR_RESET_TT		0x09
 #define	UR_GET_TT_STATE		0x0a
 #define	UR_STOP_TT		0x0b
-#define UR_SET_AND_TEST         0x0c    /* USB 2.0 only */
-#define	UR_SET_HUB_DEPTH	0x0c    /* USB 3.0 only */
+#define	UR_SET_AND_TEST		0x0c	/* USB 2.0 only */
+#define	UR_SET_HUB_DEPTH	0x0c	/* USB 3.0 only */
 #define	USB_SS_HUB_DEPTH_MAX	5
 #define	UR_GET_PORT_ERR_COUNT	0x0d
 
@@ -435,6 +435,7 @@ typedef struct usb_interface_assoc_descriptor usb_interface_assoc_descriptor_t;
 #define	UISUBCLASS_ETHERNET_EMULATION_MODEL 12
 #define	UISUBCLASS_NETWORK_CONTROL_MODEL 13
 
+#define	UIPROTO_CDC_NONE		0
 #define	UIPROTO_CDC_AT			1
 
 #define	UICLASS_HID		0x03
@@ -560,16 +561,22 @@ struct usb_string_descriptor {
 typedef struct usb_string_descriptor usb_string_descriptor_t;
 
 #define	USB_MAKE_STRING_DESC(m,name)	\
-struct name {				\
+static const struct {			\
   uByte bLength;			\
   uByte bDescriptorType;		\
   uByte bData[sizeof((uint8_t []){m})];	\
-} __packed;				\
-static const struct name name = {	\
-  .bLength = sizeof(struct name),	\
+} __packed name = {			\
+  .bLength = sizeof(name),		\
   .bDescriptorType = UDESC_STRING,	\
   .bData = { m },			\
 }
+
+struct usb_string_lang {
+	uByte bLength;
+	uByte bDescriptorType;
+	uByte bData[2];
+} __packed;
+typedef struct usb_string_lang usb_string_lang_t;
 
 struct usb_hub_descriptor {
 	uByte	bDescLength;
@@ -679,7 +686,7 @@ struct usb_port_status {
 #define	UPS_SUSPEND			0x0004
 #define	UPS_OVERCURRENT_INDICATOR	0x0008
 #define	UPS_RESET			0x0010
-#define UPS_PORT_L1                     0x0020
+#define	UPS_PORT_L1			0x0020	/* USB 2.0 only */
 /* The link-state bits are valid for Super-Speed USB HUBs */
 #define	UPS_PORT_LINK_STATE_GET(x)	(((x) >> 5) & 0xF)
 #define	UPS_PORT_LINK_STATE_SET(x)	(((x) & 0xF) << 5)
@@ -710,8 +717,8 @@ struct usb_port_status {
 #define	UPS_C_SUSPEND			0x0004
 #define	UPS_C_OVERCURRENT_INDICATOR	0x0008
 #define	UPS_C_PORT_RESET		0x0010
-#define UPS_C_PORT_L1                   0x0020	
-#define	UPS_C_BH_PORT_RESET		0x0020
+#define	UPS_C_PORT_L1			0x0020	/* USB 2.0 only */
+#define	UPS_C_BH_PORT_RESET		0x0020	/* USB 3.0 only */
 #define	UPS_C_PORT_LINK_STATE		0x0040
 #define	UPS_C_PORT_CONFIG_ERROR		0x0080
 } __packed;
@@ -744,7 +751,7 @@ enum usb_revision {
 #define	USB_REV_MAX	(USB_REV_3_0+1)
 
 /*
- * Supported host contoller modes.
+ * Supported host controller modes.
  */
 enum usb_hc_mode {
 	USB_MODE_HOST,		/* initiates transfers */
@@ -754,7 +761,7 @@ enum usb_hc_mode {
 #define	USB_MODE_MAX	(USB_MODE_DUAL+1)
 
 /*
- * The "USB_MODE" macros defines all the supported device states.
+ * The "USB_STATE" enums define all the supported device states.
  */
 enum usb_dev_state {
 	USB_STATE_DETACHED,
@@ -764,8 +771,6 @@ enum usb_dev_state {
 	USB_STATE_CONFIGURED,
 };
 #define	USB_STATE_MAX	(USB_STATE_CONFIGURED+1)
-
-
 
 /*
  * The "USB_EP_MODE" macros define all the currently supported

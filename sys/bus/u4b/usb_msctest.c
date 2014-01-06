@@ -836,7 +836,8 @@ usb_msc_eject(struct usb_device *udev, uint8_t iface_index, int method)
 		    sizeof(scsi_tct_eject), USB_MS_HZ);
 		break;
 	default:
-		kprintf("usb_msc_eject: unknown eject method (%d)\n", method);
+		DPRINTF("Unknown eject method (%d)\n", method);
+		err = 0;
 		break;
 	}
 	DPRINTF("Eject CD command status: %s\n", usbd_errstr(err));

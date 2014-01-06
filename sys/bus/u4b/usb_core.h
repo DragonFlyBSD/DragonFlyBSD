@@ -71,6 +71,7 @@ struct usb_page;
 struct usb_page_cache;
 struct usb_xfer;
 struct usb_xfer_root;
+struct usb_string_lang;
 
 /* typedefs */
 
@@ -153,7 +154,7 @@ struct usb_xfer {
 	usb_frcount_t nframes;		/* number of USB frames to transfer */
 	usb_frcount_t aframes;		/* actual number of USB frames
 					 * transferred */
-	usb_stream_t stream_id;         /* USB3.0 specific field */
+	usb_stream_t stream_id;		/* USB3.0 specific field */
 
 	uint16_t max_packet_size;
 	uint16_t max_frame_size;
@@ -176,6 +177,7 @@ struct usb_xfer {
 /* external variables */
 
 extern struct lock usb_ref_lock;
+extern const struct usb_string_lang usb_string_lang_en;
 
 /* typedefs */
 

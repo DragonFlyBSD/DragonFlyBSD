@@ -138,7 +138,7 @@ struct usb_endpoint {
 
 	struct usb_endpoint_descriptor *edesc;
 	struct usb_endpoint_ss_comp_descriptor *ecomp;
-	struct usb_pipe_methods *methods;	/* set by HC driver */
+	const struct usb_pipe_methods *methods;	/* set by HC driver */
 
 	uint16_t isoc_next;
 
@@ -157,9 +157,9 @@ struct usb_endpoint {
 	uint8_t	usb_smask;		/* USB start mask */
 	uint8_t	usb_cmask;		/* USB complete mask */
 	uint8_t	usb_uframe;		/* USB microframe */
-	
+
 	/* USB endpoint mode, see USB_EP_MODE_XXX */
-	
+
 	uint8_t ep_mode;
 };
 
@@ -225,7 +225,7 @@ struct usb_config {
 #define	USB_DEFAULT_INTERVAL	0
 	usb_timeout_t timeout;		/* transfer timeout in milliseconds */
 	struct usb_xfer_flags flags;	/* transfer flags */
-	usb_stream_t stream_id;         /* USB3.0 specific */
+	usb_stream_t stream_id;		/* USB3.0 specific */
 	enum usb_hc_mode usb_mode;	/* host or device mode */
 	uint8_t	type;			/* pipe type */
 	uint8_t	endpoint;		/* pipe number */

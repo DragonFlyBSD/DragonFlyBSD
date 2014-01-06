@@ -50,6 +50,11 @@
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
 
+const struct usb_string_lang usb_string_lang_en = {
+	sizeof(usb_string_lang_en), UDESC_STRING,
+	{ 0x09, 0x04 } /* American English */
+};
+
 MALLOC_DEFINE(M_USB, "USB", "USB");
 MALLOC_DEFINE(M_USBDEV, "USBdev", "USB device");
 MALLOC_DEFINE(M_USBHC, "USBHC", "USB host controller");

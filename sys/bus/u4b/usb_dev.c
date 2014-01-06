@@ -105,6 +105,7 @@ static struct	usb_endpoint *usb_dev_get_ep(struct usb_device *, uint8_t,
 		    uint8_t);
 static void	usb_loc_fill(struct usb_fs_privdata *,
 		    struct usb_cdev_privdata *);
+static void	usb_close(void *);
 static usb_error_t usb_ref_device(struct usb_cdev_privdata *, struct usb_cdev_refdata *, int);
 static usb_error_t usb_usb_ref_device(struct usb_cdev_privdata *, struct usb_cdev_refdata *);
 static void	usb_unref_device(struct usb_cdev_privdata *, struct usb_cdev_refdata *);
@@ -335,7 +336,7 @@ usb_unref_device(struct usb_cdev_privdata *cpd,
 
 	DPRINTFN(2, "cpd=%p is_uref=%d\n", cpd, crd->is_uref);
 
-	if (crd->is_uref)
+	if (crd->do_unlock)
 		usbd_enum_unlock(cpd->udev);
 
 	lockmgr(&usb_ref_lock, LK_EXCLUSIVE);
@@ -2238,6 +2239,9 @@ usb_alloc_symlink(const char *target)
 	struct usb_symlink *ps;
 
 	ps = kmalloc(sizeof(*ps), M_USBDEV, M_WAITOK);
+	if (ps == NULL) {
+		return (ps);
+	}
 	/* XXX no longer needed */
 	strlcpy(ps->src_path, target, sizeof(ps->src_path));
 	ps->src_len = strlen(ps->src_path);

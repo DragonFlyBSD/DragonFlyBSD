@@ -388,9 +388,8 @@ usbd_get_hr_func(struct usb_device *udev)
  * than 30 seconds is treated like a 30 second timeout. This USB stack
  * does not allow control requests without a timeout.
  *
- * NOTE: This function is thread safe. All calls to
- * "usbd_do_request_flags" will be serialised by the use of an
- * internal "sx_lock".
+ * NOTE: This function is thread safe. All calls to "usbd_do_request_flags"
+ * will be serialized by the use of the USB device enumeration lock.
  *
  * Returns:
  *    0: Success

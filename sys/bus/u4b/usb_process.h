@@ -42,6 +42,7 @@
 /* structure prototypes */
 
 struct usb_proc_msg;
+struct usb_device;
 
 /*
  * The following structure defines the USB process.
