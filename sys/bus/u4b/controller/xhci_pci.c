@@ -91,19 +91,21 @@ xhci_pci_match(device_t self)
 	uint32_t device_id = pci_get_devid(self);
 
 	switch (device_id) {
-	case 0x70231b6f:
-		return ("Etron EJ168 USB 3.0 Host Controller");
 	case 0x01941033:
 		return ("NEC uPD720200 USB 3.0 controller");
+
 	case 0x10421b21:
 		return ("ASMedia ASM1042 USB 3.0 controller");
+
 	case 0x1e318086:
 		return ("Intel Panther Point USB 3.0 controller");
 	case 0x8c318086:
 		return ("Intel Lynx Point USB 3.0 controller");
+
 	default:
 		break;
 	}
+
 	if ((pci_get_class(self) == PCIC_SERIALBUS)
 	    && (pci_get_subclass(self) == PCIS_SERIALBUS_USB)
 	    && (pci_get_progif(self) == PCIP_SERIALBUS_USB_XHCI)) {
@@ -139,6 +141,25 @@ xhci_interrupt_poll(void *_sc)
 }
 
 static int
+xhci_pci_port_route(device_t self, uint32_t set, uint32_t clear)
+{
+	uint32_t temp;
+
+	temp = pci_read_config(self, PCI_XHCI_INTEL_USB3_PSSEN, 4) |
+	    pci_read_config(self, PCI_XHCI_INTEL_XUSB2PR, 4);
+
+	temp |= set;
+	temp &= ~clear;
+
+	pci_write_config(self, PCI_XHCI_INTEL_USB3_PSSEN, temp, 4);
+	pci_write_config(self, PCI_XHCI_INTEL_XUSB2PR, temp, 4);
+
+	device_printf(self, "Port routing mask set to 0x%08x\n", temp);
+
+	return (0);
+}
+
+static int
 xhci_pci_attach(device_t self)
 {
 	struct xhci_softc *sc = device_get_softc(self);
@@ -171,7 +192,7 @@ xhci_pci_attach(device_t self)
 		count = pci_msi_count(self);
 		if (count >= 1) {
 			count = 1;
-			if (pci_alloc_msi(self, &rid, 1, &count) == 0) {
+			if (pci_alloc_msi(self, &rid, 1, count) == 0) {
 				if (bootverbose)
 					device_printf(self, "MSI enabled\n");
 				sc->sc_irq_rid = 1;
@@ -207,6 +228,16 @@ xhci_pci_attach(device_t self)
 		USB_BUS_LOCK(&sc->sc_bus);
 		xhci_interrupt_poll(sc);
 		USB_BUS_UNLOCK(&sc->sc_bus);
+	}
+
+	/* On Intel chipsets reroute ports from EHCI to XHCI controller. */
+	switch (pci_get_devid(self)) {
+	case 0x1e318086:	/* Panther Point */
+	case 0x8c318086:	/* Lynx Point */
+		sc->sc_port_route = &xhci_pci_port_route;
+		break;
+	default:
+		break;
 	}
 
 	xhci_pci_take_controller(self);
@@ -258,7 +289,8 @@ xhci_pci_detach(device_t self)
 	if (sc->sc_irq_res) {
 		if (sc->sc_irq_rid == 1)
 			pci_release_msi(self);
-		bus_release_resource(self, SYS_RES_IRQ, 0, sc->sc_irq_res);
+		bus_release_resource(self, SYS_RES_IRQ, sc->sc_irq_rid,
+		    sc->sc_irq_res);
 		sc->sc_irq_res = NULL;
 	}
 	if (sc->sc_io_res) {
@@ -276,7 +308,6 @@ static int
 xhci_pci_take_controller(device_t self)
 {
 	struct xhci_softc *sc = device_get_softc(self);
-	uint32_t device_id = pci_get_devid(self);
 	uint32_t cparams;
 	uint32_t eecp;
 	uint32_t eec;
@@ -300,7 +331,7 @@ xhci_pci_take_controller(device_t self)
 			continue;
 		device_printf(sc->sc_bus.bdev, "waiting for BIOS "
 		    "to give up control\n");
-		XWRITE1(sc, capa, eecp + 
+		XWRITE1(sc, capa, eecp +
 		    XHCI_XECP_OS_SEM, 1);
 		to = 500;
 		while (1) {
@@ -316,14 +347,6 @@ xhci_pci_take_controller(device_t self)
 			}
 			usb_pause_mtx(NULL, hz / 100);	/* wait 10ms */
 		}
-	}
-
-	/* On Intel chipsets reroute ports from EHCI to XHCI controller. */
-	if (device_id == 0x1e318086 /* Panther Point */ ||
-	    device_id == 0x8c318086 /* Lynx Point */) {
-		uint32_t temp = xhci_get_port_route();
-		pci_write_config(self, PCI_XHCI_INTEL_USB3_PSSEN, temp, 4);
-		pci_write_config(self, PCI_XHCI_INTEL_XUSB2PR, temp, 4);
 	}
 	return (0);
 }

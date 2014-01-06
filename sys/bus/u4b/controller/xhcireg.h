@@ -166,7 +166,7 @@
 #define	XHCI_IMOD_IVAL_SET(x)	(((x) & 0xFFFF) << 0)	/* 250ns unit */
 #define	XHCI_IMOD_ICNT_GET(x)	(((x) >> 16) & 0xFFFF)	/* 250ns unit */
 #define	XHCI_IMOD_ICNT_SET(x)	(((x) & 0xFFFF) << 16)	/* 250ns unit */
-#define	XHCI_IMOD_DEFAULT	0x000001F4U	/* 8000 IRQ/second */
+#define	XHCI_IMOD_DEFAULT	0x000003E8U	/* 8000 IRQ/second */
 #define	XHCI_ERSTSZ(n)		(0x0028 + (0x20 * (n)))	/* XHCI event ring segment table size */
 #define	XHCI_ERSTS_GET(x)	((x) & 0xFFFF)
 #define	XHCI_ERSTS_SET(x)	((x) & 0xFFFF)
@@ -199,25 +199,23 @@
 #define	XHCI_ID_USB_LOCAL_MEM	0x0006
 
 /* XHCI register R/W wrappers */
-#define XBARR(sc) bus_space_barrier((sc)->sc_io_tag, (sc)->sc_io_hdl, 0, (sc)->sc_io_size, \
-                        BUS_SPACE_BARRIER_READ|BUS_SPACE_BARRIER_WRITE)
 #define	XREAD1(sc, what, a) \
-	(XBARR(sc), bus_space_read_1((sc)->sc_io_tag, (sc)->sc_io_hdl, \
-		(a) + (sc)->sc_##what##_off))
+	bus_space_read_1((sc)->sc_io_tag, (sc)->sc_io_hdl, \
+		(a) + (sc)->sc_##what##_off)
 #define	XREAD2(sc, what, a) \
-	(XBARR(sc), bus_space_read_2((sc)->sc_io_tag, (sc)->sc_io_hdl, \
-		(a) + (sc)->sc_##what##_off))
+	bus_space_read_2((sc)->sc_io_tag, (sc)->sc_io_hdl, \
+		(a) + (sc)->sc_##what##_off)
 #define	XREAD4(sc, what, a) \
-	(XBARR(sc), bus_space_read_4((sc)->sc_io_tag, (sc)->sc_io_hdl, \
-		(a) + (sc)->sc_##what##_off))
+	bus_space_read_4((sc)->sc_io_tag, (sc)->sc_io_hdl, \
+		(a) + (sc)->sc_##what##_off)
 #define	XWRITE1(sc, what, a, x) \
-	do { XBARR(sc); bus_space_write_1((sc)->sc_io_tag, (sc)->sc_io_hdl, \
-		(a) + (sc)->sc_##what##_off, (x)); } while(0)
+	bus_space_write_1((sc)->sc_io_tag, (sc)->sc_io_hdl, \
+		(a) + (sc)->sc_##what##_off, (x))
 #define	XWRITE2(sc, what, a, x) \
-	do { XBARR(sc); bus_space_write_2((sc)->sc_io_tag, (sc)->sc_io_hdl, \
-		(a) + (sc)->sc_##what##_off, (x)); } while(0)
+	bus_space_write_2((sc)->sc_io_tag, (sc)->sc_io_hdl, \
+		(a) + (sc)->sc_##what##_off, (x))
 #define	XWRITE4(sc, what, a, x) \
-	do { XBARR(sc); bus_space_write_4((sc)->sc_io_tag, (sc)->sc_io_hdl, \
-		(a) + (sc)->sc_##what##_off, (x)); } while(0)
+	bus_space_write_4((sc)->sc_io_tag, (sc)->sc_io_hdl, \
+		(a) + (sc)->sc_##what##_off, (x))
 
 #endif	/* _XHCIREG_H_ */

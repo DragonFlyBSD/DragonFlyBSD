@@ -315,8 +315,8 @@ struct xhci_trb {
 } __aligned(4);
 
 struct xhci_dev_endpoint_trbs {
-	struct xhci_trb trb[XHCI_MAX_ENDPOINTS]
-	[(XHCI_MAX_STREAMS * XHCI_MAX_TRANSFERS) + XHCI_MAX_STREAMS];
+	struct xhci_trb		trb[XHCI_MAX_ENDPOINTS]
+	    [(XHCI_MAX_STREAMS * XHCI_MAX_TRANSFERS) + XHCI_MAX_STREAMS];
 };
 
 #define	XHCI_TD_PAGE_NBUF	17	/* units, room enough for 64Kbytes */
@@ -431,6 +431,8 @@ union xhci_hub_desc {
 	uint8_t				temp[128];
 };
 
+typedef int (xhci_port_route_t)(device_t, uint32_t, uint32_t);
+
 struct xhci_softc {
 	struct xhci_hw_softc	sc_hw;
 	/* base device */
@@ -439,6 +441,8 @@ struct xhci_softc {
 	struct usb_bus_msg	sc_config_msg[2];
 
 	struct usb_callout	sc_callout;
+
+	xhci_port_route_t	*sc_port_route;
 
 	union xhci_hub_desc	sc_hub_desc;
 
@@ -502,8 +506,7 @@ struct xhci_softc {
 
 /* prototypes */
 
-uint32_t xhci_get_port_route(void);
-uint8_t	xhci_use_polling(void);
+uint8_t 	xhci_use_polling(void);
 usb_error_t xhci_halt_controller(struct xhci_softc *);
 usb_error_t xhci_init(struct xhci_softc *, device_t);
 usb_error_t xhci_start_controller(struct xhci_softc *);
