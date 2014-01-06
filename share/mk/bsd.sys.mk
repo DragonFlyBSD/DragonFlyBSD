@@ -29,7 +29,7 @@ CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
 .  if ${WARNS} >= 2
-CWARNFLAGS	+=	-Wall -Wno-pointer-sign
+CWARNFLAGS	+=	-Wall -Wformat-security -Wno-pointer-sign
 .  endif
 .  if ${WARNS} >= 3
 CWARNFLAGS	+=	-Wextra -Wno-unused-parameter -Wstrict-prototypes\
