@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lastcomm.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/lastcomm/lastcomm.c,v 1.20.2.1 2007/04/18 05:53:50 dds Exp $
- * $DragonFly: src/usr.bin/lastcomm/lastcomm.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +43,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <utmp.h>
 #include "pathnames.h"
 
 time_t	 expand(u_int);
@@ -163,11 +161,11 @@ main(int argc, char *argv[])
 		if (*argv && !requested(argv, &ab))
 			continue;
 
-		(void)printf("%-*.*s %-7s %-*s %-*s",
+		(void)printf("%-*.*s %-7s %-*s %-8s",
 			     AC_COMM_LEN, AC_COMM_LEN, ab.ac_comm,
 			     flagbits(ab.ac_flag),
-			     UT_NAMESIZE, user_from_uid(ab.ac_uid, 0),
-			     UT_LINESIZE, getdev(ab.ac_tty));
+			     MAXLOGNAME - 1, user_from_uid(ab.ac_uid, 0),
+			     getdev(ab.ac_tty));
 		
 		
 		/* user + system time */
