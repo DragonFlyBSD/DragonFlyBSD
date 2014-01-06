@@ -189,9 +189,9 @@ The
 function will set up an sbuf with a drain function to use
 .Fn SYSCTL_OUT
 when the internal buffer fills.
-Note that if the various functions which append to an sbuf are used while
-a non-sleepable lock is held, the user buffer should be wired using
-.Fn sysctl_wire_old_buffer .
+.\"Note that if the various functions which append to an sbuf are used while
+.\"a non-sleepable lock is held, the user buffer should be wired using
+.\".Fn sysctl_wire_old_buffer .
 .Pp
 The
 .Fn sbuf_delete
@@ -360,7 +360,9 @@ The
 .Fn sbuf_error
 function returns any error value that the
 .Fa sbuf
-may have accumulated, either from the drain function, or ENOMEM if the
+may have accumulated, either from the drain function, or
+.Er ENOMEM
+if the
 .Fa sbuf
 overflowed.
 This function is generally not needed and instead the error code from
@@ -508,8 +510,9 @@ function returns the section length or \-1 if the buffer has an error.
 .Pp
 The
 .Fn sbuf_finish 9
-function (the kernel version) returns ENOMEM if the sbuf overflowed before
-being finished,
+function (the kernel version) returns
+.Er ENOMEM
+if the sbuf overflowed before being finished,
 or returns the error code from the drain if one is attached.
 .Pp
 The
