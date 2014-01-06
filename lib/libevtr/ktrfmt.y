@@ -9,18 +9,8 @@
 
 #include "evtr.h"
 #include "tok.h"
-#include "ktrfmt.tab.h"
 #include "internal.h"
-
-struct ktrfmt_parse_ctx {
-	struct symtab *symtab;
-	struct evtr_variable *var;
-	struct evtr_variable_value *val;
-	evtr_event_t ev;
-	char *errbuf;
-	size_t errbufsz;
-	int err;
-};
+#include "ktrfmt.tab.h"
 
 int __ktrfmtlex(YYSTYPE *);
 #define __ktrfmt_lex __ktrfmtlex
@@ -340,7 +330,7 @@ void __ktrfmt_delete_buffer(void *);
 void
 __ktrfmt_error (struct ktrfmt_parse_ctx *ctx, const char *s)
 {
-	do_parse_err(ctx, s);
+	do_parse_err(ctx, "%s", s);
 }
 
 int

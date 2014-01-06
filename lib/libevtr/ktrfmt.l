@@ -4,9 +4,9 @@
 //#define YYSTYPE struct token
 #define YY_NO_INPUT
 #include <stdlib.h>
+#include "internal.h"
 #include "ktrfmt.tab.h"
 #include "tok.h"
-#include "internal.h"
 
 enum {
 	NR_TOKENS = 18,

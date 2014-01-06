@@ -32,6 +32,16 @@ enum debug_flags {
 	} while(0)
 
 
+struct ktrfmt_parse_ctx {
+	struct symtab *symtab;
+	struct evtr_variable *var;
+	struct evtr_variable_value *val;
+	evtr_event_t ev;
+	char *errbuf;
+	size_t errbufsz;
+	int err;
+};
+
 TAILQ_HEAD(evtr_value_list, evtr_variable_value);
 typedef struct evtr_value_list *evtr_value_list_t;
 
