@@ -28,7 +28,6 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.30 2007/11/25 18:10:06 swildner Exp $
  */
 
 #include <sys/user.h>
@@ -46,7 +45,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <utmp.h>
 
 #include "ps.h"
 
@@ -73,7 +71,7 @@ int	utime(), stime(), ixrss(), idrss(), isrss();
 #define	UIDLEN	5
 #define	PIDFMT	"d"
 #define	PIDLEN	5
-#define USERLEN UT_NAMESIZE
+#define USERLEN (MAXLOGNAME-1)
 
 static const VAR var[] = {
 	{"%cpu", "%CPU", NULL, 0, pcpu, NULL, 4, 0, 0, NULL, NULL},

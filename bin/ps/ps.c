@@ -55,7 +55,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <pwd.h>
-#include <utmp.h>
 
 #include "ps.h"
 
@@ -469,7 +468,7 @@ main(int argc, char **argv)
 uid_t *
 getuids(const char *arg, int *nuids)
 {
-	char name[UT_NAMESIZE + 1];
+	char name[MAXLOGNAME];
 	struct passwd *pwd;
 	uid_t *uids, *moreuids;
 	size_t l;
