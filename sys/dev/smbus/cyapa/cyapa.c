@@ -52,8 +52,11 @@
 #include <sys/conf.h>
 #include <sys/uio.h>
 #include <sys/fcntl.h>
-#include <sys/input.h>
+/*#include <sys/input.h>*/
+#include <sys/vnode.h>
 #include <sys/sysctl.h>
+#include <sys/event.h>
+#include <sys/devfs.h>
 
 #include <bus/smbus/smbconf.h>
 #include <bus/smbus/smbus.h>
@@ -63,7 +66,14 @@
 #include "bus_if.h"
 #include "device_if.h"
 
-#define BUFSIZE 1024
+#define CYAPA_BUFSIZE	128			/* power of 2 */
+#define CYAPA_BUFMASK	(CYAPA_BUFSIZE - 1)
+
+struct cyapa_fifo {
+	int	rindex;
+	int	windex;
+	char	buf[CYAPA_BUFSIZE];
+};
 
 struct cyapa_softc {
 	device_t dev;
@@ -71,6 +81,8 @@ struct cyapa_softc {
 	int	unit;
 	int	addr;
 	cdev_t	devnode;
+	struct kqinfo kqinfo;
+	struct lock lk;
 
 	int	cap_resx;
 	int	cap_resy;
@@ -80,7 +92,31 @@ struct cyapa_softc {
 
 	int	poll_flags;
 	thread_t poll_td;
+#if 0
 	struct inputev iev;		/* subr_input.c */
+#endif
+
+	/*
+	 * PS/2 mouse emulation
+	 */
+	short	track_x;		/* current tracking */
+	short	track_y;
+	uint8_t	track_but;
+	short	delta_x;		/* accumulation -> report */
+	short	delta_y;
+	uint8_t reported_but;
+
+	struct cyapa_fifo rfifo;	/* device->host */
+	struct cyapa_fifo wfifo;	/* host->device */
+	uint8_t	ps2_cmd;		/* active p2_cmd waiting for data */
+	uint8_t ps2_acked;
+	int	data_signal;
+	int	blocked;
+	int	reporting_mode;		/* 0=disabled 1=enabled */
+	int	scaling_mode;		/* 0=1:1 1=2:1 */
+	int	remote_mode;		/* 0 for streaming mode */
+	int	resolution;		/* count/mm */
+	int	sample_rate;		/* samples/sec */
 };
 
 #define CYPOLL_SHUTDOWN	0x0001
@@ -88,15 +124,64 @@ struct cyapa_softc {
 static void cyapa_poll_thread(void *arg);
 static int cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs);
 
-static int cyapa_idle_freq = 20;
+static int fifo_empty(struct cyapa_fifo *fifo);
+static size_t fifo_ready(struct cyapa_fifo *fifo);
+#if 0
+static size_t fifo_total_ready(struct cyapa_fifo *fifo);
+#endif
+static char *fifo_read(struct cyapa_fifo *fifo, size_t n);
+static char *fifo_write(struct cyapa_fifo *fifo, size_t n);
+static uint8_t fifo_read_char(struct cyapa_fifo *fifo);
+static void fifo_write_char(struct cyapa_fifo *fifo, uint8_t c);
+static size_t fifo_space(struct cyapa_fifo *fifo);
+static void fifo_reset(struct cyapa_fifo *fifo);
+
+static int cyapa_idle_freq = 1;
 SYSCTL_INT(_debug, OID_AUTO, cyapa_idle_freq, CTLFLAG_RW,
 		&cyapa_idle_freq, 0, "");
 static int cyapa_slow_freq = 20;
 SYSCTL_INT(_debug, OID_AUTO, cyapa_slow_freq, CTLFLAG_RW,
 		&cyapa_slow_freq, 0, "");
-static int cyapa_norm_freq = 20;
+static int cyapa_norm_freq = 100;
 SYSCTL_INT(_debug, OID_AUTO, cyapa_norm_freq, CTLFLAG_RW,
 		&cyapa_norm_freq, 0, "");
+
+static int cyapa_debug = 0;
+SYSCTL_INT(_debug, OID_AUTO, cyapa_debug, CTLFLAG_RW,
+		&cyapa_debug, 0, "");
+
+static
+void
+cyapa_lock(struct cyapa_softc *sc)
+{
+	lockmgr(&sc->lk, LK_EXCLUSIVE);
+}
+
+static
+void
+cyapa_unlock(struct cyapa_softc *sc)
+{
+	lockmgr(&sc->lk, LK_RELEASE);
+}
+
+/*
+ * Notify if possible receive data ready.  Must be called
+ * without the lock held to avoid deadlocking in kqueue.
+ */
+static
+void
+cyapa_notify(struct cyapa_softc *sc)
+{
+	if (sc->data_signal || !fifo_empty(&sc->rfifo)) {
+		KNOTE(&sc->kqinfo.ki_note, 0);
+		if (sc->blocked) {
+			cyapa_lock(sc);
+			sc->blocked = 0;
+			wakeup(&sc->blocked);
+			cyapa_unlock(sc);
+		}
+	}
+}
 
 /*
  * Initialize the device
@@ -234,6 +319,7 @@ static	d_close_t	cyapaclose;
 static	d_ioctl_t	cyapaioctl;
 static	d_read_t	cyaparead;
 static	d_write_t	cyapawrite;
+static	d_kqfilter_t	cyapakqfilter;
 
 static struct dev_ops cyapa_ops = {
 	{ "cyapa", 0, 0 },
@@ -242,6 +328,7 @@ static struct dev_ops cyapa_ops = {
 	.d_ioctl =	cyapaioctl,
 	.d_read =	cyaparead,
 	.d_write =	cyapawrite,
+	.d_kqfilter =	cyapakqfilter,
 };
 
 static void
@@ -295,6 +382,9 @@ cyapa_attach(device_t dev)
 
 	bzero(sc, sizeof(struct cyapa_softc *));
 
+	lockinit(&sc->lk, "cyapa", 0, 0);
+	sc->reporting_mode = 1;
+
 	unit = device_get_unit(dev);
 	if ((unit & 0x04FF) != (0x0400 | 0x067))
 		return ENXIO;
@@ -336,6 +426,7 @@ cyapa_attach(device_t dev)
 	/*
 	 * Setup input event tracking
 	 */
+#if 0
 	inputev_init(&sc->iev, "Cypress APA Trackpad (cyapa)");
 	inputev_set_evbit(&sc->iev, EV_ABS);
 	inputev_set_abs_params(&sc->iev, ABS_MT_POSITION_X,
@@ -360,6 +451,7 @@ cyapa_attach(device_t dev)
 		inputev_set_keybit(&sc->iev, BTN_RIGHT);
 
 	inputev_register(&sc->iev);
+#endif
 
 	/*
 	 * Start the polling thread.
@@ -375,10 +467,12 @@ cyapa_detach(device_t dev)
 {
 	struct cyapa_softc *sc = (struct cyapa_softc *)device_get_softc(dev);
 
+#if 0
 	/*
 	 * Cleanup input event tracking
 	 */
 	inputev_deregister(&sc->iev);
+#endif
 
 	/*
 	 * Cleanup our poller thread
@@ -391,6 +485,8 @@ cyapa_detach(device_t dev)
 
 	if (sc->devnode)
 		dev_ops_remove_minor(&cyapa_ops, device_get_unit(dev));
+	if (sc->devnode)
+		devfs_assume_knotes(sc->devnode, &sc->kqinfo);
 
 	return (0);
 }
@@ -434,25 +530,406 @@ cyapaclose(struct dev_close_args *ap)
 }
 
 static int
-cyapawrite(struct dev_write_args *ap)
-{
-#if 0
-	cdev_t dev = ap->a_head.a_dev;
-	struct cyapa_softc *sc = CYAPA_SOFTC(minor(dev));
-#endif
-
-	return (EINVAL);
-}
-
-static int
 cyaparead(struct dev_read_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct cyapa_softc *sc = CYAPA_SOFTC(minor(dev));
 	int error;
+	struct uio *uio = ap->a_uio;
+	int ioflag = ap->a_ioflag;
+	int didread;
+	size_t n;
 
-	error = inputev_read(&sc->iev, ap->a_uio, ap->a_ioflag);
+	/*
+	 * If buffer is empty, load a new event if it is ready
+	 */
+	cyapa_lock(sc);
+again:
+	if (fifo_empty(&sc->rfifo) &&
+	    (sc->data_signal || sc->delta_x || sc->delta_y ||
+	     sc->track_but != sc->reported_but)) {
+		uint8_t c0;
+		uint8_t but;
+		short delta_x;
+		short delta_y;
+
+		sc->data_signal = 0;
+		delta_x = sc->delta_x;
+		delta_y = sc->delta_y;
+		if (delta_x > 255) {
+			delta_x = 255;
+			sc->data_signal = 1;
+		}
+		if (delta_x < -256) {
+			delta_x = -256;
+			sc->data_signal = 1;
+		}
+		if (delta_y > 255) {
+			delta_y = 255;
+			sc->data_signal = 1;
+		}
+		if (delta_y < -256) {
+			delta_y = -256;
+			sc->data_signal = 1;
+		}
+		but = sc->track_but;
+		sc->delta_x -= delta_x;
+		sc->delta_y -= delta_y;
+		sc->reported_but = but;
+
+		c0 = 0;
+		if (delta_x < 0)
+			c0 |= 0x10;
+		if (delta_y < 0)
+			c0 |= 0x20;
+		c0 |= 0x08;
+		if (but & CYAPA_FNGR_LEFT)
+			c0 |= 0x01;
+		if (but & CYAPA_FNGR_MIDDLE)
+			c0 |= 0x04;
+		if (but & CYAPA_FNGR_RIGHT)
+			c0 |= 0x02;
+
+		fifo_write_char(&sc->rfifo, c0);
+		fifo_write_char(&sc->rfifo, (uint8_t)delta_x);
+		fifo_write_char(&sc->rfifo, (uint8_t)delta_y);
+		cyapa_unlock(sc);
+		cyapa_notify(sc);
+		cyapa_lock(sc);
+	}
+
+	/*
+	 * Blocking / Non-blocking
+	 */
+	error = 0;
+	didread = (uio->uio_resid == 0);
+
+	while ((ioflag & IO_NDELAY) == 0 && fifo_empty(&sc->rfifo)) {
+		if (sc->data_signal)
+			goto again;
+		sc->blocked = 1;
+		error = lksleep(&sc->blocked, &sc->lk, PCATCH, "cyablk", 0);
+		if (error)
+			break;
+	}
+
+	/*
+	 * Return any buffered data
+	 */
+	while (error == 0 && uio->uio_resid &&
+	       (n = fifo_ready(&sc->rfifo)) > 0) {
+		if (n > uio->uio_resid)
+			n = uio->uio_resid;
+#if 0
+		{
+			uint8_t *ptr = fifo_read(&sc->rfifo, 0);
+			size_t v;
+			kprintf("read: ");
+			for (v = 0; v < n; ++v)
+				kprintf(" %02x", ptr[v]);
+			kprintf("\n");
+		}
+#endif
+		error = uiomove(fifo_read(&sc->rfifo, 0), n, uio);
+		if (error)
+			break;
+		fifo_read(&sc->rfifo, n);
+		didread = 1;
+	}
+	cyapa_unlock(sc);
+
+	if (error == 0 && didread == 0)
+		error = EWOULDBLOCK;
+
 	return error;
+}
+
+static int
+cyapawrite(struct dev_write_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct cyapa_softc *sc = CYAPA_SOFTC(minor(dev));
+	struct uio *uio = ap->a_uio;
+	int error;
+	int cmd_completed;
+	size_t n;
+	uint8_t c0;
+
+again:
+	/*
+	 * Copy data from userland.  This will also cross-over the end
+	 * of the fifo and keep filling.
+	 */
+	cyapa_lock(sc);
+	while ((n = fifo_space(&sc->wfifo)) > 0 && uio->uio_resid) {
+		if (n > uio->uio_resid)
+			n = uio->uio_resid;
+		error = uiomove(fifo_write(&sc->wfifo, 0), n, uio);
+		if (error)
+			break;
+		fifo_write(&sc->wfifo, n);
+	}
+
+	/*
+	 * Handle commands
+	 */
+	cmd_completed = (fifo_ready(&sc->wfifo) != 0);
+	while (fifo_ready(&sc->wfifo) && cmd_completed && error == 0) {
+		if (sc->ps2_cmd == 0)
+			sc->ps2_cmd = fifo_read_char(&sc->wfifo);
+		switch(sc->ps2_cmd) {
+		case 0xE6:
+			/*
+			 * SET SCALING 1:1
+			 */
+			sc->scaling_mode = 0;
+			fifo_write_char(&sc->rfifo, 0xFA);
+			break;
+		case 0xE7:
+			/*
+			 * SET SCALING 2:1
+			 */
+			sc->scaling_mode = 1;
+			fifo_write_char(&sc->rfifo, 0xFA);
+			break;
+		case 0xE8:
+			/*
+			 * SET RESOLUTION +1 byte
+			 */
+			if (sc->ps2_acked == 0) {
+				sc->ps2_acked = 1;
+				fifo_write_char(&sc->rfifo, 0xFA);
+			}
+			if (fifo_ready(&sc->wfifo) == 0) {
+				cmd_completed = 0;
+				break;
+			}
+			sc->resolution = fifo_read_char(&sc->wfifo);
+			fifo_write_char(&sc->rfifo, 0xFA);
+			break;
+		case 0xE9:
+			/*
+			 * STATUS REQUEST
+			 *
+			 * byte1:
+			 *	bit 7	0
+			 *	bit 6	Mode	(1=remote mode, 0=stream mode)
+			 *	bit 5	Enable	(data reporting enabled)
+			 *	bit 4	Scaling	(0=1:1 1=2:1)
+			 *	bit 3	0
+			 *	bit 2	LEFT BUTTON 	(1 if pressed)
+			 *	bit 1	MIDDLE BUTTON 	(1 if pressed)
+			 *	bit 0	RIGHT BUTTON 	(1 if pressed)
+			 *
+			 * byte2: resolution counts/mm
+			 * byte3: sample rate
+			 */
+			c0 = 0;
+			if (sc->remote_mode)
+				c0 |= 0x40;
+			if (sc->reporting_mode)
+				c0 |= 0x20;
+			if (sc->scaling_mode)
+				c0 |= 0x10;
+			if (sc->track_but & CYAPA_FNGR_LEFT)
+				c0 |= 0x04;
+			if (sc->track_but & CYAPA_FNGR_MIDDLE)
+				c0 |= 0x02;
+			if (sc->track_but & CYAPA_FNGR_RIGHT)
+				c0 |= 0x01;
+			fifo_write_char(&sc->rfifo, 0xFA);
+			fifo_write_char(&sc->rfifo, c0);
+			fifo_write_char(&sc->rfifo, 0x00);
+			fifo_write_char(&sc->rfifo, 100);
+			break;
+		case 0xEA:
+			/*
+			 * Set stream mode and reset movement counters
+			 */
+			sc->remote_mode = 0;
+			fifo_write_char(&sc->rfifo, 0xFA);
+			sc->delta_x = 0;
+			sc->delta_y = 0;
+			break;
+		case 0xEB:
+			/*
+			 * Read Data (if in remote mode).  If not in remote
+			 * mode force an event.
+			 */
+			fifo_write_char(&sc->rfifo, 0xFA);
+			sc->data_signal = 1;
+			break;
+		case 0xEC:
+			/*
+			 * Reset Wrap Mode (ignored)
+			 */
+			fifo_write_char(&sc->rfifo, 0xFA);
+			break;
+		case 0xEE:
+			/*
+			 * Set Wrap Mode (ignored)
+			 */
+			fifo_write_char(&sc->rfifo, 0xFA);
+			break;
+		case 0xF0:
+			/*
+			 * Set Remote Mode
+			 */
+			sc->remote_mode = 1;
+			fifo_write_char(&sc->rfifo, 0xFA);
+			sc->delta_x = 0;
+			sc->delta_y = 0;
+			break;
+		case 0xF2:
+			/*
+			 * Get Device ID
+			 *
+			 * byte1: device id (0x00)
+			 * (also reset movement counters)
+			 */
+			fifo_write_char(&sc->rfifo, 0xFA);
+			sc->delta_x = 0;
+			sc->delta_y = 0;
+			break;
+		case 0xF3:
+			/*
+			 * Set Sample Rate
+			 *
+			 * byte1: the sample rate
+			 */
+			if (sc->ps2_acked == 0) {
+				sc->ps2_acked = 1;
+				fifo_write_char(&sc->rfifo, 0xFA);
+			}
+			if (fifo_ready(&sc->wfifo) == 0) {
+				cmd_completed = 0;
+				break;
+			}
+			sc->sample_rate = fifo_read_char(&sc->wfifo);
+			fifo_write_char(&sc->rfifo, 0xFA);
+			break;
+		case 0xF4:
+			/*
+			 * Enable data reporting.  Only effects stream mode.
+			 */
+			fifo_write_char(&sc->rfifo, 0xFA);
+			sc->reporting_mode = 1;
+			break;
+		case 0xF5:
+			/*
+			 * Disable data reporting.  Only effects stream mode.
+			 */
+			fifo_write_char(&sc->rfifo, 0xFA);
+			sc->reporting_mode = 1;
+			break;
+		case 0xF6:
+			/*
+			 * SET DEFAULTS
+			 *
+			 * (reset sampling rate, resolution, scaling and
+			 *  enter stream mode)
+			 */
+			fifo_write_char(&sc->rfifo, 0xFA);
+			sc->sample_rate = 100;
+			sc->resolution = 4;
+			sc->scaling_mode = 0;
+			sc->reporting_mode = 0;
+			sc->remote_mode = 0;
+			sc->delta_x = 0;
+			sc->delta_y = 0;
+			/* signal */
+			break;
+		case 0xFE:
+			/*
+			 * RESEND
+			 *
+			 * Force a resend by guaranteeing that reported_but
+			 * differs from track_but.
+			 */
+			fifo_write_char(&sc->rfifo, 0xFA);
+			sc->data_signal = 1;
+			break;
+		case 0xFF:
+			/*
+			 * RESET
+			 */
+			fifo_reset(&sc->rfifo);	/* should we do this? */
+			fifo_reset(&sc->wfifo);	/* should we do this? */
+			fifo_write_char(&sc->rfifo, 0xFA);
+			sc->delta_x = 0;
+			sc->delta_y = 0;
+			break;
+		default:
+			break;
+		}
+		if (cmd_completed) {
+			sc->ps2_cmd = 0;
+			sc->ps2_acked = 0;
+		}
+		cyapa_unlock(sc);
+		cyapa_notify(sc);
+		cyapa_lock(sc);
+	}
+	cyapa_unlock(sc);
+	if (error == 0 && (cmd_completed || uio->uio_resid))
+		goto again;
+	return error;
+}
+
+static void cyapa_filt_detach(struct knote *);
+static int cyapa_filt(struct knote *, long);
+
+static struct filterops cyapa_filtops =
+        { FILTEROP_ISFD, NULL, cyapa_filt_detach, cyapa_filt };
+
+static int
+cyapakqfilter(struct dev_kqfilter_args *ap)
+{
+	cdev_t dev = ap->a_head.a_dev;
+	struct cyapa_softc *sc = CYAPA_SOFTC(minor(dev));
+	struct knote *kn = ap->a_kn;
+	struct klist *klist;
+
+	switch(kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &cyapa_filtops;
+		kn->kn_hook = (void *)sc;
+		ap->a_result = 0;
+		break;
+	default:
+		ap->a_result = EOPNOTSUPP;
+		return (0);
+	}
+	klist = &sc->kqinfo.ki_note;
+	knote_insert(klist, kn);
+
+	return (0);
+}
+
+static void
+cyapa_filt_detach(struct knote *kn)
+{
+	struct cyapa_softc *sc = (struct cyapa_softc *)kn->kn_hook;
+	struct klist *klist;
+
+	klist = &sc->kqinfo.ki_note;
+	knote_remove(klist, kn);
+}
+
+static int
+cyapa_filt(struct knote *kn, long hint)
+{
+	struct cyapa_softc *sc = (struct cyapa_softc *)kn->kn_hook;
+	int ready;
+
+	cyapa_lock(sc);
+	if (fifo_ready(&sc->rfifo) || sc->data_signal)
+		ready = 1;
+	else
+		ready = 0;
+	cyapa_unlock(sc);
+
+	return (ready);
 }
 
 static int
@@ -483,8 +960,10 @@ cyapaioctl(struct dev_ioctl_args *ap)
 		return (error);
 
 	switch (ap->a_cmd) {
-	case 0:
 	default:
+#if 0
+		error = inputev_ioctl(&sc->iev, ap->a_cmd, ap->a_data);
+#endif
 		error = ENOTTY;
 		break;
 	}
@@ -540,21 +1019,29 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 {
 	int nfingers;
 	int i;
+	short x;
+	short y;
+	u_char but;
 
 	nfingers = CYAPA_FNGR_NUMFINGERS(regs->fngr);
 
-	kprintf("stat %02x buttons %c%c%c nfngrs=%d ",
-		regs->stat,
-		((regs->fngr & CYAPA_FNGR_LEFT) ? 'L' : '-'),
-		((regs->fngr & CYAPA_FNGR_MIDDLE) ? 'L' : '-'),
-		((regs->fngr & CYAPA_FNGR_RIGHT) ? 'L' : '-'),
-		nfingers
-	);
+	if (cyapa_debug) {
+		kprintf("stat %02x buttons %c%c%c nfngrs=%d ",
+			regs->stat,
+			((regs->fngr & CYAPA_FNGR_LEFT) ? 'L' : '-'),
+			((regs->fngr & CYAPA_FNGR_MIDDLE) ? 'L' : '-'),
+			((regs->fngr & CYAPA_FNGR_RIGHT) ? 'L' : '-'),
+			nfingers
+		);
+	}
 	for (i = 0; i < nfingers; ++i) {
-		kprintf(" [x=%04d y=%04d p=%d]",
-			CYAPA_TOUCH_X(regs, i),
-			CYAPA_TOUCH_Y(regs, i),
-			CYAPA_TOUCH_P(regs, i));
+		if (cyapa_debug) {
+			kprintf(" [x=%04d y=%04d p=%d]",
+				CYAPA_TOUCH_X(regs, i),
+				CYAPA_TOUCH_Y(regs, i),
+				CYAPA_TOUCH_P(regs, i));
+		}
+#if 0
 		inputev_mt_slot(&sc->iev, regs->touch[i].id - 1);
 		inputev_mt_report_slot_state(&sc->iev, MT_TOOL_FINGER, 1);
 		inputev_report_abs(&sc->iev, ABS_MT_POSITION_X,
@@ -563,7 +1050,9 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 				   CYAPA_TOUCH_Y(regs, i));
 		inputev_report_abs(&sc->iev, ABS_MT_PRESSURE,
 				   CYAPA_TOUCH_P(regs, i));
+#endif
 	}
+#if 0
 	inputev_mt_sync_frame(&sc->iev);
 
 	if (sc->cap_buttons & CYAPA_FNGR_LEFT)
@@ -575,9 +1064,192 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	if (sc->cap_buttons & CYAPA_FNGR_RIGHT)
 		inputev_report_key(&sc->iev, BTN_LEFT,
 				 regs->fngr & CYAPA_FNGR_RIGHT);
+#endif
 
-	kprintf("\n");
+	/*
+	 * Tracking for local solutions
+	 */
+	cyapa_lock(sc);
+	if (nfingers == 0) {
+		sc->track_x = -1;
+		sc->track_y = -1;
+	} else {
+		x = CYAPA_TOUCH_X(regs, 0);
+		y = CYAPA_TOUCH_Y(regs, 0);
+		if (sc->track_x != -1) {
+			sc->delta_x += x - sc->track_x;
+			sc->delta_y -= y - sc->track_y;
+			sc->track_x = x;
+			sc->track_y = y;
+			if (sc->delta_x > sc->cap_resx)
+				sc->delta_x = sc->cap_resx;
+			if (sc->delta_x < -sc->cap_resx)
+				sc->delta_x = -sc->cap_resx;
+			if (sc->delta_y > sc->cap_resx)
+				sc->delta_y = sc->cap_resy;
+			if (sc->delta_y < -sc->cap_resy)
+				sc->delta_y = -sc->cap_resy;
+		} else {
+			sc->track_x = x;
+			sc->track_y = y;
+		}
+	}
+	if (regs->fngr & CYAPA_FNGR_LEFT) {
+		if (sc->track_but)
+			but = sc->track_but;	/* hold-swipe, keep same but */
+		else if (sc->track_x < sc->cap_resx * 1 / 3)
+			but = CYAPA_FNGR_LEFT;
+		else if (sc->track_x < sc->cap_resx * 2 / 3)
+			but = CYAPA_FNGR_MIDDLE;
+		else
+			but = CYAPA_FNGR_RIGHT;
+	} else {
+		but = 0;
+	}
+	sc->track_but = but;
+	if (sc->delta_x || sc->delta_y || sc->track_but != sc->reported_but) {
+		if (sc->remote_mode == 0 && sc->reporting_mode)
+			sc->data_signal = 1;
+	}
+	cyapa_unlock(sc);
+	cyapa_notify(sc);
+
+	if (cyapa_debug)
+		kprintf("\n");
 	return(0);
+}
+
+/*
+ * FIFO FUNCTIONS
+ */
+
+/*
+ * Returns non-zero if the fifo is empty
+ */
+static
+int
+fifo_empty(struct cyapa_fifo *fifo)
+{
+	return(fifo->rindex == fifo->windex);
+}
+
+/*
+ * Returns the number of characters available for reading from
+ * the fifo without wrapping the fifo buffer.
+ */
+static
+size_t
+fifo_ready(struct cyapa_fifo *fifo)
+{
+	size_t n;
+
+	n = CYAPA_BUFSIZE - (fifo->rindex & CYAPA_BUFMASK);
+	if (n > (size_t)(fifo->windex - fifo->rindex))
+		n = (size_t)(fifo->windex - fifo->rindex);
+	return n;
+}
+
+#if 0
+/*
+ * Returns the number of characters available for reading from
+ * the fifo including wrapping the fifo buffer.
+ */
+static
+size_t
+fifo_total_ready(struct cyapa_fifo *fifo)
+{
+	return ((size_t)(fifo->windex - fifo->rindex));
+}
+#endif
+
+/*
+ * Returns a read pointer into the fifo and then bumps
+ * rindex.  The FIFO must have at least 'n' characters in
+ * it.  The value (n) can cause the index to wrap but users
+ * of the buffer should never supply a value for (n) that wraps
+ * the buffer.
+ */
+static
+char *
+fifo_read(struct cyapa_fifo *fifo, size_t n)
+{
+	char *ptr;
+
+	if (n > (CYAPA_BUFSIZE - (fifo->rindex & CYAPA_BUFMASK))) {
+		kprintf("fifo_read: overflow\n");
+		return (fifo->buf);
+	}
+	ptr = fifo->buf + (fifo->rindex & CYAPA_BUFMASK);
+	fifo->rindex += n;
+
+	return (ptr);
+}
+
+static
+uint8_t
+fifo_read_char(struct cyapa_fifo *fifo)
+{
+	uint8_t c;
+
+	if (fifo->rindex == fifo->windex) {
+		kprintf("fifo_read_char: overflow\n");
+		c = 0;
+	} else {
+		c = fifo->buf[fifo->rindex & CYAPA_BUFMASK];
+		++fifo->rindex;
+	}
+	return c;
+}
+
+
+/*
+ * Write a character to the FIFO.  The character will be discarded
+ * if the FIFO is full.
+ */
+static
+void
+fifo_write_char(struct cyapa_fifo *fifo, uint8_t c)
+{
+	if (fifo->windex - fifo->rindex < CYAPA_BUFSIZE) {
+		fifo->buf[fifo->windex & CYAPA_BUFMASK] = c;
+		++fifo->windex;
+	}
+}
+
+/*
+ * Return the amount of space available for writing without wrapping
+ * the fifo.
+ */
+static
+size_t
+fifo_space(struct cyapa_fifo *fifo)
+{
+	size_t n;
+
+	n = CYAPA_BUFSIZE - (fifo->windex & CYAPA_BUFMASK);
+	if (n > (size_t)(CYAPA_BUFSIZE - (fifo->windex - fifo->rindex)))
+		n = (size_t)(CYAPA_BUFSIZE - (fifo->windex - fifo->rindex));
+	return n;
+}
+
+static
+char *
+fifo_write(struct cyapa_fifo *fifo, size_t n)
+{
+	char *ptr;
+
+	ptr = fifo->buf + (fifo->windex & CYAPA_BUFMASK);
+	fifo->windex += n;
+
+	return(ptr);
+}
+
+static
+void
+fifo_reset(struct cyapa_fifo *fifo)
+{
+	fifo->rindex = 0;
+	fifo->windex = 0;
 }
 
 DRIVER_MODULE(cyapa, smbus, cyapa_driver, cyapa_devclass, NULL, NULL);
