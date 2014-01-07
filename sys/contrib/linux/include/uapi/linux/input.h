@@ -8,13 +8,10 @@
 #ifndef _UAPI_INPUT_H
 #define _UAPI_INPUT_H
 
-
-#ifndef __KERNEL__
-#include <sys/time.h>
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <linux/types.h>
-#endif
+/*
+ * For DragonFly - do not include directly, include sys/input.h instead
+ */
+/* DragonFly - removed #include's */
 
 /*
  * The event structure itself
