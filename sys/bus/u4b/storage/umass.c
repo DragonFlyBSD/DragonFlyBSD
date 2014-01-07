@@ -422,6 +422,8 @@ struct umass_softc {
 	uint8_t	sc_maxlun;		/* maximum LUN number, inclusive */
 	uint8_t	sc_last_xfer_index;
 	uint8_t	sc_status_try;
+
+	struct usb_callout sc_rescan_timeout;
 };
 
 struct umass_probe_proto {
@@ -2085,6 +2087,7 @@ umass_cam_attach_sim(struct umass_softc *sc)
 	 * The CAM layer will then after a while start probing for devices on
 	 * the bus. The number of SIMs is limited to one.
 	 */
+	usb_callout_init_mtx(&sc->sc_rescan_timeout, &sc->sc_lock, 0);
 
 	devq = cam_simq_alloc(1 /* maximum openings */ );
 	if (devq == NULL) {
@@ -2187,16 +2190,10 @@ umass_cam_attach(struct umass_softc *sc)
 		    sc->sc_unit, CAM_LUN_WILDCARD,
 		    cam_sim_path(sc->sc_sim));
 
-        if (!cold) {
-                /*
-                 * failure is benign, as the user can still do it by hand
-                 * (camcontrol rescan <busno>). Only do this if we are not
-                 * booting, because CAM does a scan after booting has
-                 * completed, when interrupts have been enabled.
-                 */
-                usb_callout_reset(&sc->sc_rescan_timeout, USB_MS_TO_TICKS(200),
-                    umass_cam_rescan, sc);
-        }
+	if(!cold) {
+		usb_callout_reset(&sc->sc_rescan_timeout, USB_MS_TO_TICKS(200),
+		   umass_cam_rescan, sc);
+	}
 }
 
 /* umass_cam_detach
