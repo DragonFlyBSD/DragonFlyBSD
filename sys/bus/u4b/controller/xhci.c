@@ -78,6 +78,14 @@
    ((struct xhci_softc *)(((uint8_t *)(bus)) - \
     ((uint8_t *)&(((struct xhci_softc *)0)->sc_bus))))
 
+static SYSCTL_NODE(_hw_usb, OID_AUTO, xhci, CTLFLAG_RW, 0, "USB XHCI");
+
+static int xhcistreams;
+SYSCTL_INT(_hw_usb_xhci, OID_AUTO, streams, CTLFLAG_RW,
+    &xhcistreams, 0, "Set to enable streams mode support");
+TUNABLE_INT("hw.usb.xhci.streams", &xhcistreams);
+
+
 #ifdef USB_DEBUG
 static int xhcidebug = 0;
 static int xhciroute = 0;

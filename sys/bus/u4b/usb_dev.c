@@ -105,7 +105,6 @@ static struct	usb_endpoint *usb_dev_get_ep(struct usb_device *, uint8_t,
 		    uint8_t);
 static void	usb_loc_fill(struct usb_fs_privdata *,
 		    struct usb_cdev_privdata *);
-static void	usb_close(void *);
 static usb_error_t usb_ref_device(struct usb_cdev_privdata *, struct usb_cdev_refdata *, int);
 static usb_error_t usb_usb_ref_device(struct usb_cdev_privdata *, struct usb_cdev_refdata *);
 static void	usb_unref_device(struct usb_cdev_privdata *, struct usb_cdev_refdata *);
