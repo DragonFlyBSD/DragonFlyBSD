@@ -87,6 +87,11 @@ TUNABLE_INT("hw.usb.no_boot_wait", &usb_no_boot_wait);
 SYSCTL_INT(_hw_usb, OID_AUTO, no_boot_wait, CTLFLAG_RW, &usb_no_boot_wait, 0,
     "No USB device enumerate waiting at boot.");
 
+static int usb_no_suspend_wait = 0;
+TUNABLE_INT("hw.usb.no_suspend_wait", &usb_no_suspend_wait);
+SYSCTL_INT(_hw_usb, OID_AUTO, no_suspend_wait, CTLFLAG_RW,
+    &usb_no_suspend_wait, 0, "No USB device waiting at system suspend.");
+
 static int usb_no_shutdown_wait = 0;
 TUNABLE_INT("hw.usb.no_shutdown_wait", &usb_no_shutdown_wait);
 SYSCTL_INT(_hw_usb, OID_AUTO, no_shutdown_wait, CTLFLAG_RW, &usb_no_shutdown_wait, 0,
@@ -144,9 +149,7 @@ usb_root_mount_rel(struct usb_bus *bus)
 {
 	if (bus->bus_roothold != NULL) {
 		DPRINTF("Releasing root mount hold %p\n", bus->bus_roothold);
-#if 0 /* XXX Dragonflybsd seems to not have this? */
 		root_mount_rel(bus->bus_roothold);
-#endif
 		bus->bus_roothold = NULL;
 	}
 }
@@ -290,7 +293,7 @@ usb_resume(device_t dev)
 void
 usb_bus_reset_async_locked(struct usb_bus *bus)
 {
-	USB_BUS_LOCK_ASSERT(bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(bus);
 
 	DPRINTF("\n");
 
@@ -618,7 +621,7 @@ usb_power_wdog(void *arg)
 {
 	struct usb_bus *bus = arg;
 
-	USB_BUS_LOCK_ASSERT(bus, MA_OWNED);
+	USB_BUS_LOCK_ASSERT(bus);
 
 	usb_callout_reset(&bus->power_wdog,
 	    4 * hz, usb_power_wdog, arg);
@@ -800,7 +803,7 @@ usb_attach_sub(device_t dev, struct usb_bus *bus)
 	    &bus->bus_lock, device_get_nameunit(dev), USB_PRI_MED)) {
 		device_printf(dev, "WARNING: Creation of USB Giant "
 		    "callback process failed.\n");
-	} else if (usb_proc_create(BUS_USB_NON_GIANT_PROC(bus),
+	} else if (usb_proc_create(USB_BUS_NON_GIANT_PROC(bus),
 	    &bus->bus_lock, device_get_nameunit(dev), USB_PRI_HIGH)) {
 		device_printf(dev, "WARNING: Creation of USB non-Giant "
 		    "callback process failed.\n");
@@ -937,7 +940,7 @@ usb_bus_mem_free_all(struct usb_bus *bus, usb_bus_mem_cb_t *cb)
 	usb_dma_tag_unsetup(bus->dma_parent_tag);
 #endif
 
-	lock_uninit(&bus->bus_lock);
+	lockuninit(&bus->bus_lock);
 }
 
 /* convenience wrappers */
