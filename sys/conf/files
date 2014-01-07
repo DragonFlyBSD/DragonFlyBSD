@@ -795,12 +795,12 @@ dev/disk/sdhci/sdhci.c		optional sdhci pci
 bus/smbus/smbus_if.m		optional smbus
 bus/smbus/smbconf.c		optional smbus
 bus/smbus/smbus.c		optional smbus
-bus/smbus/smb.c			optional smb
 bus/smbus/amdsmb/amdsmb.c	optional amdsmb pci
 bus/smbus/ichiic/ig4_iic.c	optional ichiic
 bus/smbus/ichiic/ig4_pci.c	optional ichiic pci
 bus/smbus/ichsmb/ichsmb.c	optional ichsmb
 bus/smbus/ichsmb/ichsmb_pci.c	optional ichsmb pci
+dev/smbus/smb.c			optional smb
 dev/serial/si/si.c		optional si
 dev/serial/si/si2_z280.c	optional si
 dev/serial/si/si3_t225.c	optional si

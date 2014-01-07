@@ -934,7 +934,7 @@ devclass_alloc_unit(devclass_t dc, int *unitp)
 		device_t *newlist;
 		int newsize;
 
-		newsize = roundup((unit + 1), MINALLOCSIZE / sizeof(device_t));
+		newsize = (unit + 1);
 		newlist = kmalloc(sizeof(device_t) * newsize, M_BUS,
 				 M_INTWAIT | M_ZERO);
 		if (newlist == NULL)
@@ -960,7 +960,7 @@ devclass_add_device(devclass_t dc, device_t dev)
 
 	buflen = strlen(dc->name) + 5;
 	dev->nameunit = kmalloc(buflen, M_BUS, M_INTWAIT | M_ZERO);
-	if (!dev->nameunit)
+	if (dev->nameunit == NULL)
 		return(ENOMEM);
 
 	if ((error = devclass_alloc_unit(dc, &dev->unit)) != 0) {

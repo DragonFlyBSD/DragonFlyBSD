@@ -37,8 +37,8 @@
 #include <sys/uio.h>
 #include <sys/fcntl.h>
 
-#include "smbconf.h"
-#include "smbus.h"
+#include <bus/smbus/smbconf.h>
+#include <bus/smbus/smbus.h>
 #include "smb.h"
 
 #include "smbus_if.h"

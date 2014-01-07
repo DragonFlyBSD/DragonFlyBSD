@@ -13,6 +13,7 @@ SUBDIR=	\
 	raid \
 	serial \
 	sound \
+	smbus \
 	video \
 	virtual
 
