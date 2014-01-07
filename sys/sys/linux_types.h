@@ -31,44 +31,20 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
 /*
- * Input event user and device API
+ * This is used to minimize changes to files brought in from linux
+ * in sys/contrib/linux/...
  */
+#ifndef _SYS_LINUX_TYPES_H_
+#define _SYS_LINUX_TYPES_H_
 
-#ifndef _SYS_INPUT_H_
-#define _SYS_INPUT_H_
-
-#include <sys/linux_types.h>
-#include <contrib/linux/include/uapi/linux/input.h>
-
-struct inputev {
-	int dummy;
-};
-
-typedef struct inputev inputev_t;
-
-#ifdef _KERNEL
-
-void inputev_init(inputev_t *iev, const char *id);
-void inputev_register(inputev_t *iev);
-void inputev_deregister(inputev_t *iev);
-void inputev_sync(inputev_t *iev);
-int inputev_read(inputev_t *iev, struct uio *uio, int ioflag);
-void inputev_mt_sync_frame(inputev_t *iev);
-
-void inputev_set_evbit(inputev_t *iev, int bit);
-void inputev_set_keybit(inputev_t *iev, int bit);
-void inputev_set_propbit(inputev_t *iev, int bit);
-void inputev_set_abs_params(inputev_t *iev, u_int axis,
-			int min, int max, int fuzz, int flat);
-void inputev_set_res(inputev_t *iev, u_int axis, int val);
-
-void inputev_mt_slot(inputev_t *iev, int slot);
-void inputev_mt_report_slot_state(inputev_t *iev, u_int code, int good);
-void inputev_report_key(inputev_t *iev, u_int code, int val); /* EV_KEY */
-void inputev_report_rel(inputev_t *iev, u_int code, int val); /* EV_REL */
-void inputev_report_abs(inputev_t *iev, u_int code, int val); /* EV_ABS */
-
-#endif
+#define __u16   u_int16_t
+#define __s16   int16_t
+#define __s32   int32_t
+#define __u32   u_int32_t
+#define __u8    u_int8_t
+#define __s8    int8_t
+#define __user
 
 #endif

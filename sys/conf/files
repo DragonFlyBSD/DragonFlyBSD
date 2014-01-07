@@ -800,7 +800,7 @@ bus/smbus/ichiic/ig4_iic.c	optional ichiic
 bus/smbus/ichiic/ig4_pci.c	optional ichiic pci
 bus/smbus/ichsmb/ichsmb.c	optional ichsmb
 bus/smbus/ichsmb/ichsmb_pci.c	optional ichsmb pci
-dev/smbus/smb.c			optional smb
+dev/smbus/smb/smb.c		optional smb
 dev/serial/si/si.c		optional si
 dev/serial/si/si2_z280.c	optional si
 dev/serial/si/si3_t225.c	optional si
@@ -1004,6 +1004,9 @@ kern/subr_disklabel64.c	standard
 kern/subr_diskslice.c	standard
 kern/subr_eventhandler.c	standard
 kern/subr_firmware.c	standard
+# temporarily not included in kernel, included
+# by cyapa until stable.
+#kern/subr_input.c	standard
 kern/subr_kcore.c	standard
 kern/subr_kobj.c	standard
 kern/subr_log.c		standard

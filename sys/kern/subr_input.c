@@ -32,43 +32,112 @@
  * SUCH DAMAGE.
  */
 /*
- * Input event user and device API
+ * Implement a linux-compatible user even input interface.  This is used by
+ * various devices to supply an event stream and ioctls to userland.
  */
 
-#ifndef _SYS_INPUT_H_
-#define _SYS_INPUT_H_
+#include <sys/param.h>
+#include <sys/queue.h>
+#include <sys/malloc.h>
+#include <sys/kernel.h>
+#include <sys/bus_private.h>
+#include <sys/systm.h>
+#include <sys/uio.h>
+#include <sys/ioccom.h>
+#include <sys/machintr.h>
 
-#include <sys/linux_types.h>
-#include <contrib/linux/include/uapi/linux/input.h>
+#include <machine/stdarg.h>	/* for device_printf() */
 
-struct inputev {
-	int dummy;
-};
+#include <sys/thread2.h>
+#include <sys/mplock2.h>
+#include <sys/input.h>
 
-typedef struct inputev inputev_t;
+MALLOC_DEFINE(M_INPUT, "input", "Input Event");
 
-#ifdef _KERNEL
+void
+inputev_init(inputev_t *iev, const char *id)
+{
+}
 
-void inputev_init(inputev_t *iev, const char *id);
-void inputev_register(inputev_t *iev);
-void inputev_deregister(inputev_t *iev);
-void inputev_sync(inputev_t *iev);
-int inputev_read(inputev_t *iev, struct uio *uio, int ioflag);
-void inputev_mt_sync_frame(inputev_t *iev);
+void
+inputev_register(inputev_t *iev)
+{
+}
 
-void inputev_set_evbit(inputev_t *iev, int bit);
-void inputev_set_keybit(inputev_t *iev, int bit);
-void inputev_set_propbit(inputev_t *iev, int bit);
-void inputev_set_abs_params(inputev_t *iev, u_int axis,
-			int min, int max, int fuzz, int flat);
-void inputev_set_res(inputev_t *iev, u_int axis, int val);
+void
+inputev_deregister(inputev_t *iev)
+{
+}
 
-void inputev_mt_slot(inputev_t *iev, int slot);
-void inputev_mt_report_slot_state(inputev_t *iev, u_int code, int good);
-void inputev_report_key(inputev_t *iev, u_int code, int val); /* EV_KEY */
-void inputev_report_rel(inputev_t *iev, u_int code, int val); /* EV_REL */
-void inputev_report_abs(inputev_t *iev, u_int code, int val); /* EV_ABS */
+void
+inputev_mt_slot(inputev_t *iev, int slot)
+{
+}
 
-#endif
+void
+inputev_mt_sync_frame(inputev_t *iev)
+{
+}
 
-#endif
+void
+inputev_sync(inputev_t *iev)
+{
+}
+
+void
+inputev_set_evbit(inputev_t *iev, int bit)
+{
+}
+
+void
+inputev_set_keybit(inputev_t *iev, int bit)
+{
+}
+
+void
+inputev_set_propbit(inputev_t *iev, int bit)
+{
+}
+
+void
+inputev_set_abs_params(inputev_t *iev, u_int axis,
+		       int min, int max, int fuzz, int flat)
+{
+}
+
+void
+inputev_set_res(inputev_t *iev, u_int axis, int val)
+{
+}
+
+void
+inputev_mt_report_slot_state(inputev_t *iev, u_int code, int good)
+{
+}
+
+void
+inputev_report_key(inputev_t *iev, u_int code, int val)
+{
+}
+/* EV_KEY */
+
+void
+inputev_report_rel(inputev_t *iev, u_int code, int val)
+{
+}
+/* EV_REL */
+
+void
+inputev_report_abs(inputev_t *iev, u_int code, int val)
+{
+}
+/* EV_ABS */
+
+/*
+ * Supply a data stream to requestors
+ */
+int
+inputev_read(inputev_t *iev, struct uio *uio, int ioflag)
+{
+	return EINVAL;
+}

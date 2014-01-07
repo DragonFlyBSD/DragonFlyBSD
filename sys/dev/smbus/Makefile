@@ -1,6 +1,6 @@
 # SMBUS and I2C devices
 #
 
-SUBDIR= smb
+SUBDIR= smb cyapa
 
 .include <bsd.subdir.mk>
