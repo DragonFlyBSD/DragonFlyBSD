@@ -789,7 +789,6 @@ ig4iic_intr(void *cookie)
 	ig4iic_softc_t *sc = cookie;
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
-	kprintf("I");
 	reg_write(sc, IG4_REG_INTR_MASK, 0);
 	reg_read(sc, IG4_REG_CLR_INTR);
 	lockmgr(&sc->lk, LK_RELEASE);
