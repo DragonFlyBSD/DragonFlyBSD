@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2002 Sean Bullington <seanATstalker.org>
- *               2003-2006 Anish Mistry <amistry@am-productions.biz>
+ *               2003-2008 Anish Mistry <amistry@am-productions.biz>
  *               2004 Mark Santcroos <marks@ripe.net>
  * All Rights Reserved.
  *
@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpi_support/acpi_fujitsu.c,v 1.7 2009/06/05 18:44:36 jkim
+ * $FreeBSD: head/sys/dev/acpi_support/acpi_fujitsu.c 246128 2013-01-30 18:01:20Z sbz $
  */
 
 #include "opt_acpi.h"
@@ -84,6 +84,7 @@ ACPI_MODULE_NAME("Fujitsu")
 #define METHOD_RVOL	6
 #define METHOD_GSIF	7
 #define METHOD_GHKS	8
+#define METHOD_GBLS	9
 
 /* Notify event */
 #define	ACPI_NOTIFY_STATUS_CHANGED	0x80
@@ -108,6 +109,7 @@ struct acpi_fujitsu_softc {
 	/* Control methods */
 	struct int_nameval	_sta,	/* unused */
 				gbll,	/* brightness */
+				gbls,	/* get brightness state */
 				ghks,	/* hotkey selector */
 				gbuf,	/* unused (buffer?) */
 				gmou,	/* mouse */
@@ -190,6 +192,11 @@ static struct {
 	},
 	{
 		.name		= "volume",
+		.name		= "lcd_brightness",
+		.method		= METHOD_GBLS,
+		.description	= "Brightness level of the LCD panel"
+	},
+	{
 		.method		= METHOD_GVOL,
 		.description	= "Speakers/headphones volume level"
 	},
@@ -358,6 +365,7 @@ acpi_fujitsu_init(struct acpi_fujitsu_softc *sc)
 	/* Setup all of the names for each control method */
 	sc->_sta.name = "_STA";
 	sc->gbll.name = "GBLL";
+	sc->gbls.name = "GBLS";
 	sc->ghks.name = "GHKS";
 	sc->gmou.name = "GMOU";
 	sc->gsif.name = "GSIF";
@@ -378,13 +386,15 @@ acpi_fujitsu_init(struct acpi_fujitsu_softc *sc)
 	    OID_AUTO, "fujitsu", CTLFLAG_RD, 0, "");
 
 	for (i = 0; sysctl_table[i].name != NULL; i++) {
-		exists = 0;
 		switch(sysctl_table[i].method) {
 			case METHOD_GMOU:
 				exists = sc->gmou.exists;
 				break;
 			case METHOD_GBLL:
 				exists = sc->gbll.exists;
+				break;
+			case METHOD_GBLS:
+				exists = sc->gbls.exists;
 				break;
 			case METHOD_GVOL:
 			case METHOD_MUTE:
@@ -462,6 +472,9 @@ acpi_fujitsu_method_get(struct acpi_fujitsu_softc *sc, int method)
 		case METHOD_GBLL:
 			nv = sc->gbll;
 			break;
+		case METHOD_GBLS:
+			nv = sc->gbls;
+			break;
 		case METHOD_GMOU:
 			nv = sc->gmou;
 			break;
@@ -518,6 +531,11 @@ acpi_fujitsu_method_set(struct acpi_fujitsu_softc *sc, int method, int value)
 			changed = BRIGHT_CHANGED;
 			control = "SBLL";
 			nv = sc->gbll;
+			break;
+		case METHOD_GBLS:
+			changed = BRIGHT_CHANGED;
+			control = "SBL2";
+			nv = sc->gbls;
 			break;
 		case METHOD_GMOU:
 			changed = MOUSE_CHANGED;
@@ -584,6 +602,14 @@ acpi_fujitsu_check_hardware(struct acpi_fujitsu_softc *sc)
 	}
 
 	if (ACPI_FAILURE(acpi_GetInteger(sc->handle,
+		sc->gbls.name, &val))) {
+		sc->gbls.exists = 0;
+	} else {
+		sc->gbls.exists = 1;
+	}
+
+	/* don't add if we can use the new method */
+	if (sc->gbls.exists || ACPI_FAILURE(acpi_GetInteger(sc->handle,
 	    sc->gbll.name, &val))) {
 		sc->gbll.exists = 0;
 	} else {
@@ -680,11 +706,37 @@ acpi_fujitsu_update(struct acpi_fujitsu_softc *sc)
 			/* Clear the modification bit */
 			sc->gmou.value &= MOUSE_SETTING_BITS;
 			
+			/* Set the value in case it is not hardware controlled */
+			acpi_fujitsu_method_set(sc, METHOD_GMOU, sc->gmou.value);
+
 			acpi_UserNotify("FUJITSU", sc->handle, FN_POINTER_ENABLE);
 	
 			ACPI_VPRINT(sc->dev, acpi_sc, "Internal pointer is now %s\n",
 			(sc->bIntPtrEnabled) ? "enabled" : "disabled");
 		}
+	}
+
+	/* Screen Brightness Level P8XXX */
+	if(sc->gbls.exists) {
+		if (ACPI_FAILURE(acpi_GetInteger(sc->handle,
+                sc->gbls.name, &(sc->gbls.value)))) {
+                        device_printf(sc->dev, "Couldn't query P8XXX brightness level\n");
+                        return (FALSE);
+                }
+		if (changed & BRIGHT_CHANGED) {
+			/* No state to record here. */
+
+			/* Clear the modification bit */
+			sc->gbls.value &= BRIGHTNESS_SETTING_BITS;
+
+			/* Set the value in case it is not hardware controlled */
+			acpi_fujitsu_method_set(sc, METHOD_GBLS, sc->gbls.value);
+
+			acpi_UserNotify("FUJITSU", sc->handle, FN_LCD_BRIGHTNESS);
+
+			ACPI_VPRINT(sc->dev, acpi_sc, "P8XXX Brightness level is now %d\n",
+			sc->gbls.value);
+                }
 	}
 
 	/* Screen Brightness Level */
