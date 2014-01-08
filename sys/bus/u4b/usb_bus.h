@@ -112,6 +112,7 @@ struct usb_bus {
 	enum usb_revision usbrev;	/* USB revision. See "USB_REV_XXX". */
 
 	uint8_t	devices_max;		/* maximum number of USB devices */
+	uint8_t	reserved01;
 	uint8_t	do_probe;		/* set if USB should be re-probed */
 	uint8_t no_explore;		/* don't explore USB ports */
 };

@@ -30,6 +30,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+#include <sys/thread.h>
 #include <sys/module.h>
 #include <sys/lock.h>
 #include <sys/mutex.h>
@@ -40,6 +41,8 @@
 #include <sys/malloc.h>
 #include <sys/priv.h>
 #include <sys/proc.h>
+
+#include <sys/thread2.h>
 
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
@@ -102,6 +105,7 @@ static const struct usb_config usb_control_ep_cfg[USB_CTRL_XFER_MAX] = {
 
 static void	usbd_update_max_frame_size(struct usb_xfer *);
 static void	usbd_transfer_unsetup_sub(struct usb_xfer_root *, uint8_t);
+static void	usbd_delayed_free(void *data, struct malloc_type *mtype);
 static void	usbd_control_transfer_init(struct usb_xfer *);
 static int	usbd_setup_ctrl_transfer(struct usb_xfer *);
 static void	usb_callback_proc(struct usb_proc_msg *);
@@ -1271,7 +1275,48 @@ usbd_transfer_unsetup_sub(struct usb_xfer_root *info, uint8_t needs_delay)
 	 * free the "memory_base" last, hence the "info" structure is
 	 * contained within the "memory_base"!
 	 */
-	kfree(info->memory_base, M_USB);
+	usbd_delayed_free(info->memory_base, M_USB);
+}
+
+/*
+ * This is a horrible hack and workaround to a very bad decision by
+ * the original U4B coder to integrate the QH/TD structures into the
+ * xfer and then free the whole mess all at once.
+ *
+ * The problem is that the controller may still be accessing the QHs,
+ * because it might have gotten side-tracked onto the removed QHs
+ * chain link.  They have to remain intact long enough for the
+ * controller to get out.
+ *
+ * This horrible hack basically just delays freeing by 256 slots.
+ * It's not even time-based or door-bell based (which is the way
+ * the linux driver does it)... but to fix it properly requires rewriting
+ * too much of this driver.
+ */
+#define DFREE_SLOTS	256
+#define DFREE_MASK	(DFREE_SLOTS - 1)
+
+static struct dfree_slot {
+	void *data;
+	struct malloc_type *mtype;
+} dfree_slots[DFREE_SLOTS];
+static int dfree_index;
+
+static void
+usbd_delayed_free(void *data, struct malloc_type *mtype)
+{
+	struct dfree_slot slot;
+	int index;
+
+	crit_enter();
+	index = atomic_fetchadd_int(&dfree_index, 1);
+	index &= DFREE_MASK;
+	slot = dfree_slots[index];
+	dfree_slots[index].data = data;
+	dfree_slots[index].mtype = mtype;
+	crit_exit();
+	if (slot.data)
+		kfree(slot.data, slot.mtype);
 }
 
 /*------------------------------------------------------------------------*
@@ -1971,24 +2016,30 @@ usbd_transfer_drain(struct usb_xfer *xfer)
 
 	usbd_transfer_stop(xfer);
 
+	/*
+	 * It is allowed that the callback can drop its
+	 * transfer mutex. In that case checking only
+	 * "usbd_transfer_pending()" is not enough to tell if
+	 * the USB transfer is fully drained. We also need to
+	 * check the internal "doing_callback" flag.
+	 */
+	xfer->flags_int.draining = 1;
+
+	/*
+	 * XXX hack, the wakeup of xfer can race conditions which
+	 *     clear the pending status of the xfer.
+	 */
 	while (usbd_transfer_pending(xfer) || 
 	    xfer->flags_int.doing_callback) {
-
-		/* 
-		 * It is allowed that the callback can drop its
-		 * transfer mutex. In that case checking only
-		 * "usbd_transfer_pending()" is not enough to tell if
-		 * the USB transfer is fully drained. We also need to
-		 * check the internal "doing_callback" flag.
-		 */
-		xfer->flags_int.draining = 1;
 
 		/*
 		 * Wait until the current outstanding USB
 		 * transfer is complete !
 		 */
-		cv_wait(&xfer->xroot->cv_drain, xfer->xroot->xfer_lock);
+		/* cv_wait(&xfer->xroot->cv_drain, xfer->xroot->xfer_lock); */
+		lksleep(xfer, xfer->xroot->xfer_lock, 0, "DRAIN", hz);
 	}
+	xfer->flags_int.draining = 0;
 	USB_XFER_UNLOCK(xfer);
 }
 
@@ -2348,7 +2399,8 @@ done:
 	    (!xfer->flags_int.transferring)) {
 		/* "usbd_transfer_drain()" is waiting for end of transfer */
 		xfer->flags_int.draining = 0;
-		cv_broadcast(&info->cv_drain);
+		/* cv_broadcast(&info->cv_drain); */
+		wakeup(xfer);
 	}
 
 	/* do the next callback, if any */
@@ -2410,6 +2462,7 @@ usbd_transfer_enqueue(struct usb_xfer_queue *pq, struct usb_xfer *xfer)
 	 * Insert the USB transfer into the queue, if it is not
 	 * already on a USB transfer queue:
 	 */
+	KKASSERT(xfer->wait_queue == NULL);
 	if (xfer->wait_queue == NULL) {
 		xfer->wait_queue = pq;
 		TAILQ_INSERT_TAIL(&pq->head, xfer, wait_entry);

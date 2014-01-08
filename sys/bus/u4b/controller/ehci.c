@@ -119,7 +119,7 @@ static const struct usb_pipe_methods ehci_device_isoc_hs_methods;
 
 static void ehci_do_poll(struct usb_bus *);
 static void ehci_device_done(struct usb_xfer *, usb_error_t);
-static uint8_t ehci_check_transfer(struct usb_xfer *);
+static uint8_t ehci_check_transfer(struct usb_xfer *xfer, int finish);
 static void ehci_timeout(void *);
 static void ehci_poll_timeout(void *);
 
@@ -915,8 +915,11 @@ ehci_dump_isoc(ehci_softc_t *sc)
 static void
 ehci_transfer_intr_enqueue(struct usb_xfer *xfer)
 {
+	ehci_softc_t *sc = EHCI_BUS2SC(xfer->xroot->bus);
+	uint32_t temp;
+
 	/* check for early completion */
-	if (ehci_check_transfer(xfer)) {
+	if (ehci_check_transfer(xfer, 1)) {
 		return;
 	}
 	/* put transfer on interrupt queue */
@@ -925,6 +928,16 @@ ehci_transfer_intr_enqueue(struct usb_xfer *xfer)
 	/* start timeout, if any */
 	if (xfer->timeout != 0) {
 		usbd_transfer_timeout_ms(xfer, &ehci_timeout, xfer->timeout);
+	}
+
+	/*
+	 * NOTE: Do not test the bit and conditionalize the write, that
+	 *	 can wind up racing the device's clearing of the bit and
+	 *	 cause the doorbell to be missed.
+	 */
+	if ((sc->sc_flags & EHCI_SCFLG_IAADBUG) == 0) {
+		temp = EOREAD4(sc, EHCI_USBCMD);
+		EOWRITE4(sc, EHCI_USBCMD, temp | EHCI_CMD_IAAD);
 	}
 }
 
@@ -1001,7 +1014,9 @@ _ehci_append_qh(ehci_qh_t *sqh, ehci_qh_t *last)
 	usb_pc_cpu_flush(sqh->page_cache);
 
 	/*
-	 * the last->next->prev is never followed: sqh->next->prev = sqh;
+	 * The last->next->prev is never followed: sqh->next->prev = sqh;
+	 *
+	 * This should activate the command.
 	 */
 
 	last->next = sqh;
@@ -1010,6 +1025,27 @@ _ehci_append_qh(ehci_qh_t *sqh, ehci_qh_t *last)
 	usb_pc_cpu_flush(last->page_cache);
 
 	return (sqh);
+}
+
+static void
+ehci_stop_xfer(struct usb_xfer *xfer)
+{
+#if 0
+	if (xfer->flags_int.onhwqueue == 0)
+		return;
+	return;
+	if (ehci_check_transfer(xfer, 0))
+		return;
+	kprintf("R");
+	retry = 10;
+	while (retry && ehci_check_transfer(xfer, 0) == 0) {
+		kprintf("R");
+		DELAY(10000);
+		--retry;
+	}
+	if (retry == 0)
+		kprintf("[can't stop xfer]\n");
+#endif
 }
 
 #define	EHCI_REMOVE_FS_TD(std,last) (last) = _ehci_remove_fs_td(std,last)
@@ -1052,9 +1088,9 @@ _ehci_remove_hs_td(ehci_itd_t *std, ehci_itd_t *last)
 	return ((last == std) ? std->prev : last);
 }
 
-#define	EHCI_REMOVE_QH(sqh,last) (last) = _ehci_remove_qh(sqh,last)
+#define	EHCI_REMOVE_QH(sc,sqh,last) (last) = _ehci_remove_qh(sc,sqh,last)
 static ehci_qh_t *
-_ehci_remove_qh(ehci_qh_t *sqh, ehci_qh_t *last)
+_ehci_remove_qh(ehci_softc_t *sc, ehci_qh_t *sqh, ehci_qh_t *last)
 {
 	DPRINTFN(11, "%p from %p\n", sqh, last);
 
@@ -1062,20 +1098,41 @@ _ehci_remove_qh(ehci_qh_t *sqh, ehci_qh_t *last)
 
 	/* only remove if not removed from a queue */
 	if (sqh->prev) {
-
 		sqh->prev->next = sqh->next;
-		sqh->prev->qh_link = sqh->qh_link;
-
-		usb_pc_cpu_flush(sqh->prev->page_cache);
-
-		if (sqh->next) {
+		if (sqh->next)
 			sqh->next->prev = sqh->prev;
-			usb_pc_cpu_flush(sqh->next->page_cache);
-		}
 		last = ((last == sqh) ? sqh->prev : last);
 
-		sqh->prev = 0;
-
+		/*
+		 * This is a horrible hack because basically the entire
+		 * U4B QH handling is broken.  To do this correctly the
+		 * QH needs be unlinked but then not touched until the
+		 * next rollup doorbell interrupt.  That is, the controller
+		 * could be racing us accessing the QH and qh_link, so
+		 * the links have to remain valid enough to not cause the
+		 * controller to blow up.
+		 *
+		 * When we mess with the links it is possible for the
+		 * controller to end up on the deleted chain(s) and miss
+		 * new requests entered after the deletion.  Then it thinks
+		 * it is finished and stops scanning.  Thus we must issue a
+		 * doorbell to force the controller to re-scan and pick
+		 * up anything it missed if it got off-track.
+		 *
+		 * I wanted to try to make this more reliable by setting
+		 * qh_link to htohc32(sc, EHCI_LINK_TERMINATE), but it
+		 * doesn't work.  The controller barfs badly and isn't
+		 * able to probe all the usb devices.  I'm not sure
+		 * why it doesn't work but... whatever.
+		 */
+		sqh->prev->qh_link = sqh->qh_link;
+		usb_pc_cpu_flush(sqh->prev->page_cache);
+		/* sqh->qh_link = htohc32(sc, EHCI_LINK_TERMINATE); */
+		if ((sc->sc_flags & EHCI_SCFLG_IAADBUG) == 0) {
+			uint32_t temp = EOREAD4(sc, EHCI_USBCMD);
+			EOWRITE4(sc, EHCI_USBCMD, temp | EHCI_CMD_IAAD);
+		}
+		sqh->prev = NULL;
 		usb_pc_cpu_flush(sqh->page_cache);
 	}
 	return (last);
@@ -1119,7 +1176,6 @@ ehci_non_isoc_done_sub(struct usb_xfer *xfer)
 		usbd_xfer_set_frame_len(xfer, xfer->aframes, 0);
 	}
 	while (1) {
-
 		usb_pc_cpu_invalidate(td->page_cache);
 		status = hc32toh(sc, td->qtd_status);
 
@@ -1264,7 +1320,7 @@ done:
  * Else: USB transfer is finished
  *------------------------------------------------------------------------*/
 static uint8_t
-ehci_check_transfer(struct usb_xfer *xfer)
+ehci_check_transfer(struct usb_xfer *xfer, int finish)
 {
 	const struct usb_pipe_methods *methods = xfer->endpoint->methods;
 	ehci_softc_t *sc = EHCI_BUS2SC(xfer->xroot->bus);
@@ -1323,7 +1379,10 @@ ehci_check_transfer(struct usb_xfer *xfer)
 
 		/* if no transactions are active we continue */
 		if (!(status & htohc32(sc, EHCI_ITD_ACTIVE))) {
-			ehci_device_done(xfer, USB_ERR_NORMAL_COMPLETION);
+			if (finish) {
+				ehci_device_done(xfer,
+						 USB_ERR_NORMAL_COMPLETION);
+			}
 			goto transferred;
 		}
 	} else {
@@ -1390,7 +1449,8 @@ ehci_check_transfer(struct usb_xfer *xfer)
 			}
 			td = td->obj_next;
 		}
-		ehci_non_isoc_done(xfer);
+		if (finish)
+			ehci_non_isoc_done(xfer);
 		goto transferred;
 	}
 
@@ -1426,7 +1486,7 @@ repeat:
 		/*
 		 * check if transfer is transferred
 		 */
-		if (ehci_check_transfer(xfer)) {
+		if (ehci_check_transfer(xfer, 1)) {
 			/* queue has been modified */
 			goto repeat;
 		}
@@ -1478,6 +1538,11 @@ ehci_interrupt(ehci_softc_t *sc)
 #endif
 
 	status = EHCI_STS_INTRS(EOREAD4(sc, EHCI_USBSTS));
+#if 0
+	/*
+	 * XXX hack workaround bug where interrupt status says
+	 * nothing is pending but xfer completions might be present.
+	 */
 	if (status == 0) {
 		/* the interrupt was not for us */
 		goto done;
@@ -1485,6 +1550,7 @@ ehci_interrupt(ehci_softc_t *sc)
 	if (!(status & sc->sc_eintrs)) {
 		goto done;
 	}
+#endif
 	EOWRITE4(sc, EHCI_USBSTS, status);	/* acknowledge */
 
 	status &= sc->sc_eintrs;
@@ -1527,7 +1593,9 @@ ehci_interrupt(ehci_softc_t *sc)
 		    (void *)&ehci_poll_timeout, sc);
 	}
 
+#if 0
 done:
+#endif
 	USB_BUS_UNLOCK(&sc->sc_bus);
 }
 
@@ -1995,6 +2063,8 @@ ehci_setup_standard_chain(struct usb_xfer *xfer, ehci_qh_t **qh_last)
 	usb_pc_cpu_flush(qh->page_cache);
 
 	if (xfer->xroot->udev->flags.self_suspended == 0) {
+		KKASSERT(xfer->flags_int.onhwqueue == 0);
+		xfer->flags_int.onhwqueue = 1;
 		EHCI_APPEND_QH(qh, *qh_last);
 	}
 }
@@ -2039,7 +2109,7 @@ ehci_isoc_fs_done(ehci_softc_t *sc, struct usb_xfer *xfer)
 	DPRINTFN(13, "xfer=%p endpoint=%p transfer done\n",
 	    xfer, xfer->endpoint);
 
-	while (nframes--) {
+	while (xfer->flags_int.onhwqueue && nframes--) {
 		if (td == NULL) {
 			panic("%s:%d: out of TD's\n",
 			    __func__, __LINE__);
@@ -2075,6 +2145,7 @@ ehci_isoc_fs_done(ehci_softc_t *sc, struct usb_xfer *xfer)
 		plen++;
 		td = td->obj_next;
 	}
+	xfer->flags_int.onhwqueue = 0;
 
 	xfer->aframes = xfer->nframes;
 }
@@ -2093,7 +2164,7 @@ ehci_isoc_hs_done(ehci_softc_t *sc, struct usb_xfer *xfer)
 	DPRINTFN(13, "xfer=%p endpoint=%p transfer done\n",
 	    xfer, xfer->endpoint);
 
-	while (nframes) {
+	while (nframes && xfer->flags_int.onhwqueue) {
 		if (td == NULL) {
 			panic("%s:%d: out of TD's\n",
 			    __func__, __LINE__);
@@ -2147,6 +2218,7 @@ ehci_isoc_hs_done(ehci_softc_t *sc, struct usb_xfer *xfer)
 		}
 	}
 	xfer->aframes = xfer->nframes;
+	xfer->flags_int.onhwqueue = 0;
 }
 
 /* NOTE: "done" can be run two times in a row,
@@ -2163,24 +2235,35 @@ ehci_device_done(struct usb_xfer *xfer, usb_error_t error)
 	DPRINTFN(2, "xfer=%p, endpoint=%p, error=%d\n",
 	    xfer, xfer->endpoint, error);
 
-	if ((methods == &ehci_device_bulk_methods) ||
-	    (methods == &ehci_device_ctrl_methods)) {
+	/*
+	 * Don't throw away a timed-out transfer without safely removing
+	 * it from the controller's notice!
+	 */
+	if (error != USB_ERR_NORMAL_COMPLETION)
+		ehci_stop_xfer(xfer);
+
+	if (xfer->flags_int.onhwqueue) {
+	    if ((methods == &ehci_device_bulk_methods) ||
+		(methods == &ehci_device_ctrl_methods)) {
 #ifdef USB_DEBUG
-		if (ehcidebug > 8) {
-			DPRINTF("nexttog=%d; data after transfer:\n",
-			    xfer->endpoint->toggle_next);
-			ehci_dump_sqtds(sc,
-			    xfer->td_transfer_first);
-		}
+		    if (ehcidebug > 8) {
+			    DPRINTF("nexttog=%d; data after transfer:\n",
+				xfer->endpoint->toggle_next);
+			    ehci_dump_sqtds(sc,
+				xfer->td_transfer_first);
+		    }
 #endif
 
-		EHCI_REMOVE_QH(xfer->qh_start[xfer->flags_int.curr_dma_set],
-		    sc->sc_async_p_last);
+		    EHCI_REMOVE_QH(sc, xfer->qh_start[xfer->flags_int.curr_dma_set],
+			sc->sc_async_p_last);
+	    }
+	    if (methods == &ehci_device_intr_methods) {
+		    EHCI_REMOVE_QH(sc, xfer->qh_start[xfer->flags_int.curr_dma_set],
+			sc->sc_intr_p_last[xfer->qh_pos]);
+	    }
+	    xfer->flags_int.onhwqueue = 0;
 	}
-	if (methods == &ehci_device_intr_methods) {
-		EHCI_REMOVE_QH(xfer->qh_start[xfer->flags_int.curr_dma_set],
-		    sc->sc_intr_p_last[xfer->qh_pos]);
-	}
+
 	/*
 	 * Only finish isochronous transfers once which will update
 	 * "xfer->frlengths".
@@ -2225,7 +2308,9 @@ static void
 ehci_device_bulk_start(struct usb_xfer *xfer)
 {
 	ehci_softc_t *sc = EHCI_BUS2SC(xfer->xroot->bus);
+#if 0
 	uint32_t temp;
+#endif
 
 	/* setup TD's and QH */
 	ehci_setup_standard_chain(xfer, &sc->sc_async_p_last);
@@ -2233,9 +2318,15 @@ ehci_device_bulk_start(struct usb_xfer *xfer)
 	/* put transfer on interrupt queue */
 	ehci_transfer_intr_enqueue(xfer);
 
+#if 0
 	/* 
 	 * XXX Certain nVidia chipsets choke when using the IAAD
 	 * feature too frequently.
+	 *
+	 * XXX This code has been moved to another place which handles
+	 *     more cases.  EHCI appears to need the doorbell to be hit
+	 *     in the other queueing cases or it can wind up not
+	 *     processing the queue.
 	 */
 	if (sc->sc_flags & EHCI_SCFLG_IAADBUG)
 		return;
@@ -2247,6 +2338,7 @@ ehci_device_bulk_start(struct usb_xfer *xfer)
 	temp = EOREAD4(sc, EHCI_USBCMD);
 	if (!(temp & EHCI_CMD_IAAD))
 		EOWRITE4(sc, EHCI_USBCMD, temp | EHCI_CMD_IAAD);
+#endif
 }
 
 static const struct usb_pipe_methods ehci_device_bulk_methods =
@@ -2623,6 +2715,7 @@ ehci_device_isoc_fs_enter(struct usb_xfer *xfer)
 		}
 #endif
 		/* insert TD into schedule */
+		xfer->flags_int.onhwqueue = 1;
 		EHCI_APPEND_FS_TD(td, *pp_last);
 		pp_last++;
 
@@ -2657,7 +2750,7 @@ ehci_device_isoc_fs_start(struct usb_xfer *xfer)
 
 	/* set a default timeout */
 	if (xfer->timeout == 0)
-		xfer->timeout = 500; /* ms */
+		xfer->timeout = 1000; /* ms */
 
 	/* put transfer on interrupt queue */
 	ehci_transfer_intr_enqueue(xfer);
@@ -2920,6 +3013,7 @@ ehci_device_isoc_hs_enter(struct usb_xfer *xfer)
 			}
 #endif
 			/* insert TD into schedule */
+			xfer->flags_int.onhwqueue = 1;
 			EHCI_APPEND_HS_TD(td, *pp_last);
 			pp_last++;
 
@@ -3761,7 +3855,7 @@ ehci_device_resume(struct usb_device *udev)
 		if (xfer->xroot->udev == udev) {
 
 			methods = xfer->endpoint->methods;
-
+			KKASSERT(xfer->flags_int.onhwqueue == 0);
 			if ((methods == &ehci_device_bulk_methods) ||
 			    (methods == &ehci_device_ctrl_methods)) {
 				EHCI_APPEND_QH(xfer->qh_start[xfer->flags_int.curr_dma_set],
@@ -3771,6 +3865,7 @@ ehci_device_resume(struct usb_device *udev)
 				EHCI_APPEND_QH(xfer->qh_start[xfer->flags_int.curr_dma_set],
 				    sc->sc_intr_p_last[xfer->qh_pos]);
 			}
+			xfer->flags_int.onhwqueue = 1;
 		}
 	}
 
@@ -3793,16 +3888,15 @@ ehci_device_suspend(struct usb_device *udev)
 	TAILQ_FOREACH(xfer, &sc->sc_bus.intr_q.head, wait_entry) {
 
 		if (xfer->xroot->udev == udev) {
-
 			methods = xfer->endpoint->methods;
 
 			if ((methods == &ehci_device_bulk_methods) ||
 			    (methods == &ehci_device_ctrl_methods)) {
-				EHCI_REMOVE_QH(xfer->qh_start[xfer->flags_int.curr_dma_set],
+				EHCI_REMOVE_QH(sc, xfer->qh_start[xfer->flags_int.curr_dma_set],
 				    sc->sc_async_p_last);
 			}
 			if (methods == &ehci_device_intr_methods) {
-				EHCI_REMOVE_QH(xfer->qh_start[xfer->flags_int.curr_dma_set],
+				EHCI_REMOVE_QH(sc, xfer->qh_start[xfer->flags_int.curr_dma_set],
 				    sc->sc_intr_p_last[xfer->qh_pos]);
 			}
 		}

@@ -116,6 +116,7 @@ struct usb_xfer_flags_int {
 	uint8_t	can_cancel_immed:1;	/* set if USB transfer can be
 					 * cancelled immediately */
 	uint8_t	doing_callback:1;	/* set if executing the callback */
+	uint8_t onhwqueue:1;		/* on a hardware queue */
 };
 
 /*

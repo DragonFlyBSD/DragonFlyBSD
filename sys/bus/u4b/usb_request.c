@@ -205,7 +205,7 @@ usbd_do_request_callback(struct usb_xfer *xfer, usb_error_t error)
 		usbd_transfer_submit(xfer);
 		break;
 	default:
-		cv_signal(&xfer->xroot->udev->ctrlreq_cv);
+		wakeup(xfer);
 		break;
 	}
 }
@@ -632,9 +632,12 @@ usbd_do_request_flags(struct usb_device *udev, struct lock *lock,
 
 		usbd_transfer_start(xfer);
 
+		/*
+		 * XXX hack, the wakeup of xfer can race conditions which
+		 *     clear the pending status of the xfer.
+		 */
 		while (usbd_transfer_pending(xfer)) {
-			cv_wait(&udev->ctrlreq_cv,
-			    xfer->xroot->xfer_lock);
+			lksleep(xfer, xfer->xroot->xfer_lock, 0, "WXFER", hz);
 		}
 
 		err = xfer->error;
@@ -993,12 +996,11 @@ usbd_req_get_desc(struct usb_device *udev,
 	DPRINTFN(4, "id=%d, type=%d, index=%d, max_len=%d\n",
 	    id, type, index, max_len);
 
-	req.bmRequestType = UT_READ_DEVICE;
-	req.bRequest = UR_GET_DESCRIPTOR;
-	USETW2(req.wValue, type, index);
-	USETW(req.wIndex, id);
-
 	while (1) {
+		req.bmRequestType = UT_READ_DEVICE;
+		req.bRequest = UR_GET_DESCRIPTOR;
+		USETW2(req.wValue, type, index);
+		USETW(req.wIndex, id);
 
 		if ((min_len < 2) || (max_len < 2)) {
 			err = USB_ERR_INVAL;
@@ -1007,7 +1009,7 @@ usbd_req_get_desc(struct usb_device *udev,
 		USETW(req.wLength, min_len);
 
 		err = usbd_do_request_flags(udev, lock, &req,
-		    desc, 0, NULL, 500 /* ms */);
+		    desc, 0, NULL, 1000 /* ms */);
 
 		if (err) {
 			if (!retries) {

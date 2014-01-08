@@ -121,6 +121,8 @@ static d_write_t usb_write;
 static d_kqfilter_t usb_kqfilter;
 
 static d_ioctl_t usb_static_ioctl;
+static d_open_t usb_static_open;
+static d_close_t usb_static_close;
 
 static usb_fifo_open_t usb_fifo_dummy_open;
 static usb_fifo_close_t usb_fifo_dummy_close;
@@ -143,6 +145,8 @@ static struct cdev* usb_dev = NULL;
 /* character device structure used for /bus/u4b */
 static struct dev_ops usb_static_ops = {
 	{ "usb", 0, D_MEM },
+	.d_open = usb_static_open,
+	.d_close = usb_static_close,
 	.d_ioctl = usb_static_ioctl,
 };
 
@@ -856,6 +860,19 @@ usb_open(struct dev_open_args *ap)
 		return (EPERM);
 	}
 
+	/*
+	 * Allow re-opens as long as the perms are the same.
+	 * (dunno if this is a good idea, but 'usbconfig list'
+	 * wants to open at least one of the ugen devices up
+	 * twice).
+	 */
+	cpd = dev->si_drv2;
+	if (cpd) {
+		if (((cpd->fflags ^ fflags) & (FREAD|FWRITE)) == 0)
+			return(0);
+		return EBUSY;
+	}
+
 	cpd = kmalloc(sizeof(*cpd), M_USBDEV, M_WAITOK | M_ZERO);
 	ep = cpd->ep_addr = pd->ep_addr;
 
@@ -946,6 +963,7 @@ usb_close(struct dev_close_args *ap)
 	}
 	usb_unref_device(cpd, &refs);
 done:
+	dev->si_drv2 = NULL;
 	kfree(cpd, M_USBDEV);
 	return 0;
 }
@@ -1068,7 +1086,7 @@ usb_ioctl(struct dev_ioctl_args *ap)
 	 * XXX: This might not work as I would like it to
 	 * also I need a proper return value if it does
 	 */
-	if(dev->si_drv2 == NULL)
+	if (dev->si_drv2 == NULL)
 		return(-1);
 
 	cpd = (struct usb_cdev_privdata *)dev->si_drv2;
@@ -1324,7 +1342,7 @@ usb_read(struct dev_read_args *ap)
 		return (err);
 #endif
 
-	if(dev->si_drv2 == NULL)
+	if (dev->si_drv2 == NULL)
 		return(-1);
     
 	cpd = (struct usb_cdev_privdata *)dev->si_drv2;
@@ -1460,7 +1478,7 @@ usb_write(struct dev_write_args *ap)
 		return (err);
 #endif
 
-	if(dev->si_drv2 == NULL)
+	if (dev->si_drv2 == NULL)
 		return(-1);
     
 	cpd = (struct usb_cdev_privdata *)dev->si_drv2;
@@ -1584,6 +1602,18 @@ done:
 	usb_unref_device(cpd, &refs);
 
 	return (err);
+}
+
+int
+usb_static_open(struct dev_open_args *ap)
+{
+	return 0;
+}
+
+int
+usb_static_close(struct dev_close_args *ap)
+{
+	return 0;
 }
 
 int
