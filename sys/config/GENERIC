@@ -333,6 +333,11 @@ pseudo-device	crypto		# core crypto support, used by wlan
 pseudo-device	cryptodev
 
 # USB support
+#
+# NOTE: If you enable 'usb4bsd' you must also disable 'usb' and rebuild
+#	the world with WANT_USB4BSD=true in /etc/make.conf, in addition
+#	to rebuilding the kernel.
+#
 device		uhci		# UHCI PCI->USB interface
 device		ohci		# OHCI PCI->USB interface
 device		usb		# USB Bus (required)
