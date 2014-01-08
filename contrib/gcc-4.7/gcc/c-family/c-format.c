@@ -826,6 +826,8 @@ static const format_char_info time_char_table[] =
   /* GNU conversion specifiers.  */
   { "kls",		0, STD_EXT, NOLENGTHS, "-_0Ow",  "",   NULL },
   { "P",		0, STD_EXT, NOLENGTHS, "",       "",   NULL },
+  /* DragonFly/FreeBSD conversion specifiers. */
+  { "+",		0, STD_EXT, NOLENGTHS, "E",      "3",  NULL },
   { NULL,		0, STD_C89, NOLENGTHS, NULL, NULL, NULL }
 };
 
