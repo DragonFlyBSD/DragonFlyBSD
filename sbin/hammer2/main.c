@@ -408,7 +408,7 @@ usage(int code)
 			"Create a PFS\n"
 		"    pfs-delete <label>           "
 			"Destroy a PFS\n"
-		"    snapshot                     "
+		"    snapshot [<label>]           "
 			"Snapshot a PFS\n"
 		"    service                      "
 			"Start service daemon\n"

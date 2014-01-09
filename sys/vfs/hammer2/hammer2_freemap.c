@@ -256,7 +256,11 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 		return (hammer2_freemap_reserve(trans, chain, radix));
 	}
 
+#if 0
 	/*
+	 * (this mechanic is no longer used, DOMAYFREE is used only by
+	 * the bulk freemap scan now).
+	 *
 	 * Mark previously allocated block as possibly freeable.  There might
 	 * be snapshots and other races so we can't just mark it fully free.
 	 * (XXX optimize this for the current-transaction create+delete case)
@@ -265,6 +269,7 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 		hammer2_freemap_adjust(trans, hmp, bref,
 				       HAMMER2_FREEMAP_DOMAYFREE);
 	}
+#endif
 
 	/*
 	 * Setting ISALLOCATING ensures correct operation even when the
@@ -771,13 +776,10 @@ hammer2_freemap_iterate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 }
 
 /*
- * Free the specified blockref.  This code is only able to fully free
- * blocks when (how) is non-zero, otherwise the block is marked for
- * the bulk freeing pass to check.
- *
- * Normal use is to only mark inodes as possibly being free.  The underlying
- * file blocks are not necessarily marked.  The bulk freescan can
- * theoretically handle the case.
+ * Adjust the bit-pattern for data in the freemap bitmap according to
+ * (how).  This code is called from on-mount recovery to fixup (mark
+ * as allocated) blocks whos freemap upates might not have been committed
+ * in the last crash and is used by the bulk freemap scan to stage frees.
  *
  * XXX currently disabled when how == 0 (the normal real-time case).  At
  * the moment we depend on the bulk freescan to actually free blocks.  It

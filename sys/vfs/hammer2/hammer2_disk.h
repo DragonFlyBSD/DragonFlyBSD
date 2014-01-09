@@ -200,7 +200,7 @@
  * 2MB of storage (x1024 elements = 2GB).  2 bits per chunk:
  *
  *	00	Free
- *	01	Possibly fragmented
+ *	01	(reserved)
  *	10	Possibly free
  *	11	Allocated
  *
@@ -611,7 +611,7 @@ typedef struct hammer2_blockset hammer2_blockset_t;
  *	     storage.  Bit patterns are as follows:
  *
  *	     00	Unallocated
- *	     01 Armed for bulk free scan
+ *	     01 (reserved)
  *	     10 Possibly free
  *           11 Allocated
  */
@@ -923,7 +923,8 @@ struct hammer2_volume_data {
 	hammer2_tid_t	alloc_tid;		/* 0080 Alloctable modify tid */
 	hammer2_tid_t	inode_tid;		/* 0088 Inode allocator tid */
 	hammer2_tid_t	freemap_tid;		/* 0090 committed tid (fmap) */
-	hammer2_tid_t	reserved0090[6];	/* 0098-00C7 */
+	hammer2_tid_t	bulkfree_tid;		/* 0098 bulkfree incremental */
+	hammer2_tid_t	reserved00A0[5];	/* 00A0-00C7 */
 
 	/*
 	 * Copyids are allocated dynamically from the copyexists bitmap.

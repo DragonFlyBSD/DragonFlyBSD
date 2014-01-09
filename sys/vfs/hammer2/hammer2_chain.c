@@ -96,8 +96,6 @@ static hammer2_chain_t *hammer2_combined_find(
 static void hammer2_chain_assert_not_present(hammer2_chain_core_t *above,
 				 hammer2_chain_t *chain);
 
-hammer2_chain_t *XXChain;
-int XXChainWhy;
 /*
  * Basic RBTree for chains.  Chains cannot overlap within any given
  * core->rbtree without recursing through chain->rbtree.  We effectively
@@ -1969,8 +1967,6 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	int generation;
 	int maxloops = 300000;
 	int wasdup;
-	hammer2_chain_t * volatile xxchain = NULL;
-	volatile int xxchainwhy;
 
 	if (flags & HAMMER2_LOOKUP_ALWAYS) {
 		how_maybe = how_always;
@@ -2125,8 +2121,6 @@ again:
 			goto again;
 		}
 		if (bcmp(&bcopy, bref, sizeof(bcopy))) {
-			xxchain = chain;
-			xxchainwhy = 1;
 			hammer2_chain_drop(chain);
 			goto again;
 		}
@@ -2168,8 +2162,6 @@ again:
 			if (key_beg == 0 || key_beg > key_end)
 				return(NULL);
 		}
-		xxchain = chain;
-			xxchainwhy = 2;
 		goto again;
 	}
 
@@ -2193,16 +2185,12 @@ again:
 	    chain->bref.type == HAMMER2_BREF_TYPE_FREEMAP_NODE) {
 		hammer2_chain_unlock(parent);
 		*parentp = parent = chain;
-		xxchain = chain;
-			xxchainwhy = 3;
 		goto again;
 	}
 done:
 	/*
 	 * All done, return the chain
 	 */
-	XXChain = chain;
-	XXChainWhy = xxchainwhy;
 	return (chain);
 }
 
@@ -2284,12 +2272,14 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 }
 
 /*
- * Raw scan functions are similar to lookup/next but do not seek the parent
- * chain and do not skip stale chains.  These functions are primarily used
- * by the recovery code.
+ * The raw scan function is similar to lookup/next but does not seek to a key.
+ * Blockrefs are iterated via first_chain = (parent, NULL) and
+ * next_chain = (parent, chain).
  *
- * Parent and chain are locked, parent's data must be resolved.  To acquire
- * the first sub-chain under parent pass chain == NULL.
+ * The passed-in parent must be locked and its data resolved.  The returned
+ * chain will be locked.  Pass chain == NULL to acquire the first sub-chain
+ * under parent and then iterate with the passed-in chain (which this
+ * function will unlock).
  */
 hammer2_chain_t *
 hammer2_chain_scan(hammer2_chain_t *parent, hammer2_chain_t *chain,
@@ -3311,7 +3301,6 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	int maxloops = 300000;
 	int retry_same;
 	int wasdup;
-	hammer2_chain_t * volatile xxchain = NULL;
 
 	/*
 	 * Calculate the base blockref pointer or NULL if the chain
@@ -3555,7 +3544,6 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 			if ((chain->flags & HAMMER2_CHAIN_DUPLICATED) &&
 			    wasdup == 0) {
 				retry_same = 1;
-				xxchain = chain;
 			}
 			goto next_key;
 		}
@@ -3643,7 +3631,6 @@ next_key_spinlocked:
 		 */
 		parent = ichain;
 	}
-	XXChain = xxchain;
 
 	return(parent);
 }
