@@ -54,6 +54,7 @@ void inputev_register(inputev_t *iev);
 void inputev_deregister(inputev_t *iev);
 void inputev_sync(inputev_t *iev);
 int inputev_read(inputev_t *iev, struct uio *uio, int ioflag);
+int inputev_ioctl(inputev_t *iev, u_long cmd, void *data);
 void inputev_mt_sync_frame(inputev_t *iev);
 
 void inputev_set_evbit(inputev_t *iev, int bit);

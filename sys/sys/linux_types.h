@@ -47,4 +47,7 @@
 #define __s8    int8_t
 #define __user
 
+#define _IOC_READ	IOC_IN
+#define _IOC_WRITE	IOC_OUT
+
 #endif

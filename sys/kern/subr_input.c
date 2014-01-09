@@ -134,6 +134,15 @@ inputev_report_abs(inputev_t *iev, u_int code, int val)
 /* EV_ABS */
 
 /*
+ * Handle ioctls
+ */
+int
+inputev_ioctl(inputev_t *iev, u_long cmd, void *data)
+{
+	return ENOTTY;
+}
+
+/*
  * Supply a data stream to requestors
  */
 int
