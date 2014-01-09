@@ -69,6 +69,8 @@
 #define CYAPA_BUFSIZE	128			/* power of 2 */
 #define CYAPA_BUFMASK	(CYAPA_BUFSIZE - 1)
 
+#define ZSCALE		10
+
 struct cyapa_fifo {
 	int	rindex;
 	int	windex;
@@ -101,14 +103,18 @@ struct cyapa_softc {
 	 */
 	short	track_x;		/* current tracking */
 	short	track_y;
+	short	track_z;
 	uint8_t	track_but;
 	char 	track_id;		/* (for movement) */
 	short	delta_x;		/* accumulation -> report */
 	short	delta_y;
+	short	delta_z;
 	short	fuzz_x;
 	short	fuzz_y;
+	short	fuzz_z;
 	short	touch_x;		/* touch down coordinates */
 	short	touch_y;
+	short	touch_z;
 	uint8_t reported_but;
 
 	struct cyapa_fifo rfifo;	/* device->host */
@@ -122,6 +128,7 @@ struct cyapa_softc {
 	int	remote_mode;		/* 0 for streaming mode */
 	int	resolution;		/* count/mm */
 	int	sample_rate;		/* samples/sec */
+	int	zenabled;		/* z-axis enabled */
 };
 
 #define CYPOLL_SHUTDOWN	0x0001
@@ -559,6 +566,7 @@ again:
 		uint8_t but;
 		short delta_x;
 		short delta_y;
+		short delta_z;
 
 		/*
 		 * Accumulate delta_x, delta_y.
@@ -566,6 +574,7 @@ again:
 		sc->data_signal = 0;
 		delta_x = sc->delta_x;
 		delta_y = sc->delta_y;
+		delta_z = sc->delta_z;
 		if (delta_x > 255) {
 			delta_x = 255;
 			sc->data_signal = 1;
@@ -582,6 +591,14 @@ again:
 			delta_y = -256;
 			sc->data_signal = 1;
 		}
+		if (delta_z > 255) {
+			delta_z = 255;
+			sc->data_signal = 1;
+		}
+		if (delta_z < -256) {
+			delta_z = -256;
+			sc->data_signal = 1;
+		}
 		but = sc->track_but;
 
 		/*
@@ -589,6 +606,7 @@ again:
 		 */
 		sc->delta_x -= delta_x;
 		sc->delta_y -= delta_y;
+		sc->delta_z -= delta_z;
 		sc->reported_but = but;
 
 		/*
@@ -599,6 +617,7 @@ again:
 		 */
 		delta_x = cyapa_fuzz(delta_x, &sc->fuzz_x);
 		delta_y = cyapa_fuzz(delta_y, &sc->fuzz_y);
+		delta_z = cyapa_fuzz(delta_z, &sc->fuzz_z);
 
 		/*
 		 * Generate report
@@ -619,6 +638,8 @@ again:
 		fifo_write_char(&sc->rfifo, c0);
 		fifo_write_char(&sc->rfifo, (uint8_t)delta_x);
 		fifo_write_char(&sc->rfifo, (uint8_t)delta_y);
+		if (sc->zenabled > 0)
+			fifo_write_char(&sc->rfifo, (uint8_t)delta_z);
 		cyapa_unlock(sc);
 		cyapa_notify(sc);
 		cyapa_lock(sc);
@@ -776,6 +797,7 @@ again:
 			fifo_write_char(&sc->rfifo, 0xFA);
 			sc->delta_x = 0;
 			sc->delta_y = 0;
+			sc->delta_z = 0;
 			break;
 		case 0xEB:
 			/*
@@ -805,17 +827,25 @@ again:
 			fifo_write_char(&sc->rfifo, 0xFA);
 			sc->delta_x = 0;
 			sc->delta_y = 0;
+			sc->delta_z = 0;
 			break;
 		case 0xF2:
 			/*
 			 * Get Device ID
 			 *
-			 * byte1: device id (0x00)
+			 * If we send 0x00 - normal PS/2 mouse, no Z-axis
+			 * If we send 0x03 - Intellimouse, data packet has
+			 * an additional Z movement byte (8 bits signed).
 			 * (also reset movement counters)
 			 */
 			fifo_write_char(&sc->rfifo, 0xFA);
+			if (sc->zenabled > 0)
+				fifo_write_char(&sc->rfifo, 0x03);
+			else
+				fifo_write_char(&sc->rfifo, 0x00);
 			sc->delta_x = 0;
 			sc->delta_y = 0;
+			sc->delta_z = 0;
 			break;
 		case 0xF3:
 			/*
@@ -833,6 +863,19 @@ again:
 			}
 			sc->sample_rate = fifo_read_char(&sc->wfifo);
 			fifo_write_char(&sc->rfifo, 0xFA);
+
+			/*
+			 * zenabling sequence: 200,100,80 (device id 0x03)
+			 *		       200,200,80 (device id 0x04)
+			 *
+			 * We support id 0x03 (no 4th or 5th button).
+			 */
+			if (sc->zenabled == 0 && sc->sample_rate == 200)
+				--sc->zenabled;
+			else if (sc->zenabled == -1 && sc->sample_rate == 100)
+				--sc->zenabled;
+			else if (sc->zenabled == -2 && sc->sample_rate == 80)
+				sc->zenabled = 1;
 			break;
 		case 0xF4:
 			/*
@@ -863,6 +906,7 @@ again:
 			sc->remote_mode = 0;
 			sc->delta_x = 0;
 			sc->delta_y = 0;
+			sc->delta_z = 0;
 			/* signal */
 			break;
 		case 0xFE:
@@ -884,8 +928,11 @@ again:
 			fifo_write_char(&sc->rfifo, 0xFA);
 			sc->delta_x = 0;
 			sc->delta_y = 0;
+			sc->delta_z = 0;
+			sc->zenabled = 0;
 			break;
 		default:
+			kprintf("unknown command %02x\n", sc->ps2_cmd);
 			break;
 		}
 		if (cmd_completed) {
@@ -1047,6 +1094,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	int i;
 	short x;
 	short y;
+	short z;
 	u_char but;
 
 	nfingers = CYAPA_FNGR_NUMFINGERS(regs->fngr);
@@ -1098,10 +1146,13 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	if (nfingers == 0) {
 		sc->track_x = -1;
 		sc->track_y = -1;
+		sc->track_z = -1;
 		sc->fuzz_x = 0;
 		sc->fuzz_y = 0;
+		sc->fuzz_z = 0;
 		sc->touch_x = -1;
 		sc->touch_y = -1;
+		sc->touch_z = -1;
 		sc->track_id = -1;
 		i = 0;
 	} else if (sc->track_id == -1) {
@@ -1126,10 +1177,40 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 			i = 0;
 			sc->track_x = -1;
 			sc->track_y = -1;
+			sc->track_z = -1;
 			sc->track_id = regs->touch[i].id;
 		}
 	}
-	if (nfingers) {
+
+	/*
+	 * On initial touch determine if we are in the slider area.  Setting
+	 * track_z conditionalizes the delta calculations later on.
+	 */
+	if (nfingers && sc->zenabled > 0 &&
+	    sc->track_x == -1 && sc->track_z == -1) {
+		x = CYAPA_TOUCH_X(regs, i);
+		z = CYAPA_TOUCH_Y(regs, i);
+		if (x > sc->cap_resx * 9 / 10)
+			sc->track_z = z;
+	}
+
+	if (nfingers && sc->track_z != -1) {
+		/*
+		 * Slider emulation (right side of trackpad).  Z is tracked
+		 * based on the Y position.  X and Y tracking are disabled.
+		 *
+		 * Because we are emulating a mouse-wheel, we do not want
+		 * to shove events out at the maximum resolution.
+		 */
+		z = CYAPA_TOUCH_Y(regs, i);
+		sc->delta_z += z / ZSCALE - sc->track_z;
+		if (sc->touch_z == -1)
+			sc->touch_z = z;	/* not used atm */
+		sc->track_z = z / ZSCALE;
+	} else if (nfingers) {
+		/*
+		 * Normal pad position reporting (track_z is left -1)
+		 */
 		x = CYAPA_TOUCH_X(regs, i);
 		y = CYAPA_TOUCH_Y(regs, i);
 		if (sc->track_x != -1) {
@@ -1151,13 +1232,27 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		sc->track_x = x;
 		sc->track_y = y;
 	}
-	if ((regs->fngr & CYAPA_FNGR_LEFT) &&
-	    (abs(sc->touch_x - sc->track_x) > 16 ||
-	     abs(sc->touch_y - sc->track_y) > 16)) {
+	if (nfingers >= 3) {
+		/*
+		 * Simulate the left button with 3+ fingers down.  Makes
+		 * it ultra easy to hit GUI buttons and move windows with
+		 * a light touch, without having to apply the pressure
+		 * required to articulate the button.
+		 */
+		but = CYAPA_FNGR_LEFT;
+	} else if ((regs->fngr & CYAPA_FNGR_LEFT) &&
+		    (abs(sc->touch_x - sc->track_x) > 16 ||
+		     abs(sc->touch_y - sc->track_y) > 16)) {
 		/*
 		 * If you move the mouse enough finger-down before pushing
 		 * the button, it will always register as the left button.
 		 * Makes moving windows around and hitting GUI buttons easy.
+		 */
+		but = CYAPA_FNGR_LEFT;
+	} else if ((regs->fngr & CYAPA_FNGR_LEFT) && nfingers > 1) {
+		/*
+		 * If you hit the trackpad button with more than one
+		 * finger down, it locks to the left mouse button.
 		 */
 		but = CYAPA_FNGR_LEFT;
 	} else if (regs->fngr & CYAPA_FNGR_LEFT) {
@@ -1178,7 +1273,8 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		but = 0;
 	}
 	sc->track_but = but;
-	if (sc->delta_x || sc->delta_y || sc->track_but != sc->reported_but) {
+	if (sc->delta_x || sc->delta_y || sc->delta_z ||
+	    sc->track_but != sc->reported_but) {
 		if (sc->remote_mode == 0 && sc->reporting_mode)
 			sc->data_signal = 1;
 	}
