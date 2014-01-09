@@ -108,6 +108,7 @@ MAN=	aac.4 \
 	hptiop.4 \
 	hptmv.4 \
 	hptrr.4 \
+	ichiic.4 \
 	ichsmb.4 \
 	ichwd.4 \
 	icmp.4 \
@@ -438,12 +439,13 @@ MLINKS+=fwe.4 if_fwe.4
 MLINKS+=fxp.4 if_fxp.4
 MLINKS+=gif.4 if_gif.4
 MLINKS+=gre.4 if_gre.4
+MLINKS+=ichiic.4 ig.4
+MLINKS+=igb.4 if_igb.4
+MLINKS+=iicbus.4 ic.4 \
+	iicbus.4 if_ic.4
 MLINKS+=ipfirewall.4 ipaccounting.4 \
 	ipfirewall.4 ipacct.4 \
 	ipfirewall.4 ipfw.4
-MLINKS+=iicbus.4 ic.4 \
-	iicbus.4 if_ic.4
-MLINKS+=igb.4 if_igb.4
 MLINKS+=iwi.4 if_iwi.4
 #MLINKS+=iwl.4 if_iwl.4
 MLINKS+=iwn.4 if_iwn.4
