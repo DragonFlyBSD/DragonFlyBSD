@@ -42,6 +42,22 @@
  * Attaches under smbus but uses an I2C protocol (no count field).
  * This driver should override the "smb" device for the specific unit
  * we validate against (smb0-67).
+ *
+ * xorg.conf:
+ *
+ * Section "InputDevice"
+ *         Identifier  "Mouse0"
+ *         Driver      "mouse"
+ *         Option      "Protocol" "imps/2"		(slider)
+ * #       Option      "Protocol" "ps/2"		(basic mouse)
+ * #       Option      "Protocol" "explorerps/2"	(not working well yet)
+ *							(for b4/b5)
+ *         Option      "Device" "/dev/cyapa0-67"
+ * EndSection
+ *
+ * NOTE: In explorerps/2 mode the slider has only 4 bits of delta resolution
+ *	 and may not work as smoothly.  Buttons are recognized as button
+ *	 8 and button 9.
  */
 #include <sys/kernel.h>
 #include <sys/param.h>
@@ -104,7 +120,7 @@ struct cyapa_softc {
 	short	track_x;		/* current tracking */
 	short	track_y;
 	short	track_z;
-	uint8_t	track_but;
+	uint16_t track_but;
 	char 	track_id;		/* (for movement) */
 	short	delta_x;		/* accumulation -> report */
 	short	delta_y;
@@ -115,7 +131,7 @@ struct cyapa_softc {
 	short	touch_x;		/* touch down coordinates */
 	short	touch_y;
 	short	touch_z;
-	uint8_t reported_but;
+	uint16_t reported_but;
 
 	struct cyapa_fifo rfifo;	/* device->host */
 	struct cyapa_fifo wfifo;	/* host->device */
@@ -128,10 +144,14 @@ struct cyapa_softc {
 	int	remote_mode;		/* 0 for streaming mode */
 	int	resolution;		/* count/mm */
 	int	sample_rate;		/* samples/sec */
-	int	zenabled;		/* z-axis enabled */
+	int	zenabled;		/* z-axis enabled (mode 1 or 2) */
 };
 
 #define CYPOLL_SHUTDOWN	0x0001
+
+#define SIMULATE_BUT4	0x0100
+#define SIMULATE_BUT5	0x0200
+#define SIMULATE_LOCK	0x8000
 
 static void cyapa_poll_thread(void *arg);
 static int cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs);
@@ -563,7 +583,7 @@ again:
 	    (sc->data_signal || sc->delta_x || sc->delta_y ||
 	     sc->track_but != sc->reported_but)) {
 		uint8_t c0;
-		uint8_t but;
+		uint16_t but;
 		short delta_x;
 		short delta_y;
 		short delta_z;
@@ -638,8 +658,33 @@ again:
 		fifo_write_char(&sc->rfifo, c0);
 		fifo_write_char(&sc->rfifo, (uint8_t)delta_x);
 		fifo_write_char(&sc->rfifo, (uint8_t)delta_y);
-		if (sc->zenabled > 0)
+		switch(sc->zenabled) {
+		case 1:
+			/*
+			 * Z axis all 8 bits
+			 */
 			fifo_write_char(&sc->rfifo, (uint8_t)delta_z);
+			break;
+		case 2:
+			/*
+			 * Z axis low 4 bits + 4th button and 5th button
+			 * (high 2 bits must be left 0).  Auto-scale
+			 * delta_z to fit to avoid a wrong-direction
+			 * overflow (don't try to retain the remainder).
+			 */
+			while (delta_z > 7 || delta_z < -8)
+				delta_z >>= 1;
+			c0 = (uint8_t)delta_z & 0x0F;
+			if (but & SIMULATE_BUT4)
+				c0 |= 0x10;
+			if (but & SIMULATE_BUT5)
+				c0 |= 0x20;
+			fifo_write_char(&sc->rfifo, c0);
+			break;
+		default:
+			/* basic PS/2 */
+			break;
+		}
 		cyapa_unlock(sc);
 		cyapa_notify(sc);
 		cyapa_lock(sc);
@@ -834,15 +879,26 @@ again:
 			 * Get Device ID
 			 *
 			 * If we send 0x00 - normal PS/2 mouse, no Z-axis
+			 *
 			 * If we send 0x03 - Intellimouse, data packet has
 			 * an additional Z movement byte (8 bits signed).
 			 * (also reset movement counters)
+			 *
+			 * If we send 0x04 - Now includes z-axis and the
+			 * 4th and 5th mouse buttons.
 			 */
 			fifo_write_char(&sc->rfifo, 0xFA);
-			if (sc->zenabled > 0)
+			switch(sc->zenabled) {
+			case 1:
 				fifo_write_char(&sc->rfifo, 0x03);
-			else
+				break;
+			case 2:
+				fifo_write_char(&sc->rfifo, 0x04);
+				break;
+			default:
 				fifo_write_char(&sc->rfifo, 0x00);
+				break;
+			}
 			sc->delta_x = 0;
 			sc->delta_y = 0;
 			sc->delta_z = 0;
@@ -869,13 +925,18 @@ again:
 			 *		       200,200,80 (device id 0x04)
 			 *
 			 * We support id 0x03 (no 4th or 5th button).
+			 * We support id 0x04 (w/ 4th and 5th button).
 			 */
 			if (sc->zenabled == 0 && sc->sample_rate == 200)
-				--sc->zenabled;
+				sc->zenabled = -1;
 			else if (sc->zenabled == -1 && sc->sample_rate == 100)
-				--sc->zenabled;
+				sc->zenabled = -2;
+			else if (sc->zenabled == -1 && sc->sample_rate == 200)
+				sc->zenabled = -3;
 			else if (sc->zenabled == -2 && sc->sample_rate == 80)
-				sc->zenabled = 1;
+				sc->zenabled = 1;	/* z-axis mode */
+			else if (sc->zenabled == -3 && sc->sample_rate == 80)
+				sc->zenabled = 2;	/* z-axis+but4/5 */
 			break;
 		case 0xF4:
 			/*
@@ -1095,7 +1156,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	short x;
 	short y;
 	short z;
-	u_char but;
+	uint16_t but;	/* high bits used for simulated but4/but5 */
 
 	nfingers = CYAPA_FNGR_NUMFINGERS(regs->fngr);
 
@@ -1154,6 +1215,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		sc->touch_y = -1;
 		sc->touch_z = -1;
 		sc->track_id = -1;
+		sc->track_but = 0;
 		i = 0;
 	} else if (sc->track_id == -1) {
 		/*
@@ -1232,44 +1294,109 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		sc->track_x = x;
 		sc->track_y = y;
 	}
-	if (nfingers >= 3) {
+	if (nfingers >= 5 && sc->zenabled > 1 && sc->track_z < 0) {
 		/*
-		 * Simulate the left button with 3+ fingers down.  Makes
-		 * it ultra easy to hit GUI buttons and move windows with
-		 * a light touch, without having to apply the pressure
-		 * required to articulate the button.
+		 * Simulate the 5th button (when not in slider mode)
 		 */
-		but = CYAPA_FNGR_LEFT;
-	} else if ((regs->fngr & CYAPA_FNGR_LEFT) &&
-		    (abs(sc->touch_x - sc->track_x) > 16 ||
-		     abs(sc->touch_y - sc->track_y) > 16)) {
+		but = SIMULATE_BUT5;
+	} else if (nfingers >= 4 && sc->zenabled > 1 && sc->track_z < 0) {
 		/*
-		 * If you move the mouse enough finger-down before pushing
-		 * the button, it will always register as the left button.
-		 * Makes moving windows around and hitting GUI buttons easy.
+		 * Simulate the 4th button (when not in slider mode)
 		 */
-		but = CYAPA_FNGR_LEFT;
-	} else if ((regs->fngr & CYAPA_FNGR_LEFT) && nfingers > 1) {
+		but = SIMULATE_BUT4;
+	} else if (nfingers >= 3 && sc->track_z < 0) {
 		/*
-		 * If you hit the trackpad button with more than one
-		 * finger down, it locks to the left mouse button.
+		 * Simulate the left button with 3+ fingers when not in
+		 * slider mode (4 of 5 fingers also works if the trackpad
+		 * is not emulating button-4 and button-5).
+		 *
+		 * This makes it ultra easy to hit GUI buttons and move
+		 * windows with a light touch, without having to apply the
+		 * pressure required to articulate the button.
+		 *
+		 * However, if we are coming down from 4 or 5 fingers,
+		 * do NOT simulate the left button and instead just release
+		 * button 4 or button 5.  Leave SIMULATE_LOCK set to
+		 * placemark the condition.  We must go down to 2 fingers
+		 * to release the lock.
 		 */
-		but = CYAPA_FNGR_LEFT;
-	} else if (regs->fngr & CYAPA_FNGR_LEFT) {
+		if (sc->track_but & (SIMULATE_BUT4 |
+				     SIMULATE_BUT5 |
+				     SIMULATE_LOCK))
+			but = SIMULATE_LOCK;
+		else
+			but = CYAPA_FNGR_LEFT;
+	} else if (nfingers == 2 || (nfingers >= 2 && sc->track_z >= 0)) {
 		/*
-		 * If you are swiping while holding the button down, the
+		 * If 2 fingers are held down or 2 or more fingers are held
+		 * down and we are in slider mode, any key press is
+		 * interpreted as a left mouse button press.
+		 *
+		 * If a keypress is already active we retain the active
+		 * keypress instead.
+		 *
+		 * The high-button state is unconditionally cleared with <= 2
+		 * fingers.
+		 */
+		if (regs->fngr & CYAPA_FNGR_LEFT) {
+			but = sc->track_but & ~SIMULATE_LOCK;
+			if (but == 0)
+				but = CYAPA_FNGR_LEFT;
+		} else {
+			but = 0;
+		}
+	} else if (nfingers == 1 &&
+		   (abs(sc->touch_x - sc->track_x) > 32 ||
+		    abs(sc->touch_y - sc->track_y) > 32)) {
+		/*
+		 * When using one finger, any significant mouse movement
+		 * will lock you to the left mouse button if you push the
+		 * button, regardless of where you are on the pad.
+		 *
+		 * If a keypress is already active we retain the active
+		 * keypress instead.
+		 *
+		 * The high-button state is unconditionally cleared with <= 2
+		 * fingers.
+		 */
+		if (regs->fngr & CYAPA_FNGR_LEFT) {
+			but = sc->track_but & ~SIMULATE_LOCK;
+			if (but == 0)
+				but = CYAPA_FNGR_LEFT;
+		} else {
+			but = 0;
+		}
+	} else if (nfingers == 1 && (regs->fngr & CYAPA_FNGR_LEFT)) {
+		/*
+		 * If you are swiping while holding a button down, the
 		 * button registration does not change.  Otherwise the
 		 * registered button depends on where you are on the pad.
+		 *
+		 * Since no significant movement occurred we allow the
+		 * button to be pressed while within the slider area
+		 * and still be properly registered as the right button.
+		 *
+		 * The high-button state is unconditionally cleared with <= 2
+		 * fingers.
 		 */
-		if (sc->track_but)
-			but = sc->track_but;
+		if (sc->track_but & ~SIMULATE_LOCK)
+			but = sc->track_but & ~SIMULATE_LOCK;
 		else if (sc->track_x < sc->cap_resx * 1 / 3)
 			but = CYAPA_FNGR_LEFT;
 		else if (sc->track_x < sc->cap_resx * 2 / 3)
 			but = CYAPA_FNGR_MIDDLE;
 		else
 			but = CYAPA_FNGR_RIGHT;
+	} else if (nfingers == 1) {
+		/*
+		 * Clear all finger state if 1 finger is down and nothing
+		 * is pressed.
+		 */
+		but = 0;
 	} else {
+		/*
+		 * Clear all finger state if no fingers are down.
+		 */
 		but = 0;
 	}
 	sc->track_but = but;
