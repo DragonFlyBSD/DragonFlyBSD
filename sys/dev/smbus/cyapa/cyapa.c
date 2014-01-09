@@ -102,10 +102,13 @@ struct cyapa_softc {
 	short	track_x;		/* current tracking */
 	short	track_y;
 	uint8_t	track_but;
+	char 	track_id;		/* (for movement) */
 	short	delta_x;		/* accumulation -> report */
 	short	delta_y;
 	short	fuzz_x;
 	short	fuzz_y;
+	short	touch_x;		/* touch down coordinates */
+	short	touch_y;
 	uint8_t reported_but;
 
 	struct cyapa_fifo rfifo;	/* device->host */
@@ -1088,7 +1091,6 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		inputev_report_key(&sc->iev, BTN_LEFT,
 				 regs->fngr & CYAPA_FNGR_RIGHT);
 #endif
-
 	/*
 	 * Tracking for local solutions
 	 */
@@ -1096,14 +1098,43 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	if (nfingers == 0) {
 		sc->track_x = -1;
 		sc->track_y = -1;
+		sc->fuzz_x = 0;
+		sc->fuzz_y = 0;
+		sc->touch_x = -1;
+		sc->touch_y = -1;
+		sc->track_id = -1;
+		i = 0;
+	} else if (sc->track_id == -1) {
+		/*
+		 * Touch(es), if not tracking for mouse-movement, assign
+		 * mouse-movement to the first finger in the array.
+		 */
+		i = 0;
+		sc->track_id = regs->touch[i].id;
 	} else {
-		x = CYAPA_TOUCH_X(regs, 0);
-		y = CYAPA_TOUCH_Y(regs, 0);
+		/*
+		 * The id assigned on touch can move around in the array,
+		 * find it.  If that finger is lifted up, assign some other
+		 * finger for mouse tracking and reset track_x and track_y
+		 * to avoid a mouse jump.
+		 */
+		for (i = 0; i < nfingers; ++i) {
+			if (sc->track_id == regs->touch[i].id)
+				break;
+		}
+		if (i == nfingers) {
+			i = 0;
+			sc->track_x = -1;
+			sc->track_y = -1;
+			sc->track_id = regs->touch[i].id;
+		}
+	}
+	if (nfingers) {
+		x = CYAPA_TOUCH_X(regs, i);
+		y = CYAPA_TOUCH_Y(regs, i);
 		if (sc->track_x != -1) {
 			sc->delta_x += x - sc->track_x;
 			sc->delta_y -= y - sc->track_y;
-			sc->track_x = x;
-			sc->track_y = y;
 			if (sc->delta_x > sc->cap_resx)
 				sc->delta_x = sc->cap_resx;
 			if (sc->delta_x < -sc->cap_resx)
@@ -1112,14 +1143,31 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 				sc->delta_y = sc->cap_resy;
 			if (sc->delta_y < -sc->cap_resy)
 				sc->delta_y = -sc->cap_resy;
-		} else {
-			sc->track_x = x;
-			sc->track_y = y;
 		}
+		if (sc->touch_x == -1) {
+			sc->touch_x = x;
+			sc->touch_y = y;
+		}
+		sc->track_x = x;
+		sc->track_y = y;
 	}
-	if (regs->fngr & CYAPA_FNGR_LEFT) {
+	if ((regs->fngr & CYAPA_FNGR_LEFT) &&
+	    (abs(sc->touch_x - sc->track_x) > 16 ||
+	     abs(sc->touch_y - sc->track_y) > 16)) {
+		/*
+		 * If you move the mouse enough finger-down before pushing
+		 * the button, it will always register as the left button.
+		 * Makes moving windows around and hitting GUI buttons easy.
+		 */
+		but = CYAPA_FNGR_LEFT;
+	} else if (regs->fngr & CYAPA_FNGR_LEFT) {
+		/*
+		 * If you are swiping while holding the button down, the
+		 * button registration does not change.  Otherwise the
+		 * registered button depends on where you are on the pad.
+		 */
 		if (sc->track_but)
-			but = sc->track_but;	/* hold-swipe, keep same but */
+			but = sc->track_but;
 		else if (sc->track_x < sc->cap_resx * 1 / 3)
 			but = CYAPA_FNGR_LEFT;
 		else if (sc->track_x < sc->cap_resx * 2 / 3)
