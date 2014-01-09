@@ -439,7 +439,7 @@ MLINKS+=fwe.4 if_fwe.4
 MLINKS+=fxp.4 if_fxp.4
 MLINKS+=gif.4 if_gif.4
 MLINKS+=gre.4 if_gre.4
-MLINKS+=ichiic.4 ig.4
+MLINKS+=ichiic.4 ig4.4
 MLINKS+=igb.4 if_igb.4
 MLINKS+=iicbus.4 ic.4 \
 	iicbus.4 if_ic.4
