@@ -605,12 +605,6 @@ intel_setup_gmbus(struct drm_device *dev)
 	dev_priv->bbbus = kmalloc(sizeof(device_t) * GMBUS_NUM_PORTS,
 	    DRM_MEM_DRIVER, M_WAITOK | M_ZERO);
 
-	/*
-	 * The Giant there is recursed, most likely.  Normally, the
-	 * intel_setup_gmbus() is called from the attach method of the
-	 * driver.
-	 */
-	get_mplock();
 	for (i = 0; i < GMBUS_NUM_PORTS; i++) {
 		/*
 		 * Initialized bbbus_bridge before gmbus_bridge, since
@@ -674,12 +668,10 @@ intel_setup_gmbus(struct drm_device *dev)
 		intel_iic_reset(dev);
 	}
 
-	rel_mplock();
 	return (0);
 
 err:
 	intel_teardown_gmbus_m(dev, i);
-	rel_mplock();
 	return (ret);
 }
 
