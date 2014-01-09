@@ -25,19 +25,25 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/pcm.4,v 1.39.2.6 2007/05/23 19:45:49 brueffer Exp $
 .\"
-.Dd February 10, 2013
+.Dd January 9, 2014
 .Dt SOUND 4
 .Os
 .Sh NAME
-.Nm sound ,
 .Nm pcm ,
-.Nm snd
+.Nm sound
 .Nd DragonFly PCM audio device infrastructure
 .Sh SYNOPSIS
 To compile this driver into the kernel, place the following line in your
 kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "device pcm"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+sound_load="YES"
 .Ed
 .Sh DESCRIPTION
 The
