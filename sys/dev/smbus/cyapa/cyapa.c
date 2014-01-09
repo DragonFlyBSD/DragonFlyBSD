@@ -104,6 +104,8 @@ struct cyapa_softc {
 	uint8_t	track_but;
 	short	delta_x;		/* accumulation -> report */
 	short	delta_y;
+	short	fuzz_x;
+	short	fuzz_y;
 	uint8_t reported_but;
 
 	struct cyapa_fifo rfifo;	/* device->host */
@@ -135,6 +137,8 @@ static uint8_t fifo_read_char(struct cyapa_fifo *fifo);
 static void fifo_write_char(struct cyapa_fifo *fifo, uint8_t c);
 static size_t fifo_space(struct cyapa_fifo *fifo);
 static void fifo_reset(struct cyapa_fifo *fifo);
+
+static short cyapa_fuzz(short delta, short *fuzz);
 
 static int cyapa_idle_freq = 1;
 SYSCTL_INT(_debug, OID_AUTO, cyapa_idle_freq, CTLFLAG_RW,
@@ -553,6 +557,9 @@ again:
 		short delta_x;
 		short delta_y;
 
+		/*
+		 * Accumulate delta_x, delta_y.
+		 */
 		sc->data_signal = 0;
 		delta_x = sc->delta_x;
 		delta_y = sc->delta_y;
@@ -573,10 +580,26 @@ again:
 			sc->data_signal = 1;
 		}
 		but = sc->track_but;
+
+		/*
+		 * Adjust baseline for next calculation
+		 */
 		sc->delta_x -= delta_x;
 		sc->delta_y -= delta_y;
 		sc->reported_but = but;
 
+		/*
+		 * Fuzz reduces movement jitter by introducing some
+		 * hysteresis.  It operates without cumulative error so
+		 * if you swish around quickly and return your finger to
+		 * where it started, so to will the mouse.
+		 */
+		delta_x = cyapa_fuzz(delta_x, &sc->fuzz_x);
+		delta_y = cyapa_fuzz(delta_y, &sc->fuzz_y);
+
+		/*
+		 * Generate report
+		 */
 		c0 = 0;
 		if (delta_x < 0)
 			c0 |= 0x10;
@@ -1250,6 +1273,28 @@ fifo_reset(struct cyapa_fifo *fifo)
 {
 	fifo->rindex = 0;
 	fifo->windex = 0;
+}
+
+/*
+ * Fuzz handling
+ */
+static
+short
+cyapa_fuzz(short delta, short *fuzzp)
+{
+    short fuzz;
+
+    fuzz = *fuzzp;
+    if (fuzz >= 0 && delta < 0) {
+	++delta;
+	--fuzz;
+    } else if (fuzz <= 0 && delta > 0) {
+	--delta;
+	++fuzz;
+    }
+    *fuzzp = fuzz;
+
+    return delta;
 }
 
 DRIVER_MODULE(cyapa, smbus, cyapa_driver, cyapa_devclass, NULL, NULL);
