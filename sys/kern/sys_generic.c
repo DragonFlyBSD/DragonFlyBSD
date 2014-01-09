@@ -673,21 +673,20 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map,
 		goto done;
 	}
 
-	if (size > sizeof (ubuf.stkbuf)) {
+	if ((com & IOC_VOID) == 0 && size > sizeof(ubuf.stkbuf)) {
 		memp = kmalloc(size, M_IOCTLOPS, M_WAITOK);
 		data = memp;
 	} else {
 		memp = NULL;
 		data = ubuf.stkbuf;
 	}
-	if ((com & IOC_IN) != 0) {
+	if (com & IOC_VOID) {
+		*(caddr_t *)data = uspc_data;
+	} else if (com & IOC_IN) {
 		if (size != 0) {
 			error = copyin(uspc_data, data, (size_t)size);
-			if (error) {
-				if (memp != NULL)
-					kfree(memp, M_IOCTLOPS);
+			if (error)
 				goto done;
-			}
 		} else {
 			*(caddr_t *)data = uspc_data;
 		}
@@ -697,8 +696,6 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map,
 		 * gets back something deterministic.
 		 */
 		bzero(data, (size_t)size);
-	} else if ((com & IOC_VOID) != 0) {
-		*(caddr_t *)data = uspc_data;
 	}
 
 	switch (com) {
@@ -735,9 +732,9 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map,
 			error = copyout(data, uspc_data, (size_t)size);
 		break;
 	}
+done:
 	if (memp != NULL)
 		kfree(memp, M_IOCTLOPS);
-done:
 	fdrop(fp);
 	return(error);
 }

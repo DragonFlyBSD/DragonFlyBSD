@@ -58,6 +58,34 @@
  * NOTE: In explorerps/2 mode the slider has only 4 bits of delta resolution
  *	 and may not work as smoothly.  Buttons are recognized as button
  *	 8 and button 9.
+ *
+ *				    FEATURES
+ *
+ * Jitter supression	- Implements 2-pixel hysteresis with memory.
+ *
+ * False-finger supression- Two-fingers-down does not emulate anything,
+ *			    on purpose.
+ *
+ * Slider jesture	- Tap right hand side and slide up or down.
+ *
+ *			  (Three finger jestures)
+ * left button jesture	- Two fingers down on the left, tap/hold right
+ * middle button jesture- Two fingers down left & right, tap/hold middle
+ * right button jesture - Two fingers down on the right, tap/hold left
+ *
+ * track-pad button     - Tap/push physical button, left, middle, or right
+ *			  side of the trackpad will issue a LEFT, MIDDLE, or
+ *			  RIGHT button event.
+ *
+ * track-pad button     - Any tap/slide of more than 32 pixels and pushing
+ *			  harder to articulate the trackpad physical button
+ *			  always issues a LEFT button event.
+ *
+ * first-finger tracking- The X/Y coordinates always track the first finger
+ *			  down.  If you have multiple fingers down and lift
+ *			  up the designated first finger, a new designated
+ *			  first finger will be selected without causing the
+ *			  mouse to jump (delta's are reset).
  */
 #include <sys/kernel.h>
 #include <sys/param.h>
@@ -121,7 +149,8 @@ struct cyapa_softc {
 	short	track_y;
 	short	track_z;
 	uint16_t track_but;
-	char 	track_id;		/* (for movement) */
+	char 	track_id1;		/* first finger id */
+	char 	track_id2;		/* second finger id */
 	short	delta_x;		/* accumulation -> report */
 	short	delta_y;
 	short	delta_z;
@@ -1153,9 +1182,13 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 {
 	int nfingers;
 	int i;
+	int j;
+	int k;
 	short x;
 	short y;
 	short z;
+	short x1;
+	short x2;
 	uint16_t but;	/* high bits used for simulated but4/but5 */
 
 	nfingers = CYAPA_FNGR_NUMFINGERS(regs->fngr);
@@ -1214,25 +1247,24 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		sc->touch_x = -1;
 		sc->touch_y = -1;
 		sc->touch_z = -1;
-		sc->track_id = -1;
+		sc->track_id1 = -1;
+		sc->track_id2 = -1;
 		sc->track_but = 0;
 		i = 0;
-	} else if (sc->track_id == -1) {
-		/*
-		 * Touch(es), if not tracking for mouse-movement, assign
-		 * mouse-movement to the first finger in the array.
-		 */
-		i = 0;
-		sc->track_id = regs->touch[i].id;
+		j = 0;
+		k = 0;
 	} else {
 		/*
 		 * The id assigned on touch can move around in the array,
 		 * find it.  If that finger is lifted up, assign some other
 		 * finger for mouse tracking and reset track_x and track_y
 		 * to avoid a mouse jump.
+		 *
+		 * If >= 2 fingers are down be sure not to assign i and
+		 * j to the same index.
 		 */
 		for (i = 0; i < nfingers; ++i) {
-			if (sc->track_id == regs->touch[i].id)
+			if (sc->track_id1 == regs->touch[i].id)
 				break;
 		}
 		if (i == nfingers) {
@@ -1240,8 +1272,52 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 			sc->track_x = -1;
 			sc->track_y = -1;
 			sc->track_z = -1;
-			sc->track_id = regs->touch[i].id;
+			sc->track_id1 = regs->touch[i].id;
+			if (sc->track_id2 == sc->track_id1)
+				sc->track_id2 = -1;
 		}
+
+		/*
+		 * A second finger.
+		 */
+		for (j = 0; j < nfingers; ++j) {
+			if (sc->track_id2 == regs->touch[j].id)
+				break;
+		}
+		if (j == nfingers) {
+			if (nfingers >= 2) {
+				if (i == 0)
+					j = 1;
+				else
+					j = 0;
+				sc->track_id2 = regs->touch[j].id;
+			} else {
+				sc->track_id2 = -1;
+				j = 0;
+			}
+		}
+
+		/*
+		 * The third finger is used to tap or tap-hold to simulate
+		 * a button, we don't have to record it persistently.
+		 */
+		if (nfingers >= 3) {
+			k = 0;
+			if (i == 0 || j == 0)
+				k = 1;
+			if (i == 1 || j == 1)
+				k = 2;
+		} else {
+			k = 0;
+		}
+		kprintf("ID %3d,%3d,%3d\t%3d,%3d,%3d\n",
+			sc->track_id1,
+			sc->track_id2,
+			((nfingers >= 3) ? regs->touch[k].id : -1),
+			CYAPA_TOUCH_X(regs, i),
+			CYAPA_TOUCH_X(regs, j),
+			CYAPA_TOUCH_X(regs, k)
+		);
 	}
 
 	/*
@@ -1306,9 +1382,8 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		but = SIMULATE_BUT4;
 	} else if (nfingers >= 3 && sc->track_z < 0) {
 		/*
-		 * Simulate the left button with 3+ fingers when not in
-		 * slider mode (4 of 5 fingers also works if the trackpad
-		 * is not emulating button-4 and button-5).
+		 * Simulate the left, middle, or right button with 3
+		 * fingers when not in slider mode.
 		 *
 		 * This makes it ultra easy to hit GUI buttons and move
 		 * windows with a light touch, without having to apply the
@@ -1319,13 +1394,36 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		 * button 4 or button 5.  Leave SIMULATE_LOCK set to
 		 * placemark the condition.  We must go down to 2 fingers
 		 * to release the lock.
+		 *
+		 * LEFT BUTTON: Fingers arranged left-to-right 1 2 3,
+		 *		move mouse with fingers 2 and 3 and tap
+		 *		or hold with finger 1 (to the left of fingers
+		 *		2 and 3).
+		 *
+		 * RIGHT BUTTON: Move mouse with fingers 1 and 2 and tap
+		 *		 or hold with finger 3.
+		 *
+		 * MIDDLE BUTTON: Move mouse with fingers 1 and 3 and tap
+		 *		  or hold with finger 2.
 		 */
+		x1 = CYAPA_TOUCH_X(regs, i);	/* 1st finger down */
+		x2 = CYAPA_TOUCH_X(regs, j);	/* 2nd finger down */
+		x = CYAPA_TOUCH_X(regs, k);	/* 3rd finger (button) down */
 		if (sc->track_but & (SIMULATE_BUT4 |
-				     SIMULATE_BUT5 |
-				     SIMULATE_LOCK))
+					    SIMULATE_BUT5 |
+					    SIMULATE_LOCK)) {
 			but = SIMULATE_LOCK;
-		else
+		} else if (sc->track_but & ~SIMULATE_LOCK) {
+			but = sc->track_but;
+		} else if (x < x1 && x < x2) {
 			but = CYAPA_FNGR_LEFT;
+		} else if (x > x1 && x < x2) {
+			but = CYAPA_FNGR_MIDDLE;
+		} else if (x > x2 && x < x1) {
+			but = CYAPA_FNGR_MIDDLE;
+		} else {
+			but = CYAPA_FNGR_RIGHT;
+		}
 	} else if (nfingers == 2 || (nfingers >= 2 && sc->track_z >= 0)) {
 		/*
 		 * If 2 fingers are held down or 2 or more fingers are held
