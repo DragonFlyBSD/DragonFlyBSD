@@ -80,11 +80,11 @@ static int     nanosleep_min_us = 10;
 static int     nanosleep_hard_us = 100;
 static int     gettimeofday_quick = 0;
 SYSCTL_INT(_kern, OID_AUTO, nanosleep_min_us, CTLFLAG_RW,
-	   &nanosleep_min_us, 0, "")
+	   &nanosleep_min_us, 0, "");
 SYSCTL_INT(_kern, OID_AUTO, nanosleep_hard_us, CTLFLAG_RW,
-	   &nanosleep_hard_us, 0, "")
+	   &nanosleep_hard_us, 0, "");
 SYSCTL_INT(_kern, OID_AUTO, gettimeofday_quick, CTLFLAG_RW,
-	   &gettimeofday_quick, 0, "")
+	   &gettimeofday_quick, 0, "");
 
 static int
 settime(struct timeval *tv)

@@ -85,13 +85,25 @@ struct ctlname {
 #define	CTLTYPE_ULONG	8	/* name describes an unsigned long */
 #define	CTLTYPE_UQUAD	9	/* name describes an unsigned 64-bit number */
 
-#define CTLFLAG_RD	0x80000000	/* Allow reads of variable */
-#define CTLFLAG_WR	0x40000000	/* Allow writes to the variable */
-#define CTLFLAG_RW	(CTLFLAG_RD|CTLFLAG_WR)
-#define CTLFLAG_ANYBODY	0x10000000	/* All users can set this var */
-#define CTLFLAG_SECURE	0x08000000	/* Permit set only if securelevel<=0 */
-#define CTLFLAG_PRISON	0x04000000	/* Prisoned roots can fiddle */
-#define CTLFLAG_DYN	0x02000000	/* Dynamic oid - can be freed */
+#define	CTLFLAG_RD	0x80000000	/* Allow reads of variable */
+#define	CTLFLAG_WR	0x40000000	/* Allow writes to the variable */
+#define	CTLFLAG_RW	(CTLFLAG_RD|CTLFLAG_WR)
+#define	CTLFLAG_ANYBODY	0x10000000	/* All users can set this var */
+#define	CTLFLAG_SECURE	0x08000000	/* Permit set only if securelevel<=0 */
+#define	CTLFLAG_PRISON	0x04000000	/* Prisoned roots can fiddle */
+#define	CTLFLAG_DYN	0x02000000	/* Dynamic oid - can be freed */
+#define	CTLFLAG_SKIP	0x01000000	/* Skip this sysctl when listing */
+#define	CTLMASK_SECURE	0x00F00000	/* Secure level */
+#define	CTLFLAG_TUN	0x00080000	/* Tunable variable */
+#define	CTLFLAG_RDTUN	(CTLFLAG_RD|CTLFLAG_TUN)
+#define	CTLFLAG_RWTUN	(CTLFLAG_RW|CTLFLAG_TUN)
+#define	CTLFLAG_MPSAFE	0x00040000	/* Handler is MP safe */
+#define	CTLFLAG_VNET	0x00020000	/* Prisons with vnet can fiddle */
+#define	CTLFLAG_DYING	0x00010000	/* Oid is being removed */
+#define	CTLFLAG_CAPRD	0x00008000	/* Can be read in capability mode */
+#define	CTLFLAG_CAPWR	0x00004000	/* Can be written in capability mode */
+#define	CTLFLAG_STATS	0x00002000	/* Statistics, not a tuneable */
+#define	CTLFLAG_CAPRW	(CTLFLAG_CAPRD|CTLFLAG_CAPWR)
 
 /*
  * USE THIS instead of a hardwired number from the categories below
@@ -114,16 +126,18 @@ struct ctlname {
  * so that we can use the interface from the kernel or from user-space.
  */
 struct sysctl_req {
-	struct thread	*td;
-	int		unused01;	/* was lock */
+	struct thread	*td;		/* used for access checking */
+	int		 lock;		/* wiring state */
 	void		*oldptr;
-	size_t		oldlen;
-	size_t		oldidx;
+	size_t		 oldlen;
+	size_t		 oldidx;
 	int		(*oldfunc)(struct sysctl_req *, const void *, size_t);
 	void		*newptr;
-	size_t		newlen;
-	size_t		newidx;
+	size_t		 newlen;
+	size_t		 newidx;
 	int		(*newfunc)(struct sysctl_req *, void *, size_t);
+	size_t		 validlen;
+	int		 flags;
 };
 
 SLIST_HEAD(sysctl_oid_list, sysctl_oid);
@@ -143,6 +157,7 @@ struct sysctl_oid {
 	int 		(*oid_handler)(SYSCTL_HANDLER_ARGS);
 	const char	*oid_fmt;
 	int		oid_refcnt;
+	u_int		 oid_running;
 	const char	*oid_descr;
 };
 
@@ -188,22 +203,40 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	SYSCTL_NODE_CHILDREN(parent, name) \
 	sysctl_##parent##_##name##_children
 
-/* This constructs a "raw" MIB oid. */
-#define SYSCTL_OID(parent, nbr, name, kind, a1, a2, handler, fmt, descr) \
-	static struct sysctl_oid sysctl__##parent##_##name = {		 \
-		&sysctl_##parent##_children, { 0 },			 \
-		nbr, kind, a1, a2, #name, handler, fmt, 0, descr };		 \
-	DATA_SET(sysctl_set, sysctl__##parent##_##name);
+#define	SYSCTL_ASSERT_TYPE(type, ptr, parent, name)
 
-#define SYSCTL_ADD_OID(ctx, parent, nbr, name, kind, a1, a2, handler, fmt, descr) \
+#ifndef NO_SYSCTL_DESCR
+#define	__DESCR(d) d
+#else
+#define	__DESCR(d) ""
+#endif
+
+/* This constructs a "raw" MIB oid. */
+#define	SYSCTL_OID(parent, nbr, name, kind, a1, a2, handler, fmt, descr)\
+	static struct sysctl_oid sysctl__##parent##_##name = {		\
+		&sysctl_##parent##_children,				\
+		{ NULL },						\
+		nbr,							\
+		kind,							\
+		a1,							\
+		a2,							\
+		#name,							\
+		handler,						\
+		fmt,							\
+		0,							\
+		0,							\
+		__DESCR(descr)						\
+		};							\
+	DATA_SET(sysctl_set, sysctl__##parent##_##name)
+
+#define	SYSCTL_ADD_OID(ctx, parent, nbr, name, kind, a1, a2, handler, fmt, descr) \
 	sysctl_add_oid(ctx, parent, nbr, name, kind, a1, a2, handler, fmt, descr);
 
 /* This constructs a node from which other oids can hang. */
-#define SYSCTL_NODE(parent, nbr, name, access, handler, descr)		    \
-	struct sysctl_oid_list sysctl_##parent##_##name##_children;	    \
-	SYSCTL_OID(parent, nbr, name, CTLTYPE_NODE|access,		    \
-		   (void*)&sysctl_##parent##_##name##_children, 0, handler, \
-		   "N", descr);
+#define	SYSCTL_NODE(parent, nbr, name, access, handler, descr)		    \
+	struct sysctl_oid_list SYSCTL_NODE_CHILDREN(parent, name);	    \
+	SYSCTL_OID(parent, nbr, name, CTLTYPE_NODE|(access),		    \
+	    (void*)&SYSCTL_NODE_CHILDREN(parent, name), 0, handler, "N", descr)
 
 #define SYSCTL_ADD_NODE(ctx, parent, nbr, name, access, handler, descr)	    \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_NODE|access,	    \
@@ -219,9 +252,11 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 	arg, len, sysctl_handle_string, "A", descr)
 
 /* Oid for an int.  If ptr is NULL, val is returned. */
-#define SYSCTL_INT(parent, nbr, name, access, ptr, val, descr) \
-	SYSCTL_OID(parent, nbr, name, CTLTYPE_INT|access, \
-		ptr, val, sysctl_handle_int, "I", descr)
+#define	SYSCTL_INT(parent, nbr, name, access, ptr, val, descr)		\
+	SYSCTL_ASSERT_TYPE(INT, ptr, parent, name);			\
+	SYSCTL_OID(parent, nbr, name,					\
+	    CTLTYPE_INT | CTLFLAG_MPSAFE | (access),			\
+	    ptr, val, sysctl_handle_int, "I", descr)
 
 #define SYSCTL_ADD_INT(ctx, parent, nbr, name, access, ptr, val, descr)	    \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_INT|access,	    \
@@ -630,6 +665,9 @@ struct sysctl_oid *sysctl_add_oid(struct sysctl_ctx_list *clist,
 		int kind, void *arg1, int arg2,
 		int (*handler) (SYSCTL_HANDLER_ARGS),
 		const char *fmt, const char *descr);
+void	sysctl_rename_oid(struct sysctl_oid *oidp, const char *name);
+int	sysctl_remove_name(struct sysctl_oid *parent, const char *name, int del,
+	    int recurse);
 int	sysctl_remove_oid(struct sysctl_oid *oidp, int del, int recurse);
 int	sysctl_ctx_init(struct sysctl_ctx_list *clist);
 int	sysctl_ctx_free(struct sysctl_ctx_list *clist);
@@ -647,8 +685,8 @@ int	kernel_sysctlbyname(char *name,
 		void *old, size_t *oldlenp, void *new, size_t newlen,
 		size_t *retval);
 int	userland_sysctl(int *name, u_int namelen, void *old,
-			size_t *oldlenp, int inkernel, void *new, size_t newlen,
-			size_t *retval);
+	    size_t *oldlenp, int inkernel, void *new, size_t newlen,
+	    size_t *retval);
 int	sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
 			int *nindx, struct sysctl_req *req);
 
