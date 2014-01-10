@@ -414,11 +414,14 @@ cputimer_intr_select_caps(uint32_t caps)
     if (maybe == NULL)
 	return ENOENT;
 
+    if (sys_cputimer_intr == maybe)
+    	return 0;
+
     cputimer_intr_caps = caps;
     error = cputimer_intr_select(maybe, CPUTIMER_INTR_PRIO_MAX);
     KKASSERT(!error);
 
-    return 0;
+    return ERESTART;
 }
 
 static void

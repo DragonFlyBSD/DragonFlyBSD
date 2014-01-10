@@ -1008,8 +1008,12 @@ acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
 	     * one shot timer.
 	     */
 	    error = cputimer_intr_select_caps(CPUTIMER_INTR_CAP_NONE);
-	    KKASSERT(!error);
-	    cputimer_intr_restart();
+	    KKASSERT(!error || error == ERESTART);
+	    if (error == ERESTART) {
+		if (bootverbose)
+		    kprintf("exit C3, restart intr cputimer\n");
+		cputimer_intr_restart();
+	    }
     	}
     } else if (type == ACPI_STATE_C3 && old_type != ACPI_STATE_C3) {
 	if (atomic_fetchadd_int(&cpu_c3_ncpus, 1) == 0) {
@@ -1019,9 +1023,11 @@ acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
 	     * C3 state, i.e. the timer will not hang.
 	     */
 	    error = cputimer_intr_select_caps(CPUTIMER_INTR_CAP_PS);
-	    if (!error) {
+	    if (error == ERESTART) {
+		if (bootverbose)
+		    kprintf("enter C3, restart intr cputimer\n");
 		cputimer_intr_restart();
-	    } else {
+	    } else if (error) {
 		kprintf("no suitable intr cputimer found\n");
 
 		/* Restore */
