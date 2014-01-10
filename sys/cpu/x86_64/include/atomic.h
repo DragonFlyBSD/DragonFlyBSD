@@ -217,8 +217,7 @@ atomic_swap_ptr(volatile void **addr, void *value)
 	return (value);
 }
 
-static __inline
-int
+static __inline int
 atomic_poll_acquire_int(volatile u_int *p)
 {
 	u_int data;
@@ -227,8 +226,7 @@ atomic_poll_acquire_int(volatile u_int *p)
 	return(data);
 }
 
-static __inline
-void
+static __inline void
 atomic_poll_release_int(volatile u_int *p)
 {
 	__asm __volatile(MPLOCKED "btrl $0,%0" : "+m" (*p));
@@ -303,15 +301,13 @@ void atomic_intr_cond_dec(__atomic_intr_t *p);
 
 #else
 
-static __inline
-void
+static __inline void
 atomic_intr_init(__atomic_intr_t *p)
 {
 	*p = 0;
 }
 
-static __inline
-int
+static __inline int
 atomic_intr_handler_disable(__atomic_intr_t *p)
 {
 	int data;
@@ -322,15 +318,13 @@ atomic_intr_handler_disable(__atomic_intr_t *p)
 	return(data);
 }
 
-static __inline
-void
+static __inline void
 atomic_intr_handler_enable(__atomic_intr_t *p)
 {
 	__asm __volatile(MPLOCKED "andl $0xBFFFFFFF,%0" : "+m" (*p));
 }
 
-static __inline
-int
+static __inline int
 atomic_intr_handler_is_enabled(__atomic_intr_t *p)
 {
 	int data;
@@ -352,8 +346,7 @@ atomic_intr_cond_dec(__atomic_intr_t *p)
 	__asm __volatile(MPLOCKED "decl %0" : "+m" (*p));
 }
 
-static __inline
-void
+static __inline void
 atomic_intr_cond_enter(__atomic_intr_t *p, void (*func)(void *), void *arg)
 {
 	__asm __volatile(MPLOCKED "btsl $31,%0; jnc 3f; " \
@@ -375,8 +368,7 @@ atomic_intr_cond_enter(__atomic_intr_t *p, void (*func)(void *), void *arg)
  * Attempt to enter the interrupt condition variable.  Returns zero on
  * success, 1 on failure.
  */
-static __inline
-int
+static __inline int
 atomic_intr_cond_try(__atomic_intr_t *p)
 {
 	int ret;
@@ -391,15 +383,13 @@ atomic_intr_cond_try(__atomic_intr_t *p)
 }
 
 
-static __inline
-int
+static __inline int
 atomic_intr_cond_test(__atomic_intr_t *p)
 {
 	return((int)(*p & 0x80000000));
 }
 
-static __inline
-void
+static __inline void
 atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
 {
 	__asm __volatile(MPLOCKED "btrl $31,%0; " \
