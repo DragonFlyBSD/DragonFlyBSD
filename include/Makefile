@@ -54,14 +54,22 @@ LDIRS=	net netbt netgraph netgraph7 netinet netinet6 sys vm
 # If you make a mistake, part of your source tree might get overwritten
 # when buildworld is run.
 #
-LSUBDIRS=	bus/cam bus/cam/scsi \
+LSUBDIRS= \
+	bus/cam bus/cam/scsi \
+	bus/cam bus/pccard bus/pci bus/isa bus/ppbus bus/smbus \
+	dev/disk/dm \
+	dev/disk/mpt/mpilib \
+	dev/misc/lpt dev/misc/ppi dev/misc/putter \
+	dev/netif/wi \
+	dev/raid/ciss dev/raid/mfi \
+	dev/smbus/smb \
+	dev/video/bktr dev/video/meteor \
 	emulation/linux \
 	gnu/vfs/ext2fs \
-	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs \
-	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2 \
-	net/vlan net/ipfw net/ip6fw net/dummynet net/sppp net/ip_mroute \
+	libprop \
 	net/bridge net/tap net/tun net/ppp net/ppp_layer net/sl \
 	net/pf net/altq \
+	net/vlan net/ipfw net/ip6fw net/dummynet net/sppp net/ip_mroute \
 	netgraph/UI netgraph/async netgraph/bpf netgraph/bridge \
 	netgraph/cisco netgraph/echo netgraph/eiface netgraph/etf \
 	netgraph/ether netgraph/fec netgraph/frame_relay netgraph/hole \
@@ -77,19 +85,13 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netgraph7/mppc netgraph7/one2many netgraph7/ppp netgraph7/pppoe \
 	netgraph7/pptpgre netgraph7/rfc1490 netgraph7/socket \
 	netgraph7/tcpmss netgraph7/tee netgraph7/tty netgraph7/vjc \
-	bus/cam bus/pccard bus/pci bus/isa bus/ppbus bus/smbus \
 	netproto/atm netproto/ipsec netproto/ipx \
-	netproto/key netproto/natm netproto/ncp netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
 	netproto/atm/uni netproto/802_11 netproto/mpls \
+	netproto/key netproto/natm netproto/ncp netproto/smb \
 	vfs/isofs/cd9660 vfs/puffs \
-	dev/disk/mpt/mpilib \
-	dev/disk/dm \
-	dev/misc/lpt dev/misc/ppi dev/misc/putter \
-	dev/netif/wi \
-	dev/raid/ciss dev/raid/mfi \
-	dev/smbus/smb \
-	dev/video/bktr dev/video/meteor libprop
+	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs \
+	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2
 
 .if defined(WANT_USB4BSD)
 LSUBDIRS+=	bus/u4b
