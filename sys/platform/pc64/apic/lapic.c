@@ -263,6 +263,14 @@ lapic_init(boolean_t bsp)
 	if (bsp) {
 		lapic_timer_calibrate();
 		if (lapic_timer_enable) {
+			if (cpu_thermal_feature & CPUID_THERMAL_ARAT) {
+				/*
+				 * Local APIC timer will not stop
+				 * in deep C-state.
+				 */
+				lapic_cputimer_intr.caps |=
+				    CPUTIMER_INTR_CAP_PS;
+			}
 			cputimer_intr_register(&lapic_cputimer_intr);
 			cputimer_intr_select(&lapic_cputimer_intr, 0);
 		}
