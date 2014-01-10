@@ -42,7 +42,6 @@ DPORTS_EXTRA_PACKAGES?=
 #
 DPORTS_PACKAGES?=	devel/git \
 			dns/bind98 \
-			net/isc-dhcp42-client \
 			net/isc-dhcp42-server \
 			sysutils/cdrtools \
 			${DPORTS_EXTRA_PACKAGES}
