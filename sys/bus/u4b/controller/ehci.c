@@ -266,6 +266,7 @@ ehci_init_sub(struct ehci_softc *sc)
 	EOWRITE4(sc, EHCI_USBCMD,
 	    EHCI_CMD_ITC_1 |		/* 1 microframes interrupt delay */
 	    (EOREAD4(sc, EHCI_USBCMD) & EHCI_CMD_FLS_M) |
+	    EHCI_CMD_ASPME | EHCI_CMD_ASPMC |
 	    EHCI_CMD_ASE |
 	    EHCI_CMD_PSE |
 	    EHCI_CMD_RS);
@@ -405,6 +406,9 @@ ehci_init(ehci_softc_t *sc)
 	/*
 	 * the QHs are arranged to give poll intervals that are
 	 * powers of 2 times 1ms
+	 *
+	 * e.g. 64-127, 32-63, 16-31, 8-15, 4-7, 2-3, 1-1, 0
+	 *        1ms    2ms    4ms    8ms  16ms 32ms 64ms 128m
 	 */
 	bit = EHCI_VIRTUAL_FRAMELIST_COUNT / 2;
 	while (bit) {
@@ -461,6 +465,9 @@ ehci_init(ehci_softc_t *sc)
 		sitd->sitd_back =
 		    htohc32(sc, EHCI_LINK_TERMINATE);
 
+		/*
+		 * Point to 1ms interrupt queue heads 1:1
+		 */
 		sitd->sitd_next =
 		    sc->sc_intr_p_last[i | (EHCI_VIRTUAL_FRAMELIST_COUNT / 2)]->qh_self;
 
@@ -483,6 +490,9 @@ ehci_init(ehci_softc_t *sc)
 		    htohc32(sc, buf_res.physaddr) |
 		    htohc32(sc, EHCI_LINK_ITD);
 
+		/*
+		 * 1:1 HS -> FS
+		 */
 		itd->itd_next =
 		    sitd->sitd_self;
 	}
@@ -498,6 +508,9 @@ ehci_init(ehci_softc_t *sc)
 		 * execution order:
 		 * pframes -> high speed isochronous ->
 		 *    full speed isochronous -> interrupt QH's
+		 *
+		 * Each pframe chains through 10 queue heads.
+		 *    HS FS IQ1ms IQ2ms IQ4ms ... IQ128ms -> term
 		 */
 		for (i = 0; i < EHCI_FRAMELIST_COUNT; i++) {
 			pframes[i] = sc->sc_isoc_hs_p_last
@@ -506,6 +519,10 @@ ehci_init(ehci_softc_t *sc)
 	}
 	usbd_get_page(&sc->sc_hw.async_start_pc, 0, &buf_res);
 
+	/*
+	 * Asynchronous schedule requires a QH the points to itself initially.
+	 * (it is not terminated with EHCI_LINK_TERMINATE).
+	 */
 	if (1) {
 
 		ehci_qh_t *qh;
@@ -913,11 +930,46 @@ ehci_dump_isoc(ehci_softc_t *sc)
 #endif
 
 static void
-ehci_transfer_intr_enqueue(struct usb_xfer *xfer)
+ehci_ring_doorbell(ehci_softc_t *sc, struct usb_xfer *xfer)
 {
-	ehci_softc_t *sc = EHCI_BUS2SC(xfer->xroot->bus);
 	uint32_t temp;
 
+	/*
+	 * Request a doorbell interrupt.  We can't safely disturb previously
+	 * used QH's until controller has synchronized the list changes we've
+	 * made.
+	 *
+	 * Deal with controller races if a doorbell has already been
+	 * requested, we have to wait 2 doorbells in this case to be sure.
+	 *
+	 * (interlocked against races by the bus lock)
+	 */
+	temp = EOREAD4(sc, EHCI_USBCMD);
+	if (sc->doorbell_again == 0) {
+		if ((temp & EHCI_CMD_IAAD) == 0)
+			EOWRITE4(sc, EHCI_USBCMD, temp | EHCI_CMD_IAAD);
+		if (xfer)
+			xfer->doorbell_match = sc->doorbell_match + 1;
+		sc->doorbell_again = 1;
+	} else {
+		if ((temp & EHCI_CMD_IAAD) == 0)
+			EOWRITE4(sc, EHCI_USBCMD, temp | EHCI_CMD_IAAD);
+		if (xfer)
+			xfer->doorbell_match = sc->doorbell_match + 2;
+		sc->doorbell_again = 2;
+	}
+}
+
+static void
+ehci_wait_doorbell(ehci_softc_t *sc, int match)
+{
+	while ((int)(match - sc->doorbell_match) > 0)
+		lksleep(sc, &sc->sc_bus.bus_lock, 0, "ehcidoor", hz);
+}
+
+static void
+ehci_transfer_intr_enqueue(struct usb_xfer *xfer)
+{
 	/* check for early completion */
 	if (ehci_check_transfer(xfer, 1)) {
 		return;
@@ -928,16 +980,6 @@ ehci_transfer_intr_enqueue(struct usb_xfer *xfer)
 	/* start timeout, if any */
 	if (xfer->timeout != 0) {
 		usbd_transfer_timeout_ms(xfer, &ehci_timeout, xfer->timeout);
-	}
-
-	/*
-	 * NOTE: Do not test the bit and conditionalize the write, that
-	 *	 can wind up racing the device's clearing of the bit and
-	 *	 cause the doorbell to be missed.
-	 */
-	if ((sc->sc_flags & EHCI_SCFLG_IAADBUG) == 0) {
-		temp = EOREAD4(sc, EHCI_USBCMD);
-		EOWRITE4(sc, EHCI_USBCMD, temp | EHCI_CMD_IAAD);
 	}
 }
 
@@ -1128,10 +1170,12 @@ _ehci_remove_qh(ehci_softc_t *sc, ehci_qh_t *sqh, ehci_qh_t *last)
 		sqh->prev->qh_link = sqh->qh_link;
 		usb_pc_cpu_flush(sqh->prev->page_cache);
 		/* sqh->qh_link = htohc32(sc, EHCI_LINK_TERMINATE); */
+#if 0
 		if ((sc->sc_flags & EHCI_SCFLG_IAADBUG) == 0) {
 			uint32_t temp = EOREAD4(sc, EHCI_USBCMD);
 			EOWRITE4(sc, EHCI_USBCMD, temp | EHCI_CMD_IAAD);
 		}
+#endif
 		sqh->prev = NULL;
 		usb_pc_cpu_flush(sqh->page_cache);
 	}
@@ -1551,7 +1595,10 @@ ehci_interrupt(ehci_softc_t *sc)
 		goto done;
 	}
 #endif
-	EOWRITE4(sc, EHCI_USBSTS, status);	/* acknowledge */
+	/*
+	 * Acknowlege interrupts except IAA
+	 */
+	EOWRITE4(sc, EHCI_USBSTS, status);
 
 	status &= sc->sc_eintrs;
 
@@ -1577,14 +1624,38 @@ ehci_interrupt(ehci_softc_t *sc)
 		usb_callout_reset(&sc->sc_tmo_pcd, hz,
 		    (void *)&ehci_pcd_enable, sc);
 	}
-	status &= ~(EHCI_STS_INT | EHCI_STS_ERRINT | EHCI_STS_PCD | EHCI_STS_IAA);
 
+	/*
+	 * Handle IAA doorbells, acknowledge IAA after clearing CMD_IAAD.
+	 *
+	 * The frontend may have tried to ring the doorbell after it had
+	 * already been rung, in which case it has to wait for two doorbells.
+	 * We track this with the doorbell_again counter.  This counter never
+	 * goes above 2.
+	 *
+	 * NOTE: ehci_ring_doorbell() bumps doorbell_again so we need to
+	 *	 decrement it twice to net-out at a single decrement.
+	 */
+	if (status & EHCI_STS_IAA) {
+		++sc->doorbell_match;
+		wakeup(sc);
+		if (sc->doorbell_again && --sc->doorbell_again > 0) {
+			--sc->doorbell_again;
+			ehci_ring_doorbell(sc, NULL);
+		}
+	}
+
+	/*
+	 * Block unprocessed interrupts
+	 */
+	status &= ~(EHCI_STS_INT | EHCI_STS_ERRINT |
+		    EHCI_STS_PCD | EHCI_STS_IAA);
 	if (status != 0) {
-		/* block unprocessed interrupts */
 		sc->sc_eintrs &= ~status;
 		EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
 		kprintf("%s: blocking interrupts 0x%x\n", __func__, status);
 	}
+
 	/* poll all the USB transfers */
 	ehci_interrupt_poll(sc);
 
@@ -1650,8 +1721,8 @@ ehci_setup_standard_chain_sub(struct ehci_std_temp *temp)
 
 restart:
 
-	td = temp->td;
-	td_next = temp->td_next;
+	td = temp->td;			/* starts out NULL */
+	td_next = temp->td_next;	/* starts with first td */
 
 	while (1) {
 
@@ -1669,7 +1740,7 @@ restart:
 
 			average = temp->average;
 
-			if (temp->len < average) {
+			if (average > temp->len) {
 				if (temp->len % temp->max_frame_size) {
 					temp->shortpkt = 1;
 				}
@@ -1829,6 +1900,10 @@ ehci_setup_standard_chain(struct usb_xfer *xfer, ehci_qh_t **qh_last)
 	temp.average = xfer->max_hc_frame_size;
 	temp.max_frame_size = xfer->max_frame_size;
 	temp.sc = EHCI_BUS2SC(xfer->xroot->bus);
+
+	if (xfer->flags_int.doorbell_wait)
+		ehci_wait_doorbell(temp.sc, xfer->doorbell_match);
+	xfer->flags_int.doorbell_wait = 1;
 
 	/* toggle the DMA set we are using */
 	xfer->flags_int.curr_dma_set ^= 1;
@@ -2067,6 +2142,7 @@ ehci_setup_standard_chain(struct usb_xfer *xfer, ehci_qh_t **qh_last)
 		xfer->flags_int.onhwqueue = 1;
 		EHCI_APPEND_QH(qh, *qh_last);
 	}
+	ehci_ring_doorbell(temp.sc, NULL);
 }
 
 static void
@@ -2262,6 +2338,7 @@ ehci_device_done(struct usb_xfer *xfer, usb_error_t error)
 			sc->sc_intr_p_last[xfer->qh_pos]);
 	    }
 	    xfer->flags_int.onhwqueue = 0;
+	    ehci_ring_doorbell(sc, xfer);
 	}
 
 	/*
@@ -2736,6 +2813,7 @@ ehci_device_isoc_fs_enter(struct usb_xfer *xfer)
 	 * computation algorithm.
 	 */
 	xfer->flags_int.can_cancel_immed = 0;
+	ehci_ring_doorbell(sc, NULL);
 }
 
 static void
@@ -3028,6 +3106,7 @@ ehci_device_isoc_hs_enter(struct usb_xfer *xfer)
 	/* update isoc_next */
 	xfer->endpoint->isoc_next = (pp_last - &sc->sc_isoc_hs_p_last[0]) &
 	    (EHCI_VIRTUAL_FRAMELIST_COUNT - 1);
+	ehci_ring_doorbell(sc, NULL);
 }
 
 static void
@@ -3590,7 +3669,6 @@ ehci_xfer_setup(struct usb_setup_params *parm)
 		nqh = 1;
 		nqtd = ((2 * xfer->nframes) + 1	/* STATUS */
 		    + (xfer->max_data_length / xfer->max_hc_frame_size));
-
 	} else if (parm->methods == &ehci_device_bulk_methods) {
 
 		parm->hc_max_packet_size = 0x400;
@@ -3868,6 +3946,7 @@ ehci_device_resume(struct usb_device *udev)
 			xfer->flags_int.onhwqueue = 1;
 		}
 	}
+	ehci_ring_doorbell(sc, NULL);
 
 	USB_BUS_UNLOCK(udev->bus);
 

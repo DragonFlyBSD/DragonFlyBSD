@@ -331,7 +331,7 @@ typedef struct ehci_softc {
 	bus_space_tag_t sc_io_tag;
 	bus_space_handle_t sc_io_hdl;
 
-	uint32_t sc_terminate_self;	/* TD short packet termination pointer */
+	uint32_t sc_terminate_self;	/* TD short packet termination link */
 	uint32_t sc_eintrs;
 
 	uint16_t sc_intr_stat[EHCI_VIRTUAL_FRAMELIST_COUNT];
@@ -357,6 +357,8 @@ typedef struct ehci_softc {
 	uint8_t	sc_hub_idata[8];
 
 	char	sc_vendor[16];		/* vendor string for root hub */
+	int	doorbell_match;
+	int	doorbell_again;
 
 } ehci_softc_t;
 

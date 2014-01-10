@@ -1235,7 +1235,7 @@ usbd_transfer_unsetup_sub(struct usb_xfer_root *info, uint8_t needs_delay)
 	USB_BUS_LOCK_ASSERT(info->bus);
 
 	/* wait for any outstanding DMA operations */
-
+	/* This is insane */
 	if (needs_delay) {
 		usb_timeout_t temp;
 		temp = usbd_get_dma_delay(info->udev);

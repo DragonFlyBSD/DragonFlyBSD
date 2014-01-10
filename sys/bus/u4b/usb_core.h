@@ -117,6 +117,7 @@ struct usb_xfer_flags_int {
 					 * cancelled immediately */
 	uint8_t	doing_callback:1;	/* set if executing the callback */
 	uint8_t onhwqueue:1;		/* on a hardware queue */
+	uint8_t doorbell_wait:1;	/* structure being reused */
 };
 
 /*
@@ -168,6 +169,8 @@ struct usb_xfer {
 	uint8_t	max_packet_count;
 	uint8_t	usb_state;
 	uint8_t fps_shift;		/* down shift of FPS, 0..3 */
+
+	int	doorbell_match;
 
 	usb_error_t error;
 
