@@ -37,7 +37,7 @@ void (*cb_parent)(void) = 0;
 void (*cb_child)(void) = 0;
 
 int
-__fork()
+__fork(void)
 {
 	int ret;
 
