@@ -104,9 +104,10 @@
  * 300503 - Upgrade libiconv, locales, and associated libc functions
  * 300600 - 3.6 release
  * 300700 - 3.7 master
+ * 300701 - (bus/smb.h -> dev/smbus/smb/smb.h)
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300700	/* propagated to newvers */
+#define __DragonFly_version 300701	/* propagated to newvers */
 
 #include <sys/_null.h>
 
