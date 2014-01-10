@@ -66,6 +66,12 @@
  * False-finger supression- Two-fingers-down does not emulate anything,
  *			    on purpose.
  *
+ * False-emulated button handling-
+ *			  Buttons are emulated when three fingers are
+ *			  placed on the pad.  If you place all three
+ *			  fingers down simultaniously, this condition
+ *			  is detected and will not emulate any button.
+ *
  * Slider jesture	- Tap right hand side and slide up or down.
  *
  *			  (Three finger jestures)
@@ -86,6 +92,18 @@
  *			  up the designated first finger, a new designated
  *			  first finger will be selected without causing the
  *			  mouse to jump (delta's are reset).
+ *
+ *				WARNINGS
+ *
+ * These trackpads get confused when three or more fingers are down on the
+ * same horizontal axis and will start to glitch the finger detection.
+ * Removing your hand for a few seconds will allow the trackpad to
+ * recalibrate.  Generally speaking, when using three or more fingers
+ * please try to place at least one finger off-axis (a little above or
+ * below) the other two.
+ *
+ * button-4/button-5 'claw' (4 and 5-finger) sequences have similar
+ * problems.
  */
 #include <sys/kernel.h>
 #include <sys/param.h>
@@ -151,6 +169,7 @@ struct cyapa_softc {
 	uint16_t track_but;
 	char 	track_id1;		/* first finger id */
 	char 	track_id2;		/* second finger id */
+	int	track_nfingers;
 	short	delta_x;		/* accumulation -> report */
 	short	delta_y;
 	short	delta_z;
@@ -160,6 +179,9 @@ struct cyapa_softc {
 	short	touch_x;		/* touch down coordinates */
 	short	touch_y;
 	short	touch_z;
+	int	finger1_ticks;
+	int	finger2_ticks;
+	int	finger3_ticks;
 	uint16_t reported_but;
 
 	struct cyapa_fifo rfifo;	/* device->host */
@@ -174,6 +196,7 @@ struct cyapa_softc {
 	int	resolution;		/* count/mm */
 	int	sample_rate;		/* samples/sec */
 	int	zenabled;		/* z-axis enabled (mode 1 or 2) */
+	int	poll_ticks;
 };
 
 #define CYPOLL_SHUTDOWN	0x0001
@@ -1165,6 +1188,7 @@ cyapa_poll_thread(void *arg)
 			smbus_release_bus(bus, sc->dev);
 		}
 		tsleep(&sc->poll_flags, 0, "cyapw", (hz + freq - 1) / freq);
+		++sc->poll_ticks;
 		if (sc->count == 0)
 			freq = cyapa_slow_freq;
 		else if (isidle)
@@ -1237,6 +1261,46 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	 * Tracking for local solutions
 	 */
 	cyapa_lock(sc);
+
+	/*
+	 * Track timing for finger-downs.  Used to detect false-3-finger
+	 * button-down.
+	 */
+	switch(nfingers) {
+	case 0:
+		break;
+	case 1:
+		if (sc->track_nfingers == 0)
+			sc->finger1_ticks = sc->poll_ticks;
+		break;
+	case 2:
+		if (sc->track_nfingers <= 0)
+			sc->finger1_ticks = sc->poll_ticks;
+		if (sc->track_nfingers <= 1)
+			sc->finger2_ticks = sc->poll_ticks;
+		break;
+	case 3:
+	default:
+		if (sc->track_nfingers <= 0)
+			sc->finger1_ticks = sc->poll_ticks;
+		if (sc->track_nfingers <= 1)
+			sc->finger2_ticks = sc->poll_ticks;
+		if (sc->track_nfingers <= 2)
+			sc->finger3_ticks = sc->poll_ticks;
+		break;
+	}
+#if 0
+	kprintf("%d->%d %d (%d) (%d)\n",
+		sc->track_nfingers, nfingers,
+		(nfingers >= 1 ? sc->finger1_ticks : 0),
+		(nfingers >= 2 ? sc->finger2_ticks - sc->finger1_ticks : 0),
+		(nfingers >= 3 ? sc->finger3_ticks - sc->finger1_ticks : 0));
+#endif
+	sc->track_nfingers = nfingers;
+
+	/*
+	 * Lookup and track finger indexes in the touch[] array.
+	 */
 	if (nfingers == 0) {
 		sc->track_x = -1;
 		sc->track_y = -1;
@@ -1310,14 +1374,6 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		} else {
 			k = 0;
 		}
-		kprintf("ID %3d,%3d,%3d\t%3d,%3d,%3d\n",
-			sc->track_id1,
-			sc->track_id2,
-			((nfingers >= 3) ? regs->touch[k].id : -1),
-			CYAPA_TOUCH_X(regs, i),
-			CYAPA_TOUCH_X(regs, j),
-			CYAPA_TOUCH_X(regs, k)
-		);
 	}
 
 	/*
@@ -1405,6 +1461,9 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		 *
 		 * MIDDLE BUTTON: Move mouse with fingers 1 and 3 and tap
 		 *		  or hold with finger 2.
+		 *
+		 * Finally, detect when all three fingers were placed down
+		 * within one tick of each other.
 		 */
 		x1 = CYAPA_TOUCH_X(regs, i);	/* 1st finger down */
 		x2 = CYAPA_TOUCH_X(regs, j);	/* 2nd finger down */
@@ -1415,6 +1474,16 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 			but = SIMULATE_LOCK;
 		} else if (sc->track_but & ~SIMULATE_LOCK) {
 			but = sc->track_but;
+		} else if ((int)(sc->finger3_ticks - sc->finger1_ticks) <
+				 cyapa_norm_freq / 25 + 1) {
+			/*
+			 * False 3-finger button detection (but still detect
+			 * if the actual physical button is held down).
+			 */
+			if (regs->fngr & CYAPA_FNGR_LEFT)
+				but = CYAPA_FNGR_LEFT;
+			else
+				but = 0;
 		} else if (x < x1 && x < x2) {
 			but = CYAPA_FNGR_LEFT;
 		} else if (x > x1 && x < x2) {
