@@ -88,6 +88,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	dev/misc/lpt dev/misc/ppi dev/misc/putter \
 	dev/netif/wi \
 	dev/raid/ciss dev/raid/mfi \
+	dev/smbus/smb \
 	dev/video/bktr dev/video/meteor libprop
 
 .if defined(WANT_USB4BSD)

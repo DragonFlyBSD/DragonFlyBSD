@@ -4,9 +4,6 @@ CMAPS+=	${.CURDIR}/iconv/Symbol.map
 
 SRCS+=	iconv.c
 
-# To establish libiconv functions as weak aliases, uncomment next line
-# CFLAGS+= -D__LIBICONV_COMPAT=1
-
 .if ${LIB} == "c"
 MAN+=	iconv.3 iconvctl.3 iconv_canonicalize.3 iconvlist.3 __iconv_get_list.3
 MLINKS+=iconv.3 iconvctl.3

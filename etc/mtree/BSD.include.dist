@@ -146,6 +146,10 @@
             mfi
             ..
         ..
+        smbus
+            smb
+            ..
+        ..
         video
             bktr
             ..
