@@ -30,26 +30,32 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/gen/getosreldate.3,v 1.1.2.1 2003/02/02 02:54:03 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/getosreldate.3,v 1.6 2008/02/11 16:01:11 matthias Exp $
 .\"
-.Dd February 11, 2008
+.Dd January 10, 2014
 .Dt GETOSRELDATE 3
 .Os
 .Sh NAME
 .Nm getosreldate
-.Nd get the value of __DragonFly_version
+.Nd get the value of
+.Dv __DragonFly_version
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
-.In osreldate.h
+.In unistd.h
 .Ft int
 .Fn getosreldate void
 .Sh DESCRIPTION
 The
 .Fn getosreldate
-function should return a 32-bit integer showing the version of
+function returns an integer showing the version of the currently running
 .Dx
-that a program was compiled on, and maybe running on (if 2.0 or better).
+kernel.
+.Sh RETURN VALUES
+In case of failure, the
+.Fn getosreldate
+functions returns -1 and the global variable
+.Va errno
+is set to indicate the error.
 .Sh HISTORY
 The
 .Fn getosreldate
