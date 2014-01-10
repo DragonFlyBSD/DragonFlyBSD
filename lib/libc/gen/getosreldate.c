@@ -32,11 +32,12 @@
  *
  * @(#)gethostid.c	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/lib/libc/gen/getosreldate.c,v 1.4 1999/08/27 23:58:43 peter Exp $
- * $DragonFly: src/lib/libc/gen/getosreldate.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
+
+#include <unistd.h>
 
 int
 getosreldate(void)
