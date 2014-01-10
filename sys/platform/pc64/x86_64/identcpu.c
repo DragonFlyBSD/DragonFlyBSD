@@ -389,6 +389,21 @@ printcpuinfo(void)
 				       );
 			}
 
+			if (cpu_thermal_feature != 0) {
+				kprintf("\n  Thermal and PM Features=0x%b",
+				    cpu_thermal_feature,
+				    "\020"
+				    /* APIC-Timer-always-running */
+				    "\003ARAT"
+				    /* Power limit notification controls */
+				    "\005PLN"
+				    /* Clock modulation duty cycle extension */
+				    "\006ECMD"
+				    /* Package thermal management */
+				    "\007PTM"
+				    );
+			}
+
 			if (cpu_vendor_id == CPU_VENDOR_CENTAUR)
 				print_via_padlock_info();
 			/*
@@ -513,6 +528,10 @@ identify_cpu(void)
 	cpu_feature = regs[3];
 	cpu_feature2 = regs[2];
 
+	if (cpu_high >= 6) {
+		do_cpuid(6, regs);
+		cpu_thermal_feature = regs[0];
+	}
 	if (cpu_high >= 7) {
 		cpuid_count(7, 0, regs);
 		cpu_stdext_feature = regs[1];

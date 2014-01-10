@@ -245,6 +245,14 @@
 #define	CPUID_STDEXT_SMAP	0x00100000
 
 /*
+ * Thermal and PM Features
+ */
+#define CPUID_THERMAL_ARAT	0x00000004
+#define CPUID_THERMAL_PLN	0x00000010
+#define CPUID_THERMAL_ECMD	0x00000020
+#define CPUID_THERMAL_PTM	0x00000040
+
+/*
  * CPUID manufacturers identifiers
  */
 #define	AMD_VENDOR_ID		"AuthenticAMD"

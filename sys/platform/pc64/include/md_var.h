@@ -50,6 +50,7 @@ extern	u_int	amd_feature;
 extern	u_int	amd_feature2;
 extern	u_int	cpu_clflush_line_size;
 extern	u_int	cpu_stdext_feature;
+extern	u_int	cpu_thermal_feature;
 extern	u_int	cpu_fxsr;
 extern	u_int	cpu_xsave;
 extern	u_int	cpu_high;
