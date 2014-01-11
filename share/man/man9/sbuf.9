@@ -63,11 +63,11 @@
 .Ft struct sbuf *
 .Fn sbuf_new "struct sbuf *s" "char *buf" "int length" "int flags"
 .Ft struct sbuf *
-.Fn sbuf_new_auto
+.Fn sbuf_new_auto "void"
 .Ft void
 .Fn sbuf_clear "struct sbuf *s"
 .Ft int
-.Fn sbuf_setpos "struct sbuf *s" "int pos"
+.Fn sbuf_setpos "struct sbuf *s" "ssize_t pos"
 .Ft int
 .Fn sbuf_bcat "struct sbuf *s" "const void *buf" "size_t len"
 .Ft int
@@ -91,7 +91,7 @@
 .Ft int
 .Fn sbuf_trim "struct sbuf *s"
 .Ft int
-.Fn sbuf_error "struct sbuf *s"
+.Fn sbuf_error "const struct sbuf *s"
 .Ft int
 .Fn sbuf_finish "struct sbuf *s"
 .Ft char *
@@ -99,7 +99,7 @@
 .Ft ssize_t
 .Fn sbuf_len "struct sbuf *s"
 .Ft int
-.Fn sbuf_done "struct sbuf *s"
+.Fn sbuf_done "const struct sbuf *s"
 .Ft void
 .Fn sbuf_delete "struct sbuf *s"
 .Ft void
