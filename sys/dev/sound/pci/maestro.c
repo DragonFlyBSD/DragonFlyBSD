@@ -1808,7 +1808,6 @@ agg_attach(device_t dev)
 			       /*filter*/ NULL, NULL,
 			       /*size  */ ess->bufsz, 1, 0x3ffff,
 			       /*flags */ 0,
-			       /*lock  */ busdma_lock_mutex, &Giant,
 			       &ess->buf_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		ret = ENOMEM;
@@ -1822,7 +1821,6 @@ agg_attach(device_t dev)
 			       /*filter*/ NULL, NULL,
 			       /*size  */ 3*ess->bufsz, 1, 0x3ffff,
 			       /*flags */ 0,
-			       /*lock  */ busdma_lock_mutex, &Giant,
 			       &ess->stat_dmat) != 0) {
 		device_printf(dev, "unable to create dma tag\n");
 		ret = ENOMEM;

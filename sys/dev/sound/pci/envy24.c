@@ -2533,8 +2533,8 @@ envy24_alloc_resource(struct sc_info *sc)
 	    /*filter*/NULL, /*filterarg*/NULL,
 	    /*maxsize*/BUS_SPACE_MAXSIZE_ENVY24,
 	    /*nsegments*/1, /*maxsegsz*/0x3ffff,
-	    /*flags*/0, /*lockfunc*/busdma_lock_mutex,
-	    /*lockarg*/&Giant, &sc->dmat) != 0) {
+	    /*flags*/0,
+	    &sc->dmat) != 0) {
 		device_printf(sc->dev, "unable to create dma tag\n");
 		return ENXIO;
 	}
