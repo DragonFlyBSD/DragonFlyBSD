@@ -90,6 +90,4 @@ typedef void *		uma_fini;
 #define CTR6(ktr_line, ...)
 #define cpu_spinwait()	cpu_pause()
 
-#define CTLFLAG_RDTUN	CTLFLAG_RD
-
 #define SI_SUB_NETGRAPH	SI_SUB_DRIVERS
