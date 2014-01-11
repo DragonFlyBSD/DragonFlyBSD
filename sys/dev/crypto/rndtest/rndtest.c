@@ -1,4 +1,4 @@
-/*	$FreeBSD: src/sys/dev/rndtest/rndtest.c,v 1.1.4.1 2003/06/04 17:10:30 sam Exp $	*/
+/*	$FreeBSD: head/sys/dev/rndtest/rndtest.c 256377 2013-10-12 12:57:57Z markm $	*/
 /*	$OpenBSD$	*/
 
 /*
@@ -71,7 +71,8 @@ static const struct rndtest_testfunc {
 
 #define	RNDTEST_NTESTS	NELEM(rndtest_funcs)
 
-SYSCTL_NODE(_kern, OID_AUTO, rndtest, CTLFLAG_RD, 0, "RNG test parameters");
+static SYSCTL_NODE(_kern, OID_AUTO, rndtest, CTLFLAG_RD, 0,
+	   "RNG test parameters");
 
 static	int rndtest_retest = 120;		/* interval in seconds */
 SYSCTL_INT(_kern_rndtest, OID_AUTO, retest, CTLFLAG_RW, &rndtest_retest,
@@ -95,7 +96,6 @@ rndtest_attach(device_t dev)
 	rsp->rs_discard = 1;
 	rsp->rs_collect = 1;
 	rsp->rs_parent = dev;
-	/* NB: 1 means the callout runs w/o Giant locked */
 	callout_init_mp(&rsp->rs_to);
 	return (rsp);
 }
@@ -141,14 +141,10 @@ rndtest_harvest(struct rndtest_state *rsp, void *buf, u_int len)
 	if (rsp->rs_discard)
 		rndstats.rst_discard += len;
 	else {
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		/* XXX verify buffer is word aligned */
 		u_int32_t *p = buf;
 		for (len /= sizeof (u_int32_t); len; len--)
 			add_true_randomness(*p++);
-#else
-		random_harvest(buf, len, len*NBBY, 0, RANDOM_PURE);
-#endif
 	}
 }
 
@@ -355,7 +351,7 @@ rndtest_chi_4(struct rndtest_state *rsp)
 	for (i = 0; i < RNDTEST_CHI4_K; i++)
 		freq[i] = 0;
 
-	/* Get number of occurances of each 4 bit pattern */
+	/* Get number of occurrences of each 4 bit pattern */
 	for (i = 0; i < RNDTEST_NBYTES; i++) {
 		freq[(rsp->rs_buf[i] >> 4) & RNDTEST_CHI4_K_MASK]++;
 		freq[(rsp->rs_buf[i] >> 0) & RNDTEST_CHI4_K_MASK]++;
