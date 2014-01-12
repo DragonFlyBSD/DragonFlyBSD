@@ -109,9 +109,9 @@ fadt_probe(void)
 	KKASSERT(fadt != NULL);
 
 	/*
-	 * FADT in ACPI specification 1.0 - 4.0
+	 * FADT in ACPI specification 1.0 - 5.0
 	 */
-	if (fadt->fadt_hdr.sdth_rev < 1 || fadt->fadt_hdr.sdth_rev > 4) {
+	if (fadt->fadt_hdr.sdth_rev < 1 || fadt->fadt_hdr.sdth_rev > 5) {
 		kprintf("fadt_probe: unknown FADT revision %d\n",
 			fadt->fadt_hdr.sdth_rev);
 	}

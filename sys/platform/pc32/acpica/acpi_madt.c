@@ -177,7 +177,7 @@ madt_check(vm_paddr_t madt_paddr)
 	KKASSERT(madt != NULL);
 
 	/*
-	 * MADT in ACPI specification 1.0 - 4.0
+	 * MADT in ACPI specification 1.0 - 5.0
 	 */
 	if (madt->madt_hdr.sdth_rev < 1 || madt->madt_hdr.sdth_rev > 3) {
 		kprintf("madt_check: unknown MADT revision %d\n",
@@ -227,7 +227,7 @@ madt_iterate_entries(struct acpi_madt *madt, madt_iter_t func, void *arg)
 
 		/*
 		 * Only Local APIC, I/O APIC and Interrupt Source Override
-		 * are defined in ACPI specification 1.0 - 4.0
+		 * are defined in ACPI specification 1.0 - 5.0
 		 */
 		switch (ent->me_type) {
 		case MADT_ENT_LAPIC:
