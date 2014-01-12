@@ -359,7 +359,7 @@ printcpuinfo(void)
 			}
 
 			if (cpu_stdext_feature != 0) {
-				kprintf("\n  Standard Extended Features=0x%b",
+				kprintf("\n  Structured Extended Features=0x%b",
 				    cpu_stdext_feature,
 				       "\020"
 				       /* RDFSBASE/RDGSBASE/WRFSBASE/WRGSBASE */
