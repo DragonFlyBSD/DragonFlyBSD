@@ -729,9 +729,6 @@ cpu_halt(void)
  * critical section.
  *
  * NOTE: On an SMP system we rely on a scheduler IPI to wake a HLTed cpu up.
- *
- * NOTE: cpu_idle_hlt again defaults to 2 (use ACPI sleep states).  Set to
- *	 1 to just use hlt and for debugging purposes.
  */
 static int	cpu_idle_hlt = 2;
 static int	cpu_idle_hltcnt;

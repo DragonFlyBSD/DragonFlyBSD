@@ -796,9 +796,6 @@ cpu_halt(void)
  *	 the possibility that no IPI will occur and in such cases
  *	 lwkt_switch() sets TDF_IDLE_NOHLT.
  *
- * NOTE: cpu_idle_hlt again defaults to 2 (use ACPI sleep states).  Set to
- *	 1 to just use hlt and for debugging purposes.
- *
  * NOTE: cpu_idle_repeat determines how many entries into the idle thread
  *	 must occur before it starts using ACPI halt.
  */
