@@ -820,10 +820,10 @@ acpi_cpu_idle(void)
     }
 
     /*
-     * For C3, disable bus master arbitration and enable bus master wake
+     * For C3(+), disable bus master arbitration and enable bus master wake
      * if BM control is available, otherwise flush the CPU cache.
      */
-    if (cx_next->type == ACPI_STATE_C3) {
+    if (cx_next->type >= ACPI_STATE_C3) {
 	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
 	    AcpiWriteBitRegister(ACPI_BITREG_ARB_DISABLE, 1);
 	    AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 1);
@@ -850,7 +850,7 @@ acpi_cpu_idle(void)
     AcpiRead(&end_time, &AcpiGbl_FADT.XPmTimerBlock);
 
     /* Enable bus master arbitration and disable bus master wakeup. */
-    if (cx_next->type == ACPI_STATE_C3) {
+    if (cx_next->type >= ACPI_STATE_C3) {
 	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
 	    AcpiWriteBitRegister(ACPI_BITREG_ARB_DISABLE, 0);
 	    AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 0);
@@ -1038,7 +1038,7 @@ acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
 
     old_type = sc->cpu_cx_states[old_lowest].type;
     type = sc->cpu_cx_states[val].type;
-    if (old_type == ACPI_STATE_C3 && type != ACPI_STATE_C3) {
+    if (old_type >= ACPI_STATE_C3 && type < ACPI_STATE_C3) {
 	KKASSERT(cpu_c3_ncpus > 0);
 	if (atomic_fetchadd_int(&cpu_c3_ncpus, -1) == 1) {
 	    /*
@@ -1053,12 +1053,12 @@ acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
 		cputimer_intr_restart();
 	    }
     	}
-    } else if (type == ACPI_STATE_C3 && old_type != ACPI_STATE_C3) {
+    } else if (type >= ACPI_STATE_C3 && old_type < ACPI_STATE_C3) {
 	if (atomic_fetchadd_int(&cpu_c3_ncpus, 1) == 0) {
 	    /*
-	     * When the first CPU enters C3 state, switch
+	     * When the first CPU enters C3(+) state, switch
 	     * to an one shot timer, which could handle
-	     * C3 state, i.e. the timer will not hang.
+	     * C3(+) state, i.e. the timer will not hang.
 	     */
 	    error = cputimer_intr_select_caps(CPUTIMER_INTR_CAP_PS);
 	    if (error == ERESTART) {
