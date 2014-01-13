@@ -45,7 +45,7 @@ ${mfile:T:S/.m$/.h/}: ${mfile}
 kernel-clean:
 	rm -f *.o *.so *.So *.ko *.s eddep errs \
 	      ${KERNEL} ${KERNEL}.debug ${KERNEL}.nodebug ${KERNEL}.stripped \
-	      linterrs makelinks setdef[01].c setdefs.h tags \
+	      linterrs setdef[01].c setdefs.h tags \
 	      vers.c vnode_if.c vnode_if.h \
 	      ${MFILES:T:S/.m$/.c/} ${MFILES:T:S/.m$/.h/} \
 	      ${CLEAN}
@@ -95,14 +95,6 @@ kernel-depend: assym.s ${BEFORE_DEPEND} \
 
 kernel-cleandepend:
 	rm -f .depend
-
-links:
-	egrep '#if' ${CFILES} | sed -f $S/conf/defines | \
-	  sed -e 's/:.*//' -e 's/\.c/.o/' | sort -u > dontlink
-	${MAKE} -V CFILES | tr -s ' ' '\12' | sed 's/\.c/.o/' | \
-	  sort -u | comm -23 - dontlink | \
-	  sed 's,../.*/\(.*.o\),rm -f \1;ln -s ../GENERIC/\1 \1,' > makelinks
-	sh makelinks && rm -f dontlink
 
 kernel-tags:
 	@[ -f .depend ] || { echo "you must make depend first"; /usr/bin/false; }

@@ -33,7 +33,6 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.23 2008/07/14 04:01:44 dillon Exp $
 
 # The directory where the source resides
 #
@@ -48,34 +47,16 @@ BRANCH="DEVELOPMENT_3_7"
 
 TYPE="DragonFly"
 
-# The SHORTTAG is inclusive of the BLAH_X_Y version (if any)
-#
-if [ -z "${SHORTTAG}" ]; then
-    SHORTTAG=${BRANCH}
-fi
-
 # Figure out the revision and subversion, if any.  If the tag is in 
 # the form NAME_X_Y the revision is extracted from X and Y and the branch
 # tag is truncated to just NAME.  Otherwise we are on the HEAD branch and
 # we are either HEAD or PREVIEW and the programmed revision is used.
-#
-# If we are on a branch-tag we must also figure out the sub-version.  The
-# sub-version is extracted from the 'subvers-${SHORTTAG}' file.  This file
-# typically only exists within branches.
 #
 REVISION=${BRANCH#*_}
 BRANCH=${BRANCH%%_*}
 
 if [ "${REVISION}" != "${BRANCH}" ]; then
     REVISION=$(echo $REVISION | sed -e 's/_/./g')
-fi
-
-if [ -f ${SRCDIR}/sys/conf/subvers-${SHORTTAG} ]; then
-    SUBVER=$(tail -1 ${SRCDIR}/sys/conf/subvers-${SHORTTAG} | awk '{ print $1; }')
-    if [ "X${SUBVER}" != "X" ]; then
-	REVISION="${REVISION}.${SUBVER}"
-	break
-    fi
 fi
 
 # obtain git commit name, like "v2.3.2.449.g84e97*"
