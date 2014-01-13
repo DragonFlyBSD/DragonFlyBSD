@@ -639,13 +639,13 @@ AcpiGetSleepTypeData (
 Cleanup1:
     AcpiUtRemoveReference (Info->ReturnObject);
 
-Cleanup:
     if (ACPI_FAILURE (Status))
     {
         ACPI_EXCEPTION ((AE_INFO, Status,
             "While evaluating Sleep State [%s]", Info->RelativePathname));
     }
 
+Cleanup:
     ACPI_FREE (Info);
     return_ACPI_STATUS (Status);
 }
