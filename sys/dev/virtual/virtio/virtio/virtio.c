@@ -106,10 +106,9 @@ virtio_set_feature_desc(device_t dev,
 	    VIRTIO_IVAR_FEATURE_DESC, (uintptr_t) feature_desc);
 }
 
-/* XXX(vsrinivas): Hmm, check this SBUF usage */
 void
 virtio_describe(device_t dev, const char *msg,
-    uint64_t features, struct virtio_feature_desc *feature_desc)
+    uint64_t features, struct virtio_feature_desc *desc)
 {
 	struct sbuf sb;
 	uint64_t val;
@@ -139,15 +138,9 @@ virtio_describe(device_t dev, const char *msg,
 		else
 			sbuf_cat(&sb, ",");
 
-		name = NULL;
-		if (feature_desc != NULL)
-			name = virtio_feature_name(val, feature_desc);
+		name = virtio_feature_name(val, desc);
 		if (name == NULL)
-			name = virtio_feature_name(val,
-			    virtio_common_feature_desc);
-
-		if (name == NULL)
-			sbuf_printf(&sb, "0x%"PRIx64, val);
+			sbuf_printf(&sb, "%#jx", (uintmax_t) val);
 		else
 			sbuf_cat(&sb, name);
 	}
@@ -155,8 +148,7 @@ virtio_describe(device_t dev, const char *msg,
 	if (n > 0)
 		sbuf_cat(&sb, ">");
 
-       sbuf_finish(&sb);
-       if (sbuf_overflowed(&sb) == 0)
+	if (sbuf_finish(&sb) == 0)
 		device_printf(dev, "%s\n", sbuf_data(&sb));
 
 	sbuf_delete(&sb);
@@ -164,13 +156,21 @@ virtio_describe(device_t dev, const char *msg,
 }
 
 static const char *
-virtio_feature_name(uint64_t val, struct virtio_feature_desc *feature_desc)
+virtio_feature_name(uint64_t val, struct virtio_feature_desc *desc)
 {
-	int i;
+	int i, j;
+	struct virtio_feature_desc *descs[2] = { desc,
+	    virtio_common_feature_desc };
 
-	for (i = 0; feature_desc[i].vfd_val != 0; i++)
-		if (val == feature_desc[i].vfd_val)
-			return (feature_desc[i].vfd_str);
+	for (i = 0; i < 2; i++) {
+		if (descs[i] == NULL)
+			continue;
+
+		for (j = 0; descs[i][j].vfd_val != 0; j++) {
+			if (val == descs[i][j].vfd_val)
+				return (descs[i][j].vfd_str);
+		}
+	}
 
 	return (NULL);
 }
