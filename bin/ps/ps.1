@@ -27,7 +27,6 @@
 .\"
 .\"     @(#)ps.1	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/ps/ps.1,v 1.24.2.7 2002/06/20 22:43:33 charnier Exp $
-.\" $DragonFly: src/bin/ps/ps.1,v 1.20 2008/09/02 11:50:45 matthias Exp $
 .\"
 .Dd September 2, 2008
 .Dt PS 1
@@ -282,11 +281,6 @@ The process is trying to exit.
 .It Li L
 The process has pages locked in core (for example, for raw
 .Tn I/O ) .
-.It Li M
-This flag is deprecated.  It used to indicate that the
-process or thread was not holding the MP lock (the Big Giant Lock),
-but since that is the usual case now it just clutters the
-output.
 .It Li N
 The process has reduced CPU scheduling priority (see
 .Xr setpriority 2 ) .
