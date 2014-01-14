@@ -959,7 +959,6 @@ usb_close(struct dev_close_args *ap)
 	}
 	usb_unref_device(cpd, &refs);
 done:
-	dev->si_drv2 = NULL;
 	kfree(cpd, M_USBDEV);
 	return 0;
 }
