@@ -165,7 +165,6 @@ static struct kqinfo usb_kqevent;
 static void
 usb_cdevpriv_dtor(void *cpd)
 {
-	kprintf("usb_cdevpriv_dtor %p\n", cpd);
 }
 
 /*------------------------------------------------------------------------*
@@ -912,7 +911,6 @@ usb_open(struct dev_open_args *ap)
 	}
 	usb_unref_device(cpd, &refs);
 	err = devfs_set_cdevpriv(ap->a_fp, cpd, usb_cdevpriv_dtor);
-	kprintf("devfs_set_cdevpriv returned %d\n", err);
 	return (0);
 }
 
@@ -929,7 +927,6 @@ usb_close(struct dev_close_args *ap)
 	DPRINTFN(2, "cpd=%p\n", cpd);
 
 	err = devfs_get_cdevpriv(ap->a_fp, (void **)&cpd);
-	kprintf("devfs_get_cdevpriv: %d\n", err);
  	if (err != 0)
  		return (err);
 
@@ -1071,7 +1068,6 @@ usb_ioctl(struct dev_ioctl_args *ap)
 	DPRINTFN(2, "cmd=0x%lx\n", cmd);
 
 	err = devfs_get_cdevpriv(ap->a_fp, (void **)&cpd);
-	kprintf("devfs_get_cdevpriv: %d\n", err);
 	if (err != 0)
 		return (err);
 
@@ -1320,7 +1316,6 @@ usb_read(struct dev_read_args *ap)
 	uint8_t tr_data = 0;
 
 	err = devfs_get_cdevpriv(ap->a_fp, (void **)&cpd);
-	kprintf("devfs_get_cdevpriv: %d\n", err);
 	if (err != 0)
 		return (err);
 	err = usb_ref_device(cpd, &refs, 0 /* no uref */ );
@@ -1448,7 +1443,6 @@ usb_write(struct dev_write_args *ap)
 	DPRINTFN(2, "\n");
 
 	err = devfs_get_cdevpriv(ap->a_fp, (void **)&cpd);
-	kprintf("devfs_get_cdevpriv: %d\n", err);
 	if (err != 0)
 		return (err);
 	err = usb_ref_device(cpd, &refs, 0 /* no uref */ );
