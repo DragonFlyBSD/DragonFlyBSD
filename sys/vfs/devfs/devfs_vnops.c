@@ -1087,7 +1087,7 @@ devfs_spec_close(struct vop_close_args *ap)
 		 * WARNING!  vn_lock() will fail if the vp is in a VRECLAIM,
 		 *	     which can occur during umount.
 		 */
-		error = dev_dclose(dev, ap->a_fflag, S_IFCHR);
+		error = dev_dclose(dev, ap->a_fflag, S_IFCHR, ap->a_fp);
 		/* node is now stale */
 
 		if (needrelock) {
@@ -1125,9 +1125,9 @@ devfs_fo_close(struct file *fp)
 	struct vnode *vp = (struct vnode *)fp->f_data;
 	int error;
 
-	devfs_clear_cdevpriv(fp);
 	fp->f_ops = &badfileops;
 	error = vn_close(vp, fp->f_flag);
+	devfs_clear_cdevpriv(fp);
 
 	return (error);
 }

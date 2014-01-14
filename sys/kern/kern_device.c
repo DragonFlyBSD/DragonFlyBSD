@@ -155,7 +155,7 @@ dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred, struct file *
 }
 
 int
-dev_dclose(cdev_t dev, int fflag, int devtype)
+dev_dclose(cdev_t dev, int fflag, int devtype, struct file *fp)
 {
 	struct dev_close_args ap;
 	int needmplock = dev_needmplock(dev);
@@ -165,6 +165,7 @@ dev_dclose(cdev_t dev, int fflag, int devtype)
 	ap.a_head.a_dev = dev;
 	ap.a_fflag = fflag;
 	ap.a_devtype = devtype;
+	ap.a_fp = fp;
 
 	if (needmplock)
 		get_mplock();

@@ -278,7 +278,7 @@ disk_blk_open(struct disk *dp, kdmsg_msg_t *msg)
 		    openst->openwr) {
 			fflags |= FWRITE;
 		}
-		error = dev_dclose(dp->d_rawdev, fflags, S_IFCHR);
+		error = dev_dclose(dp->d_rawdev, fflags, S_IFCHR, NULL);
 		if (error) {
 			error = DMSG_ERR_IO;
 		} else {
@@ -293,15 +293,15 @@ disk_blk_open(struct disk *dp, kdmsg_msg_t *msg)
 			while (openst->openrd && openst->openwr) {
 				--openst->openrd;
 				--openst->openwr;
-				dev_dclose(dp->d_rawdev, FREAD|FWRITE, S_IFCHR);
+				dev_dclose(dp->d_rawdev, FREAD|FWRITE, S_IFCHR, NULL);
 			}
 			while (openst->openrd) {
 				--openst->openrd;
-				dev_dclose(dp->d_rawdev, FREAD, S_IFCHR);
+				dev_dclose(dp->d_rawdev, FREAD, S_IFCHR, NULL);
 			}
 			while (openst->openwr) {
 				--openst->openwr;
-				dev_dclose(dp->d_rawdev, FWRITE, S_IFCHR);
+				dev_dclose(dp->d_rawdev, FWRITE, S_IFCHR, NULL);
 			}
 			kfree(openst, M_DEVBUF);
 			msg->state->any.any = NULL;

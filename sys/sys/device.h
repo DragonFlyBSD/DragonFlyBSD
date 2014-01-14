@@ -77,6 +77,7 @@ struct dev_close_args {
 	struct dev_generic_args a_head;
 	int		a_fflag;
 	int		a_devtype;
+	struct file	*a_fp;
 };
 
 /*
@@ -316,7 +317,7 @@ struct disk;
 struct sysmsg;
 
 int dev_dopen(cdev_t dev, int oflags, int devtype, struct ucred *cred, struct file *fp);
-int dev_dclose(cdev_t dev, int fflag, int devtype);
+int dev_dclose(cdev_t dev, int fflag, int devtype, struct file *fp);
 void dev_dstrategy(cdev_t dev, struct bio *bio);
 void dev_dstrategy_chain(cdev_t dev, struct bio *bio);
 int dev_dioctl(cdev_t dev, u_long cmd, caddr_t data,

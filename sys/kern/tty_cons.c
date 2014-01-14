@@ -273,7 +273,7 @@ sysctl_kern_consmute(SYSCTL_HANDLER_ARGS)
 			 */
 			if (cn_is_open) {
 				error = dev_dclose(cn_dev, openflag,
-						   openmode);
+						   openmode, NULL);
 			}
 			if (error == 0)
 				cnuninit();

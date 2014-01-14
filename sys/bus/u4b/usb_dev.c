@@ -47,6 +47,7 @@
 #include <sys/vnode.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
+#include <sys/devfs.h>
 
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usb_ioctl.h>
@@ -159,6 +160,13 @@ struct lock usb_ref_lock;
 static int usb_nevents = 0;
 static struct kqinfo usb_kqevent;
 #endif
+
+ 
+static void
+usb_cdevpriv_dtor(void *cpd)
+{
+	kprintf("usb_cdevpriv_dtor %p\n", cpd);
+}
 
 /*------------------------------------------------------------------------*
  *	usb_loc_fill
@@ -860,19 +868,6 @@ usb_open(struct dev_open_args *ap)
 		return (EPERM);
 	}
 
-	/*
-	 * Allow re-opens as long as the perms are the same.
-	 * (dunno if this is a good idea, but 'usbconfig list'
-	 * wants to open at least one of the ugen devices up
-	 * twice).
-	 */
-	cpd = dev->si_drv2;
-	if (cpd) {
-		if (((cpd->fflags ^ fflags) & (FREAD|FWRITE)) == 0)
-			return(0);
-		return EBUSY;
-	}
-
 	cpd = kmalloc(sizeof(*cpd), M_USBDEV, M_WAITOK | M_ZERO);
 	ep = cpd->ep_addr = pd->ep_addr;
 
@@ -916,11 +911,8 @@ usb_open(struct dev_open_args *ap)
 		}
 	}
 	usb_unref_device(cpd, &refs);
-#if 0 /* XXX: markusp: which privs? */
-	devfs_set_cdevpriv(cpd, usb_close);
-#endif
-	/* XXX: This might not work as I expect! */
-	dev->si_drv2 = (void *)cpd;
+	err = devfs_set_cdevpriv(ap->a_fp, cpd, usb_cdevpriv_dtor);
+	kprintf("devfs_set_cdevpriv returned %d\n", err);
 	return (0);
 }
 
@@ -930,12 +922,16 @@ usb_open(struct dev_open_args *ap)
 static int
 usb_close(struct dev_close_args *ap)
 {
-	struct cdev *dev = ap->a_head.a_dev;
 	struct usb_cdev_refdata refs;
-	struct usb_cdev_privdata *cpd = (struct usb_cdev_privdata *)dev->si_drv2;
+	struct usb_cdev_privdata *cpd;
 	int err;
 
 	DPRINTFN(2, "cpd=%p\n", cpd);
+
+	err = devfs_get_cdevpriv(ap->a_fp, (void **)&cpd);
+	kprintf("devfs_get_cdevpriv: %d\n", err);
+ 	if (err != 0)
+ 		return (err);
 
 	err = usb_ref_device(cpd, &refs, 0);
 	if (err)
@@ -1063,7 +1059,6 @@ usb_ioctl_f_sub(struct usb_fifo *f, u_long cmd, void *addr,
 static int
 usb_ioctl(struct dev_ioctl_args *ap)
 {
-	struct cdev *dev = ap->a_head.a_dev;
 	u_long cmd = ap->a_cmd;
 	caddr_t addr = ap->a_data;
 	/* XXX: What is this thread and where is it supposed to come from */
@@ -1076,20 +1071,10 @@ usb_ioctl(struct dev_ioctl_args *ap)
 
 	DPRINTFN(2, "cmd=0x%lx\n", cmd);
 
-#if 0 /* XXX: cdev? */
-	err = devfs_get_cdevpriv((void **)&cpd);
+	err = devfs_get_cdevpriv(ap->a_fp, (void **)&cpd);
+	kprintf("devfs_get_cdevpriv: %d\n", err);
 	if (err != 0)
 		return (err);
-#endif
-
-	/*
-	 * XXX: This might not work as I would like it to
-	 * also I need a proper return value if it does
-	 */
-	if (dev->si_drv2 == NULL)
-		return(-1);
-
-	cpd = (struct usb_cdev_privdata *)dev->si_drv2;
 
 	/* 
 	 * Performance optimisation: We try to check for IOCTL's that
@@ -1323,7 +1308,6 @@ usb_poll(struct cdev* dev, int events, struct thread* td)
 static int
 usb_read(struct dev_read_args *ap)
 {
-	struct cdev *dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	int ioflag = ap->a_ioflag;
 	struct usb_cdev_refdata refs;
@@ -1336,17 +1320,10 @@ usb_read(struct dev_read_args *ap)
 	int err;
 	uint8_t tr_data = 0;
 
-#if 0
-	err = devfs_get_cdevpriv((void **)&cpd);
+	err = devfs_get_cdevpriv(ap->a_fp, (void **)&cpd);
+	kprintf("devfs_get_cdevpriv: %d\n", err);
 	if (err != 0)
 		return (err);
-#endif
-
-	if (dev->si_drv2 == NULL)
-		return(-1);
-    
-	cpd = (struct usb_cdev_privdata *)dev->si_drv2;
-  
 	err = usb_ref_device(cpd, &refs, 0 /* no uref */ );
 	if (err) {
 		return (ENXIO);
@@ -1456,7 +1433,6 @@ done:
 static int
 usb_write(struct dev_write_args *ap)
 {
-	struct cdev *dev = ap->a_head.a_dev;
 	struct uio *uio = ap->a_uio;
 	int ioflag = ap->a_ioflag;
 	struct usb_cdev_refdata refs;
@@ -1472,17 +1448,10 @@ usb_write(struct dev_write_args *ap)
 
 	DPRINTFN(2, "\n");
 
-#if 0 /* XXXDF */
-	err = devfs_get_cdevpriv((void **)&cpd);
+	err = devfs_get_cdevpriv(ap->a_fp, (void **)&cpd);
+	kprintf("devfs_get_cdevpriv: %d\n", err);
 	if (err != 0)
 		return (err);
-#endif
-
-	if (dev->si_drv2 == NULL)
-		return(-1);
-    
-	cpd = (struct usb_cdev_privdata *)dev->si_drv2;
-  
 	err = usb_ref_device(cpd, &refs, 0 /* no uref */ );
 	if (err) {
 		return (ENXIO);

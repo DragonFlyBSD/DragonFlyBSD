@@ -808,7 +808,7 @@ dssize(cdev_t dev, struct diskslices **sspp)
 	    || !dschkmask(&ssp->dss_slices[slice], part)) {
 		if (dev_dopen(dev, FREAD, S_IFCHR, proc0.p_ucred, NULL) != 0)
 			return (-1);
-		dev_dclose(dev, FREAD, S_IFCHR);
+		dev_dclose(dev, FREAD, S_IFCHR, NULL);
 		ssp = *sspp;
 	}
 	lp = ssp->dss_slices[slice].ds_label;

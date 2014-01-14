@@ -136,6 +136,7 @@ struct vop_close_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
 	int a_fflag;
+	struct file *a_fp;		/* optional fp for fileops override */
 };
 
 struct vop_access_args {

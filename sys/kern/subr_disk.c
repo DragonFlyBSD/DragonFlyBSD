@@ -1041,7 +1041,7 @@ diskopen(struct dev_open_args *ap)
 	error = dsopen(dev, ap->a_devtype, dp->d_info.d_dsflags,
 		       &dp->d_slice, &dp->d_info);
 	if (!dsisopen(dp->d_slice)) {
-		dev_dclose(dp->d_rawdev, ap->a_oflags, ap->a_devtype);
+		dev_dclose(dp->d_rawdev, ap->a_oflags, ap->a_devtype, NULL);
 	}
 out:
 	dp->d_flags &= ~DISKFLAG_LOCK;
@@ -1088,7 +1088,7 @@ diskclose(struct dev_close_args *ap)
 	get_mplock();
 	dsclose(dev, ap->a_devtype, dp->d_slice);
 	if (lcount <= 1 && !dsisopen(dp->d_slice)) {
-		error = dev_dclose(dp->d_rawdev, ap->a_fflag, ap->a_devtype);
+		error = dev_dclose(dp->d_rawdev, ap->a_fflag, ap->a_devtype, NULL);
 	}
 	rel_mplock();
 	return (error);
