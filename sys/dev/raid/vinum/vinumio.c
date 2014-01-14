@@ -89,7 +89,7 @@ open_drive(struct drive *drive, struct proc *p, int verbose)
      * level drive be a device.
      */
     if (error == 0 && drive->vp->v_type != VCHR) {
-	vn_close(drive->vp, FREAD|FWRITE);
+        vn_close(drive->vp, FREAD|FWRITE, NULL);
 	drive->vp = NULL;
 	error = ENODEV;
     }
@@ -223,7 +223,7 @@ close_locked_drive(struct drive *drive)
      * do.  Get rid of them here first.
      */
     if (drive->vp) {
-	drive->lasterror = vn_close(drive->vp, FREAD|FWRITE);
+	drive->lasterror = vn_close(drive->vp, FREAD|FWRITE, NULL);
 	drive->vp = NULL;
     }
     drive->flags &= ~VF_OPEN;

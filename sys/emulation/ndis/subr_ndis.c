@@ -2722,7 +2722,7 @@ NdisCloseFile(ndis_handle filehandle)
 
 	if (fh->nf_type == NDIS_FH_TYPE_VFS) {
 		vp = fh->nf_vp;
-		vn_close(vp, FREAD);
+		vn_close(vp, FREAD, NULL);
 	}
 
 	fh->nf_vp = NULL;

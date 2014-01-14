@@ -166,7 +166,7 @@ iso_mountroot(struct mount *mp)
 	args.ssector = iso_get_ssector(rootdev);
 
 	vn_lock(rootvp, LK_EXCLUSIVE | LK_RETRY);
-	VOP_CLOSE(rootvp, FREAD);
+	VOP_CLOSE(rootvp, FREAD, NULL);
 	vn_unlock(rootvp);
 
 	if (bootverbose)
@@ -539,7 +539,7 @@ out:
 		brelse(supbp);
 	if (needclose) {
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-		VOP_CLOSE(devvp, FREAD);
+		VOP_CLOSE(devvp, FREAD, NULL);
 		vn_unlock(devvp);
 	}
 	if (isomp) {
@@ -579,7 +579,7 @@ cd9660_unmount(struct mount *mp, int mntflags)
 
 	isomp->im_devvp->v_rdev->si_mountpoint = NULL;
 	vn_lock(isomp->im_devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_CLOSE(isomp->im_devvp, FREAD);
+	error = VOP_CLOSE(isomp->im_devvp, FREAD, NULL);
 	vn_unlock(isomp->im_devvp);
 	vrele(isomp->im_devvp);
 	kfree((caddr_t)isomp, M_ISOFSMNT);

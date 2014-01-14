@@ -333,7 +333,7 @@ failed:
 	mp->mnt_data = NULL;
 	dev->si_mountpoint = NULL;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
+	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, NULL);
 	vn_unlock(devvp);
 	return (error);
 }
@@ -365,7 +365,7 @@ hpfs_unmount(struct mount *mp, int mntflags)
 
 	vn_lock(hpmp->hpm_devvp, LK_EXCLUSIVE | LK_RETRY);
 	vinvalbuf(hpmp->hpm_devvp, V_SAVE, 0, 0);
-	error = VOP_CLOSE(hpmp->hpm_devvp, ronly ? FREAD : FREAD|FWRITE);
+	error = VOP_CLOSE(hpmp->hpm_devvp, ronly ? FREAD : FREAD|FWRITE, NULL);
 	vn_unlock(hpmp->hpm_devvp);
 
 	vrele(hpmp->hpm_devvp);

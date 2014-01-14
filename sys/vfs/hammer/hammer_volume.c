@@ -784,7 +784,7 @@ hammer_close_device(struct vnode **devvpp, int ronly)
 	if (*devvpp) {
 		vn_lock(*devvpp, LK_EXCLUSIVE | LK_RETRY);
 		vinvalbuf(*devvpp, ronly ? 0 : V_SAVE, 0, 0);
-		VOP_CLOSE(*devvpp, (ronly ? FREAD : FREAD|FWRITE));
+		VOP_CLOSE(*devvpp, (ronly ? FREAD : FREAD|FWRITE), NULL);
 		vn_unlock(*devvpp);
 		vrele(*devvpp);
 		*devvpp = NULL;

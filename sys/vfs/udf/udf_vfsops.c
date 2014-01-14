@@ -397,7 +397,7 @@ bail:
 		brelse(bp);
 	if (needclose) {
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-		VOP_CLOSE(devvp, FREAD);
+		VOP_CLOSE(devvp, FREAD, NULL);
 		vn_unlock(devvp);
 	}
 	return(error);
@@ -419,7 +419,7 @@ udf_unmount(struct mount *mp, int mntflags)
 
 	udfmp->im_devvp->v_rdev->si_mountpoint = NULL;
 	vn_lock(udfmp->im_devvp, LK_EXCLUSIVE | LK_RETRY);
-	error = VOP_CLOSE(udfmp->im_devvp, FREAD);
+	error = VOP_CLOSE(udfmp->im_devvp, FREAD, NULL);
 	vn_unlock(udfmp->im_devvp);
 	vrele(udfmp->im_devvp);
 

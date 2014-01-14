@@ -2360,7 +2360,7 @@ out1:
 	lf.l_type = F_UNLCK;
 	VOP_ADVLOCK(vp, (caddr_t)p, F_UNLCK, &lf, 0);
 out2:
-	error1 = vn_close(vp, FWRITE);
+	error1 = vn_close(vp, FWRITE, NULL);
 	if (error == 0)
 		error = error1;
 	return (error);

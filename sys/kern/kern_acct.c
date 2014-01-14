@@ -163,7 +163,7 @@ sys_acct(struct acct_args *uap)
 	if (acctp != NULLVP || savacctp != NULLVP) {
 		callout_stop(&acctwatch_handle);
 		error = vn_close((acctp != NULLVP ? acctp : savacctp),
-				FWRITE | O_APPEND);
+				FWRITE | O_APPEND, NULL);
 		acctp = savacctp = NULLVP;
 	}
 
@@ -319,7 +319,7 @@ acctwatch(void *a)
 
 	if (savacctp != NULLVP) {
 		if (savacctp->v_type == VBAD) {
-			(void) vn_close(savacctp, FWRITE | O_APPEND);
+			(void) vn_close(savacctp, FWRITE | O_APPEND, NULL);
 			savacctp = NULLVP;
 			return;
 		}
@@ -333,7 +333,7 @@ acctwatch(void *a)
 		if (acctp == NULLVP)
 			return;
 		if (acctp->v_type == VBAD) {
-			(void) vn_close(acctp, FWRITE | O_APPEND);
+			(void) vn_close(acctp, FWRITE | O_APPEND, NULL);
 			acctp = NULLVP;
 			return;
 		}

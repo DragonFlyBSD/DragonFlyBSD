@@ -1358,7 +1358,7 @@ hammer_recover_redo_exec(hammer_mount_t hmp, hammer_fifo_redo_t redo)
 				(intmax_t)redo->redo_objid,
 				redo->redo_localization, error);
 		}
-		VOP_CLOSE(vp, FREAD|FWRITE);
+		VOP_CLOSE(vp, FREAD|FWRITE, NULL);
 		break;
 	case HAMMER_REDO_TRUNC:
 		VATTR_NULL(&va);

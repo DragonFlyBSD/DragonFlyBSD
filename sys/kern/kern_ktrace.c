@@ -447,7 +447,7 @@ ktrdestroy(struct ktrace_node **tracenodep)
 		*tracenodep = NULL;
 		KKASSERT(tracenode->kn_refs > 0);
 		if (atomic_fetchadd_int(&tracenode->kn_refs, -1) == 1) {
-			vn_close(tracenode->kn_vp, FREAD|FWRITE);
+			vn_close(tracenode->kn_vp, FREAD|FWRITE, NULL);
 			tracenode->kn_vp = NULL;
 			kfree(tracenode, M_KTRACE);
 		}

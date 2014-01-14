@@ -412,13 +412,13 @@ ncp_writechk(struct nchandle *nch)
  * MPSAFE
  */
 int
-vn_close(struct vnode *vp, int flags)
+vn_close(struct vnode *vp, int flags, struct file *fp)
 {
 	int error;
 
 	error = vn_lock(vp, LK_SHARED | LK_RETRY | LK_FAILRECLAIM);
 	if (error == 0) {
-		error = VOP_CLOSE(vp, flags);
+		error = VOP_CLOSE(vp, flags, fp);
 		vn_unlock(vp);
 	}
 	vrele(vp);
@@ -1102,7 +1102,7 @@ vn_closefile(struct file *fp)
 	int error;
 
 	fp->f_ops = &badfileops;
-	error = vn_close(((struct vnode *)fp->f_data), fp->f_flag);
+	error = vn_close(((struct vnode *)fp->f_data), fp->f_flag, fp);
 	return (error);
 }
 

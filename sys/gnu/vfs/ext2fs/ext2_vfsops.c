@@ -309,7 +309,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			fs->s_rd_only = 1;
 			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			VOP_OPEN(devvp, FREAD, FSCRED, NULL);
-			VOP_CLOSE(devvp, FREAD|FWRITE);
+			VOP_CLOSE(devvp, FREAD|FWRITE, NULL);
 			vn_unlock(devvp);
 		}
 		if (!error && (mp->mnt_flag & MNT_RELOAD))
@@ -352,7 +352,7 @@ ext2_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 			fs->s_rd_only = 0;
 			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL);
-			VOP_CLOSE(devvp, FREAD);
+			VOP_CLOSE(devvp, FREAD, NULL);
 			vn_unlock(devvp);
 		}
 		if (args.fspec == NULL) {
@@ -856,7 +856,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 out:
 	if (bp)
 		brelse(bp);
-	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
+	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, NULL);
 	if (ump) {
 		bsd_free(ump->um_e2fs->s_es, M_EXT2MNT);
 		bsd_free(ump->um_e2fs, M_EXT2MNT);
@@ -908,7 +908,7 @@ ext2_unmount(struct mount *mp, int mntflags)
 			ULCK_BUF(fs->s_block_bitmap[i])
 
 	ump->um_devvp->v_rdev->si_mountpoint = NULL;
-	error = VOP_CLOSE(ump->um_devvp, ronly ? FREAD : FREAD|FWRITE);
+	error = VOP_CLOSE(ump->um_devvp, ronly ? FREAD : FREAD|FWRITE, NULL);
 	vrele(ump->um_devvp);
 	bsd_free(fs->s_es, M_EXT2MNT);
 	bsd_free(fs, M_EXT2MNT);

@@ -1126,7 +1126,7 @@ devfs_fo_close(struct file *fp)
 	int error;
 
 	fp->f_ops = &badfileops;
-	error = vn_close(vp, fp->f_flag);
+	error = vn_close(vp, fp->f_flag, fp);
 	devfs_clear_cdevpriv(fp);
 
 	return (error);

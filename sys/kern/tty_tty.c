@@ -117,7 +117,7 @@ retry:
 	if (ttyvp != cttyvp(p) || (ttyvp->v_flag & VCTTYISOPEN)) {
 		kprintf("Warning: cttyopen: race-2 avoided\n");
 		if (error == 0)
-			VOP_CLOSE(ttyvp, FREAD|FWRITE);
+			VOP_CLOSE(ttyvp, FREAD|FWRITE, NULL);
 		vn_unlock(ttyvp);
 		vdrop(ttyvp);
 		goto retry;
@@ -167,7 +167,7 @@ retry:
 			goto retry;
 		}
 		vclrflags(ttyvp, VCTTYISOPEN);
-		error = VOP_CLOSE(ttyvp, FREAD|FWRITE);
+		error = VOP_CLOSE(ttyvp, FREAD|FWRITE, NULL);
 		vn_unlock(ttyvp);
 		vrele(ttyvp);
 	} else {

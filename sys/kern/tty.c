@@ -360,7 +360,7 @@ retry:
 		sp->s_ttyvp = NULL;
 		if (vp->v_flag & VCTTYISOPEN) {
 			vclrflags(vp, VCTTYISOPEN);
-			VOP_CLOSE(vp, FREAD|FWRITE);
+			VOP_CLOSE(vp, FREAD|FWRITE, NULL);
 		}
 		vn_unlock(vp);
 		if (dorevoke)

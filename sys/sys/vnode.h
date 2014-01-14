@@ -473,7 +473,7 @@ int	vrecycle (struct vnode *vp);
 int	vmaxiosize (struct vnode *vp);
 void	vn_strategy(struct vnode *vp, struct bio *bio);
 int	vn_cache_strategy(struct vnode *vp, struct bio *bio);
-int	vn_close (struct vnode *vp, int flags);
+int	vn_close (struct vnode *vp, int flags, struct file *fp);
 void	vn_gone (struct vnode *vp);
 int	vn_isdisk (struct vnode *vp, int *errp);
 int	vn_islocked (struct vnode *vp);

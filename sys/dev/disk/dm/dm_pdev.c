@@ -196,7 +196,7 @@ dm_pdev_rem(dm_pdev_t * dmp)
 	KKASSERT(dmp != NULL);
 
 	if (dmp->pdev_vnode != NULL) {
-		err = vn_close(dmp->pdev_vnode, FREAD | FWRITE);
+		err = vn_close(dmp->pdev_vnode, FREAD | FWRITE, NULL);
 		if (err != 0)
 			return err;
 	}

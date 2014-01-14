@@ -701,7 +701,7 @@ out:
     if (firstpage)
 	kfree(firstpage, M_LINKER);
     vn_unlock(vp);
-    vn_close(vp, FREAD);
+    vn_close(vp, FREAD, NULL);
 
     return error;
 }

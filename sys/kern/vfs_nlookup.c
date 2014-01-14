@@ -321,7 +321,7 @@ nlookup_done(struct nlookupdata *nd)
 		vn_unlock(nd->nl_open_vp);
 		nd->nl_flags &= ~NLC_LOCKVP;
 	}
-	vn_close(nd->nl_open_vp, nd->nl_vp_fmode);
+	vn_close(nd->nl_open_vp, nd->nl_vp_fmode, NULL);
 	nd->nl_open_vp = NULL;
     }
     if (nd->nl_dvp) {

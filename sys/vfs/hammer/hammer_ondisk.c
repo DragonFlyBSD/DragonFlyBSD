@@ -238,7 +238,7 @@ late_failure:
 		if (setmp)
 			volume->devvp->v_rdev->si_mountpoint = NULL;
 		vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
-		VOP_CLOSE(volume->devvp, ronly ? FREAD : FREAD|FWRITE);
+		VOP_CLOSE(volume->devvp, ronly ? FREAD : FREAD|FWRITE, NULL);
 		vn_unlock(volume->devvp);
 		hammer_free_volume(volume);
 	}
@@ -257,11 +257,11 @@ hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused)
 		if (volume->io.hmp->ronly) {
 			/* do not call vinvalbuf */
 			VOP_OPEN(volume->devvp, FREAD, FSCRED, NULL);
-			VOP_CLOSE(volume->devvp, FREAD|FWRITE);
+			VOP_CLOSE(volume->devvp, FREAD|FWRITE, NULL);
 		} else {
 			/* do not call vinvalbuf */
 			VOP_OPEN(volume->devvp, FREAD|FWRITE, FSCRED, NULL);
-			VOP_CLOSE(volume->devvp, FREAD);
+			VOP_CLOSE(volume->devvp, FREAD, NULL);
 		}
 		vn_unlock(volume->devvp);
 	}
@@ -328,7 +328,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 			 */
 			vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
 			vinvalbuf(volume->devvp, 0, 0, 0);
-			VOP_CLOSE(volume->devvp, FREAD);
+			VOP_CLOSE(volume->devvp, FREAD, NULL);
 			vn_unlock(volume->devvp);
 		} else {
 			/*
@@ -337,7 +337,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 			 */
 			vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
 			vinvalbuf(volume->devvp, V_SAVE, 0, 0);
-			VOP_CLOSE(volume->devvp, FREAD|FWRITE);
+			VOP_CLOSE(volume->devvp, FREAD|FWRITE, NULL);
 			vn_unlock(volume->devvp);
 		}
 	}

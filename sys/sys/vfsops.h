@@ -742,7 +742,8 @@ int vop_old_mknod(struct vop_ops *ops, struct vnode *dvp,
 		struct vattr *vap);
 int vop_open(struct vop_ops *ops, struct vnode *vp, int mode,
 		struct ucred *cred, struct file *file);
-int vop_close(struct vop_ops *ops, struct vnode *vp, int fflag);
+int vop_close(struct vop_ops *ops, struct vnode *vp, int fflag,
+		struct file *file);
 int vop_access(struct vop_ops *ops, struct vnode *vp, int mode, int flags,
 		struct ucred *cred);
 int vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap);
@@ -982,8 +983,8 @@ extern struct syslink_desc vop_nrename_desc;
  */
 #define VOP_OPEN(vp, mode, cred, fp)			\
 	vop_open(*(vp)->v_ops, vp, mode, cred, fp)
-#define VOP_CLOSE(vp, fflag)				\
-	vop_close(*(vp)->v_ops, vp, fflag)
+#define VOP_CLOSE(vp, fflag, fp)			\
+	vop_close(*(vp)->v_ops, vp, fflag, fp)
 #define VOP_ACCESS(vp, mode, cred)			\
 	vop_access(*(vp)->v_ops, vp, mode, 0, cred)
 #define VOP_EACCESS(vp, mode, cred)			\

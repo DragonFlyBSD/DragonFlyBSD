@@ -296,7 +296,8 @@ vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
  * MPSAFE
  */
 int
-vop_close(struct vop_ops *ops, struct vnode *vp, int fflag)
+vop_close(struct vop_ops *ops, struct vnode *vp, int fflag,
+         struct file *fp)
 {
 	struct vop_close_args ap;
 	VFS_MPLOCK_DECLARE;
@@ -305,6 +306,7 @@ vop_close(struct vop_ops *ops, struct vnode *vp, int fflag)
 	ap.a_head.a_desc = &vop_close_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
+	ap.a_fp = fp;
 	ap.a_fflag = fflag;
 
 	VFS_MPLOCK1(vp->v_mount);

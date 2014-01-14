@@ -198,7 +198,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 				devvp = pmp->pm_devvp;
 				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 				VOP_OPEN(devvp, FREAD, FSCRED, NULL);
-				VOP_CLOSE(devvp, FREAD|FWRITE);
+				VOP_CLOSE(devvp, FREAD|FWRITE, NULL);
 				vn_unlock(devvp);
 				pmp->pm_flags |= MSDOSFSMNT_RONLY;
 			}
@@ -223,7 +223,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 				}
 			}
 			VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL);
-			VOP_CLOSE(devvp, FREAD);
+			VOP_CLOSE(devvp, FREAD, NULL);
 			vn_unlock(devvp);
 			pmp->pm_flags &= ~MSDOSFSMNT_RONLY;
 		}
@@ -615,7 +615,7 @@ error_exit:
 		brelse(bp);
 	}
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE);
+	VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE, NULL);
 	vn_unlock(devvp);
 	if (pmp) {
 		if (pmp->pm_inusemap)
@@ -677,7 +677,8 @@ msdosfs_unmount(struct mount *mp, int mntflags)
 #endif
 	vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_CLOSE(pmp->pm_devvp,
-		    (pmp->pm_flags&MSDOSFSMNT_RONLY) ? FREAD : FREAD | FWRITE);
+		    (pmp->pm_flags&MSDOSFSMNT_RONLY) ? FREAD : FREAD | FWRITE,
+		    NULL);
 	vn_unlock(pmp->pm_devvp);
 	vrele(pmp->pm_devvp);
 	kfree(pmp->pm_inusemap, M_MSDOSFSFAT);

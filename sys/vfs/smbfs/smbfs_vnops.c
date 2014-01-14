@@ -376,7 +376,7 @@ smbfs_setattr(struct vop_setattr_args *ap)
 				VOP_GETATTR(vp, &vattr);*/
 				if (mtime)
 					np->n_mtime = *mtime;
-				VOP_CLOSE(vp, FWRITE);
+				VOP_CLOSE(vp, FWRITE, NULL);
 				}
 			} else if ((vcp->vc_sopt.sv_caps & SMB_CAP_NT_SMBS)) {
 				error = smbfs_smb_setptime2(np, mtime, atime, 0, &scred);

@@ -564,7 +564,7 @@ vniocattach_file(struct vn_softc *vn, struct vn_ioctl *vio, cdev_t dev,
 	error = vnsetcred(vn, cred);
 	if (error) {
 		vn->sc_vp = NULL;
-		vn_close(vp, flags);
+		vn_close(vp, flags, NULL);
 		goto done;
 	}
 	vn->sc_flags |= VNF_INITED;
@@ -733,7 +733,8 @@ vnclear(struct vn_softc *vn)
 	vn->sc_flags &= ~VNF_INITED;
 	if (vn->sc_vp != NULL) {
 		vn_close(vn->sc_vp,
-		    (vn->sc_flags & VNF_READONLY) ?  FREAD : (FREAD|FWRITE));
+		    (vn->sc_flags & VNF_READONLY) ? FREAD : (FREAD|FWRITE),
+		    NULL);
 		vn->sc_vp = NULL;
 	}
 	vn->sc_flags &= ~VNF_READONLY;

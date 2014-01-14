@@ -406,10 +406,10 @@ success:
 			vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 			if (ronly) {
 				VOP_OPEN(devvp, FREAD, FSCRED, NULL);
-				VOP_CLOSE(devvp, FREAD|FWRITE);
+				VOP_CLOSE(devvp, FREAD|FWRITE, NULL);
 			} else {
 				VOP_OPEN(devvp, FREAD|FWRITE, FSCRED, NULL);
-				VOP_CLOSE(devvp, FREAD);
+				VOP_CLOSE(devvp, FREAD, NULL);
 			}
 			vn_unlock(devvp);
 			ffs_sbupdate(ump, MNT_WAIT);
@@ -791,7 +791,7 @@ out:
 	if (bp)
 		brelse(bp);
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
-	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
+	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, NULL);
 	vn_unlock(devvp);
 	if (ump) {
 		ufs_ihashuninit(ump);
@@ -867,7 +867,9 @@ ffs_unmount(struct mount *mp, int mntflags)
 
 	vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
 	vinvalbuf(ump->um_devvp, V_SAVE, 0, 0);
-	error = VOP_CLOSE(ump->um_devvp, fs->fs_ronly ? FREAD : FREAD|FWRITE);
+	error = VOP_CLOSE(ump->um_devvp, 
+			fs->fs_ronly ? FREAD : FREAD|FWRITE,
+			NULL);
 	vn_unlock(ump->um_devvp);
 
 	vrele(ump->um_devvp);

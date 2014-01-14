@@ -515,7 +515,7 @@ ufs_quotaoff(struct mount *mp, int type)
 	}
 	ufs_dqflush(qvp);
 	vclrflags(qvp, VSYSTEM);
-	error = vn_close(qvp, FREAD|FWRITE);
+	error = vn_close(qvp, FREAD|FWRITE, NULL);
 	ump->um_quotas[type] = NULLVP;
 	crfree(ump->um_cred[type]);
 	ump->um_cred[type] = NOCRED;

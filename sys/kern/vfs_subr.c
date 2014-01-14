@@ -1204,9 +1204,9 @@ vclean_vxlocked(struct vnode *vp, int flags)
 	if (active && (flags & DOCLOSE)) {
 		while ((n = vp->v_opencount) != 0) {
 			if (vp->v_writecount)
-				VOP_CLOSE(vp, FWRITE|FNONBLOCK);
+				VOP_CLOSE(vp, FWRITE|FNONBLOCK, NULL);
 			else
-				VOP_CLOSE(vp, FNONBLOCK);
+				VOP_CLOSE(vp, FNONBLOCK, NULL);
 			if (vp->v_opencount == n) {
 				kprintf("Warning: unable to force-close"
 				       " vnode %p\n", vp);

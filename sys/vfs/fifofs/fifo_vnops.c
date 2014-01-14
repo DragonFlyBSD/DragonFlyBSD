@@ -254,7 +254,7 @@ fifo_open(struct vop_open_args *ap)
 	return (error);
 bad:
 	vop_stdopen(ap);	/* bump opencount/writecount as appropriate */
-	VOP_CLOSE(vp, ap->a_mode);
+	VOP_CLOSE(vp, ap->a_mode, NULL);
 done:
 	lwkt_reltoken(&vp->v_token);
 	return (error);

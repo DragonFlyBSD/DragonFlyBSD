@@ -546,7 +546,7 @@ smbfs_putpages(struct vop_putpages_args *ap)
 	cred = td->td_proc->p_ucred;
 	VOP_OPEN(vp, FWRITE, cred, NULL);
 	error = vop_stdputpages(ap);
-	VOP_CLOSE(vp, FWRITE, cred);
+	VOP_CLOSE(vp, FWRITE, cred, NULL);
 	return error;
 #else
 	struct uio uio;

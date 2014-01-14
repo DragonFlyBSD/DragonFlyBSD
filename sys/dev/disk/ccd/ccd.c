@@ -1377,7 +1377,7 @@ ccdioctl(struct dev_ioctl_args *ap)
 #endif
 			if ((error = ccdlookup(cpp[i], &vpp[i])) != 0) {
 				for (j = 0; j < lookedup; ++j)
-					(void)vn_close(vpp[j], FREAD|FWRITE);
+					(void)vn_close(vpp[j], FREAD|FWRITE, NULL);
 				kfree(vpp, M_DEVBUF);
 				kfree(cpp, M_DEVBUF);
 				ccdunlock(cs);
@@ -1394,7 +1394,7 @@ ccdioctl(struct dev_ioctl_args *ap)
 		 */
 		if ((error = ccdinit(&ccd, cpp, ap->a_cred)) != 0) {
 			for (j = 0; j < lookedup; ++j)
-				vn_close(vpp[j], FREAD|FWRITE);
+				vn_close(vpp[j], FREAD|FWRITE, NULL);
 			kfree(vpp, M_DEVBUF);
 			kfree(cpp, M_DEVBUF);
 			ccdunlock(cs);
@@ -1460,7 +1460,7 @@ ccdioctl(struct dev_ioctl_args *ap)
 				vprint("CCDIOCCLR: vnode info",
 				    cs->sc_cinfo[i].ci_vp);
 #endif
-			(void)vn_close(cs->sc_cinfo[i].ci_vp, FREAD|FWRITE);
+			(void)vn_close(cs->sc_cinfo[i].ci_vp, FREAD|FWRITE, NULL);
 			kfree(cs->sc_cinfo[i].ci_path, M_DEVBUF);
 		}
 
