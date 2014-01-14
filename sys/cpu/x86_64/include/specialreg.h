@@ -253,6 +253,13 @@
 #define CPUID_THERMAL_PTM	0x00000040
 
 /*
+ * MONITOR/MWAIT
+ */
+#define CPUID_MWAIT_EXT		0x00000001
+#define CPUID_MWAIT_INTBRK	0x00000002
+#define CPUID_MWAIT_CX_SUBCNT(emu, i) (((emu) >> ((i) * 4)) & 0xf)
+
+/*
  * CPUID manufacturers identifiers
  */
 #define	AMD_VENDOR_ID		"AuthenticAMD"

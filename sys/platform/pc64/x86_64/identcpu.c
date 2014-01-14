@@ -528,6 +528,12 @@ identify_cpu(void)
 	cpu_feature = regs[3];
 	cpu_feature2 = regs[2];
 
+	if (cpu_high >= 5) {
+		do_cpuid(5, regs);
+		cpu_mwait_features = regs[2];
+		if (cpu_mwait_features & CPUID_MWAIT_EXT)
+			cpu_mwait_extemu = regs[3];
+	}
 	if (cpu_high >= 6) {
 		do_cpuid(6, regs);
 		cpu_thermal_feature = regs[0];

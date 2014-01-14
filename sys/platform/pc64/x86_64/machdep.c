@@ -175,6 +175,18 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
 	CTLFLAG_RW, &cpu_mwait_halt, 0, "");
 
+#define CPU_MWAIT_CX_MAX	8
+
+SYSCTL_NODE(_machdep, 0, mwait, CTLFLAG_RW, 0, "MWAIT features");
+
+struct cpu_mwait_cx {
+	int			subcnt;
+	char			name[4];
+	struct sysctl_ctx_list	sysctl_ctx;
+	struct sysctl_oid	*sysctl_tree;
+};
+static struct cpu_mwait_cx	cpu_mwait_cx_info[CPU_MWAIT_CX_MAX];
+
 long physmem = 0;
 
 u_long ebda_addr = 0;
@@ -421,7 +433,30 @@ again:
 static void
 cpu_finish(void *dummy __unused)
 {
+	int i;
+
 	cpu_setregs();
+
+	if (cpu_mwait_features & CPUID_MWAIT_EXT) {
+		for (i = 0; i < CPU_MWAIT_CX_MAX; ++i) {
+			struct cpu_mwait_cx *cx = &cpu_mwait_cx_info[i];
+
+			ksnprintf(cx->name, sizeof(cx->name), "C%d", i);
+
+			sysctl_ctx_init(&cx->sysctl_ctx);
+			cx->sysctl_tree = SYSCTL_ADD_NODE(&cx->sysctl_ctx,
+			    SYSCTL_STATIC_CHILDREN(_machdep_mwait), OID_AUTO,
+			    cx->name, CTLFLAG_RW, NULL, "Cx control/info");
+			if (cx->sysctl_tree == NULL)
+				continue;
+
+			cx->subcnt = CPUID_MWAIT_CX_SUBCNT(cpu_mwait_extemu, i);
+			SYSCTL_ADD_INT(&cx->sysctl_ctx,
+			    SYSCTL_CHILDREN(cx->sysctl_tree), OID_AUTO,
+			    "subcnt", CTLFLAG_RD, &cx->subcnt, 0,
+			    "sub-state count");
+		}
+	}
 }
 
 static void

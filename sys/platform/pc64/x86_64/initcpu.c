@@ -67,6 +67,8 @@ u_int	cpu_mxcsr_mask;		/* Valid bits in mxcsr */
 u_int	cpu_clflush_line_size = 32;	/* Default CLFLUSH line size */
 u_int	cpu_stdext_feature;
 u_int	cpu_thermal_feature;
+u_int	cpu_mwait_features;
+u_int	cpu_mwait_extemu;
 
 /*
  * -1: automatic (enable on h/w, disable on VMs)
