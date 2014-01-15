@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd October 9, 2011
+.Dd January 15, 2014
 .Dt SPINLOCK 9
 .Os
 .Sh NAME
@@ -136,24 +136,12 @@ code use exclusive spinlocks internally.
 Core spinlocks should not be used around large chunks of code.
 .Pp
 Holding one or more spinlocks will disable thread preemption by
-another thread (e.g. preemption by an interrupt thread), but will not
-disable FAST interrupts or IPIs.
-This means that a FAST interrupt can still operate during a spinlock,
-and any threaded interrupt (which is basically all interrupts except
-the clock interrupt) will still be scheduled for later execution, but
-will not be able to preempt the current thread.
-If you wish to disable FAST interrupts and IPIs you need to enter a
-critical section prior to obtaining the spinlock.
-.Pp
-Currently, FAST interrupts, including IPI messages, are not allowed to
-acquire any spinlocks.
-It is possible to work around this if
-.Va mycpu->gd_spinlocks_wr
-is 0.
-If one
-or the other is not zero, the FAST interrupt or IPI cannot acquire
-any spinlocks without risking a deadlock, even if the spinlocks in
-question are not related.
+another thread (e.g. preemption by an interrupt thread),
+and will prevent FAST interrupts or IPIs from running.
+This means that a FAST interrupt, IPI and any threaded interrupt
+(which is basically all interrupts except the clock interrupt)
+will still be scheduled for later execution,
+but will not be able to preempt the current thread.
 .Pp
 A thread may hold any number of exclusive
 .Em read-write
