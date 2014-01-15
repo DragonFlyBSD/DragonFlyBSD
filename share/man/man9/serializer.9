@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd April 10, 2010
+.Dd January 15, 2014
 .Dt SERIALIZER 9
 .Os
 .Sh NAME
@@ -84,11 +84,16 @@ API provides a fast locked-bus-cycle-based serialization facility
 that will serialize across blocking conditions.
 It is very similar to a lock but much faster for the common case.
 .Pp
-This API was initially designed to be a replacement for SPL calls, but
-may be used whenever a low level exclusive lock (serialization) and/or
-interrupt/device interaction is required.
-Unlike tokens this serialization is not safe from deadlocks nor is it
-recursive, and care must be taken when using it.
+This API was initially designed to be a replacement for SPL calls,
+but may be used whenever a low level exclusive lock (serialization)
+and/or interrupt/device interaction is required.
+If it is used by interrupt,
+callers should enter critical section to prevent the current thread
+holding the serializer being preempted by interrupt thread
+which may try to hold the same serializer.
+Unlike tokens this serialization is not safe from deadlocks
+nor is it recursive,
+and care must be taken when using it.
 Note that
 .Xr tsleep 9
 will not release a serializer that is being held.
@@ -117,15 +122,6 @@ is contended.
 By default,
 .Fn lwkt_serialize_adaptive_enter
 favors spinning over sleeping.
-This behavior can be changed by tuning the
-.Va debug.serialize_bolimit
-and
-.Va debug.serialize_boround
-.Xr sysctl 8
-variables.
-Note that
-.Fn lwkt_serialize_adaptive_enter
-is only available in SMP kernels.
 .Pp
 .Fn lwkt_serialize_handler_disable ,
 .Fn lwkt_serialize_handler_enable
@@ -153,10 +149,11 @@ macros assert that the serializer
 is being held/not held.
 .Sh RETURN VALUES
 The
-.Fn lwkt_serialize_try
-and
 .Fn lwkt_serialize_handler_try
-functions return 0 on success and 1 on failure.
+function return 0 on success and 1 on failure.
+The
+.Fn lwkt_serialize_try
+function return 1 on success and 0 on failure.
 .Sh FILES
 The serializer itself is implemented in
 .Pa /sys/kern/lwkt_serialize.c .
