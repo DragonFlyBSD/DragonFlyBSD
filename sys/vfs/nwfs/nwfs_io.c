@@ -302,7 +302,7 @@ nwfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *td
 	    default:
 		kprintf("nwfs_doio:  type %x unexpected\n",vp->v_type);
 		break;
-	    };
+	    }
 	    if (error) {
 		bp->b_flags |= B_ERROR;
 		bp->b_error = error;

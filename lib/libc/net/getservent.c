@@ -277,7 +277,7 @@ files_servent(void *retval, void *mdata, va_list ap)
 		break;
 	default:
 		return NS_NOTFOUND;
-	};
+	}
 
 	serv = va_arg(ap, struct servent *);
 	buffer  = va_arg(ap, char *);
@@ -445,7 +445,7 @@ files_setservent(void *retval __unused, void *mdata, va_list ap)
 		break;
 	default:
 		break;
-	};
+	}
 
 	st->compat_mode_active = 0;
 	return (NS_UNAVAIL);
@@ -502,7 +502,7 @@ nis_servent(void *retval, void *mdata, va_list ap)
 		break;
 	default:
 		return NS_NOTFOUND;
-	};
+	}
 
 	serv = va_arg(ap, struct servent *);
 	buffer  = va_arg(ap, char *);
@@ -589,7 +589,7 @@ nis_servent(void *retval, void *mdata, va_list ap)
 				}
 			}
 			break;
-		};
+		}
 
 		/* we need a room for additional \n symbol */
 		if (bufsize <=
@@ -654,7 +654,7 @@ nis_setservent(void *result __unused, void *mdata, va_list ap __unused)
 		break;
 	default:
 		break;
-	};
+	}
 
 	return (NS_UNAVAIL);
 }

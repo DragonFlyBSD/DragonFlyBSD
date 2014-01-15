@@ -1469,7 +1469,7 @@ fdstrategy(struct dev_strategy_args *ap)
 		bp->b_error = ENXIO;
 		bp->b_flags |= B_ERROR;
 		goto bad;
-	};
+	}
 
 	fdblk = 128 << (fd->ft.secsize);
 	if (bp->b_cmd != BUF_CMD_FORMAT) {
@@ -1624,7 +1624,7 @@ static int fdcpio(fdc_p fdc, buf_cmd_t cmd, caddr_t addr, u_int count)
 		if (fdc->state != PIOREAD) {
 			fdc->state = PIOREAD;
 			return(0);
-		};
+		}
 		SET_BCDR(fdc, 0, count, 0);
 		bus_space_read_multi_1(fdc->portt, fdc->porth, fdc->port_off +
 		    FDC_YE_DATAPORT, cptr, count);
@@ -1632,7 +1632,7 @@ static int fdcpio(fdc_p fdc, buf_cmd_t cmd, caddr_t addr, u_int count)
 		bus_space_write_multi_1(fdc->portt, fdc->porth, fdc->port_off +
 		    FDC_YE_DATAPORT, cptr, count);
 		SET_BCDR(fdc, 0, count, 0);
-	};
+	}
 	return(1);
 }
 
@@ -1960,7 +1960,7 @@ fdstate(fdc_p fdc)
 				callout_reset(&fd->tohandle, hz,
 						fd_iotimeout, fdc);
 				return(0);      /* will return later */
-			};
+			}
 
 		/*
 		 * write (or format) operation will fall through and

@@ -2127,7 +2127,7 @@ oce_get_func_config(POCE_SOFTC sc)
 			sc->nrssqs = MIN(sc->nrssqs, max_rss);
 		else
 			sc->nrssqs = max_rss;
-		sc->nrqs =  sc->nrssqs + 1; /* 1 for def RX */;
+		sc->nrqs =  sc->nrssqs + 1; /* 1 for def RX */
 	}
 error:
 	oce_dma_free(sc, &dma);

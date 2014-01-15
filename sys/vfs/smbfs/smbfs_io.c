@@ -328,7 +328,7 @@ smbfs_doio(struct vnode *vp, struct bio *bio, struct ucred *cr, struct thread *t
 	    default:
 		kprintf("smbfs_doio:  type %x unexpected\n",vp->v_type);
 		break;
-	    };
+	    }
 	    if (error) {
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;

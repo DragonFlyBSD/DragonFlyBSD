@@ -504,7 +504,7 @@ ubsa_baudrate(struct ubsa_softc *sc, speed_t speed)
 			      "baudrate, forcing default of 9600\n");
 		value = B230400 / B9600;
 		break;
-	};
+	}
 
 	if (speed == B0) {
 		ubsa_flow(sc, 0, 0);

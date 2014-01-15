@@ -1693,7 +1693,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			bcopy(cp, cverf, NFSX_V3CREATEVERF);
 			exclusive_flag = 1;
 			break;
-		};
+		}
 		vap->va_type = VREG;
 	} else {
 		NULLOUT(sp = nfsm_dissect(&info, NFSX_V2SATTR));
@@ -1714,7 +1714,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			break;
 		default:
 			break;
-		};
+		}
 	}
 
 	/*

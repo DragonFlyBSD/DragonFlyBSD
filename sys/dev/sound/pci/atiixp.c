@@ -244,7 +244,7 @@ atiixp_reset_aclink(struct atiixp_info *sc)
 
 		/* have to wait at least 10 usec for it to initialise */
 		DELAY(20);
-	};
+	}
 
 	/* perform a soft reset */
 	value  = atiixp_rd(sc, ATI_REG_CMD);
@@ -285,7 +285,7 @@ atiixp_reset_aclink(struct atiixp_info *sc)
 
 		/* check if its active now */
 		value = atiixp_rd(sc, ATI_REG_CMD);
-	};
+	}
 
 	if (timeout == 0)
 		device_printf(sc->dev, "giving up aclink reset\n");

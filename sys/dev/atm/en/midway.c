@@ -2444,7 +2444,7 @@ en_intr(void *arg)
 	m_freem(m);
       }
       EN_WRAPADD(0, MID_DTQ_N, idx, 1);
-    };
+    }
     sc->dtq_chip = MID_DTQ_REG2A(val);	/* sync softc */
   }
 
@@ -2526,7 +2526,7 @@ en_intr(void *arg)
 
       }
       EN_WRAPADD(0, MID_DRQ_N, idx, 1);
-    };
+    }
     sc->drq_chip = MID_DRQ_REG2A(val);	/* sync softc */
 
     if (sc->need_drqs) {	/* true if we had a DRQ shortage */
@@ -2578,7 +2578,7 @@ en_intr(void *arg)
       kprintf("%s: added VCI %d to swslist\n", sc->sc_dev.dv_xname, vci);
 #endif
       }
-    };
+    }
   }
 
   /*

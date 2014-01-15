@@ -217,7 +217,7 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 			info.mb->m_len += siz;
 		}
 		break;
-	};
+	}
 
 	/*
 	 * And the verifier...
@@ -1003,7 +1003,7 @@ nfsm_srvsattr(nfsm_info_t info, struct vattr *vap)
 	case NFSV3SATTRTIME_TOSERVER:
 		getnanotime(&vap->va_atime);
 		break;
-	};
+	}
 	NULLOUT(tl = nfsm_dissect(info, NFSX_UNSIGNED));
 	switch (fxdr_unsigned(int, *tl)) {
 	case NFSV3SATTRTIME_TOCLIENT:

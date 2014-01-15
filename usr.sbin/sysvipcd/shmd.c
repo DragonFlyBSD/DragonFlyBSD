@@ -142,7 +142,7 @@ create_sysv_file(struct shmget_msg *msg, size_t size,
 			sems->ds.sem_otime = 0;
 			//sems->ds.sem_ctime = time(NULL);
 			//semtot += nsems;
-			sems->gen = 0;;
+			sems->gen = 0;
 
 			/* Initialize each sem. */
 			memset(sems->ds.sem_base, 0, nsems + sizeof(struct sem));

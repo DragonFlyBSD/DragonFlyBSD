@@ -48,7 +48,6 @@
  * @(#)clnt_generic.c	1.40	99/04/21 SMI
  * $NetBSD: clnt_generic.c,v 1.18 2000/07/06 03:10:34 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/clnt_generic.c,v 1.15 2004/10/16 06:11:34 obrien Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_generic.c,v 1.4 2005/01/31 22:29:38 dillon Exp $
  */
 
 /*
@@ -416,7 +415,7 @@ clnt_tli_create(int fd, const struct netconfig *nconf,
 	if (madefd) {
 		CLNT_CONTROL(cl, CLSET_FD_CLOSE, NULL);
 /*		CLNT_CONTROL(cl, CLSET_POP_TIMOD, NULL);  */
-	};
+	}
 
 	return (cl);
 

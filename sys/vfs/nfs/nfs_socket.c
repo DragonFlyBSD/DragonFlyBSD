@@ -1676,7 +1676,7 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 				    *tl = 0;
 			}
 			break;
-		};
+		}
 	}
 
 	if (mrq != NULL)

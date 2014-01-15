@@ -269,7 +269,7 @@ loop:
 		rp->rc_flag |= RC_NAM;
 		rp->rc_nam = dup_sockaddr(nd->nd_nam);
 		break;
-	};
+	}
 	rp->rc_proc = nd->nd_procnum;
 	LIST_INSERT_HEAD(NFSRCHASH(nd->nd_retxid), rp, rc_hash);
 	rp->rc_flag &= ~RC_LOCKED;

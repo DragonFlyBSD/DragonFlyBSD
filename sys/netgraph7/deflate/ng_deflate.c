@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_deflate.c,v 1.3 2007/01/15 05:55:56 glebius Exp $
- * $DragonFly: src/sys/netgraph7/ng_deflate.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -510,7 +509,7 @@ ng_deflate_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 		if (*resultp == NULL) {
 			priv->stats.Errors++;
 			return (ENOMEM);
-		};
+		}
 		priv->stats.FramesComp++;
 		priv->stats.OutOctets+=outlen;
 	}
@@ -629,7 +628,7 @@ ng_deflate_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 			priv->stats.Errors++;
 			priv->seqnum = 0;
 			return (ENOMEM);
-		};
+		}
 		priv->stats.FramesPlain++;
 		priv->stats.OutOctets+=outlen;
 

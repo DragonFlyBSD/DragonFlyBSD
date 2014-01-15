@@ -318,7 +318,7 @@ nwfs_setattr(struct vop_setattr_args *ap)
 			break;
  		default:
 			return EINVAL;
-  		};
+  		}
   	}
 	error = ncp_setattr(vp, vap, ap->a_cred, td);
 	if (error && vap->va_size != VNOVAL) {

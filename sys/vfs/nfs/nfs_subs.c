@@ -1304,7 +1304,7 @@ netaddr_match(int family, union nethostaddr *haddr, struct sockaddr *nam)
 		break;
 	default:
 		break;
-	};
+	}
 	return (0);
 }
 

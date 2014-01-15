@@ -459,7 +459,7 @@ rpc_broadcast_exp(
 						      "broadcast packet");
 						stat = RPC_CANTSEND;
 						continue;
-					};
+					}
 #ifdef RPC_DEBUG
 				if (!__rpc_lowvers)
 					fprintf(stderr, "Broadcast packet sent "

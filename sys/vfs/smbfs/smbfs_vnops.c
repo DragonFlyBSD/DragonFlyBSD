@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.41 2007/11/20 21:03:50 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -326,7 +325,7 @@ smbfs_setattr(struct vop_setattr_args *ap)
 			break;
  		    default:
 			return EINVAL;
-  		};
+  		}
 		if (isreadonly)
 			return EROFS;
 		doclose = 0;

@@ -732,7 +732,7 @@ skip:
 			if (nd->nd_nam2)
 				kfree(nd->nd_nam2, M_SONAME);
 			break;
-		    };
+		    }
 		    if (nd) {
 			kfree((caddr_t)nd, M_NFSRVDESC);
 			nd = NULL;

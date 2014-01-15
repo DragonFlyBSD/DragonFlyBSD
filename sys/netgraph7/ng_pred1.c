@@ -25,7 +25,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_pred1.c,v 1.3 2008/01/27 02:04:12 mav Exp $
- * $DragonFly: src/sys/netgraph7/ng_pred1.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -442,7 +441,7 @@ ng_pred1_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	if (*resultp == NULL) {
 	    priv->stats.Errors++;
 	    return (ENOMEM);
-	};
+	}
 
 	priv->stats.OutOctets += outlen;
 
@@ -521,7 +520,7 @@ ng_pred1_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 		if (*resultp == NULL) {
 			priv->stats.Errors++;
 			return (ENOMEM);
-		};
+		}
 
 	} else {
 		priv->stats.FramesUncomp++;

@@ -205,7 +205,7 @@ m_dumpm(struct mbuf *m) {
 			kprintf("%02x ",((int)*(p++)) & 0xff);
 		}
 		m=m->m_next;
-	};
+	}
 	kprintf("\n");
 }
 #endif

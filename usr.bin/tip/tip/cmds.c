@@ -1039,7 +1039,7 @@ expand(char *name)
 	close(pivec[1]);
 	l = read(pivec[0], xname, BUFSIZ);
 	close(pivec[0]);
-	while (wait(&s) != pid);
+	while (wait(&s) != pid)
 		;
 	s &= 0377;
 	if (s != 0 && s != SIGPIPE) {

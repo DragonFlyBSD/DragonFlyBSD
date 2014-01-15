@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libncp/ncpl_subr.c,v 1.3 2000/01/01 14:21:31 bp Exp $
- * $DragonFly: src/lib/libncp/ncpl_subr.c,v 1.5 2008/09/30 16:57:05 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -362,7 +361,7 @@ ncp_args_parserc(struct ncp_args *na, char *sect, ncp_setopt_t *set_callback) {
 					return EINVAL;
 				}
 				set_callback(na);
-			};
+			}
 			break;
 		    default:
 			break;

@@ -1162,7 +1162,7 @@ sctp_timeout_handler(void *t)
 		}
 #endif /* SCTP_DEBUG */
 		break;
-	};
+	}
 #ifdef SCTP_AUDITING_ENABLED
 	sctp_audit_log(0xF1, (u_int8_t)tmr->type);
 	sctp_auditing(5, inp, stcb, net);
@@ -1484,7 +1484,7 @@ sctp_timer_start(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 #endif /* SCTP_DEBUG */
 		return (EFAULT);
 		break;
-	};
+	}
 	if ((to_ticks <= 0) || (tmr == NULL)) {
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_TIMER1) {
@@ -1630,7 +1630,7 @@ sctp_timer_stop(int t_type, struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 		}
 #endif /* SCTP_DEBUG */
 		break;
-	};
+	}
 	if (tmr == NULL)
 		return (EFAULT);
 

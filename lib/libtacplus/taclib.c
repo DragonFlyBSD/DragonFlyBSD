@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libtacplus/taclib.c,v 1.2.2.2 2002/10/09 08:50:42 pst Exp $
- *	$DragonFly: src/lib/libtacplus/taclib.c,v 1.3 2004/08/19 21:25:58 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -171,7 +170,7 @@ protocol_version(int msg_type, int var, int type)
 		default:
 		    minor = 0;
 		break;
-	    };
+	    }
 	break;
 
 	case TAC_AUTHOR:
@@ -918,7 +917,7 @@ tac_config(struct tac_handle *h, const char *path)
 				retval = -1;
 				break;
 			}
-		};
+		}
 
 		if (tac_add_server(h, host, port, secret, timeout,
 		    options) == -1) {

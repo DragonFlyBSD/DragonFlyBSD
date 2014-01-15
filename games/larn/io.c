@@ -282,7 +282,6 @@ lprintf(const char *fmt, ...)
 				cont = 0;
 				break;
 			}
-		;
 		fmt++;
 	}
 	va_end(ap);

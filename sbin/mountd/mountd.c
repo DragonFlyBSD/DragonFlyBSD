@@ -301,7 +301,7 @@ main(int argc, char **argv)
 			break;
 		default:
 			usage();
-		};
+		}
 	argc -= optind;
 	argv += optind;
 	grphead = NULL;
@@ -731,7 +731,7 @@ xdr_fhs(XDR *xdrsp, caddr_t cp)
 		if (!xdr_long(xdrsp, &len))
 			return (0);
 		return (xdr_long(xdrsp, &auth));
-	};
+	}
 	return (0);
 }
 
@@ -1434,7 +1434,7 @@ chk_host(struct dirlist *dp, struct sockaddr *saddr, int *defsetp,
 					return (1);
 				}
 			    break;
-			};
+			}
 			hp = hp->ht_next;
 		}
 	}
@@ -1783,7 +1783,7 @@ do_mount(struct exportlist *ep, struct grouplist *grp, int exflags,
 			if (cp)
 				*cp = savedc;
 			return (1);
-		};
+		}
 
 		/*
 		 * XXX:

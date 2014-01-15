@@ -389,7 +389,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		kprintf(" nfs_bioread: type %x unexpected\n",vp->v_type);
 		n = 0;
 		break;
-	    };
+	    }
 
 	    switch (vp->v_type) {
 	    case VREG:
@@ -1127,7 +1127,7 @@ nfs_doio(struct vnode *vp, struct bio *bio, struct thread *td)
 	    default:
 		kprintf("nfs_doio:  type %x unexpected\n",vp->v_type);
 		break;
-	    };
+	    }
 	    if (error) {
 		bp->b_flags |= B_ERROR;
 		bp->b_error = error;

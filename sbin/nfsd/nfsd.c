@@ -178,7 +178,7 @@ main(int argc, char **argv)
 		default:
 		case '?':
 			usage();
-		};
+		}
 	if (!tcpflag && !udpflag)
 		udpflag = 1;
 	argv += optind;

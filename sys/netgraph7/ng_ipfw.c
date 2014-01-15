@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_ipfw.c,v 1.9 2006/02/14 15:22:24 ru Exp $
- * $DragonFly: src/sys/netgraph7/ng_ipfw.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -108,7 +107,7 @@ ng_ipfw_mod_event(module_t mod, int event, void *data)
 		    != 0) {
 			log(LOG_ERR, "%s: can't create ng_ipfw node", __func__);
                 	break;
-		};
+		}
 
 		/* Try to name node */
 		if (ng_name_node(fw_node, "ipfw") != 0)
@@ -230,7 +229,7 @@ ng_ipfw_rcvdata(hook_p hook, item_p item)
 	    NULL)) == NULL) {
 		NG_FREE_M(m);
 		return (EINVAL);	/* XXX: find smth better */
-	};
+	}
 
 	switch (ngit->dir) {
 	case NG_IPFW_OUT:

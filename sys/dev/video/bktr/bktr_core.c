@@ -482,7 +482,7 @@ bktr_store_address(unit, BKTR_MEM_BUF,          buf);
 			bktr->id = BROOKTREE_879;
 			break;
 		}
-	};
+	}
 
 	bktr->clr_on_start = FALSE;
 

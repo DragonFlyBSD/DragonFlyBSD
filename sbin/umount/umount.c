@@ -336,7 +336,7 @@ checkname(char *name, char **typelist)
 				if (mntfromname == NULL && mntonname == NULL) {
 					strcpy(name, origname);
 					if (umountfs(NULL, origname,
-					    none) == 0) {;
+					    none) == 0) {
 						warnx("%s not found in "
 						    "mount table, "
 						    "unmounted it anyway",

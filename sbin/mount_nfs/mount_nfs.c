@@ -1042,7 +1042,7 @@ xdr_fh(XDR *xdrsp, struct nfhret *np)
 		if (!authfnd && (authcnt > 0 || np->auth != RPCAUTH_UNIX))
 			np->stat = EAUTH;
 		return (1);
-	};
+	}
 	return (0);
 }
 

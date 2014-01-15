@@ -262,7 +262,7 @@ urioopen(struct dev_open_args *ap)
 	{
 			sc->sc_pipeh_in = 0;
 			return EIO;
-	};
+	}
 	if (usbd_open_pipe(sc->sc_iface,
 		sc->sc_epaddr[RIO_OUT], 0, &sc->sc_pipeh_out)
 	   		!= USBD_NORMAL_COMPLETION)
@@ -271,7 +271,7 @@ urioopen(struct dev_open_args *ap)
 			sc->sc_pipeh_in = 0;
 			sc->sc_pipeh_out = 0;
 			return EIO;
-	};
+	}
 	return 0;
 }
 

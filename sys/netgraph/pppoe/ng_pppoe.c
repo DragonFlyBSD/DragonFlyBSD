@@ -1312,7 +1312,7 @@ AAA
 			code = wh->ph.code; 
 			if ( code != PADI_CODE) {
 				LEAVE(EINVAL);
-			};
+			}
 			callout_stop(&neg->timeout_ch);
 
 			/*
