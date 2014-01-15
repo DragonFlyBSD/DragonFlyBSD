@@ -238,31 +238,29 @@ atomic_poll_release_int(volatile u_int *p)
  * These functions operate on a 32 bit interrupt interlock which is defined
  * as follows:
  *
- *	bit 0-30	interrupt handler disabled bits (counter)
+ *	bit 0-29	interrupt handler wait counter
+ *	bit 30		interrupt handler disabled bit
  *	bit 31		interrupt handler currently running bit (1 = run)
  *
  * atomic_intr_cond_test(P)	Determine if the interlock is in an
  *				acquired state.  Returns 0 if it not
- *				acquired, non-zero if it is.
+ *				acquired, non-zero if it is. (not MPLOCKed)
  *
- * atomic_intr_cond_try(P)
- *				Increment the request counter and attempt to
- *				set bit 31 to acquire the interlock.  If
- *				we are unable to set bit 31 the request
- *				counter is decremented and we return -1,
- *				otherwise we return 0.
+ * atomic_intr_cond_try(P) 	Attempt to set bit 31 to acquire the
+ *				interlock.  If we are unable to set bit 31
+ *				we return 1, otherwise we return 0.
  *
  * atomic_intr_cond_enter(P, func, arg)
- *				Increment the request counter and attempt to
- *				set bit 31 to acquire the interlock.  If
- *				we are unable to set bit 31 func(arg) is
- *				called in a loop until we are able to set
- *				bit 31.
+ *				Attempt to set bit 31 to acquire the
+ *				interlock.  If we are unable to set bit 31,
+ *				the wait is incremented counter and func(arg)
+ *				is called in a loop until we are able to set
+ *				bit 31.  Once we set bit 31, wait counter
+ *				is decremented.
  *
  * atomic_intr_cond_exit(P, func, arg)
- *				Decrement the request counter and clear bit
- *				31.  If the request counter is still non-zero
- *				call func(arg) once.
+ *				Clear bit 31.  If the wait counter is still
+ *				non-zero call func(arg) once.
  *
  * atomic_intr_handler_disable(P)
  *				Set bit 30, indicating that the interrupt
@@ -283,7 +281,10 @@ atomic_poll_release_int(volatile u_int *p)
  *				Returns bit 30, 0 indicates that the handler
  *				is enabled, non-zero indicates that it is
  *				disabled.  The request counter portion of
- *				the field is ignored.
+ *				the field is ignored. (not MPLOCKed)
+ *
+ * atomic_intr_cond_inc(P)	Increment wait counter by 1.
+ * atomic_intr_cond_dec(P)	Decrement wait counter by 1.
  */
 
 #if defined(KLD_MODULE)
