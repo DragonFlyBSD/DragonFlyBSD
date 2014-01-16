@@ -782,7 +782,7 @@ xdisk_reconnect(struct service_node_opaque *xdisk)
 	 * pipe.  If we do it here we will deadlock.
 	 */
 	xaioc = malloc(sizeof(*xaioc));
-	bzero(xaioc, sizeof(xaioc));
+	bzero(xaioc, sizeof(*xaioc));
 	snprintf(xaioc->cl_label, sizeof(xaioc->cl_label),
 		 "%s", xdisk->cl_label);
 	snprintf(xaioc->fs_label, sizeof(xaioc->fs_label),
