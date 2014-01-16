@@ -80,7 +80,6 @@ priv_found:
 
 	priv->dev		= dev;
 	priv->uid               = p->td_proc->p_ucred->cr_svuid;
-	priv->uid		= p->td_ucred->cr_svuid;
 	priv->pid		= p->td_proc->p_pid;
 	priv->ioctl_count 	= 0;
 
