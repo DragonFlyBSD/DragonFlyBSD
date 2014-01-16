@@ -72,8 +72,7 @@ struct acpi_cpu_softc {
     device_t		 cpu_dev;
     struct acpi_cpux_softc *cpu_parent;
     ACPI_HANDLE		 cpu_handle;
-    struct mdglobaldata *md;
-    uint32_t		 cpu_acpi_id;	/* ACPI processor id */
+    int			 cpu_id;
     uint32_t		 cpu_p_blk;	/* ACPI P_BLK location */
     uint32_t		 cpu_p_blk_len;	/* P_BLK length (must be 6). */
     struct acpi_cx	 cpu_cx_states[MAX_CX_STATES];
@@ -239,10 +238,8 @@ acpi_cpu_cst_attach(device_t dev)
 {
     ACPI_BUFFER		   buf;
     ACPI_OBJECT		   *obj;
-    struct mdglobaldata	  *md;
     struct acpi_cpu_softc *sc;
     ACPI_STATUS		   status;
-    int			   cpu_id;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
@@ -250,10 +247,8 @@ acpi_cpu_cst_attach(device_t dev)
     sc->cpu_dev = dev;
     sc->cpu_parent = device_get_softc(device_get_parent(dev));
     sc->cpu_handle = acpi_get_handle(dev);
-    cpu_id = acpi_get_magic(dev);
-    cpu_softc[cpu_id] = sc;
-    md = (struct mdglobaldata *)globaldata_find(device_get_unit(dev));
-    sc->md = md;
+    sc->cpu_id = acpi_get_magic(dev);
+    cpu_softc[sc->cpu_id] = sc;
     cpu_smi_cmd = AcpiGbl_FADT.SmiCommand;
     cpu_cst_cnt = AcpiGbl_FADT.CstControl;
 
@@ -268,7 +263,6 @@ acpi_cpu_cst_attach(device_t dev)
     obj = (ACPI_OBJECT *)buf.Pointer;
     sc->cpu_p_blk = obj->Processor.PblkAddress;
     sc->cpu_p_blk_len = obj->Processor.PblkLength;
-    sc->cpu_acpi_id = obj->Processor.ProcId;
     AcpiOsFree(obj);
     ACPI_DEBUG_PRINT((ACPI_DB_INFO, "acpi_cpu%d: P_BLK at %#x/%d\n",
 		     device_get_unit(dev), sc->cpu_p_blk, sc->cpu_p_blk_len));
