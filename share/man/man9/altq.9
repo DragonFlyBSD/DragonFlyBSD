@@ -1,6 +1,5 @@
 .\"	$OpenBSD: altq.9,v 1.4 2001/07/12 12:41:42 itojun Exp $
 .\"	$NetBSD: altq.9,v 1.14 2007/06/24 19:26:58 rumble Exp $
-.\"	$DragonFly: src/share/man/man9/altq.9,v 1.1 2007/11/18 14:10:41 swildner Exp $
 .\"
 .\" Copyright (C) 2001
 .\" Sony Computer Science Laboratories Inc.  All rights reserved.
@@ -38,9 +37,9 @@
 .In net/if.h
 .In net/ifq_var.h
 .Ft static int
-.Fn ifq_enqueue "struct ifaltq *_ifq" "struct mbuf *_m" "struct altq_pkgattr *_pa"
+.Fn ifq_enqueue "struct ifaltq *_ifq" "struct mbuf *_m" "struct altq_pktattr *_pa"
 .Ft static int
-.Fn ifq_handoff "struct ifnet *_ifp" "struct mbuf *_m" "struct altq_pkgattr *_pa"
+.Fn ifq_handoff "struct ifnet *_ifp" "struct mbuf *_m" "struct altq_pktattr *_pa"
 .Ft struct mbuf *
 .Fn ifq_dequeue "struct ifaltq *_ifq" "struct mbuf *_mpolled"
 .Ft struct mbuf *
@@ -48,7 +47,7 @@
 .Ft void
 .Fn ifq_purge "struct ifaltq *_ifq"
 .Ft void
-.Fn ifq_classify "struct ifaltq *_ifq" "struct mbuf *_m" "uint8_t _af" "struct altq_pkgattr *_pa"
+.Fn ifq_classify "struct ifaltq *_ifq" "struct mbuf *_m" "uint8_t _af" "struct altq_pktattr *_pa"
 .Ft int
 .Fn ifq_is_empty "struct ifaltq *_ifq"
 .Ft void
