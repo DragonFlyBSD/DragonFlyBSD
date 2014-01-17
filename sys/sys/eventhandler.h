@@ -139,13 +139,13 @@ do {							\
 
 #ifdef _KERNEL
 extern eventhandler_tag	eventhandler_register(struct eventhandler_list *list, 
-					      char *name,
+					      const char *name,
 					      void *func, 
 					      void *arg, 
 					      int priority);
 extern void		eventhandler_deregister(struct eventhandler_list *list,
 						eventhandler_tag tag);
-extern struct eventhandler_list	*eventhandler_find_list(char *name);
+extern struct eventhandler_list	*eventhandler_find_list(const char *name);
 #endif /* _KERNEL */
 
 /*

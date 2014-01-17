@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_eventhandler.c,v 1.3 1999/11/16 16:28:57 phk Exp $
- * $DragonFly: src/sys/kern/subr_eventhandler.c,v 1.5 2006/09/05 03:48:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +55,7 @@ struct eventhandler_entry_generic
  * MPSAFE
  */
 eventhandler_tag
-eventhandler_register(struct eventhandler_list *list, char *name, 
+eventhandler_register(struct eventhandler_list *list, const char *name, 
 		      void *func, void *arg, int priority)
 {
     struct eventhandler_entry_generic	*eg;
@@ -142,7 +141,7 @@ eventhandler_deregister(struct eventhandler_list *list, eventhandler_tag tag)
  * Locate the requested list
  */
 struct eventhandler_list *
-eventhandler_find_list(char *name)
+eventhandler_find_list(const char *name)
 {
     struct eventhandler_list	*list;
 
