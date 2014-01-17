@@ -84,8 +84,10 @@ dm_target_stripe_init(dm_dev_t *dmv, void **target_config, char *params)
 	tsc->stripe_num = n;
 
 	ap = strsep(&params, " \t");
-	if (ap == NULL)
+	if (ap == NULL) {
+		dm_target_stripe_destroy_config(tsc);
 		return EINVAL;
+	}
 	tsc->stripe_chunksize = atoi64(ap);
 	if (tsc->stripe_chunksize < 1 ||
 	    tsc->stripe_chunksize * DEV_BSIZE > MAXPHYS) {
