@@ -72,7 +72,7 @@ struct sem_undo {
 	} un_ent[0];			/* undo entries */
 };
 
-int sysvipc_semctl (int, int, int, union semun);
+int sysvipc___semctl (int, int, int, union semun *);
 int sysvipc_semget (key_t, int, int);
 int sysvipc_semop (int, struct sembuf *, unsigned);
 

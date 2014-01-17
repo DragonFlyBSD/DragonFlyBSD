@@ -275,7 +275,8 @@ done:
 }
 
 int
-sysvipc_semctl(int semid, int semnum , int cmd, union semun arg) {
+sysvipc___semctl(int semid, int semnum , int cmd, union semun *arg)
+{
 	int i, error;
 	struct semid_pool *semaptr = NULL;
 	struct sem *semptr = NULL;
@@ -326,13 +327,13 @@ sysvipc_semctl(int semid, int semnum , int cmd, union semun arg) {
 		break;
 
 	case IPC_SET:
-		if (!arg.buf) {
+		if (!arg->buf) {
 			error = EFAULT;
 			break;
 		}
 
 		memset(&shmds, 0, sizeof(shmds)/sizeof(unsigned char));
-		memcpy(&shmds.shm_perm, &arg.buf->sem_perm,
+		memcpy(&shmds.shm_perm, &arg->buf->sem_perm,
 				sizeof(struct ipc_perm));
 		error = sysvipc_shmctl(semid, cmd, &shmds);
 		/* OBS: didn't update ctime and mode as in kernel implementation
@@ -342,7 +343,7 @@ sysvipc_semctl(int semid, int semnum , int cmd, union semun arg) {
 		break;
 
 	case IPC_STAT:
-		if (!arg.buf) {
+		if (!arg->buf) {
 			error = EFAULT;
 			break;
 		}
@@ -351,11 +352,11 @@ sysvipc_semctl(int semid, int semnum , int cmd, union semun arg) {
 		if (error)
 			break;
 
-		memcpy(&arg.buf->sem_perm, &shmds.shm_perm,
+		memcpy(&arg->buf->sem_perm, &shmds.shm_perm,
 				sizeof(struct ipc_perm));
-		arg.buf->sem_nsems = (shmds.shm_segsz - sizeof(struct semid_pool)) /
+		arg->buf->sem_nsems = (shmds.shm_segsz - sizeof(struct semid_pool)) /
 			sizeof(struct sem);
-		arg.buf->sem_ctime = shmds.shm_ctime;
+		arg->buf->sem_ctime = shmds.shm_ctime;
 
 		/* otime is semaphore specific so read it from
 		 * semaptr
@@ -363,7 +364,7 @@ sysvipc_semctl(int semid, int semnum , int cmd, union semun arg) {
 		error = try_rwlock_rdlock(semid, semaptr);
 		if (error)
 			break;
-		arg.buf->sem_otime = semaptr->ds.sem_otime;
+		arg->buf->sem_otime = semaptr->ds.sem_otime;
 		rwlock_unlock(semid, semaptr);
 		break;
 
@@ -407,7 +408,7 @@ sysvipc_semctl(int semid, int semnum , int cmd, union semun arg) {
 		break;
 
 	case GETALL:
-		if (!arg.array) {
+		if (!arg->array) {
 			error = EFAULT;
 			break;
 		}
@@ -416,7 +417,7 @@ sysvipc_semctl(int semid, int semnum , int cmd, union semun arg) {
 		if (error)
 			break;
 		for (i = 0; i < semaptr->ds.sem_nsems; i++) {
-			arg.array[i] = semaptr->ds.sem_base[i].semval;
+			arg->array[i] = semaptr->ds.sem_base[i].semval;
 		}
 		rwlock_unlock(semid, semaptr);
 		break;
@@ -444,7 +445,7 @@ sysvipc_semctl(int semid, int semnum , int cmd, union semun arg) {
 		if (error)
 			break;
 		semptr = &semaptr->ds.sem_base[semnum];
-		semptr->semval = arg.val;
+		semptr->semval = arg->val;
 		semundo_clear(semid, semnum);
 		if (semptr->semzcnt || semptr->semncnt)
 			umtx_wakeup((int *)&semptr->semval, 0);
@@ -452,7 +453,7 @@ sysvipc_semctl(int semid, int semnum , int cmd, union semun arg) {
 		break;
 
 	case SETALL:
-		if (!arg.array) {
+		if (!arg->array) {
 			error = EFAULT;
 			break;
 		}
@@ -462,7 +463,7 @@ sysvipc_semctl(int semid, int semnum , int cmd, union semun arg) {
 			break;
 		for (i = 0; i < semaptr->ds.sem_nsems; i++) {
 			semptr = &semaptr->ds.sem_base[i];
-			semptr->semval = arg.array[i];
+			semptr->semval = arg->array[i];
 			if (semptr->semzcnt || semptr->semncnt)
 				umtx_wakeup((int *)&semptr->semval, 0);
 		}

@@ -27,7 +27,7 @@ DF308.0 {
     sysvipc_msgget;
     sysvipc_msgrcv;
     sysvipc_msgsnd;
-    sysvipc_semctl;
+    sysvipc___semctl;
     sysvipc_semget;
     sysvipc_semop;
     sysvipc_shmat;

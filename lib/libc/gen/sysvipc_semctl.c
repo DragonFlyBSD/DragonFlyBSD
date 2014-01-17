@@ -23,6 +23,6 @@ semctl(int semid, int semnum, int cmd, ...)
 	va_end(ap);
 
 	if (sysvipc_userland)
-		return (sysvipc_semctl(semid, semnum, cmd, semun));
+		return (sysvipc___semctl(semid, semnum, cmd, semun_ptr));
 	return (semsys(0, semid, semnum, cmd, semun_ptr));
 }
