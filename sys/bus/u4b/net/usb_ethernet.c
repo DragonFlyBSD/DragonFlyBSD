@@ -203,6 +203,7 @@ ue_attach_post_task(struct usb_proc_msg *_task)
 
 	UE_UNLOCK(ue);
 
+	KKASSERT(!lockowned(ue->ue_lock));
 	/* XXX
 	ue->ue_unit = alloc_unr(ueunit);
 	*/
@@ -210,6 +211,7 @@ ue_attach_post_task(struct usb_proc_msg *_task)
 	usb_callout_init_mtx(&ue->ue_watchdog, ue->ue_lock, 0);
 	sysctl_ctx_init(&ue->ue_sysctl_ctx);
 
+	KKASSERT(!lockowned(ue->ue_lock));
 	error = 0;
 	ifp = if_alloc(IFT_ETHER);
 	if (ifp == NULL) {
@@ -217,11 +219,13 @@ ue_attach_post_task(struct usb_proc_msg *_task)
 		goto fail;
 	}
 
+	KKASSERT(!lockowned(ue->ue_lock));
 	ifp->if_softc = ue;
 	if_initname(ifp, "ue", ue->ue_unit);
 	if (ue->ue_methods->ue_attach_post_sub != NULL) {
 		ue->ue_ifp = ifp;
 		error = ue->ue_methods->ue_attach_post_sub(ue);
+		KKASSERT(!lockowned(ue->ue_lock));
 	} else {
 		ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 		if (ue->ue_methods->ue_ioctl != NULL)
@@ -271,6 +275,7 @@ ue_attach_post_task(struct usb_proc_msg *_task)
 	    "%parent", CTLTYPE_STRING | CTLFLAG_RD, ue, 0,
 	    ue_sysctl_parent, "A", "parent device");
 
+	KKASSERT(!lockowned(ue->ue_lock));
 	UE_LOCK(ue);
 	return;
 
@@ -344,7 +349,6 @@ uether_is_gone(struct usb_ether *ue)
 void
 uether_init(void *arg)
 {
-
 	ue_init(arg);
 }
 

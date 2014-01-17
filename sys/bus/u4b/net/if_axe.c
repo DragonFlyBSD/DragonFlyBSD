@@ -155,9 +155,11 @@ static const STRUCT_USB_HOST_ID axe_devs[] = {
 	AXE_DEV(COREGA, FETHER_USB2_TX, 0),
 	AXE_DEV(DLINK, DUBE100, 0),
 	AXE_DEV(DLINK, DUBE100B1, AXE_FLAG_772),
+	AXE_DEV(DLINK, DUBE100C1, AXE_FLAG_772B),
 	AXE_DEV(GOODWAY, GWUSB2E, 0),
 	AXE_DEV(IODATA, ETGUS2, AXE_FLAG_178),
 	AXE_DEV(JVC, MP_PRX1, 0),
+	AXE_DEV(LENOVO, ETHERNET, AXE_FLAG_772B),
 	AXE_DEV(LINKSYS2, USB200M, 0),
 	AXE_DEV(LINKSYS4, USB1000, AXE_FLAG_178),
 	AXE_DEV(LOGITEC, LAN_GTJU2A, AXE_FLAG_178),
@@ -319,7 +321,9 @@ axe_miibus_readreg(device_t dev, int phy, int reg)
 	int locked;
 
 	locked = lockowned(&sc->sc_lock);
-
+	if(!locked)
+		AXE_LOCK(sc);
+	
 	if(phy != sc->sc_phyno){
 		return(0);
 	}
@@ -330,11 +334,8 @@ axe_miibus_readreg(device_t dev, int phy, int reg)
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_SW, 0, 0, NULL);
 	axe_cmd(sc, AXE_CMD_MII_READ_REG, reg, phy, &val);
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_HW, 0, 0, NULL);
-	DPRINTFN(9,"reg     %x\n", reg);
-	DPRINTFN(9,"pre val %x\n", val);
-	val = le16toh(val);
-	DPRINTFN(9,"pos val %x\n", val);
 
+	val = le16toh(val);
 	if (AXE_IS_772(sc) && reg == MII_BMSR) {
 		/*
 		 * BMSR of AX88772 indicates that it supports extended
@@ -845,19 +846,15 @@ axe_attach_post(struct usb_ether *ue)
 	/* Initialize controller and get station address. */
 	if (sc->sc_flags & AXE_FLAG_178) {
 		axe_ax88178_init(sc);
-		sc->sc_tx_bufsz = 16 * 1024;
 		axe_cmd(sc, AXE_178_CMD_READ_NODEID, 0, 0, ue->ue_eaddr);
 	} else if (sc->sc_flags & AXE_FLAG_772) {
 		axe_ax88772_init(sc);
-		sc->sc_tx_bufsz = 8 * 1024;
 		axe_cmd(sc, AXE_178_CMD_READ_NODEID, 0, 0, ue->ue_eaddr);
 	} else if (sc->sc_flags & AXE_FLAG_772A) {
 		axe_ax88772a_init(sc);
-		sc->sc_tx_bufsz = 8 * 1024;
 		axe_cmd(sc, AXE_178_CMD_READ_NODEID, 0, 0, ue->ue_eaddr);
 	} else if (sc->sc_flags & AXE_FLAG_772B) {
 		axe_ax88772b_init(sc);
-		sc->sc_tx_bufsz = 8 * 1024;
 	} else
 		axe_cmd(sc, AXE_172_CMD_READ_NODEID, 0, 0, ue->ue_eaddr);
 
@@ -869,8 +866,9 @@ axe_attach_post(struct usb_ether *ue)
 		sc->sc_ipgs[0] = 0x15;
 		sc->sc_ipgs[1] = 0x16;
 		sc->sc_ipgs[2] = 0x1A;
-	} else
+	} else {
 		axe_cmd(sc, AXE_CMD_READ_IPG012, 0, 0, sc->sc_ipgs);
+	}
 }
 
 static int
@@ -997,7 +995,6 @@ axe_detach(device_t dev)
 	uether_ifdetach(ue);
 	lockuninit(&sc->sc_lock);
 
-
 	return (0);
 }
 
@@ -1055,7 +1052,7 @@ axe_rx_frame(struct usb_ether *ue, struct usb_page_cache *pc, int actlen)
 	error = 0;
 	if ((sc->sc_flags & AXE_FLAG_STD_FRAME) != 0) {
 		while (pos < actlen) {
-			if ((pos + sizeof(hdr)) > actlen) {
+			if ((int)(pos + sizeof(hdr)) > actlen) {
 				/* too little data */
 				error = EINVAL;
 				break;
@@ -1079,7 +1076,7 @@ axe_rx_frame(struct usb_ether *ue, struct usb_page_cache *pc, int actlen)
 		}
 	} else if ((sc->sc_flags & AXE_FLAG_CSUM_FRAME) != 0) {
 		while (pos < actlen) {
-			if ((pos + sizeof(csum_hdr)) > actlen) {
+			if ((int)(pos + sizeof(csum_hdr)) > actlen) {
 				/* too little data */
 				error = EINVAL;
 				break;
@@ -1353,7 +1350,7 @@ axe_init(struct usb_ether *ue)
 {
 	struct axe_softc *sc = uether_getsc(ue);
 	struct ifnet *ifp = uether_getifp(ue);
-	uint16_t rxmode;
+	int rxmode;
 
 	AXE_LOCK_ASSERT(sc);
 
@@ -1380,15 +1377,13 @@ axe_init(struct usb_ether *ue)
 
 	if (AXE_IS_178_FAMILY(sc)) {
 		sc->sc_flags &= ~(AXE_FLAG_STD_FRAME | AXE_FLAG_CSUM_FRAME);
-		if ((sc->sc_flags & AXE_FLAG_772B) != 0)
+		if ((sc->sc_flags & AXE_FLAG_772B) != 0) {
 			sc->sc_lenmask = AXE_CSUM_HDR_LEN_MASK;
-		else
-			sc->sc_lenmask = AXE_HDR_LEN_MASK;
-		if ((sc->sc_flags & AXE_FLAG_772B) != 0 &&
-		    (ifp->if_capenable & IFCAP_RXCSUM) != 0)
 			sc->sc_flags |= AXE_FLAG_CSUM_FRAME;
-		else
+		} else {
+			sc->sc_lenmask = AXE_HDR_LEN_MASK;
 			sc->sc_flags |= AXE_FLAG_STD_FRAME;
+		}
 	}
 
 	/* Configure TX/RX checksum offloading. */

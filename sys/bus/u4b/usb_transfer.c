@@ -2462,7 +2462,9 @@ usbd_transfer_enqueue(struct usb_xfer_queue *pq, struct usb_xfer *xfer)
 	 * Insert the USB transfer into the queue, if it is not
 	 * already on a USB transfer queue:
 	 */
+	/* mpf ? 
 	KKASSERT(xfer->wait_queue == NULL);
+	*/
 	if (xfer->wait_queue == NULL) {
 		xfer->wait_queue = pq;
 		TAILQ_INSERT_TAIL(&pq->head, xfer, wait_entry);
