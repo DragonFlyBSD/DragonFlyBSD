@@ -325,11 +325,10 @@ axe_miibus_readreg(device_t dev, int phy, int reg)
 		AXE_LOCK(sc);
 	
 	if(phy != sc->sc_phyno){
+		if(!locked)
+			AXE_UNLOCK(sc);
 		return(0);
 	}
-
-	if (!locked)
-		AXE_LOCK(sc);
 
 	axe_cmd(sc, AXE_CMD_MII_OPMODE_SW, 0, 0, NULL);
 	axe_cmd(sc, AXE_CMD_MII_READ_REG, reg, phy, &val);
