@@ -25,6 +25,10 @@
 # SUCH DAMAGE.
 #
 
+if [ ! -f /usr/pkg/sbin/pkg_info ]; then
+    exit 0
+fi
+
 # If there is a global system configuration file, suck it in.
 #
 if [ -r /etc/defaults/periodic.conf ]
