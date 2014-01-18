@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
 .\"
-.Dd July 26, 2010
+.Dd January 19, 2014
 .Dt LOCK 9
 .Os
 .Sh NAME
@@ -34,7 +34,8 @@
 .Nm lockcount ,
 .Nm lockmgr ,
 .Nm lockstatus ,
-.Nm lockmgr_printinfo
+.Nm lockmgr_printinfo ,
+.Nm lockowned
 .Nd "lockmgr family of functions"
 .Sh SYNOPSIS
 .In sys/types.h
@@ -53,6 +54,8 @@
 .Fn lockstatus "struct lock *lkp" "struct thread *td"
 .Ft void
 .Fn lockmgr_printinfo "struct lock *lkp"
+.Ft int
+.Fn lockowned "struct lock *lkp"
 .Sh DESCRIPTION
 The
 .Fn lockinit
@@ -177,6 +180,10 @@ function prints debugging information about the lock.
 It is used primarily by
 .Xr VOP_PRINT 9
 functions.
+.Pp
+The
+.Fn lockowned
+function is used to determine whether the calling thread owns a lock.
 .Sh RETURN VALUES
 The
 .Fn lockcount
@@ -201,6 +208,10 @@ A shared lock is held.
 .It Li 0
 The lock is not held by anyone.
 .El
+.Pp
+The
+.Fn lockowned
+function returns a non-zero return value if the caller owns the lock shared or exclusive.
 .Sh FILES
 The lock manager itself is implemented within the file
 .Pa /sys/kern/kern_lock.c .
