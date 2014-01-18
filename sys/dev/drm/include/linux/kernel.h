@@ -2,6 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
+ * Copyright (c) 2014 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -144,5 +145,13 @@
 typedef struct pm_message {
         int event;
 } pm_message_t;
+
+/* Swap values of a and b */
+#define swap(a, b)			\
+({					\
+	typeof(a) _swap_tmp = a;	\
+	a = b;				\
+	b = _swap_tmp;			\
+})
 
 #endif	/* _LINUX_KERNEL_H_ */
