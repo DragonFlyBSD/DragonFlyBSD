@@ -55,7 +55,7 @@
 #define	ALIGN(x, y)		roundup2((x), (y))
 #define	DIV_ROUND_UP		howmany
 
-#define	printk(X...)		printf(X)
+#define	printk(X...)		kprintf(X)
 #define	pr_debug(fmt, ...)	printk(KERN_DEBUG # fmt, ##__VA_ARGS__)
 #define udelay(t)       	DELAY(t)
 
