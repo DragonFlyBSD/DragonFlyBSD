@@ -439,27 +439,6 @@ typedef struct drm_i915_hws_addr {
 #define I915_RELOC_TYPE_1 1
 #define I915_RELOC1_STRIDE 4
 
-
-struct drm_i915_op_arg {
-	uint64_t next;
-	uint64_t reloc_ptr;
-	int handled;
-	unsigned int pad64;
-	union {
-		struct drm_bo_op_req req;
-		struct drm_bo_arg_rep rep;
-	} d;
-
-};
-
-struct drm_i915_execbuffer {
-	uint64_t ops_list;
-	uint32_t num_buffers;
-	struct drm_i915_batchbuffer batch;
-	drm_context_t context; /* for lockless use in the future */
-	struct drm_fence_arg fence_arg;
-};
-
 struct drm_i915_gem_init {
 	/**
 	 * Beginning offset in the GTT to be managed by the DRM memory

@@ -20,10 +20,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  * Authors: Dave Airlie
- *
- * $FreeBSD: head/sys/dev/drm2/drm_fixed.h 254853 2013-08-25 12:27:15Z dumbbell $
  */
-
 #ifndef DRM_FIXED_H
 #define DRM_FIXED_H
 

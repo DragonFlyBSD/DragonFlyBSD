@@ -62,4 +62,8 @@
 
 #define	uninitialized_var(x)		x = x
 
+#define __read_mostly
+#define __always_unused
+#define __must_check
+
 #endif	/* _LINUX_COMPILER_H_ */

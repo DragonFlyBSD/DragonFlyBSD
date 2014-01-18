@@ -146,22 +146,27 @@ int drm_edid_header_is_valid(const u8 *raw_edid)
 
 	return score;
 }
+EXPORT_SYMBOL(drm_edid_header_is_valid);
+
+static int edid_fixup __read_mostly = 6;
 
 /*
  * Sanity check the EDID block (base or extension).  Return 0 if the block
  * doesn't check out, or 1 if it's valid.
  */
-static bool
-drm_edid_block_valid(u8 *raw_edid)
+bool drm_edid_block_valid(u8 *raw_edid, int block, bool print_bad_edid)
 {
 	int i;
 	u8 csum = 0;
 	struct edid *edid = (struct edid *)raw_edid;
 
-	if (raw_edid[0] == 0x00) {
+	if (edid_fixup > 8 || edid_fixup < 0)
+		edid_fixup = 6;
+
+	if (block == 0) {
 		int score = drm_edid_header_is_valid(raw_edid);
 		if (score == 8) ;
-		else if (score >= 6) {
+		else if (score >= edid_fixup) {
 			DRM_DEBUG("Fixing EDID header, your hardware may be failing\n");
 			memcpy(raw_edid, edid_header, sizeof(edid_header));
 		} else {
@@ -172,7 +177,9 @@ drm_edid_block_valid(u8 *raw_edid)
 	for (i = 0; i < EDID_LENGTH; i++)
 		csum += raw_edid[i];
 	if (csum) {
-		DRM_ERROR("EDID checksum is invalid, remainder is %d\n", csum);
+		if (print_bad_edid) {
+			DRM_ERROR("EDID checksum is invalid, remainder is %d\n", csum);
+		}
 
 		/* allow CEA to slide through, switches mangle this */
 		if (raw_edid[0] != 0x02)
@@ -198,7 +205,7 @@ drm_edid_block_valid(u8 *raw_edid)
 	return 1;
 
 bad:
-	if (raw_edid) {
+	if (raw_edid && print_bad_edid) {
 		DRM_DEBUG_KMS("Raw EDID:\n");
 		if ((drm_debug & DRM_DEBUGBITS_KMS) != 0) {
 			for (i = 0; i < EDID_LENGTH; ) {
@@ -215,6 +222,7 @@ bad:
 	}
 	return 0;
 }
+EXPORT_SYMBOL(drm_edid_block_valid);
 
 /**
  * drm_edid_is_valid - sanity check EDID data
@@ -231,11 +239,12 @@ bool drm_edid_is_valid(struct edid *edid)
 		return false;
 
 	for (i = 0; i <= edid->extensions; i++)
-		if (!drm_edid_block_valid(raw + i * EDID_LENGTH))
+		if (!drm_edid_block_valid(raw + i * EDID_LENGTH, i, true))
 			return false;
 
 	return true;
 }
+EXPORT_SYMBOL(drm_edid_is_valid);
 
 #define DDC_ADDR 0x50
 #define DDC_SEGMENT_ADDR 0x30
@@ -314,6 +323,7 @@ drm_do_get_edid(struct drm_connector *connector, device_t adapter)
 {
 	int i, j = 0, valid_extensions = 0;
 	u8 *block, *new;
+	bool print_bad_edid = !connector->bad_edid_counter || (drm_debug & DRM_UT_KMS);
 
 	block = kmalloc(EDID_LENGTH, DRM_MEM_KMS, M_WAITOK | M_ZERO);
 
@@ -321,7 +331,7 @@ drm_do_get_edid(struct drm_connector *connector, device_t adapter)
 	for (i = 0; i < 4; i++) {
 		if (drm_do_probe_ddc_edid(adapter, block, 0, EDID_LENGTH))
 			goto out;
-		if (drm_edid_block_valid(block))
+		if (drm_edid_block_valid(block, 0, print_bad_edid))
 			break;
 		if (i == 0 && drm_edid_is_zero(block, EDID_LENGTH)) {
 			connector->null_edid_counter++;
@@ -337,6 +347,8 @@ drm_do_get_edid(struct drm_connector *connector, device_t adapter)
 
 	new = krealloc(block, (block[0x7e] + 1) * EDID_LENGTH, DRM_MEM_KMS,
 	    M_WAITOK);
+	if (!new)
+		goto out;
 	block = new;
 
 	for (j = 1; j <= block[0x7e]; j++) {
@@ -345,14 +357,15 @@ drm_do_get_edid(struct drm_connector *connector, device_t adapter)
 				  block + (valid_extensions + 1) * EDID_LENGTH,
 				  j, EDID_LENGTH))
 				goto out;
-			if (drm_edid_block_valid(block + (valid_extensions + 1) * EDID_LENGTH)) {
+			if (drm_edid_block_valid(block + (valid_extensions + 1) * EDID_LENGTH, j, print_bad_edid)) {
 				valid_extensions++;
 				break;
 			}
 		}
 		if (i == 4)
-			DRM_DEBUG_KMS("%s: Ignoring invalid EDID block %d.\n",
-			     drm_get_connector_name(connector), j);
+			dev_warn(connector->dev->dev,
+			 "%s: Ignoring invalid EDID block %d.\n",
+			 drm_get_connector_name(connector), j);
 	}
 
 	if (valid_extensions != block[0x7e]) {
@@ -360,18 +373,22 @@ drm_do_get_edid(struct drm_connector *connector, device_t adapter)
 		block[0x7e] = valid_extensions;
 		new = krealloc(block, (valid_extensions + 1) * EDID_LENGTH,
 		    DRM_MEM_KMS, M_WAITOK);
+		if (!new)
+			goto out;
 		block = new;
 	}
 
-	DRM_DEBUG_KMS("got EDID from %s\n", drm_get_connector_name(connector));
 	return block;
 
 carp:
-	DRM_ERROR("%s: EDID block %d invalid.\n",
-	    drm_get_connector_name(connector), j);
+	if (print_bad_edid) {
+		dev_warn(connector->dev->dev, "%s: EDID block %d invalid.\n",
+			 drm_get_connector_name(connector), j);
+	}
+	connector->bad_edid_counter++;
 
 out:
-	drm_free(block, DRM_MEM_KMS);
+	kfree(block, DRM_MEM_KMS);
 	return NULL;
 }
 
@@ -381,13 +398,14 @@ out:
  * \param adapter : i2c device adaptor
  * \return 1 on success
  */
-static bool
+bool
 drm_probe_ddc(device_t adapter)
 {
 	unsigned char out;
 
 	return (drm_do_probe_ddc_edid(adapter, &out, 0, 1) == 0);
 }
+EXPORT_SYMBOL(drm_probe_ddc);
 
 /**
  * drm_get_edid - get EDID data, if available
@@ -503,6 +521,15 @@ static void edid_fixup_preferred(struct drm_connector *connector,
 	preferred_mode->type |= DRM_MODE_TYPE_PREFERRED;
 }
 
+static bool
+mode_is_rb(const struct drm_display_mode *mode)
+{
+	return (mode->htotal - mode->hdisplay == 160) &&
+	       (mode->hsync_end - mode->hdisplay == 80) &&
+	       (mode->hsync_end - mode->hsync_start == 32) &&
+	       (mode->vsync_start - mode->vdisplay == 3);
+}
+
 /*
  * drm_mode_find_dmt - Create a copy of a mode if present in DMT
  * @dev: Device to duplicate against
@@ -515,22 +542,26 @@ static void edid_fixup_preferred(struct drm_connector *connector,
  * Return a newly allocated copy of the mode, or NULL if not found.
  */
 struct drm_display_mode *drm_mode_find_dmt(struct drm_device *dev,
-					   int hsize, int vsize, int fresh)
+					   int hsize, int vsize, int fresh,
+					   bool rb)
 {
-	struct drm_display_mode *mode = NULL;
 	int i;
 
 	for (i = 0; i < drm_num_dmt_modes; i++) {
-		struct drm_display_mode *ptr = &drm_dmt_modes[i];
-		if (hsize == ptr->hdisplay &&
-			vsize == ptr->vdisplay &&
-			fresh == drm_mode_vrefresh(ptr)) {
-			/* get the expected default mode */
-			mode = drm_mode_duplicate(dev, ptr);
-			break;
-		}
+		const struct drm_display_mode *ptr = &drm_dmt_modes[i];
+		if (hsize != ptr->hdisplay)
+			continue;
+		if (vsize != ptr->vdisplay)
+			continue;
+		if (fresh != drm_mode_vrefresh(ptr))
+			continue;
+		if (rb != mode_is_rb(ptr))
+			continue;
+
+		return drm_mode_duplicate(dev, ptr);
 	}
-	return mode;
+
+	return NULL;
 }
 EXPORT_SYMBOL(drm_mode_find_dmt);
 
@@ -759,10 +790,17 @@ drm_mode_std(struct drm_connector *connector, struct edid *edid,
 	}
 
 	/* check whether it can be found in default mode table */
-	mode = drm_mode_find_dmt(dev, hsize, vsize, vrefresh_rate);
+	if (drm_monitor_supports_rb(edid)) {
+		mode = drm_mode_find_dmt(dev, hsize, vsize, vrefresh_rate,
+					 true);
+		if (mode)
+			return mode;
+	}
+	mode = drm_mode_find_dmt(dev, hsize, vsize, vrefresh_rate, false);
 	if (mode)
 		return mode;
 
+	/* okay, generate it */
 	switch (timing_level) {
 	case LEVEL_DMT:
 		break;
@@ -776,8 +814,10 @@ drm_mode_std(struct drm_connector *connector, struct edid *edid,
 		 * secondary GTF curve.  Please don't do that.
 		 */
 		mode = drm_gtf_mode(dev, hsize, vsize, vrefresh_rate, 0, 0);
+		if (!mode)
+			return NULL;
 		if (drm_mode_hsync(mode) > drm_gtf2_hbreak(edid)) {
-			drm_free(mode, DRM_MEM_KMS);
+			drm_mode_destroy(dev, mode);
 			mode = drm_gtf_mode_complex(dev, hsize, vsize,
 						    vrefresh_rate, 0, 0,
 						    drm_gtf2_m(edid),
@@ -937,16 +977,7 @@ static struct drm_display_mode *drm_mode_detailed(struct drm_device *dev,
 }
 
 static bool
-mode_is_rb(const struct drm_display_mode *mode)
-{
-	return (mode->htotal - mode->hdisplay == 160) &&
-	       (mode->hsync_end - mode->hdisplay == 80) &&
-	       (mode->hsync_end - mode->hsync_start == 32) &&
-	       (mode->vsync_start - mode->vdisplay == 3);
-}
-
-static bool
-mode_in_hsync_range(struct drm_display_mode *mode,
+mode_in_hsync_range(const struct drm_display_mode *mode,
 		    struct edid *edid, u8 *t)
 {
 	int hsync, hmin, hmax;
@@ -963,7 +994,7 @@ mode_in_hsync_range(struct drm_display_mode *mode,
 }
 
 static bool
-mode_in_vsync_range(struct drm_display_mode *mode,
+mode_in_vsync_range(const struct drm_display_mode *mode,
 		    struct edid *edid, u8 *t)
 {
 	int vsync, vmin, vmax;
@@ -995,7 +1026,7 @@ range_pixel_clock(struct edid *edid, u8 *t)
 }
 
 static bool
-mode_in_range(struct drm_display_mode *mode, struct edid *edid,
+mode_in_range(const struct drm_display_mode *mode, struct edid *edid,
 	      struct detailed_timing *timing)
 {
 	u32 max_clock;
@@ -1084,14 +1115,14 @@ drm_est3_modes(struct drm_connector *connector, struct detailed_timing *timing)
 	for (i = 0; i < 6; i++) {
 		for (j = 7; j > 0; j--) {
 			m = (i * 8) + (7 - j);
-			if (m >= DRM_ARRAY_SIZE(est3_modes))
+			if (m >= ARRAY_SIZE(est3_modes))
 				break;
 			if (est[i] & (1 << j)) {
 				mode = drm_mode_find_dmt(connector->dev,
 							 est3_modes[m].w,
 							 est3_modes[m].h,
-							 est3_modes[m].r
-							 /*, est3_modes[m].rb */);
+							 est3_modes[m].r,
+							 est3_modes[m].rb);
 				if (mode) {
 					drm_mode_probed_add(connector, mode);
 					modes++;
@@ -1364,6 +1395,7 @@ u8 *drm_find_cea_extension(struct edid *edid)
 
 	return edid_ext;
 }
+EXPORT_SYMBOL(drm_find_cea_extension);
 
 static void
 parse_hdmi_vsdb(struct drm_connector *connector, uint8_t *db)
@@ -1767,7 +1799,7 @@ int drm_add_modes_noedid(struct drm_connector *connector,
 		vdisplay = 0;
 
 	for (i = 0; i < count; i++) {
-		struct drm_display_mode *ptr = &drm_dmt_modes[i];
+		const struct drm_display_mode *ptr = &drm_dmt_modes[i];
 		if (hdisplay && vdisplay) {
 			/*
 			 * Only when two are valid, they will be used to check

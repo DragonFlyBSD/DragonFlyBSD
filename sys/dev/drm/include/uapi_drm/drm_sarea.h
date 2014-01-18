@@ -2,10 +2,10 @@
  * \file drm_sarea.h
  * \brief SAREA definitions
  *
- * \author Michel D�zer <michel@daenzer.net>
+ * \author Michel Dänzer <michel@daenzer.net>
  */
 
-/*-
+/*
  * Copyright 2002 Tungsten Graphics, Inc., Cedar Park, Texas.
  * All Rights Reserved.
  *
@@ -32,16 +32,18 @@
 #ifndef _DRM_SAREA_H_
 #define _DRM_SAREA_H_
 
-#include "drm.h"
+#include <uapi_drm/drm.h>
 
 /* SAREA area needs to be at least a page */
 #if defined(__alpha__)
-#define SAREA_MAX                       0x2000
+#define SAREA_MAX                       0x2000U
+#elif defined(__mips__)
+#define SAREA_MAX                       0x4000U
 #elif defined(__ia64__)
-#define SAREA_MAX                       0x10000	/* 64kB */
+#define SAREA_MAX                       0x10000U	/* 64kB */
 #else
 /* Intel 830M driver needs at least 8k SAREA */
-#define SAREA_MAX                       0x2000UL
+#define SAREA_MAX                       0x2000U
 #endif
 
 /** Maximum number of drawables in the SAREA */

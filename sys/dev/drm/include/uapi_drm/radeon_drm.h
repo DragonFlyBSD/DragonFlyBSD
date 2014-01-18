@@ -28,8 +28,6 @@
  *    Kevin E. Martin <martin@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *    Keith Whitwell <keith@tungstengraphics.com>
- *
- * $FreeBSD: head/sys/dev/drm2/radeon/radeon_drm.h 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
 #ifndef __RADEON_DRM_H__
@@ -759,7 +757,7 @@ typedef struct drm_radeon_irq_wait {
 
 typedef struct drm_radeon_setparam {
 	unsigned int param;
-	int64_t value;
+	__s64 value;
 } drm_radeon_setparam_t;
 
 #define RADEON_SETPARAM_FB_LOCATION    1	/* determined framebuffer location */

@@ -291,8 +291,6 @@ int drm_framebuffer_init(struct drm_device *dev, struct drm_framebuffer *fb,
 {
 	int ret;
 
-	DRM_MODE_CONFIG_ASSERT_LOCKED(dev);
-
 	ret = drm_mode_object_get(dev, &fb->base, DRM_MODE_OBJECT_FB);
 	if (ret)
 		return ret;
@@ -322,8 +320,6 @@ void drm_framebuffer_cleanup(struct drm_framebuffer *fb)
 	struct drm_plane *plane;
 	struct drm_mode_set set;
 	int ret;
-
-	DRM_MODE_CONFIG_ASSERT_LOCKED(dev);
 
 	/* remove from any CRTC */
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
@@ -404,8 +400,6 @@ void drm_crtc_cleanup(struct drm_crtc *crtc)
 {
 	struct drm_device *dev = crtc->dev;
 
-	DRM_MODE_CONFIG_ASSERT_LOCKED(dev);
-
 	if (crtc->gamma_store) {
 		drm_free(crtc->gamma_store, DRM_MEM_KMS);
 		crtc->gamma_store = NULL;
@@ -430,8 +424,6 @@ void drm_mode_probed_add(struct drm_connector *connector,
 			 struct drm_display_mode *mode)
 {
 
-	DRM_MODE_CONFIG_ASSERT_LOCKED(connector->dev);
-
 	list_add(&mode->head, &connector->probed_modes);
 }
 
@@ -448,8 +440,6 @@ void drm_mode_probed_add(struct drm_connector *connector,
 void drm_mode_remove(struct drm_connector *connector,
 		     struct drm_display_mode *mode)
 {
-
-	DRM_MODE_CONFIG_ASSERT_LOCKED(connector->dev);
 
 	list_del(&mode->head);
 	drm_mode_destroy(connector->dev, mode);

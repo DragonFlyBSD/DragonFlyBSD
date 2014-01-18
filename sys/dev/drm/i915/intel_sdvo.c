@@ -2614,9 +2614,9 @@ bool intel_sdvo_init(struct drm_device *dev, int sdvo_reg)
 	}
 
 	if (IS_SDVOB(sdvo_reg))
-		dev_priv->hotplug_supported_mask |= SDVOB_HOTPLUG_INT_STATUS;
+		dev_priv->hotplug_supported_mask |= SDVOB_HOTPLUG_INT_STATUS_I915;
 	else
-		dev_priv->hotplug_supported_mask |= SDVOC_HOTPLUG_INT_STATUS;
+		dev_priv->hotplug_supported_mask |= SDVOC_HOTPLUG_INT_STATUS_I915;
 
 	drm_encoder_helper_add(&intel_encoder->base, &intel_sdvo_helper_funcs);
 

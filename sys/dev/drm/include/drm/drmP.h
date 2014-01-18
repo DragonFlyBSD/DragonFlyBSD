@@ -386,6 +386,8 @@ struct drm_msi_blacklist_entry
 	int device;
 };
 
+#define DRM_IOCTL_NR(n)                ((n) & 0xff)
+
 #define DRM_AUTH	0x1
 #define DRM_MASTER	0x2
 #define DRM_ROOT_ONLY	0x4

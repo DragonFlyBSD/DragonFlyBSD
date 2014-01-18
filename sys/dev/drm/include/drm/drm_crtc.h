@@ -842,13 +842,6 @@ struct drm_prop_enum_list {
 	char *name;
 };
 
-#if defined(MODE_SETTING_LOCKING_IS_NOT_BROKEN)
-#define	DRM_MODE_CONFIG_ASSERT_LOCKED(dev) \
-	sx_assert(&dev->mode_config.mutex, SA_XLOCKED)
-#else
-#define	DRM_MODE_CONFIG_ASSERT_LOCKED(dev)
-#endif
-
 extern char *drm_get_dirty_info_name(int val);
 extern char *drm_get_connector_status_name(enum drm_connector_status status);
 
@@ -889,6 +882,7 @@ extern char *drm_get_tv_subconnector_name(int val);
 extern char *drm_get_tv_select_name(int val);
 extern void drm_fb_release(struct drm_file *file_priv);
 extern int drm_mode_group_init_legacy_group(struct drm_device *dev, struct drm_mode_group *group);
+extern bool drm_probe_ddc(device_t adapter);
 extern struct edid *drm_get_edid(struct drm_connector *connector,
 				 device_t adapter);
 extern int drm_add_edid_modes(struct drm_connector *connector, struct edid *edid);
@@ -919,9 +913,6 @@ extern void drm_mode_list_concat(struct list_head *head,
 extern void drm_mode_validate_size(struct drm_device *dev,
 				   struct list_head *mode_list,
 				   int maxX, int maxY, int maxPitch);
-extern void drm_mode_validate_clocks(struct drm_device *dev,
-			      struct list_head *mode_list,
-			      int *min, int *max, int n_ranges);
 extern void drm_mode_prune_invalid(struct drm_device *dev,
 				   struct list_head *mode_list, bool verbose);
 extern void drm_mode_sort(struct list_head *mode_list);
@@ -1061,9 +1052,11 @@ extern int drm_add_modes_noedid(struct drm_connector *connector,
 extern uint8_t drm_mode_cea_vic(const struct drm_display_mode *mode);
 
 extern int drm_edid_header_is_valid(const u8 *raw_edid);
+extern bool drm_edid_block_valid(u8 *raw_edid, int block, bool print_bad_edid);
 extern bool drm_edid_is_valid(struct edid *edid);
 struct drm_display_mode *drm_mode_find_dmt(struct drm_device *dev,
-					   int hsize, int vsize, int fresh);
+					   int hsize, int vsize, int fresh,
+					   bool rb);
 
 extern int drm_mode_create_dumb_ioctl(struct drm_device *dev,
 				      void *data, struct drm_file *file_priv);

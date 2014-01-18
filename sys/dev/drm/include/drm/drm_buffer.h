@@ -23,7 +23,7 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- * $FreeBSD: head/sys/dev/drm2/drm_buffer.h 254794 2013-08-24 16:14:20Z dumbbell $
+ *
  **************************************************************************/
 /*
  * Multipart buffer for coping data which is larger than the page size.
@@ -35,7 +35,7 @@
 #ifndef _DRM_BUFFER_H_
 #define _DRM_BUFFER_H_
 
-#include "drmP.h"
+#include <drm/drmP.h>
 
 struct drm_buffer {
 	int iterator;
