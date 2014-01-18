@@ -623,7 +623,7 @@ acpi_cpu_startup(void *arg)
 	    sc = device_get_softc(cpu_devices[i]);
 	    acpi_cpu_generic_cx_probe(sc);
 	    if (sc->cpu_cx_count > cpu_cx_count)
-		    cpu_cx_count = sc->cpu_cx_count;
+		cpu_cx_count = sc->cpu_cx_count;
 	}
 
 	/*
@@ -645,9 +645,8 @@ acpi_cpu_startup(void *arg)
 	 */
 	for (i = 0; i < cpu_ndevices; i++) {
 	    sc = device_get_softc(cpu_devices[i]);
-	    if (cpu_quirks & CPU_QUIRK_NO_C3) {
+	    if (cpu_quirks & CPU_QUIRK_NO_C3)
 		sc->cpu_cx_count = sc->cpu_non_c3 + 1;
-	    }
 	    if (sc->cpu_cx_count > cpu_cx_count)
 		cpu_cx_count = sc->cpu_cx_count;
 	    sc->cpu_parent->cpux_cst_notify = acpi_cpu_cst_notify;
