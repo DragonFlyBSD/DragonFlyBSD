@@ -1427,7 +1427,7 @@ ppc_exec_microseq(device_t dev, struct ppb_microseq **p_msq)
 
 		case MS_OP_ADELAY:
 			if (mi->arg[0].i)
-				tsleep(NULL, 0, "ppbdelay",
+				tsleep(ppc_exec_microseq, 0, "ppbdelay",
 						mi->arg[0].i * (hz/1000));
 			INCR_PC;
 			break;
