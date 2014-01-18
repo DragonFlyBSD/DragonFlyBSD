@@ -213,14 +213,16 @@ void	hexdump (const void *ptr, int length, const char *hdr, int flags);
 #define	HD_OMIT_COUNT	(1 << 16)
 #define	HD_OMIT_HEX	(1 << 17)
 #define	HD_OMIT_CHARS	(1 << 18)
-int	ksscanf (const char *, char const *, ...) __scanflike(2, 3);
-int	kvsscanf (const char *, char const *, __va_list) __scanflike(2, 0);
+int	ksscanf(const char *, char const *, ...)
+	    __nonnull(1) __nonnull(2) __scanflike(2, 3);
+int	kvsscanf(const char *, char const *, __va_list)
+	    __nonnull(1) __nonnull(2) __scanflike(2, 0);
 void	kvasfree(char **);
 
-long	strtol (const char *, char **, int);
-u_long	strtoul (const char *, char **, int);
-quad_t	strtoq (const char *, char **, int);
-u_quad_t strtouq (const char *, char **, int);
+long	strtol(const char *, char **, int) __nonnull(1);
+u_long	strtoul(const char *, char **, int) __nonnull(1);
+quad_t	strtoq(const char *, char **, int) __nonnull(1);
+u_quad_t strtouq(const char *, char **, int) __nonnull(1);
 
 /*
  * note: some functions commonly used by device drivers may be passed
@@ -231,22 +233,31 @@ u_quad_t strtouq (const char *, char **, int);
  * NOTE: bcopyi() - is a dumb int-granular bcopy (len is still in bytes).
  *		    This routine is explicitly not meant to be sophisticated.
  */
-void	bcopyb (const void *from, void *to, size_t len);
-void	bcopyi (const void *from, void *to, size_t len);
-void	bcopy (volatile const void *from, volatile void *to, size_t len);
-void	ovbcopy (const void *from, void *to, size_t len);
-void	bzero (volatile void *buf, size_t len);
-void	bzeront (volatile void *buf, size_t len);
-void	*memcpy (void *to, const void *from, size_t len);
+void	bcopyb(const void *from, void *to, size_t len)
+	    __nonnull(1) __nonnull(2);
+void	bcopyi(const void *from, void *to, size_t len)
+	    __nonnull(1) __nonnull(2);
+void	bcopy(volatile const void *from, volatile void *to, size_t len)
+	    __nonnull(1) __nonnull(2);
+void	ovbcopy(const void *from, void *to, size_t len)
+	    __nonnull(1) __nonnull(2);
+void	bzero(volatile void *buf, size_t len) __nonnull(1);
+void	bzeront(volatile void *buf, size_t len) __nonnull(1);
+void	*memcpy(void *to, const void *from, size_t len)
+	    __nonnull(1) __nonnull(2);
 
 int	copystr (const void *kfaddr, void *kdaddr, size_t len,
-		size_t *lencopied);
+		size_t *lencopied) __nonnull(1) __nonnull(2);
 int	copyinstr (const void *udaddr, void *kaddr, size_t len,
-		size_t *lencopied);
-int	copyin (const void *udaddr, void *kaddr, size_t len);
-int	copyin_nofault (const void *udaddr, void *kaddr, size_t len);
-int	copyout (const void *kaddr, void *udaddr, size_t len);
-int	copyout_nofault (const void *kaddr, void *udaddr, size_t len);
+		size_t *lencopied) __nonnull(1) __nonnull(2);
+int	copyin(const void *udaddr, void *kaddr, size_t len)
+	    __nonnull(1) __nonnull(2);
+int	copyin_nofault(const void *udaddr, void *kaddr, size_t len)
+	    __nonnull(1) __nonnull(2);
+int	copyout(const void *kaddr, void *udaddr, size_t len)
+	    __nonnull(1) __nonnull(2);
+int	copyout_nofault(const void *kaddr, void *udaddr, size_t len)
+	    __nonnull(1) __nonnull(2);
 
 int	fubyte (const void *base);
 int	subyte (void *base, int byte);
@@ -349,23 +360,29 @@ extern struct globaldata	*panic_cpu_gd;
  * Common `proc' functions are declared here so that proc.h can be included
  * less often.
  */
-int	tsleep (const volatile void *, int, const char *, int);
-int	ssleep (const volatile void *, struct spinlock *, int, const char *, int);
-int	lksleep (const volatile void *, struct lock *, int, const char *, int);
-int	mtxsleep (const volatile void *, struct mtx *, int, const char *, int);
-int	zsleep(const volatile void *, struct lwkt_serialize *, int, const char *, int);
-void	tsleep_interlock (const volatile void *, int);
+int	tsleep(const volatile void *, int, const char *, int) __nonnull(1);
+int	ssleep(const volatile void *, struct spinlock *, int, const char *, int)
+	    __nonnull(1);
+int	lksleep(const volatile void *, struct lock *, int, const char *, int)
+	    __nonnull(1);
+int	mtxsleep(const volatile void *, struct mtx *, int, const char *, int)
+	    __nonnull(1);
+int	zsleep(const volatile void *, struct lwkt_serialize *, int, const char *, int)
+	    __nonnull(1);
+void	tsleep_interlock(const volatile void *, int) __nonnull(1);
 void	tsleep_remove (struct thread *);
 int	lwkt_sleep (const char *, int);
 void	tstop (void);
-void	wakeup (const volatile void *chan);
-void	wakeup_one (const volatile void *chan);
-void	wakeup_mycpu (const volatile void *chan);
-void	wakeup_mycpu_one (const volatile void *chan);
-void	wakeup_oncpu (struct globaldata *gd, const volatile void *chan);
-void	wakeup_oncpu_one (struct globaldata *gd, const volatile void *chan);
-void	wakeup_domain (const volatile void *chan, int domain);
-void	wakeup_domain_one (const volatile void *chan, int domain);
+void	wakeup(const volatile void *chan) __nonnull(1);
+void	wakeup_one(const volatile void *chan) __nonnull(1);
+void	wakeup_mycpu(const volatile void *chan) __nonnull(1);
+void	wakeup_mycpu_one(const volatile void *chan) __nonnull(1);
+void	wakeup_oncpu(struct globaldata *gd, const volatile void *chan)
+	    __nonnull(2);
+void	wakeup_oncpu_one(struct globaldata *gd, const volatile void *chan)
+	    __nonnull(2);
+void	wakeup_domain(const volatile void *chan, int domain) __nonnull(1);
+void	wakeup_domain_one(const volatile void *chan, int domain) __nonnull(1);
 void	wakeup_start_delayed(void);
 void	wakeup_end_delayed(void);
 
