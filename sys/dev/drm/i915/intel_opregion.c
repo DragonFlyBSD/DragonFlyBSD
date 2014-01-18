@@ -383,7 +383,7 @@ blind_set:
 	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
 		int output_type = ACPI_OTHER_OUTPUT;
 		if (i >= 8) {
-			device_printf(dev->device,
+			device_printf(dev->dev,
 				    "More than 8 outputs detected\n");
 			return;
 		}
@@ -501,7 +501,7 @@ int intel_opregion_setup(struct drm_device *dev)
 	u32 asls, mboxes;
 	int err = 0;
 
-	asls = pci_read_config(dev->device, PCI_ASLS, 4);
+	asls = pci_read_config(dev->dev, PCI_ASLS, 4);
 	DRM_DEBUG("graphic opregion physical addr: 0x%x\n", asls);
 	if (asls == 0) {
 		DRM_DEBUG("ACPI OpRegion not supported!\n");

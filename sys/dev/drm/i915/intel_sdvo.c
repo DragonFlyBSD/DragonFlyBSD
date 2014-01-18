@@ -1854,7 +1854,7 @@ static void intel_sdvo_enc_destroy(struct drm_encoder *encoder)
 		drm_mode_destroy(encoder->dev,
 				 intel_sdvo->sdvo_lvds_fixed_mode);
 
-	device_delete_child(intel_sdvo->base.base.dev->device,
+	device_delete_child(intel_sdvo->base.base.dev->dev,
 	    intel_sdvo->ddc_iic_bus);
 	intel_encoder_destroy(encoder);
 }
@@ -2540,7 +2540,7 @@ intel_sdvo_init_ddc_proxy(struct intel_sdvo *sdvo, struct drm_device *dev,
 	struct intel_sdvo_ddc_proxy_sc *sc;
 	int ret;
 
-	sdvo->ddc_iic_bus = device_add_child(dev->device,
+	sdvo->ddc_iic_bus = device_add_child(dev->dev,
 	    "intel_sdvo_ddc_proxy", sdvo_reg);
 	if (sdvo->ddc_iic_bus == NULL) {
 		DRM_ERROR("cannot create ddc proxy bus %d\n", sdvo_reg);
@@ -2551,7 +2551,7 @@ intel_sdvo_init_ddc_proxy(struct intel_sdvo *sdvo, struct drm_device *dev,
 	if (ret != 0) {
 		DRM_ERROR("cannot attach proxy bus %d error %d\n",
 		    sdvo_reg, ret);
-		device_delete_child(dev->device, sdvo->ddc_iic_bus);
+		device_delete_child(dev->dev, sdvo->ddc_iic_bus);
 		return (false);
 	}
 	sc = device_get_softc(sdvo->ddc_iic_bus);

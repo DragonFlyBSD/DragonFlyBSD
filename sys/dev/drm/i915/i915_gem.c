@@ -300,7 +300,7 @@ i915_gem_do_init(struct drm_device *dev, unsigned long start,
 
 	/* Take over this portion of the GTT */
 	intel_gtt_clear_range(start / PAGE_SIZE, (end-start) / PAGE_SIZE);
-	device_printf(dev->device,
+	device_printf(dev->dev,
 	    "taking over the fictitious range 0x%lx-0x%lx\n",
 	    dev->agp->base + start, dev->agp->base + start + mappable);
 	error = -vm_phys_fictitious_reg_range(dev->agp->base + start,

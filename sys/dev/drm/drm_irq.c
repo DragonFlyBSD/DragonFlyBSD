@@ -94,7 +94,7 @@ drm_irq_install(struct drm_device *dev)
 	DRM_UNLOCK(dev);
 
 	/* Install handler */
-	retcode = bus_setup_intr(dev->device, dev->irqr, INTR_MPSAFE,
+	retcode = bus_setup_intr(dev->dev, dev->irqr, INTR_MPSAFE,
 	    dev->driver->irq_handler, dev, &dev->irqh, &dev->irq_lock);
 	if (retcode != 0)
 		goto err;
@@ -107,7 +107,7 @@ drm_irq_install(struct drm_device *dev)
 
 	return (0);
 err:
-	device_printf(dev->device, "Error setting interrupt: %d\n", retcode);
+	device_printf(dev->dev, "Error setting interrupt: %d\n", retcode);
 	dev->irq_enabled = 0;
 
 	return (retcode);
@@ -142,7 +142,7 @@ int drm_irq_uninstall(struct drm_device *dev)
 		dev->driver->irq_uninstall(dev);
 
 	DRM_UNLOCK(dev);
-	bus_teardown_intr(dev->device, dev->irqr, dev->irqh);
+	bus_teardown_intr(dev->dev, dev->irqr, dev->irqh);
 	DRM_LOCK(dev);
 
 	return 0;

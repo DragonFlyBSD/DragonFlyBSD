@@ -1091,10 +1091,10 @@ intel_alloc_mchbar_resource(struct drm_device *dev)
 #endif
 
 	/* Get some space for it */
-	vga = device_get_parent(dev->device);
+	vga = device_get_parent(dev->dev);
 	dev_priv->mch_res_rid = 0x100;
 	dev_priv->mch_res = BUS_ALLOC_RESOURCE(device_get_parent(vga),
-	    dev->device, SYS_RES_MEMORY, &dev_priv->mch_res_rid, 0, ~0UL,
+	    dev->dev, SYS_RES_MEMORY, &dev_priv->mch_res_rid, 0, ~0UL,
 	    MCHBAR_SIZE, RF_ACTIVE | RF_SHAREABLE, -1);
 	if (dev_priv->mch_res == NULL) {
 		DRM_ERROR("failed mchbar resource alloc\n");
@@ -1181,10 +1181,10 @@ intel_teardown_mchbar(struct drm_device *dev)
 	}
 
 	if (dev_priv->mch_res != NULL) {
-		vga = device_get_parent(dev->device);
-		BUS_DEACTIVATE_RESOURCE(device_get_parent(vga), dev->device,
+		vga = device_get_parent(dev->dev);
+		BUS_DEACTIVATE_RESOURCE(device_get_parent(vga), dev->dev,
 		    SYS_RES_MEMORY, dev_priv->mch_res_rid, dev_priv->mch_res);
-		BUS_RELEASE_RESOURCE(device_get_parent(vga), dev->device,
+		BUS_RELEASE_RESOURCE(device_get_parent(vga), dev->dev,
 		    SYS_RES_MEMORY, dev_priv->mch_res_rid, dev_priv->mch_res);
 		dev_priv->mch_res = NULL;
 	}
@@ -1376,7 +1376,7 @@ i915_driver_unload_int(struct drm_device *dev, bool locked)
 	if (dev_priv->tq != NULL)
 		taskqueue_free(dev_priv->tq);
 
-	bus_generic_detach(dev->device);
+	bus_generic_detach(dev->dev);
 	drm_rmmap(dev, dev_priv->mmio_map);
 	intel_teardown_gmbus(dev);
 

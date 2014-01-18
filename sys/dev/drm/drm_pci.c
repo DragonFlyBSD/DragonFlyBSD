@@ -138,7 +138,7 @@ int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
 	if (!drm_device_is_pcie(dev))
 		return -EINVAL;
 
-	root = device_get_parent(dev->device);
+	root = device_get_parent(dev->dev);
 
 	pos = 0;
 	pci_find_extcap(root, PCIY_EXPRESS, &pos);

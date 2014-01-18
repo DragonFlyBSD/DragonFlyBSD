@@ -1063,7 +1063,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		/* set the radeon hw i2c adapter */
 		ksnprintf(i2c->name, sizeof(i2c->name),
 			  "Radeon i2c hw bus %s", name);
-		iicbus_dev = device_add_child(dev->device, "radeon_hw_i2c", -1);
+		iicbus_dev = device_add_child(dev->dev, "radeon_hw_i2c", -1);
 		if (iicbus_dev == NULL) {
 			DRM_ERROR("Failed to create bridge for hw i2c %s\n",
 			    name);
@@ -1076,14 +1076,14 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		if (ret != 0) {
 			DRM_ERROR("Attach failed for bridge for hw i2c %s\n",
 			    name);
-			device_delete_child(dev->device, iicbus_dev);
+			device_delete_child(dev->dev, iicbus_dev);
 			goto out_free;
 		}
 
 		i2c->adapter = device_find_child(iicbus_dev, "iicbus", -1);
 		if (i2c->adapter == NULL) {
 			DRM_ERROR("hw i2c bridge doesn't have iicbus child\n");
-			device_delete_child(dev->device, iicbus_dev);
+			device_delete_child(dev->dev, iicbus_dev);
 			goto out_free;
 		}
 	} else if (rec->hw_capable &&
@@ -1092,7 +1092,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		/* hw i2c using atom */
 		ksnprintf(i2c->name, sizeof(i2c->name),
 			  "Radeon i2c hw bus %s", name);
-		iicbus_dev = device_add_child(dev->device, "radeon_atom_hw_i2c", -1);
+		iicbus_dev = device_add_child(dev->dev, "radeon_atom_hw_i2c", -1);
 		if (iicbus_dev == NULL) {
 			DRM_ERROR("Failed to create bridge for hw i2c %s\n",
 			    name);
@@ -1105,14 +1105,14 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		if (ret != 0) {
 			DRM_ERROR("Attach failed for bridge for hw i2c %s\n",
 			    name);
-			device_delete_child(dev->device, iicbus_dev);
+			device_delete_child(dev->dev, iicbus_dev);
 			goto out_free;
 		}
 
 		i2c->adapter = device_find_child(iicbus_dev, "iicbus", -1);
 		if (i2c->adapter == NULL) {
 			DRM_ERROR("hw i2c bridge doesn't have iicbus child\n");
-			device_delete_child(dev->device, iicbus_dev);
+			device_delete_child(dev->dev, iicbus_dev);
 			goto out_free;
 		}
 	} else {
@@ -1121,7 +1121,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		/* set the radeon bit adapter */
 		ksnprintf(i2c->name, sizeof(i2c->name),
 			  "Radeon i2c bit bus %s", name);
-		iicbus_dev = device_add_child(dev->device, "radeon_iicbb", -1);
+		iicbus_dev = device_add_child(dev->dev, "radeon_iicbb", -1);
 		if (iicbus_dev == NULL) {
 			DRM_ERROR("Failed to create bridge for bb i2c %s\n",
 			    name);
@@ -1134,14 +1134,14 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		if (ret != 0) {
 			DRM_ERROR("Attach failed for bridge for bb i2c %s\n",
 			    name);
-			device_delete_child(dev->device, iicbus_dev);
+			device_delete_child(dev->dev, iicbus_dev);
 			goto out_free;
 		}
 
 		iicbb_dev = device_find_child(iicbus_dev, "iicbb", -1);
 		if (iicbb_dev == NULL) {
 			DRM_ERROR("bb i2c bridge doesn't have iicbb child\n");
-			device_delete_child(dev->device, iicbus_dev);
+			device_delete_child(dev->dev, iicbus_dev);
 			goto out_free;
 		}
 
@@ -1149,7 +1149,7 @@ struct radeon_i2c_chan *radeon_i2c_create(struct drm_device *dev,
 		if (i2c->adapter == NULL) {
 			DRM_ERROR(
 			    "bbbus bridge doesn't have iicbus grandchild\n");
-			device_delete_child(dev->device, iicbus_dev);
+			device_delete_child(dev->dev, iicbus_dev);
 			goto out_free;
 		}
 	}
@@ -1181,7 +1181,7 @@ struct radeon_i2c_chan *radeon_i2c_create_dp(struct drm_device *dev,
 	i2c->rec = *rec;
 	i2c->dev = dev;
 	ksnprintf(i2c->name, sizeof(i2c->name), "Radeon aux bus %s", name);
-	ret = iic_dp_aux_add_bus(dev->device, i2c->name,
+	ret = iic_dp_aux_add_bus(dev->dev, i2c->name,
 	    radeon_dp_i2c_aux_ch, i2c, &i2c->iic_bus,
 	    &i2c->adapter);
 	if (ret) {
@@ -1204,7 +1204,7 @@ void radeon_i2c_destroy(struct radeon_i2c_chan *i2c)
 		int ret;
 
 		get_mplock();
-		ret = device_delete_child(i2c->dev->device, i2c->iic_bus);
+		ret = device_delete_child(i2c->dev->dev, i2c->iic_bus);
 		rel_mplock();
 		KASSERT(ret == 0, ("unable to detach iic bus %s: %d",
 		    i2c->name, ret));

@@ -904,7 +904,6 @@ struct drm_pending_vblank_event {
  * may contain multiple heads.
  */
 struct drm_device {
-	struct drm_driver *driver;
 	drm_pci_id_list_t *id_entry;	/* PCI ID, name, and chipset private */
 
 	uint16_t pci_device;		/* PCI device id */
@@ -914,7 +913,6 @@ struct drm_device {
 
 	char		  *unique;	/* Unique identifier: e.g., busid  */
 	int		  unique_len;	/* Length of unique field	   */
-	device_t	  device;	/* Device instance from newbus     */
 	struct cdev	  *devnode;	/* Device number for mknod	   */
 	int		  if_version;	/* Highest interface version set */
 
@@ -984,14 +982,12 @@ struct drm_device {
 	int		  sysctl_node_idx;
 
 	drm_agp_head_t    *agp;
+
+	struct device *dev;             /**< Device structure */
+
 	drm_sg_mem_t      *sg;  /* Scatter gather memory */
 	unsigned long     *ctx_bitmap;
 	void		  *dev_private;
-	unsigned int	  agp_buffer_token;
-	drm_local_map_t   *agp_buffer_map;
-
-	struct drm_minor *control;		/**< Control node for card */
-	struct drm_minor *primary;		/**< render type primary screen head */
 
 	void		  *drm_ttm_bdev;
 
@@ -1015,8 +1011,13 @@ struct drm_device {
 	struct list_head vblank_event_list;
 	struct lock	event_lock;
 
-        struct drm_mode_config mode_config;	/**< Current mode config */
+	struct drm_driver *driver;
+	struct drm_local_map *agp_buffer_map;
+	unsigned int agp_buffer_token;
+	struct drm_minor *control;		/**< Control node for card */
+	struct drm_minor *primary;		/**< render type primary screen head */
 
+        struct drm_mode_config mode_config;	/**< Current mode config */
 
 	/** \name GEM information */
 	/*@{ */

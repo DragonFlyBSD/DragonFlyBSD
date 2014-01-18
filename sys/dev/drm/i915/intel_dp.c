@@ -662,7 +662,7 @@ intel_dp_i2c_init(struct intel_dp *intel_dp,
 	DRM_DEBUG_KMS("i2c_init %s\n", name);
 
 	ironlake_edp_panel_vdd_on(intel_dp);
-	ret = iic_dp_aux_add_bus(intel_connector->base.dev->device, name,
+	ret = iic_dp_aux_add_bus(intel_connector->base.dev->dev, name,
 	    intel_dp_i2c_aux_ch, intel_dp, &intel_dp->dp_iic_bus,
 	    &intel_dp->adapter);
 	ironlake_edp_panel_vdd_off(intel_dp, false);
@@ -2271,7 +2271,7 @@ static void intel_dp_encoder_destroy(struct drm_encoder *encoder)
 			device_delete_child(intel_dp->dp_iic_bus,
 			    intel_dp->adapter);
 		}
-		device_delete_child(dev->device, intel_dp->dp_iic_bus);
+		device_delete_child(dev->dev, intel_dp->dp_iic_bus);
 	}
 	drm_encoder_cleanup(encoder);
 	if (is_edp(intel_dp)) {

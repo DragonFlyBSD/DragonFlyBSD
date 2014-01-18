@@ -2509,7 +2509,7 @@ int r600_cs_legacy(struct drm_device *dev, void *data, struct drm_file *filp,
 	/* initialize parser */
 	memset(&parser, 0, sizeof(struct radeon_cs_parser));
 	parser.filp = filp;
-	parser.dev = dev->device;
+	parser.dev = dev->dev;
 	parser.rdev = NULL;
 	parser.family = family;
 	parser.track = track;

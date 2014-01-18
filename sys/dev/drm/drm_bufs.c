@@ -60,7 +60,7 @@ static int drm_alloc_resource(struct drm_device *dev, int resource)
 
 	DRM_UNLOCK(dev);
 	rid = PCIR_BAR(resource);
-	res = bus_alloc_resource_any(dev->device, SYS_RES_MEMORY, &rid,
+	res = bus_alloc_resource_any(dev->dev, SYS_RES_MEMORY, &rid,
 	    RF_SHAREABLE);
 	DRM_LOCK(dev);
 	if (res == NULL) {
@@ -344,7 +344,7 @@ void drm_rmmap(struct drm_device *dev, struct drm_local_map *map)
 	}
 
 	if (map->bsr != NULL) {
-		bus_release_resource(dev->device, SYS_RES_MEMORY, map->rid,
+		bus_release_resource(dev->dev, SYS_RES_MEMORY, map->rid,
 		    map->bsr);
 	}
 

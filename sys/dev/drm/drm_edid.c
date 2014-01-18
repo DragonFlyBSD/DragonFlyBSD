@@ -1707,7 +1707,7 @@ int drm_add_edid_modes(struct drm_connector *connector, struct edid *edid)
 		return 0;
 	}
 	if (!drm_edid_is_valid(edid)) {
-		device_printf(connector->dev->device, "%s: EDID invalid.\n",
+		device_printf(connector->dev->dev, "%s: EDID invalid.\n",
 			 drm_get_connector_name(connector));
 		return 0;
 	}

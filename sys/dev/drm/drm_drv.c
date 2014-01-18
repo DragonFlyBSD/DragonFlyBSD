@@ -261,19 +261,19 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	dev = device_get_softc(kdev);
 
 	if (!strcmp(device_get_name(kdev), "drmsub"))
-		dev->device = device_get_parent(kdev);
+		dev->dev = device_get_parent(kdev);
 	else
-		dev->device = kdev;
+		dev->dev = kdev;
 
-	dev->pci_domain = pci_get_domain(dev->device);
-	dev->pci_bus = pci_get_bus(dev->device);
-	dev->pci_slot = pci_get_slot(dev->device);
-	dev->pci_func = pci_get_function(dev->device);
+	dev->pci_domain = pci_get_domain(dev->dev);
+	dev->pci_bus = pci_get_bus(dev->dev);
+	dev->pci_slot = pci_get_slot(dev->dev);
+	dev->pci_func = pci_get_function(dev->dev);
 
-	dev->pci_vendor = pci_get_vendor(dev->device);
-	dev->pci_device = pci_get_device(dev->device);
-	dev->pci_subvendor = pci_get_subvendor(dev->device);
-	dev->pci_subdevice = pci_get_subdevice(dev->device);
+	dev->pci_vendor = pci_get_vendor(dev->dev);
+	dev->pci_device = pci_get_device(dev->dev);
+	dev->pci_subvendor = pci_get_subvendor(dev->dev);
+	dev->pci_subdevice = pci_get_subdevice(dev->dev);
 
 	id_entry = drm_find_description(dev->pci_vendor,
 	    dev->pci_device, idlist);
@@ -282,12 +282,12 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	if (drm_core_check_feature(dev, DRIVER_HAVE_IRQ)) {
 		if (drm_msi &&
 		    !drm_msi_is_blacklisted(dev, dev->id_entry->driver_private)) {
-			msicount = pci_msi_count(dev->device);
+			msicount = pci_msi_count(dev->dev);
 			DRM_DEBUG("MSI count = %d\n", msicount);
 			if (msicount > 1)
 				msicount = 1;
 
-			if (pci_alloc_msi(dev->device, &rid, msicount, -1) == 0) {
+			if (pci_alloc_msi(dev->dev, &rid, msicount, -1) == 0) {
 				DRM_INFO("MSI enabled %d message(s)\n",
 				    msicount);
 				dev->msi_enabled = 1;
@@ -295,7 +295,7 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 			}
 		}
 
-		dev->irqr = bus_alloc_resource_any(dev->device, SYS_RES_IRQ,
+		dev->irqr = bus_alloc_resource_any(dev->dev, SYS_RES_IRQ,
 		    &dev->irqrid, RF_SHAREABLE);
 		if (!dev->irqr) {
 			return (ENOENT);
@@ -321,11 +321,11 @@ int drm_attach(device_t kdev, drm_pci_id_list_t *idlist)
 	return (error);
 error:
 	if (dev->irqr) {
-		bus_release_resource(dev->device, SYS_RES_IRQ,
+		bus_release_resource(dev->dev, SYS_RES_IRQ,
 		    dev->irqrid, dev->irqr);
 	}
 	if (dev->msi_enabled) {
-		pci_release_msi(dev->device);
+		pci_release_msi(dev->dev);
 	}
 	return (error);
 }
@@ -354,10 +354,10 @@ int drm_detach(device_t kdev)
 	dev = device_get_softc(kdev);
 	drm_unload(dev);
 	if (dev->irqr) {
-		bus_release_resource(dev->device, SYS_RES_IRQ, dev->irqrid,
+		bus_release_resource(dev->dev, SYS_RES_IRQ, dev->irqrid,
 		    dev->irqr);
 		if (dev->msi_enabled) {
-			pci_release_msi(dev->device);
+			pci_release_msi(dev->dev);
 			DRM_INFO("MSI released\n");
 		}
 	}
@@ -572,7 +572,7 @@ static int drm_load(struct drm_device *dev)
 		/* Shared code returns -errno. */
 		retcode = -dev->driver->load(dev,
 		    dev->id_entry->driver_private);
-		if (pci_enable_busmaster(dev->device))
+		if (pci_enable_busmaster(dev->dev))
 			DRM_ERROR("Request to enable bus-master failed.\n");
 		DRM_UNLOCK(dev);
 		if (retcode != 0)
@@ -644,7 +644,7 @@ static void drm_unload(struct drm_device *dev)
 	for (i = 0; i < DRM_MAX_PCI_RESOURCE; i++) {
 		if (dev->pcir[i] == NULL)
 			continue;
-		bus_release_resource(dev->device, SYS_RES_MEMORY,
+		bus_release_resource(dev->dev, SYS_RES_MEMORY,
 		    dev->pcirid[i], dev->pcir[i]);
 		dev->pcir[i] = NULL;
 	}
@@ -664,7 +664,7 @@ static void drm_unload(struct drm_device *dev)
 
 	drm_mem_uninit();
 
-	if (pci_disable_busmaster(dev->device))
+	if (pci_disable_busmaster(dev->dev))
 		DRM_ERROR("Request to disable bus-master failed.\n");
 
 	lockuninit(&dev->vbl_lock);
@@ -720,7 +720,7 @@ drm_open(struct dev_open_args *ap)
 	if (retcode == 0) {
 		atomic_inc(&dev->counts[_DRM_STAT_OPENS]);
 		DRM_LOCK(dev);
-		device_busy(dev->device);
+		device_busy(dev->dev);
 		if (!dev->open_count++)
 			retcode = drm_firstopen(dev);
 		DRM_UNLOCK(dev);
@@ -753,7 +753,7 @@ int drm_close(struct dev_close_args *ap)
 	 */
 
 	DRM_DEBUG("pid = %d, device = 0x%lx, open_count = %d\n",
-	    DRM_CURRENTPID, (long)dev->device, dev->open_count);
+	    DRM_CURRENTPID, (long)dev->dev, dev->open_count);
 
 	if (dev->driver->driver_features & DRIVER_GEM)
 		drm_gem_release(dev, file_priv);
@@ -816,7 +816,7 @@ int drm_close(struct dev_close_args *ap)
 	 */
 
 	atomic_inc(&dev->counts[_DRM_STAT_CLOSES]);
-	device_unbusy(dev->device);
+	device_unbusy(dev->dev);
 	if (--dev->open_count == 0) {
 		retcode = drm_lastclose(dev);
 	}
@@ -848,7 +848,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	++file_priv->ioctl_count;
 
 	DRM_DEBUG("pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
-	    DRM_CURRENTPID, cmd, nr, (long)dev->device,
+	    DRM_CURRENTPID, cmd, nr, (long)dev->dev,
 	    file_priv->authenticated);
 
 	switch (cmd) {
@@ -911,7 +911,7 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	    (drm_debug & DRM_DEBUGBITS_FAILED_IOCTL) != 0) {
 		kprintf(
 "pid %d, cmd 0x%02lx, nr 0x%02x/%1d, dev 0x%lx, auth %d, res %d\n",
-		    DRM_CURRENTPID, cmd, nr, is_driver_ioctl, (long)dev->device,
+		    DRM_CURRENTPID, cmd, nr, is_driver_ioctl, (long)dev->dev,
 		    file_priv->authenticated, retcode);
 	}
 

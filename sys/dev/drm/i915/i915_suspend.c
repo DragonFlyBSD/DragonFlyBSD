@@ -800,7 +800,7 @@ int i915_save_state(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int i;
 
-	dev_priv->saveLBB = pci_read_config(dev->device, LBB, 1);
+	dev_priv->saveLBB = pci_read_config(dev->dev, LBB, 1);
 
 	/* Hardware status page */
 	dev_priv->saveHWS = I915_READ(HWS_PGA);
@@ -850,7 +850,7 @@ int i915_restore_state(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int i;
 
-	pci_write_config(dev->device, LBB, dev_priv->saveLBB, 1);
+	pci_write_config(dev->dev, LBB, dev_priv->saveLBB, 1);
 
 
 	/* Hardware status page */

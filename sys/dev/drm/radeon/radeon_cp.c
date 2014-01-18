@@ -2092,7 +2092,7 @@ int radeon_driver_load(struct drm_device *dev, unsigned long flags)
 		break;
 	}
 
-	pci_enable_busmaster(dev->device);
+	pci_enable_busmaster(dev->dev);
 
 	if (drm_device_is_agp(dev))
 		dev_priv->flags |= RADEON_IS_AGP;

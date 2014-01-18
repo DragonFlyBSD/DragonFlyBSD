@@ -70,8 +70,8 @@ static int mga_driver_device_is_agp(struct drm_device * dev)
 	 * device is 0x0021 (HB6 Universal PCI-PCI bridge), we reject the
 	 * device.
 	 */
-	bus = device_get_parent(device_get_parent(dev->device));
-	if (pci_get_device(dev->device) == 0x0525 &&
+	bus = device_get_parent(device_get_parent(dev->dev));
+	if (pci_get_device(dev->dev) == 0x0525 &&
 	    pci_get_vendor(bus) == 0x3388 &&
 	    pci_get_device(bus) == 0x0021)
 		return DRM_IS_NOT_AGP;

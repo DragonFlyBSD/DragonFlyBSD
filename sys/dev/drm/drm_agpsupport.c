@@ -43,7 +43,7 @@
 static int
 drm_device_find_capability(struct drm_device *dev, int cap)
 {
-	return (pci_find_extcap(dev->device, cap, NULL) == 0);
+	return (pci_find_extcap(dev->dev, cap, NULL) == 0);
 }
 
 int drm_device_is_agp(struct drm_device *dev)
