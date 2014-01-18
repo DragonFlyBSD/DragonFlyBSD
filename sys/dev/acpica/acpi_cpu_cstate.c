@@ -37,7 +37,7 @@
 #include <sys/proc.h>
 #include <sys/sbuf.h>
 #include <sys/thread2.h>
-#include <sys/mplock2.h>
+#include <sys/serialize.h>
 
 #include <bus/pci/pcivar.h>
 #include <machine/atomic.h>
@@ -131,6 +131,7 @@ static int		 cpu_cx_count;	/* Number of valid Cx states */
 static int		 cpu_cx_generic;
 static int		 cpu_cx_lowest; /* Current Cx lowest */
 static int		 cpu_cx_lowest_req; /* Requested Cx lowest */
+static struct lwkt_serialize cpu_cx_slize = LWKT_SERIALIZE_INITIALIZER;
 
 /* C3 state transition */
 static int		 cpu_c3_ncpus;
@@ -859,8 +860,6 @@ acpi_cpu_idle(void)
 
 /*
  * Re-evaluate the _CST object when we are notified that it changed.
- *
- * XXX Re-evaluation disabled until locking is done.
  */
 static void
 acpi_cpu_cst_notify(device_t dev)
@@ -868,14 +867,17 @@ acpi_cpu_cst_notify(device_t dev)
     struct acpi_cpu_softc *sc = device_get_softc(dev);
     struct acpi_cpu_softc *isc;
     int i;
-    
+
+    KASSERT(curthread->td_type != TD_TYPE_NETISR,
+        ("notify in netisr%d", mycpuid));
+
+    lwkt_serialize_enter(&cpu_cx_slize);
+
     /* Update the list of Cx states. */
     acpi_cpu_cx_cst(sc);
     acpi_cpu_cx_list(sc);
 
     /* Update the new lowest useable Cx state for all CPUs. */
-    crit_enter();
-
     cpu_cx_count = 0;
     for (i = 0; i < cpu_ndevices; i++) {
 	isc = device_get_softc(cpu_devices[i]);
@@ -891,7 +893,7 @@ acpi_cpu_cst_notify(device_t dev)
     if (cpu_cx_lowest > cpu_cx_count - 1)
 	cpu_cx_lowest = cpu_cx_count - 1;
 
-    crit_exit();
+    lwkt_serialize_exit(&cpu_cx_slize);
 }
 
 static int
@@ -1023,8 +1025,6 @@ acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
     int i, old_lowest, error = 0;
     uint32_t old_type, type;
 
-    get_mplock();
-
     sc->cpu_cx_lowest_req = val;
     if (val > sc->cpu_cx_count - 1)
 	val = sc->cpu_cx_count - 1;
@@ -1069,8 +1069,6 @@ acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
 	}
     }
 
-    rel_mplock();
-
     if (error)
 	return error;
 
@@ -1106,9 +1104,9 @@ acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
     if (val < 0)
 	return (EINVAL);
 
-    crit_enter();
+    lwkt_serialize_enter(&cpu_cx_slize);
     error = acpi_cpu_set_cx_lowest(sc, val);
-    crit_exit();
+    lwkt_serialize_exit(&cpu_cx_slize);
 
     return error;
 }
@@ -1141,13 +1139,14 @@ acpi_cpu_global_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
     if (val < 0)
 	return (EINVAL);
 
+    lwkt_serialize_enter(&cpu_cx_slize);
+
     cpu_cx_lowest_req = val;
     cpu_cx_lowest = val;
     if (cpu_cx_lowest > cpu_cx_count - 1)
 	cpu_cx_lowest = cpu_cx_count - 1;
 
     /* Update the new lowest useable Cx state for all CPUs. */
-    crit_enter();
     for (i = 0; i < cpu_ndevices; i++) {
 	sc = device_get_softc(cpu_devices[i]);
 	error = acpi_cpu_set_cx_lowest(sc, val);
@@ -1156,7 +1155,8 @@ acpi_cpu_global_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
 	    break;
 	}
     }
-    crit_exit();
+
+    lwkt_serialize_exit(&cpu_cx_slize);
 
     return error;
 }
