@@ -156,11 +156,7 @@ static struct lock usb_sym_lock;
 
 struct lock usb_ref_lock;
 
-#if 0
-static int usb_nevents = 0;
 static struct kqinfo usb_kqevent;
-#endif
-
  
 static void
 usb_cdevpriv_dtor(void *cpd)
@@ -911,6 +907,11 @@ usb_open(struct dev_open_args *ap)
 	}
 	usb_unref_device(cpd, &refs);
 	err = devfs_set_cdevpriv(ap->a_fp, cpd, usb_cdevpriv_dtor);
+	if(err) {
+		DPRINTFN(2, "devfs_set_cdevpriv failed in %s\n", __FUNC__);
+		kfree(cpd, M_USBDEV);
+		return(err);
+	}
 	return (0);
 }
 
@@ -1057,7 +1058,6 @@ usb_ioctl(struct dev_ioctl_args *ap)
 {
 	u_long cmd = ap->a_cmd;
 	caddr_t addr = ap->a_data;
-	/* XXX: What is this thread and where is it supposed to come from */
 	struct thread *td = curthread;
 	struct usb_cdev_refdata refs;
 	struct usb_cdev_privdata* cpd;
@@ -1149,6 +1149,7 @@ usb_kqfilter(struct dev_kqfilter_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
 	struct knote *kn = ap->a_kn;
+	struct klist *klist;
 
 	ap->a_result = 0;
 
@@ -1166,30 +1167,39 @@ usb_kqfilter(struct dev_kqfilter_args *ap)
 		return(0);
 	}
 
+	klist = &usb_kqevent.ki_note;
+	knote_insert(klist, kn);
+
 	return(0);
 }
 
 static void
 usb_filter_detach(struct knote *kn)
 {
-#if 0
 	struct klist *klist;
 
 	klist = &usb_kqevent.ki_note; 
 	knote_remove(klist, kn);
-#endif
 }
 
 static int
 usb_filter_read(struct knote *kn, long hint)
 {
-	return(0);
+	/*cdev_t dev = (cdev_t)kn->kn_hook;
+	*/
+	int ready = 0;
+
+	return(ready);
 }
 
 static int
 usb_filter_write(struct knote *kn, long hint)
 {
-		return(0);
+	/*cdev_t dev = (cdev_t)kn->kn_hook;
+	*/
+	int ready = 0;
+
+	return(ready);
 }
 
 #if 0 /* XXX implement using kqfilter */
