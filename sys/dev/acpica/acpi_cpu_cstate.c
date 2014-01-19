@@ -80,7 +80,7 @@ struct acpi_cpu_softc {
     int			 cpu_prev_sleep;/* Last idle sleep duration. */
     /* Runtime state. */
     int			 cpu_non_c3;	/* Index of lowest non-C3 state. */
-    u_int		 cpu_cx_stats[MAX_CX_STATES];/* Cx usage history. */
+    u_long		 cpu_cx_stats[MAX_CX_STATES];/* Cx usage history. */
     /* Values for sysctl. */
     int			 cpu_cx_lowest; /* Current Cx lowest */
     int			 cpu_cx_lowest_req; /* Requested Cx lowest */
