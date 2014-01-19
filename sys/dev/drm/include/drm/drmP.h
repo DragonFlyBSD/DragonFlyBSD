@@ -100,6 +100,8 @@
 #include <linux/list.h>
 #include <linux/types.h>
 
+#include <asm/uaccess.h>
+
 struct drm_file;
 struct drm_device;
 
