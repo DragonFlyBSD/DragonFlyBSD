@@ -32,6 +32,7 @@
 #include "radeon.h"
 #include "radeon_asic.h"
 #include "atom.h"
+#include <linux/delay.h>
 
 static void radeon_legacy_encoder_disable(struct drm_encoder *encoder)
 {
@@ -1501,7 +1502,7 @@ static bool radeon_legacy_ext_dac_detect(struct drm_encoder *encoder,
 		if (!drm_can_sleep())
 			DRM_MDELAY(1);
 		else
-			DRM_MSLEEP(1);
+			msleep(1);
 	}
 
 	/* restore the regs we used */

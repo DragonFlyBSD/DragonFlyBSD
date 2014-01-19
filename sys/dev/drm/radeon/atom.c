@@ -30,6 +30,7 @@
 #include "atom-names.h"
 #include "atom-bits.h"
 #include "radeon.h"
+#include <linux/delay.h>
 
 #define ATOM_COND_ABOVE		0
 #define ATOM_COND_ABOVEOREQUAL	1
@@ -664,7 +665,7 @@ static void atom_op_delay(atom_exec_context *ctx, int *ptr, int arg)
 	else if (!drm_can_sleep())
 		DRM_MDELAY(count);
 	else
-		DRM_MSLEEP(count);
+		msleep(count);
 }
 
 static void atom_op_div(atom_exec_context *ctx, int *ptr, int arg)
