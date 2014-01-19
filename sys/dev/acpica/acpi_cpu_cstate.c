@@ -166,6 +166,7 @@ static int	acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cpu_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cpu_global_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cpu_global_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
+static void	acpi_cpu_cx_non_c3(struct acpi_cpu_softc *sc);
 
 static void	acpi_cpu_c1(void);	/* XXX */
 
@@ -593,6 +594,12 @@ acpi_cpu_cx_cst(struct acpi_cpu_softc *sc)
     if (sc->cpu_cx_lowest > sc->cpu_cx_count - 1)
 	sc->cpu_cx_lowest = sc->cpu_cx_count - 1;
 
+    /*
+     * Cache the lowest non-C3 state.
+     * NOTE: must after cpu_cx_lowest is set.
+     */
+    acpi_cpu_cx_non_c3(sc);
+
     return (0);
 }
 
@@ -1018,7 +1025,7 @@ acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS)
 static int
 acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
 {
-    int i, old_lowest, error = 0;
+    int old_lowest, error = 0;
     uint32_t old_type, type;
 
     sc->cpu_cx_lowest_req = val;
@@ -1068,14 +1075,8 @@ acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
     if (error)
 	return error;
 
-    /* If not disabling, cache the new lowest non-C3 state. */
-    sc->cpu_non_c3 = 0;
-    for (i = sc->cpu_cx_lowest; i >= 0; i--) {
-	if (sc->cpu_cx_states[i].type < ACPI_STATE_C3) {
-	    sc->cpu_non_c3 = i;
-	    break;
-	}
-    }
+    /* Cache the new lowest non-C3 state. */
+    acpi_cpu_cx_non_c3(sc);
 
     /* Reset the statistics counters. */
     bzero(sc->cpu_cx_stats, sizeof(sc->cpu_cx_stats));
@@ -1182,4 +1183,20 @@ acpi_cpu_c1(void)
     else
         __asm __volatile("sti; pause");
 #endif /* !__ia64__ */
+}
+
+static void
+acpi_cpu_cx_non_c3(struct acpi_cpu_softc *sc)
+{
+    int i;
+
+    sc->cpu_non_c3 = 0;
+    for (i = sc->cpu_cx_lowest; i >= 0; i--) {
+	if (sc->cpu_cx_states[i].type < ACPI_STATE_C3) {
+	    sc->cpu_non_c3 = i;
+	    break;
+	}
+    }
+    if (bootverbose)
+	device_printf(sc->cpu_dev, "non-C3 %d\n", sc->cpu_non_c3);
 }
