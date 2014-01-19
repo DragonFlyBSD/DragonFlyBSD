@@ -84,6 +84,7 @@ struct acpi_cpu_softc {
     struct acpi_cpux_softc *cpu_parent;
     ACPI_HANDLE		 cpu_handle;
     int			 cpu_id;
+    uint32_t		 cst_flags;	/* ACPI_CST_FLAG_ */
     uint32_t		 cpu_p_blk;	/* ACPI P_BLK location */
     uint32_t		 cpu_p_blk_len;	/* P_BLK length (must be 6). */
     struct acpi_cx	 cpu_cx_states[MAX_CX_STATES];
@@ -97,6 +98,8 @@ struct acpi_cpu_softc {
     int			 cpu_cx_lowest_req; /* Requested Cx lowest */
     char 		 cpu_cx_supported[64];
 };
+
+#define ACPI_CST_FLAG_PROBING	0x1
 
 struct acpi_cpu_device {
     struct resource_list	ad_rl;
@@ -165,6 +168,7 @@ static int	acpi_cpu_cst_shutdown(device_t dev);
 static void	acpi_cpu_cx_probe(struct acpi_cpu_softc *sc);
 static void	acpi_cpu_generic_cx_probe(struct acpi_cpu_softc *sc);
 static int	acpi_cpu_cx_cst(struct acpi_cpu_softc *sc);
+static int	acpi_cpu_cx_cst_dispatch(struct acpi_cpu_softc *sc);
 static void	acpi_cpu_startup(void *arg);
 static void	acpi_cpu_startup_cx(struct acpi_cpu_softc *sc);
 static void	acpi_cpu_cx_list(struct acpi_cpu_softc *sc);
@@ -539,6 +543,9 @@ acpi_cpu_cx_cst(struct acpi_cpu_softc *sc)
 	count = MAX_CX_STATES;
     }
 
+    sc->cst_flags |= ACPI_CST_FLAG_PROBING;
+    cpu_sfence();
+
     /* Set up all valid states. */
     sc->cpu_cx_count = 0;
     cx_ptr = sc->cpu_cx_states;
@@ -613,7 +620,32 @@ acpi_cpu_cx_cst(struct acpi_cpu_softc *sc)
      */
     acpi_cpu_cx_non_c3(sc);
 
+    cpu_sfence();
+    sc->cst_flags &= ~ACPI_CST_FLAG_PROBING;
+
     return (0);
+}
+
+static void
+acpi_cst_probe_handler(netmsg_t msg)
+{
+    struct netmsg_acpi_cst *rmsg = (struct netmsg_acpi_cst *)msg;
+    int error;
+
+    error = acpi_cpu_cx_cst(rmsg->sc);
+    lwkt_replymsg(&rmsg->base.lmsg, error);
+}
+
+static int
+acpi_cpu_cx_cst_dispatch(struct acpi_cpu_softc *sc)
+{
+    struct netmsg_acpi_cst msg;
+
+    netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	acpi_cst_probe_handler);
+    msg.sc = sc;
+
+    return lwkt_domsg(netisr_cpuport(sc->cpu_id), &msg.base.lmsg, 0);
 }
 
 /*
@@ -776,6 +808,12 @@ acpi_cpu_idle(void)
 	return;
     }
 
+    /* Still probing; use C1 */
+    if (sc->cst_flags & ACPI_CST_FLAG_PROBING) {
+	acpi_cpu_c1();
+	return;
+    }
+
     /* Find the lowest state that has small enough latency. */
     cx_next_idx = 0;
     for (i = sc->cpu_cx_lowest; i >= 0; i--) {
@@ -873,7 +911,7 @@ acpi_cpu_cst_notify(device_t dev)
     lwkt_serialize_enter(&cpu_cx_slize);
 
     /* Update the list of Cx states. */
-    acpi_cpu_cx_cst(sc);
+    acpi_cpu_cx_cst_dispatch(sc);
     acpi_cpu_cx_list(sc);
 
     /* Update the new lowest useable Cx state for all CPUs. */
