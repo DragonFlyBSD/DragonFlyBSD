@@ -36,7 +36,6 @@
 #define DRM_MDELAY(msecs)	do { int loops = (msecs);		\
 				  while (loops--) DELAY(1000);		\
 				} while (0)
-#define DRM_MSLEEP(msecs)	tsleep(NULL, 0, "drm_msleep", msecs*hz/1000)
 #define DRM_TIME_SLICE		(hz/20)  /* Time slice for GLXContexts	  */
 
 #define	do_div(a, b)		((a) /= (b))
