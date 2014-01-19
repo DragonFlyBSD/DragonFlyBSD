@@ -472,7 +472,6 @@ struct drm_encoder_funcs {
 };
 
 #define DRM_CONNECTOR_MAX_UMODES 16
-#define DRM_CONNECTOR_MAX_PROPERTY 16
 #define DRM_CONNECTOR_LEN 32
 #define DRM_CONNECTOR_MAX_ENCODER 3
 
@@ -585,8 +584,7 @@ struct drm_connector {
 
 	struct list_head user_modes;
 	struct drm_property_blob *edid_blob_ptr;
-	u32 property_ids[DRM_CONNECTOR_MAX_PROPERTY];
-	uint64_t property_values[DRM_CONNECTOR_MAX_PROPERTY];
+	struct drm_object_properties properties;
 
 	uint8_t polled; /* DRM_CONNECTOR_POLL_* */
 
@@ -842,9 +840,6 @@ struct drm_prop_enum_list {
 	char *name;
 };
 
-extern char *drm_get_dirty_info_name(int val);
-extern char *drm_get_connector_status_name(enum drm_connector_status status);
-
 extern int drm_crtc_init(struct drm_device *dev,
 			 struct drm_crtc *crtc,
 			 const struct drm_crtc_funcs *funcs);
@@ -923,10 +918,10 @@ extern void drm_mode_set_crtcinfo(struct drm_display_mode *p,
 extern void drm_mode_connector_list_update(struct drm_connector *connector);
 extern int drm_mode_connector_update_edid_property(struct drm_connector *connector,
 						struct edid *edid);
-extern int drm_connector_property_set_value(struct drm_connector *connector,
+extern int drm_object_property_set_value(struct drm_mode_object *obj,
 					 struct drm_property *property,
-					 uint64_t value);
-extern int drm_connector_property_get_value(struct drm_connector *connector,
+					 uint64_t val);
+extern int drm_object_property_get_value(struct drm_mode_object *obj,
 					 struct drm_property *property,
 					 uint64_t *value);
 extern struct drm_display_mode *drm_crtc_mode_create(struct drm_device *dev);
@@ -944,8 +939,9 @@ extern int drmfb_remove(struct drm_device *dev, struct drm_framebuffer *fb);
 extern void drm_crtc_probe_connector_modes(struct drm_device *dev, int maxX, int maxY);
 extern bool drm_crtc_in_use(struct drm_crtc *crtc);
 
-extern int drm_connector_attach_property(struct drm_connector *connector,
-                                     struct drm_property *property, uint64_t init_val);
+extern void drm_object_attach_property(struct drm_mode_object *obj,
+				       struct drm_property *property,
+				       uint64_t init_val);
 extern struct drm_property *drm_property_create(struct drm_device *dev, int flags,
 						const char *name, int num_values);
 extern struct drm_property *drm_property_create_enum(struct drm_device *dev, int flags,

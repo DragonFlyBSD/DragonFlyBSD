@@ -1126,7 +1126,7 @@ radeon_user_framebuffer_create(struct drm_device *dev,
 
 	ret = radeon_framebuffer_init(dev, radeon_fb, mode_cmd, obj);
 	if (ret) {
-		drm_free(radeon_fb, DRM_MEM_DRIVER);
+		kfree(radeon_fb, DRM_MEM_DRIVER);
 		drm_gem_object_unreference_unlocked(obj);
 		return ret;
 	}

@@ -979,11 +979,7 @@ bool intel_lvds_init(struct drm_device *dev)
 
 	/* create the scaling mode property */
 	drm_mode_create_scaling_mode_property(dev);
-	/*
-	 * the initial panel fitting mode will be FULL_SCREEN.
-	 */
-
-	drm_connector_attach_property(&intel_connector->base,
+	drm_object_attach_property(&connector->base,
 				      dev->mode_config.scaling_mode_property,
 				      DRM_MODE_SCALE_ASPECT);
 	intel_lvds->fitting_mode = DRM_MODE_SCALE_ASPECT;

@@ -174,6 +174,7 @@ MALLOC_DECLARE(DRM_MEM_BUFLISTS);
 MALLOC_DECLARE(DRM_MEM_AGPLISTS);
 MALLOC_DECLARE(DRM_MEM_CTXBITMAP);
 MALLOC_DECLARE(DRM_MEM_SGLISTS);
+MALLOC_DECLARE(DRM_MEM_DRAWABLE);
 MALLOC_DECLARE(DRM_MEM_MM);
 MALLOC_DECLARE(DRM_MEM_HASHTAB);
 MALLOC_DECLARE(DRM_MEM_KMS);
@@ -1386,6 +1387,9 @@ int	drm_sg_free(struct drm_device *dev, void *data,
 drm_dma_handle_t *drm_pci_alloc(struct drm_device *dev, size_t size,
 				size_t align, dma_addr_t maxaddr);
 void	drm_pci_free(struct drm_device *dev, drm_dma_handle_t *dmah);
+
+			       /* sysfs support (drm_sysfs.c) */
+extern char *drm_get_connector_status_name(enum drm_connector_status status);
 
 /* Graphics Execution Manager library functions (drm_gem.c) */
 int drm_gem_init(struct drm_device *dev);

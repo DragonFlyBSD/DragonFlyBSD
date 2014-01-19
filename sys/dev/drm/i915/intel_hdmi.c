@@ -391,14 +391,14 @@ intel_hdmi_detect_audio(struct drm_connector *connector)
 
 static int
 intel_hdmi_set_property(struct drm_connector *connector,
-		      struct drm_property *property,
-		      uint64_t val)
+			struct drm_property *property,
+			uint64_t val)
 {
 	struct intel_hdmi *intel_hdmi = intel_attached_hdmi(connector);
 	struct drm_i915_private *dev_priv = connector->dev->dev_private;
 	int ret;
 
-	ret = drm_connector_property_set_value(connector, property, val);
+	ret = drm_object_property_set_value(&connector->base, property, val);
 	if (ret)
 		return ret;
 

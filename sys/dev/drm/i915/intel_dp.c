@@ -2197,7 +2197,7 @@ intel_dp_set_property(struct drm_connector *connector,
 	struct intel_dp *intel_dp = intel_attached_dp(connector);
 	int ret;
 
-	ret = drm_connector_property_set_value(connector, property, val);
+	ret = drm_object_property_set_value(&connector->base, property, val);
 	if (ret)
 		return ret;
 

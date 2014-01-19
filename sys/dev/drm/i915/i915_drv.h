@@ -69,6 +69,26 @@ enum plane {
 
 #define for_each_pipe(p) for ((p) = 0; (p) < dev_priv->num_pipe; (p)++)
 
+#define for_each_encoder_on_crtc(dev, __crtc, intel_encoder) \
+	list_for_each_entry((intel_encoder), &(dev)->mode_config.encoder_list, base.head) \
+		if ((intel_encoder)->base.crtc == (__crtc))
+
+struct intel_pch_pll {
+	int refcount; /* count of number of CRTCs sharing this PLL */
+	int active; /* count of number of active CRTCs (i.e. DPMS on) */
+	bool on; /* is the PLL actually active? Disabled during modeset */
+	int pll_reg;
+	int fp0_reg;
+	int fp1_reg;
+};
+#define I915_NUM_PLLS 2
+
+struct intel_ddi_plls {
+	int spll_refcount;
+	int wrpll1_refcount;
+	int wrpll2_refcount;
+};
+
 /* Interface history:
  *
  * 1.1: Original.
@@ -151,6 +171,9 @@ struct intel_device_info {
 	u8 is_broadwater:1;
 	u8 is_crestline:1;
 	u8 is_ivybridge:1;
+	u8 is_valleyview:1;
+	u8 has_force_wake:1;
+	u8 is_haswell:1;
 	u8 has_fbc:1;
 	u8 has_pipe_cxsr:1;
 	u8 has_hotplug:1;
@@ -302,7 +325,9 @@ typedef struct drm_i915_private {
 	int allow_batchbuffer;
 	unsigned int sr01, adpa, ppcr, dvob, dvoc, lvds;
 	int vblank_pipe;
+
 	int num_pipe;
+	int num_pch_pll;
 
 	/* For hangcheck timer */
 #define DRM_I915_HANGCHECK_PERIOD ((1500 /* in ms */ * hz) / 1000)
@@ -657,6 +682,9 @@ typedef struct drm_i915_private {
 	struct drm_crtc *pipe_to_crtc_mapping[3];
 	/* wait_queue_head_t pending_flip_queue; XXXKIB */
 	bool flip_pending_is_done;
+
+	struct intel_pch_pll pch_plls[I915_NUM_PLLS];
+	struct intel_ddi_plls ddi_plls;
 
 	/* Reclocking support */
 	bool render_reclock_avail;
@@ -1382,8 +1410,8 @@ __i915_write(64, 64)
 #define IS_I915GM(dev)		((dev)->pci_device == 0x2592)
 #define IS_I945G(dev)		((dev)->pci_device == 0x2772)
 #define IS_I945GM(dev)		(INTEL_INFO(dev)->is_i945gm)
-#define	IS_BROADWATER(dev)	(INTEL_INFO(dev)->is_broadwater)
-#define	IS_CRESTLINE(dev)	(INTEL_INFO(dev)->is_crestline)
+#define IS_BROADWATER(dev)	(INTEL_INFO(dev)->is_broadwater)
+#define IS_CRESTLINE(dev)	(INTEL_INFO(dev)->is_crestline)
 #define IS_GM45(dev)		((dev)->pci_device == 0x2A42)
 #define IS_G4X(dev)		(INTEL_INFO(dev)->is_g4x)
 #define IS_PINEVIEW_G(dev)	((dev)->pci_device == 0xa001)
@@ -1392,8 +1420,18 @@ __i915_write(64, 64)
 #define IS_G33(dev)		(INTEL_INFO(dev)->is_g33)
 #define IS_IRONLAKE_D(dev)	((dev)->pci_device == 0x0042)
 #define IS_IRONLAKE_M(dev)	((dev)->pci_device == 0x0046)
-#define	IS_IVYBRIDGE(dev)	(INTEL_INFO(dev)->is_ivybridge)
+#define IS_IVYBRIDGE(dev)	(INTEL_INFO(dev)->is_ivybridge)
+#define IS_IVB_GT1(dev)		((dev)->pci_device == 0x0156 || \
+				 (dev)->pci_device == 0x0152 ||	\
+				 (dev)->pci_device == 0x015a)
+#define IS_SNB_GT1(dev)		((dev)->pci_device == 0x0102 || \
+				 (dev)->pci_device == 0x0106 ||	\
+				 (dev)->pci_device == 0x010A)
+#define IS_VALLEYVIEW(dev)	(INTEL_INFO(dev)->is_valleyview)
+#define IS_HASWELL(dev)	(INTEL_INFO(dev)->is_haswell)
 #define IS_MOBILE(dev)		(INTEL_INFO(dev)->is_mobile)
+#define IS_ULT(dev)		(IS_HASWELL(dev) && \
+				 ((dev)->pci_device & 0xFF00) == 0x0A00)
 
 /* XXXKIB LEGACY */
 #define IS_I965G(dev) ((dev)->pci_device == 0x2972 || \
