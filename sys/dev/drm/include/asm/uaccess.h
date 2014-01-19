@@ -28,6 +28,9 @@
 #ifndef _ASM_UACCESS_H_
 #define _ASM_UACCESS_H_
 
+#define	get_user(_x, _p)	-copyin((_p), &(_x), sizeof(*(_p)))
+#define	put_user(_x, _p)	-copyout(&(_x), (_p), sizeof(*(_p)))
+
 static inline long
 copy_to_user(void *to, const void *from, unsigned long n)
 {
