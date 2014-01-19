@@ -167,6 +167,7 @@ static int	acpi_cpu_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cpu_global_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cpu_global_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
 static void	acpi_cpu_cx_non_c3(struct acpi_cpu_softc *sc);
+static void	acpi_cpu_global_cx_count(void);
 
 static void	acpi_cpu_c1(void);	/* XXX */
 
@@ -621,7 +622,6 @@ acpi_cpu_startup(void *arg)
      */
     acpi_cpu_quirks();
 
-    cpu_cx_count = 0;
     if (cpu_cx_generic) {
 	/*
 	 * We are using generic Cx mode, probe for available Cx states
@@ -630,24 +630,11 @@ acpi_cpu_startup(void *arg)
 	for (i = 0; i < cpu_ndevices; i++) {
 	    sc = device_get_softc(cpu_devices[i]);
 	    acpi_cpu_generic_cx_probe(sc);
-	    if (sc->cpu_cx_count > cpu_cx_count)
-		cpu_cx_count = sc->cpu_cx_count;
-	}
-
-	/*
-	 * Find the highest Cx state common to all CPUs
-	 * in the system, taking quirks into account.
-	 */
-	for (i = 0; i < cpu_ndevices; i++) {
-	    sc = device_get_softc(cpu_devices[i]);
-	    if (sc->cpu_cx_count < cpu_cx_count)
-		cpu_cx_count = sc->cpu_cx_count;
 	}
     } else {
 	/*
 	 * We are using _CST mode, remove C3 state if necessary.
-	 * Update the largest Cx state supported in the global cpu_cx_count.
-	 * It will be used in the global Cx sysctl handler.
+	 *
 	 * As we now know for sure that we will be using _CST mode
 	 * install our notify handler.
 	 */
@@ -655,11 +642,10 @@ acpi_cpu_startup(void *arg)
 	    sc = device_get_softc(cpu_devices[i]);
 	    if (cpu_quirks & CPU_QUIRK_NO_C3)
 		sc->cpu_cx_count = sc->cpu_non_c3 + 1;
-	    if (sc->cpu_cx_count > cpu_cx_count)
-		cpu_cx_count = sc->cpu_cx_count;
 	    sc->cpu_parent->cpux_cst_notify = acpi_cpu_cst_notify;
 	}
     }
+    acpi_cpu_global_cx_count();
 
     /* Perform Cx final initialization. */
     for (i = 0; i < cpu_ndevices; i++) {
@@ -868,8 +854,6 @@ static void
 acpi_cpu_cst_notify(device_t dev)
 {
     struct acpi_cpu_softc *sc = device_get_softc(dev);
-    struct acpi_cpu_softc *isc;
-    int i;
 
     KASSERT(curthread->td_type != TD_TYPE_NETISR,
         ("notify in netisr%d", mycpuid));
@@ -881,12 +865,7 @@ acpi_cpu_cst_notify(device_t dev)
     acpi_cpu_cx_list(sc);
 
     /* Update the new lowest useable Cx state for all CPUs. */
-    cpu_cx_count = 0;
-    for (i = 0; i < cpu_ndevices; i++) {
-	isc = device_get_softc(cpu_devices[i]);
-	if (isc->cpu_cx_count > cpu_cx_count)
-	    cpu_cx_count = isc->cpu_cx_count;
-    }
+    acpi_cpu_global_cx_count();
 
     /*
      * Fix up the lowest Cx being used
@@ -1199,4 +1178,32 @@ acpi_cpu_cx_non_c3(struct acpi_cpu_softc *sc)
     }
     if (bootverbose)
 	device_printf(sc->cpu_dev, "non-C3 %d\n", sc->cpu_non_c3);
+}
+
+/*
+ * Update the largest Cx state supported in the global cpu_cx_count.
+ * It will be used in the global Cx sysctl handler.
+ */
+static void
+acpi_cpu_global_cx_count(void)
+{
+    struct acpi_cpu_softc *sc;
+    int i;
+
+    if (cpu_ndevices == 0) {
+	cpu_cx_count = 0;
+	return;
+    }
+
+    sc = device_get_softc(cpu_devices[0]);
+    cpu_cx_count = sc->cpu_cx_count;
+
+    for (i = 1; i < cpu_ndevices; i++) {
+	struct acpi_cpu_softc *sc = device_get_softc(cpu_devices[i]);
+
+	if (sc->cpu_cx_count < cpu_cx_count)
+	    cpu_cx_count = sc->cpu_cx_count;
+    }
+    if (bootverbose)
+	kprintf("cpu_cst: global Cx count %d\n", cpu_cx_count);
 }
