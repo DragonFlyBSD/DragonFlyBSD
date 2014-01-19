@@ -38,6 +38,7 @@
 #include <sys/sbuf.h>
 #include <sys/thread2.h>
 #include <sys/serialize.h>
+#include <sys/msgport2.h>
 
 #include <bus/pci/pcivar.h>
 #include <machine/atomic.h>
@@ -45,6 +46,10 @@
 #include <machine/md_var.h>
 #include <machine/smp.h>
 #include <sys/rman.h>
+
+#include <net/netisr2.h>
+#include <net/netmsg2.h>
+#include <net/if_var.h>
 
 #include "acpi.h"
 #include "acpivar.h"
@@ -57,6 +62,12 @@
 /* Hooks for the ACPI CA debugging infrastructure */
 #define _COMPONENT	ACPI_PROCESSOR
 ACPI_MODULE_NAME("PROCESSOR")
+
+struct netmsg_acpi_cst {
+	struct netmsg_base base;
+	struct acpi_cpu_softc *sc;
+	int		val;
+};
 
 struct acpi_cx {
     struct resource	*p_lvlx;	/* Register to read to enter state. */
@@ -161,7 +172,8 @@ static void	acpi_cpu_idle(void);
 static void	acpi_cpu_cst_notify(device_t);
 static int	acpi_cpu_quirks(void);
 static int	acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS);
-static int	acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val);
+static int	acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *, int);
+static int	acpi_cpu_set_cx_lowest_oncpu(struct acpi_cpu_softc *, int);
 static int	acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cpu_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cpu_global_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS);
@@ -1002,10 +1014,12 @@ acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS)
 }
 
 static int
-acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
+acpi_cpu_set_cx_lowest_oncpu(struct acpi_cpu_softc *sc, int val)
 {
     int old_lowest, error = 0;
     uint32_t old_type, type;
+
+    KKASSERT(mycpuid == sc->cpu_id);
 
     sc->cpu_cx_lowest_req = val;
     if (val > sc->cpu_cx_count - 1)
@@ -1060,6 +1074,29 @@ acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
     /* Reset the statistics counters. */
     bzero(sc->cpu_cx_stats, sizeof(sc->cpu_cx_stats));
     return (0);
+}
+
+static void
+acpi_cst_set_lowest_handler(netmsg_t msg)
+{
+    struct netmsg_acpi_cst *rmsg = (struct netmsg_acpi_cst *)msg;
+    int error;
+
+    error = acpi_cpu_set_cx_lowest_oncpu(rmsg->sc, rmsg->val);
+    lwkt_replymsg(&rmsg->base.lmsg, error);
+}
+
+static int
+acpi_cpu_set_cx_lowest(struct acpi_cpu_softc *sc, int val)
+{
+    struct netmsg_acpi_cst msg;
+
+    netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	acpi_cst_set_lowest_handler);
+    msg.sc = sc;
+    msg.val = val;
+
+    return lwkt_domsg(netisr_cpuport(sc->cpu_id), &msg.base.lmsg, 0);
 }
 
 static int
