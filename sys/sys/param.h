@@ -105,9 +105,10 @@
  * 300600 - 3.6 release
  * 300700 - 3.7 master
  * 300701 - Relocate bus/smbus/smb.h to dev/smbus/smb/smb.h
+ * 300702 - drm/i915 update
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300701	/* propagated to newvers */
+#define __DragonFly_version 300702	/* propagated to newvers */
 
 #include <sys/_null.h>
 
