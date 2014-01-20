@@ -104,13 +104,8 @@ struct acpi_cst_softc {
 #define CPU_GET_REG(reg, width) 					\
     (bus_space_read_ ## width(rman_get_bustag((reg)), 			\
 		      rman_get_bushandle((reg)), 0))
-#define CPU_SET_REG(reg, width, val)					\
-    (bus_space_write_ ## width(rman_get_bustag((reg)), 			\
-		       rman_get_bushandle((reg)), 0, (val)))
 
 #define PM_USEC(x)	 ((x) >> 2)	/* ~4 clocks per usec (3.57955 Mhz) */
-
-#define ACPI_NOTIFY_CX_STATES	0x81	/* _CST changed. */
 
 #define CPU_QUIRK_NO_C3		(1<<0)	/* C3-type states are not usable. */
 #define CPU_QUIRK_NO_BM_CTRL	(1<<2)	/* No bus mastering control. */
