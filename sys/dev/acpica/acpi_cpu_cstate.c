@@ -101,10 +101,6 @@ struct acpi_cpu_softc {
 
 #define ACPI_CST_FLAG_PROBING	0x1
 
-struct acpi_cpu_device {
-    struct resource_list	ad_rl;
-};
-
 #define CPU_GET_REG(reg, width) 					\
     (bus_space_read_ ## width(rman_get_bustag((reg)), 			\
 		      rman_get_bushandle((reg)), 0))
@@ -158,13 +154,8 @@ static int	acpi_cpu_cst_probe(device_t dev);
 static int	acpi_cpu_cst_attach(device_t dev);
 static int	acpi_cpu_cst_suspend(device_t dev);
 static int	acpi_cpu_cst_resume(device_t dev);
-static struct resource_list *acpi_cpu_cst_get_rlist(device_t dev,
-		    device_t child);
-static device_t	acpi_cpu_cst_add_child(device_t bus, device_t parent,
-		    int order, const char *name, int unit);
-static int	acpi_cpu_cst_read_ivar(device_t dev, device_t child,
-		    int index, uintptr_t *result);
 static int	acpi_cpu_cst_shutdown(device_t dev);
+
 static void	acpi_cpu_cx_probe(struct acpi_cpu_softc *sc);
 static void	acpi_cpu_generic_cx_probe(struct acpi_cpu_softc *sc);
 static int	acpi_cpu_cx_cst(struct acpi_cpu_softc *sc);
@@ -197,9 +188,9 @@ static device_method_t acpi_cpu_cst_methods[] = {
     DEVMETHOD(device_resume,	acpi_cpu_cst_resume),
 
     /* Bus interface */
-    DEVMETHOD(bus_add_child,	acpi_cpu_cst_add_child),
-    DEVMETHOD(bus_read_ivar,	acpi_cpu_cst_read_ivar),
-    DEVMETHOD(bus_get_resource_list, acpi_cpu_cst_get_rlist),
+    DEVMETHOD(bus_add_child,	bus_generic_add_child),
+    DEVMETHOD(bus_read_ivar,	bus_generic_read_ivar),
+    DEVMETHOD(bus_get_resource_list, bus_generic_get_resource_list),
     DEVMETHOD(bus_get_resource,	bus_generic_rl_get_resource),
     DEVMETHOD(bus_set_resource,	bus_generic_rl_set_resource),
     DEVMETHOD(bus_alloc_resource, bus_generic_rl_alloc_resource),
@@ -330,59 +321,6 @@ acpi_cpu_cst_resume(device_t dev)
 
     cpu_disable_idle = FALSE;
     return (bus_generic_resume(dev));
-}
-
-static struct resource_list *
-acpi_cpu_cst_get_rlist(device_t dev, device_t child)
-{
-    struct acpi_cpu_device *ad;
-
-    ad = device_get_ivars(child);
-    if (ad == NULL)
-	return (NULL);
-    return (&ad->ad_rl);
-}
-
-static device_t
-acpi_cpu_cst_add_child(device_t bus, device_t parent, int order,
-    const char *name, int unit)
-{
-    struct acpi_cpu_device *ad;
-    device_t child;
-
-    if ((ad = kmalloc(sizeof(*ad), M_TEMP, M_NOWAIT | M_ZERO)) == NULL)
-	return (NULL);
-
-    resource_list_init(&ad->ad_rl);
-
-    child = device_add_child_ordered(parent, order, name, unit);
-    if (child != NULL)
-	device_set_ivars(child, ad);
-    else
-	kfree(ad, M_TEMP);
-    return (child);
-}
-
-static int
-acpi_cpu_cst_read_ivar(device_t dev, device_t child, int index,
-    uintptr_t *result)
-{
-    struct acpi_cpu_softc *sc;
-
-    sc = device_get_softc(dev);
-    switch (index) {
-    case ACPI_IVAR_HANDLE:
-	*result = (uintptr_t)sc->cpu_handle;
-	break;
-#if 0
-    case CPU_IVAR_PCPU:
-	*result = (uintptr_t)sc->cpu_pcpu;
-	break;
-#endif
-    default:
-	return (ENOENT);
-    }
-    return (0);
 }
 
 static int
