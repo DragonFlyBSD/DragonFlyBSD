@@ -173,7 +173,7 @@ static void	acpi_cpu_global_cx_count(void);
 
 static void	acpi_cpu_c1(void);	/* XXX */
 
-static device_method_t acpi_cpu_cst_methods[] = {
+static device_method_t acpi_cst_methods[] = {
     /* Device interface */
     DEVMETHOD(device_probe,	acpi_cst_probe),
     DEVMETHOD(device_attach,	acpi_cst_attach),
@@ -198,14 +198,14 @@ static device_method_t acpi_cpu_cst_methods[] = {
     DEVMETHOD_END
 };
 
-static driver_t acpi_cpu_cst_driver = {
+static driver_t acpi_cst_driver = {
     "cpu_cst",
-    acpi_cpu_cst_methods,
+    acpi_cst_methods,
     sizeof(struct acpi_cst_softc),
 };
 
-static devclass_t acpi_cpu_cst_devclass;
-DRIVER_MODULE(cpu_cst, cpu, acpi_cpu_cst_driver, acpi_cpu_cst_devclass, NULL, NULL);
+static devclass_t acpi_cst_devclass;
+DRIVER_MODULE(cpu_cst, cpu, acpi_cst_driver, acpi_cst_devclass, NULL, NULL);
 MODULE_DEPEND(cpu_cst, acpi, 1, 1, 1);
 
 static int
@@ -591,7 +591,7 @@ acpi_cpu_startup(void *arg)
     int i;
 
     /* Get set of CPU devices */
-    devclass_get_devices(acpi_cpu_cst_devclass, &cpu_devices, &cpu_ndevices);
+    devclass_get_devices(acpi_cst_devclass, &cpu_devices, &cpu_ndevices);
 
     /*
      * Setup any quirks that might necessary now that we have probed
