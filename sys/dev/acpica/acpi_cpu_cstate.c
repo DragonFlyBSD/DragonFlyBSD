@@ -145,11 +145,11 @@ static device_t		*cpu_devices;
 static int		 cpu_ndevices;
 static struct acpi_cst_softc **cpu_softc;
 
-static int	acpi_cpu_cst_probe(device_t dev);
-static int	acpi_cpu_cst_attach(device_t dev);
-static int	acpi_cpu_cst_suspend(device_t dev);
-static int	acpi_cpu_cst_resume(device_t dev);
-static int	acpi_cpu_cst_shutdown(device_t dev);
+static int	acpi_cst_probe(device_t dev);
+static int	acpi_cst_attach(device_t dev);
+static int	acpi_cst_suspend(device_t dev);
+static int	acpi_cst_resume(device_t dev);
+static int	acpi_cst_shutdown(device_t dev);
 
 static void	acpi_cpu_cx_probe(struct acpi_cst_softc *sc);
 static void	acpi_cpu_generic_cx_probe(struct acpi_cst_softc *sc);
@@ -175,12 +175,12 @@ static void	acpi_cpu_c1(void);	/* XXX */
 
 static device_method_t acpi_cpu_cst_methods[] = {
     /* Device interface */
-    DEVMETHOD(device_probe,	acpi_cpu_cst_probe),
-    DEVMETHOD(device_attach,	acpi_cpu_cst_attach),
+    DEVMETHOD(device_probe,	acpi_cst_probe),
+    DEVMETHOD(device_attach,	acpi_cst_attach),
     DEVMETHOD(device_detach,	bus_generic_detach),
-    DEVMETHOD(device_shutdown,	acpi_cpu_cst_shutdown),
-    DEVMETHOD(device_suspend,	acpi_cpu_cst_suspend),
-    DEVMETHOD(device_resume,	acpi_cpu_cst_resume),
+    DEVMETHOD(device_shutdown,	acpi_cst_shutdown),
+    DEVMETHOD(device_suspend,	acpi_cst_suspend),
+    DEVMETHOD(device_resume,	acpi_cst_resume),
 
     /* Bus interface */
     DEVMETHOD(bus_add_child,	bus_generic_add_child),
@@ -209,7 +209,7 @@ DRIVER_MODULE(cpu_cst, cpu, acpi_cpu_cst_driver, acpi_cpu_cst_devclass, NULL, NU
 MODULE_DEPEND(cpu_cst, acpi, 1, 1, 1);
 
 static int
-acpi_cpu_cst_probe(device_t dev)
+acpi_cst_probe(device_t dev)
 {
     int cpu_id;
 
@@ -239,7 +239,7 @@ acpi_cpu_cst_probe(device_t dev)
 }
 
 static int
-acpi_cpu_cst_attach(device_t dev)
+acpi_cst_attach(device_t dev)
 {
     ACPI_BUFFER		   buf;
     ACPI_OBJECT		   *obj;
@@ -299,7 +299,7 @@ acpi_cpu_cst_attach(device_t dev)
  * during resume.
  */
 static int
-acpi_cpu_cst_suspend(device_t dev)
+acpi_cst_suspend(device_t dev)
 {
     int error;
 
@@ -311,7 +311,7 @@ acpi_cpu_cst_suspend(device_t dev)
 }
 
 static int
-acpi_cpu_cst_resume(device_t dev)
+acpi_cst_resume(device_t dev)
 {
 
     cpu_disable_idle = FALSE;
@@ -319,7 +319,7 @@ acpi_cpu_cst_resume(device_t dev)
 }
 
 static int
-acpi_cpu_cst_shutdown(device_t dev)
+acpi_cst_shutdown(device_t dev)
 {
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
