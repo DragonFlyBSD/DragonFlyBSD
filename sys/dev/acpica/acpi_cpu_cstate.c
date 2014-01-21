@@ -987,12 +987,14 @@ acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS)
 static int
 acpi_cpu_set_cx_lowest_oncpu(struct acpi_cst_softc *sc, int val)
 {
-    int old_lowest, error = 0;
+    int old_lowest, error = 0, old_lowest_req;
     uint32_t old_type, type;
 
     KKASSERT(mycpuid == sc->cst_cpuid);
 
+    old_lowest_req = sc->cst_cx_lowest_req;
     sc->cst_cx_lowest_req = val;
+
     if (val > sc->cst_cx_count - 1)
 	val = sc->cst_cx_count - 1;
     old_lowest = atomic_swap_int(&sc->cst_cx_lowest, val);
@@ -1030,6 +1032,7 @@ acpi_cpu_set_cx_lowest_oncpu(struct acpi_cst_softc *sc, int val)
 		kprintf("no suitable intr cputimer found\n");
 
 		/* Restore */
+		sc->cst_cx_lowest_req = old_lowest_req;
 		sc->cst_cx_lowest = old_lowest;
 		atomic_fetchadd_int(&cpu_c3_ncpus, -1);
 	    }
