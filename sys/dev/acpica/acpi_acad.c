@@ -53,6 +53,13 @@ ACPI_MODULE_NAME("AC_ADAPTER")
 
 #define ACPI_POWERSOURCE_STAT_CHANGE	0x80
 
+/*
+ * _CST changed.
+ * Also serves as notification code, when line is unplugged
+ * on certain laptops.
+ */
+#define ACPI_NOTIFY_CX_STATES		0x81
+
 struct	acpi_acad_softc {
     int status;
 };
@@ -125,6 +132,7 @@ acpi_acad_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
     case ACPI_NOTIFY_BUS_CHECK:
     case ACPI_NOTIFY_DEVICE_CHECK:
     case ACPI_POWERSOURCE_STAT_CHANGE:
+    case ACPI_NOTIFY_CX_STATES:
 	/* Temporarily.  It is better to notify policy manager */
 	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_acad_get_status, context);
 	break;
