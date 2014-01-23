@@ -50,6 +50,7 @@
 #include <string.h>
 #include <locale.h>
 #include <time.h>
+#include <regex.h>
 
 #include "strfile.h"
 #include "pathnames.h"
@@ -94,9 +95,7 @@ bool Long_only	= false;	/* long fortune desired */
 bool Offend	= false;	/* offensive fortunes only */
 bool All_forts	= false;	/* any fortune allowed */
 bool Equal_probs= false;	/* scatter un-allocted prob equally */
-#ifndef NO_REGEX
 bool Match	= false;	/* dump fortunes matching a pattern */
-#endif
 #ifdef DEBUG
 bool Debug = false;		/* print debug messages */
 #endif
@@ -144,27 +143,12 @@ void sum_tbl(STRFILE *, STRFILE *);
 void usage(void);
 void zero_tbl(STRFILE *);
 
-#ifndef NO_REGEX
 char *conv_pat(char *);
 int find_matches(void);
 void matches_in_list(FILEDESC *);
 int maxlen_in_list(FILEDESC *);
-#endif
 
-#ifndef NO_REGEX
-#ifdef REGCMP
-#define RE_COMP(p)	(Re_pat = regcmp(p, NULL))
-#define BAD_COMP(f)	((f) == NULL)
-#define RE_EXEC(p)	regex(Re_pat, (p))
-
-char *Re_pat;
-char *regcmp(), *regex();
-#else
-#define RE_COMP(p)	(p = re_comp(p))
-#define BAD_COMP(f)	((f) != NULL)
-#define RE_EXEC(p)	re_exec(p)
-#endif
-#endif
+static regex_t Re_pat;
 
 int
 main(int ac, char *av[])
@@ -177,10 +161,8 @@ main(int ac, char *av[])
 
 	getargs(ac, av);
 
-#ifndef NO_REGEX
 	if (Match)
 		exit(find_matches() != 0);
-#endif
 
 	init_prob();
 	srandomdev();
@@ -281,15 +263,11 @@ void
 getargs(int argc, char **argv)
 {
 	int ignore_case;
-#ifndef NO_REGEX
 	char *pat;
-#endif /* NO_REGEX */
 	int ch;
 
 	ignore_case = false;
-#ifndef NO_REGEX
 	pat = NULL;
-#endif /* NO_REGEX */
 
 #ifdef DEBUG
 	while ((ch = getopt(argc, argv, "aDefilm:osw")) != -1)
@@ -325,13 +303,6 @@ getargs(int argc, char **argv)
 		case 'w':		/* give time to read */
 			Wait++;
 			break;
-#ifdef NO_REGEX
-		case 'i':			/* case-insensitive match */
-		case 'm':			/* dump out the fortunes */
-			fprintf(stderr,
-			    "fortune: can't match fortunes on this system (Sorry)\n");
-			exit(0);
-#else /* NO_REGEX */
 		case 'm':			/* dump out the fortunes */
 			Match++;
 			pat = optarg;
@@ -339,7 +310,6 @@ getargs(int argc, char **argv)
 		case 'i':			/* case-insensitive match */
 			ignore_case++;
 			break;
-#endif /* NO_REGEX */
 		case '?':
 		default:
 			usage();
@@ -358,19 +328,17 @@ getargs(int argc, char **argv)
 		print_file_list();
 #endif /* DEBUG */
 
-#ifndef NO_REGEX
 	if (pat != NULL) {
+		int error;
+
 		if (ignore_case)
 			pat = conv_pat(pat);
-		if (BAD_COMP(RE_COMP(pat))) {
-#ifndef REGCMP
-			fprintf(stderr, "%s\n", pat);
-#else /* REGCMP */
-			fprintf(stderr, "bad pattern: %s\n", pat);
-#endif /* REGCMP */
+		error = regcomp(&Re_pat, pat, REG_BASIC);
+		if (error) {
+			fprintf(stderr, "regcomp(%s) fails\n", pat);
+			exit (1);
 		}
 	}
-#endif /* NO_REGEX */
 }
 
 /*
@@ -1206,7 +1174,6 @@ print_list(FILEDESC *list, int lev)
 	}
 }
 
-#ifndef NO_REGEX
 /*
  * conv_pat:
  *	Convert the pattern to an ignore-case equivalent.
@@ -1333,7 +1300,7 @@ matches_in_list(FILEDESC *list)
 								*p = 'a' + (ch - 'a' + 13) % 26;
 						}
 					}
-				if (RE_EXEC(Fortbuf)) {
+				if (regexec(&Re_pat, Fortbuf, 0, NULL, 0) != REG_NOMATCH) {
 					printf("%c%c", fp->tbl.str_delim,
 					    fp->tbl.str_delim);
 					if (!in_file) {
@@ -1348,7 +1315,6 @@ matches_in_list(FILEDESC *list)
 			}
 	}
 }
-#endif /* NO_REGEX */
 
 void
 usage(void)
@@ -1358,13 +1324,9 @@ usage(void)
 	fprintf(stderr, "D");
 #endif /* DEBUG */
 	fprintf(stderr, "f");
-#ifndef NO_REGEX
 	fprintf(stderr, "i");
-#endif
 	fprintf(stderr, "losw]");
-#ifndef NO_REGEX
 	fprintf(stderr, " [-m pattern]");
-#endif
 	fprintf(stderr, "[[#%%] file/directory/all]\n");
 	exit(1);
 }

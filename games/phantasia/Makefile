@@ -1,11 +1,10 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/phantasia/Makefile,v 1.16.2.2 2002/08/07 16:31:42 ru Exp $
-# $DragonFly: src/games/phantasia/Makefile,v 1.5 2006/10/08 16:22:36 pavalos Exp $
 
 PROG=	phantasia
 SRCS=	main.c fight.c io.c interplayer.c gamesupport.c misc.c phantglobs.c
-DPADD=	${LIBM} ${LIBCURSES} ${LIBTERMCAP} ${LIBCOMPAT}
-LDADD=	-lm -lcurses -ltermcap -lcompat
+DPADD=	${LIBM} ${LIBCURSES} ${LIBTERMCAP}
+LDADD=	-lm -lcurses -ltermcap
 NXLDLIBS= -lm
 DATAFILES=characs gold lastdead mess monsters motd scoreboard void
 HIDEGAME=hidegame

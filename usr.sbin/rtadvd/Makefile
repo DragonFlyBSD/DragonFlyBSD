@@ -12,15 +12,12 @@
 # LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE.
 # $FreeBSD: src/usr.sbin/rtadvd/Makefile,v 1.1.2.2 2001/04/25 12:10:48 ru Exp $
-# $DragonFly: src/usr.sbin/rtadvd/Makefile,v 1.2 2003/06/17 04:30:02 dillon Exp $
 
 PROG=	rtadvd
 SRCS=	rtadvd.c rrenum.c advcap.c if.c config.c timer.c dump.c
 WARNS?=	1
 
 CFLAGS+=-DINET6
-LDADD+=	-lcompat
-DPADD+=	${LIBCOMPAT}
 
 MAN=	rtadvd.conf.5 rtadvd.8
 
