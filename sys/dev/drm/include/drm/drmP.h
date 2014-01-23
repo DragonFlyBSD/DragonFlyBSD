@@ -206,7 +206,7 @@ SYSCTL_DECL(_hw_drm);
 
 #define DRM_CURPROC		curthread
 #define DRM_STRUCTPROC		struct thread
-#define DRM_CURRENTPID		curthread->td_proc->p_pid
+#define DRM_CURRENTPID		(curproc != NULL ? curproc->p_pid : -1)
 #define DRM_LOCK(dev)		lockmgr(&(dev)->dev_struct_lock, LK_EXCLUSIVE)
 #define DRM_UNLOCK(dev)		lockmgr(&(dev)->dev_struct_lock, LK_RELEASE)
 #define	DRM_LOCK_SLEEP(dev, chan, flags, msg, timeout)			\
