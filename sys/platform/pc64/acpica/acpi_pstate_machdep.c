@@ -411,15 +411,13 @@ acpi_pst_amd_init(const struct acpi_pst_res *ctrl __unused,
 static const struct acpi_pst_md *
 acpi_pst_intel_probe(void)
 {
-	uint32_t family;
-
 	if ((cpu_feature2 & CPUID2_EST) == 0)
 		return NULL;
 
-	family = cpu_id & 0xf00;
-	if (family != 0xf00 && family != 0x600)
-		return NULL;
-	return &acpi_pst_intel;
+	if (CPUID_TO_FAMILY(cpu_id) >= 0xf || CPUID_TO_FAMILY(cpu_id) == 0x6)
+		return &acpi_pst_intel;
+
+	return NULL;
 }
 
 static int
@@ -490,18 +488,10 @@ static int
 acpi_pst_intel_init(const struct acpi_pst_res *ctrl __unused,
 		    const struct acpi_pst_res *status __unused)
 {
-	uint32_t family, model;
 	uint64_t misc_enable;
 
-	family = cpu_id & 0xf00;
-	if (family == 0xf00) {
-		/* EST enable bit is reserved in INTEL_MSR_MISC_ENABLE */
-		return 0;
-	}
-	KKASSERT(family == 0x600);
-
-	model = ((cpu_id & 0xf0000) >> 12) | ((cpu_id & 0xf0) >> 4);
-	if (model < 0xd) {
+	if (CPUID_TO_FAMILY(cpu_id) == 0xf ||
+	    (CPUID_TO_FAMILY(cpu_id) == 0x6 && CPUID_TO_MODEL(cpu_id) < 0xd)) {
 		/* EST enable bit is reserved in INTEL_MSR_MISC_ENABLE */
 		return 0;
 	}

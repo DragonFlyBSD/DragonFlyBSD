@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2009 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Sepherosa Ziehau <sepherosa@gmail.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -411,15 +411,13 @@ acpi_pst_amd_init(const struct acpi_pst_res *ctrl __unused,
 static const struct acpi_pst_md *
 acpi_pst_intel_probe(void)
 {
-	uint32_t family;
-
 	if ((cpu_feature2 & CPUID2_EST) == 0)
 		return NULL;
 
-	family = cpu_id & 0xf00;
-	if (family != 0xf00 && family != 0x600)
-		return NULL;
-	return &acpi_pst_intel;
+	if (CPUID_TO_FAMILY(cpu_id) >= 0xf || CPUID_TO_FAMILY(cpu_id) == 0x6)
+		return &acpi_pst_intel;
+
+	return NULL;
 }
 
 static int
@@ -490,18 +488,10 @@ static int
 acpi_pst_intel_init(const struct acpi_pst_res *ctrl __unused,
 		    const struct acpi_pst_res *status __unused)
 {
-	uint32_t family, model;
 	uint64_t misc_enable;
 
-	family = cpu_id & 0xf00;
-	if (family == 0xf00) {
-		/* EST enable bit is reserved in INTEL_MSR_MISC_ENABLE */
-		return 0;
-	}
-	KKASSERT(family == 0x600);
-
-	model = ((cpu_id & 0xf0000) >> 12) | ((cpu_id & 0xf0) >> 4);
-	if (model < 0xd) {
+	if (CPUID_TO_FAMILY(cpu_id) == 0xf ||
+	    (CPUID_TO_FAMILY(cpu_id) == 0x6 && CPUID_TO_MODEL(cpu_id) < 0xd)) {
 		/* EST enable bit is reserved in INTEL_MSR_MISC_ENABLE */
 		return 0;
 	}
