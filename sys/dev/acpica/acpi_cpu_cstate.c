@@ -479,6 +479,17 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc)
     sc->cst_flags |= ACPI_CST_FLAG_PROBING;
     cpu_sfence();
 
+    for (i = 0; i < sc->cst_cx_count; ++i) {
+	cx_ptr = &sc->cst_cx_states[i];
+
+	/* Free up any previous register. */
+	if (cx_ptr->p_lvlx != NULL) {
+	    bus_release_resource(sc->cst_dev, cx_ptr->res_type, cx_ptr->rid,
+	        cx_ptr->p_lvlx);
+	    cx_ptr->p_lvlx = NULL;
+	}
+    }
+
     /* Set up all valid states. */
     sc->cst_cx_count = 0;
     cx_ptr = sc->cst_cx_states;
@@ -515,15 +526,8 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc)
 	    break;
 	}
 
-#ifdef notyet
-	/* Free up any previous register. */
-	if (cx_ptr->p_lvlx != NULL) {
-	    bus_release_resource(sc->cst_dev, 0, 0, cx_ptr->p_lvlx);
-	    cx_ptr->p_lvlx = NULL;
-	}
-#endif
-
 	/* Allocate the control register for C2 or C3. */
+	KASSERT(cx_ptr->p_lvlx == NULL, ("still has lvlx"));
 	cx_ptr->rid = sc->cst_parent->cpux_next_rid;
 	acpi_PkgGas(sc->cst_dev, pkg, 0, &cx_ptr->res_type, &cx_ptr->rid,
 	    &cx_ptr->p_lvlx, RF_SHAREABLE);
