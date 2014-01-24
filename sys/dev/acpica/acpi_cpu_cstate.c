@@ -761,12 +761,13 @@ acpi_cpu_idle(void)
     }
 
     /*
-     * Check for bus master activity.  If there was activity, clear
-     * the bit and use the lowest non-C3 state.  Note that the USB
-     * driver polling for new devices keeps this bit set all the
-     * time if USB is loaded.
+     * If C3(+) is to be entered, check for bus master activity.
+     * If there was activity, clear the bit and use the lowest
+     * non-C3 state.
      */
-    if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
+    cx_next = &sc->cst_cx_states[cx_next_idx];
+    if (cx_next->type >= ACPI_STATE_C3 &&
+        (cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
 	AcpiReadBitRegister(ACPI_BITREG_BUS_MASTER_STATUS, &bm_active);
 	if (bm_active != 0) {
 	    AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_STATUS, 1);
