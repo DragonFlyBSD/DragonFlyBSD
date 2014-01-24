@@ -1,6 +1,6 @@
 KMOD	= savage
 SRCS    = savage_bci.c savage_drv.c savage_state.c
-SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h
+SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h opt_ktr.h
 CFLAGS += ${DEBUG_FLAGS} -I. -I.. -I@/dev/drm -I@/dev/drm/savage
 
 .if defined(DRM_DEBUG)

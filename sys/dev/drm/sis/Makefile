@@ -1,6 +1,6 @@
 KMOD= 	sis
 SRCS=	sis_drv.c sis_ds.c sis_mm.c
-SRCS+=	device_if.h bus_if.h pci_if.h opt_drm.h
+SRCS+=	device_if.h bus_if.h pci_if.h opt_drm.h opt_ktr.h
 CFLAGS+=	${DEBUG_FLAGS} -I. -I.. -I@/dev/drm -I@/dev/drm/sis
 
 .if defined(DRM_DEBUG)

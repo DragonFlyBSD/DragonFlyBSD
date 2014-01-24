@@ -1,6 +1,6 @@
 KMOD	= mach64
 SRCS    = mach64_dma.c mach64_drv.c mach64_irq.c mach64_state.c
-SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h
+SRCS   += device_if.h bus_if.h pci_if.h opt_drm.h opt_ktr.h
 CFLAGS += ${DEBUG_FLAGS} -I. -I.. -I@/dev/drm -I@/dev/drm/mach64
 
 .if defined(DRM_DEBUG)

@@ -1,6 +1,6 @@
 KMOD=	tdfx
 SRCS=	tdfx_drv.c
-SRCS+=	device_if.h bus_if.h pci_if.h opt_drm.h
+SRCS+=	device_if.h bus_if.h pci_if.h opt_drm.h opt_ktr.h
 CFLAGS+=	${DEBUG_FLAGS} -I. -I.. -I@/dev/drm -I@/dev/drm/tdfx
 
 .if defined(DRM_DEBUG)
