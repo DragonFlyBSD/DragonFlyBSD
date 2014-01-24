@@ -154,7 +154,7 @@ check:
 .if !exists(/usr/local/bin/mkisofs) && !exists(/usr/pkg/bin/mkisofs)
 	@echo
 	@echo "Your machine does not have cdrtools installed.  You can install it with:"
-	@echo "    pkg install cdrecord"
+	@echo "    pkg install cdrtools"
 .endif
 .if !defined(DPORTS_PATH)
 	@echo "Please set DPORTS_PATH to the dports tree that shall be used for"
