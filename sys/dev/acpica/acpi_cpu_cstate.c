@@ -72,34 +72,34 @@ struct netmsg_acpi_cst {
 
 struct acpi_cx {
     struct resource	*p_lvlx;	/* Register to read to enter state. */
-    int			 rid;		/* rid of p_lvlx */
-    uint32_t		 type;		/* C1-3 (C4 and up treated as C3). */
-    uint32_t		 trans_lat;	/* Transition latency (usec). */
-    uint32_t		 power;		/* Power consumed (mW). */
-    int			 res_type;	/* Resource type for p_lvlx. */
+    int			rid;		/* rid of p_lvlx */
+    uint32_t		type;		/* C1-3 (C4 and up treated as C3). */
+    uint32_t		trans_lat;	/* Transition latency (usec). */
+    uint32_t		power;		/* Power consumed (mW). */
+    int			res_type;	/* Resource type for p_lvlx. */
     bus_space_tag_t	btag;
     bus_space_handle_t	bhand;
 };
 #define MAX_CX_STATES	 8
 
 struct acpi_cst_softc {
-    device_t		 cst_dev;
+    device_t		cst_dev;
     struct acpi_cpux_softc *cst_parent;
-    ACPI_HANDLE		 cst_handle;
-    int			 cst_cpuid;
-    uint32_t		 cst_flags;	/* ACPI_CST_FLAG_ */
-    uint32_t		 cst_p_blk;	/* ACPI P_BLK location */
-    uint32_t		 cst_p_blk_len;	/* P_BLK length (must be 6). */
-    struct acpi_cx	 cst_cx_states[MAX_CX_STATES];
-    int			 cst_cx_count;	/* Number of valid Cx states. */
-    int			 cst_prev_sleep;/* Last idle sleep duration. */
+    ACPI_HANDLE		cst_handle;
+    int			cst_cpuid;
+    uint32_t		cst_flags;	/* ACPI_CST_FLAG_ */
+    uint32_t		cst_p_blk;	/* ACPI P_BLK location */
+    uint32_t		cst_p_blk_len;	/* P_BLK length (must be 6). */
+    struct acpi_cx	cst_cx_states[MAX_CX_STATES];
+    int			cst_cx_count;	/* Number of valid Cx states. */
+    int			cst_prev_sleep;	/* Last idle sleep duration. */
     /* Runtime state. */
-    int			 cst_non_c3;	/* Index of lowest non-C3 state. */
-    u_long		 cst_cx_stats[MAX_CX_STATES];/* Cx usage history. */
+    int			cst_non_c3;	/* Index of lowest non-C3 state. */
+    u_long		cst_cx_stats[MAX_CX_STATES];/* Cx usage history. */
     /* Values for sysctl. */
-    int			 cst_cx_lowest; /* Current Cx lowest */
-    int			 cst_cx_lowest_req; /* Requested Cx lowest */
-    char 		 cst_cx_supported[64];
+    int			cst_cx_lowest;	/* Current Cx lowest */
+    int			cst_cx_lowest_req; /* Requested Cx lowest */
+    char 		cst_cx_supported[64];
 };
 
 #define ACPI_CST_FLAG_PROBING	0x1
