@@ -173,7 +173,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 	if (pi && pi->ipi6_ifindex) {
 		/* XXX boundary check is assumed to be already done. */
 		ia6 = in6_ifawithscope(ifindex2ifnet[pi->ipi6_ifindex],
-				       dst);
+				       dst, cred);
 
 		if (ia6 && jailed) {
 			jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
@@ -210,7 +210,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			return (0);
 		}
 		ia6 = in6_ifawithscope(ifindex2ifnet[dstsock->sin6_scope_id],
-				       dst);
+				       dst, cred);
 
 		if (ia6 && jailed) {
 			jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
@@ -243,7 +243,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 		}
 
 		if (ifp) {
-			ia6 = in6_ifawithscope(ifp, dst);
+			ia6 = in6_ifawithscope(ifp, dst, cred);
 			if (ia6 == NULL) {
 				*errorp = EADDRNOTAVAIL;
 				return (0);
@@ -265,7 +265,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			sin6_next = satosin6(opts->ip6po_nexthop);
 			rt = nd6_lookup(&sin6_next->sin6_addr, 1, NULL);
 			if (rt) {
-				ia6 = in6_ifawithscope(rt->rt_ifp, dst);
+				ia6 = in6_ifawithscope(rt->rt_ifp, dst, cred);
 				if (ia6 == NULL)
 					ia6 = ifatoia6(rt->rt_ifa);
 			}
@@ -323,7 +323,7 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 		 */
 
 		if (ro->ro_rt) {
-			ia6 = in6_ifawithscope(ro->ro_rt->rt_ifa->ifa_ifp, dst);
+			ia6 = in6_ifawithscope(ro->ro_rt->rt_ifa->ifa_ifp, dst, cred);
 			if (ia6 && jailed) {
 				jsin6.sin6_addr = (&ia6->ia_addr)->sin6_addr;
 				if (!jailed_ip(cred->cr_prison,

@@ -76,6 +76,7 @@
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/syslog.h>
+#include <sys/jail.h>
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
@@ -2010,7 +2011,7 @@ in6_prefixlen2mask(struct in6_addr *maskp, int len)
  * return the best address out of the same scope
  */
 struct in6_ifaddr *
-in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst)
+in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst, struct ucred *cred)
 {
 	int dst_scope =	in6_addrscope(dst), src_scope, best_scope = 0;
 	int blen = -1;
@@ -2066,6 +2067,11 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst)
 
 			if (((struct in6_ifaddr *)ifa)->ia6_flags &
 			    IN6_IFF_DETACHED)
+				continue;
+
+			/* Skip adresses not valid for current jail */
+			if (cred != NULL &&
+			    !jailed_ip(cred->cr_prison, (struct sockaddr *)(ifa->ifa_addr)) != 0)
 				continue;
 
 			/*
