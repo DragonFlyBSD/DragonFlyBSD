@@ -39,6 +39,7 @@
 #include <sys/thread2.h>
 #include <sys/serialize.h>
 #include <sys/msgport2.h>
+#include <sys/microtime_pcpu.h>
 
 #include <bus/pci/pcivar.h>
 #include <machine/atomic.h>
@@ -104,8 +105,6 @@ struct acpi_cst_softc {
 #define CPU_GET_REG(reg, width) 					\
     (bus_space_read_ ## width(rman_get_bustag((reg)), 			\
 		      rman_get_bushandle((reg)), 0))
-
-#define PM_USEC(x)	 ((x) >> 2)	/* ~4 clocks per usec (3.57955 Mhz) */
 
 #define CPU_QUIRK_NO_C3		(1<<0)	/* C3-type states are not usable. */
 #define CPU_QUIRK_NO_BM_CTRL	(1<<2)	/* No bus mastering control. */
@@ -729,8 +728,9 @@ acpi_cpu_idle(void)
 {
     struct	acpi_cst_softc *sc;
     struct	acpi_cx *cx_next;
-    uint64_t	start_time, end_time;
-    int		bm_active, cx_next_idx, i;
+    union microtime_pcpu start, end;
+    uint64_t	dummy;
+    int		bm_active, cx_next_idx, i, tdiff;
 
     /* If disabled, return immediately. */
     if (cpu_disable_idle) {
@@ -809,21 +809,19 @@ acpi_cpu_idle(void)
 
     /*
      * Read from P_LVLx to enter C2(+), checking time spent asleep.
-     * Use the ACPI timer for measuring sleep time.  Since we need to
-     * get the time very close to the CPU start/stop clock logic, this
-     * is the only reliable time source.
      */
-    AcpiRead(&start_time, &AcpiGbl_FADT.XPmTimerBlock);
-    CPU_GET_REG(cx_next->p_lvlx, 1);
+    microtime_pcpu_get(&start);
+    cpu_mfence();
 
+    CPU_GET_REG(cx_next->p_lvlx, 1);
     /*
-     * Read the end time twice.  Since it may take an arbitrary time
-     * to enter the idle state, the first read may be executed before
-     * the processor has stopped.  Doing it again provides enough
-     * margin that we are certain to have a correct value.
+     * Perform a dummy I/O read.  Since it may take an arbitrary time
+     * to enter the idle state, this read makes sure that we are frozen.
      */
-    AcpiRead(&end_time, &AcpiGbl_FADT.XPmTimerBlock);
-    AcpiRead(&end_time, &AcpiGbl_FADT.XPmTimerBlock);
+    AcpiRead(&dummy, &AcpiGbl_FADT.XPmTimerBlock);
+
+    cpu_mfence();
+    microtime_pcpu_get(&end);
 
     /* Enable bus master arbitration and disable bus master wakeup. */
     if (cx_next->type >= ACPI_STATE_C3) {
@@ -835,8 +833,8 @@ acpi_cpu_idle(void)
     ACPI_ENABLE_IRQS();
 
     /* Find the actual time asleep in microseconds. */
-    end_time = acpi_TimerDelta(end_time, start_time);
-    sc->cst_prev_sleep = (sc->cst_prev_sleep * 3 + PM_USEC(end_time)) / 4;
+    tdiff = microtime_pcpu_diff(&start, &end);
+    sc->cst_prev_sleep = (sc->cst_prev_sleep * 3 + tdiff) / 4;
 }
 
 /*
