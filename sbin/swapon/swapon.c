@@ -49,7 +49,7 @@
 #include <libutil.h>
 
 static void usage(void);
-static int swap_on_off(char *name, int doingall, int trim);
+static int swap_on_off(char *name, int doingall, int trim, int ask);
 static void swaplist(int lflag, int sflag, int hflag);
 
 enum { SWAPON, SWAPOFF, SWAPCTL } orig_prog, which_prog = SWAPCTL;
@@ -61,7 +61,7 @@ main(int argc, char **argv)
 	char *ptr;
 	int ret;
 	int ch;
-	int doall, sflag, lflag, hflag, qflag, eflag;
+	int doall, sflag, lflag, hflag, qflag, eflag, iflag;
 
 	if ((ptr = strrchr(argv[0], '/')) == NULL)
 		ptr = argv[0];
@@ -72,7 +72,7 @@ main(int argc, char **argv)
 	orig_prog = which_prog;
 
 	sflag = lflag = hflag = qflag = doall = eflag = 0;
-	while ((ch = getopt(argc, argv, "AadeghklmqsU")) != -1) {
+	while ((ch = getopt(argc, argv, "AadeghiklmqsU")) != -1) {
 		switch((char)ch) {
 		case 'A':
 			if (which_prog == SWAPCTL) {
@@ -102,6 +102,9 @@ main(int argc, char **argv)
 			break;
 		case 'h':
 			hflag = 'H';
+			break;
+		case 'i':
+			iflag = 1;
 			break;
 		case 'k':
 			hflag = 'K';
@@ -142,7 +145,7 @@ main(int argc, char **argv)
 					continue;
 				if (strstr(fsp->fs_mntops, "noauto"))
 					continue;
-				if (swap_on_off(fsp->fs_spec, 1, eflag)) {
+				if (swap_on_off(fsp->fs_spec, 1, eflag, iflag)) {
 					ret = 1;
 				} else {
 					if (!qflag) {
@@ -157,7 +160,7 @@ main(int argc, char **argv)
 			usage();
 		}
 		for (; *argv; ++argv) {
-			if (swap_on_off(getdevpath(*argv, 0), 0, eflag)) {
+			if (swap_on_off(getdevpath(*argv, 0), 0, eflag, 1)) {
 				ret = 1;
 			} else if (orig_prog == SWAPCTL) {
 				printf("%s: %sing %s as swap device\n",
@@ -245,8 +248,18 @@ trim_volume(char * name)
 }
 
 static int
-swap_on_off(char *name, int doingall, int trim)
+swap_on_off(char *name, int doingall, int trim, int ask)
 {
+
+	if (ask && which_prog == SWAPON) {
+		printf("Do you really want to use device %s as a swap device ?\n", name);
+		printf("You might loose data. [Y/N]");
+
+		int c = fgetc(stdin);
+		if (c != 'y' && c != 'Y')
+			return(1);
+
+	}
 	if (which_prog == SWAPON && trim){
 		char sysctl_name[64];
 		int trim_enabled = 0;
@@ -297,10 +310,10 @@ usage(void)
 	switch (orig_prog) {
 	case SWAPON:
 	case SWAPOFF:
-		fprintf(stderr, "-aeq | file ...\n");
+		fprintf(stderr, "-aeiq | file ...\n");
 		break;
 	case SWAPCTL:
-		fprintf(stderr, "[-AeghklmsU] [-a file ... | -d file ...]\n");
+		fprintf(stderr, "[-AeghiklmsU] [-a file ... | -d file ...]\n");
 		break;
 	}
 	exit(1);

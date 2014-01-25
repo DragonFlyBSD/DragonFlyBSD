@@ -78,6 +78,9 @@ If the
 .Fl e
 option is used, the device will be trimmed if
 it supports trim and the trim_enabled sysctl is on.
+The
+.Fl i
+option asks user confirmation before adding a swap device.
 .Pp
 The
 .Nm swapoff
@@ -156,6 +159,8 @@ List the devices making up system swap.
 Print a summary line for system swap.
 .It Fl e
 Attempts to Trim the device if -[Aa] is used.
+.It Fl i
+Asks user confirmation when -a is used.
 .Pp
 The
 .Ev BLOCKSIZE
