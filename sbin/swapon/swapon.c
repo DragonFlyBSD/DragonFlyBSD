@@ -71,7 +71,7 @@ main(int argc, char **argv)
 		which_prog = SWAPOFF;
 	orig_prog = which_prog;
 
-	sflag = lflag = hflag = qflag = doall = eflag = 0;
+	sflag = lflag = hflag = qflag = doall = eflag = iflag = 0;
 	while ((ch = getopt(argc, argv, "AadeghiklmqsU")) != -1) {
 		switch((char)ch) {
 		case 'A':
