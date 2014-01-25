@@ -331,8 +331,18 @@ vmx_init(void)
 	}
 
 	vmx_set_default_settings(&vmx_pinbased);
+
 	vmx_set_default_settings(&vmx_procbased);
+	/* Enable second level for procbased */
+	err = vmx_set_ctl_setting(&vmx_procbased,
+	    PROCBASED_ACTIVATE_SECONDARY_CONTROLS,
+	    ONE);
+	if (err) {
+		kprintf("VMM: PROCBASED_ACTIVATE_SECONDARY_CONTROLS not supported by this CPU\n");
+		return (ENODEV);
+	}
 	vmx_set_default_settings(&vmx_procbased2);
+
 	vmx_set_default_settings(&vmx_exit);
 	vmx_set_default_settings(&vmx_entry);
 
@@ -354,14 +364,6 @@ vmx_init(void)
 		return (ENODEV);
 	}
 
-	/* Enable second level for procbased */
-	err = vmx_set_ctl_setting(&vmx_procbased,
-	    PROCBASED_ACTIVATE_SECONDARY_CONTROLS,
-	    ONE);
-	if (err) {
-		kprintf("VMM: PROCBASED_ACTIVATE_SECONDARY_CONTROLS not supported by this CPU\n");
-		return (ENODEV);
-	}
 
 	/* Set 64bits mode for GUEST */
 	err = vmx_set_ctl_setting(&vmx_entry,
