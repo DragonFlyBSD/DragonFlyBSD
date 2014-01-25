@@ -404,6 +404,17 @@ printcpuinfo(void)
 				    );
 			}
 
+			if (cpu_mwait_feature != 0) {
+				kprintf("\n  MONITOR/MWAIT Features=0x%b",
+				    cpu_mwait_feature,
+				    "\020"
+				    /* Enumeration of Monitor-Mwait extension */
+				    "\001CST"
+				    /*  interrupts as break-event for MWAIT */
+				    "\002INTBRK"
+				    );
+			}
+
 			if (cpu_vendor_id == CPU_VENDOR_CENTAUR)
 				print_via_padlock_info();
 			/*
@@ -530,8 +541,8 @@ identify_cpu(void)
 
 	if (cpu_high >= 5) {
 		do_cpuid(5, regs);
-		cpu_mwait_features = regs[2];
-		if (cpu_mwait_features & CPUID_MWAIT_EXT)
+		cpu_mwait_feature = regs[2];
+		if (cpu_mwait_feature & CPUID_MWAIT_EXT)
 			cpu_mwait_extemu = regs[3];
 	}
 	if (cpu_high >= 6) {

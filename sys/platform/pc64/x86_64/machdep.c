@@ -437,7 +437,7 @@ cpu_finish(void *dummy __unused)
 
 	cpu_setregs();
 
-	if (cpu_mwait_features & CPUID_MWAIT_EXT) {
+	if (cpu_mwait_feature & CPUID_MWAIT_EXT) {
 		for (i = 0; i < CPU_MWAIT_CX_MAX; ++i) {
 			struct cpu_mwait_cx *cx = &cpu_mwait_cx_info[i];
 
