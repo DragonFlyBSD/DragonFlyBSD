@@ -387,6 +387,10 @@ acpi_cpu_generic_cx_probe(struct acpi_cst_softc *sc)
     cx_ptr++;
     sc->cst_cx_count++;
 
+    /* C2(+) is not supported on MP system */
+    if (ncpus > 1 && (AcpiGbl_FADT.Flags & ACPI_FADT_C2_MP_SUPPORTED) == 0)
+	return;
+
     /* 
      * The spec says P_BLK must be 6 bytes long.  However, some systems
      * use it to indicate a fractional set of features present so we
