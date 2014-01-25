@@ -36,13 +36,10 @@
 #include <sys/serialize.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
+#include <sys/microtime_pcpu.h>
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
-
-#include <machine/atomic.h>
-#include <machine/clock.h>
-#include <machine/smp.h>
 
 #include <net/if.h>
 #include <net/if_poll.h>
@@ -121,11 +118,6 @@
 #define IFPOLL_RX		0x1
 #define IFPOLL_TX		0x2
 
-union ifpoll_time {
-	struct timeval		tv;
-	uint64_t		tsc;
-};
-
 struct iopoll_rec {
 	struct lwkt_serialize	*serializer;
 	struct ifnet		*ifp;
@@ -134,7 +126,7 @@ struct iopoll_rec {
 };
 
 struct iopoll_ctx {
-	union ifpoll_time	prev_t;
+	union microtime_pcpu	prev_t;
 	u_long			short_ticks;		/* statistics */
 	u_long			lost_polls;		/* statistics */
 	u_long			suspect;		/* statistics */
@@ -149,7 +141,7 @@ struct iopoll_ctx {
 	uint32_t		phase;			/* state */
 	int			residual_burst;		/* state */
 	uint32_t		poll_each_burst;	/* tunable */
-	union ifpoll_time	poll_start_t;		/* state */
+	union microtime_pcpu	poll_start_t;		/* state */
 
 	uint32_t		poll_burst;		/* state */
 	uint32_t		poll_burst_max;		/* tunable */
@@ -327,27 +319,6 @@ static __inline void
 sched_iopollmore(struct iopoll_ctx *io_ctx)
 {
 	ifpoll_sendmsg_oncpu((netmsg_t)&io_ctx->poll_more_netmsg);
-}
-
-static __inline void
-ifpoll_time_get(union ifpoll_time *t)
-{
-	if (tsc_invariant)
-		t->tsc = rdtsc();
-	else
-		microuptime(&t->tv);
-}
-
-/* Return time diff in us */
-static __inline int
-ifpoll_time_diff(const union ifpoll_time *s, const union ifpoll_time *e)
-{
-	if (tsc_invariant) {
-		return (((e->tsc - s->tsc) * 1000000) / tsc_frequency);
-	} else {
-		return ((e->tv.tv_usec - s->tv.tv_usec) +
-			(e->tv.tv_sec - s->tv.tv_sec) * 1000000);
-	}
 }
 
 /*
@@ -772,7 +743,7 @@ iopoll_ctx_create(int cpuid, int poll_type)
 static void
 iopoll_clock(struct iopoll_ctx *io_ctx)
 {
-	union ifpoll_time t;
+	union microtime_pcpu t;
 	int delta;
 
 	KKASSERT(mycpuid == io_ctx->poll_cpuid);
@@ -782,8 +753,8 @@ iopoll_clock(struct iopoll_ctx *io_ctx)
 
 	logpoll(ioclock_start);
 
-	ifpoll_time_get(&t);
-	delta = ifpoll_time_diff(&io_ctx->prev_t, &t);
+	microtime_pcpu_get(&t);
+	delta = microtime_pcpu_diff(&io_ctx->prev_t, &t);
 	if (delta * io_ctx->pollhz < 500000)
 		io_ctx->short_ticks++;
 	else
@@ -845,7 +816,7 @@ rxpoll_handler(netmsg_t msg)
 	io_ctx->phase = 3;
 	if (io_ctx->residual_burst == 0) {
 		/* First call in this tick */
-		ifpoll_time_get(&io_ctx->poll_start_t);
+		microtime_pcpu_get(&io_ctx->poll_start_t);
 		io_ctx->residual_burst = io_ctx->poll_burst;
 	}
 	cycles = (io_ctx->residual_burst < io_ctx->poll_each_burst) ?
@@ -953,7 +924,7 @@ rxpollmore_handler(netmsg_t msg)
 {
 	struct thread *td = curthread;
 	struct iopoll_ctx *io_ctx;
-	union ifpoll_time t;
+	union microtime_pcpu t;
 	int kern_load;
 	uint32_t pending_polls;
 
@@ -983,8 +954,8 @@ rxpollmore_handler(netmsg_t msg)
 	}
 
 	/* Here we can account time spent in iopoll's in this tick */
-	ifpoll_time_get(&t);
-	kern_load = ifpoll_time_diff(&io_ctx->poll_start_t, &t);
+	microtime_pcpu_get(&t);
+	kern_load = microtime_pcpu_diff(&io_ctx->poll_start_t, &t);
 	kern_load = (kern_load * io_ctx->pollhz) / 10000; /* 0..100 */
 	io_ctx->kern_frac = kern_load;
 
