@@ -914,7 +914,7 @@ cpu_idle(void)
 		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 			splz(); /* XXX */
 			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
-					  cpu_mwait_halt);
+					  cpu_mwait_halt, 0);
 			++cpu_idle_hltcnt;
 		} else if (cpu_idle_hlt) {
 			__asm __volatile("cli");

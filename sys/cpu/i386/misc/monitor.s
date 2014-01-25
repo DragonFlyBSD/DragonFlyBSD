@@ -41,8 +41,8 @@
 	.text
 
 /*
- * void cpu_mmw_pause_int(int *addr, int oldval, int cstatehint)
- * void cpu_mmw_pause_long(long *addr, long oldval, int cstatehint)
+ * void cpu_mmw_pause_int(int *addr, int oldval, int cstate, int intrbrk)
+ * void cpu_mmw_pause_long(long *addr, long oldval, int cstate, int intrbrk)
  */
 ENTRY(cpu_mmw_pause_int)
 ENTRY(cpu_mmw_pause_long)
@@ -60,6 +60,7 @@ ENTRY(cpu_mmw_pause_long)
 	cmpl	(%eax), %ebx
 	jne	2f
 	movl	12(%esp), %eax
+	movl	16(%esp), %ecx
 	mwait
 2:
 	popl	%ebx

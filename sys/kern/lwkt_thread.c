@@ -806,7 +806,7 @@ skip:
 	    cpu_mmw_pause_int(&gd->gd_reqflags,
 			      (gd->gd_reqflags | RQF_SPINNING) &
 			      ~RQF_IDLECHECK_WK_MASK,
-			      cpu_mwait_spin);
+			      cpu_mwait_spin, 0);
 	}
 #endif
 
@@ -840,7 +840,8 @@ skip:
 		cpu_ccfence();
 #if 1
 		if (cpu_mi_feature & CPU_MI_MONITOR) {
-		    cpu_mmw_pause_int(&lwkt_cseq_rindex, oseq, cpu_mwait_spin);
+		    cpu_mmw_pause_int(&lwkt_cseq_rindex, oseq,
+			cpu_mwait_spin, 0);
 		} else {
 #endif
 		    cpu_pause();

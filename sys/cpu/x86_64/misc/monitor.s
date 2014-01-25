@@ -41,11 +41,12 @@
 	.text
 
 /*
- * void cpu_mmw_pause_int(int *addr, int oldval, int cstatetarget)
+ * void cpu_mmw_pause_int(int *addr, int oldval, int cstate, int intrbrk)
  */	
 ENTRY(cpu_mmw_pause_int)
 	movq	%rdi, %rax
 	movq	%rdx, %r8
+	movq	%rcx, %r9
 
 	xorq	%rcx, %rcx
 	xorq	%rdx, %rdx
@@ -53,23 +54,26 @@ ENTRY(cpu_mmw_pause_int)
 	cmpl	(%rax), %esi
 	jne	1f
 	movq	%r8, %rax
+	movq	%r9, %rcx
 	mwait
 1:
 	ret
 
 /*
- * void cpu_mmw_pause_long(long *addr, long oldval, cstatetarget)
+ * void cpu_mmw_pause_long(long *addr, long oldval, int cstate, int intrbrk)
  */	
 ENTRY(cpu_mmw_pause_long)
 	movq	%rdi, %rax
-
 	movq	%rdx, %r8
+	movq	%rcx, %r9
+
 	xorq	%rcx, %rcx
 	xorq	%rdx, %rdx
 	monitor
 	cmpq	(%rax), %rsi
 	jne	1f
 	movq	%r8, %rax
+	movq	%r9, %rcx
 	mwait
 1:
 	ret
