@@ -33,7 +33,7 @@ MAN=	fore_dnld.8
 SRCS=	fore_dnld.c pca200e.c
 
 CFLAGS+=	-I${.CURDIR}/../../../sys
-LDADD+=		-latm
-DPADD+=		${LIBATM}
+LDADD+=		-latm -lmd
+DPADD+=		${LIBATM} ${LIBMD}
 
 .include <bsd.prog.mk>
