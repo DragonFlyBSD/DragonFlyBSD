@@ -461,6 +461,9 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
+    if (reprobe)
+	KKASSERT(mycpuid == sc->cst_cpuid);
+
     buf.Pointer = NULL;
     buf.Length = ACPI_ALLOCATE_BUFFER;
     status = AcpiEvaluateObject(sc->cst_handle, "_CST", NULL, &buf);
@@ -552,32 +555,29 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe)
     }
     AcpiOsFree(buf.Pointer);
 
-    /*
-     * Fix up the lowest Cx being used
-     */
-    if (sc->cst_cx_lowest_req < sc->cst_cx_count)
-	sc->cst_cx_lowest = sc->cst_cx_lowest_req;
-    if (sc->cst_cx_lowest > sc->cst_cx_count - 1)
-	sc->cst_cx_lowest = sc->cst_cx_count - 1;
-
-    /*
-     * Cache the lowest non-C3 state.
-     * NOTE: must after cst_cx_lowest is set.
-     */
-    acpi_cpu_cx_non_c3(sc);
-
     /* If there are C3(+) states, always enable bus master wakeup */
     if (reprobe && (cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
 	for (i = 0; i < sc->cst_cx_count; ++i) {
 	    struct acpi_cx *cx = &sc->cst_cx_states[i];
 
 	    if (cx->type >= ACPI_STATE_C3) {
-		KKASSERT(mycpuid == sc->cst_cpuid);
 		AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 1);
 		break;
 	    }
 	}
     }
+
+    /*
+     * Fix up the lowest Cx being used
+     */
+    if (reprobe)
+	acpi_cpu_set_cx_lowest_oncpu(sc, sc->cst_cx_lowest_req);
+
+    /*
+     * Cache the lowest non-C3 state.
+     * NOTE: must after cst_cx_lowest is set.
+     */
+    acpi_cpu_cx_non_c3(sc);
 
     cpu_sfence();
     sc->cst_flags &= ~ACPI_CST_FLAG_PROBING;
