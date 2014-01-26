@@ -566,6 +566,7 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe)
      */
     acpi_cpu_cx_non_c3(sc);
 
+    /* If there are C3(+) states, always enable bus master wakeup */
     if (reprobe && (cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
 	for (i = 0; i < sc->cst_cx_count; ++i) {
 	    struct acpi_cx *cx = &sc->cst_cx_states[i];
@@ -723,6 +724,7 @@ acpi_cpu_startup_cx(struct acpi_cst_softc *sc)
 {
     struct acpi_cpux_softc *cpux = sc->cst_parent;
 
+    /* If there are C3(+) states, always enable bus master wakeup */
     if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
 	int i;
 
@@ -792,8 +794,7 @@ acpi_cpu_idle(void)
 
     /*
      * Look up our CPU id to get our softc.  If it's NULL, we'll use C1
-     * since there is no ACPI processor object for this CPU.  This occurs
-     * for logical CPUs in the HTT case.
+     * since there is no ACPI processor object for this CPU.
      */
     sc = cpu_softc[mdcpu->mi.gd_cpuid];
     if (sc == NULL) {
@@ -848,8 +849,8 @@ acpi_cpu_idle(void)
     }
 
     /*
-     * For C3(+), disable bus master arbitration and enable bus master wake
-     * if BM control is available, otherwise flush the CPU cache.
+     * For C3(+), disable bus master arbitration if BM control is
+     * available, otherwise flush the CPU cache.
      */
     if (cx_next->type >= ACPI_STATE_C3) {
 	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0)
@@ -874,7 +875,7 @@ acpi_cpu_idle(void)
     cpu_mfence();
     microtime_pcpu_get(&end);
 
-    /* Enable bus master arbitration and disable bus master wakeup. */
+    /* Enable bus master arbitration. */
     if (cx_next->type >= ACPI_STATE_C3) {
 	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0)
 	    AcpiWriteBitRegister(ACPI_BITREG_ARB_DISABLE, 0);
