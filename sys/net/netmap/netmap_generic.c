@@ -184,9 +184,6 @@ int generic_netmap_register(struct netmap_adapter *na, int enable)
     int error;
     int i, r;
 
-    if (!na)
-        return EINVAL;
-
 #ifdef REG_RESET
     error = ifp->netdev_ops->ndo_stop(ifp);
     if (error) {
