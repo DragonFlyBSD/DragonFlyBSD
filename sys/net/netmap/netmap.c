@@ -1293,7 +1293,12 @@ netmap_ioctl(struct dev_ioctl_args *ap)
 	struct netmap_kring *krings;
 	u_long cmd = ap->a_cmd;
 
-	priv = ap->a_head.a_dev->si_drv1;
+	error = devfs_get_cdevpriv(ap->a_fp, (void **)&priv);
+	if (error) {
+		/* XXX ENOENT should be impossible, since the priv
+		 * is now created in the open */
+		return (error == ENOENT ? ENXIO : error);
+	}
 
 	nmr->nr_name[sizeof(nmr->nr_name) - 1] = '\0';	/* truncate name */
 	switch (cmd) {
@@ -1577,7 +1582,9 @@ netmap_poll(struct cdev *dev, int events, struct thread *td)
 	(void)pwait;
 	mbq_init(&q);
 
-	priv = dev->si_drv1;
+	/* XXX poll isn't ported yet so fill in NULL as a placeholder: */
+	if (devfs_get_cdevpriv(NULL, (void **)&priv) != 0 || priv == NULL)
+		return POLLERR;
 
 	if (priv->np_nifp == NULL) {
 		D("No if registered");
