@@ -160,7 +160,7 @@ main(int argc, char **argv)
 			usage();
 		}
 		for (; *argv; ++argv) {
-			if (swap_on_off(getdevpath(*argv, 0), 0, eflag, 1)) {
+			if (swap_on_off(getdevpath(*argv, 0), 0, eflag, iflag)) {
 				ret = 1;
 			} else if (orig_prog == SWAPCTL) {
 				printf("%s: %sing %s as swap device\n",
@@ -256,6 +256,7 @@ swap_on_off(char *name, int doingall, int trim, int ask)
 		printf("You might loose data. [Y/N]");
 
 		int c = fgetc(stdin);
+		printf("\n");
 		if (c != 'y' && c != 'Y')
 			return(1);
 
