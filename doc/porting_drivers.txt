@@ -223,7 +223,3 @@
 * kern_psignal()
 
   Replace by ksignal()
-
-* devfs_get_cdevpriv(), devfs_set_cdevpriv() and devfs_clear_cdevpriv()
-
-  There is no available equivalent.
