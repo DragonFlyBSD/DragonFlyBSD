@@ -152,7 +152,7 @@ static int	acpi_cst_shutdown(device_t dev);
 
 static void	acpi_cpu_cx_probe(struct acpi_cst_softc *sc);
 static void	acpi_cpu_generic_cx_probe(struct acpi_cst_softc *sc);
-static int	acpi_cpu_cx_cst(struct acpi_cst_softc *sc);
+static int	acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe);
 static int	acpi_cpu_cx_cst_dispatch(struct acpi_cst_softc *sc);
 static void	acpi_cpu_startup(void *arg);
 static void	acpi_cpu_startup_cx(struct acpi_cst_softc *sc);
@@ -169,6 +169,7 @@ static int	acpi_cpu_global_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cpu_global_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
 static void	acpi_cpu_cx_non_c3(struct acpi_cst_softc *sc);
 static void	acpi_cpu_global_cx_count(void);
+static void	acpi_cst_bm_rld(struct acpi_cst_softc *);
 
 static void	acpi_cpu_c1(void);	/* XXX */
 
@@ -353,7 +354,7 @@ acpi_cpu_cx_probe(struct acpi_cst_softc *sc)
      * probed all the cpus in the system before probing for generic Cx
      * states as we may already have found cpus with valid _CST packages
      */
-    if (!cpu_cx_generic && acpi_cpu_cx_cst(sc) != 0) {
+    if (!cpu_cx_generic && acpi_cpu_cx_cst(sc, 0) != 0) {
 	/*
 	 * We were unable to find a _CST package for this cpu or there
 	 * was an error parsing it. Switch back to generic mode.
@@ -448,7 +449,7 @@ acpi_cpu_generic_cx_probe(struct acpi_cst_softc *sc)
  * to clean up and probe the new _CST package.
  */
 static int
-acpi_cpu_cx_cst(struct acpi_cst_softc *sc)
+acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe)
 {
     struct	 acpi_cx *cx_ptr;
     ACPI_STATUS	 status;
@@ -524,7 +525,6 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc)
 	case ACPI_STATE_C3:
 	default:
 	    if ((cpu_quirks & CPU_QUIRK_NO_C3) != 0) {
-
 		ACPI_DEBUG_PRINT((ACPI_DB_INFO,
 				 "acpi_cpu%d: C3[%d] not available.\n",
 				 device_get_unit(sc->cst_dev), i));
@@ -566,6 +566,18 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc)
      */
     acpi_cpu_cx_non_c3(sc);
 
+    if (reprobe && (cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
+	for (i = 0; i < sc->cst_cx_count; ++i) {
+	    struct acpi_cx *cx = &sc->cst_cx_states[i];
+
+	    if (cx->type >= ACPI_STATE_C3) {
+		KKASSERT(mycpuid == sc->cst_cpuid);
+		AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 1);
+		break;
+	    }
+	}
+    }
+
     cpu_sfence();
     sc->cst_flags &= ~ACPI_CST_FLAG_PROBING;
 
@@ -578,7 +590,7 @@ acpi_cst_probe_handler(netmsg_t msg)
     struct netmsg_acpi_cst *rmsg = (struct netmsg_acpi_cst *)msg;
     int error;
 
-    error = acpi_cpu_cx_cst(rmsg->sc);
+    error = acpi_cpu_cx_cst(rmsg->sc, 1);
     lwkt_replymsg(&rmsg->base.lmsg, error);
 }
 
@@ -686,9 +698,43 @@ acpi_cpu_cx_list(struct acpi_cst_softc *sc)
 }	
 
 static void
+acpi_cst_bm_rld_handler(netmsg_t msg)
+{
+    struct netmsg_acpi_cst *rmsg = (struct netmsg_acpi_cst *)msg;
+
+    AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 1);
+    lwkt_replymsg(&rmsg->base.lmsg, 0);
+}
+
+static void
+acpi_cst_bm_rld(struct acpi_cst_softc *sc)
+{
+    struct netmsg_acpi_cst msg;
+
+    netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	acpi_cst_bm_rld_handler);
+    msg.sc = sc;
+
+    lwkt_domsg(netisr_cpuport(sc->cst_cpuid), &msg.base.lmsg, 0);
+}
+
+static void
 acpi_cpu_startup_cx(struct acpi_cst_softc *sc)
 {
     struct acpi_cpux_softc *cpux = sc->cst_parent;
+
+    if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
+	int i;
+
+	for (i = 0; i < sc->cst_cx_count; ++i) {
+	    struct acpi_cx *cx = &sc->cst_cx_states[i];
+
+	    if (cx->type >= ACPI_STATE_C3) {
+		acpi_cst_bm_rld(sc);
+		break;
+	    }
+	}
+    }
 
     acpi_cpu_cx_list(sc);
     
@@ -806,10 +852,9 @@ acpi_cpu_idle(void)
      * if BM control is available, otherwise flush the CPU cache.
      */
     if (cx_next->type >= ACPI_STATE_C3) {
-	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
+	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0)
 	    AcpiWriteBitRegister(ACPI_BITREG_ARB_DISABLE, 1);
-	    AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 1);
-	} else
+	else
 	    ACPI_FLUSH_CPU_CACHE();
     }
 
@@ -831,10 +876,8 @@ acpi_cpu_idle(void)
 
     /* Enable bus master arbitration and disable bus master wakeup. */
     if (cx_next->type >= ACPI_STATE_C3) {
-	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
+	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0)
 	    AcpiWriteBitRegister(ACPI_BITREG_ARB_DISABLE, 0);
-	    AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 0);
-	}
     }
     ACPI_ENABLE_IRQS();
 
