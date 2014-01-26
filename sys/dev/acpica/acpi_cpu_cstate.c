@@ -57,7 +57,7 @@
 #include "acpi_cpu.h"
 
 /*
- * Support for ACPI Processor devices, including C[1-3] sleep states.
+ * Support for ACPI Processor devices, including C[1-3+] sleep states.
  */
 
 /* Hooks for the ACPI CA debugging infrastructure */
@@ -70,10 +70,10 @@ struct netmsg_acpi_cst {
 	int		val;
 };
 
-struct acpi_cx {
+struct acpi_cst_cx {
     struct resource	*p_lvlx;	/* Register to read to enter state. */
     int			rid;		/* rid of p_lvlx */
-    uint32_t		type;		/* C1-3 (C4 and up treated as C3). */
+    uint32_t		type;		/* C1-3+. */
     uint32_t		trans_lat;	/* Transition latency (usec). */
     uint32_t		power;		/* Power consumed (mW). */
     int			res_type;	/* Resource type for p_lvlx. */
@@ -90,7 +90,7 @@ struct acpi_cst_softc {
     uint32_t		cst_flags;	/* ACPI_CST_FLAG_ */
     uint32_t		cst_p_blk;	/* ACPI P_BLK location */
     uint32_t		cst_p_blk_len;	/* P_BLK length (must be 6). */
-    struct acpi_cx	cst_cx_states[MAX_CX_STATES];
+    struct acpi_cst_cx	cst_cx_states[MAX_CX_STATES];
     int			cst_cx_count;	/* Number of valid Cx states. */
     int			cst_prev_sleep;	/* Last idle sleep duration. */
     /* Runtime state. */
@@ -106,8 +106,8 @@ struct acpi_cst_softc {
 
 #define ACPI_CST_ENTER_IO(cx)	bus_space_read_1((cx)->btag, (cx)->bhand, 0)
 
-#define CPU_QUIRK_NO_C3		(1<<0)	/* C3-type states are not usable. */
-#define CPU_QUIRK_NO_BM_CTRL	(1<<2)	/* No bus mastering control. */
+#define ACPI_CST_QUIRK_NO_C3	(1<<0)	/* C3-type states are not usable. */
+#define ACPI_CST_QUIRK_NO_BM_CTRL (1<<2) /* No bus mastering control. */
 
 #define PCI_VENDOR_INTEL	0x8086
 #define PCI_DEVICE_82371AB_3	0x7113	/* PIIX4 chipset for quirks. */
@@ -119,59 +119,64 @@ struct acpi_cst_softc {
 #define PIIX4_BRLD_EN_IRQ0	(1<<0)
 #define PIIX4_BRLD_EN_IRQ	(1<<1)
 #define PIIX4_BRLD_EN_IRQ8	(1<<5)
-#define PIIX4_STOP_BREAK_MASK	(PIIX4_BRLD_EN_IRQ0 | PIIX4_BRLD_EN_IRQ | PIIX4_BRLD_EN_IRQ8)
+#define PIIX4_STOP_BREAK_MASK	(PIIX4_BRLD_EN_IRQ0 | \
+				 PIIX4_BRLD_EN_IRQ | \
+				 PIIX4_BRLD_EN_IRQ8)
 #define PIIX4_PCNTRL_BST_EN	(1<<10)
 
 /* Platform hardware resource information. */
-static uint32_t		 cpu_smi_cmd;	/* Value to write to SMI_CMD. */
-static uint8_t		 cpu_cst_cnt;	/* Indicate we are _CST aware. */
-static int		 cpu_quirks;	/* Indicate any hardware bugs. */
+static uint32_t		 acpi_cst_smi_cmd; /* Value to write to SMI_CMD. */
+static uint8_t		 acpi_cst_ctrl;	/* Indicate we are _CST aware. */
+static int		 acpi_cst_quirks; /* Indicate any hardware bugs. */
+static boolean_t	 acpi_cst_use_fadt;
 
 /* Runtime state. */
-static int		 cpu_disable_idle; /* Disable entry to idle function */
-static int		 cpu_cx_count;	/* Number of valid Cx states */
+static int		 acpi_cst_disable_idle;
+					/* Disable entry to idle function */
+static int		 acpi_cst_cx_count; /* Number of valid Cx states */
 
 /* Values for sysctl. */
-static int		 cpu_cx_generic;
-static int		 cpu_cx_lowest; /* Current Cx lowest */
-static int		 cpu_cx_lowest_req; /* Requested Cx lowest */
-static struct lwkt_serialize cpu_cx_slize = LWKT_SERIALIZE_INITIALIZER;
+static int		 acpi_cst_cx_lowest; /* Current Cx lowest */
+static int		 acpi_cst_cx_lowest_req; /* Requested Cx lowest */
 
-/* C3 state transition */
-static int		 cpu_c3_ncpus;
+/* Number of C3 state requesters */
+static int		 acpi_cst_c3_reqs;
 
-static device_t		*cpu_devices;
-static int		 cpu_ndevices;
-static struct acpi_cst_softc **cpu_softc;
+static device_t		*acpi_cst_devices;
+static int		 acpi_cst_ndevices;
+static struct acpi_cst_softc **acpi_cst_softc;
+static struct lwkt_serialize acpi_cst_slize = LWKT_SERIALIZE_INITIALIZER;
 
-static int	acpi_cst_probe(device_t dev);
-static int	acpi_cst_attach(device_t dev);
-static int	acpi_cst_suspend(device_t dev);
-static int	acpi_cst_resume(device_t dev);
-static int	acpi_cst_shutdown(device_t dev);
+static int	acpi_cst_probe(device_t);
+static int	acpi_cst_attach(device_t);
+static int	acpi_cst_suspend(device_t);
+static int	acpi_cst_resume(device_t);
+static int	acpi_cst_shutdown(device_t);
 
-static void	acpi_cpu_cx_probe(struct acpi_cst_softc *sc);
-static void	acpi_cpu_generic_cx_probe(struct acpi_cst_softc *sc);
-static int	acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe);
-static int	acpi_cpu_cx_cst_dispatch(struct acpi_cst_softc *sc);
-static void	acpi_cpu_startup(void *arg);
-static void	acpi_cpu_startup_cx(struct acpi_cst_softc *sc);
-static void	acpi_cpu_cx_list(struct acpi_cst_softc *sc);
-static void	acpi_cpu_idle(void);
-static void	acpi_cpu_cst_notify(device_t);
-static int	acpi_cpu_quirks(void);
-static int	acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS);
-static int	acpi_cpu_set_cx_lowest(struct acpi_cst_softc *, int);
-static int	acpi_cpu_set_cx_lowest_oncpu(struct acpi_cst_softc *, int);
-static int	acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS);
-static int	acpi_cpu_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
-static int	acpi_cpu_global_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS);
-static int	acpi_cpu_global_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
-static void	acpi_cpu_cx_non_c3(struct acpi_cst_softc *sc);
-static void	acpi_cpu_global_cx_count(void);
-static void	acpi_cst_bm_rld(struct acpi_cst_softc *);
+static void	acpi_cst_notify(device_t);
+static void	acpi_cst_postattach(void *);
+static void	acpi_cst_idle(void);
 
-static void	acpi_cpu_c1(void);	/* XXX */
+static void	acpi_cst_cx_probe(struct acpi_cst_softc *);
+static void	acpi_cst_cx_probe_fadt(struct acpi_cst_softc *);
+static int	acpi_cst_cx_probe_cst(struct acpi_cst_softc *, int);
+static int	acpi_cst_cx_reprobe_cst(struct acpi_cst_softc *);
+
+static void	acpi_cst_startup(struct acpi_cst_softc *);
+static void	acpi_cst_support_list(struct acpi_cst_softc *);
+static int	acpi_cst_set_lowest(struct acpi_cst_softc *, int);
+static int	acpi_cst_set_lowest_oncpu(struct acpi_cst_softc *, int);
+static void	acpi_cst_non_c3(struct acpi_cst_softc *);
+static void	acpi_cst_global_cx_count(void);
+static int	acpi_cst_set_quirks(void);
+static void	acpi_cst_c3_bm_rld(struct acpi_cst_softc *);
+static void	acpi_cst_c1_halt(void);	/* XXX */
+
+static int	acpi_cst_usage_sysctl(SYSCTL_HANDLER_ARGS);
+static int	acpi_cst_lowest_sysctl(SYSCTL_HANDLER_ARGS);
+static int	acpi_cst_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
+static int	acpi_cst_global_lowest_sysctl(SYSCTL_HANDLER_ARGS);
+static int	acpi_cst_global_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
 
 static device_method_t acpi_cst_methods[] = {
     /* Device interface */
@@ -218,21 +223,21 @@ acpi_cst_probe(device_t dev)
 
     cpu_id = acpi_get_magic(dev);
 
-    if (cpu_softc == NULL)
-	cpu_softc = kmalloc(sizeof(struct acpi_cst_softc *) *
+    if (acpi_cst_softc == NULL)
+	acpi_cst_softc = kmalloc(sizeof(struct acpi_cst_softc *) *
 	    SMP_MAXCPU, M_TEMP /* XXX */, M_INTWAIT | M_ZERO);
 
     /*
      * Check if we already probed this processor.  We scan the bus twice
      * so it's possible we've already seen this one.
      */
-    if (cpu_softc[cpu_id] != NULL) {
+    if (acpi_cst_softc[cpu_id] != NULL) {
 	device_printf(dev, "CPU%d cstate already exist\n", cpu_id);
 	return (ENXIO);
     }
 
     /* Mark this processor as in-use and save our derived id for attach. */
-    cpu_softc[cpu_id] = (void *)1;
+    acpi_cst_softc[cpu_id] = (void *)1;
     device_set_desc(dev, "ACPI CPU C-State");
 
     return (0);
@@ -253,9 +258,9 @@ acpi_cst_attach(device_t dev)
     sc->cst_parent = device_get_softc(device_get_parent(dev));
     sc->cst_handle = acpi_get_handle(dev);
     sc->cst_cpuid = acpi_get_magic(dev);
-    cpu_softc[sc->cst_cpuid] = sc;
-    cpu_smi_cmd = AcpiGbl_FADT.SmiCommand;
-    cpu_cst_cnt = AcpiGbl_FADT.CstControl;
+    acpi_cst_softc[sc->cst_cpuid] = sc;
+    acpi_cst_smi_cmd = AcpiGbl_FADT.SmiCommand;
+    acpi_cst_ctrl = AcpiGbl_FADT.CstControl;
 
     buf.Pointer = NULL;
     buf.Length = ACPI_ALLOCATE_BUFFER;
@@ -269,7 +274,7 @@ acpi_cst_attach(device_t dev)
     sc->cst_p_blk = obj->Processor.PblkAddress;
     sc->cst_p_blk_len = obj->Processor.PblkLength;
     AcpiOsFree(obj);
-    ACPI_DEBUG_PRINT((ACPI_DB_INFO, "acpi_cpu%d: P_BLK at %#x/%d\n",
+    ACPI_DEBUG_PRINT((ACPI_DB_INFO, "cpu_cst%d: P_BLK at %#x/%d\n",
 		     device_get_unit(dev), sc->cst_p_blk, sc->cst_p_blk_len));
 
     /*
@@ -277,15 +282,15 @@ acpi_cst_attach(device_t dev)
      * resources that will be used by all acpi cpu devices.
      */
     if (device_get_unit(dev) == 0) {
-	/* Assume we won't be using generic Cx mode by default */
-	cpu_cx_generic = FALSE;
+	/* Assume we won't be using FADT for Cx states by default */
+	acpi_cst_use_fadt = FALSE;
 
 	/* Queue post cpu-probing task handler */
-	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cpu_startup, NULL);
+	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cst_postattach, NULL);
     }
 
     /* Probe for Cx state support. */
-    acpi_cpu_cx_probe(sc);
+    acpi_cst_cx_probe(sc);
 
     /* Finally,  call identify and probe/attach for child devices. */
     bus_generic_probe(dev);
@@ -306,15 +311,14 @@ acpi_cst_suspend(device_t dev)
     error = bus_generic_suspend(dev);
     if (error)
 	return (error);
-    cpu_disable_idle = TRUE;
+    acpi_cst_disable_idle = TRUE;
     return (0);
 }
 
 static int
 acpi_cst_resume(device_t dev)
 {
-
-    cpu_disable_idle = FALSE;
+    acpi_cst_disable_idle = FALSE;
     return (bus_generic_resume(dev));
 }
 
@@ -332,13 +336,13 @@ acpi_cst_shutdown(device_t dev)
      * is ok since device_shutdown() does not free the softc, otherwise
      * we'd have to be sure all threads were evicted before returning.
      */
-    cpu_disable_idle = TRUE;
+    acpi_cst_disable_idle = TRUE;
 
     return_VALUE (0);
 }
 
 static void
-acpi_cpu_cx_probe(struct acpi_cst_softc *sc)
+acpi_cst_cx_probe(struct acpi_cst_softc *sc)
 {
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
@@ -348,20 +352,20 @@ acpi_cpu_cx_probe(struct acpi_cst_softc *sc)
     sc->cst_cx_lowest_req = 0;
 
     /*
-     * Check for the ACPI 2.0 _CST sleep states object. If we can't find
-     * any, we'll revert to generic FADT/P_BLK Cx control method which will
-     * be handled by acpi_cpu_startup. We need to defer to after having
-     * probed all the cpus in the system before probing for generic Cx
-     * states as we may already have found cpus with valid _CST packages
+     * Check for the ACPI 2.0 _CST sleep states object.  If we can't find
+     * any, we'll revert to FADT/P_BLK Cx control method which will be
+     * handled by acpi_cst_postattach.  We need to defer to after having
+     * probed all the cpus in the system before probing for Cx states from
+     * FADT as we may already have found cpus with valid _CST packages.
      */
-    if (!cpu_cx_generic && acpi_cpu_cx_cst(sc, 0) != 0) {
+    if (!acpi_cst_use_fadt && acpi_cst_cx_probe_cst(sc, 0) != 0) {
 	/*
 	 * We were unable to find a _CST package for this cpu or there
 	 * was an error parsing it. Switch back to generic mode.
 	 */
-	cpu_cx_generic = TRUE;
+	acpi_cst_use_fadt = TRUE;
 	if (bootverbose)
-	    device_printf(sc->cst_dev, "switching to generic Cx mode\n");
+	    device_printf(sc->cst_dev, "switching to FADT Cx mode\n");
     }
 
     /*
@@ -370,10 +374,10 @@ acpi_cpu_cx_probe(struct acpi_cst_softc *sc)
 }
 
 static void
-acpi_cpu_generic_cx_probe(struct acpi_cst_softc *sc)
+acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
 {
     ACPI_GENERIC_ADDRESS	 gas;
-    struct acpi_cx		*cx_ptr;
+    struct acpi_cst_cx		*cx_ptr;
 
     sc->cst_cx_count = 0;
     cx_ptr = sc->cst_cx_states;
@@ -425,7 +429,8 @@ acpi_cpu_generic_cx_probe(struct acpi_cst_softc *sc)
 	return;
 
     /* Validate and allocate resources for C3 (P_LVL3). */
-    if (AcpiGbl_FADT.C3Latency <= 1000 && !(cpu_quirks & CPU_QUIRK_NO_C3)) {
+    if (AcpiGbl_FADT.C3Latency <= 1000 &&
+        !(acpi_cst_quirks & ACPI_CST_QUIRK_NO_C3)) {
 	gas.Address = sc->cst_p_blk + 5;
 
 	cx_ptr->rid = sc->cst_parent->cpux_next_rid;
@@ -449,9 +454,9 @@ acpi_cpu_generic_cx_probe(struct acpi_cst_softc *sc)
  * to clean up and probe the new _CST package.
  */
 static int
-acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe)
+acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 {
-    struct	 acpi_cx *cx_ptr;
+    struct	 acpi_cst_cx *cx_ptr;
     ACPI_STATUS	 status;
     ACPI_BUFFER	 buf;
     ACPI_OBJECT	*top;
@@ -527,9 +532,9 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe)
 	    break;
 	case ACPI_STATE_C3:
 	default:
-	    if ((cpu_quirks & CPU_QUIRK_NO_C3) != 0) {
+	    if ((acpi_cst_quirks & ACPI_CST_QUIRK_NO_C3) != 0) {
 		ACPI_DEBUG_PRINT((ACPI_DB_INFO,
-				 "acpi_cpu%d: C3[%d] not available.\n",
+				 "cpu_cst%d: C3[%d] not available.\n",
 				 device_get_unit(sc->cst_dev), i));
 		continue;
 	    }
@@ -544,7 +549,7 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe)
 	if (cx_ptr->p_lvlx != NULL) {
 	    sc->cst_parent->cpux_next_rid++;
 	    ACPI_DEBUG_PRINT((ACPI_DB_INFO,
-			     "acpi_cpu%d: Got C%d - %d latency\n",
+			     "cpu_cst%d: Got C%d - %d latency\n",
 			     device_get_unit(sc->cst_dev), cx_ptr->type,
 			     cx_ptr->trans_lat));
 	    cx_ptr->btag = rman_get_bustag(cx_ptr->p_lvlx);
@@ -556,9 +561,9 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe)
     AcpiOsFree(buf.Pointer);
 
     /* If there are C3(+) states, always enable bus master wakeup */
-    if (reprobe && (cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
+    if (reprobe && (acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0) {
 	for (i = 0; i < sc->cst_cx_count; ++i) {
-	    struct acpi_cx *cx = &sc->cst_cx_states[i];
+	    struct acpi_cst_cx *cx = &sc->cst_cx_states[i];
 
 	    if (cx->type >= ACPI_STATE_C3) {
 		AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 1);
@@ -571,13 +576,13 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe)
      * Fix up the lowest Cx being used
      */
     if (reprobe)
-	acpi_cpu_set_cx_lowest_oncpu(sc, sc->cst_cx_lowest_req);
+	acpi_cst_set_lowest_oncpu(sc, sc->cst_cx_lowest_req);
 
     /*
      * Cache the lowest non-C3 state.
      * NOTE: must after cst_cx_lowest is set.
      */
-    acpi_cpu_cx_non_c3(sc);
+    acpi_cst_non_c3(sc);
 
     cpu_sfence();
     sc->cst_flags &= ~ACPI_CST_FLAG_PROBING;
@@ -586,53 +591,54 @@ acpi_cpu_cx_cst(struct acpi_cst_softc *sc, int reprobe)
 }
 
 static void
-acpi_cst_probe_handler(netmsg_t msg)
+acpi_cst_cx_reprobe_cst_handler(netmsg_t msg)
 {
     struct netmsg_acpi_cst *rmsg = (struct netmsg_acpi_cst *)msg;
     int error;
 
-    error = acpi_cpu_cx_cst(rmsg->sc, 1);
+    error = acpi_cst_cx_probe_cst(rmsg->sc, 1);
     lwkt_replymsg(&rmsg->base.lmsg, error);
 }
 
 static int
-acpi_cpu_cx_cst_dispatch(struct acpi_cst_softc *sc)
+acpi_cst_cx_reprobe_cst(struct acpi_cst_softc *sc)
 {
     struct netmsg_acpi_cst msg;
 
     netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
-	acpi_cst_probe_handler);
+	acpi_cst_cx_reprobe_cst_handler);
     msg.sc = sc;
 
     return lwkt_domsg(netisr_cpuport(sc->cst_cpuid), &msg.base.lmsg, 0);
 }
 
 /*
- * Call this *after* all CPUs have been attached.
+ * Call this *after* all CPUs Cx states have been attached.
  */
 static void
-acpi_cpu_startup(void *arg)
+acpi_cst_postattach(void *arg)
 {
     struct acpi_cst_softc *sc;
     int i;
 
-    /* Get set of CPU devices */
-    devclass_get_devices(acpi_cst_devclass, &cpu_devices, &cpu_ndevices);
+    /* Get set of Cx state devices */
+    devclass_get_devices(acpi_cst_devclass, &acpi_cst_devices,
+	&acpi_cst_ndevices);
 
     /*
      * Setup any quirks that might necessary now that we have probed
-     * all the CPUs
+     * all the CPUs' Cx states.
      */
-    acpi_cpu_quirks();
+    acpi_cst_set_quirks();
 
-    if (cpu_cx_generic) {
+    if (acpi_cst_use_fadt) {
 	/*
-	 * We are using generic Cx mode, probe for available Cx states
+	 * We are using Cx mode from FADT, probe for available Cx states
 	 * for all processors.
 	 */
-	for (i = 0; i < cpu_ndevices; i++) {
-	    sc = device_get_softc(cpu_devices[i]);
-	    acpi_cpu_generic_cx_probe(sc);
+	for (i = 0; i < acpi_cst_ndevices; i++) {
+	    sc = device_get_softc(acpi_cst_devices[i]);
+	    acpi_cst_cx_probe_fadt(sc);
 	}
     } else {
 	/*
@@ -641,19 +647,19 @@ acpi_cpu_startup(void *arg)
 	 * As we now know for sure that we will be using _CST mode
 	 * install our notify handler.
 	 */
-	for (i = 0; i < cpu_ndevices; i++) {
-	    sc = device_get_softc(cpu_devices[i]);
-	    if (cpu_quirks & CPU_QUIRK_NO_C3)
+	for (i = 0; i < acpi_cst_ndevices; i++) {
+	    sc = device_get_softc(acpi_cst_devices[i]);
+	    if (acpi_cst_quirks & ACPI_CST_QUIRK_NO_C3)
 		sc->cst_cx_count = sc->cst_non_c3 + 1;
-	    sc->cst_parent->cpux_cst_notify = acpi_cpu_cst_notify;
+	    sc->cst_parent->cpux_cst_notify = acpi_cst_notify;
 	}
     }
-    acpi_cpu_global_cx_count();
+    acpi_cst_global_cx_count();
 
     /* Perform Cx final initialization. */
-    for (i = 0; i < cpu_ndevices; i++) {
-	sc = device_get_softc(cpu_devices[i]);
-	acpi_cpu_startup_cx(sc);
+    for (i = 0; i < acpi_cst_ndevices; i++) {
+	sc = device_get_softc(acpi_cst_devices[i]);
+	acpi_cst_startup(sc);
 
 	if (sc->cst_parent->glob_sysctl_tree != NULL) {
 	    struct acpi_cpux_softc *cpux = sc->cst_parent;
@@ -663,26 +669,26 @@ acpi_cpu_startup(void *arg)
 	    		    SYSCTL_CHILDREN(cpux->glob_sysctl_tree),
 			    OID_AUTO, "cx_lowest",
 			    CTLTYPE_STRING | CTLFLAG_RW, NULL, 0,
-			    acpi_cpu_global_cx_lowest_sysctl, "A",
+			    acpi_cst_global_lowest_sysctl, "A",
 			    "Requested global lowest Cx sleep state");
 	    SYSCTL_ADD_PROC(&cpux->glob_sysctl_ctx,
 	    		    SYSCTL_CHILDREN(cpux->glob_sysctl_tree),
 			    OID_AUTO, "cx_lowest_use",
 			    CTLTYPE_STRING | CTLFLAG_RD, NULL, 0,
-			    acpi_cpu_global_cx_lowest_use_sysctl, "A",
+			    acpi_cst_global_lowest_use_sysctl, "A",
 			    "Global lowest Cx sleep state to use");
 	}
     }
 
     /* Take over idling from cpu_idle_default(). */
-    cpu_cx_lowest = 0;
-    cpu_cx_lowest_req = 0;
-    cpu_disable_idle = FALSE;
-    cpu_idle_hook = acpi_cpu_idle;
+    acpi_cst_cx_lowest = 0;
+    acpi_cst_cx_lowest_req = 0;
+    acpi_cst_disable_idle = FALSE;
+    cpu_idle_hook = acpi_cst_idle;
 }
 
 static void
-acpi_cpu_cx_list(struct acpi_cst_softc *sc)
+acpi_cst_support_list(struct acpi_cst_softc *sc)
 {
     struct sbuf sb;
     int i;
@@ -699,7 +705,7 @@ acpi_cpu_cx_list(struct acpi_cst_softc *sc)
 }	
 
 static void
-acpi_cst_bm_rld_handler(netmsg_t msg)
+acpi_cst_c3_bm_rld_handler(netmsg_t msg)
 {
     struct netmsg_acpi_cst *rmsg = (struct netmsg_acpi_cst *)msg;
 
@@ -708,37 +714,37 @@ acpi_cst_bm_rld_handler(netmsg_t msg)
 }
 
 static void
-acpi_cst_bm_rld(struct acpi_cst_softc *sc)
+acpi_cst_c3_bm_rld(struct acpi_cst_softc *sc)
 {
     struct netmsg_acpi_cst msg;
 
     netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
-	acpi_cst_bm_rld_handler);
+	acpi_cst_c3_bm_rld_handler);
     msg.sc = sc;
 
     lwkt_domsg(netisr_cpuport(sc->cst_cpuid), &msg.base.lmsg, 0);
 }
 
 static void
-acpi_cpu_startup_cx(struct acpi_cst_softc *sc)
+acpi_cst_startup(struct acpi_cst_softc *sc)
 {
     struct acpi_cpux_softc *cpux = sc->cst_parent;
 
     /* If there are C3(+) states, always enable bus master wakeup */
-    if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
+    if ((acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0) {
 	int i;
 
 	for (i = 0; i < sc->cst_cx_count; ++i) {
-	    struct acpi_cx *cx = &sc->cst_cx_states[i];
+	    struct acpi_cst_cx *cx = &sc->cst_cx_states[i];
 
 	    if (cx->type >= ACPI_STATE_C3) {
-		acpi_cst_bm_rld(sc);
+		acpi_cst_c3_bm_rld(sc);
 		break;
 	    }
 	}
     }
 
-    acpi_cpu_cx_list(sc);
+    acpi_cst_support_list(sc);
     
     SYSCTL_ADD_STRING(&cpux->pcpu_sysctl_ctx,
 		      SYSCTL_CHILDREN(cpux->pcpu_sysctl_tree),
@@ -748,24 +754,24 @@ acpi_cpu_startup_cx(struct acpi_cst_softc *sc)
     SYSCTL_ADD_PROC(&cpux->pcpu_sysctl_ctx,
 		    SYSCTL_CHILDREN(cpux->pcpu_sysctl_tree),
 		    OID_AUTO, "cx_lowest", CTLTYPE_STRING | CTLFLAG_RW,
-		    (void *)sc, 0, acpi_cpu_cx_lowest_sysctl, "A",
+		    (void *)sc, 0, acpi_cst_lowest_sysctl, "A",
 		    "requested lowest Cx sleep state");
     SYSCTL_ADD_PROC(&cpux->pcpu_sysctl_ctx,
 		    SYSCTL_CHILDREN(cpux->pcpu_sysctl_tree),
 		    OID_AUTO, "cx_lowest_use", CTLTYPE_STRING | CTLFLAG_RD,
-		    (void *)sc, 0, acpi_cpu_cx_lowest_use_sysctl, "A",
+		    (void *)sc, 0, acpi_cst_lowest_use_sysctl, "A",
 		    "lowest Cx sleep state to use");
     SYSCTL_ADD_PROC(&cpux->pcpu_sysctl_ctx,
 		    SYSCTL_CHILDREN(cpux->pcpu_sysctl_tree),
 		    OID_AUTO, "cx_usage", CTLTYPE_STRING | CTLFLAG_RD,
-		    (void *)sc, 0, acpi_cpu_usage_sysctl, "A",
+		    (void *)sc, 0, acpi_cst_usage_sysctl, "A",
 		    "percent usage for each Cx state");
 
 #ifdef notyet
     /* Signal platform that we can handle _CST notification. */
-    if (!cpu_cx_generic && cpu_cst_cnt != 0) {
+    if (!acpi_cst_use_fadt && acpi_cst_ctrl != 0) {
 	ACPI_LOCK(acpi);
-	AcpiOsWritePort(cpu_smi_cmd, cpu_cst_cnt, 8);
+	AcpiOsWritePort(acpi_cst_smi_cmd, acpi_cst_ctrl, 8);
 	ACPI_UNLOCK(acpi);
     }
 #endif
@@ -778,33 +784,33 @@ acpi_cpu_startup_cx(struct acpi_cst_softc *sc)
  * interrupts are re-enabled.
  */
 static void
-acpi_cpu_idle(void)
+acpi_cst_idle(void)
 {
     struct	acpi_cst_softc *sc;
-    struct	acpi_cx *cx_next;
+    struct	acpi_cst_cx *cx_next;
     union microtime_pcpu start, end;
     uint64_t	dummy;
     int		bm_active, cx_next_idx, i, tdiff;
 
     /* If disabled, return immediately. */
-    if (cpu_disable_idle) {
+    if (acpi_cst_disable_idle) {
 	ACPI_ENABLE_IRQS();
 	return;
     }
 
     /*
      * Look up our CPU id to get our softc.  If it's NULL, we'll use C1
-     * since there is no ACPI processor object for this CPU.
+     * since there is no Cx state for this processor.
      */
-    sc = cpu_softc[mdcpu->mi.gd_cpuid];
+    sc = acpi_cst_softc[mdcpu->mi.gd_cpuid];
     if (sc == NULL) {
-	acpi_cpu_c1();
+	acpi_cst_c1_halt();
 	return;
     }
 
     /* Still probing; use C1 */
     if (sc->cst_flags & ACPI_CST_FLAG_PROBING) {
-	acpi_cpu_c1();
+	acpi_cst_c1_halt();
 	return;
     }
 
@@ -824,7 +830,7 @@ acpi_cpu_idle(void)
      */
     cx_next = &sc->cst_cx_states[cx_next_idx];
     if (cx_next->type >= ACPI_STATE_C3 &&
-        (cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
+        (acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0) {
 	AcpiReadBitRegister(ACPI_BITREG_BUS_MASTER_STATUS, &bm_active);
 	if (bm_active != 0) {
 	    AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_STATUS, 1);
@@ -835,7 +841,7 @@ acpi_cpu_idle(void)
     /* Select the next state and update statistics. */
     cx_next = &sc->cst_cx_states[cx_next_idx];
     sc->cst_cx_stats[cx_next_idx]++;
-    KASSERT(cx_next->type != ACPI_STATE_C0, ("acpi_cpu_idle: C0 sleep"));
+    KASSERT(cx_next->type != ACPI_STATE_C0, ("C0 sleep"));
 
     /*
      * Execute HLT (or equivalent) and wait for an interrupt.  We can't
@@ -844,7 +850,7 @@ acpi_cpu_idle(void)
      */
     if (cx_next->type == ACPI_STATE_C1) {
 	sc->cst_prev_sleep = (sc->cst_prev_sleep * 3 + 500000 / hz) / 4;
-	acpi_cpu_c1();
+	acpi_cst_c1_halt();
 	return;
     }
 
@@ -853,7 +859,7 @@ acpi_cpu_idle(void)
      * available, otherwise flush the CPU cache.
      */
     if (cx_next->type >= ACPI_STATE_C3) {
-	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0)
+	if ((acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0)
 	    AcpiWriteBitRegister(ACPI_BITREG_ARB_DISABLE, 1);
 	else
 	    ACPI_FLUSH_CPU_CACHE();
@@ -877,7 +883,7 @@ acpi_cpu_idle(void)
 
     /* Enable bus master arbitration. */
     if (cx_next->type >= ACPI_STATE_C3) {
-	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0)
+	if ((acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0)
 	    AcpiWriteBitRegister(ACPI_BITREG_ARB_DISABLE, 0);
     }
     ACPI_ENABLE_IRQS();
@@ -891,35 +897,35 @@ acpi_cpu_idle(void)
  * Re-evaluate the _CST object when we are notified that it changed.
  */
 static void
-acpi_cpu_cst_notify(device_t dev)
+acpi_cst_notify(device_t dev)
 {
     struct acpi_cst_softc *sc = device_get_softc(dev);
 
     KASSERT(curthread->td_type != TD_TYPE_NETISR,
         ("notify in netisr%d", mycpuid));
 
-    lwkt_serialize_enter(&cpu_cx_slize);
+    lwkt_serialize_enter(&acpi_cst_slize);
 
     /* Update the list of Cx states. */
-    acpi_cpu_cx_cst_dispatch(sc);
-    acpi_cpu_cx_list(sc);
+    acpi_cst_cx_reprobe_cst(sc);
+    acpi_cst_support_list(sc);
 
     /* Update the new lowest useable Cx state for all CPUs. */
-    acpi_cpu_global_cx_count();
+    acpi_cst_global_cx_count();
 
     /*
      * Fix up the lowest Cx being used
      */
-    if (cpu_cx_lowest_req < cpu_cx_count)
-	cpu_cx_lowest = cpu_cx_lowest_req;
-    if (cpu_cx_lowest > cpu_cx_count - 1)
-	cpu_cx_lowest = cpu_cx_count - 1;
+    if (acpi_cst_cx_lowest_req < acpi_cst_cx_count)
+	acpi_cst_cx_lowest = acpi_cst_cx_lowest_req;
+    if (acpi_cst_cx_lowest > acpi_cst_cx_count - 1)
+	acpi_cst_cx_lowest = acpi_cst_cx_count - 1;
 
-    lwkt_serialize_exit(&cpu_cx_slize);
+    lwkt_serialize_exit(&acpi_cst_slize);
 }
 
 static int
-acpi_cpu_quirks(void)
+acpi_cst_set_quirks(void)
 {
     device_t acpi_dev;
     uint32_t val;
@@ -936,24 +942,24 @@ acpi_cpu_quirks(void)
 	AcpiGbl_FADT.Pm2ControlLength == 0) {
 	if ((AcpiGbl_FADT.Flags & ACPI_FADT_WBINVD) &&
 	    (AcpiGbl_FADT.Flags & ACPI_FADT_WBINVD_FLUSH) == 0) {
-	    cpu_quirks |= CPU_QUIRK_NO_BM_CTRL;
+	    acpi_cst_quirks |= ACPI_CST_QUIRK_NO_BM_CTRL;
 	    ACPI_DEBUG_PRINT((ACPI_DB_INFO,
-		"acpi_cpu: no BM control, using flush cache method\n"));
+		"cpu_cst: no BM control, using flush cache method\n"));
 	} else {
-	    cpu_quirks |= CPU_QUIRK_NO_C3;
+	    acpi_cst_quirks |= ACPI_CST_QUIRK_NO_C3;
 	    ACPI_DEBUG_PRINT((ACPI_DB_INFO,
-		"acpi_cpu: no BM control, C3 not available\n"));
+		"cpu_cst: no BM control, C3 not available\n"));
 	}
     }
 
     /*
-     * If we are using generic Cx mode, C3 on multiple CPUs requires using
+     * If we are using FADT Cx mode, C3 on multiple CPUs requires using
      * the expensive flush cache instruction.
      */
-    if (cpu_cx_generic && ncpus > 1) {
-	cpu_quirks |= CPU_QUIRK_NO_BM_CTRL;
+    if (acpi_cst_use_fadt && ncpus > 1) {
+	acpi_cst_quirks |= ACPI_CST_QUIRK_NO_BM_CTRL;
 	ACPI_DEBUG_PRINT((ACPI_DB_INFO,
-	    "acpi_cpu: SMP, using flush cache mode for C3\n"));
+	    "cpu_cst: SMP, using flush cache mode for C3\n"));
     }
 
     /* Look for various quirks of the PIIX4 part. */
@@ -983,21 +989,21 @@ acpi_cpu_quirks(void)
 	case PCI_REVISION_B_STEP:
 	case PCI_REVISION_4E:
 	case PCI_REVISION_4M:
-	    cpu_quirks |= CPU_QUIRK_NO_C3;
+	    acpi_cst_quirks |= ACPI_CST_QUIRK_NO_C3;
 	    ACPI_DEBUG_PRINT((ACPI_DB_INFO,
-		"acpi_cpu: working around PIIX4 bug, disabling C3\n"));
+		"cpu_cst: working around PIIX4 bug, disabling C3\n"));
 
 	    val = pci_read_config(acpi_dev, PIIX4_DEVACTB_REG, 4);
 	    if ((val & PIIX4_STOP_BREAK_MASK) != PIIX4_STOP_BREAK_MASK) {
 		ACPI_DEBUG_PRINT((ACPI_DB_INFO,
-		    "acpi_cpu: PIIX4: enabling IRQs to generate Stop Break\n"));
+		    "cpu_cst: PIIX4: enabling IRQs to generate Stop Break\n"));
 	    	val |= PIIX4_STOP_BREAK_MASK;
 		pci_write_config(acpi_dev, PIIX4_DEVACTB_REG, val, 4);
 	    }
 	    AcpiReadBitRegister(ACPI_BITREG_BUS_MASTER_RLD, &val);
 	    if (val) {
 		ACPI_DEBUG_PRINT((ACPI_DB_INFO,
-		    "acpi_cpu: PIIX4: reset BRLD_EN_BM\n"));
+		    "cpu_cst: PIIX4: reset BRLD_EN_BM\n"));
 		AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 0);
 	    }
 	    break;
@@ -1010,7 +1016,7 @@ acpi_cpu_quirks(void)
 }
 
 static int
-acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS)
+acpi_cst_usage_sysctl(SYSCTL_HANDLER_ARGS)
 {
     struct acpi_cst_softc *sc;
     struct sbuf	 sb;
@@ -1042,7 +1048,7 @@ acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS)
 }
 
 static int
-acpi_cpu_set_cx_lowest_oncpu(struct acpi_cst_softc *sc, int val)
+acpi_cst_set_lowest_oncpu(struct acpi_cst_softc *sc, int val)
 {
     int old_lowest, error = 0, old_lowest_req;
     uint32_t old_type, type;
@@ -1059,22 +1065,22 @@ acpi_cpu_set_cx_lowest_oncpu(struct acpi_cst_softc *sc, int val)
     old_type = sc->cst_cx_states[old_lowest].type;
     type = sc->cst_cx_states[val].type;
     if (old_type >= ACPI_STATE_C3 && type < ACPI_STATE_C3) {
-	KKASSERT(cpu_c3_ncpus > 0);
-	if (atomic_fetchadd_int(&cpu_c3_ncpus, -1) == 1) {
+	KKASSERT(acpi_cst_c3_reqs > 0);
+	if (atomic_fetchadd_int(&acpi_cst_c3_reqs, -1) == 1) {
 	    /*
-	     * All of the CPUs exit C3 state, use a better
+	     * All of the CPUs exit C3(+) state, use a better
 	     * one shot timer.
 	     */
 	    error = cputimer_intr_select_caps(CPUTIMER_INTR_CAP_NONE);
 	    KKASSERT(!error || error == ERESTART);
 	    if (error == ERESTART) {
 		if (bootverbose)
-		    kprintf("exit C3, restart intr cputimer\n");
+		    kprintf("disable C3(+), restart intr cputimer\n");
 		cputimer_intr_restart();
 	    }
     	}
     } else if (type >= ACPI_STATE_C3 && old_type < ACPI_STATE_C3) {
-	if (atomic_fetchadd_int(&cpu_c3_ncpus, 1) == 0) {
+	if (atomic_fetchadd_int(&acpi_cst_c3_reqs, 1) == 0) {
 	    /*
 	     * When the first CPU enters C3(+) state, switch
 	     * to an one shot timer, which could handle
@@ -1083,7 +1089,7 @@ acpi_cpu_set_cx_lowest_oncpu(struct acpi_cst_softc *sc, int val)
 	    error = cputimer_intr_select_caps(CPUTIMER_INTR_CAP_PS);
 	    if (error == ERESTART) {
 		if (bootverbose)
-		    kprintf("enter C3, restart intr cputimer\n");
+		    kprintf("enable C3(+), restart intr cputimer\n");
 		cputimer_intr_restart();
 	    } else if (error) {
 		kprintf("no suitable intr cputimer found\n");
@@ -1091,7 +1097,7 @@ acpi_cpu_set_cx_lowest_oncpu(struct acpi_cst_softc *sc, int val)
 		/* Restore */
 		sc->cst_cx_lowest_req = old_lowest_req;
 		sc->cst_cx_lowest = old_lowest;
-		atomic_fetchadd_int(&cpu_c3_ncpus, -1);
+		atomic_fetchadd_int(&acpi_cst_c3_reqs, -1);
 	    }
 	}
     }
@@ -1100,7 +1106,7 @@ acpi_cpu_set_cx_lowest_oncpu(struct acpi_cst_softc *sc, int val)
 	return error;
 
     /* Cache the new lowest non-C3 state. */
-    acpi_cpu_cx_non_c3(sc);
+    acpi_cst_non_c3(sc);
 
     /* Reset the statistics counters. */
     bzero(sc->cst_cx_stats, sizeof(sc->cst_cx_stats));
@@ -1113,12 +1119,12 @@ acpi_cst_set_lowest_handler(netmsg_t msg)
     struct netmsg_acpi_cst *rmsg = (struct netmsg_acpi_cst *)msg;
     int error;
 
-    error = acpi_cpu_set_cx_lowest_oncpu(rmsg->sc, rmsg->val);
+    error = acpi_cst_set_lowest_oncpu(rmsg->sc, rmsg->val);
     lwkt_replymsg(&rmsg->base.lmsg, error);
 }
 
 static int
-acpi_cpu_set_cx_lowest(struct acpi_cst_softc *sc, int val)
+acpi_cst_set_lowest(struct acpi_cst_softc *sc, int val)
 {
     struct netmsg_acpi_cst msg;
 
@@ -1131,7 +1137,7 @@ acpi_cpu_set_cx_lowest(struct acpi_cst_softc *sc, int val)
 }
 
 static int
-acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
+acpi_cst_lowest_sysctl(SYSCTL_HANDLER_ARGS)
 {
     struct	 acpi_cst_softc *sc;
     char	 state[8];
@@ -1148,15 +1154,15 @@ acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
     if (val < 0)
 	return (EINVAL);
 
-    lwkt_serialize_enter(&cpu_cx_slize);
-    error = acpi_cpu_set_cx_lowest(sc, val);
-    lwkt_serialize_exit(&cpu_cx_slize);
+    lwkt_serialize_enter(&acpi_cst_slize);
+    error = acpi_cst_set_lowest(sc, val);
+    lwkt_serialize_exit(&acpi_cst_slize);
 
     return error;
 }
 
 static int
-acpi_cpu_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS)
+acpi_cst_lowest_use_sysctl(SYSCTL_HANDLER_ARGS)
 {
     struct	 acpi_cst_softc *sc;
     char	 state[8];
@@ -1167,13 +1173,13 @@ acpi_cpu_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS)
 }
 
 static int
-acpi_cpu_global_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
+acpi_cst_global_lowest_sysctl(SYSCTL_HANDLER_ARGS)
 {
     struct	acpi_cst_softc *sc;
     char	state[8];
     int		val, error, i;
 
-    ksnprintf(state, sizeof(state), "C%d", cpu_cx_lowest_req + 1);
+    ksnprintf(state, sizeof(state), "C%d", acpi_cst_cx_lowest_req + 1);
     error = sysctl_handle_string(oidp, state, sizeof(state), req);
     if (error != 0 || req->newptr == NULL)
 	return (error);
@@ -1183,34 +1189,34 @@ acpi_cpu_global_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
     if (val < 0)
 	return (EINVAL);
 
-    lwkt_serialize_enter(&cpu_cx_slize);
+    lwkt_serialize_enter(&acpi_cst_slize);
 
-    cpu_cx_lowest_req = val;
-    cpu_cx_lowest = val;
-    if (cpu_cx_lowest > cpu_cx_count - 1)
-	cpu_cx_lowest = cpu_cx_count - 1;
+    acpi_cst_cx_lowest_req = val;
+    acpi_cst_cx_lowest = val;
+    if (acpi_cst_cx_lowest > acpi_cst_cx_count - 1)
+	acpi_cst_cx_lowest = acpi_cst_cx_count - 1;
 
     /* Update the new lowest useable Cx state for all CPUs. */
-    for (i = 0; i < cpu_ndevices; i++) {
-	sc = device_get_softc(cpu_devices[i]);
-	error = acpi_cpu_set_cx_lowest(sc, val);
+    for (i = 0; i < acpi_cst_ndevices; i++) {
+	sc = device_get_softc(acpi_cst_devices[i]);
+	error = acpi_cst_set_lowest(sc, val);
 	if (error) {
 	    KKASSERT(i == 0);
 	    break;
 	}
     }
 
-    lwkt_serialize_exit(&cpu_cx_slize);
+    lwkt_serialize_exit(&acpi_cst_slize);
 
     return error;
 }
 
 static int
-acpi_cpu_global_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS)
+acpi_cst_global_lowest_use_sysctl(SYSCTL_HANDLER_ARGS)
 {
     char	state[8];
 
-    ksnprintf(state, sizeof(state), "C%d", cpu_cx_lowest + 1);
+    ksnprintf(state, sizeof(state), "C%d", acpi_cst_cx_lowest + 1);
     return sysctl_handle_string(oidp, state, sizeof(state), req);
 }
 
@@ -1219,21 +1225,17 @@ acpi_cpu_global_cx_lowest_use_sysctl(SYSCTL_HANDLER_ARGS)
  * XXX: shouldn't be here!
  */
 static void
-acpi_cpu_c1(void)
+acpi_cst_c1_halt(void)
 {
-#ifdef __ia64__
-    ia64_call_pal_static(PAL_HALT_LIGHT, 0, 0, 0);
-#else
     splz();
     if ((mycpu->gd_reqflags & RQF_IDLECHECK_WK_MASK) == 0)
         __asm __volatile("sti; hlt");
     else
         __asm __volatile("sti; pause");
-#endif /* !__ia64__ */
 }
 
 static void
-acpi_cpu_cx_non_c3(struct acpi_cst_softc *sc)
+acpi_cst_non_c3(struct acpi_cst_softc *sc)
 {
     int i;
 
@@ -1249,29 +1251,29 @@ acpi_cpu_cx_non_c3(struct acpi_cst_softc *sc)
 }
 
 /*
- * Update the largest Cx state supported in the global cpu_cx_count.
+ * Update the largest Cx state supported in the global acpi_cst_cx_count.
  * It will be used in the global Cx sysctl handler.
  */
 static void
-acpi_cpu_global_cx_count(void)
+acpi_cst_global_cx_count(void)
 {
     struct acpi_cst_softc *sc;
     int i;
 
-    if (cpu_ndevices == 0) {
-	cpu_cx_count = 0;
+    if (acpi_cst_ndevices == 0) {
+	acpi_cst_cx_count = 0;
 	return;
     }
 
-    sc = device_get_softc(cpu_devices[0]);
-    cpu_cx_count = sc->cst_cx_count;
+    sc = device_get_softc(acpi_cst_devices[0]);
+    acpi_cst_cx_count = sc->cst_cx_count;
 
-    for (i = 1; i < cpu_ndevices; i++) {
-	struct acpi_cst_softc *sc = device_get_softc(cpu_devices[i]);
+    for (i = 1; i < acpi_cst_ndevices; i++) {
+	struct acpi_cst_softc *sc = device_get_softc(acpi_cst_devices[i]);
 
-	if (sc->cst_cx_count < cpu_cx_count)
-	    cpu_cx_count = sc->cst_cx_count;
+	if (sc->cst_cx_count < acpi_cst_cx_count)
+	    acpi_cst_cx_count = sc->cst_cx_count;
     }
     if (bootverbose)
-	kprintf("cpu_cst: global Cx count %d\n", cpu_cx_count);
+	kprintf("cpu_cst: global Cx count %d\n", acpi_cst_cx_count);
 }
