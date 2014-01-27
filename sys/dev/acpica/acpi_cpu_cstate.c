@@ -691,6 +691,8 @@ acpi_cst_postattach(void *arg)
     acpi_cst_cx_lowest = 0;
     acpi_cst_cx_lowest_req = 0;
     acpi_cst_disable_idle = FALSE;
+
+    cpu_sfence();
     cpu_idle_hook = acpi_cst_idle;
 }
 
