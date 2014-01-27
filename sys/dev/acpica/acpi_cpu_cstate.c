@@ -841,7 +841,7 @@ acpi_cst_idle(void)
 	AcpiReadBitRegister(ACPI_BITREG_BUS_MASTER_STATUS, &bm_active);
 	if (bm_active != 0) {
 	    AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_STATUS, 1);
-	    cx_next_idx = min(cx_next_idx, sc->cst_non_c3);
+	    cx_next_idx = sc->cst_non_c3;
 	}
     }
 
