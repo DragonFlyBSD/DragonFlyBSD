@@ -71,14 +71,16 @@ struct netmsg_acpi_cst {
 };
 
 struct acpi_cst_cx {
-    struct resource	*p_lvlx;	/* Register to read to enter state. */
-    int			rid;		/* rid of p_lvlx */
     uint32_t		type;		/* C1-3+. */
     uint32_t		trans_lat;	/* Transition latency (usec). */
-    uint32_t		power;		/* Power consumed (mW). */
-    int			res_type;	/* Resource type for p_lvlx. */
     bus_space_tag_t	btag;
     bus_space_handle_t	bhand;
+
+    struct resource	*p_lvlx;	/* Register to read to enter state. */
+    ACPI_GENERIC_ADDRESS gas;
+    int			rid;		/* rid of p_lvlx */
+    uint32_t		power;		/* Power consumed (mW). */
+    int			res_type;	/* Resource type for p_lvlx. */
 };
 #define MAX_CX_STATES	 8
 
@@ -376,7 +378,6 @@ acpi_cst_cx_probe(struct acpi_cst_softc *sc)
 static void
 acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
 {
-    ACPI_GENERIC_ADDRESS	 gas;
     struct acpi_cst_cx		*cx_ptr;
 
     sc->cst_cx_count = 0;
@@ -386,6 +387,7 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
     sc->cst_prev_sleep = 1000000;
 
     /* C1 has been required since just after ACPI 1.0 */
+    cx_ptr->gas.SpaceId = ACPI_ADR_SPACE_FIXED_HARDWARE;
     cx_ptr->type = ACPI_STATE_C1;
     cx_ptr->trans_lat = 0;
     cx_ptr++;
@@ -395,7 +397,7 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
     if (ncpus > 1 && (AcpiGbl_FADT.Flags & ACPI_FADT_C2_MP_SUPPORTED) == 0)
 	return;
 
-    /* 
+    /*
      * The spec says P_BLK must be 6 bytes long.  However, some systems
      * use it to indicate a fractional set of features present so we
      * take 5 as C2.  Some may also have a value of 7 to indicate
@@ -406,14 +408,14 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
 	return; 
 
     /* Validate and allocate resources for C2 (P_LVL2). */
-    gas.SpaceId = ACPI_ADR_SPACE_SYSTEM_IO;
-    gas.BitWidth = 8;
     if (AcpiGbl_FADT.C2Latency <= 100) {
-	gas.Address = sc->cst_p_blk + 4;
+	cx_ptr->gas.SpaceId = ACPI_ADR_SPACE_SYSTEM_IO;
+	cx_ptr->gas.BitWidth = 8;
+	cx_ptr->gas.Address = sc->cst_p_blk + 4;
 
 	cx_ptr->rid = sc->cst_parent->cpux_next_rid;
-	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->type, &cx_ptr->rid, &gas,
-	    &cx_ptr->p_lvlx, RF_SHAREABLE);
+	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->res_type, &cx_ptr->rid,
+	    &cx_ptr->gas, &cx_ptr->p_lvlx, RF_SHAREABLE);
 	if (cx_ptr->p_lvlx != NULL) {
 	    sc->cst_parent->cpux_next_rid++;
 	    cx_ptr->type = ACPI_STATE_C2;
@@ -431,11 +433,13 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
     /* Validate and allocate resources for C3 (P_LVL3). */
     if (AcpiGbl_FADT.C3Latency <= 1000 &&
         !(acpi_cst_quirks & ACPI_CST_QUIRK_NO_C3)) {
-	gas.Address = sc->cst_p_blk + 5;
+	cx_ptr->gas.SpaceId = ACPI_ADR_SPACE_SYSTEM_IO;
+	cx_ptr->gas.BitWidth = 8;
+	cx_ptr->gas.Address = sc->cst_p_blk + 5;
 
 	cx_ptr->rid = sc->cst_parent->cpux_next_rid;
-	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->type, &cx_ptr->rid, &gas,
-	    &cx_ptr->p_lvlx, RF_SHAREABLE);
+	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->res_type, &cx_ptr->rid,
+	    &cx_ptr->gas, &cx_ptr->p_lvlx, RF_SHAREABLE);
 	if (cx_ptr->p_lvlx != NULL) {
 	    sc->cst_parent->cpux_next_rid++;
 	    cx_ptr->type = ACPI_STATE_C3;
@@ -541,11 +545,15 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	    break;
 	}
 
-	/* Allocate the control register for C2 or C3. */
+	/*
+	 * Allocate the control register for C2 or C3(+).
+	 */
 	KASSERT(cx_ptr->p_lvlx == NULL, ("still has lvlx"));
+	acpi_PkgRawGas(pkg, 0, &cx_ptr->gas);
+
 	cx_ptr->rid = sc->cst_parent->cpux_next_rid;
-	acpi_PkgGas(sc->cst_dev, pkg, 0, &cx_ptr->res_type, &cx_ptr->rid,
-	    &cx_ptr->p_lvlx, RF_SHAREABLE);
+	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->res_type, &cx_ptr->rid,
+	    &cx_ptr->gas, &cx_ptr->p_lvlx, RF_SHAREABLE);
 	if (cx_ptr->p_lvlx != NULL) {
 	    sc->cst_parent->cpux_next_rid++;
 	    ACPI_DEBUG_PRINT((ACPI_DB_INFO,
