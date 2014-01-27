@@ -73,6 +73,7 @@ struct netmsg_acpi_cst {
 struct acpi_cst_cx {
     uint32_t		type;		/* C1-3+. */
     uint32_t		trans_lat;	/* Transition latency (usec). */
+    void		(*enter)(const struct acpi_cst_cx *);
     bus_space_tag_t	btag;
     bus_space_handle_t	bhand;
 
@@ -105,8 +106,6 @@ struct acpi_cst_softc {
 };
 
 #define ACPI_CST_FLAG_PROBING	0x1
-
-#define ACPI_CST_ENTER_IO(cx)	bus_space_read_1((cx)->btag, (cx)->bhand, 0)
 
 #define ACPI_CST_QUIRK_NO_C3	(1<<0)	/* C3-type states are not usable. */
 #define ACPI_CST_QUIRK_NO_BM_CTRL (1<<2) /* No bus mastering control. */
@@ -172,13 +171,16 @@ static void	acpi_cst_non_c3(struct acpi_cst_softc *);
 static void	acpi_cst_global_cx_count(void);
 static int	acpi_cst_set_quirks(void);
 static void	acpi_cst_c3_bm_rld(struct acpi_cst_softc *);
-static void	acpi_cst_c1_halt(void);	/* XXX */
+static void	acpi_cst_c1_halt(void);
 
 static int	acpi_cst_usage_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cst_lowest_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cst_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cst_global_lowest_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cst_global_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
+
+static void	acpi_cst_c1_halt_enter(const struct acpi_cst_cx *);
+static void	acpi_cst_cx_io_enter(const struct acpi_cst_cx *);
 
 static device_method_t acpi_cst_methods[] = {
     /* Device interface */
@@ -390,6 +392,7 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
     cx_ptr->gas.SpaceId = ACPI_ADR_SPACE_FIXED_HARDWARE;
     cx_ptr->type = ACPI_STATE_C1;
     cx_ptr->trans_lat = 0;
+    cx_ptr->enter = acpi_cst_c1_halt_enter;
     cx_ptr++;
     sc->cst_cx_count++;
 
@@ -420,6 +423,7 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
 	    sc->cst_parent->cpux_next_rid++;
 	    cx_ptr->type = ACPI_STATE_C2;
 	    cx_ptr->trans_lat = AcpiGbl_FADT.C2Latency;
+	    cx_ptr->enter = acpi_cst_cx_io_enter;
 	    cx_ptr->btag = rman_get_bustag(cx_ptr->p_lvlx);
 	    cx_ptr->bhand = rman_get_bushandle(cx_ptr->p_lvlx);
 	    cx_ptr++;
@@ -444,6 +448,7 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
 	    sc->cst_parent->cpux_next_rid++;
 	    cx_ptr->type = ACPI_STATE_C3;
 	    cx_ptr->trans_lat = AcpiGbl_FADT.C3Latency;
+	    cx_ptr->enter = acpi_cst_cx_io_enter;
 	    cx_ptr->btag = rman_get_bustag(cx_ptr->p_lvlx);
 	    cx_ptr->bhand = rman_get_bushandle(cx_ptr->p_lvlx);
 	    cx_ptr++;
@@ -508,6 +513,7 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	        cx_ptr->p_lvlx);
 	    cx_ptr->p_lvlx = NULL;
 	}
+	cx_ptr->enter = NULL;
     }
 
     /* Set up all valid states. */
@@ -528,6 +534,7 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	switch (cx_ptr->type) {
 	case ACPI_STATE_C1:
 	    sc->cst_non_c3 = i;
+	    cx_ptr->enter = acpi_cst_c1_halt_enter;
 	    cx_ptr++;
 	    sc->cst_cx_count++;
 	    continue;
@@ -560,6 +567,7 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 			     "cpu_cst%d: Got C%d - %d latency\n",
 			     device_get_unit(sc->cst_dev), cx_ptr->type,
 			     cx_ptr->trans_lat));
+	    cx_ptr->enter = acpi_cst_cx_io_enter;
 	    cx_ptr->btag = rman_get_bustag(cx_ptr->p_lvlx);
 	    cx_ptr->bhand = rman_get_bushandle(cx_ptr->p_lvlx);
 	    cx_ptr++;
@@ -798,7 +806,6 @@ acpi_cst_idle(void)
     struct	acpi_cst_softc *sc;
     struct	acpi_cst_cx *cx_next;
     union microtime_pcpu start, end;
-    uint64_t	dummy;
     int		bm_active, cx_next_idx, i, tdiff;
 
     /* If disabled, return immediately. */
@@ -859,7 +866,7 @@ acpi_cst_idle(void)
      */
     if (cx_next->type == ACPI_STATE_C1) {
 	sc->cst_prev_sleep = (sc->cst_prev_sleep * 3 + 500000 / hz) / 4;
-	acpi_cst_c1_halt();
+	cx_next->enter(cx_next);
 	return;
     }
 
@@ -880,12 +887,7 @@ acpi_cst_idle(void)
     microtime_pcpu_get(&start);
     cpu_mfence();
 
-    ACPI_CST_ENTER_IO(cx_next);
-    /*
-     * Perform a dummy I/O read.  Since it may take an arbitrary time
-     * to enter the idle state, this read makes sure that we are frozen.
-     */
-    AcpiRead(&dummy, &AcpiGbl_FADT.XPmTimerBlock);
+    cx_next->enter(cx_next);
 
     cpu_mfence();
     microtime_pcpu_get(&end);
@@ -1285,4 +1287,23 @@ acpi_cst_global_cx_count(void)
     }
     if (bootverbose)
 	kprintf("cpu_cst: global Cx count %d\n", acpi_cst_cx_count);
+}
+
+static void
+acpi_cst_c1_halt_enter(const struct acpi_cst_cx *cx __unused)
+{
+    acpi_cst_c1_halt();
+}
+
+static void
+acpi_cst_cx_io_enter(const struct acpi_cst_cx *cx)
+{
+    uint64_t dummy;
+
+    bus_space_read_1(cx->btag, cx->bhand, 0);
+    /*
+     * Perform a dummy I/O read.  Since it may take an arbitrary time
+     * to enter the idle state, this read makes sure that we are frozen.
+     */
+    AcpiRead(&dummy, &AcpiGbl_FADT.XPmTimerBlock);
 }
