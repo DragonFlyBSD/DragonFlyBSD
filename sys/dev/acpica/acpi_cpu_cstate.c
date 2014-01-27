@@ -568,23 +568,22 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
     }
     AcpiOsFree(buf.Pointer);
 
-    /* If there are C3(+) states, always enable bus master wakeup */
-    if (reprobe && (acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0) {
-	for (i = 0; i < sc->cst_cx_count; ++i) {
-	    struct acpi_cst_cx *cx = &sc->cst_cx_states[i];
+    if (reprobe) {
+	/* If there are C3(+) states, always enable bus master wakeup */
+	if ((acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0) {
+	    for (i = 0; i < sc->cst_cx_count; ++i) {
+		struct acpi_cst_cx *cx = &sc->cst_cx_states[i];
 
-	    if (cx->type >= ACPI_STATE_C3) {
-		AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 1);
-		break;
+		if (cx->type >= ACPI_STATE_C3) {
+		    AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_RLD, 1);
+		    break;
+		}
 	    }
 	}
-    }
 
-    /*
-     * Fix up the lowest Cx being used
-     */
-    if (reprobe)
+	/* Fix up the lowest Cx being used */
 	acpi_cst_set_lowest_oncpu(sc, sc->cst_cx_lowest_req);
+    }
 
     /*
      * Cache the lowest non-C3 state.
