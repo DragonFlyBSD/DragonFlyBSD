@@ -192,10 +192,8 @@ taskqueue_enqueue_locked(struct taskqueue *queue, struct task *task)
 	/*
 	 * Don't allow new tasks on a queue which is being freed.
 	 */
-	if ((queue->tq_flags & TQ_FLAGS_ACTIVE) == 0) {
-		TQ_UNLOCK(queue);
+	if ((queue->tq_flags & TQ_FLAGS_ACTIVE) == 0)
 		return EPIPE;
-	}
 
 	/*
 	 * Count multiple enqueues.
