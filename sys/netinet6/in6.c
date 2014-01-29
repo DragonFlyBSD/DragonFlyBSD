@@ -2017,6 +2017,10 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst, struct ucred *cred)
 	int blen = -1;
 	struct ifnet *ifp;
 	struct in6_ifaddr *ifa_best = NULL;
+	int jailed = 0;
+
+	if(cred && cred->cr_prison)
+		jailed = 1;
 
 	if (oifp == NULL) {
 #if 0
@@ -2070,7 +2074,7 @@ in6_ifawithscope(struct ifnet *oifp, struct in6_addr *dst, struct ucred *cred)
 				continue;
 
 			/* Skip adresses not valid for current jail */
-			if (cred != NULL &&
+			if (jailed &&
 			    !jailed_ip(cred->cr_prison, (struct sockaddr *)(ifa->ifa_addr)) != 0)
 				continue;
 
