@@ -156,6 +156,7 @@ static void	acpi_cst_non_c3(struct acpi_cst_softc *);
 static void	acpi_cst_global_cx_count(void);
 static int	acpi_cst_set_quirks(void);
 static void	acpi_cst_c3_bm_rld(struct acpi_cst_softc *);
+static void	acpi_cst_free_resource(struct acpi_cst_softc *, int);
 static void	acpi_cst_c1_halt(void);
 
 static int	acpi_cst_usage_sysctl(SYSCTL_HANDLER_ARGS);
@@ -369,7 +370,14 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
     struct acpi_cst_cx *cx_ptr;
     int error;
 
-    /* XXX free previously allocated resources */
+    /*
+     * Free all previously allocated resources.
+     *
+     * NITE:
+     * It is needed, since we could enter here because of other
+     * cpu's _CST probing failure.
+     */
+    acpi_cst_free_resource(sc, 0);
 
     sc->cst_cx_count = 0;
     cx_ptr = sc->cst_cx_states;
@@ -504,19 +512,12 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
     sc->cst_flags |= ACPI_CST_FLAG_PROBING;
     cpu_sfence();
 
-    for (i = 0; i < sc->cst_cx_count; ++i) {
-	cx_ptr = &sc->cst_cx_states[i];
-
-	/* Free up any previous register. */
-	if (cx_ptr->res != NULL) {
-	    bus_release_resource(sc->cst_dev, cx_ptr->res_type, cx_ptr->rid,
-	        cx_ptr->res);
-	    cx_ptr->res = NULL;
-	}
-	cx_ptr->enter = NULL;
-	cx_ptr->flags = 0;
-	cx_ptr->preamble = ACPI_CST_CX_PREAMBLE_NONE;
-    }
+    /*
+     * Free all previously allocated resources
+     *
+     * NOTE: It is needed for _CST reprobing.
+     */
+    acpi_cst_free_resource(sc, 0);
 
     /* Set up all valid states. */
     sc->cst_cx_count = 0;
@@ -686,7 +687,8 @@ acpi_cst_postattach(void *arg)
 	for (i = 0; i < acpi_cst_ndevices; i++) {
 	    sc = device_get_softc(acpi_cst_devices[i]);
 	    if (acpi_cst_quirks & ACPI_CST_QUIRK_NO_C3) {
-		/* XXX leak resource */
+		/* Free part of unused resources */
+		acpi_cst_free_resource(sc, sc->cst_non_c3 + 1);
 		sc->cst_cx_count = sc->cst_non_c3 + 1;
 	    }
 	    sc->cst_parent->cpux_cst_notify = acpi_cst_notify;
@@ -1353,4 +1355,18 @@ acpi_cst_cx_setup(struct acpi_cst_cx *cx)
 	    cx->preamble = ACPI_CST_CX_PREAMBLE_WBINVD;
     }
     return acpi_cst_md_cx_setup(cx);
+}
+
+static void
+acpi_cst_free_resource(struct acpi_cst_softc *sc, int start)
+{
+    int i;
+
+    for (i = start; i < MAX_CX_STATES; ++i) {
+	struct acpi_cst_cx *cx = &sc->cst_cx_states[i];
+
+	if (cx->res != NULL)
+	    bus_release_resource(sc->cst_dev, cx->res_type, cx->rid, cx->res);
+	memset(cx, 0, sizeof(*cx));
+    }
 }
