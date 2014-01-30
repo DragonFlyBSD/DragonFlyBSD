@@ -117,7 +117,7 @@ int		 	 acpi_cst_quirks; /* Indicate any hardware bugs. */
 static boolean_t	 acpi_cst_use_fadt;
 
 /* Runtime state. */
-static int		 acpi_cst_disable_idle;
+static boolean_t	 acpi_cst_disable_idle;
 					/* Disable entry to idle function */
 static int		 acpi_cst_cx_count; /* Number of valid Cx states */
 
