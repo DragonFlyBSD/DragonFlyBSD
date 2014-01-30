@@ -87,7 +87,7 @@ static device_method_t acpi_cpu_methods[] = {
 static driver_t acpi_cpu_driver = {
     "cpu",
     acpi_cpu_methods,
-    sizeof(struct acpi_cpux_softc)
+    sizeof(struct acpi_cpu_softc)
 };
 
 static devclass_t acpi_cpu_devclass;
@@ -147,7 +147,7 @@ acpi_cpu_probe(device_t dev)
 static int
 acpi_cpu_attach(device_t dev)
 {
-    struct acpi_cpux_softc *sc = device_get_softc(dev);
+    struct acpi_cpu_softc *sc = device_get_softc(dev);
     ACPI_HANDLE handle;
     device_t child;
     int cpu_id, cpu_features;
@@ -239,7 +239,7 @@ acpi_cpu_attach(device_t dev)
 	return ENXIO;
     acpi_set_handle(child, handle);
     acpi_set_magic(child, cpu_id);
-    sc->cpux_cst = child;
+    sc->cpu_cst = child;
 
     child = BUS_ADD_CHILD(dev, dev, 0, "cpu_pst", -1);
     if (child == NULL)
@@ -318,12 +318,12 @@ acpi_cpu_get_id(uint32_t idx, uint32_t *acpi_id, uint32_t *cpu_id)
 static void
 acpi_cpu_notify(ACPI_HANDLE handler __unused, UINT32 notify, void *xsc)
 {
-    struct acpi_cpux_softc *sc = xsc;
+    struct acpi_cpu_softc *sc = xsc;
 
     switch (notify) {
     case ACPI_NOTIFY_CX_STATES:
-	if (sc->cpux_cst_notify != NULL)
-	    sc->cpux_cst_notify(sc->cpux_cst);
+	if (sc->cpu_cst_notify != NULL)
+	    sc->cpu_cst_notify(sc->cpu_cst);
 	break;
     }
 }

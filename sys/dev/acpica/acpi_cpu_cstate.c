@@ -75,7 +75,7 @@ struct netmsg_acpi_cst {
 
 struct acpi_cst_softc {
     device_t		cst_dev;
-    struct acpi_cpux_softc *cst_parent;
+    struct acpi_cpu_softc *cst_parent;
     ACPI_HANDLE		cst_handle;
     int			cst_cpuid;
     uint32_t		cst_flags;	/* ACPI_CST_FLAG_ */
@@ -416,11 +416,11 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
 	cx_ptr->gas.BitWidth = 8;
 	cx_ptr->gas.Address = sc->cst_p_blk + 4;
 
-	cx_ptr->rid = sc->cst_parent->cpux_next_rid;
+	cx_ptr->rid = sc->cst_parent->cpu_next_rid;
 	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->res_type, &cx_ptr->rid,
 	    &cx_ptr->gas, &cx_ptr->res, RF_SHAREABLE);
 	if (cx_ptr->res != NULL) {
-	    sc->cst_parent->cpux_next_rid++;
+	    sc->cst_parent->cpu_next_rid++;
 	    cx_ptr->type = ACPI_STATE_C2;
 	    cx_ptr->trans_lat = AcpiGbl_FADT.C2Latency;
 	    cx_ptr->enter = acpi_cst_cx_io_enter;
@@ -444,11 +444,11 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
 	cx_ptr->gas.BitWidth = 8;
 	cx_ptr->gas.Address = sc->cst_p_blk + 5;
 
-	cx_ptr->rid = sc->cst_parent->cpux_next_rid;
+	cx_ptr->rid = sc->cst_parent->cpu_next_rid;
 	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->res_type, &cx_ptr->rid,
 	    &cx_ptr->gas, &cx_ptr->res, RF_SHAREABLE);
 	if (cx_ptr->res != NULL) {
-	    sc->cst_parent->cpux_next_rid++;
+	    sc->cst_parent->cpu_next_rid++;
 	    cx_ptr->type = ACPI_STATE_C3;
 	    cx_ptr->trans_lat = AcpiGbl_FADT.C3Latency;
 	    cx_ptr->enter = acpi_cst_cx_io_enter;
@@ -566,11 +566,11 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	KASSERT(cx_ptr->res == NULL, ("still has res"));
 	acpi_PkgRawGas(pkg, 0, &cx_ptr->gas);
 
-	cx_ptr->rid = sc->cst_parent->cpux_next_rid;
+	cx_ptr->rid = sc->cst_parent->cpu_next_rid;
 	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->res_type, &cx_ptr->rid,
 	    &cx_ptr->gas, &cx_ptr->res, RF_SHAREABLE);
 	if (cx_ptr->res != NULL) {
-	    sc->cst_parent->cpux_next_rid++;
+	    sc->cst_parent->cpu_next_rid++;
 	    ACPI_DEBUG_PRINT((ACPI_DB_INFO,
 			     "cpu_cst%d: Got C%d - %d latency\n",
 			     device_get_unit(sc->cst_dev), cx_ptr->type,
@@ -688,7 +688,7 @@ acpi_cst_postattach(void *arg)
 		acpi_cst_free_resource(sc, sc->cst_non_c3 + 1);
 		sc->cst_cx_count = sc->cst_non_c3 + 1;
 	    }
-	    sc->cst_parent->cpux_cst_notify = acpi_cst_notify;
+	    sc->cst_parent->cpu_cst_notify = acpi_cst_notify;
 	}
     }
     acpi_cst_global_cx_count();
@@ -699,17 +699,17 @@ acpi_cst_postattach(void *arg)
 	acpi_cst_startup(sc);
 
 	if (sc->cst_parent->glob_sysctl_tree != NULL) {
-	    struct acpi_cpux_softc *cpux = sc->cst_parent;
+	    struct acpi_cpu_softc *cpu = sc->cst_parent;
 
 	    /* Add a sysctl handler to handle global Cx lowest setting */
-	    SYSCTL_ADD_PROC(&cpux->glob_sysctl_ctx,
-	    		    SYSCTL_CHILDREN(cpux->glob_sysctl_tree),
+	    SYSCTL_ADD_PROC(&cpu->glob_sysctl_ctx,
+	    		    SYSCTL_CHILDREN(cpu->glob_sysctl_tree),
 			    OID_AUTO, "cx_lowest",
 			    CTLTYPE_STRING | CTLFLAG_RW, NULL, 0,
 			    acpi_cst_global_lowest_sysctl, "A",
 			    "Requested global lowest Cx sleep state");
-	    SYSCTL_ADD_PROC(&cpux->glob_sysctl_ctx,
-	    		    SYSCTL_CHILDREN(cpux->glob_sysctl_tree),
+	    SYSCTL_ADD_PROC(&cpu->glob_sysctl_ctx,
+	    		    SYSCTL_CHILDREN(cpu->glob_sysctl_tree),
 			    OID_AUTO, "cx_lowest_use",
 			    CTLTYPE_STRING | CTLFLAG_RD, NULL, 0,
 			    acpi_cst_global_lowest_use_sysctl, "A",
@@ -767,7 +767,7 @@ acpi_cst_c3_bm_rld(struct acpi_cst_softc *sc)
 static void
 acpi_cst_startup(struct acpi_cst_softc *sc)
 {
-    struct acpi_cpux_softc *cpux = sc->cst_parent;
+    struct acpi_cpu_softc *cpu = sc->cst_parent;
     int i, bm_rld_done = 0;
 
     for (i = 0; i < sc->cst_cx_count; ++i) {
@@ -789,23 +789,23 @@ acpi_cst_startup(struct acpi_cst_softc *sc)
 
     acpi_cst_support_list(sc);
     
-    SYSCTL_ADD_STRING(&cpux->pcpu_sysctl_ctx,
-		      SYSCTL_CHILDREN(cpux->pcpu_sysctl_tree),
+    SYSCTL_ADD_STRING(&cpu->pcpu_sysctl_ctx,
+		      SYSCTL_CHILDREN(cpu->pcpu_sysctl_tree),
 		      OID_AUTO, "cx_supported", CTLFLAG_RD,
 		      sc->cst_cx_supported, 0,
 		      "Cx/microsecond values for supported Cx states");
-    SYSCTL_ADD_PROC(&cpux->pcpu_sysctl_ctx,
-		    SYSCTL_CHILDREN(cpux->pcpu_sysctl_tree),
+    SYSCTL_ADD_PROC(&cpu->pcpu_sysctl_ctx,
+		    SYSCTL_CHILDREN(cpu->pcpu_sysctl_tree),
 		    OID_AUTO, "cx_lowest", CTLTYPE_STRING | CTLFLAG_RW,
 		    (void *)sc, 0, acpi_cst_lowest_sysctl, "A",
 		    "requested lowest Cx sleep state");
-    SYSCTL_ADD_PROC(&cpux->pcpu_sysctl_ctx,
-		    SYSCTL_CHILDREN(cpux->pcpu_sysctl_tree),
+    SYSCTL_ADD_PROC(&cpu->pcpu_sysctl_ctx,
+		    SYSCTL_CHILDREN(cpu->pcpu_sysctl_tree),
 		    OID_AUTO, "cx_lowest_use", CTLTYPE_STRING | CTLFLAG_RD,
 		    (void *)sc, 0, acpi_cst_lowest_use_sysctl, "A",
 		    "lowest Cx sleep state to use");
-    SYSCTL_ADD_PROC(&cpux->pcpu_sysctl_ctx,
-		    SYSCTL_CHILDREN(cpux->pcpu_sysctl_tree),
+    SYSCTL_ADD_PROC(&cpu->pcpu_sysctl_ctx,
+		    SYSCTL_CHILDREN(cpu->pcpu_sysctl_tree),
 		    OID_AUTO, "cx_usage", CTLTYPE_STRING | CTLFLAG_RD,
 		    (void *)sc, 0, acpi_cst_usage_sysctl, "A",
 		    "percent usage for each Cx state");

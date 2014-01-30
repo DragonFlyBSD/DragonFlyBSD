@@ -96,7 +96,7 @@ LIST_HEAD(acpi_pst_domlist, acpi_pst_domain);
 
 struct acpi_pst_softc {
 	device_t		pst_dev;
-	struct acpi_cpux_softc	*pst_parent;
+	struct acpi_cpu_softc	*pst_parent;
 	struct acpi_pst_domain	*pst_domain;
 	struct acpi_pst_res	pst_creg;
 	struct acpi_pst_res	pst_sreg;
@@ -763,7 +763,7 @@ static void
 acpi_pst_postattach(void *arg __unused)
 {
 	struct acpi_pst_domain *dom;
-	struct acpi_cpux_softc *cpux;
+	struct acpi_cpu_softc *cpu;
 	device_t *devices;
 	int i, ndevices, error, has_domain, sstate;
 
@@ -776,14 +776,14 @@ acpi_pst_postattach(void *arg __unused)
 	if (ndevices == 0)
 		return;
 
-	cpux = NULL;
+	cpu = NULL;
 	for (i = 0; i < ndevices; ++i) {
-		cpux = device_get_softc(device_get_parent(devices[i]));
-		if (cpux->glob_sysctl_tree != NULL)
+		cpu = device_get_softc(device_get_parent(devices[i]));
+		if (cpu->glob_sysctl_tree != NULL)
 			break;
 	}
 	kfree(devices, M_TEMP);
-	KKASSERT(cpux != NULL);
+	KKASSERT(cpu != NULL);
 
 	if (acpi_pst_md == NULL)
 		kprintf("ACPI: no P-State CPU driver\n");
@@ -863,7 +863,7 @@ acpi_pst_postattach(void *arg __unused)
 		sysctl_ctx_init(&dom->pd_sysctl_ctx);
 		dom->pd_sysctl_tree =
 		SYSCTL_ADD_NODE(&dom->pd_sysctl_ctx,
-			SYSCTL_CHILDREN(cpux->glob_sysctl_tree),
+			SYSCTL_CHILDREN(cpu->glob_sysctl_tree),
 			OID_AUTO, buf, CTLFLAG_RD, 0,
 			"P-State domain");
 		if (dom->pd_sysctl_tree == NULL) {
@@ -902,8 +902,8 @@ acpi_pst_postattach(void *arg __unused)
 
 	if (has_domain && acpi_pst_md != NULL &&
 	    acpi_pst_md->pmd_set_pstate != NULL) {
-		SYSCTL_ADD_PROC(&cpux->glob_sysctl_ctx,
-				SYSCTL_CHILDREN(cpux->glob_sysctl_tree),
+		SYSCTL_ADD_PROC(&cpu->glob_sysctl_ctx,
+				SYSCTL_CHILDREN(cpu->glob_sysctl_tree),
 				OID_AUTO, "px_global",
 				CTLTYPE_UINT | CTLFLAG_RW,
 				NULL, 0, acpi_pst_sysctl_global,
@@ -1165,10 +1165,10 @@ acpi_pst_alloc_resource(device_t dev, ACPI_OBJECT *obj, int idx,
 		return error;
 
 	/* Allocate resource, if possible */
-	res->pr_rid = sc->pst_parent->cpux_next_rid;
+	res->pr_rid = sc->pst_parent->cpu_next_rid;
 	acpi_bus_alloc_gas(dev, &type, &res->pr_rid, &res->pr_gas, &res->pr_res, 0);
 	if (res->pr_res != NULL) {
-		sc->pst_parent->cpux_next_rid++;
+		sc->pst_parent->cpu_next_rid++;
 		res->pr_bt = rman_get_bustag(res->pr_res);
 		res->pr_bh = rman_get_bushandle(res->pr_res);
 	} else {
