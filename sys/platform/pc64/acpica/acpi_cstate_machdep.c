@@ -52,11 +52,22 @@ acpi_cst_md_cx_setup(struct acpi_cst_cx *cx)
 	if (cpu_vendor_id != CPU_VENDOR_INTEL) {
 		/*
 		 * No optimization for non-Intel CPUs so far.
-		 * Hardware fixed resouce is not supported yet.
+		 *
+		 * Hardware fixed resouce is not supported for
+		 * C1+ state yet.
 		 */
+		if (cx->type == ACPI_STATE_C1 &&
+		    cx->gas.SpaceId == ACPI_ADR_SPACE_FIXED_HARDWARE)
+			return 0;
 		if (cx->gas.SpaceId != ACPI_ADR_SPACE_SYSTEM_IO &&
 		    cx->gas.SpaceId != ACPI_ADR_SPACE_SYSTEM_MEMORY)
 			return EINVAL;
+		return 0;
+	}
+
+	if (cx->type == ACPI_STATE_C1 &&
+	    cx->gas.SpaceId == ACPI_ADR_SPACE_FIXED_HARDWARE) {
+		/* TODO: filter C1 I/O then halt */
 		return 0;
 	}
 

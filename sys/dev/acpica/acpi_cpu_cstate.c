@@ -386,7 +386,7 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
     sc->cst_prev_sleep = 1000000;
 
     /* C1 has been required since just after ACPI 1.0 */
-    cx_ptr->gas.SpaceId = ACPI_ADR_SPACE_SYSTEM_IO;
+    cx_ptr->gas.SpaceId = ACPI_ADR_SPACE_FIXED_HARDWARE;
     cx_ptr->type = ACPI_STATE_C1;
     cx_ptr->trans_lat = 0;
     cx_ptr->enter = acpi_cst_c1_halt_enter;
@@ -539,7 +539,6 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	switch (cx_ptr->type) {
 	case ACPI_STATE_C1:
 	    sc->cst_non_c3 = i;
-	    cx_ptr->gas.SpaceId = ACPI_ADR_SPACE_SYSTEM_IO;
 	    cx_ptr->enter = acpi_cst_c1_halt_enter;
 	    error = acpi_cst_cx_setup(cx_ptr);
 	    if (error)
