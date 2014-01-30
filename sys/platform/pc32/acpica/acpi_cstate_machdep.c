@@ -60,8 +60,11 @@ acpi_cst_md_cx_setup(struct acpi_cst_cx *cx)
 		    cx->gas.SpaceId == ACPI_ADR_SPACE_FIXED_HARDWARE)
 			return 0;
 		if (cx->gas.SpaceId != ACPI_ADR_SPACE_SYSTEM_IO &&
-		    cx->gas.SpaceId != ACPI_ADR_SPACE_SYSTEM_MEMORY)
+		    cx->gas.SpaceId != ACPI_ADR_SPACE_SYSTEM_MEMORY) {
+			kprintf("C%d: invalid SpaceId %d\n", cx->type,
+			    cx->gas.SpaceId);
 			return EINVAL;
+		}
 		return 0;
 	}
 
@@ -73,8 +76,13 @@ acpi_cst_md_cx_setup(struct acpi_cst_cx *cx)
 
 	/* TODO: We don't support fixed hardware yet */
 	if (cx->gas.SpaceId != ACPI_ADR_SPACE_SYSTEM_IO &&
-	    cx->gas.SpaceId != ACPI_ADR_SPACE_SYSTEM_MEMORY)
+	    cx->gas.SpaceId != ACPI_ADR_SPACE_SYSTEM_MEMORY) {
+		if (cx->gas.SpaceId != ACPI_ADR_SPACE_FIXED_HARDWARE) {
+			kprintf("C%d: invalid SpaceId %d\n", cx->type,
+			    cx->gas.SpaceId);
+		}
 		return EINVAL;
+	}
 
 	if (cx->type >= ACPI_STATE_C3) {
 		if (CPUID_TO_FAMILY(cpu_id) > 0xf ||

@@ -2353,3 +2353,21 @@ init_locks(void)
 	lwkt_token_pool_init();
 }
 
+boolean_t
+cpu_mwait_hint_valid(uint32_t hint)
+{
+	const struct cpu_mwait_cx *cx;
+	int cx_idx, sub;
+
+	cx_idx = MWAIT_EAX_TO_CX(hint);
+	sub = MWAIT_EAX_TO_CX_SUB(hint);
+
+	if (cx_idx >= CPU_MWAIT_CX_MAX)
+		return FALSE;
+
+	cx = &cpu_mwait_cx_info[cx_idx];
+	if (sub >= cx->subcnt)
+		return FALSE;
+
+	return TRUE;
+}

@@ -584,7 +584,6 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	    cx_ptr++;
 	    sc->cst_cx_count++;
 	} else {
-#ifdef notyet
 	    error = acpi_cst_cx_setup(cx_ptr);
 	    if (!error) {
 		KASSERT(cx_ptr->enter != NULL,
@@ -592,7 +591,6 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 		cx_ptr++;
 		sc->cst_cx_count++;
 	    }
-#endif
 	}
     }
     AcpiOsFree(buf.Pointer);

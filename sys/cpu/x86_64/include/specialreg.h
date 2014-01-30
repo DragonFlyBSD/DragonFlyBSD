@@ -259,6 +259,15 @@
 #define CPUID_MWAIT_INTBRK	0x00000002
 #define CPUID_MWAIT_CX_SUBCNT(emu, i) (((emu) >> ((i) * 4)) & 0xf)
 
+/* MWAIT EAX to Cx and its sub state */
+#define MWAIT_EAX_TO_CX(x)	((((x) >> 4) + 1) & 0xf)
+#define MWAIT_EAX_TO_CX_SUB(x)	((x) & 0xf)
+
+/* MWAIT EAX hint and ECX extension */
+#define MWAIT_EAX_HINT(cx, sub) \
+    (((((uint32_t)(cx) - 1) & 0xf) << 4) | ((sub) & 0xf))
+#define MWAIT_ECX_INTBRK	0x1
+
 /*
  * CPUID manufacturers identifiers
  */

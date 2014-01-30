@@ -39,6 +39,7 @@ struct acpi_cst_cx {
     uint32_t		trans_lat;	/* Transition latency (usec). */
     int			preamble;	/* ACPI_CST_CX_PREAMBLE_ */
     uint32_t		flags;		/* ACPI_CST_CX_FLAG_ */
+    uint32_t		md_arg0;	/* machine depend arg */
     void		(*enter)(const struct acpi_cst_cx *);
     bus_space_tag_t	btag;
     bus_space_handle_t	bhand;
