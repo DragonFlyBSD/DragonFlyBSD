@@ -56,6 +56,7 @@ ${OSACPI_MD_DIR}/OsdEnvironment.c	optional        acpi
 ${OSACPI_MD_DIR}/acpi_cpu_machdep.c	optional	acpi
 ${OSACPI_MD_DIR}/acpi_machdep.c		optional        acpi
 ${OSACPI_MD_DIR}/acpi_pstate_machdep.c	optional	acpi
+${OSACPI_MD_DIR}/acpi_cstate_machdep.c	optional	acpi
 ${OSACPI_MD_DIR}/acpi_wakeup.c		optional        acpi
 acpi_wakecode.h				optional        acpi		\
 	dependency	"$S/${OSACPI_MD_DIR}/acpi_wakecode.S"		\

@@ -55,6 +55,7 @@
 #include "acpi.h"
 #include "acpivar.h"
 #include "acpi_cpu.h"
+#include "acpi_cpu_cstate.h"
 
 /*
  * Support for ACPI Processor devices, including C[1-3+] sleep states.
@@ -70,19 +71,6 @@ struct netmsg_acpi_cst {
 	int		val;
 };
 
-struct acpi_cst_cx {
-    uint32_t		type;		/* C1-3+. */
-    uint32_t		trans_lat;	/* Transition latency (usec). */
-    void		(*enter)(const struct acpi_cst_cx *);
-    bus_space_tag_t	btag;
-    bus_space_handle_t	bhand;
-
-    struct resource	*p_lvlx;	/* Register to read to enter state. */
-    ACPI_GENERIC_ADDRESS gas;
-    int			rid;		/* rid of p_lvlx */
-    uint32_t		power;		/* Power consumed (mW). */
-    int			res_type;	/* Resource type for p_lvlx. */
-};
 #define MAX_CX_STATES	 8
 
 struct acpi_cst_softc {
@@ -107,9 +95,6 @@ struct acpi_cst_softc {
 
 #define ACPI_CST_FLAG_PROBING	0x1
 
-#define ACPI_CST_QUIRK_NO_C3	(1<<0)	/* C3-type states are not usable. */
-#define ACPI_CST_QUIRK_NO_BM_CTRL (1<<2) /* No bus mastering control. */
-
 #define PCI_VENDOR_INTEL	0x8086
 #define PCI_DEVICE_82371AB_3	0x7113	/* PIIX4 chipset for quirks. */
 #define PCI_REVISION_A_STEP	0
@@ -128,7 +113,7 @@ struct acpi_cst_softc {
 /* Platform hardware resource information. */
 static uint32_t		 acpi_cst_smi_cmd; /* Value to write to SMI_CMD. */
 static uint8_t		 acpi_cst_ctrl;	/* Indicate we are _CST aware. */
-static int		 acpi_cst_quirks; /* Indicate any hardware bugs. */
+int		 	 acpi_cst_quirks; /* Indicate any hardware bugs. */
 static boolean_t	 acpi_cst_use_fadt;
 
 /* Runtime state. */
@@ -179,6 +164,7 @@ static int	acpi_cst_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cst_global_lowest_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cst_global_lowest_use_sysctl(SYSCTL_HANDLER_ARGS);
 
+static int	acpi_cst_cx_setup(struct acpi_cst_cx *cx);
 static void	acpi_cst_c1_halt_enter(const struct acpi_cst_cx *);
 static void	acpi_cst_cx_io_enter(const struct acpi_cst_cx *);
 
@@ -380,7 +366,10 @@ acpi_cst_cx_probe(struct acpi_cst_softc *sc)
 static void
 acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
 {
-    struct acpi_cst_cx		*cx_ptr;
+    struct acpi_cst_cx *cx_ptr;
+    int error;
+
+    /* XXX free previously allocated resources */
 
     sc->cst_cx_count = 0;
     cx_ptr = sc->cst_cx_states;
@@ -389,10 +378,13 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
     sc->cst_prev_sleep = 1000000;
 
     /* C1 has been required since just after ACPI 1.0 */
-    cx_ptr->gas.SpaceId = ACPI_ADR_SPACE_FIXED_HARDWARE;
+    cx_ptr->gas.SpaceId = ACPI_ADR_SPACE_SYSTEM_IO;
     cx_ptr->type = ACPI_STATE_C1;
     cx_ptr->trans_lat = 0;
     cx_ptr->enter = acpi_cst_c1_halt_enter;
+    error = acpi_cst_cx_setup(cx_ptr);
+    if (error)
+	panic("C1 FADT HALT setup failed: %d", error);
     cx_ptr++;
     sc->cst_cx_count++;
 
@@ -418,14 +410,17 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
 
 	cx_ptr->rid = sc->cst_parent->cpux_next_rid;
 	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->res_type, &cx_ptr->rid,
-	    &cx_ptr->gas, &cx_ptr->p_lvlx, RF_SHAREABLE);
-	if (cx_ptr->p_lvlx != NULL) {
+	    &cx_ptr->gas, &cx_ptr->res, RF_SHAREABLE);
+	if (cx_ptr->res != NULL) {
 	    sc->cst_parent->cpux_next_rid++;
 	    cx_ptr->type = ACPI_STATE_C2;
 	    cx_ptr->trans_lat = AcpiGbl_FADT.C2Latency;
 	    cx_ptr->enter = acpi_cst_cx_io_enter;
-	    cx_ptr->btag = rman_get_bustag(cx_ptr->p_lvlx);
-	    cx_ptr->bhand = rman_get_bushandle(cx_ptr->p_lvlx);
+	    cx_ptr->btag = rman_get_bustag(cx_ptr->res);
+	    cx_ptr->bhand = rman_get_bushandle(cx_ptr->res);
+	    error = acpi_cst_cx_setup(cx_ptr);
+	    if (error)
+		panic("C2 FADT I/O setup failed: %d", error);
 	    cx_ptr++;
 	    sc->cst_cx_count++;
 	    sc->cst_non_c3 = 1;
@@ -443,14 +438,17 @@ acpi_cst_cx_probe_fadt(struct acpi_cst_softc *sc)
 
 	cx_ptr->rid = sc->cst_parent->cpux_next_rid;
 	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->res_type, &cx_ptr->rid,
-	    &cx_ptr->gas, &cx_ptr->p_lvlx, RF_SHAREABLE);
-	if (cx_ptr->p_lvlx != NULL) {
+	    &cx_ptr->gas, &cx_ptr->res, RF_SHAREABLE);
+	if (cx_ptr->res != NULL) {
 	    sc->cst_parent->cpux_next_rid++;
 	    cx_ptr->type = ACPI_STATE_C3;
 	    cx_ptr->trans_lat = AcpiGbl_FADT.C3Latency;
 	    cx_ptr->enter = acpi_cst_cx_io_enter;
-	    cx_ptr->btag = rman_get_bustag(cx_ptr->p_lvlx);
-	    cx_ptr->bhand = rman_get_bushandle(cx_ptr->p_lvlx);
+	    cx_ptr->btag = rman_get_bustag(cx_ptr->res);
+	    cx_ptr->bhand = rman_get_bushandle(cx_ptr->res);
+	    error = acpi_cst_cx_setup(cx_ptr);
+	    if (error)
+		panic("C3 FADT I/O setup failed: %d", error);
 	    cx_ptr++;
 	    sc->cst_cx_count++;
 	}
@@ -475,8 +473,10 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
+#ifdef INVARIANTS
     if (reprobe)
-	KKASSERT(mycpuid == sc->cst_cpuid);
+	KKASSERT(&curthread->td_msgport == netisr_cpuport(sc->cst_cpuid));
+#endif
 
     buf.Pointer = NULL;
     buf.Length = ACPI_ALLOCATE_BUFFER;
@@ -508,18 +508,22 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	cx_ptr = &sc->cst_cx_states[i];
 
 	/* Free up any previous register. */
-	if (cx_ptr->p_lvlx != NULL) {
+	if (cx_ptr->res != NULL) {
 	    bus_release_resource(sc->cst_dev, cx_ptr->res_type, cx_ptr->rid,
-	        cx_ptr->p_lvlx);
-	    cx_ptr->p_lvlx = NULL;
+	        cx_ptr->res);
+	    cx_ptr->res = NULL;
 	}
 	cx_ptr->enter = NULL;
+	cx_ptr->flags = 0;
+	cx_ptr->preamble = ACPI_CST_CX_PREAMBLE_NONE;
     }
 
     /* Set up all valid states. */
     sc->cst_cx_count = 0;
     cx_ptr = sc->cst_cx_states;
     for (i = 0; i < count; i++) {
+	int error;
+
 	pkg = &top->Package.Elements[i + 1];
 	if (!ACPI_PKG_VALID(pkg, 4) ||
 	    acpi_PkgInt32(pkg, 1, &cx_ptr->type) != 0 ||
@@ -534,7 +538,11 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	switch (cx_ptr->type) {
 	case ACPI_STATE_C1:
 	    sc->cst_non_c3 = i;
+	    cx_ptr->gas.SpaceId = ACPI_ADR_SPACE_SYSTEM_IO;
 	    cx_ptr->enter = acpi_cst_c1_halt_enter;
+	    error = acpi_cst_cx_setup(cx_ptr);
+	    if (error)
+		panic("C1 CST HALT setup failed: %d", error);
 	    cx_ptr++;
 	    sc->cst_cx_count++;
 	    continue;
@@ -555,30 +563,43 @@ acpi_cst_cx_probe_cst(struct acpi_cst_softc *sc, int reprobe)
 	/*
 	 * Allocate the control register for C2 or C3(+).
 	 */
-	KASSERT(cx_ptr->p_lvlx == NULL, ("still has lvlx"));
+	KASSERT(cx_ptr->res == NULL, ("still has res"));
 	acpi_PkgRawGas(pkg, 0, &cx_ptr->gas);
 
 	cx_ptr->rid = sc->cst_parent->cpux_next_rid;
 	acpi_bus_alloc_gas(sc->cst_dev, &cx_ptr->res_type, &cx_ptr->rid,
-	    &cx_ptr->gas, &cx_ptr->p_lvlx, RF_SHAREABLE);
-	if (cx_ptr->p_lvlx != NULL) {
+	    &cx_ptr->gas, &cx_ptr->res, RF_SHAREABLE);
+	if (cx_ptr->res != NULL) {
 	    sc->cst_parent->cpux_next_rid++;
 	    ACPI_DEBUG_PRINT((ACPI_DB_INFO,
 			     "cpu_cst%d: Got C%d - %d latency\n",
 			     device_get_unit(sc->cst_dev), cx_ptr->type,
 			     cx_ptr->trans_lat));
 	    cx_ptr->enter = acpi_cst_cx_io_enter;
-	    cx_ptr->btag = rman_get_bustag(cx_ptr->p_lvlx);
-	    cx_ptr->bhand = rman_get_bushandle(cx_ptr->p_lvlx);
+	    cx_ptr->btag = rman_get_bustag(cx_ptr->res);
+	    cx_ptr->bhand = rman_get_bushandle(cx_ptr->res);
+	    error = acpi_cst_cx_setup(cx_ptr);
+	    if (error)
+		panic("C%d CST I/O setup failed: %d", cx_ptr->type, error);
 	    cx_ptr++;
 	    sc->cst_cx_count++;
+	} else {
+#ifdef notyet
+	    error = acpi_cst_cx_setup(cx_ptr);
+	    if (!error) {
+		KASSERT(cx_ptr->enter != NULL,
+		    ("C%d enter is not set", cx_ptr->type));
+		cx_ptr++;
+		sc->cst_cx_count++;
+	    }
+#endif
 	}
     }
     AcpiOsFree(buf.Pointer);
 
     if (reprobe) {
 	/* If there are C3(+) states, always enable bus master wakeup */
-	if ((acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0) {
+	if ((acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM) == 0) {
 	    for (i = 0; i < sc->cst_cx_count; ++i) {
 		struct acpi_cst_cx *cx = &sc->cst_cx_states[i];
 
@@ -664,8 +685,10 @@ acpi_cst_postattach(void *arg)
 	 */
 	for (i = 0; i < acpi_cst_ndevices; i++) {
 	    sc = device_get_softc(acpi_cst_devices[i]);
-	    if (acpi_cst_quirks & ACPI_CST_QUIRK_NO_C3)
+	    if (acpi_cst_quirks & ACPI_CST_QUIRK_NO_C3) {
+		/* XXX leak resource */
 		sc->cst_cx_count = sc->cst_non_c3 + 1;
+	    }
 	    sc->cst_parent->cpux_cst_notify = acpi_cst_notify;
 	}
     }
@@ -746,19 +769,23 @@ static void
 acpi_cst_startup(struct acpi_cst_softc *sc)
 {
     struct acpi_cpux_softc *cpux = sc->cst_parent;
+    int i, bm_rld_done = 0;
 
-    /* If there are C3(+) states, always enable bus master wakeup */
-    if ((acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0) {
-	int i;
+    for (i = 0; i < sc->cst_cx_count; ++i) {
+	struct acpi_cst_cx *cx = &sc->cst_cx_states[i];
+	int error;
 
-	for (i = 0; i < sc->cst_cx_count; ++i) {
-	    struct acpi_cst_cx *cx = &sc->cst_cx_states[i];
-
-	    if (cx->type >= ACPI_STATE_C3) {
-		acpi_cst_c3_bm_rld(sc);
-		break;
-	    }
+	/* If there are C3(+) states, always enable bus master wakeup */
+	if (cx->type >= ACPI_STATE_C3 && !bm_rld_done &&
+	    (acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM) == 0) {
+	    acpi_cst_c3_bm_rld(sc);
+	    bm_rld_done = 1;
 	}
+
+	/* Redo the Cx setup, since quirks have been changed */
+	error = acpi_cst_cx_setup(cx);
+	if (error)
+	    panic("C%d startup setup failed: %d", i + 1, error);
     }
 
     acpi_cst_support_list(sc);
@@ -806,7 +833,7 @@ acpi_cst_idle(void)
     struct	acpi_cst_softc *sc;
     struct	acpi_cst_cx *cx_next;
     union microtime_pcpu start, end;
-    int		bm_active, cx_next_idx, i, tdiff;
+    int		cx_next_idx, i, tdiff, bm_arb_disabled = 0;
 
     /* If disabled, return immediately. */
     if (acpi_cst_disable_idle) {
@@ -840,13 +867,13 @@ acpi_cst_idle(void)
     }
 
     /*
-     * If C3(+) is to be entered, check for bus master activity.
-     * If there was activity, clear the bit and use the lowest
-     * non-C3 state.
+     * Check for bus master activity if needed for the selected state.
+     * If there was activity, clear the bit and use the lowest non-C3 state.
      */
     cx_next = &sc->cst_cx_states[cx_next_idx];
-    if (cx_next->type >= ACPI_STATE_C3 &&
-        (acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0) {
+    if (cx_next->flags & ACPI_CST_CX_FLAG_BM_STS) {
+	int bm_active;
+
 	AcpiReadBitRegister(ACPI_BITREG_BUS_MASTER_STATUS, &bm_active);
 	if (bm_active != 0) {
 	    AcpiWriteBitRegister(ACPI_BITREG_BUS_MASTER_STATUS, 1);
@@ -870,19 +897,16 @@ acpi_cst_idle(void)
 	return;
     }
 
-    /*
-     * For C3(+), disable bus master arbitration if BM control is
-     * available, otherwise flush the CPU cache.
-     */
-    if (cx_next->type >= ACPI_STATE_C3) {
-	if ((acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0)
-	    AcpiWriteBitRegister(ACPI_BITREG_ARB_DISABLE, 1);
-	else
-	    ACPI_FLUSH_CPU_CACHE();
+    /* Execute the proper preamble before enter the selected state. */
+    if (cx_next->preamble == ACPI_CST_CX_PREAMBLE_BM_ARB) {
+	AcpiWriteBitRegister(ACPI_BITREG_ARB_DISABLE, 1);
+	bm_arb_disabled = 1;
+    } else if (cx_next->preamble == ACPI_CST_CX_PREAMBLE_WBINVD) {
+	ACPI_FLUSH_CPU_CACHE();
     }
 
     /*
-     * Read from P_LVLx to enter C2(+), checking time spent asleep.
+     * Enter the selected state and check time spent asleep.
      */
     microtime_pcpu_get(&start);
     cpu_mfence();
@@ -892,11 +916,10 @@ acpi_cst_idle(void)
     cpu_mfence();
     microtime_pcpu_get(&end);
 
-    /* Enable bus master arbitration. */
-    if (cx_next->type >= ACPI_STATE_C3) {
-	if ((acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM_CTRL) == 0)
-	    AcpiWriteBitRegister(ACPI_BITREG_ARB_DISABLE, 0);
-    }
+    /* Enable bus master arbitration, if it was disabled. */
+    if (bm_arb_disabled)
+	AcpiWriteBitRegister(ACPI_BITREG_ARB_DISABLE, 0);
+
     ACPI_ENABLE_IRQS();
 
     /* Find the actual time asleep in microseconds. */
@@ -953,7 +976,7 @@ acpi_cst_set_quirks(void)
 	AcpiGbl_FADT.Pm2ControlLength == 0) {
 	if ((AcpiGbl_FADT.Flags & ACPI_FADT_WBINVD) &&
 	    (AcpiGbl_FADT.Flags & ACPI_FADT_WBINVD_FLUSH) == 0) {
-	    acpi_cst_quirks |= ACPI_CST_QUIRK_NO_BM_CTRL;
+	    acpi_cst_quirks |= ACPI_CST_QUIRK_NO_BM;
 	    ACPI_DEBUG_PRINT((ACPI_DB_INFO,
 		"cpu_cst: no BM control, using flush cache method\n"));
 	} else {
@@ -961,16 +984,6 @@ acpi_cst_set_quirks(void)
 	    ACPI_DEBUG_PRINT((ACPI_DB_INFO,
 		"cpu_cst: no BM control, C3 not available\n"));
 	}
-    }
-
-    /*
-     * If we are using FADT Cx mode, C3 on multiple CPUs requires using
-     * the expensive flush cache instruction.
-     */
-    if (acpi_cst_use_fadt && ncpus > 1) {
-	acpi_cst_quirks |= ACPI_CST_QUIRK_NO_BM_CTRL;
-	ACPI_DEBUG_PRINT((ACPI_DB_INFO,
-	    "cpu_cst: SMP, using flush cache mode for C3\n"));
     }
 
     /* Look for various quirks of the PIIX4 part. */
@@ -1300,10 +1313,44 @@ acpi_cst_cx_io_enter(const struct acpi_cst_cx *cx)
 {
     uint64_t dummy;
 
+    /*
+     * Read I/O to enter this Cx state
+     */
     bus_space_read_1(cx->btag, cx->bhand, 0);
     /*
      * Perform a dummy I/O read.  Since it may take an arbitrary time
      * to enter the idle state, this read makes sure that we are frozen.
      */
     AcpiRead(&dummy, &AcpiGbl_FADT.XPmTimerBlock);
+}
+
+static int
+acpi_cst_cx_setup(struct acpi_cst_cx *cx)
+{
+    cx->flags &= ~ACPI_CST_CX_FLAG_BM_STS;
+    cx->preamble = ACPI_CST_CX_PREAMBLE_NONE;
+
+    if (cx->type >= ACPI_STATE_C3) {
+	/*
+	 * Set the required operations for entering C3(+) state.
+	 * Later acpi_cst_md_cx_setup() may fix them up.
+	 */
+
+	/*
+	 * Always check BM_STS.
+	 */
+	if ((acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM) == 0)
+	    cx->flags |= ACPI_CST_CX_FLAG_BM_STS;
+
+	/*
+	 * According to the ACPI specification, bus master arbitration
+	 * is only available on UP system.  For MP system, cache flushing
+	 * is required.
+	 */
+	if (ncpus == 1 && (acpi_cst_quirks & ACPI_CST_QUIRK_NO_BM) == 0)
+	    cx->preamble = ACPI_CST_CX_PREAMBLE_BM_ARB;
+	else
+	    cx->preamble = ACPI_CST_CX_PREAMBLE_WBINVD;
+    }
+    return acpi_cst_md_cx_setup(cx);
 }
