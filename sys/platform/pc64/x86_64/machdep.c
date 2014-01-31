@@ -71,6 +71,7 @@
 #include <sys/usched.h>
 #include <sys/reg.h>
 #include <sys/sbuf.h>
+#include <sys/ctype.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -192,6 +193,15 @@ static char			cpu_mwait_cx_supported[256];
 
 SYSCTL_STRING(_machdep_mwait_CX, OID_AUTO, supported, CTLFLAG_RD,
     cpu_mwait_cx_supported, 0, "MWAIT supported C states");
+
+static int	cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *);
+static int	cpu_mwait_cx_idle_sysctl(SYSCTL_HANDLER_ARGS);
+static int	cpu_mwait_cx_spin_sysctl(SYSCTL_HANDLER_ARGS);
+
+SYSCTL_PROC(_machdep_mwait_CX, OID_AUTO, idle, CTLTYPE_STRING|CTLFLAG_RW,
+    NULL, 0, cpu_mwait_cx_idle_sysctl, "A", "");
+SYSCTL_PROC(_machdep_mwait_CX, OID_AUTO, spin, CTLTYPE_STRING|CTLFLAG_RW,
+    NULL, 0, cpu_mwait_cx_spin_sysctl, "A", "");
 
 long physmem = 0;
 
@@ -2373,18 +2383,73 @@ init_locks(void)
 boolean_t
 cpu_mwait_hint_valid(uint32_t hint)
 {
-	const struct cpu_mwait_cx *cx;
 	int cx_idx, sub;
 
 	cx_idx = MWAIT_EAX_TO_CX(hint);
-	sub = MWAIT_EAX_TO_CX_SUB(hint);
-
 	if (cx_idx >= CPU_MWAIT_CX_MAX)
 		return FALSE;
 
-	cx = &cpu_mwait_cx_info[cx_idx];
-	if (sub >= cx->subcnt)
+	sub = MWAIT_EAX_TO_CX_SUB(hint);
+	if (sub >= cpu_mwait_cx_info[cx_idx].subcnt)
 		return FALSE;
 
 	return TRUE;
+}
+
+static int
+cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0)
+{
+	int error, cx_idx, sub, hint;
+	char name[16], *ptr, *start;
+
+	hint = *hint0;
+	cx_idx = MWAIT_EAX_TO_CX(hint);
+	sub = MWAIT_EAX_TO_CX_SUB(hint);
+
+	if (cx_idx >= CPU_MWAIT_CX_MAX ||
+	    sub >= cpu_mwait_cx_info[cx_idx].subcnt)
+		strlcpy(name, "INVALID", sizeof(name));
+	else
+		ksnprintf(name, sizeof(name), "C%d/%d", cx_idx, sub);
+
+	error = sysctl_handle_string(oidp, name, sizeof(name), req);
+	if (error != 0 || req->newptr == NULL)
+		return error;
+
+	if (strlen(name) < 4 || toupper(name[0]) != 'C')
+		return EINVAL;
+	start = &name[1];
+	ptr = NULL;
+
+	cx_idx = strtol(start, &ptr, 10);
+	if (ptr == start || *ptr != '/')
+		return EINVAL;
+	if (cx_idx < 0 || cx_idx >= CPU_MWAIT_CX_MAX)
+		return EINVAL;
+
+	start = ptr + 1;
+	ptr = NULL;
+
+	sub = strtol(start, &ptr, 10);
+	if (*ptr != '\0')
+		return EINVAL;
+	if (sub < 0 || sub >= cpu_mwait_cx_info[cx_idx].subcnt)
+		return EINVAL;
+
+	*hint0 = MWAIT_EAX_HINT(cx_idx, sub);
+	return 0;
+}
+
+static int
+cpu_mwait_cx_idle_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	return cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
+	    &cpu_mwait_halt);
+}
+
+static int
+cpu_mwait_cx_spin_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	return cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
+	    &cpu_mwait_spin);
 }
