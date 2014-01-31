@@ -70,6 +70,7 @@
 #include <sys/bus.h>
 #include <sys/usched.h>
 #include <sys/reg.h>
+#include <sys/sbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -178,6 +179,7 @@ SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
 #define CPU_MWAIT_CX_MAX	8
 
 SYSCTL_NODE(_machdep, 0, mwait, CTLFLAG_RW, 0, "MWAIT features");
+SYSCTL_NODE(_machdep_mwait, 0, CX, CTLFLAG_RW, 0, "MWAIT Cx settings");
 
 struct cpu_mwait_cx {
 	int			subcnt;
@@ -186,6 +188,10 @@ struct cpu_mwait_cx {
 	struct sysctl_oid	*sysctl_tree;
 };
 static struct cpu_mwait_cx	cpu_mwait_cx_info[CPU_MWAIT_CX_MAX];
+static char			cpu_mwait_cx_supported[256];
+
+SYSCTL_STRING(_machdep_mwait_CX, OID_AUTO, supported, CTLFLAG_RD,
+    cpu_mwait_cx_supported, 0, "MWAIT supported C states");
 
 long physmem = 0;
 
@@ -438,8 +444,14 @@ cpu_finish(void *dummy __unused)
 	cpu_setregs();
 
 	if (cpu_mwait_feature & CPUID_MWAIT_EXT) {
+		struct sbuf sb;
+
+		sbuf_new(&sb, cpu_mwait_cx_supported,
+		    sizeof(cpu_mwait_cx_supported), SBUF_FIXEDLEN);
+
 		for (i = 0; i < CPU_MWAIT_CX_MAX; ++i) {
 			struct cpu_mwait_cx *cx = &cpu_mwait_cx_info[i];
+			int sub;
 
 			ksnprintf(cx->name, sizeof(cx->name), "C%d", i);
 
@@ -455,7 +467,12 @@ cpu_finish(void *dummy __unused)
 			    SYSCTL_CHILDREN(cx->sysctl_tree), OID_AUTO,
 			    "subcnt", CTLFLAG_RD, &cx->subcnt, 0,
 			    "sub-state count");
+
+			for (sub = 0; sub < cx->subcnt; ++sub)
+				sbuf_printf(&sb, "C%d/%d ", i, sub);
 		}
+		sbuf_trim(&sb);
+		sbuf_finish(&sb);
 	}
 }
 
