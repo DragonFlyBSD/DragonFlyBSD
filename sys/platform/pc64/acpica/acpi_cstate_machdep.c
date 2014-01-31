@@ -61,7 +61,7 @@
 #define ACPI_GAS_INTEL_ARG0_MWAIT_HINTMASK	0xffffffff
 
 static int		acpi_cst_cx_mwait_setup(struct acpi_cst_cx *);
-static void		acpi_cst_cx_mwait_enter(struct acpi_cst_cx *);
+static void		acpi_cst_cx_mwait_enter(const struct acpi_cst_cx *);
 
 int
 acpi_cst_md_cx_setup(struct acpi_cst_cx *cx)
@@ -172,7 +172,7 @@ acpi_cst_cx_mwait_setup(struct acpi_cst_cx *cx)
 }
 
 static void
-acpi_cst_cx_mwait_enter(struct acpi_cst_cx *cx)
+acpi_cst_cx_mwait_enter(const struct acpi_cst_cx *cx)
 {
 	struct globaldata *gd = mycpu;
 	int reqflags;
