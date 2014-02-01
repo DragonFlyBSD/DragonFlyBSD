@@ -244,6 +244,8 @@ void cputimer_intr_config(const struct cputimer *);
 void cputimer_intr_reload(sysclock_t);
 void cputimer_intr_restart(void);
 int  cputimer_intr_select_caps(uint32_t);
+int  cputimer_intr_powersave_addreq(void);
+void cputimer_intr_powersave_remreq(void);
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 

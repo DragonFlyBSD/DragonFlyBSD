@@ -42,6 +42,7 @@
 #include <sys/systm.h>
 #include <sys/thread.h>
 #include <sys/globaldata.h>
+#include <sys/serialize.h>
 #include <sys/systimer.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
@@ -66,6 +67,10 @@ static struct cputimer dummy_cputimer = {
 
 struct cputimer *sys_cputimer = &dummy_cputimer;
 SLIST_HEAD(, cputimer) cputimerhead = SLIST_HEAD_INITIALIZER(&cputimerhead);
+
+static int	cputimer_intr_ps_reqs;
+static struct lwkt_serialize cputimer_intr_ps_slize =
+    LWKT_SERIALIZE_INITIALIZER;
 
 /*
  * Generic cputimer API
@@ -511,3 +516,61 @@ SYSCTL_PROC(_kern_cputimer_intr, OID_AUTO, freq, CTLTYPE_INT|CTLFLAG_RD,
 	    NULL, 0, sysctl_cputimer_intr_freq, "I", "");
 SYSCTL_PROC(_kern_cputimer_intr, OID_AUTO, select, CTLTYPE_STRING|CTLFLAG_RW,
 	    NULL, 0, sysctl_cputimer_intr_select, "A", "");
+
+int
+cputimer_intr_powersave_addreq(void)
+{
+    int error = 0;
+
+    lwkt_serialize_enter(&cputimer_intr_ps_slize);
+
+    ++cputimer_intr_ps_reqs;
+    if (cputimer_intr_ps_reqs == 1) {
+	/*
+	 * Upon the first power saving request, switch to an one shot
+	 * timer, which would not stop in the any power saving state.
+	 */
+	error = cputimer_intr_select_caps(CPUTIMER_INTR_CAP_PS);
+	if (error == ERESTART) {
+	    error = 0;
+	    if (bootverbose)
+		kprintf("cputimer: first power save request, restart\n");
+	    cputimer_intr_restart();
+	} else if (error) {
+	    kprintf("no suitable intr cputimer found\n");
+	    --cputimer_intr_ps_reqs;
+	} else if (bootverbose) {
+	    kprintf("cputimer: first power save request\n");
+	}
+    }
+
+    lwkt_serialize_exit(&cputimer_intr_ps_slize);
+
+    return error;
+}
+
+void
+cputimer_intr_powersave_remreq(void)
+{
+    lwkt_serialize_enter(&cputimer_intr_ps_slize);
+
+    KASSERT(cputimer_intr_ps_reqs > 0,
+        ("invalid # of powersave reqs %d", cputimer_intr_ps_reqs));
+    --cputimer_intr_ps_reqs;
+    if (cputimer_intr_ps_reqs == 0) {
+	int error;
+
+	/* No one needs power saving, use a better one shot timer. */
+	error = cputimer_intr_select_caps(CPUTIMER_INTR_CAP_NONE);
+	KKASSERT(!error || error == ERESTART);
+	if (error == ERESTART) {
+	    if (bootverbose)
+		kprintf("cputimer: no powser save request, restart\n");
+	    cputimer_intr_restart();
+	} else if (bootverbose) {
+	    kprintf("cputimer: no power save request\n");
+    	}
+    }
+
+    lwkt_serialize_exit(&cputimer_intr_ps_slize);
+}

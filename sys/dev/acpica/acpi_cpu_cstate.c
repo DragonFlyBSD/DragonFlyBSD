@@ -125,9 +125,6 @@ static int		 acpi_cst_cx_count; /* Number of valid Cx states */
 static int		 acpi_cst_cx_lowest; /* Current Cx lowest */
 static int		 acpi_cst_cx_lowest_req; /* Requested Cx lowest */
 
-/* Number of C3 state requesters */
-static int		 acpi_cst_c3_reqs;
-
 static device_t		*acpi_cst_devices;
 static int		 acpi_cst_ndevices;
 static struct acpi_cst_softc **acpi_cst_softc;
@@ -1088,40 +1085,13 @@ acpi_cst_set_lowest_oncpu(struct acpi_cst_softc *sc, int val)
     old_type = sc->cst_cx_states[old_lowest].type;
     type = sc->cst_cx_states[val].type;
     if (old_type >= ACPI_STATE_C3 && type < ACPI_STATE_C3) {
-	KKASSERT(acpi_cst_c3_reqs > 0);
-	if (atomic_fetchadd_int(&acpi_cst_c3_reqs, -1) == 1) {
-	    /*
-	     * All of the CPUs exit C3(+) state, use a better
-	     * one shot timer.
-	     */
-	    error = cputimer_intr_select_caps(CPUTIMER_INTR_CAP_NONE);
-	    KKASSERT(!error || error == ERESTART);
-	    if (error == ERESTART) {
-		if (bootverbose)
-		    kprintf("disable C3(+), restart intr cputimer\n");
-		cputimer_intr_restart();
-	    }
-    	}
+	cputimer_intr_powersave_remreq();
     } else if (type >= ACPI_STATE_C3 && old_type < ACPI_STATE_C3) {
-	if (atomic_fetchadd_int(&acpi_cst_c3_reqs, 1) == 0) {
-	    /*
-	     * When the first CPU enters C3(+) state, switch
-	     * to an one shot timer, which could handle
-	     * C3(+) state, i.e. the timer will not hang.
-	     */
-	    error = cputimer_intr_select_caps(CPUTIMER_INTR_CAP_PS);
-	    if (error == ERESTART) {
-		if (bootverbose)
-		    kprintf("enable C3(+), restart intr cputimer\n");
-		cputimer_intr_restart();
-	    } else if (error) {
-		kprintf("no suitable intr cputimer found\n");
-
-		/* Restore */
-		sc->cst_cx_lowest_req = old_lowest_req;
-		sc->cst_cx_lowest = old_lowest;
-		atomic_fetchadd_int(&acpi_cst_c3_reqs, -1);
-	    }
+	error = cputimer_intr_powersave_addreq();
+	if (error) {
+	    /* Restore */
+	    sc->cst_cx_lowest_req = old_lowest_req;
+	    sc->cst_cx_lowest = old_lowest;
 	}
     }
 
