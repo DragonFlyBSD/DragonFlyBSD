@@ -93,7 +93,7 @@ int hash_accesses, hash_collisions, hash_expansions, hash_overflows;
 DB *
 __hash_open(const char *file, int flags, mode_t mode,
     const HASHINFO *info,	/* Special directives for create */
-    int dflags)
+    __unused int dflags)
 {
 	HTAB *hashp;
 	struct stat statbuf;

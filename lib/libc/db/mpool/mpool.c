@@ -57,7 +57,7 @@ static int  mpool_write(MPOOL *, BKT *);
  */
 /* ARGSUSED */
 MPOOL *
-mpool_open(void *key, int fd, pgno_t pagesize, pgno_t maxcache)
+mpool_open(__unused void *key, int fd, pgno_t pagesize, pgno_t maxcache)
 {
 	struct stat sb;
 	MPOOL *mp;

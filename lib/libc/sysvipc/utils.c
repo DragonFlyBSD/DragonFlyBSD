@@ -50,7 +50,7 @@ sysv_print(const char *fmt, ...) {
 }
 #else
 void
-sysv_print(const char *fmt, ...) {}
+sysv_print(__unused const char *fmt, ...) {}
 #endif
 
 void

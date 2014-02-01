@@ -209,7 +209,7 @@ __set_thread_rune_locale(locale_t loc)
 #endif
 
 void *
-__ctype_load(const char *locale, locale_t unused)
+__ctype_load(const char *locale, __unused locale_t unused)
 {
 	struct xlocale_ctype *l = calloc(sizeof(struct xlocale_ctype), 1);
 

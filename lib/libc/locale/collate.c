@@ -87,7 +87,7 @@ destruct_collate(void *t)
 }
 
 void *
-__collate_load(const char *encoding, locale_t unused)
+__collate_load(const char *encoding, __unused locale_t unused)
 {
 	if (strcmp(encoding, "C") == 0 || strcmp(encoding, "POSIX") == 0) {
 		return &__xlocale_C_collate;
