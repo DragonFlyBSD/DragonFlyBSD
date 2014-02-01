@@ -141,7 +141,9 @@ __fgetwc(FILE *fp, locale_t locale)
  * Structure initializations for 'fake' FILE objects.
  */
 #define	FAKE_FILE {				\
-	.pub._fileno = -1,				\
+	.pub._lbfsize = 0,			\
+	.pub._fileno = -1,			\
+	._fl_mutex = PTHREAD_MUTEX_INITIALIZER,	\
 }
 
 /*
