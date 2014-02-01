@@ -31,7 +31,13 @@
 # SUCH DAMAGE.
 #
 
-. /etc/defaults/rc.conf
+if [ -r /etc/defaults/rc.conf ]; then
+	. /etc/defaults/rc.conf
+fi
+
+if [ -r /etc/rc.conf ]; then
+	. /etc/rc.conf
+fi
 
 buildrclist()
 {
