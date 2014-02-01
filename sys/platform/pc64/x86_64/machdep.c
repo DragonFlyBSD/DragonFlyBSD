@@ -72,6 +72,8 @@
 #include <sys/reg.h>
 #include <sys/sbuf.h>
 #include <sys/ctype.h>
+#include <sys/serialize.h>
+#include <sys/systimer.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -177,6 +179,7 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
 	CTLFLAG_RW, &cpu_mwait_halt, 0, "");
 
+#define CPU_MWAIT_C3		3
 #define CPU_MWAIT_CX_MAX	8
 
 SYSCTL_NODE(_machdep, 0, mwait, CTLFLAG_RW, 0, "MWAIT features");
@@ -194,6 +197,7 @@ static char			cpu_mwait_cx_supported[256];
 SYSCTL_STRING(_machdep_mwait_CX, OID_AUTO, supported, CTLFLAG_RD,
     cpu_mwait_cx_supported, 0, "MWAIT supported C states");
 
+static struct lwkt_serialize cpu_mwait_cx_slize = LWKT_SERIALIZE_INITIALIZER;
 static int	cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *);
 static int	cpu_mwait_cx_idle_sysctl(SYSCTL_HANDLER_ARGS);
 static int	cpu_mwait_cx_spin_sysctl(SYSCTL_HANDLER_ARGS);
@@ -2399,14 +2403,17 @@ cpu_mwait_hint_valid(uint32_t hint)
 static int
 cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0)
 {
-	int error, cx_idx, sub, hint;
+	int error, cx_idx, sub, hint, new_hint;
 	char name[16], *ptr, *start;
 
 	hint = *hint0;
 	cx_idx = MWAIT_EAX_TO_CX(hint);
 	sub = MWAIT_EAX_TO_CX_SUB(hint);
 
-	if (cx_idx >= CPU_MWAIT_CX_MAX ||
+	if ((cpu_feature2 & CPUID2_MON) == 0 ||
+	    (cpu_mwait_feature & CPUID_MWAIT_EXT) == 0)
+		strlcpy(name, "NONE", sizeof(name));
+	else if (cx_idx >= CPU_MWAIT_CX_MAX ||
 	    sub >= cpu_mwait_cx_info[cx_idx].subcnt)
 		strlcpy(name, "INVALID", sizeof(name));
 	else
@@ -2415,6 +2422,10 @@ cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0)
 	error = sysctl_handle_string(oidp, name, sizeof(name), req);
 	if (error != 0 || req->newptr == NULL)
 		return error;
+
+	if ((cpu_feature2 & CPUID2_MON) == 0 ||
+	    (cpu_mwait_feature & CPUID_MWAIT_EXT) == 0)
+		return EOPNOTSUPP;
 
 	if (strlen(name) < 4 || toupper(name[0]) != 'C')
 		return EINVAL;
@@ -2436,20 +2447,39 @@ cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0)
 	if (sub < 0 || sub >= cpu_mwait_cx_info[cx_idx].subcnt)
 		return EINVAL;
 
-	*hint0 = MWAIT_EAX_HINT(cx_idx, sub);
+	new_hint = MWAIT_EAX_HINT(cx_idx, sub);
+	if (hint < CPU_MWAIT_C3 && new_hint >= CPU_MWAIT_C3) {
+		error = cputimer_intr_powersave_addreq();
+		if (error)
+			return error;
+	} else if (hint >= CPU_MWAIT_C3 && new_hint < CPU_MWAIT_C3) {
+		cputimer_intr_powersave_remreq();
+	}
+
+	*hint0 = new_hint;
 	return 0;
 }
 
 static int
 cpu_mwait_cx_idle_sysctl(SYSCTL_HANDLER_ARGS)
 {
-	return cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
+	int error;
+
+	lwkt_serialize_enter(&cpu_mwait_cx_slize);
+	error = cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
 	    &cpu_mwait_halt);
+	lwkt_serialize_exit(&cpu_mwait_cx_slize);
+	return error;
 }
 
 static int
 cpu_mwait_cx_spin_sysctl(SYSCTL_HANDLER_ARGS)
 {
-	return cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
+	int error;
+
+	lwkt_serialize_enter(&cpu_mwait_cx_slize);
+	error = cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
 	    &cpu_mwait_spin);
+	lwkt_serialize_exit(&cpu_mwait_cx_slize);
+	return error;
 }
