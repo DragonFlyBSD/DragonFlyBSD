@@ -55,48 +55,48 @@ dostart()
     arg=$1
     shift
 
-    for i in $@; do
-	case X`varsym -s -q rcng_$i` in
+    for tgt in $@; do
+	case X`varsym -s -q rcng_$tgt` in
 	Xrunning*)
-	    echo "$i has already been started"
+	    echo "$tgt has already been started"
 	    ;;
 	Xconfigured*)
-	    echo "$i has already been configured"
+	    echo "$tgt has already been configured"
 	    ;;
 	*)
 	    _return=0
-	    buildrclist $i
-	    for j in $rclist; do
+	    buildrclist $tgt
+	    for dep in $rclist; do
 		need=1
-		for k in `rcorder -p $j`; do
-		    if [ $k = $i ]; then
+		for dep_prvd in `rcorder -p $dep`; do
+		    if [ $dep_prvd = $tgt ]; then
 			need=0
 		    else
-			state=`varsym -s -q rcng_$k`
+			state=`varsym -s -q rcng_$dep_prvd`
 			case X$state in
 			Xrunning*|Xconfigured*|Xirrelevant*|Xdisabled*)
 			    ;;
 			*)
-			    echo "$i depends on $k, current state: $state"
+			    echo "$tgt depends on $dep_prvd, current state: $state"
 			    _return=1
 			    ;;
 			esac
 		    fi
 		done
 	    done
-	    # $j contains the last dependency, which we run
+	    # $dep contains the last dependency, which we run
 	    #
-	    if [ X$j = X ]; then
-		echo "Unable to find keyword $i"
+	    if [ X$dep = X ]; then
+		echo "Unable to find keyword $tgt"
 	    elif [ $_return = 0 ]; then
-		echo "Running $j $arg"
-		(sh $j $arg)
-		case X`varsym -s -q rcng_$i` in
+		echo "Running $dep $arg"
+		(sh $dep $arg)
+		case X`varsym -s -q rcng_$tgt` in
 		Xdisabled*)
-		    echo "$i is disabled, enable in rc.conf first or use rcforce/rcone"
+		    echo "$tgt is disabled, enable in rc.conf first or use rcforce/rcone"
 		    ;;
 		Xfailed*)
-		    echo "$i has failed to start"
+		    echo "$tgt has failed to start"
 		    ;;
 			
 		esac
@@ -161,24 +161,24 @@ onestart)
 	dostart onestart $@
 	;;
 stop)
-	for i in $@; do
-	    buildrclist $i
-	    j=`echo "$rclist" | tail -1`
-	    if [ X$j = X ]; then
-		echo "Unable to find keyword $i"
+	for tgt in $@; do
+	    buildrclist $tgt
+	    dep=`echo "$rclist" | tail -1`
+	    if [ X$dep = X ]; then
+		echo "Unable to find keyword $tgt"
 	    else
-		(sh $j stop)
+		(sh $dep stop)
 	    fi
 	done
 	;;
 restart)
-	for i in $@; do
-	    buildrclist $i
-	    j=`echo "$rclist" | tail -1`
-	    if [ X$j = X ]; then
-		echo "Unable to find keyword $i"
+	for tgt in $@; do
+	    buildrclist $tgt
+	    dep=`echo "$rclist" | tail -1`
+	    if [ X$dep = X ]; then
+		echo "Unable to find keyword $tgt"
 	    else
-		(sh $j restart)
+		(sh $dep restart)
 	    fi
 	done
 	;;
@@ -188,18 +188,18 @@ disable|enable)
 	else
 	    mode=NO
 	fi
-	for i in $@; do
-	    buildrclist $i
-	    j=`echo "$rclist" | tail -1`
-	    if [ X$j = X ]; then
-		echo "Unable to find provider id $i"
-	    elif [ `varsym -s -q rcng_$i` = "$mode" ]; then
-		echo "$i is already $mode"
+	for tgt in $@; do
+	    buildrclist $tgt
+	    dep=`echo "$rclist" | tail -1`
+	    if [ X$dep = X ]; then
+		echo "Unable to find provider id $tgt"
+	    elif [ `varsym -s -q rcng_$tgt` = "$mode" ]; then
+		echo "$tgt is already $mode"
 	    else
-		vars=`(sh $j rcvar) 2>/dev/null | grep = | sed -e 's/\\$//g' | sed -e 's/=.*//g'`
+		vars=`(sh $dep rcvar) 2>/dev/null | grep = | sed -e 's/\\$//g' | sed -e 's/=.*//g'`
 		cp /etc/rc.conf /etc/rc.conf.bak
 		if [ $arg = disable ]; then
-		    rcstop $i
+		    rcstop $tgt
 		fi
 		for k in $vars; do
 		    rm -f /etc/rc.conf.$$
@@ -208,30 +208,30 @@ disable|enable)
 		    echo "added/modified: ${k}=${mode}"
 		done
 		if [ $arg = enable ]; then
-		    rcstart $i
+		    rcstart $tgt
 		fi
 	    fi
 	done
 	;;
 rcvar)
-	for i in $@; do
-	    buildrclist $i
-	    j=`echo "$rclist" | tail -1`
-	    if [ X$j = X ]; then
-		echo "Unable to find provider id $i"
+	for tgt in $@; do
+	    buildrclist $tgt
+	    dep=`echo "$rclist" | tail -1`
+	    if [ X$dep = X ]; then
+		echo "Unable to find provider id $tgt"
 	    else
-		(sh $j rcvar)
+		(sh $dep rcvar)
 	    fi
 	done
 	;;
 list)
 	if [ "X$*" = X ]; then
-	    for i in `varsym -a -s | egrep '^rcng_'`; do
-		echo $i
+	    for tgt in `varsym -a -s | egrep '^rcng_'`; do
+		echo $tgt
 	    done
 	else
-	    for i in $@; do
-		varsym -s rcng_$i 2>/dev/null || varsym -s rcng_$i
+	    for tgt in $@; do
+		varsym -s rcng_$tgt 2>/dev/null || varsym -s rcng_$tgt
 	    done
 	fi
 	;;
