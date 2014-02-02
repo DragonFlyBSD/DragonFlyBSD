@@ -172,7 +172,7 @@ ksched_setscheduler(register_t *ret, struct ksched *ksched,
 			lp->lwp_rtprio = rtp;
 			need_user_resched();
 		} else {
-			e = EPERM;
+			e = EINVAL;
 		}
 		break;
 	case SCHED_OTHER:
