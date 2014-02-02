@@ -180,6 +180,7 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
 	CTLFLAG_RW, &cpu_mwait_halt, 0, "");
 
+#define CPU_MWAIT_C2		2
 #define CPU_MWAIT_C3		3
 #define CPU_MWAIT_CX_MAX	8
 
@@ -208,7 +209,8 @@ SYSCTL_STRING(_machdep_mwait_CX, OID_AUTO, supported, CTLFLAG_RD,
     cpu_mwait_cx_supported, 0, "MWAIT supported C states");
 
 static struct lwkt_serialize cpu_mwait_cx_slize = LWKT_SERIALIZE_INITIALIZER;
-static int	cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *);
+static int	cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS,
+		    int *, boolean_t);
 static int	cpu_mwait_cx_idle_sysctl(SYSCTL_HANDLER_ARGS);
 static int	cpu_mwait_cx_spin_sysctl(SYSCTL_HANDLER_ARGS);
 
@@ -980,9 +982,21 @@ void (*cpu_idle_hook)(void) = cpu_idle_default_hook;
 static __inline int
 cpu_mwait_cx_hint(struct globaldata *gd)
 {
+	u_int idx;
+
 	if (cpu_mwait_halt >= 0)
 		return cpu_mwait_halt;
-	panic("not supported yet");
+
+	idx = gd->gd_idle_repeat >> 4;
+	if (cpu_mwait_halt == CPU_MWAIT_HINT_AUTODEEP) {
+		if (idx >= cpu_mwait_deep_hints_cnt)
+			idx = cpu_mwait_deep_hints_cnt - 1;
+		return cpu_mwait_deep_hints[idx];
+	} else {
+		if (idx >= cpu_mwait_hints_cnt)
+			idx = cpu_mwait_hints_cnt - 1;
+		return cpu_mwait_hints[idx];
+	}
 }
 
 void
@@ -2495,23 +2509,36 @@ cpu_mwait_hint_valid(uint32_t hint)
 }
 
 static int
-cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0)
+cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0,
+    boolean_t allow_auto)
 {
-	int error, cx_idx, sub, hint, new_hint;
+	int error, cx_idx, old_cx_idx, sub = 0, hint;
 	char name[16], *ptr, *start;
 
 	hint = *hint0;
-	cx_idx = MWAIT_EAX_TO_CX(hint);
-	sub = MWAIT_EAX_TO_CX_SUB(hint);
+	if (hint >= 0) {
+		old_cx_idx = MWAIT_EAX_TO_CX(hint);
+		sub = MWAIT_EAX_TO_CX_SUB(hint);
+	} else if (hint == CPU_MWAIT_HINT_AUTO) {
+		old_cx_idx = allow_auto ? CPU_MWAIT_C2 : CPU_MWAIT_CX_MAX;
+	} else if (hint == CPU_MWAIT_HINT_AUTODEEP) {
+		old_cx_idx = allow_auto ? CPU_MWAIT_C3 : CPU_MWAIT_CX_MAX;
+	} else {
+		old_cx_idx = CPU_MWAIT_CX_MAX;
+	}
 
 	if ((cpu_feature2 & CPUID2_MON) == 0 ||
 	    (cpu_mwait_feature & CPUID_MWAIT_EXT) == 0)
 		strlcpy(name, "NONE", sizeof(name));
-	else if (cx_idx >= CPU_MWAIT_CX_MAX ||
-	    sub >= cpu_mwait_cx_info[cx_idx].subcnt)
+	else if (allow_auto && hint == CPU_MWAIT_HINT_AUTO)
+		strlcpy(name, "AUTO", sizeof(name));
+	else if (allow_auto && hint == CPU_MWAIT_HINT_AUTODEEP)
+		strlcpy(name, "AUTODEEP", sizeof(name));
+	else if (old_cx_idx >= CPU_MWAIT_CX_MAX ||
+	    sub >= cpu_mwait_cx_info[old_cx_idx].subcnt)
 		strlcpy(name, "INVALID", sizeof(name));
 	else
-		ksnprintf(name, sizeof(name), "C%d/%d", cx_idx, sub);
+		ksnprintf(name, sizeof(name), "C%d/%d", old_cx_idx, sub);
 
 	error = sysctl_handle_string(oidp, name, sizeof(name), req);
 	if (error != 0 || req->newptr == NULL)
@@ -2520,6 +2547,18 @@ cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0)
 	if ((cpu_feature2 & CPUID2_MON) == 0 ||
 	    (cpu_mwait_feature & CPUID_MWAIT_EXT) == 0)
 		return EOPNOTSUPP;
+
+	if (allow_auto && strcmp(name, "AUTO") == 0) {
+		hint = CPU_MWAIT_HINT_AUTO;
+		cx_idx = CPU_MWAIT_C2;
+		goto done;
+	}
+	if (allow_auto && strcmp(name, "AUTODEEP") == 0) {
+		hint = CPU_MWAIT_HINT_AUTODEEP;
+		cx_idx = CPU_MWAIT_C3;
+		/* TODO: Check BM_ARB and BM_STS */
+		goto done;
+	}
 
 	if (strlen(name) < 4 || toupper(name[0]) != 'C')
 		return EINVAL;
@@ -2541,16 +2580,17 @@ cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0)
 	if (sub < 0 || sub >= cpu_mwait_cx_info[cx_idx].subcnt)
 		return EINVAL;
 
-	new_hint = MWAIT_EAX_HINT(cx_idx, sub);
-	if (hint < CPU_MWAIT_C3 && new_hint >= CPU_MWAIT_C3) {
+	hint = MWAIT_EAX_HINT(cx_idx, sub);
+done:
+	if (old_cx_idx < CPU_MWAIT_C3 && cx_idx >= CPU_MWAIT_C3) {
 		error = cputimer_intr_powersave_addreq();
 		if (error)
 			return error;
-	} else if (hint >= CPU_MWAIT_C3 && new_hint < CPU_MWAIT_C3) {
+	} else if (old_cx_idx >= CPU_MWAIT_C3 && cx_idx < CPU_MWAIT_C3) {
 		cputimer_intr_powersave_remreq();
 	}
 
-	*hint0 = new_hint;
+	*hint0 = hint;
 	return 0;
 }
 
@@ -2561,7 +2601,7 @@ cpu_mwait_cx_idle_sysctl(SYSCTL_HANDLER_ARGS)
 
 	lwkt_serialize_enter(&cpu_mwait_cx_slize);
 	error = cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
-	    &cpu_mwait_halt);
+	    &cpu_mwait_halt, TRUE);
 	lwkt_serialize_exit(&cpu_mwait_cx_slize);
 	return error;
 }
@@ -2573,7 +2613,7 @@ cpu_mwait_cx_spin_sysctl(SYSCTL_HANDLER_ARGS)
 
 	lwkt_serialize_enter(&cpu_mwait_cx_slize);
 	error = cpu_mwait_cx_select_sysctl(oidp, arg1, arg2, req,
-	    &cpu_mwait_spin);
+	    &cpu_mwait_spin, FALSE);
 	lwkt_serialize_exit(&cpu_mwait_cx_slize);
 	return error;
 }
