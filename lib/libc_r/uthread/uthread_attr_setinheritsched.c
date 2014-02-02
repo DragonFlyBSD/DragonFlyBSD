@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_attr_setinheritsched.c,v 1.3.2.1 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_attr_setinheritsched.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
  */
 #include <errno.h>
 #include <pthread.h>
@@ -42,6 +41,9 @@ _pthread_attr_setinheritsched(pthread_attr_t *attr, int sched_inherit)
 	int ret = 0;
 
 	if ((attr == NULL) || (*attr == NULL))
+		ret = EINVAL;
+	else if (sched_inherit != PTHREAD_INHERIT_SCHED &&
+		 sched_inherit != PTHREAD_EXPLICIT_SCHED)
 		ret = EINVAL;
 	else
 		(*attr)->sched_inherit = sched_inherit;
