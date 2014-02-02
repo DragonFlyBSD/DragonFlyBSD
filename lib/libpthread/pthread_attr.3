@@ -26,7 +26,7 @@
 .\" EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread_attr.3,v 1.18 2007/10/22 10:08:00 ru Exp $
-.\" $DragonFly: src/lib/libc_r/man/pthread_attr.3,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\"
 .Dd July 10, 2009
 .Dt PTHREAD_ATTR 3
 .Os
@@ -181,6 +181,8 @@ function will fail if:
 .Bl -tag -width Er
 .It Bq Er EINVAL
 Invalid value for
+.Fa inheritsched
+or uninitialized
 .Fa attr .
 .El
 .Pp
