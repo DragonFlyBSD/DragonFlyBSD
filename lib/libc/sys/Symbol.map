@@ -355,7 +355,6 @@ DFprivate_1.0 {
     __sys_fhstatfs;
     __sys_fhstatvfs;
     __sys_flock;
-    __sys_fork;
     __sys_fpathconf;
     __sys_fstat;
     __sys_fstatat;
@@ -641,7 +640,6 @@ DFprivate_1.0 {
     _fhstatfs;
     _fhstatvfs;
     _flock;
-    _fork;
     _fpathconf;
     _fseeko;
     _fstat;
