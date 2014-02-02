@@ -244,7 +244,7 @@ extern void (*cb_parent)(void);
 extern void (*cb_child)(void);
 extern int __isthreaded;
 
-int
+static int __used
 __atfork(void (*prepare)(void), void (*parent)(void),
     void (*child)(void))
 {

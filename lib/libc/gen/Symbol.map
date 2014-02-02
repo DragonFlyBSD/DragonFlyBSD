@@ -653,5 +653,4 @@ DFprivate_1.0 {
     _wait;
     _waitpid;
     _warn;
-    __atfork;
 };
