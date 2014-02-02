@@ -1345,7 +1345,6 @@ int	__sys_execve(const char *, char * const *, char * const *);
 int	__sys_faccessat(int, const char *, int, int);
 int	__sys_fchown(int, uid_t, gid_t);
 int	__sys_fchownat(int, const char *, uid_t, gid_t, int);
-pid_t	__sys_fork(void);
 long	__sys_fpathconf(int, int);
 int	__sys_fsync(int);
 int	__sys_pipe(int *);

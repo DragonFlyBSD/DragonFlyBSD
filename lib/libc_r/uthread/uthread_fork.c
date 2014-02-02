@@ -32,6 +32,7 @@
  * $FreeBSD: src/lib/libc_r/uthread/uthread_fork.c,v 1.19.2.7 2002/10/22 14:44:03 fjoe Exp $
  */
 
+#include <sys/syscall.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -65,7 +66,7 @@ _fork(void)
 	}
 
 	/* Fork a new process: */
-	if ((ret = __sys_fork()) != 0) {
+	if ((ret = __syscall(SYS_fork)) != 0) {
 		/* Run down atfork parent handlers. */
 		TAILQ_FOREACH(af, &_atfork_list, qe) {
 			if (af->parent != NULL)
