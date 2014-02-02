@@ -210,7 +210,7 @@ _pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 			 * Check if this thread is to inherit the scheduling
 			 * attributes from its parent:
 			 */
-			if (new_thread->attr.flags & PTHREAD_INHERIT_SCHED) {
+			if (new_thread->attr.sched_inherit & PTHREAD_INHERIT_SCHED) {
 				/* Copy the scheduling attributes: */
 				new_thread->base_priority =
 				    curthread->base_priority &
