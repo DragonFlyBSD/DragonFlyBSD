@@ -2,8 +2,7 @@
 #
 LIB=c_r
 SHLIB_MAJOR= 5
-CSTD?=gnu89
-WARNS?=1
+WARNS?=2
 CFLAGS+=-I${.CURDIR}/../libc/include
 CFLAGS+=-DPTHREAD_KERNEL -D_THREAD_SAFE -I${.CURDIR}/uthread
 CFLAGS+=-I${.CURDIR}/../../include

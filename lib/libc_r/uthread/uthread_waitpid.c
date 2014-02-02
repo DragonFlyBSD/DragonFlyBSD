@@ -27,7 +27,6 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_waitpid.c,v 1.1.2.2 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_waitpid.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -35,6 +34,7 @@
 #include <pthread.h>
 #include "pthread_private.h"
 
+extern pid_t	__waitpid(pid_t, int *, int);
 pid_t
 waitpid(pid_t wpid, int *status, int options)
 {

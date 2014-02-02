@@ -27,11 +27,12 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_wait.c,v 1.1.2.2 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_wait.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 
 #include <pthread.h>
 #include "pthread_private.h"
+
+extern pid_t	__wait(int *);
 
 pid_t
 wait(int *istat)

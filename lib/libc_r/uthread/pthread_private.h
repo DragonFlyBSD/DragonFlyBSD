@@ -32,7 +32,6 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.16 2008/05/25 21:34:49 hasso Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -1155,6 +1154,7 @@ SCLASS int	_thread_kern_new_state
  * Function prototype definitions.
  */
 __BEGIN_DECLS
+int	_close(int);
 char    *__ttyname_basic(int);
 void	_cond_wait_backout(pthread_t);
 void	_fd_lock_backout(pthread_t);
@@ -1247,6 +1247,7 @@ int	__sys_aio_suspend(const struct aiocb * const[], int, const struct timespec *
 #ifdef _SYS_EVENT_H_
 int	__sys_kevent(int, const struct kevent *, int, struct kevent *,
 	    int, const struct timespec *);
+int	__sys_kqueue(void);
 #endif
 
 /* #include <sys/ioctl.h> */
@@ -1290,7 +1291,9 @@ int	__sys_socketpair(int, int, int, int *);
 #ifdef _SYS_STAT_H_
 int	__sys_fchflags(int, u_long);
 int	__sys_fchmod(int, mode_t);
+int	__sys_fchmodat(int, const char *, mode_t, int);
 int	__sys_fstat(int, struct stat *);
+int	__sys_fstatat(int, const char *, struct stat *, int);
 #endif
 
 /* #include <sys/uio.h> */
@@ -1316,6 +1319,7 @@ int	__sys_getdirentries(int, char *, int, long *);
 int	__sys_fcntl(int, int, ...);
 int	__sys_flock(int, int);
 int	__sys_open(const char *, int, ...);
+int	__sys_openat(int, const char *, int, ...);
 #endif
 
 /* #include <poll.h> */
@@ -1338,7 +1342,9 @@ int	__sys_closefrom(int);
 int	__sys_dup(int);
 int	__sys_dup2(int, int);
 int	__sys_execve(const char *, char * const *, char * const *);
+int	__sys_faccessat(int, const char *, int, int);
 int	__sys_fchown(int, uid_t, gid_t);
+int	__sys_fchownat(int, const char *, uid_t, gid_t, int);
 pid_t	__sys_fork(void);
 long	__sys_fpathconf(int, int);
 int	__sys_fsync(int);
@@ -1347,6 +1353,7 @@ ssize_t	__sys_read(int, void *, size_t);
 ssize_t	__sys_extpread(int, void *, size_t, int, off_t);
 ssize_t	__sys_write(int, const void *, size_t);
 ssize_t	__sys_extpwrite(int, const void *, size_t, int, off_t);
+int	__sys_unlinkat(int, const char *, int);
 #endif
 
 /* #include <setjmp.h> */

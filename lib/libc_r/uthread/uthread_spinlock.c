@@ -30,9 +30,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_spinlock.c,v 1.8.2.2 2002/10/17 19:37:39 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_spinlock.c,v 1.6 2007/06/26 23:30:05 josepht Exp $
- *
  */
+
+extern unsigned	int	__sleep(unsigned int);
 
 #include <sys/fcntl.h>
 #include <stdio.h>
