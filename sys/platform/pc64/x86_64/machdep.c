@@ -167,7 +167,8 @@ struct privatespace CPU_prvspace[MAXCPU] __aligned(4096); /* XXX */
 int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
 int64_t tsc_offsets[MAXCPU];
-int cpu_mwait_halt;
+
+int cpu_mwait_halt;	/* MWAIT hint (EAX) or CPU_MWAIT_HINT_ */
 
 #if defined(SWTCH_OPTIM_STATS)
 extern int swtch_optim_stats;
@@ -182,6 +183,9 @@ SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
 #define CPU_MWAIT_C3		3
 #define CPU_MWAIT_CX_MAX	8
 
+#define CPU_MWAIT_HINT_AUTO	-1	/* C1 and C2 */
+#define CPU_MWAIT_HINT_AUTODEEP	-2	/* C3+ */
+
 SYSCTL_NODE(_machdep, 0, mwait, CTLFLAG_RW, 0, "MWAIT features");
 SYSCTL_NODE(_machdep_mwait, 0, CX, CTLFLAG_RW, 0, "MWAIT Cx settings");
 
@@ -193,6 +197,12 @@ struct cpu_mwait_cx {
 };
 static struct cpu_mwait_cx	cpu_mwait_cx_info[CPU_MWAIT_CX_MAX];
 static char			cpu_mwait_cx_supported[256];
+
+static int			cpu_mwait_hints_cnt;
+static int			*cpu_mwait_hints;
+
+static int			cpu_mwait_deep_hints_cnt;
+static int			*cpu_mwait_deep_hints;
 
 SYSCTL_STRING(_machdep_mwait_CX, OID_AUTO, supported, CTLFLAG_RD,
     cpu_mwait_cx_supported, 0, "MWAIT supported C states");
@@ -457,8 +467,10 @@ cpu_finish(void *dummy __unused)
 
 	cpu_setregs();
 
-	if (cpu_mwait_feature & CPUID_MWAIT_EXT) {
+	if ((cpu_feature2 & CPUID2_MON) &&
+	    (cpu_mwait_feature & CPUID_MWAIT_EXT)) {
 		struct sbuf sb;
+		int hint_idx;
 
 		sbuf_new(&sb, cpu_mwait_cx_supported,
 		    sizeof(cpu_mwait_cx_supported), SBUF_FIXEDLEN);
@@ -487,6 +499,80 @@ cpu_finish(void *dummy __unused)
 		}
 		sbuf_trim(&sb);
 		sbuf_finish(&sb);
+
+		/*
+		 * Non-deep C-states
+		 */
+		for (i = 0; i < CPU_MWAIT_C3; ++i)
+			cpu_mwait_hints_cnt += cpu_mwait_cx_info[i].subcnt;
+		cpu_mwait_hints = kmalloc(sizeof(int) * cpu_mwait_hints_cnt,
+		    M_DEVBUF, M_WAITOK);
+
+		hint_idx = 0;
+		for (i = 0; i < CPU_MWAIT_C3; ++i) {
+			int j, subcnt;
+
+			subcnt = cpu_mwait_cx_info[i].subcnt;
+			for (j = 0; j < subcnt; ++j) {
+				KASSERT(hint_idx < cpu_mwait_hints_cnt,
+				    ("invalid mwait hint index %d", hint_idx));
+				cpu_mwait_hints[hint_idx] =
+				    MWAIT_EAX_HINT(i, j);
+				++hint_idx;
+			}
+		}
+		KASSERT(hint_idx == cpu_mwait_hints_cnt,
+		    ("mwait hint count %d != index %d",
+		     cpu_mwait_hints_cnt, hint_idx));
+
+		if (bootverbose) {
+			kprintf("MWAIT hints:\n");
+			for (i = 0; i < cpu_mwait_hints_cnt; ++i) {
+				int hint = cpu_mwait_hints[i];
+
+				kprintf("  C%d/%d hint 0x%04x\n",
+				    MWAIT_EAX_TO_CX(hint),
+				    MWAIT_EAX_TO_CX_SUB(hint), hint);
+			}
+		}
+
+		/*
+		 * Deep C-states
+		 */
+		for (i = 0; i < CPU_MWAIT_CX_MAX; ++i)
+			cpu_mwait_deep_hints_cnt += cpu_mwait_cx_info[i].subcnt;
+		cpu_mwait_deep_hints =
+		    kmalloc(sizeof(int) * cpu_mwait_deep_hints_cnt,
+		    M_DEVBUF, M_WAITOK);
+
+		hint_idx = 0;
+		for (i = 0; i < CPU_MWAIT_CX_MAX; ++i) {
+			int j, subcnt;
+
+			subcnt = cpu_mwait_cx_info[i].subcnt;
+			for (j = 0; j < subcnt; ++j) {
+				KASSERT(hint_idx < cpu_mwait_deep_hints_cnt,
+				    ("invalid mwait deep hint index %d",
+				     hint_idx));
+				cpu_mwait_deep_hints[hint_idx] =
+				    MWAIT_EAX_HINT(i, j);
+				++hint_idx;
+			}
+		}
+		KASSERT(hint_idx == cpu_mwait_deep_hints_cnt,
+		    ("mwait deep hint count %d != index %d",
+		     cpu_mwait_deep_hints_cnt, hint_idx));
+
+		if (bootverbose) {
+			kprintf("MWAIT deep hints:\n");
+			for (i = 0; i < cpu_mwait_deep_hints_cnt; ++i) {
+				int hint = cpu_mwait_deep_hints[i];
+
+				kprintf("  C%d/%d hint 0x%04x\n",
+				    MWAIT_EAX_TO_CX(hint),
+				    MWAIT_EAX_TO_CX_SUB(hint), hint);
+			}
+		}
 	}
 }
 
@@ -891,6 +977,14 @@ cpu_idle_default_hook(void)
 /* Other subsystems (e.g., ACPI) can hook this later. */
 void (*cpu_idle_hook)(void) = cpu_idle_default_hook;
 
+static __inline int
+cpu_mwait_cx_hint(struct globaldata *gd)
+{
+	if (cpu_mwait_halt >= 0)
+		return cpu_mwait_halt;
+	panic("not supported yet");
+}
+
 void
 cpu_idle(void)
 {
@@ -945,7 +1039,7 @@ cpu_idle(void)
 		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 			splz(); /* XXX */
 			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
-					  cpu_mwait_halt, 0);
+			    cpu_mwait_cx_hint(gd), 0);
 			++cpu_idle_hltcnt;
 		} else if (cpu_idle_hlt) {
 			__asm __volatile("cli");
