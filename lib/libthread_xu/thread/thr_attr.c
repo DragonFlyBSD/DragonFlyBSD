@@ -29,8 +29,6 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $DragonFly: src/lib/libthread_xu/thread/thr_attr.c,v 1.9 2008/07/15 01:18:53 dillon Exp $
  */
 
 #include "namespace.h"
@@ -360,7 +358,7 @@ _pthread_attr_setinheritsched(pthread_attr_t *attr, int sched_inherit)
 		ret = EINVAL;
 	else if (sched_inherit != PTHREAD_INHERIT_SCHED &&
 		 sched_inherit != PTHREAD_EXPLICIT_SCHED)
-		ret = ENOTSUP;
+		ret = EINVAL;
 	else
 		(*attr)->sched_inherit = sched_inherit;
 
