@@ -126,7 +126,7 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 		 */
 		THR_LOCK(curthread);
 		new_thread->base_priority = curthread->base_priority;
-		new_thread->attr.prio = curthread->base_priority;
+		new_thread->attr.prio = curthread->attr.prio;
 		new_thread->attr.sched_policy = curthread->attr.sched_policy;
 		THR_UNLOCK(curthread);
 	} else {
