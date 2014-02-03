@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998-2004 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 1998-2004 Dag-Erling Smørgrav
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libfetch/fetch.c,v 1.42 2008/12/17 18:00:18 murray Exp $
+ * $FreeBSD: head/lib/libfetch/fetch.c 252375 2013-06-29 15:51:27Z kientzle $
  */
 
 #include <sys/param.h>
@@ -375,7 +375,7 @@ fetchParseURL(const char *URL)
 
 		/* password */
 		if (*q == ':')
-			q = fetch_pctdecode(u->pwd, ++q, URL_PWDLEN);
+			q = fetch_pctdecode(u->pwd, q + 1, URL_PWDLEN);
 
 		p++;
 	} else {

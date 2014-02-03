@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1998-2004 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 1998-2004 Dag-Erling Smørgrav
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libfetch/fetch.h,v 1.27 2008/12/15 08:27:44 murray Exp $
- * $DragonFly: src/lib/libfetch/fetch.h,v 1.3 2007/08/05 21:48:12 swildner Exp $
+ * $FreeBSD: head/lib/libfetch/fetch.h 226537 2011-10-19 11:43:51Z des $
  */
 
 #ifndef _FETCH_H_INCLUDED

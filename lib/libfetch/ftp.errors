@@ -1,5 +1,4 @@
-# $FreeBSD: src/lib/libfetch/ftp.errors,v 1.6 2002/10/30 06:06:16 des Exp $
-# $DragonFly: src/lib/libfetch/ftp.errors,v 1.3 2007/08/05 21:48:12 swildner Exp $
+# $FreeBSD: head/lib/libfetch/ftp.errors 106190 2002-10-30 06:06:16Z des $
 #
 # This list is taken from RFC 959.
 # It probably needs a going over.
