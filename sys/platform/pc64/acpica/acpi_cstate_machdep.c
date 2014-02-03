@@ -165,8 +165,10 @@ acpi_cst_cx_mwait_setup(struct acpi_cst_cx *cx)
 	cx->enter = acpi_cst_cx_mwait_enter;
 
 	if (cx->type >= ACPI_STATE_C3 &&
-	    (cx->gas.AccessWidth & ACPI_GAS_INTEL_ARG1_BM_STS) == 0)
+	    (cx->gas.AccessWidth & ACPI_GAS_INTEL_ARG1_BM_STS) == 0) {
 		cx->flags &= ~ACPI_CST_CX_FLAG_BM_STS;
+		cpu_mwait_cx_no_bmsts();
+	}
 
 	return 0;
 }

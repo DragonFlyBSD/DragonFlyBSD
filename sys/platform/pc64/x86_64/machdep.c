@@ -205,6 +205,13 @@ static int			*cpu_mwait_hints;
 static int			cpu_mwait_deep_hints_cnt;
 static int			*cpu_mwait_deep_hints;
 
+#define CPU_MWAIT_C3_PREAMBLE_BM_ARB	0x1
+#define CPU_MWAIT_C3_PREAMBLE_BM_STS	0x2
+
+static int			cpu_mwait_c3_preamble =
+				    CPU_MWAIT_C3_PREAMBLE_BM_ARB |
+				    CPU_MWAIT_C3_PREAMBLE_BM_STS;
+
 SYSCTL_STRING(_machdep_mwait_CX, OID_AUTO, supported, CTLFLAG_RD,
     cpu_mwait_cx_supported, 0, "MWAIT supported C states");
 
@@ -473,6 +480,14 @@ cpu_finish(void *dummy __unused)
 	    (cpu_mwait_feature & CPUID_MWAIT_EXT)) {
 		struct sbuf sb;
 		int hint_idx;
+
+		if (cpu_vendor_id == CPU_VENDOR_INTEL &&
+		    (CPUID_TO_FAMILY(cpu_id) > 0xf ||
+		     (CPUID_TO_FAMILY(cpu_id) == 0x6 &&
+		      CPUID_TO_MODEL(cpu_id) >= 0xf))) {
+			atomic_clear_int(&cpu_mwait_c3_preamble,
+			    CPU_MWAIT_C3_PREAMBLE_BM_ARB);
+		}
 
 		sbuf_new(&sb, cpu_mwait_cx_supported,
 		    sizeof(cpu_mwait_cx_supported), SBUF_FIXEDLEN);
@@ -2508,6 +2523,12 @@ cpu_mwait_hint_valid(uint32_t hint)
 	return TRUE;
 }
 
+void
+cpu_mwait_cx_no_bmsts(void)
+{
+	atomic_clear_int(&cpu_mwait_c3_preamble, CPU_MWAIT_C3_PREAMBLE_BM_STS);
+}
+
 static int
 cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0,
     boolean_t allow_auto)
@@ -2556,7 +2577,6 @@ cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0,
 	if (allow_auto && strcmp(name, "AUTODEEP") == 0) {
 		hint = CPU_MWAIT_HINT_AUTODEEP;
 		cx_idx = CPU_MWAIT_C3;
-		/* TODO: Check BM_ARB and BM_STS */
 		goto done;
 	}
 
@@ -2582,6 +2602,8 @@ cpu_mwait_cx_select_sysctl(SYSCTL_HANDLER_ARGS, int *hint0,
 
 	hint = MWAIT_EAX_HINT(cx_idx, sub);
 done:
+	if (cx_idx >= CPU_MWAIT_C3 && cpu_mwait_c3_preamble)
+		return EOPNOTSUPP;
 	if (old_cx_idx < CPU_MWAIT_C3 && cx_idx >= CPU_MWAIT_C3) {
 		error = cputimer_intr_powersave_addreq();
 		if (error)
