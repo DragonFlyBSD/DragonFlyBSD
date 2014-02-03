@@ -472,6 +472,8 @@ again:
 struct cpu_idle_stat {
 	u_long	halt;
 	u_long	spin;
+	u_long	repeat;
+	u_long	repeat_last;
 	u_long	mwait_cx[CPU_MWAIT_CX_MAX];
 } __cachealign;
 
@@ -1050,7 +1052,7 @@ cpu_idle_default_hook(void)
 void (*cpu_idle_hook)(void) = cpu_idle_default_hook;
 
 static __inline int
-cpu_mwait_cx_hint(struct globaldata *gd)
+cpu_mwait_cx_hint(struct cpu_idle_stat *stat)
 {
 	int hint, cx_idx;
 	u_int idx;
@@ -1060,7 +1062,7 @@ cpu_mwait_cx_hint(struct globaldata *gd)
 		goto done;
 	}
 
-	idx = gd->gd_idle_repeat >> 4;
+	idx = (stat->repeat + stat->repeat_last) >> 1;
 	if (cpu_mwait_halt == CPU_MWAIT_HINT_AUTODEEP) {
 		if (idx >= cpu_mwait_deep_hints_cnt)
 			idx = cpu_mwait_deep_hints_cnt - 1;
@@ -1073,7 +1075,7 @@ cpu_mwait_cx_hint(struct globaldata *gd)
 done:
 	cx_idx = MWAIT_EAX_TO_CX(hint);
 	if (cx_idx >= 0 && cx_idx < CPU_MWAIT_CX_MAX)
-		cpu_idle_stats[gd->gd_cpuid].mwait_cx[cx_idx]++;
+		stat->mwait_cx[cx_idx]++;
 	return hint;
 }
 
@@ -1081,6 +1083,7 @@ void
 cpu_idle(void)
 {
 	globaldata_t gd = mycpu;
+	struct cpu_idle_stat *stat = &cpu_idle_stats[gd->gd_cpuid];
 	struct thread *td __debugvar = gd->gd_curthread;
 	int reqflags;
 	int quick;
@@ -1121,6 +1124,11 @@ cpu_idle(void)
 		 *	 don't bother capping gd_idle_repeat, it is ok if
 		 *	 it overflows.
 		 */
+		if (gd->gd_idle_repeat == 0) {
+			stat->repeat = (stat->repeat + stat->repeat_last) >> 1;
+			stat->repeat_last = 0;
+		}
+		++stat->repeat_last;
 		++gd->gd_idle_repeat;
 		reqflags = gd->gd_reqflags;
 		quick = (cpu_idle_hlt == 1) ||
@@ -1131,8 +1139,8 @@ cpu_idle(void)
 		    (reqflags & RQF_IDLECHECK_WK_MASK) == 0) {
 			splz(); /* XXX */
 			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
-			    cpu_mwait_cx_hint(gd), 0);
-			cpu_idle_stats[gd->gd_cpuid].halt++;
+			    cpu_mwait_cx_hint(stat), 0);
+			stat->halt++;
 		} else if (cpu_idle_hlt) {
 			__asm __volatile("cli");
 			splz();
@@ -1143,11 +1151,11 @@ cpu_idle(void)
 					cpu_idle_hook();
 			}
 			__asm __volatile("sti");
-			cpu_idle_stats[gd->gd_cpuid].halt++;
+			stat->halt++;
 		} else {
 			splz();
 			__asm __volatile("sti");
-			cpu_idle_stats[gd->gd_cpuid].spin++;
+			stat->spin++;
 		}
 	}
 }
