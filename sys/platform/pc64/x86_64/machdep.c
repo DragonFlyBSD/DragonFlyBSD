@@ -469,6 +469,58 @@ again:
 		1024 / 1024);
 }
 
+struct cpu_idle_stat {
+	u_long	halt;
+	u_long	spin;
+	u_long	mwait_cx[CPU_MWAIT_CX_MAX];
+} __cachealign;
+
+#define CPU_IDLE_STAT_HALT	-1
+#define CPU_IDLE_STAT_SPIN	-2
+
+static struct cpu_idle_stat	cpu_idle_stats[MAXCPU];
+
+static int
+sysctl_cpu_idle_cnt(SYSCTL_HANDLER_ARGS)
+{
+	int idx = arg2, cpu, error;
+	u_long val = 0;
+
+	if (idx == CPU_IDLE_STAT_HALT) {
+		for (cpu = 0; cpu < ncpus; ++cpu)
+			val += cpu_idle_stats[cpu].halt;
+	} else if (idx == CPU_IDLE_STAT_SPIN) {
+		for (cpu = 0; cpu < ncpus; ++cpu)
+			val += cpu_idle_stats[cpu].spin;
+	} else {
+		KASSERT(idx >= 0 && idx < CPU_MWAIT_CX_MAX,
+		    ("invalid index %d", idx));
+		for (cpu = 0; cpu < ncpus; ++cpu)
+			val += cpu_idle_stats[cpu].mwait_cx[idx];
+	}
+
+	error = sysctl_handle_quad(oidp, &val, 0, req);
+        if (error || req->newptr == NULL)
+	        return error;
+
+	if (idx == CPU_IDLE_STAT_HALT) {
+		for (cpu = 0; cpu < ncpus; ++cpu)
+			cpu_idle_stats[cpu].halt = 0;
+		cpu_idle_stats[0].halt = val;
+	} else if (idx == CPU_IDLE_STAT_SPIN) {
+		for (cpu = 0; cpu < ncpus; ++cpu)
+			cpu_idle_stats[cpu].spin = 0;
+		cpu_idle_stats[0].spin = val;
+	} else {
+		KASSERT(idx >= 0 && idx < CPU_MWAIT_CX_MAX,
+		    ("invalid index %d", idx));
+		for (cpu = 0; cpu < ncpus; ++cpu)
+			cpu_idle_stats[cpu].mwait_cx[idx] = 0;
+		cpu_idle_stats[0].mwait_cx[idx] = val;
+	}
+	return 0;
+}
+
 static void
 cpu_finish(void *dummy __unused)
 {
@@ -510,6 +562,10 @@ cpu_finish(void *dummy __unused)
 			    SYSCTL_CHILDREN(cx->sysctl_tree), OID_AUTO,
 			    "subcnt", CTLFLAG_RD, &cx->subcnt, 0,
 			    "sub-state count");
+			SYSCTL_ADD_PROC(&cx->sysctl_ctx,
+			    SYSCTL_CHILDREN(cx->sysctl_tree), OID_AUTO,
+			    "entered", (CTLTYPE_QUAD | CTLFLAG_RW), 0,
+			    i, sysctl_cpu_idle_cnt, "Q", "# of times entered");
 
 			for (sub = 0; sub < cx->subcnt; ++sub)
 				sbuf_printf(&sb, "C%d/%d ", i, sub);
@@ -969,17 +1025,16 @@ cpu_halt(void)
  *	 must occur before it starts using ACPI halt.
  */
 static int	cpu_idle_hlt = 2;
-static int	cpu_idle_hltcnt;
-static int	cpu_idle_spincnt;
 static u_int	cpu_idle_repeat = 750;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
-SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hltcnt, CTLFLAG_RW,
-    &cpu_idle_hltcnt, 0, "Idle loop entry halts");
-SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_spincnt, CTLFLAG_RW,
-    &cpu_idle_spincnt, 0, "Idle loop entry spins");
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_repeat, CTLFLAG_RW,
     &cpu_idle_repeat, 0, "Idle entries before acpi hlt");
+
+SYSCTL_PROC(_machdep, OID_AUTO, cpu_idle_hltcnt, (CTLTYPE_QUAD | CTLFLAG_RW),
+    0, CPU_IDLE_STAT_HALT, sysctl_cpu_idle_cnt, "Q", "Idle loop entry halts");
+SYSCTL_PROC(_machdep, OID_AUTO, cpu_idle_spincnt, (CTLTYPE_QUAD | CTLFLAG_RW),
+    0, CPU_IDLE_STAT_SPIN, sysctl_cpu_idle_cnt, "Q", "Idle loop entry spins");
 
 static void
 cpu_idle_default_hook(void)
@@ -997,21 +1052,29 @@ void (*cpu_idle_hook)(void) = cpu_idle_default_hook;
 static __inline int
 cpu_mwait_cx_hint(struct globaldata *gd)
 {
+	int hint, cx_idx;
 	u_int idx;
 
-	if (cpu_mwait_halt >= 0)
-		return cpu_mwait_halt;
+	if (cpu_mwait_halt >= 0) {
+		hint = cpu_mwait_halt;
+		goto done;
+	}
 
 	idx = gd->gd_idle_repeat >> 4;
 	if (cpu_mwait_halt == CPU_MWAIT_HINT_AUTODEEP) {
 		if (idx >= cpu_mwait_deep_hints_cnt)
 			idx = cpu_mwait_deep_hints_cnt - 1;
-		return cpu_mwait_deep_hints[idx];
+		hint = cpu_mwait_deep_hints[idx];
 	} else {
 		if (idx >= cpu_mwait_hints_cnt)
 			idx = cpu_mwait_hints_cnt - 1;
-		return cpu_mwait_hints[idx];
+		hint = cpu_mwait_hints[idx];
 	}
+done:
+	cx_idx = MWAIT_EAX_TO_CX(hint);
+	if (cx_idx >= 0 && cx_idx < CPU_MWAIT_CX_MAX)
+		cpu_idle_stats[gd->gd_cpuid].mwait_cx[cx_idx]++;
+	return hint;
 }
 
 void
@@ -1069,7 +1132,7 @@ cpu_idle(void)
 			splz(); /* XXX */
 			cpu_mmw_pause_int(&gd->gd_reqflags, reqflags,
 			    cpu_mwait_cx_hint(gd), 0);
-			++cpu_idle_hltcnt;
+			cpu_idle_stats[gd->gd_cpuid].halt++;
 		} else if (cpu_idle_hlt) {
 			__asm __volatile("cli");
 			splz();
@@ -1080,11 +1143,11 @@ cpu_idle(void)
 					cpu_idle_hook();
 			}
 			__asm __volatile("sti");
-			++cpu_idle_hltcnt;
+			cpu_idle_stats[gd->gd_cpuid].halt++;
 		} else {
 			splz();
 			__asm __volatile("sti");
-			++cpu_idle_spincnt;
+			cpu_idle_stats[gd->gd_cpuid].spin++;
 		}
 	}
 }
