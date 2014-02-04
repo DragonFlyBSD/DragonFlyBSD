@@ -26,8 +26,6 @@
  * Authors:
  *      Dave Airlie <airlied@linux.ie>
  *      Jesse Barnes <jesse.barnes@intel.com>
- *
- * $FreeBSD: src/sys/dev/drm2/drm_fb_helper.h,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 #ifndef DRM_FB_HELPER_H
 #define DRM_FB_HELPER_H
@@ -35,23 +33,8 @@
 struct drm_fb_helper;
 
 struct drm_fb_helper_crtc {
-	uint32_t crtc_id;
 	struct drm_mode_set mode_set;
 	struct drm_display_mode *desired_mode;
-};
-
-/* mode specified on the command line */
-struct drm_fb_helper_cmdline_mode {
-	bool specified;
-	bool refresh_specified;
-	bool bpp_specified;
-	int xres, yres;
-	int bpp;
-	int refresh;
-	bool rb;
-	bool interlace;
-	bool cvt;
-	bool margins;
 };
 
 struct drm_fb_helper_surface_size {
@@ -74,9 +57,8 @@ struct drm_fb_helper_funcs {
 };
 
 struct drm_fb_helper_connector {
-	struct drm_fb_helper_cmdline_mode cmdline_mode;
-	struct drm_cmdline_mode cmdline_mode1;
 	struct drm_connector *connector;
+	struct drm_cmdline_mode cmdline_mode;
 };
 
 struct drm_fb_helper {
@@ -89,7 +71,6 @@ struct drm_fb_helper {
 	int connector_count;
 	struct drm_fb_helper_connector **connector_info;
 	struct drm_fb_helper_funcs *funcs;
-	int conn_limit;
 	struct fb_info *fbdev;
 	u32 pseudo_palette[17];
 	struct list_head kernel_fb_list;
@@ -136,6 +117,5 @@ bool drm_fb_helper_initial_config(struct drm_fb_helper *fb_helper, int bpp_sel);
 int drm_fb_helper_single_add_all_connectors(struct drm_fb_helper *fb_helper);
 int drm_fb_helper_debug_enter(struct fb_info *info);
 int drm_fb_helper_debug_leave(struct fb_info *info);
-bool drm_fb_helper_force_kernel_mode(void);
 
 #endif
