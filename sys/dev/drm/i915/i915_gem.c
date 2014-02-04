@@ -2055,13 +2055,14 @@ i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 		free_space = drm_mm_search_free(&dev_priv->mm.gtt_space,
 		    size, alignment, 0);
 	if (free_space != NULL) {
+		int color = 0;
 		if (map_and_fenceable)
 			obj->gtt_space = drm_mm_get_block_range_generic(
-			    free_space, size, alignment, 0,
+			    free_space, size, alignment, color, 0,
 			    dev_priv->mm.gtt_mappable_end, 1);
 		else
 			obj->gtt_space = drm_mm_get_block_generic(free_space,
-			    size, alignment, 1);
+			    size, alignment, color, 1);
 	}
 	if (obj->gtt_space == NULL) {
 		ret = i915_gem_evict_something(dev, size, alignment,
