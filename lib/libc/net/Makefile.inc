@@ -1,6 +1,5 @@
 #	from @(#)Makefile.inc	8.2 (Berkeley) 9/5/93
 # $FreeBSD: src/lib/libc/net/Makefile.inc,v 1.36.2.5 2002/07/29 18:33:18 ume Exp $
-# $DragonFly: src/lib/libc/net/Makefile.inc,v 1.6 2008/10/04 22:09:17 swildner Exp $
 
 # machine-independent net sources
 .PATH: ${.CURDIR}/../libc/net
@@ -111,4 +110,9 @@ MLINKS+=resolver.3 dn_comp.3 resolver.3 dn_expand.3 resolver.3 dn_skipname.3 \
 .if defined(WANT_HESIOD)
 SRCS+=	hesiod.c
 MAN+=	hesiod.3
+MLINKS+=hesiod.3 hesiod_end.3 \
+	hesiod.3 hesiod_free_list.3 \
+	hesiod.3 hesiod_init.3 \
+	hesiod.3 hesiod_resolve.3 \
+	hesiod.3 hesiod_to_bind.3
 .endif
