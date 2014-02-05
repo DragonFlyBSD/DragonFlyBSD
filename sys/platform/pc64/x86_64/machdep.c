@@ -180,6 +180,7 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
 	CTLFLAG_RW, &cpu_mwait_halt, 0, "");
 
+#define CPU_MWAIT_C1		1
 #define CPU_MWAIT_C2		2
 #define CPU_MWAIT_C3		3
 #define CPU_MWAIT_CX_MAX	8
@@ -578,13 +579,13 @@ cpu_finish(void *dummy __unused)
 		/*
 		 * Non-deep C-states
 		 */
-		for (i = 0; i < CPU_MWAIT_C3; ++i)
+		for (i = CPU_MWAIT_C1; i < CPU_MWAIT_C3; ++i)
 			cpu_mwait_hints_cnt += cpu_mwait_cx_info[i].subcnt;
 		cpu_mwait_hints = kmalloc(sizeof(int) * cpu_mwait_hints_cnt,
 		    M_DEVBUF, M_WAITOK);
 
 		hint_idx = 0;
-		for (i = 0; i < CPU_MWAIT_C3; ++i) {
+		for (i = CPU_MWAIT_C1; i < CPU_MWAIT_C3; ++i) {
 			int j, subcnt;
 
 			subcnt = cpu_mwait_cx_info[i].subcnt;
@@ -614,14 +615,14 @@ cpu_finish(void *dummy __unused)
 		/*
 		 * Deep C-states
 		 */
-		for (i = 0; i < CPU_MWAIT_CX_MAX; ++i)
+		for (i = CPU_MWAIT_C1; i < CPU_MWAIT_CX_MAX; ++i)
 			cpu_mwait_deep_hints_cnt += cpu_mwait_cx_info[i].subcnt;
 		cpu_mwait_deep_hints =
 		    kmalloc(sizeof(int) * cpu_mwait_deep_hints_cnt,
 		    M_DEVBUF, M_WAITOK);
 
 		hint_idx = 0;
-		for (i = 0; i < CPU_MWAIT_CX_MAX; ++i) {
+		for (i = CPU_MWAIT_C1; i < CPU_MWAIT_CX_MAX; ++i) {
 			int j, subcnt;
 
 			subcnt = cpu_mwait_cx_info[i].subcnt;
