@@ -206,6 +206,9 @@ static int			*cpu_mwait_hints;
 static int			cpu_mwait_deep_hints_cnt;
 static int			*cpu_mwait_deep_hints;
 
+static u_int			cpu_idle_repeat = 750;
+static u_long			cpu_idle_repeat_max;
+
 #define CPU_MWAIT_C3_PREAMBLE_BM_ARB	0x1
 #define CPU_MWAIT_C3_PREAMBLE_BM_STS	0x2
 
@@ -531,6 +534,7 @@ cpu_finish(void *dummy __unused)
 
 	cpu_setregs();
 
+	cpu_idle_repeat_max = cpu_idle_repeat;
 	if ((cpu_feature2 & CPUID2_MON) &&
 	    (cpu_mwait_feature & CPUID_MWAIT_EXT)) {
 		struct sbuf sb;
@@ -649,6 +653,7 @@ cpu_finish(void *dummy __unused)
 				    MWAIT_EAX_TO_CX_SUB(hint), hint);
 			}
 		}
+		cpu_idle_repeat_max = 64 * cpu_mwait_deep_hints_cnt;
 	}
 }
 
@@ -1028,7 +1033,6 @@ cpu_halt(void)
  *	 must occur before it starts using ACPI halt.
  */
 static int	cpu_idle_hlt = 2;
-static u_int	cpu_idle_repeat = 750;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_repeat, CTLFLAG_RW,
@@ -1089,6 +1093,8 @@ cpu_idle(void)
 	int reqflags;
 	int quick;
 
+	stat->repeat = stat->repeat_last = cpu_idle_repeat_max;
+
 	crit_exit();
 	KKASSERT(td->td_critcount == 0);
 	for (;;) {
@@ -1127,9 +1133,12 @@ cpu_idle(void)
 		 */
 		if (gd->gd_idle_repeat == 0) {
 			stat->repeat = (stat->repeat + stat->repeat_last) >> 1;
+			if (stat->repeat > cpu_idle_repeat_max)
+				stat->repeat = cpu_idle_repeat_max;
 			stat->repeat_last = 0;
 		}
 		++stat->repeat_last;
+
 		++gd->gd_idle_repeat;
 		reqflags = gd->gd_reqflags;
 		quick = (cpu_idle_hlt == 1) ||
