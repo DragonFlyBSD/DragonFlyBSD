@@ -197,7 +197,7 @@ struct ucom_softc {
 	uint8_t sc_jitterbuf[UCOM_JITTERBUF_SIZE];
 };
 
-#define	UCOM_MTX_ASSERT(sc, what) KKASSERT(lockowned((sc)->sc_lock)==what)
+#define	UCOM_MTX_ASSERT(sc, what) KKASSERT(lockowned((sc)->sc_lock))
 #define	UCOM_MTX_LOCK(sc) lockmgr((sc)->sc_lock, LK_EXCLUSIVE)
 #define	UCOM_MTX_UNLOCK(sc) lockmgr((sc)->sc_lock, LK_RELEASE)
 #define	UCOM_UNLOAD_DRAIN(x) \

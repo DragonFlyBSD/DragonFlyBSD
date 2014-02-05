@@ -96,6 +96,7 @@
 #include <sys/malloc.h>
 #include <sys/priv.h>
 #include <sys/sbuf.h>
+#include <sys/serial.h>
 
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
