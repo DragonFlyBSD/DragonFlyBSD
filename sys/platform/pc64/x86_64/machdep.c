@@ -168,7 +168,7 @@ int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
 int64_t tsc_offsets[MAXCPU];
 
-int cpu_mwait_halt;	/* MWAIT hint (EAX) or CPU_MWAIT_HINT_ */
+static int cpu_mwait_halt;	/* MWAIT hint (EAX) or CPU_MWAIT_HINT_ */
 
 #if defined(SWTCH_OPTIM_STATS)
 extern int swtch_optim_stats;

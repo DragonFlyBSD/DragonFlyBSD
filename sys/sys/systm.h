@@ -70,7 +70,6 @@ extern int selwait;		/* select timeout address */
 
 extern u_char curpriority;	/* priority of current process */
 extern int cpu_mwait_spin;	/* typically set in machdep, used by lwkt */
-extern int cpu_mwait_halt;	/* typically set in machdep, used by idle */
 
 extern long physmem;		/* physical memory */
 

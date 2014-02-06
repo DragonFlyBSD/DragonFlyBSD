@@ -153,7 +153,7 @@ SYSINIT(cpu_finish, SI_BOOT2_FINISH_CPU, SI_ORDER_FIRST, cpu_finish, NULL)
 int	_udatasel, _ucodesel;
 u_int	atdevbase;
 int64_t tsc_offsets[MAXCPU];
-int cpu_mwait_halt = 0;
+static int cpu_mwait_halt = 0;
 
 #if defined(SWTCH_OPTIM_STATS)
 extern int swtch_optim_stats;
