@@ -1,11 +1,4 @@
-/*
- * $OpenBSD: common.h,v 1.26 2006/03/11 19:41:30 otto Exp $
- * $DragonFly: src/usr.bin/patch/common.h,v 1.5 2008/08/10 23:50:12 joerg Exp $
- */
-
-/*
- * patch - a program to apply diffs to original files
- * 
+/*-
  * Copyright 1986, Larry Wall
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +18,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ * patch - a program to apply diffs to original files
+ *
  * -C option added in 1998, original code by Marc Espie, based on FreeBSD
  * behaviour
+ *
+ * $OpenBSD: common.h,v 1.26 2006/03/11 19:41:30 otto Exp $
+ * $FreeBSD: head/usr.bin/patch/common.h 246091 2013-01-29 20:05:16Z delphij $
  */
 
 #include <sys/types.h>
@@ -38,10 +36,10 @@
 
 /* constants */
 
-#define MAXHUNKSIZE 100000	/* is this enough lines? */
+#define MAXHUNKSIZE 200000	/* is this enough lines? */
 #define INITHUNKMAX 125		/* initial dynamic allocation size */
-#define MAXLINELEN 8192
-#define BUFFERSIZE 1024
+#define INITLINELEN 4096
+#define BUFFERSIZE 4096
 
 #define SCCSPREFIX "s."
 #define GET "get -e %s"
@@ -69,8 +67,8 @@ typedef long    LINENUM;	/* must be signed */
 
 extern mode_t	filemode;
 
-extern char	buf[MAXLINELEN];/* general purpose buffer */
-extern size_t	buf_len;
+extern char	*buf;		/* general purpose buffer */
+extern size_t	buf_size;	/* size of general purpose buffer */
 
 extern bool	using_plan_a;	/* try to keep everything in memory */
 extern bool	out_of_mem;	/* ran out of memory in plan a */

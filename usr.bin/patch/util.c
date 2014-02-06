@@ -1,11 +1,4 @@
-/*
- * $OpenBSD: util.c,v 1.32 2006/03/11 19:41:30 otto Exp $
- * $DragonFly: src/usr.bin/patch/util.c,v 1.9 2007/09/29 23:11:10 swildner Exp $
- */
-
-/*
- * patch - a program to apply diffs to original files
- * 
+/*-
  * Copyright 1986, Larry Wall
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +18,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ * patch - a program to apply diffs to original files
+ *
  * -C option added in 1998, original code by Marc Espie, based on FreeBSD
  * behaviour
+ *
+ * $OpenBSD: util.c,v 1.35 2010/07/24 01:10:12 ray Exp $
+ * $FreeBSD: head/usr.bin/patch/util.c 255894 2013-09-26 18:00:45Z delphij $
  */
 
 #include <sys/param.h>
@@ -67,7 +65,7 @@ move_file(const char *from, const char *to)
 		fromfd = open(from, O_RDONLY);
 		if (fromfd < 0)
 			pfatal("internal error, can't reopen %s", from);
-		while ((i = read(fromfd, buf, buf_len)) > 0)
+		while ((i = read(fromfd, buf, buf_size)) > 0)
 			if (write(STDOUT_FILENO, buf, i) != i)
 				pfatal("write failed");
 		close(fromfd);
@@ -175,7 +173,7 @@ copy_file(const char *from, const char *to)
 	fromfd = open(from, O_RDONLY, 0);
 	if (fromfd < 0)
 		pfatal("internal error, can't reopen %s", from);
-	while ((i = read(fromfd, buf, buf_len)) > 0)
+	while ((i = read(fromfd, buf, buf_size)) > 0)
 		if (write(tofd, buf, i) != i)
 			pfatal("write to %s failed", to);
 	close(fromfd);
@@ -212,9 +210,9 @@ say(const char *fmt, ...)
 	va_list	ap;
 
 	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
+	vfprintf(stdout, fmt, ap);
 	va_end(ap);
-	fflush(stderr);
+	fflush(stdout);
 }
 
 /*
@@ -266,7 +264,7 @@ ask(const char *fmt, ...)
 	if (ttyfd < 0)
 		ttyfd = open(_PATH_TTY, O_RDONLY);
 	if (ttyfd >= 0) {
-		if ((nr = read(ttyfd, buf, buf_len)) > 0 &&
+		if ((nr = read(ttyfd, buf, buf_size)) > 0 &&
 		    buf[nr - 1] == '\n')
 			buf[nr - 1] = '\0';
 	}
@@ -414,7 +412,7 @@ checked_in(char *file)
 void
 version(void)
 {
-	fprintf(stderr, "Patch version 2.0-12u8-OpenBSD\n");
+	fprintf(stderr, "patch 2.0-12u10\n");
 	my_exit(EXIT_SUCCESS);
 }
 

@@ -1,10 +1,4 @@
-/*
- * $OpenBSD: inp.c,v 1.34 2006/03/11 19:41:30 otto Exp $
- */
-
-/*
- * patch - a program to apply diffs to original files
- * 
+/*-
  * Copyright 1986, Larry Wall
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -24,8 +18,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
+ * patch - a program to apply diffs to original files
+ *
  * -C option added in 1998, original code by Marc Espie, based on FreeBSD
  * behaviour
+ *
+ * $OpenBSD: inp.c,v 1.36 2012/04/10 14:46:34 ajacoutot Exp $
+ * $FreeBSD: head/usr.bin/patch/inp.c 246091 2013-01-29 20:05:16Z delphij $
  */
 
 #include <sys/types.h>
@@ -134,7 +133,7 @@ static bool
 plan_a(const char *filename)
 {
 	int		ifd, statfailed;
-	char		*p, *s, lbuf[MAXLINELEN];
+	char		*p, *s, lbuf[INITLINELEN];
 	struct stat	filestat;
 	ptrdiff_t	sz;
 	size_t		i;
@@ -187,17 +186,17 @@ plan_a(const char *filename)
 		s = lbuf + 20;
 
 #define try(f, a1, a2, a3) \
-	(snprintf(s, sizeof lbuf - 20, f, a1, a2, a3), stat(s, &cstat) == 0)
+	(snprintf(s, buf_size - 20, f, a1, a2, a3), stat(s, &cstat) == 0)
 
 		if (try("%s/RCS/%s%s", filedir, filebase, RCSSUFFIX) ||
 		    try("%s/RCS/%s%s", filedir, filebase, "") ||
 		    try("%s/%s%s", filedir, filebase, RCSSUFFIX)) {
-			snprintf(buf, buf_len, CHECKOUT, filename);
+			snprintf(buf, buf_size, CHECKOUT, filename);
 			snprintf(lbuf, sizeof lbuf, RCSDIFF, filename);
 			cs = "RCS";
 		} else if (try("%s/SCCS/%s%s", filedir, SCCSPREFIX, filebase) ||
 		    try("%s/%s%s", filedir, SCCSPREFIX, filebase)) {
-			snprintf(buf, buf_len, GET, s);
+			snprintf(buf, buf_size, GET, s);
 			snprintf(lbuf, sizeof lbuf, SCCSDIFF, s, filename);
 			cs = "SCCS";
 		} else if (statfailed)
@@ -360,7 +359,7 @@ plan_b(const char *filename)
 	unlink(TMPINNAME);
 	if ((tifd = open(TMPINNAME, O_EXCL | O_CREAT | O_WRONLY, 0666)) < 0)
 		pfatal("can't open file %s", TMPINNAME);
-	while (fgets(buf, buf_len, ifp) != NULL) {
+	while (fgets(buf, buf_size, ifp) != NULL) {
 		if (revision != NULL && !found_revision && rev_in_string(buf))
 			found_revision = true;
 		if ((i = strlen(buf)) > maxlen)
