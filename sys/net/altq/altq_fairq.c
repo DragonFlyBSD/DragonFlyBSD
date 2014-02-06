@@ -569,7 +569,7 @@ fairq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 		error = ENOBUFS;
 		goto done;
 	}
-	ALTQ_SQ_CNTR_INC(ifsq, len);
+	ALTQ_SQ_PKTCNT_INC(ifsq);
 	error = 0;
 done:
 	crit_exit();
@@ -618,7 +618,7 @@ fairq_dequeue(struct ifaltq_subque *ifsq, int op)
 		m = fairq_getq(best_cl, cur_time);
 		pif->pif_poll_cache = NULL;
 		if (m) {
-			ALTQ_SQ_CNTR_DEC(ifsq, m_pktlen(m));
+			ALTQ_SQ_PKTCNT_DEC(ifsq);
 			PKTCNTR_ADD(&best_cl->cl_xmitcnt, m_pktlen(m));
 		}
 	} else {
@@ -688,7 +688,7 @@ fairq_dequeue(struct ifaltq_subque *ifsq, int op)
 		} else if (best_cl) {
 			m = fairq_getq(best_cl, cur_time);
 			KKASSERT(best_m == m);
-			ALTQ_SQ_CNTR_DEC(ifsq, m_pktlen(m));
+			ALTQ_SQ_PKTCNT_DEC(ifsq);
 			PKTCNTR_ADD(&best_cl->cl_xmitcnt, m_pktlen(m));
 		} else {
 			m = NULL;

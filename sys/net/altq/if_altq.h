@@ -106,16 +106,26 @@ struct ifaltq_subque {
 #define ASSERT_ALTQ_SQ_NOT_SERIALIZED_HW(ifsq) \
 	ASSERT_NOT_SERIALIZED((ifsq)->ifsq_hw_serialize)
 
-#define ALTQ_SQ_CNTR_INC(ifsq, bcnt) \
+#define ALTQ_SQ_PKTCNT_INC(ifsq) \
 do { \
 	(ifsq)->ifsq_len++; \
+} while (0)
+
+#define ALTQ_SQ_PKTCNT_DEC(ifsq) \
+do { \
+	KASSERT((ifsq)->ifsq_len > 0, ("invalid packet count")); \
+	(ifsq)->ifsq_len--; \
+} while (0)
+
+#define ALTQ_SQ_CNTR_INC(ifsq, bcnt) \
+do { \
+	ALTQ_SQ_PKTCNT_INC((ifsq)); \
 	(ifsq)->ifsq_bcnt += (bcnt); \
 } while (0)
 
 #define ALTQ_SQ_CNTR_DEC(ifsq, bcnt) \
 do { \
-	KASSERT((ifsq)->ifsq_len > 0, ("invalid packet count")); \
-	(ifsq)->ifsq_len--; \
+	ALTQ_SQ_PKTCNT_DEC((ifsq)); \
 	KASSERT((ifsq)->ifsq_bcnt >= (bcnt), ("invalid byte count")); \
 	(ifsq)->ifsq_bcnt -= (bcnt); \
 } while (0)

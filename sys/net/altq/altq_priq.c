@@ -470,7 +470,7 @@ priq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 		error = ENOBUFS;
 		goto done;
 	}
-	ALTQ_SQ_CNTR_INC(ifsq, len);
+	ALTQ_SQ_PKTCNT_INC(ifsq);
 	error = 0;
 done:
 	crit_exit();
@@ -518,7 +518,7 @@ priq_dequeue(struct ifaltq_subque *ifsq, int op)
 
 			m = priq_getq(cl);
 			if (m != NULL) {
-				ALTQ_SQ_CNTR_DEC(ifsq, m_pktlen(m));
+				ALTQ_SQ_PKTCNT_DEC(ifsq);
 				if (qempty(cl->cl_q))
 					cl->cl_period++;
 				PKTCNTR_ADD(&cl->cl_xmitcnt, m_pktlen(m));

@@ -542,7 +542,7 @@ cbq_enqueue(struct ifaltq_subque *ifsq, struct mbuf *m,
 
 	/* successfully queued. */
 	++cbqp->cbq_qlen;
-	ALTQ_SQ_CNTR_INC(ifsq, len);
+	ALTQ_SQ_PKTCNT_INC(ifsq);
 	crit_exit();
 	return (0);
 }
@@ -568,7 +568,7 @@ cbq_dequeue(struct ifaltq_subque *ifsq, int op)
 
 	if (m && op == ALTDQ_REMOVE) {
 		--cbqp->cbq_qlen;  /* decrement # of packets in cbq */
-		ALTQ_SQ_CNTR_DEC(ifsq, m_pktlen(m));
+		ALTQ_SQ_PKTCNT_DEC(ifsq);
 
 		/* Update the class. */
 		rmc_update_class_util(&cbqp->ifnp);
