@@ -115,8 +115,6 @@ TUNABLE_INT("lwkt.use_spin_port", &lwkt_use_spin_port);
 SYSCTL_INT(_lwkt, OID_AUTO, panic_on_cscount, CTLFLAG_RW, &panic_on_cscount, 0,
     "Panic if attempting to switch lwkt's while mastering cpusync");
 #endif
-SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_spin, CTLFLAG_RW, &cpu_mwait_spin, 0,
-    "monitor/mwait target state");
 SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0,
     "Number of switched threads");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, 

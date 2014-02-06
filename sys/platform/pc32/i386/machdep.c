@@ -164,6 +164,8 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 #endif
 SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
 	CTLFLAG_RW, &cpu_mwait_halt, 0, "");
+SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_spin, CTLFLAG_RW, &cpu_mwait_spin, 0,
+    "monitor/mwait target state");
 
 long physmem = 0;
 
