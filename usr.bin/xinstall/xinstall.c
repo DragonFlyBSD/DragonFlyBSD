@@ -51,8 +51,6 @@
 #include <unistd.h>
 #include <utime.h>
 
-#include "pathnames.h"
-
 /* Bootstrap aid - this doesn't exist in most older releases */
 #ifndef MAP_FAILED
 #define MAP_FAILED ((void *)-1)	/* from <sys/mman.h> */
@@ -80,19 +78,19 @@ char  *destdir;
 static int file_getgroup(const char *etcdir, const char *group, gid_t *gidret);
 static int file_getowner(const char *etcdir, const char *owner, uid_t *uidret);
 
-void	copy(int, const char *, int, const char *, off_t);
-int	compare(int, const char *, size_t, int, const char *, size_t);
-int	create_newfile(const char *, int, struct stat *);
-int	create_tempfile(const char *, char *, size_t);
-void	install(const char *, const char *, u_long, u_long, u_int);
-void	install_dir(char *);
+static int	compare(int, const char *, size_t, int, const char *, size_t);
+static void	copy(int, const char *, int, const char *, off_t);
+static int	create_newfile(const char *, int, struct stat *);
+static int	create_tempfile(const char *, char *, size_t);
+static void	install(const char *, const char *, u_long, u_long, u_int);
+static void	install_dir(char *);
 u_long	numeric_id(const char *, const char *);
-void	strip(const char *);
-int	trymmap(int);
-void	usage(void);
+static void	strip(const char *);
+static int	trymmap(int);
+static void	usage(void);
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	struct stat from_sb, to_sb;
 	mode_t *set;
@@ -111,11 +109,8 @@ main(int argc, char **argv)
 	owner = NULL;
 	etcdir = NULL;
 
-	while ((ch = getopt(argc, argv, "L:B:bCcdf:g:lMm:o:pSsv:D:")) != -1)
+	while ((ch = getopt(argc, argv, "L:B:bCcD:df:g:lMm:o:pSsv")) != -1)
 		switch((char)ch) {
-		case 'L':
-			etcdir = optarg;
-			break;
 		case 'B':
 			suffix = optarg;
 			/* FALLTHROUGH */
@@ -128,11 +123,11 @@ main(int argc, char **argv)
 		case 'c':
 			/* For backwards compatibility. */
 			break;
-		case 'd':
-			dodir = 1;
-			break;
 		case 'D':
 			destdir = optarg;
+			break;
+		case 'd':
+			dodir = 1;
 			break;
 		case 'f':
 			flags = optarg;
@@ -142,6 +137,9 @@ main(int argc, char **argv)
 			break;
 		case 'g':
 			group = optarg;
+			break;
+		case 'L':
+			etcdir = optarg;
 			break;
 		case 'l':
 			trysys = 1;
@@ -179,8 +177,10 @@ main(int argc, char **argv)
 	argv += optind;
 
 	/* some options make no sense when creating directories */
-	if (dostrip && dodir)
+	if (dostrip && dodir) {
+		warnx("-d and -s may not be specified together");
 		usage();
+	}
 
 	/* must have at least two arguments, except when creating directories */
 	if (argc < 2 && !dodir)
@@ -233,8 +233,15 @@ main(int argc, char **argv)
 	}
 
 	/* can't do file1 file2 directory/file */
-	if (argc != 2)
+	if (argc != 2) {
+		if (no_target)
+			warnx("target directory `%s' does not exist",
+			    argv[argc - 1]);
+		else
+			warnx("target `%s' is not a directory",
+			    argv[argc - 1]);
 		usage();
+	}
 
 	if (!no_target) {
 		if (stat(*argv, &from_sb))
@@ -346,7 +353,7 @@ file_getowner(const char *etcdir, const char *owner, uid_t *uidret)
  * install --
  *	build a path name and install the file
  */
-void
+static void
 install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	u_int flags)
 {
@@ -370,7 +377,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 		}
 		/* Build the target path. */
 		if (flags & DIRECTORY) {
-			snprintf(pathbuf, sizeof(pathbuf), "%s/%s",
+			(void)snprintf(pathbuf, sizeof(pathbuf), "%s/%s",
 			    to_name,
 			    (p = strrchr(from_name, '/')) ? ++p : from_name);
 			to_name = pathbuf;
@@ -408,7 +415,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 
 		/* Close "to" file unless we match. */
 		if (!files_match)
-			close(to_fd);
+			(void)close(to_fd);
 	}
 
 	if (!files_match) {
@@ -422,7 +429,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 			    &to_sb)) < 0)
 				err(EX_OSERR, "%s", to_name);
 			if (verbose)
-				printf("install: %s -> %s\n",
+				(void)printf("install: %s -> %s\n",
 				    from_name, to_name);
 		}
 		if (!devnull)
@@ -455,7 +462,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 
 		if (fstat(temp_fd, &temp_sb)) {
 			serrno = errno;
-			unlink(tempfile);
+			(void)unlink(tempfile);
 			errno = serrno;
 			err(EX_OSERR, "%s", tempfile);
 		}
@@ -473,9 +480,9 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 				utime(tempfile, &utb);
 			} else {
 				files_match = 1;
-				unlink(tempfile);
+				(void)unlink(tempfile);
 			}
-			close(temp_fd);
+			(void) close(temp_fd);
 		}
 	}
 
@@ -486,7 +493,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	if (tempcopy && !files_match) {
 		/* Try to turn off the immutable bits. */
 		if (to_sb.st_flags & NOCHANGEBITS)
-			chflags(to_name, to_sb.st_flags & ~NOCHANGEBITS);
+			(void)chflags(to_name, to_sb.st_flags & ~NOCHANGEBITS);
 		if (dobackup) {
 			if ((size_t)snprintf(backup, MAXPATHLEN, "%s%s", to_name,
 			    suffix) != strlen(to_name) + strlen(suffix)) {
@@ -495,7 +502,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 				    to_name);
 			}
 			if (verbose)
-				printf("install: %s -> %s\n", to_name, backup);
+				(void)printf("install: %s -> %s\n", to_name, backup);
 			if (rename(to_name, backup) < 0) {
 				serrno = errno;
 				unlink(tempfile);
@@ -505,7 +512,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 			}
 		}
 		if (verbose)
-			printf("install: %s -> %s\n", from_name, to_name);
+			(void)printf("install: %s -> %s\n", from_name, to_name);
 		if (rename(tempfile, to_name) < 0) {
 			serrno = errno;
 			unlink(tempfile);
@@ -515,7 +522,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 		}
 
 		/* Re-open to_fd so we aren't hosed by the rename(2). */
-		close(to_fd);
+		(void) close(to_fd);
 		if ((to_fd = open(to_name, O_RDONLY, 0)) < 0)
 			err(EX_OSERR, "%s", to_name);
 	}
@@ -531,7 +538,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 
 	if (fstat(to_fd, &to_sb) == -1) {
 		serrno = errno;
-		unlink(to_name);
+		(void)unlink(to_name);
 		errno = serrno;
 		err(EX_OSERR, "%s", to_name);
 	}
@@ -545,14 +552,14 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	    (mode != to_sb.st_mode)) {
 		/* Try to turn off the immutable bits. */
 		if (to_sb.st_flags & NOCHANGEBITS)
-			fchflags(to_fd, to_sb.st_flags & ~NOCHANGEBITS);
+			(void)fchflags(to_fd, to_sb.st_flags & ~NOCHANGEBITS);
 	}
 
 	if ((gid != (gid_t)-1 && gid != to_sb.st_gid) ||
 	    (uid != (uid_t)-1 && uid != to_sb.st_uid))
 		if (fchown(to_fd, uid, gid) == -1) {
 			serrno = errno;
-			unlink(to_name);
+			(void)unlink(to_name);
 			errno = serrno;
 			err(EX_OSERR,"%s: chown/chgrp", to_name);
 		}
@@ -560,7 +567,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	if (mode != to_sb.st_mode)
 		if (fchmod(to_fd, mode)) {
 			serrno = errno;
-			unlink(to_name);
+			(void)unlink(to_name);
 			errno = serrno;
 			err(EX_OSERR, "%s: chmod", to_name);
 		}
@@ -582,7 +589,7 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 	/*
 	 * NFS does not support flags.  Ignore EOPNOTSUPP flags if we're just
 	 * trying to turn off UF_NODUMP.  If we're trying to set real flags,
-	 * then warn if the the fs doesn't support it, otherwise fail.
+	 * then warn if the fs doesn't support it, otherwise fail.
 	 */
 	if (!devnull && fchflags(to_fd, nfset)) {
 		if (flags & SETFLAGS) {
@@ -590,23 +597,23 @@ install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
 				warn("%s: chflags", to_name);
 			else {
 				serrno = errno;
-				unlink(to_name);
+				(void)unlink(to_name);
 				errno = serrno;
 				err(EX_OSERR, "%s: chflags", to_name);
 			}
 		}
 	}
 
-	close(to_fd);
+	(void)close(to_fd);
 	if (!devnull)
-		close(from_fd);
+		(void)close(from_fd);
 }
 
 /*
  * compare --
  *	compare two files; non-zero means files differ
  */
-int
+static int
 compare(int from_fd, const char *from_name __unused, size_t from_len,
 	int to_fd, const char *to_name __unused, size_t to_len)
 {
@@ -670,18 +677,18 @@ compare(int from_fd, const char *from_name __unused, size_t from_len,
  * create_tempfile --
  *	create a temporary file based on path and open it
  */
-int
+static int
 create_tempfile(const char *path, char *temp, size_t tsize)
 {
 	char *p;
 
-	strncpy(temp, path, tsize);
+	(void)strncpy(temp, path, tsize);
 	temp[tsize - 1] = '\0';
 	if ((p = strrchr(temp, '/')) != NULL)
 		p++;
 	else
 		p = temp;
-	strncpy(p, "INS@XXXX", &temp[tsize - 1] - p);
+	(void)strncpy(p, "INS@XXXX", &temp[tsize - 1] - p);
 	temp[tsize - 1] = '\0';
 	return (mkstemp(temp));
 }
@@ -690,7 +697,7 @@ create_tempfile(const char *path, char *temp, size_t tsize)
  * create_newfile --
  *	create a new file, overwriting an existing one if necessary
  */
-int
+static int
 create_newfile(const char *path, int target, struct stat *sbp)
 {
 	char backup[MAXPATHLEN];
@@ -702,17 +709,17 @@ create_newfile(const char *path, int target, struct stat *sbp)
 		 * it might work.
 		 */
 		if (sbp->st_flags & NOCHANGEBITS)
-			chflags(path, sbp->st_flags & ~NOCHANGEBITS);
+			(void)chflags(path, sbp->st_flags & ~NOCHANGEBITS);
 
 		if (dobackup) {
 			if ((size_t)snprintf(backup, MAXPATHLEN, "%s%s",
 			    path, suffix) != strlen(path) + strlen(suffix))
 				errx(EX_OSERR, "%s: backup filename too long",
 				    path);
-			snprintf(backup, MAXPATHLEN, "%s%s",
+			(void)snprintf(backup, MAXPATHLEN, "%s%s",
 			    path, suffix);
 			if (verbose)
-				printf("install: %s -> %s\n",
+				(void)printf("install: %s -> %s\n",
 				    path, backup);
 			if (rename(path, backup) < 0)
 				err(EX_OSERR, "rename: %s to %s", path, backup);
@@ -727,7 +734,7 @@ create_newfile(const char *path, int target, struct stat *sbp)
  * copy --
  *	copy from one file to another
  */
-void
+static void
 copy(int from_fd, const char *from_name, int to_fd,
      const char *to_name, off_t size)
 {
@@ -753,7 +760,7 @@ copy(int from_fd, const char *from_name, int to_fd,
 		    from_fd, (off_t)0)) != (char *)MAP_FAILED) {
 		if ((nw = write(to_fd, p, size)) != size) {
 			serrno = errno;
-			unlink(to_name);
+			(void)unlink(to_name);
 			errno = nw > 0 ? EIO : serrno;
 			err(EX_OSERR, "%s", to_name);
 		}
@@ -763,13 +770,13 @@ copy(int from_fd, const char *from_name, int to_fd,
 		while ((nr = read(from_fd, buf, sizeof(buf))) > 0)
 			if ((nw = write(to_fd, buf, nr)) != nr) {
 				serrno = errno;
-				unlink(to_name);
+				(void)unlink(to_name);
 				errno = nw > 0 ? EIO : serrno;
 				err(EX_OSERR, "%s", to_name);
 			}
 		if (nr != 0) {
 			serrno = errno;
-			unlink(to_name);
+			(void)unlink(to_name);
 			errno = serrno;
 			err(EX_OSERR, "%s", from_name);
 		}
@@ -780,7 +787,7 @@ copy(int from_fd, const char *from_name, int to_fd,
  * strip --
  *	use strip(1) to strip the target file
  */
-void
+static void
 strip(const char *to_name)
 {
 	const char *stripbin;
@@ -789,19 +796,19 @@ strip(const char *to_name)
 	switch (fork()) {
 	case -1:
 		serrno = errno;
-		unlink(to_name);
+		(void)unlink(to_name);
 		errno = serrno;
 		err(EX_TEMPFAIL, "fork");
 	case 0:
 		stripbin = getenv("STRIPBIN");
 		if (stripbin == NULL)
 			stripbin = "strip";
-		execlp(stripbin, stripbin, to_name, NULL);
+		execlp(stripbin, stripbin, to_name, (char *)NULL);
 		err(EX_OSERR, "exec(%s)", stripbin);
 	default:
 		if (wait(&status) == -1 || status) {
 			serrno = errno;
-			unlink(to_name);
+			(void)unlink(to_name);
 			errc(EX_SOFTWARE, serrno, "wait");
 			/* NOTREACHED */
 		}
@@ -831,7 +838,7 @@ mkdir_race(const char *path, int nmode)
  * install_dir --
  *	build directory hierarchy
  */
-void
+static void
 install_dir(char *path)
 {
 	char *p;
@@ -848,7 +855,7 @@ install_dir(char *path)
 					err(EX_OSERR, "mkdir %s", path);
 					/* NOTREACHED */
 				} else if (verbose)
-					printf("install: mkdir %s\n",
+					(void)printf("install: mkdir %s\n",
 						     path);
 			} else if (!S_ISDIR(sb.st_mode))
 				errx(EX_OSERR, "%s exists but is not a directory", path);
@@ -866,7 +873,7 @@ install_dir(char *path)
  * usage --
  *	print a usage message and die
  */
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "\
@@ -883,7 +890,7 @@ usage: install [-bCcpSsv] [-B suffix] [-D dest] [-f flags] [-g group] [-m mode]\
  * trymmap --
  *	return true (1) if mmap should be tried, false (0) if not.
  */
-int
+static int
 trymmap(int fd)
 {
 /*
