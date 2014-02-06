@@ -393,6 +393,10 @@ printcpuinfo(void)
 				kprintf("\n  Thermal and PM Features=0x%b",
 				    cpu_thermal_feature,
 				    "\020"
+				    /* Digital temperature sensor */
+				    "\001SENSOR"
+				    /* Turbo boost */
+				    "\002TURBO"
 				    /* APIC-Timer-always-running */
 				    "\003ARAT"
 				    /* Power limit notification controls */
