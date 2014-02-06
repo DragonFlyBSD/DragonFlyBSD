@@ -178,7 +178,7 @@ SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 	CTLFLAG_RD, &tlb_flush_count, 0, "");
 #endif
 SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_halt,
-	CTLFLAG_RW, &cpu_mwait_halt, 0, "");
+	CTLFLAG_RD, &cpu_mwait_halt, 0, "");
 
 #define CPU_MWAIT_C1		1
 #define CPU_MWAIT_C2		2
