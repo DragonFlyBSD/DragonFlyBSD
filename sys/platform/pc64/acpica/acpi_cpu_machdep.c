@@ -19,17 +19,6 @@ acpi_cpu_md_features(void)
 	uint32_t features = 0;
 
 	if (cpu_vendor_id == CPU_VENDOR_INTEL) {
-		static int reported;
-
-		if (!reported) {
-			uint32_t regs[4];
-
-			do_cpuid(0x6, regs);
-			if (regs[0] & 0x2)
-				kprintf("Turbo mode enabled in BIOS\n");
-			reported = 1;
-		}
-
 		if (cpu_feature2 & CPUID2_EST) {
 			features |= ACPI_PDC_PX_MSR |
 			    ACPI_PDC_MP_PX_SWCOORD |
