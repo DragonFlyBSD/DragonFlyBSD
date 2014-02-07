@@ -1911,6 +1911,9 @@ device		iicsmb		# smb over i2c bridge
 
 device		pcf0	at isa? port 0x320 irq 5
 
+# Intel performance-energy bias
+device		perfbias
+
 # Intel Core and newer CPUs on-die digital thermal sensor support
 device		coretemp
 
