@@ -1182,20 +1182,22 @@ int	drm_lock_transfer(struct drm_lock_data *lock_data,
 int	drm_lock_free(struct drm_lock_data *lock_data,
 		      unsigned int context);
 
-/* Buffer management support (drm_bufs.c) */
+/*
+ * These are exported to drivers so that they can implement fencing using
+ * DMA quiscent + idle. DMA quiescent usually requires the hardware lock.
+ */
+
 unsigned long drm_get_resource_start(struct drm_device *dev,
 				     unsigned int resource);
 unsigned long drm_get_resource_len(struct drm_device *dev,
 				   unsigned int resource);
 void	drm_rmmap(struct drm_device *dev, drm_local_map_t *map);
 int	drm_order(unsigned long size);
-int	drm_addmap(struct drm_device *dev, unsigned long offset,
-		   unsigned long size,
-		   enum drm_map_type type, enum drm_map_flags flags,
-		   drm_local_map_t **map_ptr);
-int	drm_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *request);
-int	drm_addbufs_sg(struct drm_device *dev, struct drm_buf_desc *request);
 int	drm_addbufs_agp(struct drm_device *dev, struct drm_buf_desc *request);
+int	drm_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *request);
+extern int drm_addmap(struct drm_device *dev, resource_size_t offset,
+		      unsigned int size, enum drm_map_type type,
+		      enum drm_map_flags flags, struct drm_local_map **map_ptr);
 
 /* DMA support (drm_dma.c) */
 int	drm_dma_setup(struct drm_device *dev);

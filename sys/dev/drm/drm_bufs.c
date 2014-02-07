@@ -1,4 +1,14 @@
-/*-
+/**
+ * \file drm_bufs.c
+ * Generic buffer template
+ *
+ * \author Rickard E. (Rik) Faith <faith@valinux.com>
+ * \author Gareth Hughes <gareth@valinux.com>
+ */
+
+/*
+ * Created: Thu Nov 23 03:10:50 2000 by gareth@valinux.com
+ *
  * Copyright 1999, 2000 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
@@ -22,20 +32,13 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  *
- * Authors:
- *    Rickard E. (Rik) Faith <faith@valinux.com>
- *    Gareth Hughes <gareth@valinux.com>
- *
  * $FreeBSD: src/sys/dev/drm2/drm_bufs.c,v 1.1 2012/05/22 11:07:44 kib Exp $
- */
-
-/** @file drm_bufs.c
- * Implementation of the ioctls for setup of DRM mappings and DMA buffers.
  */
 
 #include <sys/conf.h>
 #include <bus/pci/pcireg.h>
-
+#include <linux/types.h>
+#include <linux/export.h>
 #include <drm/drmP.h>
 
 /* Allocation of PCI memory resources (framebuffer, registers, etc.) for
@@ -94,9 +97,9 @@ unsigned long drm_get_resource_len(struct drm_device *dev,
 	return rman_get_size(dev->pcir[resource]);
 }
 
-int drm_addmap(struct drm_device * dev, unsigned long offset,
-	       unsigned long size,
-    enum drm_map_type type, enum drm_map_flags flags, drm_local_map_t **map_ptr)
+int drm_addmap(struct drm_device * dev, resource_size_t offset,
+	       unsigned int size, enum drm_map_type type,
+	       enum drm_map_flags flags, struct drm_local_map ** map_ptr)
 {
 	struct drm_local_map *map;
 	struct drm_map_list *entry = NULL;
@@ -127,20 +130,20 @@ int drm_addmap(struct drm_device * dev, unsigned long offset,
 		return EINVAL;
 	}
 	if ((offset & PAGE_MASK) || (size & PAGE_MASK)) {
-		DRM_ERROR("offset/size not page aligned: 0x%lx/0x%lx\n",
+		DRM_ERROR("offset/size not page aligned: 0x%lx/0x%04x\n",
 		    offset, size);
 		drm_free(map, DRM_MEM_MAPS);
 		return EINVAL;
 	}
 	if (offset + size < offset) {
-		DRM_ERROR("offset and size wrap around: 0x%lx/0x%lx\n",
+		DRM_ERROR("offset and size wrap around: 0x%lx/0x%04x\n",
 		    offset, size);
 		drm_free(map, DRM_MEM_MAPS);
 		return EINVAL;
 	}
 
-	DRM_DEBUG("offset = 0x%08lx, size = 0x%08lx, type = %d\n", offset,
-	    size, type);
+	DRM_DEBUG("offset = 0x%08llx, size = 0x%08lx, type = %d\n",
+		  (unsigned long long)map->offset, map->size, map->type);
 
 	/* Check if this is just another version of a kernel-allocated map, and
 	 * just hand that back if so.
@@ -262,6 +265,17 @@ done:
 	return 0;
 }
 
+/**
+ * Ioctl to specify a range of memory that is available for mapping by a
+ * non-root process.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg pointer to a drm_map structure.
+ * \return zero on success or a negative value on error.
+ *
+ */
 int drm_addmap_ioctl(struct drm_device *dev, void *data,
 		     struct drm_file *file_priv)
 {
@@ -410,9 +424,16 @@ int drm_rmmap_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
-
-static void drm_cleanup_buf_error(struct drm_device *dev,
-				  drm_buf_entry_t *entry)
+/**
+ * Cleanup after an error on one of the addbufs() functions.
+ *
+ * \param dev DRM device.
+ * \param entry buffer entry where the error occurred.
+ *
+ * Frees any pages and buffers associated with the given entry.
+ */
+static void drm_cleanup_buf_error(struct drm_device * dev,
+				  struct drm_buf_entry * entry)
 {
 	int i;
 
@@ -827,7 +848,18 @@ static int drm_do_addbufs_sg(struct drm_device *dev, struct drm_buf_desc *reques
 	return 0;
 }
 
-int drm_addbufs_agp(struct drm_device *dev, struct drm_buf_desc *request)
+/**
+ * Add AGP buffers for DMA transfers.
+ *
+ * \param dev struct drm_device to which the buffers are to be added.
+ * \param request pointer to a struct drm_buf_desc describing the request.
+ * \return zero on success or a negative number on failure.
+ *
+ * After some sanity checks creates a drm_buf structure for each buffer and
+ * reallocates the buffer list of the same size order to accommodate the new
+ * buffers.
+ */
+int drm_addbufs_agp(struct drm_device * dev, struct drm_buf_desc * request)
 {
 	int order, ret;
 
@@ -858,7 +890,7 @@ int drm_addbufs_agp(struct drm_device *dev, struct drm_buf_desc *request)
 	return ret;
 }
 
-int drm_addbufs_sg(struct drm_device *dev, struct drm_buf_desc *request)
+static int drm_addbufs_sg(struct drm_device * dev, struct drm_buf_desc * request)
 {
 	int order, ret;
 
@@ -892,7 +924,7 @@ int drm_addbufs_sg(struct drm_device *dev, struct drm_buf_desc *request)
 	return ret;
 }
 
-int drm_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *request)
+int drm_addbufs_pci(struct drm_device * dev, struct drm_buf_desc * request)
 {
 	int order, ret;
 
@@ -926,7 +958,22 @@ int drm_addbufs_pci(struct drm_device *dev, struct drm_buf_desc *request)
 	return ret;
 }
 
-int drm_addbufs(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/**
+ * Add buffers for DMA transfers (ioctl).
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg pointer to a struct drm_buf_desc request.
+ * \return zero on success or a negative number on failure.
+ *
+ * According with the memory type specified in drm_buf_desc::flags and the
+ * build options, it dispatches the call either to addbufs_agp(),
+ * addbufs_sg() or addbufs_pci() for AGP, scatter-gather or consistent
+ * PCI memory respectively.
+ */
+int drm_addbufs(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
 {
 	struct drm_buf_desc *request = data;
 	int err;
@@ -941,7 +988,25 @@ int drm_addbufs(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	return err;
 }
 
-int drm_infobufs(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/**
+ * Get information about the buffer mappings.
+ *
+ * This was originally mean for debugging purposes, or by a sophisticated
+ * client library to determine how best to use the available buffers (e.g.,
+ * large buffers can be used for image transfer).
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg pointer to a drm_buf_info structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Increments drm_device::buf_use while holding the drm_device::count_lock
+ * lock, preventing of allocating more buffers after this call. Information
+ * about each requested buffer is then copied into user space.
+ */
+int drm_infobufs(struct drm_device *dev, void *data,
+		 struct drm_file *file_priv)
 {
 	drm_device_dma_t *dma = dev->dma;
 	struct drm_buf_info *request = data;
@@ -990,7 +1055,22 @@ int drm_infobufs(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	return retcode;
 }
 
-int drm_markbufs(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/**
+ * Specifies a low and high water mark for buffer allocation
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg a pointer to a drm_buf_desc structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Verifies that the size order is bounded between the admissible orders and
+ * updates the respective drm_device_dma::bufs entry low and high water mark.
+ *
+ * \note This ioctl is deprecated and mostly never used.
+ */
+int drm_markbufs(struct drm_device *dev, void *data,
+		 struct drm_file *file_priv)
 {
 	drm_device_dma_t *dma = dev->dma;
 	struct drm_buf_desc *request = data;
@@ -1020,7 +1100,20 @@ int drm_markbufs(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	return 0;
 }
 
-int drm_freebufs(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/**
+ * Unreserve the buffers in list, previously reserved using drmDMA.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg pointer to a drm_buf_free structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Calls free_buffer() for each used buffer.
+ * This function is primarily used for debugging.
+ */
+int drm_freebufs(struct drm_device *dev, void *data,
+		 struct drm_file *file_priv)
 {
 	drm_device_dma_t *dma = dev->dma;
 	struct drm_buf_free *request = data;
@@ -1057,7 +1150,22 @@ int drm_freebufs(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	return retcode;
 }
 
-int drm_mapbufs(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/**
+ * Maps all of the DMA buffers into client-virtual space (ioctl).
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg pointer to a drm_buf_map structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Maps the AGP, SG or PCI buffer region with vm_mmap(), and copies information
+ * about each buffer into user space. For PCI buffers, it calls vm_mmap() with
+ * offset equal to 0, which drm_mmap() interpretes as PCI buffers and calls
+ * drm_mmap_dma().
+ */
+int drm_mapbufs(struct drm_device *dev, void *data,
+	        struct drm_file *file_priv)
 {
 	drm_device_dma_t *dma = dev->dma;
 	int retcode = 0;
@@ -1136,19 +1244,25 @@ int drm_mapbufs(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	return retcode;
 }
 
-/*
- * Compute order.  Can be made faster.
+/**
+ * Compute size order.  Returns the exponent of the smaller power of two which
+ * is greater or equal to given number.
+ *
+ * \param size size.
+ * \return order.
+ *
+ * \todo Can be made faster.
  */
 int drm_order(unsigned long size)
 {
 	int order;
+	unsigned long tmp;
 
-	if (size == 0)
-		return 0;
+	for (order = 0, tmp = size >> 1; tmp; tmp >>= 1, order++) ;
 
-	order = flsl(size) - 1;
-	if (size & ~(1ul << order))
+	if (size & (size - 1))
 		++order;
 
 	return order;
 }
+EXPORT_SYMBOL(drm_order);
