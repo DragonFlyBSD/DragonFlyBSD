@@ -1,4 +1,15 @@
-/*-
+/**
+ * \file drm_fops.c
+ * File operations for DRM
+ *
+ * \author Rickard E. (Rik) Faith <faith@valinux.com>
+ * \author Daryll Strauss <daryll@valinux.com>
+ * \author Gareth Hughes <gareth@valinux.com>
+ */
+
+/*
+ * Created: Mon Jan  4 08:58:31 1999 by faith@valinux.com
+ *
  * Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
@@ -22,23 +33,17 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  *
- * Authors:
- *    Rickard E. (Rik) Faith <faith@valinux.com>
- *    Daryll Strauss <daryll@valinux.com>
- *    Gareth Hughes <gareth@valinux.com>
- *
  * $FreeBSD: src/sys/dev/drm2/drm_fops.c,v 1.1 2012/05/22 11:07:44 kib Exp $
- */
-
-/** @file drm_fops.c
- * Support code for dealing with the file privates associated with each
- * open of the DRM device.
  */
 
 #include <sys/types.h>
 #include <sys/conf.h>
 
 #include <drm/drmP.h>
+
+extern drm_pci_id_list_t *drm_find_description(int vendor, int device,
+    drm_pci_id_list_t *idlist);
+extern devclass_t drm_devclass;
 
 struct drm_file *drm_find_file_by_proc(struct drm_device *dev, DRM_STRUCTPROC *p)
 {
@@ -50,6 +55,84 @@ struct drm_file *drm_find_file_by_proc(struct drm_device *dev, DRM_STRUCTPROC *p
 		if (priv->pid == pid && priv->uid == uid)
 			return priv;
 	return NULL;
+}
+
+static int drm_setup(struct drm_device *dev)
+{
+	drm_local_map_t *map;
+	int i;
+
+	DRM_LOCK_ASSERT(dev);
+
+	/* prebuild the SAREA */
+	i = drm_addmap(dev, 0, SAREA_MAX, _DRM_SHM,
+	    _DRM_CONTAINS_LOCK, &map);
+	if (i != 0)
+		return i;
+
+	if (dev->driver->firstopen)
+		dev->driver->firstopen(dev);
+
+	dev->buf_use = 0;
+
+	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA)) {
+		i = drm_dma_setup(dev);
+		if (i != 0)
+			return i;
+	}
+
+	for (i = 0; i < DRM_HASH_SIZE; i++) {
+		dev->magiclist[i].head = NULL;
+		dev->magiclist[i].tail = NULL;
+	}
+
+	dev->lock.lock_queue = 0;
+	if (!drm_core_check_feature(dev, DRIVER_MODESET))
+		dev->irq_enabled = 0;
+	dev->context_flag = 0;
+	dev->last_context = 0;
+	dev->if_version = 0;
+
+	dev->buf_sigio = NULL;
+
+	DRM_DEBUG("\n");
+
+	return 0;
+}
+
+#define DRIVER_SOFTC(unit) \
+	((struct drm_device *)devclass_get_softc(drm_devclass, unit))
+
+int
+drm_open(struct dev_open_args *ap)
+{
+	struct cdev *kdev = ap->a_head.a_dev;
+	int flags = ap->a_oflags;
+	int fmt = 0;
+	struct thread *p = curthread;
+	struct drm_device *dev;
+	int retcode;
+
+	dev = DRIVER_SOFTC(minor(kdev));
+	if (dev == NULL)
+		return (ENXIO);
+
+	DRM_DEBUG("open_count = %d\n", dev->open_count);
+
+	retcode = drm_open_helper(kdev, flags, fmt, p, dev);
+
+	if (retcode == 0) {
+		atomic_inc(&dev->counts[_DRM_STAT_OPENS]);
+		DRM_LOCK(dev);
+		device_busy(dev->dev);
+		if (!dev->open_count++)
+			retcode = drm_setup(dev);
+		DRM_UNLOCK(dev);
+	}
+
+	DRM_DEBUG("return %d\n", retcode);
+
+	return (retcode);
 }
 
 /* drm_open_helper is called whenever a process opens /dev/drm. */

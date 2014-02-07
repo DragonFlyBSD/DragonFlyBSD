@@ -53,7 +53,7 @@ unsigned int drm_timestamp_precision = 20;  /* Default to 20 usecs. */
 
 static int drm_load(struct drm_device *dev);
 static void drm_unload(struct drm_device *dev);
-static drm_pci_id_list_t *drm_find_description(int vendor, int device,
+drm_pci_id_list_t *drm_find_description(int vendor, int device,
     drm_pci_id_list_t *idlist);
 
 #define DRIVER_SOFTC(unit) \
@@ -385,49 +385,6 @@ drm_pci_id_list_t *drm_find_description(int vendor, int device,
 	return NULL;
 }
 
-static int drm_firstopen(struct drm_device *dev)
-{
-	drm_local_map_t *map;
-	int i;
-
-	DRM_LOCK_ASSERT(dev);
-
-	/* prebuild the SAREA */
-	i = drm_addmap(dev, 0, SAREA_MAX, _DRM_SHM,
-	    _DRM_CONTAINS_LOCK, &map);
-	if (i != 0)
-		return i;
-
-	if (dev->driver->firstopen)
-		dev->driver->firstopen(dev);
-
-	dev->buf_use = 0;
-
-	if (drm_core_check_feature(dev, DRIVER_HAVE_DMA)) {
-		i = drm_dma_setup(dev);
-		if (i != 0)
-			return i;
-	}
-
-	for (i = 0; i < DRM_HASH_SIZE; i++) {
-		dev->magiclist[i].head = NULL;
-		dev->magiclist[i].tail = NULL;
-	}
-
-	dev->lock.lock_queue = 0;
-	if (!drm_core_check_feature(dev, DRIVER_MODESET))
-		dev->irq_enabled = 0;
-	dev->context_flag = 0;
-	dev->last_context = 0;
-	dev->if_version = 0;
-
-	dev->buf_sigio = NULL;
-
-	DRM_DEBUG("\n");
-
-	return 0;
-}
-
 /**
  * Take down the DRM device.
  *
@@ -696,39 +653,6 @@ int drm_version(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	DRM_COPY(version->desc, dev->driver->desc);
 
 	return 0;
-}
-
-int
-/* drm_open(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p) */
-drm_open(struct dev_open_args *ap)
-{
-	struct cdev *kdev = ap->a_head.a_dev;
-	int flags = ap->a_oflags;
-	int fmt = 0;
-	struct thread *p = curthread;
-	struct drm_device *dev;
-	int retcode;
-
-	dev = DRIVER_SOFTC(minor(kdev));
-	if (dev == NULL)
-		return (ENXIO);
-
-	DRM_DEBUG("open_count = %d\n", dev->open_count);
-
-	retcode = drm_open_helper(kdev, flags, fmt, p, dev);
-
-	if (retcode == 0) {
-		atomic_inc(&dev->counts[_DRM_STAT_OPENS]);
-		DRM_LOCK(dev);
-		device_busy(dev->dev);
-		if (!dev->open_count++)
-			retcode = drm_firstopen(dev);
-		DRM_UNLOCK(dev);
-	}
-
-	DRM_DEBUG("return %d\n", retcode);
-
-	return (retcode);
 }
 
 int drm_close(struct dev_close_args *ap)
