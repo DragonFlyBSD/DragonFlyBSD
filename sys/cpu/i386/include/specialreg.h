@@ -214,6 +214,10 @@
 #define	FUNC_B_BITS_SHIFT_NEXT_LEVEL(eax)	((eax) & 0x1f)
 #define	FUNC_B_LEVEL_MAX_SIBLINGS(ebx)	((ebx) & 0xffff)
 
+/*
+ * Thermal and PM Features
+ */
+#define CPUID_THERMAL2_SETBH	0x00000008
 
 /*
  * AMD extended function 8000_0007h edx info
