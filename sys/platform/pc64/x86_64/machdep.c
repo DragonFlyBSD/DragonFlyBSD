@@ -208,8 +208,10 @@ static int			*cpu_mwait_hints;
 static int			cpu_mwait_deep_hints_cnt;
 static int			*cpu_mwait_deep_hints;
 
-static u_int			cpu_idle_repeat = 750;
-static u_long			cpu_idle_repeat_max;
+#define CPU_IDLE_REPEAT_DEFAULT	750
+
+static u_int			cpu_idle_repeat = CPU_IDLE_REPEAT_DEFAULT;
+static u_long			cpu_idle_repeat_max = CPU_IDLE_REPEAT_DEFAULT;
 
 #define CPU_MWAIT_C3_PREAMBLE_BM_ARB	0x1
 #define CPU_MWAIT_C3_PREAMBLE_BM_STS	0x2
@@ -530,133 +532,132 @@ sysctl_cpu_idle_cnt(SYSCTL_HANDLER_ARGS)
 }
 
 static void
+cpu_mwait_attach(void)
+{
+	struct sbuf sb;
+	int hint_idx, i;
+
+	if ((cpu_feature2 & CPUID2_MON) == 0 ||
+	    (cpu_mwait_feature & CPUID_MWAIT_EXT) == 0)
+		return;
+
+	if (cpu_vendor_id == CPU_VENDOR_INTEL &&
+	    (CPUID_TO_FAMILY(cpu_id) > 0xf ||
+	     (CPUID_TO_FAMILY(cpu_id) == 0x6 &&
+	      CPUID_TO_MODEL(cpu_id) >= 0xf))) {
+		atomic_clear_int(&cpu_mwait_c3_preamble,
+		    CPU_MWAIT_C3_PREAMBLE_BM_ARB);
+	}
+
+	sbuf_new(&sb, cpu_mwait_cx_supported,
+	    sizeof(cpu_mwait_cx_supported), SBUF_FIXEDLEN);
+
+	for (i = 0; i < CPU_MWAIT_CX_MAX; ++i) {
+		struct cpu_mwait_cx *cx = &cpu_mwait_cx_info[i];
+		int sub;
+
+		ksnprintf(cx->name, sizeof(cx->name), "C%d", i);
+
+		sysctl_ctx_init(&cx->sysctl_ctx);
+		cx->sysctl_tree = SYSCTL_ADD_NODE(&cx->sysctl_ctx,
+		    SYSCTL_STATIC_CHILDREN(_machdep_mwait), OID_AUTO,
+		    cx->name, CTLFLAG_RW, NULL, "Cx control/info");
+		if (cx->sysctl_tree == NULL)
+			continue;
+
+		cx->subcnt = CPUID_MWAIT_CX_SUBCNT(cpu_mwait_extemu, i);
+		SYSCTL_ADD_INT(&cx->sysctl_ctx,
+		    SYSCTL_CHILDREN(cx->sysctl_tree), OID_AUTO,
+		    "subcnt", CTLFLAG_RD, &cx->subcnt, 0,
+		    "sub-state count");
+		SYSCTL_ADD_PROC(&cx->sysctl_ctx,
+		    SYSCTL_CHILDREN(cx->sysctl_tree), OID_AUTO,
+		    "entered", (CTLTYPE_QUAD | CTLFLAG_RW), 0,
+		    i, sysctl_cpu_idle_cnt, "Q", "# of times entered");
+
+		for (sub = 0; sub < cx->subcnt; ++sub)
+			sbuf_printf(&sb, "C%d/%d ", i, sub);
+	}
+	sbuf_trim(&sb);
+	sbuf_finish(&sb);
+
+	/*
+	 * Non-deep C-states
+	 */
+	for (i = CPU_MWAIT_C1; i < CPU_MWAIT_C3; ++i)
+		cpu_mwait_hints_cnt += cpu_mwait_cx_info[i].subcnt;
+	cpu_mwait_hints = kmalloc(sizeof(int) * cpu_mwait_hints_cnt,
+	    M_DEVBUF, M_WAITOK);
+
+	hint_idx = 0;
+	for (i = CPU_MWAIT_C1; i < CPU_MWAIT_C3; ++i) {
+		int j, subcnt;
+
+		subcnt = cpu_mwait_cx_info[i].subcnt;
+		for (j = 0; j < subcnt; ++j) {
+			KASSERT(hint_idx < cpu_mwait_hints_cnt,
+			    ("invalid mwait hint index %d", hint_idx));
+			cpu_mwait_hints[hint_idx] = MWAIT_EAX_HINT(i, j);
+			++hint_idx;
+		}
+	}
+	KASSERT(hint_idx == cpu_mwait_hints_cnt,
+	    ("mwait hint count %d != index %d",
+	     cpu_mwait_hints_cnt, hint_idx));
+
+	if (bootverbose) {
+		kprintf("MWAIT hints:\n");
+		for (i = 0; i < cpu_mwait_hints_cnt; ++i) {
+			int hint = cpu_mwait_hints[i];
+
+			kprintf("  C%d/%d hint 0x%04x\n",
+			    MWAIT_EAX_TO_CX(hint), MWAIT_EAX_TO_CX_SUB(hint),
+			    hint);
+		}
+	}
+
+	/*
+	 * Deep C-states
+	 */
+	for (i = CPU_MWAIT_C1; i < CPU_MWAIT_CX_MAX; ++i)
+		cpu_mwait_deep_hints_cnt += cpu_mwait_cx_info[i].subcnt;
+	cpu_mwait_deep_hints = kmalloc(sizeof(int) * cpu_mwait_deep_hints_cnt,
+	    M_DEVBUF, M_WAITOK);
+
+	hint_idx = 0;
+	for (i = CPU_MWAIT_C1; i < CPU_MWAIT_CX_MAX; ++i) {
+		int j, subcnt;
+
+		subcnt = cpu_mwait_cx_info[i].subcnt;
+		for (j = 0; j < subcnt; ++j) {
+			KASSERT(hint_idx < cpu_mwait_deep_hints_cnt,
+			    ("invalid mwait deep hint index %d", hint_idx));
+			cpu_mwait_deep_hints[hint_idx] = MWAIT_EAX_HINT(i, j);
+			++hint_idx;
+		}
+	}
+	KASSERT(hint_idx == cpu_mwait_deep_hints_cnt,
+	    ("mwait deep hint count %d != index %d",
+	     cpu_mwait_deep_hints_cnt, hint_idx));
+
+	if (bootverbose) {
+		kprintf("MWAIT deep hints:\n");
+		for (i = 0; i < cpu_mwait_deep_hints_cnt; ++i) {
+			int hint = cpu_mwait_deep_hints[i];
+
+			kprintf("  C%d/%d hint 0x%04x\n",
+			    MWAIT_EAX_TO_CX(hint), MWAIT_EAX_TO_CX_SUB(hint),
+			    hint);
+		}
+	}
+	cpu_idle_repeat_max = 64 * cpu_mwait_deep_hints_cnt;
+}
+
+static void
 cpu_finish(void *dummy __unused)
 {
-	int i;
-
 	cpu_setregs();
-
-	cpu_idle_repeat_max = cpu_idle_repeat;
-	if ((cpu_feature2 & CPUID2_MON) &&
-	    (cpu_mwait_feature & CPUID_MWAIT_EXT)) {
-		struct sbuf sb;
-		int hint_idx;
-
-		if (cpu_vendor_id == CPU_VENDOR_INTEL &&
-		    (CPUID_TO_FAMILY(cpu_id) > 0xf ||
-		     (CPUID_TO_FAMILY(cpu_id) == 0x6 &&
-		      CPUID_TO_MODEL(cpu_id) >= 0xf))) {
-			atomic_clear_int(&cpu_mwait_c3_preamble,
-			    CPU_MWAIT_C3_PREAMBLE_BM_ARB);
-		}
-
-		sbuf_new(&sb, cpu_mwait_cx_supported,
-		    sizeof(cpu_mwait_cx_supported), SBUF_FIXEDLEN);
-
-		for (i = 0; i < CPU_MWAIT_CX_MAX; ++i) {
-			struct cpu_mwait_cx *cx = &cpu_mwait_cx_info[i];
-			int sub;
-
-			ksnprintf(cx->name, sizeof(cx->name), "C%d", i);
-
-			sysctl_ctx_init(&cx->sysctl_ctx);
-			cx->sysctl_tree = SYSCTL_ADD_NODE(&cx->sysctl_ctx,
-			    SYSCTL_STATIC_CHILDREN(_machdep_mwait), OID_AUTO,
-			    cx->name, CTLFLAG_RW, NULL, "Cx control/info");
-			if (cx->sysctl_tree == NULL)
-				continue;
-
-			cx->subcnt = CPUID_MWAIT_CX_SUBCNT(cpu_mwait_extemu, i);
-			SYSCTL_ADD_INT(&cx->sysctl_ctx,
-			    SYSCTL_CHILDREN(cx->sysctl_tree), OID_AUTO,
-			    "subcnt", CTLFLAG_RD, &cx->subcnt, 0,
-			    "sub-state count");
-			SYSCTL_ADD_PROC(&cx->sysctl_ctx,
-			    SYSCTL_CHILDREN(cx->sysctl_tree), OID_AUTO,
-			    "entered", (CTLTYPE_QUAD | CTLFLAG_RW), 0,
-			    i, sysctl_cpu_idle_cnt, "Q", "# of times entered");
-
-			for (sub = 0; sub < cx->subcnt; ++sub)
-				sbuf_printf(&sb, "C%d/%d ", i, sub);
-		}
-		sbuf_trim(&sb);
-		sbuf_finish(&sb);
-
-		/*
-		 * Non-deep C-states
-		 */
-		for (i = CPU_MWAIT_C1; i < CPU_MWAIT_C3; ++i)
-			cpu_mwait_hints_cnt += cpu_mwait_cx_info[i].subcnt;
-		cpu_mwait_hints = kmalloc(sizeof(int) * cpu_mwait_hints_cnt,
-		    M_DEVBUF, M_WAITOK);
-
-		hint_idx = 0;
-		for (i = CPU_MWAIT_C1; i < CPU_MWAIT_C3; ++i) {
-			int j, subcnt;
-
-			subcnt = cpu_mwait_cx_info[i].subcnt;
-			for (j = 0; j < subcnt; ++j) {
-				KASSERT(hint_idx < cpu_mwait_hints_cnt,
-				    ("invalid mwait hint index %d", hint_idx));
-				cpu_mwait_hints[hint_idx] =
-				    MWAIT_EAX_HINT(i, j);
-				++hint_idx;
-			}
-		}
-		KASSERT(hint_idx == cpu_mwait_hints_cnt,
-		    ("mwait hint count %d != index %d",
-		     cpu_mwait_hints_cnt, hint_idx));
-
-		if (bootverbose) {
-			kprintf("MWAIT hints:\n");
-			for (i = 0; i < cpu_mwait_hints_cnt; ++i) {
-				int hint = cpu_mwait_hints[i];
-
-				kprintf("  C%d/%d hint 0x%04x\n",
-				    MWAIT_EAX_TO_CX(hint),
-				    MWAIT_EAX_TO_CX_SUB(hint), hint);
-			}
-		}
-
-		/*
-		 * Deep C-states
-		 */
-		for (i = CPU_MWAIT_C1; i < CPU_MWAIT_CX_MAX; ++i)
-			cpu_mwait_deep_hints_cnt += cpu_mwait_cx_info[i].subcnt;
-		cpu_mwait_deep_hints =
-		    kmalloc(sizeof(int) * cpu_mwait_deep_hints_cnt,
-		    M_DEVBUF, M_WAITOK);
-
-		hint_idx = 0;
-		for (i = CPU_MWAIT_C1; i < CPU_MWAIT_CX_MAX; ++i) {
-			int j, subcnt;
-
-			subcnt = cpu_mwait_cx_info[i].subcnt;
-			for (j = 0; j < subcnt; ++j) {
-				KASSERT(hint_idx < cpu_mwait_deep_hints_cnt,
-				    ("invalid mwait deep hint index %d",
-				     hint_idx));
-				cpu_mwait_deep_hints[hint_idx] =
-				    MWAIT_EAX_HINT(i, j);
-				++hint_idx;
-			}
-		}
-		KASSERT(hint_idx == cpu_mwait_deep_hints_cnt,
-		    ("mwait deep hint count %d != index %d",
-		     cpu_mwait_deep_hints_cnt, hint_idx));
-
-		if (bootverbose) {
-			kprintf("MWAIT deep hints:\n");
-			for (i = 0; i < cpu_mwait_deep_hints_cnt; ++i) {
-				int hint = cpu_mwait_deep_hints[i];
-
-				kprintf("  C%d/%d hint 0x%04x\n",
-				    MWAIT_EAX_TO_CX(hint),
-				    MWAIT_EAX_TO_CX_SUB(hint), hint);
-			}
-		}
-		cpu_idle_repeat_max = 64 * cpu_mwait_deep_hints_cnt;
-	}
+	cpu_mwait_attach();
 }
 
 static void
