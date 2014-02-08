@@ -213,7 +213,7 @@ sta_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	    __func__, ieee80211_state_name[ostate],
 	    ieee80211_state_name[nstate], arg);
 	vap->iv_state = nstate;			/* state transition */
-	callout_stop_sync(&vap->iv_mgtsend);
+	callout_stop(&vap->iv_mgtsend);
 	if (ostate != IEEE80211_S_SCAN)
 		ieee80211_cancel_scan(vap);	/* background scan */
 	ni = vap->iv_bss;			/* NB: no reference held */
