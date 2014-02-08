@@ -148,6 +148,9 @@ struct drm_device;
 #define DRIVER_PRIME       0x4000
 #define DRIVER_LOCKLESS_IRQ 0x8000
 
+/***********************************************************************/
+/** \name Begin the DRM... */
+/*@{*/
 
 #define DRM_HASH_SIZE	      16 /* Size of key hash table		  */
 #define DRM_KERNEL_CONTEXT    0	 /* Change drm_resctx if changed	  */
@@ -1206,7 +1209,7 @@ void	drm_free_buffer(struct drm_device *dev, drm_buf_t *buf);
 void	drm_reclaim_buffers(struct drm_device *dev, struct drm_file *file_priv);
 #define drm_core_reclaim_buffers drm_reclaim_buffers
 
-/* IRQ support (drm_irq.c) */
+				/* IRQ support (drm_irq.h) */
 int	drm_irq_install(struct drm_device *dev);
 int	drm_irq_uninstall(struct drm_device *dev);
 irqreturn_t drm_irq_handler(DRM_IRQ_ARGS);
@@ -1226,6 +1229,8 @@ extern int drm_vblank_wait(struct drm_device *dev, unsigned int *vbl_seq);
 extern u32 drm_vblank_count(struct drm_device *dev, int crtc);
 extern u32 drm_vblank_count_and_time(struct drm_device *dev, int crtc,
 				     struct timeval *vblanktime);
+extern void drm_send_vblank_event(struct drm_device *dev, int crtc,
+				     struct drm_pending_vblank_event *e);
 extern bool drm_handle_vblank(struct drm_device *dev, int crtc);
 void drm_handle_vblank_events(struct drm_device *dev, int crtc);
 extern int drm_vblank_get(struct drm_device *dev, int crtc);

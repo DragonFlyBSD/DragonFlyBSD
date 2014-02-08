@@ -31,6 +31,8 @@
  * handing interrupt handlers off to the drivers.
  */
 
+#include <linux/export.h>
+#include <linux/mutex.h>
 #include <drm/drmP.h>
 
 MALLOC_DEFINE(DRM_MEM_VBLANK, "drm_vblank", "DRM VBLANK Handling Data");
@@ -600,6 +602,15 @@ drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev, int crtc,
 	return vbl_status;
 }
 
+static struct timeval get_drm_timestamp(void)
+{
+	struct timeval now;
+
+	getmicrouptime(&now);
+
+	return now;
+}
+
 /**
  * drm_get_last_vbltimestamp - retrieve raw timestamp for the most recent
  * vblank interval.
@@ -690,6 +701,50 @@ u32 drm_vblank_count_and_time(struct drm_device *dev, int crtc,
 
 	return cur_vblank;
 }
+
+static void send_vblank_event(struct drm_device *dev,
+		struct drm_pending_vblank_event *e,
+		unsigned long seq, struct timeval *now)
+{
+	KKASSERT(mutex_is_locked(&dev->event_lock));
+	e->event.sequence = seq;
+	e->event.tv_sec = now->tv_sec;
+	e->event.tv_usec = now->tv_usec;
+
+	list_add_tail(&e->base.link,
+		      &e->base.file_priv->event_list);
+	wakeup(&e->base.file_priv->event_list);
+#if 0
+	trace_drm_vblank_event_delivered(e->base.pid, e->pipe,
+					 e->event.sequence);
+#endif
+}
+
+/**
+ * drm_send_vblank_event - helper to send vblank event after pageflip
+ * @dev: DRM device
+ * @crtc: CRTC in question
+ * @e: the event to send
+ *
+ * Updates sequence # and timestamp on event, and sends it to userspace.
+ * Caller must hold event lock.
+ */
+void drm_send_vblank_event(struct drm_device *dev, int crtc,
+		struct drm_pending_vblank_event *e)
+{
+	struct timeval now;
+	unsigned int seq;
+	if (crtc >= 0) {
+		seq = drm_vblank_count_and_time(dev, crtc, &now);
+	} else {
+		seq = 0;
+
+		now = get_drm_timestamp();
+	}
+	e->pipe = crtc;
+	send_vblank_event(dev, e, seq, &now);
+}
+EXPORT_SYMBOL(drm_send_vblank_event);
 
 /**
  * drm_update_vblank_count - update the master vblank counter
@@ -841,13 +896,9 @@ void drm_vblank_off(struct drm_device *dev, int crtc)
 		DRM_DEBUG("Sending premature vblank event on disable: \
 			  wanted %d, current %d\n",
 			  e->event.sequence, seq);
-
-		e->event.sequence = seq;
-		e->event.tv_sec = now.tv_sec;
-		e->event.tv_usec = now.tv_usec;
+		list_del(&e->base.link);
 		drm_vblank_put(dev, e->pipe);
-		list_move_tail(&e->base.link, &e->base.file_priv->event_list);
-		drm_event_wakeup(&e->base);
+		send_vblank_event(dev, e, seq, &now);
 	}
 
 	lockmgr(&dev->event_lock, LK_RELEASE);
@@ -989,12 +1040,8 @@ static int drm_queue_vblank_event(struct drm_device *dev, int pipe,
 
 	e->event.sequence = vblwait->request.sequence;
 	if ((seq - vblwait->request.sequence) <= (1 << 23)) {
-		e->event.sequence = seq;
-		e->event.tv_sec = now.tv_sec;
-		e->event.tv_usec = now.tv_usec;
 		drm_vblank_put(dev, pipe);
-		list_add_tail(&e->base.link, &e->base.file_priv->event_list);
-		drm_event_wakeup(&e->base);
+		send_vblank_event(dev, e, seq, &now);
 		vblwait->reply.sequence = seq;
 	} else {
 		/* drm_handle_vblank_events will call drm_vblank_put */
@@ -1138,12 +1185,12 @@ void drm_handle_vblank_events(struct drm_device *dev, int crtc)
 		if ((seq - e->event.sequence) > (1<<23))
 			continue;
 
-		e->event.sequence = seq;
-		e->event.tv_sec = now.tv_sec;
-		e->event.tv_usec = now.tv_usec;
+		DRM_DEBUG("vblank event on %d, current %d\n",
+			  e->event.sequence, seq);
+
+		list_del(&e->base.link);
 		drm_vblank_put(dev, e->pipe);
-		list_move_tail(&e->base.link, &e->base.file_priv->event_list);
-		drm_event_wakeup(&e->base);
+		send_vblank_event(dev, e, seq, &now);
 	}
 
 	lockmgr(&dev->event_lock, LK_RELEASE);

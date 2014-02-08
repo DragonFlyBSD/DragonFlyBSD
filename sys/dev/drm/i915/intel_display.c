@@ -7282,14 +7282,10 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 	struct intel_unpin_work *work;
 	struct drm_i915_gem_object *obj;
-	struct drm_pending_vblank_event *e;
-	struct timeval tnow, tvbl;
 
 	/* Ignore early vblank irqs */
 	if (intel_crtc == NULL)
 		return;
-
-	microtime(&tnow);
 
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	work = intel_crtc->unpin_work;
@@ -7300,45 +7296,17 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 
 	intel_crtc->unpin_work = NULL;
 
-	if (work->event) {
-		e = work->event;
-		e->event.sequence = drm_vblank_count_and_time(dev, intel_crtc->pipe, &tvbl);
-
-		/* Called before vblank count and timestamps have
-		 * been updated for the vblank interval of flip
-		 * completion? Need to increment vblank count and
-		 * add one videorefresh duration to returned timestamp
-		 * to account for this. We assume this happened if we
-		 * get called over 0.9 frame durations after the last
-		 * timestamped vblank.
-		 *
-		 * This calculation can not be used with vrefresh rates
-		 * below 5Hz (10Hz to be on the safe side) without
-		 * promoting to 64 integers.
-		 */
-		if (10 * (timeval_to_ns(&tnow) - timeval_to_ns(&tvbl)) >
-		    9 * crtc->framedur_ns) {
-			e->event.sequence++;
-			tvbl = ns_to_timeval(timeval_to_ns(&tvbl) +
-					     crtc->framedur_ns);
-		}
-
-		e->event.tv_sec = tvbl.tv_sec;
-		e->event.tv_usec = tvbl.tv_usec;
-
-		list_add_tail(&e->base.link,
-			      &e->base.file_priv->event_list);
-		drm_event_wakeup(&e->base);
-	}
+	if (work->event)
+		drm_send_vblank_event(dev, intel_crtc->pipe, work->event);
 
 	drm_vblank_put(dev, intel_crtc->pipe);
+
+	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	obj = work->old_fb_obj;
 
 	atomic_clear_int(&obj->pending_flip, 1 << intel_crtc->plane);
-	if (atomic_load_acq_int(&obj->pending_flip) == 0)
-		wakeup(&obj->pending_flip);
-	lockmgr(&dev->event_lock, LK_RELEASE);
+	wakeup(&obj->pending_flip);
 
 	taskqueue_enqueue(dev_priv->tq, &work->task);
 }
