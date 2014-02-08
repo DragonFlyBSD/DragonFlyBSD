@@ -41,6 +41,9 @@
 #include "smbus_if.h"
 #include "pcidevs.h"
 
+#define IG4_RBUFSIZE	128
+#define IG4_RBUFMASK	(IG4_RBUFSIZE - 1)
+
 enum ig4_op { IG4_IDLE, IG4_READ, IG4_WRITE };
 
 struct ig4iic_softc {
@@ -56,9 +59,9 @@ struct ig4iic_softc {
 	int		intr_type;
 	enum ig4_op	op;
 	int		cmd;
-	int		pos;
-	int		len;
-	char		buf[128];
+	int		rnext;
+	int		rpos;
+	char		rbuf[IG4_RBUFSIZE];
 	int		error;
 	uint8_t		last_slave;
 	int		pci_attached : 1;

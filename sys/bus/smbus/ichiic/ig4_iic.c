@@ -132,12 +132,30 @@ wait_status(ig4iic_softc_t *sc, uint32_t status)
 	limit = sys_cputimer->freq / 40;
 
 	while (sys_cputimer->count() - count <= limit) {
+		/*
+		 * Check requested status
+		 */
 		v = reg_read(sc, IG4_REG_I2C_STA);
 		if (v & status) {
 			error = 0;
 			break;
 		}
 
+		/*
+		 * Shim RX_NOTEMPTY of the data was read by the
+		 * interrupt code.
+		 */
+		if (status & IG4_STATUS_RX_NOTEMPTY) {
+			if (sc->rpos != sc->rnext) {
+				error = 0;
+				break;
+			}
+		}
+
+		/*
+		 * Shim TX_EMPTY by resetting the retry timer if we
+		 * see a change in the transmit fifo level.
+		 */
 		if (status & IG4_STATUS_TX_EMPTY) {
 			v = reg_read(sc, IG4_REG_TXFLR) & IG4_FIFOLVL_MASK;
 			if (txlvl != v) {
@@ -146,6 +164,10 @@ wait_status(ig4iic_softc_t *sc, uint32_t status)
 			}
 		}
 
+		/*
+		 * The interrupt will wake us up if we are waiting for
+		 * read data, otherwise poll.
+		 */
 		if (status & IG4_STATUS_RX_NOTEMPTY) {
 			lksleep(sc, &sc->lk, 0, "i2cwait", (hz + 99) / 100);
 		} else {
@@ -153,6 +175,26 @@ wait_status(ig4iic_softc_t *sc, uint32_t status)
 		}
 	}
 	return error;
+}
+
+/*
+ * Read I2C data.  The data might have already been read by
+ * the interrupt code, otherwise it is sitting in the data
+ * register.
+ */
+static
+uint8_t
+data_read(ig4iic_softc_t *sc)
+{
+	uint8_t c;
+
+	if (sc->rpos == sc->rnext) {
+		c = (uint8_t)reg_read(sc, IG4_REG_DATA_CMD);
+	} else {
+		c = sc->rbuf[sc->rpos & IG4_RBUFMASK];
+		++sc->rpos;
+	}
+	return c;
 }
 
 /*
@@ -276,6 +318,12 @@ smb_transaction(ig4iic_softc_t *sc, char cmd, int op,
 			last |= IG4_DATA_STOP;
 		reg_write(sc, IG4_REG_DATA_CMD, last);
 		last = 0;
+
+		/*
+		 * Clean out any previously received data
+		 */
+		sc->rpos = 0;
+		sc->rnext = 0;
 	}
 
 	/*
@@ -351,7 +399,7 @@ smb_transaction(ig4iic_softc_t *sc, char cmd, int op,
 		error = wait_status(sc, IG4_STATUS_RX_NOTEMPTY);
 		if (error)
 			goto done;
-		last = reg_read(sc, IG4_REG_DATA_CMD);
+		last = data_read(sc);
 
 		if (op & SMB_TRANS_NOCNT) {
 			*rbuf = (u_char)last;
@@ -625,7 +673,7 @@ ig4iic_smb_recvb(device_t dev, u_char slave, char *byte)
 	set_slave_addr(sc, slave, 0);
 	reg_write(sc, IG4_REG_DATA_CMD, IG4_DATA_COMMAND_RD);
 	if (wait_status(sc, IG4_STATUS_RX_NOTEMPTY) == 0) {
-		*byte = (uint8_t)reg_read(sc, IG4_REG_DATA_CMD);
+		*byte = data_read(sc);
 		error = 0;
 	} else {
 		*byte = 0;
@@ -806,9 +854,16 @@ void
 ig4iic_intr(void *cookie)
 {
 	ig4iic_softc_t *sc = cookie;
+	uint32_t status;
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
 /*	reg_write(sc, IG4_REG_INTR_MASK, IG4_INTR_STOP_DET);*/
+	status = reg_read(sc, IG4_REG_I2C_STA);
+	if (status & IG4_STATUS_RX_NOTEMPTY) {
+		sc->rbuf[sc->rnext & IG4_RBUFMASK] =
+		    (uint8_t)reg_read(sc, IG4_REG_DATA_CMD);
+		++sc->rnext;
+	}
 	reg_read(sc, IG4_REG_CLR_INTR);
 	wakeup(sc);
 	lockmgr(&sc->lk, LK_RELEASE);
