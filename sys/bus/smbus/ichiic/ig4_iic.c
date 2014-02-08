@@ -122,12 +122,16 @@ int
 wait_status(ig4iic_softc_t *sc, uint32_t status)
 {
 	uint32_t v;
-	int retry;
 	int error;
 	int txlvl = -1;
+	sysclock_t count;
+	sysclock_t limit;
 
 	error = SMB_ETIMEOUT;
-	for (retry = 0; retry < 1000000 / 40; retry += 25) {
+	count = sys_cputimer->count();
+	limit = sys_cputimer->freq / 40;
+
+	while (sys_cputimer->count() - count <= limit) {
 		v = reg_read(sc, IG4_REG_I2C_STA);
 		if (v & status) {
 			error = 0;
@@ -138,12 +142,15 @@ wait_status(ig4iic_softc_t *sc, uint32_t status)
 			v = reg_read(sc, IG4_REG_TXFLR) & IG4_FIFOLVL_MASK;
 			if (txlvl != v) {
 				txlvl = v;
-				retry = 0;
+				count = sys_cputimer->count();
 			}
 		}
 
-		/*tsleep(sc, 0, "i2cwait", 1);*/
-		DELAY(25);
+		if (status & IG4_STATUS_RX_NOTEMPTY) {
+			lksleep(sc, &sc->lk, 0, "i2cwait", (hz + 99) / 100);
+		} else {
+			DELAY(25);
+		}
 	}
 	return error;
 }
@@ -426,6 +433,13 @@ ig4iic_attach(ig4iic_softc_t *sc)
 	reg_write(sc, IG4_REG_FS_SCL_HCNT, 100);
 	reg_write(sc, IG4_REG_FS_SCL_LCNT, 125);
 
+	/*
+	 * Use a threshold of 1 so we get interrupted on each character,
+	 * allowing us to use lksleep() in our poll code.  Not perfect
+	 * but this is better than using DELAY() for receiving data.
+	 */
+	reg_write(sc, IG4_REG_RX_TL, 1);
+
 	reg_write(sc, IG4_REG_CTL,
 		  IG4_CTL_MASTER |
 		  IG4_CTL_SLAVE_DISABLE |
@@ -446,7 +460,12 @@ ig4iic_attach(ig4iic_softc_t *sc)
 	reg_write(sc, IG4_REG_RESETS, IG4_RESETS_ASSERT);
 	reg_write(sc, IG4_REG_RESETS, IG4_RESETS_DEASSERT);
 #endif
-	reg_write(sc, IG4_REG_INTR_MASK, 0);
+
+	/*
+	 * Interrupt on STOP detect or receive character ready
+	 */
+	reg_write(sc, IG4_REG_INTR_MASK, IG4_INTR_STOP_DET |
+					 IG4_INTR_RX_FULL);
 	if (set_controller(sc, 0))
 		device_printf(sc->dev, "controller error during attach-1\n");
 	if (set_controller(sc, IG4_I2C_ENABLE))
@@ -789,8 +808,9 @@ ig4iic_intr(void *cookie)
 	ig4iic_softc_t *sc = cookie;
 
 	lockmgr(&sc->lk, LK_EXCLUSIVE);
-	reg_write(sc, IG4_REG_INTR_MASK, 0);
+/*	reg_write(sc, IG4_REG_INTR_MASK, IG4_INTR_STOP_DET);*/
 	reg_read(sc, IG4_REG_CLR_INTR);
+	wakeup(sc);
 	lockmgr(&sc->lk, LK_RELEASE);
 }
 
