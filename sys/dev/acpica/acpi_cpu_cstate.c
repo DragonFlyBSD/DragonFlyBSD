@@ -280,10 +280,6 @@ acpi_cst_attach(device_t dev)
     /* Probe for Cx state support. */
     acpi_cst_cx_probe(sc);
 
-    /* Finally,  call identify and probe/attach for child devices. */
-    bus_generic_probe(dev);
-    bus_generic_attach(dev);
-
     return (0);
 }
 
