@@ -188,6 +188,7 @@ struct cyapa_softc {
 	struct cyapa_fifo wfifo;	/* host->device */
 	uint8_t	ps2_cmd;		/* active p2_cmd waiting for data */
 	uint8_t ps2_acked;
+	int	active_tick;
 	int	data_signal;
 	int	blocked;
 	int	reporting_mode;		/* 0=disabled 1=enabled */
@@ -1190,9 +1191,9 @@ cyapa_poll_thread(void *arg)
 		tsleep(&sc->poll_flags, 0, "cyapw", (hz + freq - 1) / freq);
 		++sc->poll_ticks;
 		if (sc->count == 0)
-			freq = cyapa_slow_freq;
-		else if (isidle)
 			freq = cyapa_idle_freq;
+		else if (isidle)
+			freq = cyapa_slow_freq;
 		else
 			freq = cyapa_norm_freq;
 	}
@@ -1208,6 +1209,7 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 	int i;
 	int j;
 	int k;
+	int isidle;
 	short x;
 	short y;
 	short z;
@@ -1566,18 +1568,30 @@ cyapa_raw_input(struct cyapa_softc *sc, struct cyapa_regs *regs)
 		 */
 		but = 0;
 	}
+
+	/*
+	 * Detect state change from last reported state and
+	 * determine if we have gone idle.
+	 */
 	sc->track_but = but;
 	if (sc->delta_x || sc->delta_y || sc->delta_z ||
 	    sc->track_but != sc->reported_but) {
+		sc->active_tick = ticks;
 		if (sc->remote_mode == 0 && sc->reporting_mode)
 			sc->data_signal = 1;
+		isidle = 0;
+	} else if ((unsigned)(ticks - sc->active_tick) > hz) {
+		sc->active_tick = ticks - hz;	/* prevent overflow */
+		isidle = 1;
+	} else {
+		isidle = 0;
 	}
 	cyapa_unlock(sc);
 	cyapa_notify(sc);
 
 	if (cyapa_debug)
 		kprintf("\n");
-	return(0);
+	return(isidle);
 }
 
 /*
