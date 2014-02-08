@@ -1324,12 +1324,7 @@ mps_free(struct mps_softc *sc)
 	mps_lock(sc);
 	sc->mps_flags |= MPS_FLAGS_SHUTDOWN;
 	mps_unlock(sc);
-#if 0 /* XXX swildner */
-	/* Lock must not be held for this */
-	callout_drain(&sc->periodic);
-#else
-	callout_stop(&sc->periodic);
-#endif
+	callout_stop_sync(&sc->periodic);
 
 	if (((error = mps_detach_log(sc)) != 0) ||
 	    ((error = mps_detach_sas(sc)) != 0))

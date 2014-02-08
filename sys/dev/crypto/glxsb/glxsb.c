@@ -370,10 +370,7 @@ glxsb_detach(device_t dev)
 	}
 	spin_unlock(&sc->sc_sessions_lock);
 	crypto_unregister_all(sc->sc_cid);
-#if 0
-	/* XXX: need implementation of callout_drain or workaround */
-	callout_drain(&sc->sc_rngco);
-#endif
+	callout_stop_sync(&sc->sc_rngco);
 
 	/* XXX: thread taskqueues ? */
 	/* XXX: need implementation of taskqueue_drain or workaround */

@@ -1913,11 +1913,7 @@ ciss_free(struct ciss_softc *sc)
 	destroy_dev(sc->ciss_dev_t);
 
     /* Final cleanup of the callout. */
-#if 0 /* XXX swildner callout_drain */
-    callout_drain(&sc->ciss_periodic);
-#else
-    callout_stop(&sc->ciss_periodic);
-#endif
+    callout_stop_sync(&sc->ciss_periodic);
     lockuninit(&sc->ciss_lock);
 
     /* free the controller data */

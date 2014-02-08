@@ -347,7 +347,7 @@ wds_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_STATE, "%s: %s -> %s\n", __func__,
 		ieee80211_state_name[ostate], ieee80211_state_name[nstate]);
 	vap->iv_state = nstate;			/* state transition */
-	callout_stop(&vap->iv_mgtsend);		/* XXX callout_drain */
+	callout_stop_sync(&vap->iv_mgtsend);
 	if (ostate != IEEE80211_S_SCAN)
 		ieee80211_cancel_scan(vap);	/* background scan */
 	error = 0;

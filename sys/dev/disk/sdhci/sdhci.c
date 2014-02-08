@@ -784,10 +784,7 @@ sdhci_detach(device_t dev)
 		struct sdhci_slot *slot = &sc->slots[i];
 		device_t d;
 
-#if 0
-		/* XXX: need implementation of callout_drain or workaround */
-		callout_drain(&slot->card_callout);
-#endif
+		callout_stop_sync(&slot->card_callout);
 		taskqueue_drain(taskqueue_swi, &slot->card_task);
 
 		SDHCI_LOCK(slot);

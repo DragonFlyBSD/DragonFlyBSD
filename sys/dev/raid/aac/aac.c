@@ -675,11 +675,7 @@ aac_detach(device_t dev)
 	sc = device_get_softc(dev);
 	fwprintf(sc, HBA_FLAGS_DBG_FUNCTION_ENTRY_B, "");
 
-#if 0 /* XXX swildner */
-	callout_drain(&sc->aac_daemontime);
-#else
-	callout_stop(&sc->aac_daemontime);
-#endif
+	callout_stop_sync(&sc->aac_daemontime);
 
 	lockmgr(&sc->aac_io_lock, LK_EXCLUSIVE);
 	while (sc->aifflags & AAC_AIFFLAGS_RUNNING) {

@@ -5423,7 +5423,7 @@ ath_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 		csa_run_transition = 1;
 
 	wlan_serialize_exit();
-	callout_drain(&sc->sc_cal_ch);
+	callout_stop_sync(&sc->sc_cal_ch);
 	wlan_serialize_enter();
 	ath_hal_setledstate(ah, leds[nstate]);	/* set LED */
 

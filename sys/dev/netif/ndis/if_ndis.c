@@ -1035,7 +1035,7 @@ ndis_vap_delete(struct ieee80211vap *vap)
 	struct ndis_softc *sc = ifp->if_softc;
 
 	ndis_stop(sc);
-	callout_stop(&sc->ndis_scan_callout); /* XXX swildner callout_drain() */
+	callout_stop_sync(&sc->ndis_scan_callout);
 	ieee80211_vap_detach(vap);
 	kfree(nvp, M_80211_VAP);
 }
@@ -3104,7 +3104,7 @@ ndis_stop(struct ndis_softc *sc)
 	int			i;
 
 	ifp = sc->ifp;
-	callout_stop(&sc->ndis_stat_callout); /* XXX swildner callout_drain() */
+	callout_stop_sync(&sc->ndis_stat_callout);
 
 	NDIS_LOCK(sc);
 	sc->ndis_tx_timer = 0;

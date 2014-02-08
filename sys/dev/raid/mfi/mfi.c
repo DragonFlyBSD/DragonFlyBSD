@@ -1085,7 +1085,7 @@ mfi_free(struct mfi_softc *sc)
 	struct mfi_command *cm;
 	int i;
 
-	callout_stop(&sc->mfi_watchdog_callout); /* XXX callout_drain() */
+	callout_stop_sync(&sc->mfi_watchdog_callout);
 
 	if (sc->mfi_cdev != NULL)
 		destroy_dev(sc->mfi_cdev);
