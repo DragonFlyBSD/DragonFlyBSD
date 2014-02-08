@@ -72,6 +72,7 @@ SUBDIR=	alias \
 	fstat \
 	fsync \
 	ftp \
+	gcore \
 	gencat \
 	getconf \
 	getent \
@@ -269,8 +270,7 @@ SUBDIR+=vacation
 
 .if ${MACHINE_ARCH} == "i386"
 # Things that don't compile on x86_64 or are i386 specific:
-SUBDIR+=gcore \
-	ncplist \
+SUBDIR+=ncplist \
 	ncplogin \
 	smbutil
 .endif
