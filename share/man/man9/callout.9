@@ -35,9 +35,8 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/timeout.9,v 1.9.2.6 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/callout.9,v 1.6 2008/05/02 02:05:06 swildner Exp $
 .\"
-.Dd November 14, 2007
+.Dd February 8, 2014
 .Dt CALLOUT 9
 .Os
 .Sh NAME
@@ -45,6 +44,7 @@
 .Nm callout_init_mp ,
 .Nm callout_reset ,
 .Nm callout_stop ,
+.Nm callout_stop_sync ,
 .Nm callout_active ,
 .Nm callout_pending ,
 .Nm callout_deactivate
@@ -63,6 +63,8 @@ typedef void timeout_t (void *);
 .Fn callout_reset "struct callout *c" "int ticks" "timeout_t *func" "void *arg"
 .Ft int
 .Fn callout_stop "struct callout *c"
+.Ft void
+.Fn callout_stop_sync "struct callout *c"
 .Ft int
 .Fn callout_active "struct callout *c"
 .Ft int
@@ -125,6 +127,12 @@ It is safe to call
 on a callout that is not pending, so long as it is initialized.
 If the callout is not set, has already been serviced or is currently
 being serviced, then zero will be returned.
+The
+.Fn callout_stop_sync
+function is a synchronous version of
+.Fn callout_stop
+which ensures that the callout function has completed operation (if it
+was running) before returning.
 .Pp
 The
 .Fn callout_pending
