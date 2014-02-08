@@ -247,6 +247,7 @@ acpi_cpu_attach(device_t dev)
     acpi_set_handle(child, handle);
     acpi_set_magic(child, cpu_id);
 
+    bus_generic_probe(dev);
     bus_generic_attach(dev);
 
     AcpiInstallNotifyHandler(handle, ACPI_DEVICE_NOTIFY, acpi_cpu_notify, sc);
