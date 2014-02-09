@@ -2,8 +2,9 @@
 
 WARNS=	6
 PROG=	toeplitz
-BINDIR=	/usr/sbin
 NOMAN=
+
+BINDIR=	/usr/local/bin
 
 CFLAGS+= -I${.CURDIR}/..
 
