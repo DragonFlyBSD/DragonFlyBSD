@@ -207,6 +207,9 @@ enum no_fbc_reason {
 	FBC_MODULE_PARAM,
 };
 
+/* defined intel_pm.c */
+extern struct lock mchdev_lock;
+
 struct mem_block {
 	struct mem_block *next;
 	struct mem_block *prev;
