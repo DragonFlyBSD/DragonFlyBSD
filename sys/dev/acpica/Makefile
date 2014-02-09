@@ -31,7 +31,7 @@ KMOD	= acpi
 
 # ACPI CA sources
 SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
-SRCS+=	dbinput.c dbstats.c dbutils.c dbxface.c
+SRCS+=	dbinput.c dbstats.c dbtest.c dbutils.c dbxface.c
 SRCS+=	dbmethod.c dbnames.c
 SRCS+=	dmbuffer.c dmdeferred.c dmnames.c dmobject.c dmopcode.c
 SRCS+=	dmresrc.c dmresrcl.c dmresrcl2.c dmresrcs.c dmutils.c dmwalk.c

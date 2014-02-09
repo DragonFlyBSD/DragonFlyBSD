@@ -2241,6 +2241,7 @@ ${ACPICA_COMP_DIR}/debugger/dbinput.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbmethod.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbnames.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbstats.c		optional acpi acpi_debug
+${ACPICA_COMP_DIR}/debugger/dbtest.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbutils.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbxface.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/disassembler/dmbuffer.c	optional acpi acpi_debug

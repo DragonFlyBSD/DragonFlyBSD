@@ -29,6 +29,7 @@ SRCS+=	\
 	dbmethod.c \
 	dbnames.c \
 	dbstats.c \
+	dbtest.c \
 	dbutils.c \
 	dbxface.c \
 	dmbuffer.c \
