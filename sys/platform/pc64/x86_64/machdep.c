@@ -202,6 +202,7 @@ struct cpu_mwait_cx {
 static struct cpu_mwait_cx	cpu_mwait_cx_info[CPU_MWAIT_CX_MAX];
 static char			cpu_mwait_cx_supported[256];
 
+static int			cpu_mwait_c1_hints_cnt;
 static int			cpu_mwait_hints_cnt;
 static int			*cpu_mwait_hints;
 
@@ -212,6 +213,7 @@ static int			*cpu_mwait_deep_hints;
 
 static u_int			cpu_idle_repeat = CPU_IDLE_REPEAT_DEFAULT;
 static u_long			cpu_idle_repeat_max = CPU_IDLE_REPEAT_DEFAULT;
+static u_int			cpu_mwait_repeat_shift = 1;
 
 #define CPU_MWAIT_C3_PREAMBLE_BM_ARB	0x1
 #define CPU_MWAIT_C3_PREAMBLE_BM_STS	0x2
@@ -233,6 +235,8 @@ SYSCTL_PROC(_machdep_mwait_CX, OID_AUTO, idle, CTLTYPE_STRING|CTLFLAG_RW,
     NULL, 0, cpu_mwait_cx_idle_sysctl, "A", "");
 SYSCTL_PROC(_machdep_mwait_CX, OID_AUTO, spin, CTLTYPE_STRING|CTLFLAG_RW,
     NULL, 0, cpu_mwait_cx_spin_sysctl, "A", "");
+SYSCTL_UINT(_machdep_mwait_CX, OID_AUTO, repeat_shift, CTLFLAG_RW,
+    &cpu_mwait_repeat_shift, 0, "");
 
 long physmem = 0;
 
@@ -482,6 +486,7 @@ struct cpu_idle_stat {
 	u_long	spin;
 	u_long	repeat;
 	u_long	repeat_last;
+	u_long	repeat_delta;
 	u_long	mwait_cx[CPU_MWAIT_CX_MAX];
 } __cachealign;
 
@@ -584,6 +589,7 @@ cpu_mwait_attach(void)
 	/*
 	 * Non-deep C-states
 	 */
+	cpu_mwait_c1_hints_cnt = cpu_mwait_cx_info[CPU_MWAIT_C1].subcnt;
 	for (i = CPU_MWAIT_C1; i < CPU_MWAIT_C3; ++i)
 		cpu_mwait_hints_cnt += cpu_mwait_cx_info[i].subcnt;
 	cpu_mwait_hints = kmalloc(sizeof(int) * cpu_mwait_hints_cnt,
@@ -606,7 +612,7 @@ cpu_mwait_attach(void)
 	     cpu_mwait_hints_cnt, hint_idx));
 
 	if (bootverbose) {
-		kprintf("MWAIT hints:\n");
+		kprintf("MWAIT hints (%d C1 hints):\n", cpu_mwait_c1_hints_cnt);
 		for (i = 0; i < cpu_mwait_hints_cnt; ++i) {
 			int hint = cpu_mwait_hints[i];
 
@@ -650,7 +656,7 @@ cpu_mwait_attach(void)
 			    hint);
 		}
 	}
-	cpu_idle_repeat_max = 64 * cpu_mwait_deep_hints_cnt;
+	cpu_idle_repeat_max = 256 * cpu_mwait_deep_hints_cnt;
 }
 
 static void
@@ -1070,7 +1076,12 @@ cpu_mwait_cx_hint(struct cpu_idle_stat *stat)
 		goto done;
 	}
 
-	idx = (stat->repeat + stat->repeat_last) >> 1;
+	idx = (stat->repeat + stat->repeat_last + stat->repeat_delta) >>
+	    cpu_mwait_repeat_shift;
+	if (idx >= cpu_mwait_c1_hints_cnt) {
+		/* Step up faster, once we walked through all C1 states */
+		stat->repeat_delta += 1 << (cpu_mwait_repeat_shift + 1);
+	}
 	if (cpu_mwait_halt == CPU_MWAIT_HINT_AUTODEEP) {
 		if (idx >= cpu_mwait_deep_hints_cnt)
 			idx = cpu_mwait_deep_hints_cnt - 1;
@@ -1139,6 +1150,7 @@ cpu_idle(void)
 			if (stat->repeat > cpu_idle_repeat_max)
 				stat->repeat = cpu_idle_repeat_max;
 			stat->repeat_last = 0;
+			stat->repeat_delta = 0;
 		}
 		++stat->repeat_last;
 
