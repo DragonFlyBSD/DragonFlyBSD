@@ -22,6 +22,7 @@ SRCS	= \
 	intel_opregion.c \
 	intel_overlay.c \
 	intel_panel.c \
+	intel_pm.c \
 	intel_ringbuffer.c \
 	intel_sdvo.c \
 	intel_sprite.c \
