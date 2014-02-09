@@ -1,7 +1,9 @@
-# $FreeBSD: src/usr.sbin/daemon/Makefile,v 1.1.2.1 2002/08/28 17:25:54 sheldonh Exp $
-# $DragonFly: src/usr.sbin/daemon/Makefile,v 1.3 2004/12/21 23:30:57 liamfoy Exp $
+# $FreeBSD: head/usr.sbin/daemon/Makefile 201390 2010-01-02 11:07:44Z ed $
 
 PROG=	daemon
 MAN=	daemon.8
+
+DPADD=	${LIBUTIL}
+LDADD=	-lutil
 
 .include <bsd.prog.mk>
