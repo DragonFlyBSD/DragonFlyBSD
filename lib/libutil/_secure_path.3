@@ -17,7 +17,7 @@
 .\" 5. Modifications may be freely made to this file providing the above
 .\"    conditions are met.
 .\"
-.\" $FreeBSD: src/lib/libutil/_secure_path.3,v 1.7.2.4 2002/03/19 01:49:54 dd Exp $
+.\" $FreeBSD: head/lib/libutil/_secure_path.3 206622 2010-04-14 19:08:06Z uqs $
 .\"
 .Dd May 2, 1997
 .Dt _SECURE_PATH 3
@@ -58,8 +58,9 @@ gid, if gid is not -1.
 This function returns zero if the file exists and may be
 considered secure, -2 if the file does not exist, and
 -1 otherwise to indicate a security failure.
+The
 .Xr syslog 3
-is used to log any failure of this function, including the
+function is used to log any failure of this function, including the
 reason, at LOG_ERR priority.
 .Sh SEE ALSO
 .Xr lstat 2 ,

@@ -354,9 +354,12 @@ main(int argc, char **argv)
 #ifdef DEBUG
 	if (f_debug == 0) {
 #endif
+		struct pidfh *pfh = NULL;
+
+		pfh = pidfile_open(NULL, 600, NULL);
 		if (daemon(0, 0) == -1)
 			err(1, "daemon failed");
-		pidfile(NULL);
+		pidfile_write(pfh);
 #ifdef DEBUG
 	}
 #endif

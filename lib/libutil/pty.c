@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)pty.c	8.3 (Berkeley) 5/16/94
- * $FreeBSD: src/lib/libutil/pty.c,v 1.10 1999/08/28 00:05:51 peter Exp $
+ * $FreeBSD: head/lib/libutil/pty.c 184634 2008-11-04 13:50:50Z des $
  */
 
 #include <sys/types.h>
@@ -37,59 +37,42 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <libutil.h>
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
 
-#include "libutil.h"
-
 int
 openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 	struct winsize *winp)
 {
-	char line[] = "/dev/ptyXX";
-	const char *cp1, *cp2;
-	int master, slave, ttygid;
-	struct group *gr;
-	const char *slave_name;
-
-	if ((gr = getgrnam("tty")) != NULL)
-		ttygid = gr->gr_gid;
-	else
-		ttygid = -1;
+	const char *slavename;
+	int master, slave;
 
 	master = posix_openpt(O_RDWR|O_NOCTTY);
 	if (master == -1)
-		goto fallback;
+		return (-1);
 
-	if (grantpt(master) != 0) {
-		close(master);
-		goto fallback;
-	}
+	if (grantpt(master) == -1)
+		goto bad;
 
-	if (unlockpt(master) != 0) {
-		close(master);
-		goto fallback;
-	}
+	if (unlockpt(master) == -1)
+		goto bad;
 
-	slave_name = ptsname(master);
-	if (slave_name == NULL) {
-		close(master);
-		goto fallback;
-	}
+	slavename = ptsname(master);
+	if (slavename == NULL)
+		goto bad;
 
-	slave = open(slave_name, O_RDWR);
-	if (slave == -1) {
-		close(master);
-		goto fallback;
-	}
+	slave = open(slavename, O_RDWR);
+	if (slave == -1)
+		goto bad;
 
 	*amaster = master;
 	*aslave = slave;
 
 	if (name)
-		strcpy(name, slave_name);
+		strcpy(name, slavename);
 	if (termp)
 		tcsetattr(slave, TCSAFLUSH, termp);
 	if (winp)
@@ -97,38 +80,7 @@ openpty(int *amaster, int *aslave, char *name, struct termios *termp,
 
 	return (0);
 
-fallback:
-	for (cp1 = "pqrsPQRS"; *cp1; cp1++) {
-		line[8] = *cp1;
-		for (cp2 = "0123456789abcdefghijklmnopqrstuv"; *cp2; cp2++) {
-			line[5] = 'p';
-			line[9] = *cp2;
-			if ((master = open(line, O_RDWR, 0)) == -1) {
-				if (errno == ENOENT)
-					return (-1);	/* out of ptys */
-			} else {
-				line[5] = 't';
-				(void) chown(line, getuid(), ttygid);
-				(void) chmod(line, S_IRUSR|S_IWUSR|S_IWGRP);
-				(void) revoke(line);
-				if ((slave = open(line, O_RDWR, 0)) != -1) {
-					*amaster = master;
-					*aslave = slave;
-					if (name)
-						strcpy(name, line);
-					if (termp)
-						(void) tcsetattr(slave,
-							TCSAFLUSH, termp);
-					if (winp)
-						(void) ioctl(slave, TIOCSWINSZ,
-							(char *)winp);
-					return (0);
-				}
-				(void) close(master);
-			}
-		}
-	}
-	errno = ENOENT;	/* out of ptys */
+bad:	close(master);
 	return (-1);
 }
 

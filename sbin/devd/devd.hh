@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sbin/devd/devd.hh,v 1.5 2007/12/21 01:00:04 imp Exp $
- * $DragonFly: src/sbin/devd/devd.hh,v 1.1 2008/10/03 00:26:21 hasso Exp $
+ * $FreeBSD: head/sbin/devd/devd.hh 247760 2013-03-04 02:21:24Z eadler $
  */
 
 #ifndef DEVD_HH
@@ -91,6 +90,7 @@ public:
 	virtual bool do_match(config &);
 	virtual bool do_action(config &) { return true; }
 private:
+	bool _inv;
 	std::string _var;
 	std::string _re;
 	regex_t _regex;
@@ -144,7 +144,7 @@ private:
 class config
 {
 public:
-	config() : _pidfile("") { push_var_table(); }
+	config() { push_var_table(); }
 	virtual ~config() { reset(); }
 	void add_attach(int, event_proc *);
 	void add_detach(int, event_proc *);
@@ -154,6 +154,7 @@ public:
 	void set_pidfile(const char *);
 	void reset();
 	void parse();
+	void close_pidfile();
 	void open_pidfile();
 	void write_pidfile();
 	void remove_pidfile();
@@ -161,7 +162,8 @@ public:
 	void pop_var_table();
 	void set_variable(const char *var, const char *val);
 	const std::string &get_variable(const std::string &var);
-	const std::string expand_string(const std::string &var);
+	const std::string expand_string(const char * var, 
+	    const char * prepend = NULL, const char * append = NULL);
 	char *set_vars(char *);
 	void find_and_execute(char);
 protected:

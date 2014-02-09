@@ -1,6 +1,4 @@
 /*	$NetBSD: fparseln.c,v 1.9 1999/09/20 04:48:06 lukem Exp $	*/
-/* $FreeBSD: src/lib/libutil/fparseln.c,v 1.2 1999/12/29 17:50:33 peter Exp $ */
-/* $DragonFly: src/lib/libutil/fparseln.c,v 1.6 2005/03/16 06:35:48 cpressey Exp $ */
 
 /*
  * Copyright (c) 1997 Christos Zoulas.  All rights reserved.
@@ -30,20 +28,18 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libutil/fparseln.c,v 1.2 1999/12/29 17:50:33 peter Exp $
+ * $FreeBSD: head/lib/libutil/fparseln.c 121193 2003-10-18 10:04:16Z markm $
  */
 
 #include <sys/types.h>
-
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
+#include <libutil.h>
 
-#include "libutil.h"
-
-static int isescaped (const char *, const char *, int);
+static int isescaped(const char *, const char *, int);
 
 /* isescaped():
  *	Return true if the character in *p that belongs to a string
@@ -55,8 +51,10 @@ isescaped(const char *sp, const char *p, int esc)
 	const char     *cp;
 	size_t		ne;
 
+#if 0
 	_DIAGASSERT(sp != NULL);
 	_DIAGASSERT(p != NULL);
+#endif
 
 	/* No escape character */
 	if (esc == '\0')
@@ -87,7 +85,9 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 	int	cnt;
 	char	esc, con, nl, com;
 
+#if 0
 	_DIAGASSERT(fp != NULL);
+#endif
 
 	len = 0;
 	buf = NULL;
@@ -192,7 +192,7 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 #ifdef TEST
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	char   *ptr;
 	size_t	size, line;

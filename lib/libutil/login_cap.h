@@ -22,8 +22,7 @@
  * Low-level routines relating to the user capabilities database
  *
  *	Was login_cap.h,v 1.9 1997/05/07 20:00:01 eivind Exp
- * $FreeBSD: src/lib/libutil/login_cap.h,v 1.3.2.1 2000/09/20 11:19:54 green Exp $
- * $DragonFly: src/lib/libutil/login_cap.h,v 1.5 2008/10/29 22:03:12 swildner Exp $
+ * $FreeBSD: head/lib/libutil/login_cap.h 219304 2011-03-05 12:40:35Z trasz $
  */
 
 #ifndef _LOGIN_CAP_H_
@@ -48,7 +47,10 @@
 #define LOGIN_SETUMASK		0x0020		/* set umask, obviously */
 #define LOGIN_SETUSER		0x0040		/* set user (via setuid) */
 #define LOGIN_SETENV		0x0080		/* set user environment */
-#define	LOGIN_SETALL		0x00ff		/* set everything */
+#define LOGIN_SETMAC		0x0100		/* set user default MAC label */
+#define LOGIN_SETCPUMASK	0x0200		/* set user cpumask */
+#define LOGIN_SETLOGINCLASS	0x0400		/* set login class in the kernel */
+#define LOGIN_SETALL		0x07ff		/* set everything */
 
 #define BI_AUTH		"authorize"		/* accepted authentication */
 #define BI_REJECT	"reject"		/* rejected authentication */
@@ -97,63 +99,67 @@ typedef struct login_time {
 __BEGIN_DECLS
 struct passwd;
 
-void login_close (login_cap_t *);
-login_cap_t *login_getclassbyname (const char *, const struct passwd *);
-login_cap_t *login_getclass (const char *);
-login_cap_t *login_getpwclass (const struct passwd *);
-login_cap_t *login_getuserclass (const struct passwd *);
+void login_close(login_cap_t *);
+login_cap_t *login_getclassbyname(const char *, const struct passwd *);
+login_cap_t *login_getclass(const char *);
+login_cap_t *login_getpwclass(const struct passwd *);
+login_cap_t *login_getuserclass(const struct passwd *);
 
-char *login_getcapstr (login_cap_t*, const char *, char *, char *);
-char **login_getcaplist (login_cap_t *, const char *, const char *);
-char *login_getstyle (login_cap_t *, char *, const char *);
-rlim_t login_getcaptime (login_cap_t *, const char *, rlim_t, rlim_t);
-rlim_t login_getcapnum (login_cap_t *, const char *, rlim_t, rlim_t);
-rlim_t login_getcapsize (login_cap_t *, const char *, rlim_t, rlim_t);
-char *login_getpath (login_cap_t *, const char *, char *);
-int login_getcapbool (login_cap_t *, const char *, int);
-const char *login_setcryptfmt (login_cap_t *, const char *, const char *);
+const char *login_getcapstr(login_cap_t *, const char *, const char *,
+    const char *);
+const char **login_getcaplist(login_cap_t *, const char *, const char *);
+const char *login_getstyle(login_cap_t *, const char *, const char *);
+rlim_t login_getcaptime(login_cap_t *, const char *, rlim_t, rlim_t);
+rlim_t login_getcapnum(login_cap_t *, const char *, rlim_t, rlim_t);
+rlim_t login_getcapsize(login_cap_t *, const char *, rlim_t, rlim_t);
+const char *login_getpath(login_cap_t *, const char *, const char *);
+int login_getcapbool(login_cap_t *, const char *, int);
+const char *login_setcryptfmt(login_cap_t *, const char *, const char *);
 
-int setclasscontext (const char*, unsigned int);
-int setusercontext (login_cap_t*, const struct passwd*, uid_t, unsigned int);
-void setclassresources (login_cap_t *);
-int setclassenvironment (login_cap_t *, const struct passwd *, int);
+int setclasscontext(const char *, unsigned int);
+int setusercontext(login_cap_t *, const struct passwd *, uid_t, unsigned int);
+void setclassresources(login_cap_t *);
+void setclassenvironment(login_cap_t *, const struct passwd *, int);
 
 /* Most of these functions are deprecated */
-int auth_approve (login_cap_t*, const char*, const char*);
-int auth_check (const char *, const char *, const char *, const char *, int *);
-void auth_env (void);
-char *auth_mkvalue (const char *n);
-int auth_response (const char *, const char *, const char *, const char *, int *, const char *, const char *);
-void auth_rmfiles (void);
-int auth_scan (int);
-int auth_script (const char*, ...);
-int auth_script_data (const char *, int, const char *, ...);
-char *auth_valud (const char *);
-int auth_setopt (const char *, const char *);
-void auth_clropts (void);
+int auth_approve(login_cap_t *, const char *, const char *);
+int auth_check(const char *, const char *, const char *, const char *, int *);
+void auth_env(void);
+char *auth_mkvalue(const char *);
+int auth_response(const char *, const char *, const char *, const char *, int *,
+    const char *, const char *);
+void auth_rmfiles(void);
+int auth_scan(int);
+int auth_script(const char *, ...);
+int auth_script_data(const char *, int, const char *, ...);
+char *auth_valud(const char *);
+int auth_setopt(const char *, const char *);
+void auth_clropts(void);
 
-void auth_checknologin (login_cap_t*);
-int auth_cat (const char*);
+void auth_checknologin(login_cap_t *);
+int auth_cat(const char *);
 
-int auth_ttyok (login_cap_t*, const char *);
-int auth_hostok (login_cap_t*, const char *, char const *);
-int auth_timeok (login_cap_t*, time_t);
+int auth_ttyok(login_cap_t *, const char *);
+int auth_hostok(login_cap_t *, const char *, char const *);
+int auth_timeok(login_cap_t *, time_t);
 
 struct tm;
 
-login_time_t parse_lt (const char *);
+login_time_t parse_lt(const char *);
 int in_lt(const login_time_t *, time_t *);
-int in_ltm (const login_time_t *, struct tm *, time_t *);
-int in_ltms (const login_time_t *, struct tm *, time_t *);
+int in_ltm(const login_time_t *, struct tm *, time_t *);
+int in_ltms(const login_time_t *, struct tm *, time_t *);
 int in_lts(const login_time_t *, time_t *);
 
 /* helper functions */
 
-int login_strinlist (char **, char const *, int);
-int login_str2inlist (char **, const char *, const char *, int);
-login_time_t * login_timelist (login_cap_t *, char const *, int *, login_time_t **);
-int login_ttyok (login_cap_t *, const char *, const char *, const char *);
-int login_hostok (login_cap_t *, const char *, const char *, const char *, const char *);
+int login_strinlist(const char **, char const *, int);
+int login_str2inlist(const char **, const char *, const char *, int);
+login_time_t * login_timelist(login_cap_t *, char const *, int *,
+    login_time_t **);
+int login_ttyok(login_cap_t *, const char *, const char *, const char *);
+int login_hostok(login_cap_t *, const char *, const char *, const char *,
+    const char *);
 
 __END_DECLS
 

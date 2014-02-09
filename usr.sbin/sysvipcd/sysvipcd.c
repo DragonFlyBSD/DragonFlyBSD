@@ -336,6 +336,7 @@ main(int argc, char *argv[])
 	int c;
 	int error;
 	char *pidfilename = NULL;
+	struct pidfh *pfh = NULL;
 
 	sysvd_debug = 0;
 	sysvd_daemon = 1;
@@ -374,8 +375,9 @@ main(int argc, char *argv[])
 		goto out;
 		
 	if (sysvd_daemon == 1) {
+		pfh = pidfile_open(pidfilename, 600, NULL);
 		daemon(1,0);
-		pidfile(pidfilename);
+		pidfile_write(pfh);
 	}
 
 	daemon_func();

@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libutil/trimdomain.3,v 1.3.2.3 2001/12/17 10:08:32 ru Exp $
+.\" $FreeBSD: head/lib/libutil/trimdomain.3 206622 2010-04-14 19:08:06Z uqs $
 .\"
 .Dd April 7, 1999
 .Dt TRIMDOMAIN 3
@@ -44,14 +44,17 @@ removes the current domain name from the passed
 .Ar fullhost
 name by writing a
 .Dv NUL
-character over the first period of the passed name.  The current domain
+character over the first period of the passed name.
+The current domain
 name is determined by calling
 .Xr gethostname 3
-and removing everything up to the first period.  The name is determined
+and removing everything up to the first period.
+The name is determined
 the first time this function is called and is cached for future use.
 .Pp
+The
 .Fn trimdomain
-will only trim the domain name if the passed
+function will only trim the domain name if the passed
 .Ar fullname
 ends with the current domain name and if the length of the resulting host
 name does not exceed
@@ -75,7 +78,8 @@ numbers to the end of the base host name and resulting in
 .Ar host : nn Op . Ar nn .
 .Sm on
 .Sh RETURN VALUES
+The
 .Fn trimdomain
-does not return a value.
+function does not return a value.
 .Sh SEE ALSO
 .Xr gethostname 3

@@ -624,6 +624,7 @@ main(int ac, char* av[])
 	int	daemonize = 1;
 	char	*prog;
 	int	logopt = LOG_NDELAY | LOG_PID;
+	struct pidfh *pfh = NULL;
 
 	while ((ch = getopt(ac, av, "df:v")) != -1) {
 		switch (ch) {
@@ -642,6 +643,7 @@ main(int ac, char* av[])
 		}
 	}
 
+	pfh = pidfile_open(NULL, 600, NULL);
 	if (daemonize)
 		daemon(0, 0);
 
@@ -671,7 +673,7 @@ main(int ac, char* av[])
 	}
 
 	restart();
-	pidfile(NULL);
+	pidfile_write(pfh);
 	event_loop();
  	exit(EXIT_SUCCESS);
 }

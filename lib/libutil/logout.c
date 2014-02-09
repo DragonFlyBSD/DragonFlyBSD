@@ -28,7 +28,6 @@
  *
  * @(#)logout.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libutil/logout.c,v 1.6.2.2 2000/09/20 09:54:16 jkh Exp $
- * $DragonFly: src/lib/libutil/logout.c,v 1.5 2007/12/30 13:44:33 matthias Exp $
  */
 
 #include <sys/types.h>
@@ -39,8 +38,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "libutil.h"
+#include <libutil.h>
 
 typedef struct utmp UTMP;
 

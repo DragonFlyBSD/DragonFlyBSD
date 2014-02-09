@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/devd/devd.cc,v 1.33 2006/09/17 22:49:26 ru Exp $
- * $DragonFly: src/sbin/devd/devd.cc,v 1.1 2008/10/03 00:26:21 hasso Exp $
+
  */
 
 /*
@@ -80,6 +80,7 @@ static const char nomatch = '?';
 static const char attach = '+';
 static const char detach = '-';
 
+static struct pidfh *pfh;
 int Dflag;
 int dflag;
 int nflag;
@@ -154,18 +155,18 @@ action::~action()
 bool
 action::do_action(config &c)
 {
-	string s = c.expand_string(_cmd);
+	string s = c.expand_string(_cmd.c_str());
 	if (Dflag)
 		fprintf(stderr, "Executing '%s'\n", s.c_str());
 	::system(s.c_str());
 	return (true);
 }
 
-match::match(config &c, const char *var, const char *re)
-	: _var(var), _re("^")
+match::match(config &c, const char *var, const char *re) :
+	_inv(re[0] == '!'),
+	_var(var),
+	_re(c.expand_string(_inv ? re + 1 : re, "^", "$"))
 {
-	_re.append(c.expand_string(string(re)));
-	_re.append("$");
 	regcomp(&_regex, _re.c_str(), REG_EXTENDED | REG_NOSUB | REG_ICASE);
 }
 
@@ -180,12 +181,21 @@ match::do_match(config &c)
 	const string &value = c.get_variable(_var);
 	bool retval;
 
+	/*
+	 * This function gets called WAY too often to justify calling syslog()
+	 * each time, even at LOG_DEBUG.  Because if syslogd isn't running, it
+	 * can consume excessive amounts of systime inside of connect().  Only
+	 * log when we're in -d mode.
+	 */
 	if (Dflag)
 		fprintf(stderr, "Testing %s=%s against %s\n", _var.c_str(),
 		    value.c_str(), _re.c_str());
 
 	retval = (regexec(&_regex, value.c_str(), 0, NULL, 0) == 0);
-	return retval;
+	if (_inv == 1)
+		retval = (retval == 0) ? 1 : 0;
+
+	return (retval);
 }
 
 #include <sys/sockio.h>
@@ -256,7 +266,7 @@ media::do_match(config &c)
 		close(s);
 	}
 
-	return retval;
+	return (retval);
 }
 
 const string var_list::bogus = "_$_$_$_$_B_O_G_U_S_$_$_$_$_";
@@ -282,6 +292,12 @@ var_list::is_set(const string &var) const
 void
 var_list::set_variable(const string &var, const string &val)
 {
+	/*
+	 * This function gets called WAY too often to justify calling syslog()
+	 * each time, even at LOG_DEBUG.  Because if syslogd isn't running, it
+	 * can consume excessive amounts of systime inside of connect().  Only
+	 * log when we're in -d mode.
+	 */
 	if (Dflag)
 		fprintf(stderr, "setting %s=%s\n", var.c_str(), val.c_str());
 	_vars[var] = val;
@@ -333,6 +349,7 @@ config::parse_files_in_dir(const char *dirname)
 			parse_one_file(path);
 		}
 	}
+	closedir(dirp);
 }
 
 class epv_greater {
@@ -366,8 +383,37 @@ config::parse(void)
 void
 config::open_pidfile()
 {
-	if (pidfile(NULL))
-		errx(1, "devd already running");
+	pid_t otherpid;
+
+	if (_pidfile.empty())
+		return;
+	pfh = pidfile_open(_pidfile.c_str(), 0600, &otherpid);
+	if (pfh == NULL) {
+		if (errno == EEXIST)
+			errx(1, "devd already running, pid: %d", (int)otherpid);
+		warn("cannot open pid file");
+	}
+}
+
+void
+config::write_pidfile()
+{
+
+	pidfile_write(pfh);
+}
+
+void
+config::close_pidfile()
+{
+
+	pidfile_close(pfh);
+}
+
+void
+config::remove_pidfile()
+{
+
+	pidfile_remove(pfh);
 }
 
 void
@@ -459,7 +505,7 @@ void
 config::expand_one(const char *&src, string &dst)
 {
 	int count;
-	string buffer, varstr;
+	string buffer;
 
 	src++;
 	// $$ -> $
@@ -496,25 +542,37 @@ config::expand_one(const char *&src, string &dst)
 	do {
 		buffer += *src++;
 	} while (is_id_char(*src));
-	buffer.append("", 1);
-	varstr = get_variable(buffer.c_str());
-	dst.append(varstr);
+	dst.append(get_variable(buffer));
 }
 
 const string
-config::expand_string(const string &s)
+config::expand_string(const char *src, const char *prepend, const char *append)
 {
-	const char *src;
+	const char *var_at;
 	string dst;
 
-	src = s.c_str();
-	while (*src) {
-		if (*src == '$')
+	/*
+	 * 128 bytes is enough for 2427 of 2438 expansions that happen
+	 * while parsing config files, as tested on 2013-01-30.
+	 */
+	dst.reserve(128);
+
+	if (prepend != NULL)
+		dst = prepend;
+
+	for (;;) {
+		var_at = strchr(src, '$');
+		if (var_at == NULL) {
+			dst.append(src);
+			break;
+		}
+		dst.append(src, var_at - src);
+		src = var_at;
 			expand_one(src, dst);
-		else
-			dst.append(src++, 1);
 	}
-	dst.append("", 1);
+
+	if (append != NULL)
+		dst.append(append);
 
 	return (dst);
 }
@@ -608,7 +666,7 @@ config::find_and_execute(char type)
 
 }
 
-
+
 static void
 process_event(char *buffer)
 {
@@ -632,9 +690,13 @@ process_event(char *buffer)
 		if (sp == NULL)
 			return;	/* Can't happen? */
 		*sp++ = '\0';
+		while (isspace(*sp))
+			sp++;
 		if (strncmp(sp, "at ", 3) == 0)
 			sp += 3;
 		sp = cfg.set_vars(sp);
+		while (isspace(*sp))
+			sp++;
 		if (strncmp(sp, "on ", 3) == 0)
 			cfg.set_variable("bus", sp + 3);
 		break;
@@ -645,9 +707,13 @@ process_event(char *buffer)
 			return;	/* Can't happen? */
 		*sp++ = '\0';
 		cfg.set_variable("device-name", buffer);
+		while (isspace(*sp))
+			sp++;
 		if (strncmp(sp, "at ", 3) == 0)
 			sp += 3;
 		sp = cfg.set_vars(sp);
+		while (isspace(*sp))
+			sp++;
 		if (strncmp(sp, "on ", 3) == 0)
 			cfg.set_variable("bus", sp + 3);
 		break;
@@ -739,8 +805,10 @@ event_loop(void)
 			if (rv == 0) {
 				if (Dflag)
 					fprintf(stderr, "Calling daemon\n");
-				daemon(0, 0);
+				cfg.remove_pidfile();
 				cfg.open_pidfile();
+				daemon(0, 0);
+				cfg.write_pidfile();
 				once++;
 			}
 		}
@@ -774,7 +842,7 @@ event_loop(void)
 	}
 	close(fd);
 }
-
+
 /*
  * functions that the parser uses.
  */
@@ -859,7 +927,7 @@ set_variable(const char *var, const char *val)
 	free(const_cast<char *>(val));
 }
 
-
+
 
 static void
 gensighand(int)
@@ -921,10 +989,9 @@ main(int argc, char **argv)
 
 	cfg.parse();
 	if (!dflag && nflag) {
-		if (Dflag)
-			fprintf(stderr, "Calling daemon\n");
-		daemon(0, 0);
 		cfg.open_pidfile();
+		daemon(0, 0);
+		cfg.write_pidfile();
 	}
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGHUP, gensighand);

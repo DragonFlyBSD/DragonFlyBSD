@@ -26,26 +26,23 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libutil/uucplock.c,v 1.12.2.1 2000/10/09 20:20:52 brian Exp $
- * $DragonFly: src/lib/libutil/uucplock.c,v 1.6 2007/12/30 13:44:33 matthias Exp $
+ * $FreeBSD: head/lib/libutil/uucplock.c 255007 2013-08-28 21:10:37Z jilles $
  *
  * @(#)uucplock.c	8.1 (Berkeley) 6/6/93
  */
 
 #include <sys/types.h>
 #include <sys/file.h>
-
 #include <dirent.h>
-#include <errno.h>
 #include <limits.h>
+#include <errno.h>
 #include <paths.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "libutil.h"
+#include <libutil.h>
 
 #define MAXTRIES 5
 
@@ -68,8 +65,8 @@ uu_lock(const char *tty_name)
 {
 	int fd, tmpfd, i;
 	pid_t pid, pid_old;
-	char lckname[PATH_MAX],
-	     lcktmpname[PATH_MAX];
+	char lckname[sizeof(_PATH_UUCPLOCK) + NAME_MAX],
+	     lcktmpname[sizeof(_PATH_UUCPLOCK) + NAME_MAX];
 	int err, uuerr;
 
 	pid = getpid();
@@ -77,7 +74,8 @@ uu_lock(const char *tty_name)
 			pid);
 	(void)snprintf(lckname, sizeof(lckname), _PATH_UUCPLOCK LOCKFMT,
 			tty_name);
-	if ((tmpfd = creat(lcktmpname, 0664)) < 0)
+	if ((tmpfd = open(lcktmpname, O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC,
+	    0664)) < 0)
 		GORET(0, UU_LOCK_CREAT_ERR);
 
 	for (i = 0; i < MAXTRIES; i++) {
@@ -89,7 +87,7 @@ uu_lock(const char *tty_name)
 			 * check to see if the process holding the lock
 			 * still exists
 			 */
-			if ((fd = open(lckname, O_RDONLY)) < 0)
+			if ((fd = open(lckname, O_RDONLY | O_CLOEXEC)) < 0)
 				GORET(1, UU_LOCK_OPEN_ERR);
 
 			if ((pid_old = get_pid (fd, &err)) == -1)
@@ -129,16 +127,16 @@ int
 uu_lock_txfr(const char *tty_name, pid_t pid)
 {
 	int fd, err;
-	char lckname[PATH_MAX];
+	char lckname[sizeof(_PATH_UUCPLOCK) + NAME_MAX];
 
 	snprintf(lckname, sizeof(lckname), _PATH_UUCPLOCK LOCKFMT, tty_name);
 
-	if ((fd = open(lckname, O_RDWR)) < 0)
+	if ((fd = open(lckname, O_RDWR | O_CLOEXEC)) < 0)
 		return UU_LOCK_OWNER_ERR;
 	if (get_pid(fd, &err) != getpid())
 		err = UU_LOCK_OWNER_ERR;
 	else {
-        	lseek(fd, 0, SEEK_SET);
+		lseek(fd, (off_t)0, SEEK_SET);
 		err = put_pid(fd, pid) ? 0 : UU_LOCK_WRITE_ERR;
 	}
 	close(fd);
@@ -149,7 +147,7 @@ uu_lock_txfr(const char *tty_name, pid_t pid)
 int
 uu_unlock(const char *tty_name)
 {
-	char tbuf[PATH_MAX];
+	char tbuf[sizeof(_PATH_UUCPLOCK) + NAME_MAX];
 
 	(void)snprintf(tbuf, sizeof(tbuf), _PATH_UUCPLOCK LOCKFMT, tty_name);
 	return unlink(tbuf);
@@ -203,7 +201,7 @@ put_pid(int fd, pid_t pid)
 	int len;
 
 	len = sprintf (buf, "%10d\n", (int)pid);
-	return write (fd, buf, len) == len;
+	return write (fd, buf, (size_t)len) == len;
 }
 
 static pid_t
@@ -216,7 +214,7 @@ get_pid(int fd, int *err)
 	bytes_read = read (fd, buf, sizeof (buf) - 1);
 	if (bytes_read > 0) {
 		buf[bytes_read] = '\0';
-		pid = strtol (buf, NULL, 10);
+		pid = (pid_t)strtol (buf, (char **) NULL, 10);
 	} else {
 		pid = -1;
 		*err = bytes_read ? errno : EINVAL;

@@ -1,5 +1,5 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
-#	$FreeBSD: src/lib/libutil/Makefile,v 1.33.2.4 2001/04/25 10:04:42 ru Exp $
+#	$FreeBSD: head/lib/libutil/Makefile 242381 2012-10-30 22:18:08Z bapt $
 
 LIB=	util
 SHLIB_MAJOR= 4
@@ -12,7 +12,7 @@ SRCS=	flopen.c login.c login_tty.c logout.c logwtmp.c logwtmpx.c pty.c \
 	realhostname.c fparseln.c stub.c pidfile.c trimdomain.c \
 	dehumanize_number.c humanize_number.c humanize_unsigned.c pw_util.c \
 	efun.c getmntopts.c
-SRCS+=	gr_util.c hexdump.c
+SRCS+=	gr_util.c hexdump.c expand_number.c
 
 INCS=	libutil.h login_cap.h
 INCSLINKS=libutil.h ${INCLUDEDIR}/util.h
@@ -29,6 +29,7 @@ MAN+=	flopen.3 login.3 loginx.3 login_auth.3 login_tty.3 logout.3 logwtmp.3 \
 	efun.3 getmntopts.3
 MAN+=	login.conf.5 auth.conf.5
 MAN+=	hexdump.3
+MAN+=	pw_util.3
 
 MLINKS+=auth.3 auth_getval.3
 MLINKS+=efun.3 ecalloc.3 efun.3 emalloc.3 efun.3 erealloc.3 efun.3 esetfunc.3 \
@@ -57,5 +58,18 @@ MLINKS+=property.3 property_find.3
 MLINKS+=pty.3 openpty.3 pty.3 forkpty.3
 MLINKS+=uucplock.3 uu_lock.3 uucplock.3 uu_lock_txfr.3 \
 	uucplock.3 uu_unlock.3 uucplock.3 uu_lockerr.3
+MLINKS+=pw_util.3 pw_copy.3 \
+	pw_util.3 pw_dup.3 \
+	pw_util.3 pw_edit.3 \
+	pw_util.3 pw_equal.3 \
+	pw_util.3 pw_fini.3 \
+	pw_util.3 pw_init.3 \
+	pw_util.3 pw_make.3 \
+	pw_util.3 pw_make_v7.3 \
+	pw_util.3 pw_mkdb.3 \
+	pw_util.3 pw_lock.3 \
+	pw_util.3 pw_scan.3 \
+	pw_util.3 pw_tempname.3 \
+	pw_util.3 pw_tmp.3
 
 .include <bsd.lib.mk>

@@ -1,29 +1,21 @@
-/*	$OpenBSD: authpf.c,v 1.104 2007/02/24 17:35:08 beck Exp $	*/
-/*	$DragonFly: src/usr.sbin/authpf/authpf.c,v 1.2 2004/12/18 22:48:02 swildner Exp $ */
+/*	$OpenBSD: authpf.c,v 1.112 2009/01/10 19:08:53 miod Exp $	*/
 
 /*
  * Copyright (C) 1998 - 2007 Bob Beck (beck@openbsd.org).
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $FreeBSD: head/contrib/pf/authpf/authpf.c 223637 2011-06-28 11:57:25Z bz $
  */
 
 #include <sys/param.h>
@@ -95,12 +87,12 @@ main(int argc __unused, char **argv __unused)
 	char		*cp;
 	gid_t		 gid;
 	uid_t		 uid;
-	char		*shell;
+	const char	*shell;
 	login_cap_t	*lc;
 
 	config = fopen(PATH_CONFFILE, "r");
 	if (config == NULL) {
-		syslog(LOG_ERR, "can not open %s (%m)", PATH_CONFFILE);
+		syslog(LOG_ERR, "cannot open %s (%m)", PATH_CONFFILE);
 		exit(1);
 	}
 
@@ -150,18 +142,16 @@ main(int argc __unused, char **argv __unused)
 	else
 		shell = pw->pw_shell;
 
-	login_close(lc);
+
 
 	if (strcmp(shell, PATH_AUTHPF_SHELL)) {
 		syslog(LOG_ERR, "wrong shell for user %s, uid %u",
 		    pw->pw_name, pw->pw_uid);
-		if (shell != pw->pw_shell)
-			free(shell);
+		login_close(lc);
 		goto die;
 	}
 
-	if (shell != pw->pw_shell)
-		free(shell);
+	login_close(lc);
 
 	/*
 	 * Paranoia, but this data _does_ come from outside authpf, and
@@ -173,11 +163,11 @@ main(int argc __unused, char **argv __unused)
 	}
 
 	if ((n = snprintf(rulesetname, sizeof(rulesetname), "%s(%ld)",
-	    luser, (long)getpid())) < 0 || n >= (int)sizeof(rulesetname)) {
+	    luser, (long)getpid())) < 0 || (u_int)n >= sizeof(rulesetname)) {
 		syslog(LOG_INFO, "%s(%ld) too large, ruleset name will be %ld",
 		    luser, (long)getpid(), (long)getpid());
 		if ((n = snprintf(rulesetname, sizeof(rulesetname), "%ld",
-		    (long)getpid())) < 0 || n >= (int)sizeof(rulesetname)) {
+		    (long)getpid())) < 0 || (u_int)n >= sizeof(rulesetname)) {
 			syslog(LOG_ERR, "pid too large for ruleset name");
 			goto die;
 		}
@@ -244,9 +234,9 @@ main(int argc __unused, char **argv __unused)
 		}
 
 		/*
-		 * we try to kill the previous process and acquire the lock
+		 * We try to kill the previous process and acquire the lock
 		 * for 10 seconds, trying once a second. if we can't after
-		 * 10 attempts we log an error and give up
+		 * 10 attempts we log an error and give up.
 		 */
 		if (++lockcnt > 10) {
 			syslog(LOG_ERR, "cannot kill previous authpf (pid %d)",
@@ -362,6 +352,8 @@ read_config(FILE *f)
 		}
 		i++;
 		len = strlen(buf);
+		if (len == 0)
+			continue;
 		if (buf[len - 1] != '\n' && !feof(f)) {
 			syslog(LOG_ERR, "line %d too long in %s", i,
 			    PATH_CONFFILE);

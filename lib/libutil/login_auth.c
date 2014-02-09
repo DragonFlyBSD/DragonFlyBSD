@@ -25,19 +25,17 @@
  *
  * Low-level routines relating to the user capabilities database
  *
- * $FreeBSD: src/lib/libutil/login_auth.c,v 1.11 1999/08/28 00:05:45 peter Exp $
- * $DragonFly: src/lib/libutil/login_auth.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
+ * $FreeBSD: head/lib/libutil/login_auth.c 255007 2013-08-28 21:10:37Z jilles $
  */
 
 #include <sys/types.h>
 
 #include <fcntl.h>
+#include <login_cap.h>
 #include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-#include "login_cap.h"
 
 
 /*
@@ -52,7 +50,7 @@
 void
 auth_checknologin(login_cap_t *lc)
 {
-  char *file;
+  const char *file;
 
   /* Do we ignore a nologin file? */
   if (login_getcapbool(lc, "ignorenologin", 0))
@@ -85,7 +83,7 @@ auth_cat(const char *file)
   int fd, count;
   char buf[BUFSIZ];
 
-  if ((fd = open(file, O_RDONLY)) < 0)
+  if ((fd = open(file, O_RDONLY | O_CLOEXEC)) < 0)
     return 0;
   while ((count = read(fd, buf, sizeof(buf))) > 0)
     (void)write(fileno(stdout), buf, count);

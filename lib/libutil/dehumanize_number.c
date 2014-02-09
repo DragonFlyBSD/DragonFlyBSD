@@ -36,8 +36,7 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
-
-#include "libutil.h"
+#include <libutil.h>
 
 /*
  * Converts the number given in 'str', which may be given in a humanized

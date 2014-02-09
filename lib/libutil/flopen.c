@@ -24,24 +24,21 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libutil/flopen.c,v 1.11 2008/10/20 18:11:30 des Exp $
+ * $FreeBSD: head/lib/libutil/flopen.c 193591 2009-06-06 18:47:03Z des $
  */
 
 #include <sys/stat.h>
 
 #include <errno.h>
-#include <fcntl.h>
 #include <stdarg.h>
-#include <string.h>
 #include <unistd.h>
-
+#include <fcntl.h>
 #include <libutil.h>
 
 int
 flopen(const char *path, int flags, ...)
 {
 	int fd, operation, serrno, trunc;
-	struct flock lock;
 	struct stat sb, fsb;
 	mode_t mode;
 
@@ -58,10 +55,9 @@ flopen(const char *path, int flags, ...)
 		va_end(ap);
 	}
 
-	memset(&lock, 0, sizeof lock);
-	lock.l_type = ((flags & O_ACCMODE) == O_RDONLY) ? F_RDLCK : F_WRLCK;
-	lock.l_whence = SEEK_SET;
-	operation = (flags & O_NONBLOCK) ? F_SETLK : F_SETLKW;
+        operation = LOCK_EX;
+        if (flags & O_NONBLOCK)
+                operation |= LOCK_NB;
 
 	trunc = (flags & O_TRUNC);
 	flags &= ~O_TRUNC;
@@ -70,35 +66,35 @@ flopen(const char *path, int flags, ...)
 		if ((fd = open(path, flags, mode)) == -1)
 			/* non-existent or no access */
 			return (-1);
-		if (fcntl(fd, operation, &lock) == -1) {
+		if (flock(fd, operation) == -1) {
 			/* unsupported or interrupted */
 			serrno = errno;
-			close(fd);
+			(void)close(fd);
 			errno = serrno;
 			return (-1);
 		}
 		if (stat(path, &sb) == -1) {
 			/* disappeared from under our feet */
-			close(fd);
+			(void)close(fd);
 			continue;
 		}
 		if (fstat(fd, &fsb) == -1) {
 			/* can't happen [tm] */
 			serrno = errno;
-			close(fd);
+			(void)close(fd);
 			errno = serrno;
 			return (-1);
 		}
 		if (sb.st_dev != fsb.st_dev ||
 		    sb.st_ino != fsb.st_ino) {
 			/* changed under our feet */
-			close(fd);
+			(void)close(fd);
 			continue;
 		}
 		if (trunc && ftruncate(fd, 0) != 0) {
 			/* can't happen [tm] */
 			serrno = errno;
-			close(fd);
+			(void)close(fd);
 			errno = serrno;
 			return (-1);
 		}

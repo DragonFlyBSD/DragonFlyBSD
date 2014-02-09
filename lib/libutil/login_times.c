@@ -20,18 +20,15 @@
  *
  * Login period parsing and comparison functions.
  *
- * $FreeBSD: src/lib/libutil/login_times.c,v 1.7 1999/08/28 00:05:48 peter Exp $
- * $DragonFly: src/lib/libutil/login_times.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
+ * $FreeBSD: head/lib/libutil/login_times.c 252376 2013-06-29 15:52:48Z kientzle $
  */
 
 #include <sys/types.h>
-
 #include <ctype.h>
+#include <login_cap.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-#include "login_cap.h"
 
 static struct
 {
@@ -56,12 +53,12 @@ parse_time(char * ptr, u_short * t)
 
     *t = (u_short)((val / 100) * 60 + (val % 100));
 
-    return ptr;
+    return (ptr);
 }
 
 
 login_time_t
-parse_lt(const char * str)
+parse_lt(const char *str)
 {
     login_time_t    t;
 
@@ -74,10 +71,10 @@ parse_lt(const char * str)
 	char		buf[64];
 
 	/* Make local copy and force lowercase to simplify parsing */
-	p = strncpy(buf, str, sizeof buf);
-	buf[sizeof buf - 1] = '\0';
+	strlcpy(buf, str, sizeof buf);
 	for (i = 0; buf[i]; i++)
 	    buf[i] = (char)tolower(buf[i]);
+	p = buf;
 
 	while (isalpha(*p)) {
 
@@ -98,18 +95,18 @@ parse_lt(const char * str)
 	else
 	    m.lt_start = 0;
 	if (*p == '-')
-	    p = parse_time(++p, &m.lt_end);
+	    p = parse_time(p + 1, &m.lt_end);
 	else
 	    m.lt_end = 1440;
 
 	t = m;
     }
-    return t;
+    return (t);
 }
 
 
 int
-in_ltm(const login_time_t * ltm, struct tm * tt, time_t * ends)
+in_ltm(const login_time_t *ltm, struct tm *tt, time_t *ends)
 {
     int	    rc = 0;
 
@@ -132,32 +129,33 @@ in_ltm(const login_time_t * ltm, struct tm * tt, time_t * ends)
 	    }
 	}
     }
-    return rc;
+    return (rc);
 }
 
 
 int
-in_lt(const login_time_t * ltm, time_t * t)
+in_lt(const login_time_t *ltm, time_t *t)
 {
-    return in_ltm(ltm, localtime(t), t);
+
+    return (in_ltm(ltm, localtime(t), t));
 }
 
 int
-in_ltms(const login_time_t * ltm, struct tm * tm, time_t * t)
+in_ltms(const login_time_t *ltm, struct tm *tm, time_t *t)
 {
     int	    i = 0;
 
     while (i < LC_MAXTIMES && ltm[i].lt_dow != LTM_NONE) {
 	if (in_ltm(ltm + i, tm, t))
-	    return i;
+	    return (i);
 	i++;
     }
-    return -1;
+    return (-1);
 }
 
 int
-in_lts(const login_time_t * ltm, time_t * t)
+in_lts(const login_time_t *ltm, time_t *t)
 {
-    return in_ltms(ltm, localtime(t), t);
-}
 
+    return (in_ltms(ltm, localtime(t), t));
+}

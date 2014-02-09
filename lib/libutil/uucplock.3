@@ -23,8 +23,8 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libutil/uucplock.3,v 1.13.2.4 2001/12/17 10:08:32 ru Exp $
-.\"
+.\" $FreeBSD: head/lib/libutil/uucplock.3 206622 2010-04-14 19:08:06Z uqs $
+.\" "
 .Dd March 30, 1997
 .Dt UUCPLOCK 3
 .Os
@@ -103,7 +103,7 @@ The lock file could not be read via
 .Xr read 2 .
 .Pp
 .Dv UU_LOCK_CREAT_ERR :
-Can't create temporary lock file via
+Cannot create temporary lock file via
 .Xr creat 2 .
 .Pp
 .Dv UU_LOCK_WRITE_ERR :
@@ -111,7 +111,7 @@ The current process id could not be written to the lock file via a call to
 .Xr write 2 .
 .Pp
 .Dv UU_LOCK_LINK_ERR :
-Can't link temporary lock file via
+Cannot link temporary lock file via
 .Xr link 2 .
 .Pp
 .Dv UU_LOCK_TRY_ERR :
@@ -127,7 +127,8 @@ the reason for failure is returned.
 .Fn uu_lockerr
 uses the current value of
 .Va errno
-to determine the exact error.  Care should be made not to allow
+to determine the exact error.
+Care should be made not to allow
 .Va errno
 to be changed between calls to
 .Fn uu_lock
@@ -138,7 +139,8 @@ and
 may return any of the following values:
 .Pp
 .Dv UU_LOCK_OK :
-The transfer was successful.  The specified process now holds the device
+The transfer was successful.
+The specified process now holds the device
 lock.
 .Pp
 .Dv UU_LOCK_OWNER_ERR :
@@ -152,7 +154,8 @@ If
 .Fn uu_lock
 returns one of the error values above, the global value
 .Va errno
-can be used to determine the cause.  Refer to the respective manual pages
+can be used to determine the cause.
+Refer to the respective manual pages
 for further details.
 .Pp
 .Fn uu_unlock
@@ -174,6 +177,7 @@ the stale lock.
 .Pp
 The calling process must have write permissions to the
 .Pa /var/spool/lock
-directory.  There is no mechanism in place to ensure that the
+directory.
+There is no mechanism in place to ensure that the
 permissions of this directory are the same as those of the
 serial devices that might be locked.

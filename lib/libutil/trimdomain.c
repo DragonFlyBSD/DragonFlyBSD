@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2001 Brian Somers <brian@Awfulhak.org>
  *   Based on original work by Atsushi Murai <amurai@FreeBSD.org>
  * All rights reserved.
@@ -24,15 +24,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: /repoman/r/ncvs/src/lib/libutil/trimdomain.c,v 1.5 2003/10/18 10:04:16 markm Exp $
+ * $FreeBSD: head/lib/libutil/trimdomain.c 150955 2005-10-05 04:42:20Z brooks $
  */
 
 #include <sys/param.h>
 
+#include <libutil.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "libutil.h"
 
 static int	isDISP(const char *);
 
@@ -74,18 +73,16 @@ trimdomain(char *fullhost, int hostsize)
 
 	s = fullhost;
 	end = s + hostsize + 1;
-	for (; (s = memchr(s, '.', (size_t)(end - s))) != NULL; s++) {
+	if ((s = memchr(s, '.', (size_t)(end - s))) != NULL) {
 		if (strncasecmp(s + 1, domain, dlen) == 0) {
 			if (s[dlen + 1] == '\0') {
 				/* Found -- lose the domain. */
 				*s = '\0';
-				break;
 			} else if (s[dlen + 1] == ':' &&
 			    isDISP(s + dlen + 2) &&
 			    (len = strlen(s + dlen + 1)) < (size_t)(end - s)) {
 				/* Found -- shuffle the DISPLAY back. */
 				memmove(s, s + dlen + 1, len + 1);
-				break;
 			}
 		}
 	}

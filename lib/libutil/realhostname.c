@@ -23,26 +23,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libutil/realhostname.c,v 1.6.2.6 2002/06/29 18:26:37 ume Exp $
- * $DragonFly: src/lib/libutil/realhostname.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $FreeBSD: head/lib/libutil/realhostname.c 185277 2008-11-25 02:15:09Z avatar $
  */
 
 #include <sys/param.h>
-
 #include <sys/socket.h>
+
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include <stdio.h>
 #include <string.h>
-
-#include "libutil.h"
-
-/* wrapper for KAME-special getnameinfo() */
-#ifndef NI_WITHSCOPEID
-#define	NI_WITHSCOPEID	0
-#endif
+#include <libutil.h>
 
 struct sockinet {
 	u_char	si_len;
@@ -58,7 +51,7 @@ realhostname(char *host, size_t hsize, const struct in_addr *ip)
 	struct hostent *hp;
 
 	result = HOSTNAME_INVALIDADDR;
-	hp = gethostbyaddr(ip, sizeof(*ip), AF_INET);
+	hp = gethostbyaddr((const char *)ip, sizeof(*ip), AF_INET);
 
 	if (hp != NULL) {
 		strlcpy(trimmed, hp->h_name, sizeof(trimmed));
@@ -66,8 +59,7 @@ realhostname(char *host, size_t hsize, const struct in_addr *ip)
 		if (strlen(trimmed) <= hsize) {
 			char lookup[MAXHOSTNAMELEN];
 
-			strncpy(lookup, hp->h_name, sizeof(lookup) - 1);
-			lookup[sizeof(lookup) - 1] = '\0';
+			strlcpy(lookup, hp->h_name, sizeof(lookup));
 			hp = gethostbyname(lookup);
 			if (hp == NULL)
 				result = HOSTNAME_INVALIDNAME;
@@ -89,12 +81,26 @@ realhostname(char *host, size_t hsize, const struct in_addr *ip)
 	return result;
 }
 
+/*
+ * struct sockaddr has very lax alignment requirements, since all its
+ * members are char or equivalent.  This is a problem when trying to
+ * dereference a struct sockaddr_in6 * that was passed in as a struct
+ * sockaddr *.  Although we know (or trust) that the passed-in struct was
+ * properly aligned, the compiler doesn't, and (rightly) complains.  These
+ * macros perform the cast in a way that the compiler will accept.
+ */
+#define SOCKADDR_IN6(p) ((struct sockaddr_in6 *)(void *)(p))
+#define SOCKADDR_IN(p) ((struct sockaddr_in *)(void *)(p))
+#define SOCKINET(p) ((struct sockinet *)(void *)(p))
+
 int
 realhostname_sa(char *host, size_t hsize, struct sockaddr *addr, int addrlen)
 {
 	int result, error;
 	char buf[NI_MAXHOST];
-	struct sockaddr_in sin;
+#ifdef INET6
+	struct sockaddr_in lsin;
+#endif
 
 	result = HOSTNAME_INVALIDADDR;
 
@@ -102,24 +108,24 @@ realhostname_sa(char *host, size_t hsize, struct sockaddr *addr, int addrlen)
 	/* IPv4 mapped IPv6 addr consideraton, specified in rfc2373. */
 	if (addr->sa_family == AF_INET6 &&
 	    addrlen == sizeof(struct sockaddr_in6) &&
-	    IN6_IS_ADDR_V4MAPPED(&((struct sockaddr_in6 *)addr)->sin6_addr)) {
+	    IN6_IS_ADDR_V4MAPPED(&SOCKADDR_IN6(addr)->sin6_addr)) {
 		struct sockaddr_in6 *sin6;
 
-		sin6 = (struct sockaddr_in6 *)addr;
+		sin6 = SOCKADDR_IN6(addr);
 
-		memset(&sin, 0, sizeof(sin));
-		sin.sin_len = sizeof(struct sockaddr_in);
-		sin.sin_family = AF_INET;
-		sin.sin_port = sin6->sin6_port;
-		memcpy(&sin.sin_addr, &sin6->sin6_addr.s6_addr[12],
+		memset(&lsin, 0, sizeof(lsin));
+		lsin.sin_len = sizeof(struct sockaddr_in);
+		lsin.sin_family = AF_INET;
+		lsin.sin_port = sin6->sin6_port;
+		memcpy(&lsin.sin_addr, &sin6->sin6_addr.s6_addr[12],
 		       sizeof(struct in_addr));
-		addr = (struct sockaddr *)&sin;
-		addrlen = sin.sin_len;
+		addr = (struct sockaddr *)&lsin;
+		addrlen = lsin.sin_len;
 	}
 #endif
 
 	error = getnameinfo(addr, addrlen, buf, sizeof(buf), NULL, 0,
-			    NI_WITHSCOPEID | NI_NAMEREQD);
+			    NI_NAMEREQD);
 	if (error == 0) {
 		struct addrinfo hints, *res, *ores;
 		struct sockaddr *sa;
@@ -148,15 +154,16 @@ realhostname_sa(char *host, size_t hsize, struct sockaddr *addr, int addrlen)
 			}
 			if (sa->sa_len == addrlen &&
 			    sa->sa_family == addr->sa_family) {
-				((struct sockinet *)sa)->si_port = ((struct sockinet *)addr)->si_port;
+				SOCKINET(sa)->si_port = SOCKINET(addr)->si_port;
 #ifdef INET6
 				/*
 				 * XXX: sin6_socpe_id may not been
 				 * filled by DNS
 				 */
 				if (sa->sa_family == AF_INET6 &&
-				    ((struct sockaddr_in6 *)sa)->sin6_scope_id == 0)
-					((struct sockaddr_in6 *)sa)->sin6_scope_id = ((struct sockaddr_in6 *)addr)->sin6_scope_id;
+				    SOCKADDR_IN6(sa)->sin6_scope_id == 0)
+					SOCKADDR_IN6(sa)->sin6_scope_id =
+					    SOCKADDR_IN6(addr)->sin6_scope_id;
 #endif
 				if (!memcmp(sa, addr, sa->sa_len)) {
 					result = HOSTNAME_FOUND;
@@ -181,7 +188,7 @@ realhostname_sa(char *host, size_t hsize, struct sockaddr *addr, int addrlen)
 	} else {
     numeric:
 		if (getnameinfo(addr, addrlen, buf, sizeof(buf), NULL, 0,
-				NI_NUMERICHOST|NI_WITHSCOPEID) == 0)
+				NI_NUMERICHOST) == 0)
 			strncpy(host, buf, hsize);
 	}
 

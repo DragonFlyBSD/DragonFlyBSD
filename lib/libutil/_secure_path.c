@@ -18,8 +18,7 @@
  * 5. Modifications may be freely made to this file providing the above
  *    conditions are met.
  *
- * $FreeBSD: src/lib/libutil/_secure_path.c,v 1.5 1999/08/28 00:05:42 peter Exp $
- * $DragonFly: src/lib/libutil/_secure_path.c,v 1.4 2008/10/29 22:03:12 swildner Exp $
+ * $FreeBSD: head/lib/libutil/_secure_path.c 139012 2004-12-18 12:31:12Z ru $
  */
 
 
@@ -27,15 +26,14 @@
 #include <sys/stat.h>
 
 #include <errno.h>
+#include <libutil.h>
 #include <syslog.h>
-
-#include "libutil.h"
 
 /*
  * Check for common security problems on a given path
  * It must be:
  * 1. A regular file, and exists
- * 2. Owned and writaable only by root (or given owner)
+ * 2. Owned and writable only by root (or given owner)
  * 3. Group ownership is given group or is non-group writable
  *
  * Returns:	-2 if file does not exist,

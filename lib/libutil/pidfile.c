@@ -1,12 +1,6 @@
-/*	$NetBSD: pidfile.c,v 1.6 2001/10/20 09:20:28 taca Exp $	*/
-/*	$DragonFly: src/lib/libutil/pidfile.c,v 1.2 2005/03/04 04:31:11 cpressey Exp $ */
-
 /*-
- * Copyright (c) 1999 The NetBSD Foundation, Inc.
+ * Copyright (c) 2005 Pawel Jakub Dawidek <pjd@FreeBSD.org>
  * All rights reserved.
- *
- * This code is derived from software contributed to The NetBSD Foundation
- * by Jason R. Thorpe and Matthias Scheler.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -16,110 +10,267 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
- * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHORS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHORS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/lib/libutil/pidfile.c 255007 2013-08-28 21:10:37Z jilles $
  */
 
 #include <sys/param.h>
+#include <sys/stat.h>
 
-#include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <time.h>
+#include <err.h>
+#include <errno.h>
+#include <libutil.h>
 
-#include "libutil.h"
+struct pidfh {
+	int	pf_fd;
+	char	pf_path[MAXPATHLEN + 1];
+	dev_t	pf_dev;
+	ino_t	pf_ino;
+};
 
-static int   pidfile_atexit_done;
-static pid_t pidfile_pid;
-static char *pidfile_basename;
-static char *pidfile_path;
+static int _pidfile_remove(struct pidfh *pfh, int freeit);
 
-static void pidfile_cleanup(void);
-
-int
-pidfile(const char *basename)
+static int
+pidfile_verify(const struct pidfh *pfh)
 {
-	FILE *f;
+	struct stat sb;
 
+	if (pfh == NULL || pfh->pf_fd == -1)
+		return (EDOOFUS);
 	/*
-	 * Register handler which will remove the pidfile later.
+	 * Check remembered descriptor.
 	 */
-	if (!pidfile_atexit_done) {
-		if (atexit(pidfile_cleanup) < 0)
-			return -1;
-		pidfile_atexit_done = 1;
-	}
-
-	if (basename == NULL)
-		basename = getprogname();
-
-	/*
-	 * If pidfile has already been created for the supplied basename
-	 * we don't need to create a pidfile again.
-	 */
-	if (pidfile_path != NULL) {
-		if (strcmp(pidfile_basename, basename) == 0)
-			return 0;
-		/*
-		 * Remove existing pidfile if it was created by this process.
-		 */
-		pidfile_cleanup();
-
-		free(pidfile_path);
-		pidfile_path = NULL;
-		free(pidfile_basename);
-		pidfile_basename = NULL;
-	}
-
-	pidfile_pid = getpid();
-
-	pidfile_basename = strdup(basename);
-	if (pidfile_basename == NULL)
-		return -1;
-
-	/* _PATH_VARRUN includes trailing / */
-	asprintf(&pidfile_path, "%s%s.pid", _PATH_VARRUN, basename);
-	if (pidfile_path == NULL) {
-		free(pidfile_basename);
-		pidfile_basename = NULL;
-		return -1;
-	}
-
-	if ((f = fopen(pidfile_path, "w")) == NULL) {
-		free(pidfile_path);
-		pidfile_path = NULL;
-		free(pidfile_basename);
-		pidfile_basename = NULL;
-		return -1;
-	}
-
-	fprintf(f, "%d\n", pidfile_pid);
-	fclose(f);
-	return 0;
+	if (fstat(pfh->pf_fd, &sb) == -1)
+		return (errno);
+	if (sb.st_dev != pfh->pf_dev || sb.st_ino != pfh->pf_ino)
+		return (EDOOFUS);
+	return (0);
 }
 
-static void
-pidfile_cleanup(void)
+static int
+pidfile_read(const char *path, pid_t *pidptr)
 {
-	/* Only remove the pidfile if it was created by this process. */
-	if ((pidfile_path != NULL) && (pidfile_pid == getpid()))
-		unlink(pidfile_path);
+	char buf[16], *endptr;
+	int error, fd, i;
+
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd == -1)
+		return (errno);
+
+	i = read(fd, buf, sizeof(buf) - 1);
+	error = errno;	/* Remember errno in case close() wants to change it. */
+	close(fd);
+	if (i == -1)
+		return (error);
+	else if (i == 0)
+		return (EAGAIN);
+	buf[i] = '\0';
+
+	*pidptr = strtol(buf, &endptr, 10);
+	if (endptr != &buf[i])
+		return (EINVAL);
+
+	return (0);
+}
+
+struct pidfh *
+pidfile_open(const char *path, mode_t mode, pid_t *pidptr)
+{
+	struct pidfh *pfh;
+	struct stat sb;
+	int error, fd, len, count;
+	struct timespec rqtp;
+
+	pfh = malloc(sizeof(*pfh));
+	if (pfh == NULL)
+		return (NULL);
+
+	if (path == NULL)
+		len = snprintf(pfh->pf_path, sizeof(pfh->pf_path),
+		    "/var/run/%s.pid", getprogname());
+	else
+		len = snprintf(pfh->pf_path, sizeof(pfh->pf_path),
+		    "%s", path);
+	if (len >= (int)sizeof(pfh->pf_path)) {
+		free(pfh);
+		errno = ENAMETOOLONG;
+		return (NULL);
+	}
+
+	/*
+	 * Open the PID file and obtain exclusive lock.
+	 * We truncate PID file here only to remove old PID immediatelly,
+	 * PID file will be truncated again in pidfile_write(), so
+	 * pidfile_write() can be called multiple times.
+	 */
+	fd = flopen(pfh->pf_path,
+	    O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | O_NONBLOCK, mode);
+	if (fd == -1) {
+		if (errno == EWOULDBLOCK) {
+			if (pidptr == NULL) {
+				errno = EEXIST;
+			} else {
+				count = 20;
+				rqtp.tv_sec = 0;
+				rqtp.tv_nsec = 5000000;
+				for (;;) {
+					errno = pidfile_read(pfh->pf_path,
+					    pidptr);
+					if (errno != EAGAIN || --count == 0)
+						break;
+					nanosleep(&rqtp, 0);
+				}
+				if (errno == EAGAIN)
+					*pidptr = -1;
+				if (errno == 0 || errno == EAGAIN)
+					errno = EEXIST;
+			}
+		}
+		free(pfh);
+		return (NULL);
+	}
+
+	/*
+	 * Remember file information, so in pidfile_write() we are sure we write
+	 * to the proper descriptor.
+	 */
+	if (fstat(fd, &sb) == -1) {
+		error = errno;
+		unlink(pfh->pf_path);
+		close(fd);
+		free(pfh);
+		errno = error;
+		return (NULL);
+	}
+
+	pfh->pf_fd = fd;
+	pfh->pf_dev = sb.st_dev;
+	pfh->pf_ino = sb.st_ino;
+
+	return (pfh);
+}
+
+int
+pidfile_write(struct pidfh *pfh)
+{
+	char pidstr[16];
+	int error, fd;
+
+	/*
+	 * Check remembered descriptor, so we don't overwrite some other
+	 * file if pidfile was closed and descriptor reused.
+	 */
+	errno = pidfile_verify(pfh);
+	if (errno != 0) {
+		/*
+		 * Don't close descriptor, because we are not sure if it's ours.
+		 */
+		return (-1);
+	}
+	fd = pfh->pf_fd;
+
+	/*
+	 * Truncate PID file, so multiple calls of pidfile_write() are allowed.
+	 */
+	if (ftruncate(fd, 0) == -1) {
+		error = errno;
+		_pidfile_remove(pfh, 0);
+		errno = error;
+		return (-1);
+	}
+
+	snprintf(pidstr, sizeof(pidstr), "%u", getpid());
+	if (pwrite(fd, pidstr, strlen(pidstr), 0) != (ssize_t)strlen(pidstr)) {
+		error = errno;
+		_pidfile_remove(pfh, 0);
+		errno = error;
+		return (-1);
+	}
+
+	return (0);
+}
+
+int
+pidfile_close(struct pidfh *pfh)
+{
+	int error;
+
+	error = pidfile_verify(pfh);
+	if (error != 0) {
+		errno = error;
+		return (-1);
+	}
+
+	if (close(pfh->pf_fd) == -1)
+		error = errno;
+	free(pfh);
+	if (error != 0) {
+		errno = error;
+		return (-1);
+	}
+	return (0);
+}
+
+static int
+_pidfile_remove(struct pidfh *pfh, int freeit)
+{
+	int error;
+
+	error = pidfile_verify(pfh);
+	if (error != 0) {
+		errno = error;
+		return (-1);
+	}
+
+	if (unlink(pfh->pf_path) == -1)
+		error = errno;
+	if (close(pfh->pf_fd) == -1) {
+		if (error == 0)
+			error = errno;
+	}
+	if (freeit)
+		free(pfh);
+	else
+		pfh->pf_fd = -1;
+	if (error != 0) {
+		errno = error;
+		return (-1);
+	}
+	return (0);
+}
+
+int
+pidfile_remove(struct pidfh *pfh)
+{
+
+	return (_pidfile_remove(pfh, 1));
+}
+
+int
+pidfile_fileno(const struct pidfh *pfh)
+{
+
+	if (pfh == NULL || pfh->pf_fd == -1) {
+		errno = EDOOFUS;
+		return (-1);
+	}
+	return (pfh->pf_fd);
 }

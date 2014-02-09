@@ -23,8 +23,8 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libutil/property.3,v 1.8.2.7 2001/12/17 10:08:32 ru Exp $
-.\"
+.\" $FreeBSD: head/lib/libutil/property.3 236965 2012-06-12 17:02:53Z des $
+.\" "
 .Dd October 7, 1998
 .Dt PROPERTIES 3
 .Os
@@ -36,7 +36,6 @@
 .Sh LIBRARY
 .Lb libutil
 .Sh SYNOPSIS
-.In sys/types.h
 .In libutil.h
 .Ft properties
 .Fn properties_read "int fd"
@@ -63,15 +62,18 @@ and returns the head of a new property list, assuming that the
 file's contents have been parsed properly, or NULL in case
 of error.
 .Pp
+The
 .Fn property_find
-Returns the associated value string for the property named
+function returns the associated value string for the property named
 .Fa name
-if found, otherwise NULL.  The value returned may be up to
+if found, otherwise NULL.
+The value returned may be up to
 .Dv PROPERTY_MAX_VALUE
 bytes in length.
 .Pp
+The
 .Fn properties_free
-is used to free the structure returned by
+function is used to free the structure returned by
 .Fn properties_read
 when it is no longer needed.
 .Sh FILE FORMAT
@@ -82,12 +84,12 @@ where
 is an alphanumeric string (and any punctuation not including the `=' character)
 and
 .Fa value
-is an arbitrary string of text terminated by a newline character.  If newlines
+is an arbitrary string of text terminated by a newline character.
+If newlines
 are desired, the entire value should be enclosed in { } (curly-bracket)
-characters.  Any line beginning with a # or ; character is assumed to
+characters.
+Any line beginning with a # or ; character is assumed to
 be a comment and will be ignored.
-.Sh SEE ALSO
-.Xr auth_getval 3
 .Sh AUTHORS
 .An Jordan Hubbard
 .Sh BUGS

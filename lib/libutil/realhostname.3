@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libutil/realhostname.3,v 1.4.2.2 2001/12/17 10:08:32 ru Exp $
+.\" $FreeBSD: head/lib/libutil/realhostname.3 230234 2012-01-16 21:25:41Z ghelmer $
 .\"
 .Dd April 6, 1999
 .Dt REALHOSTNAME 3
@@ -33,8 +33,6 @@
 .Sh LIBRARY
 .Lb libutil
 .Sh SYNOPSIS
-.In sys/types.h
-.In netinet/in.h
 .In libutil.h
 .Ft int
 .Fn realhostname "char *host" "size_t hsize" "const struct in_addr *ip"
@@ -43,7 +41,8 @@ The function
 .Fn realhostname
 converts
 .Ar ip
-to the corresponding host name.  This is done by resolving
+to the corresponding host name.
+This is done by resolving
 .Ar ip
 to a host name and then ensuring that the host name resolves
 back to
@@ -54,7 +53,7 @@ must point to a buffer of at least
 .Ar hsize
 bytes, and will always be written to by this function.
 .Pp
-If the name resolution doesn't work both ways or if the host name is longer
+If the name resolution does not work both ways or if the host name is longer
 than
 .Ar hsize
 bytes,
@@ -71,8 +70,9 @@ bytes long,
 .Ar host
 will not be NUL terminated.
 .Sh RETURN VALUES
+The
 .Fn realhostname
-will return one of the following constants which are defined in
+function will return one of the following constants which are defined in
 .In libutil.h :
 .Bl -tag -width XXX -offset XXX
 .It Li HOSTNAME_FOUND

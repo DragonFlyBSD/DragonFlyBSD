@@ -33,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD$
+ * $FreeBSD: head/lib/libutil/libutil.h 247919 2013-03-07 19:00:00Z db $
  */
 
 #ifndef _LIBUTIL_H_
@@ -58,6 +58,7 @@ typedef struct _property {
 
 /* Avoid pulling in all the include files for no need. */
 struct in_addr;
+struct pidfh;
 struct sockaddr;
 struct termios;
 struct winsize;
@@ -65,7 +66,7 @@ struct utmp;
 struct utmpx;
 
 __BEGIN_DECLS
-int	flopen(const char *, int, ...);
+char	*auth_getval(const char *_name);
 void	login(struct utmp *);
 void	loginx(const struct utmpx *);
 int	login_tty(int);
@@ -74,11 +75,14 @@ int	logoutx(const char *, int, int);
 void	logwtmp(const char *, const char *, const char *);
 void	logwtmpx(const char *, const char *, const char *, int, int);
 void	trimdomain(char *, int);
-int	openpty(int *, int *, char *, struct termios *, struct winsize *);
-int	forkpty(int *, char *, struct termios *, struct winsize *);
+int	expand_number(const char *_buf, uint64_t *_num);
+int	flopen(const char *_path, int _flags, ...);
+int	forkpty(int *_amaster, char *_name,
+	    struct termios *_termp, struct winsize *_winp);
 int	dehumanize_number(const char *, int64_t *);
 void	hexdump(const void *_ptr, int _length, const char *_hdr, int _flags);
-int	humanize_number(char *, size_t, int64_t, const char *, int, int);
+int	humanize_number(char *_buf, size_t _len, int64_t _number,
+	    const char *_suffix, int _scale, int _flags);
 int	humanize_unsigned(char *buf, size_t len, uint64_t bytes,
 					const char *suffix, int divisor);
 int	format_bytes(char *buf, size_t len, uint64_t bytes);
@@ -87,11 +91,18 @@ int	uu_lock(const char *);
 int	uu_unlock(const char *);
 int	uu_lock_txfr(const char *, pid_t);
 int	_secure_path(const char *, uid_t, gid_t);
-int	pidfile(const char *);
-properties properties_read(int fd);
-void	properties_free(properties);
-char	*property_find(properties, const char *);
-char	*auth_getval(const char *);
+int	openpty(int *_amaster, int *_aslave, char *_name,
+	    struct termios *_termp, struct winsize *_winp);
+int	pidfile_close(struct pidfh *_pfh);
+int	pidfile_fileno(const struct pidfh *_pfh);
+struct pidfh *
+	pidfile_open(const char *_path, mode_t _mode, pid_t *_pidptr);
+int	pidfile_remove(struct pidfh *_pfh);
+int	pidfile_write(struct pidfh *_pfh);
+void	properties_free(properties _list);
+char	*property_find(properties _list, const char *_name);
+properties
+	properties_read(int fd);
 int	realhostname(char *, size_t, const struct in_addr *);
 int	realhostname_sa(char *, size_t, struct sockaddr *, int);
 #ifdef _STDIO_H_	/* avoid adding new includes */
@@ -108,6 +119,7 @@ int	pw_equal(const struct passwd *_pw1, const struct passwd *_pw2);
 void	pw_fini(void);
 int	pw_init(const char *_dir, const char *_master);
 char	*pw_make(const struct passwd *_pw);
+char	*pw_make_v7(const struct passwd *_pw);
 int	pw_mkdb(const char *_user);
 int	pw_lock(void);
 struct passwd *
@@ -122,6 +134,8 @@ int 	gr_copy(int __ffd, int _tfd, const struct group *_gr,
 	    struct group *_old_gr);
 struct group *
 	gr_dup(const struct group *_gr);
+struct group *
+	gr_add(const struct group *_gr, const char *_newmember);
 int	gr_equal(const struct group *_gr1, const struct group *_gr2);
 void	gr_fini(void);
 int	gr_init(const char *_dir, const char *_master);

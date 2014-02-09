@@ -26,10 +26,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)syslog.conf.5	8.1 (Berkeley) 6/9/93
-.\" $FreeBSD: src/usr.sbin/syslogd/syslog.conf.5,v 1.46 2008/12/23 17:39:24 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/syslogd/syslog.conf.5,v 1.10 2008/04/20 21:14:39 swildner Exp $
+.\" $FreeBSD: head/usr.sbin/syslogd/syslog.conf.5 240409 2012-09-12 16:58:42Z eadler $
 .\"
-.Dd December 23, 2008
+.Dd September 12, 2012
 .Dt SYSLOG.CONF 5
 .Os
 .Sh NAME
@@ -323,7 +322,7 @@ A pathname (beginning with a leading slash).
 Selected messages are appended to the file.
 .Pp
 To ensure that kernel messages are written to disk promptly,
-.Xr syslogd 8
+.Nm
 calls
 .Xr fsync 2
 after writing messages from the kernel.
@@ -348,6 +347,14 @@ If a port number is added after a colon
 .Pq Ql :\&
 then that port will be used as the destination port
 rather than the usual syslog port.
+IPv6 addresses can be used
+by surrounding the address portion with
+square brackets
+.Po
+.Ql [\&
+and
+.Ql ]\&
+.Pc .
 .It
 A comma separated list of users.
 Selected messages are written to those users
@@ -355,14 +362,6 @@ if they are logged in.
 .It
 An asterisk.
 Selected messages are written to all logged-in users.
-.It
-A percent sign
-.Pq Dq \&% ,
-followed by a pathname (beginning with a leading slash).  Selected messages
-are written to a circular log file.
-See
-.Xr clog 8
-for a discussion of circular log files.
 .It
 A vertical bar
 .Pq Dq \&| ,
@@ -485,15 +484,15 @@ uucp,news.crit						/var/log/spoolerr
 # Pipe all authentication messages to a filter.
 auth.*					|exec /usr/local/sbin/authfilter
 
-# Save ftpd transactions along with mail and news
-!ftpd
-*.*							/var/log/spoolerr
-
 # Log all security messages to a separate file.
 security.*						/var/log/security
 
 # Log all writes to /dev/console to a separate file.
 console.*						/var/log/console.log
+
+# Save ftpd transactions along with mail and news
+!ftpd
+*.*							/var/log/spoolerr
 
 # Log ipfw messages without syncing after every message.
 !ipfw
@@ -521,7 +520,6 @@ implement the same set of facilities.
 The facilities
 authpriv, cron, ftp, and ntp that are known to this implementation
 might be absent on the target system.
-Even worse, DEC
-.Ux
-uses facility number 10 (which is authpriv in this implementation) to
+Even worse, DEC UNIX uses
+facility number 10 (which is authpriv in this implementation) to
 log events for their AdvFS file system.

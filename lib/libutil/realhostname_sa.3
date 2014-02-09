@@ -49,14 +49,16 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libutil/realhostname_sa.3,v 1.2.2.3 2001/12/17 10:08:32 ru Exp $
+.\" $FreeBSD: head/lib/libutil/realhostname_sa.3 213573 2010-10-08 12:40:16Z uqs $
 .\"
 .Dd January 11, 2000
 .Dt REALHOSTNAME_SA 3
 .Os
 .Sh NAME
 .Nm realhostname_sa
-.Nd "convert an struct sockaddr to the real host name"
+.Nd "convert a"
+.Vt "struct sockaddr"
+to the real host name
 .Sh LIBRARY
 .Lb libutil
 .Sh SYNOPSIS
@@ -70,7 +72,8 @@ The function
 .Fn realhostname_sa
 converts
 .Ar addr
-to the corresponding host name.  This is done by resolving
+to the corresponding host name.
+This is done by resolving
 .Ar addr
 to a host name and then ensuring that the host name resolves
 back to
@@ -81,7 +84,7 @@ must point to a buffer of at least
 .Ar hsize
 bytes, and will always be written to by this function.
 .Pp
-If the name resolution doesn't work both ways or if the host name is longer
+If the name resolution does not work both ways or if the host name is longer
 than
 .Ar hsize
 bytes,
@@ -98,8 +101,9 @@ bytes long,
 .Ar host
 will not be NUL terminated.
 .Sh RETURN VALUES
+The
 .Fn realhostname_sa
-will return one of the following constants which are defined in
+function will return one of the following constants which are defined in
 .In libutil.h :
 .Bl -tag -width XXX -offset XXX
 .It Li HOSTNAME_FOUND

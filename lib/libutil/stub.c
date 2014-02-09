@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libutil/stub.c,v 1.1.2.1 2000/10/27 01:50:31 green Exp $
- * $DragonFly: src/lib/libutil/stub.c,v 1.3 2008/10/29 22:03:12 swildner Exp $
+ * $FreeBSD: head/lib/libutil/stub.c 121193 2003-10-18 10:04:16Z markm $
  */
 
 #include <stdio.h>
@@ -36,6 +35,7 @@
  */
 
 #pragma weak crypt_set_format
+/* ARGSUSED */
 int
 crypt_set_format(const char *f __unused) {
 

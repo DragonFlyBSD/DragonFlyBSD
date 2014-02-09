@@ -62,6 +62,8 @@ main(int argc, char *argv[])
 	mode_t		mode;
 	struct kevent	change;
 	struct timespec	timeout = { 0, 0 };
+	struct pidfh	*pfh = NULL;
+	const char	*pidfile = NULL;
 
 	bdaddr_copy(&bdaddr, BDADDR_ANY);
 	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
@@ -129,9 +131,13 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (detach && pidfile(NULL) < 0) {
-		syslog(LOG_ERR, "Could not create PID file: %m");
-		exit(EXIT_FAILURE);
+	if (detach) {
+		pfh = pidfile_open(pidfile, 600, NULL);
+		if (pfh == NULL) {
+			syslog(LOG_ERR, "Could not create PID file: %m");
+			exit(EXIT_FAILURE);
+		}
+		pidfile_write(pfh);
 	}
 
 	read_config_file();

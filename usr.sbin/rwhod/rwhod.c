@@ -227,8 +227,10 @@ main(int argc, char *argv[])
 	if (argc > 0)
 		usage();
 #ifndef DEBUG
+        struct pidfh *pfh = NULL;
+        pfh = pidfile_open(NULL, 600, NULL);
 	daemon(1, 0);
-	pidfile(NULL);
+        pidfile_write(pfh);
 #endif
 	signal(SIGHUP, hup);
 	openlog("rwhod", LOG_PID, LOG_DAEMON);

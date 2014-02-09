@@ -41,8 +41,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <utmp.h>
-
-#include "libutil.h"
+#include <libutil.h>
 
 /* wrapper for KAME-special getnameinfo() */
 #ifndef NI_WITHSCOPEID

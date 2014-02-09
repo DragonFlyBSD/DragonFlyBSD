@@ -566,6 +566,7 @@ main(int argc, char **argv)
 	int ch, np, ret, Xflag = 0;
 	pcap_handler phandler = dump_packet;
 	const char *errstr = NULL;
+	struct pidfh *pfh = NULL;
 	char *pidf = NULL;
 
 	ret = 0;
@@ -625,11 +626,12 @@ main(int argc, char **argv)
 
 	if (!Debug) {
 		openlog("pflogd", LOG_PID | LOG_CONS, LOG_DAEMON);
+		pfh = pidfile_open(pidf, 0600, NULL);
 		if (daemon(0, 0)) {
 			logmsg(LOG_WARNING, "Failed to become daemon: %s",
 			    strerror(errno));
 		}
-		pidfile(pidf);
+		pidfile_write(pfh);
 	}
 
 	umask(S_IRWXG | S_IRWXO);

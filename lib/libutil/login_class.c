@@ -21,27 +21,28 @@
  *
  * High-level routines relating to use of the user capabilities database
  *
- * $FreeBSD: src/lib/libutil/login_class.c,v 1.14.2.3 2002/08/06 07:07:52 ache Exp $
- * $DragonFly: src/lib/libutil/login_class.c,v 1.5 2006/01/12 13:43:10 corecode Exp $
+ * $FreeBSD: head/lib/libutil/login_class.c 256850 2013-10-21 16:46:12Z kib $
  */
 
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/rtprio.h>
+#include <sys/stat.h>
+#include <sys/time.h>
 
+#include <ctype.h>
+#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <login_cap.h>
 #include <paths.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
-
-#include "login_cap.h"
 
 
 static struct login_res {
@@ -105,7 +106,7 @@ setclassresources(login_cap_t *lc)
 	    rmax = (*lr->who)(lc, lr->what, rmax, rmax);
 	    rlim.rlim_cur = (*lr->who)(lc, name_cur, rcur, rcur);
 	    rlim.rlim_max = (*lr->who)(lc, name_max, rmax, rmax);
-    
+
 	    if (setrlimit(lr->why, &rlim) == -1)
 		syslog(LOG_WARNING, "set class '%s' resource limit %s: %m", lc->lc_class, lr->what);
 	}
@@ -133,7 +134,7 @@ static struct login_vars {
 };
 
 static char *
-substvar(char * var, const struct passwd * pwd, int hlen, int pch, int nlen)
+substvar(const char * var, const struct passwd * pwd, int hlen, int pch, int nlen)
 {
     char    *np = NULL;
 
@@ -141,14 +142,13 @@ substvar(char * var, const struct passwd * pwd, int hlen, int pch, int nlen)
 	int	tildes = 0;
 	int	dollas = 0;
 	char	*p;
+	const char *q;
 
 	if (pwd != NULL) {
-	    /* Count the number of ~'s in var to substitute */
-	    for (p = var; (p = strchr(p, '~')) != NULL; p++)
-		++tildes;
-	    /* Count the number of $'s in var to substitute */
-	    for (p = var; (p = strchr(p, '$')) != NULL; p++)
-		++dollas;
+	    for (q = var; *q != '\0'; ++q) {
+		tildes += (*q == '~');
+		dollas += (*q == '$');
+	    }
 	}
 
 	np = malloc(strlen(var) + (dollas * nlen)
@@ -186,11 +186,11 @@ substvar(char * var, const struct passwd * pwd, int hlen, int pch, int nlen)
 	}
     }
 
-    return np;
+    return (np);
 }
 
 
-int
+void
 setclassenvironment(login_cap_t *lc, const struct passwd * pwd, int paths)
 {
     struct login_vars	*vars = paths ? pathvars : envars;
@@ -202,23 +202,16 @@ setclassenvironment(login_cap_t *lc, const struct passwd * pwd, int paths)
 	++pch;
 
     while (vars->tag != NULL) {
-	char * var = paths ? login_getpath(lc, vars->tag, NULL)
+	const char * var = paths ? login_getpath(lc, vars->tag, NULL)
 	    		   : login_getcapstr(lc, vars->tag, NULL, NULL);
 
 	char * np  = substvar(var, pwd, hlen, pch, nlen);
 
 	if (np != NULL) {
-	    if (setenv(vars->var, np, vars->overwrite) == -1) {
-		syslog(LOG_ERR, "setclassenvironment: %m");
-		free(np);
-		return -1;
-	    }
+	    setenv(vars->var, np, vars->overwrite);
 	    free(np);
 	} else if (vars->def != NULL) {
-	    if (setenv(vars->var, vars->def, 0) == -1) {
-		syslog(LOG_ERR, "setclassenvironment: %m");
-		return -1;
-	    }
+	    setenv(vars->var, vars->def, 0);
 	}
 	++vars;
     }
@@ -228,7 +221,7 @@ setclassenvironment(login_cap_t *lc, const struct passwd * pwd, int paths)
      * which the admin and/or user may set an arbitrary set of env vars.
      */
     if (!paths) {
-	char	**set_env = login_getcaplist(lc, "setenv", ",");
+	const char	**set_env = login_getcaplist(lc, "setenv", ",");
 
 	if (set_env != NULL) {
 	    while (*set_env != NULL) {
@@ -239,10 +232,7 @@ setclassenvironment(login_cap_t *lc, const struct passwd * pwd, int paths)
 
 		    *p++ = '\0';
 		    if ((np = substvar(p, pwd, hlen, pch, nlen)) != NULL) {
-			if (setenv(*set_env, np, 1) == -1) {
-			    free(np);
-			    return -1;
-			}
+			setenv(*set_env, np, 1);
 			free(np);
 		    }
 		}
@@ -250,8 +240,8 @@ setclassenvironment(login_cap_t *lc, const struct passwd * pwd, int paths)
 	    }
 	}
     }
-    return 0;
 }
+
 
 
 /*
@@ -278,20 +268,19 @@ setclasscontext(const char *classname, unsigned int flags)
 
     rc = lc ? setusercontext(lc, NULL, 0, flags) : -1;
     login_close(lc);
-    return rc;
+    return (rc);
 }
 
 
 
 /*
- * Private functionw which takes care of processing
+ * Private function which takes care of processing
  */
 
 static mode_t
 setlogincontext(login_cap_t *lc, const struct passwd *pwd,
-		mode_t mymask, unsigned long flags, int *errcode)
+		mode_t mymask, unsigned long flags)
 {
-    *errcode = 0;
     if (lc) {
 	/* Set resources */
 	if (flags & LOGIN_SETRESOURCES)
@@ -300,17 +289,13 @@ setlogincontext(login_cap_t *lc, const struct passwd *pwd,
 	if (flags & LOGIN_SETUMASK)
 	    mymask = (mode_t)login_getcapnum(lc, "umask", mymask, mymask);
 	/* Set paths */
-	if (flags & LOGIN_SETPATH) {
-	    if (setclassenvironment(lc, pwd, 1) == -1)
-		*errcode = -1;
-	}
+	if (flags & LOGIN_SETPATH)
+	    setclassenvironment(lc, pwd, 1);
 	/* Set environment */
-	if (flags & LOGIN_SETENV) {
-	    if (setclassenvironment(lc, pwd, 0) == -1)
-		*errcode = -1;
-	}
+	if (flags & LOGIN_SETENV)
+	    setclassenvironment(lc, pwd, 0);
     }
-    return mymask;
+    return (mymask);
 }
 
 
@@ -335,10 +320,7 @@ setusercontext(login_cap_t *lc, const struct passwd *pwd, uid_t uid, unsigned in
     quad_t	p;
     mode_t	mymask;
     login_cap_t *llc = NULL;
-#ifndef __NETBSD_SYSCALLS
     struct rtprio rtp;
-#endif
-    int		errcode;
 
     if (lc == NULL) {
 	if (pwd != NULL && (lc = login_getpwclass(pwd)) != NULL)
@@ -356,25 +338,26 @@ setusercontext(login_cap_t *lc, const struct passwd *pwd, uid_t uid, unsigned in
     if (flags & LOGIN_SETPRIORITY) {
 	p = login_getcapnum(lc, "priority", LOGIN_DEFPRI, LOGIN_DEFPRI);
 
-	if(p > PRIO_MAX) {
-#ifndef __NETBSD_SYSCALLS
+	if (p > PRIO_MAX) {
 	    rtp.type = RTP_PRIO_IDLE;
 	    rtp.prio = p - PRIO_MAX - 1;
-	    if(rtprio(RTP_SET, 0, &rtp))
-		syslog(LOG_WARNING, "rtprio (%s): %m",
+	    p = (rtp.prio > RTP_PRIO_MAX) ? 31 : p;
+	    if (rtprio(RTP_SET, 0, &rtp))
+		syslog(LOG_WARNING, "rtprio '%s' (%s): %m",
+		    pwd ? pwd->pw_name : "-",
 		    lc ? lc->lc_class : LOGIN_DEFCLASS);
-#endif
-	} else if(p < PRIO_MIN) {
-#ifndef __NETBSD_SYSCALLS
+	} else if (p < PRIO_MIN) {
 	    rtp.type = RTP_PRIO_REALTIME;
 	    rtp.prio = abs(p - PRIO_MIN + RTP_PRIO_MAX);
-	    if(rtprio(RTP_SET, 0, &rtp))
-		syslog(LOG_WARNING, "rtprio (%s): %m",
+	    p = (rtp.prio > RTP_PRIO_MAX) ? 1 : p;
+	    if (rtprio(RTP_SET, 0, &rtp))
+		syslog(LOG_WARNING, "rtprio '%s' (%s): %m",
+		    pwd ? pwd->pw_name : "-",
 		    lc ? lc->lc_class : LOGIN_DEFCLASS);
-#endif
 	} else {
 	    if (setpriority(PRIO_PROCESS, 0, (int)p) != 0)
-		syslog(LOG_WARNING, "setpriority (%s): %m",
+		syslog(LOG_WARNING, "setpriority '%s' (%s): %m",
+		    pwd ? pwd->pw_name : "-",
 		    lc ? lc->lc_class : LOGIN_DEFCLASS);
 	}
     }
@@ -384,13 +367,13 @@ setusercontext(login_cap_t *lc, const struct passwd *pwd, uid_t uid, unsigned in
 	if (setgid(pwd->pw_gid) != 0) {
 	    syslog(LOG_ERR, "setgid(%lu): %m", (u_long)pwd->pw_gid);
 	    login_close(llc);
-	    return -1;
+	    return (-1);
 	}
 	if (initgroups(pwd->pw_name, pwd->pw_gid) == -1) {
 	    syslog(LOG_ERR, "initgroups(%s,%lu): %m", pwd->pw_name,
 		   (u_long)pwd->pw_gid);
 	    login_close(llc);
-	    return -1;
+	    return (-1);
 	}
     }
 
@@ -398,32 +381,24 @@ setusercontext(login_cap_t *lc, const struct passwd *pwd, uid_t uid, unsigned in
     if ((flags & LOGIN_SETLOGIN) && setlogin(pwd->pw_name) != 0) {
 	syslog(LOG_ERR, "setlogin(%s): %m", pwd->pw_name);
 	login_close(llc);
-	return -1;
+	return (-1);
     }
 
     mymask = (flags & LOGIN_SETUMASK) ? umask(LOGIN_DEFUMASK) : 0;
-    mymask = setlogincontext(lc, pwd, mymask, flags, &errcode);
-    if (errcode == -1) {
-	login_close(llc);
-	return -1;
-    }
+    mymask = setlogincontext(lc, pwd, mymask, flags);
     login_close(llc);
 
     /* This needs to be done after anything that needs root privs */
     if ((flags & LOGIN_SETUSER) && setuid(uid) != 0) {
 	syslog(LOG_ERR, "setuid(%lu): %m", (u_long)uid);
-	return -1;	/* Paranoia again */
+	return (-1);	/* Paranoia again */
     }
 
     /*
      * Now, we repeat some of the above for the user's private entries
      */
-    if ((lc = login_getuserclass(pwd)) != NULL) {
-	mymask = setlogincontext(lc, pwd, mymask, flags, &errcode);
-	if (errcode == -1) {
-	    login_close(lc);
-	    return -1;
-	}
+    if (getuid() == uid && (lc = login_getuserclass(pwd)) != NULL) {
+	mymask = setlogincontext(lc, pwd, mymask, flags);
 	login_close(lc);
     }
 
@@ -431,6 +406,5 @@ setusercontext(login_cap_t *lc, const struct passwd *pwd, uid_t uid, unsigned in
     if (flags & LOGIN_SETUMASK)
 	umask(mymask);
 
-    return 0;
+    return (0);
 }
-

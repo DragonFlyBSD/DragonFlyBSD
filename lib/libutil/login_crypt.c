@@ -23,23 +23,21 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libutil/login_crypt.c,v 1.2.2.2 2000/10/27 01:50:31 green Exp $
- * $DragonFly: src/lib/libutil/login_crypt.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
+ * $FreeBSD: head/lib/libutil/login_crypt.c 94202 2002-04-08 11:04:56Z ru $
  */
 
 #include <sys/types.h>
 
+#include <login_cap.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-#include "login_cap.h"
 
 const char *
 login_setcryptfmt(login_cap_t *lc, const char *def, const char *error) {
 	const char *cipher;
 
-	cipher = login_getcapstr(lc, "passwd_format", (char *)def, NULL);
+	cipher = login_getcapstr(lc, "passwd_format", def, NULL);
 	if (getenv("CRYPT_DEBUG") != NULL)
 		fprintf(stderr, "login_setcryptfmt: "
 		    "passwd_format = %s\n", cipher);

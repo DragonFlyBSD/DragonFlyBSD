@@ -23,9 +23,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libutil/flopen.3,v 1.7 2008/10/20 18:02:16 des Exp $
+.\" $FreeBSD: head/lib/libutil/flopen.3 229784 2012-01-07 16:13:56Z uqs $
 .\"
-.Dd December 27, 2008
+.Dd June 6, 2009
 .Dt FLOPEN 3
 .Os
 .Sh NAME
@@ -46,13 +46,12 @@ The
 function opens or creates a file and acquires an exclusive lock on it.
 It is essentially equivalent with calling
 .Fn open
-with the same parameters followed by an
-.Fn fcntl
-.Dv F_SETLK
-or
-.Dv F_SETLKW
-operation with lock type
-.Dv F_WRLCK ,
+with the same parameters followed by
+.Fn flock
+with an
+.Va operation
+argument of
+.Dv LOCK_EX ,
 except that
 .Fn flopen
 will attempt to detect and handle races that may occur between opening
@@ -70,7 +69,7 @@ and the file is already locked,
 will fail and set
 .Va errno
 to
-.Er EWOULDBLOCK .
+.Dv EWOULDBLOCK .
 .Pp
 As with
 .Fn open ,
@@ -87,18 +86,13 @@ returns a valid file descriptor.
 Otherwise, it returns -1, and sets
 .Va errno
 as described in
-.Xr fcntl 2
+.Xr flock 2
 and
 .Xr open 2 .
 .Sh SEE ALSO
 .Xr errno 2 ,
-.Xr fcntl 2 ,
+.Xr flock 2 ,
 .Xr open 2
-.Sh HISTORY
-The
-.Fn flopen
-function first appeared in
-.Fx 6.3 .
 .Sh AUTHORS
 .An -nosplit
 The

@@ -31,8 +31,7 @@
 
 #include <stdio.h>
 #include <string.h>
-
-#include "libutil.h"
+#include <libutil.h>
 
 /*
  * snprintf() `bytes' into `buf', reformatting it so that the number,

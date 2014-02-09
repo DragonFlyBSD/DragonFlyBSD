@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
+ * $FreeBSD: head/lib/libutil/hexdump.c 180161 2008-07-01 22:30:57Z jhb $
  */
 
 #include <sys/types.h>

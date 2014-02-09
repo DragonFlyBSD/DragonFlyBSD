@@ -23,8 +23,8 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libutil/login_tty.3,v 1.5.2.3 2001/12/17 10:08:32 ru Exp $
-.\"
+.\" $FreeBSD: head/lib/libutil/login_tty.3 206622 2010-04-14 19:08:06Z uqs $
+.\" "
 .Dd December 29, 1996
 .Dt LOGIN_TTY 3
 .Os
@@ -41,19 +41,22 @@
 .Sh DESCRIPTION
 The function
 .Fn login_tty
-prepares a terminal for a new login session.  The file descriptor
+prepares a terminal for a new login session.
+The file descriptor
 .Ar fd
 passed to
 .Fn login_tty
-must be opened for reading and writing on a terminal device.  It will be
+must be opened for reading and writing on a terminal device.
+It will be
 made the controlling terminal for the calling process, after allocating
 a new session with
 .Xr setsid 2 .
 This terminal device will also be made the standard input, standard output,
 and standard error output of the calling process.
 .Sh RETURN VALUES
-.Fn Login_tty
-returns -1 if it could not make the device referenced by
+The
+.Fn login_tty
+function returns -1 if it could not make the device referenced by
 .Ar fd
 the controlling terminal of the calling process, and 0 otherwise.
 .Sh SEE ALSO

@@ -17,7 +17,7 @@
 .\" 5. Modifications may be freely made to this file providing the above
 .\"    conditions are met.
 .\"
-.\" $FreeBSD: src/lib/libutil/login_ok.3,v 1.7.2.4 2001/12/17 10:08:32 ru Exp $
+.\" $FreeBSD: head/lib/libutil/login_ok.3 206622 2010-04-14 19:08:06Z uqs $
 .\"
 .Dd January 2, 1997
 .Dt LOGIN_OK 3
@@ -44,8 +44,9 @@ This set of functions checks to see if login is allowed based on login
 class capability entries in the login database,
 .Xr login.conf 5 .
 .Pp
+The
 .Fn auth_ttyok
-checks to see if the named tty is available to users of a specific
+function checks to see if the named tty is available to users of a specific
 class, and is either in the
 .Em ttys.allow
 access list, and not in
@@ -55,7 +56,7 @@ access list.
 An empty
 .Em ttys.allow
 list (or if no such capability exists for
-the give login class) logins via any tty device are allowed unless
+the given login class) logins via any tty device are allowed unless
 the
 .Em ttys.deny
 list exists and is non-empty, and the device or its
@@ -63,7 +64,7 @@ tty group (see
 .Xr ttys 5 )
 is not in the list.
 Access to ttys may be allowed or restricted specifically by tty device
-name, a device name which includes a wildcard (e.g. ttyD* or cuaD*),
+name, a device name which includes a wildcard (e.g.\& ttyD* or cuaD*),
 or may name a ttygroup, when group=<name> tags have been assigned in
 .Pa /etc/ttys .
 Matching of ttys and ttygroups is case sensitive.
@@ -73,8 +74,9 @@ or empty string as the
 .Ar tty
 parameter causes the function to return a non-zero value.
 .Pp
+The
 .Fn auth_hostok
-checks for any host restrictions for remote logins.
+function checks for any host restrictions for remote logins.
 The function checks on both a host name and IP address (given in its
 text form, typically n.n.n.n) against the
 .Em host.allow
@@ -88,7 +90,7 @@ The
 function is used for matching, and the matching on hostnames is case
 insensitive.
 Note that this function expects that the hostname is fully expanded
-(i.e. the local domain name added if necessary) and the IP address
+(i.e., the local domain name added if necessary) and the IP address
 is in its canonical form.
 No hostname or address lookups are attempted.
 .Pp
