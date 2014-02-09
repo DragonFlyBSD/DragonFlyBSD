@@ -12,7 +12,7 @@ SRCS=	flopen.c login.c login_tty.c logout.c logwtmp.c logwtmpx.c pty.c \
 	realhostname.c fparseln.c stub.c pidfile.c trimdomain.c \
 	dehumanize_number.c humanize_number.c humanize_unsigned.c pw_util.c \
 	efun.c getmntopts.c
-SRCS+=	gr_util.c hexdump.c expand_number.c
+SRCS+=	gr_util.c hexdump.c
 
 INCS=	libutil.h login_cap.h
 INCSLINKS=libutil.h ${INCLUDEDIR}/util.h

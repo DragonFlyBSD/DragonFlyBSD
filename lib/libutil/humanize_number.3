@@ -32,12 +32,16 @@
 .Dt HUMANIZE_NUMBER 3
 .Os
 .Sh NAME
+
+.Nm dehumanize_number ,
 .Nm humanize_number
-.Nd format a number into a human readable form
+.Nd format a number into a human readable form and vice versa
 .Sh LIBRARY
 .Lb libutil
 .Sh SYNOPSIS
 .In libutil.h
+.Ft int
+.Fn dehumanize_number "const char *str" "int64_t *result"
 .Ft int
 .Fo humanize_number
 .Fa "char *buf" "size_t len" "int64_t number" "const char *suffix"
@@ -159,6 +163,15 @@ This flag has no effect when
 .Dv HN_DIVISOR_1000
 is also specified.
 .El
+.Pp
+The
+.Fn dehumanize_number
+function parses the string representing an integral value given in
+.Fa str
+and stores the numerical value in the integer pointed to by
+.Fa result .
+The provided string may hold one of the suffixes, which will be interpreted
+and used to scale up its accompanying numerical value.
 .Sh RETURN VALUES
 Upon success, the
 .Nm
@@ -175,8 +188,28 @@ may be modified.
 If
 .Dv HN_GETSCALE
 is specified, the prefix index number will be returned instead.
-.Sh SEE ALSO
-.Xr expand_number 3
+.Pp
+The
+.Fn dehumanize_number
+function returns 0 if the string was parsed correctly.
+A \-1 is returned to indicate failure and an error code is stored in
+.Va errno .
+.Sh ERRORS
+The
+.Fn dehumanize_number
+function will fail and no number will be stored in
+.Fa result
+if:
+.Bl -tag -width Er
+.It Bq Er EINVAL
+The string in
+.Fa str
+was empty or carried an unknown suffix.
+.It Bq Er ERANGE
+The string in
+.Fa str
+represented a number that does not fit in
+.Fa result .
 .Sh STANDARDS
 The
 .Dv HN_DIVISOR_1000
