@@ -3,8 +3,7 @@ $ ee.i18n.guide for more information
 $ 
 $ For ee patchlevel 3
 $ 
-$ $FreeBSD: src/usr.bin/ee/nls/uk_UA.KOI8-U/ee.msg,v 1.1.2.1 2001/06/10 11:06:11 sobomax Exp $
-$ $DragonFly: src/usr.bin/ee/nls/uk_UA.KOI8-U/ee.msg,v 1.3 2003/10/05 16:51:39 drhodus Exp $
+$ $FreeBSD: head/usr.bin/ee/nls/uk_UA.KOI8-U/ee.msg 192914 2009-05-27 17:27:03Z ed $
 $ 
 $ 
 $set 1
@@ -111,7 +110,7 @@ $quote "
 100 "           ...пошук"
 101 "рядок \"%s\" не знайдено"
 102 "що шукати: "
-103 "не можу виконати %s"
+103 "не можу виконати %s\n"
 104 "натисн╕ть <enter> для продовження..."
 105 "Esc - в╕дм╕на"
 106 "меню завелике для екрану"

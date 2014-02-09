@@ -3,8 +3,7 @@ $ ee.i18n.guide for more information
 $ 
 $ For ee patchlevel 3
 $
-$ $FreeBSD: src/usr.bin/ee/nls/fr_FR.ISO8859-1/ee.msg,v 1.10.2.1 2002/01/05 15:47:14 phantom Exp $
-$ $DragonFly: src/usr.bin/ee/nls/fr_FR.ISO8859-1/ee.msg,v 1.3 2003/10/05 16:51:39 drhodus Exp $
+$ $FreeBSD: head/usr.bin/ee/nls/fr_FR.ISO8859-1/ee.msg 192914 2009-05-27 17:27:03Z ed $
 $ 
 $ 
 $set 1
@@ -111,7 +110,7 @@ $quote "
 100 "           ...recherche"
 101 "chaîne \"%s\" non trouvée"
 102 "rechercher : "
-103 "impossible d'exécuter %s"
+103 "impossible d'exécuter %s\n"
 104 "tapez entrée pour continuer "
 105 "pressez sur échap. pour annuler"
 106 "menu trop grand pour la fenêtre"

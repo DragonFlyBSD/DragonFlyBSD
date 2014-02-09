@@ -69,10 +69,7 @@ char *version = "@(#) ee, version "  EE_VERSION  " $Revision: 1.104 $";
 #include <curses.h>
 #endif
 
-#ifdef HAS_CTYPE
 #include <ctype.h>
-#endif
-
 #include <signal.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -80,6 +77,7 @@ char *version = "@(#) ee, version "  EE_VERSION  " $Revision: 1.104 $";
 #include <errno.h>
 #include <string.h>
 #include <pwd.h>
+#include <locale.h>
 
 #ifdef HAS_SYS_WAIT
 #include <sys/wait.h>
@@ -97,9 +95,7 @@ char *version = "@(#) ee, version "  EE_VERSION  " $Revision: 1.104 $";
 #include <unistd.h>
 #endif
 
-
 #ifndef NO_CATGETS
-#include <locale.h>
 #include <nl_types.h>
 
 nl_catd catalog;
@@ -308,7 +304,7 @@ void undel_word P_((void));
 void del_line P_((void));
 void undel_line P_((void));
 void adv_word P_((void));
-void move_rel P_((char direction, int lines));
+void move_rel P_((int direction, int lines));
 void eol P_((void));
 void bol P_((void));
 void adv_line P_((void));
@@ -552,7 +548,7 @@ char *argv[];
 {
 	int counter;
 
-	for (counter = 1; counter < SIGUNUSED; counter++)
+	for (counter = 1; counter < 24; counter++)
 		signal(counter, SIG_IGN);
 
 	signal(SIGCHLD, SIG_DFL);
@@ -723,7 +719,7 @@ int character;			/* new character			*/
 	}
 	*point = character;	/* insert new character			*/
 	wclrtoeol(text_win);
-	if (((character >= 0) && (character < ' ')) || (character >= 127)) /* check for TAB character*/
+	if (!isprint((unsigned char)character)) /* check for TAB character*/
 	{
 		scr_pos = scr_horz += out_char(text_win, character, scr_horz);
 		point++;
@@ -731,7 +727,7 @@ int character;			/* new character			*/
 	}
 	else
 	{
-		waddch(text_win, character);
+		waddch(text_win, (unsigned char)character);
 		scr_pos = ++scr_horz;
 		point++;
 		position ++;
@@ -933,7 +929,7 @@ int temp_int;
 int 
 out_char(window, character, column)	/* output non-printing character */
 WINDOW *window;
-char character;
+int character;
 int column;
 {
 	int i1, i2;
@@ -965,23 +961,23 @@ int column;
 		}
 		else
 		{
-			waddch(window, (char)character );
+			waddch(window, (unsigned char)character );
 			return(1);
 		}
 	}
 	else
 	{
-		waddch(window, (char)character);
+		waddch(window, (unsigned char)character);
 		return(1);
 	}
 	for (i2 = 0; (string[i2] != '\0') && (((column+i2+1)-horiz_offset) < last_col); i2++)
-		waddch(window, string[i2]);
+		waddch(window, (unsigned char)string[i2]);
 	return(strlen(string));
 }
 
 int 
 len_char(character, column)	/* return the length of the character	*/
-char character;
+int character;
 int column;	/* the column must be known to provide spacing for tabs	*/
 {
 	int length;
@@ -1040,7 +1036,7 @@ int length;	/* length (in bytes) of line			*/
 	wclrtoeol(text_win);
 	while ((posit < length) && (column <= last_col))
 	{
-		if ((*temp < 32) || (*temp >= 127))
+		if (!isprint(*temp))
 		{
 			column += len_char(*temp, abs_column);
 			abs_column += out_char(text_win, *temp, abs_column);
@@ -1919,13 +1915,13 @@ int advance;		/* if true, skip leading spaces and tabs	*/
 			}
 			*nam_str = in;
 			g_pos++;
-			if (((in < ' ') || (in > 126)) && (g_horz < (last_col - 1)))
+			if (!isprint((unsigned char)in) && (g_horz < (last_col - 1)))
 				g_horz += out_char(com_win, in, g_horz);
 			else
 			{
 				g_horz++;
 				if (g_horz < (last_col - 1))
-					waddch(com_win, in);
+					waddch(com_win, (unsigned char)in);
 			}
 			nam_str++;
 		}
@@ -1970,7 +1966,7 @@ int sensitive;
 		}
 		else
 		{
-			if (toupper(*strng1) != toupper(*strng2))
+			if (toupper((unsigned char)*strng1) != toupper((unsigned char)*strng2))
 				equal = FALSE;
 		}
 		strng1++;
@@ -2106,10 +2102,10 @@ char *arguments[];
 		else if (!strcmp("-?", buff))
 		{
 			fprintf(stderr, usage0, arguments[0]);
-			fprintf(stderr, usage1);
-			fprintf(stderr, usage2);
-			fprintf(stderr, usage3);
-			fprintf(stderr, usage4);
+			fputs(usage1, stderr);
+			fputs(usage2, stderr);
+			fputs(usage3, stderr);
+			fputs(usage4, stderr);
 			exit(1);
 		}
 		else if ((*buff == '+') && (start_at_line == NULL))
@@ -2442,7 +2438,7 @@ int noverify;
 	if ((text_changes) && (!noverify))
 	{
 		ans = get_string(changes_made_prompt, TRUE);
-		if (toupper(*ans) == toupper(*yes_char))
+		if (toupper((unsigned char)*ans) == toupper((unsigned char)*yes_char))
 			text_changes = FALSE;
 		else
 			return(0);
@@ -2519,7 +2515,7 @@ int warn_if_exists;
 		if ((temp_fp = fopen(file_name, "r")))
 		{
 			tmp_point = get_string(file_exists_prompt, TRUE);
-			if (toupper(*tmp_point) == toupper(*yes_char))
+			if (toupper((unsigned char)*tmp_point) == toupper((unsigned char)*yes_char))
 				write_flag = TRUE;
 			else 
 				write_flag = FALSE;
@@ -2940,7 +2936,7 @@ while ((position < curr_line->line_length) && ((*point == 32) || (*point == 9)))
 
 void 
 move_rel(direction, lines)	/* move relative to current line	*/
-char direction;
+int direction;
 int lines;
 {
 	int i;
@@ -3243,7 +3239,7 @@ char *string;		/* string containing user command		*/
 	}
 	if (shell_fork)
 	{
-		printf(continue_msg);
+		fputs(continue_msg, stdout);
 		fflush(stdout);
 		while ((in = getchar()) != '\n')
 			;
@@ -3434,14 +3430,13 @@ struct menu_entries menu_list[];
 		if (input == -1)
 			exit(0);
 
-		if (((tolower(input) >= 'a') && (tolower(input) <= 'z')) || 
-		    ((input >= '0') && (input <= '9')))
+		if (isascii(input) && isalnum(input))
 		{
-			if ((tolower(input) >= 'a') && (tolower(input) <= 'z'))
+			if (isalpha(input))
 			{
 				temp = 1 + tolower(input) - 'a';
 			}
-			else if ((input >= '0') && (input <= '9'))
+			else if (isdigit(input))
 			{
 				temp = (2 + 'z' - 'a') + (input - '0');
 			}
@@ -4124,7 +4119,7 @@ Format()	/* format the paragraph according to set margins	*/
 }
 
 unsigned char *init_name[3] = {
-	"/usr/local/lib/init.ee", 
+	"/usr/share/misc/init.ee", 
 	NULL, 
 	".init.ee"
 	};
@@ -5081,9 +5076,9 @@ strings_init()
 {
 	int counter;
 
-#ifndef NO_CATGETS
 	setlocale(LC_ALL, "");
-	catalog = catopen("ee", 0);
+#ifndef NO_CATGETS
+	catalog = catopen("ee", NL_CAT_LOCALE);
 #endif /* NO_CATGETS */
 
 	modes_menu[0].item_string = catgetlocal( 1, "modes menu");

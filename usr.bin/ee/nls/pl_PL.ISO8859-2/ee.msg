@@ -3,8 +3,7 @@ $ ee.i18n.guide for more information
 $ 
 $ For ee patchlevel 3
 $ 
-$ $FreeBSD: src/usr.bin/ee/nls/pl_PL.ISO8859-2/ee.msg,v 1.5.2.1 2002/01/05 15:47:14 phantom Exp $
-$ $DragonFly: src/usr.bin/ee/nls/pl_PL.ISO8859-2/ee.msg,v 1.4 2005/03/03 19:07:29 joerg Exp $
+$ $FreeBSD: head/usr.bin/ee/nls/pl_PL.ISO8859-2/ee.msg 192914 2009-05-27 17:27:03Z ed $
 $ 
 $ 
 $set 1
@@ -59,7 +58,7 @@ $quote "
 48 "read    : wczytaj plik                  char    : kod ASCII znaku          "
 49 "write   : zapisz do pliku               case    : szukaj (ma³e!=du¿e)      "
 50 "exit    : zachowaj i wyjd¼              nocase  : szukaj (ma³e==du¿e)      "
-51 "quit    : wyjd¼ bez zachowania          !cmd    : wykonaj \"cmd\" w shellu"
+51 "quit    : wyjd¼ bez zachowania          !cmd    : wykonaj \"cmd\" w shellu   "
 52 "line    : wy¶wietl numer wiersza        0-9     : id¼ do wiersza \"#\"       "
 53 "expand  : rozwiñ tabulacje na spacje    noexpand: nie rozwijaj tabulacji   "
 54 "                                                                             "
@@ -111,7 +110,7 @@ $quote "
 100 "           ...szukam"
 101 "napis \"%s\" nie zosta³ znaleziony"
 102 "szukaj: "
-103 "nie mo¿na wykonaæ %s"
+103 "nie mo¿na wykonaæ %s\n"
 104 "naci¶nij Enter ¿eby kontynuowaæ "
 105 "naci¶nij Esc ¿eby anulowaæ"
 106 "menu zbyt du¿e dla tego okna"
