@@ -512,6 +512,8 @@ out_disable:
 }
 
 void i915_ironlake_get_mem_freq(struct drm_device *dev);
+void i915_pineview_get_mem_freq(struct drm_device *dev);
+
 void i915_pineview_get_mem_freq(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
