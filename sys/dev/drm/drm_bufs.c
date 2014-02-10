@@ -130,14 +130,14 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 		return EINVAL;
 	}
 	if ((offset & PAGE_MASK) || (size & PAGE_MASK)) {
-		DRM_ERROR("offset/size not page aligned: 0x%lx/0x%04x\n",
-		    offset, size);
+		DRM_ERROR("offset/size not page aligned: 0x%jx/0x%04x\n",
+		    (uintmax_t)offset, size);
 		drm_free(map, DRM_MEM_MAPS);
 		return EINVAL;
 	}
 	if (offset + size < offset) {
-		DRM_ERROR("offset and size wrap around: 0x%lx/0x%04x\n",
-		    offset, size);
+		DRM_ERROR("offset and size wrap around: 0x%jx/0x%04x\n",
+		    (uintmax_t)offset, size);
 		drm_free(map, DRM_MEM_MAPS);
 		return EINVAL;
 	}
@@ -225,7 +225,7 @@ int drm_addmap(struct drm_device * dev, resource_size_t offset,
 			drm_free(map, DRM_MEM_MAPS);
 			return EINVAL;
 		}
-		map->virtual = (void *)(dev->sg->vaddr + offset);
+		map->virtual = (void *)(uintptr_t)(dev->sg->vaddr + offset);
 		map->offset = dev->sg->vaddr + offset;
 		break;
 	case _DRM_CONSISTENT:
