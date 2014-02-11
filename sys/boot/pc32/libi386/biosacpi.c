@@ -32,7 +32,7 @@
 #include <btxv86.h>
 #include "libi386.h"
 
-#include "acdragonfly.h"
+#include "platform/acdragonfly.h"
 #include "acconfig.h"
 #define ACPI_SYSTEM_XFACE
 #include "actypes.h"

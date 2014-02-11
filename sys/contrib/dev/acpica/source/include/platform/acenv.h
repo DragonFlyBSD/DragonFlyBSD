@@ -153,7 +153,7 @@
 #include "acmacosx.h"
 
 #elif defined(__DragonFly__)
-#include <dev/acpica/acdragonfly.h>
+#include "acdragonfly.h"
 
 #elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
 #include "acfreebsd.h"
