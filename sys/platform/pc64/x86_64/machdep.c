@@ -550,8 +550,16 @@ cpu_mwait_attach(void)
 	    (CPUID_TO_FAMILY(cpu_id) > 0xf ||
 	     (CPUID_TO_FAMILY(cpu_id) == 0x6 &&
 	      CPUID_TO_MODEL(cpu_id) >= 0xf))) {
+		int bm_sts = 1;
+
 		atomic_clear_int(&cpu_mwait_c3_preamble,
 		    CPU_MWAIT_C3_PREAMBLE_BM_ARB);
+
+		TUNABLE_INT_FETCH("machdep.cpu.mwait.bm_sts", &bm_sts);
+		if (!bm_sts) {
+			atomic_clear_int(&cpu_mwait_c3_preamble,
+			    CPU_MWAIT_C3_PREAMBLE_BM_STS);
+		}
 	}
 
 	sbuf_new(&sb, cpu_mwait_cx_supported,
