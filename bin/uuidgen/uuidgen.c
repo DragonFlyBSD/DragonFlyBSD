@@ -24,7 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/uuidgen/uuidgen.c,v 1.3 2003/03/15 02:27:10 marcel Exp $
- * $DragonFly: src/usr.bin/uuidgen/uuidgen.c,v 1.1 2007/06/17 05:03:23 dillon Exp $
  */
 
 #include <err.h>

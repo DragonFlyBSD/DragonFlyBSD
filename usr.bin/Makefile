@@ -220,7 +220,6 @@ SUBDIR=	alias \
 	users \
 	uudecode \
 	uuencode \
-	uuidgen \
 	vgrind \
 	vi \
 	vis \

@@ -35,6 +35,7 @@ SUBDIR= cat \
 	stty \
 	sync \
 	test \
+	uuidgen \
 	varsym
 
 .if !defined(NO_SENDMAIL)
