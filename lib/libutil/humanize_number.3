@@ -32,13 +32,13 @@
 .Dt HUMANIZE_NUMBER 3
 .Os
 .Sh NAME
-
 .Nm dehumanize_number ,
 .Nm humanize_number
 .Nd format a number into a human readable form and vice versa
 .Sh LIBRARY
 .Lb libutil
 .Sh SYNOPSIS
+.In sys/types.h
 .In libutil.h
 .Ft int
 .Fn dehumanize_number "const char *str" "int64_t *result"
@@ -72,7 +72,7 @@ then divide
 by 1024 until it will.
 In this case, prefix
 .Fa suffix
-with the appropriate designator.
+with the appropriate SI designator.
 The
 .Fn humanize_number
 function follows the traditional computer science conventions by
@@ -174,7 +174,7 @@ The provided string may hold one of the suffixes, which will be interpreted
 and used to scale up its accompanying numerical value.
 .Sh RETURN VALUES
 Upon success, the
-.Nm
+.Fn humanize_number
 function returns the number of characters that would have been stored in
 .Fa buf
 (excluding the terminating
@@ -210,6 +210,7 @@ The string in
 .Fa str
 represented a number that does not fit in
 .Fa result .
+.El
 .Sh STANDARDS
 The
 .Dv HN_DIVISOR_1000

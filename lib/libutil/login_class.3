@@ -39,7 +39,7 @@
 .Fn setusercontext "login_cap_t *lc" "const struct passwd *pwd" "uid_t uid" "unsigned int flags"
 .Ft void
 .Fn setclassresources "login_cap_t *lc"
-.Ft int
+.Ft void
 .Fn setclassenvironment "login_cap_t *lc" "const struct passwd *pwd" "int paths"
 .Sh DESCRIPTION
 These functions provide a higher level interface to the login class
@@ -171,12 +171,11 @@ and
 functions are subsets of the setcontext functions above, but may
 be useful in isolation.
 .Sh RETURN VALUES
-.Fn setclassenvironment
-,
+The
 .Fn setclasscontext
 and
 .Fn setusercontext
-return -1 if an error occurred, or 0 on success.
+functions return -1 if an error occurred, or 0 on success.
 If an error occurs when attempting to set the user, login, group
 or resources, a message is reported to
 .Xr syslog 3 ,

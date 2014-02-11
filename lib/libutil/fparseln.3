@@ -37,6 +37,7 @@
 .Sh LIBRARY
 .Lb libutil
 .Sh SYNOPSIS
+.In sys/types.h
 .In stdio.h
 .In libutil.h
 .Ft "char *"
@@ -122,7 +123,6 @@ Remove escape preceding any other character.
 .It Dv FPARSELN_UNESCALL
 All of the above.
 .El
-.Pp
 .El
 .Sh RETURN VALUES
 Upon successful completion a pointer to the parsed line is returned;
