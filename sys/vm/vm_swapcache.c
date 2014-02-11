@@ -688,12 +688,12 @@ vm_swapcache_cleaning(vm_object_t marker, int *swindexp)
 	count = vm_swapcache_maxlaunder;
 	scount = vm_swapcache_maxscan;
 
-outerloop:
 	/*
 	 * Look for vnode objects
 	 */
 	lwkt_gettoken(&vmobj_tokens[*swindexp]);
 
+outerloop:
 	while ((object = TAILQ_NEXT(marker, object_list)) != NULL) {
 		/*
 		 * We have to skip markers.  We cannot hold/drop marker
