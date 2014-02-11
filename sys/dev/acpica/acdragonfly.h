@@ -117,10 +117,8 @@
 #ifndef __ACDRAGONFLY_H_
 #define __ACDRAGONFLY_H_
 
-/* DragonFly uses GCC */
-
+#include <platform/acgcc.h>	/* DragonFly uses GCC */
 #include <sys/types.h>
-#include <platform/acgcc.h>
 #include <machine/acpica_machdep.h>
 
 #define ACPI_UINTPTR_T		uintptr_t
@@ -129,10 +127,7 @@
 #include "opt_acpi.h"
 #endif
 
-#ifdef ACPI_DEBUG
-#define ACPI_DEBUG_OUTPUT	/* for backward compatibility */
-#define ACPI_DISASSEMBLER
-#endif
+#define ACPI_USE_DO_WHILE_0
 
 #ifdef _KERNEL
 
@@ -148,6 +143,11 @@
 
 #define DEBUGGER_THREADING 0    /* integrated with DDB */
 
+#ifdef ACPI_DEBUG
+#define ACPI_DEBUG_OUTPUT	/* for backward compatibility */
+#define ACPI_DISASSEMBLER
+#endif
+
 #ifdef ACPI_DEBUG_OUTPUT
 #include "opt_ddb.h"
 #ifdef DDB
@@ -162,23 +162,6 @@ struct acpi_spinlock;
 #define ACPI_CACHE_T	struct acpicache
 struct acpicache;
 #endif
-
-#else /* _KERNEL */
-
-#define ACPI_CAST_PTHREAD_T(pthread)    ((ACPI_THREAD_ID) ACPI_TO_INTEGER (pthread))
-
-/* Always use DragonFly code over our local versions */
-#define ACPI_USE_SYSTEM_CLIBRARY
-
-/* Not building kernel code, so use libc */
-#define ACPI_USE_STANDARD_HEADERS
-#define ACPI_FLUSH_CPU_CACHE()
-#define __cli()
-#define __sti()
-
-#endif /* _KERNEL */
-
-#ifdef _KERNEL
 
 /* Or strstr (used in debugging mode, also move to libkern) */
 static __inline char *
@@ -199,6 +182,18 @@ strstr(char *s, char *find)
     }
     return (s);
 }
+
+#else /* _KERNEL */
+
+/* Always use DragonFly code over our local versions */
+#define ACPI_USE_SYSTEM_CLIBRARY
+
+#define ACPI_CAST_PTHREAD_T(pthread)    ((ACPI_THREAD_ID) ACPI_TO_INTEGER (pthread))
+
+/* Not building kernel code, so use libc */
+#define ACPI_USE_STANDARD_HEADERS
+#define ACPI_FLUSH_CPU_CACHE()
+
 #endif /* _KERNEL */
 
 #define inline		__inline
