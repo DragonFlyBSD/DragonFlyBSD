@@ -35,6 +35,7 @@
 #include <sys/memrange.h>
 #include <sys/cons.h>	/* cngetc() */
 #include <sys/machintr.h>
+#include <sys/cpu_topology.h>
 
 #include <sys/mplock2.h>
 
@@ -1246,6 +1247,38 @@ detect_amd_topology(int count_htt_cores)
 		core_bits = shift;
 		logical_CPU_bits = 0;
 	}
+}
+
+static void
+amd_get_compute_unit_id(void *arg)
+{
+	u_int regs[4];
+
+	do_cpuid(0x8000001e, regs);
+	cpu_node_t * mynode = get_cpu_node_by_cpuid(mycpuid);
+	/* 
+	 * AMD - CPUID Specification September 2010
+	 * page 34 - //ComputeUnitID = ebx[0:7]//
+	 */
+	mynode->compute_unit_id = regs[1] & 0xff;
+}
+
+int
+fix_amd_topology(void)
+{
+	if (cpu_vendor_id != CPU_VENDOR_AMD)
+		return -1;
+	if ((amd_feature2 & AMDID2_TOPOEXT) == 0)
+		return -1;
+
+	lwkt_cpusync_simple(-1, amd_get_compute_unit_id, NULL);
+
+	kprintf("Compute unit iDS:\n");
+	int i;
+	for (i = 0; i < ncpus; i++)
+		kprintf("%d-%d; \n", i, get_cpu_node_by_cpuid(i)->compute_unit_id);
+
+	return 0;
 }
 
 /* Calculate

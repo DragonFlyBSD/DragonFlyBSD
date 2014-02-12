@@ -109,38 +109,48 @@ build_topology_tree(int *children_no_per_level,
 	node->child_no = children_no_per_level[cur_level];
 	node->type = level_types[cur_level];
 	node->members = 0;
+	node->compute_unit_id = -1;
 
 	if (node->child_no == 0) {
-		node->child_node = NULL;
 		*apicid = get_next_valid_apicid(*apicid);
 		node->members = CPUMASK(get_cpuid_from_apicid(*apicid));
 		return;
 	}
 
-	node->child_node = *last_free_node;
-	(*last_free_node) += node->child_no;
 	if (node->parent_node == NULL)
 		root_cpu_node = node;
 	
 	for (i = 0; i < node->child_no; i++) {
-		node->child_node[i].parent_node = node;
+		node->child_node[i] = *last_free_node;
+		(*last_free_node)++;
+
+		node->child_node[i]->parent_node = node;
 
 		build_topology_tree(children_no_per_level,
 		    level_types,
 		    cur_level + 1,
-		    &(node->child_node[i]),
+		    node->child_node[i],
 		    last_free_node,
 		    apicid);
 
-		node->members |= node->child_node[i].members;
+		node->members |= node->child_node[i]->members;
 	}
+}
+
+static void migrate_elements(cpu_node_t **a, int n, int pos) {
+	int i;
+
+	for (i = pos; i < n - 1 ; i++) {
+		a[i] = a[i+1];
+	}
+	a[i] = NULL;
 }
 
 /* Build CPU topology. The detection is made by comparing the
  * chip, core and logical IDs of each CPU with the IDs of the 
  * BSP. When we found a match, at that level the CPUs are siblings.
  */
-static cpu_node_t *
+static void
 build_cpu_topology(void)
 {
 	detect_cpu_topology();
@@ -243,7 +253,67 @@ build_cpu_topology(void)
 
 	}
 
-	return root;
+	cpu_root_node = root;
+
+
+#if defined(__x86_64__)
+	if (fix_amd_topology() == 0) {
+		int visited[MAXCPU], i, j, pos, cpuid;
+		cpu_node_t *leaf, *parent;
+
+		bzero(visited, MAXCPU * sizeof(int));
+
+		for (i = 0; i < ncpus; i++) {
+			if (visited[i] == 0) {
+				pos = 0;
+				visited[i] = 1;
+				leaf = get_cpu_node_by_cpuid(i);
+
+				if (leaf->type == CORE_LEVEL) {
+					parent = leaf->parent_node;
+
+					last_free_node->child_node[0] = leaf;
+					last_free_node->child_no = 1;
+					last_free_node->members = leaf->members;
+					last_free_node->compute_unit_id = leaf->compute_unit_id;
+					last_free_node->parent_node = parent;
+					last_free_node->type = CORE_LEVEL;
+
+
+					for (j = 0; j < parent->child_no; j++) {
+						if (parent->child_node[j] != leaf) {
+
+							cpuid = BSFCPUMASK(parent->child_node[j]->members);
+							if (visited[cpuid] == 0 &&
+							    parent->child_node[j]->compute_unit_id == leaf->compute_unit_id) {
+
+								last_free_node->child_node[last_free_node->child_no] = parent->child_node[j];
+								last_free_node->child_no++;
+								last_free_node->members |= parent->child_node[j]->members;
+
+								parent->child_node[j]->type = THREAD_LEVEL;
+								parent->child_node[j]->parent_node = last_free_node;
+								visited[cpuid] = 1;
+
+								migrate_elements(parent->child_node, parent->child_no, j);
+								parent->child_no--;
+								j--;
+							}
+						} else {
+							pos = j;
+						}
+					}
+					if (last_free_node->child_no > 1) {
+						parent->child_node[pos] = last_free_node;
+						leaf->type = THREAD_LEVEL;
+						leaf->parent_node = last_free_node;
+						last_free_node++;
+					}
+				}
+			}
+		}
+	}
+#endif
 }
 
 /* Recursive function helper to print the CPU topology tree */
@@ -276,11 +346,21 @@ print_cpu_topology_tree_sysctl_helper(cpu_node_t *node,
 		sbuf_printf(sb,"CHIP ID %d: ",
 			get_chip_ID(bsr_member));
 	} else if (node->type == CORE_LEVEL) {
-		sbuf_printf(sb,"CORE ID %d: ",
-			get_core_number_within_chip(bsr_member));
+		if (node->compute_unit_id != -1) {
+			sbuf_printf(sb,"Compute Unit ID %d: ",
+				node->compute_unit_id);
+		} else {
+			sbuf_printf(sb,"CORE ID %d: ",
+				get_core_number_within_chip(bsr_member));
+		}
 	} else if (node->type == THREAD_LEVEL) {
-		sbuf_printf(sb,"THREAD ID %d: ",
-			get_logical_CPU_number_within_core(bsr_member));
+		if (node->compute_unit_id != -1) {
+			sbuf_printf(sb,"CORE ID %d: ",
+				get_core_number_within_chip(bsr_member));
+		} else {
+			sbuf_printf(sb,"THREAD ID %d: ",
+				get_logical_CPU_number_within_core(bsr_member));
+		}
 	} else {
 		sbuf_printf(sb,"UNKNOWN: ");
 	}
@@ -291,7 +371,7 @@ print_cpu_topology_tree_sysctl_helper(cpu_node_t *node,
 	sbuf_printf(sb,"\n");
 
 	for (i = 0; i < node->child_no; i++) {
-		print_cpu_topology_tree_sysctl_helper(&(node->child_node[i]),
+		print_cpu_topology_tree_sysctl_helper(node->child_node[i],
 		    sb, buf, buf_len, i == (node->child_no -1));
 	}
 }
@@ -364,7 +444,7 @@ get_cpu_node_by_cpumask(cpu_node_t * node,
 	}
 
 	for (i = 0; i < node->child_no; i++) {
-		found = get_cpu_node_by_cpumask(&(node->child_node[i]), mask);
+		found = get_cpu_node_by_cpumask(node->child_node[i], mask);
 		if (found != NULL) {
 			return found;
 		}
@@ -560,7 +640,7 @@ build_sysctl_cpu_topology(void)
 static void
 init_cpu_topology(void)
 {
-	cpu_root_node = build_cpu_topology();
+	build_cpu_topology();
 
 	init_pcpu_topology_sysctl();
 	build_sysctl_cpu_topology();

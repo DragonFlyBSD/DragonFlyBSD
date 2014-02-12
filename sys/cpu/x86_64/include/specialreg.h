@@ -175,6 +175,7 @@
 #define	AMDID2_SSE5	0x00000800
 #define	AMDID2_SKINIT	0x00001000
 #define	AMDID2_WDT	0x00002000
+#define	AMDID2_TOPOEXT	0x00400000
 
 /*
  * CPUID instruction 1 eax info

@@ -6,10 +6,13 @@
 /* CPU TOPOLOGY DATA AND FUNCTIONS */
 struct cpu_node {
 	struct cpu_node * parent_node;
-	struct cpu_node * child_node;
+	struct cpu_node * child_node[MAXCPU];
 	uint32_t child_no;
 	cpumask_t members;
 	uint8_t type;
+#if defined(__x86_64__)
+	uint8_t compute_unit_id; /* AMD compute unit ID */
+#endif
 };
 typedef struct cpu_node cpu_node_t;
 

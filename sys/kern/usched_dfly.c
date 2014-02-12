@@ -1468,15 +1468,15 @@ dfly_choose_best_queue(struct lwp *lp)
 		/*
 		 * Degenerate case super-root
 		 */
-		if (cpup->child_node && cpup->child_no == 1) {
-			cpup = cpup->child_node;
+		if (cpup->child_no == 1) {
+			cpup = cpup->child_node[0];
 			continue;
 		}
 
 		/*
 		 * Terminal cpunode
 		 */
-		if (cpup->child_node == NULL) {
+		if (cpup->child_no == 0) {
 			rdd = &dfly_pcpu[BSFCPUMASK(cpup->members)];
 			break;
 		}
@@ -1489,7 +1489,7 @@ dfly_choose_best_queue(struct lwp *lp)
 			 * Accumulate load information for all cpus
 			 * which are members of this node.
 			 */
-			cpun = &cpup->child_node[n];
+			cpun = cpup->child_node[n];
 			mask = cpun->members & usched_global_cpumask &
 			       smp_active_mask & lp->lwp_cpumask;
 			if (mask == 0)
@@ -1557,7 +1557,7 @@ dfly_choose_best_queue(struct lwp *lp)
 			 * the weight1 factor for the all-but-one nodes.
 			 */
 			if (cpun->members & wakemask) {
-				if (cpun->child_node != NULL) {
+				if (cpun->child_no != 0) {
 					/* advantage */
 					load -= usched_dfly_weight2;
 				} else {
@@ -1635,15 +1635,15 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 		/*
 		 * Degenerate case super-root
 		 */
-		if (cpup->child_node && cpup->child_no == 1) {
-			cpup = cpup->child_node;
+		if (cpup->child_no == 1) {
+			cpup = cpup->child_node[0];
 			continue;
 		}
 
 		/*
 		 * Terminal cpunode
 		 */
-		if (cpup->child_node == NULL) {
+		if (cpup->child_no == 0) {
 			rdd = &dfly_pcpu[BSFCPUMASK(cpup->members)];
 			break;
 		}
@@ -1656,7 +1656,7 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 			 * Accumulate load information for all cpus
 			 * which are members of this node.
 			 */
-			cpun = &cpup->child_node[n];
+			cpun = cpup->child_node[n];
 			mask = cpun->members & usched_global_cpumask &
 			       smp_active_mask;
 			if (mask == 0)
