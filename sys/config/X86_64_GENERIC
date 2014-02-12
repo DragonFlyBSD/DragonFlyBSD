@@ -173,6 +173,8 @@ device		agp		# support several AGP chipsets
 
 # Intel performance-energy bias
 device		perfbias
+# Intel software controlled clock modulation
+device		clockmod
 
 # HW monitoring devices
 #device		aps0	at isa? port 0x1600

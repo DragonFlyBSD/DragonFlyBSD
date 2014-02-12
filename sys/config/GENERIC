@@ -193,6 +193,8 @@ device		npx0	at nexus? port IO_NPX irq 13
 device		apm0	at nexus? disable flags 0x20 # Advanced Power Management
 # Intel performance-energy bias
 device		perfbias
+# Intel software controlled clock modulation
+device		clockmod
 
 # HW monitoring devices
 #device		aps0	at isa? port 0x1600

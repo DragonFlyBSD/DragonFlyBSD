@@ -441,6 +441,7 @@ dev/raid/hptmv/ioctl.c		optional hptmv
 dev/raid/hptrr/hptrr_os_bsd.c	optional hptrr
 dev/raid/hptrr/hptrr_osm_bsd.c	optional hptrr
 dev/raid/hptrr/hptrr_config.c	optional hptrr
+dev/powermng/clockmod/clockmod.c	optional clockmod
 dev/powermng/perfbias/perfbias.c	optional perfbias
 dev/powermng/coretemp/coretemp.c	optional coretemp
 dev/powermng/kate/kate.c	optional kate pci
