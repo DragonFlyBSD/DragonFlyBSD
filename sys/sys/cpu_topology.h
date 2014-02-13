@@ -10,9 +10,7 @@ struct cpu_node {
 	uint32_t child_no;
 	cpumask_t members;
 	uint8_t type;
-#if defined(__x86_64__)
 	uint8_t compute_unit_id; /* AMD compute unit ID */
-#endif
 };
 typedef struct cpu_node cpu_node_t;
 

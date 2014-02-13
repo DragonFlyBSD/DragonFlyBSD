@@ -137,7 +137,10 @@ build_topology_tree(int *children_no_per_level,
 	}
 }
 
-static void migrate_elements(cpu_node_t **a, int n, int pos) {
+#if defined(__x86_64__) && !defined(_KERNEL_VIRTUAL)
+static void
+migrate_elements(cpu_node_t **a, int n, int pos)
+{
 	int i;
 
 	for (i = pos; i < n - 1 ; i++) {
@@ -145,6 +148,7 @@ static void migrate_elements(cpu_node_t **a, int n, int pos) {
 	}
 	a[i] = NULL;
 }
+#endif
 
 /* Build CPU topology. The detection is made by comparing the
  * chip, core and logical IDs of each CPU with the IDs of the 
@@ -256,7 +260,7 @@ build_cpu_topology(void)
 	cpu_root_node = root;
 
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) && !defined(_KERNEL_VIRTUAL)
 	if (fix_amd_topology() == 0) {
 		int visited[MAXCPU], i, j, pos, cpuid;
 		cpu_node_t *leaf, *parent;
