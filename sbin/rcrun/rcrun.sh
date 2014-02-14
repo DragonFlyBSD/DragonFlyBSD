@@ -47,6 +47,9 @@ buildrclist()
 	    rcfiles="$rcfiles `find $d -type f`"
 	fi
     done
+    # The last element of this list is the script that provides the target
+    # we want to run.
+    #
     rclist=`rcorder -o $1 $rcfiles`
 }
 
@@ -68,10 +71,18 @@ dostart()
 	    buildrclist $tgt
 	    for dep in $rclist; do
 		need=1
-		for dep_prvd in `rcorder -p $dep`; do
+		dep_prvd_list=`rcorder -p $dep`
+		# Because the dependency could actually provide more than one
+		# keyword, iterate it twice, first looking for a match in any
+		# of its PROVIDEs.
+		#
+		for dep_prvd in $dep_prvd_list; do
 		    if [ $dep_prvd = $tgt ]; then
 			need=0
-		    else
+		    fi
+		done
+		if [ $need = 1 ]; then
+		    for dep_prvd in $dep_prvd_list; do
 			state=`varsym -s -q rcng_$dep_prvd`
 			case X$state in
 			Xrunning*|Xconfigured*|Xirrelevant*|Xdisabled*)
@@ -81,8 +92,8 @@ dostart()
 			    _return=1
 			    ;;
 			esac
-		    fi
-		done
+		    done
+		fi
 	    done
 	    # $dep contains the last dependency, which we run
 	    #
