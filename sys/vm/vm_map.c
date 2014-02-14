@@ -3777,7 +3777,7 @@ vm_map_hint(struct proc *p, vm_offset_t addr, vm_prot_t prot)
 {
 	struct vmspace *vms = p->p_vmspace;
 
-	if (!randomize_mmap) {
+	if (!randomize_mmap || addr != 0) {
 		/*
 		 * Set a reasonable start point for the hint if it was
 		 * not specified or if it falls within the heap space.
@@ -3791,9 +3791,6 @@ vm_map_hint(struct proc *p, vm_offset_t addr, vm_prot_t prot)
 
 		return addr;
 	}
-
-	if (addr != 0 && addr >= (vm_offset_t)vms->vm_daddr)
-		return addr;
 
 #ifdef notyet
 #ifdef __i386__
