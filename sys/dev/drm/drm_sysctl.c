@@ -295,7 +295,7 @@ static int drm_clients_info DRM_SYSCTL_HANDLER_ARGS
 	DRM_LOCK(dev);
 
 	privcount = 0;
-	TAILQ_FOREACH(priv, &dev->files, link)
+	list_for_each_entry(priv, &dev->filelist, lhead)
 		privcount++;
 
 	tempprivs = kmalloc(sizeof(struct drm_file) * privcount, DRM_MEM_DRIVER,
@@ -305,7 +305,7 @@ static int drm_clients_info DRM_SYSCTL_HANDLER_ARGS
 		return ENOMEM;
 	}
 	i = 0;
-	TAILQ_FOREACH(priv, &dev->files, link)
+	list_for_each_entry(priv, &dev->filelist, lhead)
 		tempprivs[i++] = *priv;
 
 	DRM_UNLOCK(dev);

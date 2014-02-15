@@ -203,17 +203,17 @@ int drm_getclient(struct drm_device *dev, void *data,
 
 	idx = client->idx;
 	DRM_LOCK(dev);
-	TAILQ_FOREACH(pt, &dev->files, link) {
-		if (i == idx) {
+	list_for_each_entry(pt, &dev->filelist, lhead) {
+		if (i++ >= idx) {
 			client->auth  = pt->authenticated;
 			client->pid   = pt->pid;
 			client->uid   = pt->uid;
 			client->magic = pt->magic;
 			client->iocs  = pt->ioctl_count;
 			DRM_UNLOCK(dev);
+
 			return 0;
 		}
-		i++;
 	}
 	DRM_UNLOCK(dev);
 

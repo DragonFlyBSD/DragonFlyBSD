@@ -501,16 +501,16 @@ struct drm_prime_file_private {
 #endif /* DUMBBELL_WIP */
 };
 
-typedef TAILQ_HEAD(drm_file_list, drm_file) drm_file_list_t;
+/** File private data */
 struct drm_file {
-	TAILQ_ENTRY(drm_file) link;
+	int authenticated;
 	struct drm_device *dev;
-	int		  authenticated;
 	int		  master;
 	pid_t		  pid;
 	uid_t		  uid;
 	drm_magic_t	  magic;
 	unsigned long	  ioctl_count;
+	struct list_head lhead;
 
 	/** Mapping of mm object handles to object pointers. */
 	struct idr object_idr;
@@ -942,8 +942,9 @@ struct drm_device {
 	atomic_t          counts[15];
 
 				/* Authentication */
-	drm_file_list_t   files;
 	drm_magic_head_t  magiclist[DRM_HASH_SIZE];
+
+	struct list_head filelist;
 
 	/** \name Memory management */
 	/*@{ */

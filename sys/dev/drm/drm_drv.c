@@ -477,7 +477,7 @@ static int drm_load(struct drm_device *dev)
 
 	drm_mem_init();
 	drm_sysctl_init(dev);
-	TAILQ_INIT(&dev->files);
+	INIT_LIST_HEAD(&dev->filelist);
 
 	dev->counters  = 6;
 	dev->types[0]  = _DRM_STAT_LOCK;
@@ -732,7 +732,8 @@ int drm_close(struct dev_close_args *ap)
 
 	if (dev->driver->postclose != NULL)
 		dev->driver->postclose(dev, file_priv);
-	TAILQ_REMOVE(&dev->files, file_priv, link);
+	list_del(&file_priv->lhead);
+
 	drm_free(file_priv, DRM_MEM_FILES);
 
 	/* ========================================================

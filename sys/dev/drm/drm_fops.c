@@ -51,7 +51,7 @@ struct drm_file *drm_find_file_by_proc(struct drm_device *dev, DRM_STRUCTPROC *p
 	pid_t pid = p->td_proc->p_pid;
 	struct drm_file *priv;
 
-	TAILQ_FOREACH(priv, &dev->files, link)
+	list_for_each_entry(priv, &dev->filelist, lhead)
 		if (priv->pid == pid && priv->uid == uid)
 			return priv;
 	return NULL;
@@ -187,9 +187,9 @@ priv_found:
 	}
 
 	/* first opener automatically becomes master */
-	priv->master = TAILQ_EMPTY(&dev->files);
+	priv->master = list_empty(&dev->filelist);
 
-	TAILQ_INSERT_TAIL(&dev->files, priv, link);
+	list_add(&priv->lhead, &dev->filelist);
 	DRM_UNLOCK(dev);
 	kdev->si_drv1 = dev;
 	return 0;
