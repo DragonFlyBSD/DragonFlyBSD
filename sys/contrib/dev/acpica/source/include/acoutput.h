@@ -44,6 +44,8 @@
 #ifndef __ACOUTPUT_H__
 #define __ACOUTPUT_H__
 
+#pragma pack(push) /* Set default struct packing */
+
 /*
  * Debug levels and component IDs. These are used to control the
  * granularity of the output of the ACPI_DEBUG_PRINT macro -- on a
@@ -467,5 +469,7 @@
 
 #endif /* ACPI_DEBUG_OUTPUT */
 
+
+#pragma pack(pop) /* Restore original struct packing */
 
 #endif /* __ACOUTPUT_H__ */

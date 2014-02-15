@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi.4,v 1.61.8.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd February 10, 2013
+.Dd February 15, 2014
 .Dt ACPI 4
 .Os
 .Sh NAME
@@ -227,14 +227,10 @@ Enables calling the VESA reset BIOS vector on the resume path.
 This can fix some graphics cards that have problems such as LCD white-out
 after resume.
 Default is 0 (disabled).
-.It Va hw.acpi.serialize_methods
-Allow override of whether methods execute in parallel or not.
-Enable this for serial behavior, which fixes
-.Qq Li AE_ALREADY_EXISTS
-errors for
-AML that really cannot handle parallel method execution.
-It is off by default since this breaks recursive methods and some IBMs use
-such code.
+.It Va hw.acpi.auto_serialize_methods
+Auto-serialization of control methods to proactively prevent problems with
+ill-behaved reentrant control methods that create named ACPI objects.
+Default is 1 (enabled).
 .It Va hw.acpi.verbose
 Turn on verbose debugging information about what ACPI is doing.
 .It Va hw.pci.link.%s.%d.irq

@@ -228,14 +228,12 @@ SYSCTL_STRING(_debug_acpi, OID_AUTO, acpi_ca_version, CTLFLAG_RD,
 	      acpi_ca_version, 0, "Version of Intel ACPI-CA");
 
 /*
- * Allow override of whether methods execute in parallel or not.
- * Enable this for serial behavior, which fixes "AE_ALREADY_EXISTS"
- * errors for AML that really can't handle parallel method execution.
- * It is off by default since this breaks recursive methods and
- * some IBMs use such code.
+ * Disable the control method auto-serialization mechanism that was added
+ * in 20140214 and superseded the previous AcpiGbl_SerializeAllMethods
+ * option.
  */
-static int acpi_serialize_methods;
-TUNABLE_INT("hw.acpi.serialize_methods", &acpi_serialize_methods);
+static int acpi_auto_serialize_methods = 1;
+TUNABLE_INT("hw.acpi.auto_serialize_methods", &acpi_auto_serialize_methods);
 
 /* Power devices off and on in suspend and resume.  XXX Remove once tested. */
 static int acpi_do_powerstate = 1;
@@ -446,7 +444,7 @@ acpi_attach(device_t dev)
      * Set the globals from our tunables.  This is needed because ACPI-CA
      * uses UINT8 for some values and we have no tunable_byte.
      */
-    AcpiGbl_AllMethodsSerialized = acpi_serialize_methods;
+    AcpiGbl_AutoSerializeMethods = acpi_auto_serialize_methods;
     AcpiGbl_EnableInterpreterSlack = TRUE;
 
     /* Start up the ACPI CA subsystem. */
