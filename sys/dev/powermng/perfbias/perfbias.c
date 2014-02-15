@@ -71,7 +71,9 @@ static int	perfbias_probe(device_t);
 static int	perfbias_attach(device_t);
 static int	perfbias_detach(device_t);
 
-static void	perfbias_sysctl_handler(netmsg_t);
+static void	perfbias_set_handler(netmsg_t);
+static int	perfbias_set(struct perfbias_softc *, int);
+
 static int	perfbias_sysctl(SYSCTL_HANDLER_ARGS);
 
 static device_method_t perfbias_methods[] = {
@@ -153,6 +155,9 @@ perfbias_detach(device_t dev)
 
 	if (sc->sc_sysctl_tree != NULL)
 		sysctl_ctx_free(&sc->sc_sysctl_ctx);
+
+	/* Restore to highest performance */
+	perfbias_set(sc, 0);
 	return 0;
 }
 
@@ -160,7 +165,6 @@ static int
 perfbias_sysctl(SYSCTL_HANDLER_ARGS)
 {
 	struct perfbias_softc *sc = (void *)arg1;
-	struct netmsg_perfbias msg;
 	int error, hint;
 
 	hint = sc->sc_hint;
@@ -170,16 +174,11 @@ perfbias_sysctl(SYSCTL_HANDLER_ARGS)
 	if (hint < 0 || hint > INTEL_MSR_PERF_BIAS_HINTMASK)
 		return EINVAL;
 
-	netmsg_init(&msg.base, NULL, &curthread->td_msgport,
-	    MSGF_PRIORITY, perfbias_sysctl_handler);
-	msg.hint = hint;
-	msg.sc = sc;
-
-	return lwkt_domsg(netisr_cpuport(sc->sc_cpuid), &msg.base.lmsg, 0);
+	return perfbias_set(sc, hint);
 }
 
 static void
-perfbias_sysctl_handler(netmsg_t msg)
+perfbias_set_handler(netmsg_t msg)
 {
 	struct netmsg_perfbias *pmsg = (struct netmsg_perfbias *)msg;
 	struct perfbias_softc *sc = pmsg->sc;
@@ -191,4 +190,17 @@ perfbias_sysctl_handler(netmsg_t msg)
 	sc->sc_hint = hint & INTEL_MSR_PERF_BIAS_HINTMASK;
 
 	lwkt_replymsg(&pmsg->base.lmsg, 0);
+}
+
+static int
+perfbias_set(struct perfbias_softc *sc, int hint)
+{
+	struct netmsg_perfbias msg;
+
+	netmsg_init(&msg.base, NULL, &curthread->td_msgport, MSGF_PRIORITY,
+	    perfbias_set_handler);
+	msg.hint = hint;
+	msg.sc = sc;
+
+	return lwkt_domsg(netisr_cpuport(sc->sc_cpuid), &msg.base.lmsg, 0);
 }
