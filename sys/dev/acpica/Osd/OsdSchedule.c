@@ -82,8 +82,16 @@ int
 acpi_task_thread_init(void)
 {
     lwkt_initport_replyonly(&acpi_afree_rport, acpi_autofree_reply);
-    kthread_create(acpi_task_thread, NULL, &acpi_task_td, "acpi_task");
+    acpi_task_td = kmalloc(sizeof(struct thread), M_DEVBUF, M_INTWAIT | M_ZERO);
+    lwkt_create(acpi_task_thread, NULL, NULL, acpi_task_td, TDF_NOSTART, 0,
+	"acpi_task");
     return (0);
+}
+
+void
+acpi_task_thread_schedule(void)
+{
+    lwkt_schedule(acpi_task_td);
 }
 
 /*

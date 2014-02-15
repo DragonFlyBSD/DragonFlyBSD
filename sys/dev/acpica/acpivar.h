@@ -465,7 +465,8 @@ int		acpi_PkgRawGas(ACPI_OBJECT *res, int idx,
 			       ACPI_GENERIC_ADDRESS *gas);
 ACPI_HANDLE	acpi_GetReference(ACPI_HANDLE scope, ACPI_OBJECT *obj);
 /* ACPI task kernel thread initialization. */
-int     acpi_task_thread_init(void);
+int		acpi_task_thread_init(void);
+void		acpi_task_thread_schedule(void);
 extern BOOLEAN acpi_MatchHid(ACPI_HANDLE h, const char *hid);
 /*
  * Base level for BUS_ADD_CHILD.  Special devices are added at orders less

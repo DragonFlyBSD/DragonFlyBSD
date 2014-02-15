@@ -668,6 +668,7 @@ acpi_attach(device_t dev)
 
  out:
     cputimer_intr_pmfixup();
+    acpi_task_thread_schedule();
     return_VALUE (error);
 }
 
