@@ -220,7 +220,6 @@ platform/pc32/i386/mp_clock.c		standard
 platform/pc32/i386/mp_machdep.c		standard
 platform/pc32/i386/mptable.c		standard
 platform/pc32/i386/nexus.c		standard
-platform/pc32/i386/p4tcc.c		optional	cpu_enable_tcc
 platform/pc32/i386/perfmon.c		optional	perfmon
 platform/pc32/i386/perfmon.c		optional	perfmon	profiling-routine
 platform/pc32/i386/pmap.c		standard

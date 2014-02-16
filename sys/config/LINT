@@ -139,12 +139,6 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # technology which allows to restrict power consumption of the CPU by
 # using group of hw.crusoe.* sysctls.
 #
-# CPU_ENABLE_TCC enables Thermal Control Circuitry (TCC) found in some
-# Pentium(tm) 4 and (possibly) later CPUs.  When enabled and detected,
-# TCC supports restricting power consumption using the hw.p4tcc.*
-# sysctls.  This operates independently of SpeedStep and is useful on
-# systems where other mechanisms such as apm(4) or acpi(4) don't work.
-#
 # CPU_HAS_SSE2 will enable the lfence and mfence instructions in
 # cpu_lfence() and cpu_mfence().  If the CPU does not support them,
 # it will cause a panic.
@@ -185,7 +179,6 @@ options 	CPU_DISABLE_SSE
 options 	CPU_ELAN
 options		CPU_ENABLE_EST
 options 	CPU_ENABLE_LONGRUN
-options		CPU_ENABLE_TCC
 options		CPU_GEODE
 options		CPU_HAS_SSE2
 options 	CPU_I486_ON_386
