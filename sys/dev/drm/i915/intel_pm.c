@@ -2218,7 +2218,7 @@ unsigned long i915_mch_val(struct drm_i915_private *dev_priv)
 	tsfs = I915_READ(TSFS);
 
 	m = ((tsfs & TSFS_SLOPE_MASK) >> TSFS_SLOPE_SHIFT);
-	x = I915_READ8(I915_TR1);
+	x = I915_READ8(TR1);
 
 	b = tsfs & TSFS_INTR_MASK;
 
@@ -2886,22 +2886,18 @@ void gen6_update_ring_freq(struct drm_i915_private *dev_priv)
 void ironlake_init_clock_gating(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	uint32_t dspclk_gate = VRHUNIT_CLOCK_GATE_DISABLE;
+	uint32_t dspclk_gate = ILK_VRHUNIT_CLOCK_GATE_DISABLE;
 
 	/* Required for FBC */
-	dspclk_gate |= DPFCUNIT_CLOCK_GATE_DISABLE |
-		DPFCRUNIT_CLOCK_GATE_DISABLE |
-		DPFDUNIT_CLOCK_GATE_DISABLE;
-	/* Required for CxSR */
-	dspclk_gate |= DPARBUNIT_CLOCK_GATE_DISABLE;
+	dspclk_gate |= ILK_DPFCRUNIT_CLOCK_GATE_DISABLE |
+		   ILK_DPFCUNIT_CLOCK_GATE_DISABLE |
+		   ILK_DPFDUNIT_CLOCK_GATE_ENABLE;
 
 	I915_WRITE(PCH_3DCGDIS0,
 		   MARIUNIT_CLOCK_GATE_DISABLE |
 		   SVSMUNIT_CLOCK_GATE_DISABLE);
 	I915_WRITE(PCH_3DCGDIS1,
 		   VFMUNIT_CLOCK_GATE_DISABLE);
-
-	I915_WRITE(PCH_DSPCLK_GATE_D, dspclk_gate);
 
 	/*
 	 * According to the spec the following bits should be set in
@@ -2913,9 +2909,7 @@ void ironlake_init_clock_gating(struct drm_device *dev)
 	I915_WRITE(ILK_DISPLAY_CHICKEN2,
 		   (I915_READ(ILK_DISPLAY_CHICKEN2) |
 		    ILK_DPARB_GATE | ILK_VSDPFD_FULL));
-	I915_WRITE(ILK_DSPCLK_GATE,
-		   (I915_READ(ILK_DSPCLK_GATE) |
-		    ILK_DPARB_CLK_GATE));
+	dspclk_gate |= ILK_DPARBUNIT_CLOCK_GATE_ENABLE;
 	I915_WRITE(DISP_ARB_CTL,
 		   (I915_READ(DISP_ARB_CTL) |
 		    DISP_FBC_WM_DIS));
@@ -2937,12 +2931,9 @@ void ironlake_init_clock_gating(struct drm_device *dev)
 		I915_WRITE(ILK_DISPLAY_CHICKEN2,
 			   I915_READ(ILK_DISPLAY_CHICKEN2) |
 			   ILK_DPARB_GATE);
-		I915_WRITE(ILK_DSPCLK_GATE,
-			   I915_READ(ILK_DSPCLK_GATE) |
-			   ILK_DPFC_DIS1 |
-			   ILK_DPFC_DIS2 |
-			   ILK_CLK_FBC);
 	}
+
+	I915_WRITE(ILK_DSPCLK_GATE_D, dspclk_gate);
 
 	I915_WRITE(ILK_DISPLAY_CHICKEN2,
 		   I915_READ(ILK_DISPLAY_CHICKEN2) |
@@ -2950,27 +2941,71 @@ void ironlake_init_clock_gating(struct drm_device *dev)
 	I915_WRITE(_3D_CHICKEN2,
 		   _3D_CHICKEN2_WM_READ_PIPELINED << 16 |
 		   _3D_CHICKEN2_WM_READ_PIPELINED);
+
+	/* WaDisableRenderCachePipelinedFlush */
+	I915_WRITE(CACHE_MODE_0,
+		   _MASKED_BIT_ENABLE(CM0_PIPELINED_RENDER_FLUSH_DISABLE));
+
+	ibx_init_clock_gating(dev);
+}
+
+void cpt_init_clock_gating(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	int pipe;
+
+	/*
+	 * On Ibex Peak and Cougar Point, we need to disable clock
+	 * gating for the panel power sequencer or it will fail to
+	 * start up when no ports are active.
+	 */
+	I915_WRITE(SOUTH_DSPCLK_GATE_D, PCH_DPLSUNIT_CLOCK_GATE_DISABLE);
+	I915_WRITE(SOUTH_CHICKEN2, I915_READ(SOUTH_CHICKEN2) |
+		   DPLS_EDP_PPS_FIX_DIS);
+	/* The below fixes the weird display corruption, a few pixels shifted
+	 * downward, on (only) LVDS of some HP laptops with IVY.
+	 */
+	for_each_pipe(pipe)
+		I915_WRITE(TRANS_CHICKEN2(pipe), TRANS_CHICKEN2_TIMING_OVERRIDE);
+	/* WADP0ClockGatingDisable */
+	for_each_pipe(pipe) {
+		I915_WRITE(TRANS_CHICKEN1(pipe),
+			   TRANS_CHICKEN1_DP0UNIT_GC_DISABLE);
+	}
 }
 
 void gen6_init_clock_gating(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int pipe;
-	uint32_t dspclk_gate = VRHUNIT_CLOCK_GATE_DISABLE;
+	uint32_t dspclk_gate = ILK_VRHUNIT_CLOCK_GATE_DISABLE;
 
-	I915_WRITE(PCH_DSPCLK_GATE_D, dspclk_gate);
+	I915_WRITE(ILK_DSPCLK_GATE_D, dspclk_gate);
 
 	I915_WRITE(ILK_DISPLAY_CHICKEN2,
 		   I915_READ(ILK_DISPLAY_CHICKEN2) |
 		   ILK_ELPIN_409_SELECT);
 
+	/* WaDisableHiZPlanesWhenMSAAEnabled */
+	I915_WRITE(_3D_CHICKEN,
+		   _MASKED_BIT_ENABLE(_3D_CHICKEN_HIZ_PLANE_DISABLE_MSAA_4X_SNB));
+
+	/* WaSetupGtModeTdRowDispatch */
+	if (IS_SNB_GT1(dev))
+		I915_WRITE(GEN6_GT_MODE,
+			   _MASKED_BIT_ENABLE(GEN6_TD_FOUR_ROW_DISPATCH_DISABLE));
+
 	I915_WRITE(WM3_LP_ILK, 0);
 	I915_WRITE(WM2_LP_ILK, 0);
 	I915_WRITE(WM1_LP_ILK, 0);
 
+	I915_WRITE(CACHE_MODE_0,
+		   _MASKED_BIT_DISABLE(CM0_STC_EVICT_DISABLE_LRA_SNB));
+
 	I915_WRITE(GEN6_UCGCTL1,
 		   I915_READ(GEN6_UCGCTL1) |
-		   GEN6_BLBUNIT_CLOCK_GATE_DISABLE);
+		   GEN6_BLBUNIT_CLOCK_GATE_DISABLE |
+		   GEN6_CSUNIT_CLOCK_GATE_DISABLE);
 
 	/* According to the BSpec vol1g, bit 12 (RCPBUNIT) clock
 	 * gating disable must be set.  Failure to set it results in
@@ -2981,10 +3016,18 @@ void gen6_init_clock_gating(struct drm_device *dev)
 	 *
 	 * According to the spec, bit 11 (RCCUNIT) must also be set,
 	 * but we didn't debug actual testcases to find it out.
+	 *
+	 * Also apply WaDisableVDSUnitClockGating and
+	 * WaDisableRCPBUnitClockGating.
 	 */
 	I915_WRITE(GEN6_UCGCTL2,
+		   GEN7_VDSUNIT_CLOCK_GATE_DISABLE |
 		   GEN6_RCPBUNIT_CLOCK_GATE_DISABLE |
 		   GEN6_RCCUNIT_CLOCK_GATE_DISABLE);
+
+	/* Bspec says we need to always set all mask bits. */
+	I915_WRITE(_3D_CHICKEN3, (0xFFFF << 16) |
+		   _3D_CHICKEN3_SF_DISABLE_FASTCLIP_CULL);
 
 	/*
 	 * According to the spec the following bits should be
@@ -3001,10 +3044,14 @@ void gen6_init_clock_gating(struct drm_device *dev)
 	I915_WRITE(ILK_DISPLAY_CHICKEN2,
 		   I915_READ(ILK_DISPLAY_CHICKEN2) |
 		   ILK_DPARB_GATE | ILK_VSDPFD_FULL);
-	I915_WRITE(ILK_DSPCLK_GATE,
-		   I915_READ(ILK_DSPCLK_GATE) |
-		   ILK_DPARB_CLK_GATE  |
-		   ILK_DPFD_CLK_GATE);
+	I915_WRITE(ILK_DSPCLK_GATE_D,
+		   I915_READ(ILK_DSPCLK_GATE_D) |
+		   ILK_DPARBUNIT_CLOCK_GATE_ENABLE  |
+		   ILK_DPFDUNIT_CLOCK_GATE_ENABLE);
+
+	/* WaMbcDriverBootEnable */
+	I915_WRITE(GEN6_MBCTL, I915_READ(GEN6_MBCTL) |
+		   GEN6_MBCTL_ENABLE_BOOT_FETCH);
 
 	for_each_pipe(pipe) {
 		I915_WRITE(DSPCNTR(pipe),
@@ -3012,6 +3059,13 @@ void gen6_init_clock_gating(struct drm_device *dev)
 			   DISPPLANE_TRICKLE_FEED_DISABLE);
 		intel_flush_display_plane(dev_priv, pipe);
 	}
+
+	/* The default value should be 0x200 according to docs, but the two
+	 * platforms I checked have a 0 for this. (Maybe BIOS overrides?) */
+	I915_WRITE(GEN6_GT_MODE, _MASKED_BIT_DISABLE(0xffff));
+	I915_WRITE(GEN6_GT_MODE, _MASKED_BIT_ENABLE(GEN6_GT_MODE_HI));
+
+	cpt_init_clock_gating(dev);
 }
 
 void ivybridge_init_clock_gating(struct drm_device *dev)
@@ -3020,7 +3074,7 @@ void ivybridge_init_clock_gating(struct drm_device *dev)
 	int pipe;
 	uint32_t dspclk_gate = VRHUNIT_CLOCK_GATE_DISABLE;
 
-	I915_WRITE(PCH_DSPCLK_GATE_D, dspclk_gate);
+	I915_WRITE(ILK_DSPCLK_GATE_D, dspclk_gate);
 
 	I915_WRITE(WM3_LP_ILK, 0);
 	I915_WRITE(WM2_LP_ILK, 0);
@@ -3031,7 +3085,7 @@ void ivybridge_init_clock_gating(struct drm_device *dev)
 	 */
 	I915_WRITE(GEN6_UCGCTL2, GEN6_RCZUNIT_CLOCK_GATE_DISABLE);
 
-	I915_WRITE(ILK_DSPCLK_GATE, IVB_VRHUNIT_CLK_GATE);
+	I915_WRITE(ILK_DSPCLK_GATE_D, ILK_VRHUNIT_CLOCK_GATE_DISABLE);
 
 	I915_WRITE(IVB_CHICKEN3,
 		   CHICKEN3_DGMG_REQ_OUT_FIX_DISABLE |
@@ -3135,24 +3189,6 @@ void ibx_init_clock_gating(struct drm_device *dev)
 	 * start up when no ports are active.
 	 */
 	I915_WRITE(SOUTH_DSPCLK_GATE_D, PCH_DPLSUNIT_CLOCK_GATE_DISABLE);
-}
-
-void cpt_init_clock_gating(struct drm_device *dev)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	int pipe;
-
-	/*
-	 * On Ibex Peak and Cougar Point, we need to disable clock
-	 * gating for the panel power sequencer or it will fail to
-	 * start up when no ports are active.
-	 */
-	I915_WRITE(SOUTH_DSPCLK_GATE_D, PCH_DPLSUNIT_CLOCK_GATE_DISABLE);
-	I915_WRITE(SOUTH_CHICKEN2, I915_READ(SOUTH_CHICKEN2) |
-		   DPLS_EDP_PPS_FIX_DIS);
-	/* Without this, mode sets may fail silently on FDI */
-	for_each_pipe(pipe)
-		I915_WRITE(TRANS_CHICKEN2(pipe), TRANS_AUTOTRAIN_GEN_STALL_DIS);
 }
 
 static void ironlake_teardown_rc6(struct drm_device *dev)

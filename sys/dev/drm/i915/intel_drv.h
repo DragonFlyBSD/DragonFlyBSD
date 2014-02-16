@@ -28,12 +28,30 @@
 #ifndef DRM_INTEL_DRV_H
 #define	DRM_INTEL_DRV_H
 
+#include <linux/delay.h>
 #include <drm/i915_drm.h>
 #include "i915_drv.h"
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_dp_helper.h>
+
+#define _wait_for(COND, MS, W) ({ \
+	unsigned long timeout__ = jiffies + msecs_to_jiffies(MS);	\
+	int ret__ = 0;							\
+	while (!(COND)) {						\
+		if (time_after(jiffies, timeout__)) {			\
+			ret__ = -ETIMEDOUT;				\
+			break;						\
+		}							\
+		if (W && drm_can_sleep())  {				\
+			msleep(W);					\
+		} else {						\
+			cpu_pause();					\
+		}							\
+	}								\
+	ret__;								\
+})
 
 #define _intel_wait_for(DEV, COND, MS, W, WMSG)				\
 ({									\
@@ -52,6 +70,9 @@
 									\
 	ret;								\
 })
+
+#define wait_for(COND, MS) _wait_for(COND, MS, 1)
+#define wait_for_atomic(COND, MS) _wait_for(COND, MS, 0)
 
 #define KHz(x) (1000*x)
 #define MHz(x) KHz(1000*x)

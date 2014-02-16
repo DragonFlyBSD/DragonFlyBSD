@@ -756,6 +756,11 @@ typedef struct drm_i915_private {
 	struct drm_property *force_audio_property;
 } drm_i915_private_t;
 
+/* Iterate over initialised rings */
+#define for_each_ring(ring__, dev_priv__, i__) \
+	for ((i__) = 0; (i__) < I915_NUM_RINGS; (i__)++) \
+		if (((ring__) = &(dev_priv__)->ring[(i__)]), intel_ring_initialized((ring__)))
+
 enum hdmi_force_audio {
 	HDMI_AUDIO_OFF_DVI = -2,	/* no aux data for HDMI-DVI converter */
 	HDMI_AUDIO_OFF,			/* force turn off HDMI audio */
@@ -1499,6 +1504,8 @@ __i915_write(64, 64)
 #define INTEL_PCH_TYPE(dev) (((struct drm_i915_private *)(dev)->dev_private)->pch_type)
 #define HAS_PCH_CPT(dev) (INTEL_PCH_TYPE(dev) == PCH_CPT)
 #define HAS_PCH_IBX(dev) (INTEL_PCH_TYPE(dev) == PCH_IBX)
+
+#define HAS_L3_GPU_CACHE(dev) (IS_IVYBRIDGE(dev) || IS_HASWELL(dev))
 
 #define PRIMARY_RINGBUFFER_SIZE         (128*1024)
 

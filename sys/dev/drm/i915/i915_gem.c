@@ -222,10 +222,8 @@ init_ring_lists(struct intel_ring_buffer *ring)
 void
 i915_gem_load(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv;
 	int i;
-
-	dev_priv = dev->dev_private;
+	drm_i915_private_t *dev_priv = dev->dev_private;
 
 	INIT_LIST_HEAD(&dev_priv->mm.active_list);
 	INIT_LIST_HEAD(&dev_priv->mm.flushing_list);
@@ -244,16 +242,8 @@ i915_gem_load(struct drm_device *dev)
 
 	/* On GEN3 we really need to make sure the ARB C3 LP bit is set */
 	if (IS_GEN3(dev)) {
-		u32 tmp = I915_READ(MI_ARB_STATE);
-		if (!(tmp & MI_ARB_C3_LP_WRITE_ENABLE)) {
-			/*
-			 * arb state is a masked write, so set bit +
-			 * bit in mask.
-			 */
-			tmp = MI_ARB_C3_LP_WRITE_ENABLE |
-			    (MI_ARB_C3_LP_WRITE_ENABLE << MI_ARB_MASK_SHIFT);
-			I915_WRITE(MI_ARB_STATE, tmp);
-		}
+		I915_WRITE(MI_ARB_STATE,
+			   _MASKED_BIT_ENABLE(MI_ARB_C3_LP_WRITE_ENABLE));
 	}
 
 	dev_priv->relative_constants_mode = I915_EXEC_CONSTANTS_REL_GENERAL;
@@ -262,17 +252,16 @@ i915_gem_load(struct drm_device *dev)
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		dev_priv->fence_reg_start = 3;
 
-	if (INTEL_INFO(dev)->gen >= 4 || IS_I945G(dev) || IS_I945GM(dev) ||
-	    IS_G33(dev))
+	if (INTEL_INFO(dev)->gen >= 4 || IS_I945G(dev) || IS_I945GM(dev) || IS_G33(dev))
 		dev_priv->num_fence_regs = 16;
 	else
 		dev_priv->num_fence_regs = 8;
 
 	/* Initialize fence registers to zero */
-	for (i = 0; i < dev_priv->num_fence_regs; i++) {
-		i915_gem_clear_fence_reg(dev, &dev_priv->fence_regs[i]);
-	}
+	i915_gem_reset_fences(dev);
+
 	i915_gem_detect_bit_6_swizzle(dev);
+
 	dev_priv->mm.interruptible = true;
 
 	dev_priv->mm.i915_lowmem = EVENTHANDLER_REGISTER(vm_lowmem,
@@ -390,59 +379,9 @@ i915_gem_init_swizzling(struct drm_device *dev)
 
 	I915_WRITE(TILECTL, I915_READ(TILECTL) | TILECTL_SWZCTL);
 	if (IS_GEN6(dev))
-		I915_WRITE(ARB_MODE, ARB_MODE_ENABLE(ARB_MODE_SWIZZLE_SNB));
+		I915_WRITE(ARB_MODE, _MASKED_BIT_ENABLE(ARB_MODE_SWIZZLE_SNB));
 	else
-		I915_WRITE(ARB_MODE, ARB_MODE_ENABLE(ARB_MODE_SWIZZLE_IVB));
-}
-
-void
-i915_gem_init_ppgtt(struct drm_device *dev)
-{
-	drm_i915_private_t *dev_priv;
-	struct i915_hw_ppgtt *ppgtt;
-	uint32_t pd_offset, pd_entry;
-	vm_paddr_t pt_addr;
-	struct intel_ring_buffer *ring;
-	u_int first_pd_entry_in_global_pt, i;
-
-	dev_priv = dev->dev_private;
-	ppgtt = dev_priv->mm.aliasing_ppgtt;
-	if (ppgtt == NULL)
-		return;
-
-	first_pd_entry_in_global_pt = 512 * 1024 - I915_PPGTT_PD_ENTRIES;
-	for (i = 0; i < ppgtt->num_pd_entries; i++) {
-		pt_addr = VM_PAGE_TO_PHYS(ppgtt->pt_pages[i]);
-		pd_entry = GEN6_PDE_ADDR_ENCODE(pt_addr);
-		pd_entry |= GEN6_PDE_VALID;
-		intel_gtt_write(first_pd_entry_in_global_pt + i, pd_entry);
-	}
-	intel_gtt_read_pte(first_pd_entry_in_global_pt);
-
-	pd_offset = ppgtt->pd_offset;
-	pd_offset /= 64; /* in cachelines, */
-	pd_offset <<= 16;
-
-	if (INTEL_INFO(dev)->gen == 6) {
-		uint32_t ecochk = I915_READ(GAM_ECOCHK);
-		I915_WRITE(GAM_ECOCHK, ecochk | ECOCHK_SNB_BIT |
-				       ECOCHK_PPGTT_CACHE64B);
-		I915_WRITE(GFX_MODE, GFX_MODE_ENABLE(GFX_PPGTT_ENABLE));
-	} else if (INTEL_INFO(dev)->gen >= 7) {
-		I915_WRITE(GAM_ECOCHK, ECOCHK_PPGTT_CACHE64B);
-		/* GFX_MODE is per-ring on gen7+ */
-	}
-
-	for (i = 0; i < I915_NUM_RINGS; i++) {
-		ring = &dev_priv->rings[i];
-
-		if (INTEL_INFO(dev)->gen >= 7)
-			I915_WRITE(RING_MODE_GEN7(ring),
-				   GFX_MODE_ENABLE(GFX_PPGTT_ENABLE));
-
-		I915_WRITE(RING_PP_DIR_DCLV(ring), PP_DIR_DCLV_2G);
-		I915_WRITE(RING_PP_DIR_BASE(ring), pd_offset);
-	}
+		I915_WRITE(ARB_MODE, _MASKED_BIT_ENABLE(ARB_MODE_SWIZZLE_IVB));
 }
 
 int
@@ -805,24 +744,23 @@ i915_gem_throttle_ioctl(struct drm_device *dev, void *data,
 
 int
 i915_gem_madvise_ioctl(struct drm_device *dev, void *data,
-    struct drm_file *file_priv)
+		       struct drm_file *file_priv)
 {
-	struct drm_i915_gem_madvise *args;
+	struct drm_i915_gem_madvise *args = data;
 	struct drm_i915_gem_object *obj;
 	int ret;
 
-	args = data;
 	switch (args->madv) {
 	case I915_MADV_DONTNEED:
 	case I915_MADV_WILLNEED:
-		break;
+	    break;
 	default:
-		return (-EINVAL);
+	    return -EINVAL;
 	}
 
 	ret = i915_mutex_lock_interruptible(dev);
-	if (ret != 0)
-		return (ret);
+	if (ret)
+		return ret;
 
 	obj = to_intel_bo(drm_gem_object_lookup(dev, file_priv, args->handle));
 	if (&obj->base == NULL) {
@@ -830,22 +768,25 @@ i915_gem_madvise_ioctl(struct drm_device *dev, void *data,
 		goto unlock;
 	}
 
-	if (obj->pin_count != 0) {
+	if (obj->pin_count) {
 		ret = -EINVAL;
 		goto out;
 	}
 
-	if (obj->madv != I915_MADV_PURGED_INTERNAL)
+	if (obj->madv != __I915_MADV_PURGED)
 		obj->madv = args->madv;
-	if (i915_gem_object_is_purgeable(obj) && obj->gtt_space == NULL)
+
+	/* if the object is no longer attached, discard its backing storage */
+	if (i915_gem_object_is_purgeable(obj) && obj->pages == NULL)
 		i915_gem_object_truncate(obj);
-	args->retained = obj->madv != I915_MADV_PURGED_INTERNAL;
+
+	args->retained = obj->madv != __I915_MADV_PURGED;
 
 out:
 	drm_gem_object_unreference(&obj->base);
 unlock:
 	DRM_UNLOCK(dev);
-	return (ret);
+	return ret;
 }
 
 void
@@ -2265,7 +2206,7 @@ i915_gem_object_put_pages_gtt(struct drm_i915_gem_object *obj)
 	vm_page_t m;
 	int page_count, i;
 
-	KASSERT(obj->madv != I915_MADV_PURGED_INTERNAL, ("Purged object"));
+	BUG_ON(obj->madv == __I915_MADV_PURGED);
 
 	if (obj->tiling_mode != I915_TILING_NONE)
 		i915_gem_object_save_bit_17_swizzle(obj);
@@ -2423,6 +2364,7 @@ i915_gem_object_move_to_inactive(struct drm_i915_gem_object *obj)
 #endif
 }
 
+/* Immediately discard the backing storage */
 static void
 i915_gem_object_truncate(struct drm_i915_gem_object *obj)
 {
@@ -2432,7 +2374,7 @@ i915_gem_object_truncate(struct drm_i915_gem_object *obj)
 	VM_OBJECT_LOCK(vm_obj);
 	vm_object_page_remove(vm_obj, 0, 0, false);
 	VM_OBJECT_UNLOCK(vm_obj);
-	obj->madv = I915_MADV_PURGED_INTERNAL;
+	obj->madv = __I915_MADV_PURGED;
 }
 
 static inline int

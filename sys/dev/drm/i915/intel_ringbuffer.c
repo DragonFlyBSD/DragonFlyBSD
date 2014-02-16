@@ -45,18 +45,6 @@ struct pipe_control {
 	u32 gtt_offset;
 };
 
-void
-i915_trace_irq_get(struct intel_ring_buffer *ring, uint32_t seqno)
-{
-
-	if (ring->trace_irq_seqno == 0) {
-		lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
-		if (ring->irq_get(ring))
-			ring->trace_irq_seqno = seqno;
-		lockmgr(&ring->irq_lock, LK_RELEASE);
-	}
-}
-
 static inline int ring_space(struct intel_ring_buffer *ring)
 {
 	int space = (ring->head & HEAD_ADDR) - (ring->tail + 8);
@@ -402,21 +390,31 @@ static int init_render_ring(struct intel_ring_buffer *ring)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret = init_ring_common(ring);
 
-	if (INTEL_INFO(dev)->gen > 3) {
-		int mode = VS_TIMER_DISPATCH << 16 | VS_TIMER_DISPATCH;
-		I915_WRITE(MI_MODE, mode);
-		if (IS_GEN7(dev))
-			I915_WRITE(GFX_MODE_GEN7,
-				   GFX_MODE_DISABLE(GFX_TLB_INVALIDATE_ALWAYS) |
-				   GFX_MODE_ENABLE(GFX_REPLAY_MODE));
-	}
+	if (INTEL_INFO(dev)->gen > 3)
+		I915_WRITE(MI_MODE, _MASKED_BIT_ENABLE(VS_TIMER_DISPATCH));
+
+	/* We need to disable the AsyncFlip performance optimisations in order
+	 * to use MI_WAIT_FOR_EVENT within the CS. It should already be
+	 * programmed to '1' on all products.
+	 */
+	if (INTEL_INFO(dev)->gen >= 6)
+		I915_WRITE(MI_MODE, _MASKED_BIT_ENABLE(ASYNC_FLIP_PERF_DISABLE));
+
+	/* Required for the hardware to program scanline values for waiting */
+	if (INTEL_INFO(dev)->gen == 6)
+		I915_WRITE(GFX_MODE,
+			   _MASKED_BIT_ENABLE(GFX_TLB_INVALIDATE_ALWAYS));
+
+	if (IS_GEN7(dev))
+		I915_WRITE(GFX_MODE_GEN7,
+			   _MASKED_BIT_DISABLE(GFX_TLB_INVALIDATE_ALWAYS) |
+			   _MASKED_BIT_ENABLE(GFX_REPLAY_MODE));
 
 	if (INTEL_INFO(dev)->gen >= 5) {
 		ret = init_pipe_control(ring);
 		if (ret)
 			return ret;
 	}
-
 
 	if (IS_GEN6(dev)) {
 		/* From the Sandybridge PRM, volume 1 part 3, page 24:
@@ -425,13 +423,14 @@ static int init_render_ring(struct intel_ring_buffer *ring)
 		 *  policy is not supported."
 		 */
 		I915_WRITE(CACHE_MODE_0,
-			   CM0_STC_EVICT_DISABLE_LRA_SNB << CM0_MASK_SHIFT);
+			   _MASKED_BIT_DISABLE(CM0_STC_EVICT_DISABLE_LRA_SNB));
 	}
 
-	if (INTEL_INFO(dev)->gen >= 6) {
-		I915_WRITE(INSTPM,
-			   INSTPM_FORCE_ORDERING << 16 | INSTPM_FORCE_ORDERING);
-	}
+	if (INTEL_INFO(dev)->gen >= 6)
+		I915_WRITE(INSTPM, _MASKED_BIT_ENABLE(INSTPM_FORCE_ORDERING));
+
+	if (HAS_L3_GPU_CACHE(dev))
+		I915_WRITE_IMR(ring, ~GEN6_RENDER_L3_PARITY_ERROR);
 
 	return ret;
 }
@@ -1340,26 +1339,36 @@ static const struct intel_ring_buffer bsd_ring = {
 
 
 static void gen6_bsd_ring_write_tail(struct intel_ring_buffer *ring,
-				     uint32_t value)
+				     u32 value)
 {
 	drm_i915_private_t *dev_priv = ring->dev->dev_private;
 
-	/* Every tail move must follow the sequence below */
+       /* Every tail move must follow the sequence below */
+
+	/* Disable notification that the ring is IDLE. The GT
+	 * will then assume that it is busy and bring it out of rc6.
+	 */
 	I915_WRITE(GEN6_BSD_SLEEP_PSMI_CONTROL,
-	    GEN6_BSD_SLEEP_PSMI_CONTROL_RC_ILDL_MESSAGE_MODIFY_MASK |
-	    GEN6_BSD_SLEEP_PSMI_CONTROL_RC_ILDL_MESSAGE_DISABLE);
-	I915_WRITE(GEN6_BSD_RNCID, 0x0);
+		   _MASKED_BIT_ENABLE(GEN6_BSD_SLEEP_MSG_DISABLE));
 
-	if (_intel_wait_for(ring->dev,
-	    (I915_READ(GEN6_BSD_SLEEP_PSMI_CONTROL) &
-	     GEN6_BSD_SLEEP_PSMI_CONTROL_IDLE_INDICATOR) == 0, 50,
-	    true, "915g6i") != 0)
-		DRM_ERROR("timed out waiting for IDLE Indicator\n");
+	/* Clear the context id. Here be magic! */
+	I915_WRITE64(GEN6_BSD_RNCID, 0x0);
 
+	/* Wait for the ring not to be idle, i.e. for it to wake up. */
+	if (wait_for((I915_READ(GEN6_BSD_SLEEP_PSMI_CONTROL) &
+		      GEN6_BSD_SLEEP_INDICATOR) == 0,
+		     50))
+		DRM_ERROR("timed out waiting for the BSD ring to wake up\n");
+
+	/* Now that the ring is fully powered up, update the tail */
 	I915_WRITE_TAIL(ring, value);
+	POSTING_READ(RING_TAIL(ring->mmio_base));
+
+	/* Let the ring send IDLE messages to the GT again,
+	 * and so let it sleep to conserve power when idle.
+	 */
 	I915_WRITE(GEN6_BSD_SLEEP_PSMI_CONTROL,
-	    GEN6_BSD_SLEEP_PSMI_CONTROL_RC_ILDL_MESSAGE_MODIFY_MASK |
-	    GEN6_BSD_SLEEP_PSMI_CONTROL_RC_ILDL_MESSAGE_ENABLE);
+		   _MASKED_BIT_DISABLE(GEN6_BSD_SLEEP_MSG_DISABLE));
 }
 
 static int gen6_ring_flush(struct intel_ring_buffer *ring,
@@ -1460,7 +1469,7 @@ static bool
 blt_ring_get_irq(struct intel_ring_buffer *ring)
 {
 	return gen6_ring_get_irq(ring,
-				 GT_BLT_USER_INTERRUPT,
+				 GT_GEN6_BLT_USER_INTERRUPT,
 				 GEN6_BLITTER_USER_INTERRUPT);
 }
 
@@ -1468,7 +1477,7 @@ static void
 blt_ring_put_irq(struct intel_ring_buffer *ring)
 {
 	gen6_ring_put_irq(ring,
-			  GT_BLT_USER_INTERRUPT,
+			  GT_GEN6_BLT_USER_INTERRUPT,
 			  GEN6_BLITTER_USER_INTERRUPT);
 }
 

@@ -30,20 +30,67 @@
 #include "i915_drv.h"
 #include "intel_drv.h"
 
-/* PPGTT support for Sandybdrige/Gen6 and later */
-static void
-i915_ppgtt_clear_range(struct i915_hw_ppgtt *ppgtt,
-    unsigned first_entry, unsigned num_entries)
+typedef uint32_t gtt_pte_t;
+
+/* PPGTT stuff */
+#define GEN6_GTT_ADDR_ENCODE(addr)	((addr) | (((addr) >> 28) & 0xff0))
+
+#define GEN6_PDE_VALID			(1 << 0)
+/* gen6+ has bit 11-4 for physical addr bit 39-32 */
+#define GEN6_PDE_ADDR_ENCODE(addr)	GEN6_GTT_ADDR_ENCODE(addr)
+
+#define GEN6_PTE_VALID			(1 << 0)
+#define GEN6_PTE_UNCACHED		(1 << 1)
+#define HSW_PTE_UNCACHED		(0)
+#define GEN6_PTE_CACHE_LLC		(2 << 1)
+#define GEN6_PTE_CACHE_LLC_MLC		(3 << 1)
+#define GEN6_PTE_ADDR_ENCODE(addr)	GEN6_GTT_ADDR_ENCODE(addr)
+
+static inline gtt_pte_t pte_encode(struct drm_device *dev,
+				   dma_addr_t addr,
+				   enum i915_cache_level level)
 {
-	uint32_t *pt_vaddr;
-	uint32_t scratch_pte;
+	gtt_pte_t pte = GEN6_PTE_VALID;
+	pte |= GEN6_PTE_ADDR_ENCODE(addr);
+
+	switch (level) {
+	case I915_CACHE_LLC_MLC:
+		/* Haswell doesn't set L3 this way */
+		if (IS_HASWELL(dev))
+			pte |= GEN6_PTE_CACHE_LLC;
+		else
+			pte |= GEN6_PTE_CACHE_LLC_MLC;
+		break;
+	case I915_CACHE_LLC:
+		pte |= GEN6_PTE_CACHE_LLC;
+		break;
+	case I915_CACHE_NONE:
+		if (IS_HASWELL(dev))
+			pte |= HSW_PTE_UNCACHED;
+		else
+			pte |= GEN6_PTE_UNCACHED;
+		break;
+	default:
+		BUG();
+	}
+
+
+	return pte;
+}
+
+/* PPGTT support for Sandybdrige/Gen6 and later */
+static void i915_ppgtt_clear_range(struct i915_hw_ppgtt *ppgtt,
+				   unsigned first_entry,
+				   unsigned num_entries)
+{
+	gtt_pte_t *pt_vaddr;
+	gtt_pte_t scratch_pte;
 	struct sf_buf *sf;
-	unsigned act_pd, first_pte, last_pte, i;
+	unsigned act_pd = first_entry / I915_PPGTT_PT_ENTRIES;
+	unsigned first_pte = first_entry % I915_PPGTT_PT_ENTRIES;
+	unsigned last_pte, i;
 
-	act_pd = first_entry / I915_PPGTT_PT_ENTRIES;
-	first_pte = first_entry % I915_PPGTT_PT_ENTRIES;
-
-	scratch_pte = GEN6_PTE_ADDR_ENCODE(ppgtt->scratch_page_dma_addr);
+	scratch_pte = GEN6_GTT_ADDR_ENCODE(ppgtt->scratch_page_dma_addr);
 	scratch_pte |= GEN6_PTE_VALID | GEN6_PTE_CACHE_LLC;
 
 	while (num_entries) {
@@ -63,7 +110,6 @@ i915_ppgtt_clear_range(struct i915_hw_ppgtt *ppgtt,
 		first_pte = 0;
 		act_pd++;
 	}
-
 }
 
 int
@@ -319,4 +365,54 @@ i915_gem_gtt_unbind_object(struct drm_i915_gem_object *obj)
 	    obj->base.size >> PAGE_SHIFT);
 
 	undo_idling(dev_priv, interruptible);
+}
+
+#define GFX_MODE_ENABLE(bit) (((bit) << 16) | (bit))
+
+void i915_gem_init_ppgtt(struct drm_device *dev)
+{
+	drm_i915_private_t *dev_priv = dev->dev_private;
+	uint32_t pd_offset;
+	struct intel_ring_buffer *ring;
+	struct i915_hw_ppgtt *ppgtt = dev_priv->mm.aliasing_ppgtt;
+	uint32_t pd_entry;
+	vm_paddr_t pt_addr;
+	u_int first_pd_entry_in_global_pt, i;
+
+	if (ppgtt == NULL)
+		return;
+
+	first_pd_entry_in_global_pt = 512 * 1024 - I915_PPGTT_PD_ENTRIES;
+	for (i = 0; i < ppgtt->num_pd_entries; i++) {
+		pt_addr = VM_PAGE_TO_PHYS(ppgtt->pt_pages[i]);
+		pd_entry = GEN6_PDE_ADDR_ENCODE(pt_addr);
+		pd_entry |= GEN6_PDE_VALID;
+		intel_gtt_write(first_pd_entry_in_global_pt + i, pd_entry);
+	}
+	intel_gtt_read_pte(first_pd_entry_in_global_pt);
+
+	pd_offset = ppgtt->pd_offset;
+	pd_offset /= 64; /* in cachelines, */
+	pd_offset <<= 16;
+
+	if (INTEL_INFO(dev)->gen == 6) {
+		uint32_t ecochk = I915_READ(GAM_ECOCHK);
+		I915_WRITE(GAM_ECOCHK, ecochk | ECOCHK_SNB_BIT |
+				       ECOCHK_PPGTT_CACHE64B);
+		I915_WRITE(GFX_MODE, GFX_MODE_ENABLE(GFX_PPGTT_ENABLE));
+	} else if (INTEL_INFO(dev)->gen >= 7) {
+		I915_WRITE(GAM_ECOCHK, ECOCHK_PPGTT_CACHE64B);
+		/* GFX_MODE is per-ring on gen7+ */
+	}
+
+	for (i = 0; i < I915_NUM_RINGS; i++) {
+		ring = &dev_priv->rings[i];
+
+		if (INTEL_INFO(dev)->gen >= 7)
+			I915_WRITE(RING_MODE_GEN7(ring),
+				   GFX_MODE_ENABLE(GFX_PPGTT_ENABLE));
+
+		I915_WRITE(RING_PP_DIR_DCLV(ring), PP_DIR_DCLV_2G);
+		I915_WRITE(RING_PP_DIR_BASE(ring), pd_offset);
+	}
 }

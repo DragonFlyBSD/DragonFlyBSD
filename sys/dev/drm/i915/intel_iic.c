@@ -411,13 +411,11 @@ intel_iic_quirk_xfer(device_t idev, struct iic_msg *msgs, int nmsgs)
 }
 
 static const char *gpio_names[GMBUS_NUM_PORTS] = {
-	"disabled",
 	"ssc",
 	"vga",
 	"panel",
 	"dpc",
 	"dpb",
-	"reserved",
 	"dpd",
 };
 

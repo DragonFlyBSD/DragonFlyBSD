@@ -767,15 +767,20 @@ void intel_wait_for_pipe_off(struct drm_device *dev, int pipe)
 		    1, "915pip"))
 			DRM_DEBUG_KMS("pipe_off wait timed out\n");
 	} else {
-		u32 last_line;
+		u32 last_line, line_mask;
 		int reg = PIPEDSL(pipe);
 		unsigned long timeout = jiffies + msecs_to_jiffies(100);
 
+		if (IS_GEN2(dev))
+			line_mask = DSL_LINEMASK_GEN2;
+		else
+			line_mask = DSL_LINEMASK_GEN3;
+
 		/* Wait for the display line to settle */
 		do {
-			last_line = I915_READ(reg) & DSL_LINEMASK;
+			last_line = I915_READ(reg) & line_mask;
 			DELAY(5000);
-		} while (((I915_READ(reg) & DSL_LINEMASK) != last_line) &&
+		} while (((I915_READ(reg) & line_mask) != last_line) &&
 			 time_after(timeout, jiffies));
 		if (time_after(jiffies, timeout))
 			DRM_DEBUG_KMS("pipe_off wait timed out\n");
@@ -826,7 +831,7 @@ static void assert_pch_pll(struct drm_i915_private *dev_priv,
 		pipe = (pch_dpll >> (4 * pipe)) & 1;
 	}
 
-	reg = PCH_DPLL(pipe);
+	reg = _PCH_DPLL(pipe);
 	val = I915_READ(reg);
 	cur_state = !!(val & DPLL_VCO_ENABLE);
 	if (cur_state != state)
@@ -1220,7 +1225,7 @@ static void intel_enable_pch_pll(struct drm_i915_private *dev_priv,
 	/* PCH refclock must be enabled first */
 	assert_pch_refclk_enabled(dev_priv);
 
-	reg = PCH_DPLL(pipe);
+	reg = _PCH_DPLL(pipe);
 	val = I915_READ(reg);
 	val |= DPLL_VCO_ENABLE;
 	I915_WRITE(reg, val);
@@ -1253,7 +1258,7 @@ static void intel_disable_pch_pll(struct drm_i915_private *dev_priv,
 	if ((I915_READ(PCH_DPLL_SEL) & pll_mask) == pll_sel)
 		return;
 
-	reg = PCH_DPLL(pipe);
+	reg = _PCH_DPLL(pipe);
 	val = I915_READ(reg);
 	val &= ~DPLL_VCO_ENABLE;
 	I915_WRITE(reg, val);
@@ -1629,13 +1634,13 @@ static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 		break;
 	case 16:
 		if (fb->depth == 15)
-			dspcntr |= DISPPLANE_15_16BPP;
+			dspcntr |= DISPPLANE_BGRX555;
 		else
-			dspcntr |= DISPPLANE_16BPP;
+			dspcntr |= DISPPLANE_BGRX565;
 		break;
 	case 24:
 	case 32:
-		dspcntr |= DISPPLANE_32BPP_NO_ALPHA;
+		dspcntr |= DISPPLANE_BGRX888;
 		break;
 	default:
 		DRM_ERROR("Unknown color depth %d\n", fb->bits_per_pixel);
@@ -1707,14 +1712,14 @@ static int ironlake_update_plane(struct drm_crtc *crtc,
 			return -EINVAL;
 		}
 
-		dspcntr |= DISPPLANE_16BPP;
+		dspcntr |= DISPPLANE_BGRX565;
 		break;
 	case 24:
 	case 32:
 		if (fb->depth == 24)
-			dspcntr |= DISPPLANE_32BPP_NO_ALPHA;
+			dspcntr |= DISPPLANE_BGRX888;
 		else if (fb->depth == 30)
-			dspcntr |= DISPPLANE_32BPP_30BIT_NO_ALPHA;
+			dspcntr |= DISPPLANE_BGRX101010;
 		else {
 			DRM_ERROR("bpp %d depth %d\n", fb->bits_per_pixel,
 			    fb->depth);
@@ -2589,18 +2594,13 @@ static void ironlake_pch_enable(struct drm_crtc *crtc)
 void intel_cpt_verify_modeset(struct drm_device *dev, int pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	int dslreg = PIPEDSL(pipe), tc2reg = TRANS_CHICKEN2(pipe);
+	int dslreg = PIPEDSL(pipe);
 	u32 temp;
 
 	temp = I915_READ(dslreg);
-	DELAY(500);
-	if (_intel_wait_for(dev, I915_READ(dslreg) != temp, 5, 1, "915cp1")) {
-		/* Without this, mode sets may fail silently on FDI */
-		I915_WRITE(tc2reg, TRANS_AUTOTRAIN_GEN_STALL_DIS);
-		DELAY(250);
-		I915_WRITE(tc2reg, 0);
-		if (_intel_wait_for(dev, I915_READ(dslreg) != temp, 5, 1,
-		    "915cp2"))
+	udelay(500);
+	if (wait_for(I915_READ(dslreg) != temp, 5)) {
+		if (wait_for(I915_READ(dslreg) != temp, 5))
 			DRM_ERROR("mode set failed: pipe %d stuck\n", pipe);
 	}
 }
@@ -4136,19 +4136,19 @@ static int ironlake_crtc_mode_set(struct drm_crtc *crtc,
 	if (!intel_crtc->no_pll) {
 		if (!has_edp_encoder ||
 		    intel_encoder_is_pch_edp(&has_edp_encoder->base)) {
-			I915_WRITE(PCH_FP0(pipe), fp);
-			I915_WRITE(PCH_DPLL(pipe), dpll & ~DPLL_VCO_ENABLE);
+			I915_WRITE(_PCH_FP0(pipe), fp);
+			I915_WRITE(_PCH_DPLL(pipe), dpll & ~DPLL_VCO_ENABLE);
 
-			POSTING_READ(PCH_DPLL(pipe));
+			POSTING_READ(_PCH_DPLL(pipe));
 			DELAY(150);
 		}
 	} else {
-		if (dpll == (I915_READ(PCH_DPLL(0)) & 0x7fffffff) &&
-		    fp == I915_READ(PCH_FP0(0))) {
+		if (dpll == (I915_READ(_PCH_DPLL(0)) & 0x7fffffff) &&
+		    fp == I915_READ(_PCH_FP0(0))) {
 			intel_crtc->use_pll_a = true;
 			DRM_DEBUG_KMS("using pipe a dpll\n");
-		} else if (dpll == (I915_READ(PCH_DPLL(1)) & 0x7fffffff) &&
-			   fp == I915_READ(PCH_FP0(1))) {
+		} else if (dpll == (I915_READ(_PCH_DPLL(1)) & 0x7fffffff) &&
+			   fp == I915_READ(_PCH_FP0(1))) {
 			intel_crtc->use_pll_a = false;
 			DRM_DEBUG_KMS("using pipe b dpll\n");
 		} else {
@@ -4226,10 +4226,10 @@ static int ironlake_crtc_mode_set(struct drm_crtc *crtc,
 	if (!intel_crtc->no_pll &&
 	    (!has_edp_encoder ||
 	     intel_encoder_is_pch_edp(&has_edp_encoder->base))) {
-		I915_WRITE(PCH_DPLL(pipe), dpll);
+		I915_WRITE(_PCH_DPLL(pipe), dpll);
 
 		/* Wait for the clocks to stabilize. */
-		POSTING_READ(PCH_DPLL(pipe));
+		POSTING_READ(_PCH_DPLL(pipe));
 		DELAY(150);
 
 		/* The pixel multiplier can only be updated once the
@@ -4237,20 +4237,20 @@ static int ironlake_crtc_mode_set(struct drm_crtc *crtc,
 		 *
 		 * So write it again.
 		 */
-		I915_WRITE(PCH_DPLL(pipe), dpll);
+		I915_WRITE(_PCH_DPLL(pipe), dpll);
 	}
 
 	intel_crtc->lowfreq_avail = false;
 	if (!intel_crtc->no_pll) {
 		if (is_lvds && has_reduced_clock && i915_powersave) {
-			I915_WRITE(PCH_FP1(pipe), fp2);
+			I915_WRITE(_PCH_FP1(pipe), fp2);
 			intel_crtc->lowfreq_avail = true;
 			if (HAS_PIPE_CXSR(dev)) {
 				DRM_DEBUG_KMS("enabling CxSR downclocking\n");
 				pipeconf |= PIPECONF_CXSR_DOWNCLOCK;
 			}
 		} else {
-			I915_WRITE(PCH_FP1(pipe), fp);
+			I915_WRITE(_PCH_FP1(pipe), fp);
 			if (HAS_PIPE_CXSR(dev)) {
 				DRM_DEBUG_KMS("disabling CxSR downclocking\n");
 				pipeconf &= ~PIPECONF_CXSR_DOWNCLOCK;

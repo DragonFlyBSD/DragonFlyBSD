@@ -526,7 +526,7 @@ ivybridge_irq_handler(void *arg)
 		notify_ring(dev, &dev_priv->rings[RCS]);
 	if (gt_iir & GT_GEN6_BSD_USER_INTERRUPT)
 		notify_ring(dev, &dev_priv->rings[VCS]);
-	if (gt_iir & GT_BLT_USER_INTERRUPT)
+	if (gt_iir & GT_GEN6_BLT_USER_INTERRUPT)
 		notify_ring(dev, &dev_priv->rings[BCS]);
 
 	if (de_iir & DE_GSE_IVB) {
@@ -635,7 +635,7 @@ ironlake_irq_handler(void *arg)
 		notify_ring(dev, &dev_priv->rings[RCS]);
 	if (gt_iir & bsd_usr_interrupt)
 		notify_ring(dev, &dev_priv->rings[VCS]);
-	if (gt_iir & GT_BLT_USER_INTERRUPT)
+	if (gt_iir & GT_GEN6_BLT_USER_INTERRUPT)
 		notify_ring(dev, &dev_priv->rings[BCS]);
 
 	if (de_iir & DE_GSE) {
@@ -1572,7 +1572,7 @@ static int ironlake_irq_postinstall(struct drm_device *dev)
 		render_irqs =
 			GT_USER_INTERRUPT |
 			GT_GEN6_BSD_USER_INTERRUPT |
-			GT_BLT_USER_INTERRUPT;
+			GT_GEN6_BLT_USER_INTERRUPT;
 	else
 		render_irqs =
 			GT_USER_INTERRUPT |
@@ -1640,7 +1640,7 @@ ivybridge_irq_postinstall(struct drm_device *dev)
 	I915_WRITE(GTIMR, dev_priv->gt_irq_mask);
 
 	render_irqs = GT_USER_INTERRUPT | GT_GEN6_BSD_USER_INTERRUPT |
-		GT_BLT_USER_INTERRUPT;
+		GT_GEN6_BLT_USER_INTERRUPT;
 	I915_WRITE(GTIER, render_irqs);
 	POSTING_READ(GTIER);
 

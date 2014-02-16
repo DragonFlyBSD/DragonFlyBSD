@@ -1,12 +1,19 @@
-/*
- * $FreeBSD: src/sys/dev/drm2/i915/intel_ringbuffer.h,v 1.1 2012/05/22 11:07:44 kib Exp $
- */
-
 #ifndef _INTEL_RINGBUFFER_H_
 #define _INTEL_RINGBUFFER_H_
 
+/*
+ * Gen2 BSpec "1. Programming Environment" / 1.4.4.6 "Ring Buffer Use"
+ * Gen3 BSpec "vol1c Memory Interface Functions" / 2.3.4.5 "Ring Buffer Use"
+ * Gen4+ BSpec "vol1c Memory Interface and Command Stream" / 5.3.4.5 "Ring Buffer Use"
+ *
+ * "If the Ring Buffer Head Pointer and the Tail Pointer are on the same
+ * cacheline, the Head Pointer must not be greater than the Tail
+ * Pointer."
+ */
+#define I915_RING_FREE_SPACE 64
+
 struct  intel_hw_status_page {
-	uint32_t	*page_addr;
+	u32		*page_addr;
 	unsigned int	gfx_addr;
 	struct		drm_i915_gem_object *obj;
 };
@@ -127,13 +134,19 @@ struct  intel_ring_buffer {
 	void *private;
 };
 
+static inline bool
+intel_ring_initialized(struct intel_ring_buffer *ring)
+{
+	return ring->obj != NULL;
+}
+
 static inline unsigned
 intel_ring_flag(struct intel_ring_buffer *ring)
 {
 	return 1 << ring->id;
 }
 
-static inline uint32_t
+static inline u32
 intel_ring_sync_index(struct intel_ring_buffer *ring,
 		      struct intel_ring_buffer *other)
 {
@@ -152,14 +165,14 @@ intel_ring_sync_index(struct intel_ring_buffer *ring,
 	return idx;
 }
 
-static inline uint32_t
-intel_read_status_page(struct intel_ring_buffer *ring, int reg)
+static inline u32
+intel_read_status_page(struct intel_ring_buffer *ring,
+		       int reg)
 {
-
-	return (atomic_load_acq_32(ring->status_page.page_addr + reg));
+	/* Ensure that the compiler doesn't optimize away the load. */
+	cpu_ccfence();
+	return ring->status_page.page_addr[reg];
 }
-
-void intel_cleanup_ring_buffer(struct intel_ring_buffer *ring);
 
 int intel_wait_ring_buffer(struct intel_ring_buffer *ring, int n);
 static inline int intel_wait_ring_idle(struct intel_ring_buffer *ring)
@@ -168,19 +181,41 @@ static inline int intel_wait_ring_idle(struct intel_ring_buffer *ring)
 	return (intel_wait_ring_buffer(ring, ring->size - 8));
 }
 
-int intel_ring_begin(struct intel_ring_buffer *ring, int n);
+/**
+ * Reads a dword out of the status page, which is written to from the command
+ * queue by automatic updates, MI_REPORT_HEAD, MI_STORE_DATA_INDEX, or
+ * MI_STORE_DATA_IMM.
+ *
+ * The following dwords have a reserved meaning:
+ * 0x00: ISR copy, updated when an ISR bit not set in the HWSTAM changes.
+ * 0x04: ring 0 head pointer
+ * 0x05: ring 1 head pointer (915-class)
+ * 0x06: ring 2 head pointer (915-class)
+ * 0x10-0x1b: Context status DWords (GM45)
+ * 0x1f: Last written status offset. (GM45)
+ *
+ * The area from dword 0x20 to 0x3ff is available for driver usage.
+ */
+#define I915_GEM_HWS_INDEX		0x20
+#define I915_GEM_HWS_SCRATCH_INDEX	0x30
+#define I915_GEM_HWS_SCRATCH_ADDR (I915_GEM_HWS_SCRATCH_INDEX << MI_STORE_DWORD_INDEX_SHIFT)
 
+void intel_cleanup_ring_buffer(struct intel_ring_buffer *ring);
+
+#define iowrite32(data, addr)	*(volatile uint32_t *)((char *)addr) = data;
+
+int __must_check intel_ring_begin(struct intel_ring_buffer *ring, int n);
 static inline void intel_ring_emit(struct intel_ring_buffer *ring,
-				   uint32_t data)
+				   u32 data)
 {
-	*(volatile uint32_t *)((char *)ring->virtual_start +
-	    ring->tail) = data;
+	iowrite32(data, ring->virtual_start + ring->tail);
 	ring->tail += 4;
 }
-
 void intel_ring_advance(struct intel_ring_buffer *ring);
+int __must_check intel_ring_idle(struct intel_ring_buffer *ring);
 
-uint32_t intel_ring_get_seqno(struct intel_ring_buffer *ring);
+int intel_ring_flush_all_caches(struct intel_ring_buffer *ring);
+int intel_ring_invalidate_all_caches(struct intel_ring_buffer *ring);
 
 int intel_init_render_ring_buffer(struct drm_device *dev);
 int intel_init_bsd_ring_buffer(struct drm_device *dev);
@@ -194,10 +229,19 @@ static inline u32 intel_ring_get_tail(struct intel_ring_buffer *ring)
 	return ring->tail;
 }
 
-void i915_trace_irq_get(struct intel_ring_buffer *ring, uint32_t seqno);
+static inline u32 intel_ring_get_seqno(struct intel_ring_buffer *ring)
+{
+	BUG_ON(ring->outstanding_lazy_request == 0);
+	return ring->outstanding_lazy_request;
+}
+
+static inline void i915_trace_irq_get(struct intel_ring_buffer *ring, u32 seqno)
+{
+	if (ring->trace_irq_seqno == 0 && ring->irq_get(ring))
+		ring->trace_irq_seqno = seqno;
+}
 
 /* DRI warts */
-int intel_render_ring_init_dri(struct drm_device *dev, uint64_t start,
-    uint32_t size);
+int intel_render_ring_init_dri(struct drm_device *dev, u64 start, u32 size);
 
 #endif /* _INTEL_RINGBUFFER_H_ */
