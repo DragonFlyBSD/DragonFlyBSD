@@ -111,6 +111,7 @@ struct ar_softc {
     u_int64_t           rebuild_lba;    /* rebuild progress indicator */
     struct spinlock     lock;           /* metadata lock */
     struct disk		disk;		/* disklabel/slice stuff */
+    struct devstat	devstat;	/* device statistics */
     cdev_t		cdev;		/* device placeholder */
     struct proc         *pid;           /* rebuilder process id */
 };
