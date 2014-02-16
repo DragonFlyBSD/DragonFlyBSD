@@ -1102,6 +1102,7 @@ extern int	drm_debug;
 
 extern unsigned int drm_vblank_offdelay;
 extern unsigned int drm_timestamp_precision;
+extern unsigned int drm_timestamp_monotonic;
 
 /* Device setup support (drm_drv.c) */
 int	drm_probe(device_t kdev, drm_pci_id_list_t *idlist);

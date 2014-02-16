@@ -27,8 +27,8 @@
 #ifndef _LINUX_I2C_H_
 #define _LINUX_I2C_H_
 
-#include <bus/iicbus/iic.h>
-
 #define i2c_msg iic_msg
+
+#define I2C_M_RD	IIC_M_RD
 
 #endif	/* _LINUX_I2C_H_ */

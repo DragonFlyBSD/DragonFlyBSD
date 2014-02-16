@@ -31,8 +31,9 @@
  */
 
 #include <linux/export.h>
+#include <linux/kernel.h>
+#include <linux/i2c.h>
 #include <drm/drmP.h>
-#include <drm/drm_crtc.h>
 #include <drm/drm_edid.h>
 #include "drm_edid_modes.h"
 #include <bus/iicbus/iic.h>
@@ -70,6 +71,8 @@
 #define EDID_QUIRK_FIRST_DETAILED_PREFERRED	(1 << 5)
 /* use +hsync +vsync for detailed mode */
 #define EDID_QUIRK_DETAILED_SYNC_PP		(1 << 6)
+/* Force reduced-blanking timings for detailed modes */
+#define EDID_QUIRK_FORCE_REDUCED_BLANKING	(1 << 7)
 
 struct detailed_mode_closure {
 	struct drm_connector *connector;
@@ -85,10 +88,13 @@ struct detailed_mode_closure {
 #define LEVEL_CVT	3
 
 static struct edid_quirk {
-	char *vendor;
+	char vendor[4];
 	int product_id;
 	u32 quirks;
 } edid_quirk_list[] = {
+	/* ASUS VW222S */
+	{ "ACI", 0x22a2, EDID_QUIRK_FORCE_REDUCED_BLANKING },
+
 	/* Acer AL1706 */
 	{ "ACR", 44358, EDID_QUIRK_PREFER_LARGE_60 },
 	/* Acer F51 */
@@ -124,6 +130,9 @@ static struct edid_quirk {
 	/* Samsung SyncMaster 22[5-6]BW */
 	{ "SAM", 596, EDID_QUIRK_PREFER_LARGE_60 },
 	{ "SAM", 638, EDID_QUIRK_PREFER_LARGE_60 },
+
+	/* ViewSonic VA2026w */
+	{ "VSC", 5020, EDID_QUIRK_FORCE_REDUCED_BLANKING },
 };
 
 /*** DDC fetch and block validation ***/
@@ -246,7 +255,6 @@ bool drm_edid_is_valid(struct edid *edid)
 }
 EXPORT_SYMBOL(drm_edid_is_valid);
 
-#define DDC_ADDR 0x50
 #define DDC_SEGMENT_ADDR 0x30
 /**
  * Get EDID information via I2C.
@@ -274,7 +282,7 @@ drm_do_probe_ddc_edid(device_t adapter, unsigned char *buf,
 	 * of the individual block a few times seems to overcome this.
 	 */
 	do {
-		struct iic_msg msgs[] = {
+		struct i2c_msg msgs[] = {
 			{
 				.slave  = DDC_SEGMENT_ADDR << 1,
 				.flags  = 0,
@@ -282,12 +290,12 @@ drm_do_probe_ddc_edid(device_t adapter, unsigned char *buf,
 				.buf    = &segment,
 			}, {
 				.slave	= DDC_ADDR << 1,
-				.flags	= IIC_M_WR,
+				.flags	= 0,
 				.len	= 1,
 				.buf	= &start,
 			}, {
 				.slave	= DDC_ADDR << 1,
-				.flags	= IIC_M_RD,
+				.flags	= I2C_M_RD,
 				.len	= len,
 				.buf	= buf,
 			}
@@ -461,7 +469,7 @@ static u32 edid_get_quirks(struct edid *edid)
 	struct edid_quirk *quirk;
 	int i;
 
-	for (i = 0; i < DRM_ARRAY_SIZE(edid_quirk_list); i++) {
+	for (i = 0; i < ARRAY_SIZE(edid_quirk_list); i++) {
 		quirk = &edid_quirk_list[i];
 
 		if (edid_vendor(edid, quirk->vendor) &&
@@ -633,7 +641,7 @@ static bool
 drm_monitor_supports_rb(struct edid *edid)
 {
 	if (edid->revision >= 4) {
-		bool ret;
+		bool ret = false;
 		drm_for_each_detailed_block((u8 *)edid, is_rb, &ret);
 		return ret;
 	}
@@ -862,7 +870,7 @@ drm_mode_do_interlace_quirk(struct drm_display_mode *mode,
 	if (!(pt->misc & DRM_EDID_PT_INTERLACED))
 		return;
 
-	for (i = 0; i < DRM_ARRAY_SIZE(cea_interlaced); i++) {
+	for (i = 0; i < ARRAY_SIZE(cea_interlaced); i++) {
 		if ((mode->hdisplay == cea_interlaced[i].w) &&
 		    (mode->vdisplay == cea_interlaced[i].h / 2)) {
 			mode->vdisplay *= 2;
@@ -920,16 +928,23 @@ static struct drm_display_mode *drm_mode_detailed(struct drm_device *dev,
 				"Wrong Hsync/Vsync pulse width\n");
 		return NULL;
 	}
+
+	if (quirks & EDID_QUIRK_FORCE_REDUCED_BLANKING) {
+		mode = drm_cvt_mode(dev, hactive, vactive, 60, true, false, false);
+		if (!mode)
+			return NULL;
+
+		goto set_size;
+	}
+
 	mode = drm_mode_create(dev);
 	if (!mode)
 		return NULL;
 
-	mode->type = DRM_MODE_TYPE_DRIVER;
-
 	if (quirks & EDID_QUIRK_135_CLOCK_TOO_HIGH)
-		timing->pixel_clock = htole16(1088);
+		timing->pixel_clock = cpu_to_le16(1088);
 
-	mode->clock = le16toh(timing->pixel_clock) * 10;
+	mode->clock = le16_to_cpu(timing->pixel_clock) * 10;
 
 	mode->hdisplay = hactive;
 	mode->hsync_start = mode->hdisplay + hsync_offset;
@@ -949,8 +964,6 @@ static struct drm_display_mode *drm_mode_detailed(struct drm_device *dev,
 
 	drm_mode_do_interlace_quirk(mode, pt);
 
-	drm_mode_set_name(mode);
-
 	if (quirks & EDID_QUIRK_DETAILED_SYNC_PP) {
 		pt->misc |= DRM_EDID_PT_HSYNC_POSITIVE | DRM_EDID_PT_VSYNC_POSITIVE;
 	}
@@ -960,6 +973,7 @@ static struct drm_display_mode *drm_mode_detailed(struct drm_device *dev,
 	mode->flags |= (pt->misc & DRM_EDID_PT_VSYNC_POSITIVE) ?
 		DRM_MODE_FLAG_PVSYNC : DRM_MODE_FLAG_NVSYNC;
 
+set_size:
 	mode->width_mm = pt->width_mm_lo | (pt->width_height_mm_hi & 0xf0) << 4;
 	mode->height_mm = pt->height_mm_lo | (pt->width_height_mm_hi & 0xf) << 8;
 
@@ -972,6 +986,9 @@ static struct drm_display_mode *drm_mode_detailed(struct drm_device *dev,
 		mode->width_mm = edid->width_cm * 10;
 		mode->height_mm = edid->height_cm * 10;
 	}
+
+	mode->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_set_name(mode);
 
 	return mode;
 }
@@ -1053,12 +1070,26 @@ mode_in_range(const struct drm_display_mode *mode, struct edid *edid,
 	return true;
 }
 
-/*
- * XXX If drm_dmt_modes ever regrows the CVT-R modes (and it will) this will
- * need to account for them.
- */
+static bool valid_inferred_mode(const struct drm_connector *connector,
+				const struct drm_display_mode *mode)
+{
+	struct drm_display_mode *m;
+	bool ok = false;
+
+	list_for_each_entry(m, &connector->probed_modes, head) {
+		if (mode->hdisplay == m->hdisplay &&
+		    mode->vdisplay == m->vdisplay &&
+		    drm_mode_vrefresh(mode) == drm_mode_vrefresh(m))
+			return false; /* duplicated */
+		if (mode->hdisplay <= m->hdisplay &&
+		    mode->vdisplay <= m->vdisplay)
+			ok = true;
+	}
+	return ok;
+}
+
 static int
-drm_gtf_modes_for_range(struct drm_connector *connector, struct edid *edid,
+drm_dmt_modes_for_range(struct drm_connector *connector, struct edid *edid,
 			struct detailed_timing *timing)
 {
 	int i, modes = 0;
@@ -1066,7 +1097,8 @@ drm_gtf_modes_for_range(struct drm_connector *connector, struct edid *edid,
 	struct drm_device *dev = connector->dev;
 
 	for (i = 0; i < drm_num_dmt_modes; i++) {
-		if (mode_in_range(drm_dmt_modes + i, edid, timing)) {
+		if (mode_in_range(drm_dmt_modes + i, edid, timing) &&
+		    valid_inferred_mode(connector, drm_dmt_modes + i)) {
 			newmode = drm_mode_duplicate(dev, &drm_dmt_modes[i]);
 			if (newmode) {
 				drm_mode_probed_add(connector, newmode);
@@ -1078,17 +1110,112 @@ drm_gtf_modes_for_range(struct drm_connector *connector, struct edid *edid,
 	return modes;
 }
 
+/* fix up 1366x768 mode from 1368x768;
+ * GFT/CVT can't express 1366 width which isn't dividable by 8
+ */
+static void fixup_mode_1366x768(struct drm_display_mode *mode)
+{
+	if (mode->hdisplay == 1368 && mode->vdisplay == 768) {
+		mode->hdisplay = 1366;
+		mode->hsync_start--;
+		mode->hsync_end--;
+		drm_mode_set_name(mode);
+	}
+}
+
+static int
+drm_gtf_modes_for_range(struct drm_connector *connector, struct edid *edid,
+			struct detailed_timing *timing)
+{
+	int i, modes = 0;
+	struct drm_display_mode *newmode;
+	struct drm_device *dev = connector->dev;
+
+	for (i = 0; i < num_extra_modes; i++) {
+		const struct minimode *m = &extra_modes[i];
+		newmode = drm_gtf_mode(dev, m->w, m->h, m->r, 0, 0);
+		if (!newmode)
+			return modes;
+
+		fixup_mode_1366x768(newmode);
+		if (!mode_in_range(newmode, edid, timing) ||
+		    !valid_inferred_mode(connector, newmode)) {
+			drm_mode_destroy(dev, newmode);
+			continue;
+		}
+
+		drm_mode_probed_add(connector, newmode);
+		modes++;
+	}
+
+	return modes;
+}
+
+static int
+drm_cvt_modes_for_range(struct drm_connector *connector, struct edid *edid,
+			struct detailed_timing *timing)
+{
+	int i, modes = 0;
+	struct drm_display_mode *newmode;
+	struct drm_device *dev = connector->dev;
+	bool rb = drm_monitor_supports_rb(edid);
+
+	for (i = 0; i < num_extra_modes; i++) {
+		const struct minimode *m = &extra_modes[i];
+		newmode = drm_cvt_mode(dev, m->w, m->h, m->r, rb, 0, 0);
+		if (!newmode)
+			return modes;
+
+		fixup_mode_1366x768(newmode);
+		if (!mode_in_range(newmode, edid, timing) ||
+		    !valid_inferred_mode(connector, newmode)) {
+			drm_mode_destroy(dev, newmode);
+			continue;
+		}
+
+		drm_mode_probed_add(connector, newmode);
+		modes++;
+	}
+
+	return modes;
+}
+
 static void
 do_inferred_modes(struct detailed_timing *timing, void *c)
 {
 	struct detailed_mode_closure *closure = c;
 	struct detailed_non_pixel *data = &timing->data.other_data;
-	int gtf = (closure->edid->features & DRM_EDID_FEATURE_DEFAULT_GTF);
+	struct detailed_data_monitor_range *range = &data->data.range;
 
-	if (gtf && data->type == EDID_DETAIL_MONITOR_RANGE)
+	if (data->type != EDID_DETAIL_MONITOR_RANGE)
+		return;
+
+	closure->modes += drm_dmt_modes_for_range(closure->connector,
+						  closure->edid,
+						  timing);
+	
+	if (!version_greater(closure->edid, 1, 1))
+		return; /* GTF not defined yet */
+
+	switch (range->flags) {
+	case 0x02: /* secondary gtf, XXX could do more */
+	case 0x00: /* default gtf */
 		closure->modes += drm_gtf_modes_for_range(closure->connector,
 							  closure->edid,
 							  timing);
+		break;
+	case 0x04: /* cvt, only in 1.4+ */
+		if (!version_greater(closure->edid, 1, 3))
+			break;
+
+		closure->modes += drm_cvt_modes_for_range(closure->connector,
+							  closure->edid,
+							  timing);
+		break;
+	case 0x01: /* just the ranges, no formula */
+	default:
+		break;
+	}
 }
 
 static int
@@ -1253,7 +1380,7 @@ static int drm_cvt_modes(struct drm_connector *connector,
 	const u8 empty[3] = { 0, 0, 0 };
 
 	for (i = 0; i < 4; i++) {
-		int width = 0, height;
+		int uninitialized_var(width), height;
 		cvt = &(timing->data.other_data.data.cvt[i]);
 
 		if (!memcmp(cvt->code, empty, 3))
@@ -1367,9 +1494,12 @@ add_detailed_modes(struct drm_connector *connector, struct edid *edid,
 
 #define HDMI_IDENTIFIER 0x000C03
 #define AUDIO_BLOCK	0x01
+#define VIDEO_BLOCK     0x02
 #define VENDOR_BLOCK    0x03
 #define SPEAKER_BLOCK	0x04
 #define EDID_BASIC_AUDIO	(1 << 6)
+#define EDID_CEA_YCRCB444	(1 << 5)
+#define EDID_CEA_YCRCB422	(1 << 4)
 
 /**
  * Search EDID for CEA extension block.
@@ -1397,20 +1527,130 @@ u8 *drm_find_cea_extension(struct edid *edid)
 }
 EXPORT_SYMBOL(drm_find_cea_extension);
 
-static void
-parse_hdmi_vsdb(struct drm_connector *connector, uint8_t *db)
+/*
+ * Looks for a CEA mode matching given drm_display_mode.
+ * Returns its CEA Video ID code, or 0 if not found.
+ */
+u8 drm_match_cea_mode(struct drm_display_mode *to_match)
 {
-	connector->eld[5] |= (db[6] >> 7) << 1;  /* Supports_AI */
+	u8 mode;
 
-	connector->dvi_dual = db[6] & 1;
-	connector->max_tmds_clock = db[7] * 5;
+	for (mode = 0; mode < drm_num_cea_modes; mode++) {
+		const struct drm_display_mode *cea_mode = &edid_cea_modes[mode];
 
-	connector->latency_present[0] = db[8] >> 7;
-	connector->latency_present[1] = (db[8] >> 6) & 1;
-	connector->video_latency[0] = db[9];
-	connector->audio_latency[0] = db[10];
-	connector->video_latency[1] = db[11];
-	connector->audio_latency[1] = db[12];
+		if (drm_mode_equal(to_match, cea_mode))
+			return mode + 1;
+	}
+	return 0;
+}
+EXPORT_SYMBOL(drm_match_cea_mode);
+
+
+static int
+do_cea_modes (struct drm_connector *connector, u8 *db, u8 len)
+{
+	struct drm_device *dev = connector->dev;
+	u8 * mode, cea_mode;
+	int modes = 0;
+
+	for (mode = db; mode < db + len; mode++) {
+		cea_mode = (*mode & 127) - 1; /* CEA modes are numbered 1..127 */
+		if (cea_mode < drm_num_cea_modes) {
+			struct drm_display_mode *newmode;
+			newmode = drm_mode_duplicate(dev,
+						     &edid_cea_modes[cea_mode]);
+			if (newmode) {
+				drm_mode_probed_add(connector, newmode);
+				modes++;
+			}
+		}
+	}
+
+	return modes;
+}
+
+static int
+cea_db_payload_len(const u8 *db)
+{
+	return db[0] & 0x1f;
+}
+
+static int
+cea_db_tag(const u8 *db)
+{
+	return db[0] >> 5;
+}
+
+static int
+cea_revision(const u8 *cea)
+{
+	return cea[1];
+}
+
+static int
+cea_db_offsets(const u8 *cea, int *start, int *end)
+{
+	/* Data block offset in CEA extension block */
+	*start = 4;
+	*end = cea[2];
+	if (*end == 0)
+		*end = 127;
+	if (*end < 4 || *end > 127)
+		return -ERANGE;
+	return 0;
+}
+
+#define for_each_cea_db(cea, i, start, end) \
+	for ((i) = (start); (i) < (end) && (i) + cea_db_payload_len(&(cea)[(i)]) < (end); (i) += cea_db_payload_len(&(cea)[(i)]) + 1)
+
+static int
+add_cea_modes(struct drm_connector *connector, struct edid *edid)
+{
+	u8 * cea = drm_find_cea_extension(edid);
+	u8 * db, dbl;
+	int modes = 0;
+
+	if (cea && cea_revision(cea) >= 3) {
+		int i, start, end;
+
+		if (cea_db_offsets(cea, &start, &end))
+			return 0;
+
+		for_each_cea_db(cea, i, start, end) {
+			db = &cea[i];
+			dbl = cea_db_payload_len(db);
+
+			if (cea_db_tag(db) == VIDEO_BLOCK)
+				modes += do_cea_modes (connector, db+1, dbl);
+		}
+	}
+
+	return modes;
+}
+
+static void
+parse_hdmi_vsdb(struct drm_connector *connector, const u8 *db)
+{
+	u8 len = cea_db_payload_len(db);
+
+	if (len >= 6) {
+		connector->eld[5] |= (db[6] >> 7) << 1;  /* Supports_AI */
+		connector->dvi_dual = db[6] & 1;
+	}
+	if (len >= 7)
+		connector->max_tmds_clock = db[7] * 5;
+	if (len >= 8) {
+		connector->latency_present[0] = db[8] >> 7;
+		connector->latency_present[1] = (db[8] >> 6) & 1;
+	}
+	if (len >= 9)
+		connector->video_latency[0] = db[9];
+	if (len >= 10)
+		connector->audio_latency[0] = db[10];
+	if (len >= 11)
+		connector->video_latency[1] = db[11];
+	if (len >= 12)
+		connector->audio_latency[1] = db[12];
 
 	DRM_DEBUG_KMS("HDMI: DVI dual %d, "
 		    "max TMDS clock %d, "
@@ -1432,6 +1672,21 @@ monitor_name(struct detailed_timing *t, void *data)
 {
 	if (t->data.other_data.type == EDID_DETAIL_MONITOR_NAME)
 		*(u8 **)data = t->data.other_data.data.str.str;
+}
+
+static bool cea_db_is_hdmi_vsdb(const u8 *db)
+{
+	int hdmi_id;
+
+	if (cea_db_tag(db) != VENDOR_BLOCK)
+		return false;
+
+	if (cea_db_payload_len(db) < 5)
+		return false;
+
+	hdmi_id = db[1] | (db[2] << 8) | (db[3] << 16);
+
+	return hdmi_id == HDMI_IDENTIFIER;
 }
 
 /**
@@ -1480,24 +1735,38 @@ void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
 	eld[18] = edid->prod_code[0];
 	eld[19] = edid->prod_code[1];
 
-	for (db = cea + 4; db < cea + cea[2]; db += dbl + 1) {
-		dbl = db[0] & 0x1f;
+	if (cea_revision(cea) >= 3) {
+		int i, start, end;
 
-		switch ((db[0] & 0xe0) >> 5) {
-		case AUDIO_BLOCK:	/* Audio Data Block, contains SADs */
-			sad_count = dbl / 3;
-			memcpy(eld + 20 + mnl, &db[1], dbl);
-			break;
-		case SPEAKER_BLOCK:	/* Speaker Allocation Data Block */
-			eld[7] = db[1];
-			break;
-		case VENDOR_BLOCK:
-			/* HDMI Vendor-Specific Data Block */
-			if (db[1] == 0x03 && db[2] == 0x0c && db[3] == 0)
-				parse_hdmi_vsdb(connector, db);
-			break;
-		default:
-			break;
+		if (cea_db_offsets(cea, &start, &end)) {
+			start = 0;
+			end = 0;
+		}
+
+		for_each_cea_db(cea, i, start, end) {
+			db = &cea[i];
+			dbl = cea_db_payload_len(db);
+
+			switch (cea_db_tag(db)) {
+			case AUDIO_BLOCK:
+				/* Audio Data Block, contains SADs */
+				sad_count = dbl / 3;
+				if (dbl >= 1)
+					memcpy(eld + 20 + mnl, &db[1], dbl);
+				break;
+			case SPEAKER_BLOCK:
+				/* Speaker Allocation Data Block */
+				if (dbl >= 1)
+					eld[7] = db[1];
+				break;
+			case VENDOR_BLOCK:
+				/* HDMI Vendor-Specific Data Block */
+				if (cea_db_is_hdmi_vsdb(db))
+					parse_hdmi_vsdb(connector, db);
+				break;
+			default:
+				break;
+			}
 		}
 	}
 	eld[5] |= sad_count << 4;
@@ -1505,6 +1774,7 @@ void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
 
 	DRM_DEBUG_KMS("ELD size %d, SAD count %d\n", (int)eld[2], sad_count);
 }
+EXPORT_SYMBOL(drm_edid_to_eld);
 
 /**
  * drm_av_sync_delay - HDMI/DP sink audio-video sync delay in millisecond
@@ -1542,6 +1812,7 @@ int drm_av_sync_delay(struct drm_connector *connector,
 
 	return max(v - a, 0);
 }
+EXPORT_SYMBOL(drm_av_sync_delay);
 
 /**
  * drm_select_eld - select one ELD from multiple HDMI/DP sinks
@@ -1563,6 +1834,7 @@ struct drm_connector *drm_select_eld(struct drm_encoder *encoder,
 
 	return NULL;
 }
+EXPORT_SYMBOL(drm_select_eld);
 
 /**
  * drm_detect_hdmi_monitor - detect whether monitor is hdmi.
@@ -1574,39 +1846,28 @@ struct drm_connector *drm_select_eld(struct drm_encoder *encoder,
 bool drm_detect_hdmi_monitor(struct edid *edid)
 {
 	u8 *edid_ext;
-	int i, hdmi_id;
+	int i;
 	int start_offset, end_offset;
-	bool is_hdmi = false;
 
 	edid_ext = drm_find_cea_extension(edid);
 	if (!edid_ext)
-		goto end;
+		return false;
 
-	/* Data block offset in CEA extension block */
-	start_offset = 4;
-	end_offset = edid_ext[2];
+	if (cea_db_offsets(edid_ext, &start_offset, &end_offset))
+		return false;
 
 	/*
 	 * Because HDMI identifier is in Vendor Specific Block,
 	 * search it from all data blocks of CEA extension.
 	 */
-	for (i = start_offset; i < end_offset;
-		/* Increased by data block len */
-		i += ((edid_ext[i] & 0x1f) + 1)) {
-		/* Find vendor specific block */
-		if ((edid_ext[i] >> 5) == VENDOR_BLOCK) {
-			hdmi_id = edid_ext[i + 1] | (edid_ext[i + 2] << 8) |
-				  edid_ext[i + 3] << 16;
-			/* Find HDMI identifier */
-			if (hdmi_id == HDMI_IDENTIFIER)
-				is_hdmi = true;
-			break;
-		}
+	for_each_cea_db(edid_ext, i, start_offset, end_offset) {
+		if (cea_db_is_hdmi_vsdb(&edid_ext[i]))
+			return true;
 	}
 
-end:
-	return is_hdmi;
+	return false;
 }
+EXPORT_SYMBOL(drm_detect_hdmi_monitor);
 
 /**
  * drm_detect_monitor_audio - check monitor audio capability
@@ -1636,15 +1897,13 @@ bool drm_detect_monitor_audio(struct edid *edid)
 		goto end;
 	}
 
-	/* Data block offset in CEA extension block */
-	start_offset = 4;
-	end_offset = edid_ext[2];
+	if (cea_db_offsets(edid_ext, &start_offset, &end_offset))
+		goto end;
 
-	for (i = start_offset; i < end_offset;
-			i += ((edid_ext[i] & 0x1f) + 1)) {
-		if ((edid_ext[i] >> 5) == AUDIO_BLOCK) {
+	for_each_cea_db(edid_ext, i, start_offset, end_offset) {
+		if (cea_db_tag(&edid_ext[i]) == AUDIO_BLOCK) {
 			has_audio = true;
-			for (j = 1; j < (edid_ext[i] & 0x1f); j += 3)
+			for (j = 1; j < cea_db_payload_len(&edid_ext[i]) + 1; j += 3)
 				DRM_DEBUG_KMS("CEA audio format %d\n",
 					      (edid_ext[i + j] >> 3) & 0xf);
 			goto end;
@@ -1653,6 +1912,7 @@ bool drm_detect_monitor_audio(struct edid *edid)
 end:
 	return has_audio;
 }
+EXPORT_SYMBOL(drm_detect_monitor_audio);
 
 /**
  * drm_add_display_info - pull display info out if present
@@ -1675,11 +1935,27 @@ static void drm_add_display_info(struct edid *edid,
 	info->bpc = 0;
 	info->color_formats = 0;
 
-	/* Only defined for 1.4 with digital displays */
-	if (edid->revision < 4)
+	if (edid->revision < 3)
 		return;
 
 	if (!(edid->input & DRM_EDID_INPUT_DIGITAL))
+		return;
+
+	/* Get data from CEA blocks if present */
+	edid_ext = drm_find_cea_extension(edid);
+	if (edid_ext) {
+		info->cea_rev = edid_ext[1];
+
+		/* The existence of a CEA block should imply RGB support */
+		info->color_formats = DRM_COLOR_FORMAT_RGB444;
+		if (edid_ext[3] & EDID_CEA_YCRCB444)
+			info->color_formats |= DRM_COLOR_FORMAT_YCRCB444;
+		if (edid_ext[3] & EDID_CEA_YCRCB422)
+			info->color_formats |= DRM_COLOR_FORMAT_YCRCB422;
+	}
+
+	/* Only defined for 1.4 with digital displays */
+	if (edid->revision < 4)
 		return;
 
 	switch (edid->input & DRM_EDID_DIGITAL_DEPTH_MASK) {
@@ -1707,18 +1983,11 @@ static void drm_add_display_info(struct edid *edid,
 		break;
 	}
 
-	info->color_formats = DRM_COLOR_FORMAT_RGB444;
-	if (info->color_formats & DRM_EDID_FEATURE_RGB_YCRCB444)
-		info->color_formats = DRM_COLOR_FORMAT_YCRCB444;
-	if (info->color_formats & DRM_EDID_FEATURE_RGB_YCRCB422)
-		info->color_formats = DRM_COLOR_FORMAT_YCRCB422;
-
-	/* Get data from CEA blocks if present */
-	edid_ext = drm_find_cea_extension(edid);
-	if (!edid_ext)
-		return;
-
-	info->cea_rev = edid_ext[1];
+	info->color_formats |= DRM_COLOR_FORMAT_RGB444;
+	if (edid->features & DRM_EDID_FEATURE_RGB_YCRCB444)
+		info->color_formats |= DRM_COLOR_FORMAT_YCRCB444;
+	if (edid->features & DRM_EDID_FEATURE_RGB_YCRCB422)
+		info->color_formats |= DRM_COLOR_FORMAT_YCRCB422;
 }
 
 /**
@@ -1739,7 +2008,7 @@ int drm_add_edid_modes(struct drm_connector *connector, struct edid *edid)
 		return 0;
 	}
 	if (!drm_edid_is_valid(edid)) {
-		device_printf(connector->dev->dev, "%s: EDID invalid.\n",
+		dev_warn(connector->dev->dev, "%s: EDID invalid.\n",
 			 drm_get_connector_name(connector));
 		return 0;
 	}
@@ -1765,6 +2034,7 @@ int drm_add_edid_modes(struct drm_connector *connector, struct edid *edid)
 	num_modes += add_standard_modes(connector, edid);
 	num_modes += add_established_modes(connector, edid);
 	num_modes += add_inferred_modes(connector, edid);
+	num_modes += add_cea_modes(connector, edid);
 
 	if (quirks & (EDID_QUIRK_PREFER_LARGE_60 | EDID_QUIRK_PREFER_LARGE_75))
 		edid_fixup_preferred(connector, quirks);
@@ -1773,6 +2043,7 @@ int drm_add_edid_modes(struct drm_connector *connector, struct edid *edid)
 
 	return num_modes;
 }
+EXPORT_SYMBOL(drm_add_edid_modes);
 
 /**
  * drm_add_modes_noedid - add modes for the connectors without EDID
@@ -1820,3 +2091,23 @@ int drm_add_modes_noedid(struct drm_connector *connector,
 	}
 	return num_modes;
 }
+EXPORT_SYMBOL(drm_add_modes_noedid);
+
+/**
+ * drm_mode_cea_vic - return the CEA-861 VIC of a given mode
+ * @mode: mode
+ *
+ * RETURNS:
+ * The VIC number, 0 in case it's not a CEA-861 mode.
+ */
+uint8_t drm_mode_cea_vic(const struct drm_display_mode *mode)
+{
+	uint8_t i;
+
+	for (i = 0; i < drm_num_cea_modes; i++)
+		if (drm_mode_equal(mode, &edid_cea_modes[i]))
+			return i + 1;
+
+	return 0;
+}
+EXPORT_SYMBOL(drm_mode_cea_vic);

@@ -28,10 +28,10 @@
  * and author(s) shall not be used in advertising or otherwise to promote
  * the sale, use or other dealings in this Software without prior written
  * authorization from the copyright holder(s) and author(s).
- *
- * $FreeBSD: src/sys/dev/drm2/drm_modes.c,v 1.1 2012/05/22 11:07:44 kib Exp $
  */
 
+#include <linux/kernel.h>
+#include <linux/list.h>
 #include <linux/export.h>
 #include <drm/drmP.h>
 #include <drm/drm_crtc.h>
@@ -278,6 +278,7 @@ struct drm_display_mode *drm_cvt_mode(struct drm_device *dev, int hdisplay,
 
 	return drm_mode;
 }
+EXPORT_SYMBOL(drm_cvt_mode);
 
 /**
  * drm_gtf_mode_complex - create the modeline based on full GTF algorithm
@@ -463,6 +464,7 @@ drm_gtf_mode_complex(struct drm_device *dev, int hdisplay, int vdisplay,
 
 	return drm_mode;
 }
+EXPORT_SYMBOL(drm_gtf_mode_complex);
 
 /**
  * drm_gtf_mode - create the modeline based on GTF algorithm
@@ -502,6 +504,7 @@ drm_gtf_mode(struct drm_device *dev, int hdisplay, int vdisplay, int vrefresh,
 	return drm_gtf_mode_complex(dev, hdisplay, vdisplay, vrefresh, lace,
 				    margins, 600, 40 * 2, 128, 20 * 2);
 }
+EXPORT_SYMBOL(drm_gtf_mode);
 
 /**
  * drm_mode_set_name - set the name on a mode
@@ -520,6 +523,7 @@ void drm_mode_set_name(struct drm_display_mode *mode)
 		 mode->hdisplay, mode->vdisplay,
 		 interlaced ? "i" : "");
 }
+EXPORT_SYMBOL(drm_mode_set_name);
 
 /**
  * drm_mode_list_concat - move modes from one list to another
@@ -540,6 +544,7 @@ void drm_mode_list_concat(struct list_head *head, struct list_head *new)
 		list_move_tail(entry, new);
 	}
 }
+EXPORT_SYMBOL(drm_mode_list_concat);
 
 /**
  * drm_mode_width - get the width of a mode
@@ -606,6 +611,7 @@ int drm_mode_hsync(const struct drm_display_mode *mode)
 
 	return calc_val;
 }
+EXPORT_SYMBOL(drm_mode_hsync);
 
 /**
  * drm_mode_vrefresh - get the vrefresh of a mode
@@ -647,6 +653,7 @@ int drm_mode_vrefresh(const struct drm_display_mode *mode)
 	}
 	return refresh;
 }
+EXPORT_SYMBOL(drm_mode_vrefresh);
 
 /**
  * drm_mode_set_crtcinfo - set CRTC modesetting parameters
@@ -703,6 +710,28 @@ void drm_mode_set_crtcinfo(struct drm_display_mode *p, int adjust_flags)
 }
 EXPORT_SYMBOL(drm_mode_set_crtcinfo);
 
+
+/**
+ * drm_mode_copy - copy the mode
+ * @dst: mode to overwrite
+ * @src: mode to copy
+ *
+ * LOCKING:
+ * None.
+ *
+ * Copy an existing mode into another mode, preserving the object id
+ * of the destination mode.
+ */
+void drm_mode_copy(struct drm_display_mode *dst, const struct drm_display_mode *src)
+{
+	int id = dst->base.id;
+
+	*dst = *src;
+	dst->base.id = id;
+	INIT_LIST_HEAD(&dst->head);
+}
+EXPORT_SYMBOL(drm_mode_copy);
+
 /**
  * drm_mode_duplicate - allocate and duplicate an existing mode
  * @m: mode to duplicate
@@ -717,18 +746,16 @@ struct drm_display_mode *drm_mode_duplicate(struct drm_device *dev,
 					    const struct drm_display_mode *mode)
 {
 	struct drm_display_mode *nmode;
-	int new_id;
 
 	nmode = drm_mode_create(dev);
 	if (!nmode)
 		return NULL;
 
-	new_id = nmode->base.id;
-	*nmode = *mode;
-	nmode->base.id = new_id;
-	INIT_LIST_HEAD(&nmode->head);
+	drm_mode_copy(nmode, mode);
+
 	return nmode;
 }
+EXPORT_SYMBOL(drm_mode_duplicate);
 
 /**
  * drm_mode_equal - test modes for equality
@@ -802,6 +829,7 @@ void drm_mode_validate_size(struct drm_device *dev,
 			mode->status = MODE_VIRTUAL_Y;
 	}
 }
+EXPORT_SYMBOL(drm_mode_validate_size);
 
 /**
  * drm_mode_prune_invalid - remove invalid modes from mode list
@@ -833,6 +861,7 @@ void drm_mode_prune_invalid(struct drm_device *dev,
 		}
 	}
 }
+EXPORT_SYMBOL(drm_mode_prune_invalid);
 
 /**
  * drm_mode_compare - compare modes for favorability
@@ -880,6 +909,7 @@ void drm_mode_sort(struct list_head *mode_list)
 {
 	drm_list_sort(NULL, mode_list, drm_mode_compare);
 }
+EXPORT_SYMBOL(drm_mode_sort);
 
 /**
  * drm_mode_connector_list_update - update the mode list for the connector
@@ -921,6 +951,7 @@ void drm_mode_connector_list_update(struct drm_connector *connector)
 		}
 	}
 }
+EXPORT_SYMBOL(drm_mode_connector_list_update);
 
 /**
  * drm_mode_parse_command_line_for_connector - parse command line for connector
@@ -965,7 +996,7 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 		case '@':
 			if (!refresh_specified && !bpp_specified &&
 			    !yres_specified && !cvt && !rb && was_digit) {
-				refresh = strtol(&name[i+1], NULL, 10);
+				refresh = simple_strtol(&name[i+1], NULL, 10);
 				refresh_specified = true;
 				was_digit = false;
 			} else
@@ -974,7 +1005,7 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 		case '-':
 			if (!bpp_specified && !yres_specified && !cvt &&
 			    !rb && was_digit) {
-				bpp = strtol(&name[i+1], NULL, 10);
+				bpp = simple_strtol(&name[i+1], NULL, 10);
 				bpp_specified = true;
 				was_digit = false;
 			} else
@@ -982,7 +1013,7 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 			break;
 		case 'x':
 			if (!yres_specified && was_digit) {
-				yres = strtol(&name[i+1], NULL, 10);
+				yres = simple_strtol(&name[i+1], NULL, 10);
 				yres_specified = true;
 				was_digit = false;
 			} else
@@ -1042,7 +1073,7 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 
 	if (i < 0 && yres_specified) {
 		char *ch;
-		xres = strtol(name, &ch, 10);
+		xres = simple_strtol(name, &ch, 10);
 		if ((ch != NULL) && (*ch == 'x'))
 			res_specified = true;
 		else
@@ -1082,6 +1113,7 @@ done:
 
 	return true;
 }
+EXPORT_SYMBOL(drm_mode_parse_command_line_for_connector);
 
 struct drm_display_mode *
 drm_mode_create_from_cmdline_mode(struct drm_device *dev,
@@ -1107,3 +1139,4 @@ drm_mode_create_from_cmdline_mode(struct drm_device *dev,
 	drm_mode_set_crtcinfo(mode, CRTC_INTERLACE_HALVE_V);
 	return mode;
 }
+EXPORT_SYMBOL(drm_mode_create_from_cmdline_mode);

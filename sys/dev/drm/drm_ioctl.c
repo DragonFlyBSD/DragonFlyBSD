@@ -1,4 +1,14 @@
-/*-
+/**
+ * \file drm_ioctl.c
+ * IOCTL processing for DRM
+ *
+ * \author Rickard E. (Rik) Faith <faith@valinux.com>
+ * \author Gareth Hughes <gareth@valinux.com>
+ */
+
+/*
+ * Created: Fri Jan  8 09:01:26 1999 by faith@valinux.com
+ *
  * Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
@@ -22,26 +32,24 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  *
- * Authors:
- *    Rickard E. (Rik) Faith <faith@valinux.com>
- *    Gareth Hughes <gareth@valinux.com>
- *
  * $FreeBSD: src/sys/dev/drm2/drm_ioctl.c,v 1.1 2012/05/22 11:07:44 kib Exp $
- */
-
-/** @file drm_ioctl.c
- * Varios minor DRM ioctls not applicable to other files, such as versioning
- * information and reporting DRM information to userland.
  */
 
 #include <drm/drmP.h>
 #include <drm/drm_core.h>
 
-/*
- * Beginning in revision 1.1 of the DRM interface, getunique will return
- * a unique in the form pci:oooo:bb:dd.f (o=domain, b=bus, d=device, f=function)
- * before setunique has been called.  The format for the bus-specific part of
- * the unique is not defined for any other bus.
+#include <linux/export.h>
+
+/**
+ * Get the bus id.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument, pointing to a drm_unique structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Copies the bus id from drm_device::unique into user space.
  */
 int drm_getunique(struct drm_device *dev, void *data,
 		  struct drm_file *file_priv)
@@ -57,8 +65,19 @@ int drm_getunique(struct drm_device *dev, void *data,
 	return 0;
 }
 
-/* Deprecated in DRM version 1.1, and will return EBUSY when setversion has
- * requested version 1.1 or greater.
+/**
+ * Set the bus id.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument, pointing to a drm_unique structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Copies the bus id from userspace into drm_device::unique, and verifies that
+ * it matches the device this DRM is attached to (EINVAL otherwise).  Deprecated
+ * in interface version 1.1 and will return EBUSY when setversion has requested
+ * version 1.1 or greater.
  */
 int drm_setunique(struct drm_device *dev, void *data,
 		  struct drm_file *file_priv)
@@ -114,17 +133,10 @@ int drm_setunique(struct drm_device *dev, void *data,
 	return 0;
 }
 
-
-static int
-drm_set_busid(struct drm_device *dev)
+static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
 {
 
 	DRM_LOCK(dev);
-
-	if (dev->unique != NULL) {
-		DRM_UNLOCK(dev);
-		return EBUSY;
-	}
 
 	dev->unique_len = 20;
 	dev->unique = kmalloc(dev->unique_len + 1, DRM_MEM_DRIVER, M_NOWAIT);
@@ -193,6 +205,19 @@ int drm_getmap(struct drm_device *dev, void *data,
 	return 0;
 }
 
+/**
+ * Get client information.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument, pointing to a drm_client structure.
+ *
+ * \return zero on success or a negative number on failure.
+ *
+ * Searches for the client with the specified index and copies its information
+ * into userspace
+ */
 int drm_getclient(struct drm_device *dev, void *data,
 		  struct drm_file *file_priv)
 {
@@ -220,6 +245,16 @@ int drm_getclient(struct drm_device *dev, void *data,
 	return EINVAL;
 }
 
+/**
+ * Get statistics information.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument, pointing to a drm_stats structure.
+ *
+ * \return zero on success or a negative number on failure.
+ */
 int drm_getstats(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	struct drm_stats *stats = data;
@@ -245,6 +280,9 @@ int drm_getstats(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	return 0;
 }
 
+/**
+ * Get device/driver capabilities
+ */
 int drm_getcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	struct drm_get_cap *req = data;
@@ -264,18 +302,31 @@ int drm_getcap(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	case DRM_CAP_DUMB_PREFER_SHADOW:
 		req->value = dev->mode_config.prefer_shadow;
 		break;
+	case DRM_CAP_TIMESTAMP_MONOTONIC:
+		req->value = drm_timestamp_monotonic;
+		break;
 	default:
 		return EINVAL;
 	}
 	return 0;
 }
 
-int drm_setversion(struct drm_device *dev, void *data,
-		   struct drm_file *file_priv)
+/**
+ * Setversion ioctl.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument, pointing to a drm_lock structure.
+ * \return zero on success or negative number on failure.
+ *
+ * Sets the requested interface version
+ */
+int drm_setversion(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	struct drm_set_version *sv = data;
 	struct drm_set_version ver;
-	int if_version;
+	int if_version, retcode = 0;
 
 	/* Save the incoming data, and set the response before continuing
 	 * any further.
@@ -285,15 +336,6 @@ int drm_setversion(struct drm_device *dev, void *data,
 	sv->drm_di_minor = DRM_IF_MINOR;
 	sv->drm_dd_major = dev->driver->major;
 	sv->drm_dd_minor = dev->driver->minor;
-
-	DRM_DEBUG("ver.drm_di_major %d ver.drm_di_minor %d "
-	    "ver.drm_dd_major %d ver.drm_dd_minor %d\n",
-	    ver.drm_di_major, ver.drm_di_minor, ver.drm_dd_major,
-	    ver.drm_dd_minor);
-	DRM_DEBUG("sv->drm_di_major %d sv->drm_di_minor %d "
-	    "sv->drm_dd_major %d sv->drm_dd_minor %d\n",
-	    sv->drm_di_major, sv->drm_di_minor, sv->drm_dd_major,
-	    sv->drm_dd_minor);
 
 	if (ver.drm_di_major != -1) {
 		if (ver.drm_di_major != DRM_IF_MAJOR ||
@@ -306,8 +348,11 @@ int drm_setversion(struct drm_device *dev, void *data,
 		if (ver.drm_di_minor >= 1) {
 			/*
 			 * Version 1.1 includes tying of DRM to specific device
+			 * Version 1.4 has proper PCI domain support
 			 */
-			drm_set_busid(dev);
+			retcode = drm_set_busid(dev, file_priv);
+			if (retcode)
+				return retcode;
 		}
 	}
 
@@ -323,9 +368,11 @@ int drm_setversion(struct drm_device *dev, void *data,
 	return 0;
 }
 
-
-int drm_noop(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/** No-op ioctl. */
+int drm_noop(struct drm_device *dev, void *data,
+	     struct drm_file *file_priv)
 {
 	DRM_DEBUG("\n");
 	return 0;
 }
+EXPORT_SYMBOL(drm_noop);

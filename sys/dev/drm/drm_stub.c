@@ -35,6 +35,12 @@
 
 #include <drm/drmP.h>
 
+/*
+ * Default to use monotonic timestamps for wait-for-vblank and page-flip
+ * complete events.
+ */
+unsigned int drm_timestamp_monotonic = 1;
+
 int
 drm_setmaster_ioctl(struct drm_device *dev, void *data,
     struct drm_file *file_priv)
