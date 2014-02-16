@@ -206,6 +206,8 @@ device		it3	at isa?	port 0x228
 device		wbsio0	at isa? port 0x2e
 device		wbsio1	at isa? port 0x4e
 device		lm#3	at wbsio?
+# Intel Core and newer CPUs on-die digital thermal sensor support
+device		coretemp
 
 # PCCARD (PCMCIA) support
 device		pccard
