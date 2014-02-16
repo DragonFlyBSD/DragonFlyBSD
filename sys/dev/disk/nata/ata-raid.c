@@ -1021,7 +1021,8 @@ ata_raid_create(struct ata_ioc_raid_config *config)
     struct ar_softc *rdp;
     device_t subdisk;
     int array, disk;
-    int ctlr = 0, disk_size = 0, total_disks = 0;
+    int ctlr = 0, total_disks = 0;
+    u_int disk_size = 0;
     device_t gpdev;
 
     for (array = 0; array < MAX_ARRAYS; array++) {
@@ -1241,7 +1242,8 @@ ata_raid_create(struct ata_ioc_raid_config *config)
 
     rdp->total_disks = total_disks;
     rdp->width = total_disks / (rdp->type & (AR_RAID1 | AR_T_RAID01) ? 2 : 1);
-    rdp->total_sectors = disk_size * (rdp->width - (rdp->type == AR_RAID5));
+    rdp->total_sectors =
+	(uint64_t)disk_size * (rdp->width - (rdp->type == AR_RAID5));
     rdp->heads = 255;
     rdp->sectors = 63;
     rdp->cylinders = rdp->total_sectors / (255 * 63);
