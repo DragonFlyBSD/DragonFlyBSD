@@ -1,0 +1,49 @@
+.Dd February 17, 2014
+.Dt CLOCKMOD 4
+.Os
+.Sh NAME
+.Nm clockmod
+.Nd device driver for Intel software controlled clock modulation
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device clockmod"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+clockmod_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for Intel software controlled clock modulation,
+which reduces CPU core's duty cycle to reduce the power consumption.
+A clock moduation domain contains logical CPUs on the same CPU core.
+All logical CPUs in the same clock modulation domain will have the same
+duty cycle setting.
+.Ed
+.Sh MIB Variables
+Clock modulation domain's information and controlling is provided by
+.Va machdep.clockmod_dom Ns Em X
+branch of the
+.Xr sysctl 3
+MIB.
+.Bl -tag -width "available"
+.It Va members
+Logical CPUs belong to this clock modulation domain.
+.It Va available
+Available duty cycle settings for this clock modulation domain.
+.It Va select
+The current duty cycle setting for this clock modulation domain.
+It could be set to any value listed in
+.Va available .
+The lower duty cycle the more power saving.
+.El
+.Sh SEE ALSO
+.Xr sysctl 3 ,
+.Xr sysctl 8
