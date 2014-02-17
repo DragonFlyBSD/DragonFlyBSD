@@ -61,6 +61,7 @@ MAN=	aac.4 \
 	cd.4 \
 	ch.4 \
 	ciss.4 \
+	clockmod.4 \
 	cmx.4 \
 	coretemp.4 \
 	crypto.4 \
@@ -227,6 +228,7 @@ MAN=	aac.4 \
 	pci.4 \
 	pcm.4 \
 	pcn.4 \
+	perfbias.4 \
 	pf.4 \
 	pflog.4 \
 	pim.4 \
