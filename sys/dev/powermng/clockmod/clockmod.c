@@ -514,7 +514,17 @@ clockmod_errata_duty(int duty)
 	model = CPUID_TO_MODEL(cpu_id);
 	stepping = cpu_id & 0xf;
 
-	if (model == 0x2) {
+	if (model == 0x6) {
+		switch (stepping) {
+		case 0x2:
+		case 0x4:
+		case 0x5:
+			/* Hang w/ 12.50% and 25.00% */
+			if (duty == 1250 || duty == 2500)
+				return TRUE;
+			break;
+		}
+	} else if (model == 0x2) {
 		switch (stepping) {
 		case 0x2:
 		case 0x4:
