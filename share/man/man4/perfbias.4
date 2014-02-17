@@ -1,0 +1,45 @@
+.Dd February 17, 2014
+.Dt PERFBIAS 4
+.Os
+.Sh NAME
+.Nm perfbias
+.Nd device driver for Intel performance-energy bias support
+.Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device perfbias"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+perfbias_load="YES"
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for Intel performance-energy bias,
+which allows OS to guide logical CPU heuristic of power management features
+to favor increasing dynamic performance or conserve energy consumption.
+Each logical CPU could has its own performance-energy bias setting.
+.Ed
+.Sh MIB Variables
+Each logical CPU's performance-energy bias is controlled through the
+.Va machdep.perfbias Ns Em X
+branch of the
+.Xr sysctl 3
+MIB.
+.Em X
+is the logical CPU id.
+.Bl -tag -width "hint"
+.It Va hint
+Valid value ranges from 0 to 15, inclusive.
+Set it to 0 to give the highest performance.
+Set it to 15 to maximize energy saving.
+.El
+.Sh SEE ALSO
+.Xr sysctl 3 ,
+.Xr sysctl 8
