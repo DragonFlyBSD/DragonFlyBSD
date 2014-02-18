@@ -172,6 +172,7 @@
 #define __section(x)
 #define __always_inline
 #define __nonnull(x)
+#define __heedresult
 
 #else
 
@@ -205,9 +206,11 @@
 #endif
 
 #if __GNUC_PREREQ__(3, 3)
+#define __heedresult	__attribute__((__warn_unused_result__))
 #define __nonnull(x)    __attribute__((__nonnull__(x)))
 #define	__used		__attribute__((__used__))
 #else
+#define __heedresult
 #define __nonnull(x)
 #define __used		__unused
 #endif
