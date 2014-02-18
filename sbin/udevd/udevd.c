@@ -178,7 +178,10 @@ again:
 	if ((n = read(fd, xml, sz)) <= 0) {
 		if (errno == ENOMEM) {
 			sz <<= 2;
-			realloc(xml, sz);
+			if ((xml = realloc(xml, sz)) == NULL) {
+				syslog(LOG_ERR, "could not realloc xml memory");
+				return;
+			}
 			goto again;
 		}
 		free(xml);
