@@ -1260,7 +1260,7 @@ int intel_wait_ring_buffer(struct intel_ring_buffer *ring, int n)
 #endif
 
 		DELAY(1000);
-		if (atomic_load_acq_32(&dev_priv->mm.wedged) != 0) {
+		if (atomic_read(&dev_priv->mm.wedged) != 0) {
 			return -EAGAIN;
 		}
 	} while (!time_after(ticks, end));
@@ -1274,7 +1274,7 @@ int intel_ring_begin(struct intel_ring_buffer *ring,
 	int n = 4*num_dwords;
 	int ret;
 
-	if (atomic_load_acq_int(&dev_priv->mm.wedged))
+	if (atomic_read(&dev_priv->mm.wedged))
 		return -EIO;
 
 	if (ring->tail + n > ring->effective_size) {

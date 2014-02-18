@@ -329,7 +329,7 @@ i915_gem_pageflip_info(struct drm_device *dev, struct sbuf *m, void *data)
 			sbuf_printf(m, "No flip due on pipe %c (plane %c)\n",
 				   pipe, plane);
 		} else {
-			if (!work->pending) {
+			if (!atomic_read(&work->pending)) {
 				sbuf_printf(m, "Flip queued on pipe %c (plane %c)\n",
 					   pipe, plane);
 			} else {
@@ -340,7 +340,7 @@ i915_gem_pageflip_info(struct drm_device *dev, struct sbuf *m, void *data)
 				sbuf_printf(m, "Stall check enabled, ");
 			else
 				sbuf_printf(m, "Stall check waiting for page flip ioctl, ");
-			sbuf_printf(m, "%d prepares\n", work->pending);
+			sbuf_printf(m, "%d prepares\n", atomic_read(&work->pending));
 
 			if (work->old_fb_obj) {
 				obj = work->old_fb_obj;
@@ -1442,26 +1442,6 @@ i915_ppgtt_info(struct drm_device *dev, struct sbuf *m, void *data)
 }
 
 static int
-i915_debug_set_wedged(SYSCTL_HANDLER_ARGS)
-{
-	struct drm_device *dev;
-	drm_i915_private_t *dev_priv;
-	int error, wedged;
-
-	dev = arg1;
-	dev_priv = dev->dev_private;
-	if (dev_priv == NULL)
-		return (EBUSY);
-	wedged = dev_priv->mm.wedged;
-	error = sysctl_handle_int(oidp, &wedged, 0, req);
-	if (error || !req->newptr)
-		return (error);
-	DRM_INFO("Manually setting wedged to %d\n", wedged);
-	i915_handle_error(dev, wedged);
-	return (error);
-}
-
-static int
 i915_max_freq(SYSCTL_HANDLER_ARGS)
 {
 	struct drm_device *dev;
@@ -1643,9 +1623,6 @@ i915_sysctl_init(struct drm_device *dev, struct sysctl_ctx_list *ctx,
 	oid = SYSCTL_ADD_LONG(ctx, SYSCTL_CHILDREN(info), OID_AUTO,
 	    "i915_gem_wired_pages", CTLFLAG_RD, &i915_gem_wired_pages_cnt,
 	    NULL);
-	oid = SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(top), OID_AUTO, "wedged",
-	    CTLTYPE_INT | CTLFLAG_RW, dev, 0,
-	    i915_debug_set_wedged, "I", NULL);
 	if (oid == NULL)
 		return (ENOMEM);
 	oid = SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(top), OID_AUTO, "max_freq",

@@ -712,11 +712,11 @@ i915_error_work_func(void *context, int pending)
 
 	/* kobject_uevent_env(&dev->primary->kdev.kobj, KOBJ_CHANGE, error_event); */
 
-	if (atomic_load_acq_int(&dev_priv->mm.wedged)) {
+	if (atomic_read(&dev_priv->mm.wedged)) {
 		DRM_DEBUG("i915: resetting chip\n");
 		/* kobject_uevent_env(&dev->primary->kdev.kobj, KOBJ_CHANGE, reset_event); */
 		if (!i915_reset(dev, GRDOM_RENDER)) {
-			atomic_store_rel_int(&dev_priv->mm.wedged, 0);
+			atomic_set(&dev_priv->mm.wedged, 0);
 			/* kobject_uevent_env(&dev->primary->kdev.kobj, KOBJ_CHANGE, reset_done_event); */
 		}
 		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
@@ -855,7 +855,7 @@ void i915_handle_error(struct drm_device *dev, bool wedged)
 	if (wedged) {
 		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
 		dev_priv->error_completion = 0;
-		dev_priv->mm.wedged = 1;
+		atomic_set(&dev_priv->mm.wedged, 1);
 		/* unlock acts as rel barrier for store to wedged */
 		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 
@@ -896,7 +896,8 @@ static void i915_pageflip_stall_check(struct drm_device *dev, int pipe)
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	work = intel_crtc->unpin_work;
 
-	if (work == NULL || work->pending || !work->enable_stall_check) {
+	if (work == NULL || atomic_read(&work->pending) ||
+	    !work->enable_stall_check) {
 		/* Either the pending flip IRQ arrived, or we're too early. Don't check */
 		lockmgr(&dev->event_lock, LK_RELEASE);
 		return;

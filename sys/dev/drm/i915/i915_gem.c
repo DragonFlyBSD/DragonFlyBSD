@@ -118,12 +118,11 @@ i915_gem_info_remove_obj(struct drm_i915_private *dev_priv, size_t size)
 static int
 i915_gem_wait_for_error(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret;
 
-	dev_priv = dev->dev_private;
-	if (!atomic_load_acq_int(&dev_priv->mm.wedged))
-		return (0);
+	if (!atomic_read(&dev_priv->mm.wedged))
+		return 0;
 
 	lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
 	while (dev_priv->error_completion == 0) {
@@ -136,12 +135,17 @@ i915_gem_wait_for_error(struct drm_device *dev)
 	}
 	lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 
-	if (atomic_load_acq_int(&dev_priv->mm.wedged)) {
+	if (atomic_read(&dev_priv->mm.wedged)) {
+		/* GPU is hung, bump the completion count to account for
+		 * the token we just consumed so that we never hit zero and
+		 * end up waiting upon a subsequent completion event that
+		 * will never happen.
+		 */
 		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
 		dev_priv->error_completion++;
 		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 	}
-	return (0);
+	return 0;
 }
 
 int
@@ -687,8 +691,8 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 	int ret;
 
 	dev_priv = dev->dev_private;
-	if (atomic_load_acq_int(&dev_priv->mm.wedged))
-		return (-EIO);
+	if (atomic_read(&dev_priv->mm.wedged))
+		return -EIO;
 
 	recent_enough = ticks - (20 * hz / 1000);
 	ring = NULL;
@@ -713,15 +717,15 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 		if (ring->irq_get(ring)) {
 			while (ret == 0 &&
 			    !(i915_seqno_passed(ring->get_seqno(ring), seqno) ||
-			    atomic_load_acq_int(&dev_priv->mm.wedged)))
+			    atomic_read(&dev_priv->mm.wedged)))
 				ret = -lksleep(ring, &ring->irq_lock, PCATCH,
 				    "915thr", 0);
 			ring->irq_put(ring);
-			if (ret == 0 && atomic_load_acq_int(&dev_priv->mm.wedged))
+			if (ret == 0 && atomic_read(&dev_priv->mm.wedged))
 				ret = -EIO;
 		} else if (_intel_wait_for(dev,
 		    i915_seqno_passed(ring->get_seqno(ring), seqno) ||
-		    atomic_load_acq_int(&dev_priv->mm.wedged), 3000, 0, "915rtr")) {
+		    atomic_read(&dev_priv->mm.wedged), 3000, 0, "915rtr")) {
 			ret = -EBUSY;
 		}
 	}
@@ -802,49 +806,44 @@ i915_gem_cleanup_ringbuffer(struct drm_device *dev)
 
 int
 i915_gem_entervt_ioctl(struct drm_device *dev, void *data,
-    struct drm_file *file_priv)
+		       struct drm_file *file_priv)
 {
-	drm_i915_private_t *dev_priv;
-	int ret, i;
+	drm_i915_private_t *dev_priv = dev->dev_private;
+	int ret;
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET))
-		return (0);
-	dev_priv = dev->dev_private;
-	if (atomic_load_acq_int(&dev_priv->mm.wedged) != 0) {
+		return 0;
+
+	if (atomic_read(&dev_priv->mm.wedged)) {
 		DRM_ERROR("Reenabling wedged hardware, good luck\n");
-		atomic_store_rel_int(&dev_priv->mm.wedged, 0);
+		atomic_set(&dev_priv->mm.wedged, 0);
 	}
 
+	DRM_LOCK(dev);
 	dev_priv->mm.suspended = 0;
 
 	ret = i915_gem_init_hw(dev);
 	if (ret != 0) {
-		return (ret);
+		DRM_UNLOCK(dev);
+		return ret;
 	}
 
 	KASSERT(list_empty(&dev_priv->mm.active_list), ("active list"));
-	KASSERT(list_empty(&dev_priv->mm.flushing_list), ("flushing list"));
-	KASSERT(list_empty(&dev_priv->mm.inactive_list), ("inactive list"));
-	for (i = 0; i < I915_NUM_RINGS; i++) {
-		KASSERT(list_empty(&dev_priv->rings[i].active_list),
-		    ("ring %d active list", i));
-		KASSERT(list_empty(&dev_priv->rings[i].request_list),
-		    ("ring %d request list", i));
-	}
-
 	DRM_UNLOCK(dev);
+
 	ret = drm_irq_install(dev);
-	DRM_LOCK(dev);
 	if (ret)
 		goto cleanup_ringbuffer;
 
-	return (0);
+	return 0;
 
 cleanup_ringbuffer:
+	DRM_LOCK(dev);
 	i915_gem_cleanup_ringbuffer(dev);
 	dev_priv->mm.suspended = 1;
+	DRM_UNLOCK(dev);
 
-	return (ret);
+	return ret;
 }
 
 int
@@ -2512,7 +2511,7 @@ i915_wait_request(struct intel_ring_buffer *ring, uint32_t seqno, bool do_retire
 	dev_priv = ring->dev->dev_private;
 	ret = 0;
 
-	if (atomic_load_acq_int(&dev_priv->mm.wedged) != 0) {
+	if (atomic_read(&dev_priv->mm.wedged) != 0) {
 		/* Give the error handler a chance to run. */
 		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
 		recovery_complete = (&dev_priv->error_completion) > 0;
@@ -2552,7 +2551,7 @@ i915_wait_request(struct intel_ring_buffer *ring, uint32_t seqno, bool do_retire
 		if (ring->irq_get(ring)) {
 			flags = dev_priv->mm.interruptible ? PCATCH : 0;
 			while (!i915_seqno_passed(ring->get_seqno(ring), seqno)
-			    && !atomic_load_acq_int(&dev_priv->mm.wedged) &&
+			    && !atomic_read(&dev_priv->mm.wedged) &&
 			    ret == 0) {
 				ret = -lksleep(ring, &ring->irq_lock, flags,
 				    "915gwr", 0);
@@ -2563,14 +2562,14 @@ i915_wait_request(struct intel_ring_buffer *ring, uint32_t seqno, bool do_retire
 			lockmgr(&ring->irq_lock, LK_RELEASE);
 			if (_intel_wait_for(ring->dev,
 			    i915_seqno_passed(ring->get_seqno(ring), seqno) ||
-			    atomic_load_acq_int(&dev_priv->mm.wedged), 3000,
+			    atomic_read(&dev_priv->mm.wedged), 3000,
 			    0, "i915wrq") != 0)
 				ret = -EBUSY;
 		}
 		ring->waiting_seqno = 0;
 
 	}
-	if (atomic_load_acq_int(&dev_priv->mm.wedged))
+	if (atomic_read(&dev_priv->mm.wedged))
 		ret = -EAGAIN;
 
 	/* Directly dispatch request retiring.  While we have the work queue

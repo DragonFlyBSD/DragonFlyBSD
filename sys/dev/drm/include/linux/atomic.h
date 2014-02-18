@@ -120,7 +120,12 @@ static inline int atomic_add_unless(atomic_t *v, int a, int u)
 
 #define atomic_inc_not_zero(v) atomic_add_unless((v), 1, 0)
 
-
-
+/* atomic_clear_mask: atomically clears a variable from the bit set in mask */
+#define atomic_clear_mask(mask, addr)		\
+	/* atomic *addr &= ~mask; */		\
+	__asm __volatile("lock andl %0, %1"	\
+		:				\
+		: "r" (~mask), "m" (*addr)	\
+		: "memory");
 
 #endif	/* _ASM_ATOMIC_H_ */

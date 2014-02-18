@@ -1779,13 +1779,13 @@ intel_finish_fb(struct drm_framebuffer *old_fb)
 	bool was_interruptible = dev_priv->mm.interruptible;
 	int ret;
 
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
-	while (!atomic_load_acq_int(&dev_priv->mm.wedged) &&
-	    atomic_load_acq_int(&obj->pending_flip) != 0) {
+/* XXX */	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	while (!atomic_read(&dev_priv->mm.wedged) &&
+	       atomic_read(&obj->pending_flip) != 0) {
 		lksleep(&obj->pending_flip, &dev->event_lock,
 		    0, "915flp", 0);
 	}
-	lockmgr(&dev->event_lock, LK_RELEASE);
+/* XXX */	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	/* Big Hammer, we also need to ensure that any pending
 	 * MI_WAIT_FOR_EVENT inside a user batch buffer on the
@@ -2467,7 +2467,7 @@ static void intel_crtc_wait_for_pending_flips(struct drm_crtc *crtc)
 	dev = crtc->dev;
 	dev_priv = dev->dev_private;
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
-	while (atomic_load_acq_int(&obj->pending_flip) != 0)
+	while (atomic_read(&obj->pending_flip) != 0)
 		lksleep(&obj->pending_flip, &dev->event_lock, 0, "915wfl", 0);
 	lockmgr(&dev->event_lock, LK_RELEASE);
 }
@@ -5467,7 +5467,7 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	work = intel_crtc->unpin_work;
-	if (work == NULL || !work->pending) {
+	if (work == NULL || !atomic_read(&work->pending)) {
 		lockmgr(&dev->event_lock, LK_RELEASE);
 		return;
 	}
@@ -5483,7 +5483,8 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 
 	obj = work->old_fb_obj;
 
-	atomic_clear_int(&obj->pending_flip, 1 << intel_crtc->plane);
+	atomic_clear_mask(1 << intel_crtc->plane,
+			  &obj->pending_flip.counter);
 	wakeup(&obj->pending_flip);
 
 	taskqueue_enqueue(dev_priv->tq, &work->task);
@@ -5512,12 +5513,8 @@ void intel_prepare_page_flip(struct drm_device *dev, int plane)
 		to_intel_crtc(dev_priv->plane_to_crtc_mapping[plane]);
 
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
-	if (intel_crtc->unpin_work) {
-		if ((++intel_crtc->unpin_work->pending) > 1)
-			DRM_ERROR("Prepared flip multiple times\n");
-	} else {
-		DRM_DEBUG("preparing flip with no unpin work?\n");
-	}
+	if (intel_crtc->unpin_work)
+		atomic_inc_not_zero(&intel_crtc->unpin_work->pending);
 	lockmgr(&dev->event_lock, LK_RELEASE);
 }
 
@@ -5773,7 +5770,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	/* Block clients from rendering to the new back buffer until
 	 * the flip occurs and the object is no longer visible.
 	 */
-	atomic_set_int(&work->old_fb_obj->pending_flip, 1 << intel_crtc->plane);
+	atomic_add(1 << intel_crtc->plane, &work->old_fb_obj->pending_flip);
 
 	ret = dev_priv->display.queue_flip(dev, crtc, fb, obj);
 	if (ret)
@@ -5784,7 +5781,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	return 0;
 
 cleanup_pending:
-	atomic_clear_int(&work->old_fb_obj->pending_flip, 1 << intel_crtc->plane);
+	atomic_sub(1 << intel_crtc->plane, &work->old_fb_obj->pending_flip);
 	drm_gem_object_unreference(&work->old_fb_obj->base);
 	drm_gem_object_unreference(&obj->base);
 	DRM_UNLOCK(dev);
