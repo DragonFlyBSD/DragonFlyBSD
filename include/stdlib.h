@@ -94,7 +94,7 @@ int	 atoi(const char *);
 long	 atol(const char *);
 void	*bsearch(const void *, const void *, size_t,
 		 size_t, int (*)(const void *, const void *));
-void	*calloc(size_t, size_t);
+void	*calloc(size_t, size_t) __heedresult;
 div_t	 div(int, int) __pure2;
 void	 exit(int) __dead2;
 void	 free(void *);
@@ -103,14 +103,14 @@ char	*getenv(const char *);
 long	 labs(long) __pure2;
 #endif
 ldiv_t	 ldiv(long, long) __pure2;
-void	*malloc(size_t);
+void	*malloc(size_t) __heedresult;
 int	 posix_memalign(void **, size_t, size_t);
 int	 mblen(const char *, size_t);
 size_t	 mbstowcs(wchar_t * __restrict , const char * __restrict, size_t);
 int	 mbtowc(wchar_t * __restrict, const char * __restrict, size_t);
 void	 qsort(void *, size_t, size_t, int (*)(const void *, const void *));
 int	 rand(void);
-void	*realloc(void *, size_t);
+void	*realloc(void *, size_t) __heedresult;
 void	 srand(unsigned);
 double	 strtod(const char * __restrict, char ** __restrict);
 float	 strtof(const char * __restrict, char ** __restrict);
@@ -286,7 +286,7 @@ void	 qsort_r(void *, size_t, size_t, void *,
 		 int (*)(void *, const void *, const void *));
 int	 radixsort(const unsigned char **, int, const unsigned char *,
 		   unsigned int);
-void    *reallocf(void *, size_t);
+void    *reallocf(void *, size_t) __heedresult;
 int	 rpmatch(const char *);
 void	 setprogname(const char *);
 int	 sradixsort(const unsigned char **, int, const unsigned char *,
@@ -314,7 +314,7 @@ extern char *suboptarg;			/* getsubopt(3) external variable */
 int 	at_quick_exit(void (*func)(void));
 _Noreturn void
 	quick_exit(int);
-void	*aligned_alloc(size_t, size_t);
+void	*aligned_alloc(size_t, size_t) __heedresult;
 #endif /* __ISO_C_VISIBLE >= 2011 */
 
 __END_DECLS

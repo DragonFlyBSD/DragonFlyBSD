@@ -172,7 +172,8 @@ void	contigfree(void *addr, unsigned long size, struct malloc_type *type)
 	    __nonnull(1);
 void	*contigmalloc (unsigned long size, struct malloc_type *type,
 			   int flags, vm_paddr_t low, vm_paddr_t high,
-			   unsigned long alignment, unsigned long boundary);
+			   unsigned long alignment, unsigned long boundary)
+	    __heedresult;
 void	malloc_init (void *);
 void	malloc_uninit (void *);
 void	kmalloc_raise_limit(struct malloc_type *type, size_t bytes);
@@ -181,12 +182,12 @@ void	kmalloc_destroy(struct malloc_type **typep);
 
 #ifdef SLAB_DEBUG
 void	*kmalloc_debug (unsigned long size, struct malloc_type *type, int flags,
-			const char *file, int line);
+			const char *file, int line) __heedresult;
 void	*krealloc_debug (void *addr, unsigned long size,
 			struct malloc_type *type, int flags,
-			const char *file, int line);
+			const char *file, int line) __heedresult;
 char	*kstrdup_debug (const char *, struct malloc_type *,
-			const char *file, int line);
+			const char *file, int line) __heedresult;
 #define kmalloc(size, type, flags)		\
 	kmalloc_debug(size, type, flags, __FILE__, __LINE__)
 #define krealloc(addr, size, type, flags)	\
@@ -194,10 +195,11 @@ char	*kstrdup_debug (const char *, struct malloc_type *,
 #define kstrdup(str, type)			\
 	kstrdup_debug(str, type, __FILE__, __LINE__)
 #else
-void	*kmalloc (unsigned long size, struct malloc_type *type, int flags);
+void	*kmalloc (unsigned long size, struct malloc_type *type, int flags)
+	    __heedresult;
 void	*krealloc (void *addr, unsigned long size,
-		      struct malloc_type *type, int flags);
-char	*kstrdup (const char *, struct malloc_type *);
+		      struct malloc_type *type, int flags) __heedresult;
+char	*kstrdup (const char *, struct malloc_type *) __heedresult;
 #define kmalloc_debug(size, type, flags, file, line)		\
 	kmalloc(size, type, flags)
 #define krealloc_debug(addr, size, type, flags, file, line)	\
@@ -206,7 +208,7 @@ char	*kstrdup (const char *, struct malloc_type *);
 	kstrdup(str, type)
 #endif
 void	*kmalloc_cachealign (unsigned long size, struct malloc_type *type,
-			   int flags);
+			   int flags) __heedresult;
 void	kfree(void *addr, struct malloc_type *type)
 	    __nonnull(1) __nonnull(2);
 long	kmalloc_limit (struct malloc_type *type);
