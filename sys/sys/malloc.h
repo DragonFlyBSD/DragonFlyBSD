@@ -168,8 +168,8 @@ MALLOC_DECLARE(M_IOV);
 
 /* XXX struct malloc_type is unused for contig*(). */
 size_t  kmem_lim_size(void);
-void	contigfree (void *addr, unsigned long size,
-			struct malloc_type *type);
+void	contigfree(void *addr, unsigned long size, struct malloc_type *type)
+	    __nonnull(1);
 void	*contigmalloc (unsigned long size, struct malloc_type *type,
 			   int flags, vm_paddr_t low, vm_paddr_t high,
 			   unsigned long alignment, unsigned long boundary);
@@ -207,7 +207,8 @@ char	*kstrdup (const char *, struct malloc_type *);
 #endif
 void	*kmalloc_cachealign (unsigned long size, struct malloc_type *type,
 			   int flags);
-void	kfree (void *addr, struct malloc_type *type);
+void	kfree(void *addr, struct malloc_type *type)
+	    __nonnull(1) __nonnull(2);
 long	kmalloc_limit (struct malloc_type *type);
 void	slab_cleanup(void);
 
