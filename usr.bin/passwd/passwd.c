@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/passwd/passwd.c,v 1.23 2003/04/18 21:27:09 nectar Exp $
- * $DragonFly: src/usr.bin/passwd/passwd.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +66,7 @@ int
 main(int argc, char **argv)
 {
 	char hostname[MAXHOSTNAMELEN];
-	struct passwd *pwd = pwd;
+	struct passwd *pwd = NULL;
 	int o, pam_err;
 	uid_t uid;
 

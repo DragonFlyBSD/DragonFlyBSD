@@ -58,7 +58,6 @@
  *
  * @(#)su.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/su/su.c,v 1.88 2008/06/04 19:16:54 dwmalone Exp $
- * $DragonFly: src/usr.bin/su/su.c,v 1.9 2006/01/12 13:43:11 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -152,7 +151,7 @@ main(int argc, char **argv)
 			statusp;
 	u_int		setwhat;
 	char		*username, *class, shellbuf[MAXPATHLEN];
-	const char	*p = p, *user, *shell, *mytty, **nargv;
+	const char	*p = NULL, *user, *shell, *mytty, **nargv;
 	const void	*v;
 	struct sigaction sa, sa_int, sa_quit, sa_pipe;
 	int temp, fds[2];
