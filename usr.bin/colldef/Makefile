@@ -14,6 +14,7 @@ DPADD=	${LIBL}
 SRCS+=		sys/types.h ctype.h
 CLEANFILES+=	ctype.h
 CLEANDIRS+=	sys
+CFLAGS+=	-D__heedresult=
 .endif
 
 sys/types.h: /usr/include/sys/types.h
