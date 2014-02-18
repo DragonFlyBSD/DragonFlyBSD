@@ -91,7 +91,6 @@ static int xhcidebug = 0;
 static int xhciroute = 0;
 static int xhcipolling = 0;
 
-static SYSCTL_NODE(_hw_usb, OID_AUTO, xhci, CTLFLAG_RW, 0, "USB XHCI");
 SYSCTL_INT(_hw_usb_xhci, OID_AUTO, debug, CTLFLAG_RW,
     &xhcidebug, 0, "Debug level");
 TUNABLE_INT("hw.usb.xhci.debug", &xhcidebug);

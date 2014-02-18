@@ -908,7 +908,7 @@ usb_open(struct dev_open_args *ap)
 	usb_unref_device(cpd, &refs);
 	err = devfs_set_cdevpriv(ap->a_fp, cpd, usb_cdevpriv_dtor);
 	if(err) {
-		DPRINTFN(2, "devfs_set_cdevpriv failed in %s\n", __FUNC__);
+		DPRINTFN(2, "devfs_set_cdevpriv failed in %s\n", __FUNCTION__);
 		kfree(cpd, M_USBDEV);
 		return(err);
 	}
@@ -925,11 +925,11 @@ usb_close(struct dev_close_args *ap)
 	struct usb_cdev_privdata *cpd;
 	int err;
 
-	DPRINTFN(2, "cpd=%p\n", cpd);
-
 	err = devfs_get_cdevpriv(ap->a_fp, (void **)&cpd);
  	if (err != 0)
  		return (err);
+
+	DPRINTFN(2, "cpd=%p\n", cpd);
 
 	err = usb_ref_device(cpd, &refs, 0);
 	if (err)
