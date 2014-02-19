@@ -228,9 +228,9 @@ SYSCTL_STRING(_debug_acpi, OID_AUTO, acpi_ca_version, CTLFLAG_RD,
 	      acpi_ca_version, 0, "Version of Intel ACPI-CA");
 
 /*
- * Disable the control method auto-serialization mechanism that was added
- * in 20140214 and superseded the previous AcpiGbl_SerializeAllMethods
- * option.
+ * Use this tunable to disable the control method auto-serialization
+ * mechanism that was added in 20140214 and superseded the previous
+ * AcpiGbl_SerializeAllMethods global.
  */
 static int acpi_auto_serialize_methods = 1;
 TUNABLE_INT("hw.acpi.auto_serialize_methods", &acpi_auto_serialize_methods);
