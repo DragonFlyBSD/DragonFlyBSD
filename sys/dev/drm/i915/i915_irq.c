@@ -523,11 +523,11 @@ ivybridge_irq_handler(void *arg)
 #endif
 
 	if (gt_iir & (GT_USER_INTERRUPT | GT_PIPE_NOTIFY))
-		notify_ring(dev, &dev_priv->rings[RCS]);
+		notify_ring(dev, &dev_priv->ring[RCS]);
 	if (gt_iir & GT_GEN6_BSD_USER_INTERRUPT)
-		notify_ring(dev, &dev_priv->rings[VCS]);
+		notify_ring(dev, &dev_priv->ring[VCS]);
 	if (gt_iir & GT_GEN6_BLT_USER_INTERRUPT)
-		notify_ring(dev, &dev_priv->rings[BCS]);
+		notify_ring(dev, &dev_priv->ring[BCS]);
 
 	if (de_iir & DE_GSE_IVB) {
 #if 1
@@ -632,11 +632,11 @@ ironlake_irq_handler(void *arg)
 #endif
 
 	if (gt_iir & (GT_USER_INTERRUPT | GT_PIPE_NOTIFY))
-		notify_ring(dev, &dev_priv->rings[RCS]);
+		notify_ring(dev, &dev_priv->ring[RCS]);
 	if (gt_iir & bsd_usr_interrupt)
-		notify_ring(dev, &dev_priv->rings[VCS]);
+		notify_ring(dev, &dev_priv->ring[VCS]);
 	if (gt_iir & GT_GEN6_BLT_USER_INTERRUPT)
-		notify_ring(dev, &dev_priv->rings[BCS]);
+		notify_ring(dev, &dev_priv->ring[BCS]);
 
 	if (de_iir & DE_GSE) {
 #if 1
@@ -862,18 +862,18 @@ void i915_handle_error(struct drm_device *dev, bool wedged)
 		/*
 		 * Wakeup waiting processes so they don't hang
 		 */
-		lockmgr(&dev_priv->rings[RCS].irq_lock, LK_EXCLUSIVE);
-		wakeup(&dev_priv->rings[RCS]);
-		lockmgr(&dev_priv->rings[RCS].irq_lock, LK_RELEASE);
+		lockmgr(&dev_priv->ring[RCS].irq_lock, LK_EXCLUSIVE);
+		wakeup(&dev_priv->ring[RCS]);
+		lockmgr(&dev_priv->ring[RCS].irq_lock, LK_RELEASE);
 		if (HAS_BSD(dev)) {
-			lockmgr(&dev_priv->rings[VCS].irq_lock, LK_EXCLUSIVE);
-			wakeup(&dev_priv->rings[VCS]);
-			lockmgr(&dev_priv->rings[VCS].irq_lock, LK_RELEASE);
+			lockmgr(&dev_priv->ring[VCS].irq_lock, LK_EXCLUSIVE);
+			wakeup(&dev_priv->ring[VCS]);
+			lockmgr(&dev_priv->ring[VCS].irq_lock, LK_RELEASE);
 		}
 		if (HAS_BLT(dev)) {
-			lockmgr(&dev_priv->rings[BCS].irq_lock, LK_EXCLUSIVE);
-			wakeup(&dev_priv->rings[BCS]);
-			lockmgr(&dev_priv->rings[BCS].irq_lock, LK_RELEASE);
+			lockmgr(&dev_priv->ring[BCS].irq_lock, LK_EXCLUSIVE);
+			wakeup(&dev_priv->ring[BCS]);
+			lockmgr(&dev_priv->ring[BCS].irq_lock, LK_RELEASE);
 		}
 	}
 
@@ -1012,9 +1012,9 @@ i915_driver_irq_handler(void *arg)
 #endif
 
 		if (iir & I915_USER_INTERRUPT)
-			notify_ring(dev, &dev_priv->rings[RCS]);
+			notify_ring(dev, &dev_priv->ring[RCS]);
 		if (iir & I915_BSD_USER_INTERRUPT)
-			notify_ring(dev, &dev_priv->rings[VCS]);
+			notify_ring(dev, &dev_priv->ring[VCS]);
 
 		if (iir & I915_DISPLAY_PLANE_A_FLIP_PENDING_INTERRUPT) {
 			intel_prepare_page_flip(dev, 0);
@@ -1424,9 +1424,9 @@ i915_hangcheck_elapsed(void *context)
 		return;
 
 	/* If all work is done then ACTHD clearly hasn't advanced. */
-	if (i915_hangcheck_ring_idle(&dev_priv->rings[RCS], &err) &&
-	    i915_hangcheck_ring_idle(&dev_priv->rings[VCS], &err) &&
-	    i915_hangcheck_ring_idle(&dev_priv->rings[BCS], &err)) {
+	if (i915_hangcheck_ring_idle(&dev_priv->ring[RCS], &err) &&
+	    i915_hangcheck_ring_idle(&dev_priv->ring[VCS], &err) &&
+	    i915_hangcheck_ring_idle(&dev_priv->ring[BCS], &err)) {
 		dev_priv->hangcheck_count = 0;
 		if (err)
 			goto repeat;
@@ -1440,11 +1440,11 @@ i915_hangcheck_elapsed(void *context)
 		instdone = I915_READ(INSTDONE_I965);
 		instdone1 = I915_READ(INSTDONE1);
 	}
-	acthd = intel_ring_get_active_head(&dev_priv->rings[RCS]);
+	acthd = intel_ring_get_active_head(&dev_priv->ring[RCS]);
 	acthd_bsd = HAS_BSD(dev) ?
-		intel_ring_get_active_head(&dev_priv->rings[VCS]) : 0;
+		intel_ring_get_active_head(&dev_priv->ring[VCS]) : 0;
 	acthd_blt = HAS_BLT(dev) ?
-		intel_ring_get_active_head(&dev_priv->rings[BCS]) : 0;
+		intel_ring_get_active_head(&dev_priv->ring[BCS]) : 0;
 
 	if (dev_priv->last_acthd == acthd &&
 	    dev_priv->last_acthd_bsd == acthd_bsd &&
@@ -1461,15 +1461,15 @@ i915_hangcheck_elapsed(void *context)
 				 * and break the hang. This should work on
 				 * all but the second generation chipsets.
 				 */
-				if (kick_ring(&dev_priv->rings[RCS]))
+				if (kick_ring(&dev_priv->ring[RCS]))
 					goto repeat;
 
 				if (HAS_BSD(dev) &&
-				    kick_ring(&dev_priv->rings[VCS]))
+				    kick_ring(&dev_priv->ring[VCS]))
 					goto repeat;
 
 				if (HAS_BLT(dev) &&
-				    kick_ring(&dev_priv->rings[BCS]))
+				    kick_ring(&dev_priv->ring[BCS]))
 					goto repeat;
 			}
 
@@ -2122,7 +2122,7 @@ i915_gem_record_rings(struct drm_device *dev,
 	int i, count;
 
 	for (i = 0; i < I915_NUM_RINGS; i++) {
-		struct intel_ring_buffer *ring = &dev_priv->rings[i];
+		struct intel_ring_buffer *ring = &dev_priv->ring[i];
 
 		if (ring->obj == NULL)
 			continue;

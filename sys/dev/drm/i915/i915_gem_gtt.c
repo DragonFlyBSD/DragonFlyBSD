@@ -406,7 +406,7 @@ void i915_gem_init_ppgtt(struct drm_device *dev)
 	}
 
 	for (i = 0; i < I915_NUM_RINGS; i++) {
-		ring = &dev_priv->rings[i];
+		ring = &dev_priv->ring[i];
 
 		if (INTEL_INFO(dev)->gen >= 7)
 			I915_WRITE(RING_MODE_GEN7(ring),

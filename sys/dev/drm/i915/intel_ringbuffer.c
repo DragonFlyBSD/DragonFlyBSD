@@ -1525,7 +1525,7 @@ static const struct intel_ring_buffer gen6_blt_ring = {
 int intel_init_render_ring_buffer(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
-	struct intel_ring_buffer *ring = &dev_priv->rings[RCS];
+	struct intel_ring_buffer *ring = &dev_priv->ring[RCS];
 
 	*ring = render_ring;
 	if (INTEL_INFO(dev)->gen >= 6) {
@@ -1551,7 +1551,7 @@ int intel_render_ring_init_dri(struct drm_device *dev, uint64_t start,
     uint32_t size)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
-	struct intel_ring_buffer *ring = &dev_priv->rings[RCS];
+	struct intel_ring_buffer *ring = &dev_priv->ring[RCS];
 
 	*ring = render_ring;
 	if (INTEL_INFO(dev)->gen >= 6) {
@@ -1593,7 +1593,7 @@ int intel_render_ring_init_dri(struct drm_device *dev, uint64_t start,
 int intel_init_bsd_ring_buffer(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
-	struct intel_ring_buffer *ring = &dev_priv->rings[VCS];
+	struct intel_ring_buffer *ring = &dev_priv->ring[VCS];
 
 	if (IS_GEN6(dev) || IS_GEN7(dev))
 		*ring = gen6_bsd_ring;
@@ -1606,7 +1606,7 @@ int intel_init_bsd_ring_buffer(struct drm_device *dev)
 int intel_init_blt_ring_buffer(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
-	struct intel_ring_buffer *ring = &dev_priv->rings[BCS];
+	struct intel_ring_buffer *ring = &dev_priv->ring[BCS];
 
 	*ring = gen6_blt_ring;
 

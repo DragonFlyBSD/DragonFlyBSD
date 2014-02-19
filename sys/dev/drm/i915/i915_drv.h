@@ -291,8 +291,7 @@ typedef struct drm_i915_private {
 	struct lock gt_lock;
 
 	drm_i915_sarea_t *sarea_priv;
-	/* drm_i915_ring_buffer_t ring; */
-	struct intel_ring_buffer rings[I915_NUM_RINGS];
+	struct intel_ring_buffer ring[I915_NUM_RINGS];
 	uint32_t next_seqno;
 
 	drm_dma_handle_t *status_page_dmah;
@@ -1371,7 +1370,7 @@ __i915_write(64, 64)
 
 #define I915_VERBOSE 0
 
-#define LP_RING(d) (&((struct drm_i915_private *)(d))->rings[RCS])
+#define LP_RING(d) (&((struct drm_i915_private *)(d))->ring[RCS])
 
 #define BEGIN_LP_RING(n) \
 	intel_ring_begin(LP_RING(dev_priv), (n))

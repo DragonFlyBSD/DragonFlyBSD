@@ -237,7 +237,7 @@ i915_gem_load(struct drm_device *dev)
 	INIT_LIST_HEAD(&dev_priv->mm.deferred_free_list);
 	INIT_LIST_HEAD(&dev_priv->mm.gtt_list);
 	for (i = 0; i < I915_NUM_RINGS; i++)
-		init_ring_lists(&dev_priv->rings[i]);
+		init_ring_lists(&dev_priv->ring[i]);
 	for (i = 0; i < I915_MAX_NUM_FENCES; i++)
 		INIT_LIST_HEAD(&dev_priv->fence_regs[i].lru_list);
 	TIMEOUT_TASK_INIT(dev_priv->tq, &dev_priv->mm.retire_task, 0,
@@ -419,9 +419,9 @@ i915_gem_init_hw(struct drm_device *dev)
 	return (0);
 
 cleanup_bsd_ring:
-	intel_cleanup_ring_buffer(&dev_priv->rings[VCS]);
+	intel_cleanup_ring_buffer(&dev_priv->ring[VCS]);
 cleanup_render_ring:
-	intel_cleanup_ring_buffer(&dev_priv->rings[RCS]);
+	intel_cleanup_ring_buffer(&dev_priv->ring[RCS]);
 	return (ret);
 }
 
@@ -801,7 +801,7 @@ i915_gem_cleanup_ringbuffer(struct drm_device *dev)
 
 	dev_priv = dev->dev_private;
 	for (i = 0; i < I915_NUM_RINGS; i++)
-		intel_cleanup_ring_buffer(&dev_priv->rings[i]);
+		intel_cleanup_ring_buffer(&dev_priv->ring[i]);
 }
 
 int
@@ -2489,7 +2489,7 @@ i915_gpu_idle(struct drm_device *dev, bool do_retire)
 
 	/* Flush everything onto the inactive list. */
 	for (i = 0; i < I915_NUM_RINGS; i++) {
-		ret = i915_ring_idle(&dev_priv->rings[i], do_retire);
+		ret = i915_ring_idle(&dev_priv->ring[i], do_retire);
 		if (ret)
 			return ret;
 	}
@@ -2762,7 +2762,7 @@ i915_gem_reset(struct drm_device *dev)
 	int i;
 
 	for (i = 0; i < I915_NUM_RINGS; i++)
-		i915_gem_reset_ring_lists(dev_priv, &dev_priv->rings[i]);
+		i915_gem_reset_ring_lists(dev_priv, &dev_priv->ring[i]);
 
 	/* Remove anything from the flushing lists. The GPU cache is likely
 	 * to be lost on reset along with the data, so simply move the
@@ -2865,7 +2865,7 @@ i915_gem_retire_requests(struct drm_device *dev)
 	}
 
 	for (i = 0; i < I915_NUM_RINGS; i++)
-		i915_gem_retire_requests_ring(&dev_priv->rings[i]);
+		i915_gem_retire_requests_ring(&dev_priv->ring[i]);
 }
 
 static int
@@ -3368,7 +3368,7 @@ i915_gem_retire_task_handler(void *arg, int pending)
 	 */
 	idle = true;
 	for (i = 0; i < I915_NUM_RINGS; i++) {
-		struct intel_ring_buffer *ring = &dev_priv->rings[i];
+		struct intel_ring_buffer *ring = &dev_priv->ring[i];
 
 		if (!list_empty(&ring->gpu_write_list)) {
 			struct drm_i915_gem_request *request;

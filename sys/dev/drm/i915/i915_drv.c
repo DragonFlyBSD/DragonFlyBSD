@@ -744,11 +744,11 @@ i915_reset(struct drm_device *dev, u8 flags)
 
 		i915_gem_init_swizzling(dev);
 
-		dev_priv->rings[RCS].init(&dev_priv->rings[RCS]);
+		dev_priv->ring[RCS].init(&dev_priv->ring[RCS]);
 		if (HAS_BSD(dev))
-			dev_priv->rings[VCS].init(&dev_priv->rings[VCS]);
+			dev_priv->ring[VCS].init(&dev_priv->ring[VCS]);
 		if (HAS_BLT(dev))
-			dev_priv->rings[BCS].init(&dev_priv->rings[BCS]);
+			dev_priv->ring[BCS].init(&dev_priv->ring[BCS]);
 
 		i915_gem_init_ppgtt(dev);
 

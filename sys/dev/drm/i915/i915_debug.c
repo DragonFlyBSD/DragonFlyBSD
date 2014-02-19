@@ -370,10 +370,10 @@ i915_gem_request_info(struct drm_device *dev, struct sbuf *m, void *data)
 		return (EINTR);
 
 	count = 0;
-	if (!list_empty(&dev_priv->rings[RCS].request_list)) {
+	if (!list_empty(&dev_priv->ring[RCS].request_list)) {
 		sbuf_printf(m, "Render requests:\n");
 		list_for_each_entry(gem_request,
-				    &dev_priv->rings[RCS].request_list,
+				    &dev_priv->ring[RCS].request_list,
 				    list) {
 			sbuf_printf(m, "    %d @ %d\n",
 				   gem_request->seqno,
@@ -381,10 +381,10 @@ i915_gem_request_info(struct drm_device *dev, struct sbuf *m, void *data)
 		}
 		count++;
 	}
-	if (!list_empty(&dev_priv->rings[VCS].request_list)) {
+	if (!list_empty(&dev_priv->ring[VCS].request_list)) {
 		sbuf_printf(m, "BSD requests:\n");
 		list_for_each_entry(gem_request,
-				    &dev_priv->rings[VCS].request_list,
+				    &dev_priv->ring[VCS].request_list,
 				    list) {
 			sbuf_printf(m, "    %d @ %d\n",
 				   gem_request->seqno,
@@ -392,10 +392,10 @@ i915_gem_request_info(struct drm_device *dev, struct sbuf *m, void *data)
 		}
 		count++;
 	}
-	if (!list_empty(&dev_priv->rings[BCS].request_list)) {
+	if (!list_empty(&dev_priv->ring[BCS].request_list)) {
 		sbuf_printf(m, "BLT requests:\n");
 		list_for_each_entry(gem_request,
-				    &dev_priv->rings[BCS].request_list,
+				    &dev_priv->ring[BCS].request_list,
 				    list) {
 			sbuf_printf(m, "    %d @ %d\n",
 				   gem_request->seqno,
@@ -433,7 +433,7 @@ i915_gem_seqno_info(struct drm_device *dev, struct sbuf *m, void *data)
 	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
 	for (i = 0; i < I915_NUM_RINGS; i++)
-		i915_ring_seqno_info(m, &dev_priv->rings[i]);
+		i915_ring_seqno_info(m, &dev_priv->ring[i]);
 	DRM_UNLOCK(dev);
 	return (0);
 }
@@ -484,10 +484,10 @@ i915_interrupt_info(struct drm_device *dev, struct sbuf *m, void *data)
 	for (i = 0; i < I915_NUM_RINGS; i++) {
 		if (IS_GEN6(dev) || IS_GEN7(dev)) {
 			sbuf_printf(m, "Graphics Interrupt mask (%s):	%08x\n",
-				   dev_priv->rings[i].name,
-				   I915_READ_IMR(&dev_priv->rings[i]));
+				   dev_priv->ring[i].name,
+				   I915_READ_IMR(&dev_priv->ring[i]));
 		}
-		i915_ring_seqno_info(m, &dev_priv->rings[i]);
+		i915_ring_seqno_info(m, &dev_priv->ring[i]);
 	}
 	DRM_UNLOCK(dev);
 
@@ -528,7 +528,7 @@ i915_hws_info(struct drm_device *dev, struct sbuf *m, void *data)
 	const volatile u32 *hws;
 	int i;
 
-	ring = &dev_priv->rings[(uintptr_t)data];
+	ring = &dev_priv->ring[(uintptr_t)data];
 	hws = (volatile u32 *)ring->status_page.page_addr;
 	if (hws == NULL)
 		return (0);
@@ -549,7 +549,7 @@ i915_ringbuffer_data(struct drm_device *dev, struct sbuf *m, void *data)
 
 	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
 		return (EINTR);
-	ring = &dev_priv->rings[(uintptr_t)data];
+	ring = &dev_priv->ring[(uintptr_t)data];
 	if (!ring->obj) {
 		sbuf_printf(m, "No ringbuffer setup\n");
 	} else {
@@ -571,7 +571,7 @@ i915_ringbuffer_info(struct drm_device *dev, struct sbuf *m, void *data)
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	struct intel_ring_buffer *ring;
 
-	ring = &dev_priv->rings[(uintptr_t)data];
+	ring = &dev_priv->ring[(uintptr_t)data];
 	if (ring->size == 0)
 		return (0);
 
@@ -752,7 +752,7 @@ static int i915_error_state(struct drm_device *dev, struct sbuf *m,
  
 		if ((obj = error->ring[i].batchbuffer)) {
 			sbuf_printf(m, "%s --- gtt_offset = 0x%08x\n",
-				   dev_priv->rings[i].name,
+				   dev_priv->ring[i].name,
 				   obj->gtt_offset);
 			offset = 0;
 			for (page = 0; page < obj->page_count; page++) {
@@ -766,7 +766,7 @@ static int i915_error_state(struct drm_device *dev, struct sbuf *m,
 
 		if (error->ring[i].num_requests) {
 			sbuf_printf(m, "%s --- %d requests\n",
-				   dev_priv->rings[i].name,
+				   dev_priv->ring[i].name,
 				   error->ring[i].num_requests);
 			for (j = 0; j < error->ring[i].num_requests; j++) {
 				sbuf_printf(m, "  seqno 0x%08x, emitted %ld, tail 0x%08x\n",
@@ -778,7 +778,7 @@ static int i915_error_state(struct drm_device *dev, struct sbuf *m,
 
 		if ((obj = error->ring[i].ringbuffer)) {
 			sbuf_printf(m, "%s --- ringbuffer = 0x%08x\n",
-				   dev_priv->rings[i].name,
+				   dev_priv->ring[i].name,
 				   obj->gtt_offset);
 			offset = 0;
 			for (page = 0; page < obj->page_count; page++) {
@@ -1420,7 +1420,7 @@ i915_ppgtt_info(struct drm_device *dev, struct sbuf *m, void *data)
 		sbuf_printf(m, "GFX_MODE: 0x%08x\n", I915_READ(GFX_MODE));
 
 	for (i = 0; i < I915_NUM_RINGS; i++) {
-		ring = &dev_priv->rings[i];
+		ring = &dev_priv->ring[i];
 
 		sbuf_printf(m, "%s\n", ring->name);
 		if (INTEL_INFO(dev)->gen == 7)

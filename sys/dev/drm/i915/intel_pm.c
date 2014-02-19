@@ -2707,7 +2707,7 @@ void gen6_enable_rps(struct drm_i915_private *dev_priv)
 	I915_WRITE(GEN6_RC_IDLE_HYSTERSIS, 25);
 
 	for (i = 0; i < I915_NUM_RINGS; i++)
-		I915_WRITE(RING_MAX_IDLE(dev_priv->rings[i].mmio_base), 10);
+		I915_WRITE(RING_MAX_IDLE(dev_priv->ring[i].mmio_base), 10);
 
 	I915_WRITE(GEN6_RC_SLEEP, 0);
 	I915_WRITE(GEN6_RC1e_THRESHOLD, 1000);

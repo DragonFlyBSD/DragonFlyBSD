@@ -821,7 +821,7 @@ i915_gem_execbuffer_flush(struct drm_device *dev,
 	if ((flush_domains | invalidate_domains) & I915_GEM_GPU_DOMAINS) {
 		for (i = 0; i < I915_NUM_RINGS; i++)
 			if (flush_rings & (1 << i)) {
-				ret = i915_gem_flush_ring(&dev_priv->rings[i],
+				ret = i915_gem_flush_ring(&dev_priv->ring[i],
 				    invalidate_domains, flush_domains);
 				if (ret)
 					return ret;
@@ -1113,7 +1113,7 @@ i915_reset_gen7_sol_offsets(struct drm_device *dev,
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	int ret, i;
 
-	if (!IS_GEN7(dev) || ring != &dev_priv->rings[RCS])
+	if (!IS_GEN7(dev) || ring != &dev_priv->ring[RCS])
 		return 0;
 
 	ret = intel_ring_begin(ring, 4 * 3);
@@ -1164,21 +1164,21 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 	switch (args->flags & I915_EXEC_RING_MASK) {
 	case I915_EXEC_DEFAULT:
 	case I915_EXEC_RENDER:
-		ring = &dev_priv->rings[RCS];
+		ring = &dev_priv->ring[RCS];
 		break;
 	case I915_EXEC_BSD:
 		if (!HAS_BSD(dev)) {
 			DRM_DEBUG("execbuf with invalid ring (BSD)\n");
 			return -EINVAL;
 		}
-		ring = &dev_priv->rings[VCS];
+		ring = &dev_priv->ring[VCS];
 		break;
 	case I915_EXEC_BLT:
 		if (!HAS_BLT(dev)) {
 			DRM_DEBUG("execbuf with invalid ring (BLT)\n");
 			return -EINVAL;
 		}
-		ring = &dev_priv->rings[BCS];
+		ring = &dev_priv->ring[BCS];
 		break;
 	default:
 		DRM_DEBUG("execbuf with unknown ring: %d\n",
@@ -1193,7 +1193,7 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 	case I915_EXEC_CONSTANTS_REL_GENERAL:
 	case I915_EXEC_CONSTANTS_ABSOLUTE:
 	case I915_EXEC_CONSTANTS_REL_SURFACE:
-		if (ring == &dev_priv->rings[RCS] &&
+		if (ring == &dev_priv->ring[RCS] &&
 		    mode != dev_priv->relative_constants_mode) {
 			if (INTEL_INFO(dev)->gen < 4) {
 				ret = -EINVAL;
@@ -1224,7 +1224,7 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 	}
 
 	if (args->num_cliprects != 0) {
-		if (ring != &dev_priv->rings[RCS]) {
+		if (ring != &dev_priv->ring[RCS]) {
 	DRM_DEBUG("clip rectangles are only valid with the render ring\n");
 			ret = -EINVAL;
 			goto pre_struct_lock_err;
@@ -1335,7 +1335,7 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 		}
 	}
 
-	if (ring == &dev_priv->rings[RCS] &&
+	if (ring == &dev_priv->ring[RCS] &&
 	    mode != dev_priv->relative_constants_mode) {
 		ret = intel_ring_begin(ring, 4);
 		if (ret)
