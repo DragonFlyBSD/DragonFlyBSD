@@ -66,7 +66,7 @@
  * Enable debugging by defining ICHSMB_DEBUG to a non-zero value.
  */
 #define ICHSMB_DEBUG	0
-#if ICHSMB_DEBUG != 0 && defined(__CC_SUPPORTS___FUNC__)
+#if ICHSMB_DEBUG != 0
 #define DBG(fmt, args...)	\
 	do { kprintf("%s: " fmt, __func__ , ## args); } while (0)
 #else
