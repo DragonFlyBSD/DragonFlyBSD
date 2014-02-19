@@ -141,12 +141,18 @@ static int	ix_media_change(struct ifnet *);
 static void	ix_timer(void *);
 
 static void	ix_add_sysctl(struct ix_softc *);
+static void	ix_add_intr_rate_sysctl(struct ix_softc *, int,
+		    const char *, int (*)(SYSCTL_HANDLER_ARGS), const char *);
 static int	ix_sysctl_tx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_rx_wreg_nsegs(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_txd(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_rxd(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_tx_intr_nsegs(SYSCTL_HANDLER_ARGS);
-static int	ix_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
+static int	ix_sysctl_intr_rate(SYSCTL_HANDLER_ARGS, int);
+static int	ix_sysctl_rxtx_intr_rate(SYSCTL_HANDLER_ARGS);
+static int	ix_sysctl_rx_intr_rate(SYSCTL_HANDLER_ARGS);
+static int	ix_sysctl_tx_intr_rate(SYSCTL_HANDLER_ARGS);
+static int	ix_sysctl_sts_intr_rate(SYSCTL_HANDLER_ARGS);
 static int	ix_sysctl_flowctrl(SYSCTL_HANDLER_ARGS);
 #ifdef foo
 static int	ix_sysctl_advspeed(SYSCTL_HANDLER_ARGS);
@@ -181,7 +187,7 @@ static int	ix_tx_ctx_setup(struct ix_tx_ring *,
 		    const struct mbuf *, uint32_t *, uint32_t *);
 static int	ix_tso_ctx_setup(struct ix_tx_ring *,
 		    const struct mbuf *, uint32_t *, uint32_t *);
-static void	ix_txeof(struct ix_tx_ring *);
+static void	ix_txeof(struct ix_tx_ring *, int);
 
 static int	ix_get_rxring_inuse(const struct ix_softc *, boolean_t);
 static int	ix_init_rx_ring(struct ix_rx_ring *);
@@ -198,6 +204,12 @@ static void	ix_rx_discard(struct ix_rx_ring *, int, boolean_t);
 static void	ix_enable_rx_drop(struct ix_softc *);
 static void	ix_disable_rx_drop(struct ix_softc *);
 
+static void	ix_alloc_msix(struct ix_softc *);
+static void	ix_free_msix(struct ix_softc *, boolean_t);
+static void	ix_conf_rx_msix(struct ix_softc *, int, int *, int);
+static void	ix_conf_tx_msix(struct ix_softc *, int, int *, int);
+static void	ix_setup_msix_eims(const struct ix_softc *, int,
+		    uint32_t *, uint32_t *);
 static int	ix_alloc_intr(struct ix_softc *);
 static void	ix_free_intr(struct ix_softc *);
 static int	ix_setup_intr(struct ix_softc *);
@@ -205,11 +217,13 @@ static void	ix_teardown_intr(struct ix_softc *, int);
 static void	ix_enable_intr(struct ix_softc *);
 static void	ix_disable_intr(struct ix_softc *);
 static void	ix_set_ivar(struct ix_softc *, uint8_t, uint8_t, int8_t);
-#if 0
-static void	ix_configure_ivars(struct ix_softc *);
-#endif
 static void	ix_set_eitr(struct ix_softc *, int, int);
+static void	ix_intr_status(struct ix_softc *, uint32_t);
 static void	ix_intr(void *);
+static void	ix_msix_rxtx(void *);
+static void	ix_msix_rx(void *);
+static void	ix_msix_tx(void *);
+static void	ix_msix_status(void *);
 
 static void	ix_config_link(struct ix_softc *);
 static boolean_t ix_sfp_probe(struct ix_softc *);
@@ -219,14 +233,6 @@ static void	ix_update_link_status(struct ix_softc *);
 static void	ix_handle_link(struct ix_softc *);
 static void	ix_handle_mod(struct ix_softc *);
 static void	ix_handle_msf(struct ix_softc *);
-
-#if 0
-static void	ix_msix_que(void *);
-static void	ix_msix_link(void *);
-static int	ix_allocate_msix(struct ix_softc *);
-static int	ix_setup_msix(struct ix_softc *);
-static void	ix_handle_que(void *, int);
-#endif
 
 /* XXX Shared code structure requires this for the moment */
 extern void ixgbe_stop_mac_link_on_d3_82599(struct ixgbe_hw *);
@@ -252,13 +258,19 @@ DECLARE_DUMMY_MODULE(if_ix);
 DRIVER_MODULE(if_ix, pci, ix_driver, ix_devclass, NULL, NULL);
 
 static int	ix_msi_enable = 1;
+static int	ix_msix_enable = 1;
+static int	ix_msix_agg_rxtx = 1;
 static int	ix_rxr = 0;
+static int	ix_txr = 0;
 static int	ix_txd = IX_PERF_TXD;
 static int	ix_rxd = IX_PERF_RXD;
 static int	ix_unsupported_sfp = 0;
 
 TUNABLE_INT("hw.ix.msi.enable", &ix_msi_enable);
+TUNABLE_INT("hw.ix.msix.enable", &ix_msix_enable);
+TUNABLE_INT("hw.ix.msix.agg_rxtx", &ix_msix_agg_rxtx);
 TUNABLE_INT("hw.ix.rxr", &ix_rxr);
+TUNABLE_INT("hw.ix.txr", &ix_txr);
 TUNABLE_INT("hw.ix.txd", &ix_txd);
 TUNABLE_INT("hw.ix.rxd", &ix_rxd);
 TUNABLE_INT("hw.ix.unsupported_sfp", &ix_unsupported_sfp);
@@ -294,7 +306,7 @@ ix_attach(device_t dev)
 {
 	struct ix_softc *sc = device_get_softc(dev);
 	struct ixgbe_hw *hw;
-	int error;
+	int error, ring_cnt_max;
 	uint16_t csum;
 	uint32_t ctrl_ext;
 
@@ -355,7 +367,25 @@ ix_attach(device_t dev)
 	sc->rx_ring_cnt = if_ring_count2(sc->rx_ring_cnt, IX_MAX_RXRING);
 	sc->rx_ring_inuse = sc->rx_ring_cnt;
 
-	sc->tx_ring_cnt = 1;
+	switch (hw->mac.type) {
+	case ixgbe_mac_82598EB:
+		ring_cnt_max = IX_MAX_TXRING_82598;
+		break;
+
+	case ixgbe_mac_82599EB:
+		ring_cnt_max = IX_MAX_TXRING_82599;
+		break;
+
+	case ixgbe_mac_X540:
+		ring_cnt_max = IX_MAX_TXRING_X540;
+		break;
+
+	default:
+		ring_cnt_max = 1;
+		break;
+	}
+	sc->tx_ring_cnt = device_getenv_int(dev, "txr", ix_txr);
+	sc->tx_ring_cnt = if_ring_count2(sc->tx_ring_cnt, ring_cnt_max);
 	sc->tx_ring_inuse = sc->tx_ring_cnt;
 
 	/* Allocate TX/RX rings */
@@ -483,6 +513,10 @@ ix_detach(device_t dev)
 
 	ix_free_intr(sc);
 
+	if (sc->msix_mem_res != NULL) {
+		bus_release_resource(dev, SYS_RES_MEMORY, sc->msix_mem_rid,
+		    sc->msix_mem_res);
+	}
 	if (sc->mem_res != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY, sc->mem_rid,
 		    sc->mem_res);
@@ -811,25 +845,64 @@ ix_init(void *xsc)
 	rxctrl |= IXGBE_RXCTRL_RXEN;
 	ixgbe_enable_rx_dma(hw, rxctrl);
 
+	for (i = 0; i < sc->tx_ring_inuse; ++i) {
+		const struct ix_tx_ring *txr = &sc->tx_rings[i];
+
+		if (txr->tx_intr_vec >= 0) {
+			ix_set_ivar(sc, i, txr->tx_intr_vec, 1);
+		} else {
+			/*
+			 * Unconfigured TX interrupt vector could only
+			 * happen for MSI-X.
+			 */
+			KASSERT(sc->intr_type == PCI_INTR_TYPE_MSIX,
+			    ("TX intr vector is not set"));
+			KASSERT(i < sc->rx_ring_inuse,
+			    ("invalid TX ring %d, no piggyback RX ring", i));
+			KASSERT(sc->rx_rings[i].rx_txr == txr,
+			    ("RX ring %d piggybacked TX ring mismatch", i));
+			if (bootverbose)
+				if_printf(ifp, "IVAR skips TX ring %d\n", i);
+		}
+	}
+	for (i = 0; i < sc->rx_ring_inuse; ++i) {
+		const struct ix_rx_ring *rxr = &sc->rx_rings[i];
+
+		KKASSERT(rxr->rx_intr_vec >= 0);
+		ix_set_ivar(sc, i, rxr->rx_intr_vec, 0);
+		if (rxr->rx_txr != NULL) {
+			/*
+			 * Piggyback the TX ring interrupt onto the RX
+			 * ring interrupt vector.
+			 */
+			KASSERT(rxr->rx_txr->tx_intr_vec < 0,
+			    ("piggybacked TX ring configured intr vector"));
+			KASSERT(rxr->rx_txr->tx_idx == i,
+			    ("RX ring %d piggybacked TX ring %u",
+			     i, rxr->rx_txr->tx_idx));
+			ix_set_ivar(sc, i, rxr->rx_intr_vec, 1);
+			if (bootverbose) {
+				if_printf(ifp, "IVAR RX ring %d piggybacks "
+				    "TX ring %u\n", i, rxr->rx_txr->tx_idx);
+			}
+		}
+	}
 	if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
-#if 0
-		ix_configure_ivars(sc);
-#endif
-		/* Set up auto-mask */
-		if (hw->mac.type == ixgbe_mac_82598EB)
-			IXGBE_WRITE_REG(hw, IXGBE_EIAM, IXGBE_EICS_RTX_QUEUE);
-		else {
+		/* Set up status MSI-X vector; it is using fixed entry 1 */
+		ix_set_ivar(sc, 1, sc->sts_msix_vec, -1);
+
+		/* Set up auto-mask for TX and RX rings */
+		if (hw->mac.type == ixgbe_mac_82598EB) {
+			IXGBE_WRITE_REG(hw, IXGBE_EIAM, IXGBE_EIMS_RTX_QUEUE);
+		} else {
 			IXGBE_WRITE_REG(hw, IXGBE_EIAM_EX(0), 0xFFFFFFFF);
 			IXGBE_WRITE_REG(hw, IXGBE_EIAM_EX(1), 0xFFFFFFFF);
 		}
 	} else {
-		for (i = 0; i < sc->tx_ring_inuse; ++i)
-			ix_set_ivar(sc, i, sc->tx_rings[i].tx_intr_vec, 1);
-		for (i = 0; i < sc->rx_ring_inuse; ++i)
-			ix_set_ivar(sc, i, sc->rx_rings[i].rx_intr_vec, 0);
-		IXGBE_WRITE_REG(hw, IXGBE_EIAM, IXGBE_EICS_RTX_QUEUE);
-		ix_set_eitr(sc, 0, sc->intr_data[0].intr_rate);
+		IXGBE_WRITE_REG(hw, IXGBE_EIAM, IXGBE_EIMS_RTX_QUEUE);
 	}
+	for (i = 0; i < sc->intr_cnt; ++i)
+		ix_set_eitr(sc, i, sc->intr_data[i].intr_rate);
 
 	/*
 	 * Check on any SFP devices that need to be kick-started
@@ -843,11 +916,6 @@ ix_init(void *xsc)
 			return;
 		}
 	}
-
-#if 0
-	/* Set moderation on the Link interrupt */
-	IXGBE_WRITE_REG(hw, IXGBE_EITR(sc->linkvec), IXGBE_LINK_ITR);
-#endif
 
 	/* Config/Enable Link */
 	ix_config_link(sc);
@@ -893,93 +961,6 @@ ix_init(void *xsc)
 	callout_reset_bycpu(&sc->timer, hz, ix_timer, sc, sc->timer_cpuid);
 }
 
-#if 0
-/*
-**
-** MSIX Interrupt Handlers and Tasklets
-**
-*/
-
-static __inline void
-ix_enable_queue(struct ix_softc *sc, uint32_t vector)
-{
-	struct ixgbe_hw *hw = &sc->hw;
-	uint64_t	queue = (uint64_t)(1 << vector);
-	uint32_t	mask;
-
-	if (hw->mac.type == ixgbe_mac_82598EB) {
-		mask = (IXGBE_EIMS_RTX_QUEUE & queue);
-		IXGBE_WRITE_REG(hw, IXGBE_EIMS, mask);
-	} else {
-		mask = (queue & 0xFFFFFFFF);
-		if (mask)
-			IXGBE_WRITE_REG(hw, IXGBE_EIMS_EX(0), mask);
-		mask = (queue >> 32);
-		if (mask)
-			IXGBE_WRITE_REG(hw, IXGBE_EIMS_EX(1), mask);
-	}
-}
-
-static __inline void
-ix_disable_queue(struct ix_softc *sc, uint32_t vector)
-{
-	struct ixgbe_hw *hw = &sc->hw;
-	uint64_t	queue = (uint64_t)(1 << vector);
-	uint32_t	mask;
-
-	if (hw->mac.type == ixgbe_mac_82598EB) {
-		mask = (IXGBE_EIMS_RTX_QUEUE & queue);
-		IXGBE_WRITE_REG(hw, IXGBE_EIMC, mask);
-	} else {
-		mask = (queue & 0xFFFFFFFF);
-		if (mask)
-			IXGBE_WRITE_REG(hw, IXGBE_EIMC_EX(0), mask);
-		mask = (queue >> 32);
-		if (mask)
-			IXGBE_WRITE_REG(hw, IXGBE_EIMC_EX(1), mask);
-	}
-}
-
-static __inline void
-ix_rearm_queues(struct ix_softc *sc, uint64_t queues)
-{
-	uint32_t mask;
-
-	if (sc->hw.mac.type == ixgbe_mac_82598EB) {
-		mask = (IXGBE_EIMS_RTX_QUEUE & queues);
-		IXGBE_WRITE_REG(&sc->hw, IXGBE_EICS, mask);
-	} else {
-		mask = (queues & 0xFFFFFFFF);
-		IXGBE_WRITE_REG(&sc->hw, IXGBE_EICS_EX(0), mask);
-		mask = (queues >> 32);
-		IXGBE_WRITE_REG(&sc->hw, IXGBE_EICS_EX(1), mask);
-	}
-}
-
-static void
-ix_handle_que(void *context, int pending)
-{
-	struct ix_queue *que = context;
-	struct ix_softc  *sc = que->sc;
-	struct ix_tx_ring  *txr = que->txr;
-	struct ifnet    *ifp = &sc->arpcom.ac_if;
-
-	if (ifp->if_flags & IFF_RUNNING) {
-		more = ix_rxeof(que);
-		ix_txeof(txr);
-		if (!ifq_is_empty(&ifp->if_snd))
-			ixgbe_start_locked(txr, ifp);
-	}
-
-	/* Reenable this interrupt */
-	if (que->res != NULL)
-		ixgbe_enable_queue(sc, que->msix);
-	else
-		ix_enable_intr(sc);
-	return;
-}
-#endif
-
 static void
 ix_intr(void *xsc)
 {
@@ -1017,176 +998,17 @@ ix_intr(void *xsc)
 		struct ix_tx_ring *txr = &sc->tx_rings[0];
 
 		lwkt_serialize_enter(&txr->tx_serialize);
-		ix_txeof(txr);
+		ix_txeof(txr, *(txr->tx_hdr));
 		if (!ifsq_is_empty(txr->tx_ifsq))
 			ifsq_devstart(txr->tx_ifsq);
 		lwkt_serialize_exit(&txr->tx_serialize);
 	}
 
-	/* Check for fan failure */
-	if (__predict_false((eicr & IXGBE_EICR_GPI_SDP1) &&
-	    hw->phy.media_type == ixgbe_media_type_copper)) {
-		if_printf(&sc->arpcom.ac_if, "CRITICAL: FAN FAILURE!!  "
-		    "REPLACE IMMEDIATELY!!\n");
-	}
-
-	/* Link status change */
-	if (__predict_false(eicr & IXGBE_EICR_LSC))
-		ix_handle_link(sc);
+	if (__predict_false(eicr & IX_EICR_STATUS))
+		ix_intr_status(sc, eicr);
 
 	IXGBE_WRITE_REG(hw, IXGBE_EIMS, sc->intr_mask);
 }
-
-#if 0
-/*********************************************************************
- *
- *  MSIX Queue Interrupt Service routine
- *
- **********************************************************************/
-void
-ix_msix_que(void *arg)
-{
-	struct ix_queue	*que = arg;
-	struct ix_softc  *sc = que->sc;
-	struct ifnet    *ifp = &sc->arpcom.ac_if;
-	struct ix_tx_ring	*txr = que->txr;
-	struct ix_rx_ring	*rxr = que->rxr;
-	uint32_t		newitr = 0;
-
-	ixgbe_disable_queue(sc, que->msix);
-	++que->irqs;
-
-	more = ix_rxeof(que);
-
-	ix_txeof(txr);
-	if (!ifq_is_empty(&ifp->if_snd))
-		ixgbe_start_locked(txr, ifp);
-
-	/* Do AIM now? */
-
-	if (ixgbe_enable_aim == FALSE)
-		goto no_calc;
-	/*
-	** Do Adaptive Interrupt Moderation:
-	**  - Write out last calculated setting
-	**  - Calculate based on average size over
-	**    the last interval.
-	*/
-	if (que->eitr_setting)
-		IXGBE_WRITE_REG(&sc->hw,
-		    IXGBE_EITR(que->msix), que->eitr_setting);
-
-	que->eitr_setting = 0;
-
-	/* Idle, do nothing */
-	if ((txr->bytes == 0) && (rxr->bytes == 0))
-		goto no_calc;
-				
-	if ((txr->bytes) && (txr->packets))
-		newitr = txr->bytes/txr->packets;
-	if ((rxr->bytes) && (rxr->packets))
-		newitr = max(newitr,
-		    (rxr->bytes / rxr->packets));
-	newitr += 24; /* account for hardware frame, crc */
-
-	/* set an upper boundary */
-	newitr = min(newitr, 3000);
-
-	/* Be nice to the mid range */
-	if ((newitr > 300) && (newitr < 1200))
-		newitr = (newitr / 3);
-	else
-		newitr = (newitr / 2);
-
-	if (sc->hw.mac.type == ixgbe_mac_82598EB)
-		newitr |= newitr << 16;
-	else
-		newitr |= IXGBE_EITR_CNT_WDIS;
-		 
-	/* save for next interrupt */
-	que->eitr_setting = newitr;
-
-	/* Reset state */
-	txr->bytes = 0;
-	txr->packets = 0;
-	rxr->bytes = 0;
-	rxr->packets = 0;
-
-no_calc:
-#if 0
-	if (more)
-		taskqueue_enqueue(que->tq, &que->que_task);
-	else
-#endif
-		ixgbe_enable_queue(sc, que->msix);
-	return;
-}
-
-
-static void
-ix_msix_link(void *arg)
-{
-	struct ix_softc	*sc = arg;
-	struct ixgbe_hw *hw = &sc->hw;
-	uint32_t		reg_eicr;
-
-	++sc->link_irq;
-
-	/* First get the cause */
-	reg_eicr = IXGBE_READ_REG(hw, IXGBE_EICS);
-	/* Clear interrupt with write */
-	IXGBE_WRITE_REG(hw, IXGBE_EICR, reg_eicr);
-
-#if 0
-	/* Link status change */
-	if (reg_eicr & IXGBE_EICR_LSC)
-		taskqueue_enqueue(sc->tq, &sc->link_task);
-#endif
-
-	if (sc->hw.mac.type != ixgbe_mac_82598EB) {
-		if (reg_eicr & IXGBE_EICR_ECC) {
-			device_printf(sc->dev, "\nCRITICAL: ECC ERROR!! "
-			    "Please Reboot!!\n");
-			IXGBE_WRITE_REG(hw, IXGBE_EICR, IXGBE_EICR_ECC);
-		} else
-
-		if (reg_eicr & IXGBE_EICR_GPI_SDP1) {
-			/* Clear the interrupt */
-			IXGBE_WRITE_REG(hw, IXGBE_EICR, IXGBE_EICR_GPI_SDP1);
-#if 0
-			taskqueue_enqueue(sc->tq, &sc->msf_task);
-#endif
-		} else if (reg_eicr & IXGBE_EICR_GPI_SDP2) {
-			/* Clear the interrupt */
-			IXGBE_WRITE_REG(hw, IXGBE_EICR, IXGBE_EICR_GPI_SDP2);
-#if 0
-			taskqueue_enqueue(sc->tq, &sc->mod_task);
-#endif
-		}
-	} 
-
-	/* Check for fan failure */
-	if ((hw->device_id == IXGBE_DEV_ID_82598AT) &&
-	    (reg_eicr & IXGBE_EICR_GPI_SDP1)) {
-		device_printf(sc->dev, "\nCRITICAL: FAN FAILURE!! "
-		    "REPLACE IMMEDIATELY!!\n");
-		IXGBE_WRITE_REG(hw, IXGBE_EICR, IXGBE_EICR_GPI_SDP1);
-	}
-
-	/* Check for over temp condition */
-	if ((hw->mac.type == ixgbe_mac_X540) &&
-	    (reg_eicr & IXGBE_EICR_TS)) {
-		device_printf(sc->dev, "\nCRITICAL: OVER TEMP!! "
-		    "PHY IS SHUT DOWN!!\n");
-		device_printf(sc->dev, "System shutdown required\n");
-		IXGBE_WRITE_REG(hw, IXGBE_EICR, IXGBE_EICR_TS);
-	}
-
-	IXGBE_WRITE_REG(&sc->hw, IXGBE_EIMS, IXGBE_EIMS_OTHER);
-	return;
-}
-
-#endif
 
 static void
 ix_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
@@ -1616,164 +1438,6 @@ ix_setup_optics(struct ix_softc *sc)
 	sc->optics = IFM_ETHER | IFM_AUTO;
 }
 
-#if 0
-/*********************************************************************
- *
- *  Setup MSIX Interrupt resources and handlers 
- *
- **********************************************************************/
-static int
-ix_allocate_msix(struct ix_softc *sc)
-{
-	device_t        dev = sc->dev;
-	struct 		ix_queue *que = sc->queues;
-	struct  	ix_tx_ring *txr = sc->tx_rings;
-	int 		error, rid, vector = 0;
-
-	for (int i = 0; i < sc->num_queues; i++, vector++, que++, txr++) {
-		rid = vector + 1;
-		que->res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid,
-		    RF_SHAREABLE | RF_ACTIVE);
-		if (que->res == NULL) {
-			device_printf(dev,"Unable to allocate"
-			    " bus resource: que interrupt [%d]\n", vector);
-			return (ENXIO);
-		}
-		/* Set the handler function */
-		error = bus_setup_intr(dev, que->res,
-		    INTR_TYPE_NET | INTR_MPSAFE, NULL,
-		    ix_msix_que, que, &que->tag);
-		if (error) {
-			que->res = NULL;
-			device_printf(dev, "Failed to register QUE handler");
-			return (error);
-		}
-#if __FreeBSD_version >= 800504
-		bus_describe_intr(dev, que->res, que->tag, "que %d", i);
-#endif
-		que->msix = vector;
-		sc->que_mask |= (uint64_t)(1 << que->msix);
-		/*
-		** Bind the msix vector, and thus the
-		** ring to the corresponding cpu.
-		*/
-		if (sc->num_queues > 1)
-			bus_bind_intr(dev, que->res, i);
-
-		TASK_INIT(&que->que_task, 0, ix_handle_que, que);
-		que->tq = taskqueue_create_fast("ixgbe_que", M_NOWAIT,
-		    taskqueue_thread_enqueue, &que->tq);
-		taskqueue_start_threads(&que->tq, 1, PI_NET, "%s que",
-		    device_get_nameunit(sc->dev));
-	}
-
-	/* and Link */
-	rid = vector + 1;
-	sc->res = bus_alloc_resource_any(dev,
-	    SYS_RES_IRQ, &rid, RF_SHAREABLE | RF_ACTIVE);
-	if (!sc->res) {
-		device_printf(dev,"Unable to allocate"
-	    " bus resource: Link interrupt [%d]\n", rid);
-		return (ENXIO);
-	}
-	/* Set the link handler function */
-	error = bus_setup_intr(dev, sc->res,
-	    INTR_TYPE_NET | INTR_MPSAFE, NULL,
-	    ix_msix_link, sc, &sc->tag);
-	if (error) {
-		sc->res = NULL;
-		device_printf(dev, "Failed to register LINK handler");
-		return (error);
-	}
-#if __FreeBSD_version >= 800504
-	bus_describe_intr(dev, sc->res, sc->tag, "link");
-#endif
-	sc->linkvec = vector;
-	/* Tasklets for Link, SFP and Multispeed Fiber */
-	TASK_INIT(&sc->link_task, 0, ix_handle_link, sc);
-	TASK_INIT(&sc->mod_task, 0, ix_handle_mod, sc);
-	TASK_INIT(&sc->msf_task, 0, ix_handle_msf, sc);
-	sc->tq = taskqueue_create_fast("ixgbe_link", M_NOWAIT,
-	    taskqueue_thread_enqueue, &sc->tq);
-	taskqueue_start_threads(&sc->tq, 1, PI_NET, "%s linkq",
-	    device_get_nameunit(sc->dev));
-
-	return (0);
-}
-
-static int
-ix_setup_msix(struct ix_softc *sc)
-{
-	device_t dev = sc->dev;
-	int rid, want, queues, msgs;
-
-	/* Override by tuneable */
-	if (ixgbe_enable_msix == 0)
-		goto msi;
-
-	/* First try MSI/X */
-	rid = PCIR_BAR(MSIX_82598_BAR);
-	sc->msix_mem = bus_alloc_resource_any(dev,
-	    SYS_RES_MEMORY, &rid, RF_ACTIVE);
-	if (!sc->msix_mem) {
-		rid += 4;	/* 82599 maps in higher BAR */
-		sc->msix_mem = bus_alloc_resource_any(dev,
-		    SYS_RES_MEMORY, &rid, RF_ACTIVE);
-	}
-	if (!sc->msix_mem) {
-		/* May not be enabled */
-		device_printf(sc->dev,
-		    "Unable to map MSIX table \n");
-		goto msi;
-	}
-
-	msgs = pci_msix_count(dev); 
-	if (msgs == 0) { /* system has msix disabled */
-		bus_release_resource(dev, SYS_RES_MEMORY,
-		    rid, sc->msix_mem);
-		sc->msix_mem = NULL;
-		goto msi;
-	}
-
-	/* Figure out a reasonable auto config value */
-	queues = (mp_ncpus > (msgs-1)) ? (msgs-1) : mp_ncpus;
-
-	if (ixgbe_num_queues != 0)
-		queues = ixgbe_num_queues;
-	/* Set max queues to 8 when autoconfiguring */
-	else if ((ixgbe_num_queues == 0) && (queues > 8))
-		queues = 8;
-
-	/*
-	** Want one vector (RX/TX pair) per queue
-	** plus an additional for Link.
-	*/
-	want = queues + 1;
-	if (msgs >= want)
-		msgs = want;
-	else {
-		device_printf(sc->dev,
-		    "MSIX Configuration Problem, "
-		    "%d vectors but %d queues wanted!\n",
-		    msgs, want);
-		return (0); /* Will go to Legacy setup */
-	}
-	if ((msgs) && pci_alloc_msix(dev, &msgs) == 0) {
-		device_printf(sc->dev,
-		    "Using MSIX interrupts with %d vectors\n", msgs);
-		sc->num_queues = queues;
-		return (msgs);
-	}
-msi:
-	msgs = pci_msi_count(dev);
-	if (msgs == 1 && pci_alloc_msi(dev, &msgs) == 0)
-		device_printf(sc->dev,"Using an MSI interrupt\n");
-	else
-		device_printf(sc->dev,"Using a Legacy interrupt\n");
-	return (msgs);
-}
-#endif
-
 static void
 ix_setup_ifp(struct ix_softc *sc)
 {
@@ -1794,6 +1458,9 @@ ix_setup_ifp(struct ix_softc *sc)
 #ifdef INVARIANTS
 	ifp->if_serialize_assert = ix_serialize_assert;
 #endif
+
+	/* Increase TSO burst length */
+	ifp->if_tsolen = (8 * ETHERMTU);
 
 	ifq_set_maxlen(&ifp->if_snd, sc->tx_rings[0].tx_ndesc - 2);
 	ifq_set_ready(&ifp->if_snd);
@@ -1932,6 +1599,7 @@ ix_alloc_rings(struct ix_softc *sc)
 
 		txr->tx_sc = sc;
 		txr->tx_idx = i;
+		txr->tx_intr_vec = -1;
 		lwkt_serialize_init(&txr->tx_serialize);
 
 		error = ix_create_tx_ring(txr);
@@ -1950,6 +1618,7 @@ ix_alloc_rings(struct ix_softc *sc)
 
 		rxr->rx_sc = sc;
 		rxr->rx_idx = i;
+		rxr->rx_intr_vec = -1;
 		lwkt_serialize_init(&rxr->rx_serialize);
 
 		error = ix_create_rx_ring(rxr);
@@ -2322,17 +1991,15 @@ ix_tso_ctx_setup(struct ix_tx_ring *txr, const struct mbuf *mp,
 }
 
 static void
-ix_txeof(struct ix_tx_ring *txr)
+ix_txeof(struct ix_tx_ring *txr, int hdr)
 {
 	struct ifnet *ifp = &txr->tx_sc->arpcom.ac_if;
-	int first, hdr, avail;
+	int first, avail;
 
 	if (txr->tx_avail == txr->tx_ndesc)
 		return;
 
 	first = txr->tx_next_clean;
-	hdr = *(txr->tx_hdr);
-
 	if (first == hdr)
 		return;
 
@@ -3038,64 +2705,76 @@ static void
 ix_enable_intr(struct ix_softc *sc)
 {
 	struct ixgbe_hw	*hw = &sc->hw;
-	uint32_t mask, fwsm;
+	uint32_t fwsm;
 	int i;
 
 	for (i = 0; i < sc->intr_cnt; ++i)
 		lwkt_serialize_handler_enable(sc->intr_data[i].intr_serialize);
 
-	mask = (IXGBE_EIMS_ENABLE_MASK & ~IXGBE_EIMS_RTX_QUEUE);
+	sc->intr_mask = (IXGBE_EIMS_ENABLE_MASK & ~IXGBE_EIMS_RTX_QUEUE);
 
 	/* Enable Fan Failure detection */
 	if (hw->device_id == IXGBE_DEV_ID_82598AT)
-		mask |= IXGBE_EIMS_GPI_SDP1;
+		sc->intr_mask |= IXGBE_EIMS_GPI_SDP1;
 
 	switch (sc->hw.mac.type) {
 	case ixgbe_mac_82599EB:
-		mask |= IXGBE_EIMS_ECC;
-		mask |= IXGBE_EIMS_GPI_SDP0;
-		mask |= IXGBE_EIMS_GPI_SDP1;
-		mask |= IXGBE_EIMS_GPI_SDP2;
+		sc->intr_mask |= IXGBE_EIMS_ECC;
+		sc->intr_mask |= IXGBE_EIMS_GPI_SDP0;
+		sc->intr_mask |= IXGBE_EIMS_GPI_SDP1;
+		sc->intr_mask |= IXGBE_EIMS_GPI_SDP2;
 		break;
+
 	case ixgbe_mac_X540:
-		mask |= IXGBE_EIMS_ECC;
+		sc->intr_mask |= IXGBE_EIMS_ECC;
 		/* Detect if Thermal Sensor is enabled */
 		fwsm = IXGBE_READ_REG(hw, IXGBE_FWSM);
 		if (fwsm & IXGBE_FWSM_TS_ENABLED)
-			mask |= IXGBE_EIMS_TS;
+			sc->intr_mask |= IXGBE_EIMS_TS;
 		/* FALL THROUGH */
 	default:
 		break;
 	}
-	sc->intr_mask = mask;
 
-	/* With MSI-X we use auto clear */
+	/* With MSI-X we use auto clear for RX and TX rings */
 	if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
-		mask = IXGBE_EIMS_ENABLE_MASK;
-		/* Don't autoclear Link */
-		mask &= ~IXGBE_EIMS_OTHER;
-		mask &= ~IXGBE_EIMS_LSC;
-		IXGBE_WRITE_REG(hw, IXGBE_EIAC, mask);
+		/*
+		 * There are no EIAC1/EIAC2 for newer chips; the related
+		 * bits for TX and RX rings > 16 are always auto clear.
+		 *
+		 * XXX which bits?  There are _no_ documented EICR1 and
+		 * EICR2 at all; only EICR.
+		 */
+		IXGBE_WRITE_REG(hw, IXGBE_EIAC, IXGBE_EIMS_RTX_QUEUE);
 	} else {
-		sc->intr_mask |= IX_TX_INTR_MASK |
-		    IX_RX0_INTR_MASK;
+		sc->intr_mask |= IX_TX_INTR_MASK | IX_RX0_INTR_MASK;
 
 		KKASSERT(sc->rx_ring_inuse <= IX_MIN_RXRING_RSS);
 		if (sc->rx_ring_inuse == IX_MIN_RXRING_RSS)
 			sc->intr_mask |= IX_RX1_INTR_MASK;
 	}
 
-#if 0
-	/*
-	** Now enable all queues, this is done separately to
-	** allow for handling the extended (beyond 32) MSIX
-	** vectors that can be used by 82599
-	*/
-	for (int i = 0; i < sc->num_queues; i++, que++)
-		ixgbe_enable_queue(sc, que->msix);
-#else
 	IXGBE_WRITE_REG(hw, IXGBE_EIMS, sc->intr_mask);
-#endif
+
+	/*
+	 * Enable RX and TX rings for MSI-X
+	 */
+	if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
+		for (i = 0; i < sc->tx_ring_inuse; ++i) {
+			const struct ix_tx_ring *txr = &sc->tx_rings[i];
+
+			if (txr->tx_intr_vec >= 0) {
+				IXGBE_WRITE_REG(hw, txr->tx_eims,
+				    txr->tx_eims_val);
+			}
+		}
+		for (i = 0; i < sc->rx_ring_inuse; ++i) {
+			const struct ix_rx_ring *rxr = &sc->rx_rings[i];
+
+			KKASSERT(rxr->rx_intr_vec >= 0);
+			IXGBE_WRITE_REG(hw, rxr->rx_eims, rxr->rx_eims_val);
+		}
+	}
 
 	IXGBE_WRITE_FLUSH(hw);
 }
@@ -3105,10 +2784,9 @@ ix_disable_intr(struct ix_softc *sc)
 {
 	int i;
 
-#if 0
-	if (sc->msix_mem)
+	if (sc->intr_type == PCI_INTR_TYPE_MSIX)
 		IXGBE_WRITE_REG(&sc->hw, IXGBE_EIAC, 0);
-#endif
+
 	if (sc->hw.mac.type == ixgbe_mac_82598EB) {
 		IXGBE_WRITE_REG(&sc->hw, IXGBE_EIMC, ~0);
 	} else {
@@ -3277,33 +2955,6 @@ ix_set_ivar(struct ix_softc *sc, uint8_t entry, uint8_t vector,
 		break;
 	}
 }
-
-#if 0
-static void
-ix_configure_ivars(struct ix_softc *sc)
-{
-	struct  ix_queue *que = sc->queues;
-	uint32_t newitr;
-
-	if (ixgbe_max_interrupt_rate > 0)
-		newitr = (4000000 / ixgbe_max_interrupt_rate) & 0x0FF8;
-	else
-		newitr = 0;
-
-	for (int i = 0; i < sc->num_queues; i++, que++) {
-		/* First the RX queue entry */
-		ix_set_ivar(sc, i, que->msix, 0);
-		/* ... and the TX */
-		ix_set_ivar(sc, i, que->msix, 1);
-		/* Set an Initial EITR value */
-		IXGBE_WRITE_REG(&sc->hw,
-		    IXGBE_EITR(que->msix), newitr);
-	}
-
-	/* For the Link interrupt */
-	ix_set_ivar(sc, 1, sc->linkvec, -1);
-}
-#endif
 
 static boolean_t
 ix_sfp_probe(struct ix_softc *sc)
@@ -3911,7 +3562,12 @@ ix_alloc_intr(struct ix_softc *sc)
 {
 	struct ix_intr_data *intr;
 	u_int intr_flags;
-	int i;
+
+	ix_alloc_msix(sc);
+	if (sc->intr_type == PCI_INTR_TYPE_MSIX) {
+		ix_set_ring_inuse(sc, FALSE);
+		return 0;
+	}
 
 	if (sc->intr_data != NULL)
 		kfree(sc->intr_data, M_DEVBUF);
@@ -3942,13 +3598,10 @@ ix_alloc_intr(struct ix_softc *sc)
 	intr->intr_rate = IX_INTR_RATE;
 	intr->intr_use = IX_INTR_USE_RXTX;
 
-	for (i = 0; i < sc->tx_ring_cnt; ++i) {
-		sc->tx_rings[i].tx_intr_cpuid = intr->intr_cpuid;
-		sc->tx_rings[i].tx_intr_vec = IX_TX_INTR_VEC;
-	}
+	sc->tx_rings[0].tx_intr_cpuid = intr->intr_cpuid;
+	sc->tx_rings[0].tx_intr_vec = IX_TX_INTR_VEC;
 
-	for (i = 0; i < sc->rx_ring_cnt; ++i)
-		sc->rx_rings[i].rx_intr_vec = IX_RX0_INTR_VEC;
+	sc->rx_rings[0].rx_intr_vec = IX_RX0_INTR_VEC;
 
 	ix_set_ring_inuse(sc, FALSE);
 
@@ -3975,10 +3628,11 @@ ix_free_intr(struct ix_softc *sc)
 		}
 		if (sc->intr_type == PCI_INTR_TYPE_MSI)
 			pci_release_msi(sc->dev);
+
+		kfree(sc->intr_data, M_DEVBUF);
 	} else {
-		/* TODO */
+		ix_free_msix(sc, TRUE);
 	}
-	kfree(sc->intr_data, M_DEVBUF);
 }
 
 static void
@@ -4005,7 +3659,7 @@ ix_get_rxring_inuse(const struct ix_softc *sc, boolean_t polling)
 	else if (sc->intr_type != PCI_INTR_TYPE_MSIX)
 		return IX_MIN_RXRING_RSS;
 	else
-		return 1; /* TODO */
+		return sc->rx_ring_msix;
 }
 
 static int
@@ -4019,7 +3673,7 @@ ix_get_txring_inuse(const struct ix_softc *sc, boolean_t polling)
 	else if (sc->intr_type != PCI_INTR_TYPE_MSIX)
 		return 1;
 	else
-		return 1; /* TODO */
+		return sc->tx_ring_msix;
 }
 
 static int
@@ -4248,7 +3902,6 @@ ix_add_sysctl(struct ix_softc *sc)
 #ifdef IX_RSS_DEBUG
 	char node[32];
 #endif
-	int i, add;
 
 	sysctl_ctx_init(&sc->sysctl_ctx);
 	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
@@ -4290,20 +3943,18 @@ ix_add_sysctl(struct ix_softc *sc)
 	    sc, 0, ix_sysctl_tx_intr_nsegs, "I",
 	    "# of segments per TX interrupt");
 
-	add = 0;
-	for (i = 0; i < sc->intr_cnt; ++i) {
-		if (sc->intr_data[i].intr_use == IX_INTR_USE_RXTX) {
-			add = 1;
-			break;
-		}
-	}
-	if (add) {
-		SYSCTL_ADD_PROC(&sc->sysctl_ctx,
-		    SYSCTL_CHILDREN(sc->sysctl_tree),
-		    OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
-		    sc, 0, ix_sysctl_intr_rate, "I",
-		    "interrupt rate");
-	}
+#define IX_ADD_INTR_RATE_SYSCTL(sc, use, name) \
+do { \
+	ix_add_intr_rate_sysctl(sc, IX_INTR_USE_##use, #name, \
+	    ix_sysctl_##name, #use " interrupt rate"); \
+} while (0)
+
+	IX_ADD_INTR_RATE_SYSCTL(sc, RXTX, rxtx_intr_rate);
+	IX_ADD_INTR_RATE_SYSCTL(sc, RX, rx_intr_rate);
+	IX_ADD_INTR_RATE_SYSCTL(sc, TX, tx_intr_rate);
+	IX_ADD_INTR_RATE_SYSCTL(sc, STATUS, sts_intr_rate);
+
+#undef IX_ADD_INTR_RATE_SYSCTL
 
 #ifdef IX_RSS_DEBUG
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
@@ -4466,7 +4117,31 @@ ix_set_eitr(struct ix_softc *sc, int idx, int rate)
 }
 
 static int
-ix_sysctl_intr_rate(SYSCTL_HANDLER_ARGS)
+ix_sysctl_rxtx_intr_rate(SYSCTL_HANDLER_ARGS)
+{
+	return ix_sysctl_intr_rate(oidp, arg1, arg2, req, IX_INTR_USE_RXTX);
+}
+
+static int
+ix_sysctl_rx_intr_rate(SYSCTL_HANDLER_ARGS)
+{
+	return ix_sysctl_intr_rate(oidp, arg1, arg2, req, IX_INTR_USE_RX);
+}
+
+static int
+ix_sysctl_tx_intr_rate(SYSCTL_HANDLER_ARGS)
+{
+	return ix_sysctl_intr_rate(oidp, arg1, arg2, req, IX_INTR_USE_TX);
+}
+
+static int
+ix_sysctl_sts_intr_rate(SYSCTL_HANDLER_ARGS)
+{
+	return ix_sysctl_intr_rate(oidp, arg1, arg2, req, IX_INTR_USE_STATUS);
+}
+
+static int
+ix_sysctl_intr_rate(SYSCTL_HANDLER_ARGS, int use)
 {
 	struct ix_softc *sc = (void *)arg1;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -4474,7 +4149,7 @@ ix_sysctl_intr_rate(SYSCTL_HANDLER_ARGS)
 
 	rate = 0;
 	for (i = 0; i < sc->intr_cnt; ++i) {
-		if (sc->intr_data[i].intr_use == IX_INTR_USE_RXTX) {
+		if (sc->intr_data[i].intr_use == use) {
 			rate = sc->intr_data[i].intr_rate;
 			break;
 		}
@@ -4489,7 +4164,7 @@ ix_sysctl_intr_rate(SYSCTL_HANDLER_ARGS)
 	ifnet_serialize_all(ifp);
 
 	for (i = 0; i < sc->intr_cnt; ++i) {
-		if (sc->intr_data[i].intr_use == IX_INTR_USE_RXTX) {
+		if (sc->intr_data[i].intr_use == use) {
 			sc->intr_data[i].intr_rate = rate;
 			if (ifp->if_flags & IFF_RUNNING)
 				ix_set_eitr(sc, i, rate);
@@ -4502,10 +4177,539 @@ ix_sysctl_intr_rate(SYSCTL_HANDLER_ARGS)
 }
 
 static void
+ix_add_intr_rate_sysctl(struct ix_softc *sc, int use,
+    const char *name, int (*handler)(SYSCTL_HANDLER_ARGS), const char *desc)
+{
+	int i;
+
+	for (i = 0; i < sc->intr_cnt; ++i) {
+		if (sc->intr_data[i].intr_use == use) {
+			SYSCTL_ADD_PROC(&sc->sysctl_ctx,
+			    SYSCTL_CHILDREN(sc->sysctl_tree),
+			    OID_AUTO, name, CTLTYPE_INT | CTLFLAG_RW,
+			    sc, 0, handler, "I", desc);
+			break;
+		}
+	}
+}
+
+static void
 ix_set_timer_cpuid(struct ix_softc *sc, boolean_t polling)
 {
 	if (polling || sc->intr_type == PCI_INTR_TYPE_MSIX)
 		sc->timer_cpuid = 0; /* XXX fixed */
 	else
 		sc->timer_cpuid = rman_get_cpuid(sc->intr_data[0].intr_res);
+}
+
+static void
+ix_alloc_msix(struct ix_softc *sc)
+{
+	int msix_enable, msix_cnt, msix_cnt2, alloc_cnt;
+	struct ix_intr_data *intr;
+	int i, x, error;
+	int offset, offset_def, agg_rxtx, ring_max;
+	boolean_t aggregate, setup = FALSE;
+
+	msix_enable = ix_msix_enable;
+	/*
+	 * Don't enable MSI-X on 82598 by default, see:
+	 * 82598 specification update errata #38
+	 */
+	if (sc->hw.mac.type == ixgbe_mac_82598EB)
+		msix_enable = 0;
+	msix_enable = device_getenv_int(sc->dev, "msix.enable", msix_enable);
+	if (!msix_enable)
+		return;
+
+	msix_cnt = pci_msix_count(sc->dev);
+#ifdef IX_MSIX_DEBUG
+	msix_cnt = device_getenv_int(sc->dev, "msix.count", msix_cnt);
+#endif
+	if (msix_cnt <= 1) {
+		/* One MSI-X model does not make sense */
+		return;
+	}
+
+	i = 0;
+	while ((1 << (i + 1)) <= msix_cnt)
+		++i;
+	msix_cnt2 = 1 << i;
+
+	if (bootverbose) {
+		device_printf(sc->dev, "MSI-X count %d/%d\n",
+		    msix_cnt2, msix_cnt);
+	}
+
+	KKASSERT(msix_cnt >= msix_cnt2);
+	if (msix_cnt == msix_cnt2) {
+		/* We need at least one MSI-X for link status */
+		msix_cnt2 >>= 1;
+		if (msix_cnt2 <= 1) {
+			/* One MSI-X for RX/TX does not make sense */
+			device_printf(sc->dev, "not enough MSI-X for TX/RX, "
+			    "MSI-X count %d/%d\n", msix_cnt2, msix_cnt);
+			return;
+		}
+		KKASSERT(msix_cnt > msix_cnt2);
+
+		if (bootverbose) {
+			device_printf(sc->dev, "MSI-X count eq fixup %d/%d\n",
+			    msix_cnt2, msix_cnt);
+		}
+	}
+
+	/*
+	 * Make sure that we don't break interrupt related registers
+	 * (EIMS, etc) limitation.
+	 *
+	 * NOTE: msix_cnt > msix_cnt2, when we reach here
+	 */
+	if (sc->hw.mac.type == ixgbe_mac_82598EB) {
+		if (msix_cnt2 > IX_MAX_MSIX_82598)
+			msix_cnt2 = IX_MAX_MSIX_82598;
+	} else {
+		if (msix_cnt2 > IX_MAX_MSIX)
+			msix_cnt2 = IX_MAX_MSIX;
+	}
+	msix_cnt = msix_cnt2 + 1;	/* +1 for status */
+
+	if (bootverbose) {
+		device_printf(sc->dev, "MSI-X count max fixup %d/%d\n",
+		    msix_cnt2, msix_cnt);
+	}
+
+	sc->rx_ring_msix = sc->rx_ring_cnt;
+	if (sc->rx_ring_msix > msix_cnt2)
+		sc->rx_ring_msix = msix_cnt2;
+
+	sc->tx_ring_msix = sc->tx_ring_cnt;
+	if (sc->tx_ring_msix > msix_cnt2)
+		sc->tx_ring_msix = msix_cnt2;
+
+	ring_max = sc->rx_ring_msix;
+	if (ring_max < sc->tx_ring_msix)
+		ring_max = sc->tx_ring_msix;
+
+	/* Allow user to force independent RX/TX MSI-X handling */
+	agg_rxtx = device_getenv_int(sc->dev, "msix.agg_rxtx",
+	    ix_msix_agg_rxtx);
+
+	if (!agg_rxtx && msix_cnt >= sc->tx_ring_msix + sc->rx_ring_msix + 1) {
+		/*
+		 * Independent TX/RX MSI-X
+		 */
+		aggregate = FALSE;
+		if (bootverbose)
+			device_printf(sc->dev, "independent TX/RX MSI-X\n");
+		alloc_cnt = sc->tx_ring_msix + sc->rx_ring_msix;
+	} else {
+		/*
+		 * Aggregate TX/RX MSI-X
+		 */
+		aggregate = TRUE;
+		if (bootverbose)
+			device_printf(sc->dev, "aggregate TX/RX MSI-X\n");
+		alloc_cnt = msix_cnt2;
+		if (alloc_cnt > ring_max)
+			alloc_cnt = ring_max;
+		KKASSERT(alloc_cnt >= sc->rx_ring_msix &&
+		    alloc_cnt >= sc->tx_ring_msix);
+	}
+	++alloc_cnt;	/* For status */
+
+	if (bootverbose) {
+		device_printf(sc->dev, "MSI-X alloc %d, "
+		    "RX ring %d, TX ring %d\n", alloc_cnt,
+		    sc->rx_ring_msix, sc->tx_ring_msix);
+	}
+
+	sc->msix_mem_rid = PCIR_BAR(IX_MSIX_BAR_82598);
+	sc->msix_mem_res = bus_alloc_resource_any(sc->dev, SYS_RES_MEMORY,
+	    &sc->msix_mem_rid, RF_ACTIVE);
+	if (sc->msix_mem_res == NULL) {
+		sc->msix_mem_rid = PCIR_BAR(IX_MSIX_BAR_82599);
+		sc->msix_mem_res = bus_alloc_resource_any(sc->dev,
+		    SYS_RES_MEMORY, &sc->msix_mem_rid, RF_ACTIVE);
+		if (sc->msix_mem_res == NULL) {
+			device_printf(sc->dev, "Unable to map MSI-X table\n");
+			return;
+		}
+	}
+
+	sc->intr_cnt = alloc_cnt;
+	sc->intr_data = kmalloc(sizeof(struct ix_intr_data) * sc->intr_cnt,
+	    M_DEVBUF, M_WAITOK | M_ZERO);
+	for (x = 0; x < sc->intr_cnt; ++x) {
+		intr = &sc->intr_data[x];
+		intr->intr_rid = -1;
+		intr->intr_rate = IX_INTR_RATE;
+	}
+
+	x = 0;
+	if (!aggregate) {
+		/*
+		 * RX rings
+		 */
+		if (sc->rx_ring_msix == ncpus2) {
+			offset = 0;
+		} else {
+			offset_def = (sc->rx_ring_msix *
+			    device_get_unit(sc->dev)) % ncpus2;
+
+			offset = device_getenv_int(sc->dev,
+			    "msix.rxoff", offset_def);
+			if (offset >= ncpus2 ||
+			    offset % sc->rx_ring_msix != 0) {
+				device_printf(sc->dev,
+				    "invalid msix.rxoff %d, use %d\n",
+				    offset, offset_def);
+				offset = offset_def;
+			}
+		}
+		ix_conf_rx_msix(sc, 0, &x, offset);
+
+		/*
+		 * TX rings
+		 */
+		if (sc->tx_ring_msix == ncpus2) {
+			offset = 0;
+		} else {
+			offset_def = (sc->tx_ring_msix *
+			    device_get_unit(sc->dev)) % ncpus2;
+
+			offset = device_getenv_int(sc->dev,
+			    "msix.txoff", offset_def);
+			if (offset >= ncpus2 ||
+			    offset % sc->tx_ring_msix != 0) {
+				device_printf(sc->dev,
+				    "invalid msix.txoff %d, use %d\n",
+				    offset, offset_def);
+				offset = offset_def;
+			}
+		}
+		ix_conf_tx_msix(sc, 0, &x, offset);
+	} else {
+		int ring_agg;
+
+		ring_agg = sc->rx_ring_msix;
+		if (ring_agg > sc->tx_ring_msix)
+			ring_agg = sc->tx_ring_msix;
+
+		if (ring_max == ncpus2) {
+			offset = 0;
+		} else {
+			offset_def = (ring_max * device_get_unit(sc->dev)) %
+			    ncpus2;
+
+			offset = device_getenv_int(sc->dev, "msix.off",
+			    offset_def);
+			if (offset >= ncpus2 || offset % ring_max != 0) {
+				device_printf(sc->dev,
+				    "invalid msix.off %d, use %d\n",
+				    offset, offset_def);
+				offset = offset_def;
+			}
+		}
+
+		for (i = 0; i < ring_agg; ++i) {
+			struct ix_tx_ring *txr = &sc->tx_rings[i];
+			struct ix_rx_ring *rxr = &sc->rx_rings[i];
+
+			KKASSERT(x < sc->intr_cnt);
+			rxr->rx_intr_vec = x;
+			ix_setup_msix_eims(sc, x,
+			    &rxr->rx_eims, &rxr->rx_eims_val);
+			rxr->rx_txr = txr;
+			/* NOTE: Leave TX ring's intr_vec negative */
+
+			intr = &sc->intr_data[x++];
+
+			intr->intr_serialize = &rxr->rx_serialize;
+			intr->intr_func = ix_msix_rxtx;
+			intr->intr_funcarg = rxr;
+			intr->intr_use = IX_INTR_USE_RXTX;
+
+			intr->intr_cpuid = i + offset;
+			KKASSERT(intr->intr_cpuid < ncpus2);
+			txr->tx_intr_cpuid = intr->intr_cpuid;
+
+			ksnprintf(intr->intr_desc0, sizeof(intr->intr_desc0),
+			    "%s rxtx%d", device_get_nameunit(sc->dev), i);
+			intr->intr_desc = intr->intr_desc0;
+		}
+
+		if (ring_agg != ring_max) {
+			if (ring_max == sc->tx_ring_msix)
+				ix_conf_tx_msix(sc, i, &x, offset);
+			else
+				ix_conf_rx_msix(sc, i, &x, offset);
+		}
+	}
+
+	/*
+	 * Status MSI-X
+	 */
+	KKASSERT(x < sc->intr_cnt);
+	sc->sts_msix_vec = x;
+
+	intr = &sc->intr_data[x++];
+
+	intr->intr_serialize = &sc->main_serialize;
+	intr->intr_func = ix_msix_status;
+	intr->intr_funcarg = sc;
+	intr->intr_cpuid = 0;
+	intr->intr_use = IX_INTR_USE_STATUS;
+
+	ksnprintf(intr->intr_desc0, sizeof(intr->intr_desc0), "%s sts",
+	    device_get_nameunit(sc->dev));
+	intr->intr_desc = intr->intr_desc0;
+
+	KKASSERT(x == sc->intr_cnt);
+
+	error = pci_setup_msix(sc->dev);
+	if (error) {
+		device_printf(sc->dev, "Setup MSI-X failed\n");
+		goto back;
+	}
+	setup = TRUE;
+
+	for (i = 0; i < sc->intr_cnt; ++i) {
+		intr = &sc->intr_data[i];
+
+		error = pci_alloc_msix_vector(sc->dev, i, &intr->intr_rid,
+		    intr->intr_cpuid);
+		if (error) {
+			device_printf(sc->dev,
+			    "Unable to allocate MSI-X %d on cpu%d\n", i,
+			    intr->intr_cpuid);
+			goto back;
+		}
+
+		intr->intr_res = bus_alloc_resource_any(sc->dev, SYS_RES_IRQ,
+		    &intr->intr_rid, RF_ACTIVE);
+		if (intr->intr_res == NULL) {
+			device_printf(sc->dev,
+			    "Unable to allocate MSI-X %d resource\n", i);
+			error = ENOMEM;
+			goto back;
+		}
+	}
+
+	pci_enable_msix(sc->dev);
+	sc->intr_type = PCI_INTR_TYPE_MSIX;
+back:
+	if (error)
+		ix_free_msix(sc, setup);
+}
+
+static void
+ix_free_msix(struct ix_softc *sc, boolean_t setup)
+{
+	int i;
+
+	KKASSERT(sc->intr_cnt > 1);
+
+	for (i = 0; i < sc->intr_cnt; ++i) {
+		struct ix_intr_data *intr = &sc->intr_data[i];
+
+		if (intr->intr_res != NULL) {
+			bus_release_resource(sc->dev, SYS_RES_IRQ,
+			    intr->intr_rid, intr->intr_res);
+		}
+		if (intr->intr_rid >= 0)
+			pci_release_msix_vector(sc->dev, intr->intr_rid);
+	}
+	if (setup)
+		pci_teardown_msix(sc->dev);
+
+	sc->intr_cnt = 0;
+	kfree(sc->intr_data, M_DEVBUF);
+	sc->intr_data = NULL;
+}
+
+static void
+ix_conf_rx_msix(struct ix_softc *sc, int i, int *x0, int offset)
+{
+	int x = *x0;
+
+	for (; i < sc->rx_ring_msix; ++i) {
+		struct ix_rx_ring *rxr = &sc->rx_rings[i];
+		struct ix_intr_data *intr;
+
+		KKASSERT(x < sc->intr_cnt);
+		rxr->rx_intr_vec = x;
+		ix_setup_msix_eims(sc, x, &rxr->rx_eims, &rxr->rx_eims_val);
+
+		intr = &sc->intr_data[x++];
+
+		intr->intr_serialize = &rxr->rx_serialize;
+		intr->intr_func = ix_msix_rx;
+		intr->intr_funcarg = rxr;
+		intr->intr_rate = IX_MSIX_RX_RATE;
+		intr->intr_use = IX_INTR_USE_RX;
+
+		intr->intr_cpuid = i + offset;
+		KKASSERT(intr->intr_cpuid < ncpus2);
+
+		ksnprintf(intr->intr_desc0, sizeof(intr->intr_desc0), "%s rx%d",
+		    device_get_nameunit(sc->dev), i);
+		intr->intr_desc = intr->intr_desc0;
+	}
+	*x0 = x;
+}
+
+static void
+ix_conf_tx_msix(struct ix_softc *sc, int i, int *x0, int offset)
+{
+	int x = *x0;
+
+	for (; i < sc->tx_ring_msix; ++i) {
+		struct ix_tx_ring *txr = &sc->tx_rings[i];
+		struct ix_intr_data *intr;
+
+		KKASSERT(x < sc->intr_cnt);
+		txr->tx_intr_vec = x;
+		ix_setup_msix_eims(sc, x, &txr->tx_eims, &txr->tx_eims_val);
+
+		intr = &sc->intr_data[x++];
+
+		intr->intr_serialize = &txr->tx_serialize;
+		intr->intr_func = ix_msix_tx;
+		intr->intr_funcarg = txr;
+		intr->intr_rate = IX_MSIX_TX_RATE;
+		intr->intr_use = IX_INTR_USE_TX;
+
+		intr->intr_cpuid = i + offset;
+		KKASSERT(intr->intr_cpuid < ncpus2);
+		txr->tx_intr_cpuid = intr->intr_cpuid;
+
+		ksnprintf(intr->intr_desc0, sizeof(intr->intr_desc0), "%s tx%d",
+		    device_get_nameunit(sc->dev), i);
+		intr->intr_desc = intr->intr_desc0;
+	}
+	*x0 = x;
+}
+
+static void
+ix_msix_rx(void *xrxr)
+{
+	struct ix_rx_ring *rxr = xrxr;
+
+	ASSERT_SERIALIZED(&rxr->rx_serialize);
+
+	ix_rxeof(rxr);
+	IXGBE_WRITE_REG(&rxr->rx_sc->hw, rxr->rx_eims, rxr->rx_eims_val);
+}
+
+static void
+ix_msix_tx(void *xtxr)
+{
+	struct ix_tx_ring *txr = xtxr;
+
+	ASSERT_SERIALIZED(&txr->tx_serialize);
+
+	ix_txeof(txr, *(txr->tx_hdr));
+	if (!ifsq_is_empty(txr->tx_ifsq))
+		ifsq_devstart(txr->tx_ifsq);
+	IXGBE_WRITE_REG(&txr->tx_sc->hw, txr->tx_eims, txr->tx_eims_val);
+}
+
+static void
+ix_msix_rxtx(void *xrxr)
+{
+	struct ix_rx_ring *rxr = xrxr;
+	struct ix_tx_ring *txr;
+	int hdr;
+
+	ASSERT_SERIALIZED(&rxr->rx_serialize);
+
+	ix_rxeof(rxr);
+
+	/*
+	 * NOTE:
+	 * Since tx_next_clean is only changed by ix_txeof(),
+	 * which is called only in interrupt handler, the
+	 * check w/o holding tx serializer is MPSAFE.
+	 */
+	txr = rxr->rx_txr;
+	hdr = *(txr->tx_hdr);
+	if (hdr != txr->tx_next_clean) {
+		lwkt_serialize_enter(&txr->tx_serialize);
+		ix_txeof(txr, hdr);
+		if (!ifsq_is_empty(txr->tx_ifsq))
+			ifsq_devstart(txr->tx_ifsq);
+		lwkt_serialize_exit(&txr->tx_serialize);
+	}
+
+	IXGBE_WRITE_REG(&rxr->rx_sc->hw, rxr->rx_eims, rxr->rx_eims_val);
+}
+
+static void
+ix_intr_status(struct ix_softc *sc, uint32_t eicr)
+{
+	struct ixgbe_hw *hw = &sc->hw;
+
+	/* Link status change */
+	if (eicr & IXGBE_EICR_LSC)
+		ix_handle_link(sc);
+
+	if (hw->mac.type != ixgbe_mac_82598EB) {
+		if (eicr & IXGBE_EICR_ECC)
+			if_printf(&sc->arpcom.ac_if, "ECC ERROR!!  Reboot!!\n");
+		else if (eicr & IXGBE_EICR_GPI_SDP1)
+			ix_handle_msf(sc);
+		else if (eicr & IXGBE_EICR_GPI_SDP2)
+			ix_handle_mod(sc);
+	} 
+
+	/* Check for fan failure */
+	if (hw->device_id == IXGBE_DEV_ID_82598AT &&
+	    (eicr & IXGBE_EICR_GPI_SDP1))
+		if_printf(&sc->arpcom.ac_if, "FAN FAILURE!!  Replace!!\n");
+
+	/* Check for over temp condition */
+	if (hw->mac.type == ixgbe_mac_X540 && (eicr & IXGBE_EICR_TS)) {
+		if_printf(&sc->arpcom.ac_if, "OVER TEMP!!  "
+		    "PHY IS SHUT DOWN!!  Reboot\n");
+	}
+}
+
+static void
+ix_msix_status(void *xsc)
+{
+	struct ix_softc *sc = xsc;
+	uint32_t eicr;
+
+	ASSERT_SERIALIZED(&sc->main_serialize);
+
+	eicr = IXGBE_READ_REG(&sc->hw, IXGBE_EICR);
+	ix_intr_status(sc, eicr);
+
+	IXGBE_WRITE_REG(&sc->hw, IXGBE_EIMS, sc->intr_mask);
+}
+
+static void
+ix_setup_msix_eims(const struct ix_softc *sc, int x,
+    uint32_t *eims, uint32_t *eims_val)
+{
+	if (x < 32) {
+		if (sc->hw.mac.type == ixgbe_mac_82598EB) {
+			KASSERT(x < IX_MAX_MSIX_82598,
+			    ("%s: invalid vector %d for 82598",
+			     device_get_nameunit(sc->dev), x));
+			*eims = IXGBE_EIMS;
+		} else {
+			*eims = IXGBE_EIMS_EX(0);
+		}
+		*eims_val = 1 << x;
+	} else {
+		KASSERT(x < IX_MAX_MSIX, ("%s: invalid vector %d",
+		    device_get_nameunit(sc->dev), x));
+		KASSERT(sc->hw.mac.type != ixgbe_mac_82598EB,
+		    ("%s: invalid vector %d for 82598",
+		     device_get_nameunit(sc->dev), x));
+		*eims = IXGBE_EIMS_EX(1);
+		*eims_val = 1 << (x - 32);
+	}
 }

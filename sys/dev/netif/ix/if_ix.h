@@ -35,10 +35,23 @@
 /* Tunables */
 
 /*
+ * MSI-X count
+ */
+#define IX_MAX_MSIX		64
+#define IX_MAX_MSIX_82598	16
+
+/*
  * RX ring count
  */
 #define IX_MAX_RXRING		16
 #define IX_MIN_RXRING_RSS	2
+
+/*
+ * TX ring count
+ */
+#define IX_MAX_TXRING_82598	32
+#define IX_MAX_TXRING_82599	64
+#define IX_MAX_TXRING_X540	64
 
 /*
  * Default number of segments received before writing to RX related registers
@@ -123,8 +136,8 @@
 
 #define IX_MAX_MCASTADDR	128
 
-#define MSIX_82598_BAR		3
-#define MSIX_82599_BAR		4
+#define IX_MSIX_BAR_82598	3
+#define IX_MSIX_BAR_82599	4
 
 #define IX_TSO_SIZE		(IP_MAXPACKET + \
 				 sizeof(struct ether_vlan_header))
@@ -150,12 +163,18 @@
 #define IX_RX1_INTR_MASK	(1 << IX_RX1_INTR_VEC)
 
 #define IX_INTR_RATE		8000
+#define IX_MSIX_RX_RATE		8000
+#define IX_MSIX_TX_RATE		6000
 
 /* IOCTL define to gather SFP+ Diagnostic data */
 #define SIOCGI2C		SIOCGIFGENERIC
 
 /* TX checksum offload */
 #define CSUM_OFFLOAD		(CSUM_IP|CSUM_TCP|CSUM_UDP)
+
+#define IX_EICR_STATUS		(IXGBE_EICR_LSC | IXGBE_EICR_ECC | \
+				 IXGBE_EICR_GPI_SDP1 | IXGBE_EICR_GPI_SDP2 | \
+				 IXGBE_EICR_TS)
 
 /* This is used to get SFP+ module data */
 struct ix_i2c_req {
@@ -200,6 +219,8 @@ struct ix_tx_ring {
 	uint16_t		tx_nsegs;
 	int16_t			tx_intr_vec;
 	int			tx_intr_cpuid;
+	uint32_t		tx_eims;
+	uint32_t		tx_eims_val;
 	struct ifsubq_watchdog	tx_watchdog;
 
 	bus_dma_tag_t		tx_base_dtag;
@@ -227,6 +248,9 @@ struct ix_rx_ring {
 	uint16_t		rx_mbuf_sz;
 	uint16_t		rx_wreg_nsegs;
 	int16_t			rx_intr_vec;
+	uint32_t		rx_eims;
+	uint32_t		rx_eims_val;
+	struct ix_tx_ring	*rx_txr;	/* piggybacked TX ring */
 
 #ifdef IX_RSS_DEBUG
 	u_long			rx_pkts;
@@ -266,13 +290,11 @@ struct ix_softc {
 
 	boolean_t		link_active;
 
-	int			tx_ring_cnt;
-	int			tx_ring_inuse;
-	struct ix_tx_ring	*tx_rings;
-
-	int			rx_ring_cnt;
 	int			rx_ring_inuse;
+	int			tx_ring_inuse;
+
 	struct ix_rx_ring	*rx_rings;
+	struct ix_tx_ring	*tx_rings;
 
 	struct callout		timer;
 	int			timer_cpuid;
@@ -284,6 +306,12 @@ struct ix_softc {
 	boolean_t		sfp_probe;	/* plyggable optics */
 
 	struct ixgbe_hw_stats 	stats;
+
+	int			rx_ring_cnt;
+	int			rx_ring_msix;
+
+	int			tx_ring_cnt;
+	int			tx_ring_msix;
 
 	int			intr_type;
 	int			intr_cnt;
@@ -300,6 +328,9 @@ struct ix_softc {
 	struct resource		*mem_res;
 	int			mem_rid;
 
+	struct resource 	*msix_mem_res;
+	int			msix_mem_rid;
+
 	int			nserialize;
 	struct lwkt_serialize	**serializes;
 
@@ -308,6 +339,7 @@ struct ix_softc {
 	int			if_flags;
 	int			advspeed;	/* advertised link speeds */
 	uint16_t		max_frame_size;
+	int16_t			sts_msix_vec;	/* status MSI-X vector */
 
 #ifdef IX_RSS_DEBUG
 	int			rss_debug;
