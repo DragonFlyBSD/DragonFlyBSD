@@ -48,6 +48,16 @@ get_authorized_hosts()
 	fi
 }
 
+get_authorized_keys()
+{
+	[ -r /root/.ssh/authorized_keys ] && return 0
+	if [ -r $1/authorized_keys ]; then
+		echo "authorized_keys found!"
+		mkdir -p /root/.ssh/
+		tr -d "\r" < $1/authorized_keys > /root/.ssh/authorized_keys
+	fi
+}
+
 look_for_pfi_config_msdos()
 {
 	[ -r /etc/pfi.conf ] && return 0
@@ -59,6 +69,7 @@ look_for_pfi_config_msdos()
 				echo -n " /dev/$try_device ok..."
 				if get_pfi_config /mnt /dev/$try_device; then
 					get_authorized_hosts /mnt
+					get_authorized_keys /mnt
 					umount /mnt
 					return 0
 				fi
@@ -81,6 +92,7 @@ look_for_pfi_config_cd9660()
 				echo -n " /dev/$try_device ok..."
 				if get_pfi_config /mnt /dev/$try_device; then
 					get_authorized_hosts /mnt
+					get_authorized_keys /mnt
 					umount /mnt
 					return 0
 				fi
