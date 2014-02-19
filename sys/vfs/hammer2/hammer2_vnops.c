@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -305,9 +305,6 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		return(0);
 
 	/*
-	 * Set update_hi so we can detect and propagate the DELETED
-	 * bit in the flush code.
-	 *
 	 * ip->chain might be stale, correct it before checking as older
 	 * versions of the chain are likely marked deleted even if the
 	 * file hasn't been.  XXX ip->chain should never be stale on
@@ -327,11 +324,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 *
 	 * HAMMER2 usually does not try to optimize the freemap by returning
 	 * deleted blocks to it as it does not usually know how many snapshots
-	 * might be referencing portions of the file/dir.  XXX TODO.
-	 *
-	 * XXX TODO - However, any modified file as-of when a snapshot is made
-	 *	      cannot use this optimization as some of the modifications
-	 *	      may wind up being part of the snapshot.
+	 * might be referencing portions of the file/dir.
 	 */
 	vp->v_data = NULL;
 	ip->vp = NULL;
@@ -341,11 +334,6 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 		hammer2_trans_init(&trans, ip->pmp, NULL,
 				   HAMMER2_TRANS_BUFCACHE);
 		hammer2_chain_delete(&trans, chain, 0);
-		hammer2_chain_setsubmod(&trans, chain);
-		spin_lock(&chain->core->cst.spin);
-		if (chain->core->update_hi < trans.sync_tid)
-			chain->core->update_hi = trans.sync_tid; /* needed? */
-		spin_unlock(&chain->core->cst.spin);
 		hammer2_trans_done(&trans);
 	}
 
@@ -408,7 +396,7 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	 * XXX creates discontinuity w/modify_tid
 	 */
 	if (ap->a_flags & VOP_FSYNC_SYSCALL) {
-		hammer2_chain_flush(&trans, &chain);
+		hammer2_flush(&trans, &chain);
 	}
 #endif
 	hammer2_inode_unlock_ex(ip, chain);

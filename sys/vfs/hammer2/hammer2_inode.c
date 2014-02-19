@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -40,6 +40,8 @@
 #include <sys/uuid.h>
 
 #include "hammer2.h"
+
+#define INODE_DEBUG	0
 
 static void hammer2_inode_move_to_hidden(hammer2_trans_t *trans,
 					 hammer2_chain_t **chainp,
@@ -619,6 +621,10 @@ retry:
 					     HAMMER2_BREF_TYPE_INODE,
 					     HAMMER2_INODE_BYTES);
 	}
+#if INODE_DEBUG
+	kprintf("CREATE INODE %*.*s chain=%p\n",
+		(int)name_len, (int)name_len, name, chain);
+#endif
 
 	/*
 	 * Cleanup and handle retries.

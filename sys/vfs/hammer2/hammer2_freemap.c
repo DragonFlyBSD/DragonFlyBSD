@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -44,6 +44,8 @@
 #include <sys/mountctl.h>
 
 #include "hammer2.h"
+
+#define FREEMAP_DEBUG	0
 
 struct hammer2_fiterate {
 	hammer2_off_t	bpref;
@@ -203,8 +205,9 @@ hammer2_freemap_reserve(hammer2_trans_t *trans, hammer2_chain_t *chain,
 		break;
 	}
 	bref->data_off = off | radix;
-#if 0
-	kprintf("-> %016jx\n", bref->data_off);
+#if FREEMAP_DEBUG
+	kprintf("FREEMAP BLOCK TYPE %d %016jx/%d DATA_OFF=%016jx\n",
+		bref->type, bref->key, bref->keybits, bref->data_off);
 #endif
 	return (0);
 }
@@ -894,6 +897,12 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 		/* XXX handle error */
 	}
 
+#if FREEMAP_DEBUG
+	kprintf("FREEMAP ADJUST TYPE %d %016jx/%d DATA_OFF=%016jx\n",
+		chain->bref.type, chain->bref.key,
+		chain->bref.keybits, chain->bref.data_off);
+#endif
+
 	/*
 	 * Calculate the bitmask (runs in 2-bit pairs).
 	 */
@@ -917,12 +926,15 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	/*
 	 * [re]load the bmap and bitmap pointers.  Each bmap entry covers
 	 * a 2MB swath.  The bmap itself (LEVEL1) covers 2GB.
+	 *
+	 * Be sure to reset the linear iterator to ensure that the adjustment
+	 * is not ignored.
 	 */
 again:
 	bmap = &chain->data->bmdata[(int)(data_off >> HAMMER2_SEGRADIX) &
 				    (HAMMER2_FREEMAP_COUNT - 1)];
 	bitmap = &bmap->bitmap[(int)(data_off >> (HAMMER2_SEGRADIX - 3)) & 7];
-
+	bmap->linear = 0;
 
 	while (count) {
 		KKASSERT(bmmask11);

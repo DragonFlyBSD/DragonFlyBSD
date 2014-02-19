@@ -1,5 +1,0 @@
-#!/bin/csh
-#
-
-umount /mnt
-newfs_hammer2 -L ROOT /dev/da0s1b

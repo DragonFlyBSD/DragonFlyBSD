@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -91,14 +91,29 @@ struct hammer2_msg;
  * boundaries, renames, resizing, or any move of the chain to elsewhere
  * in the topology is accomplished via the DELETE-DUPLICATE mechanism.
  *
- * DELETE-DUPLICATE allows HAMMER2 to track work across flush synchronization
- * points without stalling the filesystem or corrupting the flush
- * sychronization point.  When necessary a chain will be marked DELETED
- * and a new, duplicate chain will be allocated.
+ * Deletions and delete-duplicates:
  *
- * This mechanism necessarily requires that we be able to overload chains
- * at any given layer in the topology.  Overloading is accomplished via a
- * RBTREE recursion through chain->rbtree.
+ *	Any movement of chains within the topology utilize a delete-duplicate
+ *	operation instead of a simple rename.  That is, the chain must be
+ *	deleted from its original location and then duplicated to the new
+ *	location.  A new chain structure is allocated while the old is
+ *	deleted.  Deleted chains are removed from the above chain_core's
+ *	rbtree but remain linked via the shadow topology for flush
+ *	synchronization purposes.
+ *
+ *	delete_bmap is allocated and a bit set if the chain was originally
+ *	loaded via the blockmap.
+ *
+ * Flush synchronization:
+ *
+ *	Flushes must synchronize chains up through the root.  To do this
+ *	the in-memory topology would normally have to be frozen during the
+ *	flush.  To avoid freezing the topology and to allow concurrent
+ *	foreground / flush activity, any new modifications made while a
+ *	flush is in progress retains the original chain in a shadow topology
+ *	that is only visible to the flush code.  Only one flush can be
+ *	running at a time so the shadow hierarchy can be implemented with
+ *	just a few link fields in our in-memory data structures.
  *
  * Advantages:
  *
@@ -123,29 +138,22 @@ struct hammer2_msg;
 RB_HEAD(hammer2_chain_tree, hammer2_chain);
 TAILQ_HEAD(h2_flush_deferral_list, hammer2_chain);
 TAILQ_HEAD(h2_core_list, hammer2_chain);
-TAILQ_HEAD(h2_layer_list, hammer2_chain_layer);
 
-struct hammer2_chain_layer {
-	int		good;
-	TAILQ_ENTRY(hammer2_chain_layer) entry;
-	struct hammer2_chain_tree rbtree;
-	int		refs;		/* prevent destruction */
-};
-
-typedef struct hammer2_chain_layer hammer2_chain_layer_t;
+#define CHAIN_CORE_DELETE_BMAP_ENTRIES	\
+	(HAMMER2_PBUFSIZE / sizeof(hammer2_blockref_t) / sizeof(uint32_t))
 
 struct hammer2_chain_core {
 	int		good;
 	struct ccms_cst	cst;
-	struct h2_core_list ownerq;	/* all chains sharing this core */
-	struct h2_layer_list layerq;
+	struct h2_core_list ownerq;	  /* all chains sharing this core */
+	struct hammer2_chain_tree rbtree; /* live chains */
+	struct hammer2_chain_tree dbtree; /* bmapped deletions */
+	struct h2_core_list dbq;	  /* other deletions */
 	int		live_zero;	/* blockref array opt */
-	hammer2_tid_t	update_lo;	/* check update against parent */
-	hammer2_tid_t	update_hi;	/* check update against parent */
-	u_int		chain_count;	/* total chains in layers */
 	u_int		sharecnt;
 	u_int		flags;
 	u_int		live_count;	/* live (not deleted) chains in tree */
+	u_int		chain_count;	/* live + deleted chains under core */
 	int		generation;	/* generation number (inserts only) */
 };
 
@@ -186,9 +194,9 @@ typedef struct hammer2_io hammer2_io_t;
  * Primary chain structure keeps track of the topology in-memory.
  */
 struct hammer2_chain {
-	RB_ENTRY(hammer2_chain) rbnode;		/* node */
 	TAILQ_ENTRY(hammer2_chain) core_entry;	/* contemporary chains */
-	hammer2_chain_layer_t	*inlayer;
+	RB_ENTRY(hammer2_chain) rbnode;		/* live chain(s) */
+	TAILQ_ENTRY(hammer2_chain) db_entry;	/* non bmapped deletions */
 	hammer2_blockref_t	bref;
 	hammer2_chain_core_t	*core;
 	hammer2_chain_core_t	*above;
@@ -196,8 +204,23 @@ struct hammer2_chain {
 	struct hammer2_mount	*hmp;
 	struct hammer2_pfsmount	*pmp;		/* can be NULL */
 
-	hammer2_tid_t	modify_tid;		/* snapshot/flush filter */
-	hammer2_tid_t	delete_tid;
+	hammer2_blockref_t	dsrc;			/* DEBUG */
+	int			ninserts;		/* DEBUG */
+	int			nremoves;		/* DEBUG */
+	hammer2_tid_t		dsrc_dupfromat;		/* DEBUG */
+	uint32_t		dsrc_dupfromflags;	/* DEBUG */
+	int			dsrc_reason;		/* DEBUG */
+	int			dsrc_ninserts;		/* DEBUG */
+	uint32_t		dsrc_flags;		/* DEBUG */
+	hammer2_tid_t		dsrc_modify;		/* DEBUG */
+	hammer2_tid_t		dsrc_delete;		/* DEBUG */
+	hammer2_tid_t		dsrc_update_lo;		/* DEBUG */
+	struct hammer2_chain	*dsrc_original;		/* DEBUG */
+
+	hammer2_tid_t	modify_tid;		/* flush filter */
+	hammer2_tid_t	delete_tid;		/* flush filter */
+	hammer2_tid_t	update_lo;		/* flush propagation */
+	hammer2_tid_t	update_hi;		/* setsubmod propagation */
 	hammer2_key_t   data_count;		/* delta's to apply */
 	hammer2_key_t   inode_count;		/* delta's to apply */
 	hammer2_io_t	*dio;			/* physical data buffer */
@@ -224,32 +247,28 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  *	     related buffer.  The data is assumed to be all-zeros.  It
  *	     is primarily used for indirect blocks.
  *
- * MOVED   - A modified chain becomes MOVED after it flushes.  A chain
- *	     can also become MOVED if it is moved within the topology
- *	     (even if not modified).
- *
  * MODIFIED- The chain's media data has been modified.
  */
 #define HAMMER2_CHAIN_MODIFIED		0x00000001	/* dirty chain data */
 #define HAMMER2_CHAIN_ALLOCATED		0x00000002	/* kmalloc'd chain */
-#define HAMMER2_CHAIN_UNUSED0004	0x00000004
+#define HAMMER2_CHAIN_FLUSH_TEMPORARY	0x00000004
 #define HAMMER2_CHAIN_FORCECOW		0x00000008	/* force copy-on-wr */
 #define HAMMER2_CHAIN_DELETED		0x00000010	/* deleted chain */
 #define HAMMER2_CHAIN_INITIAL		0x00000020	/* initial create */
-#define HAMMER2_CHAIN_FLUSHED		0x00000040	/* blktable updated */
-#define HAMMER2_CHAIN_MOVED		0x00000080	/* bref changed */
+#define HAMMER2_CHAIN_FLUSH_CREATE	0x00000040	/* needs flush blkadd */
+#define HAMMER2_CHAIN_FLUSH_DELETE	0x00000080	/* needs flush blkdel */
 #define HAMMER2_CHAIN_IOFLUSH		0x00000100	/* bawrite on put */
 #define HAMMER2_CHAIN_DEFERRED		0x00000200	/* on a deferral list */
 #define HAMMER2_CHAIN_UNLINKED		0x00000400	/* delete on reclaim */
 #define HAMMER2_CHAIN_VOLUMESYNC	0x00000800	/* needs volume sync */
-#define HAMMER2_CHAIN_UNUSED01000	0x00001000
+#define HAMMER2_CHAIN_ONDBQ		0x00001000	/* !bmapped deletes */
 #define HAMMER2_CHAIN_MOUNTED		0x00002000	/* PFS is mounted */
 #define HAMMER2_CHAIN_ONRBTREE		0x00004000	/* on parent RB tree */
 #define HAMMER2_CHAIN_SNAPSHOT		0x00008000	/* snapshot special */
 #define HAMMER2_CHAIN_EMBEDDED		0x00010000	/* embedded data */
 #define HAMMER2_CHAIN_RELEASE		0x00020000	/* don't keep around */
-#define HAMMER2_CHAIN_UNUSED40000	0x00040000
-#define HAMMER2_CHAIN_UNUSED80000	0x00080000
+#define HAMMER2_CHAIN_BMAPPED		0x00040000	/* in parent blkmap */
+#define HAMMER2_CHAIN_ONDBTREE		0x00080000	/* bmapped deletes */
 #define HAMMER2_CHAIN_DUPLICATED	0x00100000	/* fwd delete-dup */
 #define HAMMER2_CHAIN_PFSROOT		0x00200000	/* in pfs->cluster */
 
@@ -472,8 +491,8 @@ struct hammer2_trans {
 	TAILQ_ENTRY(hammer2_trans) entry;
 	struct hammer2_pfsmount *pmp;		/* might be NULL */
 	struct hammer2_mount	*hmp_single;	/* if single-targetted */
-	hammer2_tid_t		sync_tid;
-	hammer2_tid_t		real_tid;
+	hammer2_tid_t		orig_tid;
+	hammer2_tid_t		sync_tid;	/* effective transaction id */
 	hammer2_tid_t		inode_tid;
 	thread_t		td;		/* pointer */
 	int			flags;
@@ -485,7 +504,7 @@ struct hammer2_trans {
 typedef struct hammer2_trans hammer2_trans_t;
 
 #define HAMMER2_TRANS_ISFLUSH		0x0001	/* formal flush */
-#define HAMMER2_TRANS_UNUSED0002	0x0002
+#define HAMMER2_TRANS_CONCURRENT	0x0002	/* concurrent w/flush */
 #define HAMMER2_TRANS_BUFCACHE		0x0004	/* from bioq strategy write */
 #define HAMMER2_TRANS_NEWINODE		0x0008	/* caller allocating inode */
 #define HAMMER2_TRANS_ISALLOCATING	0x0010	/* in allocator */
@@ -644,6 +663,7 @@ extern int hammer2_debug;
 extern int hammer2_cluster_enable;
 extern int hammer2_hardlink_enable;
 extern int hammer2_flush_pipe;
+extern int hammer2_synchronous_flush;
 extern long hammer2_limit_dirty_chains;
 extern long hammer2_iod_file_read;
 extern long hammer2_iod_meta_read;
@@ -786,8 +806,8 @@ void hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 				int nradix, int flags);
 void hammer2_chain_unlock(hammer2_chain_t *chain);
 void hammer2_chain_wait(hammer2_chain_t *chain);
-hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent,
-				hammer2_blockref_t *bref, int generation);
+hammer2_chain_t *hammer2_chain_get(hammer2_chain_t *parent, int generation,
+				hammer2_blockref_t *bref);
 hammer2_chain_t *hammer2_chain_lookup_init(hammer2_chain_t *parent, int flags);
 void hammer2_chain_lookup_done(hammer2_chain_t *parent);
 hammer2_chain_t *hammer2_chain_lookup(hammer2_chain_t **parentp,
@@ -818,7 +838,7 @@ void hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *chain,
 				int flags);
 void hammer2_chain_delete_duplicate(hammer2_trans_t *trans,
 				hammer2_chain_t **chainp, int flags);
-void hammer2_chain_flush(hammer2_trans_t *trans, hammer2_chain_t **chainp);
+void hammer2_flush(hammer2_trans_t *trans, hammer2_chain_t **chainp);
 void hammer2_chain_commit(hammer2_trans_t *trans, hammer2_chain_t *chain);
 void hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain);
 
@@ -827,13 +847,12 @@ void hammer2_chain_memory_inc(hammer2_pfsmount_t *pmp);
 void hammer2_chain_memory_wakeup(hammer2_pfsmount_t *pmp);
 void hammer2_chain_countbrefs(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count);
-void hammer2_chain_layer_check_locked(hammer2_mount_t *hmp,
-				hammer2_chain_core_t *core);
 
 int hammer2_base_find(hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
 				int *cache_indexp, hammer2_key_t *key_nextp,
-				hammer2_key_t key_beg, hammer2_key_t key_end);
+				hammer2_key_t key_beg, hammer2_key_t key_end,
+				int delete_filter);
 void hammer2_base_delete(hammer2_trans_t *trans, hammer2_chain_t *chain,
 				hammer2_blockref_t *base, int count,
 				int *cache_indexp, hammer2_chain_t *child);
@@ -880,11 +899,11 @@ void hammer2_io_breadcb(hammer2_mount_t *hmp, off_t lbase, int lsize,
 void hammer2_io_bawrite(hammer2_io_t **diop);
 void hammer2_io_bdwrite(hammer2_io_t **diop);
 int hammer2_io_bwrite(hammer2_io_t **diop);
+int hammer2_io_isdirty(hammer2_io_t *dio);
 void hammer2_io_setdirty(hammer2_io_t *dio);
 void hammer2_io_setinval(hammer2_io_t *dio, u_int bytes);
 void hammer2_io_brelse(hammer2_io_t **diop);
 void hammer2_io_bqrelse(hammer2_io_t **diop);
-int hammer2_io_isdirty(hammer2_io_t *dio);
 
 /*
  * hammer2_msgops.c
@@ -898,7 +917,7 @@ int hammer2_msg_adhoc_input(kdmsg_msg_t *msg);
 void hammer2_clusterctl_wakeup(kdmsg_iocom_t *iocom);
 void hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index);
 void hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp);
-void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp);
+void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx);
 void hammer2_bioq_sync(hammer2_pfsmount_t *pmp);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
 void hammer2_lwinprog_ref(hammer2_pfsmount_t *pmp);
