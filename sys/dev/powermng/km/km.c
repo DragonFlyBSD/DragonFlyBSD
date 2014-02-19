@@ -1,7 +1,7 @@
-/*	$OpenBSD: km.c,v 1.2 2008/08/29 03:38:31 cnst Exp $	*/
+/*	$OpenBSD: km.c,v 1.8 2013/09/17 13:42:34 kettenis Exp $	*/
 
 /*
- * Copyright (c) 2008/2010 Constantine A. Murenin <cnst+dfly@bugmail.mojo.ru>
+ * Copyright (c) 2008/2010 Constantine A. Murenin <cnst+openbsd@bugmail.mojo.ru>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -26,7 +26,7 @@
 
 
 /*
- * AMD Family 10h Processors, Function 3 -- Miscellaneous Control
+ * AMD Family 10h/11h/14h/15h Processors, Function 3 -- Miscellaneous Control
  */
 
 /* Function 3 Registers */
@@ -86,24 +86,34 @@ km_identify(driver_t *driver, struct device *parent)
 static int
 km_probe(struct device *dev)
 {
-	int ten = 0;
+	char *desc;
 
 	if (pci_get_vendor(dev) != PCI_VENDOR_AMD)
 		return ENXIO;
 
 	switch (pci_get_device(dev)) {
 	case PCI_PRODUCT_AMD_AMD64_F10_MISC:
-		ten = 1;
-		/* FALLTHROUGH */
+		desc = "AMD Family 10h temperature sensor";
+		break;
 	case PCI_PRODUCT_AMD_AMD64_F11_MISC:
-		if (device_get_desc(dev) == NULL)
-			device_set_desc(dev, ten ?
-			    "AMD Family 10h temperature sensor" :
-			    "AMD Family 11h temperature sensor");
-		return 0;
+		desc = "AMD Family 11h temperature sensor";
+		break;
+	case PCI_PRODUCT_AMD_AMD64_F14_MISC:
+		desc = "AMD Family 14h temperature sensor";
+		break;
+	case PCI_PRODUCT_AMD_AMD64_F15_0x_MISC:
+		desc = "AMD Family 15/0xh temperature sensor";
+		break;
+	case PCI_PRODUCT_AMD_AMD64_F15_1x_MISC:
+		desc = "AMD Family 15/1xh temperature sensor";
+		break;
 	default:
 		return ENXIO;
 	}
+
+	if (device_get_desc(dev) == NULL)
+		device_set_desc(dev, desc);
+	return 0;
 }
 
 static int

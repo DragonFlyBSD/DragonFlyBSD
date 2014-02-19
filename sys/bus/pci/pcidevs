@@ -171,6 +171,9 @@ product ALTIMA AC9100	0x03ea	AC9100 Gigabit Ethernet
 product AMD AMD64_MISC	0x1103	AMD64 Miscellaneous configuration
 product AMD AMD64_F10_MISC	0x1203  Family 10h Miscellaneous
 product AMD AMD64_F11_MISC	0x1303  Family 11h Miscellaneous
+product AMD AMD64_F14_MISC	0x1703  Family 14h Miscellaneous
+product AMD AMD64_F15_0x_MISC	0x1603  Family 15/0xh Miscellaneous
+product AMD AMD64_F15_1x_MISC	0x1403  Family 15/1xh Miscellaneous
 product AMD PCNET_PCI	0x2000	PCnet-PCI Ethernet
 product AMD PCNET_HOME	0x2001	PCnet-Home HomePNA Ethernet
 product AMD GEODE_LX_PCHB	0x2080	Geode LX
