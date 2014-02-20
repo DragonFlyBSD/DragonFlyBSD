@@ -833,7 +833,6 @@ ata_raid_done(struct ata_request *request)
 	kprintf("ar%d: unknown array type in ata_raid_done\n", rdp->lun);
     }
 
-    devstat_end_transaction_buf(&rdp->devstat, bbp);
     if (finished) {
 	if ((rdp->status & AR_S_REBUILDING) && 
 	    rdp->rebuild_lba >= rdp->total_sectors) {
@@ -850,6 +849,7 @@ ata_raid_done(struct ata_request *request)
 	    rdp->status &= ~AR_S_REBUILDING;
 	    ata_raid_config_changed(rdp, 1);
 	}
+	devstat_end_transaction_buf(&rdp->devstat, bbp);
 	if (!bbp->b_resid)
 	    biodone(bp);
     }
