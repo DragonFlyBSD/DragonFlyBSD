@@ -24,14 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcalendar/calendar.c,v 1.3 1999/08/28 00:04:03 peter Exp $
- * $DragonFly: src/lib/libcalendar/calendar.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
  */
 
+#include <sys/param.h>
 #include "calendar.h"
-
-#ifndef NULL
-#define NULL 0
-#endif
 
 /*
  * For each month tabulate the number of days elapsed in a year before the
