@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_dnslookup.c,v 1.27 2005/05/20 13:04:10 charnier Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_dnslookup.c,v 1.4 2005/11/24 22:23:02 swildner Exp $
  */
 
 /*
@@ -456,7 +455,7 @@ yp_async_lookup_name(struct svc_req *rqstp, char *name, int af)
 	pending++;
 
 	if (debug)
-		yp_error("queueing async DNS name lookup (%d)", q->id);
+		yp_error("queueing async DNS name lookup (%lu)", q->id);
 
 	yp_prune_dnsq();
 	return(YP_TRUE);
@@ -544,7 +543,7 @@ yp_async_lookup_addr(struct svc_req *rqstp, char *addr, int af)
 	pending++;
 
 	if (debug)
-		yp_error("queueing async DNS address lookup (%d)", q->id);
+		yp_error("queueing async DNS address lookup (%lu)", q->id);
 
 	yp_prune_dnsq();
 	return(YP_TRUE);

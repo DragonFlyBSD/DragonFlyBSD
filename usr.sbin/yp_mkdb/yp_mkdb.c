@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/yp_mkdb/yp_mkdb.c,v 1.12.2.1 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/yp_mkdb/yp_mkdb.c,v 1.4 2005/11/24 22:23:02 swildner Exp $
  */
 
 #include <err.h>
@@ -87,7 +86,8 @@ unwind(char *map)
 
 	key.data = NULL;
 	while (yp_next_record(dbp, &key, &data, 1, 1) == YP_TRUE)
-		printf("%.*s %.*s\n", key.size,key.data,data.size,data.data);
+		printf("%.*s %.*s\n", (int)key.size, (char *)key.data,
+		    (int)data.size, (char *)data.data);
 
 	dbp->close(dbp);
 	return;

@@ -1,5 +1,4 @@
 # $FreeBSD: src/usr.sbin/ypserv/Makefile,v 1.24 2004/10/18 21:42:15 ru Exp $
-# $DragonFly: src/usr.sbin/ypserv/Makefile,v 1.3 2005/07/07 11:49:57 corecode Exp $
 
 RPCDIR=	${.CURDIR}/../../include/rpcsvc
 .PATH: ${RPCDIR}
@@ -8,7 +7,7 @@ PROG=	ypserv
 MAN=	ypserv.8 ypinit.8
 SRCS=	yp_svc.c yp_server.c yp_dblookup.c yp_dnslookup.c \
 	ypxfr_clnt.c yp.h yp_main.c yp_error.c yp_access.c yp_svc_udp.c
-WARNS?=	1
+WARNS?=	2
 
 CFLAGS+= -DDB_CACHE -DTCP_WRAPPER -I.
 
