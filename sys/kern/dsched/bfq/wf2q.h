@@ -32,17 +32,12 @@
  * SUCH DAMAGE.
  */
 
-
 #ifndef _DSCHED_BFQ_WF2Q_H_
 #define _DSCHED_BFQ_WF2Q_H_
 
 #include <sys/tree.h>
 
-#ifndef NULL
-#define NULL 0x0
-#endif
 /* struct bfq_thread_io is defined in bfq.h */
-
 struct bfq_thread_io;
 
 RB_HEAD(wf2q_augtree_t, bfq_thread_io);
@@ -64,5 +59,4 @@ void wf2q_update_vd(struct bfq_thread_io *tdio, int received_service);
 struct bfq_thread_io *wf2q_get_next_thread_io(struct wf2q_t *wf2q);
 void wf2q_inc_tot_service(struct wf2q_t *wf2q, int amount);
 
-#endif
-
+#endif /* !_DSCHED_BFQ_WF2Q_H_ */
