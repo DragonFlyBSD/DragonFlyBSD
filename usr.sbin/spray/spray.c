@@ -28,7 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/spray/spray.c,v 1.5.2.2 2001/07/30 10:23:00 dd Exp $
- * $DragonFly: src/usr.sbin/spray/spray.c,v 1.4 2005/03/19 17:43:18 liamfoy Exp $
  */
 
 #include <rpc/rpc.h>
@@ -221,7 +220,7 @@ getnum(const char *arg)
 	long tmp;
 
 	tmp = strtol(arg, &ep, 10);
-	if (*ep != NULL || tmp < INT_MIN || tmp > INT_MAX)
+	if (*ep != '\0' || tmp < INT_MIN || tmp > INT_MAX)
 		errx(1, "invalid value: %s", arg);
 
 	return((int)tmp);
