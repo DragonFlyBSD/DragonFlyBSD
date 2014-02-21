@@ -2044,13 +2044,13 @@ _dns_getaddrinfo(void *rv, void *cb_data __unused, va_list ap)
 
 	buf = malloc(sizeof(*buf));
 	if (!buf) {
-		RES_SET_H_ERRNO(res, NETDB_INTERNAL);
+		h_errno = NETDB_INTERNAL;
 		return NS_NOTFOUND;
 	}
 	buf2 = malloc(sizeof(*buf2));
 	if (!buf2) {
 		free(buf);
-		RES_SET_H_ERRNO(res, NETDB_INTERNAL);
+		h_errno = NETDB_INTERNAL;
 		return NS_NOTFOUND;
 	}
 
