@@ -23,6 +23,8 @@ Installation
 
 	make install sendmail-link mailq-link install-spool-dirs install-etc
 
+See INSTALL for requirements and configuration options.
+
 
 Contact
 -------

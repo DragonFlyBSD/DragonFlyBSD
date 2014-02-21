@@ -1,9 +1,11 @@
+version!=       sh get-version.sh
+
 .PATH: ${.CURDIR}/..
 
 CFLAGS+=-I${.CURDIR}/..
 CFLAGS+= -DHAVE_REALLOCF -DHAVE_STRLCPY -DHAVE_GETPROGNAME
 CFLAGS+=-DCONF_PATH='"/etc/dma"'
-CFLAGS+=-DLIBEXEC_PATH='"/usr/libexec"' -DDMA_VERSION='"v0.7"'
+CFLAGS+=-DLIBEXEC_PATH='"/usr/libexec"' -DDMA_VERSION='"${version}"'
 
 DPADD=  ${LIBSSL} ${LIBCRYPTO}
 LDADD=  -lssl -lcrypto

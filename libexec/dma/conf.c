@@ -211,7 +211,7 @@ parse_conf(const char *config_path)
 			} else {
 				host = data;
 			}
-			if (host && *host == 0)
+ 			if (host && *host == 0)
 				host = NULL;
                         if (user && *user == 0)
                                 user = NULL;
@@ -229,10 +229,17 @@ parse_conf(const char *config_path)
 			config.features |= INSECURE;
 		else if (strcmp(word, "FULLBOUNCE") == 0 && data == NULL)
 			config.features |= FULLBOUNCE;
+		else if (strcmp(word, "NULLCLIENT") == 0 && data == NULL)
+			config.features |= NULLCLIENT;
 		else {
 			errlogx(1, "syntax error in %s:%d", config_path, lineno);
 			/* NOTREACHED */
 		}
+	}
+
+	if ((config.features & NULLCLIENT) && config.smarthost == NULL) {
+		errlogx(1, "%s: NULLCLIENT requires SMARTHOST", config_path);
+		/* NOTREACHED */
 	}
 
 	fclose(conf);

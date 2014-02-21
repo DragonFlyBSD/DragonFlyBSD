@@ -2,6 +2,7 @@
 
 #include <err.h>
 #include <string.h>
+#include <syslog.h>
 #include "dma.h"
 
 extern int yylineno;
@@ -12,7 +13,12 @@ int yylex(void);
 static void
 yyerror(const char *msg)
 {
-	warnx("aliases line %d: %s", yylineno, msg);
+	/**
+	 * Because we do error '\n' below, we need to report the error
+	 * one line above of what yylineno points to.
+	 */
+	syslog(LOG_CRIT, "aliases line %d: %s", yylineno - 1, msg);
+	fprintf(stderr, "aliases line %d: %s\n", yylineno - 1, msg);
 }
 
 int
@@ -72,8 +78,7 @@ alias	: T_IDENT ':' dests '\n'
 		}
 	| error '\n'
 		{
-			yyerrok;
-			$$ = NULL;
+			YYABORT;
 		}
      	;
 

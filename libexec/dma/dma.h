@@ -52,6 +52,7 @@
 #define MIN_RETRY	300		/* 5 minutes */
 #define MAX_RETRY	(3*60*60)	/* retry at least every 3 hours */
 #define MAX_TIMEOUT	(5*24*60*60)	/* give up after 5 days */
+#define SLEEP_TIMEOUT	30		/* check for queue flush every 30 seconds */
 #ifndef PATH_MAX
 #define PATH_MAX	1024		/* Max path len */
 #endif
@@ -65,6 +66,7 @@
 #define INSECURE	0x020		/* Allow plain login w/o encryption */
 #define FULLBOUNCE	0x040		/* Bounce the full message */
 #define TLS_OPP		0x080		/* Opportunistic STARTTLS */
+#define NULLCLIENT	0x100		/* Nullclient support */
 
 #ifndef CONF_PATH
 #error Please define CONF_PATH
@@ -74,8 +76,14 @@
 #error Please define LIBEXEC_PATH
 #endif
 
+#define SPOOL_FLUSHFILE	"flush"
+
+#ifndef DMA_ROOT_USER
 #define DMA_ROOT_USER	"mail"
+#endif
+#ifndef DMA_GROUP
 #define DMA_GROUP	"mail"
+#endif
 
 #ifndef MBOX_STRICT
 #define MBOX_STRICT	0
@@ -182,7 +190,7 @@ int dns_get_mx_list(const char *, int, struct mx_hostentry **, int);
 /* net.c */
 char *ssl_errstr(void);
 int read_remote(int, int, char *);
-ssize_t send_remote_command(int, const char*, ...) __printflike(2, 3);
+ssize_t send_remote_command(int, const char*, ...)  __attribute__((__nonnull__(2), __format__ (__printf__, 2, 3)));
 int deliver_remote(struct qitem *);
 
 /* base64.c */
@@ -202,6 +210,8 @@ int load_queue(struct queue *);
 void delqueue(struct qitem *);
 int acquirespool(struct qitem *);
 void dropspool(struct queue *, struct qitem *);
+int flushqueue_since(unsigned int);
+int flushqueue_signal(void);
 
 /* local.c */
 int deliver_local(struct qitem *);
@@ -212,9 +222,9 @@ int readmail(struct queue *, int, int);
 
 /* util.c */
 const char *hostname(void);
-void setlogident(const char *, ...) __printf0like(1, 2);
-void errlog(int, const char *, ...) __printf0like(2, 3);
-void errlogx(int, const char *, ...) __printf0like(2, 3);
+void setlogident(const char *, ...) __attribute__((__format__ (__printf__, 1, 2)));
+void errlog(int, const char *, ...) __attribute__((__format__ (__printf__, 2, 3)));
+void errlogx(int, const char *, ...) __attribute__((__format__ (__printf__, 2, 3)));
 void set_username(void);
 void deltmp(void);
 int do_timeout(int, int);

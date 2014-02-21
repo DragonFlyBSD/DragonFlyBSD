@@ -256,7 +256,7 @@ smtp_login(int fd, char *login, char* password)
 		return (0);
 	} else if (res == -2) {
 	/*
-	 * If the return code is -2, then then the login attempt failed, 
+	 * If the return code is -2, then then the login attempt failed,
 	 * do not try other login mechanisms
 	 */
 		return (1);
@@ -493,17 +493,6 @@ deliver_remote(struct qitem *it)
 	int port;
 	int error = 1, smarthost = 0;
 
-	host = strrchr(it->addr, '@');
-	/* Should not happen */
-	if (host == NULL) {
-		snprintf(errmsg, sizeof(errmsg), "Internal error: badly formed address %s",
-		    it->addr);
-		return(-1);
-	} else {
-		/* Step over the @ */
-		host++;
-	}
-
 	port = SMTP_PORT;
 
 	/* Smarthost support? */
@@ -512,11 +501,23 @@ deliver_remote(struct qitem *it)
 		port = config.port;
 		syslog(LOG_INFO, "using smarthost (%s:%i)", host, port);
 		smarthost = 1;
+	} else {
+		host = strrchr(it->addr, '@');
+		/* Should not happen */
+		if (host == NULL) {
+			snprintf(errmsg, sizeof(errmsg), "Internal error: badly formed address %s",
+				 it->addr);
+			return(-1);
+		} else {
+			/* Step over the @ */
+			host++;
+		}
 	}
 
 	error = dns_get_mx_list(host, port, &hosts, smarthost);
 	if (error) {
-		syslog(LOG_NOTICE, "remote delivery %s: DNS failure (%s)",
+		snprintf(errmsg, sizeof(errmsg), "DNS lookup failure: host %s not found", host);
+		syslog(LOG_NOTICE, "remote delivery %s: DNS lookup failure: host %s not found",
 		       error < 0 ? "failed" : "deferred",
 		       host);
 		return (error);

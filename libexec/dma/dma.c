@@ -70,6 +70,7 @@ const char *logident_base;
 char errmsg[ERRMSG_SIZE];
 
 static int daemonize = 1;
+static int doqueue = 0;
 
 struct config config = {
 	.smarthost	= NULL,
@@ -94,25 +95,31 @@ sighup_handler(int signo)
 static char *
 set_from(struct queue *queue, const char *osender)
 {
+	const char *addr;
 	char *sender;
 
 	if (osender) {
-		sender = strdup(osender);
-		if (sender == NULL)
-			return (NULL);
+		addr = osender;
 	} else if (getenv("EMAIL") != NULL) {
-		sender = strdup(getenv("EMAIL"));
-		if (sender == NULL)
-			return (NULL);
+		addr = getenv("EMAIL");
 	} else {
-		const char *from_user = username;
+		if (config.masquerade_user)
+			addr = config.masquerade_user;
+		else
+			addr = username;
+	}
+
+	if (!strchr(addr, '@')) {
 		const char *from_host = hostname();
 
-		if (config.masquerade_user)
-			from_user = config.masquerade_user;
 		if (config.masquerade_host)
 			from_host = config.masquerade_host;
-		if (asprintf(&sender, "%s@%s", from_user, from_host) <= 0)
+
+		if (asprintf(&sender, "%s@%s", addr, from_host) <= 0)
+			return (NULL);
+	} else {
+		sender = strdup(addr);
+		if (sender == NULL)
 			return (NULL);
 	}
 
@@ -195,7 +202,12 @@ add_recp(struct queue *queue, const char *str, int expand)
 		}
 	}
 	LIST_INSERT_HEAD(&queue->queue, it, next);
-	if (strrchr(it->addr, '@') == NULL) {
+
+	/**
+	 * Do local delivery if there is no @.
+	 * Do not do local delivery when NULLCLIENT is set.
+	 */
+	if (strrchr(it->addr, '@') == NULL && (config.features & NULLCLIENT) == 0) {
 		it->remote = 0;
 		if (expand) {
 			aliased = do_alias(queue, it->addr);
@@ -265,11 +277,21 @@ retit:
 			/*
 			 * If necessary, acquire the queue and * mail files.
 			 * If this fails, we probably were raced by another
-			 * process.
+			 * process.  It is okay to be raced if we're supposed
+			 * to flush the queue.
 			 */
 			setlogident("%s", it->queueid);
-			if (acquirespool(it) < 0)
+			switch (acquirespool(it)) {
+			case 0:
+				break;
+			case 1:
+				if (doqueue)
+					exit(0);
+				syslog(LOG_WARNING, "could not lock queue file");
 				exit(1);
+			default:
+				exit(1);
+			}
 			dropspool(queue, it);
 			return (it);
 
@@ -291,7 +313,7 @@ static void
 deliver(struct qitem *it)
 {
 	int error;
-	unsigned int backoff = MIN_RETRY;
+	unsigned int backoff = MIN_RETRY, slept;
 	struct timeval now;
 	struct stat st;
 
@@ -323,7 +345,14 @@ retry:
 				 MAX_TIMEOUT);
 			goto bounce;
 		}
-		if (sleep(backoff) == 0) {
+		for (slept = 0; slept < backoff;) {
+			slept += SLEEP_TIMEOUT - sleep(SLEEP_TIMEOUT);
+			if (flushqueue_since(slept)) {
+				backoff = MIN_RETRY;
+				goto retry;
+			}
+		}
+		if (slept >= backoff) {
 			/* pick the next backoff between [1.5, 2.5) times backoff */
 			backoff = backoff + backoff / 2 + random() % backoff;
 			if (backoff > MAX_RETRY)
@@ -393,7 +422,7 @@ main(int argc, char **argv)
 	char *sender = NULL;
 	struct queue queue;
 	int i, ch;
-	int nodot = 0, doqueue = 0, showq = 0, queue_only = 0;
+	int nodot = 0, showq = 0, queue_only = 0;
 	int recp_from_header = 0;
 
 	set_username();
@@ -405,9 +434,14 @@ main(int argc, char **argv)
 	if (geteuid() == 0 || getuid() == 0) {
 		struct passwd *pw;
 
+		errno = 0;
 		pw = getpwnam(DMA_ROOT_USER);
-		if (pw == NULL)
-			err(1, "cannot drop root privileges");
+		if (pw == NULL) {
+			if (errno == 0)
+				errx(1, "user '%s' not found", DMA_ROOT_USER);
+			else
+				err(1, "cannot drop root privileges");
+		}
 
 		if (setuid(pw->pw_uid) != 0)
 			err(1, "cannot drop root privileges");
@@ -428,6 +462,13 @@ main(int argc, char **argv)
 		if (argc != 0)
 			errx(1, "invalid arguments");
 		goto skipopts;
+	} else if (strcmp(argv[0], "newaliases") == 0) {
+		logident_base = "dma";
+		setlogident(NULL);
+
+		if (read_aliases() != 0)
+			errx(1, "could not parse aliases file `%s'", config.aliases);
+		exit(0);
 	}
 
 	opterr = 0;
@@ -476,6 +517,9 @@ main(int argc, char **argv)
 			break;
 
 		case 'q':
+			/* Don't let getopt slup up other arguments */
+			if (optarg && *optarg == '-')
+				optind--;
 			doqueue = 1;
 			break;
 
@@ -540,6 +584,7 @@ skipopts:
 	}
 
 	if (doqueue) {
+		flushqueue_signal();
 		if (load_queue(&queue) < 0)
 			errlog(1, "can not load queue");
 		run_queue(&queue);
@@ -547,13 +592,13 @@ skipopts:
 	}
 
 	if (read_aliases() != 0)
-		errlog(1, "can not read aliases file `%s'", config.aliases);
+		errlog(1, "could not parse aliases file `%s'", config.aliases);
 
 	if ((sender = set_from(&queue, sender)) == NULL)
 		errlog(1, NULL);
 
 	if (newspoolf(&queue) != 0)
-		errlog(1, "can not create temp file");
+		errlog(1, "can not create temp file in `%s'", config.spooldir);
 
 	setlogident("%s", queue.id);
 
