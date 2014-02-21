@@ -30,7 +30,6 @@
  *
  * @(#)rand.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/lib/libc/stdlib/rand.c,v 1.17 2007/12/11 20:39:32 ache Exp $
- * $DragonFly: src/lib/libc/stdlib/rand.c,v 1.6 2005/11/20 14:58:40 swildner Exp $
  */
 
 #include "namespace.h"
@@ -45,17 +44,6 @@
 #include <stdio.h>
 #endif /* TEST */
 
-static int
-do_rand(unsigned long *ctx)
-{
-#ifdef  USE_WEAK_SEEDING
-/*
- * Historic implementation compatibility.
- * The random sequences do not vary much with the seed,
- * even with overflowing.
- */
-	return ((*ctx = *ctx * 1103515245 + 12345) % ((u_long)RAND_MAX + 1));
-#else   /* !USE_WEAK_SEEDING */
 /*
  * Compute x = (7^5 * x) mod (2^31 - 1)
  * without overflowing 31 bits:
@@ -64,6 +52,9 @@ do_rand(unsigned long *ctx)
  * Park and Miller, Communications of the ACM, vol. 31, no. 10,
  * October 1988, p. 1195.
  */
+static int
+do_rand(unsigned long *ctx)
+{
 	long hi, lo, x;
 
 	/* Can't be initialized with 0, so use another value. */
@@ -75,7 +66,6 @@ do_rand(unsigned long *ctx)
 	if (x < 0)
 		x += 0x7fffffff;
 	return ((*ctx = x) % ((u_long)RAND_MAX + 1));
-#endif  /* !USE_WEAK_SEEDING */
 }
 
 
