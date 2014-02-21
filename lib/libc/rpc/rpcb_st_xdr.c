@@ -83,7 +83,6 @@ bool_t
 xdr_rpcbs_rmtcalllist(XDR *xdrs, rpcbs_rmtcalllist *objp)
 {
 	int32_t *buf;
-	struct rpcbs_rmtcalllist **pnext;
 
 	if (xdrs->x_op == XDR_ENCODE) {
 		buf = XDR_INLINE(xdrs, 6 * BYTES_PER_XDR_UNIT);
@@ -117,8 +116,7 @@ xdr_rpcbs_rmtcalllist(XDR *xdrs, rpcbs_rmtcalllist *objp)
 		if (!xdr_string(xdrs, &objp->netid, (u_int)~0)) {
 			return (FALSE);
 		}
-		pnext = &objp->next;
-		if (!xdr_pointer(xdrs, (char **) pnext,
+		if (!xdr_pointer(xdrs, (char **)&objp->next,
 				sizeof (rpcbs_rmtcalllist),
 				(xdrproc_t)xdr_rpcbs_rmtcalllist)) {
 			return (FALSE);
@@ -156,7 +154,7 @@ xdr_rpcbs_rmtcalllist(XDR *xdrs, rpcbs_rmtcalllist *objp)
 		if (!xdr_string(xdrs, &objp->netid, (u_int)~0)) {
 			return (FALSE);
 		}
-		if (!xdr_pointer(xdrs, (char **) pnext,
+		if (!xdr_pointer(xdrs, (char **)&objp->next,
 				sizeof (rpcbs_rmtcalllist),
 				(xdrproc_t)xdr_rpcbs_rmtcalllist)) {
 			return (FALSE);
@@ -184,7 +182,7 @@ xdr_rpcbs_rmtcalllist(XDR *xdrs, rpcbs_rmtcalllist *objp)
 	if (!xdr_string(xdrs, &objp->netid, (u_int)~0)) {
 		return (FALSE);
 	}
-	if (!xdr_pointer(xdrs, (char **) pnext,
+	if (!xdr_pointer(xdrs, (char **)&objp->next,
 			sizeof (rpcbs_rmtcalllist),
 			(xdrproc_t)xdr_rpcbs_rmtcalllist)) {
 		return (FALSE);
