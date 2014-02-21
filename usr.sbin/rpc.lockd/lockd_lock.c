@@ -585,19 +585,19 @@ do_unlock(struct file_lock *rfl)
 	int error;
 	int lockst;
 
-	/* unlock the file: closing is enouth ! */
+	/* unlock the file: closing is enough! */
 	if (close(rfl->fd) < 0) {
 		if (errno == ESTALE)
 			error = nlm4_stale_fh;
 		else
 			error = nlm4_failed;
-		if ((fl->flags & LOCK_V4) == 0)
+		if ((rfl->flags & LOCK_V4) == 0)
 			error = nlm_denied;
 		syslog(LOG_NOTICE,
 		    "close failed (from %s): %s",
 		    rfl->client_name, strerror(errno));
 	} else {
-		error = (fl->flags & LOCK_V4) ?
+		error = (rfl->flags & LOCK_V4) ?
 		    nlm4_granted : nlm_granted;
 	}
 	LIST_REMOVE(rfl, lcklst);
