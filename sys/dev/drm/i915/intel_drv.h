@@ -179,6 +179,7 @@ struct intel_crtc {
 	u8 lut_r[256], lut_g[256], lut_b[256];
 	int dpms_mode;
 	bool active; /* is the crtc on? independent of the dpms mode */
+	bool primary_disabled; /* is the crtc obscured by a plane? */
 	bool busy; /* is scanout buffer being updated frequently? */
 	struct callout idle_callout;
 	bool lowfreq_avail;
@@ -201,7 +202,7 @@ struct intel_plane {
 	struct drm_plane base;
 	enum i915_pipe pipe;
 	struct drm_i915_gem_object *obj;
-	bool primary_disabled;
+	bool can_scale;
 	int max_downscale;
 	u32 lut_r[1024], lut_g[1024], lut_b[1024];
 	void (*update_plane)(struct drm_plane *plane,
@@ -318,6 +319,8 @@ struct intel_fbc_work {
 	int interval;
 };
 
+int intel_connector_update_modes(struct drm_connector *connector,
+				struct edid *edid);
 int intel_ddc_get_modes(struct drm_connector *c, device_t adapter);
 extern bool intel_ddc_probe(struct intel_encoder *intel_encoder, int ddc_bus);
 
@@ -378,6 +381,9 @@ extern struct drm_display_mode *intel_crtc_mode_get(struct drm_device *dev,
 						    struct drm_crtc *crtc);
 int intel_get_pipe_from_crtc_id(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
+extern enum transcoder
+intel_pipe_to_cpu_transcoder(struct drm_i915_private *dev_priv,
+			     enum i915_pipe pipe);
 extern void intel_wait_for_vblank(struct drm_device *dev, int pipe);
 extern void intel_wait_for_pipe_off(struct drm_device *dev, int pipe);
 
@@ -449,6 +455,11 @@ extern void intel_update_watermarks(struct drm_device *dev);
 extern void intel_update_sprite_watermarks(struct drm_device *dev, int pipe,
 					   uint32_t sprite_width,
 					   int pixel_size);
+
+extern unsigned long intel_gen4_compute_offset_xtiled(int *x, int *y,
+						      unsigned int bpp,
+						      unsigned int pitch);
+
 extern int intel_sprite_set_colorkey(struct drm_device *dev, void *data,
 				     struct drm_file *file_priv);
 extern int intel_sprite_get_colorkey(struct drm_device *dev, void *data,

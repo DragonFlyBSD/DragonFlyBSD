@@ -58,12 +58,30 @@ enum i915_pipe {
 #define pipe_name(p) ((p) + 'A')
 #define I915_NUM_PIPE	2
 
+enum transcoder {
+	TRANSCODER_A = 0,
+	TRANSCODER_B,
+	TRANSCODER_C,
+	TRANSCODER_EDP = 0xF,
+};
+#define transcoder_name(t) ((t) + 'A')
+
 enum plane {
 	PLANE_A = 0,
 	PLANE_B,
 	PLANE_C,
 };
 #define plane_name(p) ((p) + 'A')
+
+enum port {
+	PORT_A = 0,
+	PORT_B,
+	PORT_C,
+	PORT_D,
+	PORT_E,
+	I915_MAX_PORTS
+};
+#define port_name(p) ((p) + 'A')
 
 #define	I915_GEM_GPU_DOMAINS	(~(I915_GEM_DOMAIN_CPU | I915_GEM_DOMAIN_GTT))
 
@@ -104,12 +122,8 @@ struct intel_ddi_plls {
 #define DRIVER_PATCHLEVEL	0
 
 #define WATCH_COHERENCY	0
-#define WATCH_BUF	0
-#define WATCH_EXEC	0
-#define WATCH_LRU	0
-#define WATCH_RELOC	0
-#define WATCH_INACTIVE	0
-#define WATCH_PWRITE	0
+#define WATCH_LISTS	0
+#define WATCH_GTT	0
 
 #define I915_GEM_PHYS_CURSOR_0 1
 #define I915_GEM_PHYS_CURSOR_1 2
@@ -122,7 +136,107 @@ struct drm_i915_gem_phys_object {
 	struct drm_i915_gem_object *cur_obj;
 };
 
+struct opregion_header;
+struct opregion_acpi;
+struct opregion_swsci;
+struct opregion_asle;
 struct drm_i915_private;
+
+struct intel_opregion {
+	struct opregion_header __iomem *header;
+	struct opregion_acpi __iomem *acpi;
+	struct opregion_swsci __iomem *swsci;
+	struct opregion_asle __iomem *asle;
+	void __iomem *vbt;
+	u32 __iomem *lid_state;
+};
+#define OPREGION_SIZE            (8*1024)
+
+struct intel_overlay;
+struct intel_overlay_error_state;
+
+struct drm_i915_master_private {
+	drm_local_map_t *sarea;
+	struct _drm_i915_sarea *sarea_priv;
+};
+#define I915_FENCE_REG_NONE -1
+#define I915_MAX_NUM_FENCES 16
+/* 16 fences + sign bit for FENCE_REG_NONE */
+#define I915_MAX_NUM_FENCE_BITS 5
+
+struct drm_i915_fence_reg {
+	struct list_head lru_list;
+	struct drm_i915_gem_object *obj;
+	uint32_t setup_seqno;
+	int pin_count;
+};
+
+struct sdvo_device_mapping {
+	u8 initialized;
+	u8 dvo_port;
+	u8 slave_addr;
+	u8 dvo_wiring;
+	u8 i2c_pin;
+	u8 ddc_pin;
+};
+
+struct drm_i915_error_state {
+	u32 eir;
+	u32 pgtbl_er;
+	u32 pipestat[I915_MAX_PIPES];
+	u32 tail[I915_NUM_RINGS];
+	u32 head[I915_NUM_RINGS];
+	u32 ipeir[I915_NUM_RINGS];
+	u32 ipehr[I915_NUM_RINGS];
+	u32 instdone[I915_NUM_RINGS];
+	u32 acthd[I915_NUM_RINGS];
+	u32 semaphore_mboxes[I915_NUM_RINGS][I915_NUM_RINGS - 1];
+	/* our own tracking of ring head and tail */
+	u32 cpu_ring_head[I915_NUM_RINGS];
+	u32 cpu_ring_tail[I915_NUM_RINGS];
+	u32 error; /* gen6+ */
+	u32 instpm[I915_NUM_RINGS];
+	u32 instps[I915_NUM_RINGS];
+	u32 instdone1;
+	u32 seqno[I915_NUM_RINGS];
+	u64 bbaddr;
+	u32 fault_reg[I915_NUM_RINGS];
+	u32 done_reg;
+	u32 faddr[I915_NUM_RINGS];
+	u64 fence[I915_MAX_NUM_FENCES];
+	struct timeval time;
+	struct drm_i915_error_ring {
+		struct drm_i915_error_object {
+			int page_count;
+			u32 gtt_offset;
+			u32 *pages[0];
+		} *ringbuffer, *batchbuffer;
+		struct drm_i915_error_request {
+			long jiffies;
+			u32 seqno;
+			u32 tail;
+		} *requests;
+		int num_requests;
+	} ring[I915_NUM_RINGS];
+	struct drm_i915_error_buffer {
+		u32 size;
+		u32 name;
+		u32 seqno;
+		u32 gtt_offset;
+		u32 read_domains;
+		u32 write_domain;
+		s32 fence_reg:I915_MAX_NUM_FENCE_BITS;
+		s32 pinned:2;
+		u32 tiling:2;
+		u32 dirty:1;
+		u32 purgeable:1;
+		s32 ring:4;
+		u32 cache_level:2;
+	} *active_bo, *pinned_bo;
+	u32 active_bo_count, pinned_bo_count;
+	struct intel_overlay_error_state *overlay;
+	struct intel_display_error_state *display;
+};
 
 struct drm_i915_display_funcs {
 	void (*dpms)(struct drm_crtc *crtc, int mode);
@@ -157,6 +271,37 @@ struct drm_i915_display_funcs {
 	/* display clock increase/decrease */
 	/* pll clock increase/decrease */
 };
+
+struct drm_i915_gt_funcs {
+	void (*force_wake_get)(struct drm_i915_private *dev_priv);
+	void (*force_wake_put)(struct drm_i915_private *dev_priv);
+};
+
+#define DEV_INFO_FLAGS \
+	DEV_INFO_FLAG(is_mobile) DEV_INFO_SEP \
+	DEV_INFO_FLAG(is_i85x) DEV_INFO_SEP \
+	DEV_INFO_FLAG(is_i915g) DEV_INFO_SEP \
+	DEV_INFO_FLAG(is_i945gm) DEV_INFO_SEP \
+	DEV_INFO_FLAG(is_g33) DEV_INFO_SEP \
+	DEV_INFO_FLAG(need_gfx_hws) DEV_INFO_SEP \
+	DEV_INFO_FLAG(is_g4x) DEV_INFO_SEP \
+	DEV_INFO_FLAG(is_pineview) DEV_INFO_SEP \
+	DEV_INFO_FLAG(is_broadwater) DEV_INFO_SEP \
+	DEV_INFO_FLAG(is_crestline) DEV_INFO_SEP \
+	DEV_INFO_FLAG(is_ivybridge) DEV_INFO_SEP \
+	DEV_INFO_FLAG(is_valleyview) DEV_INFO_SEP \
+	DEV_INFO_FLAG(is_haswell) DEV_INFO_SEP \
+	DEV_INFO_FLAG(has_force_wake) DEV_INFO_SEP \
+	DEV_INFO_FLAG(has_fbc) DEV_INFO_SEP \
+	DEV_INFO_FLAG(has_pipe_cxsr) DEV_INFO_SEP \
+	DEV_INFO_FLAG(has_hotplug) DEV_INFO_SEP \
+	DEV_INFO_FLAG(cursor_needs_physical) DEV_INFO_SEP \
+	DEV_INFO_FLAG(has_overlay) DEV_INFO_SEP \
+	DEV_INFO_FLAG(overlay_needs_physical) DEV_INFO_SEP \
+	DEV_INFO_FLAG(supports_tv) DEV_INFO_SEP \
+	DEV_INFO_FLAG(has_bsd_ring) DEV_INFO_SEP \
+	DEV_INFO_FLAG(has_blt_ring) DEV_INFO_SEP \
+	DEV_INFO_FLAG(has_llc)
 
 struct intel_device_info {
 	u8 gen;
@@ -223,36 +368,10 @@ struct opregion_acpi;
 struct opregion_swsci;
 struct opregion_asle;
 
-struct intel_opregion {
-	struct opregion_header *header;
-	struct opregion_acpi *acpi;
-	struct opregion_swsci *swsci;
-	struct opregion_asle *asle;
-	void *vbt;
-	u32 *lid_state;
-};
-#define OPREGION_SIZE            (8*1024)
-
 #define I915_FENCE_REG_NONE -1
 #define I915_MAX_NUM_FENCES 16
 /* 16 fences + sign bit for FENCE_REG_NONE */
 #define I915_MAX_NUM_FENCE_BITS 5
-
-struct drm_i915_fence_reg {
-	struct list_head lru_list;
-	struct drm_i915_gem_object *obj;
-	uint32_t setup_seqno;
-	int pin_count;
-};
-
-struct sdvo_device_mapping {
-	u8 initialized;
-	u8 dvo_port;
-	u8 slave_addr;
-	u8 dvo_wiring;
-	u8 i2c_pin;
-	u8 ddc_pin;
-};
 
 enum intel_pch {
 	PCH_IBX,	/* Ibexpeak PCH */
@@ -962,64 +1081,6 @@ struct drm_i915_file_private {
 		struct spinlock lock;
 		struct list_head request_list;
 	} mm;
-};
-
-struct drm_i915_error_state {
-	u32 eir;
-	u32 pgtbl_er;
-	u32 pipestat[I915_MAX_PIPES];
-	u32 tail[I915_NUM_RINGS];
-	u32 head[I915_NUM_RINGS];
-	u32 ipeir[I915_NUM_RINGS];
-	u32 ipehr[I915_NUM_RINGS];
-	u32 instdone[I915_NUM_RINGS];
-	u32 acthd[I915_NUM_RINGS];
-	u32 semaphore_mboxes[I915_NUM_RINGS][I915_NUM_RINGS - 1];
-	/* our own tracking of ring head and tail */
-	u32 cpu_ring_head[I915_NUM_RINGS];
-	u32 cpu_ring_tail[I915_NUM_RINGS];
-	u32 error; /* gen6+ */
-	u32 instpm[I915_NUM_RINGS];
-	u32 instps[I915_NUM_RINGS];
-	u32 instdone1;
-	u32 seqno[I915_NUM_RINGS];
-	u64 bbaddr;
-	u32 fault_reg[I915_NUM_RINGS];
-	u32 done_reg;
-	u32 faddr[I915_NUM_RINGS];
-	u64 fence[I915_MAX_NUM_FENCES];
-	struct timeval time;
-	struct drm_i915_error_ring {
-		struct drm_i915_error_object {
-			int page_count;
-			u32 gtt_offset;
-			u32 *pages[0];
-		} *ringbuffer, *batchbuffer;
-		struct drm_i915_error_request {
-			long jiffies;
-			u32 seqno;
-			u32 tail;
-		} *requests;
-		int num_requests;
-	} ring[I915_NUM_RINGS];
-	struct drm_i915_error_buffer {
-		u32 size;
-		u32 name;
-		u32 seqno;
-		u32 gtt_offset;
-		u32 read_domains;
-		u32 write_domain;
-		s32 fence_reg:I915_MAX_NUM_FENCE_BITS;
-		s32 pinned:2;
-		u32 tiling:2;
-		u32 dirty:1;
-		u32 purgeable:1;
-		s32 ring:4;
-		u32 cache_level:2;
-	} *active_bo, *pinned_bo;
-	u32 active_bo_count, pinned_bo_count;
-	struct intel_overlay_error_state *overlay;
-	struct intel_display_error_state *display;
 };
 
 /**
