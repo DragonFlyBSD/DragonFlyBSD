@@ -27,7 +27,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ata.4,v 1.72 2007/03/10 12:44:22 brueffer Exp $
 .\"
-.Dd January 1, 2008
+.Dd February 22, 2014
 .Dt NATA 4
 .Os
 .Sh NAME
@@ -38,6 +38,10 @@
 .Nm ast
 .Nd generic ATA/ATAPI disk controller driver
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
 For ISA based ATA/ATAPI support:
 .Cd device isa
 .Cd device nata0 at isa? port IO_WD1 irq 14
@@ -61,6 +65,22 @@ To support ATAPI floppy drives:
 .Pp
 To support ATAPI tape drives:
 .Cd device natapist
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+nata_load="YES"
+natacard_load="YES"
+natadisk_load="YES"
+nataisa_load="YES"
+natapci_load="YES"
+natapicd_load="YES"
+natapifd_load="YES"
+natapist_load="YES"
+natausb_load="YES"
+.Ed
 .Pp
 The following tunables are settable from the loader:
 .Bl -ohang

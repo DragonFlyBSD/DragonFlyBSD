@@ -1,6 +1,5 @@
 SUBDIR=		nata natacard natadisk nataisa natapci natapicd natapifd \
-		natapist natapicam
-#SUBDIR+=	nataraid
+		natapist natapicam nataraid
 
 .if !defined(WANT_USB4BSD)
 SUBDIR+=	natausb

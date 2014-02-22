@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ataraid.4,v 1.10 2006/09/18 15:24:18 ru Exp $
 .\"
-.Dd June 24, 2007
+.Dd February 22, 2014
 .Dt NATARAID 4
 .Os
 .Sh NAME
@@ -32,8 +32,20 @@
 .Nm ar
 .Nd "ATA software RAID support"
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd "device nata"
 .Cd "device nataraid"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+nataraid_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
