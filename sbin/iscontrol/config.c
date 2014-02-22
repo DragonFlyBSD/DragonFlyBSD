@@ -91,7 +91,7 @@
 #define OPT_iqn				34
 #define OPT_sockbufsize			35
 
-#define _OFF(v)	((int)&((isc_opt_t *)NULL)->v)
+#define _OFF(v)	(offsetof(isc_opt_t *), (v))
 #define _E(u, s, v) {.usage=u, .scope=s, .name=#v, .tokenID=OPT_##v}
 
 textkey_t keyMap[] = {
