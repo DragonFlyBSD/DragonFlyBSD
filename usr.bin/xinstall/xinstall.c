@@ -803,7 +803,7 @@ strip(const char *to_name)
 		stripbin = getenv("STRIPBIN");
 		if (stripbin == NULL)
 			stripbin = "strip";
-		execlp(stripbin, stripbin, to_name, (char *)NULL);
+		execlp(stripbin, stripbin, to_name, NULL);
 		err(EX_OSERR, "exec(%s)", stripbin);
 	default:
 		if (wait(&status) == -1 || status) {

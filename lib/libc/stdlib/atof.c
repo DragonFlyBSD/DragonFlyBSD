@@ -42,5 +42,5 @@ atof(const char *ascii)
 double
 atof_l(const char *ascii, locale_t locale)
 {
-	return strtod_l(ascii, (char **)NULL, locale);
+	return strtod_l(ascii, NULL, locale);
 }

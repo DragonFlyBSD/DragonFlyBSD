@@ -164,30 +164,30 @@ oce_hw_pci_free(POCE_SOFTC sc)
 		bus_release_resource(sc->dev,
 				     SYS_RES_MEMORY,
 				     PCIR_BAR(pci_cfg_barnum), sc->devcfg_res);
-		sc->devcfg_res = (struct resource *)NULL;
+		sc->devcfg_res = NULL;
 		sc->devcfg_btag = (bus_space_tag_t) 0;
 		sc->devcfg_bhandle = (bus_space_handle_t)0;
-		sc->devcfg_vhandle = (void *)NULL;
+		sc->devcfg_vhandle = NULL;
 	}
 
 	if (sc->csr_res != NULL) {
 		bus_release_resource(sc->dev,
 				     SYS_RES_MEMORY,
 				     PCIR_BAR(OCE_PCI_CSR_BAR), sc->csr_res);
-		sc->csr_res = (struct resource *)NULL;
+		sc->csr_res = NULL;
 		sc->csr_btag = (bus_space_tag_t)0;
 		sc->csr_bhandle = (bus_space_handle_t)0;
-		sc->csr_vhandle = (void *)NULL;
+		sc->csr_vhandle = NULL;
 	}
 
 	if (sc->db_res != NULL) {
 		bus_release_resource(sc->dev,
 				     SYS_RES_MEMORY,
 				     PCIR_BAR(OCE_PCI_DB_BAR), sc->db_res);
-		sc->db_res = (struct resource *)NULL;
+		sc->db_res = NULL;
 		sc->db_btag = (bus_space_tag_t)0;
 		sc->db_bhandle = (bus_space_handle_t)0;
-		sc->db_vhandle = (void *)NULL;
+		sc->db_vhandle = NULL;
 	}
 }
 

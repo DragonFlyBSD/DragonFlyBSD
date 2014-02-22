@@ -744,9 +744,9 @@ literal:
 
 				buf[nr] = '\0';
 				if ((flags & UNSIGNED) == 0)
-				    res = strtoimax_l(buf, (char **)NULL, base, locale);
+				    res = strtoimax_l(buf, NULL, base, locale);
 				else
-				    res = strtoumax_l(buf, (char **)NULL, base, locale);
+				    res = strtoumax_l(buf, NULL, base, locale);
 				if (flags & POINTER)
 					*va_arg(ap, void **) =
 							(void *)(uintptr_t)res;

@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1988, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)shutdown.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/shutdown/shutdown.c,v 1.21.2.1 2001/07/30 10:38:08 dd Exp $
- * $DragonFly: src/sbin/shutdown/shutdown.c,v 1.6 2005/01/02 01:22:49 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -121,11 +120,11 @@ main(int argc, char **argv)
 		++p;
 	if (strcmp(p, "poweroff") == 0) {
 		if (getopt(argc, argv, "") != -1)
-			usage((char *)NULL);
+			usage(NULL);
 		argc -= optind;
 		argv += optind;
 		if (argc != 0)
-			usage((char *)NULL);
+			usage(NULL);
 		dopower = 1;
 		offset = 0;
 		(void)time(&shuttime);

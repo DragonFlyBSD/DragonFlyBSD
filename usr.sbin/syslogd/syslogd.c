@@ -1020,13 +1020,13 @@ logmsg(int pri, const char *msg, const char *from, int flags)
 			 * in the future.
 			 */
 			if (now > REPEATTIME(f)) {
-				fprintlog(f, flags, (char *)NULL);
+				fprintlog(f, flags, NULL);
 				BACKOFF(f);
 			}
 		} else {
 			/* new line, save it */
 			if (f->f_prevcount)
-				fprintlog(f, 0, (char *)NULL);
+				fprintlog(f, 0, NULL);
 			f->f_repeatcount = 0;
 			f->f_prevpri = pri;
 			(void)strlcpy(f->f_lasttime, timestamp,
@@ -1036,7 +1036,7 @@ logmsg(int pri, const char *msg, const char *from, int flags)
 			if (msglen < MAXSVLINE) {
 				f->f_prevlen = msglen;
 				(void)strlcpy(f->f_prevline, msg, sizeof(f->f_prevline));
-				fprintlog(f, flags, (char *)NULL);
+				fprintlog(f, flags, NULL);
 			} else {
 				f->f_prevline[0] = 0;
 				f->f_prevlen = 0;
@@ -1381,7 +1381,7 @@ reapchild(int signo __unused)
 	pid_t pid;
 	struct filed *f;
 
-	while ((pid = wait3(&status, WNOHANG, (struct rusage *)NULL)) > 0) {
+	while ((pid = wait3(&status, WNOHANG, NULL)) > 0) {
 		if (!Initialized)
 			/* Don't tell while we are initting. */
 			continue;
@@ -1557,7 +1557,7 @@ init(int signo)
 	for (f = Files; f != NULL; f = next) {
 		/* flush any pending output */
 		if (f->f_prevcount)
-			fprintlog(f, 0, (char *)NULL);
+			fprintlog(f, 0, NULL);
 
 		switch (f->f_type) {
 		case F_FILE:
@@ -2047,7 +2047,7 @@ markit(void)
 	struct filed *f;
 	dq_t q, next;
 
-	now = time((time_t *)NULL);
+	now = time(NULL);
 	MarkSeq += TIMERINTVL;
 	if (MarkSeq >= MarkInterval) {
 		logmsg(LOG_INFO, "-- MARK --",
@@ -2060,7 +2060,7 @@ markit(void)
 			dprintf("flush %s: repeated %d times, %d sec.\n",
 			    TypeNames[f->f_type], f->f_prevcount,
 			    repeatinterval[f->f_repeatcount]);
-			fprintlog(f, 0, (char *)NULL);
+			fprintlog(f, 0, NULL);
 			BACKOFF(f);
 		}
 	}

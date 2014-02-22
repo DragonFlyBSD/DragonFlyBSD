@@ -42,5 +42,5 @@ atol(const char *str)
 long
 atol_l(const char *str, locale_t locale)
 {
-	return strtol_l(str, (char **)NULL, 10, locale);
+	return strtol_l(str, NULL, 10, locale);
 }

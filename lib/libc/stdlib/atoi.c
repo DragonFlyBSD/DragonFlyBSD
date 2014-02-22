@@ -42,5 +42,5 @@ atoi(const char *str)
 int
 atoi_l(const char *str, locale_t locale)
 {
-	return (int)strtol_l(str, (char **)NULL, 10, locale);
+	return (int)strtol_l(str, NULL, 10, locale);
 }

@@ -214,7 +214,7 @@ get_pid(int fd, int *err)
 	bytes_read = read (fd, buf, sizeof (buf) - 1);
 	if (bytes_read > 0) {
 		buf[bytes_read] = '\0';
-		pid = (pid_t)strtol (buf, (char **) NULL, 10);
+		pid = (pid_t)strtol (buf, NULL, 10);
 	} else {
 		pid = -1;
 		*err = bytes_read ? errno : EINVAL;

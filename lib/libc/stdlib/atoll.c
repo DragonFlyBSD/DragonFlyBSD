@@ -41,5 +41,5 @@ atoll(const char *str)
 long long
 atoll_l(const char *str, locale_t locale)
 {
-	return strtoll_l(str, (char **)NULL, 10, locale);
+	return strtoll_l(str, NULL, 10, locale);
 }
