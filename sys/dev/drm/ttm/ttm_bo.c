@@ -203,7 +203,7 @@ int ttm_bo_reserve_nolru(struct ttm_buffer_object *bo,
 {
 	int ret;
 
-	while (unlikely(atomic_read(&bo->reserved) != 0)) {
+	while (unlikely(atomic_xchg(&bo->reserved, 1) != 0)) {
 		/**
 		 * Deadlock avoidance for multi-bo reserving.
 		 */
