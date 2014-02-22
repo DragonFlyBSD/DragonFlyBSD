@@ -40,9 +40,9 @@
 #include "opt_vm.h"
 
 #include <drm/drmP.h>
-#include <dev/drm/ttm/ttm_module.h>
-#include <dev/drm/ttm/ttm_bo_driver.h>
-#include <dev/drm/ttm/ttm_placement.h>
+#include <drm/ttm/ttm_module.h>
+#include <drm/ttm/ttm_bo_driver.h>
+#include <drm/ttm/ttm_placement.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>

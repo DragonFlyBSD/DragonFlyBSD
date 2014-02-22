@@ -37,8 +37,8 @@
  * $FreeBSD: head/sys/dev/drm2/ttm/ttm_lock.c 247835 2013-03-05 09:49:34Z kib $
  */
 
-#include <dev/drm/ttm/ttm_lock.h>
-#include <dev/drm/ttm/ttm_module.h>
+#include <drm/ttm/ttm_lock.h>
+#include <drm/ttm/ttm_module.h>
 
 #define TTM_WRITE_LOCK_PENDING    (1 << 0)
 #define TTM_VT_LOCK_PENDING       (1 << 1)

@@ -51,7 +51,7 @@
 #define _TTM_LOCK_H_
 
 #include <drm/drmP.h>
-#include <dev/drm/ttm/ttm_object.h>
+#include <drm/ttm/ttm_object.h>
 
 /**
  * struct ttm_lock

@@ -27,9 +27,9 @@
  **************************************************************************/
 
 #include <drm/drmP.h>
-#include <dev/drm/ttm/ttm_memory.h>
-#include <dev/drm/ttm/ttm_module.h>
-#include <dev/drm/ttm/ttm_page_alloc.h>
+#include <drm/ttm/ttm_memory.h>
+#include <drm/ttm/ttm_module.h>
+#include <drm/ttm/ttm_page_alloc.h>
 
 #define TTM_MEMORY_ALLOC_RETRIES 4
 

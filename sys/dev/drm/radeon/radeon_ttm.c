@@ -32,11 +32,11 @@
  * $FreeBSD: head/sys/dev/drm2/radeon/radeon_ttm.c 254885 2013-08-25 19:37:15Z dumbbell $
  */
 
-#include <dev/drm/ttm/ttm_bo_api.h>
-#include <dev/drm/ttm/ttm_bo_driver.h>
-#include <dev/drm/ttm/ttm_placement.h>
-#include <dev/drm/ttm/ttm_module.h>
-#include <dev/drm/ttm/ttm_page_alloc.h>
+#include <drm/ttm/ttm_bo_api.h>
+#include <drm/ttm/ttm_bo_driver.h>
+#include <drm/ttm/ttm_placement.h>
+#include <drm/ttm/ttm_module.h>
+#include <drm/ttm/ttm_page_alloc.h>
 #include <drm/drmP.h>
 #include <uapi_drm/radeon_drm.h>
 #include "radeon_reg.h"

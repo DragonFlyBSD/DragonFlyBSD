@@ -31,8 +31,8 @@
  */
 
 #include <drm/drmP.h>
-#include <dev/drm/ttm/ttm_bo_driver.h>
-#include <dev/drm/ttm/ttm_placement.h>
+#include <drm/ttm/ttm_bo_driver.h>
+#include <drm/ttm/ttm_placement.h>
 #include <sys/sfbuf.h>
 
 void ttm_bo_free_old_node(struct ttm_buffer_object *bo)

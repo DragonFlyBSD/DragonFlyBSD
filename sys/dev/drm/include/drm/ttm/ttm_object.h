@@ -39,7 +39,7 @@
 #define _TTM_OBJECT_H_
 
 #include <drm/drm_hashtab.h>
-#include <dev/drm/ttm/ttm_memory.h>
+#include <drm/ttm/ttm_memory.h>
 
 /**
  * enum ttm_ref_type

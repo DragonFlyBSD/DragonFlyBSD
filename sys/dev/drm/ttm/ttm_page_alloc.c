@@ -43,8 +43,8 @@
 #include <sys/eventhandler.h>
 
 #include <drm/drmP.h>
-#include <dev/drm/ttm/ttm_bo_driver.h>
-#include <dev/drm/ttm/ttm_page_alloc.h>
+#include <drm/ttm/ttm_bo_driver.h>
+#include <drm/ttm/ttm_page_alloc.h>
 
 #ifdef TTM_HAS_AGP
 #include <asm/agp.h>

@@ -31,9 +31,9 @@
  */
 
 #include <drm/drmP.h>
-#include <dev/drm/ttm/ttm_module.h>
-#include <dev/drm/ttm/ttm_bo_driver.h>
-#include <dev/drm/ttm/ttm_placement.h>
+#include <drm/ttm/ttm_module.h>
+#include <drm/ttm/ttm_bo_driver.h>
+#include <drm/ttm/ttm_placement.h>
 #include <drm/drm_mm.h>
 
 /**

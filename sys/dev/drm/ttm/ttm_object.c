@@ -54,8 +54,8 @@
 #define pr_fmt(fmt) "[TTM] " fmt
 
 #include <drm/drmP.h>
-#include <dev/drm/ttm/ttm_object.h>
-#include <dev/drm/ttm/ttm_module.h>
+#include <drm/ttm/ttm_object.h>
+#include <drm/ttm/ttm_module.h>
 
 struct ttm_object_file {
 	struct ttm_object_device *tdev;

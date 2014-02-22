@@ -72,11 +72,11 @@
 #include <contrib/dev/acpica/source/include/acpi.h>
 #include <dev/acpica/acpivar.h>
 
-#include <dev/drm/ttm/ttm_bo_api.h>
-#include <dev/drm/ttm/ttm_bo_driver.h>
-#include <dev/drm/ttm/ttm_placement.h>
-#include <dev/drm/ttm/ttm_module.h>
-#include <dev/drm/ttm/ttm_execbuf_util.h>
+#include <drm/ttm/ttm_bo_api.h>
+#include <drm/ttm/ttm_bo_driver.h>
+#include <drm/ttm/ttm_placement.h>
+#include <drm/ttm/ttm_module.h>
+#include <drm/ttm/ttm_execbuf_util.h>
 
 #include "radeon_family.h"
 #include "radeon_mode.h"
