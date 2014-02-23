@@ -3906,8 +3906,8 @@ matched_symbol(SymLook *req, const Obj_Entry *obj, Sym_Match_Result *result,
 	default:
 		return (false);
 	}
-    if (strcmp(req->name, strp) != 0)
-	return (false);
+	if (strcmp(req->name, strp) != 0)
+		return (false);
 
 	if (req->ventry == NULL) {
 		if (obj->versyms != NULL) {
