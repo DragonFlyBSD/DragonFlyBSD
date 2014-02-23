@@ -563,11 +563,11 @@ pw_copy(int ffd, int tfd, const struct passwd *pw, struct passwd *old_pw)
 		goto err;
  done:
 	if (line != NULL)
-	free(line);
+		free(line);
 	return (0);
  err:
 	if (line != NULL)
-	free(line);
+		free(line);
 	return (-1);
 }
 
