@@ -1086,7 +1086,7 @@ fprintlog(struct filed *f, int flags, const char *msg)
 		    f->f_prevhost, f->f_lasttime);
 		if (v->iov_len >= sizeof greetings)
 			v->iov_len = sizeof greetings - 1;
-			v++;
+		v++;
 		v->iov_base = nul;
 		v->iov_len = 0;
 		v++;
