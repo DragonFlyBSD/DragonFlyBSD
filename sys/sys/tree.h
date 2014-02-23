@@ -1,6 +1,5 @@
 /*	$NetBSD: tree.h,v 1.8 2004/03/28 19:38:30 provos Exp $	*/
 /*	$OpenBSD: tree.h,v 1.7 2002/10/17 21:51:54 art Exp $	*/
-/*	$DragonFly: src/sys/sys/tree.h,v 1.11 2008/01/07 01:22:30 corecode Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -409,6 +408,8 @@ struct {								\
 	_RB_PROTOTYPE(name, type, field, cmp, __unused static)
 
 #define _RB_PROTOTYPE(name, type, field, cmp, STORQUAL)			\
+STORQUAL void name##_RB_INSERT_COLOR(struct name *, struct type *);	\
+STORQUAL void name##_RB_REMOVE_COLOR(struct name *, struct type *, struct type *);\
 STORQUAL struct type *name##_RB_REMOVE(struct name *, struct type *);	\
 STORQUAL struct type *name##_RB_INSERT(struct name *, struct type *);	\
 STORQUAL struct type *name##_RB_FIND(struct name *, struct type *);	\
@@ -454,7 +455,7 @@ struct type *name##_RB_LOOKUP_##ext (struct name *, datatype)		\
 	_RB_GENERATE(name, type, field, cmp, __unused static)
 
 #define _RB_GENERATE(name, type, field, cmp, STORQUAL)			\
-static void								\
+void								\
 name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 {									\
 	struct type *parent, *gparent, *tmp;				\
@@ -498,7 +499,7 @@ name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 	RB_COLOR(head->rbh_root, field) = RB_BLACK;			\
 }									\
 									\
-static void								\
+void								\
 name##_RB_REMOVE_COLOR(struct name *head, struct type *parent,		\
 			struct type *elm) 				\
 {									\
