@@ -52,18 +52,6 @@ struct sim_dedup_entry {
 	RB_ENTRY(sim_dedup_entry) rb_entry;
 };
 
-/* Sorted list of HAMMER B-Tree keys */
-struct dedup_entry_rb_tree;
-struct sha_dedup_entry_rb_tree;
-
-RB_HEAD(dedup_entry_rb_tree, dedup_entry) dedup_tree =
-					RB_INITIALIZER(&dedup_tree);
-RB_PROTOTYPE2(dedup_entry_rb_tree, dedup_entry, rb_entry,
-		rb_dedup_entry_compare, hammer_crc_t);
-
-RB_PROTOTYPE(sha_dedup_entry_rb_tree, sha_dedup_entry, fict_entry,
-		rb_sha_dedup_entry_compare);
-
 struct dedup_entry {
 	struct hammer_btree_leaf_elm leaf;
 	union {
@@ -86,6 +74,18 @@ struct sha_dedup_entry {
 	u_int8_t			sha_hash[SHA256_DIGEST_LENGTH];
 	RB_ENTRY(sha_dedup_entry)	fict_entry;
 };
+
+/* Sorted list of HAMMER B-Tree keys */
+struct dedup_entry_rb_tree;
+struct sha_dedup_entry_rb_tree;
+
+RB_HEAD(dedup_entry_rb_tree, dedup_entry) dedup_tree =
+					RB_INITIALIZER(&dedup_tree);
+RB_PROTOTYPE2(dedup_entry_rb_tree, dedup_entry, rb_entry,
+		rb_dedup_entry_compare, hammer_crc_t);
+
+RB_PROTOTYPE(sha_dedup_entry_rb_tree, sha_dedup_entry, fict_entry,
+		rb_sha_dedup_entry_compare);
 
 /*
  * Pass2 list - contains entries that were not dedup'ed because ioctl failed
