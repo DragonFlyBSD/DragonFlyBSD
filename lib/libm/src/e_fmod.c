@@ -95,7 +95,7 @@ __ieee754_fmod(double x, double y)
 	    hz=hx-hy;lz=lx-ly; if(lx<ly) hz -= 1;
 	    if(hz<0){hx = hx+hx+(lx>>31); lx = lx+lx;}
 	    else {
-	    	if((hz|lz)==0) 		/* return sign(x)*0 */
+		if((hz|lz)==0) 		/* return sign(x)*0 */
 		    return Zero[(u_int32_t)sx>>31];
 	    	hx = hz+hz+(lz>>31); lx = lz+lz;
 	    }

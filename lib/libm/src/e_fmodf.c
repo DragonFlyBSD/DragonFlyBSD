@@ -75,7 +75,7 @@ __ieee754_fmodf(float x, float y)
 	    hz=hx-hy;
 	    if(hz<0){hx = hx+hx;}
 	    else {
-	    	if(hz==0) 		/* return sign(x)*0 */
+		if(hz==0) 		/* return sign(x)*0 */
 		    return Zero[(u_int32_t)sx>>31];
 	    	hx = hz+hz;
 	    }
