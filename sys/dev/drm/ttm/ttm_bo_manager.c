@@ -30,11 +30,11 @@
  * $FreeBSD: head/sys/dev/drm2/ttm/ttm_bo_manager.c 247835 2013-03-05 09:49:34Z kib $
  */
 
-#include <drm/drmP.h>
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <drm/drm_mm.h>
+#include <linux/export.h>
 
 /**
  * Currently we use a spinlock for the lock, but a mutex *may* be
@@ -108,9 +108,12 @@ static int ttm_bo_man_init(struct ttm_mem_type_manager *man,
 	int ret;
 
 	rman = kmalloc(sizeof(*rman), M_TTM_RMAN, M_ZERO | M_WAITOK);
+	if (!rman)
+		return -ENOMEM;
+
 	ret = drm_mm_init(&rman->mm, 0, p_size);
 	if (ret) {
-		drm_free(rman, M_TTM_RMAN);
+		kfree(rman, M_TTM_RMAN);
 		return ret;
 	}
 
@@ -128,8 +131,7 @@ static int ttm_bo_man_takedown(struct ttm_mem_type_manager *man)
 	if (drm_mm_clean(mm)) {
 		drm_mm_takedown(mm);
 		lockmgr(&rman->lock, LK_RELEASE);
-		lockuninit(&rman->lock);
-		drm_free(rman, M_TTM_RMAN);
+		kfree(rman, M_TTM_RMAN);
 		man->priv = NULL;
 		return 0;
 	}
@@ -154,3 +156,4 @@ const struct ttm_mem_type_manager_func ttm_bo_manager_func = {
 	ttm_bo_man_put_node,
 	ttm_bo_man_debug
 };
+EXPORT_SYMBOL(ttm_bo_manager_func);

@@ -23,13 +23,12 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- * $FreeBSD: head/sys/dev/drm2/ttm/ttm_execbuf_util.c 247835 2013-03-05 09:49:34Z kib $
  **************************************************************************/
 
-#include <drm/drmP.h>
 #include <drm/ttm/ttm_execbuf_util.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
+#include <linux/export.h>
 
 static void ttm_eu_backoff_reservation_locked(struct list_head *list)
 {
@@ -95,6 +94,7 @@ void ttm_eu_backoff_reservation(struct list_head *list)
 	ttm_eu_backoff_reservation_locked(list);
 	lockmgr(&glob->lru_lock, LK_RELEASE);
 }
+EXPORT_SYMBOL(ttm_eu_backoff_reservation);
 
 /*
  * Reserve buffers for validation.
@@ -130,7 +130,7 @@ int ttm_eu_reserve_buffers(struct list_head *list)
 	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	val_seq = entry->bo->bdev->val_seq++;
 
-retry_locked:
+retry:
 	list_for_each_entry(entry, list, head) {
 		struct ttm_buffer_object *bo = entry->bo;
 
@@ -144,8 +144,10 @@ retry_locked:
 			break;
 		case -EBUSY:
 			ttm_eu_del_from_lru_locked(list);
+			lockmgr(&glob->lru_lock, LK_RELEASE);
 			ret = ttm_bo_reserve_nolru(bo, true, false,
 						   true, val_seq);
+			lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 			if (!ret)
 				break;
 
@@ -164,18 +166,18 @@ retry_locked:
 			 */
 			val_seq = entry->bo->bdev->val_seq++;
 
+			lockmgr(&glob->lru_lock, LK_RELEASE);
 			ttm_eu_list_ref_sub(list);
 			ret = ttm_bo_reserve_slowpath_nolru(bo, true, val_seq);
-			if (unlikely(ret != 0)) {
-				lockmgr(&glob->lru_lock, LK_RELEASE);
+			if (unlikely(ret != 0))
 				return ret;
-			}
+			lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 			entry->reserved = true;
 			if (unlikely(atomic_read(&bo->cpu_writers) > 0)) {
 				ret = -EBUSY;
 				goto err;
 			}
-			goto retry_locked;
+			goto retry;
 		default:
 			goto err;
 		}
@@ -199,6 +201,7 @@ err:
 	ttm_eu_list_ref_sub(list);
 	return ret;
 }
+EXPORT_SYMBOL(ttm_eu_reserve_buffers);
 
 void ttm_eu_fence_buffer_objects(struct list_head *list, void *sync_obj)
 {
@@ -234,3 +237,4 @@ void ttm_eu_fence_buffer_objects(struct list_head *list, void *sync_obj)
 			driver->sync_obj_unref(&entry->old_sync_obj);
 	}
 }
+EXPORT_SYMBOL(ttm_eu_fence_buffer_objects);

@@ -26,14 +26,12 @@
  **************************************************************************/
 /*
  * Authors: Thomas Hellstrom <thellstrom-at-vmware-dot-com>
- *
- * $FreeBSD: head/sys/dev/drm2/ttm/ttm_bo_util.c 248666 2013-03-23 22:23:15Z kib $
  */
 
-#include <drm/drmP.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <sys/sfbuf.h>
+#include <linux/export.h>
 
 void ttm_bo_free_old_node(struct ttm_buffer_object *bo)
 {
@@ -71,6 +69,7 @@ int ttm_bo_move_ttm(struct ttm_buffer_object *bo,
 
 	return 0;
 }
+EXPORT_SYMBOL(ttm_bo_move_ttm);
 
 int ttm_mem_io_lock(struct ttm_mem_type_manager *man, bool interruptible)
 {
@@ -261,7 +260,7 @@ static int ttm_copy_io_ttm_page(struct ttm_tt *ttm, void *src,
 	if (!dst)
 		return -ENOMEM;
 
-	memcpy(dst, src, PAGE_SIZE);
+	memcpy_fromio(dst, src, PAGE_SIZE);
 
 	pmap_unmapdev((vm_offset_t)dst, PAGE_SIZE);
 
@@ -283,7 +282,7 @@ static int ttm_copy_ttm_io_page(struct ttm_tt *ttm, void *dst,
 	if (!src)
 		return -ENOMEM;
 
-	memcpy(dst, src, PAGE_SIZE);
+	memcpy_toio(dst, src, PAGE_SIZE);
 
 	pmap_unmapdev((vm_offset_t)src, PAGE_SIZE);
 
@@ -375,12 +374,13 @@ out:
 	ttm_bo_mem_put(bo, &old_copy);
 	return ret;
 }
+EXPORT_SYMBOL(ttm_bo_move_memcpy);
 
 MALLOC_DEFINE(M_TTM_TRANSF_OBJ, "ttm_transf_obj", "TTM Transfer Objects");
 
 static void ttm_transfered_destroy(struct ttm_buffer_object *bo)
 {
-	drm_free(bo, M_TTM_TRANSF_OBJ);
+	kfree(bo, M_TTM_TRANSF_OBJ);
 }
 
 /**
@@ -398,15 +398,17 @@ static void ttm_transfered_destroy(struct ttm_buffer_object *bo)
  * !0: Failure.
  */
 
-static int
-ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
-    struct ttm_buffer_object **new_obj)
+static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
+				      struct ttm_buffer_object **new_obj)
 {
 	struct ttm_buffer_object *fbo;
 	struct ttm_bo_device *bdev = bo->bdev;
 	struct ttm_bo_driver *driver = bdev->driver;
 
 	fbo = kmalloc(sizeof(*fbo), M_TTM_TRANSF_OBJ, M_WAITOK);
+	if (!fbo)
+		return -ENOMEM;
+
 	*fbo = *bo;
 
 	/**
@@ -439,7 +441,7 @@ ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 vm_memattr_t
 ttm_io_prot(uint32_t caching_flags)
 {
-#if defined(__i386__) || defined(__amd64__)
+#if defined(__i386__) || defined(__x86_64__)
 	if (caching_flags & TTM_PL_FLAG_WC)
 		return (VM_MEMATTR_WRITE_COMBINING);
 	else
@@ -452,6 +454,7 @@ ttm_io_prot(uint32_t caching_flags)
 #error Port me
 #endif
 }
+EXPORT_SYMBOL(ttm_io_prot);
 
 static int ttm_bo_ioremap(struct ttm_buffer_object *bo,
 			  unsigned long offset,
@@ -484,7 +487,7 @@ static int ttm_bo_kmap_ttm(struct ttm_buffer_object *bo,
 	struct ttm_tt *ttm = bo->ttm;
 	int i, ret;
 
-	KKASSERT(ttm != NULL);
+	BUG_ON(!ttm);
 
 	if (ttm->state == tt_unpopulated) {
 		ret = ttm->bdev->driver->ttm_tt_populate(ttm);
@@ -536,7 +539,7 @@ int ttm_bo_kmap(struct ttm_buffer_object *bo,
 	unsigned long offset, size;
 	int ret;
 
-	KKASSERT(list_empty(&bo->swap));
+	BUG_ON(!list_empty(&bo->swap));
 	map->virtual = NULL;
 	map->bo = bo;
 	if (num_pages > bo->num_pages)
@@ -560,6 +563,7 @@ int ttm_bo_kmap(struct ttm_buffer_object *bo,
 		return ttm_bo_ioremap(bo, offset, size, map);
 	}
 }
+EXPORT_SYMBOL(ttm_bo_kmap);
 
 void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 {
@@ -584,7 +588,7 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 	case ttm_bo_map_premapped:
 		break;
 	default:
-		KKASSERT(0);
+		BUG();
 	}
 	(void) ttm_mem_io_lock(man, false);
 	ttm_mem_io_free(map->bo->bdev, &map->bo->mem);
@@ -593,6 +597,7 @@ void ttm_bo_kunmap(struct ttm_bo_kmap_obj *map)
 	map->page = NULL;
 	map->sf = NULL;
 }
+EXPORT_SYMBOL(ttm_bo_kunmap);
 
 int ttm_bo_move_accel_cleanup(struct ttm_buffer_object *bo,
 			      void *sync_obj,
@@ -667,3 +672,4 @@ int ttm_bo_move_accel_cleanup(struct ttm_buffer_object *bo,
 
 	return 0;
 }
+EXPORT_SYMBOL(ttm_bo_move_accel_cleanup);

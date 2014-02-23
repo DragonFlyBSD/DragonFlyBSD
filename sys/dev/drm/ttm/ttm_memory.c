@@ -30,6 +30,7 @@
 #include <drm/ttm/ttm_memory.h>
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_page_alloc.h>
+#include <linux/export.h>
 
 #define TTM_MEMORY_ALLOC_RETRIES 4
 
@@ -279,6 +280,7 @@ out_no_zone:
 	ttm_mem_global_release(glob);
 	return ret;
 }
+EXPORT_SYMBOL(ttm_mem_global_init);
 
 void ttm_mem_global_release(struct ttm_mem_global *glob)
 {
@@ -300,6 +302,7 @@ void ttm_mem_global_release(struct ttm_mem_global *glob)
 	if (refcount_release(&glob->kobj_ref))
 		ttm_mem_global_kobj_release(glob);
 }
+EXPORT_SYMBOL(ttm_mem_global_release);
 
 static void ttm_check_swapping(struct ttm_mem_global *glob)
 {
@@ -344,6 +347,7 @@ void ttm_mem_global_free(struct ttm_mem_global *glob,
 {
 	ttm_mem_global_free_zone(glob, NULL, amount);
 }
+EXPORT_SYMBOL(ttm_mem_global_free);
 
 static int ttm_mem_global_reserve(struct ttm_mem_global *glob,
 				  struct ttm_mem_zone *single_zone,
@@ -417,6 +421,7 @@ int ttm_mem_global_alloc(struct ttm_mem_global *glob, uint64_t memory,
 	return ttm_mem_global_alloc_zone(glob, NULL, memory, no_wait,
 					 interruptible);
 }
+EXPORT_SYMBOL(ttm_mem_global_alloc);
 
 #define page_to_pfn(pp) OFF_TO_IDX(VM_PAGE_TO_PHYS(pp))
 
@@ -464,3 +469,4 @@ size_t ttm_round_pot(size_t size)
 	}
 	return 0;
 }
+EXPORT_SYMBOL(ttm_round_pot);

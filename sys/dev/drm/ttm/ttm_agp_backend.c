@@ -31,7 +31,8 @@
  * $FreeBSD: head/sys/dev/drm2/ttm/ttm_agp_backend.c 247835 2013-03-05 09:49:34Z kib $
  */
 
-#include <drm/drmP.h>
+#define pr_fmt(fmt) "[TTM] " fmt
+
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_page_alloc.h>
@@ -116,6 +117,8 @@ struct ttm_tt *ttm_agp_tt_create(struct ttm_bo_device *bdev,
 	struct ttm_agp_backend *agp_be;
 
 	agp_be = kmalloc(sizeof(*agp_be), M_TTM_AGP, M_WAITOK | M_ZERO);
+	if (!agp_be)
+		return NULL;
 
 	agp_be->mem = NULL;
 	agp_be->bridge = bridge;
@@ -127,6 +130,7 @@ struct ttm_tt *ttm_agp_tt_create(struct ttm_bo_device *bdev,
 
 	return &agp_be->ttm;
 }
+EXPORT_SYMBOL(ttm_agp_tt_create);
 
 int ttm_agp_tt_populate(struct ttm_tt *ttm)
 {
@@ -135,10 +139,12 @@ int ttm_agp_tt_populate(struct ttm_tt *ttm)
 
 	return ttm_pool_populate(ttm);
 }
+EXPORT_SYMBOL(ttm_agp_tt_populate);
 
 void ttm_agp_tt_unpopulate(struct ttm_tt *ttm)
 {
 	ttm_pool_unpopulate(ttm);
 }
+EXPORT_SYMBOL(ttm_agp_tt_unpopulate);
 
 #endif

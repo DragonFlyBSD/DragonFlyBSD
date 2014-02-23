@@ -39,6 +39,8 @@
 
 #include <drm/ttm/ttm_lock.h>
 #include <drm/ttm/ttm_module.h>
+#include <linux/atomic.h>
+#include <linux/export.h>
 
 #define TTM_WRITE_LOCK_PENDING    (1 << 0)
 #define TTM_VT_LOCK_PENDING       (1 << 1)
@@ -54,6 +56,7 @@ void ttm_lock_init(struct ttm_lock *lock)
 	lock->kill_takers = false;
 	lock->signal = SIGKILL;
 }
+EXPORT_SYMBOL(ttm_lock_init);
 
 static void
 ttm_lock_send_sig(int signo)
@@ -73,24 +76,27 @@ void ttm_read_unlock(struct ttm_lock *lock)
 		wakeup(lock);
 	lockmgr(&lock->lock, LK_RELEASE);
 }
+EXPORT_SYMBOL(ttm_read_unlock);
 
 static bool __ttm_read_lock(struct ttm_lock *lock)
 {
 	bool locked = false;
 
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	if (unlikely(lock->kill_takers)) {
 		ttm_lock_send_sig(lock->signal);
+		lockmgr(&lock->lock, LK_RELEASE);
 		return false;
 	}
 	if (lock->rw >= 0 && lock->flags == 0) {
 		++lock->rw;
 		locked = true;
 	}
+	lockmgr(&lock->lock, LK_RELEASE);
 	return locked;
 }
 
-int
-ttm_read_lock(struct ttm_lock *lock, bool interruptible)
+int ttm_read_lock(struct ttm_lock *lock, bool interruptible)
 {
 	const char *wmsg;
 	int flags, ret;
@@ -111,6 +117,7 @@ ttm_read_lock(struct ttm_lock *lock, bool interruptible)
 	}
 	return (-ret);
 }
+EXPORT_SYMBOL(ttm_read_lock);
 
 static bool __ttm_read_trylock(struct ttm_lock *lock, bool *locked)
 {
@@ -118,8 +125,10 @@ static bool __ttm_read_trylock(struct ttm_lock *lock, bool *locked)
 
 	*locked = false;
 
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	if (unlikely(lock->kill_takers)) {
 		ttm_lock_send_sig(lock->signal);
+		lockmgr(&lock->lock, LK_RELEASE);
 		return false;
 	}
 	if (lock->rw >= 0 && lock->flags == 0) {
@@ -129,6 +138,7 @@ static bool __ttm_read_trylock(struct ttm_lock *lock, bool *locked)
 	} else if (lock->flags == 0) {
 		block = false;
 	}
+	lockmgr(&lock->lock, LK_RELEASE);
 
 	return !block;
 }
@@ -166,13 +176,16 @@ void ttm_write_unlock(struct ttm_lock *lock)
 	wakeup(lock);
 	lockmgr(&lock->lock, LK_RELEASE);
 }
+EXPORT_SYMBOL(ttm_write_unlock);
 
 static bool __ttm_write_lock(struct ttm_lock *lock)
 {
 	bool locked = false;
 
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	if (unlikely(lock->kill_takers)) {
 		ttm_lock_send_sig(lock->signal);
+		lockmgr(&lock->lock, LK_RELEASE);
 		return false;
 	}
 	if (lock->rw == 0 && ((lock->flags & ~TTM_WRITE_LOCK_PENDING) == 0)) {
@@ -182,11 +195,11 @@ static bool __ttm_write_lock(struct ttm_lock *lock)
 	} else {
 		lock->flags |= TTM_WRITE_LOCK_PENDING;
 	}
+	lockmgr(&lock->lock, LK_RELEASE);
 	return locked;
 }
 
-int
-ttm_write_lock(struct ttm_lock *lock, bool interruptible)
+int ttm_write_lock(struct ttm_lock *lock, bool interruptible)
 {
 	const char *wmsg;
 	int flags, ret;
@@ -213,6 +226,7 @@ ttm_write_lock(struct ttm_lock *lock, bool interruptible)
 
 	return (-ret);
 }
+EXPORT_SYMBOL(ttm_write_lock);
 
 void ttm_write_lock_downgrade(struct ttm_lock *lock)
 {
@@ -244,13 +258,14 @@ static void ttm_vt_lock_remove(struct ttm_base_object **p_base)
 
 	*p_base = NULL;
 	ret = __ttm_vt_unlock(lock);
-	KKASSERT(ret == 0);
+	BUG_ON(ret != 0);
 }
 
 static bool __ttm_vt_lock(struct ttm_lock *lock)
 {
 	bool locked = false;
 
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	if (lock->rw == 0) {
 		lock->flags &= ~TTM_VT_LOCK_PENDING;
 		lock->flags |= TTM_VT_LOCK;
@@ -258,6 +273,7 @@ static bool __ttm_vt_lock(struct ttm_lock *lock)
 	} else {
 		lock->flags |= TTM_VT_LOCK_PENDING;
 	}
+	lockmgr(&lock->lock, LK_RELEASE);
 	return locked;
 }
 
@@ -301,12 +317,14 @@ int ttm_vt_lock(struct ttm_lock *lock,
 
 	return (-ret);
 }
+EXPORT_SYMBOL(ttm_vt_lock);
 
 int ttm_vt_unlock(struct ttm_lock *lock)
 {
 	return ttm_ref_object_base_unref(lock->vt_holder,
 					 lock->base.hash.key, TTM_REF_USAGE);
 }
+EXPORT_SYMBOL(ttm_vt_unlock);
 
 void ttm_suspend_unlock(struct ttm_lock *lock)
 {
@@ -315,11 +333,13 @@ void ttm_suspend_unlock(struct ttm_lock *lock)
 	wakeup(lock);
 	lockmgr(&lock->lock, LK_RELEASE);
 }
+EXPORT_SYMBOL(ttm_suspend_unlock);
 
 static bool __ttm_suspend_lock(struct ttm_lock *lock)
 {
 	bool locked = false;
 
+	lockmgr(&lock->lock, LK_EXCLUSIVE);
 	if (lock->rw == 0) {
 		lock->flags &= ~TTM_SUSPEND_LOCK_PENDING;
 		lock->flags |= TTM_SUSPEND_LOCK;
@@ -327,6 +347,7 @@ static bool __ttm_suspend_lock(struct ttm_lock *lock)
 	} else {
 		lock->flags |= TTM_SUSPEND_LOCK_PENDING;
 	}
+	lockmgr(&lock->lock, LK_RELEASE);
 	return locked;
 }
 
@@ -337,3 +358,4 @@ void ttm_suspend_lock(struct ttm_lock *lock)
 		lksleep(lock, &lock->lock, 0, "ttms", 0);
 	lockmgr(&lock->lock, LK_RELEASE);
 }
+EXPORT_SYMBOL(ttm_suspend_lock);

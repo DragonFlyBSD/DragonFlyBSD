@@ -38,6 +38,8 @@
  */
 
 #include <drm/drmP.h>
+
+#include <linux/export.h>
 #include <drm/ttm/ttm_module.h>
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
@@ -62,7 +64,6 @@ static void ttm_dma_tt_alloc_page_directory(struct ttm_dma_tt *ttm)
 	    sizeof(*ttm->dma_address), M_TTM_PD, M_WAITOK);
 }
 
-#if defined(__i386__) || defined(__amd64__)
 static inline int ttm_tt_set_page_caching(vm_page_t p,
 					  enum ttm_caching_state c_old,
 					  enum ttm_caching_state c_new)
@@ -84,14 +85,6 @@ static inline int ttm_tt_set_page_caching(vm_page_t p,
 
 	return (0);
 }
-#else
-static inline int ttm_tt_set_page_caching(vm_page_t p,
-					  enum ttm_caching_state c_old,
-					  enum ttm_caching_state c_new)
-{
-	return 0;
-}
-#endif
 
 /*
  * Change caching policy for the linear kernel map
@@ -135,7 +128,7 @@ static int ttm_tt_set_caching(struct ttm_tt *ttm,
 out_err:
 	for (j = 0; j < i; ++j) {
 		cur_page = ttm->pages[j];
-		if (cur_page != NULL) {
+		if (likely(cur_page != NULL)) {
 			(void)ttm_tt_set_page_caching(cur_page, c_state,
 						      ttm->caching_state);
 		}
@@ -157,6 +150,7 @@ int ttm_tt_set_placement_caching(struct ttm_tt *ttm, uint32_t placement)
 
 	return ttm_tt_set_caching(ttm, state);
 }
+EXPORT_SYMBOL(ttm_tt_set_placement_caching);
 
 void ttm_tt_destroy(struct ttm_tt *ttm)
 {
@@ -200,12 +194,14 @@ int ttm_tt_init(struct ttm_tt *ttm, struct ttm_bo_device *bdev,
 	}
 	return 0;
 }
+EXPORT_SYMBOL(ttm_tt_init);
 
 void ttm_tt_fini(struct ttm_tt *ttm)
 {
 	drm_free(ttm->pages, M_TTM_PD);
 	ttm->pages = NULL;
 }
+EXPORT_SYMBOL(ttm_tt_fini);
 
 int ttm_dma_tt_init(struct ttm_dma_tt *ttm_dma, struct ttm_bo_device *bdev,
 		unsigned long size, uint32_t page_flags,
@@ -231,6 +227,7 @@ int ttm_dma_tt_init(struct ttm_dma_tt *ttm_dma, struct ttm_bo_device *bdev,
 	}
 	return 0;
 }
+EXPORT_SYMBOL(ttm_dma_tt_init);
 
 void ttm_dma_tt_fini(struct ttm_dma_tt *ttm_dma)
 {
@@ -241,6 +238,7 @@ void ttm_dma_tt_fini(struct ttm_dma_tt *ttm_dma)
 	drm_free(ttm_dma->dma_address, M_TTM_PD);
 	ttm_dma->dma_address = NULL;
 }
+EXPORT_SYMBOL(ttm_dma_tt_fini);
 
 void ttm_tt_unbind(struct ttm_tt *ttm)
 {
@@ -248,7 +246,7 @@ void ttm_tt_unbind(struct ttm_tt *ttm)
 
 	if (ttm->state == tt_bound) {
 		ret = ttm->func->unbind(ttm);
-		KKASSERT(ret == 0);
+		BUG_ON(ret);
 		ttm->state = tt_unbound;
 	}
 }
@@ -275,6 +273,7 @@ int ttm_tt_bind(struct ttm_tt *ttm, struct ttm_mem_reg *bo_mem)
 
 	return 0;
 }
+EXPORT_SYMBOL(ttm_tt_bind);
 
 int ttm_tt_swapin(struct ttm_tt *ttm)
 {
@@ -330,18 +329,12 @@ int ttm_tt_swapout(struct ttm_tt *ttm, vm_object_t persistent_swap_storage)
 	vm_page_t from_page, to_page;
 	int i;
 
-	KKASSERT(ttm->state == tt_unbound || ttm->state == tt_unpopulated);
-	KKASSERT(ttm->caching_state == tt_cached);
+	BUG_ON(ttm->state != tt_unbound && ttm->state != tt_unpopulated);
+	BUG_ON(ttm->caching_state != tt_cached);
 
-	if (persistent_swap_storage == NULL) {
-#if 0
-		obj = vm_pager_allocate(OBJT_SWAP, NULL,
-		    IDX_TO_OFF(ttm->num_pages), VM_PROT_DEFAULT, 0,
-		    curthread->td_ucred);
-#else
+	if (!persistent_swap_storage) {
 		obj = swap_pager_alloc(NULL,
 		    IDX_TO_OFF(ttm->num_pages), VM_PROT_DEFAULT, 0);
-#endif
 		if (obj == NULL) {
 			kprintf("[TTM] Failed allocating swap storage\n");
 			return (-ENOMEM);
@@ -368,7 +361,8 @@ int ttm_tt_swapout(struct ttm_tt *ttm, vm_object_t persistent_swap_storage)
 	ttm->bdev->driver->ttm_tt_unpopulate(ttm);
 	ttm->swap_storage = obj;
 	ttm->page_flags |= TTM_PAGE_FLAG_SWAPPED;
-	if (persistent_swap_storage != NULL)
+	if (persistent_swap_storage)
 		ttm->page_flags |= TTM_PAGE_FLAG_PERSISTENT_SWAP;
-	return (0);
+
+	return 0;
 }
