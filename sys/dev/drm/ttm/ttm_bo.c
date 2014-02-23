@@ -37,6 +37,7 @@
 #include <drm/ttm/ttm_placement.h>
 #include <linux/atomic.h>
 #include <linux/export.h>
+#include <linux/rbtree.h>
 
 #define TTM_ASSERT_LOCKED(param)
 #define TTM_DEBUG(fmt, arg...)
@@ -763,8 +764,7 @@ static void ttm_bo_release(struct kref *kref)
 
 	lockmgr(&bdev->vm_lock, LK_EXCLUSIVE);
 	if (likely(bo->vm_node != NULL)) {
-		RB_REMOVE(ttm_bo_device_buffer_objects,
-		    &bdev->addr_space_rb, bo);
+		rb_erase(&bo->vm_rb, &bdev->addr_space_rb);
 		drm_mm_put_block(bo->vm_node);
 		bo->vm_node = NULL;
 	}
@@ -1608,7 +1608,7 @@ int ttm_bo_device_init(struct ttm_bo_device *bdev,
 	if (unlikely(ret != 0))
 		goto out_no_sys;
 
-	RB_INIT(&bdev->addr_space_rb);
+	bdev->addr_space_rb = RB_ROOT;
 	ret = drm_mm_init(&bdev->addr_space_mm, file_page_offset, 0x10000000);
 	if (unlikely(ret != 0))
 		goto out_no_addr_mm;
@@ -1677,9 +1677,26 @@ EXPORT_SYMBOL(ttm_bo_unmap_virtual);
 static void ttm_bo_vm_insert_rb(struct ttm_buffer_object *bo)
 {
 	struct ttm_bo_device *bdev = bo->bdev;
+	struct rb_node **cur = &bdev->addr_space_rb.rb_node;
+	struct rb_node *parent = NULL;
+	struct ttm_buffer_object *cur_bo;
+	unsigned long offset = bo->vm_node->start;
+	unsigned long cur_offset;
 
-	/* The caller acquired bdev->vm_lock. */
-	RB_INSERT(ttm_bo_device_buffer_objects, &bdev->addr_space_rb, bo);
+	while (*cur) {
+		parent = *cur;
+		cur_bo = rb_entry(parent, struct ttm_buffer_object, vm_rb);
+		cur_offset = cur_bo->vm_node->start;
+		if (offset < cur_offset)
+			cur = &parent->rb_left;
+		else if (offset > cur_offset)
+			cur = &parent->rb_right;
+		else
+			BUG();
+	}
+
+	rb_link_node(&bo->vm_rb, parent, cur);
+	rb_insert_color(&bo->vm_rb, &bdev->addr_space_rb);
 }
 
 /**

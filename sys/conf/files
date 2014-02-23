@@ -2033,6 +2033,7 @@ dev/drm/drm_scatter.c			optional drm
 dev/drm/drm_stub.c			optional drm
 dev/drm/drm_sysctl.c			optional drm
 dev/drm/drm_vm.c			optional drm
+dev/drm/linux_compat.c			optional drm
 dev/drm/ttm/ttm_lock.c			optional drm
 dev/drm/ttm/ttm_object.c		optional drm
 dev/drm/ttm/ttm_tt.c			optional drm
