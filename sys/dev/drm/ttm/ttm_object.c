@@ -32,8 +32,6 @@
  * Base- and reference object implementation for the various
  * ttm objects. Implements reference counting, minimal security checks
  * and release on file close.
- *
- * $FreeBSD: head/sys/dev/drm2/ttm/ttm_object.c 247835 2013-03-05 09:49:34Z kib $
  */
 
 /**
@@ -56,13 +54,14 @@
 #include <drm/drmP.h>
 #include <drm/ttm/ttm_object.h>
 #include <drm/ttm/ttm_module.h>
+#include <linux/export.h>
 
 struct ttm_object_file {
 	struct ttm_object_device *tdev;
 	struct lock lock;
 	struct list_head ref_list;
 	struct drm_open_hash ref_hash[TTM_REF_NUM];
-	u_int refcount;
+	struct kref refcount;
 };
 
 /**
@@ -108,7 +107,7 @@ struct ttm_object_device {
 struct ttm_ref_object {
 	struct drm_hash_item hash;
 	struct list_head head;
-	u_int kref;
+	struct kref kref;
 	enum ttm_ref_type ref_type;
 	struct ttm_base_object *obj;
 	struct ttm_object_file *tfile;
@@ -119,12 +118,14 @@ MALLOC_DEFINE(M_TTM_OBJ_FILE, "ttm_obj_file", "TTM File Objects");
 static inline struct ttm_object_file *
 ttm_object_file_ref(struct ttm_object_file *tfile)
 {
-	refcount_acquire(&tfile->refcount);
+	kref_get(&tfile->refcount);
 	return tfile;
 }
 
-static void ttm_object_file_destroy(struct ttm_object_file *tfile)
+static void ttm_object_file_destroy(struct kref *kref)
 {
+	struct ttm_object_file *tfile =
+		container_of(kref, struct ttm_object_file, refcount);
 
 	drm_free(tfile, M_TTM_OBJ_FILE);
 }
@@ -135,8 +136,7 @@ static inline void ttm_object_file_unref(struct ttm_object_file **p_tfile)
 	struct ttm_object_file *tfile = *p_tfile;
 
 	*p_tfile = NULL;
-	if (refcount_release(&tfile->refcount))
-		ttm_object_file_destroy(tfile);
+	kref_put(&tfile->refcount, ttm_object_file_destroy);
 }
 
 
@@ -144,7 +144,7 @@ int ttm_base_object_init(struct ttm_object_file *tfile,
 			 struct ttm_base_object *base,
 			 bool shareable,
 			 enum ttm_object_type object_type,
-			 void (*rcount_release) (struct ttm_base_object **),
+			 void (*refcount_release) (struct ttm_base_object **),
 			 void (*ref_obj_release) (struct ttm_base_object *,
 						  enum ttm_ref_type ref_type))
 {
@@ -153,10 +153,10 @@ int ttm_base_object_init(struct ttm_object_file *tfile,
 
 	base->shareable = shareable;
 	base->tfile = ttm_object_file_ref(tfile);
-	base->refcount_release = rcount_release;
+	base->refcount_release = refcount_release;
 	base->ref_obj_release = ref_obj_release;
 	base->object_type = object_type;
-	refcount_init(&base->refcount, 1);
+	kref_init(&base->refcount);
 	lockinit(&tdev->object_lock, "ttmbao", 0, LK_CANRECURSE);
 	lockmgr(&tdev->object_lock, LK_EXCLUSIVE);
 	ret = drm_ht_just_insert_please(&tdev->object_hash,
@@ -180,13 +180,18 @@ out_err1:
 out_err0:
 	return ret;
 }
+EXPORT_SYMBOL(ttm_base_object_init);
 
-static void ttm_release_base(struct ttm_base_object *base)
+static void ttm_release_base(struct kref *kref)
 {
+	struct ttm_base_object *base =
+	    container_of(kref, struct ttm_base_object, refcount);
 	struct ttm_object_device *tdev = base->tfile->tdev;
 
+	lockmgr(&tdev->object_lock, LK_EXCLUSIVE);
 	(void)drm_ht_remove_item(&tdev->object_hash, &base->hash);
 	lockmgr(&tdev->object_lock, LK_RELEASE);
+
 	/*
 	 * Note: We don't use synchronize_rcu() here because it's far
 	 * too slow. It's up to the user to free the object using
@@ -197,26 +202,17 @@ static void ttm_release_base(struct ttm_base_object *base)
 		ttm_object_file_unref(&base->tfile);
 		base->refcount_release(&base);
 	}
-	lockmgr(&tdev->object_lock, LK_EXCLUSIVE);
 }
 
 void ttm_base_object_unref(struct ttm_base_object **p_base)
 {
 	struct ttm_base_object *base = *p_base;
-	struct ttm_object_device *tdev = base->tfile->tdev;
 
 	*p_base = NULL;
 
-	/*
-	 * Need to take the lock here to avoid racing with
-	 * users trying to look up the object.
-	 */
-
-	lockmgr(&tdev->object_lock, LK_EXCLUSIVE);
-	if (refcount_release(&base->refcount))
-		ttm_release_base(base);
-	lockmgr(&tdev->object_lock, LK_RELEASE);
+	kref_put(&base->refcount, ttm_release_base);
 }
+EXPORT_SYMBOL(ttm_base_object_unref);
 
 struct ttm_base_object *ttm_base_object_lookup(struct ttm_object_file *tfile,
 					       uint32_t key)
@@ -229,9 +225,9 @@ struct ttm_base_object *ttm_base_object_lookup(struct ttm_object_file *tfile,
 	lockmgr(&tdev->object_lock, LK_EXCLUSIVE);
 	ret = drm_ht_find_item(&tdev->object_hash, key, &hash);
 
-	if (ret == 0) {
+	if (likely(ret == 0)) {
 		base = drm_hash_entry(hash, struct ttm_base_object, hash);
-		refcount_acquire(&base->refcount);
+		ret = kref_get_unless_zero(&base->refcount) ? 0 : -EINVAL;
 	}
 	lockmgr(&tdev->object_lock, LK_RELEASE);
 
@@ -247,6 +243,7 @@ struct ttm_base_object *ttm_base_object_lookup(struct ttm_object_file *tfile,
 
 	return base;
 }
+EXPORT_SYMBOL(ttm_base_object_lookup);
 
 MALLOC_DEFINE(M_TTM_OBJ_REF, "ttm_obj_ref", "TTM Ref Objects");
 
@@ -269,7 +266,7 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 
 		if (ret == 0) {
 			ref = drm_hash_entry(hash, struct ttm_ref_object, hash);
-			refcount_acquire(&ref->kref);
+			kref_get(&ref->kref);
 			lockmgr(&tfile->lock, LK_RELEASE);
 			break;
 		}
@@ -289,14 +286,14 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 		ref->obj = base;
 		ref->tfile = tfile;
 		ref->ref_type = ref_type;
-		refcount_init(&ref->kref, 1);
+		kref_init(&ref->kref);
 
 		lockmgr(&tfile->lock, LK_EXCLUSIVE);
 		ret = drm_ht_insert_item(ht, &ref->hash);
 
-		if (ret == 0) {
+		if (likely(ret == 0)) {
 			list_add_tail(&ref->head, &tfile->ref_list);
-			refcount_acquire(&base->refcount);
+			kref_get(&base->refcount);
 			lockmgr(&tfile->lock, LK_RELEASE);
 			if (existed != NULL)
 				*existed = false;
@@ -304,7 +301,7 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 		}
 
 		lockmgr(&tfile->lock, LK_RELEASE);
-		KKASSERT(ret == -EINVAL);
+		BUG_ON(ret != -EINVAL);
 
 		ttm_mem_global_free(mem_glob, sizeof(*ref));
 		drm_free(ref, M_TTM_OBJ_REF);
@@ -312,9 +309,12 @@ int ttm_ref_object_add(struct ttm_object_file *tfile,
 
 	return ret;
 }
+EXPORT_SYMBOL(ttm_ref_object_add);
 
-static void ttm_ref_object_release(struct ttm_ref_object *ref)
+static void ttm_ref_object_release(struct kref *kref)
 {
+	struct ttm_ref_object *ref =
+	    container_of(kref, struct ttm_ref_object, kref);
 	struct ttm_base_object *base = ref->obj;
 	struct ttm_object_file *tfile = ref->tfile;
 	struct drm_open_hash *ht;
@@ -349,11 +349,11 @@ int ttm_ref_object_base_unref(struct ttm_object_file *tfile,
 		return -EINVAL;
 	}
 	ref = drm_hash_entry(hash, struct ttm_ref_object, hash);
-	if (refcount_release(&ref->kref))
-		ttm_ref_object_release(ref);
+	kref_put(&ref->kref, ttm_ref_object_release);
 	lockmgr(&tfile->lock, LK_RELEASE);
 	return 0;
 }
+EXPORT_SYMBOL(ttm_ref_object_base_unref);
 
 void ttm_object_file_release(struct ttm_object_file **p_tfile)
 {
@@ -373,7 +373,7 @@ void ttm_object_file_release(struct ttm_object_file **p_tfile)
 	while (!list_empty(&tfile->ref_list)) {
 		list = tfile->ref_list.next;
 		ref = list_entry(list, struct ttm_ref_object, head);
-		ttm_ref_object_release(ref);
+		ttm_ref_object_release(&ref->kref);
 	}
 
 	for (i = 0; i < TTM_REF_NUM; ++i)
@@ -382,6 +382,7 @@ void ttm_object_file_release(struct ttm_object_file **p_tfile)
 	lockmgr(&tfile->lock, LK_RELEASE);
 	ttm_object_file_unref(&tfile);
 }
+EXPORT_SYMBOL(ttm_object_file_release);
 
 struct ttm_object_file *ttm_object_file_init(struct ttm_object_device *tdev,
 					     unsigned int hash_order)
@@ -392,9 +393,12 @@ struct ttm_object_file *ttm_object_file_init(struct ttm_object_device *tdev,
 	int ret;
 
 	tfile = kmalloc(sizeof(*tfile), M_TTM_OBJ_FILE, M_WAITOK);
+	if (unlikely(tfile == NULL))
+		return NULL;
+
 	lockinit(&tfile->lock, "ttmfo", 0, LK_CANRECURSE);
 	tfile->tdev = tdev;
-	refcount_init(&tfile->refcount, 1);
+	kref_init(&tfile->refcount);
 	INIT_LIST_HEAD(&tfile->ref_list);
 
 	for (i = 0; i < TTM_REF_NUM; ++i) {
@@ -414,6 +418,7 @@ out_err:
 
 	return NULL;
 }
+EXPORT_SYMBOL(ttm_object_file_init);
 
 MALLOC_DEFINE(M_TTM_OBJ_DEV, "ttm_obj_dev", "TTM Device Objects");
 
@@ -425,17 +430,21 @@ struct ttm_object_device *ttm_object_device_init(struct ttm_mem_global
 	int ret;
 
 	tdev = kmalloc(sizeof(*tdev), M_TTM_OBJ_DEV, M_WAITOK);
+	if (unlikely(tdev == NULL))
+		return NULL;
+
 	tdev->mem_glob = mem_glob;
 	lockinit(&tdev->object_lock, "ttmdo", 0, LK_CANRECURSE);
 	atomic_set(&tdev->object_count, 0);
 	ret = drm_ht_create(&tdev->object_hash, hash_order);
 
-	if (ret == 0)
+	if (likely(ret == 0))
 		return tdev;
 
 	drm_free(tdev, M_TTM_OBJ_DEV);
 	return NULL;
 }
+EXPORT_SYMBOL(ttm_object_device_init);
 
 void ttm_object_device_release(struct ttm_object_device **p_tdev)
 {
@@ -449,3 +458,4 @@ void ttm_object_device_release(struct ttm_object_device **p_tdev)
 
 	drm_free(tdev, M_TTM_OBJ_DEV);
 }
+EXPORT_SYMBOL(ttm_object_device_release);

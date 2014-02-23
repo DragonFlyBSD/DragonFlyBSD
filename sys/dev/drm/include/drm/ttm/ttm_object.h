@@ -40,6 +40,7 @@
 
 #include <drm/drm_hashtab.h>
 #include <drm/ttm/ttm_memory.h>
+#include <linux/kref.h>
 
 /**
  * enum ttm_ref_type
@@ -124,7 +125,7 @@ struct ttm_base_object {
 	enum ttm_object_type object_type;
 	bool shareable;
 	struct ttm_object_file *tfile;
-	u_int refcount;
+	struct kref refcount;
 	void (*refcount_release) (struct ttm_base_object **base);
 	void (*ref_obj_release) (struct ttm_base_object *base,
 				 enum ttm_ref_type ref_type);
@@ -268,4 +269,6 @@ extern struct ttm_object_device *ttm_object_device_init
 
 extern void ttm_object_device_release(struct ttm_object_device **p_tdev);
 
+#define ttm_base_object_kfree(__object, __base)\
+	kfree_rcu(__object, __base.rhead)
 #endif
