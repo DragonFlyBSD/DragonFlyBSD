@@ -23,7 +23,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/net/getifaddrs.3,v 1.10 2005/02/09 18:03:13 ru Exp $
-.\" $DragonFly: src/lib/libc/net/getifaddrs.3,v 1.5 2007/08/18 20:48:47 swildner Exp $
 .\"
 .Dd October 12, 1995
 .Dt GETIFADDRS 3
@@ -66,65 +65,65 @@ structure contains at least the following entries:
 .Ed
 .Pp
 The
-.Li ifa_next
+.Fa ifa_next
 field contains a pointer to the next structure on the list.
 This field is
 .Dv NULL
 in last structure on the list.
 .Pp
 The
-.Li ifa_name
+.Fa ifa_name
 field contains the interface name.
 .Pp
 The
-.Li ifa_flags
+.Fa ifa_flags
 field contains the interface flags, as set by
 .Xr ifconfig 8
 utility.
 .Pp
 The
-.Li ifa_addr
+.Fa ifa_addr
 field references either the address of the interface or the link level
 address of the interface, if one exists, otherwise it is NULL.
 (The
-.Li sa_family
+.Fa sa_family
 field of the
-.Li ifa_addr
+.Fa ifa_addr
 field should be consulted to determine the format of the
-.Li ifa_addr
+.Fa ifa_addr
 address.)
 .Pp
 The
-.Li ifa_netmask
+.Fa ifa_netmask
 field references the netmask associated with
-.Li ifa_addr ,
+.Fa ifa_addr ,
 if one is set, otherwise it is NULL.
 .Pp
 The
-.Li ifa_broadaddr
+.Fa ifa_broadaddr
 field,
 which should only be referenced for non-P2P interfaces,
 references the broadcast address associated with
-.Li ifa_addr ,
+.Fa ifa_addr ,
 if one exists, otherwise it is NULL.
 .Pp
 The
-.Li ifa_dstaddr
+.Fa ifa_dstaddr
 field references the destination address on a P2P interface,
 if one exists, otherwise it is NULL.
 .Pp
 The
-.Li ifa_data
+.Fa ifa_data
 field references address family specific data.
 For
 .Dv AF_LINK
 addresses it contains a pointer to the
-.Fa struct if_data
+.Vt struct if_data
 (as defined in include file
 .In net/if.h )
 which contains various interface attributes and statistics.
 For all other address families, it contains a pointer to the
-.Fa struct ifa_data
+.Vt struct ifa_data
 (as defined in include file
 .In net/if.h )
 which contains per-address interface statistics.
