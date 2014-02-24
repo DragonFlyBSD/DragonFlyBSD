@@ -1321,7 +1321,11 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 					lwkt_reltoken(&map->token);
 					return(EINVAL);
 				}
+			} else if (error) {
+				lwkt_reltoken(&map->token);
+				return(error);
 			}
+
 			docow = MAP_PREFAULT_PARTIAL;
 			flags &= ~(MAP_PRIVATE|MAP_COPY);
 			flags |= MAP_SHARED;
