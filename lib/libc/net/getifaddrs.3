@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/lib/libc/net/getifaddrs.3,v 1.10 2005/02/09 18:03:13 ru Exp $
 .\"
-.Dd October 12, 1995
+.Dd February 24, 2014
 .Dt GETIFADDRS 3
 .Os
 .Sh NAME
@@ -59,9 +59,8 @@ structure contains at least the following entries:
     u_int             ifa_flags;        /* Interface flags */
     struct sockaddr  *ifa_addr;         /* Interface address */
     struct sockaddr  *ifa_netmask;      /* Interface netmask */
-    struct sockaddr  *ifa_broadaddr;    /* Interface broadcast address */
     struct sockaddr  *ifa_dstaddr;      /* P2P interface destination */
-    void             *ifa_data;		/* Address specific data */
+    void             *ifa_data;         /* Address specific data */
 .Ed
 .Pp
 The
@@ -100,17 +99,19 @@ field references the netmask associated with
 if one is set, otherwise it is NULL.
 .Pp
 The
+.Fa ifa_dstaddr
+field references the destination address on a P2P interface,
+if one exists, otherwise it is NULL.
+.Pp
+The
 .Fa ifa_broadaddr
 field,
 which should only be referenced for non-P2P interfaces,
 references the broadcast address associated with
 .Fa ifa_addr ,
 if one exists, otherwise it is NULL.
-.Pp
-The
-.Fa ifa_dstaddr
-field references the destination address on a P2P interface,
-if one exists, otherwise it is NULL.
+It is really just another name for
+.Fa ifa_dstaddr .
 .Pp
 The
 .Fa ifa_data
