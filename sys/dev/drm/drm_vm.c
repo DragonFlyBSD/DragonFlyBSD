@@ -93,9 +93,10 @@ int drm_mmap(struct dev_mmap_args *ap)
 	DRM_LOCK(dev);
 	list_for_each_entry(r_list, &dev->maplist, head) {
 		if (r_list->map && r_list->map->offset >> DRM_MAP_HANDLE_SHIFT ==
-		    (unsigned long)r_list->map->handle >> DRM_MAP_HANDLE_SHIFT)
+		    (unsigned long)r_list->map->handle >> DRM_MAP_HANDLE_SHIFT) {
 			map = r_list->map;
 			break;
+		}
 	}
 
 	if (map == NULL) {
