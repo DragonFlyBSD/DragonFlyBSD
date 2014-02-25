@@ -39,19 +39,13 @@
 #include <sys/file.h>
 #include <sys/malloc.h>
 
-#if defined(__NetBSD__)
-#include <miscfs/specfs/specdev.h>
-#endif
-
 #include "ntfs.h"
 #include "ntfs_compr.h"
 
 #define GET_UINT16(addr)	(*((u_int16_t *)(addr)))
 
 int
-ntfs_uncompblock(
-	u_int8_t * buf,
-	u_int8_t * cbuf)
+ntfs_uncompblock(u_int8_t * buf, u_int8_t * cbuf)
 {
 	u_int32_t       ctag;
 	int             len, dshift, lmask;

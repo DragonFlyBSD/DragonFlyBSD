@@ -48,10 +48,6 @@
 #include <sys/buf2.h>
 #include <sys/spinlock2.h>
 
-#if defined(__NetBSD__)
-#include <miscfs/specfs/specdev.h>
-#endif
-
 #include "ntfs.h"
 #include "ntfsmount.h"
 #include "ntfs_inode.h"
@@ -60,12 +56,10 @@
 #include "ntfs_compr.h"
 #include "ntfs_ihash.h"
 
-#if defined(__DragonFly__)
 MALLOC_DEFINE(M_NTFSNTVATTR, "NTFS vattr", "NTFS file attribute information");
 MALLOC_DEFINE(M_NTFSRDATA, "NTFS res data", "NTFS resident data");
 MALLOC_DEFINE(M_NTFSRUN, "NTFS vrun", "NTFS vrun storage");
 MALLOC_DEFINE(M_NTFSDECOMP, "NTFS decomp", "NTFS decompression temporary");
-#endif
 
 static int ntfs_ntlookupattr (struct ntfsmount *, const char *, int, int *, char **);
 static int ntfs_findvattr (struct ntfsmount *, struct ntnode *, struct ntvattr **, struct ntvattr **, u_int32_t, const char *, size_t, cn_t);
@@ -86,7 +80,7 @@ extern struct iconv_functions *ntfs_iconv;
   !NTFS_UASTRCMP(aalp->al_name,aalp->al_namelen,name,namelen) )
 
 /*
- * 
+ *
  */
 int
 ntfs_ntvattrrele(struct ntvattr *vap)
@@ -311,7 +305,7 @@ ntfs_loadntnode(struct ntfsmount *ntmp, struct ntnode *ip)
 	ap = (struct attr *) ((caddr_t)mfrp + off);
 
 	LIST_INIT(&ip->i_valist);
-	
+
 	while (ap->a_hdr.a_type != -1) {
 		error = ntfs_attrtontvattr(ntmp, &nvap, ap);
 		if (error)
@@ -339,7 +333,7 @@ out:
 	kfree(mfrp, M_TEMP);
 	return (error);
 }
-		
+
 /*
  * Routine locks ntnode and increase usecount, just opposite of
  * ntfs_ntput().
@@ -463,7 +457,7 @@ ntfs_ntput(struct ntnode *ip)
 }
 
 /*
- * increment usecount of ntnode 
+ * increment usecount of ntnode
  */
 void
 ntfs_ntref(struct ntnode *ip)
@@ -472,7 +466,6 @@ ntfs_ntref(struct ntnode *ip)
 
 	dprintf(("ntfs_ntref: ino %"PRId64", usecount: %d\n",
 		ip->i_number, ip->i_usecount));
-			
 }
 
 /*
@@ -711,7 +704,7 @@ ntfs_uastrcmp(struct ntfsmount *ntmp, const wchar *ustr, size_t ustrlen,
 	return (ustrlen - mbstrlen);
 }
 
-/* 
+/*
  * Search fnode in ntnode, if not found allocate and preinitialize.
  *
  * ntnode should be locked on entry.
@@ -729,7 +722,7 @@ ntfs_fget(struct ntfsmount *ntmp, struct ntnode *ip, int attrtype,
 		dprintf(("ntfs_fget: fnode: attrtype: %d, attrname: %s\n",
 			fp->f_attrtype, fp->f_attrname?fp->f_attrname:""));
 
-		if ((attrtype == fp->f_attrtype) && 
+		if ((attrtype == fp->f_attrtype) &&
 		    ((!attrname && !fp->f_attrname) ||
 		     (attrname && fp->f_attrname &&
 		      !strcmp(attrname,fp->f_attrname)))){
@@ -786,7 +779,7 @@ ntfs_frele(struct fnode *fp)
 }
 
 /*
- * Lookup attribute name in format: [[:$ATTR_TYPE]:$ATTR_NAME], 
+ * Lookup attribute name in format: [[:$ATTR_TYPE]:$ATTR_NAME],
  * $ATTR_TYPE is searched in attrdefs read from $AttrDefs.
  * If $ATTR_TYPE nott specifed, ATTR_A_DATA assumed.
  */
@@ -815,7 +808,7 @@ ntfs_ntlookupattr(struct ntfsmount *ntmp, const char *name, int namelen,
 
 		adp = ntmp->ntm_ad;
 		for (i = 0; i < ntmp->ntm_adnum; i++, adp++){
-			if (syslen != adp->ad_namelen || 
+			if (syslen != adp->ad_namelen ||
 			   strncmp(sys, adp->ad_name, syslen) != 0)
 				continue;
 
@@ -1419,19 +1412,13 @@ ntfs_writentvattr_plain(struct ntfsmount *ntmp,	struct ntnode *ip,
 		off = ntfs_btocnoff(off);
 
 		while (left && ccl) {
-#if defined(__DragonFly__)
 			tocopy = min(left,
 				  min(ntfs_cntob(ccl) - off, MAXBSIZE - off));
-#else
-			/* under NetBSD, bread() can read
-			 * maximum one block worth of data */
-			tocopy = min(left, ntmp->ntm_bps - off);
-#endif
 			cl = ntfs_btocl(tocopy + off);
 			ddprintf(("ntfs_writentvattr_plain: write: " \
 				"cn: 0x%x cl: %d, off: %d len: %d, left: %d\n",
-				(u_int32_t) cn, (u_int32_t) cl, 
-				(u_int32_t) off, (u_int32_t) tocopy, 
+				(u_int32_t) cn, (u_int32_t) cl,
+				(u_int32_t) off, (u_int32_t) tocopy,
 				(u_int32_t) left));
 			if (off == 0 && tocopy == ntfs_cntob(cl) &&
 			    uio->uio_segflg != UIO_NOCOPY) {
@@ -1518,24 +1505,17 @@ ntfs_readntvattr_plain(struct ntfsmount *ntmp, struct ntnode *ip,
 				off = ntfs_btocnoff(off);
 
 				while (left && ccl) {
-#if defined(__DragonFly__)
 					tocopy = min(left,
 						  min(ntfs_cntob(ccl) - off,
 						      MAXBSIZE - off));
-#else
-					/* under NetBSD, bread() can read
-					 * maximum one block worth of data */
-					tocopy = min(left,
-						ntmp->ntm_bps - off);
-#endif
 					cl = ntfs_btocl(tocopy + off);
 					ddprintf(("ntfs_readntvattr_plain: " \
 						"read: cn: 0x%x cl: %d, " \
 						"off: %d len: %d, left: %d\n",
-						(u_int32_t) cn, 
-						(u_int32_t) cl, 
-						(u_int32_t) off, 
-						(u_int32_t) tocopy, 
+						(u_int32_t) cn,
+						(u_int32_t) cl,
+						(u_int32_t) off,
+						(u_int32_t) tocopy,
 						(u_int32_t) left));
 					error = bread(ntmp->ntm_devvp,
 						      ntfs_cntodoff(cn),
