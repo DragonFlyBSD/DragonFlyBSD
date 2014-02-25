@@ -60,10 +60,8 @@
 #define	unlikely(x)			__builtin_expect(!!(x), 0)
 #define typeof(x)			__typeof(x)
 
-#define	uninitialized_var(x)		x = x
-
 #define __read_mostly
 #define __always_unused
-#define __must_check
+#define __must_check			__heedresult
 
 #endif	/* _LINUX_COMPILER_H_ */

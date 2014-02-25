@@ -339,12 +339,14 @@ static int i915_emit_cmds(struct drm_device *dev, int __user *buffer,
 			  int dwords)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
-	int i;
+	int i, ret;
 
 	if ((dwords+1) * sizeof(int) >= LP_RING(dev_priv)->size - 8)
 		return -EINVAL;
 
-	BEGIN_LP_RING((dwords+1)&~1);
+	ret = BEGIN_LP_RING((dwords+1)&~1);
+	if (ret)
+		return ret;
 
 	for (i = 0; i < dwords;) {
 		int cmd, sz;
