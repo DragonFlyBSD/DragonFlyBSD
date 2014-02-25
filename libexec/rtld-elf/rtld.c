@@ -223,7 +223,9 @@ int osreldate;
 #endif
 
 static int stack_prot = PROT_READ | PROT_WRITE | RTLD_DEFAULT_STACK_EXEC;
+#if 0
 static int max_stack_flags;
+#endif
 
 /*
  * Global declarations normally provided by crt1.  The dynamic linker is
@@ -464,7 +466,9 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	close(fd);
 	if (obj_main == NULL)
 	    die();
+#if 0
 	max_stack_flags = obj->stack_flags;
+#endif
     } else {				/* Main program already loaded. */
 	const Elf_Phdr *phdr;
 	int phnum;
@@ -2225,7 +2229,9 @@ do_load_object(int fd, const char *name, char *path, struct stat *sbp,
     obj_count++;
     obj_loads++;
     linkmap_add(obj);	/* for GDB & dlinfo() */
+#if 0
     max_stack_flags |= obj->stack_flags;
+#endif
 
     dbg("  %p .. %p: %s", obj->mapbase,
          obj->mapbase + obj->mapsize - 1, obj->path);
