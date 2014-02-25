@@ -56,6 +56,7 @@
 #include <sys/signalvar.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
+#include <sys/sysctl.h>
 
 #include <sys/signal2.h>
 #include <sys/mplock2.h>
@@ -95,6 +96,8 @@ static int random_ioctl (cdev_t, u_long, caddr_t, int, struct ucred *);
 
 struct mem_range_softc mem_range_softc;
 
+static int seedenable;
+SYSCTL_INT(_kern, OID_AUTO, seedenable, CTLFLAG_RW, &seedenable, 0, "");
 
 static int
 mmopen(struct dev_open_args *ap)
@@ -235,8 +238,13 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 			c = min(iov->iov_len, PAGE_SIZE);
 			if (uio->uio_rw == UIO_WRITE) {
 				error = uiomove(buf, (int)c, uio);
-				if (error == 0)
+				if (error == 0 &&
+				    seedenable &&
+				    securelevel <= 0) {
 					error = add_buffer_randomness(buf, c);
+				} else if (error == 0) {
+					error = EPERM;
+				}
 			} else {
 				poolsize = read_random(buf, c);
 				if (poolsize == 0) {

@@ -375,3 +375,10 @@ device		fwe		# Ethernet over FireWire (non-standard!)
 device		mmc
 device		mmcsd
 device		sdhci
+
+# RNG
+#
+device          aesni           # hardware crypto/RNG for AES-NI
+#device          glxsb           # Geode LX Security Block
+device          padlock         # hardware crypto/RNG for VIA C3/C7/Eden
+device          rdrand          # hardware RNG for RdRand

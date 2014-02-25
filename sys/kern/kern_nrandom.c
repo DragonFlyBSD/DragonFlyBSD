@@ -407,8 +407,6 @@ static int sysctl_kern_random(SYSCTL_HANDLER_ARGS);
 
 static int nrandevents;
 SYSCTL_INT(_kern, OID_AUTO, nrandevents, CTLFLAG_RD, &nrandevents, 0, "");
-static int seedenable;
-SYSCTL_INT(_kern, OID_AUTO, seedenable, CTLFLAG_RW, &seedenable, 0, "");
 SYSCTL_PROC(_kern, OID_AUTO, random, CTLFLAG_RD | CTLFLAG_ANYBODY, 0, 0,
 		sysctl_kern_random, "I", "Acquire random data");
 
@@ -487,26 +485,21 @@ add_true_randomness(int val)
 int
 add_buffer_randomness(const char *buf, int bytes)
 {
-	int error;
 	int i;
 
-	if (seedenable && securelevel <= 0) {
-		while (bytes >= sizeof(int)) {
-			add_true_randomness(*(const int *)buf);
-			buf += sizeof(int);
-			bytes -= sizeof(int);
-		}
-		error = 0;
-
-		/*
-		 * Warm up the generator to get rid of weak initial states.
-		 */
-		for (i = 0; i < 10; ++i)
-			IBAA_Call();
-	} else {
-		error = EPERM;
+	while (bytes >= sizeof(int)) {
+		add_true_randomness(*(const int *)buf);
+		buf += sizeof(int);
+		bytes -= sizeof(int);
 	}
-	return (error);
+
+	/*
+	 * Warm up the generator to get rid of weak initial states.
+	 */
+	for (i = 0; i < 10; ++i)
+		IBAA_Call();
+
+	return 0;
 }
 
 /*
