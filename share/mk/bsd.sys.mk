@@ -29,7 +29,7 @@ CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
 .  if ${WARNS} >= 2
-CWARNFLAGS	+=	-Wall -Wformat-security -Wno-pointer-sign
+CWARNFLAGS	+=	-Wall -Wformat-security -Winit-self -Wno-pointer-sign
 .  endif
 .  if ${WARNS} >= 3
 CWARNFLAGS	+=	-Wextra -Wno-unused-parameter -Wstrict-prototypes\
@@ -45,9 +45,9 @@ CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs\
 			-Wredundant-decls
 .  endif
 .  if ${WARNS} >= 2 && ${WARNS} <= 4
-# XXX Delete -Wuninitialized by default for now -- the compiler doesn't
+# XXX Delete -Wmaybe-uninitialized by default for now -- the compiler doesn't
 # XXX always get it right.
-CWARNFLAGS	+=	-Wno-uninitialized
+CWARNFLAGS	+=	-Wno-maybe-uninitialized
 .  endif
 # Activate gcc47's -Wunused-but-set-variable (which is in -Wall) and
 # -Wunused-but-set-parameter (which is in -Wextra) only at WARNS >= 4
