@@ -138,13 +138,10 @@ rndtest_harvest(struct rndtest_state *rsp, void *buf, u_int len)
 	/*
 	 * Only stir entropy that passes muster into the pool.
 	 */
-	if (rsp->rs_discard)
+	if (rsp->rs_discard) {
 		rndstats.rst_discard += len;
-	else {
-		/* XXX verify buffer is word aligned */
-		u_int32_t *p = buf;
-		for (len /= sizeof (u_int32_t); len; len--)
-			add_true_randomness(*p++);
+	} else {
+		add_buffer_randomness(buf, len);
 	}
 }
 

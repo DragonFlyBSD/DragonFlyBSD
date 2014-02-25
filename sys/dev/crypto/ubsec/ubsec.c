@@ -256,11 +256,9 @@ ubsec_partname(struct ubsec_softc *sc)
 }
 
 static void
-default_harvest(struct rndtest_state *rsp, void *buf, u_int count)
+default_harvest(struct rndtest_state *rsp __unused, void *buf, u_int count)
 {
-	u_int32_t *p = (u_int32_t *)buf;
-	for (count /= sizeof (u_int32_t); count; count--)
-		add_true_randomness(*p++);
+	add_buffer_randomness(buf, count);
 }
 
 static int

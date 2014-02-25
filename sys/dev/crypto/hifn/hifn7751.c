@@ -256,9 +256,7 @@ hifn_partname(struct hifn_softc *sc)
 static void
 default_harvest(struct rndtest_state *rsp, void *buf, u_int count)
 {
-	u_int32_t *p = (u_int32_t *)buf;
-	for (count /= sizeof (u_int32_t); count; count--)
-		add_true_randomness(*p++);
+	add_buffer_randomness(buf, count);
 }
 
 static u_int
