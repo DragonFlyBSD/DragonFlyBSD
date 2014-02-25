@@ -381,7 +381,7 @@ ntfs_ntlookup(struct ntfsmount *ntmp, ino_t ino, struct ntnode **ipp)
 	} while (LOCKMGR(&ntfs_hashlock, LK_EXCLUSIVE | LK_SLEEPFAIL));
 
 	ip = kmalloc(sizeof(struct ntnode), M_NTFSNTNODE, M_WAITOK | M_ZERO);
-	ddprintf(("ntfs_ntlookup: allocating ntnode: %d: %p\n", ino, ip));
+	ddprintf(("ntfs_ntlookup: allocating ntnode: %ju: %p\n", ino, ip));
 
 	/* Generic initialization */
 	ip->i_devvp = ntmp->ntm_devvp;

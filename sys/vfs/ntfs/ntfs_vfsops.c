@@ -811,7 +811,7 @@ ntfs_fhtovp(struct mount *mp, struct vnode *rootvp,
 	struct ntfid *ntfhp = (struct ntfid *)fhp;
 	int error;
 
-	ddprintf(("ntfs_fhtovp(): %d\n", ntfhp->ntfid_ino));
+	ddprintf(("ntfs_fhtovp(): %ju\n", ntfhp->ntfid_ino));
 
 	if ((error = VFS_VGET(mp, NULL, ntfhp->ntfid_ino, &nvp)) != 0) {
 		*vpp = NULLVP;
