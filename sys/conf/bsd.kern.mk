@@ -10,7 +10,7 @@
 CWARNFLAGS?=	-Wall -Wredundant-decls -Wnested-externs -Wstrict-prototypes \
 		-Wmissing-prototypes -Wpointer-arith -Winline -Wcast-qual \
 		-Wold-style-definition -Wold-style-declaration -Wno-inline \
-		-Wno-pointer-sign -std=c99
+		-Wno-pointer-sign -Winit-self -std=c99
 
 .if ${CCVER} == "gcc47"
 CWARNFLAGS+=	-Wno-unused-but-set-variable
