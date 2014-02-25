@@ -35,6 +35,7 @@
 ENTRY(rdrand_rng)
 	movl	4(%esp),%edi
 	movl	8(%esp),%ecx
+	pushl	%ebx
 
 	shrl	$2,	%ecx	/* Divide by 4 to get 32-bit word count */
 
@@ -76,5 +77,6 @@ out:
 	/* return the number of stored random bytes (random words * 4) */
 	shll	$2,	%ebx
 	movl	%ebx, 	%eax
+	popl	%ebx
 	ret
 END(rdrand_rng)

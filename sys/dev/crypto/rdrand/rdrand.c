@@ -34,11 +34,16 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/random.h>
+#include <sys/sysctl.h>
 
 #include <machine/specialreg.h>
 
 #define	RDRAND_ALIGN(p)	(void *)(roundup2((uintptr_t)(p), 16))
+#define RDRAND_SIZE	512
 
+static int rdrand_debug;
+SYSCTL_INT(_debug, OID_AUTO, rdrand, CTLFLAG_RW, &rdrand_debug, 0,
+	   "Enable rdrand debugging");
 
 struct rdrand_softc {
 	struct callout	sc_rng_co;
@@ -47,7 +52,7 @@ struct rdrand_softc {
 
 
 static void rdrand_rng_harvest(void *);
-int rdrand_rng(uint8_t *out, int limit);
+int rdrand_rng(uint8_t *out, long limit);
 
 
 static void
@@ -82,14 +87,14 @@ rdrand_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 
-	if (hz > 100)
-		sc->sc_rng_ticks = hz/100;
+	if (hz > 10)
+		sc->sc_rng_ticks = hz / 10;
 	else
 		sc->sc_rng_ticks = 1;
 
 	callout_init_mp(&sc->sc_rng_co);
 	callout_reset(&sc->sc_rng_co, sc->sc_rng_ticks,
-	    rdrand_rng_harvest, sc);
+		      rdrand_rng_harvest, sc);
 
 	return 0;
 }
@@ -108,24 +113,32 @@ rdrand_detach(device_t dev)
 }
 
 
-static int random_count = 512; /* in bytes */
-
 static void
 rdrand_rng_harvest(void *arg)
 {
 	struct rdrand_softc *sc = arg;
-	uint8_t randomness[2048];
+	uint8_t randomness[RDRAND_SIZE + 32];
 	uint8_t *arandomness; /* randomness aligned */
-	int i, cnt;
+	int cnt;
 
 	arandomness = RDRAND_ALIGN(randomness);
-	cnt = rdrand_rng(arandomness, random_count);
 
-	for (i = 0; i < cnt; i++)
-		add_true_randomness((int)arandomness[i]);
+	cnt = rdrand_rng(arandomness, sizeof(RDRAND_SIZE));
+	if (cnt > 0 && cnt < sizeof(randomness)) {
+		add_buffer_randomness(arandomness, cnt);
+
+		if (rdrand_debug) {
+			kprintf("rdrand(%d): %02x %02x %02x %02x...\n",
+				cnt,
+				arandomness[0],
+				arandomness[1],
+				arandomness[2],
+				arandomness[3]);
+		}
+	}
 
 	callout_reset(&sc->sc_rng_co, sc->sc_rng_ticks,
-	    rdrand_rng_harvest, sc);
+		      rdrand_rng_harvest, sc);
 }
 
 

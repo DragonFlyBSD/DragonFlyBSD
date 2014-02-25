@@ -31,12 +31,12 @@
 
 	.text
 
-/* int rdrand_rng(uint8_t *out, int limit) */
+/* int rdrand_rng(uint8_t *out, long limit) */
 ENTRY(rdrand_rng)
-	movl	%esi,	%ecx
-	shrl	$3,	%ecx	/* Divide by 8 to get 64-bit word count */
+	movq	%rsi,	%rcx
+	shrq	$3,	%rcx	/* Divide by 8 to get 64-bit word count */
 
-	xorq	%rbx, 	%rbx
+	xorq	%r11, 	%r11
 loop:
 	/*
 	 * rdx: (output)	entropy
@@ -61,18 +61,18 @@ loop:
 	 * Increment the count of stored random words as well as the
 	 * buffer pointer in rdi.
 	 */
-	addl	$1, 	%ebx
+	addq	$1, 	%r11
 	addq	$8,	%rdi
 
 	/*
 	 * If we haven't already read enough random words,
 	 * loop again.
 	 */
-	cmpl	%ecx, 	%ebx
+	cmpq	%rcx, 	%r11
 	jl	loop
 out:
 	/* return the number of stored random bytes (random words * 8) */
-	shll	$3,	%ebx
-	movl	%ebx, 	%eax
+	shlq	$3,	%r11
+	movq	%r11, 	%rax
 	ret
 END(rdrand_rng)
