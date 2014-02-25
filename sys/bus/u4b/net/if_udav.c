@@ -757,8 +757,8 @@ udav_ifmedia_upd(struct ifnet *ifp)
         sc->sc_flags &= ~UDAV_FLAG_LINK;
 	LIST_FOREACH(miisc, &mii->mii_phys, mii_list)
 		mii_phy_reset(miisc);
-	mii_mediachg(mii);
-	return (0);
+	error = mii_mediachg(mii);
+	return (error);
 }
 
 static void
