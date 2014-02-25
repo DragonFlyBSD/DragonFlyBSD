@@ -40,25 +40,15 @@
 #include <sys/buf.h>
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
-#if defined(__NetBSD__)
-#include <sys/device.h>
-#endif
 
 #include <machine/inttypes.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
-#if defined(__NetBSD__)
-#include <vm/vm_prot.h>
-#endif
 #include <vm/vm_page.h>
 #include <vm/vm_object.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
-
-#if defined(__NetBSD__)
-#include <miscfs/specfs/specdev.h>
-#endif
 
 #include <sys/buf2.h>
 
@@ -71,12 +61,10 @@
 
 extern struct vop_ops ntfs_vnode_vops;
 
-#if defined(__DragonFly__)
 MALLOC_DEFINE(M_NTFSMNT, "NTFS mount", "NTFS mount structure");
 MALLOC_DEFINE(M_NTFSNTNODE,"NTFS ntnode",  "NTFS ntnode information");
 MALLOC_DEFINE(M_NTFSFNODE,"NTFS fnode",  "NTFS fnode information");
 MALLOC_DEFINE(M_NTFSDIR,"NTFS dir",  "NTFS dir buffer");
-#endif
 
 struct iconv_functions *ntfs_iconv = NULL;
 
@@ -94,42 +82,17 @@ static int	ntfs_vptofh (struct vnode *, struct fid *);
 static int	ntfs_fhtovp (struct mount *, struct vnode *rootvp,
 				struct fid *, struct vnode **);
 
-#if !defined (__DragonFly__)
-static int	ntfs_quotactl (struct mount *, int, uid_t, caddr_t,
-				   struct thread *);
-static int	ntfs_start (struct mount *, int, struct thread *);
-static int	ntfs_sync (struct mount *, int, struct ucred *,
-			       struct thread *);
-#endif
-
-#if defined(__DragonFly__)
 struct sockaddr;
 static int	ntfs_mount (struct mount *, char *, caddr_t, struct ucred *);
 static int	ntfs_init (struct vfsconf *);
 static int	ntfs_checkexp (struct mount *, struct sockaddr *,
 				   int *, struct ucred **);
-#elif defined(__NetBSD__)
-static int	ntfs_mount (struct mount *, const char *, void *,
-				struct nameidata *, struct thread *);
-static void	ntfs_init (void);
-static int	ntfs_mountroot (void);
-static int	ntfs_sysctl (int *, u_int, void *, size_t *, void *,
-				 size_t, struct thread *);
-static int	ntfs_checkexp (struct mount *, struct mbuf *,
-				   int *, struct ucred **);
-#endif
-
 /*
  * Verify a remote client has export rights and return these rights via.
  * exflagsp and credanonp.
  */
 static int
-ntfs_checkexp(struct mount *mp,
-#if defined(__DragonFly__)
-	      struct sockaddr *nam,
-#else /* defined(__NetBSD__) */
-	      struct mbuf *nam,
-#endif
+ntfs_checkexp(struct mount *mp,  struct sockaddr *nam,
 	      int *exflagsp, struct ucred **credanonp)
 {
 	struct netcred *np;
@@ -147,65 +110,6 @@ ntfs_checkexp(struct mount *mp,
 	return (0);
 }
 
-#if defined(__NetBSD__)
-/*ARGSUSED*/
-static int
-ntfs_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
-	    size_t newlen, struct thread *td)
-{
-	return (EINVAL);
-}
-
-static int
-ntfs_mountroot(void)
-{
-	struct mount *mp;
-	struct vnode *rootvp;
-	struct thread *td = curthread;	/* XXX */
-	struct ntfs_args args;
-	int error;
-
-	if (root_device->dv_class != DV_DISK)
-		return (ENODEV);
-
-	/*
-	 * Get vnodes for rootdev.
-	 */
-	if (bdevvp(rootdev, &rootvp))
-		panic("ntfs_mountroot: can't setup rootvp");
-
-	if ((error = vfs_rootmountalloc(MOUNT_NTFS, "root_device", &mp))) {
-		vrele(rootvp);
-		return (error);
-	}
-
-	args.flag = 0;
-	args.uid = 0;
-	args.gid = 0;
-	args.mode = 0777;
-
-	if ((error = ntfs_mountfs(rootvp, mp, &args, proc0.p_ucred)) != 0) {
-		mp->mnt_op->vfs_refcount--;
-		vfs_unbusy(mp);
-		kfree(mp, M_MOUNT);
-		vrele(rootvp);
-		return (error);
-	}
-	mountlist_insert(mp, MNTINS_LAST);
-	(void)ntfs_statfs(mp, &mp->mnt_stat, proc0.p_ucred);
-	vfs_unbusy(mp);
-	return (0);
-}
-
-static void
-ntfs_init(void)
-{
-	ntfs_nthashinit();
-	ntfs_toupper_init();
-}
-
-#elif defined(__DragonFly__)
-
 static int
 ntfs_init(struct vfsconf *vcp)
 {
@@ -213,8 +117,6 @@ ntfs_init(struct vfsconf *vcp)
 	ntfs_toupper_init();
 	return 0;
 }
-
-#endif /* NetBSD */
 
 static int
 ntfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
@@ -227,7 +129,6 @@ ntfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	struct vnode *rootvp;
 
 	error = 0;
-#ifdef __DragonFly__
 	/*
 	 * Use NULL path to flag a root mount
 	 */
@@ -237,7 +138,7 @@ ntfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		 * Mounting root file system
 		 ***
 		 */
-	
+
 		/* Get vnode for root device*/
 		if( bdevvp( rootdev, &rootvp))
 			panic("ffs_mountroot: can't setup bdevvp for root");
@@ -258,7 +159,6 @@ ntfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		goto dostatfs;		/* success*/
 
 	}
-#endif /* FreeBSD */
 
 	/*
 	 ***
@@ -306,19 +206,9 @@ ntfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	if (error)
 		goto error_1;
 
-#if defined(__DragonFly__)
-	if (!vn_isdisk(devvp, &error)) 
+	if (!vn_isdisk(devvp, &error))
 		goto error_2;
-#else
-	if (devvp->v_type != VBLK) {
-		error = ENOTBLK;
-		goto error_2;
-	}
-	if (devvp->v_umajor >= nblkdev) {
-		error = ENXIO;
-		goto error_2;
-	}
-#endif
+
 	if (mp->mnt_flag & MNT_UPDATE) {
 #if 0
 		/*
@@ -363,9 +253,7 @@ ntfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		goto error_2;
 	}
 
-#ifdef __DragonFly__
 dostatfs:
-#endif
 	/*
 	 * Initialize FS stat information in mount struct; uses
 	 * mp->mnt_stat.f_mntfromname.
@@ -413,19 +301,16 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	if (error)
 		return (error);
 	ncount = vcount(devvp);
-#if defined(__DragonFly__)
+
 	if (devvp->v_object)
 		ncount -= 1;
-#endif
+
 	if (ncount > 1)
 		return (EBUSY);
-#if defined(__DragonFly__)
+
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = vinvalbuf(devvp, V_SAVE, 0, 0);
 	VOP__UNLOCK(devvp, 0);
-#else
-	error = vinvalbuf(devvp, V_SAVE, 0, 0);
-#endif
 	if (error)
 		return (error);
 
@@ -494,9 +379,9 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	vfs_add_vnodeops(mp, &ntfs_vnode_vops, &mp->mnt_vn_norm_ops);
 
 	/*
-	 * We read in some system nodes to do not allow 
+	 * We read in some system nodes to do not allow
 	 * reclaim them and to have everytime access to them.
-	 */ 
+	 */
 	{
 		int pi[3] = { NTFS_MFTINO, NTFS_ROOTINO, NTFS_BITMAPINO };
 		for (i=0; i<3; i++) {
@@ -524,7 +409,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 
 	/*
 	 * Read and translate to internal format attribute
-	 * definition file. 
+	 * definition file.
 	 */
 	{
 		int num,j;
@@ -532,7 +417,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 
 		/* Open $AttrDef */
 		error = VFS_VGET(mp, NULL, NTFS_ATTRDEFINO, &vp);
-		if(error) 
+		if(error)
 			goto out1;
 
 		/* Count valid entries */
@@ -572,13 +457,8 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 		vput(vp);
 	}
 
-#if defined(__DragonFly__)
 	mp->mnt_stat.f_fsid.val[0] = dev2udev(dev);
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
-#else
-	mp->mnt_stat.f_fsid.val[0] = dev;
-	mp->mnt_stat.f_fsid.val[1] = makefstype(MOUNT_NTFS);
-#endif
 	mp->mnt_maxsymlinklen = 0;
 	mp->mnt_flag |= MNT_LOCAL;
 	dev->si_mountpoint = mp;
@@ -597,27 +477,12 @@ out:
 	if (bp)
 		brelse(bp);
 
-#if defined __NetBSD__
-	/* lock the device vnode before calling VOP_CLOSE() */
-	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY);
-	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE);
-	VOP__UNLOCK(devvp, 0);
-#else
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	(void)VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, NULL);
 	vn_unlock(devvp);
-#endif
-	
+
 	return (error);
 }
-
-#if !defined(__DragonFly__)
-static int
-ntfs_start(struct mount *mp, int flags, struct thread *td)
-{
-	return (0);
-}
-#endif
 
 static int
 ntfs_unmount(struct mount *mp, int mntflags)
@@ -642,7 +507,7 @@ ntfs_unmount(struct mount *mp, int mntflags)
 
 	/* Check if only system vnodes are left */
 	for(i=0;i<NTFS_SYSNODESNUM;i++)
-		 if((ntmp->ntm_sysvn[i]) && 
+		 if((ntmp->ntm_sysvn[i]) &&
 		    (VREFCNT(ntmp->ntm_sysvn[i]) > 1)) return (EBUSY);
 
 	/* Dereference all system vnodes */
@@ -699,16 +564,6 @@ ntfs_root(struct mount *mp, struct vnode **vpp)
 	return (0);
 }
 
-#if !defined(__DragonFly__)
-static int
-ntfs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
-	      struct thread *td)
-{
-	kprintf("\nntfs_quotactl():\n");
-	return EOPNOTSUPP;
-}
-#endif
-
 int
 ntfs_calccfree(struct ntfsmount *ntmp, cn_t *cfreep)
 {
@@ -749,13 +604,7 @@ ntfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 
 	mftallocated = VTOF(ntmp->ntm_sysvn[NTFS_MFTINO])->f_allocated;
 
-#if defined(__DragonFly__)
 	sbp->f_type = mp->mnt_vfc->vfc_typenum;
-#elif defined(__NetBSD__)
-	sbp->f_type = 0;
-#else
-	sbp->f_type = MOUNT_NTFS;
-#endif
 	sbp->f_bsize = ntmp->ntm_bps;
 	sbp->f_iosize = ntmp->ntm_bps * ntmp->ntm_spc;
 	sbp->f_blocks = ntmp->ntm_bootfile.bf_spv;
@@ -768,10 +617,7 @@ ntfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 			(caddr_t)&sbp->f_mntfromname[0], MNAMELEN);
 	}
 	sbp->f_flags = mp->mnt_flag;
-#ifdef __NetBSD__
-	strncpy(sbp->f_fstypename, mp->mnt_op->vfs_name, MFSNAMELEN);
-#endif
-	
+
 	return (0);
 }
 
@@ -792,18 +638,9 @@ ntfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	sbp->f_ffree = sbp->f_bfree / ntmp->ntm_bpmftrec;
 	sbp->f_files = mftallocated / (ntmp->ntm_bpmftrec * ntmp->ntm_bps) +
 		       sbp->f_ffree;
-	
-	return (0);
-}
 
-#if !defined(__DragonFly__)
-static int
-ntfs_sync(struct mount *mp, int waitfor, struct ucred *cred, struct thread *td)
-{
-	/*dprintf(("ntfs_sync():\n"));*/
 	return (0);
 }
-#endif
 
 /*ARGSUSED*/
 static int
@@ -846,7 +683,7 @@ ntfs_vptofh(struct vnode *vp, struct fid *fhp)
 int
 ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	    u_long lkflags, u_long flags, struct thread *td,
-	    struct vnode **vpp) 
+	    struct vnode **vpp)
 {
 	int error;
 	struct ntfsmount *ntmp;
@@ -895,9 +732,9 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 			f_type = VINT;
 			fp->f_size = fp->f_allocated = 0;
 		} else {
-			f_type = VREG;	
+			f_type = VREG;
 
-			error = ntfs_filesize(ntmp, fp, 
+			error = ntfs_filesize(ntmp, fp,
 					      &fp->f_size, &fp->f_allocated);
 			if (error) {
 				ntfs_ntput(ip);
@@ -942,7 +779,6 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	/* XXX leave vnode locked exclusively from getnewvnode */
 	*vpp = vp;
 	return (0);
-	
 }
 
 static int
@@ -952,7 +788,6 @@ ntfs_vget(struct mount *mp, struct vnode *dvp, ino_t ino, struct vnode **vpp)
 			LK_EXCLUSIVE | LK_RETRY, 0, curthread, vpp);
 }
 
-#if defined(__DragonFly__)
 static struct vfsops ntfs_vfsops = {
 	.vfs_mount =    	ntfs_mount,
 	.vfs_unmount =   	ntfs_unmount,
@@ -969,47 +804,3 @@ static struct vfsops ntfs_vfsops = {
 };
 VFS_SET(ntfs_vfsops, ntfs, 0);
 MODULE_VERSION(ntfs, 1);
-#elif defined(__NetBSD__)
-extern struct vnodeopv_desc ntfs_vnodeop_opv_desc;
-
-struct vnodeopv_desc *ntfs_vnodeopv_descs[] = {
-	&ntfs_vnodeop_opv_desc,
-	NULL,
-};
-
-struct vfsops ntfs_vfsops = {
-	MOUNT_NTFS,
-	ntfs_mount,
-	ntfs_start,
-	ntfs_unmount,
-	ntfs_root,
-	ntfs_quotactl,
-	ntfs_statfs,
-	ntfs_sync,
-	ntfs_vget,
-	ntfs_fhtovp,
-	ntfs_vptofh,
-	ntfs_init,
-	ntfs_sysctl,
-	ntfs_mountroot,
-	ntfs_checkexp,
-	ntfs_vnodeopv_descs,
-};
-#else /* !NetBSD && !FreeBSD */
-static struct vfsops ntfs_vfsops = {
-	ntfs_mount,
-	ntfs_start,
-	ntfs_unmount,
-	ntfs_root,
-	ntfs_quotactl,
-	ntfs_statfs,
-	ntfs_sync,
-	ntfs_vget,
-	ntfs_fhtovp,
-	ntfs_vptofh,
-	ntfs_init,
-};
-VFS_SET(ntfs_vfsops, ntfs, MOUNT_NTFS, 0);
-#endif
-
-

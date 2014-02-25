@@ -52,15 +52,10 @@
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
-#if defined(__NetBSD__)
-#include <vm/vm_prot.h>
-#endif
 #include <vm/vm_page.h>
 #include <vm/vm_object.h>
 #include <vm/vm_pager.h>
-#if defined(__DragonFly__)
 #include <vm/vnode_pager.h>
-#endif
 #include <vm/vm_extern.h>
 
 #include <sys/sysctl.h>
@@ -70,10 +65,6 @@
 #include "ntfs.h"
 #include "ntfs_inode.h"
 #include "ntfs_subr.h"
-#if defined(__NetBSD__)
-#include <miscfs/specfs/specdev.h>
-#include <miscfs/genfs/genfs.h>
-#endif
 
 #include <sys/unistd.h> /* for pathconf(2) constants */
 
@@ -90,11 +81,7 @@ static int	ntfs_close (struct vop_close_args *ap);
 static int	ntfs_readdir (struct vop_readdir_args *ap);
 static int	ntfs_lookup (struct vop_old_lookup_args *ap);
 static int	ntfs_bmap (struct vop_bmap_args *ap);
-#if defined(__DragonFly__)
 static int	ntfs_fsync (struct vop_fsync_args *ap);
-#else
-static int	ntfs_bypass (struct vop_generic_args *);
-#endif
 static int	ntfs_pathconf (struct vop_pathconf_args *);
 
 int	ntfs_prtactive = 1;	/* 1 => print out reclaim of active vnodes */
@@ -114,10 +101,8 @@ ntfs_bmap(struct vop_bmap_args *ap)
 		*ap->a_doffsetp = ap->a_loffset;
 	if (ap->a_runp != NULL)
 		*ap->a_runp = 0;
-#if !defined(__NetBSD__)
 	if (ap->a_runb != NULL)
 		*ap->a_runb = 0;
-#endif
 	return (0);
 }
 
@@ -178,21 +163,6 @@ ntfs_read(struct vop_read_args *ap)
 	return (error);
 }
 
-#if !defined(__DragonFly__)
-
-/*
- * ntfs_bypass()
- */
-static int
-ntfs_bypass(struct vop_generic_args *ap)
-{
-	int error = ENOTTY;
-	dprintf(("ntfs_bypass: %s\n", ap->a_desc->sd_name));
-	return (error);
-}
-
-#endif
-
 /*
  * ntfs_getattr(struct vnode *a_vp, struct vattr *a_vap)
  */
@@ -207,11 +177,7 @@ ntfs_getattr(struct vop_getattr_args *ap)
 	dprintf(("ntfs_getattr: %ju, flags: %d\n", (uintmax_t)ip->i_number,
 		ip->i_flag));
 
-#if defined(__DragonFly__)
 	vap->va_fsid = dev2udev(ip->i_dev);
-#else /* NetBSD */
-	vap->va_fsid = ip->i_dev;
-#endif
 	vap->va_fileid = ip->i_number;
 	vap->va_mode = ip->i_mp->ntm_mode;
 	vap->va_nlink = ip->i_nlink;
@@ -797,14 +763,6 @@ ntfs_pathconf(struct vop_pathconf_args *ap)
 	case _PC_NO_TRUNC:
 		*ap->a_retval = 0;
 		return (0);
-#if defined(__NetBSD__)
-	case _PC_SYNC_IO:
-		*ap->a_retval = 1;
-		return (0);
-	case _PC_FILESIZEBITS:
-		*ap->a_retval = 64;
-		return (0);
-#endif
 	default:
 		return (EINVAL);
 	}
