@@ -1,7 +1,7 @@
 /*	$OpenBSD: km.c,v 1.8 2013/09/17 13:42:34 kettenis Exp $	*/
 
 /*
- * Copyright (c) 2008/2010 Constantine A. Murenin <cnst+openbsd@bugmail.mojo.ru>
+ * Copyright (c) 2008/2010 Constantine A. Murenin <cnst+dfly@bugmail.mojo.ru>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
