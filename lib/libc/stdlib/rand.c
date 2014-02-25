@@ -35,6 +35,7 @@
 #include "namespace.h"
 #include <sys/time.h>          /* for sranddev() */
 #include <sys/types.h>
+#include <sys/sysctl.h>
 #include <fcntl.h>             /* for sranddev() */
 #include <stdlib.h>
 #include <unistd.h>            /* for sranddev() */
@@ -116,11 +117,17 @@ sranddev(void)
 	}
 
 	if (!done) {
+		size_t len = sizeof(next);
+
+		if (sysctlbyname("kern.random", &next, &len, NULL, 0) == 0)
+			done = 1;
+	}
+		
+	if (!done) {
 		struct timeval tv;
-		unsigned long junk;	/* XXX left uninitialized on purpose */
 
 		gettimeofday(&tv, NULL);
-		srand((getpid() << 16) ^ tv.tv_sec ^ tv.tv_usec ^ junk);
+		srand((getpid() << 16) ^ tv.tv_sec ^ tv.tv_usec);
 	}
 }
 
