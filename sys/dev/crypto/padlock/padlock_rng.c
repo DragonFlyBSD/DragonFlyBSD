@@ -36,23 +36,22 @@
 
 #include <dev/crypto/padlock/padlock.h>
 
-int padlock_rng(uint8_t *out, int limit);
+int padlock_rng(uint8_t *out, long limit);
 
-static int random_count = 32;
+#define PADLOCK_RNDBYTES	32
 
 static void
 padlock_rng_harvest(void *arg)
 {
 	struct padlock_softc *sc = arg;
-	uint8_t randomness[128];
+	uint8_t randomness[PADLOCK_RNDBYTES + 32];
 	uint8_t *arandomness; /* randomness aligned */
-	int i, cnt;
+	int cnt;
 
 	arandomness = PADLOCK_ALIGN(randomness);
-	cnt = padlock_rng(arandomness, random_count);
+	cnt = padlock_rng(arandomness, PADLOCK_RNDBYTES);
 
-	for (i = 0; i < cnt; i++)
-		add_true_randomness((int)arandomness[i]);
+	add_buffer_randomness(arandomness, cnt);
 
 	callout_reset(&sc->sc_rng_co, sc->sc_rng_ticks,
 	    padlock_rng_harvest, sc);

@@ -35,6 +35,7 @@
 ENTRY(padlock_rng)
 	movl	4(%esp),%edi
 	movl	8(%esp),%ecx
+	pushl	%ebx
 
 	movl	$3,	%edx
 	xorl	%ebx, 	%ebx
@@ -72,5 +73,6 @@ loop:
 out:
 	/* return the number of stored random bytes. */
 	movl	%ebx, 	%eax
+	popl	%ebx
 	ret
 END(padlock_rng)

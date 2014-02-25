@@ -31,12 +31,12 @@
 
 	.text
 
-/* int padlock_rng(uint8_t *out, int limit) */
+/* int padlock_rng(uint8_t *out, long limit) */
 ENTRY(padlock_rng)
-	movl	%esi,	%ecx
+	movq	%rsi,	%rcx
 
 	movq	$3,	%rdx
-	xorq	%rbx, 	%rbx
+	xorq	%r11, 	%r11
 loop:
 	/*
 	 * edx: (input)		quality factor of rng entropy
@@ -60,16 +60,16 @@ loop:
 	 * Increment the count of stored random bytes. The buffer pointer
 	 * in rdi is auto-incremented by the xstore-rng instruction.
 	 */
-	addl	%eax, 	%ebx
+	addq	%rax, 	%r11
 
 	/*
 	 * If we haven't already read enough random bytes,
 	 * loop again.
 	 */
-	cmpl	%ecx, 	%ebx
+	cmpq	%rcx, 	%r11
 	jl	loop
 out:
 	/* return the number of stored random bytes. */
-	movl	%ebx, 	%eax
+	movq	%r11, 	%rax
 	ret
 END(padlock_rng)
