@@ -1596,7 +1596,7 @@ ldns_dnssec_verify_denial_nsec3_match( ldns_rr *rr
 	ldns_rdf *zone_name;
 	ldns_rdf *hashed_name;
 	/* self assignment to suppress uninitialized warning */
-	ldns_rdf *next_closer = next_closer;
+	ldns_rdf *next_closer = NULL;
 	ldns_rdf *hashed_next_closer;
 	size_t i;
 	ldns_status result = LDNS_STATUS_DNSSEC_NSEC_RR_NOT_COVERED;

@@ -10,5 +10,7 @@ size = 1109941
 sha1 = 5b4fc6c5c3078cd061905c47178478cb1015c62a
 
 A list of files and directories removed is in README.DELETED
-There are no local modifications.
 
+The following files have been patched:
+
+dnssec_verify.c - to silence -Winit-self and not have to lower WARNS
