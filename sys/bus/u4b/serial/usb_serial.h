@@ -166,6 +166,7 @@ struct ucom_softc {
 	const struct ucom_callback *sc_callback;
 	struct ucom_super_softc *sc_super;
 	struct tty *sc_tty;
+	struct dev *sc_dev;
 	struct lock *sc_lock;
 	void   *sc_parent;
 	int sc_subunit;

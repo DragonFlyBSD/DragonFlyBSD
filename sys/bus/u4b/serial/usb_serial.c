@@ -81,7 +81,8 @@
 #include <sys/priv.h>
 #include <sys/cons.h>
 #include <sys/serial.h>
-
+#include <sys/conf.h>
+ 
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
 #include <bus/u4b/usbdi_util.h>
@@ -395,7 +396,6 @@ ucom_drain(struct ucom_super_softc *ssc)
 void
 ucom_drain_all(void *arg)
 {
-#if XXX
 	lockmgr(&ucom_lock, LK_EXCLUSIVE);
 	while (ucom_close_refs > 0) {
 		kprintf("ucom: Waiting for all detached TTY "
@@ -403,7 +403,6 @@ ucom_drain_all(void *arg)
 		usb_pause_mtx(&ucom_lock, hz);
 	}
 	lockmgr(&ucom_lock, LK_RELEASE);
-#endif
 }
 
 static int
@@ -411,13 +410,15 @@ ucom_attach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 {
 	struct tty *tp;
 	char buf[32];			/* temporary TTY device name buffer */
+	cdev_t dev;
 
-	/*
-	tp = tty_alloc_mutex(&ucom_class, sc, sc->sc_lock);
-	*/
-	tp = NULL;
-	if (tp == NULL)
+	lwkt_gettoken(&tty_token);
+	
+	tp = ttymalloc(sc->sc_tty);
+	if (tp == NULL) {
+		lwkt_reltoken(&tty_token);
 		return (ENOMEM);
+	}
 
 	/* Check if the client has a custom TTY name */
 	buf[0] = '\0';
@@ -437,10 +438,12 @@ ucom_attach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 			    ssc->sc_unit);
 		}
 	}
-	/*
-	tty_makedev(tp, NULL, "%s", buf);
-	*/
+
+	dev = make_dev(&ucom_ops, ssc->sc_unit | 0x80, // XXX UCOM_CALLOUT_MASK,
+			UID_UUCP, GID_DIALER, 0660,
+			buf, ssc->sc_unit);
 	sc->sc_tty = tp;
+	sc->sc_dev = dev;
 
 	DPRINTF("ttycreate: %s\n", buf);
 
@@ -471,6 +474,7 @@ ucom_attach_tty(struct ucom_super_softc *ssc, struct ucom_softc *sc)
 		UCOM_MTX_UNLOCK(ucom_cons_softc);
 	}
 
+	lwkt_reltoken(&tty_token);
 	return (0);
 }
 
