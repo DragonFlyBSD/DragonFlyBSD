@@ -123,7 +123,7 @@ rdrand_rng_harvest(void *arg)
 
 	arandomness = RDRAND_ALIGN(randomness);
 
-	cnt = rdrand_rng(arandomness, sizeof(RDRAND_SIZE));
+	cnt = rdrand_rng(arandomness, RDRAND_SIZE);
 	if (cnt > 0 && cnt < sizeof(randomness)) {
 		add_buffer_randomness(arandomness, cnt);
 
