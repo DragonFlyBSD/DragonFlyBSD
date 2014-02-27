@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
+ * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
  */
 
 
@@ -329,6 +329,14 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 		goto out;
 	ntmp = kmalloc(sizeof *ntmp, M_NTFSMNT, M_WAITOK | M_ZERO);
 	bcopy( bp->b_data, &ntmp->ntm_bootfile, sizeof(struct bootfile) );
+	/*
+	 * We must not cache the boot block if its size is not exactly
+	 * one cluster in order to avoid confusing the buffer cache when
+	 * the boot file is read later by ntfs_readntvattr_plain(), which
+	 * reads a cluster at a time.
+	 */
+	if (ntfs_cntob(1) != BBSIZE)
+		bp->b_flags |= B_NOCACHE;
 	brelse( bp );
 	bp = NULL;
 
