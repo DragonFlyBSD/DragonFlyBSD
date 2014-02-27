@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/sys/sem.h,v 1.20.2.2 2000/08/04 22:31:10 peter Exp $ */
-/* $DragonFly: src/sys/sys/sem.h,v 1.4 2003/08/27 02:03:22 dillon Exp $ */
 /*	$NetBSD: sem.h,v 1.5 1994/06/29 06:45:15 cgd Exp $	*/
 
 /*
@@ -117,7 +116,6 @@ extern struct seminfo	seminfo;
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int semsys (int, ...);
 int semctl (int, int, int, ...);
 int semget (key_t, int, int);
 int semop (int, struct sembuf *,unsigned);

@@ -265,14 +265,9 @@
 			    struct rtprio *rtp); }
 167	UNIMPL	nosys
 168	UNIMPL	nosys
-169	STD	{ int semsys(int which, int a2, int a3, int a4, \
-			    int a5); }
-; XXX should be		{ int semsys(int which, ...); }
-170	STD	{ int msgsys(int which, int a2, int a3, int a4, \
-			    int a5, int a6); }
-; XXX should be		{ int msgsys(int which, ...); }
-171	STD	{ int shmsys(int which, int a2, int a3, int a4); }
-; XXX should be		{ int shmsys(int which, ...); }
+169	OBSOL	semsys
+170	OBSOL	msgsys
+171	OBSOL	shmsys
 172	UNIMPL	nosys
 173	STD	{ ssize_t extpread(int fd, void *buf, \
 			    size_t nbyte, int flags, off_t offset); }

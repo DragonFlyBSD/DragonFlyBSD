@@ -163,9 +163,9 @@
 #define	SYS_uname	164
 #define	SYS_sysarch	165
 #define	SYS_rtprio	166
-#define	SYS_semsys	169
-#define	SYS_msgsys	170
-#define	SYS_shmsys	171
+				/* 169 is obsolete semsys */
+				/* 170 is obsolete msgsys */
+				/* 171 is obsolete shmsys */
 #define	SYS_extpread	173
 #define	SYS_extpwrite	174
 #define	SYS_ntp_adjtime	176

@@ -57,18 +57,8 @@
 
 static MALLOC_DEFINE(M_SHM, "shm", "SVID compatible shared memory segments");
 
-struct oshmctl_args;
-static int sys_oshmctl (struct proc *p, struct oshmctl_args *uap);
-
 static int shmget_allocate_segment (struct proc *p, struct shmget_args *uap, int mode);
 static int shmget_existing (struct proc *p, struct shmget_args *uap, int mode, int segnum);
-
-/* XXX casting to (sy_call_t *) is bogus, as usual. */
-static sy_call_t *shmcalls[] = {
-	(sy_call_t *)sys_shmat, (sy_call_t *)sys_oshmctl,
-	(sy_call_t *)sys_shmdt, (sy_call_t *)sys_shmget,
-	(sy_call_t *)sys_shmctl
-};
 
 #define	SHMSEG_FREE     	0x0200
 #define	SHMSEG_REMOVED  	0x0400
@@ -368,75 +358,6 @@ done:
 	return error;
 }
 
-struct oshmid_ds {
-	struct	ipc_perm shm_perm;	/* operation perms */
-	int	shm_segsz;		/* size of segment (bytes) */
-	ushort	shm_cpid;		/* pid, creator */
-	ushort	shm_lpid;		/* pid, last operation */
-	short	shm_nattch;		/* no. of current attaches */
-	time_t	shm_atime;		/* last attach time */
-	time_t	shm_dtime;		/* last detach time */
-	time_t	shm_ctime;		/* last change time */
-	void	*shm_handle;		/* internal handle for shm segment */
-};
-
-struct oshmctl_args {
-	struct sysmsg sysmsg;
-	int shmid;
-	int cmd;
-	struct oshmid_ds *ubuf;
-};
-
-/*
- * MPALMOSTSAFE
- */
-static int
-sys_oshmctl(struct proc *p, struct oshmctl_args *uap)
-{
-#ifdef COMPAT_43
-	struct thread *td = curthread;
-	struct shmid_ds *shmseg;
-	struct oshmid_ds outbuf;
-	int error;
-
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
-		return (ENOSYS);
-
-	get_mplock();
-	shmseg = shm_find_segment_by_shmid(uap->shmid);
-	if (shmseg == NULL) {
-		error = EINVAL;
-		goto done;
-	}
-
-	switch (uap->cmd) {
-	case IPC_STAT:
-		error = ipcperm(p, &shmseg->shm_perm, IPC_R);
-		if (error)
-			break;
-		outbuf.shm_perm = shmseg->shm_perm;
-		outbuf.shm_segsz = shmseg->shm_segsz;
-		outbuf.shm_cpid = shmseg->shm_cpid;
-		outbuf.shm_lpid = shmseg->shm_lpid;
-		outbuf.shm_nattch = shmseg->shm_nattch;
-		outbuf.shm_atime = shmseg->shm_atime;
-		outbuf.shm_dtime = shmseg->shm_dtime;
-		outbuf.shm_ctime = shmseg->shm_ctime;
-		outbuf.shm_handle = shmseg->shm_internal;
-		error = copyout((caddr_t)&outbuf, uap->ubuf, sizeof(outbuf));
-		break;
-	default:
-		/* XXX casting to (sy_call_t *) is bogus, as usual. */
-		error = sys_shmctl((struct shmctl_args *)uap);
-	}
-done:
-	rel_mplock();
-	return error;
-#else
-	return EINVAL;
-#endif
-}
-
 /*
  * MPALMOSTSAFE
  */
@@ -677,32 +598,6 @@ sys_shmget(struct shmget_args *uap)
 done:
 	rel_mplock();
 	return (error);
-}
-
-/*
- * shmsys_args(int which, int a2, ...) (VARARGS)
- *
- * MPALMOSTSAFE
- */
-int
-sys_shmsys(struct shmsys_args *uap)
-{
-	struct thread *td = curthread;
-	unsigned int which = (unsigned int)uap->which;
-	int error;
-
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
-		return (ENOSYS);
-
-	if (which >= NELEM(shmcalls))
-		return EINVAL;
-	get_mplock();
-	bcopy(&uap->a2, &uap->which,
-		sizeof(struct shmsys_args) - offsetof(struct shmsys_args, a2));
-	error = ((*shmcalls[which])(uap));
-	rel_mplock();
-
-	return(error);
 }
 
 void

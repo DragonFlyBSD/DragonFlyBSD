@@ -346,7 +346,6 @@ DF306.0 {
     semctl;
     semget;
     semop;
-    semsys;
     set_mcontext;
     setcontext;
     setdomainname;

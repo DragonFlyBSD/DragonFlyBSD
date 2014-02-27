@@ -206,9 +206,6 @@ union sysunion {
 	struct	uname_args uname;
 	struct	sysarch_args sysarch;
 	struct	rtprio_args rtprio;
-	struct	semsys_args semsys;
-	struct	msgsys_args msgsys;
-	struct	shmsys_args shmsys;
 	struct	extpread_args extpread;
 	struct	extpwrite_args extpwrite;
 	struct	ntp_adjtime_args ntp_adjtime;

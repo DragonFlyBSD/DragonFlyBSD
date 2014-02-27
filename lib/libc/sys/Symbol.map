@@ -153,7 +153,6 @@ DF306.0 {
     mq_unlink;
     msgctl;
     msync;
-    msgsys;
     munlock;
     munlockall;
     munmap;
@@ -225,7 +224,6 @@ DF306.0 {
     shmctl;
     shmdt;
     shmget;
-    shmsys;
     shutdown;
     sigaction;
     sigaltstack;
@@ -450,7 +448,6 @@ DFprivate_1.0 {
     __sys_mq_timedreceive;
     __sys_mq_timedsend;
     __sys_mq_unlink;
-    __sys_msgsys;
     __sys_msync;
     __sys_munlock;
     __sys_munlockall;
@@ -491,7 +488,6 @@ DFprivate_1.0 {
     __sys_sched_setscheduler;
     __sys_sched_yield;
     __sys_select;
-    __sys_semsys;
     __sys_sendfile;
     __sys_sendmsg;
     __sys_sendto;
@@ -517,7 +513,6 @@ DFprivate_1.0 {
     __sys_shmctl;
     __sys_shmdt;
     __sys_shmget;
-    __sys_shmsys;
     __sys_shutdown;
     __sys_sigaction;
     __sys_sigaltstack;
@@ -735,7 +730,6 @@ DFprivate_1.0 {
     _mq_timedreceive;
     _mq_timedsend;
     _mq_unlink;
-    _msgsys;
     _msync;
     _munlock;
     _munlockall;
@@ -786,7 +780,6 @@ DFprivate_1.0 {
     _sem_trywait;
     _sem_unlink;
     _sem_wait;
-    _semsys;
     _sendfile;
     _sendmsg;
     _sendto;
@@ -812,7 +805,6 @@ DFprivate_1.0 {
     _shmctl;
     _shmdt;
     _shmget;
-    _shmsys;
     _shutdown;
     _sigaction;
     _sigaltstack;

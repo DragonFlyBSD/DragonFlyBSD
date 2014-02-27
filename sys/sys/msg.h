@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/sys/msg.h,v 1.10.2.1 2000/08/04 22:31:10 peter Exp $ */
-/* $DragonFly: src/sys/sys/msg.h,v 1.4 2003/08/27 02:03:22 dillon Exp $ */
 /*	$NetBSD: msg.h,v 1.4 1994/06/29 06:44:43 cgd Exp $	*/
 
 /*
@@ -105,7 +104,6 @@ extern struct msginfo	msginfo;
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int msgsys (int, ...);
 int msgctl (int, int, struct msqid_ds *);
 int msgget (key_t, int);
 int msgsnd (int, void *, size_t, int);

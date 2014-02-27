@@ -95,7 +95,6 @@ void	shmfork (struct proc *, struct proc *);
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int shmsys (int, ...);
 int shmget (key_t, size_t, int);
 int shmctl (int, int, struct shmid_ds *);
 void *shmat  (int, const void *, int);

@@ -44,12 +44,6 @@ static void msginit (void *);
 
 static void msg_freehdr (struct msg *msghdr);
 
-/* XXX casting to (sy_call_t *) is bogus, as usual. */
-static sy_call_t *msgcalls[] = {
-	(sy_call_t *)sys_msgctl, (sy_call_t *)sys_msgget,
-	(sy_call_t *)sys_msgsnd, (sy_call_t *)sys_msgrcv
-};
-
 struct msg {
 	struct	msg *msg_next;	/* next msg in the chain */
 	long	msg_type;	/* type of this message */
@@ -179,33 +173,6 @@ msginit(void *dummy)
 	}
 }
 SYSINIT(sysv_msg, SI_SUB_SYSV_MSG, SI_ORDER_FIRST, msginit, NULL)
-
-/*
- * Entry point for all MSG calls
- *
- * msgsys_args(int which, int a2, ...) (VARARGS)
- *
- * MPALMOSTSAFE
- */
-int
-sys_msgsys(struct msgsys_args *uap)
-{
-	struct thread *td = curthread;
-	unsigned int which = (unsigned int)uap->which;
-	int error;
-
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
-		return (ENOSYS);
-
-	if (which >= NELEM(msgcalls))
-		return (EINVAL);
-	bcopy(&uap->a2, &uap->which,
-	      sizeof(struct msgsys_args) - offsetof(struct msgsys_args, a2));
-	get_mplock();
-	error = (*msgcalls[which])(uap);
-	rel_mplock();
-	return (error);
-}
 
 static void
 msg_freehdr(struct msg *msghdr)

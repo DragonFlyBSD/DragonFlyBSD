@@ -32,12 +32,6 @@ static struct sem_undo *semu_alloc (struct proc *p);
 static int semundo_adjust (struct proc *p, int semid, int semnum, int adjval);
 static void semundo_clear (int semid, int semnum);
 
-/* XXX casting to (sy_call_t *) is bogus, as usual. */
-static sy_call_t *semcalls[] = {
-	(sy_call_t *)sys___semctl, (sy_call_t *)sys_semget,
-	(sy_call_t *)sys_semop
-};
-
 static struct lwkt_token semu_token = LWKT_TOKEN_INITIALIZER(semu_token);
 static int	semtot = 0;
 static struct semid_pool *sema;	/* semaphore id pool */
@@ -187,31 +181,6 @@ seminit(void *dummy)
 	}
 }
 SYSINIT(sysv_sem, SI_SUB_SYSV_SEM, SI_ORDER_FIRST, seminit, NULL)
-
-/*
- * Entry point for all SEM calls
- *
- * semsys_args(int which, a2, a3, ...) (VARARGS)
- *
- * MPALMOSTSAFE
- */
-int
-sys_semsys(struct semsys_args *uap)
-{
-	struct thread *td = curthread;
-	unsigned int which = (unsigned int)uap->which;
-	int error;
-
-	if (!jail_sysvipc_allowed && td->td_ucred->cr_prison != NULL)
-		return (ENOSYS);
-
-	if (which >= NELEM(semcalls))
-		return (EINVAL);
-	bcopy(&uap->a2, &uap->which,
-	      sizeof(struct semsys_args) - offsetof(struct semsys_args, a2));
-	error = (*semcalls[which])(uap);
-	return (error);
-}
 
 /*
  * Allocate a new sem_undo structure for a process

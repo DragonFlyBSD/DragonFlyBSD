@@ -8,7 +8,7 @@ MDASM=	Ovfork.S brk.S cerror.S exect.S fork.S getcontext.S pipe.S ptrace.S \
 	reboot.S rfork.S sbrk.S setlogin.S sigreturn.S syscall.S
 
 # Don't generate default code for these syscalls:
-NOASM=	__semctl.o break.o exit.o ftruncate.o getdomainname.o getlogin.o \
+NOASM=	break.o exit.o ftruncate.o getdomainname.o getlogin.o \
 	lseek.o mmap.o openbsd_poll.o semconfig.o setdomainname.o sstk.o \
 	truncate.o uname.o vfork.o yield.o fork.o
 

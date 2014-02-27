@@ -858,36 +858,6 @@ struct	rtprio_args {
 	pid_t	pid;	char pid_[PAD_(pid_t)];
 	struct rtprio *	rtp;	char rtp_[PAD_(struct rtprio *)];
 };
-struct	semsys_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	which;	char which_[PAD_(int)];
-	int	a2;	char a2_[PAD_(int)];
-	int	a3;	char a3_[PAD_(int)];
-	int	a4;	char a4_[PAD_(int)];
-	int	a5;	char a5_[PAD_(int)];
-};
-struct	msgsys_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	which;	char which_[PAD_(int)];
-	int	a2;	char a2_[PAD_(int)];
-	int	a3;	char a3_[PAD_(int)];
-	int	a4;	char a4_[PAD_(int)];
-	int	a5;	char a5_[PAD_(int)];
-	int	a6;	char a6_[PAD_(int)];
-};
-struct	shmsys_args {
-#ifdef _KERNEL
-	struct sysmsg sysmsg;
-#endif
-	int	which;	char which_[PAD_(int)];
-	int	a2;	char a2_[PAD_(int)];
-	int	a3;	char a3_[PAD_(int)];
-	int	a4;	char a4_[PAD_(int)];
-};
 struct	extpread_args {
 #ifdef _KERNEL
 	struct sysmsg sysmsg;
@@ -2717,9 +2687,6 @@ int	sys_setdomainname (struct setdomainname_args *);
 int	sys_uname (struct uname_args *);
 int	sys_sysarch (struct sysarch_args *);
 int	sys_rtprio (struct rtprio_args *);
-int	sys_semsys (struct semsys_args *);
-int	sys_msgsys (struct msgsys_args *);
-int	sys_shmsys (struct shmsys_args *);
 int	sys_extpread (struct extpread_args *);
 int	sys_extpwrite (struct extpwrite_args *);
 int	sys_ntp_adjtime (struct ntp_adjtime_args *);

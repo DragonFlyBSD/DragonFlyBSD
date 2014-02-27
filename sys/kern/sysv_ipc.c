@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/kern/sysv_ipc.c,v 1.13.2.2 2000/07/01 14:33:49 bsd Exp $ */
-/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.8 2005/10/08 14:31:26 corecode Exp $ */
 /*	$NetBSD: sysv_ipc.c,v 1.7 1994/06/29 06:33:11 cgd Exp $	*/
 
 /*
@@ -107,7 +106,6 @@ sysv_nosys(char *s)
  * SYSVSEM stubs
  */
 
-SYSCALL_NOT_PRESENT_GEN(semsys, "SYSVSEM");
 SYSCALL_NOT_PRESENT_GEN(__semctl, "SYSVSEM");
 SYSCALL_NOT_PRESENT_GEN(semget, "SYSVSEM");
 SYSCALL_NOT_PRESENT_GEN(semop, "SYSVSEM");
@@ -126,11 +124,8 @@ semexit(struct proc *p)
 
 /*
  * SYSVMSG stubs
- * 
- * note: msgsys args actually var-args? YYYY
  */
 
-SYSCALL_NOT_PRESENT_GEN(msgsys, "SYSVMSG");
 SYSCALL_NOT_PRESENT_GEN(msgctl, "SYSVMSG");
 SYSCALL_NOT_PRESENT_GEN(msgget, "SYSVMSG");
 SYSCALL_NOT_PRESENT_GEN(msgsnd, "SYSVMSG");
@@ -149,7 +144,6 @@ SYSCALL_NOT_PRESENT_GEN(shmdt, "SYSVSHM");
 SYSCALL_NOT_PRESENT_GEN(shmat, "SYSVSHM");
 SYSCALL_NOT_PRESENT_GEN(shmctl, "SYSVSHM");
 SYSCALL_NOT_PRESENT_GEN(shmget, "SYSVSHM");
-SYSCALL_NOT_PRESENT_GEN(shmsys, "SYSVSHM");
 
 /* called from kern_fork.c */
 void

@@ -114,9 +114,6 @@ MIASM =  \
 	uname.o \
 	sysarch.o \
 	rtprio.o \
-	semsys.o \
-	msgsys.o \
-	shmsys.o \
 	extpread.o \
 	extpwrite.o \
 	ntp_adjtime.o \
