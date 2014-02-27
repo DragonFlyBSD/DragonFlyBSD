@@ -1412,9 +1412,16 @@ ntfs_writentvattr_plain(struct ntfsmount *ntmp,	struct ntnode *ip,
 		off = ntfs_btocnoff(off);
 
 		while (left && ccl) {
-			tocopy = min(left,
-				  min(ntfs_cntob(ccl) - off, MAXBSIZE - off));
+			/*
+			 * Always read and write single clusters at a time -
+			 * we need to avoid requesting differently-sized
+			 * blocks at the same disk offsets to avoid
+			 * confusing the buffer cache.
+			 */
+			tocopy = min(left, ntfs_cntob(1) - off);
 			cl = ntfs_btocl(tocopy + off);
+			KASSERT(cl == 1 && tocopy <= ntfs_cntob(1),
+			    ("single cluster limit mistake"));
 			ddprintf(("ntfs_writentvattr_plain: write: " \
 				"cn: 0x%x cl: %d, off: %d len: %d, left: %d\n",
 				(u_int32_t) cn, (u_int32_t) cl,
@@ -1510,17 +1517,19 @@ ntfs_readntvattr_plain(struct ntfsmount *ntmp, struct ntnode *ip,
 						      MAXBSIZE - off));
 					cl = ntfs_btocl(tocopy + off);
 
-					/* If 'off' pushes us to next
-					 * block, don't attempt to read whole
-					 * 'tocopy' at once. This is to avoid
-					 * bread() with varying 'size' for
-					 * same 'blkno', which is not good.
+					/*
+					 * Always read single clusters at a
+					 * time - we need to avoid reading
+					 * differently-sized blocks at the
+					 * same disk offsets to avoid
+					 * confusing the buffer cache.
 					 */
-					if (cl > ntfs_btocl(tocopy)) {
-						tocopy -=
-						    ntfs_btocnoff(tocopy + off);
-						cl--;
-					}
+					tocopy = min(left,
+					    ntfs_cntob(1) - off);
+					cl = ntfs_btocl(tocopy + off);
+					KASSERT(cl == 1 &&
+					    tocopy <= ntfs_cntob(1),
+					    ("single cluster limit mistake"));
 
 					ddprintf(("ntfs_readntvattr_plain: " \
 						"read: cn: 0x%x cl: %d, " \
