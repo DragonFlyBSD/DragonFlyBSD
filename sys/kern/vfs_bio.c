@@ -2169,6 +2169,12 @@ restart:
 		if (bp->b_bufsize)
 			allocbuf(bp, 0);
 
+                if (bp->b_flags & (B_VNDIRTY | B_VNCLEAN | B_HASHED)) {
+			kprintf("getnewbuf: caught bug vp queue "
+				"%p/%08x qidx %d\n",
+				bp, bp->b_flags, qindex);
+			brelvp(bp);
+		}
 		bp->b_flags = B_BNOCLIP;
 		bp->b_cmd = BUF_CMD_DONE;
 		bp->b_vp = NULL;
