@@ -516,12 +516,19 @@ execute_vmclear(void *data)
 		/*
 		 * Must set vti->launched to zero after vmclear'ing to
 		 * force a vmlaunch the next time.
+		 *
+		 * Must not clear the loaded_vmx field until after we call
+		 * vmclear on the region.  This field triggers the interlocked
+		 * cpusync from another cpu trying to destroy or reuse
+		 * the vti.  If we clear the field first, the other cpu will
+		 * not interlock and may race our vmclear() on the underlying
+		 * memory.
 		 */
+		ERROR_IF(vmclear(vti->vmcs_region));
+error:
 		pcpu_info[gd->gd_cpuid].loaded_vmx = NULL;
 		vti->launched = 0;
-		ERROR_IF(vmclear(vti->vmcs_region));
 	}
-error:
 	return;
 }
 
