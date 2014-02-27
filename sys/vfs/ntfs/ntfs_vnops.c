@@ -725,7 +725,6 @@ ntfs_lookup(struct vop_old_lookup_args *ap)
 	return (error);
 }
 
-#if defined(__DragonFly__)
 /*
  * Flush the blocks of a file to disk.
  *
@@ -739,7 +738,6 @@ ntfs_fsync(struct vop_fsync_args *ap)
 {
 	return (0);
 }
-#endif
 
 /*
  * Return POSIX pathconf information applicable to NTFS filesystem
