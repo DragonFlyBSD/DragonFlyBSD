@@ -194,6 +194,8 @@ ata_dmafree(device_t dev)
 	bus_dma_tag_destroy(ch->dma->dmatag);
 	ch->dma->dmatag = NULL;
     }
+    if (ch->dma)
+	kfree(ch->dma, M_ATADMA);
 }
 
 static void
