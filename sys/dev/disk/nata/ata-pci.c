@@ -246,9 +246,11 @@ ata_pci_attach(device_t dev)
 	    continue;
 	}
 	/* XXX TGEN devclass_find_free_unit() implementation */
-	while (freeunit < devclass_get_maxunit(ata_devclass) &&
-	       devclass_get_device(ata_devclass, freeunit) != NULL)
-	    freeunit++;
+	if (ata_devclass) {
+		while (freeunit < devclass_get_maxunit(ata_devclass) &&
+		    devclass_get_device(ata_devclass, freeunit) != NULL)
+			freeunit++;
+	}
 	device_add_child(dev, "ata", freeunit);
     }
     bus_generic_attach(dev);
