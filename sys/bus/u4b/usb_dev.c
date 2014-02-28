@@ -1147,29 +1147,55 @@ static struct filterops usb_filtops_write =
 static int
 usb_kqfilter(struct dev_kqfilter_args *ap)
 {
-	cdev_t dev = ap->a_head.a_dev;
+	int fflags, err;
+	//cdev_t dev = ap->a_head.a_dev;
 	struct knote *kn = ap->a_kn;
 	struct klist *klist;
+	struct usb_fifo *f;
+	//struct usb_mbuf *m;
+	struct usb_cdev_refdata refs;
+	struct usb_cdev_privdata* cpd;
+
+	/* XXX This means something went wrong, what do we do
+	 * in that case
+	 */
+	err = devfs_get_cdevpriv(ap->a_fp, (void **)&cpd);
+	if (err != 0)
+		return (ENXIO);
+	err = usb_ref_device(cpd, &refs, 0 /* no uref */ );
+	if (err) {
+		return (ENXIO);
+	}
 
 	ap->a_result = 0;
+	fflags = cpd->fflags;
 
 	switch(kn->kn_filter) {
 	case EVFILT_READ:
-		kn->kn_fop = &usb_filtops_read;
-		kn->kn_hook = (caddr_t)dev;
+		if(fflags & FREAD) {
+			kn->kn_fop = &usb_filtops_read;
+		} else {
+			ap->a_result = EPERM;
+		}
 		break;
 	case EVFILT_WRITE:
-		kn->kn_fop = &usb_filtops_write;
-		kn->kn_hook = (caddr_t)dev;
+		if(fflags & FWRITE) {
+			f->flag_isselect = 1;
+			kn->kn_fop = &usb_filtops_write;
+		} else {
+			ap->a_result = EPERM;
+		}
 		break;
 	default:
 		ap->a_result = EOPNOTSUPP;
 		return(0);
 	}
 
+	kn->kn_hook = (caddr_t)cpd;
 	klist = &usb_kqevent.ki_note;
 	knote_insert(klist, kn);
 
+	usb_unref_device(cpd, &refs);
 	return(0);
 }
 
@@ -1185,9 +1211,52 @@ usb_filter_detach(struct knote *kn)
 static int
 usb_filter_read(struct knote *kn, long hint)
 {
-	/*cdev_t dev = (cdev_t)kn->kn_hook;
-	*/
-	int ready = 0;
+	struct usb_cdev_privdata* cpd = (struct usb_cdev_privdata *)kn->kn_hook;
+	struct usb_cdev_refdata refs;
+	struct usb_fifo *f;
+	struct usb_mbuf *m;
+	int err,ready = 0;
+	
+	err = usb_ref_device(cpd, &refs, 0 /* no uref */ );
+	if (err) {
+		return (0);
+	}
+
+	f = refs.rxfifo;
+
+	lockmgr(f->priv_lock, LK_EXCLUSIVE);
+
+	if (!refs.is_usbfs) {
+		if (f->flag_iserror) {
+			/* we got an error */
+			m = (void *)1;
+		} else {
+			if (f->queue_data == NULL) {
+				/*
+				 * start read transfer, if not
+				 * already started
+				 */
+				(f->methods->f_start_read) (f);
+			}
+			/* check if any packets are available */
+			USB_IF_POLL(&f->used_q, m);
+		}
+	} else {
+		if (f->flag_iscomplete) {
+			m = (void *)1;
+		} else {
+			m = NULL;
+		}
+	}
+
+	if (m) {
+		ready = 1;
+	} else {
+		ready = 0;
+	}
+	lockmgr(f->priv_lock, LK_RELEASE);
+
+	usb_unref_device(cpd, &refs);
 
 	return(ready);
 }
@@ -1195,10 +1264,52 @@ usb_filter_read(struct knote *kn, long hint)
 static int
 usb_filter_write(struct knote *kn, long hint)
 {
-	/*cdev_t dev = (cdev_t)kn->kn_hook;
-	*/
-	int ready = 0;
+	struct usb_cdev_privdata* cpd = (struct usb_cdev_privdata *)kn->kn_hook;
+	struct usb_cdev_refdata refs;
+	struct usb_fifo *f;
+	struct usb_mbuf *m;
+	int err,ready = 0;
+	
+	err = usb_ref_device(cpd, &refs, 0 /* no uref */ );
+	if (err) {
+		return (0);
+	}
 
+	f = refs.txfifo;
+
+	lockmgr(f->priv_lock, LK_EXCLUSIVE);
+
+	if (!refs.is_usbfs) {
+		if (f->flag_iserror) {
+			/* we got an error */
+			m = (void *)1;
+		} else {
+			if (f->queue_data == NULL) {
+				/*
+				 * start write transfer, if not
+				 * already started
+				 */
+				(f->methods->f_start_write) (f);
+			}
+			/* check if any packets are available */
+			USB_IF_POLL(&f->free_q, m);
+		}
+	} else {
+		if (f->flag_iscomplete) {
+			m = (void *)1;
+		} else {
+			m = NULL;
+		}
+	}
+
+	if (m) {
+		ready = 1;
+	} else {
+		ready = 0;
+	}
+
+	lockmgr(f->priv_lock, LK_RELEASE);
+	usb_unref_device(cpd, &refs);
 	return(ready);
 }
 
