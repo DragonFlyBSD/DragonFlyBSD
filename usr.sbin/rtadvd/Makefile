@@ -15,7 +15,7 @@
 
 PROG=	rtadvd
 SRCS=	rtadvd.c rrenum.c advcap.c if.c config.c timer.c dump.c
-WARNS?=	1
+WARNS?=	2
 
 CFLAGS+=-DINET6
 
