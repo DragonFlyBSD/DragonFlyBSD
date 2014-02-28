@@ -190,8 +190,8 @@ SYSCTL_INT(_hw, OID_AUTO, cpu_mwait_spin, CTLFLAG_RD, &cpu_mwait_spin, 0,
 #define CPU_MWAIT_HINT_AUTO	-1	/* C1 and C2 */
 #define CPU_MWAIT_HINT_AUTODEEP	-2	/* C3+ */
 
-SYSCTL_NODE(_machdep, 0, mwait, CTLFLAG_RW, 0, "MWAIT features");
-SYSCTL_NODE(_machdep_mwait, 0, CX, CTLFLAG_RW, 0, "MWAIT Cx settings");
+SYSCTL_NODE(_machdep, OID_AUTO, mwait, CTLFLAG_RW, 0, "MWAIT features");
+SYSCTL_NODE(_machdep_mwait, OID_AUTO, CX, CTLFLAG_RW, 0, "MWAIT Cx settings");
 
 struct cpu_mwait_cx {
 	int			subcnt;
