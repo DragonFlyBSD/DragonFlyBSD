@@ -2,7 +2,7 @@
 
 LIB=		smb
 
-WARNS?=		1
+WARNS?=		2
 
 SHLIB_MAJOR=	2
 
