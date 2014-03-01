@@ -99,7 +99,7 @@
 #include <bus/u4b/usbdi_util.h>
 #include <bus/u4b/usbhid.h>
 #include <bus/u4b/usb_cdc.h>
-#include <bus/u4b/usbdevs.h>
+#include "usbdevs.h"
 
 #include <bus/u4b/usb_ioctl.h>
 

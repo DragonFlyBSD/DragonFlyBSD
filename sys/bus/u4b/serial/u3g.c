@@ -50,7 +50,8 @@
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
 #include <bus/u4b/usbdi_util.h>
-#include <bus/u4b/usbdevs.h>
+
+#include "usbdevs.h"
 
 #define	USB_DEBUG_VAR u3g_debug
 #include <bus/u4b/usb_debug.h>
