@@ -3901,6 +3901,7 @@ ix_add_sysctl(struct ix_softc *sc)
 {
 #ifdef IX_RSS_DEBUG
 	char node[32];
+	int i;
 #endif
 
 	sysctl_ctx_init(&sc->sysctl_ctx);
