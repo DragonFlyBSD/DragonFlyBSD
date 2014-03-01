@@ -77,6 +77,7 @@ vcdinit(void *dummy __unused)
 {
 	struct vkdisk_info *dsk;
 	struct vcd_softc *sc;
+	struct disk_info info;
 	struct stat st;
 	int i;
 
@@ -100,6 +101,18 @@ vcdinit(void *dummy __unused)
 		sc->dev = disk_create(sc->unit, &sc->disk, &vcd_ops);
 		sc->dev->si_drv1 = sc;
 		sc->dev->si_iosize_max = 256 * 1024;
+
+		bzero(&info, sizeof(info));
+		info.d_media_blksize = 2048;
+		info.d_media_blocks = st.st_size / info.d_media_blksize;
+		info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL | DSO_COMPATPARTA |
+		    DSO_RAWEXTENSIONS;
+		info.d_nheads = 1;
+		info.d_ncylinders = 1;
+		info.d_secpertrack = info.d_media_blocks;
+		info.d_secpercyl = info.d_secpertrack * info.d_nheads;
+
+		disk_setdiskinfo(&sc->disk, &info);
 	}
 }
 
@@ -109,7 +122,6 @@ static int
 vcdopen(struct dev_open_args *ap)
 {
 	struct vcd_softc *sc;
-	struct disk_info info;
 	struct stat st;
 	cdev_t dev;
 
@@ -118,17 +130,6 @@ vcdopen(struct dev_open_args *ap)
 	if (fstat(sc->fd, &st) < 0 || st.st_size == 0)
 		return(ENXIO);
 
-	bzero(&info, sizeof(info));
-	info.d_media_blksize = 2048;
-	info.d_media_blocks = st.st_size / info.d_media_blksize;
-	info.d_dsflags = DSO_ONESLICE | DSO_COMPATLABEL | DSO_COMPATPARTA |
-			 DSO_RAWEXTENSIONS;
-	info.d_nheads = 1;
-	info.d_ncylinders = 1;
-	info.d_secpertrack = info.d_media_blocks;
-	info.d_secpercyl = info.d_secpertrack * info.d_nheads;
-
-	disk_setdiskinfo(&sc->disk, &info);
 	return(0);
 }
 
