@@ -117,7 +117,7 @@ exec_shell_imgact(struct image_params *imgp)
 	offset += strlen(imgp->args->fname) + 1;	/* add fname */
 	length = strlen(imgp->args->begin_argv) + 1;	/* bytes to delete */
 
-	if (offset - length > imgp->args->space)
+	if (offset > imgp->args->space + length)
 		return (E2BIG);
 
 	bcopy(imgp->args->begin_argv + length, imgp->args->begin_argv + offset,
