@@ -29,8 +29,14 @@
 #ifndef __cplusplus
 typedef	int		__wchar_t;
 #endif
+#ifndef ___WINT_T_DECLARED
 typedef	int		__wint_t;
+#define	___WINT_T_DECLARED
+#endif
+#ifndef ___RUNE_T_DECLARED
 typedef	int		__rune_t;
+#define ___RUNE_T_DECLARED
+#endif
 typedef	void		*__wctrans_t;
 typedef	void		*__wctype_t;
 

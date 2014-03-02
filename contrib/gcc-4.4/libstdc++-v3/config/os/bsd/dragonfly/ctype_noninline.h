@@ -34,15 +34,17 @@
 
 // Information as gleaned from /usr/include/ctype.h
 
-#ifdef _CTYPE_S
-  extern "C" const unsigned long __libc_C_ctype_[];
-#else
+#ifndef _CTYPE_S
   extern "C" const __uint16_t __libc_C_ctype_[];
 #endif
 
   const ctype_base::mask*
   ctype<char>::classic_table() throw()
+#ifdef _CTYPE_S
+  { return 0; }
+#else
   { return __libc_C_ctype_ + 1; }
+#endif
 
   ctype<char>::ctype(__c_locale, const mask* __table, bool __del,
 		     size_t __refs)

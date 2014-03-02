@@ -121,7 +121,10 @@ typedef struct vm_page *vm_page_t;
 
 /* Memory attributes. */
 
+#ifndef __VM_MEMATTR_T_DEFINED__
+#define __VM_MEMATTR_T_DEFINED__
 typedef char vm_memattr_t;
+#endif
 
 #define VM_MEMATTR_UNCACHEABLE		((vm_memattr_t)PAT_UNCACHEABLE)
 #define VM_MEMATTR_WRITE_COMBINING	((vm_memattr_t)PAT_WRITE_COMBINING)

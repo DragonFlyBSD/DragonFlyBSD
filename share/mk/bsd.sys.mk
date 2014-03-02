@@ -47,7 +47,11 @@ CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs\
 .  if ${WARNS} >= 2 && ${WARNS} <= 4
 # XXX Delete -Wmaybe-uninitialized by default for now -- the compiler doesn't
 # XXX always get it right.
+.   if ${CCVER} == "gcc47"
 CWARNFLAGS	+=	-Wno-maybe-uninitialized
+.   else
+CWARNFLAGS	+=	-Wno-uninitialized
+.   endif
 .  endif
 # Activate gcc47's -Wunused-but-set-variable (which is in -Wall) and
 # -Wunused-but-set-parameter (which is in -Wextra) only at WARNS >= 4

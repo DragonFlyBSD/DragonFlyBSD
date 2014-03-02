@@ -281,7 +281,7 @@ send_msg_with_cred(int sock, char *buffer, size_t size) {
 int
 receive_msg_with_cred(int sock, char *buffer, size_t size,
 		struct cmsgcred *cred) {
-	struct msghdr msg = {0};
+	struct msghdr msg = { .msg_name = NULL };
 	struct iovec vec;
 	ssize_t n;
 	int result;

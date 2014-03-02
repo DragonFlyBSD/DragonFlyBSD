@@ -43,7 +43,6 @@
  * from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  * from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/platform/vkernel/include/pmap.h,v 1.4 2007/07/01 02:51:44 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -203,8 +202,14 @@ extern char *ptvmmap;		/* poor name! */
 extern vm_offset_t clean_sva;
 extern vm_offset_t clean_eva;
 
+#ifndef __VM_PAGE_T_DEFINED__
+#define __VM_PAGE_T_DEFINED__
 typedef struct vm_page *vm_page_t;
+#endif
+#ifndef __VM_MEMATTR_T_DEFINED__
+#define __VM_MEMATTR_T_DEFINED__
 typedef char vm_memattr_t;
+#endif
 
 void	pmap_bootstrap(vm_paddr_t *, int64_t);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);

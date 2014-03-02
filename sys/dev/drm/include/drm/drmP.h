@@ -668,8 +668,6 @@ struct drm_ati_pcigart_info {
 	struct drm_dma_handle *dmah; /* handle for ATI PCIGART table */
 };
 
-typedef vm_paddr_t resource_size_t;
-
 /**
  * GEM specific mm private for tracking GEM objects
  */

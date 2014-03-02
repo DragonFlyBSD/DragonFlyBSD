@@ -2439,6 +2439,7 @@ ar5416GetGainBoundariesAndPdadcs(struct ath_hal *ah,
     int16_t  minDelta = 0;
     CHAN_CENTERS centers;
 
+    minPwrT4[0] = 0;		/* XXX make gcc44 happy */
     ar5416GetChannelCenters(ah, chan, &centers);
 
     /* Trim numPiers for the number of populated channel Piers */

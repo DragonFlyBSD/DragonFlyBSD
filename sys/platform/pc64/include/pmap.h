@@ -351,8 +351,14 @@ extern vm_offset_t clean_eva;
 extern vm_offset_t clean_sva;
 extern char *ptvmmap;		/* poor name! */
 
+#ifndef __VM_PAGE_T_DEFINED__
+#define __VM_PAGE_T_DEFINED__
 typedef struct vm_page *vm_page_t;
+#endif
+#ifndef __VM_MEMATTR_T_DEFINED__
+#define __VM_MEMATTR_T_DEFINED__
 typedef char vm_memattr_t;
+#endif
 
 void	pmap_release(struct pmap *pmap);
 void	pmap_interlock_wait (struct vmspace *);
