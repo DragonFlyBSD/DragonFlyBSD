@@ -29,6 +29,7 @@
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <linux/export.h>
+#include <linux/wait.h>
 
 static void ttm_eu_backoff_reservation_locked(struct list_head *list)
 {
@@ -46,7 +47,7 @@ static void ttm_eu_backoff_reservation_locked(struct list_head *list)
 		}
 		entry->reserved = false;
 		atomic_set(&bo->reserved, 0);
-		wakeup(bo);
+		wake_up_all(&bo->event_queue);
 	}
 }
 

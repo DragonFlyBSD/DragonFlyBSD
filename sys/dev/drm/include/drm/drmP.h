@@ -99,6 +99,7 @@
 #include <linux/kref.h>
 #include <linux/list.h>
 #include <linux/types.h>
+#include <linux/wait.h>
 
 #include <asm/uaccess.h>
 
@@ -202,7 +203,6 @@ SYSCTL_DECL(_hw_drm);
 #define DRM_DEV_UID	0
 #define DRM_DEV_GID	0
 
-#define wait_queue_head_t	atomic_t
 #define DRM_WAKEUP(w)		wakeup((void *)w)
 #define DRM_WAKEUP_INT(w)	wakeup(w)
 #define DRM_INIT_WAITQUEUE(queue) do {(void)(queue);} while (0)
@@ -456,14 +456,15 @@ typedef struct drm_buf {
 	void *dev_private;		 /**< Per-buffer private storage */
 } drm_buf_t;
 
-typedef struct drm_freelist {
+struct drm_freelist {
 	int		  initialized; /* Freelist in use		   */
 	atomic_t	  count;       /* Number of free buffers	   */
 	drm_buf_t	  *next;       /* End pointer			   */
 
+	wait_queue_head_t waiting;     /**< Processes waiting on free bufs */
 	int		  low_mark;    /* Low water mark		   */
 	int		  high_mark;   /* High water mark		   */
-} drm_freelist_t;
+};
 
 typedef struct drm_dma_handle {
 	void *vaddr;
@@ -480,7 +481,7 @@ typedef struct drm_buf_entry {
 	drm_dma_handle_t  **seglist;
 	int		  page_order;
 
-	drm_freelist_t	  freelist;
+	struct drm_freelist freelist;
 } drm_buf_entry_t;
 
 /* Event queued up for userspace to read */
@@ -524,18 +525,23 @@ struct drm_file {
 
 	struct list_head  fbs;
 
+	wait_queue_head_t event_wait;
 	struct list_head  event_list;
 	int		  event_space;
 
 	struct drm_prime_file_private prime;
 };
 
-typedef struct drm_lock_data {
-	struct drm_hw_lock	*hw_lock;	/* Hardware lock		   */
-	struct drm_file   *file_priv;   /* Unique identifier of holding process (NULL is kernel)*/
-	int		  lock_queue;	/* Queue of blocked processes	   */
-	unsigned long	  lock_time;	/* Time of last lock in jiffies	   */
-} drm_lock_data_t;
+/**
+ * Lock data.
+ */
+struct drm_lock_data {
+	struct drm_hw_lock *hw_lock;	/**< Hardware lock */
+	/** Private of lock holder's file (NULL=kernel) */
+	struct drm_file *file_priv;
+	wait_queue_head_t lock_queue;	/**< Queue of blocked processes */
+	unsigned long lock_time;	/**< Time of last lock in jiffies */
+};
 
 /* This structure, in the struct drm_device, is always initialized while the
  * device
@@ -954,7 +960,7 @@ struct drm_device {
 	drm_local_map_t	  **context_sareas;
 	int		  max_context;
 
-	drm_lock_data_t	  lock;		/* Information on hardware lock	   */
+	struct drm_lock_data lock;	/* Information on hardware lock	   */
 
 				/* DMA queues (contexts) */
 	drm_device_dma_t  *dma;		/* Optional pointer for DMA support */

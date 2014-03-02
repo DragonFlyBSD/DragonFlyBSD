@@ -38,6 +38,7 @@
 #include <linux/atomic.h>
 #include <linux/export.h>
 #include <linux/rbtree.h>
+#include <linux/wait.h>
 
 #define TTM_ASSERT_LOCKED(param)
 #define TTM_DEBUG(fmt, arg...)
@@ -257,7 +258,7 @@ int ttm_bo_reserve_nolru(struct ttm_buffer_object *bo,
 		bo->val_seq = sequence;
 		bo->seq_valid = true;
 		if (wake_up)
-			wakeup(bo);
+			wake_up_all(&bo->event_queue);
 	} else {
 		bo->seq_valid = false;
 	}
@@ -323,7 +324,7 @@ int ttm_bo_reserve_slowpath_nolru(struct ttm_buffer_object *bo,
 	bo->val_seq = sequence;
 	bo->seq_valid = true;
 	if (wake_up)
-		wakeup(bo);
+		wake_up_all(&bo->event_queue);
 
 	return 0;
 }
@@ -349,7 +350,7 @@ void ttm_bo_unreserve_locked(struct ttm_buffer_object *bo)
 {
 	ttm_bo_add_to_lru(bo);
 	atomic_set(&bo->reserved, 0);
-	wakeup(bo);
+	wake_up_all(&bo->event_queue);
 }
 
 void ttm_bo_unreserve(struct ttm_buffer_object *bo)
@@ -533,7 +534,7 @@ static void ttm_bo_cleanup_memtype_use(struct ttm_buffer_object *bo)
 	ttm_bo_mem_put(bo, &bo->mem);
 
 	atomic_set(&bo->reserved, 0);
-	wakeup(&bo);
+	wake_up_all(&bo->event_queue);
 
 	/*
 	 * Since the final reference to this bo may not be dropped by
@@ -576,7 +577,7 @@ static void ttm_bo_cleanup_refs_or_queue(struct ttm_buffer_object *bo)
 
 	if (!ret) {
 		atomic_set(&bo->reserved, 0);
-		wakeup(bo);
+		wake_up_all(&bo->event_queue);
 	}
 
 	kref_get(&bo->list_kref);
@@ -628,7 +629,7 @@ static int ttm_bo_cleanup_refs_and_unlock(struct ttm_buffer_object *bo,
 		lockmgr(&bdev->fence_lock, LK_RELEASE);
 
 		atomic_set(&bo->reserved, 0);
-		wakeup(bo);
+		wake_up_all(&bo->event_queue);
 		lockmgr(&glob->lru_lock, LK_RELEASE);
 
 		ret = driver->sync_obj_wait(sync_obj, false, interruptible);
@@ -667,7 +668,7 @@ static int ttm_bo_cleanup_refs_and_unlock(struct ttm_buffer_object *bo,
 
 	if (ret || unlikely(list_empty(&bo->ddestroy))) {
 		atomic_set(&bo->reserved, 0);
-		wakeup(bo);
+		wake_up_all(&bo->event_queue);
 		lockmgr(&glob->lru_lock, LK_RELEASE);
 		return ret;
 	}
@@ -1260,6 +1261,7 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 	kref_init(&bo->list_kref);
 	atomic_set(&bo->cpu_writers, 0);
 	atomic_set(&bo->reserved, 1);
+	init_waitqueue_head(&bo->event_queue);
 	INIT_LIST_HEAD(&bo->lru);
 	INIT_LIST_HEAD(&bo->ddestroy);
 	INIT_LIST_HEAD(&bo->swap);
@@ -1914,7 +1916,7 @@ out:
 	 */
 
 	atomic_set(&bo->reserved, 0);
-	wakeup(bo);
+	wake_up_all(&bo->event_queue);
 	kref_put(&bo->list_kref, ttm_bo_release_list);
 	return ret;
 }

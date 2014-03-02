@@ -171,6 +171,7 @@ priv_found:
 
 	INIT_LIST_HEAD(&priv->fbs);
 	INIT_LIST_HEAD(&priv->event_list);
+	init_waitqueue_head(&priv->event_wait);
 	priv->event_space = 4096; /* set aside 4k for event buffer */
 
 	if (dev->driver->driver_features & DRIVER_GEM)

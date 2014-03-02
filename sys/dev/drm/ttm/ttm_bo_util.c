@@ -32,6 +32,7 @@
 #include <drm/ttm/ttm_placement.h>
 #include <sys/sfbuf.h>
 #include <linux/export.h>
+#include <linux/wait.h>
 
 void ttm_bo_free_old_node(struct ttm_buffer_object *bo)
 {
@@ -416,6 +417,7 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	 * TODO: Explicit member copy would probably be better here.
 	 */
 
+	init_waitqueue_head(&fbo->event_queue);
 	INIT_LIST_HEAD(&fbo->ddestroy);
 	INIT_LIST_HEAD(&fbo->lru);
 	INIT_LIST_HEAD(&fbo->swap);

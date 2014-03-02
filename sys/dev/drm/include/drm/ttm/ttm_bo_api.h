@@ -208,7 +208,7 @@ struct ttm_buffer_object {
 	struct kref kref;
 	struct kref list_kref;
 
-	/* wait_queue_head_t event_queue; */
+	wait_queue_head_t event_queue;
 
 	/**
 	 * Members protected by the bo::reserved lock.
