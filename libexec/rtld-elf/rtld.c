@@ -467,7 +467,7 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	if (obj_main == NULL)
 	    die();
 #if 0
-	max_stack_flags = obj->stack_flags;
+	max_stack_flags = obj_main->stack_flags;
 #endif
     } else {				/* Main program already loaded. */
 	const Elf_Phdr *phdr;
