@@ -1130,7 +1130,7 @@ void
 vclean_unlocked(struct vnode *vp)
 {
 	vx_get(vp);
-	if (VREFCNT(vp) <= 0)
+	if (VREFCNT(vp) <= 1)
 		vgone_vxlocked(vp);
 	vx_put(vp);
 }
