@@ -405,7 +405,7 @@ hammer_cmd_pseudofs_downgrade(char **av, int ac)
 		printf("pfs-downgrade of PFS#%d (%s) succeeded\n",
 			pfs.pfs_id, pfs.ondisk->label);
 	} else {
-		fprintf(stderr, "pfs-upgrade of PFS#%d (%s) failed: %s\n",
+		fprintf(stderr, "pfs-downgrade of PFS#%d (%s) failed: %s\n",
 			pfs.pfs_id, pfs.ondisk->label, strerror(errno));
 	}
 }
