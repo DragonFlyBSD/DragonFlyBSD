@@ -163,9 +163,12 @@ initializecpu(int cpu)
 		cpu_fxsr = hw_instruction_sse = 1;
 	}
 
-	/* Check if we are running in a hypervisor. */
-	if (cpu_feature2 & CPUID2_VMM)
-		vmm_guest = 1;
+	if (cpu == 0) {
+		/* Check if we are running in a hypervisor. */
+		vmm_guest = detect_virtual();
+		if (vmm_guest == VMM_GUEST_NONE && (cpu_feature2 & CPUID2_VMM))
+			vmm_guest = VMM_GUEST_UNKNOWN;
+	}
 
 #if !defined(CPU_DISABLE_AVX)
 	/*Check for XSAVE and AVX support and enable if available.*/

@@ -87,6 +87,23 @@ extern int lbolt;			/* once a second sleep address */
 extern void *lbolt_syncer;		/* approx 1 hz but may be sped up */
 extern int vmm_guest; 			/* Running as virtual machine guest? */
 
+enum vmm_guest_type {
+	VMM_GUEST_NONE = 0,
+	VMM_GUEST_QEMU,
+	VMM_GUEST_PLEX86,
+	VMM_GUEST_BOCHS,
+	VMM_GUEST_XEN,
+	VMM_GUEST_BHYVE,
+	VMM_GUEST_KVM,
+	VMM_GUEST_VMWARE,
+	VMM_GUEST_VPC,
+	VMM_GUEST_VBOX,
+	VMM_GUEST_PARALLELS,
+	VMM_GUEST_VKERNEL,
+	VMM_GUEST_UNKNOWN,
+	VMM_LAST
+};
+
 /*
  * Enumerated types for known system startup interfaces.
  *

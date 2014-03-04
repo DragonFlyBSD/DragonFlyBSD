@@ -33,7 +33,6 @@
  *
  *	@(#)param.c	8.3 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/kern/subr_param.c,v 1.42.2.10 2002/03/09 21:05:47 silby Exp $
- * $DragonFly: src/sys/kern/subr_param.c,v 1.7 2005/06/26 22:03:22 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -43,6 +42,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
+#include <sys/sysctl.h>
 #include <vm/pmap.h>
 #include <machine/vmparam.h>
 
@@ -63,6 +63,8 @@
 #ifndef MAXPOSIXLOCKSPERUID
 #define MAXPOSIXLOCKSPERUID (maxusers * 64) /* Should be a safe value */
 #endif
+
+static int sysctl_kern_vmm_guest(SYSCTL_HANDLER_ARGS);
 
 int	hz;
 int	stathz;
@@ -92,12 +94,88 @@ u_quad_t	dflssiz;			/* initial stack size limit */
 u_quad_t	maxssiz;			/* max stack size */
 u_quad_t	sgrowsiz;			/* amount to grow stack */
 
+SYSCTL_PROC(_kern, OID_AUTO, vmm_guest, CTLFLAG_RD | CTLTYPE_STRING,
+    NULL, 0, sysctl_kern_vmm_guest, "A",
+    "Virtual machine guest type");
+
 /*
  * These have to be allocated somewhere; allocating
  * them here forces loader errors if this file is omitted
  * (if they've been externed everywhere else; hah!).
  */
 struct	buf *swbuf;
+
+struct vmm_bname {
+	const char *str;
+	enum vmm_guest_type type;
+};
+
+static struct vmm_bname vmm_bnames[] = {
+	{ "QEMU",	VMM_GUEST_QEMU },	/* QEMU */
+	{ "Plex86",	VMM_GUEST_PLEX86 },	/* Plex86 */
+	{ "Bochs",	VMM_GUEST_BOCHS },	/* Bochs */
+	{ "Xen",	VMM_GUEST_XEN },	/* Xen */
+	{ "BHYVE",	VMM_GUEST_BHYVE },	/* bhyve */
+	{ "Seabios",	VMM_GUEST_KVM},		/* KVM */
+	{ NULL, 0 }
+};
+
+static struct vmm_bname vmm_pnames[] = {
+	{ "VMware Virtual Platform",	VMM_GUEST_VMWARE },	/* VMWare VM */
+	{ "Virtual Machine",		VMM_GUEST_VPC },	/* M$ VirtualPC */
+	{ "VirtualBox",			VMM_GUEST_VBOX },	/* Sun VirtualBox */
+	{ "Parallels Virtual Platform",	VMM_GUEST_PARALLELS },	/* Parallels VM */
+	{ "KVM",			VMM_GUEST_KVM },	/* KVM */
+	{ NULL, 0 }
+};
+
+static const char *const vmm_guest_sysctl_names[] = {
+	"none",
+	"qemu",
+	"plex86",
+	"bochs",
+	"xen",
+	"bhyve",
+	"kvm",
+	"vmware",
+	"vpc",
+	"vbox",
+	"parallels",
+	"vkernel",
+	"unknown",
+	NULL
+};
+CTASSERT(NELEM(vmm_guest_sysctl_names) - 1 == VMM_LAST);
+
+/*
+ * Detect known Virtual Machine hosts by inspecting the emulated BIOS.
+ */
+enum vmm_guest_type
+detect_virtual(void)
+{
+	char *sysenv;
+	int i;
+
+	sysenv = kgetenv("smbios.bios.vendor");
+	if (sysenv != NULL) {
+		for (i = 0; vmm_bnames[i].str != NULL; i++)
+			if (strcmp(sysenv, vmm_bnames[i].str) == 0) {
+				kfreeenv(sysenv);
+				return (vmm_bnames[i].type);
+			}
+		kfreeenv(sysenv);
+	}
+	sysenv = kgetenv("smbios.system.product");
+	if (sysenv != NULL) {
+		for (i = 0; vmm_pnames[i].str != NULL; i++)
+			if (strcmp(sysenv, vmm_pnames[i].str) == 0) {
+				kfreeenv(sysenv);
+				return (vmm_pnames[i].type);
+			}
+		kfreeenv(sysenv);
+	}
+	return (VMM_GUEST_NONE);
+}
 
 /*
  * Boot time overrides that are not scaled against main memory
@@ -224,3 +302,12 @@ init_param2(int physpages)
 	TUNABLE_INT_FETCH("kern.ncallout", &ncallout);
 }
 
+/*
+ * Sysctl stringifying handler for kern.vmm_guest.
+ */
+static int
+sysctl_kern_vmm_guest(SYSCTL_HANDLER_ARGS)
+{
+	return (SYSCTL_OUT(req, vmm_guest_sysctl_names[vmm_guest], 
+	    strlen(vmm_guest_sysctl_names[vmm_guest])));
+}

@@ -359,8 +359,10 @@ initializecpu(void)
 	}
 	enable_sse();
 
-	if (cpu_feature2 & CPUID2_VMM)
-		vmm_guest = 1;
+	/* Check if we are running in a hypervisor. */
+	vmm_guest = detect_virtual();
+	if (vmm_guest == VMM_GUEST_NONE && (cpu_feature2 & CPUID2_VMM))
+		vmm_guest = VMM_GUEST_UNKNOWN;
 
 	if (cpu_vendor_id == CPU_VENDOR_AMD) {
 		switch((cpu_id & 0xFF0000)) {

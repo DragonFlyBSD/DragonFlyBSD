@@ -369,7 +369,7 @@ main(int ac, char **av)
 	setrealcpu();
 	init_kqueue();
 
-	vmm_guest = 1;
+	vmm_guest = VMM_GUEST_VKERNEL;
 
 	/*
 	 * Check TSC
