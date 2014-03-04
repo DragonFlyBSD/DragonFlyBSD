@@ -48,12 +48,13 @@ static int timetosecs(char *str);
  * softlink.
  */
 int
-getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
+getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path)
 {
 	uintmax_t dummy_tid;
 	struct stat st;
 	char *dirpath;
 	char buf[64];
+	size_t len;
 	int fd;
 	int n;
 
@@ -61,6 +62,16 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	pfs->ondisk = malloc(sizeof(*pfs->ondisk));
 	bzero(pfs->ondisk, sizeof(*pfs->ondisk));
 	pfs->bytes = sizeof(*pfs->ondisk);
+
+	/*
+	 * Remove the trailing '/' if there is one so that
+	 * in the case path is a symbolic link to the PFS,
+	 * the symbolic link is used and not the root dir of
+	 * the PFS
+	 */
+	len = strnlen(path, MAXPATHLEN);
+	if (path[len-1] == '/' && path[len] == '\0')
+		path[len-1] = '\0';
 
 	/*
 	 * Calculate the directory containing the softlink

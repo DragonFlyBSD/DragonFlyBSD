@@ -87,7 +87,7 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	hammer_ioc_mrecord_any_t mrec;
 	hammer_tid_t sync_tid;
 	histogram_t histogram_ary;
-	const char *filesystem;
+	char *filesystem;
 	char *buf = malloc(SERIALBUF_SIZE);
 	int interrupted = 0;
 	int error;
@@ -757,7 +757,7 @@ void
 hammer_cmd_mirror_write(char **av, int ac)
 {
 	struct hammer_ioc_mirror_rw mirror;
-	const char *filesystem;
+	char *filesystem;
 	char *buf = malloc(SERIALBUF_SIZE);
 	struct hammer_ioc_pseudofs_rw pfs;
 	struct hammer_ioc_mrecord_head pickup;
