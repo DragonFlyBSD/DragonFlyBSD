@@ -85,7 +85,7 @@ extern int profhz;			/* profiling clock's frequency */
 extern int ticks;
 extern int lbolt;			/* once a second sleep address */
 extern void *lbolt_syncer;		/* approx 1 hz but may be sped up */
-extern int vmm_guest; 			/* Running as virtual machine guest? */
+extern enum vmm_guest_type vmm_guest; 	/* Running as virtual machine guest? */
 
 enum vmm_guest_type {
 	VMM_GUEST_NONE = 0,
@@ -101,7 +101,7 @@ enum vmm_guest_type {
 	VMM_GUEST_PARALLELS,
 	VMM_GUEST_VKERNEL,
 	VMM_GUEST_UNKNOWN,
-	VMM_LAST
+	VMM_GUEST_LAST
 };
 
 /*

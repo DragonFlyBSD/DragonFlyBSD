@@ -86,7 +86,7 @@ long	nbuf;
 long	nswbuf;
 long	maxswzone;			/* max swmeta KVA storage */
 long	maxbcache;			/* max buffer cache KVA storage */
-int	vmm_guest = 0; 			/* Running as virtual machine guest? */
+enum vmm_guest_type vmm_guest = VMM_GUEST_NONE;	/* Running as VM guest? */
 u_quad_t	maxtsiz;			/* max text size */
 u_quad_t	dfldsiz;			/* initial data size limit */
 u_quad_t	maxdsiz;			/* max data size */
@@ -145,7 +145,7 @@ static const char *const vmm_guest_sysctl_names[] = {
 	"unknown",
 	NULL
 };
-CTASSERT(NELEM(vmm_guest_sysctl_names) - 1 == VMM_LAST);
+CTASSERT(NELEM(vmm_guest_sysctl_names) - 1 == VMM_GUEST_LAST);
 
 /*
  * Detect known Virtual Machine hosts by inspecting the emulated BIOS.
