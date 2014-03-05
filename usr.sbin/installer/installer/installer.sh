@@ -178,10 +178,14 @@ if [ $# -gt 1 ]; then
 fi
 
 # Check if we are booted from a LiveCD, DVD etc. ttyv1 isn't configured in
-# this case, so use that as a clue for now.
+# this case, so use that as a clue for now. Also, we have to use /dev/console
+# in vkernels.
 #
 _ttyv1=`grep -w "^ttyv1" /etc/ttys`
-if [ -z "$_ttyv1" ]; then
+if [ "`sysctl -n kern.vmm_guest`" = "vkernel" ]; then
+	SOURCE_DIR=/
+	TTY=/dev/console
+elif [ -z "$_ttyv1" ]; then
 	LIVECD=YES
 	SOURCE_DIR=/
 	TTY=/dev/ttyv1
