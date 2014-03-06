@@ -28,7 +28,7 @@
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
 .\"
-.Dd May 23, 2013
+.Dd March 6, 2014
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -54,6 +54,15 @@ at boot time) and loadable kernel modules;
 see
 .Xr kldstat 8
 .El
+.It Pa /compat/
+files related to compatibility layers
+.Pp
+.Bl -tag -width ".Pa ndis/" -compact
+.It Pa ndis/
+firmwares for
+.Xr ndis 4
+drivers
+.El
 .It Pa /dev/
 block and character device files
 .Pp
@@ -76,10 +85,6 @@ see
 .It Pa dma/
 .Xr dma 8
 configuration files
-.\".It Pa firmware/
-.\"Firmware image files;
-.\"see
-.\".Xr firmware 9
 .It Pa localtime
 local timezone information;
 see
@@ -295,8 +300,8 @@ misc. utility data files
 .It Pa libexec/
 system daemons & system utilities (executed by other programs)
 .Pp
-.Bl -tag -width ".Pa binutils221/" -compact
-.It Pa binutils221/
+.Bl -tag -width ".Pa binutils222/" -compact
+.It Pa binutils222/
 .Pp
 .Bl -tag -width ".Pa ldscripts/" -compact
 .It Pa ldscripts/
@@ -305,7 +310,7 @@ see
 .Xr ld 1
 .El
 .Pp
-.It Pa binutils222/
+.It Pa binutils224/
 .Pp
 .Bl -tag -width ".Pa ldscripts/" -compact
 .It Pa ldscripts/
