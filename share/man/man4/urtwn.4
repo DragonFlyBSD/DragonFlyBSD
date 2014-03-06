@@ -1,5 +1,3 @@
-.\" $OpenBSD: urtwn.4,v 1.20 2013/05/16 10:02:59 sthen Exp $
-.\" $FreeBSD: src/share/man/man4/urtwn.4,v 1.3 2013/06/26 00:26:08 svnexp Exp $
 .\"
 .\" Copyright (c) 2010 Damien Bergamini <damien.bergamini@free.fr>
 .\"
@@ -15,7 +13,9 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd August 19, 2013
+.\" $FreeBSD: head/share/man/man4/urtwn.4 257408 2013-10-31 01:57:05Z kevlo $
+.\"
+.Dd March 16, 2014
 .Dt URTWN 4
 .Os
 .Sh NAME
@@ -31,7 +31,6 @@ kernel configuration file:
 .Cd "device ohci"
 .Cd "device usb4bsd"
 .Cd "device urtwn"
-.Cx "device urtwnfw"
 .Cd "device wlan"
 .Ed
 .Pp
@@ -40,8 +39,6 @@ module at boot time, place the following line in
 .Xr loader.conf 5 :
 .Bd -literal -offset indent
 if_urtwn_load="YES"
-urtwn-rtl8192cfwT_load="YES"
-urtwn-rtl8192cfwU_load="YES"
 .Ed
 .Pp
 In both cases, place the following line in
@@ -68,14 +65,9 @@ The RTL8192CU is a highly integrated multiple-in, multiple-out (MIMO)
 RF in a single chip.
 It operates in the 2GHz spectrum only.
 .Pp
-The driver needs at least version 1.1p0 of the following firmware files,
-which are loaded when an interface is attached:
-.Pp
-.Bl -tag -width Ds -offset indent -compact
-.It urtwn-rtl8192cfwT
-.It urtwn-rtl8192cfwU
-.El
-.Pp
+This driver requires the firmware built with the
+.Xr urtwnfw 4
+module to work.
 For the loaded firmware to be enabled for use the license at
 .Pa /usr/share/doc/legal/realtek/LICENSE
 must be agreed to by adding the following line to
@@ -131,6 +123,7 @@ This should not happen.
 .Xr ifmedia 4 ,
 .Xr intro 4 ,
 .Xr netintro 4 ,
+.Xr urtwnfw 4 ,
 .Xr usb 4 ,
 .Xr wlan 4 ,
 .Xr wlan_ccmp 4 ,

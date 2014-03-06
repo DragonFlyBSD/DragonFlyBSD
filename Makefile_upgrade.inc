@@ -2514,6 +2514,8 @@ TO_REMOVE+=/boot/kernel/urtwn-rtl8192cfwT.ko
 TO_REMOVE+=/boot/kernel/urtwn-rtl8192cfwU.ko
 TO_REMOVE+=/usr/share/man/cat4/urtwn.4.gz
 TO_REMOVE+=/usr/share/man/man4/urtwn.4.gz
+TO_REMOVE+=/usr/share/man/cat4/urtwnfw.4.gz
+TO_REMOVE+=/usr/share/man/man4/urtwnfw.4.gz
 TO_REMOVE+=/usr/share/man/cat4/usb_quirk.4.gz
 TO_REMOVE+=/usr/share/man/man4/usb_quirk.4.gz
 .endif
