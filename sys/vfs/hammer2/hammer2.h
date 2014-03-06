@@ -508,6 +508,7 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_TRANS_BUFCACHE		0x0004	/* from bioq strategy write */
 #define HAMMER2_TRANS_NEWINODE		0x0008	/* caller allocating inode */
 #define HAMMER2_TRANS_ISALLOCATING	0x0010	/* in allocator */
+#define HAMMER2_TRANS_PREFLUSH		0x0020	/* preflush state */
 
 #define HAMMER2_FREEMAP_HEUR_NRADIX	4	/* pwr 2 PBUFRADIX-MINIORADIX */
 #define HAMMER2_FREEMAP_HEUR_TYPES	8
@@ -865,7 +866,6 @@ void hammer2_base_insert(hammer2_trans_t *trans, hammer2_chain_t *chain,
  */
 void hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp,
 				hammer2_mount_t *hmp, int flags);
-void hammer2_trans_clear_invfsync(hammer2_trans_t *trans);
 void hammer2_trans_done(hammer2_trans_t *trans);
 
 /*

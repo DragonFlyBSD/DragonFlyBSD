@@ -82,7 +82,7 @@ int hammer2_debug;
 int hammer2_cluster_enable = 1;
 int hammer2_hardlink_enable = 1;
 int hammer2_flush_pipe = 100;
-int hammer2_synchronous_flush = 0;
+int hammer2_synchronous_flush = 1;
 long hammer2_limit_dirty_chains;
 long hammer2_iod_file_read;
 long hammer2_iod_meta_read;
@@ -1907,27 +1907,46 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 		flags |= VMSC_ONEPASS;
 
 	/*
-	 * Initialize a normal transaction and sync everything out, then
-	 * wait for pending I/O to finish (so it gets a transaction id
-	 * that the meta-data flush will catch).
+	 * Start our flush transaction.  This does not return until all
+	 * concurrent transactions have completed and will prevent any
+	 * new transactions from running concurrently, except for the
+	 * buffer cache transactions.
+	 *
+	 * For efficiency do an async pass before making sure with a
+	 * synchronous pass on all related buffer cache buffers.  It
+	 * should theoretically not be possible for any new file buffers
+	 * to be instantiated during this sequence.
 	 */
-	hammer2_trans_init(&info.trans, pmp, NULL, 0);
+	hammer2_trans_init(&info.trans, pmp, NULL, HAMMER2_TRANS_ISFLUSH |
+						   HAMMER2_TRANS_PREFLUSH);
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);
+	info.waitfor = MNT_WAIT;
+	vsyncscan(mp, flags, hammer2_sync_scan2, &info);
 
+	/*
+	 * Clear PREFLUSH.  This prevents (or asserts on) any new logical
+	 * buffer cache flushes which occur during the flush.  Device buffers
+	 * are not affected.
+	 */
+
+#if 0
 	if (info.error == 0 && (waitfor & MNT_WAIT)) {
 		info.waitfor = waitfor;
 		    vsyncscan(mp, flags, hammer2_sync_scan2, &info);
 
 	}
-	hammer2_trans_done(&info.trans);
+#endif
 	hammer2_bioq_sync(info.trans.pmp);
+	atomic_clear_int(&info.trans.flags, HAMMER2_TRANS_PREFLUSH);
 
+#if 0
 	/*
 	 * Start the flush transaction and flush all meta-data.
 	 */
 	hammer2_trans_init(&info.trans, pmp, NULL, HAMMER2_TRANS_ISFLUSH);
+#endif
 
 	total_error = 0;
 	for (i = 0; i < pmp->cluster.nchains; ++i) {
@@ -2090,24 +2109,12 @@ hammer2_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	if (vp)
 		vfsync(vp, MNT_NOWAIT, 1, NULL, NULL);
 
-#if 0
-	/*
-	 * XXX this interferes with flush operations mainly because the
-	 *     same transaction id is being used by asynchronous buffer
-	 *     operations above and can be reordered after the flush
-	 *     below.
-	 */
-	parent = hammer2_inode_lock_ex(ip);
-	hammer2_flush(&info->trans, &parent);
-	hammer2_inode_unlock_ex(ip, parent);
-#endif
 	hammer2_inode_drop(ip);
+#if 1
 	error = 0;
-#if 0
-	error = VOP_FSYNC(vp, MNT_NOWAIT, 0);
-#endif
 	if (error)
 		info->error = error;
+#endif
 	return(0);
 }
 

@@ -281,7 +281,7 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 	KKASSERT(bytes >= HAMMER2_MIN_ALLOC && bytes <= HAMMER2_MAX_ALLOC);
 	KKASSERT((trans->flags & HAMMER2_TRANS_ISALLOCATING) == 0);
 	atomic_set_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
-	if (trans->flags & HAMMER2_TRANS_ISFLUSH)
+	if (trans->flags & (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_PREFLUSH))
 		++trans->sync_tid;
 
 	/*
@@ -345,7 +345,7 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 	hammer2_chain_unlock(parent);
 
 	atomic_clear_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
-	if (trans->flags & HAMMER2_TRANS_ISFLUSH)
+	if (trans->flags & (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_PREFLUSH))
 		--trans->sync_tid;
 
 	return (error);
@@ -839,7 +839,7 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	KKASSERT((data_off & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
 	KKASSERT((trans->flags & HAMMER2_TRANS_ISALLOCATING) == 0);
 	atomic_set_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
-	if (trans->flags & HAMMER2_TRANS_ISFLUSH)
+	if (trans->flags & (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_PREFLUSH))
 		++trans->sync_tid;
 
 	/*
@@ -1040,6 +1040,6 @@ again:
 done:
 	hammer2_chain_unlock(parent);
 	atomic_clear_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
-	if (trans->flags & HAMMER2_TRANS_ISFLUSH)
+	if (trans->flags & (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_PREFLUSH))
 		--trans->sync_tid;
 }

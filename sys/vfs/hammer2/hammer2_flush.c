@@ -70,6 +70,7 @@ static int hammer2_flush_pass1(hammer2_chain_t *child, void *data);
 static int hammer2_flush_pass2(hammer2_chain_t *child, void *data);
 static int hammer2_flush_pass3(hammer2_chain_t *child, void *data);
 static int hammer2_flush_pass4(hammer2_chain_t *child, void *data);
+static int hammer2_flush_pass5(hammer2_chain_t *child, void *data);
 static void hammer2_rollup_stats(hammer2_chain_t *parent,
 				hammer2_chain_t *child, int how);
 
@@ -192,13 +193,32 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp,
 		trans->orig_tid = trans->sync_tid;
 
 		/* XXX improve/optimize inode allocation */
+	} else if (trans->flags & HAMMER2_TRANS_BUFCACHE) {
+		/*
+		 * A buffer cache transaction is requested while a flush
+		 * is in progress.  The flush's PREFLUSH flag must be set
+		 * in this situation.
+		 *
+		 * The buffer cache flush takes on the main flush's
+		 * transaction id.
+		 */
+		TAILQ_FOREACH(head, &hmp->transq, entry) {
+			if (head->flags & HAMMER2_TRANS_ISFLUSH)
+				break;
+		}
+		KKASSERT(head);
+		KKASSERT(head->flags & HAMMER2_TRANS_PREFLUSH);
+		trans->flags |= HAMMER2_TRANS_PREFLUSH;
+		TAILQ_INSERT_AFTER(&hmp->transq, head, trans, entry);
+		trans->sync_tid = head->orig_tid;
+		trans->orig_tid = trans->sync_tid;
+		trans->flags |= HAMMER2_TRANS_CONCURRENT;
+		/* not allowed to block */
 	} else {
 		/*
-		 * One or more flushes are pending.  We insert after
-		 * the current flush and may block.  We have priority
-		 * over any flushes that are not the current flush.
-		 *
-		 * TRANS_BUFCACHE transactions cannot block.
+		 * A normal transaction is requested while a flush is in
+		 * progress.  We insert after the current flush and may
+		 * block.  Assign sync_tid = flush's tid + 1.
 		 */
 		TAILQ_FOREACH(head, &hmp->transq, entry) {
 			if (head->flags & HAMMER2_TRANS_ISFLUSH)
@@ -210,21 +230,22 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp,
 		trans->orig_tid = trans->sync_tid;
 		trans->flags |= HAMMER2_TRANS_CONCURRENT;
 
-		if ((trans->flags & HAMMER2_TRANS_BUFCACHE) == 0) {
-			/*
-			 * If synchronous flush mode is enabled concurrent
-			 * frontend transactions during the flush are not
-			 * allowed (except we don't have a choice for buffer
-			 * cache ops).
-			 */
-			if (hammer2_synchronous_flush > 0 ||
-			    TAILQ_FIRST(&hmp->transq) != head) {
-				trans->blocked = 1;
-				while (trans->blocked) {
-					lksleep(&trans->sync_tid,
-						&hmp->voldatalk, 0,
-						"h2multf", hz);
-				}
+		/*
+		 * XXX for now we must block new transactions, synchronous
+		 * flush mode is on by default.
+		 *
+		 * If synchronous flush mode is enabled concurrent
+		 * frontend transactions during the flush are not
+		 * allowed (except we don't have a choice for buffer
+		 * cache ops).
+		 */
+		if (hammer2_synchronous_flush > 0 ||
+		    TAILQ_FIRST(&hmp->transq) != head) {
+			trans->blocked = 1;
+			while (trans->blocked) {
+				lksleep(&trans->sync_tid,
+					&hmp->voldatalk, 0,
+					"h2multf", hz);
 			}
 		}
 	}
@@ -266,7 +287,7 @@ hammer2_trans_done(hammer2_trans_t *trans)
 		while (scan && (scan->flags & HAMMER2_TRANS_ISFLUSH) == 0) {
 			atomic_clear_int(&scan->flags,
 					 HAMMER2_TRANS_CONCURRENT);
-			scan = TAILQ_NEXT(head, entry);
+			scan = TAILQ_NEXT(scan, entry);
 		}
 	}
 
@@ -693,7 +714,12 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 	 *	pass2 - Process deletions from dbtree and dbq.
 	 *	pass3 - Process insertions from rbtree, dbtree, and dbq.
 	 *	pass4 - Cleanup child flags on the last parent and
-	 *		Adjust queues on the live parent.
+	 *		Adjust queues on the live parent (deletions).
+	 *	pass5 - Cleanup child flags on the last parent and
+	 *		Adjust queues on the live parent (insertions).
+	 *
+	 *	Queue adjustments had to be separated into deletions and
+	 *	insertions because both can occur on dbtree.
 	 */
 	if (info->domodify) {
 		hammer2_chain_t *scan;
@@ -744,6 +770,21 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 		}
 		RB_SCAN(hammer2_chain_tree, &core->dbtree,
 			NULL, hammer2_flush_pass4, info);
+
+		/* PASS5 - Cleanup */
+		RB_SCAN(hammer2_chain_tree, &core->rbtree,
+			NULL, hammer2_flush_pass5, info);
+		scan = TAILQ_FIRST(&core->dbq);
+		while (scan) {
+			KKASSERT(scan->flags & HAMMER2_CHAIN_ONDBQ);
+			hammer2_flush_pass5(scan, info);
+			if (scan->flags & HAMMER2_CHAIN_ONDBQ)
+				scan = TAILQ_NEXT(scan, db_entry);
+			else
+				scan = TAILQ_FIRST(&core->dbq);
+		}
+		RB_SCAN(hammer2_chain_tree, &core->dbtree,
+			NULL, hammer2_flush_pass5, info);
 
 		spin_unlock(&core->cst.spin);
 	}
@@ -1279,12 +1320,91 @@ hammer2_flush_pass3(hammer2_chain_t *child, void *data)
  * PASS4 - CLEANUP CHILDREN (non-recursive, but CAN be re-entrant)
  *
  * Adjust queues and set or clear BMAPPED appropriately if processing
- * the live parent.
+ * the live parent.  pass4 handles deletions, pass5 handles insertions.
+ * Separate passes are required because both deletions and insertions can
+ * occur on dbtree.
  *
  * Cleanup FLUSH_CREATE/FLUSH_DELETE on the last parent.
  */
 static int
 hammer2_flush_pass4(hammer2_chain_t *child, void *data)
+{
+	hammer2_flush_info_t *info = data;
+	hammer2_chain_t *parent = info->parent;
+	hammer2_chain_core_t *above = child->above;
+	hammer2_trans_t *trans = info->trans;
+
+	/*
+	 * Prefilter - Ignore children created after our flush_tid (not
+	 *	       visible to our flush).
+	 */
+	if (child->modify_tid > trans->sync_tid) {
+		KKASSERT(child->delete_tid >= child->modify_tid);
+		return 0;
+	}
+
+	/*
+	 * Ref and lock child for operation, spinlock must be temporarily
+	 * Make sure child is referenced before we unlock.
+	 */
+	hammer2_chain_ref(child);
+	spin_unlock(&above->cst.spin);
+	hammer2_chain_lock(child, HAMMER2_RESOLVE_NEVER);
+	KKASSERT(child->above == above);
+	KKASSERT(parent->core == above);
+
+	/*
+	 * Adjust BMAPPED state and rbtree/queue only when we hit the
+	 * actual live parent.
+	 */
+	if ((parent->flags & HAMMER2_CHAIN_DELETED) == 0) {
+		spin_lock(&above->cst.spin);
+
+		/*
+		 * Deleting from blockmap, move child out of dbtree
+		 * and clear BMAPPED.  Child should not be on RBTREE.
+		 */
+		if (child->delete_tid <= trans->sync_tid &&
+		    child->modify_tid <= parent->update_lo &&
+		    child->delete_tid > parent->update_lo &&
+		    (child->flags & HAMMER2_CHAIN_BMAPPED)) {
+			KKASSERT(child->flags & HAMMER2_CHAIN_ONDBTREE);
+			RB_REMOVE(hammer2_chain_tree, &above->dbtree, child);
+			atomic_clear_int(&child->flags, HAMMER2_CHAIN_ONDBTREE);
+			atomic_clear_int(&child->flags, HAMMER2_CHAIN_BMAPPED);
+		}
+
+		/*
+		 * Not on any list, place child on DBQ
+		 */
+		if ((child->flags & (HAMMER2_CHAIN_ONRBTREE |
+				     HAMMER2_CHAIN_ONDBTREE |
+				     HAMMER2_CHAIN_ONDBQ)) == 0) {
+			KKASSERT((child->flags & HAMMER2_CHAIN_BMAPPED) == 0);
+			TAILQ_INSERT_TAIL(&above->dbq, child, db_entry);
+			atomic_set_int(&child->flags, HAMMER2_CHAIN_ONDBQ);
+		}
+		spin_unlock(&above->cst.spin);
+	}
+
+	/*
+	 * Unlock the child.  This can wind up dropping the child's
+	 * last ref, removing it from the parent's RB tree, and deallocating
+	 * the structure.  The RB_SCAN() our caller is doing handles the
+	 * situation.
+	 */
+	hammer2_chain_unlock(child);
+	hammer2_chain_drop(child);
+	spin_lock(&above->cst.spin);
+
+	/*
+	 * The parent may have been delete-duplicated.
+	 */
+	return (0);
+}
+
+static int
+hammer2_flush_pass5(hammer2_chain_t *child, void *data)
 {
 	hammer2_flush_info_t *info = data;
 	hammer2_chain_t *parent = info->parent;
@@ -1316,20 +1436,7 @@ hammer2_flush_pass4(hammer2_chain_t *child, void *data)
 	 * actual live parent.
 	 */
 	if ((parent->flags & HAMMER2_CHAIN_DELETED) == 0) {
-		/*
-		 * Deleting from blockmap, move child out of dbtree
-		 * and clear BMAPPED.  Child should not be on RBTREE.
-		 */
 		spin_lock(&above->cst.spin);
-		if (child->delete_tid <= trans->sync_tid &&
-		    child->modify_tid <= parent->update_lo &&
-		    child->delete_tid > parent->update_lo &&
-		    (child->flags & HAMMER2_CHAIN_BMAPPED)) {
-			KKASSERT(child->flags & HAMMER2_CHAIN_ONDBTREE);
-			RB_REMOVE(hammer2_chain_tree, &above->dbtree, child);
-			atomic_clear_int(&child->flags, HAMMER2_CHAIN_ONDBTREE);
-			atomic_clear_int(&child->flags, HAMMER2_CHAIN_BMAPPED);
-		}
 
 		/*
 		 * Inserting into blockmap, place child in rbtree or dbtree.
@@ -1383,89 +1490,6 @@ hammer2_flush_pass4(hammer2_chain_t *child, void *data)
 		}
 		spin_unlock(&above->cst.spin);
 	}
-
-#if 0
-	/*
-	 * Adjust queues and adjust BMAPPED on the live parent only
-	 * (there should be only one).
-	 *
-	 * First handle deletions
-	 */
-	if (parent->delete_tid > info->sync_tid &&
-	    child->delete_tid <= trans->sync_tid &&
-	    child->modify_tid <= parent->update_lo &&
-	    child->delete_tid > parent->update_lo) {
-		KKASSERT(child->flags & HAMMER2_CHAIN_FLUSH_DELETE);
-		if (child->flags & HAMMER2_CHAIN_ONDBTREE) {
-			KKASSERT(child->flags & HAMMER2_CHAIN_FLUSH_DELETE);
-			KKASSERT(child->flags & HAMMER2_CHAIN_BMAPPED);
-			spin_lock(&above->cst.spin);
-			RB_REMOVE(hammer2_chain_tree, &above->dbtree, child);
-			atomic_clear_int(&child->flags, HAMMER2_CHAIN_ONDBTREE);
-			atomic_clear_int(&child->flags, HAMMER2_CHAIN_BMAPPED);
-			TAILQ_INSERT_TAIL(&above->dbq, child, db_entry);
-			atomic_set_int(&child->flags, HAMMER2_CHAIN_ONDBQ);
-			spin_unlock(&above->cst.spin);
-		} else {
-			KKASSERT(child->flags & HAMMER2_CHAIN_ONDBQ);
-		}
-	}
-
-	/*
-	 * Adjust child state when updating a live parent.
-	 * Adjust child state on the last parent.
-	 */
-	if (parent->delete_tid > info->sync_tid &&
-	    child->delete_tid > trans->sync_tid &&
-	    child->modify_tid > parent->update_lo) {
-		/*
-		 * NOTE: FLUSH_CREATE may have already been cleared and
-		 *	 BMAPPED may have already been set due to
-		 *	 reentrancy due to the queue movement below.
-		 */
-		atomic_set_int(&child->flags, HAMMER2_CHAIN_BMAPPED);
-
-		if ((child->flags & HAMMER2_CHAIN_DELETED) &&
-		    (child->flags & HAMMER2_CHAIN_ONDBQ)) {
-			/*
-			 * A deleted child that is on DBQ which has been
-			 * inserted must be moved to DBTREE.  However,
-			 * temporary deleted children are only applicable to
-			 * the current flush and must not have any visibility
-			 * beyond it, so temporary children are left on DBQ.
-			 *
-			 * We run DBQ before DBTREE so this can cause pass4
-			 * to be called twice on this child.
-			 */
-			KKASSERT((child->flags & HAMMER2_CHAIN_ONRBTREE) == 0);
-			if ((child->flags & (HAMMER2_CHAIN_ONDBQ |
-					     HAMMER2_CHAIN_FLUSH_TEMPORARY)) ==
-			    HAMMER2_CHAIN_ONDBQ) {
-				spin_lock(&above->cst.spin);
-
-				KKASSERT(child->flags &
-					 HAMMER2_CHAIN_FLUSH_CREATE);
-				TAILQ_REMOVE(&above->dbq, child, db_entry);
-				atomic_clear_int(&child->flags,
-						 HAMMER2_CHAIN_ONDBQ);
-				xchain = RB_INSERT(hammer2_chain_tree,
-						   &above->dbtree, child);
-				KASSERT(xchain == NULL, ("pass4: collision with %p moving %p to dbtree", xchain, child));
-				atomic_set_int(&child->flags,
-					       HAMMER2_CHAIN_ONDBTREE);
-				spin_unlock(&above->cst.spin);
-			}
-		} else if (child->flags & HAMMER2_CHAIN_DELETED) {
-			KKASSERT(child->flags & HAMMER2_CHAIN_ONDBTREE);
-		} else {
-			/*
-			 * If the child is not deleted it must be on
-			 * the rbtree.
-			 */
-			KKASSERT(child->flags & HAMMER2_CHAIN_ONRBTREE);
-		}
-	}
-#endif
 
 	/*
 	 * Cleanup flags on last parent iterated for flush.

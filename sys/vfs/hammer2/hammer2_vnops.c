@@ -298,19 +298,31 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	hammer2_inode_t *ip;
 	hammer2_trans_t trans;
 	struct vnode *vp;
+	int intrans;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 	if (ip == NULL)
 		return(0);
+	intrans = 0;
 
 	/*
-	 * ip->chain might be stale, correct it before checking as older
-	 * versions of the chain are likely marked deleted even if the
-	 * file hasn't been.  XXX ip->chain should never be stale on
-	 * reclaim.
+	 * Lock inode, interlock with a transaction if an unlink is required
+	 * so we can delete the chain a little later on.  A transaction
+	 * must be entered prior to any modifying operation.
+	 *
+	 * NOTE: Locking the inode will resynchronize any stale chain
+	 *	 associated with it.
 	 */
-	chain = hammer2_inode_lock_ex(ip);
+	for (;;) {
+		chain = hammer2_inode_lock_ex(ip);
+		if (intrans || (chain->flags & HAMMER2_CHAIN_UNLINKED) == 0)
+			break;
+		hammer2_inode_unlock_ex(ip, chain);
+		hammer2_trans_init(&trans, ip->pmp, NULL,
+				   HAMMER2_TRANS_BUFCACHE);
+		intrans = 1;
+	}
 #if 0
 	if (chain->next_parent)
 		kprintf("RECLAIM DUPLINKED IP: %p ip->ch=%p ch=%p np=%p\n",
@@ -331,10 +343,8 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	if (chain->flags & HAMMER2_CHAIN_UNLINKED) {
 		kprintf("unlink on reclaim: %s\n",
 			chain->data->ipdata.filename);
-		hammer2_trans_init(&trans, ip->pmp, NULL,
-				   HAMMER2_TRANS_BUFCACHE);
+		KKASSERT(intrans);
 		hammer2_chain_delete(&trans, chain, 0);
-		hammer2_trans_done(&trans);
 	}
 
 	/*
@@ -346,6 +356,9 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	hammer2_inode_drop(ip);				/* vp ref */
 	/* chain no longer referenced */
 	/* chain = NULL; not needed */
+
+	if (intrans)
+		hammer2_trans_done(&trans);
 
 	/*
 	 * XXX handle background sync when ip dirty, kernel will no longer
@@ -372,7 +385,6 @@ hammer2_vop_fsync(struct vop_fsync_args *ap)
 	/* XXX can't do this yet */
 	hammer2_trans_init(&trans, ip->pmp, NULL, HAMMER2_TRANS_ISFLUSH);
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
-	hammer2_trans_clear_invfsync(&trans);
 #endif
 	hammer2_trans_init(&trans, ip->pmp, NULL, 0);
 	vfsync(vp, ap->a_waitfor, 1, NULL, NULL);
@@ -2148,7 +2160,7 @@ hammer2_strategy_read_callback(hammer2_io_t *dio, hammer2_chain_t *chain,
 		 */
 		KKASSERT(chain->bytes <= bp->b_bcount);
 		bcopy(data, bp->b_data, chain->bytes);
-		if (chain->bytes < bp->b_bcount); {
+		if (chain->bytes < bp->b_bcount) {
 			bzero(bp->b_data + chain->bytes,
 			      bp->b_bcount - chain->bytes);
 		}
