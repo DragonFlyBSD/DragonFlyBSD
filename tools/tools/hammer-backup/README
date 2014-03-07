@@ -1,0 +1,130 @@
+1. What is hammer-backup?
+
+This script operates HAMMER PFSes and dumps its contents for backup
+purposes.
+
+It uses mirror-read directive (see 'man 8 hammer') to perform a
+dump to stdout that is redirected to a file with or without
+compression.
+
+It can take two types of backup:
+
+  a) Full: Where ALL the data of the PFS is sent to a file.
+  b) Inremental: It requires a previous full backup.
+
+Additionally to the backup data itself, it creates a .bkp file
+which contains metadata relative to the full and/or incremental
+backups.
+
+The format is the following
+
+  filename,rsv01,rsv02,backup type,shared uuid,last TID,md5 hash
+
+  filename   : Backup data file file.
+  rsv01,rsv02: Reserved fields
+  backup type: 1 or 2 (full or incremental, respectively)
+  shared uuid: PFS shared UUID for mirror ops
+  last TID   : Last transaction ID. Next incr. backup starting TID
+  md5 hash   : For restoring purposes
+
+Example:
+  $ head -1 20140305222026_pfs_t1_full.xz.bkp
+  20140305222026_pfs_t1_full.xz.bkp,,,f,e8decfc5-a4ab-11e3-942b-f56d04d293e0,000000011b36be30,05482d26644bd1e76e69d83002e08258
+
+2. How to use it?
+
+General usage.
+
+Usage: hammer-backup [-h] [-v] [-i <full-backup-file>] [-f] [-c <compress-rate>] -d [<backup-dir>] <path-to-PFS>
+
+ -h: Help outputo above.
+ -v: Verbose
+ -i <full-backup-file>: Incremental backup. Needs the full backup metadata file.
+                        Relative path to -d
+ -f: Full backup
+ -c: Compress rate for xz(1)
+ -d: Backup directory
+ <path-to-PFS>: PFS path to backup
+
+2.1 Performing a full backup
+
+# ./hammer-backup -v -f -c 6 -d /root/backups /pfs/var
+INFO: Full backup.
+INFO: XZ compression level 6.
+INFO: Backup directory is /root/backups.
+INFO: Validating PFS
+INFO: Initiating full backup
+INFO: Launching: hammer -y -v mirror-read /pfs/var  2> /tmp/tmp.UdOwvYhv         | xz -c -6 > /root/backups/20140308001146_pfs_var.xz
+INFO: Backup completed.
+
+NOTE: -v is optional. Also note /pfs/var is found in standard installations.
+
+2.2 Perform an incremental backup over a full one
+
+First list the backups avail:
+
+# ./hammer-backup -l -d /root/backups
+20140308001146_pfs_var.xz.bkp:
+ full: 20140308001146_pfs_var.xz endtid: 0x000000011db6dc20 md5: 303ee864f4a747d9da7d556e83b05de5
+
+You can then specify the .bkp file you want. See the timestamp, and the path to
+PFS separated by '_' are embedded to it.
+
+# ./hammer-backup -c 6 -v -i 20140308001146_pfs_var.xz.bkp -d /root/backups /pfs/var
+INFO: Incremental backup.
+INFO: Backup directory is /root/backups.
+INFO: Validating PFS
+INFO: Initiating incremental backup
+INFO: Launching: hammer -y -v mirror-read /pfs/var 0x000000011db6dc20 2> /tmp/tmp.AleUwNnA       | xz -c -6 > /root/backups/20140308002450_pfs_var.xz
+INFO: Backup completed.
+
+# ./hammer-backup -l -d /root/backups
+20140308001146_pfs_var.xz.bkp:
+ full: 20140308001146_pfs_var.xz endtid: 0x000000011db6dc20 md5: 303ee864f4a747d9da7d556e83b05de5
+        incr: 20140308002450_pfs_var.xz endtid: 0x000000011db6e440 md5: 7a7c2799b880a293f2c8270c6a9b22aa
+
+3.0 Recovering a PFS.
+
+If you are very familiar with HAMMER you can do it manually, so following our
+previous example:
+
+ - Locate the backup we want to recover.
+   # ./hammer-backup -l -d /root/backups
+   20140308001146_pfs_var.xz.bkp:
+    full: 20140308001146_pfs_var.xz endtid: 0x000000011db6dc20 md5: 303ee864f4a747d9da7d556e83b05de5
+         incr: 20140308002450_pfs_var.xz endtid: 0x000000011db6e440 md5: 7a7c2799b880a293f2c8270c6a9b22aa
+
+ - Mirror-write the files in the correct order. First the full, then the
+   incremental ones. NOTE: -y on the hammer command will actually create
+   a slave PFS.
+   # unxz -c /root/backups/20140308001146_pfs_var.xz | hammer -y mirror-write /pfs/var_2
+   PFS slave /pfs/var_2 does not exist. Auto create new slave PFS!
+   Creating PFS #10        succeeded!
+   /pfs/var_2
+       sync-beg-tid=0x0000000000000001
+       sync-end-tid=0x0000000000000001
+       shared-uuid=ce020232-9a71-11e3-8278-f56d04d293e0
+       unique-uuid=e569a0c9-a650-11e3-942b-f56d04d293e0
+       slave
+       label=""
+       prune-min=00:00:00
+       operating as a SLAVE
+       snapshots directory defaults to /var/hammer/<pfs>
+   Source can update synctid to 0x000000011db6dc20
+
+ - Next, incremental ones:
+   # unxz -c /root/backups/20140308002450_pfs_var.xz | hammer -y mirror-write /pfs/var_2
+   Source can update synctid to 0x000000011db6e440
+
+ - Once done, you can just upgrade the /pfs/var_2
+   # hammer pfs-upgrade /pfs/var_2
+   pfs-upgrade of PFS#10 () succeeded
+
+For the example we used you have to make sure no process is using the current
+/var PFS, and if none is you can just go ahead and unmount it. Afterwards you
+can modify the symbolic link in /pfs to point to the restored one as needed.
+
+4.0 Manipulating dumps
+
+You can upload the .xz files and the .bkp files whenever you want, for example a
+remote FTP server.
