@@ -385,6 +385,10 @@ hammer2_chain_insert(hammer2_chain_core_t *above,
 
 	/*
 	 * Insert nchain
+	 *
+	 * XXX BMAPPED might not be handled correctly for ochain/nchain
+	 *     ordering in both DELETED cases (flush and non-flush-term),
+	 *     so delete-duplicate code.
 	 */
 	if (nchain->flags & HAMMER2_CHAIN_DELETED) {
 		if (ochain && (ochain->flags & HAMMER2_CHAIN_BMAPPED)) {
@@ -2960,6 +2964,7 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	hammer2_chain_t *nchain;
 	hammer2_chain_core_t *above;
 	size_t bytes;
+	uint32_t oflags;
 
 	if (hammer2_debug & 0x20000)
 		Debugger("dd");
@@ -2969,6 +2974,7 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 * on nchain is sufficient.
 	 */
 	ochain = *chainp;
+	oflags = ochain->flags;		/* flags prior to core_alloc mods */
 	hmp = ochain->hmp;
 
 	if (ochain->bref.type == HAMMER2_BREF_TYPE_INODE) {
@@ -3060,19 +3066,16 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	nchain->modify_tid = ochain->modify_tid;
 	nchain->delete_tid = HAMMER2_MAX_TID;
 
-	if (nchain->flags & HAMMER2_CHAIN_DELETED) {
+	if ((nchain->flags & HAMMER2_CHAIN_DELETED) &&
+	    (oflags & HAMMER2_CHAIN_DUPLICATED)) {
 		/*
-		 * Special case, used by the flush code only in two cases:
+		 * Special case, used by the flush code when a chain which
+		 * has been delete-duplicated is visible (effectively 'live')
+		 * in the flush code.
 		 *
-		 * (1) The flush must operate on a chain that is visible to
-		 *     the flush but deleted in the live view.
-		 *
-		 * (2) The flush must operate on a forward-indexed chain in
-		 *     the live view, which typically
-		 *
-		 * In these situations nchain will be marked deleted and
+		 * In this situations nchain will be marked deleted and
 		 * insert before ochain.  nchain must inherit certain features
-		 * of ochain such as the BMAPPED state.
+		 * of ochain.
 		 */
 		KKASSERT(trans->flags & HAMMER2_TRANS_ISFLUSH);
 		KKASSERT(ochain->modify_tid < trans->sync_tid);
@@ -3087,6 +3090,20 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		} else if (ochain->modify_tid > trans->sync_tid) {
 			nchain->delete_tid = ochain->modify_tid;
 		}
+	} else if (nchain->flags & HAMMER2_CHAIN_DELETED) {
+		/*
+		 * ochain is 'live' with respect to not having been D-D'd,
+		 * but is flagged DELETED.  Sometimes updates to deleted
+		 * chains must be allowed due to references which still exist
+		 * on those chains, or due to a flush trying to retire a
+		 * logical buffer cache buffer.
+		 *
+		 * In this situation the D-D operates normally, except
+		 * ochain has already been deleted and nchain is also
+		 * marked deleted.
+		 */
+		hammer2_chain_insert(above, ochain, nchain, 0, 0);
+		nchain->delete_tid = trans->sync_tid;
 	} else {
 		/*
 		 * Normal case, delete-duplicate deletes ochain and nchain

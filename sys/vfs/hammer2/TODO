@@ -1,4 +1,8 @@
 
+* check inode shared lock ... can end up in endless loop if following
+  hardlink because ip->chain is not updated in the exclusive lock cycle
+  when following hardlink.
+
 cpdup /build/boomdata/jails/bleeding-edge/usr/share/man/man4 /mnt/x3
 
 

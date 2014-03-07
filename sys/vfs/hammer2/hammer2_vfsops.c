@@ -810,6 +810,10 @@ hammer2_write_thread(void *arg)
 			 * Inode is modified, flush size and mtime changes
 			 * to ensure that the file size remains consistent
 			 * with the buffers being flushed.
+			 *
+			 * NOTE: The inode_fsync() call only flushes the
+			 *	 inode's meta-data state, it doesn't try
+			 *	 to flush underlying buffers or chains.
 			 */
 			parent = hammer2_inode_lock_ex(ip);
 			if (ip->flags & (HAMMER2_INODE_RESIZED |
@@ -849,13 +853,9 @@ hammer2_bioq_sync(hammer2_pfsmount_t *pmp)
 
 	bzero(&sync_bio, sizeof(sync_bio));	/* dummy with no bio_buf */
 	mtx_lock(&pmp->wthread_mtx);
-	if (pmp->wthread_destroy == 0) {
-		if (TAILQ_EMPTY(&pmp->wthread_bioq.queue)) {
-		       bioq_insert_tail(&pmp->wthread_bioq, &sync_bio);
-		       wakeup(&pmp->wthread_bioq);
-		} else {
-		       bioq_insert_tail(&pmp->wthread_bioq, &sync_bio);
-		}
+	if (pmp->wthread_destroy == 0 &&
+	    TAILQ_FIRST(&pmp->wthread_bioq.queue)) {
+		bioq_insert_tail(&pmp->wthread_bioq, &sync_bio);
 		while ((sync_bio.bio_flags & BIO_DONE) == 0)
 			mtxsleep(&sync_bio, &pmp->wthread_mtx, 0, "h2bioq", 0);
 	}
@@ -1015,7 +1015,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 					   ipdata->comp_algo);
 		break;
 	}
-	ipdata = &ip->chain->data->ipdata;	/* reload */
+	/* ipdata = &ip->chain->data->ipdata;  reload (not needed here) */
 }
 
 /*

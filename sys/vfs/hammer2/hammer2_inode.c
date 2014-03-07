@@ -109,6 +109,7 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 	    (chain->flags & HAMMER2_CHAIN_DELETED) == 0) {
 		error = hammer2_hardlink_find(ip->pip, &chain, &ochain);
 		hammer2_chain_drop(ochain);
+		KKASSERT((chain->flags & HAMMER2_CHAIN_DUPLICATED) == 0);
 		KKASSERT(error == 0);
 		/* XXX error handling */
 	}

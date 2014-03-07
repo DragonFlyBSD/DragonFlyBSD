@@ -1502,8 +1502,11 @@ hammer2_flush_pass5(hammer2_chain_t *child, void *data)
 		}
 		if ((child->flags & HAMMER2_CHAIN_FLUSH_DELETE) &&
 		    child->delete_tid <= trans->sync_tid) {
-			KKASSERT((child->flags & HAMMER2_CHAIN_ONDBTREE) == 0);
-			KKASSERT((child->flags & HAMMER2_CHAIN_BMAPPED) == 0);
+			KKASSERT((parent->flags & HAMMER2_CHAIN_DELETED) ||
+				 (child->flags & HAMMER2_CHAIN_ONDBTREE) == 0);
+			/* XXX delete-duplicate chain insertion mech wrong */
+			KKASSERT((parent->flags & HAMMER2_CHAIN_DELETED) ||
+				 (child->flags & HAMMER2_CHAIN_BMAPPED) == 0);
 			atomic_clear_int(&child->flags,
 					 HAMMER2_CHAIN_FLUSH_DELETE);
 			hammer2_chain_drop(child);
