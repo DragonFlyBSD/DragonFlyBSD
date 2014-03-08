@@ -596,6 +596,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	lockinit(&pmp->lock, "pfslk", 0, 0);
 	spin_init(&pmp->inum_spin);
 	RB_INIT(&pmp->inum_tree);
+	TAILQ_INIT(&pmp->unlinkq);
+	spin_init(&pmp->unlinkq_spin);
 
 	kdmsg_iocom_init(&pmp->iocom, pmp,
 			 KDMSG_IOCOMF_AUTOCONN |
@@ -1412,9 +1414,6 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	if (pmp == NULL)
 		return(0);
 
-	ccms_domain_uninit(&pmp->ccms_dom);
-	kdmsg_iocom_uninit(&pmp->iocom);	/* XXX chain dependency */
-
 	lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
 
 	/*
@@ -1430,6 +1429,9 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		if (error)
 			goto failed;
 	}
+
+	ccms_domain_uninit(&pmp->ccms_dom);
+	kdmsg_iocom_uninit(&pmp->iocom);	/* XXX chain dependency */
 
 	if (pmp->wthread_td) {
 		mtx_lock(&pmp->wthread_mtx);
@@ -1919,6 +1921,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	 */
 	hammer2_trans_init(&info.trans, pmp, NULL, HAMMER2_TRANS_ISFLUSH |
 						   HAMMER2_TRANS_PREFLUSH);
+	hammer2_run_unlinkq(&info.trans, pmp);
 	info.error = 0;
 	info.waitfor = MNT_NOWAIT;
 	vsyncscan(mp, flags | VMSC_NOWAIT, hammer2_sync_scan2, &info);

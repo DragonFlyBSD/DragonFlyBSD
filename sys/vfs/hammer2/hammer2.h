@@ -446,6 +446,17 @@ RB_PROTOTYPE2(hammer2_inode_tree, hammer2_inode, rbnode, hammer2_inode_cmp,
 		hammer2_tid_t);
 
 /*
+ * inode-unlink side-structure
+ */
+struct hammer2_inode_unlink {
+	TAILQ_ENTRY(hammer2_inode_unlink) entry;
+	hammer2_inode_t	*ip;
+};
+TAILQ_HEAD(hammer2_unlk_list, hammer2_inode_unlink);
+
+typedef struct hammer2_inode_unlink hammer2_inode_unlink_t;
+
+/*
  * A hammer2 transaction and flush sequencing structure.
  *
  * This global structure is tied into hammer2_mount and is used
@@ -596,6 +607,8 @@ struct hammer2_pfsmount {
 	long			inmem_inodes;
 	long			inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */
+	struct spinlock		unlinkq_spin;
+	struct hammer2_unlk_list unlinkq;
 	thread_t		wthread_td;	/* write thread td */
 	struct bio_queue_head	wthread_bioq;	/* logical buffer bioq */
 	struct mtx		wthread_mtx;	/* interlock */
@@ -749,6 +762,7 @@ void hammer2_inode_ref(hammer2_inode_t *ip);
 void hammer2_inode_drop(hammer2_inode_t *ip);
 void hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 			hammer2_chain_t *chain);
+void hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp);
 
 hammer2_inode_t *hammer2_inode_create(hammer2_trans_t *trans,
 			hammer2_inode_t *dip,

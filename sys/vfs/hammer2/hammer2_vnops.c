@@ -296,38 +296,19 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 {
 	hammer2_chain_t *chain;
 	hammer2_inode_t *ip;
-	hammer2_trans_t trans;
+	hammer2_pfsmount_t *pmp;
 	struct vnode *vp;
-	int intrans;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 	if (ip == NULL)
 		return(0);
-	intrans = 0;
 
 	/*
-	 * Lock inode, interlock with a transaction if an unlink is required
-	 * so we can delete the chain a little later on.  A transaction
-	 * must be entered prior to any modifying operation.
-	 *
-	 * NOTE: Locking the inode will resynchronize any stale chain
-	 *	 associated with it.
+	 * Inode must be locked for reclaim.
 	 */
-	for (;;) {
-		chain = hammer2_inode_lock_ex(ip);
-		if (intrans || (chain->flags & HAMMER2_CHAIN_UNLINKED) == 0)
-			break;
-		hammer2_inode_unlock_ex(ip, chain);
-		hammer2_trans_init(&trans, ip->pmp, NULL,
-				   HAMMER2_TRANS_BUFCACHE);
-		intrans = 1;
-	}
-#if 0
-	if (chain->next_parent)
-		kprintf("RECLAIM DUPLINKED IP: %p ip->ch=%p ch=%p np=%p\n",
-			ip, ip->chain, chain, chain->next_parent);
-#endif
+	pmp = ip->pmp;
+	chain = hammer2_inode_lock_ex(ip);
 
 	/*
 	 * The final close of a deleted file or directory marks it for
@@ -340,25 +321,36 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 */
 	vp->v_data = NULL;
 	ip->vp = NULL;
-	if (chain->flags & HAMMER2_CHAIN_UNLINKED) {
-		kprintf("unlink on reclaim: %s\n",
-			chain->data->ipdata.filename);
-		KKASSERT(intrans);
-		hammer2_chain_delete(&trans, chain, 0);
-	}
 
 	/*
 	 * NOTE! We do not attempt to flush chains here, flushing is
 	 *	 really fragile and could also deadlock.
 	 */
 	vclrisdirty(vp);
-	hammer2_inode_unlock_ex(ip, chain);		/* unlock */
-	hammer2_inode_drop(ip);				/* vp ref */
+
+	/*
+	 * A reclaim can occur at any time so we cannot safely start a
+	 * transaction to handle reclamation of unlinked files.  Instead,
+	 * the ip is left with a reference and placed on a linked list and
+	 * handled later on.
+	 */
+	if (chain->flags & HAMMER2_CHAIN_UNLINKED) {
+		hammer2_inode_unlink_t *ipul;
+
+		ipul = kmalloc(sizeof(*ipul), pmp->minode, M_WAITOK | M_ZERO);
+		ipul->ip = ip;
+
+		spin_lock(&pmp->unlinkq_spin);
+		TAILQ_INSERT_TAIL(&pmp->unlinkq, ipul, entry);
+		spin_unlock(&pmp->unlinkq_spin);
+		hammer2_inode_unlock_ex(ip, chain);	/* unlock */
+		/* retain ref from vp for ipul */
+	} else {
+		hammer2_inode_unlock_ex(ip, chain);	/* unlock */
+		hammer2_inode_drop(ip);			/* vp ref */
+	}
 	/* chain no longer referenced */
 	/* chain = NULL; not needed */
-
-	if (intrans)
-		hammer2_trans_done(&trans);
 
 	/*
 	 * XXX handle background sync when ip dirty, kernel will no longer
@@ -1808,6 +1800,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 
 	hammer2_chain_memory_wait(dip->pmp);
 	hammer2_trans_init(&trans, dip->pmp, NULL, 0);
+	hammer2_run_unlinkq(&trans, dip->pmp);
 	error = hammer2_unlink_file(&trans, dip, name, name_len,
 				    1, NULL, ap->a_nch);
 	hammer2_trans_done(&trans);
@@ -2250,6 +2243,40 @@ hammer2_vop_mountctl(struct vop_mountctl_args *ap)
 	}
 	return (rc);
 }
+
+/*
+ * This handles unlinked open files after the cnode is finally dereferenced.
+ */
+void
+hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp)
+{
+	hammer2_inode_unlink_t *ipul;
+	hammer2_inode_t *ip;
+	hammer2_chain_t *chain;
+
+	if (TAILQ_EMPTY(&pmp->unlinkq))
+		return;
+
+	spin_lock(&pmp->unlinkq_spin);
+	while ((ipul = TAILQ_FIRST(&pmp->unlinkq)) != NULL) {
+		TAILQ_REMOVE(&pmp->unlinkq, ipul, entry);
+		spin_unlock(&pmp->unlinkq_spin);
+		ip = ipul->ip;
+		kfree(ipul, pmp->minode);
+
+		chain = hammer2_inode_lock_ex(ip);
+		KKASSERT(chain->flags & HAMMER2_CHAIN_UNLINKED);
+		kprintf("hammer2: unlink on reclaim: %s\n",
+			chain->data->ipdata.filename);
+		hammer2_chain_delete(trans, chain, 0);
+		hammer2_inode_unlock_ex(ip, chain);	/* inode lock */
+		hammer2_inode_drop(ip);			/* ipul ref */
+
+		spin_lock(&pmp->unlinkq_spin);
+	}
+	spin_unlock(&pmp->unlinkq_spin);
+}
+
 
 /*
  * KQFILTER
