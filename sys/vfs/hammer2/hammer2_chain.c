@@ -2063,9 +2063,25 @@ again:
 		spin_unlock(&above->cst.spin);
 		if (key_beg == key_end)	/* short cut single-key case */
 			return (NULL);
-		return (hammer2_chain_next(parentp, NULL, key_nextp,
-					   key_beg, key_end,
-					   cache_indexp, flags));
+
+		/*
+		 * Stop if we reached the end of the iteration.
+		 */
+		if (parent->bref.type != HAMMER2_BREF_TYPE_INDIRECT &&
+		    parent->bref.type != HAMMER2_BREF_TYPE_FREEMAP_NODE) {
+			return (NULL);
+		}
+
+		/*
+		 * Calculate next key, stop if we reached the end of the
+		 * iteration, otherwise go up one level and loop.
+		 */
+		key_beg = parent->bref.key +
+			  ((hammer2_key_t)1 << parent->bref.keybits);
+		if (key_beg == 0 || key_beg > key_end)
+			return (NULL);
+		parent = hammer2_chain_getparent(parentp, how_maybe);
+		goto again;
 	}
 
 	/*
