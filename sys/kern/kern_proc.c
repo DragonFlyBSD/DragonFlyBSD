@@ -1611,7 +1611,7 @@ sysctl_kern_proc_pathname(SYSCTL_HANDLER_ARGS)
 	struct proc *p;
 	struct vnode *vp;
 	char *retbuf, *freebuf;
-	int error;
+	int error = 0;
 
 	if (arglen != 1)
 		return (EINVAL);
@@ -1624,16 +1624,20 @@ sysctl_kern_proc_pathname(SYSCTL_HANDLER_ARGS)
 	}
 
 	vp = p->p_textvp;
-	if (vp == NULL) {
-		return (0);
-	}
+	if (vp == NULL)
+		goto done;
+
 	vref(vp);
 	error = vn_fullpath(p, vp, &retbuf, &freebuf, 0);
 	vrele(vp);
 	if (error)
-		return (error);
+		goto done;
 	error = SYSCTL_OUT(req, retbuf, strlen(retbuf) + 1);
 	kfree(freebuf, M_TEMP);
+done:
+	if(*pidp != -1)
+		PRELE(p);
+
 	return (error);
 }
 
