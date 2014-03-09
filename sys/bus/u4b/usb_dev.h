@@ -102,9 +102,8 @@ struct usb_fs_privdata {
 struct usb_fifo {
 	struct usb_ifqueue free_q;
 	struct usb_ifqueue used_q;
-#if 0 /* XXXDF */
-	struct selinfo selinfo;
-#endif
+	struct kqinfo selinfo;
+
 	struct cv cv_io;
 	struct cv cv_drain;
 	struct usb_fifo_methods *methods;
