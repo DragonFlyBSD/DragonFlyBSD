@@ -1031,7 +1031,7 @@ ucom_dev_ioctl(struct dev_ioctl_args *ap)
 
 
 	switch (cmd) {
-#if /* XXXDF */
+#if 0 /* XXXDF */
 	case TIOCSRING:
 		ucom_ring(sc, 1);
 		error = 0;
