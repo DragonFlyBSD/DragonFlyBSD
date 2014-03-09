@@ -39,34 +39,6 @@
 # This script operats HAMMER PFSes and dumps its contents for backup
 # purposes.
 #
-# It uses mirror-read directive (see 'man 8 hammer') to perform a
-# dump to stdout that is redirected to a file with or without
-# compression.
-#
-# It can take two types of backup:
-#
-#   a) Full: Where ALL the data of the PFS is sent to a file.
-#   b) Inremental: It requires a previous full backup.
-#
-# Additionally to the backup data itself, it creates a .bkp file
-# which contains metadata relative to the full and/or incremental
-# backups.
-#
-# The format is the following
-#
-#   filename,rsv01,rsv02,backup type,shared uuid,last TID,md5 hash
-#
-#   filename   : Backup data file file.
-#   rsv01,rsv02: Reserved fields
-#   backup type: 1 or 2 (full or incremental, respectively)
-#   shared uuid: PFS shared UUID for mirror ops
-#   last TID   : Last transaction ID. Next incr. backup starting TID
-#   md5 hash   : For restoring purposes
-#
-# Example:
-#   $ head -1 20140305222026_pfs_t1_full.xz.bkp
-#   20140305222026_pfs_t1_full.xz.bkp,,,f,e8decfc5-a4ab-11e3-942b-f56d04d293e0,000000011b36be30,05482d26644bd1e76e69d83002e08258
-#
 
 initialization()
 {
@@ -117,7 +89,7 @@ usage()
 
 check_pfs()
 {
-    info "Validating PFS ${pfs}"
+    info "Validating PFS ${pfs_path}"
 
     # Backup directory must exist
     if [ -z "${pfs_path}" ]; then
@@ -171,7 +143,7 @@ update_mdata()
     local filename=$(basename ${output_file})
     local uuid=$(get_uuid)
     local endtid=$1
-    local md5sum=$(md5 -q ${output_file})
+    local md5sum=$(md5 -q ${output_file} 2> /dev/null)
 
     # XXX - Sanity checks missing?!!
     printf "%s,,,%d,%s,%s,%s\n" $filename $backup_type $uuid $endtid $md5sum \
@@ -194,7 +166,7 @@ do_backup()
     cmd="hammer -y -v mirror-read ${pfs_path} ${begtid} 2> ${tmplog} \
 	${compress_opts} > ${output_file}"
 
-    info "Launching: ${cmd}"
+    info "Launching: ${cmd}."
     if [ ${dryrun} -eq 0 ]; then
 	# Sync to disk before mirror-read
 	hammer synctid ${pfs_path} > /dev/null 2>&1
@@ -206,6 +178,8 @@ do_backup()
 	    rm -f ${tmplog}
 	    err 1 "Failed to created backup data file!"
 	fi
+    else
+	info "Dry-run execution."
     fi
 }
 
@@ -216,7 +190,7 @@ full_backup()
     local endtid=""
 
     # Full backup (no param specified)
-    info "Initiating full backup"
+    info "Initiating full backup."
     do_backup ${tmplog}
 
     # Generate the metadata file itself
@@ -296,7 +270,7 @@ incr_backup()
     fi
 
     # Do an incremental backup
-    info "Initiating incremental backup"
+    info "Initiating incremental backup."
     do_backup ${tmplog} 0x${endtid}
 
     # Store the metadata in the full backup file
@@ -391,30 +365,23 @@ if [ ! -x /sbin/hammer ]; then
     err 1 'Could not find find hammer(8) program.'
 fi
 
-info "hammer-backup version ${VERSION}"
-
 # Handle options
 while getopts d:i:c:fvhnlk op
 do
     case $op in
 	d)
 	    backup_dir=$OPTARG
-	    info "Backup directory is ${backup_dir}."
 	    ;;
 	f)
 	    if [ ${backup_type} -eq 2 ]; then
 		err 1 "-f and -i are mutually exclusive."
 	    fi
-
-	    info "Full backup."
 	    backup_type=1
 	    ;;
 	i)
 	    if [ ${backup_type} -eq 2 ]; then
 		err 1 "-f and -i are mutually exclusive."
 	    fi
-
-	    info "Incremental backup."
 	    backup_type=2
 	    if [ "${OPTARG}" == "auto" ]; then
 		find_last=1
@@ -433,15 +400,11 @@ do
 		    err 1 "Bad compression level specified."
 		    ;;
 	    esac
-
-	    info "XZ compression level ${comp_rate}."
 	    ;;
 	k)
-	    info "Checksum test for all backup files."
 	    checksum_opt=1
 	    ;;
 	n)
-	    info "Dry-run execution."
 	    dryrun=1
 	    ;;
 	l)
@@ -461,6 +424,8 @@ done
 
 shift $(($OPTIND - 1))
 
+info "hammer-backup version ${VERSION}"
+
 #
 # If list option is selected
 pfs_path="$1"
@@ -471,6 +436,7 @@ if [ -z "${backup_dir}" ]; then
 elif [ ! -d "${backup_dir}" ]; then
     err 1 "Backup directory does not exist!"
 fi
+info "Backup dir is ${backup_dir}"
 
 # Output file format is YYYYmmddHHMMSS
 tmp=$(echo ${pfs_path} | tr '/' '_')
@@ -478,13 +444,13 @@ output_file="${backup_dir}/${timestamp}${tmp}"
 
 # List backups if needed
 if [ ${list_opt} == 1 ]; then
-    info "Listing backups in ${backup_dir}"
+    info "Listing backups."
     list_backups
 fi
 
 # Checksum test
 if [ ${checksum_opt} == 1 ]; then
-    info "Backup dir is ${backup_dir}"
+    info "Checksum test for all backup files."
     checksum_backups
 fi
 
@@ -493,8 +459,10 @@ check_pfs
 
 # Actually launch the backup itself
 if [ ${backup_type} -eq 1 ]; then
+    info "Full backup."
     full_backup
 elif [ ${backup_type} -eq 2 ]; then
+    info "Incremental backup."
     incr_full_file=${backup_dir}/${incr_full_file}
     incr_backup
 else
