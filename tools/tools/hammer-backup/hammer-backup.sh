@@ -71,9 +71,7 @@
 initialization()
 {
     VERSION="0.1-beta"
-
-    UID=`id -ur`
-    GID=`id -gr`
+    SCRIPTNAME=${0##*/}
 
     dryrun=0	  # Dry-run
     backup_type=0	  # Type of backup
@@ -86,7 +84,8 @@ initialization()
     compress=0	  # Compress output file?
     comp_rate=6	  # Compression rate
     verbose=0	  # Verbosity on/off
-    timestamp=`date +'%Y%m%d%H%M%S'`
+    timestamp=$(date +'%Y%m%d%H%M%S')
+    list_opt=0
 }
 
 info()
@@ -109,7 +108,7 @@ err()
 
 usage()
 {
-    echo "Usage: $(basename $0) [-h] [-v] [-i <full-backup-file>]" \
+    echo "Usage: ${SCRIPTNAME} [-h] [-l] [-v] [-i <full-backup-file>]" \
 	"[-f] [-c <compress-rate>] -d [<backup-dir>] <path-to-PFS>"
     exit 1
 }
@@ -119,7 +118,7 @@ check_pfs()
     info "Validating PFS ${pfs}"
 
     # Backup directory must exist
-    if [ "${pfs_path}" == "" ]; then
+    if [ -z "${pfs_path}" ]; then
 	usage
     fi
 
@@ -142,19 +141,13 @@ get_endtid()
     }' ${logfile}
 }
 
-get_md5()
-{
-    md5 ${output_file} | awk '{print $4}'
-}
-
 get_uuid()
 {
     # Get the shared UUID for the PFS
-    hammer pfs-status ${pfs_path} | \
-	awk -F= -v prop="shared-uuid" '{
-		if ( $1 ~ prop ) {
-			print $2
-		}
+   hammer pfs-status ${pfs_path} | awk -F'[ =]+' '
+	$2 == "shared-uuid" {
+		print $3;
+		exit;
 	}'
 }
 
@@ -164,8 +157,8 @@ file2date()
     local filedate=""
 
     # Extract the date
-    filename=`basename $1`
-    filedate=`echo ${filename} | cut -d "_" -f1`
+    filename=$(basename $1)
+    filedate=$(echo ${filename} | cut -d "_" -f1)
 
     date -j -f '%Y%m%d%H%M%S' ${filedate} +"%B %d, %Y %H:%M:%S %Z"
 }
@@ -173,10 +166,10 @@ file2date()
 
 update_mdata()
 {
-    local filename=`basename ${output_file}`
+    local filename=$(basename ${output_file})
     local uuid=$(get_uuid)
     local endtid=$1
-    local md5sum=$(get_md5)
+    local md5sum=$(md5 -q ${output_file})
 
     # XXX - Sanity checks missing?!!
     printf "%s,,,%d,%s,%s,%s\n" $filename $backup_type $uuid $endtid $md5sum \
@@ -216,7 +209,7 @@ do_backup()
 
 full_backup()
 {
-    local tmplog=`mktemp`
+    local tmplog=$(mktemp)
     local filename=""
     local endtid=""
 
@@ -244,8 +237,8 @@ check_metadata()
 	err 1 "Could not find ${metadata_file}"
     fi
 
-    f1=`basename ${metadata_file}`
-    f2=`head -1 ${metadata_file} | cut -d "," -f1`
+    f1=$(basename ${metadata_file})
+    f2=$(head -1 ${metadata_file} | cut -d "," -f1)
 
     if [ "${f1}" != "${f2}.bkp" ]; then
 	err 2 "Bad metadata file ${metadata_file}"
@@ -254,7 +247,7 @@ check_metadata()
 
 incr_backup()
 {
-    local tmplog=`mktemp`
+    local tmplog=$(mktemp)
     local endtid=""
     local line=""
     local srcuuid=""
@@ -270,16 +263,16 @@ incr_backup()
     check_metadata
 
     # The first backup of the metadata file must be a full one
-    line=`head -1 ${incr_full_file}`
-    btype=`echo ${line} | cut -d ',' -f4`
+    line=$(head -1 ${incr_full_file})
+    btype=$(echo ${line} | cut -d ',' -f4)
     if [ ${btype} -ne 1 ]; then
 	err 1 "No full backup in ${incr_full_file}. Cannot do incremental ones."
     fi
 
     # Read metadata info for the last backup performed
-    line=`tail -1 ${incr_full_file}`
-    srcuuid=`echo $line| cut -d ',' -f 5`
-    endtid=`echo $line| cut -d ',' -f 6`
+    line=$(tail -1 ${incr_full_file})
+    srcuuid=$(echo $line| cut -d ',' -f 5)
+    endtid=$(echo $line| cut -d ',' -f 6)
 
     # Verify shared uuid are the same
     tgtuuid=$(get_uuid)
@@ -301,15 +294,16 @@ incr_backup()
 
 list_backups()
 {
-    local filedate=""
     local nofiles=1
 
-    for bkp in `ls -1 ${backup_dir}/*.bkp 2> /dev/null`
+    for bkp in ${backup_dir}/*.bkp
     do
-	# Extract the date from file
-	filedate=$(file2date ${bkp})
+	# Skip files that don't exist
+	if [ ! -f ${bkp} ]; then
+	    continue
+	fi
 	# Show incremental backups related to the full backup above
-	awk -F "," -v fd="${filedate}" '{
+	awk -F "," '{
 		if ($4 == 1) {
 			printf("full: ");
 		}
@@ -333,7 +327,7 @@ list_backups()
 initialization
 
 # Only can be run by root
-if [ $UID -ne 0 ]; then
+if [  $(id -u) -ne 0 ]; then
     err 255 "Only root can run this script."
 fi
 
@@ -373,8 +367,8 @@ do
 	    compress=1
 
 	    case "$OPTARG" in
-		1|2|3|4|5|6|7|8|9)
-		    comp_rate=`expr $OPTARG`
+		[1-9])
+		    comp_rate=$OPTARG
 		    ;;
 		*)
 		    err 1 "Bad compression level specified."
@@ -396,7 +390,7 @@ do
 	h)
 	    usage
 	    ;;
-	\?)
+	*)
 	    usage
 	    ;;
     esac
@@ -409,18 +403,18 @@ shift $(($OPTIND - 1))
 pfs_path="$1"
 
 # Backup directory must exist
-if [ "${backup_dir}" == "" ]; then
+if [ -z "${backup_dir}" ]; then
     usage
 elif [ ! -d "${backup_dir}" ]; then
     err 1 "Backup directory does not exist!"
 fi
 
-# Output file format is YYYYmmdd-HHMMSS
-tmp=`echo ${pfs_path} | sed 's/\//_/g'`
+# Output file format is YYYYmmddHHMMSS
+tmp=$(echo ${pfs_path} | tr '/' '_')
 output_file="${backup_dir}/${timestamp}${tmp}"
 
 # List backups if needed
-if [ "${list_opt}" == "1" ]; then
+if [ ${list_opt} == 1 ]; then
     info "Listing backups in ${backup_dir}"
     list_backups
 fi
