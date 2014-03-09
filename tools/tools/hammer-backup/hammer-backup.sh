@@ -85,6 +85,7 @@ initialization()
     comp_rate=6	  # Compression rate
     verbose=0	  # Verbosity on/off
     list_opt=0	  # List backups
+    checksum_opt=0 # Perfom a checksum of all backups
     find_last=0	  # Find last full backup
     timestamp=$(date +'%Y%m%d%H%M%S')
 }
@@ -109,8 +110,8 @@ err()
 
 usage()
 {
-    echo "Usage: ${SCRIPTNAME} [-h] [-l] [-v] [-i <full-backup-file>]" \
-	"[-f] [-c <compress-rate>] -d [<backup-dir>] <path-to-PFS>"
+    echo "Usage: ${SCRIPTNAME} [-hlvfk] [-i <full-backup-file|auto>]" \
+	"[-c <compress-rate>] -d [<backup-dir>] [pfs path]"
     exit 1
 }
 
@@ -335,6 +336,46 @@ list_backups()
 
     exit 0
 }
+
+checksum_backups()
+{
+    local nofiles=1
+    local storedck=""
+    local fileck=""
+    local tmp=""
+
+    for bkp in ${backup_dir}/*.bkp
+    do
+	# Skip files that don't exist
+	if [ ! -f ${bkp} ]; then
+	    continue
+	fi
+	# Perform a checksum test
+	while read line
+	do
+	    tmp=$(echo $line | cut -d "," -f1)
+	    fname=${backup_dir}/${tmp}
+	    storedck=$(echo $line | cut -d "," -f7)
+	    fileck=$(md5 -q ${fname} 2> /dev/null)
+	    echo -n "${fname} : "
+	    if [ ! -f ${fname} ]; then
+		echo "MISSING"
+		continue
+	    elif [ "${storedck}" == "${fileck}" ]; then
+		echo "OK"
+	    else
+		echo "FAILED"
+	    fi
+	done < ${bkp}
+	nofiles=0
+    done
+
+    if [ ${nofiles} -eq 1 ]; then
+	err 255 "No backup files found in ${backup_dir}"
+    fi
+
+    exit 0
+}
 # -------------------------------------------------------------
 
 # Setup some vars
@@ -353,7 +394,7 @@ fi
 info "hammer-backup version ${VERSION}"
 
 # Handle options
-while getopts d:i:c:fvhnl op
+while getopts d:i:c:fvhnlk op
 do
     case $op in
 	d)
@@ -395,6 +436,10 @@ do
 
 	    info "XZ compression level ${comp_rate}."
 	    ;;
+	k)
+	    info "Checksum test for all backup files."
+	    checksum_opt=1
+	    ;;
 	n)
 	    info "Dry-run execution."
 	    dryrun=1
@@ -435,6 +480,12 @@ output_file="${backup_dir}/${timestamp}${tmp}"
 if [ ${list_opt} == 1 ]; then
     info "Listing backups in ${backup_dir}"
     list_backups
+fi
+
+# Checksum test
+if [ ${checksum_opt} == 1 ]; then
+    info "Backup dir is ${backup_dir}"
+    checksum_backups
 fi
 
 # Only work on a HAMMER fs

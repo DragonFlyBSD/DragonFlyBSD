@@ -46,6 +46,7 @@ Usage: hammer-backup.sh [-h] [-l] [-v] [-i <full-backup-file>] [-f] [-c <compres
  -c: Compress rate for xz(1)
  -d: Backup directory
  -l: List backups from backup directory.
+ -k: Validates integrity of all backup files.
  <path-to-PFS>: PFS path to backup
 
 2.1 Performing a full backup
