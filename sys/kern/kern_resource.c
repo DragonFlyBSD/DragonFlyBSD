@@ -1127,6 +1127,8 @@ chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 	spin_lock(&uip->ui_lock);
 	new = uip->ui_sbsize + to - *hiwat;
 	KKASSERT(new >= 0);
+	uip->ui_sbsize = new;
+	spin_unlock(&uip->ui_lock);
 
 	/*
 	 * If we are trying to increase the socket buffer size
@@ -1141,8 +1143,6 @@ chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 		if (to < MCLBYTES)
 			to = MCLBYTES;
 	}
-	uip->ui_sbsize = new;
 	*hiwat = to;
-	spin_unlock(&uip->ui_lock);
 	return (1);
 }
