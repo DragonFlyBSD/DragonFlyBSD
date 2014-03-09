@@ -70,7 +70,7 @@
 
 initialization()
 {
-    VERSION="0.1-beta"
+    VERSION="0.2"
     SCRIPTNAME=${0##*/}
 
     dryrun=0	  # Dry-run
@@ -84,8 +84,9 @@ initialization()
     compress=0	  # Compress output file?
     comp_rate=6	  # Compression rate
     verbose=0	  # Verbosity on/off
+    list_opt=0	  # List backups
+    find_last=0	  # Find last full backup
     timestamp=$(date +'%Y%m%d%H%M%S')
-    list_opt=0
 }
 
 info()
@@ -252,6 +253,19 @@ incr_backup()
     local line=""
     local srcuuid=""
     local tgtuuid=""
+    local latest=""
+    local pattern=""
+
+    # XXX
+    # Find latest metadata backup file if needed.
+    # Right now the timestamp in the filename will
+    # let them be sorted by ls. But this could actually
+    # change
+    if [ ${find_last} -eq 1 ]; then
+	pattern=$(echo ${pfs_path} | tr "/" "_").xz.bkp
+	latest=$(ls -1 ${backup_dir}/*${pattern} | tail -1)
+	incr_full_file=${latest}
+    fi
 
     # Make sure the file exists and it can be read
     if [ ! -r ${incr_full_file} ]; then
@@ -361,7 +375,11 @@ do
 
 	    info "Incremental backup."
 	    backup_type=2
-	    incr_full_file=$OPTARG
+	    if [ "${OPTARG}" == "auto" ]; then
+		find_last=1
+	    else
+		incr_full_file=$OPTARG
+	    fi
 	    ;;
 	c)
 	    compress=1

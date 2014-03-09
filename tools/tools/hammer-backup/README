@@ -35,15 +35,17 @@ Example:
 
 General usage.
 
-Usage: hammer-backup [-h] [-v] [-i <full-backup-file>] [-f] [-c <compress-rate>] -d [<backup-dir>] <path-to-PFS>
+Usage: hammer-backup.sh [-h] [-l] [-v] [-i <full-backup-file>] [-f] [-c <compress-rate>] -d [<backup-dir>] <path-to-PFS>
 
  -h: Help outputo above.
  -v: Verbose
  -i <full-backup-file>: Incremental backup. Needs the full backup metadata file.
-                        Relative path to -d
+                        Relative path to -d. You can specify 'auto' and the
+                        script should determine what's the latest full backup.
  -f: Full backup
  -c: Compress rate for xz(1)
  -d: Backup directory
+ -l: List backups from backup directory.
  <path-to-PFS>: PFS path to backup
 
 2.1 Performing a full backup
@@ -61,7 +63,7 @@ NOTE: -v is optional. Also note /pfs/var is found in standard installations.
 
 2.2 Perform an incremental backup over a full one
 
-First list the backups avail:
+First list the backups available:
 
 # ./hammer-backup -l -d /root/backups
 20140308001146_pfs_var.xz.bkp:
