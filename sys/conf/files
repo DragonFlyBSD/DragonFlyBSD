@@ -2514,6 +2514,29 @@ urtwn-rtl8192cfwU.fw			optional urtwnfw usb4bsd	\
 	no-obj no-implicit-rule						\
 	clean		"urtwn-rtl8192cfwU.fw"
 #
+# USB serial and parallel port drivers
+#
+bus/u4b/serial/usb_serial.c 		optional ucom usb4bsd
+bus/u4b/serial/u3g.c			optional u3g ucom usb4bsd
+bus/u4b/serial/uark.c			optional uark ucom usb4bsd
+bus/u4b/serial/ubsa.c			optional ubsa ucom usb4bsd
+bus/u4b/serial/ubser.c			optional ubser ucom usb4bsd
+bus/u4b/serial/uchcom.c			optional uchcom ucom usb4bsd
+bus/u4b/serial/ucycom.c			optional ucycom ucom usb4bsd
+bus/u4b/serial/ufoma.c			optional ufoma ucom usb4bsd
+bus/u4b/serial/uftdi.c			optional uftdi ucom usb4bsd
+bus/u4b/serial/ugensa.c			optional ugensa ucom usb4bsd
+bus/u4b/serial/uipaq.c			optional uipaq ucom usb4bsd
+bus/u4b/serial/ulpt.c			optional ulpt ucom usb4bsd
+bus/u4b/serial/umcs.c			optional umcs ucom usb4bsd
+bus/u4b/serial/umct.c			optional umct ucom usb4bsd
+bus/u4b/serial/umodem.c			optional umodem ucom usb4bsd
+bus/u4b/serial/umoscom.c		optional umoscom ucom usb4bsd
+bus/u4b/serial/uplcom.c			optional uplcom ucom usb4bsd
+bus/u4b/serial/uslcom.c			optional uslcom ucom usb4bsd
+bus/u4b/serial/uvisor.c			optional uvisor ucom usb4bsd
+bus/u4b/serial/uvscom.c			optional uvscom ucom usb4bsd
+#
 # USB input drivers
 #
 bus/u4b/input/ukbd.c			optional ukbd usb4bsd
