@@ -145,9 +145,15 @@ update_mdata()
     local endtid=$1
     local md5sum=$(md5 -q ${output_file} 2> /dev/null)
 
+    if [ -z "${endtid}" ]; then
+	rm ${output_file}
+	err 1 "Couldn't update the metadata file! Deleting ${output_file}"
+    fi
     # XXX - Sanity checks missing?!!
-    printf "%s,,,%d,%s,%s,%s\n" $filename $backup_type $uuid $endtid $md5sum \
-	>> ${metadata_file}
+    if [ ${dryrun} -eq 0 ]; then
+	printf "%s,,,%d,%s,%s,%s\n" ${filename} ${backup_type} ${uuid} \
+	    ${endtid} ${md5sum} >> ${metadata_file}
+    fi
 }
 
 do_backup()
@@ -221,26 +227,36 @@ check_metadata()
     fi
 }
 
-incr_backup()
+detect_latest_backup()
 {
-    local tmplog=$(mktemp)
-    local endtid=""
-    local line=""
-    local srcuuid=""
-    local tgtuuid=""
     local latest=""
     local pattern=""
 
     # XXX
-    # Find latest metadata backup file if needed.
-    # Right now the timestamp in the filename will
-    # let them be sorted by ls. But this could actually
-    # change
+    # Find latest metadata backup file if needed. Right now the timestamp
+    # in the filename will let them be sorted by ls. But this could actually
+    # change.
     if [ ${find_last} -eq 1 ]; then
 	pattern=$(echo ${pfs_path} | tr "/" "_").xz.bkp
-	latest=$(ls -1 ${backup_dir}/*${pattern} | tail -1)
+	latest=$(ls -1 ${backup_dir}/*${pattern} 2> /dev/null | tail -1)
+	if [ -z "${latest}" ]; then
+	    err 1 "Failed to detect the latest full backup file."
+	fi
 	incr_full_file=${latest}
     fi
+}
+
+incr_backup()
+{
+    local tmplog=$(mktemp)
+    local begtid=""
+    local endtid=""
+    local line=""
+    local srcuuid=""
+    local tgtuuid=""
+    local btype=0
+
+    detect_latest_backup
 
     # Make sure the file exists and it can be read
     if [ ! -r ${incr_full_file} ]; then
@@ -261,7 +277,7 @@ incr_backup()
     # Read metadata info for the last backup performed
     line=$(tail -1 ${incr_full_file})
     srcuuid=$(echo $line| cut -d ',' -f 5)
-    endtid=$(echo $line| cut -d ',' -f 6)
+    begtid=$(echo $line| cut -d ',' -f 6)
 
     # Verify shared uuid are the same
     tgtuuid=$(get_uuid)
@@ -271,10 +287,19 @@ incr_backup()
 
     # Do an incremental backup
     info "Initiating incremental backup."
-    do_backup ${tmplog} 0x${endtid}
+    do_backup ${tmplog} 0x${begtid}
 
     # Store the metadata in the full backup file
     endtid=$(get_endtid ${tmplog})
+
+    #
+    # Handle the case where the hammer mirror-read command did not retrieve
+    # any data because the PFS was not modified at all. In that case we keep
+    # TID of the previous backup.
+    #
+    if [ -z "${endtid}" ]; then
+	endtid=${begtid}
+    fi
     update_mdata ${endtid}
 
     # Cleanup
