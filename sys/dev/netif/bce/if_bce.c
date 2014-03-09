@@ -4342,6 +4342,7 @@ bce_rx_intr(struct bce_rx_ring *rxr, int count, uint16_t hw_cons)
 	struct ifnet *ifp = &rxr->sc->arpcom.ac_if;
 	uint16_t sw_cons, sw_chain_cons, sw_prod, sw_chain_prod;
 	uint32_t sw_prod_bseq;
+	int cpuid = mycpuid;
 
 	ASSERT_SERIALIZED(&rxr->rx_serialize);
 
@@ -4515,7 +4516,7 @@ bce_rx_int_next_rx:
 				m->m_pkthdr.ether_vlantag =
 					l2fhdr->l2_fhdr_vlan_tag;
 			}
-			ether_input_pkt(ifp, m, pi);
+			ether_input_pkt(ifp, m, pi, cpuid);
 #ifdef BCE_RSS_DEBUG
 			rxr->rx_pkts++;
 #endif

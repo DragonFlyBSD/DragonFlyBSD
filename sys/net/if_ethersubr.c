@@ -112,7 +112,7 @@ static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 static void ether_restore_header(struct mbuf **, const struct ether_header *,
 				 const struct ether_header *);
 static int ether_characterize(struct mbuf **);
-static void ether_dispatch(int, struct mbuf *);
+static void ether_dispatch(int, struct mbuf *, int);
 
 /*
  * if_bridge support
@@ -560,7 +560,7 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 static void
 ether_input(struct ifnet *ifp, struct mbuf *m)
 {
-	ether_input_pkt(ifp, m, NULL);
+	ether_input_pkt(ifp, m, NULL, -1);
 }
 
 /*
@@ -1402,7 +1402,7 @@ ether_input_handler(netmsg_t nmsg)
 			/*
 			 * Wrong hardware supplied hash; redispatch
 			 */
-			ether_dispatch(isr, m);
+			ether_dispatch(isr, m, -1);
 			if (__predict_false(ether_input_ckhash))
 				atomic_add_long(&ether_input_wronghwhash, 1);
 			return;
@@ -1430,11 +1430,14 @@ ether_input_handler(netmsg_t nmsg)
  * so we know which netisr to send it to.
  */
 static void
-ether_dispatch(int isr, struct mbuf *m)
+ether_dispatch(int isr, struct mbuf *m, int cpuid)
 {
 	struct netmsg_packet *pmsg;
+	int target_cpuid;
 
 	KKASSERT(m->m_flags & M_HASH);
+	target_cpuid = netisr_hashcpu(m->m_pkthdr.hash);
+
 	pmsg = &m->m_hdr.mh_netmsg;
 	netmsg_init(&pmsg->base, NULL, &netisr_apanic_rport,
 		    0, ether_input_handler);
@@ -1442,7 +1445,13 @@ ether_dispatch(int isr, struct mbuf *m)
 	pmsg->base.lmsg.u.ms_result = isr;
 
 	logether(disp_beg, NULL);
-	lwkt_sendmsg(netisr_hashport(m->m_pkthdr.hash), &pmsg->base.lmsg);
+	if (target_cpuid == cpuid) {
+		lwkt_sendmsg_oncpu(netisr_cpuport(target_cpuid),
+		    &pmsg->base.lmsg);
+	} else {
+		lwkt_sendmsg(netisr_cpuport(target_cpuid),
+		    &pmsg->base.lmsg);
+	}
 	logether(disp_end, NULL);
 }
 
@@ -1452,9 +1461,15 @@ ether_dispatch(int isr, struct mbuf *m)
  * The ethernet header is assumed to be in the mbuf so the caller
  * MUST MAKE SURE that there are at least sizeof(struct ether_header)
  * bytes in the first mbuf.
+ *
+ * If the caller knows that the current thread is stick to the current
+ * cpu, e.g. the interrupt thread or the netisr thread, the current cpuid
+ * (mycpuid) should be passed through 'cpuid' argument.  Else -1 should
+ * be passed as 'cpuid' argument.
  */
 void
-ether_input_pkt(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi)
+ether_input_pkt(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
+    int cpuid)
 {
 	int isr;
 
@@ -1506,7 +1521,7 @@ ether_input_pkt(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi)
 #endif
 		netisr_hashcheck(pi->pi_netisr, m, pi);
 		if (m->m_flags & M_HASH) {
-			ether_dispatch(pi->pi_netisr, m);
+			ether_dispatch(pi->pi_netisr, m, cpuid);
 #ifdef RSS_DEBUG
 			atomic_add_long(&ether_pktinfo_hit, 1);
 #endif
@@ -1546,7 +1561,7 @@ ether_input_pkt(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi)
 	/*
 	 * Finally dispatch it
 	 */
-	ether_dispatch(isr, m);
+	ether_dispatch(isr, m, cpuid);
 
 	logether(pkt_end, ifp);
 }

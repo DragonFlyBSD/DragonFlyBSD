@@ -123,7 +123,7 @@ static void	jme_msix_tx(void *);
 static void	jme_msix_rx(void *);
 static void	jme_msix_status(void *);
 static void	jme_txeof(struct jme_txdata *);
-static void	jme_rxeof(struct jme_rxdata *, int);
+static void	jme_rxeof(struct jme_rxdata *, int, int);
 static void	jme_rx_intr(struct jme_softc *, uint32_t);
 static void	jme_enable_intr(struct jme_softc *);
 static void	jme_disable_intr(struct jme_softc *);
@@ -144,7 +144,7 @@ static void	jme_init_tx_ring(struct jme_txdata *);
 static void	jme_init_ssb(struct jme_softc *);
 static int	jme_newbuf(struct jme_rxdata *, struct jme_rxdesc *, int);
 static int	jme_encap(struct jme_txdata *, struct mbuf **, int *);
-static void	jme_rxpkt(struct jme_rxdata *);
+static void	jme_rxpkt(struct jme_rxdata *, int);
 static int	jme_rxring_dma_alloc(struct jme_rxdata *);
 static int	jme_rxbuf_dma_alloc(struct jme_rxdata *);
 static int	jme_rxbuf_dma_filter(void *, bus_addr_t);
@@ -419,7 +419,7 @@ jme_miibus_statchg(device_t dev)
 	for (r = 0; r < sc->jme_cdata.jme_rx_ring_cnt; ++r) {
 		struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[r];
 
-		jme_rxeof(rdata, -1);
+		jme_rxeof(rdata, -1, -1);
 		if (rdata->jme_rxhead != NULL)
 			m_freem(rdata->jme_rxhead);
 		JME_RXCHAIN_RESET(rdata);
@@ -2334,7 +2334,7 @@ jme_pktinfo(struct pktinfo *pi, uint32_t flags)
 
 /* Receive a frame. */
 static void
-jme_rxpkt(struct jme_rxdata *rdata)
+jme_rxpkt(struct jme_rxdata *rdata, int cpuid)
 {
 	struct ifnet *ifp = &rdata->jme_sc->arpcom.ac_if;
 	struct jme_desc *desc;
@@ -2504,7 +2504,7 @@ jme_rxpkt(struct jme_rxdata *rdata)
 #endif
 
 			/* Pass it on. */
-			ether_input_pkt(ifp, m, pi);
+			ether_input_pkt(ifp, m, pi, cpuid);
 
 			/* Reset mbuf chains. */
 			JME_RXCHAIN_RESET(rdata);
@@ -2519,7 +2519,7 @@ jme_rxpkt(struct jme_rxdata *rdata)
 }
 
 static void
-jme_rxeof(struct jme_rxdata *rdata, int count)
+jme_rxeof(struct jme_rxdata *rdata, int count, int cpuid)
 {
 	struct jme_desc *desc;
 	int nsegs, pktlen;
@@ -2591,7 +2591,7 @@ jme_rxeof(struct jme_rxdata *rdata, int count)
 		}
 
 		/* Received a frame. */
-		jme_rxpkt(rdata);
+		jme_rxpkt(rdata, cpuid);
 	}
 }
 
@@ -3371,7 +3371,7 @@ jme_npoll_rx(struct ifnet *ifp __unused, void *arg, int cycle)
 
 	ASSERT_SERIALIZED(&rdata->jme_rx_serialize);
 
-	jme_rxeof(rdata, cycle);
+	jme_rxeof(rdata, cycle, mycpuid);
 }
 
 static void
@@ -3592,14 +3592,14 @@ jme_rxbuf_dma_alloc(struct jme_rxdata *rdata)
 static void
 jme_rx_intr(struct jme_softc *sc, uint32_t status)
 {
-	int r;
+	int r, cpuid = mycpuid;
 
 	for (r = 0; r < sc->jme_cdata.jme_rx_ring_cnt; ++r) {
 		struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[r];
 
 		if (status & rdata->jme_rx_coal) {
 			lwkt_serialize_enter(&rdata->jme_rx_serialize);
-			jme_rxeof(rdata, -1);
+			jme_rxeof(rdata, -1, cpuid);
 			lwkt_serialize_exit(&rdata->jme_rx_serialize);
 		}
 	}
@@ -3962,7 +3962,7 @@ jme_msix_rx(void *xrdata)
 	    rdata->jme_rx_coal | rdata->jme_rx_comp);
 
 	if (ifp->if_flags & IFF_RUNNING)
-		jme_rxeof(rdata, -1);
+		jme_rxeof(rdata, -1, mycpuid);
 
 	CSR_WRITE_4(sc, JME_INTR_MASK_SET, rdata->jme_rx_coal);
 }
@@ -3992,14 +3992,14 @@ jme_msix_status(void *xsc)
 static void
 jme_rx_restart(struct jme_softc *sc, uint32_t status)
 {
-	int i;
+	int i, cpuid = mycpuid;
 
 	for (i = 0; i < sc->jme_cdata.jme_rx_ring_cnt; ++i) {
 		struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[i];
 
 		if (status & rdata->jme_rx_empty) {
 			lwkt_serialize_enter(&rdata->jme_rx_serialize);
-			jme_rxeof(rdata, -1);
+			jme_rxeof(rdata, -1, cpuid);
 #ifdef JME_RSS_DEBUG
 			rdata->jme_rx_emp++;
 #endif

@@ -3091,7 +3091,7 @@ emx_rxeof(struct emx_rxdata *rdata, int count)
 	uint32_t staterr;
 	emx_rxdesc_t *current_desc;
 	struct mbuf *mp;
-	int i;
+	int i, cpuid = mycpuid;
 
 	i = rdata->next_rx_desc_to_check;
 	current_desc = &rdata->rx_desc[i];
@@ -3201,7 +3201,7 @@ discard:
 		}
 
 		if (m != NULL)
-			ether_input_pkt(ifp, m, pi);
+			ether_input_pkt(ifp, m, pi, cpuid);
 
 		/* Advance our pointers to the next descriptor. */
 		if (++i == rdata->num_rx_desc)

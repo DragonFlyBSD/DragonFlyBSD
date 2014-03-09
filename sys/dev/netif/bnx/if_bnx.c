@@ -2827,7 +2827,7 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 	struct bnx_softc *sc = ret->bnx_sc;
 	struct bnx_rx_std_ring *std = ret->bnx_std;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int std_used = 0;
+	int std_used = 0, cpuid = mycpuid;
 
 	while (ret->bnx_rx_saved_considx != rx_prod && count != 0) {
 		struct pktinfo pi0, *pi = NULL;
@@ -2914,7 +2914,7 @@ bnx_rxeof(struct bnx_rx_ret_ring *ret, uint16_t rx_prod, int count)
 			m->m_flags |= M_VLANTAG;
 			m->m_pkthdr.ether_vlantag = vlan_tag;
 		}
-		ether_input_pkt(ifp, m, pi);
+		ether_input_pkt(ifp, m, pi, cpuid);
 	}
 	bnx_writembx(sc, ret->bnx_rx_mbx, ret->bnx_rx_saved_considx);
 

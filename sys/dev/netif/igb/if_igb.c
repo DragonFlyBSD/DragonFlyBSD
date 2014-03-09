@@ -2608,7 +2608,7 @@ igb_rxeof(struct igb_rx_ring *rxr, int count)
 	struct ifnet *ifp = &rxr->sc->arpcom.ac_if;
 	union e1000_adv_rx_desc	*cur;
 	uint32_t staterr;
-	int i, ncoll = 0;
+	int i, ncoll = 0, cpuid = mycpuid;
 
 	i = rxr->next_to_check;
 	cur = &rxr->rx_base[i];
@@ -2711,7 +2711,7 @@ discard:
 		}
 
 		if (m != NULL)
-			ether_input_pkt(ifp, m, pi);
+			ether_input_pkt(ifp, m, pi, cpuid);
 
 		/* Advance our pointers to the next descriptor. */
 		if (++i == rxr->num_rx_desc)

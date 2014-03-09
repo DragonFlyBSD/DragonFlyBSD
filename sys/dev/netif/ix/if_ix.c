@@ -2529,7 +2529,7 @@ static void
 ix_rxeof(struct ix_rx_ring *rxr)
 {
 	struct ifnet *ifp = &rxr->rx_sc->arpcom.ac_if;
-	int i, nsegs = 0;
+	int i, nsegs = 0, cpuid = mycpuid;
 
 	i = rxr->rx_next_check;
 	for (;;) {
@@ -2663,7 +2663,7 @@ next_desc:
 			i = 0;
 
 		if (sendmp != NULL)
-			ether_input_pkt(ifp, sendmp, pi);
+			ether_input_pkt(ifp, sendmp, pi, cpuid);
 
 		if (nsegs >= rxr->rx_wreg_nsegs) {
 			ix_rx_refresh(rxr, i);

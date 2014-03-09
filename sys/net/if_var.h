@@ -887,7 +887,8 @@ void	ether_ifdetach(struct ifnet *);
 void	ether_demux(struct mbuf *);
 void	ether_demux_oncpu(struct ifnet *, struct mbuf *);
 void	ether_reinput_oncpu(struct ifnet *, struct mbuf *, int);
-void	ether_input_pkt(struct ifnet *, struct mbuf *, const struct pktinfo *);
+void	ether_input_pkt(struct ifnet *, struct mbuf *,
+	    const struct pktinfo *, int);
 int	ether_output_frame(struct ifnet *, struct mbuf *);
 int	ether_ioctl(struct ifnet *, u_long, caddr_t);
 u_char	*kether_aton(const char *, u_char *);
