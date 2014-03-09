@@ -70,28 +70,28 @@
 
 initialization()
 {
-	VERSION="0.1-beta"
+    VERSION="0.1-beta"
 
-	UID=`id -ur`
-	GID=`id -gr`
+    UID=`id -ur`
+    GID=`id -gr`
 
-	dryrun=0	  # Dry-run
-	backup_type=0	  # Type of backup
-	incr_full_file="" # Full backup file for the incremental
-	input_file=""	  # Full backup filename
-	output_file=""	  # Output data file
-	metadata_file=""  # Output metadata fiole
-	pfs_path=""	  # PFS path to be backed up
-	backup_dir=""	  # Target directory for backups
-	compress=0	  # Compress output file?
-	comp_rate=6	  # Compression rate
-	verbose=0	  # Verbosity on/off
-	timestamp=`date +'%Y%m%d%H%M%S'`
+    dryrun=0	  # Dry-run
+    backup_type=0	  # Type of backup
+    incr_full_file="" # Full backup file for the incremental
+    input_file=""	  # Full backup filename
+    output_file=""	  # Output data file
+    metadata_file=""  # Output metadata fiole
+    pfs_path=""	  # PFS path to be backed up
+    backup_dir=""	  # Target directory for backups
+    compress=0	  # Compress output file?
+    comp_rate=6	  # Compression rate
+    verbose=0	  # Verbosity on/off
+    timestamp=`date +'%Y%m%d%H%M%S'`
 }
 
 info()
 {
-	[ ${verbose} -eq 1 ] && echo "INFO: $1"
+    [ ${verbose} -eq 1 ] && echo "INFO: $1"
 }
 
 #
@@ -109,9 +109,9 @@ err()
 
 usage()
 {
-	echo "Usage: $(basename $0) [-h] [-v] [-i <full-backup-file>]" \
-	    "[-f] [-c <compress-rate>] -d [<backup-dir>] <path-to-PFS>"
-	exit 1
+    echo "Usage: $(basename $0) [-h] [-v] [-i <full-backup-file>]" \
+	"[-f] [-c <compress-rate>] -d [<backup-dir>] <path-to-PFS>"
+    exit 1
 }
 
 check_pfs()
@@ -347,59 +347,59 @@ info "hammer-backup version ${VERSION}"
 # Handle options
 while getopts d:i:c:fvhnl op
 do
-	case $op in
+    case $op in
 	d)
-	   backup_dir=$OPTARG
-	   info "Backup directory is ${backup_dir}."
-	   ;;
+	    backup_dir=$OPTARG
+	    info "Backup directory is ${backup_dir}."
+	    ;;
 	f)
-	   if [ ${backup_type} -eq 2 ]; then
-	       err 1 "-f and -i are mutually exclusive."
-	   fi
+	    if [ ${backup_type} -eq 2 ]; then
+		err 1 "-f and -i are mutually exclusive."
+	    fi
 
-	   info "Full backup."
-	   backup_type=1
-	   ;;
+	    info "Full backup."
+	    backup_type=1
+	    ;;
 	i)
-	   if [ ${backup_type} -eq 2 ]; then
-	       err 1 "-f and -i are mutually exclusive."
-	   fi
+	    if [ ${backup_type} -eq 2 ]; then
+		err 1 "-f and -i are mutually exclusive."
+	    fi
 
-	   info "Incremental backup."
-	   backup_type=2
-	   incr_full_file=$OPTARG
-	   ;;
+	    info "Incremental backup."
+	    backup_type=2
+	    incr_full_file=$OPTARG
+	    ;;
 	c)
-	   compress=1
+	    compress=1
 
-	   case "$OPTARG" in
-	   1|2|3|4|5|6|7|8|9)
-	   	comp_rate=`expr $OPTARG`
-		;;
-	   *)
-	   	err 1 "Bad compression level specified."
-	   	;;
-	   esac
+	    case "$OPTARG" in
+		1|2|3|4|5|6|7|8|9)
+		    comp_rate=`expr $OPTARG`
+		    ;;
+		*)
+		    err 1 "Bad compression level specified."
+		    ;;
+	    esac
 
-	   info "XZ compression level ${comp_rate}."
-	   ;;
+	    info "XZ compression level ${comp_rate}."
+	    ;;
 	n)
-	   info "Dry-run execution."
-	   dryrun=1
-	   ;;
+	    info "Dry-run execution."
+	    dryrun=1
+	    ;;
 	l)
-	   list_opt=1
-	   ;;
+	    list_opt=1
+	    ;;
 	v)
-	   verbose=1
-	   ;;
+	    verbose=1
+	    ;;
 	h)
-	   usage
-	   ;;
+	    usage
+	    ;;
 	\?)
-	   usage
-	   ;;
-	esac
+	    usage
+	    ;;
+    esac
 done
 
 shift $(($OPTIND - 1))
