@@ -73,7 +73,6 @@ device		natapicd		# ATAPI CDROM drives
 device		natapifd		# ATAPI floppy drives
 device		natapist		# ATAPI tape drives
 device		natapicam		# Emulate ATAPI devices as SCSI
-device		natausb			# ATA-over-USB support
 options 	ATA_STATIC_ID		# Static device numbering
 
 device		mpt		# LSI-Logic MPT/Fusion XXX
@@ -174,19 +173,24 @@ pseudo-device	crypto		# core crypto support, used by wlan
 pseudo-device	cryptodev
 
 # USB support
+#
+# NOTE: If you enable 'oldusb' you must also disable 'usb' and rebuild
+#	the world with WANT_OLDUSB=true in /etc/make.conf, in addition
+#	to rebuilding the kernel.
+#
+#device		oldusb		# use this instead of usb for the old stack
+#device		natausb		# ATA-over-USB support (oldusb)
+#device		ugen		# Generic (oldusb)
+#device		uscanner	# Scanners (oldusb)
+#device		urio		# Diamond Rio MP3 Player (oldusb)
+#device		aue		# ADMtek USB ethernet (oldusb)
+#device		rue		# RealTek 8150 based USB ethernet (oldusb)
+
+device		usb		# USB Bus (required)
 device		uhci		# UHCI PCI->USB interface
 device		ohci		# OHCI PCI->USB interface
-#device	ehci		# EHCI interface
-device		usb		# USB Bus (required)
-#device		oldusb		# use this instead of usb for the old stack
-device		ugen		# Generic
 device		uhid		# "Human Interface Devices"
 device		ukbd		# Keyboard
 device		ulpt		# Printer
 device		umass		# Disks/Mass storage - Requires scbus and da
 device		ums		# Mouse
-device		uscanner	# Scanners
-device		urio		# Diamond Rio MP3 Player
-# USB Ethernet, requires mii
-device		aue		# ADMtek USB ethernet
-device		rue		# RealTek 8150 based USB ethernet
