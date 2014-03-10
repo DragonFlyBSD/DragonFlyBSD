@@ -216,6 +216,7 @@ SUBDIR=	alias \
 	uniq \
 	units \
 	unvis \
+	${_usbhidaction} \
 	${_usbhidctl} \
 	users \
 	uudecode \
@@ -253,6 +254,7 @@ SUBDIR+=hesinfo
 
 .if !defined(WANT_OLDUSB)
 _usbhidctl=	u4bhidctl
+_usbhidaction=	usbhidaction
 .else
 _usbhidctl=	usbhidctl
 .endif
