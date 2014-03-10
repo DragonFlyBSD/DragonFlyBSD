@@ -4,7 +4,7 @@ KMOD=	ndis
 SRCS=	subr_pe.c subr_ndis.c subr_hal.c subr_ntoskrnl.c kern_ndis.c
 SRCS+=	kern_windrv.c
 SRCS+=	device_if.h bus_if.h pci_if.h
-SRCS+=	opt_usb.h use_usb4bsd.h
+SRCS+=	opt_usb.h use_usb.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 SRCS+=	winx64_wrap.S
@@ -20,7 +20,7 @@ SRCS+=	subr_u4bd.c
 SRCS+=	subr_usbd.c
 .endif
 
-.if !defined(BUILDING_WITH_KERNEL) && !defined(WANT_OLDUSB)
+.if !defined(WANT_OLDUSB)
 use_usb.h:
 	echo "#define NUSB 1" > ${.TARGET}
 .endif

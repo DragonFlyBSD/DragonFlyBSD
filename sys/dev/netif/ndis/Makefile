@@ -3,7 +3,7 @@
 KMOD=	if_ndis
 SRCS=	if_ndis.c if_ndis_pci.c if_ndis_pccard.c
 SRCS+=	device_if.h bus_if.h pci_if.h card_if.h
-SRCS+=	opt_usb.h use_usb4bsd.h
+SRCS+=	opt_usb.h use_usb.h
 
 .if !defined(WANT_OLDUSB)
 SRCS+=	if_ndis_u4b.c
@@ -11,7 +11,7 @@ SRCS+=	if_ndis_u4b.c
 SRCS+=	if_ndis_usb.c
 .endif
 
-.if !defined(BUILDING_WITH_KERNEL) && !defined(WANT_OLDBSD)
+.if !defined(WANT_OLDUSB)
 use_usb.h:
 	echo "#define NUSB 1" > ${.TARGET}
 .endif
