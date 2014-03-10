@@ -24,6 +24,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/lib/libusbhid/descr.c 240762 2012-09-20 18:56:27Z mav $
  */
 
 #include <sys/types.h>
@@ -65,7 +67,7 @@ hid_get_report_id(int fd)
 	if ((rep = hid_get_report_desc(fd)) == NULL)
 		goto use_ioctl;
 	kindset = 1 << hid_input | 1 << hid_output | 1 << hid_feature;
-	for (d = hid_start_parse(rep, kindset, 0); hid_get_item(d, &h); ) {
+	for (d = hid_start_parse(rep, kindset, -1); hid_get_item(d, &h); ) {
 		/* Return the first report ID we met. */
 		if (h.report_ID != 0) {
 			temp = h.report_ID;

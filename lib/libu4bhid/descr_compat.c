@@ -22,6 +22,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/lib/libusbhid/descr_compat.c 188945 2009-02-23 18:36:54Z thompsa $
  */
 
 /*
@@ -29,9 +31,6 @@
  * USB stack.
  */
 #ifdef HID_COMPAT7
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 #include <sys/types.h>
 
@@ -43,7 +42,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/time.h>
 #include <sys/ioctl.h>
 
-#include <dev/usb/usb.h>
+#include <bus/u4b/usb.h>
 
 #include "usbhid.h"
 #include "usbvar.h"

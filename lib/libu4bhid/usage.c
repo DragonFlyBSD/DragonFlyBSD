@@ -24,6 +24,8 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: head/lib/libusbhid/usage.c 205728 2010-03-27 08:00:16Z kaiw $
  */
 
 #include <sys/param.h>
@@ -74,9 +76,9 @@ hid_init(const char *hidname)
 	char line[100], name[100], *p, *n;
 	int no;
 	int lineno;
-	struct usage_page *curpage = NULL;
+	struct usage_page *curpage = 0;
 
-	if (hidname == NULL)
+	if (hidname == 0)
 		hidname = _PATH_HIDTABLE;
 
 	f = fopen(hidname, "r");
@@ -121,7 +123,7 @@ hid_init(const char *hidname)
 			curpage->pagesize++;
 		} else {
 			if (npages >= npagesmax) {
-				if (pages == NULL) {
+				if (pages == 0) {
 					npagesmax = 5;
 					pages = malloc(npagesmax *
 						  sizeof (struct usage_page));
