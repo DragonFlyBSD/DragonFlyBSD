@@ -128,6 +128,7 @@ SUBDIR= 802_11 \
 	${_usbconfig} \
 	${_usbd} \
 	${_usbdevs} \
+	${_usbdump} \
 	vidcontrol \
 	vipw \
 	vknetd \
@@ -148,6 +149,7 @@ _usbd=		usbd
 _usbdevs=	usbdevs
 .else
 _usbconfig=	usbconfig
+_usbdump=	usbdump
 .endif
 
 .if !defined(NO_LPR)

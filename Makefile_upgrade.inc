@@ -2515,4 +2515,7 @@ TO_REMOVE+=/usr/share/man/man4/usb_quirk.4.gz
 TO_REMOVE+=/usr/bin/usbhidaction
 TO_REMOVE+=/usr/share/man/cat1/usbhidaction.1.gz
 TO_REMOVE+=/usr/share/man/man1/usbhidaction.1.gz
+TO_REMOVE+=/usr/sbin/usbdump
+TO_REMOVE+=/usr/share/man/cat8/usbdump.8.gz
+TO_REMOVE+=/usr/share/man/man8/usbdump.8.gz
 .endif
