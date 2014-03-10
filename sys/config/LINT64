@@ -2047,7 +2047,9 @@ device		uhci
 # OHCI controller
 device		ohci
 # EHCI controller
-device 		ehci
+device		ehci
+# XHCI controller
+device		xhci
 # General USB code (mandatory for USB)
 device		usb
 # Human Interface Device (anything with buttons and dials)
@@ -2058,27 +2060,44 @@ device		ukbd
 device		ulpt
 # USB mass storage (Requires scbus and da)
 device		umass
+# USB mass storage driver for device-side mode
+device		usfs
 # USB modem support
 device		umodem
 # USB mouse
 device		ums
+# eGalax USB touch screen
+device		uep
 # USB com devices
+device		"u3g"
 device		uark
 device		ubsa
+device		ubser
 device		uchcom
 device		ucom
+device		ucycom
+device		ufoma
 device		uftdi
 device		ugensa
+device		uipaq
+device		umcs
 device		umct
+device		umoscom
 device		uplcom
 device		uslcom
 device		uvisor
 device		uvscom
 
 #
+# USB ethernet support
+device		uether
+#
 # ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
 # LinkSys USB200M and various other adapters.
 device		axe
+#
+# Davicom DM9601E USB to fast ethernet. Supports the Corega FEther USB-TXC.
+device		udav
 
 # USB wireless NICs, requires wlan_amrr
 #
