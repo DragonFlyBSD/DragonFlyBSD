@@ -47,7 +47,7 @@
  * expects.
  */
 
-#include "use_usb.h"
+#include "use_oldusb.h"
 
 #include <sys/ctype.h>
 #include <sys/param.h>
@@ -91,7 +91,7 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#if NUSB > 0
+#if NOLDUSB == 0
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
 #else

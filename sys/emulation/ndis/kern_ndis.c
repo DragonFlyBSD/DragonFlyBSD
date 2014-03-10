@@ -32,7 +32,7 @@
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.111 2011/02/23 21:45:28 brucec Exp $
  */
 
-#include "use_usb.h"
+#include "use_oldusb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -65,7 +65,7 @@
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_ioctl.h>
 
-#if NUSB > 0
+#if NOLDUSB == 0
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
 #else
@@ -79,7 +79,7 @@
 #include <emulation/ndis/ntoskrnl_var.h>
 #include <emulation/ndis/ndis_var.h>
 #include <emulation/ndis/hal_var.h>
-#if NUSB > 0
+#if NOLDUSB == 0
 #include <emulation/ndis/u4bd_var.h>
 #else
 #include <emulation/ndis/usbd_var.h>
