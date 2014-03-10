@@ -1,5 +1,5 @@
 #
-# $FreeBSD: src/usr.sbin/usbconfig/Makefile,v 1.3 2010/01/09 18:59:03 antoine Exp $
+# $FreeBSD: head/usr.sbin/usbconfig/Makefile 201922 2010-01-09 18:59:03Z antoine $
 #
 PROG=	usbconfig
 MAN=	usbconfig.8
