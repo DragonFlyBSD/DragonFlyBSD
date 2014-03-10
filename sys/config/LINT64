@@ -2056,7 +2056,7 @@ device		uhid
 device		ukbd
 # USB printer
 device		ulpt
-# USB Iomega Zip 100 Drive (Requires scbus and da)
+# USB mass storage (Requires scbus and da)
 device		umass
 # USB modem support
 device		umodem
