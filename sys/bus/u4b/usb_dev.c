@@ -1234,6 +1234,7 @@ usb_filter_detach(struct knote *kn)
 	if(f->flag_isselect) {
 		klist = &f->selinfo.ki_note; 
 		knote_remove(klist, kn);
+		f->flag_isselect = 0;
 	}
 	lockmgr(f->priv_lock, LK_RELEASE);
 
@@ -1278,15 +1279,8 @@ usb_filter_read(struct knote *kn, long hint)
 			kn->kn_flags |= EV_ERROR;
 			ready = 1;
 		} else {
-			/* XXX mpf 
-			 */
-			if (f->queue_data == NULL) {
-				/*
-				 * start read transfer, if not
-				 * already started
-				 */
-				(f->methods->f_start_read) (f);
-			}
+			/* start read if not running */
+			(f->methods->f_start_read)(f);
 			/* check if any packets are available */
 			USB_IF_POLL(&f->used_q, m);
 			if (m) {
@@ -1606,6 +1600,7 @@ usb_read(struct dev_read_args *ap)
 			}
 		} else {
 			USB_IF_PREPEND(&f->used_q, m);
+			usb_fifo_wakeup(f);
 		}
 
 		if (err) {
@@ -1874,8 +1869,6 @@ usb_fifo_wakeup(struct usb_fifo *f)
 	if (f->flag_isselect) {
 		KNOTE(&f->selinfo.ki_note, 0);
 		wakeup(&f->selinfo.ki_note);
-
-		f->flag_isselect = 0;
 	}
 	if (f->async_p != NULL && lwkt_trytoken(&f->async_p->p_token)) {
 		ksignal(f->async_p, SIGIO);
@@ -2178,7 +2171,6 @@ usb_fifo_put_data(struct usb_fifo *f, struct usb_page_cache *pc,
 				m->last_packet = 1;
 			}
 			USB_IF_ENQUEUE(&f->used_q, m);
-
 			usb_fifo_wakeup(f);
 
 			if ((len == 0) || (what == 1)) {
@@ -2216,7 +2208,6 @@ usb_fifo_put_data_linear(struct usb_fifo *f, void *ptr,
 				m->last_packet = 1;
 			}
 			USB_IF_ENQUEUE(&f->used_q, m);
-
 			usb_fifo_wakeup(f);
 
 			if ((len == 0) || (what == 1)) {
@@ -2302,6 +2293,7 @@ usb_fifo_get_data(struct usb_fifo *f, struct usb_page_cache *pc,
 				}
 			} else {
 				USB_IF_PREPEND(&f->used_q, m);
+				usb_fifo_wakeup(f);
 			}
 		} else {
 
@@ -2367,6 +2359,7 @@ usb_fifo_get_data_linear(struct usb_fifo *f, void *ptr,
 				}
 			} else {
 				USB_IF_PREPEND(&f->used_q, m);
+				usb_fifo_wakeup(f);
 			}
 		} else {
 

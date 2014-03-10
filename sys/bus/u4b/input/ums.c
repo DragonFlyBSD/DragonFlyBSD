@@ -129,6 +129,7 @@ struct ums_softc {
 
 	int sc_pollrate;
 	int sc_fflags;
+	int sc_read_running;
 
 	uint8_t	sc_buttons;
 	uint8_t	sc_iid;
@@ -278,7 +279,6 @@ ums_intr_callback(struct usb_xfer *xfer, usb_error_t error)
 
 		if (dx || dy || dz || dt || dw ||
 		    (buttons != sc->sc_status.button)) {
-
 			DPRINTFN(6, "x:%d y:%d z:%d t:%d w:%d buttons:0x%08x\n",
 			    dx, dy, dz, dt, dw, buttons);
 
@@ -701,14 +701,19 @@ ums_start_read(struct usb_fifo *fifo)
 	if ((rate > 0) && (sc->sc_xfer[UMS_INTR_DT] != NULL)) {
 		DPRINTF("Setting pollrate = %d\n", rate);
 		/* Stop current transfer, if any */
-		usbd_transfer_stop(sc->sc_xfer[UMS_INTR_DT]);
+		if (sc->sc_read_running) {
+			usbd_transfer_stop(sc->sc_xfer[UMS_INTR_DT]);
+			sc->sc_read_running = 0;
+		}
 		/* Set new interval */
 		usbd_xfer_set_interval(sc->sc_xfer[UMS_INTR_DT], 1000 / rate);
 		/* Only set pollrate once */
 		sc->sc_pollrate = 0;
 	}
-
-	usbd_transfer_start(sc->sc_xfer[UMS_INTR_DT]);
+	if (sc->sc_read_running == 0) {
+		sc->sc_read_running = 1;
+		usbd_transfer_start(sc->sc_xfer[UMS_INTR_DT]);
+	}
 }
 
 static void
@@ -716,8 +721,11 @@ ums_stop_read(struct usb_fifo *fifo)
 {
 	struct ums_softc *sc = usb_fifo_softc(fifo);
 
-	usbd_transfer_stop(sc->sc_xfer[UMS_INTR_DT]);
-	usb_callout_stop(&sc->sc_callout);
+	if (sc->sc_read_running) {
+		usbd_transfer_stop(sc->sc_xfer[UMS_INTR_DT]);
+		sc->sc_read_running = 0;
+		usb_callout_stop(&sc->sc_callout);
+	}
 }
 
 
