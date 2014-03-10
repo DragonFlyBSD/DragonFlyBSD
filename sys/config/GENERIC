@@ -340,14 +340,14 @@ pseudo-device	cryptodev
 
 # USB support
 #
-# NOTE: If you enable 'usb4bsd' you must also disable 'usb' and rebuild
-#	the world with WANT_USB4BSD=true in /etc/make.conf, in addition
+# NOTE: If you enable 'oldusb' you must also disable 'usb' and rebuild
+#	the world with WANT_OLDUSB=true in /etc/make.conf, in addition
 #	to rebuilding the kernel.
 #
 device		uhci		# UHCI PCI->USB interface
 device		ohci		# OHCI PCI->USB interface
 device		usb		# USB Bus (required)
-#device		"usb4bsd"	# use this instead of usb for the new stack
+#device		oldusb		# use this instead of usb for the old stack
 device		ugen		# Generic
 device		uhid		# "Human Interface Devices"
 device		ukbd		# Keyboard

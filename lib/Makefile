@@ -117,7 +117,7 @@ _libnetgraph=	libnetgraph7
 _libnetgraph=	libnetgraph
 .endif
 
-.if defined(WANT_USB4BSD)
+.if !defined(WANT_OLDUSB)
 _libusb=	libusb
 _libusbhid=	libu4bhid
 .else

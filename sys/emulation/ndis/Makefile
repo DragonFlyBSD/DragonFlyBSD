@@ -14,15 +14,15 @@ SRCS+=	winx64_wrap.S
 SRCS+=	winx32_wrap.S
 .endif
 
-.if defined(WANT_USB4BSD)
+.if !defined(WANT_OLDUSB)
 SRCS+=	subr_u4bd.c
 .else
 SRCS+=	subr_usbd.c
 .endif
 
-.if !defined(BUILDING_WITH_KERNEL) && defined(WANT_USB4BSD)
-use_usb4bsd.h:
-	echo "#define NUSB4BSD 1" > ${.TARGET}
+.if !defined(BUILDING_WITH_KERNEL) && !defined(WANT_OLDUSB)
+use_usb.h:
+	echo "#define NUSB 1" > ${.TARGET}
 .endif
 
 .include <bsd.kmod.mk>

@@ -35,7 +35,7 @@
  * then hacked upon mercilessly by me.
  */
 
-#include "use_usb4bsd.h"
+#include "use_usb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -73,7 +73,7 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#if NUSB4BSD > 0
+#if NUSB > 0
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
 #else
@@ -87,7 +87,7 @@
 #include <emulation/ndis/ntoskrnl_var.h>
 #include <emulation/ndis/hal_var.h>
 #include <emulation/ndis/ndis_var.h>
-#if NUSB4BSD > 0
+#if NUSB > 0
 #include <emulation/ndis/u4bd_var.h>
 #else
 #include <emulation/ndis/usbd_var.h>
@@ -560,14 +560,14 @@ ndis_attach(device_t dev)
 
 	lockinit(&sc->ndis_lock, "network driver", 0, LK_CANRECURSE);
 	KeInitializeSpinLock(&sc->ndis_rxlock);
-#if NUSB4BSD > 0
+#if NUSB > 0
 	KeInitializeSpinLock(&sc->ndisusb_tasklock);
 	KeInitializeSpinLock(&sc->ndisusb_xferdonelock);
 #else
 	KeInitializeSpinLock(&sc->ndisusb_xferlock);
 #endif
 	InitializeListHead(&sc->ndis_shlist);
-#if NUSB4BSD > 0
+#if NUSB > 0
 	InitializeListHead(&sc->ndisusb_tasklist);
 	InitializeListHead(&sc->ndisusb_xferdonelist);
 #else
@@ -636,7 +636,7 @@ ndis_attach(device_t dev)
 	sc->ndis_startitem = IoAllocateWorkItem(sc->ndis_block->nmb_deviceobj);
 	sc->ndis_resetitem = IoAllocateWorkItem(sc->ndis_block->nmb_deviceobj);
 	sc->ndis_inputitem = IoAllocateWorkItem(sc->ndis_block->nmb_deviceobj);
-#if NUSB4BSD > 0
+#if NUSB > 0
 	sc->ndisusb_xferdoneitem =
 	    IoAllocateWorkItem(sc->ndis_block->nmb_deviceobj);
 	sc->ndisusb_taskitem =
@@ -1077,7 +1077,7 @@ ndis_detach(device_t dev)
 		IoFreeWorkItem(sc->ndis_resetitem);
 	if (sc->ndis_inputitem != NULL)
 		IoFreeWorkItem(sc->ndis_inputitem);
-#if NUSB4BSD > 0
+#if NUSB > 0
 	if (sc->ndisusb_xferdoneitem != NULL)
 		IoFreeWorkItem(sc->ndisusb_xferdoneitem);
 	if (sc->ndisusb_taskitem != NULL)

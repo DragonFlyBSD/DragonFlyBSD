@@ -17,7 +17,7 @@ SUBDIR=	\
 	video \
 	virtual
 
-.if !defined(WANT_USB4BSD)
+.if defined(WANT_OLDBSD)
 SUBDIR+=usbmisc
 .endif
 

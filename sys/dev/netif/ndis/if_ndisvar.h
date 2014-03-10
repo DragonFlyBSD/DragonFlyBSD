@@ -32,7 +32,7 @@
  * $FreeBSD: src/sys/dev/if_ndis/if_ndisvar.h,v 1.39 2009/05/02 15:14:18 thompsa Exp $
  */
 
-#include "use_usb4bsd.h"
+#include "use_usb.h"
 
 #define NDIS_DEFAULT_NODENAME	"FreeBSD NDIS node"
 #define NDIS_NODENAME_LEN	32
@@ -115,7 +115,7 @@ struct ndis_vap {
 };
 #define	NDIS_VAP(vap)	((struct ndis_vap *)(vap))
 
-#if NUSB4BSD > 0
+#if NUSB > 0
 #define	NDISUSB_CONFIG_NO			0
 #define	NDISUSB_IFACE_INDEX			0
 /* XXX at USB2 there's no USBD_NO_TIMEOUT macro anymore  */
@@ -153,7 +153,7 @@ struct ndisusb_task {
 	void			*nt_ctx;
 	list_entry		nt_tasklist;
 };
-#else /* !NUSB4BSD > 0 */
+#else /* !NUSB > 0 */
 #define	NDISUSB_CONFIG_NO			1
 #define	NDISUSB_IFACE_INDEX			0
 #define	NDISUSB_INTR_TIMEOUT			1000
@@ -242,7 +242,7 @@ struct ndis_softc {
 	int			ndis_tx_timer;
 	int			ndis_hang_timer;
 
-#if NUSB4BSD > 0
+#if NUSB > 0
 	struct usb_device	*ndisusb_dev;
 	struct lock		ndisusb_lock;
 	struct ndisusb_ep	ndisusb_dread_ep;
@@ -270,7 +270,7 @@ struct ndis_softc {
 #define	NDISUSB_LOCK(_sc)	lockmgr(&(_sc)->ndisusb_lock, LK_EXCLUSIVE)
 #define	NDISUSB_UNLOCK(_sc)	lockmgr(&(_sc)->ndisusb_lock, LK_RELEASE)
 #define	NDISUSB_LOCK_ASSERT(_sc, t)	KKASSERT(lockstatus(&(_sc)->ndisusb_lock, curthread) != 0)
-#else /* !NUSB4BSD > 0 */
+#else /* !NUSB > 0 */
 	io_workitem		*ndisusb_xferitem;
 	list_entry		ndisusb_xferlist;
 	kspin_lock		ndisusb_xferlock;

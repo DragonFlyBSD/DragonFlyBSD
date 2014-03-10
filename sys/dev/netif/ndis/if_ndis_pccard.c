@@ -32,7 +32,7 @@
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pccard.c,v 1.21 2012/11/17 01:51:54 svnexp Exp $
  */
 
-#include "use_usb4bsd.h"
+#include "use_usb.h"
 
 #include <sys/ctype.h>
 #include <sys/param.h>
@@ -53,7 +53,7 @@
 
 #include <netproto/802_11/ieee80211_var.h>
 
-#if NUSB4BSD > 0
+#if NUSB > 0
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
 #else

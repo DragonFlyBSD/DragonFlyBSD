@@ -2449,7 +2449,7 @@ TO_REMOVE+=/usr/share/man/man4/ural.4.gz
 
 # Clean up old USB stuff when the new stack is requested
 # and vice versa
-.if defined(WANT_USB4BSD)
+.if !defined(WANT_OLDUSB)
 TO_REMOVE+=/boot/kernel/if_aue.ko
 TO_REMOVE+=/boot/kernel/if_cue.ko
 TO_REMOVE+=/boot/kernel/if_kue.ko

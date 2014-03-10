@@ -251,7 +251,7 @@ SUBDIR=	alias \
 SUBDIR+=hesinfo
 .endif
 
-.if defined(WANT_USB4BSD)
+.if !defined(WANT_OLDUSB)
 _usbhidctl=	u4bhidctl
 .else
 _usbhidctl=	usbhidctl

@@ -32,7 +32,7 @@
  * $FreeBSD: src/sys/compat/ndis/kern_windrv.c,v 1.21 2010/11/22 20:46:38 bschmidt Exp $
  */
 
-#include "use_usb4bsd.h"
+#include "use_usb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -56,7 +56,7 @@
 #include <machine/segments.h>
 #endif
 
-#if NUSB4BSD > 0
+#if NUSB > 0
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
 #else
@@ -70,7 +70,7 @@
 #include <emulation/ndis/ntoskrnl_var.h>
 #include <emulation/ndis/ndis_var.h>
 #include <emulation/ndis/hal_var.h>
-#if NUSB4BSD > 0
+#if NUSB > 0
 #include <emulation/ndis/u4bd_var.h>
 #else
 #include <emulation/ndis/usbd_var.h>

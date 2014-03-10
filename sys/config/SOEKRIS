@@ -178,7 +178,7 @@ device		uhci		# UHCI PCI->USB interface
 device		ohci		# OHCI PCI->USB interface
 #device	ehci		# EHCI interface
 device		usb		# USB Bus (required)
-#device		"usb4bsd"	# use this instead of usb for the new stack
+#device		oldusb		# use this instead of usb for the old stack
 device		ugen		# Generic
 device		uhid		# "Human Interface Devices"
 device		ukbd		# Keyboard

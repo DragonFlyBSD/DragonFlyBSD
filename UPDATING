@@ -12,6 +12,12 @@
 +         UPGRADING DRAGONFLY FROM 3.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+USB4BSD IS NOW THE DEFAULT USB STACK
+------------------------------------
+
+To get back to the old stack, put "WANT_OLDUSB=yes" in /etc/make.conf and
+replace "device usb" with "device oldusb" in the kernel configuration.
+
 MORE ISA SUPPORT DROPPED
 ------------------------
 

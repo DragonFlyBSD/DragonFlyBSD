@@ -14,11 +14,11 @@ SUBDIR+=ar sbni
 # .endif
 #
 # ...and to the new USB stack
-# .if !defined(WANT_USB4BSD)
-# SUBDIR+= rum ural
+# .if defined(WANT_OLDUSB)
+# SUBDIR+= ural
 # .endif
 
-.if !defined(WANT_USB4BSD)
+.if defined(WANT_OLDUSB)
 SUBDIR+=aue axe cue kue lgue rue
 .endif
 

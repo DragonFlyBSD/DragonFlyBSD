@@ -516,7 +516,7 @@ MLINKS+=wpi.4 if_wpi.4
 MLINKS+=xe.4 if_xe.4
 MLINKS+=xl.4 if_xl.4
 
-.if defined(WANT_USB4BSD)
+.if !defined(WANT_OLDUSB)
 MAN+=	rum.4 \
 	run.4 \
 	runfw.4 \

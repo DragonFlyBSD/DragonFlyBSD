@@ -37,8 +37,8 @@ emulation/ndis/subr_hal.c	optional	ndisapi pci
 emulation/ndis/subr_ndis.c	optional	ndisapi pci
 emulation/ndis/subr_ntoskrnl.c	optional	ndisapi pci
 emulation/ndis/subr_pe.c	optional	ndisapi pci
-emulation/ndis/subr_usbd.c	optional	ndisapi pci usb
-emulation/ndis/subr_u4bd.c	optional	ndisapi pci usb4bsd
+emulation/ndis/subr_usbd.c	optional	ndisapi pci oldusb
+emulation/ndis/subr_u4bd.c	optional	ndisapi pci usb
 emulation/ndis/winx64_wrap.S	optional	ndisapi pci
 
 # XXX use assembler versions of bf_enc and des_enc
@@ -83,8 +83,8 @@ dev/netif/ndis/if_ndis.c		optional	ndis
 dev/netif/ndis/if_ndis_pccard.c		optional	ndis pccard
 dev/netif/ndis/if_ndis_pci.c		optional	ndis cardbus
 dev/netif/ndis/if_ndis_pci.c		optional	ndis pci
-dev/netif/ndis/if_ndis_usb.c		optional	ndis usb
-dev/netif/ndis/if_ndis_u4b.c		optional	ndis usb4bsd
+dev/netif/ndis/if_ndis_usb.c		optional	ndis oldusb
+dev/netif/ndis/if_ndis_u4b.c		optional	ndis usb
 dev/misc/kbd/atkbd.c			optional	atkbd
 dev/misc/kbd/atkbdc.c			optional	atkbdc
 dev/misc/kbd/kbd.c			optional	atkbd

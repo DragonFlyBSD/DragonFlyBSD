@@ -93,7 +93,7 @@ LSUBDIRS= \
 	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs \
 	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2
 
-.if defined(WANT_USB4BSD)
+.if !defined(WANT_OLDUSB)
 LSUBDIRS+=	bus/u4b
 .else
 LSUBDIRS+=	bus/usb

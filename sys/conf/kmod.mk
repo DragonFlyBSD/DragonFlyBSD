@@ -312,7 +312,7 @@ MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
     dev/virtual/virtio/virtio/virtio_bus_if.m \
     dev/virtual/virtio/virtio/virtio_if.m
 
-.if defined(WANT_USB4BSD)
+.if !defined(WANT_OLDUSB)
 MFILES+=bus/u4b/usb_if.m
 .else
 MFILES+=bus/usb/usb_if.m

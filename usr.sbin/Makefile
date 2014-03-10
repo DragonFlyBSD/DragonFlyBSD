@@ -143,7 +143,7 @@ SUBDIR= 802_11 \
 	ypset \
 	zic
 
-.if !defined(WANT_USB4BSD)
+.if defined(WANT_OLDUSB)
 _usbd=		usbd
 _usbdevs=	usbdevs
 .else

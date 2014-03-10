@@ -32,7 +32,7 @@
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis_pci.c,v 1.26 2010/12/19 11:14:34 tijl Exp $
  */
 
-#include "use_usb4bsd.h"
+#include "use_usb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -54,7 +54,7 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#if NUSB4BSD > 0
+#if NUSB > 0
 #include <bus/u4b/usb.h>
 #include <bus/u4b/usbdi.h>
 #else
