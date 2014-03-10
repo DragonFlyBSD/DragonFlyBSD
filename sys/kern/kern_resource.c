@@ -1124,11 +1124,18 @@ chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 {
 	rlim_t new;
 
+#ifdef __x86_64__
+	rlim_t sbsize;
+
+	sbsize = atomic_fetchadd_long(&uip->ui_sbsize, to - *hiwat);
+	new = sbsize + to - *hiwat;
+#else
 	spin_lock(&uip->ui_lock);
 	new = uip->ui_sbsize + to - *hiwat;
-	KKASSERT(new >= 0);
 	uip->ui_sbsize = new;
 	spin_unlock(&uip->ui_lock);
+#endif
+	KKASSERT(new >= 0);
 
 	/*
 	 * If we are trying to increase the socket buffer size
