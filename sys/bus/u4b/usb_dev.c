@@ -932,7 +932,7 @@ usb_open(struct dev_open_args *ap)
 static int
 usb_close(struct dev_close_args *ap)
 {
-	kprintf("usb_close called\n");
+	DPRINTFN(2, "usb_close called\n");
 	return 0;
 }
 
