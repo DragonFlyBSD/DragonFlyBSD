@@ -99,6 +99,7 @@ LIBTERMCAP?=	${DESTDIR}${LIBDIR}/libtermcap.a
 LIBTERMLIB?=	"don't use LIBTERMLIB, use LIBTERMCAP"
 LIBTINFO?=	"don't use LIBTINFO, use LIBNCURSES"
 LIBUSBHID?=	${DESTDIR}${LIBDIR}/libusbhid.a
+LIBUSB?=	${DESTDIR}${LIBDIR}/libusb.a
 LIBUTIL?=	${DESTDIR}${LIBDIR}/libutil.a
 LIBVGL?=	${DESTDIR}${LIBDIR}/libvgl.a
 LIBWRAP?=	${DESTDIR}${LIBDIR}/libwrap.a
