@@ -2316,16 +2316,15 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 					 */
 					if ((sc->sc_quirks & (NO_INQUIRY_EVPD | NO_INQUIRY)) &&
 					    (sc->sc_transfer.cmd_data[1] & SI_EVPD)) {
+		                                struct scsi_sense_data *sense;
 
-#if 0 /* XXXDF */
-						scsi_set_sense_data(&ccb->csio.sense_data,
-							/*sense_format*/ SSD_TYPE_NONE,
-							/*current_error*/ 1,
-							/*sense_key*/ SSD_KEY_ILLEGAL_REQUEST,
-							/*asc*/ 0x24,
-							/*ascq*/ 0x00,
-							/*extra args*/ SSD_ELEM_NONE);
-#endif
+						sense = &ccb->csio.sense_data;
+						bzero(sense, sizeof(*sense));
+						sense->error_code = SSD_CURRENT_ERROR;
+						sense->flags = SSD_KEY_ILLEGAL_REQUEST;
+						sense->add_sense_code = 0x24;
+						sense->extra_len = 10;
+	
 						ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
 						ccb->ccb_h.status =
 						    CAM_SCSI_STATUS_ERROR |
