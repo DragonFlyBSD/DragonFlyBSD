@@ -1,4 +1,4 @@
-/* $FreeBSD: src/lib/libusb/libusb10.h,v 1.4 2009/11/20 08:57:25 thompsa Exp $ */
+/* $FreeBSD: head/lib/libusb/libusb10.h 248236 2013-03-13 12:23:14Z hselasky $ */
 /*-
  * Copyright (c) 2009 Sylvestre Gallon. All rights reserved.
  *
@@ -27,7 +27,9 @@
 #ifndef __LIBUSB10_H__
 #define	__LIBUSB10_H__
 
+#ifndef LIBUSB_GLOBAL_INCLUDE_FILE
 #include <sys/queue.h>
+#endif
 
 #define	GET_CONTEXT(ctx) (((ctx) == NULL) ? usbi_default_context : (ctx))
 #define	UNEXPORTED __attribute__((__visibility__("hidden")))

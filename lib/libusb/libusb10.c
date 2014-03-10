@@ -1,4 +1,4 @@
-/* $FreeBSD: src/lib/libusb/libusb10.c,v 1.25 2012/06/12 07:28:25 hselasky Exp $ */
+/* $FreeBSD: head/lib/libusb/libusb10.c 261224 2014-01-28 07:21:46Z hselasky $ */
 /*-
  * Copyright (c) 2009 Sylvestre Gallon. All rights reserved.
  * Copyright (c) 2009 Hans Petter Selasky. All rights reserved.
@@ -25,17 +25,23 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/queue.h>
-
+#ifdef LIBUSB_GLOBAL_INCLUDE_FILE
+#include LIBUSB_GLOBAL_INCLUDE_FILE
+#else
 #include <assert.h>
 #include <errno.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
+#include <time.h>
+#include <sys/fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/queue.h>
+#include <sys/endian.h>
+#endif
 
 #define	libusb_device_handle libusb20_device
 
@@ -282,6 +288,19 @@ libusb_get_bus_number(libusb_device *dev)
 	if (dev == NULL)
 		return (0);		/* should not happen */
 	return (libusb20_dev_get_bus_number(dev->os_priv));
+}
+
+int
+libusb_get_port_numbers(libusb_device *dev, uint8_t *buf, uint8_t bufsize)
+{
+	return (libusb20_dev_get_port_path(dev->os_priv, buf, bufsize));
+}
+
+int
+libusb_get_port_path(libusb_context *ctx, libusb_device *dev, uint8_t *buf,
+    uint8_t bufsize)
+{
+	return (libusb20_dev_get_port_path(dev->os_priv, buf, bufsize));
 }
 
 uint8_t
@@ -592,7 +611,6 @@ int
 libusb_claim_interface(struct libusb20_device *pdev, int interface_number)
 {
 	libusb_device *dev;
-	int err = 0;
 
 	dev = libusb_get_device(pdev);
 	if (dev == NULL)
@@ -602,13 +620,10 @@ libusb_claim_interface(struct libusb20_device *pdev, int interface_number)
 		return (LIBUSB_ERROR_INVALID_PARAM);
 
 	CTX_LOCK(dev->ctx);
-	if (dev->claimed_interfaces & (1 << interface_number))
-		err = LIBUSB_ERROR_BUSY;
-
-	if (!err)
-		dev->claimed_interfaces |= (1 << interface_number);
+	dev->claimed_interfaces |= (1 << interface_number);
 	CTX_UNLOCK(dev->ctx);
-	return (err);
+
+	return (0);
 }
 
 int
@@ -990,6 +1005,7 @@ libusb10_isoc_proxy(struct libusb20_transfer *pxfer)
 	uint16_t iso_packets;
 	uint16_t i;
 	uint8_t status;
+	uint8_t flags;
 
 	status = libusb20_tr_get_status(pxfer);
 	sxfer = libusb20_tr_get_priv_sc1(pxfer);
@@ -1010,6 +1026,8 @@ libusb10_isoc_proxy(struct libusb20_transfer *pxfer)
 
 	/* make sure that the number of ISOCHRONOUS packets is valid */
 	uxfer->num_iso_packets = iso_packets;
+
+	flags = uxfer->flags;
 
 	switch (status) {
 	case LIBUSB20_TRANSFER_COMPLETED:
@@ -1328,7 +1346,7 @@ failure:
 
 	/* make sure our event loop spins the done handler */
 	dummy = 0;
-	write(dev->ctx->ctrl_pipe[1], &dummy, sizeof(dummy));
+	err = write(dev->ctx->ctrl_pipe[1], &dummy, sizeof(dummy));
 }
 
 /* The following function must be called unlocked */

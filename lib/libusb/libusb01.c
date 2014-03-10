@@ -1,4 +1,4 @@
-/* $FreeBSD: src/lib/libusb/libusb01.c,v 1.2 2011/07/16 08:29:12 hselasky Exp $ */
+/* $FreeBSD: head/lib/libusb/libusb01.c 248236 2013-03-13 12:23:14Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -28,11 +28,16 @@
  * This file contains the emulation layer for LibUSB v0.1 from sourceforge.
  */
 
-#include <sys/queue.h>
-
+#ifdef LIBUSB_GLOBAL_INCLUDE_FILE
+#include LIBUSB_GLOBAL_INCLUDE_FILE
+#else
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <sys/queue.h>
+#endif
 
 #include "libusb20.h"
 #include "libusb20_desc.h"

@@ -1,0 +1,11 @@
+# $FreeBSD: head/lib/libusb/libusb-2.0.pc 253637 2013-07-25 03:54:08Z rpaulo $
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libusb-2.0
+Description: Library that abstracts ways to access USB devices (v2.0)
+Version: 2.0.0
+Libs: -L${libdir} -lusb
+Cflags: -I${includedir}

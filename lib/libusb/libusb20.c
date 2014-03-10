@@ -1,4 +1,4 @@
-/* $FreeBSD: src/lib/libusb/libusb20.c,v 1.15 2012/04/20 14:29:45 hselasky Exp $ */
+/* $FreeBSD: head/lib/libusb/libusb20.c 253339 2013-07-14 10:22:00Z hselasky $ */
 /*-
  * Copyright (c) 2008-2009 Hans Petter Selasky. All rights reserved.
  *
@@ -24,13 +24,17 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/queue.h>
-
+#ifdef LIBUSB_GLOBAL_INCLUDE_FILE
+#include LIBUSB_GLOBAL_INCLUDE_FILE
+#else
 #include <ctype.h>
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <sys/queue.h>
+#endif
 
 #include "libusb20.h"
 #include "libusb20_desc.h"
@@ -71,6 +75,8 @@ dummy_callback(struct libusb20_transfer *xfer)
 #define	dummy_check_connected (void *)dummy_int
 #define	dummy_set_power_mode (void *)dummy_int
 #define	dummy_get_power_mode (void *)dummy_int
+#define	dummy_get_port_path (void *)dummy_int
+#define	dummy_get_power_usage (void *)dummy_int
 #define	dummy_kernel_driver_active (void *)dummy_int
 #define	dummy_detach_kernel_driver (void *)dummy_int
 #define	dummy_do_request_sync (void *)dummy_int
@@ -155,6 +161,13 @@ int
 libusb20_tr_open(struct libusb20_transfer *xfer, uint32_t MaxBufSize,
     uint32_t MaxFrameCount, uint8_t ep_no)
 {
+	return (libusb20_tr_open_stream(xfer, MaxBufSize, MaxFrameCount, ep_no, 0));
+}
+
+int
+libusb20_tr_open_stream(struct libusb20_transfer *xfer, uint32_t MaxBufSize,
+    uint32_t MaxFrameCount, uint8_t ep_no, uint16_t stream_id)
+{
 	uint32_t size;
 	uint8_t pre_scale;
 	int error;
@@ -188,7 +201,7 @@ libusb20_tr_open(struct libusb20_transfer *xfer, uint32_t MaxBufSize,
 	memset(xfer->ppBuffer, 0, size);
 
 	error = xfer->pdev->methods->tr_open(xfer, MaxBufSize,
-	    MaxFrameCount, ep_no, pre_scale);
+	    MaxFrameCount, ep_no, stream_id, pre_scale);
 
 	if (error) {
 		free(xfer->ppBuffer);
@@ -711,6 +724,24 @@ libusb20_dev_get_power_mode(struct libusb20_device *pdev)
 }
 
 int
+libusb20_dev_get_port_path(struct libusb20_device *pdev, uint8_t *buf, uint8_t bufsize)
+{
+	return (pdev->methods->get_port_path(pdev, buf, bufsize));
+}
+
+uint16_t
+libusb20_dev_get_power_usage(struct libusb20_device *pdev)
+{
+	int error;
+	uint16_t power_usage;
+
+	error = pdev->methods->get_power_usage(pdev, &power_usage);
+	if (error)
+		power_usage = 0;
+	return (power_usage);
+}
+
+int
 libusb20_dev_set_alt_index(struct libusb20_device *pdev, uint8_t ifaceIndex, uint8_t altIndex)
 {
 	int error;
@@ -1171,27 +1202,13 @@ libusb20_be_alloc(const struct libusb20_backend_methods *methods)
 struct libusb20_backend *
 libusb20_be_alloc_linux(void)
 {
-	struct libusb20_backend *pbe;
-
-#ifdef __linux__
-	pbe = libusb20_be_alloc(&libusb20_linux_backend);
-#else
-	pbe = NULL;
-#endif
-	return (pbe);
+	return (NULL);
 }
 
 struct libusb20_backend *
 libusb20_be_alloc_ugen20(void)
 {
-	struct libusb20_backend *pbe;
-
-#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__DragonFly__)
-	pbe = libusb20_be_alloc(&libusb20_ugen20_backend);
-#else
-	pbe = NULL;
-#endif
-	return (pbe);
+	return (libusb20_be_alloc(&libusb20_ugen20_backend));
 }
 
 struct libusb20_backend *
@@ -1199,10 +1216,12 @@ libusb20_be_alloc_default(void)
 {
 	struct libusb20_backend *pbe;
 
+#ifdef __linux__
 	pbe = libusb20_be_alloc_linux();
 	if (pbe) {
 		return (pbe);
 	}
+#endif
 	pbe = libusb20_be_alloc_ugen20();
 	if (pbe) {
 		return (pbe);

@@ -24,9 +24,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libusb/libusb20.3,v 1.17 2012/08/13 18:10:52 hselasky Exp $
+.\" $FreeBSD: head/lib/libusb/libusb20.3 250582 2013-05-12 22:22:12Z joel $
 .\"
-.Dd October 14, 2012
+.Dd May 3, 2013
 .Dt LIBUSB20 3
 .Os
 .Sh NAME
@@ -48,6 +48,7 @@ USB access library (libusb -lusb)
 .Fn libusb20_tr_close "struct libusb20_transfer *xfer"
 .Ft int
 .Fn libusb20_tr_open "struct libusb20_transfer *xfer" "uint32_t max_buf_size" "uint32_t max_frame_count" "uint8_t ep_no"
+.Fn libusb20_tr_open_stream "struct libusb20_transfer *xfer" "uint32_t max_buf_size" "uint32_t max_frame_count" "uint8_t ep_no" "uint16_t stream_id"
 .Ft struct libusb20_transfer*
 .Fn libusb20_tr_get_pointer "struct libusb20_device *pdev"  "uint16_t tr_index"
 .Ft uint16_t
@@ -113,6 +114,8 @@ USB access library (libusb -lusb)
 .Ft const char *
 .Fn libusb20_dev_get_backend_name "struct libusb20_device *"
 .Ft int
+.Fn libusb20_dev_get_port_path "struct libusb20_device *pdev" "uint8_t *buf" "uint8_t bufsize"
+.Ft int
 .Fn libusb20_dev_get_info "struct libusb20_device *pdev" "struct usb_device_info *pinfo"
 .Ft int
 .Fn libusb20_dev_get_iface_desc "struct libusb20_device *pdev" "uint8_t iface_index" "char *buf" "uint8_t len"
@@ -148,6 +151,8 @@ USB access library (libusb -lusb)
 .Fn libusb20_dev_set_power_mode "struct libusb20_device *pdev" "uint8_t power_mode"
 .Ft uint8_t
 .Fn libusb20_dev_get_power_mode "struct libusb20_device *pdev"
+.Ft uint16_t
+.Fn libusb20_dev_get_power_usage "struct libusb20_device *pdev"
 .Ft int
 .Fn libusb20_dev_set_alt_index "struct libusb20_device *pdev" "uint8_t iface_index" "uint8_t alt_index"
 .Ft struct LIBUSB20_DEVICE_DESC_DECODED *
@@ -281,6 +286,16 @@ The actual number of frames setup is found by calling
 This function returns zero upon success.
 .
 Non-zero return values indicate a LIBUSB20_ERROR value.
+.
+.Pp
+.
+.Fn libusb20_tr_open_stream
+is identical to
+.Fn libusb20_tr_open
+except that a stream ID can be specified for BULK endpoints having
+such a feature.
+.Fn libusb20_tr_open
+can be used to open stream ID zero.
 .
 .Pp
 .
@@ -539,6 +554,20 @@ returns a zero terminated string describing the backend used.
 .
 .Pp
 .
+.Fn libusb20_dev_get_port_path
+retrieves the list of USB port numbers which the datastream for a given USB device follows.
+The first port number is the Root HUB port number.
+Then children port numbers follow.
+The Root HUB device itself has a port path length of zero.
+Valid port numbers start at one and range until and including 255.
+Typically there should not be more than 16 levels, due to electrical and protocol limitations.
+This functions returns the number of actual port levels upon success
+else a LIBUSB20_ERROR value is returned which are always negative.
+If the actual number of port levels is greater than the maximum
+specified, a LIBUSB20_ERROR value is returned.
+.
+.Pp
+.
 .Fn libusb20_dev_get_info
 retrieves the BSD specific usb_device_info structure into the memory location given by
 .Fa pinfo .
@@ -726,6 +755,12 @@ returned.
 .Fn libusb20_dev_get_power_mode
 returns the currently selected power mode for the given
 USB device.
+.
+.Pp
+.
+.Fn libusb20_dev_get_power_usage
+returns the reported power usage in milliamps for the given USB device.
+A power usage of zero typically means that the device is self powered.
 .
 .Pp
 .
@@ -1014,12 +1049,12 @@ argument.
 This function does not return NULL.
 .
 .Sh FILES
-.
-.
-/dev/usb
+.Bl -tag -width Pa
+.It Pa /dev/usb
+.El
 .Sh SEE ALSO
-.Xr libusb 3 ,
 .Xr usb 4 ,
+.Xr libusb 3 ,
 .Xr usbconfig 8 ,
 .Xr usbdump 8
 .

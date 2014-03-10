@@ -1,4 +1,4 @@
-/* $FreeBSD: src/lib/libusb/libusb20_desc.c,v 1.6 2012/04/20 14:29:45 hselasky Exp $ */
+/* $FreeBSD: head/lib/libusb/libusb20_desc.c 248236 2013-03-13 12:23:14Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -24,11 +24,15 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/queue.h>
-
+#ifdef LIBUSB_GLOBAL_INCLUDE_FILE
+#include LIBUSB_GLOBAL_INCLUDE_FILE
+#else
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <sys/queue.h>
+#endif
 
 #include "libusb20.h"
 #include "libusb20_desc.h"
@@ -513,7 +517,7 @@ libusb20_me_encode(void *ptr, uint16_t len, const void *pd)
 						 * room for the
 						 * complete structure:
 						 */
-						__unused uint16_t dummy;
+						uint16_t dummy;
 
 						dummy = libusb20_me_encode(buf,
 						    0xFFFF - 3, ps->ptr);
@@ -669,7 +673,7 @@ libusb20_me_decode(const void *ptr, uint16_t len, void *pd)
 			    ~(LIBUSB20_ME_STRUCT_ALIGN - 1));	/* align */
 			while (pd_count--) {
 				uint16_t temp;
-				__unused uint16_t dummy;
+				uint16_t dummy;
 				struct libusb20_me_struct *ps;
 
 				ps = LIBUSB20_ADD_BYTES(pd, pd_offset);

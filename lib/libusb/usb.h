@@ -1,4 +1,4 @@
-/* $FreeBSD: src/lib/libusb/usb.h,v 1.5 2011/07/16 08:29:12 hselasky Exp $ */
+/* $FreeBSD: head/lib/libusb/usb.h 248236 2013-03-13 12:23:14Z hselasky $ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -27,10 +27,11 @@
 #ifndef _LIBUSB20_COMPAT_01_H_
 #define	_LIBUSB20_COMPAT_01_H_
 
+#ifndef LIBUSB_GLOBAL_INCLUDE_FILE
+#include <stdint.h>
 #include <sys/param.h>
 #include <sys/endian.h>
-
-#include <stdint.h>
+#endif
 
 /* USB interface class codes */
 

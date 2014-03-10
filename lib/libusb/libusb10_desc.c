@@ -1,4 +1,4 @@
-/* $FreeBSD: src/lib/libusb/libusb10_desc.c,v 1.11 2012/05/07 14:07:13 hselasky Exp $ */
+/* $FreeBSD: head/lib/libusb/libusb10_desc.c 248236 2013-03-13 12:23:14Z hselasky $ */
 /*-
  * Copyright (c) 2009 Sylvestre Gallon. All rights reserved.
  *
@@ -24,10 +24,15 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/queue.h>
-
+#ifdef LIBUSB_GLOBAL_INCLUDE_FILE
+#include LIBUSB_GLOBAL_INCLUDE_FILE
+#else
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <sys/queue.h>
+#endif
 
 #define	libusb_device_handle libusb20_device
 
