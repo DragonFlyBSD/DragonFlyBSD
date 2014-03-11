@@ -376,10 +376,6 @@ tcp_init(void)
 		ticb->porthashbase = porthashbase;
 		ticb->porthashmask = porthashmask;
 		ticb->porttoken = &tcp_port_token;
-#if 0
-		ticb->porthashbase = hashinit(hashsize, M_PCB,
-					      &ticb->porthashmask);
-#endif
 		ticb->wildcardhashbase = hashinit(hashsize, M_PCB,
 						  &ticb->wildcardhashmask);
 		ticb->localgrphashbase = hashinit(hashsize, M_PCB,
