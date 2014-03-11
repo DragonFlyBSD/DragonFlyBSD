@@ -2096,6 +2096,7 @@ product GNOTOMETRICS USB	0x0010	FTDI compatible adapter
 
 /* GoHubs products */
 product GOHUBS GOCOM232		0x1001	GoCOM232 Serial
+product GOHUBS HANDYLINK	0x1200	HandyTech's Braille displays
 
 /* Good Way Technology products */
 product GOODWAY GWUSB2E		0x6200	GWUSB2E
