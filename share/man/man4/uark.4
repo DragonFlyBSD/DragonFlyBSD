@@ -14,7 +14,9 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd August 15, 2007
+.\" $FreeBSD: head/share/man/man4/uark.4 233648 2012-03-29 05:02:12Z eadler $
+.\"
+.Dd November 20, 2011
 .Dt UARK 4
 .Os
 .Sh NAME
@@ -25,8 +27,9 @@ To compile this driver into the kernel,
 place the following lines in your
 kernel configuration file:
 .Bd -ragged -offset indent
-.Cd "device uark"
+.Cd "device usb"
 .Cd "device ucom"
+.Cd "device uark"
 .Ed
 .Pp
 Alternatively, to load the driver as a
@@ -39,10 +42,11 @@ uark_load="YES"
 The
 .Nm
 driver supports Arkmicro Technologies ARK3116 based serial adapters.
-.Pp
-The following devices should work with the
+.Sh HARDWARE
+The
 .Nm
-driver:
+driver supports the following adapters:
+.Pp
 .Bl -bullet -compact
 .It
 HL USB-RS232
@@ -64,12 +68,17 @@ device driver first appeared in
 .Ox 4.0
 and was imported into
 .Dx 1.11 .
+The first
+.Fx
+release to include it was
+.Fx 7.0 .
 .Sh AUTHORS
 .An -nosplit
 The
 .Nm
 driver was written by
-.An Jonathan Gray Aq Mt jsg@openbsd.org .
+.An Jonathan Gray
+.Aq Mt jsg@openbsd.org .
 .Sh CAVEATS
 Setting hardware flow control is not currently supported.
 It is not yet known how to ask the hardware to send a break.

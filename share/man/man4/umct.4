@@ -23,9 +23,9 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/umct.4,v 1.7 2006/11/22 21:30:02 brueffer Exp $
+.\" $FreeBSD: head/share/man/man4/umct.4 227750 2011-11-20 12:18:21Z miwi $
 .\"
-.Dd December 14, 2006
+.Dd November 20, 2011
 .Dt UMCT 4
 .Os
 .Sh NAME
@@ -36,8 +36,9 @@ To compile this driver into the kernel,
 place the following lines in your
 kernel configuration file:
 .Bd -ragged -offset indent
-.Cd "device umct"
+.Cd "device usb"
 .Cd "device ucom"
+.Cd "device umct"
 .Ed
 .Pp
 Alternatively, to load the driver as a
