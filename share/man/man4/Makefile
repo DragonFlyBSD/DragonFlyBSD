@@ -520,9 +520,14 @@ MLINKS+=xl.4 if_xl.4
 MAN+=	rum.4 \
 	run.4 \
 	runfw.4 \
+	ubser.4 \
+	ucycom.4 \
+	uipaq.4 \
+	umcs.4 \
 	urtwn.4 \
 	urtwnfw.4 \
-	usb_quirk.4
+	usb_quirk.4 \
+	u3g.4
 MLINKS+=rum.4 if_rum.4
 MLINKS+=run.4 if_run.4
 MLINKS+=urtwn.4 if_urtwn.4
