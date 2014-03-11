@@ -9,35 +9,41 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by Bill Paul.
-.\" 4. Neither the name of the author nor the names of any co-contributors
-.\"    may be used to endorse or promote products derived from this software
-.\"   without specific prior written permission.
 .\"
-.\" THIS SOFTWARE IS PROVIDED BY NICK HIBMA AND CONTRIBUTORS ``AS IS'' AND
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
 .\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 .\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-.\" ARE DISCLAIMED.  IN NO EVENT SHALL NICK HIBMA OR THE VOICES IN HIS HEAD
-.\" BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-.\" CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-.\" SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-.\" INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-.\" CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-.\" THE POSSIBILITY OF SUCH DAMAGE.
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/ukbd.4,v 1.10.2.10 2002/10/27 11:35:14 ceri Exp $
+.\" $FreeBSD: head/share/man/man4/ukbd.4 204739 2010-03-04 22:06:57Z joel $
 .\"
-.Dd August 6, 2009
+.Dd March 11, 2014
 .Dt UKBD 4
 .Os
 .Sh NAME
 .Nm ukbd
 .Nd USB keyboard driver
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd "device ukbd"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+ukbd_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
@@ -53,7 +59,7 @@ By default, the keyboard subsystem does not create the appropriate devices yet.
 Make sure you reconfigure your kernel with the following option in the kernel
 config file:
 .Pp
-.D1 Cd "options KBD_INSTALL_CDEV"
+.Dl Cd "options KBD_INSTALL_CDEV"
 .Pp
 If both an AT keyboard USB keyboards are used at the same time, the
 AT keyboard will appear as
@@ -91,7 +97,8 @@ the USB keyboard will be detected
 .Em after
 the console driver
 initializes itself and you have to explicitly tell the console
-driver to use the existence of the USB keyboard.  This can be done in
+driver to use the existence of the USB keyboard.
+This can be done in
 one of the following two ways.
 .Pp
 Run the following command as a part of system initialization:
