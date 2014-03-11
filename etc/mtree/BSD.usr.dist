@@ -179,6 +179,8 @@
                     ..
                 ..
             ..
+            libusb20
+            ..
             libvgl
             ..
             mdoc
