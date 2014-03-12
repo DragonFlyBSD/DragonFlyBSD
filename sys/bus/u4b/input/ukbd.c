@@ -1,3 +1,7 @@
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD: head/sys/dev/usb/input/ukbd.c 262972 2014-03-10 08:52:30Z hselasky $");
+
+
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -468,7 +472,8 @@ ukbd_get_key(struct ukbd_softc *sc, uint8_t wait)
 	    ("not polling in kdb or panic\n"));
 #endif
 
-	if (sc->sc_inputs == 0) {
+	if (sc->sc_inputs == 0 &&
+	    (sc->sc_flags & UKBD_FLAG_GONE) == 0) {
 		/* start transfer, if not already started */
 		usbd_transfer_start(sc->sc_xfer[UKBD_INTR_DT]);
 	}
@@ -981,6 +986,7 @@ ukbd_probe(device_t dev)
 	int error;
 	uint16_t d_len;
 
+	UKBD_LOCK_ASSERT();
 	DPRINTFN(11, "\n");
 
 	if (sw == NULL) {
@@ -1124,8 +1130,12 @@ ukbd_parse_hid(struct ukbd_softc *sc, const uint8_t *ptr, uint32_t len)
 	    HID_USAGE2(HUP_KEYBOARD, 0x00),
 	    hid_input, 0, &sc->sc_loc_events, &flags,
 	    &sc->sc_id_events)) {
-		sc->sc_flags |= UKBD_FLAG_EVENTS;
-		DPRINTFN(1, "Found keyboard events\n");
+		if (flags & HIO_VARIABLE) {
+			DPRINTFN(1, "Ignoring keyboard event control\n");
+		} else {
+			sc->sc_flags |= UKBD_FLAG_EVENTS;
+			DPRINTFN(1, "Found keyboard event array\n");
+		}
 	}
 
 	/* figure out leds on keyboard */
@@ -1305,12 +1315,26 @@ ukbd_detach(device_t dev)
 	struct ukbd_softc *sc = device_get_softc(dev);
 	int error;
 
+	UKBD_LOCK_ASSERT();
+
 	DPRINTF("\n");
 
 	crit_enter();
 	sc->sc_flags |= UKBD_FLAG_GONE;
 
 	usb_callout_stop(&sc->sc_callout);
+
+	/* kill any stuck keys */
+	if (sc->sc_flags & UKBD_FLAG_ATTACHED) {
+		/* stop receiving events from the USB keyboard */
+		usbd_transfer_stop(sc->sc_xfer[UKBD_INTR_DT]);
+
+		/* release all leftover keys, if any */
+		memset(&sc->sc_ndata, 0, sizeof(sc->sc_ndata));
+
+		/* process releasing of all keys */
+		ukbd_interrupt(sc);
+	}
 
 	ukbd_disable(&sc->sc_kbd);
  
@@ -1359,6 +1383,8 @@ static int
 ukbd_resume(device_t dev)
 {
 	struct ukbd_softc *sc = device_get_softc(dev);
+
+	UKBD_LOCK_ASSERT();
 
 	ukbd_clear_state(&sc->sc_kbd);
 
@@ -1446,6 +1472,8 @@ ukbd_check(keyboard_t *kbd)
 {
 	struct ukbd_softc *sc = kbd->kb_data;
 
+	UKBD_CTX_LOCK_ASSERT();
+
 	if (!KBD_IS_ACTIVE(kbd))
 		return (0);
 
@@ -1468,6 +1496,8 @@ static int
 ukbd_check_char_locked(keyboard_t *kbd)
 {
 	struct ukbd_softc *sc = kbd->kb_data;
+
+	UKBD_CTX_LOCK_ASSERT();
 
 	if (!KBD_IS_ACTIVE(kbd))
 		return (0);
@@ -1496,7 +1526,6 @@ ukbd_check_char(keyboard_t *kbd)
 	return (result);
 }
 
-
 /* read one byte from the keyboard if it's allowed */
 /* Currently unused. */
 static int
@@ -1509,6 +1538,8 @@ ukbd_read(keyboard_t *kbd, int wait)
 	uint32_t scancode;
 
 #endif
+
+	UKBD_CTX_LOCK_ASSERT();
 
 	if (!KBD_IS_ACTIVE(kbd))
 		return (-1);
@@ -1556,6 +1587,8 @@ ukbd_read_char_locked(keyboard_t *kbd, int wait)
 #ifdef UKBD_EMULATE_ATSCANCODE
 	uint32_t scancode;
 #endif
+
+	UKBD_CTX_LOCK_ASSERT();
 
 	if (!KBD_IS_ACTIVE(kbd))
 		return (NOKEY);
@@ -1937,6 +1970,8 @@ static void
 ukbd_clear_state(keyboard_t *kbd)
 {
 	struct ukbd_softc *sc = kbd->kb_data;
+
+	UKBD_CTX_LOCK_ASSERT();
 
 	sc->sc_flags &= ~(UKBD_FLAG_COMPOSE | UKBD_FLAG_POLLING);
 	sc->sc_state &= LOCK_MASK;	/* preserve locking key state */
