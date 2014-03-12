@@ -34,7 +34,6 @@
  * $FreeBSD: head/usr.bin/mklocale/lex.l 250926 2013-05-23 05:42:35Z jkim $
  */
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>

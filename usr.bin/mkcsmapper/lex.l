@@ -28,7 +28,6 @@
  * SUCH DAMAGE.
  */
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <sys/cdefs.h>
 #include <sys/endian.h>
 

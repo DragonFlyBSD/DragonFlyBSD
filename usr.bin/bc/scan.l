@@ -19,7 +19,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <err.h>
 #include <errno.h>
 #include <histedit.h>

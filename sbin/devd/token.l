@@ -29,7 +29,6 @@
  * $FreeBSD: src/sbin/devd/token.l,v 1.7 2008/03/21 20:38:28 imp Exp $
  */
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>

@@ -39,8 +39,6 @@
 #include "common.h"
 #include "y.tab.h"
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
-
 int line_no = 1, save_no, fromsubs;
 u_char buff[BUFSIZE], *zptr;
 FILE *map_fp;

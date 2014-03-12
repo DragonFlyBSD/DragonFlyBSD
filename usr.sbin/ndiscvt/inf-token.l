@@ -33,7 +33,6 @@
  * $FreeBSD: src/usr.sbin/ndiscvt/inf-token.l,v 1.3 2004/01/11 21:10:35 mdodd Exp $
  */
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <regex.h>
 #include <ctype.h>
 #include <err.h>

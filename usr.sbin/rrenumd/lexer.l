@@ -29,12 +29,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rrenumd/lexer.l,v 1.1.2.2 2001/07/03 11:02:10 ume Exp $
- * $DragonFly: src/usr.sbin/rrenumd/lexer.l,v 1.4 2004/02/10 02:59:43 rob Exp $
  */
 
 %{
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>

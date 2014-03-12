@@ -27,7 +27,6 @@
  * SUCH DAMAGE.
  */
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <sys/endian.h>
 #include <sys/queue.h>
 #include <assert.h>

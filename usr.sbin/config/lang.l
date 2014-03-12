@@ -35,7 +35,6 @@
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
  */
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <ctype.h>
 #include <string.h>
 #include "y.tab.h"

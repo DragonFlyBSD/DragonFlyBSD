@@ -30,7 +30,6 @@
  * $FreeBSD: src/usr.sbin/bluetooth/hcsecd/lexer.l,v 1.1 2003/05/10 21:50:35 julian Exp $
  */
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <string.h>
 #include "parser.h"
 

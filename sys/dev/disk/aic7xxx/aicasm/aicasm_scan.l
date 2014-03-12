@@ -43,8 +43,6 @@
  * $FreeBSD: src/sys/dev/aic7xxx/aicasm/aicasm_scan.l,v 1.22 2003/12/16 23:54:07 gibbs Exp $
  */
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
-
 #include <sys/types.h>
 
 #include <inttypes.h>

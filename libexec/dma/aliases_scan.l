@@ -1,6 +1,5 @@
 %{
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <string.h>
 #include "aliases_parse.h"
 

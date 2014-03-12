@@ -30,7 +30,6 @@
  * $FreeBSD: src/usr.sbin/apmd/apmdlex.l,v 1.2.2.1 2001/08/13 17:30:30 nsayer Exp $
  */
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <string.h>
 #include <syslog.h>
 #include <bitstring.h>

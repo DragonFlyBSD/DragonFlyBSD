@@ -42,7 +42,6 @@
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
 
-#pragma GCC diagnostic ignored "-Wsign-compare"
 #include	"y.tab.h"
 
 extern int	line;
