@@ -30,6 +30,7 @@
 #include <sys/linker.h>
 
 #include <err.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -37,7 +38,7 @@
 static void
 usage(void)
 {
-    fprintf(stderr, "usage: kldload [-v] file ...\n");
+    fprintf(stderr, "usage: kldload [-nv] file ...\n");
     exit(1);
 }
 
@@ -48,12 +49,17 @@ main(int argc, char **argv)
     int errors;
     int fileid;
     int verbose;
+    int check_loaded;
 
     errors = 0;
     verbose = 0;
+    check_loaded = 0;
 
-    while ((c = getopt(argc, argv, "v")) != -1)
+    while ((c = getopt(argc, argv, "nv")) != -1)
 	switch (c) {
+	case 'n':
+	    check_loaded = 1;
+	    break;
 	case 'v':
 	    verbose = 1;
 	    break;
@@ -69,11 +75,29 @@ main(int argc, char **argv)
     while (argc-- != 0) {
 	fileid = kldload(argv[0]);
 	if (fileid < 0) {
-	    warn("can't load %s", argv[0]);
-	    errors++;
-	} else
+	    if (check_loaded != 0 && errno == EEXIST) {
+		if (verbose)
+		    printf("%s is already loaded\n", argv[0]);
+	    } else {
+		switch (errno) {
+		case EEXIST:
+		    warnx("can't load %s: module already loaded or "
+			"in kernel", argv[0]);
+		    break;
+		case ENOEXEC:
+		    warnx("an error occurred while loading the module. "
+			"Please check dmesg(8) for more details.");
+		    break;
+		default:
+		    warn("can't load %s", argv[0]);
+		    break;
+		}
+		errors++;
+	    }
+	} else {
 	    if (verbose)
 		printf("Loaded %s, id=%d\n", argv[0], fileid);
+	}
 	argv++;
     }
 

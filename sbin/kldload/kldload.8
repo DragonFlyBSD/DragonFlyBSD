@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/sbin/kldload/kldload.8,v 1.7.2.10 2002/12/07 08:44:02 jmallett Exp $
 .\"
-.Dd September 2, 2008
+.Dd March 12, 2014
 .Dt KLDLOAD 8
 .Os
 .Sh NAME
@@ -33,7 +33,7 @@
 .Nd load a file into the kernel
 .Sh SYNOPSIS
 .Nm
-.Op Fl v
+.Op Fl nv
 .Ar
 .Sh DESCRIPTION
 The
@@ -44,8 +44,10 @@ into the kernel using the kernel linker.
 Note that if multiple modules are specified then an attempt will
 be made to load them all, even if some fail.
 .Pp
-The following option is available:
+The following options are available:
 .Bl -tag -width indent
+.It Fl n
+Do not try to load module if already loaded.
 .It Fl v
 Be more verbose.
 .El
