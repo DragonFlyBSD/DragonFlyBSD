@@ -18,3 +18,5 @@ Local modifications applied to following files:
 	main.c      (fix ambiguous if-else)
 	buf.c       (fix discard const char qualifier)
 	filter.c    (fix declaring unused variables)
+	flex.skl    (fix -Wsign-compare)
+	gen.c	    (fix -Wsign-compare)
