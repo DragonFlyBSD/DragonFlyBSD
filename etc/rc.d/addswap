@@ -23,13 +23,7 @@ addswap_start()
 	*)
 		if [ -w "${swapfile}" ]; then
 			# load vn kernel module if needed
-			if [ ! -c /dev/vn0 ]; then
-				if kldload vn; then
-					info 'vn module loaded.'
-				else
-					err 1 'vn module failed to load.'
-				fi
-			fi
+			kldload -n vn || exit 1
 			echo "Adding ${swapfile} as additional swap"
 			vnconfig -e vn0 ${swapfile} swap
 		fi

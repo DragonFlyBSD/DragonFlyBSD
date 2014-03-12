@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/pf,v 1.3 2004/06/23 01:42:06 mlaier Exp $
-# $DragonFly: src/etc/rc.d/pf,v 1.5 2008/02/21 22:42:10 hasso Exp $
 #
 
 # PROVIDE: pf
@@ -29,13 +28,7 @@ extra_commands="reload resync status"
 pf_prestart()
 {
 	# load pf kernel module if needed
-	if ! kldstat -q -m "pf"; then
-		if kldload pf; then
-			info 'pf module loaded.'
-		else
-			err 1 'pf module failed to load.'
-		fi
-	fi
+	kldload -n pf || exit 1
 
 	# check for pf rules
 	if [ ! -r "${pf_rules}" ]

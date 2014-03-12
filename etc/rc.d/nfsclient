@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/nfsclient,v 1.3 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/nfsclient,v 1.6 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: nfsclient
@@ -19,12 +18,7 @@ stop_cmd="unmount_all"
 # Load nfs module if it was not compiled into the kernel
 nfsclient_precmd()
 {
-	if ! sysctl vfs.nfs >/dev/null 2>&1; then
-		if ! kldload nfs; then
-			warn 'Could not load nfs module'
-			return 1
-		fi
-	fi
+	kldload -n nfs || return 1
 	return 0
 }
 

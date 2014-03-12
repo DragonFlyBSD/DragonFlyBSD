@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/pflog,v 1.2 2004/08/31 14:23:51 mlaier Exp $
-# $DragonFly: src/etc/rc.d/pflog,v 1.6 2008/02/21 22:42:10 hasso Exp $
 #
 
 # PROVIDE: pflog
@@ -27,13 +26,7 @@ extra_commands="resync status"
 pflog_prestart()
 {
 	# load pflog kernel module if needed
-	if ! kldstat -q -m "pflog"; then
-		if kldload pf; then
-			info 'pflog module loaded.'
-		else
-			err 1 'pflog module failed to load.'
-		fi
-	fi
+	kldload -n pf || exit 1
 
 	# set pflog0 interface to up state
 	if ! ifconfig pflog0 up; then

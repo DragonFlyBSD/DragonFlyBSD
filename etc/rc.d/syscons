@@ -25,7 +25,6 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/syscons,v 1.9 2002/09/09 22:40:34 gordon Exp $
-# $DragonFly: src/etc/rc.d/syscons,v 1.5 2005/11/19 21:47:32 swildner Exp $
 #
 
 # PROVIDE: syscons
@@ -160,7 +159,7 @@ syscons_start()
 		for i in `kldstat | awk '$5 ~ "^splash_.*$" { print $5 }'`; do
 			kldunload ${i}
 		done
-		kldstat -v | grep -q _saver || kldload ${saver}_saver
+		kldload -n ${saver}_saver
 		;;
 	esac
 
