@@ -161,6 +161,7 @@ upgrade_etc:	preupgrade remove-obsolete-files
 	cd ${UPGRADE_SRCDIR}/periodic; ${MAKE} install
 	mkdir -p ${DESTDIR}/etc/rc.d
 	cd ${UPGRADE_SRCDIR}/rc.d; ${MAKE} install 
+	cd ${UPGRADE_SRCDIR}/devd; ${MAKE} install
 	# "../share/termcap/make etc-termcap" expanded inline here:
 	${LN} -fs /usr/share/misc/termcap ${DESTDIR}/etc/termcap
 	# "../usr.sbin/rmt/make etc-rmt" expanded inline here:
@@ -271,6 +272,7 @@ distribution:
 	cd ${.CURDIR}/bluetooth; ${MAKE} install
 	cd ${.CURDIR}/periodic; ${MAKE} install
 	cd ${.CURDIR}/rc.d; ${MAKE} install 
+	cd ${.CURDIR}/devd; ${MAKE} install
 	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap
 	cd ${.CURDIR}/../usr.sbin/rmt; ${MAKE} etc-rmt
 	cd ${.CURDIR}; \

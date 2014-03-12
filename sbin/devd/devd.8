@@ -23,10 +23,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/sbin/devd/devd.8,v 1.17 2006/09/17 22:49:26 ru Exp $
-.\" $DragonFly: src/sbin/devd/devd.8,v 1.2 2008/10/03 10:30:43 swildner Exp $
+.\" $FreeBSD: head/sbin/devd/devd.8 262914 2014-03-07 23:30:48Z asomers $
 .\"
-.Dd October 2, 2008
+.Dd January 30, 2013
 .Dt DEVD 8
 .Os
 .Sh NAME
@@ -34,8 +33,9 @@
 .Nd "device state change daemon"
 .Sh SYNOPSIS
 .Nm
-.Op Fl Ddn
+.Op Fl dnq
 .Op Fl f Ar file
+.Op Fl l Ar num
 .Sh DESCRIPTION
 The
 .Nm
@@ -44,10 +44,8 @@ kernel events happen.
 .Pp
 The following options are accepted.
 .Bl -tag -width ".Fl f Ar file"
-.It Fl D
-Enable debugging messages.
 .It Fl d
-Run in the foreground instead of becoming a daemon.
+Run in the foreground instead of becoming a daemon and log additional information for debugging.
 .It Fl f Ar file
 Use configuration file
 .Ar file
@@ -56,9 +54,17 @@ instead of the default
 If option
 .Fl f
 is specified more than once, the last file specified is used.
+.It Fl l Ar num
+Limit concurrent
+.Pa /var/run/devd.pipe
+connections to
+.Ar num .
+The default connection limit is 10.
 .It Fl n
 Do not process all pending events before becoming a daemon.
 Instead, call daemon right away.
+.It Fl q
+Quiet mode.  Only log messages at priority LOG_WARNING or above.
 .El
 .Sh IMPLEMENTATION NOTES
 The

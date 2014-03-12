@@ -26,13 +26,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sbin/devd/parse.y,v 1.5 2005/07/10 03:37:15 imp Exp $
- * $DragonFly: src/sbin/devd/parse.y,v 1.1 2008/10/03 00:26:21 hasso Exp $
+ * $FreeBSD: head/sbin/devd/parse.y 235789 2012-05-22 16:33:10Z bapt $
  */
 
+#include <sys/cdefs.h>
+#include "devd.h"
 #include <stdio.h>
 #include <string.h>
-#include "devd.h"
 
 %}
 

@@ -41,8 +41,6 @@ class config;
 class var_list
 {
 public:
-	var_list() {}
-	virtual ~var_list() {}
 	/** Set a variable in this var list.
 	 */
 	void set_variable(const std::string &var, const std::string &val);
@@ -65,10 +63,9 @@ private:
  * eps is short for event_proc_single.  It is a single entry in an
  * event_proc.  Each keyword needs its own subclass from eps.
  */
-class eps
+struct eps
 {
 public:
-	eps() {}
 	virtual ~eps() {}
 	/** Does this eps match the current config?
 	 */
@@ -126,7 +123,7 @@ private:
 	std::string _cmd;
 };
 
-class event_proc
+struct event_proc
 {
 public:
 	event_proc();

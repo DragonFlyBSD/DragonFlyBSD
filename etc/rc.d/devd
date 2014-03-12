@@ -1,7 +1,7 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/rc.d/devd,v 1.11 2008/07/16 19:50:29 dougb Exp $
-# $DragonFly: src/etc/rc.d/devd,v 1.1 2008/10/03 00:26:21 hasso Exp $
+# $FreeBSD: head/etc/rc.d/devd 238416 2012-07-13 06:46:09Z kevlo $
+#
 
 # PROVIDE: devd
 # REQUIRE: netif network_ipv6
@@ -11,13 +11,30 @@
 . /etc/rc.subr
 
 name="devd"
-rcvar=`set_rcvar`
+rcvar="devd_enable"
 command="/sbin/${name}"
+
+start_precmd=${name}_prestart
+stop_precmd=find_pidfile
+
+find_pidfile()
+{
+	if get_pidfile_from_conf pid-file /etc/devd.conf; then
+		pidfile="$_pidfile_from_conf"
+	else
+		pidfile="/var/run/${name}.pid"
+	fi
+}
+
+devd_prestart()
+{
+	find_pidfile
+
+	# If devd is disabled, turn it off in the kernel to avoid memory leaks.
+	if ! checkyesno ${rcvar}; then
+	    $SYSCTL hw.bus.devctl_disable=1
+	fi
+}
 
 load_rc_config $name
 run_rc_command "$1"
-
-# If devd is disabled, turn it off in the kernel to avoid memory leaks.
-if ! checkyesno ${rcvar}; then
-    sysctl hw.bus.devctl_disable=1
-fi

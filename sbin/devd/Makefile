@@ -1,5 +1,4 @@
-# $FreeBSD: src/sbin/devd/Makefile,v 1.9 2007/11/19 00:19:01 jb Exp $
-# $DragonFly: src/sbin/devd/Makefile,v 1.2 2008/10/28 16:56:56 swildner Exp $
+# $FreeBSD: head/sbin/devd/Makefile 203916 2010-02-15 14:07:40Z uqs $
 
 PROG_CXX=devd
 SRCS=	devd.cc token.l parse.y y.tab.h
