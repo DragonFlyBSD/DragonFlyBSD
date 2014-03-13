@@ -469,13 +469,13 @@ tmp=$(echo ${pfs_path} | tr '/' '_')
 output_file="${backup_dir}/${timestamp}${tmp}"
 
 # List backups if needed
-if [ ${list_opt} == 1 ]; then
+if [ ${list_opt} -eq 1 ]; then
     info "Listing backups."
     list_backups
 fi
 
 # Checksum test
-if [ ${checksum_opt} == 1 ]; then
+if [ ${checksum_opt} -eq 1 ]; then
     info "Checksum test for all backup files."
     checksum_backups
 fi
