@@ -204,10 +204,10 @@ buildiso:
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	cd ${.CURDIR}/..; \
 	for kernconf in ${KERNCONF}; do \
-		make DESTDIR=${ISOROOT} installkernel KERNCONF=$${kernconf}; \
+		make DESTDIR=${ISOROOT} reinstallkernel KERNCONF=$${kernconf}; \
 	done
 	rm -rf ${ISOROOT}/boot/kernel.old
-	ln -s kernel ${ISOROOT}/boot/kernel/kernel.BOOTP
+	ln -sf kernel ${ISOROOT}/boot/kernel/kernel.BOOTP
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
@@ -265,7 +265,7 @@ customizeiso:
 	# Setup some things & mount dports tree.  Use defensive umounts and
 	# rm -rf's to allow restarts.  Allow /usr/dports to be read-only.
 	#
-	cp -p /etc/resolv.conf ${ISOROOT}/etc
+	cp /etc/resolv.conf ${ISOROOT}/etc
 	${CHROOT_CMD} "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
 	-@umount ${ISOROOT}/usr/distfiles
 	-@umount ${ISOROOT}/usr/dports
