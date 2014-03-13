@@ -278,7 +278,8 @@ static pv_entry_t pmap_allocpte_seg(pmap_t pmap, vm_pindex_t ptepindex,
 static void pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp,
 		      struct pmap_inval_info *info);
 static vm_page_t pmap_remove_pv_page(pv_entry_t pv);
-static int pmap_release_pv(pv_entry_t pv, pv_entry_t pvp);
+static int pmap_release_pv( struct pmap_inval_info *info,
+		      pv_entry_t pv, pv_entry_t pvp);
 
 struct pmap_scan_info;
 static void pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
@@ -2185,7 +2186,13 @@ retry:
 				    (va + SEG_SIZE) & ~(vm_offset_t)SEG_MASK);
 			goto retry;
 		}
-		pmap_release_pv(proc_pt_pv, proc_pd_pv);
+
+		/*
+		 * The release call will indirectly clean out *pt
+		 */
+		pmap_inval_init(&info);
+		pmap_release_pv(&info, proc_pt_pv, proc_pd_pv);
+		pmap_inval_done(&info);
 		proc_pt_pv = NULL;
 		/* relookup */
 		pt = pv_pte_lookup(proc_pd_pv, pmap_pt_index(b));
@@ -2318,7 +2325,7 @@ pmap_release_callback(pv_entry_t pv, void *data)
 		info->retry = 1;
 		return(-1);
 	}
-	r = pmap_release_pv(pv, NULL);
+	r = pmap_release_pv(NULL, pv, NULL);
 	spin_lock(&pmap->pm_spin);
 	return(r);
 }
@@ -2332,7 +2339,7 @@ pmap_release_callback(pv_entry_t pv, void *data)
  * pass NULL for pvp.
  */
 static int
-pmap_release_pv(pv_entry_t pv, pv_entry_t pvp)
+pmap_release_pv(struct pmap_inval_info *info, pv_entry_t pv, pv_entry_t pvp)
 {
 	vm_page_t p;
 
@@ -2340,8 +2347,12 @@ pmap_release_pv(pv_entry_t pv, pv_entry_t pvp)
 	 * The pmap is currently not spinlocked, pv is held+locked.
 	 * Remove the pv's page from its parent's page table.  The
 	 * parent's page table page's wire_count will be decremented.
+	 *
+	 * This will clean out the pte at any level of the page table.
+	 * If info is not NULL the appropriate invlpg/invltlb/smp
+	 * invalidation will be made.
 	 */
-	pmap_remove_pv_pte(pv, pvp, NULL);
+	pmap_remove_pv_pte(pv, pvp, info);
 
 	/*
 	 * Terminal pvs are unhooked from their vm_pages.  Because
@@ -2450,8 +2461,13 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 		pdp = &pmap->pm_pml4[pdp_index & ((1ul << NPML4EPGSHIFT) - 1)];
 		KKASSERT((*pdp & pmap->pmap_bits[PG_V_IDX]) != 0);
 		p = PHYS_TO_VM_PAGE(*pdp & PG_FRAME);
-		*pdp = 0;
-		KKASSERT(info == NULL);
+		if (info) {
+			pmap_inval_interlock(info, pmap, (vm_offset_t)-1);
+			pte_load_clear(pdp);
+			pmap_inval_deinterlock(info, pmap);
+		} else {
+			*pdp = 0;
+		}
 	} else if (ptepindex >= pmap_pd_pindex(0)) {
 		/*
 		 * Remove a PD page from the pdp
@@ -2478,12 +2494,18 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 						((1ul << NPDPEPGSHIFT) - 1));
 			KKASSERT((*pd & pmap->pmap_bits[PG_V_IDX]) != 0);
 			p = PHYS_TO_VM_PAGE(*pd & PG_FRAME);
-			*pd = 0;
+			if (info) {
+				pmap_inval_interlock(info, pmap,
+						     (vm_offset_t)-1);
+				pte_load_clear(pd);
+				pmap_inval_deinterlock(info, pmap);
+			} else {
+				*pd = 0;
+			}
 		} else {
 			KKASSERT(pmap->pm_flags & PMAP_FLAG_SIMPLE);
 			p = pv->pv_m;		/* degenerate test later */
 		}
-		KKASSERT(info == NULL);
 	} else if (ptepindex >= pmap_pt_pindex(0)) {
 		/*
 		 *  Remove a PT page from the pd
@@ -2504,8 +2526,13 @@ pmap_remove_pv_pte(pv_entry_t pv, pv_entry_t pvp, struct pmap_inval_info *info)
 		pt = pv_pte_lookup(pvp, pt_index & ((1ul << NPDPEPGSHIFT) - 1));
 		KKASSERT((*pt & pmap->pmap_bits[PG_V_IDX]) != 0);
 		p = PHYS_TO_VM_PAGE(*pt & PG_FRAME);
-		*pt = 0;
-		KKASSERT(info == NULL);
+		if (info) {
+			pmap_inval_interlock(info, pmap, (vm_offset_t)-1);
+			pte_load_clear(pt);
+			pmap_inval_deinterlock(info, pmap);
+		} else {
+			*pt = 0;
+		}
 	} else {
 		/*
 		 * Remove a PTE from the PT page
@@ -3771,13 +3798,18 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 		pv_free(pte_pv);
 	} else if (sharept == 0) {
 		/*
-		 * Unmanaged page
+		 * Unmanaged page table (pt, pd, or pdp. Not pte).
 		 *
 		 * pt_pv's wire_count is still bumped by unmanaged pages
 		 * so we must decrement it manually.
+		 *
+		 * We have to unwire the target page table page.
+		 *
+		 * It is unclear how we can invalidate a segment so we
+		 * invalidate -1 which invlidates the tlb.
 		 */
 		if (info->doinval)
-			pmap_inval_interlock(&info->inval, pmap, va);
+			pmap_inval_interlock(&info->inval, pmap, -1);
 		pte = pte_load_clear(ptep);
 		if (info->doinval)
 			pmap_inval_deinterlock(&info->inval, pmap);
@@ -3788,14 +3820,20 @@ pmap_remove_callback(pmap_t pmap, struct pmap_scan_info *info,
 			panic("pmap_remove: insufficient wirecount");
 	} else {
 		/*
-		 * Unmanaged page table, pt_pv is actually the pd_pv
-		 * for our pmap (not the share object pmap).
+		 * Unmanaged page table (pt, pd, or pdp. Not pte) for
+		 * a shared page table.
+		 *
+		 * pt_pv is actually the pd_pv for our pmap (not the shared
+		 * object pmap).
 		 *
 		 * We have to unwire the target page table page and we
 		 * have to unwire our page directory page.
+		 *
+		 * It is unclear how we can invalidate a segment so we
+		 * invalidate -1 which invlidates the tlb.
 		 */
 		if (info->doinval)
-			pmap_inval_interlock(&info->inval, pmap, va);
+			pmap_inval_interlock(&info->inval, pmap, -1);
 		pte = pte_load_clear(ptep);
 		if (info->doinval)
 			pmap_inval_deinterlock(&info->inval, pmap);
@@ -3839,6 +3877,7 @@ pmap_remove_all(vm_page_t m)
 			vm_page_spin_lock(m);
 			continue;
 		}
+
 		/*
 		 * Holding no spinlocks, pv is locked.
 		 */
