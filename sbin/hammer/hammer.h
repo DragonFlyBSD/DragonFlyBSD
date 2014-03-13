@@ -106,7 +106,7 @@ void hammer_cmd_synctid(char **av, int ac);
 void hammer_cmd_mirror_read(char **av, int ac, int streaming);
 void hammer_cmd_mirror_write(char **av, int ac);
 void hammer_cmd_mirror_copy(char **av, int ac, int streaming);
-void hammer_cmd_mirror_dump(void);
+void hammer_cmd_mirror_dump(char **av, int ac);
 void hammer_cmd_history(const char *offset_str, char **av, int ac);
 void hammer_cmd_blockmap(void);
 void hammer_cmd_reblock(char **av, int ac, int flags);
@@ -139,6 +139,7 @@ void hammer_reset_cycle(void);
 
 int getpfs(struct hammer_ioc_pseudofs_rw *pfs, char *path);
 void relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs);
+void dump_pfsd(hammer_pseudofs_data_t, int);
 void hammer_check_restrict(const char *path);
 void hammer_softprune_scandir(struct softprune **basep,
                          struct hammer_ioc_prune *template,

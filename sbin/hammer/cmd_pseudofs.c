@@ -38,7 +38,6 @@
 
 static void parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd);
 static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
-static void dump_pfsd(hammer_pseudofs_data_t pfsd, int fd);
 static void pseudofs_usage(int code);
 static int getyn(void);
 static int timetosecs(char *str);
@@ -477,7 +476,6 @@ init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave)
 		pfsd->mirror_flags |= HAMMER_PFSD_SLAVE;
 }
 
-static
 void
 dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 {
@@ -518,7 +516,13 @@ dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 		printf("    operating as a MASTER\n");
 	}
 
-	if (pfsd->snapshots[0] == 0) {
+	/*
+	 * Snapshots directory cannot be shown when there is no fd since
+	 * hammer version can't be retrieved. mirror-dump passes -1 because
+	 * its input came from mirror-read output thus no path is available
+	 * to open(2).
+	 */
+	if (fd >= 0 && pfsd->snapshots[0] == 0) {
 		bzero(&version, sizeof(version));
 		if (ioctl(fd, HAMMERIOC_GET_VERSION, &version) < 0)
 			return;

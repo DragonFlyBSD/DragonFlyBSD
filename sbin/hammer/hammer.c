@@ -480,7 +480,7 @@ main(int ac, char **av)
 		else if (strcmp(av[0], "mirror-stream") == 0)
 			hammer_cmd_mirror_copy(av + 1, ac - 1, 1);
 		else if (strcmp(av[0], "mirror-dump") == 0)
-			hammer_cmd_mirror_dump();
+			hammer_cmd_mirror_dump(av + 1, ac - 1);
 		else
 			usage(1);
 		exit(0);
@@ -641,7 +641,7 @@ usage(int exit_code)
 		"hammer mirror-read <filesystem> [begin-tid]\n"
 		"hammer mirror-read-stream <filesystem> [begin-tid]\n"
 		"hammer mirror-write <filesystem>\n"
-		"hammer mirror-dump\n"
+		"hammer mirror-dump [header]\n"
 		"hammer mirror-copy [[user@]host:]<filesystem>"
 				  " [[user@]host:]<filesystem>\n"
 		"hammer mirror-stream [[user@]host:]<filesystem>"

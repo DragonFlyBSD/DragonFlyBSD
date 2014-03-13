@@ -943,7 +943,7 @@ again:
 }
 
 void
-hammer_cmd_mirror_dump(void)
+hammer_cmd_mirror_dump(char **av, int ac)
 {
 	char *buf = malloc(SERIALBUF_SIZE);
 	struct hammer_ioc_mrecord_head pickup;
@@ -952,6 +952,12 @@ hammer_cmd_mirror_dump(void)
 	int size;
 	int offset;
 	int bytes;
+	int header_only = 0;
+
+	if (ac == 1 && strcmp(*av, "header") == 0)
+		header_only = 1;
+	else if (ac != 0)
+		mirror_usage(1);
 
 	/*
 	 * Read and process the PFS header
@@ -960,6 +966,16 @@ hammer_cmd_mirror_dump(void)
 	pickup.type = 0;
 
 	mrec = read_mrecord(0, &error, &pickup);
+
+	/*
+	 * Dump the PFS header. mirror-dump takes its input from the output
+	 * of a mirror-read so getpfs() can't be used to get a fd to be passed
+	 * to dump_pfsd().
+	 */
+	if (header_only && mrec != NULL) {
+		dump_pfsd(&mrec->pfs.pfsd, -1);
+		return;
+	}
 
 again:
 	/*
@@ -1698,7 +1714,7 @@ mirror_usage(int code)
 		"hammer mirror-read <filesystem> [begin-tid]\n"
 		"hammer mirror-read-stream <filesystem> [begin-tid]\n"
 		"hammer mirror-write <filesystem>\n"
-		"hammer mirror-dump\n"
+		"hammer mirror-dump [header]\n"
 		"hammer mirror-copy [[user@]host:]<filesystem>"
 				  " [[user@]host:]<filesystem>\n"
 		"hammer mirror-stream [[user@]host:]<filesystem>"
