@@ -2517,7 +2517,7 @@ TO_REMOVE+=/usr/share/man/man9/usbd_setup_isoc_xfer.9.gz
 TO_REMOVE+=/usr/share/man/man9/usbd_setup_xfer.9.gz
 TO_REMOVE+=/usr/share/man/man9/usbd_sync_transfer.9.gz
 TO_REMOVE+=/usr/share/man/man9/usbd_transfer.9.gz
-TO_REMOVE+=/usr/include/bus/usbdevs_data.h
+TO_REMOVE+=/usr/include/bus/u4b/usbdevs_data.h
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
