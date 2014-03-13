@@ -1,4 +1,4 @@
-.\" $NetBSD: ehci.4,v 1.11 2004/06/22 09:12:48 wiz Exp $
+.\" $NetBSD: ehci.4,v 1.8 2001/11/21 17:22:56 augustss Exp $
 .\"
 .\" Copyright (c) 2001 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -14,13 +14,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"        This product includes software developed by the NetBSD
-.\"        Foundation, Inc. and its contributors.
-.\" 4. Neither the name of The NetBSD Foundation nor the names of its
-.\"    contributors may be used to endorse or promote products derived
-.\"    from this software without specific prior written permission.
 .\"
 .\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
 .\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -34,7 +27,9 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd July 4, 2010
+.\" $FreeBSD: head/share/man/man4/ehci.4 232507 2012-03-04 16:59:45Z eadler $
+.\"
+.Dd March 13, 2014
 .Dt EHCI 4
 .Os
 .Sh NAME
@@ -45,44 +40,62 @@
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for the USB Enhanced Host Controller Interface,
-which is used by USB 2.0 controllers.
+driver provides support for the
+.Tn USB
+Enhanced Host Controller Interface,
+which is used by
+.Tn USB
+2.0 controllers.
 .Pp
-EHCI controllers are peculiar in that they can only handle the USB 2.0
-protocol.
+.Tn EHCI
+controllers are peculiar in that they can only handle the
+.Tn USB
+2.0 protocol.
 This means that they normally have one or more companion controllers
 (i.e.,
 .Xr ohci 4
 or
 .Xr uhci 4 )
 handling USB 1.x devices.
-Consequently each USB connector is electrically connected to two
-USB controllers.
-The handling of this is totally automatic, but can be noticed since
-USB 1.x and USB 2.0 devices plugged into the same connector appear
-to connect to different USB busses.
-.Pp
-The
-.Nm
-driver is automatically loaded upon boot.
-To disable this behavior temporarily, the
-.Va ehci_load
-variable can be unset at the loader prompt (see
-.Xr loader 8 ) .
-To disable it permanently, the
-.Va hint.ehci.0.disabled
-tunable can be set to 1 in
-.Pa /boot/loader.conf .
+Consequently each
+.Tn USB
+connector is electrically connected to two
+.Tn USB
+controllers.
+The handling of this is totally automatic,
+but can be noticed since
+.Tn USB
+1.x and
+.Tn USB
+2.0 devices plugged in to the same
+connector appear to connect to different USB busses.
 .Sh SEE ALSO
-.Xr cardbus 4 ,
 .Xr ohci 4 ,
-.Xr pci 4 ,
 .Xr uhci 4 ,
-.Xr usb 4
+.Xr usb 4 ,
+.Xr xhci 4
 .Sh HISTORY
 The
 .Nm
-driver appeared in
-.Dx 1.0 .
-.Sh BUGS
-There is no support (yet) for interrupt or isochronous transfers.
+device driver first appeared in
+.Fx 5.1 .
+.Sh LOADER TUNABLES
+When the kernel has been compiled with
+.Cd options USB_DEBUG ,
+some tunables become available that affect the behavior of
+.Nm .
+These tunables can be set at the
+.Xr loader 8
+prompt before booting the kernel or stored in
+.Xr loader.conf 5 .
+.Bl -tag -width "xxxxxx"
+.It Va hw.usb.ehci.lostintrbug
+This tunable enables the lost interrupt quirk.
+The default value is 0 (off).
+.It Va hw.usb.ehci.iaadbug
+This tunable enables the EHCI doorbell quirk.
+The default value is 0 (off).
+.It Va hw.usb.ehci.no_hs
+This tunable disables USB devices to attach like HIGH-speed ones and will force all attached devices to attach to the FULL- or LOW-speed companion controller.
+The default value is 0 (off).
+.El
