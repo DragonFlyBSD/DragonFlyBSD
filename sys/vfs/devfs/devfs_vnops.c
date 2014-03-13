@@ -1016,6 +1016,7 @@ devfs_spec_close(struct vop_close_args *ap)
 	cdev_t dev = vp->v_rdev;
 	int error = 0;
 	int needrelock;
+	int opencount;
 
 	/*
 	 * We do special tests on the opencount so unfortunately we need
@@ -1039,9 +1040,23 @@ devfs_spec_close(struct vop_close_args *ap)
 	 *
 	 * Detect the last close on a controlling terminal and clear
 	 * the session (half-close).
+	 *
+	 * XXX opencount is not SMP safe.  The vnode is locked but there
+	 *     may be multiple vnodes referencing the same device.
 	 */
-	if (dev)
+	if (dev) {
+		/*
+		 * NOTE: Try to avoid global tokens when testing opencount
+		 * XXX hack, fixme. needs a struct lock and opencount in
+		 * struct cdev itself.
+		 */
 		reference_dev(dev);
+		opencount = vp->v_opencount;
+		if (opencount <= 1)
+			opencount = count_dev(dev);   /* XXX NOT SMP SAFE */
+	} else {
+		opencount = 0;
+	}
 
 	if (p && vp->v_opencount <= 1 && vp == p->p_session->s_ttyvp) {
 		p->p_session->s_ttyvp = NULL;
@@ -1061,7 +1076,7 @@ devfs_spec_close(struct vop_close_args *ap)
 	devfs_debug(DEVFS_DEBUG_DEBUG, "devfs_spec_close() -1- \n");
 	if (dev && ((vp->v_flag & VRECLAIMED) ||
 	    (dev_dflags(dev) & D_TRACKCLOSE) ||
-	    (vp->v_opencount == 1))) {
+	    (opencount == 1))) {
 		/*
 		 * Ugly pty magic, to make pty devices disappear again once
 		 * they are closed.
