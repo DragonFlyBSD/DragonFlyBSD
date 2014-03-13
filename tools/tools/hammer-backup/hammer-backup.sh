@@ -82,9 +82,10 @@ err()
 
 usage()
 {
+    exitval=${1:-1}
     echo "Usage: ${SCRIPTNAME} [-hlvfk] [-i <full-backup-file|auto>]" \
 	"[-c <compress-rate>] -d [<backup-dir>] [pfs path]"
-    exit 1
+    exit $exitval
 }
 
 check_pfs()
@@ -439,7 +440,7 @@ do
 	    verbose=1
 	    ;;
 	h)
-	    usage
+	    usage 0
 	    ;;
 	*)
 	    usage
