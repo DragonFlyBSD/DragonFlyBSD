@@ -361,7 +361,7 @@ ENTRY(casuword)
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 	movq	%rsp,PCB_ONFAULT_SP(%rcx)
 
-	movq	$VM_MAX_USER_ADDRESS-4,%rax
+	movq	$VM_MAX_USER_ADDRESS-8,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
 	ja	fusufault
 
@@ -370,7 +370,7 @@ ENTRY(casuword)
 	cmpxchgq %rdx,(%rdi)			/* new = %rdx */
 
 	/*
-	 * The old value is in %eax.  If the store succeeded it will be the
+	 * The old value is in %rax.  If the store succeeded it will be the
 	 * value we expected (old) from before the store, otherwise it will
 	 * be the current value.
 	 */

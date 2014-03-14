@@ -57,6 +57,41 @@ bcopyi(const void *src, void *dst, size_t len)
 	bcopy(src, dst, len);
 }
 
+u_long
+casuword(volatile u_long *p, u_long oldval, u_long newval)
+{
+	struct vmspace *vm = curproc->p_vmspace;
+	vm_offset_t kva;
+	vm_page_t m;
+	volatile u_long *dest;
+	u_long res;
+	int error;
+
+	/* XXX No idea how to handle this case in a simple way, just abort */
+	if (PAGE_SIZE - ((vm_offset_t)p & PAGE_MASK) < sizeof(u_long))
+		return -1;
+
+	m = vm_fault_page(&vm->vm_map, trunc_page((vm_offset_t)p),
+			  VM_PROT_READ|VM_PROT_WRITE,
+			  VM_FAULT_NORMAL, &error);
+	if (error)
+		return -1;
+
+	kva = PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
+	dest = (u_long *)(kva + ((vm_offset_t)p & PAGE_MASK));
+	res = oldval;
+	__asm __volatile(MPLOCKED "cmpxchgq %2,%1; " \
+			 : "+a" (res), "=m" (*dest) \
+			 : "r" (newval), "m" (*dest) \
+			 : "memory");
+
+	if (res == oldval)
+		vm_page_dirty(m);
+	vm_page_unhold(m);
+
+	return res;
+}
+
 int
 copystr(const void *kfaddr, void *kdaddr, size_t len, size_t *lencopied)
 {
