@@ -900,6 +900,14 @@ devfs_spec_open(struct vop_open_args *ap)
 			}
 		}
 		lockmgr(&devfs_lock, LK_RELEASE);
+		/*
+		 * Synchronize devfs here to make sure that, if the cloned device
+		 * creates other device nodes in addition to the cloned one,
+		 * all of them are created by the time we return from opening
+		 * the cloned one.
+		 */
+		if (ndev)
+			devfs_config();
 	}
 
 	devfs_debug(DEVFS_DEBUG_DEBUG,
