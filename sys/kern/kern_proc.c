@@ -64,6 +64,9 @@
 #define PGRP_HASH(pid)	(pid & ALLPROC_HMASK)
 #define SESS_HASH(pid)	(pid & ALLPROC_HMASK)
 
+/* Used by libkvm */
+int allproc_hsize = ALLPROC_HSIZE;
+
 LIST_HEAD(pidhashhead, proc);
 
 static MALLOC_DEFINE(M_PGRP, "pgrp", "process group header");
