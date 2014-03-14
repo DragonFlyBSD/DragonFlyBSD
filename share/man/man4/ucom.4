@@ -14,13 +14,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgment:
-.\"        This product includes software developed by the NetBSD
-.\"        Foundation, Inc. and its contributors.
-.\" 4. Neither the name of The NetBSD Foundation nor the names of its
-.\"    contributors may be used to endorse or promote products derived
-.\"    from this software without specific prior written permission.
 .\"
 .\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
 .\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -34,9 +27,9 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/ucom.4,v 1.2.2.2 2002/08/12 20:32:05 joe Exp $
+.\" $FreeBSD: head/share/man/man4/ucom.4 222696 2011-06-04 20:40:24Z hselasky $
 .\"
-.Dd November 25, 1999
+.Dd March 14, 2014
 .Dt UCOM 4
 .Os
 .Sh NAME
@@ -44,7 +37,7 @@
 .Nd USB tty support
 .Sh SYNOPSIS
 To compile this driver into the kernel,
-place the following lines in your
+place the following line in your
 kernel configuration file:
 .Bd -ragged -offset indent
 .Cd "device ucom"
@@ -68,26 +61,37 @@ driver shows a behavior like a
 This means that normal programs such as
 .Xr tip 1
 or
-.Xr pppd 8
+.Xr ppp 8
 can be used to access the device.
+.Pp
+The
+.Va portno
+locater can be used to decide which port to use for devices that have
+multiple external ports.
 .Sh FILES
-.Bl -tag -width ".Pa /dev/ucom?"
-.It Pa /dev/ucom?
+.Bl -tag -width ".Pa /dev/cuaU?"
+.It Pa /dev/cuaU?
+.It Pa /dev/ttyU?
 .El
 .Sh SEE ALSO
-.Xr moscom 4 ,
 .Xr tty 4 ,
+.Xr u3g 4 ,
 .Xr uark 4 ,
 .Xr ubsa 4 ,
+.Xr ubser 4 ,
 .Xr uchcom 4 ,
+.Xr ucycom 4 ,
+.Xr ufoma 4 ,
 .Xr uftdi 4 ,
 .Xr ugensa 4 ,
+.Xr uipaq 4 ,
+.Xr umcs 4 ,
 .Xr umct 4 ,
 .Xr umodem 4 ,
+.Xr umoscom 4 ,
 .Xr uplcom 4 ,
 .Xr usb 4 ,
 .Xr uslcom 4 ,
-.Xr uticom 4 ,
 .Xr uvisor 4 ,
 .Xr uvscom 4
 .Sh HISTORY
@@ -101,3 +105,11 @@ This manual page was adopted from
 by
 .An Tom Rhodes Aq Mt trhodes@FreeBSD.org
 in April 2002.
+.Sh CAVEATS
+Up to
+.Dx 3.6
+.Nm
+created
+.Pa /dev/ucom?
+rather than the uniform device names created today.
+Old scripts must be adjusted accordingly.
