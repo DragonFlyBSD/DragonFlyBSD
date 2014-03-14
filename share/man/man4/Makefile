@@ -328,7 +328,9 @@ MAN=	aac.4 \
 	ubt.4 \
 	uchcom.4 \
 	ucom.4 \
+	udav.4 \
 	udp.4 \
+	uep.4 \
 	ufm.4 \
 	uftdi.4 \
 	ugen.4 \
