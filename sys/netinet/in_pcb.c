@@ -594,19 +594,11 @@ in_pcbconn_bind(struct inpcb *inp, const struct sockaddr *nam,
 	KKASSERT(p);
 	cred = p->p_ucred;
 
-	/*
-	 * This has to be atomic.  If the porthash is shared across multiple
-	 * protocol threads (aka tcp) then the token will be non-NULL.
-	 */
-	if (pcbinfo->porttoken)
-		lwkt_gettoken(pcbinfo->porttoken);
-
 	jsin.sin_family = AF_INET;
 	jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
 	if (!prison_replace_wildcards(td, (struct sockaddr *)&jsin)) {
 		inp->inp_laddr.s_addr = INADDR_ANY;
-		error = EINVAL;
-		goto done;
+		return (EINVAL);
 	}
 	inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
 
@@ -620,7 +612,7 @@ in_pcbconn_bind(struct inpcb *inp, const struct sockaddr *nam,
 		if (cred &&
 		    (error = priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
 			inp->inp_laddr.s_addr = INADDR_ANY;
-			goto done;
+			return (error);
 		}
 		first = ipport_lowfirstauto;	/* 1023 */
 		last  = ipport_lowlastauto;	/* 600 */
@@ -630,6 +622,13 @@ in_pcbconn_bind(struct inpcb *inp, const struct sockaddr *nam,
 		last  = ipport_lastauto;
 		lastport = &pcbinfo->lastport;
 	}
+
+	/*
+	 * This has to be atomic.  If the porthash is shared across multiple
+	 * protocol threads (aka tcp) then the token will be non-NULL.
+	 */
+	if (pcbinfo->porttoken)
+		lwkt_gettoken(pcbinfo->porttoken);
 
 again:
 	/*
