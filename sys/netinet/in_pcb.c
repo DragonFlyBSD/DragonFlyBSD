@@ -693,16 +693,6 @@ again:
 	}
 	inp->inp_lport = lport;
 
-	jsin.sin_family = AF_INET;
-	jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
-	if (!prison_replace_wildcards(td, (struct sockaddr*)&jsin)) {
-		inp->inp_laddr.s_addr = INADDR_ANY;
-		inp->inp_lport = 0;
-		error = EINVAL;
-		goto done;
-	}
-	inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
-
 	if (in_pcbinsporthash(inp) != 0) {
 		inp->inp_laddr.s_addr = INADDR_ANY;
 		inp->inp_lport = 0;
