@@ -423,35 +423,54 @@ kvm_proclist(kvm_t *kd, int what, int arg, struct proc *p,
  */
 static int
 kvm_deadprocs(kvm_t *kd, int what, int arg, u_long a_allproc,
-	      u_long a_zombproc)
+	      int allproc_hsize)
 {
-	struct kinfo_proc *bp = kd->procbase;
-	int acnt, zcnt;
+	struct kinfo_proc *bp;
 	struct proc *p;
+	struct proclist **pl;
+	int cnt, partcnt, n;
+	u_long nextoff;
 
-	if (KREAD(kd, a_allproc, &p)) {
-		_kvm_err(kd, kd->program, "cannot read allproc");
-		return (-1);
+	cnt = partcnt = 0;
+	nextoff = 0;
+
+	/*
+	 * Dynamically allocate space for all the elements of the
+	 * allprocs array and KREAD() them.
+	 */
+	pl = _kvm_malloc(kd, allproc_hsize * sizeof(struct proclist *));
+	for (n = 0; n < allproc_hsize; n++) {
+		pl[n] = _kvm_malloc(kd, sizeof(struct proclist));
+		nextoff = a_allproc + (n * sizeof(struct proclist));
+		if (KREAD(kd, (u_long)nextoff, pl[n])) {
+			_kvm_err(kd, kd->program, "can't read proclist at 0x%lx",
+				a_allproc);
+			return (-1);
+		}
+
+		/* Ignore empty proclists */
+		if (LIST_EMPTY(pl[n]))
+			continue;
+
+		bp = kd->procbase + cnt;
+		p = pl[n]->lh_first;
+		partcnt = kvm_proclist(kd, what, arg, p, bp);
+		if (partcnt < 0) {
+			free(pl[n]);
+			return (partcnt);
+		}
+
+		cnt += partcnt;
+		free(pl[n]);
 	}
-	acnt = kvm_proclist(kd, what, arg, p, bp);
-	if (acnt < 0)
-		return (acnt);
 
-	if (KREAD(kd, a_zombproc, &p)) {
-		_kvm_err(kd, kd->program, "cannot read zombproc");
-		return (-1);
-	}
-	zcnt = kvm_proclist(kd, what, arg, p, bp + acnt);
-	if (zcnt < 0)
-		zcnt = 0;
-
-	return (acnt + zcnt);
+	return (cnt);
 }
 
 struct kinfo_proc *
 kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 {
-	int mib[4], st, nprocs;
+	int mib[4], st, nprocs, allproc_hsize;
 	int miblen = ((op & ~KERN_PROC_FLAGMASK) == KERN_PROC_ALL) ? 3 : 4;
 	size_t size;
 
@@ -497,8 +516,8 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 		struct nlist nl[4], *p;
 
 		nl[0].n_name = "_nprocs";
-		nl[1].n_name = "_allproc";
-		nl[2].n_name = "_zombproc";
+		nl[1].n_name = "_allprocs";
+		nl[2].n_name = "_allproc_hsize";
 		nl[3].n_name = 0;
 
 		if (kvm_nlist(kd, nl) != 0) {
@@ -512,8 +531,12 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 			_kvm_err(kd, kd->program, "can't read nprocs");
 			return (0);
 		}
+		if (KREAD(kd, nl[2].n_value, &allproc_hsize)) {
+			_kvm_err(kd, kd->program, "can't read allproc_hsize");
+			return (0);
+		}
 		nprocs = kvm_deadprocs(kd, op, arg, nl[1].n_value,
-				      nl[2].n_value);
+				      allproc_hsize);
 #ifdef notdef
 		size = nprocs * sizeof(struct kinfo_proc);
 		(void)realloc(kd->procbase, size);
