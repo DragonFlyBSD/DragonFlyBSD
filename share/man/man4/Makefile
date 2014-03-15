@@ -328,11 +328,8 @@ MAN=	aac.4 \
 	ubt.4 \
 	uchcom.4 \
 	ucom.4 \
-	udav.4 \
 	udp.4 \
-	uep.4 \
 	ufm.4 \
-	ufoma.4 \
 	uftdi.4 \
 	ugen.4 \
 	ugensa.4 \
@@ -376,7 +373,6 @@ MAN=	aac.4 \
 	wlan_xauth.4 \
 	wpi.4 \
 	xe.4 \
-	xhci.4 \
 	xl.4 \
 	xpt.4 \
 	zero.4
@@ -526,14 +522,19 @@ MAN+=	rum.4 \
 	runfw.4 \
 	ubser.4 \
 	ucycom.4 \
+	udav.4 \
+	uep.4 \
+	ufoma.4 \
 	uipaq.4 \
 	umcs.4 \
 	urtwn.4 \
 	urtwnfw.4 \
 	usb_quirk.4 \
-	u3g.4
+	u3g.4 \
+	xhci.4
 MLINKS+=rum.4 if_rum.4
 MLINKS+=run.4 if_run.4
+MLINKS+=udav.4 if_udav.4
 MLINKS+=urtwn.4 if_urtwn.4
 .endif
 
