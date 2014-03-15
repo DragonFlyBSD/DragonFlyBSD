@@ -418,18 +418,19 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		}
 		inp->inp_laddr = sin->sin_addr;
 	}
+
+	jsin.sin_family = AF_INET;
+	jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
+	if (!prison_replace_wildcards(td, (struct sockaddr *)&jsin)) {
+		inp->inp_laddr.s_addr = INADDR_ANY;
+		error = EINVAL;
+		goto done;
+	}
+	inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
+
 	if (lport == 0) {
 		ushort first, last;
 		int count;
-
-		jsin.sin_family = AF_INET;
-		jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
-		if (!prison_replace_wildcards(td, (struct sockaddr *)&jsin)) {
-			inp->inp_laddr.s_addr = INADDR_ANY;
-			error = EINVAL;
-			goto done;
-		}
-		inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
 
 		inp->inp_flags |= INP_ANONPORT;
 
@@ -497,16 +498,6 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		}
 	}
 	inp->inp_lport = lport;
-
-	jsin.sin_family = AF_INET;
-	jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
-	if (!prison_replace_wildcards(td, (struct sockaddr*)&jsin)) {
-		inp->inp_laddr.s_addr = INADDR_ANY;
-		inp->inp_lport = 0;
-		error = EINVAL;
-		goto done;
-	}
-	inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
 
 	if (in_pcbinsporthash(inp) != 0) {
 		inp->inp_laddr.s_addr = INADDR_ANY;
