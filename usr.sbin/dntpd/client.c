@@ -265,6 +265,7 @@ client_check(struct server_info **checkp,
 {
     struct server_info *check = *checkp;
     struct server_info *info;
+    int min_samples;
 
     /*
      * Start an alternate linear regression once our current one
@@ -304,6 +305,9 @@ client_check(struct server_info **checkp,
     /*
      * BEST CLIENT FOR FREQUENCY CORRECTION:
      *
+     * Frequency corrections get better the longer the time separation
+     * between samples.
+     *
      *	8 samples and a correlation > 0.99, or
      * 16 samples and a correlation > 0.96
      */
@@ -327,10 +331,18 @@ client_check(struct server_info **checkp,
      * offset correction is valid if the standard deviation is less then
      * the average offset divided by 4.
      *
+     * If we are in maintainance mode, require 8 samples instead of 4.
+     * Offset corrections get better with more samples.  This reduces
+     * ping-pong effects that can occur with a small number of samples.
+     *
      * Servers marked as being insane are not allowed
      */
     info = *best_off;
-    if (check->lin_countoffset >= 4 && 
+    if (info && info->poll_mode == POLL_MAINTAIN)
+	min_samples = 8;
+    else
+	min_samples = 4;
+    if (check->lin_countoffset >= min_samples &&
 	(check->lin_cache_stddev <
 	 fabs(check->lin_sumoffset / check->lin_countoffset / 4)) &&
 	check->server_insane == 0
