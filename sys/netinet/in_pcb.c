@@ -522,11 +522,11 @@ in_pcblookup_addrport(struct inpcbinfo *pcbinfo, struct in_addr laddr,
 	struct inpcb *match = NULL;
 
 	/*
-	 * If the porthashbase is shared across several cpus we need
-	 * to lock.
+	 * If the porthashbase is shared across several cpus, it must
+	 * have been locked.
 	 */
 	if (pcbinfo->porttoken)
-		lwkt_gettoken(pcbinfo->porttoken);
+		ASSERT_LWKT_TOKEN_HELD(pcbinfo->porttoken);
 
 	/*
 	 * Best fit PCB lookup.
@@ -565,8 +565,6 @@ in_pcblookup_addrport(struct inpcbinfo *pcbinfo, struct in_addr laddr,
 			}
 		}
 	}
-	if (pcbinfo->porttoken)
-		lwkt_reltoken(pcbinfo->porttoken);
 	return (match);
 }
 
