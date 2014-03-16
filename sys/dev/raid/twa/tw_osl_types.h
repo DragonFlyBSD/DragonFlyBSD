@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_osl_types.h,v 1.2 2007/05/09 04:16:32 scottl Exp $
+ *	$FreeBSD: head/sys/dev/twa/tw_osl_types.h 169400 2007-05-09 04:16:32Z scottl $
  */
 
 /*

@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_osl_inline.h,v 1.4 2010/06/09 21:40:38 delphij Exp $
+ *	$FreeBSD: head/sys/dev/twa/tw_osl_inline.h 208969 2010-06-09 21:40:38Z delphij $
  */
 
 /*

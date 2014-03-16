@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_osl.h,v 1.10 2011/12/15 06:29:13 kevlo Exp $
+ *	$FreeBSD: head/sys/dev/twa/tw_osl.h 232669 2012-03-07 18:53:56Z jhb $
  */
 
 /*
@@ -55,11 +55,7 @@
 #define TW_OSLI_MAX_NUM_IOS		(TW_OSLI_MAX_NUM_REQUESTS - 2)
 #define TW_OSLI_MAX_NUM_AENS		0x100
 
-#ifdef PAE
-#define	TW_OSLI_DMA_BOUNDARY		(1u << 31)
-#else
 #define	TW_OSLI_DMA_BOUNDARY		((bus_size_t)((uint64_t)1 << 32))
-#endif
 
 /* Possible values of req->state. */
 #define TW_OSLI_REQ_STATE_INIT		0x0	/* being initialized */

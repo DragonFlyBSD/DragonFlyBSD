@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/twa/tw_cl_init.c,v 1.7 2010/08/30 19:15:04 delphij Exp $
+ *	$FreeBSD: head/sys/dev/twa/tw_cl_init.c 212008 2010-08-30 19:15:04Z delphij $
  */
 
 /*
