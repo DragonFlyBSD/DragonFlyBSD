@@ -2536,6 +2536,10 @@ bus/u4b/serial/uslcom.c			optional uslcom ucom usb
 bus/u4b/serial/uvisor.c			optional uvisor ucom usb
 bus/u4b/serial/uvscom.c			optional uvscom ucom usb
 #
+# USB misc drivers
+#
+bus/u4b/misc/ufm.c			optional ufm usb
+#
 # USB input drivers
 #
 bus/u4b/input/ukbd.c			optional ukbd usb

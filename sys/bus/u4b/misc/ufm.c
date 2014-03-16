@@ -28,12 +28,7 @@
  * its contributors.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
-
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -42,10 +37,8 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
@@ -53,14 +46,14 @@ __FBSDID("$FreeBSD$");
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
 #include "usbdevs.h"
 
 #define	USB_DEBUG_VAR usb_debug
-#include <dev/usb/usb_debug.h>
+#include <bus/u4b/usb_debug.h>
 
-#include <dev/usb/ufm_ioctl.h>
+#include <bus/u4b/ufm_ioctl.h>
 
 #define	UFM_CMD0		0x00
 #define	UFM_CMD_SET_FREQ	0x01
@@ -68,7 +61,7 @@ __FBSDID("$FreeBSD$");
 
 struct ufm_softc {
 	struct usb_fifo_sc sc_fifo;
-	struct mtx sc_mtx;
+	struct lock sc_lock;
 
 	struct usb_device *sc_udev;
 
@@ -147,14 +140,14 @@ ufm_attach(device_t dev)
 	sc->sc_udev = uaa->device;
 	sc->sc_unit = device_get_unit(dev);
 
-	snprintf(sc->sc_name, sizeof(sc->sc_name), "%s",
+	ksnprintf(sc->sc_name, sizeof(sc->sc_name), "%s",
 	    device_get_nameunit(dev));
 
-	mtx_init(&sc->sc_mtx, "ufm lock", NULL, MTX_DEF | MTX_RECURSE);
+	lockinit(&sc->sc_lock, "ufm lock", 0, LK_CANRECURSE);
 
 	device_set_usb_desc(dev);
 
-	error = usb_fifo_attach(uaa->device, sc, &sc->sc_mtx,
+	error = usb_fifo_attach(uaa->device, sc, &sc->sc_lock,
 	    &ufm_fifo_methods, &sc->sc_fifo,
 	    device_get_unit(dev), 0 - 1, uaa->info.bIfaceIndex,
 	    UID_ROOT, GID_OPERATOR, 0644);
@@ -175,7 +168,7 @@ ufm_detach(device_t dev)
 
 	usb_fifo_detach(&sc->sc_fifo);
 
-	mtx_destroy(&sc->sc_mtx);
+	lockuninit(&sc->sc_lock);
 
 	return (0);
 }
@@ -218,9 +211,9 @@ ufm_set_freq(struct ufm_softc *sc, void *addr)
 	 * units of 12.5kHz.  We add one to the IFM to make rounding
 	 * easier.
 	 */
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	sc->sc_freq = freq;
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 
 	freq = (freq + 10700001) / 12500;
 
@@ -242,9 +235,9 @@ ufm_get_freq(struct ufm_softc *sc, void *addr)
 {
 	int *valp = (int *)addr;
 
-	mtx_lock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_EXCLUSIVE);
 	*valp = sc->sc_freq;
-	mtx_unlock(&sc->sc_mtx);
+	lockmgr(&sc->sc_lock, LK_RELEASE);
 	return (0);
 }
 

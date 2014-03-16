@@ -2158,8 +2158,6 @@ device          mly
 #
 # USB Bluetooth (oldusb)
 #device		ubt
-# Fm Radio (oldusb)
-#device		ufm
 # Generic USB device driver (oldusb)
 #device		ugen
 # USB Rio (MP3 Player) (oldusb)
@@ -2275,6 +2273,10 @@ device		runfw
 # Realtek RTL8188CU/RTL8192CU wireless driver
 device		urtwn
 device		urtwnfw
+
+# Fm Radio
+#
+device		ufm
 
 # debugging options for the USB subsystem
 #

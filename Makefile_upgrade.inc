@@ -2569,7 +2569,6 @@ TO_REMOVE+=/boot/kernel/if_rue.ko
 TO_REMOVE+=/boot/kernel/moscom.ko
 TO_REMOVE+=/boot/kernel/snd_uaudio.ko
 TO_REMOVE+=/boot/kernel/ubt.ko
-TO_REMOVE+=/boot/kernel/ufm.ko
 TO_REMOVE+=/boot/kernel/ugen.ko
 TO_REMOVE+=/boot/kernel/uscanner.ko
 TO_REMOVE+=/boot/kernel/uticom.ko
