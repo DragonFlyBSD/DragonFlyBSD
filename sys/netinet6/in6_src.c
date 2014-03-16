@@ -425,6 +425,14 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 		last  = ipport_lastauto;
 		lastport = &pcbinfo->lastport;
 	}
+
+	/*
+	 * This has to be atomic.  If the porthash is shared across multiple
+	 * protocol threads (aka tcp) then the token will be non-NULL.
+	 */
+	if (pcbinfo->porttoken)
+		lwkt_gettoken(pcbinfo->porttoken);
+
 	/*
 	 * Simple check to ensure all ports are not used up causing
 	 * a deadlock here.
@@ -445,7 +453,8 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 				 * occurred above.
 				 */
 				inp->in6p_laddr = kin6addr_any;
-				return (EAGAIN);
+				error = EAGAIN;
+				goto done;
 			}
 			--*lastport;
 			if (*lastport > first || *lastport < last)
@@ -466,7 +475,8 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 				 * occurred above.
 				 */
 				inp->in6p_laddr = kin6addr_any;
-				return (EAGAIN);
+				error = EAGAIN;
+				goto done;
 			}
 			++*lastport;
 			if (*lastport < first || *lastport > last)
@@ -480,10 +490,14 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 	if (in_pcbinsporthash(inp) != 0) {
 		inp->in6p_laddr = kin6addr_any;
 		inp->inp_lport = 0;
-		return (EAGAIN);
+		error = EAGAIN;
+		goto done;
 	}
-
-	return (0);
+	error = 0;
+done:
+	if (pcbinfo->porttoken)
+		lwkt_reltoken(pcbinfo->porttoken);
+	return error;
 }
 
 /*

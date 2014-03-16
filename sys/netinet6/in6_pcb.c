@@ -132,6 +132,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	struct ucred *cred = NULL;
 	u_short	lport = 0;
 	int wild = 0, reuseport = (so->so_options & SO_REUSEPORT);
+	int error;
 
 	if (!in6_ifaddr) /* XXX broken! */
 		return (EADDRNOTAVAIL);
@@ -141,22 +142,38 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		wild = 1;
 	if (p)
 		cred = p->p_ucred;
+
+	/*
+	 * This has to be atomic.  If the porthash is shared across multiple
+	 * protocol threads (aka tcp) then the token will be non-NULL.
+	 */
+	if (pcbinfo->porttoken)
+		lwkt_gettoken(pcbinfo->porttoken);
+
 	if (nam) {
 		sin6 = (struct sockaddr_in6 *)nam;
-		if (nam->sa_len != sizeof(*sin6))
-			return (EINVAL);
+		if (nam->sa_len != sizeof(*sin6)) {
+			error = EINVAL;
+			goto done;
+		}
 		/*
 		 * family check.
 		 */
-		if (nam->sa_family != AF_INET6)
-			return (EAFNOSUPPORT);
+		if (nam->sa_family != AF_INET6) {
+			error = EAFNOSUPPORT;
+			goto done;
+		}
 
-		if (!prison_replace_wildcards(td, nam))
-			return (EINVAL);
+		if (!prison_replace_wildcards(td, nam)) {
+			error = EINVAL;
+			goto done;
+		}
 
 		/* KAME hack: embed scopeid */
-		if (in6_embedscope(&sin6->sin6_addr, sin6, inp, NULL) != 0)
-			return EINVAL;
+		if (in6_embedscope(&sin6->sin6_addr, sin6, inp, NULL) != 0) {
+			error = EINVAL;
+			goto done;
+		}
 		/* this must be cleared for ifa_ifwithaddr() */
 		sin6->sin6_scope_id = 0;
 
@@ -177,10 +194,13 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			sin6->sin6_port = 0;		/* yech... */
 			if (!prison_replace_wildcards(td, (struct sockaddr *)sin6)) {
 				sin6->sin6_addr = kin6addr_any;
-				return(EINVAL);
+				error = EINVAL;
+				goto done;
 			}
-			if ((ia = ifa_ifwithaddr((struct sockaddr *)sin6)) == NULL)
-				return (EADDRNOTAVAIL);
+			if ((ia = ifa_ifwithaddr((struct sockaddr *)sin6)) == NULL) {
+				error = EADDRNOTAVAIL;
+				goto done;
+			}
 
 			/*
 			 * XXX: bind to an anycast address might accidentally
@@ -191,7 +211,8 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			if (ia &&
 			    ((struct in6_ifaddr *)ia)->ia6_flags &
 			    (IN6_IFF_ANYCAST|IN6_IFF_NOTREADY|IN6_IFF_DETACHED)) {
-				return (EADDRNOTAVAIL);
+				error = EADDRNOTAVAIL;
+				goto done;
 			}
 		}
 		if (lport) {
@@ -199,8 +220,10 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 			/* GROSS */
 			if (ntohs(lport) < IPV6PORT_RESERVED && cred &&
-			    priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))
-				return (EACCES);
+			    priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0)) {
+				error = EACCES;
+				goto done;
+			}
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
 				t = in6_pcblookup_local(pcbinfo,
@@ -212,8 +235,10 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 				     (t->inp_socket->so_options &
 				      SO_REUSEPORT) == 0) &&
 				    (so->so_cred->cr_uid !=
-				     t->inp_socket->so_cred->cr_uid))
-					return (EADDRINUSE);
+				     t->inp_socket->so_cred->cr_uid)) {
+					error = EADDRINUSE;
+					goto done;
+				}
 				if ((inp->inp_flags & IN6P_IPV6_V6ONLY) == 0 &&
 				    IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr)) {
 					struct sockaddr_in sin;
@@ -228,17 +253,23 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 					    (ntohl(t->inp_laddr.s_addr) !=
 					     INADDR_ANY ||
 					     INP_SOCKAF(so) ==
-					     INP_SOCKAF(t->inp_socket)))
-						return (EADDRINUSE);
+					     INP_SOCKAF(t->inp_socket))) {
+						error = EADDRINUSE;
+						goto done;
+					}
 				}
 			}
 			if (cred && cred->cr_prison &&
-			    !prison_replace_wildcards(td, nam))
-				return(EADDRNOTAVAIL);
+			    !prison_replace_wildcards(td, nam)) {
+				error = EADDRNOTAVAIL;
+				goto done;
+			}
 			t = in6_pcblookup_local(pcbinfo, &sin6->sin6_addr,
 						lport, wild, cred);
-			if (t && (reuseport & t->inp_socket->so_options) == 0)
-				return (EADDRINUSE);
+			if (t && (reuseport & t->inp_socket->so_options) == 0) {
+				error = EADDRINUSE;
+				goto done;
+			}
 			if ((inp->inp_flags & IN6P_IPV6_V6ONLY) == 0 &&
 			    IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr)) {
 				struct sockaddr_in sin;
@@ -253,8 +284,10 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 				    (ntohl(t->inp_laddr.s_addr)
 				     != INADDR_ANY ||
 				     INP_SOCKAF(so) ==
-				     INP_SOCKAF(t->inp_socket)))
-					return (EADDRINUSE);
+				     INP_SOCKAF(t->inp_socket))) {
+					error = EADDRINUSE;
+					goto done;
+				}
 			}
 		}
 		inp->in6p_laddr = sin6->sin6_addr;
@@ -267,21 +300,29 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		if (!prison_replace_wildcards(td, (struct sockaddr*)&jsin6)) {
 			inp->in6p_laddr = kin6addr_any;
 			inp->inp_lport = 0;
-			return (EINVAL);
+			error = EINVAL;
+			goto done;
 		}
 
-		if ((e = in6_pcbsetport(&inp->in6p_laddr, inp, td)) != 0)
-			return (e);
+		if ((e = in6_pcbsetport(&inp->in6p_laddr, inp, td)) != 0) {
+			error = e;
+			goto done;
+		}
 	}
 	else {
 		inp->inp_lport = lport;
 		if (in_pcbinsporthash(inp) != 0) {
 			inp->in6p_laddr = kin6addr_any;
 			inp->inp_lport = 0;
-			return (EAGAIN);
+			error = EAGAIN;
+			goto done;
 		}
 	}
-	return (0);
+	error = 0;
+done:
+	if (pcbinfo->porttoken)
+		lwkt_reltoken(pcbinfo->porttoken);
+	return error;
 }
 
 /*
