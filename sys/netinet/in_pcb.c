@@ -298,7 +298,6 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
 	struct socket *so = inp->inp_socket;
 	unsigned short *lastport;
-	struct sockaddr_in *sin;
 	struct sockaddr_in jsin;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct ucred *cred = NULL;
@@ -324,7 +323,8 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		lwkt_gettoken(pcbinfo->porttoken);
 
 	if (nam != NULL) {
-		sin = (struct sockaddr_in *)nam;
+		struct sockaddr_in *sin = (struct sockaddr_in *)nam;
+
 		if (nam->sa_len != sizeof *sin) {
 			error = EINVAL;
 			goto done;
