@@ -245,7 +245,7 @@ secure_erase(const char *dev, disksz_t bytes, size_t blksz)
 
 #if defined(__DragonFly__)
 int
-get_disk_info(const char *dev, size_t *blocks, size_t *bsize)
+get_disk_info(const char *dev, disksz_t *blocks, size_t *bsize)
 {
 	struct partinfo pinfo;
 	int fd;
@@ -262,7 +262,7 @@ get_disk_info(const char *dev, size_t *blocks, size_t *bsize)
 		return -1;
 	}
 
-	*blocks = pinfo.media_blocks;
+	*blocks = (disksz_t)pinfo.media_blocks;
 	*bsize = pinfo.media_blksize;
 
 	close(fd);
