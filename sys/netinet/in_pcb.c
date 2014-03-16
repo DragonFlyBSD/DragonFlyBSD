@@ -507,7 +507,7 @@ done:
 }
 
 static struct inpcb *
-in_pcblookup_addrport(struct inpcbinfo *pcbinfo, struct in_addr laddr,
+in_pcblookup_localremote(struct inpcbinfo *pcbinfo, struct in_addr laddr,
     u_short lport, struct in_addr faddr, u_short fport, struct ucred *cred)
 {
 	struct inpcb *inp;
@@ -646,8 +646,8 @@ again:
 			if (*lastport > first || *lastport < last)
 				*lastport = first;
 			lport = htons(*lastport);
-		} while (in_pcblookup_addrport(pcbinfo, inp->inp_laddr, lport,
-				sin->sin_addr, sin->sin_port, cred));
+		} while (in_pcblookup_localremote(pcbinfo, inp->inp_laddr,
+		    lport, sin->sin_addr, sin->sin_port, cred));
 	} else {
 		/*
 		 * counting up
@@ -664,8 +664,8 @@ again:
 			if (*lastport < first || *lastport > last)
 				*lastport = first;
 			lport = htons(*lastport);
-		} while (in_pcblookup_addrport(pcbinfo, inp->inp_laddr, lport,
-				sin->sin_addr, sin->sin_port, cred));
+		} while (in_pcblookup_localremote(pcbinfo, inp->inp_laddr,
+		    lport, sin->sin_addr, sin->sin_port, cred));
 	}
 
 	/* This could happen on loopback interface */
