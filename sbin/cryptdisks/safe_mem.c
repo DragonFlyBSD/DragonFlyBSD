@@ -50,6 +50,7 @@ struct safe_mem_tail {
 
 static struct safe_mem_hdr *safe_mem_hdr_first = NULL;
 
+#pragma weak _alloc_safe_mem
 void *
 _alloc_safe_mem(size_t req_sz, const char *file, int line)
 {
@@ -94,6 +95,7 @@ _alloc_safe_mem(size_t req_sz, const char *file, int line)
 	return user_mem;
 }
 
+#pragma weak _free_safe_mem
 void
 _free_safe_mem(void *mem_ptr, const char *file, int line)
 {
@@ -144,6 +146,7 @@ _free_safe_mem(void *mem_ptr, const char *file, int line)
 	free(mem);
 }
 
+#pragma weak check_and_purge_safe_mem
 void
 check_and_purge_safe_mem(void)
 {
