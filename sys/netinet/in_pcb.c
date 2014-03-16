@@ -563,12 +563,12 @@ in_pcblookup_localremote(struct inpcbinfo *pcbinfo, struct in_addr laddr,
 }
 
 int
-in_pcbconn_bind(struct inpcb *inp, const struct sockaddr *nam,
+in_pcbconn_bind(struct inpcb *inp, const struct sockaddr *remote,
     struct thread *td)
 {
 	struct proc *p = td->td_proc;
 	unsigned short *lastport;
-	const struct sockaddr_in *sin = (const struct sockaddr_in *)nam;
+	const struct sockaddr_in *sin = (const struct sockaddr_in *)remote;
 	struct sockaddr_in jsin;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct ucred *cred = NULL;
