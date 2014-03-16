@@ -98,7 +98,7 @@ USB access library (libusb -lusb)
 .Ft void
 .Fn libusb20_tr_setup_intr "struct libusb20_transfer *xfer" "void *pbuf" "uint32_t length" "uint32_t timeout"
 .Ft void
-.Fn libusb20_tr_setup_isoc "struct libusb20_transfer *xfer" "void *pbuf" "uint32_t length" "uint61_t fr_index"
+.Fn libusb20_tr_setup_isoc "struct libusb20_transfer *xfer" "void *pbuf" "uint32_t length" "uint16_t fr_index"
 .Ft uint8_t
 .Fn libusb20_tr_bulk_intr_sync "struct libusb20_transfer *xfer" "void *pbuf" "uint32_t length" "uint32_t *pactlen" "uint32_t timeout"
 .Ft void
