@@ -125,7 +125,6 @@ int
 in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
 	struct socket *so = inp->inp_socket;
-	struct sockaddr_in6 *sin6 = NULL;
 	struct sockaddr_in6 jsin6;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct proc *p = td->td_proc;
@@ -151,7 +150,8 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		lwkt_gettoken(pcbinfo->porttoken);
 
 	if (nam) {
-		sin6 = (struct sockaddr_in6 *)nam;
+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
+
 		if (nam->sa_len != sizeof(*sin6)) {
 			error = EINVAL;
 			goto done;
