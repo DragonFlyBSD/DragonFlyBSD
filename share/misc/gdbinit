@@ -133,16 +133,18 @@ define lstok
 	_infotok &vmspace_token
 	_infotok &kvm_token
 	while $tok < allproc_hsize
-		if (proc_tokens[$tok++].t_collisions > 0)
+		if (proc_tokens[$tok].t_collisions > 0)
 			_infotok &proc_tokens[$tok]
 		end
+		set $tok = $tok + 1
 	end
 	_infotok &tty_token
 	_infotok &vnode_token
 	while $obj < 64
-		if (vmobj_tokens[$obj++].t_collisions > 0)
+		if (vmobj_tokens[$obj].t_collisions > 0)
 			_infotok &vmobj_tokens[$obj]
 		end
+		set $obj = $obj + 1
 	end
 end
 
