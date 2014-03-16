@@ -96,10 +96,13 @@ define running_threads
 end
 
 define psax
-    set $proc = allproc->lh_first
-    while $proc != 0
-	printf "%p%6d%10s\n",$proc,$proc->p_pid,$proc->p_comm
-	set $proc = $proc->p_list.le_next
+    set $pos = 0
+    while $pos < allproc_hsize
+	set $proc = allprocs[$pos++]->lh_first
+	while $proc != 0
+		printf "%p%6d%10s\n",$proc,$proc->p_pid,$proc->p_comm
+		set $proc = $proc->p_list.le_next
+	end
     end
 end
 
@@ -121,16 +124,26 @@ define infotok
 end
 
 define lstok
+	set $tok = 0
+	set $obj = 0
 	printf "\nToken           collisions owner\n"
 	_infotok &pmap_token
 	_infotok &dev_token
 	_infotok &vm_token
 	_infotok &vmspace_token
 	_infotok &kvm_token
-	_infotok &proc_token
+	while $tok < allproc_hsize
+		if (proc_tokens[$tok++].t_collisions > 0)
+			_infotok &proc_tokens[$tok]
+		end
+	end
 	_infotok &tty_token
 	_infotok &vnode_token
-	_infotok &vmobj_token
+	while $obj < 64
+		if (vmobj_tokens[$obj++].t_collisions > 0)
+			_infotok &vmobj_tokens[$obj]
+		end
+	end
 end
 
 define lstdtok
