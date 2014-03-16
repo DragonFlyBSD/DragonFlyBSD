@@ -436,7 +436,7 @@ void	in_pcbdisconnect (struct inpcb *);
 void	in_pcbinswildcardhash(struct inpcb *inp);
 void	in_pcbinswildcardhash_oncpu(struct inpcb *, struct inpcbinfo *);
 void	in_pcbinsconnhash(struct inpcb *inp);
-int	in_pcbinsporthash (struct inpcb *);
+void	in_pcbinsporthash (struct inpcb *);
 int	in_pcbladdr (struct inpcb *, struct sockaddr *,
 	    struct sockaddr_in **, struct thread *);
 int	in_pcbladdr_find (struct inpcb *, struct sockaddr *,

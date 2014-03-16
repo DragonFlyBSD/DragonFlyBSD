@@ -765,18 +765,8 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		inp->inp_laddr = sc->sc_inc.inc_laddr;
 	}
 	inp->inp_lport = sc->sc_inc.inc_lport;
-	if (in_pcbinsporthash(inp) != 0) {
-		/*
-		 * Undo the assignments above if we failed to
-		 * put the PCB on the hash lists.
-		 */
-		if (isipv6)
-			inp->in6p_laddr = kin6addr_any;
-		else
-			inp->inp_laddr.s_addr = INADDR_ANY;
-		inp->inp_lport = 0;
-		goto abort;
-	}
+	in_pcbinsporthash(inp);
+
 	linp = lso->so_pcb;
 #ifdef IPSEC
 	/* copy old policy into new socket's */

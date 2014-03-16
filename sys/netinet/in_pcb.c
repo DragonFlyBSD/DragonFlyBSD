@@ -498,13 +498,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		}
 	}
 	inp->inp_lport = lport;
-
-	if (in_pcbinsporthash(inp) != 0) {
-		inp->inp_laddr.s_addr = INADDR_ANY;
-		inp->inp_lport = 0;
-		error = EAGAIN;
-		goto done;
-	}
+	in_pcbinsporthash(inp);
 	error = 0;
 done:
 	if (pcbinfo->porttoken)
@@ -689,13 +683,7 @@ again:
 		goto again;
 	}
 	inp->inp_lport = lport;
-
-	if (in_pcbinsporthash(inp) != 0) {
-		inp->inp_laddr.s_addr = INADDR_ANY;
-		inp->inp_lport = 0;
-		error = EAGAIN;
-		goto done;
-	}
+	in_pcbinsporthash(inp);
 	error = 0;
 done:
 	if (pcbinfo->porttoken)
@@ -1510,7 +1498,7 @@ in_pcbremconnhash(struct inpcb *inp)
 /*
  * Insert PCB into port hash table.
  */
-int
+void
 in_pcbinsporthash(struct inpcb *inp)
 {
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
@@ -1555,7 +1543,6 @@ in_pcbinsporthash(struct inpcb *inp)
 		pcbinfo->portsave = kmalloc(sizeof(*pcbinfo->portsave),
 					    M_PCB, M_INTWAIT | M_ZERO);
 	}
-	return (0);
 }
 
 static struct inp_localgroup *

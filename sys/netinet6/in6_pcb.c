@@ -311,12 +311,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	}
 	else {
 		inp->inp_lport = lport;
-		if (in_pcbinsporthash(inp) != 0) {
-			inp->in6p_laddr = kin6addr_any;
-			inp->inp_lport = 0;
-			error = EAGAIN;
-			goto done;
-		}
+		in_pcbinsporthash(inp);
 	}
 	error = 0;
 done:
