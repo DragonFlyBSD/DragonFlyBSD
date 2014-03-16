@@ -280,26 +280,11 @@ generic_opts_to_luks(struct crypt_options *co, struct generic_opts *go)
 	co->timeout = go->timeout;
 }
 
-static void
-generic_opts_to_tcplay(struct tc_api_opts *tco, struct generic_opts *go)
-{
-	/* Make sure keyfile array is NULL-terminated */
-	go->keyfiles[go->nkeyfiles] = NULL;
-
-	tco->tc_interactive_prompt = (go->passphrase != NULL) ? 0 : 1;
-	tco->tc_password_retries = go->ntries;
-	tco->tc_map_name = go->map_name;
-	tco->tc_device = go->device;
-	tco->tc_keyfiles = go->keyfiles;
-	tco->tc_passphrase = go->passphrase;
-	tco->tc_prompt_timeout = go->timeout;
-}
-
 static int
 entry_parser(char **tokens, char **options, int type)
 {
 	struct crypt_options co;
-	struct tc_api_opts tco;
+	tc_api_task tcplay_task;
 	struct generic_opts go;
 	int r, i, error, isluks;
 
@@ -308,7 +293,6 @@ entry_parser(char **tokens, char **options, int type)
 
 	bzero(&go, sizeof(go));
 	bzero(&co, sizeof(co));
-	bzero(&tco, sizeof(tco));
 
 
 	go.ntries = 3;
@@ -325,7 +309,6 @@ entry_parser(char **tokens, char **options, int type)
 	}
 
 	generic_opts_to_luks(&co, &go);
-	generic_opts_to_tcplay(&tco, &go);
 
 	/*
 	 * Check whether the device is a LUKS-formatted device; otherwise
@@ -354,26 +337,97 @@ entry_parser(char **tokens, char **options, int type)
 			crypt_remove_device(&co);
 		} else {
 			/* Assume tcplay volume */
-			tc_api_unmap_volume(&tco);
+			if ((tcplay_task = tc_api_task_init("unmap")) == NULL) {
+				fprintf(stderr, "tc_api_task_init failed.\n");
+				goto tcplay_err;
+			}
+			if ((error = tc_api_task_set(tcplay_task, "dev", go.device))) {
+				fprintf(stderr, "tc_api_task_set dev failed\n");
+				goto tcplay_err;
+			}
+			if ((error = tc_api_task_set(tcplay_task, "map_name",
+			    go.map_name))) {
+				fprintf(stderr, "tc_api_task_set map_name failed\n");
+				goto tcplay_err;
+			}
+			if ((error = tc_api_task_do(tcplay_task))) {
+				fprintf(stderr, "crypttab: line %d: device %s "
+				    "could not be unmapped: %s\n",
+				    line_no, go.device,
+				    tc_api_task_get_error(tcplay_task));
+				goto tcplay_err;
+			}
+			if ((error = tc_api_task_uninit(tcplay_task))) {
+				fprintf(stderr, "tc_api_task_uninit failed\n");
+				goto tcplay_err;
+			}
+
 		}
 	} else if (type == CRYPTDISKS_START) {
 		/* Open the device */
 		if (isluks) {
 			if ((error = crypt_luksOpen(&co)) != 0) {
 				fprintf(stderr, "crypttab: line %d: device %s "
-				    "could not be mapped / opened\n",
-				    line_no, tco.tc_device);
+				    "could not be mapped/opened\n",
+				    line_no, co.device);
 				return 1;
 			}
 		} else {
-			/* Assume tcplay volume */
-			if ((error = tc_api_map_volume(&tco)) != 0) {
-				fprintf(stderr, "crypttab: line %d: device %s "
-				    "could not be mapped / opened: %s\n",
-				    line_no, tco.tc_device,
-				    tc_api_get_error_msg());
+			if ((tcplay_task = tc_api_task_init("map")) == NULL) {
+				fprintf(stderr, "tc_api_task_init failed.\n");
+				goto tcplay_err;
+			}
+			if ((error = tc_api_task_set(tcplay_task, "dev", go.device))) {
+				fprintf(stderr, "tc_api_task_set dev failed\n");
+				goto tcplay_err;
 				tc_api_uninit();
-				return 1;
+			}
+			if ((error = tc_api_task_set(tcplay_task, "map_name",
+			    go.map_name))) {
+				fprintf(stderr, "tc_api_task_set map_name failed\n");
+				goto tcplay_err;
+			}
+			if ((error = tc_api_task_set(tcplay_task, "interactive",
+			    (go.passphrase != NULL) ? 0 : 1))) {
+				fprintf(stderr, "tc_api_task_set map_name failed\n");
+				goto tcplay_err;
+			}
+			if ((error = tc_api_task_set(tcplay_task, "retries",
+			    go.ntries))) {
+				fprintf(stderr, "tc_api_task_set map_name failed\n");
+				goto tcplay_err;
+			}
+			if ((error = tc_api_task_set(tcplay_task, "timeout",
+			    go.timeout))) {
+				fprintf(stderr, "tc_api_task_set map_name failed\n");
+				goto tcplay_err;
+			}
+
+			if (go.passphrase != NULL) {
+				if ((error = tc_api_task_set(tcplay_task, "passphrase",
+				    go.passphrase))) {
+					fprintf(stderr, "tc_api_task_set map_name failed\n");
+					goto tcplay_err;
+				}
+			}
+
+			for (i = 0; i < go.nkeyfiles; i++) {
+				if ((error = tc_api_task_set(tcplay_task, "keyfiles",
+				    go.keyfiles[i]))) {
+					fprintf(stderr, "tc_api_task_set keyfile failed\n");
+					goto tcplay_err;
+				}
+			}
+			if ((error = tc_api_task_do(tcplay_task))) {
+				fprintf(stderr, "crypttab: line %d: device %s "
+				    "could not be mapped/opened: %s\n",
+				    line_no, go.device,
+				    tc_api_task_get_error(tcplay_task));
+				goto tcplay_err;
+			}
+			if ((error = tc_api_task_uninit(tcplay_task))) {
+				fprintf(stderr, "tc_api_task_uninit failed\n");
+				goto tcplay_err;
 			}
 		}
 	}
@@ -382,6 +436,10 @@ entry_parser(char **tokens, char **options, int type)
 		tc_api_uninit();
 
 	return 0;
+
+tcplay_err:
+	tc_api_uninit();
+	return 1;
 }
 
 static int
