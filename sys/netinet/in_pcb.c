@@ -602,7 +602,8 @@ in_pcbsetlport_remote(struct inpcb *inp, const struct sockaddr *remote,
 		lastport = &pcbinfo->lasthi;
 	} else if (inp->inp_flags & INP_LOWPORT) {
 		if (cred &&
-		    (error = priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
+		    (error =
+		     priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
 			inp->inp_laddr.s_addr = INADDR_ANY;
 			return (error);
 		}
