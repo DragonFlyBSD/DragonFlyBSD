@@ -28,91 +28,59 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd July 5, 2011
+.Dd January 20, 2014
 .Dt TCPLAY 3
 .Os
 .Sh NAME
 .Nm tc_api_init ,
 .Nm tc_api_uninit ,
-.Nm tc_api_create_volume ,
-.Nm tc_api_map_volume ,
-.Nm tc_api_unmap_volume ,
-.Nm tc_api_check_cipher ,
-.Nm tc_api_check_prf_hash ,
-.Nm tc_api_get_error_msg ,
-.Nm tc_api_get_summary
+.Nm tc_api_has ,
+.Nm tc_api_cipher_iterate ,
+.Nm tc_api_prf_iterate ,
+.Nm tc_api_task_init ,
+.Nm tc_api_task_uninit ,
+.Nm tc_api_task_set ,
+.Nm tc_api_task_do ,
+.Nm tc_api_task_info_get ,
+.Nm tc_api_task_get_error
 .Nd TrueCrypt volume management
 .Sh LIBRARY
 .Lb libtcplay
 .Sh SYNOPSIS
-.In sys/types.h
 .In tcplay_api.h
+.Ft typedef int
+.Fn (*tc_api_cipher_iterator_fn) "void *priv" "const char *name" "int key_length_in_bits" "int ciphers_in_chain"
+.Ft typedef int
+.Fn (*tc_api_prf_iterator_fn) "void *priv" "const char *name"
+.Ft typedef int
+.Fn (*tc_api_state_change_fn) "void *priv" "const char *state" "int enter_state"
 .Ft int
 .Fn tc_api_init "int verbose"
 .Ft int
 .Fn tc_api_uninit "void"
 .Ft int
-.Fn tc_api_create_volume "tc_api_opts *api_opts"
+.Fn tc_api_has "const char *feature"
 .Ft int
-.Fn tc_api_map_volume "tc_api_opts *api_opts"
+.Fn tc_api_cipher_iterate "tc_api_cipher_iterator_fn fn" "void *priv"
 .Ft int
-.Fn tc_api_unmap_volume "tc_api_opts *api_opts"
+.Fn tc_api_prf_iterate "tc_api_prf_iterator_fn fn" "void *priv"
+.Ft tc_api_task
+.Fn tc_api_task_init "const char *op"
 .Ft int
-.Fn tc_api_check_cipher "tc_api_opts *api_opts"
+.Fn tc_api_task_uninit "tc_api_task task"
 .Ft int
-.Fn tc_api_check_prf_hash "tc_api_opts *api_opts"
+.Fn tc_api_task_set "tc_api_task task" "const char *key" "..."
+.Ft int
+.Fn tc_api_task_do "tc_api_task task"
+.Ft int
+.Fn tc_api_task_info_get "tc_api_task task" "const char *key" "..."
 .Ft const char *
-.Fn tc_api_get_error_msg "void"
-.Ft const char *
-.Fn tc_api_get_summary "void"
+.Fn tc_api_task_get_error "tc_api_task task"
 .Sh DESCRIPTION
 The
 .Nm tcplay
-library provides an interface to create, query and map
-TrueCrypt-compatible
-volumes.
-.Pp
-The
-.Fn tc_api_create_volume ,
-.Fn tc_api_map_volume ,
-.Fn tc_api_unmap_volume ,
-.Fn tc_api_check_cipher
-and
-.Fn tc_api_check_prf_hash
-functions take a
-.Vt tc_api_opts
-data structure as only argument, which is defined as follows:
-.Bd -literal
-typedef struct tc_api_opts {
-	/* Common fields */
-	char		*tc_device;
-	char		*tc_passphrase;
-	const char	**tc_keyfiles;
-
-	/* Fields for mapping */
-	char		*tc_map_name;
-	int		tc_password_retries;
-	int		tc_interactive_prompt;
-	unsigned long	tc_prompt_timeout;
-
-	/* Fields for creation */
-	char		*tc_cipher;
-	char		*tc_prf_hash;
-	char		*tc_cipher_hidden;
-	char		*tc_prf_hash_hidden;
-	size_t		tc_size_hidden_in_bytes;
-	char		*tc_passphrase_hidden;
-	const char	**tc_keyfiles_hidden;
-} tc_api_opts;
-.Ed
-.Pp
-where the keyfile fields,
-.Fa tc_keyfiles
-and
-.Fa tc_keyfiles_hidden ,
-are
-.Dv NULL
-terminated arrays of key file strings.
+library provides an interface to create, query, map and manage
+TrueCrypt-compatible volumes.
 .Pp
 The
 .Fn tc_api_init
@@ -130,124 +98,458 @@ function clears up all internal secure memory, such as memory used for
 decrypted headers, passphrases, keyfiles, etc.
 .Pp
 The
-.Fn tc_api_create_volume
-function creates a new volume using the parameters specified in the
-.Fa api_opts
+.Fn tc_api_has
+function checks whether the loaded tcplay library has the feature
+specified by the
+.Fa feature
 argument.
-The new volume will be created on the device specified by
-.Fa tc_device
-using the cipher specified by
-.Fa tc_cipher
-and the pbkdf2 prf hash algorithm specified by
-.Fa tc_prf_hash
-and using the passphrase and keyfiles specified by
-.Fa tc_passphrase
-and
-.Fa tc_keyfiles
-respectively.
-If
-.Fa tc_size_hidden_in_bytes
-is not zero, a hidden volume of the given size will be created, using
-the cipher specified by
-.Fa tc_cipher_hidden
-and the pbkdf2 prf hash algorithm specified by
-.Fa tc_prf_hash_hidden .
-If
-.Fa tc_cipher_hidden
-or
-.Fa tc_prf_hash_hidden
-are
-.Dv NULL ,
-the same algorithm as for the outer volume will be used.
-The passphrase and keyfiles used are specified by
-.Fa tc_passphrase_hidden
-and
-.Fa tc_keyfiles_hidden
-respectively.
+The current version of the
+.Nm tcplay
+library supports the following features:
+.Bl -column "some_long_feature" "Description"
+.It Sy Feature         Ta Sy Description
+.It Li trim            Ta    Allows enabling discards/TRIM when mapping a volume
+.El
 .Pp
 The
-.Fn tc_api_map_volume
-function maps a volume using the parameters specified in the
-.Fa api_opts
+.Fn tc_api_cipher_iterate
+function passes every available cipher chain to the callback provided in the
+.Fa fn
 argument.
-The volume, which will be mapped as
-.Fa tc_map_name ,
-is specified in
-.Fa tc_device .
 The
-.Fa tc_interactive_prompt
-field determines whether the user will be prompted to enter a passphrase
-interactively or whether the passphrase in
-.Fa tc_passphrase
-will be used.
-If an interactive prompt is used, the prompt will time out after
-.Fa tc_prompt_timeout
-seconds.
-A value of 0 indicates that no timeout will occur.
-The number of passphrase entry retries is defined by
-.Fa tc_password_retries .
-Note that the
-.Fn tc_api_map_volume
-function does not support accessing an outer volume while
-protecting the hidden volume.
-Depending on the passphrase/keyfiles used
-either the outer or the hidden volume will be mapped.
+.Fa priv
+argument is passed on every call of the callback function.
+The name of the cipher chain is passed to the callback function in the
+.Fa name
+argument.
+Similarly,
+the
+.Fa ciphers_in_chain
+argument holds the number of ciphers in the current chain,
+and
+.Fa key_length_in_bits
+holds the total key length for the cipher chain,
+in bits.
 .Pp
 The
-.Fn tc_api_unmap_volume
-unmaps / closes the volume specified in
-.Fa tc_map_name .
+.Fn tc_api_prf_iterate
+function passes every available cipher chain to the callback provided in the
+.Fa fn
+argument.
+The
+.Fa priv
+argument is passed on every call of the callback function.
+The name of the PKBDF2 PRF algorithm is passed to the callback function in the
+.Fa name
+argument.
 .Pp
 The
-.Fn tc_api_check_cipher
-function checks whether the cipher specified in the
-.Fa api_opts
-argument field
-.Fa tc_cipher
-is valid.
+.Fn tc_api_task_init
+function initializes and returns a
+.Ft tc_api_task
+opaque pointer that can be used to run
+.Nm tcplay
+commands.
+Each task can be used only for a single
+.Fn tc_api_task_do
+call,
+and must be deallocated using
+.Fn tc_api_task_uninit .
+The
+.Fa op
+argument can be one of the following:
+.Bl -tag -width indent
+.It Sy create
+Create a new encrypted TrueCrypt volume.
+.It Sy map
+Map an existing TrueCrypt volume.
+.It Sy info
+Request information about an encrypted TrueCrypt volume.
+.It Sy info_mapped
+Request information about a mapped TrueCrypt volume.
+.It Sy unmap
+Unmap a mapped TrueCrypt volume.
+.It Sy modify
+Modify the TrueCrypt volume by changing the passphrase, keyfiles, PRF algorithm,
+restoring from a backup header, restoring from a header file or saving to a header file.
+.It Sy restore
+Modify the TrueCrypt volume as
+.Sy modify
+does, but without changing the passphrase, keyfiles or PRF algorithm.
+.El
 .Pp
 The
-.Fn tc_api_check_prf_hash
-function checks whether the prf hash algorithm specified in the
-.Fa api_opts
-argument field
-.Fa tc_prf_hash
-is valid.
-.Pp
-The
-.Fn tc_api_get_error_msg
-function should be called whenver another API function returns
-.Dv TC_ERR .
-It returns a string containing a description of the error that
-occurred.
-.Pp
-The
-.Fn tc_api_get_summary
-function returns a string containing a summary of the current
-progress of a certain operation.
-Currently only the volume erasing
-part of creating a new volume can provide a summary.
-When no summary is available, an empty string is returned.
-The output otherwise is equivalent to that of a
-.Dv SIGINFO
-signal when using
+.Fn tc_api_task_set
+function allows settting a number of different options for the current task.
+The following table shows which keys are available on calls to
+.Fn tc_api_task_set
+for each of the operations.
+The letter
+.Sy M
+indicates the setting is mandatory,
+whilst
+.Sy *
+indicates the setting is optional.
+.Bl -column "hidden_header_from_filexxx" "createxxx" "infoxxx" "mapxxx" "unmapxxx" "info_mappedxxx" "modifyxxx" "restorexxx"
+.It Sy Key                      Ta Sy create Ta Sy info Ta Sy map Ta Sy unmap Ta Sy info_mapped Ta Sy modify Ta Sy restore
+.It Li dev                      Ta    "M"    Ta    "M"  Ta    "M" Ta    "*"   Ta                Ta    "M"    Ta    "M"
+.It Li map_name                 Ta           Ta         Ta    "M" Ta    "M"   Ta    "M"         Ta           Ta    ""
+.It Li interactive              Ta    "*"    Ta    "*"  Ta    "*" Ta          Ta                Ta    "*"    Ta    "*"
+.It Li retries                  Ta    "*"    Ta    "*"  Ta    "*" Ta          Ta                Ta    "*"    Ta    "*"
+.It Li timeout                  Ta    "*"    Ta    "*"  Ta    "*" Ta          Ta                Ta           Ta    ""
+.It Li state_change_fn          Ta    "*"    Ta         Ta        Ta          Ta                Ta    "*"    Ta    "*"
+.It Li weak_keys_and_salt       Ta    "*"    Ta         Ta        Ta          Ta                Ta    "*"    Ta    "*"
+.It Li secure_erase             Ta    "*"    Ta         Ta        Ta          Ta                Ta           Ta    ""
+.It Li hidden_size_bytes        Ta    "*"    Ta         Ta        Ta          Ta                Ta           Ta    ""
+.It Li prf_algo                 Ta    "*"    Ta         Ta        Ta          Ta                Ta           Ta    ""
+.It Li h_prf_algo               Ta    "*"    Ta         Ta        Ta          Ta                Ta           Ta    ""
+.It Li cipher_chain             Ta    "*"    Ta         Ta        Ta          Ta                Ta           Ta    ""
+.It Li h_cipher_chain           Ta    "*"    Ta         Ta        Ta          Ta                Ta           Ta    ""
+.It Li protect_hidden           Ta           Ta    "*"  Ta    "*" Ta          Ta                Ta           Ta    ""
+.It Li fde                      Ta           Ta    "*"  Ta    "*" Ta          Ta                Ta           Ta    ""
+.It Li sys                      Ta           Ta    "*"  Ta    "*" Ta          Ta                Ta    "?"    Ta    "?"
+.It Li use_backup_header        Ta           Ta    "*"  Ta    "*" Ta          Ta                Ta    "*"    Ta    "*"
+.It Li header_from_file         Ta           Ta    "*"  Ta    "*" Ta          Ta                Ta    "*"    Ta    "*"
+.It Li hidden_header_from_file  Ta           Ta    "*"  Ta    "*" Ta          Ta                Ta    "*"    Ta    "*"
+.It Li allow_trim               Ta           Ta         Ta    "*" Ta          Ta                Ta           Ta    ""
+.It Li save_header_to_file      Ta           Ta         Ta        Ta          Ta                Ta    "*"    Ta    ""
+.It Li passphrase               Ta    "*"    Ta    "*"  Ta    "*" Ta          Ta                Ta    "*"    Ta    "*"
+.It Li h_passphrase             Ta    "*"    Ta    "*"  Ta    "*" Ta          Ta                Ta    "*"    Ta    "*"
+.It Li keyfiles                 Ta    "*"    Ta    "*"  Ta    "*" Ta          Ta                Ta    "*"    Ta    "*"
+.It Li h_keyfiles               Ta    "*"    Ta    "*"  Ta    "*" Ta          Ta                Ta    "*"    Ta    "*"
+.It Li new_passphrase           Ta           Ta         Ta        Ta          Ta                Ta    "*"    Ta    ""
+.It Li new_keyfiles             Ta           Ta         Ta        Ta          Ta                Ta    "*"    Ta    ""
+.It Li new_prf_algo             Ta           Ta         Ta        Ta          Ta                Ta    "*"    Ta    ""
+.El
+The varargs accepted by the
+.Fn tc_api_task_set
+function depend on the key being set.
+.Bl -tag -width indent
+.It dev
+The vararg is of type
+.Ft const char * .
+It sets the device that contains the TrueCrypt volume to operate on.
+.It map_name
+The vararg is of type
+.Ft const char * .
+It set the name of the mapped volume.
+.It interactive
+The vararg is of type
+.Ft int .
+It determines whether the user will be prompted for a passphrase or whether
+the settings are taken from the arguments set using
+.Fn tc_api_task_set .
+.It retries
+The vararg is of type
+.Ft int .
+It determines the number of passphrase retries if
+.Fa interactive
+is set.
+.It weak_keys_and_salt
+The vararg is of type
+.Ft int .
+It determines whether to use a weak source of entropy for key material and/or
+the salt.
+.It secure_erase
+The vararg is of type
+.Ft int .
+It determines whether a secure erase is performed as part of the volume creation.
+.It hidden_size_bytes
+The vararg is of type
+.Ft int64_t .
+If set to
+.Fa 0
+it implies no hidden volume will be created.
+A positive value implies a hidden volume of the specified size in bytes is created.
+.It prf_algo
+The vararg is of type
+.Ft const char *
+and must be a valid PBKDF2 PRF algorithm.
+It determines which PBKDF2 PRF algorithm is used for the outer volume.
+.It h_prf_algo
+The vararg is of type
+.Ft const char *
+and must be a valid PBKDF2 PRF algorithm.
+It determines which PBKDF2 PRF algorithm is used for the hidden volume.
+.It cipher_chain
+The vararg is of type
+.Ft const char *
+and must be a valid
+.Nm tcplay
+cipher chain.
+It determines which cipher chain is used to encrypt the outer volume.
+.It h_cipher_chain
+The vararg is of type
+.Ft const char *
+and must be a valid
+.Nm tcplay
+cipher chain.
+It determines which cipher chain is used to encrypt the hidden volume.
+.It protect_hidden
+The vararg is of type
+.Ft int .
+It determines whether the size of the outer volume should be adjusted to protect
+any hidden volume.
+Using this mode requires both outer and hidden passphrases and keyfiles.
+.It sys
+The vararg is of type
+.Ft const char * .
+It determines whether the volume is a system encrypted volume,
+and if so, which disk is the system disk and hence contains the header.
+If set to
+.Dv NULL
+the volume will implicitly be treated as a non-system encrypted volume.
+.It fde
+The vararg is of type
+.Ft int .
+It determines whether the disk uses full disk encryption or not.
+If specified, the device pointed to by the
+.Fa dev
+setting should be a whole disk device, not any partition.
+The device will be mapped or queried as a whole.
+To access individual partitions, a utility such as
+.Xr kpartx 8
+should be used, which will create additional individual mappings
+for each partition in the decrypted mapped volume.
+For more details on full disk encryption, see
 .Xr tcplay 8 .
+.It use_backup_header
+The vararg is of type
+.Ft int .
+It determines whether the backup header should be used instead of the regular
+header to access the volume.
+.It header_from_file
+The vararg is of type
+.Ft const char * .
+If not
+.Dv NULL
+it forces
+.Nm tcplay
+to use the header in the specified file instead of the regular outer volume header.
+.It hidden_header_from_file
+The vararg is of type
+.Ft const char * .
+If not
+.Dv NULL
+it forces
+.Nm tcplay
+to use the header in the specified file instead of the regular hidden volume header.
+.It allow_trim
+The vararg is of type
+.Ft int .
+It specifies whether the mapped volume should allow discards (TRIM).
+.It save_header_to_file
+The vararg is of type
+.Ft const char * .
+If not
+.Dv NULL
+it forces
+.Nm tcplay
+to write the (modified) header to the specified file instead of replacing the volume
+headers.
+.It passphrase
+The vararg is of type
+.Ft const char * .
+It sets the passphrase that
+.Nm tcplay
+uses to access the volume.
+.It h_passphrase
+The vararg is of type
+.Ft const char * .
+It sets the passphrase that
+.Nm tcplay
+uses to unlock the hidden volume header.
+This option is only used if a hidden volume is being created or the
+.Fa protect_hidden
+setting is set.
+Otherwise
+.Nm tcplay
+will first use the regular passphrase to try to unlock the outer volume and then
+try to unlock the hidden volume header with the same passphrase without ever
+using
+.Fa h_passphrase .
+.It keyfiles
+The vararg is of type
+.Ft const char * .
+If not
+.Dv NULL
+the given keyfile will be added to the keyfile pool.
+Multiple calls to set this option with a non-
+.Dv NULL
+argument result add additional keyfiles.
+If
+.Dv NULL
+all keyfiles are cleared.
+.It h_keyfiles
+The vararg is of type
+.Ft const char * .
+If not
+.Dv NULL
+the given keyfile will be added to the keyfile pool.
+Multiple calls to set this option with a non-
+.Dv NULL
+argument result add additional keyfiles.
+If
+.Dv NULL
+all keyfiles are cleared.
+This option is only used if a hidden volume is being created or the
+.Fa protect_hidden
+setting is set.
+Otherwise
+.Nm tcplay
+will first use the regular keyfiles to try to unlock the outer volume and then
+try to unlock the hidden volume header with the same keyfiles without ever
+using
+.Fa h_keyfiles .
+.It new_passphrase
+The vararg is of type
+.Fa const char * .
+It specifies the new passphrase to use when modifying the volume header.
+.It new_keyfiles
+The vararg is of type
+.Fa const char * .
+If not
+.Dv NULL
+the given keyfile will be added to the new keyfile pool.
+Multiple calls to set this option with a non-
+.Dv NULL
+argument result add additional keyfiles.
+If
+.Dv NULL
+all new keyfiles are cleared.
+When the volume header is modified,
+it will be reencrypted using the new keyfiles.
+.It new_prf_algo
+The vararg is of type
+.Ft const char *
+and must be a valid PBKDF2 PRF algorithm.
+It determines which PBKDF2 PRF algorithm is used when reencrypting the (modified)
+volume header.
+.It state_change_fn
+The first vararg is of type
+.Fa tc_api_state_change_fn
+and the second vararg is of type
+.Fa void * .
+It allows the consumer to provide a callback function which will be called when
+starting and stopping a time-intensive sub-operation such as collecting entropy
+or erasing a volume.
+The second vararg is passed as the
+.Fa priv
+argument to the callback.
+The
+.Fa enter_state
+argument to the callback determines whether
+.Nm tcplay
+is starting or stopping the time-intensive sub-task specified in the
+.Fa state
+argument.
+.El
+.Pp
+The
+.Fn tc_api_task_do
+function runs the task specified in the
+.Fa task
+argument.
+Before running the task,
+.Fn tc_api_task_do
+performs a simple sanity check of the arguments set previously using
+.Fn tc_api_task_set
+before performing the actual operation.
+After a call to
+.Fn tc_api_task_do
+for the
+.Sy info
+or
+.Sy info_mapped
+operations,
+the queried information is available to be accessed using
+.Fn tc_api_task_info_get .
+.Pp
+The
+.Fn tc_api_task_info_get
+function can be used to query the result of a
+.Sy info
+or
+.Sy info_mapped
+operation.
+The
+.Fa task
+argument is the task used in a previous
+.Fn tc_api_task_do
+call.
+The
+.Fa key
+argument can be one of the following:
+.Bl -column "some_long_feature" "very_long_type" "Description"
+.It Sy Key             Ta Sy type       Ta Sy Description
+.It Li device          Ta Ft char *     Ta Corresponding device node
+.It Li cipher          Ta Ft char *     Ta Used cipher chain
+.It Li prf             Ta Ft char *     Ta Used PBKDF2 PRF algorithm
+.It Li key_bits        Ta Ft int *      Ta Number of key bits
+.It Li size            Ta Ft int64_t *  Ta Volume size in bytes
+.It Li iv_offset       Ta Ft int64_t *  Ta IV Offset of volume in bytes
+.It Li block_offset    Ta Ft int64_t *  Ta Block Offset of volume in bytes
+.El
+.Pp
+The second vararg argument must be of the type specified in the above table.
+The first vararg argument is always the size of the storage provided
+in the second argument.
+For a
+.Ft char *
+argument, the size corresponds to the size of the buffer at the provided
+location and must be of type
+.Ft size_t .
+For an
+.Ft int *
+or
+.Ft int64_t *
+argument, it should be the size of the underlying type.
+.Pp
+The
+.Fn tc_api_task_get_error
+function can be used to get a detailed error message after a failed
+.Fa tc_api_task_do
+call.
+The
+.Fa task
+argument is the task used in a previous
+.Fn tc_api_task_do
+call.
+.Sh NOTES
+TrueCrypt limits passphrases to 64 characters (including the terminating
+null character).
+To be compatible with it,
+.Nm tcplay
+does the same.
+All passphrases (exlcuding keyfiles) are trimmed to 64 characters.
+Similarly, keyfiles are limited to a size of 1 MB, but up to 256
+keyfiles can be used.
 .Sh RETURN VALUES
 All functions except
-.Fn tc_api_get_error_msg
+.Fn tc_api_task_init
 and
-.Fn tc_api_get_summary
+.Fn tc_api_task_get_error
 return either
 .Dv TC_OK
-to signal that the operation completed successfully, or
+to indicate that the operation completed successfully, or
+.Dv TC_ERR_UNIMPL
+to indicate that the operation is not implemented
+, or
 .Dv TC_ERR
-to signal that an error occurred.
+to indicate that any other error occured.
 .Pp
 The
 .Fn tc_api_get_error_msg
-and
-.Fn tc_api_get_summary
-always return a valid, but possibly empty, string.
+function always return a valid, but possibly empty (or irrelevant,
+if not called after an error occurred) string.
+.Pp
+The
+.Fn tc_api_task_init
+function returns
+.Dv NULL
+if an error occurred and an opaque
+.Ft tc_api_task
+otherwise.
 .Sh COMPATIBILITY
 The
 .Nm tcplay
@@ -255,7 +557,8 @@ library offers full compatibility with TrueCrypt volumes including
 hidden
 volumes, system encryption (map-only), keyfiles and cipher cascading.
 .Sh SEE ALSO
-.Xr tcplay 8
+.Xr tcplay 8 ,
+.Xr kpartx 8
 .Sh HISTORY
 The
 .Nm tcplay

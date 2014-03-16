@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd July 5, 2011
+.Dd December 08, 2013
 .Dt TCPLAY 8
 .Os
 .Sh NAME
@@ -40,6 +40,8 @@
 .Fl c
 .Fl d Ar device
 .Op Fl g
+.Op Fl z
+.Op Fl w
 .Op Fl a Ar pbkdf_hash
 .Op Fl b Ar cipher
 .Op Fl f Ar keyfile_hidden
@@ -53,6 +55,12 @@
 .Op Fl f Ar keyfile_hidden
 .Op Fl k Ar keyfile
 .Op Fl s Ar system_device
+.Op Fl -fde
+.Op Fl -use-backup
+.Op Fl -use-hdr-file Ar hdr_file
+.Op Fl -use-hidden-hdr-file Ar hdr_file
+.Nm
+.Fl j Ar mapping
 .Nm
 .Fl m Ar mapping
 .Fl d Ar device
@@ -60,6 +68,32 @@
 .Op Fl f Ar keyfile_hidden
 .Op Fl k Ar keyfile
 .Op Fl s Ar system_device
+.Op Fl t
+.Op Fl -fde
+.Op Fl -use-backup
+.Op Fl -use-hdr-file Ar hdr_file
+.Op Fl -use-hidden-hdr-file Ar hdr_file
+.Nm
+.Fl -modify
+.Fl d Ar device
+.Op Fl k Ar keyfile
+.Op Fl -new-keyfile Ar new_keyfile
+.Op Fl -new-pbkdf-prf Ar pbkdf_hash
+.Op Fl s Ar system_device
+.Op Fl -fde
+.Op Fl -use-backup
+.Op Fl -use-hdr-file Ar hdr_file
+.Op Fl -use-hidden-hdr-file Ar hdr_file
+.Op Fl -save-hdr-backup Ar hdr_file
+.Op Fl w
+.Nm
+.Fl -modify
+.Fl d Ar device
+.Op Fl k Ar keyfile
+.Fl -restore-from-backup-hdr
+.Op Fl w
+.Nm
+.Fl u Ar mapping
 .Nm
 .Fl h | v
 .Sh DESCRIPTION
@@ -79,6 +113,16 @@ Print help message and exit.
 .It Fl i , Fl -info
 Print out information about the encrypted device specified by
 .Fl -device .
+.It Fl j Ar mapping , Fl -info-mapped Ns = Ns Ar mapping
+Print out information about the mapped tcplay volume specified
+by
+.Ar mapping .
+Information such as key CRC and the PBKDF2 PRF is not available
+via this command.
+.It Fl -modify
+Modify the volume header.
+This mode allows changing passphrase, keyfiles, PBKDF2 PRF as
+well as restoring from a backup header.
 .It Fl m Ar mapping , Fl -map Ns = Ns Ar mapping
 Map the encrypted TrueCrypt volume on the device specified by
 .Fl -device
@@ -86,6 +130,19 @@ as a
 .Xr dm 4
 mapping called
 .Ar mapping .
+The
+.Ar mapping
+argument should not contain any spaces or special characters.
+.It Fl u Ar mapping , Fl -unmap Ns = Ns Ar mapping
+Removes (unmaps) the
+.Xr dm 4
+mapping specified by
+.Ar mapping
+as well as any related cascade mappings.
+If you mapped a volume using full disk encryption and created
+mapping for individual partitions using
+.Xr kpartx 8 ,
+you must remove these prior to unmapping the volume.
 .It Fl v, Fl -version
 Print version message and exit.
 .El
@@ -107,6 +164,9 @@ If you only intend to map a hidden volume, the
 option has to be used.
 This option can appear multiple times; if so, multiple
 keyfiles will be used.
+This option is not valid in the
+.Fl -modify
+mode.
 .It Fl k Ar keyfile , Fl -keyfile Ns = Ns Ar keyfile
 Specifies a
 .Ar keyfile
@@ -137,6 +197,12 @@ volume are those specified by
 .Fl -keyfile-hidden .
 The user will be prompted for the size of the hidden volume
 interactively.
+.It Fl w, Fl -weak-keys
+Use
+.Xr urandom 4
+for key material instead of a strong entropy source.
+This is in general a really bad idea and should only be used
+for testing.
 .It Fl x Ar pbkdf_hash , Fl -pbkdf-prf-hidden Ns = Ns Ar pbkdf_hash
 Specifies which hash algorithm to use for the PBKDF2 password
 derivation for the hidden volume.
@@ -155,12 +221,16 @@ If no cipher is specified, the same as for the outer volume
 will be used.
 To see which algorithms are supported, specify
 .Fl -cipher-hidden Ns = Ns Cm help .
+.It Fl z, Fl -insecure-erase
+Skips the secure erase of the disk.
+Use this option carefully as it is a security risk!
 .El
 .Pp
 Additional options for the
-.Fl -info
-and
+.Fl -info ,
 .Fl -map
+and
+.Fl -modify
 commands are:
 .Bl -tag -width indent
 .It Fl e, Fl -protect-hidden
@@ -169,18 +239,115 @@ its reported size will be adjusted accordingly to the size of
 the hidden volume contained in it.
 Both the hidden volume and outer volume passphrase and keyfiles
 will be required.
+This option only applies to the
+.Fl -info
+and
+.Fl -map
+commands.
 .It Fl s Ar system_device , Fl -system-encryption Ns = Ns Ar system_device
 This option is required if you are attempting to access a device
 that uses system encryption, for example an encrypted
 .Tn Windows
 system partition.
+It does not apply to disks using full disk encryption.
 The
 .Fl -device
 option will point at the actual encrypted partition, while the
 .Ar system_device
 argument will point to the parent device (i.e.\& underlying physical disk)
 of the encrypted partition.
+.It Fl -fde
+This option is intended to be used with disks using full disk encryption (FDE).
+When a disk has been encrypted using TrueCrypt's FDE, the complete disk
+is encrypted except for the first 63 sectors.
+The
+.Fl -device
+option should point to the whole disk device, not to any particular
+partition.
+The resultant mapping will cover the whole disk, and will not appear as
+separate partitions.
+To access individual partitions after mapping,
+.Xr kpartx 8
+can be used.
+.It Fl -use-backup
+This option is intended to be used when the primary headers of a volume
+have been corrupted.
+This option will force
+.Nm
+to use the backup headers, which are located at the end of the device,
+to access the volume.
 .El
+.Pp
+Additional options only for the
+.Fl -map
+command are:
+.Bl -tag -width indent
+.It Fl t , Fl -allow-trim
+This option enables TRIM (discard) support on the mapped volume.
+.El
+.Pp
+Additional options only for the
+.Fl -modify
+command are:
+.Bl -tag -width indent
+.It Fl -new-pbkdf-prf Ns = Ns Ar pbkdf_hash
+Specifies which hash algorithm to use for the PBKDF2 password
+derivation on reencrypting the volume header.
+If this option is not specified, the reencrypted header will
+use the current PRF.
+To see which algorithms are supported, specify
+.Fl -pbkdf-prf Ns = Ns Cm help .
+.It Fl -new-keyfile Ns = Ns Ar keyfile
+Specifies a
+.Ar keyfile
+to use in addition to the new passphrase on reencrypting the
+volume header.
+This option can appear multiple times; if so, multiple
+keyfiles will be used.
+.It Fl -restore-from-backup-hdr
+If this option is specified, neither
+.Fl -new-pbkdf-prf
+nor
+.Fl -new-keyfile
+should be specified.
+This option implies
+.Fl -use-backup .
+Use this option to restore the volume headers from the backup
+header.
+.El
+.Pp
+Sending a
+.Dv SIGINFO
+or
+.Dv SIGUSR1
+signal to a running
+.Nm
+process makes it print progress on slower tasks
+such as gathering entropy or wiping the volume.
+.Sh NOTES
+TrueCrypt limits passphrases to 64 characters (including the terminating
+null character).
+To be compatible with it,
+.Nm
+does the same.
+All passphrases (excluding keyfiles) are trimmed to 64 characters.
+Similarly, keyfiles are limited to a size of 1 MB, but up to
+256 keyfiles can be used.
+.Sh PLAUSIBLE DENIABILITY
+.Nm
+offers plausible deniability. Hidden volumes are created within an outer
+volume.
+Which volume is accessed solely depends on the passphrase and keyfile(s)
+used.
+If the passphrase and keyfiles for the outer volume are specified,
+no information about the existance of the hidden volume is exposed.
+Without knowledge of the passphrase and keyfile(s) of the hidden volume
+its existence remains unexposed.
+The hidden volume can be protected when mapping the outer volume by
+using the
+.Fl -protect-hidden
+option and specifying the passphrase and keyfiles for both the outer
+and hidden volumes.
 .Sh EXAMPLES
 Create a new TrueCrypt volume on
 .Pa /dev/vn0
@@ -224,9 +391,142 @@ using the keyfile
 .Fl -device Ns = Ns Cm /dev/vn0
 .Fl -keyfile Ns = Ns Cm hidden.key
 .Ed
+.Pp
+Map and mount the volume in the file
+.Pa secvol
+on Linux:
+.Bd -ragged -offset indent
+.Sy losetup Cm /dev/loop1 Cm secvol
+.Ed
+.Bd -ragged -offset indent
+.Nm Fl -map Ns = Ns Cm secv
+.Fl -device Ns = Ns Cm /dev/loop1
+.Ed
+.Bd -ragged -offset indent
+.Sy mount Cm /dev/mapper/secv Cm /mnt
+.Ed
+.Pp
+Similarly on
+.Dx :
+.Bd -ragged -offset indent
+.Sy vnconfig Cm vn1 Cm secvol
+.Ed
+.Bd -ragged -offset indent
+.Nm Fl -map Ns = Ns Cm secv
+.Fl -device Ns = Ns Cm /dev/vn1
+.Ed
+.Bd -ragged -offset indent
+.Sy mount Cm /dev/mapper/secv Cm /mnt
+.Ed
+.Pp
+Unmapping the volume
+.Sy truecrypt2
+on both Linux and
+.Dx
+after unmounting:
+.Bd -ragged -offset indent
+.Sy dmsetup Cm remove Cm truecrypt2
+.Ed
+.Pp
+Or alternatively:
+.Bd -ragged -offset indent
+.Nm Fl -unmap Ns = Ns Cm truecrypt2
+.Ed
+.Pp
+A hidden volume whose existance can be plausibly denied and its outer volume
+can for example be created with
+.Bd -ragged -offset indent
+.Nm Fl -create
+.Fl -hidden
+.Fl -device Ns = Ns Cm /dev/loop0
+.Fl -cipher Ns = Ns Cm AES-256-XTS,TWOFISH-256-XTS
+.Fl -pbkdf-prf Ns = Ns Cm whirlpool
+.Fl -keyfile Ns = Ns Cm one.key
+.Fl -cipher-hidden Ns = Ns Cm AES-256-XTS
+.Fl -pbkdf-prf-hidden Ns = Ns Cm whirlpool
+.Fl -keyfile-hidden Ns = Ns Cm hidden.key
+.Ed
+.Pp
+.Nm
+will prompt the user for the passphrase for both the outer and hidden volume
+as well as the size of the hidden volume inside the outer volume.
+The hidden volume will be created inside the area spanned by the outer volume.
+The hidden volume can optionally use a different cipher and prf function
+as specified by the
+.Fl -cipher-hidden
+and
+.Fl -pbkdf-prf-hidden
+options.
+Which volume is later accessed depends only on which passphrase and keyfile(s)
+are being used,
+so that the existance of the hidden volume remains unknown without knowledge
+of the passphrase and keyfile it is protected by since it is located within
+the outer volume.
+To map the outer volume without potentially damaging the hidden volume,
+the passphrase and keyfile(s) of the hidden volume must be known and provided
+alongside the
+.Fl -protect-hidden
+option.
+.Pp
+A disk encrypted using full disk encryption can be mapped using
+.Bd -ragged -offset indent
+.Nm Fl -map Ns = Ns Cm tcplay_sdb
+.Fl -device Ns = Ns Cm /dev/sdb
+.Fl -fde
+.Ed
+.Pp
+To access individual partitions on the now mapped disk,
+the following command will generate mappings for each
+individual partition on the encrypted disk:
+.Bd -ragged -offset indent
+.Sy kpartx Fl -av Cm /dev/mapper/tcplay_sdb
+.Ed
+.Pp
+To restore the main volume header from the backup header, the following
+command can be used:
+.Bd -ragged -offset indent
+.Nm Fl -modify
+.Fl -device Ns = Ns Cm /dev/sdb
+.Fl -restore-from-backup-hdr
+.Ed
+.Pp
+As with most other commands, which header is saved (used as source) depends
+on the passphrase and keyfiles used.
+.Pp
+To save a backup copy of a header, the following command can be used:
+.Bd -ragged -offset indent
+.Nm Fl -modify
+.Fl -device Ns = Ns Cm /dev/sdb
+.Fl -save-hdr-backup Ns = Ns Cm /tmp/sdb_backup_header.hdr
+.Ed
+.Pp
+As with most other commands, which header is saved (used as source) depends
+on the passphrase and keyfiles used.
+.Pp
+To restore a header from a backup header file, the following command can be
+used:
+.Bd -ragged -offset indent
+.Nm Fl -modify
+.Nm -use-hdr-file Ns = Ns Cm /tmp/sdb_backup_header.hdr
+.Ed
+.Pp
+Similarly, to restore a hidden header from a backup header file:
+.Bd -ragged -offset indent
+.Nm Fl -modify
+.Nm -use-hidden-hdr-file Ns = Ns Cm /tmp/sdb_backup_hidden_header.hdr
+.Ed
+.Pp
+Which header is used as the source of the operation will still depend on the
+passphrase and keyfiles used.
+Even if you use the
+.Fl -use-hidden-hdr-file
+option, if you specify the passphrase and keyfiles for the main header, the
+main header will be used instead.
 .Sh SEE ALSO
 .Xr crypttab 5 ,
-.Xr cryptsetup 8
+.Xr cryptsetup 8 ,
+.Xr dmsetup 8 ,
+.Xr kpartx 8
 .Sh HISTORY
 The
 .Nm

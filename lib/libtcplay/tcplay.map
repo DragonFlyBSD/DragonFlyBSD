@@ -2,13 +2,14 @@
 global:
 	tc_api_init;
 	tc_api_uninit;
-	tc_api_create_volume;
-	tc_api_map_volume;
-	tc_api_unmap_volume;
-	tc_api_check_cipher;
-	tc_api_check_prf_hash;
-	tc_api_get_error_msg;
-	tc_api_get_summary;
+	tc_api_has;
+	tc_api_cipher_iterate;
+	tc_api_prf_iterate;
+	tc_api_task_init;
+	tc_api_task_uninit;
+	tc_api_task_set;
+	tc_api_task_do;
+	tc_api_task_info_get;
 local:
 	*;
 };

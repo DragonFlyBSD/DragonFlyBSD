@@ -27,49 +27,26 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _TCPLAY_API_H
-#define _TCPLAY_API_H
+#ifndef _TCPLAY_API_INTERNAL_H
+#define _TCPLAY_API_INTERNAL_H
 
 #include <stddef.h>
+#include "tcplay.h"
 
-#define TC_OK		0
-#define TC_ERR		-1
-#define TC_ERR_UNIMPL	-255
+typedef enum tc_api_op {
+	TC_OP_CREATE,
+	TC_OP_MAP,
+	TC_OP_UNMAP,
+	TC_OP_INFO,
+	TC_OP_INFO_MAPPED,
+	TC_OP_MODIFY,
+	TC_OP_RESTORE
+} tc_api_op;
 
-#define TC_STATE_ENTER	1
-#define TC_STATE_EXIT	0
-
-struct _tc_api_task;
-
-typedef struct _tc_api_task *tc_api_task;
-
-typedef int (*tc_api_cipher_iterator_fn)(void *, const char *, int /* klen */, int /* length */);
-typedef int (*tc_api_prf_iterator_fn)(void *, const char *);
-typedef int (*tc_api_state_change_fn)(void *, const char *, int);
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-int tc_api_init(int verbose);
-int tc_api_uninit(void);
-
-int tc_api_has(const char *feature);
-
-int tc_api_cipher_iterate(tc_api_cipher_iterator_fn fn, void *priv);
-int tc_api_prf_iterate(tc_api_prf_iterator_fn fn, void *priv);
-
-
-tc_api_task tc_api_task_init(const char *op);
-int tc_api_task_uninit(tc_api_task task);
-int tc_api_task_set(tc_api_task task, const char *key, ...);
-int tc_api_task_do(tc_api_task task);
-
-int tc_api_task_info_get(tc_api_task task, const char *key, ...);
-const char *tc_api_task_get_error(tc_api_task task);
-
-#ifdef __cplusplus
-}
-#endif
+struct _tc_api_task {
+	tc_api_op		op;
+	struct tcplay_opts	*opts;
+	struct tcplay_info	*last_info;
+};
 
 #endif

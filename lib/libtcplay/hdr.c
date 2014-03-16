@@ -100,7 +100,7 @@ verify_hdr(struct tchdr_dec *hdr)
 		return 0;
 	}
 
-	crc = crc32(&hdr->keys, 256);
+	crc = crc32((void *)&hdr->keys, 256);
 	if (crc != hdr->crc_keys) {
 #ifdef DEBUG
 		fprintf(stderr, "CRC32 mismatch (crc_keys)\n");
@@ -127,8 +127,8 @@ verify_hdr(struct tchdr_dec *hdr)
 struct tchdr_enc *
 create_hdr(unsigned char *pass, int passlen, struct pbkdf_prf_algo *prf_algo,
     struct tc_cipher_chain *cipher_chain, size_t sec_sz,
-    size_t total_blocks __unused,
-    off_t offset, size_t blocks, int hidden, struct tchdr_enc **backup_hdr)
+    disksz_t total_blocks __unused,
+    off_t offset, disksz_t blocks, int hidden, int weak, struct tchdr_enc **backup_hdr)
 {
 	struct tchdr_enc *ehdr, *ehdr_backup;
 	struct tchdr_dec *dhdr;
@@ -169,12 +169,12 @@ create_hdr(unsigned char *pass, int passlen, struct pbkdf_prf_algo *prf_algo,
 		goto error;
 	}
 
-	if ((error = get_random(ehdr->salt, sizeof(ehdr->salt))) != 0) {
+	if ((error = get_random(ehdr->salt, sizeof(ehdr->salt), weak)) != 0) {
 		tc_log(1, "could not get salt\n");
 		goto error;
 	}
 
-	if ((error = get_random(ehdr_backup->salt, sizeof(ehdr_backup->salt)))
+	if ((error = get_random(ehdr_backup->salt, sizeof(ehdr_backup->salt), weak))
 	    != 0) {
 		tc_log(1, "could not get salt for backup header\n");
 		goto error;
@@ -198,7 +198,7 @@ create_hdr(unsigned char *pass, int passlen, struct pbkdf_prf_algo *prf_algo,
 
 	memset(dhdr, 0, sizeof(*dhdr));
 
-	if ((error = get_random(dhdr->keys, sizeof(dhdr->keys))) != 0) {
+	if ((error = get_random(dhdr->keys, sizeof(dhdr->keys), weak)) != 0) {
 		tc_log(1, "could not get key random bits\n");
 		goto error;
 	}
@@ -264,6 +264,124 @@ error:
 		free_safe_mem(key_backup);
 	if (dhdr)
 		free_safe_mem(dhdr);
+	if (ehdr)
+		free_safe_mem(ehdr);
+	if (ehdr_backup)
+		free_safe_mem(ehdr_backup);
+
+	return NULL;
+}
+
+struct tchdr_enc *copy_reencrypt_hdr(unsigned char *pass, int passlen,
+    struct pbkdf_prf_algo *prf_algo, int weak, struct tcplay_info *info,
+    struct tchdr_enc **backup_hdr)
+{
+	struct tchdr_enc *ehdr, *ehdr_backup;
+	unsigned char *key, *key_backup;
+	unsigned char iv[128];
+	int error;
+
+	key = key_backup = NULL;
+	ehdr = ehdr_backup = NULL;
+
+	/* By default stick to current PRF algo */
+	if (prf_algo == NULL)
+		prf_algo = info->pbkdf_prf;
+
+	if ((ehdr = (struct tchdr_enc *)alloc_safe_mem(sizeof(*ehdr))) == NULL) {
+		tc_log(1, "could not allocate safe ehdr memory\n");
+		goto error;
+	}
+
+	if ((ehdr_backup = (struct tchdr_enc *)alloc_safe_mem
+	    (sizeof(*ehdr_backup))) == NULL) {
+		tc_log(1, "could not allocate safe ehdr_backup memory\n");
+		goto error;
+	}
+
+	if ((key = alloc_safe_mem(MAX_KEYSZ)) == NULL) {
+		tc_log(1, "could not allocate safe key memory\n");
+		goto error;
+	}
+
+	if ((key_backup = alloc_safe_mem(MAX_KEYSZ)) == NULL) {
+		tc_log(1, "could not allocate safe backup key memory\n");
+		goto error;
+	}
+
+	if ((error = get_random(ehdr->salt, sizeof(ehdr->salt), weak)) != 0) {
+		tc_log(1, "could not get salt\n");
+		goto error;
+	}
+
+	if ((error = get_random(ehdr_backup->salt, sizeof(ehdr_backup->salt), weak))
+	    != 0) {
+		tc_log(1, "could not get salt for backup header\n");
+		goto error;
+	}
+
+	error = pbkdf2(prf_algo, (char *)pass, passlen,
+	    ehdr->salt, sizeof(ehdr->salt),
+	    MAX_KEYSZ, key);
+	if (error) {
+		tc_log(1, "could not derive key\n");
+		goto error;
+	}
+
+	error = pbkdf2(prf_algo, (char *)pass, passlen,
+	    ehdr_backup->salt, sizeof(ehdr_backup->salt),
+	    MAX_KEYSZ, key_backup);
+	if (error) {
+		tc_log(1, "could not derive backup key\n");
+		goto error;
+	}
+
+	HOST_TO_BE(16, info->hdr->tc_ver);
+	HOST_TO_LE(16, info->hdr->tc_min_ver);
+	HOST_TO_BE(32, info->hdr->crc_keys);
+	HOST_TO_BE(64, info->hdr->vol_ctime);
+	HOST_TO_BE(64, info->hdr->hdr_ctime);
+	HOST_TO_BE(64, info->hdr->sz_vol);
+	HOST_TO_BE(64, info->hdr->sz_hidvol);
+	HOST_TO_BE(64, info->hdr->off_mk_scope);
+	HOST_TO_BE(64, info->hdr->sz_mk_scope);
+	HOST_TO_BE(32, info->hdr->sec_sz);
+	HOST_TO_BE(32, info->hdr->flags);
+	HOST_TO_BE(32, info->hdr->crc_dhdr);
+
+	memset(iv, 0, sizeof(iv));
+	error = tc_encrypt(info->cipher_chain, key, iv,
+	    (unsigned char *)info->hdr, sizeof(struct tchdr_dec), ehdr->enc);
+	if (error) {
+		tc_log(1, "Header encryption failed\n");
+		goto error;
+	}
+
+	memset(iv, 0, sizeof(iv));
+	error = tc_encrypt(info->cipher_chain, key_backup, iv,
+	    (unsigned char *)info->hdr,
+	    sizeof(struct tchdr_dec), ehdr_backup->enc);
+	if (error) {
+		tc_log(1, "Backup header encryption failed\n");
+		goto error;
+	}
+
+	free_safe_mem(key);
+	free_safe_mem(key_backup);
+
+	if (backup_hdr != NULL)
+		*backup_hdr = ehdr_backup;
+	else
+		free_safe_mem(ehdr_backup);
+
+	return ehdr;
+	/* NOT REACHED */
+
+error:
+	if (key)
+		free_safe_mem(key);
+	if (key_backup)
+		free_safe_mem(key_backup);
 	if (ehdr)
 		free_safe_mem(ehdr);
 	if (ehdr_backup)

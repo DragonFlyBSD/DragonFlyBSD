@@ -145,6 +145,24 @@ _free_safe_mem(void *mem_ptr, const char *file, int line)
 	free(mem);
 }
 
+void *
+_strdup_safe_mem(const char *in, const char *file, int line)
+{
+	char *out;
+	size_t sz;
+
+	sz = strlen(in)+1;
+
+	if ((out = _alloc_safe_mem(sz, file, line)) == NULL) {
+		return NULL;
+	}
+
+	memcpy(out, in, sz);
+	out[sz-1] = '\0';
+
+	return out;
+}
+
 void
 check_and_purge_safe_mem(void)
 {
