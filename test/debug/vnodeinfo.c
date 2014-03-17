@@ -9,14 +9,14 @@
  *
  *
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -26,7 +26,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -40,7 +40,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.13 2007/05/06 20:45:01 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -62,6 +61,7 @@
 
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/inode.h>
+#include <vfs/dirfs/dirfs.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,16 +80,26 @@ struct nlist Nl[] = {
 
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 static struct mount *dumpmount(kvm_t *kd, struct mount *mp);
-static struct vnode *dumpvp(kvm_t *kd, struct vnode *vp, int whichlist);
+static struct vnode *dumpvp(kvm_t *kd, struct vnode *vp, int whichlist, char *vfc_name);
+static void dump_dirfs_node(kvm_t *kd, void *arg);
 static void dumpbufs(kvm_t *kd, void *bufp, const char *id);
 static void dumplocks(kvm_t *kd, struct lockf *lockf);
 static void dumplockinfo(kvm_t *kd, struct lockf_range *item);
 static int getobjpages(kvm_t *kd, struct vm_object *obj);
 static int getobjvnpsize(kvm_t *kd, struct vm_object *obj);
 
+static const struct dump_private_data {
+	char vfc_name[MFSNAMELEN];
+	void (*dumpfn)(kvm_t *, void *);
+} dumplist[] = {
+	{ "dirfs", dump_dirfs_node },
+	{ "", NULL }
+};
+
 int tracebufs = 0;
 int tracelocks = 0;
 int withnames = 0;
+int fsprivate = 0;
 
 int
 main(int ac, char **av)
@@ -102,8 +112,8 @@ main(int ac, char **av)
     const char *corefile = NULL;
     const char *sysfile = NULL;
 
-    while ((ch = getopt(ac, av, "alnbM:N:")) != -1) {
-	switch(ch) {   
+    while ((ch = getopt(ac, av, "alnbM:N:p")) != -1) {
+	switch(ch) {
 	case 'b':
 	    tracebufs = 1;
 	    break;
@@ -117,15 +127,19 @@ main(int ac, char **av)
 	    tracebufs = 1;
 	    tracelocks = 1;
 	    withnames = 1;
+	    fsprivate = 1;
+	    break;
+	case 'p':
+	    fsprivate = 1;
 	    break;
 	case 'M':
 	    corefile = optarg;
 	    break;
-	case 'N': 
+	case 'N':
 	    sysfile = optarg;
-	    break; 
-	default:  
-	    fprintf(stderr, "%s [-M core] [-N system]\n", av[0]);
+	    break;
+	default:
+	    fprintf(stderr, "%s [-pbnla] [-M core] [-N system]\n", av[0]);
 	    exit(1);
 	}
     }
@@ -144,12 +158,12 @@ main(int ac, char **av)
     printf("INACTIVELIST {\n");
     kkread(kd, Nl[1].n_value, &vp, sizeof(vp));
     while (vp)
-	vp = dumpvp(kd, vp, 0);
+	    vp = dumpvp(kd, vp, 0, NULL);
     printf("}\n");
     printf("ACTIVELIST {\n");
     kkread(kd, Nl[2].n_value, &vp, sizeof(vp));
     while (vp)
-	vp = dumpvp(kd, vp, 0);
+	    vp = dumpvp(kd, vp, 0, NULL);
     printf("}\n");
     return(0);
 }
@@ -159,21 +173,25 @@ dumpmount(kvm_t *kd, struct mount *mp)
 {
     struct mount mnt;
     struct vnode *vp;
+    struct vfsconf vfc;
 
     kkread(kd, (u_long)mp, &mnt, sizeof(mnt));
-    printf("MOUNTPOINT %s on %s {\n", 
+    printf("MOUNTPOINT %s on %s {\n",
 	mnt.mnt_stat.f_mntfromname, mnt.mnt_stat.f_mntonname);
     printf("    lk_flags %08x count %08x holder = %p\n",
 	mnt.mnt_lock.lk_flags, mnt.mnt_lock.lk_count,
 	mnt.mnt_lock.lk_lockholder);
-    printf("    mnt_flag %08x mnt_kern_flag %08x\n", 
+    printf("    mnt_flag %08x mnt_kern_flag %08x\n",
 	mnt.mnt_flag, mnt.mnt_kern_flag);
     printf("    mnt_nvnodelistsize %d\n", mnt.mnt_nvnodelistsize);
     printf("    mnt_stat.f_fsid %08x %08x\n", mnt.mnt_stat.f_fsid.val[0],
 	mnt.mnt_stat.f_fsid.val[1]);
+
+    /* Dump fs private node data */
+    kkread(kd, (u_long)mnt.mnt_vfc, &vfc, sizeof(vfc));
     vp = mnt.mnt_nvnodelist.tqh_first;
     while (vp)
-	vp = dumpvp(kd, vp, 1);
+	    vp = dumpvp(kd, vp, 1, vfc.vfc_name);
 
     printf("}\n");
 
@@ -211,8 +229,52 @@ vtype(enum vtype type)
     return(buf);
 }
 
+static
+void dump_dirfs_node(kvm_t *kd, void *arg)
+{
+	dirfs_node_t dnp = (dirfs_node_t)arg;
+	struct dirfs_node dn;
+	char *name = NULL;
+	char strfd[16] = {0};
+
+	/* No garbage allowed */
+	bzero(&dn, sizeof(dn));
+
+	/*
+	 * Attempt to read in the address of the dnp and also
+	 * its name if there is any.
+	 */
+	kkread(kd, (u_long)dnp, &dn, sizeof(dn));
+	if (dn.dn_name != NULL) {
+		name = dn.dn_name;
+		dn.dn_name = calloc(1, MAXPATHLEN);
+		kkread(kd, (u_long)name, dn.dn_name, dn.dn_namelen);
+	}
+	printf("\tDIRFS\n");
+	printf("\t\tdn_name=%s mode=%u flags=%08x refs=%d ",
+	    (dn.dn_name ? dn.dn_name : "NULL"), dn.dn_mode, dn.dn_flags,
+	    dn.dn_refcnt);
+
+	printf("state=");
+	if (dn.dn_state & DIRFS_ROOT)
+		printf("DIRFS_ROOT ");
+
+	if (dn.dn_fd == -1)
+		sprintf(strfd, "%s", "NOFD");
+	else
+		sprintf(strfd, "%d", dn.dn_fd);
+
+	printf("\n\t\tuid=%u gid=%u objtype=%s nlinks=%d dn_fd=%s\n", dn.dn_uid,
+	    dn.dn_gid, vtype(dn.dn_type), dn.dn_links, strfd);
+	printf("\t\tsize=%jd ctime=%ju atime=%ju mtime=%ju\n\n", dn.dn_size,
+	    dn.dn_ctime, dn.dn_atime, dn.dn_mtime);
+
+	if (dn.dn_name)
+		free(dn.dn_name);
+}
+
 static struct vnode *
-dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
+dumpvp(kvm_t *kd, struct vnode *vp, int whichlist, char *vfc_name)
 {
     struct vnode vn;
 
@@ -329,6 +391,19 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 	}
     }
 
+    if (fsprivate && vfc_name) {
+	    /*
+	     * Actually find whether the filesystem can dump
+	     * detailed inode information out of the vnode
+	     */
+	    const struct dump_private_data *dpd;
+
+	    for (dpd = dumplist; dpd->dumpfn != NULL; dpd++) {
+		    if ((strcmp(dpd->vfc_name, vfc_name) == 0) &&
+			vn.v_data != NULL)
+			    dpd->dumpfn(kd, vn.v_data);
+	    }
+    }
 
     if (whichlist)
 	return(vn.v_nmntvnodes.tqe_next);
@@ -430,4 +505,3 @@ kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes)
         exit(1);
     }
 }
-
