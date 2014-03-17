@@ -2518,6 +2518,20 @@ TO_REMOVE+=/usr/share/man/man9/usbd_setup_xfer.9.gz
 TO_REMOVE+=/usr/share/man/man9/usbd_sync_transfer.9.gz
 TO_REMOVE+=/usr/share/man/man9/usbd_transfer.9.gz
 TO_REMOVE+=/usr/include/bus/u4b/usbdevs_data.h
+TO_REMOVE+=/usr/share/man/cat3/tc_api_check_cipher.3.gz
+TO_REMOVE+=/usr/share/man/cat3/tc_api_check_prf_hash.3.gz
+TO_REMOVE+=/usr/share/man/cat3/tc_api_create_volume.3.gz
+TO_REMOVE+=/usr/share/man/cat3/tc_api_get_error_msg.3.gz
+TO_REMOVE+=/usr/share/man/cat3/tc_api_get_summary.3.gz
+TO_REMOVE+=/usr/share/man/cat3/tc_api_map_volume.3.gz
+TO_REMOVE+=/usr/share/man/cat3/tc_api_unmap_volume.3.gz
+TO_REMOVE+=/usr/share/man/man3/tc_api_check_cipher.3.gz
+TO_REMOVE+=/usr/share/man/man3/tc_api_check_prf_hash.3.gz
+TO_REMOVE+=/usr/share/man/man3/tc_api_create_volume.3.gz
+TO_REMOVE+=/usr/share/man/man3/tc_api_get_error_msg.3.gz
+TO_REMOVE+=/usr/share/man/man3/tc_api_get_summary.3.gz
+TO_REMOVE+=/usr/share/man/man3/tc_api_map_volume.3.gz
+TO_REMOVE+=/usr/share/man/man3/tc_api_unmap_volume.3.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
