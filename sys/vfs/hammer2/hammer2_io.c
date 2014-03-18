@@ -451,9 +451,12 @@ hammer2_io_bread(hammer2_mount_t *hmp, off_t lbase, int lsize,
 
 void
 hammer2_io_breadcb(hammer2_mount_t *hmp, off_t lbase, int lsize,
-		  void (*callback)(hammer2_io_t *dio, hammer2_chain_t *arg_c,
+		  void (*callback)(hammer2_io_t *dio,
+				   hammer2_cluster_t *arg_l,
+				   hammer2_chain_t *arg_c,
 				   void *arg_p, off_t arg_o),
-		  hammer2_chain_t *arg_c, void *arg_p, off_t arg_o)
+		  hammer2_cluster_t *arg_l, hammer2_chain_t *arg_c,
+		  void *arg_p, off_t arg_o)
 {
 	hammer2_io_t *dio;
 	int owner;
@@ -462,6 +465,7 @@ hammer2_io_breadcb(hammer2_mount_t *hmp, off_t lbase, int lsize,
 	dio = hammer2_io_getblk(hmp, lbase, lsize, &owner);
 	if (owner) {
 		dio->callback = callback;
+		dio->arg_l = arg_l;
 		dio->arg_c = arg_c;
 		dio->arg_p = arg_p;
 		dio->arg_o = arg_o;
@@ -469,7 +473,7 @@ hammer2_io_breadcb(hammer2_mount_t *hmp, off_t lbase, int lsize,
 			hammer2_io_callback, dio);
 	} else {
 		error = 0;
-		callback(dio, arg_c, arg_p, arg_o);
+		callback(dio, arg_l, arg_c, arg_p, arg_o);
 		hammer2_io_bqrelse(&dio);
 	}
 }
@@ -491,7 +495,7 @@ hammer2_io_callback(struct bio *bio)
 	 * We still have the ref and DIO_GOOD is now set so nothing else
 	 * should mess with the callback fields until we release the dio.
 	 */
-	dio->callback(dio, dio->arg_c, dio->arg_p, dio->arg_o);
+	dio->callback(dio, dio->arg_l, dio->arg_c, dio->arg_p, dio->arg_o);
 	hammer2_io_bqrelse(&dio);
 	/* TODO: async load meta-data and assign chain->dio */
 }

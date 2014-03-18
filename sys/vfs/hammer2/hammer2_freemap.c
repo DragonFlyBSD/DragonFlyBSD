@@ -367,6 +367,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	uint16_t class;
 	int error = 0;
 	int cache_index = -1;
+	int ddflag;
 
 
 	/*
@@ -393,7 +394,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	chain = hammer2_chain_lookup(parentp, &key_dummy, key, key + l1mask,
 				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS |
-				     HAMMER2_LOOKUP_MATCHIND);
+				     HAMMER2_LOOKUP_MATCHIND, &ddflag);
 
 	if (chain == NULL) {
 		/*
@@ -821,6 +822,7 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	int modified = 0;
 	int cache_index = -1;
 	int error;
+	int ddflag;
 
 	radix = (int)data_off & HAMMER2_OFF_MASK_RADIX;
 	data_off &= ~HAMMER2_OFF_MASK_RADIX;
@@ -856,7 +858,7 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	chain = hammer2_chain_lookup(&parent, &key_dummy, key, key + l1mask,
 				     &cache_index,
 				     HAMMER2_LOOKUP_ALWAYS |
-				     HAMMER2_LOOKUP_MATCHIND);
+				     HAMMER2_LOOKUP_MATCHIND, &ddflag);
 
 	/*
 	 * Stop early if we are trying to free something but no leaf exists.

@@ -87,14 +87,12 @@ hammer2_voldata_unlock(hammer2_mount_t *hmp, int modify)
  * ip must be locked sh/ex.
  */
 int
-hammer2_get_dtype(hammer2_chain_t *chain)
+hammer2_get_dtype(hammer2_inode_data_t *ipdata)
 {
 	uint8_t type;
 
-	KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INODE);
-
-	if ((type = chain->data->ipdata.type) == HAMMER2_OBJTYPE_HARDLINK)
-		type = chain->data->ipdata.target_type;
+	if ((type = ipdata->type) == HAMMER2_OBJTYPE_HARDLINK)
+		type = ipdata->target_type;
 
 	switch(type) {
 	case HAMMER2_OBJTYPE_UNKNOWN:
@@ -127,11 +125,9 @@ hammer2_get_dtype(hammer2_chain_t *chain)
  * Return the directory entry type for an inode
  */
 int
-hammer2_get_vtype(hammer2_chain_t *chain)
+hammer2_get_vtype(hammer2_inode_data_t *ipdata)
 {
-	KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_INODE);
-
-	switch(chain->data->ipdata.type) {
+	switch(ipdata->type) {
 	case HAMMER2_OBJTYPE_UNKNOWN:
 		return (VBAD);
 	case HAMMER2_OBJTYPE_DIRECTORY:
@@ -387,18 +383,19 @@ hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
  * Returns 0 if the requested base offset is beyond the file EOF.
  */
 int
-hammer2_calc_physical(hammer2_inode_t *ip, hammer2_key_t lbase)
+hammer2_calc_physical(hammer2_inode_t *ip, hammer2_inode_data_t *ipdata,
+		      hammer2_key_t lbase)
 {
 	int lblksize;
 	int pblksize;
 	int eofbytes;
 
 	lblksize = hammer2_calc_logical(ip, lbase, NULL, NULL);
-	if (lbase + lblksize <= ip->chain->data->ipdata.size)
+	if (lbase + lblksize <= ipdata->size)
 		return (lblksize);
-	if (lbase >= ip->chain->data->ipdata.size)
+	if (lbase >= ipdata->size)
 		return (0);
-	eofbytes = (int)(ip->chain->data->ipdata.size - lbase);
+	eofbytes = (int)(ipdata->size - lbase);
 	pblksize = lblksize;
 	while (pblksize >= eofbytes && pblksize >= HAMMER2_MIN_ALLOC)
 		pblksize >>= 1;
@@ -414,4 +411,30 @@ hammer2_update_time(uint64_t *timep)
 
 	getmicrotime(&tv);
 	*timep = (unsigned long)tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
+void
+hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes)
+{
+	long *counterp;
+
+	switch(bref->type) {
+	case HAMMER2_BREF_TYPE_DATA:
+		counterp = &hammer2_iod_file_read;
+		break;
+	case HAMMER2_BREF_TYPE_INODE:
+		counterp = &hammer2_iod_meta_read;
+		break;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		counterp = &hammer2_iod_indr_read;
+		break;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		counterp = &hammer2_iod_fmap_read;
+		break;
+	default:
+		counterp = &hammer2_iod_volu_read;
+		break;
+	}
+	*counterp += bytes;
 }

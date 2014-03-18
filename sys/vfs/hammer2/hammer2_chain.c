@@ -86,7 +86,6 @@ static hammer2_chain_t *hammer2_chain_create_indirect(
 		hammer2_trans_t *trans, hammer2_chain_t *parent,
 		hammer2_key_t key, int keybits, int for_type, int *errorp);
 static void hammer2_chain_drop_data(hammer2_chain_t *chain, int lastdrop);
-static void adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
 static hammer2_chain_t *hammer2_combined_find(
 		hammer2_chain_t *parent,
 		hammer2_blockref_t *base, int count,
@@ -896,7 +895,7 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
 	} else {
 		error = hammer2_io_bread(hmp, bref->data_off, chain->bytes,
 					 &chain->dio);
-		adjreadcounter(&chain->bref, chain->bytes);
+		hammer2_adjreadcounter(&chain->bref, chain->bytes);
 	}
 
 	if (error) {
@@ -965,19 +964,37 @@ hammer2_chain_lock(hammer2_chain_t *chain, int how)
  * of the chain first to handle certain cases.
  */
 void
-hammer2_chain_load_async(hammer2_chain_t *chain,
+hammer2_chain_load_async(hammer2_cluster_t *cluster,
 			 void (*callback)(hammer2_io_t *dio,
+					  hammer2_cluster_t *cluster,
 					  hammer2_chain_t *chain,
 					  void *arg_p, off_t arg_o),
-			 void *arg_p, off_t arg_o)
+			 void *arg_p)
 {
+	hammer2_chain_t *chain;
 	hammer2_mount_t *hmp;
 	struct hammer2_io *dio;
 	hammer2_blockref_t *bref;
 	int error;
+	int i;
+
+	/*
+	 * If no chain specified see if any chain data is available and use
+	 * that, otherwise begin an I/O iteration using the first chain.
+	 */
+	chain = NULL;
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i];
+		if (chain->data)
+			break;
+	}
+	if (i == cluster->nchains) {
+		chain = cluster->array[0];
+		i = 0;
+	}
 
 	if (chain->data) {
-		callback(NULL, chain, arg_p, arg_o);
+		callback(NULL, cluster, chain, arg_p, (off_t)i);
 		return;
 	}
 
@@ -1005,16 +1022,16 @@ hammer2_chain_load_async(hammer2_chain_t *chain,
 	    chain->bytes == hammer2_devblksize(chain->bytes)) {
 		error = hammer2_io_new(hmp, bref->data_off, chain->bytes, &dio);
 		KKASSERT(error == 0);
-		callback(dio, chain, arg_p, arg_o);
+		callback(dio, cluster, chain, arg_p, (off_t)i);
 		return;
 	}
 
 	/*
 	 * Otherwise issue a read
 	 */
-	adjreadcounter(&chain->bref, chain->bytes);
+	hammer2_adjreadcounter(&chain->bref, chain->bytes);
 	hammer2_io_breadcb(hmp, bref->data_off, chain->bytes,
-			   callback, chain, arg_p, arg_o);
+			   callback, cluster, chain, arg_p, (off_t)i);
 }
 
 /*
@@ -1291,7 +1308,11 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	*chainp = chain;
 }
 
+#if 0
+
 /*
+ * REMOVED - see cluster code
+ *
  * Set a chain modified, making it read-write and duplicating it if necessary.
  * This function will assign a new physical block to the chain if necessary
  *
@@ -1321,6 +1342,8 @@ hammer2_chain_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		vsetisdirty(ip->vp);
 	return(&ip->chain->data->ipdata);
 }
+
+#endif
 
 void
 hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
@@ -1387,7 +1410,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	if ((chain->flags & HAMMER2_CHAIN_MODIFIED) == 0) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
 		hammer2_chain_ref(chain);
-		hammer2_chain_memory_inc(chain->pmp);
+		hammer2_pfs_memory_inc(chain->pmp);
 	}
 	if ((chain->flags & HAMMER2_CHAIN_FLUSH_CREATE) == 0) {
 		atomic_set_int(&chain->flags, HAMMER2_CHAIN_FLUSH_CREATE);
@@ -1494,7 +1517,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 			error = hammer2_io_bread(hmp, chain->bref.data_off,
 						 chain->bytes, &dio);
 		}
-		adjreadcounter(&chain->bref, chain->bytes);
+		hammer2_adjreadcounter(&chain->bref, chain->bytes);
 		KKASSERT(error == 0);
 
 		bdata = hammer2_io_data(dio, chain->bref.data_off);
@@ -1908,7 +1931,7 @@ hammer2_chain_getparent(hammer2_chain_t **parentp, int how)
 hammer2_chain_t *
 hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 		     hammer2_key_t key_beg, hammer2_key_t key_end,
-		     int *cache_indexp, int flags)
+		     int *cache_indexp, int flags, int *ddflagp)
 {
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *parent;
@@ -1927,6 +1950,7 @@ hammer2_chain_lookup(hammer2_chain_t **parentp, hammer2_key_t *key_nextp,
 	int maxloops = 300000;
 	int wasdup;
 
+	*ddflagp = 0;
 	if (flags & HAMMER2_LOOKUP_ALWAYS) {
 		how_maybe = how_always;
 		how = HAMMER2_RESOLVE_ALWAYS;
@@ -1984,6 +2008,7 @@ again:
 			else
 				hammer2_chain_lock(parent, how_always);
 			*key_nextp = key_end + 1;
+			*ddflagp = 1;
 			return (parent);
 		}
 		base = &parent->data->ipdata.u.blockset.blockref[0];
@@ -2192,6 +2217,7 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 {
 	hammer2_chain_t *parent;
 	int how_maybe;
+	int ddflag;
 
 	/*
 	 * Calculate locking flags for upward recursion.
@@ -2245,7 +2271,7 @@ hammer2_chain_next(hammer2_chain_t **parentp, hammer2_chain_t *chain,
 	 */
 	return (hammer2_chain_lookup(parentp, key_nextp,
 				     key_beg, key_end,
-				     cache_indexp, flags));
+				     cache_indexp, flags, &ddflag));
 }
 
 /*
@@ -3184,74 +3210,6 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 #endif
 	hammer2_chain_setsubmod(trans, nchain);
 	*chainp = nchain;
-}
-
-/*
- * Create a snapshot of the specified {parent, ochain} with the specified
- * label.  The originating hammer2_inode must be exclusively locked for
- * safety.
- *
- * The ioctl code has already synced the filesystem.
- */
-int
-hammer2_chain_snapshot(hammer2_trans_t *trans, hammer2_chain_t **ochainp,
-		       hammer2_ioc_pfs_t *pfs)
-{
-	hammer2_mount_t *hmp;
-	hammer2_chain_t *ochain = *ochainp;
-	hammer2_chain_t *nchain;
-	hammer2_inode_data_t *ipdata;
-	hammer2_inode_t *nip;
-	size_t name_len;
-	hammer2_key_t lhc;
-	struct vattr vat;
-	uuid_t opfs_clid;
-	int error;
-
-	kprintf("snapshot %s ochain->refs %d ochain->flags %08x\n",
-		pfs->name, ochain->refs, ochain->flags);
-
-	name_len = strlen(pfs->name);
-	lhc = hammer2_dirhash(pfs->name, name_len);
-
-	hmp = ochain->hmp;
-	opfs_clid = ochain->data->ipdata.pfs_clid;
-
-	*ochainp = ochain;
-
-	/*
-	 * Create the snapshot directory under the super-root
-	 *
-	 * Set PFS type, generate a unique filesystem id, and generate
-	 * a cluster id.  Use the same clid when snapshotting a PFS root,
-	 * which theoretically allows the snapshot to be used as part of
-	 * the same cluster (perhaps as a cache).
-	 *
-	 * Copy the (flushed) ochain's blockref array.  Theoretically we
-	 * could use chain_duplicate() but it becomes difficult to disentangle
-	 * the shared core so for now just brute-force it.
-	 */
-	VATTR_NULL(&vat);
-	vat.va_type = VDIR;
-	vat.va_mode = 0755;
-	nchain = NULL;
-	nip = hammer2_inode_create(trans, hmp->sroot, &vat, proc0.p_ucred,
-				   pfs->name, name_len, &nchain, &error);
-
-	if (nip) {
-		ipdata = hammer2_chain_modify_ip(trans, nip, &nchain, 0);
-		ipdata->pfs_type = HAMMER2_PFSTYPE_SNAPSHOT;
-		kern_uuidgen(&ipdata->pfs_fsid, 1);
-		if (ochain->flags & HAMMER2_CHAIN_PFSROOT)
-			ipdata->pfs_clid = opfs_clid;
-		else
-			kern_uuidgen(&ipdata->pfs_clid, 1);
-		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_PFSROOT);
-		ipdata->u.blockset = ochain->data->ipdata.u.blockset;
-
-		hammer2_inode_unlock_ex(nip, nchain);
-	}
-	return (error);
 }
 
 /*
@@ -4485,119 +4443,27 @@ hammer2_chain_wait(hammer2_chain_t *chain)
 }
 
 /*
- * Manage excessive memory resource use for chain and related
- * structures.
+ * chain may have been moved around by the create.
  */
 void
-hammer2_chain_memory_wait(hammer2_pfsmount_t *pmp)
+hammer2_chain_refactor(hammer2_chain_t **chainp)
 {
-	long waiting;
-	long count;
-	long limit;
-#if 0
-	static int zzticks;
-#endif
+	hammer2_chain_t *chain = *chainp;
+	hammer2_chain_core_t *core;
 
-	/*
-	 * Atomic check condition and wait.  Also do an early speedup of
-	 * the syncer to try to avoid hitting the wait.
-	 */
-	for (;;) {
-		waiting = pmp->inmem_dirty_chains;
-		cpu_ccfence();
-		count = waiting & HAMMER2_DIRTYCHAIN_MASK;
+	core = chain->core;
+	while (chain->flags & HAMMER2_CHAIN_DUPLICATED) {
+		spin_lock(&core->cst.spin);
+		chain = TAILQ_NEXT(chain, core_entry);
+		while (chain->flags & HAMMER2_CHAIN_DUPLICATED)
+			chain = TAILQ_NEXT(chain, core_entry);
+		hammer2_chain_ref(chain);
+		spin_unlock(&core->cst.spin);
+		KKASSERT(chain->core == core);
 
-		limit = pmp->mp->mnt_nvnodelistsize / 10;
-		if (limit < hammer2_limit_dirty_chains)
-			limit = hammer2_limit_dirty_chains;
-		if (limit < 1000)
-			limit = 1000;
-
-#if 0
-		if ((int)(ticks - zzticks) > hz) {
-			zzticks = ticks;
-			kprintf("count %ld %ld\n", count, limit);
-		}
-#endif
-
-		/*
-		 * Block if there are too many dirty chains present, wait
-		 * for the flush to clean some out.
-		 */
-		if (count > limit) {
-			tsleep_interlock(&pmp->inmem_dirty_chains, 0);
-			if (atomic_cmpset_long(&pmp->inmem_dirty_chains,
-					       waiting,
-				       waiting | HAMMER2_DIRTYCHAIN_WAITING)) {
-				speedup_syncer(pmp->mp);
-				tsleep(&pmp->inmem_dirty_chains, PINTERLOCKED,
-				       "chnmem", hz);
-			}
-			continue;	/* loop on success or fail */
-		}
-
-		/*
-		 * Try to start an early flush before we are forced to block.
-		 */
-		if (count > limit * 7 / 10)
-			speedup_syncer(pmp->mp);
-		break;
+		hammer2_chain_unlock(*chainp);
+		hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS |
+					  HAMMER2_RESOLVE_NOREF); /* eat ref */
+		*chainp = chain;
 	}
-}
-
-void
-hammer2_chain_memory_inc(hammer2_pfsmount_t *pmp)
-{
-	if (pmp)
-		atomic_add_long(&pmp->inmem_dirty_chains, 1);
-}
-
-void
-hammer2_chain_memory_wakeup(hammer2_pfsmount_t *pmp)
-{
-	long waiting;
-
-	if (pmp == NULL)
-		return;
-
-	for (;;) {
-		waiting = pmp->inmem_dirty_chains;
-		cpu_ccfence();
-		if (atomic_cmpset_long(&pmp->inmem_dirty_chains,
-				       waiting,
-				       (waiting - 1) &
-					~HAMMER2_DIRTYCHAIN_WAITING)) {
-			break;
-		}
-	}
-
-	if (waiting & HAMMER2_DIRTYCHAIN_WAITING)
-		wakeup(&pmp->inmem_dirty_chains);
-}
-
-static
-void
-adjreadcounter(hammer2_blockref_t *bref, size_t bytes)
-{
-	long *counterp;
-
-	switch(bref->type) {
-	case HAMMER2_BREF_TYPE_DATA:
-		counterp = &hammer2_iod_file_read;
-		break;
-	case HAMMER2_BREF_TYPE_INODE:
-		counterp = &hammer2_iod_meta_read;
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		counterp = &hammer2_iod_indr_read;
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		counterp = &hammer2_iod_fmap_read;
-		break;
-	default:
-		counterp = &hammer2_iod_volu_read;
-		break;
-	}
-	*counterp += bytes;
 }

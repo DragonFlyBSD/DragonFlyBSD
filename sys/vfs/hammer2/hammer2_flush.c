@@ -148,7 +148,7 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp,
 	if (pmp) {
 		trans->pmp = pmp;
 		KKASSERT(hmp == NULL);
-		hmp = pmp->cluster.chains[0]->hmp;	/* XXX */
+		hmp = pmp->cluster.focus->hmp;	/* XXX */
 	} else {
 		trans->hmp_single = hmp;
 		KKASSERT(hmp);
@@ -265,7 +265,7 @@ hammer2_trans_done(hammer2_trans_t *trans)
 	hammer2_trans_t *scan;
 
 	if (trans->pmp)
-		hmp = trans->pmp->cluster.chains[0]->hmp;
+		hmp = trans->pmp->cluster.focus->hmp;
 	else
 		hmp = trans->hmp_single;
 
@@ -624,7 +624,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 			if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 				atomic_clear_int(&chain->flags,
 						HAMMER2_CHAIN_MODIFIED);
-				hammer2_chain_memory_wakeup(chain->pmp);
+				hammer2_pfs_memory_wakeup(chain->pmp);
 				hammer2_chain_drop(chain);
 			}
 #if 0
@@ -819,7 +819,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 	 */
 	KKASSERT(chain->flags & HAMMER2_CHAIN_FLUSH_CREATE);
 	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
-	hammer2_chain_memory_wakeup(chain->pmp);
+	hammer2_pfs_memory_wakeup(chain->pmp);
 
 	if ((chain->flags & HAMMER2_CHAIN_FLUSH_CREATE) ||
 	    chain == &hmp->vchain ||
