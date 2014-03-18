@@ -1,5 +1,3 @@
-#SUBDIR=	template
-
-SUBDIR=	usb audio controller input misc net quirk serial storage wlan
+SUBDIR=	usb audio controller input misc net quirk serial storage template wlan
 
 .include <bsd.subdir.mk>

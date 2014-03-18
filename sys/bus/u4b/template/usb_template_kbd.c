@@ -1,6 +1,4 @@
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
+/* $FreeBSD: head/sys/dev/usb/template/usb_template_kbd.c 246125 2013-01-30 16:05:54Z hselasky $ */
 /*-
  * Copyright (c) 2010 Hans Petter Selasky. All rights reserved.
  *
@@ -30,8 +28,10 @@ __FBSDID("$FreeBSD$");
  * This file contains the USB template for an USB Keyboard Device.
  */
 
+#ifdef USB_GLOBAL_INCLUDE_FILE
+#include USB_GLOBAL_INCLUDE_FILE
+#else
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -40,20 +40,20 @@ __FBSDID("$FreeBSD$");
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usb_cdc.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_cdc.h>
 
-#include <dev/usb/template/usb_template.h>
+#include <bus/u4b/template/usb_template.h>
+#endif			/* USB_GLOBAL_INCLUDE_FILE */
 
 enum {
 	INDEX_LANG,
@@ -62,21 +62,14 @@ enum {
 	INDEX_MAX,
 };
 
-#define	STRING_LANG \
-  0x09, 0x04,				/* American English */
-
 #define	STRING_PRODUCT \
-  'K', 0, 'e', 0, 'y', 0, 'b', 0, 'o', 0, 'a', 0, 'r', 0, 'd', 0, ' ', 0, \
-  'T', 0, 'e', 0, 's', 0, 't', 0, ' ', 0, \
-  'D', 0, 'e', 0, 'v', 0, 'i', 0, 'c', 0, 'e', 0, ' ', 0, 
+  "K\0e\0y\0b\0o\0a\0r\0d\0 \0T\0e\0s\0t\0 \0D\0e\0v\0i\0c\0e"
 
 #define	STRING_KEYBOARD \
-  'K', 0, 'e', 0, 'y', 0, 'b', 0, 'o', 0, 'a', 0, 'r', 0, 'd', 0, ' ', 0, \
-  'i', 0, 'n', 0, 't', 0, 'e', 0, 'r', 0, 'f', 0, 'a', 0, 'c', 0, 'e', 0,
+  "K\0e\0y\0b\0o\0a\0r\0d\0 \0i\0n\0t\0e\0r\0f\0a\0c\0e"
 
 /* make the real string descriptors */
 
-USB_MAKE_STRING_DESC(STRING_LANG, string_lang);
 USB_MAKE_STRING_DESC(STRING_KEYBOARD, string_keyboard);
 USB_MAKE_STRING_DESC(STRING_PRODUCT, string_product);
 
@@ -206,13 +199,13 @@ static const void *
 keyboard_get_string_desc(uint16_t lang_id, uint8_t string_index)
 {
 	static const void *ptr[INDEX_MAX] = {
-		[INDEX_LANG] = &string_lang,
+		[INDEX_LANG] = &usb_string_lang_en,
 		[INDEX_KEYBOARD] = &string_keyboard,
 		[INDEX_PRODUCT] = &string_product,
 	};
 
 	if (string_index == 0) {
-		return (&string_lang);
+		return (&usb_string_lang_en);
 	}
 	if (lang_id != 0x0409) {
 		return (NULL);

@@ -1,4 +1,4 @@
-/* $FreeBSD$ */
+/* $FreeBSD: head/sys/dev/usb/template/usb_template.c 259218 2013-12-11 13:20:32Z hselasky $ */
 /*-
  * Copyright (c) 2007 Hans Petter Selasky. All rights reserved.
  *
@@ -29,8 +29,10 @@
  * USB templates.
  */
 
+#ifdef USB_GLOBAL_INCLUDE_FILE
+#include USB_GLOBAL_INCLUDE_FILE
+#else
 #include <sys/stdint.h>
-#include <sys/stddef.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -39,34 +41,34 @@
 #include <sys/bus.h>
 #include <sys/module.h>
 #include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/condvar.h>
 #include <sys/sysctl.h>
-#include <sys/sx.h>
 #include <sys/unistd.h>
 #include <sys/callout.h>
 #include <sys/malloc.h>
 #include <sys/priv.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usb_ioctl.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdi_util.h>
+#include <bus/u4b/usb.h>
+#include <bus/u4b/usb_ioctl.h>
+#include <bus/u4b/usbdi.h>
+#include <bus/u4b/usbdi_util.h>
 #include "usbdevs.h"
 
-#include <dev/usb/usb_cdc.h>
-#include <dev/usb/usb_core.h>
-#include <dev/usb/usb_dynamic.h>
-#include <dev/usb/usb_busdma.h>
-#include <dev/usb/usb_process.h>
-#include <dev/usb/usb_device.h>
+#include <bus/u4b/usb_cdc.h>
+#include <bus/u4b/usb_core.h>
+#include <bus/u4b/usb_dynamic.h>
+#include <bus/u4b/usb_busdma.h>
+#include <bus/u4b/usb_process.h>
+#include <bus/u4b/usb_device.h>
 
 #define	USB_DEBUG_VAR usb_debug
-#include <dev/usb/usb_debug.h>
+#include <bus/u4b/usb_debug.h>
 
-#include <dev/usb/usb_controller.h>
-#include <dev/usb/usb_bus.h>
-#include <dev/usb/template/usb_template.h>
+#include <bus/u4b/usb_controller.h>
+#include <bus/u4b/usb_bus.h>
+#include <bus/u4b/usb_request.h>
+#include <bus/u4b/template/usb_template.h>
+#endif			/* USB_GLOBAL_INCLUDE_FILE */
 
 MODULE_DEPEND(usb_template, usb, 1, 1, 1);
 MODULE_VERSION(usb_template, 1);
@@ -374,7 +376,7 @@ usb_make_config_desc(struct usb_temp_setup *temp,
 
 	/* Reset some counters */
 
-	temp->bInterfaceNumber = 0 - 1;
+	temp->bInterfaceNumber = 0xFF;
 	temp->bAlternateSetting = 0;
 
 	/* Scan all the USB interfaces */
@@ -841,24 +843,24 @@ usb_hw_ep_resolve(struct usb_device *udev,
 	struct usb_hw_ep_scratch *ues;
 	struct usb_hw_ep_scratch_sub *ep;
 	const struct usb_hw_ep_profile *pf;
-	struct usb_bus_methods *methods;
+	const struct usb_bus_methods *methods;
 	struct usb_device_descriptor *dd;
 	uint16_t mps;
 
-	if (desc == NULL) {
+	if (desc == NULL)
 		return (USB_ERR_INVAL);
-	}
+
 	/* get bus methods */
 	methods = udev->bus->methods;
 
-	if (methods->get_hw_ep_profile == NULL) {
+	if (methods->get_hw_ep_profile == NULL)
 		return (USB_ERR_INVAL);
-	}
+
 	if (desc->bDescriptorType == UDESC_DEVICE) {
 
-		if (desc->bLength < sizeof(*dd)) {
+		if (desc->bLength < sizeof(*dd))
 			return (USB_ERR_INVAL);
-		}
+
 		dd = (void *)desc;
 
 		/* get HW control endpoint 0 profile */
@@ -905,13 +907,12 @@ usb_hw_ep_resolve(struct usb_device *udev,
 		}
 		return (0);		/* success */
 	}
-	if (desc->bDescriptorType != UDESC_CONFIG) {
+	if (desc->bDescriptorType != UDESC_CONFIG)
 		return (USB_ERR_INVAL);
-	}
-	if (desc->bLength < sizeof(*(ues->cd))) {
+	if (desc->bLength < sizeof(*(ues->cd)))
 		return (USB_ERR_INVAL);
-	}
-	ues = udev->bus->scratch[0].hw_ep_scratch;
+
+	ues = udev->scratch.hw_ep_scratch;
 
 	memset(ues, 0, sizeof(*ues));
 
@@ -1232,13 +1233,18 @@ usb_temp_setup(struct usb_device *udev,
 {
 	struct usb_temp_setup *uts;
 	void *buf;
+	usb_error_t error;
 	uint8_t n;
+	uint8_t do_unlock;
 
-	if (tdd == NULL) {
-		/* be NULL safe */
+	/* be NULL safe */
+	if (tdd == NULL)
 		return (0);
-	}
-	uts = udev->bus->scratch[0].temp_setup;
+
+	/* Protect scratch area */
+	do_unlock = usbd_enum_lock(udev);
+
+	uts = udev->scratch.temp_setup;
 
 	memset(uts, 0, sizeof(*uts));
 
@@ -1251,17 +1257,24 @@ usb_temp_setup(struct usb_device *udev,
 
 	if (uts->err) {
 		/* some error happened */
-		return (uts->err);
+		goto done;
 	}
 	/* sanity check */
 	if (uts->size == 0) {
-		return (USB_ERR_INVAL);
+		uts->err = USB_ERR_INVAL;
+		goto done;
 	}
 	/* allocate zeroed memory */
-	uts->buf = malloc(uts->size, M_USB, M_WAITOK | M_ZERO);
+	uts->buf = usbd_alloc_config_desc(udev, uts->size);
+	/*
+	 * Allow malloc() to return NULL regardless of M_WAITOK flag.
+	 * This helps when porting the software to non-FreeBSD
+	 * systems.
+	 */
 	if (uts->buf == NULL) {
 		/* could not allocate memory */
-		return (USB_ERR_NOMEM);
+		uts->err = USB_ERR_NOMEM;
+		goto done;
 	}
 	/* second pass */
 
@@ -1276,7 +1289,7 @@ usb_temp_setup(struct usb_device *udev,
 
 	if (uts->err) {
 		/* some error happened during second pass */
-		goto error;
+		goto done;
 	}
 	/*
 	 * Resolve all endpoint addresses !
@@ -1287,7 +1300,7 @@ usb_temp_setup(struct usb_device *udev,
 		DPRINTFN(0, "Could not resolve endpoints for "
 		    "Device Descriptor, error = %s\n",
 		    usbd_errstr(uts->err));
-		goto error;
+		goto done;
 	}
 	for (n = 0;; n++) {
 
@@ -1300,14 +1313,16 @@ usb_temp_setup(struct usb_device *udev,
 			DPRINTFN(0, "Could not resolve endpoints for "
 			    "Config Descriptor %u, error = %s\n", n,
 			    usbd_errstr(uts->err));
-			goto error;
+			goto done;
 		}
 	}
-	return (uts->err);
-
-error:
-	usb_temp_unsetup(udev);
-	return (uts->err);
+done:
+	error = uts->err;
+	if (error)
+		usb_temp_unsetup(udev);
+	if (do_unlock)
+		usbd_enum_unlock(udev);
+	return (error);
 }
 
 /*------------------------------------------------------------------------*
@@ -1319,12 +1334,8 @@ error:
 void
 usb_temp_unsetup(struct usb_device *udev)
 {
-	if (udev->usb_template_ptr) {
-
-		free(udev->usb_template_ptr, M_USB);
-
-		udev->usb_template_ptr = NULL;
-	}
+	usbd_free_config_desc(udev, udev->usb_template_ptr);
+	udev->usb_template_ptr = NULL;
 }
 
 static usb_error_t
@@ -1370,5 +1381,5 @@ usb_temp_init(void *arg)
 	usb_temp_unsetup_p = &usb_temp_unsetup;
 }
 
-SYSINIT(usb_temp_init, SI_SUB_LOCK, SI_ORDER_FIRST, usb_temp_init, NULL);
-SYSUNINIT(usb_temp_unload, SI_SUB_LOCK, SI_ORDER_ANY, usb_temp_unload, NULL);
+SYSINIT(usb_temp_init, SI_SUB_DRIVERS, SI_ORDER_FIRST, usb_temp_init, NULL);
+SYSUNINIT(usb_temp_unload, SI_SUB_DRIVERS, SI_ORDER_ANY, usb_temp_unload, NULL);

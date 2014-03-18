@@ -2114,6 +2114,10 @@ device		urtwnfw
 #
 device		ufm
 
+# Templates for programming USB device side drivers
+#
+device		usb_template
+
 # debugging options for the USB subsystem
 #
 options 	USB_DEBUG

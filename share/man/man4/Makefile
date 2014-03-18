@@ -531,6 +531,7 @@ MAN+=	rum.4 \
 	urtwn.4 \
 	urtwnfw.4 \
 	usb_quirk.4 \
+	usb_template.4 \
 	usfs.4 \
 	u3g.4 \
 	xhci.4
