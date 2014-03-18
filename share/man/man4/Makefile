@@ -527,9 +527,11 @@ MAN+=	rum.4 \
 	ufoma.4 \
 	uipaq.4 \
 	umcs.4 \
+	umoscom.4 \
 	urtwn.4 \
 	urtwnfw.4 \
 	usb_quirk.4 \
+	usfs.4 \
 	u3g.4 \
 	xhci.4
 MLINKS+=rum.4 if_rum.4
