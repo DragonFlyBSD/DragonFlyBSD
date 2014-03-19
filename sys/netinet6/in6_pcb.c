@@ -998,7 +998,7 @@ do_notify:
  * Lookup a PCB based on the local address and port.
  */
 struct inpcb *
-in6_pcblookup_local(struct inpcbinfo *pcbinfo, struct in6_addr *laddr,
+in6_pcblookup_local(struct inpcbinfo *pcbinfo, const struct in6_addr *laddr,
 		    u_int lport_arg, int wild_okay, struct ucred *cred)
 {
 	struct inpcb *inp;

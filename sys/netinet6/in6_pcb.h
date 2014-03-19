@@ -106,7 +106,7 @@ void	in6_pcbdisconnect (struct inpcb *);
 int	in6_pcbladdr (struct inpcb *, struct sockaddr *,
 			  struct in6_addr **, struct thread *);
 struct	inpcb *
-	in6_pcblookup_local (struct inpcbinfo *, struct in6_addr *, u_int,
+	in6_pcblookup_local (struct inpcbinfo *, const struct in6_addr *, u_int,
 			     int, struct ucred *);
 struct	inpcb *
 	in6_pcblookup_hash (struct inpcbinfo *,
