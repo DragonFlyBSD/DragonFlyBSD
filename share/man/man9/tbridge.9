@@ -62,9 +62,9 @@ Defines:
 .Pp
 Callbacks:
 .Ft typedef int
-.Fn tbridge_abort_t ""
+.Fn (*tbridge_abort_t) "void"
 .Ft typedef void
-.Fn tbridge_run_t "void *"
+.Fn (*tbridge_run_t) "void *"
 .Sh DESCRIPTION
 To create a new kernel testcase
 .Sq testfoo
