@@ -2770,6 +2770,10 @@ done:
  * FULL.  This typically means that the caller is creating the chain after
  * doing a hammer2_chain_lookup().
  *
+ * A non-NULL bref is typically passed when key and keybits must be overridden.
+ * Note that hammer2_cluster_duplicate() *ONLY* uses the key and keybits fields
+ * from a passed-in bref and uses the old chain's bref for everything else.
+ *
  * The old chain must be in a DELETED state unless snapshot is non-zero.
  *
  * The new chain will be live (i.e. not deleted), and modified.

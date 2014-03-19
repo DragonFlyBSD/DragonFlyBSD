@@ -880,6 +880,7 @@ hammer2_assign_physical(hammer2_trans_t *trans,
 			hammer2_key_t lbase, int pblksize, int *errorp)
 {
 	hammer2_cluster_t *cluster;
+	hammer2_cluster_t *dparent;
 	hammer2_key_t key_dummy;
 	int pradix = hammer2_getradix(pblksize);
 	int ddflag;
@@ -893,8 +894,8 @@ hammer2_assign_physical(hammer2_trans_t *trans,
 	*errorp = 0;
 	KKASSERT(pblksize >= HAMMER2_MIN_ALLOC);
 retry:
-	hammer2_cluster_lock(cparent, HAMMER2_RESOLVE_ALWAYS); /* extra lock */
-	cluster = hammer2_cluster_lookup(cparent, &key_dummy,
+	dparent = hammer2_cluster_lookup_init(cparent, 0);
+	cluster = hammer2_cluster_lookup(dparent, &key_dummy,
 				     lbase, lbase,
 				     HAMMER2_LOOKUP_NODATA, &ddflag);
 
@@ -905,14 +906,14 @@ retry:
 		 * NOTE: DATA chains are created without device backing
 		 *	 store (nor do we want any).
 		 */
-		*errorp = hammer2_cluster_create(trans, cparent, &cluster,
+		*errorp = hammer2_cluster_create(trans, dparent, &cluster,
 					       lbase, HAMMER2_PBUFRADIX,
 					       HAMMER2_BREF_TYPE_DATA,
 					       pblksize);
 		if (cluster == NULL) {
-			hammer2_cluster_lookup_done(cparent);
+			hammer2_cluster_lookup_done(dparent);
 			panic("hammer2_cluster_create: par=%p error=%d\n",
-				cparent->focus, *errorp);
+				dparent->focus, *errorp);
 			goto retry;
 		}
 		/*ip->delta_dcount += pblksize;*/
@@ -929,7 +930,7 @@ retry:
 		case HAMMER2_BREF_TYPE_DATA:
 			if (hammer2_cluster_bytes(cluster) != pblksize) {
 				hammer2_cluster_resize(trans, ip,
-						     cparent, cluster,
+						     dparent, cluster,
 						     pradix,
 						     HAMMER2_MODIFY_OPTDATA);
 			}
@@ -944,15 +945,14 @@ retry:
 	}
 
 	/*
-	 * Cleanup.  If chain wound up being the inode (i.e. DIRECTDATA),
-	 * we need to update cparent.  The caller expects cparent to not
-	 * become stale.
+	 * Cleanup.  If cluster wound up being the inode itself, i.e.
+	 * the DIRECTDATA case for offset 0, then we need to update cparent.
+	 * The caller expects cparent to not become stale.
 	 */
-	hammer2_cluster_lookup_done(cparent);
-	if (cluster && ddflag) {
-		kprintf("replace parent XXX\n");
+	hammer2_cluster_lookup_done(dparent);
+	/* dparent = NULL; safety */
+	if (cluster && ddflag)
 		hammer2_cluster_replace_locked(cparent, cluster);
-	}
 	return (cluster);
 }
 
@@ -1135,7 +1135,7 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 	cluster = hammer2_assign_physical(trans, ip, cparent,
 					  lbase, comp_block_size,
 					  errorp);
-	ipdata = &hammer2_cluster_data(&ip->cluster)->ipdata;
+	ipdata = &hammer2_cluster_data(cparent)->ipdata;
 
 	if (*errorp) {
 		kprintf("WRITE PATH: An error occurred while "
@@ -1663,7 +1663,7 @@ hammer2_vfs_root(struct mount *mp, struct vnode **vpp)
 		error = EINVAL;
 	} else {
 		cparent = hammer2_inode_lock_sh(pmp->iroot);
-		vp = hammer2_igetv(pmp->iroot, &error);
+		vp = hammer2_igetv(pmp->iroot, cparent, &error);
 		hammer2_inode_unlock_sh(pmp->iroot, cparent);
 		*vpp = vp;
 		if (vp == NULL)

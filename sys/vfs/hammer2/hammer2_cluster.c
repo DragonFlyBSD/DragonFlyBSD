@@ -84,29 +84,64 @@ hammer2_cluster_unlinked(hammer2_cluster_t *cluster)
 	return((cluster->focus->flags & HAMMER2_CHAIN_UNLINKED) != 0);
 }
 
+/*
+ * Return a bref representative of the cluster.  Any data offset is removed
+ * (since it would only be applicable to a particular chain in the cluster).
+ *
+ * However, the radix portion of data_off is used for many purposes and will
+ * be retained.
+ */
 void
 hammer2_cluster_bref(hammer2_cluster_t *cluster, hammer2_blockref_t *bref)
 {
 	*bref = cluster->focus->bref;
-	bref->data_off = 0;	/* should be opaque to caller */
+	bref->data_off &= HAMMER2_OFF_MASK_RADIX;
 }
 
 void
 hammer2_cluster_set_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
 {
+	hammer2_chain_t *chain;
 	int i;
 
-	for (i = 0; i < cluster->nchains; ++i)
-		atomic_set_int(&cluster->array[i]->flags, flags);
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i];
+		if (chain)
+			atomic_set_int(&chain->flags, flags);
+	}
 }
 
 void
 hammer2_cluster_setsubmod(hammer2_trans_t *trans, hammer2_cluster_t *cluster)
 {
+	hammer2_chain_t *chain;
 	int i;
 
-	for (i = 0; i < cluster->nchains; ++i)
-		hammer2_chain_setsubmod(trans, cluster->array[i]);
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i];
+		if (chain)
+			hammer2_chain_setsubmod(trans, chain);
+	}
+}
+
+/*
+ * Create a cluster with one ref from the specified chain.  The chain
+ * is not further referenced.  The caller typically supplies a locked
+ * chain and transfers ownership to the cluster.
+ */
+hammer2_cluster_t *
+hammer2_cluster_from_chain(hammer2_chain_t *chain)
+{
+	hammer2_cluster_t *cluster;
+
+	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
+	cluster->array[0] = chain;
+	cluster->nchains = 1;
+	cluster->focus = chain;
+	cluster->pmp = chain->pmp;		/* can be NULL */
+	cluster->refs = 1;
+
+	return cluster;
 }
 
 /*
@@ -204,9 +239,11 @@ hammer2_cluster_core_alloc(hammer2_trans_t *trans,
 	int i;
 
 	for (i = 0; i < ocluster->nchains; ++i) {
-		hammer2_chain_core_alloc(trans,
-					 ncluster->array[i],
-					 ocluster->array[i]);
+		if (ncluster->array[i]) {
+			hammer2_chain_core_alloc(trans,
+						 ncluster->array[i],
+						 ocluster->array[i]);
+		}
 	}
 }
 
@@ -219,11 +256,14 @@ hammer2_cluster_core_alloc(hammer2_trans_t *trans,
 void
 hammer2_cluster_ref(hammer2_cluster_t *cluster)
 {
+	hammer2_chain_t *chain;
 	int i;
 
 	atomic_add_int(&cluster->refs, 1);
 	for (i = 0; i < cluster->nchains; ++i) {
-		hammer2_chain_ref(cluster->array[i]);
+		chain = cluster->array[i];
+		if (chain)
+			hammer2_chain_ref(chain);
 	}
 }
 
@@ -234,18 +274,23 @@ hammer2_cluster_ref(hammer2_cluster_t *cluster)
 void
 hammer2_cluster_drop(hammer2_cluster_t *cluster)
 {
+	hammer2_chain_t *chain;
 	int i;
 
+	KKASSERT(cluster->refs > 0);
 	for (i = 0; i < cluster->nchains; ++i) {
-		hammer2_chain_drop(cluster->array[i]);
-		if (cluster->refs == 1)
-			cluster->array[i] = NULL;
+		chain = cluster->array[i];
+		if (chain) {
+			hammer2_chain_drop(chain);
+			if (cluster->refs == 1)
+				cluster->array[i] = NULL;
+		}
 	}
-	if (atomic_fetchadd_int(&cluster->refs, -1) != 1) {
-		KKASSERT(cluster->refs > 0);
-		return;
+	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
+		cluster->focus = NULL;
+		kfree(cluster, M_HAMMER2);
+		/* cluster = NULL; safety */
 	}
-	kfree(cluster, M_HAMMER2);
 }
 
 void
@@ -261,18 +306,22 @@ hammer2_cluster_wait(hammer2_cluster_t *cluster)
 int
 hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 {
+	hammer2_chain_t *chain;
 	int i;
 	int error;
 
 	error = 0;
 	atomic_add_int(&cluster->refs, 1);
 	for (i = 0; i < cluster->nchains; ++i) {
-		error = hammer2_chain_lock(cluster->array[i], how);
-		if (error) {
-			while (--i >= 0)
-				hammer2_chain_unlock(cluster->array[i]);
-			atomic_add_int(&cluster->refs, -1);
-			break;
+		chain = cluster->array[i];
+		if (chain) {
+			error = hammer2_chain_lock(chain, how);
+			if (error) {
+				while (--i >= 0)
+					hammer2_chain_unlock(cluster->array[i]);
+				atomic_add_int(&cluster->refs, -1);
+				break;
+			}
 		}
 	}
 	return error;
@@ -289,23 +338,32 @@ hammer2_cluster_lock(hammer2_cluster_t *cluster, int how)
 void
 hammer2_cluster_replace(hammer2_cluster_t *dst, hammer2_cluster_t *src)
 {
+	hammer2_chain_t *chain;
 	int i;
 
 	KKASSERT(dst->refs == 1);
+	dst->focus = NULL;
 
 	for (i = 0; i < src->nchains; ++i) {
-		hammer2_chain_ref(src->array[i]);
-		if (i < dst->nchains)
-			hammer2_chain_unlock(dst->array[i]);
-		dst->array[i] = src->array[i];
+		chain = src->array[i];
+		if (chain) {
+			hammer2_chain_ref(chain);
+			if (i < dst->nchains && dst->array[i])
+				hammer2_chain_unlock(dst->array[i]);
+			dst->array[i] = chain;
+			if (dst->focus == NULL)
+				dst->focus = chain;
+		}
 	}
 	while (i < dst->nchains) {
-		hammer2_chain_unlock(dst->array[i]);
-		dst->array[i] = NULL;
+		chain = dst->array[i];
+		if (chain) {
+			hammer2_chain_unlock(chain);
+			dst->array[i] = NULL;
+		}
 		++i;
 	}
 	dst->nchains = src->nchains;
-	dst->focus = src->focus;
 }
 
 /*
@@ -319,34 +377,53 @@ hammer2_cluster_replace(hammer2_cluster_t *dst, hammer2_cluster_t *src)
 void
 hammer2_cluster_replace_locked(hammer2_cluster_t *dst, hammer2_cluster_t *src)
 {
+	hammer2_chain_t *chain;
 	int i;
 
 	KKASSERT(dst->refs == 1);
 
+	dst->focus = NULL;
 	for (i = 0; i < src->nchains; ++i) {
-		hammer2_chain_lock(src->array[i], 0);
-		if (i < dst->nchains)
-			hammer2_chain_unlock(dst->array[i]);
-		dst->array[i] = src->array[i];
+		chain = src->array[i];
+		if (chain) {
+			hammer2_chain_lock(chain, 0);
+			if (i < dst->nchains && dst->array[i])
+				hammer2_chain_unlock(dst->array[i]);
+			dst->array[i] = src->array[i];
+			if (dst->focus == NULL)
+				dst->focus = chain;
+		}
 	}
 	while (i < dst->nchains) {
-		hammer2_chain_unlock(dst->array[i]);
-		dst->array[i] = NULL;
+		chain = dst->array[i];
+		if (chain) {
+			hammer2_chain_unlock(chain);
+			dst->array[i] = NULL;
+		}
 		++i;
 	}
 	dst->nchains = src->nchains;
-	dst->focus = src->focus;
 }
 
 /*
  * Copy a cluster, returned a ref'd cluster.  All underlying chains
  * are also ref'd, but not locked.
  *
- * If with_chains is 0 the returned cluster has a ref count of 1 but
- * no chains will be assigned.
+ * If HAMMER2_CLUSTER_COPY_CHAINS is specified, the chains are copied
+ * to the new cluster and a reference is nominally added to them and to
+ * the cluster.  The cluster will have 1 ref.
+ *
+ * If HAMMER2_CLUSTER_COPY_NOREF is specified along with CHAINS, the chains
+ * are copied but no additional references are made and the cluster will have
+ * 0 refs.  Callers must ref the cluster and the chains before dropping it
+ * (typically by locking it).
+ *
+ * If flags are passed as 0 the copy is setup as if it contained the chains
+ * but the chains will not be copied over, and the cluster will have 0 refs.
+ * Callers must ref the cluster before dropping it (typically by locking it).
  */
 hammer2_cluster_t *
-hammer2_cluster_copy(hammer2_cluster_t *ocluster, int with_chains)
+hammer2_cluster_copy(hammer2_cluster_t *ocluster, int copy_flags)
 {
 	hammer2_pfsmount_t *pmp = ocluster->pmp;
 	hammer2_cluster_t *ncluster;
@@ -356,11 +433,16 @@ hammer2_cluster_copy(hammer2_cluster_t *ocluster, int with_chains)
 	ncluster->pmp = pmp;
 	ncluster->nchains = ocluster->nchains;
 	ncluster->focus = ocluster->focus;
-	if (with_chains) {
-		ncluster->refs = 1;
+	ncluster->refs = 1;
+	if (copy_flags & HAMMER2_CLUSTER_COPY_CHAINS) {
+		if ((copy_flags & HAMMER2_CLUSTER_COPY_NOREF) == 0)
+			ncluster->refs = 1;
 		for (i = 0; i < ocluster->nchains; ++i) {
 			ncluster->array[i] = ocluster->array[i];
-			hammer2_chain_ref(ncluster->array[i]);
+			if ((copy_flags & HAMMER2_CLUSTER_COPY_NOREF) == 0 &&
+			    ncluster->array[i]) {
+				hammer2_chain_ref(ncluster->array[i]);
+			}
 		}
 	}
 	return (ncluster);
@@ -373,31 +455,41 @@ hammer2_cluster_copy(hammer2_cluster_t *ocluster, int with_chains)
 void
 hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 {
+	hammer2_chain_t *chain;
 	int i;
 
-	for (i = 0; i < cluster->nchains; ++i)
-		hammer2_chain_unlock(cluster->array[i]);
-	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
-		for (i = 0; i < cluster->nchains; ++i)	/* safety */
-			cluster->array[i] = NULL;
-		kfree(cluster, M_HAMMER2);
-		return;
-	}
 	KKASSERT(cluster->refs > 0);
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i];
+		if (chain) {
+			hammer2_chain_unlock(chain);
+			if (cluster->refs == 1)
+				cluster->array[i] = NULL;	/* safety */
+		}
+	}
+	if (atomic_fetchadd_int(&cluster->refs, -1) == 1) {
+		cluster->focus = NULL;
+		kfree(cluster, M_HAMMER2);
+		/* cluster = NULL; safety */
+	}
 }
 
 /*
- * Refactor the chains of a locked cluster
+ * Refactor the locked chains of a cluster.
  */
 void
 hammer2_cluster_refactor(hammer2_cluster_t *cluster)
 {
 	int i;
 
+	cluster->focus = NULL;
 	for (i = 0; i < cluster->nchains; ++i) {
-		hammer2_chain_refactor(&cluster->array[i]);
+		if (cluster->array[i]) {
+			hammer2_chain_refactor(&cluster->array[i]);
+			if (cluster->focus == NULL)
+				cluster->focus = cluster->array[i];
+		}
 	}
-	cluster->focus = cluster->array[0];
 }
 
 /*
@@ -414,12 +506,18 @@ hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	KKASSERT(cparent->pmp == cluster->pmp);		/* can be NULL */
 	KKASSERT(cparent->nchains == cluster->nchains);
 
+	cluster->focus = NULL;
 	for (i = 0; i < cluster->nchains; ++i) {
-		hammer2_chain_resize(trans, ip,
-				     cparent->array[i], &cluster->array[i],
-				     nradix, flags);
+		if (cluster->array[i]) {
+			KKASSERT(cparent->array[i]);
+			hammer2_chain_resize(trans, ip,
+					     cparent->array[i],
+					     &cluster->array[i],
+					     nradix, flags);
+			if (cluster->focus == NULL)
+				cluster->focus = cluster->array[i];
+		}
 	}
-	cluster->focus = cluster->array[0];
 }
 
 /*
@@ -453,10 +551,24 @@ hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 {
 	int i;
 
-	for (i = 0; i < cluster->nchains; ++i)
-		hammer2_chain_modify(trans, &cluster->array[i], flags);
-	cluster->focus = cluster->array[0];
+	cluster->focus = NULL;
+	for (i = 0; i < cluster->nchains; ++i) {
+		if (cluster->array[i]) {
+			hammer2_chain_modify(trans, &cluster->array[i], flags);
+			if (cluster->focus == NULL)
+				cluster->focus = cluster->array[i];
+		}
+	}
 }
+
+/*
+ * Synchronize modifications with other chains in a cluster.
+ *
+ * Nominal front-end operations only edit non-block-table data in a single
+ * chain.  This code copies such modifications to the other chains in the
+ * cluster.
+ */
+/* hammer2_cluster_modsync() */
 
 /*
  * Lookup initialization/completion API
@@ -469,10 +581,14 @@ hammer2_cluster_lookup_init(hammer2_cluster_t *cparent, int flags)
 
 	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
 	cluster->pmp = cparent->pmp;			/* can be NULL */
-	for (i = 0; i < cparent->nchains; ++i)
+	/* cluster->focus = NULL; already null */
+
+	for (i = 0; i < cparent->nchains; ++i) {
 		cluster->array[i] = cparent->array[i];
+		if (cluster->focus == NULL)
+			cluster->focus = cluster->array[i];
+	}
 	cluster->nchains = cparent->nchains;
-	cluster->focus = cluster->array[0];
 
 	/*
 	 * Independently lock (this will also give cluster 1 ref)
@@ -521,33 +637,41 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
 	cluster->pmp = pmp;				/* can be NULL */
 	cluster->refs = 1;
+	/* cluster->focus = NULL; already null */
+	cparent->focus = NULL;
 	*ddflagp = 0;
 
 	for (i = 0; i < cparent->nchains; ++i) {
 		key_next = *key_nextp;
+		if (cparent->array[i] == NULL) {
+			++null_count;
+			continue;
+		}
 		chain = hammer2_chain_lookup(&cparent->array[i], &key_next,
 					     key_beg, key_end,
 					     &cparent->cache_index[i],
 					     flags, &ddflag);
+		if (cparent->focus == NULL)
+			cparent->focus = cparent->array[i];
 		cluster->array[i] = chain;
 		if (chain == NULL) {
 			++null_count;
 		} else {
-			if (bref_type == 0)
+			if (cluster->focus == NULL) {
 				bref_type = chain->bref.type;
-			KKASSERT(bref_type == chain->bref.type);
-			if (bytes == 0)
 				bytes = chain->bytes;
+				*ddflagp = ddflag;
+				cluster->focus = chain;
+			}
+			KKASSERT(bref_type == chain->bref.type);
 			KKASSERT(bytes == chain->bytes);
+			KKASSERT(*ddflagp == ddflag);
 		}
 		if (key_accum > key_next)
 			key_accum = key_next;
-		KKASSERT(i == 0 || *ddflagp == ddflag);
-		*ddflagp = ddflag;
 	}
 	*key_nextp = key_accum;
 	cluster->nchains = i;
-	cluster->focus = cluster->array[0];
 
 	if (null_count == i) {
 		hammer2_cluster_drop(cluster);
@@ -573,17 +697,37 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 
 	key_accum = *key_nextp;
 	null_count = 0;
+	cluster->focus = NULL;
+	cparent->focus = NULL;
 
 	for (i = 0; i < cparent->nchains; ++i) {
 		key_next = *key_nextp;
-		chain = hammer2_chain_next(&cparent->array[i],
-					   cluster->array[i],
-					   &key_next,
-					   key_beg, key_end,
-					   &cparent->cache_index[i], flags);
-		cluster->array[i] = chain;
-		if (chain == NULL)
+		chain = cluster->array[i];
+		if (chain == NULL) {
+			if (cparent->focus == NULL)
+				cparent->focus = cparent->array[i];
 			++null_count;
+			continue;
+		}
+		if (cparent->array[i] == NULL) {
+			if (flags & HAMMER2_LOOKUP_NOLOCK)
+				hammer2_chain_drop(chain);
+			else
+				hammer2_chain_unlock(chain);
+			++null_count;
+			continue;
+		}
+		chain = hammer2_chain_next(&cparent->array[i], chain,
+					   &key_next, key_beg, key_end,
+					   &cparent->cache_index[i], flags);
+		if (cparent->focus == NULL)
+			cparent->focus = cparent->array[i];
+		cluster->array[i] = chain;
+		if (chain == NULL) {
+			++null_count;
+		} else if (cluster->focus == NULL) {
+			cluster->focus = chain;
+		}
 		if (key_accum > key_next)
 			key_accum = key_next;
 	}
@@ -591,13 +735,14 @@ hammer2_cluster_next(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 	if (null_count == i) {
 		hammer2_cluster_drop(cluster);
 		cluster = NULL;
-	} else {
-		cluster->focus = cluster->array[0];
 	}
 	return(cluster);
 }
 
+#if 0
 /*
+ * XXX initial NULL cluster needs reworking (pass **clusterp ?)
+ *
  * The raw scan function is similar to lookup/next but does not seek to a key.
  * Blockrefs are iterated via first_chain = (parent, NULL) and
  * next_chain = (parent, chain).
@@ -618,8 +763,21 @@ hammer2_cluster_scan(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 	null_count = 0;
 
 	for (i = 0; i < cparent->nchains; ++i) {
-		chain = hammer2_chain_scan(cparent->array[i],
-					   cluster->array[i],
+		chain = cluster->array[i];
+		if (chain == NULL) {
+			++null_count;
+			continue;
+		}
+		if (cparent->array[i] == NULL) {
+			if (flags & HAMMER2_LOOKUP_NOLOCK)
+				hammer2_chain_drop(chain);
+			else
+				hammer2_chain_unlock(chain);
+			++null_count;
+			continue;
+		}
+
+		chain = hammer2_chain_scan(cparent->array[i], chain,
 					   &cparent->cache_index[i], flags);
 		cluster->array[i] = chain;
 		if (chain == NULL)
@@ -633,6 +791,8 @@ hammer2_cluster_scan(hammer2_cluster_t *cparent, hammer2_cluster_t *cluster,
 	return(cluster);
 }
 
+#endif
+
 /*
  * Create a new cluster using the specified key
  */
@@ -642,7 +802,6 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 		     hammer2_key_t key, int keybits, int type, size_t bytes)
 {
 	hammer2_cluster_t *cluster;
-	hammer2_chain_t *chain;
 	hammer2_pfsmount_t *pmp;
 	int error;
 	int i;
@@ -655,35 +814,85 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 		cluster->pmp = pmp;			/* can be NULL */
 		cluster->refs = 1;
 	}
+	cluster->focus = NULL;
+	cparent->focus = NULL;
+
+	/*
+	 * NOTE: cluster->array[] entries can initially be NULL.  If
+	 *	 *clusterp is supplied, skip NULL entries, otherwise
+	 *	 create new chains.
+	 */
 	for (i = 0; i < cparent->nchains; ++i) {
-		chain = cluster->array[i];
-		error = hammer2_chain_create(trans, &cparent->array[i], &chain,
+		if (*clusterp && cluster->array[i] == NULL) {
+			if (cparent->focus == NULL)
+				cparent->focus = cparent->array[i];
+			continue;
+		}
+		error = hammer2_chain_create(trans,
+					     &cparent->array[i],
+					     &cluster->array[i],
 					     key, keybits, type, bytes);
 		KKASSERT(error == 0);
-		cluster->array[i] = chain;
+		if (cparent->focus == NULL)
+			cparent->focus = cparent->array[i];
+		if (cluster->focus == NULL)
+			cluster->focus = cluster->array[i];
 	}
-	cluster->focus = cluster->array[0];
+	cluster->nchains = i;
 	*clusterp = cluster;
 
 	return error;
 }
 
 /*
- * Duplicate a cluster under a new parent
+ * Duplicate a cluster under a new parent.
+ *
+ * WARNING! Unlike hammer2_chain_duplicate(), only the key and keybits fields
+ *	    are used from a passed-in non-NULL bref pointer.  All other fields
+ *	    are extracted from the original chain for each chain in the
+ *	    iteration.
  */
 void
 hammer2_cluster_duplicate(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 			  hammer2_cluster_t *cluster, hammer2_blockref_t *bref,
 			  int snapshot, int duplicate_reason)
 {
+	hammer2_chain_t *chain;
+	hammer2_blockref_t xbref;
 	int i;
 
+	cluster->focus = NULL;
+	cparent->focus = NULL;
+
 	for (i = 0; i < cluster->nchains; ++i) {
-		hammer2_chain_duplicate(trans, &cparent->array[i],
-					&cluster->array[i], bref,
-					snapshot, duplicate_reason);
+		chain = cluster->array[i];
+		if (chain) {
+			if (bref) {
+				xbref = chain->bref;
+				xbref.key = bref->key;
+				xbref.keybits = bref->keybits;
+				hammer2_chain_duplicate(trans,
+							&cparent->array[i],
+							&chain, &xbref,
+							snapshot,
+							duplicate_reason);
+			} else {
+				hammer2_chain_duplicate(trans,
+							&cparent->array[i],
+							&chain, NULL,
+							snapshot,
+							duplicate_reason);
+			}
+			cluster->array[i] = chain;
+			if (cluster->focus == NULL)
+				cluster->focus = chain;
+			if (cparent->focus == NULL)
+				cparent->focus = cparent->array[i];
+		} else {
+			if (cparent->focus == NULL)
+				cparent->focus = cparent->array[i];
+		}
 	}
-	cluster->focus = cluster->array[0];
 }
 
 /*
@@ -693,13 +902,19 @@ void
 hammer2_cluster_delete_duplicate(hammer2_trans_t *trans,
 				 hammer2_cluster_t *cluster, int flags)
 {
+	hammer2_chain_t *chain;
 	int i;
 
+	cluster->focus = NULL;
 	for (i = 0; i < cluster->nchains; ++i) {
-		hammer2_chain_delete_duplicate(trans, &cluster->array[i],
-					       flags);
+		chain = cluster->array[i];
+		if (chain) {
+			hammer2_chain_delete_duplicate(trans, &chain, flags);
+			cluster->array[i] = chain;
+			if (cluster->focus == NULL)
+				cluster->focus = chain;
+		}
 	}
-	cluster->focus = cluster->array[0];
 }
 
 /*
@@ -709,10 +924,13 @@ void
 hammer2_cluster_delete(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 		       int flags)
 {
+	hammer2_chain_t *chain;
 	int i;
 
 	for (i = 0; i < cluster->nchains; ++i) {
-		hammer2_chain_delete(trans, cluster->array[i], flags);
+		chain = cluster->array[i];
+		if (chain)
+			hammer2_chain_delete(trans, chain, flags);
 	}
 }
 

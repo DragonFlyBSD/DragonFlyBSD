@@ -93,6 +93,9 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
 	cluster = hammer2_cluster_copy(&ip->cluster, 0);
 
+	ip->cluster.focus = NULL;
+	cluster->focus = NULL;
+
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = ip->cluster.array[i];
 		core = chain->core;
@@ -105,6 +108,8 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 				spin_unlock(&core->cst.spin);
 				ochain = ip->cluster.array[i];
 				ip->cluster.array[i] = chain;
+				if (ip->cluster.focus == NULL)
+					ip->cluster.focus = chain;
 				hammer2_chain_drop(ochain);
 			}
 			hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
@@ -113,8 +118,9 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 			hammer2_chain_unlock(chain);
 		}
 		cluster->array[i] = chain;
+		if (cluster->focus == NULL)
+			cluster->focus = chain;
 	}
-	cluster->focus = cluster->array[0];
 
 	/*
 	 * Returned cluster must resolve hardlink pointers
@@ -127,7 +133,6 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 			  HAMMER2_CHAIN_DUPLICATED) == 0);
 		KKASSERT(error == 0);
 	}
-	cluster->focus = cluster->array[0];
 
 	return (cluster);
 }
@@ -164,6 +169,8 @@ hammer2_inode_lock_sh(hammer2_inode_t *ip)
 	cluster = hammer2_cluster_copy(&ip->cluster, 0);
 	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_SHARED);
 
+	cluster->focus = NULL;
+
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = ip->cluster.array[i];
 		core = chain->core;
@@ -191,8 +198,9 @@ cycle_excl:
 			continue;	/* restart at i=-1 -> i=0 on loop */
 		}
 		cluster->array[i] = chain;
+		if (cluster->focus == NULL)
+			cluster->focus = chain;
 	}
-	cluster->focus = cluster->array[0];
 
 	/*
 	 * Returned cluster must resolve hardlink pointers
@@ -205,7 +213,6 @@ cycle_excl:
 			  HAMMER2_CHAIN_DUPLICATED) == 0);
 		KKASSERT(error == 0);
 	}
-	cluster->focus = cluster->array[0];
 
 	return (cluster);
 }
@@ -314,7 +321,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				ip->pmp = NULL;
 
 				/*
-				 * Cleaning out ip->chain isn't entirely
+				 * Cleaning out ip->cluster isn't entirely
 				 * trivial.
 				 */
 				hammer2_inode_repoint(ip, NULL, NULL);
@@ -360,7 +367,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
  * races.
  */
 struct vnode *
-hammer2_igetv(hammer2_inode_t *ip, int *errorp)
+hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
 {
 	hammer2_inode_data_t *ipdata;
 	hammer2_pfsmount_t *pmp;
@@ -371,7 +378,7 @@ hammer2_igetv(hammer2_inode_t *ip, int *errorp)
 	KKASSERT(pmp != NULL);
 	*errorp = 0;
 
-	ipdata = &hammer2_cluster_data(&ip->cluster)->ipdata;
+	ipdata = &hammer2_cluster_data(cparent)->ipdata;
 
 	for (;;) {
 		/*
@@ -557,7 +564,9 @@ again:
 	 * Initialize nip's cluster
 	 */
 	nip->cluster.refs = 1;
-	nip->flags = HAMMER2_CLUSTER_INODE;
+	nip->cluster.pmp = pmp;
+	nip->cluster.flags |= HAMMER2_CLUSTER_INODE;
+	hammer2_cluster_replace(&nip->cluster, cluster);
 
 	nipdata = &hammer2_cluster_data(cluster)->ipdata;
 	nip->inum = nipdata->inum;
@@ -884,6 +893,8 @@ retry:
 	 *
 	 * WARNING! Duplications (to a different parent) can cause indirect
 	 *	    blocks to be inserted, refactor xcluster.
+	 *
+	 * WARNING! Only key and keybits is extracted from a passed-in bref.
 	 */
 	hammer2_cluster_bref(cluster, &bref);
 	bref.key = lhc;			/* invisible dir entry key */
@@ -1100,11 +1111,9 @@ hammer2_inode_connect(hammer2_trans_t *trans,
 }
 
 /*
- * Repoint ip->chain to nchain.  Caller must hold the inode exclusively
- * locked.
- *
- * ip->chain is set to nchain.  The prior chain in ip->chain is dropped
- * and nchain is ref'd.
+ * Repoint ip->cluster's chains to cluster's chains.  Caller must hold
+ * the inode exclusively locked.  cluster may be NULL to clean out any
+ * chains in ip->cluster.
  */
 void
 hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
@@ -1115,10 +1124,15 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 	hammer2_inode_t *opip;
 	int i;
 
-	for (i = 0; i < cluster->nchains; ++i) {
-		/*
-		 * Get possible replacement chain, loop if nothing to do.
-		 */
+	/*
+	 * Replace chains in ip->cluster with chains from cluster and
+	 * adjust the focus if necessary.
+	 *
+	 * NOTE: nchain and/or ochain can be NULL due to gaps
+	 *	 in the cluster arrays.
+	 */
+	ip->cluster.focus = NULL;
+	for (i = 0; cluster && i < cluster->nchains; ++i) {
 		nchain = cluster->array[i];
 		if (i < ip->cluster.nchains) {
 			ochain = ip->cluster.array[i];
@@ -1129,15 +1143,29 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		}
 
 		/*
-		 * Make adjustment
+		 * Make adjustments
 		 */
 		ip->cluster.array[i] = nchain;
+		if (ip->cluster.focus == NULL)
+			ip->cluster.focus = nchain;
 		if (nchain)
 			hammer2_chain_ref(nchain);
 		if (ochain)
 			hammer2_chain_drop(ochain);
 	}
-	ip->cluster.focus = ip->cluster.array[0];
+
+	/*
+	 * Release any left-over chains in ip->cluster.
+	 */
+	while (i < ip->cluster.nchains) {
+		nchain = ip->cluster.array[i];
+		if (nchain) {
+			ip->cluster.array[i] = NULL;
+			hammer2_chain_drop(nchain);
+		}
+		++i;
+	}
+	ip->cluster.nchains = cluster ? cluster->nchains : 0;
 
 	/*
 	 * Repoint ip->pip if requested (non-NULL pip).
@@ -1259,7 +1287,8 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		cparent = NULL;
 
 		ocluster = cluster;
-		cluster = hammer2_cluster_copy(ocluster, 1);
+		cluster = hammer2_cluster_copy(ocluster,
+					       HAMMER2_CLUSTER_COPY_CHAINS);
 		error = hammer2_hardlink_find(dip, cluster);
 		KKASSERT(error == 0);
 	}
@@ -1364,8 +1393,9 @@ done:
 		hammer2_cluster_unlock(cluster);
 	if (cparent)
 		hammer2_cluster_lookup_done(cparent);
-	if (ocluster)
+	if (ocluster) {
 		hammer2_cluster_drop(ocluster);
+	}
 
 	return error;
 }
@@ -1552,7 +1582,9 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 		 * we are delete-duplicating ncluster here it might decide not
 		 * to reallocate the block.  Set FORCECOW to force it to.
 		 */
-		ncluster = cluster;
+		ncluster = hammer2_cluster_copy(cluster,
+						HAMMER2_CLUSTER_COPY_CHAINS |
+						HAMMER2_CLUSTER_COPY_NOREF);
 		hammer2_cluster_lock(ncluster, HAMMER2_RESOLVE_ALWAYS);
 		hammer2_cluster_set_chainflags(ncluster,
 					       HAMMER2_CHAIN_FORCECOW);
@@ -1611,8 +1643,8 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 		hammer2_inode_repoint(ip, cdip, cluster);
 
 	/*
-	 * Unlock the original cluster last as the lock blocked races against
-	 * the creation of the new hardlink target.
+	 * Unlock and destroy ncluster.
+	 * Return the shifted cluster in *clusterp.
 	 */
 	if (ncluster)
 		hammer2_cluster_unlock(ncluster);

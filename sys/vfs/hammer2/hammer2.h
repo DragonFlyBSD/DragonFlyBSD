@@ -566,6 +566,9 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_FREEMAP_HEUR		(HAMMER2_FREEMAP_HEUR_NRADIX * \
 					 HAMMER2_FREEMAP_HEUR_TYPES)
 
+#define HAMMER2_CLUSTER_COPY_CHAINS	0x0001	/* copy chains */
+#define HAMMER2_CLUSTER_COPY_NOREF	0x0002	/* do not ref chains */
+
 /*
  * Global (per device) mount structure for device (aka vp->v_mount->hmp)
  */
@@ -775,8 +778,8 @@ void hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
 /*
  * hammer2_inode.c
  */
-struct vnode *hammer2_igetv(hammer2_inode_t *ip, int *errorp);
-
+struct vnode *hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent,
+			int *errorp);
 void hammer2_inode_lock_nlinks(hammer2_inode_t *ip);
 void hammer2_inode_unlock_nlinks(hammer2_inode_t *ip);
 hammer2_inode_t *hammer2_inode_lookup(hammer2_pfsmount_t *pmp,

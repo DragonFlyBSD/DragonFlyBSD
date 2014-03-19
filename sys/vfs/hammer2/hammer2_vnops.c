@@ -1210,6 +1210,23 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	hammer2_inode_unlock_sh(dip, cparent);
 
 	/*
+	 * Resolve hardlink entries before acquiring the inode.
+	 */
+	if (cluster) {
+		ipdata = &hammer2_cluster_data(cluster)->ipdata;
+		if (ipdata->type == HAMMER2_OBJTYPE_HARDLINK) {
+			hammer2_tid_t inum = ipdata->inum;
+			error = hammer2_hardlink_find(dip, cluster);
+			if (error) {
+				kprintf("hammer2: unable to find hardlink "
+					"0x%016jx\n", inum);
+				hammer2_cluster_unlock(cluster);
+				return error;
+			}
+		}
+	}
+
+	/*
 	 * nresolve needs to resolve hardlinks, the original cluster is not
 	 * sufficient.
 	 */
@@ -1264,7 +1281,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	 *	    will handle it properly.
 	 */
 	if (cluster) {
-		vp = hammer2_igetv(ip, &error);
+		vp = hammer2_igetv(ip, cluster, &error);
 		if (error == 0) {
 			vn_unlock(vp);
 			cache_setvp(ap->a_nch, vp);
@@ -1306,7 +1323,7 @@ hammer2_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 		return ENOENT;
 	}
 	cparent = hammer2_inode_lock_ex(ip);
-	*ap->a_vpp = hammer2_igetv(ip, &error);
+	*ap->a_vpp = hammer2_igetv(ip, cparent, &error);
 	hammer2_inode_unlock_ex(ip, cparent);
 
 	return error;
@@ -1343,7 +1360,7 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
 	} else {
-		*ap->a_vpp = hammer2_igetv(nip, &error);
+		*ap->a_vpp = hammer2_igetv(nip, cluster, &error);
 		hammer2_inode_unlock_ex(nip, cluster);
 	}
 	hammer2_trans_done(&trans);
@@ -1531,7 +1548,7 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
 	} else {
-		*ap->a_vpp = hammer2_igetv(nip, &error);
+		*ap->a_vpp = hammer2_igetv(nip, ncluster, &error);
 		hammer2_inode_unlock_ex(nip, ncluster);
 	}
 	hammer2_trans_done(&trans);
@@ -1577,7 +1594,7 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
 	} else {
-		*ap->a_vpp = hammer2_igetv(nip, &error);
+		*ap->a_vpp = hammer2_igetv(nip, ncluster, &error);
 		hammer2_inode_unlock_ex(nip, ncluster);
 	}
 	hammer2_trans_done(&trans);
@@ -1627,7 +1644,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		hammer2_trans_done(&trans);
 		return error;
 	}
-	*ap->a_vpp = hammer2_igetv(nip, &error);
+	*ap->a_vpp = hammer2_igetv(nip, ncparent, &error);
 
 	/*
 	 * Build the softlink (~like file data) and finalize the namecache.
@@ -2021,7 +2038,6 @@ hammer2_strategy_read(struct vop_strategy_args *ap)
 	    btype != HAMMER2_BREF_TYPE_DATA) {
 		panic("READ PATH: hammer2_strategy_read: unknown bref type");
 	}
-
 	hammer2_chain_load_async(cluster, hammer2_strategy_read_callback, nbio);
 	return(0);
 }
@@ -2052,6 +2068,7 @@ hammer2_strategy_read_callback(hammer2_io_t *dio,
 				bp->b_flags |= B_ERROR;
 				bp->b_error = dio->bp->b_error;
 				biodone(bio);
+				hammer2_cluster_unlock(cluster);
 			} else {
 				chain = cluster->array[i];
 				kprintf("hammer2: IO CHAIN-%d %p\n", i, chain);
@@ -2106,7 +2123,6 @@ hammer2_strategy_read_callback(hammer2_io_t *dio,
 			bp->b_flags |= B_NOTMETA;
 			bp->b_resid = 0;
 			bp->b_error = 0;
-			hammer2_chain_unlock(chain);
 			break;
 		default:
 			panic("hammer2_strategy_read: "
@@ -2117,8 +2133,6 @@ hammer2_strategy_read_callback(hammer2_io_t *dio,
 		if (dio)
 			hammer2_io_bqrelse(&dio);
 		panic("hammer2_strategy_read: unknown bref type");
-		/*hammer2_chain_unlock(chain);*/
-		/*chain = NULL;*/
 	}
 	hammer2_cluster_unlock(cluster);
 	biodone(bio);
