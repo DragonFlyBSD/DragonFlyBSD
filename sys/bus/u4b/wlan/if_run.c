@@ -974,14 +974,12 @@ run_load_microcode(struct run_softc *sc)
 	int ntries, error;
 	const uint64_t *temp;
 	uint64_t bytes;
-	int wlan_serialized;
 
-	wlan_serialized = IS_SERIALIZED(&wlan_global_serializer);
-	if (wlan_serialized)
-		wlan_serialize_exit();
+	wlan_assert_serialized();
+
+	wlan_serialize_exit();
 	fw = firmware_get("runfw");
-	if (wlan_serialized)
-		wlan_serialize_enter();
+	wlan_serialize_enter();
 	if (fw == NULL) {
 		device_printf(sc->sc_dev,
 		    "failed loadfirmware of file %s\n", "runfw");
