@@ -293,17 +293,103 @@ in_pcblink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	pcbinfo->ipi_count++;
 }
 
+static int
+in_pcbsetlport(struct inpcb *inp, int wild, struct ucred *cred)
+{
+	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	u_short first, last, lport;
+	u_short *lastport;
+	int count, error;
+
+	inp->inp_flags |= INP_ANONPORT;
+
+	if (inp->inp_flags & INP_HIGHPORT) {
+		first = ipport_hifirstauto;	/* sysctl */
+		last  = ipport_hilastauto;
+		lastport = &pcbinfo->lasthi;
+	} else if (inp->inp_flags & INP_LOWPORT) {
+		if (cred &&
+		    (error =
+		     priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
+			inp->inp_laddr.s_addr = INADDR_ANY;
+			return error;
+		}
+		first = ipport_lowfirstauto;	/* 1023 */
+		last  = ipport_lowlastauto;	/* 600 */
+		lastport = &pcbinfo->lastlow;
+	} else {
+		first = ipport_firstauto;	/* sysctl */
+		last  = ipport_lastauto;
+		lastport = &pcbinfo->lastport;
+	}
+
+	/*
+	 * This has to be atomic.  If the porthash is shared across multiple
+	 * protocol threads (aka tcp) then the token will be non-NULL.
+	 */
+	if (pcbinfo->porttoken)
+		lwkt_gettoken(pcbinfo->porttoken);
+
+	/*
+	 * Simple check to ensure all ports are not used up causing
+	 * a deadlock here.
+	 *
+	 * We split the two cases (up and down) so that the direction
+	 * is not being tested on each round of the loop.
+	 */
+	if (first > last) {
+		/*
+		 * counting down
+		 */
+		count = first - last;
+
+		do {
+			if (count-- < 0) {	/* completely used? */
+				inp->inp_laddr.s_addr = INADDR_ANY;
+				error = EADDRNOTAVAIL;
+				goto done;
+			}
+			--*lastport;
+			if (*lastport > first || *lastport < last)
+				*lastport = first;
+			lport = htons(*lastport);
+		} while (in_pcblookup_local(pcbinfo, inp->inp_laddr, lport,
+		    wild, cred));
+	} else {
+		/*
+		 * counting up
+		 */
+		count = last - first;
+
+		do {
+			if (count-- < 0) {	/* completely used? */
+				inp->inp_laddr.s_addr = INADDR_ANY;
+				error = EADDRNOTAVAIL;
+				goto done;
+			}
+			++*lastport;
+			if (*lastport < first || *lastport > last)
+				*lastport = first;
+			lport = htons(*lastport);
+		} while (in_pcblookup_local(pcbinfo, inp->inp_laddr, lport,
+		    wild, cred));
+	}
+	inp->inp_lport = lport;
+	in_pcbinsporthash(inp);
+	error = 0;
+done:
+	if (pcbinfo->porttoken)
+		lwkt_reltoken(pcbinfo->porttoken);
+	return error;
+}
+
 int
 in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
 	struct socket *so = inp->inp_socket;
-	unsigned short *lastport;
 	struct sockaddr_in jsin;
-	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct ucred *cred = NULL;
-	u_short lport = 0;
-	int wild = 0, reuseport = (so->so_options & SO_REUSEPORT);
-	int error;
+	int wild = 0;
 
 	if (TAILQ_EMPTY(&in_ifaddrheads[mycpuid])) /* XXX broken! */
 		return (EADDRNOTAVAIL);
@@ -315,34 +401,27 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	if (td->td_proc)
 		cred = td->td_proc->p_ucred;
 
-	/*
-	 * This has to be atomic.  If the porthash is shared across multiple
-	 * protocol threads (aka tcp) then the token will be non-NULL.
-	 */
-	if (pcbinfo->porttoken)
-		lwkt_gettoken(pcbinfo->porttoken);
-
 	if (nam != NULL) {
 		struct sockaddr_in *sin = (struct sockaddr_in *)nam;
+		struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+		struct inpcb *t;
+		u_short lport;
+		int reuseport = (so->so_options & SO_REUSEPORT);
+		int error;
 
-		if (nam->sa_len != sizeof *sin) {
-			error = EINVAL;
-			goto done;
-		}
+		if (nam->sa_len != sizeof *sin)
+			return (EINVAL);
 #ifdef notdef
 		/*
 		 * We should check the family, but old programs
 		 * incorrectly fail to initialize it.
 		 */
-		if (sin->sin_family != AF_INET) {
-			error = EAFNOSUPPORT;
-			goto done;
-		}
+		if (sin->sin_family != AF_INET)
+			return (EAFNOSUPPORT);
 #endif
-		if (!prison_replace_wildcards(td, nam)) {
-			error = EINVAL;
-			goto done;
-		}
+		if (!prison_replace_wildcards(td, nam))
+			return (EINVAL);
+
 		lport = sin->sin_port;
 		if (IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
 			/*
@@ -357,153 +436,100 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		} else if (sin->sin_addr.s_addr != INADDR_ANY) {
 			sin->sin_port = 0;		/* yech... */
 			bzero(&sin->sin_zero, sizeof sin->sin_zero);
-			if (ifa_ifwithaddr((struct sockaddr *)sin) == NULL) {
-				error = EADDRNOTAVAIL;
-				goto done;
-			}
+			if (ifa_ifwithaddr((struct sockaddr *)sin) == NULL)
+				return (EADDRNOTAVAIL);
 		}
-		if (lport != 0) {
-			struct inpcb *t;
 
-			/* GROSS */
-			if (ntohs(lport) < IPPORT_RESERVED &&
-			    cred &&
-			    priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0)) {
-				error = EACCES;
-				goto done;
-			}
-			if (so->so_cred->cr_uid != 0 &&
-			    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
-				t = in_pcblookup_local(pcbinfo,
-						       sin->sin_addr,
-						       lport,
-						       INPLOOKUP_WILDCARD,
-						       cred);
-				if (t &&
-				    (!in_nullhost(sin->sin_addr) ||
-				     !in_nullhost(t->inp_laddr) ||
-				     (t->inp_socket->so_options &
-					 SO_REUSEPORT) == 0) &&
-				    (so->so_cred->cr_uid !=
-				     t->inp_socket->so_cred->cr_uid)) {
-#ifdef INET6
-					if (!in_nullhost(sin->sin_addr) ||
-					    !in_nullhost(t->inp_laddr) ||
-					    INP_SOCKAF(so) ==
-					    INP_SOCKAF(t->inp_socket))
-#endif
-					{
-						error = EADDRINUSE;
-						goto done;
-					}
-				}
-			}
-			if (cred && !prison_replace_wildcards(td, nam)) {
-				error = EADDRNOTAVAIL;
-				goto done;
-			}
+		inp->inp_laddr = sin->sin_addr;
+
+		jsin.sin_family = AF_INET;
+		jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
+		if (!prison_replace_wildcards(td, (struct sockaddr *)&jsin)) {
+			inp->inp_laddr.s_addr = INADDR_ANY;
+			return (EINVAL);
+		}
+		inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
+
+		if (lport == 0) {
+			/* Auto-select local port */
+			return in_pcbsetlport(inp, wild, cred);
+		}
+
+		/* GROSS */
+		if (ntohs(lport) < IPPORT_RESERVED && cred &&
+		    (error =
+		     priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
+			inp->inp_laddr.s_addr = INADDR_ANY;
+			return (error);
+		}
+
+		/*
+		 * This has to be atomic.  If the porthash is shared across
+		 * multiple protocol threads (aka tcp) then the token will
+		 * be non-NULL.
+		 */
+		if (pcbinfo->porttoken)
+			lwkt_gettoken(pcbinfo->porttoken);
+
+		if (so->so_cred->cr_uid != 0 &&
+		    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
 			t = in_pcblookup_local(pcbinfo, sin->sin_addr, lport,
-					       wild, cred);
-			if (t && !(reuseport & t->inp_socket->so_options)) {
+			    INPLOOKUP_WILDCARD, cred);
+			if (t &&
+			    (!in_nullhost(sin->sin_addr) ||
+			     !in_nullhost(t->inp_laddr) ||
+			     (t->inp_socket->so_options & SO_REUSEPORT) == 0) &&
+			    (so->so_cred->cr_uid !=
+			     t->inp_socket->so_cred->cr_uid)) {
 #ifdef INET6
 				if (!in_nullhost(sin->sin_addr) ||
 				    !in_nullhost(t->inp_laddr) ||
 				    INP_SOCKAF(so) == INP_SOCKAF(t->inp_socket))
 #endif
 				{
+					inp->inp_laddr.s_addr = INADDR_ANY;
 					error = EADDRINUSE;
 					goto done;
 				}
 			}
 		}
-		inp->inp_laddr = sin->sin_addr;
-	}
-
-	jsin.sin_family = AF_INET;
-	jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
-	if (!prison_replace_wildcards(td, (struct sockaddr *)&jsin)) {
-		inp->inp_laddr.s_addr = INADDR_ANY;
-		error = EINVAL;
-		goto done;
-	}
-	inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
-
-	if (lport == 0) {
-		ushort first, last;
-		int count;
-
-		inp->inp_flags |= INP_ANONPORT;
-
-		if (inp->inp_flags & INP_HIGHPORT) {
-			first = ipport_hifirstauto;	/* sysctl */
-			last  = ipport_hilastauto;
-			lastport = &pcbinfo->lasthi;
-		} else if (inp->inp_flags & INP_LOWPORT) {
-			if (cred &&
-			    (error = priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
+		if (cred && !prison_replace_wildcards(td, nam)) {
+			inp->inp_laddr.s_addr = INADDR_ANY;
+			error = EADDRNOTAVAIL;
+			goto done;
+		}
+		t = in_pcblookup_local(pcbinfo, sin->sin_addr, lport,
+		    wild, cred);
+		if (t && !(reuseport & t->inp_socket->so_options)) {
+#ifdef INET6
+			if (!in_nullhost(sin->sin_addr) ||
+			    !in_nullhost(t->inp_laddr) ||
+			    INP_SOCKAF(so) == INP_SOCKAF(t->inp_socket))
+#endif
+			{
 				inp->inp_laddr.s_addr = INADDR_ANY;
+				error = EADDRINUSE;
 				goto done;
 			}
-			first = ipport_lowfirstauto;	/* 1023 */
-			last  = ipport_lowlastauto;	/* 600 */
-			lastport = &pcbinfo->lastlow;
-		} else {
-			first = ipport_firstauto;	/* sysctl */
-			last  = ipport_lastauto;
-			lastport = &pcbinfo->lastport;
 		}
-		/*
-		 * Simple check to ensure all ports are not used up causing
-		 * a deadlock here.
-		 *
-		 * We split the two cases (up and down) so that the direction
-		 * is not being tested on each round of the loop.
-		 */
-		if (first > last) {
-			/*
-			 * counting down
-			 */
-			count = first - last;
-
-			do {
-				if (count-- < 0) {	/* completely used? */
-					inp->inp_laddr.s_addr = INADDR_ANY;
-					error = EADDRNOTAVAIL;
-					goto done;
-				}
-				--*lastport;
-				if (*lastport > first || *lastport < last)
-					*lastport = first;
-				lport = htons(*lastport);
-			} while (in_pcblookup_local(pcbinfo, inp->inp_laddr,
-						    lport, wild, cred));
-		} else {
-			/*
-			 * counting up
-			 */
-			count = last - first;
-
-			do {
-				if (count-- < 0) {	/* completely used? */
-					inp->inp_laddr.s_addr = INADDR_ANY;
-					error = EADDRNOTAVAIL;
-					goto done;
-				}
-				++*lastport;
-				if (*lastport < first || *lastport > last)
-					*lastport = first;
-				lport = htons(*lastport);
-			} while (in_pcblookup_local(pcbinfo, inp->inp_laddr,
-						    lport, wild, cred));
-		}
-	}
-	inp->inp_lport = lport;
-	in_pcbinsporthash(inp);
-	error = 0;
+		inp->inp_lport = lport;
+		in_pcbinsporthash(inp);
+		error = 0;
 done:
-	if (pcbinfo->porttoken)
-		lwkt_reltoken(pcbinfo->porttoken);
-	return error;
+		if (pcbinfo->porttoken)
+			lwkt_reltoken(pcbinfo->porttoken);
+		return (error);
+	} else {
+		jsin.sin_family = AF_INET;
+		jsin.sin_addr.s_addr = inp->inp_laddr.s_addr;
+		if (!prison_replace_wildcards(td, (struct sockaddr *)&jsin)) {
+			inp->inp_laddr.s_addr = INADDR_ANY;
+			return (EINVAL);
+		}
+		inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
+
+		return in_pcbsetlport(inp, wild, cred);
+	}
 }
 
 static struct inpcb *
