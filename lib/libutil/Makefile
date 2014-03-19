@@ -53,6 +53,9 @@ MLINKS+=login_times.3 parse_lt.3 login_times.3 in_ltm.3 \
 MLINKS+=login_ok.3 auth_ttyok.3 login_ok.3 auth_hostok.3 \
 	login_ok.3 auth_timeok.3
 MLINKS+=login_auth.3 auth_checknologin.3 login_auth.3 auth_cat.3
+MLINKS+=pidfile.3 pidfile_close.3 pidfile.3 pidfile_fileno.3 \
+	pidfile.3 pidfile_open.3 pidfile.3 pidfile_remove.3 \
+	pidfile.3 pidfile_write.3
 MLINKS+=property.3 properties_read.3  property.3 properties_free.3
 MLINKS+=property.3 property_find.3
 MLINKS+=pty.3 openpty.3 pty.3 forkpty.3

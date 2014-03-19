@@ -624,6 +624,7 @@ MLINKS+=lock.9 lockcount.9 \
 	lock.9 lockinit.9 \
 	lock.9 lockmgr.9 \
 	lock.9 lockmgr_printinfo.9 \
+	lock.9 lockowned.9 \
 	lock.9 lockstatus.9 \
 	lock.9 lockuninit.9
 MLINKS+=lwbuf.9 lwbuf_alloc.9 \
