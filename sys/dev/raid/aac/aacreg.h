@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/aac/aacreg.h,v 1.34 2010/09/29 14:22:00 emaste Exp $
+ *	$FreeBSD: head/sys/dev/aac/aacreg.h 213272 2010-09-29 14:22:00Z emaste $
  */
 
 /*

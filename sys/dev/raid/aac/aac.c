@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/aac/aac.c,v 1.170 2012/02/13 16:48:49 emaste Exp $
+ * $FreeBSD: head/sys/dev/aac/aac.c 260044 2013-12-29 17:37:32Z marius $
  */
 
 /*
@@ -114,7 +114,7 @@ static void	aac_sa_set_mailbox(struct aac_softc *sc, u_int32_t command,
 static int	aac_sa_get_mailbox(struct aac_softc *sc, int mb);
 static void	aac_sa_set_interrupts(struct aac_softc *sc, int enable);
 
-struct aac_interface aac_sa_interface = {
+const struct aac_interface aac_sa_interface = {
 	aac_sa_get_fwstatus,
 	aac_sa_qnotify,
 	aac_sa_get_istatus,
@@ -139,7 +139,7 @@ static int aac_rx_send_command(struct aac_softc *sc, struct aac_command *cm);
 static int aac_rx_get_outb_queue(struct aac_softc *sc);
 static void aac_rx_set_outb_queue(struct aac_softc *sc, int index);
 
-struct aac_interface aac_rx_interface = {
+const struct aac_interface aac_rx_interface = {
 	aac_rx_get_fwstatus,
 	aac_rx_qnotify,
 	aac_rx_get_istatus,
@@ -166,7 +166,7 @@ static int aac_rkt_send_command(struct aac_softc *sc, struct aac_command *cm);
 static int aac_rkt_get_outb_queue(struct aac_softc *sc);
 static void aac_rkt_set_outb_queue(struct aac_softc *sc, int index);
 
-struct aac_interface aac_rkt_interface = {
+const struct aac_interface aac_rkt_interface = {
 	aac_rkt_get_fwstatus,
 	aac_rkt_qnotify,
 	aac_rkt_get_istatus,
@@ -180,8 +180,8 @@ struct aac_interface aac_rkt_interface = {
 };
 
 /* Debugging and Diagnostics */
-static void	aac_describe_controller(struct aac_softc *sc);
-static char	*aac_describe_code(struct aac_code_lookup *table,
+static void		aac_describe_controller(struct aac_softc *sc);
+static const char	*aac_describe_code(const struct aac_code_lookup *table,
 				   u_int32_t code);
 
 /* Management Interface */
@@ -220,7 +220,7 @@ static struct dev_ops aac_ops = {
 static MALLOC_DEFINE(M_AACBUF, "aacbuf", "Buffers for the AAC driver");
 
 /* sysctl node */
-static SYSCTL_NODE(_hw, OID_AUTO, aac, CTLFLAG_RD, 0, "AAC driver parameters");
+SYSCTL_NODE(_hw, OID_AUTO, aac, CTLFLAG_RD, 0, "AAC driver parameters");
 
 /*
  * Device Interface
@@ -268,7 +268,7 @@ aac_attach(struct aac_softc *sc)
 	TAILQ_INIT(&sc->aac_ev_cmfree);
 
 	/* Initialize the clock daemon callout. */
-	callout_init(&sc->aac_daemontime);
+	callout_init_mp(&sc->aac_daemontime);
 
 	/*
 	 * Initialize the adapter.
@@ -372,8 +372,8 @@ aac_daemon(void *arg)
 	*(uint32_t *)fib->data = tv.tv_sec;
 	aac_sync_fib(sc, SendHostTime, 0, fib, sizeof(uint32_t));
 	aac_release_sync_fib(sc);
-	lockmgr(&sc->aac_io_lock, LK_RELEASE);
 	callout_reset(&sc->aac_daemontime, 30 * 60 * hz, aac_daemon, sc);
+	lockmgr(&sc->aac_io_lock, LK_RELEASE);
 }
 
 void
@@ -389,8 +389,6 @@ aac_add_event(struct aac_softc *sc, struct aac_event *event)
 		    event->ev_type);
 		break;
 	}
-
-	return;
 }
 
 /*
@@ -637,9 +635,12 @@ aac_free(struct aac_softc *sc)
 	/* disconnect the interrupt handler */
 	if (sc->aac_intr)
 		bus_teardown_intr(sc->aac_dev, sc->aac_irq, sc->aac_intr);
-	if (sc->aac_irq != NULL)
-		bus_release_resource(sc->aac_dev, SYS_RES_IRQ, sc->aac_irq_rid,
-				     sc->aac_irq);
+	if (sc->aac_irq != NULL) {
+		bus_release_resource(sc->aac_dev, SYS_RES_IRQ,
+		    rman_get_rid(sc->aac_irq), sc->aac_irq);
+		if (sc->aac_irq_type == PCI_INTR_TYPE_MSI)
+			pci_release_msi(sc->aac_dev);
+	}
 
 	/* destroy data-transfer DMA tag */
 	if (sc->aac_buffer_dmat)
@@ -652,10 +653,10 @@ aac_free(struct aac_softc *sc)
 	/* release the register window mapping */
 	if (sc->aac_regs_res0 != NULL)
 		bus_release_resource(sc->aac_dev, SYS_RES_MEMORY,
-				     sc->aac_regs_rid0, sc->aac_regs_res0);
+		    rman_get_rid(sc->aac_regs_res0), sc->aac_regs_res0);
 	if (sc->aac_hwif == AAC_HWIF_NARK && sc->aac_regs_res1 != NULL)
 		bus_release_resource(sc->aac_dev, SYS_RES_MEMORY,
-				     sc->aac_regs_rid1, sc->aac_regs_res1);
+		    rman_get_rid(sc->aac_regs_res1), sc->aac_regs_res1);
 	dev_ops_remove_minor(&aac_ops, device_get_unit(sc->aac_dev));
 
 	sysctl_ctx_free(&sc->aac_sysctl_ctx);
@@ -1335,8 +1336,6 @@ aac_bio_complete(struct aac_command *cm)
 	} else {
 		bp->b_error = EIO;
 		bp->b_flags |= B_ERROR;
-		/* pass an error string out to the disk layer */
-		code = aac_describe_code(aac_command_status_table, status);
 	}
 	aac_biodone(bio, code);
 }
@@ -1633,8 +1632,6 @@ aac_map_command_sg(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 			aac_requeue_ready(cm);
 		}
 	}
-
-	return;
 }
 
 /*
@@ -1686,7 +1683,7 @@ static int
 aac_check_firmware(struct aac_softc *sc)
 {
 	u_int32_t code, major, minor, options = 0, atu_size = 0;
-	int status;
+	int rid, status;
 	time_t then;
 
 	fwprintf(sc, HBA_FLAGS_DBG_FUNCTION_ENTRY_B, "");
@@ -1764,7 +1761,7 @@ aac_check_firmware(struct aac_softc *sc)
 			sc->flags |= AAC_FLAGS_SG_64BIT;
 		}
 		if ((options & AAC_SUPPORTED_NEW_COMM)
-		 && sc->aac_if.aif_send_command)
+		 && sc->aac_if->aif_send_command)
 			sc->flags |= AAC_FLAGS_NEW_COMM;
 		if (options & AAC_SUPPORTED_64BIT_ARRAYSIZE)
 			sc->flags |= AAC_FLAGS_ARRAY_64BIT;
@@ -1775,17 +1772,15 @@ aac_check_firmware(struct aac_softc *sc)
 
 	/* Remap mem. resource, if required */
 	if ((sc->flags & AAC_FLAGS_NEW_COMM) &&
-		atu_size > rman_get_size(sc->aac_regs_res1)) {
-		bus_release_resource(
-			sc->aac_dev, SYS_RES_MEMORY,
-			sc->aac_regs_rid1, sc->aac_regs_res1);
-		sc->aac_regs_res1 = bus_alloc_resource(
-			sc->aac_dev, SYS_RES_MEMORY, &sc->aac_regs_rid1,
-			0ul, ~0ul, atu_size, RF_ACTIVE);
+	    atu_size > rman_get_size(sc->aac_regs_res1)) {
+		rid = rman_get_rid(sc->aac_regs_res1);
+		bus_release_resource(sc->aac_dev, SYS_RES_MEMORY, rid,
+		    sc->aac_regs_res1);
+		sc->aac_regs_res1 = bus_alloc_resource(sc->aac_dev,
+		    SYS_RES_MEMORY, &rid, 0ul, ~0ul, atu_size, RF_ACTIVE);
 		if (sc->aac_regs_res1 == NULL) {
 			sc->aac_regs_res1 = bus_alloc_resource_any(
-				sc->aac_dev, SYS_RES_MEMORY,
-				&sc->aac_regs_rid1, RF_ACTIVE);
+			    sc->aac_dev, SYS_RES_MEMORY, &rid, RF_ACTIVE);
 			if (sc->aac_regs_res1 == NULL) {
 				device_printf(sc->aac_dev,
 				    "couldn't allocate register window\n");
@@ -1798,7 +1793,6 @@ aac_check_firmware(struct aac_softc *sc)
 
 		if (sc->aac_hwif == AAC_HWIF_NARK) {
 			sc->aac_regs_res0 = sc->aac_regs_res1;
-			sc->aac_regs_rid0 = sc->aac_regs_rid1;
 			sc->aac_btag0 = sc->aac_btag1;
 			sc->aac_bhandle0 = sc->aac_bhandle1;
 		}
@@ -2002,14 +1996,7 @@ out:
 static int
 aac_setup_intr(struct aac_softc *sc)
 {
-	sc->aac_irq_rid = 0;
-	if ((sc->aac_irq = bus_alloc_resource_any(sc->aac_dev, SYS_RES_IRQ,
-						  &sc->aac_irq_rid,
-						  RF_SHAREABLE |
-						  RF_ACTIVE)) == NULL) {
-		device_printf(sc->aac_dev, "can't allocate interrupt\n");
-		return (EINVAL);
-	}
+
 	if (sc->flags & AAC_FLAGS_NEW_COMM) {
 		if (bus_setup_intr(sc->aac_dev, sc->aac_irq,
 				   INTR_MPSAFE,
@@ -2120,7 +2107,7 @@ aac_sync_fib(struct aac_softc *sc, u_int32_t command, u_int32_t xferstate,
  * Note that the queue implementation here is a little funky; neither the PI or
  * CI will ever be zero.  This behaviour is a controller feature.
  */
-static struct {
+static const struct {
 	int		size;
 	int		notify;
 } aac_qinfo[] = {
@@ -2376,7 +2363,6 @@ aac_timeout(struct aac_softc *sc)
 				      "longer running! code= 0x%x\n", code);
 		}
 	}
-	return;
 }
 
 /*
@@ -2787,8 +2773,8 @@ aac_describe_controller(struct aac_softc *sc)
  * Look up a text description of a numeric error code and return a pointer to
  * same.
  */
-static char *
-aac_describe_code(struct aac_code_lookup *table, u_int32_t code)
+static const char *
+aac_describe_code(const struct aac_code_lookup *table, u_int32_t code)
 {
 	int i;
 
@@ -3414,8 +3400,6 @@ aac_handle_aif(struct aac_softc *sc, struct aac_fib *fib)
 	KNOTE(&sc->rcv_kq.ki_note, 0);
 	/* token may have been lost */
 	lockmgr(&sc->aac_aifq_lock, LK_RELEASE);
-
-	return;
 }
 
 /*
@@ -3825,6 +3809,4 @@ aac_get_bus_info(struct aac_softc *sc)
 
 	if (found)
 		bus_generic_attach(sc->aac_dev);
-
-	return;
 }

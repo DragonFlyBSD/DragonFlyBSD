@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/aac/aac_debug.c,v 1.26 2010/04/13 00:33:07 emaste Exp $
+ * $FreeBSD: head/sys/dev/aac/aac_debug.c 242823 2012-11-09 13:58:52Z rdivacky $
  */
 
 /*

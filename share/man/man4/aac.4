@@ -22,8 +22,8 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/aac.4,v 1.41 2009/07/11 08:10:18 jkim Exp $
-.Dd January 7, 2011
+.\" $FreeBSD: head/share/man/man4/aac.4 195614 2009-07-11 08:10:18Z jkim $
+.Dd March 19, 2014
 .Dt AAC 4
 .Os
 .Sh NAME
@@ -86,6 +86,12 @@ Linux-compatible
 .Xr ioctl 2
 interface for the management device will be enabled and will allow
 Linux-based management applications to control the card.
+.Sh LOADER TUNABLES
+.Bl -tag -width indent
+.It Va hw.aac.msi.enable
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting this tunable to 0.
+.El
 .Sh HARDWARE
 Controllers supported by the
 .Nm

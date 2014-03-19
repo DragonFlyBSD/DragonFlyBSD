@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/aac/aac_linux.c,v 1.4 2006/12/20 17:10:53 delphij Exp $
+ * $FreeBSD: head/sys/dev/aac/aac_linux.c 165393 2006-12-20 17:10:53Z delphij $
  */
 
 /*

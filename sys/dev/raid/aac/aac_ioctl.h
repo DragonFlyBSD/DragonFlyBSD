@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/sys/aac_ioctl.h,v 1.15 2011/02/21 09:01:34 brucec Exp $
+ *	$FreeBSD: head/sys/sys/aac_ioctl.h 218909 2011-02-21 09:01:34Z brucec $
  */
 
 #include <sys/ioccom.h>

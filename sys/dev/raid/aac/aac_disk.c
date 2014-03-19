@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.50 2012/07/07 17:20:24 eadler Exp $
+ * $FreeBSD: head/sys/dev/aac/aac_disk.c 251115 2013-05-30 00:11:22Z marius $
  */
 
 #include "opt_aac.h"
@@ -355,8 +355,8 @@ aac_biodone(struct bio *bio, const char *code)
 
 	devstat_end_transaction_buf(&sc->ad_stats, bp);
 	if (bp->b_flags & B_ERROR) {
-		diskerr(bio, sc->ad_dev_t,
-			code, 0, 0);
+		bp->b_resid = bp->b_bcount;
+		diskerr(bio, sc->ad_dev_t, code, 0, 0);
 	}
 
 	biodone(bio);
