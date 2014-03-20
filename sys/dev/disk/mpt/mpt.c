@@ -94,7 +94,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF THE COPYRIGHT
  * OWNER OR CONTRIBUTOR IS ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/mpt/mpt.c,v 1.61 2012/02/11 12:03:44 marius Exp $
+ * $FreeBSD: head/sys/dev/mpt/mpt.c 241874 2012-10-22 10:42:59Z marius $
  */
 
 #include <dev/disk/mpt/mpt.h>
@@ -2369,7 +2369,7 @@ mpt_core_detach(struct mpt_softc *mpt)
 	/* Make sure no request has pending timeouts. */
 	for (val = 0; val < MPT_MAX_REQUESTS(mpt); val++) {
 		request_t *req = &mpt->request_pool[val];
-		callout_stop(&req->callout);
+		mpt_callout_drain(mpt, &req->callout);
 	}
 
 	mpt_dma_buf_free(mpt);

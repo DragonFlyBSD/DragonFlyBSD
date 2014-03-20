@@ -33,7 +33,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/share/man/man4/mpt.4,v 1.22 2011/07/23 22:55:32 gjb Exp $
+.\" $FreeBSD: head/share/man/man4/mpt.4 236623 2012-06-05 17:49:11Z obrien $
 .\"
 .Dd July 21, 2012
 .Dt MPT 4
@@ -131,8 +131,8 @@ Dell PowerEdge 1750 thru 2850
 IBM eServer xSeries 335
 .El
 .Pp
-These systems also contain Integrated Raid Mirroring and Integrated
-Raid Mirroring Enhanced which this driver also supports.
+These systems also contain Integrated RAID Mirroring and Integrated
+RAID Mirroring Enhanced which this driver also supports.
 .Pp
 The 53c1030 is also available in
 .Tn VMware
@@ -144,7 +144,7 @@ controller chips are also present on many new AMD/Opteron based systems,
 like the Sun 4100.
 Note that this controller can drive both SAS and SATA
 drives or a mix of them at the same time.
-The Integrated Raid Mirroring
+The Integrated RAID Mirroring
 available for these controllers is poorly supported at best.
 .Pp
 The
@@ -168,6 +168,7 @@ can take on - no separate compilation is required.
 .Xr pci 4 ,
 .Xr sa 4 ,
 .Xr scsi 4 ,
+.Xr targ 4 ,
 .Xr mptutil 8
 .Rs
 .%T "LSI Logic Website"

@@ -39,7 +39,7 @@
  * Support from LSI-Logic has also gone a great deal toward making this a
  * workable subsystem and is gratefully acknowledged.
  *
- * $FreeBSD: src/sys/dev/mpt/mpt_raid.c,v 1.30 2011/07/29 18:38:31 marius Exp $
+ * $FreeBSD: head/sys/dev/mpt/mpt_raid.c 260058 2013-12-29 20:41:32Z marius $
  */
 
 #include <dev/disk/mpt/mpt.h>
@@ -50,9 +50,9 @@
 
 #include <bus/cam/cam.h>
 #include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_periph.h>
 #include <bus/cam/cam_sim.h>
 #include <bus/cam/cam_xpt_sim.h>
-#include <bus/cam/cam_periph.h>
 
 #include <sys/callout.h>
 #include <sys/kthread.h>
@@ -326,7 +326,7 @@ mpt_raid_detach(struct mpt_softc *mpt)
 	struct ccb_setasync csa;
 	mpt_handler_t handler;
 
-	callout_stop(&mpt->raid_timer);
+	mpt_callout_drain(mpt, &mpt->raid_timer);
 
 	MPT_LOCK(mpt);
 	mpt_terminate_raid_thread(mpt);
@@ -635,9 +635,8 @@ mpt_spawn_raid_thread(struct mpt_softc *mpt)
 	MPT_LOCK(mpt);
 	xpt_freeze_simq(mpt->phydisk_sim, 1);
 	MPT_UNLOCK(mpt);
-	error = mpt_kthread_create(mpt_raid_thread, mpt,
-	    &mpt->raid_thread, /*flags*/0, /*altstack*/0,
-	    "mpt_raid%d", mpt->unit);
+	error = kthread_create(mpt_raid_thread, mpt,
+	    &mpt->raid_thread, "mpt_raid%d", mpt->unit);
 	if (error != 0) {
 		MPT_LOCK(mpt);
 		xpt_release_simq(mpt->phydisk_sim, /*run_queue*/FALSE);
@@ -733,7 +732,7 @@ mpt_raid_thread(void *arg)
 	mpt->raid_thread = NULL;
 	wakeup(&mpt->raid_thread);
 	MPT_UNLOCK(mpt);
-	mpt_kthread_exit(0);
+	kthread_exit();
 }
 
 #if 0

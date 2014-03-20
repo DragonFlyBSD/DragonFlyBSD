@@ -1,4 +1,4 @@
-/* $FreeBSD: src/sys/dev/mpt/mpt.h,v 1.60 2012/03/24 00:30:17 marius Exp $ */
+/* $FreeBSD: head/sys/dev/mpt/mpt.h 260058 2013-12-29 20:41:32Z marius $ */
 /*-
  * Generic defines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -100,7 +100,6 @@
 #define _MPT_H_
 
 /********************************* OS Includes ********************************/
-#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/endian.h>
@@ -226,19 +225,6 @@ struct mpt_map_info {
 };
 
 void mpt_map_rquest(void *, bus_dma_segment_t *, int, int);
-/* **************************** NewBUS interrupt Crock ************************/
-#define	mpt_setup_intr(d, i, f, U, if, ifa, hp)	\
-	bus_setup_intr(d, i, f, if, ifa, hp, NULL)
-
-/* **************************** NewBUS CAM Support ****************************/
-#define mpt_xpt_bus_register(sim, parent, bus)	\
-	xpt_bus_register(sim, bus)
-
-/**************************** Kernel Thread Support ***************************/
-#define mpt_kthread_create(func, farg, proc_ptr, flags, stackpgs, fmtstr, arg) \
-	kthread_create(func, farg, proc_ptr, fmtstr, arg)
-#define	mpt_kthread_exit(status)	\
-	kthread_exit()
 
 /********************************** Endianess *********************************/
 #define	MPT_2_HOST64(ptr, tag)	ptr->tag = le64toh(ptr->tag)
@@ -643,7 +629,7 @@ struct mpt_softc {
 	/*
 	 * PCI Hardware info
 	 */
-#ifdef OLD_MSI
+#if 0 /* XXX MSI-X support */
 	int			pci_msi_count;
 #endif
 	int			irq_type;	/* Interrupt type */
@@ -729,9 +715,10 @@ struct mpt_softc {
 	uint16_t		sequence;	/* Sequence Number */
 	uint16_t		pad3;
 
-
+#if 0
 	/* Paired port in some dual adapters configurations */
 	struct mpt_softc *	mpt2;
+#endif
 
 	/* FW Image management */
 	uint32_t		fw_image_size;
@@ -787,7 +774,9 @@ mpt_assign_serno(struct mpt_softc *mpt, request_t *req)
 #define mpt_req_untimeout(req, func, arg) \
 	callout_stop(&(req)->callout)
 #define mpt_callout_init(mpt, c) \
-	callout_init(c)
+	callout_init_mp(c)
+#define mpt_callout_drain(mpt, c) \
+	callout_stop_sync(c)
 
 /******************************* Register Access ******************************/
 static __inline void mpt_write(struct mpt_softc *, size_t, uint32_t);

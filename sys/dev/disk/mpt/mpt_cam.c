@@ -105,9 +105,9 @@
 #include "dev/disk/mpt/mpilib/mpi_targ.h"
 #include "dev/disk/mpt/mpilib/mpi_fc.h"
 #include "dev/disk/mpt/mpilib/mpi_sas.h"
-#include <sys/sysctl.h>
 #include <sys/callout.h>
 #include <sys/kthread.h>
+#include <sys/sysctl.h>
 
 static void mpt_poll(struct cam_sim *);
 static timeout_t mpt_timeout;
@@ -337,7 +337,7 @@ mpt_cam_attach(struct mpt_softc *mpt)
 	 * Register exactly this bus.
 	 */
 	MPT_LOCK(mpt);
-	if (mpt_xpt_bus_register(mpt->sim, mpt->dev, 0) != CAM_SUCCESS) {
+	if (xpt_bus_register(mpt->sim, 0) != CAM_SUCCESS) {
 		mpt_prt(mpt, "Bus registration Failed!\n");
 		error = ENOMEM;
 		MPT_UNLOCK(mpt);
@@ -376,7 +376,7 @@ mpt_cam_attach(struct mpt_softc *mpt)
 	 * Register this bus.
 	 */
 	MPT_LOCK(mpt);
-	if (mpt_xpt_bus_register(mpt->phydisk_sim, mpt->dev, 1) !=
+	if (xpt_bus_register(mpt->phydisk_sim, 1) !=
 	    CAM_SUCCESS) {
 		mpt_prt(mpt, "Physical Disk Bus registration Failed!\n");
 		error = ENOMEM;
@@ -1425,7 +1425,7 @@ bad:
 			/* SAS1078 36GB limitation WAR */
 			if (mpt->is_1078 && (((uint64_t)dm_segs->ds_addr +
 			    MPI_SGE_LENGTH(se->FlagsLength)) >> 32) == 9) {
-				addr |= (1 << 31);
+				addr |= (1U << 31);
 				tf |= MPI_SGE_FLAGS_LOCAL_ADDRESS;
 			}
 			se->Address.High = htole32(addr);
@@ -1548,7 +1548,7 @@ bad:
 				    (((uint64_t)dm_segs->ds_addr +
 				    MPI_SGE_LENGTH(se->FlagsLength)) >>
 				    32) == 9) {
-					addr |= (1 << 31);
+					addr |= (1U << 31);
 					tf |= MPI_SGE_FLAGS_LOCAL_ADDRESS;
 				}
 				se->Address.High = htole32(addr);
@@ -3804,7 +3804,7 @@ mpt_get_spi_settings(struct mpt_softc *mpt, struct ccb_trans_settings *cts)
 	}
 	mpt_lprt(mpt, MPT_PRT_NEGOTIATION,
 	    "mpt_get_spi_settings[%d]: %s flags 0x%x per 0x%x off=%d\n", tgt,
-	    IS_CURRENT_SETTINGS(cts)? "ACTIVE" : "NVRAM ", dval, pval, oval);
+	    IS_CURRENT_SETTINGS(cts) ? "ACTIVE" : "NVRAM ", dval, pval, oval);
 	return (0);
 }
 
@@ -3874,9 +3874,8 @@ mpt_spawn_recovery_thread(struct mpt_softc *mpt)
 {
 	int error;
 
-	error = mpt_kthread_create(mpt_recovery_thread, mpt,
-	    &mpt->recovery_thread, /*flags*/0,
-	    /*altstack*/0, "mpt_recovery%d", mpt->unit);
+	error = kthread_create(mpt_recovery_thread, mpt,
+	    &mpt->recovery_thread, "mpt_recovery%d", mpt->unit);
 	return (error);
 }
 
@@ -3917,7 +3916,7 @@ mpt_recovery_thread(void *arg)
 	mpt->recovery_thread = NULL;
 	wakeup(&mpt->recovery_thread);
 	MPT_UNLOCK(mpt);
-	mpt_kthread_exit(0);
+	kthread_exit();
 }
 
 static int

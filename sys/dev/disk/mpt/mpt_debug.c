@@ -62,7 +62,7 @@
  * Support from LSI-Logic has also gone a great deal toward making this a
  * workable subsystem and is gratefully acknowledged.
  *
- * $FreeBSD: src/sys/dev/mpt/mpt_debug.c,v 1.20 2011/07/29 18:35:10 marius Exp $
+ * $FreeBSD: head/sys/dev/mpt/mpt_debug.c 241874 2012-10-22 10:42:59Z marius $
  */
 
 #include <dev/disk/mpt/mpt.h>

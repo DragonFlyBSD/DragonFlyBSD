@@ -1,4 +1,4 @@
-/* $FreeBSD: src/sys/dev/mpt/mpilib/mpi_type.h,v 1.12 2012/03/24 16:23:21 marius Exp $ */
+/* $FreeBSD: head/sys/dev/mpt/mpilib/mpi_type.h 233425 2012-03-24 16:23:21Z marius $ */
 /*
  * Copyright (c) 2000-2010, LSI Logic Corporation and its contributors.
  * All rights reserved.

@@ -140,10 +140,6 @@
 #define	MPI_MANUFACTPAGE_DEVID_SAS1078DE_FB	0x007C
 #endif
 
-#ifndef	PCIM_CMD_SERRESPEN
-#define	PCIM_CMD_SERRESPEN	0x0100
-#endif
-
 static int mpt_pci_probe(device_t);
 static int mpt_pci_attach(device_t);
 static void mpt_free_bus_resources(struct mpt_softc *mpt);
@@ -169,6 +165,7 @@ static device_method_t mpt_methods[] = {
 static driver_t mpt_driver = {
 	"mpt", mpt_methods, sizeof(struct mpt_softc)
 };
+
 static devclass_t mpt_devclass;
 DRIVER_MODULE(mpt, pci, mpt_driver, mpt_devclass, NULL, NULL);
 MODULE_DEPEND(mpt, pci, 1, 1, 1);
@@ -319,6 +316,7 @@ mpt_set_options(struct mpt_softc *mpt)
 		mpt->msi_enable = tval;
 }
 
+#if 0
 static void
 mpt_link_peer(struct mpt_softc *mpt)
 {
@@ -357,13 +355,14 @@ mpt_unlink_peer(struct mpt_softc *mpt)
 		mpt->mpt2->mpt2 = NULL;
 	}
 }
+#endif
 
 static int
 mpt_pci_attach(device_t dev)
 {
 	struct mpt_softc *mpt;
 	int		  iqd;
-	uint32_t	  data, cmd;
+	uint32_t	  val;
 	int		  mpt_io_bar, mpt_mem_bar;
 	u_int		  irq_flags;
 
@@ -417,28 +416,23 @@ mpt_pci_attach(device_t dev)
 		/* Print INFO level (if any) if bootverbose is set */
 		mpt->verbose += (bootverbose != 0)? 1 : 0;
 	}
-	/* Make sure memory access decoders are enabled */
-	cmd = pci_read_config(dev, PCIR_COMMAND, 2);
-	if ((cmd & PCIM_CMD_MEMEN) == 0) {
-		device_printf(dev, "Memory accesses disabled");
-		return (ENXIO);
-	}
 
 	/*
 	 * Make sure that SERR, PERR, WRITE INVALIDATE and BUSMASTER are set.
 	 */
-	cmd |=
-	    PCIM_CMD_SERRESPEN | PCIM_CMD_PERRESPEN |
+	val = pci_read_config(dev, PCIR_COMMAND, 2);
+	val |= PCIM_CMD_SERRESPEN | PCIM_CMD_PERRESPEN |
 	    PCIM_CMD_BUSMASTEREN | PCIM_CMD_MWRICEN;
-	pci_write_config(dev, PCIR_COMMAND, cmd, 2);
+	pci_write_config(dev, PCIR_COMMAND, val, 2);
 
 	/*
 	 * Make sure we've disabled the ROM.
 	 */
-	data = pci_read_config(dev, PCIR_BIOS, 4);
-	data &= ~PCIM_BIOS_ENABLE;
-	pci_write_config(dev, PCIR_BIOS, data, 4);
+	val = pci_read_config(dev, PCIR_BIOS, 4);
+	val &= ~PCIM_BIOS_ENABLE;
+	pci_write_config(dev, PCIR_BIOS, val, 4);
 
+#if 0
 	/*
 	 * Is this part a dual?
 	 * If so, link with our partner (around yet)
@@ -455,12 +449,13 @@ mpt_pci_attach(device_t dev)
 	default:
 		break;
 	}
+#endif
 
 	/*
 	 * Figure out which are the I/O and MEM Bars
 	 */
-	data = pci_read_config(dev, PCIR_BAR(0), 4);
-	if (PCI_BAR_IO(data)) {
+	val = pci_read_config(dev, PCIR_BAR(0), 4);
+	if (PCI_BAR_IO(val)) {
 		/* BAR0 is IO, BAR1 is memory */
 		mpt_io_bar = 0;
 		mpt_mem_bar = 1;
@@ -512,7 +507,7 @@ mpt_pci_attach(device_t dev)
 
 	/* Get a handle to the interrupt */
 	iqd = 0;
-#ifdef OLD_MSI
+#if 0 /* XXX MSI-X support */
 	if (mpt->msi_enable) {
 		/*
 		 * First try to alloc an MSI-X message.  If that
@@ -543,8 +538,8 @@ mpt_pci_attach(device_t dev)
 	mpt_disable_ints(mpt);
 
 	/* Register the interrupt handler */
-	if (mpt_setup_intr(dev, mpt->pci_irq, MPT_IFLAGS, NULL, mpt_pci_intr,
-	    mpt, &mpt->ih)) {
+	if (bus_setup_intr(dev, mpt->pci_irq, MPT_IFLAGS, mpt_pci_intr,
+	    mpt, &mpt->ih, NULL)) {
 		device_printf(dev, "could not setup interrupt\n");
 		goto bad;
 	}
@@ -587,11 +582,14 @@ mpt_pci_attach(device_t dev)
 	}
 
 	mpt->eh = EVENTHANDLER_REGISTER(shutdown_post_sync, mpt_pci_shutdown,
-	    dev, SHUTDOWN_PRI_DEFAULT);
+	    dev, SHUTDOWN_PRI_LAST);
 
 	if (mpt->eh == NULL) {
 		mpt_prt(mpt, "shutdown event registration failed\n");
+		mpt_disable_ints(mpt);
 		(void) mpt_detach(mpt);
+		mpt_reset(mpt, /*reinit*/FALSE);
+		mpt_raid_free_mem(mpt);
 		goto bad;
 	}
 	return (0);
@@ -599,7 +597,9 @@ mpt_pci_attach(device_t dev)
 bad:
 	mpt_dma_mem_free(mpt);
 	mpt_free_bus_resources(mpt);
+#if 0
 	mpt_unlink_peer(mpt);
+#endif
 
 	MPT_LOCK_DESTROY(mpt);
 
@@ -624,23 +624,23 @@ mpt_free_bus_resources(struct mpt_softc *mpt)
 	if (mpt->pci_irq) {
 		bus_release_resource(mpt->dev, SYS_RES_IRQ,
 		    rman_get_rid(mpt->pci_irq), mpt->pci_irq);
+		if (mpt->irq_type == PCI_INTR_TYPE_MSI)
+			pci_release_msi(mpt->dev);
+
 		mpt->pci_irq = NULL;
 	}
-
-	if (mpt->irq_type == PCI_INTR_TYPE_MSI)
-		pci_release_msi(mpt->dev);
 
 	if (mpt->pci_pio_reg) {
 		bus_release_resource(mpt->dev, SYS_RES_IOPORT,
 		    rman_get_rid(mpt->pci_pio_reg), mpt->pci_pio_reg);
 		mpt->pci_pio_reg = NULL;
 	}
+
 	if (mpt->pci_reg) {
 		bus_release_resource(mpt->dev, SYS_RES_MEMORY,
 		    rman_get_rid(mpt->pci_reg), mpt->pci_reg);
 		mpt->pci_reg = NULL;
 	}
-	MPT_LOCK_DESTROY(mpt);
 }
 
 /*
@@ -657,12 +657,16 @@ mpt_pci_detach(device_t dev)
 		mpt_disable_ints(mpt);
 		mpt_detach(mpt);
 		mpt_reset(mpt, /*reinit*/FALSE);
+		mpt_raid_free_mem(mpt);
 		mpt_dma_mem_free(mpt);
 		mpt_free_bus_resources(mpt);
-		mpt_raid_free_mem(mpt);
+#if 0
+		mpt_unlink_peer(mpt);
+#endif
 		if (mpt->eh != NULL) {
                         EVENTHANDLER_DEREGISTER(shutdown_post_sync, mpt->eh);
 		}
+		MPT_LOCK_DESTROY(mpt);
 	}
 	return(0);
 }
@@ -676,11 +680,8 @@ mpt_pci_shutdown(device_t dev)
 	struct mpt_softc *mpt;
 
 	mpt = (struct mpt_softc *)device_get_softc(dev);
-	if (mpt) {
-		int r;
-		r = mpt_shutdown(mpt);
-		return (r);
-	}
+	if (mpt)
+		return (mpt_shutdown(mpt));
 	return(0);
 }
 

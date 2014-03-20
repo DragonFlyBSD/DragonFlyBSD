@@ -29,7 +29,7 @@
  *
  * LSI MPT-Fusion Host Adapter FreeBSD userland interface
  *
- * $FreeBSD: src/sys/dev/mpt/mpt_user.c,v 1.6 2011/07/29 18:35:10 marius Exp $
+ * $FreeBSD: head/sys/dev/mpt/mpt_user.c 251187 2013-05-31 17:27:44Z delphij $
  */
 
 #include <sys/param.h>
