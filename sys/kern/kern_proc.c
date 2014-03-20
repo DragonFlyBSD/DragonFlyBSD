@@ -1349,8 +1349,10 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			/*
 			 * Show a user only their processes.
 			 */
-			if ((!ps_showallprocs) && p_trespass(cr1, p->p_ucred))
+			if ((!ps_showallprocs) &&
+				(p->p_ucred == NULL || p_trespass(cr1, p->p_ucred))) {
 				continue;
+			}
 			/*
 			 * Skip embryonic processes.
 			 */
