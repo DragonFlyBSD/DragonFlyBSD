@@ -757,12 +757,12 @@ void hammer2_mount_exlock(hammer2_mount_t *hmp);
 void hammer2_mount_shlock(hammer2_mount_t *hmp);
 void hammer2_mount_unlock(hammer2_mount_t *hmp);
 
-int hammer2_get_dtype(hammer2_inode_data_t *ipdata);
-int hammer2_get_vtype(hammer2_inode_data_t *ipdata);
+int hammer2_get_dtype(const hammer2_inode_data_t *ipdata);
+int hammer2_get_vtype(const hammer2_inode_data_t *ipdata);
 u_int8_t hammer2_get_obj_type(enum vtype vtype);
 void hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts);
-u_int64_t hammer2_timespec_to_time(struct timespec *ts);
-u_int32_t hammer2_to_unix_xid(uuid_t *uuid);
+u_int64_t hammer2_timespec_to_time(const struct timespec *ts);
+u_int32_t hammer2_to_unix_xid(const uuid_t *uuid);
 void hammer2_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
@@ -770,7 +770,8 @@ int hammer2_getradix(size_t bytes);
 
 int hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
 			hammer2_key_t *lbasep, hammer2_key_t *leofp);
-int hammer2_calc_physical(hammer2_inode_t *ip, hammer2_inode_data_t *ipdata,
+int hammer2_calc_physical(hammer2_inode_t *ip,
+			const hammer2_inode_data_t *ipdata,
 			hammer2_key_t lbase);
 void hammer2_update_time(uint64_t *timep);
 void hammer2_adjreadcounter(hammer2_blockref_t *bref, size_t bytes);
@@ -980,7 +981,8 @@ void hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
  */
 u_int hammer2_cluster_bytes(hammer2_cluster_t *cluster);
 uint8_t hammer2_cluster_type(hammer2_cluster_t *cluster);
-hammer2_media_data_t *hammer2_cluster_data(hammer2_cluster_t *cluster);
+const hammer2_media_data_t *hammer2_cluster_data(hammer2_cluster_t *cluster);
+hammer2_media_data_t *hammer2_cluster_wdata(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_from_chain(hammer2_chain_t *chain);
 int hammer2_cluster_modified(hammer2_cluster_t *cluster);
 int hammer2_cluster_unlinked(hammer2_cluster_t *cluster);
@@ -1014,6 +1016,7 @@ hammer2_inode_data_t *hammer2_cluster_modify_ip(hammer2_trans_t *trans,
 			int flags);
 void hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 			int flags);
+void hammer2_cluster_modsync(hammer2_cluster_t *cluster);
 hammer2_cluster_t *hammer2_cluster_lookup_init(hammer2_cluster_t *cparent,
 			int flags);
 void hammer2_cluster_lookup_done(hammer2_cluster_t *cparent);

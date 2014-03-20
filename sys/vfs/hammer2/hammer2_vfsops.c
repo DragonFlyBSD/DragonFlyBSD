@@ -211,20 +211,20 @@ static void hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 				int *errorp);
 static void hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_inode_t *ip,
-				hammer2_inode_data_t *ipdata,
+				const hammer2_inode_data_t *ipdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase, int ioflag,
 				int pblksize, int *errorp, int comp_algo);
 static void hammer2_zero_check_and_write(struct buf *bp,
 				hammer2_trans_t *trans, hammer2_inode_t *ip,
-				hammer2_inode_data_t *ipdata,
+				const hammer2_inode_data_t *ipdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase,
 				int ioflag, int pblksize, int *errorp);
 static int test_block_zeros(const char *buf, size_t bytes);
 static void zero_write(struct buf *bp, hammer2_trans_t *trans,
 				hammer2_inode_t *ip,
-				hammer2_inode_data_t *ipdata,
+				const hammer2_inode_data_t *ipdata,
 				hammer2_cluster_t *cparent,
 				hammer2_key_t lbase,
 				int *errorp);
@@ -769,7 +769,7 @@ hammer2_write_thread(void *arg)
 	struct vnode *vp;
 	hammer2_inode_t *ip;
 	hammer2_cluster_t *cparent;
-	hammer2_inode_data_t *ipdata;
+	hammer2_inode_data_t *wipdata;
 	hammer2_key_t lbase;
 	int lblksize;
 	int pblksize;
@@ -827,15 +827,16 @@ hammer2_write_thread(void *arg)
 					 HAMMER2_INODE_MTIME)) {
 				hammer2_inode_fsync(&trans, ip, cparent);
 			}
-			ipdata = hammer2_cluster_modify_ip(&trans, ip,
+			wipdata = hammer2_cluster_modify_ip(&trans, ip,
 							 cparent, 0);
 			lblksize = hammer2_calc_logical(ip, bio->bio_offset,
 							&lbase, NULL);
-			pblksize = hammer2_calc_physical(ip, ipdata, lbase);
-			hammer2_write_file_core(bp, &trans, ip, ipdata,
+			pblksize = hammer2_calc_physical(ip, wipdata, lbase);
+			hammer2_write_file_core(bp, &trans, ip, wipdata,
 						cparent,
 						lbase, IO_ASYNC,
 						pblksize, &error);
+			hammer2_cluster_modsync(cparent);
 			hammer2_inode_unlock_ex(ip, cparent);
 			if (error) {
 				kprintf("hammer2: error in buffer write\n");
@@ -1019,7 +1020,7 @@ hammer2_write_file_core(struct buf *bp, hammer2_trans_t *trans,
 static
 void
 hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
-	hammer2_inode_t *ip, hammer2_inode_data_t *ipdata,
+	hammer2_inode_t *ip, const hammer2_inode_data_t *ipdata,
 	hammer2_cluster_t *cparent,
 	hammer2_key_t lbase, int ioflag, int pblksize,
 	int *errorp, int comp_algo)
@@ -1244,7 +1245,7 @@ done:
 static
 void
 hammer2_zero_check_and_write(struct buf *bp, hammer2_trans_t *trans,
-	hammer2_inode_t *ip, hammer2_inode_data_t *ipdata,
+	hammer2_inode_t *ip, const hammer2_inode_data_t *ipdata,
 	hammer2_cluster_t *cparent,
 	hammer2_key_t lbase, int ioflag, int pblksize, int *errorp)
 {
@@ -1283,8 +1284,9 @@ test_block_zeros(const char *buf, size_t bytes)
  */
 static
 void
-zero_write(struct buf *bp, hammer2_trans_t *trans, hammer2_inode_t *ip,
-	hammer2_inode_data_t *ipdata, hammer2_cluster_t *cparent,
+zero_write(struct buf *bp, hammer2_trans_t *trans,
+	hammer2_inode_t *ip, const hammer2_inode_data_t *ipdata,
+	hammer2_cluster_t *cparent,
 	hammer2_key_t lbase, int *errorp __unused)
 {
 	hammer2_cluster_t *cluster;
@@ -1296,10 +1298,13 @@ zero_write(struct buf *bp, hammer2_trans_t *trans, hammer2_inode_t *ip,
 	cluster = hammer2_cluster_lookup(cparent, &key_dummy, lbase, lbase,
 				     HAMMER2_LOOKUP_NODATA, &ddflag);
 	if (cluster) {
-		data = hammer2_cluster_data(cluster);
+		data = hammer2_cluster_wdata(cluster);
 
 		if (ddflag) {
+			KKASSERT(cluster->focus->flags &
+				 HAMMER2_CHAIN_MODIFIED);
 			bzero(data->ipdata.u.data, HAMMER2_EMBEDDED_BYTES);
+			hammer2_cluster_modsync(cluster);
 		} else {
 			hammer2_cluster_delete(trans, cluster, 0);
 		}
@@ -2262,7 +2267,7 @@ hammer2_install_volume_header(hammer2_mount_t *hmp)
 void
 hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 {
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ipdata;
 	hammer2_cluster_t *cparent;
 	hammer2_mount_t *hmp;
 	size_t name_len;

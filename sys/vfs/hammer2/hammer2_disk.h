@@ -752,7 +752,7 @@ struct hammer2_inode_data {
 	 * allocations under inode, not counting the inode itself.
 	 * 0/0 indicates empty entry.  fully set-associative.
 	 */
-	hammer2_off_t	freezones[4];	/* 00E0/E8/F0/F8 base|radix */
+	hammer2_off_t	reservedE0[4];	/* 00E0/E8/F0/F8 */
 
 	unsigned char	filename[HAMMER2_INODE_MAXNAME];
 					/* 0100-01FF (256 char, unterminated) */

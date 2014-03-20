@@ -349,7 +349,7 @@ hammer2_ioctl_socket_set(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 {
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ipdata;
 	hammer2_mount_t *hmp;
 	hammer2_ioc_pfs_t *pfs;
 	hammer2_cluster_t *cparent;
@@ -440,7 +440,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_pfs_lookup(hammer2_inode_t *ip, void *data)
 {
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ipdata;
 	hammer2_mount_t *hmp;
 	hammer2_ioc_pfs_t *pfs;
 	hammer2_cluster_t *cparent;
@@ -537,6 +537,7 @@ hammer2_ioctl_pfs_create(hammer2_inode_t *ip, void *data)
 		 */
 		if (strcmp(pfs->name, "boot") == 0)
 			nipdata->comp_algo = HAMMER2_COMP_AUTOZERO;
+		hammer2_cluster_modsync(ncluster);
 		hammer2_inode_unlock_ex(nip, ncluster);
 	}
 	hammer2_trans_done(&trans);
@@ -595,9 +596,11 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 {
-	hammer2_ioc_inode_t *ino = data;
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ipdata;
+	hammer2_ioc_inode_t *ino;
 	hammer2_cluster_t *cparent;
+
+	ino = data;
 
 	cparent = hammer2_inode_lock_sh(ip);
 	ipdata = &hammer2_cluster_data(cparent)->ipdata;
@@ -615,19 +618,23 @@ hammer2_ioctl_inode_get(hammer2_inode_t *ip, void *data)
 static int
 hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 {
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ripdata;
+	hammer2_inode_data_t *wipdata;
 	hammer2_ioc_inode_t *ino = data;
 	hammer2_cluster_t *cparent;
 	hammer2_trans_t trans;
 	int error = 0;
+	int dosync = 0;
 
 	hammer2_trans_init(&trans, ip->pmp, NULL, 0);
 	cparent = hammer2_inode_lock_ex(ip);
-	ipdata = &hammer2_cluster_data(cparent)->ipdata;
+	ripdata = &hammer2_cluster_data(cparent)->ipdata;
 
-	if (ino->ip_data.comp_algo != ipdata->comp_algo) {
-		ipdata = hammer2_cluster_modify_ip(&trans, ip, cparent, 0);
-		ipdata->comp_algo = ino->ip_data.comp_algo;
+	if (ino->ip_data.comp_algo != ripdata->comp_algo) {
+		wipdata = hammer2_cluster_modify_ip(&trans, ip, cparent, 0);
+		wipdata->comp_algo = ino->ip_data.comp_algo;
+		ripdata = wipdata; /* safety */
+		dosync = 1;
 	}
 	ino->kdata = ip;
 	
@@ -638,6 +645,8 @@ hammer2_ioctl_inode_set(hammer2_inode_t *ip, void *data)
 	}
 	if (ino->flags & HAMMER2IOC_INODE_FLAG_COPIES) {
 	}
+	if (dosync)
+		hammer2_cluster_modsync(cparent);
 	hammer2_trans_done(&trans);
 	hammer2_inode_unlock_ex(ip, cparent);
 

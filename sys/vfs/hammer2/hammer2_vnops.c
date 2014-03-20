@@ -347,7 +347,7 @@ int
 hammer2_vop_access(struct vop_access_args *ap)
 {
 	hammer2_inode_t *ip = VTOI(ap->a_vp);
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ipdata;
 	hammer2_cluster_t *cluster;
 	uid_t uid;
 	gid_t gid;
@@ -367,7 +367,7 @@ static
 int
 hammer2_vop_getattr(struct vop_getattr_args *ap)
 {
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ipdata;
 	hammer2_cluster_t *cluster;
 	hammer2_pfsmount_t *pmp;
 	hammer2_inode_t *ip;
@@ -416,7 +416,8 @@ static
 int
 hammer2_vop_setattr(struct vop_setattr_args *ap)
 {
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ripdata;
+	hammer2_inode_data_t *wipdata;
 	hammer2_inode_t *ip;
 	hammer2_cluster_t *cluster;
 	hammer2_trans_t trans;
@@ -425,6 +426,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	int error;
 	int kflags = 0;
 	int domtime = 0;
+	int dosync = 0;
 	uint64_t ctime;
 
 	vp = ap->a_vp;
@@ -439,39 +441,41 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	hammer2_pfs_memory_wait(ip->pmp);
 	hammer2_trans_init(&trans, ip->pmp, NULL, 0);
 	cluster = hammer2_inode_lock_ex(ip);
-	ipdata = &hammer2_cluster_data(cluster)->ipdata;
+	ripdata = &hammer2_cluster_data(cluster)->ipdata;
 	error = 0;
 
 	if (vap->va_flags != VNOVAL) {
 		u_int32_t flags;
 
-		flags = ipdata->uflags;
+		flags = ripdata->uflags;
 		error = vop_helper_setattr_flags(&flags, vap->va_flags,
-					 hammer2_to_unix_xid(&ipdata->uid),
+					 hammer2_to_unix_xid(&ripdata->uid),
 					 ap->a_cred);
 		if (error == 0) {
-			if (ipdata->uflags != flags) {
-				ipdata = hammer2_cluster_modify_ip(&trans, ip,
-								 cluster, 0);
-				ipdata->uflags = flags;
-				ipdata->ctime = ctime;
+			if (ripdata->uflags != flags) {
+				wipdata = hammer2_cluster_modify_ip(&trans, ip,
+								    cluster, 0);
+				wipdata->uflags = flags;
+				wipdata->ctime = ctime;
 				kflags |= NOTE_ATTRIB;
+				dosync = 1;
+				ripdata = wipdata;
 			}
-			if (ipdata->uflags & (IMMUTABLE | APPEND)) {
+			if (ripdata->uflags & (IMMUTABLE | APPEND)) {
 				error = 0;
 				goto done;
 			}
 		}
 		goto done;
 	}
-	if (ipdata->uflags & (IMMUTABLE | APPEND)) {
+	if (ripdata->uflags & (IMMUTABLE | APPEND)) {
 		error = EPERM;
 		goto done;
 	}
 	if (vap->va_uid != (uid_t)VNOVAL || vap->va_gid != (gid_t)VNOVAL) {
-		mode_t cur_mode = ipdata->mode;
-		uid_t cur_uid = hammer2_to_unix_xid(&ipdata->uid);
-		gid_t cur_gid = hammer2_to_unix_xid(&ipdata->gid);
+		mode_t cur_mode = ripdata->mode;
+		uid_t cur_uid = hammer2_to_unix_xid(&ripdata->uid);
+		gid_t cur_gid = hammer2_to_unix_xid(&ripdata->gid);
 		uuid_t uuid_uid;
 		uuid_t uuid_gid;
 
@@ -481,16 +485,18 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 		if (error == 0) {
 			hammer2_guid_to_uuid(&uuid_uid, cur_uid);
 			hammer2_guid_to_uuid(&uuid_gid, cur_gid);
-			if (bcmp(&uuid_uid, &ipdata->uid, sizeof(uuid_uid)) ||
-			    bcmp(&uuid_gid, &ipdata->gid, sizeof(uuid_gid)) ||
-			    ipdata->mode != cur_mode
+			if (bcmp(&uuid_uid, &ripdata->uid, sizeof(uuid_uid)) ||
+			    bcmp(&uuid_gid, &ripdata->gid, sizeof(uuid_gid)) ||
+			    ripdata->mode != cur_mode
 			) {
-				ipdata = hammer2_cluster_modify_ip(&trans, ip,
-								 cluster, 0);
-				ipdata->uid = uuid_uid;
-				ipdata->gid = uuid_gid;
-				ipdata->mode = cur_mode;
-				ipdata->ctime = ctime;
+				wipdata = hammer2_cluster_modify_ip(&trans, ip,
+								    cluster, 0);
+				wipdata->uid = uuid_uid;
+				wipdata->gid = uuid_gid;
+				wipdata->mode = cur_mode;
+				wipdata->ctime = ctime;
+				dosync = 1;
+				ripdata = wipdata;
 			}
 			kflags |= NOTE_ATTRIB;
 		}
@@ -512,7 +518,7 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 			}
 			cluster = hammer2_inode_lock_ex(ip);
 			/* RELOAD */
-			ipdata = &hammer2_cluster_data(cluster)->ipdata;
+			ripdata = &hammer2_cluster_data(cluster)->ipdata;
 			domtime = 1;
 			break;
 		default:
@@ -523,30 +529,36 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 #if 0
 	/* atime not supported */
 	if (vap->va_atime.tv_sec != VNOVAL) {
-		ipdata = hammer2_cluster_modify_ip(&trans, ip, cluster, 0);
-		ipdata->atime = hammer2_timespec_to_time(&vap->va_atime);
+		wipdata = hammer2_cluster_modify_ip(&trans, ip, cluster, 0);
+		wipdata->atime = hammer2_timespec_to_time(&vap->va_atime);
 		kflags |= NOTE_ATTRIB;
+		dosync = 1;
+		ripdata = wipdata;
 	}
 #endif
 	if (vap->va_mtime.tv_sec != VNOVAL) {
-		ipdata = hammer2_cluster_modify_ip(&trans, ip, cluster, 0);
-		ipdata->mtime = hammer2_timespec_to_time(&vap->va_mtime);
+		wipdata = hammer2_cluster_modify_ip(&trans, ip, cluster, 0);
+		wipdata->mtime = hammer2_timespec_to_time(&vap->va_mtime);
 		kflags |= NOTE_ATTRIB;
 		domtime = 0;
+		dosync = 1;
+		ripdata = wipdata;
 	}
 	if (vap->va_mode != (mode_t)VNOVAL) {
-		mode_t cur_mode = ipdata->mode;
-		uid_t cur_uid = hammer2_to_unix_xid(&ipdata->uid);
-		gid_t cur_gid = hammer2_to_unix_xid(&ipdata->gid);
+		mode_t cur_mode = ripdata->mode;
+		uid_t cur_uid = hammer2_to_unix_xid(&ripdata->uid);
+		gid_t cur_gid = hammer2_to_unix_xid(&ripdata->gid);
 
 		error = vop_helper_chmod(ap->a_vp, vap->va_mode, ap->a_cred,
 					 cur_uid, cur_gid, &cur_mode);
-		if (error == 0 && ipdata->mode != cur_mode) {
-			ipdata = hammer2_cluster_modify_ip(&trans, ip,
-							   cluster, 0);
-			ipdata->mode = cur_mode;
-			ipdata->ctime = ctime;
+		if (error == 0 && ripdata->mode != cur_mode) {
+			wipdata = hammer2_cluster_modify_ip(&trans, ip,
+							    cluster, 0);
+			wipdata->mode = cur_mode;
+			wipdata->ctime = ctime;
 			kflags |= NOTE_ATTRIB;
+			dosync = 1;
+			ripdata = wipdata;
 		}
 	}
 
@@ -555,6 +567,10 @@ hammer2_vop_setattr(struct vop_setattr_args *ap)
 	 * to trim the related data chains, otherwise a later expansion can
 	 * cause havoc.
 	 */
+	if (dosync) {
+		hammer2_cluster_modsync(cluster);
+		dosync = 0;
+	}
 	hammer2_inode_fsync(&trans, ip, cluster);
 
 	/*
@@ -568,6 +584,8 @@ done:
 					   HAMMER2_INODE_MTIME);
 		vsetisdirty(ip->vp);
 	}
+	if (dosync)
+		hammer2_cluster_modsync(cluster);
 	hammer2_inode_unlock_ex(ip, cluster);
 	hammer2_trans_done(&trans);
 	hammer2_knote(ip->vp, kflags);
@@ -579,7 +597,7 @@ static
 int
 hammer2_vop_readdir(struct vop_readdir_args *ap)
 {
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ipdata;
 	hammer2_inode_t *ip;
 	hammer2_inode_t *xip;
 	hammer2_cluster_t *cparent;
@@ -1171,7 +1189,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 	hammer2_inode_t *dip;
 	hammer2_cluster_t *cparent;
 	hammer2_cluster_t *cluster;
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ipdata;
 	hammer2_key_t key_next;
 	hammer2_key_t lhc;
 	struct namecache *ncp;
@@ -1408,7 +1426,7 @@ int
 hammer2_vop_advlock(struct vop_advlock_args *ap)
 {
 	hammer2_inode_t *ip = VTOI(ap->a_vp);
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ipdata;
 	hammer2_cluster_t *cparent;
 	hammer2_off_t size;
 
@@ -1655,7 +1673,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 		struct iovec aiov;
 		hammer2_inode_data_t *nipdata;
 
-		nipdata = &hammer2_cluster_data(ncparent)->ipdata;
+		nipdata = &hammer2_cluster_wdata(ncparent)->ipdata;
 		/* nipdata = &nip->chain->data->ipdata;XXX */
 		bytes = strlen(ap->a_target);
 

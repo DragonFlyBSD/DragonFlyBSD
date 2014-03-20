@@ -87,7 +87,7 @@ hammer2_voldata_unlock(hammer2_mount_t *hmp, int modify)
  * ip must be locked sh/ex.
  */
 int
-hammer2_get_dtype(hammer2_inode_data_t *ipdata)
+hammer2_get_dtype(const hammer2_inode_data_t *ipdata)
 {
 	uint8_t type;
 
@@ -125,7 +125,7 @@ hammer2_get_dtype(hammer2_inode_data_t *ipdata)
  * Return the directory entry type for an inode
  */
 int
-hammer2_get_vtype(hammer2_inode_data_t *ipdata)
+hammer2_get_vtype(const hammer2_inode_data_t *ipdata)
 {
 	switch(ipdata->type) {
 	case HAMMER2_OBJTYPE_UNKNOWN:
@@ -189,7 +189,7 @@ hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts)
 }
 
 u_int64_t
-hammer2_timespec_to_time(struct timespec *ts)
+hammer2_timespec_to_time(const struct timespec *ts)
 {
 	u_int64_t xtime;
 
@@ -202,9 +202,9 @@ hammer2_timespec_to_time(struct timespec *ts)
  * Convert a uuid to a unix uid or gid
  */
 u_int32_t
-hammer2_to_unix_xid(uuid_t *uuid)
+hammer2_to_unix_xid(const uuid_t *uuid)
 {
-	return(*(u_int32_t *)&uuid->node[2]);
+	return(*(const u_int32_t *)&uuid->node[2]);
 }
 
 void
@@ -383,7 +383,8 @@ hammer2_calc_logical(hammer2_inode_t *ip, hammer2_off_t uoff,
  * Returns 0 if the requested base offset is beyond the file EOF.
  */
 int
-hammer2_calc_physical(hammer2_inode_t *ip, hammer2_inode_data_t *ipdata,
+hammer2_calc_physical(hammer2_inode_t *ip,
+		      const hammer2_inode_data_t *ipdata,
 		      hammer2_key_t lbase)
 {
 	int lblksize;

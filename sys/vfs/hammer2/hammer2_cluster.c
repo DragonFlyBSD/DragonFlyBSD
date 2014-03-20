@@ -66,8 +66,19 @@ hammer2_cluster_type(hammer2_cluster_t *cluster)
 	return(cluster->focus->bref.type);
 }
 
-hammer2_media_data_t *
+/*
+ * NOTE: When modifying a cluster object via hammer2_cluster_wdata()
+ *	 and hammer2_cluster_modsync(), remember that block array
+ *	 entries are not copied to the elements of the cluster.
+ */
+const hammer2_media_data_t *
 hammer2_cluster_data(hammer2_cluster_t *cluster)
+{
+	return(cluster->focus->data);
+}
+
+hammer2_media_data_t *
+hammer2_cluster_wdata(hammer2_cluster_t *cluster)
 {
 	return(cluster->focus->data);
 }
@@ -539,7 +550,7 @@ hammer2_cluster_modify_ip(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	hammer2_inode_repoint(ip, NULL, cluster);
 	if (ip->vp)
 		vsetisdirty(ip->vp);
-	return (&hammer2_cluster_data(cluster)->ipdata);
+	return (&hammer2_cluster_wdata(cluster)->ipdata);
 }
 
 /*
@@ -569,6 +580,53 @@ hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
  * cluster.
  */
 /* hammer2_cluster_modsync() */
+
+void
+hammer2_cluster_modsync(hammer2_cluster_t *cluster)
+{
+	hammer2_chain_t *focus;
+	hammer2_chain_t *scan;
+	const hammer2_inode_data_t *ripdata;
+	hammer2_inode_data_t *wipdata;
+	int i;
+
+	focus = cluster->focus;
+	KKASSERT(focus->flags & HAMMER2_CHAIN_MODIFIED);
+
+	for (i = 0; i < cluster->nchains; ++i) {
+		scan = cluster->array[i];
+		if (scan == NULL || scan == focus)
+			continue;
+		KKASSERT(scan->flags & HAMMER2_CHAIN_MODIFIED);
+		KKASSERT(focus->bytes == scan->bytes &&
+			 focus->bref.type == scan->bref.type);
+		switch(focus->bref.type) {
+		case HAMMER2_BREF_TYPE_INODE:
+			ripdata = &focus->data->ipdata;
+			wipdata = &scan->data->ipdata;
+			if ((ripdata->op_flags &
+			    HAMMER2_OPFLAG_DIRECTDATA) == 0) {
+				bcopy(ripdata, wipdata,
+				      offsetof(hammer2_inode_data_t, u));
+				break;
+			}
+			/* fall through */
+		case HAMMER2_BREF_TYPE_DATA:
+			bcopy(focus->data, scan->data, focus->bytes);
+			break;
+		case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		case HAMMER2_BREF_TYPE_FREEMAP:
+		case HAMMER2_BREF_TYPE_VOLUME:
+			panic("hammer2_cluster_modsync: illegal node type");
+			/* NOT REACHED */
+			break;
+		default:
+			panic("hammer2_cluster_modsync: unknown node type");
+			break;
+		}
+	}
+}
 
 /*
  * Lookup initialization/completion API
@@ -947,7 +1005,8 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 {
 	hammer2_mount_t *hmp;
 	hammer2_cluster_t *ncluster;
-	hammer2_inode_data_t *ipdata;
+	const hammer2_inode_data_t *ipdata;
+	hammer2_inode_data_t *wipdata;
 	hammer2_inode_t *nip;
 	size_t name_len;
 	hammer2_key_t lhc;
@@ -984,17 +1043,19 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 				   pfs->name, name_len, &ncluster, &error);
 
 	if (nip) {
-		ipdata = hammer2_cluster_modify_ip(trans, nip, ncluster, 0);
-		ipdata->pfs_type = HAMMER2_PFSTYPE_SNAPSHOT;
-		kern_uuidgen(&ipdata->pfs_fsid, 1);
+		wipdata = hammer2_cluster_modify_ip(trans, nip, ncluster, 0);
+		wipdata->pfs_type = HAMMER2_PFSTYPE_SNAPSHOT;
+		kern_uuidgen(&wipdata->pfs_fsid, 1);
 		if (ocluster->focus->flags & HAMMER2_CHAIN_PFSROOT)
-			ipdata->pfs_clid = opfs_clid;
+			wipdata->pfs_clid = opfs_clid;
 		else
-			kern_uuidgen(&ipdata->pfs_clid, 1);
+			kern_uuidgen(&wipdata->pfs_clid, 1);
 		hammer2_cluster_set_chainflags(ncluster, HAMMER2_CHAIN_PFSROOT);
 
 		/* XXX hack blockset copy */
-		ipdata->u.blockset = ocluster->focus->data->ipdata.u.blockset;
+		/* XXX doesn't work with real cluster */
+		KKASSERT(ocluster->nchains == 1);
+		wipdata->u.blockset = ocluster->focus->data->ipdata.u.blockset;
 
 		hammer2_inode_unlock_ex(nip, ncluster);
 	}
