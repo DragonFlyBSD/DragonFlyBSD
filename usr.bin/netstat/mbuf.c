@@ -98,10 +98,10 @@ mbpr(u_long mbaddr, u_long mbtaddr, u_long nmbcaddr, u_long nmbjcaddr,
 	if (mbaddr) {
 		if (kread(ncpusaddr, (char *)&ncpus, sizeof ncpus))
 			goto err;
-		mbstat = malloc(sizeof(*mbstat) * ncpus);
+		mbstat = calloc(ncpus, sizeof(*mbstat));
 		if (kread(mbaddr, (char *)mbstat, sizeof *mbstat * ncpus))
 			goto err;
-		mbtypes = malloc(mbtypeslen * ncpus);
+		mbtypes = calloc(ncpus, mbtypeslen);
 		if (kread(mbtaddr, (char *)mbtypes, mbtypeslen * ncpus))
 			goto err;
 		if (kread(nmbcaddr, (char *)&nmbclusters, sizeof(int)))
