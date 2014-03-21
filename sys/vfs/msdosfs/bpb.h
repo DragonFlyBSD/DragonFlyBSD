@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/msdosfs/bpb.h,v 1.7.2.1 2000/10/27 09:45:07 bde Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/bpb.h,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
 /*	$NetBSD: bpb.h,v 1.7 1997/11/17 15:36:24 ws Exp $	*/
 
 /*
@@ -17,6 +16,9 @@
  *
  * October 1992
  */
+
+#ifndef _VFS_MSDOSFS_BPB_H_
+#define	_VFS_MSDOSFS_BPB_H_
 
 /*
  * BIOS Parameter Block (BPB) for DOS 3.3
@@ -79,7 +81,7 @@ struct bpb710 {
 	u_int32_t	bpbRootClust;	/* start cluster for root directory */
 	u_int16_t	bpbFSInfo;	/* filesystem info structure sector */
 	u_int16_t	bpbBackup;	/* backup boot sector */
-	/* There is a 12 byte filler here, but we ignore it */
+	u_int8_t	bpbReserved[12]; /* reserved for future expansion */
 };
 
 #ifdef	atari
@@ -197,7 +199,7 @@ struct byte_bpb710 {
 	u_int8_t bpbRootClust[4];	/* start cluster for root directory */
 	u_int8_t bpbFSInfo[2];		/* filesystem info structure sector */
 	u_int8_t bpbBackup[2];		/* backup boot sector */
-	/* There is a 12 byte filler here, but we ignore it */
+	u_int8_t bpbReserved[12];	/* reserved for future expansion */
 };
 
 /*
@@ -214,3 +216,5 @@ struct fsinfo {
 	u_int8_t fsifill3[508];
 	u_int8_t fsisig4[4];
 };
+
+#endif /* !_VFS_MSDOSFS_BPB_H_ */

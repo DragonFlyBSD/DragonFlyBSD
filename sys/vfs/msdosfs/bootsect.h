@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/msdosfs/bootsect.h,v 1.7 1999/08/28 00:48:06 peter Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/bootsect.h,v 1.3 2004/01/08 18:39:18 asmodai Exp $ */
 /*	$NetBSD: bootsect.h,v 1.9 1997/11/17 15:36:17 ws Exp $	*/
 
 /*
@@ -17,6 +16,9 @@
  *
  * October 1992
  */
+
+#ifndef _VFS_MSDOSFS_BOOTSECT_H_
+#define	_VFS_MSDOSFS_BOOTSECT_H_
 
 /*
  * Format of a boot sector.  This is the first sector on a DOS floppy disk
@@ -113,3 +115,5 @@ union bootsector {
 #define	bsHiddenSecs	bsBPB.bpbHiddenSecs
 #define	bsHugeSectors	bsBPB.bpbHugeSectors
 #endif
+
+#endif /* !_VFS_MSDOSFS_BOOTSECT_H_ */
