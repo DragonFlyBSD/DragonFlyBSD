@@ -1,4 +1,7 @@
 
+* hidden dir or other dirs/files/modifications made to PFS before
+  additional cluster entries added.
+
 * transaction on cluster - multiple trans structures, subtrans
 
 * inode always contains target cluster/chain, not hardlink

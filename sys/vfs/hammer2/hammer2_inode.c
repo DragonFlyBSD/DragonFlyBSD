@@ -120,6 +120,8 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 		cluster->array[i] = chain;
 		if (cluster->focus == NULL)
 			cluster->focus = chain;
+		if (ip->cluster.focus == NULL)
+			ip->cluster.focus = chain;
 	}
 
 	/*
@@ -195,6 +197,7 @@ cycle_excl:
 			ccms_thread_unlock(&ip->topo_cst);
 			hammer2_inode_unlock_ex(ip, hammer2_inode_lock_ex(ip));
 			ccms_thread_lock(&ip->topo_cst, CCMS_STATE_SHARED);
+			cluster->focus = NULL;
 			continue;	/* restart at i=-1 -> i=0 on loop */
 		}
 		cluster->array[i] = chain;
@@ -1140,8 +1143,11 @@ hammer2_inode_repoint(hammer2_inode_t *ip, hammer2_inode_t *pip,
 		nchain = cluster->array[i];
 		if (i < ip->cluster.nchains) {
 			ochain = ip->cluster.array[i];
-			if (ochain == nchain)
+			if (ochain == nchain) {
+				if (ip->cluster.focus == NULL)
+					ip->cluster.focus = nchain;
 				continue;
+			}
 		} else {
 			ochain = NULL;
 		}

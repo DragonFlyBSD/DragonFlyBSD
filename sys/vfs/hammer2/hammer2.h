@@ -444,8 +444,7 @@ struct hammer2_cluster {
 
 typedef struct hammer2_cluster hammer2_cluster_t;
 
-#define HAMMER2_CLUSTER_PFS	0x00000001	/* embedded in pfsmount */
-#define HAMMER2_CLUSTER_INODE	0x00000002	/* embedded in inode */
+#define HAMMER2_CLUSTER_INODE	0x00000001	/* embedded in inode */
 
 
 RB_HEAD(hammer2_inode_tree, hammer2_inode);
@@ -619,7 +618,9 @@ typedef struct hammer2_mount hammer2_mount_t;
  */
 struct hammer2_pfsmount {
 	struct mount		*mp;
-	hammer2_cluster_t	cluster;
+	TAILQ_ENTRY(hammer2_pfsmount) mntentry; /* hammer2_pfslist */
+	uuid_t			pfs_clid;
+	uuid_t			pfs_fsid;
 	hammer2_inode_t		*iroot;		/* PFS root inode */
 	hammer2_inode_t		*ihidden;	/* PFS hidden directory */
 	struct lock		lock;		/* PFS lock for certain ops */

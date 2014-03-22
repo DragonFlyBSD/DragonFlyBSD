@@ -1,4 +1,4 @@
-/*-
+/*
  * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
@@ -75,7 +75,9 @@ struct hammer2_sync_info {
 };
 
 TAILQ_HEAD(hammer2_mntlist, hammer2_mount);
+TAILQ_HEAD(hammer2_pfslist, hammer2_pfsmount);
 static struct hammer2_mntlist hammer2_mntlist;
+static struct hammer2_pfslist hammer2_pfslist;
 static struct lock hammer2_mntlk;
 
 int hammer2_debug;
@@ -240,7 +242,7 @@ static void hammer2_autodmsg(kdmsg_msg_t *msg);
  */
 static struct vfsops hammer2_vfsops = {
 	.vfs_init	= hammer2_vfs_init,
-	.vfs_uninit = hammer2_vfs_uninit,
+	.vfs_uninit	= hammer2_vfs_uninit,
 	.vfs_sync	= hammer2_vfs_sync,
 	.vfs_mount	= hammer2_vfs_mount,
 	.vfs_unmount	= hammer2_vfs_unmount,
@@ -294,6 +296,7 @@ hammer2_vfs_init(struct vfsconf *conf)
 
 	lockinit(&hammer2_mntlk, "mntlk", 0, 0);
 	TAILQ_INIT(&hammer2_mntlist);
+	TAILQ_INIT(&hammer2_pfslist);
 
 	hammer2_limit_dirty_chains = desiredvnodes / 10;
 
@@ -347,6 +350,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	hammer2_chain_t *schain;
 	hammer2_cluster_t *cluster;
 	hammer2_cluster_t *cparent;
+	const hammer2_inode_data_t *ipdata;
 	struct file *fp;
 	char devstr[MNAMELEN];
 	size_t size;
@@ -403,8 +407,8 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			/* Update mount */
 			/* HAMMER2 implements NFS export via mountctl */
 			pmp = MPTOPMP(mp);
-			for (i = 0; i < pmp->cluster.nchains; ++i) {
-				hmp = pmp->cluster.array[i]->hmp;
+			for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
+				hmp = pmp->iroot->cluster.array[i]->hmp;
 				devvp = hmp->devvp;
 				error = hammer2_remount(hmp, mp, path,
 							devvp, cred);
@@ -418,7 +422,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 
 	/*
-	 * PFS mount
+	 * HMP device mount
 	 *
 	 * Lookup name and verify it refers to a block device.
 	 */
@@ -586,55 +590,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			/* XXX do something with error */
 		}
 	}
-
-	/*
-	 * Block device opened successfully, finish initializing the
-	 * mount structure.
-	 *
-	 * From this point on we have to call hammer2_unmount() on failure.
-	 */
-	pmp = kmalloc(sizeof(*pmp), M_HAMMER2, M_WAITOK | M_ZERO);
-
-	kmalloc_create(&pmp->minode, "HAMMER2-inodes");
-	kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
-	lockinit(&pmp->lock, "pfslk", 0, 0);
-	spin_init(&pmp->inum_spin);
-	RB_INIT(&pmp->inum_tree);
-	TAILQ_INIT(&pmp->unlinkq);
-	spin_init(&pmp->unlinkq_spin);
-	pmp->cluster.flags = HAMMER2_CLUSTER_PFS;
-
-	kdmsg_iocom_init(&pmp->iocom, pmp,
-			 KDMSG_IOCOMF_AUTOCONN |
-			 KDMSG_IOCOMF_AUTOSPAN |
-			 KDMSG_IOCOMF_AUTOCIRC,
-			 pmp->mmsg, hammer2_rcvdmsg);
-
-	ccms_domain_init(&pmp->ccms_dom);
 	++hmp->pmp_count;
-	lockmgr(&hammer2_mntlk, LK_RELEASE);
-	kprintf("hammer2_mount hmp=%p pmp=%p pmpcnt=%d\n",
-		hmp, pmp, hmp->pmp_count);
-
-	mp->mnt_flag = MNT_LOCAL;
-	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;	/* all entry pts are SMP */
-	mp->mnt_kern_flag |= MNTK_THR_SYNC;	/* new vsyncscan semantics */
-
-	/*
-	 * required mount structure initializations
-	 */
-	mp->mnt_stat.f_iosize = HAMMER2_PBUFSIZE;
-	mp->mnt_stat.f_bsize = HAMMER2_PBUFSIZE;
-
-	mp->mnt_vstat.f_frsize = HAMMER2_PBUFSIZE;
-	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
-
-	/*
-	 * Optional fields
-	 */
-	mp->mnt_iosize_max = MAXPHYS;
-	mp->mnt_data = (qaddr_t)pmp;
-	pmp->mp = mp;
 
 	/*
 	 * Lookup mount point under the media-localized super-root.
@@ -660,6 +616,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		kprintf("hammer2_mount: PFS label not found\n");
 		hammer2_vfs_unmount_hmp1(mp, hmp);
 		hammer2_vfs_unmount_hmp2(mp, hmp);
+		lockmgr(&hammer2_mntlk, LK_RELEASE);
 		hammer2_vfs_unmount(mp, MNT_FORCE);
 		return EINVAL;
 	}
@@ -671,6 +628,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			hammer2_cluster_unlock(cluster);
 			hammer2_vfs_unmount_hmp1(mp, hmp);
 			hammer2_vfs_unmount_hmp2(mp, hmp);
+			lockmgr(&hammer2_mntlk, LK_RELEASE);
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return EBUSY;
 		}
@@ -680,6 +638,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			hammer2_cluster_unlock(cluster);
 			hammer2_vfs_unmount_hmp1(mp, hmp);
 			hammer2_vfs_unmount_hmp2(mp, hmp);
+			lockmgr(&hammer2_mntlk, LK_RELEASE);
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return EBUSY;
 		}
@@ -687,23 +646,117 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 
 	/*
+	 * Check to see if the cluster id is already mounted at the mount
+	 * point.  If it is, add us to the cluster.
+	 */
+	ipdata = &hammer2_cluster_data(cluster)->ipdata;
+	TAILQ_FOREACH(pmp, &hammer2_pfslist, mntentry) {
+		if (bcmp(&pmp->pfs_clid, &ipdata->pfs_clid,
+		    sizeof(pmp->pfs_clid)) == 0)
+			break;
+	}
+	if (pmp) {
+		int i;
+		int j;
+
+		hammer2_inode_ref(pmp->iroot);
+		ccms_thread_lock(&pmp->iroot->topo_cst, CCMS_STATE_EXCLUSIVE);
+
+		if (pmp->iroot->cluster.nchains + cluster->nchains >
+		    HAMMER2_MAXCLUSTER) {
+			kprintf("hammer2_mount: cluster full!\n");
+
+			ccms_thread_unlock(&pmp->iroot->topo_cst);
+			hammer2_inode_drop(pmp->iroot);
+
+			hammer2_cluster_unlock(cluster);
+			hammer2_vfs_unmount_hmp1(mp, hmp);
+			hammer2_vfs_unmount_hmp2(mp, hmp);
+			lockmgr(&hammer2_mntlk, LK_RELEASE);
+			hammer2_vfs_unmount(mp, MNT_FORCE);
+			return EBUSY;
+		}
+		kprintf("hammer2_vfs_mount: Adding pfs to existing cluster\n");
+		j = pmp->iroot->cluster.nchains;
+		for (i = 0; i < cluster->nchains; ++i) {
+			hammer2_chain_ref(cluster->array[i]);
+			pmp->iroot->cluster.array[j] = cluster->array[i];
+			++j;
+		}
+		pmp->iroot->cluster.nchains = j;
+		ccms_thread_unlock(&pmp->iroot->topo_cst);
+		hammer2_inode_drop(pmp->iroot);
+		hammer2_cluster_unlock(cluster);
+		lockmgr(&hammer2_mntlk, LK_RELEASE);
+
+		kprintf("ok\n");
+
+		return ERANGE;
+	}
+
+	/*
+	 * Block device opened successfully, finish initializing the
+	 * mount structure.
+	 *
+	 * From this point on we have to call hammer2_unmount() on failure.
+	 */
+	pmp = kmalloc(sizeof(*pmp), M_HAMMER2, M_WAITOK | M_ZERO);
+
+	kmalloc_create(&pmp->minode, "HAMMER2-inodes");
+	kmalloc_create(&pmp->mmsg, "HAMMER2-pfsmsg");
+	lockinit(&pmp->lock, "pfslk", 0, 0);
+	spin_init(&pmp->inum_spin);
+	RB_INIT(&pmp->inum_tree);
+	TAILQ_INIT(&pmp->unlinkq);
+	spin_init(&pmp->unlinkq_spin);
+	pmp->pfs_clid = ipdata->pfs_clid;
+
+	kdmsg_iocom_init(&pmp->iocom, pmp,
+			 KDMSG_IOCOMF_AUTOCONN |
+			 KDMSG_IOCOMF_AUTOSPAN |
+			 KDMSG_IOCOMF_AUTOCIRC,
+			 pmp->mmsg, hammer2_rcvdmsg);
+
+	ccms_domain_init(&pmp->ccms_dom);
+	TAILQ_INSERT_TAIL(&hammer2_pfslist, pmp, mntentry);
+	lockmgr(&hammer2_mntlk, LK_RELEASE);
+
+	kprintf("hammer2_mount hmp=%p pmp=%p pmpcnt=%d\n",
+		hmp, pmp, hmp->pmp_count);
+
+	mp->mnt_flag = MNT_LOCAL;
+	mp->mnt_kern_flag |= MNTK_ALL_MPSAFE;	/* all entry pts are SMP */
+	mp->mnt_kern_flag |= MNTK_THR_SYNC;	/* new vsyncscan semantics */
+
+	/*
+	 * required mount structure initializations
+	 */
+	mp->mnt_stat.f_iosize = HAMMER2_PBUFSIZE;
+	mp->mnt_stat.f_bsize = HAMMER2_PBUFSIZE;
+
+	mp->mnt_vstat.f_frsize = HAMMER2_PBUFSIZE;
+	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
+
+	/*
+	 * Optional fields
+	 */
+	mp->mnt_iosize_max = MAXPHYS;
+	mp->mnt_data = (qaddr_t)pmp;
+	pmp->mp = mp;
+
+	/*
 	 * After this point hammer2_vfs_unmount() has visibility on hmp
 	 * and manual hmp1/hmp2 calls are not needed on fatal errors.
 	 */
-	pmp->cluster = *cluster;
-	KKASSERT(pmp->cluster.refs == 1);
 	for (i = 0; i < cluster->nchains; ++i) {
 		rchain = cluster->array[i];
 		KKASSERT(rchain->pmp == NULL);	/* tracking pmp for rchain */
 		rchain->pmp = pmp;
 		atomic_set_int(&rchain->flags, HAMMER2_CHAIN_MOUNTED);
-		hammer2_chain_ref(rchain);	/* ref for pmp->cluster */
 	}
 	pmp->iroot = hammer2_inode_get(pmp, NULL, cluster);
 	hammer2_inode_ref(pmp->iroot);		/* ref for pmp->iroot */
 	hammer2_inode_unlock_ex(pmp->iroot, cluster);
-
-	kprintf("iroot %p\n", pmp->iroot);
 
 	/*
 	 * The logical file buffer bio write thread handles things
@@ -1421,6 +1474,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	hammer2_pfsmount_t *pmp;
 	hammer2_mount_t *hmp;
 	hammer2_chain_t *rchain;
+	hammer2_cluster_t *cluster;
 	int flags;
 	int error = 0;
 	int i;
@@ -1431,6 +1485,7 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		return(0);
 
 	lockmgr(&hammer2_mntlk, LK_EXCLUSIVE);
+	TAILQ_REMOVE(&hammer2_pfslist, pmp, mntentry);
 
 	/*
 	 * If mount initialization proceeded far enough we must flush
@@ -1475,6 +1530,28 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 	 * by the flush code.
 	 */
 	if (pmp->iroot) {
+		cluster = &pmp->iroot->cluster;
+		for (i = 0; i < pmp->iroot->cluster.nchains; ++i) {
+			rchain = pmp->iroot->cluster.array[i];
+			if (rchain == NULL)
+				continue;
+			hmp = rchain->hmp;
+			hammer2_vfs_unmount_hmp1(mp, hmp);
+
+			atomic_clear_int(&rchain->flags, HAMMER2_CHAIN_MOUNTED);
+#if REPORT_REFS_ERRORS
+			if (rchain->refs != 1)
+				kprintf("PMP->RCHAIN %p REFS WRONG %d\n",
+					rchain, rchain->refs);
+#else
+			KKASSERT(rchain->refs == 1);
+#endif
+			hammer2_chain_drop(rchain);
+			cluster->array[i] = NULL;
+			hammer2_vfs_unmount_hmp2(mp, hmp);
+		}
+		cluster->focus = NULL;
+
 #if REPORT_REFS_ERRORS
 		if (pmp->iroot->refs != 1)
 			kprintf("PMP->IROOT %p REFS WRONG %d\n",
@@ -1485,28 +1562,6 @@ hammer2_vfs_unmount(struct mount *mp, int mntflags)
 		/* ref for pmp->iroot */
 		hammer2_inode_drop(pmp->iroot);
 		pmp->iroot = NULL;
-	}
-
-	for (i = 0; i < pmp->cluster.nchains; ++i) {
-		hmp = pmp->cluster.array[i]->hmp;
-
-		hammer2_vfs_unmount_hmp1(mp, hmp);
-
-		rchain = pmp->cluster.array[i];
-		if (rchain) {
-			atomic_clear_int(&rchain->flags, HAMMER2_CHAIN_MOUNTED);
-#if REPORT_REFS_ERRORS
-			if (rchain->refs != 1)
-				kprintf("PMP->RCHAIN %p REFS WRONG %d\n",
-					rchain, rchain->refs);
-#else
-			KKASSERT(rchain->refs == 1);
-#endif
-			hammer2_chain_drop(rchain);
-			pmp->cluster.array[i] = NULL;
-		}
-
-		hammer2_vfs_unmount_hmp2(mp, hmp);
 	}
 
 	pmp->mp = NULL;
@@ -1691,8 +1746,8 @@ hammer2_vfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	hammer2_mount_t *hmp;
 
 	pmp = MPTOPMP(mp);
-	KKASSERT(pmp->cluster.nchains >= 1);
-	hmp = pmp->cluster.focus->hmp;	/* XXX */
+	KKASSERT(pmp->iroot->cluster.nchains >= 1);
+	hmp = pmp->iroot->cluster.focus->hmp;	/* XXX */
 
 	mp->mnt_stat.f_files = pmp->inode_count;
 	mp->mnt_stat.f_ffree = 0;
@@ -1712,8 +1767,8 @@ hammer2_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	hammer2_mount_t *hmp;
 
 	pmp = MPTOPMP(mp);
-	KKASSERT(pmp->cluster.nchains >= 1);
-	hmp = pmp->cluster.focus->hmp;	/* XXX */
+	KKASSERT(pmp->iroot->cluster.nchains >= 1);
+	hmp = pmp->iroot->cluster.focus->hmp;	/* XXX */
 
 	mp->mnt_vstat.f_bsize = HAMMER2_PBUFSIZE;
 	mp->mnt_vstat.f_files = pmp->inode_count;
@@ -1968,8 +2023,8 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 #endif
 
 	total_error = 0;
-	for (i = 0; i < pmp->cluster.nchains; ++i) {
-		hmp = pmp->cluster.array[i]->hmp;
+	for (i = 0; pmp->iroot && i < pmp->iroot->cluster.nchains; ++i) {
+		hmp = pmp->iroot->cluster.array[i]->hmp;
 
 		/*
 		 * Media mounts have two 'roots', vchain for the topology
@@ -2272,7 +2327,7 @@ hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 	hammer2_mount_t *hmp;
 	size_t name_len;
 
-	hmp = pmp->cluster.focus->hmp;	/* XXX */
+	hmp = pmp->iroot->cluster.focus->hmp;	/* XXX */
 
 	/*
 	 * Closes old comm descriptor, kills threads, cleans up
@@ -2385,7 +2440,7 @@ static void
 hammer2_autodmsg(kdmsg_msg_t *msg)
 {
 	hammer2_pfsmount_t *pmp = msg->iocom->handle;
-	hammer2_mount_t *hmp = pmp->cluster.focus->hmp; /* XXX */
+	hammer2_mount_t *hmp = pmp->iroot->cluster.focus->hmp; /* XXX */
 	int copyid;
 
 	/*
@@ -2428,7 +2483,7 @@ hammer2_autodmsg(kdmsg_msg_t *msg)
 void
 hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
 {
-	hammer2_mount_t *hmp = pmp->cluster.focus->hmp;	/* XXX */
+	hammer2_mount_t *hmp = pmp->iroot->cluster.focus->hmp;	/* XXX */
 	kdmsg_msg_t *msg;
 
 	/* XXX interlock against connection state termination */

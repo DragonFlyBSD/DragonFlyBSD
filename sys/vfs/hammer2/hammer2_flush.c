@@ -148,7 +148,7 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp,
 	if (pmp) {
 		trans->pmp = pmp;
 		KKASSERT(hmp == NULL);
-		hmp = pmp->cluster.focus->hmp;	/* XXX */
+		hmp = pmp->iroot->cluster.focus->hmp;	/* XXX */
 	} else {
 		trans->hmp_single = hmp;
 		KKASSERT(hmp);
@@ -265,7 +265,7 @@ hammer2_trans_done(hammer2_trans_t *trans)
 	hammer2_trans_t *scan;
 
 	if (trans->pmp)
-		hmp = trans->pmp->cluster.focus->hmp;
+		hmp = trans->pmp->iroot->cluster.focus->hmp;
 	else
 		hmp = trans->hmp_single;
 

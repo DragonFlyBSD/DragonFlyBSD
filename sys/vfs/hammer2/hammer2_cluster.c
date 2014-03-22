@@ -165,6 +165,7 @@ hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
 		      hammer2_trans_t *trans, hammer2_blockref_t *bref)
 {
 	hammer2_cluster_t *cluster;
+	hammer2_cluster_t *rcluster;
 	hammer2_chain_t *chain;
 	u_int bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	int i;
@@ -199,11 +200,12 @@ hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
 	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
 	cluster->refs = 1;
 
-	for (i = 0; i < pmp->cluster.nchains; ++i) {
-		chain = hammer2_chain_alloc(pmp->cluster.array[i]->hmp, pmp,
+	rcluster = &pmp->iroot->cluster;
+	for (i = 0; i < rcluster->nchains; ++i) {
+		chain = hammer2_chain_alloc(rcluster->array[i]->hmp, pmp,
 					    trans, bref);
 		chain->pmp = pmp;
-		chain->hmp = pmp->cluster.array[i]->hmp;
+		chain->hmp = rcluster->array[i]->hmp;
 		chain->bref = *bref;
 		chain->bytes = bytes;
 		chain->refs = 1;
