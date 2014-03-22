@@ -43,6 +43,8 @@
 .Op Fl b Ar bootsize
 .Op Fl r Ar redosize
 .Op Fl V Ar version
+.Op Fl R Ar uuid
+.Op Fl I Ar uuid
 .Ar special ...
 .Sh DESCRIPTION
 The
@@ -141,6 +143,15 @@ sysctl.
 If you need to maintain compatibility with an older version of
 .Nm HAMMER2
 you may specify the version with this option.
+.It Fl R Ar uuid
+Specify the super-root cluster id.
+Use this option to set-up whole-media mirrors with the same super-root
+cluster id.
+If not specified, a random uuid is generated.
+.It Fl I Ar uuid
+Specify the cluster id for the initial mount point label.
+Use this option to set-up PFS mirrors with the same cluster id.
+If not specified, a random uuid is generated.
 .El
 .Pp
 The

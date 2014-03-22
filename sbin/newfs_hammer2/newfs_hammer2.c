@@ -72,9 +72,11 @@ static hammer2_key_t dirhash(const unsigned char *name, size_t len);
 static int Hammer2Version = -1;
 static int ForceOpt = 0;
 static uuid_t Hammer2_FSType;	/* static filesystem type id for HAMMER2 */
-static uuid_t Hammer2_FSId;	/* unique filesystem id in volu header */
-static uuid_t Hammer2_SPFSId;	/* PFS id in super-root inode */
-static uuid_t Hammer2_RPFSId;	/* PFS id in root inode */
+static uuid_t Hammer2_VolFSID;	/* unique filesystem id in volu header */
+static uuid_t Hammer2_SupCLID;	/* PFS cluster id in super-root inode */
+static uuid_t Hammer2_SupFSID;	/* PFS unique id in super-root inode */
+static uuid_t Hammer2_PfsCLID;	/* PFS cluster id in labeled pfs (root) */
+static uuid_t Hammer2_PfsFSID;	/* PFS unique id in labeled pfs (root) */
 static const char *Label = "ROOT";
 static hammer2_off_t BootAreaSize;
 static hammer2_off_t AuxAreaSize;
@@ -90,9 +92,11 @@ main(int ac, char **av)
 	hammer2_off_t reserved_space;
 	int ch;
 	int fd = -1;
-	char *fsidstr;
-	char *spfsidstr;
-	char *rpfsidstr;
+	char *vol_fsid;
+	char *sup_clid;
+	char *sup_fsid;
+	char *pfs_clid;
+	char *pfs_fsid;
 
 	/*
 	 * Sanity check basic filesystem structures.  No cookies for us
@@ -106,20 +110,22 @@ main(int ac, char **av)
 	 * Generate a filesystem id and lookup the filesystem type
 	 */
 	srandomdev();
-	uuidgen(&Hammer2_FSId, 1);
-	uuidgen(&Hammer2_SPFSId, 1);
-	uuidgen(&Hammer2_RPFSId, 1);
+	uuidgen(&Hammer2_VolFSID, 1);
+	uuidgen(&Hammer2_SupCLID, 1);
+	uuidgen(&Hammer2_SupFSID, 1);
+	uuidgen(&Hammer2_PfsCLID, 1);
+	uuidgen(&Hammer2_PfsFSID, 1);
 	uuid_from_string(HAMMER2_UUID_STRING, &Hammer2_FSType, &status);
 	/*uuid_name_lookup(&Hammer2_FSType, "DragonFly HAMMER2", &status);*/
 	if (status != uuid_s_ok) {
 		errx(1, "uuids file does not have the DragonFly "
-			"HAMMER filesystem type");
+			"HAMMER2 filesystem type");
 	}
 
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "fL:b:m:r:V:")) != -1) {
+	while ((ch = getopt(ac, av, "fL:b:m:r:V:R:I:")) != -1) {
 		switch(ch) {
 		case 'f':
 			ForceOpt = 1;
@@ -150,6 +156,16 @@ main(int ac, char **av)
 				     "HAMMER2 version %d\n",
 				     Hammer2Version);
 			}
+			break;
+		case 'R':
+			uuid_from_string(optarg, &Hammer2_SupCLID, &status);
+			if (status != uuid_s_ok)
+				errx(1, "uuid %s badly formatted", optarg);
+			break;
+		case 'I':
+			uuid_from_string(optarg, &Hammer2_PfsCLID, &status);
+			if (status != uuid_s_ok)
+				errx(1, "uuid %s badly formatted", optarg);
 			break;
 		default:
 			usage();
@@ -233,9 +249,11 @@ main(int ac, char **av)
 	/*
 	 * We'll need to stuff this in the volume header soon.
 	 */
-	uuid_to_string(&Hammer2_FSId, &fsidstr, &status);
-	uuid_to_string(&Hammer2_SPFSId, &spfsidstr, &status);
-	uuid_to_string(&Hammer2_RPFSId, &rpfsidstr, &status);
+	uuid_to_string(&Hammer2_VolFSID, &vol_fsid, &status);
+	uuid_to_string(&Hammer2_SupCLID, &sup_clid, &status);
+	uuid_to_string(&Hammer2_SupFSID, &sup_fsid, &status);
+	uuid_to_string(&Hammer2_PfsCLID, &pfs_clid, &status);
+	uuid_to_string(&Hammer2_PfsFSID, &pfs_fsid, &status);
 
 	/*
 	 * Calculate the amount of reserved space.  HAMMER2_ZONE_SEG (4MB)
@@ -266,9 +284,11 @@ main(int ac, char **av)
 	printf("aux-area-size:    %s\n", sizetostr(AuxAreaSize));
 	printf("topo-reserved:	  %s\n", sizetostr(reserved_space));
 	printf("free-space:       %s\n", sizetostr(free_space));
-	printf("fsid:             %s\n", fsidstr);
-	printf("supr-pfsid:       %s\n", spfsidstr);
-	printf("root-pfsid:       %s\n", rpfsidstr);
+	printf("vol-fsid:         %s\n", vol_fsid);
+	printf("sup-clid:         %s\n", sup_clid);
+	printf("sup-fsid:         %s\n", sup_fsid);
+	printf("pfs-clid:         %s\n", pfs_clid);
+	printf("pfs-fsid:         %s\n", pfs_fsid);
 	printf("\n");
 
 	return(0);
@@ -531,7 +551,8 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	else
 		rawip->comp_algo = HAMMER2_COMP_NEWFS_DEFAULT;
 
-	rawip->pfs_clid = Hammer2_RPFSId;
+	rawip->pfs_clid = Hammer2_PfsCLID;
+	rawip->pfs_fsid = Hammer2_PfsCLID;
 	rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
 	rawip->op_flags |= HAMMER2_OPFLAG_PFSROOT;
 
@@ -585,7 +606,8 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 * snapshots and all if desired.  PFS ids are used to match up
 	 * mirror sources and targets and cluster copy sources and targets.
 	 */
-	rawip->pfs_clid = Hammer2_SPFSId;
+	rawip->pfs_clid = Hammer2_SupCLID;
+	rawip->pfs_fsid = Hammer2_SupFSID;
 	rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
 	rawip->op_flags |= HAMMER2_OPFLAG_PFSROOT;
 
@@ -635,7 +657,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	vol->version = Hammer2Version;
 	vol->flags = 0;
 
-	vol->fsid = Hammer2_FSId;
+	vol->fsid = Hammer2_VolFSID;
 	vol->fstype = Hammer2_FSType;
 
 	vol->peer_type = HAMMER2_PEER_HAMMER2;	/* LNK_CONN identification */
