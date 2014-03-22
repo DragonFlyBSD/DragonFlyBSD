@@ -94,9 +94,15 @@ main(int argc, char *argv[])
 	mountpt = argv[2];
 
 	error = mount(vfc.vfc_name, mountpt, mount_flags, &info);
-	if (error) {
-		perror("mount: ");
-		exit(1);
+	if (error < 0) {
+		if (errno == ERANGE) {
+			fprintf(stderr,
+				"%s integrated with %s\n",
+				info.volume, mountpt);
+		} else {
+			perror("mount: ");
+			exit(1);
+		}
 	}
 
 	/*
