@@ -112,6 +112,7 @@
 
 /* Internal variables */
 static struct inpcbinfo divcbinfo;
+static struct inpcbportinfo divcbportinfo;
 
 static u_long	div_sendspace = DIVSNDQ;	/* XXX sysctl ? */
 static u_long	div_recvspace = DIVRCVQ;	/* XXX sysctl ? */
@@ -127,13 +128,14 @@ void
 div_init(void)
 {
 	in_pcbinfo_init(&divcbinfo);
+	in_pcbportinfo_init(&divcbportinfo, 1, FALSE);
 	/*
 	 * XXX We don't use the hash list for divert IP, but it's easier
 	 * to allocate a one entry hash list than it is to check all
 	 * over the place for hashbase == NULL.
 	 */
 	divcbinfo.hashbase = hashinit(1, M_PCB, &divcbinfo.hashmask);
-	divcbinfo.porthashbase = hashinit(1, M_PCB, &divcbinfo.porthashmask);
+	divcbinfo.portinfo = &divcbportinfo;
 	divcbinfo.wildcardhashbase = hashinit(1, M_PCB,
 					      &divcbinfo.wildcardhashmask);
 	divcbinfo.ipi_size = sizeof(struct inpcb);

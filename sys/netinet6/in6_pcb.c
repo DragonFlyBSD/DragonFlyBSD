@@ -135,7 +135,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 	if (nam) {
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
-		struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+		struct inpcbportinfo *portinfo;
 		int wild = 0, reuseport = (so->so_options & SO_REUSEPORT);
 		struct ucred *cred = NULL;
 		struct inpcb *t;
@@ -202,13 +202,15 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		if (lport == 0)
 			goto auto_select;
 
+		portinfo = inp->inp_pcbinfo->portinfo;
+
 		/*
 		 * This has to be atomic.  If the porthash is shared across
 		 * multiple protocol threads (aka tcp) then the token will be
 		 * non-NULL.
 		 */
-		if (pcbinfo->porttoken)
-			lwkt_gettoken(pcbinfo->porttoken);
+		if (portinfo->porttoken)
+			lwkt_gettoken(portinfo->porttoken);
 
 		/* GROSS */
 		if (ntohs(lport) < IPV6PORT_RESERVED && cred &&
@@ -219,7 +221,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		}
 		if (so->so_cred->cr_uid != 0 &&
 		    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
-			t = in6_pcblookup_local(pcbinfo,
+			t = in6_pcblookup_local(portinfo,
 			    &sin6->sin6_addr, lport, INPLOOKUP_WILDCARD, cred);
 			if (t &&
 			    (!IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr) ||
@@ -236,7 +238,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 				struct sockaddr_in sin;
 
 				in6_sin6_2_sin(&sin, sin6);
-				t = in_pcblookup_local(pcbinfo,
+				t = in_pcblookup_local(portinfo,
 				    sin.sin_addr, lport,
 				    INPLOOKUP_WILDCARD, cred);
 				if (t &&
@@ -257,7 +259,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			error = EADDRNOTAVAIL;
 			goto done;
 		}
-		t = in6_pcblookup_local(pcbinfo, &sin6->sin6_addr, lport,
+		t = in6_pcblookup_local(portinfo, &sin6->sin6_addr, lport,
 		    wild, cred);
 		if (t && (reuseport & t->inp_socket->so_options) == 0) {
 			inp->in6p_laddr = kin6addr_any;
@@ -269,7 +271,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			struct sockaddr_in sin;
 
 			in6_sin6_2_sin(&sin, sin6);
-			t = in_pcblookup_local(pcbinfo, sin.sin_addr, lport,
+			t = in_pcblookup_local(portinfo, sin.sin_addr, lport,
 			    wild, cred);
 			if (t && (reuseport & t->inp_socket->so_options) == 0 &&
 			    (ntohl(t->inp_laddr.s_addr) != INADDR_ANY ||
@@ -281,11 +283,11 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		}
 
 		inp->inp_lport = lport;
-		in_pcbinsporthash(inp);
+		in_pcbinsporthash(portinfo, inp);
 		error = 0;
 done:
-		if (pcbinfo->porttoken)
-			lwkt_reltoken(pcbinfo->porttoken);
+		if (portinfo->porttoken)
+			lwkt_reltoken(portinfo->porttoken);
 		return (error);
 	} else {
 auto_select:
@@ -979,8 +981,9 @@ do_notify:
  * Lookup a PCB based on the local address and port.
  */
 struct inpcb *
-in6_pcblookup_local(struct inpcbinfo *pcbinfo, const struct in6_addr *laddr,
-		    u_int lport_arg, int wild_okay, struct ucred *cred)
+in6_pcblookup_local(struct inpcbportinfo *portinfo,
+    const struct in6_addr *laddr, u_int lport_arg, int wild_okay,
+    struct ucred *cred)
 {
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
@@ -993,8 +996,8 @@ in6_pcblookup_local(struct inpcbinfo *pcbinfo, const struct in6_addr *laddr,
 	 * If the porthashbase is shared across several cpus, it must
 	 * have been locked.
 	 */
-	if (pcbinfo->porttoken)
-		ASSERT_LWKT_TOKEN_HELD(pcbinfo->porttoken);
+	if (portinfo->porttoken)
+		ASSERT_LWKT_TOKEN_HELD(portinfo->porttoken);
 
 	/*
 	 * Best fit PCB lookup.
@@ -1002,8 +1005,8 @@ in6_pcblookup_local(struct inpcbinfo *pcbinfo, const struct in6_addr *laddr,
 	 * First see if this local port is in use by looking on the
 	 * port hash list.
 	 */
-	porthash = &pcbinfo->porthashbase[
-				INP_PCBPORTHASH(lport, pcbinfo->porthashmask)];
+	porthash = &portinfo->porthashbase[
+				INP_PCBPORTHASH(lport, portinfo->porthashmask)];
 	LIST_FOREACH(phd, porthash, phd_hash) {
 		if (phd->phd_port == lport)
 			break;

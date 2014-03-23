@@ -80,6 +80,7 @@
 #endif /*IPSEC*/
 
 struct	inpcbinfo ripcbinfo;
+struct	inpcbportinfo ripcbportinfo;
 
 /* control hooks for ipfw and dummynet */
 ip_fw_ctl_t *ip_fw_ctl_ptr;
@@ -127,13 +128,14 @@ void
 rip_init(void)
 {
 	in_pcbinfo_init(&ripcbinfo);
+	in_pcbportinfo_init(&ripcbportinfo, 1, FALSE);
 	/*
 	 * XXX We don't use the hash list for raw IP, but it's easier
 	 * to allocate a one entry hash list than it is to check all
 	 * over the place for hashbase == NULL.
 	 */
 	ripcbinfo.hashbase = hashinit(1, M_PCB, &ripcbinfo.hashmask);
-	ripcbinfo.porthashbase = hashinit(1, M_PCB, &ripcbinfo.porthashmask);
+	ripcbinfo.portinfo = &ripcbportinfo;
 	ripcbinfo.wildcardhashbase = hashinit(1, M_PCB,
 					      &ripcbinfo.wildcardhashmask);
 	ripcbinfo.ipi_size = sizeof(struct inpcb);

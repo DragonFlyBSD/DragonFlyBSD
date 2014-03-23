@@ -765,7 +765,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 		inp->inp_laddr = sc->sc_inc.inc_laddr;
 	}
 	inp->inp_lport = sc->sc_inc.inc_lport;
-	in_pcbinsporthash(inp);
+	in_pcbinsporthash(inp->inp_pcbinfo->portinfo, inp);
 
 	linp = lso->so_pcb;
 #ifdef IPSEC

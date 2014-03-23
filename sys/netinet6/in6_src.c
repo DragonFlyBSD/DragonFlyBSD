@@ -399,7 +399,7 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 	struct socket *so = inp->inp_socket;
 	u_int16_t lport = 0, first, last, *lastport;
 	int count, error = 0, wild = 0;
-	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	struct inpcbportinfo *portinfo = inp->inp_pcbinfo->portinfo;
 	struct ucred *cred = NULL;
 
 	/* XXX: this is redundant when called from in6_pcbbind */
@@ -413,25 +413,25 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 	if (inp->inp_flags & INP_HIGHPORT) {
 		first = ipport_hifirstauto;	/* sysctl */
 		last  = ipport_hilastauto;
-		lastport = &pcbinfo->lasthi;
+		lastport = &portinfo->lasthi;
 	} else if (inp->inp_flags & INP_LOWPORT) {
 		if ((error = priv_check(td, PRIV_ROOT)) != 0)
 			return error;
 		first = ipport_lowfirstauto;	/* 1023 */
 		last  = ipport_lowlastauto;	/* 600 */
-		lastport = &pcbinfo->lastlow;
+		lastport = &portinfo->lastlow;
 	} else {
 		first = ipport_firstauto;	/* sysctl */
 		last  = ipport_lastauto;
-		lastport = &pcbinfo->lastport;
+		lastport = &portinfo->lastport;
 	}
 
 	/*
 	 * This has to be atomic.  If the porthash is shared across multiple
 	 * protocol threads (aka tcp) then the token will be non-NULL.
 	 */
-	if (pcbinfo->porttoken)
-		lwkt_gettoken(pcbinfo->porttoken);
+	if (portinfo->porttoken)
+		lwkt_gettoken(portinfo->porttoken);
 
 	/*
 	 * Simple check to ensure all ports are not used up causing
@@ -460,7 +460,7 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 			if (*lastport > first || *lastport < last)
 				*lastport = first;
 			lport = htons(*lastport);
-		} while (in6_pcblookup_local(pcbinfo, &inp->in6p_laddr,
+		} while (in6_pcblookup_local(portinfo, &inp->in6p_laddr,
 			 lport, wild, cred));
 	} else {
 		/*
@@ -482,16 +482,16 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 			if (*lastport < first || *lastport > last)
 				*lastport = first;
 			lport = htons(*lastport);
-		} while (in6_pcblookup_local(pcbinfo, &inp->in6p_laddr,
+		} while (in6_pcblookup_local(portinfo, &inp->in6p_laddr,
 			 lport, wild, cred));
 	}
 
 	inp->inp_lport = lport;
-	in_pcbinsporthash(inp);
+	in_pcbinsporthash(portinfo, inp);
 	error = 0;
 done:
-	if (pcbinfo->porttoken)
-		lwkt_reltoken(pcbinfo->porttoken);
+	if (portinfo->porttoken)
+		lwkt_reltoken(portinfo->porttoken);
 	return error;
 }
 

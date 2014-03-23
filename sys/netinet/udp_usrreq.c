@@ -155,6 +155,7 @@ SYSCTL_INT(_net_inet_udp, OID_AUTO, reuseport_ext, CTLFLAG_RW,
 	&udp_reuseport_ext, 0, "SO_REUSEPORT extension");
 
 struct	inpcbinfo udbinfo;
+struct	inpcbportinfo udbportinfo;
 
 static struct netisr_barrier *udbinfo_br;
 static struct lwkt_serialize udbinfo_slize = LWKT_SERIALIZE_INITIALIZER;
@@ -197,9 +198,10 @@ udp_init(void)
 	int cpu;
 
 	in_pcbinfo_init(&udbinfo);
+	in_pcbportinfo_init(&udbportinfo, UDBHASHSIZE, FALSE);
+
 	udbinfo.hashbase = hashinit(UDBHASHSIZE, M_PCB, &udbinfo.hashmask);
-	udbinfo.porthashbase = hashinit(UDBHASHSIZE, M_PCB,
-					&udbinfo.porthashmask);
+	udbinfo.portinfo = &udbportinfo;
 	udbinfo.wildcardhashbase = hashinit(UDBHASHSIZE, M_PCB,
 					    &udbinfo.wildcardhashmask);
 	udbinfo.localgrphashbase = hashinit(UDBHASHSIZE, M_PCB,

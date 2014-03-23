@@ -186,6 +186,7 @@ struct in_conninfo {
  * stable.
  */
 struct	icmp6_filter;
+struct	inpcbportinfo;
 
 struct inpcb {
 	LIST_ENTRY(inpcb) inp_hash; /* hash list */
@@ -240,6 +241,7 @@ struct inpcb {
 		u_int8_t	inp6_hlim;
 	} inp_depend6;
 	LIST_ENTRY(inpcb) inp_portlist;
+	struct	inpcbportinfo *inp_portinfo;
 	struct	inpcbport *inp_phd;	/* head of this list */
 	inp_gen_t	inp_gencnt;	/* generation count of this instance */
 #define	in6p_faddr	inp_inc.inc6_faddr
@@ -292,21 +294,25 @@ struct inpcbport {
 
 struct lwkt_token;
 
+struct inpcbportinfo {
+	struct  lwkt_token *porttoken;	/* if this inpcbportinfo is shared */
+	struct	inpcbporthead *porthashbase;
+	u_long	porthashmask;
+	u_short	lastport;
+	u_short	lastlow;
+	u_short	lasthi;
+} __cachealign;
+
 struct inpcbinfo {		/* XXX documentation, prefixes */
 	struct	inpcbhead *hashbase;
 	u_long	hashmask;
-	struct	inpcbporthead *porthashbase;
-	u_long	porthashmask;
-	struct  lwkt_token *porttoken;	/* if porthashbase is shared */
+	struct	inpcbportinfo *portinfo;
 	struct 	inpcbport *portsave;	/* port allocation cache */
 	struct	inpcontainerhead *wildcardhashbase;
 	u_long	wildcardhashmask;
 	struct	inp_localgrphead *localgrphashbase;
 	u_long	localgrphashmask;
 	struct	inpcbhead pcblisthead;	/* head of queue of active pcb's */
-	u_short	lastport;
-	u_short	lastlow;
-	u_short	lasthi;
 	size_t	ipi_size;	/* allocation size for pcbs */
 	u_int	ipi_count;	/* number of pcbs in this list */
 	u_quad_t ipi_gencnt;	/* current generation count */
@@ -424,6 +430,7 @@ void	in_pcbpurgeif0 (struct inpcb *, struct ifnet *);
 void	in_losing (struct inpcb *);
 void	in_rtchange (struct inpcb *, int);
 void	in_pcbinfo_init (struct inpcbinfo *);
+void	in_pcbportinfo_init (struct inpcbportinfo *, int, boolean_t);
 int	in_pcballoc (struct socket *, struct inpcbinfo *);
 void	in_pcbunlink (struct inpcb *, struct inpcbinfo *);
 void	in_pcblink (struct inpcb *, struct inpcbinfo *);
@@ -436,13 +443,13 @@ void	in_pcbdisconnect (struct inpcb *);
 void	in_pcbinswildcardhash(struct inpcb *inp);
 void	in_pcbinswildcardhash_oncpu(struct inpcb *, struct inpcbinfo *);
 void	in_pcbinsconnhash(struct inpcb *inp);
-void	in_pcbinsporthash (struct inpcb *);
+void	in_pcbinsporthash (struct inpcbportinfo *, struct inpcb *);
 int	in_pcbladdr (struct inpcb *, struct sockaddr *,
 	    struct sockaddr_in **, struct thread *);
 int	in_pcbladdr_find (struct inpcb *, struct sockaddr *,
 	    struct sockaddr_in **, struct thread *, int);
 struct inpcb *
-	in_pcblookup_local (struct inpcbinfo *, struct in_addr, u_int, int,
+	in_pcblookup_local (struct inpcbportinfo *, struct in_addr, u_int, int,
 			    struct ucred *);
 struct inpcb *
 	in_pcblookup_hash (struct inpcbinfo *,
