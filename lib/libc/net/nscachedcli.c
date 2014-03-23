@@ -260,7 +260,6 @@ __cached_write(struct cached_connection_ *connection, const char *entry_name,
 	int result;
 
 	error_code = -1;
-	result = 0;
 	result = send_credentials(connection, CET_WRITE_REQUEST);
 	if (result != 0)
 		goto fin;
