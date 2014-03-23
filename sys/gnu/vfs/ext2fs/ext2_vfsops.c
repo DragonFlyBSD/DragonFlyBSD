@@ -856,7 +856,9 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct ucred *cred)
 out:
 	if (bp)
 		brelse(bp);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, NULL);
+	vn_unlock(devvp);
 	if (ump) {
 		bsd_free(ump->um_e2fs->s_es, M_EXT2MNT);
 		bsd_free(ump->um_e2fs, M_EXT2MNT);
@@ -908,7 +910,11 @@ ext2_unmount(struct mount *mp, int mntflags)
 			ULCK_BUF(fs->s_block_bitmap[i])
 
 	ump->um_devvp->v_rdev->si_mountpoint = NULL;
+
+	vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_CLOSE(ump->um_devvp, ronly ? FREAD : FREAD|FWRITE, NULL);
+	vn_unlock(ump->um_devvp);
+
 	vrele(ump->um_devvp);
 	bsd_free(fs->s_es, M_EXT2MNT);
 	bsd_free(fs, M_EXT2MNT);
