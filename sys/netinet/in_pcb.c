@@ -1535,11 +1535,11 @@ in_pcbinsporthash(struct inpcbportinfo *portinfo, struct inpcb *inp)
 	struct inpcbport *phd;
 
 	/*
-	 * If the porthashbase is shared across several cpus we need
-	 * to lock.
+	 * If the porthashbase is shared across several cpus, it must
+	 * have been locked.
 	 */
 	if (portinfo->porttoken)
-		lwkt_gettoken(portinfo->porttoken);
+		ASSERT_LWKT_TOKEN_HELD(portinfo->porttoken);
 
 	/*
 	 * Insert into the port hash table.
@@ -1567,12 +1567,24 @@ in_pcbinsporthash(struct inpcbportinfo *portinfo, struct inpcb *inp)
 	inp->inp_phd = phd;
 	LIST_INSERT_HEAD(&phd->phd_pcblist, inp, inp_portlist);
 
-	if (portinfo->porttoken)
-		lwkt_reltoken(portinfo->porttoken);
 	if (pcbinfo->portsave == NULL) {
 		pcbinfo->portsave = kmalloc(sizeof(*pcbinfo->portsave),
 					    M_PCB, M_INTWAIT | M_ZERO);
 	}
+}
+
+void
+in_pcbinsporthash_lport(struct inpcb *inp)
+{
+	struct inpcbportinfo *portinfo = inp->inp_pcbinfo->portinfo;
+
+	if (portinfo->porttoken)
+		lwkt_gettoken(portinfo->porttoken);
+
+	in_pcbinsporthash(portinfo, inp);
+
+	if (portinfo->porttoken)
+		lwkt_reltoken(portinfo->porttoken);
 }
 
 static struct inp_localgroup *
