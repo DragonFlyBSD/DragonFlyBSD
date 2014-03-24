@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.h,v 1.2.2.3 2001/08/13 16:26:17 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.h,v 1.9 2006/12/29 18:02:56 victor Exp $	*/
 /*	$KAME: in6_pcb.h,v 1.13 2001/02/06 09:16:53 itojun Exp $	*/
 
 /*
@@ -88,6 +87,7 @@ struct sockaddr;
 struct inpcb;
 struct in6pcb;
 struct inpcbinfo;
+struct inpcbportinfo;
 struct inpcbhead;
 struct ip6_moptions;
 struct ip6_pktopts;
