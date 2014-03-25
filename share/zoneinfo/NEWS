@@ -1,6 +1,45 @@
 News for the tz database
 
 
+Release 2014b - 2014-03-24 21:28:50 -0700
+
+  Changes affecting near-future time stamps
+
+    Crimea switches to Moscow time on 2014-03-30 at 02:00 local time.
+    (Thanks to Alexander Krivenyshev.)  Move its zone.tab entry from UA to RU.
+
+    New entry for Troll station, Antarctica.  (Thanks to Paul-Inge Flakstad and
+    Bengt-Inge Larsson.)  This is currently an approximation; a better version
+    will require the zic and localtime fixes mentioned below, and the plan is
+    to wait for a while until at least the zic fixes propagate.
+
+  Changes affecting code
+
+    'zic' and 'localtime' no longer reject locations needing four transitions
+    per year for the forseeable future.  (Thanks to Andrew Main (Zefram).)
+    Also, 'zic' avoids some unlikely failures due to integer overflow.
+
+  Changes affecting build procedure
+
+    'make check' now detects Rule lines defined but never used.
+    The NZAQ rules, an instance of this problem, have been removed.
+
+  Changes affecting commentary and documentation
+
+    Fix Tuesday/Thursday typo in description of time in Israel.
+    (Thanks to Bert Katz via Pavel Kharitonov and Mike Frysinger.)
+
+    Microsoft Windows 8.1 doesn't support tz database names.  (Thanks
+    to Donald MacQueen.)  Instead, the Microsoft Windows Store app
+    library supports them.
+
+    Add comments about Johnston Island time in the 1960s.
+    (Thanks to Lyle McElhaney.)
+
+    Morocco's 2014 DST start will be as predicted.
+    (Thanks to Sebastien Willemijns.)
+
+
 Release 2014a - 2014-03-07 23:30:29 -0800
 
   Changes affecting near-future time stamps
@@ -48,7 +87,7 @@ Release 2014a - 2014-03-07 23:30:29 -0800
 
       Mention xCal (Internet RFC 6321) and jCal.
 
-      Microsoft Windows 8.1 and later support tz database names.
+      Microsoft has some support for tz database names.
 
       CLDR data is available in both XML and JSON form.
 
