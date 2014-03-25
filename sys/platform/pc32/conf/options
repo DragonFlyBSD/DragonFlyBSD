@@ -44,7 +44,6 @@ CPU_BLUELIGHTNING_3X		opt_cpu.h
 CPU_ELAN			opt_cpu.h
 CPU_ENABLE_EST			opt_cpu.h
 CPU_ENABLE_LONGRUN		opt_cpu.h
-CPU_ENABLE_TCC			opt_cpu.h
 CPU_GEODE			opt_cpu.h
 CPU_I486_ON_386			opt_cpu.h
 CPU_L2_LATENCY			opt_cpu.h
