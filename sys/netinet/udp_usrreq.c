@@ -198,7 +198,7 @@ udp_init(void)
 	int cpu;
 
 	in_pcbinfo_init(&udbinfo);
-	in_pcbportinfo_init(&udbportinfo, UDBHASHSIZE, FALSE);
+	in_pcbportinfo_init(&udbportinfo, UDBHASHSIZE, FALSE, 0);
 
 	udbinfo.hashbase = hashinit(UDBHASHSIZE, M_PCB, &udbinfo.hashmask);
 	udbinfo.portinfo = &udbportinfo;

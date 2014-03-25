@@ -135,11 +135,12 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 	if (nam) {
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
+		struct inpcbinfo *pcbinfo;
 		struct inpcbportinfo *portinfo;
 		int wild = 0, reuseport = (so->so_options & SO_REUSEPORT);
 		struct ucred *cred = NULL;
 		struct inpcb *t;
-		u_short	lport;
+		u_short	lport, lport_ho;
 
 		if ((so->so_options & (SO_REUSEADDR|SO_REUSEPORT)) == 0)
 			wild = 1;
@@ -201,8 +202,23 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 		if (lport == 0)
 			goto auto_select;
+		lport_ho = ntohs(lport);
 
-		portinfo = inp->inp_pcbinfo->portinfo;
+		/* GROSS */
+		if (lport_ho < IPV6PORT_RESERVED && cred &&
+		    priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0)) {
+			inp->in6p_laddr = kin6addr_any;
+			return (EACCES);
+		}
+
+		/*
+		 * Locate the proper portinfo based on lport
+		 */
+		pcbinfo = inp->inp_pcbinfo;
+		portinfo =
+		    &pcbinfo->portinfo[lport_ho & pcbinfo->portinfo_mask];
+		KKASSERT((lport_ho & pcbinfo->portinfo_mask) ==
+		    portinfo->offset);
 
 		/*
 		 * This has to be atomic.  If the porthash is shared across
@@ -212,13 +228,6 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		if (portinfo->porttoken)
 			lwkt_gettoken(portinfo->porttoken);
 
-		/* GROSS */
-		if (ntohs(lport) < IPV6PORT_RESERVED && cred &&
-		    priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0)) {
-			inp->in6p_laddr = kin6addr_any;
-			error = EACCES;
-			goto done;
-		}
 		if (so->so_cred->cr_uid != 0 &&
 		    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
 			t = in6_pcblookup_local(portinfo,

@@ -298,6 +298,7 @@ struct inpcbportinfo {
 	struct  lwkt_token *porttoken;	/* if this inpcbportinfo is shared */
 	struct	inpcbporthead *porthashbase;
 	u_long	porthashmask;
+	u_short	offset;
 	u_short	lastport;
 	u_short	lastlow;
 	u_short	lasthi;
@@ -306,6 +307,7 @@ struct inpcbportinfo {
 struct inpcbinfo {		/* XXX documentation, prefixes */
 	struct	inpcbhead *hashbase;
 	u_long	hashmask;
+	int	portinfo_mask;
 	struct	inpcbportinfo *portinfo;
 	struct 	inpcbport *portsave;	/* port allocation cache */
 	struct	inpcontainerhead *wildcardhashbase;
@@ -426,11 +428,12 @@ extern int	ipport_hilastauto;
 union netmsg;
 struct xinpcb;
 
+void	in_pcbportrange(u_short *, u_short *, u_short, u_short);
 void	in_pcbpurgeif0 (struct inpcb *, struct ifnet *);
 void	in_losing (struct inpcb *);
 void	in_rtchange (struct inpcb *, int);
 void	in_pcbinfo_init (struct inpcbinfo *);
-void	in_pcbportinfo_init (struct inpcbportinfo *, int, boolean_t);
+void	in_pcbportinfo_init (struct inpcbportinfo *, int, boolean_t, u_short);
 int	in_pcballoc (struct socket *, struct inpcbinfo *);
 void	in_pcbunlink (struct inpcb *, struct inpcbinfo *);
 void	in_pcblink (struct inpcb *, struct inpcbinfo *);

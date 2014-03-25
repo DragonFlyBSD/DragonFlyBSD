@@ -296,12 +296,20 @@ in_pcblink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 static int
 in_pcbsetlport(struct inpcb *inp, int wild, struct ucred *cred)
 {
-	struct inpcbportinfo *portinfo = inp->inp_pcbinfo->portinfo;
-	u_short first, last, lport;
+	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	struct inpcbportinfo *portinfo;
+	u_short first, last, lport, step;
 	u_short *lastport;
 	int count, error;
+	int portinfo_first, portinfo_idx;
 
 	inp->inp_flags |= INP_ANONPORT;
+
+	step = pcbinfo->portinfo_mask + 1;
+	portinfo_first = mycpuid & pcbinfo->portinfo_mask;
+	portinfo_idx = portinfo_first;
+loop:
+	portinfo = &pcbinfo->portinfo[portinfo_idx];
 
 	if (inp->inp_flags & INP_HIGHPORT) {
 		first = ipport_hifirstauto;	/* sysctl */
@@ -341,17 +349,19 @@ in_pcbsetlport(struct inpcb *inp, int wild, struct ucred *cred)
 		/*
 		 * counting down
 		 */
-		count = first - last;
+		in_pcbportrange(&first, &last, portinfo->offset, step);
+		count = (first - last) / step;
 
 		do {
 			if (count-- < 0) {	/* completely used? */
-				inp->inp_laddr.s_addr = INADDR_ANY;
 				error = EADDRNOTAVAIL;
 				goto done;
 			}
-			--*lastport;
+			*lastport -= step;
 			if (*lastport > first || *lastport < last)
 				*lastport = first;
+			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+			    portinfo->offset);
 			lport = htons(*lastport);
 		} while (in_pcblookup_local(portinfo, inp->inp_laddr, lport,
 		    wild, cred));
@@ -359,17 +369,19 @@ in_pcbsetlport(struct inpcb *inp, int wild, struct ucred *cred)
 		/*
 		 * counting up
 		 */
-		count = last - first;
+		in_pcbportrange(&last, &first, portinfo->offset, step);
+		count = (last - first) / step;
 
 		do {
 			if (count-- < 0) {	/* completely used? */
-				inp->inp_laddr.s_addr = INADDR_ANY;
 				error = EADDRNOTAVAIL;
 				goto done;
 			}
-			++*lastport;
+			*lastport += step;
 			if (*lastport < first || *lastport > last)
 				*lastport = first;
+			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+			    portinfo->offset);
 			lport = htons(*lastport);
 		} while (in_pcblookup_local(portinfo, inp->inp_laddr, lport,
 		    wild, cred));
@@ -380,6 +392,15 @@ in_pcbsetlport(struct inpcb *inp, int wild, struct ucred *cred)
 done:
 	if (portinfo->porttoken)
 		lwkt_reltoken(portinfo->porttoken);
+
+	if (error) {
+		/* Try next portinfo */
+		portinfo_idx++;
+		portinfo_idx &= pcbinfo->portinfo_mask;
+		if (portinfo_idx != portinfo_first)
+			goto loop;
+		inp->inp_laddr.s_addr = INADDR_ANY;
+	}
 	return error;
 }
 
@@ -403,9 +424,10 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 	if (nam != NULL) {
 		struct sockaddr_in *sin = (struct sockaddr_in *)nam;
+		struct inpcbinfo *pcbinfo;
 		struct inpcbportinfo *portinfo;
 		struct inpcb *t;
-		u_short lport;
+		u_short lport, lport_ho;
 		int reuseport = (so->so_options & SO_REUSEPORT);
 		int error;
 
@@ -454,16 +476,24 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			/* Auto-select local port */
 			return in_pcbsetlport(inp, wild, cred);
 		}
+		lport_ho = ntohs(lport);
 
 		/* GROSS */
-		if (ntohs(lport) < IPPORT_RESERVED && cred &&
+		if (lport_ho < IPPORT_RESERVED && cred &&
 		    (error =
 		     priv_check_cred(cred, PRIV_NETINET_RESERVEDPORT, 0))) {
 			inp->inp_laddr.s_addr = INADDR_ANY;
 			return (error);
 		}
 
-		portinfo = inp->inp_pcbinfo->portinfo;
+		/*
+		 * Locate the proper portinfo based on lport
+		 */
+		pcbinfo = inp->inp_pcbinfo;
+		portinfo =
+		    &pcbinfo->portinfo[lport_ho & pcbinfo->portinfo_mask];
+		KKASSERT((lport_ho & pcbinfo->portinfo_mask) ==
+		    portinfo->offset);
 
 		/*
 		 * This has to be atomic.  If the porthash is shared across
@@ -598,11 +628,12 @@ in_pcbsetlport_remote(struct inpcb *inp, const struct sockaddr *remote,
 	unsigned short *lastport;
 	const struct sockaddr_in *sin = (const struct sockaddr_in *)remote;
 	struct sockaddr_in jsin;
-	struct inpcbportinfo *portinfo = inp->inp_pcbinfo->portinfo;
+	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	struct inpcbportinfo *portinfo;
 	struct ucred *cred = NULL;
-	u_short lport = 0;
-	ushort first, last;
-	int count, error, dup = 0;
+	u_short first, last, lport, step;
+	int count, error, dup;
+	int portinfo_first, portinfo_idx;
 
 	if (TAILQ_EMPTY(&in_ifaddrheads[mycpuid])) /* XXX broken! */
 		return (EADDRNOTAVAIL);
@@ -623,6 +654,13 @@ in_pcbsetlport_remote(struct inpcb *inp, const struct sockaddr *remote,
 	inp->inp_laddr.s_addr = jsin.sin_addr.s_addr;
 
 	inp->inp_flags |= INP_ANONPORT;
+
+	step = pcbinfo->portinfo_mask + 1;
+	portinfo_first = mycpuid & pcbinfo->portinfo_mask;
+	portinfo_idx = portinfo_first;
+loop:
+	portinfo = &pcbinfo->portinfo[portinfo_idx];
+	dup = 0;
 
 	if (inp->inp_flags & INP_HIGHPORT) {
 		first = ipport_hifirstauto;	/* sysctl */
@@ -663,17 +701,19 @@ again:
 		/*
 		 * counting down
 		 */
-		count = first - last;
+		in_pcbportrange(&first, &last, portinfo->offset, step);
+		count = (first - last) / step;
 
 		do {
 			if (count-- < 0) {	/* completely used? */
-				inp->inp_laddr.s_addr = INADDR_ANY;
 				error = EADDRNOTAVAIL;
 				goto done;
 			}
-			--*lastport;
+			*lastport -= step;
 			if (*lastport > first || *lastport < last)
 				*lastport = first;
+			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+			    portinfo->offset);
 			lport = htons(*lastport);
 		} while (in_pcblookup_localremote(portinfo, inp->inp_laddr,
 		    lport, sin->sin_addr, sin->sin_port, cred));
@@ -681,17 +721,19 @@ again:
 		/*
 		 * counting up
 		 */
-		count = last - first;
+		in_pcbportrange(&last, &first, portinfo->offset, step);
+		count = (last - first) / step;
 
 		do {
 			if (count-- < 0) {	/* completely used? */
-				inp->inp_laddr.s_addr = INADDR_ANY;
 				error = EADDRNOTAVAIL;
 				goto done;
 			}
-			++*lastport;
+			*lastport += step;
 			if (*lastport < first || *lastport > last)
 				*lastport = first;
+			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+			    portinfo->offset);
 			lport = htons(*lastport);
 		} while (in_pcblookup_localremote(portinfo, inp->inp_laddr,
 		    lport, sin->sin_addr, sin->sin_port, cred));
@@ -704,7 +746,6 @@ again:
 			/*
 			 * Duplicate again; give up
 			 */
-			inp->inp_laddr.s_addr = INADDR_ANY;
 			error = EADDRNOTAVAIL;
 			goto done;
 		}
@@ -717,6 +758,15 @@ again:
 done:
 	if (portinfo->porttoken)
 		lwkt_reltoken(portinfo->porttoken);
+
+	if (error) {
+		/* Try next portinfo */
+		portinfo_idx++;
+		portinfo_idx &= pcbinfo->portinfo_mask;
+		if (portinfo_idx != portinfo_first)
+			goto loop;
+		inp->inp_laddr.s_addr = INADDR_ANY;
+	}
 	return error;
 }
 
@@ -1576,7 +1626,14 @@ in_pcbinsporthash(struct inpcbportinfo *portinfo, struct inpcb *inp)
 void
 in_pcbinsporthash_lport(struct inpcb *inp)
 {
-	struct inpcbportinfo *portinfo = inp->inp_pcbinfo->portinfo;
+	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	struct inpcbportinfo *portinfo;
+	u_short lport_ho;
+
+	/* Locate the proper portinfo based on lport */
+	lport_ho = ntohs(inp->inp_lport);
+	portinfo = &pcbinfo->portinfo[lport_ho & pcbinfo->portinfo_mask];
+	KKASSERT((lport_ho & pcbinfo->portinfo_mask) == portinfo->offset);
 
 	if (portinfo->porttoken)
 		lwkt_gettoken(portinfo->porttoken);
@@ -2020,14 +2077,46 @@ in_savefaddr(struct socket *so, const struct sockaddr *faddr)
 
 void
 in_pcbportinfo_init(struct inpcbportinfo *portinfo, int hashsize,
-    boolean_t shared)
+    boolean_t shared, u_short offset)
 {
 	memset(portinfo, 0, sizeof(*portinfo));
+
+	portinfo->offset = offset;
+	portinfo->lastport = offset;
+	portinfo->lastlow = offset;
+	portinfo->lasthi = offset;
+
 	portinfo->porthashbase = hashinit(hashsize, M_PCB,
 	    &portinfo->porthashmask);
+
 	if (shared) {
 		portinfo->porttoken = kmalloc(sizeof(struct lwkt_token),
 		    M_PCB, M_WAITOK);
 		lwkt_token_init(portinfo->porttoken, "porttoken");
 	}
+}
+
+void
+in_pcbportrange(u_short *hi0, u_short *lo0, u_short ofs, u_short step)
+{
+	int hi, lo;
+
+	if (step == 1)
+		return;
+
+	hi = *hi0;
+	lo = *lo0;
+
+	hi = rounddown2(hi, step);
+	hi += ofs;
+	if (hi > (int)*hi0)
+		hi -= step;
+
+	lo = roundup2(lo, step);
+	lo -= (step - ofs);
+	if (lo < (int)*lo0)
+		lo += step;
+
+	*hi0 = hi;
+	*lo0 = lo;
 }

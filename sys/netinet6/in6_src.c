@@ -397,10 +397,12 @@ int
 in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 {
 	struct socket *so = inp->inp_socket;
-	u_int16_t lport = 0, first, last, *lastport;
+	u_int16_t lport = 0, first, last, *lastport, step;
 	int count, error = 0, wild = 0;
-	struct inpcbportinfo *portinfo = inp->inp_pcbinfo->portinfo;
+	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	struct inpcbportinfo *portinfo;
 	struct ucred *cred = NULL;
+	int portinfo_first, portinfo_idx;
 
 	/* XXX: this is redundant when called from in6_pcbbind */
 	if ((so->so_options & (SO_REUSEADDR|SO_REUSEPORT)) == 0)
@@ -409,6 +411,12 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 		cred = td->td_proc->p_ucred;
 
 	inp->inp_flags |= INP_ANONPORT;
+
+	step = pcbinfo->portinfo_mask + 1;
+	portinfo_first = mycpuid & pcbinfo->portinfo_mask;
+	portinfo_idx = portinfo_first;
+loop:
+	portinfo = &pcbinfo->portinfo[portinfo_idx];
 
 	if (inp->inp_flags & INP_HIGHPORT) {
 		first = ipport_hifirstauto;	/* sysctl */
@@ -444,21 +452,19 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 		/*
 		 * counting down
 		 */
-		count = first - last;
+		in_pcbportrange(&first, &last, portinfo->offset, step);
+		count = (first - last) / step;
 
 		do {
 			if (count-- < 0) {	/* completely used? */
-				/*
-				 * Undo any address bind that may have
-				 * occurred above.
-				 */
-				inp->in6p_laddr = kin6addr_any;
 				error = EAGAIN;
 				goto done;
 			}
-			--*lastport;
+			*lastport -= step;
 			if (*lastport > first || *lastport < last)
 				*lastport = first;
+			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+			    portinfo->offset);
 			lport = htons(*lastport);
 		} while (in6_pcblookup_local(portinfo, &inp->in6p_laddr,
 			 lport, wild, cred));
@@ -466,21 +472,19 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 		/*
 		 * counting up
 		 */
-		count = last - first;
+		in_pcbportrange(&last, &first, portinfo->offset, step);
+		count = (last - first) / step;
 
 		do {
 			if (count-- < 0) {	/* completely used? */
-				/*
-				 * Undo any address bind that may have
-				 * occurred above.
-				 */
-				inp->in6p_laddr = kin6addr_any;
 				error = EAGAIN;
 				goto done;
 			}
-			++*lastport;
+			*lastport += step;
 			if (*lastport < first || *lastport > last)
 				*lastport = first;
+			KKASSERT((*lastport & pcbinfo->portinfo_mask) ==
+			    portinfo->offset);
 			lport = htons(*lastport);
 		} while (in6_pcblookup_local(portinfo, &inp->in6p_laddr,
 			 lport, wild, cred));
@@ -492,6 +496,17 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 done:
 	if (portinfo->porttoken)
 		lwkt_reltoken(portinfo->porttoken);
+
+	if (error) {
+		/* Try next portinfo */
+		portinfo_idx++;
+		portinfo_idx &= pcbinfo->portinfo_mask;
+		if (portinfo_idx != portinfo_first)
+			goto loop;
+
+		/* Undo any address bind that may have occurred above. */
+		inp->in6p_laddr = kin6addr_any;
+	}
 	return error;
 }
 

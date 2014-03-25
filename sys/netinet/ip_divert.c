@@ -128,7 +128,7 @@ void
 div_init(void)
 {
 	in_pcbinfo_init(&divcbinfo);
-	in_pcbportinfo_init(&divcbportinfo, 1, FALSE);
+	in_pcbportinfo_init(&divcbportinfo, 1, FALSE, 0);
 	/*
 	 * XXX We don't use the hash list for divert IP, but it's easier
 	 * to allocate a one entry hash list than it is to check all

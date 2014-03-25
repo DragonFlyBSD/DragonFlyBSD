@@ -362,8 +362,8 @@ tcp_init(void)
 	}
 	tcp_tcbhashsize = hashsize;
 
-	portinfo = kmalloc_cachealign(sizeof(*portinfo), M_PCB, M_WAITOK);
-	in_pcbportinfo_init(portinfo, hashsize, TRUE);
+	portinfo = kmalloc_cachealign(sizeof(*portinfo) * ncpus2, M_PCB,
+	    M_WAITOK);
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		ticb = &tcbinfo[cpu];
@@ -371,7 +371,9 @@ tcp_init(void)
 		ticb->cpu = cpu;
 		ticb->hashbase = hashinit(hashsize, M_PCB,
 					  &ticb->hashmask);
+		in_pcbportinfo_init(&portinfo[cpu], hashsize, TRUE, cpu);
 		ticb->portinfo = portinfo;
+		ticb->portinfo_mask = ncpus2_mask;
 		ticb->wildcardhashbase = hashinit(hashsize, M_PCB,
 						  &ticb->wildcardhashmask);
 		ticb->localgrphashbase = hashinit(hashsize, M_PCB,
