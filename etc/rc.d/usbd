@@ -13,7 +13,9 @@ name="usbd"
 rcvar=`set_rcvar`
 command="/usr/sbin/${name}"
 
-if [ -x $command ]; then
-	load_rc_config $name
+load_rc_config $name
+if [ -x $command -a -c /dev/usb ]; then
 	run_rc_command "$1"
+else
+	dummy_rc_command "$1"
 fi
