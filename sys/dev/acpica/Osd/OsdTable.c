@@ -69,12 +69,12 @@ AcpiOsTableOverride (
         return(AE_BAD_PARAMETER);
 
     *NewTable = NULL;
-    if (strncmp(ExistingTable->Signature, "DSDT", 4) != 0)
-        return(AE_OK);
+    if (ACPI_COMPARE_NAME(ExistingTable->Signature, ACPI_SIG_DSDT) == 0)
+        return(AE_SUPPORT);
     if ((acpi_dsdt = preload_search_by_type("acpi_dsdt")) == NULL)
-        return(AE_OK);
+        return(AE_NOT_FOUND);
     if ((p = preload_search_info(acpi_dsdt, MODINFO_ADDR)) == NULL)
-        return(AE_OK);
+        return(AE_ERROR);
 
     *NewTable = *(void **)p;
     kprintf("ACPI: DSDT was overridden.\n");
