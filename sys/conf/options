@@ -644,6 +644,14 @@ BNX_RSS_DEBUG		opt_bnx.h
 BNX_TSO_DEBUG		opt_bnx.h
 BNX_TSS_DEBUG		opt_bnx.h
 
+# bwn driver
+BWN_DEBUG		opt_bwn.h
+BWN_RXRING_SLOTS	opt_bwn.h
+BWN_TXRING_SLOTS	opt_bwn.h
+
+# siba_bwn driver
+SIBA_DEBUG		opt_siba.h
+
 # ed driver
 ED_NO_MIIBUS		opt_ed.h
 

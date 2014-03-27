@@ -303,6 +303,8 @@ device		ath		# Atheros NICs
 device		ath_hal		# Atheros Hardware Access Layer
 options 	AH_SUPPORT_AR5416	# enable AR5416 tx/rx descriptors
 device		ath_rate_sample	# Atheros Sample TX rate control algorithm
+device		siba_bwn	# Sonic Inc. Silicon Backplane needed for bwn
+device		bwn		# Broadcom BCM43xx NICs using v4 firmware
 device		ral		# Ralink Technology 802.11 wireless NIC
 device		iwn		# Intel
 #device		rtw		# RealTek 802.11 wireless NIC

@@ -34,6 +34,8 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_core.c 257241 2013-10-28 07:29:16Z gl
  * the Sonics Silicon Backplane driver.
  */
 
+#include "opt_siba.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
@@ -41,24 +43,18 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_core.c 257241 2013-10-28 07:29:16Z gl
 #include <sys/kernel.h>
 #include <sys/endian.h>
 #include <sys/errno.h>
-#include <sys/lock.h>
-#include <sys/mutex.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
+#include <sys/bus.h>
+#include <sys/bus_resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/socket.h>
 
-#include <net/if.h>
-#include <net/if_media.h>
-#include <net/if_arp.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
-
-#include <dev/siba/siba_ids.h>
-#include <dev/siba/sibareg.h>
-#include <dev/siba/sibavar.h>
+#include <dev/netif/bwn/siba/siba_ids.h>
+#include <dev/netif/bwn/siba/sibareg.h>
+#include <dev/netif/bwn/siba/sibavar.h>
 
 #ifdef SIBA_DEBUG
 enum {
@@ -71,11 +67,11 @@ enum {
 	SIBA_DEBUG_ANY		= 0xffffffff
 };
 #define DPRINTF(siba, m, fmt, ...) do {			\
-	if (siba->siba_debug & (m))			\
-		printf(fmt, __VA_ARGS__);		\
+	if (m)						\
+		kprintf(fmt, __VA_ARGS__);		\
 } while (0)
 #else
-#define DPRINTF(siba, m, fmt, ...) do { (void) siba; } while (0)
+#define DPRINTF(siba, m, fmt, ...)
 #endif
 #define	N(a)			(sizeof(a) / sizeof(a[0]))
 
@@ -332,7 +328,7 @@ siba_scan(struct siba_softc *siba)
 		DPRINTF(siba, SIBA_DEBUG_SCAN,
 		    "core %d (%s) found (cc %#xrev %#x vendor %#x)\n",
 		    i, siba_core_name(sd->sd_id.sd_device),
-		    sd->sd_id.sd_device, sd->sd_id.sd_rev, sd->sd_id.vendor);
+		    sd->sd_id.sd_device, sd->sd_id.sd_rev, sd->sd_id.sd_vendor);
 
 		switch (sd->sd_id.sd_device) {
 		case SIBA_DEVID_CHIPCOMMON:
@@ -355,7 +351,7 @@ siba_scan(struct siba_softc *siba)
 		case SIBA_DEVID_PCI:
 		case SIBA_DEVID_PCIE:
 			n_pci++;
-			error = pci_find_cap(siba->siba_dev, PCIY_EXPRESS,
+			error = pci_find_extcap(siba->siba_dev, PCIY_EXPRESS,
 			    &base);
 			is_pcie = (error == 0) ? 1 : 0;
 
@@ -1197,7 +1193,7 @@ siba_cc_pmu0_pll0_init(struct siba_cc *scc, uint32_t xtalfreq)
 		xtalfreq = 25000;
 	if (xtalfreq)
 		e = siba_cc_pmu0_plltab_findentry(xtalfreq);
-	if (!e)
+	if (e == NULL)
 		e = siba_cc_pmu0_plltab_findentry(
 		    SIBA_CC_PMU0_DEFAULT_XTALFREQ);
 	KASSERT(e != NULL, ("%s:%d: fail", __func__, __LINE__));
@@ -1356,18 +1352,14 @@ siba_pci_sprom(struct siba_softc *siba, struct siba_sprom *sprom)
 	int error = ENOMEM;
 	uint16_t *buf;
 
-	buf = malloc(SIBA_SPROMSIZE_R123 * sizeof(uint16_t),
-	    M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (buf == NULL)
-		return (ENOMEM);
+	buf = kmalloc(SIBA_SPROMSIZE_R123 * sizeof(uint16_t),
+	    M_DEVBUF, M_INTWAIT | M_ZERO);
 	siba_sprom_read(siba, buf, SIBA_SPROMSIZE_R123);
 	error = sprom_check_crc(buf, siba->siba_spromsize);
 	if (error) {
-		free(buf, M_DEVBUF);
-		buf = malloc(SIBA_SPROMSIZE_R4 * sizeof(uint16_t),
-		    M_DEVBUF, M_NOWAIT | M_ZERO);
-		if (buf == NULL)
-			return (ENOMEM);
+		kfree(buf, M_DEVBUF);
+		buf = kmalloc(SIBA_SPROMSIZE_R4 * sizeof(uint16_t),
+		    M_DEVBUF, M_INTWAIT | M_ZERO);
 		siba_sprom_read(siba, buf, SIBA_SPROMSIZE_R4);
 		error = sprom_check_crc(buf, siba->siba_spromsize);
 		if (error)
@@ -1413,7 +1405,7 @@ siba_pci_sprom(struct siba_softc *siba, struct siba_sprom *sprom)
 	if (sprom->bf_hi == 0xffff)
 		sprom->bf_hi = 0;
 
-	free(buf, M_DEVBUF);
+	kfree(buf, M_DEVBUF);
 	return (error);
 }
 
@@ -1729,7 +1721,7 @@ siba_powerdown_sub(struct siba_softc *siba)
 		return (0);
 
 	scc = &siba->siba_cc;
-	if (!scc->scc_dev || scc->scc_dev->sd_id.sd_rev < 5)
+	if (scc->scc_dev == NULL || scc->scc_dev->sd_id.sd_rev < 5)
 		return (0);
 	siba_cc_clock(scc, SIBA_CLOCK_SLOW);
 	siba_pci_gpio(siba, SIBA_GPIO_CRYSTAL | SIBA_GPIO_PLL, 0);
@@ -2532,7 +2524,7 @@ siba_gpio_get(device_t dev)
 
 	pcidev = siba->siba_pci.spc_dev;
 	gpiodev = siba->siba_cc.scc_dev ? siba->siba_cc.scc_dev : pcidev;
-	if (!gpiodev)
+	if (gpiodev == NULL)
 		return (-1);
 	return (siba_read_4_sub(gpiodev, SIBA_GPIOCTL));
 }
@@ -2546,7 +2538,7 @@ siba_gpio_set(device_t dev, uint32_t value)
 
 	pcidev = siba->siba_pci.spc_dev;
 	gpiodev = siba->siba_cc.scc_dev ? siba->siba_cc.scc_dev : pcidev;
-	if (!gpiodev)
+	if (gpiodev == NULL)
 		return;
 	siba_write_4_sub(gpiodev, SIBA_GPIOCTL, value);
 }

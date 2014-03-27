@@ -32,12 +32,14 @@
 #ifndef _IF_BWNVAR_H
 #define	_IF_BWNVAR_H
 
+#include <netproto/802_11/ieee80211_amrr.h>
+
 struct siba_dev_softc;
 struct bwn_softc;
 struct bwn_mac;
 
 #define	N(a)			(sizeof(a) / sizeof(a[0]))
-#define	BWN_ALIGN			0x1000
+#define	BWN_ALIGN			0x2000
 #define	BWN_BUS_SPACE_MAXADDR_30BIT	0x3fffffff
 #define	BWN_RETRY_SHORT			7
 #define	BWN_RETRY_LONG			4
@@ -58,6 +60,7 @@ struct bwn_mac;
 #define	BWN_ISOLDFMT(mac)		((mac)->mac_fw.rev <= 351)
 #define	BWN_TSSI2DBM(num, den)						\
 	((int32_t)((num < 0) ? num / den : (num + den / 2) / den))
+#define	BWN_MAX_HDRSIZE(mac)	(104 + sizeof(struct bwn_plcp6))
 #define	BWN_HDRSIZE(mac)						\
 	((BWN_ISOLDFMT(mac)) ? (100 + sizeof(struct bwn_plcp6)) :	\
 	    (104 + sizeof(struct bwn_plcp6)))
@@ -591,6 +594,7 @@ struct bwn_dma_ring {
 	void				*dr_txhdr_cache;
 	bus_dma_tag_t			dr_ring_dtag;
 	bus_dma_tag_t			dr_txring_dtag;
+	bus_dmamap_t			dr_txring_dmap;
 	bus_dmamap_t			dr_spare_dmap; /* only for RX */
 	bus_dmamap_t			dr_ring_dmap;
 	bus_addr_t			dr_txring_paddr;
@@ -850,12 +854,6 @@ struct bwn_mac {
 #define	BWN_MAC_FLAG_WME		(1 << 4)
 #define	BWN_MAC_FLAG_HWCRYPTO		(1 << 5)
 
-	struct resource_spec		*mac_intr_spec;
-#define	BWN_MSI_MESSAGES		1
-	struct resource			*mac_res_irq[BWN_MSI_MESSAGES];
-	void				*mac_intrhand[BWN_MSI_MESSAGES];
-	int				mac_msi;
-
 	struct bwn_noise		mac_noise;
 	struct bwn_phy			mac_phy;
 	struct bwn_stats		mac_stats;
@@ -896,12 +894,13 @@ struct bwn_vap {
 
 struct bwn_softc {
 	device_t			sc_dev;
-	struct mtx			sc_mtx;
 	struct ifnet			*sc_ifp;
 	unsigned			sc_flags;
 #define	BWN_FLAG_ATTACHED		(1 << 0)
 #define	BWN_FLAG_INVALID		(1 << 1)
 #define	BWN_FLAG_NEED_BEACON_TP		(1 << 2)
+	struct sysctl_ctx_list	sc_sysctl_ctx;
+	struct sysctl_oid	*sc_sysctl_tree;
 	unsigned			sc_debug;
 
 	struct bwn_mac		*sc_curmac;
@@ -937,16 +936,13 @@ struct bwn_softc {
 	int				sc_led_idle;
 	int				sc_led_blink;
 
+	struct resource			*bwn_irq;
+	void				*bwn_intr;
+	int				bwn_irq_rid;
+	int				bwn_irq_type;
+
 	struct bwn_tx_radiotap_header	sc_tx_th;
 	struct bwn_rx_radiotap_header	sc_rx_th;
 };
-
-#define	BWN_LOCK_INIT(sc) \
-	mtx_init(&(sc)->sc_mtx, device_get_nameunit((sc)->sc_dev), \
-	    MTX_NETWORK_LOCK, MTX_DEF)
-#define	BWN_LOCK_DESTROY(sc)	mtx_destroy(&(sc)->sc_mtx)
-#define	BWN_LOCK(sc)		mtx_lock(&(sc)->sc_mtx)
-#define	BWN_UNLOCK(sc)		mtx_unlock(&(sc)->sc_mtx)
-#define	BWN_ASSERT_LOCKED(sc)	mtx_assert(&(sc)->sc_mtx, MA_OWNED)
 
 #endif	/* !_IF_BWNVAR_H */

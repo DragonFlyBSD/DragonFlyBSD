@@ -34,30 +34,26 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_bwn.c 257241 2013-10-28 07:29:16Z gle
  * Sonics Silicon Backplane front-end for bwn(4).
  */
 
+#include <opt_siba.h>
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/kernel.h>
-#include <sys/lock.h>
-#include <sys/mutex.h>
 #include <sys/errno.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
+#include <sys/bus.h>
+#include <sys/bus_resource.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/socket.h>
 
-#include <net/if.h>
-#include <net/if_media.h>
-#include <net/if_arp.h>
+#include <bus/pci/pcivar.h>
+#include <bus/pci/pcireg.h>
 
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
-
-#include <dev/siba/siba_ids.h>
-#include <dev/siba/sibareg.h>
-#include <dev/siba/sibavar.h>
+#include <dev/netif/bwn/siba/siba_ids.h>
+#include <dev/netif/bwn/siba/sibareg.h>
+#include <dev/netif/bwn/siba/sibavar.h>
 
 /*
  * PCI glue.
@@ -135,7 +131,7 @@ siba_bwn_attach(device_t dev)
 	 */
 	pci_enable_busmaster(dev);
 
-	/* 
+	/*
 	 * Setup memory-mapping of PCI registers.
 	 */
 	siba->siba_mem_rid = SIBA_PCIR_BAR;
@@ -188,7 +184,7 @@ siba_bwn_shutdown(device_t dev)
 
 	for (i = 0 ; i < devcnt ; i++)
 		device_shutdown(devlistp[i]);
-	free(devlistp, M_TEMP);
+	kfree(devlistp, M_TEMP);
 	return (0);
 }
 
@@ -209,11 +205,11 @@ siba_bwn_suspend(device_t dev)
 		if (error) {
 			for (j = 0; j < i; j++)
 				DEVICE_RESUME(devlistp[j]);
-			free(devlistp, M_TEMP);
+			kfree(devlistp, M_TEMP);
 			return (error);
 		}
 	}
-	free(devlistp, M_TEMP);
+	kfree(devlistp, M_TEMP);
 	return (siba_core_suspend(siba));
 }
 
@@ -235,18 +231,18 @@ siba_bwn_resume(device_t dev)
 
 	for (i = 0 ; i < devcnt ; i++)
 		DEVICE_RESUME(devlistp[i]);
-	free(devlistp, M_TEMP);
+	kfree(devlistp, M_TEMP);
 	return (0);
 }
 
 /* proxying to the parent */
 static struct resource *
 siba_bwn_alloc_resource(device_t dev, device_t child, int type, int *rid,
-    u_long start, u_long end, u_long count, u_int flags)
+    u_long start, u_long end, u_long count, u_int flags, int cpuid)
 {
 
 	return (BUS_ALLOC_RESOURCE(device_get_parent(dev), dev,
-	    type, rid, start, end, count, flags));
+	    type, rid, start, end, count, flags, cpuid));
 }
 
 /* proxying to the parent */
@@ -262,12 +258,12 @@ siba_bwn_release_resource(device_t dev, device_t child, int type,
 /* proxying to the parent */
 static int
 siba_bwn_setup_intr(device_t dev, device_t child, struct resource *irq,
-    int flags, driver_filter_t *filter, driver_intr_t *intr, void *arg,
-    void **cookiep)
+    int flags, driver_intr_t *intr, void *arg, void **cookiep,
+    lwkt_serialize_t serializer)
 {
 
 	return (BUS_SETUP_INTR(device_get_parent(dev), dev, irq, flags,
-	    filter, intr, arg, cookiep));
+	    intr, arg, cookiep, serializer, NULL));
 }
 
 /* proxying to the parent */
@@ -280,14 +276,6 @@ siba_bwn_teardown_intr(device_t dev, device_t child, struct resource *irq,
 }
 
 static int
-siba_bwn_find_cap(device_t dev, device_t child, int capability,
-    int *capreg)
-{
-
-	return (pci_find_cap(dev, capability, capreg));
-}
-
-static int
 siba_bwn_find_extcap(device_t dev, device_t child, int capability,
     int *capreg)
 {
@@ -296,15 +284,8 @@ siba_bwn_find_extcap(device_t dev, device_t child, int capability,
 }
 
 static int
-siba_bwn_find_htcap(device_t dev, device_t child, int capability,
-    int *capreg)
-{
-
-	return (pci_find_htcap(dev, capability, capreg));
-}
-
-static int
-siba_bwn_alloc_msi(device_t dev, device_t child, int *count)
+siba_bwn_alloc_msi(device_t dev, device_t child, int *rid, int count,
+    int cpuid)
 {
 	struct siba_bwn_softc *ssc;
 	int error;
@@ -312,7 +293,7 @@ siba_bwn_alloc_msi(device_t dev, device_t child, int *count)
 	ssc = device_get_softc(dev);
 	if (ssc->ssc_msi_child != NULL)
 		return (EBUSY);
-	error = pci_alloc_msi(dev, count);
+	error = pci_alloc_msi(dev, rid, count, cpuid);
 	if (error == 0)
 		ssc->ssc_msi_child = child;
 	return (error);
@@ -422,9 +403,7 @@ static device_method_t siba_bwn_methods[] = {
 	DEVMETHOD(bus_teardown_intr,    siba_bwn_teardown_intr),
 
 	/* PCI interface */
-	DEVMETHOD(pci_find_cap,		siba_bwn_find_cap),
 	DEVMETHOD(pci_find_extcap,	siba_bwn_find_extcap),
-	DEVMETHOD(pci_find_htcap,	siba_bwn_find_htcap),
 	DEVMETHOD(pci_alloc_msi,	siba_bwn_alloc_msi),
 	DEVMETHOD(pci_release_msi,	siba_bwn_release_msi),
 	DEVMETHOD(pci_msi_count,	siba_bwn_msi_count),

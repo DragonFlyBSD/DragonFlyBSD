@@ -1,4 +1,4 @@
-SUBDIR= an age alc ale ath bce bfe bge \
+SUBDIR= an age alc ale ath bce bfe bge bwn \
 	dc ed em ep et \
 	fwe fxp ic iwi iwn jme lge lnc \
 	mii_layer my msk mxge ndis nfe nge oce pcn \

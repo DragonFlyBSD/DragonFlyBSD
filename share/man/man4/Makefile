@@ -55,6 +55,7 @@ MAN=	aac.4 \
 	bpf.4 \
 	bridge.4 \
 	bt.4 \
+	bwn.4 \
 	cardbus.4 \
 	carp.4 \
 	ccd.4 \
@@ -405,6 +406,7 @@ MLINKS+=bktr.4 brooktree.4
 MLINKS+=bnx.4 if_bnx.4
 MLINKS+=bridge.4 if_bridge.4
 #MLINKS+=bwi.4 if_bwi.4
+MLINKS+=bwn.4 if_bwn.4
 MLINKS+=crypto.4 cryptodev.4
 MLINKS+=cue.4 if_cue.4
 MLINKS+=dc.4 if_dc.4

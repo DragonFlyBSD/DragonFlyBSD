@@ -343,6 +343,7 @@ dev/netif/bce/if_bce.c			optional bce
 dev/netif/bfe/if_bfe.c			optional bfe
 dev/netif/bge/if_bge.c			optional bge
 dev/netif/bnx/if_bnx.c			optional bnx
+dev/netif/bwn/bwn/if_bwn.c		optional bwn siba_bwn
 dev/disk/buslogic/bt.c			optional bt
 dev/disk/buslogic/bt_pci.c		optional bt pci
 dev/disk/ccd/ccd.c			optional ccd
@@ -807,6 +808,8 @@ dev/serial/si/si.c		optional si
 dev/serial/si/si2_z280.c	optional si
 dev/serial/si/si3_t225.c	optional si
 dev/serial/si/si_pci.c		optional si pci
+dev/netif/bwn/siba/siba_bwn.c	optional siba_bwn pci
+dev/netif/bwn/siba/siba_core.c	optional siba_bwn pci
 dev/netif/sln/if_sln.c		optional sln pci
 dev/netif/sn/if_sn.c		optional sn
 dev/netif/sn/if_sn_pccard.c	optional sn pccard

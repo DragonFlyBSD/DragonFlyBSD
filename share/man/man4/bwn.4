@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD$
+.\" $FreeBSD: head/share/man/man4/bwn.4 233992 2012-04-07 09:05:30Z joel $
 .\"
-.Dd February 15, 2011
+.Dd April 5, 2014
 .Dt BWN 4
 .Os
 .Sh NAME
@@ -65,12 +65,12 @@ For more information on configuring this device, see
 .Pp
 This driver requires firmware to be loaded before it will work.
 The
-.Pa ports/net/bwn-firmware-kmod
+.Pa dports/net/bwn-firmware-kmod
 port needs to be installed before
 .Xr ifconfig 8
 will work.
-Most cases you need to use bwn_v4_ucode module but if you are a
-LP (low power) PHY user please uses bwn_v4_lp_ucode module.
+In most cases you need to use the bwn_v4_ucode module but if you are a
+LP (low power) PHY user please use the bwn_v4_lp_ucode module.
 .Sh HARDWARE
 The
 .Nm
@@ -118,9 +118,9 @@ Tunables can be set at the
 prompt before booting the kernel or stored in
 .Xr loader.conf 5 .
 .Bl -tag -width indent
-.It Va hw.bwn.msi_disable
-This tunable disables MSI support on the hardware.
-The default value is 0.
+.It Va hw.bwn.msi.enable
+By default, the driver will use MSI if it is supported.
+This behavior can be turned off by setting this tunable to 0.
 .It Va hw.bwn.usedma
 This tunable enables DMA operations on the hardware.
 If the value is 0, PIO mode would be used.
@@ -128,8 +128,9 @@ The default value is 1.
 .El
 .Sh SEE ALSO
 .Xr arp 4 ,
-.Xr bwi 4 ,
+.\".Xr bwi 4 ,
 .Xr cardbus 4 ,
+.Xr ifmedia 4 ,
 .Xr intro 4 ,
 .Xr pci 4 ,
 .Xr wlan 4 ,
@@ -152,5 +153,5 @@ driver was written by
 .\"Some card based on the BCM4306 and BCM4309 chips do not work properly
 .\"on channel 1, 2 and 3.
 .Sh CAVEATS
-Some LP PHY devices have DMA operation problems that in that case try to
-use PIO mode.
+Some LP PHY devices have DMA operation problems.
+In that case try to use the PIO mode.

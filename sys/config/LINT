@@ -1353,6 +1353,12 @@ options		ATH_ENABLE_DFS
 options		ATH_KTR_INTR_DEBUG
 options		ATH_RXBUF=80	# number of RX buffers to allocate
 options		ATH_TXBUF=400	# number of TX buffers to allocate
+device		siba_bwn	# Sonic Inc. Silicon Backplane needed for bwn
+options		SIBA_DEBUG	# turn on debugging output
+device		bwn		# Broadcom BCM43xx NICs using v4 firmware
+options		BWN_DEBUG	# turn on debugging output
+options		BWN_RXRING_SLOTS=128	# number of RX slots to allocate
+options		BWN_TXRING_SLOTS=128	# number of TX slots to allocate
 #device		iwl		# Intel PRO/Wireless 2100
 device		iwi		# Intel PRO/Wireless 2200BG/2915ABG
 device		iwn		# Intel WiFi Link 4965/1000/5000/5150/5300/6000/6050
