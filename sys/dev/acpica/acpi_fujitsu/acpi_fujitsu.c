@@ -191,12 +191,12 @@ static struct {
 		.description	= "Brightness level of the LCD panel"
 	},
 	{
-		.name		= "volume",
 		.name		= "lcd_brightness",
 		.method		= METHOD_GBLS,
 		.description	= "Brightness level of the LCD panel"
 	},
 	{
+		.name		= "volume",
 		.method		= METHOD_GVOL,
 		.description	= "Speakers/headphones volume level"
 	},
