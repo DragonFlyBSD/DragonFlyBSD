@@ -350,7 +350,7 @@ print_cpu_topology_tree_sysctl_helper(cpu_node_t *node,
 		sbuf_printf(sb,"CHIP ID %d: ",
 			get_chip_ID(bsr_member));
 	} else if (node->type == CORE_LEVEL) {
-		if (node->compute_unit_id != -1) {
+		if (node->compute_unit_id != (uint8_t)-1) {
 			sbuf_printf(sb,"Compute Unit ID %d: ",
 				node->compute_unit_id);
 		} else {
@@ -358,7 +358,7 @@ print_cpu_topology_tree_sysctl_helper(cpu_node_t *node,
 				get_core_number_within_chip(bsr_member));
 		}
 	} else if (node->type == THREAD_LEVEL) {
-		if (node->compute_unit_id != -1) {
+		if (node->compute_unit_id != (uint8_t)-1) {
 			sbuf_printf(sb,"CORE ID %d: ",
 				get_core_number_within_chip(bsr_member));
 		} else {
