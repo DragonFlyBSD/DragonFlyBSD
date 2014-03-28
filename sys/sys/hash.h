@@ -26,7 +26,7 @@
  * $FreeBSD: src/sys/sys/hash.h,v 1.3 2007/04/09 22:55:14 thompsa Exp $
  */
 
-#ifndef _SYS_HASH_H
+#ifndef _SYS_HASH_H_
 #define	_SYS_HASH_H_
 #include <sys/types.h>
 
