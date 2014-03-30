@@ -554,8 +554,8 @@ show_bref(int fd, int tab, int bi, hammer2_blockref_t *bref, int dofreemap)
 		}
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
-		printf("alloc_tid=%016jx freemap_tid=%016jx ",
-			media.voldata.alloc_tid,
+		printf("mirror_tid=%016jx freemap_tid=%016jx ",
+			media.voldata.mirror_tid,
 			media.voldata.freemap_tid);
 		if (dofreemap) {
 			bscan = &media.voldata.freemap_blockset.blockref[0];

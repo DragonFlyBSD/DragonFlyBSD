@@ -64,23 +64,6 @@ hammer2_mount_unlock(hammer2_mount_t *hmp)
 	ccms_thread_unlock(&hmp->vchain.core->cst);
 }
 
-void
-hammer2_voldata_lock(hammer2_mount_t *hmp)
-{
-	lockmgr(&hmp->voldatalk, LK_EXCLUSIVE);
-}
-
-void
-hammer2_voldata_unlock(hammer2_mount_t *hmp, int modify)
-{
-	if (modify &&
-	    (hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) == 0) {
-		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED);
-		hammer2_chain_ref(&hmp->vchain);
-	}
-	lockmgr(&hmp->voldatalk, LK_RELEASE);
-}
-
 /*
  * Return the directory entry type for an inode.
  *
@@ -286,15 +269,15 @@ hammer2_dirhash(const unsigned char *name, size_t len)
  * the specified number of bytes.
  *
  * Always returns at least the minimum media allocation
- * size radix, HAMMER2_MIN_RADIX (10), which is 1KB.
+ * size radix, HAMMER2_RADIX_MIN (10), which is 1KB.
  */
 int
 hammer2_allocsize(size_t bytes)
 {
 	int radix;
 
-	if (bytes < HAMMER2_MIN_ALLOC)
-		bytes = HAMMER2_MIN_ALLOC;
+	if (bytes < HAMMER2_ALLOC_MIN)
+		bytes = HAMMER2_ALLOC_MIN;
 	if (bytes == HAMMER2_PBUFSIZE)
 		radix = HAMMER2_PBUFRADIX;
 	else if (bytes >= 16384)
@@ -302,7 +285,7 @@ hammer2_allocsize(size_t bytes)
 	else if (bytes >= 1024)
 		radix = 10;
 	else
-		radix = HAMMER2_MIN_RADIX;
+		radix = HAMMER2_RADIX_MIN;
 
 	while (((size_t)1 << radix) < bytes)
 		++radix;
@@ -323,8 +306,8 @@ hammer2_getradix(size_t bytes)
 		radix = HAMMER2_PBUFRADIX;
 	else if (bytes >= HAMMER2_LBUFSIZE)
 		radix = HAMMER2_LBUFRADIX;
-	else if (bytes >= HAMMER2_MIN_ALLOC)	/* clamp */
-		radix = HAMMER2_MIN_RADIX;
+	else if (bytes >= HAMMER2_ALLOC_MIN)	/* clamp */
+		radix = HAMMER2_RADIX_MIN;
 	else
 		radix = 0;
 
@@ -398,7 +381,7 @@ hammer2_calc_physical(hammer2_inode_t *ip,
 		return (0);
 	eofbytes = (int)(ipdata->size - lbase);
 	pblksize = lblksize;
-	while (pblksize >= eofbytes && pblksize >= HAMMER2_MIN_ALLOC)
+	while (pblksize >= eofbytes && pblksize >= HAMMER2_ALLOC_MIN)
 		pblksize >>= 1;
 	pblksize <<= 1;
 

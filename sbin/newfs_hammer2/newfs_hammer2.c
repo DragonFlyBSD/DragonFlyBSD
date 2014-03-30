@@ -555,6 +555,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	rawip->pfs_fsid = Hammer2_PfsCLID;
 	rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
 	rawip->op_flags |= HAMMER2_OPFLAG_PFSROOT;
+	rawip->pfs_inum = 16;	/* first allocatable inode number */
 
 	/* rawip->u.blockset is left empty */
 
@@ -574,6 +575,8 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	root_blockref.type = HAMMER2_BREF_TYPE_INODE;
 	root_blockref.methods = HAMMER2_ENC_CHECK(HAMMER2_CHECK_ISCSI32) |
 				HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
+	root_blockref.mirror_tid = 16;
+	root_blockref.flags = HAMMER2_BREF_FLAG_PFSROOT;
 
 	/*
 	 * Format the super-root directory inode, giving it one directory
@@ -605,11 +608,17 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 * random FSID, making it possible to mirror an entire HAMMER2 disk
 	 * snapshots and all if desired.  PFS ids are used to match up
 	 * mirror sources and targets and cluster copy sources and targets.
+	 *
+	 * (XXX whole-disk logical mirroring is not really supported in
+	 *  the first attempt because each PFS is in its own modify/mirror
+	 *  transaction id domain, so normal mechanics cannot cross a PFS
+	 *  boundary).
 	 */
 	rawip->pfs_clid = Hammer2_SupCLID;
 	rawip->pfs_fsid = Hammer2_SupFSID;
 	rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
-	rawip->op_flags |= HAMMER2_OPFLAG_PFSROOT;
+	rawip->op_flags |= HAMMER2_OPFLAG_SUPROOT;
+	rawip->pfs_inum = 16;	/* first allocatable inode number */
 
 	/*
 	 * The super-root has one directory entry pointing at the named
@@ -627,6 +636,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	sroot_blockref.type = HAMMER2_BREF_TYPE_INODE;
 	sroot_blockref.methods = HAMMER2_ENC_CHECK(HAMMER2_CHECK_ISCSI32) |
 			         HAMMER2_ENC_COMP(HAMMER2_COMP_AUTOZERO);
+	sroot_blockref.mirror_tid = 16;
 	rawip = NULL;
 
 	/*
@@ -667,9 +677,8 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	vol->allocator_beg = alloc_base;
 
 	vol->sroot_blockset.blockref[0] = sroot_blockref;
-	vol->mirror_tid = 0;
-	vol->alloc_tid = 16;	/* first transaction id */
-	vol->inode_tid = 16;	/* first allocatable inode number */
+	vol->mirror_tid = 16;	/* all blockref mirror TIDs set to 16 */
+	vol->freemap_tid = 16;	/* all blockref mirror TIDs set to 16 */
 	vol->icrc_sects[HAMMER2_VOL_ICRC_SECT1] =
 			hammer2_icrc32((char *)vol + HAMMER2_VOLUME_ICRC1_OFF,
 				       HAMMER2_VOLUME_ICRC1_SIZE);
@@ -718,8 +727,8 @@ alloc_direct(hammer2_off_t *basep, hammer2_blockref_t *bref, size_t bytes)
 		++radix;
 	}
 	assert(bytes == 1);
-	if (radix < HAMMER2_MIN_RADIX)
-		radix = HAMMER2_MIN_RADIX;
+	if (radix < HAMMER2_RADIX_MIN)
+		radix = HAMMER2_RADIX_MIN;
 
 	bzero(bref, sizeof(*bref));
 	bref->data_off = *basep | radix;

@@ -138,6 +138,16 @@ struct hammer2_state;
 struct hammer2_msg;
 
 /*
+ * The xid tracks internal transactional updates.
+ *
+ * XXX fix-me, really needs to be 64-bits
+ */
+typedef uint32_t hammer2_xid_t;
+
+#define HAMMER2_XID_MIN	0x00000000U
+#define HAMMER2_XID_MAX 0x7FFFFFFFU
+
+/*
  * The chain structure tracks a portion of the media topology from the
  * root (volume) down.  Chains represent volumes, inodes, indirect blocks,
  * data blocks, and freemap nodes and leafs.
@@ -262,25 +272,12 @@ struct hammer2_chain {
 	hammer2_chain_core_t	*above;
 	struct hammer2_state	*state;		/* if active cache msg */
 	struct hammer2_mount	*hmp;
-	struct hammer2_pfsmount	*pmp;		/* can be NULL */
+	struct hammer2_pfsmount	*pmp;		/* (pfs-cluster pmp or spmp) */
 
-	hammer2_blockref_t	dsrc;			/* DEBUG */
-	int			ninserts;		/* DEBUG */
-	int			nremoves;		/* DEBUG */
-	hammer2_tid_t		dsrc_dupfromat;		/* DEBUG */
-	uint32_t		dsrc_dupfromflags;	/* DEBUG */
-	int			dsrc_reason;		/* DEBUG */
-	int			dsrc_ninserts;		/* DEBUG */
-	uint32_t		dsrc_flags;		/* DEBUG */
-	hammer2_tid_t		dsrc_modify;		/* DEBUG */
-	hammer2_tid_t		dsrc_delete;		/* DEBUG */
-	hammer2_tid_t		dsrc_update_lo;		/* DEBUG */
-	struct hammer2_chain	*dsrc_original;		/* DEBUG */
-
-	hammer2_tid_t	modify_tid;		/* flush filter */
-	hammer2_tid_t	delete_tid;		/* flush filter */
-	hammer2_tid_t	update_lo;		/* flush propagation */
-	hammer2_tid_t	update_hi;		/* setsubmod propagation */
+	hammer2_xid_t	modify_xid;		/* flush filter */
+	hammer2_xid_t	delete_xid;		/* flush filter */
+	hammer2_xid_t	update_xlo;		/* flush propagation */
+	hammer2_xid_t	update_xhi;		/* setsubmod propagation */
 	hammer2_key_t   data_count;		/* delta's to apply */
 	hammer2_key_t   inode_count;		/* delta's to apply */
 	hammer2_io_t	*dio;			/* physical data buffer */
@@ -331,6 +328,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_ONDBTREE		0x00080000	/* bmapped deletes */
 #define HAMMER2_CHAIN_DUPLICATED	0x00100000	/* fwd delete-dup */
 #define HAMMER2_CHAIN_PFSROOT		0x00200000	/* in pfs->cluster */
+#define HAMMER2_CHAIN_PFSBOUNDARY	0x00400000	/* super->pfs inode */
 
 /*
  * Flags passed to hammer2_chain_lookup() and hammer2_chain_next()
@@ -539,11 +537,9 @@ typedef struct hammer2_inode_unlink hammer2_inode_unlink_t;
  */
 struct hammer2_trans {
 	TAILQ_ENTRY(hammer2_trans) entry;
-	struct hammer2_pfsmount *pmp;		/* might be NULL */
-	struct hammer2_mount	*hmp_single;	/* if single-targetted */
-	hammer2_tid_t		orig_tid;
-	hammer2_tid_t		sync_tid;	/* effective transaction id */
-	hammer2_tid_t		inode_tid;
+	struct hammer2_pfsmount *pmp;
+	hammer2_xid_t		sync_xid;
+	hammer2_tid_t		inode_tid;	/* inode number assignment */
 	thread_t		td;		/* pointer */
 	int			flags;
 	int			blocked;
@@ -557,7 +553,7 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_TRANS_CONCURRENT	0x0002	/* concurrent w/flush */
 #define HAMMER2_TRANS_BUFCACHE		0x0004	/* from bioq strategy write */
 #define HAMMER2_TRANS_NEWINODE		0x0008	/* caller allocating inode */
-#define HAMMER2_TRANS_ISALLOCATING	0x0010	/* in allocator */
+#define HAMMER2_TRANS_UNUSED0010	0x0010
 #define HAMMER2_TRANS_PREFLUSH		0x0020	/* preflush state */
 
 #define HAMMER2_FREEMAP_HEUR_NRADIX	4	/* pwr 2 PBUFRADIX-MINIORADIX */
@@ -569,10 +565,23 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_CLUSTER_COPY_NOREF	0x0002	/* do not ref chains */
 
 /*
- * Global (per device) mount structure for device (aka vp->v_mount->hmp)
+ * Transaction Rendezvous
  */
 TAILQ_HEAD(hammer2_trans_queue, hammer2_trans);
 
+struct hammer2_trans_manage {
+	hammer2_xid_t		flush_xid;	/* last flush transaction */
+	hammer2_xid_t		alloc_xid;
+	struct lock		translk;	/* lockmgr lock */
+	struct hammer2_trans_queue transq;	/* modifying transactions */
+	int			flushcnt;	/* track flush trans */
+};
+
+typedef struct hammer2_trans_manage hammer2_trans_manage_t;
+
+/*
+ * Global (per device) mount structure for device (aka vp->v_mount->hmp)
+ */
 struct hammer2_mount {
 	struct vnode	*devvp;		/* device vnode */
 	int		ronly;		/* read-only mount */
@@ -587,13 +596,9 @@ struct hammer2_mount {
 	int		iofree_count;
 	hammer2_chain_t vchain;		/* anchor chain (topology) */
 	hammer2_chain_t fchain;		/* anchor chain (freemap) */
-	hammer2_inode_t	*sroot;		/* super-root localized to media */
-	struct lock	alloclk;	/* lockmgr lock */
-	struct lock	voldatalk;	/* lockmgr lock */
-	struct hammer2_trans_queue transq; /* all in-progress transactions */
+	struct hammer2_pfsmount *spmp;	/* super-root pmp for transactions */
+	struct lock	vollk;		/* lockmgr lock */
 	hammer2_off_t	heur_freemap[HAMMER2_FREEMAP_HEUR];
-	int		flushcnt;	/* #of flush trans on the list */
-
 	int		volhdrno;	/* last volhdrno written */
 	hammer2_volume_data_t voldata;
 	hammer2_volume_data_t volsync;	/* synchronized voldata */
@@ -621,6 +626,7 @@ struct hammer2_pfsmount {
 	TAILQ_ENTRY(hammer2_pfsmount) mntentry; /* hammer2_pfslist */
 	uuid_t			pfs_clid;
 	uuid_t			pfs_fsid;
+	hammer2_mount_t		*spmp_hmp;	/* (spmp only) */
 	hammer2_inode_t		*iroot;		/* PFS root inode */
 	hammer2_inode_t		*ihidden;	/* PFS hidden directory */
 	struct lock		lock;		/* PFS lock for certain ops */
@@ -632,7 +638,10 @@ struct hammer2_pfsmount {
 	struct malloc_type	*mmsg;
 	kdmsg_iocom_t		iocom;
 	struct spinlock		inum_spin;	/* inumber lookup */
-	struct hammer2_inode_tree inum_tree;
+	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
+	hammer2_tid_t		alloc_tid;
+	hammer2_tid_t		flush_tid;
+	hammer2_tid_t		inode_tid;
 	long			inmem_inodes;
 	long			inmem_dirty_chains;
 	int			count_lwinprog;	/* logical write in prog */
@@ -747,8 +756,6 @@ hammer2_cluster_t *hammer2_inode_lock_ex(hammer2_inode_t *ip);
 hammer2_cluster_t *hammer2_inode_lock_sh(hammer2_inode_t *ip);
 void hammer2_inode_unlock_ex(hammer2_inode_t *ip, hammer2_cluster_t *chain);
 void hammer2_inode_unlock_sh(hammer2_inode_t *ip, hammer2_cluster_t *chain);
-void hammer2_voldata_lock(hammer2_mount_t *hmp);
-void hammer2_voldata_unlock(hammer2_mount_t *hmp, int modify);
 ccms_state_t hammer2_inode_lock_temp_release(hammer2_inode_t *ip);
 void hammer2_inode_lock_temp_restore(hammer2_inode_t *ip, ccms_state_t ostate);
 ccms_state_t hammer2_inode_lock_upgrade(hammer2_inode_t *ip);
@@ -765,6 +772,8 @@ void hammer2_time_to_timespec(u_int64_t xtime, struct timespec *ts);
 u_int64_t hammer2_timespec_to_time(const struct timespec *ts);
 u_int32_t hammer2_to_unix_xid(const uuid_t *uuid);
 void hammer2_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
+hammer2_xid_t hammer2_trans_newxid(hammer2_pfsmount_t *pmp);
+void hammer2_trans_manage_init(void);
 
 hammer2_key_t hammer2_dirhash(const unsigned char *name, size_t len);
 int hammer2_getradix(size_t bytes);
@@ -824,7 +833,9 @@ void hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp);
 /*
  * hammer2_chain.c
  */
-void hammer2_modify_volume(hammer2_mount_t *hmp);
+void hammer2_voldata_lock(hammer2_mount_t *hmp);
+void hammer2_voldata_unlock(hammer2_mount_t *hmp);
+void hammer2_voldata_modify(hammer2_mount_t *hmp);
 hammer2_chain_t *hammer2_chain_alloc(hammer2_mount_t *hmp,
 				hammer2_pfsmount_t *pmp,
 				hammer2_trans_t *trans,
@@ -866,9 +877,9 @@ hammer2_chain_t *hammer2_chain_scan(hammer2_chain_t *parent,
 				hammer2_chain_t *chain,
 				int *cache_indexp, int flags);
 
-int hammer2_chain_create(hammer2_trans_t *trans,
-				hammer2_chain_t **parentp,
+int hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				hammer2_chain_t **chainp,
+				hammer2_pfsmount_t *pmp,
 				hammer2_key_t key, int keybits,
 				int type, size_t bytes);
 void hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
@@ -908,7 +919,7 @@ void hammer2_chain_refactor(hammer2_chain_t **chainp);
  * hammer2_trans.c
  */
 void hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp,
-				hammer2_mount_t *hmp, int flags);
+				int flags);
 void hammer2_trans_done(hammer2_trans_t *trans);
 
 /*

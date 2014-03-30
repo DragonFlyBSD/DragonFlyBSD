@@ -122,46 +122,9 @@ hammer2_freemap_reserve(hammer2_trans_t *trans, hammer2_chain_t *chain,
 	}
 
 	/*
-	 * Calculate new index (our 'allocation').  We have to be careful
-	 * here as there can be two different transaction ids running
-	 * concurrently when a flush is in-progress.
-	 *
-	 * We also want to make sure, for algorithmic repeatability, that
-	 * the index sequences are monotonic with transaction ids.  Some
-	 * skipping is allowed as long as we ensure that all four volume
-	 * header backups have consistent freemaps.
-	 *
-	 * FLUSH  NORMAL FLUSH  NORMAL FLUSH  NORMAL FLUSH  NORMAL
-	 * N+=1   N+=2
-	 * (0->1) (1->3) (3->4) (4->6) (6->7) (7->9) (9->10) (10->12)
-	 *
-	 * [-concurrent-][-concurrent-][-concurrent-][-concurrent-]
-	 *
-	 * (alternative first NORMAL might be 0->2 if flush had not yet
-	 *  modified the chain, this is the worst case).
+	 * Calculate new index (our 'allocation').
 	 */
-	if ((trans->flags & HAMMER2_TRANS_ISFLUSH) == 0) {
-		/*
-		 * Normal transactions always run with the highest TID.
-		 * But if a flush is in-progress we want to reserve a slot
-		 * for the flush with a lower TID running concurrently to
-		 * do a delete-duplicate.
-		 */
-		index = (index + 2) % HAMMER2_ZONE_FREEMAP_COPIES;
-	} else if (trans->flags & HAMMER2_TRANS_ISALLOCATING) {
-		/*
-		 * Flush transaction, hammer2_freemap.c itself is doing a
-		 * delete-duplicate during an allocation within the freemap.
-		 */
-		index = (index + 1) % HAMMER2_ZONE_FREEMAP_COPIES;
-	} else {
-		/*
-		 * Flush transaction, hammer2_flush.c is doing a
-		 * delete-duplicate on the freemap while flushing
-		 * hmp->fchain.
-		 */
-		index = (index + 1) % HAMMER2_ZONE_FREEMAP_COPIES;
-	}
+	index = (index + 1) % HAMMER2_ZONE_FREEMAP_COPIES;
 
 	/*
 	 * Calculate the block offset of the reserved block.  This will
@@ -222,12 +185,6 @@ hammer2_freemap_reserve(hammer2_trans_t *trans, hammer2_chain_t *chain,
  *
  * ip and bpref are only used as a heuristic to determine locality of
  * reference.  bref->key may also be used heuristically.
- *
- * WARNING! When called from a flush we have to use the 'live' sync_tid
- *	    and not the flush sync_tid.  The live sync_tid is the flush
- *	    sync_tid + 1.  That is, freemap allocations which occur during
- *	    a flush are not part of the flush.  Crash-recovery will restore
- *	    any lost allocations.
  */
 int
 hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
@@ -250,39 +207,20 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 	radix = hammer2_getradix(bytes);
 	KKASSERT((size_t)1 << radix == bytes);
 
-	/*
-	 * Freemap blocks themselves are simply assigned from the reserve
-	 * area, not allocated from the freemap.
-	 */
 	if (bref->type == HAMMER2_BREF_TYPE_FREEMAP_NODE ||
 	    bref->type == HAMMER2_BREF_TYPE_FREEMAP_LEAF) {
-		return (hammer2_freemap_reserve(trans, chain, radix));
+		/*
+		 * Freemap blocks themselves are assigned from the reserve
+		 * area, not allocated from the freemap.
+		 */
+		error = hammer2_freemap_reserve(trans, chain, radix);
+		return error;
 	}
 
-#if 0
-	/*
-	 * (this mechanic is no longer used, DOMAYFREE is used only by
-	 * the bulk freemap scan now).
-	 *
-	 * Mark previously allocated block as possibly freeable.  There might
-	 * be snapshots and other races so we can't just mark it fully free.
-	 * (XXX optimize this for the current-transaction create+delete case)
-	 */
-	if (bref->data_off & ~HAMMER2_OFF_MASK_RADIX) {
-		hammer2_freemap_adjust(trans, hmp, bref,
-				       HAMMER2_FREEMAP_DOMAYFREE);
-	}
-#endif
+	KKASSERT(bytes >= HAMMER2_ALLOC_MIN && bytes <= HAMMER2_ALLOC_MAX);
 
-	/*
-	 * Setting ISALLOCATING ensures correct operation even when the
-	 * flusher itself is making allocations.
-	 */
-	KKASSERT(bytes >= HAMMER2_MIN_ALLOC && bytes <= HAMMER2_MAX_ALLOC);
-	KKASSERT((trans->flags & HAMMER2_TRANS_ISALLOCATING) == 0);
-	atomic_set_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
 	if (trans->flags & (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_PREFLUSH))
-		++trans->sync_tid;
+		++trans->sync_xid;
 
 	/*
 	 * Calculate the starting point for our allocation search.
@@ -344,9 +282,8 @@ hammer2_freemap_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain,
 	hmp->heur_freemap[hindex] = iter.bnext;
 	hammer2_chain_unlock(parent);
 
-	atomic_clear_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
 	if (trans->flags & (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_PREFLUSH))
-		--trans->sync_tid;
+		--trans->sync_xid;
 
 	return (error);
 }
@@ -406,7 +343,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		kprintf("freemap create L1 @ %016jx bpref %016jx\n",
 			key, iter->bpref);
 #endif
-		error = hammer2_chain_create(trans, parentp, &chain,
+		error = hammer2_chain_create(trans, parentp, &chain, hmp->spmp,
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
 				     HAMMER2_FREEMAP_LEVELN_PSIZE);
@@ -588,7 +525,7 @@ hammer2_bmap_alloc(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	    bmap->linear < HAMMER2_SEGSIZE) {
 		KKASSERT(bmap->linear >= 0 &&
 			 bmap->linear + size <= HAMMER2_SEGSIZE &&
-			 (bmap->linear & (HAMMER2_MIN_ALLOC - 1)) == 0);
+			 (bmap->linear & (HAMMER2_ALLOC_MIN - 1)) == 0);
 		offset = bmap->linear;
 		i = offset / (HAMMER2_SEGSIZE / 8);
 		j = (offset / (HAMMER2_FREEMAP_BLOCK_SIZE / 2)) & 30;
@@ -685,8 +622,9 @@ success:
 	*basep += offset;
 
 	hammer2_voldata_lock(hmp);
+	hammer2_voldata_modify(hmp);
 	hmp->voldata.allocator_free -= size;  /* XXX */
-	hammer2_voldata_unlock(hmp, 1);
+	hammer2_voldata_unlock(hmp);
 
 	return(0);
 }
@@ -789,12 +727,6 @@ hammer2_freemap_iterate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
  * the moment we depend on the bulk freescan to actually free blocks.  It
  * will still call this routine with a non-zero how to stage possible frees
  * and to do the actual free.
- *
- * WARNING! When called from a flush we have to use the 'live' sync_tid
- *	    and not the flush sync_tid.  The live sync_tid is the flush
- *	    sync_tid + 1.  That is, freemap allocations which occur during
- *	    a flush are not part of the flush.  Crash-recovery will restore
- *	    any lost allocations.
  */
 void
 hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
@@ -826,7 +758,7 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 
 	radix = (int)data_off & HAMMER2_OFF_MASK_RADIX;
 	data_off &= ~HAMMER2_OFF_MASK_RADIX;
-	KKASSERT(radix <= HAMMER2_MAX_RADIX);
+	KKASSERT(radix <= HAMMER2_RADIX_MAX);
 
 	bytes = (size_t)1 << radix;
 	class = (bref->type << 8) | hammer2_devblkradix(radix);
@@ -839,10 +771,6 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 		return;
 
 	KKASSERT((data_off & HAMMER2_ZONE_MASK64) >= HAMMER2_ZONE_SEG);
-	KKASSERT((trans->flags & HAMMER2_TRANS_ISALLOCATING) == 0);
-	atomic_set_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
-	if (trans->flags & (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_PREFLUSH))
-		++trans->sync_tid;
 
 	/*
 	 * Lookup the level1 freemap chain.  The chain must exist.
@@ -876,7 +804,7 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 	 * bref.check.freemap structure.
 	 */
 	if (chain == NULL && how == HAMMER2_FREEMAP_DORECOVER) {
-		error = hammer2_chain_create(trans, &parent, &chain,
+		error = hammer2_chain_create(trans, &parent, &chain, hmp->spmp,
 				     key, HAMMER2_FREEMAP_LEVEL1_RADIX,
 				     HAMMER2_BREF_TYPE_FREEMAP_LEAF,
 				     HAMMER2_FREEMAP_LEVELN_PSIZE);
@@ -1041,7 +969,4 @@ again:
 	hammer2_chain_unlock(chain);
 done:
 	hammer2_chain_unlock(parent);
-	atomic_clear_int(&trans->flags, HAMMER2_TRANS_ISALLOCATING);
-	if (trans->flags & (HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_PREFLUSH))
-		--trans->sync_tid;
 }

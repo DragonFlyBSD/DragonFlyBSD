@@ -149,7 +149,7 @@ hammer2_cluster_from_chain(hammer2_chain_t *chain)
 	cluster->array[0] = chain;
 	cluster->nchains = 1;
 	cluster->focus = chain;
-	cluster->pmp = chain->pmp;		/* can be NULL */
+	cluster->pmp = chain->pmp;
 	cluster->refs = 1;
 
 	return cluster;
@@ -202,19 +202,18 @@ hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
 
 	rcluster = &pmp->iroot->cluster;
 	for (i = 0; i < rcluster->nchains; ++i) {
-		chain = hammer2_chain_alloc(rcluster->array[i]->hmp, pmp,
-					    trans, bref);
-		chain->pmp = pmp;
+		chain = hammer2_chain_alloc(rcluster->array[i]->hmp,
+					    pmp, trans, bref);
 		chain->hmp = rcluster->array[i]->hmp;
 		chain->bref = *bref;
 		chain->bytes = bytes;
 		chain->refs = 1;
 		chain->flags = HAMMER2_CHAIN_ALLOCATED;
-		chain->delete_tid = HAMMER2_MAX_TID;
+		chain->delete_xid = HAMMER2_XID_MAX;
 
 		/*
 		 * Set modify_tid if a transaction is creating the inode.
-		 * Enforce update_lo = 0 so nearby transactions do not think
+		 * Enforce update_xlo = 0 so nearby transactions do not think
 		 * it has been flushed when it hasn't.
 		 *
 		 * NOTE: When loading a chain from backing store or creating a
@@ -222,8 +221,8 @@ hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
 		 *	 responsible for setting these fields.
 		 */
 		if (trans) {
-			chain->modify_tid = trans->sync_tid;
-			chain->update_lo = 0;
+			chain->modify_xid = trans->sync_xid;
+			chain->update_xlo = 0;
 		}
 		cluster->array[i] = chain;
 	}
@@ -888,9 +887,8 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 				cparent->focus = cparent->array[i];
 			continue;
 		}
-		error = hammer2_chain_create(trans,
-					     &cparent->array[i],
-					     &cluster->array[i],
+		error = hammer2_chain_create(trans, &cparent->array[i],
+					     &cluster->array[i], pmp,
 					     key, keybits, type, bytes);
 		KKASSERT(error == 0);
 		if (cparent->focus == NULL)
@@ -1041,8 +1039,9 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 	vat.va_type = VDIR;
 	vat.va_mode = 0755;
 	ncluster = NULL;
-	nip = hammer2_inode_create(trans, hmp->sroot, &vat, proc0.p_ucred,
-				   pfs->name, name_len, &ncluster, &error);
+	nip = hammer2_inode_create(trans, hmp->spmp->iroot, &vat,
+				   proc0.p_ucred, pfs->name, name_len,
+				   &ncluster, &error);
 
 	if (nip) {
 		wipdata = hammer2_cluster_modify_ip(trans, nip, ncluster, 0);

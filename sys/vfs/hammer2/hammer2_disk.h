@@ -81,11 +81,11 @@
  * currently supports up to 8 copies, which brings the address space down
  * to 66 bits and gives us 2 bits of leeway.
  */
-#define HAMMER2_MIN_ALLOC	1024	/* minimum allocation size */
-#define HAMMER2_MIN_RADIX	10	/* minimum allocation size 2^N */
-#define HAMMER2_MAX_ALLOC	65536	/* maximum allocation size */
-#define HAMMER2_MAX_RADIX	16	/* maximum allocation size 2^N */
-#define HAMMER2_KEY_RADIX	64	/* number of bits in key */
+#define HAMMER2_ALLOC_MIN	1024	/* minimum allocation size */
+#define HAMMER2_RADIX_MIN	10	/* minimum allocation size 2^N */
+#define HAMMER2_ALLOC_MAX	65536	/* maximum allocation size */
+#define HAMMER2_RADIX_MAX	16	/* maximum allocation size 2^N */
+#define HAMMER2_RADIX_KEY	64	/* number of bits in key */
 
 /*
  * MINALLOCSIZE		- The minimum allocation size.  This can be smaller
@@ -359,12 +359,12 @@ typedef uint32_t hammer2_crc32_t;
 /*
  * Miscellanious ranges (all are unsigned).
  */
-#define HAMMER2_MIN_TID		1ULL
-#define HAMMER2_MAX_TID		0xFFFFFFFFFFFFFFFFULL
-#define HAMMER2_MIN_KEY		0ULL
-#define HAMMER2_MAX_KEY		0xFFFFFFFFFFFFFFFFULL
-#define HAMMER2_MIN_OFFSET	0ULL
-#define HAMMER2_MAX_OFFSET	0xFFFFFFFFFFFFFFFFULL
+#define HAMMER2_TID_MIN		1ULL
+#define HAMMER2_TID_MAX		0xFFFFFFFFFFFFFFFFULL
+#define HAMMER2_KEY_MIN		0ULL
+#define HAMMER2_KEY_MAX		0xFFFFFFFFFFFFFFFFULL
+#define HAMMER2_OFFSET_MIN	0ULL
+#define HAMMER2_OFFSET_MAX	0xFFFFFFFFFFFFFFFFULL
 
 /*
  * HAMMER2 data offset special cases and masking.
@@ -377,7 +377,7 @@ typedef uint32_t hammer2_crc32_t;
  * to as a power of 2.  The theoretical minimum radix is thus 6 (The space
  * needed in the low bits of the data offset field).  However, the practical
  * minimum allocation chunk size is 1KB (a radix of 10), so HAMMER2 sets
- * HAMMER2_MIN_RADIX to 10.  The maximum radix is currently 16 (64KB), but
+ * HAMMER2_RADIX_MIN to 10.  The maximum radix is currently 16 (64KB), but
  * we fully intend to support larger extents in the future.
  */
 #define HAMMER2_OFF_BAD		((hammer2_off_t)-1)
@@ -483,13 +483,6 @@ struct hammer2_blockref {		/* MUST BE EXACTLY 64 BYTES */
 
 typedef struct hammer2_blockref hammer2_blockref_t;
 
-#if 0
-#define HAMMER2_BREF_SYNC1		0x01	/* modification synchronized */
-#define HAMMER2_BREF_SYNC2		0x02	/* modification committed */
-#define HAMMER2_BREF_DESYNCCHLD		0x04	/* desynchronize children */
-#define HAMMER2_BREF_DELETED		0x80	/* indicates a deletion */
-#endif
-
 #define HAMMER2_BLOCKREF_BYTES		64	/* blockref struct in bytes */
 
 /*
@@ -504,6 +497,8 @@ typedef struct hammer2_blockref hammer2_blockref_t;
 #define HAMMER2_BREF_TYPE_FREEMAP_LEAF	6
 #define HAMMER2_BREF_TYPE_FREEMAP	254	/* pseudo-type */
 #define HAMMER2_BREF_TYPE_VOLUME	255	/* pseudo-type */
+
+#define HAMMER2_BREF_FLAG_PFSROOT	0x01	/* see also related opflag */
 
 #define HAMMER2_ENC_CHECK(n)		((n) << 4)
 #define HAMMER2_DEC_CHECK(n)		(((n) >> 4) & 15)
@@ -569,8 +564,8 @@ typedef struct hammer2_blockset hammer2_blockset_t;
 #if (1 << HAMMER2_PBUFRADIX) != HAMMER2_PBUFSIZE
 #error "HAMMER2_PBUFRADIX and HAMMER2_PBUFSIZE are inconsistent"
 #endif
-#if (1 << HAMMER2_MIN_RADIX) != HAMMER2_MIN_ALLOC
-#error "HAMMER2_MIN_RADIX and HAMMER2_MIN_ALLOC are inconsistent"
+#if (1 << HAMMER2_RADIX_MIN) != HAMMER2_ALLOC_MIN
+#error "HAMMER2_RADIX_MIN and HAMMER2_ALLOC_MIN are inconsistent"
 #endif
 
 /*
@@ -765,8 +760,9 @@ struct hammer2_inode_data {
 typedef struct hammer2_inode_data hammer2_inode_data_t;
 
 #define HAMMER2_OPFLAG_DIRECTDATA	0x01
-#define HAMMER2_OPFLAG_PFSROOT		0x02
+#define HAMMER2_OPFLAG_PFSROOT		0x02	/* (see also bref flag) */
 #define HAMMER2_OPFLAG_COPYIDS		0x04	/* copyids override parent */
+#define HAMMER2_OPFLAG_SUPROOT		0x08
 
 #define HAMMER2_OBJTYPE_UNKNOWN		0
 #define HAMMER2_OBJTYPE_DIRECTORY	1
@@ -919,9 +915,17 @@ struct hammer2_volume_data {
 	hammer2_off_t	allocator_size;		/* 0060 Total data space */
 	hammer2_off_t   allocator_free;		/* 0068	Free space */
 	hammer2_off_t	allocator_beg;		/* 0070 Initial allocations */
+
+	/*
+	 * mirror_tid reflects the highest committed super-root change
+	 * freemap_tid reflects the highest committed freemap change
+	 *
+	 * NOTE: mirror_tid does not track (and should not track) changes
+	 *	 made to or under PFS roots.
+	 */
 	hammer2_tid_t	mirror_tid;		/* 0078 committed tid (vol) */
-	hammer2_tid_t	alloc_tid;		/* 0080 Alloctable modify tid */
-	hammer2_tid_t	inode_tid;		/* 0088 Inode allocator tid */
+	hammer2_tid_t	reserved0080;		/* 0080 */
+	hammer2_tid_t	reserved0088;		/* 0088 */
 	hammer2_tid_t	freemap_tid;		/* 0090 committed tid (fmap) */
 	hammer2_tid_t	bulkfree_tid;		/* 0098 bulkfree incremental */
 	hammer2_tid_t	reserved00A0[5];	/* 00A0-00C7 */

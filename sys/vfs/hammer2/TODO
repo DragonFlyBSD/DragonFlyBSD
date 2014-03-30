@@ -1,4 +1,13 @@
 
+* hammer2_xid_t needs to be 64 bits
+
+* snapshot creation must allocate and separately pass a new pmp for the pfs
+  degenerate 'cluster' representing the snapshot.  This theoretically will
+  also allow a snapshot to be generated inside a cluster of more than one
+  node.
+
+* snapshot copy currently also copies uuids and can confuse cluster code
+
 * hidden dir or other dirs/files/modifications made to PFS before
   additional cluster entries added.
 

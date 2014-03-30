@@ -261,14 +261,15 @@ hammer2_inode_lookup(hammer2_pfsmount_t *pmp, hammer2_tid_t inum)
 {
 	hammer2_inode_t *ip;
 
-	if (pmp) {
+	KKASSERT(pmp);
+	if (pmp->spmp_hmp) {
+		ip = NULL;
+	} else {
 		spin_lock(&pmp->inum_spin);
 		ip = RB_LOOKUP(hammer2_inode_tree, &pmp->inum_tree, inum);
 		if (ip)
 			hammer2_inode_ref(ip);
 		spin_unlock(&pmp->inum_spin);
-	} else {
-		ip = NULL;
 	}
 	return(ip);
 }
@@ -301,12 +302,10 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 			/*
 			 * Transition to zero, must interlock with
 			 * the inode inumber lookup tree (if applicable).
-			 *
-			 * NOTE: The super-root inode has no pmp.
 			 */
 			pmp = ip->pmp;
-			if (pmp)
-				spin_lock(&pmp->inum_spin);
+			KKASSERT(pmp);
+			spin_lock(&pmp->inum_spin);
 
 			if (atomic_cmpset_int(&ip->refs, 1, 0)) {
 				KKASSERT(ip->topo_cst.count == 0);
@@ -316,8 +315,7 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 					RB_REMOVE(hammer2_inode_tree,
 						  &pmp->inum_tree, ip);
 				}
-				if (pmp)
-					spin_unlock(&pmp->inum_spin);
+				spin_unlock(&pmp->inum_spin);
 
 				pip = ip->pip;
 				ip->pip = NULL;
@@ -334,21 +332,12 @@ hammer2_inode_drop(hammer2_inode_t *ip)
 				 * dispose of our implied reference from
 				 * ip->pip.  We can simply loop on it.
 				 */
-				if (pmp) {
-					KKASSERT((ip->flags &
-						  HAMMER2_INODE_SROOT) == 0);
-					kfree(ip, pmp->minode);
-					atomic_add_long(&pmp->inmem_inodes, -1);
-				} else {
-					KKASSERT(ip->flags &
-						 HAMMER2_INODE_SROOT);
-					kfree(ip, M_HAMMER2);
-				}
+				kfree(ip, pmp->minode);
+				atomic_add_long(&pmp->inmem_inodes, -1);
 				ip = pip;
 				/* continue with pip (can be NULL) */
 			} else {
-				if (pmp)
-					spin_unlock(&ip->pmp->inum_spin);
+				spin_unlock(&ip->pmp->inum_spin);
 			}
 		} else {
 			/*
@@ -514,9 +503,6 @@ hammer2_igetv(hammer2_inode_t *ip, hammer2_cluster_t *cparent, int *errorp)
  *
  * The hammer2_inode structure regulates the interface between the high level
  * kernel VNOPS API and the filesystem backend (the chains).
- *
- * WARNING!  The mount code is allowed to pass dip == NULL for iroot and
- *	     is allowed to pass pmp == NULL and dip == NULL for sroot.
  */
 hammer2_inode_t *
 hammer2_inode_get(hammer2_pfsmount_t *pmp, hammer2_inode_t *dip,
@@ -527,6 +513,7 @@ hammer2_inode_get(hammer2_pfsmount_t *pmp, hammer2_inode_t *dip,
 	const hammer2_inode_data_t *nipdata;
 
 	KKASSERT(hammer2_cluster_type(cluster) == HAMMER2_BREF_TYPE_INODE);
+	KKASSERT(pmp);
 
 	/*
 	 * Interlocked lookup/ref of the inode.  This code is only needed
@@ -541,7 +528,13 @@ again:
 			break;
 
 		ccms_thread_lock(&nip->topo_cst, CCMS_STATE_EXCLUSIVE);
-		if ((nip->flags & HAMMER2_INODE_ONRBTREE) == 0) { /* race */
+
+		/*
+		 * Handle SMP race (not applicable to the super-root spmp
+		 * which can't index inodes due to duplicative inode numbers).
+		 */
+		if (pmp->spmp_hmp == NULL &&
+		    (nip->flags & HAMMER2_INODE_ONRBTREE) == 0) {
 			ccms_thread_unlock(&nip->topo_cst);
 			hammer2_inode_drop(nip);
 			continue;
@@ -553,15 +546,12 @@ again:
 	/*
 	 * We couldn't find the inode number, create a new inode.
 	 */
-	if (pmp) {
-		nip = kmalloc(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
-		atomic_add_long(&pmp->inmem_inodes, 1);
-		hammer2_pfs_memory_inc(pmp);
-		hammer2_pfs_memory_wakeup(pmp);
-	} else {
-		nip = kmalloc(sizeof(*nip), M_HAMMER2, M_WAITOK | M_ZERO);
+	nip = kmalloc(sizeof(*nip), pmp->minode, M_WAITOK | M_ZERO);
+	atomic_add_long(&pmp->inmem_inodes, 1);
+	hammer2_pfs_memory_inc(pmp);
+	hammer2_pfs_memory_wakeup(pmp);
+	if (pmp->spmp_hmp)
 		nip->flags = HAMMER2_INODE_SROOT;
-	}
 
 	/*
 	 * Initialize nip's cluster
@@ -595,7 +585,7 @@ again:
 	 * Attempt to add the inode.  If it fails we raced another inode
 	 * get.  Undo all the work and try again.
 	 */
-	if (pmp) {
+	if (pmp->spmp_hmp == NULL) {
 		spin_lock(&pmp->inum_spin);
 		if (RB_INSERT(hammer2_inode_tree, &pmp->inum_tree, nip)) {
 			spin_unlock(&pmp->inum_spin);
@@ -622,6 +612,9 @@ again:
  * under the super-root, so the inode number is set to 1 in this case.
  *
  * dip is not locked on entry.
+ *
+ * NOTE: When used to create a snapshot, the inode is temporarily associated
+ *	 with the super-root spmp. XXX should pass new pmp for snapshot.
  */
 hammer2_inode_t *
 hammer2_inode_create(hammer2_trans_t *trans, hammer2_inode_t *dip,
@@ -1439,7 +1432,7 @@ hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp)
 	 * Find the hidden directory
 	 */
 	bzero(&key_dummy, sizeof(key_dummy));
-	hammer2_trans_init(&trans, pmp, NULL, 0);
+	hammer2_trans_init(&trans, pmp, 0);
 
 	cparent = hammer2_inode_lock_ex(pmp->iroot);
 	cluster = hammer2_cluster_lookup(cparent, &key_dummy,
@@ -1456,7 +1449,7 @@ hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp)
 		 */
 		count = 0;
 		scan = hammer2_cluster_lookup(cluster, &key_next,
-					      0, HAMMER2_MAX_TID,
+					      0, HAMMER2_TID_MAX,
 					      HAMMER2_LOOKUP_NODATA, &ddflag);
 		while (scan) {
 			if (hammer2_cluster_type(scan) ==
@@ -1465,7 +1458,7 @@ hammer2_inode_install_hidden(hammer2_pfsmount_t *pmp)
 				++count;
 			}
 			scan = hammer2_cluster_next(cluster, scan, &key_next,
-						    0, HAMMER2_MAX_TID,
+						    0, HAMMER2_TID_MAX,
 						    HAMMER2_LOOKUP_NODATA);
 		}
 

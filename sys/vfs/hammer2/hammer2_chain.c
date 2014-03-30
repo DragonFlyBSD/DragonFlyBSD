@@ -142,7 +142,10 @@ hammer2_isclusterable(hammer2_chain_t *chain)
 }
 
 /*
- * Recursively set update_hi starting at chain up through to the root.
+ * Recursively set update_xhi starting at chain and moving upward.  Stop early
+ * if we hit a PFS transition (PFS flush code will have to detect the case
+ * and perform an update within its own transaction).  The transaction xid
+ * is only good within the current PFS.
  *
  * This controls top-down visibility for flushes.  The child has just one
  * 'above' core, but the core itself can be multi-homed with parents iterated
@@ -154,21 +157,23 @@ hammer2_isclusterable(hammer2_chain_t *chain)
  * allocating which requires the live tree).  The flush keeps track of its
  * recursion itself.
  *
- * XXX SMP races
+ * XXX SMP races.  For now we do not allow concurrent transactions with
+ *     different transaction ids and there should be no race, but if we do
+ *     later on there will be a problem.
  */
 void
 hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain)
 {
 	hammer2_chain_core_t *above;
 
-	if (chain->update_hi < trans->sync_tid)
-		chain->update_hi = trans->sync_tid;
+	if (chain->update_xhi < trans->sync_xid)
+		chain->update_xhi = trans->sync_xid;
 
 	while ((above = chain->above) != NULL) {
 		spin_lock(&above->cst.spin);
 		chain = TAILQ_LAST(&above->ownerq, h2_core_list);
-		if (chain->update_hi < trans->sync_tid)
-			chain->update_hi = trans->sync_tid;
+		if (chain->update_xhi < trans->sync_xid)
+			chain->update_xhi = trans->sync_xid;
 		spin_unlock(&above->cst.spin);
 	}
 }
@@ -181,6 +186,9 @@ hammer2_chain_setsubmod(hammer2_trans_t *trans, hammer2_chain_t *chain)
  * chain->core is NOT allocated and the media data and bp pointers are left
  * NULL.  The caller must call chain_core_alloc() to allocate or associate
  * a core with the chain.
+ *
+ * chain->pmp inherits pmp unless the chain is an inode (other than the
+ * super-root inode).
  *
  * NOTE: Returns a referenced but unlocked (because there is no core) chain.
  */
@@ -206,8 +214,6 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
 		 * purposes.  The pmp can be NULL.
 		 */
 		chain = kmalloc(sizeof(*chain), hmp->mchain, M_WAITOK | M_ZERO);
-		if (pmp)
-			chain->pmp = pmp;
 		break;
 	case HAMMER2_BREF_TYPE_VOLUME:
 	case HAMMER2_BREF_TYPE_FREEMAP:
@@ -219,16 +225,26 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
 		      bref->type);
 	}
 
+	/*
+	 * Initialize the new chain structure.
+	 */
+	chain->pmp = pmp;
 	chain->hmp = hmp;
 	chain->bref = *bref;
 	chain->bytes = bytes;
 	chain->refs = 1;
 	chain->flags = HAMMER2_CHAIN_ALLOCATED;
-	chain->delete_tid = HAMMER2_MAX_TID;
+	chain->delete_xid = HAMMER2_XID_MAX;
 
 	/*
-	 * Set modify_tid if a transaction is creating the inode.
-	 * Enforce update_lo = 0 so nearby transactions do not think
+	 * Set the PFS boundary flag if this chain represents a PFS root.
+	 */
+	if (bref->flags & HAMMER2_BREF_FLAG_PFSROOT)
+		chain->flags |= HAMMER2_CHAIN_PFSBOUNDARY;
+
+	/*
+	 * Set modify_xid if a transaction is creating the inode.
+	 * Enforce update_xlo = 0 so nearby transactions do not think
 	 * it has been flushed when it hasn't.
 	 *
 	 * NOTE: When loading a chain from backing store or creating a
@@ -236,8 +252,8 @@ hammer2_chain_alloc(hammer2_mount_t *hmp, hammer2_pfsmount_t *pmp,
 	 *	 for setting these fields.
 	 */
 	if (trans) {
-		chain->modify_tid = trans->sync_tid;
-		chain->update_lo = 0;
+		chain->modify_xid = trans->sync_xid;
+		chain->update_xlo = 0;
 	}
 
 	return (chain);
@@ -291,8 +307,8 @@ hammer2_chain_core_alloc(hammer2_trans_t *trans,
 		 *
 		 * It is possible for the DUPLICATED flag to already be
 		 * set when called via a flush operation because flush
-		 * operations may have to work on elements with delete_tid's
-		 * beyond the flush sync_tid.  In this situation we must
+		 * operations may have to work on elements with delete_xid's
+		 * beyond the flush sync_xid.  In this situation we must
 		 * ensure that nchain is placed just after ochain in the
 		 * ownerq and that the DUPLICATED flag is set on nchain so
 		 * 'live' operations skip past it to the correct chain.
@@ -306,10 +322,7 @@ hammer2_chain_core_alloc(hammer2_trans_t *trans,
 		 *	    more than just adjusting a block table.
 		 */
 		if (ochain->flags & HAMMER2_CHAIN_DUPLICATED) {
-			KKASSERT((trans->flags &
-				  (HAMMER2_TRANS_ISFLUSH |
-				   HAMMER2_TRANS_ISALLOCATING)) ==
-			         HAMMER2_TRANS_ISFLUSH);
+			KKASSERT(trans->flags & HAMMER2_TRANS_ISFLUSH);
 			atomic_set_int(&nchain->flags,
 				       HAMMER2_CHAIN_DUPLICATED);
 		}
@@ -331,7 +344,7 @@ hammer2_chain_core_alloc(hammer2_trans_t *trans,
 		 * on forward-indexed ochains.  We must properly insert
 		 * nchain relative to ochain.
 		 */
-		if (trans && trans->sync_tid < ochain->modify_tid) {
+		if (trans && trans->sync_xid < ochain->modify_xid) {
 			TAILQ_INSERT_BEFORE(ochain, nchain, core_entry);
 		} else {
 			TAILQ_INSERT_AFTER(&core->ownerq, ochain,
@@ -1359,9 +1372,6 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	chain = *chainp;
 	hmp = chain->hmp;
 
-	KKASSERT(chain->bref.mirror_tid != trans->sync_tid ||
-		 (chain->flags & HAMMER2_CHAIN_MODIFIED));
-
 	/*
 	 * data is not optional for freemap chains (we must always be sure
 	 * to copy the data on COW storage allocations).
@@ -1382,7 +1392,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 *
 	 * The freemap and volume header special chains are never D-Dd.
 	 */
-	if (chain->modify_tid != trans->sync_tid &&	   /* cross boundary */
+	if (chain->modify_xid != trans->sync_xid &&	   /* cross boundary */
 	    (flags & HAMMER2_MODIFY_INPLACE) == 0) {	   /* from d-d */
 		if (chain != &hmp->fchain && chain != &hmp->vchain) {
 			KKASSERT((flags & HAMMER2_MODIFY_ASSERTNOCOPY) == 0);
@@ -1427,7 +1437,7 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	if (chain != &hmp->vchain && chain != &hmp->fchain) {
 		if ((chain->bref.data_off & ~HAMMER2_OFF_MASK_RADIX) == 0 ||
 		     ((flags & HAMMER2_MODIFY_NOREALLOC) == 0 &&
-		      chain->modify_tid != trans->sync_tid)
+		      chain->modify_xid != trans->sync_xid)
 		) {
 			hammer2_freemap_alloc(trans, chain, chain->bytes);
 			/* XXX failed allocation */
@@ -1439,20 +1449,17 @@ hammer2_chain_modify(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	}
 
 	/*
-	 * Update modify_tid.  XXX special-case vchain/fchain because they
+	 * Update modify_xid.  XXX special-case vchain/fchain because they
 	 * are always modified in-place.  Otherwise the chain being modified
 	 * must not be part of a future transaction.
 	 */
 	if (chain == &hmp->vchain || chain == &hmp->fchain) {
-		if (chain->modify_tid <= trans->sync_tid)
-			chain->modify_tid = trans->sync_tid;
+		if (chain->modify_xid <= trans->sync_xid)
+			chain->modify_xid = trans->sync_xid;
 	} else {
-		KKASSERT(chain->modify_tid <= trans->sync_tid);
-		chain->modify_tid = trans->sync_tid;
+		KKASSERT(chain->modify_xid <= trans->sync_xid);
+		chain->modify_xid = trans->sync_xid;
 	}
-
-	if ((flags & HAMMER2_MODIFY_NO_MODIFY_TID) == 0)
-		chain->bref.modify_tid = trans->sync_tid;
 
 	/*
 	 * Do not COW BREF_TYPE_DATA when OPTDATA is set.  This is because
@@ -1556,26 +1563,36 @@ skip2:
 }
 
 /*
- * Mark the volume as having been modified.  This short-cut version
- * does not have to lock the volume's chain, which allows the ioctl
- * code to make adjustments to connections without deadlocking.  XXX
- *
- * No ref is made on vchain when flagging it MODIFIED.
+ * Volume header data locks
  */
 void
-hammer2_modify_volume(hammer2_mount_t *hmp)
+hammer2_voldata_lock(hammer2_mount_t *hmp)
 {
-	hammer2_voldata_lock(hmp);
-	hammer2_voldata_unlock(hmp, 1);
+	lockmgr(&hmp->vollk, LK_EXCLUSIVE);
+}
+
+void
+hammer2_voldata_unlock(hammer2_mount_t *hmp)
+{
+	lockmgr(&hmp->vollk, LK_RELEASE);
+}
+
+void
+hammer2_voldata_modify(hammer2_mount_t *hmp)
+{
+	if ((hmp->vchain.flags & HAMMER2_CHAIN_MODIFIED) == 0) {
+		atomic_set_int(&hmp->vchain.flags, HAMMER2_CHAIN_MODIFIED);
+		hammer2_chain_ref(&hmp->vchain);
+	}
 }
 
 /*
  * This function returns the chain at the nearest key within the specified
- * range with the highest delete_tid.  The core spinlock must be held on
+ * range with the highest delete_xid.  The core spinlock must be held on
  * call and the returned chain will be referenced but not locked.
  *
  * The returned chain may or may not be in a deleted state.  Note that
- * live chains have a delete_tid = MAX_TID.
+ * live chains have a delete_xid = XID_MAX.
  *
  * This function will recurse through chain->rbtree as necessary and will
  * return a *key_nextp suitable for iteration.  *key_nextp is only set if
@@ -1649,7 +1666,7 @@ hammer2_chain_find_deleted(hammer2_chain_t *parent,
 		hammer2_chain_find_cmp, hammer2_chain_find_callback,
 		&info);
 	if ((child = info.best) != NULL) {
-		if (child->delete_tid <= parent->update_lo)
+		if (child->delete_xid <= parent->update_xlo)
 			child = NULL;
 	}
 	return child;
@@ -1699,43 +1716,43 @@ hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
 		   child->bref.key <= info->key_beg) {
 		/*
 		 * If our current best is flush with key_beg and child is
-		 * also flush with key_beg choose based on delete_tid.
+		 * also flush with key_beg choose based on delete_xid.
 		 *
 		 * key_next will automatically be limited to the smaller of
 		 * the two end-points.
 		 */
-		if (child->delete_tid > best->delete_tid)
+		if (child->delete_xid > best->delete_xid)
 			info->best = child;
 	} else if (child->bref.key < best->bref.key) {
 		/*
 		 * Child has a nearer key and best is not flush with key_beg.
 		 * Truncate key_next to the old best key iff it had a better
-		 * delete_tid.
+		 * delete_xid.
 		 */
 		info->best = child;
-		if (best->delete_tid >= child->delete_tid &&
+		if (best->delete_xid >= child->delete_xid &&
 		    (info->key_next > best->bref.key || info->key_next == 0))
 			info->key_next = best->bref.key;
 	} else if (child->bref.key == best->bref.key) {
 		/*
 		 * If our current best is flush with the child then choose
-		 * based on delete_tid.
+		 * based on delete_xid.
 		 *
 		 * key_next will automatically be limited to the smaller of
 		 * the two end-points.
 		 */
-		if (child->delete_tid > best->delete_tid)
+		if (child->delete_xid > best->delete_xid)
 			info->best = child;
 	} else {
 		/*
 		 * Keep the current best but truncate key_next to the child's
-		 * base iff the child has a higher delete_tid.
+		 * base iff the child has a higher delete_xid.
 		 *
 		 * key_next will also automatically be limited to the smaller
 		 * of the two end-points (probably not necessary for this case
 		 * but we do it anyway).
 		 */
-		if (child->delete_tid >= best->delete_tid &&
+		if (child->delete_xid >= best->delete_xid &&
 		    (info->key_next > child->bref.key || info->key_next == 0))
 			info->key_next = child->bref.key;
 	}
@@ -1752,8 +1769,9 @@ hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
 
 /*
  * Retrieve the specified chain from a media blockref, creating the
- * in-memory chain structure which reflects it.  modify_tid will be
- * left 0 which forces any modifications to issue a delete-duplicate.
+ * in-memory chain structure which reflects it.  modify_xid will be
+ * set to the min value which forces any modifications to issue a
+ * delete-duplicate.
  *
  * To handle insertion races pass the INSERT_RACE flag along with the
  * generation number of the core.  NULL will be returned if the generation
@@ -1762,6 +1780,9 @@ hammer2_chain_find_callback(hammer2_chain_t *child, void *data)
  *
  * Caller must hold the parent locked shared or exclusive since we may
  * need the parent's bref array to find our block.
+ *
+ * WARNING! chain->pmp is left NULL if the bref represents a PFS mount
+ *	    point.
  */
 hammer2_chain_t *
 hammer2_chain_get(hammer2_chain_t *parent, int generation,
@@ -1776,16 +1797,19 @@ hammer2_chain_get(hammer2_chain_t *parent, int generation,
 	 * Allocate a chain structure representing the existing media
 	 * entry.  Resulting chain has one ref and is not locked.
 	 */
-	chain = hammer2_chain_alloc(hmp, parent->pmp, NULL, bref);
+	if (bref->flags & HAMMER2_BREF_FLAG_PFSROOT)
+		chain = hammer2_chain_alloc(hmp, NULL, NULL, bref);
+	else
+		chain = hammer2_chain_alloc(hmp, parent->pmp, NULL, bref);
 	hammer2_chain_core_alloc(NULL, chain, NULL);
 	/* ref'd chain returned */
 
 	/*
-	 * Set modify_tid and update_lo to the chain's synchronization
+	 * Set modify_xid and update_xlo to the chain's synchronization
 	 * point from the media.
 	 */
-	chain->modify_tid = chain->bref.mirror_tid;
-	chain->update_lo = chain->bref.mirror_tid;
+	chain->modify_xid = HAMMER2_XID_MIN;
+	chain->update_xlo = HAMMER2_XID_MIN;
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_BMAPPED);
 
 	/*
@@ -2401,7 +2425,7 @@ again:
 	spin_lock(&above->cst.spin);
 	chain = hammer2_combined_find(parent, base, count,
 				      cache_indexp, &next_key,
-				      key, HAMMER2_MAX_KEY,
+				      key, HAMMER2_KEY_MAX,
 				      &bref);
 	generation = above->generation;
 
@@ -2510,7 +2534,7 @@ done:
  */
 int
 hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
-		     hammer2_chain_t **chainp,
+		     hammer2_chain_t **chainp, hammer2_pfsmount_t *pmp,
 		     hammer2_key_t key, int keybits, int type, size_t bytes)
 {
 	hammer2_mount_t *hmp;
@@ -2524,6 +2548,9 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	int count;
 	int maxloops = 300000;
 
+	/*
+	 * Topology may be crossing a PFS boundary.
+	 */
 	above = parent->core;
 	KKASSERT(ccms_thread_lock_owned(&above->cst));
 	hmp = parent->hmp;
@@ -2542,7 +2569,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		dummy.keybits = keybits;
 		dummy.data_off = hammer2_getradix(bytes);
 		dummy.methods = parent->bref.methods;
-		chain = hammer2_chain_alloc(hmp, parent->pmp, trans, &dummy);
+		chain = hammer2_chain_alloc(hmp, pmp, trans, &dummy);
 		hammer2_chain_core_alloc(trans, chain, NULL);
 
 		/*
@@ -2599,7 +2626,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		 *
 		 * The chain must be modified in the current transaction
 		 * (the duplication code should have done that for us),
-		 * and it's modify_tid should be greater than the parent's
+		 * and it's modify_xid should be greater than the parent's
 		 * bref.mirror_tid.  This should cause it to be created under
 		 * the new parent.
 		 *
@@ -2609,7 +2636,7 @@ hammer2_chain_create(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		 *
 		 * Do NOT mess with the current state of the INITIAL flag.
 		 */
-		KKASSERT(chain->modify_tid == trans->sync_tid);
+		KKASSERT(chain->modify_xid == trans->sync_xid);
 		chain->bref.key = key;
 		chain->bref.keybits = keybits;
 		KKASSERT(chain->above == NULL);
@@ -2808,7 +2835,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	 * We want nchain to be our go-to live chain, but ochain may be in
 	 * a MODIFIED state within the current flush synchronization segment.
 	 * Force any further modifications of ochain to do another COW
-	 * operation even if modify_tid indicates that one is not needed.
+	 * operation even if modify_xid indicates that one is not needed.
 	 *
 	 * We don't want to set FORCECOW on nchain simply as an optimization,
 	 * as many duplication calls simply move chains into ichains and
@@ -2829,10 +2856,10 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	 * it with the same core, making it the same size, pointing it
 	 * to the same bref (the same media block).
 	 *
-	 * Give nchain the same modify_tid that we previously ensured was
+	 * Give nchain the same modify_xid that we previously ensured was
 	 * sufficiently advanced to trigger a block table insertion on flush.
 	 *
-	 * nchain copies ochain's data and must inherit ochain->update_lo.
+	 * nchain copies ochain's data and must inherit ochain->update_xlo.
 	 *
 	 * NOTE: bref.mirror_tid duplicated by virtue of bref copy in
 	 *	 hammer2_chain_alloc()
@@ -2849,14 +2876,16 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 	bytes = (hammer2_off_t)1 <<
 		(int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
 	nchain->bytes = bytes;
-	nchain->modify_tid = ochain->modify_tid;
-	nchain->update_lo = ochain->update_lo;
+	nchain->modify_xid = ochain->modify_xid;
+	nchain->update_xlo = ochain->update_xlo;
 	nchain->inode_reason = ochain->inode_reason + 0x100000;
 	atomic_set_int(&nchain->flags,
 		       ochain->flags & (HAMMER2_CHAIN_INITIAL |
 					HAMMER2_CHAIN_FORCECOW |
-					HAMMER2_CHAIN_UNLINKED));
-	if (ochain->modify_tid == trans->sync_tid)
+					HAMMER2_CHAIN_UNLINKED |
+					HAMMER2_CHAIN_PFSROOT |
+					HAMMER2_CHAIN_PFSBOUNDARY));
+	if (ochain->modify_xid == trans->sync_xid)
 		atomic_set_int(&ochain->flags, HAMMER2_CHAIN_FORCECOW);
 
 	/*
@@ -2869,12 +2898,12 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 
 	/*
 	 * Place nchain in the modified state, instantiate media data
-	 * if necessary.  Because modify_tid is already completely
+	 * if necessary.  Because modify_xid is already completely
 	 * synchronized this should not result in a delete-duplicate.
 	 *
 	 * We want nchain at the target to look like a new insertion.
 	 * Forcing the modification to be INPLACE accomplishes this
-	 * because we get the same nchain with an updated modify_tid.
+	 * because we get the same nchain with an updated modify_xid.
 	 */
 	if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
 		hammer2_chain_modify(trans, &nchain,
@@ -2903,7 +2932,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		KKASSERT((nchain->flags & HAMMER2_CHAIN_DELETED) == 0);
 		KKASSERT(parent->refs > 0);
 
-		hammer2_chain_create(trans, parentp, &nchain,
+		hammer2_chain_create(trans, parentp, &nchain, nchain->pmp,
 				     nchain->bref.key, nchain->bref.keybits,
 				     nchain->bref.type, nchain->bytes);
 		parent = NULL;
@@ -2922,7 +2951,7 @@ hammer2_chain_duplicate(hammer2_trans_t *trans, hammer2_chain_t **parentp,
  *
  * If appropriate, the chain is added to the shadow topology and FLUSH_DELETE
  * is set for flusher visbility.  The caller is responsible for calling
- * setsubmod on chain, so we do not adjust update_hi here.
+ * setsubmod on chain, so we do not adjust update_xhi here.
  */
 static void
 _hammer2_chain_delete_helper(hammer2_trans_t *trans,
@@ -2933,7 +2962,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 	hammer2_chain_t *xchain;
 
 	KKASSERT(chain->flags & HAMMER2_CHAIN_ONRBTREE);
-	KKASSERT(trans->sync_tid >= chain->modify_tid);
+	KKASSERT(trans->sync_xid >= chain->modify_xid);
 	KKASSERT((chain->flags & (HAMMER2_CHAIN_DELETED |
 				  HAMMER2_CHAIN_ONDBQ |
 				  HAMMER2_CHAIN_ONDBTREE |
@@ -2943,7 +2972,7 @@ _hammer2_chain_delete_helper(hammer2_trans_t *trans,
 	 * Flag as deleted, reduce live_count and bump the above core's
 	 * generation.
 	 */
-	chain->delete_tid = trans->sync_tid;
+	chain->delete_xid = trans->sync_xid;
 	atomic_set_int(&chain->flags, HAMMER2_CHAIN_DELETED);
 	atomic_add_int(&above->live_count, -1);
 	++above->generation;
@@ -3046,7 +3075,7 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 */
 	nchain = hammer2_chain_alloc(hmp, ochain->pmp, trans, &ochain->bref);
 	if ((ochain->flags & HAMMER2_CHAIN_DELETED) ||
-	    (ochain->modify_tid > trans->sync_tid)) {
+	    (ochain->modify_xid > trans->sync_xid)) {
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_DELETED);
 	}
 	if (flags & HAMMER2_DELDUP_RECORE)
@@ -3065,7 +3094,7 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 * doing this in-place under the same parent the block array
 	 * inserted/deleted state does not change.
 	 *
-	 * nchain copies ochain's data and must inherit ochain->update_lo.
+	 * nchain copies ochain's data and must inherit ochain->update_xlo.
 	 *
 	 * If ochain was previously marked FORCECOW we also flag nchain
 	 * FORCECOW (used during hardlink splits).  FORCECOW forces a
@@ -3080,21 +3109,13 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	atomic_set_int(&nchain->flags,
 		       ochain->flags & (HAMMER2_CHAIN_INITIAL |
 					HAMMER2_CHAIN_FORCECOW |
-					HAMMER2_CHAIN_UNLINKED));
-	if (ochain->modify_tid == trans->sync_tid)
+					HAMMER2_CHAIN_UNLINKED |
+					HAMMER2_CHAIN_PFSROOT |
+					HAMMER2_CHAIN_PFSBOUNDARY));
+	if (ochain->modify_xid == trans->sync_xid)
 		atomic_set_int(&ochain->flags, HAMMER2_CHAIN_FORCECOW);
 	nchain->inode_reason = ochain->inode_reason + 0x1000;
-	nchain->update_lo = ochain->update_lo;
-	nchain->dsrc = ochain->bref;			/* DEBUG */
-	nchain->dsrc_dupfromat = trans->sync_tid;	/* DEBUG */
-	nchain->dsrc_dupfromflags = trans->flags;	/* DEBUG */
-	nchain->dsrc_reason = ochain->inode_reason;	/* DEBUG */
-	nchain->dsrc_ninserts = ochain->ninserts;	/* DEBUG */
-	nchain->dsrc_flags = ochain->flags;		/* DEBUG */
-	nchain->dsrc_modify = ochain->modify_tid;	/* DEBUG */
-	nchain->dsrc_delete = ochain->delete_tid;	/* DEBUG */
-	nchain->dsrc_update_lo = ochain->update_lo;	/* DEBUG */
-	nchain->dsrc_original = ochain;			/* DEBUG */
+	nchain->update_xlo = ochain->update_xlo;
 
 	/*
 	 * Lock nchain so both chains are now locked (extremely important
@@ -3109,8 +3130,8 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 				  HAMMER2_CHAIN_ONDBQ));
 	spin_lock(&above->cst.spin);
 
-	nchain->modify_tid = ochain->modify_tid;
-	nchain->delete_tid = HAMMER2_MAX_TID;
+	nchain->modify_xid = ochain->modify_xid;
+	nchain->delete_xid = HAMMER2_XID_MAX;
 
 	if ((nchain->flags & HAMMER2_CHAIN_DELETED) &&
 	    (oflags & HAMMER2_CHAIN_DUPLICATED)) {
@@ -3124,17 +3145,17 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		 * of ochain.
 		 */
 		KKASSERT(trans->flags & HAMMER2_TRANS_ISFLUSH);
-		KKASSERT(ochain->modify_tid < trans->sync_tid);
-		KKASSERT(ochain->delete_tid > trans->sync_tid);
+		KKASSERT(ochain->modify_xid < trans->sync_xid);
+		KKASSERT(ochain->delete_xid > trans->sync_xid);
 		atomic_set_int(&nchain->flags, HAMMER2_CHAIN_FLUSH_TEMPORARY);
 		hammer2_chain_insert(above, ochain, nchain, 0, 0);
 
 		if ((ochain->flags & HAMMER2_CHAIN_DELETED) &&
-		    ochain->modify_tid < trans->sync_tid) {
-			nchain->delete_tid = ochain->delete_tid;
-			ochain->delete_tid = trans->sync_tid;
-		} else if (ochain->modify_tid > trans->sync_tid) {
-			nchain->delete_tid = ochain->modify_tid;
+		    ochain->modify_xid < trans->sync_xid) {
+			nchain->delete_xid = ochain->delete_xid;
+			ochain->delete_xid = trans->sync_xid;
+		} else if (ochain->modify_xid > trans->sync_xid) {
+			nchain->delete_xid = ochain->modify_xid;
 		}
 	} else if (nchain->flags & HAMMER2_CHAIN_DELETED) {
 		/*
@@ -3149,7 +3170,7 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 		 * marked deleted.
 		 */
 		hammer2_chain_insert(above, ochain, nchain, 0, 0);
-		nchain->delete_tid = trans->sync_tid;
+		nchain->delete_xid = trans->sync_xid;
 	} else {
 		/*
 		 * Normal case, delete-duplicate deletes ochain and nchain
@@ -3173,8 +3194,8 @@ hammer2_chain_delete_duplicate(hammer2_trans_t *trans, hammer2_chain_t **chainp,
 	 * Finishing fixing up nchain.  A new block will be allocated if
 	 * crossing a synchronization point (meta-data only).
 	 *
-	 * Calling hammer2_chain_modify() will update modify_tid to
-	 * (typically) trans->sync_tid.
+	 * Calling hammer2_chain_modify() will update modify_xid to
+	 * (typically) trans->sync_xid.
 	 */
 	if (nchain->bref.type == HAMMER2_BREF_TYPE_DATA) {
 		hammer2_chain_modify(trans, &nchain,
@@ -3360,7 +3381,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * dummy used in later chain allocation (no longer used for lookups).
 	 */
 	bzero(&dummy, sizeof(dummy));
-	dummy.delete_tid = HAMMER2_MAX_TID;
+	dummy.delete_xid = HAMMER2_XID_MAX;
 
 	/*
 	 * When creating an indirect block for a freemap node or leaf
@@ -3433,7 +3454,7 @@ hammer2_chain_create_indirect(hammer2_trans_t *trans, hammer2_chain_t *parent,
 	 * XXX handle flushes.
 	 */
 	key_beg = 0;
-	key_end = HAMMER2_MAX_KEY;
+	key_end = HAMMER2_KEY_MAX;
 	cache_index = 0;
 	spin_lock(&above->cst.spin);
 	loops = 0;
@@ -3651,7 +3672,7 @@ hammer2_chain_indkey_freemap(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	 * slots which are overridden with a deletion.
 	 */
 	key_beg = 0;
-	key_end = HAMMER2_MAX_KEY;
+	key_end = HAMMER2_KEY_MAX;
 	cache_index = 0;
 	spin_lock(&above->cst.spin);
 
@@ -3764,7 +3785,7 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 	 * range into the new indirect block.
 	 */
 	key_beg = 0;
-	key_end = HAMMER2_MAX_KEY;
+	key_end = HAMMER2_KEY_MAX;
 	cache_index = 0;
 	spin_lock(&above->cst.spin);
 
@@ -3896,7 +3917,7 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
 
 /*
  * Sets CHAIN_DELETED and CHAIN_FLUSH_DELETE in the chain being deleted and
- * set chain->delete_tid.  The chain is not actually marked possibly-free
+ * set chain->delete_xid.  The chain is not actually marked possibly-free
  * in the freemap until the deletion is completely flushed out (because
  * a flush which doesn't cover the entire deletion is flushing the deleted
  * chain as if it were live).
@@ -3913,10 +3934,6 @@ hammer2_chain_indkey_normal(hammer2_chain_t *parent, hammer2_key_t *keyp,
  * chain (such as an inode) may still need visibility into its contents,
  * as well as the ability to read and modify the contents.  For example,
  * for an unlinked file which is still open.
- *
- * NOTE: This function does NOT set chain->modify_tid, allowing future
- *	 code to distinguish between live and deleted chains by testing
- *	 trans->sync_tid vs chain->modify_tid and chain->delete_tid.
  *
  * NOTE: Deletions normally do not occur in the middle of a duplication
  *	 chain but we use a trick for hardlink migration that refactors
@@ -4133,9 +4150,12 @@ hammer2_combined_find(hammer2_chain_t *parent,
 	    chain->bref.key == base[i].key) {
 		KKASSERT(chain->bref.key == base[i].key);
 		if ((chain->flags & HAMMER2_CHAIN_BMAPPED) == 0) {
-			kprintf("chain not bmapped %p.%d %08x\n", chain, chain->bref.type, chain->flags);
-			kprintf("in chain mod/del %016jx %016jx\n", chain->modify_tid, chain->delete_tid);
-			kprintf("and updlo/hi %016jx %016jx\n", chain->update_lo, chain->update_hi);
+			kprintf("chain not bmapped %p.%d %08x\n",
+				chain, chain->bref.type, chain->flags);
+			kprintf("in chain mod/del %08x %08x\n",
+				chain->modify_xid, chain->delete_xid);
+			kprintf("and updlo/hi %08x %08x\n",
+				chain->update_xlo, chain->update_xhi);
 		}
 		KKASSERT(chain->flags & HAMMER2_CHAIN_BMAPPED);
 		bref = &chain->bref;
@@ -4203,10 +4223,6 @@ hammer2_base_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
 		return;
 	}
 	bzero(&base[i], sizeof(*base));
-	base[i].mirror_tid = (intptr_t)parent;		/* MEDIA DEBUG */
-	base[i].modify_tid = (intptr_t)child;		/* MEDIA DEBUG */
-	base[i].check.debug.sync_tid = trans->sync_tid;	/* MEDIA DEBUG */
-	++parent->nremoves;				/* DEBUG */
 
 	/*
 	 * We can only optimize core->live_zero for live chains.
@@ -4268,7 +4284,6 @@ hammer2_base_insert(hammer2_trans_t *trans __unused, hammer2_chain_t *parent,
 		if ((parent->flags & HAMMER2_CHAIN_DUPLICATED) == 0) {
 			i = core->live_zero++;
 			base[i] = *elm;
-	++parent->ninserts;	/* DEBUG */
 			return;
 		}
 	}
@@ -4302,7 +4317,6 @@ hammer2_base_insert(hammer2_trans_t *trans __unused, hammer2_chain_t *parent,
 				      (i - j - 1) * sizeof(*base));
 				base[i - 1] = *elm;
 			}
-	++parent->ninserts;	/* DEBUG */
 			goto validate;
 		}
 		++k;
@@ -4320,7 +4334,6 @@ hammer2_base_insert(hammer2_trans_t *trans __unused, hammer2_chain_t *parent,
 					core->live_zero = k + 1;
 			}
 			u = 2;
-	++parent->ninserts;	/* DEBUG */
 			goto validate;
 		}
 	}
