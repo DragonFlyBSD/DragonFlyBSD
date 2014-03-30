@@ -805,7 +805,8 @@ BSTRAPDIRS2= \
 	usr.sbin/chown usr.sbin/mtree usr.sbin/config \
 	usr.sbin/btxld usr.sbin/zic usr.sbin/makewhatis \
 	gnu/usr.bin/texinfo gnu/usr.bin/grep usr.bin/sort \
-	usr.bin/gzip usr.bin/bzip2 usr.bin/mkcsmapper usr.bin/mkesdb
+	usr.bin/gzip usr.bin/bzip2 usr.bin/mkcsmapper usr.bin/mkesdb \
+	usr.bin/crunch
 
 bootstrap-tools: bootstrap-tools-before bootstrap-tools-targets1 bootstrap-tools-targets2
 	touch ${BTOOLSDEST}/.bootstrap_done

@@ -1,6 +1,4 @@
 /*	$NetBSD: crunchide.c,v 1.8 1997/11/01 06:51:45 lukem Exp $	*/
-/* $FreeBSD: src/usr.sbin/crunch/crunchide/crunchide.c,v 1.6.6.1 2002/07/25 09:33:17 ru Exp $ */
-/* $DragonFly: src/usr.sbin/crunch/crunchide/crunchide.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $ */
 /*
  * Copyright (c) 1997 Christopher G. Demetriou.  All rights reserved.
  * Copyright (c) 1994 University of Maryland
@@ -26,8 +24,6 @@
  * Author: James da Silva, Systems Design and Analysis Group
  *			   Computer Science Department
  *			   University of Maryland at College Park
- *
- * $NetBSD: crunchide.c,v 1.8 1997/11/01 06:51:45 lukem Exp $
  */
 /*
  * crunchide.c - tiptoes through an a.out symbol table, hiding all defined
@@ -62,17 +58,22 @@
  *	  that the final crunched binary BSS size is the max of all the
  *	  component programs' BSS sizes, rather than their sum.
  */
-#include <sys/cdefs.h>
 
+#include <sys/cdefs.h>
+#ifndef lint
+__RCSID("$NetBSD: crunchide.c,v 1.8 1997/11/01 06:51:45 lukem Exp $");
+#endif
+__FBSDID("$FreeBSD: head/usr.sbin/crunch/crunchide/crunchide.c 237625 2012-06-27 04:39:30Z obrien $");
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/errno.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
 #include <a.out.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/errno.h>
 
 #include "extern.h"
 
@@ -194,7 +195,7 @@ add_file_to_keep_list(char *filename)
 	usage();
     }
 
-    while(fgets(symbol, 1024, keepf)) {
+    while(fgets(symbol, sizeof(symbol), keepf)) {
 	len = strlen(symbol);
 	if(len && symbol[len-1] == '\n')
 	    symbol[len-1] = '\0';
@@ -211,10 +212,8 @@ struct {
 	int	(*check)(int, const char *);	/* 1 if match, zero if not */
 	int	(*hide)(int, const char *);	/* non-zero if error */
 } exec_formats[] = {
-#if defined(__i386__) && defined(arch_i386)
 #ifdef NLIST_AOUT
 	{	"a.out",	check_aout,	hide_aout,	},
-#endif
 #endif
 #ifdef NLIST_ECOFF
 	{	"ECOFF",	check_elf64,	hide_elf64,	},

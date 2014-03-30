@@ -22,9 +22,6 @@
  * Author: James da Silva, Systems Design and Analysis Group
  *			   Computer Science Department
  *			   University of Maryland at College Park
- *
- * $FreeBSD: src/usr.sbin/crunch/crunchgen/crunched_main.c,v 1.6.6.2 2002/08/09 02:42:02 gshapiro Exp $
- * $DragonFly: src/usr.sbin/crunch/crunchgen/crunched_main.c,v 1.3 2003/11/16 14:10:44 eirikn Exp $
  */
 /*
  * crunched_main.c - main program for crunched binaries, it branches to a
@@ -34,7 +31,12 @@
  *	or calls one of them based on argv[1].   This allows the testing of
  *	the crunched binary without creating all the links.
  */
+
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD: head/usr.sbin/crunch/crunchgen/crunched_main.c 237625 2012-06-27 04:39:30Z obrien $");
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 struct stub {
@@ -42,6 +44,7 @@ struct stub {
     int (*f)();
 };
 
+extern char *__progname;
 extern struct stub entry_points[];
 
 int
@@ -87,18 +90,22 @@ crunched_here(char *path)
 int
 crunched_main(int argc, char **argv, char **envp)
 {
+    char *slash;
     struct stub *ep;
     int columns, len;
 
     if(argc <= 1)
 	crunched_usage();
 
+    slash = strrchr(argv[1], '/');
+    __progname = slash? slash+1 : argv[1];
+
     return main(--argc, ++argv, envp);
 }
 
 
 int
-crunched_usage(void)
+crunched_usage()
 {
     int columns, len;
     struct stub *ep;

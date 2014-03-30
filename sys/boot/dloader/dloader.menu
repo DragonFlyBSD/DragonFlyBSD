@@ -133,6 +133,21 @@ menuadd boot
 menuadd set autoboot_delay=NO
 endif
 
+menuitem r "Boot DragonFly in a rescue ramdisk"
+menuadd cd ${base}${default_kernel}
+menuadd optinclude loader.conf
+menuadd optinclude loader.conf.local
+menuadd set boot_single="YES"
+menuadd lunsetif acpi_load hint.acpi.0.disabled
+menuadd lunsetif ehci_load hint.ehci.0.disabled
+menuadd lunsetif ahci_load hint.ahci.disabled
+menuadd initrd.img_load="YES"
+menuadd initrd.img_type="md_image"
+menuadd set vfs.root.mountfrom="ufs:md0s0"
+menuadd loadall
+menuadd boot
+menuadd set autoboot_delay=NO
+
 menuitem s "Boot DragonFly in single user mode"
 menuadd cd ${base}${default_kernel}
 menuadd optinclude loader.conf

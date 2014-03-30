@@ -1,6 +1,5 @@
 /*	$NetBSD: extern.h,v 1.5 1998/05/06 13:16:57 mycroft Exp $	*/
-/* $FreeBSD: src/usr.sbin/crunch/crunchide/extern.h,v 1.1.6.1 2002/07/25 09:33:17 ru Exp $ */
-/* $DragonFly: src/usr.sbin/crunch/crunchide/extern.h,v 1.2 2003/06/17 04:29:53 dillon Exp $ */
+/* $FreeBSD: head/usr.sbin/crunch/crunchide/extern.h 97280 2002-05-25 13:39:20Z ru $ */
 
 /*
  * Copyright (c) 1997 Christopher G. Demetriou.  All rights reserved.
@@ -31,24 +30,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifdef arch_alpha
-#define	NLIST_ECOFF
-#define	NLIST_ELF64
-#else
-#ifdef arch_mips
-#define NLIST_ELF32
-#else
-#ifdef arch_powerpc
-#define	NLIST_ELF32
-#else
-#define	NLIST_AOUT
-/* #define	NLIST_ECOFF */
-#define	NLIST_ELF32
-/* #define	NLIST_ELF64 */
-#endif
-#endif
-#endif
 
 #ifdef NLIST_AOUT
 int	check_aout(int, const char *);

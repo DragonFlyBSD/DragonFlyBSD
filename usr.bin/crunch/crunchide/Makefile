@@ -1,13 +1,19 @@
-# $FreeBSD: src/usr.sbin/crunch/crunchide/Makefile,v 1.2.6.1 2002/07/25 09:33:17 ru Exp $
-# $DragonFly: src/usr.sbin/crunch/crunchide/Makefile,v 1.2 2003/06/17 04:29:53 dillon Exp $
+# $FreeBSD: head/usr.sbin/crunch/crunchide/Makefile 232911 2012-03-13 05:21:14Z jmallett $
 
 PROG=   crunchide
-SRCS=	crunchide.c exec_elf32.c exec_elf64.c
+SRCS=	crunchide.c
 
 TARGET_ARCH?=	${MACHINE_ARCH}
-.if ${TARGET_ARCH} == i386 && ${MACHINE_ARCH} == i386
-SRCS+=	exec_aout.c
+
+.if ${TARGET_ARCH} == ia64 || ${TARGET_ARCH} == powerpc64 || \
+    ${TARGET_ARCH} == sparc64 || ${TARGET_ARCH} == x86_64 || \
+    ${TARGET_ARCH:Mmips64*}
+CFLAGS+=-DNLIST_ELF64
+SRCS+=	exec_elf64.c
+exec_elf64.o: exec_elf32.c
+.else
+CFLAGS+=-DNLIST_ELF32
+SRCS+=	exec_elf32.c
 .endif
-CFLAGS+=-Darch_${TARGET_ARCH}
 
 .include <bsd.prog.mk>

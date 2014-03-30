@@ -1,5 +1,4 @@
-# $FreeBSD: src/usr.sbin/crunch/crunchgen/Makefile,v 1.4.8.1 2002/04/11 19:41:39 murray Exp $
-# $DragonFly: src/usr.sbin/crunch/crunchgen/Makefile,v 1.2 2003/06/17 04:29:53 dillon Exp $
+# $FreeBSD: head/usr.sbin/crunch/crunchgen/Makefile 80029 2001-07-20 06:20:32Z obrien $
 
 PROG=	crunchgen
 SRCS=	crunchgen.c crunched_skel.c

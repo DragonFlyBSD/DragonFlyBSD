@@ -1,5 +1,6 @@
+# $FreeBSD: head/usr.sbin/crunch/examples/Makefile 241298 2012-10-06 20:01:05Z marcel $
 
-CRUNCHED=   fixit
+CRUNCHED=	fixit
 
 # below is boiler-plate to make $(CRUNCHED) from $(CRUNCHED).conf
 # I'd use PROG instead of CRUNCHED, but the system makefiles REALLY want
@@ -8,24 +9,24 @@ CRUNCHED=   fixit
 CONF=	$(CRUNCHED).conf
 
 OUTMK=	$(CRUNCHED).mk
-OUTPUTS=  $(OUTMK) $(CRUNCHED).c $(CRUNCHED).cache
+OUTPUTS= $(OUTMK) $(CRUNCHED).c $(CRUNCHED).cache
 
-NOMAN=
-CLEANFILES+=$(CRUNCHED) *.o *.lo *.c *.mk *.cache
-CLEANDIRFILES+=$(OUTPUTS)
+NO_MAN=
+CLEANFILES+= $(CRUNCHED) *.o *.lo *.c *.mk *.cache
+CLEANDIRFILES+= $(OUTPUTS)
 
 all: $(CRUNCHED)
 exe: $(CRUNCHED)
 
 $(OUTPUTS): $(CONF)
-	crunchgen ${.CURDIR}/$(CONF)
+	MAKE=${MAKE} crunchgen ${.CURDIR}/$(CONF)
 
 $(CRUNCHED): $(OUTPUTS) submake
 
 submake:
-	make -f $(OUTMK)
+	${MAKE} -f $(OUTMK)
 objs:
-	make -f $(OUTMK) objs
+	${MAKE} -f $(OUTMK) objs
 cleandir:
 	rm -f $(CLEANDIRFILES)
 
