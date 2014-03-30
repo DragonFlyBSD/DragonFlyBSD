@@ -438,17 +438,17 @@
 #if (defined(__cplusplus) && __cplusplus >= 201103L) || \
     __has_extension(cxx_static_assert)
 #define	_Static_assert(x, y)	static_assert(x, y)
-#define	CTASSERT(x)		_Static_assert(x, \
-				    "compile-time assertion failed")
 #elif !__GNUC_PREREQ__(4, 6)
 #define	_Static_assert(x, y)	struct __hack
 #define	CTASSERT(x)		_CTASSERT(x, __LINE__)
 #define	_CTASSERT(x, y)		__CTASSERT(x, y)
 #define	__CTASSERT(x, y)	typedef char __assert ## y[(x) ? 1 : -1]
-#else
+#endif
+#endif
+
+#ifndef CTASSERT
 #define	CTASSERT(x)		_Static_assert(x, \
 				    "compile-time assertion failed")
-#endif
 #endif
 
 /*
