@@ -998,7 +998,7 @@ hammer2_chain_load_async(hammer2_cluster_t *cluster,
 	chain = NULL;
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i];
-		if (chain->data)
+		if (chain && chain->data)
 			break;
 	}
 	if (i == cluster->nchains) {

@@ -91,13 +91,18 @@ hammer2_inode_lock_ex(hammer2_inode_t *ip)
 
 	hammer2_inode_ref(ip);
 	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_EXCLUSIVE);
-	cluster = hammer2_cluster_copy(&ip->cluster, 0);
+	cluster = hammer2_cluster_copy(&ip->cluster,
+				       HAMMER2_CLUSTER_COPY_NOCHAINS);
 
 	ip->cluster.focus = NULL;
 	cluster->focus = NULL;
 
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = ip->cluster.array[i];
+		if (chain == NULL) {
+			kprintf("inode_lock: %p: missing chain\n", ip);
+			continue;
+		}
 		core = chain->core;
 		for (;;) {
 			if (chain->flags & HAMMER2_CHAIN_DUPLICATED) {
@@ -168,13 +173,20 @@ hammer2_inode_lock_sh(hammer2_inode_t *ip)
 	int i;
 
 	hammer2_inode_ref(ip);
-	cluster = hammer2_cluster_copy(&ip->cluster, 0);
+	cluster = hammer2_cluster_copy(&ip->cluster,
+				       HAMMER2_CLUSTER_COPY_NOCHAINS);
 	ccms_thread_lock(&ip->topo_cst, CCMS_STATE_SHARED);
 
 	cluster->focus = NULL;
 
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = ip->cluster.array[i];
+
+		if (chain == NULL) {
+			kprintf("inode_lock: %p: missing chain\n", ip);
+			continue;
+		}
+
 		core = chain->core;
 
 		if (chain->flags & HAMMER2_CHAIN_DUPLICATED)
@@ -1291,8 +1303,7 @@ hammer2_unlink_file(hammer2_trans_t *trans, hammer2_inode_t *dip,
 		cparent = NULL;
 
 		ocluster = cluster;
-		cluster = hammer2_cluster_copy(ocluster,
-					       HAMMER2_CLUSTER_COPY_CHAINS);
+		cluster = hammer2_cluster_copy(ocluster, 0);
 		error = hammer2_hardlink_find(dip, cluster);
 		KKASSERT(error == 0);
 	}
@@ -1596,7 +1607,6 @@ hammer2_hardlink_consolidate(hammer2_trans_t *trans,
 		 * to reallocate the block.  Set FORCECOW to force it to.
 		 */
 		ncluster = hammer2_cluster_copy(cluster,
-						HAMMER2_CLUSTER_COPY_CHAINS |
 						HAMMER2_CLUSTER_COPY_NOREF);
 		hammer2_cluster_lock(ncluster, HAMMER2_RESOLVE_ALWAYS);
 		hammer2_cluster_set_chainflags(ncluster,

@@ -114,6 +114,7 @@ hammer2_io_getblk(hammer2_mount_t *hmp, off_t lbase, int lsize, int *ownerp)
 		spin_lock(&hmp->io_spin);
 		xio = RB_INSERT(hammer2_io_tree, &hmp->iotree, dio);
 		if (xio == NULL) {
+			atomic_add_int(&hammer2_dio_count, 1);
 			spin_unlock(&hmp->io_spin);
 		} else {
 			if ((atomic_fetchadd_int(&xio->refs, 1) &
@@ -330,6 +331,7 @@ hammer2_io_cleanup(hammer2_mount_t *hmp, struct hammer2_io_tree *tree)
 		KKASSERT(dio->bp == NULL &&
 		    (dio->refs & (HAMMER2_DIO_MASK | HAMMER2_DIO_INPROG)) == 0);
 		kfree(dio, M_HAMMER2);
+		atomic_add_int(&hammer2_dio_count, -1);
 		atomic_add_int(&hmp->iofree_count, -1);
 	}
 }

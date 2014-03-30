@@ -521,11 +521,13 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 	hammer2_chain_t *chain = *chainp;
 	hammer2_chain_t *saved_parent;
 	hammer2_mount_t *hmp;
+	hammer2_pfsmount_t *pmp;
 	hammer2_chain_core_t *core;
 	int diddeferral;
 	int saved_domodify;
 
 	hmp = chain->hmp;
+	pmp = chain->pmp;
 	core = chain->core;
 	diddeferral = info->diddeferral;
 
@@ -547,7 +549,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 	/*
 	 * mirror_tid should not be forward-indexed
 	 */
-	KKASSERT(chain->bref.mirror_tid <= chain->pmp->flush_tid);
+	KKASSERT(chain->bref.mirror_tid <= pmp->flush_tid);
 
 	/*
 	 * Ignore chains modified beyond the current flush point.  These
@@ -668,7 +670,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 			if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 				atomic_clear_int(&chain->flags,
 						HAMMER2_CHAIN_MODIFIED);
-				hammer2_pfs_memory_wakeup(chain->pmp);
+				hammer2_pfs_memory_wakeup(pmp);
 				hammer2_chain_drop(chain);
 			}
 #if 0
@@ -850,7 +852,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 	 *
 	 * update bref.mirror_tid.  update_xlo has already been updated.
 	 */
-	chain->bref.mirror_tid = chain->pmp->flush_tid;
+	chain->bref.mirror_tid = pmp->flush_tid;
 
 	/*
 	 * Dispose of the modified bit.  FLUSH_CREATE should already be
@@ -859,7 +861,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 	KKASSERT((chain->flags & HAMMER2_CHAIN_FLUSH_CREATE) ||
 		 chain == &hmp->vchain);
 	atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
-	hammer2_pfs_memory_wakeup(chain->pmp);
+	hammer2_pfs_memory_wakeup(pmp);
 
 	if ((chain->flags & HAMMER2_CHAIN_FLUSH_CREATE) ||
 	    chain == &hmp->vchain ||
@@ -1012,7 +1014,14 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 		break;
 	case HAMMER2_BREF_TYPE_INODE:
 		if (chain->data->ipdata.op_flags & HAMMER2_OPFLAG_PFSROOT) {
-			/* might not be mounted as a PFS */
+			/*
+			 * non-NULL pmp if mounted as a PFS.  We must sync
+			 * fields cached in the pmp.
+			 */
+			hammer2_inode_data_t *ipdata;
+
+			ipdata = &chain->data->ipdata;
+			ipdata->pfs_inum = pmp->inode_tid;
 		} else {
 			/* can't be mounted as a PFS */
 			KKASSERT((chain->flags & HAMMER2_CHAIN_PFSROOT) == 0);

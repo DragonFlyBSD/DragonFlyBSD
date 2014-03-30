@@ -85,6 +85,7 @@ int hammer2_cluster_enable = 1;
 int hammer2_hardlink_enable = 1;
 int hammer2_flush_pipe = 100;
 int hammer2_synchronous_flush = 1;
+int hammer2_dio_count;
 long hammer2_limit_dirty_chains;
 long hammer2_iod_file_read;
 long hammer2_iod_meta_read;
@@ -127,6 +128,8 @@ SYSCTL_INT(_vfs_hammer2, OID_AUTO, synchronous_flush, CTLFLAG_RW,
 	   &hammer2_synchronous_flush, 0, "");
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, limit_dirty_chains, CTLFLAG_RW,
 	   &hammer2_limit_dirty_chains, 0, "");
+SYSCTL_INT(_vfs_hammer2, OID_AUTO, dio_count, CTLFLAG_RD,
+	   &hammer2_dio_count, 0, "");
 
 SYSCTL_LONG(_vfs_hammer2, OID_AUTO, iod_file_read, CTLFLAG_RW,
 	   &hammer2_iod_file_read, 0, "");
@@ -1346,10 +1349,10 @@ hammer2_compress_and_write(struct buf *bp, hammer2_trans_t *trans,
 			/* NOT REACHED */
 			break;
 		}
-
-		hammer2_chain_unlock(chain);
 	}
 done:
+	if (cluster)
+		hammer2_cluster_unlock(cluster);
 	if (comp_buffer)
 		objcache_put(cache_buffer_write, comp_buffer);
 }
@@ -1718,6 +1721,8 @@ hammer2_vfs_unmount_hmp2(struct mount *mp, hammer2_mount_t *hmp)
 				spmp->iroot = NULL;
 			}
 			hmp->spmp = NULL;
+			kmalloc_destroy(&spmp->mmsg);
+			kmalloc_destroy(&spmp->minode);
 			kfree(spmp, M_HAMMER2);
 		}
 

@@ -437,12 +437,14 @@ struct hammer2_cluster {
 	int			nchains;
 	hammer2_chain_t		*focus;		/* current focus (or mod) */
 	hammer2_chain_t		*array[HAMMER2_MAXCLUSTER];
+	char			missed[HAMMER2_MAXCLUSTER];
 	int			cache_index[HAMMER2_MAXCLUSTER];
 };
 
 typedef struct hammer2_cluster hammer2_cluster_t;
 
 #define HAMMER2_CLUSTER_INODE	0x00000001	/* embedded in inode */
+#define HAMMER2_CLUSTER_NOSYNC	0x00000002	/* not in sync (cumulative) */
 
 
 RB_HEAD(hammer2_inode_tree, hammer2_inode);
@@ -561,8 +563,8 @@ typedef struct hammer2_trans hammer2_trans_t;
 #define HAMMER2_FREEMAP_HEUR		(HAMMER2_FREEMAP_HEUR_NRADIX * \
 					 HAMMER2_FREEMAP_HEUR_TYPES)
 
-#define HAMMER2_CLUSTER_COPY_CHAINS	0x0001	/* copy chains */
-#define HAMMER2_CLUSTER_COPY_NOREF	0x0002	/* do not ref chains */
+#define HAMMER2_CLUSTER_COPY_NOCHAINS	0x0001	/* do not copy or ref chains */
+#define HAMMER2_CLUSTER_COPY_NOREF	0x0002	/* do not ref chains or cl */
 
 /*
  * Transaction Rendezvous
@@ -716,6 +718,7 @@ extern int hammer2_cluster_enable;
 extern int hammer2_hardlink_enable;
 extern int hammer2_flush_pipe;
 extern int hammer2_synchronous_flush;
+extern int hammer2_dio_count;
 extern long hammer2_limit_dirty_chains;
 extern long hammer2_iod_file_read;
 extern long hammer2_iod_meta_read;

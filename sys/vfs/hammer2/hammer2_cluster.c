@@ -439,21 +439,21 @@ hammer2_cluster_copy(hammer2_cluster_t *ocluster, int copy_flags)
 {
 	hammer2_pfsmount_t *pmp = ocluster->pmp;
 	hammer2_cluster_t *ncluster;
+	hammer2_chain_t *chain;
 	int i;
 
 	ncluster = kmalloc(sizeof(*ncluster), M_HAMMER2, M_WAITOK | M_ZERO);
 	ncluster->pmp = pmp;
 	ncluster->nchains = ocluster->nchains;
 	ncluster->focus = ocluster->focus;
-	ncluster->refs = 1;
-	if (copy_flags & HAMMER2_CLUSTER_COPY_CHAINS) {
-		if ((copy_flags & HAMMER2_CLUSTER_COPY_NOREF) == 0)
-			ncluster->refs = 1;
+	ncluster->refs = (copy_flags & HAMMER2_CLUSTER_COPY_NOREF) ? 0 : 1;
+	if ((copy_flags & HAMMER2_CLUSTER_COPY_NOCHAINS) == 0) {
 		for (i = 0; i < ocluster->nchains; ++i) {
-			ncluster->array[i] = ocluster->array[i];
+			chain = ocluster->array[i];
+			ncluster->array[i] = chain;
 			if ((copy_flags & HAMMER2_CLUSTER_COPY_NOREF) == 0 &&
-			    ncluster->array[i]) {
-				hammer2_chain_ref(ncluster->array[i]);
+			    chain) {
+				hammer2_chain_ref(chain);
 			}
 		}
 	}
@@ -681,6 +681,8 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 	hammer2_chain_t *chain;
 	hammer2_key_t key_accum;
 	hammer2_key_t key_next;
+	hammer2_key_t bref_key;
+	int bref_keybits;
 	int null_count;
 	int ddflag;
 	int i;
@@ -691,6 +693,8 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 	key_accum = *key_nextp;
 	null_count = 0;
 	bref_type = 0;
+	bref_key = 0;
+	bref_keybits = 0;
 	bytes = 0;
 
 	cluster = kmalloc(sizeof(*cluster), M_HAMMER2, M_WAITOK | M_ZERO);
@@ -718,11 +722,15 @@ hammer2_cluster_lookup(hammer2_cluster_t *cparent, hammer2_key_t *key_nextp,
 		} else {
 			if (cluster->focus == NULL) {
 				bref_type = chain->bref.type;
+				bref_key = chain->bref.key;
+				bref_keybits = chain->bref.keybits;
 				bytes = chain->bytes;
 				*ddflagp = ddflag;
 				cluster->focus = chain;
 			}
 			KKASSERT(bref_type == chain->bref.type);
+			KKASSERT(bref_key == chain->bref.key);
+			KKASSERT(bref_keybits == chain->bref.keybits);
 			KKASSERT(bytes == chain->bytes);
 			KKASSERT(*ddflagp == ddflag);
 		}
