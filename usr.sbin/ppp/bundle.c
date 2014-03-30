@@ -677,9 +677,12 @@ bundle_LockTun(struct bundle *bundle)
   if (lockfile != NULL) {
     fprintf(lockfile, "%d\n", (int)getpid());
     fclose(lockfile);
-  } else
+  }
+#ifndef RELEASE_CRUNCH
+  else
     log_Printf(LogERROR, "Warning: Can't create %s: %s\n",
                pidfilename, strerror(errno));
+#endif
 }
 
 static void

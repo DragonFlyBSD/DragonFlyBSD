@@ -64,7 +64,7 @@ SRCS+=	sm_os.h
 CLEANFILES+=sm_os.h
 
 .if exists(${.CURDIR}/../../secure) && !defined(NO_CRYPT) && \
-	!defined(NO_OPENSSL)
+	!defined(NO_OPENSSL) && !defined(RELEASE_CRUNCH)
 # STARTTLS support
 CFLAGS+=	-DSTARTTLS -D_FFR_TLS_1
 LDADD+=		-lssl -lcrypto

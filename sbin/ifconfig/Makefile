@@ -28,10 +28,14 @@ SRCS+=	ifcarp.c		# SIOC[GS]VH support
 
 SRCS+=	ifbridge.c		# bridge support
 
+.ifndef RELEASE_CRUNCH
 SRCS+=	af_ipx.c		# IPX support
 
 DPADD=	${LIBIPX} ${LIBBSDXML} ${LIBSBUF}
 LDADD=	-lipx -lbsdxml -lsbuf
+.else
+CFLAGS+= -DNO_IPX
+.endif
 
 MAN=	ifconfig.8
 

@@ -29,11 +29,20 @@ LDADD+=	-lpcap
 DPADD+=	${LIBPCAP}
 
 # MS-CHAP support.  Requires the DES library.
-.if exists(${.CURDIR}/../../secure) && !defined(NO_CRYPT)  && !defined(NO_OPENSSL)
+.if exists(${.CURDIR}/../../secure) && !defined(NO_CRYPT)  && !defined(NO_OPENSSL) && !defined(RELEASE_CRUNCH)
 CFLAGS+=-DCHAPMS
 SRCS+=	chap_ms.c
 LDADD+=	-lcrypto
 DPADD+=	${LIBCRYPTO}
+.endif
+
+.if defined(RELEASE_CRUNCH)
+# We must create these objects because crunchgen will link them,
+# and we don't want any unused symbols to spoil the final link.
+SRCS+= chap_ms.c
+chap_ms.o:
+	>null_${.PREFIX}.c
+	cc -c -o ${.TARGET} null_${.PREFIX}.c
 .endif
 
 .include <bsd.prog.mk>

@@ -51,7 +51,8 @@ CFLAGS+=	-DINET6 -DHAVE_GETNAMEINFO
 
 DPADD=	${LIBL} ${LIBPCAP}
 LDADD=	-ll -lpcap
-.if exists(../../secure) && !defined(NO_CRYPT) && !defined(NO_OPENSSL)
+.if exists(../../secure) && !defined(NO_CRYPT) && !defined(NO_OPENSSL) && \
+	!defined(RELEASE_CRUNCH)
 DPADD+= ${LIBCRYPTO}
 LDADD+= -lcrypto
 CFLAGS+= -I${DESTDIR}/usr/include/openssl -DHAVE_LIBCRYPTO -DHAVE_OPENSSL_EVP_H

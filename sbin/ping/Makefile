@@ -5,9 +5,13 @@
 PROG=	ping
 MAN=	ping.8
 BINMODE=4555
-DPADD=	${LIBM} ${LIBIPSEC}
-LDADD=	-lm -lipsec
+DPADD=	${LIBM}
+LDADD=	-lm
 
+.if !defined(RELEASE_CRUNCH)
 CFLAGS+=-DIPSEC
+DPADD+=	${LIBIPSEC}
+LDADD+=	-lipsec
+.endif
 
 .include <bsd.prog.mk>

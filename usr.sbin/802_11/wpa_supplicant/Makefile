@@ -50,7 +50,7 @@ LDADD+=${WPA_SUPPLICANT_LDADD}
 SRCS+=	eapol_supp_sm.c eap.c eap_common.c eap_methods.c
 CFLAGS+= -DIEEE8021X_EAPOL
 
-.if !defined(NO_CRYPT) && !defined(NO_OPENSSL)
+.if !defined(NO_CRYPT) && !defined(NO_OPENSSL) && !defined(RELEASE_CRUNCH)
 CFLAGS+=-DEAP_TLS -DEAP_PEAP -DEAP_MSCHAPv2 -DEAP_LEAP -DEAP_PSK \
 	-DEAP_TLV -DEAP_TLS_FUNCS -DEAP_TLS_OPENSSL
 SRCS+=	chap.c crypto_openssl.c \

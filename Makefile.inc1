@@ -877,7 +877,9 @@ btools-${_tool}!
 _btxld=	usr.sbin/btxld
 .endif
 
-CTOOLSDIRS= ${_btxld} ${_binutils} usr.bin/objformat ${_gcc_common_cross} \
+CTOOLSDIRS= ${_btxld} ${_binutils} \
+		usr.bin/objformat usr.bin/crunch/crunchide \
+		${_gcc_common_cross} \
 		${_gcc44_cross} ${_gcc47_cross} ${_custom_cross}
 
 cross-tools: cross-tools-targets

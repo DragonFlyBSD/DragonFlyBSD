@@ -7,10 +7,14 @@ SRCS=	inetd.c builtins.c
 MAN=	inetd.8
 MLINKS=	inetd.8 inetd.conf.5
 
-CFLAGS+= -DLOGIN_CAP -DINET6 -DIPSEC
+CFLAGS+= -DLOGIN_CAP
 #CFLAGS+= -DSANITY_CHECK
 
-DPADD+=	${LIBUTIL} ${LIBWRAP} ${LIBIPSEC}
-LDADD+=	-lutil -lwrap -lipsec
-
+DPADD+=	${LIBUTIL} ${LIBWRAP}
+LDADD+=	-lutil -lwrap
+.if !defined(RELEASE_CRUNCH)
+CFLAGS+=-DINET6 -DIPSEC
+DPADD+=	${LIBIPSEC}
+LDADD+=	-lipsec
+.endif
 .include <bsd.prog.mk>
