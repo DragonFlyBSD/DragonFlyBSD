@@ -297,7 +297,7 @@ h2lookup(struct hammer2_fs *hfs, hammer2_blockref_t *base,
 	 * assumptions.
 	 */
 again:
-	best.key = HAMMER2_MAX_KEY;
+	best.key = HAMMER2_KEY_MAX;
 	best.type = 0;
 
 	for (i = 0; i < count; ++i) {
@@ -837,7 +837,7 @@ hammer2_readdir(struct open_file *f, struct dirent *den)
 	for (;;) {
 		bytes = h2lookup(&hf->hfs, &hf->bref,
 				 f->f_offset | HAMMER2_DIRHASH_VISIBLE, 
-				 HAMMER2_MAX_KEY,
+				 HAMMER2_KEY_MAX,
 				 &bres, (void **)&ipdata);
 		if (bytes <= 0)
 			break;
