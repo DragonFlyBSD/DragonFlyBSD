@@ -96,7 +96,7 @@ copy_tools()
 copy_content()
 {
 	for dir in ${CONTENT_DIRS}; do
-		cp -R ${dir}/* ${BUILD_DIR}/
+		cpdup ${dir}/ ${BUILD_DIR}/
 	done
 }
 
@@ -130,9 +130,9 @@ test ! -z $1 && usage
 BUILD_DIR="${TMP_DIR}/initrd"
 
 create_vn
+copy_content
 make_hier
 copy_tools
-copy_content
 print_info
 destroy_vn
 mv ${TMP_DIR}/initrd.img ${BOOT_DIR}/kernel/initrd.img
