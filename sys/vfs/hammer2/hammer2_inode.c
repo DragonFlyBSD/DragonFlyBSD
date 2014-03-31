@@ -727,6 +727,7 @@ retry:
 	KKASSERT(cluster->focus->flags & HAMMER2_CHAIN_MODIFIED);
 	nipdata = &hammer2_cluster_wdata(cluster)->ipdata;
 	nipdata->inum = trans->inode_tid;
+	hammer2_cluster_modsync(cluster);
 	nip = hammer2_inode_get(dip->pmp, dip, cluster);
 	nipdata = &hammer2_cluster_wdata(cluster)->ipdata;
 
@@ -800,6 +801,7 @@ retry:
 	bcopy(name, nipdata->filename, name_len);
 	nipdata->name_key = lhc;
 	nipdata->name_len = name_len;
+	hammer2_cluster_modsync(cluster);
 	*clusterp = cluster;
 
 	return (nip);

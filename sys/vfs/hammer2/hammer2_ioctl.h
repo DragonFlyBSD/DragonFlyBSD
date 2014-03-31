@@ -145,4 +145,6 @@ typedef struct hammer2_ioc_inode hammer2_ioc_inode_t;
 #define HAMMER2IOC_INODE_COMP_REC_SET	_IOWR('h', 89, struct hammer2_ioc_inode)
 #define HAMMER2IOC_INODE_COMP_REC_SET2	_IOWR('h', 90, struct hammer2_ioc_inode)*/
 
+#define HAMMER2IOC_DEBUG_DUMP	_IOWR('h', 91, int)
+
 #endif /* !_VFS_HAMMER2_IOCTL_H_ */

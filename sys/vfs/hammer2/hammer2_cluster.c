@@ -1065,7 +1065,7 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 		/* XXX doesn't work with real cluster */
 		KKASSERT(ocluster->nchains == 1);
 		wipdata->u.blockset = ocluster->focus->data->ipdata.u.blockset;
-
+		hammer2_cluster_modsync(ncluster);
 		hammer2_inode_unlock_ex(nip, ncluster);
 	}
 	return (error);

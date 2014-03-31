@@ -923,6 +923,7 @@ void hammer2_chain_refactor(hammer2_chain_t **chainp);
  */
 void hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp,
 				int flags);
+void hammer2_trans_spmp(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp);
 void hammer2_trans_done(hammer2_trans_t *trans);
 
 /*

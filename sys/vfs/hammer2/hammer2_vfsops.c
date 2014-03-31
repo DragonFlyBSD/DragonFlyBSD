@@ -762,6 +762,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		lockmgr(&hammer2_mntlk, LK_RELEASE);
 
 		kprintf("ok\n");
+		hammer2_inode_install_hidden(pmp);
 
 		return ERANGE;
 	}
@@ -2101,6 +2102,7 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 	int total_error;
 	int force_fchain;
 	int i;
+	int j;
 
 	pmp = MPTOPMP(mp);
 	iroot = pmp->iroot;
@@ -2213,10 +2215,18 @@ hammer2_vfs_sync(struct mount *mp, int waitfor)
 			continue;
 
 		hmp = chain->hmp;
-#if 0
-		hammer2_trans_init(&info.trans, hmp->spmp,
-				   HAMMER2_TRANS_ISFLUSH);
-#endif
+
+		/*
+		 * We only have to flush each hmp once
+		 */
+		for (j = i - 1; j >= 0; --j) {
+			if (iroot->cluster.array[j] &&
+			    iroot->cluster.array[j]->hmp == hmp)
+				break;
+		}
+		if (j >= 0)
+			continue;
+		hammer2_trans_spmp(&info.trans, hmp->spmp);
 
 		/*
 		 * Force an update of the XID from the PFS root to the

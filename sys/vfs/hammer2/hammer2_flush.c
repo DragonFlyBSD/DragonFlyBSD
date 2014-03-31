@@ -309,6 +309,21 @@ hammer2_trans_init(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp, int flags)
 	lockmgr(&tman->translk, LK_RELEASE);
 }
 
+/*
+ * This may only be called while in a flush transaction.  It's a bit of a
+ * hack but after flushing a PFS we need to flush each volume root as part
+ * of the same transaction.
+ */
+void
+hammer2_trans_spmp(hammer2_trans_t *trans, hammer2_pfsmount_t *spmp)
+{
+	++spmp->alloc_tid;
+	spmp->flush_tid = spmp->alloc_tid;
+	++spmp->alloc_tid;
+	trans->pmp = spmp;
+}
+
+
 void
 hammer2_trans_done(hammer2_trans_t *trans)
 {
@@ -950,6 +965,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 		 */
 		hmp->voldata.mirror_tid = chain->bref.mirror_tid;
 		hmp->voldata.freemap_tid = hmp->fchain.bref.mirror_tid;
+		kprintf("mirror_tid %016llx\n", chain->bref.mirror_tid);
 
 		/*
 		 * The volume header is flushed manually by the syncer, not

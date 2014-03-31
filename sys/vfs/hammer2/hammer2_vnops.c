@@ -1683,6 +1683,7 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 			bcopy(ap->a_target, nipdata->u.data, bytes);
 			nipdata->size = bytes;
 			nip->size = bytes;
+			hammer2_cluster_modsync(ncparent);
 			hammer2_inode_unlock_ex(nip, ncparent);
 			/* nipdata = NULL; not needed */
 		} else {
