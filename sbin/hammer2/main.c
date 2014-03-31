@@ -149,6 +149,11 @@ main(int ac, char **av)
 			usage(1);
 		}
 		ecode = cmd_remote_connect(sel_path, av[1]);
+	} else if (strcmp(av[0], "chaindump") == 0) {
+		if (ac < 2)
+			ecode = cmd_chaindump(".");
+		else
+			ecode = cmd_chaindump(av[1]);
 	} else if (strcmp(av[0], "debugspan") == 0) {
 		/*
 		 * Debug connection to the target hammer2 service and run

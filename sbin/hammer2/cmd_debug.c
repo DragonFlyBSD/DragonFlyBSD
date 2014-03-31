@@ -631,6 +631,22 @@ cmd_hash(int ac, const char **av)
 	return(0);
 }
 
+int
+cmd_chaindump(const char *path)
+{
+	int dummy = 0;
+	int fd;
+
+	fd = open(path, O_RDONLY);
+	if (fd >= 0) {
+		ioctl(fd, HAMMER2IOC_DEBUG_DUMP, &dummy);
+		close(fd);
+	} else {
+		fprintf(stderr, "unable to open %s\n", path);
+	}
+	return 0;
+}
+
 
 static
 void

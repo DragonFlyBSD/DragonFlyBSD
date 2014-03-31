@@ -134,6 +134,7 @@ int cmd_stat(int ac, const char **av);
 int cmd_leaf(const char *sel_path);
 int cmd_shell(const char *hostname);
 int cmd_debugspan(const char *hostname);
+int cmd_chaindump(const char *path);
 int cmd_show(const char *devpath, int dofreemap);
 int cmd_rsainit(const char *dir_path);
 int cmd_rsaenc(const char **keys, int nkeys);
