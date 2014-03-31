@@ -155,6 +155,28 @@
 #endif /* DDB */
 #endif /* ACPI_DEBUG_OUTPUT */
 
+#ifdef ACPI_DEBUG_CACHE
+#define	ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsReleaseObject
+#define	AcpiOsReleaseObject(Cache, Object) \
+	_AcpiOsReleaseObject((Cache), (Object), __func__, __LINE__)
+#endif
+
+#ifdef ACPI_DEBUG_LOCKS
+#define	ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsAcquireLock
+#define AcpiOsAcquireLock(Handle) \
+	_AcpiOsAcquireLock((Handle), __func__, __LINE__)
+#endif
+
+#ifdef ACPI_DEBUG_MEMMAP
+#define	ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsMapMemory
+#define AcpiOsMapMemory(Where, Length) \
+	_AcpiOsMapMemory((Where), (Length), __func__, __LINE__)
+
+#define	ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsUnmapMemory
+#define AcpiOsUnmapMemory(LogicalAddress, Size) \
+	_AcpiOsUnmapMemory((LogicalAddress), (Size), __func__, __LINE__)
+#endif
+
 #define ACPI_SPINLOCK	struct acpi_spinlock *
 struct acpi_spinlock;
 
