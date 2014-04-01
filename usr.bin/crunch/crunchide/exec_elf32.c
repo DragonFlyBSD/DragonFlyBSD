@@ -28,14 +28,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-#ifndef lint
-#if 0
-__RCSID("$NetBSD: exec_elf32.c,v 1.6 1999/09/20 04:12:16 christos Exp $");
-#endif
-#endif
-__FBSDID("$FreeBSD: head/usr.sbin/crunch/crunchide/exec_elf32.c 246298 2013-02-03 21:16:33Z pfg $");
- 
 #ifndef ELFSIZE
 #define ELFSIZE         32
 #endif

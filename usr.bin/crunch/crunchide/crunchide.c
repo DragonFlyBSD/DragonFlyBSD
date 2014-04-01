@@ -59,12 +59,6 @@
  *	  component programs' BSS sizes, rather than their sum.
  */
 
-#include <sys/cdefs.h>
-#ifndef lint
-__RCSID("$NetBSD: crunchide.c,v 1.8 1997/11/01 06:51:45 lukem Exp $");
-#endif
-__FBSDID("$FreeBSD: head/usr.sbin/crunch/crunchide/crunchide.c 237625 2012-06-27 04:39:30Z obrien $");
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/errno.h>
