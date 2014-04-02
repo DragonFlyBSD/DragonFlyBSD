@@ -124,6 +124,12 @@ static int	bd_open(struct open_file *f, ...);
 static int	bd_close(struct open_file *f);
 static void	bd_print(int verbose);
 
+/*
+ * Max number of sectors to bounce-buffer if the request crosses a 64k boundary
+ */
+#define BOUNCEBUF_SIZE	8192
+#define BOUNCEBUF_SECTS	(BOUNCEBUF_SIZE / BIOSDISK_SECSIZE)
+
 struct devsw biosdisk = {
     "disk", 
     DEVT_DISK, 
@@ -139,7 +145,10 @@ struct devsw biosdisk = {
 static int	bd_opendisk(struct open_disk **odp, struct i386_devdesc *dev);
 static void	bd_closedisk(struct open_disk *od);
 static int	bd_bestslice(struct open_disk *od);
-static void	bd_chainextended(struct open_disk *od, u_int32_t base, u_int32_t offset);
+static void	bd_chainextended(struct open_disk *od, u_int32_t base,
+					u_int32_t offset);
+
+static caddr_t	bounce_base;
 
 /*
  * Translate between BIOS device numbers and our private unit numbers.
@@ -172,7 +181,10 @@ bd_unit2bios(int unit)
 static int
 bd_init(void) 
 {
-    int		base, unit, nfd = 0;
+    int	base, unit, nfd = 0;
+
+    if (bounce_base == NULL)
+	bounce_base = malloc(BOUNCEBUF_SIZE * 2);
 
     /* sequence 0, 0x80 */
     for (base = 0; base <= 0x80; base += 0x80) {
@@ -998,9 +1010,6 @@ bd_realstrategy(void *devdata, int rw, daddr_t dblk, size_t size, char *buf, siz
     return EROFS;
 }
 
-/* Max number of sectors to bounce-buffer if the request crosses a 64k boundary */
-#define FLOPPY_BOUNCEBUF	18
-
 static int
 bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 {
@@ -1016,15 +1025,9 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
     p = dest;
 
     /*
-     * Decide whether we have to bounce.
-     *
-     * We have to bounce if the destination buffer is not segment addressable
-     * or if it crosses a 64KB boundary.
+     * Always bounce.  Our buffer is probably not segment-addressable.
      */
-    if ((od->od_unit < 0x80) && 
-	(VTOP(dest + blks * BIOSDISK_SECSIZE) >= 16384 * 1024 ||
-	 ((VTOP(dest) >> 16) != (VTOP(dest + blks * BIOSDISK_SECSIZE) >> 16)))
-     ) {
+    if (1) {
 
 	/* 
 	 * There is a 64k physical boundary somewhere in the destination
@@ -1032,10 +1035,11 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	 * a buffer twice as large as we need to.  Use the bottom half unless
 	 * there is a break there, in which case we use the top half.
 	 */
-	x = min(FLOPPY_BOUNCEBUF, (unsigned)blks);
-	bbuf = malloc(x * 2 * BIOSDISK_SECSIZE);
-	if (((u_int32_t)VTOP(bbuf) & 0xffff0000) ==
-	    ((u_int32_t)VTOP(bbuf + x * BIOSDISK_SECSIZE) & 0xffff0000)) {
+	bbuf = bounce_base;
+	x = min(BOUNCEBUF_SECTS, (unsigned)blks);
+
+	if (((u_int32_t)VTOP(bbuf) & 0xffff8000) ==
+	    ((u_int32_t)VTOP(bbuf + x * BIOSDISK_SECSIZE - 1) & 0xffff8000)) {
 	    breg = bbuf;
 	} else {
 	    breg = bbuf + x * BIOSDISK_SECSIZE;
@@ -1059,7 +1063,7 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	    x = min(x, maxfer);		/* fit bounce buffer */
 
 	/* where do we transfer to? */
-	xp = bbuf == NULL ? p : breg;
+	xp = (bbuf == NULL ? p : breg);
 
 	/* correct sector number for 1-based BIOS numbering */
 	sec++;
@@ -1125,15 +1129,16 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	    }
 	}
 	
- 	DEBUG("%u sectors from %u/%u/%d to %p (0x%x) %s", x, cyl, hd, sec - 1, p, VTOP(p), result ? "failed" : "ok");
+	DEBUG("%u sectors from %u/%u/%d to %p (0x%x) %s",
+	      x, cyl, hd, sec - 1, p, VTOP(p), result ? "failed" : "ok");
 	/* BUG here, cannot use v86 in printf because putchar uses it too */
 	DEBUG("ax = 0x%04x cx = 0x%04x dx = 0x%04x status 0x%x", 
-	      0x200 | x, ((cyl & 0xff) << 8) | ((cyl & 0x300) >> 2) | sec, (hd << 8) | od->od_unit, (v86.eax >> 8) & 0xff);
-	if (result) {
-	    if (bbuf != NULL)
-		free(bbuf);
+	      0x200 | x,
+	      ((cyl & 0xff) << 8) | ((cyl & 0x300) >> 2) | sec,
+	      (hd << 8) | od->od_unit,
+	      (v86.eax >> 8) & 0xff);
+	if (result)
 	    return(-1);
-	}
 	if (bbuf != NULL)
 	    bcopy(breg, p, x * BIOSDISK_SECSIZE);
 	p += (x * BIOSDISK_SECSIZE);
@@ -1142,8 +1147,6 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
     }
 	
 /*    hexdump(dest, (blks * BIOSDISK_SECSIZE)); */
-    if (bbuf != NULL)
-	free(bbuf);
     return(0);
 }
 
@@ -1162,25 +1165,26 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
     resid = blks;
     p = dest;
 
-    /* Decide whether we have to bounce */
-    if ((od->od_unit < 0x80) && 
-	((VTOP(dest) >> 16) != (VTOP(dest + blks * BIOSDISK_SECSIZE) >> 16))) {
-
+    /*
+     * Always bounce.  Our buffer is probably not segment-addressable.
+     */
+    if (1) {
 	/* 
 	 * There is a 64k physical boundary somewhere in the destination
 	 * buffer, so we have to arrange a suitable bounce buffer.  Allocate
 	 * a buffer twice as large as we need to.  Use the bottom half
 	 * unless there is a break there, in which case we use the top half.
 	 */
+	bbuf = bounce_base;
+	x = min(BOUNCEBUF_SECTS, (unsigned)blks);
 
-	x = min(FLOPPY_BOUNCEBUF, (unsigned)blks);
-	bbuf = malloc(x * 2 * BIOSDISK_SECSIZE);
-	if (((u_int32_t)VTOP(bbuf) & 0xffff0000) == ((u_int32_t)VTOP(bbuf + x * BIOSDISK_SECSIZE) & 0xffff0000)) {
+	if (((u_int32_t)VTOP(bbuf) & 0xffff0000) ==
+	    ((u_int32_t)VTOP(bbuf + x * BIOSDISK_SECSIZE - 1) & 0xffff0000)) {
 	    breg = bbuf;
 	} else {
 	    breg = bbuf + x * BIOSDISK_SECSIZE;
 	}
-	maxfer = x;			/* limit transfers to bounce region size */
+	maxfer = x;		/* limit transfers to bounce region size */
     } else {
 	breg = bbuf = NULL;
 	maxfer = 0;
@@ -1199,7 +1203,7 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	    x = szmin(x, maxfer);		/* fit bounce buffer */
 
 	/* where do we transfer to? */
-	xp = bbuf == NULL ? p : breg;
+	xp = (bbuf == NULL ? p : breg);
 
 	/* correct sector number for 1-based BIOS numbering */
 	sec++;
@@ -1280,16 +1284,11 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	/* BUG here, cannot use v86 in printf because putchar uses it too */
 	DEBUG("ax = 0x%04x cx = 0x%04x dx = 0x%04x status 0x%x", 
 	      0x200 | x, ((cyl & 0xff) << 8) | ((cyl & 0x300) >> 2) | sec, (hd << 8) | od->od_unit, (v86.eax >> 8) & 0xff);
-	if (result) {
-	    if (bbuf != NULL)
-		free(bbuf);
+	if (result)
 	    return(-1);
-	}
     }
 	
-/*    hexdump(dest, (blks * BIOSDISK_SECSIZE)); */
-    if (bbuf != NULL)
-	free(bbuf);
+    /* hexdump(dest, (blks * BIOSDISK_SECSIZE)); */
     return(0);
 }
 static int

@@ -245,8 +245,11 @@ init.8: 	xorl %ecx,%ecx			# Zero
 /*
  * XXX We should NOT use BDA_MEM here.  Use a fixed location
  * instead.  (%eax is a physical stack addr)
+ *
+ * (must match stack specified in btxldr)
  */
 		movzwl %ss:BDA_MEM,%eax 	# Get free memory
+		decl %eax			# Don't quite trust bios
 		shll $0xa,%eax			# To bytes
 #else
 /*

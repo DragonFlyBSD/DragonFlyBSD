@@ -171,7 +171,7 @@ main(void)
      * data.
      */
     bios_getmem();
-    memend = (char *)&memend - 0x8000;	/* space for stack */
+    memend = (char *)&memend - 0x8000;	/* space for stack (16K) */
     memend = (char *)((uintptr_t)memend & ~(uintptr_t)(0x1000 - 1));
     if (memend < (char *)_end) {
 	setheap((void *)_end, PTOV(bios_basemem));
@@ -365,8 +365,13 @@ COMMAND_SET(heap, "heap", "show heap usage", command_heap);
 static int
 command_heap(int argc, char *argv[])
 {
+    char *base;
+    size_t bytes;
+
     mallocstats();
-    printf("heap base at %p, top at %p\n", _end, sbrk(0));
+    base = getheap(&bytes);
+    printf("heap %p-%p (%d)\n", base, base + bytes, (int)bytes);
+    printf("stack at %p\n", &argc);
     return(CMD_OK);
 }
 

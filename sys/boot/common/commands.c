@@ -638,3 +638,34 @@ command_endif(int argc, char *argv[])
 		return(-1);
 	}
 }
+
+COMMAND_SET(rmem, "rmem", "read memory", command_rmem);
+
+static int
+command_rmem(int argc, char *argv[])
+{
+    int addr;
+
+    if (argc > 1) {
+	addr = strtol(argv[1], NULL, 0);
+	printf("%08x: %08x\n", addr, *(int *)(intptr_t)addr);
+    }
+    return(CMD_OK);
+}
+
+COMMAND_SET(wmem, "wmem", "write memory", command_wmem);
+
+static int
+command_wmem(int argc, char *argv[])
+{
+    int addr;
+    int data;
+
+    if (argc > 2) {
+	addr = strtol(argv[1], NULL, 0);
+	data = strtol(argv[2], NULL, 0);
+	*(int *)(intptr_t)addr = data;
+	printf("%08x: %08x\n", addr, *(int *)(intptr_t)addr);
+    }
+    return(CMD_OK);
+}

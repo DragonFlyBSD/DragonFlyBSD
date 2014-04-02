@@ -140,6 +140,18 @@
 #define MEM_BTX_USR	0xa000		/* base of BTX client/user memory */
 #define MEM_BTX_USR_ARG	0xa100
 
+/*
+ * By default the user stack is (theoretically) placed at the top of
+ * BIOS memory (typically around the 640K mark).  See btx.S.  BTX loads
+ * the stack from a BIOS memory address (BDA_MEM) rather than figuring it
+ * out from the smap.
+ *
+ * There aren't really any other places we can put it short of intruding on
+ * the kernel/module load space.
+ */
+/*#define MEM_BTX_USR_STK	0x3000000*/
+/*#define MEM_BTX_USR_STK	0x0F0000*/
+
 #elif defined(BOOT_NEWBOOTLOADER) && BOOT_NEWBOOTLOADER == 1
 
 /************************************************************************

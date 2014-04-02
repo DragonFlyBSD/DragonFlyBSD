@@ -97,6 +97,7 @@ start:		cld				# String ops inc
 		call putstr			#  ourselves
 #if !defined(MEM_BTX_USR_STK)
 		movzwl BDA_MEM,%eax		# Get base memory
+		decl %eax
 		shll $0xa,%eax			# Convert to bytes
 #else
 		movl $MEM_BTX_USR_STK,%eax
