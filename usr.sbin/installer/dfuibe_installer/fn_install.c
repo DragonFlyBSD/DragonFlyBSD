@@ -603,10 +603,6 @@ fn_install_os(struct i_fn_args *a)
 				    subpartition_get_device_name(sp),
 				    subpartition_get_mountpoint(sp),
 				    a->os_root);
-				command_add(cmds, "%s%s 'vfs.boot.mountfrom=\"ufs:%s\"' >>%smnt/boot/loader.conf",
-				    a->os_root, cmd_name(a, "ECHO"),
-				    subpartition_get_device_name(sp),
-				    a->os_root);
 			}
 		}
 	}
