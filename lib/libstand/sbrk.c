@@ -46,6 +46,13 @@ setheap(void *base, void *top)
 }
 
 char *
+getheap(size_t *sizep)
+{
+    *sizep = maxheap;
+    return heapbase;
+}
+
+char *
 sbrk(int incr)
 {
     char	*ret;

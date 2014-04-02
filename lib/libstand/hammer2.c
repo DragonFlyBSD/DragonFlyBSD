@@ -65,11 +65,14 @@
 uint32_t iscsi_crc32(const void *buf, size_t size);
 uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 
+static hammer2_media_data_t media;
+static hammer2_blockref_t saved_base;
+
 #define hammer2_icrc32(buf, size)	iscsi_crc32(buf, size)
 
 struct hammer2_fs {
-	struct hammer2_volume_data	vol;
 	hammer2_blockref_t		sroot;
+	hammer2_blockset_t		sroot_blockset;
 #if defined(TESTING)
 	int 				fd;
 #elif defined(LIBSTAND)
@@ -209,7 +212,7 @@ h2read(struct hammer2_fs *hfs, void *buf, size_t nbytes, off_t off)
 	int rc;
 
 #if defined(TESTING)
-	rc = pread(hfs->fd, &hfs->vol, nbytes, off);
+	rc = pread(hfs->fd, &media, nbytes, off);
 	if (rc == (int)nbytes)
 		rc = 0;
 	else
@@ -266,8 +269,6 @@ h2lookup(struct hammer2_fs *hfs, hammer2_blockref_t *base,
 	int count;
 	int dev_boff;
 	int dev_bsize;
-	static hammer2_media_data_t media;
-	static hammer2_blockref_t saved_base;
 
 	if (base == NULL) {
 		saved_base.data_off = (hammer2_off_t)-1;
@@ -330,7 +331,7 @@ again:
 		 */
 		switch(base->type) {
 		case HAMMER2_BREF_TYPE_VOLUME:
-			bref = &hfs->vol.sroot_blockset.blockref[i];
+			bref = &hfs->sroot_blockset.blockref[i];
 			break;
 		case HAMMER2_BREF_TYPE_INODE:
 			bref = &media.ipdata.u.blockset.blockref[i];
@@ -574,13 +575,13 @@ h2init(struct hammer2_fs *hfs)
 		off = i * HAMMER2_ZONE_BYTES64;
 		if (i)
 			no_io_error = 1;
-		if (h2read(hfs, &hfs->vol, sizeof(hfs->vol), off))
+		if (h2read(hfs, &media, sizeof(media.voldata), off))
 			continue;
-		if (hfs->vol.magic != HAMMER2_VOLUME_ID_HBO)
+		if (media.voldata.magic != HAMMER2_VOLUME_ID_HBO)
 			continue;
-		if (best < 0 || best_tid < hfs->vol.mirror_tid) {
+		if (best < 0 || best_tid < media.voldata.mirror_tid) {
 			best = i;
-			best_tid = hfs->vol.mirror_tid;
+			best_tid = media.voldata.mirror_tid;
 		}
 	}
 	no_io_error = 0;
@@ -589,18 +590,20 @@ h2init(struct hammer2_fs *hfs)
 
 	/*
 	 * Reload the best volume header and set up the blockref.
+	 * We messed with media, clear the cache before continuing.
 	 */
 	off = best * HAMMER2_ZONE_BYTES64;
-	if (h2read(hfs, &hfs->vol, sizeof(hfs->vol), off))
+	if (h2read(hfs, &media, sizeof(media.voldata), off))
 		return(-1);
 	hfs->sroot.type = HAMMER2_BREF_TYPE_VOLUME;
 	hfs->sroot.data_off = off;
+	hfs->sroot_blockset = media.voldata.sroot_blockset;
 	h2lookup(hfs, NULL, 0, 0, NULL, NULL);
-	h2lookup(hfs, &hfs->sroot, 0, 0, &hfs->sroot, &data);
 
 	/*
-	 * Clear cache
+	 * Lookup sroot and clear the cache again.
 	 */
+	h2lookup(hfs, &hfs->sroot, 0, 0, &hfs->sroot, &data);
 	h2lookup(hfs, NULL, 0, 0, NULL, NULL);
 
 	return (0);
