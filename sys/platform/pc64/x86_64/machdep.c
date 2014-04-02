@@ -1556,19 +1556,19 @@ ssdtosyssd(struct soft_segment_descriptor *ssd,
 
 #define PHYSMAP_ALIGN		(vm_paddr_t)(128 * 1024)
 #define PHYSMAP_ALIGN_MASK	(vm_paddr_t)(PHYSMAP_ALIGN - 1)
+	vm_paddr_t physmap[PHYSMAP_SIZE];
+	struct bios_smap *smapbase, *smap, *smapend;
+	u_int32_t smapsize;
 
 static void
 getmemsize(caddr_t kmdp, u_int64_t first)
 {
 	int off, physmap_idx, pa_indx, da_indx;
 	int i, j;
-	vm_paddr_t physmap[PHYSMAP_SIZE];
 	vm_paddr_t pa;
 	vm_paddr_t msgbuf_size;
 	u_long physmem_tunable;
 	pt_entry_t *pte;
-	struct bios_smap *smapbase, *smap, *smapend;
-	u_int32_t smapsize;
 	quad_t dcons_addr, dcons_size;
 
 	bzero(physmap, sizeof(physmap));

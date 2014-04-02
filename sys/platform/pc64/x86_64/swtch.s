@@ -624,17 +624,29 @@ ENTRY(cpu_idle_restore)
 	/* JG push RBP? */
 	pushq	$0
 	movq	%rcx,%cr3
-	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
-	orl	$TDF_RUNNING,TD_FLAGS(%rax)	/* manual, no switch_return */
 	cmpl	$0,PCPU(cpuid)
 	je	1f
+	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
+	orl	$TDF_RUNNING,TD_FLAGS(%rax)	/* manual, no switch_return */
 	call	ap_init
-1:
 	/*
 	 * ap_init can decide to enable interrupts early, but otherwise, or if
 	 * we are UP, do it here.
 	 */
 	sti
+	jmp	cpu_idle
+
+	/*
+	 * cpu 0's idle thread entry for the first time must use normal
+	 * lwkt_switch_return() semantics or a pending cpu migration on
+	 * thread0 will deadlock.
+	 */
+1:
+	sti
+	pushq	%rax
+	movq	%rbx,%rdi
+	call	lwkt_switch_return
+	popq	%rax
 	jmp	cpu_idle
 
 /*
