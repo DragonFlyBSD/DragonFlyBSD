@@ -31,7 +31,7 @@
 .\"     @(#)ls.1	8.7 (Berkeley) 7/29/94
 .\" $FreeBSD: src/bin/ls/ls.1,v 1.86 2005/02/13 22:25:09 ru Exp $
 .\"
-.Dd September 25, 2008
+.Dd March 4, 2014
 .Dt LS 1
 .Os
 .Sh NAME
@@ -169,6 +169,8 @@ Use time when file status was last changed for sorting or printing.
 Directories are listed as plain files (not searched recursively).
 .It Fl f
 Output is not sorted.
+This option implies
+.Fl a .
 .It Fl g
 This option is deprecated and is only available for compatibility
 with

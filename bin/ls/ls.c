@@ -32,7 +32,6 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/ls.c,v 1.78 2004/06/08 09:30:10 das Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.17 2008/01/19 15:33:42 matthias Exp $
  */
 
 #include <sys/types.h>
@@ -245,6 +244,9 @@ main(int argc, char *argv[])
 		case 'S':
 			f_sortsize = 1;
 			break;
+		case 'f':
+			f_nosort = 1;
+		       /* FALLTHROUGH */
 		case 'a':
 			fts_options |= FTS_SEEDOT;
 			/* FALLTHROUGH */
@@ -255,9 +257,6 @@ main(int argc, char *argv[])
 		case 'd':
 			f_listdir = 1;
 			f_recursive = 0;
-			break;
-		case 'f':
-			f_nosort = 1;
 			break;
 		case 'g':	/* Compatibility with 4.3BSD. */
 			break;
