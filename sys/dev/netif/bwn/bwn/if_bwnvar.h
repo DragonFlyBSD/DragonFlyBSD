@@ -549,7 +549,7 @@ struct bwn_dmadesc_meta {
 
 #define	BWN_DMAINTR_FATALMASK	\
 	((1 << 10) | (1 << 11) | (1 << 12) | (1 << 14) | (1 << 15))
-#define	BWN_DMAINTR_NONFATALMASK	(1 << 13)
+#define	BWN_DMAINTR_RDESC_UFLOW		(1 << 13)
 #define	BWN_DMAINTR_RX_DONE		(1 << 16)
 
 #define	BWN_DMA32_DCTL_BYTECNT		0x00001fff
