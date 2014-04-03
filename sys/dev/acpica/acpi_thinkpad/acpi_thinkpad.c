@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpi_support/acpi_ibm.c,v 1.15 2007/10/25 17:30:18 jhb Exp $
+ * $FreeBSD: head/sys/dev/acpi_support/acpi_ibm.c 246128 2013-01-30 18:01:20Z sbz $
  */
 
 /*
@@ -43,6 +43,7 @@
 #include <machine/cpufunc.h>
 #include <sys/module.h>
 #include <sys/sensors.h>
+#include <sys/sbuf.h>
 #include <sys/sysctl.h>
 #include <sys/lock.h>
 #include <sys/thread2.h>
@@ -51,7 +52,6 @@
 #include "acpi.h"
 #include "accommon.h"
 #include "acpivar.h"
-#include "acpi_if.h"
 
 #define _COMPONENT	ACPI_OEM
 ACPI_MODULE_NAME("THINKPAD")
@@ -70,6 +70,7 @@ ACPI_MODULE_NAME("THINKPAD")
 #define ACPI_THINKPAD_METHOD_FANLEVEL		11
 #define ACPI_THINKPAD_METHOD_FANSTATUS		12
 #define ACPI_THINKPAD_METHOD_THERMAL		13
+#define ACPI_THINKPAD_METHOD_HANDLEREVENTS	14
 
 /* Hotkeys/Buttons */
 #define THINKPAD_RTC_HOTKEY1			0x64
@@ -129,6 +130,21 @@ ACPI_MODULE_NAME("THINKPAD")
 #define	THINKPAD_NUM_SENSORS			9
 #define	THINKPAD_TEMP_SENSORS			8
 
+/* Event Code */
+#define THINKPAD_EVENT_LCD_BACKLIGHT		0x03
+#define THINKPAD_EVENT_SUSPEND_TO_RAM		0x04
+#define THINKPAD_EVENT_BLUETOOTH		0x05
+#define THINKPAD_EVENT_SCREEN_EXPAND		0x07
+#define THINKPAD_EVENT_SUSPEND_TO_DISK		0x0c
+#define THINKPAD_EVENT_BRIGHTNESS_UP		0x10
+#define THINKPAD_EVENT_BRIGHTNESS_DOWN		0x11
+#define THINKPAD_EVENT_THINKLIGHT		0x12
+#define THINKPAD_EVENT_ZOOM			0x14
+#define THINKPAD_EVENT_VOLUME_UP		0x15
+#define THINKPAD_EVENT_VOLUME_DOWN		0x16
+#define THINKPAD_EVENT_MUTE			0x17
+#define THINKPAD_EVENT_ACCESS_THINKPAD_BUTTON	0x18
+
 #define ABS(x) (((x) < 0)? -(x) : (x))
 
 struct acpi_thinkpad_softc {
@@ -170,6 +186,8 @@ struct acpi_thinkpad_softc {
 	/* sensors(9) related */
 	struct ksensordev sensordev;
 	struct ksensor sensors[THINKPAD_NUM_SENSORS];
+
+	unsigned int	handler_events;
 
 	struct sysctl_ctx_list	 sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
@@ -236,6 +254,12 @@ static struct {
 		.access		= CTLTYPE_INT | CTLFLAG_RD
 	},
 	{
+		.name		= "fan_speed",
+		.method		= ACPI_THINKPAD_METHOD_FANSPEED,
+		.description	= "Fan speed",
+		.access		= CTLTYPE_INT | CTLFLAG_RD
+	},
+	{
 		.name		= "fan_level",
 		.method		= ACPI_THINKPAD_METHOD_FANLEVEL,
 		.description	= "Fan level",
@@ -251,11 +275,17 @@ static struct {
 	{ NULL, 0, NULL, 0 }
 };
 
-static struct lock tplock;
+ACPI_SERIAL_DECL(thinkpad, "ACPI Thinkpad extras");
 
 static int	acpi_thinkpad_probe(device_t dev);
 static int	acpi_thinkpad_attach(device_t dev);
 static int	acpi_thinkpad_detach(device_t dev);
+static int	acpi_thinkpad_resume(device_t dev);
+
+#if 0 /* XXX */
+static void	thinkpad_led(void *softc, int onoff);
+static void	thinkpad_led_task(struct acpi_thinkpad_softc *sc, int pending __unused);
+#endif
 
 static int	acpi_thinkpad_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_thinkpad_sysctl_init(struct acpi_thinkpad_softc *sc,
@@ -267,15 +297,24 @@ static int	acpi_thinkpad_sysctl_set(struct acpi_thinkpad_softc *sc,
 
 static int	acpi_thinkpad_eventmask_set(struct acpi_thinkpad_softc *sc,
 		int val);
+static int	acpi_thinkpad_handlerevents_sysctl(SYSCTL_HANDLER_ARGS);
 static void	acpi_thinkpad_notify(ACPI_HANDLE h, UINT32 notify,
 		void *context);
 static void	acpi_thinkpad_refresh(void *);
+
+static int	acpi_thinkpad_brightness_set(struct acpi_thinkpad_softc *sc, int arg);
+static int	acpi_thinkpad_bluetooth_set(struct acpi_thinkpad_softc *sc, int arg);
+static int	acpi_thinkpad_thinklight_set(struct acpi_thinkpad_softc *sc, int arg);
+static int	acpi_thinkpad_volume_set(struct acpi_thinkpad_softc *sc, int arg);
+static int	acpi_thinkpad_mute_set(struct acpi_thinkpad_softc *sc, int arg);
 
 static device_method_t acpi_thinkpad_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe, acpi_thinkpad_probe),
 	DEVMETHOD(device_attach, acpi_thinkpad_attach),
 	DEVMETHOD(device_detach, acpi_thinkpad_detach),
+	DEVMETHOD(device_resume, acpi_thinkpad_resume),
+
 	DEVMETHOD_END
 };
 
@@ -288,9 +327,39 @@ static driver_t	acpi_thinkpad_driver = {
 static devclass_t acpi_thinkpad_devclass;
 
 DRIVER_MODULE(acpi_thinkpad, acpi, acpi_thinkpad_driver,
-    acpi_thinkpad_devclass, 0, 0);
+    acpi_thinkpad_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_thinkpad, acpi, 1, 1, 1);
 static char    *thinkpad_ids[] = {"IBM0068", "LEN0068", NULL};
+
+#if 0 /* XXX */
+static void
+thinkpad_led(void *softc, int onoff)
+{
+	struct acpi_thinkpad_softc* sc = (struct acpi_thinkpad_softc*) softc;
+
+	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+
+	if (sc->led_busy)
+		return;
+
+	sc->led_busy = 1;
+	sc->led_state = onoff;
+
+	AcpiOsExecute(OSL_NOTIFY_HANDLER, (void *)thinkpad_led_task, sc);
+}
+
+static void
+thinkpad_led_task(struct acpi_thinkpad_softc *sc, int pending __unused)
+{
+	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+
+	ACPI_SERIAL_BEGIN(thinkpad);
+	acpi_thinkpad_sysctl_set(sc, ACPI_THINKPAD_METHOD_THINKLIGHT, sc->led_state);
+	ACPI_SERIAL_END(thinkpad);
+
+	sc->led_busy = 0;
+}
+#endif
 
 static int
 acpi_thinkpad_probe(device_t dev)
@@ -333,9 +402,6 @@ acpi_thinkpad_attach(device_t dev)
 	}
 	sc->ec_handle = acpi_get_handle(sc->ec_dev);
 	
-	lockinit(&tplock, "thinkpad", 0, 0);
-	lockmgr(&tplock, LK_EXCLUSIVE);
-
 	sysctl_ctx_init(&sc->sysctl_ctx);
 	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
 	    SYSCTL_CHILDREN(acpi_sc->acpi_sysctl_tree), OID_AUTO,
@@ -346,7 +412,7 @@ acpi_thinkpad_attach(device_t dev)
 	    THINKPAD_NAME_EVENTS_MASK_GET, &sc->events_initialmask));
 
 	if (sc->events_mask_supported) {
-		SYSCTL_ADD_INT(&sc->sysctl_ctx,
+		SYSCTL_ADD_UINT(&sc->sysctl_ctx,
 		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
 		    "initialmask", CTLFLAG_RD,
 		    &sc->events_initialmask, 0, "Initial eventmask");
@@ -356,7 +422,7 @@ acpi_thinkpad_attach(device_t dev)
 		    THINKPAD_NAME_EVENTS_AVAILMASK, &sc->events_availmask)))
 			sc->events_availmask = 0xffffffff;
 
-		SYSCTL_ADD_INT(&sc->sysctl_ctx,
+		SYSCTL_ADD_UINT(&sc->sysctl_ctx,
 		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
 		    "availmask", CTLFLAG_RD,
 		    &sc->events_availmask, 0, "Mask of supported events");
@@ -376,8 +442,15 @@ acpi_thinkpad_attach(device_t dev)
 		    acpi_thinkpad_sysctls[i].description);
 	}
 
-	lockmgr(&tplock, LK_RELEASE);
-
+	/* Hook up handlerevents node */
+	if (acpi_thinkpad_sysctl_init(sc, ACPI_THINKPAD_METHOD_HANDLEREVENTS)) {
+		SYSCTL_ADD_PROC(&sc->sysctl_ctx,
+		    SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
+		    "handlerevents", CTLTYPE_STRING | CTLFLAG_RW,
+		    sc, 0, acpi_thinkpad_handlerevents_sysctl, "I",
+		    "devd(8) events handled by acpi_thinkpad");
+	}
+ 
 	/* Handle notifies */
 	AcpiInstallNotifyHandler(sc->handle, ACPI_DEVICE_NOTIFY,
 	    acpi_thinkpad_notify, dev);
@@ -401,6 +474,12 @@ acpi_thinkpad_attach(device_t dev)
 
 	sensordev_install(&sc->sensordev);
 
+#if 0 /* XXX */
+	/* Hook up light to led(4) */
+	if (sc->light_set_supported)
+		sc->led_dev = led_create_state(thinkpad_led, sc, "thinklight", sc->light_val);
+#endif
+
 	return (0);
 }
 
@@ -414,11 +493,11 @@ acpi_thinkpad_detach(device_t dev)
 	struct acpi_thinkpad_softc *sc = device_get_softc(dev);
 
 	/* Disable events and restore eventmask */
-	lockmgr(&tplock, LK_EXCLUSIVE);
+	ACPI_SERIAL_BEGIN(thinkpad);
 	acpi_thinkpad_sysctl_set(sc, ACPI_THINKPAD_METHOD_EVENTS, 0);
 	acpi_thinkpad_sysctl_set(sc, ACPI_THINKPAD_METHOD_EVENTMASK,
 	    sc->events_initialmask);
-	lockmgr(&tplock, LK_RELEASE);
+	ACPI_SERIAL_END(thinkpad);
 
 	AcpiRemoveNotifyHandler(sc->handle, ACPI_DEVICE_NOTIFY,
 	    acpi_thinkpad_notify);
@@ -430,6 +509,39 @@ acpi_thinkpad_detach(device_t dev)
 	for (i = 0; i < THINKPAD_NUM_SENSORS; i++)
 		sensor_detach(&sc->sensordev, &sc->sensors[i]);
 	sensor_task_unregister(sc);
+
+#if 0 /* XXX */
+	if (sc->led_dev != NULL)
+		led_destroy(sc->led_dev);
+#endif
+
+	return (0);
+}
+
+static int
+acpi_thinkpad_resume(device_t dev)
+{
+	struct acpi_thinkpad_softc *sc = device_get_softc(dev);
+
+	ACPI_FUNCTION_TRACE((char *)(uintptr_t) __func__);
+
+	ACPI_SERIAL_BEGIN(thinkpad);
+	for (int i = 0; acpi_thinkpad_sysctls[i].name != NULL; i++) {
+		int val;
+
+		if ((acpi_thinkpad_sysctls[i].access & CTLFLAG_RD) == 0) {
+			continue;
+		}
+
+		val = acpi_thinkpad_sysctl_get(sc, i);
+
+		if ((acpi_thinkpad_sysctls[i].access & CTLFLAG_WR) == 0) {
+			continue;
+		}
+
+		acpi_thinkpad_sysctl_set(sc, i, val);
+	}
+	ACPI_SERIAL_END(thinkpad);
 
 	return (0);
 }
@@ -443,7 +555,7 @@ acpi_thinkpad_eventmask_set(struct acpi_thinkpad_softc *sc, int val)
 	ACPI_STATUS		status;
 
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
-	KKASSERT(lockstatus(&tplock, curthread) != 0);
+	ACPI_SERIAL_ASSERT(thinkpad);
 
 	args.Count = 2;
 	args.Pointer = arg;
@@ -478,7 +590,7 @@ acpi_thinkpad_sysctl(SYSCTL_HANDLER_ARGS)
 	function = oidp->oid_arg2;
 	method = acpi_thinkpad_sysctls[function].method;
 
-	lockmgr(&tplock, LK_EXCLUSIVE);
+	ACPI_SERIAL_BEGIN(thinkpad);
 	arg = acpi_thinkpad_sysctl_get(sc, method);
 	error = sysctl_handle_int(oidp, &arg, 0, req);
 
@@ -490,18 +602,18 @@ acpi_thinkpad_sysctl(SYSCTL_HANDLER_ARGS)
 	error = acpi_thinkpad_sysctl_set(sc, method, arg);
 
 out:
-	lockmgr(&tplock, LK_RELEASE);
+	ACPI_SERIAL_END(thinkpad);
 	return (error);
 }
 
 static int
 acpi_thinkpad_sysctl_get(struct acpi_thinkpad_softc *sc, int method)
 {
-	ACPI_INTEGER	val_ec;
+	UINT64		val_ec;
 	int 		val = 0, key;
 
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
-	KKASSERT(lockstatus(&tplock, curthread) != 0);
+	ACPI_SERIAL_ASSERT(thinkpad);
 
 	switch (method) {
 	case ACPI_THINKPAD_METHOD_EVENTS:
@@ -638,14 +750,12 @@ acpi_thinkpad_sysctl_get(struct acpi_thinkpad_softc *sc, int method)
 static int
 acpi_thinkpad_sysctl_set(struct acpi_thinkpad_softc *sc, int method, int arg)
 {
-	int			val, step, i;
-	ACPI_INTEGER		val_ec;
-	ACPI_OBJECT		Arg;
-	ACPI_OBJECT_LIST	Args;
+	int			val;
+	UINT64			val_ec;
 	ACPI_STATUS		status;
 
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
-	KKASSERT(lockstatus(&tplock, curthread) != 0);
+	ACPI_SERIAL_ASSERT(thinkpad);
 
 	switch (method) {
 	case ACPI_THINKPAD_METHOD_EVENTS:
@@ -667,121 +777,23 @@ acpi_thinkpad_sysctl_set(struct acpi_thinkpad_softc *sc, int method, int arg)
 		break;
 
 	case ACPI_THINKPAD_METHOD_BRIGHTNESS:
-		if (arg < 0 || arg > 7)
-			return (EINVAL);
-
-		if (sc->cmos_handle) {
-			/* Read the current brightness */
-			status = ACPI_EC_READ(sc->ec_dev,
-			    THINKPAD_EC_BRIGHTNESS, &val_ec, 1);
-			if (ACPI_FAILURE(status))
-				return (status);
-			val = val_ec & THINKPAD_EC_MASK_BRI;
-
-			Args.Count = 1;
-			Args.Pointer = &Arg;
-			Arg.Type = ACPI_TYPE_INTEGER;
-			Arg.Integer.Value = (arg > val) ?
-			    THINKPAD_CMOS_BRIGHTNESS_UP :
-			    THINKPAD_CMOS_BRIGHTNESS_DOWN;
-
-			step = (arg > val) ? 1 : -1;
-			for (i = val; i != arg; i += step) {
-				status = AcpiEvaluateObject(sc->cmos_handle,
-				    NULL, &Args, NULL);
-				if (ACPI_FAILURE(status))
-					break;
-			}
-		}
-		return ACPI_EC_WRITE(sc->ec_dev, THINKPAD_EC_BRIGHTNESS,
-		    arg, 1);
+		return acpi_thinkpad_brightness_set(sc, arg);
 		break;
 
 	case ACPI_THINKPAD_METHOD_VOLUME:
-		if (arg < 0 || arg > 14)
-			return (EINVAL);
-
-		status = ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_VOLUME,
-		    &val_ec, 1);
-		if (ACPI_FAILURE(status))
-			return (status);
-
-		if (sc->cmos_handle) {
-			val = val_ec & THINKPAD_EC_MASK_VOL;
-
-			Args.Count = 1;
-			Args.Pointer = &Arg;
-			Arg.Type = ACPI_TYPE_INTEGER;
-			Arg.Integer.Value = (arg > val) ?
-			    THINKPAD_CMOS_VOLUME_UP : THINKPAD_CMOS_VOLUME_DOWN;
-
-			step = (arg > val) ? 1 : -1;
-			for (i = val; i != arg; i += step) {
-				status = AcpiEvaluateObject(sc->cmos_handle,
-				    NULL, &Args, NULL);
-				if (ACPI_FAILURE(status))
-					break;
-			}
-		}
-		return ACPI_EC_WRITE(sc->ec_dev, THINKPAD_EC_VOLUME, arg +
-		    (val_ec & (~THINKPAD_EC_MASK_VOL)), 1);
+		return acpi_thinkpad_volume_set(sc, arg);
 		break;
 
 	case ACPI_THINKPAD_METHOD_MUTE:
-		if (arg < 0 || arg > 1)
-			return (EINVAL);
-
-		status = ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_VOLUME,
-		    &val_ec, 1);
-		if (ACPI_FAILURE(status))
-			return (status);
-
-		if (sc->cmos_handle) {
-			val = val_ec & THINKPAD_EC_MASK_VOL;
-
-			Args.Count = 1;
-			Args.Pointer = &Arg;
-			Arg.Type = ACPI_TYPE_INTEGER;
-			Arg.Integer.Value = THINKPAD_CMOS_VOLUME_MUTE;
-
-			status = AcpiEvaluateObject(sc->cmos_handle, NULL,
-			    &Args, NULL);
-			if (ACPI_FAILURE(status))
-				break;
-		}
-		return ACPI_EC_WRITE(sc->ec_dev, THINKPAD_EC_VOLUME, (arg==1) ?
-		   val_ec | THINKPAD_EC_MASK_MUTE :
-		   val_ec & (~THINKPAD_EC_MASK_MUTE), 1);
+		return acpi_thinkpad_mute_set(sc, arg);
 		break;
 
 	case ACPI_THINKPAD_METHOD_THINKLIGHT:
-		if (arg < 0 || arg > 1)
-			return (EINVAL);
-
-		if (sc->light_set_supported) {
-			Args.Count = 1;
-			Args.Pointer = &Arg;
-			Arg.Type = ACPI_TYPE_INTEGER;
-			Arg.Integer.Value = arg ?
-			    sc->light_cmd_on : sc->light_cmd_off;
-
-			status = AcpiEvaluateObject(sc->light_handle, NULL,
-			    &Args, NULL);
-			if (ACPI_SUCCESS(status))
-				sc->light_val = arg;
-			return (status);
-		}
+		return acpi_thinkpad_thinklight_set(sc, arg);
 		break;
 
 	case ACPI_THINKPAD_METHOD_BLUETOOTH:
-		if (arg < 0 || arg > 1)
-			return (EINVAL);
-
-		val = (arg == 1) ? sc->wlan_bt_flags |
-		    THINKPAD_NAME_MASK_BT :
-		    sc->wlan_bt_flags & (~THINKPAD_NAME_MASK_BT);
-		return acpi_SetInteger(sc->handle, THINKPAD_NAME_WLAN_BT_SET,
-		    val);
+		return acpi_thinkpad_bluetooth_set(sc, arg);
 		break;
 
 	case ACPI_THINKPAD_METHOD_FANLEVEL:
@@ -916,8 +928,335 @@ acpi_thinkpad_sysctl_init(struct acpi_thinkpad_softc *sc, int method)
 			return (TRUE);
 		}
 		return (FALSE);
+
+	case ACPI_THINKPAD_METHOD_HANDLEREVENTS:
+		return (TRUE);
 	}
 	return (FALSE);
+}
+
+static int
+acpi_thinkpad_handlerevents_sysctl(SYSCTL_HANDLER_ARGS)
+{
+	struct acpi_thinkpad_softc	*sc;
+	int			error = 0;
+	struct sbuf		sb;
+	char			*cp, *ep;
+	int			l, val;
+	unsigned int		handler_events;
+
+	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+
+	sc = (struct acpi_thinkpad_softc *)oidp->oid_arg1;
+
+	if (sbuf_new(&sb, NULL, 128, SBUF_AUTOEXTEND) == NULL)
+		return (ENOMEM);
+
+	ACPI_SERIAL_BEGIN(thinkpad);
+
+	/* Get old values if this is a get request. */
+	if (req->newptr == NULL) {
+		for (int i = 0; i < 8 * sizeof(sc->handler_events); i++)
+			if (sc->handler_events & (1 << i))
+				sbuf_printf(&sb, "0x%02x ", i + 1);
+		if (sbuf_len(&sb) == 0)
+			sbuf_printf(&sb, "NONE");
+	}
+
+	sbuf_trim(&sb);
+	sbuf_finish(&sb);
+
+	/* Copy out the old values to the user. */
+	error = SYSCTL_OUT(req, sbuf_data(&sb), sbuf_len(&sb));
+	sbuf_delete(&sb);
+
+	if (error != 0 || req->newptr == NULL)
+		goto out;
+
+	/* If the user is setting a string, parse it. */
+	handler_events = 0;
+	cp = (char *)req->newptr;
+	while (*cp) {
+		if (isspace(*cp)) {
+			cp++;
+			continue;
+		}
+
+		ep = cp;
+
+		while (*ep && !isspace(*ep))
+			ep++;
+
+		l = ep - cp;
+		if (l == 0)
+			break;
+
+		if (strncmp(cp, "NONE", 4) == 0) {
+			cp = ep;
+			continue;
+		}
+
+		if (l >= 3 && cp[0] == '0' && (cp[1] == 'X' || cp[1] == 'x'))
+			val = strtoul(cp, &ep, 16);
+		else
+			val = strtoul(cp, &ep, 10);
+
+		if (val == 0 || ep == cp || val >= 8 * sizeof(handler_events)) {
+			cp[l] = '\0';
+			device_printf(sc->dev, "invalid event code: %s\n", cp);
+			error = EINVAL;
+			goto out;
+		}
+
+		handler_events |= 1 << (val - 1);
+
+		cp = ep;
+	}
+
+	sc->handler_events = handler_events;
+out:
+	ACPI_SERIAL_END(thinkpad);
+	return (error);
+}
+
+static int
+acpi_thinkpad_brightness_set(struct acpi_thinkpad_softc *sc, int arg)
+{
+	int			val, step;
+	UINT64			val_ec;
+	ACPI_OBJECT		Arg;
+	ACPI_OBJECT_LIST	Args;
+	ACPI_STATUS		status;
+
+	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+	ACPI_SERIAL_ASSERT(thinkpad);
+
+	if (arg < 0 || arg > 7)
+		return (EINVAL);
+
+	/* Read the current brightness */
+	status = ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_BRIGHTNESS, &val_ec, 1);
+	if (ACPI_FAILURE(status))
+		return (status);
+
+	if (sc->cmos_handle) {
+		val = val_ec & THINKPAD_EC_MASK_BRI;
+
+		Args.Count = 1;
+		Args.Pointer = &Arg;
+		Arg.Type = ACPI_TYPE_INTEGER;
+		Arg.Integer.Value = (arg > val) ? THINKPAD_CMOS_BRIGHTNESS_UP :
+						  THINKPAD_CMOS_BRIGHTNESS_DOWN;
+
+		step = (arg > val) ? 1 : -1;
+		for (int i = val; i != arg; i += step) {
+			status = AcpiEvaluateObject(sc->cmos_handle, NULL,
+						    &Args, NULL);
+			if (ACPI_FAILURE(status)) {
+				/* Record the last value */
+				if (i != val) {
+					ACPI_EC_WRITE(sc->ec_dev,
+					    THINKPAD_EC_BRIGHTNESS, i - step, 1);
+				}
+				return (status);
+			}
+		}
+	}
+
+	return ACPI_EC_WRITE(sc->ec_dev, THINKPAD_EC_BRIGHTNESS, arg, 1);
+}
+
+static int
+acpi_thinkpad_bluetooth_set(struct acpi_thinkpad_softc *sc, int arg)
+{
+	int			val;
+
+	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+	ACPI_SERIAL_ASSERT(thinkpad);
+
+	if (arg < 0 || arg > 1)
+		return (EINVAL);
+
+	val = (arg == 1) ? sc->wlan_bt_flags | THINKPAD_NAME_MASK_BT :
+			   sc->wlan_bt_flags & (~THINKPAD_NAME_MASK_BT);
+	return acpi_SetInteger(sc->handle, THINKPAD_NAME_WLAN_BT_SET, val);
+}
+
+static int
+acpi_thinkpad_thinklight_set(struct acpi_thinkpad_softc *sc, int arg)
+{
+	ACPI_OBJECT		Arg;
+	ACPI_OBJECT_LIST	Args;
+	ACPI_STATUS		status;
+
+	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+	ACPI_SERIAL_ASSERT(thinkpad);
+
+	if (arg < 0 || arg > 1)
+		return (EINVAL);
+
+	if (sc->light_set_supported) {
+		Args.Count = 1;
+		Args.Pointer = &Arg;
+		Arg.Type = ACPI_TYPE_INTEGER;
+		Arg.Integer.Value = arg ? sc->light_cmd_on : sc->light_cmd_off;
+
+		status = AcpiEvaluateObject(sc->light_handle, NULL,
+					    &Args, NULL);
+		if (ACPI_SUCCESS(status))
+			sc->light_val = arg;
+		return (status);
+	}
+
+	return (0);
+}
+
+static int
+acpi_thinkpad_volume_set(struct acpi_thinkpad_softc *sc, int arg)
+{
+	int			val, step;
+	UINT64			val_ec;
+	ACPI_OBJECT		Arg;
+	ACPI_OBJECT_LIST	Args;
+	ACPI_STATUS		status;
+
+	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+	ACPI_SERIAL_ASSERT(thinkpad);
+
+	if (arg < 0 || arg > 14)
+		return (EINVAL);
+
+	/* Read the current volume */
+	status = ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_VOLUME, &val_ec, 1);
+	if (ACPI_FAILURE(status))
+		return (status);
+
+	if (sc->cmos_handle) {
+		val = val_ec & THINKPAD_EC_MASK_VOL;
+
+		Args.Count = 1;
+		Args.Pointer = &Arg;
+		Arg.Type = ACPI_TYPE_INTEGER;
+		Arg.Integer.Value = (arg > val) ? THINKPAD_CMOS_VOLUME_UP :
+						  THINKPAD_CMOS_VOLUME_DOWN;
+
+		step = (arg > val) ? 1 : -1;
+		for (int i = val; i != arg; i += step) {
+			status = AcpiEvaluateObject(sc->cmos_handle, NULL,
+						    &Args, NULL);
+			if (ACPI_FAILURE(status)) {
+				/* Record the last value */
+				if (i != val) {
+					val_ec = i - step +
+						 (val_ec & (~THINKPAD_EC_MASK_VOL));
+					ACPI_EC_WRITE(sc->ec_dev, THINKPAD_EC_VOLUME,
+						      val_ec, 1);
+				}
+				return (status);
+			}
+		}
+	}
+
+	val_ec = arg + (val_ec & (~THINKPAD_EC_MASK_VOL));
+	return ACPI_EC_WRITE(sc->ec_dev, THINKPAD_EC_VOLUME, val_ec, 1);
+}
+
+static int
+acpi_thinkpad_mute_set(struct acpi_thinkpad_softc *sc, int arg)
+{
+	UINT64			val_ec;
+	ACPI_OBJECT		Arg;
+	ACPI_OBJECT_LIST	Args;
+	ACPI_STATUS		status;
+
+	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+	ACPI_SERIAL_ASSERT(thinkpad);
+
+	if (arg < 0 || arg > 1)
+		return (EINVAL);
+
+	status = ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_VOLUME, &val_ec, 1);
+	if (ACPI_FAILURE(status))
+		return (status);
+
+	if (sc->cmos_handle) {
+		Args.Count = 1;
+		Args.Pointer = &Arg;
+		Arg.Type = ACPI_TYPE_INTEGER;
+		Arg.Integer.Value = THINKPAD_CMOS_VOLUME_MUTE;
+
+		status = AcpiEvaluateObject(sc->cmos_handle, NULL, &Args, NULL);
+		if (ACPI_FAILURE(status))
+			return (status);
+	}
+
+	val_ec = (arg == 1) ? val_ec | THINKPAD_EC_MASK_MUTE :
+			      val_ec & (~THINKPAD_EC_MASK_MUTE);
+	return ACPI_EC_WRITE(sc->ec_dev, THINKPAD_EC_VOLUME, val_ec, 1);
+}
+
+static void
+acpi_thinkpad_eventhandler(struct acpi_thinkpad_softc *sc, int arg)
+{
+	int			val;
+	UINT64			val_ec;
+	ACPI_STATUS		status;
+
+	ACPI_SERIAL_BEGIN(thinkpad);
+	switch (arg) {
+#if 0 /* XXX */
+	case THINKPAD_EVENT_SUSPEND_TO_RAM:
+		power_pm_suspend(POWER_SLEEP_STATE_SUSPEND);
+		break;
+#endif
+
+	case THINKPAD_EVENT_BLUETOOTH:
+		acpi_thinkpad_bluetooth_set(sc, (sc->wlan_bt_flags == 0));
+		break;
+
+	case THINKPAD_EVENT_BRIGHTNESS_UP:
+	case THINKPAD_EVENT_BRIGHTNESS_DOWN:
+		/* Read the current brightness */
+		status = ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_BRIGHTNESS,
+				      &val_ec, 1);
+		if (ACPI_FAILURE(status))
+			return;
+
+		val = val_ec & THINKPAD_EC_MASK_BRI;
+		val = (arg == THINKPAD_EVENT_BRIGHTNESS_UP) ? val + 1 : val - 1;
+		acpi_thinkpad_brightness_set(sc, val);
+		break;
+
+	case THINKPAD_EVENT_THINKLIGHT:
+		acpi_thinkpad_thinklight_set(sc, (sc->light_val == 0));
+		break;
+
+	case THINKPAD_EVENT_VOLUME_UP:
+	case THINKPAD_EVENT_VOLUME_DOWN:
+		/* Read the current volume */
+		status = ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_VOLUME, &val_ec, 1);
+		if (ACPI_FAILURE(status))
+			return;
+
+		val = val_ec & THINKPAD_EC_MASK_VOL;
+		val = (arg == THINKPAD_EVENT_VOLUME_UP) ? val + 1 : val - 1;
+		acpi_thinkpad_volume_set(sc, val);
+		break;
+
+	case THINKPAD_EVENT_MUTE:
+		/* Read the current value */
+		status = ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_VOLUME, &val_ec, 1);
+		if (ACPI_FAILURE(status))
+			return;
+
+		val = ((val_ec & THINKPAD_EC_MASK_MUTE) == THINKPAD_EC_MASK_MUTE);
+		acpi_thinkpad_mute_set(sc, (val == 0));
+		break;
+
+	default:
+		break;
+	}
+	ACPI_SERIAL_END(thinkpad);
 }
 
 static void
@@ -947,6 +1286,10 @@ acpi_thinkpad_notify(ACPI_HANDLE h, UINT32 notify, void *context)
 				device_printf(dev, "Unknown key %d\n", arg);
 				break;
 			}
+
+			/* Execute event handler */
+			if (sc->handler_events & (1 << (arg - 1)))
+				acpi_thinkpad_eventhandler(sc, (arg & 0xff));
 
 			/* Notify devd(8) */
 			acpi_UserNotify("THINKPAD", h, (arg & 0xff));
