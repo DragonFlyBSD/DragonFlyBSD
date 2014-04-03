@@ -290,7 +290,7 @@ static devclass_t acpi_thinkpad_devclass;
 DRIVER_MODULE(acpi_thinkpad, acpi, acpi_thinkpad_driver,
     acpi_thinkpad_devclass, 0, 0);
 MODULE_DEPEND(acpi_thinkpad, acpi, 1, 1, 1);
-static char    *thinkpad_ids[] = {"IBM0068", NULL};
+static char    *thinkpad_ids[] = {"IBM0068", "LEN0068", NULL};
 
 static int
 acpi_thinkpad_probe(device_t dev)
