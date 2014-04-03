@@ -1122,6 +1122,8 @@ d_mmap_t drm_mmap;
 d_mmap_single_t drm_mmap_single;
 extern drm_local_map_t	*drm_getsarea(struct drm_device *dev);
 
+void drm_cdevpriv_dtor(void *cd);
+
 void drm_event_wakeup(struct drm_pending_event *e);
 
 int drm_add_busid_modesetting(struct drm_device *dev,
@@ -1130,7 +1132,8 @@ int drm_add_busid_modesetting(struct drm_device *dev,
 /* File operations helpers (drm_fops.c) */
 extern int		drm_open_helper(struct cdev *kdev, int flags, int fmt,
 					 DRM_STRUCTPROC *p,
-					struct drm_device *dev);
+					struct drm_device *dev,
+					struct file *fp);
 extern struct drm_file	*drm_find_file_by_proc(struct drm_device *dev,
 					DRM_STRUCTPROC *p);
 

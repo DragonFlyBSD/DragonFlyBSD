@@ -38,24 +38,13 @@
 
 #include <sys/types.h>
 #include <sys/conf.h>
+#include <sys/devfs.h>
 
 #include <drm/drmP.h>
 
 extern drm_pci_id_list_t *drm_find_description(int vendor, int device,
     drm_pci_id_list_t *idlist);
 extern devclass_t drm_devclass;
-
-struct drm_file *drm_find_file_by_proc(struct drm_device *dev, DRM_STRUCTPROC *p)
-{
-	uid_t uid = p->td_proc->p_ucred->cr_svuid;
-	pid_t pid = p->td_proc->p_pid;
-	struct drm_file *priv;
-
-	list_for_each_entry(priv, &dev->filelist, lhead)
-		if (priv->pid == pid && priv->uid == uid)
-			return priv;
-	return NULL;
-}
 
 static int drm_setup(struct drm_device *dev)
 {
@@ -119,7 +108,7 @@ drm_open(struct dev_open_args *ap)
 
 	DRM_DEBUG("open_count = %d\n", dev->open_count);
 
-	retcode = drm_open_helper(kdev, flags, fmt, p, dev);
+	retcode = drm_open_helper(kdev, flags, fmt, p, dev, ap->a_fp);
 
 	if (retcode == 0) {
 		atomic_inc(&dev->counts[_DRM_STAT_OPENS]);
@@ -137,7 +126,7 @@ drm_open(struct dev_open_args *ap)
 
 /* drm_open_helper is called whenever a process opens /dev/drm. */
 int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
-		    struct drm_device *dev)
+		    struct drm_device *dev, struct file *fp)
 {
 	struct drm_file *priv;
 	int retcode;
@@ -147,20 +136,13 @@ int drm_open_helper(struct cdev *kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 	dev->flags = flags;
 
 	DRM_DEBUG("pid = %d, device = %s\n", DRM_CURRENTPID, devtoname(kdev));
-	DRM_LOCK(dev);
-
-        priv = drm_find_file_by_proc(dev, p);
-        if (priv) {
-		goto priv_found;
-        }
 
 	priv = kmalloc(sizeof(*priv), DRM_MEM_FILES, M_NOWAIT | M_ZERO);
 	if (priv == NULL) {
 		return ENOMEM;
 	}
 	
-priv_found:
-
+	DRM_LOCK(dev);
 	priv->dev		= dev;
 	priv->uid               = p->td_proc->p_ucred->cr_svuid;
 	priv->pid		= p->td_proc->p_pid;
@@ -193,7 +175,12 @@ priv_found:
 	list_add(&priv->lhead, &dev->filelist);
 	DRM_UNLOCK(dev);
 	kdev->si_drv1 = dev;
-	return 0;
+
+	retcode = devfs_set_cdevpriv(fp, priv, &drm_cdevpriv_dtor);
+	if (retcode != 0)
+		drm_cdevpriv_dtor(priv);
+
+	return retcode;
 }
 
 static bool
@@ -226,9 +213,12 @@ drm_read(struct dev_read_args *ap)
 	struct drm_pending_event *e;
 	int error;
 
+	error = devfs_get_cdevpriv(ap->a_fp, (void **)&file_priv);
+	if (error != 0) {
+		DRM_ERROR("can't find authenticator\n");
+		return (EINVAL);
+	}
 	dev = drm_get_device_from_kdev(kdev);
-	file_priv = drm_find_file_by_proc(dev, curthread);
-
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	while (list_empty(&file_priv->event_list)) {
 		if ((ioflag & O_NONBLOCK) != 0) {

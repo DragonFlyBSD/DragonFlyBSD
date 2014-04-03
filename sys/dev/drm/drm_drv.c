@@ -655,15 +655,19 @@ int drm_version(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	return 0;
 }
 
+/*
+ * Stub is needed for devfs
+ */
 int drm_close(struct dev_close_args *ap)
 {
-	struct cdev *kdev = ap->a_head.a_dev;
-	struct drm_file *file_priv;
-	struct drm_device *dev;
-	int retcode = 0;
+	return 0;
+}
 
-	dev = DRIVER_SOFTC(minor(kdev));
-	file_priv = drm_find_file_by_proc(dev, curthread);
+void drm_cdevpriv_dtor(void *cd)
+{
+	struct drm_file *file_priv = cd;
+	struct drm_device *dev = file_priv->dev;
+	int retcode = 0;
 
 	DRM_DEBUG("open_count = %d\n", dev->open_count);
 
@@ -734,7 +738,6 @@ int drm_close(struct dev_close_args *ap)
 		dev->driver->postclose(dev, file_priv);
 	list_del(&file_priv->lhead);
 
-	drm_free(file_priv, DRM_MEM_FILES);
 
 	/* ========================================================
 	 * End inline drm_release
@@ -747,8 +750,6 @@ int drm_close(struct dev_close_args *ap)
 	}
 
 	DRM_UNLOCK(dev);
-
-	return (0);
 }
 
 /* drm_ioctl is called whenever a process performs an ioctl on /dev/drm.
@@ -767,7 +768,11 @@ int drm_ioctl(struct dev_ioctl_args *ap)
 	int is_driver_ioctl = 0;
 	struct drm_file *file_priv;
 
-	file_priv = drm_find_file_by_proc(dev, p);
+	retcode = devfs_get_cdevpriv(ap->a_fp, (void **)&file_priv);
+	if (retcode !=0) {
+		DRM_ERROR("can't find authenticator\n");
+		return EINVAL;
+	}
 
 	atomic_inc(&dev->counts[_DRM_STAT_IOCTLS]);
 	++file_priv->ioctl_count;
