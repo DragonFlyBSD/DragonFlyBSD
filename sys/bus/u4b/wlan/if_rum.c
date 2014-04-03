@@ -159,7 +159,6 @@ static void		rum_vap_delete(struct ieee80211vap *);
 static void		rum_tx_free(struct rum_tx_data *, int);
 static void		rum_setup_tx_list(struct rum_softc *);
 static void		rum_unsetup_tx_list(struct rum_softc *);
-static void		rum_newassoc(struct ieee80211_node *, int);
 static int		rum_newstate(struct ieee80211vap *,
 			    enum ieee80211_state, int);
 static void		rum_setup_tx_desc(struct rum_softc *,
@@ -512,7 +511,6 @@ rum_attach(device_t self)
 	ieee80211_init_channels(ic, NULL, &bands);
 
 	ieee80211_ifattach(ic, sc->sc_bssid);
-	ic->ic_newassoc = rum_newassoc;
 	ic->ic_update_promisc = rum_update_promisc;
 	ic->ic_raw_xmit = rum_raw_xmit;
 	ic->ic_scan_start = rum_scan_start;
@@ -699,13 +697,6 @@ rum_unsetup_tx_list(struct rum_softc *sc)
 			data->ni = NULL;
 		}
 	}
-}
-
-static void
-rum_newassoc(struct ieee80211_node *ni, int isnew)
-{
-	ieee80211_ratectl_node_deinit(ni);
-	ieee80211_ratectl_node_init(ni);
 }
 
 static int

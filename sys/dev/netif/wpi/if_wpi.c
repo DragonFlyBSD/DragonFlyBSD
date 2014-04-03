@@ -239,7 +239,6 @@ static void	wpi_init_locked(struct wpi_softc *, int);
 static void	wpi_stop(struct wpi_softc *);
 static void	wpi_stop_locked(struct wpi_softc *);
 
-static void	wpi_newassoc(struct ieee80211_node *, int);
 static int	wpi_set_txpower(struct wpi_softc *, struct ieee80211_channel *,
 		    int);
 static void	wpi_calib_timeout_callout(void *);
@@ -676,7 +675,6 @@ wpi_attach(device_t dev)
 	ieee80211_ifattach(ic, macaddr);
 	/* override default methods */
 	ic->ic_node_alloc = wpi_node_alloc;
-	ic->ic_newassoc = wpi_newassoc;
 	ic->ic_raw_xmit = wpi_raw_xmit;
 	ic->ic_wme.wme_update = wpi_wme_update;
 	ic->ic_scan_start = wpi_scan_start;
@@ -3212,13 +3210,6 @@ static void
 wpi_stop(struct wpi_softc *sc)
 {
 	wpi_stop_locked(sc);
-}
-
-static void
-wpi_newassoc(struct ieee80211_node *ni, int isnew)
-{
-	/* XXX move */
-	ieee80211_ratectl_node_init(ni);
 }
 
 static void
