@@ -160,8 +160,10 @@ amrr_node_init(struct ieee80211_node *ni)
 static void
 amrr_node_deinit(struct ieee80211_node *ni)
 {
-	kfree(ni->ni_rctls, M_80211_RATECTL);
-	ni->ni_rctls = NULL;
+	if (ni->ni_rctls) {
+		kfree(ni->ni_rctls, M_80211_RATECTL);
+		ni->ni_rctls = NULL;
+	}
 }
 
 static int
