@@ -165,9 +165,13 @@ rssadapt_node_init(struct ieee80211_node *ni)
 	struct ieee80211_rssadapt *rsa = ni->ni_vap->iv_rs;
 	const struct ieee80211_rateset *rs = &ni->ni_rates;
 
-	ra = kmalloc(sizeof(struct ieee80211_rssadapt_node), M_80211_RATECTL,
-	    M_WAITOK|M_ZERO);
-	ni->ni_rctls = ra;
+	if (ni->ni_rctls == NULL) {
+		ni->ni_rctls = ra =
+		    kmalloc(sizeof(struct ieee80211_rssadapt_node),
+			M_80211_RATECTL, M_WAITOK|M_ZERO);
+	} else {
+		ra = ni->ni_rctls;
+	}
 	ra->ra_rs = rsa;
 	ra->ra_rates = *rs;
 	rssadapt_updatestats(ra);
