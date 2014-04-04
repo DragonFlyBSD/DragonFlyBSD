@@ -1068,7 +1068,9 @@ ath_detach(struct ath_softc *sc)
 	 * Other than that, it's straightforward...
 	 */
 	ath_stop(ifp);
+	wlan_serialize_enter();
 	ieee80211_ifdetach(ifp->if_l2com);
+	wlan_serialize_exit();
 	taskqueue_free(sc->sc_tq);
 #ifdef ATH_TX99_DIAG
 	if (sc->sc_tx99 != NULL)
