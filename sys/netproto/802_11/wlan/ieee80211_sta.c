@@ -55,6 +55,7 @@
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_sta.h>
 #include <netproto/802_11/ieee80211_input.h>
+#include <netproto/802_11/ieee80211_ratectl.h>
 #ifdef IEEE80211_SUPPORT_SUPERG
 #include <netproto/802_11/ieee80211_superg.h>
 #endif
