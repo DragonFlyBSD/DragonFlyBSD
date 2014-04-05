@@ -306,7 +306,7 @@ auto_select:
 			return (EINVAL);
 		}
 
-		return in6_pcbsetport(&inp->in6p_laddr, inp, td);
+		return in6_pcbsetlport(&inp->in6p_laddr, inp, td);
 	}
 }
 

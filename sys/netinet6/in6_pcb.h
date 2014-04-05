@@ -131,7 +131,7 @@ struct	in6_addr *in6_selectsrc (struct sockaddr_in6 *,
 				     struct route_in6 *,
 				     struct in6_addr *, int *, struct thread *);
 int	in6_selecthlim (struct in6pcb *, struct ifnet *);
-int	in6_pcbsetport (struct in6_addr *, struct inpcb *, struct thread *);
+int	in6_pcbsetlport (struct in6_addr *, struct inpcb *, struct thread *);
 void	init_sin6 (struct sockaddr_in6 *sin6, struct mbuf *m);
 
 #endif /* _KERNEL */

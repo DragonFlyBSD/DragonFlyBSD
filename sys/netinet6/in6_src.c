@@ -394,7 +394,7 @@ in6_selecthlim(struct in6pcb *in6p, struct ifnet *ifp)
  * share this function by all *bsd*...
  */
 int
-in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
+in6_pcbsetlport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 {
 	struct socket *so = inp->inp_socket;
 	u_int16_t lport = 0, first, last, *lastport, step;

@@ -148,7 +148,7 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 		 * which needs splnet and affects performance.
 		 * Since we saw no essential reason for calling in_pcbconnect,
 		 * we get rid of such kind of logic, and call in6_selectsrc
-		 * and in6_pcbsetport in order to fill in the local address
+		 * and in6_pcbsetlport in order to fill in the local address
 		 * and the local port.
 		 */
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr6;
@@ -211,7 +211,7 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 			goto release;
 		}
 		if (in6p->in6p_lport == 0 &&
-		    (error = in6_pcbsetport(laddr, in6p, td)) != 0)
+		    (error = in6_pcbsetlport(laddr, in6p, td)) != 0)
 			goto release;
 	} else {
 		if (IN6_IS_ADDR_UNSPECIFIED(&in6p->in6p_faddr)) {
