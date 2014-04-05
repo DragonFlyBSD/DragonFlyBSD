@@ -436,10 +436,9 @@ loop:
 
 	/*
 	 * This has to be atomic.  If the porthash is shared across multiple
-	 * protocol threads (aka tcp) then the token will be non-NULL.
+	 * protocol threads (aka tcp) then the token must be held.
 	 */
-	if (portinfo->porttoken)
-		lwkt_gettoken(portinfo->porttoken);
+	GET_PORT_TOKEN(portinfo);
 
 	/*
 	 * Simple check to ensure all ports are not used up causing
@@ -494,8 +493,7 @@ loop:
 	in_pcbinsporthash(portinfo, inp);
 	error = 0;
 done:
-	if (portinfo->porttoken)
-		lwkt_reltoken(portinfo->porttoken);
+	REL_PORT_TOKEN(portinfo);
 
 	if (error) {
 		/* Try next portinfo */

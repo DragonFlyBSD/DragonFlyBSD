@@ -333,10 +333,9 @@ loop:
 
 	/*
 	 * This has to be atomic.  If the porthash is shared across multiple
-	 * protocol threads (aka tcp) then the token will be non-NULL.
+	 * protocol threads (aka tcp) then the token must be held.
 	 */
-	if (portinfo->porttoken)
-		lwkt_gettoken(portinfo->porttoken);
+	GET_PORT_TOKEN(portinfo);
 
 	/*
 	 * Simple check to ensure all ports are not used up causing
@@ -390,8 +389,7 @@ loop:
 	in_pcbinsporthash(portinfo, inp);
 	error = 0;
 done:
-	if (portinfo->porttoken)
-		lwkt_reltoken(portinfo->porttoken);
+	REL_PORT_TOKEN(portinfo);
 
 	if (error) {
 		/* Try next portinfo */
@@ -497,11 +495,10 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 		/*
 		 * This has to be atomic.  If the porthash is shared across
-		 * multiple protocol threads (aka tcp) then the token will
-		 * be non-NULL.
+		 * multiple protocol threads (aka tcp) then the token must
+		 * be held.
 		 */
-		if (portinfo->porttoken)
-			lwkt_gettoken(portinfo->porttoken);
+		GET_PORT_TOKEN(portinfo);
 
 		if (so->so_cred->cr_uid != 0 &&
 		    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
@@ -548,8 +545,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		in_pcbinsporthash(portinfo, inp);
 		error = 0;
 done:
-		if (portinfo->porttoken)
-			lwkt_reltoken(portinfo->porttoken);
+		REL_PORT_TOKEN(portinfo);
 		return (error);
 	} else {
 		jsin.sin_family = AF_INET;
@@ -577,8 +573,7 @@ in_pcblookup_localremote(struct inpcbportinfo *portinfo, struct in_addr laddr,
 	 * If the porthashbase is shared across several cpus, it must
 	 * have been locked.
 	 */
-	if (portinfo->porttoken)
-		ASSERT_LWKT_TOKEN_HELD(portinfo->porttoken);
+	ASSERT_PORT_TOKEN_HELD(portinfo);
 
 	/*
 	 * Best fit PCB lookup.
@@ -684,10 +679,9 @@ loop:
 
 	/*
 	 * This has to be atomic.  If the porthash is shared across multiple
-	 * protocol threads (aka tcp) then the token will be non-NULL.
+	 * protocol threads (aka tcp) then the token must be held.
 	 */
-	if (portinfo->porttoken)
-		lwkt_gettoken(portinfo->porttoken);
+	GET_PORT_TOKEN(portinfo);
 
 again:
 	/*
@@ -756,8 +750,7 @@ again:
 	in_pcbinsporthash(portinfo, inp);
 	error = 0;
 done:
-	if (portinfo->porttoken)
-		lwkt_reltoken(portinfo->porttoken);
+	REL_PORT_TOKEN(portinfo);
 
 	if (error) {
 		/* Try next portinfo */
@@ -1237,8 +1230,7 @@ in_pcblookup_local(struct inpcbportinfo *portinfo, struct in_addr laddr,
 	 * If the porthashbase is shared across several cpus, it must
 	 * have been locked.
 	 */
-	if (portinfo->porttoken)
-		ASSERT_LWKT_TOKEN_HELD(portinfo->porttoken);
+	ASSERT_PORT_TOKEN_HELD(portinfo);
 
 	/*
 	 * Best fit PCB lookup.
@@ -1588,8 +1580,7 @@ in_pcbinsporthash(struct inpcbportinfo *portinfo, struct inpcb *inp)
 	 * If the porthashbase is shared across several cpus, it must
 	 * have been locked.
 	 */
-	if (portinfo->porttoken)
-		ASSERT_LWKT_TOKEN_HELD(portinfo->porttoken);
+	ASSERT_PORT_TOKEN_HELD(portinfo);
 
 	/*
 	 * Insert into the port hash table.
@@ -1635,13 +1626,9 @@ in_pcbinsporthash_lport(struct inpcb *inp)
 	portinfo = &pcbinfo->portinfo[lport_ho & pcbinfo->portinfo_mask];
 	KKASSERT((lport_ho & pcbinfo->portinfo_mask) == portinfo->offset);
 
-	if (portinfo->porttoken)
-		lwkt_gettoken(portinfo->porttoken);
-
+	GET_PORT_TOKEN(portinfo);
 	in_pcbinsporthash(portinfo, inp);
-
-	if (portinfo->porttoken)
-		lwkt_reltoken(portinfo->porttoken);
+	REL_PORT_TOKEN(portinfo);
 }
 
 static struct inp_localgroup *
@@ -1898,8 +1885,7 @@ in_pcbremlists(struct inpcb *inp)
 		 * inp->inp_pcbinfo->portinfo.
 		 */
 		portinfo = inp->inp_portinfo;
-		if (portinfo->porttoken)
-			lwkt_gettoken(portinfo->porttoken);
+		GET_PORT_TOKEN(portinfo);
 
 		phd = inp->inp_phd;
 		LIST_REMOVE(inp, inp_portlist);
@@ -1907,8 +1893,8 @@ in_pcbremlists(struct inpcb *inp)
 			LIST_REMOVE(phd, phd_hash);
 			kfree(phd, M_PCB);
 		}
-		if (portinfo->porttoken)
-			lwkt_reltoken(portinfo->porttoken);
+
+		REL_PORT_TOKEN(portinfo);
 	}
 	if (inp->inp_flags & INP_WILDCARD) {
 		in_pcbremwildcardhash(inp);

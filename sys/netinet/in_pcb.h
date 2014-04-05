@@ -418,6 +418,29 @@ struct baddynamicports {
 #define	INP_CHECK_SOCKAF(so, af)	(INP_SOCKAF(so) == af)
 
 #ifdef _KERNEL
+
+#define GET_PORT_TOKEN(portinfo) \
+do { \
+	if ((portinfo)->porttoken) \
+		lwkt_gettoken((portinfo)->porttoken); \
+} while (0)
+
+#define REL_PORT_TOKEN(portinfo) \
+do { \
+	if ((portinfo)->porttoken) \
+		lwkt_reltoken((portinfo)->porttoken); \
+} while (0)
+
+#ifdef INVARIANTS
+#define ASSERT_PORT_TOKEN_HELD(portinfo) \
+do { \
+	if ((portinfo)->porttoken) \
+		ASSERT_LWKT_TOKEN_HELD((portinfo)->porttoken); \
+} while (0)
+#else	/* !INVARIANTS */
+#define ASSERT_PORT_TOKEN_HELD(portinfo)
+#endif	/* INVARIANTS */
+
 extern int	ipport_lowfirstauto;
 extern int	ipport_lowlastauto;
 extern int	ipport_firstauto;
@@ -482,6 +505,7 @@ struct inpcb *
 int	in_pcblist_global(SYSCTL_HANDLER_ARGS);
 int	in_pcblist_global_nomarker(SYSCTL_HANDLER_ARGS,
 	    struct xinpcb **, int *);
+
 #endif /* _KERNEL */
 
 #endif /* !_NETINET_IN_PCB_H_ */

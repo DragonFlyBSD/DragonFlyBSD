@@ -222,11 +222,10 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 		/*
 		 * This has to be atomic.  If the porthash is shared across
-		 * multiple protocol threads (aka tcp) then the token will be
-		 * non-NULL.
+		 * multiple protocol threads (aka tcp) then the token must
+		 * be held.
 		 */
-		if (portinfo->porttoken)
-			lwkt_gettoken(portinfo->porttoken);
+		GET_PORT_TOKEN(portinfo);
 
 		if (so->so_cred->cr_uid != 0 &&
 		    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
@@ -295,8 +294,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 		in_pcbinsporthash(portinfo, inp);
 		error = 0;
 done:
-		if (portinfo->porttoken)
-			lwkt_reltoken(portinfo->porttoken);
+		REL_PORT_TOKEN(portinfo);
 		return (error);
 	} else {
 auto_select:
@@ -1005,8 +1003,7 @@ in6_pcblookup_local(struct inpcbportinfo *portinfo,
 	 * If the porthashbase is shared across several cpus, it must
 	 * have been locked.
 	 */
-	if (portinfo->porttoken)
-		ASSERT_LWKT_TOKEN_HELD(portinfo->porttoken);
+	ASSERT_PORT_TOKEN_HELD(portinfo);
 
 	/*
 	 * Best fit PCB lookup.
