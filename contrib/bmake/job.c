@@ -1360,10 +1360,12 @@ JobExec(Job *job, char **argv)
 	(void)fcntl(0, F_SETFD, 0);
 	(void)lseek(0, (off_t)0, SEEK_SET);
 
-	if (job->node->type & OP_MAKE) {
-		/*
-		 * Pass job token pipe to submakes.
-		 */
+	/*
+	 * Always pass job token pipe to submakes.  OP_MAKE simply doesn't
+	 * catch all situations and can lead to a massive multiplication of
+	 * jobs.
+	 */
+	/*if (job->node->type & OP_MAKE)*/ {
 		fcntl(tokenWaitJob.inPipe, F_SETFD, 0);
 		fcntl(tokenWaitJob.outPipe, F_SETFD, 0);		
 	}
