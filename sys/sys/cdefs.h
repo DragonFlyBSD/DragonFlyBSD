@@ -440,13 +440,15 @@
 #define	_Static_assert(x, y)	static_assert(x, y)
 #elif !__GNUC_PREREQ__(4, 6)
 #define	_Static_assert(x, y)	struct __hack
+#ifdef _KERNEL
 #define	CTASSERT(x)		_CTASSERT(x, __LINE__)
 #define	_CTASSERT(x, y)		__CTASSERT(x, y)
 #define	__CTASSERT(x, y)	typedef char __assert ## y[(x) ? 1 : -1]
 #endif
 #endif
+#endif
 
-#ifndef CTASSERT
+#if defined(_KERNEL) && !defined(CTASSERT)
 #define	CTASSERT(x)		_Static_assert(x, \
 				    "compile-time assertion failed")
 #endif
