@@ -1594,7 +1594,7 @@ in_pcbinsporthash(struct inpcbportinfo *portinfo, struct inpcb *inp)
 			break;
 	}
 
-	/* If none exists, malloc one and tack it on. */
+	/* If none exists, use saved one and tack it on. */
 	if (phd == NULL) {
 		KKASSERT(pcbinfo->portsave != NULL);
 		phd = pcbinfo->portsave;
@@ -1608,6 +1608,12 @@ in_pcbinsporthash(struct inpcbportinfo *portinfo, struct inpcb *inp)
 	inp->inp_phd = phd;
 	LIST_INSERT_HEAD(&phd->phd_pcblist, inp, inp_portlist);
 
+	/*
+	 * Malloc one inpcbport for later use.  It is safe to use
+	 * "wait" malloc here (port token would be released, if
+	 * malloc ever blocked), since all changes to the porthash
+	 * are done.
+	 */
 	if (pcbinfo->portsave == NULL) {
 		pcbinfo->portsave = kmalloc(sizeof(*pcbinfo->portsave),
 					    M_PCB, M_INTWAIT | M_ZERO);
