@@ -28,6 +28,7 @@
  */
 
 #include <sys/conf.h>
+#include <sys/devfs.h>
 #include <sys/mutex2.h>
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
@@ -51,7 +52,7 @@ int drm_mmap(struct dev_mmap_args *ap)
 	 * the first call.  We need to assume that if error is EBADF the
 	 * call was succesful and the client is authenticated.
 	 */
-	error = devfs_get_cdevpriv((void **)&file_priv);
+	error = devfs_get_cdevpriv(ap->a_fp, (void **)&file_priv);
 	if (error == ENOENT) {
 		DRM_ERROR("Could not find authenticator!\n");
 		return EINVAL;
