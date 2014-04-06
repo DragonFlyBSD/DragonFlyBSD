@@ -768,6 +768,7 @@ hammer_vop_write(struct vop_write_args *ap)
 					  hammer_blockoff(ip->ino_data.size),
 					  0);
 			}
+			lwkt_reltoken(&hmp->fs_token);
 			break;
 		}
 		kflags |= NOTE_WRITE;
