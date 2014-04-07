@@ -207,7 +207,7 @@ pfi_kif_get(const char *kif_name)
 		return (kif);
 
 	/* create new one */
-	if ((kif = kmalloc(sizeof(*kif), PFI_MTYPE, M_WAITOK)) == NULL)
+	if ((kif = kmalloc(sizeof(*kif), PFI_MTYPE, M_WAITOK | M_ZERO)) == NULL)
 		return (NULL);
 
 	strlcpy(kif->pfik_name, kif_name, sizeof(kif->pfik_name));
