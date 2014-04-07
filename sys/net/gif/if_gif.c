@@ -200,9 +200,22 @@ gif_clone_destroy(struct ifnet *ifp)
 static void
 gif_clear_cache(struct gif_softc *sc)
 {
+	struct rtentry *rt;
+	int origcpu;
 	int n;
 
 	for (n = 0; n < ncpus; ++n) {
+		rt = sc->gif_ro[n].ro_rt;
+		/*
+		 * Routes need to be cleaned up in their CPU so migrate
+		 * to it and return to the original CPU after completion.
+		 */
+		origcpu = mycpuid;
+		if (rt && rt->rt_cpuid != mycpuid)
+			lwkt_migratecpu(rt->rt_cpuid);
+		else
+			origcpu = -1;
+
 		if (sc->gif_ro[n].ro_rt) {
 			RTFREE(sc->gif_ro[n].ro_rt);
 			sc->gif_ro[n].ro_rt = NULL;
@@ -213,6 +226,8 @@ gif_clear_cache(struct gif_softc *sc)
 			sc->gif_ro6[n].ro_rt = NULL;
 		}
 #endif
+		if (origcpu >= 0)
+			lwkt_migratecpu(origcpu);
 	}
 }
 
