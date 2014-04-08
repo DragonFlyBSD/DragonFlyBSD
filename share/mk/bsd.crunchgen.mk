@@ -57,7 +57,7 @@ NO_DEBUG_FILES=
 .ifdef CRUNCH_SRCDIR_${P}
 $(OUTPUTS): $(CRUNCH_SRCDIR_${P})/Makefile
 .else
-$(OUTPUTS): $(.CURDIR)/../../$(D)/$(P)/Makefile
+$(OUTPUTS): $(.CURDIR)/../../../$(D)/$(P)/Makefile
 .endif
 .if ${CRUNCH_GENERATE_LINKS} == "yes"
 .ifndef CRUNCH_SUPPRESS_LINK_${P}
@@ -92,7 +92,7 @@ $(CONF): Makefile
 .ifdef CRUNCH_SRCDIR_${P}
 	echo special $(P) srcdir $(CRUNCH_SRCDIR_${P}) >>$(.TARGET)
 .else
-	echo special $(P) srcdir $(.CURDIR)/../../$(D)/$(P) >>$(.TARGET)
+	echo special $(P) srcdir $(.CURDIR)/../../../$(D)/$(P) >>$(.TARGET)
 .endif
 .ifdef CRUNCH_BUILDOPTS_${P}
 	echo special $(P) buildopts DIRPRFX=${DIRPRFX}${P}/ \
@@ -123,7 +123,7 @@ objs: $(OUTMK)
 # shell scripts so we can remove this nonsense.
 build-tools:
 .for _tool in $(CRUNCH_BUILDTOOLS)
-	cd $(.CURDIR)/../../${_tool}; \
+	cd $(.CURDIR)/../../../${_tool}; \
 	MAKEOBJDIRPREFIX=${CRUNCHOBJS} ${MAKE} obj; \
 	MAKEOBJDIRPREFIX=${CRUNCHOBJS} ${MAKE} build-tools
 .endfor
@@ -140,7 +140,7 @@ cleandepend cleandir obj objlink:
 	    MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
 .else
-	cd $(.CURDIR)/../../${D}/${P} && \
+	cd $(.CURDIR)/../../../${D}/${P} && \
 	    MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
 .endif
@@ -159,7 +159,7 @@ clean:
 	    MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
 .else
-	cd $(.CURDIR)/../../${D}/${P} && \
+	cd $(.CURDIR)/../../../${D}/${P} && \
 	    MAKEOBJDIRPREFIX=${CANONICALOBJDIR} ${MAKE} \
 	    DIRPRFX=${DIRPRFX}${P}/ ${CRUNCH_BUILDOPTS} ${.TARGET}
 .endif
