@@ -57,7 +57,7 @@ create_vn()
 	[ -f ${TMP_DIR}/vndev.mkinitrd ] && rm ${TMP_DIR}/vndev.mkinitrd
 
 	echo "Configured $VN_DEV"
-	newfs /dev/${VN_DEV}s0
+	newfs -i 131072 -m 0 /dev/${VN_DEV}s0
 	echo "Formatted initrd image with UFS"
 	mount /dev/${VN_DEV}s0 $BUILD_DIR
 	echo "Mounted initrd image on ${BUILD_DIR}"
