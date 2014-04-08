@@ -7,16 +7,7 @@
 SRCDIR=		${.CURDIR}/../../contrib/nvi
 SUBDIR+=	catalog
 
-.if defined(RELEASE_CRUNCH)
-# When building `vi' for the fixit floppy, don't include any of the
-# API stuff.
-APISTUFF=	ex_notcl.c ex_noperl.c
-
-.else
-
 APISTUFF=	ex_tcl.c ex_perl.c
-
-.endif
 
 WARNS?=	0	# some warn issues on 32 bit machines
 

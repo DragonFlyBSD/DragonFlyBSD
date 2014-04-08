@@ -12,9 +12,7 @@ CFLAGS+= -DLOGIN_CAP
 
 DPADD+=	${LIBUTIL} ${LIBWRAP}
 LDADD+=	-lutil -lwrap
-.if !defined(RELEASE_CRUNCH)
 CFLAGS+=-DINET6 -DIPSEC
 DPADD+=	${LIBIPSEC}
 LDADD+=	-lipsec
-.endif
 .include <bsd.prog.mk>

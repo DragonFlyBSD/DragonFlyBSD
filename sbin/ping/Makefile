@@ -8,10 +8,8 @@ BINMODE=4555
 DPADD=	${LIBM}
 LDADD=	-lm
 
-.if !defined(RELEASE_CRUNCH)
 CFLAGS+=-DIPSEC
 DPADD+=	${LIBIPSEC}
 LDADD+=	-lipsec
-.endif
 
 .include <bsd.prog.mk>

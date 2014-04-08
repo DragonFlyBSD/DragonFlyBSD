@@ -369,13 +369,9 @@ physical_Close(struct physical *p)
 
   if (*p->name.full == '/') {
     snprintf(fn, sizeof fn, "%s%s.if", _PATH_VARRUN, p->name.base);
-#ifndef RELEASE_CRUNCH
     if (ID0unlink(fn) == -1)
       log_Printf(LogALERT, "%s: Can't remove %s: %s\n",
                  p->link.name, fn, strerror(errno));
-#else
-    ID0unlink(fn);
-#endif
   }
   physical_Unlock(p);
   if (p->handler && p->handler->destroy)
@@ -981,11 +977,9 @@ physical_Found(struct physical *p)
       fprintf(lockfile, "%s%d\n", TUN_NAME, p->dl->bundle->unit);
       fclose(lockfile);
     }
-#ifndef RELEASE_CRUNCH
     else
       log_Printf(LogALERT, "%s: Can't create %s: %s\n",
                  p->link.name, fn, strerror(errno));
-#endif
   }
 
   throughput_start(&p->link.stats.total, "physical throughput",
