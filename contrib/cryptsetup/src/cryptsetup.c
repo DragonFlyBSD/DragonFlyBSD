@@ -854,7 +854,7 @@ int main(int argc, char **argv)
 	}
 
 	action_argc = argc-1;
-	action_argv = &argv[1];
+	action_argv = (void *)&argv[1];
 
 	if(action_argc < action->required_action_argc) {
 		char buf[128];
