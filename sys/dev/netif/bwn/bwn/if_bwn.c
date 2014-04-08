@@ -1231,22 +1231,18 @@ bwn_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data,
 	struct bwn_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = ifp->if_l2com;
 	struct ifreq *ifr = (struct ifreq *)data;
-	int error = 0, startall;
+	int error = 0;
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
-		startall = 0;
 		if (IS_RUNNING(ifp)) {
 			bwn_update_promisc(ifp);
 		} else if (ifp->if_flags & IFF_UP) {
 			if ((sc->sc_flags & BWN_FLAG_INVALID) == 0) {
 				bwn_init(sc);
-				startall = 1;
 			}
 		} else
 			bwn_stop(sc, 1);
-		if (startall)
-			ieee80211_start_all(ic);
 		break;
 	case SIOCGIFMEDIA:
 		error = ifmedia_ioctl(ifp, ifr, &ic->ic_media, cmd);
