@@ -100,6 +100,9 @@ $(CONF): Makefile
 .else
 	echo special $(P) buildopts DIRPRFX=${DIRPRFX}${P}/ >>$(.TARGET)
 .endif
+.ifdef CRUNCH_KEEP_${P}
+	echo special $(P) keep $(CRUNCH_KEEP_${P}) >>$(.TARGET)
+.endif
 .for A in $(CRUNCH_ALIAS_$(P))
 	echo ln $(P) $(A) >>$(.TARGET)
 .endfor
