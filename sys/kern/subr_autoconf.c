@@ -67,8 +67,10 @@ run_interrupt_driven_config_hooks(void *dummy)
 {
 	struct intr_config_hook *hook_entry;
 	int waiting;
+	int save_ticks;
 
 	waiting = 0;
+	save_ticks = ticks;
 
 	ran_config_hooks = 1;
 	while (!TAILQ_EMPTY(&intr_config_hook_list)) {
@@ -106,6 +108,16 @@ run_interrupt_driven_config_hooks(void *dummy)
 		tsleep(&intr_config_hook_list, 0, "conifhk", hz);
 		++waiting;
 	}
+
+	/*
+	 * Terrible hack to give U4B (usb) a chance to configure, else
+	 * the root mount might not see a valid usb device.  This can happen
+	 * because the AHCI devices might have already finished probing
+	 * before the usb ports are even registered.
+	 */
+	while (ticks - save_ticks < 5*hz)
+		tsleep(&intr_config_hook_list, 0, "delay", hz / 10);
+
 }
 SYSINIT(intr_config_hooks, SI_SUB_INT_CONFIG_HOOKS, SI_ORDER_FIRST,
 	run_interrupt_driven_config_hooks, NULL)
