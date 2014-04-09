@@ -11,6 +11,7 @@ mkdir /var/run
 /sbin/mount_ufs -w /dev/md0s0 /
 
 rescue_shell() {
+	cat /etc/motd
 	echo "Starting recovery shell!"
 	exec sh
 	exit 0

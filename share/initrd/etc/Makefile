@@ -15,7 +15,10 @@ FILESMODE_${file}=555
 
 # Files that should be installed read-only (444)
 #
-ETC_FILES=	${.CURDIR}/wpa_supplicant.conf
+ETC_FILES=	${.CURDIR}/../../../etc/protocols	\
+		${.CURDIR}/../../../etc/regdomain.xml	\
+		${.CURDIR}/wpa_supplicant.conf		\
+		${.CURDIR}/motd
 
 afterinstall:
 	${INSTALL} -o root -g wheel -m 444 \
