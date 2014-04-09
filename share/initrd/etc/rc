@@ -3,6 +3,8 @@
 # echo "Starting shell from md boot"
 # exec sh
 
+export HOME=/root
+
 /sbin/mount_tmpfs tmpfs /tmp
 /sbin/mount_tmpfs tmpfs /var
 mkdir /var/tmp
