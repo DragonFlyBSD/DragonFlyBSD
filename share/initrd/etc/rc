@@ -32,6 +32,10 @@ if [ "$?" -ne "0" ]; then
 		"kernel if you intend to use initrd"
 	rescue_shell
 fi
+if [ -z "${REAL_ROOT}" ]; then
+	echo "vfs.real_root sysctl not set. Dropping to a rescue shell."
+	rescue_shell
+fi
 set -- $REAL_ROOT
 TYPE=$1
 unset IFS
