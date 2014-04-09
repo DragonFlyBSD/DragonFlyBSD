@@ -80,19 +80,6 @@ make_hier()
 	echo "Created directory structure"
 }
 
-copy_tools()
-{
-	for tool in ${BIN_TOOLS}; do
-		objcopy -S /bin/${tool} ${BUILD_DIR}/bin/${tool}
-	done
-
-	for tool in ${SBIN_TOOLS}; do
-		objcopy -S /sbin/${tool} ${BUILD_DIR}/sbin/${tool}
-	done
-
-	echo "Copied essential tools"
-}
-
 copy_content()
 {
 	for dir in ${CONTENT_DIRS}; do
@@ -132,7 +119,6 @@ BUILD_DIR="${TMP_DIR}/initrd"
 create_vn
 copy_content
 make_hier
-copy_tools
 print_info
 destroy_vn
 mv ${TMP_DIR}/initrd.img ${BOOT_DIR}/kernel/initrd.img
