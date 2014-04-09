@@ -20,8 +20,14 @@ ETC_FILES=	${.CURDIR}/../../../etc/protocols	\
 		${.CURDIR}/wpa_supplicant.conf		\
 		${.CURDIR}/motd
 
+PW_FILES=	/tmp/pwd.db /tmp/spwd.db
+
 afterinstall:
 	${INSTALL} -o root -g wheel -m 444 \
 		${ETC_FILES} ${DESTDIR}${SHAREDIR}/initrd/etc
+	cp /usr/src/etc/master.passwd /tmp
+	/usr/sbin/pwd_mkdb -d /tmp /tmp/master.passwd
+	${INSTALL} -o root -g wheel -m 444 \
+		${PW_FILES} ${DESTFIR}${SHAREDIR}/initrd/etc
 
 .include <bsd.prog.mk>
