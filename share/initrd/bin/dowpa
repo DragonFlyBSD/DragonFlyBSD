@@ -1,0 +1,30 @@
+#!/bin/sh
+
+if [ $# != 3 ]; then
+    echo "dowpa ath0 ssid password"
+    exit 1
+fi
+
+ifc=$1
+ssid=$2
+pass=$3
+
+killall -9 wpa_supplicant > /dev/null 2>&1
+sleep 0.5
+ifconfig wlan0 down > /dev/null 2>&1
+ifconfig wlan0 destroy > /dev/null 2>&1
+sleep 0.5
+
+cat > /etc/wpa_supplicant.conf << EOF
+network={
+    ssid="$ssid"
+    scan_ssid=1
+    psk="$3"
+}
+EOF
+
+ifconfig wlan0 create wlandev $ifc
+sleep 0.5
+/sbin/wpa_supplicant -B -q -i wlan0 -c /etc/wpa_supplicant.conf -D bsd \
+	 -P /var/run/wpa_supplicant/wlan0.pid
+

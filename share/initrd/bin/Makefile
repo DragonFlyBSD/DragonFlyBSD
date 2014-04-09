@@ -7,6 +7,7 @@ NO_MAN=	YES
 
 PROG=	rescue
 BINDIR=	/usr/share/initrd/bin
+SCRIPTS=dowpa
 
 ###################################################################
 # Programs from stock /bin
