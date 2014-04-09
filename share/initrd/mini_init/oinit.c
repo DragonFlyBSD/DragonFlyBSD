@@ -78,6 +78,9 @@ main(int argc __unused, char **argv)
 	if (getuid() != 0)
 		errx(1, "%s", strerror(EPERM));
 
+	/* Init is not allowed to die, it would make the kernel panic */
+	signal(SIGTERM, SIG_IGN);
+
 	runcom(argv);
 	return 1;
 }
@@ -136,12 +139,18 @@ runcom(char **argv_orig)
 
 	error = chroot_kernel("/new_root");
 	if (error)
-		exit(1);
+		goto chroot_failed;
 
 	error = chroot("/new_root");
 	if (error)
-		exit(1);
+		goto chroot_failed;
 
 	execv("/sbin/init", __DECONST(char **, argv_orig));
+
+	/* We failed to exec /sbin/init in the chroot, sleep forever */
+chroot_failed:
+	while(1) {
+		sleep(3);
+	};
 }
 
