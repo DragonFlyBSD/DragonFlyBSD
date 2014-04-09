@@ -1,11 +1,8 @@
 # $FreeBSD: src/secure/lib/libssl/Makefile,v 1.4.2.8 2003/02/14 22:38:20 nectar Exp $
-# $DragonFly: src/secure/lib/libssl/Makefile,v 1.6 2006/09/06 12:40:54 corecode Exp $
 
 LIB=		ssl
 SHLIB_MAJOR=	5
 WARNS?=		2
-
-NOLINT=		true
 
 .if exists(Makefile.man)
 .include "Makefile.man"

@@ -1,10 +1,6 @@
-# $DragonFly: src/secure/Makefile.ssh.common,v 1.4 2008/04/07 01:20:18 pavalos Exp $
-
 SSHDIR=		${.CURDIR}/../../../crypto/openssh
 
 CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${SSHDIR} -include ssh_namespace.h
-
-NOLINT=	true
 
 .if ${.CURDIR:T} != "libssh"
 DPADD+=	${LIBSSH} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ}

@@ -1,11 +1,8 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile,v 1.15.2.14 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.11 2008/09/06 20:42:53 pavalos Exp $
 
 LIB=		crypto
 SHLIB_MAJOR=	5
 WARNS?=		0
-
-NOLINT=		true
 
 SUBDIR=	engines
 
