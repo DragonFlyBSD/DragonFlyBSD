@@ -72,8 +72,8 @@ __FBSDID("$FreeBSD: head/sys/dev/bwn/if_bwn.c 260444 2014-01-08 08:06:56Z kevlo 
 #include <netproto/802_11/ieee80211_phy.h>
 #include <netproto/802_11/ieee80211_ratectl.h>
 
-#include <dev/netif/bwn/bwn/if_bwnreg.h>
-#include <dev/netif/bwn/bwn/if_bwnvar.h>
+#include "if_bwnreg.h"
+#include "if_bwnvar.h"
 
 static SYSCTL_NODE(_hw, OID_AUTO, bwn, CTLFLAG_RD, 0,
     "Broadcom driver parameters");
@@ -1105,10 +1105,10 @@ bwn_detach(device_t dev)
 	if (device_is_attached(sc->sc_dev)) {
 		bwn_stop(sc, 1);
 		bwn_dma_free(mac);
-		callout_drain(&sc->sc_led_blink_ch);
-		callout_drain(&sc->sc_rfswitch_ch);
-		callout_drain(&sc->sc_task_ch);
-		callout_drain(&sc->sc_watchdog_ch);
+		callout_stop_sync(&sc->sc_led_blink_ch);
+		callout_stop_sync(&sc->sc_rfswitch_ch);
+		callout_stop_sync(&sc->sc_task_ch);
+		callout_stop_sync(&sc->sc_watchdog_ch);
 		bwn_phy_detach(mac);
 		if (ifp != NULL) {
 			wlan_serialize_exit();
@@ -7733,7 +7733,7 @@ bwn_fw_loaducode(struct bwn_mac *mac)
 			error = ENXIO;
 			goto error;
 		}
-		tsleep(sc, 0, "bwndelay", (50 * hz) / 1000);
+		DELAY(50000);
 	}
 	BWN_READ_4(mac, BWN_INTR_REASON);
 

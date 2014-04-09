@@ -51,9 +51,9 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_bwn.c 257241 2013-10-28 07:29:16Z gle
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 
-#include <dev/netif/bwn/siba/siba_ids.h>
-#include <dev/netif/bwn/siba/sibareg.h>
-#include <dev/netif/bwn/siba/sibavar.h>
+#include "siba_ids.h"
+#include "sibareg.h"
+#include "sibavar.h"
 
 /*
  * PCI glue.
