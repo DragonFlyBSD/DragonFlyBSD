@@ -1,5 +1,3 @@
-SUBDIR=	mini_init
-
 SCRIPTS=mkinitrd.sh
 MAN=	mkinitrd.8
 MLINKS=	mkinitrd.8 mkinitrd.conf.5
