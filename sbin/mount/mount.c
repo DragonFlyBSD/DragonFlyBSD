@@ -361,7 +361,10 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 	struct statfs sf;
 	pid_t pid;
 	int argc, i, status;
-	char *optbuf, execname[MAXPATHLEN + 1], mntpath[MAXPATHLEN];
+	char *optbuf;
+	char *argv0;
+	char execname[MAXPATHLEN + 1];
+	char mntpath[MAXPATHLEN];
 
 #if __GNUC__
 	(void)&optbuf;
@@ -399,8 +402,10 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 	if (flags & MNT_UPDATE)
 		optbuf = catopt(optbuf, "update");
 
+	asprintf(&argv0, "mount_%s", vfstype);
+
 	argc = 0;
-	argv[argc++] = vfstype;
+	argv[argc++] = argv0;
 	mangle(optbuf, &argc, argv);
 	argv[argc++] = spec;
 	argv[argc++] = name;
@@ -422,8 +427,8 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 	case 0:					/* Child. */
 		/* Go find an executable. */
 		for (edir = edirs; *edir; edir++) {
-			snprintf(execname,
-			    sizeof(execname), "%s/mount_%s", *edir, vfstype);
+			snprintf(execname, sizeof(execname),
+				 "%s/mount_%s", *edir, vfstype);
 			execv(execname, __DECONST(char * const *, argv));
 		}
 		if (errno == ENOENT) {
