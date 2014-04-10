@@ -681,7 +681,8 @@ pass:
 	 * be handled via ip_forward() and ether_output() with the loopback
 	 * into the stack for SIMPLEX interfaces handled by ether_output().
 	 */
-	if (m->m_pkthdr.rcvif->if_flags & IFF_BROADCAST) {
+	if (m->m_pkthdr.rcvif != NULL &&
+	    m->m_pkthdr.rcvif->if_flags & IFF_BROADCAST) {
 		struct ifaddr_container *ifac;
 
 		TAILQ_FOREACH(ifac, &m->m_pkthdr.rcvif->if_addrheads[mycpuid],
