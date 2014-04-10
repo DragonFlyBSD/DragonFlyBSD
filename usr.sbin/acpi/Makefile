@@ -1,5 +1,3 @@
-# XXX missing: examples
-
 SUBDIR=	\
 	acpibin \
 	acpiconf \
@@ -7,7 +5,6 @@ SUBDIR=	\
 	acpiexec \
 	acpihelp \
 	acpinames \
-	acpisrc \
 	acpixtract \
 	iasl
 

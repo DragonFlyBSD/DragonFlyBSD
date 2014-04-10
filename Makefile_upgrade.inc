@@ -2528,6 +2528,7 @@ TO_REMOVE+=/usr/share/man/man3/tc_api_map_volume.3.gz
 TO_REMOVE+=/usr/share/man/man3/tc_api_unmap_volume.3.gz
 TO_REMOVE+=/usr/share/man/cat9/sbuf_overflowed.9.gz
 TO_REMOVE+=/usr/share/man/man9/sbuf_overflowed.9.gz
+TO_REMOVE+=/usr/sbin/acpisrc
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
