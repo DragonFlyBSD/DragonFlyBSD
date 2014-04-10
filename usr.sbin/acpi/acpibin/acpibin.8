@@ -29,47 +29,36 @@
 .\" SUCH DAMAGE.
 .\"
 .Dd April 10, 2014
-.Dt ACPIDUMP 8
+.Dt ACPIBIN 8
 .Os
 .Sh NAME
-.Nm acpidump
-.Nd obtain system ACPI tables and save in ASCII hex format
+.Nm acpibin
+.Nd miscellaneous manipulation of binary ACPI tables
 .Sh SYNOPSIS
 .Nm
 .Op Ar option ...
 .Sh DESCRIPTION
 The following options are supported:
 .Bl -tag -width indent
-.It Fl a Ar address
-Get table via a physical address.
-.It Fl b
-Dump tables to binary files.
-.It Fl c
-Dump customized tables.
-.It Fl f Ar binary_file
-Get table via a binary file.
-.It Fl h
-Display the help message.
-.It Fl \&?
-Alias for
-.Fl h .
-.It Fl n Ar signature
-Get table via a name/signature.
-.It Fl o Ar file
-Redirect output to file.
-.It Fl r Ar address
-Dump tables from specified RSDP.
-.It Fl s
-Print table summaries only.
+.It Fl c Ar file1 Ar file2
+Compare two binary AML files.
+.It Fl d Ar in Ar out
+Dump AML binary to text file.
+.It Fl e Ar sig Ar in Ar out
+Extract binary AML table from AcpiDump file.
+.It Fl h Ar file
+Display table header for binary AML file.
+.It Fl s Ar file
+Update checksum for binary AML file.
+.It Fl t
+Terse mode.
 .It Fl v
 Display version information.
-.It Fl z
-Verbose mode.
 .El
 .Sh SEE ALSO
 .Xr acpi 4 ,
-.Xr acpibin 8 ,
 .Xr acpiconf 8 ,
+.Xr acpidump 8 ,
 .Xr acpiexec 8 ,
 .Xr acpihelp 8 ,
 .Xr acpinames 8 ,

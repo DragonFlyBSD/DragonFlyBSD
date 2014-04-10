@@ -9,7 +9,7 @@ UTILDIR=${.CURDIR}/../../../sys/contrib/dev/acpica/source/tools/acpiexec
 .PATH:	${UTILDIR}
 
 PROG=	acpiexec
-NOMAN=
+MAN=	acpiexec.8
 
 SRCS=	\
 	aeexec.c \

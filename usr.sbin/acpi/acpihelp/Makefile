@@ -8,7 +8,7 @@ UTILDIR=${.CURDIR}/../../../sys/contrib/dev/acpica/source/tools/acpihelp
 .PATH:	${UTILDIR}
 
 PROG=	acpihelp
-NOMAN=
+MAN=	acpihelp.8
 
 SRCS=	\
 	ahamlops.c \

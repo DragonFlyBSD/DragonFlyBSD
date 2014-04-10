@@ -7,7 +7,7 @@ UTILDIR=${.CURDIR}/../../../sys/contrib/dev/acpica/source/tools/acpixtract
 .PATH:	${UTILDIR}
 
 PROG=	acpixtract
-NOMAN=
+MAN=	acpixtract.8
 
 SRCS=	\
 	acpixtract.c \

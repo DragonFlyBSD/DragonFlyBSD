@@ -1,129 +1,108 @@
-.\"-
-.\" Copyright (c) 2003 Nate Lawson
-.\" All rights reserved.
+.\"
+.\" Copyright (c) 2014 The DragonFly Project.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
+.\"
 .\" 1. Redistributions of source code must retain the above copyright
-.\"    notice, this list of conditions and the following disclaimer
-.\"    in this position and unchanged.
+.\"    notice, this list of conditions and the following disclaimer.
 .\" 2. Redistributions in binary form must reproduce the above copyright
-.\"    notice, this list of conditions and the following disclaimer in the
-.\"    documentation and/or other materials provided with the distribution.
-.\" 3. The name of the author may not be used to endorse or promote products
-.\"    derived from this software without specific prior written permission.
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
 .\"
-.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-.\" DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/acpi/iasl/iasl.8,v 1.2 2004/06/13 18:03:39 ru Exp $
-.\" $DragonFly: src/usr.sbin/acpi/iasl/iasl.8,v 1.1 2004/07/05 00:22:43 dillon Exp $
-.\"
-.Dd August 7, 2003
+.Dd April 10, 2014
 .Dt IASL 8
 .Os
 .Sh NAME
 .Nm iasl
-.Nd Intel ACPI compiler/decompiler
+.Nd ACPI Source Language compiler, ACPI table compiler, and AML disassembler
 .Sh SYNOPSIS
 .Nm
-.Op Fl cefghl
-.Op Fl b Ar type
-.Op Fl d Ar file
-.Op Fl dc Ar file
-.Op Fl hc
-.Op Fl hr
-.Op Fl i Ar type
-.Op Fl ln
-.Op Fl ls
-.Op Fl oa
-.Op Fl of
-.Op Fl oi
-.Op Fl on
-.Op Fl ot
-.Op Fl p Ar prefix
-.Op Fl s Ar type
-.Op Fl t Ar type
-.Op Fl vi
-.Op Fl vo
-.Op Fl vr
-.Op Fl vs
-.Op Fl x Ar level
-.Ar input-file
+.Op Ar option ...
+.Op Ar file ...
 .Sh DESCRIPTION
-The
-.Nm
-utility is a compiler/decompiler for ACPI Source Language (ASL)
-and ACPI Machine Language (AML).
-Major features of
-.Nm
-include:
-.Bl -bullet -offset indent
-.It
-Full support for the ACPI 2.0b Specification including ASL grammar
-elements and operators.
-.It
-Extensive compiler syntax and semantic error checking, especially in
-the area of control methods.
-This reduces the number of errors that are
-not discovered until the AML code is actually interpreted (i.e., the
-compile-time error checking reduces the number of run-time errors).
-.It
-Multiple types of output files, including formatted listing files with
-intermixed source, several types of AML files, and error messages.
-.El
-.Sh OPTIONS
+The following options are supported:
 .Bl -tag -width indent
-.It Fl b Sm Cm p | t | b Sm
-Create compiler debug/trace file
-.Pq Pa *.txt .
-Types: Parse/Tree/Both.
-.It Fl c
-Parse only, no output generation.
-.It Fl d Ar file
-Disassemble AML to ASL source code file
-.Pq Pa *.dsl .
-.It Fl dc Ar file
+.It Fl @ Ar file
+Specify command file.
+.It Fl bf
+Create debug file (full tree only) (*.txt).
+.It Fl bt
+Create debug file (parse tree only) (*.txt).
+.It Fl cr
+Disable Resource Descriptor error checking.
+.It Fl d Ar file1 Op Ar file2
+Disassemble or decode binary ACPI tables to file (*.dsl).
+The
+.Ar file2
+is optional, file type is automatically detected.
+.It Fl D Ar symbol
+Define symbol for preprocessor use.
+.It Fl da Ar file ...
+Disassemble multiple tables from single namespace.
+.It Fl db
+Do not translate Buffers to Resource Templates.
+.It Fl dc Ar file ...
 Disassemble AML and immediately compile it.
-(Obtain DSDT from current system if no input file.)
-.It Fl e
-Generate
-.Fn External
-statements for unresolved symbols.
+Obtain the DSDT from the current system if no input file has it.
+.It Fl e Ar file ...
+Include ACPI table(s) for external symbol resolution.
 .It Fl f
 Ignore errors, force creation of AML output file(s).
-.It Fl g
-Get ACPI tables and write to files
-.Pq Pa *.dat .
+.It Fl fe Ar file
+Specify external symbol declaration file.
+.It Fl G
+Compile custom table that contains generic operators.
 .It Fl h
-Additional help and compiler debug options.
+Display the help message.
 .It Fl hc
 Display operators allowed in constant expressions.
+.It Fl hf
+Display help for output filename generation.
 .It Fl hr
 Display ACPI reserved method names.
-.It Fl i Sm Cm a | c Sm
-Create assembler or C include file
-.Pa ( *.inc
-or
-.Pa *.h ) .
+.It Fl ht
+Display currently supported ACPI table names.
+.It Fl I Ar directory
+Specify additional include directory.
+.It Fl ia
+Create include file in assembler (*.inc).
+.It Fl ic
+Create include file in C (*.h).
+.It Fl in
+Ignore NoOp opcodes.
+.It Fl in
+Ignore NoOp operators.
 .It Fl l
-Create mixed listing file (ASL source and AML)
-.Pq Pa *.lst .
+Create mixed listing file (ASL source and AML) (*.lst).
+.It Fl li
+Create preprocessed output file (*.i).
 .It Fl ln
-Create namespace file
-.Pq Pa *.nsp .
+Create namespace file (*.nsp).
 .It Fl ls
-Create combined source file (expanded includes)
-.Pq Pa *.src .
+Create combined source file (expanded includes) (*.src).
+.It Fl m Ar size
+Set internal line buffer size (in Kbytes).
+.It Fl n
+Parse only, no output generation.
 .It Fl oa
 Disable all optimizations (compatibility mode).
 .It Fl of
@@ -133,18 +112,36 @@ Disable integer optimization to Zero/One/Ones.
 .It Fl on
 Disable named reference string optimization.
 .It Fl ot
-Display compile times.
+Display compile times and statistics.
+.It Fl P
+Preprocess only and create preprocessor output file (*.i).
 .It Fl p Ar prefix
-Specify filename prefix for all output files (including
-.Pa .aml ) .
-.It Fl s Sm Cm a | c Sm
-Create AML in assembler or C source file
-.Pa ( *.asm
-or
-.Pa *.c ) .
-.It Fl t Ar a|c
-Create AML in assembler or C hex table
-.Pq Pa *.hex .
+Specify path/filename prefix for all output files.
+.It Fl Pn
+Disable preprocessor.
+.It Fl r Ar revision
+Override table header Revision (1-255).
+.It Fl sa
+Create source file in assembler (*.asm).
+.It Fl sc
+Create source file in C (*.c).
+.It Fl so
+Create offset table in C (*.offset.h).
+.It Fl T Ar sig | ALL | *
+Create table template file for ACPI
+.Ar sig .
+.It Fl ta
+Create hex AML table in assembler (*.hex).
+.It Fl tc
+Create hex AML table in C (*.hex).
+.It Fl ts
+Create hex AML table in ASL (*.hex).
+.It Fl v
+Display compiler version.
+.It Fl va
+Disable all errors/warnings/remarks.
+.It Fl ve
+Report only errors (ignore warnings and remarks).
 .It Fl vi
 Less verbose errors and warnings for use with IDEs.
 .It Fl vo
@@ -153,23 +150,42 @@ Enable optimization comments.
 Disable remarks.
 .It Fl vs
 Disable signon.
+.It Fl vt
+Create verbose template files (full disassembly).
+.It Fl vt
+Dump binary table data in hex format within output file.
+.It Fl vw Ar message_id
+Disable specific warning or remark.
+.It Fl w1 | Fl w2 | Fl w3
+Set warning reporting level.
+.It Fl we
+Report warnings as errors.
 .It Fl x Ar level
 Set debug level for trace output.
+.It Fl z
+Do not insert new compiler ID for DataTables.
 .El
 .Sh SEE ALSO
 .Xr acpi 4 ,
-.Xr acpidump 8
-.Sh HISTORY
-The
-.Nm
-utility is provided with Intel ACPI-CA.
-It first appeared in
-.Fx 5.2 .
+.Xr acpibin 8 ,
+.Xr acpiconf 8 ,
+.Xr acpidump 8 ,
+.Xr acpiexec 8 ,
+.Xr acpihelp 8 ,
+.Xr acpinames 8 ,
+.Xr acpixtract 8
+.Pp
+.Lk https://acpica.org/documentation/
+.Pp
+.Lk https://acpica.org/sites/acpica/files/aslcompiler_5.pdf
 .Sh AUTHORS
-.An -nosplit
 The
 .Nm
-utility was written by
-.An Intel .
+utility is provided by
+.Tn Intel
+as part of their
+.Sy ACPICA
+distribution.
+.Pp
 This manual page was written by
-.An Nate Lawson .
+.An Sascha Wildner .

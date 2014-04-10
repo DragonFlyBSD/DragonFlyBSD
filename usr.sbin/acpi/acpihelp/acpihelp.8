@@ -29,49 +29,62 @@
 .\" SUCH DAMAGE.
 .\"
 .Dd April 10, 2014
-.Dt ACPIDUMP 8
+.Dt ACPIHELP 8
 .Os
 .Sh NAME
-.Nm acpidump
-.Nd obtain system ACPI tables and save in ASCII hex format
+.Nm acpihelp
+.Nd help utility for ASL operators, AML opcodes, and ACPI predefined names
 .Sh SYNOPSIS
 .Nm
 .Op Ar option ...
+.Op Ar name_prefix | hex_value
 .Sh DESCRIPTION
 The following options are supported:
 .Bl -tag -width indent
-.It Fl a Ar address
-Get table via a physical address.
-.It Fl b
-Dump tables to binary files.
-.It Fl c
-Dump customized tables.
-.It Fl f Ar binary_file
-Get table via a binary file.
+.It Fl e Op Ar hex_value
+Decode ACPICA exception code.
 .It Fl h
-Display the help message.
-.It Fl \&?
-Alias for
-.Fl h .
-.It Fl n Ar signature
-Get table via a name/signature.
-.It Fl o Ar file
-Redirect output to file.
-.It Fl r Ar address
-Dump tables from specified RSDP.
-.It Fl s
-Print table summaries only.
+Display help.
+.It Fl i
+Display known ACPI Device IDs (_HID).
+.It Fl k Op Ar name_prefix
+Find/Display ASL non-operator keyword(s).
+.It Fl m Op Ar name_prefix
+Find/Display AML opcode name(s).
+.It Fl o Op Ar hex_value
+Decode hex AML opcode.
+.It Fl p Op Ar name_prefix
+Find/Display ASL predefined method name(s).
+.It Fl s Op Ar name_prefix
+Find/Display ASL operator name(s).
 .It Fl v
 Display version information.
-.It Fl z
-Verbose mode.
 .El
+.Pp
+If neither
+.Ar name_prefix
+nor
+.Ar hex_value
+are specified
+.Nm
+defaults to displaying all information available for the specified option.
+.Pp
+If a
+.Ar name_prefix
+but no options are specified
+.Nm
+defaults to finding ASL operator names if
+.Ar name_prefix
+does not start with an underscore, and to finding ASL predefined method
+names if
+.Ar name_prefix
+does start with an underscore.
 .Sh SEE ALSO
 .Xr acpi 4 ,
 .Xr acpibin 8 ,
 .Xr acpiconf 8 ,
+.Xr acpidump 8 ,
 .Xr acpiexec 8 ,
-.Xr acpihelp 8 ,
 .Xr acpinames 8 ,
 .Xr acpixtract 8 ,
 .Xr iasl 8

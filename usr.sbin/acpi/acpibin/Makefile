@@ -7,7 +7,7 @@ UTILDIR=${.CURDIR}/../../../sys/contrib/dev/acpica/source/tools/acpibin
 .PATH:	${UTILDIR}
 
 PROG=	acpibin
-NOMAN=
+MAN=	acpibin.8
 
 SRCS=	\
 	abcompare.c \

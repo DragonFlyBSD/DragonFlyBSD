@@ -9,7 +9,7 @@ UTILDIR=${.CURDIR}/../../../sys/contrib/dev/acpica/source/tools/acpinames
 .PATH:	${UTILDIR}
 
 PROG=	acpinames
-NOMAN=
+MAN=	acpinames.8
 
 SRCS=	\
 	anmain.c \
