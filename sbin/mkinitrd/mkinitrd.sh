@@ -121,4 +121,5 @@ copy_content
 make_hier
 print_info
 destroy_vn
-mv ${TMP_DIR}/initrd.img ${BOOT_DIR}/kernel/initrd.img
+/usr/bin/gzip -9 ${TMP_DIR}/initrd.img
+mv ${TMP_DIR}/initrd.img.gz ${BOOT_DIR}/kernel/initrd.img.gz
