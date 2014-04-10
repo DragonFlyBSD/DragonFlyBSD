@@ -144,7 +144,7 @@ menuadd lunsetif ahci_load hint.ahci.disabled
 menuadd initrd.img_load="YES"
 menuadd initrd.img_type="md_image"
 menuadd set vfs.root.mountfrom="ufs:md0s0"
-menuadd lunset vfs.real_root
+menuadd unset vfs.root.real_root
 menuadd loadall
 menuadd boot
 menuadd set autoboot_delay=NO
