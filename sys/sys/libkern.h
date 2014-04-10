@@ -32,7 +32,6 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.16 2007/11/18 17:53:02 pavalos Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -134,6 +133,7 @@ int	 strncmp (const char *, const char *, size_t);
 int	 strncasecmp (const char *, const char *, size_t);
 char	*strncpy (char * __restrict, const char * __restrict, size_t);
 char	*strsep(char **, const char *);
+char	*strstr(const char *, const char *);
 int	_kfnmatch(const char *, const char *, int, int);
 void *	memcchr(const void *, int, size_t);
 char *	hexncpy(const u_char *, int, char *, int, const char *);

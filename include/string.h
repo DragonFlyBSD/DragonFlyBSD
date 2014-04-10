@@ -132,7 +132,9 @@ char	*strsep(char **, const char *);
 char	*strsignal(int);
 #endif
 size_t	 strspn(const char *, const char *) __pure;
+#if !defined(_KERNEL_VIRTUAL)
 char	*strstr(const char *, const char *) __pure;
+#endif
 char	*strtok(char * __restrict, const char * __restrict);
 #if __POSIX_VISIBLE >= 199506 || __XSI_VISIBLE >= 500
 char	*strtok_r(char *, const char *, char **);

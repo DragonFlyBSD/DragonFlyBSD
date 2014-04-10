@@ -131,12 +131,6 @@
 
 #ifdef _KERNEL
 
-#include <sys/ctype.h>
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/libkern.h>
-#include <stdarg.h>
-
 #ifdef DEBUGGER_THREADING
 #undef DEBUGGER_THREADING
 #endif /* DEBUGGER_THREADING */
@@ -184,26 +178,6 @@ struct acpi_spinlock;
 #define ACPI_CACHE_T	struct acpicache
 struct acpicache;
 #endif
-
-/* Or strstr (used in debugging mode, also move to libkern) */
-static __inline char *
-strstr(char *s, char *find)
-{
-    char c, sc;
-    size_t len;
-
-    if ((c = *find++) != 0) {
-    len = strlen(find);
-    do {
-        do {
-        if ((sc = *s++) == 0)
-            return (NULL);
-        } while (sc != c);
-    } while (strncmp(s, find, len) != 0);
-    s--;
-    }
-    return (s);
-}
 
 #else /* _KERNEL */
 
