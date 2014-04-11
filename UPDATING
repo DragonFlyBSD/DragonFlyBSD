@@ -25,6 +25,14 @@ ISA support has been dropped from the following drivers: adv(4), an(4),
 ar(4), cs(4), digi(4), ed(4), ep(4), ex(4), fe(4), lnc(4), sbni(4),
 si(4), sn(4), and stg(4).
 
+INITRD IMAGES NOW INSTALLED BY DEFAULT
+--------------------------------------
+
+An initial ramdisk image is now installed in /boot/kernel/initrd.img.gz
+
+Older images installed under the file name of initrd.img will be removed
+automatically by the make upgrade process.
+
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.4 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+

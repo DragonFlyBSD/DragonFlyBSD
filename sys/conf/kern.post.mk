@@ -240,6 +240,9 @@ modules-install: kernel-installable
 	if [ -f ${DESTDIR}${DESTKERNDIR}/initrd.img ]; then	\
 		cp -p ${DESTDIR}${DESTKERNDIR}/initrd.img ${DESTDIR}${DESTKERNDIR}.old; \
 	fi
+	if [ -f ${DESTDIR}${DESTKERNDIR}/initrd.img.gz ]; then	\
+		cp -p ${DESTDIR}${DESTKERNDIR}/initrd.img.gz ${DESTDIR}${DESTKERNDIR}.old; \
+	fi
 .endif
 .if exists(${DESTDIR}/${OLDMODULESDIR})
 	rm -rf ${DESTDIR}/${OLDMODULESDIR} # remove deprecated

@@ -472,6 +472,7 @@ installcheck:
 installworld: installcheck backupworld-auto
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
+	mkinitrd
 
 #
 # reinstall
