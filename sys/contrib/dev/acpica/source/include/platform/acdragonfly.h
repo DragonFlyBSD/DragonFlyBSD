@@ -131,6 +131,9 @@
 
 #ifdef _KERNEL
 
+#include <sys/ctype.h>
+#include <sys/systm.h>
+
 #ifdef DEBUGGER_THREADING
 #undef DEBUGGER_THREADING
 #endif /* DEBUGGER_THREADING */
