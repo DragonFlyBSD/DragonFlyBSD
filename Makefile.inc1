@@ -464,12 +464,20 @@ installcheck:
 .if !defined(DESTDIR) || ${DESTDIR} == "" || ${DESTDIR} == "/"
 	@case `uname -r` in 1.2*|1.3-*|1.3.*|1.4.*|1.5.0-*|1.5.1-*|1.5.2-*|1.5.3-*) echo "You must upgrade your kernel to at least 1.5.4 and reboot before you can safely installworld, due to libc/system call ABI changes" ; /usr/bin/false ; esac
 .endif
+
 #
 # installworld
 #
+# Backs up the current world if ${AUTO_BACKUP} is writable.
 # Installs everything compiled by a 'buildworld'.
-#
-installworld: installcheck backupworld-auto
+
+installworld: installcheck
+	-@mkdir -p ${AUTO_BACKUP} > /dev/null 2>&1
+	@cd ${.CURDIR}; \
+	    (touch ${AUTO_BACKUP}/.updating > /dev/null 2>&1 && \
+	     ${IMAKE} backupworld-auto) || \
+	    echo "Cannot write to ${AUTO_BACKUP} - world not backed up"
+
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
 	mkinitrd
