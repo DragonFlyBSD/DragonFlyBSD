@@ -133,6 +133,7 @@
 
 #include <sys/ctype.h>
 #include <sys/systm.h>
+#include <stdarg.h>
 
 #ifdef DEBUGGER_THREADING
 #undef DEBUGGER_THREADING
