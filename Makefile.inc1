@@ -26,6 +26,13 @@
 # Put initial settings here.
 SUBDIR=
 
+# /libexec/ld-elf.so.2 needs to be installed first
+# Otherwise, install(1) beeing a dynamically linked binary will fail
+# during the first upgrade from a static to a dynamic world
+.if exists(${.CURDIR}/libexec)
+SUBDIR+= libexec
+.endif
+
 # We must do share/info early so that installation of info `dir'
 # entries works correctly.  Do it first since it is less likely to
 # grow dependencies on include and lib than vice versa.
@@ -57,9 +64,6 @@ SUBDIR+= games
 .endif
 .if exists(${.CURDIR}/gnu)
 SUBDIR+= gnu
-.endif
-.if exists(${.CURDIR}/libexec)
-SUBDIR+= libexec
 .endif
 .if exists(${.CURDIR}/sbin)
 SUBDIR+= sbin

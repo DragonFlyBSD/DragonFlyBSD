@@ -6,6 +6,8 @@ SRCS=		rtld_start.S \
 		malloc.c xmalloc.c debug.c libmap.c
 MAN=		rtld.1
 CSTD?=		gnu99
+BINDIR=		/libexec
+SYMLINKS=	${BINDIR}/${PROG} /usr/libexec/${PROG}
 WARNS?=		2
 
 # To activate LD_DEBUG functionality, define ENABLE_DEBUG
@@ -47,6 +49,13 @@ LDADD=		-L${.OBJDIR}/../../lib/libc_rtld -lc_rtld_pic
 
 .ifdef ENABLE_DEBUG
 CFLAGS+=	-DDEBUG
+.endif
+
+# Since moving rtld-elf to /libexec, we need to create a symlink.
+# Fixup the existing binary that's there so we can symlink over it.
+beforeinstall:
+.if exists(${DESTDIR}/usr/libexec/${PROG})
+	chflags -h noschg ${DESTDIR}/usr/libexec/${PROG}
 .endif
 
 .PATH: ${.CURDIR}/${MACHINE_ARCH}
