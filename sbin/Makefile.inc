@@ -3,5 +3,7 @@
 # $DragonFly: src/sbin/Makefile.inc,v 1.3 2006/10/17 00:55:39 pavalos Exp $
 
 BINDIR?=	/sbin
+.if defined(NO_DYNAMICROOT)
 NOSHARED?=	YES
+.endif
 WARNS?=		6

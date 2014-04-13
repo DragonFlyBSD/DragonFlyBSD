@@ -5,4 +5,6 @@ LDADD=	-lprop -lpthread
 DPADD=	${LIBPROP} ${LIBPTHREAD}
 MAN=	udevd.8
 
+NOSHARED=yes
+
 .include <bsd.prog.mk>

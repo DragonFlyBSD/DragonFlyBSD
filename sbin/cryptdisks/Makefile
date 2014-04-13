@@ -1,5 +1,6 @@
 PROG=		cryptdisks
 MAN=		cryptdisks.8
+NOSHARED=	YES
 
 SRCS+=		cryptdisks.c safe_mem.c
 
