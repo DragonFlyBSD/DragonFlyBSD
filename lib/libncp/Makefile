@@ -3,6 +3,7 @@
 NCPLIB=${.CURDIR}
 
 LIB=		ncp
+SHLIBDIR?=	/lib
 
 SHLIB_MAJOR=	2
 

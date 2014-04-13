@@ -1,4 +1,5 @@
 LIB=	fsid
+SHLIBDIR?= /lib
 SRCS=	libfsid.c ufs.c hammer.c cd9660.c msdosfs.c ext2.c 
 INCS=	libfsid.h
 CFLAGS+=	-D_FSID_INTERNAL

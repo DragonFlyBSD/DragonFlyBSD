@@ -3,6 +3,7 @@
 
 LIB=		edit
 SHLIB_MAJOR=	5  		# NetBSD designates SHLIB_MAJOR as 3
+SHLIBDIR?=	/lib
 
 SRCDIR= 	${BASEDIR}/src
 .PATH:		${SRCDIR}

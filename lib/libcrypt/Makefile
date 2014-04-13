@@ -5,6 +5,7 @@
 
 SHLIB_MAJOR=	4
 LIB=		crypt
+SHLIBDIR?=	/lib
 
 .PATH:		${.CURDIR}/../libmd
 SRCS=		crypt.c crypt-md5.c \

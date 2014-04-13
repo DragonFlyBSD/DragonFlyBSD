@@ -1,4 +1,5 @@
 LIB=	dm
+SHLIBDIR?= /lib
 SRCS=	dm_task.c
 INCS=	libdm.h
 

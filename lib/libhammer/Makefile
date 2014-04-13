@@ -1,6 +1,7 @@
 # DragonflyBSD Makefile
 
 LIB=	hammer
+SHLIBDIR?= /lib
 SRCS=	crc32.c info.c misc.c stats.c
 INCS=	libhammer.h
 

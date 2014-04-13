@@ -2,6 +2,7 @@
 
 LIB=		crypto
 SHLIB_MAJOR=	5
+SHLIBDIR?=	/lib
 WARNS?=		0
 
 SUBDIR=	engines

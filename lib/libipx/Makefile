@@ -2,6 +2,7 @@
 # $DragonFly: src/lib/libipx/Makefile,v 1.3 2008/10/28 17:23:45 swildner Exp $
 
 LIB=	ipx
+SHLIBDIR?= /lib
 #CFLAGS+=-I${.CURDIR}/../../sys
 SRCS=	ipx_addr.c ipx_ntoa.c
 WARNS?=	2

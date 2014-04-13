@@ -1,6 +1,7 @@
 # $FreeBSD: src/lib/libmd/Makefile,v 1.42 2005/03/09 19:23:04 cperciva Exp $
 
 LIB=	md
+SHLIBDIR?= /lib
 SRCS=	md2c.c md4c.c md5c.c md2hl.c md4hl.c md5hl.c \
 	rmd160c.c rmd160hl.c \
 	sha0c.c sha0hl.c sha1c.c sha1hl.c \

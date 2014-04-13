@@ -266,7 +266,7 @@ customizeiso:
 	# rm -rf's to allow restarts.  Allow /usr/dports to be read-only.
 	#
 	cp /etc/resolv.conf ${ISOROOT}/etc
-	${CHROOT_CMD} "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
+	${CHROOT_CMD} "ldconfig -elf /lib /usr/lib /usr/lib/gcc* /usr/lib/compat"
 	-@umount ${ISOROOT}/usr/distfiles
 	-@umount ${ISOROOT}/usr/dports
 	-@umount ${ISOROOT}/dev

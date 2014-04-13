@@ -1,5 +1,7 @@
 LIB=    ncurses${LIB_SUFFIX}
 
+SHLIBDIR?=	/lib
+
 .include "../Makefile.inc"
 
 NCURSESBASEDIR=${NCURSESDIR}/ncurses/base
@@ -288,10 +290,10 @@ SYMLINKS+=libncurses${LIB_SUFFIX}.a ${LIBDIR}/libtermlib${LIB_SUFFIX}.a
 SYMLINKS+=libncurses${LIB_SUFFIX}.a ${LIBDIR}/libtinfo${LIB_SUFFIX}.a
 .if !defined(NOPIC)
 # no need for major at all, it's an ld-time redirection only
-SYMLINKS+=libncurses${LIB_SUFFIX}.so ${SHLIBDIR}/libcurses${LIB_SUFFIX}.so
-SYMLINKS+=libncurses${LIB_SUFFIX}.so ${SHLIBDIR}/libtermcap${LIB_SUFFIX}.so
-SYMLINKS+=libncurses${LIB_SUFFIX}.so ${SHLIBDIR}/libtermlib${LIB_SUFFIX}.so
-SYMLINKS+=libncurses${LIB_SUFFIX}.so ${SHLIBDIR}/libtinfo${LIB_SUFFIX}.so
+SYMLINKS+=libncurses${LIB_SUFFIX}.so ${LIBDIR}/libcurses${LIB_SUFFIX}.so
+SYMLINKS+=libncurses${LIB_SUFFIX}.so ${LIBDIR}/libtermcap${LIB_SUFFIX}.so
+SYMLINKS+=libncurses${LIB_SUFFIX}.so ${LIBDIR}/libtermlib${LIB_SUFFIX}.so
+SYMLINKS+=libncurses${LIB_SUFFIX}.so ${LIBDIR}/libtinfo${LIB_SUFFIX}.so
 .endif
 .if !defined(NOPROFILE)
 SYMLINKS+=libncurses${LIB_SUFFIX}.a ${PROFLIBDIR}/libcurses${LIB_SUFFIX}.a

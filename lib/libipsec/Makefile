@@ -29,6 +29,7 @@
 
 LIB=	ipsec
 SHLIB_MAJOR= 2
+SHLIBDIR?= /lib
 CFLAGS+=-I. -I${.CURDIR}
 CFLAGS+=-DIPSEC_DEBUG -DIPSEC
 .if !defined(NOINET6)

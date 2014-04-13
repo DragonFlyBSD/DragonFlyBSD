@@ -1,6 +1,7 @@
 # $FreeBSD: src/lib/libcam/Makefile,v 1.6.2.2 2001/04/25 10:04:22 ru Exp $
 
 LIB=	cam
+SHLIBDIR?= /lib
 SRCS=	camlib.c scsi_cmdparse.c scsi_all.c scsi_da.c scsi_sa.c cam.c
 INCS=	camlib.h
 WARNS?=	2
