@@ -15,6 +15,8 @@ SRCS=	\
 	apmain.c
 
 SRCS+=	\
+	cmfsize.c \
+	getopt.c \
 	osunixdir.c \
 	osunixmap.c \
 	tbprint.c \
@@ -23,8 +25,7 @@ SRCS+=	\
 	utexcep.c \
 	utmath.c \
 	utstring.c \
-	utxferror.c \
-	getopt.c
+	utxferror.c
 
 SRCS+=	\
 	osdragonflytbl.c

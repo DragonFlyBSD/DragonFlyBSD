@@ -15,6 +15,7 @@ SRCS=	\
 	ahaslkey.c \
 	ahaslops.c \
 	ahdecode.c \
+	ahids.c \
 	ahpredef.c \
 	ahmain.c
 

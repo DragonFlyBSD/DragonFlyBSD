@@ -22,6 +22,7 @@ SRCS=	\
 	adfile.c \
 	adisasm.c \
 	adwalk.c \
+	ahids.c \
 	ahpredef.c \
 	aslanalyze.c \
 	aslbtypes.c \
@@ -65,6 +66,7 @@ SRCS=	\
 	asluuid.c \
 	aslwalks.c \
 	aslxref.c \
+	cmfsize.c \
 	dtcompile.c \
 	dtexpress.c \
 	dtfield.c \
@@ -147,6 +149,7 @@ SRCS=	\
 	pstree.c \
 	psutils.c \
 	pswalk.c \
+	tbdata.c \
 	tbfadt.c \
 	tbinstal.c \
 	tbprint.c \

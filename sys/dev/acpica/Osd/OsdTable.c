@@ -80,3 +80,12 @@ AcpiOsTableOverride (
     kprintf("ACPI: DSDT was overridden.\n");
     return (AE_OK);
 }
+
+ACPI_STATUS
+AcpiOsPhysicalTableOverride(
+    ACPI_TABLE_HEADER		*ExistingTable,
+    ACPI_PHYSICAL_ADDRESS	*NewAddress,
+    UINT32			*NewTableLength)
+{
+	return (AE_SUPPORT);
+}

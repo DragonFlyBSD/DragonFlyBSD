@@ -19,6 +19,8 @@ SRCS=	\
 
 SRCS+=	\
 	acgetline.c \
+	ahids.c \
+	cmfsize.c \
 	dbcmds.c \
 	dbconvert.c \
 	dbdisply.c \
@@ -154,6 +156,7 @@ SRCS+=	\
 	rsserial.c \
 	rsutils.c \
 	rsxface.c \
+	tbdata.c \
 	tbfadt.c \
 	tbfind.c \
 	tbinstal.c \

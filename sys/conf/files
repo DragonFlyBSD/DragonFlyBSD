@@ -2237,6 +2237,7 @@ kern/dsched/bfq/wf2q.c			optional dsched_bfq
 kern/dsched/bfq/bfq_helper_thread.c	optional dsched_bfq
 
 # ACPICA code
+${ACPICA_DIR}/common/ahids.c			optional acpi
 ${ACPICA_COMP_DIR}/debugger/dbcmds.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbconvert.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbdisply.c		optional acpi acpi_debug
@@ -2371,6 +2372,7 @@ ${ACPICA_COMP_DIR}/resources/rsmisc.c		optional acpi
 ${ACPICA_COMP_DIR}/resources/rsserial.c		optional acpi
 ${ACPICA_COMP_DIR}/resources/rsutils.c		optional acpi
 ${ACPICA_COMP_DIR}/resources/rsxface.c		optional acpi
+${ACPICA_COMP_DIR}/tables/tbdata.c		optional acpi
 ${ACPICA_COMP_DIR}/tables/tbfadt.c		optional acpi
 ${ACPICA_COMP_DIR}/tables/tbfind.c		optional acpi
 ${ACPICA_COMP_DIR}/tables/tbinstal.c		optional acpi

@@ -8,6 +8,7 @@ SYSDIR=	$S
 .endif
 
 ACPICA_KERN_PATHS = \
+	${SYSDIR}/${ACPICA_DIR}/common			\
 	${SYSDIR}/${ACPICA_COMP_DIR}/dispatcher 	\
 	${SYSDIR}/${ACPICA_COMP_DIR}/executer		\
 	${SYSDIR}/${ACPICA_COMP_DIR}/parser		\

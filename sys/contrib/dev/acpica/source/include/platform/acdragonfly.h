@@ -175,6 +175,10 @@
 	_AcpiOsUnmapMemory((LogicalAddress), (Size), __func__, __LINE__)
 #endif
 
+/* XXX TBI */
+#define	ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsWaitEventsComplete
+#define	AcpiOsWaitEventsComplete()
+
 #define ACPI_SPINLOCK	struct acpi_spinlock *
 struct acpi_spinlock;
 

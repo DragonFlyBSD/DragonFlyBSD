@@ -17,6 +17,7 @@ SRCS=	\
 	antables.c
 
 SRCS+=	\
+	cmfsize.c \
 	dbfileio.c \
 	dsfield.c \
 	dsmthdat.c \
@@ -58,6 +59,7 @@ SRCS+=	\
 	psutils.c \
 	pswalk.c \
 	psxface.c \
+	tbdata.c \
 	tbfadt.c \
 	tbfind.c \
 	tbinstal.c \

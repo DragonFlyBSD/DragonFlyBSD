@@ -30,6 +30,7 @@ CFLAGS+=	-DACPI_DEBUG_CACHE
 KMOD	= acpi
 
 # ACPI CA sources
+SRCS+=	ahids.c
 SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
 SRCS+=	dbinput.c dbstats.c dbtest.c dbutils.c dbxface.c
 SRCS+=	dbmethod.c dbnames.c
@@ -55,7 +56,7 @@ SRCS+=	psargs.c psloop.c psobject.c psopcode.c psopinfo.c psparse.c psscope.c
 SRCS+=	pstree.c psutils.c pswalk.c psxface.c
 SRCS+=	rsaddr.c rscalc.c rscreate.c rsdump.c rsdumpinfo.c rsinfo.c rsio.c
 SRCS+=	rsirq.c rslist.c rsmemory.c rsmisc.c rsserial.c rsutils.c
-SRCS+=	rsxface.c tbfadt.c tbfind.c tbinstal.c tbprint.c
+SRCS+=	rsxface.c tbdata.c tbfadt.c tbfind.c tbinstal.c tbprint.c
 SRCS+=	tbutils.c tbxface.c tbxfload.c tbxfroot.c utalloc.c utbuffer.c
 SRCS+=	utaddress.c utclib.c utcopy.c
 SRCS+=	utdebug.c utdelete.c uterror.c uteval.c utexcep.c

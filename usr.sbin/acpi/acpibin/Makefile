@@ -14,6 +14,8 @@ SRCS=	\
 	abmain.c
 
 SRCS+=	\
+	cmfsize.c \
+	getopt.c \
 	utalloc.c \
 	utbuffer.c \
 	utcache.c \
@@ -27,8 +29,7 @@ SRCS+=	\
 	utstate.c \
 	utstring.c \
 	utxferror.c \
-	osunixxf.c \
-	getopt.c
+	osunixxf.c
 
 CFLAGS+= \
 	-DACPI_BIN_APP \
