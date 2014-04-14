@@ -28,6 +28,6 @@ afterinstall:
 	cp /usr/src/etc/master.passwd /tmp
 	/usr/sbin/pwd_mkdb -d /tmp /tmp/master.passwd
 	${INSTALL} -o root -g wheel -m 444 \
-		${PW_FILES} ${DESTFIR}${SHAREDIR}/initrd/etc
+		${PW_FILES} ${DESTDIR}${SHAREDIR}/initrd/etc
 
 .include <bsd.prog.mk>
