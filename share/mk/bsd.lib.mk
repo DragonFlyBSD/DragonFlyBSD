@@ -226,7 +226,7 @@ _libinstall:
 .if ${SHLIBDIR} == ${LIBDIR}
 	${LN} -fs ${SHLIB_NAME} ${DESTDIR}${TARGET_SHLIBDIR}/${SHLIB_LINK}
 .else
-	${LN} -fs ${DESTDIR}${TARGET_SHLIBDIR}/${SHLIB_NAME} \
+	${LN} -fs ${_SHLIBDIRPREFIX}${TARGET_SHLIBDIR}/${SHLIB_NAME} \
 	    ${DESTDIR}${TARGET_LIBDIR}/${SHLIB_LINK}
 .endif
 .endif
