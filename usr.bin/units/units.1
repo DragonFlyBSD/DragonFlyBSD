@@ -1,5 +1,5 @@
-.\" $FreeBSD: src/usr.bin/units/units.1,v 1.18 2005/02/13 22:25:25 ru Exp $
-.Dd December 4, 2008
+.\" $FreeBSD: head/usr.bin/units/units.1 264470 2014-04-14 20:51:04Z eadler $
+.Dd April 15, 2014
 .Dt UNITS 1
 .Os
 .Sh NAME
@@ -8,7 +8,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl f Ar filename
-.Op Fl qv
+.Op Fl qvUV
 .Op Ar from-unit to-unit
 .Sh OPTIONS
 The following options are available:
@@ -18,14 +18,23 @@ Specify the name of the units data file to load.
 .It Fl q
 Suppress prompting of the user for units and the display of statistics
 about the number of units loaded.
-.It Fl v
-Print the version number.
+.It Fl U
+If the default unit file exists prints its location.
+If not, print
+.Qo
+Units data file not found
+.Qc
+.It Fl V
+Print the version number, usage, and then exit.
 .It Ar from-unit to-unit
 Allow a single unit conversion to be done directly from the command
 line.
 The program will not print prompts.
 It will print out the
 result of the single specified conversion.
+.It Fl v
+Print the units in the conversion output.
+Be more verbose in general.
 .El
 .Sh DESCRIPTION
 The
@@ -35,8 +44,7 @@ their equivalents in other scales.
 The
 .Nm
 program can only
-handle multiplicative scale changes.
-Experimental support is available to convert Celsius to Fahrenheit.
+handle multiplicative or affine scale changes.
 It works interactively by prompting
 the user for input:
 .Bd -literal
@@ -60,9 +68,9 @@ the user for input:
             * 1.27
             / 0.78740157
 
-    You have: 20 degC
-    You want: degF
-            68
+    You have: 85 degF
+    You want: degC
+	29.444444
 .Ed
 .Pp
 Powers of units can be specified using the '^' character as shown in

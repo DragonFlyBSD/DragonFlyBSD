@@ -13,6 +13,8 @@
  *
  * I would appreciate (though I do not require) receiving a copy of any
  * improvements you might make to this program.
+ *
+ * $FreeBSD: head/usr.bin/units/units.c 264475 2014-04-14 21:09:47Z eadler $
  */
 
 #include <ctype.h>
