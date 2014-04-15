@@ -43,9 +43,6 @@
 
 #include "acpidump.h"
 
-#if 0 /* see XXX below */
-#include <kenv.h>
-#endif
 #include <unistd.h>
 #include <sys/param.h>
 #include <sys/sysctl.h>
@@ -81,7 +78,6 @@ OslGetTableViaRoot (
 
 /* Hints for RSDP */
 
-#define SYSTEM_KENV         "hint.acpi.0.rsdp"
 #define SYSTEM_SYSCTL       "machdep.acpi_root"
 
 /* Initialization flags */
@@ -393,18 +389,12 @@ OslTableInitialize (
         return (AE_OK);
     }
 
-    /* Attempt to use kenv or sysctl to find RSD PTR record. */
+    /* Attempt to use sysctl to find RSD PTR record. */
 
     if (Gbl_RsdpBase)
     {
         Address = Gbl_RsdpBase;
     }
-#if 0 /* XXX: Either import kenv(2) or scan the list a la kenv(1) */
-    else if (kenv (KENV_GET, SYSTEM_KENV, Buffer, sizeof (Buffer)) > 0)
-    {
-        Address = ACPI_STRTOUL (Buffer, NULL, 0);
-    }
-#endif
     if (!Address)
     {
         if (sysctlbyname (SYSTEM_SYSCTL, &Address, &Length, NULL, 0) != 0)
