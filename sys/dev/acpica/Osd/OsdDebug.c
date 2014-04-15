@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/Osd/OsdDebug.c,v 1.9 2004/09/02 04:28:05 njl Exp $
+ * $FreeBSD: head/sys/dev/acpica/Osd/OsdDebug.c 222544 2011-05-31 19:45:58Z jkim $
  */
 
 /*
@@ -48,31 +48,21 @@ ACPI_STATUS
 AcpiOsGetLine(char *Buffer, UINT32 BufferLength, UINT32 *BytesRead)
 {
 #ifdef DDB
-    char *cp;
+	char *cp;
 
-    cp = Buffer;
-    if (db_readline(Buffer, BufferLength) > 0)
-        while (*cp != '\0' && *cp != '\n' && *cp != '\r')
-            cp++;
-    *cp = '\0';
-    if (BytesRead != NULL)
-        *BytesRead = cp - Buffer;
-    return (AE_OK);
+	cp = Buffer;
+	if (db_readline(Buffer, BufferLength) > 0)
+		while (*cp != '\0' && *cp != '\n' && *cp != '\r')
+			cp++;
+	*cp = '\0';
+	if (BytesRead != NULL)
+		*BytesRead = cp - Buffer;
+	return (AE_OK);
 #else
-    kprintf("AcpiOsGetLine called but no input support");
-    return (AE_NOT_EXIST);
+	kprintf("AcpiOsGetLine called but no input support");
+	return (AE_NOT_EXIST);
 #endif /* DDB */
 }
-
-#if 0	/* unused for ages */
-void
-AcpiOsDbgAssert(void *FailedAssertion, void *FileName, UINT32 LineNumber,
-    char *Message)
-{
-    kprintf("ACPI: %s:%d - %s\n", (char *)FileName, LineNumber, Message);
-    kprintf("ACPI: assertion  %s\n", (char *)FailedAssertion);
-}
-#endif
 
 ACPI_STATUS
 AcpiOsSignal(UINT32 Function, void *Info)
@@ -82,9 +72,11 @@ AcpiOsSignal(UINT32 Function, void *Info)
     switch (Function) {
     case ACPI_SIGNAL_FATAL:
 	fatal = (ACPI_SIGNAL_FATAL_INFO *)Info;
-	kprintf("ACPI fatal signal, type 0x%x  code 0x%x  argument 0x%x",
+	kprintf("ACPI fatal signal, type 0x%x code 0x%x argument 0x%x",
 	      fatal->Type, fatal->Code, fatal->Argument);
+#ifdef ACPI_DEBUG
 	Debugger("AcpiOsSignal");
+#endif
 	break;
 	
     case ACPI_SIGNAL_BREAKPOINT:
@@ -96,6 +88,7 @@ AcpiOsSignal(UINT32 Function, void *Info)
     default:
 	return (AE_BAD_PARAMETER);
     }
+
     return (AE_OK);
 }
 
