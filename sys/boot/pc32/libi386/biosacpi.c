@@ -39,7 +39,7 @@
 #include "actbl.h"
 
 /*
- * Detect ACPI and export information about the APCI BIOS into the
+ * Detect ACPI and export information about the ACPI BIOS into the
  * environment.
  */
 
@@ -54,8 +54,6 @@ biosacpi_detect(void)
     ACPI_TABLE_RSDP	*rsdp;
     char		buf[160];
     int			revision;
-
-    /* XXX check the BIOS datestamp */
 
     /* locate and validate the RSDP */
     if ((rsdp = biosacpi_find_rsdp()) == NULL)
@@ -79,8 +77,6 @@ biosacpi_detect(void)
 	sprintf(buf, "%d", rsdp->Length);
 	setenv("hint.acpi.0.xsdt_length", buf, 1);
     }
-    /* XXX other tables? */
-
     setenv("acpi_load", "YES", 1);
 }
 
@@ -122,10 +118,8 @@ biosacpi_search_rsdp(char *base, int length)
 	    sum = 0;
 	    for (idx = 0; idx < RSDP_CHECKSUM_LENGTH; idx++)
 		sum += *(cp + idx);
-	    if (sum != 0) {
-		printf("acpi: bad RSDP checksum (%d)\n", sum);
+	    if (sum != 0)
 		continue;
-	    }
 	    return(rsdp);
 	}
     }
