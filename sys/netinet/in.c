@@ -1299,7 +1299,7 @@ in_broadcast(struct in_addr in, struct ifnet *ifp)
 	if (in.s_addr == INADDR_BROADCAST ||
 	    in.s_addr == INADDR_ANY)
 		return 1;
-	if ((ifp->if_flags & IFF_BROADCAST) == 0)
+	if (ifp == NULL || (ifp->if_flags & IFF_BROADCAST) == 0)
 		return 0;
 	t = ntohl(in.s_addr);
 	/*
