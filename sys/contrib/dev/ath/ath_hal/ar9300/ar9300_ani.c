@@ -1201,7 +1201,7 @@ ar9300_ani_ar_poll(struct ath_hal *ah, const HAL_NODE_STATS *stats,
         }
         if (old_phy_noise_spur != ani_state->phy_noise_spur) {
             HALDEBUG(ah, HAL_DEBUG_ANI,
-                     "%s: enviroment change from %d to %d\n",
+                     "%s: environment change from %d to %d\n",
                      __func__, old_phy_noise_spur, ani_state->phy_noise_spur);
         }
     }

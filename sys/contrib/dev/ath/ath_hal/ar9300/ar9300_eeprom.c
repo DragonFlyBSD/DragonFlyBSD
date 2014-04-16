@@ -3789,7 +3789,7 @@ ar9300_eeprom_restore_internal_address(struct ath_hal *ah,
                     dptr = ar9300_eeprom_struct_default_find_by_id(reference);
                     if (dptr == 0) {
                         HALDEBUG(ah, HAL_DEBUG_EEPROM,
-                            "%s: cant find reference eeprom struct %d\n",
+                            "%s: can't find reference eeprom struct %d\n",
                             __func__, reference);
                         break;
                     }

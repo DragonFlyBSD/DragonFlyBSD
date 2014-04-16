@@ -304,7 +304,7 @@ xhci_reset_command_queue_locked(struct xhci_softc *sc)
 		/* check if command ring is still running */
 		temp = XREAD4(sc, oper, XHCI_CRCR_LO);
 		if (temp & XHCI_CRCR_LO_CRR) {
-			DPRINTF("Comand ring still running\n");
+			DPRINTF("Command ring still running\n");
 			return (USB_ERR_IOERROR);
 		}
 	}

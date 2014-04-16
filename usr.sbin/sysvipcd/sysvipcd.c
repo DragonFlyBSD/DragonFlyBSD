@@ -165,7 +165,7 @@ daemon_add_client(void)
 	cl->pid = cred.cmcred_pid;
 
 	sysvd_print("total = %d...another one will be added\n", nr_poll_fds);
-	sysvd_print("pid = %d conected\n", cl->pid);
+	sysvd_print("pid = %d connected\n", cl->pid);
 
 	/* Verify if the client is already connected using the hashtable. */
 	if (_hash_lookup(clientshash, cl->pid)) {

@@ -128,7 +128,7 @@ create_sysv_file(struct shmget_msg *msg, size_t size,
 			sems = (struct semid_pool*)addr;
 			nsems = (msg->size - sizeof(struct semid_pool)) /
 				sizeof(struct sem);
-			sysvd_print("alocate %d sems\n", nsems);
+			sysvd_print("allocate %d sems\n", nsems);
 
 			/* Init lock. */
 #ifdef SYSV_RWLOCK

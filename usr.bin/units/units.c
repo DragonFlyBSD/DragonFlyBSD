@@ -753,7 +753,7 @@ main(int argc, char **argv)
 	el_source(el, NULL);
 	history(inhistory, &ev, H_SETSIZE, 800);
 	if (inhistory == 0)
-		err(1, "Could not initalize history");
+		err(1, "Could not initialize history");
 
 	if (optind == argc - 2) {
 		havestr = argv[optind];
