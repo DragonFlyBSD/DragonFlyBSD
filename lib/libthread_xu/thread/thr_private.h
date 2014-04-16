@@ -655,6 +655,7 @@ void	_thr_rtld_init(void);
 void	_thr_rtld_fini(void);
 int	_thr_stack_alloc(struct pthread_attr *);
 void	_thr_stack_free(struct pthread_attr *);
+void	_thr_stack_cleanup(void);
 void	_thr_free(struct pthread *, struct pthread *);
 void	_thr_gc(struct pthread *);
 void    _thread_cleanupspecific(void);

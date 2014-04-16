@@ -266,3 +266,15 @@ _thr_stack_free(struct pthread_attr *attr)
 		attr->stackaddr_attr = NULL;
 	}
 }
+
+void
+_thr_stack_cleanup(void)
+{
+	struct stack *spare;
+
+	while ((spare = LIST_FIRST(&dstackq)) != NULL) {
+		LIST_REMOVE(spare, qe);
+		munmap(spare->stackaddr,
+		       spare->stacksize + spare->guardsize);
+	}
+}

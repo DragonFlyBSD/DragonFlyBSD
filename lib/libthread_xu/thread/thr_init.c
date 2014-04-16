@@ -145,6 +145,7 @@ STATIC_LIB_REQUIRE(_pthread_yield);
 char		*_usrstack;
 struct pthread	*_thr_initial;
 int		_thread_scope_system;
+static void	*_thr_main_redzone;
 
 pid_t		_thr_pid;
 size_t		_thr_guard_default;
@@ -153,6 +154,7 @@ size_t		_thr_stack_initial =	THR_STACK_INITIAL;
 int		_thr_page_size;
 
 static void	init_private(void);
+static void	_libpthread_uninit(void);
 static void	init_main_thread(struct pthread *thread);
 static int	init_once = 0;
 
@@ -161,6 +163,13 @@ void
 _thread_init(void)
 {
 	_libpthread_init(NULL);
+}
+
+void	_thread_uninit(void) __attribute__ ((destructor));
+void
+_thread_uninit(void)
+{
+	_libpthread_uninit();
 }
 
 /*
@@ -250,6 +259,18 @@ _libpthread_init(struct pthread *curthread)
 	}
 }
 
+static void
+_libpthread_uninit(void)
+{
+	if (_thr_initial == NULL)
+		return;
+	if (_thr_main_redzone && _thr_main_redzone != MAP_FAILED) {
+		munmap(_thr_main_redzone, _thr_guard_default);
+		_thr_main_redzone = NULL;
+	}
+	_thr_stack_cleanup();
+}
+
 /*
  * This function and pthread_create() do a lot of the same things.
  * It'd be nice to consolidate the common stuff in one place.
@@ -269,9 +290,10 @@ init_main_thread(struct pthread *thread)
 	 * resource limits, so this stack needs an explicitly mapped
 	 * red zone to protect the thread stack that is just beyond.
 	 */
-	if (mmap(_usrstack - _thr_stack_initial -
-		_thr_guard_default, _thr_guard_default,
-		0, MAP_ANON | MAP_TRYFIXED, -1, 0) == MAP_FAILED) {
+	_thr_main_redzone = mmap(_usrstack - _thr_stack_initial -
+				 _thr_guard_default, _thr_guard_default,
+				 0, MAP_ANON | MAP_TRYFIXED, -1, 0);
+	if (_thr_main_redzone == MAP_FAILED) {
 		PANIC("Cannot allocate red zone for initial thread");
 	}
 
