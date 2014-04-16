@@ -486,7 +486,7 @@ installworld: installcheck
 
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
-	mkinitrd
+	mkinitrd -b ${DESTDIR}/boot
 
 #
 # reinstall
