@@ -8,4 +8,7 @@ MAN=	mount.8
 LDADD=	-lutil
 DPADD=	${LIBUTIL}
 
+DPADD=	${LIBUTIL}
+LDADD=	-lutil
+
 .include <bsd.prog.mk>
