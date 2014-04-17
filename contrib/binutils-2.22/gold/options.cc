@@ -1143,6 +1143,7 @@ General_options::finalize()
     }
   else if (!this->nostdlib())
     {
+      this->add_to_library_path_with_sysroot(USRDATA_PREFIX "/lib");
       this->add_to_library_path_with_sysroot(USRDATA_PREFIX "/usr/lib");
     }
 

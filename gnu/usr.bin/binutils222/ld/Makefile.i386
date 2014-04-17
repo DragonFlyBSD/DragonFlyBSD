@@ -5,9 +5,9 @@ NATIVE_EMULATION=	elf_i386
 HOST=	${TARGET_TUPLE}
 CFLAGS+= -DDEFAULT_EMULATION=\"${NATIVE_EMULATION}\"
 CFLAGS+= -DTARGET=\"${TARGET_TUPLE}\"
-_i386_path=	${USRDATA_PREFIX}/usr/lib
+_i386_path=	${USRDATA_PREFIX}/lib:${USRDATA_PREFIX}/usr/lib
 .else
-_i386_path=	/usr/cross/i386-dragonfly/usr/lib
+_i386_path=	/usr/cross/i386-dragonfly/lib:/usr/cross/i386-dragonfly/usr/lib
 .endif
 EMS+=		${NATIVE_EMULATION}
 .for ext in ${ELF_SCR_EXT}
