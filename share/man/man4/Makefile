@@ -360,6 +360,7 @@ MAN=	aac.4 \
 	vn.4 \
 	vpo.4 \
 	vr.4 \
+	vtnet.4 \
 	watchdog.4 \
 	wb.4 \
 	wbsio.4 \
@@ -510,6 +511,7 @@ MLINKS+=vge.4 if_vge.4
 MLINKS+=vlan.4 if_vlan.4
 MLINKS+=vpo.4 imm.4
 MLINKS+=vr.4 if_vr.4
+MLINKS+=vtnet.4 if_vtnet.4
 MLINKS+=wb.4 if_wb.4
 MLINKS+=wi.4 if_wi.4
 MLINKS+=wpi.4 if_wpi.4

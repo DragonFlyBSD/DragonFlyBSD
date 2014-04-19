@@ -2417,6 +2417,7 @@ device		tbridge		# regression testing
 #
 device		virtio		# VirtIO core
 device		virtio_blk	# VirtIO disk driver
+device		vtnet		# VirtIO network driver
 device		virtio_pci	# VirtIO transport over PCI bus
 
 #

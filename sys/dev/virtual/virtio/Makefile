@@ -23,6 +23,6 @@
 # SUCH DAMAGE.
 #
 
-SUBDIR= virtio pci block 
+SUBDIR= virtio pci block net
 
 .include <bsd.subdir.mk>

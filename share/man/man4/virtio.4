@@ -64,10 +64,10 @@ interrupt notifications needed to interact with the hypervisor.
 .Dx
 supports the following VirtIO device(s):
 .Bl -hang -offset indent -width xxxxxxxx
-.\".It Nm Ethernet
-.\"An emulated Ethernet device is provided by the
-.\".Xr vtnet 4
-.\"device driver.
+.It Nm Ethernet
+An emulated Ethernet device is provided by the
+.Xr vtnet 4
+device driver.
 .It Nm Block
 An emulated disk controller is provided by the
 .Xr virtio_blk 4
@@ -86,7 +86,7 @@ device driver.
 .\".Xr virtio_balloon 4 ,
 .Xr virtio_blk 4
 .\".Xr virtio_scsi 4 ,
-.\".Xr vtnet 4
+.Xr vtnet 4
 .Sh HISTORY
 Support for VirtIO first appeared in
 .Fx 9.0 .

@@ -164,6 +164,7 @@ device		twe		# 3ware Escalade 7000/8000's
 # VirtIO support
 device		virtio		# VirtIO core
 device		virtio_blk	# VirtIO disk driver
+device		vtnet		# VirtIO network driver
 device		virtio_pci	# VirtIO transport over PCI bus
 
 # atkbdc0 controls both the keyboard and the PS/2 mouse

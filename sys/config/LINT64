@@ -2251,6 +2251,7 @@ device		tbridge		# regression testing
 #
 device		virtio
 device		virtio_blk
+device		vtnet
 device		virtio_pci
 
 #
