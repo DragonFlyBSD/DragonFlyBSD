@@ -451,8 +451,6 @@ typedef struct hammer2_volconf hammer2_volconf_t;
 #define DMSG_VOLF_CONN_EF	0x40	/* media errors flagged */
 #define DMSG_VOLF_CONN_PRI	0x0F	/* select priority 0-15 (15=best) */
 
-#define DMSG_COPYID_COUNT	256	/* WARNING! embedded in hammer2 vol */
-
 struct dmsg_lnk_hammer2_volconf {
 	dmsg_hdr_t		head;
 	hammer2_volconf_t	copy;	/* copy spec */
@@ -849,16 +847,7 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_COPYID_NONE		0
 #define HAMMER2_COPYID_LOCAL		((uint8_t)-1)
 
-/*
- * PEER types identify connections and help cluster controller filter
- * out unwanted SPANs.
- */
-#define HAMMER2_PEER_NONE		DMSG_PEER_NONE
-#define HAMMER2_PEER_CLUSTER		DMSG_PEER_CLUSTER
-#define HAMMER2_PEER_BLOCK		DMSG_PEER_BLOCK
-#define HAMMER2_PEER_HAMMER2		DMSG_PEER_HAMMER2
-
-#define HAMMER2_COPYID_COUNT		DMSG_COPYID_COUNT
+#define HAMMER2_COPYID_COUNT		256
 
 /*
  * PFS types identify a PFS on media and in LNK_SPAN messages.

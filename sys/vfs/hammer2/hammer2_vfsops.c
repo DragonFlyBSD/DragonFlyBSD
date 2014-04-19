@@ -451,7 +451,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 				if (error)
 					break;
 			}
-			hammer2_inode_install_hidden(pmp);
+			/*hammer2_inode_install_hidden(pmp);*/
 
 			return error;
 		}
@@ -762,7 +762,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		lockmgr(&hammer2_mntlk, LK_RELEASE);
 
 		kprintf("ok\n");
-		/* hammer2_inode_install_hidden(pmp); */
+		hammer2_inode_install_hidden(pmp);
 
 		return ERANGE;
 	}
@@ -2570,7 +2570,7 @@ hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp)
 	 * clients (otherwise millions of clients would present a serious
 	 * problem).  The fs_label also serves to restrict the namespace.
 	 */
-	pmp->iocom.auto_lnk_conn.peer_mask = 1LLU << HAMMER2_PEER_HAMMER2;
+	pmp->iocom.auto_lnk_conn.peer_mask = 1LLU << DMSG_PEER_HAMMER2;
 	pmp->iocom.auto_lnk_conn.pfs_mask = (uint64_t)-1;
 	switch (ipdata->pfs_type) {
 	case DMSG_PFSTYPE_CLIENT:

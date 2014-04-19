@@ -38,6 +38,24 @@
 #include <sys/xdiskioctl.h>
 #include <machine/atomic.h>
 
+struct hammer2_media_config {
+	hammer2_volconf_t	copy_run;
+	hammer2_volconf_t	copy_pend;
+	pthread_t		thread;
+	pthread_cond_t		cond;
+	int			ctl;
+	int			fd;
+	int			pipefd[2];      /* signal stop */
+	dmsg_iocom_t		iocom;
+	pthread_t		iocom_thread;
+	enum { H2MC_STOPPED, H2MC_CONNECT, H2MC_RUNNING } state;
+};
+
+typedef struct hammer2_media_config hammer2_media_config_t;
+
+#define H2CONFCTL_STOP          0x00000001
+#define H2CONFCTL_UPDATE        0x00000002
+
 struct diskcon {
 	TAILQ_ENTRY(diskcon) entry;
 	char	*disk;
@@ -65,7 +83,8 @@ struct autoconn {
 #define WS " \r\n"
 
 TAILQ_HEAD(, diskcon) diskconq = TAILQ_HEAD_INITIALIZER(diskconq);
-pthread_mutex_t diskmtx;
+static pthread_mutex_t diskmtx;
+static pthread_mutex_t confmtx;
 
 static void *service_thread(void *data);
 static void *udev_thread(void *data);
@@ -74,7 +93,14 @@ static void master_reconnect(const char *mntpt);
 static void disk_reconnect(const char *disk);
 static void disk_disconnect(void *handle);
 static void udev_check_disks(void);
-static void service_node_handler(void **opaque, struct dmsg_msg *msg, int op);
+static void hammer2_usrmsg_handler(dmsg_msg_t *msg, int unmanaged);
+static void hammer2_node_handler(void **opaque, struct dmsg_msg *msg, int op);
+static void *hammer2_volconf_thread(void *info);
+static void hammer2_volconf_signal(dmsg_iocom_t *iocom);
+static void hammer2_volconf_start(hammer2_media_config_t *conf,
+			const char *hostname);
+static void hammer2_volconf_stop(hammer2_media_config_t *conf);
+
 
 static void xdisk_reconnect(struct service_node_opaque *info);
 static void xdisk_disconnect(void *handle);
@@ -199,8 +225,6 @@ service_thread(void *data)
 	setproctitle("hammer2 master listen");
 	pthread_detach(pthread_self());
 
-	dmsg_node_handler = service_node_handler;
-
 	/*
 	 * Start up a thread to handle block device monitoring
 	 */
@@ -241,12 +265,223 @@ service_thread(void *data)
 		bzero(info, sizeof(*info));
 		info->fd = fd;
 		info->detachme = 1;
-		info->dbgmsg_callback = hammer2_shell_parse;
+		info->usrmsg_callback = hammer2_usrmsg_handler;
+		info->node_handler = hammer2_node_handler;
 		info->label = strdup("client");
 		pthread_create(&thread, NULL, dmsg_master_service, info);
 	}
 	return (NULL);
 }
+
+/*
+ * Handle/Monitor the dmsg stream.  If unmanaged is set we are responsible
+ * for responding for the message, otherwise if it is not set libdmsg has
+ * already done some preprocessing and will respond to the message for us
+ * when we return.
+ *
+ * We primarily monitor for VOLCONFs
+ */
+static
+void
+hammer2_usrmsg_handler(dmsg_msg_t *msg, int unmanaged)
+{
+	dmsg_state_t *state;
+	hammer2_media_config_t *conf;
+	dmsg_lnk_hammer2_volconf_t *msgconf;
+	int i;
+
+	/*
+	 * Only process messages which are part of a LNK_CONN stream
+	 */
+	state = msg->state;
+	if (state == NULL ||
+	    (state->rxcmd & DMSGF_BASECMDMASK) != DMSG_LNK_CONN) {
+		hammer2_shell_parse(msg, unmanaged);
+		return;
+	}
+
+	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
+	case DMSG_LNK_CONN | DMSGF_CREATE | DMSGF_DELETE:
+	case DMSG_LNK_CONN | DMSGF_DELETE:
+	case DMSG_LNK_ERROR | DMSGF_DELETE:
+		/*
+		 * Deleting connection, clean out all volume configs
+		 */
+		if (state->media == NULL || state->media->usrhandle == NULL)
+			break;
+		conf = state->media->usrhandle;
+		fprintf(stderr, "Shutting down media spans\n");
+		for (i = 0; i < HAMMER2_COPYID_COUNT; ++i) {
+			if (conf[i].thread) {
+				conf[i].ctl = H2CONFCTL_STOP;
+				pthread_cond_signal(&conf[i].cond);
+			}
+		}
+		for (i = 0; i < HAMMER2_COPYID_COUNT; ++i) {
+			if (conf[i].thread) {
+				pthread_join(conf[i].thread, NULL);
+				conf->thread = NULL;
+				pthread_cond_destroy(&conf[i].cond);
+			}
+		}
+		state->media->usrhandle = NULL;
+		free(conf);
+		break;
+	case DMSG_LNK_HAMMER2_VOLCONF:
+		/*
+		 * One-way volume-configuration message is transmitted
+		 * over the open LNK_CONN transaction.
+		 */
+		fprintf(stderr, "RECEIVED VOLCONF\n");
+
+		if ((conf = state->media->usrhandle) == NULL) {
+			conf = malloc(sizeof(*conf) * HAMMER2_COPYID_COUNT);
+			bzero(conf, sizeof(*conf) * HAMMER2_COPYID_COUNT);
+			state->media->usrhandle = conf;
+		}
+		msgconf = H2_LNK_VOLCONF(msg);
+
+		if (msgconf->index < 0 ||
+		    msgconf->index >= HAMMER2_COPYID_COUNT) {
+			fprintf(stderr,
+				"VOLCONF: ILLEGAL INDEX %d\n",
+				msgconf->index);
+			break;
+		}
+		if (msgconf->copy.path[sizeof(msgconf->copy.path) - 1] != 0 ||
+		    msgconf->copy.path[0] == 0) {
+			fprintf(stderr,
+				"VOLCONF: ILLEGAL PATH %d\n",
+				msgconf->index);
+			break;
+		}
+		conf += msgconf->index;
+		pthread_mutex_lock(&confmtx);
+		conf->copy_pend = msgconf->copy;
+		conf->ctl |= H2CONFCTL_UPDATE;
+		pthread_mutex_unlock(&confmtx);
+		if (conf->thread == NULL) {
+			fprintf(stderr, "VOLCONF THREAD STARTED\n");
+			pthread_cond_init(&conf->cond, NULL);
+			pthread_create(&conf->thread, NULL,
+				       hammer2_volconf_thread, (void *)conf);
+		}
+		pthread_cond_signal(&conf->cond);
+		break;
+	default:
+		if (unmanaged)
+			dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+		break;
+	}
+}
+
+static void *
+hammer2_volconf_thread(void *info)
+{
+	hammer2_media_config_t *conf = info;
+
+	pthread_mutex_lock(&confmtx);
+	while ((conf->ctl & H2CONFCTL_STOP) == 0) {
+		if (conf->ctl & H2CONFCTL_UPDATE) {
+			fprintf(stderr, "VOLCONF UPDATE\n");
+			conf->ctl &= ~H2CONFCTL_UPDATE;
+			if (bcmp(&conf->copy_run, &conf->copy_pend,
+				 sizeof(conf->copy_run)) == 0) {
+				fprintf(stderr, "VOLCONF: no changes\n");
+				continue;
+			}
+			/*
+			 * XXX TODO - auto reconnect on lookup failure or
+			 *		connect failure or stream failure.
+			 */
+
+			pthread_mutex_unlock(&confmtx);
+			hammer2_volconf_stop(conf);
+			conf->copy_run = conf->copy_pend;
+			if (conf->copy_run.copyid != 0 &&
+			    strncmp(conf->copy_run.path, "span:", 5) == 0) {
+				hammer2_volconf_start(conf,
+						      conf->copy_run.path + 5);
+			}
+			pthread_mutex_lock(&confmtx);
+			fprintf(stderr, "VOLCONF UPDATE DONE state %d\n", conf->state);
+		}
+		if (conf->state == H2MC_CONNECT) {
+			hammer2_volconf_start(conf, conf->copy_run.path + 5);
+			pthread_mutex_unlock(&confmtx);
+			sleep(5);
+			pthread_mutex_lock(&confmtx);
+		} else {
+			pthread_cond_wait(&conf->cond, &confmtx);
+		}
+	}
+	pthread_mutex_unlock(&confmtx);
+	hammer2_volconf_stop(conf);
+	return(NULL);
+}
+
+static
+void
+hammer2_volconf_start(hammer2_media_config_t *conf, const char *hostname)
+{
+	dmsg_master_service_info_t *info;
+
+	switch(conf->state) {
+	case H2MC_STOPPED:
+	case H2MC_CONNECT:
+		conf->fd = dmsg_connect(hostname);
+		if (conf->fd < 0) {
+			fprintf(stderr, "Unable to connect to %s\n", hostname);
+			conf->state = H2MC_CONNECT;
+		} else if (pipe(conf->pipefd) < 0) {
+			close(conf->fd);
+			fprintf(stderr, "pipe() failed during volconf\n");
+			conf->state = H2MC_CONNECT;
+		} else {
+			fprintf(stderr, "VOLCONF CONNECT\n");
+			info = malloc(sizeof(*info));
+			bzero(info, sizeof(*info));
+			info->fd = conf->fd;
+			info->altfd = conf->pipefd[0];
+			info->altmsg_callback = hammer2_volconf_signal;
+			info->detachme = 0;
+			conf->state = H2MC_RUNNING;
+			pthread_create(&conf->iocom_thread, NULL,
+				       dmsg_master_service, info);
+		}
+		break;
+	case H2MC_RUNNING:
+		break;
+	}
+}
+
+static
+void
+hammer2_volconf_stop(hammer2_media_config_t *conf)
+{
+	switch(conf->state) {
+	case H2MC_STOPPED:
+		break;
+	case H2MC_CONNECT:
+		conf->state = H2MC_STOPPED;
+		break;
+	case H2MC_RUNNING:
+		close(conf->pipefd[1]);
+		conf->pipefd[1] = -1;
+		pthread_join(conf->iocom_thread, NULL);
+		conf->iocom_thread = NULL;
+		conf->state = H2MC_STOPPED;
+		break;
+	}
+}
+
+static
+void
+hammer2_volconf_signal(dmsg_iocom_t *iocom)
+{
+	atomic_set_int(&iocom->flags, DMSG_IOCOMF_EOF);
+}
+
 
 /*
  * Node discovery code on received SPANs (or loss of SPANs).  This code
@@ -260,7 +495,7 @@ service_thread(void *data)
  */
 static
 void
-service_node_handler(void **opaquep, struct dmsg_msg *msg, int op)
+hammer2_node_handler(void **opaquep, struct dmsg_msg *msg, int op)
 {
 	struct service_node_opaque *info = *opaquep;
 
@@ -643,7 +878,8 @@ master_reconnect(const char *mntpt)
 	bzero(info, sizeof(*info));
 	info->fd = pipefds[1];
 	info->detachme = 1;
-	info->dbgmsg_callback = hammer2_shell_parse;
+	info->usrmsg_callback = hammer2_usrmsg_handler;
+	info->node_handler = hammer2_node_handler;
 	info->label = strdup("hammer2");
 	pthread_create(&thread, NULL, dmsg_master_service, info);
 }
@@ -724,7 +960,8 @@ disk_reconnect(const char *disk)
 	bzero(info, sizeof(*info));
 	info->fd = pipefds[1];
 	info->detachme = 1;
-	info->dbgmsg_callback = hammer2_shell_parse;
+	info->usrmsg_callback = hammer2_usrmsg_handler;
+	info->node_handler = hammer2_node_handler;
 	info->exit_callback = disk_disconnect;
 	info->handle = dc;
 	info->label = strdup(dc->disk);
@@ -768,7 +1005,8 @@ xdisk_reconnect(struct service_node_opaque *xdisk)
 	bzero(info, sizeof(*info));
 	info->fd = pipefds[1];
 	info->detachme = 1;
-	info->dbgmsg_callback = hammer2_shell_parse;
+	info->usrmsg_callback = hammer2_usrmsg_handler;
+	info->node_handler = hammer2_node_handler;
 	info->exit_callback = xdisk_disconnect;
 	info->handle = xdisk;
 	xdisk->servicing = 1;

@@ -965,7 +965,7 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t **chainp,
 		 */
 		hmp->voldata.mirror_tid = chain->bref.mirror_tid;
 		hmp->voldata.freemap_tid = hmp->fchain.bref.mirror_tid;
-		kprintf("mirror_tid %08x\n", chain->bref.mirror_tid);
+		kprintf("mirror_tid %08jx\n", (intmax_t)chain->bref.mirror_tid);
 
 		/*
 		 * The volume header is flushed manually by the syncer, not

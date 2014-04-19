@@ -154,5 +154,5 @@ hammer2_key_t dirhash(const unsigned char *name, size_t len);
 uint32_t hammer2_icrc32(const void *buf, size_t size);
 uint32_t hammer2_icrc32c(const void *buf, size_t size, uint32_t crc);
 
-void hammer2_shell_parse(dmsg_msg_t *msg);
+void hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged);
 void print_inode(char* inode_string);

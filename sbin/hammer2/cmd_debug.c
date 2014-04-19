@@ -172,27 +172,50 @@ static void shell_span(dmsg_circuit_t *circuit, char *cmdbuf);
 static void shell_circ(dmsg_circuit_t *circuit, char *cmdbuf);
 
 void
-hammer2_shell_parse(dmsg_msg_t *msg)
+hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged)
 {
-	dmsg_circuit_t *circuit = msg->circuit;
-	char *cmdbuf = msg->aux_data;
-	char *cmd = strsep(&cmdbuf, " \t");
+	dmsg_circuit_t *circuit;
+	char *cmdbuf;
+	char *cmdp;
+	uint32_t cmd;
 
-	if (cmd == NULL || *cmd == 0) {
+	/*
+	 * Filter on debug shell commands only
+	 */
+	cmd = msg->any.head.cmd;
+	if ((cmd & DMSGF_PROTOS) != DMSG_PROTO_DBG) {
+		if (unmanaged)
+			dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+		return;
+	}
+	if ((cmd & DMSGF_CMDSWMASK) != DMSG_DBG_SHELL) {
+		if (unmanaged)
+			dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+		return;
+	}
+
+	/*
+	 * Debug shell command
+	 */
+	circuit = msg->circuit;
+	cmdbuf = msg->aux_data;
+	cmdp = strsep(&cmdbuf, " \t");
+
+	if (cmdp == NULL || *cmdp == 0) {
 		;
-	} else if (strcmp(cmd, "span") == 0) {
+	} else if (strcmp(cmdp, "span") == 0) {
 		shell_span(circuit, cmdbuf);
-	} else if (strcmp(cmd, "circ") == 0) {
+	} else if (strcmp(cmdp, "circ") == 0) {
 		shell_circ(circuit, cmdbuf);
-	} else if (strcmp(cmd, "tree") == 0) {
+	} else if (strcmp(cmdp, "tree") == 0) {
 		dmsg_shell_tree(circuit, cmdbuf); /* dump spanning tree */
-	} else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
+	} else if (strcmp(cmdp, "help") == 0 || strcmp(cmdp, "?") == 0) {
 		dmsg_circuit_printf(circuit, "help            Command help\n");
 		dmsg_circuit_printf(circuit, "span <host>     Span to target host\n");
 		dmsg_circuit_printf(circuit, "circ <msgid>    Create VC to msgid of rx SPAN\n");
 		dmsg_circuit_printf(circuit, "tree            Dump spanning tree\n");
 	} else {
-		dmsg_circuit_printf(circuit, "Unrecognized command: %s\n", cmd);
+		dmsg_circuit_printf(circuit, "Unrecognized command: %s\n", cmdp);
 	}
 }
 
@@ -227,7 +250,7 @@ shell_span(dmsg_circuit_t *circuit, char *cmdbuf)
 		bzero(info, sizeof(*info));
 		info->fd = fd;
 		info->detachme = 1;
-		info->dbgmsg_callback = hammer2_shell_parse;
+		info->usrmsg_callback = hammer2_shell_parse;
 		info->label = strdup("client");
 
 		pthread_create(&thread, NULL, dmsg_master_service, info);
