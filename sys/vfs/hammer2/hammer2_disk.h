@@ -398,6 +398,77 @@ typedef uint32_t hammer2_crc32_t;
 
 #define HAMMER2_SROOT_KEY	0x0000000000000000ULL	/* volume to sroot */
 
+/************************************************************************
+ *				DMSG SUPPORT				*
+ ************************************************************************
+ * LNK_VOLCONF
+ *
+ * All HAMMER2 directories directly under the super-root on your local
+ * media can be mounted separately, even if they share the same physical
+ * device.
+ *
+ * When you do a HAMMER2 mount you are effectively tying into a HAMMER2
+ * cluster via local media.  The local media does not have to participate
+ * in the cluster, other than to provide the hammer2_volconf[] array and
+ * root inode for the mount.
+ *
+ * This is important: The mount device path you specify serves to bootstrap
+ * your entry into the cluster, but your mount will make active connections
+ * to ALL copy elements in the hammer2_volconf[] array which match the
+ * PFSID of the directory in the super-root that you specified.  The local
+ * media path does not have to be mentioned in this array but becomes part
+ * of the cluster based on its type and access rights.  ALL ELEMENTS ARE
+ * TREATED ACCORDING TO TYPE NO MATTER WHICH ONE YOU MOUNT FROM.
+ *
+ * The actual cluster may be far larger than the elements you list in the
+ * hammer2_volconf[] array.  You list only the elements you wish to
+ * directly connect to and you are able to access the rest of the cluster
+ * indirectly through those connections.
+ *
+ * WARNING!  This structure must be exactly 128 bytes long for its config
+ *	     array to fit in the volume header.
+ */
+struct hammer2_volconf {
+	uint8_t	copyid;		/* 00	 copyid 0-255 (must match slot) */
+	uint8_t inprog;		/* 01	 operation in progress, or 0 */
+	uint8_t chain_to;	/* 02	 operation chaining to, or 0 */
+	uint8_t chain_from;	/* 03	 operation chaining from, or 0 */
+	uint16_t flags;		/* 04-05 flags field */
+	uint8_t error;		/* 06	 last operational error */
+	uint8_t priority;	/* 07	 priority and round-robin flag */
+	uint8_t remote_pfs_type;/* 08	 probed direct remote PFS type */
+	uint8_t reserved08[23];	/* 09-1F */
+	uuid_t	pfs_clid;	/* 20-2F copy target must match this uuid */
+	uint8_t label[16];	/* 30-3F import/export label */
+	uint8_t path[64];	/* 40-7F target specification string or key */
+};
+
+typedef struct hammer2_volconf hammer2_volconf_t;
+
+#define DMSG_VOLF_ENABLED	0x0001
+#define DMSG_VOLF_INPROG	0x0002
+#define DMSG_VOLF_CONN_RR	0x80	/* round-robin at same priority */
+#define DMSG_VOLF_CONN_EF	0x40	/* media errors flagged */
+#define DMSG_VOLF_CONN_PRI	0x0F	/* select priority 0-15 (15=best) */
+
+#define DMSG_COPYID_COUNT	256	/* WARNING! embedded in hammer2 vol */
+
+struct dmsg_lnk_hammer2_volconf {
+	dmsg_hdr_t		head;
+	hammer2_volconf_t	copy;	/* copy spec */
+	int32_t			index;
+	int32_t			unused01;
+	uuid_t			mediaid;
+	int64_t			reserved02[32];
+};
+
+typedef struct dmsg_lnk_hammer2_volconf dmsg_lnk_hammer2_volconf_t;
+
+#define DMSG_LNK_HAMMER2_VOLCONF DMSG_LNK(DMSG_LNK_CMD_HAMMER2_VOLCONF, \
+					  dmsg_lnk_hammer2_volconf)
+
+#define H2_LNK_VOLCONF(msg)	((dmsg_lnk_hammer2_volconf_t *)(msg)->any.buf)
+
 /*
  * The media block reference structure.  This forms the core of the HAMMER2
  * media topology recursion.  This 64-byte data structure is embedded in the
@@ -792,17 +863,18 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 /*
  * PFS types identify a PFS on media and in LNK_SPAN messages.
  */
-#define HAMMER2_PFSTYPE_NONE		DMSG_PFSTYPE_NONE
-#define HAMMER2_PFSTYPE_ADMIN		DMSG_PFSTYPE_ADMIN
-#define HAMMER2_PFSTYPE_CLIENT		DMSG_PFSTYPE_CLIENT
-#define HAMMER2_PFSTYPE_CACHE		DMSG_PFSTYPE_CACHE
-#define HAMMER2_PFSTYPE_COPY		DMSG_PFSTYPE_COPY
-#define HAMMER2_PFSTYPE_SLAVE		DMSG_PFSTYPE_SLAVE
-#define HAMMER2_PFSTYPE_SOFT_SLAVE	DMSG_PFSTYPE_SOFT_SLAVE
-#define HAMMER2_PFSTYPE_SOFT_MASTER	DMSG_PFSTYPE_SOFT_MASTER
-#define HAMMER2_PFSTYPE_MASTER		DMSG_PFSTYPE_MASTER
-#define HAMMER2_PFSTYPE_SNAPSHOT	DMSG_PFSTYPE_SNAPSHOT
-#define HAMMER2_PFSTYPE_MAX		DMSG_PFSTYPE_MAX
+#define HAMMER2_PFSTYPE_NONE		0
+#define HAMMER2_PFSTYPE_ADMIN		1
+#define HAMMER2_PFSTYPE_CLIENT		2
+#define HAMMER2_PFSTYPE_CACHE		3
+#define HAMMER2_PFSTYPE_COPY		4
+#define HAMMER2_PFSTYPE_SLAVE		5
+#define HAMMER2_PFSTYPE_SOFT_SLAVE	6
+#define HAMMER2_PFSTYPE_SOFT_MASTER	7
+#define HAMMER2_PFSTYPE_MASTER		8
+#define HAMMER2_PFSTYPE_SERVER		9
+#define HAMMER2_PFSTYPE_SNAPSHOT	10
+#define HAMMER2_PFSTYPE_MAX		11
 
 /*
  *				Allocation Table
@@ -985,7 +1057,7 @@ struct hammer2_volume_data {
 	 * indexes into this array.
 	 */
 						/* 1000-8FFF copyinfo config */
-	dmsg_vol_data_t	copyinfo[HAMMER2_COPYID_COUNT];
+	hammer2_volconf_t copyinfo[HAMMER2_COPYID_COUNT];
 
 	/*
 	 * Remaining sections are reserved for future use.

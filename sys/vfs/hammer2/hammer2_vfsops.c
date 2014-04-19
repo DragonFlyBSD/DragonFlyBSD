@@ -762,7 +762,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		lockmgr(&hammer2_mntlk, LK_RELEASE);
 
 		kprintf("ok\n");
-		hammer2_inode_install_hidden(pmp);
+		/* hammer2_inode_install_hidden(pmp); */
 
 		return ERANGE;
 	}
@@ -2709,10 +2709,11 @@ hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index)
 	if (pmp->iocom.conn_state) {
 		kprintf("TRANSMIT VOLCONF VIA OPEN CONN TRANSACTION\n");
 		msg = kdmsg_msg_alloc_state(pmp->iocom.conn_state,
-					    DMSG_LNK_VOLCONF, NULL, NULL);
-		msg->any.lnk_volconf.copy = hmp->voldata.copyinfo[index];
-		msg->any.lnk_volconf.mediaid = hmp->voldata.fsid;
-		msg->any.lnk_volconf.index = index;
+					    DMSG_LNK_HAMMER2_VOLCONF,
+					    NULL, NULL);
+		H2_LNK_VOLCONF(msg)->copy = hmp->voldata.copyinfo[index];
+		H2_LNK_VOLCONF(msg)->mediaid = hmp->voldata.fsid;
+		H2_LNK_VOLCONF(msg)->index = index;
 		kdmsg_msg_write(msg);
 	}
 }

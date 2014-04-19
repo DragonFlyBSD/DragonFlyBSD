@@ -73,8 +73,8 @@ struct hammer2_ioc_remote {
 	int			fd;	/* socket descriptor if applicable */
 	int			reserved03;
 	int			reserved04[8];
-	dmsg_vol_data_t		copy1;	/* copy spec */
-	dmsg_vol_data_t		copy2;	/* copy spec (rename ops only) */
+	hammer2_volconf_t	copy1;	/* copy spec */
+	hammer2_volconf_t	copy2;	/* copy spec (rename ops only) */
 };
 
 typedef struct hammer2_ioc_remote hammer2_ioc_remote_t;

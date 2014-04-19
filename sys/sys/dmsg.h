@@ -176,6 +176,10 @@
  * inline.  CRCs are still recommended and required at the beginning, but
  * may be negotiated away later.
  */
+
+/*
+ * dmsg_hdr must be 64 bytes
+ */
 struct dmsg_hdr {
 	uint16_t	magic;		/* 00 sanity, synchro, endian */
 	uint16_t	reserved02;	/* 02 */
@@ -326,12 +330,6 @@ typedef struct dmsg_hdr dmsg_hdr_t;
  * LNK_CIRC	- a CIRC transaction establishes a circuit from source to
  *		  target by creating pairs of open transactions across each
  *		  hop.
- *
- * LNK_VOLCONF	- Volume header configuration change.  All hammer2
- *		  connections (hammer2 connect ...) stored in the volume
- *		  header are spammed on circuit 0 to the hammer2
- *		  service daemon, and any live configuration change
- *		  thereafter.
  */
 #define DMSG_LNK_PAD		DMSG_LNK(0x000, dmsg_hdr)
 #define DMSG_LNK_PING		DMSG_LNK(0x001, dmsg_hdr)
@@ -339,8 +337,13 @@ typedef struct dmsg_hdr dmsg_hdr_t;
 #define DMSG_LNK_CONN		DMSG_LNK(0x011, dmsg_lnk_conn)
 #define DMSG_LNK_SPAN		DMSG_LNK(0x012, dmsg_lnk_span)
 #define DMSG_LNK_CIRC		DMSG_LNK(0x013, dmsg_lnk_circ)
-#define DMSG_LNK_VOLCONF	DMSG_LNK(0x020, dmsg_lnk_volconf)
 #define DMSG_LNK_ERROR		DMSG_LNK(0xFFF, dmsg_hdr)
+
+/*
+ * Reserved command codes for third party subsystems.  Structure size is
+ * not known here so do not try to construct the full DMSG_LNK_ define.
+ */
+#define DMSG_LNK_CMD_HAMMER2_VOLCONF	0x20
 
 /*
  * LNK_AUTH - Authentication (often omitted)
@@ -393,18 +396,18 @@ struct dmsg_lnk_conn {
 
 typedef struct dmsg_lnk_conn dmsg_lnk_conn_t;
 
-#define DMSG_PFSTYPE_NONE	0
-#define DMSG_PFSTYPE_ADMIN	1
-#define DMSG_PFSTYPE_CLIENT	2
-#define DMSG_PFSTYPE_CACHE	3
-#define DMSG_PFSTYPE_COPY	4
-#define DMSG_PFSTYPE_SLAVE	5
-#define DMSG_PFSTYPE_SOFT_SLAVE	6
-#define DMSG_PFSTYPE_SOFT_MASTER 7
-#define DMSG_PFSTYPE_MASTER	8
-#define DMSG_PFSTYPE_SERVER	9
-#define DMSG_PFSTYPE_SNAPSHOT	10
-#define DMSG_PFSTYPE_MAX	11	/* 0-10 */
+#define DMSG_PFSTYPE_NONE		HAMMER2_PFSTYPE_NONE
+#define DMSG_PFSTYPE_ADMIN		HAMMER2_PFSTYPE_ADMIN
+#define DMSG_PFSTYPE_CLIENT		HAMMER2_PFSTYPE_CLIENT
+#define DMSG_PFSTYPE_CACHE		HAMMER2_PFSTYPE_CACHE
+#define DMSG_PFSTYPE_COPY		HAMMER2_PFSTYPE_COPY
+#define DMSG_PFSTYPE_SLAVE		HAMMER2_PFSTYPE_SLAVE
+#define DMSG_PFSTYPE_SOFT_SLAVE		HAMMER2_PFSTYPE_SOFT_SLAVE
+#define DMSG_PFSTYPE_SOFT_MASTER	HAMMER2_PFSTYPE_SOFT_MASTER
+#define DMSG_PFSTYPE_MASTER		HAMMER2_PFSTYPE_MASTER
+#define DMSG_PFSTYPE_SERVER		HAMMER2_PFSTYPE_SERVER
+#define DMSG_PFSTYPE_SNAPSHOT		HAMMER2_PFSTYPE_SNAPSHOT
+#define DMSG_PFSTYPE_MAX		HAMMER2_PFSTYPE_MAX
 
 #define DMSG_PEER_NONE		0
 #define DMSG_PEER_CLUSTER	1	/* a cluster controller */
@@ -519,71 +522,6 @@ struct dmsg_lnk_circ {
 };
 
 typedef struct dmsg_lnk_circ dmsg_lnk_circ_t;
-
-/*
- * LNK_VOLCONF
- *
- * All HAMMER2 directories directly under the super-root on your local
- * media can be mounted separately, even if they share the same physical
- * device.
- *
- * When you do a HAMMER2 mount you are effectively tying into a HAMMER2
- * cluster via local media.  The local media does not have to participate
- * in the cluster, other than to provide the dmsg_vol_data[] array and
- * root inode for the mount.
- *
- * This is important: The mount device path you specify serves to bootstrap
- * your entry into the cluster, but your mount will make active connections
- * to ALL copy elements in the dmsg_vol_data[] array which match the
- * PFSID of the directory in the super-root that you specified.  The local
- * media path does not have to be mentioned in this array but becomes part
- * of the cluster based on its type and access rights.  ALL ELEMENTS ARE
- * TREATED ACCORDING TO TYPE NO MATTER WHICH ONE YOU MOUNT FROM.
- *
- * The actual cluster may be far larger than the elements you list in the
- * dmsg_vol_data[] array.  You list only the elements you wish to
- * directly connect to and you are able to access the rest of the cluster
- * indirectly through those connections.
- *
- * This structure must be exactly 128 bytes long.
- *
- * WARNING!  dmsg_vol_data is embedded in the hammer2 media volume header
- */
-struct dmsg_vol_data {
-	uint8_t	copyid;		/* 00	 copyid 0-255 (must match slot) */
-	uint8_t inprog;		/* 01	 operation in progress, or 0 */
-	uint8_t chain_to;	/* 02	 operation chaining to, or 0 */
-	uint8_t chain_from;	/* 03	 operation chaining from, or 0 */
-	uint16_t flags;		/* 04-05 flags field */
-	uint8_t error;		/* 06	 last operational error */
-	uint8_t priority;	/* 07	 priority and round-robin flag */
-	uint8_t remote_pfs_type;/* 08	 probed direct remote PFS type */
-	uint8_t reserved08[23];	/* 09-1F */
-	uuid_t	pfs_clid;	/* 20-2F copy target must match this uuid */
-	uint8_t label[16];	/* 30-3F import/export label */
-	uint8_t path[64];	/* 40-7F target specification string or key */
-};
-
-typedef struct dmsg_vol_data dmsg_vol_data_t;
-
-#define DMSG_VOLF_ENABLED	0x0001
-#define DMSG_VOLF_INPROG	0x0002
-#define DMSG_VOLF_CONN_RR	0x80	/* round-robin at same priority */
-#define DMSG_VOLF_CONN_EF	0x40	/* media errors flagged */
-#define DMSG_VOLF_CONN_PRI	0x0F	/* select priority 0-15 (15=best) */
-
-#define DMSG_COPYID_COUNT	256	/* WARNING! embedded in hammer2 vol */
-
-struct dmsg_lnk_volconf {
-	dmsg_hdr_t		head;
-	dmsg_vol_data_t		copy;	/* copy spec */
-	int32_t			index;
-	int32_t			unused01;
-	uuid_t			mediaid;
-	int64_t			reserved02[32];
-};
-
-typedef struct dmsg_lnk_volconf dmsg_lnk_volconf_t;
 
 /*
  * Debug layer ops operate on any link
@@ -786,7 +724,6 @@ union dmsg_any {
 	dmsg_lnk_conn_t		lnk_conn;
 	dmsg_lnk_span_t		lnk_span;
 	dmsg_lnk_circ_t		lnk_circ;
-	dmsg_lnk_volconf_t	lnk_volconf;
 
 	dmsg_blk_open_t		blk_open;
 	dmsg_blk_error_t	blk_error;
@@ -880,7 +817,7 @@ struct kdmsg_msg {
 	size_t		aux_size;
 	char		*aux_data;
 	int		flags;
-	dmsg_any_t	any;
+	dmsg_any_t	any;			/* variable sized */
 };
 
 #define KDMSG_FLAG_AUXALLOC	0x0001

@@ -1070,3 +1070,78 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 	}
 	return (error);
 }
+
+/************************************************************************
+ *			    NODE FAILURES 				*
+ ************************************************************************
+ *
+ * A node failure can occur for numerous reasons.
+ *
+ *	- A read I/O may fail
+ *	- A write I/O may fail
+ *	- An unexpected chain might be found (or be missing)
+ *	- A node might disconnect temporarily and reconnect later
+ *	  (for example, a USB stick could get pulled, or a node might
+ *	  be programmatically disconnected).
+ *	- A node might run out of space during a modifying operation.
+ *
+ * When a read failure or an unexpected chain state is found, the chain and
+ * parent chain at the failure point for the nodes involved (the nodes
+ * which we determine to be in error) are flagged as failed and removed
+ * from the cluster.  The node itself is allowed to remain active.  The
+ * highest common point (usually a parent chain) is queued to the
+ * resynchronization thread for action.
+ *
+ * When a write I/O fails or a node runs out of space, we first adjust
+ * as if a read failure occurs but we further disable flushes on the
+ * ENTIRE node.  Concurrent modifying transactions are allowed to complete
+ * but any new modifying transactions will automatically remove the node
+ * from consideration in all related cluster structures and not generate
+ * any new modified chains.  The ROOT chain for the failed node(s) is queued
+ * to the resynchronization thread for action.
+ *
+ * A temporary disconnect is handled as if a write failure occurred.
+ *
+ * Any of these failures might or might not stall related high level VNOPS,
+ * depending on what has failed, what nodes remain, the type of cluster,
+ * and the operating state of the cluster.
+ *
+ *			    FLUSH ON WRITE-DISABLED NODES
+ *
+ * A flush on a write-disabled node is not allowed to write anything because
+ * we cannot safely update the mirror_tid anywhere on the failed node.  The
+ * synchronization thread uses mirror_tid to calculate incremental resyncs.
+ * Dirty meta-data related to the failed node is thrown away.
+ *
+ * Dirty buffer cache buffers and inodes are only thrown away if they can be
+ * retired... that is, if the filesystem still has enough nodes to complete
+ * the operation.
+ */
+
+/************************************************************************
+ *			SYNCHRONIZATION THREAD				*
+ ************************************************************************
+ *
+ * This thread is responsible for [re]synchronizing the cluster representing
+ * a PFS.  Any out-of-sync or failed node starts this thread on a
+ * node-by-node basis when the failure is detected.
+ *
+ * Clusters needing resynchronization are queued at the highest point
+ * where the parent on the failed node is still valid, or a special
+ * incremental scan from the ROOT is queued if no parent exists.  This
+ * thread is also responsible for waiting for reconnections of the failed
+ * node if the cause was due to a disconnect, and waiting for space to be
+ * freed up if the cause was due to running out of space.
+ *
+ * If the cause is due to a node running out of space, this thread will also
+ * remove older (unlocked) snapshots to make new space, recover space, and
+ * then start resynchronization.
+ *
+ * Each resynchronization pass virtually snapshots the PFS on the good nodes
+ * and synchronizes using that snapshot against the target node.  This
+ * ensures a consistent chain topology and also avoid interference between
+ * the resynchronization thread and frontend operations.
+ *
+ * Since these are per-node threads it is possible to resynchronize several
+ * nodes at once.
+ */
