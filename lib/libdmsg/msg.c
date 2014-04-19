@@ -112,10 +112,10 @@ dmsg_ioq_done(dmsg_iocom_t *iocom __unused, dmsg_ioq_t *ioq)
  */
 void
 dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
-		   void (*signal_func)(dmsg_iocom_t *),
-		   void (*rcvmsg_func)(dmsg_msg_t *),
-		   void (*dbgmsg_func)(dmsg_msg_t *),
-		   void (*altmsg_func)(dmsg_iocom_t *))
+		   void (*signal_func)(dmsg_iocom_t *iocom),
+		   void (*rcvmsg_func)(dmsg_msg_t *msg),
+		   void (*usrmsg_func)(dmsg_msg_t *msg, int unmanaged),
+		   void (*altmsg_func)(dmsg_iocom_t *iocom))
 {
 	struct stat st;
 
@@ -125,7 +125,7 @@ dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 	iocom->signal_callback = signal_func;
 	iocom->rcvmsg_callback = rcvmsg_func;
 	iocom->altmsg_callback = altmsg_func;
-	iocom->dbgmsg_callback = dbgmsg_func;
+	iocom->usrmsg_callback = usrmsg_func;
 
 	pthread_mutex_init(&iocom->mtx, NULL);
 	RB_INIT(&iocom->circuit_tree);
@@ -192,13 +192,11 @@ dmsg_iocom_label(dmsg_iocom_t *iocom, const char *ctl, ...)
 void
 dmsg_iocom_restate(dmsg_iocom_t *iocom,
 		   void (*signal_func)(dmsg_iocom_t *),
-		   void (*rcvmsg_func)(dmsg_msg_t *msg),
-		   void (*altmsg_func)(dmsg_iocom_t *))
+		   void (*rcvmsg_func)(dmsg_msg_t *msg))
 {
 	pthread_mutex_lock(&iocom->mtx);
 	iocom->signal_callback = signal_func;
 	iocom->rcvmsg_callback = rcvmsg_func;
-	iocom->altmsg_callback = altmsg_func;
 	if (signal_func)
 		atomic_set_int(&iocom->flags, DMSG_IOCOMF_SWORK);
 	else

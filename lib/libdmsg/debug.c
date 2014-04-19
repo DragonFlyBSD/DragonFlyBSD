@@ -90,9 +90,6 @@ dmsg_basecmd_str(uint32_t cmd)
 	case DMSG_LNK_SPAN:
 		cmdstr = "SPAN";
 		break;
-	case DMSG_LNK_VOLCONF:
-		cmdstr = "VOLCONF";
-		break;
 	case DMSG_LNK_ERROR:
 		if (cmd & DMSGF_DELETE)
 			cmdstr = "RETURN";

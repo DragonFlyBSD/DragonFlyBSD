@@ -151,6 +151,20 @@ struct dmsg_circuit {
 };
 
 /*
+ * This represents a media, managed by LNK_CONN connection state
+ */
+TAILQ_HEAD(dmsg_media_queue, dmsg_media);
+
+struct dmsg_media {
+	TAILQ_ENTRY(dmsg_media) entry;
+	uuid_t  mediaid;
+	int     refs;
+	void	*usrhandle;
+};
+
+typedef struct dmsg_media dmsg_media_t;
+
+/*
  * The state structure is ref-counted.  The iocom cannot go away while
  * state structures are active.  However, the related h2span_* linkages
  * can be destroyed and NULL'd out if the state is terminated in both
@@ -176,6 +190,7 @@ struct dmsg_state {
 		struct h2span_relay *relay;
 		struct dmsg_circuit *circ;
 	} any;
+	dmsg_media_t	*media;
 };
 
 #define DMSG_STATE_INSERTED	0x0001
@@ -285,9 +300,10 @@ struct dmsg_iocom {
 	int	rxmisc;
 	int	txmisc;
 	void	(*signal_callback)(struct dmsg_iocom *);
-	void	(*rcvmsg_callback)(struct dmsg_msg *);
 	void	(*altmsg_callback)(struct dmsg_iocom *);
-	void	(*dbgmsg_callback)(dmsg_msg_t *msg);
+	void	(*rcvmsg_callback)(dmsg_msg_t *msg);
+	void	(*usrmsg_callback)(dmsg_msg_t *msg, int unmanaged);
+	void	(*node_handler)(void **opaquep, dmsg_msg_t *msg, int op);
 	struct dmsg_circuit_tree circuit_tree;	/* active circuits */
 	struct dmsg_circuit	circuit0;	/* embedded circuit0 */
 	dmsg_msg_queue_t txmsgq;		/* tx msgq from remote */
@@ -335,9 +351,10 @@ struct dmsg_master_service_info {
 	int	detachme;
 	char	*label;
 	void	*handle;
-	void	(*dbgmsg_callback)(dmsg_msg_t *msg);
+	void	(*altmsg_callback)(dmsg_iocom_t *iocom);
+	void	(*usrmsg_callback)(dmsg_msg_t *msg, int unmanaged);
+	void	(*node_handler)(void **opaquep, dmsg_msg_t *msg, int op);
 	void	(*exit_callback)(void *handle);
-	void	(*altmsg_callback)(dmsg_iocom_t *);
 };
 
 typedef struct dmsg_master_service_info dmsg_master_service_info_t;
@@ -347,9 +364,6 @@ typedef struct dmsg_master_service_info dmsg_master_service_info_t;
  */
 #define DMSG_NODEOP_ADD		1
 #define DMSG_NODEOP_DEL		2
-
-extern void (*dmsg_node_handler)(void **opaquep, struct dmsg_msg *msg, int op);
-
 
 /*
  * icrc
@@ -380,14 +394,13 @@ void dmsg_bswap_head(dmsg_hdr_t *head);
 void dmsg_ioq_init(dmsg_iocom_t *iocom, dmsg_ioq_t *ioq);
 void dmsg_ioq_done(dmsg_iocom_t *iocom, dmsg_ioq_t *ioq);
 void dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
-			void (*state_func)(dmsg_iocom_t *),
-			void (*rcvmsg_func)(dmsg_msg_t *),
-			void (*dbgmsg_func)(dmsg_msg_t *),
-			void (*altmsg_func)(dmsg_iocom_t *));
+			void (*state_func)(dmsg_iocom_t *iocom),
+			void (*rcvmsg_func)(dmsg_msg_t *msg),
+			void (*usrmsg_func)(dmsg_msg_t *msg, int unmanaged),
+			void (*altmsg_func)(dmsg_iocom_t *iocom));
 void dmsg_iocom_restate(dmsg_iocom_t *iocom,
-			void (*state_func)(dmsg_iocom_t *),
-			void (*rcvmsg_func)(dmsg_msg_t *),
-			void (*altmsg_func)(dmsg_iocom_t *));
+			void (*state_func)(dmsg_iocom_t *iocom),
+			void (*rcvmsg_func)(dmsg_msg_t *msg));
 void dmsg_iocom_label(dmsg_iocom_t *iocom, const char *ctl, ...);
 void dmsg_iocom_signal(dmsg_iocom_t *iocom);
 void dmsg_iocom_done(dmsg_iocom_t *iocom);

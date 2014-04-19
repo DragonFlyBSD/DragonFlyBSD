@@ -38,8 +38,6 @@
 
 #include "dmsg_local.h"
 
-void (*dmsg_node_handler)(void **opaquep, struct dmsg_msg *msg, int op);
-
 /*
  * Maximum spanning tree distance.  This has the practical effect of
  * stopping tail-chasing closed loops when a feeder span is lost.
@@ -102,7 +100,6 @@ void (*dmsg_node_handler)(void **opaquep, struct dmsg_msg *msg, int op);
 
 struct h2span_link;
 struct h2span_relay;
-TAILQ_HEAD(h2span_media_queue, h2span_media);
 TAILQ_HEAD(h2span_conn_queue, h2span_conn);
 TAILQ_HEAD(h2span_relay_queue, h2span_relay);
 
@@ -113,32 +110,6 @@ RB_HEAD(h2span_relay_tree, h2span_relay);
 uint32_t DMsgRNSS;
 
 /*
- * This represents a media
- */
-struct h2span_media {
-	TAILQ_ENTRY(h2span_media) entry;
-	uuid_t	mediaid;
-	int	refs;
-	struct h2span_media_config {
-		dmsg_vol_data_t		copy_run;
-		dmsg_vol_data_t		copy_pend;
-		pthread_t		thread;
-		pthread_cond_t		cond;
-		int			ctl;
-		int			fd;
-		int			pipefd[2];	/* signal stop */
-		dmsg_iocom_t		iocom;
-		pthread_t		iocom_thread;
-		enum { H2MC_STOPPED, H2MC_CONNECT, H2MC_RUNNING } state;
-	} config[DMSG_COPYID_COUNT];
-};
-
-typedef struct h2span_media_config h2span_media_config_t;
-
-#define H2CONFCTL_STOP		0x00000001
-#define H2CONFCTL_UPDATE	0x00000002
-
-/*
  * Received LNK_CONN transaction enables SPAN protocol over connection.
  * (may contain filter).  Typically one for each mount and several may
  * share the same media.
@@ -146,7 +117,6 @@ typedef struct h2span_media_config h2span_media_config_t;
 struct h2span_conn {
 	TAILQ_ENTRY(h2span_conn) entry;
 	struct h2span_relay_tree tree;
-	struct h2span_media *media;
 	dmsg_state_t *state;
 };
 
@@ -206,7 +176,6 @@ struct h2span_relay {
 	dmsg_state_t		*target_rt;	/* h2span_relay state */
 };
 
-typedef struct h2span_media h2span_media_t;
 typedef struct h2span_conn h2span_conn_t;
 typedef struct h2span_cluster h2span_cluster_t;
 typedef struct h2span_node h2span_node_t;
@@ -359,7 +328,7 @@ RB_GENERATE_STATIC(h2span_relay_tree, h2span_relay,
 static pthread_mutex_t cluster_mtx;
 static struct h2span_cluster_tree cluster_tree = RB_INITIALIZER(cluster_tree);
 static struct h2span_conn_queue connq = TAILQ_HEAD_INITIALIZER(connq);
-static struct h2span_media_queue mediaq = TAILQ_HEAD_INITIALIZER(mediaq);
+static struct dmsg_media_queue mediaq = TAILQ_HEAD_INITIALIZER(mediaq);
 
 static void dmsg_lnk_span(dmsg_msg_t *msg);
 static void dmsg_lnk_conn(dmsg_msg_t *msg);
@@ -367,11 +336,6 @@ static void dmsg_lnk_circ(dmsg_msg_t *msg);
 static void dmsg_lnk_relay(dmsg_msg_t *msg);
 static void dmsg_relay_scan(h2span_conn_t *conn, h2span_node_t *node);
 static void dmsg_relay_delete(h2span_relay_t *relay);
-
-static void *dmsg_volconf_thread(void *info);
-static void dmsg_volconf_stop(h2span_media_config_t *conf);
-static void dmsg_volconf_start(h2span_media_config_t *conf,
-				const char *hostname);
 
 void
 dmsg_msg_lnk_signal(dmsg_iocom_t *iocom __unused)
@@ -405,9 +369,7 @@ dmsg_msg_lnk(dmsg_msg_t *msg)
 		dmsg_lnk_circ(msg);
 		break;
 	default:
-		fprintf(stderr,
-			"MSG_PROTO_LNK: Unknown msg %08x\n", msg->any.head.cmd);
-		dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+		msg->iocom->usrmsg_callback(msg, 1);
 		/* state invalid after reply */
 		break;
 	}
@@ -424,17 +386,18 @@ void
 dmsg_lnk_conn(dmsg_msg_t *msg)
 {
 	dmsg_state_t *state = msg->state;
-	h2span_media_t *media;
-	h2span_media_config_t *conf;
+	dmsg_media_t *media;
 	h2span_conn_t *conn;
 	h2span_relay_t *relay;
 	char *alloc = NULL;
-	int i;
 
 	pthread_mutex_lock(&cluster_mtx);
 
-	fprintf(stderr, "dmsg_lnk_conn: msg %p cmd %08x state %p txcmd %08x rxcmd %08x\n",
-		msg, msg->any.head.cmd, state, state->txcmd, state->rxcmd);
+	fprintf(stderr,
+		"dmsg_lnk_conn: msg %p cmd %08x state %p "
+		"txcmd %08x rxcmd %08x\n",
+		msg, msg->any.head.cmd, state,
+		state->txcmd, state->rxcmd);
 
 	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
 	case DMSG_LNK_CONN | DMSGF_CREATE:
@@ -475,10 +438,11 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 			media->mediaid = msg->any.lnk_conn.mediaid;
 			TAILQ_INSERT_TAIL(&mediaq, media, entry);
 		}
-		conn->media = media;
+		state->media = media;
 		++media->refs;
 
 		if ((msg->any.head.cmd & DMSGF_DELETE) == 0) {
+			msg->iocom->usrmsg_callback(msg, 0);
 			dmsg_msg_result(msg, 0);
 			dmsg_iocom_signal(msg->iocom);
 			break;
@@ -486,7 +450,6 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		/* FALL THROUGH */
 	case DMSG_LNK_CONN | DMSGF_DELETE:
 	case DMSG_LNK_ERROR | DMSGF_DELETE:
-deleteconn:
 		/*
 		 * On transaction terminate we clean out our h2span_conn
 		 * and acknowledge the request, closing the transaction.
@@ -496,36 +459,21 @@ deleteconn:
 		assert(conn);
 
 		/*
-		 * Clean out the media structure. If refs drops to zero we
-		 * also clean out the media config threads.  These threads
-		 * maintain span connections to other hammer2 service daemons.
+		 * Adjust media refs
+		 *
+		 * Callback will clean out media config / user-opaque state
 		 */
-		media = conn->media;
-		if (--media->refs == 0) {
-			fprintf(stderr, "Shutting down media spans\n");
-			for (i = 0; i < DMSG_COPYID_COUNT; ++i) {
-				conf = &media->config[i];
-
-				if (conf->thread == NULL)
-					continue;
-				conf->ctl = H2CONFCTL_STOP;
-				pthread_cond_signal(&conf->cond);
-			}
-			for (i = 0; i < DMSG_COPYID_COUNT; ++i) {
-				conf = &media->config[i];
-
-				if (conf->thread == NULL)
-					continue;
-				pthread_mutex_unlock(&cluster_mtx);
-				pthread_join(conf->thread, NULL);
-				pthread_mutex_lock(&cluster_mtx);
-				conf->thread = NULL;
-				pthread_cond_destroy(&conf->cond);
-			}
-			fprintf(stderr, "Media shutdown complete\n");
+		media = state->media;
+		--media->refs;
+		if (media->refs == 0) {
+			fprintf(stderr, "Media shutdown\n");
 			TAILQ_REMOVE(&mediaq, media, entry);
+			pthread_mutex_unlock(&cluster_mtx);
+			msg->iocom->usrmsg_callback(msg, 0);
+			pthread_mutex_lock(&cluster_mtx);
 			dmsg_free(media);
 		}
+		state->media = NULL;
 
 		/*
 		 * Clean out all relays.  This requires terminating each
@@ -538,7 +486,6 @@ deleteconn:
 		/*
 		 * Clean out conn
 		 */
-		conn->media = NULL;
 		conn->state = NULL;
 		msg->state->any.conn = NULL;
 		msg->state->iocom->conn = NULL;
@@ -548,47 +495,13 @@ deleteconn:
 		dmsg_msg_reply(msg, 0);
 		/* state invalid after reply */
 		break;
-	case DMSG_LNK_VOLCONF:
-		/*
-		 * One-way volume-configuration message is transmitted
-		 * over the open LNK_CONN transaction.
-		 */
-		fprintf(stderr, "RECEIVED VOLCONF\n");
-		if (msg->any.lnk_volconf.index < 0 ||
-		    msg->any.lnk_volconf.index >= DMSG_COPYID_COUNT) {
-			fprintf(stderr, "VOLCONF: ILLEGAL INDEX %d\n",
-				msg->any.lnk_volconf.index);
-			break;
-		}
-		if (msg->any.lnk_volconf.copy.path[sizeof(msg->any.lnk_volconf.copy.path) - 1] != 0 ||
-		    msg->any.lnk_volconf.copy.path[0] == 0) {
-			fprintf(stderr, "VOLCONF: ILLEGAL PATH %d\n",
-				msg->any.lnk_volconf.index);
-			break;
-		}
-		conn = msg->state->any.conn;
-		if (conn == NULL) {
-			fprintf(stderr, "VOLCONF: LNK_CONN is missing\n");
-			break;
-		}
-		conf = &conn->media->config[msg->any.lnk_volconf.index];
-		conf->copy_pend = msg->any.lnk_volconf.copy;
-		conf->ctl |= H2CONFCTL_UPDATE;
-		if (conf->thread == NULL) {
-			fprintf(stderr, "VOLCONF THREAD STARTED\n");
-			pthread_cond_init(&conf->cond, NULL);
-			pthread_create(&conf->thread, NULL,
-				       dmsg_volconf_thread, (void *)conf);
-		}
-		pthread_cond_signal(&conf->cond);
-		break;
 	default:
-		/*
-		 * Failsafe
-		 */
+		msg->iocom->usrmsg_callback(msg, 1);
+#if 0
 		if (msg->any.head.cmd & DMSGF_DELETE)
 			goto deleteconn;
 		dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+#endif
 		break;
 	}
 	pthread_mutex_unlock(&cluster_mtx);
@@ -664,9 +577,9 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 			node->cls = cls;
 			RB_INIT(&node->tree);
 			RB_INSERT(h2span_node_tree, &cls->tree, node);
-			if (dmsg_node_handler) {
-				dmsg_node_handler(&node->opaque, msg,
-						  DMSG_NODEOP_ADD);
+			if (msg->iocom->node_handler) {
+				msg->iocom->node_handler(&node->opaque, msg,
+							 DMSG_NODEOP_ADD);
 			}
 		}
 
@@ -731,9 +644,9 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		RB_REMOVE(h2span_link_tree, &node->tree, slink);
 		if (RB_EMPTY(&node->tree)) {
 			RB_REMOVE(h2span_node_tree, &cls->tree, node);
-			if (dmsg_node_handler) {
-				dmsg_node_handler(&node->opaque, msg,
-						  DMSG_NODEOP_DEL);
+			if (msg->iocom->node_handler) {
+				msg->iocom->node_handler(&node->opaque, msg,
+							 DMSG_NODEOP_DEL);
 			}
 			if (RB_EMPTY(&cls->tree) && cls->refs == 0) {
 				RB_REMOVE(h2span_cluster_tree,
@@ -1405,115 +1318,6 @@ dmsg_relay_delete(h2span_relay_t *relay)
 	relay->conn = NULL;
 	relay->source_rt = NULL;
 	dmsg_free(relay);
-}
-
-static void *
-dmsg_volconf_thread(void *info)
-{
-	h2span_media_config_t *conf = info;
-
-	pthread_mutex_lock(&cluster_mtx);
-	while ((conf->ctl & H2CONFCTL_STOP) == 0) {
-		if (conf->ctl & H2CONFCTL_UPDATE) {
-			fprintf(stderr, "VOLCONF UPDATE\n");
-			conf->ctl &= ~H2CONFCTL_UPDATE;
-			if (bcmp(&conf->copy_run, &conf->copy_pend,
-				 sizeof(conf->copy_run)) == 0) {
-				fprintf(stderr, "VOLCONF: no changes\n");
-				continue;
-			}
-			/*
-			 * XXX TODO - auto reconnect on lookup failure or
-			 *		connect failure or stream failure.
-			 */
-
-			pthread_mutex_unlock(&cluster_mtx);
-			dmsg_volconf_stop(conf);
-			conf->copy_run = conf->copy_pend;
-			if (conf->copy_run.copyid != 0 &&
-			    strncmp(conf->copy_run.path, "span:", 5) == 0) {
-				dmsg_volconf_start(conf,
-						      conf->copy_run.path + 5);
-			}
-			pthread_mutex_lock(&cluster_mtx);
-			fprintf(stderr, "VOLCONF UPDATE DONE state %d\n", conf->state);
-		}
-		if (conf->state == H2MC_CONNECT) {
-			dmsg_volconf_start(conf, conf->copy_run.path + 5);
-			pthread_mutex_unlock(&cluster_mtx);
-			sleep(5);
-			pthread_mutex_lock(&cluster_mtx);
-		} else {
-			pthread_cond_wait(&conf->cond, &cluster_mtx);
-		}
-	}
-	pthread_mutex_unlock(&cluster_mtx);
-	dmsg_volconf_stop(conf);
-	return(NULL);
-}
-
-static void dmsg_volconf_signal(dmsg_iocom_t *iocom);
-
-static
-void
-dmsg_volconf_start(h2span_media_config_t *conf, const char *hostname)
-{
-	dmsg_master_service_info_t *info;
-
-	switch(conf->state) {
-	case H2MC_STOPPED:
-	case H2MC_CONNECT:
-		conf->fd = dmsg_connect(hostname);
-		if (conf->fd < 0) {
-			fprintf(stderr, "Unable to connect to %s\n", hostname);
-			conf->state = H2MC_CONNECT;
-		} else if (pipe(conf->pipefd) < 0) {
-			close(conf->fd);
-			fprintf(stderr, "pipe() failed during volconf\n");
-			conf->state = H2MC_CONNECT;
-		} else {
-			fprintf(stderr, "VOLCONF CONNECT\n");
-			info = malloc(sizeof(*info));
-			bzero(info, sizeof(*info));
-			info->fd = conf->fd;
-			info->altfd = conf->pipefd[0];
-			info->altmsg_callback = dmsg_volconf_signal;
-			info->detachme = 0;
-			conf->state = H2MC_RUNNING;
-			pthread_create(&conf->iocom_thread, NULL,
-				       dmsg_master_service, info);
-		}
-		break;
-	case H2MC_RUNNING:
-		break;
-	}
-}
-
-static
-void
-dmsg_volconf_stop(h2span_media_config_t *conf)
-{
-	switch(conf->state) {
-	case H2MC_STOPPED:
-		break;
-	case H2MC_CONNECT:
-		conf->state = H2MC_STOPPED;
-		break;
-	case H2MC_RUNNING:
-		close(conf->pipefd[1]);
-		conf->pipefd[1] = -1;
-		pthread_join(conf->iocom_thread, NULL);
-		conf->iocom_thread = NULL;
-		conf->state = H2MC_STOPPED;
-		break;
-	}
-}
-
-static
-void
-dmsg_volconf_signal(dmsg_iocom_t *iocom)
-{
-	atomic_set_int(&iocom->flags, DMSG_IOCOMF_EOF);
 }
 
 /************************************************************************

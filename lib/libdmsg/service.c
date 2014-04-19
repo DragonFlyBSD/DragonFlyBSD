@@ -59,7 +59,7 @@ dmsg_master_service(void *data)
 			(info->altmsg_callback ? info->altfd : -1),
 			master_auth_signal,
 			master_auth_rxmsg,
-			info->dbgmsg_callback,
+			info->usrmsg_callback,
 			info->altmsg_callback);
 	if (info->noclosealt)
 		iocom.flags &= ~DMSG_IOCOMF_CLOSEALT;
@@ -116,10 +116,7 @@ master_auth_signal(dmsg_iocom_t *iocom)
 
 	dmsg_msg_write(msg);
 
-	dmsg_iocom_restate(iocom,
-			    master_link_signal,
-			    master_link_rxmsg,
-			    iocom->altmsg_callback);
+	dmsg_iocom_restate(iocom, master_link_signal, master_link_rxmsg);
 }
 
 static
@@ -180,7 +177,7 @@ master_link_rxmsg(dmsg_msg_t *msg)
 			dmsg_msg_dbg(msg);
 			break;
 		default:
-			dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+			msg->iocom->usrmsg_callback(msg, 1);
 			break;
 		}
 	}
@@ -202,7 +199,7 @@ dmsg_msg_dbg(dmsg_msg_t *msg)
 		 */
 		if (msg->aux_data)
 			msg->aux_data[msg->aux_size - 1] = 0;
-		msg->iocom->dbgmsg_callback(msg);
+		msg->iocom->usrmsg_callback(msg, 0);
 		dmsg_msg_reply(msg, 0);	/* XXX send prompt instead */
 		break;
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
@@ -216,7 +213,7 @@ dmsg_msg_dbg(dmsg_msg_t *msg)
 			write(2, msg->aux_data, strlen(msg->aux_data));
 		break;
 	default:
-		dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+		msg->iocom->usrmsg_callback(msg, 1);
 		break;
 	}
 }
