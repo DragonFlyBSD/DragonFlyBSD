@@ -53,6 +53,7 @@
 #include <sys/stat.h>
 #include <sys/uuid.h>
 
+#include <vfs/hammer2/hammer2_disk.h>
 #include <sys/dmsg.h>
 
 #include <sys/buf2.h>
