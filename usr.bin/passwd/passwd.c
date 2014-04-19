@@ -119,9 +119,8 @@ main(int argc, char **argv)
 		    pwd->pw_name);
 		break;
 	default:
-		/* XXX: Green men ought to be supported via PAM. */
-		errx(1,
-	  "Sorry, `passwd' can only change passwords for local or NIS users.");
+		fprintf(stderr, "Changing password for %s\n",
+		    pwd->pw_name);
 	}
 
 #define pam_check(func) do { \
