@@ -1,4 +1,4 @@
-.\" Copyright (c) 2011 The DragonFly Project.  All rights reserved.
+.\" Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
 .\"
 .\" This code is derived from software contributed to The DragonFly Project
 .\" by Matthew Dillon <dillon@backplane.com>
@@ -38,59 +38,88 @@
 .Nd construct a new HAMMER2 file system
 .Sh SYNOPSIS
 .Nm
-.Fl L Ar label
 .Op Fl f
 .Op Fl b Ar bootsize
 .Op Fl r Ar redosize
 .Op Fl V Ar version
-.Op Fl R Ar uuid
-.Op Fl I Ar uuid
-.Ar special ...
+.Op Fl L Ar label
+.Ar special
 .Sh DESCRIPTION
 The
 .Nm
-utility creates a
+utility prepares a
 .Nm HAMMER2
-file system on device(s)
-.Ar special .
-If multiple devices are specified a single
+volume on the specified block device.
 .Nm HAMMER2
-file system is created
-which spans all of them.
-Each
-.Ar special
-will constitute a volume which the
-.Nm HAMMER2
-file system is built on.
+volumes can contain any number of named PFSs (Pseudo FileSystems).
+Each named PFS can operate independently or be a constituent of
+of a larger cluster.
+Regardless, you must still format each block device separately using
+this command.
+.Pp
+By default the
+.Nm
+program creates three local MASTER PFSs: "LOCAL", "BOOT", and "ROOT".
+The "LOCAL" PFS is mandatory and is always created.  It represents an
+unclustered mount point representative of the just block device you
+formatted.
+.Pp
+The "BOOT" and "ROOT" PFSs are optional and will be created by default.
+These provide convenient initially non-clustered mount points for your
+boot or root filesystem.
+These PFSs are not created if the
+.Fl L Ar label
+option is specified.
+You can specify
+.Fl L Ar none
+if you do not want
+.Nm
+to create any PFSs other than "LOCAL".
+.Pp
+Generally speaking this command is not used to create clusters.  It is used
+to format volumes which are then made available for additional clustering
+commands.
+Once formatted the device@LOCAL volume can be mounted in order to make the
+block device available to the cluster.
+You can then use
+.Xr hammer2 8
+directives to construct your cluster, including the creation of additional
+PFSs within various volumes.
+If you are managing several machines, or a large number of machines,
+.Fl L Ar none
+is typically specified and each machine's ROOT is individually named,
+for example, "FUBAR-ROOT".
+.Pp
 .Nm HAMMER2
 file systems are sector-size agnostic, however the
 .Dx
 implementation requires the sector size to be no larger than 16K.
 .Nm HAMMER2
-file systems start at a relative offset of 0 and may only be created
-under out-of-band disk labels
+file systems start at a relative offset of 0 and leave no room for
+in-band disklabels (old, traditional BSD labels).
+They may only be created using out-of-band disk labels, which is the
+default on
+.Dx
+via
 .Po
-.Xr disklabel64 5
+.Xr disklabel 5
 or
 .Xr gpt 8
 labels
 .Pc ,
-or in
-.Xr disklabel32 5
-partitions which do not overlap the label area (have a starting sector
+or with
+old style disklabels as long as
+the partition does not overlap the label area (have a starting sector
 greater than 16).
 .Pp
 .Nm HAMMER2
 file systems are designed for large storage systems, up to 1 Exabyte, and
-will not operate efficiently on small storage systems.
+may not operate efficiently on small storage systems.
 The minimum recommended file system size is 50GB.
-.Nm HAMMER2
-must reserve 500MB to 1GB of its storage for reblocking and UNDO/REDO.
 In addition,
 .Nm HAMMER2
-file systems operating normally, with full history
-retention and daily snapshots, do not immediately reclaim space when
-files are deleted.
+file systems operating normally, with automatic snapshots, do not
+immediately reclaim space when files are deleted.
 A regular system maintenance job runs once a day by
 .Xr periodic 8
 to handle reclamation.
@@ -101,11 +130,6 @@ the file system up in the course of 60 days of operation.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
-.It Fl L Ar label
-All
-.Nm HAMMER2
-file systems must be named and names should be unique on a
-per-machine basis.
 .It Fl b Ar bootsize
 Specify a fixed area in which a boot related kernel and data can be stored.
 The
@@ -143,15 +167,23 @@ sysctl.
 If you need to maintain compatibility with an older version of
 .Nm HAMMER2
 you may specify the version with this option.
-.It Fl R Ar uuid
-Specify the super-root cluster id.
-Use this option to set-up whole-media mirrors with the same super-root
-cluster id.
-If not specified, a random uuid is generated.
-.It Fl I Ar uuid
-Specify the cluster id for the initial mount point label.
-Use this option to set-up PFS mirrors with the same cluster id.
-If not specified, a random uuid is generated.
+.It Fl L Ar label
+By default
+.Nm
+creates three local master PFSs on the new volume: "LOCAL", "BOOT", and "ROOT".
+If you specify one or more label options
+.Nm
+will not automatically create "BOOT" or "ROOT".
+"LOCAL" is always created and should never be specified.
+If you don't want any extra PFSs to be created, use
+.Fl L Ar none .
+.Pp
+Typically simple HAMMER2 filesystems just use the defaults and
+.Fl L Ar none
+is used for more complex filesystem, followed by mounting device@LOCAL
+and using
+.Nm hammer2
+directives to create the desired cluster.
 .El
 .Pp
 The
@@ -164,13 +196,15 @@ or
 .Cm T
 meaning kilobyte, megabyte, gigabyte and terabyte.
 Lower case can also be used for suffix.
+These options create reserved blocks of space on the target volume
+but are not currently used by the filesystem for anything.
 .Sh EXAMPLES
 .Bd -literal -offset indent
-newfs_hammer2 -L Home /dev/ad0s1d
+newfs_hammer2 -L SATURN-HOME /dev/ad0s1d
 .Ed
 .Pp
 Create a file system named
-.Sq Home
+.Sq SATURN-HOME
 on
 .Pa /dev/ad0s1d .
 .Sh DIAGNOSTICS

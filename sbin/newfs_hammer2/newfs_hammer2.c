@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -52,6 +52,8 @@
 #include <err.h>
 #include <uuid.h>
 
+#define MAXLABELS	4
+
 #define hammer2_icrc32(buf, size)	iscsi_crc32((buf), (size))
 #define hammer2_icrc32c(buf, size, crc)	iscsi_crc32_ext((buf), (size), (crc))
 uint32_t iscsi_crc32(const void *buf, size_t size);
@@ -61,6 +63,7 @@ static hammer2_off_t check_volume(const char *path, int *fdp);
 static int64_t getsize(const char *str, int64_t minval, int64_t maxval, int pw);
 static const char *sizetostr(hammer2_off_t size);
 static uint64_t nowtime(void);
+static int blkrefary_cmp(const void *b1, const void *b2);
 static void usage(void);
 
 static void format_hammer2(int fd, hammer2_off_t total_space,
@@ -77,9 +80,10 @@ static uuid_t Hammer2_SupCLID;	/* PFS cluster id in super-root inode */
 static uuid_t Hammer2_SupFSID;	/* PFS unique id in super-root inode */
 static uuid_t Hammer2_PfsCLID;	/* PFS cluster id in labeled pfs (root) */
 static uuid_t Hammer2_PfsFSID;	/* PFS unique id in labeled pfs (root) */
-static const char *Label = "ROOT";
+static const char *Label[MAXLABELS];
 static hammer2_off_t BootAreaSize;
 static hammer2_off_t AuxAreaSize;
+static int NLabels;
 
 #define GIG	((hammer2_off_t)1024*1024*1024)
 
@@ -92,11 +96,15 @@ main(int ac, char **av)
 	hammer2_off_t reserved_space;
 	int ch;
 	int fd = -1;
+	int i;
+	int nolabels = 0;
 	char *vol_fsid;
 	char *sup_clid;
 	char *sup_fsid;
 	char *pfs_clid;
 	char *pfs_fsid;
+
+	Label[NLabels++] = "LOCAL";
 
 	/*
 	 * Sanity check basic filesystem structures.  No cookies for us
@@ -125,14 +133,21 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "fL:b:m:r:V:R:I:")) != -1) {
+	while ((ch = getopt(ac, av, "fL:b:m:r:V:")) != -1) {
 		switch(ch) {
 		case 'f':
 			ForceOpt = 1;
 			break;
 		case 'L':
-			Label = optarg;
-			if (strlen(Label) > HAMMER2_INODE_MAXNAME) {
+			if (strcasecmp(optarg, "none") == 0) {
+				nolabels = 1;
+				break;
+			}
+			if (NLabels >= MAXLABELS) {
+				errx(1, "Limit of 3 local labels");
+			}
+			Label[NLabels++] = optarg;
+			if (strlen(Label[NLabels-1]) > HAMMER2_INODE_MAXNAME) {
 				errx(1, "Root directory label too long "
 					"(64 chars max)\n");
 			}
@@ -157,6 +172,7 @@ main(int ac, char **av)
 				     Hammer2Version);
 			}
 			break;
+#if 0
 		case 'R':
 			uuid_from_string(optarg, &Hammer2_SupCLID, &status);
 			if (status != uuid_s_ok)
@@ -167,12 +183,26 @@ main(int ac, char **av)
 			if (status != uuid_s_ok)
 				errx(1, "uuid %s badly formatted", optarg);
 			break;
+#endif
 		default:
 			usage();
 			break;
 		}
 	}
 
+	/*
+	 * Adjust Label[] and NLabels
+	 */
+	if (nolabels) {
+		NLabels = 1;
+	} else if (NLabels == 1) {
+		Label[NLabels++] = "BOOT";
+		Label[NLabels++] = "ROOT";
+	}
+
+	/*
+	 * Check Hammer2 version
+	 */
 	if (Hammer2Version < 0) {
 		size_t olen = sizeof(Hammer2Version);
 		Hammer2Version = HAMMER2_VOL_VERSION_DEFAULT;
@@ -278,8 +308,11 @@ main(int ac, char **av)
 	printf("total-size:       %s (%jd bytes)\n",
 	       sizetostr(total_space),
 	       (intmax_t)total_space);
-	printf("root-label:       %s\n", Label);
-	printf("version:            %d\n", Hammer2Version);
+	printf("local-labels:     %s", Label[0]);
+	for (i = 1; i < NLabels; ++i)
+		printf(", %s", Label[i]);
+	printf("\n");
+	printf("version:          %d\n", Hammer2Version);
 	printf("boot-area-size:   %s\n", sizetostr(BootAreaSize));
 	printf("aux-area-size:    %s\n", sizetostr(AuxAreaSize));
 	printf("topo-reserved:	  %s\n", sizetostr(reserved_space));
@@ -471,7 +504,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	hammer2_volume_data_t *vol;
 	hammer2_inode_data_t *rawip;
 	hammer2_blockref_t sroot_blockref;
-	hammer2_blockref_t root_blockref;
+	hammer2_blockref_t root_blockref[MAXLABELS];	/* Max 4 labels */
 	uint64_t now;
 	hammer2_off_t volu_base = 0;
 	hammer2_off_t boot_base = HAMMER2_ZONE_SEG;
@@ -512,71 +545,77 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 */
 	assert((alloc_base & HAMMER2_PBUFMASK) == 0);
 	assert(alloc_base < HAMMER2_ZONE_BYTES64 - HAMMER2_ZONE_SEG);
+	now = nowtime();
+	bzero(buf, HAMMER2_PBUFSIZE);
 
 	alloc_base &= ~HAMMER2_PBUFMASK64;
 	alloc_direct(&alloc_base, &sroot_blockref, HAMMER2_INODE_BYTES);
-	alloc_direct(&alloc_base, &root_blockref, HAMMER2_INODE_BYTES);
-	assert(((sroot_blockref.data_off ^ root_blockref.data_off) &
-		HAMMER2_OFF_MASK_HI) == 0);
 
-	bzero(buf, HAMMER2_PBUFSIZE);
-	now = nowtime();
+	for (i = 0; i < NLabels; ++i) {
+		alloc_direct(&alloc_base, &root_blockref[i],
+			     HAMMER2_INODE_BYTES);
+		assert(((sroot_blockref.data_off ^ root_blockref[i].data_off) &
+			HAMMER2_OFF_MASK_HI) == 0);
 
-	/*
-	 * Format the root directory inode, which is left empty.
-	 */
-	rawip = (void *)(buf + (HAMMER2_OFF_MASK_LO & root_blockref.data_off));
-	rawip->version = HAMMER2_INODE_VERSION_ONE;
-	rawip->ctime = now;
-	rawip->mtime = now;
-	/* rawip->atime = now; NOT IMPL MUST BE ZERO */
-	rawip->btime = now;
-	rawip->type = HAMMER2_OBJTYPE_DIRECTORY;
-	rawip->mode = 0755;
-	rawip->inum = 1;		/* root inode, inumber 1 */
-	rawip->nlinks = 1; 		/* directory link count compat */
+		/*
+		 * Format the root directory inode, which is left empty.
+		 */
+		rawip = (void *)(buf + (HAMMER2_OFF_MASK_LO &
+					root_blockref[i].data_off));
+		rawip->version = HAMMER2_INODE_VERSION_ONE;
+		rawip->ctime = now;
+		rawip->mtime = now;
+		/* rawip->atime = now; NOT IMPL MUST BE ZERO */
+		rawip->btime = now;
+		rawip->type = HAMMER2_OBJTYPE_DIRECTORY;
+		rawip->mode = 0755;
+		rawip->inum = 1;	/* root inode, inumber 1 */
+		rawip->nlinks = 1; 	/* directory link count compat */
 
-	rawip->name_len = strlen(Label);
-	bcopy(Label, rawip->filename, rawip->name_len);
-	rawip->name_key = dirhash(rawip->filename, rawip->name_len);
+		rawip->name_len = strlen(Label[i]);
+		bcopy(Label[i], rawip->filename, rawip->name_len);
+		rawip->name_key = dirhash(rawip->filename, rawip->name_len);
 
-	/*
-	 * Compression mode and supported copyids.
-	 *
-	 * Do not allow compression when creating a "boot" label
-	 * (pfs-create also does the same if the pfs is named "boot")
-	 */
-	if (strcmp(Label, "boot") == 0)
-		rawip->comp_algo = HAMMER2_COMP_AUTOZERO;
-	else
-		rawip->comp_algo = HAMMER2_COMP_NEWFS_DEFAULT;
+		/*
+		 * Compression mode and supported copyids.
+		 *
+		 * Do not allow compression when creating a "BOOT" label
+		 * (pfs-create also does the same if the pfs is named "BOOT")
+		 */
+		if (strcasecmp(Label[i], "BOOT") == 0) {
+			rawip->comp_algo = HAMMER2_COMP_AUTOZERO;
+		} else  {
+			rawip->comp_algo = HAMMER2_COMP_NEWFS_DEFAULT;
+		}
 
-	rawip->pfs_clid = Hammer2_PfsCLID;
-	rawip->pfs_fsid = Hammer2_PfsCLID;
-	rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
-	rawip->op_flags |= HAMMER2_OPFLAG_PFSROOT;
-	rawip->pfs_inum = 16;	/* first allocatable inode number */
+		rawip->pfs_clid = Hammer2_PfsCLID;
+		rawip->pfs_fsid = Hammer2_PfsCLID;
+		rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
+		rawip->op_flags |= HAMMER2_OPFLAG_PFSROOT;
+		rawip->pfs_inum = 16;	/* first allocatable inode number */
 
-	/* rawip->u.blockset is left empty */
+		/* rawip->u.blockset is left empty */
 
-	/*
-	 * The root blockref will be stored in the super-root inode as
-	 * the only directory entry.  The copyid here is the actual copyid
-	 * of the storage ref.
-	 *
-	 * The key field for a directory entry's blockref is essentially
-	 * the name key for the entry.
-	 */
-	root_blockref.key = rawip->name_key;
-	root_blockref.copyid = HAMMER2_COPYID_LOCAL;
-	root_blockref.keybits = 0;
-	root_blockref.check.iscsi32.value =
-			hammer2_icrc32(rawip, sizeof(*rawip));
-	root_blockref.type = HAMMER2_BREF_TYPE_INODE;
-	root_blockref.methods = HAMMER2_ENC_CHECK(HAMMER2_CHECK_ISCSI32) |
+		/*
+		 * The root blockref will be stored in the super-root inode as
+		 * the only directory entry.  The copyid here is the actual
+		 * copyid of the storage ref.
+		 *
+		 * The key field for a directory entry's blockref is
+		 * essentially the name key for the entry.
+		 */
+		root_blockref[i].key = rawip->name_key;
+		root_blockref[i].copyid = HAMMER2_COPYID_LOCAL;
+		root_blockref[i].keybits = 0;
+		root_blockref[i].check.iscsi32.value =
+				hammer2_icrc32(rawip, sizeof(*rawip));
+		root_blockref[i].type = HAMMER2_BREF_TYPE_INODE;
+		root_blockref[i].methods =
+				HAMMER2_ENC_CHECK(HAMMER2_CHECK_ISCSI32) |
 				HAMMER2_ENC_COMP(HAMMER2_COMP_NONE);
-	root_blockref.mirror_tid = 16;
-	root_blockref.flags = HAMMER2_BREF_FLAG_PFSROOT;
+		root_blockref[i].mirror_tid = 16;
+		root_blockref[i].flags = HAMMER2_BREF_FLAG_PFSROOT;
+	}
 
 	/*
 	 * Format the super-root directory inode, giving it one directory
@@ -616,15 +655,18 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 */
 	rawip->pfs_clid = Hammer2_SupCLID;
 	rawip->pfs_fsid = Hammer2_SupFSID;
-	rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
-	rawip->op_flags |= HAMMER2_OPFLAG_SUPROOT;
+	rawip->pfs_type = HAMMER2_PFSTYPE_SUPROOT;
 	rawip->pfs_inum = 16;	/* first allocatable inode number */
 
 	/*
-	 * The super-root has one directory entry pointing at the named
-	 * root inode.
+	 * The super-root has a directory entry pointing to each local
+	 * PFS.  To avoid having to deal with indirect blocks we can't load
+	 * up more than 8 entries, but NLabels is restricted to 4 entries
+	 * to leave room for possible future mandatory PFSs.
 	 */
-	rawip->u.blockset.blockref[0] = root_blockref;
+	qsort(root_blockref, NLabels, sizeof(root_blockref[0]), blkrefary_cmp);
+	for (i = 0; i < NLabels; ++i)
+		rawip->u.blockset.blockref[i] = root_blockref[i];
 
 	/*
 	 * The sroot blockref will be stored in the volume header.
@@ -643,7 +685,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	 * Write out the 64K HAMMER2 block containing the root and sroot.
 	 */
 	n = pwrite(fd, buf, HAMMER2_PBUFSIZE,
-		   root_blockref.data_off & HAMMER2_OFF_MASK_HI);
+		   sroot_blockref.data_off & HAMMER2_OFF_MASK_HI);
 	if (n != HAMMER2_PBUFSIZE) {
 		perror("write");
 		exit(1);
@@ -670,7 +712,7 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	vol->fsid = Hammer2_VolFSID;
 	vol->fstype = Hammer2_FSType;
 
-	vol->peer_type = HAMMER2_PEER_HAMMER2;	/* LNK_CONN identification */
+	vol->peer_type = DMSG_PEER_HAMMER2;	/* LNK_CONN identification */
 
 	vol->allocator_size = free_space;
 	vol->allocator_free = free_space;
@@ -810,4 +852,16 @@ dirhash(const unsigned char *name, size_t len)
 	key |= 0x8000U;
 
 	return (key);
+}
+
+static int
+blkrefary_cmp(const void *b1, const void *b2)
+{
+	const hammer2_blockref_t *bref1 = b1;
+	const hammer2_blockref_t *bref2 = b2;
+	if (bref1->key < bref2->key)
+		return(-1);
+	if (bref1->key > bref2->key)
+		return(1);
+	return 0;
 }
