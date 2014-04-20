@@ -795,7 +795,7 @@ struct hammer2_inode_data {
 	 */
 	uint8_t		target_type;	/* 0084 hardlink target type */
 	uint8_t		reserved85;	/* 0085 */
-	uint8_t		reserved86;	/* 0086 */
+	uint8_t		pfs_nmasters;	/* 0086 (if PFSROOT) if multi-master */
 	uint8_t		pfs_type;	/* 0087 (if PFSROOT) node type */
 	uint64_t	pfs_inum;	/* 0088 (if PFSROOT) inum allocator */
 	uuid_t		pfs_clid;	/* 0090 (if PFSROOT) cluster uuid */
@@ -831,7 +831,6 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 #define HAMMER2_OPFLAG_DIRECTDATA	0x01
 #define HAMMER2_OPFLAG_PFSROOT		0x02	/* (see also bref flag) */
 #define HAMMER2_OPFLAG_COPYIDS		0x04	/* copyids override parent */
-#define HAMMER2_OPFLAG_SUPROOT		0x08
 
 #define HAMMER2_OBJTYPE_UNKNOWN		0
 #define HAMMER2_OBJTYPE_DIRECTORY	1
@@ -851,19 +850,19 @@ typedef struct hammer2_inode_data hammer2_inode_data_t;
 
 /*
  * PFS types identify a PFS on media and in LNK_SPAN messages.
+ *
+ * PFS types >= 16 belong to HAMMER, 0-15 are defined in sys/dmsg.h
  */
-#define HAMMER2_PFSTYPE_NONE		0
-#define HAMMER2_PFSTYPE_ADMIN		1
-#define HAMMER2_PFSTYPE_CLIENT		2
-#define HAMMER2_PFSTYPE_CACHE		3
-#define HAMMER2_PFSTYPE_COPY		4
-#define HAMMER2_PFSTYPE_SLAVE		5
-#define HAMMER2_PFSTYPE_SOFT_SLAVE	6
-#define HAMMER2_PFSTYPE_SOFT_MASTER	7
-#define HAMMER2_PFSTYPE_MASTER		8
-#define HAMMER2_PFSTYPE_SERVER		9
-#define HAMMER2_PFSTYPE_SNAPSHOT	10
-#define HAMMER2_PFSTYPE_MAX		11
+/* 0-15 reserved by sys/dmsg.h */
+#define HAMMER2_PFSTYPE_CACHE		16
+#define HAMMER2_PFSTYPE_COPY		17
+#define HAMMER2_PFSTYPE_SLAVE		18
+#define HAMMER2_PFSTYPE_SOFT_SLAVE	19
+#define HAMMER2_PFSTYPE_SOFT_MASTER	20
+#define HAMMER2_PFSTYPE_MASTER		21
+#define HAMMER2_PFSTYPE_SNAPSHOT	22
+#define HAMMER2_PFSTYPE_SUPROOT		23
+#define HAMMER2_PFSTYPE_MAX		32
 
 /*
  *				Allocation Table
