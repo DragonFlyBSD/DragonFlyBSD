@@ -64,13 +64,11 @@
  *  o   To reconsider transmission buffer usage, including
  *      transmission buffer size (currently 4KB x 2) and pros-and-
  *      cons of multiple frame transmission.
- *  o   To test IPX codes.
  *  o   To test new-bus frontend.
  */
 
 #include "opt_fe.h"
 #include "opt_inet.h"
-#include "opt_ipx.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

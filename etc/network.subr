@@ -23,7 +23,6 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/network.subr,v 1.163 2005/06/30 04:52:47 brooks Exp $
-# $DragonFly: src/etc/network.subr,v 1.7 2008/03/15 10:13:37 hasso Exp $
 #
 
 #
@@ -325,52 +324,6 @@ gif_up() {
 		done
 		;;
 	esac
-}
-
-#
-# ipx_up ifn
-# Configure any IPX addresses for interface $ifn. Returns 0 if IPX
-# arguments were found and configured; returns 1 otherwise.
-#
-ipx_up()
-{
-	ifn="$1"
-	eval ifconfig_args=\$ifconfig_${ifn}_ipx
-	if [ -n "${ifconfig_args}" ]; then
-		ifconfig ${ifn} ${ifconfig_args}
-		return 0
-	fi
-	return 1
-}
-
-# ipx_down ifn
-#	Remove IPX addresses for interface $ifn. Returns 0 if IPX
-#	addresses were found and unconfigured. It returns 1, otherwise.
-#
-ipx_down()
-{
-	[ -z "$1" ] && return 1
-	_ifs="^"
-	_ret=1
-
-	ipxList="`ifconfig $1 | grep 'ipx ' | tr "\n" "$_ifs"`"
-
-	oldifs="$IFS"
-	IFS="$_ifs"
-	for _ipx in $ipxList ; do
-		# get rid of extraneous line
-		[ -z "$_ipx" ] && break
-
-		_ipx=`expr "$_ipx" : '.*\(ipx [0-9a-h]\{1,8\}H*\.[0-9a-h]\{1,12\}\).*'`
-
-		IFS="$oldifs"
-		ifconfig $1 ${_ipx} delete
-		IFS="$_ifs"
-		_ret=0
-	done
-	IFS="$oldifs"
-
-	return $_ret
 }
 
 # ifnet_rename

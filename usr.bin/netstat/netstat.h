@@ -107,21 +107,13 @@ void	intpr (int, u_long, void (*)(char *), u_long);
 void	pr_rthdr (int);
 void	pr_family (int);
 void	rt_stats (void);
-char	*ipx_pnet (struct sockaddr *);
-char	*ipx_phost (struct sockaddr *);
 char	*ns_phost (struct sockaddr *);
 void	upHex (char *);
 
 char	*routename (u_long);
 char	*netname (u_long, u_long);
-char	*ipx_print (struct sockaddr *);
 char	*ns_print (struct sockaddr *);
 void	routepr (u_long);
-
-void	ipxprotopr (u_long, const char *, int);
-void	spx_stats (u_long, const char *, int);
-void	ipx_stats (u_long, const char *, int);
-void	ipxerr_stats (u_long, char *, int);
 
 void	nsprotopr (u_long, char *, int);
 void	spp_stats (u_long, char *, int);

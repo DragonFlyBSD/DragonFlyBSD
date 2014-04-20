@@ -20,7 +20,6 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/sys-bsd.c,v 1.17.2.1 2002/09/17 16:53:55 nectar Exp $
- * $DragonFly: src/usr.sbin/pppd/sys-bsd.c,v 1.6 2005/11/24 23:42:54 swildner Exp $
  */
 
 /*	$NetBSD: sys-bsd.c,v 1.1.1.3 1997/09/26 18:53:04 christos Exp $	*/
@@ -58,10 +57,6 @@
 #include <net/route.h>
 #include <net/if_dl.h>
 #include <netinet/in.h>
-
-#ifdef IPX_CHANGE
-#include <netipx/ipx.h>
-#endif
 
 #if RTM_VERSION >= 3
 #include <sys/param.h>
@@ -1204,107 +1199,6 @@ cifproxyarp(int unit, u_int32_t hisaddr)
     return 1;
 }
 #endif	/* RTM_VERSION */
-
-#ifdef IPX_CHANGE
-/********************************************************************
- *
- * sipxfaddr - Config the interface IPX networknumber
- */
-
-int
-sipxfaddr(int unit, unsigned long int network, unsigned char *node)
-{
-    int    result = 1;
-
-    int    skfd; 
-    struct sockaddr_ipx  ipx_addr;
-    struct ifreq         ifr;
-    struct sockaddr_ipx *sipx = (struct sockaddr_ipx *) &ifr.ifr_addr;
-    union ipx_net_u net;
-
-    skfd = socket (AF_IPX, SOCK_DGRAM, 0);
-    if (skfd < 0)
-      { 
-	syslog (LOG_DEBUG, "socket(AF_IPX): %m(%d)", errno);
-	result = 0;
-      }
-    else
-      {
-	memset (&ifr, '\0', sizeof (ifr));
-	strcpy (ifr.ifr_name, ifname);
-
-	memcpy (sipx->sipx_addr.x_host.c_host, node, 6);
-	sipx->sipx_len     = sizeof(sipx);
-	sipx->sipx_family  = AF_IPX;
-	sipx->sipx_port    = 0;
-	memset(&net, 0, sizeof(net));
-	net.long_e = htonl (network);
-	sipx->sipx_addr.x_net = net.net_e;
-/*
- *  Set the IPX device
- */
-	if (ioctl(skfd, SIOCSIFADDR, (caddr_t) &ifr) < 0)
-	  {
-	    result = 0;
-	    if (errno != EEXIST)
-	      {
-		syslog (LOG_DEBUG,
-			    "ioctl(SIOCAIFADDR, CRTITF): %m(%d)", errno);
-	      }
-	    else
-	      {
-		syslog (LOG_WARNING,
-			"ioctl(SIOCAIFADDR, CRTITF): Address already exists");
-	      }
-	  }
-	close (skfd);
-      }
-    return result;
-}
-
-/********************************************************************
- *
- * cipxfaddr - Clear the information for the IPX network. The IPX routes
- *	       are removed and the device is no longer able to pass IPX
- *	       frames.
- */
-
-int cipxfaddr(int unit)
-{
-    int    result = 1;
-
-    int    skfd; 
-    struct sockaddr_ipx  ipx_addr;
-    struct ifreq         ifr;
-    struct sockaddr_ipx *sipx = (struct sockaddr_ipx *) &ifr.ifr_addr;
-
-    skfd = socket (AF_IPX, SOCK_DGRAM, 0);
-    if (skfd < 0)
-      { 
-	syslog (LOG_DEBUG, "socket(AF_IPX): %m(%d)", errno);
-	result = 0;
-      }
-    else
-      {
-	memset (&ifr, '\0', sizeof (ifr));
-	strcpy (ifr.ifr_name, ifname);
-
-	sipx->sipx_len     = sizeof(sipx);
-	sipx->sipx_family  = AF_IPX;
-/*
- *  Set the IPX device
- */
-	if (ioctl(skfd, SIOCSIFADDR, (caddr_t) &ifr) < 0)
-	  {
-	    syslog (LOG_INFO,
-			"ioctl(SIOCAIFADDR, IPX_DLTITF): %m(%d)", errno);
-	    result = 0;
-	  }
-	close (skfd);
-      }
-    return result;
-}
-#endif
 
 /*
  * get_ether_addr - get the hardware address of an interface on the

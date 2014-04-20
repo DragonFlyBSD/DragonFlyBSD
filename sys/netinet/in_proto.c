@@ -31,7 +31,6 @@
  */
 
 #include "opt_ipdivert.h"
-#include "opt_ipx.h"
 #include "opt_mrouting.h"
 #include "opt_ipsec.h"
 #include "opt_inet6.h"
@@ -84,10 +83,6 @@
 #ifdef FAST_IPSEC
 #include <netproto/ipsec/ipsec.h>
 #endif /* FAST_IPSEC */
-
-#ifdef IPXIP
-#include <netproto/ipx/ipx_ip.h>
-#endif
 
 #ifdef SCTP
 #include <netinet/in_pcb.h>
@@ -434,22 +429,6 @@ struct protosw inetsw[] = {
 	.pr_ctlport = NULL,
 	.pr_init = div_init,
 	.pr_usrreqs = &div_usrreqs
-    },
-#endif
-#ifdef IPXIP
-    {
-	.pr_type = SOCK_RAW,
-	.pr_domain = &inetdomain,
-	.pr_protocol = IPPROTO_IDP,
-	.pr_flags = PR_ATOMIC|PR_ADDR|PR_LASTHDR,
-
-	.pr_input = ipxip_input,
-	.pr_output = NULL,
-	.pr_ctlinput = ipxip_ctlinput,
-	.pr_ctloutput = NULL,
-
-	.pr_ctlport = cpu0_ctlport,
-	.pr_usrreqs = &rip_usrreqs
     },
 #endif
 #ifdef PIM

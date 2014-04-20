@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.27 2008/09/28 05:08:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -229,7 +228,6 @@ bsd_to_linux_ftype(const char *fstypename)
 		{"procfs",  LINUX_PROC_SUPER_MAGIC},
 		{"msdosfs", LINUX_MSDOS_SUPER_MAGIC},
 		{"ntfs",    LINUX_NTFS_SUPER_MAGIC},
-		{"nwfs",    LINUX_NCP_SUPER_MAGIC},
 		{"hpfs",    LINUX_HPFS_SUPER_MAGIC},
 		{NULL,      0L}};
 

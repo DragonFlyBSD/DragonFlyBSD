@@ -4,7 +4,6 @@
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
 SUBDIR= 802_11 \
-	IPXrouted \
 	ac \
 	accton \
 	acpi \

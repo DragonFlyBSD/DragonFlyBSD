@@ -19,7 +19,6 @@
 #include "use_tun.h"
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipx.h"
 
 #include <sys/param.h>
 #include <sys/proc.h>
@@ -686,11 +685,6 @@ tunwrite(struct dev_write_args *ap)
 #ifdef INET6
 	case AF_INET6:
 		isr = NETISR_IPV6;
-		break;
-#endif
-#ifdef IPX
-	case AF_IPX:
-		isr = NETISR_IPX;
 		break;
 #endif
 	default:

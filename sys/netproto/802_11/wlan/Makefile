@@ -11,7 +11,7 @@ SRCS	+= ieee80211_ratectl.c ieee80211_ratectl_none.c
 SRCS	+= ieee80211_regdomain.c ieee80211_rssadapt.c
 SRCS	+= ieee80211_scan.c ieee80211_scan_sta.c ieee80211_sta.c
 SRCS	+= ieee80211_superg.c ieee80211_tdma.c ieee80211_wds.c
-SRCS	+= bus_if.h device_if.h opt_inet.h opt_inet6.h opt_ipx.h opt_wlan.h
+SRCS	+= bus_if.h device_if.h opt_inet.h opt_inet6.h opt_wlan.h
 SRCS	+= opt_tdma.h opt_ddb.h
 
 .if !defined(BUILDING_WITH_KERNEL)
@@ -20,9 +20,6 @@ opt_inet.h:
 
 opt_inet6.h:
 	echo "#define INET6	1" > ${.TARGET}
-
-opt_ipx.h:
-	echo "#define IPX	1" > ${.TARGET}
 
 opt_wlan.h:
 	echo "#define IEEE80211_DEBUG		1" > ${.TARGET}

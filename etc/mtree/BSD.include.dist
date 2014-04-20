@@ -344,15 +344,11 @@
         ..
         ipsec
         ..
-        ipx
-        ..
         key
         ..
         mpls
         ..
         natm
-        ..
-        ncp
         ..
         smb
         ..
@@ -383,8 +379,6 @@
         nfs
         ..
         ntfs
-        ..
-        nwfs
         ..
         puffs
         ..

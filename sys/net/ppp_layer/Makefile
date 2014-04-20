@@ -3,14 +3,13 @@
 .PATH:  ${.CURDIR}/../ppp ${.CURDIR}/..
 KMOD=   if_ppp
 SRCS=	if_ppp.c ppp_tty.c slcompress.c \
-	use_ppp.h opt_inet.h opt_ipx.h opt_ppp.h
+	use_ppp.h opt_inet.h opt_ppp.h
 
 NPPP?=		2
 PPP_BSDCOMP?=	1	# 0/1
 PPP_DEFLATE?=	1	# 0/1
 PPP_FILTER?=	1	# 0/1 - requires bpf to be configured in kernel
 PPP_INET?=	1	# 0/1 - requires INET to be configured in kernel
-PPP_IPX?=	0	# 0/1 - requires IPX to be configured in kernel
 
 .if ${PPP_BSDCOMP} > 0
 SRCS+=	bsd_comp.c
@@ -26,12 +25,6 @@ opt_inet.h:
 	touch opt_inet.h
 .if ${PPP_INET} > 0
 	echo "#define INET 1" > ${.TARGET}
-.endif
-
-opt_ipx.h:
-	touch opt_ipx.h
-.if ${PPP_IPX} > 0
-	echo "#define IPX ${PPP_IPX}" > ${.TARGET}
 .endif
 
 opt_ppp.h:

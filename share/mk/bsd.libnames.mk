@@ -41,7 +41,6 @@ LIBFSID?=	${DESTDIR}${LIBDIR}/libfsid.a
 LIBFTPIO?=	${DESTDIR}${LIBDIR}/libftpio.a
 LIBHAMMER?=	${DESTDIR}${LIBDIR}/libhammer.a
 LIBIPSEC?=	${DESTDIR}${LIBDIR}/libipsec.a
-LIBIPX?=	${DESTDIR}${LIBDIR}/libipx.a
 LIBKCORE?=	${DESTDIR}${LIBDIR}/libkcore.a
 LIBKICONV?=	${DESTDIR}${LIBDIR}/libkiconv.a
 LIBKINFO?=	${DESTDIR}${LIBDIR}/libkinfo.a
@@ -61,7 +60,6 @@ LIBMENU?=	${DESTDIR}${LIBDIR}/libmenu.a
 LIBMILTER?=	${DESTDIR}${LIBDIR}/libmilter.a
 .endif
 LIBMYTINFO?=	"don't use LIBMYTINFO, use LIBNCURSES"
-LIBNCP?=	${DESTDIR}${LIBDIR}/libncp.a
 LIBNCURSES?=	${DESTDIR}${LIBDIR}/libncurses.a
 LIBNCURSESW?=	${DESTDIR}${LIBDIR}/libncursesw.a
 LIBNETGRAPH?=	${DESTDIR}${LIBDIR}/libnetgraph.a

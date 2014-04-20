@@ -156,12 +156,8 @@ supported are
 .Dq inet ,
 .Dq inet6 ,
 .Dq atalk ,
-.Dq ipx ,
-.\" .Dq iso ,
 and
 .Dq link .
-.\" and
-.\" .Dq ns .
 The default is
 .Dq inet .
 .Dq ether
@@ -267,12 +263,6 @@ This action does not automatically disable routes using the interface.
 Fill interface index
 (lowermost 64bit of an IPv6 address)
 automatically.
-.It Cm ipdst
-This is used to specify an Internet host who is willing to receive
-IP packets encapsulating IPX packets bound for a remote network.
-An apparent point to point link is constructed, and
-the address specified will be taken as the IPX address and network
-of the destination.
 .It Cm media Ar type
 If the driver supports the media selection system, set the media type
 of the interface to

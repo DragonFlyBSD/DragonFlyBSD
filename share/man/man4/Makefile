@@ -88,7 +88,6 @@ MAN=	aac.4 \
 	dummynet.4 \
 	ecc.4 \
 	ed.4 \
-	ef.4 \
 	ehci.4 \
 	em.4 \
 	est.4 \
@@ -430,7 +429,6 @@ MLINKS+=drm.4 i915kms.4 \
 #	drm.4 viadrm.4
 MLINKS+=dsched.4 dsched_fq.4
 MLINKS+=ed.4 if_ed.4
-MLINKS+=ef.4 if_ef.4
 MLINKS+=em.4 emx.4 \
 	em.4 if_em.4 \
 	em.4 if_emx.4

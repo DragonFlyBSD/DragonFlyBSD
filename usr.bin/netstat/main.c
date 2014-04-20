@@ -99,49 +99,43 @@ static struct nlist nl[] = {
 	{ .n_name = "_mfctable" },
 #define N_VIFTABLE	21
 	{ .n_name = "_viftable" },
-#define N_IPX		22
-	{ .n_name = "_ipxpcb"},
-#define N_IPXSTAT	23
-	{ .n_name = "_ipxstat"},
-#define N_SPXSTAT	24
-	{ .n_name = "_spx_istat"},
-#define N_NGSOCKS	25
+#define N_NGSOCKS	22
 	{ .n_name = "_ngsocklist"},
-#define N_IP6STAT	26
+#define N_IP6STAT	23
 	{ .n_name = "_ip6stat" },
-#define N_ICMP6STAT	27
+#define N_ICMP6STAT	24
 	{ .n_name = "_icmp6stat" },
-#define N_IPSECSTAT	28
+#define N_IPSECSTAT	25
 	{ .n_name = "_ipsecstat" },
-#define N_IPSEC6STAT	29
+#define N_IPSEC6STAT	26
 	{ .n_name = "_ipsec6stat" },
-#define N_PIM6STAT	30
+#define N_PIM6STAT	27
 	{ .n_name = "_pim6stat" },
-#define N_MRT6PROTO	31
+#define N_MRT6PROTO	28
 	{ .n_name = "_ip6_mrtproto" },
-#define N_MRT6STAT	32
+#define N_MRT6STAT	29
 	{ .n_name = "_mrt6stat" },
-#define N_MF6CTABLE	33
+#define N_MF6CTABLE	30
 	{ .n_name = "_mf6ctable" },
-#define N_MIF6TABLE	34
+#define N_MIF6TABLE	31
 	{ .n_name = "_mif6table" },
-#define N_PFKEYSTAT	35
+#define N_PFKEYSTAT	32
 	{ .n_name = "_pfkeystat" },
-#define N_MBSTAT	36
+#define N_MBSTAT	33
 	{ .n_name = "_mbstat" },
-#define N_MBTYPES	37
+#define N_MBTYPES	34
 	{ .n_name = "_mbtypes" },
-#define N_NMBCLUSTERS	38
+#define N_NMBCLUSTERS	35
 	{ .n_name = "_nmbclusters" },
-#define N_NMBUFS	39
+#define N_NMBUFS	36
 	{ .n_name = "_nmbufs" },
-#define	N_RTTRASH	40
+#define	N_RTTRASH	37
 	{ .n_name = "_rttrash" },
-#define	N_NCPUS		41
+#define	N_NCPUS		38
 	{ .n_name = "_ncpus" },
-#define	N_CARPSTAT	42
+#define	N_CARPSTAT	39
 	{ .n_name = "_carpstats" },
-#define N_NMBJCLUSTERS	43
+#define N_NMBJCLUSTERS	40
 	{ .n_name = "_nmbjclusters" },
 	{ .n_name = NULL },
 };
@@ -225,15 +219,6 @@ struct protox netgraphprotox[] = {
 	  0,		NULL,		NULL,	0 }
 };
 
-struct protox ipxprotox[] = {
-	{ N_IPX,	N_IPXSTAT,	1,	ipxprotopr,
-	  ipx_stats,	NULL,		"ipx",	0 },
-	{ N_IPX,	N_SPXSTAT,	1,	ipxprotopr,
-	  spx_stats,	NULL,		"spx",	0 },
-	{ -1,		-1,		0,	0,
-	  0,		NULL,		0,	0 }
-};
-
 #ifdef ISO
 struct protox isoprotox[] = {
 	{ ISO_TP,	N_TPSTAT,	1,	iso_protopr,
@@ -257,7 +242,6 @@ struct protox *protoprotox[] = {
 #ifdef IPSEC
 					 pfkeyprotox,
 #endif
-					 ipxprotox,
 #ifdef ISO
 					 isoprotox, 
 #endif
@@ -329,9 +313,7 @@ main(int argc, char **argv)
 			dflag = 1;
 			break;
 		case 'f':
-			if (strcmp(optarg, "ipx") == 0)
-				af = AF_IPX;
-			else if (strcmp(optarg, "inet") == 0)
+			if (strcmp(optarg, "inet") == 0)
 				af = AF_INET;
 #ifdef INET6
 			else if (strcmp(optarg, "inet6") == 0)
@@ -541,11 +523,6 @@ main(int argc, char **argv)
 		for (tp = pfkeyprotox; tp->pr_name; tp++)
 			printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);
 #endif /*IPSEC*/
-	if (af == AF_IPX || af == AF_UNSPEC) {
-		kread(0, 0, 0);
-		for (tp = ipxprotox; tp->pr_name; tp++)
-			printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);
-	}
 	if (af == AF_NETGRAPH || af == AF_UNSPEC)
 		for (tp = netgraphprotox; tp->pr_name; tp++)
 			printproto(tp, tp->pr_name, nl[N_NCPUS].n_value);

@@ -37,7 +37,6 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipx.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -60,11 +59,6 @@
 #ifdef	INET
 #include <netinet/in.h>
 #include <netinet/in_var.h>
-#endif
-
-#ifdef IPX
-#include <netproto/ipx/ipx.h>
-#include <netproto/ipx/ipx_if.h>
 #endif
 
 #ifdef INET6
@@ -142,7 +136,6 @@ looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	switch (dst->sa_family) {
 	case AF_INET:
 	case AF_INET6:
-	case AF_IPX:
 		break;
 	default:
 		kprintf("looutput: af=%d unexpected\n", dst->sa_family);
@@ -253,11 +246,6 @@ rel:
 		isr = NETISR_IPV6;
 		break;
 #endif
-#ifdef IPX
-	case AF_IPX:
-		isr = NETISR_IPX;
-		break;
-#endif
 	default:
 		kprintf("if_simloop: can't handle af=%d\n", af);
 		m_freem(m);
@@ -299,11 +287,6 @@ lo_altqstart(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 		case AF_INET6:
 			m->m_flags |= M_LOOP;
 			isr = NETISR_IPV6;
-			break;
-#endif
-#ifdef IPX
-		case AF_IPX:
-			isr = NETISR_IPX;
 			break;
 #endif
 #ifdef ISO

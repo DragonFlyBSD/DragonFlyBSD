@@ -25,7 +25,6 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipx.h"
 
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -58,11 +57,6 @@
 #endif
 
 #include <netinet/if_ether.h>
-
-#ifdef IPX
-#include <netproto/ipx/ipx.h>
-#include <netproto/ipx/ipx_if.h>
-#endif
 
 #include "if_sppp.h"
 
@@ -99,7 +93,6 @@
 #define PPP_IP		0x0021		/* Internet Protocol */
 #define PPP_ISO		0x0023		/* ISO OSI Protocol */
 #define PPP_XNS		0x0025		/* Xerox NS Protocol */
-#define PPP_IPX		0x002b		/* Novell IPX Protocol */
 #define PPP_VJ_COMP	0x002d		/* VJ compressed TCP/IP */
 #define PPP_VJ_UCOMP	0x002f		/* VJ uncompressed TCP/IP */
 #define PPP_IPV6	0x0057		/* Internet Protocol Version 6 */
@@ -606,15 +599,6 @@ drop2:
 			do_account++;
 			break;
 #endif
-#ifdef IPX
-		case PPP_IPX:
-			/* IPX IPXCP not implemented yet */
-			if (sp->pp_phase == PHASE_NETWORK) {
-				isr = NETISR_IPX;
-			}
-			do_account++;
-			break;
-#endif
 		}
 		break;
 	case CISCO_MULTICAST:
@@ -646,12 +630,6 @@ drop2:
 #ifdef INET6
 		case ETHERTYPE_IPV6:
 			isr = NETISR_IPV6;
-			do_account++;
-			break;
-#endif
-#ifdef IPX
-		case ETHERTYPE_IPX:
-			isr = NETISR_IPX;
 			do_account++;
 			break;
 #endif
@@ -879,12 +857,6 @@ sppp_output_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 			if (sp->state[IDX_IPV6CP] != STATE_OPENED)
 				rv = ENETDOWN;
 		}
-		break;
-#endif
-#ifdef IPX
-	case AF_IPX:     /* Novell IPX Protocol */
-		h->protocol = htons (sp->pp_mode == IFF_CISCO ?
-			ETHERTYPE_IPX : PPP_IPX);
 		break;
 #endif
 	default:

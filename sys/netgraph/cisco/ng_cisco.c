@@ -57,9 +57,6 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 
-#include <netproto/ipx/ipx.h>
-#include <netproto/ipx/ipx_if.h>
-
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>

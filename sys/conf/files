@@ -1145,7 +1145,6 @@ net/if_clone.c			standard
 net/if_atmsubr.c		optional atm
 net/if_poll.c			optional ifpoll_enable
 net/disc/if_disc.c		optional disc
-net/ef/if_ef.c			optional ef
 net/if_ethersubr.c		optional ether
 net/faith/if_faith.c		optional faith
 net/gif/if_gif.c		optional gif
@@ -1571,17 +1570,6 @@ netproto/ipsec/xform_ah.c	optional fast_ipsec
 netproto/ipsec/xform_esp.c	optional fast_ipsec
 netproto/ipsec/xform_ipcomp.c	optional fast_ipsec
 netproto/ipsec/xform_ipip.c	optional fast_ipsec
-netproto/ipx/ipx.c		optional ipx
-netproto/ipx/ipx_cksum.c	optional ipx
-netproto/ipx/ipx_input.c	optional ipx
-netproto/ipx/ipx_ip.c		optional ipx
-netproto/ipx/ipx_outputfl.c	optional ipx
-netproto/ipx/ipx_pcb.c		optional ipx
-netproto/ipx/ipx_proto.c	optional ipx
-netproto/ipx/ipx_tun.c		optional ipx
-netproto/ipx/ipx_usrreq.c	optional ipx
-netproto/ipx/spx_debug.c	optional ipx
-netproto/ipx/spx_usrreq.c	optional ipx
 netproto/key/key.c		optional ipsec
 netproto/key/key_debug.c	optional ipsec
 netproto/key/keydb.c		optional ipsec
@@ -1593,15 +1581,6 @@ netproto/mpls/mpls_proto.c	optional mpls
 netproto/natm/natm.c		optional natm
 netproto/natm/natm_pcb.c	optional natm
 netproto/natm/natm_proto.c	optional natm
-netproto/ncp/ncp_conn.c		optional ncp
-netproto/ncp/ncp_crypt.c	optional ncp
-netproto/ncp/ncp_login.c	optional ncp
-netproto/ncp/ncp_mod.c		optional ncp
-netproto/ncp/ncp_ncp.c		optional ncp
-netproto/ncp/ncp_nls.c		optional ncp
-netproto/ncp/ncp_rq.c		optional ncp
-netproto/ncp/ncp_sock.c		optional ncp
-netproto/ncp/ncp_subr.c		optional ncp
 kern/md4c.c			optional netsmb
 netproto/smb/smb_conn.c		optional netsmb
 netproto/smb/smb_crypt.c	optional netsmb
@@ -1627,12 +1606,6 @@ vfs/nfs/nfsm_subs.c		optional nfs
 vfs/nfs/bootp_subr.c		optional bootp
 vfs/nfs/nfs_mountrpc.c		optional nfs
 vfs/nfs/krpc_subr.c		optional nfs
-vfs/nwfs/nwfs_io.c		optional nwfs
-vfs/nwfs/nwfs_ioctl.c		optional nwfs
-vfs/nwfs/nwfs_node.c		optional nwfs
-vfs/nwfs/nwfs_subr.c		optional nwfs
-vfs/nwfs/nwfs_vfsops.c		optional nwfs
-vfs/nwfs/nwfs_vnops.c		optional nwfs
 bus/pccard/card_if.m		standard
 pccarddevs.h			optional pccard \
 	dependency		"$S/tools/pccarddevs2h.awk $S/bus/pccard/pccarddevs" \

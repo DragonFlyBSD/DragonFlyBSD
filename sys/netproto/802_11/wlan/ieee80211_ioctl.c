@@ -31,7 +31,6 @@
  */
 
 #include "opt_inet.h"
-#include "opt_ipx.h"
 #include "opt_wlan.h"
 
 #include <sys/endian.h>
@@ -52,11 +51,6 @@
 #ifdef INET
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
-#endif
-
-#ifdef IPX
-#include <netproto/ipx/ipx.h>
-#include <netproto/ipx/ipx_if.h>
 #endif
 
 #include <netproto/802_11/ieee80211_var.h>

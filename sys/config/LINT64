@@ -273,12 +273,6 @@ options 	IPSEC_DEBUG		#debug for IP security
 #
 #options 	FAST_IPSEC		#new IPsec
 
-options 	IPX			#IPX/SPX communications protocols
-options 	IPXIP			#IPX in IP encapsulation (not available)
-options 	IPTUNNEL		#IP in IPX encapsulation (not available)
-
-options 	NCP			#NetWare Core protocol
-
 options 	MPLS			#Multi-Protocol Label Switching
 
 #
@@ -379,12 +373,6 @@ pseudo-device	ppp	2		#Point-to-point protocol
 options 	PPP_BSDCOMP		#PPP BSD-compress support
 options 	PPP_DEFLATE		#PPP zlib/deflate/gzip support
 options 	PPP_FILTER		#enable bpf filtering (needs bpf)
-
-pseudo-device	ef			# Multiple ethernet frames support
-options 	ETHER_II		# enable Ethernet_II frame
-options 	ETHER_8023		# enable Ethernet_802.3 (Novell) frame
-options 	ETHER_8022		# enable Ethernet_802.2 frame
-options 	ETHER_SNAP		# enable Ethernet_802.2/SNAP frame
 
 # for IPv6
 pseudo-device	gif			#IPv6 and IPv4 tunneling
@@ -558,7 +546,6 @@ options 	HPFS			#OS/2 File system
 options 	MSDOSFS			#MS DOS filesystem
 options 	NTFS			#NT filesystem
 options 	NULLFS			#NULL filesystem
-options 	NWFS			#NetWare filesystem
 options 	PORTAL			#Portal filesystem
 options 	PROCFS			#Process filesystem
 options		PUFFS			#Userspace file systems (e.g. ntfs-3g & sshfs)

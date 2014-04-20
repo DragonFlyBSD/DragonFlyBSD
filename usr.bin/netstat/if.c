@@ -44,8 +44,6 @@
 #include <net/ethernet.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
-#include <netproto/ipx/ipx.h>
-#include <netproto/ipx/ipx_if.h>
 #ifdef ISO
 #include <netiso/iso.h>
 #include <netiso/iso_var.h>
@@ -107,7 +105,6 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 #ifdef INET6
 		struct in6_ifaddr in6;
 #endif
-		struct ipx_ifaddr ipx;
 #ifdef ISO
 		struct iso_ifaddr iso;
 #endif
@@ -332,22 +329,6 @@ intpr(int interval1, u_long ifnetaddr, void (*pfunc)(char *), u_long ncpusaddr)
 				network_layer = 1;
 				break;
 #endif /*INET6*/
-			case AF_IPX:
-				{
-				struct sockaddr_ipx *sipx =
-					(struct sockaddr_ipx *)sa;
-				u_long net;
-				char netnum[10];
-
-				*(union ipx_net *) &net = sipx->sipx_addr.x_net;
-				sprintf(netnum, "%lx", (u_long)ntohl(net));
-				printf("ipx:%-8s  ", netnum);
-/*				printf("ipx:%-8s ", netname(net, 0L)); */
-				printf("%-15s ",
-				    ipx_phost((struct sockaddr *)sipx));
-				}
-				break;
-
 			case AF_LINK:
 				{
 				struct sockaddr_dl *sdl =

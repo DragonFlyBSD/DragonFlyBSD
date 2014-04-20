@@ -43,7 +43,6 @@
 #include <net/route.h>
 
 #include <netinet/in.h>
-#include <netipx/ipx.h>
 #include <netgraph/socket/ng_socket.h>
 
 #include <netproto/mpls/mpls.h>
@@ -197,9 +196,6 @@ pr_family(int af1)
 		afname = "Internet6";
 		break;
 #endif /*INET6*/
-	case AF_IPX:
-		afname = "IPX";
-		break;
 	case AF_ISO:
 		afname = "ISO";
 		break;
@@ -681,15 +677,6 @@ fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 	    }
 #endif /*INET6*/
 
-	case AF_IPX:
-	    {
-		struct ipx_addr work = ((struct sockaddr_ipx *)sa)->sipx_addr;
-		if (ipx_nullnet(satoipx_addr(work)))
-			cp = "default";
-		else
-			cp = ipx_print(sa);
-		break;
-	    }
 	case AF_NETGRAPH:
 	    {
 		printf("%s", ((struct sockaddr_ng *)sa)->sg_data);
@@ -1093,92 +1080,6 @@ rt_stats(void)
 	p(rts_unreach, "\t%lu destination%s found unreachable\n");
 	p(rts_wildcard, "\t%lu use%s of a wildcard route\n");
 #undef p
-}
-
-char *
-ipx_print(struct sockaddr *sa)
-{
-	u_short port;
-	struct servent *sp = NULL;
-	const char *net = "", *host = "";
-	char *p;
-	u_char *q;
-	struct ipx_addr work = ((struct sockaddr_ipx *)sa)->sipx_addr;
-	static char mybuf[50];
-	char cport[10], chost[15], cnet[15];
-
-	port = ntohs(work.x_port);
-
-	if (ipx_nullnet(work) && ipx_nullhost(work)) {
-
-		if (port) {
-			if (sp)
-				sprintf(mybuf, "*.%s", sp->s_name);
-			else
-				sprintf(mybuf, "*.%x", port);
-		} else
-			sprintf(mybuf, "*.*");
-
-		return (mybuf);
-	}
-
-	if (ipx_wildnet(work))
-		net = "any";
-	else if (ipx_nullnet(work))
-		net = "*";
-	else {
-		q = work.x_net.c_net;
-		sprintf(cnet, "%02x%02x%02x%02x",
-			q[0], q[1], q[2], q[3]);
-		for (p = cnet; *p == '0' && p < cnet + 8; p++)
-			continue;
-		net = p;
-	}
-
-	if (ipx_wildhost(work))
-		host = "any";
-	else if (ipx_nullhost(work))
-		host = "*";
-	else {
-		q = work.x_host.c_host;
-		sprintf(chost, "%02x%02x%02x%02x%02x%02x",
-			q[0], q[1], q[2], q[3], q[4], q[5]);
-		for (p = chost; *p == '0' && p < chost + 12; p++)
-			continue;
-		host = p;
-	}
-
-	if (port) {
-		if (strcmp(host, "*") == 0)
-			host = "";
-		if (sp)	
-			snprintf(cport, sizeof(cport),
-				"%s%s", *host ? "." : "", sp->s_name);
-		else	
-			snprintf(cport, sizeof(cport),
-				"%s%x", *host ? "." : "", port);
-	} else
-		*cport = 0;
-
-	snprintf(mybuf, sizeof(mybuf), "%s.%s%s", net, host, cport);
-	return(mybuf);
-}
-
-char *
-ipx_phost(struct sockaddr *sa)
-{
-	struct sockaddr_ipx *sipx = (struct sockaddr_ipx *)sa;
-	struct sockaddr_ipx work;
-	static union ipx_net ipx_zeronet;
-	char *p;
-
-	work = *sipx;
-	work.sipx_addr.x_port = 0;
-	work.sipx_addr.x_net = ipx_zeronet;
-	p = ipx_print((struct sockaddr *)&work);
-	if (strncmp("*.", p, 2) == 0) p += 2;
-
-	return(p);
 }
 
 void

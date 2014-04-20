@@ -47,7 +47,6 @@
 .ds doc-str-Lb-libfsid          Filesystem Identification Library (libfsid, \-lfsid)
 .ds doc-str-Lb-libftpio         FTP Connection Management Library (libftpio, \-lftpio)
 .ds doc-str-Lb-libhammer        HAMMER Filesystem Userland Library (libhammer, \-lhammer)
-.ds doc-str-Lb-libipx           IPX Address Conversion Support Library (libipx, \-lipx)
 .ds doc-str-Lb-libkcore         Kernel Memory Core Access Library (libkcore, \-lkcore)
 .ds doc-str-Lb-libkiconv        Kernel side iconv library (libkiconv, \-lkiconv)
 .ds doc-str-Lb-libkinfo         Kernel Information Access Library (libkinfo, \-lkinfo)

@@ -32,7 +32,6 @@
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
-#include "opt_ipx.h"
 #include "opt_mpls.h"
 #include "opt_netgraph.h"
 #include "opt_carp.h"
@@ -84,14 +83,6 @@
 
 #ifdef CARP
 #include <netinet/ip_carp.h>
-#endif
-
-#ifdef IPX
-#include <netproto/ipx/ipx.h>
-#include <netproto/ipx/ipx_if.h>
-int (*ef_inputp)(struct ifnet*, const struct ether_header *eh, struct mbuf *m);
-int (*ef_outputp)(struct ifnet *ifp, struct mbuf **mp, struct sockaddr *dst,
-		  short *tp, int *hlen);
 #endif
 
 #ifdef MPLS
@@ -257,29 +248,6 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		if (!nd6_storelladdr(&ac->ac_if, rt, m, dst, edst))
 			return (0);		/* Something bad happenned. */
 		eh->ether_type = htons(ETHERTYPE_IPV6);
-		break;
-#endif
-#ifdef IPX
-	case AF_IPX:
-		if (ef_outputp != NULL) {
-			/*
-			 * Hold BGL and recheck ef_outputp
-			 */
-			get_mplock();
-			if (ef_outputp != NULL) {
-				error = ef_outputp(ifp, &m, dst,
-						   &eh->ether_type, &hlen);
-				rel_mplock();
-				if (error)
-					goto bad;
-				else
-					break;
-			}
-			rel_mplock();
-		}
-		eh->ether_type = htons(ETHERTYPE_IPX);
-		bcopy(&(((struct sockaddr_ipx *)dst)->sipx_addr.x_host),
-		      edst, ETHER_ADDR_LEN);
 		break;
 #endif
 	case pseudo_AF_HDRCMPLT:
@@ -665,25 +633,6 @@ do { \
 			IF_INIT(ifp);	/* before arpwhohas */
 			arp_ifinit(ifp, ifa);
 			break;
-#endif
-#ifdef IPX
-		/*
-		 * XXX - This code is probably wrong
-		 */
-		case AF_IPX:
-			{
-			struct ipx_addr *ina = &IA_SIPX(ifa)->sipx_addr;
-			struct arpcom *ac = IFP2AC(ifp);
-
-			if (ipx_nullhost(*ina))
-				ina->x_host = *(union ipx_host *) ac->ac_enaddr;
-			else
-				bcopy(ina->x_host.c_host, ac->ac_enaddr,
-				      sizeof ac->ac_enaddr);
-
-			IF_INIT(ifp);	/* Set new address. */
-			break;
-			}
 #endif
 		default:
 			IF_INIT(ifp);
@@ -1117,23 +1066,6 @@ post_stats:
 		break;
 #endif
 
-#ifdef IPX
-	case ETHERTYPE_IPX:
-		if (ef_inputp) {
-			/*
-			 * Hold BGL and recheck ef_inputp
-			 */
-			get_mplock();
-			if (ef_inputp && ef_inputp(ifp, eh, m) == 0) {
-				rel_mplock();
-				return;
-			}
-			rel_mplock();
-		}
-		isr = NETISR_IPX;
-		break;
-#endif
-
 #ifdef MPLS
 	case ETHERTYPE_MPLS:
 	case ETHERTYPE_MPLS_MCAST:
@@ -1149,19 +1081,6 @@ post_stats:
 		 * we reach here, so recharacterize packet.
 		 */
 		m->m_flags &= ~M_HASH;
-#ifdef IPX
-		if (ef_inputp) {
-			/*
-			 * Hold BGL and recheck ef_inputp
-			 */
-			get_mplock();
-			if (ef_inputp && ef_inputp(ifp, eh, m) == 0) {
-				rel_mplock();
-				return;
-			}
-			rel_mplock();
-		}
-#endif
 		if (ng_ether_input_orphan_p != NULL) {
 			/*
 			 * Put back the ethernet header so netgraph has a
@@ -1594,12 +1513,6 @@ ether_characterize(struct mbuf **m0)
 #ifdef INET6
 	case ETHERTYPE_IPV6:
 		isr = NETISR_IPV6;
-		break;
-#endif
-
-#ifdef IPX
-	case ETHERTYPE_IPX:
-		isr = NETISR_IPX;
 		break;
 #endif
 

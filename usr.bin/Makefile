@@ -272,9 +272,7 @@ SUBDIR+=vacation
 
 .if ${MACHINE_ARCH} == "i386"
 # Things that don't compile on x86_64 or are i386 specific:
-SUBDIR+=ncplist \
-	ncplogin \
-	smbutil
+SUBDIR+=smbutil
 .endif
 
 .include <bsd.subdir.mk>

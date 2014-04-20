@@ -23,7 +23,6 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/gnu/usr.bin/groff/tmac/ru.KOI8-R,v 1.14 2003/09/20 21:30:33 ru Exp $
-.\" $DragonFly: src/gnu/usr.bin/groff/tmac/ru.KOI8-R,v 1.3 2005/09/01 20:47:14 asmodai Exp $
 .\"
 .\"     %beginstrip%
 .
@@ -87,7 +86,6 @@
 .ds doc-str-Lb-libgeom     Пользовательская API библиотека подсистемы ядра GEOM (libgeom, \-lgeom)
 .ds doc-str-Lb-libi386     Библиотека архитектуры i386 (libi386, \-li386)
 .ds doc-str-Lb-libipsec    Библиотека управления IPsec Policy (libipsec, \-lipsec)
-.ds doc-str-Lb-libipx      Библиотека поддержки конверсии адресов IPX (libipx, \-lipx)
 .ds doc-str-Lb-libkvm      Библиотека доступа к данным ядра (libkvm, \-lkvm)
 .ds doc-str-Lb-libm        Библиотека математических функций (libm, \-lm)
 .\" XXX ds doc-str-Lb-libmd       Message Digest (MD4, MD5, и т.д.) Support Library (libmd, \-lmd)

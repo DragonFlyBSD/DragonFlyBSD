@@ -76,7 +76,6 @@
 #include "use_ppp.h"
 
 #include "opt_inet.h"
-#include "opt_ipx.h"
 #include "opt_ppp.h"
 
 #ifdef INET
@@ -110,11 +109,6 @@
 #include <netinet/in_systm.h>
 #include <netinet/in_var.h>
 #include <netinet/ip.h>
-#endif
-
-#ifdef IPX
-#include <netproto/ipx/ipx.h>
-#include <netproto/ipx/ipx_if.h>
 #endif
 
 #ifdef VJC
@@ -609,10 +603,6 @@ pppsioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case AF_INET:
 	    break;
 #endif
-#ifdef IPX
-	case AF_IPX:
-	    break;
-#endif
 	default:
 	    error = EAFNOSUPPORT;
 	    break;
@@ -623,10 +613,6 @@ pppsioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	switch(ifa->ifa_addr->sa_family) {
 #ifdef INET
 	case AF_INET:
-	    break;
-#endif
-#ifdef IPX
-	case AF_IPX:
 	    break;
 #endif
 	default:
@@ -754,19 +740,6 @@ pppoutput_serialized(struct ifnet *ifp, struct ifaltq_subque *ifsq,
 	ip = mtod(m0, struct ip *);
 	if (ip->ip_tos & IPTOS_LOWDELAY)
 	    m0->m_flags |= M_HIGHPRI;
-	break;
-#endif
-#ifdef IPX
-    case AF_IPX:
-	/*
-	 * This is pretty bogus.. We dont have an ipxcp module in pppd
-	 * yet to configure the link parameters.  Sigh. I guess a
-	 * manual ifconfig would do....  -Peter
-	 */
-	address = PPP_ALLSTATIONS;
-	control = PPP_UI;
-	protocol = PPP_IPX;
-	mode = NPMODE_PASS;
 	break;
 #endif
     case AF_UNSPEC:
@@ -1504,24 +1477,6 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
 	    return;
 #endif
 	isr = NETISR_IP;
-	break;
-#endif
-#ifdef IPX
-    case PPP_IPX:
-	/*
-	 * IPX packet - take off the ppp header and pass it up to IPX.
-	 */
-	if ((sc->sc_if.if_flags & IFF_UP) == 0
-	    /* XXX: || sc->sc_npmode[NP_IPX] != NPMODE_PASS*/) {
-	    /* interface is down - drop the packet. */
-	    m_freem(m);
-	    return;
-	}
-	m->m_pkthdr.len -= PPP_HDRLEN;
-	m->m_data += PPP_HDRLEN;
-	m->m_len -= PPP_HDRLEN;
-	isr = NETISR_IPX;
-	sc->sc_last_recv = time_uptime;	/* update time of last pkt rcvd */
 	break;
 #endif
 

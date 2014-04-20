@@ -69,7 +69,7 @@ CRUNCH_ALIAS_swapon= swapoff swapctl
 
 CRUNCH_LIBS+= -lcam -lsbuf -lutil -lkvm -lm -lmd -lhammer -lkiconv -ledit
 CRUNCH_LIBS+= -ltermcap -ldevstat -lprop -lpthread
-CRUNCH_LIBS+= -lipx -lbsdxml -lipsec
+CRUNCH_LIBS+= -lbsdxml -lipsec
 
 CRUNCH_SRCDIRS+= usr.sbin
 CRUNCH_PROGS_usr.sbin= boot0cfg chroot

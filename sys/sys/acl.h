@@ -24,7 +24,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/acl.h,v 1.8 2000/01/28 15:22:51 rwatson Exp $
- * $DragonFly: src/sys/sys/acl.h,v 1.5 2007/02/19 00:51:54 swildner Exp $
  */
 
 /* 
@@ -84,7 +83,6 @@ typedef struct acl	*acl_t;
 #define	ACL_TYPE_AFS		0x00000002
 #define	ACL_TYPE_CODA		0x00000003
 #define	ACL_TYPE_NTFS		0x00000004
-#define	ACL_TYPE_NWFS		0x00000005
 
 /*
  * Possible flags in a_perm field

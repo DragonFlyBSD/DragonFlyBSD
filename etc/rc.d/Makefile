@@ -10,7 +10,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	battd bootconf bootparams btconfig bthcid ccd cleanvar cryptdisks \
 	cleartmp cron cryptdisks devd devfs dhclient diskless dmesg dumpon \
 	fixbootfile fsck ftpd hostapd hostname hotplugd \
-	inetd initdiskless initrandom ip6fw ipfw ipsec ipxrouted \
+	inetd initdiskless initrandom ip6fw ipfw ipsec \
 	jail keyserv \
 	ldconfig local localdaemons lockd lpd lvm \
 	mixer motd mountcritlocal mountcritremote \

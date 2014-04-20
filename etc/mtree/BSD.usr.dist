@@ -189,8 +189,6 @@
             ..
             netgraph
             ..
-            nwclient
-            ..
             perfmon
             ..
             pf

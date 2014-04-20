@@ -53,7 +53,6 @@
 #include <sys/interrupt.h>
 
 #include "opt_inet.h"
-#include "opt_ipx.h"
 
 #include <net/if.h>
 #include <net/if_media.h>
@@ -64,11 +63,6 @@
 #ifdef INET
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
-#endif
-
-#ifdef IPX
-#include <netproto/ipx/ipx.h>
-#include <netproto/ipx/ipx_if.h>
 #endif
 
 #include <vm/vm.h>

@@ -44,7 +44,6 @@
 #include "opt_ddb.h"
 #include "opt_directio.h"
 #include "opt_inet.h"
-#include "opt_ipx.h"
 #include "opt_msgbuf.h"
 #include "opt_swap.h"
 

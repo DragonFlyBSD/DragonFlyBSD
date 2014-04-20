@@ -257,9 +257,6 @@ pr_family(int af)
 		afname = "Internet6";
 		break;
 #endif /* INET6 */
-	case AF_IPX:
-		afname = "IPX";
-		break;
 	case AF_ISO:
 		afname = "ISO";
 		break;

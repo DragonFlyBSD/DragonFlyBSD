@@ -56,7 +56,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libftpio \
 	libhammer \
 	libipsec \
-	libipx \
 	libkcore \
 	libkiconv \
 	libkinfo \
@@ -67,7 +66,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libmagic \
 	libmandoc \
 	${_libmilter} \
-	libncp \
 	${_libnetgraph} \
 	libopie \
 	libpam \

@@ -37,7 +37,6 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.h,v 1.1.4.2 2000/10/24 18:36:45 julian Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.h,v 1.2 2003/06/17 04:28:50 dillon Exp $
  * $Whistle: ng_iface.h,v 1.5 1999/01/20 00:22:13 archie Exp $
  */
 
@@ -56,7 +55,6 @@
 #define NG_IFACE_HOOK_INET		"inet"
 #define NG_IFACE_HOOK_INET6		"inet6"
 #define NG_IFACE_HOOK_ATALK		"atalk"	/* AppleTalk phase 2 */
-#define NG_IFACE_HOOK_IPX		"ipx"
 #define NG_IFACE_HOOK_ATM		"atm"
 #define NG_IFACE_HOOK_NATM		"natm"
 #define NG_IFACE_HOOK_NS		"ns"

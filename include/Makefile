@@ -85,12 +85,12 @@ LSUBDIRS= \
 	netgraph7/mppc netgraph7/one2many netgraph7/ppp netgraph7/pppoe \
 	netgraph7/pptpgre netgraph7/rfc1490 netgraph7/socket \
 	netgraph7/tcpmss netgraph7/tee netgraph7/tty netgraph7/vjc \
-	netproto/atm netproto/ipsec netproto/ipx \
+	netproto/atm netproto/ipsec \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
 	netproto/atm/uni netproto/802_11 netproto/mpls \
-	netproto/key netproto/natm netproto/ncp netproto/smb \
+	netproto/key netproto/natm netproto/smb \
 	vfs/isofs/cd9660 vfs/puffs \
-	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs \
+	vfs/msdosfs vfs/nfs vfs/ntfs \
 	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2
 
 .if !defined(WANT_OLDUSB)
@@ -140,7 +140,6 @@ INCSLINKS+=	vfs/isofs ${INCLUDEDIR}/isofs
 INCSLINKS+=	vfs/mfs ${INCLUDEDIR}/mfs
 INCSLINKS+=	vfs/nfs ${INCLUDEDIR}/nfs
 INCSLINKS+=	vfs/ntfs ${INCLUDEDIR}/ntfs
-INCSLINKS+=	vfs/nwfs ${INCLUDEDIR}/nwfs
 INCSLINKS+=	vfs ${INCLUDEDIR}/fs
 # this is for <ufs/ufs/...> and <ufs/ffs/...> paths used by ports
 # It is hopefully a temporary hack until we have environments working.
@@ -149,10 +148,8 @@ INCSLINKS+=	ufs ${INCLUDEDIR}/vfs/ffs
 INCSLINKS+=	emulation ${INCLUDEDIR}/compat
 INCSLINKS+=	netproto/atm ${INCLUDEDIR}/netatm
 INCSLINKS+=	netproto/ipsec ${INCLUDEDIR}/netipsec
-INCSLINKS+=	netproto/ipx ${INCLUDEDIR}/netipx
 INCSLINKS+=	netproto/key ${INCLUDEDIR}/netkey
 INCSLINKS+=	netproto/natm ${INCLUDEDIR}/netnatm
-INCSLINKS+=	netproto/ncp ${INCLUDEDIR}/netncp
 INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
 INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
 # Some 3rd party software looks for <floatingpoint.h>

@@ -1,7 +1,6 @@
 #!/bin/sh -
 #
 # $FreeBSD: src/etc/pccard_ether,v 1.15.2.10 2001/09/14 17:28:11 imp Exp $
-# $DragonFly: src/etc/pccard_ether,v 1.4 2003/10/09 15:39:36 dillon Exp $
 #
 # pccard_ether interfacename [start|stop] [ifconfig option]
 #
@@ -101,12 +100,6 @@ case ${startstop} in
 				break;
 			fi
 		done
-
-		# Do ipx address if specified
-		eval ifx_args=\$ifconfig_${interface}_ipx
-		if [ -n "${ifx_args}" ]; then
-			ifconfig ${interface} ${ifx_args}
-		fi
 
 		# Add default route into $static_routes
 		case ${defaultrouter} in

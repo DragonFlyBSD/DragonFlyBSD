@@ -2,7 +2,7 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/12/93
 
 PROG=	netstat
-SRCS=	if.c inet.c inet6.c main.c mbuf.c mroute.c ipx.c route.c \
+SRCS=	if.c inet.c inet6.c main.c mbuf.c mroute.c route.c \
 	unix.c netgraph.c mroute6.c ipsec.c # iso.c tp_astring.c
 CFLAGS+=-DIPSEC
 CFLAGS+=-DINET6
@@ -11,7 +11,7 @@ CFLAGS+=-DINET6
 #.PATH:	${.CURDIR}/../../sys/netiso
 BINGRP=	kmem
 BINMODE=2555
-DPADD=	${LIBKVM} ${LIBKINFO} ${LIBIPX} ${LIBNETGRAPH} ${LIBUTIL}
-LDADD=	-lkvm -lkinfo -lipx -lnetgraph -lutil
+DPADD=	${LIBKVM} ${LIBKINFO} ${LIBNETGRAPH} ${LIBUTIL}
+LDADD=	-lkvm -lkinfo -lnetgraph -lutil
 
 .include <bsd.prog.mk>

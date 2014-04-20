@@ -104,8 +104,7 @@ SUBDIR=	adjkerntz \
 .if ${MACHINE_ARCH} == i386
 SUBDIR+=kget
 .endif
-SUBDIR+=mount_nwfs \
-	mount_smbfs \
+SUBDIR+=mount_smbfs \
 	fdisk \
 	nextboot
 .endif

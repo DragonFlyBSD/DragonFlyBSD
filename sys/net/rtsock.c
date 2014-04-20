@@ -96,7 +96,6 @@ MALLOC_DEFINE(M_RTABLE, "routetbl", "routing tables");
 static struct route_cb {
 	int	ip_count;
 	int	ip6_count;
-	int	ipx_count;
 	int	ns_count;
 	int	any_count;
 } route_cb;
@@ -175,9 +174,6 @@ rts_attach(netmsg_t msg)
 	case AF_INET6:
 		route_cb.ip6_count++;
 		break;
-	case AF_IPX:
-		route_cb.ipx_count++;
-		break;
 	}
 	rp->rcb_faddr = &route_src;
 	route_cb.any_count++;
@@ -224,9 +220,6 @@ rts_detach(netmsg_t msg)
 			break;
 		case AF_INET6:
 			route_cb.ip6_count--;
-			break;
-		case AF_IPX:
-			route_cb.ipx_count--;
 			break;
 		}
 		route_cb.any_count--;

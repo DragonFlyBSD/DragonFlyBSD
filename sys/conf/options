@@ -134,7 +134,6 @@ MFS		opt_dontuse.h
 MSDOSFS		opt_dontuse.h
 NTFS		opt_dontuse.h
 NULLFS		opt_dontuse.h
-NWFS		opt_dontuse.h
 PORTAL		opt_dontuse.h
 PROCFS		opt_dontuse.h
 PUFFS		opt_dontuse.h
@@ -296,12 +295,8 @@ IPV6FIREWALL_VERBOSE	opt_ip6fw.h
 IPV6FIREWALL_VERBOSE_LIMIT	opt_ip6fw.h
 IPV6FIREWALL_DEFAULT_TO_ACCEPT	opt_ip6fw.h
 IPSTEALTH
-IPX			opt_ipx.h
-IPXIP			opt_ipx.h
-IPTUNNEL		opt_ipx.h
 LIBMCHAIN
 MPLS			opt_mpls.h
-NCP			opt_ncp.h
 PPP_BSDCOMP		opt_ppp.h
 PPP_DEFLATE		opt_ppp.h
 PPP_FILTER		opt_ppp.h

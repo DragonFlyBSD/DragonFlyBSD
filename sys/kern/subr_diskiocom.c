@@ -61,6 +61,8 @@
 #include <sys/msgport2.h>
 #include <sys/thread2.h>
 
+#include <vfs/hammer2/hammer2_disk.h>
+
 struct dios_open {
 	int	openrd;
 	int	openwr;

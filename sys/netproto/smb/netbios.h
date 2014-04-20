@@ -42,12 +42,7 @@
 #include <netinet/in.h>
 #endif
 
-#ifndef _NETIPX_IPX_H_
-#include <netproto/ipx/ipx.h>
-#endif
-
 #define	NBPROTO_TCPSSN	1		/* NETBIOS session over TCP */
-#define	NBPROTO_IPXSSN	11		/* NETBIOS over IPX */
 
 #define NB_NAMELEN	16
 #define	NB_ENCNAMELEN	NB_NAMELEN * 2
@@ -119,7 +114,6 @@
  */
 union nb_tran {
 	struct sockaddr_in	x_in;
-	struct sockaddr_ipx	x_ipx;
 };
 
 struct nb_name {
