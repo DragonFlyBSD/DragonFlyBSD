@@ -2,8 +2,8 @@
 
 SRCS= iscontrol.c pdu.c fsm.c config.c login.c auth_subr.c misc.c
 PROG= iscontrol
-DPADD= ${LIBCAM} ${LIBMD} ${LIBSBUF}
-LDADD= -lcam -lmd -lsbuf
+DPADD= ${LIBCAM} ${LIBMD}
+LDADD= -lcam -lmd
 
 CFLAGS += -I${.CURDIR}/../../sys/dev/disk/iscsi/initiator
 #CFLAGS += -g -DDEBUG

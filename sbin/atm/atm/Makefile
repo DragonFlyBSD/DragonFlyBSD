@@ -34,7 +34,7 @@ SRCS=	atm.c atm_fore200.c atm_eni.c atm_inet.c atm_print.c \
 MAN=	atm.8
 
 CFLAGS+=	-I${.CURDIR}/../../../sys
-LDADD+=		-latm -lmd
-DPADD+=		 ${LIBATM} ${LIBMD}
+LDADD+=		-latm
+DPADD+=		 ${LIBATM}
 
 .include <bsd.prog.mk>

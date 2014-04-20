@@ -32,7 +32,7 @@ PROG=	ilmid
 MAN=	ilmid.8
 
 CFLAGS+=	-I${.CURDIR}/../../../sys
-LDADD+=		-latm -lmd
-DPADD+=		${LIBATM} ${LIBMD}
+LDADD+=		-latm
+DPADD+=		${LIBATM}
 
 .include <bsd.prog.mk>
