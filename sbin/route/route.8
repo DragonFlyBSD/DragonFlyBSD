@@ -132,7 +132,6 @@ command is specified,
 will ``flush'' the routing tables of all gateway entries.
 When the address family may is specified by any of the
 .Fl osi ,
-.Fl xns ,
 .Fl inet6 ,
 or
 .Fl inet
@@ -221,13 +220,11 @@ if the local or remote addresses change.
 .Pp
 The optional modifiers
 .Fl mpls ,
-.Fl xns ,
 .Fl osi ,
 and
 .Fl link
 specify that all subsequent addresses are in the
 .Tn MPLS ,
-.Tn XNS ,
 or
 .Tn OSI
 address families,
@@ -466,7 +463,6 @@ The next-hop gateway should be reachable through a different route.
 .Xr arp 8 ,
 .Xr IPXrouted 8 ,
 .Xr routed 8
-.\".Xr XNSrouted 8
 .Sh HISTORY
 The
 .Nm
