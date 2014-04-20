@@ -201,10 +201,8 @@ const char *
 hammer2_pfstype_to_str(uint8_t type)
 {
 	switch(type) {
-	case HAMMER2_PFSTYPE_NONE:
+	case DMSG_PFSTYPE_NONE:
 		return("NONE");
-	case HAMMER2_PFSTYPE_ADMIN:
-		return("ADMIN");
 	case HAMMER2_PFSTYPE_CACHE:
 		return("CACHE");
 	case HAMMER2_PFSTYPE_COPY:

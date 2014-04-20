@@ -384,7 +384,6 @@ void *dmsg_alloc(size_t bytes);
 void dmsg_free(void *ptr);
 const char *dmsg_uuid_to_str(uuid_t *uuid, char **strp);
 const char *dmsg_peer_type_to_str(uint8_t type);
-const char *dmsg_pfs_type_to_str(uint8_t type);
 int dmsg_connect(const char *hostname);
 
 /*

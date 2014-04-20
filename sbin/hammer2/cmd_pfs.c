@@ -61,11 +61,8 @@ cmd_pfs_list(const char *sel_path)
 			       "Label\n");
 		}
 		switch(pfs.pfs_type) {
-		case HAMMER2_PFSTYPE_NONE:
+		case DMSG_PFSTYPE_NONE:
 			printf("NONE        ");
-			break;
-		case HAMMER2_PFSTYPE_ADMIN:
-			printf("ADMIN       ");
 			break;
 		case HAMMER2_PFSTYPE_CACHE:
 			printf("CACHE       ");
@@ -147,7 +144,7 @@ cmd_pfs_create(const char *sel_path, const char *name,
 	/*
 	 * Default to MASTER
 	 */
-	if (pfs_type == HAMMER2_PFSTYPE_NONE) {
+	if (pfs_type == DMSG_PFSTYPE_NONE) {
 		pfs_type = HAMMER2_PFSTYPE_MASTER;
 	}
 

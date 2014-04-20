@@ -315,6 +315,8 @@ again:
 			TAILQ_INSERT_TAIL(&xa->tag_freeq, tag, entry);
 		}
 		TAILQ_INSERT_TAIL(&xa_queue, xa, entry);
+	} else {
+		unit = xa->unit;
 	}
 
 	/*

@@ -444,6 +444,7 @@ hammer2_volconf_start(hammer2_media_config_t *conf, const char *hostname)
 			info->fd = conf->fd;
 			info->altfd = conf->pipefd[0];
 			info->altmsg_callback = hammer2_volconf_signal;
+			info->usrmsg_callback = hammer2_usrmsg_handler;
 			info->detachme = 0;
 			conf->state = H2MC_RUNNING;
 			pthread_create(&conf->iocom_thread, NULL,
@@ -499,12 +500,17 @@ hammer2_node_handler(void **opaquep, struct dmsg_msg *msg, int op)
 {
 	struct service_node_opaque *info = *opaquep;
 
+	fprintf(stderr, "NODE HANLDER A **********************\n");
+
 	switch(op) {
 	case DMSG_NODEOP_ADD:
 		if (msg->any.lnk_span.peer_type != DMSG_PEER_BLOCK)
 			break;
+	fprintf(stderr, "NODE HANLDER B %d **********************\n",
+		msg->any.lnk_span.pfs_type);
 		if (msg->any.lnk_span.pfs_type != DMSG_PFSTYPE_SERVER)
 			break;
+	fprintf(stderr, "NODE HANLDER C **********************\n");
 		if (info == NULL) {
 			info = malloc(sizeof(*info));
 			bzero(info, sizeof(*info));
@@ -765,6 +771,7 @@ autoconn_connect_thread(void *data)
 		info->fd = fd;
 		info->altfd = ac->pipefd[0];
 		info->altmsg_callback = autoconn_disconnect_signal;
+		info->usrmsg_callback = hammer2_usrmsg_handler;
 		info->detachme = 0;
 		info->noclosealt = 1;
 		pthread_create(&ac->thread, NULL, dmsg_master_service, info);

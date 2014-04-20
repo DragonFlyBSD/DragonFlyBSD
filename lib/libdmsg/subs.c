@@ -84,35 +84,6 @@ dmsg_peer_type_to_str(uint8_t type)
 	}
 }
 
-const char *
-dmsg_pfs_type_to_str(uint8_t type)
-{
-	switch(type) {
-	case DMSG_PFSTYPE_NONE:
-		return("NONE");
-	case DMSG_PFSTYPE_ADMIN:
-		return("ADMIN");
-	case DMSG_PFSTYPE_CLIENT:
-		return("CLIENT");
-	case DMSG_PFSTYPE_CACHE:
-		return("CACHE");
-	case DMSG_PFSTYPE_COPY:
-		return("COPY");
-	case DMSG_PFSTYPE_SLAVE:
-		return("SLAVE");
-	case DMSG_PFSTYPE_SOFT_SLAVE:
-		return("SOFT_SLAVE");
-	case DMSG_PFSTYPE_SOFT_MASTER:
-		return("SOFT_MASTER");
-	case DMSG_PFSTYPE_MASTER:
-		return("MASTER");
-	case DMSG_PFSTYPE_SERVER:
-		return("SERVER");
-	default:
-		return("?PFSTYPE?");
-	}
-}
-
 int
 dmsg_connect(const char *hostname)
 {

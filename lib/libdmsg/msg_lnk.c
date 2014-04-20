@@ -1159,6 +1159,7 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		if (((1LLU << lspan->pfs_type) & lconn->pfs_mask) == 0)
 			break;
 
+#if 0
 		/*
 		 * Do not give pure clients visibility to other pure clients
 		 */
@@ -1166,6 +1167,7 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		    lspan->pfs_type == DMSG_PFSTYPE_CLIENT) {
 			break;
 		}
+#endif
 
 		/*
 		 * Connection filter, if cluster uuid is not NULL it must
@@ -1450,8 +1452,8 @@ dmsg_shell_tree(dmsg_circuit_t *circuit, char *cmdbuf __unused)
 				  dmsg_uuid_to_str(&cls->pfs_clid, &uustr),
 				  cls->cl_label);
 		RB_FOREACH(node, h2span_node_tree, &cls->tree) {
-			dmsg_circuit_printf(circuit, "    Node %s %s (%s)\n",
-				dmsg_pfs_type_to_str(node->pfs_type),
+			dmsg_circuit_printf(circuit, "    Node %02x %s (%s)\n",
+				node->pfs_type,
 				dmsg_uuid_to_str(&node->pfs_fsid, &uustr),
 				node->fs_label);
 			RB_FOREACH(slink, h2span_link_tree, &node->tree) {
