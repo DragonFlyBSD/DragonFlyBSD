@@ -116,9 +116,6 @@ show(int argc, char *argv[])
                                 af = AF_INET6;
                                 break;
 #endif
-                        case K_XNS:
-                                af = AF_NS;
-                                break;
                         case K_LINK:
                                 af = AF_LINK;
                                 break;
@@ -260,9 +257,6 @@ pr_family(int af)
 		afname = "Internet6";
 		break;
 #endif /* INET6 */
-	case AF_NS:
-		afname = "XNS";
-		break;
 	case AF_IPX:
 		afname = "IPX";
 		break;

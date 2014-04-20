@@ -143,7 +143,6 @@ looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	case AF_INET:
 	case AF_INET6:
 	case AF_IPX:
-	case AF_NS:
 		break;
 	default:
 		kprintf("looutput: af=%d unexpected\n", dst->sa_family);

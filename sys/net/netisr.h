@@ -87,7 +87,6 @@
  */
 #define NETISR_RESERVED0 0		/* cannot be used */
 #define	NETISR_IP	2		/* same as AF_INET */
-#define	NETISR_NS	6		/* same as AF_NS */
 #define	NETISR_ARP	18		/* same as AF_LINK */
 #define	NETISR_MPLS	21		/* MPLS */
 #define	NETISR_IPX	23		/* same as AF_IPX */

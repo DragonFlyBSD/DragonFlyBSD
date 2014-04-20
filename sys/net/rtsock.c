@@ -178,9 +178,6 @@ rts_attach(netmsg_t msg)
 	case AF_IPX:
 		route_cb.ipx_count++;
 		break;
-	case AF_NS:
-		route_cb.ns_count++;
-		break;
 	}
 	rp->rcb_faddr = &route_src;
 	route_cb.any_count++;
@@ -230,9 +227,6 @@ rts_detach(netmsg_t msg)
 			break;
 		case AF_IPX:
 			route_cb.ipx_count--;
-			break;
-		case AF_NS:
-			route_cb.ns_count--;
 			break;
 		}
 		route_cb.any_count--;

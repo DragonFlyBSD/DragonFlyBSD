@@ -30,8 +30,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/netbios.h,v 1.1.2.2 2002/04/22 04:24:25 bp Exp $
- * $DragonFly: src/sys/netproto/smb/netbios.h,v 1.3 2003/08/07 21:54:35 dillon Exp $
  */
+
 #ifndef _NETSMB_NETBIOS_H_
 #define	_NETSMB_NETBIOS_H_
 
@@ -45,9 +45,6 @@
 #ifndef _NETIPX_IPX_H_
 #include <netproto/ipx/ipx.h>
 #endif
-
-#define AF_NETBIOS	AF_NS		/* XXX: should go to socket.h */
-#define PF_NETBIOS	AF_NETBIOS
 
 #define	NBPROTO_TCPSSN	1		/* NETBIOS session over TCP */
 #define	NBPROTO_IPXSSN	11		/* NETBIOS over IPX */
