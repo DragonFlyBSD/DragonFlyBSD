@@ -37,7 +37,6 @@
  *
  *	@(#)assert.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/include/assert.h,v 1.6 2007/12/01 19:28:13 phk Exp $
- * $DragonFly: src/include/assert.h,v 1.4 2005/04/26 10:41:57 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -70,8 +69,14 @@
 
 #ifndef _ASSERT_H_
 #define _ASSERT_H_
+
+#if __ISO_C_VISIBLE >= 2011 && !defined(__cplusplus)
+#define	static_assert	_Static_assert
+#endif
+
 __BEGIN_DECLS
 void	__assert(const char *, const char *, int, const char *);
 void	__diagassert(const char *, int, const char *, const char *);
 __END_DECLS
+
 #endif /* !_ASSERT_H_ */
