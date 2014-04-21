@@ -85,7 +85,7 @@ static
 void
 shell_rcvmsg(dmsg_msg_t *msg)
 {
-	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
+	switch(msg->tcmd) {
 	case DMSG_LNK_ERROR:
 	case DMSG_LNK_ERROR | DMSGF_REPLY:
 		/*

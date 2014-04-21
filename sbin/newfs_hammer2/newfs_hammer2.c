@@ -78,8 +78,8 @@ static uuid_t Hammer2_FSType;	/* static filesystem type id for HAMMER2 */
 static uuid_t Hammer2_VolFSID;	/* unique filesystem id in volu header */
 static uuid_t Hammer2_SupCLID;	/* PFS cluster id in super-root inode */
 static uuid_t Hammer2_SupFSID;	/* PFS unique id in super-root inode */
-static uuid_t Hammer2_PfsCLID;	/* PFS cluster id in labeled pfs (root) */
-static uuid_t Hammer2_PfsFSID;	/* PFS unique id in labeled pfs (root) */
+static uuid_t Hammer2_PfsCLID[MAXLABELS];
+static uuid_t Hammer2_PfsFSID[MAXLABELS];
 static const char *Label[MAXLABELS];
 static hammer2_off_t BootAreaSize;
 static hammer2_off_t AuxAreaSize;
@@ -99,10 +99,10 @@ main(int ac, char **av)
 	int i;
 	int nolabels = 0;
 	char *vol_fsid;
-	char *sup_clid;
-	char *sup_fsid;
-	char *pfs_clid;
-	char *pfs_fsid;
+	char *sup_clid_name;
+	char *sup_fsid_name;
+	char *pfs_clid_name;
+	char *pfs_fsid_name;
 
 	Label[NLabels++] = "LOCAL";
 
@@ -121,8 +121,6 @@ main(int ac, char **av)
 	uuidgen(&Hammer2_VolFSID, 1);
 	uuidgen(&Hammer2_SupCLID, 1);
 	uuidgen(&Hammer2_SupFSID, 1);
-	uuidgen(&Hammer2_PfsCLID, 1);
-	uuidgen(&Hammer2_PfsFSID, 1);
 	uuid_from_string(HAMMER2_UUID_STRING, &Hammer2_FSType, &status);
 	/*uuid_name_lookup(&Hammer2_FSType, "DragonFly HAMMER2", &status);*/
 	if (status != uuid_s_ok) {
@@ -172,18 +170,6 @@ main(int ac, char **av)
 				     Hammer2Version);
 			}
 			break;
-#if 0
-		case 'R':
-			uuid_from_string(optarg, &Hammer2_SupCLID, &status);
-			if (status != uuid_s_ok)
-				errx(1, "uuid %s badly formatted", optarg);
-			break;
-		case 'I':
-			uuid_from_string(optarg, &Hammer2_PfsCLID, &status);
-			if (status != uuid_s_ok)
-				errx(1, "uuid %s badly formatted", optarg);
-			break;
-#endif
 		default:
 			usage();
 			break;
@@ -280,10 +266,8 @@ main(int ac, char **av)
 	 * We'll need to stuff this in the volume header soon.
 	 */
 	uuid_to_string(&Hammer2_VolFSID, &vol_fsid, &status);
-	uuid_to_string(&Hammer2_SupCLID, &sup_clid, &status);
-	uuid_to_string(&Hammer2_SupFSID, &sup_fsid, &status);
-	uuid_to_string(&Hammer2_PfsCLID, &pfs_clid, &status);
-	uuid_to_string(&Hammer2_PfsFSID, &pfs_fsid, &status);
+	uuid_to_string(&Hammer2_SupCLID, &sup_clid_name, &status);
+	uuid_to_string(&Hammer2_SupFSID, &sup_fsid_name, &status);
 
 	/*
 	 * Calculate the amount of reserved space.  HAMMER2_ZONE_SEG (4MB)
@@ -305,23 +289,24 @@ main(int ac, char **av)
 	close(fd);
 
 	printf("---------------------------------------------\n");
+	printf("version:          %d\n", Hammer2Version);
 	printf("total-size:       %s (%jd bytes)\n",
 	       sizetostr(total_space),
 	       (intmax_t)total_space);
-	printf("local-labels:     %s", Label[0]);
-	for (i = 1; i < NLabels; ++i)
-		printf(", %s", Label[i]);
-	printf("\n");
-	printf("version:          %d\n", Hammer2Version);
 	printf("boot-area-size:   %s\n", sizetostr(BootAreaSize));
 	printf("aux-area-size:    %s\n", sizetostr(AuxAreaSize));
 	printf("topo-reserved:	  %s\n", sizetostr(reserved_space));
 	printf("free-space:       %s\n", sizetostr(free_space));
 	printf("vol-fsid:         %s\n", vol_fsid);
-	printf("sup-clid:         %s\n", sup_clid);
-	printf("sup-fsid:         %s\n", sup_fsid);
-	printf("pfs-clid:         %s\n", pfs_clid);
-	printf("pfs-fsid:         %s\n", pfs_fsid);
+	printf("sup-clid:         %s\n", sup_clid_name);
+	printf("sup-fsid:         %s\n", sup_fsid_name);
+	for (i = 0; i < NLabels; ++i) {
+		printf("PFS \"%s\"\n", Label[i]);
+		uuid_to_string(&Hammer2_PfsCLID[i], &pfs_clid_name, &status);
+		uuid_to_string(&Hammer2_PfsFSID[i], &pfs_fsid_name, &status);
+		printf("    clid %s\n", pfs_clid_name);
+		printf("    fsid %s\n", pfs_fsid_name);
+	}
 	printf("\n");
 
 	return(0);
@@ -552,6 +537,9 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 	alloc_direct(&alloc_base, &sroot_blockref, HAMMER2_INODE_BYTES);
 
 	for (i = 0; i < NLabels; ++i) {
+		uuidgen(&Hammer2_PfsCLID[i], 1);
+		uuidgen(&Hammer2_PfsFSID[i], 1);
+
 		alloc_direct(&alloc_base, &root_blockref[i],
 			     HAMMER2_INODE_BYTES);
 		assert(((sroot_blockref.data_off ^ root_blockref[i].data_off) &
@@ -588,8 +576,8 @@ format_hammer2(int fd, hammer2_off_t total_space, hammer2_off_t free_space)
 			rawip->comp_algo = HAMMER2_COMP_NEWFS_DEFAULT;
 		}
 
-		rawip->pfs_clid = Hammer2_PfsCLID;
-		rawip->pfs_fsid = Hammer2_PfsCLID;
+		rawip->pfs_clid = Hammer2_PfsCLID[i];
+		rawip->pfs_fsid = Hammer2_PfsFSID[i];
 		rawip->pfs_type = HAMMER2_PFSTYPE_MASTER;
 		rawip->op_flags |= HAMMER2_OPFLAG_PFSROOT;
 		rawip->pfs_inum = 16;	/* first allocatable inode number */

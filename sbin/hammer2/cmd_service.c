@@ -300,7 +300,7 @@ hammer2_usrmsg_handler(dmsg_msg_t *msg, int unmanaged)
 		return;
 	}
 
-	switch(msg->any.head.cmd & DMSGF_TRANSMASK) {
+	switch(msg->tcmd) {
 	case DMSG_LNK_CONN | DMSGF_CREATE | DMSGF_DELETE:
 	case DMSG_LNK_CONN | DMSGF_DELETE:
 	case DMSG_LNK_ERROR | DMSGF_DELETE:
@@ -500,17 +500,12 @@ hammer2_node_handler(void **opaquep, struct dmsg_msg *msg, int op)
 {
 	struct service_node_opaque *info = *opaquep;
 
-	fprintf(stderr, "NODE HANLDER A **********************\n");
-
 	switch(op) {
 	case DMSG_NODEOP_ADD:
 		if (msg->any.lnk_span.peer_type != DMSG_PEER_BLOCK)
 			break;
-	fprintf(stderr, "NODE HANLDER B %d **********************\n",
-		msg->any.lnk_span.pfs_type);
 		if (msg->any.lnk_span.pfs_type != DMSG_PFSTYPE_SERVER)
 			break;
-	fprintf(stderr, "NODE HANLDER C **********************\n");
 		if (info == NULL) {
 			info = malloc(sizeof(*info));
 			bzero(info, sizeof(*info));

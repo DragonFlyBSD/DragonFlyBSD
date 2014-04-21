@@ -170,15 +170,25 @@ hammer2_ioctl_recluster(hammer2_inode_t *ip, void *data)
 {
 	hammer2_ioc_recluster_t *recl = data;
 	struct file *fp;
+	hammer2_cluster_t *cluster;
+	int error;
 
 	fp = holdfp(curproc->p_fd, recl->fd, -1);
 	if (fp) {
-		kprintf("reconnect to cluster\n");
-		hammer2_cluster_reconnect(ip->pmp, fp);
-		return 0;
+		kprintf("reconnect to cluster: ");
+		cluster = &ip->pmp->iroot->cluster;
+		if (cluster->nchains != 1 || cluster->focus == NULL) {
+			kprintf("not a local device mount\n");
+			error = EINVAL;
+		} else {
+			hammer2_cluster_reconnect(cluster->focus->hmp, fp);
+			kprintf("ok\n");
+			error = 0;
+		}
 	} else {
-		return EINVAL;
+		error = EINVAL;
 	}
+	return error;
 }
 
 /*
@@ -243,7 +253,7 @@ hammer2_ioctl_remote_add(hammer2_inode_t *ip, void *data)
 	hammer2_voldata_modify(hmp);
 	remote->copy1.copyid = copyid;
 	hmp->voldata.copyinfo[copyid] = remote->copy1;
-	hammer2_volconf_update(pmp, copyid);
+	hammer2_volconf_update(hmp, copyid);
 failed:
 	hammer2_voldata_unlock(hmp);
 	return (error);
@@ -282,7 +292,7 @@ hammer2_ioctl_remote_del(hammer2_inode_t *ip, void *data)
 	}
 	hammer2_voldata_modify(hmp);
 	hmp->voldata.copyinfo[copyid].copyid = 0;
-	hammer2_volconf_update(pmp, copyid);
+	hammer2_volconf_update(hmp, copyid);
 failed:
 	hammer2_voldata_unlock(hmp);
 	return (error);
@@ -305,7 +315,7 @@ hammer2_ioctl_remote_rep(hammer2_inode_t *ip, void *data)
 
 	hammer2_voldata_lock(hmp);
 	hammer2_voldata_modify(hmp);
-	/*hammer2_volconf_update(pmp, copyid);*/
+	/*hammer2_volconf_update(hmp, copyid);*/
 	hammer2_voldata_unlock(hmp);
 
 	return(0);

@@ -593,6 +593,7 @@ struct hammer2_mount {
 	struct malloc_type *mchain;
 	int		nipstacks;
 	int		maxipstacks;
+	kdmsg_iocom_t	iocom;		/* volume-level dmsg interface */
 	struct spinlock	io_spin;	/* iotree access */
 	struct hammer2_io_tree iotree;
 	int		iofree_count;
@@ -638,7 +639,6 @@ struct hammer2_pfsmount {
 	int			ronly;		/* read-only mount */
 	struct malloc_type	*minode;
 	struct malloc_type	*mmsg;
-	kdmsg_iocom_t		iocom;
 	struct spinlock		inum_spin;	/* inumber lookup */
 	struct hammer2_inode_tree inum_tree;	/* (not applicable to spmp) */
 	hammer2_tid_t		alloc_tid;
@@ -975,8 +975,9 @@ int hammer2_msg_adhoc_input(kdmsg_msg_t *msg);
  * hammer2_vfsops.c
  */
 void hammer2_clusterctl_wakeup(kdmsg_iocom_t *iocom);
-void hammer2_volconf_update(hammer2_pfsmount_t *pmp, int index);
-void hammer2_cluster_reconnect(hammer2_pfsmount_t *pmp, struct file *fp);
+void hammer2_volconf_update(hammer2_mount_t *hmp, int index);
+void hammer2_update_spans(hammer2_mount_t *hmp);
+void hammer2_cluster_reconnect(hammer2_mount_t *hmp, struct file *fp);
 void hammer2_dump_chain(hammer2_chain_t *chain, int tab, int *countp, char pfx);
 void hammer2_bioq_sync(hammer2_pfsmount_t *pmp);
 int hammer2_vfs_sync(struct mount *mp, int waitflags);
