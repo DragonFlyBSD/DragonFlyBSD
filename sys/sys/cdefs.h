@@ -428,11 +428,33 @@
  * Keywords added in C11.
  */
 
+#if !__GNUC_PREREQ__(2, 95)
+#define	__alignof(x)	__offsetof(struct { char __a; x __b; }, __b)
+#endif
+
+/*
+ * Keywords added in C11.
+ */
+
 #if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
 
-#define	_Noreturn		__dead2
+#if !__has_extension(c_alignas)
+#if (defined(__cplusplus) && __cplusplus >= 201103L) || \
+    __has_extension(cxx_alignas)
+#define	_Alignas(x)		alignas(x)
+#else
+/* XXX: Only emulates _Alignas(constant-expression); not _Alignas(type-name). */
+#define	_Alignas(x)		__aligned(x)
+#endif
+#endif
 
-#endif /* __STDC_VERSION__ || __STDC_VERSION__ < 201112L */
+#if defined(__cplusplus) && __cplusplus >= 201103L
+#define	_Alignof(x)		alignof(x)
+#else
+#define	_Alignof(x)		__alignof(x)
+#endif
+
+#define	_Noreturn		__dead2
 
 #if !__has_extension(c_static_assert)
 #if (defined(__cplusplus) && __cplusplus >= 201103L) || \
@@ -447,6 +469,8 @@
 #endif
 #endif
 #endif
+
+#endif /* __STDC_VERSION__ || __STDC_VERSION__ < 201112L */
 
 #if defined(_KERNEL) && !defined(CTASSERT)
 #define	CTASSERT(x)		_Static_assert(x, \
