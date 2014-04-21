@@ -65,6 +65,17 @@
 #define PGRP_HASH(pid)	(pid & ALLPROC_HMASK)
 #define SESS_HASH(pid)	(pid & ALLPROC_HMASK)
 
+/*
+ * pid_doms[] management, used to control how quickly a PID can be recycled.
+ * Must be a multiple of ALLPROC_HSIZE for the proc_makepid() inner loops.
+ *
+ * WARNING! PIDDOM_DELAY should not be defined > 20 or so unless you change
+ *	    the array from int8_t's to int16_t's.
+ */
+#define PIDDOM_COUNT	10	/* 10 pids per domain - reduce array size */
+#define PIDDOM_DELAY	10	/* min 10 seconds after exit before reuse */
+#define PIDSEL_DOMAINS	(PID_MAX / PIDDOM_COUNT / ALLPROC_HSIZE * ALLPROC_HSIZE)
+
 /* Used by libkvm */
 int allproc_hsize = ALLPROC_HSIZE;
 
@@ -84,6 +95,14 @@ SYSCTL_INT(_security, OID_AUTO, ps_showallprocs, CTLFLAG_RW,
 SYSCTL_INT(_security, OID_AUTO, ps_showallthreads, CTLFLAG_RW,
     &ps_showallthreads, 0,
     "Unprivileged processes can see kernel threads");
+static u_int pid_domain_skips;
+SYSCTL_UINT(_kern, OID_AUTO, pid_domain_skips, CTLFLAG_RW,
+    &pid_domain_skips, 0,
+    "Number of pid_doms[] skipped");
+static u_int pid_inner_skips;
+SYSCTL_UINT(_kern, OID_AUTO, pid_inner_skips, CTLFLAG_RW,
+    &pid_inner_skips, 0,
+    "Number of pid_doms[] skipped");
 
 static void orphanpg(struct pgrp *pg);
 static void proc_makepid(struct proc *p, int random_offset);
@@ -95,6 +114,18 @@ static struct lwkt_token proc_tokens[ALLPROC_HSIZE];
 static struct proclist allprocs[ALLPROC_HSIZE];	/* locked by proc_tokens */
 static struct pgrplist allpgrps[ALLPROC_HSIZE];	/* locked by proc_tokens */
 static struct sesslist allsessn[ALLPROC_HSIZE];	/* locked by proc_tokens */
+
+/*
+ * We try our best to avoid recycling a PID too quickly.  We do this by
+ * storing (uint8_t)time_second in the related pid domain on-reap and then
+ * using that to skip-over the domain on-allocate.
+ *
+ * This array has to be fairly large to support a high fork/exec rate.
+ * We want ~100,000 entries or so to support a 10-second reuse latency
+ * at 10,000 execs/second, worst case.  Best-case multiply by PIDDOM_COUNT
+ * (approximately 100,000 execs/second).
+ */
+static uint8_t pid_doms[PIDSEL_DOMAINS];	/* ~100,000 entries */
 
 /*
  * Random component to nextpid generation.  We mix in a random factor to make
@@ -142,6 +173,17 @@ procinit(void)
 {
 	u_long i;
 
+	/*
+	 * Avoid unnecessary stalls due to pid_doms[] values all being
+	 * the same.  Make sure that the allocation of pid 1 and pid 2
+	 * succeeds.
+	 */
+	for (i = 0; i < PIDSEL_DOMAINS; ++i)
+		pid_doms[i] = (int8_t)i - (int8_t)(PIDDOM_DELAY + 1);
+
+	/*
+	 * Other misc init.
+	 */
 	for (i = 0; i < ALLPROC_HSIZE; ++i) {
 		LIST_INIT(&allprocs[i]);
 		LIST_INIT(&allsessn[i]);
@@ -536,6 +578,7 @@ pgrel(struct pgrp *pgrp)
 	 * Successful 1->0 transition, pghash_spin is held.
 	 */
 	LIST_REMOVE(pgrp, pg_list);
+	pid_doms[pgrp->pg_id % PIDSEL_DOMAINS] = (uint8_t)time_second;
 
 	/*
 	 * Reset any sigio structures pointing to us as a result of
@@ -782,6 +825,7 @@ sess_rele(struct session *sess)
 	 * Successful 1->0 transition and tty_token is held.
 	 */
 	LIST_REMOVE(sess, s_list);
+	pid_doms[sess->s_sid % PIDSEL_DOMAINS] = (uint8_t)time_second;
 
 	if (sess->s_ttyp && sess->s_ttyp->t_session) {
 #ifdef TTY_DO_FULL_CLOSE
@@ -914,34 +958,70 @@ proc_add_allproc(struct proc *p)
  * the new process can be added to the allproc list.
  *
  * p_pid is assigned and the process is added to the allproc hash table
+ *
+ * WARNING! We need to allocate PIDs sequentially during early boot.
+ *	    In particular, init needs to have a pid of 1.
  */
 static
 void
 proc_makepid(struct proc *p, int random_offset)
 {
-	static pid_t nextpid;	/* heuristic, allowed to race */
+	static pid_t nextpid = 1;	/* heuristic, allowed to race */
 	struct pgrp *pg;
 	struct proc *ps;
 	struct session *sess;
 	pid_t base;
+	int8_t delta8;
+	int retries;
 	int n;
+
+	/*
+	 * Select the next pid base candidate.
+	 *
+	 * Check cyclement, do not allow a pid < 100.
+	 */
+	retries = 0;
+retry:
+	base = atomic_fetchadd_int(&nextpid, 1) + random_offset;
+	if (base <= 0 || base >= PID_MAX) {
+		base = base % PID_MAX;
+		if (base < 0)
+			base = 100;
+		if (base < 100)
+			base += 100;
+		nextpid = base;		/* reset (SMP race ok) */
+	}
+
+	/*
+	 * Do not allow a base pid to be selected from a domain that has
+	 * recently seen a pid/pgid/sessid reap.  Sleep a little if we looped
+	 * through all available domains.
+	 *
+	 * WARNING: We want the early pids to be allocated linearly,
+	 *	    particularly pid 1 and pid 2.
+	 */
+	if (++retries >= PIDSEL_DOMAINS)
+		tsleep(&nextpid, 0, "makepid", 1);
+	if (base >= 100) {
+		delta8 = (int8_t)time_second -
+			 (int8_t)pid_doms[base % PIDSEL_DOMAINS];
+		if (delta8 >= 0 && delta8 <= PIDDOM_DELAY) {
+			++pid_domain_skips;
+			goto retry;
+		}
+	}
 
 	/*
 	 * Calculate a hash index and find an unused process id within
 	 * the table, looping if we cannot find one.
+	 *
+	 * The inner loop increments by ALLPROC_HSIZE which keeps the
+	 * PID at the same pid_doms[] index as well as the same hash index.
 	 */
-	if (random_offset)
-		atomic_add_int(&nextpid, random_offset);
-retry:
-	base = atomic_fetchadd_int(&nextpid, 1) + 1;
-	if (base >= PID_MAX) {
-		base = base % PID_MAX;
-		if (base < 100)
-			base += 100;
-	}
 	n = ALLPROC_HASH(base);
 	lwkt_gettoken(&proc_tokens[n]);
 
+restart1:
 	LIST_FOREACH(ps, &allprocs[n], p_list) {
 		if (ps->p_pid == base) {
 			base += ALLPROC_HSIZE;
@@ -949,6 +1029,8 @@ retry:
 				lwkt_reltoken(&proc_tokens[n]);
 				goto retry;
 			}
+			++pid_inner_skips;
+			goto restart1;
 		}
 	}
 	LIST_FOREACH(pg, &allpgrps[n], pg_list) {
@@ -958,6 +1040,8 @@ retry:
 				lwkt_reltoken(&proc_tokens[n]);
 				goto retry;
 			}
+			++pid_inner_skips;
+			goto restart1;
 		}
 	}
 	LIST_FOREACH(sess, &allsessn[n], s_list) {
@@ -967,6 +1051,8 @@ retry:
 				lwkt_reltoken(&proc_tokens[n]);
 				goto retry;
 			}
+			++pid_inner_skips;
+			goto restart1;
 		}
 	}
 
@@ -1025,6 +1111,7 @@ proc_remove_zombie(struct proc *p)
 	LIST_REMOVE(p, p_list);		/* from remove master list */
 	LIST_REMOVE(p, p_sibling);	/* and from sibling list */
 	p->p_pptr = NULL;
+	pid_doms[p->p_pid % PIDSEL_DOMAINS] = (uint8_t)time_second;
 	lwkt_reltoken(&proc_tokens[n]);
 }
 

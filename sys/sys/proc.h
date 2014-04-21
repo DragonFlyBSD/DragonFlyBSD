@@ -434,11 +434,11 @@ _only_lwp_in_proc(struct proc *p, const char *caller)
 #endif
 
 /*
- * We use process IDs <= PID_MAX; PID_MAX + 1 must also fit in a pid_t,
- * as it is used to represent "no process group".
+ * We use process IDs <= PID_MAX.  NO_PID must also fit in a pid_t and
+ * is used to represent "no process group".
  */
-#define	PID_MAX		99999
-#define	NO_PID		100000
+#define	PID_MAX		999999
+#define	NO_PID		0x7FFFFFFF
 
 #define SESS_LEADER(p)	((p)->p_session->s_leader == (p))
 
