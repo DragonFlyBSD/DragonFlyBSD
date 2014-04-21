@@ -356,9 +356,7 @@ dmsg_msg_lnk_signal(dmsg_iocom_t *iocom __unused)
 void
 dmsg_msg_lnk(dmsg_msg_t *msg)
 {
-	uint32_t icmd = msg->state ? msg->state->icmd : msg->any.head.cmd;
-
-	switch(icmd & DMSGF_BASECMDMASK) {
+	switch(msg->tcmd & DMSGF_BASECMDMASK) {
 	case DMSG_LNK_CONN:
 		dmsg_lnk_conn(msg);
 		break;
@@ -1159,7 +1157,6 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		if (((1LLU << lspan->pfs_type) & lconn->pfs_mask) == 0)
 			break;
 
-#if 0
 		/*
 		 * Do not give pure clients visibility to other pure clients
 		 */
@@ -1167,7 +1164,6 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		    lspan->pfs_type == DMSG_PFSTYPE_CLIENT) {
 			break;
 		}
-#endif
 
 		/*
 		 * Connection filter, if cluster uuid is not NULL it must

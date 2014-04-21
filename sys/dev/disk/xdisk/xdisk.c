@@ -351,9 +351,10 @@ again:
 	ksnprintf(devname, sizeof(devname), "xa%d", unit);
 	kdmsg_iocom_init(&xa->iocom, xa,
 			 KDMSG_IOCOMF_AUTOCONN |
-			 KDMSG_IOCOMF_AUTOSPAN |
-			 KDMSG_IOCOMF_AUTOCIRC |
-			 KDMSG_IOCOMF_AUTOFORGE,
+			 KDMSG_IOCOMF_AUTORXSPAN |
+			 KDMSG_IOCOMF_AUTOTXSPAN |
+			 KDMSG_IOCOMF_AUTORXCIRC |
+			 KDMSG_IOCOMF_AUTOTXCIRC,
 			 M_XDISK, xa_rcvdmsg);
 	xa->iocom.exit_func = xa_exit;
 

@@ -212,6 +212,7 @@ struct dmsg_msg {
 	size_t		hdr_size;
 	size_t		aux_size;
 	char		*aux_data;
+	uint32_t	tcmd;			/* easy-switch cmd */
 	dmsg_any_t 	any;			/* must be last element */
 };
 

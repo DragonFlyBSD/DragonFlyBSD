@@ -164,9 +164,9 @@ kdmsg_iocom_reconnect(kdmsg_iocom_t *iocom, struct file *fp,
  * Caller sets up iocom->auto_lnk_conn and iocom->auto_lnk_span, then calls
  * this function to handle the state machine for LNK_CONN and LNK_SPAN.
  *
- * NOTE: Caller typically also sets the IOCOMF_AUTOCONN, IOCOMF_AUTOSPAN,
- *	 and IOCOMF_AUTOCIRC in the kdmsg_iocom_init() call.  Clients
- *	 typically set IOCOMF_AUTOFORGE to automatically forged circuits
+ * NOTE: Caller typically also sets the IOCOMF_AUTOCONN, IOCOMF_AUTORXSPAN,
+ *	 and IOCOMF_AUTORXCIRC in the kdmsg_iocom_init() call.  Clients
+ *	 typically set IOCOMF_AUTOTXCIRC to automatically forged circuits
  *	 for received SPANs.
  */
 static int kdmsg_lnk_conn_reply(kdmsg_state_t *state, kdmsg_msg_t *msg);
@@ -196,7 +196,14 @@ kdmsg_lnk_conn_reply(kdmsg_state_t *state, kdmsg_msg_t *msg)
 	kdmsg_iocom_t *iocom = state->iocom;
 	kdmsg_msg_t *rmsg;
 
-	if (msg->any.head.cmd & DMSGF_CREATE) {
+	/*
+	 * Upon receipt of the LNK_CONN acknowledgement initiate an
+	 * automatic SPAN if we were asked to.  Used by e.g. xdisk, but
+	 * not used by HAMMER2 which must manage more than one transmitted
+	 * SPAN.
+	 */
+	if ((msg->any.head.cmd & DMSGF_CREATE) &&
+	    (iocom->flags & KDMSG_IOCOMF_AUTOTXSPAN)) {
 		rmsg = kdmsg_msg_alloc(iocom, NULL,
 				       DMSG_LNK_SPAN | DMSGF_CREATE,
 				       kdmsg_lnk_span_reply, NULL);
@@ -805,8 +812,7 @@ kdmsg_state_msgrx(kdmsg_msg_t *msg)
 	 */
 	if ((msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE |
 				  DMSGF_ABORT)) == 0) {
-		lockmgr(&iocom->msglk, LK_RELEASE);
-		return(0);
+		goto done;
 	}
 
 	/*
@@ -948,7 +954,32 @@ kdmsg_state_msgrx(kdmsg_msg_t *msg)
 		error = 0;
 		break;
 	}
+
+	/*
+	 * Calculate the easy-switch() transactional command.  Represents
+	 * the outer-transaction command for any transaction-create or
+	 * transaction-delete, and the inner message command for any
+	 * non-transaction or inside-transaction command.  tcmd will be
+	 * set to 0 for any messaging error condition.
+	 *
+	 * The two can be told apart because outer-transaction commands
+	 * always have a DMSGF_CREATE and/or DMSGF_DELETE flag.
+	 */
+done:
 	lockmgr(&iocom->msglk, LK_RELEASE);
+
+	if (msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE)) {
+		if (state) {
+			msg->tcmd = (msg->state->icmd & DMSGF_BASECMDMASK) |
+				    (msg->any.head.cmd & (DMSGF_CREATE |
+							  DMSGF_DELETE |
+							  DMSGF_REPLY));
+		} else {
+			msg->tcmd = 0;
+		}
+	} else {
+		msg->tcmd = msg->any.head.cmd & DMSGF_CMDSWMASK;
+	}
 	return (error);
 }
 
@@ -966,14 +997,20 @@ kdmsg_autorxmsg(kdmsg_msg_t *msg)
 	uint32_t cmd;
 
 	/*
-	 * Process a combination of the transaction command and the message
-	 * flags.  For the purposes of this routine, the message command is
-	 * only relevant when it initiates a transaction (where it is
-	 * recorded in icmd).
+	 * Main switch processes transaction create/delete sequences only.
+	 * Use icmd (DELETEs use DMSG_LNK_ERROR
+	 *
+	 * NOTE: If processing in-transaction messages you generally want
+	 *	 an inner switch on msg->any.head.cmd.
 	 */
-	cmd = (msg->state ? msg->state->icmd : msg->any.head.cmd) &
-	      DMSGF_BASECMDMASK;
-	cmd |= msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY);
+	if (msg->state) {
+		cmd = (msg->state->icmd & DMSGF_BASECMDMASK) |
+		      (msg->any.head.cmd & (DMSGF_CREATE |
+					    DMSGF_DELETE |
+					    DMSGF_REPLY));
+	} else {
+		cmd = 0;
+	}
 
 	switch(cmd) {
 	case DMSG_LNK_CONN | DMSGF_CREATE:
@@ -1015,16 +1052,16 @@ kdmsg_autorxmsg(kdmsg_msg_t *msg)
 		 * Received LNK_SPAN transaction.  We do not have to respond
 		 * but we must leave the transaction open.
 		 *
-		 * If AUTOCIRC is set automatically initiate a virtual circuit
-		 * to the received span.  This will attach a kdmsg_circuit
-		 * to the SPAN state.  The circuit is lost when the span is
-		 * lost.
+		 * If AUTOTXCIRC is set automatically initiate a virtual
+		 * circuit to the received span.  This will attach a
+		 * kdmsg_circuit to the SPAN state.  The circuit is lost
+		 * when the span is lost.
 		 *
 		 * Handle shim after acknowledging the SPAN.
 		 */
-		if (iocom->flags & KDMSG_IOCOMF_AUTOSPAN) {
+		if (iocom->flags & KDMSG_IOCOMF_AUTORXSPAN) {
 			if ((msg->any.head.cmd & DMSGF_DELETE) == 0) {
-				if (iocom->flags & KDMSG_IOCOMF_AUTOFORGE)
+				if (iocom->flags & KDMSG_IOCOMF_AUTOTXCIRC)
 					kdmsg_autocirc(msg);
 				if (iocom->auto_callback)
 					iocom->auto_callback(msg);
@@ -1045,10 +1082,10 @@ kdmsg_autorxmsg(kdmsg_msg_t *msg)
 		 *
 		 * Handle shim before closing the SPAN transaction.
 		 */
-		if (iocom->flags & KDMSG_IOCOMF_AUTOSPAN) {
+		if (iocom->flags & KDMSG_IOCOMF_AUTORXSPAN) {
 			if (iocom->auto_callback)
 				iocom->auto_callback(msg);
-			if (iocom->flags & KDMSG_IOCOMF_AUTOFORGE)
+			if (iocom->flags & KDMSG_IOCOMF_AUTOTXCIRC)
 				kdmsg_autocirc(msg);
 			kdmsg_msg_reply(msg, 0);
 		} else {
@@ -1063,7 +1100,7 @@ kdmsg_autorxmsg(kdmsg_msg_t *msg)
 		 * remote can start issuing commands to us over the circuit
 		 * even before we respond.
 		 */
-		if (iocom->flags & KDMSG_IOCOMF_AUTOCIRC) {
+		if (iocom->flags & KDMSG_IOCOMF_AUTORXCIRC) {
 			if ((msg->any.head.cmd & DMSGF_DELETE) == 0) {
 				circ = kmalloc(sizeof(*circ), iocom->mmsg,
 					       M_WAITOK | M_ZERO);
@@ -1099,7 +1136,7 @@ kdmsg_autorxmsg(kdmsg_msg_t *msg)
 		}
 		/* fall through */
 	case DMSG_LNK_CIRC | DMSGF_DELETE:
-		if (iocom->flags & KDMSG_IOCOMF_AUTOCIRC) {
+		if (iocom->flags & KDMSG_IOCOMF_AUTORXCIRC) {
 			circ = msg->state->any.circ;
 			if (circ == NULL)
 				break;
@@ -1143,8 +1180,8 @@ kdmsg_autorxmsg(kdmsg_msg_t *msg)
 
 /*
  * Handle automatic forging of virtual circuits based on received SPANs.
- * (AUTOFORGE).  Note that other code handles tracking received circuit
- * transactions (AUTOCIRC).
+ * (AUTOTXCIRC).  Note that other code handles tracking received circuit
+ * transactions (AUTORXCIRC).
  *
  * We can ignore non-transactions here.  Use trans->icmd to test the
  * transactional command (once past the CREATE the individual message
@@ -1776,7 +1813,7 @@ kdmsg_msg_write(kdmsg_msg_t *msg)
 	}
 
 	/*
-	 * With AUTOCIRC and AUTOFORGE it is possible for the circuit to
+	 * With AUTORXCIRC and AUTOTXCIRC it is possible for the circuit to
 	 * get ripped out in the rxthread while some other thread is
 	 * holding a ref on it inbetween allocating and sending a dmsg.
 	 */

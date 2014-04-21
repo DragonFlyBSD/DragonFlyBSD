@@ -192,7 +192,7 @@ master_link_rxmsg(dmsg_msg_t *msg)
 void
 dmsg_msg_dbg(dmsg_msg_t *msg)
 {
-	switch(msg->any.head.cmd & DMSGF_CMDSWMASK) {
+	switch(msg->tcmd & DMSGF_CMDSWMASK) {
 	case DMSG_DBG_SHELL:
 		/*
 		 * This is a command which we must process.

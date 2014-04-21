@@ -736,7 +736,7 @@ typedef union dmsg_any dmsg_any_t;
  */
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
-struct hammer2_pfsmount;
+struct hammer2_mount;
 struct kdmsg_iocom;
 struct kdmsg_state;
 struct kdmsg_msg;
@@ -794,7 +794,7 @@ struct kdmsg_state {
 	int (*func)(struct kdmsg_state *, struct kdmsg_msg *);
 	union {
 		void *any;
-		struct hammer2_pfsmount *pmp;
+		struct hammer2_mount *hmp;
 		struct kdmsg_circuit *circ;
 	} any;
 };
@@ -812,7 +812,8 @@ struct kdmsg_msg {
 	size_t		hdr_size;
 	size_t		aux_size;
 	char		*aux_data;
-	int		flags;
+	uint32_t	flags;
+	uint32_t	tcmd;			/* outer transaction cmd */
 	dmsg_any_t	any;			/* variable sized */
 };
 
@@ -862,16 +863,18 @@ struct kdmsg_iocom {
 
 typedef struct kdmsg_iocom	kdmsg_iocom_t;
 
-#define KDMSG_IOCOMF_AUTOCONN	0x0001	/* handle received LNK_CONN */
-#define KDMSG_IOCOMF_AUTOSPAN	0x0002	/* handle received LNK_SPAN */
-#define KDMSG_IOCOMF_AUTOCIRC	0x0004	/* handle received LNK_CIRC */
-#define KDMSG_IOCOMF_AUTOFORGE	0x0008	/* auto initiate LNK_CIRC */
-#define KDMSG_IOCOMF_EXITNOACC	0x0010	/* cannot accept writes */
+#define KDMSG_IOCOMF_AUTOCONN	0x0001	/* handle rx/tx LNK_CONN */
+#define KDMSG_IOCOMF_AUTORXSPAN	0x0002	/* handle rx LNK_SPAN */
+#define KDMSG_IOCOMF_AUTORXCIRC	0x0004	/* handle rx LNK_CIRC */
+#define KDMSG_IOCOMF_AUTOTXSPAN	0x0008	/* handle tx LNK CIRC */
+#define KDMSG_IOCOMF_AUTOTXCIRC	0x0010	/* handle tx LNK CIRC */
+#define KDMSG_IOCOMF_EXITNOACC	0x8000	/* cannot accept writes */
 
 #define KDMSG_IOCOMF_AUTOANY	(KDMSG_IOCOMF_AUTOCONN |	\
-				 KDMSG_IOCOMF_AUTOSPAN |	\
-				 KDMSG_IOCOMF_AUTOCIRC |	\
-				 KDMSG_IOCOMF_AUTOFORGE)
+				 KDMSG_IOCOMF_AUTORXSPAN |	\
+				 KDMSG_IOCOMF_AUTORXCIRC |	\
+				 KDMSG_IOCOMF_AUTOTXSPAN |	\
+				 KDMSG_IOCOMF_AUTOTXCIRC)
 
 uint32_t kdmsg_icrc32(const void *buf, size_t size);
 uint32_t kdmsg_icrc32c(const void *buf, size_t size, uint32_t crc);

@@ -1888,7 +1888,7 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 	 */
 	if ((msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE |
 				  DMSGF_ABORT)) == 0) {
-		return(0);
+		goto done;
 	}
 
 	/*
@@ -2045,6 +2045,31 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		error = 0;
 		break;
 	}
+
+	/*
+	 * Calculate the easy-switch() transactional command.  Represents
+	 * the outer-transaction command for any transaction-create or
+	 * transaction-delete, and the inner message command for any
+	 * non-transaction or inside-transaction command.  tcmd will be
+	 * set to 0 for any messaging error condition.
+	 *
+	 * The two can be told apart because outer-transaction commands
+	 * always have a DMSGF_CREATE and/or DMSGF_DELETE flag.
+	 */
+done:
+	if (msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE)) {
+		if (state) {
+			msg->tcmd = (msg->state->icmd & DMSGF_BASECMDMASK) |
+				    (msg->any.head.cmd & (DMSGF_CREATE |
+							  DMSGF_DELETE |
+							  DMSGF_REPLY));
+		} else {
+			msg->tcmd = 0;
+		}
+	} else {
+		msg->tcmd = msg->any.head.cmd & DMSGF_CMDSWMASK;
+	}
+
 	return (error);
 }
 

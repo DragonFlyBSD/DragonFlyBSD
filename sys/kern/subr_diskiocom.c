@@ -52,16 +52,12 @@
 #include <sys/lock.h>
 #include <sys/stat.h>
 #include <sys/uuid.h>
-
-#include <vfs/hammer2/hammer2_disk.h>
 #include <sys/dmsg.h>
 
 #include <sys/buf2.h>
 #include <sys/mplock2.h>
 #include <sys/msgport2.h>
 #include <sys/thread2.h>
-
-#include <vfs/hammer2/hammer2_disk.h>
 
 struct dios_open {
 	int	openrd;
@@ -90,8 +86,10 @@ disk_iocom_init(struct disk *dp)
 {
 	kdmsg_iocom_init(&dp->d_iocom, dp,
 			 KDMSG_IOCOMF_AUTOCONN |
-			 KDMSG_IOCOMF_AUTOSPAN |
-			 KDMSG_IOCOMF_AUTOCIRC,
+			 KDMSG_IOCOMF_AUTORXSPAN |
+			 KDMSG_IOCOMF_AUTOTXSPAN |
+			 KDMSG_IOCOMF_AUTORXCIRC |
+			 KDMSG_IOCOMF_AUTOTXCIRC,	/* XXX needed? */
 			 M_DMSG_DISK, disk_rcvdmsg);
 }
 
