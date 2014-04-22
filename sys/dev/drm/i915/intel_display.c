@@ -4704,9 +4704,6 @@ static void intel_crtc_update_cursor(struct drm_crtc *crtc,
 		else
 			i9xx_update_cursor(crtc, base);
 	}
-
-	if (visible)
-		intel_mark_busy(dev, to_intel_framebuffer(crtc->fb)->obj);
 }
 
 static int intel_crtc_cursor_set(struct drm_crtc *crtc,
@@ -5239,46 +5236,6 @@ struct drm_display_mode *intel_crtc_mode_get(struct drm_device *dev,
 	return mode;
 }
 
-#define GPU_IDLE_TIMEOUT (500 /* ms */ * 1000 / hz)
-
-/* When this timer fires, we've been idle for awhile */
-static void intel_gpu_idle_timer(void *arg)
-{
-	struct drm_device *dev = arg;
-	drm_i915_private_t *dev_priv = dev->dev_private;
-
-	if (!list_empty(&dev_priv->mm.active_list)) {
-		/* Still processing requests, so just re-arm the timer. */
-		callout_reset(&dev_priv->idle_callout, GPU_IDLE_TIMEOUT,
-		    i915_hangcheck_elapsed, dev);
-		return;
-	}
-
-	dev_priv->busy = false;
-	taskqueue_enqueue(dev_priv->tq, &dev_priv->idle_task);
-}
-
-#define CRTC_IDLE_TIMEOUT (1000 /* ms */ * 1000 / hz)
-
-static void intel_crtc_idle_timer(void *arg)
-{
-	struct intel_crtc *intel_crtc = arg;
-	struct drm_crtc *crtc = &intel_crtc->base;
-	drm_i915_private_t *dev_priv = crtc->dev->dev_private;
-	struct intel_framebuffer *intel_fb;
-
-	intel_fb = to_intel_framebuffer(crtc->fb);
-	if (intel_fb && intel_fb->obj->active) {
-		/* The framebuffer is still being accessed by the GPU. */
-		callout_reset(&intel_crtc->idle_callout, CRTC_IDLE_TIMEOUT,
-		    i915_hangcheck_elapsed, crtc->dev);
-		return;
-	}
-
-	intel_crtc->busy = false;
-	taskqueue_enqueue(dev_priv->tq, &dev_priv->idle_task);
-}
-
 static void intel_increase_pllclock(struct drm_crtc *crtc)
 {
 	struct drm_device *dev = crtc->dev;
@@ -5308,10 +5265,6 @@ static void intel_increase_pllclock(struct drm_crtc *crtc)
 		if (dpll & DISPLAY_RATE_SELECT_FPA1)
 			DRM_DEBUG_DRIVER("failed to upclock LVDS!\n");
 	}
-
-	/* Schedule downclock */
-	callout_reset(&intel_crtc->idle_callout, CRTC_IDLE_TIMEOUT,
-	    intel_crtc_idle_timer, intel_crtc);
 }
 
 static void intel_decrease_pllclock(struct drm_crtc *crtc)
@@ -5383,51 +5336,9 @@ static void intel_idle_update(void *arg, int pending)
 	DRM_UNLOCK(dev);
 }
 
-/**
- * intel_mark_busy - mark the GPU and possibly the display busy
- * @dev: drm device
- * @obj: object we're operating on
- *
- * Callers can use this function to indicate that the GPU is busy processing
- * commands.  If @obj matches one of the CRTC objects (i.e. it's a scanout
- * buffer), we'll also mark the display as busy, so we know to increase its
- * clock frequency.
- */
-void intel_mark_busy(struct drm_device *dev, struct drm_i915_gem_object *obj)
+void intel_mark_busy(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
-	struct drm_crtc *crtc = NULL;
-	struct intel_framebuffer *intel_fb;
-	struct intel_crtc *intel_crtc;
-
-	if (!drm_core_check_feature(dev, DRIVER_MODESET))
-		return;
-
-	if (!dev_priv->busy)
-		dev_priv->busy = true;
-	else
-		callout_reset(&dev_priv->idle_callout, GPU_IDLE_TIMEOUT,
-		    intel_gpu_idle_timer, dev);
-
-	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
-		if (!crtc->fb)
-			continue;
-
-		intel_crtc = to_intel_crtc(crtc);
-		intel_fb = to_intel_framebuffer(crtc->fb);
-		if (intel_fb->obj == obj) {
-			if (!intel_crtc->busy) {
-				/* Non-busy -> busy, upclock */
-				intel_increase_pllclock(crtc);
-				intel_crtc->busy = true;
-			} else {
-				/* Busy -> busy, put off timer */
-				callout_reset(&intel_crtc->idle_callout, 
-				    CRTC_IDLE_TIMEOUT, intel_crtc_idle_timer,
-				    intel_crtc);
-			}
-		}
-	}
+	i915_update_gfx_val(dev->dev_private);
 }
 
 static void intel_crtc_destroy(struct drm_crtc *crtc)

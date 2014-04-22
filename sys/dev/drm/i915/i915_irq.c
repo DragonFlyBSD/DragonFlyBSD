@@ -379,8 +379,8 @@ static void notify_ring(struct drm_device *dev,
 
 	if (i915_enable_hangcheck) {
 		dev_priv->hangcheck_count = 0;
-		callout_reset(&dev_priv->hangcheck_timer,
-		    DRM_I915_HANGCHECK_PERIOD, i915_hangcheck_elapsed, dev);
+		mod_timer(&dev_priv->hangcheck_timer,
+			  round_jiffies_up(jiffies + DRM_I915_HANGCHECK_JIFFIES));
 	}
 }
 
@@ -1412,10 +1412,9 @@ static bool kick_ring(struct intel_ring_buffer *ring)
  * ACTHD. If ACTHD hasn't changed by the time the hangcheck timer elapses
  * again, we assume the chip is wedged and try to fix it.
  */
-void
-i915_hangcheck_elapsed(void *context)
+void i915_hangcheck_elapsed(unsigned long data)
 {
-	struct drm_device *dev = (struct drm_device *)context;
+	struct drm_device *dev = (struct drm_device *)data;
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	uint32_t acthd, instdone, instdone1, acthd_bsd, acthd_blt;
 	bool err = false;
@@ -1487,8 +1486,8 @@ i915_hangcheck_elapsed(void *context)
 
 repeat:
 	/* Reset timer case chip hangs without another request being added */
-	callout_reset(&dev_priv->hangcheck_timer, DRM_I915_HANGCHECK_PERIOD,
-	    i915_hangcheck_elapsed, dev);
+	mod_timer(&dev_priv->hangcheck_timer,
+		  round_jiffies_up(jiffies + DRM_I915_HANGCHECK_JIFFIES));
 }
 
 /* drm_dma.h hooks

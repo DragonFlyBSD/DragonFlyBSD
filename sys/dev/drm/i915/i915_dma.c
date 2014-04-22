@@ -1285,9 +1285,8 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 
 	intel_opregion_init(dev);
 
-	callout_init_mp(&dev_priv->hangcheck_timer);
-	callout_reset(&dev_priv->hangcheck_timer, DRM_I915_HANGCHECK_PERIOD,
-	    i915_hangcheck_elapsed, dev);
+	setup_timer(&dev_priv->hangcheck_timer, i915_hangcheck_elapsed,
+		    (unsigned long) dev);
 
 	if (IS_GEN5(dev)) {
 		lockmgr(&mchdev_lock, LK_EXCLUSIVE);
@@ -1330,7 +1329,7 @@ i915_driver_unload_int(struct drm_device *dev, bool locked)
 	}
 
 	/* Free error state after interrupts are fully disabled. */
-	callout_stop(&dev_priv->hangcheck_timer);
+	del_timer_sync(&dev_priv->hangcheck_timer);
 
 	i915_destroy_error_state(dev);
 

@@ -1031,7 +1031,7 @@ i915_gem_execbuffer_move_to_active(struct list_head *objects,
 			obj->pending_gpu_write = true;
 			list_move_tail(&obj->gpu_write_list,
 				       &ring->gpu_write_list);
-			intel_mark_busy(ring->dev, obj);
+			intel_mark_busy(ring->dev);
 		}
 	}
 }

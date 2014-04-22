@@ -452,6 +452,8 @@ typedef struct drm_i915_private {
 
 	/* For hangcheck timer */
 #define DRM_I915_HANGCHECK_PERIOD ((1500 /* in ms */ * hz) / 1000)
+#define DRM_I915_HANGCHECK_JIFFIES msecs_to_jiffies(DRM_I915_HANGCHECK_PERIOD)
+	struct timer_list hangcheck_timer;
 	int hangcheck_count;
 	uint32_t last_acthd;
 	uint32_t last_acthd_bsd;
@@ -864,7 +866,6 @@ typedef struct drm_i915_private {
 	struct lock error_completion_lock;
 	struct drm_i915_error_state *first_error;
 	struct lock error_lock;
-	struct callout hangcheck_timer;
 
 	unsigned long last_gpu_reset;
 
@@ -1167,7 +1168,7 @@ extern int i915_vblank_pipe_get(struct drm_device *dev, void *data,
 extern int i915_vblank_swap(struct drm_device *dev, void *data,
 			    struct drm_file *file_priv);
 void intel_enable_asle(struct drm_device *dev);
-void i915_hangcheck_elapsed(void *context);
+void i915_hangcheck_elapsed(unsigned long data);
 void i915_handle_error(struct drm_device *dev, bool wedged);
 
 void i915_enable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask);
