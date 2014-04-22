@@ -33,6 +33,7 @@
 
 #include <linux/export.h>
 #include <linux/mutex.h>
+#include <linux/timer.h>
 #include <drm/drmP.h>
 
 MALLOC_DEFINE(DRM_MEM_VBLANK, "drm_vblank", "DRM VBLANK Handling Data");
@@ -298,7 +299,7 @@ static void vblank_disable_and_save(struct drm_device *dev, int crtc)
 	lockmgr(&dev->vblank_time_lock, LK_RELEASE);
 }
 
-static void vblank_disable_fn(void * arg)
+static void vblank_disable_fn(unsigned long arg)
 {
 	struct drm_device *dev = (struct drm_device *)arg;
 	int i;
@@ -323,9 +324,9 @@ void drm_vblank_cleanup(struct drm_device *dev)
 	if (dev->num_crtcs == 0)
 		return;
 
-	callout_stop(&dev->vblank_disable_callout);
+	del_timer_sync(&dev->vblank_disable_timer);
 
-	vblank_disable_fn(dev);
+	vblank_disable_fn((unsigned long)dev);
 
 	drm_free(dev->_vblank_count, DRM_MEM_VBLANK);
 	drm_free(dev->vblank_refcount, DRM_MEM_VBLANK);
@@ -337,18 +338,20 @@ void drm_vblank_cleanup(struct drm_device *dev)
 
 	dev->num_crtcs = 0;
 }
+EXPORT_SYMBOL(drm_vblank_cleanup);
 
 int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 {
 	int i;
 
-	callout_init_mp(&dev->vblank_disable_callout);
-#if 0
-	mtx_init(&dev->vbl_lock, "drmvbl", NULL, MTX_DEF);
-#endif
+	setup_timer(&dev->vblank_disable_timer, vblank_disable_fn,
+		    (unsigned long)dev);
 	lockinit(&dev->vblank_time_lock, "drmvtl", 0, LK_CANRECURSE);
 
 	dev->num_crtcs = num_crtcs;
+
+	dev->vbl_queue = kmalloc(sizeof(wait_queue_head_t) * num_crtcs,
+	    DRM_MEM_VBLANK, M_WAITOK);
 
 	dev->_vblank_count = kmalloc(sizeof(atomic_t) * num_crtcs,
 	    DRM_MEM_VBLANK, M_WAITOK);
@@ -374,6 +377,7 @@ int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 
 	/* Zero per-crtc vblank stuff */
 	for (i = 0; i < num_crtcs; i++) {
+		init_waitqueue_head(&dev->vbl_queue[i]);
 		atomic_set(&dev->_vblank_count[i], 0);
 		atomic_set(&dev->vblank_refcount[i], 0);
 	}
@@ -381,6 +385,7 @@ int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 	dev->vblank_disable_allowed = 0;
 	return 0;
 }
+EXPORT_SYMBOL(drm_vblank_init);
 
 void
 drm_calc_timestamping_constants(struct drm_crtc *crtc)
@@ -866,16 +871,15 @@ int drm_vblank_get(struct drm_device *dev, int crtc)
  */
 void drm_vblank_put(struct drm_device *dev, int crtc)
 {
-	KASSERT(atomic_read(&dev->vblank_refcount[crtc]) != 0,
-	    ("Too many drm_vblank_put for crtc %d", crtc));
+	BUG_ON(atomic_read(&dev->vblank_refcount[crtc]) == 0);
 
 	/* Last user schedules interrupt disable */
 	if (atomic_dec_and_test(&dev->vblank_refcount[crtc]) &&
 	    (drm_vblank_offdelay > 0))
-		callout_reset(&dev->vblank_disable_callout,
-		    (drm_vblank_offdelay * DRM_HZ) / 1000,
-		    vblank_disable_fn, dev);
+		mod_timer(&dev->vblank_disable_timer,
+			  jiffies + ((drm_vblank_offdelay * DRM_HZ)/1000));
 }
+EXPORT_SYMBOL(drm_vblank_put);
 
 void drm_vblank_off(struct drm_device *dev, int crtc)
 {

@@ -98,6 +98,7 @@
 #include <linux/kernel.h>
 #include <linux/kref.h>
 #include <linux/list.h>
+#include <linux/timer.h>
 #include <linux/types.h>
 #include <linux/wait.h>
 
@@ -1004,8 +1005,15 @@ struct drm_device {
 
 	void		  *drm_ttm_bdev;
 
+	/*
+	 * At load time, disabling the vblank interrupt won't be allowed since
+	 * old clients may not call the modeset ioctl and therefore misbehave.
+	 * Once the modeset ioctl *has* been called though, we can safely
+	 * disable them when unused.
+	 */
 	int vblank_disable_allowed;
 
+	wait_queue_head_t *vbl_queue;   /**< VBLANK wait queue */
 	atomic_t *_vblank_count;        /**< number of VBLANK interrupts (driver must alloc the right number of counters) */
 	struct timeval *_vblank_time;   /**< timestamp of current vblank_count (drivers must alloc right number of fields) */
 	struct lock vblank_time_lock;   /**< Protects vblank count and time updates during vblank enable/disable */
@@ -1017,10 +1025,13 @@ struct drm_device {
 					   once per disable */
 	int *vblank_inmodeset;          /* Display driver is setting mode */
 	u32 *last_vblank_wait;		/* Last vblank seqno waited per CRTC */
-	struct callout vblank_disable_callout;
+	struct timer_list vblank_disable_timer;
 
 	u32 max_vblank_count;           /**< size of vblank counter register */
 
+	/**
+	 * List of events
+	 */
 	struct list_head vblank_event_list;
 	struct lock	event_lock;
 
