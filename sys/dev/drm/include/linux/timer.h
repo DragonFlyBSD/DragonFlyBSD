@@ -2,6 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
+ * Copyright (c) 2014 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,12 +34,14 @@
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/callout.h>
+#include <sys/thread.h>
 
 struct timer_list {
 	struct callout	timer_callout;
 	void		(*function)(unsigned long);
 	unsigned long	data;
 	unsigned long	expires;
+	struct lwkt_token timer_token;
 };
 
 static inline void
@@ -54,34 +57,55 @@ _timer_fn(void *context)
 do {									\
 	(timer)->function = (func);					\
 	(timer)->data = (dat);						\
-	callout_init(&(timer)->timer_callout, CALLOUT_MPSAFE);		\
+	lwkt_token_init(&(timer)->timer_token, "timer token");	\
+	callout_init_mp(&(timer)->timer_callout);			\
 } while (0)
 
 #define	init_timer(timer)						\
 do {									\
 	(timer)->function = NULL;					\
 	(timer)->data = 0;						\
-	callout_init(&(timer)->timer_callout, CALLOUT_MPSAFE);		\
+	lwkt_token_init(&(timer)->timer_token, "timer token");	\
+	callout_init_mp(&(timer)->timer_callout);			\
 } while (0)
 
 #define	mod_timer(timer, exp)						\
 do {									\
 	(timer)->expires = (exp);					\
+	lwkt_gettoken(&(timer)->timer_token);				\
 	callout_reset(&(timer)->timer_callout, (exp) - jiffies,		\
 	    _timer_fn, (timer));					\
+	lwkt_reltoken(&(timer)->timer_token);				\
 } while (0)
 
 #define	add_timer(timer)						\
+	lwkt_gettoken(&(timer)->timer_token);				\
 	callout_reset(&(timer)->timer_callout,				\
-	    (timer)->expires - jiffies, _timer_fn, (timer))
+	    (timer)->expires - jiffies, _timer_fn, (timer));		\
+	lwkt_reltoken(&(timer)->timer_token);
 
-#define	del_timer(timer)	callout_stop(&(timer)->timer_callout)
+static inline void
+del_timer(struct timer_list *timer)
+{
+	lwkt_gettoken(&(timer)->timer_token);
+	callout_stop(&(timer)->timer_callout);
+	lwkt_reltoken(&(timer)->timer_token);
+
+	lwkt_token_uninit(&(timer)->timer_token);
+}
+
 #define	del_timer_sync(timer)	callout_drain(&(timer)->timer_callout)
 
 #define	timer_pending(timer)	callout_pending(&(timer)->timer_callout)
 
 static inline unsigned long
 round_jiffies(unsigned long j)
+{
+	return roundup(j, hz);
+}
+
+static inline unsigned long
+round_jiffies_up(unsigned long j)
 {
 	return roundup(j, hz);
 }
