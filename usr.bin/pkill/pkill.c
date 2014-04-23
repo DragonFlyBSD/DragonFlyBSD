@@ -40,6 +40,7 @@
 #include <sys/stat.h>
 #include <sys/fcntl.h>
 #include <sys/time.h>
+#include <sys/user.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -64,7 +65,7 @@
 #define	STATUS_ERROR	3
 
 #define	MIN_PID	5
-#define	MAX_PID	99999
+#define	MAX_PID	PID_MAX
 
 /* Ignore system-processes (if '-S' flag is not specified) and myself. */
 #define	PSKIP(kp)	((kp)->kp_pid == mypid ||			\

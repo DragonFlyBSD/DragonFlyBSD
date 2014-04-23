@@ -59,6 +59,7 @@
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
+#include <sys/user.h>
 #include <sys/wait.h>
 
 #include <assert.h>
@@ -125,7 +126,7 @@
 #define	CE_NODUMP	0x0200	/* Set 'nodump' on newly created log file. */
 
 #define	MIN_PID         5	/* Don't touch pids lower than this */
-#define	MAX_PID		99999	/* was lower, see /usr/include/sys/proc.h */
+#define	MAX_PID		PID_MAX	/* was lower, see /usr/include/sys/proc.h */
 
 #define	kbytes(size)  (((size) + 1023) >> 10)
 
