@@ -37,13 +37,39 @@
 
 #define SHOW_TAB	2
 
-static void shell_rcvmsg(dmsg_msg_t *msg);
+static void shell_msghandler(dmsg_msg_t *msg, int unmanaged);
 static void shell_ttymsg(dmsg_iocom_t *iocom);
 
 /************************************************************************
  *				    SHELL				*
  ************************************************************************/
 
+int
+cmd_shell(const char *hostname)
+{
+	dmsg_master_service_info_t *info;
+	pthread_t thread;
+	int fd;
+
+	fd = dmsg_connect(hostname);
+	if (fd < 0)
+		return 1;
+
+	info = malloc(sizeof(*info));
+	bzero(info, sizeof(*info));
+	info->fd = fd;
+	info->detachme = 0;
+	info->usrmsg_callback = shell_msghandler;
+	info->altmsg_callback = shell_ttymsg;
+	info->node_handler = NULL;
+	info->label = strdup("debug");
+	pthread_create(&thread, NULL, dmsg_master_service, info);
+	pthread_join(thread, NULL);
+
+	return 0;
+}
+
+#if 0
 int
 cmd_shell(const char *hostname)
 {
@@ -59,7 +85,8 @@ cmd_shell(const char *hostname)
 		return 1;
 
 	/*
-	 * Run the session.  The remote end transmits our prompt.
+	 * Initialize the session and transmit an empty DMSG_DBG_SHELL
+	 * to cause the remote end to generate a prompt.
 	 */
 	dmsg_iocom_init(&iocom, fd, 0,
 			NULL,
@@ -69,23 +96,29 @@ cmd_shell(const char *hostname)
 	fcntl(0, F_SETFL, O_NONBLOCK);
 	printf("debug: connected\n");
 
-	msg = dmsg_msg_alloc(&iocom.circuit0, 0, DMSG_DBG_SHELL, NULL, NULL);
+	msg = dmsg_msg_alloc(&iocom.state0, 0, DMSG_DBG_SHELL, NULL, NULL);
 	dmsg_msg_write(msg);
 	dmsg_iocom_core(&iocom);
 	fprintf(stderr, "debug: disconnected\n");
 	close(fd);
 	return 0;
 }
+#endif
 
 /*
+ * Debug session front-end
+ *
  * Callback from dmsg_iocom_core() when messages might be present
  * on the socket.
  */
 static
 void
-shell_rcvmsg(dmsg_msg_t *msg)
+shell_msghandler(dmsg_msg_t *msg, int unmanaged)
 {
+	dmsg_msg_t *nmsg;
+
 	switch(msg->tcmd) {
+#if 0
 	case DMSG_LNK_ERROR:
 	case DMSG_LNK_ERROR | DMSGF_REPLY:
 		/*
@@ -103,12 +136,14 @@ shell_rcvmsg(dmsg_msg_t *msg)
 	case DMSG_LNK_ERROR | DMSGF_DELETE:
 		/* ignore termination of LNK_CONN */
 		break;
+#endif
 	case DMSG_DBG_SHELL:
 		/*
 		 * We send the commands, not accept them.
 		 * (one-way message, not transactional)
 		 */
-		dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+		if (unmanaged)
+			dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
 		/*
@@ -120,43 +155,73 @@ shell_rcvmsg(dmsg_msg_t *msg)
 			write(1, msg->aux_data, strlen(msg->aux_data));
 		}
 		break;
+#if 1
 	case DMSG_LNK_CONN | DMSGF_CREATE:
-		fprintf(stderr, "Debug Shell is ignoring received LNK_CONN\n");
+		fprintf(stderr, "Debug Shell received LNK_CONN\n");
+		nmsg = dmsg_msg_alloc(&msg->state->iocom->state0, 0,
+				      DMSG_DBG_SHELL,
+				      NULL, NULL);
+		dmsg_msg_write(nmsg);
 		dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		break;
 	case DMSG_LNK_CONN | DMSGF_DELETE:
 		break;
+#endif
 	default:
 		/*
 		 * Ignore any unknown messages, Terminate any unknown
 		 * transactions with an error.
 		 */
 		fprintf(stderr, "Unknown message: %s\n", dmsg_msg_str(msg));
-		if (msg->any.head.cmd & DMSGF_CREATE)
-			dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
-		if (msg->any.head.cmd & DMSGF_DELETE)
-			dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+		if (unmanaged) {
+			if (msg->any.head.cmd & DMSGF_CREATE)
+				dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+			if (msg->any.head.cmd & DMSGF_DELETE)
+				dmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
+		}
 		break;
 	}
 }
 
+/*
+ * Debug session front-end
+ */
 static
 void
 shell_ttymsg(dmsg_iocom_t *iocom)
 {
+	dmsg_state_t *pstate;
 	dmsg_msg_t *msg;
 	char buf[256];
+	char *cmd;
 	size_t len;
 
 	if (fgets(buf, sizeof(buf), stdin) != NULL) {
-		len = strlen(buf);
-		if (len && buf[len - 1] == '\n')
-			buf[--len] = 0;
-		++len;
-		msg = dmsg_msg_alloc(&iocom->circuit0, len, DMSG_DBG_SHELL,
-				     NULL, NULL);
-		bcopy(buf, msg->aux_data, len);
-		dmsg_msg_write(msg);
+		if (buf[0] == '@') {
+			pstate = dmsg_findspan(strtok(buf + 1, " \t\n"));
+			cmd = strtok(NULL, "\n");
+		} else {
+			pstate = &iocom->state0;
+			cmd = strtok(buf, "\n");
+		}
+		if (cmd && pstate) {
+			len = strlen(cmd) + 1;
+			msg = dmsg_msg_alloc(pstate, len, DMSG_DBG_SHELL,
+					     NULL, NULL);
+			bcopy(cmd, msg->aux_data, len);
+			dmsg_msg_write(msg);
+		} else if (cmd) {
+			fprintf(stderr, "@msgid not found\n");
+		} else {
+			/*
+			 * This should cause the remote end to generate
+			 * a debug> prompt (and thus shows that there is
+			 * connectivity).
+			 */
+			msg = dmsg_msg_alloc(pstate, 0, DMSG_DBG_SHELL,
+					     NULL, NULL);
+			dmsg_msg_write(msg);
+		}
 	} else if (feof(stdin)) {
 		/*
 		 * Set EOF flag without setting any error code for normal
@@ -168,13 +233,15 @@ shell_ttymsg(dmsg_iocom_t *iocom)
 	}
 }
 
-static void shell_span(dmsg_circuit_t *circuit, char *cmdbuf);
-static void shell_circ(dmsg_circuit_t *circuit, char *cmdbuf);
+/*
+ * Debug session back-end (on remote side)
+ */
+static void shell_span(dmsg_msg_t *msg, char *cmdbuf);
 
 void
 hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged)
 {
-	dmsg_circuit_t *circuit;
+	dmsg_iocom_t *iocom = msg->state->iocom;
 	char *cmdbuf;
 	char *cmdp;
 	uint32_t cmd;
@@ -197,31 +264,30 @@ hammer2_shell_parse(dmsg_msg_t *msg, int unmanaged)
 	/*
 	 * Debug shell command
 	 */
-	circuit = msg->circuit;
 	cmdbuf = msg->aux_data;
 	cmdp = strsep(&cmdbuf, " \t");
 
 	if (cmdp == NULL || *cmdp == 0) {
 		;
 	} else if (strcmp(cmdp, "span") == 0) {
-		shell_span(circuit, cmdbuf);
-	} else if (strcmp(cmdp, "circ") == 0) {
-		shell_circ(circuit, cmdbuf);
+		shell_span(msg, cmdbuf);
 	} else if (strcmp(cmdp, "tree") == 0) {
-		dmsg_shell_tree(circuit, cmdbuf); /* dump spanning tree */
+		dmsg_shell_tree(iocom, cmdbuf); /* dump spanning tree */
 	} else if (strcmp(cmdp, "help") == 0 || strcmp(cmdp, "?") == 0) {
-		dmsg_circuit_printf(circuit, "help            Command help\n");
-		dmsg_circuit_printf(circuit, "span <host>     Span to target host\n");
-		dmsg_circuit_printf(circuit, "circ <msgid>    Create VC to msgid of rx SPAN\n");
-		dmsg_circuit_printf(circuit, "tree            Dump spanning tree\n");
+		dmsg_printf(iocom, "help            Command help\n");
+		dmsg_printf(iocom, "span <host>     Span to target host\n");
+		dmsg_printf(iocom, "tree            Dump spanning tree\n");
+		dmsg_printf(iocom, "@span <cmd>     Issue via circuit\n");
 	} else {
-		dmsg_circuit_printf(circuit, "Unrecognized command: %s\n", cmdp);
+		dmsg_printf(iocom, "Unrecognized command: %s\n", cmdp);
 	}
+	dmsg_printf(iocom, "debug> ");
 }
 
 static void
-shell_span(dmsg_circuit_t *circuit, char *cmdbuf)
+shell_span(dmsg_msg_t *msg, char *cmdbuf)
 {
+	dmsg_iocom_t *iocom = msg->state->iocom;
 	dmsg_master_service_info_t *info;
 	const char *hostname = strsep(&cmdbuf, " \t");
 	pthread_t thread;
@@ -240,11 +306,9 @@ shell_span(dmsg_circuit_t *circuit, char *cmdbuf)
 	 * Start master service
 	 */
 	if (fd < 0) {
-		dmsg_circuit_printf(circuit,
-				    "Connection to %s failed\n",
-				    hostname);
+		dmsg_printf(iocom, "Connection to %s failed\n", hostname);
 	} else {
-		dmsg_circuit_printf(circuit, "Connected to %s\n", hostname);
+		dmsg_printf(iocom, "Connected to %s\n", hostname);
 
 		info = malloc(sizeof(*info));
 		bzero(info, sizeof(*info));
@@ -255,46 +319,6 @@ shell_span(dmsg_circuit_t *circuit, char *cmdbuf)
 
 		pthread_create(&thread, NULL, dmsg_master_service, info);
 		/*pthread_join(thread, &res);*/
-	}
-}
-
-static void shell_circ_reply(dmsg_msg_t *msg);
-
-static void
-shell_circ(dmsg_circuit_t *circuit, char *cmdbuf)
-{
-	uint64_t msgid = strtoull(cmdbuf, NULL, 16);
-	dmsg_state_t *state;
-	dmsg_msg_t *msg;
-
-	if (dmsg_debug_findspan(msgid, &state) == 0) {
-		dmsg_circuit_printf(circuit, "Found state %p\n", state);
-
-		dmsg_circuit_printf(circuit, "Establishing CIRC\n");
-		msg = dmsg_msg_alloc(&state->iocom->circuit0, 0,
-				     DMSG_LNK_CIRC | DMSGF_CREATE,
-				     shell_circ_reply, circuit);
-		msg->any.lnk_circ.target = state->msgid;
-		dmsg_msg_write(msg);
-	} else {
-		dmsg_circuit_printf(circuit,
-				    "Unable to locate %016jx\n",
-				    (intmax_t)msgid);
-	}
-}
-
-static void
-shell_circ_reply(dmsg_msg_t *msg)
-{
-	dmsg_circuit_t *circ = msg->state->any.circ;
-
-	if (msg->any.head.cmd & DMSGF_DELETE) {
-		dmsg_circuit_printf(circ, "rxmsg DELETE error %d\n",
-				    msg->any.head.error);
-		msg->state->any.circ = NULL;
-	} else {
-		dmsg_circuit_printf(circ, "rxmsg result error %d\n",
-				    msg->any.head.error);
 	}
 }
 

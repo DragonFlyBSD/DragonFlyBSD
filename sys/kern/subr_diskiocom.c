@@ -87,9 +87,7 @@ disk_iocom_init(struct disk *dp)
 	kdmsg_iocom_init(&dp->d_iocom, dp,
 			 KDMSG_IOCOMF_AUTOCONN |
 			 KDMSG_IOCOMF_AUTORXSPAN |
-			 KDMSG_IOCOMF_AUTOTXSPAN |
-			 KDMSG_IOCOMF_AUTORXCIRC |
-			 KDMSG_IOCOMF_AUTOTXCIRC,	/* XXX needed? */
+			 KDMSG_IOCOMF_AUTOTXSPAN,
 			 M_DMSG_DISK, disk_rcvdmsg);
 }
 
@@ -177,7 +175,7 @@ disk_iocom_reconnect(struct disk *dp, struct file *fp)
 int
 disk_rcvdmsg(kdmsg_msg_t *msg)
 {
-	struct disk *dp = msg->iocom->handle;
+	struct disk *dp = msg->state->iocom->handle;
 
 	/*
 	 * Handle debug messages (these might not be in transactions)
@@ -204,7 +202,7 @@ disk_rcvdmsg(kdmsg_msg_t *msg)
 	 *	  actual message command within the transaction may be
 	 *	  different (if streaming within a transaction).
 	 */
-	if (msg->state == NULL) {
+	if (msg->state == &msg->state->iocom->state0) {
 		kdmsg_msg_reply(msg, DMSG_ERR_NOSUPP);
 		return(0);
 	}
@@ -614,7 +612,7 @@ diskiodone(struct bio *bio)
 	 * Allocate a basic or extended reply.  Be careful not to populate
 	 * extended header fields unless we allocated an extended reply.
 	 */
-	rmsg = kdmsg_msg_alloc_state(state, cmd, NULL, 0);
+	rmsg = kdmsg_msg_alloc(state, cmd, NULL, 0);
 	if (data) {
 		rmsg->aux_data = kmalloc(bytes, state->iocom->mmsg, M_INTWAIT);
 		rmsg->aux_size = bytes;

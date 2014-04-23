@@ -108,7 +108,7 @@ master_auth_signal(dmsg_iocom_t *iocom)
 	 *
 	 * XXX put additional authentication states here?
 	 */
-	msg = dmsg_msg_alloc(&iocom->circuit0, 0,
+	msg = dmsg_msg_alloc(&iocom->state0, 0,
 			     DMSG_LNK_CONN | DMSGF_CREATE,
 			     master_auth_conn_rx, NULL);
 	msg->any.lnk_conn.peer_mask = (uint64_t)-1;
@@ -152,6 +152,7 @@ void
 master_link_rxmsg(dmsg_msg_t *msg)
 {
 	dmsg_state_t *state;
+	dmsg_iocom_t *iocom;
 	uint32_t cmd;
 
 	/*
@@ -164,10 +165,10 @@ master_link_rxmsg(dmsg_msg_t *msg)
 	 * might have REPLY set.
 	 */
 	state = msg->state;
-	cmd = state ? state->icmd : msg->any.head.cmd;
+	iocom = state->iocom;
+	cmd = (state != &iocom->state0) ? state->icmd : msg->any.head.cmd;
 
-	if (state && state->func) {
-		assert(state->func != NULL);
+	if (state != &iocom->state0 && state->func) {
 		state->func(msg);
 	} else {
 		switch(cmd & DMSGF_PROTOS) {
@@ -178,7 +179,7 @@ master_link_rxmsg(dmsg_msg_t *msg)
 			dmsg_msg_dbg(msg);
 			break;
 		default:
-			msg->iocom->usrmsg_callback(msg, 1);
+			iocom->usrmsg_callback(msg, 1);
 			break;
 		}
 	}
@@ -192,6 +193,8 @@ master_link_rxmsg(dmsg_msg_t *msg)
 void
 dmsg_msg_dbg(dmsg_msg_t *msg)
 {
+	dmsg_iocom_t *iocom = msg->state->iocom;
+
 	switch(msg->tcmd & DMSGF_CMDSWMASK) {
 	case DMSG_DBG_SHELL:
 		/*
@@ -200,8 +203,7 @@ dmsg_msg_dbg(dmsg_msg_t *msg)
 		 */
 		if (msg->aux_data)
 			msg->aux_data[msg->aux_size - 1] = 0;
-		msg->iocom->usrmsg_callback(msg, 0);
-		dmsg_msg_reply(msg, 0);	/* XXX send prompt instead */
+		iocom->usrmsg_callback(msg, 0);
 		break;
 	case DMSG_DBG_SHELL | DMSGF_REPLY:
 		/*
@@ -214,7 +216,7 @@ dmsg_msg_dbg(dmsg_msg_t *msg)
 			write(2, msg->aux_data, strlen(msg->aux_data));
 		break;
 	default:
-		msg->iocom->usrmsg_callback(msg, 1);
+		iocom->usrmsg_callback(msg, 1);
 		break;
 	}
 }
@@ -224,11 +226,11 @@ dmsg_msg_dbg(dmsg_msg_t *msg)
  * not modified and stays intact.  We use a one-way message with REPLY set
  * to distinguish between a debug command and debug terminal output.
  *
- * To prevent loops circuit_printf() can filter the message (cmd) related
- * to the circuit_printf().  We filter out DBG messages.
+ * To prevent loops dmsg_printf() can filter the message (cmd) related
+ * to the dmsg_printf().  We filter out DBG messages.
  */
 void
-dmsg_circuit_printf(dmsg_circuit_t *circuit, const char *ctl, ...)
+dmsg_printf(dmsg_iocom_t *iocom, const char *ctl, ...)
 {
 	dmsg_msg_t *rmsg;
 	va_list va;
@@ -240,7 +242,7 @@ dmsg_circuit_printf(dmsg_circuit_t *circuit, const char *ctl, ...)
 	va_end(va);
 	len = strlen(buf) + 1;
 
-	rmsg = dmsg_msg_alloc(circuit, len,
+	rmsg = dmsg_msg_alloc(&iocom->state0, len,
 			      DMSG_DBG_SHELL | DMSGF_REPLY,
 			      NULL, NULL);
 	bcopy(buf, rmsg->aux_data, len);

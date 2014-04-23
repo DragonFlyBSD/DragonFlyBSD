@@ -124,31 +124,16 @@ typedef struct dmsg_handshake dmsg_handshake_t;
  * by a connection.
  */
 struct dmsg_iocom;
-struct dmsg_circuit;
 struct dmsg_state;
 struct dmsg_msg;
 
 TAILQ_HEAD(dmsg_state_queue, dmsg_state);
 TAILQ_HEAD(dmsg_msg_queue, dmsg_msg);
 RB_HEAD(dmsg_state_tree, dmsg_state);
-RB_HEAD(dmsg_circuit_tree, dmsg_circuit);
 
 struct h2span_link;
 struct h2span_relay;
 struct h2span_conn;
-
-struct dmsg_circuit {
-	RB_ENTRY(dmsg_circuit)	rbnode;
-	uint64_t		msgid;
-	struct dmsg_iocom	*iocom;
-	struct dmsg_state_tree	staterd_tree;	/* active transactions */
-	struct dmsg_state_tree	statewr_tree;	/* active transactions */
-	struct dmsg_circuit	*peer;		/* (if circuit relay) */
-	struct dmsg_state	*state;		/* open VC transaction state */
-	struct dmsg_state	*span_state;	/* span, relay or link */
-	int			is_relay;	/* span is h2span_relay */
-	int			refs;
-};
 
 /*
  * This represents a media, managed by LNK_CONN connection state
@@ -172,23 +157,23 @@ typedef struct dmsg_media dmsg_media_t;
  */
 struct dmsg_state {
 	RB_ENTRY(dmsg_state) rbnode;		/* indexed by msgid */
+	TAILQ_HEAD(, dmsg_state) subq;		/* active stacked states */
+	TAILQ_ENTRY(dmsg_state) entry;		/* on parent subq */
 	struct dmsg_iocom *iocom;
-	struct dmsg_circuit *circuit;		/* associated circuit */
+	struct dmsg_state *parent;		/* transaction stacking */
 	uint32_t	icmd;			/* command creating state */
 	uint32_t	txcmd;			/* mostly for CMDF flags */
 	uint32_t	rxcmd;			/* mostly for CMDF flags */
-	uint64_t	msgid;			/* {spanid,msgid} uniq */
+	uint64_t	msgid;
 	int		flags;
 	int		error;
 	int		refs;			/* prevent destruction */
-	struct dmsg_msg *msg;			/* msg creating orig state */
 	void (*func)(struct dmsg_msg *);
 	union {
 		void *any;
 		struct h2span_link *link;
 		struct h2span_conn *conn;
 		struct h2span_relay *relay;
-		struct dmsg_circuit *circ;
 	} any;
 	dmsg_media_t	*media;
 };
@@ -196,18 +181,18 @@ struct dmsg_state {
 #define DMSG_STATE_INSERTED	0x0001
 #define DMSG_STATE_DYNAMIC	0x0002
 #define DMSG_STATE_NODEID	0x0004		/* manages a node id */
+#define DMSG_STATE_ROUTED	0x0008		/* message is routed */
+#define DMSG_STATE_OPPOSITE	0x0010		/* initiated by other end */
 
 /*
  * This is the core in-memory representation of a message structure.
- * The iocom represents the incoming or outgoing iocom.  Various state
- * pointers are calculated based on the message's raw source and target
- * fields, and will ref the underlying state.  Message headers are embedded
- * while auxillary data is separately allocated.
+ * state is the local representation of the transactional state and
+ * will point to &iocom->state0 for non-transactional messages.
+ *
+ * Message headers are embedded while auxillary data is separately allocated.
  */
 struct dmsg_msg {
 	TAILQ_ENTRY(dmsg_msg) qentry;
-	struct dmsg_iocom *iocom;		/* incoming/outgoing iocom */
-	struct dmsg_circuit *circuit;		/* associated circuit */
 	struct dmsg_state *state;		/* message state */
 	size_t		hdr_size;
 	size_t		aux_size;
@@ -216,15 +201,12 @@ struct dmsg_msg {
 	dmsg_any_t 	any;			/* must be last element */
 };
 
-typedef struct dmsg_circuit dmsg_circuit_t;
 typedef struct dmsg_state dmsg_state_t;
 typedef struct dmsg_msg dmsg_msg_t;
 typedef struct dmsg_msg_queue dmsg_msg_queue_t;
 
 int dmsg_state_cmp(dmsg_state_t *state1, dmsg_state_t *state2);
 RB_PROTOTYPE(dmsg_state_tree, dmsg_state, rbnode, dmsg_state_cmp);
-int dmsg_circuit_cmp(dmsg_circuit_t *circuit1, dmsg_circuit_t *circuit2);
-RB_PROTOTYPE(dmsg_circuit_tree, dmsg_circuit, rbnode, dmsg_circuit_cmp);
 
 /*
  * dmsg_ioq - An embedded component of dmsg_conn, holds state
@@ -294,6 +276,9 @@ struct dmsg_iocom {
 	dmsg_ioq_t	ioq_tx;
 	dmsg_msg_queue_t freeq;			/* free msgs hdr only */
 	dmsg_msg_queue_t freeq_aux;		/* free msgs w/aux_data */
+	dmsg_state_t	state0;			/* root state for stacking */
+	struct dmsg_state_tree  staterd_tree;   /* active transactions */
+	struct dmsg_state_tree  statewr_tree;   /* active transactions */
 	int	sock_fd;			/* comm socket or pipe */
 	int	alt_fd;				/* thread signal, tty, etc */
 	int	wakeupfds[2];			/* pipe wakes up iocom thread */
@@ -305,11 +290,10 @@ struct dmsg_iocom {
 	void	(*rcvmsg_callback)(dmsg_msg_t *msg);
 	void	(*usrmsg_callback)(dmsg_msg_t *msg, int unmanaged);
 	void	(*node_handler)(void **opaquep, dmsg_msg_t *msg, int op);
-	struct dmsg_circuit_tree circuit_tree;	/* active circuits */
-	struct dmsg_circuit	circuit0;	/* embedded circuit0 */
 	dmsg_msg_queue_t txmsgq;		/* tx msgq from remote */
 	struct h2span_conn *conn;		/* if LNK_CONN active */
-	pthread_mutex_t mtx;			/* mutex for state*tree/rmsgq */
+	uint64_t	conn_msgid;		/* LNK_CONN circuit */
+	pthread_mutex_t	mtx;			/* mutex for state*tree/rmsgq */
 };
 
 typedef struct dmsg_iocom dmsg_iocom_t;
@@ -404,9 +388,7 @@ void dmsg_iocom_restate(dmsg_iocom_t *iocom,
 void dmsg_iocom_label(dmsg_iocom_t *iocom, const char *ctl, ...);
 void dmsg_iocom_signal(dmsg_iocom_t *iocom);
 void dmsg_iocom_done(dmsg_iocom_t *iocom);
-void dmsg_circuit_init(dmsg_iocom_t *iocom, dmsg_circuit_t *circuit);
-dmsg_msg_t *dmsg_msg_alloc(dmsg_circuit_t *circuit,
-			size_t aux_size, uint32_t cmd,
+dmsg_msg_t *dmsg_msg_alloc(dmsg_state_t *state, size_t aux_size, uint32_t cmd,
 			void (*func)(dmsg_msg_t *), void *data);
 void dmsg_msg_reply(dmsg_msg_t *msg, uint32_t error);
 void dmsg_msg_result(dmsg_msg_t *msg, uint32_t error);
@@ -425,11 +407,6 @@ void dmsg_iocom_flush2(dmsg_iocom_t *iocom);
 
 void dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg);
 void dmsg_state_free(dmsg_state_t *state);
-void dmsg_circuit_hold(dmsg_circuit_t *circuit);
-void dmsg_circuit_drop(dmsg_circuit_t *circuit);
-void dmsg_circuit_drop_locked(dmsg_circuit_t *circuit);
-
-int dmsg_circuit_route(dmsg_msg_t *msg);
 
 /*
  * Msg protocol functions
@@ -437,8 +414,9 @@ int dmsg_circuit_route(dmsg_msg_t *msg);
 void dmsg_msg_lnk_signal(dmsg_iocom_t *iocom);
 void dmsg_msg_lnk(dmsg_msg_t *msg);
 void dmsg_msg_dbg(dmsg_msg_t *msg);
-void dmsg_shell_tree(dmsg_circuit_t *circuit, char *cmdbuf __unused);
+void dmsg_shell_tree(dmsg_iocom_t *iocom, char *cmdbuf __unused);
 int dmsg_debug_findspan(uint64_t msgid, dmsg_state_t **statep);
+dmsg_state_t *dmsg_findspan(const char *label);
 
 
 /*
@@ -454,7 +432,6 @@ int dmsg_crypto_encrypt(dmsg_iocom_t *iocom, dmsg_ioq_t *ioq,
  * Service daemon functions
  */
 void *dmsg_master_service(void *data);
-void dmsg_circuit_printf(dmsg_circuit_t *circuit, const char *ctl, ...)
-	__printflike(2, 3);
+void dmsg_printf(dmsg_iocom_t *iocom, const char *ctl, ...) __printflike(2, 3);
 
 extern int DMsgDebugOpt;

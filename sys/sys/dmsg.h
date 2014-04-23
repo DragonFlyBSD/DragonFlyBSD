@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -53,73 +53,95 @@
  *
  *				CONN PROTOCOL
  *
- * The mesh is constructed from point-to-point streaming links with varying
- * levels of interconnectedness, forming a graph.  Terminii in the graph
- * are entities such as a HAMMER2 PFS or a network mount or other types
- * of nodes.
+ * The mesh is constructed via point-to-point streaming links with varying
+ * levels of interconnectedness, forming a graph.  Leafs of the graph are
+ * typically kernel devices (xdisk) or VFSs (HAMMER2).  Internal nodes are
+ * usually (user level) hammer2 service demons.
  *
  * Upon connecting and after authentication, a LNK_CONN transaction is opened
- * on circuit 0 by both ends.  This configures and enables the SPAN protocol.
- * The LNK_CONN transaction remains open for the life of the connection.
+ * to configure the link.  The SPAN protocol is then typically run over the
+ * open LNK_CONN transaction.
+ *
+ * Terminating the LNK_CONN transaction terminates everything running over it
+ * (typically open LNK_SPAN transactions), which in turn terminates everything
+ * running over the LNK_SPANs.
  *
  *				SPAN PROTOCOL
  *
- * Once enabled, termini transmits a representitive LNK_SPAN out all
- * available connections advertising what it is.  Nodes maintaing multiple
- * connections will relay received LNK_SPANs out available connections
- * with some filtering based on the CONN configuration.  A distance metric
- * and per-node random value (rnss) is aggregated.
+ * The SPAN protocol runs over an open LNK_CONN transaction and is used to
+ * advertise any number of services.  For example, each PFS under a HAMMER2
+ * mount will be advertised as an open LNK_SPAN transaction.
  *
- * Since LNK_SPANs can rapidly multiply in a complex graph, not all incoming
- * LNK_SPANs will be relayed.  Only the top N over all collect LNK_SPANs for
- * any given advertisement are relayed.
+ * Any network node on the graph running multiple connections is capable
+ * of relaying LNK_SPANs from any connection to any other connection.  This
+ * is typically done by the user-level hammer2 service demon, and typically
+ * not done by kernel devices or VFSs (though these entities must be able
+ * to manage multiple LNK_SPANs since they might advertise or need to talk
+ * to multiple services).
  *
- * It is possible to code the SPANning tree algorithm to guarantee that
- * symmetrical spans will be generated after stabilization.  The RNSS field
- * is used to help distinguish and reduce paths in complex graphs when
- * symmetric spans are desired.  We always generate RNSS but we currently do
- * not implement symmetrical SPAN guarantees.
+ * Relaying is not necessarily trivial as it requires internal nodes to
+ * track two open transactions (on the two iocom interfaces) and translate
+ * the msgid and circuit.  In addition, the relay may have to track multiple
+ * SPANs from the same iocom or from multiple iocoms which represent the same
+ * end-point and must select the best end-point, must send notifications when
+ * a better path is available, and must allow (when connectivity is still
+ * present) any existing, open, stacked sub-transactions to complete before
+ * terminating the less efficient SPAN.
  *
- *				CIRC PROTOCOL
+ * Relaying is optional.  It is perfectly acceptable for the hammer2 service
+ * to plug a received socket descriptor directly into the appropriate kernel
+ * device driver.
  *
- * We aren't done yet.  Before transactions can be relayed, symmetric paths
- * must be formed via the LNK_CIRC protocol.  The LNK_CIRC protocol
- * establishes a virtual circuit from any node to any other node, creating
- * a circuit id which is stored in dmsg_hdr.circuit.  Messages received on
- * one side or forwarded to the other.  Forwarded messages bypass normal
- * state tracking.
+ *			       STACKED TRANSACTIONS
  *
- * A virtual circuit is forged by working the propogated SPANs backwards.
- * Each node in the graph helps propagate the virtual circuit by attach the
- * LNK_CIRC transaction it receives to a LNK_CIRC transaction it initiates
- * out the other interface.
+ * Message transactions can be stacked.  That is, you can initiate a DMSG
+ * transaction relative to another open transaction.  sub-transactions can
+ * be initiate without waiting for the parent transaction to complete its
+ * handshake.
  *
- * Since SPANs are link-state transactions any change in related span(s)
- * will also force-terminate VC's using those spans.
+ * This is done by entering the open transaction's msgid as the circuit field
+ * in the new transaction (typically by populating msg->parent).  The
+ * transaction tracking structure will be referenced and will track the
+ * sub-transaction.  Note that msgids must still be unique on an
+ * iocom-by-iocom basis.
  *
- *			MESSAGE TRANSACTIONAL STATES
+ *			    MESSAGE TRANSACTIONAL STATES
  *
- * Message state is handled by the CREATE, DELETE, REPLY, and ABORT
- * flags.  Message state is typically recorded at the end points and
- * at each hop until a DELETE is received from both sides.
+ * Message transactions are handled by the CREATE, DELETE, REPLY, ABORT, and
+ * CREPLY flags.  Message state is typically recorded at the end points and
+ * will be maintained (preventing reuse of the transaction id) until a DELETE
+ * is both sent and received.
  *
- * One-way messages such as those used by spanning tree commands are not
- * recorded.  These are sent without the CREATE, DELETE, or ABORT flags set.
- * ABORT is not supported for one-off messages.  The REPLY bit can be used
- * to distinguish between command and status if desired.
+ * One-way messages such as those used for debug commands are not recorded
+ * and do not require any transactional state.  These are sent without
+ * the CREATE, DELETE, or ABORT flags set.  ABORT is not supported for
+ * one-off messages.  The REPLY bit can be used to distinguish between
+ * command and status if desired.
  *
- * Persistent-state messages are messages which require a reply to be
+ * Transactional messages are messages which require a reply to be
  * returned.  These messages can also consist of multiple message elements
  * for the command or reply or both (or neither).  The command message
  * sequence sets CREATE on the first message and DELETE on the last message.
  * A single message command sets both (CREATE|DELETE).  The reply message
  * sequence works the same way but of course also sets the REPLY bit.
  *
- * Persistent-state messages can be aborted by sending a message element
+ * Tansactional messages can be aborted by sending a message element
  * with the ABORT flag set.  This flag can be combined with either or both
  * the CREATE and DELETE flags.  When combined with the CREATE flag the
  * command is treated as non-blocking but still executes.  Whem combined
  * with the DELETE flag no additional message elements are required.
+ *
+ * Transactions are terminated by sending a message with DELETE set.
+ * Transactions must be CREATEd and DELETEd in both directions.  If a
+ * transaction is governing stacked sub-transactions the sub-transactions
+ * are automatically terminated before the governing transaction is terminated.
+ * Terminates are handled by simulating a received DELETE and expecting the
+ * normal function callback and state machine to (ultimately) issue a
+ * terminating (DELETE) response.
+ *
+ * Transactions can operate in full-duplex as both sides are fully open
+ * (i.e. CREATE sent, CREATE|REPLY returned, DELETE not sent by anyone).
+ * Additional commands can be initiated from either side of the transaction.
  *
  * ABORT SPECIAL CASE - Mid-stream aborts.  A mid-stream abort can be sent
  * when supported by the sender by sending an ABORT message with neither
@@ -127,7 +149,7 @@
  * non-blocking message (but depending on what is being represented can also
  * cut short prior data elements in the stream).
  *
- * ABORT SPECIAL CASE - Abort-after-DELETE.  Persistent messages have to be
+ * ABORT SPECIAL CASE - Abort-after-DELETE.  Transactional messages have to be
  * abortable if the stream/pipe/whatever is lost.  In this situation any
  * forwarding relay needs to unconditionally abort commands and replies that
  * are still active.  This is done by sending an ABORT|DELETE even in
@@ -223,8 +245,8 @@ typedef struct dmsg_hdr dmsg_hdr_t;
 #define DMSGF_DELETE		0x40000000U	/* msg end */
 #define DMSGF_REPLY		0x20000000U	/* reply path */
 #define DMSGF_ABORT		0x10000000U	/* abort req */
-#define DMSGF_AUXOOB		0x08000000U	/* aux-data is OOB */
-#define DMSGF_FLAG2		0x04000000U
+#define DMSGF_REVTRANS		0x08000000U	/* opposite direction msgid */
+#define DMSGF_REVCIRC		0x04000000U	/* opposite direction circuit */
 #define DMSGF_FLAG1		0x02000000U
 #define DMSGF_FLAG0		0x01000000U
 
@@ -232,6 +254,13 @@ typedef struct dmsg_hdr dmsg_hdr_t;
 #define DMSGF_PROTOS		0x00F00000U	/* all protos */
 #define DMSGF_CMDS		0x000FFF00U	/* all cmds */
 #define DMSGF_SIZE		0x000000FFU	/* N*32 */
+
+/*
+ * XXX Future, flag that an in-line (not part of a CREATE/DELETE) command
+ *     expects some sort of acknowledgement.  Allows protocol mismatches to
+ *     be detected.
+ */
+#define DMSGF_CMDF_EXPECT_ACK	0x00080000U	/* in-line command no-ack */
 
 #define DMSGF_CMDSWMASK		(DMSGF_CMDS |	\
 					 DMSGF_SIZE |	\
@@ -251,9 +280,9 @@ typedef struct dmsg_hdr dmsg_hdr_t;
 
 #define DMSG_PROTO_LNK		0x00000000U
 #define DMSG_PROTO_DBG		0x00100000U
-#define DMSG_PROTO_DOM		0x00200000U
-#define DMSG_PROTO_CAC		0x00300000U
-#define DMSG_PROTO_QRM		0x00400000U
+#define DMSG_PROTO_HM2		0x00200000U
+#define DMSG_PROTO_XX3		0x00300000U
+#define DMSG_PROTO_XX4		0x00400000U
 #define DMSG_PROTO_BLK		0x00500000U
 #define DMSG_PROTO_VOP		0x00600000U
 
@@ -277,15 +306,7 @@ typedef struct dmsg_hdr dmsg_hdr_t;
 					 ((cmd) << 8) | 		\
 					 DMSG_HDR_ENCODE(elm))
 
-#define DMSG_DOM(cmd, elm)	(DMSG_PROTO_DOM |			\
-					 ((cmd) << 8) | 		\
-					 DMSG_HDR_ENCODE(elm))
-
-#define DMSG_CAC(cmd, elm)	(DMSG_PROTO_CAC |			\
-					 ((cmd) << 8) | 		\
-					 DMSG_HDR_ENCODE(elm))
-
-#define DMSG_QRM(cmd, elm)	(DMSG_PROTO_QRM |			\
+#define DMSG_HM2(cmd, elm)	(DMSG_PROTO_HM2 |			\
 					 ((cmd) << 8) | 		\
 					 DMSG_HDR_ENCODE(elm))
 
@@ -319,24 +340,19 @@ typedef struct dmsg_hdr dmsg_hdr_t;
  *		  installing a PFS filter (by cluster id, unique id, and/or
  *		  wildcarded name).
  *
- * LNK_SPAN	- A SPAN transaction on circuit-0 enables messages to be
- *		  relayed to/from a particular cluster node.  SPANs are
- *		  received, sorted, aggregated, filtered, and retransmitted
- *		  back out across all applicable connections.
+ * LNK_SPAN	- A SPAN transaction typically on iocom->state0 enables
+ *		  messages to be relayed to/from a particular cluster node.
+ *		  SPANs are received, sorted, aggregated, filtered, and
+ *		  retransmitted back out across all applicable connections.
  *
  *		  The leaf protocol also uses this to make a PFS available
  *		  to the cluster (e.g. on-mount).
- *
- * LNK_CIRC	- a CIRC transaction establishes a circuit from source to
- *		  target by creating pairs of open transactions across each
- *		  hop.
  */
 #define DMSG_LNK_PAD		DMSG_LNK(0x000, dmsg_hdr)
 #define DMSG_LNK_PING		DMSG_LNK(0x001, dmsg_hdr)
 #define DMSG_LNK_AUTH		DMSG_LNK(0x010, dmsg_lnk_auth)
 #define DMSG_LNK_CONN		DMSG_LNK(0x011, dmsg_lnk_conn)
 #define DMSG_LNK_SPAN		DMSG_LNK(0x012, dmsg_lnk_span)
-#define DMSG_LNK_CIRC		DMSG_LNK(0x013, dmsg_lnk_circ)
 #define DMSG_LNK_ERROR		DMSG_LNK(0xFFF, dmsg_hdr)
 
 /*
@@ -355,7 +371,7 @@ struct dmsg_lnk_auth {
 
 /*
  * LNK_CONN - Register connection info for SPAN protocol
- *	      (transaction, left open, circuit 0 only).
+ *	      (transaction, left open, iocom->state0 only).
  *
  * LNK_CONN identifies a streaming connection into the cluster and serves
  * to identify, enable, and specify filters for the SPAN protocol.
@@ -422,7 +438,7 @@ typedef struct dmsg_media_block dmsg_media_block_t;
 
 /*
  * LNK_SPAN - Initiate or relay a SPAN
- *	      (transaction, left open, circuit 0 only)
+ *	      (transaction, left open, typically only on iocom->state0)
  *
  * This message registers an end-point with the other end of the connection,
  * telling the other end who we are and what we can provide or intend to
@@ -499,27 +515,6 @@ typedef struct dmsg_lnk_span dmsg_lnk_span_t;
 #define DMSG_SPAN_PROTO_1	1
 
 /*
- * LNK_CIRC - Establish a circuit
- *	      (transaction, left open, circuit 0 only)
- *
- * Establish a circuit to the specified target.  The msgid for the open
- * transaction is used to transit messages in both directions.
- *
- * For circuit establishment the receiving entity looks up the outgoing
- * relayed SPAN on the incoming iocom based on the target field and then
- * creates peer circuit on the interface the SPAN originally came in on.
- * Messages received on one side or forwarded to the other side and vise-versa.
- * Any link state loss causes all related circuits to be lost.
- */
-struct dmsg_lnk_circ {
-	dmsg_hdr_t	head;
-	uint64_t	reserved01;
-	uint64_t	target;
-};
-
-typedef struct dmsg_lnk_circ dmsg_lnk_circ_t;
-
-/*
  * Debug layer ops operate on any link
  *
  * SHELL	- Persist stream, access the debug shell on the target
@@ -533,73 +528,26 @@ struct dmsg_dbg_shell {
 typedef struct dmsg_dbg_shell dmsg_dbg_shell_t;
 
 /*
- * Domain layer ops operate on any link, link-0 may be used when the
- * directory connected target is the desired registration.
+ * Hammer2 layer ops (low-level chain manipulation used by cluster code)
  *
- * (nothing defined)
+ * HM2_OPENPFS	- Attach a PFS
+ * HM2_FLUSHPFS - Flush a PFS
+ *
+ * HM2_LOOKUP	- Lookup chain (parent-relative transaction)
+ *		  (can request multiple chains)
+ * HM2_NEXT	- Lookup next chain (parent-relative transaction)
+ *		  (can request multiple chains)
+ * HM2_LOCK	- [Re]lock a chain (chain-relative) (non-recursive)
+ * HM2_UNLOCK	- Unlock a chain (chain-relative) (non-recursive)
+ * HM2_RESIZE	- Resize a chain (chain-relative)
+ * HM2_MODIFY	- Modify a chain (chain-relative)
+ * HM2_CREATE	- Create a chain (parent-relative)
+ * HM2_DUPLICATE- Duplicate a chain (target-parent-relative)
+ * HM2_DELDUP	- Delete-Duplicate a chain (chain-relative)
+ * HM2_DELETE	- Delete a chain (chain-relative)
+ * HM2_SNAPSHOT	- Create a snapshot (snapshot-root-relative, w/clid override)
  */
-
-/*
- * Cache layer ops operate on any link, link-0 may be used when the
- * directly connected target is the desired registration.
- *
- * LOCK		- Persist state, blockable, abortable.
- *
- *		  Obtain cache state (MODIFIED, EXCLUSIVE, SHARED, or INVAL)
- *		  in any of three domains (TREE, INUM, ATTR, DIRENT) for a
- *		  particular key relative to cache state already owned.
- *
- *		  TREE - Effects entire sub-tree at the specified element
- *			 and will cause existing cache state owned by
- *			 other nodes to be adjusted such that the request
- *			 can be granted.
- *
- *		  INUM - Only effects inode creation/deletion of an existing
- *			 element or a new element, by inumber and/or name.
- *			 typically can be held for very long periods of time
- *			 (think the vnode cache), directly relates to
- *			 hammer2_chain structures representing inodes.
- *
- *		  ATTR - Only effects an inode's attributes, such as
- *			 ownership, modes, etc.  Used for lookups, chdir,
- *			 open, etc.  mtime has no affect.
- *
- *		  DIRENT - Only affects an inode's attributes plus the
- *			 attributes or names related to any directory entry
- *			 directly under this inode (non-recursively).  Can
- *			 be retained for medium periods of time when doing
- *			 directory scans.
- *
- *		  This function may block and can be aborted.  You may be
- *		  granted cache state that is more broad than the state you
- *		  requested (e.g. a different set of domains and/or an element
- *		  at a higher layer in the tree).  When quorum operations
- *		  are used you may have to reconcile these grants to the
- *		  lowest common denominator.
- *
- *		  In order to grant your request either you or the target
- *		  (or both) may have to obtain a quorum agreement.  Deadlock
- *		  resolution may be required.  When doing it yourself you
- *		  will typically maintain an active message to each master
- *		  node in the system.  You can only grant the cache state
- *		  when a quorum of nodes agree.
- *
- *		  The cache state includes transaction id information which
- *		  can be used to resolve data requests.
- */
-#define DMSG_CAC_LOCK		DMSG_CAC(0x001, dmsg_cac_lock)
-
-/*
- * Quorum layer ops operate on any link, link-0 may be used when the
- * directly connected target is the desired registration.
- *
- * COMMIT	- Persist state, blockable, abortable
- *
- *		  Issue a COMMIT in two phases.  A quorum must acknowledge
- *		  the operation to proceed to phase-2.  Message-update to
- *		  proceed to phase-2.
- */
-#define DMSG_QRM_COMMIT		DMSG_QRM(0x001, dmsg_qrm_commit)
+#define DMSG_HM2_OPENPFS	DMSG_HM2(0x001, dmsg_hm2_openpfs)
 
 /*
  * DMSG_PROTO_BLK Protocol
@@ -719,7 +667,6 @@ union dmsg_any {
 
 	dmsg_lnk_conn_t		lnk_conn;
 	dmsg_lnk_span_t		lnk_span;
-	dmsg_lnk_circ_t		lnk_circ;
 
 	dmsg_blk_open_t		blk_open;
 	dmsg_blk_error_t	blk_error;
@@ -750,52 +697,27 @@ struct kdmsg_msg;
 #define KDMSG_CLUSTERCTL_SLEEPING	0x00000008 /* interlocked w/msglk */
 
 /*
- * When the KDMSG_IOCOMF_AUTOCIRC flag is set the kdmsg code in
- * the kernel automatically tries to forge a virtual circuit for
- * any active SPAN state received.
- *
- * This is only done when the received SPANs are significantly filtered
- * by the transmitted LNK_CONN.  That is, it is done only by clients who
- * connect to specific services over the cluster.
- */
-struct kdmsg_circuit {
-	RB_ENTRY(kdmsg_circuit) rbnode;		/* indexed by msgid */
-	TAILQ_ENTRY(kdmsg_circuit) entry;	/* written by shim */
-	struct kdmsg_iocom	*iocom;		/* written by shim */
-	struct kdmsg_state	*span_state;
-	struct kdmsg_state	*circ_state;	/* master circuit */
-	struct kdmsg_state	*rcirc_state;	/* slave circuit */
-	uint64_t		msgid;
-	int			weight;
-	int			recorded;	/* written by shim */
-	int			lost;		/* written by shim */
-	int			refs;		/* written by shim */
-};
-
-typedef struct kdmsg_circuit kdmsg_circuit_t;
-
-/*
  * Transactional state structure, representing an open transaction.  The
  * transaction might represent a cache state (and thus have a chain
  * association), or a VOP op, LNK_SPAN, or other things.
  */
 struct kdmsg_state {
 	RB_ENTRY(kdmsg_state) rbnode;		/* indexed by msgid */
+	TAILQ_HEAD(, kdmsg_state) subq;		/* active stacked states */
+	TAILQ_ENTRY(kdmsg_state) entry;		/* on parent subq */
 	struct kdmsg_iocom *iocom;
-	struct kdmsg_circuit *circ;
+	struct kdmsg_state *parent;
 	uint32_t	icmd;			/* record cmd creating state */
 	uint32_t	txcmd;			/* mostly for CMDF flags */
 	uint32_t	rxcmd;			/* mostly for CMDF flags */
-	uint64_t	msgid;			/* {circuit,msgid} uniq */
+	uint64_t	msgid;			/* {parent,msgid} uniq */
 	int		flags;
 	int		error;
 	void		*chain;			/* (caller's state) */
-	struct kdmsg_msg *msg;
 	int (*func)(struct kdmsg_state *, struct kdmsg_msg *);
 	union {
 		void *any;
 		struct hammer2_mount *hmp;
-		struct kdmsg_circuit *circ;
 	} any;
 };
 
@@ -803,12 +725,11 @@ struct kdmsg_state {
 #define KDMSG_STATE_DYNAMIC	0x0002
 #define KDMSG_STATE_DELPEND	0x0004		/* transmit delete pending */
 #define KDMSG_STATE_ABORTING	0x0008		/* avoids recursive abort */
+#define KDMSG_STATE_OPPOSITE	0x0010		/* opposite direction */
 
 struct kdmsg_msg {
 	TAILQ_ENTRY(kdmsg_msg) qentry;		/* serialized queue */
-	struct kdmsg_iocom *iocom;
 	struct kdmsg_state *state;
-	struct kdmsg_circuit *circ;
 	size_t		hdr_size;
 	size_t		aux_size;
 	char		*aux_data;
@@ -828,11 +749,6 @@ int kdmsg_state_cmp(kdmsg_state_t *state1, kdmsg_state_t *state2);
 RB_HEAD(kdmsg_state_tree, kdmsg_state);
 RB_PROTOTYPE(kdmsg_state_tree, kdmsg_state, rbnode, kdmsg_state_cmp);
 
-struct kdmsg_circuit_tree;
-int kdmsg_circuit_cmp(kdmsg_circuit_t *circ1, kdmsg_circuit_t *circ2);
-RB_HEAD(kdmsg_circuit_tree, kdmsg_circuit);
-RB_PROTOTYPE(kdmsg_circuit_tree, kdmsg_circuit, rbnode, kdmsg_circuit_cmp);
-
 /*
  * Structure embedded in e.g. mount, master control structure for
  * DMSG stream handling.
@@ -851,30 +767,26 @@ struct kdmsg_iocom {
 	void			(*auto_callback)(kdmsg_msg_t *);
 	int			(*rcvmsg)(kdmsg_msg_t *);
 	void			(*exit_func)(struct kdmsg_iocom *);
+	struct kdmsg_state	state0;		/* root state for stacking */
 	struct kdmsg_state	*conn_state;	/* active LNK_CONN state */
 	struct kdmsg_state	*freerd_state;	/* allocation cache */
 	struct kdmsg_state	*freewr_state;	/* allocation cache */
 	struct kdmsg_state_tree staterd_tree;	/* active messages */
 	struct kdmsg_state_tree statewr_tree;	/* active messages */
-	struct kdmsg_circuit_tree circ_tree;	/* active circuits */
 	dmsg_lnk_conn_t		auto_lnk_conn;
 	dmsg_lnk_span_t		auto_lnk_span;
 };
 
 typedef struct kdmsg_iocom	kdmsg_iocom_t;
 
-#define KDMSG_IOCOMF_AUTOCONN	0x0001	/* handle rx/tx LNK_CONN */
-#define KDMSG_IOCOMF_AUTORXSPAN	0x0002	/* handle rx LNK_SPAN */
-#define KDMSG_IOCOMF_AUTORXCIRC	0x0004	/* handle rx LNK_CIRC */
-#define KDMSG_IOCOMF_AUTOTXSPAN	0x0008	/* handle tx LNK CIRC */
-#define KDMSG_IOCOMF_AUTOTXCIRC	0x0010	/* handle tx LNK CIRC */
+#define KDMSG_IOCOMF_AUTOCONN	0x0001	/* handle RX/TX LNK_CONN */
+#define KDMSG_IOCOMF_AUTORXSPAN	0x0002	/* handle RX LNK_SPAN */
+#define KDMSG_IOCOMF_AUTOTXSPAN	0x0008	/* handle TX LNK_SPAN */
 #define KDMSG_IOCOMF_EXITNOACC	0x8000	/* cannot accept writes */
 
 #define KDMSG_IOCOMF_AUTOANY	(KDMSG_IOCOMF_AUTOCONN |	\
 				 KDMSG_IOCOMF_AUTORXSPAN |	\
-				 KDMSG_IOCOMF_AUTORXCIRC |	\
-				 KDMSG_IOCOMF_AUTOTXSPAN |	\
-				 KDMSG_IOCOMF_AUTOTXCIRC)
+				 KDMSG_IOCOMF_AUTOTXSPAN)
 
 uint32_t kdmsg_icrc32(const void *buf, size_t size);
 uint32_t kdmsg_icrc32c(const void *buf, size_t size, uint32_t crc);
@@ -893,11 +805,7 @@ void kdmsg_iocom_uninit(kdmsg_iocom_t *iocom);
 void kdmsg_drain_msgq(kdmsg_iocom_t *iocom);
 
 void kdmsg_msg_free(kdmsg_msg_t *msg);
-kdmsg_msg_t *kdmsg_msg_alloc(kdmsg_iocom_t *iocom, kdmsg_circuit_t *circ,
-				uint32_t cmd,
-				int (*func)(kdmsg_state_t *, kdmsg_msg_t *),
-				void *data);
-kdmsg_msg_t *kdmsg_msg_alloc_state(kdmsg_state_t *state, uint32_t cmd,
+kdmsg_msg_t *kdmsg_msg_alloc(kdmsg_state_t *state, uint32_t cmd,
 				int (*func)(kdmsg_state_t *, kdmsg_msg_t *),
 				void *data);
 void kdmsg_msg_write(kdmsg_msg_t *msg);
@@ -905,10 +813,6 @@ void kdmsg_msg_reply(kdmsg_msg_t *msg, uint32_t error);
 void kdmsg_msg_result(kdmsg_msg_t *msg, uint32_t error);
 void kdmsg_state_reply(kdmsg_state_t *state, uint32_t error);
 void kdmsg_state_result(kdmsg_state_t *state, uint32_t error);
-
-void kdmsg_circ_hold(kdmsg_circuit_t *circ);
-void kdmsg_circ_drop(kdmsg_circuit_t *circ);
-
 
 #endif
 

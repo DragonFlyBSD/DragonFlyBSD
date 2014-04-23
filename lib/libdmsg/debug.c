@@ -50,14 +50,8 @@ dmsg_basecmd_str(uint32_t cmd)
 	case DMSG_PROTO_DBG:
 		protostr = "DBG_";
 		break;
-	case DMSG_PROTO_DOM:
-		protostr = "DOM_";
-		break;
-	case DMSG_PROTO_CAC:
-		protostr = "CAC_";
-		break;
-	case DMSG_PROTO_QRM:
-		protostr = "QRM_";
+	case DMSG_PROTO_HM2:
+		protostr = "HM2_";
 		break;
 	case DMSG_PROTO_BLK:
 		protostr = "BLK_";

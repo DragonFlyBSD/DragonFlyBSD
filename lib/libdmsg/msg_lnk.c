@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2012-2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -118,6 +118,7 @@ struct h2span_conn {
 	TAILQ_ENTRY(h2span_conn) entry;
 	struct h2span_relay_tree tree;
 	dmsg_state_t *state;
+	dmsg_lnk_conn_t lnk_conn;
 };
 
 /*
@@ -147,9 +148,8 @@ struct h2span_link {
 	RB_ENTRY(h2span_link) rbnode;
 	dmsg_state_t	*state;		/* state<->link */
 	struct h2span_node *node;	/* related node */
-	uint32_t	dist;
-	uint32_t 	rnss;
 	struct h2span_relay_queue relayq; /* relay out */
+	dmsg_lnk_span_t lnk_span;
 };
 
 /*
@@ -244,13 +244,13 @@ static
 int
 h2span_link_cmp(h2span_link_t *link1, h2span_link_t *link2)
 {
-	if (link1->dist < link2->dist)
+	if (link1->lnk_span.dist < link2->lnk_span.dist)
 		return(-1);
-	if (link1->dist > link2->dist)
+	if (link1->lnk_span.dist > link2->lnk_span.dist)
 		return(1);
-	if (link1->rnss < link2->rnss)
+	if (link1->lnk_span.rnss < link2->lnk_span.rnss)
 		return(-1);
-	if (link1->rnss > link2->rnss)
+	if (link1->lnk_span.rnss > link2->lnk_span.rnss)
 		return(1);
 #if 1
 	if ((uintptr_t)link1->state < (uintptr_t)link2->state)
@@ -282,13 +282,13 @@ h2span_relay_cmp(h2span_relay_t *relay1, h2span_relay_t *relay2)
 		return(-1);
 	if ((intptr_t)link1->node > (intptr_t)link2->node)
 		return(1);
-	if (link1->dist < link2->dist)
+	if (link1->lnk_span.dist < link2->lnk_span.dist)
 		return(-1);
-	if (link1->dist > link2->dist)
+	if (link1->lnk_span.dist > link2->lnk_span.dist)
 		return(1);
-	if (link1->rnss < link2->rnss)
+	if (link1->lnk_span.rnss < link2->lnk_span.rnss)
 		return(-1);
-	if (link1->rnss > link2->rnss)
+	if (link1->lnk_span.rnss > link2->lnk_span.rnss)
 		return(1);
 #if 1
 	if ((uintptr_t)link1->state < (uintptr_t)link2->state)
@@ -332,7 +332,6 @@ static struct dmsg_media_queue mediaq = TAILQ_HEAD_INITIALIZER(mediaq);
 
 static void dmsg_lnk_span(dmsg_msg_t *msg);
 static void dmsg_lnk_conn(dmsg_msg_t *msg);
-static void dmsg_lnk_circ(dmsg_msg_t *msg);
 static void dmsg_lnk_relay(dmsg_msg_t *msg);
 static void dmsg_relay_scan(h2span_conn_t *conn, h2span_node_t *node);
 static void dmsg_relay_delete(h2span_relay_t *relay);
@@ -356,6 +355,8 @@ dmsg_msg_lnk_signal(dmsg_iocom_t *iocom __unused)
 void
 dmsg_msg_lnk(dmsg_msg_t *msg)
 {
+	dmsg_iocom_t *iocom = msg->state->iocom;
+
 	switch(msg->tcmd & DMSGF_BASECMDMASK) {
 	case DMSG_LNK_CONN:
 		dmsg_lnk_conn(msg);
@@ -363,11 +364,8 @@ dmsg_msg_lnk(dmsg_msg_t *msg)
 	case DMSG_LNK_SPAN:
 		dmsg_lnk_span(msg);
 		break;
-	case DMSG_LNK_CIRC:
-		dmsg_lnk_circ(msg);
-		break;
 	default:
-		msg->iocom->usrmsg_callback(msg, 1);
+		iocom->usrmsg_callback(msg, 1);
 		/* state invalid after reply */
 		break;
 	}
@@ -384,6 +382,7 @@ void
 dmsg_lnk_conn(dmsg_msg_t *msg)
 {
 	dmsg_state_t *state = msg->state;
+	dmsg_iocom_t *iocom = state->iocom;
 	dmsg_media_t *media;
 	h2span_conn_t *conn;
 	h2span_relay_t *relay;
@@ -414,13 +413,16 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		free(alloc);
 
 		conn = dmsg_alloc(sizeof(*conn));
+		assert(state->iocom->conn == NULL);
 
 		RB_INIT(&conn->tree);
 		state->iocom->conn = conn;	/* XXX only one */
+		state->iocom->conn_msgid = state->msgid;
 		conn->state = state;
 		state->func = dmsg_lnk_conn;
 		state->any.conn = conn;
 		TAILQ_INSERT_TAIL(&connq, conn, entry);
+		conn->lnk_conn = msg->any.lnk_conn;
 
 		/*
 		 * Set up media
@@ -440,9 +442,9 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		++media->refs;
 
 		if ((msg->any.head.cmd & DMSGF_DELETE) == 0) {
-			msg->iocom->usrmsg_callback(msg, 0);
+			iocom->usrmsg_callback(msg, 0);
 			dmsg_msg_result(msg, 0);
-			dmsg_iocom_signal(msg->iocom);
+			dmsg_iocom_signal(iocom);
 			break;
 		}
 		/* FALL THROUGH */
@@ -467,7 +469,7 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 			fprintf(stderr, "Media shutdown\n");
 			TAILQ_REMOVE(&mediaq, media, entry);
 			pthread_mutex_unlock(&cluster_mtx);
-			msg->iocom->usrmsg_callback(msg, 0);
+			iocom->usrmsg_callback(msg, 0);
 			pthread_mutex_lock(&cluster_mtx);
 			dmsg_free(media);
 		}
@@ -494,7 +496,7 @@ dmsg_lnk_conn(dmsg_msg_t *msg)
 		/* state invalid after reply */
 		break;
 	default:
-		msg->iocom->usrmsg_callback(msg, 1);
+		iocom->usrmsg_callback(msg, 1);
 #if 0
 		if (msg->any.head.cmd & DMSGF_DELETE)
 			goto deleteconn;
@@ -516,6 +518,7 @@ void
 dmsg_lnk_span(dmsg_msg_t *msg)
 {
 	dmsg_state_t *state = msg->state;
+	dmsg_iocom_t *iocom = state->iocom;
 	h2span_cluster_t dummy_cls;
 	h2span_node_t dummy_node;
 	h2span_cluster_t *cls;
@@ -524,7 +527,14 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 	h2span_relay_t *relay;
 	char *alloc = NULL;
 
-	assert((msg->any.head.cmd & DMSGF_REPLY) == 0);
+	/*
+	 * Ignore reply to LNK_SPAN.  The reply is needed to forge the
+	 * return path for the transaction.
+	 */
+	if (msg->any.head.cmd & DMSGF_REPLY) {
+		printf("Ignore reply to LNK_SPAN\n");
+		return;
+	}
 
 	pthread_mutex_lock(&cluster_mtx);
 
@@ -575,9 +585,9 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 			node->cls = cls;
 			RB_INIT(&node->tree);
 			RB_INSERT(h2span_node_tree, &cls->tree, node);
-			if (msg->iocom->node_handler) {
-				msg->iocom->node_handler(&node->opaque, msg,
-							 DMSG_NODEOP_ADD);
+			if (iocom->node_handler) {
+				iocom->node_handler(&node->opaque, msg,
+						    DMSG_NODEOP_ADD);
 			}
 		}
 
@@ -588,16 +598,15 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		slink = dmsg_alloc(sizeof(*slink));
 		TAILQ_INIT(&slink->relayq);
 		slink->node = node;
-		slink->dist = msg->any.lnk_span.dist;
-		slink->rnss = msg->any.lnk_span.rnss;
 		slink->state = state;
 		state->any.link = slink;
+		slink->lnk_span = msg->any.lnk_span;
 
 		RB_INSERT(h2span_link_tree, &node->tree, slink);
 
 		fprintf(stderr,
 			"LNK_SPAN(thr %p): %p %s cl=%s fs=%s dist=%d\n",
-			msg->iocom,
+			iocom,
 			slink,
 			dmsg_uuid_to_str(&msg->any.lnk_span.pfs_clid, &alloc),
 			msg->any.lnk_span.cl_label,
@@ -607,7 +616,7 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 #if 0
 		dmsg_relay_scan(NULL, node);
 #endif
-		dmsg_iocom_signal(msg->iocom);
+		dmsg_iocom_signal(iocom);
 	}
 
 	/*
@@ -619,13 +628,12 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		node = slink->node;
 		cls = node->cls;
 
-		fprintf(stderr, "LNK_DELE(thr %p): %p %s cl=%s fs=%s dist=%d\n",
-			msg->iocom,
+		fprintf(stderr, "LNK_DELE(thr %p): %p %s cl=%s fs=%s\n",
+			iocom,
 			slink,
 			dmsg_uuid_to_str(&cls->pfs_clid, &alloc),
-			state->msg->any.lnk_span.cl_label,
-			state->msg->any.lnk_span.fs_label,
-			state->msg->any.lnk_span.dist);
+			cls->cl_label,
+			node->fs_label);
 		free(alloc);
 
 		/*
@@ -642,9 +650,9 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		RB_REMOVE(h2span_link_tree, &node->tree, slink);
 		if (RB_EMPTY(&node->tree)) {
 			RB_REMOVE(h2span_node_tree, &cls->tree, node);
-			if (msg->iocom->node_handler) {
-				msg->iocom->node_handler(&node->opaque, msg,
-							 DMSG_NODEOP_DEL);
+			if (iocom->node_handler) {
+				iocom->node_handler(&node->opaque, msg,
+						    DMSG_NODEOP_DEL);
 			}
 			if (RB_EMPTY(&cls->tree) && cls->refs == 0) {
 				RB_REMOVE(h2span_cluster_tree,
@@ -676,285 +684,10 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 			dmsg_relay_scan(NULL, node);
 #endif
 		if (node)
-			dmsg_iocom_signal(msg->iocom);
+			dmsg_iocom_signal(iocom);
 	}
 
 	pthread_mutex_unlock(&cluster_mtx);
-}
-
-/*
- * LNK_CIRC - Virtual circuit protocol message reception
- *	      (incoming iocom lock not held)
- *
- * Handles all cases.
- */
-void
-dmsg_lnk_circ(dmsg_msg_t *msg)
-{
-	dmsg_circuit_t *circA;
-	dmsg_circuit_t *circB;
-	dmsg_state_t *rx_state;
-	dmsg_state_t *tx_state;
-	dmsg_state_t *state;
-	dmsg_state_t dummy;
-	dmsg_msg_t *fwd_msg;
-	dmsg_iocom_t *iocomA;
-	dmsg_iocom_t *iocomB;
-	int disconnect;
-
-	/*pthread_mutex_lock(&cluster_mtx);*/
-
-	if (DMsgDebugOpt >= 4)
-		fprintf(stderr, "CIRC receive cmd=%08x\n", msg->any.head.cmd);
-
-	switch (msg->any.head.cmd & (DMSGF_CREATE |
-				     DMSGF_DELETE |
-				     DMSGF_REPLY)) {
-	case DMSGF_CREATE:
-	case DMSGF_CREATE | DMSGF_DELETE:
-		/*
-		 * (A) wishes to establish a virtual circuit through us to (B).
-		 * (B) is specified by lnk_circ.target (the message id for
-		 * a LNK_SPAN that (A) received from us which represents (B)).
-		 *
-		 * Designate the originator of the circuit (the current
-		 * remote end) as (A) and the other side as (B).
-		 *
-		 * Accept the VC but do not reply.  We will wait for the end-
-		 * to-end reply to propagate back.
-		 */
-		iocomA = msg->iocom;
-
-		/*
-		 * Locate the open transaction state that the other end
-		 * specified in <target>.  This will be an open SPAN
-		 * transaction that we transmitted (h2span_relay) over
-		 * the interface the LNK_CIRC is being received on.
-		 *
-		 * (all LNK_CIRC's that we transmit are on circuit0)
-		 */
-		pthread_mutex_lock(&iocomA->mtx);
-		dummy.msgid = msg->any.lnk_circ.target;
-		tx_state = RB_FIND(dmsg_state_tree,
-				   &iocomA->circuit0.statewr_tree,
-				   &dummy);
-		pthread_mutex_unlock(&iocomA->mtx);
-		if (tx_state == NULL) {
-			/* XXX SMP race */
-			fprintf(stderr, "dmsg_lnk_circ: no circuit\n");
-			dmsg_msg_reply(msg, DMSG_ERR_CANTCIRC);
-			break;
-		}
-		if (tx_state->icmd != DMSG_LNK_SPAN) {
-			/* XXX SMP race */
-			fprintf(stderr, "dmsg_lnk_circ: not LNK_SPAN\n");
-			dmsg_msg_reply(msg, DMSG_ERR_CANTCIRC);
-			break;
-		}
-
-		/* locate h2span_link */
-		rx_state = tx_state->any.relay->source_rt;
-
-		/*
-		 * A wishes to establish a VC through us to the
-		 * specified target.
-		 *
-		 * A sends us the msgid of an open SPAN transaction
-		 * it received from us as <target>.
-		 */
-		circA = dmsg_alloc(sizeof(*circA));
-		dmsg_circuit_init(iocomA, circA);
-		circA->state = msg->state;	/* LNK_CIRC state */
-		circA->msgid = msg->state->msgid;
-		circA->span_state = tx_state;	/* H2SPAN_RELAY state */
-		circA->is_relay = 1;
-		circA->refs = 2;		/* state and peer */
-
-		/*
-		 * Upgrade received state so we act on both it and its
-		 * peer (created below) symmetrically.
-		 */
-		msg->state->any.circ = circA;
-		msg->state->func = dmsg_lnk_circ;
-
-		iocomB = rx_state->iocom;
-
-		circB = dmsg_alloc(sizeof(*circB));
-		dmsg_circuit_init(iocomB, circB);
-
-		/*
-		 * Create a LNK_CIRC transaction on B
-		 */
-		fwd_msg = dmsg_msg_alloc(&iocomB->circuit0,
-					 0, DMSG_LNK_CIRC | DMSGF_CREATE,
-					 dmsg_lnk_circ, circB);
-		fwd_msg->state->any.circ = circB;
-		fwd_msg->any.lnk_circ.target = rx_state->msgid;
-		circB->state = fwd_msg->state;	/* LNK_CIRC state */
-		circB->msgid = fwd_msg->any.head.msgid;
-		circB->span_state = rx_state;	/* H2SPAN_LINK state */
-		circB->is_relay = 0;
-		circB->refs = 2;		/* state and peer */
-
-		if (DMsgDebugOpt >= 4)
-			fprintf(stderr, "CIRC forward %p->%p\n", circA, circB);
-
-		/*
-		 * Link the two circuits together.
-		 */
-		circA->peer = circB;
-		circB->peer = circA;
-
-		if (iocomA < iocomB) {
-			pthread_mutex_lock(&iocomA->mtx);
-			pthread_mutex_lock(&iocomB->mtx);
-		} else {
-			pthread_mutex_lock(&iocomB->mtx);
-			pthread_mutex_lock(&iocomA->mtx);
-		}
-		if (RB_INSERT(dmsg_circuit_tree, &iocomA->circuit_tree, circA))
-			assert(0);
-		if (RB_INSERT(dmsg_circuit_tree, &iocomB->circuit_tree, circB))
-			assert(0);
-		if (iocomA < iocomB) {
-			pthread_mutex_unlock(&iocomB->mtx);
-			pthread_mutex_unlock(&iocomA->mtx);
-		} else {
-			pthread_mutex_unlock(&iocomA->mtx);
-			pthread_mutex_unlock(&iocomB->mtx);
-		}
-
-		dmsg_msg_write(fwd_msg);
-
-		if ((msg->any.head.cmd & DMSGF_DELETE) == 0)
-			break;
-		/* FALL THROUGH TO DELETE */
-	case DMSGF_DELETE:
-		/*
-		 * (A) Is deleting the virtual circuit, propogate closure
-		 * to (B).
-		 */
-		iocomA = msg->iocom;
-		if (msg->state->any.circ == NULL) {
-			/* already returned an error/deleted */
-			break;
-		}
-		circA = msg->state->any.circ;
-		circB = circA->peer;
-		assert(msg->state == circA->state);
-
-		/*
-		 * We are closing B's send side.  If B's receive side is
-		 * already closed we disconnect the circuit from B's state.
-		 */
-		disconnect = 0;
-		if (circB && (state = circB->state) != NULL) {
-			if (state->rxcmd & DMSGF_DELETE) {
-				disconnect = 1;
-				circB->state = NULL;
-				state->any.circ = NULL;
-				dmsg_circuit_drop(circB);
-			}
-			dmsg_state_reply(state, msg->any.head.error);
-		}
-
-		/*
-		 * We received a close on A.  If A's send side is already
-		 * closed we disconnect the circuit from A's state.
-		 */
-		if (circA && (state = circA->state) != NULL) {
-			if (state->txcmd & DMSGF_DELETE) {
-				disconnect = 1;
-				circA->state = NULL;
-				state->any.circ = NULL;
-				dmsg_circuit_drop(circA);
-			}
-		}
-
-		/*
-		 * Disconnect the peer<->peer association
-		 */
-		if (disconnect) {
-			if (circB) {
-				circA->peer = NULL;
-				circB->peer = NULL;
-				dmsg_circuit_drop(circA);
-				dmsg_circuit_drop(circB); /* XXX SMP */
-			}
-		}
-		break;
-	case DMSGF_REPLY | DMSGF_CREATE:
-	case DMSGF_REPLY | DMSGF_CREATE | DMSGF_DELETE:
-		/*
-		 * (B) is acknowledging the creation of the virtual
-		 * circuit.  This propagates all the way back to (A), though
-		 * it should be noted that (A) can start issuing commands
-		 * via the virtual circuit before seeing this reply.
-		 */
-		circB = msg->state->any.circ;
-		assert(circB);
-		circA = circB->peer;
-		assert(msg->state == circB->state);
-		assert(circA);
-		if ((msg->any.head.cmd & DMSGF_DELETE) == 0) {
-			dmsg_state_result(circA->state, msg->any.head.error);
-			break;
-		}
-		/* FALL THROUGH TO DELETE */
-	case DMSGF_REPLY | DMSGF_DELETE:
-		/*
-		 * (B) Is deleting the virtual circuit or acknowledging
-		 * our deletion of the virtual circuit, propogate closure
-		 * to (A).
-		 */
-		iocomB = msg->iocom;
-		circB = msg->state->any.circ;
-		circA = circB->peer;
-		assert(msg->state == circB->state);
-
-		/*
-		 * We received a close on (B), propagate to (A).  If we have
-		 * already received the close from (A) we disconnect the state.
-		 */
-		disconnect = 0;
-		if (circA && (state = circA->state) != NULL) {
-			if (state->rxcmd & DMSGF_DELETE) {
-				disconnect = 1;
-				circA->state = NULL;
-				state->any.circ = NULL;
-				dmsg_circuit_drop(circA);
-			}
-			dmsg_state_reply(state, msg->any.head.error);
-		}
-
-		/*
-		 * We received a close on (B).  If (B)'s send side is already
-		 * closed we disconnect the state.
-		 */
-		if (circB && (state = circB->state) != NULL) {
-			if (state->txcmd & DMSGF_DELETE) {
-				disconnect = 1;
-				circB->state = NULL;
-				state->any.circ = NULL;
-				dmsg_circuit_drop(circB);
-			}
-		}
-
-		/*
-		 * Disconnect the peer<->peer association
-		 */
-		if (disconnect) {
-			if (circA) {
-				circB->peer = NULL;
-				circA->peer = NULL;
-				dmsg_circuit_drop(circB);
-				dmsg_circuit_drop(circA); /* XXX SMP */
-			}
-		}
-		break;
-	}
-
-	/*pthread_mutex_lock(&cluster_mtx);*/
 }
 
 /*
@@ -1106,8 +839,10 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		 */
 		if (++count >= maxcount) {
 #ifdef REQUIRE_SYMMETRICAL
-			if (lastdist != slink->dist || lastrnss != slink->rnss)
+			if (lastdist != slink->lnk_span.dist ||
+			    lastrnss != slink->lnk_span.rnss) {
 				break;
+			}
 #else
 			break;
 #endif
@@ -1129,7 +864,7 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		 * The spanning tree can cause closed loops so we have
 		 * to limit slink->dist.
 		 */
-		if (slink->dist > DMSG_SPAN_MAXDIST)
+		if (slink->lnk_span.dist > DMSG_SPAN_MAXDIST)
 			break;
 
 		/*
@@ -1150,8 +885,8 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		 * pfs_mask is typically used so pure clients can filter
 		 * out receiving SPANs for other pure clients.
 		 */
-		lspan = &slink->state->msg->any.lnk_span;
-		lconn = &conn->state->msg->any.lnk_conn;
+		lspan = &slink->lnk_span;
+		lconn = &conn->lnk_conn;
 		if (((1LLU << lspan->peer_type) & lconn->peer_mask) == 0)
 			break;
 		if (((1LLU << lspan->pfs_type) & lconn->pfs_mask) == 0)
@@ -1199,11 +934,12 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 		 */
 		assert(relay == NULL ||
 		       relay->source_rt->any.link->node != slink->node ||
-		       relay->source_rt->any.link->dist >= slink->dist);
+		       relay->source_rt->any.link->lnk_span.dist >=
+		        slink->lnk_span.dist);
 		relay = dmsg_generate_relay(conn, slink);
 #ifdef REQUIRE_SYMMETRICAL
-		lastdist = slink->dist;
-		lastrnss = slink->rnss;
+		lastdist = slink->lnk_span.dist;
+		lastrnss = slink->lnk_span.rnss;
 #endif
 
 		/*
@@ -1227,7 +963,42 @@ dmsg_relay_scan_specific(h2span_node_t *node, h2span_conn_t *conn)
 }
 
 /*
- * Helper function to generate missing relay.
+ * Find the slink associated with the msgid and return its state,
+ * so the caller can issue a transaction.
+ */
+dmsg_state_t *
+dmsg_findspan(const char *label)
+{
+	dmsg_state_t *state;
+        h2span_cluster_t *cls;
+	h2span_node_t *node;
+	h2span_link_t *slink;
+	uint64_t msgid = strtoull(label, NULL, 16);
+
+	pthread_mutex_lock(&cluster_mtx);
+
+	state = NULL;
+	RB_FOREACH(cls, h2span_cluster_tree, &cluster_tree) {
+		RB_FOREACH(node, h2span_node_tree, &cls->tree) {
+			RB_FOREACH(slink, h2span_link_tree, &node->tree) {
+				if (slink->state->msgid == msgid) {
+					state = slink->state;
+					goto done;
+				}
+			}
+		}
+	}
+done:
+	pthread_mutex_unlock(&cluster_mtx);
+
+	fprintf(stderr, "findspan: %p\n", state);
+
+	return state;
+}
+
+
+/*
+ * Helper function to generate missing relay on target connection.
  *
  * cluster_mtx must be held
  */
@@ -1245,15 +1016,18 @@ dmsg_generate_relay(h2span_conn_t *conn, h2span_link_t *slink)
 
 	/*
 	 * NOTE: relay->target_rt->any.relay set to relay by alloc.
+	 *
+	 * NOTE: LNK_SPAN is transmitted as a top-level transaction.
 	 */
-	msg = dmsg_msg_alloc(&conn->state->iocom->circuit0,
+	msg = dmsg_msg_alloc(&conn->state->iocom->state0,
 			     0, DMSG_LNK_SPAN | DMSGF_CREATE,
 			     dmsg_lnk_relay, relay);
 	relay->target_rt = msg->state;
+	msg->state->flags |= DMSG_STATE_ROUTED;
 
-	msg->any.lnk_span = slink->state->msg->any.lnk_span;
-	msg->any.lnk_span.dist = slink->dist + 1;
-	msg->any.lnk_span.rnss = slink->rnss + dmsg_rnss();
+	msg->any.lnk_span = slink->lnk_span;
+	msg->any.lnk_span.dist = slink->lnk_span.dist + 1;
+	msg->any.lnk_span.rnss = slink->lnk_span.rnss + dmsg_rnss();
 
 	RB_INSERT(h2span_relay_tree, &conn->tree, relay);
 	TAILQ_INSERT_TAIL(&slink->relayq, relay, entry);
@@ -1297,12 +1071,15 @@ void
 dmsg_relay_delete(h2span_relay_t *relay)
 {
 	fprintf(stderr,
-		"RELAY DELETE %p RELAY %p ON CLS=%p NODE=%p DIST=%d FD %d STATE %p\n",
+		"RELAY DELETE %p RELAY %p ON CLS=%p NODE=%p "
+		"DIST=%d FD %d STATE %p\n",
 		relay->source_rt->any.link,
 		relay,
-		relay->source_rt->any.link->node->cls, relay->source_rt->any.link->node,
-		relay->source_rt->any.link->dist,
-		relay->conn->state->iocom->sock_fd, relay->target_rt);
+		relay->source_rt->any.link->node->cls,
+		relay->source_rt->any.link->node,
+		relay->source_rt->any.link->lnk_span.dist,
+		relay->conn->state->iocom->sock_fd,
+		relay->target_rt);
 
 	RB_REMOVE(h2span_relay_tree, &relay->conn->tree, relay);
 	TAILQ_REMOVE(&relay->source_rt->any.link->relayq, relay, entry);
@@ -1316,55 +1093,6 @@ dmsg_relay_delete(h2span_relay_t *relay)
 	relay->conn = NULL;
 	relay->source_rt = NULL;
 	dmsg_free(relay);
-}
-
-/************************************************************************
- *			MESSAGE ROUTING AND SOURCE VALIDATION		*
- ************************************************************************/
-
-int
-dmsg_circuit_route(dmsg_msg_t *msg)
-{
-	dmsg_iocom_t *iocom = msg->iocom;
-	dmsg_circuit_t *circ;
-	dmsg_circuit_t *peer;
-	dmsg_circuit_t dummy;
-	int error = 0;
-
-	/*
-	 * Relay occurs before any state processing, msg state should always
-	 * be NULL.
-	 */
-	assert(msg->state == NULL);
-
-	/*
-	 * Lookup the circuit on the incoming iocom.
-	 */
-	pthread_mutex_lock(&iocom->mtx);
-
-	dummy.msgid = msg->any.head.circuit;
-	circ = RB_FIND(dmsg_circuit_tree, &iocom->circuit_tree, &dummy);
-	assert(circ);
-	peer = circ->peer;
-	dmsg_circuit_hold(peer);
-
-	if (DMsgDebugOpt >= 4) {
-		fprintf(stderr,
-			"CIRC relay %08x %p->%p\n",
-			msg->any.head.cmd, circ, peer);
-	}
-
-	msg->iocom = peer->iocom;
-	msg->any.head.circuit = peer->msgid;
-	dmsg_circuit_drop_locked(msg->circuit);
-	msg->circuit = peer;
-
-	pthread_mutex_unlock(&iocom->mtx);
-
-	dmsg_msg_write(msg);
-	error = DMSG_IOQ_ERROR_ROUTED;
-
-	return error;
 }
 
 /************************************************************************
@@ -1433,7 +1161,7 @@ dmsg_node_get(h2span_cluster_t *cls, uuid_t *pfs_fsid)
  * DEBUG ONLY
  */
 void
-dmsg_shell_tree(dmsg_circuit_t *circuit, char *cmdbuf __unused)
+dmsg_shell_tree(dmsg_iocom_t *iocom, char *cmdbuf __unused)
 {
 	h2span_cluster_t *cls;
 	h2span_node_t *node;
@@ -1443,24 +1171,24 @@ dmsg_shell_tree(dmsg_circuit_t *circuit, char *cmdbuf __unused)
 
 	pthread_mutex_lock(&cluster_mtx);
 	RB_FOREACH(cls, h2span_cluster_tree, &cluster_tree) {
-		dmsg_circuit_printf(circuit, "Cluster %s %s (%s)\n",
+		dmsg_printf(iocom, "Cluster %s %s (%s)\n",
 				  dmsg_peer_type_to_str(cls->peer_type),
 				  dmsg_uuid_to_str(&cls->pfs_clid, &uustr),
 				  cls->cl_label);
 		RB_FOREACH(node, h2span_node_tree, &cls->tree) {
-			dmsg_circuit_printf(circuit, "    Node %02x %s (%s)\n",
+			dmsg_printf(iocom, "    Node %02x %s (%s)\n",
 				node->pfs_type,
 				dmsg_uuid_to_str(&node->pfs_fsid, &uustr),
 				node->fs_label);
 			RB_FOREACH(slink, h2span_link_tree, &node->tree) {
-				dmsg_circuit_printf(circuit,
+				dmsg_printf(iocom,
 					    "\tSLink msgid %016jx "
 					    "dist=%d via %d\n",
 					    (intmax_t)slink->state->msgid,
-					    slink->dist,
+					    slink->lnk_span.dist,
 					    slink->state->iocom->sock_fd);
 				TAILQ_FOREACH(relay, &slink->relayq, entry) {
-					dmsg_circuit_printf(circuit,
+					dmsg_printf(iocom,
 					    "\t    Relay-out msgid %016jx "
 					    "via %d\n",
 					    (intmax_t)relay->target_rt->msgid,
