@@ -550,7 +550,8 @@ int radeon_dummy_page_init(struct radeon_device *rdev)
 	    PAGE_SIZE, PAGE_SIZE, ~0);
 	if (rdev->dummy_page.dmah == NULL)
 		return -ENOMEM;
-	rdev->dummy_page.addr = (dma_addr_t)rdev->dummy_page.dmah->vaddr;
+	rdev->dummy_page.addr =
+	    (dma_addr_t)(uintptr_t)rdev->dummy_page.dmah->vaddr;
 	return 0;
 }
 
