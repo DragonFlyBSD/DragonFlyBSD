@@ -220,7 +220,7 @@ acpi_cpu_attach(device_t dev)
 
 	if (!ACPI_SUCCESS(status)) {
 	    if (bootverbose)
-		device_printf(dev, "_OSC failed, use _PDC\n");
+		device_printf(dev, "_OSC failed, using _PDC\n");
 
 	    arglist.Pointer = arg;
 	    arglist.Count = 1;
