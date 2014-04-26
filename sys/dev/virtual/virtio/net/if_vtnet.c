@@ -206,12 +206,6 @@ struct vtnet_mac_filter {
 	struct vtnet_mac_table	vmf_multicast;
 };
 
-/*
- * The MAC filter table is malloc(9)'d when needed. Ensure it will
- * always fit in one segment.
- */
-CTASSERT(sizeof(struct vtnet_mac_filter) <= PAGE_SIZE);
-
 #define VTNET_WATCHDOG_TIMEOUT	5
 #define VTNET_CSUM_OFFLOAD	(CSUM_TCP | CSUM_UDP)// | CSUM_SCTP)
 
@@ -546,7 +540,7 @@ vtnet_attach(device_t dev)
 	}
 	sc->vtnet_macfilter = contigmalloc(
 	    sizeof(struct vtnet_mac_filter),
-	    M_VTNET, M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
+	    M_DEVBUF, M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
 	if (sc->vtnet_macfilter == NULL) {
 		device_printf(dev,
 		    "cannot contigmalloc the mac filter table\n");
@@ -694,7 +688,7 @@ vtnet_detach(device_t dev)
 	}
 	if (sc->vtnet_macfilter != NULL) {
 		contigfree(sc->vtnet_macfilter,
-		    sizeof(struct vtnet_mac_filter), M_VTNET);
+		    sizeof(struct vtnet_mac_filter), M_DEVBUF);
 		sc->vtnet_macfilter = NULL;
 	}
 
@@ -2354,7 +2348,7 @@ vtnet_set_allmulti(struct vtnet_softc *sc, int on)
 static void
 vtnet_rx_filter_mac(struct vtnet_softc *sc)
 {
-	struct virtio_net_ctrl_hdr hdr;
+	struct virtio_net_ctrl_hdr hdr __aligned(2);
 	struct vtnet_mac_filter *filter;
 	struct sglist_seg segs[4];
 	struct sglist sg;
@@ -2378,6 +2372,7 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 
 	/* Use the MAC filtering table allocated in vtnet_attach. */
 	filter = sc->vtnet_macfilter;
+	memset(filter, 0, sizeof(struct vtnet_mac_filter));
 
 	/* Unicast MAC addresses: */
 	//if_addr_rlock(ifp);
