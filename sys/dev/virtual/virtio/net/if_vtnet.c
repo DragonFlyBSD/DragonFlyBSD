@@ -110,8 +110,9 @@ struct vtnet_softc {
 	struct virtqueue	*vtnet_tx_vq;
 	struct virtqueue	*vtnet_ctrl_vq;
 
-	struct vtnet_tx_header	*txhdrarea;
-	uint32_t		txhdridx;
+	struct vtnet_tx_header	*vtnet_txhdrarea;
+	uint32_t		vtnet_txhdridx;
+	struct vtnet_mac_filter *vtnet_macfilter;
 
 	int			vtnet_hdr_size;
 	int			vtnet_tx_size;
@@ -535,12 +536,21 @@ vtnet_attach(device_t dev)
 
 	tx_size = virtqueue_size(sc->vtnet_tx_vq);
 	sc->vtnet_tx_size = tx_size;
-	sc->txhdridx = 0;
-	sc->txhdrarea = contigmalloc(
-	    ((sc->vtnet_tx_size + 3) / 2) * sizeof(struct vtnet_tx_header),
+	sc->vtnet_txhdridx = 0;
+	sc->vtnet_txhdrarea = contigmalloc(
+	    ((sc->vtnet_tx_size / 2) + 1) * sizeof(struct vtnet_tx_header),
 	    M_VTNET, M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
-	if (sc->txhdrarea == NULL) {
-		panic("cannot contigmalloc the tx headers\n");
+	if (sc->vtnet_txhdrarea == NULL) {
+		device_printf(dev, "cannot contigmalloc the tx headers\n");
+		goto fail;
+	}
+	sc->vtnet_macfilter = contigmalloc(
+	    sizeof(struct vtnet_mac_filter),
+	    M_VTNET, M_WAITOK, 0, BUS_SPACE_MAXADDR, 4, 0);
+	if (sc->vtnet_macfilter == NULL) {
+		device_printf(dev,
+		    "cannot contigmalloc the mac filter table\n");
+		goto fail;
 	}
 	ifq_set_maxlen(&ifp->if_snd, tx_size - 1);
 	ifq_set_ready(&ifp->if_snd);
@@ -676,9 +686,17 @@ vtnet_detach(device_t dev)
 	if (sc->vtnet_ctrl_vq != NULL)
 		vtnet_free_ctrl_vq(sc);
 
-	contigfree(sc->txhdrarea,
-	    ((sc->vtnet_tx_size + 3) / 2) * sizeof(struct vtnet_tx_header),
-	    M_VTNET);
+	if (sc->vtnet_txhdrarea != NULL) {
+		contigfree(sc->vtnet_txhdrarea,
+		    ((sc->vtnet_tx_size / 2) + 1) *
+		    sizeof(struct vtnet_tx_header), M_VTNET);
+		sc->vtnet_txhdrarea = NULL;
+	}
+	if (sc->vtnet_macfilter != NULL) {
+		contigfree(sc->vtnet_macfilter,
+		    sizeof(struct vtnet_mac_filter), M_VTNET);
+		sc->vtnet_macfilter = NULL;
+	}
 
 	ifmedia_removeall(&sc->vtnet_media);
 
@@ -1912,7 +1930,7 @@ vtnet_encap(struct vtnet_softc *sc, struct mbuf **m_head)
 	struct mbuf *m;
 	int error;
 
-	txhdr = &sc->txhdrarea[sc->txhdridx];
+	txhdr = &sc->vtnet_txhdrarea[sc->vtnet_txhdridx];
 	memset(txhdr, 0, sizeof(struct vtnet_tx_header));
 
 	/*
@@ -1942,8 +1960,8 @@ vtnet_encap(struct vtnet_softc *sc, struct mbuf **m_head)
 
 	error = vtnet_enqueue_txbuf(sc, m_head, txhdr);
 	if (error == 0)
-		sc->txhdridx =
-		    (sc->txhdridx + 1) % ((sc->vtnet_tx_size + 3) / 2);
+		sc->vtnet_txhdridx =
+		    (sc->vtnet_txhdridx + 1) % ((sc->vtnet_tx_size / 2) + 1);
 fail:
 	return (error);
 }
@@ -2291,7 +2309,7 @@ vtnet_rx_filter(struct vtnet_softc *sc)
 static int
 vtnet_ctrl_rx_cmd(struct vtnet_softc *sc, int cmd, int on)
 {
-	struct virtio_net_ctrl_hdr hdr;
+	struct virtio_net_ctrl_hdr hdr __aligned(2);
 	struct sglist_seg segs[3];
 	struct sglist sg;
 	uint8_t onoff, ack;
@@ -2358,13 +2376,8 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 	KASSERT(sc->vtnet_flags & VTNET_FLAG_CTRL_RX,
 	    ("CTRL_RX feature not negotiated"));
 
-	/*
-	 * Allocate the MAC filtering table. Note we could do this
-	 * at attach time, but it is probably not worth keeping it
-	 * around for an infrequent occurrence.
-	 */
-	filter = kmalloc(sizeof(struct vtnet_mac_filter), M_DEVBUF,
-	    M_INTWAIT | M_ZERO);
+	/* Use the MAC filtering table allocated in vtnet_attach. */
+	filter = sc->vtnet_macfilter;
 
 	/* Unicast MAC addresses: */
 	//if_addr_rlock(ifp);
@@ -2438,8 +2451,6 @@ vtnet_rx_filter_mac(struct vtnet_softc *sc)
 		if_printf(ifp, "error setting host MAC filter table\n");
 
 out:
-	kfree(filter, M_DEVBUF);
-
 	if (promisc)
 		if (vtnet_set_promisc(sc, 1) != 0)
 			if_printf(ifp, "cannot enable promiscuous mode\n");
@@ -2451,7 +2462,7 @@ out:
 static int
 vtnet_exec_vlan_filter(struct vtnet_softc *sc, int add, uint16_t tag)
 {
-	struct virtio_net_ctrl_hdr hdr;
+	struct virtio_net_ctrl_hdr hdr __aligned(2);
 	struct sglist_seg segs[3];
 	struct sglist sg;
 	uint8_t ack;
