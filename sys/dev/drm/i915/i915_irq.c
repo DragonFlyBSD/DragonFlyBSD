@@ -330,11 +330,17 @@ i915_hotplug_work_func(void *context, int pending)
 #endif
 }
 
-static void i915_handle_rps_change(struct drm_device *dev)
+static void ironlake_handle_rps_change(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	u32 busy_up, busy_down, max_avg, min_avg;
-	u8 new_delay = dev_priv->cur_delay;
+	u8 new_delay;
+
+	lockmgr(&mchdev_lock, LK_EXCLUSIVE);
+
+	I915_WRITE16(MEMINTRSTS, I915_READ(MEMINTRSTS));
+
+	new_delay = dev_priv->cur_delay;
 
 	I915_WRITE16(MEMINTRSTS, MEMINT_EVAL_CHG);
 	busy_up = I915_READ(RCPREVBSYTUPAVG);
@@ -357,6 +363,8 @@ static void i915_handle_rps_change(struct drm_device *dev)
 
 	if (ironlake_set_drps(dev, new_delay))
 		dev_priv->cur_delay = new_delay;
+
+	lockmgr(&mchdev_lock, LK_RELEASE);
 
 	return;
 }
@@ -441,47 +449,128 @@ gen6_pm_rps_work_func(void *arg, int pending)
 	DRM_UNLOCK(dev);
 }
 
-static void pch_irq_handler(struct drm_device *dev)
+static void snb_gt_irq_handler(struct drm_device *dev,
+			       struct drm_i915_private *dev_priv,
+			       u32 gt_iir)
+{
+
+	if (gt_iir & (GEN6_RENDER_USER_INTERRUPT |
+		      GEN6_RENDER_PIPE_CONTROL_NOTIFY_INTERRUPT))
+		notify_ring(dev, &dev_priv->ring[RCS]);
+	if (gt_iir & GEN6_BSD_USER_INTERRUPT)
+		notify_ring(dev, &dev_priv->ring[VCS]);
+	if (gt_iir & GEN6_BLITTER_USER_INTERRUPT)
+		notify_ring(dev, &dev_priv->ring[BCS]);
+
+	if (gt_iir & (GT_GEN6_BLT_CS_ERROR_INTERRUPT |
+		      GT_GEN6_BSD_CS_ERROR_INTERRUPT |
+		      GT_RENDER_CS_ERROR_INTERRUPT)) {
+		DRM_ERROR("GT error interrupt 0x%08x\n", gt_iir);
+		i915_handle_error(dev, false);
+	}
+
+#if 0
+	if (gt_iir & GT_GEN7_L3_PARITY_ERROR_INTERRUPT)
+		ivybridge_handle_parity_error(dev);
+#endif
+}
+
+static void gen6_queue_rps_work(struct drm_i915_private *dev_priv,
+				u32 pm_iir)
+{
+
+	/*
+	 * IIR bits should never already be set because IMR should
+	 * prevent an interrupt from being shown in IIR. The warning
+	 * displays a case where we've unsafely cleared
+	 * dev_priv->rps.pm_iir. Although missing an interrupt of the same
+	 * type is not a problem, it displays a problem in the logic.
+	 *
+	 * The mask bit in IMR is cleared by dev_priv->rps.work.
+	 */
+
+	lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
+	dev_priv->pm_iir |= pm_iir;
+	I915_WRITE(GEN6_PMIMR, dev_priv->pm_iir);
+	POSTING_READ(GEN6_PMIMR);
+	lockmgr(&dev_priv->rps_lock, LK_RELEASE);
+
+	taskqueue_enqueue(dev_priv->tq, &dev_priv->rps_task);
+}
+
+static void ibx_irq_handler(struct drm_device *dev, u32 pch_iir)
 {
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-	u32 pch_iir;
 	int pipe;
 
-	pch_iir = I915_READ(SDEIIR);
+	if (pch_iir & SDE_HOTPLUG_MASK)
+		taskqueue_enqueue(dev_priv->tq, &dev_priv->hotplug_task);
 
 	if (pch_iir & SDE_AUDIO_POWER_MASK)
-		DRM_DEBUG("i915: PCH audio power change on port %d\n",
+		DRM_DEBUG_DRIVER("PCH audio power change on port %d\n",
 				 (pch_iir & SDE_AUDIO_POWER_MASK) >>
 				 SDE_AUDIO_POWER_SHIFT);
 
 	if (pch_iir & SDE_GMBUS)
-		DRM_DEBUG("i915: PCH GMBUS interrupt\n");
+		DRM_DEBUG_DRIVER("PCH GMBUS interrupt\n");
 
 	if (pch_iir & SDE_AUDIO_HDCP_MASK)
-		DRM_DEBUG("i915: PCH HDCP audio interrupt\n");
+		DRM_DEBUG_DRIVER("PCH HDCP audio interrupt\n");
 
 	if (pch_iir & SDE_AUDIO_TRANS_MASK)
-		DRM_DEBUG("i915: PCH transcoder audio interrupt\n");
+		DRM_DEBUG_DRIVER("PCH transcoder audio interrupt\n");
 
 	if (pch_iir & SDE_POISON)
-		DRM_ERROR("i915: PCH poison interrupt\n");
+		DRM_ERROR("PCH poison interrupt\n");
 
 	if (pch_iir & SDE_FDI_MASK)
 		for_each_pipe(pipe)
-			DRM_DEBUG("  pipe %c FDI IIR: 0x%08x\n",
+			DRM_DEBUG_DRIVER("  pipe %c FDI IIR: 0x%08x\n",
 					 pipe_name(pipe),
 					 I915_READ(FDI_RX_IIR(pipe)));
 
 	if (pch_iir & (SDE_TRANSB_CRC_DONE | SDE_TRANSA_CRC_DONE))
-		DRM_DEBUG("i915: PCH transcoder CRC done interrupt\n");
+		DRM_DEBUG_DRIVER("PCH transcoder CRC done interrupt\n");
 
 	if (pch_iir & (SDE_TRANSB_CRC_ERR | SDE_TRANSA_CRC_ERR))
-		DRM_DEBUG("i915: PCH transcoder CRC error interrupt\n");
+		DRM_DEBUG_DRIVER("PCH transcoder CRC error interrupt\n");
 
 	if (pch_iir & SDE_TRANSB_FIFO_UNDER)
-		DRM_DEBUG("i915: PCH transcoder B underrun interrupt\n");
+		DRM_DEBUG_DRIVER("PCH transcoder B underrun interrupt\n");
 	if (pch_iir & SDE_TRANSA_FIFO_UNDER)
-		DRM_DEBUG("PCH transcoder A underrun interrupt\n");
+		DRM_DEBUG_DRIVER("PCH transcoder A underrun interrupt\n");
+}
+
+static void cpt_irq_handler(struct drm_device *dev, u32 pch_iir)
+{
+	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
+	int pipe;
+
+	if (pch_iir & SDE_HOTPLUG_MASK_CPT)
+		taskqueue_enqueue(dev_priv->tq, &dev_priv->hotplug_task);
+
+	if (pch_iir & SDE_AUDIO_POWER_MASK_CPT)
+		DRM_DEBUG_DRIVER("PCH audio power change on port %d\n",
+				 (pch_iir & SDE_AUDIO_POWER_MASK_CPT) >>
+				 SDE_AUDIO_POWER_SHIFT_CPT);
+
+	if (pch_iir & SDE_AUX_MASK_CPT)
+		DRM_DEBUG_DRIVER("AUX channel interrupt\n");
+
+	if (pch_iir & SDE_GMBUS_CPT)
+		DRM_DEBUG_DRIVER("PCH GMBUS interrupt\n");
+
+	if (pch_iir & SDE_AUDIO_CP_REQ_CPT)
+		DRM_DEBUG_DRIVER("Audio CP request interrupt\n");
+
+	if (pch_iir & SDE_AUDIO_CP_CHG_CPT)
+		DRM_DEBUG_DRIVER("Audio CP change interrupt\n");
+
+	if (pch_iir & SDE_FDI_MASK_CPT)
+		for_each_pipe(pipe)
+			DRM_DEBUG_DRIVER("  pipe %c FDI IIR: 0x%08x\n",
+					 pipe_name(pipe),
+					 I915_READ(FDI_RX_IIR(pipe)));
 }
 
 static void 
@@ -489,97 +578,69 @@ ivybridge_irq_handler(void *arg)
 {
 	struct drm_device *dev = (struct drm_device *) arg;
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
-	u32 de_iir, gt_iir, de_ier, pch_iir, pm_iir;
-#if 0
-	struct drm_i915_master_private *master_priv;
-#endif
+	u32 de_iir, gt_iir, de_ier, pm_iir;
+	int i;
 
 	atomic_inc(&dev_priv->irq_received);
 
 	/* disable master interrupt before clearing iir  */
 	de_ier = I915_READ(DEIER);
 	I915_WRITE(DEIER, de_ier & ~DE_MASTER_IRQ_CONTROL);
-	POSTING_READ(DEIER);
 
-	de_iir = I915_READ(DEIIR);
 	gt_iir = I915_READ(GTIIR);
-	pch_iir = I915_READ(SDEIIR);
-	pm_iir = I915_READ(GEN6_PMIIR);
+	if (gt_iir) {
+		snb_gt_irq_handler(dev, dev_priv, gt_iir);
+		I915_WRITE(GTIIR, gt_iir);
+	}
 
-	if (de_iir == 0 && gt_iir == 0 && pch_iir == 0 && pm_iir == 0)
-		goto done;
-
+	de_iir = I915_READ(DEIER);
+	if (de_iir) {
 #if 0
-	if (dev->primary->master) {
-		master_priv = dev->primary->master->driver_priv;
-		if (master_priv->sarea_priv)
-			master_priv->sarea_priv->last_dispatch =
-				READ_BREADCRUMB(dev_priv);
-	}
-#else
-	if (dev_priv->sarea_priv)
-		dev_priv->sarea_priv->last_dispatch =
-		    READ_BREADCRUMB(dev_priv);
+		if (de_iir & DE_GSE_IVB)
+			intel_opregion_gse_intr(dev);
 #endif
 
-	if (gt_iir & (GT_USER_INTERRUPT | GT_PIPE_NOTIFY))
-		notify_ring(dev, &dev_priv->ring[RCS]);
-	if (gt_iir & GT_GEN6_BSD_USER_INTERRUPT)
-		notify_ring(dev, &dev_priv->ring[VCS]);
-	if (gt_iir & GT_GEN6_BLT_USER_INTERRUPT)
-		notify_ring(dev, &dev_priv->ring[BCS]);
+		for (i = 0; i < 3; i++) {
+			if (de_iir & (DE_PIPEA_VBLANK_IVB << (5 * i)))
+				drm_handle_vblank(dev, i);
+			if (de_iir & (DE_PLANEA_FLIP_DONE_IVB << (5 * i))) {
+				intel_prepare_page_flip(dev, i);
+				intel_finish_page_flip_plane(dev, i);
+			}
+		}
 
-	if (de_iir & DE_GSE_IVB) {
-#if 1
-		KIB_NOTYET();
-#else
-		intel_opregion_gse_intr(dev);
-#endif
+		/* check event from PCH */
+		if (de_iir & DE_PCH_EVENT_IVB) {
+			u32 pch_iir = I915_READ(SDEIIR);
+
+			cpt_irq_handler(dev, pch_iir);
+
+			/* clear PCH hotplug event before clear CPU irq */
+			I915_WRITE(SDEIIR, pch_iir);
+		}
+
+		I915_WRITE(DEIIR, de_iir);
 	}
 
-	if (de_iir & DE_PLANEA_FLIP_DONE_IVB) {
-		intel_prepare_page_flip(dev, 0);
-		intel_finish_page_flip_plane(dev, 0);
+	pm_iir = I915_READ(GEN6_PMIIR);
+	if (pm_iir) {
+		if (pm_iir & GEN6_PM_DEFERRED_EVENTS)
+			gen6_queue_rps_work(dev_priv, pm_iir);
+		I915_WRITE(GEN6_PMIIR, pm_iir);
 	}
 
-	if (de_iir & DE_PLANEB_FLIP_DONE_IVB) {
-		intel_prepare_page_flip(dev, 1);
-		intel_finish_page_flip_plane(dev, 1);
-	}
-
-	if (de_iir & DE_PIPEA_VBLANK_IVB)
-		drm_handle_vblank(dev, 0);
-
-	if (de_iir & DE_PIPEB_VBLANK_IVB)
-		drm_handle_vblank(dev, 1);
-
-	/* check event from PCH */
-	if (de_iir & DE_PCH_EVENT_IVB) {
-		if (pch_iir & SDE_HOTPLUG_MASK_CPT)
-			taskqueue_enqueue(dev_priv->tq, &dev_priv->hotplug_task);
-		pch_irq_handler(dev);
-	}
-
-	if (pm_iir & GEN6_PM_DEFERRED_EVENTS) {
-		lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
-		if ((dev_priv->pm_iir & pm_iir) != 0)
-			kprintf("Missed a PM interrupt\n");
-		dev_priv->pm_iir |= pm_iir;
-		I915_WRITE(GEN6_PMIMR, dev_priv->pm_iir);
-		POSTING_READ(GEN6_PMIMR);
-		lockmgr(&dev_priv->rps_lock, LK_RELEASE);
-		taskqueue_enqueue(dev_priv->tq, &dev_priv->rps_task);
-	}
-
-	/* should clear PCH hotplug event before clear CPU irq */
-	I915_WRITE(SDEIIR, pch_iir);
-	I915_WRITE(GTIIR, gt_iir);
-	I915_WRITE(DEIIR, de_iir);
-	I915_WRITE(GEN6_PMIIR, pm_iir);
-
-done:
 	I915_WRITE(DEIER, de_ier);
 	POSTING_READ(DEIER);
+}
+
+static void ilk_gt_irq_handler(struct drm_device *dev,
+			       struct drm_i915_private *dev_priv,
+			       u32 gt_iir)
+{
+	if (gt_iir & (GT_USER_INTERRUPT | GT_PIPE_NOTIFY))
+		notify_ring(dev, &dev_priv->ring[RCS]);
+	if (gt_iir & GT_BSD_USER_INTERRUPT)
+		notify_ring(dev, &dev_priv->ring[VCS]);
 }
 
 static void
@@ -588,16 +649,8 @@ ironlake_irq_handler(void *arg)
 	struct drm_device *dev = arg;
 	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
 	u32 de_iir, gt_iir, de_ier, pch_iir, pm_iir;
-	u32 hotplug_mask;
-#if 0
-	struct drm_i915_master_private *master_priv;
-#endif
-	u32 bsd_usr_interrupt = GT_BSD_USER_INTERRUPT;
 
 	atomic_inc(&dev_priv->irq_received);
-
-	if (IS_GEN6(dev))
-		bsd_usr_interrupt = GT_GEN6_BSD_USER_INTERRUPT;
 
 	/* disable master interrupt before clearing iir  */
 	de_ier = I915_READ(DEIER);
@@ -613,28 +666,11 @@ ironlake_irq_handler(void *arg)
 	    (!IS_GEN6(dev) || pm_iir == 0))
 		goto done;
 
-	if (HAS_PCH_CPT(dev))
-		hotplug_mask = SDE_HOTPLUG_MASK_CPT;
+	if (IS_GEN5(dev))
+		ilk_gt_irq_handler(dev, dev_priv, gt_iir);
 	else
-		hotplug_mask = SDE_HOTPLUG_MASK;
+		snb_gt_irq_handler(dev, dev_priv, gt_iir);
 
-#if 0
-	if (dev->primary->master) {
-		master_priv = dev->primary->master->driver_priv;
-		if (master_priv->sarea_priv)
-			master_priv->sarea_priv->last_dispatch =
-				READ_BREADCRUMB(dev_priv);
-	}
-#else
-		if (dev_priv->sarea_priv)
-			dev_priv->sarea_priv->last_dispatch =
-			    READ_BREADCRUMB(dev_priv);
-#endif
-
-	if (gt_iir & (GT_USER_INTERRUPT | GT_PIPE_NOTIFY))
-		notify_ring(dev, &dev_priv->ring[RCS]);
-	if (gt_iir & bsd_usr_interrupt)
-		notify_ring(dev, &dev_priv->ring[VCS]);
 	if (gt_iir & GT_GEN6_BLT_USER_INTERRUPT)
 		notify_ring(dev, &dev_priv->ring[BCS]);
 
@@ -646,6 +682,12 @@ ironlake_irq_handler(void *arg)
 #endif
 	}
 
+	if (de_iir & DE_PIPEA_VBLANK)
+		drm_handle_vblank(dev, 0);
+
+	if (de_iir & DE_PIPEB_VBLANK)
+		drm_handle_vblank(dev, 1);
+
 	if (de_iir & DE_PLANEA_FLIP_DONE) {
 		intel_prepare_page_flip(dev, 0);
 		intel_finish_page_flip_plane(dev, 0);
@@ -656,35 +698,19 @@ ironlake_irq_handler(void *arg)
 		intel_finish_page_flip_plane(dev, 1);
 	}
 
-	if (de_iir & DE_PIPEA_VBLANK)
-		drm_handle_vblank(dev, 0);
-
-	if (de_iir & DE_PIPEB_VBLANK)
-		drm_handle_vblank(dev, 1);
-
 	/* check event from PCH */
 	if (de_iir & DE_PCH_EVENT) {
-		if (pch_iir & hotplug_mask)
-			taskqueue_enqueue(dev_priv->tq,
-			    &dev_priv->hotplug_task);
-		pch_irq_handler(dev);
+		if (HAS_PCH_CPT(dev))
+			cpt_irq_handler(dev, pch_iir);
+		else
+			ibx_irq_handler(dev, pch_iir);
 	}
 
-	if (de_iir & DE_PCU_EVENT) {
-		I915_WRITE16(MEMINTRSTS, I915_READ(MEMINTRSTS));
-		i915_handle_rps_change(dev);
-	}
+	if (IS_GEN5(dev) &&  de_iir & DE_PCU_EVENT)
+		ironlake_handle_rps_change(dev);
 
-	if (pm_iir & GEN6_PM_DEFERRED_EVENTS) {
-		lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
-		if ((dev_priv->pm_iir & pm_iir) != 0)
-			kprintf("Missed a PM interrupt\n");
-		dev_priv->pm_iir |= pm_iir;
-		I915_WRITE(GEN6_PMIMR, dev_priv->pm_iir);
-		POSTING_READ(GEN6_PMIMR);
-		lockmgr(&dev_priv->rps_lock, LK_RELEASE);
-		taskqueue_enqueue(dev_priv->tq, &dev_priv->rps_task);
-	}
+	if (IS_GEN6(dev) && pm_iir & GEN6_PM_DEFERRED_EVENTS)
+		gen6_queue_rps_work(dev_priv, pm_iir);
 
 	/* should clear PCH hotplug event before clear CPU irq */
 	I915_WRITE(SDEIIR, pch_iir);
