@@ -441,18 +441,24 @@ void
 dump_packet_nobuf(u_char *user, const struct pcap_pkthdr *h, const u_char *sp)
 {
 	FILE *f = (FILE *)user;
+	struct pcap_sf_pkthdr sh;
 
 	if (suspended) {
 		packets_dropped++;
 		return;
 	}
 
-	if (fwrite(h, sizeof(*h), 1, f) != 1) {
+	sh.ts.tv_sec = (bpf_int32)h->ts.tv_sec;
+	sh.ts.tv_usec = (bpf_int32)h->ts.tv_usec;
+	sh.caplen = h->caplen;
+	sh.len = h->len;
+
+	if (fwrite((char *)&sh, sizeof(sh), 1, f) != 1) {
 		off_t pos = ftello(f);
 
 		/* try to undo header to prevent corruption */
-		if ((size_t)pos < sizeof(*h) ||
-		    ftruncate(fileno(f), pos - sizeof(*h))) {
+		if ((size_t)pos < sizeof(sh) ||
+		    ftruncate(fileno(f), pos - sizeof(sh))) {
 			logmsg(LOG_ERR, "Write failed, corrupted logfile!");
 			set_suspended(1);
 			gotsig_close = 1;
@@ -521,7 +527,8 @@ void
 dump_packet(u_char *user, const struct pcap_pkthdr *h, const u_char *sp)
 {
 	FILE *f = (FILE *)user;
-	size_t len = sizeof(*h) + h->caplen;
+	struct pcap_sf_pkthdr sh;
+	size_t len = sizeof(sh) + h->caplen;
 
 	if (len < sizeof(*h) || h->caplen > (size_t)cur_snaplen) {
 		logmsg(LOG_NOTICE, "invalid size %zd (%u/%u), packet dropped",
@@ -549,8 +556,13 @@ dump_packet(u_char *user, const struct pcap_pkthdr *h, const u_char *sp)
 	}
 
  append:
-	memcpy(bufpos, h, sizeof(*h));
-	memcpy(bufpos + sizeof(*h), sp, h->caplen);
+	sh.ts.tv_sec = (bpf_int32)h->ts.tv_sec;
+	sh.ts.tv_usec = (bpf_int32)h->ts.tv_usec;
+	sh.caplen = h->caplen;
+	sh.len = h->len;
+
+	memcpy(bufpos, &sh, sizeof(sh));
+	memcpy(bufpos + sizeof(sh), sp, h->caplen);
 
 	bufpos += len;
 	bufleft -= len;
