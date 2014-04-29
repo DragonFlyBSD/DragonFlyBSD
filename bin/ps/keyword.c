@@ -70,7 +70,7 @@ int	utime(), stime(), ixrss(), idrss(), isrss();
 #define	UIDFMT	"u"
 #define	UIDLEN	5
 #define	PIDFMT	"d"
-#define	PIDLEN	5
+#define	PIDLEN	6
 #define USERLEN (MAXLOGNAME-1)
 
 static const VAR var[] = {
