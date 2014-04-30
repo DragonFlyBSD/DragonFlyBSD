@@ -21,7 +21,7 @@ INCS=	a.out.h ar.h assert.h bitstring.h cpio.h ctype.h db.h \
 	res_update.h resolv.h re_comp.h rmd160.h \
 	runetype.h search.h setjmp.h sgtty.h \
 	signal.h spawn.h stab.h stdalign.h stdarg.h stdbool.h \
-	stddef.h stdint.h stdio.h stdlib.h \
+	stddef.h stdint.h stdio.h stdlib.h stdnoreturn.h \
 	string.h stringlist.h strings.h struct.h sysexits.h \
 	tar.h tgmath.h time.h \
 	timeconv.h \
