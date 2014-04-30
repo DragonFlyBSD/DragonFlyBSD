@@ -13,6 +13,7 @@ SRCS=	\
 	aslcompiler.y.h \
 	aslcompilerlex.c \
 	aslcompilerparse.c \
+	aslmessages.c \
 	dtparser.y.h \
 	dtparserlex.c \
 	dtparserparse.c \
