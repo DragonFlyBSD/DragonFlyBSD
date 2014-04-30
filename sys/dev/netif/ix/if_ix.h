@@ -209,6 +209,9 @@ struct ix_tx_ring {
 	union ixgbe_adv_tx_desc	*tx_base;
 	struct ix_tx_buf	*tx_buf;
 	bus_dma_tag_t		tx_tag;
+	uint16_t		tx_flags;
+#define IX_TXFLAG_ENABLED	0x1
+	uint16_t		tx_pad;
 	uint32_t		tx_idx;
 	uint16_t		tx_avail;
 	uint16_t		tx_next_avail;
@@ -340,6 +343,9 @@ struct ix_softc {
 	int			advspeed;	/* advertised link speeds */
 	uint16_t		max_frame_size;
 	int16_t			sts_msix_vec;	/* status MSI-X vector */
+
+	int			rx_npoll_off;
+	int			tx_npoll_off;
 
 #ifdef IX_RSS_DEBUG
 	int			rss_debug;

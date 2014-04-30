@@ -29,6 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "opt_ifpoll.h"
 #include "opt_ix.h"
 
 #include <sys/param.h>
@@ -139,6 +140,12 @@ static void	ix_stop(struct ix_softc *);
 static void	ix_media_status(struct ifnet *, struct ifmediareq *);
 static int	ix_media_change(struct ifnet *);
 static void	ix_timer(void *);
+#ifdef IFPOLL_ENABLE
+static void	ix_npoll(struct ifnet *, struct ifpoll_info *);
+static void	ix_npoll_rx(struct ifnet *, void *, int);
+static void	ix_npoll_tx(struct ifnet *, void *, int);
+static void	ix_npoll_status(struct ifnet *);
+#endif
 
 static void	ix_add_sysctl(struct ix_softc *);
 static void	ix_add_intr_rate_sysctl(struct ix_softc *, int,
@@ -159,6 +166,10 @@ static int	ix_sysctl_advspeed(SYSCTL_HANDLER_ARGS);
 #endif
 #if 0
 static void     ix_add_hw_stats(struct ix_softc *);
+#endif
+#ifdef IFPOLL_ENABLE
+static int	ix_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS);
+static int	ix_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS);
 #endif
 
 static void	ix_slot_info(struct ix_softc *);
@@ -199,7 +210,7 @@ static void	ix_init_rx_unit(struct ix_softc *);
 static void	ix_setup_hw_rsc(struct ix_rx_ring *);
 #endif
 static int	ix_newbuf(struct ix_rx_ring *, int, boolean_t);
-static void	ix_rxeof(struct ix_rx_ring *);
+static void	ix_rxeof(struct ix_rx_ring *, int);
 static void	ix_rx_discard(struct ix_rx_ring *, int, boolean_t);
 static void	ix_enable_rx_drop(struct ix_softc *);
 static void	ix_disable_rx_drop(struct ix_softc *);
@@ -309,6 +320,9 @@ ix_attach(device_t dev)
 	int error, ring_cnt_max;
 	uint16_t csum;
 	uint32_t ctrl_ext;
+#ifdef IFPOLL_ENABLE
+	int offset, offset_def;
+#endif
 
 	sc->dev = sc->osdep.dev = dev;
 	hw = &sc->hw;
@@ -392,6 +406,42 @@ ix_attach(device_t dev)
 	error = ix_alloc_rings(sc);
 	if (error)
 		goto failed;
+
+#ifdef IFPOLL_ENABLE
+	/*
+	 * NPOLLING RX CPU offset
+	 */
+	if (sc->rx_ring_cnt == ncpus2) {
+		offset = 0;
+	} else {
+		offset_def = (sc->rx_ring_cnt * device_get_unit(dev)) % ncpus2;
+		offset = device_getenv_int(dev, "npoll.rxoff", offset_def);
+		if (offset >= ncpus2 ||
+		    offset % sc->rx_ring_cnt != 0) {
+			device_printf(dev, "invalid npoll.rxoff %d, use %d\n",
+			    offset, offset_def);
+			offset = offset_def;
+		}
+	}
+	sc->rx_npoll_off = offset;
+
+	/*
+	 * NPOLLING TX CPU offset
+	 */
+	if (sc->tx_ring_cnt == ncpus2) {
+		offset = 0;
+	} else {
+		offset_def = (sc->tx_ring_cnt * device_get_unit(dev)) % ncpus2;
+		offset = device_getenv_int(dev, "npoll.txoff", offset_def);
+		if (offset >= ncpus2 ||
+		    offset % sc->tx_ring_cnt != 0) {
+			device_printf(dev, "invalid npoll.txoff %d, use %d\n",
+			    offset, offset_def);
+			offset = offset_def;
+		}
+	}
+	sc->tx_npoll_off = offset;
+#endif
 
 	/* Allocate interrupt */
 	error = ix_alloc_intr(sc);
@@ -559,7 +609,7 @@ ix_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifsq_is_oactive(ifsq))
 		return;
 
-	if (!sc->link_active) {
+	if (!sc->link_active || (txr->tx_flags & IX_TXFLAG_ENABLED) == 0) {
 		ifsq_purge(ifsq);
 		return;
 	}
@@ -635,7 +685,10 @@ ix_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		if (ifp->if_flags & IFF_RUNNING) {
 			ix_disable_intr(sc);
 			ix_set_multi(sc);
-			ix_enable_intr(sc);
+#ifdef IFPOLL_ENABLE
+			if ((ifp->if_flags & IFF_NPOLLING) == 0)
+#endif
+				ix_enable_intr(sc);
 		}
 		break;
 
@@ -711,13 +764,20 @@ ix_init(void *xsc)
 	uint32_t rxpb, frame, size, tmp;
 	uint32_t gpie, rxctrl;
 	int i, error;
+	boolean_t polling;
 
 	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	ix_stop(sc);
 
+	polling = FALSE;
+#ifdef IFPOLL_ENABLE
+	if (ifp->if_flags & IFF_NPOLLING)
+		polling = TRUE;
+#endif
+
 	/* Configure # of used RX/TX rings */
-	ix_set_ring_inuse(sc, FALSE);
+	ix_set_ring_inuse(sc, polling);
 	ifq_set_subq_mask(&ifp->if_snd, sc->tx_ring_inuse - 1);
 
 	/* Get the latest mac address, User can use a LAA */
@@ -948,8 +1008,14 @@ ix_init(void *xsc)
 	/* Initialize the FC settings */
 	ixgbe_start_hw(hw);
 
-	/* And now turn on interrupts */
-	ix_enable_intr(sc);
+	/*
+	 * Only enable interrupts if we are not polling, make sure
+	 * they are off otherwise.
+	 */
+	if (polling)
+		ix_disable_intr(sc);
+	else
+		ix_enable_intr(sc);
 
 	ifp->if_flags |= IFF_RUNNING;
 	for (i = 0; i < sc->tx_ring_inuse; ++i) {
@@ -957,7 +1023,7 @@ ix_init(void *xsc)
 		ifsq_watchdog_start(&sc->tx_rings[i].tx_watchdog);
 	}
 
-	ix_set_timer_cpuid(sc, FALSE);
+	ix_set_timer_cpuid(sc, polling);
 	callout_reset_bycpu(&sc->timer, hz, ix_timer, sc, sc->timer_cpuid);
 }
 
@@ -980,7 +1046,7 @@ ix_intr(void *xsc)
 		struct ix_rx_ring *rxr = &sc->rx_rings[0];
 
 		lwkt_serialize_enter(&rxr->rx_serialize);
-		ix_rxeof(rxr);
+		ix_rxeof(rxr, -1);
 		lwkt_serialize_exit(&rxr->rx_serialize);
 	}
 	if (eicr & IX_RX1_INTR_MASK) {
@@ -990,7 +1056,7 @@ ix_intr(void *xsc)
 		rxr = &sc->rx_rings[1];
 
 		lwkt_serialize_enter(&rxr->rx_serialize);
-		ix_rxeof(rxr);
+		ix_rxeof(rxr, -1);
 		lwkt_serialize_exit(&rxr->rx_serialize);
 	}
 
@@ -1363,8 +1429,11 @@ ix_stop(struct ix_softc *sc)
 
 	ifp->if_flags &= ~IFF_RUNNING;
 	for (i = 0; i < sc->tx_ring_cnt; ++i) {
-		ifsq_clr_oactive(sc->tx_rings[i].tx_ifsq);
-		ifsq_watchdog_stop(&sc->tx_rings[i].tx_watchdog);
+		struct ix_tx_ring *txr = &sc->tx_rings[i];
+
+		ifsq_clr_oactive(txr->tx_ifsq);
+		ifsq_watchdog_stop(&txr->tx_watchdog);
+		txr->tx_flags &= ~IX_TXFLAG_ENABLED;
 	}
 
 	ixgbe_reset_hw(hw);
@@ -1457,6 +1526,9 @@ ix_setup_ifp(struct ix_softc *sc)
 	ifp->if_tryserialize = ix_tryserialize;
 #ifdef INVARIANTS
 	ifp->if_serialize_assert = ix_serialize_assert;
+#endif
+#ifdef IFPOLL_ENABLE
+	ifp->if_npoll = ix_npoll;
 #endif
 
 	/* Increase TSO burst length */
@@ -1777,6 +1849,9 @@ ix_init_tx_ring(struct ix_tx_ring *txr)
 
 	/* Set number of descriptors available */
 	txr->tx_avail = txr->tx_ndesc;
+
+	/* Enable this TX ring */
+	txr->tx_flags |= IX_TXFLAG_ENABLED;
 }
 
 static void
@@ -2526,13 +2601,13 @@ ix_rx_discard(struct ix_rx_ring *rxr, int i, boolean_t eop)
 }
 
 static void
-ix_rxeof(struct ix_rx_ring *rxr)
+ix_rxeof(struct ix_rx_ring *rxr, int count)
 {
 	struct ifnet *ifp = &rxr->rx_sc->arpcom.ac_if;
 	int i, nsegs = 0, cpuid = mycpuid;
 
 	i = rxr->rx_next_check;
-	for (;;) {
+	while (count != 0) {
 		struct ix_rx_buf *rxbuf, *nbuf = NULL;
 		union ixgbe_adv_rx_desc	*cur;
 		struct mbuf *sendmp = NULL, *mp;
@@ -2557,7 +2632,10 @@ ix_rxeof(struct ix_rx_ring *rxr)
 		hash = le32toh(cur->wb.lower.hi_dword.rss);
 		hashtype = le32toh(cur->wb.lower.lo_dword.data) &
 		    IXGBE_RXDADV_RSSTYPE_MASK;
+
 		eop = ((staterr & IXGBE_RXD_STAT_EOP) != 0);
+		if (eop)
+			--count;
 
 		/*
 		 * Make sure bad packets are discarded
@@ -3944,6 +4022,15 @@ ix_add_sysctl(struct ix_softc *sc)
 	    sc, 0, ix_sysctl_tx_intr_nsegs, "I",
 	    "# of segments per TX interrupt");
 
+#ifdef IFPOLL_ENABLE
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "npoll_rxoff", CTLTYPE_INT|CTLFLAG_RW,
+	    sc, 0, ix_sysctl_npoll_rxoff, "I", "NPOLLING RX cpu offset");
+	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	    OID_AUTO, "npoll_txoff", CTLTYPE_INT|CTLFLAG_RW,
+	    sc, 0, ix_sysctl_npoll_txoff, "I", "NPOLLING TX cpu offset");
+#endif
+
 #define IX_ADD_INTR_RATE_SYSCTL(sc, use, name) \
 do { \
 	ix_add_intr_rate_sysctl(sc, IX_INTR_USE_##use, #name, \
@@ -4599,7 +4686,7 @@ ix_msix_rx(void *xrxr)
 
 	ASSERT_SERIALIZED(&rxr->rx_serialize);
 
-	ix_rxeof(rxr);
+	ix_rxeof(rxr, -1);
 	IXGBE_WRITE_REG(&rxr->rx_sc->hw, rxr->rx_eims, rxr->rx_eims_val);
 }
 
@@ -4625,7 +4712,7 @@ ix_msix_rxtx(void *xrxr)
 
 	ASSERT_SERIALIZED(&rxr->rx_serialize);
 
-	ix_rxeof(rxr);
+	ix_rxeof(rxr, -1);
 
 	/*
 	 * NOTE:
@@ -4714,3 +4801,163 @@ ix_setup_msix_eims(const struct ix_softc *sc, int x,
 		*eims_val = 1 << (x - 32);
 	}
 }
+
+#ifdef IFPOLL_ENABLE
+
+static void
+ix_npoll_status(struct ifnet *ifp)
+{
+	struct ix_softc *sc = ifp->if_softc;
+	uint32_t eicr;
+
+	ASSERT_SERIALIZED(&sc->main_serialize);
+
+	eicr = IXGBE_READ_REG(&sc->hw, IXGBE_EICR);
+	ix_intr_status(sc, eicr);
+}
+
+static void
+ix_npoll_tx(struct ifnet *ifp, void *arg, int cycle __unused)
+{
+	struct ix_tx_ring *txr = arg;
+
+	ASSERT_SERIALIZED(&txr->tx_serialize);
+
+	ix_txeof(txr, *(txr->tx_hdr));
+	if (!ifsq_is_empty(txr->tx_ifsq))
+		ifsq_devstart(txr->tx_ifsq);
+}
+
+static void
+ix_npoll_rx(struct ifnet *ifp __unused, void *arg, int cycle)
+{
+	struct ix_rx_ring *rxr = arg;
+
+	ASSERT_SERIALIZED(&rxr->rx_serialize);
+
+	ix_rxeof(rxr, cycle);
+}
+
+static void
+ix_npoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct ix_softc *sc = ifp->if_softc;
+	int i, txr_cnt, rxr_cnt;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	if (info) {
+		int off;
+
+		info->ifpi_status.status_func = ix_npoll_status;
+		info->ifpi_status.serializer = &sc->main_serialize;
+
+		txr_cnt = ix_get_txring_inuse(sc, TRUE);
+		off = sc->tx_npoll_off;
+		for (i = 0; i < txr_cnt; ++i) {
+			struct ix_tx_ring *txr = &sc->tx_rings[i];
+			int idx = i + off;
+
+			KKASSERT(idx < ncpus2);
+			info->ifpi_tx[idx].poll_func = ix_npoll_tx;
+			info->ifpi_tx[idx].arg = txr;
+			info->ifpi_tx[idx].serializer = &txr->tx_serialize;
+			ifsq_set_cpuid(txr->tx_ifsq, idx);
+		}
+
+		rxr_cnt = ix_get_rxring_inuse(sc, TRUE);
+		off = sc->rx_npoll_off;
+		for (i = 0; i < rxr_cnt; ++i) {
+			struct ix_rx_ring *rxr = &sc->rx_rings[i];
+			int idx = i + off;
+
+			KKASSERT(idx < ncpus2);
+			info->ifpi_rx[idx].poll_func = ix_npoll_rx;
+			info->ifpi_rx[idx].arg = rxr;
+			info->ifpi_rx[idx].serializer = &rxr->rx_serialize;
+		}
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			if (rxr_cnt == sc->rx_ring_inuse &&
+			    txr_cnt == sc->tx_ring_inuse) {
+				ix_set_timer_cpuid(sc, TRUE);
+				ix_disable_intr(sc);
+			} else {
+				ix_init(sc);
+			}
+		}
+	} else {
+		for (i = 0; i < sc->tx_ring_cnt; ++i) {
+			struct ix_tx_ring *txr = &sc->tx_rings[i];
+
+			ifsq_set_cpuid(txr->tx_ifsq, txr->tx_intr_cpuid);
+		}
+
+		if (ifp->if_flags & IFF_RUNNING) {
+			txr_cnt = ix_get_txring_inuse(sc, FALSE);
+			rxr_cnt = ix_get_rxring_inuse(sc, FALSE);
+
+			if (rxr_cnt == sc->rx_ring_inuse &&
+			    txr_cnt == sc->tx_ring_inuse) {
+				ix_set_timer_cpuid(sc, FALSE);
+				ix_enable_intr(sc);
+			} else {
+				ix_init(sc);
+			}
+		}
+	}
+}
+
+static int
+ix_sysctl_npoll_rxoff(SYSCTL_HANDLER_ARGS)
+{
+	struct ix_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, off;
+
+	off = sc->rx_npoll_off;
+	error = sysctl_handle_int(oidp, &off, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (off < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+	if (off >= ncpus2 || off % sc->rx_ring_cnt != 0) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		sc->rx_npoll_off = off;
+	}
+	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+static int
+ix_sysctl_npoll_txoff(SYSCTL_HANDLER_ARGS)
+{
+	struct ix_softc *sc = (void *)arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, off;
+
+	off = sc->tx_npoll_off;
+	error = sysctl_handle_int(oidp, &off, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (off < 0)
+		return EINVAL;
+
+	ifnet_serialize_all(ifp);
+	if (off >= ncpus2 || off % sc->tx_ring_cnt != 0) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		sc->tx_npoll_off = off;
+	}
+	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
+#endif /* IFPOLL_ENABLE */
