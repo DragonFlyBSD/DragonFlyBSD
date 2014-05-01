@@ -108,9 +108,10 @@
  * 300702 - drm/i915 update
  * 300703 - Make usb4bsd default
  * 300704 - Removal of IPX, NCP and NWFS support
+ * 300705 - Removal of ATM support.
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300704	/* propagated to newvers */
+#define __DragonFly_version 300705	/* propagated to newvers */
 
 #include <sys/_null.h>
 

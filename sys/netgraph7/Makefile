@@ -3,7 +3,6 @@
 
 SUBDIR=	UI \
 	async \
-	atmllc \
 	bpf \
 	bridge \
 	cisco \

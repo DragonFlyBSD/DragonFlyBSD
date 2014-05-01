@@ -447,15 +447,6 @@ disables the loading of firewall rules
 will load the rules in the given filename (full path required).
 .El
 .Pp
-The
-.Pa /etc/rc.d/atm*
-scripts are used to configure ATM network interfaces.
-The interfaces are configured in three passes.
-The first pass performs the initial interface configuration.
-The second pass completes the interface configuration and defines PVCs and
-permanent ATMARP entries.
-The third pass starts any ATM daemons.
-.Pp
 Most daemons, including network related daemons, have their own script in
 .Pa /etc/rc.d/ ,
 which can be used to start, stop, and check the status of the service.

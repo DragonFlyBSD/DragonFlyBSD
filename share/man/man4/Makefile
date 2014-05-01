@@ -180,7 +180,6 @@ MAN=	aac.4 \
 	nata.4 \
 	natapicam.4 \
 	nataraid.4 \
-	natm.4 \
 	ncr.4 \
 	ncv.4 \
 	ndis.4 \

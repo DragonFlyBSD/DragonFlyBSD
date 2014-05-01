@@ -272,8 +272,6 @@
         ..
         async
         ..
-        atmllc
-        ..
         bpf
         ..
         bridge
@@ -332,23 +330,11 @@
     netproto
         802_11
         ..
-        atm
-            ipatm
-            ..
-            sigpvc
-            ..
-            spans
-            ..
-            uni
-            ..
-        ..
         ipsec
         ..
         key
         ..
         mpls
-        ..
-        natm
         ..
         smb
         ..

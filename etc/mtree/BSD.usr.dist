@@ -137,8 +137,6 @@
             ..
             acpica
             ..
-            atm
-            ..
             cvs
                 contrib
                 ..

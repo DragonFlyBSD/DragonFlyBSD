@@ -10,7 +10,6 @@
 
 LIBALIAS?=	${DESTDIR}${LIBDIR}/libalias.a
 LIBARCHIVE?=	${DESTDIR}${LIBDIR}/libarchive.a
-LIBATM?=	${DESTDIR}${LIBDIR}/libatm.a
 LIBBLUETOOTH?=	${DESTDIR}${LIBDIR}/libbluetooth.a
 LIBBSDXML?=	${DESTDIR}${LIBDIR}/libbsdxml.a
 LIBBZ2?=	${DESTDIR}${LIBDIR}/libbz2.a

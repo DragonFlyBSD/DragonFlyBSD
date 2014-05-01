@@ -63,7 +63,6 @@
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
-#include <net/if_atm.h>
 #include <net/route.h>
 
 #include <netinet/in.h>
@@ -206,9 +205,6 @@ nd6_setmtu0(struct ifnet *ifp, struct nd_ifinfo *ndi)
 	switch (ifp->if_type) {
 	case IFT_ETHER:
 		ndi->maxmtu = MIN(ETHERMTU, ifp->if_mtu);
-		break;
-	case IFT_ATM:
-		ndi->maxmtu = MIN(ATMMTU, ifp->if_mtu);
 		break;
 	case IFT_IEEE1394:	/* XXX should be IEEE1394MTU(1500) */
 		ndi->maxmtu = MIN(ETHERMTU, ifp->if_mtu);

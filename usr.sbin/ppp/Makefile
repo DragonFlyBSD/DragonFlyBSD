@@ -48,12 +48,6 @@ LDADD+=	-lalias
 DPADD+= ${LIBALIAS}
 .endif
 
-.if defined(NOATM)
-CFLAGS+=-DNOATM
-.else
-SRCS+=	atm.c
-.endif
-
 .if defined(NOSUID) || defined(PPP_NOSUID)
 CFLAGS+=-DNOSUID
 .else

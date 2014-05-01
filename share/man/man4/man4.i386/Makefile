@@ -4,7 +4,6 @@ MAN=	ar.4 \
 	cs.4 \
 	cy.4 \
 	digi.4 \
-	en.4 \
 	ep.4 \
 	ex.4 \
 	fe.4 \

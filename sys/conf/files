@@ -392,7 +392,6 @@ dev/netif/ig_hal/e1000_nvm.c	optional ig_hal
 dev/netif/ig_hal/e1000_osdep.c	optional ig_hal
 dev/netif/ig_hal/e1000_phy.c	optional ig_hal
 dev/netif/ig_hal/e1000_vf.c	optional ig_hal
-dev/atm/en/midway.c		optional en
 dev/netif/et/if_et.c		optional et
 dev/netif/ex/if_ex.c		optional ex
 dev/netif/ex/if_ex_pccard.c	optional ex pccard
@@ -408,28 +407,6 @@ dev/disk/sbp/sbp.c		optional sbp
 dev/netif/fxp/if_fxp.c		optional fxp
 dev/netif/msk/if_msk.c		optional msk
 dev/netif/nfe/if_nfe.c		optional nfe
-dev/atm/hea/eni.c		optional hea
-dev/atm/hea/eni_buffer.c	optional hea
-dev/atm/hea/eni_globals.c	optional hea
-dev/atm/hea/eni_if.c		optional hea
-dev/atm/hea/eni_init.c		optional hea
-dev/atm/hea/eni_intr.c		optional hea
-dev/atm/hea/eni_receive.c	optional hea
-dev/atm/hea/eni_transmit.c	optional nowerror hea
-dev/atm/hea/eni_vcm.c		optional hea
-dev/atm/hfa/fore_buffer.c	optional nowerror hfa
-dev/atm/hfa/fore_command.c	optional nowerror hfa
-dev/atm/hfa/fore_globals.c	optional hfa
-dev/atm/hfa/fore_if.c		optional hfa
-dev/atm/hfa/fore_init.c		optional nowerror hfa
-dev/atm/hfa/fore_intr.c		optional hfa
-dev/atm/hfa/fore_load.c		optional hfa
-dev/atm/hfa/fore_output.c	optional nowerror hfa
-dev/atm/hfa/fore_receive.c	optional nowerror hfa
-dev/atm/hfa/fore_stats.c	optional nowerror hfa
-dev/atm/hfa/fore_timer.c	optional hfa
-dev/atm/hfa/fore_transmit.c	optional nowerror hfa
-dev/atm/hfa/fore_vcm.c		optional hfa
 dev/raid/hpt27xx/os_bsd.c	optional hpt27xx
 dev/raid/hpt27xx/osm_bsd.c	optional hpt27xx
 dev/raid/hpt27xx/hpt27xx_config.c optional hpt27xx
@@ -1142,7 +1119,6 @@ net/bridge/bridgestp.c		optional bridge
 net/bsd_comp.c			optional ppp_bsdcomp
 net/if.c			standard
 net/if_clone.c			standard
-net/if_atmsubr.c		optional atm
 net/if_poll.c			optional ifpoll_enable
 net/disc/if_disc.c		optional disc
 net/if_ethersubr.c		optional ether
@@ -1244,101 +1220,10 @@ netproto/802_11/wlan/ieee80211_superg.c     optional wlan ieee80211_support_supe
 netproto/802_11/wlan/ieee80211_tdma.c       optional wlan ieee80211_support_tdma
 netproto/802_11/wlan/ieee80211_wds.c        optional wlan
 netproto/802_11/wlan_xauth/ieee80211_xauth.c optional wlan_xauth
-netproto/atm/atm_aal5.c		optional atm_core
-netproto/atm/atm_cm.c			optional atm_core
-netproto/atm/atm_device.c		optional atm_core
-netproto/atm/atm_if.c			optional atm_core
-netproto/atm/atm_proto.c		optional atm_core
-netproto/atm/atm_signal.c		optional atm_core
-netproto/atm/atm_socket.c		optional atm_core
-netproto/atm/atm_subr.c		optional atm_core
-netproto/atm/atm_usrreq.c		optional atm_core
-netproto/atm/ipatm/ipatm_event.c	optional atm_ip atm_core
-netproto/atm/ipatm/ipatm_if.c		optional atm_ip atm_core
-netproto/atm/ipatm/ipatm_input.c	optional atm_ip atm_core
-netproto/atm/ipatm/ipatm_load.c	optional atm_ip atm_core
-netproto/atm/ipatm/ipatm_output.c	optional atm_ip atm_core
-netproto/atm/ipatm/ipatm_usrreq.c	optional atm_ip atm_core
-netproto/atm/ipatm/ipatm_vcm.c	optional atm_ip atm_core
-netproto/atm/sigpvc/sigpvc_if.c	optional atm_sigpvc atm_core
-netproto/atm/sigpvc/sigpvc_subr.c	optional atm_sigpvc atm_core
-netproto/atm/spans/spans_arp.c	optional atm_spans atm_core	\
-	dependency	"spans_xdr.h"
-netproto/atm/spans/spans_cls.c	optional atm_spans atm_core
-netproto/atm/spans/spans_if.c		optional atm_spans atm_core
-netproto/atm/spans/spans_kxdr.c	optional nowerror atm_spans atm_core
-netproto/atm/spans/spans_msg.c	optional atm_spans atm_core
-netproto/atm/spans/spans_print.c	optional atm_spans atm_core
-netproto/atm/spans/spans_proto.c	optional atm_spans atm_core
-netproto/atm/spans/spans_subr.c	optional atm_spans atm_core
-netproto/atm/spans/spans_util.c	optional atm_spans atm_core
-spans_xdr.h			optional atm_spans atm_core	\
-	before-depend						\
-	dependency      "$S/netproto/atm/spans/spans_xdr.x"	\
-	compile-with    "rpcgen -h -C $S/netproto/atm/spans/spans_xdr.x | grep -v rpc/rpc.h > spans_xdr.h" \
-	clean           "spans_xdr.h"				\
-	no-obj no-implicit-rule
-spans_xdr.c			optional atm_spans atm_core	\
-	before-depend						\
-	dependency      "$S/netproto/atm/spans/spans_xdr.x"	\
-	compile-with    "rpcgen -c -C $S/netproto/atm/spans/spans_xdr.x | grep -v rpc/rpc.h > spans_xdr.c" \
-	clean           "spans_xdr.c"				\
-	no-obj no-implicit-rule local
-spans_xdr.o			optional atm_spans atm_core	\
-	dependency      "$S/netproto/atm/spans/spans_xdr.x"	\
-	compile-with	"${NORMAL_C} ${WERROR}"		\
-	no-implicit-rule local
-netproto/atm/uni/q2110_sigaa.c	optional atm_uni atm_core
-netproto/atm/uni/q2110_sigcpcs.c	optional atm_uni atm_core
-netproto/atm/uni/q2110_subr.c		optional atm_uni atm_core
-netproto/atm/uni/qsaal1_sigaa.c	optional atm_uni atm_core
-netproto/atm/uni/qsaal1_sigcpcs.c	optional atm_uni atm_core
-netproto/atm/uni/qsaal1_subr.c	optional atm_uni atm_core
-netproto/atm/uni/sscf_uni.c		optional atm_uni atm_core
-netproto/atm/uni/sscf_uni_lower.c	optional atm_uni atm_core
-netproto/atm/uni/sscf_uni_upper.c	optional atm_uni atm_core
-netproto/atm/uni/sscop.c		optional atm_uni atm_core
-netproto/atm/uni/sscop_lower.c	optional atm_uni atm_core
-netproto/atm/uni/sscop_pdu.c		optional atm_uni atm_core
-netproto/atm/uni/sscop_sigaa.c	optional atm_uni atm_core
-netproto/atm/uni/sscop_sigcpcs.c	optional atm_uni atm_core
-netproto/atm/uni/sscop_subr.c		optional atm_uni atm_core
-netproto/atm/uni/sscop_timer.c	optional atm_uni atm_core
-netproto/atm/uni/sscop_upper.c	optional atm_uni atm_core
-netproto/atm/uni/uni_load.c		optional atm_uni atm_core
-netproto/atm/uni/uniarp.c		optional atm_uni atm_core
-netproto/atm/uni/uniarp_cache.c	optional atm_uni atm_core
-netproto/atm/uni/uniarp_input.c	optional atm_uni atm_core
-netproto/atm/uni/uniarp_output.c	optional atm_uni atm_core
-netproto/atm/uni/uniarp_timer.c	optional atm_uni atm_core
-netproto/atm/uni/uniarp_vcm.c		optional atm_uni atm_core
-netproto/atm/uni/uniip.c		optional atm_uni atm_core
-netproto/atm/uni/unisig_decode.c	optional atm_uni atm_core
-netproto/atm/uni/unisig_encode.c	optional atm_uni atm_core
-netproto/atm/uni/unisig_if.c		optional atm_uni atm_core
-netproto/atm/uni/unisig_mbuf.c	optional atm_uni atm_core
-netproto/atm/uni/unisig_msg.c		optional atm_uni atm_core
-netproto/atm/uni/unisig_print.c	optional atm_uni atm_core
-netproto/atm/uni/unisig_proto.c	optional atm_uni atm_core
-netproto/atm/uni/unisig_sigmgr_state.c	optional atm_uni atm_core
-netproto/atm/uni/unisig_subr.c	optional atm_uni atm_core
-netproto/atm/uni/unisig_util.c	optional atm_uni atm_core
-netproto/atm/uni/unisig_vc_state.c	optional atm_uni atm_core
 
 #
 # New netgraph
 #
-netgraph7/atm/ccatm/ng_ccatm.c				optional ngatm7_ccatm \
-	compile-with "${NORMAL_C} -I$S/contrib/ngatm ${WERROR}"
-netgraph7/atm/ng_atm.c					optional ngatm7_atm
-netgraph7/atm/ngatmbase.c				optional ngatm7_atmbase \
-	compile-with "${NORMAL_C} -I$S/contrib/ngatm ${WERROR}"
-netgraph7/atm/sscfu/ng_sscfu.c				optional ngatm7_sscfu \
-	compile-with "${NORMAL_C} -I$S/contrib/ngatm ${WERROR}"
-netgraph7/atm/sscop/ng_sscop.c				optional ngatm7_sscop \
-	compile-with "${NORMAL_C} -I$S/contrib/ngatm ${WERROR}"
-netgraph7/atm/uni/ng_uni.c				optional ngatm7_uni \
-	compile-with "${NORMAL_C} -I$S/contrib/ngatm ${WERROR}"
 netgraph7/bluetooth/common/ng_bluetooth.c		optional netgraph7_bluetooth
 netgraph7/bluetooth/drivers/bt3c/ng_bt3c_pccard.c	optional netgraph7_bluetooth_bt3c
 netgraph7/bluetooth/drivers/h4/ng_h4.c			optional netgraph7_bluetooth_h4
@@ -1364,7 +1249,6 @@ netgraph7/netflow/netflow.c	optional netgraph7_netflow
 netgraph7/netflow/ng_netflow.c	optional netgraph7_netflow
 netgraph7/UI/ng_UI.c		optional netgraph7_UI
 netgraph7/async/ng_async.c	optional netgraph7_async
-netgraph7/atmllc/ng_atmllc.c	optional netgraph7_atmllc
 netgraph7/netgraph/ng_base.c	optional netgraph7
 netgraph7/bpf/ng_bpf.c		optional netgraph7_bpf
 netgraph7/bridge/ng_bridge.c	optional netgraph7_bridge
@@ -1469,7 +1353,6 @@ net/toeplitz.c			standard
 
 net/accf_data/accf_data.c		optional accept_filter_data
 net/accf_http/accf_http.c		optional accept_filter_http
-netinet/if_atm.c			optional atm
 netinet/if_ether.c			optional ether
 netinet/in_gif.c		optional gif inet
 netinet/igmp.c			optional inet
@@ -1578,9 +1461,6 @@ netproto/mpls/mpls_demux.c	optional mpls
 netproto/mpls/mpls_input.c	optional mpls
 netproto/mpls/mpls_output.c	optional mpls
 netproto/mpls/mpls_proto.c	optional mpls
-netproto/natm/natm.c		optional natm
-netproto/natm/natm_pcb.c	optional natm
-netproto/natm/natm_proto.c	optional natm
 kern/md4c.c			optional netsmb
 netproto/smb/smb_conn.c		optional netsmb
 netproto/smb/smb_crypt.c	optional netsmb

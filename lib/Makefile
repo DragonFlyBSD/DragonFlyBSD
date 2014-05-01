@@ -7,7 +7,7 @@
 # ${_libc_r} must be built before libpthread.
 # libcom_err must be built before libpam.
 # libcrypt must be built before libpam.
-# libmd must be built before libarchive, libatm, libopie, libradius, and libtacplus.
+# libmd must be built before libarchive, libopie, libradius, and libtacplus.
 # libncurses must be built before libdialog and libedit.
 # libradius must be built before libpam.
 # libsbuf must be built before libcam.
@@ -34,7 +34,6 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	i18n_module \
 	libalias \
 	libarchive \
-	libatm \
 	libbluetooth \
 	libbz2 \
 	libc \

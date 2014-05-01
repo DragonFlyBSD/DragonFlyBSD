@@ -418,10 +418,6 @@ phyint lnc1 boundary EE
 phyint 172.16.12.38 boundary EE altnet 172.16.15.0/26
 	altnet 172.16.15.128/26 altnet 172.16.48.0/24
 #
-# atm0 is our ATM interface, which doesn't properly
-#      support multicasting.
-phyint atm0 disable
-#
 # This is an internal tunnel to another EE subnet
 # Remove the default tunnel rate limit, since this
 #   tunnel is over ethernets

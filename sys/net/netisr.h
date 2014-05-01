@@ -92,7 +92,6 @@
 #define	NETISR_USB	25		/* USB soft interrupt */
 #define	NETISR_PPP	27		/* PPP soft interrupt */
 #define	NETISR_IPV6	28		/* same as AF_INET6 */
-#define	NETISR_NATM	29		/* same as AF_NATM */
 #define	NETISR_NETGRAPH	30		/* same as AF_NETGRAPH */
 #define	NETISR_BLUETOOTH 31
 

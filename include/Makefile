@@ -77,7 +77,7 @@ LSUBDIRS= \
 	netgraph/mppc netgraph/one2many netgraph/ppp \
 	netgraph/pppoe netgraph/pptpgre netgraph/rfc1490 netgraph/socket \
 	netgraph/tee netgraph/tty netgraph/vjc \
-	netgraph7/UI netgraph7/async netgraph7/atmllc netgraph7/bpf \
+	netgraph7/UI netgraph7/async netgraph7/bpf \
 	netgraph7/bridge netgraph7/cisco netgraph7/deflate netgraph7/echo \
 	netgraph7/etf netgraph7/ether netgraph7/frame_relay netgraph7/hole \
 	netgraph7/hub \
@@ -85,10 +85,8 @@ LSUBDIRS= \
 	netgraph7/mppc netgraph7/one2many netgraph7/ppp netgraph7/pppoe \
 	netgraph7/pptpgre netgraph7/rfc1490 netgraph7/socket \
 	netgraph7/tcpmss netgraph7/tee netgraph7/tty netgraph7/vjc \
-	netproto/atm netproto/ipsec \
-	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
-	netproto/atm/uni netproto/802_11 netproto/mpls \
-	netproto/key netproto/natm netproto/smb \
+	netproto/ipsec netproto/802_11 netproto/mpls \
+	netproto/key netproto/smb \
 	vfs/isofs/cd9660 vfs/puffs \
 	vfs/msdosfs vfs/nfs vfs/ntfs \
 	vfs/smbfs vfs/udf vfs/ufs vfs/hammer vfs/hammer2
@@ -99,9 +97,8 @@ LSUBDIRS+=	bus/u4b
 LSUBDIRS+=	bus/usb
 .endif
 
-# For SHARED=symlinks, bus/cam and netproto/atm are symlinks, so cam/scsi
-# and netproto/atm/* are taken care of
-LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnetproto/atm/*:Nnet/*:Nnetgraph/*:Nnetgraph7/*}
+# For SHARED=symlinks, bus/cam is a symlink, so cam/scsi is taken care of
+LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnet/*:Nnetgraph/*:Nnetgraph7/*}
 
 # For obsolete headers which need to be removed
 RMHEADERS=	machine/ansi.h sys/inttypes.h
@@ -146,10 +143,8 @@ INCSLINKS+=	vfs ${INCLUDEDIR}/fs
 INCSLINKS+=	vfs ${INCLUDEDIR}/ufs
 INCSLINKS+=	ufs ${INCLUDEDIR}/vfs/ffs
 INCSLINKS+=	emulation ${INCLUDEDIR}/compat
-INCSLINKS+=	netproto/atm ${INCLUDEDIR}/netatm
 INCSLINKS+=	netproto/ipsec ${INCLUDEDIR}/netipsec
 INCSLINKS+=	netproto/key ${INCLUDEDIR}/netkey
-INCSLINKS+=	netproto/natm ${INCLUDEDIR}/netnatm
 INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
 INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
 # Some 3rd party software looks for <floatingpoint.h>

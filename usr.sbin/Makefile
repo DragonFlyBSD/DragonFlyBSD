@@ -12,7 +12,6 @@ SUBDIR= 802_11 \
 	ancontrol \
 	arp \
 	asf \
-	atm \
 	authpf \
 	bootparamd \
 	btconfig \

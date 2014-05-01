@@ -36,7 +36,6 @@
  * Author: Archie Cobbs <archie@whistle.com>
  *
  * $FreeBSD: src/lib/libnetgraph/debug.c,v 1.9 2005/10/25 20:58:30 ru Exp $
- * $DragonFly: src/lib/libnetgraph/debug.c,v 1.4 2007/06/17 20:33:14 swildner Exp $
  * $Whistle: debug.c,v 1.24 1999/01/24 01:15:33 archie Exp $
  */
 
@@ -58,7 +57,6 @@
 
 #include <netgraph7/UI/ng_UI.h>
 #include <netgraph7/async/ng_async.h>
-#include <netgraph7/atmllc/ng_atmllc.h>
 #include <netgraph7/bpf/ng_bpf.h>
 #include <netgraph/bridge/ng_bridge.h>
 #include <netgraph7/cisco/ng_cisco.h>
@@ -128,7 +126,6 @@ struct ng_cookie {
 static const struct ng_cookie cookies[] = {
 	COOKIE(UI),
 	COOKIE(ASYNC),
-	COOKIE(ATMLLC),
 	COOKIE(BPF),
 	COOKIE(BRIDGE),
 	COOKIE(CISCO),

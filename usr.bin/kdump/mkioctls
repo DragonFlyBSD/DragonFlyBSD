@@ -20,12 +20,12 @@ LC_ALL=C; export LC_ALL
 
 # Build a list of headers that have ioctls in them.
 # XXX should we use an ANSI cpp?
-# XXX leave out cam/, fs/, netatm/, netnatm/, netsmb/,
+# XXX leave out cam/, fs/, netsmb/,
 #     and ufs/ because they are fake softlinks
 ioctl_includes=`
 	cd $1
 	find -s * -name '*.h' -follow |
-		egrep -v '^(cam/)|^(fs/)|^(netatm/)|^(netnatm/)|^(netsmb/)|^(ufs/)' |
+		egrep -v '^(cam/)|^(fs/)|^(netsmb/)|^(ufs/)' |
 		xargs egrep -l \
 '^#[ 	]*define[ 	]+[A-Za-z_][A-Za-z0-9_]*[ 	]+_IO[^a-z0-9_]' |
 		awk '{printf("#include <%s>\\\\n", $1)}'
@@ -41,10 +41,6 @@ BEGIN {
 	print "#include <sys/tty.h>"
 	print "#include <net/if_arp.h>"
 	print "#include <net/route.h>"
-	print "#include <netatm/atm.h>"
-	print "#include <netatm/atm_if.h>"
-	print "#include <netatm/atm_sap.h>"
-	print "#include <netatm/atm_sys.h>"
 	print "#include <netinet/in.h>"
 	print "#include <net/ip_mroute/ip_mroute.h>"
 	print "#include <netinet6/nd6.h>"

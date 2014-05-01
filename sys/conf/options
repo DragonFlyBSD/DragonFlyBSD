@@ -414,17 +414,6 @@ AGP_DEBUG		opt_agp.h
 DRM_DEBUG		opt_drm.h
 DRM_LINUX		opt_drm.h
 
-# ATM (HARP version)
-ATM_CORE		opt_atm.h
-ATM_IP			opt_atm.h
-ATM_SIGPVC		opt_atm.h
-ATM_SPANS		opt_atm.h
-ATM_UNI			opt_atm.h
-
-# XXX Conflict: # of devices vs network protocol (Native ATM).
-# This makes "atm.h" unusable.
-NATM			opt_natm.h
-
 # DPT driver debug flags
 DPT_MEASURE_PERFORMANCE	opt_dpt.h
 DPT_HANDLE_TIMEOUTS	opt_dpt.h

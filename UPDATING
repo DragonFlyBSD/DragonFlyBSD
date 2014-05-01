@@ -12,11 +12,11 @@
 +         UPGRADING DRAGONFLY FROM 3.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
-IPX, NCP AND NWFS SUPPORT DROPPED
----------------------------------
+ATM, IPX, NCP AND NWFS SUPPORT DROPPED
+--------------------------------------
 
 Support for the IPX and NCP network protocols and for mouting NetWare
-file systems has been dropped.
+file systems has been dropped. Dito for ATM protocol support.
 
 INITRD IMAGES NOW INSTALLED BY DEFAULT
 --------------------------------------

@@ -346,12 +346,12 @@
 #define	PRIV_NET80211_MANAGE	441	/* Administer 802.11. */
 
 /*
- * ATM privileges.
+ * Placeholders for ATM privileges, not supported any more.
  */
-#define	PRIV_NETATM_CFG		460
-#define	PRIV_NETATM_ADD		461
-#define	PRIV_NETATM_DEL		462
-#define	PRIV_NETATM_SET		463
+#define	_PRIV_NETATM_CFG	460
+#define	_PRIV_NETATM_ADD	461
+#define	_PRIV_NETATM_DEL	462
+#define	_PRIV_NETATM_SET	463
 
 /*
  * Bluetooth privileges.

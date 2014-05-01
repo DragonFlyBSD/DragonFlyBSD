@@ -1,5 +1,5 @@
 FILESDIR=    ${LIBCOMPATDIR}
-COMPAT_LIBS= libalias.so.4 libarchive.so.1 libatm.so.2 libbz2.so.1 \
+COMPAT_LIBS= libalias.so.4 libarchive.so.1 libbz2.so.1 \
 	     libc.so.4 libc_r.so.4 libcalendar.so.2 libcam.so.2 \
 	     libcipher.so.2 libcom_err.so.2 libcrypt.so.2 libcrypto.so.3 \
 	     libdevstat.so.2 libdialog.so.4 libedit.so.3 libfetch.so.3 \
