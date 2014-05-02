@@ -47,6 +47,7 @@
 #include <netproto/802_11/ieee80211_radiotap.h>
 #include <netproto/802_11/ieee80211_amrr.h>
 
+#include "pcidevs.h"
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -65,10 +66,14 @@ struct ral_pci_ident {
 };
 
 static const struct ral_pci_ident ral_pci_ids[] = {
-	{ 0x1814, 0x0201, "Ralink Technology RT2560" },
-	{ 0x1814, 0x0301, "Ralink Technology RT2561S" },
-	{ 0x1814, 0x0302, "Ralink Technology RT2561" },
-	{ 0x1814, 0x0401, "Ralink Technology RT2661" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2560,
+		"Ralink Technology RT2560" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2561S,
+		"Ralink Technology RT2561S" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2561,
+		"Ralink Technology RT2561" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2661,
+		"Ralink Technology RT2661" },
 
 	{ 0, 0, NULL }
 };

@@ -101,6 +101,7 @@ vendor LINKSYS		0x1737	Linksys
 vendor ALTIMA		0x173b	Altima
 vendor PEPPERCON	0x1743  Peppercon AG
 vendor BELKIN		0x1799	Belkin
+vendor RALINK		0x1814	Ralink Technologies
 vendor SILAN		0x1904	Hangzhou Silan Microelectronics
 vendor JMICRON		0x197b	JMicron Technology Corporation
 vendor ADDTRON		0x4033	Addtron Technology
