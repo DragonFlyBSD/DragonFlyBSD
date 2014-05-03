@@ -560,7 +560,6 @@ ieee80211_sta_tim_notify(struct ieee80211vap *vap, int set)
 	 * XXX TODO: verify that the transition to RUN will wake up the
 	 * BSS node!
 	 */
-	kprintf("STA_TIM_NOTIFY\n");
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_POWER, "%s: TIM=%d\n", __func__, set);
 	if (set == 1 && vap->iv_state == IEEE80211_S_SLEEP) {
 		ieee80211_new_state_locked(vap, IEEE80211_S_RUN, 0);
