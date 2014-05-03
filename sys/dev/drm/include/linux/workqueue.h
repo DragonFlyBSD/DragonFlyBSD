@@ -2,6 +2,7 @@
  * Copyright (c) 2010 Isilon Systems, Inc.
  * Copyright (c) 2010 iX Systems, Inc.
  * Copyright (c) 2010 Panasas, Inc.
+ * Copyright (c) 2014 François Tigeot
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,10 +29,11 @@
 #ifndef	_LINUX_WORKQUEUE_H_
 #define	_LINUX_WORKQUEUE_H_
 
+#include <sys/types.h>
+#include <sys/malloc.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
 #include <linux/timer.h>
-#include <linux/slab.h>
 
 #include <sys/taskqueue.h>
 
@@ -48,6 +50,7 @@ struct work_struct {
 struct delayed_work {
 	struct work_struct	work;
 	struct callout		timer;
+	struct lwkt_token	token;
 };
 
 static inline struct delayed_work *
@@ -77,18 +80,19 @@ do {									\
 #define	INIT_DELAYED_WORK(_work, func)					\
 do {									\
 	INIT_WORK(&(_work)->work, func);				\
-	callout_init(&(_work)->timer, CALLOUT_MPSAFE);			\
+	lwkt_token_init(&(_work)->token, "workqueue token");		\
+	callout_init_mp(&(_work)->timer);				\
 } while (0)
 
 #define	INIT_DEFERRABLE_WORK	INIT_DELAYED_WORK
 
 #define	schedule_work(work)						\
 do {									\
-	(work)->taskqueue = taskqueue_thread;				\
-	taskqueue_enqueue(taskqueue_thread, &(work)->work_task);	\
+	(work)->taskqueue = taskqueue_thread[mycpuid];				\
+	taskqueue_enqueue(taskqueue_thread[mycpuid], &(work)->work_task);	\
 } while (0)
 
-#define	flush_scheduled_work()	flush_taskqueue(taskqueue_thread)
+#define	flush_scheduled_work()	flush_taskqueue(taskqueue_thread[mycpuid])
 
 #define	queue_work(q, work)						\
 do {									\
@@ -113,10 +117,13 @@ queue_delayed_work(struct workqueue_struct *wq, struct delayed_work *work,
 
 	pending = work->work.work_task.ta_pending;
 	work->work.taskqueue = wq->taskqueue;
-	if (delay != 0)
+	if (delay != 0) {
+		lwkt_gettoken(&work->token);
 		callout_reset(&work->timer, delay, _delayed_work_fn, work);
-	else
+		lwkt_reltoken(&work->token);
+	} else {
 		_delayed_work_fn((void *)work);
+	}
 
 	return (!pending);
 }
@@ -125,7 +132,7 @@ static inline bool schedule_delayed_work(struct delayed_work *dwork,
                                          unsigned long delay)
 {
         struct workqueue_struct wq;
-        wq.taskqueue = taskqueue_thread;
+        wq.taskqueue = taskqueue_thread[mycpuid];
         return queue_delayed_work(&wq, dwork, delay);
 }
 
@@ -134,10 +141,10 @@ _create_workqueue_common(char *name, int cpus)
 {
 	struct workqueue_struct *wq;
 
-	wq = kmalloc(sizeof(*wq), M_WAITOK);
+	wq = kmalloc(sizeof(*wq), DRM_MEM_KMS, M_WAITOK);
 	wq->taskqueue = taskqueue_create((name), M_WAITOK,
 	    taskqueue_thread_enqueue,  &wq->taskqueue);
-	taskqueue_start_threads(&wq->taskqueue, cpus, PWAIT, "%s", name);
+	taskqueue_start_threads(&wq->taskqueue, cpus, 0, -1, "%s", name);
 
 	return (wq);
 }
@@ -149,11 +156,14 @@ _create_workqueue_common(char *name, int cpus)
 #define	create_workqueue(name)						\
 	_create_workqueue_common(name, MAXCPU)
 
+#define alloc_ordered_workqueue(name, flags)				\
+	_create_workqueue_common(name, 1)
+
 static inline void
 destroy_workqueue(struct workqueue_struct *wq)
 {
 	taskqueue_free(wq->taskqueue);
-	kfree(wq);
+	kfree(wq, DRM_MEM_KMS);
 }
 
 #define	flush_workqueue(wq)	flush_taskqueue((wq)->taskqueue)
@@ -191,7 +201,9 @@ static inline int
 cancel_delayed_work(struct delayed_work *work)
 {
 
+	lwkt_gettoken(&work->token);
 	callout_stop(&work->timer);
+	lwkt_reltoken(&work->token);
 	if (work->work.taskqueue)
 		return (taskqueue_cancel(work->work.taskqueue,
 		    &work->work.work_task, NULL) == 0);
@@ -202,11 +214,13 @@ static inline int
 cancel_delayed_work_sync(struct delayed_work *work)
 {
 
-        callout_drain(&work->timer);
-        if (work->work.taskqueue &&
-            taskqueue_cancel(work->work.taskqueue, &work->work.work_task, NULL))
-                taskqueue_drain(work->work.taskqueue, &work->work.work_task);
-        return 0;
+	lwkt_gettoken(&work->token);
+	callout_drain(&work->timer);
+	lwkt_reltoken(&work->token);
+	if (work->work.taskqueue &&
+	    taskqueue_cancel(work->work.taskqueue, &work->work.work_task, NULL))
+		taskqueue_drain(work->work.taskqueue, &work->work.work_task);
+	return 0;
 }
 
 #endif	/* _LINUX_WORKQUEUE_H_ */
