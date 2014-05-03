@@ -109,10 +109,12 @@ ath_sysctl_slottime(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	wlan_serialize_enter();
+	ath_power_set_power_state(sc, HAL_PM_AWAKE);
 	slottime = ath_hal_getslottime(sc->sc_ah);
 	error = sysctl_handle_int(oidp, &slottime, 0, req);
 	if (error == 0 && req->newptr)
 		error = !ath_hal_setslottime(sc->sc_ah, slottime) ? EINVAL : 0;
+	ath_power_restore_power_state(sc);
 	wlan_serialize_exit();
 	return error;
 }

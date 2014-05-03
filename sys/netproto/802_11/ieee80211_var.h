@@ -469,6 +469,8 @@ struct ieee80211vap {
 	/* power save handling */
 	void			(*iv_update_ps)(struct ieee80211vap *, int);
 	int			(*iv_set_tim)(struct ieee80211_node *, int);
+	void			(*iv_node_ps)(struct ieee80211_node *, int);
+	void			(*iv_sta_ps)(struct ieee80211vap *, int);
 	/* state machine processing */
 	int			(*iv_newstate)(struct ieee80211vap *,
 				    enum ieee80211_state, int);
@@ -601,6 +603,7 @@ MALLOC_DECLARE(M_80211_VAP);
 #define	IEEE80211_C_MONITOR	0x00010000	/* CAPABILITY: monitor mode */
 #define	IEEE80211_C_DFS		0x00020000	/* CAPABILITY: DFS/radar avail*/
 #define	IEEE80211_C_MBSS	0x00040000	/* CAPABILITY: MBSS available */
+#define IEEE80211_C_SWSLEEP	0x00080000	/* CAPABILITY: do sleep here */
 /* 0x7c0000 available */
 #define	IEEE80211_C_WPA1	0x00800000	/* CAPABILITY: WPA1 avail */
 #define	IEEE80211_C_WPA2	0x01000000	/* CAPABILITY: WPA2 avail */

@@ -106,8 +106,6 @@ static void update_mcast_task(void *, int);
 static void update_promisc_task(void *, int);
 static void update_channel_task(void *, int);
 static void ieee80211_newstate_task(void *, int);
-static int ieee80211_new_state_locked(struct ieee80211vap *,
-	enum ieee80211_state, int);
 
 static int
 null_raw_xmit(struct ieee80211_node *ni, struct mbuf *m,
@@ -1708,7 +1706,7 @@ done:
  * is usually a mistake and indicates lack of proper integration
  * with the net80211 layer.
  */
-static int
+int
 ieee80211_new_state_locked(struct ieee80211vap *vap,
 	enum ieee80211_state nstate, int arg)
 {

@@ -118,6 +118,8 @@
 void
 ath_led_config(struct ath_softc *sc)
 {
+	ath_power_set_power_state(sc, HAL_PM_AWAKE);
+
 	/* Software LED blinking - GPIO controlled LED */
 	if (sc->sc_softled) {
 		ath_hal_gpioCfgOutput(sc->sc_ah, sc->sc_ledpin,
@@ -140,6 +142,8 @@ ath_led_config(struct ath_softc *sc)
 			ath_hal_gpioCfgOutput(sc->sc_ah, sc->sc_led_net_pin,
 			    HAL_GPIO_OUTPUT_MUX_MAC_NETWORK_LED);
 	}
+
+	ath_power_restore_power_state(sc);
 }
 
 static void

@@ -75,6 +75,7 @@
 
 #include <dev/netif/ath/ath/if_ath_debug.h>
 #include <dev/netif/ath/ath/if_ath_keycache.h>
+#include <dev/netif/ath/ath/if_ath_misc.h>
 
 extern  const char* ath_hal_ether_sprintf(const uint8_t *mac);
 
@@ -197,6 +198,7 @@ ath_keyset(struct ath_softc *sc, struct ieee80211vap *vap,
 	u_int8_t gmac[IEEE80211_ADDR_LEN];
 	const u_int8_t *mac;
 	HAL_KEYVAL hk;
+	int ret;
 
 	memset(&hk, 0, sizeof(hk));
 	/*
@@ -250,13 +252,17 @@ ath_keyset(struct ath_softc *sc, struct ieee80211vap *vap,
 	} else
 		mac = k->wk_macaddr;
 
+	ath_power_set_power_state(sc, HAL_PM_AWAKE);
 	if (hk.kv_type == HAL_CIPHER_TKIP &&
 	    (k->wk_flags & IEEE80211_KEY_SWMIC) == 0) {
-		return ath_keyset_tkip(sc, k, &hk, mac);
+		ret = ath_keyset_tkip(sc, k, &hk, mac);
 	} else {
 		KEYPRINTF(sc, k->wk_keyix, &hk, mac);
-		return ath_hal_keyset(ah, k->wk_keyix, &hk, mac);
+		ret = ath_hal_keyset(ah, k->wk_keyix, &hk, mac);
 	}
+	ath_power_restore_power_state(sc);
+
+	return (ret);
 #undef N
 }
 
@@ -491,6 +497,7 @@ ath_key_delete(struct ieee80211vap *vap, const struct ieee80211_key *k)
 
 	DPRINTF(sc, ATH_DEBUG_KEYCACHE, "%s: delete key %u\n", __func__, keyix);
 
+	ath_power_set_power_state(sc, HAL_PM_AWAKE);
 	ath_hal_keyreset(ah, keyix);
 	/*
 	 * Handle split tx/rx keying required for TKIP with h/w MIC.
@@ -514,6 +521,7 @@ ath_key_delete(struct ieee80211vap *vap, const struct ieee80211_key *k)
 			}
 		}
 	}
+	ath_power_restore_power_state(sc);
 	return 1;
 }
 

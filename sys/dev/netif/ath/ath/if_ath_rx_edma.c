@@ -282,17 +282,21 @@ static void
 ath_edma_recv_sched_queue(struct ath_softc *sc, HAL_RX_QUEUE qtype,
     int dosched)
 {
-
+	ath_power_set_power_state(sc, HAL_PM_AWAKE);
 	ath_edma_recv_proc_queue(sc, qtype, dosched);
+	ath_power_restore_power_state(sc);
+
 	taskqueue_enqueue(sc->sc_tq, &sc->sc_rxtask);
 }
 
 static void
 ath_edma_recv_sched(struct ath_softc *sc, int dosched)
 {
-
+	ath_power_set_power_state(sc, HAL_PM_AWAKE);
 	ath_edma_recv_proc_queue(sc, HAL_RX_QUEUE_HP, dosched);
 	ath_edma_recv_proc_queue(sc, HAL_RX_QUEUE_LP, dosched);
+	ath_power_restore_power_state(sc);
+
 	taskqueue_enqueue(sc->sc_tq, &sc->sc_rxtask);
 }
 
@@ -306,6 +310,8 @@ ath_edma_recv_flush(struct ath_softc *sc)
 	sc->sc_rxproc_cnt++;
 	ATH_PCU_UNLOCK(sc);
 
+	ath_power_set_power_state(sc, HAL_PM_AWAKE);
+
 	/*
 	 * Flush any active frames from FIFO -> deferred list
 	 */
@@ -315,8 +321,15 @@ ath_edma_recv_flush(struct ath_softc *sc)
 	/*
 	 * Process what's in the deferred queue
 	 */
+	/*
+	 * XXX: If we read the tsf/channoise here and then pass it in,
+	 * we could restore the power state before processing
+	 * the deferred queue.
+	 */
 	ath_edma_recv_proc_deferred_queue(sc, HAL_RX_QUEUE_HP, 0);
 	ath_edma_recv_proc_deferred_queue(sc, HAL_RX_QUEUE_LP, 0);
+
+	ath_power_restore_power_state(sc);
 
 	ATH_PCU_LOCK(sc);
 	sc->sc_rxproc_cnt--;
@@ -552,11 +565,20 @@ ath_edma_recv_tasklet(void *arg, int npending)
 	sc->sc_rxproc_cnt++;
 	ATH_PCU_UNLOCK(sc);
 
+	ath_power_set_power_state(sc, HAL_PM_AWAKE);
+
 	ath_edma_recv_proc_queue(sc, HAL_RX_QUEUE_HP, 1);
 	ath_edma_recv_proc_queue(sc, HAL_RX_QUEUE_LP, 1);
 
 	ath_edma_recv_proc_deferred_queue(sc, HAL_RX_QUEUE_HP, 1);
 	ath_edma_recv_proc_deferred_queue(sc, HAL_RX_QUEUE_LP, 1);
+
+	/*
+	 * XXX: If we read the tsf/channoise here and then pass it in,
+	 * we could restore the power state before processing
+	 * the deferred queue.
+	 */
+	ath_power_restore_power_state(sc);
 
 	/* XXX inside IF_LOCK ? */
 	if (!ifq_is_oactive(&ifp->if_snd)) {
