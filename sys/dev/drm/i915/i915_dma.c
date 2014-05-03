@@ -32,6 +32,7 @@
 #include "i915_drv.h"
 #include "intel_drv.h"
 #include "intel_ringbuffer.h"
+#include <linux/workqueue.h>
 
 extern struct drm_i915_private *i915_mch_dev;
 
@@ -1182,8 +1183,18 @@ intel_teardown_mchbar(struct drm_device *dev)
 	}
 }
 
-int
-i915_driver_load(struct drm_device *dev, unsigned long flags)
+/**
+ * i915_driver_load - setup chip and create an initial config
+ * @dev: DRM device
+ * @flags: startup flags
+ *
+ * The driver load routine has to do several things:
+ *   - drive output discovery via intel_modeset_init()
+ *   - initialize the memory manager
+ *   - allocate initial config memory
+ *   - setup the DRM framebuffer with the allocated memory
+ */
+int i915_driver_load(struct drm_device *dev, unsigned long flags)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	unsigned long base, size;
@@ -1221,13 +1232,32 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 	ret = drm_addmap(dev, base, size, _DRM_REGISTERS,
 	    _DRM_KERNEL | _DRM_DRIVER, &dev_priv->mmio_map);
 
-	dev_priv->tq = taskqueue_create("915", M_WAITOK,
-	    taskqueue_thread_enqueue, &dev_priv->tq);
-	taskqueue_start_threads(&dev_priv->tq, 1, 0, -1, "i915 taskq");
+	/* The i915 workqueue is primarily used for batched retirement of
+	 * requests (and thus managing bo) once the task has been completed
+	 * by the GPU. i915_gem_retire_requests() is called directly when we
+	 * need high-priority retirement, such as waiting for an explicit
+	 * bo.
+	 *
+	 * It is also used for periodic low-priority events, such as
+	 * idle-timers and recording error state.
+	 *
+	 * All tasks on the workqueue are expected to acquire the dev mutex
+	 * so there is no point in running more than one instance of the
+	 * workqueue at any time.  Use an ordered one.
+	 */
+	dev_priv->wq = alloc_ordered_workqueue("i915", 0);
+	if (dev_priv->wq == NULL) {
+		DRM_ERROR("Failed to create our workqueue.\n");
+		ret = -ENOMEM;
+		goto out_mtrrfree;
+	}
+
 	lockinit(&dev_priv->gt_lock, "915gt", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->error_lock, "915err", 0, LK_CANRECURSE);
+	spin_init(&dev_priv->rps.lock);
 	lockinit(&dev_priv->error_completion_lock, "915cmp", 0, LK_CANRECURSE);
-	lockinit(&dev_priv->rps_lock, "915rps", 0, LK_CANRECURSE);
+
+	lockinit(&dev_priv->rps.hw_lock, "i915 rps.hw_lock", 0, LK_CANRECURSE);
 
 	dev_priv->has_gem = 1;
 	intel_irq_init(dev);
@@ -1257,7 +1287,7 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 
 	lockinit(&dev_priv->irq_lock, "userirq", 0, LK_CANRECURSE);
 
-	if (IS_IVYBRIDGE(dev))
+	if (IS_IVYBRIDGE(dev) || IS_HASWELL(dev))
 		dev_priv->num_pipe = 3;
 	else if (IS_MOBILE(dev) || !IS_GEN2(dev))
 		dev_priv->num_pipe = 2;
@@ -1274,9 +1304,7 @@ i915_driver_load(struct drm_device *dev, unsigned long flags)
 	intel_detect_pch(dev);
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
-		DRM_UNLOCK(dev);
 		ret = i915_load_modeset_init(dev);
-		DRM_LOCK(dev);
 		if (ret < 0) {
 			DRM_ERROR("failed to init modeset\n");
 			goto out_gem_unload;
@@ -1301,6 +1329,8 @@ out_gem_unload:
 	/* XXXKIB */
 	(void) i915_driver_unload_int(dev, true);
 	return (ret);
+out_mtrrfree:
+	return ret;
 }
 
 static int
@@ -1364,8 +1394,8 @@ i915_driver_unload_int(struct drm_device *dev, bool locked)
 
 	lockuninit(&dev_priv->irq_lock);
 
-	if (dev_priv->tq != NULL)
-		taskqueue_free(dev_priv->tq);
+	if (dev_priv->wq != NULL)
+		destroy_workqueue(dev_priv->wq);
 
 	bus_generic_detach(dev->dev);
 	drm_rmmap(dev, dev_priv->mmio_map);
@@ -1373,7 +1403,6 @@ i915_driver_unload_int(struct drm_device *dev, bool locked)
 
 	lockuninit(&dev_priv->error_lock);
 	lockuninit(&dev_priv->error_completion_lock);
-	lockuninit(&dev_priv->rps_lock);
 	drm_free(dev->dev_private, DRM_MEM_DRIVER);
 
 	return (0);

@@ -301,19 +301,13 @@ i915_get_vblank_timestamp(struct drm_device *dev, int pipe, int *max_error,
 /*
  * Handle hotplug events outside the interrupt handler proper.
  */
-static void
-i915_hotplug_work_func(void *context, int pending)
+static void i915_hotplug_work_func(struct work_struct *work)
 {
-	drm_i915_private_t *dev_priv = context;
+	drm_i915_private_t *dev_priv = container_of(work, drm_i915_private_t,
+						    hotplug_work);
 	struct drm_device *dev = dev_priv->dev;
-	struct drm_mode_config *mode_config;
+	struct drm_mode_config *mode_config = &dev->mode_config;
 	struct intel_encoder *encoder;
-
-	DRM_DEBUG("running encoder hotplug functions\n");
-	dev_priv = context;
-	dev = dev_priv->dev;
-
-	mode_config = &dev->mode_config;
 
 	lockmgr(&mode_config->mutex, LK_EXCLUSIVE);
 	DRM_DEBUG_KMS("running encoder hotplug functions\n");
@@ -340,7 +334,7 @@ static void ironlake_handle_rps_change(struct drm_device *dev)
 
 	I915_WRITE16(MEMINTRSTS, I915_READ(MEMINTRSTS));
 
-	new_delay = dev_priv->cur_delay;
+	new_delay = dev_priv->rps.cur_delay;
 
 	I915_WRITE16(MEMINTRSTS, MEMINT_EVAL_CHG);
 	busy_up = I915_READ(RCPREVBSYTUPAVG);
@@ -350,19 +344,19 @@ static void ironlake_handle_rps_change(struct drm_device *dev)
 
 	/* Handle RCS change request from hw */
 	if (busy_up > max_avg) {
-		if (dev_priv->cur_delay != dev_priv->max_delay)
-			new_delay = dev_priv->cur_delay - 1;
-		if (new_delay < dev_priv->max_delay)
-			new_delay = dev_priv->max_delay;
+		if (dev_priv->rps.cur_delay != dev_priv->rps.max_delay)
+			new_delay = dev_priv->rps.cur_delay - 1;
+		if (new_delay < dev_priv->rps.max_delay)
+			new_delay = dev_priv->rps.max_delay;
 	} else if (busy_down < min_avg) {
-		if (dev_priv->cur_delay != dev_priv->min_delay)
-			new_delay = dev_priv->cur_delay + 1;
-		if (new_delay > dev_priv->min_delay)
-			new_delay = dev_priv->min_delay;
+		if (dev_priv->rps.cur_delay != dev_priv->rps.min_delay)
+			new_delay = dev_priv->rps.cur_delay + 1;
+		if (new_delay > dev_priv->rps.min_delay)
+			new_delay = dev_priv->rps.min_delay;
 	}
 
 	if (ironlake_set_drps(dev, new_delay))
-		dev_priv->cur_delay = new_delay;
+		dev_priv->rps.cur_delay = new_delay;
 
 	lockmgr(&mchdev_lock, LK_RELEASE);
 
@@ -392,61 +386,39 @@ static void notify_ring(struct drm_device *dev,
 	}
 }
 
-static void
-gen6_pm_rps_work_func(void *arg, int pending)
+static void gen6_pm_rps_work(struct work_struct *work)
 {
-	struct drm_device *dev;
-	drm_i915_private_t *dev_priv;
-	u8 new_delay;
+	drm_i915_private_t *dev_priv = container_of(work, drm_i915_private_t,
+						    rps.work);
 	u32 pm_iir, pm_imr;
+	u8 new_delay;
 
-	dev_priv = (drm_i915_private_t *)arg;
-	dev = dev_priv->dev;
-	new_delay = dev_priv->cur_delay;
-
-	lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
-	pm_iir = dev_priv->pm_iir;
-	dev_priv->pm_iir = 0;
+	spin_lock(&dev_priv->rps.lock);
+	pm_iir = dev_priv->rps.pm_iir;
+	dev_priv->rps.pm_iir = 0;
 	pm_imr = I915_READ(GEN6_PMIMR);
 	I915_WRITE(GEN6_PMIMR, 0);
-	lockmgr(&dev_priv->rps_lock, LK_RELEASE);
+	spin_unlock(&dev_priv->rps.lock);
 
-	if (!pm_iir)
+	if ((pm_iir & GEN6_PM_DEFERRED_EVENTS) == 0)
 		return;
 
-	DRM_LOCK(dev);
-	if (pm_iir & GEN6_PM_RP_UP_THRESHOLD) {
-		if (dev_priv->cur_delay != dev_priv->max_delay)
-			new_delay = dev_priv->cur_delay + 1;
-		if (new_delay > dev_priv->max_delay)
-			new_delay = dev_priv->max_delay;
-	} else if (pm_iir & (GEN6_PM_RP_DOWN_THRESHOLD | GEN6_PM_RP_DOWN_TIMEOUT)) {
-		gen6_gt_force_wake_get(dev_priv);
-		if (dev_priv->cur_delay != dev_priv->min_delay)
-			new_delay = dev_priv->cur_delay - 1;
-		if (new_delay < dev_priv->min_delay) {
-			new_delay = dev_priv->min_delay;
-			I915_WRITE(GEN6_RP_INTERRUPT_LIMITS,
-				   I915_READ(GEN6_RP_INTERRUPT_LIMITS) |
-				   ((new_delay << 16) & 0x3f0000));
-		} else {
-			/* Make sure we continue to get down interrupts
-			 * until we hit the minimum frequency */
-			I915_WRITE(GEN6_RP_INTERRUPT_LIMITS,
-				   I915_READ(GEN6_RP_INTERRUPT_LIMITS) & ~0x3f0000);
-		}
-		gen6_gt_force_wake_put(dev_priv);
+	lockmgr(&dev_priv->rps.hw_lock, LK_EXCLUSIVE);
+
+	if (pm_iir & GEN6_PM_RP_UP_THRESHOLD)
+		new_delay = dev_priv->rps.cur_delay + 1;
+	else
+		new_delay = dev_priv->rps.cur_delay - 1;
+
+	/* sysfs frequency interfaces may have snuck in while servicing the
+	 * interrupt
+	 */
+	if (!(new_delay > dev_priv->rps.max_delay ||
+	      new_delay < dev_priv->rps.min_delay)) {
+		gen6_set_rps(dev_priv->dev, new_delay);
 	}
 
-	gen6_set_rps(dev, new_delay);
-	dev_priv->cur_delay = new_delay;
-
-	/*
-	 * rps_lock not held here because clearing is non-destructive. There is
-	 * an *extremely* unlikely race with gen6_rps_enable() that is prevented
-	 * by holding struct_mutex for the duration of the write.
-	 */
-	DRM_UNLOCK(dev);
+	lockmgr(&dev_priv->rps.hw_lock, LK_RELEASE);
 }
 
 static void snb_gt_irq_handler(struct drm_device *dev,
@@ -489,13 +461,13 @@ static void gen6_queue_rps_work(struct drm_i915_private *dev_priv,
 	 * The mask bit in IMR is cleared by dev_priv->rps.work.
 	 */
 
-	lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
-	dev_priv->pm_iir |= pm_iir;
-	I915_WRITE(GEN6_PMIMR, dev_priv->pm_iir);
+	spin_lock(&dev_priv->rps.lock);
+	dev_priv->rps.pm_iir |= pm_iir;
+	I915_WRITE(GEN6_PMIMR, dev_priv->rps.pm_iir);
 	POSTING_READ(GEN6_PMIMR);
-	lockmgr(&dev_priv->rps_lock, LK_RELEASE);
+	spin_unlock(&dev_priv->rps.lock);
 
-	taskqueue_enqueue(dev_priv->tq, &dev_priv->rps_task);
+	queue_work(dev_priv->wq, &dev_priv->rps.work);
 }
 
 static void ibx_irq_handler(struct drm_device *dev, u32 pch_iir)
@@ -504,7 +476,7 @@ static void ibx_irq_handler(struct drm_device *dev, u32 pch_iir)
 	int pipe;
 
 	if (pch_iir & SDE_HOTPLUG_MASK)
-		taskqueue_enqueue(dev_priv->tq, &dev_priv->hotplug_task);
+		queue_work(dev_priv->wq, &dev_priv->hotplug_work);
 
 	if (pch_iir & SDE_AUDIO_POWER_MASK)
 		DRM_DEBUG_DRIVER("PCH audio power change on port %d\n",
@@ -547,7 +519,7 @@ static void cpt_irq_handler(struct drm_device *dev, u32 pch_iir)
 	int pipe;
 
 	if (pch_iir & SDE_HOTPLUG_MASK_CPT)
-		taskqueue_enqueue(dev_priv->tq, &dev_priv->hotplug_task);
+		queue_work(dev_priv->wq, &dev_priv->hotplug_work);
 
 	if (pch_iir & SDE_AUDIO_POWER_MASK_CPT)
 		DRM_DEBUG_DRIVER("PCH audio power change on port %d\n",
@@ -730,16 +702,16 @@ done:
  * Fire an error uevent so userspace can see that a hang or error
  * was detected.
  */
-static void
-i915_error_work_func(void *context, int pending)
+static void i915_error_work_func(struct work_struct *work)
 {
-	drm_i915_private_t *dev_priv = context;
+	drm_i915_private_t *dev_priv = container_of(work, drm_i915_private_t,
+						    error_work);
 	struct drm_device *dev = dev_priv->dev;
 
 	/* kobject_uevent_env(&dev->primary->kdev.kobj, KOBJ_CHANGE, error_event); */
 
 	if (atomic_read(&dev_priv->mm.wedged)) {
-		DRM_DEBUG("i915: resetting chip\n");
+		DRM_DEBUG_DRIVER("resetting chip\n");
 		/* kobject_uevent_env(&dev->primary->kdev.kobj, KOBJ_CHANGE, reset_event); */
 		if (!i915_reset(dev, GRDOM_RENDER)) {
 			atomic_set(&dev_priv->mm.wedged, 0);
@@ -903,7 +875,7 @@ void i915_handle_error(struct drm_device *dev, bool wedged)
 		}
 	}
 
-	taskqueue_enqueue(dev_priv->tq, &dev_priv->error_task);
+	queue_work(dev_priv->wq, &dev_priv->error_work);
 }
 
 static void i915_pageflip_stall_check(struct drm_device *dev, int pipe)
@@ -1014,8 +986,8 @@ i915_driver_irq_handler(void *arg)
 			DRM_DEBUG("i915: hotplug event received, stat 0x%08x\n",
 				  hotplug_status);
 			if (hotplug_status & dev_priv->hotplug_supported_mask)
-				taskqueue_enqueue(dev_priv->tq,
-				    &dev_priv->hotplug_task);
+				queue_work(dev_priv->wq,
+					   &dev_priv->hotplug_work);
 
 			I915_WRITE(PORT_HOTPLUG_STAT, hotplug_status);
 			I915_READ(PORT_HOTPLUG_STAT);
@@ -1525,13 +1497,6 @@ ironlake_irq_preinstall(struct drm_device *dev)
 
 	atomic_set(&dev_priv->irq_received, 0);
 
-	TASK_INIT(&dev_priv->hotplug_task, 0, i915_hotplug_work_func,
-	    dev->dev_private);
-	TASK_INIT(&dev_priv->error_task, 0, i915_error_work_func,
-	    dev->dev_private);
-	TASK_INIT(&dev_priv->rps_task, 0, gen6_pm_rps_work_func,
-	    dev->dev_private);
-
 	I915_WRITE(HWSTAM, 0xeffe);
 
 	/* XXX hotplug from PCH */
@@ -1694,13 +1659,6 @@ i915_driver_irq_preinstall(struct drm_device * dev)
 
 	atomic_set(&dev_priv->irq_received, 0);
 
-	TASK_INIT(&dev_priv->hotplug_task, 0, i915_hotplug_work_func,
-	    dev->dev_private);
-	TASK_INIT(&dev_priv->error_task, 0, i915_error_work_func,
-	    dev->dev_private);
-	TASK_INIT(&dev_priv->rps_task, 0, gen6_pm_rps_work_func,
-	    dev->dev_private);
-
 	if (I915_HAS_HOTPLUG(dev)) {
 		I915_WRITE(PORT_HOTPLUG_EN, 0);
 		I915_WRITE(PORT_HOTPLUG_STAT, I915_READ(PORT_HOTPLUG_STAT));
@@ -1822,10 +1780,6 @@ ironlake_irq_uninstall(struct drm_device *dev)
 	I915_WRITE(SDEIMR, 0xffffffff);
 	I915_WRITE(SDEIER, 0x0);
 	I915_WRITE(SDEIIR, I915_READ(SDEIIR));
-
-	taskqueue_drain(dev_priv->tq, &dev_priv->hotplug_task);
-	taskqueue_drain(dev_priv->tq, &dev_priv->error_task);
-	taskqueue_drain(dev_priv->tq, &dev_priv->rps_task);
 }
 
 static void i915_driver_irq_uninstall(struct drm_device * dev)
@@ -1853,15 +1807,16 @@ static void i915_driver_irq_uninstall(struct drm_device * dev)
 		I915_WRITE(PIPESTAT(pipe),
 			   I915_READ(PIPESTAT(pipe)) & 0x8000ffff);
 	I915_WRITE(IIR, I915_READ(IIR));
-
-	taskqueue_drain(dev_priv->tq, &dev_priv->hotplug_task);
-	taskqueue_drain(dev_priv->tq, &dev_priv->error_task);
-	taskqueue_drain(dev_priv->tq, &dev_priv->rps_task);
 }
 
 void
 intel_irq_init(struct drm_device *dev)
 {
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	INIT_WORK(&dev_priv->hotplug_work, i915_hotplug_work_func);
+	INIT_WORK(&dev_priv->error_work, i915_error_work_func);
+	INIT_WORK(&dev_priv->rps.work, gen6_pm_rps_work);
 
 	dev->driver->get_vblank_counter = i915_get_vblank_counter;
 	dev->max_vblank_count = 0xffffff; /* only 24 bits of frame count */

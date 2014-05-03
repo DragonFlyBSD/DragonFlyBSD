@@ -37,6 +37,7 @@
 #include "i915_reg.h"
 #include "intel_bios.h"
 #include "intel_ringbuffer.h"
+#include <linux/workqueue.h>
 
 /* General customization:
  */
@@ -384,6 +385,28 @@ enum intel_pch {
 struct intel_fbdev;
 struct intel_fbc_work;
 
+struct intel_gen6_power_mgmt {
+	struct work_struct work;
+	u32 pm_iir;
+	/* lock - irqsave spinlock that protectects the work_struct and
+	 * pm_iir. */
+	struct spinlock lock;
+
+	/* The below variables an all the rps hw state are protected by
+	 * dev->struct mutext. */
+	u8 cur_delay;
+	u8 min_delay;
+	u8 max_delay;
+
+	struct delayed_work delayed_resume_work;
+
+	/*
+	 * Protects RPS/RC6 register access and PCU communication.
+	 * Must be taken after struct_mutex if nested.
+	 */
+	struct lock hw_lock;
+};
+
 typedef struct drm_i915_private {
 	struct drm_device *dev;
 
@@ -414,6 +437,8 @@ typedef struct drm_i915_private {
 	uint32_t next_seqno;
 
 	drm_dma_handle_t *status_page_dmah;
+	struct resource *mch_res;
+
 	void *hw_status_page;
 	dma_addr_t dma_status_page;
 	uint32_t counter;
@@ -737,7 +762,7 @@ typedef struct drm_i915_private {
 		 * fire periodically while the ring is running. When it
 		 * fires, go retire requests.
 		 */
-		struct timeout_task retire_task;
+		struct delayed_work retire_work;
 
  		/**
 		 * Are we in a non-interruptible section of code like
@@ -825,16 +850,12 @@ typedef struct drm_i915_private {
 
 	device_t bridge_dev;
 	bool mchbar_need_disable;
+
 	int mch_res_rid;
-	struct resource *mch_res;
 
-	struct lock rps_lock;
-	u32 pm_iir;
-	struct task rps_task;
+	/* gen6+ rps state */
+	struct intel_gen6_power_mgmt rps;
 
-	u8 cur_delay;
-	u8 min_delay;
-	u8 max_delay;
 	u8 fmax;
 	u8 fstart;
 
@@ -859,13 +880,14 @@ typedef struct drm_i915_private {
 
 	unsigned int fsb_freq, mem_freq, is_ddr3;
 
-	struct taskqueue *tq;
-	struct task error_task;
-	struct task hotplug_task;
+	struct lock error_lock;
+	/* Protected by dev->error_lock. */
+	struct drm_i915_error_state *first_error;
+	struct work_struct error_work;
 	int error_completion;
 	struct lock error_completion_lock;
-	struct drm_i915_error_state *first_error;
-	struct lock error_lock;
+	struct workqueue_struct *wq;
+	struct work_struct hotplug_work;
 
 	unsigned long last_gpu_reset;
 

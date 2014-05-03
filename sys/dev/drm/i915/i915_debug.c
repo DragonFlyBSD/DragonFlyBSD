@@ -1164,12 +1164,13 @@ static int i915_ring_freq_table(struct drm_device *dev, struct sbuf *m,
 		return (0);
 	}
 
-	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
-		return (EINTR);
+	if (lockmgr(&dev_priv->rps.hw_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
+		return -EINTR;
 
 	sbuf_printf(m, "GPU freq (MHz)\tEffective CPU freq (MHz)\n");
 
-	for (gpu_freq = dev_priv->min_delay; gpu_freq <= dev_priv->max_delay;
+	for (gpu_freq = dev_priv->rps.min_delay;
+	     gpu_freq <= dev_priv->rps.max_delay;
 	     gpu_freq++) {
 		I915_WRITE(GEN6_PCODE_DATA, gpu_freq);
 		I915_WRITE(GEN6_PCODE_MAILBOX, GEN6_PCODE_READY |
@@ -1184,9 +1185,9 @@ static int i915_ring_freq_table(struct drm_device *dev, struct sbuf *m,
 		sbuf_printf(m, "%d\t\t%d\n", gpu_freq * 50, ia_freq * 100);
 	}
 
-	DRM_UNLOCK(dev);
+	lockmgr(&dev_priv->rps.hw_lock, LK_RELEASE);
 
-	return (0);
+	return 0;
 }
 
 static int
@@ -1452,16 +1453,23 @@ i915_max_freq(SYSCTL_HANDLER_ARGS)
 	dev_priv = dev->dev_private;
 	if (dev_priv == NULL)
 		return (EBUSY);
-	max_freq = dev_priv->max_delay * 50;
+	max_freq = dev_priv->rps.max_delay * 50;
 	error = sysctl_handle_int(oidp, &max_freq, 0, req);
 	if (error || !req->newptr)
 		return (error);
 	DRM_DEBUG("Manually setting max freq to %d\n", max_freq);
+
+	if (lockmgr(&dev_priv->rps.hw_lock, LK_EXCLUSIVE|LK_SLEEPFAIL))
+		return -EINTR;
+
 	/*
 	 * Turbo will still be enabled, but won't go above the set value.
 	 */
-	dev_priv->max_delay = max_freq / 50;
+	dev_priv->rps.max_delay = max_freq / 50;
+
 	gen6_set_rps(dev, max_freq / 50);
+	lockmgr(&dev_priv->rps.hw_lock, LK_RELEASE);
+
 	return (error);
 }
 

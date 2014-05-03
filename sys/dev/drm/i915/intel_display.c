@@ -5302,50 +5302,30 @@ static void intel_decrease_pllclock(struct drm_crtc *crtc)
 	}
 }
 
-/**
- * intel_idle_update - adjust clocks for idleness
- * @work: work struct
- *
- * Either the GPU or display (or both) went idle.  Check the busy status
- * here and adjust the CRTC and GPU clocks as necessary.
- */
-static void intel_idle_update(void *arg, int pending)
+void intel_mark_busy(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv = arg;
-	struct drm_device *dev = dev_priv->dev;
+	i915_update_gfx_val(dev->dev_private);
+}
+
+void intel_mark_idle(struct drm_device *dev)
+{
 	struct drm_crtc *crtc;
-	struct intel_crtc *intel_crtc;
 
 	if (!i915_powersave)
 		return;
 
-	DRM_LOCK(dev);
-
-	i915_update_gfx_val(dev_priv);
-
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
-		/* Skip inactive CRTCs */
 		if (!crtc->fb)
 			continue;
 
-		intel_crtc = to_intel_crtc(crtc);
-		if (!intel_crtc->busy)
-			intel_decrease_pllclock(crtc);
+		intel_decrease_pllclock(crtc);
 	}
-
-	DRM_UNLOCK(dev);
-}
-
-void intel_mark_busy(struct drm_device *dev)
-{
-	i915_update_gfx_val(dev->dev_private);
 }
 
 static void intel_crtc_destroy(struct drm_crtc *crtc)
 {
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 	struct drm_device *dev = crtc->dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_unpin_work *work;
 
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
@@ -5354,9 +5334,8 @@ static void intel_crtc_destroy(struct drm_crtc *crtc)
 	lockmgr(&dev->event_lock, LK_RELEASE);
 
 	if (work) {
-		taskqueue_cancel(dev_priv->tq, &work->task, NULL);
-		taskqueue_drain(dev_priv->tq, &work->task);
-		drm_free(work, DRM_MEM_KMS);
+		cancel_work_sync(&work->work);
+		kfree(work, DRM_MEM_KMS);
 	}
 
 	drm_crtc_cleanup(crtc);
@@ -5364,9 +5343,10 @@ static void intel_crtc_destroy(struct drm_crtc *crtc)
 	drm_free(intel_crtc, DRM_MEM_KMS);
 }
 
-static void intel_unpin_work_fn(void *arg, int pending)
+static void intel_unpin_work_fn(struct work_struct *__work)
 {
-	struct intel_unpin_work *work = arg;
+	struct intel_unpin_work *work =
+				container_of(__work, struct intel_unpin_work, work);
 	struct drm_device *dev;
 
 	dev = work->dev;
@@ -5414,7 +5394,7 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 			  &obj->pending_flip.counter);
 	wakeup(&obj->pending_flip);
 
-	taskqueue_enqueue(dev_priv->tq, &work->task);
+	queue_work(dev_priv->wq, &work->work);
 }
 
 void intel_finish_page_flip(struct drm_device *dev, int pipe)
@@ -5660,7 +5640,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	work->dev = crtc->dev;
 	intel_fb = to_intel_framebuffer(crtc->fb);
 	work->old_fb_obj = intel_fb->obj;
-	TASK_INIT(&work->task, 0, intel_unpin_work_fn, work);
+	INIT_WORK(&work->work, intel_unpin_work_fn);
 
 	ret = drm_vblank_get(dev, intel_crtc->pipe);
 	if (ret)
@@ -6492,7 +6472,6 @@ void intel_modeset_init(struct drm_device *dev)
 		gen6_update_ring_freq(dev_priv);
 	}
 
-	TASK_INIT(&dev_priv->idle_task, 0, intel_idle_update, dev_priv);
 	callout_init_mp(&dev_priv->idle_callout);
 }
 
@@ -6536,19 +6515,16 @@ void intel_modeset_cleanup(struct drm_device *dev)
 	if (IS_IRONLAKE_M(dev))
 		ironlake_disable_rc6(dev);
 
+	DRM_UNLOCK(dev);
+
 	/* Disable the irq before mode object teardown, for the irq might
 	 * enqueue unpin/hotplug work. */
 	drm_irq_uninstall(dev);
-	DRM_UNLOCK(dev);
+	cancel_work_sync(&dev_priv->hotplug_work);
+	cancel_work_sync(&dev_priv->rps.work);
 
-	if (taskqueue_cancel(dev_priv->tq, &dev_priv->hotplug_task, NULL))
-		taskqueue_drain(dev_priv->tq, &dev_priv->hotplug_task);
-	if (taskqueue_cancel(dev_priv->tq, &dev_priv->rps_task, NULL))
-		taskqueue_drain(dev_priv->tq, &dev_priv->rps_task);
-
-	/* Shut off idle work before the crtcs get freed. */
-	if (taskqueue_cancel(dev_priv->tq, &dev_priv->idle_task, NULL))
-		taskqueue_drain(dev_priv->tq, &dev_priv->idle_task);
+	/* flush any delayed tasks or pending work */
+	flush_scheduled_work();
 
 	drm_mode_config_cleanup(dev);
 }

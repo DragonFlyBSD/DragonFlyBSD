@@ -90,7 +90,6 @@ static void i915_gem_process_flushing_list(struct intel_ring_buffer *ring,
 static void i915_gem_clear_fence_reg(struct drm_device *dev,
     struct drm_i915_fence_reg *reg);
 static void i915_gem_reset_fences(struct drm_device *dev);
-static void i915_gem_retire_task_handler(void *arg, int pending);
 static int i915_gem_phys_pwrite(struct drm_device *dev,
     struct drm_i915_gem_object *obj, uint64_t data_ptr, uint64_t offset,
     uint64_t size, struct drm_file *file_priv);
@@ -214,64 +213,6 @@ i915_gem_free_object(struct drm_gem_object *gem_obj)
 	i915_gem_free_object_tail(obj);
 }
 
-static void
-init_ring_lists(struct intel_ring_buffer *ring)
-{
-
-	INIT_LIST_HEAD(&ring->active_list);
-	INIT_LIST_HEAD(&ring->request_list);
-	INIT_LIST_HEAD(&ring->gpu_write_list);
-}
-
-void
-i915_gem_load(struct drm_device *dev)
-{
-	int i;
-	drm_i915_private_t *dev_priv = dev->dev_private;
-
-	INIT_LIST_HEAD(&dev_priv->mm.active_list);
-	INIT_LIST_HEAD(&dev_priv->mm.flushing_list);
-	INIT_LIST_HEAD(&dev_priv->mm.inactive_list);
-	INIT_LIST_HEAD(&dev_priv->mm.pinned_list);
-	INIT_LIST_HEAD(&dev_priv->mm.fence_list);
-	INIT_LIST_HEAD(&dev_priv->mm.deferred_free_list);
-	INIT_LIST_HEAD(&dev_priv->mm.gtt_list);
-	for (i = 0; i < I915_NUM_RINGS; i++)
-		init_ring_lists(&dev_priv->ring[i]);
-	for (i = 0; i < I915_MAX_NUM_FENCES; i++)
-		INIT_LIST_HEAD(&dev_priv->fence_regs[i].lru_list);
-	TIMEOUT_TASK_INIT(dev_priv->tq, &dev_priv->mm.retire_task, 0,
-	    i915_gem_retire_task_handler, dev_priv);
-	dev_priv->error_completion = 0;
-
-	/* On GEN3 we really need to make sure the ARB C3 LP bit is set */
-	if (IS_GEN3(dev)) {
-		I915_WRITE(MI_ARB_STATE,
-			   _MASKED_BIT_ENABLE(MI_ARB_C3_LP_WRITE_ENABLE));
-	}
-
-	dev_priv->relative_constants_mode = I915_EXEC_CONSTANTS_REL_GENERAL;
-
-	/* Old X drivers will take 0-2 for front, back, depth buffers */
-	if (!drm_core_check_feature(dev, DRIVER_MODESET))
-		dev_priv->fence_reg_start = 3;
-
-	if (INTEL_INFO(dev)->gen >= 4 || IS_I945G(dev) || IS_I945GM(dev) || IS_G33(dev))
-		dev_priv->num_fence_regs = 16;
-	else
-		dev_priv->num_fence_regs = 8;
-
-	/* Initialize fence registers to zero */
-	i915_gem_reset_fences(dev);
-
-	i915_gem_detect_bit_6_swizzle(dev);
-
-	dev_priv->mm.interruptible = true;
-
-	dev_priv->mm.i915_lowmem = EVENTHANDLER_REGISTER(vm_lowmem,
-	    i915_gem_lowmem, dev, EVENTHANDLER_PRI_ANY);
-}
-
 int
 i915_gem_do_init(struct drm_device *dev, unsigned long start,
     unsigned long mappable_end, unsigned long end)
@@ -360,7 +301,8 @@ i915_gem_idle(struct drm_device *dev)
 	i915_gem_cleanup_ringbuffer(dev);
 
 	/* Cancel the retire work handler, which should be idle now. */
-	taskqueue_cancel_timeout(dev_priv->tq, &dev_priv->mm.retire_task, NULL);
+	cancel_delayed_work_sync(&dev_priv->mm.retire_work);
+
 	return (ret);
 }
 
@@ -732,8 +674,7 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 	lockmgr(&ring->irq_lock, LK_RELEASE);
 
 	if (ret == 0)
-		taskqueue_enqueue_timeout(dev_priv->tq,
-		    &dev_priv->mm.retire_task, 0);
+		queue_delayed_work(dev_priv->wq, &dev_priv->mm.retire_work, 0);
 
 	return ret;
 }
@@ -2651,9 +2592,12 @@ i915_add_request(struct intel_ring_buffer *ring, struct drm_file *file,
 			mod_timer(&dev_priv->hangcheck_timer,
 				  round_jiffies_up(jiffies + DRM_I915_HANGCHECK_JIFFIES));
 		}
-		if (was_empty)
-			taskqueue_enqueue_timeout(dev_priv->tq,
-			    &dev_priv->mm.retire_task, hz);
+		if (was_empty) {
+			queue_delayed_work(dev_priv->wq,
+					   &dev_priv->mm.retire_work,
+					   round_jiffies_up_relative(hz));
+			intel_mark_busy(dev_priv->dev);
+		}
 	}
 	return (0);
 }
@@ -3344,20 +3288,22 @@ i915_gem_object_is_inactive(struct drm_i915_gem_object *obj)
 }
 
 static void
-i915_gem_retire_task_handler(void *arg, int pending)
+i915_gem_retire_work_handler(struct work_struct *work)
 {
 	drm_i915_private_t *dev_priv;
 	struct drm_device *dev;
+	struct intel_ring_buffer *ring;
 	bool idle;
 	int i;
 
-	dev_priv = arg;
+	dev_priv = container_of(work, drm_i915_private_t,
+				mm.retire_work.work);
 	dev = dev_priv->dev;
 
 	/* Come back later if the device is busy... */
 	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_NOWAIT)) {
-		taskqueue_enqueue_timeout(dev_priv->tq,
-		    &dev_priv->mm.retire_task, hz);
+		queue_delayed_work(dev_priv->wq, &dev_priv->mm.retire_work,
+				   round_jiffies_up_relative(hz));
 		return;
 	}
 
@@ -3368,7 +3314,7 @@ i915_gem_retire_task_handler(void *arg, int pending)
 	 */
 	idle = true;
 	for (i = 0; i < I915_NUM_RINGS; i++) {
-		struct intel_ring_buffer *ring = &dev_priv->ring[i];
+		ring = &dev_priv->ring[i];
 
 		if (!list_empty(&ring->gpu_write_list)) {
 			struct drm_i915_gem_request *request;
@@ -3387,8 +3333,8 @@ i915_gem_retire_task_handler(void *arg, int pending)
 	}
 
 	if (!dev_priv->mm.suspended && !idle)
-		taskqueue_enqueue_timeout(dev_priv->tq,
-		    &dev_priv->mm.retire_task, hz);
+		queue_delayed_work(dev_priv->wq, &dev_priv->mm.retire_work,
+				   round_jiffies_up_relative(hz));
 
 	DRM_UNLOCK(dev);
 }
@@ -3509,6 +3455,64 @@ i915_gem_detach_phys_object(struct drm_device *dev,
 
 	obj->phys_obj->cur_obj = NULL;
 	obj->phys_obj = NULL;
+}
+
+static void
+init_ring_lists(struct intel_ring_buffer *ring)
+{
+
+	INIT_LIST_HEAD(&ring->active_list);
+	INIT_LIST_HEAD(&ring->request_list);
+	INIT_LIST_HEAD(&ring->gpu_write_list);
+}
+
+void
+i915_gem_load(struct drm_device *dev)
+{
+	int i;
+	drm_i915_private_t *dev_priv = dev->dev_private;
+
+	INIT_LIST_HEAD(&dev_priv->mm.active_list);
+	INIT_LIST_HEAD(&dev_priv->mm.flushing_list);
+	INIT_LIST_HEAD(&dev_priv->mm.inactive_list);
+	INIT_LIST_HEAD(&dev_priv->mm.pinned_list);
+	INIT_LIST_HEAD(&dev_priv->mm.fence_list);
+	INIT_LIST_HEAD(&dev_priv->mm.deferred_free_list);
+	INIT_LIST_HEAD(&dev_priv->mm.gtt_list);
+	for (i = 0; i < I915_NUM_RINGS; i++)
+		init_ring_lists(&dev_priv->ring[i]);
+	for (i = 0; i < I915_MAX_NUM_FENCES; i++)
+		INIT_LIST_HEAD(&dev_priv->fence_regs[i].lru_list);
+	INIT_DELAYED_WORK(&dev_priv->mm.retire_work,
+			  i915_gem_retire_work_handler);
+	dev_priv->error_completion = 0;
+
+	/* On GEN3 we really need to make sure the ARB C3 LP bit is set */
+	if (IS_GEN3(dev)) {
+		I915_WRITE(MI_ARB_STATE,
+			   _MASKED_BIT_ENABLE(MI_ARB_C3_LP_WRITE_ENABLE));
+	}
+
+	dev_priv->relative_constants_mode = I915_EXEC_CONSTANTS_REL_GENERAL;
+
+	/* Old X drivers will take 0-2 for front, back, depth buffers */
+	if (!drm_core_check_feature(dev, DRIVER_MODESET))
+		dev_priv->fence_reg_start = 3;
+
+	if (INTEL_INFO(dev)->gen >= 4 || IS_I945G(dev) || IS_I945GM(dev) || IS_G33(dev))
+		dev_priv->num_fence_regs = 16;
+	else
+		dev_priv->num_fence_regs = 8;
+
+	/* Initialize fence registers to zero */
+	i915_gem_reset_fences(dev);
+
+	i915_gem_detect_bit_6_swizzle(dev);
+
+	dev_priv->mm.interruptible = true;
+
+	dev_priv->mm.i915_lowmem = EVENTHANDLER_REGISTER(vm_lowmem,
+	    i915_gem_lowmem, dev, EVENTHANDLER_PRI_ANY);
 }
 
 int

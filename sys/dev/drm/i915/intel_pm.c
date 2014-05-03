@@ -242,9 +242,11 @@ bool intel_fbc_enabled(struct drm_device *dev)
 	return dev_priv->display.fbc_enabled(dev);
 }
 
-static void intel_fbc_work_fn(void *arg, int pending)
+static void intel_fbc_work_fn(struct work_struct *__work)
 {
-	struct intel_fbc_work *work = arg;
+	struct intel_fbc_work *work =
+		container_of(to_delayed_work(__work),
+			     struct intel_fbc_work, work);
 	struct drm_device *dev = work->crtc->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
@@ -271,8 +273,6 @@ static void intel_fbc_work_fn(void *arg, int pending)
 
 static void intel_cancel_fbc_work(struct drm_i915_private *dev_priv)
 {
-	u_int pending;
-
 	if (dev_priv->fbc_work == NULL)
 		return;
 
@@ -282,10 +282,9 @@ static void intel_cancel_fbc_work(struct drm_i915_private *dev_priv)
 	 * dev_priv->fbc_work, so we can perform the cancellation
 	 * entirely asynchronously.
 	 */
-	if (taskqueue_cancel_timeout(dev_priv->tq, &dev_priv->fbc_work->task,
-	    &pending) == 0)
+	if (cancel_delayed_work(&dev_priv->fbc_work->work))
 		/* tasklet was killed before being run, clean up */
-		drm_free(dev_priv->fbc_work, DRM_MEM_KMS);
+		kfree(dev_priv->fbc_work, DRM_MEM_KMS);
 
 	/* Mark the work as no longer wanted so that if it does
 	 * wake-up (because the work was already running and waiting
@@ -310,8 +309,7 @@ void intel_enable_fbc(struct drm_crtc *crtc, unsigned long interval)
 	work->crtc = crtc;
 	work->fb = crtc->fb;
 	work->interval = interval;
-	TIMEOUT_TASK_INIT(dev_priv->tq, &work->task, 0, intel_fbc_work_fn,
-	    work);
+	INIT_DELAYED_WORK(&work->work, intel_fbc_work_fn);
 
 	dev_priv->fbc_work = work;
 
@@ -328,8 +326,7 @@ void intel_enable_fbc(struct drm_crtc *crtc, unsigned long interval)
 	 * and indeed performing the enable as a co-routine and not
 	 * waiting synchronously upon the vblank.
 	 */
-	taskqueue_enqueue_timeout(dev_priv->tq, &work->task,
-	    msecs_to_jiffies(50));
+	schedule_delayed_work(&work->work, msecs_to_jiffies(50));
 }
 
 void intel_disable_fbc(struct drm_device *dev)
@@ -2047,9 +2044,9 @@ void ironlake_enable_drps(struct drm_device *dev)
 	dev_priv->fmax = fmax; /* IPS callback will increase this */
 	dev_priv->fstart = fstart;
 
-	dev_priv->max_delay = fstart;
-	dev_priv->min_delay = fmin;
-	dev_priv->cur_delay = fstart;
+	dev_priv->rps.max_delay = fstart;
+	dev_priv->rps.min_delay = fmin;
+	dev_priv->rps.cur_delay = fstart;
 
 	DRM_DEBUG("fmax: %d, fmin: %d, fstart: %d\n",
 			 fmax, fmin, fstart);
@@ -2123,9 +2120,9 @@ void gen6_disable_rps(struct drm_device *dev)
 	 * register (PMIMR) to mask PM interrupts. The only risk is in leaving
 	 * stale bits in PMIIR and PMIMR which gen6_enable_rps will clean up. */
 
-	lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
-	dev_priv->pm_iir = 0;
-	lockmgr(&dev_priv->rps_lock, LK_RELEASE);
+	spin_lock(&dev_priv->rps.lock);
+	dev_priv->rps.pm_iir = 0;
+	spin_unlock(&dev_priv->rps.lock);
 
 	I915_WRITE(GEN6_PMIIR, I915_READ(GEN6_PMIIR));
 }
@@ -2408,7 +2405,7 @@ unsigned long i915_gfx_val(struct drm_i915_private *dev_priv)
 	unsigned long t, corr, state1, corr2, state2;
 	u32 pxvid, ext_v;
 
-	pxvid = I915_READ(PXVFREQ_BASE + (dev_priv->cur_delay * 4));
+	pxvid = I915_READ(PXVFREQ_BASE + (dev_priv->rps.cur_delay * 4));
 	pxvid = (pxvid >> 24) & 0x7f;
 	ext_v = pvid_to_extvid(dev_priv, pxvid);
 
@@ -2482,8 +2479,8 @@ bool i915_gpu_raise(void)
 	}
 	dev_priv = i915_mch_dev;
 
-	if (dev_priv->max_delay > dev_priv->fmax)
-		dev_priv->max_delay--;
+	if (dev_priv->rps.max_delay > dev_priv->fmax)
+		dev_priv->rps.max_delay--;
 
 out_unlock:
 	lockmgr(&mchdev_lock, LK_RELEASE);
@@ -2509,8 +2506,8 @@ bool i915_gpu_lower(void)
 	}
 	dev_priv = i915_mch_dev;
 
-	if (dev_priv->max_delay < dev_priv->min_delay)
-		dev_priv->max_delay++;
+	if (dev_priv->rps.max_delay < dev_priv->rps.min_delay)
+		dev_priv->rps.max_delay++;
 
 out_unlock:
 	lockmgr(&mchdev_lock, LK_RELEASE);
@@ -2559,7 +2556,7 @@ bool i915_gpu_turbo_disable(void)
 	}
 	dev_priv = i915_mch_dev;
 
-	dev_priv->max_delay = dev_priv->fstart;
+	dev_priv->rps.max_delay = dev_priv->fstart;
 
 	if (!ironlake_set_drps(dev_priv->dev, dev_priv->fstart))
 		ret = false;
@@ -2671,7 +2668,6 @@ static int intel_enable_rc6(struct drm_device *dev)
 
 void gen6_enable_rps(struct drm_i915_private *dev_priv)
 {
-	struct drm_device *dev = dev_priv->dev;
 	u32 rp_state_cap = I915_READ(GEN6_RP_STATE_CAP);
 	u32 gt_perf_status = I915_READ(GEN6_GT_PERF_STATUS);
 	u32 pcu_mbox, rc6_mask = 0;
@@ -2687,7 +2683,6 @@ void gen6_enable_rps(struct drm_i915_private *dev_priv)
 	 * userspace...
 	 */
 	I915_WRITE(GEN6_RC_STATE, 0);
-	DRM_LOCK(dev);
 
 	/* Clear the DBG now so we don't confuse earlier errors */
 	if ((gtfifodbg = I915_READ(GTFIFODBG))) {
@@ -2794,9 +2789,9 @@ void gen6_enable_rps(struct drm_i915_private *dev_priv)
 	}
 
 	/* In units of 100MHz */
-	dev_priv->max_delay = max_freq;
-	dev_priv->min_delay = min_freq;
-	dev_priv->cur_delay = cur_freq;
+	dev_priv->rps.max_delay = max_freq;
+	dev_priv->rps.min_delay = min_freq;
+	dev_priv->rps.cur_delay = cur_freq;
 
 	/* requires MSI enabled */
 	I915_WRITE(GEN6_PMIER,
@@ -2807,16 +2802,14 @@ void gen6_enable_rps(struct drm_i915_private *dev_priv)
 		   GEN6_PM_RP_DOWN_THRESHOLD |
 		   GEN6_PM_RP_UP_EI_EXPIRED |
 		   GEN6_PM_RP_DOWN_EI_EXPIRED);
-	lockmgr(&dev_priv->rps_lock, LK_EXCLUSIVE);
-	if (dev_priv->pm_iir != 0)
-		kprintf("pm_iir %x\n", dev_priv->pm_iir);
+	spin_lock(&dev_priv->rps.lock);
+	WARN_ON(dev_priv->rps.pm_iir != 0);
 	I915_WRITE(GEN6_PMIMR, 0);
-	lockmgr(&dev_priv->rps_lock, LK_RELEASE);
+	spin_unlock(&dev_priv->rps.lock);
 	/* enable all PM interrupts */
 	I915_WRITE(GEN6_PMINTRMSK, 0);
 
 	gen6_gt_force_wake_put(dev_priv);
-	DRM_UNLOCK(dev);
 }
 
 void gen6_update_ring_freq(struct drm_i915_private *dev_priv)
@@ -2851,9 +2844,9 @@ void gen6_update_ring_freq(struct drm_i915_private *dev_priv)
 	 * to use for memory access.  We do this by specifying the IA frequency
 	 * the PCU should use as a reference to determine the ring frequency.
 	 */
-	for (gpu_freq = dev_priv->max_delay; gpu_freq >= dev_priv->min_delay;
+	for (gpu_freq = dev_priv->rps.max_delay; gpu_freq >= dev_priv->rps.min_delay;
 	     gpu_freq--) {
-		int diff = dev_priv->max_delay - gpu_freq;
+		int diff = dev_priv->rps.max_delay - gpu_freq;
 		int d;
 
 		/*

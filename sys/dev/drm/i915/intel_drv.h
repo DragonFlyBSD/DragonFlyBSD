@@ -288,6 +288,35 @@ struct dip_infoframe {
 	} __attribute__ ((packed)) body;
 } __attribute__((packed));
 
+#define DP_MAX_DOWNSTREAM_PORTS		0x10
+#define DP_LINK_CONFIGURATION_SIZE	9
+
+struct intel_dp {
+	struct intel_encoder base;
+	uint32_t output_reg;
+	uint32_t DP;
+	uint8_t  link_configuration[DP_LINK_CONFIGURATION_SIZE];
+	bool has_audio;
+	enum hdmi_force_audio force_audio;
+	uint32_t color_range;
+	int dpms_mode;
+	uint8_t link_bw;
+	uint8_t lane_count;
+	uint8_t dpcd[DP_RECEIVER_CAP_SIZE];
+	device_t dp_iic_bus;
+	device_t adapter;
+	bool is_pch_edp;
+	uint8_t	train_set[4];
+	int panel_power_up_delay;
+	int panel_power_down_delay;
+	int panel_power_cycle_delay;
+	int backlight_on_delay;
+	int backlight_off_delay;
+	struct delayed_work panel_vdd_work;
+	bool want_panel_vdd;
+	struct drm_display_mode *panel_fixed_mode;  /* for eDP */
+};
+
 static inline struct drm_crtc *
 intel_get_crtc_for_pipe(struct drm_device *dev, int pipe)
 {
@@ -303,17 +332,20 @@ intel_get_crtc_for_plane(struct drm_device *dev, int plane)
 }
 
 struct intel_unpin_work {
-	struct task task;
+	struct work_struct work;
 	struct drm_device *dev;
 	struct drm_i915_gem_object *old_fb_obj;
 	struct drm_i915_gem_object *pending_flip_obj;
 	struct drm_pending_vblank_event *event;
 	atomic_t pending;
+#define INTEL_FLIP_INACTIVE	0
+#define INTEL_FLIP_PENDING	1
+#define INTEL_FLIP_COMPLETE	2
 	bool enable_stall_check;
 };
 
 struct intel_fbc_work {
-	struct timeout_task task;
+	struct delayed_work work;
 	struct drm_crtc *crtc;
 	struct drm_framebuffer *fb;
 	int interval;
@@ -334,6 +366,7 @@ extern bool intel_sdvo_init(struct drm_device *dev, int output_device);
 extern void intel_dvo_init(struct drm_device *dev);
 extern void intel_tv_init(struct drm_device *dev);
 extern void intel_mark_busy(struct drm_device *dev);
+extern void intel_mark_idle(struct drm_device *dev);
 extern bool intel_lvds_init(struct drm_device *dev);
 extern void intel_dp_init(struct drm_device *dev, int dp_reg);
 void

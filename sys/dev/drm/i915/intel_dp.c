@@ -40,32 +40,6 @@
 
 #define DP_LINK_CONFIGURATION_SIZE	9
 
-struct intel_dp {
-	struct intel_encoder base;
-	uint32_t output_reg;
-	uint32_t DP;
-	uint8_t  link_configuration[DP_LINK_CONFIGURATION_SIZE];
-	bool has_audio;
-	enum hdmi_force_audio force_audio;
-	uint32_t color_range;
-	int dpms_mode;
-	uint8_t link_bw;
-	uint8_t lane_count;
-	uint8_t dpcd[DP_RECEIVER_CAP_SIZE];
-	device_t dp_iic_bus;
-	device_t adapter;
-	bool is_pch_edp;
-	uint8_t	train_set[4];
-	int panel_power_up_delay;
-	int panel_power_down_delay;
-	int panel_power_cycle_delay;
-	int backlight_on_delay;
-	int backlight_off_delay;
-	struct drm_display_mode *panel_fixed_mode;  /* for eDP */
-	struct timeout_task panel_vdd_task;
-	bool want_panel_vdd;
-};
-
 /**
  * is_edp - is the given port attached to an eDP panel (either CPU or PCH)
  * @intel_dp: DP struct
@@ -1046,9 +1020,10 @@ static void ironlake_panel_vdd_off_sync(struct intel_dp *intel_dp)
 	}
 }
 
-static void ironlake_panel_vdd_work(void *arg, int pending __unused)
+static void ironlake_panel_vdd_work(struct work_struct *__work)
 {
-	struct intel_dp *intel_dp = arg;
+	struct intel_dp *intel_dp = container_of(to_delayed_work(__work),
+						 struct intel_dp, panel_vdd_work);
 	struct drm_device *dev = intel_dp->base.base.dev;
 
 	lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
@@ -1075,10 +1050,8 @@ static void ironlake_edp_panel_vdd_off(struct intel_dp *intel_dp, bool sync)
 		 * time from now (relative to the power down delay)
 		 * to keep the panel power up across a sequence of operations
 		 */
-		struct drm_i915_private *dev_priv = intel_dp->base.base.dev->dev_private;
-		taskqueue_enqueue_timeout(dev_priv->tq,
-		    &intel_dp->panel_vdd_task,
-		    msecs_to_jiffies(intel_dp->panel_power_cycle_delay * 5));
+		schedule_delayed_work(&intel_dp->panel_vdd_work,
+				      msecs_to_jiffies(intel_dp->panel_power_cycle_delay * 5));
 	}
 }
 
@@ -2275,12 +2248,7 @@ static void intel_dp_encoder_destroy(struct drm_encoder *encoder)
 	}
 	drm_encoder_cleanup(encoder);
 	if (is_edp(intel_dp)) {
-		struct drm_i915_private *dev_priv = intel_dp->base.base.dev->dev_private;
-
-		taskqueue_cancel_timeout(dev_priv->tq,
-		    &intel_dp->panel_vdd_task, NULL);
-		taskqueue_drain_timeout(dev_priv->tq,
-		    &intel_dp->panel_vdd_task);
+		cancel_delayed_work_sync(&intel_dp->panel_vdd_work);
 		ironlake_panel_vdd_off_sync(intel_dp);
 	}
 	drm_free(intel_dp, DRM_MEM_KMS);
@@ -2418,8 +2386,8 @@ intel_dp_init(struct drm_device *dev, int output_reg)
 
 	if (is_edp(intel_dp)) {
 		intel_encoder->clone_mask = (1 << INTEL_EDP_CLONE_BIT);
-		TIMEOUT_TASK_INIT(dev_priv->tq, &intel_dp->panel_vdd_task, 0,
-		    ironlake_panel_vdd_work, intel_dp);
+		INIT_DELAYED_WORK(&intel_dp->panel_vdd_work,
+			  ironlake_panel_vdd_work);
 	}
 
 	intel_encoder->crtc_mask = (1 << 0) | (1 << 1) | (1 << 2);
