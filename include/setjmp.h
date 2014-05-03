@@ -36,16 +36,15 @@
  * SUCH DAMAGE.
  *
  *	@(#)setjmp.h	8.2 (Berkeley) 1/21/94
- * $DragonFly: src/include/setjmp.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _SETJMP_H_
 #define _SETJMP_H_
 
+#include <sys/cdefs.h>
+
 /* The size of the jmp_buf is machine dependent: */
 #include <machine/setjmp.h>
-
-#include <sys/cdefs.h>
 
 __BEGIN_DECLS
 int	setjmp (jmp_buf);
