@@ -1,5 +1,4 @@
 /* $FreeBSD: src/sys/i386/include/setjmp.h,v 1.4.2.1 2000/10/27 09:16:05 bde Exp $ */
-/* $DragonFly: src/sys/cpu/i386/include/setjmp.h,v 1.4 2006/11/07 17:51:21 dillon Exp $ */
 /*
  * Copyright (c) 1998 John Birrell <jb@cimlogic.com.au>.
  * All rights reserved.
@@ -43,9 +42,9 @@
  * compile-time diagnostics for mismatches.  The structs are the same
  * internally to avoid some run-time errors for mismatches.
  */
-#ifndef _ANSI_SOURCE
+#if __BSD_VISIBLE || __POSIX_VISIBLE || __XSI_VISIBLE
 typedef struct _sigjmp_buf { int _sjb[_JBLEN + 1]; } sigjmp_buf[1];
-#endif /* not ANSI */
+#endif
 
 typedef struct _jmp_buf { int _jb[_JBLEN + 1]; } jmp_buf[1];
 

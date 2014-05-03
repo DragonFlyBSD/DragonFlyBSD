@@ -50,16 +50,19 @@ __BEGIN_DECLS
 int	setjmp (jmp_buf);
 void	longjmp (jmp_buf, int) __dead2;
 
-#ifndef _ANSI_SOURCE
+#if __BSD_VISIBLE || __POSIX_VISIBLE || __XSI_VISIBLE
 int	sigsetjmp (sigjmp_buf, int);
 void	siglongjmp (sigjmp_buf, int) __dead2;
-#endif /* not ANSI */
+#endif
 
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
+#if __BSD_VISIBLE || __XSI_VISIBLE >= 600
 int	_setjmp (jmp_buf);
 void	_longjmp (jmp_buf, int) __dead2;
+#endif
+
+#if __BSD_VISIBLE
 void	longjmperror (void);
-#endif /* neither ANSI nor POSIX */
+#endif
 __END_DECLS
 
 #endif /* !_SETJMP_H_ */
