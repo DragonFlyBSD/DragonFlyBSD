@@ -110,4 +110,10 @@ round_jiffies_up(unsigned long j)
 	return roundup(j, hz);
 }
 
+static inline unsigned long
+round_jiffies_up_relative(unsigned long j)
+{
+	return roundup(j, hz);
+}
+
 #endif /* _LINUX_TIMER_H_ */
