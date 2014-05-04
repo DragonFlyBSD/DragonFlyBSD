@@ -55,7 +55,7 @@ int	sigsetjmp (sigjmp_buf, int);
 void	siglongjmp (sigjmp_buf, int) __dead2;
 #endif
 
-#if __BSD_VISIBLE || __XSI_VISIBLE >= 600
+#if __BSD_VISIBLE || __XSI_VISIBLE >= 500
 int	_setjmp (jmp_buf);
 void	_longjmp (jmp_buf, int) __dead2;
 #endif
