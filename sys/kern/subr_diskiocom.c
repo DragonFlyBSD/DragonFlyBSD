@@ -209,7 +209,6 @@ disk_rcvdmsg(kdmsg_msg_t *msg)
 
 	switch(msg->state->rxcmd & DMSGF_CMDSWMASK) {
 	case DMSG_BLK_OPEN:
-	case DMSG_BLK_CLOSE:
 		disk_blk_open(dp, msg);
 		break;
 	case DMSG_BLK_READ:
@@ -266,6 +265,7 @@ disk_blk_open(struct disk *dp, kdmsg_msg_t *msg)
 				++openst->openwr;
 		}
 	}
+#if 0
 	if ((msg->any.head.cmd & DMSGF_CMDSWMASK) == DMSG_BLK_CLOSE &&
 	    openst) {
 		fflags = 0;
@@ -287,6 +287,7 @@ disk_blk_open(struct disk *dp, kdmsg_msg_t *msg)
 				--openst->openwr;
 		}
 	}
+#endif
 	if (msg->any.head.cmd & DMSGF_DELETE) {
 		if (openst) {
 			while (openst->openrd && openst->openwr) {

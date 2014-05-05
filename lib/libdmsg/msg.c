@@ -38,7 +38,6 @@
 int DMsgDebugOpt;
 
 static int dmsg_state_msgrx(dmsg_msg_t *msg);
-static int dmsg_state_routedrx(dmsg_state_t *state, dmsg_msg_t *msg);
 static void dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg);
 static void dmsg_msg_free_locked(dmsg_msg_t *msg);
 
@@ -128,6 +127,7 @@ dmsg_iocom_init(dmsg_iocom_t *iocom, int sock_fd, int alt_fd,
 	dmsg_ioq_init(iocom, &iocom->ioq_tx);
 	iocom->state0.iocom = iocom;
 	iocom->state0.parent = &iocom->state0;
+	iocom->state0.flags = DMSG_STATE_ROOT;
 	TAILQ_INIT(&iocom->state0.subq);
 
 	if (pipe(iocom->wakeupfds) < 0)
@@ -248,7 +248,7 @@ dmsg_iocom_done(dmsg_iocom_t *iocom)
  * Allocate a new message using the specified transaction state.
  *
  * If CREATE is set a new transaction is allocated relative to the passed-in
- * transaction.
+ * transaction (the 'state' argument becomes pstate).
  *
  * If CREATE is not set the message is associated with the passed-in
  * transaction.
@@ -291,6 +291,7 @@ dmsg_msg_alloc(dmsg_state_t *state,
 		state = malloc(sizeof(*state));
 		bzero(state, sizeof(*state));
 		TAILQ_INIT(&state->subq);
+		atomic_add_int(&pstate->refs, 1);
 		state->parent = pstate;
 		state->iocom = iocom;
 		state->flags = DMSG_STATE_DYNAMIC;
@@ -300,6 +301,7 @@ dmsg_msg_alloc(dmsg_state_t *state,
 		state->icmd = state->txcmd & DMSGF_BASECMDMASK;
 		state->func = func;
 		state->any.any = data;
+
 		RB_INSERT(dmsg_state_tree, &iocom->statewr_tree, state);
 		TAILQ_INSERT_TAIL(&pstate->subq, state, entry);
 		state->flags |= DMSG_STATE_INSERTED;
@@ -980,8 +982,14 @@ again:
 		xcrc32 = dmsg_icrc32(msg->aux_data, ioq->abytes);
 		if (xcrc32 != msg->any.head.aux_crc) {
 			ioq->error = DMSG_IOQ_ERROR_ACRC;
-			fprintf(stderr, "iocom: ACRC error %08x vs %08x msgid %016jx msgcmd %08x auxsize %d\n",
-				xcrc32, msg->any.head.aux_crc, (intmax_t)msg->any.head.msgid, msg->any.head.cmd, msg->any.head.aux_bytes);
+			fprintf(stderr,
+				"iocom: ACRC error %08x vs %08x "
+				"msgid %016jx msgcmd %08x auxsize %d\n",
+				xcrc32,
+				msg->any.head.aux_crc,
+				(intmax_t)msg->any.head.msgid,
+				msg->any.head.cmd,
+				msg->any.head.aux_bytes);
 			break;
 		}
 		break;
@@ -1207,13 +1215,6 @@ skip:
 				dmsg_msg_free(msg);
 				goto again;
 			}
-
-			/*
-			 * msg routed, msg pointer no longer owned by us.
-			 * Go to the top and start reading another.
-			 */
-			if (error == DMSG_IOQ_ERROR_ROUTED)
-				goto again;
 
 			/*
 			 * Process real error and throw away message.
@@ -1543,7 +1544,8 @@ dmsg_msg_write(dmsg_msg_t *msg)
 	 */
 	pthread_mutex_lock(&iocom->mtx);
 	state = msg->state;
-	if (state != &state->iocom->state0) {
+
+	if ((state->flags & DMSG_STATE_ROOT) == 0) {
 		/*
 		 * Existing transaction (could be reply).  It is also
 		 * possible for this to be the first reply (CREATE is set),
@@ -1603,7 +1605,6 @@ dmsg_msg_reply(dmsg_msg_t *msg, uint32_t error)
 	dmsg_msg_t *nmsg;
 	uint32_t cmd;
 
-
 	/*
 	 * Reply with a simple error code and terminate the transaction.
 	 */
@@ -1618,7 +1619,7 @@ dmsg_msg_reply(dmsg_msg_t *msg, uint32_t error)
 	 * If our direction has already been closed we just return without
 	 * doing anything.
 	 */
-	if (state != &state->iocom->state0) {
+	if ((state->flags & DMSG_STATE_ROOT) == 0) {
 		if (state->txcmd & DMSGF_DELETE)
 			return;
 		if (state->txcmd & DMSGF_REPLY)
@@ -1635,7 +1636,7 @@ dmsg_msg_reply(dmsg_msg_t *msg, uint32_t error)
 	 * allocate new state.  We have our state already.
 	 */
 	nmsg = dmsg_msg_alloc(state, 0, cmd, NULL, NULL);
-	if (state != &state->iocom->state0) {
+	if ((state->flags & DMSG_STATE_ROOT) == 0) {
 		if ((state->txcmd & DMSGF_CREATE) == 0)
 			nmsg->any.head.cmd |= DMSGF_CREATE;
 	}
@@ -1672,7 +1673,7 @@ dmsg_msg_result(dmsg_msg_t *msg, uint32_t error)
 	 * If our direction has already been closed we just return without
 	 * doing anything.
 	 */
-	if (state != &state->iocom->state0) {
+	if ((state->flags & DMSG_STATE_ROOT) == 0) {
 		if (state->txcmd & DMSGF_DELETE)
 			return;
 		if (state->txcmd & DMSGF_REPLY)
@@ -1683,7 +1684,7 @@ dmsg_msg_result(dmsg_msg_t *msg, uint32_t error)
 			cmd |= DMSGF_REPLY;
 	}
 	nmsg = dmsg_msg_alloc(state, 0, cmd, NULL, NULL);
-	if (state != &state->iocom->state0) {
+	if ((state->flags & DMSG_STATE_ROOT) == 0) {
 		if ((state->txcmd & DMSGF_CREATE) == 0)
 			nmsg->any.head.cmd |= DMSGF_CREATE;
 	}
@@ -1716,7 +1717,7 @@ dmsg_state_reply(dmsg_state_t *state, uint32_t error)
 		cmd |= DMSGF_REPLY;
 
 	nmsg = dmsg_msg_alloc(state, 0, cmd, NULL, NULL);
-	if (state != &state->iocom->state0) {
+	if ((state->flags & DMSG_STATE_ROOT) == 0) {
 		if ((state->txcmd & DMSGF_CREATE) == 0)
 			nmsg->any.head.cmd |= DMSGF_CREATE;
 	}
@@ -1748,7 +1749,7 @@ dmsg_state_result(dmsg_state_t *state, uint32_t error)
 		cmd |= DMSGF_REPLY;
 
 	nmsg = dmsg_msg_alloc(state, 0, cmd, NULL, NULL);
-	if (state != &state->iocom->state0) {
+	if ((state->flags & DMSG_STATE_ROOT) == 0) {
 		if ((state->txcmd & DMSGF_CREATE) == 0)
 			nmsg->any.head.cmd |= DMSGF_CREATE;
 	}
@@ -1763,8 +1764,8 @@ dmsg_state_result(dmsg_state_t *state, uint32_t error)
  */
 
 /*
- * Process circuit and state tracking for a message after reception, prior
- * to execution.
+ * Process state tracking for a message after reception, prior to execution.
+ * Possibly route the message (consuming it).
  *
  * Called with msglk held and the msg dequeued.
  *
@@ -1823,10 +1824,14 @@ dmsg_state_result(dmsg_state_t *state, uint32_t error)
  *
  * --
  *
- * One-off messages (no reply expected) are sent with neither CREATE or DELETE
- * set.  One-off messages cannot be aborted and typically aren't processed
- * by these routines.  The REPLY bit can be used to distinguish whether a
- * one-off message is a command or reply.  For example, one-off replies
+ * One-off messages (no reply expected) are sent without an established
+ * transaction.  CREATE and DELETE are left clear and the msgid is usually 0.
+ * For one-off messages sent over circuits msgid generally MUST be 0.
+ *
+ * One-off messages cannot be aborted and typically aren't processed
+ * by these routines.  Order is still guaranteed for messages sent over
+ * the same circuit.  The REPLY bit can be used to distinguish whether
+ * a one-off message is a command or reply.  For example, one-off replies
  * will typically just contain status updates.
  */
 static int
@@ -1838,19 +1843,40 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 	dmsg_state_t sdummy;
 	int error;
 
-#if 0
-	fprintf(stderr,
-		"MSGREAD  %016jx %08x\n",
-		msg->any.head.msgid, msg->any.head.cmd);
-#endif
-
 	pthread_mutex_lock(&iocom->mtx);
 
 	/*
-	 * XXX handle circuit accounting
+	 * Lookup the circuit (pstate).  The circuit will be an open
+	 * transaction.  The REVCIRC bit in the message tells us which side
+	 * initiated it.
 	 */
+	if (msg->any.head.circuit) {
+		sdummy.msgid = msg->any.head.circuit;
+
+		if (msg->any.head.cmd & DMSGF_REVCIRC) {
+			pstate = RB_FIND(dmsg_state_tree,
+					 &iocom->statewr_tree,
+					 &sdummy);
+		} else {
+			pstate = RB_FIND(dmsg_state_tree,
+					 &iocom->staterd_tree,
+					 &sdummy);
+		}
+		if (pstate == NULL) {
+			fprintf(stderr,
+				"missing parent in stacked trans %s\n",
+				dmsg_msg_str(msg));
+			error = DMSG_IOQ_ERROR_TRANS;
+			pthread_mutex_unlock(&iocom->mtx);
+			assert(0);
+		}
+	} else {
+		pstate = &iocom->state0;
+	}
 
 	/*
+	 * Lookup the msgid.
+	 *
 	 * If received msg is a command state is on staterd_tree.
 	 * If received msg is a reply state is on statewr_tree.
 	 * Otherwise there is no state (retain &iocom->state0)
@@ -1860,34 +1886,42 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		state = RB_FIND(dmsg_state_tree, &iocom->statewr_tree, &sdummy);
 	else
 		state = RB_FIND(dmsg_state_tree, &iocom->staterd_tree, &sdummy);
-	if (state)
-		msg->state = state;	/* found an open transaction */
-	else
-		state = msg->state;	/* retain &iocom->state0 */
+
+	if (state) {
+		/*
+		 * Message over an existing transaction (CREATE should not
+		 * be set).
+		 */
+		msg->state = state;
+		assert(pstate == state->parent);
+	} else {
+		/*
+		 * Either a new transaction (if CREATE set) or a one-off.
+		 */
+		state = pstate;
+	}
 
 	pthread_mutex_unlock(&iocom->mtx);
 
 	/*
-	 * Short-cut one-off or mid-stream messages (state may be NULL).
-	 */
-	if ((msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE |
-				  DMSGF_ABORT)) == 0) {
-		error = 0;
-		goto done;
-	}
-
-	/*
 	 * Switch on CREATE, DELETE, REPLY, and also handle ABORT from
 	 * inside the case statements.
+	 *
+	 * Construct new state as necessary.
 	 */
 	switch(msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE |
 				    DMSGF_REPLY)) {
 	case DMSGF_CREATE:
 	case DMSGF_CREATE | DMSGF_DELETE:
 		/*
-		 * New persistant command received.
+		 * Create new sub-transaction under pstate.
+		 * (any DELETE is handled in post-processing of msg).
+		 *
+		 * (During routing the msgid was made unique for this
+		 * direction over the comlink, so our RB trees can be
+		 * iocom-based instead of state-based).
 		 */
-		if (state != &state->iocom->state0) {
+		if (state != pstate) {
 			fprintf(stderr,
 				"duplicate transaction %s\n",
 				dmsg_msg_str(msg));
@@ -1897,60 +1931,38 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		}
 
 		/*
-		 * Lookup the circuit.  The circuit is an open transaction.
-		 * the REVCIRC bit in the message tells us which side
-		 * initiated the transaction representing the circuit.
-		 */
-		if (msg->any.head.circuit) {
-			pthread_mutex_lock(&iocom->mtx);
-			sdummy.msgid = msg->any.head.circuit;
-
-			if (msg->any.head.cmd & DMSGF_REVCIRC) {
-				pstate = RB_FIND(dmsg_state_tree,
-						 &iocom->statewr_tree,
-						 &sdummy);
-			} else {
-				pstate = RB_FIND(dmsg_state_tree,
-						 &iocom->staterd_tree,
-						 &sdummy);
-			}
-			if (pstate == NULL) {
-				fprintf(stderr,
-					"missing parent in stacked trans %s\n",
-					dmsg_msg_str(msg));
-				error = DMSG_IOQ_ERROR_TRANS;
-				pthread_mutex_unlock(&iocom->mtx);
-				assert(0);
-				break;
-			}
-			pthread_mutex_unlock(&iocom->mtx);
-		} else {
-			pstate = &iocom->state0;
-		}
-
-		/*
-		 * Allocate new state
+		 * Allocate the new state.
 		 */
 		state = malloc(sizeof(*state));
 		bzero(state, sizeof(*state));
 		TAILQ_INIT(&state->subq);
+		atomic_add_int(&pstate->refs, 1);
 		state->parent = pstate;
 		state->iocom = iocom;
 		state->flags = DMSG_STATE_DYNAMIC |
-			       DMSG_STATE_OPPOSITE |
-			       (pstate->flags & DMSG_STATE_ROUTED);
+			       DMSG_STATE_OPPOSITE;
 		state->msgid = msg->any.head.msgid;
 		state->txcmd = DMSGF_REPLY;
 		state->rxcmd = msg->any.head.cmd & ~DMSGF_DELETE;
 		state->icmd = state->rxcmd & DMSGF_BASECMDMASK;
 		msg->state = state;
-
 		pthread_mutex_lock(&iocom->mtx);
 		RB_INSERT(dmsg_state_tree, &iocom->staterd_tree, state);
 		TAILQ_INSERT_TAIL(&pstate->subq, state, entry);
 		state->flags |= DMSG_STATE_INSERTED;
+
+		/*
+		 * If the parent is a relay set up the state handler to
+		 * automatically route the message.  Local processing will
+		 * not occur if set.
+		 *
+		 * (state relays are seeded by SPAN processing)
+		 */
+		if (pstate->relay)
+			state->func = dmsg_state_relay;
 		pthread_mutex_unlock(&iocom->mtx);
 		error = 0;
+
 		if (DMsgDebugOpt) {
 			fprintf(stderr,
 				"create state %p id=%08x on iocom staterd %p\n",
@@ -1961,15 +1973,17 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		/*
 		 * Persistent state is expected but might not exist if an
 		 * ABORT+DELETE races the close.
+		 *
+		 * (any DELETE is handled in post-processing of msg).
 		 */
-		if (state == &state->iocom->state0) {
+		if (state == pstate) {
 			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = DMSG_IOQ_ERROR_EALREADY;
 			} else {
 				fprintf(stderr, "missing-state %s\n",
 					dmsg_msg_str(msg));
 				error = DMSG_IOQ_ERROR_TRANS;
-			assert(0);
+				assert(0);
 			}
 			break;
 		}
@@ -1985,7 +1999,7 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 				fprintf(stderr, "reused-state %s\n",
 					dmsg_msg_str(msg));
 				error = DMSG_IOQ_ERROR_TRANS;
-			assert(0);
+				assert(0);
 			}
 			break;
 		}
@@ -1997,7 +2011,7 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		 * allow.
 		 */
 		if (msg->any.head.cmd & DMSGF_ABORT) {
-			if (state == &state->iocom->state0 ||
+			if ((state == pstate) ||
 			    (state->rxcmd & DMSGF_CREATE) == 0) {
 				error = DMSG_IOQ_ERROR_EALREADY;
 				break;
@@ -2011,15 +2025,14 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		 * When receiving a reply with CREATE set the original
 		 * persistent state message should already exist.
 		 */
-		if (state == &state->iocom->state0) {
+		if (state == pstate) {
 			fprintf(stderr, "no-state(r) %s\n",
 				dmsg_msg_str(msg));
 			error = DMSG_IOQ_ERROR_TRANS;
 			assert(0);
 			break;
 		}
-		assert(((state->rxcmd ^ msg->any.head.cmd) &
-			DMSGF_REPLY) == 0);
+		assert(((state->rxcmd ^ msg->any.head.cmd) & DMSGF_REPLY) == 0);
 		state->rxcmd = msg->any.head.cmd & ~DMSGF_DELETE;
 		error = 0;
 		break;
@@ -2028,14 +2041,14 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		 * Received REPLY+ABORT+DELETE in case where msgid has
 		 * already been fully closed, ignore the message.
 		 */
-		if (state == &state->iocom->state0) {
+		if (state == pstate) {
 			if (msg->any.head.cmd & DMSGF_ABORT) {
 				error = DMSG_IOQ_ERROR_EALREADY;
 			} else {
 				fprintf(stderr, "no-state(r,d) %s\n",
 					dmsg_msg_str(msg));
 				error = DMSG_IOQ_ERROR_TRANS;
-			assert(0);
+				assert(0);
 			}
 			break;
 		}
@@ -2052,7 +2065,7 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 				fprintf(stderr, "reused-state(r,d) %s\n",
 					dmsg_msg_str(msg));
 				error = DMSG_IOQ_ERROR_TRANS;
-			assert(0);
+				assert(0);
 			}
 			break;
 		}
@@ -2063,7 +2076,7 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 		 * Check for mid-stream ABORT reply received to sent command.
 		 */
 		if (msg->any.head.cmd & DMSGF_ABORT) {
-			if (state == &state->iocom->state0 ||
+			if (state == pstate ||
 			    (state->rxcmd & DMSGF_CREATE) == 0) {
 				error = DMSG_IOQ_ERROR_EALREADY;
 				break;
@@ -2083,9 +2096,8 @@ dmsg_state_msgrx(dmsg_msg_t *msg)
 	 * The two can be told apart because outer-transaction commands
 	 * always have a DMSGF_CREATE and/or DMSGF_DELETE flag.
 	 */
-done:
 	if (msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE)) {
-		if (state != &state->iocom->state0) {
+		if ((state->flags & DMSG_STATE_ROOT) == 0) {
 			msg->tcmd = (msg->state->icmd & DMSGF_BASECMDMASK) |
 				    (msg->any.head.cmd & (DMSGF_CREATE |
 							  DMSGF_DELETE |
@@ -2096,52 +2108,72 @@ done:
 	} else {
 		msg->tcmd = msg->any.head.cmd & DMSGF_CMDSWMASK;
 	}
-
-	/*
-	 * Possibly route the message if the state inherited the ROUTED
-	 * flag.
-	 */
-	if (state->flags & DMSG_STATE_ROUTED)
-		error = dmsg_state_routedrx(state, msg);
-
 	return (error);
 }
 
 /*
- * Routed messages still do state-tracking
+ * Route the message and handle pair-state processing.
  */
-static int
-dmsg_state_routedrx(dmsg_state_t *state, dmsg_msg_t *msg)
+void
+dmsg_state_relay(dmsg_msg_t *lmsg)
 {
-	/*
-	 * If this message is a CREATE or DELETE on the LNK_SPAN transaction
-	 * itself we process it normally rather than route it.
-	 */
-	if (state->parent == &state->iocom->state0 &&
-	    (msg->any.head.cmd & (DMSGF_CREATE | DMSGF_DELETE))) {
-		assert(state->icmd == DMSG_LNK_SPAN);
-		return 0;
-	}
+	dmsg_state_t *lpstate;
+	dmsg_state_t *rpstate;
+	dmsg_state_t *lstate;
+	dmsg_state_t *rstate;
+	dmsg_msg_t *rmsg;
 
-	/*
-	 * When routing the msgid must be translated to our representation
-	 * of the transaction. XXX
-	 */
-	fprintf(stderr, "ROUTING MESSAGE\n");
-
-	if (state->parent == &state->iocom->state0 &&
-	    state->icmd == DMSG_LNK_SPAN) {
+	if ((lmsg->any.head.cmd & (DMSGF_CREATE | DMSGF_REPLY)) ==
+	    DMSGF_CREATE) {
 		/*
-		 * Route a non-transactional command through the SPAN.
+		 * New sub-transaction, establish new state and relay.
 		 */
+		lstate = lmsg->state;
+		lpstate = lstate->parent;
+		rpstate = lpstate->relay;
+		assert(lstate->relay == NULL);
+		assert(rpstate != NULL);
+
+		rmsg = dmsg_msg_alloc(rpstate,
+				      lmsg->aux_size,
+				      lmsg->any.head.cmd,
+				      dmsg_state_relay, NULL);
+		rstate = rmsg->state;
+		rstate->relay = lstate;
+		lstate->relay = rstate;
+		atomic_add_int(&lstate->refs, 1);
+		atomic_add_int(&rstate->refs, 1);
 	} else {
 		/*
-		 * Route a transactional message stacked under the LNK_SPAN.
+		 * State & relay already established
 		 */
+		lstate = lmsg->state;
+		rstate = lstate->relay;
+		assert(rstate != NULL);
+
+		rmsg = dmsg_msg_alloc(rstate,
+				      lmsg->aux_size,
+				      lmsg->any.head.cmd,
+				      dmsg_state_relay, NULL);
 	}
-	return DMSG_IOQ_ERROR_ROUTED;
+	if (lmsg->hdr_size > sizeof(lmsg->any.head)) {
+		bcopy(&lmsg->any.head + 1, &rmsg->any.head + 1,
+		      lmsg->hdr_size - sizeof(lmsg->any.head));
+	}
+	rmsg->any.head.error = lmsg->any.head.error;
+	rmsg->any.head.reserved02 = lmsg->any.head.reserved02;
+	rmsg->any.head.reserved18 = lmsg->any.head.reserved18;
+	rmsg->aux_data = lmsg->aux_data;
+	lmsg->aux_data = NULL;
+	/*
+	fprintf(stderr, "RELAY %08x\n", rmsg->any.head.cmd);
+	*/
+	dmsg_msg_write(rmsg);
 }
 
+/*
+ * Cleanup and retire msg after processing
+ */
 void
 dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 {
@@ -2150,7 +2182,7 @@ dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 
 	assert(msg->state->iocom == iocom);
 	state = msg->state;
-	if (state == &iocom->state0) {
+	if (state->flags & DMSG_STATE_ROOT) {
 		/*
 		 * Free a non-transactional message, there is no state
 		 * to worry about.
@@ -2178,13 +2210,20 @@ dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 			}
 			pstate = state->parent;
 			TAILQ_REMOVE(&pstate->subq, state, entry);
-			if (pstate != &pstate->iocom->state0 &&
+			state->flags &= ~DMSG_STATE_INSERTED;
+			state->parent = NULL;
+			atomic_add_int(&pstate->refs, -1);
+
+			if ((pstate->flags & DMSG_STATE_ROOT) == 0 &&
 			    TAILQ_EMPTY(&pstate->subq) &&
 			    (pstate->flags & DMSG_STATE_INSERTED) == 0) {
 				dmsg_state_free(pstate);
 			}
-			state->flags &= ~DMSG_STATE_INSERTED;
-			state->parent = NULL;
+
+			if (state->relay) {
+				atomic_add_int(&state->relay->refs, -1);
+				state->relay = NULL;
+			}
 			dmsg_msg_free(msg);
 			if (TAILQ_EMPTY(&state->subq))
 				dmsg_state_free(state);
@@ -2209,7 +2248,7 @@ dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 
 	assert(iocom == msg->state->iocom);
 	state = msg->state;
-	if (state == &state->iocom->state0) {
+	if (state->flags & DMSG_STATE_ROOT) {
 		dmsg_msg_free(msg);
 	} else if (msg->any.head.cmd & DMSGF_DELETE) {
 		pthread_mutex_lock(&iocom->mtx);
@@ -2229,13 +2268,20 @@ dmsg_state_cleanuptx(dmsg_iocom_t *iocom, dmsg_msg_t *msg)
 			}
 			pstate = state->parent;
 			TAILQ_REMOVE(&pstate->subq, state, entry);
-			if (pstate != &pstate->iocom->state0 &&
+			state->flags &= ~DMSG_STATE_INSERTED;
+			state->parent = NULL;
+			atomic_add_int(&pstate->refs, -1);
+
+			if ((pstate->flags & DMSG_STATE_ROOT) == 0 &&
 			    TAILQ_EMPTY(&pstate->subq) &&
 			    (pstate->flags & DMSG_STATE_INSERTED) == 0) {
 				dmsg_state_free(pstate);
 			}
-			state->flags &= ~DMSG_STATE_INSERTED;
-			state->parent = NULL;
+
+			if (state->relay) {
+				atomic_add_int(&state->relay->refs, -1);
+				state->relay = NULL;
+			}
 			dmsg_msg_free(msg);
 			if (TAILQ_EMPTY(&state->subq))
 				dmsg_state_free(state);

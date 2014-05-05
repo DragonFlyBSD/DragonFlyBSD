@@ -61,7 +61,6 @@ cmd_shell(const char *hostname)
 	info->detachme = 0;
 	info->usrmsg_callback = shell_msghandler;
 	info->altmsg_callback = shell_ttymsg;
-	info->node_handler = NULL;
 	info->label = strdup("debug");
 	pthread_create(&thread, NULL, dmsg_master_service, info);
 	pthread_join(thread, NULL);

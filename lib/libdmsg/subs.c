@@ -90,6 +90,7 @@ dmsg_connect(const char *hostname)
 	struct sockaddr_in lsin;
 	struct hostent *hen;
 	int fd;
+	int opt;
 
 	/*
 	 * Acquire socket and set options
@@ -99,6 +100,8 @@ dmsg_connect(const char *hostname)
 			strerror(errno));
 		return -1;
 	}
+	opt = 1;
+	setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof opt);
 
 	/*
 	 * Connect to the target

@@ -528,8 +528,11 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 	char *alloc = NULL;
 
 	/*
-	 * Ignore reply to LNK_SPAN.  The reply is needed to forge the
-	 * return path for the transaction.
+	 * Ignore reply to LNK_SPAN.  The reply is expected and will commands
+	 * to flow in both directions on the open transaction.  This will also
+	 * ignore DMSGF_REPLY|DMSGF_DELETE messages.  Since we take no action
+	 * if the other end unexpectedly closes their side of the transaction,
+	 * we can ignore that too.
 	 */
 	if (msg->any.head.cmd & DMSGF_REPLY) {
 		printf("Ignore reply to LNK_SPAN\n");
@@ -585,14 +588,26 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 			node->cls = cls;
 			RB_INIT(&node->tree);
 			RB_INSERT(h2span_node_tree, &cls->tree, node);
-			if (iocom->node_handler) {
-				iocom->node_handler(&node->opaque, msg,
-						    DMSG_NODEOP_ADD);
-			}
 		}
 
 		/*
 		 * Create the link
+		 *
+		 * NOTE: Sub-transactions on the incoming SPAN can be used
+		 *	 to talk to the originator.  We should not set-up
+		 *	 state->relay for incoming SPANs since our sub-trans
+		 *	 is running on the same interface (i.e. no actual
+		 *	 relaying need be done).
+		 *
+		 * NOTE: Later on when we relay the SPAN out the outgoing
+		 *	 SPAN state will be set up to relay back to this
+		 *	 state.
+		 *
+		 * NOTE: It is possible for SPAN targets to send one-way
+		 *	 messages to the originator but it is not possible
+		 *	 for the originator to (currently) broadcast one-way
+		 *	 messages to all of its SPAN targets.  The protocol
+		 *	 allows such a feature to be added in the future.
 		 */
 		assert(state->any.link == NULL);
 		slink = dmsg_alloc(sizeof(*slink));
@@ -616,6 +631,12 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 #if 0
 		dmsg_relay_scan(NULL, node);
 #endif
+		/*
+		 * Ack the open, which will issue a CREATE on our side, and
+		 * leave the transaction open.  Necessary to allow the
+		 * transaction to be used as a virtual circuit.
+		 */
+		dmsg_state_result(state, 0);
 		dmsg_iocom_signal(iocom);
 	}
 
@@ -650,10 +671,6 @@ dmsg_lnk_span(dmsg_msg_t *msg)
 		RB_REMOVE(h2span_link_tree, &node->tree, slink);
 		if (RB_EMPTY(&node->tree)) {
 			RB_REMOVE(h2span_node_tree, &cls->tree, node);
-			if (iocom->node_handler) {
-				iocom->node_handler(&node->opaque, msg,
-						    DMSG_NODEOP_DEL);
-			}
 			if (RB_EMPTY(&cls->tree) && cls->refs == 0) {
 				RB_REMOVE(h2span_cluster_tree,
 					  &cluster_tree, cls);
@@ -1023,7 +1040,6 @@ dmsg_generate_relay(h2span_conn_t *conn, h2span_link_t *slink)
 			     0, DMSG_LNK_SPAN | DMSGF_CREATE,
 			     dmsg_lnk_relay, relay);
 	relay->target_rt = msg->state;
-	msg->state->flags |= DMSG_STATE_ROUTED;
 
 	msg->any.lnk_span = slink->lnk_span;
 	msg->any.lnk_span.dist = slink->lnk_span.dist + 1;
@@ -1031,6 +1047,13 @@ dmsg_generate_relay(h2span_conn_t *conn, h2span_link_t *slink)
 
 	RB_INSERT(h2span_relay_tree, &conn->tree, relay);
 	TAILQ_INSERT_TAIL(&slink->relayq, relay, entry);
+
+	/*
+	 * Seed the relay so new sub-transactions received on the outgoing
+	 * SPAN circuit are relayed back to the originator.
+	 */
+	msg->state->relay = relay->source_rt;
+	atomic_add_int(&relay->source_rt->refs, 1);
 
 	dmsg_msg_write(msg);
 
@@ -1090,6 +1113,11 @@ dmsg_relay_delete(h2span_relay_t *relay)
 		/* state invalid after reply */
 		relay->target_rt = NULL;
 	}
+
+	/*
+	 * NOTE: relay->source_rt->refs is held by the relay SPAN
+	 *	 state, not by this relay structure.
+	 */
 	relay->conn = NULL;
 	relay->source_rt = NULL;
 	dmsg_free(relay);

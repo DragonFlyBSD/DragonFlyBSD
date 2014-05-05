@@ -156,11 +156,12 @@ typedef struct dmsg_media dmsg_media_t;
  * directions.
  */
 struct dmsg_state {
-	RB_ENTRY(dmsg_state) rbnode;		/* indexed by msgid */
+	RB_ENTRY(dmsg_state) rbnode;		/* by state->msgid */
 	TAILQ_HEAD(, dmsg_state) subq;		/* active stacked states */
 	TAILQ_ENTRY(dmsg_state) entry;		/* on parent subq */
 	struct dmsg_iocom *iocom;
 	struct dmsg_state *parent;		/* transaction stacking */
+	struct dmsg_state *relay;		/* routing */
 	uint32_t	icmd;			/* command creating state */
 	uint32_t	txcmd;			/* mostly for CMDF flags */
 	uint32_t	rxcmd;			/* mostly for CMDF flags */
@@ -181,8 +182,10 @@ struct dmsg_state {
 #define DMSG_STATE_INSERTED	0x0001
 #define DMSG_STATE_DYNAMIC	0x0002
 #define DMSG_STATE_NODEID	0x0004		/* manages a node id */
-#define DMSG_STATE_ROUTED	0x0008		/* message is routed */
+#define DMSG_STATE_UNUSED_0008	0x0008
 #define DMSG_STATE_OPPOSITE	0x0010		/* initiated by other end */
+#define DMSG_STATE_CIRCUIT	0x0020		/* LNK_SPAN special case */
+#define DMSG_STATE_ROOT		0x8000		/* iocom->state0 */
 
 /*
  * This is the core in-memory representation of a message structure.
@@ -260,7 +263,7 @@ typedef struct dmsg_ioq dmsg_ioq_t;
 #define DMSG_IOQ_ERROR_IVWRAP		18	/* IVs exhaused */
 #define DMSG_IOQ_ERROR_MACFAIL		19	/* MAC of encr alg failed */
 #define DMSG_IOQ_ERROR_ALGO		20	/* Misc. encr alg error */
-#define DMSG_IOQ_ERROR_ROUTED		21	/* ignore routed message */
+#define DMSG_IOQ_ERROR_UNUSED21		21
 #define DMSG_IOQ_ERROR_BAD_CIRCUIT	22	/* unconfigured circuit */
 #define DMSG_IOQ_ERROR_UNUSED23		23
 #define DMSG_IOQ_ERROR_ASSYM		24	/* Assymetric path */
@@ -289,7 +292,6 @@ struct dmsg_iocom {
 	void	(*altmsg_callback)(struct dmsg_iocom *);
 	void	(*rcvmsg_callback)(dmsg_msg_t *msg);
 	void	(*usrmsg_callback)(dmsg_msg_t *msg, int unmanaged);
-	void	(*node_handler)(void **opaquep, dmsg_msg_t *msg, int op);
 	dmsg_msg_queue_t txmsgq;		/* tx msgq from remote */
 	struct h2span_conn *conn;		/* if LNK_CONN active */
 	uint64_t	conn_msgid;		/* LNK_CONN circuit */
@@ -338,7 +340,6 @@ struct dmsg_master_service_info {
 	void	*handle;
 	void	(*altmsg_callback)(dmsg_iocom_t *iocom);
 	void	(*usrmsg_callback)(dmsg_msg_t *msg, int unmanaged);
-	void	(*node_handler)(void **opaquep, dmsg_msg_t *msg, int op);
 	void	(*exit_callback)(void *handle);
 };
 
@@ -405,6 +406,7 @@ void dmsg_iocom_drain(dmsg_iocom_t *iocom);
 void dmsg_iocom_flush1(dmsg_iocom_t *iocom);
 void dmsg_iocom_flush2(dmsg_iocom_t *iocom);
 
+void dmsg_state_relay(dmsg_msg_t *msg);
 void dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg);
 void dmsg_state_free(dmsg_state_t *state);
 

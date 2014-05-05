@@ -94,7 +94,6 @@ static void disk_reconnect(const char *disk);
 static void disk_disconnect(void *handle);
 static void udev_check_disks(void);
 static void hammer2_usrmsg_handler(dmsg_msg_t *msg, int unmanaged);
-static void hammer2_node_handler(void **opaque, struct dmsg_msg *msg, int op);
 static void *hammer2_volconf_thread(void *info);
 static void hammer2_volconf_signal(dmsg_iocom_t *iocom);
 static void hammer2_volconf_start(hammer2_media_config_t *conf,
@@ -102,9 +101,7 @@ static void hammer2_volconf_start(hammer2_media_config_t *conf,
 static void hammer2_volconf_stop(hammer2_media_config_t *conf);
 
 
-static void xdisk_reconnect(struct service_node_opaque *info);
-static void xdisk_disconnect(void *handle);
-static void *xdisk_attach_tmpthread(void *data);
+static void xdisk_connect(void);
 
 /*
  * Start-up the master listener daemon for the machine.  This daemon runs
@@ -216,6 +213,7 @@ service_thread(void *data)
 	int fd;
 	int i;
 	int count;
+	int opt;
 	struct statfs *mntbuf = NULL;
 	struct statvfs *mntvbuf = NULL;
 
@@ -226,10 +224,17 @@ service_thread(void *data)
 	pthread_detach(pthread_self());
 
 	/*
-	 * Start up a thread to handle block device monitoring
+	 * Start up a thread to handle block device monitoring for
+	 * export to the cluster.
 	 */
 	thread = NULL;
 	pthread_create(&thread, NULL, udev_thread, NULL);
+
+	/*
+	 * Start up a thread to tie /dev/xdisk into the cluster
+	 * controller.
+	 */
+	xdisk_connect();
 
 	/*
 	 * Start thread to manage /etc/hammer2/autoconn
@@ -259,6 +264,8 @@ service_thread(void *data)
 				continue;
 			break;
 		}
+		opt = 1;
+		setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof opt);
 		thread = NULL;
 		fprintf(stderr, "service_thread: accept fd %d\n", fd);
 		info = malloc(sizeof(*info));
@@ -266,7 +273,6 @@ service_thread(void *data)
 		info->fd = fd;
 		info->detachme = 1;
 		info->usrmsg_callback = hammer2_usrmsg_handler;
-		info->node_handler = hammer2_node_handler;
 		info->label = strdup("client");
 		pthread_create(&thread, NULL, dmsg_master_service, info);
 	}
@@ -481,63 +487,6 @@ void
 hammer2_volconf_signal(dmsg_iocom_t *iocom)
 {
 	atomic_set_int(&iocom->flags, DMSG_IOCOMF_EOF);
-}
-
-
-/*
- * Node discovery code on received SPANs (or loss of SPANs).  This code
- * is used to track the availability of remote block devices and install
- * or deinstall them using the xdisk driver (/dev/xdisk).
- *
- * An installed xdisk creates /dev/xa%d and /dev/serno/<blah> based on
- * the data handed to it.  When opened, a virtual circuit is forged and
- * maintained to the block device server via DMSG.  Temporary failures
- * stall the device until successfully reconnected or explicitly destroyed.
- */
-static
-void
-hammer2_node_handler(void **opaquep, struct dmsg_msg *msg, int op)
-{
-	struct service_node_opaque *info = *opaquep;
-
-	switch(op) {
-	case DMSG_NODEOP_ADD:
-		if (msg->any.lnk_span.peer_type != DMSG_PEER_BLOCK)
-			break;
-		if (msg->any.lnk_span.pfs_type != DMSG_PFSTYPE_SERVER)
-			break;
-		if (info == NULL) {
-			info = malloc(sizeof(*info));
-			bzero(info, sizeof(*info));
-			*opaquep = info;
-		}
-		snprintf(info->cl_label, sizeof(info->cl_label),
-			 "%s", msg->any.lnk_span.cl_label);
-		snprintf(info->fs_label, sizeof(info->fs_label),
-			 "%s", msg->any.lnk_span.fs_label);
-		info->block = msg->any.lnk_span.media.block;
-		fprintf(stderr, "NODE ADD %s serno %s\n",
-			info->cl_label, info->fs_label);
-		info->attached = 1;
-		xdisk_reconnect(info);
-		break;
-	case DMSG_NODEOP_DEL:
-		if (info) {
-			fprintf(stderr, "NODE DEL %s serno %s\n",
-				info->cl_label, info->fs_label);
-			pthread_mutex_lock(&diskmtx);
-			*opaquep = NULL;
-			info->attached = 0;
-			if (info->servicing == 0)
-				free(info);
-			else
-				shutdown(info->servicefd, SHUT_RDWR);/*XXX*/
-			pthread_mutex_unlock(&diskmtx);
-		}
-		break;
-	default:
-		break;
-	}
 }
 
 /*
@@ -881,7 +830,6 @@ master_reconnect(const char *mntpt)
 	info->fd = pipefds[1];
 	info->detachme = 1;
 	info->usrmsg_callback = hammer2_usrmsg_handler;
-	info->node_handler = hammer2_node_handler;
 	info->label = strdup("hammer2");
 	pthread_create(&thread, NULL, dmsg_master_service, info);
 }
@@ -963,7 +911,6 @@ disk_reconnect(const char *disk)
 	info->fd = pipefds[1];
 	info->detachme = 1;
 	info->usrmsg_callback = hammer2_usrmsg_handler;
-	info->node_handler = hammer2_node_handler;
 	info->exit_callback = disk_disconnect;
 	info->handle = dc;
 	info->label = strdup(dc->disk);
@@ -986,87 +933,60 @@ disk_disconnect(void *handle)
 }
 
 /*
- * [re]connect a remote disk service to the local system via /dev/xdisk.
+ * Connect our cluster controller to /dev/xdisk.  xdisk will pick up
+ * SPAN messages that we route to it, makes remote block devices
+ * available to the host, and can issue dmsg transactions based on
+ * device requests.
  */
 static
 void
-xdisk_reconnect(struct service_node_opaque *xdisk)
+xdisk_connect(void)
 {
-	struct xdisk_attach_ioctl *xaioc;
 	dmsg_master_service_info_t *info;
+	struct xdisk_attach_ioctl xaioc;
 	pthread_t thread;
 	int pipefds[2];
+	int xfd;
+	int error;
 
-	if (pipe(pipefds) < 0) {
-		fprintf(stderr, "reconnect %s: pipe() failed\n",
-			xdisk->cl_label);
+	/*
+	 * Is /dev/xdisk available?
+	 */
+	xfd = open("/dev/xdisk", O_RDWR, 0600);
+	if (xfd < 0) {
+		fprintf(stderr, "xdisk_connect: Unable to open /dev/xdisk\n");
 		return;
 	}
 
+	if (pipe(pipefds) < 0) {
+		fprintf(stderr, "xdisk_connect: pipe() failed\n");
+		return;
+	}
+
+	/*
+	 * Pipe between cluster controller (this user process).
+	 */
 	info = malloc(sizeof(*info));
 	bzero(info, sizeof(*info));
 	info->fd = pipefds[1];
 	info->detachme = 1;
 	info->usrmsg_callback = hammer2_usrmsg_handler;
-	info->node_handler = hammer2_node_handler;
-	info->exit_callback = xdisk_disconnect;
-	info->handle = xdisk;
-	xdisk->servicing = 1;
-	xdisk->servicefd = info->fd;
-	info->label = strdup(xdisk->cl_label);
+	info->exit_callback = NULL;
 	pthread_create(&thread, NULL, dmsg_master_service, info);
 
 	/*
-	 * We have to run the attach in its own pthread because it will
-	 * synchronously interact with the messaging subsystem over the
-	 * pipe.  If we do it here we will deadlock.
+	 * And the xdisk device.
 	 */
-	xaioc = malloc(sizeof(*xaioc));
-	bzero(xaioc, sizeof(*xaioc));
-	snprintf(xaioc->cl_label, sizeof(xaioc->cl_label),
-		 "%s", xdisk->cl_label);
-	snprintf(xaioc->fs_label, sizeof(xaioc->fs_label),
-		 "X-%s", xdisk->fs_label);
-	xaioc->bytes = xdisk->block.bytes;
-	xaioc->blksize = xdisk->block.blksize;
-	xaioc->fd = pipefds[0];
+	bzero(&xaioc, sizeof(xaioc));
+	xaioc.fd = pipefds[0];
+	error = ioctl(xfd, XDISKIOCATTACH, &xaioc);
+	close(pipefds[0]);
+	close(xfd);
 
-	pthread_create(&thread, NULL, xdisk_attach_tmpthread, xaioc);
-}
-
-static
-void *
-xdisk_attach_tmpthread(void *data)
-{
-	struct xdisk_attach_ioctl *xaioc = data;
-	int fd;
-
-	pthread_detach(pthread_self());
-
-	fd = open("/dev/xdisk", O_RDWR, 0600);
-	if (fd < 0) {
-		fprintf(stderr, "xdisk_reconnect: Unable to open /dev/xdisk\n");
+	if (error < 0) {
+		fprintf(stderr,
+			"xdisk_connect: cannot attach %s\n",
+			strerror(errno));
+		return;
 	}
-	if (ioctl(fd, XDISKIOCATTACH, xaioc) < 0) {
-		fprintf(stderr, "reconnect %s: xdisk attach failed\n",
-			xaioc->cl_label);
-	}
-	close(xaioc->fd);
-	close(fd);
-	return (NULL);
-}
-
-static
-void
-xdisk_disconnect(void *handle)
-{
-	struct service_node_opaque *info = handle;
-
-	assert(info->servicing == 1);
-
-	pthread_mutex_lock(&diskmtx);
-	info->servicing = 0;
-	if (info->attached == 0)
-		free(info);
-	pthread_mutex_unlock(&diskmtx);
 }

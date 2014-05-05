@@ -517,14 +517,13 @@ cleanuprd:
 	 * Simulate received MSGF_DELETE's for any remaining states.
 	 * (For local masters).
 	 */
-cleanupwr:
 	kdmsg_drain_msgq(iocom);
 	RB_FOREACH(state, kdmsg_state_tree, &iocom->statewr_tree) {
 		if ((state->rxcmd & DMSGF_DELETE) == 0) {
 			lockmgr(&iocom->msglk, LK_RELEASE);
 			kdmsg_state_abort(state);
 			lockmgr(&iocom->msglk, LK_EXCLUSIVE);
-			goto cleanupwr;
+			goto cleanuprd;
 		}
 	}
 
@@ -934,7 +933,7 @@ kdmsg_state_msgrx(kdmsg_msg_t *msg)
 	 * the outer-transaction command for any transaction-create or
 	 * transaction-delete, and the inner message command for any
 	 * non-transaction or inside-transaction command.  tcmd will be
-	 * set to 0 for any messaging error condition.
+	 * set to 0 if the message state is illegal.
 	 *
 	 * The two can be told apart because outer-transaction commands
 	 * always have a DMSGF_CREATE and/or DMSGF_DELETE flag.

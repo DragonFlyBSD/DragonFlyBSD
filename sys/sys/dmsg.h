@@ -278,6 +278,8 @@ typedef struct dmsg_hdr dmsg_hdr_t;
 					 DMSGF_CREATE |	\
 					 DMSGF_DELETE)
 
+#define DMSGF_BASEFLAGS		(DMSGF_CREATE | DMSGF_DELETE | DMSGF_REPLY)
+
 #define DMSG_PROTO_LNK		0x00000000U
 #define DMSG_PROTO_DBG		0x00100000U
 #define DMSG_PROTO_HM2		0x00200000U
@@ -361,6 +363,8 @@ typedef struct dmsg_hdr dmsg_hdr_t;
  */
 #define DMSG_LNK_CMD_HAMMER2_VOLCONF	0x20
 
+#define DMSG_LABEL_SIZE		128	/* fixed at 128, do not change */
+
 /*
  * LNK_AUTH - Authentication (often omitted)
  */
@@ -406,8 +410,8 @@ struct dmsg_lnk_conn {
 	uint8_t		reserved02[8];
 	uint32_t	reserved03[12];
 	uint64_t	pfs_mask;	/* PFS mask for SPAN filtering */
-	char		cl_label[128];	/* cluster label (for PEER_BLOCK) */
-	char		fs_label[128];	/* PFS label (for PEER_HAMMER2) */
+	char		cl_label[DMSG_LABEL_SIZE]; /* cluster label */
+	char		fs_label[DMSG_LABEL_SIZE]; /* PFS label */
 };
 
 typedef struct dmsg_lnk_conn dmsg_lnk_conn_t;
@@ -506,8 +510,8 @@ struct dmsg_lnk_span {
 	 *	 for PEER_BLOCK cl_label is typically host/device and
 	 *	 fs_label is typically the serial number string.
 	 */
-	char		cl_label[128];	/* cluster label */
-	char		fs_label[128];	/* PFS label */
+	char		cl_label[DMSG_LABEL_SIZE]; /* cluster label */
+	char		fs_label[DMSG_LABEL_SIZE]; /* PFS label */
 };
 
 typedef struct dmsg_lnk_span dmsg_lnk_span_t;
@@ -561,7 +565,7 @@ typedef struct dmsg_dbg_shell dmsg_dbg_shell_t;
  *		  within a BLK_OPEN transaction.  It may NOT initiate a
  *		  transaction.  Note that a termination of the transaction
  *		  (e.g. with LNK_ERROR or BLK_ERROR) closes all active OPENs
- *		  for that transaction.
+ *		  for that transaction.  XXX not well defined atm.
  *
  * BLK_READ	- Strategy read.  Not typically streaming.
  *
@@ -684,6 +688,7 @@ typedef union dmsg_any dmsg_any_t;
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 struct hammer2_mount;
+struct xa_softc;
 struct kdmsg_iocom;
 struct kdmsg_state;
 struct kdmsg_msg;
@@ -701,10 +706,13 @@ struct kdmsg_msg;
  * transaction might represent a cache state (and thus have a chain
  * association), or a VOP op, LNK_SPAN, or other things.
  */
+TAILQ_HEAD(kdmsg_state_list, kdmsg_state);
+
 struct kdmsg_state {
 	RB_ENTRY(kdmsg_state) rbnode;		/* indexed by msgid */
-	TAILQ_HEAD(, kdmsg_state) subq;		/* active stacked states */
+	struct kdmsg_state_list	subq;		/* active stacked states */
 	TAILQ_ENTRY(kdmsg_state) entry;		/* on parent subq */
+	TAILQ_ENTRY(kdmsg_state) user_entry;	/* available to devices */
 	struct kdmsg_iocom *iocom;
 	struct kdmsg_state *parent;
 	uint32_t	icmd;			/* record cmd creating state */
@@ -718,6 +726,7 @@ struct kdmsg_state {
 	union {
 		void *any;
 		struct hammer2_mount *hmp;
+		struct xa_softc *xa_sc;
 	} any;
 };
 

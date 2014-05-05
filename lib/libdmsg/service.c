@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2011-2014 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@dragonflybsd.org>
@@ -61,7 +61,6 @@ dmsg_master_service(void *data)
 			master_auth_rxmsg,
 			info->usrmsg_callback,
 			info->altmsg_callback);
-	iocom.node_handler = info->node_handler;
 	if (info->noclosealt)
 		iocom.flags &= ~DMSG_IOCOMF_CLOSEALT;
 	if (info->label) {
@@ -168,9 +167,16 @@ master_link_rxmsg(dmsg_msg_t *msg)
 	iocom = state->iocom;
 	cmd = (state != &iocom->state0) ? state->icmd : msg->any.head.cmd;
 
-	if (state != &iocom->state0 && state->func) {
+	if (state->func) {
+		/*
+		 * Call function or router
+		 */
+		assert(state != &iocom->state0);
 		state->func(msg);
 	} else {
+		/*
+		 * Top-level message
+		 */
 		switch(cmd & DMSGF_PROTOS) {
 		case DMSG_PROTO_LNK:
 			dmsg_msg_lnk(msg);
