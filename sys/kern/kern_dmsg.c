@@ -503,6 +503,10 @@ kdmsg_iocom_thread_wr(void *arg)
 	 * due to state callbacks.
 	 */
 cleanuprd:
+	RB_FOREACH(state, kdmsg_state_tree, &iocom->staterd_tree)
+		atomic_set_int(&state->flags, KDMSG_STATE_DYING);
+	RB_FOREACH(state, kdmsg_state_tree, &iocom->statewr_tree)
+		atomic_set_int(&state->flags, KDMSG_STATE_DYING);
 	kdmsg_drain_msgq(iocom);
 	RB_FOREACH(state, kdmsg_state_tree, &iocom->staterd_tree) {
 		if ((state->rxcmd & DMSGF_DELETE) == 0) {

@@ -185,6 +185,7 @@ struct dmsg_state {
 #define DMSG_STATE_UNUSED_0008	0x0008
 #define DMSG_STATE_OPPOSITE	0x0010		/* initiated by other end */
 #define DMSG_STATE_CIRCUIT	0x0020		/* LNK_SPAN special case */
+#define DMSG_STATE_DYING	0x0040		/* indicates circuit failure */
 #define DMSG_STATE_ROOT		0x8000		/* iocom->state0 */
 
 /*
@@ -389,7 +390,11 @@ void dmsg_iocom_restate(dmsg_iocom_t *iocom,
 void dmsg_iocom_label(dmsg_iocom_t *iocom, const char *ctl, ...);
 void dmsg_iocom_signal(dmsg_iocom_t *iocom);
 void dmsg_iocom_done(dmsg_iocom_t *iocom);
-dmsg_msg_t *dmsg_msg_alloc(dmsg_state_t *state, size_t aux_size, uint32_t cmd,
+dmsg_msg_t *dmsg_msg_alloc(dmsg_state_t *state, size_t aux_size,
+			uint32_t cmd,
+			void (*func)(dmsg_msg_t *), void *data);
+dmsg_msg_t *dmsg_msg_alloc_locked(dmsg_state_t *state, size_t aux_size,
+			uint32_t cmd,
 			void (*func)(dmsg_msg_t *), void *data);
 void dmsg_msg_reply(dmsg_msg_t *msg, uint32_t error);
 void dmsg_msg_result(dmsg_msg_t *msg, uint32_t error);
@@ -408,7 +413,8 @@ void dmsg_iocom_flush2(dmsg_iocom_t *iocom);
 
 void dmsg_state_relay(dmsg_msg_t *msg);
 void dmsg_state_cleanuprx(dmsg_iocom_t *iocom, dmsg_msg_t *msg);
-void dmsg_state_free(dmsg_state_t *state);
+void dmsg_state_hold(dmsg_state_t *state);
+void dmsg_state_drop(dmsg_state_t *state);
 
 /*
  * Msg protocol functions

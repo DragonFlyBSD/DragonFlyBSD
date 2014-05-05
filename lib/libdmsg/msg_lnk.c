@@ -1053,7 +1053,7 @@ dmsg_generate_relay(h2span_conn_t *conn, h2span_link_t *slink)
 	 * SPAN circuit are relayed back to the originator.
 	 */
 	msg->state->relay = relay->source_rt;
-	atomic_add_int(&relay->source_rt->refs, 1);
+	dmsg_state_hold(msg->state->relay);
 
 	dmsg_msg_write(msg);
 

@@ -221,7 +221,7 @@ DEV_MODULE(xdisk, xdisk_modevent, 0);
 static int
 xa_softc_cmp(xa_softc_t *sc1, xa_softc_t *sc2)
 {
-	return(bcmp(sc1->fs_label, sc2->fs_label, sizeof(sc1->fs_label)));
+	return(strcmp(sc1->fs_label, sc2->fs_label));
 }
 
 /*
@@ -391,7 +391,7 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 		      sizeof(xaio->dummysc.fs_label));
 		xaio->dummysc.fs_label[sizeof(xaio->dummysc.fs_label) - 1] = 0;
 
-		kprintf("xdisk: %s LNK_SPAN create\n",
+		kprintf("xdisk: %s LNK_SPAN create ",
 			msg->any.lnk_span.fs_label);
 
 		sc = RB_FIND(xa_softc_tree, &xa_device_tree, &xaio->dummysc);
@@ -403,6 +403,7 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 			int n;
 
 			sc = kmalloc(sizeof(*sc), M_XDISK, M_WAITOK | M_ZERO);
+			kprintf("(not found - create %p)\n", sc);
 			bcopy(msg->any.lnk_span.cl_label, sc->cl_label,
 			      sizeof(sc->cl_label));
 			sc->cl_label[sizeof(sc->cl_label) - 1] = 0;
@@ -467,6 +468,7 @@ xaio_rcvdmsg(kdmsg_msg_t *msg)
 			disk_setdiskinfo_sync(&sc->disk, &sc->info);
 			xa_restart_deferred(sc);	/* eats serializing */
 		} else {
+			kprintf("(found spancnt %d sc=%p)\n", sc->spancnt, sc);
 			++sc->spancnt;
 			TAILQ_INSERT_TAIL(&sc->spanq, msg->state, user_entry);
 			msg->state->any.xa_sc = sc;
@@ -558,12 +560,16 @@ xa_terminate_check(struct xa_softc *sc)
 	/*
 	 * Determine if we can destroy the softc.
 	 */
-	kprintf("xdisk: terminate check xa%d (%d,%d,%d)\n",
+	kprintf("xdisk: terminate check xa%d (%d,%d,%d) sc=%p ",
 		sc->unit,
-		sc->opencnt, sc->serializing, sc->spancnt);
+		sc->opencnt, sc->serializing, sc->spancnt,
+		sc);
 
-	if (sc->opencnt || sc->serializing || sc->spancnt)
+	if (sc->opencnt || sc->serializing || sc->spancnt) {
+		kprintf("(leave intact)\n");
 		return;
+	}
+	kprintf("(remove from tree)\n");
 	sc->serializing = 1;
 	KKASSERT(TAILQ_EMPTY(&sc->tag_pendq));
 
@@ -1000,16 +1006,14 @@ xa_bio_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 	}
 
 	/*
-	 * Potentially move the bio back onto the pending queue if the
-	 * device is open and the error is related to losing the virtual
-	 * circuit.
+	 * If the device is open stall the bio on DMSG errors.  If an
+	 * actual I/O error occured on the remote device, DMSG_ERR_IO
+	 * will be returned.
 	 */
 	if (tag->status.head.error &&
 	    (msg->any.head.cmd & DMSGF_DELETE) && sc->opencnt) {
-		if (tag->status.head.error == DMSG_ERR_LOSTLINK ||
-		    tag->status.head.error == DMSG_ERR_CANTCIRC) {
+		if (tag->status.head.error != DMSG_ERR_IO)
 			goto handle_repend;
-		}
 	}
 
 	/*
@@ -1039,7 +1043,8 @@ xa_bio_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 		if (tag->status.resid > bp->b_bcount)
 			tag->status.resid = bp->b_bcount;
 		bp->b_resid = tag->status.resid;
-		if ((bp->b_error = tag->status.head.error) != 0) {
+		if (tag->status.head.error != 0) {
+			bp->b_error = EIO;
 			bp->b_flags |= B_ERROR;
 		} else {
 			bp->b_resid = 0;

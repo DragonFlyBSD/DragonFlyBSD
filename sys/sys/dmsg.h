@@ -735,6 +735,7 @@ struct kdmsg_state {
 #define KDMSG_STATE_DELPEND	0x0004		/* transmit delete pending */
 #define KDMSG_STATE_ABORTING	0x0008		/* avoids recursive abort */
 #define KDMSG_STATE_OPPOSITE	0x0010		/* opposite direction */
+#define KDMSG_STATE_DYING	0x0020		/* indicates circuit failure */
 
 struct kdmsg_msg {
 	TAILQ_ENTRY(kdmsg_msg) qentry;		/* serialized queue */
