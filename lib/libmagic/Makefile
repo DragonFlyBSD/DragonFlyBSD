@@ -20,12 +20,15 @@ MAN=	libmagic.3
 MLINKS+=	libmagic.3 magic_open.3
 MLINKS+=	libmagic.3 magic_close.3
 MLINKS+=	libmagic.3 magic_error.3
+MLINKS+=	libmagic.3 magic_errno.3
 MLINKS+=	libmagic.3 magic_descriptor.3
 MLINKS+=	libmagic.3 magic_buffer.3
 MLINKS+=	libmagic.3 magic_setflags.3
 MLINKS+=	libmagic.3 magic_check.3
 MLINKS+=	libmagic.3 magic_compile.3
+MLINKS+=	libmagic.3 magic_list.3
 MLINKS+=	libmagic.3 magic_load.3
+MLINKS+=	libmagic.3 magic_version.3
 
 CLEANFILES+=	magic magic.mgc libmagic.3
 
@@ -50,7 +53,7 @@ CLEANFILES+=   mkmagic.nx
 build-tools: mkmagic.nx
 
 NXCFLAGS+=	-w -DCOMPILE_ONLY -DBOOTSTRAPPING
-mkmagic.nx: apprentice.c funcs.c magic.c print.c
+mkmagic.nx: apprentice.c cdf_time.c funcs.c magic.c print.c
 	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.ALLSRC} ${NXLDLIBS} -o ${.TARGET}
 
 .include <bsd.lib.mk>
