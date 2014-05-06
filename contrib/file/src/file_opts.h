@@ -23,7 +23,7 @@ OPT('c', "checking-printout", 0, "    print the parsed form of the magic file, u
     "                               before installing it\n")
 OPT('e', "exclude", 1, " TEST         exclude TEST from the list of test to be\n"
     "                               performed for file. Valid tests are:\n"
-    "                               ascii, apptype, compress, elf, soft, tar, tokens, troff\n")
+    "                               %o\n")
 OPT('f', "files-from", 1, " FILE      read the filenames to be examined from FILE\n")
 OPT('F', "separator", 1, " STRING     use string as separator instead of `:'\n")
 OPT('i', "mime", 0, "                 output MIME type strings (--mime-type and\n"
@@ -32,8 +32,8 @@ OPT_LONGONLY("apple", 0, "                output the Apple CREATOR/TYPE\n")
 OPT_LONGONLY("mime-type", 0, "            output the MIME type\n")
 OPT_LONGONLY("mime-encoding", 0, "        output the MIME encoding\n")
 OPT('k', "keep-going", 0, "           don't stop at the first match\n")
-#ifdef S_IFLNK
 OPT('l', "list", 0, "                 list magic strength\n")
+#ifdef S_IFLNK
 OPT('L', "dereference", 0, "          follow symlinks (default)\n")
 OPT('h', "no-dereference", 0, "       don't follow symlinks\n")
 #endif
