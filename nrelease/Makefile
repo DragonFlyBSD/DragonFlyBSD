@@ -305,10 +305,6 @@ customizeiso:
 	rm -rf ${ISOROOT}/usr/distfiles
 	rm -f ${ISOROOT}/etc/resolv.conf
 	#
-	# Add a pkg.conf
-	#
-	cp -p ${ISOROOT}/usr/local/etc/pkg.conf.sample ${ISOROOT}/usr/local/etc/pkg.conf
-	#
 	# Finally, update the locate(8) database
 	#
 	${CHROOT_CMD} /etc/periodic/weekly/310.locate
