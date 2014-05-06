@@ -24,9 +24,15 @@ missing
 python/
 src/Makefile.am
 src/Makefile.in
+src/asctime_r.c
 src/asprintf.c
+src/ctime_r.c
+src/fmtcheck.c
 src/getline.c
 src/getopt_long.c
+src/magic.h.in
+src/pread.c
+src/strcasestr.c
 src/strlcat.c
 src/strlcpy.c
 src/vasprintf.c

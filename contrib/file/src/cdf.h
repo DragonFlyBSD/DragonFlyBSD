@@ -294,7 +294,8 @@ int cdf_read_dir(const cdf_info_t *, const cdf_header_t *, const cdf_sat_t *,
 int cdf_read_ssat(const cdf_info_t *, const cdf_header_t *, const cdf_sat_t *,
     cdf_sat_t *);
 int cdf_read_short_stream(const cdf_info_t *, const cdf_header_t *,
-    const cdf_sat_t *, const cdf_dir_t *, cdf_stream_t *);
+    const cdf_sat_t *, const cdf_dir_t *, cdf_stream_t *,
+    const cdf_directory_t **);
 int cdf_read_property_info(const cdf_stream_t *, const cdf_header_t *, uint32_t,
     cdf_property_info_t **, size_t *, size_t *);
 int cdf_read_summary_info(const cdf_info_t *, const cdf_header_t *,
@@ -308,7 +309,7 @@ int cdf_print_elapsed_time(char *, size_t, cdf_timestamp_t);
 uint16_t cdf_tole2(uint16_t);
 uint32_t cdf_tole4(uint32_t);
 uint64_t cdf_tole8(uint64_t);
-char *cdf_ctime(const time_t *);
+char *cdf_ctime(const time_t *, char *);
 
 #ifdef CDF_DEBUG
 void cdf_dump_header(const cdf_header_t *);

@@ -1,5 +1,5 @@
-.\" $File: file.man,v 1.98 2011/12/08 12:12:46 rrt Exp $
-.Dd October 17, 2011
+.\" $File: file.man,v 1.106 2014/03/07 23:11:51 christos Exp $
+.Dd January 30, 2014
 .Dt FILE __CSECTION__
 .Os
 .Sh NAME
@@ -8,7 +8,7 @@
 .Sh SYNOPSIS
 .Nm
 .Bk -words
-.Op Fl bchiklLNnprsvz0
+.Op Fl bcEhiklLNnprsvz0
 .Op Fl Fl apple
 .Op Fl Fl mime-encoding
 .Op Fl Fl mime-type
@@ -164,6 +164,10 @@ in any of the character sets listed above is simply said to be
 .Dq data .
 .Sh OPTIONS
 .Bl -tag -width indent
+.It Fl Fl apple
+Causes the file command to output the file type and creator code as
+used by older MacOS versions. The code consists of eight letters,
+the first describing the file type, the latter the creator.
 .It Fl b , Fl Fl brief
 Do not prepend filenames to output lines (brief mode).
 .It Fl C , Fl Fl compile
@@ -175,6 +179,10 @@ Cause a checking printout of the parsed form of the magic file.
 This is usually used in conjunction with the
 .Fl m
 flag to debug a new magic file before installing it.
+.It Fl E
+On filesystem errors (file not found etc), instead of handling the error
+as regular output as POSIX mandates and keep going, issue an error message
+and exit.
 .It Fl e , Fl Fl exclude Ar testname
 Exclude the test named in
 .Ar testname
@@ -259,8 +267,16 @@ prepended.
 (If you want a newline, see the
 .Fl r
 option.)
+The magic pattern with the highest strength (see the
+.Fl l
+option) comes first.
 .It Fl l , Fl Fl list
-Print information about the strength of each magic pattern.
+Shows a list of patterns and their strength sorted descending by
+.Xr magic 4
+strength
+which is used for the matching (see also the
+.Fl k
+option).
 .It Fl L , Fl Fl dereference
 option causes symlinks to be followed, as the like-named option in
 .Xr ls 1
@@ -268,8 +284,6 @@ option causes symlinks to be followed, as the like-named option in
 This is the default if the environment variable
 .Ev POSIXLY_CORRECT
 is defined.
-.It Fl l
-Shows sorted patterns list in the order which is used for the matching.
 .It Fl m , Fl Fl magic-file Ar magicfiles
 Specify an alternate list of files and directories containing magic.
 This can be a single item, or a colon-separated list.
@@ -325,7 +339,7 @@ after the end of the filename.
 Nice to
 .Xr cut 1
 the output.
-This does not affect the separator which is still printed.
+This does not affect the separator, which is still printed.
 .It Fl -help
 Print a help message and exit.
 .El
@@ -547,20 +561,27 @@ returns 0 on success, and non-zero on error.
 Please report bugs and send patches to the bug tracker at
 .Pa http://bugs.gw.com/
 or the mailing list at
-.Aq file@mx.gw.com .
+.Aq file@mx.gw.com
+(visit
+.Pa http://mx.gw.com/mailman/listinfo/file
+first to subscribe).
 .Sh TODO
 .Pp
 Fix output so that tests for MIME and APPLE flags are not needed all
-over the place, and actual output is only done in one place. This
-needs a design. Suggestion: push possible outputs on to a list, then
-pick the last-pushed (most specific, one hopes) value at the end, or
-use a default if the list is empty. This should not slow down evaluation.
+over the place, and actual output is only done in one place.
+This needs a design.
+Suggestion: push possible outputs on to a list, then pick the
+last-pushed (most specific, one hopes) value at the end, or
+use a default if the list is empty.
+This should not slow down evaluation.
 .Pp
-Continue to squash all magic bugs. See Debian BTS for a good source.
+Continue to squash all magic bugs.
+See Debian BTS for a good source.
 .Pp
 Store arbitrarily long strings, for example for %s patterns, so that
-they can be printed out. Fixes Debian bug #271672. Would require more
-complex store/load code in apprentice.
+they can be printed out.
+Fixes Debian bug #271672.
+Would require more complex store/load code in apprentice.
 .Pp
 Add syntax for relative offsets after current level (Debian bug #466037).
 .Pp
@@ -570,6 +591,30 @@ Add a zip library so we can peek inside Office2007 documents to
 figure out what they are.
 .Pp
 Add an option to print URLs for the sources of the file descriptions.
+.Pp
+Combine script searches and add a way to map executable names to MIME
+types (e.g. have a magic value for !:mime which causes the resulting
+string to be looked up in a table).
+This would avoid adding the same magic repeatedly for each new
+hash-bang interpreter.
+.Pp
+Fix
+.Dq name
+and
+.Dq use
+to check for consistency at compile time (duplicate 
+.Dq name ,
+.Dq use
+pointing to undefined
+.Dq name
+).
+Make 
+.Dq name
+/
+.Dq use 
+more efficient by keeping a sorted list of names.
+Special-case ^ to flip endianness in the parser so that it does not
+have to be escaped, and document it.
 .Sh AVAILABILITY
 You can obtain the original author's latest version by anonymous FTP
 on
