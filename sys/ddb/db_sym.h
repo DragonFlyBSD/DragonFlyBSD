@@ -24,7 +24,6 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_sym.h,v 1.19 1999/08/28 00:41:10 peter Exp $
- * $DragonFly: src/sys/ddb/db_sym.h,v 1.4 2006/05/20 02:42:01 dillon Exp $
  */
 
 #ifndef _DDB_DB_SYM_H_
@@ -91,7 +90,7 @@ void		db_symbol_values (c_db_sym_t, const char **, db_expr_t *);
 	db_symbol_values(db_search_symbol(val,DB_STGY_XTRN,offp),namep,0)
 					/* ditto, but no locals */
 
-int		db_eqname (const char *, const char *, int);
+boolean_t	db_eqname (const char *, const char *, int);
 					/* strcmp, modulo leading char */
 
 void		db_printsym (db_expr_t, db_strategy_t);
@@ -106,7 +105,7 @@ c_db_sym_t	X_db_lookup (db_symtab_t *stab, const char *symstr);
 c_db_sym_t	X_db_search_symbol (db_symtab_t *symtab, db_addr_t off,
 					db_strategy_t strategy,
 					db_expr_t *diffp);
-int		X_db_sym_numargs (db_symtab_t *, c_db_sym_t, int *,
+boolean_t	X_db_sym_numargs (db_symtab_t *, c_db_sym_t, int *,
 				      char **);
 void		X_db_symbol_values (db_symtab_t *symtab,
 					c_db_sym_t sym, const char **namep,

@@ -65,7 +65,6 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.24 2008/09/04 09:08:22 hasso Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -481,11 +480,11 @@ struct inpcb *
 struct inpcb *
 	in_pcblookup_hash (struct inpcbinfo *,
 			       struct in_addr, u_int, struct in_addr, u_int,
-			       int, struct ifnet *);
+			       boolean_t, struct ifnet *);
 struct inpcb *
 	in_pcblookup_pkthash (struct inpcbinfo *,
 			       struct in_addr, u_int, struct in_addr, u_int,
-			       int, struct ifnet *, const struct mbuf *);
+			       boolean_t, struct ifnet *, const struct mbuf *);
 void	in_pcbnotifyall (struct inpcbhead *, struct in_addr,
 	    int, void (*)(struct inpcb *, int));
 int	in_setpeeraddr (struct socket *so, struct sockaddr **nam);

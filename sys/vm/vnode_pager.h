@@ -37,7 +37,6 @@
  *
  *	@(#)vnode_pager.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/vnode_pager.h,v 1.14 1999/12/29 04:55:12 peter Exp $
- * $DragonFly: src/sys/vm/vnode_pager.h,v 1.6 2006/05/20 02:42:15 dillon Exp $
  */
 
 #ifndef	_VM_VNODE_PAGER_H_
@@ -60,8 +59,7 @@ struct vnode *vnode_pager_lock (vm_object_t);
  * XXX should go away soon.
  */
 int vnode_pager_generic_getpages (struct vnode *, vm_page_t *, int, int, int);
-int vnode_pager_generic_putpages (struct vnode *, vm_page_t *, int,
-					boolean_t, int *);
+int vnode_pager_generic_putpages (struct vnode *, vm_page_t *, int, int, int *);
 #endif
 
 #endif				/* _VM_VNODE_PAGER_H_ */

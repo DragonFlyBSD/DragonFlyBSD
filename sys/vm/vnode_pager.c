@@ -75,7 +75,7 @@
 
 static void vnode_pager_dealloc (vm_object_t);
 static int vnode_pager_getpage (vm_object_t, vm_page_t *, int);
-static void vnode_pager_putpages (vm_object_t, vm_page_t *, int, boolean_t, int *);
+static void vnode_pager_putpages (vm_object_t, vm_page_t *, int, int, int *);
 static boolean_t vnode_pager_haspage (vm_object_t, vm_pindex_t);
 
 struct pagerops vnodepagerops = {
@@ -624,7 +624,7 @@ vnode_pager_generic_getpages(struct vnode *vp, vm_page_t *mpp, int bytecount,
  */
 static void
 vnode_pager_putpages(vm_object_t object, vm_page_t *m, int count,
-		     boolean_t sync, int *rtvals)
+		     int sync, int *rtvals)
 {
 	int rtval;
 	struct vnode *vp;

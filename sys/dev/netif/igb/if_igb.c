@@ -2917,7 +2917,7 @@ igb_rel_hw_control(struct igb_softc *sc)
 	    ctrl_ext & ~E1000_CTRL_EXT_DRV_LOAD);
 }
 
-static int
+static boolean_t
 igb_is_valid_ether_addr(const uint8_t *addr)
 {
 	uint8_t zero_addr[ETHER_ADDR_LEN] = { 0, 0, 0, 0, 0, 0 };

@@ -127,7 +127,7 @@ dead_pager_putpages(vm_object_t object, vm_page_t *m, int count, int flags,
 /*
  * No requirements.
  */
-static int
+static boolean_t
 dead_pager_haspage(vm_object_t object, vm_pindex_t pindex)
 {
 	return FALSE;

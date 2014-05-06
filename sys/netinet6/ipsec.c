@@ -2680,7 +2680,7 @@ bad:
 int
 ipsec6_output_trans(struct ipsec_output_state *state, u_char *nexthdrp,
 		    struct mbuf *mprev, struct secpolicy *sp, int flags,
-		    int *tun)
+		    boolean_t *tun)
 {
 	struct ip6_hdr *ip6;
 	struct ipsecrequest *isr = NULL;
@@ -2835,7 +2835,7 @@ ipsec6_output_trans(struct ipsec_output_state *state, u_char *nexthdrp,
 
 	/* if we have more to go, we need a tunnel mode processing */
 	if (isr != NULL)
-		*tun = 1;
+		*tun = TRUE;
 	lwkt_reltoken(&key_token);
 	return 0;
 

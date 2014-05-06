@@ -57,8 +57,7 @@
 
 static void dev_pager_dealloc (vm_object_t);
 static int dev_pager_getpage (vm_object_t, vm_page_t *, int);
-static void dev_pager_putpages (vm_object_t, vm_page_t *, int, 
-		boolean_t, int *);
+static void dev_pager_putpages (vm_object_t, vm_page_t *, int, int, int *);
 static boolean_t dev_pager_haspage (vm_object_t, vm_pindex_t);
 
 /* list of device pager objects */
@@ -239,7 +238,7 @@ dev_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
  */
 static void
 dev_pager_putpages(vm_object_t object, vm_page_t *m,
-		   int count, boolean_t sync, int *rtvals)
+		   int count, int sync, int *rtvals)
 {
 	panic("dev_pager_putpage called");
 }

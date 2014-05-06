@@ -1,5 +1,4 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec6.h,v 1.3.2.2 2001/07/03 11:01:54 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec6.h,v 1.5 2006/05/20 02:42:12 dillon Exp $	*/
 /*	$KAME: ipsec.h,v 1.44 2001/03/23 08:08:47 itojun Exp $	*/
 
 /*
@@ -77,7 +76,7 @@ extern size_t ipsec6_hdrsiz (struct mbuf *, u_int, struct inpcb *);
 extern const char *ipsec6_logpacketstr (struct ip6_hdr *, u_int32_t);
 
 extern int ipsec6_output_trans (struct ipsec_output_state *, u_char *,
-	struct mbuf *, struct secpolicy *, int, int *);
+	struct mbuf *, struct secpolicy *, int, boolean_t *);
 extern int ipsec6_output_tunnel (struct ipsec_output_state *,
 	struct secpolicy *, int);
 extern int ipsec6_tunnel_validate (struct mbuf *, int, u_int,

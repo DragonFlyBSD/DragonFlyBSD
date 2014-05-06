@@ -52,8 +52,8 @@
 
 static void default_pager_dealloc (vm_object_t);
 static int default_pager_getpage (vm_object_t, vm_page_t *, int);
-static void default_pager_putpages (vm_object_t, vm_page_t *, int, 
-		boolean_t, int *);
+static void default_pager_putpages (vm_object_t, vm_page_t *, int,
+		int, int *);
 static boolean_t default_pager_haspage (vm_object_t, vm_pindex_t);
 /*
  * pagerops for OBJT_DEFAULT - "default pager".
@@ -116,7 +116,7 @@ default_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
  */
 static void
 default_pager_putpages(vm_object_t object, vm_page_t *mpp, int count,
-		       boolean_t sync, int *rtvals)
+		       int sync, int *rtvals)
 {
 	swap_pager_putpages(object, mpp, count, sync, rtvals);
 }

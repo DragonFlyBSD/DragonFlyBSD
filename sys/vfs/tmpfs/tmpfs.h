@@ -425,7 +425,7 @@ void	tmpfs_itimes(struct vnode *, const struct timespec *,
 
 void	tmpfs_update(struct vnode *);
 int	tmpfs_truncate(struct vnode *, off_t);
-int	tmpfs_node_ctor(void *obj, void *privdata, int flags);
+boolean_t tmpfs_node_ctor(void *obj, void *privdata, int flags);
 
 /* --------------------------------------------------------------------- */
 

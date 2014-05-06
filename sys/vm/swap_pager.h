@@ -37,7 +37,6 @@
  *
  *	from: @(#)swap_pager.h	7.1 (Berkeley) 12/5/90
  * $FreeBSD: src/sys/vm/swap_pager.h,v 1.28.2.1 2000/10/13 07:13:23 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.h,v 1.6 2008/08/10 22:09:52 dillon Exp $
  */
 
 /*
@@ -96,7 +95,7 @@ extern int vm_swapcache_use_chflags;
 extern struct blist *swapblist;
 extern int nswap_lowat, nswap_hiwat;
 
-void swap_pager_putpages (vm_object_t, struct vm_page **, int, boolean_t, int *);
+void swap_pager_putpages (vm_object_t, struct vm_page **, int, int, int *);
 boolean_t swap_pager_haspage (vm_object_t object, vm_pindex_t pindex);
 int swap_pager_swapoff (int devidx);
 

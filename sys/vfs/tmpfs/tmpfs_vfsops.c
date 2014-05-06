@@ -78,7 +78,7 @@ static int	tmpfs_fhtovp(struct mount *, struct vnode *, struct fid *, struct vno
 static int	tmpfs_statfs(struct mount *, struct statfs *, struct ucred *cred);
 
 /* --------------------------------------------------------------------- */
-int
+boolean_t
 tmpfs_node_ctor(void *obj, void *privdata, int flags)
 {
 	struct tmpfs_node *node = obj;
@@ -92,7 +92,7 @@ tmpfs_node_ctor(void *obj, void *privdata, int flags)
 	node->tn_vpstate = TMPFS_VNODE_WANT;
 	bzero(&node->tn_spec, sizeof(node->tn_spec));
 
-	return (1);
+	return (TRUE);
 }
 
 static void

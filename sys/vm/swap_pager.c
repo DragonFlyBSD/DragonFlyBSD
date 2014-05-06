@@ -1473,7 +1473,7 @@ swap_pager_getpage(vm_object_t object, vm_page_t *mpp, int seqaccess)
  */
 void
 swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
-		    boolean_t sync, int *rtvals)
+		    int sync, int *rtvals)
 {
 	int i;
 	int n = 0;

@@ -108,7 +108,7 @@ void		db_skip_to_eol (void);
 boolean_t	db_stop_at_pc (boolean_t *is_breakpoint);
 #define		db_strcpy	strcpy
 void		db_trap (int type, int code);
-int		db_value_of_name (const char *name, db_expr_t *valuep);
+boolean_t	db_value_of_name (const char *name, db_expr_t *valuep);
 void		db_write_bytes (vm_offset_t addr, size_t size, char *data);
 				/* machine-dependent */
 void		kdb_init (void);

@@ -69,7 +69,7 @@ static struct radix_node_head *mask_rnheads[MAXCPU];
 static char rn_zeros[RN_MAXKEYLEN];
 static char rn_ones[RN_MAXKEYLEN] = RN_MAXKEYONES;
 
-static int rn_lexobetter(char *m, char *n);
+static boolean_t rn_lexobetter(char *m, char *n);
 static struct radix_mask *
     rn_new_radix_mask(struct radix_node *tt, struct radix_mask *nextmask);
 static boolean_t
