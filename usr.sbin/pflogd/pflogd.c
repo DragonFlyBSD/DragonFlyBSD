@@ -63,7 +63,7 @@ int Debug = 0;
 static int snaplen = DEF_SNAPLEN;
 static int cur_snaplen = DEF_SNAPLEN;
 
-volatile sig_atomic_t gotsig_close, gotsig_alrm, gotsig_hup;
+volatile sig_atomic_t gotsig_close, gotsig_alrm, gotsig_hup, gotsig_usr1;
 
 const char *filename = PFLOGD_LOG_FILE;
 const char *interface = PFLOGD_DEFAULT_IF;
@@ -77,15 +77,18 @@ unsigned int delay = FLUSH_DELAY;
 char *copy_argv(char * const *);
 void  dump_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
 void  dump_packet_nobuf(u_char *, const struct pcap_pkthdr *, const u_char *);
+void  log_pcap_stats(void);
 int   flush_buffer(FILE *);
 int   if_exists(char *);
 int   init_pcap(void);
+void  logmsg(int, const char *, ...) __printflike(2, 3);
 void  purge_buffer(void);
 int   reset_dump(int);
 int   scan_dump(FILE *, off_t);
 int   set_snaplen(int);
 void  set_suspended(int);
 void  sig_alrm(int);
+void  sig_usr1(int);
 void  sig_close(int);
 void  sig_hup(int);
 void  usage(void);
@@ -180,6 +183,12 @@ void
 sig_alrm(int sig __unused)
 {
 	gotsig_alrm = 1;
+}
+
+void
+sig_usr1(int sig __unused)
+{
+	gotsig_usr1 = 1;
 }
 
 void
@@ -372,7 +381,7 @@ int
 scan_dump(FILE *fp, off_t size)
 {
 	struct pcap_file_header hdr;
-	struct pcap_pkthdr ph;
+	struct pcap_sf_pkthdr ph;
 	off_t pos;
 
 	/*
@@ -571,10 +580,21 @@ dump_packet(u_char *user, const struct pcap_pkthdr *h, const u_char *sp)
 	return;
 }
 
+void
+log_pcap_stats(void)
+{
+	struct pcap_stat pstat;
+	if (pcap_stats(hpcap, &pstat) < 0)
+		logmsg(LOG_WARNING, "Reading stats: %s", pcap_geterr(hpcap));
+	else
+		logmsg(LOG_NOTICE,
+               "%u packets received, %u/%ld dropped (kernel/pflogd)",
+               pstat.ps_recv, pstat.ps_drop, packets_dropped);
+}
+
 int
 main(int argc, char **argv)
 {
-	struct pcap_stat pstat;
 	int ch, np, ret, Xflag = 0;
 	pcap_handler phandler = dump_packet;
 	const char *errstr = NULL;
@@ -646,6 +666,7 @@ main(int argc, char **argv)
 		pidfile_write(pfh);
 	}
 
+	tzset();
 	umask(S_IRWXG | S_IRWXO);
 
 	/* filter will be used by the privileged process */
@@ -673,6 +694,7 @@ main(int argc, char **argv)
 	signal(SIGINT, sig_close);
 	signal(SIGQUIT, sig_close);
 	signal(SIGALRM, sig_alrm);
+	signal(SIGUSR1, sig_usr1);
 	signal(SIGHUP, sig_hup);
 	alarm(delay);
 
@@ -728,6 +750,11 @@ main(int argc, char **argv)
 			gotsig_alrm = 0;
 			alarm(delay);
 		}
+
+		if (gotsig_usr1) {
+			log_pcap_stats();
+			gotsig_usr1 = 0;
+		}
 	}
 
 	logmsg(LOG_NOTICE, "Exiting");
@@ -737,13 +764,7 @@ main(int argc, char **argv)
 	}
 	purge_buffer();
 
-	if (pcap_stats(hpcap, &pstat) < 0)
-		logmsg(LOG_WARNING, "Reading stats: %s", pcap_geterr(hpcap));
-	else
-		logmsg(LOG_NOTICE,
-		    "%u packets received, %u/%ld dropped (kernel/pflogd)",
-		    pstat.ps_recv, pstat.ps_drop, packets_dropped);
-
+	log_pcap_stats();
 	pcap_close(hpcap);
 	if (!Debug)
 		closelog();
