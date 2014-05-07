@@ -12,11 +12,6 @@ SUBDIR+=ar sbni
 # XXX need to be updated to the new net80211 stack
 # SUBDIR+= acx bwi iwl rtw
 # .endif
-#
-# ...and to the new USB stack
-# .if defined(WANT_OLDUSB)
-# SUBDIR+= ural
-# .endif
 
 .if defined(WANT_OLDUSB)
 SUBDIR+=aue axe cue kue lgue rue
