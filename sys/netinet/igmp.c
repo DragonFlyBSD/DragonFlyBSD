@@ -60,6 +60,8 @@
 
 #include <net/if.h>
 #include <net/route.h>
+#include <net/netmsg2.h>
+#include <net/netisr2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -85,7 +87,12 @@ static u_long igmp_all_rtrs_group;
 static struct mbuf *router_alert;
 static struct router_info *Head;
 
+static struct netmsg_base igmp_slowtimo_netmsg;
+static struct netmsg_base igmp_fasttimo_netmsg;
+
 static void igmp_sendpkt (struct in_multi *, int, unsigned long);
+static void igmp_slowtimo_dispatch(netmsg_t);
+static void igmp_fasttimo_dispatch(netmsg_t);
 
 void
 igmp_init(void)
@@ -113,6 +120,11 @@ igmp_init(void)
 	router_alert->m_len = sizeof(ra->ipopt_dst) + ra->ipopt_list[1];
 
 	Head = NULL;
+
+	netmsg_init(&igmp_slowtimo_netmsg, NULL, &netisr_adone_rport, 0,
+	    igmp_slowtimo_dispatch);
+	netmsg_init(&igmp_fasttimo_netmsg, NULL, &netisr_adone_rport, 0,
+	    igmp_fasttimo_dispatch);
 }
 
 static struct router_info *
@@ -370,11 +382,32 @@ igmp_leavegroup(struct in_multi *inm)
 		igmp_sendpkt(inm, IGMP_V2_LEAVE_GROUP, igmp_all_rtrs_group);
 }
 
+static void
+igmp_fasttimo_ipi(void *arg __unused)
+{
+	struct lwkt_msg *msg = &igmp_fasttimo_netmsg.lmsg;
+
+	crit_enter();
+	if (msg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), msg);
+	crit_exit();
+}
+
 void
 igmp_fasttimo(void)
 {
+	lwkt_send_ipiq_bycpu(0, igmp_fasttimo_ipi, NULL);
+}
+
+static void
+igmp_fasttimo_dispatch(netmsg_t nmsg)
+{
 	struct in_multi *inm;
 	struct in_multistep step;
+
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
+	crit_exit();
 
 	/*
 	 * Quick check to see if any work needs to be done, in order
@@ -384,7 +417,6 @@ igmp_fasttimo(void)
 	if (!igmp_timers_are_running)
 		return;
 
-	crit_enter();
 	igmp_timers_are_running = 0;
 	IN_FIRST_MULTI(step, inm);
 	while (inm != NULL) {
@@ -398,15 +430,34 @@ igmp_fasttimo(void)
 		}
 		IN_NEXT_MULTI(step, inm);
 	}
+}
+
+static void
+igmp_slowtimo_ipi(void *arg __unused)
+{
+	struct lwkt_msg *msg = &igmp_slowtimo_netmsg.lmsg;
+
+	crit_enter();
+	if (msg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(0), msg);
 	crit_exit();
 }
 
 void
 igmp_slowtimo(void)
 {
-	struct router_info *rti =  Head;
+	lwkt_send_ipiq_bycpu(0, igmp_slowtimo_ipi, NULL);
+}
+
+static void
+igmp_slowtimo_dispatch(netmsg_t nmsg)
+{
+	struct router_info *rti = Head;
 
 	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);	/* reply ASAP */
+	crit_exit();
+
 #ifdef IGMP_DEBUG
 	kprintf("[igmp.c,_slowtimo] -- > entering \n");
 #endif
@@ -422,7 +473,6 @@ igmp_slowtimo(void)
 #ifdef IGMP_DEBUG	
 	kprintf("[igmp.c,_slowtimo] -- > exiting \n");
 #endif
-	crit_exit();
 }
 
 static struct route igmprt;
