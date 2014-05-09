@@ -1101,10 +1101,6 @@ semexit(struct proc *p)
 		adjval = suptr->un_ent[ix].un_adjval;
 
 		semaptr = &sema[semid];
-		if ((semaptr->ds.sem_perm.mode & SEM_ALLOC) == 0)
-			panic("semexit - semid not allocated");
-		if (semnum >= semaptr->ds.sem_nsems)
-			panic("semexit - semnum out of range");
 
 		/*
 		 * Recheck after locking, then execute the undo
@@ -1119,6 +1115,13 @@ semexit(struct proc *p)
 		    semid == suptr->un_ent[ix].un_id &&
 		    semnum == suptr->un_ent[ix].un_num &&
 		    adjval == suptr->un_ent[ix].un_adjval) {
+			/*
+			 * Only do assertions when we aren't in a SMP race.
+			 */
+			if ((semaptr->ds.sem_perm.mode & SEM_ALLOC) == 0)
+				panic("semexit - semid not allocated");
+			if (semnum >= semaptr->ds.sem_nsems)
+				panic("semexit - semnum out of range");
 			--suptr->un_cnt;
 
 			if (adjval < 0) {
