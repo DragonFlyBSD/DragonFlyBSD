@@ -41,6 +41,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
+#include <sys/msgport2.h>
 #include <sys/sockio.h>
 #include <sys/thread2.h>
 
@@ -51,6 +52,8 @@
 #include <net/ifq_var.h>
 #include <net/route.h>
 #include <net/bpf.h>
+#include <net/netisr2.h>
+#include <net/netmsg2.h>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #include <netinet/ip_carp.h>
@@ -105,6 +108,9 @@ void	pfsync_timeout(void *);
 void	pfsync_send_bus(struct pfsync_softc *, u_int8_t);
 void	pfsync_bulk_update(void *);
 void	pfsync_bulkfail(void *);
+
+static struct in_multi *pfsync_in_addmulti(struct ifnet *);
+static void pfsync_in_delmulti(struct in_multi *);
 
 static MALLOC_DEFINE(M_PFSYNC, PFSYNCNAME, "Packet Filter State Sync. Interface");
 static LIST_HEAD(pfsync_list, pfsync_softc) pfsync_list;
@@ -1063,7 +1069,7 @@ pfsyncioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 				crit_exit();
 			}
 			if (imo->imo_num_memberships > 0) {
-				in_delmulti(imo->imo_membership[--imo->imo_num_memberships]);
+				pfsync_in_delmulti(imo->imo_membership[--imo->imo_num_memberships]);
 				imo->imo_multicast_ifp = NULL;
 			}
 			break;
@@ -1085,14 +1091,12 @@ pfsyncioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		pfsync_setmtu(sc, sc->sc_if.if_mtu);
 
 		if (imo->imo_num_memberships > 0) {
-			in_delmulti(imo->imo_membership[--imo->imo_num_memberships]);
+			pfsync_in_delmulti(imo->imo_membership[--imo->imo_num_memberships]);
 			imo->imo_multicast_ifp = NULL;
 		}
 
 		if (sc->sc_sync_ifp &&
 		    sc->sc_sync_peer.s_addr == INADDR_PFSYNC_GROUP) {
-			struct in_addr addr;
-
 			if (!(sc->sc_sync_ifp->if_flags & IFF_MULTICAST)) {
 				sc->sc_sync_ifp = NULL;
 				lwkt_reltoken(&pf_token);
@@ -1100,10 +1104,8 @@ pfsyncioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 				return (EADDRNOTAVAIL);
 			}
 
-			addr.s_addr = INADDR_PFSYNC_GROUP;
-
 			if ((imo->imo_membership[0] =
-			    in_addmulti(&addr, sc->sc_sync_ifp)) == NULL) {
+			    pfsync_in_addmulti(sc->sc_sync_ifp)) == NULL) {
 				sc->sc_sync_ifp = NULL;
 				lwkt_reltoken(&pf_token);
 				crit_exit();
@@ -1743,5 +1745,51 @@ static moduledata_t pfsync_mod = {
 DECLARE_MODULE(pfsync, pfsync_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 MODULE_VERSION(pfsync, PFSYNC_MODVER);
 
+static void
+pfsync_in_addmulti_dispatch(netmsg_t nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->lmsg;
+	struct ifnet *ifp = lmsg->u.ms_resultp;
+	struct in_addr addr;
 
+	addr.s_addr = INADDR_PFSYNC_GROUP;
+	lmsg->u.ms_resultp = in_addmulti(&addr, ifp);
 
+	lwkt_replymsg(lmsg, 0);
+}
+
+static struct in_multi *
+pfsync_in_addmulti(struct ifnet *ifp)
+{
+	struct netmsg_base nmsg;
+	struct lwkt_msg *lmsg = &nmsg.lmsg;
+
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport, 0,
+	    pfsync_in_addmulti_dispatch);
+	lmsg->u.ms_resultp = ifp;
+
+	lwkt_domsg(netisr_cpuport(0), lmsg, 0);
+	return lmsg->u.ms_resultp;
+}
+
+static void
+pfsync_in_delmulti_dispatch(netmsg_t nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->lmsg;
+
+	in_delmulti(lmsg->u.ms_resultp);
+	lwkt_replymsg(lmsg, 0);
+}
+
+static void
+pfsync_in_delmulti(struct in_multi *inm)
+{
+	struct netmsg_base nmsg;
+	struct lwkt_msg *lmsg = &nmsg.lmsg;
+
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport, 0,
+	    pfsync_in_delmulti_dispatch);
+	lmsg->u.ms_resultp = inm;
+
+	lwkt_domsg(netisr_cpuport(0), lmsg, 0);
+}
