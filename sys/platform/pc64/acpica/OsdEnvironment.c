@@ -66,7 +66,7 @@ AcpiOsGetRootPointer(void)
 		 * manually here.
 		 */
 		status = AcpiFindRootPointer(&ptr);
-		if (status == AE_OK)
+		if (ACPI_SUCCESS(status))
 			i386_acpi_root = ptr;
 	}
 

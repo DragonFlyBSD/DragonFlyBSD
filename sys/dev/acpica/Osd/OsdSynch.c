@@ -272,7 +272,9 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 	    kprintf("%s: Timeout %d, pending %d, semaphore %p\n",
 		__func__, Timeout, as->as_pendings, as);
 	}
-	if (result == AE_OK && (as->as_timeouts > 0 || as->as_pendings > 0)) {
+	if (ACPI_SUCCESS(result) &&
+	    (as->as_timeouts > 0 || as->as_pendings > 0))
+	{
 	    kprintf("%s: Acquire %d, units %d, pending %d, sem %p, thread %jd\n",
 		__func__, Units, as->as_units, as->as_pendings, as,
 		(intmax_t)AcpiOsGetThreadId());
