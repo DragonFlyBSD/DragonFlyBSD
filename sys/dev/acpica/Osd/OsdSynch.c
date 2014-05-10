@@ -37,12 +37,15 @@
 #include "opt_acpi.h"
 
 #include <sys/kernel.h>
+#include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
 #include <sys/lock.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
+
+#include <dev/acpica/acpivar.h>
 
 #define _COMPONENT	ACPI_OS_SERVICES
 ACPI_MODULE_NAME("SYNCH")
@@ -72,7 +75,6 @@ struct acpi_semaphore {
 #endif
 static int	acpi_semaphore_debug = 0;
 TUNABLE_INT("debug.acpi_semaphore_debug", &acpi_semaphore_debug);
-SYSCTL_DECL(_debug_acpi);
 SYSCTL_INT(_debug_acpi, OID_AUTO, semaphore_debug, CTLFLAG_RW,
 	   &acpi_semaphore_debug, 0, "Enable ACPI semaphore debug messages");
 #endif /* !ACPI_NO_SEMAPHORES */

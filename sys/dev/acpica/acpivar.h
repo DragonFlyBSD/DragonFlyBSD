@@ -484,5 +484,7 @@ extern BOOLEAN acpi_MatchHid(ACPI_HANDLE h, const char *hid);
 /* Use the device logging level for ktr(4). */
 #define	KTR_ACPI		KTR_DEV
 
+SYSCTL_DECL(_debug_acpi);
+
 #endif /* _KERNEL */
 #endif /* !_ACPIVAR_H_ */
