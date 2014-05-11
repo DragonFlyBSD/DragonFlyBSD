@@ -1412,12 +1412,27 @@ in_delmulti(struct in_multi *inm)
 	crit_exit();
 }
 
+static void
+in_ifdetach_dispatch(netmsg_t nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->lmsg;
+	struct ifnet *ifp = lmsg->u.ms_resultp;
+
+	in_pcbpurgeif0(LIST_FIRST(&ripcbinfo.pcblisthead), ifp);
+	in_pcbpurgeif0(LIST_FIRST(&udbinfo.pcblisthead), ifp);
+
+	lwkt_replymsg(lmsg, 0);
+}
+
 void
 in_ifdetach(struct ifnet *ifp)
 {
-	in_pcbpurgeif0(LIST_FIRST(&ripcbinfo.pcblisthead), ifp);
+	struct netmsg_base nmsg;
+	struct lwkt_msg *lmsg = &nmsg.lmsg;
 
-	udbinfo_lock();
-	in_pcbpurgeif0(LIST_FIRST(&udbinfo.pcblisthead), ifp);
-	udbinfo_unlock();
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport, 0,
+	    in_ifdetach_dispatch);
+	lmsg->u.ms_resultp = ifp;
+
+	lwkt_domsg(netisr_cpuport(0), lmsg, 0);
 }
