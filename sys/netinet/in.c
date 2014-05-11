@@ -1328,6 +1328,7 @@ in_broadcast(struct in_addr in, struct ifnet *ifp)
 	return (0);
 #undef ia
 }
+
 /*
  * Add an address to the list of IP multicast addresses for a given interface.
  */
@@ -1338,6 +1339,9 @@ in_addmulti(struct in_addr *ap, struct ifnet *ifp)
 	int error;
 	struct sockaddr_in sin;
 	struct ifmultiaddr *ifma;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("in_addmulti is not called in netisr0"));
 
 	/*
 	 * Call generic routine to add membership or increment
@@ -1389,6 +1393,9 @@ in_delmulti(struct in_multi *inm)
 {
 	struct ifmultiaddr *ifma;
 	struct in_multi my_inm;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("in_delmulti is not called in netisr0"));
 
 	crit_enter();
 	ifma = inm->inm_ifma;
