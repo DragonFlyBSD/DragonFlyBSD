@@ -548,7 +548,7 @@ struct machintr_abi MachIntrABI_IOAPIC = {
 
 static int	ioapic_abi_extint_irq = -1;
 static int	ioapic_abi_legacy_irq_max;
-static int	ioapic_abi_gsi_balance;
+static int	ioapic_abi_gsi_balance = 1;
 static int	ioapic_abi_msi_start;	/* NOTE: for testing only */
 
 struct ioapic_irqinfo	ioapic_irqs[IOAPIC_HWI_VECTORS];
