@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
 .\"
-.Dd October 31, 2013
+.Dd May 11, 2014
 .Dt KTR 4
 .Os
 .Sh NAME
@@ -35,6 +35,7 @@
 .Cd options KTR_ENTRIES=8192
 .Cd options KTR_VERBOSE=1
 .Cd options KTR_ALL
+.Cd options KTR_ACPI_EC
 .Cd options KTR_CTXSW
 .Cd options KTR_DMCRYPT
 .Cd options KTR_ETHERNET
@@ -82,6 +83,8 @@ related kernel options exist:
 .Bl -tag -width ".Dv KTR_SPIN_CONTENTION"
 .It Dv KTR_ALL
 turns on all options
+.It Dv KTR_ACPI_EC
+ACPI Embedded Controller related data
 .It Dv KTR_CTXSW
 context switches
 .It Dv KTR_DMCRYPT

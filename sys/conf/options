@@ -555,6 +555,7 @@ SAFE_RNDTEST		opt_safe.h
 KTR				opt_global.h
 KTR_ENTRIES			opt_global.h
 KTR_ALL				opt_ktr.h
+KTR_ACPI_EC			opt_ktr.h
 KTR_CTXSW			opt_ktr.h
 KTR_DMCRYPT			opt_ktr.h
 KTR_DSCHED_BFQ			opt_ktr.h

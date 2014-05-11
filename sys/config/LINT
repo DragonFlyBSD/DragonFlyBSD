@@ -2463,6 +2463,7 @@ options	KTR
 options KTR_ALL
 options	KTR_ENTRIES=1024
 options	KTR_VERBOSE=1
+#options KTR_ACPI_EC
 #options KTR_CTXSW
 #options KTR_DMCRYPT
 #options KTR_DSCHED_BFQ

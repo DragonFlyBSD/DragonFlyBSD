@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.76.2.1.6.1 2009/04/15 03:14:26 kensmith Exp $
+ * $FreeBSD: head/sys/dev/acpica/acpi_ec.c 246128 2013-01-30 18:01:20Z sbz $
  */
 
 #include "opt_acpi.h"
@@ -38,15 +38,16 @@
 #include <sys/rman.h>
 
 #include "acpi.h"
+#include "accommon.h"
+
 #include <dev/acpica/acpivar.h>
-#include "acutils.h"
 
 /* Hooks for the ACPI CA debugging infrastructure */
 #define _COMPONENT	ACPI_EC
 ACPI_MODULE_NAME("EC")
 
 #define rebooting 0
-#define PZERO 0
+
 /*
  * EC_COMMAND:
  * -----------
@@ -174,7 +175,7 @@ struct acpi_ec_softc {
 
 ACPI_SERIAL_DECL(ec, "ACPI embedded controller");
 
-SYSCTL_NODE(_debug_acpi, OID_AUTO, ec, CTLFLAG_RD, NULL, "EC debugging");
+static SYSCTL_NODE(_debug_acpi, OID_AUTO, ec, CTLFLAG_RD, NULL, "EC debugging");
 
 static int	ec_burst_mode;
 TUNABLE_INT("debug.acpi.ec.burst", &ec_burst_mode);
@@ -189,32 +190,64 @@ TUNABLE_INT("debug.acpi.ec.timeout", &ec_timeout);
 SYSCTL_INT(_debug_acpi_ec, OID_AUTO, timeout, CTLFLAG_RW, &ec_timeout,
     EC_TIMEOUT, "Total time spent waiting for a response (poll+sleep)");
 
+#ifndef KTR_ACPI_EC
+#define	KTR_ACPI_EC	KTR_ALL
+#endif
+
+KTR_INFO_MASTER(acpi_ec);
+KTR_INFO(KTR_ACPI_EC, acpi_ec, burstdis, 0,
+    "ec burst disabled in waitevent (%s)", const char *msg);
+KTR_INFO(KTR_ACPI_EC, acpi_ec, burstdisok, 1,
+    "ec disabled burst ok");
+KTR_INFO(KTR_ACPI_EC, acpi_ec, burstenl, 2,
+    "ec burst enabled");
+KTR_INFO(KTR_ACPI_EC, acpi_ec, cmdrun, 3,
+    "ec running command %#x", EC_COMMAND cmd);
+KTR_INFO(KTR_ACPI_EC, acpi_ec, gpehdlstart, 4,
+    "ec gpe handler start");
+KTR_INFO(KTR_ACPI_EC, acpi_ec, gpequeuehdl, 5,
+    "ec gpe queueing query handler");
+KTR_INFO(KTR_ACPI_EC, acpi_ec, gperun, 6,
+    "ec running gpe handler directly");
+KTR_INFO(KTR_ACPI_EC, acpi_ec, qryoknotrun, 7,
+    "ec query ok, not running _Q%02X", uint8_t Data);
+KTR_INFO(KTR_ACPI_EC, acpi_ec, qryokrun, 8,
+    "ec query ok, running _Q%02X", uint8_t Data);
+KTR_INFO(KTR_ACPI_EC, acpi_ec, readaddr, 9,
+    "ec read from %#x", UINT8 Address);
+KTR_INFO(KTR_ACPI_EC, acpi_ec, timeout, 10,
+    "error: ec wait timed out");
+KTR_INFO(KTR_ACPI_EC, acpi_ec, waitrdy, 11,
+    "ec %s wait ready, status %#x", const char *msg, EC_STATUS ec_status);
+KTR_INFO(KTR_ACPI_EC, acpi_ec, writeaddr, 12,
+    "ec write to %#x, data %#x", UINT8 Address, UINT8 Data);
+
 static ACPI_STATUS
 EcLock(struct acpi_ec_softc *sc)
 {
     ACPI_STATUS	status;
 
-    ACPI_SERIAL_BEGIN(ec);
     /* If _GLK is non-zero, acquire the global lock. */
     status = AE_OK;
     if (sc->ec_glk) {
 	status = AcpiAcquireGlobalLock(EC_LOCK_TIMEOUT, &sc->ec_glkhandle);
 	if (ACPI_FAILURE(status))
-	    ACPI_SERIAL_END(ec);
+	    return (status);
     }
+    ACPI_SERIAL_BEGIN(ec);
     return (status);
 }
 
 static void
 EcUnlock(struct acpi_ec_softc *sc)
 {
+    ACPI_SERIAL_END(ec);
     if (sc->ec_glk)
 	AcpiReleaseGlobalLock(sc->ec_glkhandle);
-    ACPI_SERIAL_END(ec);
 }
 
-static uint32_t		EcGpeHandler(ACPI_HANDLE GpeDevice,
-                                 UINT32 GpeNumber, void *Context);
+static UINT32		EcGpeHandler(ACPI_HANDLE GpeDevice,
+				UINT32 GpeNumber, void *Context);
 static ACPI_STATUS	EcSpaceSetup(ACPI_HANDLE Region, UINT32 Function,
 				void *Context, void **return_Context);
 static ACPI_STATUS	EcSpaceHandler(UINT32 Function,
@@ -495,7 +528,7 @@ acpi_ec_attach(device_t dev)
      */
     ACPI_DEBUG_PRINT((ACPI_DB_RESOURCES, "attaching GPE handler\n"));
     Status = AcpiInstallGpeHandler(sc->ec_gpehandle, sc->ec_gpebit,
-		ACPI_GPE_EDGE_TRIGGERED, &EcGpeHandler, sc);
+		ACPI_GPE_EDGE_TRIGGERED, EcGpeHandler, sc);
     if (ACPI_FAILURE(Status)) {
 	device_printf(dev, "can't install GPE handler for %s - %s\n",
 		      acpi_name(sc->ec_handle), AcpiFormatException(Status));
@@ -514,7 +547,7 @@ acpi_ec_attach(device_t dev)
 	goto error;
     }
 
-    /* Enable runtime GPEs for the handler */
+    /* Enable runtime GPEs for the handler. */
     Status = AcpiEnableGpe(sc->ec_gpehandle, sc->ec_gpebit);
     if (ACPI_FAILURE(Status)) {
 	device_printf(dev, "AcpiEnableGpe failed: %s\n",
@@ -526,7 +559,7 @@ acpi_ec_attach(device_t dev)
     return (0);
 
 error:
-    AcpiRemoveGpeHandler(sc->ec_gpehandle, sc->ec_gpebit, &EcGpeHandler);
+    AcpiRemoveGpeHandler(sc->ec_gpehandle, sc->ec_gpebit, EcGpeHandler);
     AcpiRemoveAddressSpaceHandler(sc->ec_handle, ACPI_ADR_SPACE_EC,
 	EcSpaceHandler);
     if (sc->ec_csr_res)
@@ -605,9 +638,11 @@ EcCheckStatus(struct acpi_ec_softc *sc, const char *msg, EC_EVENT event)
     status = AE_NO_HARDWARE_RESPONSE;
     ec_status = EC_GET_CSR(sc);
     if (sc->ec_burstactive && !(ec_status & EC_FLAG_BURST_MODE)) {
+	KTR_LOG(acpi_ec_burstdis, msg);
 	sc->ec_burstactive = FALSE;
     }
     if (EVENT_READY(event, ec_status)) {
+	KTR_LOG(acpi_ec_waitrdy, msg, ec_status);
 	status = AE_OK;
     }
     return (status);
@@ -668,8 +703,12 @@ EcGpeQueryHandler(void *Context)
     EcUnlock(sc);
 
     /* Ignore the value for "no outstanding event". (13.3.5) */
-    if (Data == 0)
+    if (Data == 0) {
+	KTR_LOG(acpi_ec_qryoknotrun, Data);
 	return;
+    } else {
+	KTR_LOG(acpi_ec_qryokrun, Data);
+    }
 
     /* Evaluate _Qxx to respond to the controller. */
     ksnprintf(qxx, sizeof(qxx), "_Q%02X", Data);
@@ -693,7 +732,7 @@ EcGpeQueryHandler(void *Context)
  * The GPE handler is called when IBE/OBF or SCI events occur.  We are
  * called from an unknown lock context.
  */
-static uint32_t
+static UINT32
 EcGpeHandler(ACPI_HANDLE GpeDevice, UINT32 GpeNumber, void *Context)
 {
     struct acpi_ec_softc *sc = Context;
@@ -701,6 +740,7 @@ EcGpeHandler(ACPI_HANDLE GpeDevice, UINT32 GpeNumber, void *Context)
     EC_STATUS		       EcStatus;
 
     KASSERT(Context != NULL, ("EcGpeHandler called with NULL"));
+    KTR_LOG(acpi_ec_gpehdlstart);
     /*
      * Notify EcWaitEvent() that the status register is now fresh.  If we
      * didn't do this, it wouldn't be possible to distinguish an old IBE
@@ -716,6 +756,7 @@ EcGpeHandler(ACPI_HANDLE GpeDevice, UINT32 GpeNumber, void *Context)
      */
     EcStatus = EC_GET_CSR(sc);
     if ((EcStatus & EC_EVENT_SCI) && !sc->ec_sci_pend) {
+	KTR_LOG(acpi_ec_gpequeuehdl);
 	Status = AcpiOsExecute(OSL_GPE_HANDLER, EcGpeQueryHandler, Context);
 	if (ACPI_SUCCESS(Status)) {
 	    sc->ec_sci_pend = TRUE;
@@ -770,6 +811,7 @@ EcSpaceHandler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 Width,
      */
     if (cold || rebooting || sc->ec_suspending) {
 	if ((EC_GET_CSR(sc) & EC_EVENT_SCI)) {
+	    KTR_LOG(acpi_ec_gperun);
 	    EcGpeQueryHandler(sc);
 	}
     }
@@ -783,6 +825,7 @@ EcSpaceHandler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 Width,
     Status = EcCommand(sc, EC_COMMAND_BURST_ENABLE);
     if (ACPI_SUCCESS(Status)) {
 	if (EC_GET_DATA(sc) == EC_BURST_ACK) {
+	    KTR_LOG(acpi_ec_burstenl);
 	    sc->ec_burstactive = TRUE;
 	}
     }
@@ -809,8 +852,8 @@ EcSpaceHandler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 Width,
 
     if (sc->ec_burstactive) {
 	sc->ec_burstactive = FALSE;
-	if (ACPI_SUCCESS(EcCommand(sc, EC_COMMAND_BURST_DISABLE))) {
-    	}
+	if (ACPI_SUCCESS(EcCommand(sc, EC_COMMAND_BURST_DISABLE)))
+	    KTR_LOG(acpi_ec_burstdisok);
     }
 
     EcUnlock(sc);
@@ -820,7 +863,7 @@ EcSpaceHandler(UINT32 Function, ACPI_PHYSICAL_ADDRESS Address, UINT32 Width,
 static ACPI_STATUS
 EcWaitEvent(struct acpi_ec_softc *sc, EC_EVENT Event, u_int gen_count)
 {
-    static int no_intr = 0;
+    static int	no_intr = 0;
     ACPI_STATUS	Status;
     int		count, i, need_poll, slp_ival;
 
@@ -889,6 +932,8 @@ EcWaitEvent(struct acpi_ec_softc *sc, EC_EVENT Event, u_int gen_count)
 	    "not getting interrupts, switched to polled mode\n");
 	ec_polled_mode = 1;
     }
+    if (ACPI_FAILURE(Status))
+	KTR_LOG(acpi_ec_timeout);
     return (Status);
 }
 
@@ -931,6 +976,7 @@ EcCommand(struct acpi_ec_softc *sc, EC_COMMAND cmd)
 	return (status);
 
     /* Run the command and wait for the chosen event. */
+    KTR_LOG(acpi_ec_cmdrun, cmd);
     gen_count = sc->ec_gencount;
     EC_SET_CSR(sc, cmd);
     status = EcWaitEvent(sc, event, gen_count);
@@ -954,6 +1000,7 @@ EcRead(struct acpi_ec_softc *sc, UINT8 Address, UINT8 *Data)
     int retry;
 
     ACPI_SERIAL_ASSERT(ec);
+    KTR_LOG(acpi_ec_readaddr, Address);
 
     for (retry = 0; retry < 2; retry++) {
 	status = EcCommand(sc, EC_COMMAND_READ);
@@ -984,6 +1031,7 @@ EcWrite(struct acpi_ec_softc *sc, UINT8 Address, UINT8 Data)
     u_int gen_count;
 
     ACPI_SERIAL_ASSERT(ec);
+    KTR_LOG(acpi_ec_writeaddr, Address, Data);
 
     status = EcCommand(sc, EC_COMMAND_WRITE);
     if (ACPI_FAILURE(status))

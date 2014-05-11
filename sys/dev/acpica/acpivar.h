@@ -43,6 +43,7 @@
 #include <sys/spinlock.h>
 #include <sys/spinlock2.h>
 #include <sys/serialize.h>
+#include <sys/ktr.h>
 #include <contrib/dev/acpica/source/include/acmacros.h>
 #include <contrib/dev/acpica/source/include/acconfig.h>
 #include <contrib/dev/acpica/source/include/aclocal.h>
