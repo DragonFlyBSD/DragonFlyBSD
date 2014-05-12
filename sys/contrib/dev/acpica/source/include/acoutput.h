@@ -219,7 +219,6 @@
 #define ACPI_ERROR(plist)               AcpiError plist
 #define ACPI_BIOS_WARNING(plist)        AcpiBiosWarning plist
 #define ACPI_BIOS_ERROR(plist)          AcpiBiosError plist
-#define ACPI_DEBUG_OBJECT(obj,l,i)      AcpiExDoDebugObject(obj,l,i)
 
 #else
 
@@ -231,9 +230,14 @@
 #define ACPI_ERROR(plist)
 #define ACPI_BIOS_WARNING(plist)
 #define ACPI_BIOS_ERROR(plist)
-#define ACPI_DEBUG_OBJECT(obj,l,i)
 
 #endif /* ACPI_NO_ERROR_MESSAGES */
+
+#ifdef ACPI_DEBUG_MESSAGE
+#define ACPI_DEBUG_OBJECT(obj,l,i)      AcpiExDoDebugObject(obj,l,i)
+#else
+#define ACPI_DEBUG_OBJECT(obj,l,i)
+#endif
 
 
 /*

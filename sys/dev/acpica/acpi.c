@@ -150,7 +150,6 @@ static void	acpi_system_eventhandler_sleep(void *arg, int state);
 static void	acpi_system_eventhandler_wakeup(void *arg, int state);
 static int	acpi_supported_sleep_state_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_sleep_state_sysctl(SYSCTL_HANDLER_ARGS);
-static int	acpi_debug_objects_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_pm_func(u_long cmd, void *arg, ...);
 static int	acpi_child_location_str_method(device_t acdev, device_t child,
 					       char *buf, size_t buflen);
@@ -235,13 +234,6 @@ SYSCTL_STRING(_debug_acpi, OID_AUTO, acpi_ca_version, CTLFLAG_RD,
  */
 static int acpi_auto_serialize_methods = 1;
 TUNABLE_INT("hw.acpi.auto_serialize_methods", &acpi_auto_serialize_methods);
-
-/* Allow users to dump Debug objects without ACPI debugger. */
-static int acpi_debug_objects;
-TUNABLE_INT("debug.acpi.enable_debug_objects", &acpi_debug_objects);
-SYSCTL_PROC(_debug_acpi, OID_AUTO, enable_debug_objects,
-    CTLFLAG_RW | CTLTYPE_INT, NULL, 0, acpi_debug_objects_sysctl, "I",
-    "Enable Debug objects");
 
 /* Power devices off and on in suspend and resume.  XXX Remove once tested. */
 static int acpi_do_powerstate = 1;
@@ -454,7 +446,6 @@ acpi_attach(device_t dev)
      */
     AcpiGbl_AutoSerializeMethods = acpi_auto_serialize_methods;
     AcpiGbl_EnableInterpreterSlack = TRUE;
-    AcpiGbl_EnableAmlDebugObject = acpi_debug_objects ? TRUE : FALSE;
 
     /* Start up the ACPI CA subsystem. */
     status = AcpiInitializeSubsystem();
@@ -3391,26 +3382,6 @@ SYSCTL_PROC(_debug_acpi, OID_AUTO, layer, CTLFLAG_RW | CTLTYPE_STRING,
 SYSCTL_PROC(_debug_acpi, OID_AUTO, level, CTLFLAG_RW | CTLTYPE_STRING,
 	    "debug.acpi.level", 0, acpi_debug_sysctl, "A", "");
 #endif /* ACPI_DEBUG */
-
-static int
-acpi_debug_objects_sysctl(SYSCTL_HANDLER_ARGS)
-{
-	int	error;
-	int	old;
-
-	old = acpi_debug_objects;
-	error = sysctl_handle_int(oidp, &acpi_debug_objects, 0, req);
-	if (error != 0 || req->newptr == NULL)
-		return (error);
-	if (old == acpi_debug_objects || (old && acpi_debug_objects))
-		return (0);
-
-	ACPI_SERIAL_BEGIN(acpi);
-	AcpiGbl_EnableAmlDebugObject = acpi_debug_objects ? TRUE : FALSE;
-	ACPI_SERIAL_END(acpi);
-
-	return (0);
-}
 
 static int
 acpi_pm_func(u_long cmd, void *arg, ...)
