@@ -2197,7 +2197,7 @@ if_addmulti(
 	ifma->ifma_lladdr = llsa;
 	ifma->ifma_ifp = ifp;
 	ifma->ifma_refcount = 1;
-	ifma->ifma_protospec = 0;
+	ifma->ifma_protospec = NULL;
 	rt_newmaddrmsg(RTM_NEWMADDR, ifma);
 
 	/*

@@ -210,7 +210,7 @@ do { \
 		    (addr).s_addr) \
 			break; \
 	} \
-	(inm) = ifma ? ifma->ifma_protospec : 0; \
+	(inm) = ifma ? ifma->ifma_protospec : NULL; \
 } while(0)
 
 /*

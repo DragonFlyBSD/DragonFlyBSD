@@ -571,7 +571,7 @@ do { \
 					  &(addr))) \
 			break; \
 	} \
-	(in6m) = (struct in6_multi *)(ifma ? ifma->ifma_protospec : 0); \
+	(in6m) = (struct in6_multi *)(ifma ? ifma->ifma_protospec : NULL); \
 } while(0)
 
 /*
