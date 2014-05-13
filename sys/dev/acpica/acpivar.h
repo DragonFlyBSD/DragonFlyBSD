@@ -210,6 +210,11 @@ extern struct lock acpi_lock;
 #define ACPI_PDC_MP_C2C3_NATIVE	(1 << 9) /* MP C2 and C3 support */
 #define ACPI_PDC_PX_HWCOORD	(1 << 11)/* Hardware coordination of Px */
 
+#define ACPI_OSCERR_OSCFAIL	(1 << 1) /* _OSC failure */
+#define ACPI_OSCERR_UUID	(1 << 2) /* Unrecognized UUID */
+#define ACPI_OSCERR_REVISION	(1 << 3) /* Unrecognized revision ID */
+#define ACPI_OSCERR_CAPSMASKED	(1 << 4) /* Capabilities have been cleared */
+
 /*
  * Quirk flags.
  *

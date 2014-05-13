@@ -217,8 +217,17 @@ acpi_cpu_attach(device_t dev)
 	cap_set[0] = 0;
 	cap_set[1] = cpu_features;
 	status = AcpiEvaluateObject(handle, "_OSC", &arglist, NULL);
-
-	if (!ACPI_SUCCESS(status)) {
+	if (ACPI_SUCCESS(status)) {
+	    if (cap_set[0] & ACPI_OSCERR_OSCFAIL)
+		device_printf(dev, "_OSC unable to process request\n");
+	    if (cap_set[0] & ACPI_OSCERR_UUID)
+		device_printf(dev, "_OSC unrecognized UUID\n");
+	    if (cap_set[0] & ACPI_OSCERR_REVISION)
+		device_printf(dev, "_OSC unrecognized revision ID\n");
+	    if (cap_set[0] & ACPI_OSCERR_CAPSMASKED)
+		device_printf(dev, "_OSC capabilities have been masked: %#x\n",
+		    cpu_features & ~cap_set[1]);
+	} else {
 	    if (bootverbose)
 		device_printf(dev, "_OSC failed, using _PDC\n");
 
