@@ -695,7 +695,7 @@ ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
 			error = ENETUNREACH;
 			goto bad;
 		}
-		IN6_LOOKUP_MULTI(ip6->ip6_dst, ifp, in6m);
+		in6m = IN6_LOOKUP_MULTI(&ip6->ip6_dst, ifp);
 		if (in6m != NULL &&
 		   (im6o == NULL || im6o->im6o_multicast_loop)) {
 			/*

@@ -413,7 +413,7 @@ reroute:
 		if (ip->ip_src.s_addr != INADDR_ANY) {
 			struct in_multi *inm;
 
-			IN_LOOKUP_MULTI(pkt_dst, ifp, inm);
+			inm = IN_LOOKUP_MULTI(&pkt_dst, ifp);
 			if (inm != NULL &&
 			    (imo == NULL || imo->imo_multicast_loop)) {
 				/*

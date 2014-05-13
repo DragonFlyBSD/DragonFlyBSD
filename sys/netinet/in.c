@@ -1352,24 +1352,17 @@ in_addmulti(struct in_addr *ap, struct ifnet *ifp)
 	sin.sin_family = AF_INET;
 	sin.sin_len = sizeof sin;
 	sin.sin_addr = *ap;
-	crit_enter();
 	error = if_addmulti(ifp, (struct sockaddr *)&sin, &ifma);
-	if (error) {
-		crit_exit();
-		return 0;
-	}
+	if (error)
+		return NULL;
 
 	/*
 	 * If ifma->ifma_protospec is null, then if_addmulti() created
 	 * a new record.  Otherwise, we are done.
 	 */
-	if (ifma->ifma_protospec != NULL) {
-		crit_exit();
+	if (ifma->ifma_protospec != NULL)
 		return ifma->ifma_protospec;
-	}
 
-	/* XXX - if_addmulti uses M_WAITOK.  Can this really be called
-	   at interrupt time?  If so, need to fix if_addmulti. XXX */
 	inm = kmalloc(sizeof *inm, M_IPMADDR, M_WAITOK | M_ZERO);
 	inm->inm_addr = *ap;
 	inm->inm_ifp = ifp;
@@ -1381,8 +1374,7 @@ in_addmulti(struct in_addr *ap, struct ifnet *ifp)
 	 * Let IGMP know that we have joined a new IP multicast group.
 	 */
 	igmp_joingroup(inm);
-	crit_exit();
-	return (inm);
+	return inm;
 }
 
 /*
@@ -1397,7 +1389,6 @@ in_delmulti(struct in_multi *inm)
 	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
 	    ("in_delmulti is not called in netisr0"));
 
-	crit_enter();
 	ifma = inm->inm_ifma;
 	my_inm.inm_ifp = NULL ; /* don't send the leave msg */
 	if (ifma->ifma_refcount == 1) {
@@ -1416,7 +1407,6 @@ in_delmulti(struct in_multi *inm)
 	if_delmulti(ifma->ifma_ifp, ifma->ifma_addr);
 	if (my_inm.inm_ifp != NULL)
 		igmp_leavegroup(&my_inm);
-	crit_exit();
 }
 
 static void

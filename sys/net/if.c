@@ -116,6 +116,7 @@ static int	if_rtdel(struct radix_node *, void *);
 
 /* Helper functions */
 static void	ifsq_watchdog_reset(struct ifsubq_watchdog *);
+static int	if_delmulti_serialized(struct ifnet *, struct sockaddr *);
 
 #ifdef INET6
 /*
@@ -2152,14 +2153,14 @@ if_allmulti(struct ifnet *ifp, int onswitch)
  * The link layer provides a routine which converts
  */
 int
-if_addmulti(
-	struct ifnet *ifp,	/* interface to manipulate */
-	struct sockaddr *sa,	/* address to add */
-	struct ifmultiaddr **retifma)
+if_addmulti_serialized(struct ifnet *ifp, struct sockaddr *sa,
+    struct ifmultiaddr **retifma)
 {
 	struct sockaddr *llsa, *dupsa;
 	int error;
 	struct ifmultiaddr *ifma;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	/*
 	 * If the matching multicast address already exists
@@ -2180,10 +2181,8 @@ if_addmulti(
 	 * already.
 	 */
 	if (ifp->if_resolvemulti) {
-		ifnet_serialize_all(ifp);
 		error = ifp->if_resolvemulti(ifp, &llsa, sa);
-		ifnet_deserialize_all(ifp);
-		if (error) 
+		if (error)
 			return error;
 	} else {
 		llsa = NULL;
@@ -2200,13 +2199,7 @@ if_addmulti(
 	ifma->ifma_protospec = NULL;
 	rt_newmaddrmsg(RTM_NEWMADDR, ifma);
 
-	/*
-	 * Some network interfaces can scan the address list at
-	 * interrupt time; lock them out.
-	 */
-	crit_enter();
 	TAILQ_INSERT_HEAD(&ifp->if_multiaddrs, ifma, ifma_link);
-	crit_exit();
 	if (retifma)
 		*retifma = ifma;
 
@@ -2224,33 +2217,42 @@ if_addmulti(
 			ifma->ifma_addr = dupsa;
 			ifma->ifma_ifp = ifp;
 			ifma->ifma_refcount = 1;
-			crit_enter();
 			TAILQ_INSERT_HEAD(&ifp->if_multiaddrs, ifma, ifma_link);
-			crit_exit();
 		}
 	}
 	/*
 	 * We are certain we have added something, so call down to the
 	 * interface to let them know about it.
 	 */
-	crit_enter();
-	ifnet_serialize_all(ifp);
 	if (ifp->if_ioctl)
 		ifp->if_ioctl(ifp, SIOCADDMULTI, 0, NULL);
-	ifnet_deserialize_all(ifp);
-	crit_exit();
 
 	return 0;
+}
+
+int
+if_addmulti(struct ifnet *ifp, struct sockaddr *sa,
+    struct ifmultiaddr **retifma)
+{
+	int error;
+
+	ifnet_serialize_all(ifp);
+	error = if_addmulti_serialized(ifp, sa, retifma);
+	ifnet_deserialize_all(ifp);
+
+	return error;
 }
 
 /*
  * Remove a reference to a multicast address on this interface.  Yell
  * if the request does not match an existing membership.
  */
-int
-if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
+static int
+if_delmulti_serialized(struct ifnet *ifp, struct sockaddr *sa)
 {
 	struct ifmultiaddr *ifma;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 		if (sa_equal(sa, ifma->ifma_addr))
@@ -2265,18 +2267,13 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 
 	rt_newmaddrmsg(RTM_DELMADDR, ifma);
 	sa = ifma->ifma_lladdr;
-	crit_enter();
 	TAILQ_REMOVE(&ifp->if_multiaddrs, ifma, ifma_link);
 	/*
 	 * Make sure the interface driver is notified
 	 * in the case of a link layer mcast group being left.
 	 */
-	if (ifma->ifma_addr->sa_family == AF_LINK && sa == NULL) {
-		ifnet_serialize_all(ifp);
+	if (ifma->ifma_addr->sa_family == AF_LINK && sa == NULL)
 		ifp->if_ioctl(ifp, SIOCDELMULTI, 0, NULL);
-		ifnet_deserialize_all(ifp);
-	}
-	crit_exit();
 	kfree(ifma->ifma_addr, M_IFMADDR);
 	kfree(ifma, M_IFMADDR);
 	if (sa == NULL)
@@ -2304,12 +2301,8 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 		return 0;
 	}
 
-	crit_enter();
-	ifnet_serialize_all(ifp);
 	TAILQ_REMOVE(&ifp->if_multiaddrs, ifma, ifma_link);
 	ifp->if_ioctl(ifp, SIOCDELMULTI, 0, NULL);
-	ifnet_deserialize_all(ifp);
-	crit_exit();
 	kfree(ifma->ifma_addr, M_IFMADDR);
 	kfree(sa, M_IFMADDR);
 	kfree(ifma, M_IFMADDR);
@@ -2317,18 +2310,49 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	return 0;
 }
 
+int
+if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
+{
+	int error;
+
+	ifnet_serialize_all(ifp);
+	error = if_delmulti_serialized(ifp, sa);
+	ifnet_deserialize_all(ifp);
+
+	return error;
+}
+
 /*
  * Delete all multicast group membership for an interface.
  * Should be used to quickly flush all multicast filters.
  */
 void
-if_delallmulti(struct ifnet *ifp)
+if_delallmulti_serialized(struct ifnet *ifp)
 {
-	struct ifmultiaddr *ifma;
-	struct ifmultiaddr *next;
+	struct ifmultiaddr *ifma, mark;
+	struct sockaddr sa;
 
-	TAILQ_FOREACH_MUTABLE(ifma, &ifp->if_multiaddrs, ifma_link, next)
-		if_delmulti(ifp, ifma->ifma_addr);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	bzero(&sa, sizeof(sa));
+	sa.sa_family = AF_UNSPEC;
+	sa.sa_len = sizeof(sa);
+
+	bzero(&mark, sizeof(mark));
+	mark.ifma_addr = &sa;
+
+	TAILQ_INSERT_HEAD(&ifp->if_multiaddrs, &mark, ifma_link);
+
+	while ((ifma = TAILQ_NEXT(&mark, ifma_link)) != NULL) {
+		TAILQ_REMOVE(&ifp->if_multiaddrs, &mark, ifma_link);
+		TAILQ_INSERT_AFTER(&ifp->if_multiaddrs, ifma, &mark,
+		    ifma_link);
+
+		if (ifma->ifma_addr->sa_family == AF_UNSPEC)
+			continue;
+
+		if_delmulti_serialized(ifp, ifma->ifma_addr);
+	}
 }
 
 
@@ -2403,9 +2427,12 @@ ifmaof_ifpforaddr(struct sockaddr *sa, struct ifnet *ifp)
 {
 	struct ifmultiaddr *ifma;
 
+	/* TODO: need ifnet_serialize_main */
+	ifnet_serialize_all(ifp);
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 		if (sa_equal(ifma->ifma_addr, sa))
 			break;
+	ifnet_deserialize_all(ifp);
 
 	return ifma;
 }

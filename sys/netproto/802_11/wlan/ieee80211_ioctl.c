@@ -3181,12 +3181,8 @@ ieee80211_ioctl_updatemulti(struct ieee80211com *ic)
 {
 	struct ifnet *parent = ic->ic_ifp;
 	struct ieee80211vap *vap;
-	void *ioctl;
 
-	wlan_serialize_exit();
-	if_delallmulti(parent);
-	ioctl = parent->if_ioctl;	/* XXX WAR if_allmulti */
-	parent->if_ioctl = NULL;
+	if_delallmulti_serialized(parent);
 	TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 		struct ifnet *ifp = vap->iv_ifp;
 		struct ifmultiaddr *ifma;
@@ -3194,12 +3190,10 @@ ieee80211_ioctl_updatemulti(struct ieee80211com *ic)
 		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
-			(void) if_addmulti(parent, ifma->ifma_addr, NULL);
+			if_addmulti_serialized(parent, ifma->ifma_addr, NULL);
 		}
 	}
-	parent->if_ioctl = ioctl;
 	ieee80211_runtask(ic, &ic->ic_mcast_task);
-	wlan_serialize_enter();
 }
 
 int

@@ -1084,7 +1084,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 		mltaddr.sin6_addr = kin6addr_linklocal_allnodes;
 		mltaddr.sin6_addr.s6_addr16[1] = htons(ifp->if_index);
 
-		IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
+		in6m = IN6_LOOKUP_MULTI(&mltaddr.sin6_addr, ifp);
 		if (in6m == NULL) {
 			rtrequest_global(RTM_ADD,
 				  (struct sockaddr *)&mltaddr,
@@ -1107,7 +1107,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 #define hostnamelen	strlen(hostname)
 		if (in6_nigroup(ifp, hostname, hostnamelen, &mltaddr.sin6_addr)
 		    == 0) {
-			IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
+			in6m = IN6_LOOKUP_MULTI(&mltaddr.sin6_addr, ifp);
 			if (in6m == NULL && ia != NULL) {
 				in6_addmulti(&mltaddr.sin6_addr, ifp, &error);
 				if (error != 0) {
@@ -1135,7 +1135,7 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 
 			mltaddr.sin6_addr = kin6addr_nodelocal_allnodes;
 
-			IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
+			in6m = IN6_LOOKUP_MULTI(&mltaddr.sin6_addr, ifp);
 			if (in6m == NULL && ia_loop != NULL) {
 				rtrequest_global(RTM_ADD,
 					  (struct sockaddr *)&mltaddr,
@@ -1240,7 +1240,7 @@ in6_purgeaddr(struct ifaddr *ifa)
 			ia->ia_addr.sin6_addr.s6_addr32[3];
 		llsol.s6_addr8[12] = 0xff;
 
-		IN6_LOOKUP_MULTI(llsol, ifp, in6m);
+		in6m = IN6_LOOKUP_MULTI(&llsol, ifp);
 		if (in6m)
 			in6_delmulti(in6m);
 	}

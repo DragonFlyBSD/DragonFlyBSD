@@ -3561,8 +3561,7 @@ key_ismyaddr6(struct sockaddr_in6 *sin6)
 		 * about IPv4 multicast??
 		 * XXX scope
 		 */
-		in6m = NULL;
-		IN6_LOOKUP_MULTI(sin6->sin6_addr, ia->ia_ifp, in6m);
+		in6m = IN6_LOOKUP_MULTI(&sin6->sin6_addr, ia->ia_ifp);
 		if (in6m)
 			return 1;
 	}

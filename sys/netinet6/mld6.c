@@ -184,7 +184,8 @@ mld6_input(struct mbuf *m, int off)
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
 	struct in6_multi *in6m;
 	struct in6_ifaddr *ia;
-	struct ifmultiaddr *ifma;
+	struct ifmultiaddr *ifma, mark;
+	struct sockaddr sa;
 	int timer;		/* timer value in the MLD query header */
 
 #ifndef PULLDOWN_TEST
@@ -265,9 +266,23 @@ mld6_input(struct mbuf *m, int off)
 			timer = 1;
 		mld6_all_nodes_linklocal.s6_addr16[1] =
 			htons(ifp->if_index); /* XXX */
-		
-		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
-		{
+
+		bzero(&sa, sizeof(sa));
+		sa.sa_family = AF_UNSPEC;
+		sa.sa_len = sizeof(sa);
+
+		bzero(&mark, sizeof(mark));
+		mark.ifma_addr = &sa;
+
+		/* TODO: need ifnet_serialize_main */
+		ifnet_serialize_all(ifp);
+
+		TAILQ_INSERT_HEAD(&ifp->if_multiaddrs, &mark, ifma_link);
+		while ((ifma = TAILQ_NEXT(&mark, ifma_link)) != NULL) {
+			TAILQ_REMOVE(&ifp->if_multiaddrs, &mark, ifma_link);
+			TAILQ_INSERT_AFTER(&ifp->if_multiaddrs, ifma, &mark,
+			    ifma_link);
+
 			if (ifma->ifma_addr->sa_family != AF_INET6)
 				continue;
 			in6m = (struct in6_multi *)ifma->ifma_protospec;
@@ -282,9 +297,15 @@ mld6_input(struct mbuf *m, int off)
 						&in6m->in6m_addr))
 			{
 				if (timer == 0) {
+					/*
+					 * Release serializer(s) temporarily,
+					 * before sending report.
+					 */
+					ifnet_deserialize_all(ifp);
 					/* send a report immediately */
 					mld6_sendpkt(in6m, MLD_LISTENER_REPORT,
 						NULL);
+					ifnet_serialize_all(ifp);
 					in6m->in6m_timer = 0; /* reset timer */
 					in6m->in6m_state = MLD6_IREPORTEDLAST;
 				}
@@ -296,6 +317,8 @@ mld6_input(struct mbuf *m, int off)
 				}
 			}
 		}
+
+		ifnet_deserialize_all(ifp);
 
 		if (IN6_IS_ADDR_MC_LINKLOCAL(&mldh->mld_addr))
 			mldh->mld_addr.s6_addr16[1] = 0; /* XXX */
@@ -323,7 +346,7 @@ mld6_input(struct mbuf *m, int off)
 		 * If we belong to the group being reported, stop
 		 * our timer for that group.
 		 */
-		IN6_LOOKUP_MULTI(mldh->mld_addr, ifp, in6m);
+		in6m = IN6_LOOKUP_MULTI(&mldh->mld_addr, ifp);
 		if (in6m) {
 			in6m->in6m_timer = 0; /* transit to idle state */
 			in6m->in6m_state = MLD6_OTHERLISTENER; /* clear flag */

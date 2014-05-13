@@ -425,6 +425,7 @@ ip_input(struct mbuf *m)
 	int hlen, checkif;
 	u_short sum;
 	struct in_addr pkt_dst;
+	boolean_t check_msgport = FALSE;
 	boolean_t using_srcrt = FALSE;		/* forward (by PFIL_HOOKS) */
 	struct in_addr odst;			/* original dst address(NAT) */
 	struct m_tag *mtag;
@@ -448,8 +449,28 @@ ip_input(struct mbuf *m)
 		if (m == NULL)
 			return;
 		KKASSERT(m->m_flags & M_HASH);
+		check_msgport = TRUE;
 	}
 	ip = mtod(m, struct ip *);
+
+	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr))) {
+		/*
+		 * XXX handle multicast on CPU0 for now.
+		 *
+		 * This could happen for packets hashed by hardware
+		 * using RSS, which does not differentiate multicast
+		 * packets from unicast packets.
+		 */
+		m->m_pkthdr.hash = 0;
+		check_msgport = TRUE;
+	}
+
+	if (check_msgport &&
+	    &curthread->td_msgport != netisr_hashport(m->m_pkthdr.hash)) {
+		netisr_queue(NETISR_IP, m);
+		/* Requeued to other netisr msgport; done */
+		return;
+	}
 
 	/*
 	 * Pull out certain tags
@@ -743,7 +764,7 @@ pass:
 		 * See if we belong to the destination multicast group on the
 		 * arrival interface.
 		 */
-		IN_LOOKUP_MULTI(ip->ip_dst, m->m_pkthdr.rcvif, inm);
+		inm = IN_LOOKUP_MULTI(&ip->ip_dst, m->m_pkthdr.rcvif);
 		if (inm == NULL) {
 			rel_mplock();
 			ipstat.ips_notmember++;

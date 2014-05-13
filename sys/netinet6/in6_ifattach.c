@@ -643,7 +643,7 @@ in6_nigroup_attach(const char *name, int namelen)
 
 	TAILQ_FOREACH(ifp, &ifnet, if_list) {
 		mltaddr.sin6_addr.s6_addr16[1] = htons(ifp->if_index);
-		IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
+		in6m = IN6_LOOKUP_MULTI(&mltaddr.sin6_addr, ifp);
 		if (!in6m) {
 			if (!in6_addmulti(&mltaddr.sin6_addr, ifp, &error)) {
 				nd6log((LOG_ERR, "%s: failed to join %s "
@@ -670,7 +670,7 @@ in6_nigroup_detach(const char *name, int namelen)
 
 	TAILQ_FOREACH(ifp, &ifnet, if_list) {
 		mltaddr.sin6_addr.s6_addr16[1] = htons(ifp->if_index);
-		IN6_LOOKUP_MULTI(mltaddr.sin6_addr, ifp, in6m);
+		in6m = IN6_LOOKUP_MULTI(&mltaddr.sin6_addr, ifp);
 		if (in6m)
 			in6_delmulti(in6m);
 	}

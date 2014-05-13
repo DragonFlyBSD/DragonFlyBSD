@@ -194,24 +194,29 @@ struct in_multistep {
 };
 
 /*
- * Macro for looking up the in_multi record for a given IP multicast address
- * on a given interface.  If no matching record is found, "inm" is set null.
+ * Look up the in_multi record for a given IP multicast address on a given
+ * interface.  If no matching record is found, NULL is returned.
  */
-#define IN_LOOKUP_MULTI(addr, ifp, inm) \
-	/* struct in_addr addr; */ \
-	/* struct ifnet *ifp; */ \
-	/* struct in_multi *inm; */ \
-do { \
-	struct ifmultiaddr *ifma; \
-\
-	TAILQ_FOREACH(ifma, &((ifp)->if_multiaddrs), ifma_link) { \
-		if (ifma->ifma_addr->sa_family == AF_INET \
-		    && ((struct sockaddr_in *)ifma->ifma_addr)->sin_addr.s_addr == \
-		    (addr).s_addr) \
-			break; \
-	} \
-	(inm) = ifma ? ifma->ifma_protospec : NULL; \
-} while(0)
+static __inline struct in_multi *
+IN_LOOKUP_MULTI(const struct in_addr *_addr, struct ifnet *_ifp)
+{
+	const struct ifmultiaddr *_ifma;
+	struct in_multi *_inm = NULL;
+
+	/* TODO: need ifnet_serialize_main */
+	ifnet_serialize_all(_ifp);
+	TAILQ_FOREACH(_ifma, &_ifp->if_multiaddrs, ifma_link) {
+		if (_ifma->ifma_addr->sa_family == AF_INET &&
+		    ((struct sockaddr_in *)_ifma->ifma_addr)->sin_addr.s_addr ==
+		    _addr->s_addr) {
+			_inm = _ifma->ifma_protospec;
+			break;
+		}
+	}
+	ifnet_deserialize_all(_ifp);
+
+	return _inm;
+}
 
 /*
  * Macro to step through all of the in_multi records, one at a time.

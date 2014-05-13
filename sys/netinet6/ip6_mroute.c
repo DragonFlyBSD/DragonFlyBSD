@@ -1429,7 +1429,7 @@ phyint_send(struct ip6_hdr *ip6, struct mif6 *mifp, struct mbuf *m)
 	 * on the outgoing interface, loop back a copy.
 	 */
 	dst6 = (struct sockaddr_in6 *)&ro.ro_dst;
-	IN6_LOOKUP_MULTI(ip6->ip6_dst, ifp, in6m);
+	in6m = IN6_LOOKUP_MULTI(&ip6->ip6_dst, ifp);
 	if (in6m != NULL) {
 		dst6->sin6_len = sizeof(struct sockaddr_in6);
 		dst6->sin6_family = AF_INET6;

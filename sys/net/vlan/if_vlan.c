@@ -285,7 +285,7 @@ vlan_setflag(struct ifvlan *ifv, struct ifnet *ifp_p, int flag, int set,
 static int
 vlan_setmulti(struct ifvlan *ifv, struct ifnet *ifp_p)
 {
-	struct ifmultiaddr *ifma, *rifma = NULL;
+	struct ifmultiaddr *ifma;
 	struct vlan_mc_entry *mc = NULL;
 	struct sockaddr_dl sdl;
 	struct ifnet *ifp = &ifv->ifv_if;
@@ -298,6 +298,24 @@ vlan_setmulti(struct ifvlan *ifv, struct ifnet *ifp_p)
 	vlan_clrmulti(ifv, ifp_p);
 
 	/*
+	 * Save the filter entries to be added to parent.
+	 *
+	 * TODO: need ifnet_serialize_main
+	 */
+	ifnet_serialize_all(ifp);
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+		if (ifma->ifma_addr->sa_family != AF_LINK)
+			continue;
+
+		/* Save a copy */
+		mc = kmalloc(sizeof(struct vlan_mc_entry), M_VLAN, M_WAITOK);
+		bcopy(LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
+		      &mc->mc_addr, ETHER_ADDR_LEN);
+		SLIST_INSERT_HEAD(&ifv->vlan_mc_listhead, mc, mc_entries);
+	}
+	ifnet_deserialize_all(ifp);
+
+	/*
 	 * Now program new ones.
 	 */
 	bzero(&sdl, sizeof(sdl));
@@ -307,24 +325,18 @@ vlan_setmulti(struct ifvlan *ifv, struct ifnet *ifp_p)
 	sdl.sdl_type = IFT_ETHER;
 	sdl.sdl_alen = ETHER_ADDR_LEN;
 
-	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
+	/*
+	 * Program the parent multicast filter
+	 */
+	SLIST_FOREACH(mc, &ifv->vlan_mc_listhead, mc_entries) {
 		int error;
 
-		if (ifma->ifma_addr->sa_family != AF_LINK)
-			continue;
-
-		/* Save a copy */
-		mc = kmalloc(sizeof(struct vlan_mc_entry), M_VLAN, M_WAITOK);
-		bcopy(LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
-		      &mc->mc_addr, ETHER_ADDR_LEN);
-		SLIST_INSERT_HEAD(&ifv->vlan_mc_listhead, mc, mc_entries);
-
-		/* Program the parent multicast filter */
-		bcopy(LLADDR((struct sockaddr_dl *)ifma->ifma_addr),
-		      LLADDR(&sdl), ETHER_ADDR_LEN);
-		error = if_addmulti(ifp_p, (struct sockaddr *)&sdl, &rifma);
-		if (error)
+		bcopy(&mc->mc_addr, LLADDR(&sdl), ETHER_ADDR_LEN);
+		error = if_addmulti(ifp_p, (struct sockaddr *)&sdl, NULL);
+		if (error) {
+			/* XXX probably should keep going */
 			return error;
+		}
 	}
 	return 0;
 }

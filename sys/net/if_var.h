@@ -898,10 +898,12 @@ uint32_t	ether_crc32_le(const uint8_t *, size_t);
 uint32_t	ether_crc32_be(const uint8_t *, size_t);
 
 int	if_addmulti(struct ifnet *, struct sockaddr *, struct ifmultiaddr **);
+int	if_addmulti_serialized(struct ifnet *, struct sockaddr *,
+	    struct ifmultiaddr **);
 int	if_allmulti(struct ifnet *, int);
 void	if_attach(struct ifnet *, struct lwkt_serialize *);
 int	if_delmulti(struct ifnet *, struct sockaddr *);
-void	if_delallmulti(struct ifnet *ifp);
+void	if_delallmulti_serialized(struct ifnet *ifp);
 void	if_purgeaddrs_nolink(struct ifnet *);
 void	if_detach(struct ifnet *);
 void	if_down(struct ifnet *);

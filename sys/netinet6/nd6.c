@@ -1282,7 +1282,7 @@ nd6_rtrequest(int req, struct rtentry *rt)
 			llsol.s6_addr32[2] = htonl(1);
 			llsol.s6_addr8[12] = 0xff;
 
-			IN6_LOOKUP_MULTI(llsol, ifp, in6m);
+			in6m = IN6_LOOKUP_MULTI(&llsol, ifp);
 			if (in6m)
 				in6_delmulti(in6m);
 		}

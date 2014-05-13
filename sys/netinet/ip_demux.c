@@ -294,6 +294,11 @@ ip_hashfn(struct mbuf **mptr, int hoff, int dir)
 		break;
 
 	case IPPROTO_UDP:
+		if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr))) {
+			/* XXX handle multicast on CPU0 for now */
+			hash = 0;
+			break;
+		}
 		uh = (struct udphdr *)((caddr_t)ip + iphlen);
 		hash = INP_MPORT_HASH_UDP(ip->ip_src.s_addr, ip->ip_dst.s_addr,
 		    uh->uh_sport, uh->uh_dport);

@@ -332,7 +332,7 @@ igmp_input(struct mbuf **mp, int *offp, int proto)
 		 * If we belong to the group being reported, stop
 		 * our timer for that group.
 		 */
-		IN_LOOKUP_MULTI(igmp->igmp_group, ifp, inm);
+		inm = IN_LOOKUP_MULTI(&igmp->igmp_group, ifp);
 
 		if (inm != NULL) {
 			inm->inm_timer = 0;

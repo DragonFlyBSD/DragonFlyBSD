@@ -554,25 +554,30 @@ struct	in6_multistep {
 };
 
 /*
- * Macros for looking up the in6_multi record for a given IP6 multicast
- * address on a given interface. If no matching record is found, "in6m"
- * returns NLL.
+ * Look up the in6_multi record for a given IP6 multicast address on a given
+ * interface.  If no matching record is found, NULL is returned.
  */
+static __inline struct in6_multi *
+IN6_LOOKUP_MULTI(const struct in6_addr *_addr, struct ifnet *_ifp)
+{
+	const struct ifmultiaddr *_ifma;
+	struct in6_multi *_in6m = NULL;
 
-#define IN6_LOOKUP_MULTI(addr, ifp, in6m)			\
-/* struct in6_addr addr; */					\
-/* struct ifnet *ifp; */					\
-/* struct in6_multi *in6m; */					\
-do { \
-	struct ifmultiaddr *ifma; \
-	TAILQ_FOREACH(ifma, &((ifp)->if_multiaddrs), ifma_link) { \
-		if (ifma->ifma_addr->sa_family == AF_INET6 \
-		    && IN6_ARE_ADDR_EQUAL(&((struct sockaddr_in6 *)ifma->ifma_addr)->sin6_addr, \
-					  &(addr))) \
-			break; \
-	} \
-	(in6m) = (struct in6_multi *)(ifma ? ifma->ifma_protospec : NULL); \
-} while(0)
+	/* TODO: need ifnet_serialize_main */
+	ifnet_serialize_all(_ifp);
+	TAILQ_FOREACH(_ifma, &_ifp->if_multiaddrs, ifma_link) {
+		if (_ifma->ifma_addr->sa_family == AF_INET6 &&
+		    IN6_ARE_ADDR_EQUAL(
+		    &((struct sockaddr_in6 *)_ifma->ifma_addr)->sin6_addr,
+		    _addr)) {
+			_in6m = _ifma->ifma_protospec;
+			break;
+		}
+	}
+	ifnet_deserialize_all(_ifp);
+
+	return _in6m;
+}
 
 /*
  * Macro to step through all of the in6_multi records, one at a time.
