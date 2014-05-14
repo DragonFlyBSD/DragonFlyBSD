@@ -454,7 +454,7 @@ print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 	struct ktr_info *info = NULL;
 	static struct save_ctx nctx, pctx, fmtctx, symctx, infoctx;
 
-	fprintf(fo, " %06x ", row & 0x00FFFFFF);
+	fprintf(fo, "%06x ", row & 0x00FFFFFF);
 	if (cflag)
 		fprintf(fo, "%-3d ", n);
 	if (tflag || rflag) {
@@ -501,7 +501,7 @@ print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 			if (va_list_from_blob(&ap, fmt,
 					      (char *)&entry->ktr_data,
 					      info->kf_data_size))
-				err(2, "Can't generate va_list from %s\n", fmt);
+				err(2, "Can't generate va_list from %s", fmt);
 			kvmfprintf(fo, kvm_string(info->kf_format, &fmtctx),
 				   (void *)ap);
 			va_list_cleanup(&ap);
@@ -628,7 +628,7 @@ mangle_string_ptrs(const char *fmt, uint8_t *fmtdata, int dofree)
 			break;
 		default:
 			fprintf(stderr, "Unknown conversion specifier %c "
-				"in fmt starting with %s", p[0], f - 1);
+				"in fmt starting with %s\n", p[0], f - 1);
 			return -1;
 		}
 		fmtdata += skipsize;
@@ -659,7 +659,7 @@ dump_callback(void *ctx, int n, int row __unused, struct ktr_entry *entry,
 		if ((conv = mangle_string_ptrs(ev.fmt,
 					       __DECONST(uint8_t *, ev.fmtdata),
 					       0)) < 0)
-			errx(1, "Can't parse format string\n");
+			errx(1, "Can't parse format string");
 		ev.fmtdatalen = ki->kf_data_size;
 	} else {
 		ev.fmt = ev.fmtdata = NULL;
@@ -828,12 +828,12 @@ ktr_bufs_init(void)
 
 	ktr_bufs = malloc(sizeof(*ktr_bufs) * ncpus);
 	if (!ktr_bufs)
-		err(1, "can't allocate data structures\n");
+		err(1, "can't allocate data structures");
 	for (i = 0; i < ncpus; ++i) {
 		it = ktr_bufs + i;
 		it->ents = malloc(sizeof(struct ktr_entry) * entries_per_buf);
 		if (it->ents == NULL)
-			err(1, "can't allocate data structures\n");
+			err(1, "can't allocate data structures");
 		it->reset = 1;
 		it->beg_idx = -1;
 		it->end_idx = -1;
@@ -1245,7 +1245,7 @@ conversion_size(const char *fmt, enum argument_class *argclass)
 		break;
 	default:
 		fprintf(stderr, "Unknown conversion specifier %c "
-			"in fmt starting with %s", p[0], fmt - 1);
+			"in fmt starting with %s\n", p[0], fmt - 1);
 		return -2;
 	}
 	return convsize;
@@ -1268,7 +1268,7 @@ va_list_push_integral(struct my_va_list *valist, void *val, size_t valsize,
 	case 8:
 		r = *(uint64_t *)val; break;
 	default:
-		err(1, "WTF\n");
+		err(1, "WTF");
 	}
 	/* we always need to push the full 8 bytes */
 	if ((valist->gp_offset + valsize) <= 48) {	/* got a free reg */
@@ -1341,7 +1341,7 @@ va_list_from_blob(machine_va_list *_valist, const char *fmt, char *blob, size_t 
 		if (argclass == ARGCLASS_INTEGER) {
 			if (blobsize < sz) {
 				fprintf(stderr, "not enough data available "
-					"for format: %s", fmt);
+				    "for format: %s\n", fmt, sz, blobsize);
 				goto free_areas;
 			}
 			if (va_list_push_integral(valist, blob, sz, &stacksize))
@@ -1396,7 +1396,7 @@ va_list_from_blob(machine_va_list *valist, const char *fmt, char *blob, size_t b
 		sz = conversion_size(f, &argclass);
 		if (blobsize < sz) {
 			fprintf(stderr, "not enough data available "
-				"for format: %s", fmt);
+				"for format: %s\n", fmt);
 			goto free_va;
 		}
 		if ((argclass == ARGCLASS_INTEGER) && (sz < 4)) {
