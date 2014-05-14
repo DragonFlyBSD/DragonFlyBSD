@@ -74,13 +74,14 @@ SRCS+=  acpi_package.c
 # The PCI part of ACPI5 doesn't work with the current infrastructure
 SRCS+=	acpi_pci.c acpi_pcib.c acpi_pcib_acpi.c acpi_pcib_pci.c
 SRCS+=	acpi_pci_link.c
-SRCS+=  acpi_powerres.c acpi_resource.c acpi_thermal.c
+SRCS+=  acpi_powerres.c acpi_quirk.c acpi_resource.c acpi_thermal.c
 SRCS+=  acpi_timer.c acpi_hpet.c acpi_if.c acpi_wmi_if.c
 SRCS+=  OsdDebug.c
 SRCS+=  OsdHardware.c OsdInterrupt.c OsdMemory.c OsdSchedule.c
 SRCS+=  OsdStream.c OsdSynch.c OsdTable.c OsdEnvironment.c
 SRCS+=  opt_acpi.h opt_ddb.h
-SRCS+=  device_if.h bus_if.h pci_if.h pcib_if.h isa_if.h acpi_if.h acpi_wmi_if.h
+SRCS+=  device_if.h bus_if.h pci_if.h pcib_if.h isa_if.h acpi_if.h
+SRCS+=  acpi_quirks.h acpi_wmi_if.h
 
 .if ACPI_NO_SEMAPHORES
 CFLAGS+=-DACPI_NO_SEMAPHORES

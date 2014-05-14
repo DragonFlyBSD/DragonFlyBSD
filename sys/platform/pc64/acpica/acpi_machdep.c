@@ -358,3 +358,10 @@ acpi_machdep_init(device_t dev)
 
 	return (0);
 }
+
+int
+acpi_machdep_quirks(int *quirks)
+{
+	return (0);
+}
+

@@ -4,6 +4,11 @@
 # limitations in config: backslash-newline doesn't work in strings, and
 # dependency lines other than the first are silently ignored.
 #
+acpi_quirks.h			optional acpi				   \
+	dependency	"$S/tools/acpi_quirks2h.awk $S/dev/acpica/acpi_quirks" \
+	compile-with	"${AWK} -f $S/tools/acpi_quirks2h.awk $S/dev/acpica/acpi_quirks" \
+	no-obj no-implicit-rule before-depend				   \
+	clean		"acpi_quirks.h"
 aicasm.nx			optional ahc				   \
 	dependency 	"$S/dev/disk/aic7xxx/aicasm/*.[chyl]"		   \
 	compile-with	"${MAKE} -f $S/dev/disk/aic7xxx/aicasm/Makefile MAKESRCPATH=$S/dev/disk/aic7xxx/aicasm" \
@@ -2053,6 +2058,7 @@ ${OSACPI_MI_DIR}/acpi_pcib.c		optional acpi pci
 ${OSACPI_MI_DIR}/acpi_pcib_acpi.c	optional acpi pci
 ${OSACPI_MI_DIR}/acpi_pcib_pci.c	optional acpi pci
 ${OSACPI_MI_DIR}/acpi_powerres.c	optional acpi
+${OSACPI_MI_DIR}/acpi_quirk.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_resource.c	optional acpi
 ${OSACPI_MI_DIR}/acpi_smbat.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_thermal.c		optional acpi

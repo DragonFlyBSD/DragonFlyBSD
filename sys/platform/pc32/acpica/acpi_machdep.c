@@ -356,3 +356,24 @@ acpi_machdep_init(device_t dev)
 
 	return (0);
 }
+
+/* Check BIOS date.  If 1998 or older, disable ACPI. */
+int
+acpi_machdep_quirks(int *quirks)
+{
+	char *va;
+	int year;
+
+	/* BIOS address 0xffff5 contains the date in the format mm/dd/yy. */
+	va = pmap_mapbios(0xffff0, 16);
+	ksscanf(va + 11, "%2d", &year);
+	pmap_unmapbios((vm_offset_t)va, 16);
+
+	/* 
+	 * Date must be >= 1/1/1999 or we don't trust ACPI.
+	 */
+	if (year > 90 && year < 99)
+		*quirks = ACPI_Q_BROKEN;
+
+	return (0);
+}

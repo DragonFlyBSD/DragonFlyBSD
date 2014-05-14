@@ -399,6 +399,16 @@ usbdevs_data.h: @/tools/usbdevs2h.awk @/bus/u4b/usbdevs
 	${AWK} -f @/tools/usbdevs2h.awk @/bus/u4b/usbdevs -d
 .endif
 
+.if !empty(SRCS:Macpi_quirks.h)
+CLEANFILES+=	acpi_quirks.h
+.if !exists(@)
+acpi_quirks.h: @
+.else
+acpi_quirks.h: @/tools/acpi_quirks2h.awk @/dev/acpica/acpi_quirks
+.endif
+	${AWK} -f @/tools/acpi_quirks2h.awk @/dev/acpica/acpi_quirks
+.endif
+
 .if !empty(SRCS:Massym.s)
 CLEANFILES+=	assym.s genassym.o
 assym.s: genassym.o

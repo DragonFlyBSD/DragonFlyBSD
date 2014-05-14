@@ -88,6 +88,7 @@ static struct dev_ops acpi_ops = {
 
 /* Global mutex for locking access to the ACPI subsystem. */
 struct lock acpi_lock;
+
 /* Bitmap of device quirks. */
 int		acpi_quirks;
 
@@ -302,10 +303,8 @@ acpi_Startup(void)
     }
 
     /* Set up any quirks we have for this system. */
-#ifdef notyet
     if (acpi_quirks == ACPI_Q_OK)
 	acpi_table_quirks(&acpi_quirks);
-#endif
 
     /* If the user manually set the disabled hint to 0, force-enable ACPI. */
     if (resource_int_value("acpi", 0, "disabled", &val) == 0 && val == 0)

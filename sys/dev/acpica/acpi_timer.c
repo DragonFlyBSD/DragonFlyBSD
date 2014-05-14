@@ -130,7 +130,8 @@ acpi_timer_identify(driver_t *driver, device_t parent)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
-    if (acpi_disabled("timer") || acpi_timer_dev)
+    if (acpi_disabled("timer") || (acpi_quirks & ACPI_Q_TIMER) ||
+	acpi_timer_dev)
 	return (ENXIO);
 
     if ((dev = BUS_ADD_CHILD(parent, parent, 0, "acpi_timer", 0)) == NULL) {
