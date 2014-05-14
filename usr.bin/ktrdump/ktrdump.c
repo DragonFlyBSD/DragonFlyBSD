@@ -1341,7 +1341,7 @@ va_list_from_blob(machine_va_list *_valist, const char *fmt, char *blob, size_t 
 		if (argclass == ARGCLASS_INTEGER) {
 			if (blobsize < sz) {
 				fprintf(stderr, "not enough data available "
-				    "for format: %s\n", fmt, sz, blobsize);
+					"for format: %s\n", fmt);
 				goto free_areas;
 			}
 			if (va_list_push_integral(valist, blob, sz, &stacksize))
