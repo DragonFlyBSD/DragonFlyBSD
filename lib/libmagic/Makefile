@@ -22,6 +22,7 @@ MLINKS+=	libmagic.3 magic_close.3
 MLINKS+=	libmagic.3 magic_error.3
 MLINKS+=	libmagic.3 magic_errno.3
 MLINKS+=	libmagic.3 magic_descriptor.3
+MLINKS+=	libmagic.3 magic_file.3
 MLINKS+=	libmagic.3 magic_buffer.3
 MLINKS+=	libmagic.3 magic_setflags.3
 MLINKS+=	libmagic.3 magic_check.3
