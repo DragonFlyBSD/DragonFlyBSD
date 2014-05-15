@@ -1,4 +1,4 @@
-/*	$FreeBSD: head/sys/dev/ral/if_ral_pci.c 189575 2009-03-09 13:23:54Z imp $	*/
+/*	$FreeBSD: src/sys/dev/ral/if_ral_pci.c,v 1.10 2012/05/10 17:41:16 bschmidt Exp $	*/
 
 /*-
  * Copyright (c) 2005, 2006
@@ -53,6 +53,7 @@
 
 #include <dev/netif/ral/rt2560var.h>
 #include <dev/netif/ral/rt2661var.h>
+#include <dev/netif/ral/rt2860var.h>
 
 MODULE_DEPEND(ral, pci, 1, 1, 1);
 MODULE_DEPEND(ral, firmware, 1, 1, 1);
@@ -66,6 +67,28 @@ struct ral_pci_ident {
 };
 
 static const struct ral_pci_ident ral_pci_ids[] = {
+	{ PCI_VENDOR_AWT, PCI_PRODUCT_AWT_RT2890,
+		"Ralink Technology RT2890" },
+	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_1,
+		"Ralink Technology RT2860" },
+	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_2,
+		"Ralink Technology RT2860" },
+	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_3,
+		"Ralink Technology RT2860" },
+	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_4,
+		"Ralink Technology RT2860" },
+	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_5,
+		"Ralink Technology RT2860" },
+	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_6,
+		"Ralink Technology RT2860" },
+	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT2860_7,
+		"Ralink Technology RT2860" },
+	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT3591_1,
+		"Ralink Technology RT3591" },
+	{ PCI_VENDOR_EDIMAX, PCI_PRODUCT_EDIMAX_RT3591_2,
+		"Ralink Technology RT3591" },
+	{ PCI_VENDOR_MSI, PCI_PRODUCT_MSI_RT3090,
+		"Ralink Technology RT3090" },
 	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2560,
 		"Ralink Technology RT2560" },
 	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2561S,
@@ -74,6 +97,38 @@ static const struct ral_pci_ident ral_pci_ids[] = {
 		"Ralink Technology RT2561" },
 	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2661,
 		"Ralink Technology RT2661" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2760,
+		"Ralink Technology RT2760" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2790,
+		"Ralink Technology RT2790" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2860,
+		"Ralink Technology RT2860" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT2890,
+		"Ralink Technology RT2890" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3060,
+		"Ralink Technology RT3060" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3062,
+		"Ralink Technology RT3062" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3090,
+		"Ralink Technology RT3090" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3091,
+		"Ralink Technology RT3091" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3092,
+		"Ralink Technology RT3092" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3390,
+		"Ralink Technology RT3390" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3562,
+		"Ralink Technology RT3562" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3592,
+		"Ralink Technology RT3592" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT3593,
+		"Ralink Technology RT3593" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT5390_1,
+		"Ralink Technology RT5390" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT5390_2,
+		"Ralink Technology RT5390" },
+	{ PCI_VENDOR_RALINK, PCI_PRODUCT_RALINK_RT5390_3,
+		"Ralink Technology RT5390" },
 
 	{ 0, 0, NULL }
 };
@@ -101,12 +156,20 @@ static struct ral_opns {
 	rt2661_suspend,
 	rt2661_resume,
 	rt2661_intr
+}, ral_rt2860_opns = {
+	rt2860_attach,
+	rt2860_detach,
+	rt2860_shutdown,
+	rt2860_suspend,
+	rt2860_resume,
+	rt2860_intr
 };
 
 struct ral_pci_softc {
 	union {
 		struct rt2560_softc sc_rt2560;
 		struct rt2661_softc sc_rt2661;
+		struct rt2860_softc sc_rt2860;
 	} u;
 
 	struct ral_opns		*sc_opns;
@@ -185,8 +248,19 @@ ral_pci_attach(device_t dev)
 	/* enable bus-mastering */
 	pci_enable_busmaster(dev);
 
-	psc->sc_opns = (pci_get_device(dev) == 0x0201) ? &ral_rt2560_opns :
-	    &ral_rt2661_opns;
+	switch (pci_get_device(dev)) {
+	case PCI_PRODUCT_RALINK_RT2560:
+		psc->sc_opns = &ral_rt2560_opns;
+		break;
+	case PCI_PRODUCT_RALINK_RT2561S:
+	case PCI_PRODUCT_RALINK_RT2561:
+	case PCI_PRODUCT_RALINK_RT2661:
+		psc->sc_opns = &ral_rt2661_opns;
+		break;
+	default:
+		psc->sc_opns = &ral_rt2860_opns;
+		break;
+	}
 
 	psc->mem_rid = RAL_PCI_BAR0;
 	psc->mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &psc->mem_rid,

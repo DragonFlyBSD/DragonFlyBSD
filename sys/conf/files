@@ -607,6 +607,7 @@ dev/netif/acx/acx111.c	optional acx
 dev/netif/ral/if_ral_pci.c	optional ral
 dev/netif/ral/rt2560.c		optional ral
 dev/netif/ral/rt2661.c		optional ral
+dev/netif/ral/rt2860.c		optional ral
 rt2561fw.c			optional ralfw				\
 	compile-with	"${AWK} -f $S/tools/fw_stub.awk rt2561.fw:rt2561fw -mrt2561 -c${.TARGET}" \
 	no-implicit-rule before-depend local				\
