@@ -35,6 +35,8 @@
 #include <sys/sysctl.h>
 #include <sys/uio.h>
 
+#include <machine/pmap.h>
+
 #include "acpi.h"
 #include <dev/acpica/acpivar.h>
 #include <dev/acpica/acpiio.h>
@@ -367,7 +369,7 @@ acpi_machdep_quirks(int *quirks)
 	/* BIOS address 0xffff5 contains the date in the format mm/dd/yy. */
 	va = pmap_mapbios(0xffff0, 16);
 	ksscanf(va + 11, "%2d", &year);
-	pmap_unmapbios((vm_offset_t)va, 16);
+	pmap_unmapdev((vm_offset_t)va, 16);
 
 	/* 
 	 * Date must be >= 1/1/1999 or we don't trust ACPI.
