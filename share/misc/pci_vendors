@@ -1,8 +1,8 @@
 #
 #	List of PCI ID's
 #
-#	Version: 2014.04.14
-#	Date:    2014-04-14 03:15:01
+#	Version: 2014.05.13
+#	Date:    2014-05-13 03:15:01
 #
 #	Maintained by Martin Mares <mj@ucw.cz> and other volunteers from the
 #	PCI ID Project at http://pci-ids.ucw.cz/.
@@ -587,6 +587,7 @@
 	1305  Kaveri
 	1306  Kaveri
 	1307  Kaveri
+	1308  Kaveri HDMI/DP Audio Controller
 	1309  Kaveri [Radeon R7 Graphics]
 	130a  Kaveri [Radeon R6 Graphics]
 	130b  Kaveri [Radeon R4 Graphics]
@@ -1432,6 +1433,7 @@
 		148c 2117  Bravo X700 (Secondary)
 	5f57  R423 [Radeon X800 XT]
 	6600  Mars [Radeon HD 8670A/8670M/8750M]
+		103c 1952  ProBook 455 G1
 	6601  Mars [Radeon HD 8730M]
 		103c 2100  FirePro M4100
 	6602  Mars
@@ -1454,6 +1456,7 @@
 		174b a240  Radeon R7 240 OEM
 		1b0a 90d3  Radeon R7 240 OEM
 	6613  Oland PRO [Radeon R7 240]
+		1682 7240  R7 240 2048 MB
 	6620  Mars
 	6621  Mars PRO
 	6623  Mars
@@ -2045,15 +2048,15 @@
 		174b 8b04  Radeon HD 8860
 	6819  Pitcairn PRO [Radeon HD 7850]
 		174b e221  Radeon HD 7850 2GB GDDR5 DVI-I/DVI-D/HDMI/DP
-	6820  Venus XTX [Radeon HD 8890M]
+	6820  Venus XTX [Radeon HD 8890M / R9 M275X]
 		103c 1851  Radeon HD 7750M
 		17aa 3801  Radeon R9 M275
-	6821  Venus XT [Radeon HD 8870M]
+	6821  Venus XT [Radeon HD 8870M / R9 M270X]
 		1002 031e  FirePro SX4000
 		1028 05cc  FirePro M5100
 		1028 15cc  FirePro M5100
 	6822  Venus PRO [Radeon E8860]
-	6823  Venus PRO [Radeon HD 8850M]
+	6823  Venus PRO [Radeon HD 8850M / R9 M265X]
 	6825  Heathrow XT [Radeon HD 7870M]
 		8086 2111  Chelsea PRO
 	6826  Chelsea LP [Radeon HD 7700M Series]
@@ -2629,7 +2632,7 @@
 		17af 3012  Radeon HD 5490
 		17af 3013  Radeon HD 5470
 		17af 3014  Radeon HD 6350
-	68fa  Cedar [Radeon HD 7350/8350]
+	68fa  Cedar [Radeon HD 7350/8350 / R5 220]
 		1019 0019  Radeon HD 7350
 		1019 0021  Radeon HD 7350
 		1019 0022  Radeon HD 7350
@@ -2643,6 +2646,9 @@
 		1462 2495  Radeon HD 7350
 		1462 b490  Radeon HD 7350
 		1642 3985  Radeon HD 7350
+		174b 3510  Radeon HD 8350
+		174b 3521  Radeon R5 220
+		174b 3522  Radeon R5 220
 		174b 7350  Radeon HD 7350
 		174b 8153  Radeon HD 8350
 		174b e127  Radeon HD 7350
@@ -3007,15 +3013,15 @@
 	9808  Wrestler [Radeon HD 7340]
 	9809  Wrestler [Radeon HD 7310]
 	980a  Wrestler [Radeon HD 7290]
-	9830  Kabini [Radeon HD 8400]
+	9830  Kabini [Radeon HD 8400 / R3 Series]
 	9831  Kabini [Radeon HD 8400E]
 	9832  Kabini [Radeon HD 8330]
 	9833  Kabini [Radeon HD 8330E]
 	9834  Kabini [Radeon HD 8210]
 	9835  Kabini [Radeon HD 8310E]
-	9836  Kabini [Radeon HD 8280]
+	9836  Kabini [Radeon HD 8280 / R3 Series]
 	9837  Kabini [Radeon HD 8280E]
-	9838  Kabini [Radeon HD 8240]
+	9838  Kabini [Radeon HD 8240 / R3 Series]
 	9839  Kabini [Radeon HD 8180]
 	983a  Kabini
 	983b  Kabini
@@ -3626,6 +3632,15 @@
 	1417  Family 15h (Models 10h-1fh) Processor Root Port
 	1418  Family 15h (Models 10h-1fh) Processor Root Port
 	1419  Family 15h (Models 10h-1fh) I/O Memory Management Unit
+	141a  Family 15h (Models 30h-3fh) Processor Function 0
+	141b  Family 15h (Models 30h-3fh) Processor Function 1
+	141c  Family 15h (Models 30h-3fh) Processor Function 2
+	141d  Family 15h (Models 30h-3fh) Processor Function 3
+	141e  Family 15h (Models 30h-3fh) Processor Function 4
+	141f  Family 15h (Models 30h-3fh) Processor Function 5
+	1422  Family 15h (Models 30h-3fh) Processor Root Complex
+	1423  Family 15h (Models 30h-3fh) I/O Memory Management Unit
+	1426  Family 15h (Models 30h-3fh) Processor Root Port
 	1439  Family 16h Processor Functions 5:1
 	1510  Family 14h Processor Root Complex
 		174b 1001  PURE Fusion Mini
@@ -5942,12 +5957,14 @@
 	7194  PCI-7813R
 	71bc  PCI-6221 (37pin)
 	71d0  PXI-6143
+	71dc  PCI-1588
 	7260  PXI-5142
 	7261  PCI-5142
 	72a8  PXI-5152
 	72a9  PCI-5152
 	72aa  PXI-5105
 	72ab  PCI-5105
+	72b8  PXI-6682
 	730f  PXI-5922EX
 	7310  PCI-5922EX
 	7333  PXI-5900
@@ -5971,12 +5988,15 @@
 	73ec  PXI-7954R
 	73f0  PXI-5153
 	73f1  PCI-5153
+	7405  PXIe-6674T
 	745e  PXI-5153EX
 	745f  PCI-5153EX
 	7460  PXI-5154EX
 	7461  PCI-5154EX
 	7539  NI 9157
 	753a  NI 9159
+	75e5  PXI-6683
+	75e6  PXI-6683H
 	7626  NI 9154
 	7627  NI 9155
 	b001  IMAQ-PCI-1408
@@ -8850,6 +8870,7 @@
 	0fd5  GK107M [GeForce GT 650M Mac Edition]
 	0fd8  GK107M [GeForce GT 640M Mac Edition]
 	0fd9  GK107M [GeForce GT 645M]
+	0fdb  GK107M
 	0fdf  GK107M [GeForce GT 740M]
 	0fe0  GK107M [GeForce GTX 660M Mac Edition]
 	0fe1  GK107M [GeForce GT 730M]
@@ -9044,6 +9065,8 @@
 		1028 05e0  GeForce GT 720M
 		1028 05e8  GeForce GT 630M
 		1028 05f4  GeForce GT 720M
+		1028 064e  GeForce 820M
+		1028 068d  GeForce 820M
 		103c 18ef  GeForce GT 630M
 		103c 18f9  GeForce GT 630M
 		103c 18fb  GeForce GT 630M
@@ -9177,8 +9200,13 @@
 		17aa 502d  GeForce 710M
 		17aa 502e  GeForce GT 720M
 		17aa 502f  GeForce GT 720M
+		17aa 5030  GeForce 705M
+		17aa 5031  GeForce 705M
+		17aa 5032  GeForce 820M
+		17aa 5033  GeForce 820M
 		17aa 503e  GeForce 710M
 		17aa 503f  GeForce 820M
+		17aa 5040  GeForce 820M
 		1854 0177  GeForce 710M
 		1854 0180  GeForce 710M
 		1854 0190  GeForce GT 720M
@@ -9479,6 +9507,7 @@
 	8111  Twist3 Frame Grabber
 10ec  Realtek Semiconductor Co., Ltd.
 	0139  RTL-8139/8139C/8139C+ Ethernet Controller
+	5208  RTS5208 PCI Express Card Reader
 	5209  RTS5209 PCI Express Card Reader
 	5227  RTS5227 PCI Express Card Reader
 		17aa 220e  ThinkPad T440p
@@ -9488,7 +9517,7 @@
 		103c 194e  ProBook 455 G1 Notebook
 	5249  RTS5249 PCI Express Card Reader
 		103c 1909  ZBook 15
-	5288  Barossa PCI Express Card Reader
+	5288  RTS5288 PCI Express Card Reader
 	8029  RTL-8029(AS)
 		10b8 2011  EZ-Card (SMC1208)
 		10ec 8029  RTL-8029(AS)
@@ -9573,7 +9602,7 @@
 		1043 82c6  M3A78-EH Motherboard
 		1043 83a3  M4A785TD Motherboard
 		1043 8432  P8P67 and other motherboards
-		1043 8505  P8H77-I Motherboard
+		1043 8505  P8 series motherboard
 		105b 0d7c  D270S/D250S Motherboard
 		10ec 8168  RTL8111/8168 PCI Express Gigabit Ethernet controller
 		1458 e000  Motherboard
@@ -10849,6 +10878,7 @@
 		1894 0023  TVStation DVB-C plus
 	7160  SAA7160
 		1458 9009  E8000 DVB-T/Analog TV/FM tuner
+		1461 1455  AVerTV Hybrid Speedy PCI-E (H788)
 	7162  SAA7162
 		11bd 0101  Pinnacle PCTV 7010iX TV Card
 	7164  SAA7164
@@ -11701,6 +11731,7 @@
 	2a41  88W8366 [TopDog] 802.11n Wireless
 	2a42  88W8366 [TopDog] 802.11n Wireless
 	2a43  88W8366 [TopDog] 802.11n Wireless
+	2a55  88W8864 [Avastar] 802.11ac Wireless
 	2b36  88W8764 [Avastar] 802.11n Wireless
 	4101  OLPC Cafe Controller Secure Digital Controller
 	4320  88E8001 Gigabit Ethernet Controller
@@ -11884,6 +11915,7 @@
 		16b8 434b  Tempo SATA E4P
 	7810  MV78100 [Discovery Innovation] ARM SoC
 	7820  MV78200 [Discovery Innovation] ARM SoC
+	7823  MV78230 [Armada XP] ARM SoC
 	f003  GT-64010 Primary Image Piranha Image Generator
 11ac  Canon Information Systems Research Aust.
 11ad  Lite-On Communications Inc
@@ -12321,9 +12353,11 @@
 	7233  OZ711MP3/MS3 4-in-1 MemoryCardBus Controller
 	8120  Integrated MMC/SD Controller
 	8130  Integrated MS/MSPRO/xD Controller
-	8320  OZ600 MMC/SD Controller
+	8220  OZ600FJ1/OZ900FJ1 SD/MMC Card Reader Controller
+	8221  OZ600FJ0/OZ900FJ0/OZ600FJS SD/MMC Card Reader Controller
+	8320  OZ600RJ1/OZ900RJ1 SD/MMC Card Reader Controller
 		1028 04a3  Precision M4600
-	8321  Integrated MMC/SD controller
+	8321  OZ600RJ0/OZ900RJ0/OZ600RJS SD/MMC Card Reader Controller
 	8330  OZ600 MS/xD Controller
 		1028 04a3  Precision M4600
 	8331  O2 Flash Memory Card
@@ -14592,7 +14626,11 @@
 1467  DIGICOM SPA
 1468  AMBIT Microsystem Corp.
 1469  Cleveland Motion Controls
-146a  IFR
+# formerly IFR.
+146a  Aeroflex
+# 1.5 GHz to 3.0 GHz x 1Hz
+	3010  3010 RF Synthesizer
+	3a11  3011A PXI RF Synthesizer
 146b  Parascan Technologies Ltd
 146c  Ruby Tech Corp.
 	1430  FE-1430TX Fast Ethernet PCI Adapter
@@ -15617,6 +15655,7 @@
 		0070 9600  WinTV 88x Video
 		0070 9802  WinTV-HVR1100 DVB-T/Hybrid (Low Profile)
 		1002 00f8  ATI TV Wonder Pro
+		1002 00f9  ATI TV Wonder
 		1002 a101  HDTV Wonder
 		1043 4823  ASUS PVR-416
 		107d 6611  Winfast TV 2000XP Expert
@@ -17696,6 +17735,7 @@
 	4005  Accelerated Virtual Video Adapter
 	4006  Memory Ballooning Controller
 1ab9  Espia Srl
+1ac8  Aeroflex Gaisler
 1acc  Point of View BV
 1ad7  Spectracom Corporation
 	8000  TSync-PCIe Time Code Processor
@@ -17803,7 +17843,9 @@
 	9192  88SE9172 SATA III 6Gb/s RAID Controller
 	91a0  88SE912x SATA 6Gb/s Controller [IDE mode]
 	91a4  88SE912x IDE Controller
+	9220  88SE9220 PCIe 2.0 x2 2-port SATA 6 Gb/s RAID Controller
 	9230  88SE9230 PCIe SATA 6Gb/s Controller
+	9235  88SE9235 PCIe 2.0 x2 4-port SATA 6 Gb/s Controller
 	9445  88SE9445 PCIe 2.0 x4 4-Port SAS/SATA 6 Gbps RAID Controller
 	9480  88SE9480 SAS/SATA 6Gb/s RAID controller
 	9485  88SE9485 SAS/SATA 6Gb/s controller
@@ -18466,7 +18508,7 @@
 	1025  16 photo couple 16 relay Card
 	4000  WatchDog Card
 6688  Zycoo Co., Ltd
-	1200  CooVOX TDM Analog Module
+	1200  CooVox TDM Analog Module
 	1400  CooVOX TDM GSM Module
 	1600  CooVOX TDM E1/T1 Module
 	1800  CooVOX TDM BRI Module
@@ -18590,7 +18632,7 @@
 	0126  2nd Generation Core Processor Family Integrated Graphics Controller
 		1028 04cc  Vostro 3350
 	0150  Xeon E3-1200 v2/3rd Gen Core processor DRAM Controller
-		1043 84ca  P8H77-I Motherboard
+		1043 84ca  P8 series motherboard
 		1849 0150  Motherboard
 	0151  Xeon E3-1200 v2/3rd Gen Core processor PCI Express Root Port
 		1043 1477  N56VZ
@@ -18619,6 +18661,7 @@
 		1043 844d  P8 series motherboard
 	015e  Xeon E3-1200 v2/3rd Gen Core processor Graphics Controller
 	0162  Xeon E3-1200 v2/3rd Gen Core processor Graphics Controller
+		1043 84ca  P8 series motherboard
 		1849 0162  Motherboard
 	0166  3rd Gen Core processor Graphics Controller
 		1043 1517  Zenbook Prime UX31A
@@ -19980,8 +20023,8 @@
 	1520  I350 Ethernet Controller Virtual Function
 	1521  I350 Gigabit Network Connection
 		1028 0602  Gigabit 2P I350-t LOM
-		1028 1f60  Intel GbE 4P I350crNDC
-		1028 1f62  Intel GbE 2P I350crNDC
+		1028 1f60  Gigabit 4P I350-t rNDC
+		1028 1f62  Gigabit 4P X540/I350 rNDC
 		1028 ff9a  Gigabit 4P X710/I350 rNDC
 		103c 17d1  Ethernet 1Gb 4-port 366FLR Adapter
 		103c 2003  Ethernet 1Gb 2-port 367i Adapter
@@ -20010,7 +20053,8 @@
 		8086 00a3  Ethernet Server Adapter I350-F4
 		8086 00a4  Ethernet Server Adapter I350-F2
 	1523  I350 Gigabit Backplane Connection
-		1028 1f9b  Gigabit 4P I350 bNDC
+		1028 0060  Gigabit 2P I350 LOM
+		1028 1f9b  Gigabit 4P I350-t bNDC
 		103c 1784  Ethernet 1Gb 2-port 361FLB Adapter
 		103c 18d1  Ethernet 1Gb 2-port 361FLB Adapter
 		103c 1989  Ethernet 1Gb 2-port 363i Adapter
@@ -20042,11 +20086,11 @@
 	1529  82599 10 Gigabit Dual Port Network Connection with FCoE
 	152a  82599 10 Gigabit Dual Port Backplane Connection with FCoE
 	1533  I210 Gigabit Network Connection
-		103c 0003  Ethernet Server Adapter I210-T1
+		103c 0003  Ethernet I210-T1 GbE NIC
+		10a9 802c  UV300 BaseIO single-port GbE
 		17aa 1100  ThinkServer Ethernet Server Adapter
 		8086 0001  Ethernet Server Adapter I210-T1
 		8086 0002  Ethernet Server Adapter I210-T1
-	1534  I210 Gigabit Network Connection
 	1536  I210 Gigabit Fiber Network Connection
 	1537  I210 Gigabit Backplane Connection
 	1538  I210 Gigabit Network Connection
@@ -20078,6 +20122,8 @@
 		8086 0001  Ethernet Server Bypass Adapter X520-SR2
 		8086 0002  Ethernet Server Bypass Adapter X520-LR2
 	1560  Ethernet Controller X540
+	156f  Ethernet Connection I219-LM
+	1570  Ethernet Connection I219-V
 	1571  XL710 X710 Virtual Function
 	1572  Ethernet 10G 2P X710 Adapter
 		1028 1f99  Ethernet 10G 4P X710/I350 rNDC
@@ -20093,7 +20139,7 @@
 	1580  Ethernet Controller XL710 for 40Gbe backplane
 	1581  Ethernet Controller X710 for 10Gbe backplane
 		1028 1f98  Ethernet 10G 4P X710-k bNDC
-	1583  Ethernet Controller LX710 for 40GbE QSFP+
+	1583  Ethernet Controller XL710 for 40GbE QSFP+
 		8086 0001  Ethernet Converged Network Adapter XL710-Q2
 		8086 0002  Ethernet Converged Network Adapter XL710-Q2
 		8086 0003  Ethernet I/O Module XL710-Q2
@@ -20381,7 +20427,7 @@
 	1e00  7 Series/C210 Series Chipset Family 4-port SATA Controller [IDE mode]
 	1e01  7 Series Chipset Family 4-port SATA Controller [IDE mode]
 	1e02  7 Series/C210 Series Chipset Family 6-port SATA Controller [AHCI mode]
-		1043 84ca  P8H77-I Motherboard
+		1043 84ca  P8 series motherboard
 		1849 1e02  Motherboard
 	1e03  7 Series Chipset Family 6-port SATA Controller [AHCI mode]
 		1043 1477  N56VZ
@@ -20417,11 +20463,12 @@
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
 		1043 8415  P8H77-I Motherboard
+		1043 8445  ASUS P8Z77-V LX Motherboard
 		1849 1898  Z77 Extreme4 motherboard
 	1e22  7 Series/C210 Series Chipset Family SMBus Controller
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
-		1043 84ca  P8H77-I Motherboard
+		1043 84ca  P8 series motherboard
 		1849 1e22  Motherboard
 	1e24  7 Series/C210 Series Chipset Family Thermal Management Controller
 		1043 1517  Zenbook Prime UX31A
@@ -20429,24 +20476,24 @@
 	1e26  7 Series/C210 Series Chipset Family USB Enhanced Host Controller #1
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
-		1043 84ca  P8H77-I Motherboard
+		1043 84ca  P8 series motherboard
 		1849 1e26  Motherboard
 	1e2d  7 Series/C210 Series Chipset Family USB Enhanced Host Controller #2
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
-		1043 84ca  P8H77-I Motherboard
+		1043 84ca  P8 series motherboard
 		1849 1e2d  Motherboard
 	1e31  7 Series/C210 Series Chipset Family USB xHCI Host Controller
 		103c 17ab  ProBook 6570b
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
-		1043 84ca  P8H77-I Motherboard
+		1043 84ca  P8 series motherboard
 		1849 1e31  Motherboard
 	1e33  7 Series/C210 Series Chipset Family LAN Controller
 	1e3a  7 Series/C210 Series Chipset Family MEI Controller #1
 		1043 1477  N56VZ
 		1043 1517  Zenbook Prime UX31A
-		1043 84ca  P8H77-I Motherboard
+		1043 84ca  P8 series motherboard
 		1849 1e3a  Motherboard
 	1e3b  7 Series/C210 Series Chipset Family MEI Controller #2
 	1e3c  7 Series/C210 Series Chipset Family IDE-r Controller
@@ -20455,6 +20502,7 @@
 	1e42  7 Series Chipset Family LPC Controller
 	1e43  7 Series Chipset Family LPC Controller
 	1e44  Z77 Express Chipset LPC Controller
+		1043 84ca  P8 series motherboard
 		1849 1e44  Motherboard
 	1e45  7 Series Chipset Family LPC Controller
 	1e46  Z75 Express Chipset LPC Controller
