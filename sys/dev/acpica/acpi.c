@@ -446,9 +446,6 @@ acpi_attach(device_t dev)
     AcpiGbl_AutoSerializeMethods = acpi_auto_serialize_methods;
     AcpiGbl_EnableInterpreterSlack = TRUE;
 
-    device_printf(dev, "AcpiDbgLayer:%#x AcpiDbgLevel:%#x\n",
-	AcpiDbgLayer, AcpiDbgLevel);
-
     /* Start up the ACPI CA subsystem. */
     status = AcpiInitializeSubsystem();
     if (ACPI_FAILURE(status)) {
