@@ -168,7 +168,7 @@ AcpiOsGetTimer (void)
 }
 
 void
-AcpiOsSleep(ACPI_INTEGER Milliseconds)
+AcpiOsSleep(UINT64 Milliseconds)
 {
     int		timo;
     static int	dummy;

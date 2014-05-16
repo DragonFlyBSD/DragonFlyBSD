@@ -1334,7 +1334,7 @@ acpi_thinkpad_refresh(void *arg)
 		sc->sensors[i].value = data;
 		sc->sensors[i].flags &= ~SENSOR_FINVALID;
 	} else {
-		ACPI_INTEGER speed;
+		UINT64 speed;
 
 		ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_FANSPEED, &speed, 2);
 		sc->sensors[i].value = speed;

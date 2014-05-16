@@ -46,9 +46,9 @@
 
 struct aibs_sensor {
 	struct ksensor	s;
-	ACPI_INTEGER	i;
-	ACPI_INTEGER	l;
-	ACPI_INTEGER	h;
+	UINT64		i;
+	UINT64		l;
+	UINT64		h;
 };
 
 struct aibs_softc {
@@ -337,9 +337,9 @@ aibs_refresh_r(struct aibs_softc *sc, enum sensor_type st)
 		ACPI_OBJECT		p, *bp;
 		ACPI_OBJECT_LIST	mp;
 		ACPI_BUFFER		b;
-		ACPI_INTEGER		v;
+		UINT64			v;
 		struct ksensor		*s = &as[i].s;
-		const ACPI_INTEGER	l = as[i].l, h = as[i].h;
+		const UINT64		l = as[i].l, h = as[i].h;
 
 		p.Type = ACPI_TYPE_INTEGER;
 		p.Integer.Value = as[i].i;

@@ -41,7 +41,7 @@
  */
 
 int
-acpi_PkgInt(ACPI_OBJECT *res, int idx, ACPI_INTEGER *dst)
+acpi_PkgInt(ACPI_OBJECT *res, int idx, UINT64 *dst)
 {
     ACPI_OBJECT		*obj;
 
@@ -56,7 +56,7 @@ acpi_PkgInt(ACPI_OBJECT *res, int idx, ACPI_INTEGER *dst)
 int
 acpi_PkgInt32(ACPI_OBJECT *res, int idx, uint32_t *dst)
 {
-    ACPI_INTEGER	tmp;
+    UINT64		tmp;
     int			error;
 
     error = acpi_PkgInt(res, idx, &tmp);
