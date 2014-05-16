@@ -2633,6 +2633,7 @@ TO_REMOVE+=/usr/share/man/cat8/ilmid.8.gz
 TO_REMOVE+=/usr/share/man/man8/ilmid.8.gz
 TO_REMOVE+=/usr/share/man/cat8/scspd.8.gz
 TO_REMOVE+=/usr/share/man/man8/scspd.8.gz
+TO_REMOVE+=/boot/kernel/.ko
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
