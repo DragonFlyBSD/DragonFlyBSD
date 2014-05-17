@@ -75,9 +75,8 @@ AcpiOsTableOverride (
         return(AE_NOT_FOUND);
     if ((p = preload_search_info(acpi_dsdt, MODINFO_ADDR)) == NULL)
         return(AE_ERROR);
-
     *NewTable = *(void **)p;
-    kprintf("ACPI: DSDT was overridden.\n");
+
     return (AE_OK);
 }
 
