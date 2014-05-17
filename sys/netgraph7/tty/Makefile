@@ -1,4 +1,4 @@
-MOD=		ng_tty
+KMOD=		ng_tty
 SRCS= 		ng_tty.c
 KMODDEPS=	netgraph
 
