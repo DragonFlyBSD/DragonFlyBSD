@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi.4,v 1.61.8.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd April 29, 2014
+.Dd May 18, 2014
 .Dt ACPI 4
 .Os
 .Sh NAME
@@ -195,6 +195,8 @@ entry for access after boot.
 Enables loading of a custom ACPI DSDT.
 .It Va acpi_dsdt_name
 Name of the DSDT table to load, if loading is enabled.
+It is relative to
+.Pa /boot/kernel .
 .It Va debug.acpi.disabled
 Selectively disables portions of ACPI that are enabled by default, for
 debugging purposes.
@@ -561,12 +563,12 @@ provides a way to override it with your own AML code to work around
 or debug such problems.
 Note that all AML in your DSDT and any SSDT tables is overridden.
 .Pp
-In order to load your AML code, you must edit
-.Pa /boot/loader.conf
-and include the following lines.
+In order to load your AML code, copy it to
+.Pa /boot/kernel/acpi_dsdt.aml
+and add the following line to
+.Pa /boot/loader.conf.
 .Bd -literal -offset indent
 acpi_dsdt_load="YES"
-acpi_dsdt_name="/boot/acpi_dsdt.aml" # You may change this name.
 .Ed
 .Pp
 In order to prepare your AML code, you will need the
