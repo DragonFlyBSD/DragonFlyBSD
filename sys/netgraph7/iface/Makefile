@@ -3,7 +3,6 @@
 
 KMOD=		ng_iface
 SRCS= 		ng_iface.c opt_inet.h opt_inet6.h
-KMODDEPS=	netgraph
 
 .if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:

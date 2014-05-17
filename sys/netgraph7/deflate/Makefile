@@ -3,6 +3,5 @@
 
 KMOD=		ng_deflate
 SRCS= 		ng_deflate.c opt_netgraph.h
-KMODDEPS=	netgraph
 
 .include <bsd.kmod.mk>
