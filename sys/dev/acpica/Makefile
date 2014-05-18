@@ -29,7 +29,7 @@ CFLAGS+=	-DACPI_DEBUG_CACHE
 
 KMOD	= acpi
 
-# ACPI CA sources
+# ACPICA sources
 SRCS+=	ahids.c
 SRCS+=	dbcmds.c dbconvert.c dbdisply.c dbexec.c dbfileio.c dbhistry.c
 SRCS+=	dbinput.c dbstats.c dbtest.c dbutils.c dbxface.c

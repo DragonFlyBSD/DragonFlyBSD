@@ -226,7 +226,7 @@ static const char* sleep_state_names[] = {
 SYSCTL_NODE(_debug, OID_AUTO, acpi, CTLFLAG_RD, NULL, "ACPI debugging");
 static char acpi_ca_version[12];
 SYSCTL_STRING(_debug_acpi, OID_AUTO, acpi_ca_version, CTLFLAG_RD,
-	      acpi_ca_version, 0, "Version of Intel ACPI-CA");
+	      acpi_ca_version, 0, "Version of Intel ACPICA");
 
 /*
  * Use this tunable to disable the control method auto-serialization

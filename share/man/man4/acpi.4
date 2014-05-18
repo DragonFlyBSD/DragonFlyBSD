@@ -44,7 +44,7 @@ standard.
 This support includes platform hardware discovery (superseding the
 PnP and PCI BIOS), as well as power management (superseding APM) and
 other features.
-ACPI core support is provided by the ACPI CA reference implementation
+ACPI core support is provided by the ACPICA reference implementation
 from Intel.
 .Pp
 Note that the
@@ -402,7 +402,7 @@ the region to be avoided in the kernel environment variable
 .Va debug.acpi.avoid .
 The object and all of its children will be ignored during the
 bus/children scan of the namespace.
-The ACPI CA code will still know about the avoided region.
+The ACPICA code will still know about the avoided region.
 .Sh DEBUGGING OUTPUT
 To enable debugging output,
 .Nm
@@ -418,10 +418,10 @@ tokens, with layers listed in
 and levels in
 .Va debug.acpi.level .
 .Pp
-The first set of layers is for ACPI-CA components, and the second is for
+The first set of layers is for ACPICA components, and the second is for
 .Dx
 drivers.
-The ACPI-CA layer descriptions include the prefix for the files they
+The ACPICA layer descriptions include the prefix for the files they
 refer to.
 The supported layers are:
 .Pp
@@ -451,7 +451,7 @@ Usermode support routines ("os")
 .It Li ACPI_CA_DISASSEMBLER
 Disassembler implementation (unused)
 .It Li ACPI_ALL_COMPONENTS
-All the above ACPI-CA components
+All the above ACPICA components
 .It Li ACPI_AC_ADAPTER
 AC adapter driver
 .It Li ACPI_BATTERY
@@ -538,7 +538,7 @@ Selection of the appropriate layer and level values is important
 to avoid massive amounts of debugging output.
 For example, the following configuration is a good way to gather initial
 information.
-It enables debug output for both ACPI-CA and the
+It enables debug output for both ACPICA and the
 .Nm
 driver, printing basic information about errors, warnings, and progress.
 .Bd -literal -offset indent
@@ -546,7 +546,7 @@ debug.acpi.layer="ACPI_ALL_COMPONENTS ACPI_ALL_DRIVERS"
 debug.acpi.level="ACPI_LV_ALL_EXCEPTIONS"
 .Ed
 .Pp
-Debugging output by the ACPI CA subsystem is prefixed with the
+Debugging output by the ACPICA subsystem is prefixed with the
 module name in lowercase, followed by a source line number.
 Output from the
 .Dx Ns -local
@@ -611,7 +611,7 @@ utilities and some ACPI knowledge.
 .Re
 .Sh AUTHORS
 .An -nosplit
-The ACPI CA subsystem is developed and maintained by
+The ACPICA subsystem is developed and maintained by
 Intel Architecture Labs.
 .Pp
 The following people made notable contributions to the ACPI subsystem
