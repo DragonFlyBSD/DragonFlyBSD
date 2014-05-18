@@ -94,7 +94,8 @@ as are allowed by the number of CPUs in the system.
 .Pp
 If multiple transmission queues are used,
 the round-robin arbitration is performed among the transmission queues.
-And the round-robin arbitration between transmission queues is done at the
+And if both TSO and multiple tranmission queues are used,
+the round-robin arbitration between transmission queues is done at the
 TCP segment boundary after the hardware segmentation is performed.
 .Pp
 82598 supports 16 reception queues and 32 transmission queues.
