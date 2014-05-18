@@ -364,10 +364,8 @@ netisr_queue(int num, struct mbuf *m)
 	 */
 	if ((m->m_flags & M_HASH) == 0) {
 		ni->ni_hashfn(&m, 0);
-		if (m == NULL) {
-			m_freem(m);
+		if (m == NULL)
 			return (EIO);
-		}
 		if ((m->m_flags & M_HASH) == 0) {
 			kprintf("netisr_queue(%d): packet hash failed\n", num);
 			m_freem(m);
