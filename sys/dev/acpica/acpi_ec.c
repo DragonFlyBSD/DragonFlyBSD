@@ -36,6 +36,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/rman.h>
+#include <sys/ktr.h>
 
 #include "acpi.h"
 #include "accommon.h"
