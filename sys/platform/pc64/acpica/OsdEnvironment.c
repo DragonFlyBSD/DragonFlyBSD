@@ -44,13 +44,13 @@ SYSCTL_ULONG(_machdep, OID_AUTO, acpi_root, CTLFLAG_RD, &i386_acpi_root, 0,
 ACPI_STATUS
 AcpiOsInitialize(void)
 {
-	return(0);
+	return (AE_OK);
 }
 
 ACPI_STATUS
 AcpiOsTerminate(void)
 {
-	return(0);
+	return (AE_OK);
 }
 
 ACPI_PHYSICAL_ADDRESS
