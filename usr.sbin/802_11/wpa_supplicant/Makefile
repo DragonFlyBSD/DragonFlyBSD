@@ -94,7 +94,7 @@ SRCS+=	eap_sim_common.c
 #
 .if !empty(CFLAGS:M*-DPCSC_FUNCS)
 SRCS+=	pcsc_funcs.c
-DPADD+=${LIBPTHREAD}
+DPADD+=${LIBPCSCLITE} ${LIBPTHREAD}
 LDADD+=-lpcsclite -lpthread
 .endif
 .endif
