@@ -90,6 +90,7 @@ main(int argc, char *argv[])
 
 	memset(&mreq, 0, sizeof(mreq));
 	mreq.imr_multiaddr = in.sin_addr;
+	mreq.imr_interface = iface;
 	if (setsockopt(s, IPPROTO_IP, IP_ADD_MEMBERSHIP,
 	    &mreq, sizeof(mreq)) < 0) {
 		fprintf(stderr, "setsockopt IP MEMSHIP failed: %d\n", errno);
