@@ -729,10 +729,10 @@ pass:
 	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr))) {
 		struct in_multi *inm;
 
-		/* XXX Multicast is not MPSAFE yet */
-		get_mplock();
-
 		if (ip_mrouter != NULL) {
+			/* XXX Multicast routing is not MPSAFE yet */
+			get_mplock();
+
 			/*
 			 * If we are acting as a multicast router, all
 			 * incoming multicast packets are passed to the
@@ -749,15 +749,15 @@ pass:
 				return;
 			}
 
+			rel_mplock();
+
 			/*
 			 * The process-level routing daemon needs to receive
 			 * all multicast IGMP packets, whether or not this
 			 * host belongs to their destination groups.
 			 */
-			if (ip->ip_p == IPPROTO_IGMP) {
-				rel_mplock();
+			if (ip->ip_p == IPPROTO_IGMP)
 				goto ours;
-			}
 			ipstat.ips_forward++;
 		}
 		/*
@@ -766,13 +766,10 @@ pass:
 		 */
 		inm = IN_LOOKUP_MULTI(&ip->ip_dst, m->m_pkthdr.rcvif);
 		if (inm == NULL) {
-			rel_mplock();
 			ipstat.ips_notmember++;
 			m_freem(m);
 			return;
 		}
-
-		rel_mplock();
 		goto ours;
 	}
 	if (ip->ip_dst.s_addr == INADDR_BROADCAST)
