@@ -847,7 +847,8 @@ in_pcbladdr_find(struct inpcb *inp, struct sockaddr *nam,
 		 * unless it is the loopback (in case a route
 		 * to our address on another net goes to loopback).
 		 */
-		if (ro->ro_rt && !(ro->ro_rt->rt_ifp->if_flags & IFF_LOOPBACK)) {
+		if (ro->ro_rt &&
+		    !(ro->ro_rt->rt_ifp->if_flags & IFF_LOOPBACK)) {
 			if (jailed) {
 				if (jailed_ip(cred->cr_prison, 
 				    ro->ro_rt->rt_ifa->ifa_addr)) {
@@ -913,8 +914,10 @@ in_pcbladdr_find(struct inpcb *inp, struct sockaddr *nam,
 		 * and exit to caller, that will do the lookup.
 		 */
 		if (ia == NULL && jailed) {
-			if ((jsin = prison_get_nonlocal(cred->cr_prison, AF_INET, NULL)) != NULL ||
-			    (jsin = prison_get_local(cred->cr_prison, AF_INET, NULL)) != NULL) {
+			if ((jsin = prison_get_nonlocal(
+				cred->cr_prison, AF_INET, NULL)) != NULL ||
+			    (jsin = prison_get_local(
+				cred->cr_prison, AF_INET, NULL)) != NULL) {
 				*plocal_sin = satosin(jsin);
 			} else {
 				/* IPv6 only Jail */
