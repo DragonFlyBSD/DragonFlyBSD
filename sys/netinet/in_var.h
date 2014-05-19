@@ -203,6 +203,9 @@ IN_LOOKUP_MULTI(const struct in_addr *_addr, struct ifnet *_ifp)
 	const struct ifmultiaddr *_ifma;
 	struct in_multi *_inm = NULL;
 
+	if (_ifp == NULL)
+		return NULL;
+
 	/* TODO: need ifnet_serialize_main */
 	ifnet_serialize_all(_ifp);
 	TAILQ_FOREACH(_ifma, &_ifp->if_multiaddrs, ifma_link) {
