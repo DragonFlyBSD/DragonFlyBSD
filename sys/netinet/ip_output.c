@@ -2173,8 +2173,6 @@ ip_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in *dst,
 			dst->sin_family = AF_INET;
 		}
 #endif
-		get_mplock();	/* is if_simloop() mpsafe yet? */
 		if_simloop(ifp, copym, dst->sin_family, 0);
-		rel_mplock();
 	}
 }
