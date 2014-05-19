@@ -79,6 +79,51 @@ MALLOC_DEFINE(M_P31B, "p1003.1b", "Posix 1003.1B");
 #define CAN_AFFECT(p, cr, q) ((cr)->cr_uid == 0)
 #endif
 
+#if !defined(_KPOSIX_PRIORITY_SCHEDULING)
+
+int syscall_not_present(const char *s);
+
+/* The system calls return ENOSYS if an entry is called that is
+ * not run-time supported.  I am also logging since some programs
+ * start to use this when they shouldn't.  That will be removed if annoying.
+ */
+int syscall_not_present(const char *s)
+{
+	struct proc *p = curproc;
+	log(LOG_ERR, "cmd %s pid %d tried to use non-present %s\n",
+			p->p_comm, p->p_pid, s);
+
+	/* a " return nosys(p, uap); " here causes a core dump.
+	 */
+
+	return ENOSYS;
+}
+
+/* Not configured but loadable via a module:
+ */
+
+static int sched_attach(void)
+{
+	return 0;
+}
+
+#define SYSCALL_NOT_PRESENT_GEN(SC) \
+int sys_##SC (struct SC##_args *uap) \
+{ \
+	return syscall_not_present(#SC); \
+}
+
+SYSCALL_NOT_PRESENT_GEN(sched_setparam)
+SYSCALL_NOT_PRESENT_GEN(sched_getparam)
+SYSCALL_NOT_PRESENT_GEN(sched_setscheduler)
+SYSCALL_NOT_PRESENT_GEN(sched_getscheduler)
+SYSCALL_NOT_PRESENT_GEN(sched_yield)
+SYSCALL_NOT_PRESENT_GEN(sched_get_priority_max)
+SYSCALL_NOT_PRESENT_GEN(sched_get_priority_min)
+SYSCALL_NOT_PRESENT_GEN(sched_rr_get_interval)
+
+#else
+
 /*
  * p31b_proc: Look up a proc from a PID.  If proc is 0 it is
  * my own proc.
@@ -129,52 +174,6 @@ p31b_proc_done(struct proc *other_proc)
 		PRELE(other_proc);
 	}
 }
-
-
-#if !defined(_KPOSIX_PRIORITY_SCHEDULING)
-
-int syscall_not_present(const char *s);
-
-/* The system calls return ENOSYS if an entry is called that is
- * not run-time supported.  I am also logging since some programs
- * start to use this when they shouldn't.  That will be removed if annoying.
- */
-int syscall_not_present(const char *s)
-{
-	struct proc *p = curproc;
-	log(LOG_ERR, "cmd %s pid %d tried to use non-present %s\n",
-			p->p_comm, p->p_pid, s);
-
-	/* a " return nosys(p, uap); " here causes a core dump.
-	 */
-
-	return ENOSYS;
-}
-
-/* Not configured but loadable via a module:
- */
-
-static int sched_attach(void)
-{
-	return 0;
-}
-
-#define SYSCALL_NOT_PRESENT_GEN(SC) \
-int sys_##SC (struct SC##_args *uap) \
-{ \
-	return syscall_not_present(#SC); \
-}
-
-SYSCALL_NOT_PRESENT_GEN(sched_setparam)
-SYSCALL_NOT_PRESENT_GEN(sched_getparam)
-SYSCALL_NOT_PRESENT_GEN(sched_setscheduler)
-SYSCALL_NOT_PRESENT_GEN(sched_getscheduler)
-SYSCALL_NOT_PRESENT_GEN(sched_yield)
-SYSCALL_NOT_PRESENT_GEN(sched_get_priority_max)
-SYSCALL_NOT_PRESENT_GEN(sched_get_priority_min)
-SYSCALL_NOT_PRESENT_GEN(sched_rr_get_interval)
-
-#else
 
 /* Configured in kernel version:
  */
