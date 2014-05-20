@@ -122,15 +122,11 @@
 #include <machine/acpica_machdep.h>
 
 #define ACPI_UINTPTR_T		uintptr_t
-
-#ifdef _KERNEL
-#include "opt_acpi.h"
-#endif
-
 #define ACPI_USE_DO_WHILE_0
 
 #ifdef _KERNEL
 
+#include "opt_acpi.h"
 #include <sys/ctype.h>
 #include <sys/systm.h>
 #include <stdarg.h>
@@ -199,7 +195,5 @@ struct acpicache;
 #define ACPI_FLUSH_CPU_CACHE()
 
 #endif /* _KERNEL */
-
-#define inline		__inline
 
 #endif /* __ACDRAGONFLY_H_ */
