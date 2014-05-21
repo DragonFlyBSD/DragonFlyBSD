@@ -80,6 +80,7 @@
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
 #include <sys/in_cksum.h>
+#include <sys/ktr.h>
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
@@ -116,6 +117,20 @@
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
 #endif
+
+#define UDP_KTR_STRING		"inp=%p"
+#define UDP_KTR_ARGS		struct inpcb *inp
+
+#ifndef KTR_UDP
+#define KTR_UDP			KTR_ALL
+#endif
+
+KTR_INFO_MASTER(udp);
+KTR_INFO(KTR_UDP, udp, output_beg, 0, UDP_KTR_STRING, UDP_KTR_ARGS);
+KTR_INFO(KTR_UDP, udp, output_end, 1, UDP_KTR_STRING, UDP_KTR_ARGS);
+KTR_INFO(KTR_UDP, udp, ip_output, 2, UDP_KTR_STRING, UDP_KTR_ARGS);
+
+#define logudp(name, inp)	KTR_LOG(udp_##name, inp)
 
 /*
  * UDP protocol implementation.
@@ -849,6 +864,8 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	struct sockaddr_in *sin;	/* really is initialized before use */
 	int error = 0, lport_any = 0;
 
+	logudp(output_beg, inp);
+
 	if (len + sizeof(struct udpiphdr) > IP_MAXPACKET) {
 		error = EMSGSIZE;
 		goto release;
@@ -969,6 +986,7 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	((struct ip *)ui)->ip_tos = inp->inp_ip_tos;	/* XXX */
 	udp_stat.udps_opackets++;
 
+	logudp(ip_output, inp);
 	error = ip_output(m, inp->inp_options, &inp->inp_route,
 	    (inp->inp_socket->so_options & (SO_DONTROUTE | SO_BROADCAST)) |
 	    flags | IP_DEBUGROUTE,
@@ -994,12 +1012,15 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 #endif
 		}
 	}
+	logudp(output_end, inp);
 	return (error);
 
 release:
 	if (held_td)
 		lwkt_rele(td);
 	m_freem(m);
+
+	logudp(output_end, inp);
 	return (error);
 }
 
