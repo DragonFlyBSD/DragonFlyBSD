@@ -41,11 +41,6 @@
 #include <vm/vm_param.h>
 #include <vm/vm_zone.h>
 #include <sys/lock.h>
-#ifdef SPARSE_MAPPING
-#include <vm/vm_object.h>
-#include <vm/vm_kern.h>
-#include <vm/vm_extern.h>
-#endif
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 
@@ -93,9 +88,6 @@ static struct linker_file_ops link_elf_module_ops = {
 
 typedef struct elf_file {
     caddr_t		address;	/* Relocation address */
-#ifdef SPARSE_MAPPING
-    vm_object_t		object;		/* VM object to hold file pages */
-#endif
     const Elf_Dyn*	dynamic;	/* Symbol table etc. */
     Elf_Hashelt		nbuckets;	/* DT_HASH info */
     Elf_Hashelt		nchains;
@@ -150,9 +142,6 @@ link_elf_init(void* arg)
     if (dp) {
 	ef = kmalloc(sizeof(struct elf_file), M_LINKER, M_INTWAIT | M_ZERO);
 	ef->address = NULL;
-#ifdef SPARSE_MAPPING
-	ef->object = NULL;
-#endif
 	ef->dynamic = dp;
 	modname = NULL;
 	modptr = preload_search_by_type("elf kernel");
@@ -362,9 +351,6 @@ link_elf_preload_file(const char *filename, linker_file_t *result)
     ef = kmalloc(sizeof(struct elf_file), M_LINKER, M_WAITOK | M_ZERO);
     ef->modptr = modptr;
     ef->address = *(caddr_t *)baseptr;
-#ifdef SPARSE_MAPPING
-    ef->object = NULL;
-#endif
     dp = (vm_offset_t)ef->address + *(vm_offset_t *)dynptr;
     ef->dynamic = (Elf_Dyn *)dp;
     lf = linker_make_file(filename, ef, &link_elf_module_ops);
@@ -557,31 +543,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     mapsize = base_vlimit - base_vaddr;
 
     ef = kmalloc(sizeof(struct elf_file), M_LINKER, M_WAITOK | M_ZERO);
-#ifdef SPARSE_MAPPING
-    ef->object = vm_object_allocate(OBJT_DEFAULT, mapsize >> PAGE_SHIFT);
-    if (ef->object == NULL) {
-	kfree(ef, M_LINKER);
-	error = ENOMEM;
-	goto out;
-    }
-    vm_object_hold(ef->object);
-    vm_object_reference_locked(ef->object);
-    ef->address = (caddr_t)vm_map_min(&kernel_map);
-    error = vm_map_find(&kernel_map, ef->object, 0,
-			(vm_offset_t *)&ef->address,
-			mapsize, PAGE_SIZE,
-			1, VM_MAPTYPE_NORMAL,
-			VM_PROT_ALL, VM_PROT_ALL,
-			0);
-    vm_object_drop(ef->object);
-    if (error) {
-	vm_object_deallocate(ef->object);
-	kfree(ef, M_LINKER);
-	goto out;
-    }
-#else
     ef->address = kmalloc(mapsize, M_LINKER, M_WAITOK);
-#endif
     mapbase = ef->address;
 
     /*
@@ -593,43 +555,19 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 			segbase, segs[i]->p_filesz, segs[i]->p_offset,
 			UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid);
 	if (error) {
-#ifdef SPARSE_MAPPING
-	    vm_map_remove(&kernel_map, (vm_offset_t) ef->address,
-			  (vm_offset_t) ef->address
-			  + (ef->object->size << PAGE_SHIFT));
-	    vm_object_deallocate(ef->object);
-#else
 	    kfree(ef->address, M_LINKER);
-#endif
 	    kfree(ef, M_LINKER);
 	    goto out;
 	}
 	bzero(segbase + segs[i]->p_filesz,
 	      segs[i]->p_memsz - segs[i]->p_filesz);
-
-#ifdef SPARSE_MAPPING
-	/*
-	 * Wire down the pages
-	 */
-	vm_map_wire(&kernel_map,
-		    (vm_offset_t) segbase,
-		    (vm_offset_t) segbase + segs[i]->p_memsz,
-		    0);
-#endif
     }
 
     ef->dynamic = (const Elf_Dyn *) (mapbase + phdyn->p_vaddr - base_vaddr);
 
     lf = linker_make_file(filename, ef, &link_elf_file_ops);
     if (lf == NULL) {
-#ifdef SPARSE_MAPPING
-	vm_map_remove(&kernel_map, (vm_offset_t) ef->address,
-		      (vm_offset_t) ef->address
-		      + (ef->object->size << PAGE_SHIFT));
-	vm_object_deallocate(ef->object);
-#else
 	kfree(ef->address, M_LINKER);
-#endif
 	kfree(ef, M_LINKER);
 	error = ENOMEM;
 	goto out;
@@ -729,17 +667,8 @@ link_elf_unload_file(linker_file_t file)
     elf_file_t ef = file->priv;
 
     if (ef) {
-#ifdef SPARSE_MAPPING
-	if (ef->object) {
-	    vm_map_remove(&kernel_map, (vm_offset_t) ef->address,
-			  (vm_offset_t) ef->address
-			  + (ef->object->size << PAGE_SHIFT));
-	    vm_object_deallocate(ef->object);
-	}
-#else
 	if (ef->address)
 	    kfree(ef->address, M_LINKER);
-#endif
 	if (ef->symbase)
 	    kfree(ef->symbase, M_LINKER);
 	if (ef->strbase)
