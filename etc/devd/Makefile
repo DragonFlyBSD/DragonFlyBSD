@@ -6,7 +6,7 @@ FILES=	uath.conf usb.conf
 FILES+=	asus.conf
 .endif
 
-NO_OBJ=
+NOOBJ=
 FILESDIR=	/etc/devd
 FILESMODE=	644
 
