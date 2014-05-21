@@ -1,5 +1,4 @@
 # $FreeBSD: src/sys/boot/common/Makefile.inc,v 1.16 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/common/Makefile.inc,v 1.5 2008/09/02 17:21:12 dillon Exp $
 
 SRCS+=	bcache.c boot.c commands.c console.c devopen.c
 SRCS+=	interp_backslash.c interp_parse.c ls.c misc.c 
@@ -31,10 +30,6 @@ SRCS+=	pnp.c
 .if BOOT_DLOADER
 SRCS+=	do_dloader.c
 #MAN+=	../dloader/loader.dloader.8
-.endif
-
-.if BOOT_DEFAULT
-SRCS+=	do_default.c
 .endif
 
 MAN+=	loader.8
