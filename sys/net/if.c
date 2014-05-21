@@ -2342,7 +2342,6 @@ if_delallmulti_serialized(struct ifnet *ifp)
 	mark.ifma_addr = &sa;
 
 	TAILQ_INSERT_HEAD(&ifp->if_multiaddrs, &mark, ifma_link);
-
 	while ((ifma = TAILQ_NEXT(&mark, ifma_link)) != NULL) {
 		TAILQ_REMOVE(&ifp->if_multiaddrs, &mark, ifma_link);
 		TAILQ_INSERT_AFTER(&ifp->if_multiaddrs, ifma, &mark,
@@ -2353,6 +2352,7 @@ if_delallmulti_serialized(struct ifnet *ifp)
 
 		if_delmulti_serialized(ifp, ifma->ifma_addr);
 	}
+	TAILQ_REMOVE(&ifp->if_multiaddrs, &mark, ifma_link);
 }
 
 

@@ -317,6 +317,7 @@ mld6_input(struct mbuf *m, int off)
 				}
 			}
 		}
+		TAILQ_REMOVE(&ifp->if_multiaddrs, &mark, ifma_link);
 
 		ifnet_deserialize_all(ifp);
 
