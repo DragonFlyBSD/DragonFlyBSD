@@ -21,6 +21,7 @@ Foundation, 51 Franklin St - Fifth Floor, Boston, MA 02110-1301, USA. */
 
 #include "lib.h"
 
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
@@ -96,16 +97,33 @@ void search_path::command_line_dir(const char *s)
 
 FILE *search_path::open_file(const char *name, char **pathp)
 {
+  char *tmp;
+  struct stat st;
   assert(name != 0);
   if (IS_ABSOLUTE(name) || *dirs == '\0') {
-    FILE *fp = fopen(name, "r");
+    FILE *fp;
+
+    fp = fopen(name, "r");
+    if (fp == NULL) {
+	asprintf(&tmp, "%s.gz", name);
+	if (stat(tmp, &st) == 0) {
+	    char *cmd;
+	    asprintf(&cmd, "/usr/bin/zcat %s.gz", tmp);
+	    fp = popen(cmd, "r");
+	    a_delete cmd;
+	}
+    } else {
+	tmp = strsave(name);
+    }
     if (fp) {
       if (pathp)
-	*pathp = strsave(name);
-      return fp;
+	*pathp = tmp;
+      else
+	a_delete tmp;
+    } else {
+      a_delete tmp;
     }
-    else
-      return 0;
+    return fp;
   }
   unsigned namelen = strlen(name);
   char *p = dirs;
@@ -114,20 +132,29 @@ FILE *search_path::open_file(const char *name, char **pathp)
     if (!end)
       end = strchr(p, '\0');
     int need_slash = end > p && strchr(DIR_SEPS, end[-1]) == 0;
-    char *origpath = new char[(end - p) + need_slash + namelen + 1];
-    memcpy(origpath, p, end - p);
-    if (need_slash)
-      origpath[end - p] = '/';
-    strcpy(origpath + (end - p) + need_slash, name);
-#if 0
-    fprintf(stderr, "origpath `%s'\n", origpath);
-#endif
-    char *path = relocate(origpath);
-    a_delete origpath;
-#if 0
-    fprintf(stderr, "trying `%s'\n", path);
-#endif
-    FILE *fp = fopen(path, "r");
+
+    asprintf(&tmp, "%*.*s%s%s",
+	(int)(end - p), (int)(end - p), p,
+	(need_slash ? "/" : ""),
+	name);
+
+    FILE *fp;
+    fp = fopen(tmp, "r");
+    if (fp == NULL) {
+	a_delete tmp;
+	asprintf(&tmp, "%*.*s%s%s.gz",
+	    (int)(end - p), (int)(end - p), p,
+	    (need_slash ? "/" : ""),
+	    name);
+
+	if (stat(tmp, &st) == 0) {
+	    char *cmd;
+	    asprintf(&cmd, "/usr/bin/zcat %s.gz", tmp);
+	    fp = popen(cmd, "r");
+	    a_delete cmd;
+	}
+    }
+    char *path = tmp;
     if (fp) {
       if (pathp)
 	*pathp = path;
@@ -146,6 +173,9 @@ FILE *search_path::open_file(const char *name, char **pathp)
 FILE *search_path::open_file_cautious(const char *name, char **pathp,
 				      const char *mode)
 {
+  char *tmp;
+  struct stat st;
+
   if (!mode)
     mode = "r";
   bool reading = (strchr(mode, 'r') != 0);
@@ -156,13 +186,26 @@ FILE *search_path::open_file_cautious(const char *name, char **pathp,
   }
   if (!reading || IS_ABSOLUTE(name) || *dirs == '\0') {
     FILE *fp = fopen(name, mode);
+    if (fp == NULL) {
+	asprintf(&tmp, "%s.gz", name);
+	if (stat(tmp, &st) == 0) {
+	    char *cmd;
+	    asprintf(&cmd, "/usr/bin/zcat %s", tmp);
+	    fp = popen(cmd, "r");
+	    a_delete cmd;
+	}
+    } else {
+	tmp = strsave(name);
+    }
     if (fp) {
       if (pathp)
-	*pathp = strsave(name);
-      return fp;
+	*pathp = tmp;
+      else
+        a_delete tmp;
+    } else {
+      a_delete tmp;
     }
-    else
-      return 0;
+    return fp;
   }
   unsigned namelen = strlen(name);
   char *p = dirs;
@@ -171,29 +214,35 @@ FILE *search_path::open_file_cautious(const char *name, char **pathp,
     if (!end)
       end = strchr(p, '\0');
     int need_slash = end > p && strchr(DIR_SEPS, end[-1]) == 0;
-    char *origpath = new char[(end - p) + need_slash + namelen + 1];
-    memcpy(origpath, p, end - p);
-    if (need_slash)
-      origpath[end - p] = '/';
-    strcpy(origpath + (end - p) + need_slash, name);
-#if 0
-    fprintf(stderr, "origpath `%s'\n", origpath);
-#endif
-    char *path = relocate(origpath);
-    a_delete origpath;
-#if 0
-    fprintf(stderr, "trying `%s'\n", path);
-#endif
-    FILE *fp = fopen(path, mode);
+
+    asprintf(&tmp, "%*.*s%s%s",
+	(int)(end - p), (int)(end - p), p,
+	(need_slash ? "/" : ""),
+	name);
+
+    FILE *fp = fopen(tmp, mode);
+    if (fp == NULL) {
+	a_delete tmp;
+	asprintf(&tmp, "%*.*s%s%s.gz",
+	    (int)(end - p), (int)(end - p), p,
+	    (need_slash ? "/" : ""),
+	    name);
+	if (stat(tmp, &st) == 0) {
+	    char *cmd;
+	    asprintf(&cmd, "/usr/bin/zcat %s", tmp);
+	    fp = popen(cmd, "r");
+	    a_delete cmd;
+	}
+    }
     if (fp) {
       if (pathp)
-	*pathp = path;
+	*pathp = tmp;
       else
-	a_delete path;
+	a_delete tmp;
       return fp;
     }
     int err = errno;
-    a_delete path;
+    a_delete tmp;
     if (err != ENOENT)
     {
       errno = err;
