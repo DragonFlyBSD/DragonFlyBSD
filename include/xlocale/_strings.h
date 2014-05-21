@@ -32,28 +32,17 @@ typedef struct	_xlocale *locale_t;
 #endif
 
 /*
- * This file is included from both string.h and xlocale.h.  We need to expose
+ * This file is included from both strings.h and xlocale.h.  We need to expose
  * the declarations unconditionally if we are included from xlocale.h, but only
- * if we are in POSIX2008 mode if included from string.h.
+ * if we are in POSIX2008 mode if included from strings.h.
  */
 
-#ifndef _XLOCALE_STRING1_H
-#define _XLOCALE_STRING1_H
+#ifndef _XLOCALE_STRINGS1_H
+#define _XLOCALE_STRINGS1_H
 
 /*
  * POSIX2008 functions
  */
-int	 strcoll_l(const char *, const char *, locale_t);
-size_t	 strxfrm_l(char *, const char *, size_t, locale_t);
-#endif /* _XLOCALE_STRING1_H */
-
-/*
- * xlocale extensions
- */
-#ifdef _XLOCALE_H_
-#ifndef _XLOCALE_STRING2_H
-#define _XLOCALE_STRING2_H
-char	*strcasestr_l(const char *, const char *, locale_t);
-
-#endif /* _XLOCALE_STRING2_H */
-#endif /* _XLOCALE_H_ */
+int	 strcasecmp_l(const char *, const char *, locale_t);
+int	 strncasecmp_l(const char *, const char *, size_t, locale_t);
+#endif /* _XLOCALE_STRINGS1_H */

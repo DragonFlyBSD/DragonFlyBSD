@@ -59,6 +59,10 @@ char	*rindex(const char *, int) __pure;			/* LEGACY */
 int	 strcasecmp(const char *, const char *) __pure;
 int	 strncasecmp(const char *, const char *, size_t) __pure;
 #endif
+
+#if __POSIX_VISIBLE >= 200809 || defined(_XLOCALE_H_)
+#include <xlocale/_strings.h>
+#endif
 __END_DECLS
 
 #endif /* _STRINGS_H_ */
