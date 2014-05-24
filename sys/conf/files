@@ -2076,6 +2076,7 @@ ${OSACPI_MI_DIR}/Osd/OsdSynch.c		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdTable.c		optional acpi
 
 ${OSACPI_MI_DIR}/acpi_asus/acpi_asus.c		optional acpi_asus acpi
+${OSACPI_MI_DIR}/acpi_dock/acpi_dock.c		optional acpi_dock acpi
 ${OSACPI_MI_DIR}/acpi_fujitsu/acpi_fujitsu.c	optional acpi_fujitsu acpi
 ${OSACPI_MI_DIR}/acpi_hp/acpi_hp.c		optional acpi_hp acpi
 ${OSACPI_MI_DIR}/acpi_panasonic/acpi_panasonic.c optional acpi_panasonic acpi

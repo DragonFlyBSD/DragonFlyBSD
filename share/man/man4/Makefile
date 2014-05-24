@@ -4,6 +4,7 @@
 MAN=	aac.4 \
 	acpi.4 \
 	acpi_asus.4 \
+	acpi_dock.4 \
 	acpi_fujitsu.4 \
 	acpi_hp.4 \
 	acpi_panasonic.4 \
