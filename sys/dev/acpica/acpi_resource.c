@@ -693,7 +693,7 @@ static driver_t acpi_sysres_driver = {
 
 static devclass_t acpi_sysres_devclass;
 DRIVER_MODULE(acpi_sysresource, acpi, acpi_sysres_driver, acpi_sysres_devclass,
-    0, 0);
+    NULL, NULL);
 MODULE_DEPEND(acpi_sysresource, acpi, 1, 1, 1);
 
 static int
@@ -728,9 +728,9 @@ acpi_sysres_attach(device_t dev)
     bus = device_get_parent(dev);
     dev_rl = BUS_GET_RESOURCE_LIST(bus, dev);
     bus_rl = BUS_GET_RESOURCE_LIST(device_get_parent(bus), bus);
-    if(bus_rl)
+    if (bus_rl)
 	kprintf("busrl is not null!\n");
-	SLIST_FOREACH(dev_rle, dev_rl, link) {
+    SLIST_FOREACH(dev_rle, dev_rl, link) {
 	if (dev_rle->type != SYS_RES_IOPORT && dev_rle->type != SYS_RES_MEMORY)
 	    continue;
 
@@ -739,34 +739,36 @@ acpi_sysres_attach(device_t dev)
 	count = dev_rle->count;
 	type = dev_rle->type;
 	done = FALSE;
-	if(bus_rl) {
-	SLIST_FOREACH(bus_rle, bus_rl, link) {
-	    if (bus_rle->type != type)
-		continue;
+	if (bus_rl) {
+	    SLIST_FOREACH(bus_rle, bus_rl, link) {
+		if (bus_rle->type != type)
+		    continue;
 
-	    /* New resource wholly contained in old, discard. */
-	    if (start >= bus_rle->start && end <= bus_rle->end)
-		break;
+		/* New resource wholly contained in old, discard. */
+		if (start >= bus_rle->start && end <= bus_rle->end)
+		    break;
 
-	    /* New tail overlaps old head, grow existing resource downward. */
-	    if (start < bus_rle->start && end >= bus_rle->start) {
-		bus_rle->count += bus_rle->start - start;
-		bus_rle->start = start;
-		done = TRUE;
+		/* New tail overlaps old head, grow existing resource downward. */
+		if (start < bus_rle->start && end >= bus_rle->start) {
+		    bus_rle->count += bus_rle->start - start;
+		    bus_rle->start = start;
+		    done = TRUE;
+		}
+
+		/* New head overlaps old tail, grow existing resource upward. */
+		if (start <= bus_rle->end && end > bus_rle->end) {
+		    bus_rle->count += end - bus_rle->end;
+		    bus_rle->end = end;
+		    done = TRUE;
+		}
+
+		/* If we adjusted the old resource, we're finished. */
+		if (done)
+		    break;
 	    }
-
-	    /* New head overlaps old tail, grow existing resource upward. */
-	    if (start <= bus_rle->end && end > bus_rle->end) {
-		bus_rle->count += end - bus_rle->end;
-		bus_rle->end = end;
-		done = TRUE;
-	    }
-
-	    /* If we adjusted the old resource, we're finished. */
-	    if (done)
-		break;
+	} else {
+	    bus_rle = NULL;
 	}
-	} else bus_rle = NULL;
 	/* If we didn't merge with anything, add this resource. */
 	if (bus_rle == NULL) {
 	    bus_set_resource(bus, type, acpi_sysres_rid++, start, count, -1);
