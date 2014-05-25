@@ -124,7 +124,7 @@ AcpiOsWritePciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register,
     	return (AE_NOT_EXIST);
 
     pci_cfgregwrite(PciId->Bus, PciId->Device, PciId->Function, Register,
-    		    (u_int32_t)Value, Width / 8); /* XXX casting */
+    		    (uint32_t)Value, Width / 8); /* XXX casting */
 
     return (AE_OK);
 }

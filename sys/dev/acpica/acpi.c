@@ -1226,7 +1226,7 @@ acpi_isa_get_logicalid(device_t dev)
     ACPI_DEVICE_INFO	*devinfo;
     ACPI_HANDLE		h;
     ACPI_STATUS		error;
-    u_int32_t		pnpid;
+    uint32_t		pnpid;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
@@ -2060,7 +2060,7 @@ acpi_FindIndexedResource(ACPI_BUFFER *buf, int index, ACPI_RESOURCE **resp)
     i = index;
     while (i-- > 0) {
 	/* Range check */
-	if (rp > (ACPI_RESOURCE *)((u_int8_t *)buf->Pointer + buf->Length))
+	if (rp > (ACPI_RESOURCE *)((uint8_t *)buf->Pointer + buf->Length))
 	    return (AE_BAD_PARAMETER);
 
 	/* Check for terminator */
@@ -2110,7 +2110,7 @@ acpi_AppendBufferResource(ACPI_BUFFER *buf, ACPI_RESOURCE *res)
     rp = (ACPI_RESOURCE *)buf->Pointer;
     for (;;) {
 	/* Range check, don't go outside the buffer */
-	if (rp >= (ACPI_RESOURCE *)((u_int8_t *)buf->Pointer + buf->Length))
+	if (rp >= (ACPI_RESOURCE *)((uint8_t *)buf->Pointer + buf->Length))
 	    return (AE_BAD_PARAMETER);
 	if (rp->Type == ACPI_RESOURCE_TYPE_END_TAG || rp->Length == 0)
 	    break;
@@ -2128,14 +2128,14 @@ acpi_AppendBufferResource(ACPI_BUFFER *buf, ACPI_RESOURCE *res)
      * Note that this loop should really only run once, unless
      * for some reason we are stuffing a *really* huge resource.
      */
-    while ((((u_int8_t *)rp - (u_int8_t *)buf->Pointer) + 
+    while ((((uint8_t *)rp - (uint8_t *)buf->Pointer) + 
 	    res->Length + ACPI_RS_SIZE_NO_DATA +
 	    ACPI_RS_SIZE_MIN) >= buf->Length) {
 	if ((newp = AcpiOsAllocate(buf->Length * 2)) == NULL)
 	    return (AE_NO_MEMORY);
 	bcopy(buf->Pointer, newp, buf->Length);
-	rp = (ACPI_RESOURCE *)((u_int8_t *)newp +
-			       ((u_int8_t *)rp - (u_int8_t *)buf->Pointer));
+	rp = (ACPI_RESOURCE *)((uint8_t *)newp +
+			       ((uint8_t *)rp - (uint8_t *)buf->Pointer));
 	AcpiOsFree(buf->Pointer);
 	buf->Pointer = newp;
 	buf->Length += buf->Length;

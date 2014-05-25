@@ -487,20 +487,20 @@ acpi_parse_resources(device_t dev, ACPI_HANDLE handle,
 static void	acpi_res_set_init(device_t dev, void *arg, void **context);
 static void	acpi_res_set_done(device_t dev, void *context);
 static void	acpi_res_set_ioport(device_t dev, void *context,
-				    u_int32_t base, u_int32_t length);
+				    uint32_t base, uint32_t length);
 static void	acpi_res_set_iorange(device_t dev, void *context,
-				     u_int32_t low, u_int32_t high, 
-				     u_int32_t length, u_int32_t align);
+				     uint32_t low, uint32_t high, 
+				     uint32_t length, uint32_t align);
 static void	acpi_res_set_memory(device_t dev, void *context,
-				    u_int32_t base, u_int32_t length);
+				    uint32_t base, uint32_t length);
 static void	acpi_res_set_memoryrange(device_t dev, void *context,
-					 u_int32_t low, u_int32_t high, 
-					 u_int32_t length, u_int32_t align);
-static void	acpi_res_set_irq(device_t dev, void *context, u_int8_t *irq,
+					 uint32_t low, uint32_t high, 
+					 uint32_t length, uint32_t align);
+static void	acpi_res_set_irq(device_t dev, void *context, uint8_t *irq,
 				 int count, int trig, int pol);
 static void	acpi_res_set_ext_irq(device_t dev, void *context,
-				 u_int32_t *irq, int count, int trig, int pol);
-static void	acpi_res_set_drq(device_t dev, void *context, u_int8_t *drq,
+				 uint32_t *irq, int count, int trig, int pol);
+static void	acpi_res_set_drq(device_t dev, void *context, uint8_t *drq,
 				 int count);
 static void	acpi_res_set_start_dependent(device_t dev, void *context,
 					     int preference);
@@ -551,8 +551,8 @@ acpi_res_set_done(device_t dev, void *context)
 }
 
 static void
-acpi_res_set_ioport(device_t dev, void *context, u_int32_t base,
-		    u_int32_t length)
+acpi_res_set_ioport(device_t dev, void *context, uint32_t base,
+		    uint32_t length)
 {
     struct acpi_res_context	*cp = (struct acpi_res_context *)context;
 
@@ -562,8 +562,8 @@ acpi_res_set_ioport(device_t dev, void *context, u_int32_t base,
 }
 
 static void
-acpi_res_set_iorange(device_t dev, void *context, u_int32_t low,
-		     u_int32_t high, u_int32_t length, u_int32_t align)
+acpi_res_set_iorange(device_t dev, void *context, uint32_t low,
+		     uint32_t high, uint32_t length, uint32_t align)
 {
     struct acpi_res_context	*cp = (struct acpi_res_context *)context;
 
@@ -573,8 +573,8 @@ acpi_res_set_iorange(device_t dev, void *context, u_int32_t low,
 }
 
 static void
-acpi_res_set_memory(device_t dev, void *context, u_int32_t base,
-		    u_int32_t length)
+acpi_res_set_memory(device_t dev, void *context, uint32_t base,
+		    uint32_t length)
 {
     struct acpi_res_context	*cp = (struct acpi_res_context *)context;
 
@@ -585,8 +585,8 @@ acpi_res_set_memory(device_t dev, void *context, u_int32_t base,
 }
 
 static void
-acpi_res_set_memoryrange(device_t dev, void *context, u_int32_t low,
-			 u_int32_t high, u_int32_t length, u_int32_t align)
+acpi_res_set_memoryrange(device_t dev, void *context, uint32_t low,
+			 uint32_t high, uint32_t length, uint32_t align)
 {
     struct acpi_res_context	*cp = (struct acpi_res_context *)context;
 
@@ -596,7 +596,7 @@ acpi_res_set_memoryrange(device_t dev, void *context, u_int32_t low,
 }
 
 static void
-acpi_res_set_irq(device_t dev, void *context, u_int8_t *irq, int count,
+acpi_res_set_irq(device_t dev, void *context, uint8_t *irq, int count,
     int trig, int pol)
 {
     struct acpi_res_context	*cp = (struct acpi_res_context *)context;
@@ -613,7 +613,7 @@ acpi_res_set_irq(device_t dev, void *context, u_int8_t *irq, int count,
 }
 
 static void
-acpi_res_set_ext_irq(device_t dev, void *context, u_int32_t *irq, int count,
+acpi_res_set_ext_irq(device_t dev, void *context, uint32_t *irq, int count,
     int trig, int pol)
 {
     struct acpi_res_context	*cp = (struct acpi_res_context *)context;
@@ -630,7 +630,7 @@ acpi_res_set_ext_irq(device_t dev, void *context, u_int32_t *irq, int count,
 }
 
 static void
-acpi_res_set_drq(device_t dev, void *context, u_int8_t *drq, int count)
+acpi_res_set_drq(device_t dev, void *context, uint8_t *drq, int count)
 {
     struct acpi_res_context	*cp = (struct acpi_res_context *)context;
 

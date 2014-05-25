@@ -956,7 +956,7 @@ static uint8_t
 acpi_pci_link_choose_irq(device_t dev, struct link *link)
 {
 	char tunable_buffer[64], link_name[5];
-	u_int8_t best_irq, pos_irq;
+	uint8_t best_irq, pos_irq;
 	int best_weight, pos_weight, i;
 
 	KASSERT(!link->l_routed, ("%s: link already routed", __func__));
