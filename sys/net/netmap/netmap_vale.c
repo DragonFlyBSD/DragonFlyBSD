@@ -1545,7 +1545,7 @@ bdg_netmap_attach(struct netmap_adapter *arg)
 	vpna = kmalloc(sizeof(*vpna), M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (vpna == NULL)
 		return ENOMEM;
- 	na = &vpna->up;
+	na = &vpna->up;
 	*na = *arg;
 	na->na_flags |= NAF_BDG_MAYSLEEP | NAF_MEM_OWNER;
 	na->nm_txsync = bdg_netmap_txsync;

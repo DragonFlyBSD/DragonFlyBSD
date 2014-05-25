@@ -1192,7 +1192,7 @@ winSlotCnt(const u_char *un, size_t unlen, struct msdosfsmount *pmp)
 	}
 	if (unlen > WIN_MAXLEN)
 		return 0;
-	 return howmany(unlen, WIN_CHARS);
+	return howmany(unlen, WIN_CHARS);
 }
 
 /*

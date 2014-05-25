@@ -157,7 +157,7 @@ usbpf_clone_create(struct if_clone *ifc, char *name, size_t len, caddr_t params)
 	error = ifc_name2unit(name, &unit);
 	if (error)
 		return (error);
- 	if (unit < 0)
+	if (unit < 0)
 		return (EINVAL);
 
 	ubus = usbpf_ifname2ubus(name);

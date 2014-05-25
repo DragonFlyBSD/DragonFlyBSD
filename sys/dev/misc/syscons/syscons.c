@@ -3338,21 +3338,23 @@ next_code:
 
 	case SPCLKEY | FKEY | F(51):  /* page up key */
 	    sc_remove_cutmarking(scp);
-	    for (i=0; i<scp->ysize; i++)
-	    if (sc_hist_up_line(scp)) {
-		if (!(flags & SCGETC_CN))
-		    sc_bell(scp, bios_value.bell_pitch, BELL_DURATION);
-		break;
+	    for (i=0; i<scp->ysize; i++) {
+		if (sc_hist_up_line(scp)) {
+		    if (!(flags & SCGETC_CN))
+			sc_bell(scp, bios_value.bell_pitch, BELL_DURATION);
+		    break;
+		}
 	    }
 	    goto next_code;
 
 	case SPCLKEY | FKEY | F(59):  /* page down key */
 	    sc_remove_cutmarking(scp);
-	    for (i=0; i<scp->ysize; i++)
-	    if (sc_hist_down_line(scp)) {
-		if (!(flags & SCGETC_CN))
-		    sc_bell(scp, bios_value.bell_pitch, BELL_DURATION);
-		break;
+	    for (i=0; i<scp->ysize; i++) {
+		if (sc_hist_down_line(scp)) {
+		    if (!(flags & SCGETC_CN))
+			sc_bell(scp, bios_value.bell_pitch, BELL_DURATION);
+		    break;
+		}
 	    }
 	    goto next_code;
 	}

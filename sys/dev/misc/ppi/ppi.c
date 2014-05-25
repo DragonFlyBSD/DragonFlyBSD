@@ -447,7 +447,7 @@ ppiwrite(struct dev_write_args *ap)
  	if (ppb_1284_get_state(ppbus) < PPB_PERIPHERAL_NEGOCIATION)
 		ppb_1284_terminate(ppbus);
 
- 	while (ppb_1284_get_state(ppbus) != PPB_PERIPHERAL_IDLE) {
+	while (ppb_1284_get_state(ppbus) != PPB_PERIPHERAL_IDLE) {
 		/* XXX should check a variable before sleeping */
 #ifdef DEBUG_1284
 		kprintf("s");

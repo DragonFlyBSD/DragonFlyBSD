@@ -2730,7 +2730,7 @@ ar5416EepromSetAddac(struct ath_hal *ah, const struct ieee80211_channel *chan)
 
 		while (freqCount < 3) {
 			if (XPA_LVL_FREQ(freqCount) == 0x0)
-			break;
+				break;
 
 			freqBin = XPA_LVL_FREQ(freqCount) & 0xff;
 			if (resetFreqBin >= freqBin)

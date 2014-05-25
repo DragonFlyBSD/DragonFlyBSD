@@ -26,7 +26,6 @@
  * Author: Ruslan Ermilov <ru@FreeBSD.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_vlan.c,v 1.5 2007/06/11 15:29:02 imp Exp $
- * $DragonFly: src/sys/netgraph7/ng_vlan.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -319,12 +318,13 @@ ng_vlan_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		/* Broadcast the event to all uplinks. */
 		for (i = 0, chain = priv->hashtable; i < HASHSIZE;
-		    i++, chain++)
-		LIST_FOREACH(f, chain, next) {
-			NG_COPYMESSAGE(copy, msg, M_WAITOK | M_NULLOK);
-			if (copy == NULL)
-				continue;
-			NG_SEND_MSG_HOOK(error, node, copy, f->hook, 0);
+		    i++, chain++) {
+			LIST_FOREACH(f, chain, next) {
+				NG_COPYMESSAGE(copy, msg, M_WAITOK | M_NULLOK);
+				if (copy == NULL)
+					continue;
+				NG_SEND_MSG_HOOK(error, node, copy, f->hook, 0);
+			}
 		}
 
 		break;
