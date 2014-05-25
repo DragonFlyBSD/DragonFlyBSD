@@ -862,7 +862,7 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	struct udpiphdr *ui;
 	int len = m->m_pkthdr.len;
 	struct sockaddr_in *sin;	/* really is initialized before use */
-	int error = 0, lport_any = 0;
+	int error = 0;
 
 	logudp(output_beg, inp);
 
@@ -879,7 +879,6 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 		udbinfo_barrier_set();
 		in_pcbinswildcardhash(inp);
 		udbinfo_barrier_rem();
-		lport_any = 1;
 	}
 
 	if (dstaddr != NULL) {		/* destination address specified */
@@ -992,26 +991,6 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	    flags | IP_DEBUGROUTE,
 	    inp->inp_moptions, inp);
 
-	/*
-	 * If this is the first data gram sent on an unbound and unconnected
-	 * UDP socket, lport will be changed in this function.  If target
-	 * CPU after this lport changing is no longer the current CPU, then
-	 * free the route entry allocated on the current CPU.
-	 */
-	if (lport_any) {
-		if (udp_addrcpu(inp->inp_faddr.s_addr, inp->inp_fport,
-		    inp->inp_laddr.s_addr, inp->inp_lport) != mycpuid) {
-#ifdef notyet
-			struct route *ro = &inp->inp_route;
-
-			if (ro->ro_rt != NULL)
-				RTFREE(ro->ro_rt);
-			bzero(ro, sizeof(*ro));
-#else
-			panic("UDP activity should only be in netisr0");
-#endif
-		}
-	}
 	logudp(output_end, inp);
 	return (error);
 
