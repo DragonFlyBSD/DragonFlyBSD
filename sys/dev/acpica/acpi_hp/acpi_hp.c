@@ -306,15 +306,9 @@ static int	acpi_hp_get_cmi_block(device_t wmi_dev, const char* guid,
 		    UINT32* sequence, int detail);
 static void	acpi_hp_hex_decode(char* buffer);
 
-#if defined (__FreeBSD__)
 static d_open_t	acpi_hp_hpcmi_open;
 static d_close_t acpi_hp_hpcmi_close;
 static d_read_t	acpi_hp_hpcmi_read;
-#else 
-static int acpi_hp_hpcmi_open(struct dev_open_args *ap);
-static int acpi_hp_hpcmi_close(struct dev_close_args *ap);
-static int acpi_hp_hpcmi_read(struct dev_read_args *ap);
-#endif
 
 /* handler /dev/hpcmi device */
 static struct dev_ops hpcmi_ops = {
