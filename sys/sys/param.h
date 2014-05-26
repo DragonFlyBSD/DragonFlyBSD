@@ -109,9 +109,11 @@
  * 300703 - Make usb4bsd default
  * 300704 - Removal of IPX, NCP and NWFS support
  * 300705 - Removal of ATM support.
+ * 300800 - 3.8 release
+ * 300900 - 3.9 master
  */
 #undef __DragonFly_version
-#define __DragonFly_version 300705	/* propagated to newvers */
+#define __DragonFly_version 300900	/* propagated to newvers */
 
 #include <sys/_null.h>
 
