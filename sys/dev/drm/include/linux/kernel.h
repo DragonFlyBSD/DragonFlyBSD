@@ -50,7 +50,16 @@
 
 #define BUG()			panic("BUG")
 #define BUG_ON(condition)	do { if (condition) BUG(); } while(0)
-#define	WARN_ON			BUG_ON
+
+#define _WARN_STR(x) #x
+
+#define WARN_ON(condition) ({						\
+	int __ret = !!(condition);					\
+	if (__ret)							\
+		kprintf("WARNING %s failed at %s:%d\n",			\
+		    _WARN_STR(condition), __FILE__, __LINE__);			\
+	unlikely(__ret);						\
+})
 
 #undef	ALIGN
 #define	ALIGN(x, y)		roundup2((x), (y))
