@@ -2,20 +2,13 @@
  * EAP peer method: EAP-TNC (Trusted Network Connect)
  * Copyright (c) 2007, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
 
 #include "common.h"
-#include "base64.h"
 #include "eap_i.h"
 #include "tncc.h"
 
@@ -73,12 +66,13 @@ static struct wpabuf * eap_tnc_build_frag_ack(u8 id, u8 code)
 {
 	struct wpabuf *msg;
 
-	msg = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_TNC, 0, code, id);
+	msg = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_TNC, 1, code, id);
 	if (msg == NULL) {
 		wpa_printf(MSG_ERROR, "EAP-TNC: Failed to allocate memory "
 			   "for fragment ack");
 		return NULL;
 	}
+	wpabuf_put_u8(msg, EAP_TNC_VERSION); /* Flags */
 
 	wpa_printf(MSG_DEBUG, "EAP-TNC: Send fragment ack");
 
@@ -262,7 +256,7 @@ static struct wpabuf * eap_tnc_process(struct eap_sm *sm, void *priv,
 		   "Message Length %u", flags, message_length);
 
 	if (data->state == WAIT_FRAG_ACK) {
-		if (len != 0) {
+		if (len > 1) {
 			wpa_printf(MSG_DEBUG, "EAP-TNC: Unexpected payload in "
 				   "WAIT_FRAG_ACK state");
 			ret->ignore = TRUE;

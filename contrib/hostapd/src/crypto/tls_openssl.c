@@ -1,22 +1,18 @@
 /*
- * WPA Supplicant / SSL/TLS interface functions for openssl
- * Copyright (c) 2004-2008, Jouni Malinen <j@w1.fi>
+ * SSL/TLS interface functions for OpenSSL
+ * Copyright (c) 2004-2013, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
 
 #ifndef CONFIG_SMARTCARD
 #ifndef OPENSSL_NO_ENGINE
+#ifndef ANDROID
 #define OPENSSL_NO_ENGINE
+#endif
 #endif
 #endif
 
@@ -29,12 +25,17 @@
 #endif /* OPENSSL_NO_ENGINE */
 
 #include "common.h"
+#include "crypto.h"
 #include "tls.h"
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #define OPENSSL_d2i_TYPE const unsigned char **
 #else
 #define OPENSSL_d2i_TYPE unsigned char **
+#endif
+
+#if defined(SSL_CTX_get_app_data) && defined(SSL_CTX_set_app_data)
+#define OPENSSL_SUPPORTS_CTX_APP_DATA
 #endif
 
 #ifdef SSL_F_SSL_SET_SESSION_TICKET_EXT
@@ -47,16 +48,51 @@
 #endif
 #endif
 
+#ifdef SSL_set_tlsext_status_type
+#ifndef OPENSSL_NO_TLSEXT
+#define HAVE_OCSP
+#include <openssl/ocsp.h>
+#endif /* OPENSSL_NO_TLSEXT */
+#endif /* SSL_set_tlsext_status_type */
+
+#ifdef ANDROID
+#include <openssl/pem.h>
+#include <keystore/keystore_get.h>
+
+static BIO * BIO_from_keystore(const char *key)
+{
+	BIO *bio = NULL;
+	uint8_t *value = NULL;
+	int length = keystore_get(key, strlen(key), &value);
+	if (length != -1 && (bio = BIO_new(BIO_s_mem())) != NULL)
+		BIO_write(bio, value, length);
+	free(value);
+	return bio;
+}
+#endif /* ANDROID */
+
 static int tls_openssl_ref_count = 0;
 
+struct tls_context {
+	void (*event_cb)(void *ctx, enum tls_event ev,
+			 union tls_event_data *data);
+	void *cb_ctx;
+	int cert_in_cb;
+	char *ocsp_stapling_response;
+};
+
+static struct tls_context *tls_global = NULL;
+
+
 struct tls_connection {
+	struct tls_context *context;
 	SSL *ssl;
 	BIO *ssl_in, *ssl_out;
 #ifndef OPENSSL_NO_ENGINE
 	ENGINE *engine;        /* functional reference to the engine */
 	EVP_PKEY *private_key; /* the private key if using engine */
 #endif /* OPENSSL_NO_ENGINE */
-	char *subject_match, *altsubject_match;
+	char *subject_match, *altsubject_match, *suffix_match;
 	int read_alerts, write_alerts, failed;
 
 	tls_session_ticket_cb session_ticket_cb;
@@ -65,7 +101,34 @@ struct tls_connection {
 	/* SessionTicket received from OpenSSL hello_extension_cb (server) */
 	u8 *session_ticket;
 	size_t session_ticket_len;
+
+	unsigned int ca_cert_verify:1;
+	unsigned int cert_probe:1;
+	unsigned int server_cert_only:1;
+	unsigned int server:1;
+
+	u8 srv_cert_hash[32];
+
+	unsigned int flags;
+
+	X509 *peer_cert;
+	X509 *peer_issuer;
+	X509 *peer_issuer_issuer;
 };
+
+
+static struct tls_context * tls_context_new(const struct tls_config *conf)
+{
+	struct tls_context *context = os_zalloc(sizeof(*context));
+	if (context == NULL)
+		return NULL;
+	if (conf) {
+		context->event_cb = conf->event_cb;
+		context->cb_ctx = conf->cb_ctx;
+		context->cert_in_cb = conf->cert_in_cb;
+	}
+	return context;
+}
 
 
 #ifdef CONFIG_NO_STDOUT_DEBUG
@@ -493,6 +556,7 @@ static void ssl_info_cb(const SSL *ssl, int where, int ret)
 		wpa_printf(MSG_DEBUG, "SSL: %s:%s",
 			   str, SSL_state_string_long(ssl));
 	} else if (where & SSL_CB_ALERT) {
+		struct tls_connection *conn = SSL_get_app_data((SSL *) ssl);
 		wpa_printf(MSG_INFO, "SSL: SSL3 alert: %s:%s:%s",
 			   where & SSL_CB_READ ?
 			   "read (remote end reported an error)" :
@@ -500,12 +564,19 @@ static void ssl_info_cb(const SSL *ssl, int where, int ret)
 			   SSL_alert_type_string_long(ret),
 			   SSL_alert_desc_string_long(ret));
 		if ((ret >> 8) == SSL3_AL_FATAL) {
-			struct tls_connection *conn =
-				SSL_get_app_data((SSL *) ssl);
 			if (where & SSL_CB_READ)
 				conn->read_alerts++;
 			else
 				conn->write_alerts++;
+		}
+		if (conn->context->event_cb != NULL) {
+			union tls_event_data ev;
+			struct tls_context *context = conn->context;
+			os_memset(&ev, 0, sizeof(ev));
+			ev.alert.is_local = !(where & SSL_CB_READ);
+			ev.alert.type = SSL_alert_type_string_long(ret);
+			ev.alert.description = SSL_alert_desc_string_long(ret);
+			context->event_cb(context->cb_ctx, TLS_ALERT, &ev);
 		}
 	} else if (where & SSL_CB_EXIT && ret <= 0) {
 		wpa_printf(MSG_DEBUG, "SSL: %s:%s in %s",
@@ -663,11 +734,39 @@ static int tls_engine_load_dynamic_opensc(const char *opensc_so_path)
 void * tls_init(const struct tls_config *conf)
 {
 	SSL_CTX *ssl;
+	struct tls_context *context;
 
 	if (tls_openssl_ref_count == 0) {
+		tls_global = context = tls_context_new(conf);
+		if (context == NULL)
+			return NULL;
+#ifdef CONFIG_FIPS
+#ifdef OPENSSL_FIPS
+		if (conf && conf->fips_mode) {
+			if (!FIPS_mode_set(1)) {
+				wpa_printf(MSG_ERROR, "Failed to enable FIPS "
+					   "mode");
+				ERR_load_crypto_strings();
+				ERR_print_errors_fp(stderr);
+				os_free(tls_global);
+				tls_global = NULL;
+				return NULL;
+			} else
+				wpa_printf(MSG_INFO, "Running in FIPS mode");
+		}
+#else /* OPENSSL_FIPS */
+		if (conf && conf->fips_mode) {
+			wpa_printf(MSG_ERROR, "FIPS mode requested, but not "
+				   "supported");
+			os_free(tls_global);
+			tls_global = NULL;
+			return NULL;
+		}
+#endif /* OPENSSL_FIPS */
+#endif /* CONFIG_FIPS */
 		SSL_load_error_strings();
 		SSL_library_init();
-#ifndef OPENSSL_NO_SHA256
+#if (OPENSSL_VERSION_NUMBER >= 0x0090800fL) && !defined(OPENSSL_NO_SHA256)
 		EVP_add_digest(EVP_sha256());
 #endif /* OPENSSL_NO_SHA256 */
 		/* TODO: if /dev/urandom is available, PRNG is seeded
@@ -686,14 +785,35 @@ void * tls_init(const struct tls_config *conf)
 #endif /* OPENSSL_NO_RC2 */
 		PKCS12_PBE_add();
 #endif  /* PKCS12_FUNCS */
+	} else {
+		context = tls_global;
+#ifdef OPENSSL_SUPPORTS_CTX_APP_DATA
+		/* Newer OpenSSL can store app-data per-SSL */
+		context = tls_context_new(conf);
+		if (context == NULL)
+			return NULL;
+#endif /* OPENSSL_SUPPORTS_CTX_APP_DATA */
 	}
 	tls_openssl_ref_count++;
 
 	ssl = SSL_CTX_new(TLSv1_method());
-	if (ssl == NULL)
+	if (ssl == NULL) {
+		tls_openssl_ref_count--;
+#ifdef OPENSSL_SUPPORTS_CTX_APP_DATA
+		if (context != tls_global)
+			os_free(context);
+#endif /* OPENSSL_SUPPORTS_CTX_APP_DATA */
+		if (tls_openssl_ref_count == 0) {
+			os_free(tls_global);
+			tls_global = NULL;
+		}
 		return NULL;
+	}
 
 	SSL_CTX_set_info_callback(ssl, ssl_info_cb);
+#ifdef OPENSSL_SUPPORTS_CTX_APP_DATA
+	SSL_CTX_set_app_data(ssl, context);
+#endif /* OPENSSL_SUPPORTS_CTX_APP_DATA */
 
 #ifndef OPENSSL_NO_ENGINE
 	if (conf &&
@@ -719,6 +839,11 @@ void * tls_init(const struct tls_config *conf)
 void tls_deinit(void *ssl_ctx)
 {
 	SSL_CTX *ssl = ssl_ctx;
+#ifdef OPENSSL_SUPPORTS_CTX_APP_DATA
+	struct tls_context *context = SSL_CTX_get_app_data(ssl);
+	if (context != tls_global)
+		os_free(context);
+#endif /* OPENSSL_SUPPORTS_CTX_APP_DATA */
 	SSL_CTX_free(ssl);
 
 	tls_openssl_ref_count--;
@@ -730,6 +855,10 @@ void tls_deinit(void *ssl_ctx)
 		ERR_remove_state(0);
 		ERR_free_strings();
 		EVP_cleanup();
+		os_free(tls_global->ocsp_stapling_response);
+		tls_global->ocsp_stapling_response = NULL;
+		os_free(tls_global);
+		tls_global = NULL;
 	}
 }
 
@@ -744,16 +873,21 @@ static int tls_engine_init(struct tls_connection *conn, const char *engine_id,
 		wpa_printf(MSG_ERROR, "ENGINE: Engine ID not set");
 		return -1;
 	}
+#ifndef ANDROID
 	if (pin == NULL) {
 		wpa_printf(MSG_ERROR, "ENGINE: Smartcard PIN not set");
 		return -1;
 	}
+#endif
 	if (key_id == NULL) {
 		wpa_printf(MSG_ERROR, "ENGINE: Key Id not set");
 		return -1;
 	}
 
 	ERR_clear_error();
+#ifdef ANDROID
+	ENGINE_load_dynamic();
+#endif
 	conn->engine = ENGINE_by_id(engine_id);
 	if (!conn->engine) {
 		wpa_printf(MSG_ERROR, "ENGINE: engine %s not available [%s]",
@@ -768,11 +902,13 @@ static int tls_engine_init(struct tls_connection *conn, const char *engine_id,
 	}
 	wpa_printf(MSG_DEBUG, "ENGINE: engine initialized");
 
+#ifndef ANDROID
 	if (ENGINE_ctrl_cmd_string(conn->engine, "PIN", pin, 0) == 0) {
 		wpa_printf(MSG_ERROR, "ENGINE: cannot set pin [%s]",
 			   ERR_error_string(ERR_get_error(), NULL));
 		goto err;
 	}
+#endif
 	/* load private key first in-case PIN is required for cert */
 	conn->private_key = ENGINE_load_private_key(conn->engine,
 						    key_id, NULL, NULL);
@@ -853,6 +989,10 @@ struct tls_connection * tls_connection_init(void *ssl_ctx)
 	SSL_CTX *ssl = ssl_ctx;
 	struct tls_connection *conn;
 	long options;
+	struct tls_context *context = tls_global;
+#ifdef OPENSSL_SUPPORTS_CTX_APP_DATA
+	context = SSL_CTX_get_app_data(ssl);
+#endif /* OPENSSL_SUPPORTS_CTX_APP_DATA */
 
 	conn = os_zalloc(sizeof(*conn));
 	if (conn == NULL)
@@ -865,6 +1005,7 @@ struct tls_connection * tls_connection_init(void *ssl_ctx)
 		return NULL;
 	}
 
+	conn->context = context;
 	SSL_set_app_data(conn->ssl, conn);
 	options = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
 		SSL_OP_SINGLE_DH_USE;
@@ -906,6 +1047,7 @@ void tls_connection_deinit(void *ssl_ctx, struct tls_connection *conn)
 	tls_engine_deinit(conn);
 	os_free(conn->subject_match);
 	os_free(conn->altsubject_match);
+	os_free(conn->suffix_match);
 	os_free(conn->session_ticket);
 	os_free(conn);
 }
@@ -996,6 +1138,224 @@ static int tls_match_altsubject(X509 *cert, const char *match)
 }
 
 
+#ifndef CONFIG_NATIVE_WINDOWS
+static int domain_suffix_match(const u8 *val, size_t len, const char *match)
+{
+	size_t i, match_len;
+
+	/* Check for embedded nuls that could mess up suffix matching */
+	for (i = 0; i < len; i++) {
+		if (val[i] == '\0') {
+			wpa_printf(MSG_DEBUG, "TLS: Embedded null in a string - reject");
+			return 0;
+		}
+	}
+
+	match_len = os_strlen(match);
+	if (match_len > len)
+		return 0;
+
+	if (os_strncasecmp((const char *) val + len - match_len, match,
+			   match_len) != 0)
+		return 0; /* no match */
+
+	if (match_len == len)
+		return 1; /* exact match */
+
+	if (val[len - match_len - 1] == '.')
+		return 1; /* full label match completes suffix match */
+
+	wpa_printf(MSG_DEBUG, "TLS: Reject due to incomplete label match");
+	return 0;
+}
+#endif /* CONFIG_NATIVE_WINDOWS */
+
+
+static int tls_match_suffix(X509 *cert, const char *match)
+{
+#ifdef CONFIG_NATIVE_WINDOWS
+	/* wincrypt.h has conflicting X509_NAME definition */
+	return -1;
+#else /* CONFIG_NATIVE_WINDOWS */
+	GENERAL_NAME *gen;
+	void *ext;
+	int i;
+	int dns_name = 0;
+	X509_NAME *name;
+
+	wpa_printf(MSG_DEBUG, "TLS: Match domain against suffix %s", match);
+
+	ext = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
+
+	for (i = 0; ext && i < sk_GENERAL_NAME_num(ext); i++) {
+		gen = sk_GENERAL_NAME_value(ext, i);
+		if (gen->type != GEN_DNS)
+			continue;
+		dns_name++;
+		wpa_hexdump_ascii(MSG_DEBUG, "TLS: Certificate dNSName",
+				  gen->d.dNSName->data,
+				  gen->d.dNSName->length);
+		if (domain_suffix_match(gen->d.dNSName->data,
+					gen->d.dNSName->length, match) == 1) {
+			wpa_printf(MSG_DEBUG, "TLS: Suffix match in dNSName found");
+			return 1;
+		}
+	}
+
+	if (dns_name) {
+		wpa_printf(MSG_DEBUG, "TLS: None of the dNSName(s) matched");
+		return 0;
+	}
+
+	name = X509_get_subject_name(cert);
+	i = -1;
+	for (;;) {
+		X509_NAME_ENTRY *e;
+		ASN1_STRING *cn;
+
+		i = X509_NAME_get_index_by_NID(name, NID_commonName, i);
+		if (i == -1)
+			break;
+		e = X509_NAME_get_entry(name, i);
+		if (e == NULL)
+			continue;
+		cn = X509_NAME_ENTRY_get_data(e);
+		if (cn == NULL)
+			continue;
+		wpa_hexdump_ascii(MSG_DEBUG, "TLS: Certificate commonName",
+				  cn->data, cn->length);
+		if (domain_suffix_match(cn->data, cn->length, match) == 1) {
+			wpa_printf(MSG_DEBUG, "TLS: Suffix match in commonName found");
+			return 1;
+		}
+	}
+
+	wpa_printf(MSG_DEBUG, "TLS: No CommonName suffix match found");
+	return 0;
+#endif /* CONFIG_NATIVE_WINDOWS */
+}
+
+
+static enum tls_fail_reason openssl_tls_fail_reason(int err)
+{
+	switch (err) {
+	case X509_V_ERR_CERT_REVOKED:
+		return TLS_FAIL_REVOKED;
+	case X509_V_ERR_CERT_NOT_YET_VALID:
+	case X509_V_ERR_CRL_NOT_YET_VALID:
+		return TLS_FAIL_NOT_YET_VALID;
+	case X509_V_ERR_CERT_HAS_EXPIRED:
+	case X509_V_ERR_CRL_HAS_EXPIRED:
+		return TLS_FAIL_EXPIRED;
+	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
+	case X509_V_ERR_UNABLE_TO_GET_CRL:
+	case X509_V_ERR_UNABLE_TO_GET_CRL_ISSUER:
+	case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
+	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
+	case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+	case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
+	case X509_V_ERR_CERT_CHAIN_TOO_LONG:
+	case X509_V_ERR_PATH_LENGTH_EXCEEDED:
+	case X509_V_ERR_INVALID_CA:
+		return TLS_FAIL_UNTRUSTED;
+	case X509_V_ERR_UNABLE_TO_DECRYPT_CERT_SIGNATURE:
+	case X509_V_ERR_UNABLE_TO_DECRYPT_CRL_SIGNATURE:
+	case X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY:
+	case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
+	case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
+	case X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD:
+	case X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD:
+	case X509_V_ERR_CERT_UNTRUSTED:
+	case X509_V_ERR_CERT_REJECTED:
+		return TLS_FAIL_BAD_CERTIFICATE;
+	default:
+		return TLS_FAIL_UNSPECIFIED;
+	}
+}
+
+
+static struct wpabuf * get_x509_cert(X509 *cert)
+{
+	struct wpabuf *buf;
+	u8 *tmp;
+
+	int cert_len = i2d_X509(cert, NULL);
+	if (cert_len <= 0)
+		return NULL;
+
+	buf = wpabuf_alloc(cert_len);
+	if (buf == NULL)
+		return NULL;
+
+	tmp = wpabuf_put(buf, cert_len);
+	i2d_X509(cert, &tmp);
+	return buf;
+}
+
+
+static void openssl_tls_fail_event(struct tls_connection *conn,
+				   X509 *err_cert, int err, int depth,
+				   const char *subject, const char *err_str,
+				   enum tls_fail_reason reason)
+{
+	union tls_event_data ev;
+	struct wpabuf *cert = NULL;
+	struct tls_context *context = conn->context;
+
+	if (context->event_cb == NULL)
+		return;
+
+	cert = get_x509_cert(err_cert);
+	os_memset(&ev, 0, sizeof(ev));
+	ev.cert_fail.reason = reason != TLS_FAIL_UNSPECIFIED ?
+		reason : openssl_tls_fail_reason(err);
+	ev.cert_fail.depth = depth;
+	ev.cert_fail.subject = subject;
+	ev.cert_fail.reason_txt = err_str;
+	ev.cert_fail.cert = cert;
+	context->event_cb(context->cb_ctx, TLS_CERT_CHAIN_FAILURE, &ev);
+	wpabuf_free(cert);
+}
+
+
+static void openssl_tls_cert_event(struct tls_connection *conn,
+				   X509 *err_cert, int depth,
+				   const char *subject)
+{
+	struct wpabuf *cert = NULL;
+	union tls_event_data ev;
+	struct tls_context *context = conn->context;
+#ifdef CONFIG_SHA256
+	u8 hash[32];
+#endif /* CONFIG_SHA256 */
+
+	if (context->event_cb == NULL)
+		return;
+
+	os_memset(&ev, 0, sizeof(ev));
+	if (conn->cert_probe || context->cert_in_cb) {
+		cert = get_x509_cert(err_cert);
+		ev.peer_cert.cert = cert;
+	}
+#ifdef CONFIG_SHA256
+	if (cert) {
+		const u8 *addr[1];
+		size_t len[1];
+		addr[0] = wpabuf_head(cert);
+		len[0] = wpabuf_len(cert);
+		if (sha256_vector(1, addr, len, hash) == 0) {
+			ev.peer_cert.hash = hash;
+			ev.peer_cert.hash_len = sizeof(hash);
+		}
+	}
+#endif /* CONFIG_SHA256 */
+	ev.peer_cert.depth = depth;
+	ev.peer_cert.subject = subject;
+	context->event_cb(context->cb_ctx, TLS_PEER_CERTIFICATE, &ev);
+	wpabuf_free(cert);
+}
+
+
 static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 {
 	char buf[256];
@@ -1003,7 +1363,9 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 	int err, depth;
 	SSL *ssl;
 	struct tls_connection *conn;
-	char *match, *altmatch;
+	struct tls_context *context;
+	char *match, *altmatch, *suffix_match;
+	const char *err_str;
 
 	err_cert = X509_STORE_CTX_get_current_cert(x509_ctx);
 	err = X509_STORE_CTX_get_error(x509_ctx);
@@ -1013,29 +1375,121 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 	X509_NAME_oneline(X509_get_subject_name(err_cert), buf, sizeof(buf));
 
 	conn = SSL_get_app_data(ssl);
-	match = conn ? conn->subject_match : NULL;
-	altmatch = conn ? conn->altsubject_match : NULL;
+	if (conn == NULL)
+		return 0;
+
+	if (depth == 0)
+		conn->peer_cert = err_cert;
+	else if (depth == 1)
+		conn->peer_issuer = err_cert;
+	else if (depth == 2)
+		conn->peer_issuer_issuer = err_cert;
+
+	context = conn->context;
+	match = conn->subject_match;
+	altmatch = conn->altsubject_match;
+	suffix_match = conn->suffix_match;
+
+	if (!preverify_ok && !conn->ca_cert_verify)
+		preverify_ok = 1;
+	if (!preverify_ok && depth > 0 && conn->server_cert_only)
+		preverify_ok = 1;
+	if (!preverify_ok && (conn->flags & TLS_CONN_DISABLE_TIME_CHECKS) &&
+	    (err == X509_V_ERR_CERT_HAS_EXPIRED ||
+	     err == X509_V_ERR_CERT_NOT_YET_VALID)) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: Ignore certificate validity "
+			   "time mismatch");
+		preverify_ok = 1;
+	}
+
+	err_str = X509_verify_cert_error_string(err);
+
+#ifdef CONFIG_SHA256
+	if (preverify_ok && depth == 0 && conn->server_cert_only) {
+		struct wpabuf *cert;
+		cert = get_x509_cert(err_cert);
+		if (!cert) {
+			wpa_printf(MSG_DEBUG, "OpenSSL: Could not fetch "
+				   "server certificate data");
+			preverify_ok = 0;
+		} else {
+			u8 hash[32];
+			const u8 *addr[1];
+			size_t len[1];
+			addr[0] = wpabuf_head(cert);
+			len[0] = wpabuf_len(cert);
+			if (sha256_vector(1, addr, len, hash) < 0 ||
+			    os_memcmp(conn->srv_cert_hash, hash, 32) != 0) {
+				err_str = "Server certificate mismatch";
+				err = X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN;
+				preverify_ok = 0;
+			}
+			wpabuf_free(cert);
+		}
+	}
+#endif /* CONFIG_SHA256 */
 
 	if (!preverify_ok) {
 		wpa_printf(MSG_WARNING, "TLS: Certificate verification failed,"
-			   " error %d (%s) depth %d for '%s'", err,
-			   X509_verify_cert_error_string(err), depth, buf);
-	} else {
-		wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb - "
-			   "preverify_ok=%d err=%d (%s) depth=%d buf='%s'",
-			   preverify_ok, err,
-			   X509_verify_cert_error_string(err), depth, buf);
-		if (depth == 0 && match && os_strstr(buf, match) == NULL) {
-			wpa_printf(MSG_WARNING, "TLS: Subject '%s' did not "
-				   "match with '%s'", buf, match);
-			preverify_ok = 0;
-		} else if (depth == 0 && altmatch &&
-			   !tls_match_altsubject(err_cert, altmatch)) {
-			wpa_printf(MSG_WARNING, "TLS: altSubjectName match "
-				   "'%s' not found", altmatch);
-			preverify_ok = 0;
-		}
+			   " error %d (%s) depth %d for '%s'", err, err_str,
+			   depth, buf);
+		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
+				       err_str, TLS_FAIL_UNSPECIFIED);
+		return preverify_ok;
 	}
+
+	wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb - preverify_ok=%d "
+		   "err=%d (%s) ca_cert_verify=%d depth=%d buf='%s'",
+		   preverify_ok, err, err_str,
+		   conn->ca_cert_verify, depth, buf);
+	if (depth == 0 && match && os_strstr(buf, match) == NULL) {
+		wpa_printf(MSG_WARNING, "TLS: Subject '%s' did not "
+			   "match with '%s'", buf, match);
+		preverify_ok = 0;
+		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
+				       "Subject mismatch",
+				       TLS_FAIL_SUBJECT_MISMATCH);
+	} else if (depth == 0 && altmatch &&
+		   !tls_match_altsubject(err_cert, altmatch)) {
+		wpa_printf(MSG_WARNING, "TLS: altSubjectName match "
+			   "'%s' not found", altmatch);
+		preverify_ok = 0;
+		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
+				       "AltSubject mismatch",
+				       TLS_FAIL_ALTSUBJECT_MISMATCH);
+	} else if (depth == 0 && suffix_match &&
+		   !tls_match_suffix(err_cert, suffix_match)) {
+		wpa_printf(MSG_WARNING, "TLS: Domain suffix match '%s' not found",
+			   suffix_match);
+		preverify_ok = 0;
+		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
+				       "Domain suffix mismatch",
+				       TLS_FAIL_DOMAIN_SUFFIX_MISMATCH);
+	} else
+		openssl_tls_cert_event(conn, err_cert, depth, buf);
+
+	if (conn->cert_probe && preverify_ok && depth == 0) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: Reject server certificate "
+			   "on probe-only run");
+		preverify_ok = 0;
+		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
+				       "Server certificate chain probe",
+				       TLS_FAIL_SERVER_CHAIN_PROBE);
+	}
+
+	if (!conn->server && err_cert && preverify_ok && depth == 0 &&
+	    (err_cert->ex_flags & EXFLAG_XKUSAGE) &&
+	    (err_cert->ex_xkusage & XKU_SSL_CLIENT)) {
+		wpa_printf(MSG_WARNING, "TLS: Server used client certificate");
+		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
+				       "Server used client certificate",
+				       TLS_FAIL_SERVER_USED_CLIENT_CERT);
+		preverify_ok = 0;
+	}
+
+	if (preverify_ok && context->event_cb != NULL)
+		context->event_cb(context->cb_ctx,
+				  TLS_CERT_CHAIN_SUCCESS, NULL);
 
 	return preverify_ok;
 }
@@ -1092,6 +1546,47 @@ static int tls_connection_ca_cert(void *_ssl_ctx, struct tls_connection *conn,
 		return -1;
 	}
 
+	SSL_set_verify(conn->ssl, SSL_VERIFY_PEER, tls_verify_cb);
+	conn->ca_cert_verify = 1;
+
+	if (ca_cert && os_strncmp(ca_cert, "probe://", 8) == 0) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: Probe for server certificate "
+			   "chain");
+		conn->cert_probe = 1;
+		conn->ca_cert_verify = 0;
+		return 0;
+	}
+
+	if (ca_cert && os_strncmp(ca_cert, "hash://", 7) == 0) {
+#ifdef CONFIG_SHA256
+		const char *pos = ca_cert + 7;
+		if (os_strncmp(pos, "server/sha256/", 14) != 0) {
+			wpa_printf(MSG_DEBUG, "OpenSSL: Unsupported ca_cert "
+				   "hash value '%s'", ca_cert);
+			return -1;
+		}
+		pos += 14;
+		if (os_strlen(pos) != 32 * 2) {
+			wpa_printf(MSG_DEBUG, "OpenSSL: Unexpected SHA256 "
+				   "hash length in ca_cert '%s'", ca_cert);
+			return -1;
+		}
+		if (hexstr2bin(pos, conn->srv_cert_hash, 32) < 0) {
+			wpa_printf(MSG_DEBUG, "OpenSSL: Invalid SHA256 hash "
+				   "value in ca_cert '%s'", ca_cert);
+			return -1;
+		}
+		conn->server_cert_only = 1;
+		wpa_printf(MSG_DEBUG, "OpenSSL: Checking only server "
+			   "certificate match");
+		return 0;
+#else /* CONFIG_SHA256 */
+		wpa_printf(MSG_INFO, "No SHA256 included in the build - "
+			   "cannot validate server certificate hash");
+		return -1;
+#endif /* CONFIG_SHA256 */
+	}
+
 	if (ca_cert_blob) {
 		X509 *cert = d2i_X509(NULL, (OPENSSL_d2i_TYPE) &ca_cert_blob,
 				      ca_cert_blob_len);
@@ -1120,16 +1615,44 @@ static int tls_connection_ca_cert(void *_ssl_ctx, struct tls_connection *conn,
 		X509_free(cert);
 		wpa_printf(MSG_DEBUG, "OpenSSL: %s - added ca_cert_blob "
 			   "to certificate store", __func__);
+		return 0;
+	}
+
+#ifdef ANDROID
+	if (ca_cert && os_strncmp("keystore://", ca_cert, 11) == 0) {
+		BIO *bio = BIO_from_keystore(&ca_cert[11]);
+		STACK_OF(X509_INFO) *stack = NULL;
+		int i;
+
+		if (bio) {
+			stack = PEM_X509_INFO_read_bio(bio, NULL, NULL, NULL);
+			BIO_free(bio);
+		}
+		if (!stack)
+			return -1;
+
+		for (i = 0; i < sk_X509_INFO_num(stack); ++i) {
+			X509_INFO *info = sk_X509_INFO_value(stack, i);
+			if (info->x509) {
+				X509_STORE_add_cert(ssl_ctx->cert_store,
+						    info->x509);
+			}
+			if (info->crl) {
+				X509_STORE_add_crl(ssl_ctx->cert_store,
+						   info->crl);
+			}
+		}
+		sk_X509_INFO_pop_free(stack, X509_INFO_free);
 		SSL_set_verify(conn->ssl, SSL_VERIFY_PEER, tls_verify_cb);
 		return 0;
 	}
+#endif /* ANDROID */
 
 #ifdef CONFIG_NATIVE_WINDOWS
 	if (ca_cert && tls_cryptoapi_ca_cert(ssl_ctx, conn->ssl, ca_cert) ==
 	    0) {
 		wpa_printf(MSG_DEBUG, "OpenSSL: Added CA certificates from "
 			   "system certificate store");
-		SSL_set_verify(conn->ssl, SSL_VERIFY_PEER, tls_verify_cb);
 		return 0;
 	}
 #endif /* CONFIG_NATIVE_WINDOWS */
@@ -1152,7 +1675,6 @@ static int tls_connection_ca_cert(void *_ssl_ctx, struct tls_connection *conn,
 				   "certificate(s) loaded");
 			tls_get_errors(ssl_ctx);
 		}
-		SSL_set_verify(conn->ssl, SSL_VERIFY_PEER, tls_verify_cb);
 #else /* OPENSSL_NO_STDIO */
 		wpa_printf(MSG_DEBUG, "OpenSSL: %s - OPENSSL_NO_STDIO",
 			   __func__);
@@ -1161,7 +1683,7 @@ static int tls_connection_ca_cert(void *_ssl_ctx, struct tls_connection *conn,
 	} else {
 		/* No ca_cert configured - do not try to verify server
 		 * certificate */
-		SSL_set_verify(conn->ssl, SSL_VERIFY_NONE, NULL);
+		conn->ca_cert_verify = 0;
 	}
 
 	return 0;
@@ -1215,7 +1737,8 @@ int tls_global_set_verify(void *ssl_ctx, int check_crl)
 
 static int tls_connection_set_subject_match(struct tls_connection *conn,
 					    const char *subject_match,
-					    const char *altsubject_match)
+					    const char *altsubject_match,
+					    const char *suffix_match)
 {
 	os_free(conn->subject_match);
 	conn->subject_match = NULL;
@@ -1233,6 +1756,14 @@ static int tls_connection_set_subject_match(struct tls_connection *conn,
 			return -1;
 	}
 
+	os_free(conn->suffix_match);
+	conn->suffix_match = NULL;
+	if (suffix_match) {
+		conn->suffix_match = os_strdup(suffix_match);
+		if (conn->suffix_match == NULL)
+			return -1;
+	}
+
 	return 0;
 }
 
@@ -1246,10 +1777,12 @@ int tls_connection_set_verify(void *ssl_ctx, struct tls_connection *conn,
 		return -1;
 
 	if (verify_peer) {
+		conn->ca_cert_verify = 1;
 		SSL_set_verify(conn->ssl, SSL_VERIFY_PEER |
 			       SSL_VERIFY_FAIL_IF_NO_PEER_CERT |
 			       SSL_VERIFY_CLIENT_ONCE, tls_verify_cb);
 	} else {
+		conn->ca_cert_verify = 0;
 		SSL_set_verify(conn->ssl, SSL_VERIFY_NONE, NULL);
 	}
 
@@ -1294,26 +1827,42 @@ static int tls_connection_client_cert(struct tls_connection *conn,
 	if (client_cert == NULL)
 		return -1;
 
+#ifdef ANDROID
+	if (os_strncmp("keystore://", client_cert, 11) == 0) {
+		BIO *bio = BIO_from_keystore(&client_cert[11]);
+		X509 *x509 = NULL;
+		int ret = -1;
+		if (bio) {
+			x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+			BIO_free(bio);
+		}
+		if (x509) {
+			if (SSL_use_certificate(conn->ssl, x509) == 1)
+				ret = 0;
+			X509_free(x509);
+		}
+		return ret;
+	}
+#endif /* ANDROID */
+
 #ifndef OPENSSL_NO_STDIO
 	if (SSL_use_certificate_file(conn->ssl, client_cert,
 				     SSL_FILETYPE_ASN1) == 1) {
 		wpa_printf(MSG_DEBUG, "OpenSSL: SSL_use_certificate_file (DER)"
 			   " --> OK");
 		return 0;
-	} else {
-		tls_show_errors(MSG_DEBUG, __func__,
-				"SSL_use_certificate_file (DER) failed");
 	}
 
 	if (SSL_use_certificate_file(conn->ssl, client_cert,
 				     SSL_FILETYPE_PEM) == 1) {
+		ERR_clear_error();
 		wpa_printf(MSG_DEBUG, "OpenSSL: SSL_use_certificate_file (PEM)"
 			   " --> OK");
 		return 0;
-	} else {
-		tls_show_errors(MSG_DEBUG, __func__,
-				"SSL_use_certificate_file (PEM) failed");
 	}
+
+	tls_show_errors(MSG_DEBUG, __func__,
+			"SSL_use_certificate_file failed");
 #else /* OPENSSL_NO_STDIO */
 	wpa_printf(MSG_DEBUG, "OpenSSL: %s - OPENSSL_NO_STDIO", __func__);
 #endif /* OPENSSL_NO_STDIO */
@@ -1330,6 +1879,7 @@ static int tls_global_client_cert(SSL_CTX *ssl_ctx, const char *client_cert)
 
 	if (SSL_CTX_use_certificate_file(ssl_ctx, client_cert,
 					 SSL_FILETYPE_ASN1) != 1 &&
+	    SSL_CTX_use_certificate_chain_file(ssl_ctx, client_cert) != 1 &&
 	    SSL_CTX_use_certificate_file(ssl_ctx, client_cert,
 					 SSL_FILETYPE_PEM) != 1) {
 		tls_show_errors(MSG_INFO, __func__,
@@ -1581,6 +2131,8 @@ static int tls_connection_engine_ca_cert(void *_ssl_ctx,
 	wpa_printf(MSG_DEBUG, "OpenSSL: %s - added CA certificate from engine "
 		   "to certificate store", __func__);
 	SSL_set_verify(conn->ssl, SSL_VERIFY_PEER, tls_verify_cb);
+	conn->ca_cert_verify = 1;
+
 	return 0;
 
 #else /* OPENSSL_NO_ENGINE */
@@ -1644,10 +2196,6 @@ static int tls_connection_private_key(void *_ssl_ctx,
 				   "ASN1(EVP_PKEY_RSA) --> OK");
 			ok = 1;
 			break;
-		} else {
-			tls_show_errors(MSG_DEBUG, __func__,
-					"SSL_use_PrivateKey_ASN1(EVP_PKEY_RSA)"
-					" failed");
 		}
 
 		if (SSL_use_PrivateKey_ASN1(EVP_PKEY_DSA, conn->ssl,
@@ -1657,10 +2205,6 @@ static int tls_connection_private_key(void *_ssl_ctx,
 				   "ASN1(EVP_PKEY_DSA) --> OK");
 			ok = 1;
 			break;
-		} else {
-			tls_show_errors(MSG_DEBUG, __func__,
-					"SSL_use_PrivateKey_ASN1(EVP_PKEY_DSA)"
-					" failed");
 		}
 
 		if (SSL_use_RSAPrivateKey_ASN1(conn->ssl,
@@ -1670,9 +2214,6 @@ static int tls_connection_private_key(void *_ssl_ctx,
 				   "SSL_use_RSAPrivateKey_ASN1 --> OK");
 			ok = 1;
 			break;
-		} else {
-			tls_show_errors(MSG_DEBUG, __func__,
-					"SSL_use_RSAPrivateKey_ASN1 failed");
 		}
 
 		if (tls_read_pkcs12_blob(ssl_ctx, conn->ssl, private_key_blob,
@@ -1694,10 +2235,6 @@ static int tls_connection_private_key(void *_ssl_ctx,
 				   "SSL_use_PrivateKey_File (DER) --> OK");
 			ok = 1;
 			break;
-		} else {
-			tls_show_errors(MSG_DEBUG, __func__,
-					"SSL_use_PrivateKey_File (DER) "
-					"failed");
 		}
 
 		if (SSL_use_PrivateKey_file(conn->ssl, private_key,
@@ -1706,10 +2243,6 @@ static int tls_connection_private_key(void *_ssl_ctx,
 				   "SSL_use_PrivateKey_File (PEM) --> OK");
 			ok = 1;
 			break;
-		} else {
-			tls_show_errors(MSG_DEBUG, __func__,
-					"SSL_use_PrivateKey_File (PEM) "
-					"failed");
 		}
 #else /* OPENSSL_NO_STDIO */
 		wpa_printf(MSG_DEBUG, "OpenSSL: %s - OPENSSL_NO_STDIO",
@@ -1735,15 +2268,15 @@ static int tls_connection_private_key(void *_ssl_ctx,
 	}
 
 	if (!ok) {
-		wpa_printf(MSG_INFO, "OpenSSL: Failed to load private key");
+		tls_show_errors(MSG_INFO, __func__,
+				"Failed to load private key");
 		os_free(passwd);
-		ERR_clear_error();
 		return -1;
 	}
 	ERR_clear_error();
 	SSL_CTX_set_default_passwd_cb(ssl_ctx, NULL);
 	os_free(passwd);
-	
+
 	if (!SSL_check_private_key(conn->ssl)) {
 		tls_show_errors(MSG_INFO, __func__, "Private key failed "
 				"verification");
@@ -1789,7 +2322,7 @@ static int tls_global_private_key(SSL_CTX *ssl_ctx, const char *private_key,
 	os_free(passwd);
 	ERR_clear_error();
 	SSL_CTX_set_default_passwd_cb(ssl_ctx, NULL);
-	
+
 	if (!SSL_CTX_check_private_key(ssl_ctx)) {
 		tls_show_errors(MSG_INFO, __func__,
 				"Private key failed verification");
@@ -1951,6 +2484,11 @@ static int tls_global_dh(SSL_CTX *ssl_ctx, const char *dh_file)
 int tls_connection_get_keys(void *ssl_ctx, struct tls_connection *conn,
 			    struct tls_keys *keys)
 {
+#ifdef CONFIG_FIPS
+	wpa_printf(MSG_ERROR, "OpenSSL: TLS keys cannot be exported in FIPS "
+		   "mode");
+	return -1;
+#else /* CONFIG_FIPS */
 	SSL *ssl;
 
 	if (conn == NULL || keys == NULL)
@@ -1968,6 +2506,7 @@ int tls_connection_get_keys(void *ssl_ctx, struct tls_connection *conn,
 	keys->server_random_len = SSL3_RANDOM_SIZE;
 
 	return 0;
+#endif /* CONFIG_FIPS */
 }
 
 
@@ -1975,34 +2514,49 @@ int tls_connection_prf(void *tls_ctx, struct tls_connection *conn,
 		       const char *label, int server_random_first,
 		       u8 *out, size_t out_len)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+	SSL *ssl;
+	if (conn == NULL)
+		return -1;
+	if (server_random_first)
+		return -1;
+	ssl = conn->ssl;
+	if (SSL_export_keying_material(ssl, out, out_len, label,
+				       os_strlen(label), NULL, 0, 0) == 1) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: Using internal PRF");
+		return 0;
+	}
+#endif
 	return -1;
 }
 
 
-u8 * tls_connection_handshake(void *ssl_ctx, struct tls_connection *conn,
-			      const u8 *in_data, size_t in_len,
-			      size_t *out_len, u8 **appl_data,
-			      size_t *appl_data_len)
+static struct wpabuf *
+openssl_handshake(struct tls_connection *conn, const struct wpabuf *in_data,
+		  int server)
 {
 	int res;
-	u8 *out_data;
+	struct wpabuf *out_data;
 
-	if (appl_data)
-		*appl_data = NULL;
+	conn->server = !!server;
 
 	/*
 	 * Give TLS handshake data from the server (if available) to OpenSSL
 	 * for processing.
 	 */
 	if (in_data &&
-	    BIO_write(conn->ssl_in, in_data, in_len) < 0) {
+	    BIO_write(conn->ssl_in, wpabuf_head(in_data), wpabuf_len(in_data))
+	    < 0) {
 		tls_show_errors(MSG_INFO, __func__,
 				"Handshake failed - BIO_write");
 		return NULL;
 	}
 
 	/* Initiate TLS handshake or continue the existing handshake */
-	res = SSL_connect(conn->ssl);
+	if (server)
+		res = SSL_accept(conn->ssl);
+	else
+		res = SSL_connect(conn->ssl);
 	if (res != 1) {
 		int err = SSL_get_error(conn->ssl, res);
 		if (err == SSL_ERROR_WANT_READ)
@@ -2020,7 +2574,7 @@ u8 * tls_connection_handshake(void *ssl_ctx, struct tls_connection *conn,
 	/* Get the TLS handshake data to be sent to the server */
 	res = BIO_ctrl_pending(conn->ssl_out);
 	wpa_printf(MSG_DEBUG, "SSL: %d bytes pending from ssl_out", res);
-	out_data = os_malloc(res == 0 ? 1 : res);
+	out_data = wpabuf_alloc(res);
 	if (out_data == NULL) {
 		wpa_printf(MSG_DEBUG, "SSL: Failed to allocate memory for "
 			   "handshake output (%d bytes)", res);
@@ -2028,10 +2582,10 @@ u8 * tls_connection_handshake(void *ssl_ctx, struct tls_connection *conn,
 			tls_show_errors(MSG_INFO, __func__,
 					"BIO_reset failed");
 		}
-		*out_len = 0;
 		return NULL;
 	}
-	res = res == 0 ? 0 : BIO_read(conn->ssl_out, out_data, res);
+	res = res == 0 ? 0 : BIO_read(conn->ssl_out, wpabuf_mhead(out_data),
+				      res);
 	if (res < 0) {
 		tls_show_errors(MSG_INFO, __func__,
 				"Handshake failed - BIO_read");
@@ -2039,169 +2593,169 @@ u8 * tls_connection_handshake(void *ssl_ctx, struct tls_connection *conn,
 			tls_show_errors(MSG_INFO, __func__,
 					"BIO_reset failed");
 		}
-		*out_len = 0;
+		wpabuf_free(out_data);
 		return NULL;
 	}
-	*out_len = res;
-
-	if (SSL_is_init_finished(conn->ssl) && appl_data) {
-		*appl_data = os_malloc(in_len);
-		if (*appl_data) {
-			res = SSL_read(conn->ssl, *appl_data, in_len);
-			if (res < 0) {
-				int err = SSL_get_error(conn->ssl, res);
-				if (err == SSL_ERROR_WANT_READ ||
-				    err == SSL_ERROR_WANT_WRITE) {
-					wpa_printf(MSG_DEBUG,
-						   "SSL: No Application Data "
-						   "included");
-				} else {
-					tls_show_errors(MSG_INFO, __func__,
-							"Failed to read "
-							"possible "
-							"Application Data");
-				}
-				os_free(*appl_data);
-				*appl_data = NULL;
-			} else {
-				*appl_data_len = res;
-				wpa_hexdump_key(MSG_MSGDUMP, "SSL: Application"
-						" Data in Finish message",
-						*appl_data, *appl_data_len);
-			}
-		}
-	}
+	wpabuf_put(out_data, res);
 
 	return out_data;
 }
 
 
-u8 * tls_connection_server_handshake(void *ssl_ctx,
-				     struct tls_connection *conn,
-				     const u8 *in_data, size_t in_len,
-				     size_t *out_len)
+static struct wpabuf *
+openssl_get_appl_data(struct tls_connection *conn, size_t max_len)
 {
+	struct wpabuf *appl_data;
 	int res;
-	u8 *out_data;
 
-	/*
-	 * Give TLS handshake data from the client (if available) to OpenSSL
-	 * for processing.
-	 */
-	if (in_data &&
-	    BIO_write(conn->ssl_in, in_data, in_len) < 0) {
-		tls_show_errors(MSG_INFO, __func__,
-				"Handshake failed - BIO_write");
+	appl_data = wpabuf_alloc(max_len + 100);
+	if (appl_data == NULL)
 		return NULL;
-	}
 
-	/* Initiate TLS handshake or continue the existing handshake */
-	res = SSL_accept(conn->ssl);
-	if (res != 1) {
+	res = SSL_read(conn->ssl, wpabuf_mhead(appl_data),
+		       wpabuf_size(appl_data));
+	if (res < 0) {
 		int err = SSL_get_error(conn->ssl, res);
-		if (err == SSL_ERROR_WANT_READ)
-			wpa_printf(MSG_DEBUG, "SSL: SSL_accept - want "
-				   "more data");
-		else if (err == SSL_ERROR_WANT_WRITE)
-			wpa_printf(MSG_DEBUG, "SSL: SSL_accept - want to "
-				   "write");
-		else {
-			tls_show_errors(MSG_INFO, __func__, "SSL_accept");
-			return NULL;
+		if (err == SSL_ERROR_WANT_READ ||
+		    err == SSL_ERROR_WANT_WRITE) {
+			wpa_printf(MSG_DEBUG, "SSL: No Application Data "
+				   "included");
+		} else {
+			tls_show_errors(MSG_INFO, __func__,
+					"Failed to read possible "
+					"Application Data");
 		}
+		wpabuf_free(appl_data);
+		return NULL;
 	}
 
-	/* Get the TLS handshake data to be sent to the client */
-	res = BIO_ctrl_pending(conn->ssl_out);
-	wpa_printf(MSG_DEBUG, "SSL: %d bytes pending from ssl_out", res);
-	out_data = os_malloc(res == 0 ? 1 : res);
-	if (out_data == NULL) {
-		wpa_printf(MSG_DEBUG, "SSL: Failed to allocate memory for "
-			   "handshake output (%d bytes)", res);
-		if (BIO_reset(conn->ssl_out) < 0) {
-			tls_show_errors(MSG_INFO, __func__,
-					"BIO_reset failed");
-		}
-		*out_len = 0;
+	wpabuf_put(appl_data, res);
+	wpa_hexdump_buf_key(MSG_MSGDUMP, "SSL: Application Data in Finished "
+			    "message", appl_data);
+
+	return appl_data;
+}
+
+
+static struct wpabuf *
+openssl_connection_handshake(struct tls_connection *conn,
+			     const struct wpabuf *in_data,
+			     struct wpabuf **appl_data, int server)
+{
+	struct wpabuf *out_data;
+
+	if (appl_data)
+		*appl_data = NULL;
+
+	out_data = openssl_handshake(conn, in_data, server);
+	if (out_data == NULL)
 		return NULL;
-	}
-	res = res == 0 ? 0 : BIO_read(conn->ssl_out, out_data, res);
-	if (res < 0) {
-		tls_show_errors(MSG_INFO, __func__,
-				"Handshake failed - BIO_read");
-		if (BIO_reset(conn->ssl_out) < 0) {
-			tls_show_errors(MSG_INFO, __func__,
-					"BIO_reset failed");
-		}
-		*out_len = 0;
-		return NULL;
-	}
-	*out_len = res;
+
+	if (SSL_is_init_finished(conn->ssl) && appl_data && in_data)
+		*appl_data = openssl_get_appl_data(conn, wpabuf_len(in_data));
+
 	return out_data;
 }
 
 
-int tls_connection_encrypt(void *ssl_ctx, struct tls_connection *conn,
-			   const u8 *in_data, size_t in_len,
-			   u8 *out_data, size_t out_len)
+struct wpabuf *
+tls_connection_handshake(void *ssl_ctx, struct tls_connection *conn,
+			 const struct wpabuf *in_data,
+			 struct wpabuf **appl_data)
+{
+	return openssl_connection_handshake(conn, in_data, appl_data, 0);
+}
+
+
+struct wpabuf * tls_connection_server_handshake(void *tls_ctx,
+						struct tls_connection *conn,
+						const struct wpabuf *in_data,
+						struct wpabuf **appl_data)
+{
+	return openssl_connection_handshake(conn, in_data, appl_data, 1);
+}
+
+
+struct wpabuf * tls_connection_encrypt(void *tls_ctx,
+				       struct tls_connection *conn,
+				       const struct wpabuf *in_data)
 {
 	int res;
+	struct wpabuf *buf;
 
 	if (conn == NULL)
-		return -1;
+		return NULL;
 
 	/* Give plaintext data for OpenSSL to encrypt into the TLS tunnel. */
 	if ((res = BIO_reset(conn->ssl_in)) < 0 ||
 	    (res = BIO_reset(conn->ssl_out)) < 0) {
 		tls_show_errors(MSG_INFO, __func__, "BIO_reset failed");
-		return res;
+		return NULL;
 	}
-	res = SSL_write(conn->ssl, in_data, in_len);
+	res = SSL_write(conn->ssl, wpabuf_head(in_data), wpabuf_len(in_data));
 	if (res < 0) {
 		tls_show_errors(MSG_INFO, __func__,
 				"Encryption failed - SSL_write");
-		return res;
+		return NULL;
 	}
 
 	/* Read encrypted data to be sent to the server */
-	res = BIO_read(conn->ssl_out, out_data, out_len);
+	buf = wpabuf_alloc(wpabuf_len(in_data) + 300);
+	if (buf == NULL)
+		return NULL;
+	res = BIO_read(conn->ssl_out, wpabuf_mhead(buf), wpabuf_size(buf));
 	if (res < 0) {
 		tls_show_errors(MSG_INFO, __func__,
 				"Encryption failed - BIO_read");
-		return res;
+		wpabuf_free(buf);
+		return NULL;
 	}
+	wpabuf_put(buf, res);
 
-	return res;
+	return buf;
 }
 
 
-int tls_connection_decrypt(void *ssl_ctx, struct tls_connection *conn,
-			   const u8 *in_data, size_t in_len,
-			   u8 *out_data, size_t out_len)
+struct wpabuf * tls_connection_decrypt(void *tls_ctx,
+				       struct tls_connection *conn,
+				       const struct wpabuf *in_data)
 {
 	int res;
+	struct wpabuf *buf;
 
 	/* Give encrypted data from TLS tunnel for OpenSSL to decrypt. */
-	res = BIO_write(conn->ssl_in, in_data, in_len);
+	res = BIO_write(conn->ssl_in, wpabuf_head(in_data),
+			wpabuf_len(in_data));
 	if (res < 0) {
 		tls_show_errors(MSG_INFO, __func__,
 				"Decryption failed - BIO_write");
-		return res;
+		return NULL;
 	}
 	if (BIO_reset(conn->ssl_out) < 0) {
 		tls_show_errors(MSG_INFO, __func__, "BIO_reset failed");
-		return res;
+		return NULL;
 	}
 
 	/* Read decrypted data for further processing */
-	res = SSL_read(conn->ssl, out_data, out_len);
+	/*
+	 * Even though we try to disable TLS compression, it is possible that
+	 * this cannot be done with all TLS libraries. Add extra buffer space
+	 * to handle the possibility of the decrypted data being longer than
+	 * input data.
+	 */
+	buf = wpabuf_alloc((wpabuf_len(in_data) + 500) * 3);
+	if (buf == NULL)
+		return NULL;
+	res = SSL_read(conn->ssl, wpabuf_mhead(buf), wpabuf_size(buf));
 	if (res < 0) {
 		tls_show_errors(MSG_INFO, __func__,
 				"Decryption failed - SSL_read");
-		return res;
+		wpabuf_free(buf);
+		return NULL;
 	}
+	wpabuf_put(buf, res);
 
-	return res;
+	return buf;
 }
 
 
@@ -2292,7 +2846,7 @@ int tls_connection_enable_workaround(void *ssl_ctx,
 }
 
 
-#if defined(EAP_FAST) || defined(EAP_FAST_DYNAMIC)
+#if defined(EAP_FAST) || defined(EAP_FAST_DYNAMIC) || defined(EAP_SERVER_FAST)
 /* ClientHello TLS extensions require a patch to openssl, so this function is
  * commented out unless explicitly needed for EAP-FAST in order to be able to
  * build this file with unmodified openssl. */
@@ -2315,7 +2869,7 @@ int tls_connection_client_hello_ext(void *ssl_ctx, struct tls_connection *conn,
 
 	return 0;
 }
-#endif /* EAP_FAST || EAP_FAST_DYNAMIC */
+#endif /* EAP_FAST || EAP_FAST_DYNAMIC || EAP_SERVER_FAST */
 
 
 int tls_connection_get_failed(void *ssl_ctx, struct tls_connection *conn)
@@ -2342,6 +2896,222 @@ int tls_connection_get_write_alerts(void *ssl_ctx, struct tls_connection *conn)
 }
 
 
+#ifdef HAVE_OCSP
+
+static void ocsp_debug_print_resp(OCSP_RESPONSE *rsp)
+{
+#ifndef CONFIG_NO_STDOUT_DEBUG
+	BIO *out;
+	size_t rlen;
+	char *txt;
+	int res;
+
+	if (wpa_debug_level > MSG_DEBUG)
+		return;
+
+	out = BIO_new(BIO_s_mem());
+	if (!out)
+		return;
+
+	OCSP_RESPONSE_print(out, rsp, 0);
+	rlen = BIO_ctrl_pending(out);
+	txt = os_malloc(rlen + 1);
+	if (!txt) {
+		BIO_free(out);
+		return;
+	}
+
+	res = BIO_read(out, txt, rlen);
+	if (res > 0) {
+		txt[res] = '\0';
+		wpa_printf(MSG_DEBUG, "OpenSSL: OCSP Response\n%s", txt);
+	}
+	os_free(txt);
+	BIO_free(out);
+#endif /* CONFIG_NO_STDOUT_DEBUG */
+}
+
+
+static int ocsp_resp_cb(SSL *s, void *arg)
+{
+	struct tls_connection *conn = arg;
+	const unsigned char *p;
+	int len, status, reason;
+	OCSP_RESPONSE *rsp;
+	OCSP_BASICRESP *basic;
+	OCSP_CERTID *id;
+	ASN1_GENERALIZEDTIME *produced_at, *this_update, *next_update;
+	X509_STORE *store;
+	STACK_OF(X509) *certs = NULL;
+
+	len = SSL_get_tlsext_status_ocsp_resp(s, &p);
+	if (!p) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: No OCSP response received");
+		return (conn->flags & TLS_CONN_REQUIRE_OCSP) ? 0 : 1;
+	}
+
+	wpa_hexdump(MSG_DEBUG, "OpenSSL: OCSP response", p, len);
+
+	rsp = d2i_OCSP_RESPONSE(NULL, &p, len);
+	if (!rsp) {
+		wpa_printf(MSG_INFO, "OpenSSL: Failed to parse OCSP response");
+		return 0;
+	}
+
+	ocsp_debug_print_resp(rsp);
+
+	status = OCSP_response_status(rsp);
+	if (status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+		wpa_printf(MSG_INFO, "OpenSSL: OCSP responder error %d (%s)",
+			   status, OCSP_response_status_str(status));
+		return 0;
+	}
+
+	basic = OCSP_response_get1_basic(rsp);
+	if (!basic) {
+		wpa_printf(MSG_INFO, "OpenSSL: Could not find BasicOCSPResponse");
+		return 0;
+	}
+
+	store = SSL_CTX_get_cert_store(s->ctx);
+	if (conn->peer_issuer) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: Add issuer");
+		X509_print_fp(stdout, conn->peer_issuer);
+
+		if (X509_STORE_add_cert(store, conn->peer_issuer) != 1) {
+			tls_show_errors(MSG_INFO, __func__,
+					"OpenSSL: Could not add issuer to certificate store\n");
+		}
+		certs = sk_X509_new_null();
+		if (certs) {
+			X509 *cert;
+			cert = X509_dup(conn->peer_issuer);
+			if (cert && !sk_X509_push(certs, cert)) {
+				tls_show_errors(
+					MSG_INFO, __func__,
+					"OpenSSL: Could not add issuer to OCSP responder trust store\n");
+				X509_free(cert);
+				sk_X509_free(certs);
+				certs = NULL;
+			}
+			if (conn->peer_issuer_issuer) {
+				cert = X509_dup(conn->peer_issuer_issuer);
+				if (cert && !sk_X509_push(certs, cert)) {
+					tls_show_errors(
+						MSG_INFO, __func__,
+						"OpenSSL: Could not add issuer to OCSP responder trust store\n");
+					X509_free(cert);
+				}
+			}
+		}
+	}
+
+	status = OCSP_basic_verify(basic, certs, store, OCSP_TRUSTOTHER);
+	sk_X509_pop_free(certs, X509_free);
+	if (status <= 0) {
+		tls_show_errors(MSG_INFO, __func__,
+				"OpenSSL: OCSP response failed verification");
+		OCSP_BASICRESP_free(basic);
+		OCSP_RESPONSE_free(rsp);
+		return 0;
+	}
+
+	wpa_printf(MSG_DEBUG, "OpenSSL: OCSP response verification succeeded");
+
+	if (!conn->peer_cert) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: Peer certificate not available for OCSP status check");
+		OCSP_BASICRESP_free(basic);
+		OCSP_RESPONSE_free(rsp);
+		return 0;
+	}
+
+	if (!conn->peer_issuer) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: Peer issuer certificate not available for OCSP status check");
+		OCSP_BASICRESP_free(basic);
+		OCSP_RESPONSE_free(rsp);
+		return 0;
+	}
+
+	id = OCSP_cert_to_id(NULL, conn->peer_cert, conn->peer_issuer);
+	if (!id) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: Could not create OCSP certificate identifier");
+		OCSP_BASICRESP_free(basic);
+		OCSP_RESPONSE_free(rsp);
+		return 0;
+	}
+
+	if (!OCSP_resp_find_status(basic, id, &status, &reason, &produced_at,
+				   &this_update, &next_update)) {
+		wpa_printf(MSG_INFO, "OpenSSL: Could not find current server certificate from OCSP response%s",
+			   (conn->flags & TLS_CONN_REQUIRE_OCSP) ? "" :
+			   " (OCSP not required)");
+		OCSP_BASICRESP_free(basic);
+		OCSP_RESPONSE_free(rsp);
+		return (conn->flags & TLS_CONN_REQUIRE_OCSP) ? 0 : 1;
+	}
+
+	if (!OCSP_check_validity(this_update, next_update, 5 * 60, -1)) {
+		tls_show_errors(MSG_INFO, __func__,
+				"OpenSSL: OCSP status times invalid");
+		OCSP_BASICRESP_free(basic);
+		OCSP_RESPONSE_free(rsp);
+		return 0;
+	}
+
+	OCSP_BASICRESP_free(basic);
+	OCSP_RESPONSE_free(rsp);
+
+	wpa_printf(MSG_DEBUG, "OpenSSL: OCSP status for server certificate: %s",
+		   OCSP_cert_status_str(status));
+
+	if (status == V_OCSP_CERTSTATUS_GOOD)
+		return 1;
+	if (status == V_OCSP_CERTSTATUS_REVOKED)
+		return 0;
+	if (conn->flags & TLS_CONN_REQUIRE_OCSP) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: OCSP status unknown, but OCSP required");
+		return 0;
+	}
+	wpa_printf(MSG_DEBUG, "OpenSSL: OCSP status unknown, but OCSP was not required, so allow connection to continue");
+	return 1;
+}
+
+
+static int ocsp_status_cb(SSL *s, void *arg)
+{
+	char *tmp;
+	char *resp;
+	size_t len;
+
+	if (tls_global->ocsp_stapling_response == NULL) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: OCSP status callback - no response configured");
+		return SSL_TLSEXT_ERR_OK;
+	}
+
+	resp = os_readfile(tls_global->ocsp_stapling_response, &len);
+	if (resp == NULL) {
+		wpa_printf(MSG_DEBUG, "OpenSSL: OCSP status callback - could not read response file");
+		/* TODO: Build OCSPResponse with responseStatus = internalError
+		 */
+		return SSL_TLSEXT_ERR_OK;
+	}
+	wpa_printf(MSG_DEBUG, "OpenSSL: OCSP status callback - send cached response");
+	tmp = OPENSSL_malloc(len);
+	if (tmp == NULL) {
+		os_free(resp);
+		return SSL_TLSEXT_ERR_ALERT_FATAL;
+	}
+
+	os_memcpy(tmp, resp, len);
+	os_free(resp);
+	SSL_set_tlsext_status_ocsp_resp(s, tmp, len);
+
+	return SSL_TLSEXT_ERR_OK;
+}
+
+#endif /* HAVE_OCSP */
+
+
 int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 			      const struct tls_connection_params *params)
 {
@@ -2366,7 +3136,8 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 	}
 	if (tls_connection_set_subject_match(conn,
 					     params->subject_match,
-					     params->altsubject_match))
+					     params->altsubject_match,
+					     params->suffix_match))
 		return -1;
 
 	if (params->engine && params->ca_cert_id) {
@@ -2407,6 +3178,26 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 		return -1;
 	}
 
+#ifdef SSL_OP_NO_TICKET
+	if (params->flags & TLS_CONN_DISABLE_SESSION_TICKET)
+		SSL_set_options(conn->ssl, SSL_OP_NO_TICKET);
+#ifdef SSL_clear_options
+	else
+		SSL_clear_options(conn->ssl, SSL_OP_NO_TICKET);
+#endif /* SSL_clear_options */
+#endif /*  SSL_OP_NO_TICKET */
+
+#ifdef HAVE_OCSP
+	if (params->flags & TLS_CONN_REQUEST_OCSP) {
+		SSL_CTX *ssl_ctx = tls_ctx;
+		SSL_set_tlsext_status_type(conn->ssl, TLSEXT_STATUSTYPE_ocsp);
+		SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_resp_cb);
+		SSL_CTX_set_tlsext_status_arg(ssl_ctx, conn);
+	}
+#endif /* HAVE_OCSP */
+
+	conn->flags = params->flags;
+
 	tls_get_errors(tls_ctx);
 
 	return 0;
@@ -2440,6 +3231,26 @@ int tls_global_set_params(void *tls_ctx,
 		return -1;
 	}
 
+#ifdef SSL_OP_NO_TICKET
+	if (params->flags & TLS_CONN_DISABLE_SESSION_TICKET)
+		SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_TICKET);
+#ifdef SSL_CTX_clear_options
+	else
+		SSL_CTX_clear_options(ssl_ctx, SSL_OP_NO_TICKET);
+#endif /* SSL_clear_options */
+#endif /*  SSL_OP_NO_TICKET */
+
+#ifdef HAVE_OCSP
+	SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_status_cb);
+	SSL_CTX_set_tlsext_status_arg(ssl_ctx, ssl_ctx);
+	os_free(tls_global->ocsp_stapling_response);
+	if (params->ocsp_stapling_response)
+		tls_global->ocsp_stapling_response =
+			os_strdup(params->ocsp_stapling_response);
+	else
+		tls_global->ocsp_stapling_response = NULL;
+#endif /* HAVE_OCSP */
+
 	return 0;
 }
 
@@ -2449,6 +3260,7 @@ int tls_connection_get_keyblock_size(void *tls_ctx,
 {
 	const EVP_CIPHER *c;
 	const EVP_MD *h;
+	int md_size;
 
 	if (conn == NULL || conn->ssl == NULL ||
 	    conn->ssl->enc_read_ctx == NULL ||
@@ -2462,9 +3274,20 @@ int tls_connection_get_keyblock_size(void *tls_ctx,
 #else
 	h = conn->ssl->read_hash;
 #endif
+	if (h)
+		md_size = EVP_MD_size(h);
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+	else if (conn->ssl->s3)
+		md_size = conn->ssl->s3->tmp.new_mac_secret_size;
+#endif
+	else
+		return -1;
 
+	wpa_printf(MSG_DEBUG, "OpenSSL: keyblock size: key_len=%d MD_size=%d "
+		   "IV_len=%d", EVP_CIPHER_key_length(c), md_size,
+		   EVP_CIPHER_iv_length(c));
 	return 2 * (EVP_CIPHER_key_length(c) +
-		    EVP_MD_size(h) +
+		    md_size +
 		    EVP_CIPHER_iv_length(c));
 }
 
@@ -2475,38 +3298,7 @@ unsigned int tls_capabilities(void *tls_ctx)
 }
 
 
-int tls_connection_set_ia(void *tls_ctx, struct tls_connection *conn,
-			  int tls_ia)
-{
-	return -1;
-}
-
-
-int tls_connection_ia_send_phase_finished(void *tls_ctx,
-					  struct tls_connection *conn,
-					  int final,
-					  u8 *out_data, size_t out_len)
-{
-	return -1;
-}
-
-
-int tls_connection_ia_final_phase_finished(void *tls_ctx,
-					   struct tls_connection *conn)
-{
-	return -1;
-}
-
-
-int tls_connection_ia_permute_inner_secret(void *tls_ctx,
-					   struct tls_connection *conn,
-					   const u8 *key, size_t key_len)
-{
-	return -1;
-}
-
-
-#if defined(EAP_FAST) || defined(EAP_FAST_DYNAMIC)
+#if defined(EAP_FAST) || defined(EAP_FAST_DYNAMIC) || defined(EAP_SERVER_FAST)
 /* Pre-shared secred requires a patch to openssl, so this function is
  * commented out unless explicitly needed for EAP-FAST in order to be able to
  * build this file with unmodified openssl. */
@@ -2619,7 +3411,7 @@ static int tls_hello_ext_cb(SSL *s, TLS_EXTENSION *ext, void *arg)
 }
 #endif /* SSL_OP_NO_TICKET */
 #endif /* CONFIG_OPENSSL_TICKET_OVERRIDE */
-#endif /* EAP_FAST || EAP_FAST_DYNAMIC */
+#endif /* EAP_FAST || EAP_FAST_DYNAMIC || EAP_SERVER_FAST */
 
 
 int tls_connection_set_session_ticket_cb(void *tls_ctx,
@@ -2627,7 +3419,7 @@ int tls_connection_set_session_ticket_cb(void *tls_ctx,
 					 tls_session_ticket_cb cb,
 					 void *ctx)
 {
-#if defined(EAP_FAST) || defined(EAP_FAST_DYNAMIC)
+#if defined(EAP_FAST) || defined(EAP_FAST_DYNAMIC) || defined(EAP_SERVER_FAST)
 	conn->session_ticket_cb = cb;
 	conn->session_ticket_cb_ctx = ctx;
 
@@ -2665,7 +3457,7 @@ int tls_connection_set_session_ticket_cb(void *tls_ctx,
 	}
 
 	return 0;
-#else /* EAP_FAST || EAP_FAST_DYNAMIC */
+#else /* EAP_FAST || EAP_FAST_DYNAMIC || EAP_SERVER_FAST */
 	return -1;
-#endif /* EAP_FAST || EAP_FAST_DYNAMIC */
+#endif /* EAP_FAST || EAP_FAST_DYNAMIC || EAP_SERVER_FAST */
 }

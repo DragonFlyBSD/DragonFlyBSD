@@ -1,22 +1,18 @@
 /*
- * wpa_supplicant - Internal WPA state machine definitions
- * Copyright (c) 2004-2007, Jouni Malinen <j@w1.fi>
+ * Internal WPA/RSN supplicant state machine definitions
+ * Copyright (c) 2004-2010, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #ifndef WPA_I_H
 #define WPA_I_H
 
-struct rsn_pmksa_candidate;
+#include "utils/list.h"
+
 struct wpa_peerkey;
+struct wpa_tdls_peer;
 struct wpa_eapol_key;
 
 /**
@@ -38,10 +34,11 @@ struct wpa_sm {
 
 	struct rsn_pmksa_cache *pmksa; /* PMKSA cache */
 	struct rsn_pmksa_cache_entry *cur_pmksa; /* current PMKSA entry */
-	struct rsn_pmksa_candidate *pmksa_candidates;
+	struct dl_list pmksa_candidates;
 
 	struct l2_packet_data *l2_preauth;
 	struct l2_packet_data *l2_preauth_br;
+	struct l2_packet_data *l2_tdls;
 	u8 preauth_bssid[ETH_ALEN]; /* current RSN pre-auth peer or
 				     * 00:00:00:00:00:00 if no pre-auth is
 				     * in progress */
@@ -61,6 +58,7 @@ struct wpa_sm {
 	u8 ssid[32];
 	size_t ssid_len;
 	int wpa_ptk_rekey;
+	int p2p;
 
 	u8 own_addr[ETH_ALEN];
 	const char *ifname;
@@ -81,6 +79,7 @@ struct wpa_sm {
 	unsigned int mgmt_group_cipher;
 
 	int rsn_enabled; /* Whether RSN is enabled in configuration */
+	int mfp; /* 0 = disabled, 1 = optional, 2 = mandatory */
 
 	u8 *assoc_wpa_ie; /* Own WPA/RSN IE from (Re)AssocReq */
 	size_t assoc_wpa_ie_len;
@@ -90,6 +89,20 @@ struct wpa_sm {
 #ifdef CONFIG_PEERKEY
 	struct wpa_peerkey *peerkey;
 #endif /* CONFIG_PEERKEY */
+#ifdef CONFIG_TDLS
+	struct wpa_tdls_peer *tdls;
+	int tdls_prohibited;
+	int tdls_disabled;
+
+	/* The driver supports TDLS */
+	int tdls_supported;
+
+	/*
+	 * The driver requires explicit discovery/setup/teardown frames sent
+	 * to it via tdls_mgmt.
+	 */
+	int tdls_external_setup;
+#endif /* CONFIG_TDLS */
 
 #ifdef CONFIG_IEEE80211R
 	u8 xxkey[PMK_LEN]; /* PSK or the second 256 bits of MSK */
@@ -105,17 +118,25 @@ struct wpa_sm {
 	int ft_completed;
 	int over_the_ds_in_progress;
 	u8 target_ap[ETH_ALEN]; /* over-the-DS target AP */
+	int set_ptk_after_assoc;
+	u8 mdie_ft_capab; /* FT Capability and Policy from target AP MDIE */
+	u8 *assoc_resp_ies; /* MDIE and FTIE from (Re)Association Response */
+	size_t assoc_resp_ies_len;
 #endif /* CONFIG_IEEE80211R */
+
+#ifdef CONFIG_P2P
+	u8 p2p_ip_addr[3 * 4];
+#endif /* CONFIG_P2P */
 };
 
 
-static inline void wpa_sm_set_state(struct wpa_sm *sm, wpa_states state)
+static inline void wpa_sm_set_state(struct wpa_sm *sm, enum wpa_states state)
 {
 	WPA_ASSERT(sm->ctx->set_state);
 	sm->ctx->set_state(sm->ctx->ctx, state);
 }
 
-static inline wpa_states wpa_sm_get_state(struct wpa_sm *sm)
+static inline enum wpa_states wpa_sm_get_state(struct wpa_sm *sm)
 {
 	WPA_ASSERT(sm->ctx->get_state);
 	return sm->ctx->get_state(sm->ctx->ctx);
@@ -127,13 +148,7 @@ static inline void wpa_sm_deauthenticate(struct wpa_sm *sm, int reason_code)
 	sm->ctx->deauthenticate(sm->ctx->ctx, reason_code);
 }
 
-static inline void wpa_sm_disassociate(struct wpa_sm *sm, int reason_code)
-{
-	WPA_ASSERT(sm->ctx->disassociate);
-	sm->ctx->disassociate(sm->ctx->ctx, reason_code);
-}
-
-static inline int wpa_sm_set_key(struct wpa_sm *sm, wpa_alg alg,
+static inline int wpa_sm_set_key(struct wpa_sm *sm, enum wpa_alg alg,
 				 const u8 *addr, int key_idx, int set_tx,
 				 const u8 *seq, size_t seq_len,
 				 const u8 *key, size_t key_len)
@@ -223,6 +238,77 @@ static inline int wpa_sm_send_ft_action(struct wpa_sm *sm, u8 action,
 	return -1;
 }
 
+static inline int wpa_sm_mark_authenticated(struct wpa_sm *sm,
+					    const u8 *target_ap)
+{
+	if (sm->ctx->mark_authenticated)
+		return sm->ctx->mark_authenticated(sm->ctx->ctx, target_ap);
+	return -1;
+}
+
+static inline void wpa_sm_set_rekey_offload(struct wpa_sm *sm)
+{
+	if (!sm->ctx->set_rekey_offload)
+		return;
+	sm->ctx->set_rekey_offload(sm->ctx->ctx, sm->ptk.kek,
+				   sm->ptk.kck, sm->rx_replay_counter);
+}
+
+#ifdef CONFIG_TDLS
+static inline int wpa_sm_tdls_get_capa(struct wpa_sm *sm,
+				       int *tdls_supported,
+				       int *tdls_ext_setup)
+{
+	if (sm->ctx->tdls_get_capa)
+		return sm->ctx->tdls_get_capa(sm->ctx->ctx, tdls_supported,
+					      tdls_ext_setup);
+	return -1;
+}
+
+static inline int wpa_sm_send_tdls_mgmt(struct wpa_sm *sm, const u8 *dst,
+					u8 action_code, u8 dialog_token,
+					u16 status_code, const u8 *buf,
+					size_t len)
+{
+	if (sm->ctx->send_tdls_mgmt)
+		return sm->ctx->send_tdls_mgmt(sm->ctx->ctx, dst, action_code,
+					       dialog_token, status_code,
+					       buf, len);
+	return -1;
+}
+
+static inline int wpa_sm_tdls_oper(struct wpa_sm *sm, int oper,
+				   const u8 *peer)
+{
+	if (sm->ctx->tdls_oper)
+		return sm->ctx->tdls_oper(sm->ctx->ctx, oper, peer);
+	return -1;
+}
+
+static inline int
+wpa_sm_tdls_peer_addset(struct wpa_sm *sm, const u8 *addr, int add,
+			u16 aid, u16 capability, const u8 *supp_rates,
+			size_t supp_rates_len,
+			const struct ieee80211_ht_capabilities *ht_capab,
+			const struct ieee80211_vht_capabilities *vht_capab,
+			u8 qosinfo, const u8 *ext_capab, size_t ext_capab_len,
+			const u8 *supp_channels, size_t supp_channels_len,
+			const u8 *supp_oper_classes,
+			size_t supp_oper_classes_len)
+{
+	if (sm->ctx->tdls_peer_addset)
+		return sm->ctx->tdls_peer_addset(sm->ctx->ctx, addr, add,
+						 aid, capability, supp_rates,
+						 supp_rates_len, ht_capab,
+						 vht_capab, qosinfo,
+						 ext_capab, ext_capab_len,
+						 supp_channels,
+						 supp_channels_len,
+						 supp_oper_classes,
+						 supp_oper_classes_len);
+	return -1;
+}
+#endif /* CONFIG_TDLS */
 
 void wpa_eapol_key_send(struct wpa_sm *sm, const u8 *kck,
 			int ver, const u8 *dest, u16 proto,
@@ -241,5 +327,8 @@ int wpa_supplicant_send_4_of_4(struct wpa_sm *sm, const unsigned char *dst,
 int wpa_derive_ptk_ft(struct wpa_sm *sm, const unsigned char *src_addr,
 		      const struct wpa_eapol_key *key,
 		      struct wpa_ptk *ptk, size_t ptk_len);
+
+void wpa_tdls_assoc(struct wpa_sm *sm);
+void wpa_tdls_disassoc(struct wpa_sm *sm);
 
 #endif /* WPA_I_H */

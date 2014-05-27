@@ -1,15 +1,9 @@
 /*
  * EAP-IKEv2 peer (RFC 5106)
- * Copyright (c) 2007, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2007-2014, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
@@ -66,6 +60,7 @@ static void * eap_ikev2_init(struct eap_sm *sm)
 	struct eap_ikev2_data *data;
 	const u8 *identity, *password;
 	size_t identity_len, password_len;
+	int fragment_size;
 
 	identity = eap_get_config_identity(sm, &identity_len);
 	if (identity == NULL) {
@@ -77,7 +72,11 @@ static void * eap_ikev2_init(struct eap_sm *sm)
 	if (data == NULL)
 		return NULL;
 	data->state = WAIT_START;
-	data->fragment_size = IKEV2_FRAGMENT_SIZE;
+	fragment_size = eap_get_config_fragment_size(sm);
+	if (fragment_size <= 0)
+		data->fragment_size = IKEV2_FRAGMENT_SIZE;
+	else
+		data->fragment_size = fragment_size;
 	data->ikev2.state = SA_INIT;
 	data->ikev2.peer_auth = PEER_AUTH_SECRET;
 	data->ikev2.key_pad = (u8 *) os_strdup("Key Pad for EAP-IKEv2");
@@ -481,6 +480,36 @@ static u8 * eap_ikev2_get_emsk(struct eap_sm *sm, void *priv, size_t *len)
 }
 
 
+static u8 * eap_ikev2_get_session_id(struct eap_sm *sm, void *priv, size_t *len)
+{
+	struct eap_ikev2_data *data = priv;
+	u8 *sid;
+	size_t sid_len;
+	size_t offset;
+
+	if (data->state != DONE || !data->keymat_ok)
+		return NULL;
+
+	sid_len = 1 + data->ikev2.i_nonce_len + data->ikev2.r_nonce_len;
+	sid = os_malloc(sid_len);
+	if (sid) {
+		offset = 0;
+		sid[offset] = EAP_TYPE_IKEV2;
+		offset++;
+		os_memcpy(sid + offset, data->ikev2.i_nonce,
+			  data->ikev2.i_nonce_len);
+		offset += data->ikev2.i_nonce_len;
+		os_memcpy(sid + offset, data->ikev2.r_nonce,
+			  data->ikev2.r_nonce_len);
+		*len = sid_len;
+		wpa_hexdump(MSG_DEBUG, "EAP-IKEV2: Derived Session-Id",
+			    sid, sid_len);
+	}
+
+	return sid;
+}
+
+
 int eap_peer_ikev2_register(void)
 {
 	struct eap_method *eap;
@@ -498,6 +527,7 @@ int eap_peer_ikev2_register(void)
 	eap->isKeyAvailable = eap_ikev2_isKeyAvailable;
 	eap->getKey = eap_ikev2_getKey;
 	eap->get_emsk = eap_ikev2_get_emsk;
+	eap->getSessionId = eap_ikev2_get_session_id;
 
 	ret = eap_peer_method_register(eap);
 	if (ret)

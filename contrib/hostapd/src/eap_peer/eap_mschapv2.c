@@ -2,14 +2,8 @@
  * EAP peer method: EAP-MSCHAPV2 (draft-kamath-pppext-eap-mschapv2-00.txt)
  * Copyright (c) 2004-2008, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  *
  * This file implements EAP peer part of EAP-MSCHAPV2 method (EAP type 26).
  * draft-kamath-pppext-eap-mschapv2-00.txt defines the Microsoft EAP CHAP
@@ -22,11 +16,12 @@
 #include "includes.h"
 
 #include "common.h"
+#include "crypto/ms_funcs.h"
+#include "crypto/random.h"
+#include "common/wpa_ctrl.h"
+#include "mschapv2.h"
 #include "eap_i.h"
 #include "eap_config.h"
-#include "ms_funcs.h"
-#include "wpa_ctrl.h"
-#include "mschapv2.h"
 
 
 #ifdef _MSC_VER
@@ -199,7 +194,7 @@ static struct wpabuf * eap_mschapv2_challenge_reply(
 			   "in Phase 1");
 		peer_challenge = data->peer_challenge;
 		os_memset(r->peer_challenge, 0, MSCHAPV2_CHAL_LEN);
-	} else if (os_get_random(peer_challenge, MSCHAPV2_CHAL_LEN)) {
+	} else if (random_get_bytes(peer_challenge, MSCHAPV2_CHAL_LEN)) {
 		wpabuf_free(resp);
 		return NULL;
 	}
@@ -209,10 +204,15 @@ static struct wpabuf * eap_mschapv2_challenge_reply(
 			   "in Phase 1");
 		auth_challenge = data->auth_challenge;
 	}
-	mschapv2_derive_response(identity, identity_len, password,
-				 password_len, pwhash, auth_challenge,
-				 peer_challenge, r->nt_response,
-				 data->auth_response, data->master_key);
+	if (mschapv2_derive_response(identity, identity_len, password,
+				     password_len, pwhash, auth_challenge,
+				     peer_challenge, r->nt_response,
+				     data->auth_response, data->master_key)) {
+		wpa_printf(MSG_ERROR, "EAP-MSCHAPV2: Failed to derive "
+			   "response");
+		wpabuf_free(resp);
+		return NULL;
+	}
 	data->auth_response_valid = 1;
 	data->master_key_valid = 1;
 
@@ -304,7 +304,9 @@ static void eap_mschapv2_password_changed(struct eap_sm *sm,
 			"EAP-MSCHAPV2: Password changed successfully");
 		data->prev_error = 0;
 		os_free(config->password);
-		if (config->flags & EAP_CONFIG_FLAGS_PASSWORD_NTHASH) {
+		if (config->flags & EAP_CONFIG_FLAGS_EXT_PASSWORD) {
+			/* TODO: update external storage */
+		} else if (config->flags & EAP_CONFIG_FLAGS_PASSWORD_NTHASH) {
 			config->password = os_malloc(16);
 			config->password_len = 16;
 			if (config->password) {
@@ -559,7 +561,7 @@ static struct wpabuf * eap_mschapv2_change_password(
 	}
 
 	/* Peer-Challenge */
-	if (os_get_random(cp->peer_challenge, MSCHAPV2_CHAL_LEN))
+	if (random_get_bytes(cp->peer_challenge, MSCHAPV2_CHAL_LEN))
 		goto fail;
 
 	/* Reserved, must be zero */
@@ -642,10 +644,8 @@ static struct wpabuf * eap_mschapv2_failure(struct eap_sm *sm,
 	 * must allocate a large enough temporary buffer to create that since
 	 * the received message does not include nul termination.
 	 */
-	buf = os_malloc(len + 1);
+	buf = dup_binstr(msdata, len);
 	if (buf) {
-		os_memcpy(buf, msdata, len);
-		buf[len] = '\0';
 		retry = eap_mschapv2_failure_txt(sm, data, buf);
 		os_free(buf);
 	}

@@ -2,22 +2,13 @@
  * ASN.1 DER parsing
  * Copyright (c) 2006, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
 
 #include "common.h"
-
-#ifdef CONFIG_INTERNAL_X509
-
 #include "asn1.h"
 
 int asn1_get_next(const u8 *buf, size_t len, struct asn1_hdr *hdr)
@@ -85,28 +76,16 @@ int asn1_get_next(const u8 *buf, size_t len, struct asn1_hdr *hdr)
 }
 
 
-int asn1_get_oid(const u8 *buf, size_t len, struct asn1_oid *oid,
-		 const u8 **next)
+int asn1_parse_oid(const u8 *buf, size_t len, struct asn1_oid *oid)
 {
-	struct asn1_hdr hdr;
 	const u8 *pos, *end;
 	unsigned long val;
 	u8 tmp;
 
 	os_memset(oid, 0, sizeof(*oid));
 
-	if (asn1_get_next(buf, len, &hdr) < 0 || hdr.length == 0)
-		return -1;
-
-	if (hdr.class != ASN1_CLASS_UNIVERSAL || hdr.tag != ASN1_TAG_OID) {
-		wpa_printf(MSG_DEBUG, "ASN.1: Expected OID - found class %d "
-			   "tag 0x%x", hdr.class, hdr.tag);
-		return -1;
-	}
-
-	pos = hdr.payload;
-	end = hdr.payload + hdr.length;
-	*next = end;
+	pos = buf;
+	end = buf + len;
 
 	while (pos < end) {
 		val = 0;
@@ -138,6 +117,26 @@ int asn1_get_oid(const u8 *buf, size_t len, struct asn1_oid *oid,
 	}
 
 	return 0;
+}
+
+
+int asn1_get_oid(const u8 *buf, size_t len, struct asn1_oid *oid,
+		 const u8 **next)
+{
+	struct asn1_hdr hdr;
+
+	if (asn1_get_next(buf, len, &hdr) < 0 || hdr.length == 0)
+		return -1;
+
+	if (hdr.class != ASN1_CLASS_UNIVERSAL || hdr.tag != ASN1_TAG_OID) {
+		wpa_printf(MSG_DEBUG, "ASN.1: Expected OID - found class %d "
+			   "tag 0x%x", hdr.class, hdr.tag);
+		return -1;
+	}
+
+	*next = hdr.payload + hdr.length;
+
+	return asn1_parse_oid(hdr.payload, hdr.length, oid);
 }
 
 
@@ -205,5 +204,3 @@ unsigned long asn1_bit_string_to_long(const u8 *buf, size_t len)
 
 	return val;
 }
-
-#endif /* CONFIG_INTERNAL_X509 */
