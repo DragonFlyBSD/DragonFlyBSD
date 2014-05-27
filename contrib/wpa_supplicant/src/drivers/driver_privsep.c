@@ -2,14 +2,8 @@
  * WPA Supplicant - privilege separated driver interface
  * Copyright (c) 2007-2009, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
@@ -18,7 +12,7 @@
 #include "common.h"
 #include "driver.h"
 #include "eloop.h"
-#include "privsep_commands.h"
+#include "common/privsep_commands.h"
 
 
 struct wpa_driver_privsep_data {
@@ -102,18 +96,12 @@ static int wpa_priv_cmd(struct wpa_driver_privsep_data *drv, int cmd,
 }
 
 			     
-static int wpa_driver_privsep_set_wpa(void *priv, int enabled)
+static int wpa_driver_privsep_scan(void *priv,
+				   struct wpa_driver_scan_params *params)
 {
 	struct wpa_driver_privsep_data *drv = priv;
-	wpa_printf(MSG_DEBUG, "%s: enabled=%d", __func__, enabled);
-	return wpa_priv_cmd(drv, PRIVSEP_CMD_SET_WPA, &enabled,
-			    sizeof(enabled), NULL, NULL);
-}
-
-
-static int wpa_driver_privsep_scan(void *priv, const u8 *ssid, size_t ssid_len)
-{
-	struct wpa_driver_privsep_data *drv = priv;
+	const u8 *ssid = params->ssids[0].ssid;
+	size_t ssid_len = params->ssids[0].ssid_len;
 	wpa_printf(MSG_DEBUG, "%s: priv=%p", __func__, priv);
 	return wpa_priv_cmd(drv, PRIVSEP_CMD_SCAN, ssid, ssid_len,
 			    NULL, NULL);
@@ -164,7 +152,7 @@ wpa_driver_privsep_get_scan_results2(void *priv)
 		return NULL;
 	}
 
-	results->res = os_zalloc(num * sizeof(struct wpa_scan_res *));
+	results->res = os_calloc(num, sizeof(struct wpa_scan_res *));
 	if (results->res == NULL) {
 		os_free(results);
 		os_free(buf);
@@ -196,10 +184,11 @@ wpa_driver_privsep_get_scan_results2(void *priv)
 }
 
 
-static int wpa_driver_privsep_set_key(void *priv, wpa_alg alg, const u8 *addr,
-				   int key_idx, int set_tx,
-				   const u8 *seq, size_t seq_len,
-				   const u8 *key, size_t key_len)
+static int wpa_driver_privsep_set_key(const char *ifname, void *priv,
+				      enum wpa_alg alg, const u8 *addr,
+				      int key_idx, int set_tx,
+				      const u8 *seq, size_t seq_len,
+				      const u8 *key, size_t key_len)
 {
 	struct wpa_driver_privsep_data *drv = priv;
 	struct privsep_cmd_set_key cmd;
@@ -315,18 +304,8 @@ static int wpa_driver_privsep_deauthenticate(void *priv, const u8 *addr,
 }
 
 
-static int wpa_driver_privsep_disassociate(void *priv, const u8 *addr,
-					int reason_code)
-{
-	//struct wpa_driver_privsep_data *drv = priv;
-	wpa_printf(MSG_DEBUG, "%s addr=" MACSTR " reason_code=%d",
-		   __func__, MAC2STR(addr), reason_code);
-	wpa_printf(MSG_DEBUG, "%s - TODO", __func__);
-	return 0;
-}
-
-
-static void wpa_driver_privsep_event_assoc(void *ctx, wpa_event_type event,
+static void wpa_driver_privsep_event_assoc(void *ctx,
+					   enum wpa_event_type event,
 					   u8 *buf, size_t len)
 {
 	union wpa_event_data data;
@@ -438,24 +417,7 @@ static void wpa_driver_privsep_event_rx_eapol(void *ctx, u8 *buf, size_t len)
 {
 	if (len < ETH_ALEN)
 		return;
-
-	wpa_supplicant_rx_eapol(ctx, buf, buf + ETH_ALEN, len - ETH_ALEN);
-}
-
-
-static void wpa_driver_privsep_event_sta_rx(void *ctx, u8 *buf, size_t len)
-{
-#ifdef CONFIG_CLIENT_MLME
-	struct ieee80211_rx_status *rx_status;
-
-	if (len < sizeof(*rx_status))
-		return;
-	rx_status = (struct ieee80211_rx_status *) buf;
-	buf += sizeof(*rx_status);
-	len -= sizeof(*rx_status);
-
-	wpa_supplicant_sta_rx(ctx, buf, len, rx_status);
-#endif /* CONFIG_CLIENT_MLME */
+	drv_event_eapol_rx(ctx, buf, buf + ETH_ALEN, len - ETH_ALEN);
 }
 
 
@@ -534,10 +496,6 @@ static void wpa_driver_privsep_receive(int sock, void *eloop_ctx,
 	case PRIVSEP_EVENT_RX_EAPOL:
 		wpa_driver_privsep_event_rx_eapol(drv->ctx, event_buf,
 						  event_len);
-		break;
-	case PRIVSEP_EVENT_STA_RX:
-		wpa_driver_privsep_event_sta_rx(drv->ctx, event_buf,
-						event_len);
 		break;
 	}
 
@@ -682,7 +640,7 @@ static int wpa_driver_privsep_set_param(void *priv, const char *param)
 	os_strlcpy(addr.sun_path, drv->own_socket_path, sizeof(addr.sun_path));
 	if (bind(drv->priv_socket, (struct sockaddr *) &addr, sizeof(addr)) <
 	    0) {
-		perror("bind(PF_UNIX)");
+		perror("privsep-set-params priv-sock: bind(PF_UNIX)");
 		close(drv->priv_socket);
 		drv->priv_socket = -1;
 		unlink(drv->own_socket_path);
@@ -707,7 +665,7 @@ static int wpa_driver_privsep_set_param(void *priv, const char *param)
 	os_strlcpy(addr.sun_path, drv->own_cmd_path, sizeof(addr.sun_path));
 	if (bind(drv->cmd_socket, (struct sockaddr *) &addr, sizeof(addr)) < 0)
 	{
-		perror("bind(PF_UNIX)");
+		perror("privsep-set-params cmd-sock: bind(PF_UNIX)");
 		close(drv->cmd_socket);
 		drv->cmd_socket = -1;
 		unlink(drv->own_cmd_path);
@@ -747,15 +705,6 @@ static const u8 * wpa_driver_privsep_get_mac_addr(void *priv)
 }
 
 
-static int wpa_driver_privsep_set_mode(void *priv, int mode)
-{
-	struct wpa_driver_privsep_data *drv = priv;
-	wpa_printf(MSG_DEBUG, "%s mode=%d", __func__, mode);
-	return wpa_priv_cmd(drv, PRIVSEP_CMD_SET_MODE, &mode, sizeof(mode),
-			    NULL, NULL);
-}
-
-
 static int wpa_driver_privsep_set_country(void *priv, const char *alpha2)
 {
 	struct wpa_driver_privsep_data *drv = priv;
@@ -768,52 +717,23 @@ static int wpa_driver_privsep_set_country(void *priv, const char *alpha2)
 struct wpa_driver_ops wpa_driver_privsep_ops = {
 	"privsep",
 	"wpa_supplicant privilege separated driver",
-	wpa_driver_privsep_get_bssid,
-	wpa_driver_privsep_get_ssid,
-	wpa_driver_privsep_set_wpa,
-	wpa_driver_privsep_set_key,
-	wpa_driver_privsep_init,
-	wpa_driver_privsep_deinit,
-	wpa_driver_privsep_set_param,
-	NULL /* set_countermeasures */,
-	NULL /* set_drop_unencrypted */,
-	wpa_driver_privsep_scan,
-	NULL /*  get_scan_results */,
-	wpa_driver_privsep_deauthenticate,
-	wpa_driver_privsep_disassociate,
-	wpa_driver_privsep_associate,
-	NULL /* set_auth_alg */,
-	NULL /* add_pmkid */,
-	NULL /* remove_pmkid */,
-	NULL /* flush_pmkid */,
-	wpa_driver_privsep_get_capa,
-	NULL /* poll */,
-	NULL /* get_ifname */,
-	wpa_driver_privsep_get_mac_addr,
-	NULL /* send_eapol */,
-	NULL /* set_operstate */,
-	NULL /* mlme_setprotection */,
-	NULL /* get_hw_feature_data */,
-	NULL /* set_channel */,
-	NULL /* set_ssid */,
-	NULL /* set_bssid */,
-	NULL /* send_mlme */,
-	NULL /* mlme_add_sta */,
-	NULL /* mlme_remove_sta */,
-	NULL /* update_ft_ies */,
-	NULL /* send_ft_action */,
-	wpa_driver_privsep_get_scan_results2,
-	NULL /* set_probe_req_ie */,
-	wpa_driver_privsep_set_mode,
-	wpa_driver_privsep_set_country,
-	NULL /* global_init */,
-	NULL /* global_deinit */,
-	NULL /* init2 */,
-	NULL /* get_interfaces */
+	.get_bssid = wpa_driver_privsep_get_bssid,
+	.get_ssid = wpa_driver_privsep_get_ssid,
+	.set_key = wpa_driver_privsep_set_key,
+	.init = wpa_driver_privsep_init,
+	.deinit = wpa_driver_privsep_deinit,
+	.set_param = wpa_driver_privsep_set_param,
+	.scan2 = wpa_driver_privsep_scan,
+	.deauthenticate = wpa_driver_privsep_deauthenticate,
+	.associate = wpa_driver_privsep_associate,
+	.get_capa = wpa_driver_privsep_get_capa,
+	.get_mac_addr = wpa_driver_privsep_get_mac_addr,
+	.get_scan_results2 = wpa_driver_privsep_get_scan_results2,
+	.set_country = wpa_driver_privsep_set_country,
 };
 
 
-struct wpa_driver_ops *wpa_supplicant_drivers[] =
+struct wpa_driver_ops *wpa_drivers[] =
 {
 	&wpa_driver_privsep_ops,
 	NULL

@@ -2,14 +2,8 @@
  * EAP peer state machines internal structures (RFC 4137)
  * Copyright (c) 2004-2007, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #ifndef EAP_I_H
@@ -267,6 +261,19 @@ struct eap_method {
 	 * private data or this function may derive the key.
 	 */
 	u8 * (*get_emsk)(struct eap_sm *sm, void *priv, size_t *len);
+
+	/**
+	 * getSessionId - Get EAP method specific Session-Id
+	 * @sm: Pointer to EAP state machine allocated with eap_peer_sm_init()
+	 * @priv: Pointer to private EAP method data from eap_method::init()
+	 * @len: Pointer to a variable to store Session-Id length
+	 * Returns: Session-Id or %NULL if not available
+	 *
+	 * This function can be used to get the Session-Id from the EAP method.
+	 * The Session-Id may already be stored in the method-specific private
+	 * data or this function may derive the Session-Id.
+	 */
+	u8 * (*getSessionId)(struct eap_sm *sm, void *priv, size_t *len);
 };
 
 
@@ -304,6 +311,8 @@ struct eap_sm {
 	Boolean eapKeyAvailable; /* peer to lower layer */
 	u8 *eapKeyData; /* peer to lower layer */
 	size_t eapKeyDataLen; /* peer to lower layer */
+	u8 *eapSessionId; /* peer to lower layer */
+	size_t eapSessionIdLen; /* peer to lower layer */
 	const struct eap_method *m; /* selected EAP method */
 	/* not defined in RFC 4137 */
 	Boolean changed;
@@ -323,6 +332,7 @@ struct eap_sm {
 	void *msg_ctx;
 	void *scard_ctx;
 	void *ssl_ctx;
+	void *ssl_ctx2;
 
 	unsigned int workaround;
 
@@ -335,6 +345,13 @@ struct eap_sm {
 	struct wps_context *wps;
 
 	int prev_failure;
+
+	struct ext_password_data *ext_pw;
+	struct wpabuf *ext_pw_buf;
+
+	int external_sim;
+
+	unsigned int expected_failure:1;
 };
 
 const u8 * eap_get_config_identity(struct eap_sm *sm, size_t *len);
@@ -345,6 +362,7 @@ const u8 * eap_get_config_otp(struct eap_sm *sm, size_t *len);
 void eap_clear_config_otp(struct eap_sm *sm);
 const char * eap_get_config_phase1(struct eap_sm *sm);
 const char * eap_get_config_phase2(struct eap_sm *sm);
+int eap_get_config_fragment_size(struct eap_sm *sm);
 struct eap_peer_config * eap_get_config(struct eap_sm *sm);
 void eap_set_config_blob(struct eap_sm *sm, struct wpa_config_blob *blob);
 const struct wpa_config_blob *

@@ -2,14 +2,8 @@
  * WPA Supplicant - Layer2 packet handling with Microsoft NDISUIO
  * Copyright (c) 2003-2006, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  *
  * This implementation requires Windows specific event loop implementation,
  * i.e., eloop_win.c. In addition, the NDISUIO connection is shared with
@@ -137,11 +131,17 @@ int l2_packet_send(struct l2_packet_data *l2, const u8 *dst_addr, u16 proto,
 		DWORD err = GetLastError();
 #ifndef _WIN32_WCE
 		if (err == ERROR_IO_PENDING) {
-			/* For now, just assume that the packet will be sent in
-			 * time before the next write happens. This could be
-			 * cleaned up at some point to actually wait for
-			 * completion before starting new writes.
-			 */
+			wpa_printf(MSG_DEBUG, "L2(NDISUIO): Wait for pending "
+				   "write to complete");
+			res = GetOverlappedResult(
+				driver_ndis_get_ndisuio_handle(), &overlapped,
+				&written, TRUE);
+			if (!res) {
+				wpa_printf(MSG_DEBUG, "L2(NDISUIO): "
+					   "GetOverlappedResult failed: %d",
+					   (int) GetLastError());
+				return -1;
+			}
 			return 0;
 		}
 #endif /* _WIN32_WCE */

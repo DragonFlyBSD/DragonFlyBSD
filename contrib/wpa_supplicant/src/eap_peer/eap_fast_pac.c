@@ -2,14 +2,8 @@
  * EAP peer method: EAP-FAST PAC file processing
  * Copyright (c) 2004-2006, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
@@ -428,8 +422,12 @@ int eap_fast_load_pac(struct eap_sm *sm, struct eap_fast_pac **pac_root,
 	if (eap_fast_init_pac_data(sm, pac_file, &rc) < 0)
 		return 0;
 
-	if (eap_fast_read_line(&rc, &pos) < 0 ||
-	    os_strcmp(pac_file_hdr, rc.buf) != 0)
+	if (eap_fast_read_line(&rc, &pos) < 0) {
+		/* empty file - assume it is fine to overwrite */
+		eap_fast_deinit_pac_data(&rc);
+		return 0;
+	}
+	if (os_strcmp(pac_file_hdr, rc.buf) != 0)
 		err = "Unrecognized header line";
 
 	while (!err && eap_fast_read_line(&rc, &pos) == 0) {
@@ -480,8 +478,10 @@ static void eap_fast_write(char **buf, char **pos, size_t *buf_len,
 {
 	size_t i, need;
 	int ret;
+	char *end;
 
-	if (data == NULL || *buf == NULL)
+	if (data == NULL || buf == NULL || *buf == NULL ||
+	    pos == NULL || *pos == NULL || *pos < *buf)
 		return;
 
 	need = os_strlen(field) + len * 2 + 30;
@@ -495,35 +495,35 @@ static void eap_fast_write(char **buf, char **pos, size_t *buf_len,
 			*buf = NULL;
 			return;
 		}
+		*pos = nbuf + (*pos - *buf);
 		*buf = nbuf;
 		*buf_len += need;
 	}
+	end = *buf + *buf_len;
 
-	ret = os_snprintf(*pos, *buf + *buf_len - *pos, "%s=", field);
-	if (ret < 0 || ret >= *buf + *buf_len - *pos)
+	ret = os_snprintf(*pos, end - *pos, "%s=", field);
+	if (ret < 0 || ret >= end - *pos)
 		return;
 	*pos += ret;
-	*pos += wpa_snprintf_hex(*pos, *buf + *buf_len - *pos, data, len);
-	ret = os_snprintf(*pos, *buf + *buf_len - *pos, "\n");
-	if (ret < 0 || ret >= *buf + *buf_len - *pos)
+	*pos += wpa_snprintf_hex(*pos, end - *pos, data, len);
+	ret = os_snprintf(*pos, end - *pos, "\n");
+	if (ret < 0 || ret >= end - *pos)
 		return;
 	*pos += ret;
 
 	if (txt) {
-		ret = os_snprintf(*pos, *buf + *buf_len - *pos,
-				  "%s-txt=", field);
-		if (ret < 0 || ret >= *buf + *buf_len - *pos)
+		ret = os_snprintf(*pos, end - *pos, "%s-txt=", field);
+		if (ret < 0 || ret >= end - *pos)
 			return;
 		*pos += ret;
 		for (i = 0; i < len; i++) {
-			ret = os_snprintf(*pos, *buf + *buf_len - *pos,
-					  "%c", data[i]);
-			if (ret < 0 || ret >= *buf + *buf_len - *pos)
+			ret = os_snprintf(*pos, end - *pos, "%c", data[i]);
+			if (ret < 0 || ret >= end - *pos)
 				return;
 			*pos += ret;
 		}
-		ret = os_snprintf(*pos, *buf + *buf_len - *pos, "\n");
-		if (ret < 0 || ret >= *buf + *buf_len - *pos)
+		ret = os_snprintf(*pos, end - *pos, "\n");
+		if (ret < 0 || ret >= end - *pos)
 			return;
 		*pos += ret;
 	}

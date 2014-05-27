@@ -1,25 +1,20 @@
 /*
  * IEEE 802.11 Common routines
- * Copyright (c) 2002-2008, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2002-2013, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
 
 #include "common.h"
+#include "defs.h"
 #include "ieee802_11_defs.h"
 #include "ieee802_11_common.h"
 
 
-static int ieee802_11_parse_vendor_specific(u8 *pos, size_t elen,
+static int ieee802_11_parse_vendor_specific(const u8 *pos, size_t elen,
 					    struct ieee802_11_elems *elems,
 					    int show_errors)
 {
@@ -75,7 +70,7 @@ static int ieee802_11_parse_vendor_specific(u8 *pos, size_t elen,
 				elems->wmm_tspec_len = elen;
 				break;
 			default:
-				wpa_printf(MSG_MSGDUMP, "unknown WMM "
+				wpa_printf(MSG_EXCESSIVE, "unknown WMM "
 					   "information element ignored "
 					   "(subtype=%d len=%lu)",
 					   pos[4], (unsigned long) elen);
@@ -88,7 +83,33 @@ static int ieee802_11_parse_vendor_specific(u8 *pos, size_t elen,
 			elems->wps_ie_len = elen;
 			break;
 		default:
-			wpa_printf(MSG_MSGDUMP, "Unknown Microsoft "
+			wpa_printf(MSG_EXCESSIVE, "Unknown Microsoft "
+				   "information element ignored "
+				   "(type=%d len=%lu)",
+				   pos[3], (unsigned long) elen);
+			return -1;
+		}
+		break;
+
+	case OUI_WFA:
+		switch (pos[3]) {
+		case P2P_OUI_TYPE:
+			/* Wi-Fi Alliance - P2P IE */
+			elems->p2p = pos;
+			elems->p2p_len = elen;
+			break;
+		case WFD_OUI_TYPE:
+			/* Wi-Fi Alliance - WFD IE */
+			elems->wfd = pos;
+			elems->wfd_len = elen;
+			break;
+		case HS20_INDICATION_OUI_TYPE:
+			/* Hotspot 2.0 */
+			elems->hs20 = pos;
+			elems->hs20_len = elen;
+			break;
+		default:
+			wpa_printf(MSG_MSGDUMP, "Unknown WFA "
 				   "information element ignored "
 				   "(type=%d len=%lu)\n",
 				   pos[3], (unsigned long) elen);
@@ -103,18 +124,18 @@ static int ieee802_11_parse_vendor_specific(u8 *pos, size_t elen,
 			elems->vendor_ht_cap_len = elen;
 			break;
 		default:
-			wpa_printf(MSG_MSGDUMP, "Unknown Broadcom "
+			wpa_printf(MSG_EXCESSIVE, "Unknown Broadcom "
 				   "information element ignored "
-				   "(type=%d len=%lu)\n",
+				   "(type=%d len=%lu)",
 				   pos[3], (unsigned long) elen);
 			return -1;
 		}
 		break;
 
 	default:
-		wpa_printf(MSG_MSGDUMP, "unknown vendor specific information "
-			   "element ignored (vendor OUI %02x:%02x:%02x "
-			   "len=%lu)",
+		wpa_printf(MSG_EXCESSIVE, "unknown vendor specific "
+			   "information element ignored (vendor OUI "
+			   "%02x:%02x:%02x len=%lu)",
 			   pos[0], pos[1], pos[2], (unsigned long) elen);
 		return -1;
 	}
@@ -131,12 +152,12 @@ static int ieee802_11_parse_vendor_specific(u8 *pos, size_t elen,
  * @show_errors: Whether to show parsing errors in debug log
  * Returns: Parsing result
  */
-ParseRes ieee802_11_parse_elems(u8 *start, size_t len,
+ParseRes ieee802_11_parse_elems(const u8 *start, size_t len,
 				struct ieee802_11_elems *elems,
 				int show_errors)
 {
 	size_t left = len;
-	u8 *pos = start;
+	const u8 *pos = start;
 	int unknown = 0;
 
 	os_memset(elems, 0, sizeof(*elems));
@@ -168,25 +189,12 @@ ParseRes ieee802_11_parse_elems(u8 *start, size_t len,
 			elems->supp_rates = pos;
 			elems->supp_rates_len = elen;
 			break;
-		case WLAN_EID_FH_PARAMS:
-			elems->fh_params = pos;
-			elems->fh_params_len = elen;
-			break;
 		case WLAN_EID_DS_PARAMS:
 			elems->ds_params = pos;
 			elems->ds_params_len = elen;
 			break;
 		case WLAN_EID_CF_PARAMS:
-			elems->cf_params = pos;
-			elems->cf_params_len = elen;
-			break;
 		case WLAN_EID_TIM:
-			elems->tim = pos;
-			elems->tim_len = elen;
-			break;
-		case WLAN_EID_IBSS_PARAMS:
-			elems->ibss_params = pos;
-			elems->ibss_params_len = elen;
 			break;
 		case WLAN_EID_CHALLENGE:
 			elems->challenge = pos;
@@ -211,8 +219,6 @@ ParseRes ieee802_11_parse_elems(u8 *start, size_t len,
 			elems->rsn_ie_len = elen;
 			break;
 		case WLAN_EID_PWR_CAPABILITY:
-			elems->power_cap = pos;
-			elems->power_cap_len = elen;
 			break;
 		case WLAN_EID_SUPPORTED_CHANNELS:
 			elems->supp_channels = pos;
@@ -238,6 +244,42 @@ ParseRes ieee802_11_parse_elems(u8 *start, size_t len,
 			elems->ht_operation = pos;
 			elems->ht_operation_len = elen;
 			break;
+		case WLAN_EID_VHT_CAP:
+			elems->vht_capabilities = pos;
+			elems->vht_capabilities_len = elen;
+			break;
+		case WLAN_EID_VHT_OPERATION:
+			elems->vht_operation = pos;
+			elems->vht_operation_len = elen;
+			break;
+		case WLAN_EID_LINK_ID:
+			if (elen < 18)
+				break;
+			elems->link_id = pos;
+			break;
+		case WLAN_EID_INTERWORKING:
+			elems->interworking = pos;
+			elems->interworking_len = elen;
+			break;
+		case WLAN_EID_QOS_MAP_SET:
+			if (elen < 16)
+				break;
+			elems->qos_map_set = pos;
+			elems->qos_map_set_len = elen;
+			break;
+		case WLAN_EID_EXT_CAPAB:
+			elems->ext_capab = pos;
+			elems->ext_capab_len = elen;
+			break;
+		case WLAN_EID_BSS_MAX_IDLE_PERIOD:
+			if (elen < 3)
+				break;
+			elems->bss_max_idle_period = pos;
+			break;
+		case WLAN_EID_SSID_LIST:
+			elems->ssid_list = pos;
+			elems->ssid_list_len = elen;
+			break;
 		default:
 			unknown++;
 			if (!show_errors)
@@ -256,4 +298,241 @@ ParseRes ieee802_11_parse_elems(u8 *start, size_t len,
 		return ParseFailed;
 
 	return unknown ? ParseUnknown : ParseOK;
+}
+
+
+int ieee802_11_ie_count(const u8 *ies, size_t ies_len)
+{
+	int count = 0;
+	const u8 *pos, *end;
+
+	if (ies == NULL)
+		return 0;
+
+	pos = ies;
+	end = ies + ies_len;
+
+	while (pos + 2 <= end) {
+		if (pos + 2 + pos[1] > end)
+			break;
+		count++;
+		pos += 2 + pos[1];
+	}
+
+	return count;
+}
+
+
+struct wpabuf * ieee802_11_vendor_ie_concat(const u8 *ies, size_t ies_len,
+					    u32 oui_type)
+{
+	struct wpabuf *buf;
+	const u8 *end, *pos, *ie;
+
+	pos = ies;
+	end = ies + ies_len;
+	ie = NULL;
+
+	while (pos + 1 < end) {
+		if (pos + 2 + pos[1] > end)
+			return NULL;
+		if (pos[0] == WLAN_EID_VENDOR_SPECIFIC && pos[1] >= 4 &&
+		    WPA_GET_BE32(&pos[2]) == oui_type) {
+			ie = pos;
+			break;
+		}
+		pos += 2 + pos[1];
+	}
+
+	if (ie == NULL)
+		return NULL; /* No specified vendor IE found */
+
+	buf = wpabuf_alloc(ies_len);
+	if (buf == NULL)
+		return NULL;
+
+	/*
+	 * There may be multiple vendor IEs in the message, so need to
+	 * concatenate their data fields.
+	 */
+	while (pos + 1 < end) {
+		if (pos + 2 + pos[1] > end)
+			break;
+		if (pos[0] == WLAN_EID_VENDOR_SPECIFIC && pos[1] >= 4 &&
+		    WPA_GET_BE32(&pos[2]) == oui_type)
+			wpabuf_put_data(buf, pos + 6, pos[1] - 4);
+		pos += 2 + pos[1];
+	}
+
+	return buf;
+}
+
+
+const u8 * get_hdr_bssid(const struct ieee80211_hdr *hdr, size_t len)
+{
+	u16 fc, type, stype;
+
+	/*
+	 * PS-Poll frames are 16 bytes. All other frames are
+	 * 24 bytes or longer.
+	 */
+	if (len < 16)
+		return NULL;
+
+	fc = le_to_host16(hdr->frame_control);
+	type = WLAN_FC_GET_TYPE(fc);
+	stype = WLAN_FC_GET_STYPE(fc);
+
+	switch (type) {
+	case WLAN_FC_TYPE_DATA:
+		if (len < 24)
+			return NULL;
+		switch (fc & (WLAN_FC_FROMDS | WLAN_FC_TODS)) {
+		case WLAN_FC_FROMDS | WLAN_FC_TODS:
+		case WLAN_FC_TODS:
+			return hdr->addr1;
+		case WLAN_FC_FROMDS:
+			return hdr->addr2;
+		default:
+			return NULL;
+		}
+	case WLAN_FC_TYPE_CTRL:
+		if (stype != WLAN_FC_STYPE_PSPOLL)
+			return NULL;
+		return hdr->addr1;
+	case WLAN_FC_TYPE_MGMT:
+		return hdr->addr3;
+	default:
+		return NULL;
+	}
+}
+
+
+int hostapd_config_wmm_ac(struct hostapd_wmm_ac_params wmm_ac_params[],
+			  const char *name, const char *val)
+{
+	int num, v;
+	const char *pos;
+	struct hostapd_wmm_ac_params *ac;
+
+	/* skip 'wme_ac_' or 'wmm_ac_' prefix */
+	pos = name + 7;
+	if (os_strncmp(pos, "be_", 3) == 0) {
+		num = 0;
+		pos += 3;
+	} else if (os_strncmp(pos, "bk_", 3) == 0) {
+		num = 1;
+		pos += 3;
+	} else if (os_strncmp(pos, "vi_", 3) == 0) {
+		num = 2;
+		pos += 3;
+	} else if (os_strncmp(pos, "vo_", 3) == 0) {
+		num = 3;
+		pos += 3;
+	} else {
+		wpa_printf(MSG_ERROR, "Unknown WMM name '%s'", pos);
+		return -1;
+	}
+
+	ac = &wmm_ac_params[num];
+
+	if (os_strcmp(pos, "aifs") == 0) {
+		v = atoi(val);
+		if (v < 1 || v > 255) {
+			wpa_printf(MSG_ERROR, "Invalid AIFS value %d", v);
+			return -1;
+		}
+		ac->aifs = v;
+	} else if (os_strcmp(pos, "cwmin") == 0) {
+		v = atoi(val);
+		if (v < 0 || v > 12) {
+			wpa_printf(MSG_ERROR, "Invalid cwMin value %d", v);
+			return -1;
+		}
+		ac->cwmin = v;
+	} else if (os_strcmp(pos, "cwmax") == 0) {
+		v = atoi(val);
+		if (v < 0 || v > 12) {
+			wpa_printf(MSG_ERROR, "Invalid cwMax value %d", v);
+			return -1;
+		}
+		ac->cwmax = v;
+	} else if (os_strcmp(pos, "txop_limit") == 0) {
+		v = atoi(val);
+		if (v < 0 || v > 0xffff) {
+			wpa_printf(MSG_ERROR, "Invalid txop value %d", v);
+			return -1;
+		}
+		ac->txop_limit = v;
+	} else if (os_strcmp(pos, "acm") == 0) {
+		v = atoi(val);
+		if (v < 0 || v > 1) {
+			wpa_printf(MSG_ERROR, "Invalid acm value %d", v);
+			return -1;
+		}
+		ac->admission_control_mandatory = v;
+	} else {
+		wpa_printf(MSG_ERROR, "Unknown wmm_ac_ field '%s'", pos);
+		return -1;
+	}
+
+	return 0;
+}
+
+
+enum hostapd_hw_mode ieee80211_freq_to_chan(int freq, u8 *channel)
+{
+	enum hostapd_hw_mode mode = NUM_HOSTAPD_MODES;
+
+	if (freq >= 2412 && freq <= 2472) {
+		mode = HOSTAPD_MODE_IEEE80211G;
+		*channel = (freq - 2407) / 5;
+	} else if (freq == 2484) {
+		mode = HOSTAPD_MODE_IEEE80211B;
+		*channel = 14;
+	} else if (freq >= 4900 && freq < 5000) {
+		mode = HOSTAPD_MODE_IEEE80211A;
+		*channel = (freq - 4000) / 5;
+	} else if (freq >= 5000 && freq < 5900) {
+		mode = HOSTAPD_MODE_IEEE80211A;
+		*channel = (freq - 5000) / 5;
+	} else if (freq >= 56160 + 2160 * 1 && freq <= 56160 + 2160 * 4) {
+		mode = HOSTAPD_MODE_IEEE80211AD;
+		*channel = (freq - 56160) / 2160;
+	}
+
+	return mode;
+}
+
+
+static int is_11b(u8 rate)
+{
+	return rate == 0x02 || rate == 0x04 || rate == 0x0b || rate == 0x16;
+}
+
+
+int supp_rates_11b_only(struct ieee802_11_elems *elems)
+{
+	int num_11b = 0, num_others = 0;
+	int i;
+
+	if (elems->supp_rates == NULL && elems->ext_supp_rates == NULL)
+		return 0;
+
+	for (i = 0; elems->supp_rates && i < elems->supp_rates_len; i++) {
+		if (is_11b(elems->supp_rates[i]))
+			num_11b++;
+		else
+			num_others++;
+	}
+
+	for (i = 0; elems->ext_supp_rates && i < elems->ext_supp_rates_len;
+	     i++) {
+		if (is_11b(elems->ext_supp_rates[i]))
+			num_11b++;
+		else
+			num_others++;
+	}
+
+	return num_11b > 0 && num_others == 0;
 }

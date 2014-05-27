@@ -42,6 +42,9 @@
 /* Include faster sqr at the cost of about 0.5 kB in code */
 #define BN_FAST_S_MP_SQR_C
 
+/* About 0.25 kB of code, but ~1.7kB of stack space! */
+#define BN_FAST_S_MP_MUL_DIGS_C
+
 #else /* LTM_FAST */
 
 #define BN_MP_DIV_SMALL
@@ -66,11 +69,19 @@
 
 #define  OPT_CAST(x)
 
+#ifdef __x86_64__
+typedef unsigned long mp_digit;
+typedef unsigned long mp_word __attribute__((mode(TI)));
+
+#define DIGIT_BIT 60
+#define MP_64BIT
+#else
 typedef unsigned long mp_digit;
 typedef u64 mp_word;
 
 #define DIGIT_BIT          28
 #define MP_28BIT
+#endif
 
 
 #define XMALLOC  os_malloc
@@ -131,7 +142,9 @@ static int s_mp_mul_digs (mp_int * a, mp_int * b, mp_int * c, int digs);
 static int s_mp_sqr(mp_int * a, mp_int * b);
 static int s_mp_mul_high_digs(mp_int * a, mp_int * b, mp_int * c, int digs);
 
+#ifdef BN_FAST_S_MP_MUL_DIGS_C
 static int fast_s_mp_mul_digs (mp_int * a, mp_int * b, mp_int * c, int digs);
+#endif
 
 #ifdef BN_MP_INIT_MULTI_C
 static int mp_init_multi(mp_int *mp, ...);
@@ -572,7 +585,7 @@ static int mp_mod (mp_int * a, mp_int * b, mp_int * c)
 
 /* this is a shell function that calls either the normal or Montgomery
  * exptmod functions.  Originally the call to the montgomery code was
- * embedded in the normal function but that wasted alot of stack space
+ * embedded in the normal function but that wasted a lot of stack space
  * for nothing (since 99% of the time the Montgomery code would be called)
  */
 static int mp_exptmod (mp_int * G, mp_int * X, mp_int * P, mp_int * Y)
@@ -663,6 +676,9 @@ static int mp_exptmod (mp_int * G, mp_int * X, mp_int * P, mp_int * Y)
 #ifdef BN_MP_EXPTMOD_FAST_C
   }
 #endif
+  if (dr == 0) {
+    /* avoid compiler warnings about possibly unused variable */
+  }
 }
 
 
@@ -2207,7 +2223,7 @@ static int mp_2expt (mp_int * a, int b)
   /* zero a as per default */
   mp_zero (a);
 
-  /* grow a to accomodate the single bit */
+  /* grow a to accommodate the single bit */
   if ((res = mp_grow (a, b / DIGIT_BIT + 1)) != MP_OKAY) {
     return res;
   }
@@ -2319,7 +2335,7 @@ CLEANUP:
 }
 
 
-/* multiplies |a| * |b| and only computes upto digs digits of result
+/* multiplies |a| * |b| and only computes up to digs digits of result
  * HAC pp. 595, Algorithm 14.12  Modified so you can control how 
  * many digits of output are created.
  */
@@ -2331,12 +2347,14 @@ static int s_mp_mul_digs (mp_int * a, mp_int * b, mp_int * c, int digs)
   mp_word r;
   mp_digit tmpx, *tmpt, *tmpy;
 
+#ifdef BN_FAST_S_MP_MUL_DIGS_C
   /* can we use the fast multiplier? */
   if (((digs) < MP_WARRAY) &&
       MIN (a->used, b->used) < 
           (1 << ((CHAR_BIT * sizeof (mp_word)) - (2 * DIGIT_BIT)))) {
     return fast_s_mp_mul_digs (a, b, c, digs);
   }
+#endif
 
   if ((res = mp_init_size (&t, digs)) != MP_OKAY) {
     return res;
@@ -2389,6 +2407,7 @@ static int s_mp_mul_digs (mp_int * a, mp_int * b, mp_int * c, int digs)
 }
 
 
+#ifdef BN_FAST_S_MP_MUL_DIGS_C
 /* Fast (comba) multiplier
  *
  * This is the fast column-array [comba] multiplier.  It is 
@@ -2474,6 +2493,7 @@ static int fast_s_mp_mul_digs (mp_int * a, mp_int * b, mp_int * c, int digs)
   mp_clamp (c);
   return MP_OKAY;
 }
+#endif /* BN_FAST_S_MP_MUL_DIGS_C */
 
 
 /* init an mp_init for a given size */
@@ -2678,7 +2698,7 @@ mp_montgomery_setup (mp_int * n, mp_digit * rho)
  *
  * Based on Algorithm 14.32 on pp.601 of HAC.
 */
-int fast_mp_montgomery_reduce (mp_int * x, mp_int * n, mp_digit rho)
+static int fast_mp_montgomery_reduce (mp_int * x, mp_int * n, mp_digit rho)
 {
   int     ix, res, olduse;
   mp_word W[MP_WARRAY];
@@ -2829,7 +2849,7 @@ static int mp_mul_2(mp_int * a, mp_int * b)
 {
   int     x, res, oldused;
 
-  /* grow to accomodate result */
+  /* grow to accommodate result */
   if (b->alloc < a->used + 1) {
     if ((res = mp_grow (b, a->used + 1)) != MP_OKAY) {
       return res;
@@ -2891,8 +2911,8 @@ static int mp_mul_2(mp_int * a, mp_int * b)
 /*
  * shifts with subtractions when the result is greater than b.
  *
- * The method is slightly modified to shift B unconditionally upto just under
- * the leading bit of b.  This saves alot of multiple precision shifting.
+ * The method is slightly modified to shift B unconditionally up to just under
+ * the leading bit of b.  This saves a lot of multiple precision shifting.
  */
 static int mp_montgomery_calc_normalization (mp_int * a, mp_int * b)
 {

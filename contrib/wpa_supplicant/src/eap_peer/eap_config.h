@@ -1,15 +1,9 @@
 /*
  * EAP peer configuration data
- * Copyright (c) 2003-2008, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2003-2013, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #ifndef EAP_CONFIG_H
@@ -41,6 +35,9 @@ struct eap_peer_config {
 	 *
 	 * If not set, the identity field will be used for both unencrypted and
 	 * protected fields.
+	 *
+	 * This field can also be used with EAP-SIM/AKA/AKA' to store the
+	 * pseudonym identity.
 	 */
 	u8 *anonymous_identity;
 
@@ -84,6 +81,15 @@ struct eap_peer_config {
 	 *
 	 * Alternatively, a named configuration blob can be used by setting
 	 * this to blob://blob_name.
+	 *
+	 * Alternatively, this can be used to only perform matching of the
+	 * server certificate (SHA-256 hash of the DER encoded X.509
+	 * certificate). In this case, the possible CA certificates in the
+	 * server certificate chain are ignored and only the server certificate
+	 * is verified. This is configured with the following format:
+	 * hash:://server/sha256/cert_hash_in_hex
+	 * For example: "hash://server/sha256/
+	 * 5a1bc1296205e6fdbe3979728efe3920798885c1c4590b5f90f43222d239ca6a"
 	 *
 	 * On Windows, trusted CA certificates can be loaded from the system
 	 * certificate store by setting this to cert_store://name, e.g.,
@@ -202,6 +208,24 @@ struct eap_peer_config {
 	u8 *altsubject_match;
 
 	/**
+	 * domain_suffix_match - Constraint for server domain name
+	 *
+	 * If set, this FQDN is used as a suffix match requirement for the
+	 * server certificate in SubjectAltName dNSName element(s). If a
+	 * matching dNSName is found, this constraint is met. If no dNSName
+	 * values are present, this constraint is matched against SubjetName CN
+	 * using same suffix match comparison. Suffix match here means that the
+	 * host/domain name is compared one label at a time starting from the
+	 * top-level domain and all the labels in domain_suffix_match shall be
+	 * included in the certificate. The certificate may include additional
+	 * sub-level labels in addition to the required labels.
+	 *
+	 * For example, domain_suffix_match=example.com would match
+	 * test.example.com but would not match test-example.com.
+	 */
+	char *domain_suffix_match;
+
+	/**
 	 * ca_cert2 - File path to CA certificate file (PEM/DER) (Phase 2)
 	 *
 	 * This file can have one or more trusted CA certificates. If ca_cert2
@@ -295,6 +319,14 @@ struct eap_peer_config {
 	 * EAP-TTLS/PEAP/FAST tunnel) authentication.
 	 */
 	u8 *altsubject_match2;
+
+	/**
+	 * domain_suffix_match2 - Constraint for server domain name
+	 *
+	 * This field is like domain_suffix_match, but used for phase 2 (inside
+	 * EAP-TTLS/PEAP/FAST tunnel) authentication.
+	 */
+	char *domain_suffix_match2;
 
 	/**
 	 * eap_methods - Allowed EAP methods
@@ -616,6 +648,7 @@ struct eap_peer_config {
 	int fragment_size;
 
 #define EAP_CONFIG_FLAGS_PASSWORD_NTHASH BIT(0)
+#define EAP_CONFIG_FLAGS_EXT_PASSWORD BIT(1)
 	/**
 	 * flags - Network configuration flags (bitfield)
 	 *
@@ -623,8 +656,28 @@ struct eap_peer_config {
 	 * for the network parameters.
 	 * bit 0 = password is represented as a 16-byte NtPasswordHash value
 	 *         instead of plaintext password
+	 * bit 1 = password is stored in external storage; the value in the
+	 *         password field is the name of that external entry
 	 */
 	u32 flags;
+
+	/**
+	 * ocsp - Whether to use/require OCSP to check server certificate
+	 *
+	 * 0 = do not use OCSP stapling (TLS certificate status extension)
+	 * 1 = try to use OCSP stapling, but not require response
+	 * 2 = require valid OCSP stapling response
+	 */
+	int ocsp;
+
+	/**
+	 * external_sim_resp - Response from external SIM processing
+	 *
+	 * This field should not be set in configuration step. It is only used
+	 * internally when control interface is used to request external
+	 * SIM/USIM processing.
+	 */
+	char *external_sim_resp;
 };
 
 

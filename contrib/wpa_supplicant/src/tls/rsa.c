@@ -2,20 +2,13 @@
  * RSA
  * Copyright (c) 2006, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
 
 #include "common.h"
-#include "crypto.h"
 #include "asn1.h"
 #include "bignum.h"
 #include "rsa.h"
@@ -35,7 +28,6 @@ struct crypto_rsa_key {
 };
 
 
-#ifdef EAP_TLS_FUNCS
 static const u8 * crypto_rsa_parse_integer(const u8 *pos, const u8 *end,
 					   struct bignum *num)
 {
@@ -224,7 +216,6 @@ error:
 	crypto_rsa_free(key);
 	return NULL;
 }
-#endif /* EAP_TLS_FUNCS */
 
 
 /**

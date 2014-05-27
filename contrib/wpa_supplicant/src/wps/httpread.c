@@ -1,16 +1,10 @@
-/**
+/*
  * httpread - Manage reading file(s) from HTTP/TCP socket
  * Author: Ted Merrill
  * Copyright 2008 Atheros Communications
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  *
  * The files are buffered via internal callbacks from eloop, then presented to
  * an application callback routine when completely read into memory. May also
@@ -73,8 +67,6 @@ struct httpread {
 	int timeout_seconds;            /* 0 or total duration timeout period */
 
 	/* dynamically used information follows */
-	int sd_registered;      /* nonzero if we need to unregister socket */
-	int to_registered;      /* nonzero if we need to unregister timeout */
 
 	int got_hdr;            /* nonzero when header is finalized */
 	char hdr[HTTPREAD_HEADER_MAX_SIZE+1];   /* headers stored here */
@@ -135,19 +127,6 @@ static int word_eq(char *s1, char *s2)
 }
 
 
-/* convert hex to binary
- * Requires that c have been previously tested true with isxdigit().
- */
-static int hex_value(int c)
-{
-	if (isdigit(c))
-		return c - '0';
-	if (islower(c))
-		return 10 + c - 'a';
-	return 10 + c - 'A';
-}
-
-
 static void httpread_timeout_handler(void *eloop_data, void *user_ctx);
 
 /* httpread_destroy -- if h is non-NULL, clean up
@@ -162,12 +141,8 @@ void httpread_destroy(struct httpread *h)
 	if (!h)
 		return;
 
-	if (h->to_registered)
-		eloop_cancel_timeout(httpread_timeout_handler, NULL, h);
-	h->to_registered = 0;
-	if (h->sd_registered)
-		eloop_unregister_sock(h->sd, EVENT_TYPE_READ);
-	h->sd_registered = 0;
+	eloop_cancel_timeout(httpread_timeout_handler, NULL, h);
+	eloop_unregister_sock(h->sd, EVENT_TYPE_READ);
 	os_free(h->body);
 	os_free(h->uri);
 	os_memset(h, 0, sizeof(*h));  /* aid debugging */
@@ -182,7 +157,6 @@ static void httpread_timeout_handler(void *eloop_data, void *user_ctx)
 {
 	struct httpread *h = user_ctx;
 	wpa_printf(MSG_DEBUG, "httpread timeout (%p)", h);
-	h->to_registered = 0;   /* is self-cancelling */
 	(*h->cb)(h, h->cookie, HTTPREAD_EVENT_TIMEOUT);
 }
 
@@ -301,8 +275,7 @@ static int httpread_hdr_analyze(struct httpread *h)
 			int c = *rawuri;
 			if (c == '%' &&
 			    isxdigit(rawuri[1]) && isxdigit(rawuri[2])) {
-				*uri++ = (hex_value(rawuri[1]) << 4) |
-					hex_value(rawuri[2]);
+				*uri++ = hex2byte(rawuri + 1);
 				rawuri += 3;
 			} else {
 				*uri++ = c;
@@ -709,15 +682,11 @@ got_file:
 	 * and just in case somehow we don't get destroyed right away,
 	 * unregister now.
 	 */
-	if (h->sd_registered)
-		eloop_unregister_sock(h->sd, EVENT_TYPE_READ);
-	h->sd_registered = 0;
+	eloop_unregister_sock(h->sd, EVENT_TYPE_READ);
 	/* The application can destroy us whenever they feel like...
 	 * cancel timeout.
 	 */
-	if (h->to_registered)
-		eloop_cancel_timeout(httpread_timeout_handler, NULL, h);
-	h->to_registered = 0;
+	eloop_cancel_timeout(httpread_timeout_handler, NULL, h);
 	(*h->cb)(h, h->cookie, HTTPREAD_EVENT_FILE_READY);
 }
 
@@ -755,21 +724,17 @@ struct httpread * httpread_create(
 	h->max_bytes = max_bytes;
 	h->timeout_seconds = timeout_seconds;
 
-	if (timeout_seconds > 0) {
-		if (eloop_register_timeout(timeout_seconds, 0,
-					   httpread_timeout_handler,
-					   NULL, h)) {
-			/* No way to recover (from malloc failure) */
-			goto fail;
-		}
-		h->to_registered = 1;
+	if (timeout_seconds > 0 &&
+	    eloop_register_timeout(timeout_seconds, 0,
+				   httpread_timeout_handler, NULL, h)) {
+		/* No way to recover (from malloc failure) */
+		goto fail;
 	}
 	if (eloop_register_sock(sd, EVENT_TYPE_READ, httpread_read_handler,
 				NULL, h)) {
 		/* No way to recover (from malloc failure) */
 		goto fail;
 	}
-	h->sd_registered = 1;
 	return h;
 
 fail:
