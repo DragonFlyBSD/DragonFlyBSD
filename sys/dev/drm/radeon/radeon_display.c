@@ -34,6 +34,7 @@
 
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_edid.h>
+#include <linux/err.h>
 
 static void avivo_crtc_load_lut(struct drm_crtc *crtc)
 {
@@ -1100,11 +1101,10 @@ radeon_framebuffer_init(struct drm_device *dev,
 	return 0;
 }
 
-static int
+static struct drm_framebuffer *
 radeon_user_framebuffer_create(struct drm_device *dev,
 			       struct drm_file *file_priv,
-			       struct drm_mode_fb_cmd2 *mode_cmd,
-			       struct drm_framebuffer **res)
+			       struct drm_mode_fb_cmd2 *mode_cmd)
 {
 	struct drm_gem_object *obj;
 	struct radeon_framebuffer *radeon_fb;
@@ -1114,25 +1114,24 @@ radeon_user_framebuffer_create(struct drm_device *dev,
 	if (obj ==  NULL) {
 		dev_err(dev->dev, "No GEM object associated to handle 0x%08X, "
 			"can't create framebuffer\n", mode_cmd->handles[0]);
-		return -ENOENT;
+		return ERR_PTR(-ENOENT);
 	}
 
 	radeon_fb = kmalloc(sizeof(*radeon_fb), DRM_MEM_DRIVER,
 			    M_WAITOK | M_ZERO);
 	if (radeon_fb == NULL) {
 		drm_gem_object_unreference_unlocked(obj);
-		return (-ENOMEM);
+		return ERR_PTR(-ENOMEM);
 	}
 
 	ret = radeon_framebuffer_init(dev, radeon_fb, mode_cmd, obj);
 	if (ret) {
 		kfree(radeon_fb, DRM_MEM_DRIVER);
 		drm_gem_object_unreference_unlocked(obj);
-		return ret;
+		return ERR_PTR(ret);
 	}
 
-	*res = &radeon_fb->base;
-	return 0;
+	return &radeon_fb->base;
 }
 
 static void radeon_output_poll_changed(struct drm_device *dev)

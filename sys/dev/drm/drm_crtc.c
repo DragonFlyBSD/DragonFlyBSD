@@ -2185,9 +2185,10 @@ int drm_mode_addfb(struct drm_device *dev,
 	/* TODO check buffer is sufficiently large */
 	/* TODO setup destructor callback */
 
-	ret = -dev->mode_config.funcs->fb_create(dev, file_priv, &r, &fb);
-	if (ret != 0) {
-		DRM_ERROR("could not create framebuffer, error %d\n", ret);
+	fb = dev->mode_config.funcs->fb_create(dev, file_priv, &r);
+	if (IS_ERR(fb)) {
+		DRM_DEBUG_KMS("could not create framebuffer\n");
+		ret = PTR_ERR(fb);
 		goto out;
 	}
 
@@ -2370,9 +2371,9 @@ int drm_mode_addfb2(struct drm_device *dev,
 
 	lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
 
-	ret = -dev->mode_config.funcs->fb_create(dev, file_priv, r, &fb);
-	if (ret != 0) {
-		DRM_ERROR("could not create framebuffer, error %d\n", ret);
+	fb = dev->mode_config.funcs->fb_create(dev, file_priv, r);
+	if (IS_ERR(fb)) {
+		DRM_DEBUG_KMS("could not create framebuffer\n");
 		ret = PTR_ERR(fb);
 		goto out;
 	}
