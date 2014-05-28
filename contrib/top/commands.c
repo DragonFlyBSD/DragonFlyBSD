@@ -864,6 +864,17 @@ cmd_useruid(globalstate *gstate)
 
 {
     gstate->pselect.usernames = !gstate->pselect.usernames;
+    /* set constants for username/uid display */
+    if (gstate->pselect.usernames)
+    {
+        gstate->header_text = format_header("USERNAME");
+        gstate->get_userid = username;
+    }
+    else
+    {
+        gstate->header_text = format_header("   UID  ");
+        gstate->get_userid = itoa7;
+    }
     display_header(2);
     return CMD_REFRESH;
 }
