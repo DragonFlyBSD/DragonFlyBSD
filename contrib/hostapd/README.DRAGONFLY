@@ -1,0 +1,17 @@
+HOSTAPD 2.1
+===========
+
+This directory contains a selected set of files from hostapd-2.1.
+Original source can be downloaded from:
+
+	http://hostap.epitest.fi/hostapd/
+
+file = hostapd-2.1.tar.gz
+date = 23 May 2014
+size = 1490215
+sha1 = 5c1a1ead3ccf89bceb035bd6b5a6e516d44f4b2b
+
+
+The following files have been added or patched:
+===============================================
+	modified:   src/wps/wps_upnp.c

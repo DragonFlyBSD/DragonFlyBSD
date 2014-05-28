@@ -1,0 +1,18 @@
+WPA SUPPLICANT 2.1
+==================
+
+This directory contains a selected set of files from wpa_supplicant-2.1.
+Original source can be downloaded from:
+
+	http://hostap.epitest.fi/wpa_supplicant/
+
+file = wpa_supplicant-2.1.tar.gz
+date = 23 May 2014
+size = 2222066
+sha1 = 25b9cb997cd9d2e84cf1ab73fac71b717cbb5f65
+
+A list of files and directories removed is in README.DELETED
+
+The following files have been added or patched:
+===============================================
+	modified:   src/wps/wps_upnp.c
