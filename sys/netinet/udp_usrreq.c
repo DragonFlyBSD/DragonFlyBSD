@@ -204,8 +204,6 @@ static void ip_2_ip6_hdr (struct ip6_hdr *ip6, struct ip *ip);
 
 static int udp_connect_oncpu(struct socket *so, struct thread *td,
 			struct sockaddr_in *sin, struct sockaddr_in *if_sin);
-static int udp_output (struct inpcb *, struct mbuf *, struct sockaddr *,
-			struct thread *, int, boolean_t);
 
 void
 udp_init(void)
@@ -855,16 +853,31 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_net_inet_udp, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
     0, 0, udp_getcred, "S,ucred", "Get the ucred of a UDP connection");
 
-static int
-udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
-    struct thread *td, int flags, boolean_t held_td)
+static void
+udp_send(netmsg_t msg)
 {
+	struct socket *so = msg->send.base.nm_so;
+	struct mbuf *m = msg->send.nm_m;
+	struct sockaddr *dstaddr = msg->send.nm_addr;
+	int pru_flags = msg->send.nm_flags;
+	struct inpcb *inp = so->so_pcb;
+	struct thread *td = msg->send.nm_td;
+	int flags;
+
 	struct udpiphdr *ui;
 	int len = m->m_pkthdr.len;
 	struct sockaddr_in *sin;	/* really is initialized before use */
 	int error = 0;
 
+	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
+	KKASSERT(msg->send.nm_control == NULL);
+
 	logudp(output_beg, inp);
+
+	if (inp == NULL) {
+		error = EINVAL;
+		goto release;
+	}
 
 	if (len + sizeof(struct udpiphdr) > IP_MAXPACKET) {
 		error = EMSGSIZE;
@@ -961,9 +974,16 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	/*
 	 * Release the original thread, since it is no longer used
 	 */
-	if (held_td) {
+	if (pru_flags & PRUS_HELDTD) {
 		lwkt_rele(td);
-		held_td = FALSE;
+		pru_flags &= ~PRUS_HELDTD;
+	}
+	/*
+	 * Free the dest address, since it is no longer needed
+	 */
+	if (pru_flags & PRUS_FREEADDR) {
+		kfree(dstaddr, M_SONAME);
+		pru_flags &= ~PRUS_FREEADDR;
 	}
 
 	ui->ui_ulen = htons((u_short)len + sizeof(struct udphdr));
@@ -985,22 +1005,28 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	((struct ip *)ui)->ip_tos = inp->inp_ip_tos;	/* XXX */
 	udp_stat.udps_opackets++;
 
-	logudp(ip_output, inp);
-	error = ip_output(m, inp->inp_options, &inp->inp_route,
-	    (inp->inp_socket->so_options & (SO_DONTROUTE | SO_BROADCAST)) |
-	    flags | IP_DEBUGROUTE,
-	    inp->inp_moptions, inp);
+	flags = IP_DEBUGROUTE |
+	    (inp->inp_socket->so_options & (SO_DONTROUTE | SO_BROADCAST));
+	if (pru_flags & PRUS_DONTROUTE)
+		flags |= SO_DONTROUTE;
 
-	logudp(output_end, inp);
-	return (error);
+	logudp(ip_output, inp);
+	error = ip_output(m, inp->inp_options, &inp->inp_route, flags,
+	    inp->inp_moptions, inp);
+	m = NULL;
 
 release:
-	if (held_td)
+	if (m != NULL)
+		m_freem(m);
+
+	if (pru_flags & PRUS_HELDTD)
 		lwkt_rele(td);
-	m_freem(m);
+	if (pru_flags & PRUS_FREEADDR)
+		kfree(dstaddr, M_SONAME);
+	if ((pru_flags & PRUS_NOREPLY) == 0)
+		lwkt_replymsg(&msg->send.base.lmsg, error);
 
 	logudp(output_end, inp);
-	return (error);
 }
 
 u_long	udp_sendspace = 9216;		/* really max datagram size */
@@ -1301,42 +1327,6 @@ udp_disconnect(netmsg_t msg)
 	error = 0;
 out:
 	lwkt_replymsg(&msg->disconnect.base.lmsg, error);
-}
-
-static void
-udp_send(netmsg_t msg)
-{
-	struct socket *so = msg->send.base.nm_so;
-	struct mbuf *m = msg->send.nm_m;
-	struct sockaddr *addr = msg->send.nm_addr;
-	int pru_flags = msg->send.nm_flags;
-	struct inpcb *inp;
-	int error;
-
-	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
-	KKASSERT(msg->send.nm_control == NULL);
-
-	inp = so->so_pcb;
-	if (inp) {
-		struct thread *td = msg->send.nm_td;
-		int flags = 0;
-
-		if (pru_flags & PRUS_DONTROUTE)
-			flags |= SO_DONTROUTE;
-		error = udp_output(inp, m, addr, td, flags,
-		    (pru_flags & PRUS_HELDTD) ? TRUE : FALSE);
-	} else {
-		if (pru_flags & PRUS_HELDTD)
-			lwkt_rele(msg->send.nm_td);
-		m_freem(m);
-		error = EINVAL;
-	}
-
-	if (pru_flags & PRUS_FREEADDR)
-		kfree(addr, M_SONAME);
-
-	if ((pru_flags & PRUS_NOREPLY) == 0)
-		lwkt_replymsg(&msg->send.base.lmsg, error);
 }
 
 void
