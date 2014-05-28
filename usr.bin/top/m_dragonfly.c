@@ -534,6 +534,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	char status[16];
 	int state;
 	int xnice;
+	int prefer_fullcmd;
 	char **comm_full;
 	char *comm;
 	char cputime_fmt[10], ccputime_fmt[10];
@@ -544,9 +545,11 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	hp->remaining--;
 
 	/* get the process's command name */
+	prefer_fullcmd = show_fullcmd;
 	if (show_fullcmd) {
 		if ((comm_full = kvm_getargv(kd, pp, 0)) == NULL) {
-			return (fmt);
+			prefer_fullcmd = 0;
+			comm = PP(pp, comm);
 		}
 	}
 	else {
@@ -627,7 +630,7 @@ format_next_process(caddr_t xhandle, char *(*get_userid) (int))
 	    ccputime_fmt,
 	    100.0 * pct,
 	    cmdlength,
-	    show_fullcmd ? *comm_full : comm);
+	    prefer_fullcmd ? *comm_full : comm);
 
 	/* return the result */
 	return (fmt);
