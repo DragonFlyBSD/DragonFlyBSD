@@ -523,12 +523,7 @@ do_display(globalstate *gstate)
 	active_procs = 0;
     }
 
-#ifdef HAVE_FORMAT_PROCESS_HEADER
-    /* get the process header to use */
-    hdr = format_process_header(&(gstate->pselect), processes, active_procs);
-#else
     hdr = gstate->header_text;
-#endif
 
     /* full screen or update? */
     if (gstate->fulldraw)
@@ -863,7 +858,6 @@ main(int argc, char *argv[])
 	need_mini = 0;
     }
 
-#ifndef HAVE_FORMAT_PROCESS_HEADER
     /* set constants for username/uid display */
     if (gstate->show_usernames)
     {
@@ -875,7 +869,6 @@ main(int argc, char *argv[])
 	gstate->header_text = format_header("   UID  ");
 	gstate->get_userid = itoa7;
     }
-#endif
     gstate->pselect.usernames = gstate->show_usernames;
 
     /* initialize display */
