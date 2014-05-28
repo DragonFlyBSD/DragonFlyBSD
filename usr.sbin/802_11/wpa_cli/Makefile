@@ -5,13 +5,10 @@
 .PATH.c:	${.CURDIR}/..  \
 		${WPA_DISTDIR}/wpa_supplicant
 PROG=	wpa_cli
-SRCS=	wpa_cli.c wpa_ctrl.c os_unix.c
+SRCS=	common.c edit.c eloop.c os_unix.c wpa_cli.c wpa_ctrl.c wpa_debug.c
 
 MAN=	wpa_cli.8
 
-WARNS=	0
-
-CFLAGS+= -I${WPA_DISTDIR}
 CFLAGS+= -DCONFIG_CTRL_IFACE
 CFLAGS+= -DCONFIG_CTRL_IFACE_UNIX
 CFLAGS+= -DCONFIG_READLINE

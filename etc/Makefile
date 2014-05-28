@@ -33,6 +33,7 @@ BIN1=	amd.map auth.conf \
 	nscd.conf pf.conf phones printcap profile \
 	regdomain.xml remote sensorsd.conf services \
 	shells sysctl.conf syslog.conf usbd.conf \
+	hostapd.conf wpa_supplicant.conf \
 	etc.${MACHINE_ARCH}/ttys
 .if defined(BINARY_UPGRADE) # location of these depends on upgrade method
 BIN1+=	manpath.config

@@ -17,7 +17,7 @@ FILESMODE_${file}=555
 #
 ETC_FILES=	${.CURDIR}/../../../etc/protocols	\
 		${.CURDIR}/../../../etc/regdomain.xml	\
-		${.CURDIR}/wpa_supplicant.conf		\
+		${.CURDIR}/../../../etc/wpa_supplicant.conf	\
 		${.CURDIR}/motd
 
 PW_FILES=	/tmp/pwd.db /tmp/spwd.db

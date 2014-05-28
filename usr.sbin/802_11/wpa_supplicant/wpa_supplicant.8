@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/wpa/wpa_supplicant/wpa_supplicant.8,v 1.8 2012/11/17 01:55:00 svnexp Exp $
+.\" $FreeBSD: head/usr.sbin/wpa/wpa_supplicant/wpa_supplicant.8 242696 2012-11-07 15:47:36Z issyl0 $
 .\"
-.Dd November 23, 2012
+.Dd November 7, 2012
 .Dt WPA_SUPPLICANT 8
 .Os
 .Sh NAME
@@ -113,7 +113,7 @@ in the background.
 Enable debugging messages.
 If this option is supplied twice, more verbose messages are displayed.
 .It Fl D
-Driver name (bsd, ndis etc.)
+Driver name (can be multiple drivers: nl80211,wext).
 .It Fl f
 Log output to debug file instead of stdout.
 .It Fl g
@@ -154,15 +154,15 @@ Wait for a control interface monitor before starting.
 .Sh SEE ALSO
 .Xr an 4 ,
 .Xr ath 4 ,
-.\".Xr ipw 4 ,
+.Xr ipw 4 ,
 .Xr iwi 4 ,
 .Xr ral 4 ,
 .Xr rum 4 ,
-.\".Xr ural 4 ,
+.Xr ural 4 ,
 .Xr wi 4 ,
 .Xr wlan 4 ,
 .Xr wpi 4 ,
-.\".Xr zyd 4 ,
+.Xr zyd 4 ,
 .Xr wpa_supplicant.conf 5 ,
 .Xr devd 8 ,
 .Xr ifconfig 8 ,
@@ -176,7 +176,7 @@ utility first appeared in
 The
 .Nm
 utility was written by
-.An Jouni Malinen Aq Mt j@w1.fi .
+.An Jouni Malinen Aq j@w1.fi .
 This manual page is derived from the
 .Pa README
 file included in the

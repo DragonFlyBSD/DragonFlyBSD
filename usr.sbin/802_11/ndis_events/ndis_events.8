@@ -28,7 +28,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/wpa/ndis_events/ndis_events.8,v 1.7 2007/09/07 22:19:29 brueffer Exp $
+.\" $FreeBSD: head/usr.sbin/wpa/ndis_events/ndis_events.8 258438 2013-11-21 19:31:57Z pluknet $
 .\"
 .Dd August 30, 2007
 .Dt NDIS_EVENTS 8
@@ -77,11 +77,11 @@ The standard
 distribution includes its own version of this utility for use with
 .Tn Windows\[rg] .
 The
-.Dx
+.Fx
 version performs the same functions as the
 .Tn Windows\[rg]
 one, except that it uses an
-.Fn ioctl
+.Xr ioctl 2
 and routing socket interface instead of WMI.
 .Pp
 Note that a single instance of
@@ -132,4 +132,4 @@ utility first appeared in
 The
 .Nm
 utility was written by
-.An Bill Paul Aq Mt wpaul@windriver.com .
+.An Bill Paul Aq wpaul@windriver.com .
