@@ -156,17 +156,18 @@ check:
 	@echo "Your machine does not have cdrtools installed.  You can install it with:"
 	@echo "    pkg install cdrtools"
 .endif
-.if !defined(DPORTS_PATH)
-	@echo "Please set DPORTS_PATH to the dports tree that shall be used for"
-	@echo "package building.  For example /usr/dports.  See the Makefile"
-	@echo "in /usr if you are unfamiliar with dports."
-.endif
+	@if [ ! -d ${DPORTS_PATH} ]; then \
+		echo "${DPORTS_PATH} does not exist."; \
+		echo ""; \
+		echo "Please set DPORTS_PATH to the dports tree that shall be used for"; \
+		echo "package building. The default is /usr/dports. See the Makefile in"; \
+		echo "/usr if you are unfamiliar with dports."; \
+		/usr/bin/false; \
+	fi
 .if !exists(/usr/local/bin/mkisofs) && !exists(/usr/pkg/bin/mkisofs)
 	@/usr/bin/false
 .endif
-.if !defined(DPORTS_PATH)
-	@/usr/bin/false
-.endif
+	@echo "Using ${DPORTS_PATH} as the dports tree."
 
 buildworld1 buildworld2:
 	cd ${.CURDIR}/..; \
