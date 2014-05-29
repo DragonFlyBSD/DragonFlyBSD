@@ -153,11 +153,6 @@ disk_new(struct storage *s, const char *dev_name)
 {
 	struct disk *d;
 
-	if (disk_find(s, dev_name) != NULL) {
-		/* Already discovered */
-		return(NULL);
-	}
-
 	AURA_MALLOC(d, disk);
 
 	d->device = aura_strdup(dev_name);
@@ -275,7 +270,8 @@ disk_find(const struct storage *s, const char *device)
 	struct disk *d = s->disk_head;
 
 	while (d != NULL) {
-		if (strncmp(device, d->device, strlen(d->device)) == 0)
+		if (strncmp(device, d->device, strlen(d->device)) == 0 &&
+		    strlen(device) == strlen(d->device))
 			return(d);
 		d = d->next;
 	}
