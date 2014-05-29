@@ -949,6 +949,11 @@ struct drm_device {
 				/* Authentication */
 	drm_magic_head_t  magiclist[DRM_HASH_SIZE];
 
+	/** \name Locks */
+	/*@{ */
+	struct lock struct_mutex;	/**< For others */
+	/*@} */
+
 	struct list_head filelist;
 
 	/** \name Memory management */
@@ -1232,7 +1237,6 @@ void	drm_reclaim_buffers(struct drm_device *dev, struct drm_file *file_priv);
 				/* IRQ support (drm_irq.h) */
 int	drm_irq_install(struct drm_device *dev);
 int	drm_irq_uninstall(struct drm_device *dev);
-irqreturn_t drm_irq_handler(DRM_IRQ_ARGS);
 void	drm_driver_irq_preinstall(struct drm_device *dev);
 void	drm_driver_irq_postinstall(struct drm_device *dev);
 void	drm_driver_irq_uninstall(struct drm_device *dev);

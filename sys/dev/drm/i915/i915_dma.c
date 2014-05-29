@@ -40,6 +40,20 @@ extern void i915_pineview_get_mem_freq(struct drm_device *dev);
 extern void i915_ironlake_get_mem_freq(struct drm_device *dev);
 static int i915_driver_unload_int(struct drm_device *dev, bool locked);
 
+void i915_update_dri1_breadcrumb(struct drm_device *dev)
+{
+	/*
+	 * The dri breadcrumb update races against the drm master disappearing.
+	 * Instead of trying to fix this (this is by far not the only ums issue)
+	 * just don't do the update in kms mode.
+	 */
+	if (drm_core_check_feature(dev, DRIVER_MODESET))
+		return;
+
+	/* XXX: don't do it at all actually */
+	return;
+}
+
 static void i915_write_hws_pga(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
@@ -723,6 +737,143 @@ fail_batch_free:
 	return ret;
 }
 
+static int i915_emit_irq(struct drm_device * dev)
+{
+	drm_i915_private_t *dev_priv = dev->dev_private;
+#if 0
+	struct drm_i915_master_private *master_priv = dev->primary->master->driver_priv;
+#endif
+
+	i915_kernel_lost_context(dev);
+
+	DRM_DEBUG("i915: emit_irq\n");
+
+	dev_priv->counter++;
+	if (dev_priv->counter > 0x7FFFFFFFUL)
+		dev_priv->counter = 1;
+#if 0
+	if (master_priv->sarea_priv)
+		master_priv->sarea_priv->last_enqueue = dev_priv->counter;
+#else
+	if (dev_priv->sarea_priv)
+		dev_priv->sarea_priv->last_enqueue = dev_priv->counter;
+#endif
+
+	if (BEGIN_LP_RING(4) == 0) {
+		OUT_RING(MI_STORE_DWORD_INDEX);
+		OUT_RING(I915_BREADCRUMB_INDEX << MI_STORE_DWORD_INDEX_SHIFT);
+		OUT_RING(dev_priv->counter);
+		OUT_RING(MI_USER_INTERRUPT);
+		ADVANCE_LP_RING();
+	}
+
+	return dev_priv->counter;
+}
+
+static int i915_wait_irq(struct drm_device * dev, int irq_nr)
+{
+	drm_i915_private_t *dev_priv = (drm_i915_private_t *) dev->dev_private;
+#if 0
+	struct drm_i915_master_private *master_priv = dev->primary->master->driver_priv;
+#endif
+	int ret;
+	struct intel_ring_buffer *ring = LP_RING(dev_priv);
+
+	DRM_DEBUG("irq_nr=%d breadcrumb=%d\n", irq_nr,
+		  READ_BREADCRUMB(dev_priv));
+
+#if 0
+	if (READ_BREADCRUMB(dev_priv) >= irq_nr) {
+		if (master_priv->sarea_priv)
+			master_priv->sarea_priv->last_dispatch = READ_BREADCRUMB(dev_priv);
+		return 0;
+	}
+
+	if (master_priv->sarea_priv)
+		master_priv->sarea_priv->perf_boxes |= I915_BOX_WAIT;
+#else
+	if (READ_BREADCRUMB(dev_priv) >= irq_nr) {
+		if (dev_priv->sarea_priv) {
+			dev_priv->sarea_priv->last_dispatch =
+				READ_BREADCRUMB(dev_priv);
+		}
+		return 0;
+	}
+
+	if (dev_priv->sarea_priv)
+		dev_priv->sarea_priv->perf_boxes |= I915_BOX_WAIT;
+#endif
+
+	ret = 0;
+	lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
+	if (ring->irq_get(ring)) {
+		DRM_UNLOCK(dev);
+		while (ret == 0 && READ_BREADCRUMB(dev_priv) < irq_nr) {
+			ret = -lksleep(ring, &ring->irq_lock, PCATCH,
+			    "915wtq", 3 * hz);
+		}
+		ring->irq_put(ring);
+		lockmgr(&ring->irq_lock, LK_RELEASE);
+		DRM_LOCK(dev);
+	} else {
+		lockmgr(&ring->irq_lock, LK_RELEASE);
+		if (_intel_wait_for(dev, READ_BREADCRUMB(dev_priv) >= irq_nr,
+		     3000, 1, "915wir"))
+			ret = -EBUSY;
+	}
+
+	if (ret == -EBUSY) {
+		DRM_ERROR("EBUSY -- rec: %d emitted: %d\n",
+			  READ_BREADCRUMB(dev_priv), (int)dev_priv->counter);
+	}
+
+	return ret;
+}
+
+/* Needs the lock as it touches the ring.
+ */
+int i915_irq_emit(struct drm_device *dev, void *data,
+			 struct drm_file *file_priv)
+{
+	drm_i915_private_t *dev_priv = dev->dev_private;
+	drm_i915_irq_emit_t *emit = data;
+	int result;
+
+	if (!dev_priv || !LP_RING(dev_priv)->virtual_start) {
+		DRM_ERROR("called with no initialization\n");
+		return -EINVAL;
+	}
+
+	RING_LOCK_TEST_WITH_RETURN(dev, file_priv);
+
+	DRM_LOCK(dev);
+	result = i915_emit_irq(dev);
+	DRM_UNLOCK(dev);
+
+	if (DRM_COPY_TO_USER(emit->irq_seq, &result, sizeof(int))) {
+		DRM_ERROR("copy_to_user\n");
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+/* Doesn't need the hardware lock.
+ */
+int i915_irq_wait(struct drm_device *dev, void *data,
+			 struct drm_file *file_priv)
+{
+	drm_i915_private_t *dev_priv = dev->dev_private;
+	drm_i915_irq_wait_t *irqwait = data;
+
+	if (!dev_priv) {
+		DRM_ERROR("called with no initialization\n");
+		return -EINVAL;
+	}
+
+	return i915_wait_irq(dev, irqwait->irq_seq);
+}
+
 static int i915_flip_bufs(struct drm_device *dev, void *data,
 			  struct drm_file *file_priv)
 {
@@ -1252,16 +1403,10 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 		goto out_mtrrfree;
 	}
 
-	lockinit(&dev_priv->gt_lock, "915gt", 0, LK_CANRECURSE);
-	lockinit(&dev_priv->error_lock, "915err", 0, LK_CANRECURSE);
-	spin_init(&dev_priv->rps.lock);
-	lockinit(&dev_priv->error_completion_lock, "915cmp", 0, LK_CANRECURSE);
-
-	lockinit(&dev_priv->rps.hw_lock, "i915 rps.hw_lock", 0, LK_CANRECURSE);
-
-	dev_priv->has_gem = 1;
 	intel_irq_init(dev);
+	intel_gt_init(dev);
 
+	/* Try to make sure MCHBAR is enabled before poking at it */
 	intel_setup_mchbar(dev);
 	intel_setup_gmbus(dev);
 	intel_opregion_setup(dev);
@@ -1269,6 +1414,25 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	intel_setup_bios(dev);
 
 	i915_gem_load(dev);
+
+	/* On the 945G/GM, the chipset reports the MSI capability on the
+	 * integrated graphics even though the support isn't actually there
+	 * according to the published specs.  It doesn't appear to function
+	 * correctly in testing on 945G.
+	 * This may be a side effect of MSI having been made available for PEG
+	 * and the registers being closely associated.
+	 *
+	 * According to chipset errata, on the 965GM, MSI interrupts may
+	 * be lost or delayed, but we use them anyways to avoid
+	 * stuck interrupts on some machines.
+	 */
+
+	lockinit(&dev_priv->irq_lock, "userirq", 0, LK_CANRECURSE);
+	lockinit(&dev_priv->error_lock, "915err", 0, LK_CANRECURSE);
+	spin_init(&dev_priv->rps.lock);
+	lockinit(&dev_priv->error_completion_lock, "915cmp", 0, LK_CANRECURSE);
+
+	lockinit(&dev_priv->rps.hw_lock, "i915 rps.hw_lock", 0, LK_CANRECURSE);
 
 	/* Init HWS */
 	if (!I915_NEED_GFX_HWS(dev)) {
@@ -1284,8 +1448,6 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 		i915_pineview_get_mem_freq(dev);
 	else if (IS_GEN5(dev))
 		i915_ironlake_get_mem_freq(dev);
-
-	lockinit(&dev_priv->irq_lock, "userirq", 0, LK_CANRECURSE);
 
 	if (IS_IVYBRIDGE(dev) || IS_HASWELL(dev))
 		dev_priv->num_pipe = 3;

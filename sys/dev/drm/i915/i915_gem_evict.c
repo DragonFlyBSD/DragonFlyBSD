@@ -34,6 +34,9 @@
 static bool
 mark_free(struct drm_i915_gem_object *obj, struct list_head *unwind)
 {
+	if (obj->pin_count)
+		return false;
+
 	list_add(&obj->exec_list, unwind);
 	return drm_mm_scan_add_block(obj->gtt_space);
 }

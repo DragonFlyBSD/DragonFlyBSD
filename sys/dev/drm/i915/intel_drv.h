@@ -53,6 +53,32 @@
 	ret__;								\
 })
 
+/* XXX: poor substitute for the Linux version of this routine */
+static inline
+unsigned long usecs_to_jiffies(const unsigned int u)
+{
+	unsigned long jiffies;
+
+	jiffies = (u * hz) / 1000000;
+	if (jiffies < 1)
+		return 1;
+	else
+		return jiffies;
+}
+
+#define wait_for_atomic_us(COND, US) ({ \
+	unsigned long timeout__ = jiffies + usecs_to_jiffies(US);	\
+	int ret__ = 0;							\
+	while (!(COND)) {						\
+		if (time_after(jiffies, timeout__)) {			\
+			ret__ = -ETIMEDOUT;				\
+			break;						\
+		}							\
+		cpu_pause();						\
+	}								\
+	ret__;								\
+})
+
 #define _intel_wait_for(DEV, COND, MS, W, WMSG)				\
 ({									\
 	int end, ret;							\
@@ -511,6 +537,11 @@ extern bool ironlake_fbc_enabled(struct drm_device *dev);
 extern bool intel_fbc_enabled(struct drm_device *dev);
 extern void intel_enable_fbc(struct drm_crtc *crtc, unsigned long interval);
 extern void intel_update_fbc(struct drm_device *dev);
+
+extern void intel_init_power_wells(struct drm_device *dev);
+extern void intel_enable_gt_powersave(struct drm_device *dev);
+extern void intel_disable_gt_powersave(struct drm_device *dev);
+extern void gen6_gt_check_fifodbg(struct drm_i915_private *dev_priv);
 
 /* Watermarks */
 extern void pineview_update_wm(struct drm_device *dev);

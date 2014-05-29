@@ -29,6 +29,8 @@
 #include "intel_drv.h"
 #include "i915_drv.h"
 
+#define FORCEWAKE_ACK_TIMEOUT_MS 2
+
 void i8xx_disable_fbc(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -2638,6 +2640,21 @@ void intel_init_emon(struct drm_device *dev)
 	dev_priv->corr = (lcfuse & LCFUSE_HIV_MASK);
 }
 
+void intel_disable_gt_powersave(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	if (IS_IRONLAKE_M(dev)) {
+		ironlake_disable_drps(dev);
+		ironlake_disable_rc6(dev);
+	} else if (INTEL_INFO(dev)->gen >= 6 && !IS_VALLEYVIEW(dev)) {
+		cancel_delayed_work_sync(&dev_priv->rps.delayed_resume_work);
+		lockmgr(&dev_priv->rps.hw_lock, LK_EXCLUSIVE);
+		gen6_disable_rps(dev);
+		lockmgr(&dev_priv->rps.hw_lock, LK_RELEASE);
+	}
+}
+
 static int intel_enable_rc6(struct drm_device *dev)
 {
 	/*
@@ -3308,4 +3325,212 @@ void intel_init_clock_gating(struct drm_device *dev)
 
 	if (dev_priv->display.init_pch_clock_gating)
 		dev_priv->display.init_pch_clock_gating(dev);
+}
+
+static void __gen6_gt_wait_for_thread_c0(struct drm_i915_private *dev_priv)
+{
+	u32 gt_thread_status_mask;
+
+	if (IS_HASWELL(dev_priv->dev))
+		gt_thread_status_mask = GEN6_GT_THREAD_STATUS_CORE_MASK_HSW;
+	else
+		gt_thread_status_mask = GEN6_GT_THREAD_STATUS_CORE_MASK;
+
+	/* w/a for a sporadic read returning 0 by waiting for the GT
+	 * thread to wake up.
+	 */
+	if (wait_for_atomic_us((I915_READ_NOTRACE(GEN6_GT_THREAD_STATUS_REG) & gt_thread_status_mask) == 0, 500))
+		DRM_ERROR("GT thread status wait timed out\n");
+}
+
+static void __gen6_gt_force_wake_reset(struct drm_i915_private *dev_priv)
+{
+	I915_WRITE_NOTRACE(FORCEWAKE, 0);
+	POSTING_READ(ECOBUS); /* something from same cacheline, but !FORCEWAKE */
+}
+
+static void __gen6_gt_force_wake_get(struct drm_i915_private *dev_priv)
+{
+	u32 forcewake_ack;
+
+	if (IS_HASWELL(dev_priv->dev))
+		forcewake_ack = FORCEWAKE_ACK_HSW;
+	else
+		forcewake_ack = FORCEWAKE_ACK;
+
+	if (wait_for_atomic((I915_READ_NOTRACE(forcewake_ack) & 1) == 0,
+			    FORCEWAKE_ACK_TIMEOUT_MS))
+		DRM_ERROR("Timed out waiting for forcewake old ack to clear.\n");
+
+	I915_WRITE_NOTRACE(FORCEWAKE, FORCEWAKE_KERNEL);
+	POSTING_READ(ECOBUS); /* something from same cacheline, but !FORCEWAKE */
+
+	if (wait_for_atomic((I915_READ_NOTRACE(forcewake_ack) & 1),
+			    FORCEWAKE_ACK_TIMEOUT_MS))
+		DRM_ERROR("Timed out waiting for forcewake to ack request.\n");
+
+	__gen6_gt_wait_for_thread_c0(dev_priv);
+}
+
+static void __gen6_gt_force_wake_mt_reset(struct drm_i915_private *dev_priv)
+{
+	I915_WRITE_NOTRACE(FORCEWAKE_MT, _MASKED_BIT_DISABLE(0xffff));
+	/* something from same cacheline, but !FORCEWAKE_MT */
+	POSTING_READ(ECOBUS);
+}
+
+static void __gen6_gt_force_wake_mt_get(struct drm_i915_private *dev_priv)
+{
+	int count;
+
+	count = 0;
+	while (count++ < 50 && (I915_READ_NOTRACE(FORCEWAKE_MT_ACK) & 1))
+		DELAY(10);
+
+	I915_WRITE_NOTRACE(FORCEWAKE_MT, (1<<16) | 1);
+	POSTING_READ(FORCEWAKE_MT);
+
+	count = 0;
+	while (count++ < 50 && (I915_READ_NOTRACE(FORCEWAKE_MT_ACK) & 1) == 0)
+		DELAY(10);
+}
+
+/*
+ * Generally this is called implicitly by the register read function. However,
+ * if some sequence requires the GT to not power down then this function should
+ * be called at the beginning of the sequence followed by a call to
+ * gen6_gt_force_wake_put() at the end of the sequence.
+ */
+void gen6_gt_force_wake_get(struct drm_i915_private *dev_priv)
+{
+
+	lockmgr(&dev_priv->gt_lock, LK_EXCLUSIVE);
+	if (dev_priv->forcewake_count++ == 0)
+		dev_priv->gt.force_wake_get(dev_priv);
+	lockmgr(&dev_priv->gt_lock, LK_RELEASE);
+}
+
+void gen6_gt_check_fifodbg(struct drm_i915_private *dev_priv)
+{
+	u32 gtfifodbg;
+	gtfifodbg = I915_READ_NOTRACE(GTFIFODBG);
+	if (WARN(gtfifodbg & GT_FIFO_CPU_ERROR_MASK,
+	     "MMIO read or write has been dropped %x\n", gtfifodbg))
+		I915_WRITE_NOTRACE(GTFIFODBG, GT_FIFO_CPU_ERROR_MASK);
+}
+
+static void __gen6_gt_force_wake_put(struct drm_i915_private *dev_priv)
+{
+	I915_WRITE_NOTRACE(FORCEWAKE, 0);
+	/* something from same cacheline, but !FORCEWAKE */
+	POSTING_READ(ECOBUS);
+	gen6_gt_check_fifodbg(dev_priv);
+}
+
+static void __gen6_gt_force_wake_mt_put(struct drm_i915_private *dev_priv)
+{
+	I915_WRITE_NOTRACE(FORCEWAKE_MT, _MASKED_BIT_DISABLE(FORCEWAKE_KERNEL));
+	/* something from same cacheline, but !FORCEWAKE_MT */
+	POSTING_READ(ECOBUS);
+	gen6_gt_check_fifodbg(dev_priv);
+}
+
+/*
+ * see gen6_gt_force_wake_get()
+ */
+void gen6_gt_force_wake_put(struct drm_i915_private *dev_priv)
+{
+	lockmgr(&dev_priv->gt_lock, LK_EXCLUSIVE);
+	if (--dev_priv->forcewake_count == 0)
+		dev_priv->gt.force_wake_put(dev_priv);
+	lockmgr(&dev_priv->gt_lock, LK_RELEASE);
+}
+
+int __gen6_gt_wait_for_fifo(struct drm_i915_private *dev_priv)
+{
+	int ret = 0;
+
+	if (dev_priv->gt_fifo_count < GT_FIFO_NUM_RESERVED_ENTRIES) {
+		int loop = 500;
+		u32 fifo = I915_READ_NOTRACE(GT_FIFO_FREE_ENTRIES);
+		while (fifo <= GT_FIFO_NUM_RESERVED_ENTRIES && loop--) {
+			udelay(10);
+			fifo = I915_READ_NOTRACE(GT_FIFO_FREE_ENTRIES);
+		}
+		if (loop < 0 && fifo <= GT_FIFO_NUM_RESERVED_ENTRIES) {
+			kprintf("%s loop\n", __func__);
+			++ret;
+		}
+		dev_priv->gt_fifo_count = fifo;
+	}
+	dev_priv->gt_fifo_count--;
+
+	return ret;
+}
+
+static void vlv_force_wake_reset(struct drm_i915_private *dev_priv)
+{
+	I915_WRITE_NOTRACE(FORCEWAKE_VLV, _MASKED_BIT_DISABLE(0xffff));
+	/* something from same cacheline, but !FORCEWAKE_VLV */
+	POSTING_READ(FORCEWAKE_ACK_VLV);
+}
+
+static void vlv_force_wake_get(struct drm_i915_private *dev_priv)
+{
+	if (wait_for_atomic((I915_READ_NOTRACE(FORCEWAKE_ACK_VLV) & 1) == 0,
+			    FORCEWAKE_ACK_TIMEOUT_MS))
+		DRM_ERROR("Timed out waiting for forcewake old ack to clear.\n");
+
+	I915_WRITE_NOTRACE(FORCEWAKE_VLV, _MASKED_BIT_ENABLE(FORCEWAKE_KERNEL));
+
+	if (wait_for_atomic((I915_READ_NOTRACE(FORCEWAKE_ACK_VLV) & 1),
+			    FORCEWAKE_ACK_TIMEOUT_MS))
+		DRM_ERROR("Timed out waiting for forcewake to ack request.\n");
+
+	__gen6_gt_wait_for_thread_c0(dev_priv);
+}
+
+static void vlv_force_wake_put(struct drm_i915_private *dev_priv)
+{
+	I915_WRITE_NOTRACE(FORCEWAKE_VLV, _MASKED_BIT_DISABLE(FORCEWAKE_KERNEL));
+	/* something from same cacheline, but !FORCEWAKE_VLV */
+	POSTING_READ(FORCEWAKE_ACK_VLV);
+	gen6_gt_check_fifodbg(dev_priv);
+}
+
+void intel_gt_reset(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	if (IS_VALLEYVIEW(dev)) {
+		vlv_force_wake_reset(dev_priv);
+	} else if (INTEL_INFO(dev)->gen >= 6) {
+		__gen6_gt_force_wake_reset(dev_priv);
+		if (IS_IVYBRIDGE(dev) || IS_HASWELL(dev))
+			__gen6_gt_force_wake_mt_reset(dev_priv);
+	}
+}
+
+void intel_gt_init(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	lockinit(&dev_priv->gt_lock, "915gt", 0, LK_CANRECURSE);
+
+	intel_gt_reset(dev);
+
+	if (IS_VALLEYVIEW(dev)) {
+		dev_priv->gt.force_wake_get = vlv_force_wake_get;
+		dev_priv->gt.force_wake_put = vlv_force_wake_put;
+	} else if (IS_IVYBRIDGE(dev) || IS_HASWELL(dev)) {
+		dev_priv->gt.force_wake_get = __gen6_gt_force_wake_mt_get;
+		dev_priv->gt.force_wake_put = __gen6_gt_force_wake_mt_put;
+	} else if (IS_GEN6(dev)) {
+		dev_priv->gt.force_wake_get = __gen6_gt_force_wake_get;
+		dev_priv->gt.force_wake_put = __gen6_gt_force_wake_put;
+	}
+#if 0
+	INIT_DELAYED_WORK(&dev_priv->rps.delayed_resume_work,
+			  intel_gen6_powersave_work);
+#endif
 }

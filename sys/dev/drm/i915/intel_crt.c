@@ -44,7 +44,11 @@
 
 struct intel_crt {
 	struct intel_encoder base;
+	/* DPMS state is stored in the connector, which we need in the
+	 * encoder's enable/disable callbacks */
+	struct intel_connector *connector;
 	bool force_hotplug_required;
+	u32 adpa_reg;
 };
 
 static struct intel_crt *intel_attached_crt(struct drm_connector *connector)
@@ -581,12 +585,23 @@ void intel_crt_init(struct drm_device *dev)
 	crt->base.clone_mask = (1 << INTEL_SDVO_NON_TV_CLONE_BIT |
 				1 << INTEL_ANALOG_CLONE_BIT |
 				1 << INTEL_SDVO_LVDS_CLONE_BIT);
-	crt->base.crtc_mask = (1 << 0) | (1 << 1);
+	if (IS_I830(dev))
+		crt->base.crtc_mask = (1 << 0);
+	else
+		crt->base.crtc_mask = (1 << 0) | (1 << 1) | (1 << 2);
+
 	if (IS_GEN2(dev))
 		connector->interlace_allowed = 0;
 	else
 		connector->interlace_allowed = 1;
 	connector->doublescan_allowed = 0;
+
+	if (HAS_PCH_SPLIT(dev))
+		crt->adpa_reg = PCH_ADPA;
+	else if (IS_VALLEYVIEW(dev))
+		crt->adpa_reg = VLV_ADPA;
+	else
+		crt->adpa_reg = ADPA;
 
 	drm_encoder_helper_add(&crt->base.base, &intel_crt_helper_funcs);
 	drm_connector_helper_add(connector, &intel_crt_connector_helper_funcs);

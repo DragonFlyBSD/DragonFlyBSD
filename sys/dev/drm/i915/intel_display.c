@@ -6171,8 +6171,6 @@ static void intel_init_display(struct drm_device *dev)
 
 	/* For FIFO watermark updates */
 	if (HAS_PCH_SPLIT(dev)) {
-		dev_priv->display.force_wake_get = __gen6_gt_force_wake_get;
-		dev_priv->display.force_wake_put = __gen6_gt_force_wake_put;
 
 		/* IVB configs may use multi-threaded forcewake */
 		if (IS_IVYBRIDGE(dev)) {
@@ -6185,17 +6183,11 @@ static void intel_init_display(struct drm_device *dev)
 			 * disabled.
 			 */
 			DRM_LOCK(dev);
-			__gen6_gt_force_wake_mt_get(dev_priv);
 			ecobus = I915_READ_NOTRACE(ECOBUS);
-			__gen6_gt_force_wake_mt_put(dev_priv);
 			DRM_UNLOCK(dev);
 
 			if (ecobus & FORCEWAKE_MT_ENABLE) {
 				DRM_DEBUG_KMS("Using MT version of forcewake\n");
-				dev_priv->display.force_wake_get =
-					__gen6_gt_force_wake_mt_get;
-				dev_priv->display.force_wake_put =
-					__gen6_gt_force_wake_mt_put;
 			}
 		}
 
