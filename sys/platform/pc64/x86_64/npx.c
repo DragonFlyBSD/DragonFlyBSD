@@ -367,8 +367,9 @@ npxdna(void)
 #endif
 	) {
 		krateprintf(&badfprate,
-			    "FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
-			    td->td_savefpu->sv_xmm.sv_env.en_mxcsr, didinit);
+			    "%s: FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
+			    td->td_comm, td->td_savefpu->sv_xmm.sv_env.en_mxcsr,
+			    didinit);
 		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
 		lwpsignal(curproc, curthread->td_lwp, SIGFPE);
 	}
