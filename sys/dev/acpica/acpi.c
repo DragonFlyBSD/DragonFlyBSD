@@ -68,9 +68,6 @@
 
 MALLOC_DEFINE(M_ACPIDEV, "acpidev", "ACPI devices");
 
-#define GIANT_REQUIRED
-#define mtx_lock(a)
-#define mtx_unlock(a)
 /* Hooks for the ACPI CA debugging infrastructure */
 #define _COMPONENT	ACPI_BUS
 ACPI_MODULE_NAME("ACPI")
@@ -691,8 +688,6 @@ acpi_suspend(device_t dev)
     device_t child, *devlist;
     int error, i, numdevs, pstate;
 
-    GIANT_REQUIRED;
-
     /* First give child devices a chance to suspend. */
     error = bus_generic_suspend(dev);
     if (error)
@@ -733,8 +728,6 @@ acpi_resume(device_t dev)
     int i, numdevs;
     device_t child, *devlist;
 
-    GIANT_REQUIRED;
-
     /*
      * Put all devices in D0 before resuming them.  Call _S0D on each one
      * since some systems expect this.
@@ -756,9 +749,6 @@ acpi_resume(device_t dev)
 static int
 acpi_shutdown(device_t dev)
 {
-
-    GIANT_REQUIRED;
-
     /* Allow children to shutdown first. */
     bus_generic_shutdown(dev);
 
