@@ -338,7 +338,6 @@ static void	iwn_radio_off_task(void *, int);
 static void	iwn_init_locked(struct iwn_softc *);
 static void	iwn_init(void *);
 static void	iwn_stop_locked(struct iwn_softc *);
-static void	iwn_stop(struct iwn_softc *);
 static void	iwn_scan_start(struct ieee80211com *);
 static void	iwn_scan_end(struct ieee80211com *);
 static void	iwn_set_channel(struct ieee80211com *);
@@ -1365,7 +1364,7 @@ iwn_pci_detach(device_t dev)
 		ieee80211_draintask(ic, &sc->sc_radioon_task);
 		ieee80211_draintask(ic, &sc->sc_radiooff_task);
 
-		iwn_stop(sc);
+		iwn_stop_locked(sc);
 		callout_stop(&sc->watchdog_to);
 		callout_stop(&sc->calib_to);
 		ieee80211_ifdetach(ic);
@@ -8332,14 +8331,6 @@ iwn_stop_locked(struct iwn_softc *sc)
 
 	/* Power OFF hardware. */
 	iwn_hw_stop(sc);
-}
-
-static void
-iwn_stop(struct iwn_softc *sc)
-{
-	wlan_serialize_enter();
-	iwn_stop_locked(sc);
-	wlan_serialize_exit();
 }
 
 /*
