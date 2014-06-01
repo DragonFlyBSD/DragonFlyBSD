@@ -241,6 +241,12 @@ SYSCTL_PROC(_debug_acpi, OID_AUTO, enable_debug_objects,
     CTLFLAG_RW | CTLTYPE_INT, NULL, 0, acpi_debug_objects_sysctl, "I",
     "Enable Debug objects");
 
+/* Allow the interpreter to ignore common mistakes in BIOS. */
+static int acpi_interpreter_slack = 1;
+TUNABLE_INT("debug.acpi.interpreter_slack", &acpi_interpreter_slack);
+SYSCTL_INT(_debug_acpi, OID_AUTO, interpreter_slack, CTLFLAG_RD,
+    &acpi_interpreter_slack, 1, "Turn on interpreter slack mode.");
+
 /* Power devices off and on in suspend and resume.  XXX Remove once tested. */
 static int acpi_do_powerstate = 1;
 TUNABLE_INT("debug.acpi.do_powerstate", &acpi_do_powerstate);
@@ -448,8 +454,8 @@ acpi_attach(device_t dev)
      * Set the globals from our tunables.  This is needed because ACPI-CA
      * uses UINT8 for some values and we have no tunable_byte.
      */
-    AcpiGbl_AutoSerializeMethods = acpi_auto_serialize_methods;
-    AcpiGbl_EnableInterpreterSlack = TRUE;
+    AcpiGbl_AutoSerializeMethods = acpi_auto_serialize_methods ? TRUE : FALSE;
+    AcpiGbl_EnableInterpreterSlack = acpi_interpreter_slack ? TRUE : FALSE;
     AcpiGbl_EnableAmlDebugObject = acpi_debug_objects ? TRUE : FALSE;
 
 #ifndef ACPI_DEBUG
