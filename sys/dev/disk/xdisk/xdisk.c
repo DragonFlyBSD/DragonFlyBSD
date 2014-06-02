@@ -899,7 +899,7 @@ static int
 xa_sync_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 {
 	xa_tag_t *tag = state->any.any;
-	xa_softc_t *sc = tag->sc;
+	xa_softc_t *sc;
 	struct bio *bio;
 
 	/*
@@ -912,6 +912,7 @@ xa_sync_completion(kdmsg_state_t *state, kdmsg_msg_t *msg)
 			kdmsg_state_reply(state, DMSG_ERR_LOSTLINK);
 		return 0;
 	}
+	sc = tag->sc;
 
 	/*
 	 * Validate the tag
