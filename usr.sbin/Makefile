@@ -109,6 +109,7 @@ SUBDIR= 802_11 \
 	sa \
 	sdpd \
 	sensorsd \
+	service \
 	setkey \
 	sliplogin \
 	slstat \
