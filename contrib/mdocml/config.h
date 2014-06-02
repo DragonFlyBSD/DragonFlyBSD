@@ -15,7 +15,7 @@
 #define HAVE_MMAP
 #define HAVE_STRLCPY
 
-#define OSNAME "DragonFly 3.7"
+#define OSNAME "DragonFly 3.8"
 
 #include <sys/types.h>
 
