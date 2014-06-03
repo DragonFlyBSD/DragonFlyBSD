@@ -499,6 +499,7 @@ enum usb_hc_mode usbd_get_mode(struct usb_device *udev);
 enum usb_dev_speed usbd_get_speed(struct usb_device *udev);
 void device_set_usb_desc(device_t dev);
 void usb_pause_mtx(struct lock *lock, int _ticks);
+void usb_pause_ls(struct lock *lock, struct lwkt_serialize *slz, int _ticks);
 usb_error_t usbd_set_pnpinfo(struct usb_device *udev,
     uint8_t iface_index, const char *pnpinfo);
 usb_error_t usbd_add_dynamic_quirk(struct usb_device *udev,
