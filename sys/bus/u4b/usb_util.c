@@ -139,6 +139,39 @@ usb_pause_mtx(struct lock *lock, int timo)
 	}
 }
 
+
+/*------------------------------------------------------------------------*
+ *	 usb_pause_ls - factored out code
+ *
+ * This function will delay the code by the passed number of system
+ * ticks. The passed lock "lock", will be dropped while waiting, 
+ * if * "lock" is different from NULL, "slz" will be left.
+ *
+ * This function is here because sometimes we have two subsystems with
+ * different locking primitives (lockmgr locks, lwkt serializers) involved.
+ *------------------------------------------------------------------------*/
+void
+usb_pause_ls(struct lock *lock, struct lwkt_serialize *slz, int _ticks)
+{
+	int locked = 0;
+
+	locked = (lock != NULL) && lockowned(lock);
+
+	tsleep_interlock(&usb_pause_ls, 0);
+
+	lwkt_serialize_exit(slz);
+
+	if(locked)
+		lockmgr(lock, LK_RELEASE);
+
+	tsleep(&usb_pause_ls, PINTERLOCKED, "USBSL2", _ticks);
+
+	if(locked)
+		lockmgr(lock, LK_EXCLUSIVE);
+
+	lwkt_serialize_enter(slz);
+}
+
 /*------------------------------------------------------------------------*
  *	usb_printbcd
  *
