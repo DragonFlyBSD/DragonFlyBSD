@@ -6282,10 +6282,9 @@ run_stop(void *arg)
 static void
 run_delay(struct run_softc *sc, u_int ms)
 {
-	zsleep(sc, &wlan_global_serializer, 0, "rundelay",
+	usb_pause_ls(lockowned(&sc->sc_lock) ? &sc->sc_lock : NULL,
+            &wlan_global_serializer,
 	    USB_MS_TO_TICKS(ms));
-//	usb_pause_mtx(lockowned(&sc->sc_lock) ?
-//	    &sc->sc_lock : NULL, USB_MS_TO_TICKS(ms));
 }
 
 static device_method_t run_methods[] = {
