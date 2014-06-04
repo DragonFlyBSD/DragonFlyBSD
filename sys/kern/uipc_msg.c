@@ -435,11 +435,11 @@ so_pru_send_async(struct socket *so, int flags, struct mbuf *m,
 	    ("async pru_send is not supported"));
 
 	if (addr0 != NULL) {
-		addr = kmalloc(addr0->sa_len, M_SONAME, M_NOWAIT);
+		addr = kmalloc(addr0->sa_len, M_SONAME, M_WAITOK | M_NULLOK);
 		if (addr == NULL) {
 			/*
-			 * Fail to allocate address w/o waiting;
-			 * fallback to synchronized pru_send.
+			 * Fail to allocate address; fallback to
+			 * synchronized pru_send.
 			 */
 			so_pru_send(so, flags, m, addr0, control, td);
 			return;
