@@ -277,8 +277,8 @@ http_readfn(void *v, char *buf, int len)
 	if (!io->buf || io->bufpos == io->buflen) {
 		if ((rlen = http_fillbuf(io, len)) < 0) {
 			if ((errno = io->error) == EINTR)
-			io->error = 0;
-		return (-1);
+				io->error = 0;
+			return (-1);
 		} else if (rlen == 0) {
 			return (0);
 	}

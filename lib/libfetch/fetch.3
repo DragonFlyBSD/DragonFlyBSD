@@ -128,7 +128,7 @@ uploading files using Uniform Resource Locators (URLs).
 .Fn fetchParseURL
 takes a URL in the form of a null-terminated string and splits it into
 its components function according to the Common Internet Scheme Syntax
-detailed in RFC 1738.
+detailed in RFC1738.
 A regular expression which produces this syntax is:
 .Bd -literal
     <scheme>:(//(<user>(:<pwd>)?@)?<host>(:<port>)?)?/(<document>)?
@@ -316,7 +316,7 @@ replacing them.
 .Fn fetchGetFTP
 and
 .Fn fetchPutFTP
-implement the FTP protocol as described in RFC 959.
+implement the FTP protocol as described in RFC959.
 .Pp
 If the
 .Ql P
@@ -360,7 +360,7 @@ and
 .Fn fetchPutHTTP
 functions implement the HTTP/1.1 protocol.
 With a little luck, there is
-even a chance that they comply with RFC 2616 and RFC 2617.
+even a chance that they comply with RFC2616 and RFC2617.
 .Pp
 If the
 .Ql d
@@ -721,7 +721,7 @@ SSL_CA_CERT_FILE=/path/to/myca.pem
 .%A J. K. Reynolds
 .%D October 1985
 .%B File Transfer Protocol
-.%O RFC 959
+.%O RFC959
 .Re
 .Rs
 .%A P. Deutsch
@@ -729,7 +729,7 @@ SSL_CA_CERT_FILE=/path/to/myca.pem
 .%A A. Marine.
 .%D May 1994
 .%T How to Use Anonymous FTP
-.%O RFC 1635
+.%O RFC1635
 .Re
 .Rs
 .%A T. Berners-Lee
@@ -737,7 +737,7 @@ SSL_CA_CERT_FILE=/path/to/myca.pem
 .%A M. McCahill
 .%D December 1994
 .%T Uniform Resource Locators (URL)
-.%O RFC 1738
+.%O RFC1738
 .Re
 .Rs
 .%A R. Fielding
@@ -749,7 +749,7 @@ SSL_CA_CERT_FILE=/path/to/myca.pem
 .%A T. Berners-Lee
 .%D January 1999
 .%B Hypertext Transfer Protocol -- HTTP/1.1
-.%O RFC 2616
+.%O RFC2616
 .Re
 .Rs
 .%A J. Franks
@@ -761,7 +761,7 @@ SSL_CA_CERT_FILE=/path/to/myca.pem
 .%A L. Stewart
 .%D June 1999
 .%B HTTP Authentication: Basic and Digest Access Authentication
-.%O RFC 2617
+.%O RFC2617
 .Re
 .Sh HISTORY
 The
@@ -821,6 +821,10 @@ implemented, superfluous at this site" in an FTP context and
 .Pp
 .Fn fetchStatFTP
 does not check that the result of an MDTM command is a valid date.
+.Pp
+In case password protected keys are used for client certificate based
+authentication the user is prompted for the password on each and every
+fetch operation.
 .Pp
 The man page is incomplete, poorly written and produces badly
 formatted text.

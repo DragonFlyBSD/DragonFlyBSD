@@ -25,10 +25,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: head/lib/libfetch/common.c 261284 2014-01-30 08:37:23Z des $
+ * $FreeBSD: head/lib/libfetch/common.c 266291 2014-05-17 03:39:56Z des $
  */
 
+#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -687,6 +687,8 @@ fetch_ssl_setup_transport_layer(SSL_CTX *ctx, int verbose)
 /*
  * Configure peer verification based on environment.
  */
+#define LOCAL_CERT_FILE	"/usr/local/etc/ssl/cert.pem"
+#define BASE_CERT_FILE  "/etc/ssl/cert.pem"
 static int
 fetch_ssl_setup_peer_verification(SSL_CTX *ctx, int verbose)
 {
@@ -695,8 +697,12 @@ fetch_ssl_setup_peer_verification(SSL_CTX *ctx, int verbose)
 	const char *ca_cert_file, *ca_cert_path, *crl_file;
 
 	if (getenv("SSL_NO_VERIFY_PEER") == NULL) {
-		ca_cert_file = getenv("SSL_CA_CERT_FILE") != NULL ?
-		    getenv("SSL_CA_CERT_FILE") : "/etc/ssl/cert.pem";
+		ca_cert_file = getenv("SSL_CA_CERT_FILE");
+		if (ca_cert_file == NULL &&
+		    access(LOCAL_CERT_FILE, R_OK) == 0)
+			ca_cert_file = LOCAL_CERT_FILE;
+		if (ca_cert_file == NULL)
+			ca_cert_file = BASE_CERT_FILE;
 		ca_cert_path = getenv("SSL_CA_CERT_PATH");
 		if (verbose) {
 			fetch_info("Peer verification enabled");
@@ -982,26 +988,26 @@ fetch_read(conn_t *conn, char *buf, size_t len)
 			return (-1);
 		}
 		// assert(rlen == FETCH_READ_WAIT);
-			if (fetchTimeout > 0) {
-				gettimeofday(&now, NULL);
-				if (!timercmp(&timeout, &now, >)) {
-					errno = ETIMEDOUT;
-					fetch_syserr();
-					return (-1);
-				}
-				timersub(&timeout, &now, &delta);
-			deltams = delta.tv_sec * 1000 +
-			    delta.tv_usec / 1000;;
-			}
-			errno = 0;
-		pfd.revents = 0;
-		if (poll(&pfd, 1, deltams) < 0) {
-			if (errno == EINTR && fetchRestartCalls)
-						continue;
+		if (fetchTimeout > 0) {
+			gettimeofday(&now, NULL);
+			if (!timercmp(&timeout, &now, >)) {
+				errno = ETIMEDOUT;
 				fetch_syserr();
 				return (-1);
 			}
+			timersub(&timeout, &now, &delta);
+			deltams = delta.tv_sec * 1000 +
+			    delta.tv_usec / 1000;;
 		}
+		errno = 0;
+		pfd.revents = 0;
+		if (poll(&pfd, 1, deltams) < 0) {
+			if (errno == EINTR && fetchRestartCalls)
+				continue;
+			fetch_syserr();
+			return (-1);
+		}
+	}
 	return (rlen);
 }
 
