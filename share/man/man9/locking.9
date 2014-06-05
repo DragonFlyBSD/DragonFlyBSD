@@ -1,0 +1,116 @@
+.\"
+.\" Copyright (c) 2014 Markus Pfeiffer
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"
+.Dd June 5, 2014
+.Dt LOCKING 9
+.Os
+.Sh NAME
+.Nm locking
+.Nd introduction to kernel locking primitives
+.Sh DESCRIPTION
+The
+.Dx
+kernel provides several locking and synchronisation primitives, each with
+different characteristics and purposes. This manpage aims at giving an
+overview of the available locking primitives and their usecases.
+.Sh CONDITION VARIABLES
+Condition variables are used to wait for conditions to occur. In
+.Dx
+condition variables use spinlocks internally. 
+Threads that wait on a condition variable are called waiters. Either just
+one or all waiters can be notified of changes to a condition variable.
+A condition variable can interlock sleep when given a lockmgr lock to
+avoid missing changes to it, or regular tsleep.
+.Pp
+See
+.Xr condvar 9
+
+.Sh CRITICAL SECTIONS
+A critical section changes the priority of the current thread to 
+TDPRIT_CRIT, effectively avoiding preemption of the thread. 
+Critical sections are a per-cpu primitive, and there is no synchronisation
+or locking between CPUs.
+.Ss Use cases
+.Ss See also
+.Xr crit_enter 9
+.Sh LOCKMGR LOCKS
+Lockmgr locks are the kitchen sink locking primitive for the
+.Dx
+kernel. See
+.Xr lockmgr 9
+for more information. Lockmgr locks should be used for FreeBSD compatibility when porting drivers that use FreeBSD's mutexes.
+.Pp
+See
+.Xr lockmgr 9
+
+.Sh LWKT SERIALIZING TOKENS
+
+Lwkt serializing tokens use atomic_cmpset internally and are integrated with
+the lwkt serializer. The scheduler takes care of acquiring a token before
+rescheduling, so a thread will not be run unless all tokens for it can be
+acquired. 
+
+Tokens are not owned by a thread, but by the CPU, and threads are only given
+references to tokens.
+
+.Sh LWKT MESSAGES
+
+.Sh MPLOCK
+The mplock is an API wrapper for the MP token. The use of this should be
+avoided at all cost, because there is only one MP token for the whole system.
+.Ss Use cases
+.Sh MTX
+Mtx mutexes are a locking primitive that is based around atomic_cmpset_int instead
+of spinlocks. They are much faster and use less memory than than lockmgr locks. 
+Mtx can always be recursive, shared/exclusive and can be held across blocking calls
+and sleeps.
+Mtx are also capable of passing ownership directly to a new owner without wakeup. 
+
+See
+.Sh SERIALIZERS
+Serializers are used to serialize access to hardware and other subsystems.
+Serializers are deprecated, and should not be used in new code.
+
+.Sh SPINLOCKS
+Spinlocks employ a busy wait loop to acquire a lock. This means that this type of lock
+is very lightweight, but should only be held for a very short time, since all contenders
+will be spinning and not sleeping. No wakeup is necessary, because a waiter will be
+spinning already.
+If a thread tries to sleep while holding a spinlock, the kernel will panic. 
+Spinlocks cannot recurse.
+
+.Ss Use cases
+Spinlocks are mainly used to protect kernel structures, and to implement higher level
+locking primitives.
+.Ss See also
+
+.Sh AUTHORS
+.An -nosplit
+This manual page was written by
+.An Markus Pfeiffer Aq Mt markus.pfeiffer@morphism.de ,
+based on comments by various
+.Dx
+authors.
