@@ -54,7 +54,7 @@
 
 #define PKTGEN_DEVPATH	"/dev/pktg0"
 
-#define DEFAULT_PORT	3000
+#define DEFAULT_PORT	7000
 
 #define INDST_MASK	0x0001
 #define INSRC_MASK	0x0002
@@ -70,7 +70,7 @@ usage(void)
 	    "-d dst_inaddr[:dst_port] [-d dst_inaddr[:dst_port] ...] "
 	    "-s src_inaddr[:src_port] "
 	    "-e (gw_eaddr|dst_eaddr) -i iface "
-	    "[-m data_len] [-l duration] [-D dev] [-q pktenq] [-M]\n");
+	    "[-m data_len] [-l duration] [-D dev] [-q pktenq] [-M] [-S]\n");
 	exit(1);
 }
 
@@ -122,7 +122,7 @@ main(int argc, char *argv[])
 		err(1, "calloc(%d dst)", ndst_alloc);
 
 	conf.pc_ndst = 0;
-	while ((c = getopt(argc, argv, "d:s:e:i:m:l:D:q:M")) != -1) {
+	while ((c = getopt(argc, argv, "d:s:e:i:m:l:D:q:MS")) != -1) {
 		switch (c) {
 		case 'd':
 			if (conf.pc_ndst >= ndst_alloc) {
@@ -197,6 +197,10 @@ main(int argc, char *argv[])
 
 		case 'M':
 			start = PKTGENMQSTART;
+			break;
+
+		case 'S':
+			conf.pc_flags |= PKTGEN_FLAG_SWITCH_SRCDST;
 			break;
 
 		default:

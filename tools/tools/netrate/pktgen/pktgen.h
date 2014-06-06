@@ -47,10 +47,14 @@ struct pktgen_conf {
 	int			pc_ndst;
 	struct sockaddr_in	*pc_dst;
 	int			pc_pktenq;
+
+	int			pc_flags;	/* PKTGEN_FLAG_ */
 };
 
 #define PKTGENSTART	_IO('G', 19)
 #define PKTGENSCONF	_IOW('G', 20, struct pktgen_conf)
 #define PKTGENMQSTART	_IO('G', 21)
+
+#define PKTGEN_FLAG_SWITCH_SRCDST	0x1
 
 #endif	/* !_NET_PKTGEN_H */

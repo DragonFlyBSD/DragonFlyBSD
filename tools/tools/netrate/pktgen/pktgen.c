@@ -117,8 +117,9 @@ struct pktgen {
 	struct pktgen_pcpu	pktg_pcpu[MAXCPU];
 };
 
-#define PKTG_F_CONFIG	0x1
-#define PKTG_F_RUNNING	0x4
+#define PKTG_F_CONFIG		0x1
+#define PKTG_F_RUNNING		0x4
+#define PKTG_F_SWITCH_SRCDST	0x8
 
 static int 		pktgen_modevent(module_t, int, void *);
 
@@ -347,6 +348,8 @@ pktgen_config(struct pktgen *pktg, const struct pktgen_conf *conf)
 	 */
 	pktg->pktg_flags |= PKTG_F_CONFIG;
 
+	if (conf->pc_flags & PKTGEN_FLAG_SWITCH_SRCDST)
+		pktg->pktg_flags |= PKTG_F_SWITCH_SRCDST;
 	pktg->pktg_duration = conf->pc_duration;
 	pktg->pktg_datalen = conf->pc_datalen;
 	pktg->pktg_pktenq = pktenq;
@@ -504,10 +507,17 @@ pktgen_start_ifsq_handler(netmsg_t nmsg)
 
 		ui = mtod(m, struct udpiphdr *);
 		ui->ui_pr = IPPROTO_UDP;
-		ui->ui_src.s_addr = pktg->pktg_src.sin_addr.s_addr;
-		ui->ui_dst.s_addr = dst->sin_addr.s_addr;
-		ui->ui_sport = pktg->pktg_src.sin_port;
-		ui->ui_dport = dst->sin_port;
+		if (pktg->pktg_flags & PKTG_F_SWITCH_SRCDST) {
+			ui->ui_src.s_addr = dst->sin_addr.s_addr;
+			ui->ui_dst.s_addr = pktg->pktg_src.sin_addr.s_addr;
+			ui->ui_sport = dst->sin_port;
+			ui->ui_dport = pktg->pktg_src.sin_port;
+		} else {
+			ui->ui_src.s_addr = pktg->pktg_src.sin_addr.s_addr;
+			ui->ui_dst.s_addr = dst->sin_addr.s_addr;
+			ui->ui_sport = pktg->pktg_src.sin_port;
+			ui->ui_dport = dst->sin_port;
+		}
 		ui->ui_ulen = ulen;
 		ui->ui_sum = in_pseudo(ui->ui_src.s_addr, ui->ui_dst.s_addr,
 		    psum);
