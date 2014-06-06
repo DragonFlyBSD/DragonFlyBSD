@@ -34,79 +34,100 @@
 The
 .Dx
 kernel provides several locking and synchronisation primitives, each with
-different characteristics and purposes. This manpage aims at giving an
-overview of the available locking primitives and their usecases.
+different characteristics and purposes.
+This manpage aims at giving an
+overview of the available locking primitives and their use cases.
 .Sh CONDITION VARIABLES
-Condition variables are used to wait for conditions to occur. In
+Condition variables are used to wait for conditions to occur.
+In
 .Dx
-condition variables use spinlocks internally. 
-Threads that wait on a condition variable are called waiters. Either just
+condition variables use spinlocks internally.
+Threads that wait on a condition variable are called waiters.
+Either just
 one or all waiters can be notified of changes to a condition variable.
-A condition variable can interlock sleep when given a lockmgr lock to
-avoid missing changes to it, or regular tsleep.
-.Pp
+A condition variable can
+.Xr tsleep_interlock 9
+when given a
+.Xr lockmgr 9
+lock to avoid missing changes to it, or regular
+.Xr tsleep 9 .
 See
-.Xr condvar 9
-
+.Xr condvar 9 .
+for further information.
 .Sh CRITICAL SECTIONS
-A critical section changes the priority of the current thread to 
-TDPRIT_CRIT, effectively avoiding preemption of the thread. 
+A critical section changes the priority of the current thread to
+.Dv TDPRIT_CRIT ,
+effectively avoiding preemption of the thread.
 Critical sections are a per-cpu primitive, and there is no synchronisation
 or locking between CPUs.
-.Ss Use cases
-.Ss See also
-.Xr crit_enter 9
-.Sh LOCKMGR LOCKS
-Lockmgr locks are the kitchen sink locking primitive for the
-.Dx
-kernel. See
-.Xr lockmgr 9
-for more information. Lockmgr locks should be used for FreeBSD compatibility when porting drivers that use FreeBSD's mutexes.
-.Pp
 See
-.Xr lockmgr 9
-
+.Xr crit_enter 9 .
+.Sh LOCKMGR LOCKS
+.Xr Lockmgr 9
+locks are the kitchen sink locking primitive for the
+.Dx
+kernel.
+Lockmgr locks should be used for
+.Fx
+compatibility when porting drivers that use
+.Fx Ap s
+mutexes.
+See
+.Xr lockmgr 9 .
+for more information.
 .Sh LWKT SERIALIZING TOKENS
-
-Lwkt serializing tokens use atomic_cmpset internally and are integrated with
-the lwkt serializer. The scheduler takes care of acquiring a token before
+LWKT serializing tokens use
+.Xr atomic_cmpset 9
+internally and are integrated with the LWKT serializer.
+The scheduler takes care of acquiring a token before
 rescheduling, so a thread will not be run unless all tokens for it can be
-acquired. 
-
+acquired.
 Tokens are not owned by a thread, but by the CPU, and threads are only given
 references to tokens.
-
-.Sh LWKT MESSAGES
-
+See
+.Xr serializer 9 .
+.\".Sh LWKT MESSAGES
 .Sh MPLOCK
 The mplock is an API wrapper for the MP token. The use of this should be
 avoided at all cost, because there is only one MP token for the whole system.
-.Ss Use cases
-.Sh MTX
-Mtx mutexes are a locking primitive that is based around atomic_cmpset_int instead
-of spinlocks. They are much faster and use less memory than than lockmgr locks. 
-Mtx can always be recursive, shared/exclusive and can be held across blocking calls
-and sleeps.
-Mtx are also capable of passing ownership directly to a new owner without wakeup. 
-
+.Sh MTX MUTEXES
+Mtx mutexes are a locking primitive that is based around
+.Xr atomic_cmpset_int 9
+instead of spinlocks.
+They are much faster and use less memory than
+.Xr lockmgr 9
+locks.
+Mtx mutexes can always be recursive, shared/exclusive and can be held
+across blocking calls and sleeps.
+They are also capable of passing ownership directly to a new owner
+without wakeup.
 See
+.Xr mutex 9 .
 .Sh SERIALIZERS
 Serializers are used to serialize access to hardware and other subsystems.
 Serializers are deprecated, and should not be used in new code.
-
 .Sh SPINLOCKS
-Spinlocks employ a busy wait loop to acquire a lock. This means that this type of lock
-is very lightweight, but should only be held for a very short time, since all contenders
-will be spinning and not sleeping. No wakeup is necessary, because a waiter will be
-spinning already.
-If a thread tries to sleep while holding a spinlock, the kernel will panic. 
+Spinlocks employ a busy wait loop to acquire a lock.
+This means that this type of lock is very lightweight,
+but should only be held for a very short time, since all contenders
+will be spinning and not sleeping.
+No wakeup is necessary, because a waiter will be spinning already.
+If a thread tries to sleep while holding a spinlock, the kernel will panic.
 Spinlocks cannot recurse.
-
-.Ss Use cases
-Spinlocks are mainly used to protect kernel structures, and to implement higher level
-locking primitives.
-.Ss See also
-
+.Pp
+They are mainly used to protect kernel structures, and to
+implement higher level locking primitives.
+See
+.Xr spinlock 9 .
+.Sh SEE ALSO
+.Xr atomic 9 ,
+.Xr condvar 9 ,
+.Xr crit_enter 9 ,
+.Xr lockmgr 9 ,
+.Xr mutex 9 ,
+.Xr serializer 9 ,
+.Xr spinlock 9 ,
+.Xr tsleep 9
 .Sh AUTHORS
 .An -nosplit
 This manual page was written by
