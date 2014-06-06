@@ -36,49 +36,78 @@ The
 kernel provides several locking and synchronisation primitives, each with
 different characteristics and purposes.
 This manpage aims at giving an
-overview of the available locking primitives and their use cases.
-.Sh CONDITION VARIABLES
+overview of the available locking primitives and their use cases, as well
+as pointers towards further information.
+.Ss Condition Variables
 Condition variables are used to wait for conditions to occur.
 In
 .Dx
-condition variables use spinlocks internally.
+condition variables use a
+.Xr spinlock 9
+internally.
 Threads that wait on a condition variable are called waiters.
-Either just
-one or all waiters can be notified of changes to a condition variable.
+Either just one or all waiters can be notified of changes to a
+condition variable.
 A condition variable can
 .Xr tsleep_interlock 9
 when given a
 .Xr lockmgr 9
-lock to avoid missing changes to it, or regular
+lock to avoid missing changes to it, or use regular
 .Xr tsleep 9 .
+.Pp
 See
-.Xr condvar 9 .
+.Xr condvar 9
 for further information.
-.Sh CRITICAL SECTIONS
+.Ss Critical Sections
 A critical section changes the priority of the current thread to
 .Dv TDPRIT_CRIT ,
 effectively avoiding preemption of the thread.
 Critical sections are a per-cpu primitive, and there is no synchronisation
 or locking between CPUs.
+.Pp
 See
 .Xr crit_enter 9 .
-.Sh LOCKMGR LOCKS
+for further information.
+.Ss Lockmgr Locks
 .Xr Lockmgr 9
 locks are the kitchen sink locking primitive for the
 .Dx
-kernel.
+kernel, and the most heavyweight locking mechanism.
+.Xr lockmgr 9
+locks can be shared/exclusive and recursive.
 Lockmgr locks should be used for
 .Fx
 compatibility when porting drivers that use
 .Fx Ap s
 mutexes.
+.Pp
 See
-.Xr lockmgr 9 .
+.Xr lockmgr 9
 for more information.
-.Sh LWKT SERIALIZING TOKENS
-LWKT serializing tokens use
+.Ss LWKT Messages
+LWKT messages can be used to pass messages between light weight kernel
+threads in the
+.Dx
+kernel.
+LWKT mesages are sent to message ports. Every light weight kernel thread
+possesses a message port, but more can be created if necessary.
+.Pp
+See
+.Xr msgport 9
+for more information. 
+.Ss LWKT Serializers
+LWKT serializers provide a fast locked-bus-cycle-based serialization
+facility. 
+They are used to serialize access to hardware and other subsystems.
+Serializers were designed to provide low level exclusive locks.
+.Pp
+See
+.Xr serializer 9 .
+for more information.
+.Ss LWKT Tokens
+LWKT tokens use
 .Xr atomic_cmpset 9
-internally and are integrated with the LWKT serializer.
+internally and are integrated with the LWKT scheduler.
 The scheduler takes care of acquiring a token before
 rescheduling, so a thread will not be run unless all tokens for it can be
 acquired.
@@ -86,11 +115,10 @@ Tokens are not owned by a thread, but by the CPU, and threads are only given
 references to tokens.
 See
 .Xr serializer 9 .
-.\".Sh LWKT MESSAGES
-.Sh MPLOCK
+.Ss MPLOCK
 The mplock is an API wrapper for the MP token. The use of this should be
 avoided at all cost, because there is only one MP token for the whole system.
-.Sh MTX MUTEXES
+.Ss MTX Mutexes
 Mtx mutexes are a locking primitive that is based around
 .Xr atomic_cmpset_int 9
 instead of spinlocks.
@@ -103,10 +131,7 @@ They are also capable of passing ownership directly to a new owner
 without wakeup.
 See
 .Xr mutex 9 .
-.Sh SERIALIZERS
-Serializers are used to serialize access to hardware and other subsystems.
-Serializers are deprecated, and should not be used in new code.
-.Sh SPINLOCKS
+.Ss Spinlocks
 Spinlocks employ a busy wait loop to acquire a lock.
 This means that this type of lock is very lightweight,
 but should only be held for a very short time, since all contenders
