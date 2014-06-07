@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1996, Javier Mart^mn Rueda (jmrueda@diatel.upm.es)
+ * Copyright (c) 1996, Javier Martín Rueda (jmrueda@diatel.upm.es)
  * All rights reserved.
  *
  * Copyright (c) 2000 Matthew N. Dodd

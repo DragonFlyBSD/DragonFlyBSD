@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2005 Joerg Sonnenberger <joerg@bec.de>.  All rights reserved.
- * Copyright (c) 2002 Dag-Erling Coïdan Smørgrav
+ * Copyright (c) 2002 Dag-Erling CoÃ¯dan SmÃ¸rgrav
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2000 - 2006 Søren Schmidt <sos@FreeBSD.org>
+ * Copyright (c) 2000 - 2006 SÃ¸ren Schmidt <sos@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -623,11 +623,11 @@ ata_raid_strategy(struct dev_strategy_args *ap)
 		    ata_raid_send_request(request);
 		    /* XXX TGEN no, I don't speak Danish either */
 		    /*
-		     * sikre at læs-modify-skriv til hver disk er atomarisk.
+		     * sikre at lÃ¦s-modify-skriv til hver disk er atomarisk.
 		     * par kopi af request
-		     * læse orgdata fra drv
+		     * lÃ¦se orgdata fra drv
 		     * skriv nydata til drv
-		     * læse parorgdata fra par
+		     * lÃ¦se parorgdata fra par
 		     * skriv orgdata xor parorgdata xor nydata til par
 		     */
 		}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994-1995 Søren Schmidt
+ * Copyright (c) 1994-1995 SÃ¸ren Schmidt
  * Copyright (c) 2004 Simon 'corecode' Schubert
  * All rights reserved.
  *
