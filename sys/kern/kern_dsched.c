@@ -266,7 +266,6 @@ dsched_queue(struct disk *dp, struct bio *bio)
 	struct dsched_thread_ctx	*tdctx;
 	struct dsched_thread_io		*tdio;
 	struct dsched_disk_ctx		*diskctx;
-	int	found;
 	int	error;
 
 	if (dp->d_sched_policy == &dsched_noop_policy) {
@@ -276,7 +275,6 @@ dsched_queue(struct disk *dp, struct bio *bio)
 		return;
 	}
 
-	found = 0;
 	error = 0;
 	tdctx = dsched_get_buf_priv(bio->bio_buf);
 	if (tdctx == NULL) {
@@ -309,7 +307,6 @@ dsched_queue(struct disk *dp, struct bio *bio)
 	dsched_clr_buf_priv(bio->bio_buf);
 	dsched_thread_ctx_unref(tdctx); /* acquired on new_buf */
 
-	KKASSERT(found == 1);
 	diskctx = dsched_get_disk_priv(dp);
 	dsched_disk_ctx_ref(diskctx);
 
