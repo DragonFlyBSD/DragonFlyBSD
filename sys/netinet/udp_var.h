@@ -155,6 +155,8 @@ extern int	log_in_vain;
 
 int			udp_addrcpu (in_addr_t faddr, in_port_t fport,
 				     in_addr_t laddr, in_port_t lport);
+int			udp_addrcpu_pkt (in_addr_t faddr, in_port_t fport,
+				     in_addr_t laddr, in_port_t lport);
 struct lwkt_port	*udp_addrport (in_addr_t faddr, in_port_t fport,
 				     in_addr_t laddr, in_port_t lport);
 void			udp_ctlinput(netmsg_t msg);

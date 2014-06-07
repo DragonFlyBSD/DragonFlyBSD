@@ -99,6 +99,17 @@ udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 #endif
 }
 
+int
+udp_addrcpu_pkt(in_addr_t faddr, in_port_t fport, in_addr_t laddr,
+    in_port_t lport)
+{
+	if (IN_MULTICAST(ntohl(faddr))) {
+		/* XXX handle multicast on CPU0 for now */
+		return 0;
+	}
+	return (netisr_hashcpu(INP_MPORT_HASH_UDP(faddr, laddr, fport, lport)));
+}
+
 /*
  * If the packet is a valid IP datagram, upon returning of this function
  * following things are promised:

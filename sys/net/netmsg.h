@@ -59,6 +59,8 @@ struct netmsg_base {
 	struct socket		*nm_so;
 };
 
+#define MSGF_IGNSOPORT		MSGF_USER0	/* don't check so_port */
+
 typedef struct netmsg_base *netmsg_base_t;
 
 /*
@@ -201,6 +203,7 @@ struct netmsg_pru_rcvoob {
 struct netmsg_pru_send {
 	struct netmsg_base	base;
 	int			nm_flags;	/* PRUS_xxx */
+	int			nm_priv;	/* proto priv. */
 	struct mbuf		*nm_m;
 	struct sockaddr		*nm_addr;
 	struct mbuf		*nm_control;

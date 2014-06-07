@@ -293,7 +293,12 @@ netmsg_service_loop(void *arg)
 			KASSERT(msg->nm_dispatch != NULL,
 				("netmsg_service isr %d badmsg",
 				msg->lmsg.u.ms_result));
-			if (msg->nm_so &&
+			/*
+			 * Don't match so_port, if the msg explicitly
+			 * asks us to ignore its so_port.
+			 */
+			if ((msg->lmsg.ms_flags & MSGF_IGNSOPORT) == 0 &&
+			    msg->nm_so &&
 			    msg->nm_so->so_port != &td->td_msgport) {
 				/*
 				 * Sockets undergoing connect or disconnect
@@ -655,8 +660,14 @@ netisr_barrier_set(struct netisr_barrier *br)
 
 		msg = kmalloc(sizeof(struct netmsg_barrier),
 			      M_LWKTMSG, M_WAITOK);
-		netmsg_init(&msg->base, NULL, &netisr_afree_rport,
-			    MSGF_PRIORITY, netisr_barrier_dispatch);
+
+		/*
+		 * Don't use priority message here; mainly to keep
+		 * it ordered w/ the previous data packets sent by
+		 * the caller.
+		 */
+		netmsg_init(&msg->base, NULL, &netisr_afree_rport, 0,
+		    netisr_barrier_dispatch);
 		msg->br_cpumask = &other_cpumask;
 		msg->br_done = NETISR_BR_NOTDONE;
 

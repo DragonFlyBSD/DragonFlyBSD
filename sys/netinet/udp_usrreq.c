@@ -126,9 +126,12 @@
 #endif
 
 KTR_INFO_MASTER(udp);
-KTR_INFO(KTR_UDP, udp, output_beg, 0, UDP_KTR_STRING, UDP_KTR_ARGS);
-KTR_INFO(KTR_UDP, udp, output_end, 1, UDP_KTR_STRING, UDP_KTR_ARGS);
-KTR_INFO(KTR_UDP, udp, ip_output, 2, UDP_KTR_STRING, UDP_KTR_ARGS);
+KTR_INFO(KTR_UDP, udp, send_beg, 0, UDP_KTR_STRING, UDP_KTR_ARGS);
+KTR_INFO(KTR_UDP, udp, send_end, 1, UDP_KTR_STRING, UDP_KTR_ARGS);
+KTR_INFO(KTR_UDP, udp, send_ipout, 2, UDP_KTR_STRING, UDP_KTR_ARGS);
+KTR_INFO(KTR_UDP, udp, redisp_ipout_beg, 3, UDP_KTR_STRING, UDP_KTR_ARGS);
+KTR_INFO(KTR_UDP, udp, redisp_ipout_end, 4, UDP_KTR_STRING, UDP_KTR_ARGS);
+KTR_INFO(KTR_UDP, udp, send_redisp, 5, UDP_KTR_STRING, UDP_KTR_ARGS);
 
 #define logudp(name, inp)	KTR_LOG(udp_##name, inp)
 
@@ -854,6 +857,37 @@ SYSCTL_PROC(_net_inet_udp, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
     0, 0, udp_getcred, "S,ucred", "Get the ucred of a UDP connection");
 
 static void
+udp_send_redispatch(netmsg_t msg)
+{
+	struct mbuf *m = msg->send.nm_m;
+	int pru_flags = msg->send.nm_flags;
+	struct inpcb *inp = msg->send.base.nm_so->so_pcb;
+	struct mbuf *m_opt = msg->send.nm_control; /* XXX save ipopt */
+	int flags = msg->send.nm_priv; /* ip_output flags */
+	int error;
+
+	logudp(redisp_ipout_beg, inp);
+
+	/*
+	 * - Don't use inp route cache.  It should only be used in the
+	 *   inp owner netisr.
+	 * - Access to inp_moptions should be safe, since multicast UDP
+	 *   datagrams are redispatched to netisr0 and inp_moptions is
+	 *   changed only in netisr0.
+	 */
+	error = ip_output(m, m_opt, NULL, flags, inp->inp_moptions, inp);
+	if ((pru_flags & PRUS_NOREPLY) == 0)
+		lwkt_replymsg(&msg->send.base.lmsg, error);
+
+	if (m_opt != NULL) {
+		/* Free saved ip options, if any */
+		m_freem(m_opt);
+	}
+
+	logudp(redisp_ipout_end, inp);
+}
+
+static void
 udp_send(netmsg_t msg)
 {
 	struct socket *so = msg->send.base.nm_so;
@@ -867,12 +901,12 @@ udp_send(netmsg_t msg)
 	struct udpiphdr *ui;
 	int len = m->m_pkthdr.len;
 	struct sockaddr_in *sin;	/* really is initialized before use */
-	int error = 0;
+	int error = 0, cpu;
 
 	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 	KKASSERT(msg->send.nm_control == NULL);
 
-	logudp(output_beg, inp);
+	logudp(send_beg, inp);
 
 	if (inp == NULL) {
 		error = EINVAL;
@@ -1010,7 +1044,68 @@ udp_send(netmsg_t msg)
 	if (pru_flags & PRUS_DONTROUTE)
 		flags |= SO_DONTROUTE;
 
-	logudp(ip_output, inp);
+	cpu = udp_addrcpu_pkt(ui->ui_dst.s_addr, ui->ui_dport,
+	    ui->ui_src.s_addr, ui->ui_sport);
+	if (cpu != mycpuid) {
+		struct mbuf *m_opt = NULL;
+		struct netmsg_pru_send *smsg;
+		struct lwkt_port *port = netisr_cpuport(cpu);
+
+		/*
+		 * Not on the CPU that matches this UDP datagram hash;
+		 * redispatch to the correct CPU to do the ip_output().
+		 */
+		if (inp->inp_options != NULL) {
+			/*
+			 * If there are ip options, then save a copy,
+			 * since accessing inp_options on other CPUs'
+			 * is not safe.
+			 *
+			 * XXX optimize this?
+			 */
+			m_opt = m_copym(inp->inp_options, 0, M_COPYALL,
+			    MB_WAIT);
+		}
+		if ((pru_flags & PRUS_NOREPLY) == 0) {
+			/*
+			 * Change some parts of the original netmsg and
+			 * forward it to the target netisr.
+			 *
+			 * NOTE: so_port MUST NOT be checked in the target
+			 * netisr.
+			 */
+			smsg = &msg->send;
+			smsg->nm_priv = flags; /* ip_output flags */
+			smsg->nm_m = m;
+			smsg->nm_control = m_opt; /* XXX save ipopt */
+			smsg->base.lmsg.ms_flags |= MSGF_IGNSOPORT;
+			smsg->base.nm_dispatch = udp_send_redispatch;
+			lwkt_forwardmsg(port, &smsg->base.lmsg);
+		} else {
+			/*
+			 * Recreate the netmsg, since the original mbuf
+			 * could have been changed.  And send it to the
+			 * target netisr.
+			 *
+			 * NOTE: so_port MUST NOT be checked in the target
+			 * netisr.
+			 */
+			smsg = &m->m_hdr.mh_sndmsg;
+			netmsg_init(&smsg->base, so, &netisr_apanic_rport,
+			    MSGF_IGNSOPORT, udp_send_redispatch);
+			smsg->nm_priv = flags; /* ip_output flags */
+			smsg->nm_flags = pru_flags;
+			smsg->nm_m = m;
+			smsg->nm_control = m_opt; /* XXX save ipopt */
+			lwkt_sendmsg(port, &smsg->base.lmsg);
+		}
+
+		/* This UDP datagram is redispatched; done */
+		logudp(send_redisp, inp);
+		return;
+	}
+
+	logudp(send_ipout, inp);
 	error = ip_output(m, inp->inp_options, &inp->inp_route, flags,
 	    inp->inp_moptions, inp);
 	m = NULL;
@@ -1026,7 +1121,7 @@ release:
 	if ((pru_flags & PRUS_NOREPLY) == 0)
 		lwkt_replymsg(&msg->send.base.lmsg, error);
 
-	logudp(output_end, inp);
+	logudp(send_end, inp);
 }
 
 u_long	udp_sendspace = 9216;		/* really max datagram size */
