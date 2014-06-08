@@ -3627,6 +3627,7 @@ kern_ftruncate(int fd, off_t length)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
 	if (vp->v_type == VDIR) {
 		error = EISDIR;
+		vn_unlock(vp);
 		goto done;
 	}
 
