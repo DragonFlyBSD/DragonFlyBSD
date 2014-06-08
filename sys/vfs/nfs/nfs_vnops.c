@@ -541,8 +541,10 @@ nfs_open(struct vop_open_args *ap)
 		np->n_attrstamp = 0;
 		if (vp->v_type == VDIR) {
 			error = nfs_vinvalbuf(vp, V_SAVE, 1);
-			if (error == EINTR)
+			if (error == EINTR) {
+				lwkt_reltoken(&nmp->nm_token);
 				return (error);
+			}
 			nfs_invaldir(vp);
 		}
 	}
@@ -810,8 +812,10 @@ again:
 		 */
 		if (np->n_flag & NRMODIFIED)
 			error = nfs_vinvalbuf(vp, V_SAVE, 1);
-		if (error == EINTR)
+		if (error == EINTR) {
+			lwkt_reltoken(&nmp->nm_token);
 			return (error);
+		}
 		if (error == 0) {
 			if (vap->va_mtime.tv_sec != VNOVAL) {
 				np->n_mtime = vap->va_mtime.tv_sec;

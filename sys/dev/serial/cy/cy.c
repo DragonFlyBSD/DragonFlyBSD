@@ -896,6 +896,7 @@ siowrite(struct dev_write_args *ap)
 	int		mynor;
 	struct tty	*tp;
 	int		unit;
+	int		ret;
 
 	mynor = minor(dev);
 	if (mynor & CONTROL_MASK)
@@ -917,10 +918,12 @@ siowrite(struct dev_write_args *ap)
 	 * CR & LF chars.  Hardly worth the effort, given that high-throughput
 	 * sessions are raw anyhow.
 	 */
+	ret = 0;
 #else
-	return ((*linesw[tp->t_line].l_write)(tp, uio, ap->a_ioflag));
+	ret = (*linesw[tp->t_line].l_write)(tp, uio, ap->a_ioflag);
 #endif
 	lwkt_reltoken(&tty_token);
+	return(ret);
 }
 
 static void
