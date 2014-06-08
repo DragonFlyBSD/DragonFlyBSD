@@ -203,10 +203,12 @@ mld6_input(struct mbuf *m, int off)
 	/* source address validation */
 	ip6 = mtod(m, struct ip6_hdr *);/* in case mpullup */
 	if (!IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_src)) {
+#if 0
 		log(LOG_ERR,
 		    "mld6_input: src %s is not link-local (grp=%s)\n",
 		    ip6_sprintf(&ip6->ip6_src),
 		    ip6_sprintf(&mldh->mld_addr));
+#endif
 		/*
 		 * spec (RFC2710) does not explicitly
 		 * specify to discard the packet from a non link-local
