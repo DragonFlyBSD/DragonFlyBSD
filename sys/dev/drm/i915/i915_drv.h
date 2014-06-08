@@ -1077,13 +1077,9 @@ struct drm_i915_gem_object {
 	unsigned int cache_level:2;
 
 	unsigned int has_aliasing_ppgtt_mapping:1;
+	unsigned int has_global_gtt_mapping:1;
 
 	vm_page_t *pages;
-
-	/**
-	 * DMAR support
-	 */
-	struct sglist *sg_list;
 
 	/**
 	 * Used for performing relocations during execbuffer insertion.
@@ -1445,8 +1441,12 @@ uint32_t i915_gem_get_unfenced_gtt_alignment(struct drm_device *dev,
 int i915_mutex_lock_interruptible(struct drm_device *dev);
 int i915_gem_object_set_to_gtt_domain(struct drm_i915_gem_object *obj,
     bool write);
-int i915_gem_object_pin_to_display_plane(struct drm_i915_gem_object *obj,
-    u32 alignment, struct intel_ring_buffer *pipelined);
+int __must_check
+i915_gem_object_set_to_cpu_domain(struct drm_i915_gem_object *obj, bool write);
+int __must_check
+i915_gem_object_pin_to_display_plane(struct drm_i915_gem_object *obj,
+				     u32 alignment,
+				     struct intel_ring_buffer *pipelined);
 int i915_gem_object_finish_gpu(struct drm_i915_gem_object *obj);
 int i915_gem_flush_ring(struct intel_ring_buffer *ring,
     uint32_t invalidate_domains, uint32_t flush_domains);
@@ -1527,10 +1527,9 @@ void i915_ppgtt_unbind_object(struct i915_hw_ppgtt *ppgtt,
     struct drm_i915_gem_object *obj);
 
 void i915_gem_restore_gtt_mappings(struct drm_device *dev);
-int i915_gem_gtt_bind_object(struct drm_i915_gem_object *obj);
+void i915_gem_gtt_bind_object(struct drm_i915_gem_object *obj,
+				enum i915_cache_level cache_level);
 void i915_gem_gtt_unbind_object(struct drm_i915_gem_object *obj);
-void i915_gem_gtt_rebind_object(struct drm_i915_gem_object *obj,
-    enum i915_cache_level cache_level);
 
 /* modesetting */
 extern void intel_modeset_init(struct drm_device *dev);

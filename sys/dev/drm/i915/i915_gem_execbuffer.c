@@ -374,25 +374,31 @@ i915_gem_execbuffer_relocate_entry(struct drm_i915_gem_object *obj,
 		return ret;
 	}
 
+	/* We can't wait for rendering with pagefaults disabled */
+	if (obj->active && (curthread->td_flags & TDF_NOFAULT))
+		return -EFAULT;
+
 	reloc->delta += target_offset;
 	if (obj->base.write_domain == I915_GEM_DOMAIN_CPU) {
 		uint32_t page_offset = reloc->offset & PAGE_MASK;
 		char *vaddr;
 		struct sf_buf *sf;
 
+		ret = i915_gem_object_set_to_cpu_domain(obj, 1);
+		if (ret)
+			return ret;
+
 		sf = sf_buf_alloc(obj->pages[OFF_TO_IDX(reloc->offset)]);
 		if (sf == NULL)
 			return (-ENOMEM);
 		vaddr = (void *)sf_buf_kva(sf);
+
 		*(uint32_t *)(vaddr + page_offset) = reloc->delta;
 		sf_buf_free(sf);
 	} else {
 		uint32_t *reloc_entry;
 		char *reloc_page;
 
-		/* We can't wait for rendering with pagefaults disabled */
-		if (obj->active && (curthread->td_flags & TDF_NOFAULT))
-			return (-EFAULT);
 		ret = i915_gem_object_set_to_gtt_domain(obj, 1);
 		if (ret)
 			return ret;

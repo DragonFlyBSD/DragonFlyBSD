@@ -47,7 +47,7 @@ struct pipe_control {
 
 static inline int ring_space(struct intel_ring_buffer *ring)
 {
-	int space = (ring->head & HEAD_ADDR) - (ring->tail + 8);
+	int space = (ring->head & HEAD_ADDR) - (ring->tail + I915_RING_FREE_SPACE);
 	if (space < 0)
 		space += ring->size;
 	return space;

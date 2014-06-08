@@ -112,14 +112,11 @@ static void i915_ppgtt_clear_range(struct i915_hw_ppgtt *ppgtt,
 	}
 }
 
-int
-i915_gem_init_aliasing_ppgtt(struct drm_device *dev)
+int i915_gem_init_aliasing_ppgtt(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct i915_hw_ppgtt *ppgtt;
 	u_int first_pd_entry_in_global_pt, i;
-
-	dev_priv = dev->dev_private;
 
 	/*
 	 * ppgtt PDEs reside in the global gtt pagetable, which has 512*1024
@@ -152,6 +149,33 @@ i915_gem_init_aliasing_ppgtt(struct drm_device *dev)
 	dev_priv->mm.aliasing_ppgtt = ppgtt;
 	return (0);
 }
+
+void
+i915_gem_cleanup_aliasing_ppgtt(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv;
+	struct i915_hw_ppgtt *ppgtt;
+	vm_page_t m;
+	int i;
+
+	dev_priv = dev->dev_private;
+	ppgtt = dev_priv->mm.aliasing_ppgtt;
+	if (ppgtt == NULL)
+		return;
+	dev_priv->mm.aliasing_ppgtt = NULL;
+
+	for (i = 0; i < ppgtt->num_pd_entries; i++) {
+		m = ppgtt->pt_pages[i];
+		if (m != NULL) {
+			vm_page_busy_wait(m, FALSE, "i915gem");
+			vm_page_unwire(m, 0);
+			vm_page_free(m);
+		}
+	}
+	drm_free(ppgtt->pt_pages, DRM_I915_GEM);
+	drm_free(ppgtt, DRM_I915_GEM);
+}
+
 
 static void
 i915_ppgtt_insert_pages(struct i915_hw_ppgtt *ppgtt, unsigned first_entry,
@@ -190,9 +214,9 @@ i915_ppgtt_insert_pages(struct i915_hw_ppgtt *ppgtt, unsigned first_entry,
 	}
 }
 
-void
-i915_ppgtt_bind_object(struct i915_hw_ppgtt *ppgtt,
-    struct drm_i915_gem_object *obj, enum i915_cache_level cache_level)
+void i915_ppgtt_bind_object(struct i915_hw_ppgtt *ppgtt,
+			    struct drm_i915_gem_object *obj,
+			    enum i915_cache_level cache_level)
 {
 	struct drm_device *dev;
 	struct drm_i915_private *dev_priv;
@@ -227,58 +251,63 @@ void i915_ppgtt_unbind_object(struct i915_hw_ppgtt *ppgtt,
 	    obj->base.size >> PAGE_SHIFT);
 }
 
-void
-i915_gem_cleanup_aliasing_ppgtt(struct drm_device *dev)
+void i915_gem_init_ppgtt(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv;
-	struct i915_hw_ppgtt *ppgtt;
-	vm_page_t m;
+	drm_i915_private_t *dev_priv = dev->dev_private;
+	uint32_t pd_offset;
+	struct intel_ring_buffer *ring;
+	struct i915_hw_ppgtt *ppgtt = dev_priv->mm.aliasing_ppgtt;
+	uint32_t pd_entry, first_pd_entry_in_global_pt;
 	int i;
 
-	dev_priv = dev->dev_private;
-	ppgtt = dev_priv->mm.aliasing_ppgtt;
-	if (ppgtt == NULL)
+	if (!dev_priv->mm.aliasing_ppgtt)
 		return;
-	dev_priv->mm.aliasing_ppgtt = NULL;
 
+	first_pd_entry_in_global_pt = 512 * 1024 - I915_PPGTT_PD_ENTRIES;
 	for (i = 0; i < ppgtt->num_pd_entries; i++) {
-		m = ppgtt->pt_pages[i];
-		if (m != NULL) {
-			vm_page_busy_wait(m, FALSE, "i915gem");
-			vm_page_unwire(m, 0);
-			vm_page_free(m);
-		}
+		vm_paddr_t pt_addr;
+
+		pt_addr = VM_PAGE_TO_PHYS(ppgtt->pt_pages[i]);
+		pd_entry = GEN6_PDE_ADDR_ENCODE(pt_addr);
+		pd_entry |= GEN6_PDE_VALID;
+
+		intel_gtt_write(first_pd_entry_in_global_pt + i, pd_entry);
 	}
-	drm_free(ppgtt->pt_pages, DRM_I915_GEM);
-	drm_free(ppgtt, DRM_I915_GEM);
+	intel_gtt_read_pte(first_pd_entry_in_global_pt);
+
+	pd_offset = ppgtt->pd_offset;
+	pd_offset /= 64; /* in cachelines, */
+	pd_offset <<= 16;
+
+	if (INTEL_INFO(dev)->gen == 6) {
+		uint32_t ecochk, gab_ctl, ecobits;
+
+		ecobits = I915_READ(GAC_ECO_BITS);
+		I915_WRITE(GAC_ECO_BITS, ecobits | ECOBITS_PPGTT_CACHE64B);
+
+		gab_ctl = I915_READ(GAB_CTL);
+		I915_WRITE(GAB_CTL, gab_ctl | GAB_CTL_CONT_AFTER_PAGEFAULT);
+
+		ecochk = I915_READ(GAM_ECOCHK);
+		I915_WRITE(GAM_ECOCHK, ecochk | ECOCHK_SNB_BIT |
+				       ECOCHK_PPGTT_CACHE64B);
+		I915_WRITE(GFX_MODE, _MASKED_BIT_ENABLE(GFX_PPGTT_ENABLE));
+	} else if (INTEL_INFO(dev)->gen >= 7) {
+		I915_WRITE(GAM_ECOCHK, ECOCHK_PPGTT_CACHE64B);
+		/* GFX_MODE is per-ring on gen7+ */
+	}
+
+	for_each_ring(ring, dev_priv, i) {
+		if (INTEL_INFO(dev)->gen >= 7)
+			I915_WRITE(RING_MODE_GEN7(ring),
+				   _MASKED_BIT_ENABLE(GFX_PPGTT_ENABLE));
+
+		I915_WRITE(RING_PP_DIR_DCLV(ring), PP_DIR_DCLV_2G);
+		I915_WRITE(RING_PP_DIR_BASE(ring), pd_offset);
+	}
 }
 
-
-static unsigned int
-cache_level_to_agp_type(struct drm_device *dev, enum i915_cache_level
-    cache_level)
-{
-
-	switch (cache_level) {
-	case I915_CACHE_LLC_MLC:
-		if (INTEL_INFO(dev)->gen >= 6)
-			return (AGP_USER_CACHED_MEMORY_LLC_MLC);
-		/*
-		 * Older chipsets do not have this extra level of CPU
-		 * cacheing, so fallthrough and request the PTE simply
-		 * as cached.
-		 */
-	case I915_CACHE_LLC:
-		return (AGP_USER_CACHED_MEMORY);
-
-	default:
-	case I915_CACHE_NONE:
-		return (AGP_USER_MEMORY);
-	}
-}
-
-static bool
-do_idling(struct drm_i915_private *dev_priv)
+static bool do_idling(struct drm_i915_private *dev_priv)
 {
 	bool ret = dev_priv->mm.interruptible;
 
@@ -294,13 +323,40 @@ do_idling(struct drm_i915_private *dev_priv)
 	return ret;
 }
 
-static void
-undo_idling(struct drm_i915_private *dev_priv, bool interruptible)
+static void undo_idling(struct drm_i915_private *dev_priv, bool interruptible)
 {
 
 	if (unlikely(dev_priv->mm.gtt->do_idle_maps))
 		dev_priv->mm.interruptible = interruptible;
 }
+
+#if 0
+static void i915_ggtt_clear_range(struct drm_device *dev,
+				 unsigned first_entry,
+				 unsigned num_entries)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	gtt_pte_t scratch_pte;
+	gtt_pte_t __iomem *gtt_base = dev_priv->mm.gtt->gtt + first_entry;
+	const int max_entries = dev_priv->mm.gtt->gtt_total_entries - first_entry;
+	int i;
+
+	if (INTEL_INFO(dev)->gen < 6) {
+		intel_gtt_clear_range(first_entry, num_entries);
+		return;
+	}
+
+	if (WARN(num_entries > max_entries,
+		 "First entry = %d; Num entries = %d (max=%d)\n",
+		 first_entry, num_entries, max_entries))
+		num_entries = max_entries;
+
+	scratch_pte = pte_encode(dev, dev_priv->mm.gtt->scratch_page_dma, I915_CACHE_LLC);
+	for (i = 0; i < num_entries; i++)
+		iowrite32(scratch_pte, &gtt_base[i]);
+	readl(gtt_base);
+}
+#endif
 
 void
 i915_gem_restore_gtt_mappings(struct drm_device *dev)
@@ -316,48 +372,79 @@ i915_gem_restore_gtt_mappings(struct drm_device *dev)
 
 	list_for_each_entry(obj, &dev_priv->mm.gtt_list, gtt_list) {
 		i915_gem_clflush_object(obj);
-		i915_gem_gtt_rebind_object(obj, obj->cache_level);
+		i915_gem_gtt_bind_object(obj, obj->cache_level);
 	}
 
 	intel_gtt_chipset_flush();
 }
 
-int
-i915_gem_gtt_bind_object(struct drm_i915_gem_object *obj)
+#if 0
+/*
+ * Binds an object into the global gtt with the specified cache level. The object
+ * will be accessible to the GPU via commands whose operands reference offsets
+ * within the global GTT as well as accessible by the GPU through the GMADR
+ * mapped BAR (dev_priv->mm.gtt->gtt).
+ */
+static void gen6_ggtt_bind_object(struct drm_i915_gem_object *obj,
+				  enum i915_cache_level level)
 {
-	unsigned int agp_type;
+	struct drm_device *dev = obj->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct sg_table *st = obj->pages;
+	struct scatterlist *sg = st->sgl;
+	const int first_entry = obj->gtt_space->start >> PAGE_SHIFT;
+	const int max_entries = dev_priv->mm.gtt->gtt_total_entries - first_entry;
+	gtt_pte_t __iomem *gtt_entries = dev_priv->mm.gtt->gtt + first_entry;
+	int unused, i = 0;
+	unsigned int len, m = 0;
+	dma_addr_t addr;
 
-	agp_type = cache_level_to_agp_type(obj->base.dev, obj->cache_level);
+	for_each_sg(st->sgl, sg, st->nents, unused) {
+		len = sg_dma_len(sg) >> PAGE_SHIFT;
+		for (m = 0; m < len; m++) {
+			addr = sg_dma_address(sg) + (m << PAGE_SHIFT);
+			iowrite32(pte_encode(dev, addr, level), &gtt_entries[i]);
+			i++;
+		}
+	}
+
+	BUG_ON(i > max_entries);
+	BUG_ON(i != obj->base.size / PAGE_SIZE);
+
+	/* XXX: This serves as a posting read to make sure that the PTE has
+	 * actually been updated. There is some concern that even though
+	 * registers and PTEs are within the same BAR that they are potentially
+	 * of NUMA access patterns. Therefore, even with the way we assume
+	 * hardware should work, we must keep this posting read for paranoia.
+	 */
+	if (i != 0)
+		WARN_ON(readl(&gtt_entries[i-1]) != pte_encode(dev, addr, level));
+
+	/* This next bit makes the above posting read even more important. We
+	 * want to flush the TLBs only after we're certain all the PTE updates
+	 * have finished.
+	 */
+	I915_WRITE(GFX_FLSH_CNTL_GEN6, GFX_FLSH_CNTL_EN);
+	POSTING_READ(GFX_FLSH_CNTL_GEN6);
+}
+#endif
+
+void i915_gem_gtt_bind_object(struct drm_i915_gem_object *obj,
+			      enum i915_cache_level cache_level)
+{
+	unsigned int flags = (cache_level == I915_CACHE_NONE) ?
+			AGP_USER_MEMORY : AGP_USER_CACHED_MEMORY;
 	intel_gtt_insert_pages(obj->gtt_space->start >> PAGE_SHIFT,
-	    obj->base.size >> PAGE_SHIFT, obj->pages, agp_type);
-	return (0);
+	    obj->base.size >> PAGE_SHIFT, obj->pages, flags);
+
+	obj->has_global_gtt_mapping = 1;
 }
 
-void
-i915_gem_gtt_rebind_object(struct drm_i915_gem_object *obj,
-    enum i915_cache_level cache_level)
-{
-	struct drm_device *dev;
-	struct drm_i915_private *dev_priv;
-	unsigned int agp_type;
-
-	dev = obj->base.dev;
-	dev_priv = dev->dev_private;
-	agp_type = cache_level_to_agp_type(dev, cache_level);
-
-	intel_gtt_insert_pages(obj->gtt_space->start >> PAGE_SHIFT,
-	    obj->base.size >> PAGE_SHIFT, obj->pages, agp_type);
-}
-
-void
-i915_gem_gtt_unbind_object(struct drm_i915_gem_object *obj)
+void i915_gem_gtt_unbind_object(struct drm_i915_gem_object *obj)
 {
 	struct drm_device *dev = obj->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	bool interruptible;
-
-	dev = obj->base.dev;
-	dev_priv = dev->dev_private;
 
 	interruptible = do_idling(dev_priv);
 
@@ -365,54 +452,5 @@ i915_gem_gtt_unbind_object(struct drm_i915_gem_object *obj)
 	    obj->base.size >> PAGE_SHIFT);
 
 	undo_idling(dev_priv, interruptible);
-}
-
-#define GFX_MODE_ENABLE(bit) (((bit) << 16) | (bit))
-
-void i915_gem_init_ppgtt(struct drm_device *dev)
-{
-	drm_i915_private_t *dev_priv = dev->dev_private;
-	uint32_t pd_offset;
-	struct intel_ring_buffer *ring;
-	struct i915_hw_ppgtt *ppgtt = dev_priv->mm.aliasing_ppgtt;
-	uint32_t pd_entry;
-	vm_paddr_t pt_addr;
-	u_int first_pd_entry_in_global_pt, i;
-
-	if (ppgtt == NULL)
-		return;
-
-	first_pd_entry_in_global_pt = 512 * 1024 - I915_PPGTT_PD_ENTRIES;
-	for (i = 0; i < ppgtt->num_pd_entries; i++) {
-		pt_addr = VM_PAGE_TO_PHYS(ppgtt->pt_pages[i]);
-		pd_entry = GEN6_PDE_ADDR_ENCODE(pt_addr);
-		pd_entry |= GEN6_PDE_VALID;
-		intel_gtt_write(first_pd_entry_in_global_pt + i, pd_entry);
-	}
-	intel_gtt_read_pte(first_pd_entry_in_global_pt);
-
-	pd_offset = ppgtt->pd_offset;
-	pd_offset /= 64; /* in cachelines, */
-	pd_offset <<= 16;
-
-	if (INTEL_INFO(dev)->gen == 6) {
-		uint32_t ecochk = I915_READ(GAM_ECOCHK);
-		I915_WRITE(GAM_ECOCHK, ecochk | ECOCHK_SNB_BIT |
-				       ECOCHK_PPGTT_CACHE64B);
-		I915_WRITE(GFX_MODE, GFX_MODE_ENABLE(GFX_PPGTT_ENABLE));
-	} else if (INTEL_INFO(dev)->gen >= 7) {
-		I915_WRITE(GAM_ECOCHK, ECOCHK_PPGTT_CACHE64B);
-		/* GFX_MODE is per-ring on gen7+ */
-	}
-
-	for (i = 0; i < I915_NUM_RINGS; i++) {
-		ring = &dev_priv->ring[i];
-
-		if (INTEL_INFO(dev)->gen >= 7)
-			I915_WRITE(RING_MODE_GEN7(ring),
-				   GFX_MODE_ENABLE(GFX_PPGTT_ENABLE));
-
-		I915_WRITE(RING_PP_DIR_DCLV(ring), PP_DIR_DCLV_2G);
-		I915_WRITE(RING_PP_DIR_BASE(ring), pd_offset);
-	}
+	obj->has_global_gtt_mapping = 0;
 }
