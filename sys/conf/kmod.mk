@@ -77,7 +77,11 @@ KMODMODE?=	${BINMODE}
 
 .SUFFIXES: .out .o .c .cc .cxx .C .y .l .s .S
 
-CFLAGS+=	${COPTS} -D_KERNEL ${CWARNFLAGS}
+.if !defined(NO_WERROR) && (${CCVER} == "gcc44" || ${CCVER} == "gcc47")
+WERROR=-Werror
+.endif
+
+CFLAGS+=	${COPTS} -D_KERNEL ${CWARNFLAGS} ${WERROR}
 CFLAGS+=	-DKLD_MODULE
 
 # Don't use any standard include directories.
