@@ -416,11 +416,7 @@ i915_ring_seqno_info(struct sbuf *m, struct intel_ring_buffer *ring)
 {
 	if (ring->get_seqno) {
 		sbuf_printf(m, "Current sequence (%s): %d\n",
-			   ring->name, ring->get_seqno(ring));
-		sbuf_printf(m, "Waiter sequence (%s):  %d\n",
-			   ring->name, ring->waiting_seqno);
-		sbuf_printf(m, "IRQ sequence (%s):     %d\n",
-			   ring->name, ring->irq_seqno);
+			   ring->name, ring->get_seqno(ring, false));
 	}
 }
 
@@ -697,6 +693,7 @@ i915_ring_error_state(struct sbuf *m, struct drm_device *dev,
 			   error->semaphore_mboxes[ring][1]);
 	}
 	sbuf_printf(m, "  seqno: 0x%08x\n", error->seqno[ring]);
+	sbuf_printf(m, "  waiting: %s\n", yesno(error->waiting[ring]));
 	sbuf_printf(m, "  ring->head: 0x%08x\n", error->cpu_ring_head[ring]);
 	sbuf_printf(m, "  ring->tail: 0x%08x\n", error->cpu_ring_tail[ring]);
 }

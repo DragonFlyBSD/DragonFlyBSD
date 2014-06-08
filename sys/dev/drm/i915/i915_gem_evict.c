@@ -178,7 +178,7 @@ i915_gem_evict_everything(struct drm_device *dev, bool purgeable_only)
 		return -ENOSPC;
 
 	/* Flush everything (on to the inactive lists) and evict */
-	ret = i915_gpu_idle(dev, true);
+	ret = i915_gpu_idle(dev);
 	if (ret)
 		return ret;
 

@@ -608,13 +608,10 @@ static int i915_dispatch_flip(struct drm_device * dev)
 	return 0;
 }
 
-static int
-i915_quiescent(struct drm_device *dev)
+static int i915_quiescent(struct drm_device *dev)
 {
-	struct intel_ring_buffer *ring = LP_RING(dev->dev_private);
-
 	i915_kernel_lost_context(dev);
-	return (intel_wait_ring_idle(ring));
+	return intel_ring_idle(LP_RING(dev->dev_private));
 }
 
 static int
@@ -776,10 +773,10 @@ static int i915_wait_irq(struct drm_device * dev, int irq_nr)
 #if 0
 	struct drm_i915_master_private *master_priv = dev->primary->master->driver_priv;
 #endif
-	int ret;
+	int ret = 0;
 	struct intel_ring_buffer *ring = LP_RING(dev_priv);
 
-	DRM_DEBUG("irq_nr=%d breadcrumb=%d\n", irq_nr,
+	DRM_DEBUG_DRIVER("irq_nr=%d breadcrumb=%d\n", irq_nr,
 		  READ_BREADCRUMB(dev_priv));
 
 #if 0
@@ -804,23 +801,12 @@ static int i915_wait_irq(struct drm_device * dev, int irq_nr)
 		dev_priv->sarea_priv->perf_boxes |= I915_BOX_WAIT;
 #endif
 
-	ret = 0;
-	lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
 	if (ring->irq_get(ring)) {
-		DRM_UNLOCK(dev);
-		while (ret == 0 && READ_BREADCRUMB(dev_priv) < irq_nr) {
-			ret = -lksleep(ring, &ring->irq_lock, PCATCH,
-			    "915wtq", 3 * hz);
-		}
+		DRM_WAIT_ON(ret, ring->irq_queue, 3 * DRM_HZ,
+			    READ_BREADCRUMB(dev_priv) >= irq_nr);
 		ring->irq_put(ring);
-		lockmgr(&ring->irq_lock, LK_RELEASE);
-		DRM_LOCK(dev);
-	} else {
-		lockmgr(&ring->irq_lock, LK_RELEASE);
-		if (_intel_wait_for(dev, READ_BREADCRUMB(dev_priv) >= irq_nr,
-		     3000, 1, "915wir"))
-			ret = -EBUSY;
-	}
+	} else if (wait_for(READ_BREADCRUMB(dev_priv) >= irq_nr, 3000))
+		ret = -EBUSY;
 
 	if (ret == -EBUSY) {
 		DRM_ERROR("EBUSY -- rec: %d emitted: %d\n",
@@ -1503,7 +1489,7 @@ i915_driver_unload_int(struct drm_device *dev, bool locked)
 
 	if (!locked)
 		DRM_LOCK(dev);
-	ret = i915_gpu_idle(dev, true);
+	ret = i915_gpu_idle(dev);
 	if (ret)
 		DRM_ERROR("failed to idle hardware: %d\n", ret);
 	if (!locked)

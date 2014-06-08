@@ -1072,7 +1072,7 @@ i915_gem_execbuffer_retire_commands(struct drm_device *dev,
 		i915_gem_next_request_seqno(ring);
 		drm_free(request, DRM_I915_GEM);
 	} else if (i915_gem_sync_exec_requests)
-		i915_wait_request(ring, request->seqno, true);
+		i915_wait_seqno(ring, request->seqno);
 }
 
 static void
@@ -1333,7 +1333,7 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 			 * so every billion or so execbuffers, we need to stall
 			 * the GPU in order to reset the counters.
 			 */
-			ret = i915_gpu_idle(dev, true);
+			ret = i915_gpu_idle(dev);
 			if (ret)
 				goto err;
 

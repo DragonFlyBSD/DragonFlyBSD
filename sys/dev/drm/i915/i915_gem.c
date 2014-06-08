@@ -274,7 +274,7 @@ i915_gem_idle(struct drm_device *dev)
 	if (dev_priv->mm.suspended)
 		return (0);
 
-	ret = i915_gpu_idle(dev, true);
+	ret = i915_gpu_idle(dev);
 	if (ret != 0)
 		return (ret);
 
@@ -712,10 +712,10 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 
 	ret = 0;
 	lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
-	if (!i915_seqno_passed(ring->get_seqno(ring), seqno)) {
+	if (!i915_seqno_passed(ring->get_seqno(ring,false), seqno)) {
 		if (ring->irq_get(ring)) {
 			while (ret == 0 &&
-			    !(i915_seqno_passed(ring->get_seqno(ring), seqno) ||
+			    !(i915_seqno_passed(ring->get_seqno(ring,false), seqno) ||
 			    atomic_read(&dev_priv->mm.wedged)))
 				ret = -lksleep(ring, &ring->irq_lock, PCATCH,
 				    "915thr", 0);
@@ -723,7 +723,7 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 			if (ret == 0 && atomic_read(&dev_priv->mm.wedged))
 				ret = -EIO;
 		} else if (_intel_wait_for(dev,
-		    i915_seqno_passed(ring->get_seqno(ring), seqno) ||
+		    i915_seqno_passed(ring->get_seqno(ring,false), seqno) ||
 		    atomic_read(&dev_priv->mm.wedged), 3000, 0, "915rtr")) {
 			ret = -EBUSY;
 		}
@@ -2065,6 +2065,22 @@ i915_gem_object_unbind(struct drm_i915_gem_object *obj)
 	return (ret);
 }
 
+int i915_gpu_idle(struct drm_device *dev)
+{
+	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct intel_ring_buffer *ring;
+	int ret, i;
+
+	/* Flush everything onto the inactive list. */
+	for_each_ring(ring, dev_priv, i) {
+		ret = intel_ring_idle(ring);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 static int
 i915_gem_object_get_pages_gtt(struct drm_i915_gem_object *obj,
     int flags)
@@ -2205,8 +2221,7 @@ i915_gem_object_wait_rendering(struct drm_i915_gem_object *obj)
 		return 0;
 
 	if (obj->active) {
-		ret = i915_wait_request(obj->ring, obj->last_rendering_seqno,
-		    true);
+		ret = i915_wait_seqno(obj->ring, obj->last_rendering_seqno);
 		if (ret != 0)
 			return (ret);
 	}
@@ -2407,49 +2422,19 @@ i915_gem_flush_ring(struct intel_ring_buffer *ring, uint32_t invalidate_domains,
 	return 0;
 }
 
-static int
-i915_ring_idle(struct intel_ring_buffer *ring, bool do_retire)
-{
-	int ret;
-
-	if (list_empty(&ring->gpu_write_list) && list_empty(&ring->active_list))
-		return 0;
-
-	if (!list_empty(&ring->gpu_write_list)) {
-		ret = i915_gem_flush_ring(ring, I915_GEM_GPU_DOMAINS,
-		    I915_GEM_GPU_DOMAINS);
-		if (ret != 0)
-			return ret;
-	}
-
-	return (i915_wait_request(ring, i915_gem_next_request_seqno(ring),
-	    do_retire));
-}
-
+/**
+ * Waits for a sequence number to be signaled, and cleans up the
+ * request and object lists appropriately for that event.
+ */
 int
-i915_gpu_idle(struct drm_device *dev, bool do_retire)
-{
-	drm_i915_private_t *dev_priv = dev->dev_private;
-	int ret, i;
-
-	/* Flush everything onto the inactive list. */
-	for (i = 0; i < I915_NUM_RINGS; i++) {
-		ret = i915_ring_idle(&dev_priv->ring[i], do_retire);
-		if (ret)
-			return ret;
-	}
-
-	return 0;
-}
-
-int
-i915_wait_request(struct intel_ring_buffer *ring, uint32_t seqno, bool do_retire)
+i915_wait_seqno(struct intel_ring_buffer *ring, uint32_t seqno)
 {
 	drm_i915_private_t *dev_priv;
 	struct drm_i915_gem_request *request;
 	uint32_t ier;
 	int flags, ret;
 	bool recovery_complete;
+	bool do_retire = true;
 
 	KASSERT(seqno != 0, ("Zero seqno"));
 
@@ -2479,7 +2464,7 @@ i915_wait_request(struct intel_ring_buffer *ring, uint32_t seqno, bool do_retire
 		seqno = request->seqno;
 	}
 
-	if (!i915_seqno_passed(ring->get_seqno(ring), seqno)) {
+	if (!i915_seqno_passed(ring->get_seqno(ring,false), seqno)) {
 		if (HAS_PCH_SPLIT(ring->dev))
 			ier = I915_READ(DEIER) | I915_READ(GTIER);
 		else
@@ -2491,11 +2476,10 @@ i915_wait_request(struct intel_ring_buffer *ring, uint32_t seqno, bool do_retire
 			ring->dev->driver->irq_postinstall(ring->dev);
 		}
 
-		ring->waiting_seqno = seqno;
 		lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
 		if (ring->irq_get(ring)) {
 			flags = dev_priv->mm.interruptible ? PCATCH : 0;
-			while (!i915_seqno_passed(ring->get_seqno(ring), seqno)
+			while (!i915_seqno_passed(ring->get_seqno(ring,false), seqno)
 			    && !atomic_read(&dev_priv->mm.wedged) &&
 			    ret == 0) {
 				ret = -lksleep(ring, &ring->irq_lock, flags,
@@ -2506,12 +2490,11 @@ i915_wait_request(struct intel_ring_buffer *ring, uint32_t seqno, bool do_retire
 		} else {
 			lockmgr(&ring->irq_lock, LK_RELEASE);
 			if (_intel_wait_for(ring->dev,
-			    i915_seqno_passed(ring->get_seqno(ring), seqno) ||
+			    i915_seqno_passed(ring->get_seqno(ring,false), seqno) ||
 			    atomic_read(&dev_priv->mm.wedged), 3000,
 			    0, "i915wrq") != 0)
 				ret = -EBUSY;
 		}
-		ring->waiting_seqno = 0;
 
 	}
 	if (atomic_read(&dev_priv->mm.wedged))
@@ -2744,15 +2727,11 @@ void
 i915_gem_retire_requests_ring(struct intel_ring_buffer *ring)
 {
 	uint32_t seqno;
-	int i;
 
 	if (list_empty(&ring->request_list))
 		return;
 
-	seqno = ring->get_seqno(ring);
-	for (i = 0; i < DRM_ARRAY_SIZE(ring->sync_seqno); i++)
-		if (seqno >= ring->sync_seqno[i])
-			ring->sync_seqno[i] = 0;
+	seqno = ring->get_seqno(ring, true);
 
 	while (!list_empty(&ring->request_list)) {
 		struct drm_i915_gem_request *request;
@@ -2764,6 +2743,11 @@ i915_gem_retire_requests_ring(struct intel_ring_buffer *ring)
 		if (!i915_seqno_passed(seqno, request->seqno))
 			break;
 
+		/* We know the GPU must have read the request to have
+		 * sent us the seqno + interrupt, so use the position
+		 * of tail of the request to update the last known position
+		 * of the GPU head.
+		 */
 		ring->last_retired_head = request->tail;
 
 		list_del(&request->list);
@@ -2790,13 +2774,12 @@ i915_gem_retire_requests_ring(struct intel_ring_buffer *ring)
 			i915_gem_object_move_to_inactive(obj);
 	}
 
-	if (ring->trace_irq_seqno &&
-	    i915_seqno_passed(seqno, ring->trace_irq_seqno)) {
-		lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
+	if (unlikely(ring->trace_irq_seqno &&
+		     i915_seqno_passed(seqno, ring->trace_irq_seqno))) {
 		ring->irq_put(ring);
-		lockmgr(&ring->irq_lock, LK_RELEASE);
 		ring->trace_irq_seqno = 0;
 	}
+
 }
 
 void
@@ -2993,7 +2976,7 @@ i830_write_fence_reg(struct drm_i915_gem_object *obj,
 
 static bool ring_passed_seqno(struct intel_ring_buffer *ring, u32 seqno)
 {
-	return i915_seqno_passed(ring->get_seqno(ring), seqno);
+	return i915_seqno_passed(ring->get_seqno(ring,false), seqno);
 }
 
 static int
@@ -3016,9 +2999,8 @@ i915_gem_object_flush_fence(struct drm_i915_gem_object *obj,
 	if (obj->last_fenced_seqno && pipelined != obj->last_fenced_ring) {
 		if (!ring_passed_seqno(obj->last_fenced_ring,
 				       obj->last_fenced_seqno)) {
-			ret = i915_wait_request(obj->last_fenced_ring,
-						obj->last_fenced_seqno,
-						true);
+			ret = i915_wait_seqno(obj->last_fenced_ring,
+						obj->last_fenced_seqno);
 			if (ret)
 				return ret;
 		}
@@ -3145,10 +3127,9 @@ i915_gem_object_get_fence(struct drm_i915_gem_object *obj,
 			if (reg->setup_seqno) {
 				if (!ring_passed_seqno(obj->last_fenced_ring,
 				    reg->setup_seqno)) {
-					ret = i915_wait_request(
+					ret = i915_wait_seqno(
 					    obj->last_fenced_ring,
-					    reg->setup_seqno,
-					    true);
+					    reg->setup_seqno);
 					if (ret)
 						return ret;
 				}
@@ -3317,21 +3298,9 @@ i915_gem_retire_work_handler(struct work_struct *work)
 	 * objects indefinitely.
 	 */
 	idle = true;
-	for (i = 0; i < I915_NUM_RINGS; i++) {
-		ring = &dev_priv->ring[i];
-
-		if (!list_empty(&ring->gpu_write_list)) {
-			struct drm_i915_gem_request *request;
-			int ret;
-
-			ret = i915_gem_flush_ring(ring,
-						  0, I915_GEM_GPU_DOMAINS);
-			request = kmalloc(sizeof(*request), DRM_I915_GEM,
-			    M_WAITOK | M_ZERO);
-			if (ret || request == NULL ||
-			    i915_add_request(ring, NULL, request))
-				drm_free(request, DRM_I915_GEM);
-		}
+	for_each_ring(ring, dev_priv, i) {
+		if (ring->gpu_caches_dirty)
+			i915_add_request(ring, NULL, NULL);
 
 		idle &= list_empty(&ring->request_list);
 	}
@@ -3339,6 +3308,8 @@ i915_gem_retire_work_handler(struct work_struct *work)
 	if (!dev_priv->mm.suspended && !idle)
 		queue_delayed_work(dev_priv->wq, &dev_priv->mm.retire_work,
 				   round_jiffies_up_relative(hz));
+	if (idle)
+		intel_mark_idle(dev);
 
 	DRM_UNLOCK(dev);
 }
@@ -3664,7 +3635,7 @@ rescan:
 		 * This has a dramatic impact to reduce the number of
 		 * OOM-killer events whilst running the GPU aggressively.
 		 */
-		if (i915_gpu_idle(dev, true) == 0)
+		if (i915_gpu_idle(dev) == 0)
 			goto rescan;
 	}
 	DRM_UNLOCK(dev);

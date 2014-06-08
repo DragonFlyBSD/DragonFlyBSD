@@ -34,7 +34,6 @@
 #include "i915_drv.h"
 #include "intel_drv.h"
 
-static void i915_capture_error_state(struct drm_device *dev);
 static u32 ring_last_seqno(struct intel_ring_buffer *ring);
 
 /**
@@ -367,18 +366,11 @@ static void notify_ring(struct drm_device *dev,
 			struct intel_ring_buffer *ring)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	u32 seqno;
 
 	if (ring->obj == NULL)
 		return;
 
-	seqno = ring->get_seqno(ring);
-
-	lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
-	ring->irq_seqno = seqno;
-	wakeup(ring);
-	lockmgr(&ring->irq_lock, LK_RELEASE);
-
+	wake_up_all(&ring->irq_queue);
 	if (i915_enable_hangcheck) {
 		dev_priv->hangcheck_count = 0;
 		mod_timer(&dev_priv->hangcheck_timer,
@@ -855,6 +847,7 @@ int i915_vblank_swap(struct drm_device *dev, void *data,
 	return -EINVAL;
 }
 
+#if 0 /* CONFIG_DEBUG_FS */
 static struct drm_i915_error_object *
 i915_error_object_create(struct drm_i915_private *dev_priv,
     struct drm_i915_gem_object *src)
@@ -1051,10 +1044,9 @@ i915_error_first_batchbuffer(struct drm_i915_private *dev_priv,
 	return NULL;
 }
 
-static void
-i915_record_ring_state(struct drm_device *dev,
-    struct drm_i915_error_state *error,
-    struct intel_ring_buffer *ring)
+static void i915_record_ring_state(struct drm_device *dev,
+				   struct drm_i915_error_state *error,
+				   struct intel_ring_buffer *ring)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
@@ -1082,6 +1074,7 @@ i915_record_ring_state(struct drm_device *dev,
 		error->instdone[ring->id] = I915_READ(INSTDONE);
 	}
 
+	error->waiting[ring->id] = waitqueue_active(&ring->irq_queue);
 	error->instpm[ring->id] = I915_READ(RING_INSTPM(ring->mmio_base));
 	error->seqno[ring->id] = ring->get_seqno(ring);
 	error->acthd[ring->id] = intel_ring_get_active_head(ring);
@@ -1236,6 +1229,10 @@ i915_destroy_error_state(struct drm_device *dev)
 	if (error != NULL)
 		i915_error_state_free(dev, error);
 }
+#else
+#define i915_capture_error_state(x)
+#endif
+
 
 static void i915_report_and_clear_eir(struct drm_device *dev)
 {
@@ -1359,6 +1356,8 @@ static void i915_report_and_clear_eir(struct drm_device *dev)
 void i915_handle_error(struct drm_device *dev, bool wedged)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_ring_buffer *ring;
+	int i;
 
 	i915_capture_error_state(dev);
 	i915_report_and_clear_eir(dev);
@@ -1367,25 +1366,13 @@ void i915_handle_error(struct drm_device *dev, bool wedged)
 		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
 		dev_priv->error_completion = 0;
 		atomic_set(&dev_priv->mm.wedged, 1);
-		/* unlock acts as rel barrier for store to wedged */
 		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 
 		/*
 		 * Wakeup waiting processes so they don't hang
 		 */
-		lockmgr(&dev_priv->ring[RCS].irq_lock, LK_EXCLUSIVE);
-		wakeup(&dev_priv->ring[RCS]);
-		lockmgr(&dev_priv->ring[RCS].irq_lock, LK_RELEASE);
-		if (HAS_BSD(dev)) {
-			lockmgr(&dev_priv->ring[VCS].irq_lock, LK_EXCLUSIVE);
-			wakeup(&dev_priv->ring[VCS]);
-			lockmgr(&dev_priv->ring[VCS].irq_lock, LK_RELEASE);
-		}
-		if (HAS_BLT(dev)) {
-			lockmgr(&dev_priv->ring[BCS].irq_lock, LK_EXCLUSIVE);
-			wakeup(&dev_priv->ring[BCS]);
-			lockmgr(&dev_priv->ring[BCS].irq_lock, LK_RELEASE);
-		}
+		for_each_ring(ring, dev_priv, i)
+			wake_up_all(&ring->irq_queue);
 	}
 
 	queue_work(dev_priv->wq, &dev_priv->error_work);
@@ -1586,18 +1573,25 @@ ring_last_seqno(struct intel_ring_buffer *ring)
 
 static bool i915_hangcheck_ring_idle(struct intel_ring_buffer *ring, bool *err)
 {
+	/* We don't check whether the ring even exists before calling this
+	 * function. Hence check whether it's initialized. */
+	if (ring->obj == NULL)
+		return true;
+
 	if (list_empty(&ring->request_list) ||
-	    i915_seqno_passed(ring->get_seqno(ring), ring_last_seqno(ring))) {
+	    i915_seqno_passed(ring->get_seqno(ring, false),
+			      ring_last_seqno(ring))) {
 		/* Issue a wake-up to catch stuck h/w. */
-		if (ring->waiting_seqno) {
-			DRM_ERROR(
-"Hangcheck timer elapsed... %s idle [waiting on %d, at %d], missed IRQ?\n",
-				  ring->name,
-				  ring->waiting_seqno,
-				  ring->get_seqno(ring));
-			wakeup(ring);
+#if 0 /* XXX From OpenBSD */
+		if (waitqueue_active(&ring->irq_queue)) {
+			DRM_ERROR("Hangcheck timer elapsed... %s idle\n",
+				  ring->name);
+			wake_up_all(&ring->irq_queue);
 			*err = true;
 		}
+#else
+		wake_up_all(&ring->irq_queue);
+#endif
 		return true;
 	}
 	return false;

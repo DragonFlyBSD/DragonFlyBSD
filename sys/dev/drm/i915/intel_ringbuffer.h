@@ -68,12 +68,10 @@ struct  intel_ring_buffer {
 	u32		last_retired_head;
 
 	struct lock	irq_lock;
-	uint32_t	irq_refcount;
-	uint32_t	irq_mask;
-	uint32_t	irq_seqno;		/* last seq seem at irq time */
-	uint32_t	trace_irq_seqno;
-	uint32_t	waiting_seqno;
-	uint32_t	sync_seqno[I915_NUM_RINGS-1];
+	u32		irq_refcount;
+	u32		irq_mask;
+	u32		trace_irq_seqno;
+	u32		sync_seqno[I915_NUM_RINGS-1];
 	bool		(*irq_get)(struct intel_ring_buffer *ring);
 	void		(*irq_put)(struct intel_ring_buffer *ring);
 
@@ -86,7 +84,14 @@ struct  intel_ring_buffer {
 				  uint32_t	flush_domains);
 	int		(*add_request)(struct intel_ring_buffer *ring,
 				       uint32_t *seqno);
-	uint32_t	(*get_seqno)(struct intel_ring_buffer *ring);
+	/* Some chipsets are not quite as coherent as advertised and need
+	 * an expensive kick to force a true read of the up-to-date seqno.
+	 * However, the up-to-date seqno is not always required and the last
+	 * seen value is good enough. Note that the seqno will always be
+	 * monotonic, even if not coherent.
+	 */
+	u32		(*get_seqno)(struct intel_ring_buffer *ring,
+				     bool lazy_coherency);
 	int		(*dispatch_execbuffer)(struct intel_ring_buffer *ring,
 					       uint32_t offset, uint32_t length);
 	void		(*cleanup)(struct intel_ring_buffer *ring);
@@ -128,6 +133,9 @@ struct  intel_ring_buffer {
 	 * Do we have some not yet emitted requests outstanding?
 	 */
 	uint32_t outstanding_lazy_request;
+	bool gpu_caches_dirty;
+
+	wait_queue_head_t irq_queue;
 
 	drm_local_map_t map;
 
@@ -172,13 +180,6 @@ intel_read_status_page(struct intel_ring_buffer *ring,
 	/* Ensure that the compiler doesn't optimize away the load. */
 	cpu_ccfence();
 	return ring->status_page.page_addr[reg];
-}
-
-int intel_wait_ring_buffer(struct intel_ring_buffer *ring, int n);
-static inline int intel_wait_ring_idle(struct intel_ring_buffer *ring)
-{
-
-	return (intel_wait_ring_buffer(ring, ring->size - 8));
 }
 
 /**

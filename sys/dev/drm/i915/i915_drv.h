@@ -184,6 +184,7 @@ struct sdvo_device_mapping {
 struct drm_i915_error_state {
 	u32 eir;
 	u32 pgtbl_er;
+	bool waiting[I915_NUM_RINGS];
 	u32 pipestat[I915_MAX_PIPES];
 	u32 tail[I915_NUM_RINGS];
 	u32 head[I915_NUM_RINGS];
@@ -1355,7 +1356,11 @@ void i915_handle_error(struct drm_device *dev, bool wedged);
 void i915_enable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask);
 void i915_disable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask);
 
-void i915_destroy_error_state(struct drm_device *dev);
+#ifdef CONFIG_DEBUG_FS
+extern void i915_destroy_error_state(struct drm_device *dev);
+#else
+#define i915_destroy_error_state(x)
+#endif
 
 /* i915_gem.c */
 int i915_gem_create(struct drm_file *file, struct drm_device *dev, uint64_t size,
@@ -1458,16 +1463,16 @@ int i915_gem_init_hw(struct drm_device *dev);
 void i915_gem_init_swizzling(struct drm_device *dev);
 void i915_gem_init_ppgtt(struct drm_device *dev);
 void i915_gem_cleanup_ringbuffer(struct drm_device *dev);
-int i915_gpu_idle(struct drm_device *dev, bool do_retire);
+int __must_check i915_gpu_idle(struct drm_device *dev);
 void i915_gem_object_move_to_active(struct drm_i915_gem_object *obj,
     struct intel_ring_buffer *ring, uint32_t seqno);
 int i915_add_request(struct intel_ring_buffer *ring, struct drm_file *file,
     struct drm_i915_gem_request *request);
+int i915_wait_seqno(struct intel_ring_buffer *ring,
+				 uint32_t seqno);
 int i915_gem_object_get_fence(struct drm_i915_gem_object *obj,
     struct intel_ring_buffer *pipelined);
 void i915_gem_reset(struct drm_device *dev);
-int i915_wait_request(struct intel_ring_buffer *ring, uint32_t seqno,
-    bool do_retire);
 int i915_gem_mmap(struct drm_device *dev, uint64_t offset, int prot);
 int i915_gem_fault(struct drm_device *dev, uint64_t offset, int prot,
     uint64_t *phys);

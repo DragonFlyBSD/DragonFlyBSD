@@ -218,7 +218,7 @@ static int intel_overlay_do_wait_request(struct intel_overlay *overlay,
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	int ret;
 
-	KASSERT(!overlay->last_flip_req, ("Overlay already has flip req"));
+	BUG_ON(overlay->last_flip_req);
 	ret = i915_add_request(LP_RING(dev_priv), NULL, request);
 	if (ret) {
 		drm_free(request, DRM_I915_GEM);
@@ -226,8 +226,7 @@ static int intel_overlay_do_wait_request(struct intel_overlay *overlay,
 	}
 	overlay->last_flip_req = request->seqno;
 	overlay->flip_tail = tail;
-	ret = i915_wait_request(LP_RING(dev_priv), overlay->last_flip_req,
-				true);
+	ret = i915_wait_seqno(LP_RING(dev_priv), overlay->last_flip_req);
 	if (ret)
 		return ret;
 
@@ -380,15 +379,16 @@ static int intel_overlay_recover_from_interrupt(struct intel_overlay *overlay)
 {
 	struct drm_device *dev = overlay->dev;
 	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct intel_ring_buffer *ring = &dev_priv->ring[RCS];
 	int ret;
 
 	if (overlay->last_flip_req == 0)
 		return 0;
 
-	ret = i915_wait_request(LP_RING(dev_priv), overlay->last_flip_req,
-				true);
+	ret = i915_wait_seqno(ring, overlay->last_flip_req);
 	if (ret)
 		return ret;
+	i915_gem_retire_requests(dev);
 
 	if (overlay->flip_tail)
 		overlay->flip_tail(overlay);
