@@ -362,9 +362,10 @@ vnstrategy(struct dev_strategy_args *ap)
 		default:
 			auio.uio_resid = 0;
 			error = 0;
-			break;
+			goto breakunlocked;
 		}
 		vn_unlock(vn->sc_vp);
+breakunlocked:
 		bp->b_resid = auio.uio_resid;
 		if (error) {
 			bp->b_error = error;
