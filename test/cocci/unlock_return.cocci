@@ -1,5 +1,12 @@
 //
-// Look for missing lock releases before returning from a function.
+// Look for missing lock releases before returning from an error path.
+//
+// Target: Linux
+// Copyright:  2012 - LIP6/INRIA
+// License:  Licensed under ISC. See LICENSE or http://www.isc.org/software/license
+// Author: Julia Lawall <Julia.Lawall@lip6.fr>
+// URL: http://coccinelle.lip6.fr/ 
+// URL: http://coccinellery.org/ 
 //
 // Applies to kernel code.
 //
@@ -16,124 +23,136 @@
 
 // crit_enter() / crit_exit()
 //
+@rcu_crit_enter exists@
+position p1;
 @@
-@@
-crit_enter();
-... when != crit_exit()
-    when any
-    when strict
-(
-if (...) { ... when != crit_exit()
-+   crit_exit();
-    return ...;
-}
-|
+
+crit_enter@p1();
+...
 crit_exit();
-)
+
+@exists@
+position rcu_crit_enter.p1;
+@@
+
+*crit_enter@p1();
+... when != crit_exit();
+?*return ...;
 
 // get_mplock() / rel_mplock()
 //
+@rcu_get_mplock exists@
+position p1;
 @@
-@@
-get_mplock();
-... when != rel_mplock()
-    when any
-    when strict
-(
-if (...) { ... when != rel_mplock()
-+   rel_mplock();
-    return ...;
-}
-|
+
+get_mplock@p1();
+...
 rel_mplock();
-)
+
+@exists@
+position rcu_get_mplock.p1;
+@@
+
+*get_mplock@p1();
+... when != rel_mplock();
+?*return ...;
 
 // lockmgr(..., {LK_EXCLUSIVE,LK_SHARED}) / lockmgr(..., LK_RELEASE)
 //
+@rcu_lockmgr exists@
+position p1;
+expression E;
 @@
-expression l;
+
+lockmgr@p1(E,\(LK_SHARED\|LK_EXCLUSIVE\));
+...
+lockmgr(E,LK_RELEASE);
+
+@exists@
+position rcu_lockmgr.p1;
+expression E;
 @@
-lockmgr(l,\(LK_SHARED\|LK_EXCLUSIVE\));
-... when != lockmgr(l,LK_RELEASE)
-    when any
-    when strict
-(
-if (...) { ... when != lockmgr(l,LK_RELEASE)
-+   lockmgr(l,LK_RELEASE);
-    return ...;
-}
-|
-lockmgr(l,LK_RELEASE);
-)
+
+*lockmgr@p1(E,\(LK_SHARED\|LK_EXCLUSIVE\));
+... when != lockmgr(E,LK_RELEASE);
+?*return ...;
 
 // lwkt_gettoken(...) / lwkt_reltoken(...)
 //
+@rcu_lwkt_gettoken exists@
+position p1;
+expression E;
 @@
-expression l;
+
+lwkt_gettoken@p1(E);
+...
+lwkt_reltoken(E);
+
+@exists@
+position rcu_lwkt_gettoken.p1;
+expression E;
 @@
-lwkt_gettoken(l);
-... when != lwkt_reltoken(l)
-    when any
-    when strict
-(
-if (...) { ... when != lwkt_reltoken(l)
-+   lwkt_reltoken(l);
-    return ...;
-}
-|
-lwkt_reltoken(l);
-)
+
+*lwkt_gettoken@p1(E);
+... when != lwkt_reltoken(E);
+?*return ...;
 
 // lwkt_serialize_enter(...) / lwkt_serialize_exit(...)
 //
+@rcu_lwkt_serialize_enter exists@
+position p1;
+expression E;
 @@
-expression l;
+
+lwkt_serialize_enter@p1(E);
+...
+lwkt_serialize_exit(E);
+
+@exists@
+position rcu_lwkt_serialize_enter.p1;
+expression E;
 @@
-lwkt_serialize_enter(l);
-... when != lwkt_serialize_exit(l)
-    when any
-    when strict
-(
-if (...) { ... when != lwkt_serialize_exit(l)
-+   lwkt_serialize_exit(l);
-    return ...;
-}
-|
-lwkt_serialize_exit(l);
-)
+
+*lwkt_serialize_enter@p1(E);
+... when != lwkt_serialize_exit(E);
+?*return ...;
 
 // spin_lock(...) / spin_unlock(...)
 //
+@rcu_spin_lock exists@
+position p1;
+expression E;
 @@
-expression l;
+
+spin_lock@p1(E);
+...
+spin_unlock(E);
+
+@exists@
+position rcu_spin_lock.p1;
+expression E;
 @@
-spin_lock(l);
-... when != spin_unlock(l)
-    when any
-    when strict
-(
-if (...) { ... when != spin_unlock(l)
-+   spin_unlock(l);
-    return ...;
-}
-|
-spin_unlock(l);
-)
+
+*spin_lock@p1(E);
+... when != spin_unlock(E);
+?*return ...;
 
 // vm_object_hold(...) / vm_object_drop(...)
 //
+@rcu_vm_object_hold exists@
+position p1;
+expression E;
 @@
-expression l;
+
+vm_object_hold@p1(E);
+...
+vm_object_drop(E);
+
+@exists@
+position rcu_vm_object_hold.p1;
+expression E;
 @@
-vm_object_hold(l);
-... when != vm_object_drop(l)
-    when any
-    when strict
-(
-if (...) { ... when != vm_object_drop(l)
-+   vm_object_drop(l);
-    return ...;
-}
-|
-vm_object_drop(l);
-)
+
+*vm_object_hold@p1(E);
+... when != vm_object_drop(E);
+?*return ...;
