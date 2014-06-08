@@ -1001,8 +1001,10 @@ siioctl(struct dev_ioctl_args *ap)
 		switch (cmd) {
 		case TIOCSETA:
 			error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
-			if (error != 0)
+			if (error != 0) {
+				lwkt_reltoken(&tty_token);
 				return (error);
+			}
 			*ct = *(struct termios *)data;
 			lwkt_reltoken(&tty_token);
 			return (0);

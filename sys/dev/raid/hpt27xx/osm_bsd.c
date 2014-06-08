@@ -1340,10 +1340,11 @@ static int	hpt_rescan_bus(void)
 
 	ldm_for_each_vbus(vbus, vbus_ext) {
 		if (xpt_create_path(&path, xpt_periph, cam_sim_path(vbus_ext->sim),
-			CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP)
+			CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
+			rel_mplock();
 			return(EIO);
-		if ((ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK)) == NULL)
-			return(ENOMEM);
+		}
+		ccb = kmalloc(sizeof(union ccb), M_TEMP, M_WAITOK);
 		bzero(ccb, sizeof(union ccb));
 		xpt_setup_ccb(&ccb->ccb_h, path, 5);
 		ccb->ccb_h.func_code = XPT_SCAN_BUS;

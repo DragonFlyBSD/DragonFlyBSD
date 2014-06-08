@@ -398,8 +398,10 @@ sysvipc_dev_ioctl(struct dev_ioctl_args *ap)
 		 * list of consumed requests.
 		 */
 		req = TAILQ_LAST( &sysv->req_list, _req_list);
-		if(!req)
+		if(!req) {
+			lockmgr(&sysv->req_mtx, LK_RELEASE);
 			return (EINVAL);
+		}
 		TAILQ_REMOVE(&sysv->req_list, req, req_link);
 		lockmgr(&sysv->req_mtx, LK_RELEASE);
 

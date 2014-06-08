@@ -718,8 +718,10 @@ snp_modevent(module_t mod, int type, void *data)
 		}
 		break;
 	case MOD_UNLOAD:
-		if (!LIST_EMPTY(&snp_sclist))
+		if (!LIST_EMPTY(&snp_sclist)) {
+			lwkt_reltoken(&tty_token);
 			return (EBUSY);
+		}
 		ldisc_deregister(snooplinedisc);
 		devfs_clone_handler_del("snp");
 		dev_ops_remove_all(&snp_ops);

@@ -905,8 +905,10 @@ mfi_comms_init(struct mfi_softc *sc)
 	uint32_t context = 0;
 
 	lockmgr(&sc->mfi_io_lock, LK_EXCLUSIVE);
-	if ((cm = mfi_dequeue_free(sc)) == NULL)
+	if ((cm = mfi_dequeue_free(sc)) == NULL) {
+		lockmgr(&sc->mfi_io_lock, LK_RELEASE);
 		return (EBUSY);
+	}
 
 	/* Zero out the MFI frame */
 	context = cm->cm_frame->header.context;
