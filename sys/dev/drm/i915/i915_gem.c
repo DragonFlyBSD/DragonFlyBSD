@@ -718,7 +718,7 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 			    !(i915_seqno_passed(ring->get_seqno(ring,false), seqno) ||
 			    atomic_read(&dev_priv->mm.wedged)))
 				ret = -lksleep(ring, &ring->irq_lock, PCATCH,
-				    "915thr", 0);
+				    "915thr", 1*hz);
 			ring->irq_put(ring);
 			if (ret == 0 && atomic_read(&dev_priv->mm.wedged))
 				ret = -EIO;
@@ -2483,7 +2483,7 @@ i915_wait_seqno(struct intel_ring_buffer *ring, uint32_t seqno)
 			    && !atomic_read(&dev_priv->mm.wedged) &&
 			    ret == 0) {
 				ret = -lksleep(ring, &ring->irq_lock, flags,
-				    "915gwr", 0);
+				    "915gwr", 1*hz);
 			}
 			ring->irq_put(ring);
 			lockmgr(&ring->irq_lock, LK_RELEASE);
