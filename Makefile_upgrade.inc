@@ -2634,6 +2634,8 @@ TO_REMOVE+=/usr/share/man/man8/ilmid.8.gz
 TO_REMOVE+=/usr/share/man/cat8/scspd.8.gz
 TO_REMOVE+=/usr/share/man/man8/scspd.8.gz
 TO_REMOVE+=/boot/kernel/.ko
+TO_REMOVE+=/usr/share/man/cat4/ed.4.gz
+TO_REMOVE+=/usr/share/man/man4/ed.4.gz
 
 .if ${MACHINE_ARCH} == "x86_64"
 TO_REMOVE+=/usr/sbin/stlstats
@@ -2651,6 +2653,10 @@ TO_REMOVE+=/boot/kernel/if_ar.ko
 TO_REMOVE+=/boot/kernel/glxsb.ko
 TO_REMOVE+=/boot/kernel/if_sbni.ko
 TO_REMOVE+=/boot/kernel/pst.ko
+TO_REMOVE+=/boot/kernel/if_ed.ko
+TO_REMOVE+=/boot/kernel/if_sr.ko
+TO_REMOVE+=/boot/kernel/ng_sync_ar.ko
+TO_REMOVE+=/boot/kernel/ng_sync_sr.ko
 .endif
 
 # XXX Remove when pfsync(4) has been fixed

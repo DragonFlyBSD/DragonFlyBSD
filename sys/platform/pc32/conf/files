@@ -125,6 +125,9 @@ dev/video/fb/splash.c			optional	splash
 dev/video/fb/vga.c			optional	vga
 dev/powermng/est/est.c			optional	cpu_enable_est
 dev/powermng/longrun/longrun.c		optional	cpu_enable_longrun
+dev/netif/ed/if_ed.c			optional	ed
+dev/netif/ed/if_ed_pccard.c		optional	ed pccard
+dev/netif/ed/if_ed_pci.c		optional	ed pci
 dev/netif/fe/if_fe.c			optional	fe
 dev/netif/fe/if_fe_pccard.c		optional	fe pccard
 dev/netif/ndis/if_ndis.c		optional 	ndis
@@ -133,6 +136,8 @@ dev/netif/ndis/if_ndis_pci.c		optional 	ndis cardbus
 dev/netif/ndis/if_ndis_pci.c		optional 	ndis pci
 dev/netif/ndis/if_ndis_usb.c		optional 	ndis oldusb
 dev/netif/ndis/if_ndis_u4b.c		optional 	ndis usb
+dev/netif/sr/if_sr.c			optional	sr
+dev/netif/sr/if_sr_pci.c		optional	sr pci
 dev/misc/kbd/atkbd.c			optional	atkbd
 dev/misc/kbd/atkbdc.c			optional	atkbdc
 dev/misc/kbd/kbd.c			optional	atkbd

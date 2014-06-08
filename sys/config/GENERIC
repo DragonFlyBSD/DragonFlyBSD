@@ -253,6 +253,7 @@ device		bce		# Broadcom NetXtreme II Gigabit Ethernet
 device		bfe		# Broadcom BCM440x 10/100 Ethernet
 device		bnx		# Broadcom NetXtreme 5718/57785 Gigabit Ethernet
 device		dc		# DEC/Intel 21143 and various workalikes
+device		ed		# NE-2000 and WD-80x3 Ethernet
 device		et		# Agere ET1310 10/100/1000 Ethernet
 device		fxp		# Intel EtherExpress PRO/100B (82557, 82558)
 device		jme		# JMicron Gigabit/Fast Ethernet
@@ -273,15 +274,12 @@ device		bge		# Broadcom BCM570x (``Tigon III'')
 device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
 device		msk		# Marvell/SysKonnect Yukon II Gigabit Ethernet
 device		nfe		# NVIDIA nForce MCP 10/100/Gigabit Ethernet
+device		ex
+device		xe		# Xircom Ethernet
 
 # ISA Ethernet NICs.
-# 'device ed' requires 'device miibus'
-device		ed0	at isa? disable port 0x280 irq 10 iomem 0xd8000
-device		ex
 device		ep
 device		fe0	at isa? disable port 0x300
-# Xircom Ethernet
-device		xe
 
 # Wireless NIC cards
 options 	IEEE80211_DEBUG		#enable debugging msgs

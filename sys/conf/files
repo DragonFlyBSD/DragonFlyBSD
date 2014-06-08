@@ -360,9 +360,6 @@ dev/misc/dcons/dcons_crom.c	optional dcons_crom
 dev/misc/dcons/dcons_os.c	optional dcons
 dev/raid/dpt/dpt_scsi.c	optional dpt
 dev/raid/dpt/dpt_pci.c	optional dpt pci
-dev/netif/ed/if_ed.c		optional nowerror ed
-dev/netif/ed/if_ed_pccard.c	optional ed pccard
-dev/netif/ed/if_ed_pci.c	optional ed pci
 dev/netif/ep/if_ep.c		optional ep
 dev/netif/ep/if_ep_pccard.c	optional ep pccard
 dev/netif/em/if_em.c		optional em
@@ -795,8 +792,6 @@ dev/netif/sln/if_sln.c		optional sln pci
 dev/netif/sn/if_sn.c		optional sn
 dev/netif/sn/if_sn_pccard.c	optional sn pccard
 dev/misc/snp/snp.c		optional snp
-dev/netif/sr/if_sr.c		optional sr
-dev/netif/sr/if_sr_pci.c	optional sr pci
 dev/disk/stg/tmc18c30.c		optional stg
 dev/disk/stg/tmc18c30_pccard.c	optional stg pccard
 dev/crypto/tpm/tpm.c		optional tpm

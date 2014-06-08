@@ -1124,7 +1124,6 @@ device		puc
 # Network interfaces: `ed', `ep', `is', `lnc'
 #
 # cs: IBM Etherjet and other Crystal Semi CS89x0-based adapters
-# ed: Western Digital and SMC 80xx; Novell NE1000 and NE2000; 3Com 3C503
 # ep: 3Com 3C509
 # ex: Intel EtherExpress Pro/10 and other i82595-based adapters
 # lnc: Lance/PCnet cards (Isolan, Novell NE2100, NE32-VL, AMD Am7990 & Am79C960)
@@ -1137,7 +1136,6 @@ device		puc
 # xe: Xircom/Intel EtherExpress Pro100/16 PC Card ethernet controller.
 #
 device cs
-device ed
 device ep
 device ex
 device lnc

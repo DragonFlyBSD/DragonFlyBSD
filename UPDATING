@@ -9,6 +9,17 @@
 # mailing list with the details.
 
 +-----------------------------------------------------------------------+
++         UPGRADING DRAGONFLY FROM 3.8 TO LATER VERSIONS                +
++-----------------------------------------------------------------------+
+
+OLDER NETWORK DRIVERS MOVED TO I386 ONLY
+----------------------------------------
+
+The following drivers have been made i386 only: ed(4), sr(4), ng_sync_ar
+and ng_sync_sr. ed(4) used to be in X86_64_GENERIC, so it has to be
+removed in kernel configs derived from X86_64_GENERIC.
+
++-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY FROM 3.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 

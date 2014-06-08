@@ -4,6 +4,7 @@ MAN=	ar.4 \
 	cs.4 \
 	cy.4 \
 	digi.4 \
+	ed.4 \
 	ep.4 \
 	ex.4 \
 	fe.4 \
@@ -26,6 +27,7 @@ MAN=	ar.4 \
 	vx.4
 
 MLINKS+=ar.4 if_ar.4
+MLINKS+=ed.4 if_ed.4
 MLINKS+=ep.4 if_ep.4
 MLINKS+=lnc.4 if_lnc.4
 MLINKS+=sbni.4 if_sbni.4

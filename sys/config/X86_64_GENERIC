@@ -253,13 +253,8 @@ device		bge		# Broadcom BCM570x (``Tigon III'')
 device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
 device		msk		# Marvell/SysKonnect Yukon II Gigabit Ethernet
 device		nfe		# NVIDIA nForce MCP 10/100/Gigabit Ethernet
-
-# ISA Ethernet NICs.
-# 'device ed' requires 'device miibus'
-device		ed0	at isa? disable port 0x280 irq 10 iomem 0xd8000
 device		ex
-# Xircom Ethernet
-device		xe
+device		xe		# Xircom Ethernet
 
 # Wireless NIC cards
 options 	IEEE80211_DEBUG		#enable debugging msgs
