@@ -59,6 +59,7 @@ CRUNCH_ALIAS_less= more
 
 CRUNCH_SRCDIRS+= secure/usr.bin
 CRUNCH_PROGS_secure/usr.bin= ssh
+CRUNCH_ALIAS_ssh= scp
 
 CRUNCH_KEEP_ssh= roaming_write roaming_read add_recv_bytes
 
