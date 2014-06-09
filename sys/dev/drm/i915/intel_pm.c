@@ -2043,8 +2043,8 @@ void ironlake_enable_drps(struct drm_device *dev)
 	vstart = (I915_READ(PXVFREQ_BASE + (fstart * 4)) & PXVFREQ_PX_MASK) >>
 		PXVFREQ_PX_SHIFT;
 
-	dev_priv->fmax = fmax; /* IPS callback will increase this */
-	dev_priv->fstart = fstart;
+	dev_priv->ips.fmax = fmax; /* IPS callback will increase this */
+	dev_priv->ips.fstart = fstart;
 
 	dev_priv->rps.max_delay = fstart;
 	dev_priv->rps.min_delay = fmin;
@@ -2073,11 +2073,11 @@ void ironlake_enable_drps(struct drm_device *dev)
 
 	ironlake_set_drps(dev, fstart);
 
-	dev_priv->last_count1 = I915_READ(0x112e4) + I915_READ(0x112e8) +
+	dev_priv->ips.last_count1 = I915_READ(0x112e4) + I915_READ(0x112e8) +
 		I915_READ(0x112e0);
-	dev_priv->last_time1 = jiffies_to_msecs(jiffies);
-	dev_priv->last_count2 = I915_READ(0x112f4);
-	nanotime(&dev_priv->last_time2);
+	dev_priv->ips.last_time1 = jiffies_to_msecs(jiffies);
+	dev_priv->ips.last_count2 = I915_READ(0x112f4);
+	nanotime(&dev_priv->ips.last_time2);
 }
 
 void ironlake_disable_drps(struct drm_device *dev)
@@ -2093,7 +2093,7 @@ void ironlake_disable_drps(struct drm_device *dev)
 	I915_WRITE(DEIMR, I915_READ(DEIMR) | DE_PCU_EVENT);
 
 	/* Go back to the starting frequency */
-	ironlake_set_drps(dev, dev_priv->fstart);
+	ironlake_set_drps(dev, dev_priv->ips.fstart);
 	DELAY(1000);
 	rgvswctl |= MEMCTL_CMD_STS;
 	I915_WRITE(MEMSWCTL, rgvswctl);
@@ -2165,7 +2165,7 @@ unsigned long i915_chipset_val(struct drm_i915_private *dev_priv)
 	unsigned long now = jiffies_to_msecs(jiffies), diff1;
 	int i;
 
-	diff1 = now - dev_priv->last_time1;
+	diff1 = now - dev_priv->ips.last_time1;
 	/*
 	 * sysctl(8) reads the value of sysctl twice in rapid
 	 * succession.  There is high chance that it happens in the
@@ -2173,7 +2173,7 @@ unsigned long i915_chipset_val(struct drm_i915_private *dev_priv)
 	 * zero and give the hw a chance to gather more samples.
 	 */
 	if (diff1 <= 10)
-		return (dev_priv->chipset_power);
+		return (dev_priv->ips.chipset_power);
 
 	count1 = I915_READ(DMIEC);
 	count2 = I915_READ(DDREC);
@@ -2182,16 +2182,16 @@ unsigned long i915_chipset_val(struct drm_i915_private *dev_priv)
 	total_count = count1 + count2 + count3;
 
 	/* FIXME: handle per-counter overflow */
-	if (total_count < dev_priv->last_count1) {
-		diff = ~0UL - dev_priv->last_count1;
+	if (total_count < dev_priv->ips.last_count1) {
+		diff = ~0UL - dev_priv->ips.last_count1;
 		diff += total_count;
 	} else {
-		diff = total_count - dev_priv->last_count1;
+		diff = total_count - dev_priv->ips.last_count1;
 	}
 
 	for (i = 0; i < DRM_ARRAY_SIZE(cparams); i++) {
-		if (cparams[i].i == dev_priv->c_m &&
-		    cparams[i].t == dev_priv->r_t) {
+		if (cparams[i].i == dev_priv->ips.c_m &&
+		    cparams[i].t == dev_priv->ips.r_t) {
 			m = cparams[i].m;
 			c = cparams[i].c;
 			break;
@@ -2202,10 +2202,10 @@ unsigned long i915_chipset_val(struct drm_i915_private *dev_priv)
 	ret = ((m * diff) + c);
 	ret = ret / 10;
 
-	dev_priv->last_count1 = total_count;
-	dev_priv->last_time1 = now;
+	dev_priv->ips.last_count1 = total_count;
+	dev_priv->ips.last_time1 = now;
 
-	dev_priv->chipset_power = ret;
+	dev_priv->ips.chipset_power = ret;
 	return (ret);
 }
 
@@ -2377,7 +2377,7 @@ void i915_update_gfx_val(struct drm_i915_private *dev_priv)
 
 	nanotime(&now);
 	diff1 = now;
-	timespecsub(&diff1, &dev_priv->last_time2);
+	timespecsub(&diff1, &dev_priv->ips.last_time2);
 
 	/* Don't divide by 0 */
 	diffms = diff1.tv_sec * 1000 + diff1.tv_nsec / 1000000;
@@ -2386,20 +2386,20 @@ void i915_update_gfx_val(struct drm_i915_private *dev_priv)
 
 	count = I915_READ(GFXEC);
 
-	if (count < dev_priv->last_count2) {
-		diff = ~0UL - dev_priv->last_count2;
+	if (count < dev_priv->ips.last_count2) {
+		diff = ~0UL - dev_priv->ips.last_count2;
 		diff += count;
 	} else {
-		diff = count - dev_priv->last_count2;
+		diff = count - dev_priv->ips.last_count2;
 	}
 
-	dev_priv->last_count2 = count;
-	dev_priv->last_time2 = now;
+	dev_priv->ips.last_count2 = count;
+	dev_priv->ips.last_time2 = now;
 
 	/* More magic constants... */
 	diff = diff * 1181;
 	diff = diff / (diffms * 10);
-	dev_priv->gfx_power = diff;
+	dev_priv->ips.gfx_power = diff;
 }
 
 unsigned long i915_gfx_val(struct drm_i915_private *dev_priv)
@@ -2427,14 +2427,14 @@ unsigned long i915_gfx_val(struct drm_i915_private *dev_priv)
 
 	corr = corr * ((150142 * state1) / 10000 - 78642);
 	corr /= 100000;
-	corr2 = (corr * dev_priv->corr);
+	corr2 = (corr * dev_priv->ips.corr);
 
 	state2 = (corr2 * state1) / 10000;
 	state2 /= 100; /* convert to mW */
 
 	i915_update_gfx_val(dev_priv);
 
-	return dev_priv->gfx_power + state2;
+	return dev_priv->ips.gfx_power + state2;
 }
 
 /**
@@ -2481,7 +2481,7 @@ bool i915_gpu_raise(void)
 	}
 	dev_priv = i915_mch_dev;
 
-	if (dev_priv->rps.max_delay > dev_priv->fmax)
+	if (dev_priv->rps.max_delay > dev_priv->ips.fmax)
 		dev_priv->rps.max_delay--;
 
 out_unlock:
@@ -2558,9 +2558,9 @@ bool i915_gpu_turbo_disable(void)
 	}
 	dev_priv = i915_mch_dev;
 
-	dev_priv->rps.max_delay = dev_priv->fstart;
+	dev_priv->rps.max_delay = dev_priv->ips.fstart;
 
-	if (!ironlake_set_drps(dev_priv->dev, dev_priv->fstart))
+	if (!ironlake_set_drps(dev_priv->dev, dev_priv->ips.fstart))
 		ret = false;
 
 out_unlock:
@@ -2637,7 +2637,7 @@ void intel_init_emon(struct drm_device *dev)
 
 	lcfuse = I915_READ(LCFUSE02);
 
-	dev_priv->corr = (lcfuse & LCFUSE_HIV_MASK);
+	dev_priv->ips.corr = (lcfuse & LCFUSE_HIV_MASK);
 }
 
 void intel_disable_gt_powersave(struct drm_device *dev)

@@ -921,21 +921,13 @@ typedef struct drm_i915_private {
 	/* gen6+ rps state */
 	struct intel_gen6_power_mgmt rps;
 
-	u8 fmax;
-	u8 fstart;
-
-	u64 last_count1;
-	unsigned long last_time1;
-	unsigned long chipset_power;
-	u64 last_count2;
-	struct timespec last_time2;
-	unsigned long gfx_power;
-	int c_m;
-	int r_t;
-	u8 corr;
-	struct lock *mchdev_lock;
+	/* ilk-only ips/rps state. Everything in here is protected by the global
+	 * mchdev_lock in intel_pm.c */
+	struct intel_ilk_power_mgmt ips;
 
 	enum no_fbc_reason no_fbc_reason;
+
+	struct lock *mchdev_lock;
 
 	unsigned long cfb_size;
 	unsigned int cfb_fb;
