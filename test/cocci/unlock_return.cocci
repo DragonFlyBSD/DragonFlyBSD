@@ -1,10 +1,11 @@
 //
 // Look for missing lock releases before returning from an error path.
 //
-// Target: Linux
+// Target: DragonFly
 // Copyright:  2012 - LIP6/INRIA
 // License:  Licensed under ISC. See LICENSE or http://www.isc.org/software/license
 // Author: Julia Lawall <Julia.Lawall@lip6.fr>
+//         (original code, adapted for DragonFly by swildner)
 // URL: http://coccinelle.lip6.fr/ 
 // URL: http://coccinellery.org/ 
 //
@@ -155,4 +156,54 @@ expression E;
 
 *vm_object_hold@p1(E);
 ... when != vm_object_drop(E);
+?*return ...;
+
+// vn_lock(...) / vn_unlock(...)
+//
+@rcu_vn_lock exists@
+position p1;
+expression E;
+@@
+
+(
+vn_lock@p1(E,...);
+|
+vget@p1(E);
+)
+...
+(
+vn_unlock(E);
+|
+vput(E);
+)
+
+@exists@
+position rcu_vn_lock.p1;
+expression E;
+@@
+
+(
+*vn_lock@p1(E,...);
+|
+*vget@p1(E);
+)
+... when != \(vn_unlock\|vput\)(E);
+?*return ...;
+
+// wlan_serialize_enter(...) / wlan_serialize_exit(...)
+//
+@rcu_wlan_serialize_enter exists@
+position p1;
+@@
+
+wlan_serialize_enter@p1();
+...
+wlan_serialize_exit();
+
+@exists@
+position rcu_wlan_serialize_enter.p1;
+@@
+
+*wlan_serialize_enter@p1();
+... when != wlan_serialize_exit();
 ?*return ...;
