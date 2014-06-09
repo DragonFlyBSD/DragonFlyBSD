@@ -148,6 +148,7 @@ count_snapshots(u_int32_t version, char *pfs_snapshots, char *mountedon,
 	DIR *dir;
 	u_int32_t snapshot_count;
 	int fd;
+	int spallocated;
 
 	snapshot_count = 0;
 
@@ -163,10 +164,13 @@ count_snapshots(u_int32_t version, char *pfs_snapshots, char *mountedon,
 		/*
 		 * old style: count the number of softlinks in the snapshots dir
 		 */
-		if (pfs_snapshots[0])
+		if (pfs_snapshots[0]) {
 			snapshots_path = pfs_snapshots;
-		else
+			spallocated = 0;
+		} else {
 			asprintf(&snapshots_path, "%s/snapshots", mountedon);
+			spallocated = 1;
+		}
 		if ((dir = opendir(snapshots_path)) != NULL) {
 			while ((den = readdir(dir)) != NULL) {
 				if (den->d_name[0] == '.')
@@ -180,6 +184,8 @@ count_snapshots(u_int32_t version, char *pfs_snapshots, char *mountedon,
 			}
 			closedir(dir);
 		}
+		if (spallocated)
+			free(snapshots_path);
 	} else {
 		/*
 		 * new style: file system meta-data
@@ -195,8 +201,6 @@ count_snapshots(u_int32_t version, char *pfs_snapshots, char *mountedon,
 	}
 
 out:
-	if (!pfs_snapshots[0])
-		free(snapshots_path);
 	if (fd != -1)
 		close(fd);
 	return snapshot_count;
