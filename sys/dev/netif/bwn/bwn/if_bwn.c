@@ -985,12 +985,13 @@ bwn_attach(device_t dev)
 	if ((sc->bwn_irq = bus_alloc_resource_any(sc->sc_dev, SYS_RES_IRQ,
 	    &sc->bwn_irq_rid, irq_flags)) == NULL) {
 		device_printf(sc->sc_dev, "Cannot allocate interrupt\n");
+		error = EINVAL;
 		goto fail1;
 	}
-	if (bus_setup_intr(sc->sc_dev, sc->bwn_irq, INTR_MPSAFE,
-		bwn_intr, mac, &sc->bwn_intr, &wlan_global_serializer)) {
+	if ((error = bus_setup_intr(sc->sc_dev, sc->bwn_irq, INTR_MPSAFE,
+		bwn_intr, mac, &sc->bwn_intr, &wlan_global_serializer)) != 0) {
 		device_printf(sc->sc_dev, "Cannot set up interrupt\n");
-		return (EINVAL);
+		goto fail1;
 	}
 
 	TAILQ_INSERT_TAIL(&sc->sc_maclist, mac, mac_list);
