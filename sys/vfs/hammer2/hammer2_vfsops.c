@@ -578,6 +578,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			++hmp->pmp_count;
 			hammer2_vfs_unmount_hmp1(mp, hmp);
 			hammer2_vfs_unmount_hmp2(mp, hmp);
+			lockmgr(&hammer2_mntlk, LK_RELEASE);
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return error;
 		}
@@ -623,6 +624,7 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 			++hmp->pmp_count;
 			hammer2_vfs_unmount_hmp1(mp, hmp);
 			hammer2_vfs_unmount_hmp2(mp, hmp);
+			lockmgr(&hammer2_mntlk, LK_RELEASE);
 			hammer2_vfs_unmount(mp, MNT_FORCE);
 			return EINVAL;
 		}
