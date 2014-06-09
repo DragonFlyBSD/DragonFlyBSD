@@ -4669,6 +4669,7 @@ iwn_watchdog_timeout(void *arg)
 		if (--sc->sc_tx_timer == 0) {
 			if_printf(ifp, "device timeout\n");
 			ieee80211_runtask(ic, &sc->sc_reinit_task);
+			wlan_serialize_exit();
 			return;
 		}
 	}
