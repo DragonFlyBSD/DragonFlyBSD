@@ -36,8 +36,6 @@
 
 extern struct drm_i915_private *i915_mch_dev;
 
-extern void i915_pineview_get_mem_freq(struct drm_device *dev);
-extern void i915_ironlake_get_mem_freq(struct drm_device *dev);
 static int i915_driver_unload_int(struct drm_device *dev, bool locked);
 
 void i915_update_dri1_breadcrumb(struct drm_device *dev)
@@ -1389,6 +1387,9 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 		goto out_mtrrfree;
 	}
 
+	/* This must be called before any calls to HAS_PCH_* */
+	intel_detect_pch(dev);
+
 	intel_irq_init(dev);
 	intel_gt_init(dev);
 
@@ -1430,11 +1431,6 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 		}
 	}
 
-	if (IS_PINEVIEW(dev))
-		i915_pineview_get_mem_freq(dev);
-	else if (IS_GEN5(dev))
-		i915_ironlake_get_mem_freq(dev);
-
 	if (IS_IVYBRIDGE(dev) || IS_HASWELL(dev))
 		dev_priv->num_pipe = 3;
 	else if (IS_MOBILE(dev) || !IS_GEN2(dev))
@@ -1449,8 +1445,6 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	/* Start out suspended */
 	dev_priv->mm.suspended = 1;
 
-	intel_detect_pch(dev);
-
 	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
 		ret = i915_load_modeset_init(dev);
 		if (ret < 0) {
@@ -1459,6 +1453,7 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 		}
 	}
 
+	/* Must be done after probing outputs */
 	intel_opregion_init(dev);
 
 	setup_timer(&dev_priv->hangcheck_timer, i915_hangcheck_elapsed,
@@ -1471,7 +1466,7 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 		lockmgr(&mchdev_lock, LK_RELEASE);
 	}
 
-	return (0);
+	return 0;
 
 out_gem_unload:
 	/* XXXKIB */
