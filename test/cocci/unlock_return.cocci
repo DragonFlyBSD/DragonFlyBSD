@@ -118,6 +118,26 @@ expression E;
 ... when != lwkt_serialize_exit(E);
 ?*return ...;
 
+// nlookup_init(...) / nlookup_done(...)
+//
+@rcu_nlookup_init exists@
+position p1;
+expression E;
+@@
+
+nlookup_init@p1(E,...);
+...
+nlookup_done(E);
+
+@exists@
+position rcu_nlookup_init.p1;
+expression E;
+@@
+
+*nlookup_init@p1(E,...);
+... when != nlookup_done(E);
+?*return ...;
+
 // spin_lock(...) / spin_unlock(...)
 //
 @rcu_spin_lock exists@
@@ -190,7 +210,7 @@ expression E;
 ... when != \(vn_unlock\|vput\)(E);
 ?*return ...;
 
-// wlan_serialize_enter(...) / wlan_serialize_exit(...)
+// wlan_serialize_enter() / wlan_serialize_exit()
 //
 @rcu_wlan_serialize_enter exists@
 position p1;
