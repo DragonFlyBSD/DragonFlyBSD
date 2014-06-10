@@ -225,6 +225,28 @@ netmap_dev_pager_dtor(void *handle)
 #endif
 }
 
+MALLOC_DEFINE(M_FICT_PAGES, "", "");
+
+static inline vm_page_t
+vm_page_getfake(vm_paddr_t paddr, vm_memattr_t memattr)
+{
+	vm_page_t m;
+
+	m = kmalloc(sizeof(struct vm_page), M_FICT_PAGES,
+	    M_WAITOK | M_ZERO);
+	vm_page_initfake(m, paddr, memattr);
+	return (m);
+}
+
+static inline void
+vm_page_updatefake(vm_page_t m, vm_paddr_t paddr, vm_memattr_t memattr)
+{
+	KASSERT((m->flags & PG_FICTITIOUS) != 0,
+	    ("vm_page_updatefake: bad page %p", m));
+	m->phys_addr = paddr;
+	pmap_page_set_memattr(m, memattr);
+}
+
 static int
 netmap_dev_pager_fault(vm_object_t object, vm_ooffset_t offset,
 	int prot, vm_page_t *mres)

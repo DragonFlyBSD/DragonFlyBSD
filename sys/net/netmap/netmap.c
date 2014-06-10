@@ -1560,7 +1560,7 @@ netmap_kqfilter(struct dev_kqfilter_args *ap)
  * The first one is remapped to pwait as selrecord() uses the name as an
  * hidden argument.
  */
-static int
+static inline int	/* XXX mute unused for now */
 netmap_poll(struct cdev *dev, int events, struct thread *td)
 {
 	struct netmap_priv_d *priv = NULL;
