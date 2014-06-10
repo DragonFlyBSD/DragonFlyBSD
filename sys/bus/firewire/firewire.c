@@ -1884,6 +1884,7 @@ fw_rcv(struct fw_rcv_buf *rb)
 			rb->xfer = STAILQ_FIRST(&bind->xferlist);
 			if (rb->xfer == NULL) {
 				kprintf("Discard packet for this bind\n");
+				crit_exit();
 				goto err;
 			}
 			STAILQ_REMOVE_HEAD(&bind->xferlist, link);

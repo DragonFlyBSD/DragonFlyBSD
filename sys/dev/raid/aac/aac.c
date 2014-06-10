@@ -2953,16 +2953,17 @@ aac_filter_read(struct knote *kn, long hint)
 {
 	struct aac_softc *sc;
 	struct aac_fib_context *ctx;
+	int ret = 0;
 
 	sc = (struct aac_softc *)kn->kn_hook;
 
 	lockmgr(&sc->aac_aifq_lock, LK_EXCLUSIVE);
 	for (ctx = sc->fibctx; ctx; ctx = ctx->next)
 		if (ctx->ctx_idx != sc->aifq_idx || ctx->ctx_wrap)
-			return(1);
+			ret = 1;
 	lockmgr(&sc->aac_aifq_lock, LK_RELEASE);
 
-	return (0);
+	return(ret);
 }
 
 static void
