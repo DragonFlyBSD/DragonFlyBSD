@@ -633,8 +633,8 @@ ips_copperhead_queue_callback(void *queueptr, bus_dma_segment_t *segments,
 static int
 ips_copperhead_queue_init(ips_softc_t *sc)
 {
-	bus_dma_tag_t dmatag;
-	bus_dmamap_t dmamap;
+	bus_dma_tag_t dmatag = NULL;
+	bus_dmamap_t dmamap = NULL;
 	int error;
 
 	if (bus_dma_tag_create(	/* parent    */	sc->adapter_dmatag,
