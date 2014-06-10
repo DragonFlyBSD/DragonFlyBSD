@@ -404,8 +404,10 @@ prtstat(struct statfs *sfsp, struct statvfs *vsfsp, struct maxwidths *mwp)
 		printf(" %-*s %*s %*s Capacity", mwp->total, header, mwp->used,
 		    "Used", mwp->avail, "Avail");
 		if (iflag) {
-			mwp->iused = imax(mwp->iused, strlen("  iused"));
-			mwp->ifree = imax(mwp->ifree, strlen("ifree"));
+			mwp->iused = imax(hflag ? 0 : mwp->iused,
+			    (int)strlen("  iused"));
+			mwp->ifree = imax(hflag ? 0 : mwp->ifree,
+			    (int)strlen("ifree"));
 			printf(" %*s %*s %%iused", mwp->iused - 2,
 			    "iused", mwp->ifree, "ifree");
 		}
