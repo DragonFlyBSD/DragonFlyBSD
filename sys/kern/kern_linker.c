@@ -1508,7 +1508,7 @@ linker_load_module(const char *kldname, const char *modname,
      */
     filename = rindex(pathname, '/');
     if (filename == NULL)
-	filename = filename;
+	filename = pathname;
     else
 	filename++;
     if (linker_find_file_by_name(filename))
