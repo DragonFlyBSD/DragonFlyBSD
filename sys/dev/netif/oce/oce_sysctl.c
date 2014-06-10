@@ -1339,9 +1339,5 @@ oce_sysctl_sfp_vpd_dump(SYSCTL_HANDLER_ARGS)
 	if(rc)
 		return rc;
 
-	rc = oce_mbox_read_transrecv_data(sc, PAGE_NUM_A2);
-	if(rc)
-		return rc;
-
-	return rc;
+	return oce_mbox_read_transrecv_data(sc, PAGE_NUM_A2);
 }
