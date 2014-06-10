@@ -153,6 +153,7 @@ dpt_pci_attach (device_t dev)
 	if (dpt_init(dpt) != 0) {
 		dpt_free(dpt);
 		error = ENXIO;
+		crit_exit();
 		goto bad;
 	}
 

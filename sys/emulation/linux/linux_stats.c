@@ -311,10 +311,14 @@ sys_linux_fstatfs(struct linux_fstatfs_args *args)
 		kprintf(ARGS(fstatfs, "%d, *"), args->fd);
 #endif
 	get_mplock();
-	if ((error = kern_fstatfs(args->fd, &statfs)) != 0)
+	if ((error = kern_fstatfs(args->fd, &statfs)) != 0) {
+		rel_mplock();
 		return (error);
-	if ((error = holdvnode(p->p_fd, args->fd, &fp)) != 0)
+	}
+	if ((error = holdvnode(p->p_fd, args->fd, &fp)) != 0) {
+		rel_mplock();
 		return (error);
+	}
 	error = vn_get_namelen((struct vnode *)fp->f_data, &namelen);
 	rel_mplock();
 	fdrop(fp);
