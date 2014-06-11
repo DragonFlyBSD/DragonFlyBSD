@@ -92,14 +92,32 @@ static struct krate badfprate = { 1 };
 static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
 
+uint32_t npx_mxcsr_mask = 0xFFBF;	/* this is the default */
+
 /*
- * Initialize the floating point unit.
+ * Probe the npx_mxcsr_mask
  */
-void
-npxinit(u_short control)
+void npxprobemask(void)
 {
 	/*64-Byte alignment required for xsave*/
 	static union savefpu dummy __aligned(64);
+
+	crit_enter();
+	stop_emulating();
+	fxsave(&dummy);
+	npx_mxcsr_mask = ((uint32_t *)&dummy)[7];
+	start_emulating();
+	crit_exit();
+}
+
+/*
+ * Initialize the floating point unit.
+ */
+void npxinit(void)
+{
+	/*64-Byte alignment required for xsave*/
+	static union savefpu dummy __aligned(64);
+	u_short control;
 	u_int mxcsr;
 
 	/*
@@ -107,9 +125,11 @@ npxinit(u_short control)
 	 * fnsave to throw away any junk in the fpu.  npxsave() initializes
 	 * the fpu and sets npxthread = NULL as important side effects.
 	 */
+
 	npxsave(&dummy);
 	crit_enter();
 	stop_emulating();
+        control = __INITIAL_FPUCW__;
 	fldcw(&control);
 
 	mxcsr = __INITIAL_MXCSR__;
@@ -333,7 +353,7 @@ npxdna(void)
 	crit_enter();
 	if ((td->td_flags & (TDF_USINGFP | TDF_KERNELFP)) == 0) {
 		td->td_flags |= TDF_USINGFP;
-		npxinit(__INITIAL_FPUCW__);
+		npxinit();
 		didinit = 1;
 	}
 
@@ -361,7 +381,7 @@ npxdna(void)
 	 * fnsave are broken, so our treatment breaks fnclex if it is the
 	 * first FPU instruction after a context switch.
 	 */
-	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF)
+	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask)
 #ifndef CPU_DISABLE_SSE
 	    && cpu_fxsr
 #endif
@@ -370,7 +390,7 @@ npxdna(void)
 			    "%s: FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
 			    td->td_comm, td->td_savefpu->sv_xmm.sv_env.en_mxcsr,
 			    didinit);
-		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
+		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= npx_mxcsr_mask;
 		lwpsignal(curproc, curthread->td_lwp, SIGFPE);
 	}
 	fpurstor(td->td_savefpu);
@@ -513,7 +533,7 @@ npxpop(mcontext_t *mctx)
 			npxsave(td->td_savefpu);
 		KKASSERT(sizeof(*td->td_savefpu) <= sizeof(mctx->mc_fpregs));
 		bcopy(mctx->mc_fpregs, td->td_savefpu, sizeof(*td->td_savefpu));
-		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF)
+		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask)
 #ifndef CPU_DISABLE_SSE
 		    && cpu_fxsr
 #endif

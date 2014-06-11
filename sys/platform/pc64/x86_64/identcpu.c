@@ -56,6 +56,7 @@
 #include <machine/segments.h>
 #include <machine/specialreg.h>
 #include <machine/md_var.h>
+#include <machine/npx.h>
 
 /* XXX - should be in header file: */
 void printcpuinfo(void);
@@ -479,6 +480,8 @@ printcpuinfo(void)
 
 	if (cpu_vendor_id == CPU_VENDOR_AMD)
 		print_AMD_info();
+
+	kprintf("npx mask: 0x%8.8x\n", npx_mxcsr_mask);
 }
 
 void
@@ -596,6 +599,15 @@ identify_cpu(void)
 
 	if (cpu_feature2 & CPUID2_MON)
 		cpu_mi_feature |= CPU_MI_MONITOR;
+
+	/* 
+	 * We do assume that all CPUs have the same
+	 * SSE/FXSR features
+	 */
+	if ((cpu_feature & CPUID_XMM) &&
+	    (cpu_feature & CPUID_FXSR)) {
+		npxprobemask();
+	}
 }
 
 static u_int

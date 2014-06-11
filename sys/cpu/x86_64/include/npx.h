@@ -164,8 +164,11 @@ union	savefpu {
 struct proc;
 struct trapframe;
 
+extern uint32_t npx_mxcsr_mask; 
+
+void	npxprobemask (void);
 void	npxexit (void);
-void	npxinit (u_short control);
+void	npxinit (void);
 void	npxsave (union savefpu *addr);
 #endif
 
