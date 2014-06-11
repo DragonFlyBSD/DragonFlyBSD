@@ -203,7 +203,7 @@ struct ucred def_anon = {
 	{ (gid_t) -2 }
 };
 int force_v2 = 0;
-int resvport_only = 0;
+int resvport_only = 1;
 int dir_only = 1;
 int do_log = 0;
 int got_sighup = 0;
