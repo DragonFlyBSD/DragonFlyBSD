@@ -992,8 +992,6 @@ in_pcbdisconnect(struct inpcb *inp)
 	inp->inp_faddr.s_addr = INADDR_ANY;
 	inp->inp_fport = 0;
 	in_pcbremconnhash(inp);
-	if (inp->inp_socket->so_state & SS_NOFDREF)
-		in_pcbdetach(inp);
 }
 
 void
