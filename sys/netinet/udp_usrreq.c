@@ -1406,14 +1406,11 @@ udp_disconnect(netmsg_t msg)
 		goto out;
 	}
 
-	soreference(so);
-
 	udbinfo_barrier_set();
 	in_pcbdisconnect(inp);
 	udbinfo_barrier_rem();
 
 	soclrstate(so, SS_ISCONNECTED);		/* XXX */
-	sofree(so);
 
 	ro = &inp->inp_route;
 	if (ro->ro_rt != NULL)
