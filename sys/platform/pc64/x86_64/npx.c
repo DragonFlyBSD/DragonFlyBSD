@@ -117,8 +117,8 @@ void npxinit(void)
 {
 	/*64-Byte alignment required for xsave*/
 	static union savefpu dummy __aligned(64);
-	u_short control;
-	u_int mxcsr;
+	u_short control = __INITIAL_FPUCW__;
+	u_int mxcsr = __INITIAL_MXCSR__;
 
 	/*
 	 * fninit has the same h/w bugs as fnsave.  Use the detoxified
@@ -129,12 +129,8 @@ void npxinit(void)
 	npxsave(&dummy);
 	crit_enter();
 	stop_emulating();
-        control = __INITIAL_FPUCW__;
 	fldcw(&control);
-
-	mxcsr = __INITIAL_MXCSR__;
 	ldmxcsr(mxcsr);
-
 	fpusave(curthread->td_savefpu);
 	mdcpu->gd_npxthread = NULL;
 	start_emulating();

@@ -75,6 +75,7 @@
 typedef u_char bool_t;
 #ifndef CPU_DISABLE_SSE
 static	void	fpu_clean_state(void);
+#define ldmxcsr(csr)            __asm __volatile("ldmxcsr %0" : : "m" (csr))
 #endif
 
 int cpu_fxsr = 0;
@@ -102,7 +103,7 @@ SYSCTL_INT(_hw, OID_AUTO, instruction_sse, CTLFLAG_RD,
 int
 npx_attach(device_t dev)
 {
-	npxinit(__INITIAL_FPUCW__);
+	npxinit();
 	return (0);
 }
 #endif
@@ -116,10 +117,11 @@ init_fpu(int supports_sse)
 /*
  * Initialize the floating point unit.
  */
-void
-npxinit(u_short control)
+void npxinit(void)
 {
 	static union savefpu dummy __aligned(16);
+	u_short control = __INITIAL_FPUCW__;
+	u_int mxcsr = __INITIAL_MXCSR__;
 
 	/*
 	 * fninit has the same h/w bugs as fnsave.  Use the detoxified
@@ -130,6 +132,7 @@ npxinit(u_short control)
 	crit_enter();
 	/*stop_emulating();*/
 	fldcw(&control);
+	ldmxcsr(mxcsr);
 	fpusave(curthread->td_savefpu);
 	mdcpu->gd_npxthread = NULL;
 	/*start_emulating();*/
@@ -346,7 +349,7 @@ npxdna(struct trapframe *frame)
 	 */
 	if ((curthread->td_flags & TDF_USINGFP) == 0) {
 		curthread->td_flags |= TDF_USINGFP;
-		npxinit(__INITIAL_FPUCW__);
+		npxinit();
 		didinit = 1;
 	}
 

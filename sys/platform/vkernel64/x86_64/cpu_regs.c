@@ -668,7 +668,7 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 	pcb->pcb_fsbase = 0;	/* Values loaded from PCB on switch */
 	pcb->pcb_gsbase = 0;
 	/* Initialize the npx (if any) for the current process. */
-	npxinit(__INITIAL_FPUCW__);
+	npxinit();
 	crit_exit();
 
 	/*
