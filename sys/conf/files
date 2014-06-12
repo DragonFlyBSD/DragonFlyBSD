@@ -980,6 +980,7 @@ kern/kern_xxx.c		standard
 kern/md5c.c		standard
 kern/subr_autoconf.c	standard
 kern/subr_bus.c		standard
+kern/subr_csprng.c	standard
 kern/subr_busdma.c	standard
 kern/subr_devstat.c	standard
 kern/subr_disk.c	standard
@@ -1840,6 +1841,7 @@ crypto/blowfish/bf_ecb.c		optional ipsec ipsec_esp
 crypto/blowfish/bf_skey.c		optional crypto
 crypto/camellia/camellia.c		optional crypto
 crypto/camellia/camellia-api.c		optional crypto
+crypto/chacha/chacha.c			standard
 crypto/des/des_ecb.c			optional crypto
 crypto/des/des_setkey.c			optional crypto
 crypto/rc4/rc4.c			optional crypto
