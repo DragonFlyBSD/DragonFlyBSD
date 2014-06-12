@@ -277,7 +277,7 @@ sysctl_tcpstats(SYSCTL_HANDLER_ARGS)
 {
 	int cpu, error = 0;
 
-	for (cpu = 0; cpu < ncpus; ++cpu) {
+	for (cpu = 0; cpu < ncpus2; ++cpu) {
 		if ((error = SYSCTL_OUT(req, &tcpstats_percpu[cpu],
 					sizeof(struct tcp_stats))))
 			break;
@@ -399,9 +399,8 @@ tcp_init(void)
 	/*
 	 * Initialize TCP statistics counters for each CPU.
 	 */
-	for (cpu = 0; cpu < ncpus; ++cpu) {
+	for (cpu = 0; cpu < ncpus2; ++cpu)
 		bzero(&tcpstats_percpu[cpu], sizeof(struct tcp_stats));
-	}
 
 	syncache_init();
 	netisr_register_rollup(tcp_willblock, NETISR_ROLLUP_PRIO_TCP);
@@ -1181,7 +1180,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	 * resource-intensive to repeat twice on every request.
 	 */
 	if (req->oldptr == NULL) {
-		for (ccpu = 0; ccpu < ncpus; ++ccpu) {
+		for (ccpu = 0; ccpu < ncpus2; ++ccpu) {
 			gd = globaldata_find(ccpu);
 			n += tcbinfo[gd->gd_cpuid].ipi_count;
 		}
@@ -1203,21 +1202,15 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	 * cpu to avoid races).
 	 */
 	origcpu = mycpu->gd_cpuid;
-	for (ccpu = 1; ccpu <= ncpus && error == 0; ++ccpu) {
-		globaldata_t rgd;
+	for (ccpu = 0; ccpu < ncpus2 && error == 0; ++ccpu) {
 		caddr_t inp_ppcb;
 		struct xtcpcb xt;
-		int cpu_id;
 
-		cpu_id = (origcpu + ccpu) % ncpus;
-		if ((smp_active_mask & CPUMASK(cpu_id)) == 0)
-			continue;
-		rgd = globaldata_find(cpu_id);
-		lwkt_setcpu_self(rgd);
+		lwkt_migratecpu(ccpu);
 
-		n = tcbinfo[cpu_id].ipi_count;
+		n = tcbinfo[ccpu].ipi_count;
 
-		LIST_INSERT_HEAD(&tcbinfo[cpu_id].pcblisthead, marker, inp_list);
+		LIST_INSERT_HEAD(&tcbinfo[ccpu].pcblisthead, marker, inp_list);
 		i = 0;
 		while ((inp = LIST_NEXT(marker, inp_list)) != NULL && i < n) {
 			/*
@@ -1264,7 +1257,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	 * migrated userland data by (eventually) returning to userland
 	 * on a different cpu.
 	 */
-	lwkt_setcpu_self(globaldata_find(origcpu));
+	lwkt_migratecpu(origcpu);
 	kfree(marker, M_TEMP);
 	return (error);
 }
