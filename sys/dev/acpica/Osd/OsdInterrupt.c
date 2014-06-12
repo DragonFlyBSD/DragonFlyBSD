@@ -94,7 +94,7 @@ AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
     /* Set up the interrupt resource. */
     sc->acpi_irq_rid = 0;
     bus_set_resource(sc->acpi_dev, SYS_RES_IRQ, 0, InterruptNumber, 1,
-        machintr_legacy_intr_cpuid(InterruptNumber));
+	machintr_legacy_intr_cpuid(InterruptNumber));
     sc->acpi_irq = bus_alloc_resource_any(sc->acpi_dev, SYS_RES_IRQ,
 	&sc->acpi_irq_rid, flags);
     if (sc->acpi_irq == NULL) {

@@ -44,7 +44,7 @@ TUNABLE_STR("hw.acpi.osname", acpi_osname, sizeof(acpi_osname));
 ACPI_STATUS
 AcpiOsPredefinedOverride (
     const ACPI_PREDEFINED_NAMES *InitVal,
-    ACPI_STRING                 *NewVal)
+    ACPI_STRING		 *NewVal)
 {
     if (InitVal == NULL || NewVal == NULL)
 	return (AE_BAD_PARAMETER);
@@ -63,18 +63,18 @@ AcpiOsTableOverride (
     ACPI_TABLE_HEADER       *ExistingTable,
     ACPI_TABLE_HEADER       **NewTable)
 {
-    caddr_t                 acpi_dsdt, p;
+    caddr_t		    acpi_dsdt, p;
 
     if (ExistingTable == NULL || NewTable == NULL)
-        return(AE_BAD_PARAMETER);
+	return(AE_BAD_PARAMETER);
 
     *NewTable = NULL;
     if (ACPI_COMPARE_NAME(ExistingTable->Signature, ACPI_SIG_DSDT) == 0)
-        return(AE_SUPPORT);
+	return(AE_SUPPORT);
     if ((acpi_dsdt = preload_search_by_type("acpi_dsdt")) == NULL)
-        return(AE_NOT_FOUND);
+	return(AE_NOT_FOUND);
     if ((p = preload_search_info(acpi_dsdt, MODINFO_ADDR)) == NULL)
-        return(AE_ERROR);
+	return(AE_ERROR);
     *NewTable = *(void **)p;
 
     return (AE_OK);

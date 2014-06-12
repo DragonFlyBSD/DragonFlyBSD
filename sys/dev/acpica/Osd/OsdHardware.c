@@ -62,14 +62,14 @@ AcpiOsReadPort(ACPI_IO_ADDRESS InPort, UINT32 *Value, UINT32 Width)
 {
     switch (Width) {
     case 8:
-        *Value = bus_space_read_1(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, InPort);
-        break;
+	*Value = bus_space_read_1(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, InPort);
+	break;
     case 16:
-        *Value = bus_space_read_2(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, InPort);
-        break;
+	*Value = bus_space_read_2(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, InPort);
+	break;
     case 32:
-        *Value = bus_space_read_4(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, InPort);
-        break;
+	*Value = bus_space_read_4(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, InPort);
+	break;
     }
 
     return (AE_OK);
@@ -80,14 +80,14 @@ AcpiOsWritePort(ACPI_IO_ADDRESS OutPort, UINT32 Value, UINT32 Width)
 {
     switch (Width) {
     case 8:
-        bus_space_write_1(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, OutPort, Value);
-        break;
+	bus_space_write_1(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, OutPort, Value);
+	break;
     case 16:
-        bus_space_write_2(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, OutPort, Value);
-        break;
+	bus_space_write_2(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, OutPort, Value);
+	break;
     case 32:
-        bus_space_write_4(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, OutPort, Value);
-        break;
+	bus_space_write_4(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, OutPort, Value);
+	break;
     }
 
     return (AE_OK);
@@ -103,7 +103,7 @@ AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, UINT64 *Value,
 	return (AE_SUPPORT);
 
     if (!pci_cfgregopen())
-        return (AE_NOT_EXIST);
+	return (AE_NOT_EXIST);
 
     *Value = pci_cfgregread(PciId->Bus, PciId->Device,
     				      PciId->Function, Register, bytes);
