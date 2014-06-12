@@ -593,8 +593,8 @@ udp_input(struct mbuf **mp, int *offp, int proto)
 
 	lwkt_gettoken(&inp->inp_socket->so_rcv.ssb_token);
 	if (ssb_appendaddr(&inp->inp_socket->so_rcv, append_sa, m, opts) == 0) {
-		udp_stat.udps_fullsock++;
 		lwkt_reltoken(&inp->inp_socket->so_rcv.ssb_token);
+		udp_stat.udps_fullsock++;
 		goto bad;
 	}
 	lwkt_reltoken(&inp->inp_socket->so_rcv.ssb_token);
@@ -635,6 +635,7 @@ udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off,
 {
 	struct sockaddr *append_sa;
 	struct mbuf *opts = NULL;
+	int ret;
 
 	if (last->inp_flags & INP_CONTROLOPTS ||
 	    last->inp_socket->so_options & SO_TIMESTAMP) {
@@ -665,8 +666,11 @@ udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off,
 #endif
 		append_sa = (struct sockaddr *)udp_in;
 	m_adj(n, off);
+
 	lwkt_gettoken(&last->inp_socket->so_rcv.ssb_token);
-	if (ssb_appendaddr(&last->inp_socket->so_rcv, append_sa, n, opts) == 0) {
+	ret = ssb_appendaddr(&last->inp_socket->so_rcv, append_sa, n, opts);
+	lwkt_reltoken(&last->inp_socket->so_rcv.ssb_token);
+	if (ret == 0) {
 		m_freem(n);
 		if (opts)
 			m_freem(opts);
@@ -674,7 +678,6 @@ udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off,
 	} else {
 		sorwakeup(last->inp_socket);
 	}
-	lwkt_reltoken(&last->inp_socket->so_rcv.ssb_token);
 }
 
 /*
