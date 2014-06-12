@@ -153,8 +153,11 @@ union	savefpu {
 struct proc;
 struct trapframe;
 
+#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
+void	npxprobemask (void);
+#endif
 void	npxexit (void);
-void	npxinit (u_short control);
+void	npxinit (void);
 void	npxsave (union savefpu *addr);
 #endif
 

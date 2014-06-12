@@ -661,7 +661,7 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 
 #if NNPX > 0
 	/* Initialize the npx (if any) for the current process. */
-	npxinit(__INITIAL_NPXCW__);
+	npxinit();
 #endif
 	crit_exit();
 

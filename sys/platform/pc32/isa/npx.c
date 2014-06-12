@@ -146,6 +146,8 @@ static	int			npx_irq;	/* irq number */
 
 static struct krate badfprate = { 1 };
 
+uint32_t npx_mxcsr_mask = 0xFFBF;       /* this is the default */
+
 /*
  * Probe routine.  Initialize cr0 to give correct behaviour for [f]wait
  * whether the device exists or not (XXX should be elsewhere).  Set flags
@@ -216,6 +218,24 @@ npx_probe1(device_t dev)
 	return (0);
 }
 
+#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
+/*
+ * Probe the npx_mxcsr_mask
+ */
+void npxprobemask(void)
+{
+        /*64-Byte alignment required for xsave*/
+        static union savefpu dummy __aligned(64);
+
+        crit_enter();
+        stop_emulating();
+        fxsave(&dummy);
+        npx_mxcsr_mask = ((uint32_t *)&dummy)[7];
+        start_emulating();
+        crit_exit();
+}
+#endif
+
 /*
  * Attach routine - announce which it is, and wire into system
  */
@@ -257,7 +277,7 @@ npx_attach(device_t dev)
 			device_printf(dev, "no 387 emulator in kernel and no FPU!\n");
 #endif
 	}
-	npxinit(__INITIAL_NPXCW__);
+	npxinit();
 
 #if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
 	/*
@@ -278,6 +298,7 @@ npx_attach(device_t dev)
 		if ((flags & NPX_DISABLE_I586_OPTIMIZED_BZERO) == 0) {
 			/* XXX */
 		}
+		npxprobemask();
 	} else if ((cpu_feature & CPUID_MMX) && (cpu_feature & CPUID_SSE) &&
 	    npx_ex16 && npx_exists && mmxopt && cpu_fxsr
 	) {
@@ -290,6 +311,7 @@ npx_attach(device_t dev)
 		if ((flags & NPX_DISABLE_I586_OPTIMIZED_BZERO) == 0) {
 			/* XXX */
 		}
+		npxprobemask();
 	}
 
 #endif
@@ -299,10 +321,10 @@ npx_attach(device_t dev)
 /*
  * Initialize the floating point unit.
  */
-void
-npxinit(u_short control)
+void npxinit(void)
 {
 	static union savefpu dummy __aligned(16);
+	u_short control = __INITIAL_NPXCW__;
 
 	if (!npx_exists)
 		return;
@@ -658,7 +680,7 @@ npxdna(void)
 	 */
 	if ((td->td_flags & (TDF_USINGFP | TDF_KERNELFP)) == 0) {
 		td->td_flags |= TDF_USINGFP;
-		npxinit(__INITIAL_NPXCW__);
+		npxinit();
 		didinit = 1;
 	}
 
@@ -687,7 +709,7 @@ npxdna(void)
 	 * fnsave are broken, so our treatment breaks fnclex if it is the
 	 * first FPU instruction after a context switch.
 	 */
-	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF)
+	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask)
 #ifndef CPU_DISABLE_SSE
 	    && cpu_fxsr
 #endif
@@ -695,7 +717,7 @@ npxdna(void)
 		krateprintf(&badfprate,
 			    "FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
 			    td->td_savefpu->sv_xmm.sv_env.en_mxcsr, didinit);
-		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
+		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= npx_mxcsr_mask;
 		lwpsignal(curproc, curthread->td_lwp, SIGFPE);
 	}
 	fpurstor(td->td_savefpu);
@@ -827,7 +849,7 @@ npxpop(mcontext_t *mctx)
 		if (td == mdcpu->gd_npxthread)
 			npxsave(td->td_savefpu);
 		bcopy(mctx->mc_fpregs, td->td_savefpu, sizeof(*td->td_savefpu));
-		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF)
+		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask)
 #ifndef CPU_DISABLE_SSE
 		    && cpu_fxsr
 #endif
@@ -838,7 +860,7 @@ npxpop(mcontext_t *mctx)
 				    td->td_proc->p_pid,
 				    td->td_proc->p_comm,
 				    td->td_savefpu->sv_xmm.sv_env.en_mxcsr);
-			td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
+			td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= npx_mxcsr_mask;
 		}
 		td->td_flags |= TDF_USINGFP;
 		break;
