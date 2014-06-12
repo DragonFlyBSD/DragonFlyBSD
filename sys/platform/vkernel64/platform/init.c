@@ -173,7 +173,9 @@ int main(int ac, char **av) {
 	int dflag = 0;		/* disable vmm */
 	int real_vkernel_enable;
 	int supports_sse;
+	uint32_t mxcsr_mask;
 	size_t vsize;
+	size_t msize;
 	size_t kenv_size;
 	size_t kenv_size2;
 	pid_t pid;
@@ -444,6 +446,7 @@ int main(int ac, char **av) {
 	vsize = sizeof(supports_sse);
 	supports_sse = 0;
 	sysctlbyname("hw.instruction_sse", &supports_sse, &vsize, NULL, 0);
+	sysctlbyname("hw.mxcsr_mask", &mxcsr_mask, &msize, NULL, 0);
 	init_fpu(supports_sse);
 	if (supports_sse)
 		cpu_feature |= CPUID_SSE | CPUID_FXSR;
