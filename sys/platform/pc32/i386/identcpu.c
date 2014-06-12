@@ -53,6 +53,7 @@
 #include <machine/specialreg.h>
 #include <machine/md_var.h>
 #include <machine/intr_machdep.h>
+#include <machine/npx.h>
 
 #define	IDENTBLUE_CYRIX486	0
 #define	IDENTBLUE_IBMCPU	1
@@ -807,6 +808,7 @@ printcpuinfo(void)
 #ifdef CPU_HAS_SSE2
 	kprintf("Use SSE2 (lfence, mfence)\n");
 #endif
+	kprintf("npx mask: 0x%8.8x\n", npx_mxcsr_mask);
 }
 
 void
