@@ -86,6 +86,8 @@ static struct krate badfprate = { 1 };
 static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
 
+uint32_t npx_mxcsr_mask = 0xFFBF;
+
 #ifndef CPU_DISABLE_SSE
 int mmxopt = 1;
 SYSCTL_INT(_kern, OID_AUTO, mmxopt, CTLFLAG_RD, &mmxopt, 0,
@@ -112,7 +114,25 @@ void
 init_fpu(int supports_sse)
 {
 	cpu_fxsr = hw_instruction_sse = supports_sse;
+	npxprobemask();
 }
+
+/*
+ * Probe the npx_mxcsr_mask
+ */
+void npxprobemask(void)
+{
+        /*64-Byte alignment required for xsave*/
+        static union savefpu dummy __aligned(64);
+
+        crit_enter();
+	/*stop_emulating();*/
+        fxsave(&dummy);
+        npx_mxcsr_mask = ((uint32_t *)&dummy)[7];
+	/*stop_emulating();*/
+        crit_exit();
+}
+
 
 /*
  * Initialize the floating point unit.
