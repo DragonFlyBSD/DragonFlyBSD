@@ -144,10 +144,8 @@ static void cpu_startup(void *);
 static void pic_finish(void *);
 static void cpu_finish(void *);
 
-#ifndef CPU_DISABLE_SSE
 static void set_fpregs_xmm(struct save87 *, struct savexmm *);
 static void fill_fpregs_xmm(struct savexmm *, struct save87 *);
-#endif /* CPU_DISABLE_SSE */
 #ifdef DIRECTIO
 extern void ffs_rawread_setup(void);
 #endif /* DIRECTIO */
@@ -2241,7 +2239,6 @@ set_regs(struct lwp *lp, struct reg *regs)
 	return (0);
 }
 
-#ifndef CPU_DISABLE_SSE
 static void
 fill_fpregs_xmm(struct savexmm *sv_xmm, struct save87 *sv_87)
 {
@@ -2285,20 +2282,17 @@ set_fpregs_xmm(struct save87 *sv_87, struct savexmm *sv_xmm)
 	for (i = 0; i < 8; ++i)
 		sv_xmm->sv_fp[i].fp_acc = sv_87->sv_ac[i];
 }
-#endif /* CPU_DISABLE_SSE */
 
 int
 fill_fpregs(struct lwp *lp, struct fpreg *fpregs)
 {
 	if (lp->lwp_thread == NULL || lp->lwp_thread->td_pcb == NULL)
 		return EINVAL;
-#ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr) {
 		fill_fpregs_xmm(&lp->lwp_thread->td_pcb->pcb_save.sv_xmm,
 				(struct save87 *)fpregs);
 		return (0);
 	}
-#endif /* CPU_DISABLE_SSE */
 	bcopy(&lp->lwp_thread->td_pcb->pcb_save.sv_87, fpregs, sizeof *fpregs);
 	return (0);
 }
@@ -2306,13 +2300,11 @@ fill_fpregs(struct lwp *lp, struct fpreg *fpregs)
 int
 set_fpregs(struct lwp *lp, struct fpreg *fpregs)
 {
-#ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr) {
 		set_fpregs_xmm((struct save87 *)fpregs,
 			       &lp->lwp_thread->td_pcb->pcb_save.sv_xmm);
 		return (0);
 	}
-#endif /* CPU_DISABLE_SSE */
 	bcopy(fpregs, &lp->lwp_thread->td_pcb->pcb_save.sv_87, sizeof *fpregs);
 	return (0);
 }
