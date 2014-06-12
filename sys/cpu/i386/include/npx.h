@@ -153,6 +153,8 @@ union	savefpu {
 struct proc;
 struct trapframe;
 
+extern uint32_t npx_mxcsr_mask;
+
 #if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
 void	npxprobemask (void);
 #endif
