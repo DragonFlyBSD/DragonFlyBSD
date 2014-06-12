@@ -721,20 +721,6 @@ udp_notifyall_oncpu(netmsg_t msg)
 #endif
 }
 
-static void
-udp_rtchange(struct inpcb *inp, int err)
-{
-	/* XXX Nuke this, once UDP inpcbs are CPU localized */
-	if (inp->inp_route.ro_rt && inp->inp_route.ro_rt->rt_cpuid == mycpuid) {
-		rtfree(inp->inp_route.ro_rt);
-		inp->inp_route.ro_rt = NULL;
-		/*
-		 * A new route can be allocated the next time
-		 * output is attempted.
-		 */
-	}
-}
-
 void
 udp_ctlinput(netmsg_t msg)
 {
@@ -754,7 +740,7 @@ udp_ctlinput(netmsg_t msg)
 
 	if (PRC_IS_REDIRECT(cmd)) {
 		ip = NULL;
-		notify = udp_rtchange;
+		notify = in_rtchange;
 	} else if (cmd == PRC_HOSTDEAD) {
 		ip = NULL;
 	} else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0) {
@@ -767,7 +753,7 @@ udp_ctlinput(netmsg_t msg)
 					ip->ip_src, uh->uh_sport, 0, NULL);
 		if (inp != NULL && inp->inp_socket != NULL)
 			(*notify)(inp, inetctlerrmap[cmd]);
-	} else if (PRC_IS_REDIRECT(cmd)) {
+	} else {
 		struct netmsg_udp_notify *nm;
 
 		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
@@ -778,14 +764,6 @@ udp_ctlinput(netmsg_t msg)
 		nm->nm_arg = inetctlerrmap[cmd];
 		nm->nm_notify = notify;
 		lwkt_sendmsg(netisr_cpuport(0), &nm->base.lmsg);
-	} else {
-		/*
-		 * XXX We should forward msg upon PRC_HOSTHEAD and ip == NULL,
-		 * once UDP inpcbs are CPU localized
-		 */
-		KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
-		in_pcbnotifyall(&udbinfo.pcblisthead, faddr, inetctlerrmap[cmd],
-				notify);
 	}
 done:
 	lwkt_replymsg(&msg->lmsg, 0);
