@@ -67,16 +67,12 @@
 #define	fnstcw(addr)		__asm __volatile("fnstcw %0" : "=m" (*(addr)))
 #define	fnstsw(addr)		__asm __volatile("fnstsw %0" : "=m" (*(addr)))
 #define	frstor(addr)		__asm("frstor %0" : : "m" (*(addr)))
-#ifndef CPU_DISABLE_SSE
 #define	fxrstor(addr)		__asm("fxrstor %0" : : "m" (*(addr)))
 #define	fxsave(addr)		__asm __volatile("fxsave %0" : "=m" (*(addr)))
-#endif
 
 typedef u_char bool_t;
-#ifndef CPU_DISABLE_SSE
 static	void	fpu_clean_state(void);
 #define ldmxcsr(csr)            __asm __volatile("ldmxcsr %0" : : "m" (csr))
-#endif
 
 int cpu_fxsr = 0;
 
@@ -88,11 +84,9 @@ static	void	fpurstor	(union savefpu *);
 
 uint32_t npx_mxcsr_mask = 0xFFBF;
 
-#ifndef CPU_DISABLE_SSE
 int mmxopt = 1;
 SYSCTL_INT(_kern, OID_AUTO, mmxopt, CTLFLAG_RD, &mmxopt, 0,
 	"MMX/XMM optimized bcopy/copyin/copyout support");
-#endif
 
 static int      hw_instruction_sse;
 SYSCTL_INT(_hw, OID_AUTO, instruction_sse, CTLFLAG_RD,
@@ -477,11 +471,7 @@ npxpush(mcontext_t *mctx)
 		}
 		bcopy(td->td_savefpu, mctx->mc_fpregs, sizeof(mctx->mc_fpregs));
 		td->td_flags &= ~TDF_USINGFP;
-		mctx->mc_fpformat =
-#ifndef CPU_DISABLE_SSE
-			(cpu_fxsr) ? _MC_FPFMT_XMM :
-#endif
-			_MC_FPFMT_387;
+		mctx->mc_fpformat = cpu_fxsr ? _MC_FPFMT_XMM : _MC_FPFMT_387;
 	} else {
 		mctx->mc_ownedfp = _MC_FPOWNED_NONE;
 		mctx->mc_fpformat = _MC_FPFMT_NODEV;
@@ -543,8 +533,6 @@ npxpop(mcontext_t *mctx)
 	}
 }
 
-
-#ifndef CPU_DISABLE_SSE
 /*
  * On AuthenticAMD processors, the fxrstor instruction does not restore
  * the x87's stored last instruction pointer, last data pointer, and last
@@ -575,19 +563,14 @@ fpu_clean_state(void)
 	 */
 	__asm __volatile("ffree %%st(7); fld %0" : : "m" (dummy_variable));
 }
-#endif /* CPU_DISABLE_SSE */
 
 static void
 fpurstor(union savefpu *addr)
 {
-#ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr) {
 		fpu_clean_state();
 		fxrstor(addr);
 	} else {
 		frstor(addr);
 	}
-#else
-	frstor(addr);
-#endif
 }

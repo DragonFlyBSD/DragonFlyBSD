@@ -69,10 +69,8 @@
 #define	fnstcw(addr)		__asm __volatile("fnstcw %0" : "=m" (*(addr)))
 #define	fnstsw(addr)		__asm __volatile("fnstsw %0" : "=m" (*(addr)))
 #define	frstor(addr)		__asm("frstor %0" : : "m" (*(addr)))
-#ifndef CPU_DISABLE_SSE
 #define	fxrstor(addr)		__asm("fxrstor %0" : : "m" (*(addr)))
 #define	fxsave(addr)		__asm __volatile("fxsave %0" : "=m" (*(addr)))
-#endif
 #ifndef  CPU_DISABLE_AVX
 #define xrstor(eax,edx,addr)	__asm __volatile(".byte 0x0f,0xae,0x2f" : : "D" (addr), "a" (eax), "d" (edx))
 #define xsave(eax,edx,addr)	__asm __volatile(".byte 0x0f,0xae,0x27" : : "D" (addr), "a" (eax), "d" (edx) : "memory")
@@ -82,10 +80,8 @@
 #define stop_emulating()        __asm("clts")
 
 typedef u_char bool_t;
-#ifndef CPU_DISABLE_SSE
 static	void	fpu_clean_state(void);
 #define ldmxcsr(csr)            __asm __volatile("ldmxcsr %0" : : "m" (csr))
-#endif
 
 static struct krate badfprate = { 1 };
 
@@ -377,11 +373,8 @@ npxdna(void)
 	 * fnsave are broken, so our treatment breaks fnclex if it is the
 	 * first FPU instruction after a context switch.
 	 */
-	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask)
-#ifndef CPU_DISABLE_SSE
-	    && cpu_fxsr
-#endif
-	) {
+	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask) &&
+	    cpu_fxsr) {
 		krateprintf(&badfprate,
 			    "%s: FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
 			    td->td_comm, td->td_savefpu->sv_xmm.sv_env.en_mxcsr,
@@ -435,11 +428,9 @@ fpusave(union savefpu *addr)
 		xsave(CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM, 0, addr);
 	else
 #endif
-#ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr)
 		fxsave(addr);
 	else
-#endif
 		fnsave(addr);
 }
 
@@ -472,16 +463,16 @@ npxpush(mcontext_t *mctx)
 		bcopy(td->td_savefpu, mctx->mc_fpregs, sizeof(*td->td_savefpu));
 		td->td_flags &= ~TDF_USINGFP;
 #ifndef CPU_DISABLE_AVX
-	if (cpu_xsave)
-		mctx->mc_fpformat = _MC_FPFMT_YMM;
-	else
+		if (cpu_xsave)
+			mctx->mc_fpformat = _MC_FPFMT_YMM;
+		else
 #endif
-#ifndef CPU_DISABLE_SSE
-	if (cpu_fxsr)
-		mctx->mc_fpformat = _MC_FPFMT_XMM;
-	else
-#endif
-		mctx->mc_fpformat = _MC_FPFMT_387;
+		{
+			if (cpu_fxsr)
+				mctx->mc_fpformat = _MC_FPFMT_XMM;
+			else
+				mctx->mc_fpformat = _MC_FPFMT_387;
+		}
 	} else {
 		mctx->mc_ownedfp = _MC_FPOWNED_NONE;
 		mctx->mc_fpformat = _MC_FPFMT_NODEV;
@@ -529,11 +520,8 @@ npxpop(mcontext_t *mctx)
 			npxsave(td->td_savefpu);
 		KKASSERT(sizeof(*td->td_savefpu) <= sizeof(mctx->mc_fpregs));
 		bcopy(mctx->mc_fpregs, td->td_savefpu, sizeof(*td->td_savefpu));
-		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask)
-#ifndef CPU_DISABLE_SSE
-		    && cpu_fxsr
-#endif
-		) {
+		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~npx_mxcsr_mask) &&
+		    cpu_fxsr) {
 			krateprintf(&badfprate,
 				    "pid %d (%s) signal return from user: "
 				    "illegal FP MXCSR %08x\n",
@@ -547,7 +535,6 @@ npxpop(mcontext_t *mctx)
 }
 
 
-#ifndef CPU_DISABLE_SSE
 /*
  * On AuthenticAMD processors, the fxrstor instruction does not restore
  * the x87's stored last instruction pointer, last data pointer, and last
@@ -578,7 +565,6 @@ fpu_clean_state(void)
 	 */
 	__asm __volatile("ffree %%st(7); flds %0" : : "m" (dummy_variable));
 }
-#endif /* CPU_DISABLE_SSE */
 
 static void
 fpurstor(union savefpu *addr)
@@ -588,15 +574,11 @@ fpurstor(union savefpu *addr)
 		xrstor(CPU_XFEATURE_X87 | CPU_XFEATURE_SSE | CPU_XFEATURE_YMM, 0, addr);
 	else
 #endif
-#ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr) {
 		fpu_clean_state();
 		fxrstor(addr);
 	} else {
 		frstor(addr);
 	}
-#else
-	frstor(addr);
-#endif
 }
 
