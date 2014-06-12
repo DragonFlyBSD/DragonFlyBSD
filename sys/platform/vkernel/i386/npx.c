@@ -87,6 +87,8 @@ static struct krate badfprate = { 1 };
 static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
 
+uint32_t npx_mxcsr_mask = 0xFFBF;       /* this is the default */
+
 #if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
 int mmxopt = 1;
 SYSCTL_INT(_kern, OID_AUTO, mmxopt, CTLFLAG_RD, &mmxopt, 0,
@@ -104,24 +106,42 @@ SYSCTL_INT(_hw, OID_AUTO, instruction_sse, CTLFLAG_RD,
 int
 npx_attach(device_t dev)
 {
-	npxinit(__INITIAL_NPXCW__);
+	npxinit();
 	return (0);
 }
 #endif
+
+/*
+ * Probe the npx_mxcsr_mask
+ */
+void npxprobemask(void)
+{
+        static union savefpu dummy __aligned(64);
+
+        crit_enter();
+        /*stop_emulating();*/
+        fxsave(&dummy);
+        npx_mxcsr_mask = ((uint32_t *)&dummy)[7];
+        /*start_emulating();*/
+        crit_exit();
+}
 
 void
 init_fpu(int supports_sse)
 {
 	cpu_fxsr = hw_instruction_sse = supports_sse;
+	if(supports_sse) {
+		npxprobemask();
+	}
 }
 
 /*
  * Initialize the floating point unit.
  */
-void
-npxinit(u_short control)
+void npxinit(void)
 {
 	static union savefpu dummy __aligned(16);
+	u_short control = __INITIAL_NPXCW__;
 
 	/*
 	 * fninit has the same h/w bugs as fnsave.  Use the detoxified
@@ -466,7 +486,7 @@ npxdna(struct trapframe *frame)
 	 */
 	if ((curthread->td_flags & TDF_USINGFP) == 0) {
 		curthread->td_flags |= TDF_USINGFP;
-		npxinit(__INITIAL_NPXCW__);
+		npxinit();
 		didinit = 1;
 	}
 

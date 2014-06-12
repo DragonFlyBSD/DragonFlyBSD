@@ -283,7 +283,7 @@ init_secondary(void)
 	cpu_setregs();
 
 	/* set up FPU state on the AP */
-	npxinit(__INITIAL_NPXCW__);
+	npxinit();
 
 	/* set up SSE registers */
 	enable_sse();
