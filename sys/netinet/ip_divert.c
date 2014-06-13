@@ -519,7 +519,7 @@ div_send(netmsg_t msg)
 
 SYSCTL_DECL(_net_inet_divert);
 SYSCTL_PROC(_net_inet_divert, OID_AUTO, pcblist, CTLFLAG_RD, &divcbinfo, 0,
-	    in_pcblist_global, "S,xinpcb", "List of active divert sockets");
+	    in_pcblist_global_cpu0, "S,xinpcb", "List of active divert sockets");
 
 struct pr_usrreqs div_usrreqs = {
 	.pru_abort = div_abort,

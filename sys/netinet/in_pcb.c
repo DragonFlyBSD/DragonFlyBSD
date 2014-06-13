@@ -1994,6 +1994,25 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 }
 
 int
+in_pcblist_global_cpu0(SYSCTL_HANDLER_ARGS)
+{
+	boolean_t migrate = FALSE;
+	int origcpu = mycpuid;
+	int error;
+
+	if (origcpu != 0) {
+		migrate = TRUE;
+		lwkt_migratecpu(0);
+	}
+
+	error = in_pcblist_global(oidp, arg1, arg2, req);
+
+	if (migrate)
+		lwkt_migratecpu(origcpu);
+	return error;
+}
+
+int
 in_pcblist_global_nomarker(SYSCTL_HANDLER_ARGS, struct xinpcb **xi0, int *nxi0)
 {
 	struct inpcbinfo *pcbinfo = arg1;

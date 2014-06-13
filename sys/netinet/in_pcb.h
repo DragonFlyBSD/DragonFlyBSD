@@ -502,6 +502,7 @@ struct inpcb *
 	in_pcblocalgroup_last(const struct inpcbinfo *, const struct inpcb *);
 
 int	in_pcblist_global(SYSCTL_HANDLER_ARGS);
+int	in_pcblist_global_cpu0(SYSCTL_HANDLER_ARGS);
 int	in_pcblist_global_nomarker(SYSCTL_HANDLER_ARGS,
 	    struct xinpcb **, int *);
 
