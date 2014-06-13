@@ -130,7 +130,7 @@ static int feeder_rate_buffersize = FEEDBUFSZ & ~1;
  * sysctls.. I love sysctls..
  */
 TUNABLE_INT("hw.snd.feeder_rate_ratemin", &feeder_rate_ratemin);
-TUNABLE_INT("hw.snd.feeder_rate_ratemax", &feeder_rate_ratemin);
+TUNABLE_INT("hw.snd.feeder_rate_ratemax", &feeder_rate_ratemax);
 TUNABLE_INT("hw.snd.feeder_rate_scaling", &feeder_rate_scaling);
 TUNABLE_INT("hw.snd.feeder_rate_buffersize", &feeder_rate_buffersize);
 
