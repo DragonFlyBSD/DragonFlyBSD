@@ -770,8 +770,11 @@ ah_input_cb(struct cryptop *crp)
 		if (sav->tdb_cryptoid != 0)
 			sav->tdb_cryptoid = crp->crp_sid;
 
-		if (crp->crp_etype == EAGAIN)
-			return crypto_dispatch(crp);
+		if (crp->crp_etype == EAGAIN) {
+			error = crypto_dispatch(crp);
+			crit_exit();
+			return(error);
+		}
 
 		ahstat.ahs_noxform++;
 		DPRINTF(("ah_input_cb: crypto error %d\n", crp->crp_etype));
