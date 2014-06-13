@@ -339,12 +339,12 @@ static void
 L15_KSA (const LByteType * const key, const size_t keyLen)
 {
 	size_t	i, keyIndex;
-	LByteType stateIndex = 0;
+	static LByteType stateIndex = 0;
 
-	L_SCHEDULE(keyLen);
 	for (keyIndex = 0; keyIndex < keyLen; ++keyIndex) {
 		L_SCHEDULE(key[keyIndex]);
 	}
+	L_SCHEDULE(keyLen);
 }
 
 static void
@@ -514,6 +514,8 @@ random_filter_read(struct knote *kn, long hint)
 /*
  * Heavy weight random number generator.  May return less then the
  * requested number of bytes.
+ *
+ * Instead of stopping early,
  */
 u_int
 read_random(void *buf, u_int nbytes)
@@ -521,16 +523,16 @@ read_random(void *buf, u_int nbytes)
 	u_int i;
 
 	spin_lock(&rand_spin);
-	for (i = 0; i < nbytes; ++i) 
+	for (i = 0; i < nbytes; ++i)
 		((u_char *)buf)[i] = IBAA_Byte();
 	spin_unlock(&rand_spin);
 	add_interrupt_randomness(0);
-	return(i);
+	return (i);
 }
 
 /*
- * Lightweight random number generator.  Must return requested number of
- * bytes.
+ * Heavy weight random number generator.  Must return the requested
+ * number of bytes.
  */
 u_int
 read_random_unlimited(void *buf, u_int nbytes)
@@ -539,7 +541,7 @@ read_random_unlimited(void *buf, u_int nbytes)
 
 	spin_lock(&rand_spin);
 	for (i = 0; i < nbytes; ++i)
-		((u_char *)buf)[i] = L15_Byte();
+		((u_char *)buf)[i] = IBAA_Byte();
 	spin_unlock(&rand_spin);
 	add_interrupt_randomness(0);
 	return (i);
@@ -628,6 +630,7 @@ NANOUP_EVENT(void)
 	static struct timespec	ACCUM = { 0, 0 };
 	static struct timespec	NEXT  = { 0, 0 };
 	struct timespec		now;
+	int i;
 
 	nanouptime(&now);
 	spin_lock(&rand_spin);
@@ -655,6 +658,13 @@ NANOUP_EVENT(void)
 		IBAA_Seed(ACCUM.tv_nsec);
 		L15_Vector((const LByteType *)&ACCUM.tv_nsec,
 			   sizeof(ACCUM.tv_nsec));
+
+		/*
+		 * Run another warm-up to get rid of weak inital states
+		 * introduced by the seeding.
+		 */
+		for (i = 0; i < 10; ++i)
+			IBAA_Call();
 		++nrandevents;
 	}
 	spin_unlock(&rand_spin);
