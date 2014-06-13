@@ -924,6 +924,7 @@ ours:
 			/* XXX error stat??? */
 			error = EINVAL;
 DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
+			crit_exit();
 			goto bad;
 		}
 		crit_exit();

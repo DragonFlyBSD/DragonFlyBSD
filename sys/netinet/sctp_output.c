@@ -9544,8 +9544,10 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 	/* lock the socket buf */
 	SOCKBUF_LOCK(&so->so_snd);
 	error = ssb_lock(&so->so_snd, SBLOCKWAIT(flags));
-	if (error)
+	if (error) {
+		crit_exit();
 		goto out_locked;
+	}
 
 	/* will it ever fit ? */
 	if (sndlen > so->so_snd.ssb_hiwat) {
@@ -9582,6 +9584,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT)) {
 				/* Non-blocking io in place */
 				error = EWOULDBLOCK;
+				crit_exit();
 				goto release;
 			}
 			inp->sctp_tcb_at_block = (void *)stcb;
@@ -9599,6 +9602,7 @@ sctp_copy_it_in(struct sctp_inpcb *inp,
 				/* Should I really unlock ? */
 				SCTP_INP_RUNLOCK(inp);
 				error = EFAULT;
+				crit_exit();
 				goto out_locked;
 			}
 			SCTP_TCB_LOCK(stcb);
