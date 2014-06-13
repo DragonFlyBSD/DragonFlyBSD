@@ -327,6 +327,14 @@ tr_setup:
 		    sc->sc_fifo.fp[USB_FIFO_RX]) != 0) {
 			usbd_xfer_set_frame_len(xfer, 0, usbd_xfer_max_len(xfer));
 			usbd_transfer_submit(xfer);
+		} else {
+			/*
+			 * When the FIFO becomes full we stop cycling the
+			 * poll and must clear sc_read_running.  The next
+			 * userland read/select/kqueue request will call
+			 * f_start_read to get it going again.
+			 */
+			sc->sc_read_running = 0;
 		}
 		break;
 
