@@ -4,8 +4,8 @@ PROG=		fetch
 DPADD=		${LIBFETCH}
 LDADD=		-lfetch
 .if !defined(NO_CRYPT) && !defined(NO_OPENSSL)
-DPADD+=		${LIBCRYPTO} ${LIBSSL}
-LDADD+=		-lcrypto -lssl
+DPADD+=		${LIBSSL} ${LIBCRYPTO}
+LDADD+=		-lssl -lcrypto
 .endif
 
 .include <bsd.prog.mk>
