@@ -202,6 +202,7 @@ struct intel_crtc {
 	struct drm_crtc base;
 	enum i915_pipe pipe;
 	enum plane plane;
+	enum transcoder cpu_transcoder;
 	u8 lut_r[256], lut_g[256], lut_b[256];
 	int dpms_mode;
 	bool active; /* is the crtc on? independent of the dpms mode */

@@ -703,6 +703,15 @@ intel_find_pll_g4x_dp(const intel_limit_t *limit, struct drm_crtc *crtc,
 	return true;
 }
 
+enum transcoder intel_pipe_to_cpu_transcoder(struct drm_i915_private *dev_priv,
+					     enum i915_pipe pipe)
+{
+	struct drm_crtc *crtc = dev_priv->pipe_to_crtc_mapping[pipe];
+	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
+
+	return intel_crtc->cpu_transcoder;
+}
+
 /**
  * intel_wait_for_vblank - wait for vblank on a given pipe
  * @dev: drm device
@@ -5813,6 +5822,7 @@ static void intel_crtc_init(struct drm_device *dev, int pipe)
 	/* Swap pipes & planes for FBC on pre-965 */
 	intel_crtc->pipe = pipe;
 	intel_crtc->plane = pipe;
+	intel_crtc->cpu_transcoder = pipe;
 	if (IS_MOBILE(dev) && IS_GEN3(dev)) {
 		DRM_DEBUG_KMS("swapping pipes & planes for FBC\n");
 		intel_crtc->plane = !pipe;

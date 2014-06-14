@@ -577,8 +577,7 @@ TUNABLE_INT("drm.i915.enable_ppgtt", &i915_enable_ppgtt);
 int i915_enable_hangcheck = 1;
 TUNABLE_INT("drm.i915.enable_hangcheck", &i915_enable_hangcheck);
 
-static int
-i8xx_do_reset(struct drm_device *dev, u8 flags)
+static int i8xx_do_reset(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
@@ -594,13 +593,13 @@ i8xx_do_reset(struct drm_device *dev, u8 flags)
 			   DEBUG_RESET_RENDER |
 			   DEBUG_RESET_FULL);
 		POSTING_READ(DEBUG_RESET_I830);
-		DELAY(1000);
+		msleep(1);
 
 		I915_WRITE(DEBUG_RESET_I830, 0);
 		POSTING_READ(DEBUG_RESET_I830);
 	}
 
-	DELAY(1000);
+	msleep(1);
 
 	I915_WRITE(D_STATE, I915_READ(D_STATE) & ~DSTATE_GFX_RESET_I830);
 	POSTING_READ(D_STATE);
@@ -608,18 +607,16 @@ i8xx_do_reset(struct drm_device *dev, u8 flags)
 	return 0;
 }
 
-static int
-i965_reset_complete(struct drm_device *dev)
+static int i965_reset_complete(struct drm_device *dev)
 {
 	u8 gdrst;
-
 	gdrst = pci_read_config(dev->dev, I965_GDRST, 1);
 	return (gdrst & 0x1);
 }
 
-static int
-i965_do_reset(struct drm_device *dev, u8 flags)
+static int i965_do_reset(struct drm_device *dev)
 {
+	int ret;
 	u8 gdrst;
 
 	/*
@@ -628,24 +625,40 @@ i965_do_reset(struct drm_device *dev, u8 flags)
 	 * triggers the reset; when done, the hardware will clear it.
 	 */
 	gdrst = pci_read_config(dev->dev, I965_GDRST, 1);
-	pci_write_config(dev->dev, I965_GDRST, gdrst | flags | 0x1, 1);
+	pci_write_config(dev->dev, I965_GDRST,
+			      gdrst | GRDOM_RENDER |
+			      GRDOM_RESET_ENABLE, 1);
+	ret =  wait_for(i965_reset_complete(dev), 500);
+	if (ret)
+		return ret;
 
-	return (_intel_wait_for(dev, i965_reset_complete(dev), 500, 1,
-	    "915rst"));
+	/* We can't reset render&media without also resetting display ... */
+	gdrst = pci_read_config(dev->dev, I965_GDRST, 1);
+	pci_write_config(dev->dev, I965_GDRST,
+			      gdrst | GRDOM_MEDIA |
+			      GRDOM_RESET_ENABLE, 1);
+
+	return wait_for(i965_reset_complete(dev), 500);
 }
 
-static int
-ironlake_do_reset(struct drm_device *dev, u8 flags)
+static int ironlake_do_reset(struct drm_device *dev)
 {
-	struct drm_i915_private *dev_priv;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 gdrst;
+	int ret;
 
-	dev_priv = dev->dev_private;
 	gdrst = I915_READ(MCHBAR_MIRROR_BASE + ILK_GDSR);
-	I915_WRITE(MCHBAR_MIRROR_BASE + ILK_GDSR, gdrst | flags | 0x1);
-	return (_intel_wait_for(dev,
-	    (I915_READ(MCHBAR_MIRROR_BASE + ILK_GDSR) & 0x1) != 0,
-	    500, 1, "915rst"));
+	I915_WRITE(MCHBAR_MIRROR_BASE + ILK_GDSR,
+		   gdrst | GRDOM_RENDER | GRDOM_RESET_ENABLE);
+	ret = wait_for(I915_READ(MCHBAR_MIRROR_BASE + ILK_GDSR) & 0x1, 500);
+	if (ret)
+		return ret;
+
+	/* We can't reset render&media without also resetting display ... */
+	gdrst = I915_READ(MCHBAR_MIRROR_BASE + ILK_GDSR);
+	I915_WRITE(MCHBAR_MIRROR_BASE + ILK_GDSR,
+		   gdrst | GRDOM_MEDIA | GRDOM_RESET_ENABLE);
+	return wait_for(I915_READ(MCHBAR_MIRROR_BASE + ILK_GDSR) & 0x1, 500);
 }
 
 static int gen6_do_reset(struct drm_device *dev)
@@ -686,6 +699,41 @@ static int gen6_do_reset(struct drm_device *dev)
 	return ret;
 }
 
+int intel_gpu_reset(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	int ret = -ENODEV;
+
+	switch (INTEL_INFO(dev)->gen) {
+	case 7:
+	case 6:
+		ret = gen6_do_reset(dev);
+		break;
+	case 5:
+		ret = ironlake_do_reset(dev);
+		break;
+	case 4:
+		ret = i965_do_reset(dev);
+		break;
+	case 2:
+		ret = i8xx_do_reset(dev);
+		break;
+	}
+
+	/* Also reset the gpu hangman. */
+	if (dev_priv->stop_rings) {
+		DRM_DEBUG("Simulated gpu hang, resetting stop_rings\n");
+		dev_priv->stop_rings = 0;
+		if (ret == -ENODEV) {
+			DRM_ERROR("Reset not implemented, but ignoring "
+				  "error for simulated gpu hangs\n");
+			ret = 0;
+		}
+	}
+
+	return ret;
+}
+
 /**
  * i915_reset - reset chip after a hang
  * @dev: drm device to reset
@@ -701,8 +749,7 @@ static int gen6_do_reset(struct drm_device *dev)
  *   - re-init interrupt state
  *   - re-init display
  */
-int
-i915_reset(struct drm_device *dev, u8 flags)
+int i915_reset(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	int ret;
@@ -710,42 +757,21 @@ i915_reset(struct drm_device *dev, u8 flags)
 	if (!i915_try_reset)
 		return 0;
 
-	/*
-	 * We really should only reset the display subsystem if we actually
-	 * need to
-	 */
-	bool need_display = true;
-
-	if (lockmgr(&dev->dev_struct_lock, LK_EXCLUSIVE|LK_NOWAIT))
-		return (-EBUSY);
+	DRM_LOCK(dev);
 
 	i915_gem_reset(dev);
 
 	ret = -ENODEV;
-	if (time_uptime - dev_priv->last_gpu_reset < 5) {
+	if (time_uptime - dev_priv->last_gpu_reset < 5)
 		DRM_ERROR("GPU hanging too fast, declaring wedged!\n");
-	} else {
-		switch (INTEL_INFO(dev)->gen) {
-		case 7:
-		case 6:
-		ret = gen6_do_reset(dev);
-		break;
-	case 5:
-		ret = ironlake_do_reset(dev, flags);
-			break;
-		case 4:
-			ret = i965_do_reset(dev, flags);
-			break;
-		case 2:
-			ret = i8xx_do_reset(dev, flags);
-			break;
-		}
-	}
+	else
+		ret = intel_gpu_reset(dev);
+
 	dev_priv->last_gpu_reset = time_uptime;
 	if (ret) {
 		DRM_ERROR("Failed to reset chip.\n");
 		DRM_UNLOCK(dev);
-		return (ret);
+		return ret;
 	}
 
 	/* Ok, now get things going again... */
@@ -763,31 +789,34 @@ i915_reset(struct drm_device *dev, u8 flags)
 	 * switched away).
 	 */
 	if (drm_core_check_feature(dev, DRIVER_MODESET) ||
-	    !dev_priv->mm.suspended) {
+			!dev_priv->mm.suspended) {
+		struct intel_ring_buffer *ring;
+		int i;
+
 		dev_priv->mm.suspended = 0;
 
 		i915_gem_init_swizzling(dev);
 
-		dev_priv->ring[RCS].init(&dev_priv->ring[RCS]);
-		if (HAS_BSD(dev))
-			dev_priv->ring[VCS].init(&dev_priv->ring[VCS]);
-		if (HAS_BLT(dev))
-			dev_priv->ring[BCS].init(&dev_priv->ring[BCS]);
+		for_each_ring(ring, dev_priv, i)
+			ring->init(ring);
 
+#if 0	/* XXX: HW context support */
+		i915_gem_context_init(dev);
+#endif
 		i915_gem_init_ppgtt(dev);
 
-		drm_irq_uninstall(dev);
-		drm_mode_config_reset(dev);
-		DRM_UNLOCK(dev);
-		drm_irq_install(dev);
-		DRM_LOCK(dev);
-	}
-	DRM_UNLOCK(dev);
+		/*
+		 * It would make sense to re-init all the other hw state, at
+		 * least the rps/rc6/emon init done within modeset_init_hw. For
+		 * some unknown reason, this blows up my ilk, so don't.
+		 */
 
-	if (need_display) {
-		lockmgr(&dev->mode_config.mutex, LK_EXCLUSIVE);
-		drm_helper_resume_force_mode(dev);
-		lockmgr(&dev->mode_config.mutex, LK_RELEASE);
+		DRM_UNLOCK(dev);
+
+		drm_irq_uninstall(dev);
+		drm_irq_install(dev);
+	} else {
+		DRM_UNLOCK(dev);
 	}
 
 	return 0;

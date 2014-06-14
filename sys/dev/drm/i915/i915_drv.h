@@ -691,11 +691,15 @@ typedef struct drm_i915_private {
 #define DRM_I915_HANGCHECK_JIFFIES msecs_to_jiffies(DRM_I915_HANGCHECK_PERIOD)
 	struct timer_list hangcheck_timer;
 	int hangcheck_count;
-	uint32_t last_acthd;
+	uint32_t last_acthd[I915_NUM_RINGS];
+	uint32_t prev_instdone[I915_NUM_INSTDONE_REG];
+
 	uint32_t last_acthd_bsd;
 	uint32_t last_acthd_blt;
 	uint32_t last_instdone;
 	uint32_t last_instdone1;
+
+	unsigned int stop_rings;
 
 	struct intel_opregion opregion;
 
@@ -1217,6 +1221,7 @@ struct drm_i915_file_private {
 #define HAS_LLC(dev)            (INTEL_INFO(dev)->has_llc)
 #define I915_NEED_GFX_HWS(dev)	(INTEL_INFO(dev)->need_gfx_hws)
 
+#define HAS_HW_CONTEXTS(dev)	(INTEL_INFO(dev)->gen >= 6)
 #define HAS_ALIASING_PPGTT(dev)	(INTEL_INFO(dev)->gen >=6)
 
 #define HAS_OVERLAY(dev)		(INTEL_INFO(dev)->has_overlay)
@@ -1321,7 +1326,8 @@ extern int i915_emit_box(struct drm_device *dev,
 			 int i, int DR1, int DR4);
 int i915_emit_box_p(struct drm_device *dev, struct drm_clip_rect *box,
     int DR1, int DR4);
-
+extern int intel_gpu_reset(struct drm_device *dev);
+extern int i915_reset(struct drm_device *dev);
 unsigned long i915_chipset_val(struct drm_i915_private *dev_priv);
 unsigned long i915_mch_val(struct drm_i915_private *dev_priv);
 void i915_update_gfx_val(struct drm_i915_private *dev_priv);
@@ -1337,12 +1343,6 @@ extern void intel_irq_init(struct drm_device *dev);
 extern void intel_gt_init(struct drm_device *dev);
 extern void intel_gt_reset(struct drm_device *dev);
 
-extern int i915_vblank_pipe_set(struct drm_device *dev, void *data,
-				struct drm_file *file_priv);
-extern int i915_vblank_pipe_get(struct drm_device *dev, void *data,
-				struct drm_file *file_priv);
-extern int i915_vblank_swap(struct drm_device *dev, void *data,
-			    struct drm_file *file_priv);
 void intel_enable_asle(struct drm_device *dev);
 void i915_hangcheck_elapsed(unsigned long data);
 void i915_handle_error(struct drm_device *dev, bool wedged);
@@ -1509,13 +1509,8 @@ extern void intel_gmbus_set_speed(device_t idev, int speed);
 extern void intel_gmbus_force_bit(device_t idev, bool force_bit);
 extern void intel_iic_reset(struct drm_device *dev);
 
-/* intel_opregion.c */
-int intel_opregion_setup(struct drm_device *dev);
-extern int intel_opregion_init(struct drm_device *dev);
-extern void intel_opregion_fini(struct drm_device *dev);
-extern void opregion_asle_intr(struct drm_device *dev);
-extern void intel_opregion_gse_intr(struct drm_device *dev);
-extern void opregion_enable_asle(struct drm_device *dev);
+/* i915_gem_context.c */
+void i915_gem_context_init(struct drm_device *dev);
 
 /* i915_gem_gtt.c */
 int i915_gem_init_aliasing_ppgtt(struct drm_device *dev);
@@ -1529,6 +1524,22 @@ void i915_gem_restore_gtt_mappings(struct drm_device *dev);
 void i915_gem_gtt_bind_object(struct drm_i915_gem_object *obj,
 				enum i915_cache_level cache_level);
 void i915_gem_gtt_unbind_object(struct drm_i915_gem_object *obj);
+
+/* intel_opregion.c */
+extern int intel_opregion_setup(struct drm_device *dev);
+#ifdef CONFIG_ACPI
+extern void intel_opregion_init(struct drm_device *dev);
+extern void intel_opregion_fini(struct drm_device *dev);
+extern void intel_opregion_asle_intr(struct drm_device *dev);
+extern void intel_opregion_gse_intr(struct drm_device *dev);
+extern void intel_opregion_enable_asle(struct drm_device *dev);
+#else
+static inline void intel_opregion_init(struct drm_device *dev) { return; }
+static inline void intel_opregion_fini(struct drm_device *dev) { return; }
+static inline void intel_opregion_asle_intr(struct drm_device *dev) { return; }
+static inline void intel_opregion_gse_intr(struct drm_device *dev) { return; }
+static inline void intel_opregion_enable_asle(struct drm_device *dev) { return; }
+#endif
 
 /* modesetting */
 extern void intel_modeset_init(struct drm_device *dev);
@@ -1580,8 +1591,6 @@ trace_i915_reg_rw(boolean_t rw, int reg, uint64_t val, int sz)
 #define I915_BREADCRUMB_INDEX		0x21
 
 const struct intel_device_info *i915_get_device_id(int device);
-
-int i915_reset(struct drm_device *dev, u8 flags);
 
 /* i915_debug.c */
 int i915_sysctl_init(struct drm_device *dev, struct sysctl_ctx_list *ctx,
