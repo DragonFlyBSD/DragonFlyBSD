@@ -3491,24 +3491,30 @@ static void ivybridge_init_clock_gating(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int pipe;
-	uint32_t dspclk_gate = VRHUNIT_CLOCK_GATE_DISABLE;
-
-	I915_WRITE(ILK_DSPCLK_GATE_D, dspclk_gate);
+	uint32_t snpcr;
 
 	I915_WRITE(WM3_LP_ILK, 0);
 	I915_WRITE(WM2_LP_ILK, 0);
 	I915_WRITE(WM1_LP_ILK, 0);
 
-	/* According to the spec, bit 13 (RCZUNIT) must be set on IVB.
-	 * This implements the WaDisableRCZUnitClockGating workaround.
-	 */
-	I915_WRITE(GEN6_UCGCTL2, GEN6_RCZUNIT_CLOCK_GATE_DISABLE);
-
 	I915_WRITE(ILK_DSPCLK_GATE_D, ILK_VRHUNIT_CLOCK_GATE_DISABLE);
 
+	/* WaDisableEarlyCull */
+	I915_WRITE(_3D_CHICKEN3,
+		   _MASKED_BIT_ENABLE(_3D_CHICKEN_SF_DISABLE_OBJEND_CULL));
+
+	/* WaDisableBackToBackFlipFix */
 	I915_WRITE(IVB_CHICKEN3,
 		   CHICKEN3_DGMG_REQ_OUT_FIX_DISABLE |
 		   CHICKEN3_DGMG_DONE_FIX_DISABLE);
+
+	/* WaDisablePSDDualDispatchEnable */
+	if (IS_IVB_GT1(dev))
+		I915_WRITE(GEN7_HALF_SLICE_CHICKEN1,
+			   _MASKED_BIT_ENABLE(GEN7_PSD_SINGLE_PORT_DISPATCH_ENABLE));
+	else
+		I915_WRITE(GEN7_HALF_SLICE_CHICKEN1_GT2,
+			   _MASKED_BIT_ENABLE(GEN7_PSD_SINGLE_PORT_DISPATCH_ENABLE));
 
 	/* Apply the WaDisableRHWOOptimizationForRenderHang workaround. */
 	I915_WRITE(GEN7_COMMON_SLICE_CHICKEN1,
@@ -3518,7 +3524,35 @@ static void ivybridge_init_clock_gating(struct drm_device *dev)
 	I915_WRITE(GEN7_L3CNTLREG1,
 			GEN7_WA_FOR_GEN7_L3_CONTROL);
 	I915_WRITE(GEN7_L3_CHICKEN_MODE_REGISTER,
-			GEN7_WA_L3_CHICKEN_MODE);
+		   GEN7_WA_L3_CHICKEN_MODE);
+	if (IS_IVB_GT1(dev))
+		I915_WRITE(GEN7_ROW_CHICKEN2,
+			   _MASKED_BIT_ENABLE(DOP_CLOCK_GATING_DISABLE));
+	else
+		I915_WRITE(GEN7_ROW_CHICKEN2_GT2,
+			   _MASKED_BIT_ENABLE(DOP_CLOCK_GATING_DISABLE));
+
+
+	/* WaForceL3Serialization */
+	I915_WRITE(GEN7_L3SQCREG4, I915_READ(GEN7_L3SQCREG4) &
+		   ~L3SQ_URB_READ_CAM_MATCH_DISABLE);
+
+	/* According to the BSpec vol1g, bit 12 (RCPBUNIT) clock
+	 * gating disable must be set.  Failure to set it results in
+	 * flickering pixels due to Z write ordering failures after
+	 * some amount of runtime in the Mesa "fire" demo, and Unigine
+	 * Sanctuary and Tropics, and apparently anything else with
+	 * alpha test or pixel discard.
+	 *
+	 * According to the spec, bit 11 (RCCUNIT) must also be set,
+	 * but we didn't debug actual testcases to find it out.
+	 *
+	 * According to the spec, bit 13 (RCZUNIT) must be set on IVB.
+	 * This implements the WaDisableRCZUnitClockGating workaround.
+	 */
+	I915_WRITE(GEN6_UCGCTL2,
+		   GEN6_RCZUNIT_CLOCK_GATE_DISABLE |
+		   GEN6_RCCUNIT_CLOCK_GATE_DISABLE);
 
 	/* This is required by WaCatErrorRejectionIssue */
 	I915_WRITE(GEN7_SQ_CHICKEN_MBCUNIT_CONFIG,
@@ -3531,6 +3565,23 @@ static void ivybridge_init_clock_gating(struct drm_device *dev)
 			   DISPPLANE_TRICKLE_FEED_DISABLE);
 		intel_flush_display_plane(dev_priv, pipe);
 	}
+
+	/* WaMbcDriverBootEnable */
+	I915_WRITE(GEN6_MBCTL, I915_READ(GEN6_MBCTL) |
+		   GEN6_MBCTL_ENABLE_BOOT_FETCH);
+
+	gen7_setup_fixed_func_scheduler(dev_priv);
+
+	/* WaDisable4x2SubspanOptimization */
+	I915_WRITE(CACHE_MODE_1,
+		   _MASKED_BIT_ENABLE(PIXEL_SUBSPAN_COLLECT_OPT_DISABLE));
+
+	snpcr = I915_READ(GEN6_MBCUNIT_SNPCR);
+	snpcr &= ~GEN6_MBC_SNPCR_MASK;
+	snpcr |= GEN6_MBC_SNPCR_MED;
+	I915_WRITE(GEN6_MBCUNIT_SNPCR, snpcr);
+
+	cpt_init_clock_gating(dev);
 }
 
 static void valleyview_init_clock_gating(struct drm_device *dev)
