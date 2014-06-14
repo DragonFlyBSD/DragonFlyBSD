@@ -131,6 +131,7 @@ device		hptmv		# Highpoint RocketRAID 182x
 device		hptrr		# Highpoint RocketRAID 17xx, 22xx, 23xx, 25xx
 device		iir		# Intel Integrated RAID
 device		mly		# Mylex AcceleRAID/eXtremeRAID
+device		mrsas		# LSI MegaRAID SAS (Thunderbolt series and up)
 device		twa		# 3ware 9000 series PATA/SATA RAID
 device		tws		# 3ware 9750 series SATA/SAS RAID
 

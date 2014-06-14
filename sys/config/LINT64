@@ -988,6 +988,11 @@ device		mfip		# LSI MegaRAID SAS passthrough, requires CAM
 options 	MFI_DEBUG
 
 #
+# LSI MegaRAID 6Gb/s and 12Gb/s SAS+SATA RAID controller driver
+#
+device		mrsas
+
+#
 # Areca RAID (CAM is required).
 #
 device		arcmsr		# Areca SATA II RAID

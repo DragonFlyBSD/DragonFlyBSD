@@ -407,6 +407,10 @@ bus/firewire/fwohci_pci.c	optional firewire pci
 dev/netif/fwe/if_fwe.c		optional fwe
 dev/disk/sbp/sbp.c		optional sbp
 dev/netif/fxp/if_fxp.c		optional fxp
+dev/raid/mrsas/mrsas.c		optional mrsas
+dev/raid/mrsas/mrsas_cam.c	optional mrsas
+dev/raid/mrsas/mrsas_ioctl.c	optional mrsas
+dev/raid/mrsas/mrsas_fp.c	optional mrsas
 dev/netif/msk/if_msk.c		optional msk
 dev/netif/nfe/if_nfe.c		optional nfe
 dev/raid/hpt27xx/os_bsd.c	optional hpt27xx

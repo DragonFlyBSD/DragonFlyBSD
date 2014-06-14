@@ -23,7 +23,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/amr.4,v 1.35 2006/06/18 14:45:28 brueffer Exp $
 .\"
-.Dd July 11, 2012
+.Dd June 14, 2014
 .Dt AMR 4
 .Os
 .Sh NAME
@@ -60,6 +60,8 @@ and sold by Dell and Hewlett-Packard.
 .Pp
 LSI MegaRAID SAS controllers are supported by
 .Xr mfi 4
+and
+.Xr mrsas 4
 and will not work with this driver.
 .Sh HARDWARE
 Controllers supported by the
@@ -234,6 +236,7 @@ An I/O error has occurred.
 .Xr cd 4 ,
 .Xr da 4 ,
 .Xr mfi 4 ,
+.Xr mrsas 4 ,
 .Xr sa 4 ,
 .Xr scsi 4
 .Sh AUTHORS

@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/mfi.4,v 1.13 2010/05/12 17:12:38 brueffer Exp $
 .\"
-.Dd April 7, 2012
+.Dd June 14, 2014
 .Dt MFI 4
 .Os
 .Sh NAME
@@ -62,8 +62,12 @@ The
 name is derived from the phrase "MegaRAID Firmware Interface", which is
 substantially different than the old "MegaRAID" interface and thus requires
 a new driver.
+.Pp
 Older SCSI and SATA MegaRAID cards are supported by
 .Xr amr 4
+and will not work with this driver.
+Likewise, newer LSI MegaRAID SAS controllers are supported by
+.Xr mrsas 4
 and will not work with this driver.
 .Pp
 3 Gb/s and 6 Gb/s support both initiator target (IT) and integrated RAID (IR)
@@ -86,11 +90,25 @@ If the sysctl
 .Va dev.mfi.%d.delete_busy_volumes
 is set to 1,
 then the driver will allow mounted volumes to be removed.
+.Pp
+A tunable is provided to adjust the
+.Nm
+driver's behaviour when attaching to a card.
+By default the driver will attach to all known cards with high probe priority.
+If the tunable
+.Va hw.mfi.mrsas_enable
+is set to 1,
+then the driver will reduce its probe priority to allow
+.Cd mrsas
+to attach to the card instead of
+.Nm .
 .Sh LOADER TUNABLES
 .Bl -tag -width indent
 .It Va hw.mfi.msi.enable
 By default, the driver will use MSI if it is supported.
 This behavior can be turned off by setting this tunable to 0.
+.It Va hw.mfi.mrsas_enable
+See description above.
 .El
 .Sh HARDWARE
 The
@@ -180,6 +198,7 @@ dito for JBOD disks
 .Sh SEE ALSO
 .Xr amr 4 ,
 .Xr mps 4 ,
+.Xr mrsas 4 ,
 .Xr pci 4 ,
 .Xr mfiutil 8
 .Sh HISTORY
