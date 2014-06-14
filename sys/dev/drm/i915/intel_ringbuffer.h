@@ -1,6 +1,8 @@
 #ifndef _INTEL_RINGBUFFER_H_
 #define _INTEL_RINGBUFFER_H_
 
+#include <linux/io.h>
+
 /*
  * Gen2 BSpec "1. Programming Environment" / 1.4.4.6 "Ring Buffer Use"
  * Gen3 BSpec "vol1c Memory Interface Functions" / 2.3.4.5 "Ring Buffer Use"
@@ -202,8 +204,6 @@ intel_read_status_page(struct intel_ring_buffer *ring,
 #define I915_GEM_HWS_SCRATCH_ADDR (I915_GEM_HWS_SCRATCH_INDEX << MI_STORE_DWORD_INDEX_SHIFT)
 
 void intel_cleanup_ring_buffer(struct intel_ring_buffer *ring);
-
-#define iowrite32(data, addr)	*(volatile uint32_t *)((char *)addr) = data;
 
 int __must_check intel_ring_begin(struct intel_ring_buffer *ring, int n);
 static inline void intel_ring_emit(struct intel_ring_buffer *ring,
