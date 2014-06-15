@@ -108,7 +108,6 @@ void	pr_rthdr (int);
 void	pr_family (int);
 void	rt_stats (void);
 char	*ns_phost (struct sockaddr *);
-void	upHex (char *);
 
 char	*routename (u_long);
 char	*netname (u_long, u_long);

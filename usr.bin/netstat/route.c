@@ -1082,25 +1082,6 @@ rt_stats(void)
 #undef p
 }
 
-void
-upHex(char *p0)
-{
-	char *p = p0;
-
-	for (; *p; p++)
-		switch (*p) {
-
-		case 'a':
-		case 'b':
-		case 'c':
-		case 'd':
-		case 'e':
-		case 'f':
-			*p += ('A' - 'a');
-			break;
-		}
-}
-
 static const char *
 labelops(struct rtentry *rt)
 {
