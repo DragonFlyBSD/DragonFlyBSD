@@ -28,7 +28,6 @@
  *
  * @(#)tree.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/ctags/tree.c,v 1.2.6.2 2002/07/30 00:55:07 tjr Exp $
- * $DragonFly: src/usr.bin/ctags/tree.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
  */
 
 #include <err.h>
@@ -117,10 +116,13 @@ add_node(NODE *node, NODE *cur_node)
 static void
 free_tree(NODE *node)
 {
+	NODE *nleft;
+
 	while (node) {
 		if (node->right)
 			free_tree(node->right);
+		nleft = node->left;
 		free(node);
-		node = node->left;
+		node = nleft;
 	}
 }
