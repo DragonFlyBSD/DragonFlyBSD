@@ -262,7 +262,6 @@ check_spool_dirs(void)
 				      "directory", dp->path, dp->printer,
 				      dp2->path, dp2->printer);
 			}
-			continue;
 		}
 		/* Should probably check owners and modes here. */
 	}

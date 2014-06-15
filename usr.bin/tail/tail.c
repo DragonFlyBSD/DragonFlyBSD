@@ -32,7 +32,6 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tail.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/tail.c,v 1.6.2.2 2001/12/19 20:29:31 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/tail.c,v 1.6 2005/03/01 21:37:33 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -137,7 +136,6 @@ main(int argc, char **argv)
 			    fstat(fileno(file->fp), &file->st) == -1) {
 				file->fp = NULL;
 				ierr();
-				continue;
 			}
 		}
 		follow(files, style, off);

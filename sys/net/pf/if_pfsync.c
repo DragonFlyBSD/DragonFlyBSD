@@ -600,7 +600,6 @@ pfsync_input(struct mbuf *m, ...)
 					crit_exit();
 					goto done;
 				}
-				continue;
 			}
 		}
 		crit_exit();

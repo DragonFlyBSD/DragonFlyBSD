@@ -32,7 +32,6 @@
  * ------+---------+---------+---------+---------+---------+---------+---------*
  *
  * $FreeBSD: src/usr.sbin/lpr/lpc/movejobs.c,v 1.1.2.1 2002/07/26 03:12:07 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/movejobs.c,v 1.3 2005/08/08 18:58:56 joerg Exp $
  */
 
 /*
@@ -89,10 +88,8 @@ process_jobs(int argc, char *argv[], process_jqe process_rtn, void *myinfo)
 	STAILQ_INIT(&jobs_wanted);
 	for (i = 0; i < argc; i++) {
 		pjres = parse_jobspec(argv[i], &jobs_wanted);
-		if (pjres == 0) {
+		if (pjres == 0)
 			printf("\tinvalid job specifier: %s\n", argv[i]);
-			continue;
-		}
 	}
 	matchcnt = scanq_jobspec(nitems, queue, SCQ_JSORDER, &jobs_wanted,
 	    process_rtn, myinfo);

@@ -446,10 +446,8 @@ __res_vinit(res_state statp, int preinit) {
 		    continue;
 		}
 #endif
-		if (MATCH(buf, "options")) {
+		if (MATCH(buf, "options"))
 		    res_setoptions(statp, buf + sizeof("options") - 1, "conf");
-		    continue;
-		}
 	    }
 	    if (nserv > 0) 
 		statp->nscount = nserv;

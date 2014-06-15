@@ -843,10 +843,8 @@ bd_chainextended(struct open_disk *od, u_int32_t base, u_int32_t offset)
 			continue;
 		}
 		if ((dp1->dp_typ == DOSPTYP_EXT) || 
-		    (dp1->dp_typ == DOSPTYP_EXTLBA)) {
+		    (dp1->dp_typ == DOSPTYP_EXTLBA))
 			bd_chainextended(od, base, dp1->dp_start);
-			continue;
-		}
 	}
 }
 

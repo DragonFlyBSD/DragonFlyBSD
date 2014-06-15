@@ -169,11 +169,9 @@ readunits(const char *userfile)
 			lineptr[strlen(lineptr) - 1] = 0;
 			prefixtable[prefixcount].prefixname = dupstr(lineptr);
 			for (i = 0; i < prefixcount; i++)
-				if (!strcmp(prefixtable[i].prefixname, lineptr)) {
+				if (!strcmp(prefixtable[i].prefixname, lineptr))
 					warnx("redefinition of prefix '%s' on line %d ignored",
 					    lineptr, linenum);
-					continue;
-				}
 			lineptr += len + 1;
 			lineptr += strspn(lineptr, " \n\t");
 			len = strcspn(lineptr, "\n\t");
@@ -192,11 +190,9 @@ readunits(const char *userfile)
 			}
 			unittable[unitcount].uname = dupstr(lineptr);
 			for (i = 0; i < unitcount; i++)
-				if (!strcmp(unittable[i].uname, lineptr)) {
+				if (!strcmp(unittable[i].uname, lineptr))
 					warnx("redefinition of unit '%s' on line %d ignored",
 					    lineptr, linenum);
-					continue;
-				}
 			lineptr += len + 1;
 			lineptr += strspn(lineptr, " \n\t");
 			if (!strlen(lineptr)) {
