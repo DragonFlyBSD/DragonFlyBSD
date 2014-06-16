@@ -398,7 +398,7 @@ in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	if ((error = in6_pcbladdr(inp, nam, &addr6, td)) != 0)
 		return (error);
 
-	if (in6_pcblookup_hash(inp->inp_cpcbinfo, &sin6->sin6_addr,
+	if (in6_pcblookup_hash(inp->inp_pcbinfo, &sin6->sin6_addr,
 			       sin6->sin6_port,
 			      IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr)
 			      ? addr6 : &inp->in6p_laddr,

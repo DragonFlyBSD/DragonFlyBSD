@@ -409,7 +409,6 @@ tcp_usr_listen(netmsg_t msg)
 		in_pcblink(so->so_pcb, &tcbinfo[mycpuid]);
 	}
 	KASSERT(inp->inp_pcbinfo == &tcbinfo[0], ("pcbinfo is not tcbinfo0"));
-	KASSERT(inp->inp_cpcbinfo == &tcbinfo[0], ("cpcbinfo is not tcbinfo0"));
 
 	if (tp->t_flags & TF_LISTEN)
 		goto out;
@@ -978,10 +977,10 @@ tcp_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf *m,
 	struct socket *so = inp->inp_socket;
 	struct route *ro = &inp->inp_route;
 
-	KASSERT(inp->inp_cpcbinfo == &tcbinfo[mycpu->gd_cpuid],
-	    ("cpcbinfo mismatch"));
+	KASSERT(inp->inp_pcbinfo == &tcbinfo[mycpu->gd_cpuid],
+	    ("pcbinfo mismatch"));
 
-	oinp = in_pcblookup_hash(inp->inp_cpcbinfo,
+	oinp = in_pcblookup_hash(inp->inp_pcbinfo,
 				 sin->sin_addr, sin->sin_port,
 				 (inp->inp_laddr.s_addr != INADDR_ANY ?
 				  inp->inp_laddr : if_sin->sin_addr),
@@ -1286,7 +1285,7 @@ tcp6_connect_oncpu(struct tcpcb *tp, int flags, struct mbuf **mp,
 	 * earlier incarnation of this same connection still in
 	 * TIME_WAIT state, creating an ADDRINUSE error.
 	 */
-	oinp = in6_pcblookup_hash(inp->inp_cpcbinfo,
+	oinp = in6_pcblookup_hash(inp->inp_pcbinfo,
 				  &sin6->sin6_addr, sin6->sin6_port,
 				  (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr) ?
 				      addr6 : &inp->in6p_laddr),

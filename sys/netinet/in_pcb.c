@@ -235,7 +235,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	if (inp == NULL)
 		return (ENOMEM);
 	inp->inp_gencnt = ++pcbinfo->ipi_gencnt;
-	inp->inp_pcbinfo = inp->inp_cpcbinfo = pcbinfo;
+	inp->inp_pcbinfo = pcbinfo;
 	inp->inp_socket = so;
 #ifdef IPSEC
 	error = ipsec_init_policy(so, &inp->inp_sp);
@@ -266,14 +266,12 @@ void
 in_pcbunlink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 {
 	KASSERT(inp->inp_pcbinfo == pcbinfo, ("pcbinfo mismatch"));
-	KASSERT(inp->inp_cpcbinfo == pcbinfo, ("cpcbinfo mismatch"));
 	KASSERT((inp->inp_flags & (INP_WILDCARD | INP_CONNECTED)) == 0,
 	    ("already linked"));
 
 	LIST_REMOVE(inp, inp_list);
 	pcbinfo->ipi_count--;
 	inp->inp_pcbinfo = NULL;
-	inp->inp_cpcbinfo = NULL;
 }
 
 /*
@@ -283,11 +281,9 @@ void
 in_pcblink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 {
 	KASSERT(inp->inp_pcbinfo == NULL, ("has pcbinfo"));
-	KASSERT(inp->inp_cpcbinfo == NULL, ("has cpcbinfo"));
 	KASSERT((inp->inp_flags & (INP_WILDCARD | INP_CONNECTED)) == 0,
 	    ("already linked"));
 
-	inp->inp_cpcbinfo = pcbinfo;
 	inp->inp_pcbinfo = pcbinfo;
 	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, inp, inp_list);
 	pcbinfo->ipi_count++;
@@ -965,7 +961,7 @@ in_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	if ((error = in_pcbladdr(inp, nam, &if_sin, td)) != 0)
 		return (error);
 
-	if (in_pcblookup_hash(inp->inp_cpcbinfo, sin->sin_addr, sin->sin_port,
+	if (in_pcblookup_hash(inp->inp_pcbinfo, sin->sin_addr, sin->sin_port,
 			      inp->inp_laddr.s_addr ?
 				inp->inp_laddr : if_sin->sin_addr,
 			      inp->inp_lport, FALSE, NULL) != NULL) {
@@ -1526,7 +1522,7 @@ in_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 void
 in_pcbinsconnhash(struct inpcb *inp)
 {
-	struct inpcbinfo *pcbinfo = inp->inp_cpcbinfo;
+	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct inpcbhead *bucket;
 	u_int32_t hashkey_faddr, hashkey_laddr;
 

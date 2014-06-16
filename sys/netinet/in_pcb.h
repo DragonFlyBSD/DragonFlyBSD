@@ -197,7 +197,6 @@ struct inpcb {
 
 	void	*inp_ppcb;		/* pointer to per-protocol pcb */
 	struct	inpcbinfo *inp_pcbinfo;	/* PCB list info */
-	struct	inpcbinfo *inp_cpcbinfo;/* back pointer for connection table */
 	struct	socket *inp_socket;	/* back pointer to socket */
 					/* list for this PCB's local port */
 	int	inp_flags;		/* generic IP/datagram flags */
