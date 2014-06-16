@@ -1173,11 +1173,6 @@ udp_attach(netmsg_t msg)
 	if (error)
 		goto out;
 
-	/*
-	 * Set default port for protocol processing prior to bind/connect.
-	 */
-	sosetport(so, netisr_cpuport(0));
-
 	inp = (struct inpcb *)so->so_pcb;
 	inp->inp_vflag |= INP_IPV4;
 	inp->inp_ip_ttl = ip_defttl;

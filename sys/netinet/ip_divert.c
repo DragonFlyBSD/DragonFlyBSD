@@ -401,7 +401,6 @@ div_attach(netmsg_t msg)
 	if (error)
 		goto out;
 	lwkt_gettoken(&div_token);
-	sosetport(so, netisr_cpuport(0));
 	error = in_pcballoc(so, &divcbinfo);
 	if (error) {
 		lwkt_reltoken(&div_token);
