@@ -616,7 +616,7 @@ in_pcblookup_localremote(struct inpcbportinfo *portinfo, struct in_addr laddr,
 }
 
 int
-in_pcbsetlport_remote(struct inpcb *inp, const struct sockaddr *remote,
+in_pcbbind_remote(struct inpcb *inp, const struct sockaddr *remote,
     struct thread *td)
 {
 	struct proc *p = td->td_proc;

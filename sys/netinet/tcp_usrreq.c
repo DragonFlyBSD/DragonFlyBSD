@@ -1101,7 +1101,7 @@ tcp_connect(netmsg_t msg)
 				goto out;
 			inp->inp_laddr.s_addr = if_sin->sin_addr.s_addr;
 
-			error = in_pcbsetlport_remote(inp, nam, td);
+			error = in_pcbbind_remote(inp, nam, td);
 			if (error)
 				goto out;
 

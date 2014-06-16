@@ -460,7 +460,7 @@ int	in_pcballoc (struct socket *, struct inpcbinfo *);
 void	in_pcbunlink (struct inpcb *, struct inpcbinfo *);
 void	in_pcblink (struct inpcb *, struct inpcbinfo *);
 int	in_pcbbind (struct inpcb *, struct sockaddr *, struct thread *);
-int	in_pcbsetlport_remote(struct inpcb *, const struct sockaddr *,
+int	in_pcbbind_remote(struct inpcb *, const struct sockaddr *,
 	    struct thread *);
 int	in_pcbconnect (struct inpcb *, struct sockaddr *, struct thread *);
 void	in_pcbdetach (struct inpcb *);
