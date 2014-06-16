@@ -318,7 +318,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 	u_int	ipi_count;	/* number of pcbs in this list */
 	u_quad_t ipi_gencnt;	/* current generation count */
 	int	cpu;		/* related protocol thread cpu or -1 */
-};
+} __cachealign;
 
 
 #define	INP_PCBCONNHASH(faddr, fport, laddr, lport, mask)		\
