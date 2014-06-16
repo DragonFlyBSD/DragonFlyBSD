@@ -7,6 +7,9 @@ MAGIC=	${FILESDIR}/magic
 LIB=	magic
 SHLIB_MAJOR=	2
 
+DPADD=	${LIBZ}
+LDADD=	-lz
+
 SRCS=	apprentice.c apptype.c ascmagic.c cdf.c cdf_time.c \
 	compress.c encoding.c fsmagic.c funcs.c \
 	is_tar.c magic.c print.c readcdf.c readelf.c softmagic.c
