@@ -1226,6 +1226,7 @@ udp_connect(netmsg_t msg)
 	int error;
 
 	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
+	KKASSERT(msg->connect.nm_m == NULL);
 
 	inp = so->so_pcb;
 	if (inp == NULL) {
@@ -1305,7 +1306,6 @@ udp_connect(netmsg_t msg)
 	KKASSERT(port == &curthread->td_msgport);
 	error = udp_connect_oncpu(so, td, sin, if_sin);
 out:
-	KKASSERT(msg->connect.nm_m == NULL);
 	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
