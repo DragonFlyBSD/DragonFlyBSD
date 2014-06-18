@@ -318,6 +318,7 @@ initip(void)
 		return 0;
 
 	oldstat = initstat;
+	curstat = initstat;
 	return 1;
 }
 

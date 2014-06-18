@@ -299,6 +299,7 @@ inittcp(void)
 {
 	fetch_tcpstats(&initstat);
 	oldstat = initstat;
+	curstat = initstat;
 	return 1;
 }
 
