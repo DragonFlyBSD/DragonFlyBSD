@@ -1072,10 +1072,10 @@ tcp_connect(netmsg_t msg)
 	struct sockaddr *nam = msg->connect.nm_nam;
 	struct thread *td = msg->connect.nm_td;
 	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
-	struct sockaddr_in *if_sin;
+	struct sockaddr_in *if_sin = NULL;
 	struct inpcb *inp;
 	struct tcpcb *tp;
-	int error, calc_laddr = 1;
+	int error;
 	lwkt_port_t port;
 
 	COMMON_START(so, inp, 0);
@@ -1104,7 +1104,7 @@ tcp_connect(netmsg_t msg)
 			if (error)
 				goto out;
 
-			calc_laddr = 0;
+			msg->connect.nm_flags |= PRUC_HASLADDR;
 		} else {
 			error = in_pcbbind(inp, NULL, td);
 			if (error)
@@ -1112,7 +1112,7 @@ tcp_connect(netmsg_t msg)
 		}
 	}
 
-	if (calc_laddr) {
+	if ((msg->connect.nm_flags & PRUC_HASLADDR) == 0) {
 		/*
 		 * Calculate the correct protocol processing thread.  The
 		 * connect operation must run there.  Set the forwarding
@@ -1126,7 +1126,7 @@ tcp_connect(netmsg_t msg)
 	KKASSERT(inp->inp_socket == so);
 
 	port = tcp_addrport(sin->sin_addr.s_addr, sin->sin_port,
-			    (inp->inp_laddr.s_addr ?
+			    (inp->inp_laddr.s_addr != INADDR_ANY ?
 			     inp->inp_laddr.s_addr : if_sin->sin_addr.s_addr),
 			    inp->inp_lport);
 

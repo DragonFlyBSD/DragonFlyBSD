@@ -149,6 +149,7 @@ struct netmsg_pru_connect {
 #define PRUC_FALLBACK		0x0008		/* fallback to ipv4 */
 #define PRUC_ASYNC		0x0010
 #define PRUC_HELDTD		0x0020
+#define PRUC_HASLADDR		0x0040
 
 struct netmsg_pru_connect2 {
 	struct netmsg_base	base;
