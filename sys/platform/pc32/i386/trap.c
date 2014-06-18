@@ -107,6 +107,7 @@
 #include <sys/msgport2.h>
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
+#include <sys/spinlock2.h>
 
 #define MAKEMPSAFE(have_mplock)			\
 	if (have_mplock == 0) {			\
@@ -196,7 +197,9 @@ userenter(struct thread *curtd, struct proc *curp)
 	curtd->td_release = lwkt_passive_release;
 
 	if (curtd->td_ucred != curp->p_ucred) {
+		spin_lock(&curp->p_spin);
 		ncred = crhold(curp->p_ucred);
+		spin_unlock(&curp->p_spin);
 		ocred = curtd->td_ucred;
 		curtd->td_ucred = ncred;
 		if (ocred)

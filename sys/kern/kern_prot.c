@@ -418,7 +418,7 @@ sys_setuid(struct setuid_args *uap)
 		 * is important that we should do this.
 		 */
 		if (cr->cr_svuid != uid) {
-			cr = cratom(&p->p_ucred);
+			cr = cratom_proc(p);
 			cr->cr_svuid = uid;
 			setsugid();
 		}
@@ -518,7 +518,7 @@ sys_setgid(struct setgid_args *uap)
 		 * Set real gid
 		 */
 		if (cr->cr_rgid != gid) {
-			cr = cratom(&p->p_ucred);
+			cr = cratom_proc(p);
 			cr->cr_rgid = gid;
 			setsugid();
 		}
@@ -530,7 +530,7 @@ sys_setgid(struct setgid_args *uap)
 		 * is important that we should do this.
 		 */
 		if (cr->cr_svgid != gid) {
-			cr = cratom(&p->p_ucred);
+			cr = cratom_proc(p);
 			cr->cr_svgid = gid;
 			setsugid();
 		}
@@ -540,7 +540,7 @@ sys_setgid(struct setgid_args *uap)
 	 * Copy credentials so other references do not see our changes.
 	 */
 	if (cr->cr_groups[0] != gid) {
-		cr = cratom(&p->p_ucred);
+		cr = cratom_proc(p);
 		cr->cr_groups[0] = gid;
 		setsugid();
 	}
@@ -567,7 +567,7 @@ sys_setegid(struct setegid_args *uap)
 		goto done;
 	}
 	if (cr->cr_groups[0] != egid) {
-		cr = cratom(&p->p_ucred);
+		cr = cratom_proc(p);
 		cr->cr_groups[0] = egid;
 		setsugid();
 	}
@@ -599,7 +599,7 @@ sys_setgroups(struct setgroups_args *uap)
 	 * XXX A little bit lazy here.  We could test if anything has
 	 * changed before cratom() and setting P_SUGID.
 	 */
-	cr = cratom(&p->p_ucred);
+	cr = cratom_proc(p);
 	if (ngrp < 1) {
 		/*
 		 * setgroups(0, NULL) is a legitimate way of clearing the
@@ -635,9 +635,10 @@ sys_setreuid(struct setreuid_args *uap)
 
 	ruid = uap->ruid;
 	euid = uap->euid;
-	if (((ruid != (uid_t)-1 && ruid != cr->cr_ruid && ruid != cr->cr_svuid) ||
+	if (((ruid != (uid_t)-1 && ruid != cr->cr_ruid &&
+	      ruid != cr->cr_svuid) ||
 	     (euid != (uid_t)-1 && euid != cr->cr_uid &&
-	     euid != cr->cr_ruid && euid != cr->cr_svuid)) &&
+	      euid != cr->cr_ruid && euid != cr->cr_svuid)) &&
 	    (error = priv_check_cred(cr, PRIV_CRED_SETREUID, 0)) != 0) {
 		goto done;
 	}
@@ -652,7 +653,7 @@ sys_setreuid(struct setreuid_args *uap)
 	}
 	if ((ruid != (uid_t)-1 || cr->cr_uid != cr->cr_ruid) &&
 	    cr->cr_svuid != cr->cr_uid) {
-		cr = cratom(&p->p_ucred);
+		cr = cratom_proc(p);
 		cr->cr_svuid = cr->cr_uid;
 		setsugid();
 	}
@@ -675,26 +676,27 @@ sys_setregid(struct setregid_args *uap)
 
 	rgid = uap->rgid;
 	egid = uap->egid;
-	if (((rgid != (gid_t)-1 && rgid != cr->cr_rgid && rgid != cr->cr_svgid) ||
+	if (((rgid != (gid_t)-1 && rgid != cr->cr_rgid &&
+	      rgid != cr->cr_svgid) ||
 	     (egid != (gid_t)-1 && egid != cr->cr_groups[0] &&
-	     egid != cr->cr_rgid && egid != cr->cr_svgid)) &&
+	      egid != cr->cr_rgid && egid != cr->cr_svgid)) &&
 	    (error = priv_check_cred(cr, PRIV_CRED_SETREGID, 0)) != 0) {
 		goto done;
 	}
 
 	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
-		cr = cratom(&p->p_ucred);
+		cr = cratom_proc(p);
 		cr->cr_groups[0] = egid;
 		setsugid();
 	}
 	if (rgid != (gid_t)-1 && cr->cr_rgid != rgid) {
-		cr = cratom(&p->p_ucred);
+		cr = cratom_proc(p);
 		cr->cr_rgid = rgid;
 		setsugid();
 	}
 	if ((rgid != (gid_t)-1 || cr->cr_groups[0] != cr->cr_rgid) &&
 	    cr->cr_svgid != cr->cr_groups[0]) {
-		cr = cratom(&p->p_ucred);
+		cr = cratom_proc(p);
 		cr->cr_svgid = cr->cr_groups[0];
 		setsugid();
 	}
@@ -722,12 +724,12 @@ sys_setresuid(struct setresuid_args *uap)
 	ruid = uap->ruid;
 	euid = uap->euid;
 	suid = uap->suid;
-	if (((ruid != (uid_t)-1 && ruid != cr->cr_ruid && ruid != cr->cr_svuid &&
-	      ruid != cr->cr_uid) ||
-	     (euid != (uid_t)-1 && euid != cr->cr_ruid && euid != cr->cr_svuid &&
-	      euid != cr->cr_uid) ||
-	     (suid != (uid_t)-1 && suid != cr->cr_ruid && suid != cr->cr_svuid &&
-	      suid != cr->cr_uid)) &&
+	if (((ruid != (uid_t)-1 && ruid != cr->cr_ruid &&
+	      ruid != cr->cr_svuid && ruid != cr->cr_uid) ||
+	     (euid != (uid_t)-1 && euid != cr->cr_ruid &&
+	      euid != cr->cr_svuid && euid != cr->cr_uid) ||
+	     (suid != (uid_t)-1 && suid != cr->cr_ruid &&
+	      suid != cr->cr_svuid && suid != cr->cr_uid)) &&
 	    (error = priv_check_cred(cr, PRIV_CRED_SETRESUID, 0)) != 0) {
 		goto done;
 	}
@@ -740,7 +742,7 @@ sys_setresuid(struct setresuid_args *uap)
 		setsugid();
 	}
 	if (suid != (uid_t)-1 && cr->cr_svuid != suid) {
-		cr = cratom(&p->p_ucred);
+		cr = cratom_proc(p);
 		cr->cr_svuid = suid;
 		setsugid();
 	}
@@ -767,28 +769,28 @@ sys_setresgid(struct setresgid_args *uap)
 	rgid = uap->rgid;
 	egid = uap->egid;
 	sgid = uap->sgid;
-	if (((rgid != (gid_t)-1 && rgid != cr->cr_rgid && rgid != cr->cr_svgid &&
-	      rgid != cr->cr_groups[0]) ||
-	     (egid != (gid_t)-1 && egid != cr->cr_rgid && egid != cr->cr_svgid &&
-	      egid != cr->cr_groups[0]) ||
-	     (sgid != (gid_t)-1 && sgid != cr->cr_rgid && sgid != cr->cr_svgid &&
-	      sgid != cr->cr_groups[0])) &&
+	if (((rgid != (gid_t)-1 && rgid != cr->cr_rgid &&
+	      rgid != cr->cr_svgid && rgid != cr->cr_groups[0]) ||
+	     (egid != (gid_t)-1 && egid != cr->cr_rgid &&
+	      egid != cr->cr_svgid && egid != cr->cr_groups[0]) ||
+	     (sgid != (gid_t)-1 && sgid != cr->cr_rgid &&
+	      sgid != cr->cr_svgid && sgid != cr->cr_groups[0])) &&
 	    (error = priv_check_cred(cr, PRIV_CRED_SETRESGID, 0)) != 0) {
 		goto done;
 	}
 
 	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
-		cr = cratom(&p->p_ucred);
+		cr = cratom_proc(p);
 		cr->cr_groups[0] = egid;
 		setsugid();
 	}
 	if (rgid != (gid_t)-1 && cr->cr_rgid != rgid) {
-		cr = cratom(&p->p_ucred);
+		cr = cratom_proc(p);
 		cr->cr_rgid = rgid;
 		setsugid();
 	}
 	if (sgid != (gid_t)-1 && cr->cr_svgid != sgid) {
-		cr = cratom(&p->p_ucred);
+		cr = cratom_proc(p);
 		cr->cr_svgid = sgid;
 		setsugid();
 	}
@@ -1042,7 +1044,8 @@ cratom(struct ucred **pcr)
 	oldcr = *pcr;
 	if (oldcr->cr_ref == 1)
 		return (oldcr);
-	newcr = crget();
+	newcr = crget();	/* this might block */
+	oldcr = *pcr;		/* re-cache after potentially blocking */
 	*newcr = *oldcr;
 	if (newcr->cr_uidinfo)
 		uihold(newcr->cr_uidinfo);
@@ -1053,7 +1056,45 @@ cratom(struct ucred **pcr)
 	newcr->cr_ref = 1;
 	crfree(oldcr);
 	*pcr = newcr;
+
 	return (newcr);
+}
+
+/*
+ * Called with a modifying token held, but must still obtain p_spin to
+ * actually replace p_ucred to handle races against syscall entry from
+ * other threads which cache p_ucred->td_ucred.
+ *
+ * (the threads will only get the spin-lock, and they only need to in
+ *  the case where td_ucred != p_ucred so this is optimal).
+ */
+struct ucred *
+cratom_proc(struct proc *p)
+{
+	struct ucred *oldcr;
+	struct ucred *newcr;
+
+	oldcr = p->p_ucred;
+	if (oldcr->cr_ref == 1)
+		return(oldcr);
+
+	newcr = crget();	/* this might block */
+	oldcr = p->p_ucred;	/* so re-cache oldcr (do not re-test) */
+	*newcr = *oldcr;
+	if (newcr->cr_uidinfo)
+		uihold(newcr->cr_uidinfo);
+	if (newcr->cr_ruidinfo)
+		uihold(newcr->cr_ruidinfo);
+	if (jailed(newcr))
+		prison_hold(newcr->cr_prison);
+	newcr->cr_ref = 1;
+
+	spin_lock(&p->p_spin);
+	p->p_ucred = newcr;
+	spin_unlock(&p->p_spin);
+	crfree(oldcr);
+
+	return newcr;
 }
 
 /*
@@ -1164,7 +1205,7 @@ change_euid(uid_t euid)
 
 	KKASSERT(p != NULL);
 	lf_count_adjust(p, 0);
-	cr = cratom(&p->p_ucred);
+	cr = cratom_proc(p);
 	cr->cr_uid = euid;
 	uireplace(&cr->cr_uidinfo, uifind(euid));
 	lf_count_adjust(p, 1);
@@ -1185,7 +1226,7 @@ change_ruid(uid_t ruid)
 
 	KKASSERT(p != NULL);
 
-	cr = cratom(&p->p_ucred);
+	cr = cratom_proc(p);
 	chgproccnt(cr->cr_ruidinfo, -1, 0);
 	cr->cr_ruid = ruid;
 	uireplace(&cr->cr_ruidinfo, uifind(ruid));

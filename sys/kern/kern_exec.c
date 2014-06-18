@@ -458,7 +458,7 @@ interpret:
 		/*
 		 * Set the new credentials.
 		 */
-		cratom(&p->p_ucred);
+		cratom_proc(p);
 		if (attr.va_mode & VSUID)
 			change_euid(attr.va_uid);
 		if (attr.va_mode & VSGID)
@@ -479,7 +479,7 @@ interpret:
 	 */
 	if (p->p_ucred->cr_svuid != p->p_ucred->cr_uid ||
 	    p->p_ucred->cr_svgid != p->p_ucred->cr_gid) {
-		cratom(&p->p_ucred);
+		cratom_proc(p);
 		p->p_ucred->cr_svuid = p->p_ucred->cr_uid;
 		p->p_ucred->cr_svgid = p->p_ucred->cr_gid;
 	}

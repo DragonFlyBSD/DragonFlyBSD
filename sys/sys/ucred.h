@@ -94,6 +94,7 @@ struct proc;
 struct ucred	*change_euid (uid_t euid);
 struct ucred	*change_ruid (uid_t ruid);
 struct ucred	*cratom (struct ucred **pcr);
+struct ucred	*cratom_proc (struct proc *p);
 struct ucred	*crcopy (struct ucred *cr);
 struct ucred	*crdup (struct ucred *cr);
 void		crfree (struct ucred *cr);

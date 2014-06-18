@@ -88,6 +88,7 @@
 
 #include <sys/thread2.h>
 #include <sys/mplock2.h>
+#include <sys/spinlock2.h>
 
 #define MAKEMPSAFE(have_mplock)			\
 	if (have_mplock == 0) {			\
@@ -175,6 +176,11 @@ uint64_t SysCallsWorstCase[SYS_MAXSYSCALL];
  * signal handling, faults, AST traps, and anything else that enters the
  * kernel from userland and provides the kernel with a stable read-only
  * copy of the process ucred.
+ *
+ * To avoid races with another thread updating p_ucred we obtain p_spin.
+ * The other thread doing the update will obtain both p_token and p_spin.
+ * In the case where the cached cred pointer matches, we will already have
+ * the ref and we don't have to do one blessed thing.
  */
 static __inline void
 userenter(struct thread *curtd, struct proc *curp)
@@ -185,7 +191,9 @@ userenter(struct thread *curtd, struct proc *curp)
 	curtd->td_release = lwkt_passive_release;
 
 	if (curtd->td_ucred != curp->p_ucred) {
+		spin_lock(&curp->p_spin);
 		ncred = crhold(curp->p_ucred);
+		spin_unlock(&curp->p_spin);
 		ocred = curtd->td_ucred;
 		curtd->td_ucred = ncred;
 		if (ocred)

@@ -106,6 +106,7 @@ kern_jail_attach(int jid)
 {
 	struct proc *p = curthread->td_proc;
 	struct prison *pr;
+	struct ucred *cr;
 	int error;
 
 	pr = prison_find(jid);
@@ -118,8 +119,8 @@ kern_jail_attach(int jid)
 
 	prison_hold(pr);
 	lwkt_gettoken(&p->p_token);
-	cratom(&p->p_ucred);
-	p->p_ucred->cr_prison = pr;
+	cr = cratom_proc(p);
+	cr->cr_prison = pr;
 	p->p_flags |= P_JAILED;
 	lwkt_reltoken(&p->p_token);
 
