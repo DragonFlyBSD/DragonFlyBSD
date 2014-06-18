@@ -205,8 +205,8 @@ static void udp_append (struct inpcb *last, struct ip *ip,
 static void ip_2_ip6_hdr (struct ip6_hdr *ip6, struct ip *ip);
 #endif
 
-static int udp_connect_oncpu(struct socket *so, struct thread *td,
-			struct sockaddr_in *sin, struct sockaddr_in *if_sin);
+static int udp_connect_oncpu(struct inpcb *inp, struct sockaddr_in *sin,
+    struct sockaddr_in *if_sin);
 
 void
 udp_init(void)
@@ -1246,8 +1246,9 @@ udp_connect(netmsg_t msg)
 	/*
 	 * Bind if we have to
 	 */
-	if (td->td_proc && td->td_proc->p_ucred->cr_prison != NULL &&
-	    inp->inp_laddr.s_addr == INADDR_ANY) {
+	if (inp->inp_lport == 0 ||
+	    (td->td_proc && td->td_proc->p_ucred->cr_prison != NULL &&
+	     inp->inp_laddr.s_addr == INADDR_ANY)) {
 		error = in_pcbbind(inp, NULL, td);
 		if (error)
 			goto out;
@@ -1266,7 +1267,8 @@ udp_connect(netmsg_t msg)
 	}
 
 	port = udp_addrport(sin->sin_addr.s_addr, sin->sin_port,
-			    inp->inp_laddr.s_addr, inp->inp_lport);
+	    inp->inp_laddr.s_addr != INADDR_ANY ?
+	    inp->inp_laddr.s_addr : if_sin->sin_addr.s_addr, inp->inp_lport);
 	if (port != &curthread->td_msgport) {
 #ifdef notyet
 		struct route *ro = &inp->inp_route;
@@ -1299,46 +1301,47 @@ udp_connect(netmsg_t msg)
 #endif
 	}
 	KKASSERT(port == &curthread->td_msgport);
-	error = udp_connect_oncpu(so, td, sin, if_sin);
+	error = udp_connect_oncpu(inp, sin, if_sin);
 out:
 	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
 static int
-udp_connect_oncpu(struct socket *so, struct thread *td,
-		  struct sockaddr_in *sin, struct sockaddr_in *if_sin)
+udp_connect_oncpu(struct inpcb *inp, struct sockaddr_in *sin,
+    struct sockaddr_in *if_sin)
 {
-	struct inpcb *inp;
-	int error;
+	struct socket *so = inp->inp_socket;
+	struct inpcb *oinp;
+
+	oinp = in_pcblookup_hash(inp->inp_pcbinfo,
+	    sin->sin_addr, sin->sin_port,
+	    inp->inp_laddr.s_addr != INADDR_ANY ?
+	    inp->inp_laddr : if_sin->sin_addr, inp->inp_lport, FALSE, NULL);
+	if (oinp != NULL)
+		return EADDRINUSE;
 
 	udbinfo_barrier_set();
 
-	inp = so->so_pcb;
 	if (inp->inp_flags & INP_WILDCARD)
 		in_pcbremwildcardhash(inp);
-	error = in_pcbconnect(inp, (struct sockaddr *)sin, td);
 
-	if (error == 0) {
-		/*
-		 * No more errors can occur, finish adjusting the socket
-		 * and change the processing port to reflect the connected
-		 * socket.  Once set we can no longer safely mess with the
-		 * socket.
-		 */
-		soisconnected(so);
-	} else if (error == EAFNOSUPPORT) {	/* connection dissolved */
-		/*
-		 * Follow traditional BSD behavior and retain
-		 * the local port binding.  But, fix the old misbehavior
-		 * of overwriting any previously bound local address.
-		 */
-		if (!(inp->inp_flags & INP_WASBOUND_NOTANY))
-			inp->inp_laddr.s_addr = INADDR_ANY;
-		in_pcbinswildcardhash(inp);
-	}
+	if (inp->inp_laddr.s_addr == INADDR_ANY)
+		inp->inp_laddr = if_sin->sin_addr;
+	inp->inp_faddr = sin->sin_addr;
+	inp->inp_fport = sin->sin_port;
+	in_pcbinsconnhash(inp);
+
+	/*
+	 * No more errors can occur, finish adjusting the socket
+	 * and change the processing port to reflect the connected
+	 * socket.  Once set we can no longer safely mess with the
+	 * socket.
+	 */
+	soisconnected(so);
 
 	udbinfo_barrier_rem();
-	return error;
+
+	return 0;
 }
 
 static void
@@ -1383,7 +1386,18 @@ udp_disconnect(netmsg_t msg)
 	}
 
 	udbinfo_barrier_set();
+
 	in_pcbdisconnect(inp);
+
+	/*
+	 * Follow traditional BSD behavior and retain the local port
+	 * binding.  But, fix the old misbehavior of overwriting any
+	 * previously bound local address.
+	 */
+	if (!(inp->inp_flags & INP_WASBOUND_NOTANY))
+		inp->inp_laddr.s_addr = INADDR_ANY;
+	in_pcbinswildcardhash(inp);
+
 	udbinfo_barrier_rem();
 
 	soclrstate(so, SS_ISCONNECTED);		/* XXX */
