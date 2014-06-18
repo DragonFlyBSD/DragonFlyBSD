@@ -195,7 +195,7 @@ so_pru_connect_async(struct socket *so, struct sockaddr *nam, struct thread *td)
 	msg = kmalloc(sizeof(*msg) + nam->sa_len, M_LWKTMSG, M_NOWAIT);
 	if (msg == NULL) {
 		/*
-		 * Fail to allocate address w/o waiting;
+		 * Fail to allocate message w/o waiting;
 		 * fallback to synchronized pru_connect.
 		 */
 		return so_pru_connect(so, nam, td);
