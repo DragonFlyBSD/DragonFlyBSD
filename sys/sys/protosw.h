@@ -88,6 +88,9 @@ struct protosw {
 	short	pr_protocol;		/* protocol number */
 	short	pr_flags;		/* see below */
 
+	struct lwkt_port *(*pr_initport)(void);
+					/* initial msgport */
+
 	/*
 	 * Protocol hooks.  These are typically called directly within the
 	 * context of a protocol thread based on the toeplitz hash.
@@ -148,7 +151,6 @@ struct protosw {
 #define PR_ASYNC_RCVD	0x0800		/* async pru_rcvd */
 #define PR_ASEND_HOLDTD	0x1000		/* async pru_send hold orig thread */
 #define PR_ACONN_HOLDTD	0x2000		/* async pru_connect hold orig thread */
-#define PR_RAND_INITPORT 0x4000		/* random init msgport */
 
 /*
  * The arguments to usrreq are:

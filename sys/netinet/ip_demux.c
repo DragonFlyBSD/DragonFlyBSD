@@ -469,3 +469,9 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 	}
 	return (netisr_cpuport(cpu));
 }
+
+struct lwkt_port *
+tcp_initport(void)
+{
+	return netisr_cpuport(mycpuid & ncpus2_mask);
+}

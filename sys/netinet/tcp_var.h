@@ -702,6 +702,8 @@ struct lwkt_port *
 	 tcp_soport(struct socket *, struct sockaddr *, struct mbuf **);
 struct lwkt_port *
 	 tcp_ctlport(int, struct sockaddr *, void *);
+struct lwkt_port *
+	 tcp_initport(void);
 struct tcpcb *
 	 tcp_timers (struct tcpcb *, int);
 void	 tcp_trace (short, short, struct tcpcb *, void *, struct tcphdr *,
