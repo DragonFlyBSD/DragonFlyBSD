@@ -457,8 +457,7 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 		return(NULL);
 	if (ip == NULL || PRC_IS_REDIRECT(cmd) || cmd == PRC_HOSTDEAD) {
 		/*
-		 * See the comment in tcp_ctlport; the only difference
-		 * is that message is forwarded to UDP protocol theads.
+		 * See the comment in tcp_ctlport.
 		 */
 		return cpu0_ctlport(cmd, sa, vip);
 	} else {
