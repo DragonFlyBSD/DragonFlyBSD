@@ -434,7 +434,7 @@ int	ssb_wait (struct signalsockbuf *sb);
 int	_ssb_lock (struct signalsockbuf *sb);
 
 void	soabort (struct socket *so);
-void	soaborta (struct socket *so);
+void	soabort_async (struct socket *so);
 void	soabort_oncpu (struct socket *so);
 int	soaccept (struct socket *so, struct sockaddr **nam);
 void	soaccept_generic (struct socket *so);

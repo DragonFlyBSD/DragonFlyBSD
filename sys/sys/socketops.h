@@ -75,7 +75,7 @@ so_pru_soreceive(struct socket *so, struct sockaddr **paddr, struct uio *uio,
 }
 
 void so_pru_abort (struct socket *so);
-void so_pru_aborta (struct socket *so);
+void so_pru_abort_async (struct socket *so);
 void so_pru_abort_oncpu (struct socket *so);
 int so_pru_accept (struct socket *so, struct sockaddr **nam);
 int so_pru_attach (struct socket *so, int proto, struct pru_attach_info *ai);

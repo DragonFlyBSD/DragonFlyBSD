@@ -74,11 +74,11 @@ so_pru_abort(struct socket *so)
 
 /*
  * Abort a socket and free it, asynchronously.  Called from
- * soaborta() only.  soaborta() got a ref on the socket which we must
- * free on reply.
+ * soabort_async() only.  soabort_async() got a ref on the
+ * socket which we must free on reply.
  */
 void
-so_pru_aborta(struct socket *so)
+so_pru_abort_async(struct socket *so)
 {
 	struct netmsg_pru_abort *msg;
 

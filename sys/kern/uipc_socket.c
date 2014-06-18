@@ -446,14 +446,14 @@ sodiscard(struct socket *so)
 			soclrstate(sp, SS_INCOMP);
 			sp->so_head = NULL;
 			so->so_incqlen--;
-			soaborta(sp);
+			soabort_async(sp);
 		}
 		while ((sp = TAILQ_FIRST(&so->so_comp)) != NULL) {
 			TAILQ_REMOVE(&so->so_comp, sp, so_list);
 			soclrstate(sp, SS_COMP);
 			sp->so_head = NULL;
 			so->so_qlen--;
-			soaborta(sp);
+			soabort_async(sp);
 		}
 	}
 	lwkt_relpooltoken(so);
@@ -669,10 +669,10 @@ soabort(struct socket *so)
 }
 
 void
-soaborta(struct socket *so)
+soabort_async(struct socket *so)
 {
 	soreference(so);
-	so_pru_aborta(so);
+	so_pru_abort_async(so);
 }
 
 void
