@@ -2620,9 +2620,7 @@ ng_mod_event(module_t mod, int event, void *data)
 	case MOD_LOAD:
 
 		/* Register new netgraph node type */
-		crit_enter();
 		if ((error = ng_newtype(type)) != 0) {
-			crit_exit();
 			break;
 		}
 
@@ -2634,23 +2632,19 @@ ng_mod_event(module_t mod, int event, void *data)
 				LIST_REMOVE(type, types);
 				mtx_unlock(&ng_typelist_mtx);
 			}
-		crit_exit();
 		break;
 
 	case MOD_UNLOAD:
-		crit_enter();
 		if (type->refs > 1) {		/* make sure no nodes exist! */
 			error = EBUSY;
 		} else {
 			if (type->refs == 0) {
 				/* failed load, nothing to undo */
-				crit_exit();
 				break;
 			}
 			if (type->mod_event != NULL) {	/* check with type */
 				error = (*type->mod_event)(mod, event, data);
 				if (error != 0) {	/* type refuses.. */
-					crit_exit();
 					break;
 				}
 			}
@@ -2658,7 +2652,6 @@ ng_mod_event(module_t mod, int event, void *data)
 			LIST_REMOVE(type, types);
 			mtx_unlock(&ng_typelist_mtx);
 		}
-		crit_exit();
 		break;
 
 	default:
@@ -2702,12 +2695,14 @@ ngb_mod_event(module_t mod, int event, void *data)
 			    sizeof(struct ng_item), maxalloc, 0, bzero_ctor,
 			    NULL, NULL);
 		ng_apply_oc = objcache_create_mbacked(M_NETGRAPH_APPLY,
-		    sizeof(struct ng_apply_info), 0, 0, bzero_ctor, NULL, NULL);
+			    sizeof(struct ng_apply_info), 0, 0, bzero_ctor,
+			    NULL, NULL);
 		break;
 	case MOD_UNLOAD:
 #if 0
 		/* Destroy the lwkt threads too */
 		objcache_destroy(ng_apply_oc);
+		objcache_destroy(ng_oc);
 #endif
 		/* You can't unload it because an interface may be using it. */
 		error = EBUSY;
