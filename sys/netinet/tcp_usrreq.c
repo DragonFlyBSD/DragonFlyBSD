@@ -255,13 +255,13 @@ tcp_usr_detach(netmsg_t msg)
 								\
 	inp = so->so_pcb; 					\
 	do {							\
-		 if (inp == NULL) {				\
+		if (inp == NULL) {				\
 			error = ignore_error ? 0 : EINVAL;	\
 			tp = NULL;				\
 			goto out;				\
-		 }						\
-		 tp = intotcpcb(inp);				\
-		 TCPDEBUG1();					\
+		}						\
+		tp = intotcpcb(inp);				\
+		TCPDEBUG1();					\
 	} while(0)
 
 #define COMMON_END1(req, noreply)				\
