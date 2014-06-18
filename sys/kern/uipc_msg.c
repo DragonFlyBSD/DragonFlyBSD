@@ -68,7 +68,7 @@ so_pru_abort(struct socket *so)
 
 	netmsg_init(&msg.base, so, &curthread->td_msgport,
 		    0, so->so_proto->pr_usrreqs->pru_abort);
-	(void)lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
+	lwkt_domsg(so->so_port, &msg.base.lmsg, 0);
 	sofree(msg.base.nm_so);
 }
 
