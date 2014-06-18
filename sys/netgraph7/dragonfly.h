@@ -34,7 +34,6 @@
 
 #include <sys/globaldata.h>	/* curthread in mtx_assert() */
 #include <sys/lock.h>
-#include <sys/objcache.h>
 
 #ifndef _VA_LIST_DECLARED
 #define _VA_LIST_DECLARED
@@ -61,26 +60,6 @@ typedef __va_list	va_list;
 #define sprintf		ksprintf
 #define snprintf	ksnprintf
 #define vsnprintf	kvsnprintf
-
-typedef struct objcache	*objcache_t;
-#define uma_zone_t	objcache_t
-typedef void *		uma_ctor;
-typedef void *		uma_dtor;
-typedef void *		uma_init;
-typedef void *		uma_fini;
-
-#define UMA_ALIGN_CACHE	0
-
-#define uma_zcreate(name, size, ctor, dtor, uminit, fini, align, flags)	\
-			objcache_create_mbacked(M_NETGRAPH, size,	\
-					0, 0,			\
-					bzero_ctor, NULL,		\
-					NULL)
-#define uma_zalloc(zone, flags)			\
-			objcache_get(zone, flags)
-#define uma_zfree(zone, item)			\
-			objcache_put(zone, item)
-#define uma_zone_set_max(zone, nitems)
 
 #define CTR1(ktr_line, ...)
 #define CTR2(ktr_line, ...)

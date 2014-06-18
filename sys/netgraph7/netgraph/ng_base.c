@@ -62,6 +62,7 @@
 #include <sys/syslog.h>
 #include <sys/refcount.h>
 #include <sys/proc.h>
+#include <sys/objcache.h>
 #include <machine/cpu.h>
 
 #include <netgraph7/netgraph.h>
@@ -2467,17 +2468,13 @@ out:
 			Queue element get/free routines
 ************************************************************************/
 
-uma_zone_t			ng_qzone;
-objcache_t			ng_apply_oc;
-static int			maxalloc = 4096;/* limit the damage of a leak */
-static int			maxdata = 512;	/* limit the damage of a DoS */
+static struct objcache	*ng_oc;
+static struct objcache	*ng_apply_oc;
+static int		 maxalloc = 4096; /* limit the damage of a leak */
 
 TUNABLE_INT("net.graph.maxalloc", &maxalloc);
 SYSCTL_INT(_net_graph, OID_AUTO, maxalloc, CTLFLAG_RD, &maxalloc,
-    0, "Maximum number of non-data queue items to allocate");
-TUNABLE_INT("net.graph.maxdata", &maxdata);
-SYSCTL_INT(_net_graph, OID_AUTO, maxdata, CTLFLAG_RD, &maxdata,
-    0, "Maximum number of data queue items to allocate");
+    0, "Maximum number of queue items to allocate");
 
 #ifdef	NETGRAPH_DEBUG
 static TAILQ_HEAD(, ng_item) ng_itemlist = TAILQ_HEAD_INITIALIZER(ng_itemlist);
@@ -2499,7 +2496,7 @@ ng_alloc_item(int type, int flags)
 	KASSERT(((type & ~NGQF_TYPE) == 0),
 	    ("%s: incorrect item type: %d", __func__, type));
 
-	item = uma_zalloc(ng_qzone,
+	item = objcache_get(ng_oc,
 	    (flags & NG_WAITOK) ? M_WAITOK : M_NOWAIT );
 
 	if (item) {
@@ -2563,7 +2560,7 @@ ng_free_item(item_p item)
 #endif
 	/* Object must be initialized before returning to objcache */
 	bzero(item, sizeof(struct ng_item));
-	uma_zfree(ng_qzone, item);
+	objcache_put(ng_oc, item);
 }
 
 /*
@@ -2701,9 +2698,9 @@ ngb_mod_event(module_t mod, int event, void *data)
 		mtx_init(&ng_nodelist_mtx);
 		mtx_init(&ngq_mtx);
 #endif
-		ng_qzone = uma_zcreate("NetGraph items", sizeof(struct ng_item),
-		    NULL, NULL, NULL, NULL, UMA_ALIGN_CACHE, 0);
-		uma_zone_set_max(ng_qzone, maxalloc);
+		ng_oc = objcache_create_mbacked(M_NETGRAPH,
+			    sizeof(struct ng_item), maxalloc, 0, bzero_ctor,
+			    NULL, NULL);
 		ng_apply_oc = objcache_create_mbacked(M_NETGRAPH_APPLY,
 		    sizeof(struct ng_apply_info), 0, 0, bzero_ctor, NULL, NULL);
 		break;
