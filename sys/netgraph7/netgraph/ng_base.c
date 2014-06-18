@@ -1,7 +1,3 @@
-/*
- * ng_base.c
- */
-
 /*-
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
  * All rights reserved.
@@ -71,8 +67,13 @@
 
 MODULE_VERSION(netgraph, NG_ABI_VERSION);
 
-/* Mutex to protect topology events. */
-static struct mtx	ng_topo_mtx;
+/* Token to protect topology events. */
+static struct lwkt_token	ng_topo_token;
+#define	TOPOLOGY_RLOCK()	lwkt_gettoken_shared(&ng_topo_token)
+#define	TOPOLOGY_RUNLOCK()	lwkt_reltoken(&ng_topo_token)
+#define	TOPOLOGY_WLOCK()	lwkt_gettoken(&ng_topo_token)
+#define	TOPOLOGY_WUNLOCK()	lwkt_reltoken(&ng_topo_token)
+#define	TOPOLOGY_NOTOWNED()	KKASSERT(!LWKT_TOKEN_HELD_ANY(&ng_topo_token))
 
 #ifdef	NETGRAPH_DEBUG
 static struct mtx	ng_nodelist_mtx; /* protects global node/hook lists */
@@ -90,7 +91,7 @@ static void ng_dumphooks(void);
 #endif	/* NETGRAPH_DEBUG */
 /*
  * DEAD versions of the structures.
- * In order to avoid races, it is sometimes neccesary to point
+ * In order to avoid races, it is sometimes necessary to point
  * at SOMETHING even though theoretically, the current entity is
  * INVALID. Use these to avoid these races.
  */
@@ -1057,7 +1058,7 @@ ng_destroy_hook(hook_p hook)
 	 * Protect divorce process with mutex, to avoid races on
 	 * simultaneous disconnect.
 	 */
-	mtx_lock(&ng_topo_mtx);
+	TOPOLOGY_WLOCK();
 
 	hook->hk_flags |= HK_INVALID;
 
@@ -1077,17 +1078,17 @@ ng_destroy_hook(hook_p hook)
 			 * If it's already divorced from a node,
 			 * just free it.
 			 */
-			mtx_unlock(&ng_topo_mtx);
+			TOPOLOGY_WUNLOCK();
 		} else {
-			mtx_unlock(&ng_topo_mtx);
+			TOPOLOGY_WUNLOCK();
 			ng_rmhook_self(peer); 	/* Send it a surprise */
 		}
 		NG_HOOK_UNREF(peer);		/* account for peer link */
 		NG_HOOK_UNREF(hook);		/* account for peer link */
 	} else
-		mtx_unlock(&ng_topo_mtx);
+		TOPOLOGY_WUNLOCK();
 
-	KKASSERT(mtx_notowned(&ng_topo_mtx));
+	TOPOLOGY_NOTOWNED();
 
 	/*
 	 * Remove the hook from the node's list to avoid possible recursion
@@ -1328,17 +1329,17 @@ ng_con_part2(node_p node, item_p item, hook_p hook)
 	}
 
 	/*
-	 * Acquire topo mutex to avoid race with ng_destroy_hook().
+	 * Acquire topo token to avoid race with ng_destroy_hook().
 	 */
-	mtx_lock(&ng_topo_mtx);
+	TOPOLOGY_RLOCK();
 	peer = hook->hk_peer;
 	if (peer == &ng_deadhook) {
-		mtx_unlock(&ng_topo_mtx);
+		TOPOLOGY_RUNLOCK();
 		printf("failed in ng_con_part2(B)\n");
 		ng_destroy_hook(hook);
 		ERROUT(ENOENT);
 	}
-	mtx_unlock(&ng_topo_mtx);
+	TOPOLOGY_RUNLOCK();
 
 	if ((error = ng_send_fn2(peer->hk_node, peer, item, &ng_con_part3,
 	    NULL, 0, NG_REUSE_ITEM))) {
@@ -2686,7 +2687,7 @@ ngb_mod_event(module_t mod, int event, void *data)
 		mtx_init(&ng_typelist_mtx);
 		mtx_init(&ng_idhash_mtx);
 		mtx_init(&ng_namehash_mtx);
-		mtx_init(&ng_topo_mtx);
+		lwkt_token_init(&ng_topo_token, "ng topology");
 #ifdef	NETGRAPH_DEBUG
 		mtx_init(&ng_nodelist_mtx);
 		mtx_init(&ngq_mtx);
