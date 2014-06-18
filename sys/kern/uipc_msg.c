@@ -93,7 +93,7 @@ so_pru_abort_async(struct socket *so)
  * Caller must make sure that the current CPU is inpcb's owner CPU.
  */
 void
-so_pru_abort_oncpu(struct socket *so)
+so_pru_abort_direct(struct socket *so)
 {
 	struct netmsg_pru_abort msg;
 	netisr_fn_t func = so->so_proto->pr_usrreqs->pru_abort;

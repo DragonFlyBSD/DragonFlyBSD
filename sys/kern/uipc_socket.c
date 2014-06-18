@@ -679,7 +679,7 @@ void
 soabort_oncpu(struct socket *so)
 {
 	soreference(so);
-	so_pru_abort_oncpu(so);
+	so_pru_abort_direct(so);
 }
 
 /*
