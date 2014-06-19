@@ -15,8 +15,8 @@ MAN=	file.1 magic.5
 CFLAGS+= -DHAVE_CONFIG_H -DMAGIC=\"${MAGIC}\"
 CFLAGS+= -I${LIBMAGICDIR}
 
-LDADD+=	-lmagic -lz
-DPADD+=	${LIBMAGIC} ${LIBZ}
+LDADD+=	-lmagic
+DPADD+=	${LIBMAGIC}
 
 file.1: ${CONTRIBDIR}/doc/file.man
 	sed -e s@__CSECTION__@${CS}@g	\
