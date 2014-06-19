@@ -199,7 +199,6 @@
    declarations. */
 #define HAVE_VISIBILITY 1
 
-#ifndef BOOTSTRAPPING
 /* Define to 1 if you have the <wchar.h> header file. */
 #define HAVE_WCHAR_H 1
 
@@ -208,7 +207,6 @@
 
 /* Define to 1 if you have the `wcwidth' function. */
 #define HAVE_WCWIDTH 1
-#endif /* BOOTSTRAPPING */
 
 /* Define to 1 if `fork' works. */
 #define HAVE_WORKING_FORK 1

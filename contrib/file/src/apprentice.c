@@ -947,7 +947,7 @@ set_test_type(struct magic *mstart, struct magic *m)
 		break;
 	case FILE_REGEX:
 	case FILE_SEARCH:
-#ifndef COMPILE_ONLY
+		/* Check for override */
 		if (mstart->str_flags & STRING_BINTEST)
 			mstart->flag |= BINTEST;
 		if (mstart->str_flags & STRING_TEXTTEST)
@@ -962,7 +962,6 @@ set_test_type(struct magic *mstart, struct magic *m)
 			mstart->flag |= BINTEST;
 		else
 			mstart->flag |= TEXTTEST;
-#endif
 		break;
 	case FILE_DEFAULT:
 		/* can't deduce anything; we shouldn't see this at the
@@ -2342,7 +2341,7 @@ getvalue(struct magic_set *ms, struct magic *m, const char **p, int action)
 	case FILE_LEFLOAT:
 		if (m->reln != 'x') {
 			char *ep;
-#if defined(HAVE_STRTOF) && !defined(COMPILE_ONLY)
+#ifdef HAVE_STRTOF
 			m->value.f = strtof(*p, &ep);
 #else
 			m->value.f = (float)strtod(*p, &ep);

@@ -56,8 +56,8 @@ magic.mgc: mkmagic.nx magic
 CLEANFILES+=   mkmagic.nx
 build-tools: mkmagic.nx
 
-NXCFLAGS+=	-w -DCOMPILE_ONLY -DBOOTSTRAPPING
-mkmagic.nx: apprentice.c cdf_time.c funcs.c magic.c print.c
+NXCFLAGS+=	-w -DCOMPILE_ONLY
+mkmagic.nx: apprentice.c encoding.c cdf_time.c funcs.c magic.c print.c
 	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.ALLSRC} ${NXLDLIBS} -o ${.TARGET}
 
 .include <bsd.lib.mk>
