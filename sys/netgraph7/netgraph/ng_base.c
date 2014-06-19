@@ -166,7 +166,11 @@ struct lwkt_port *ng_msgport[MAXCPU];
 
 /* List of installed types */
 static LIST_HEAD(, ng_type) ng_typelist;
-static struct mtx	ng_typelist_mtx;
+static struct lwkt_token	ng_typelist_token;
+#define	TYPELIST_RLOCK()	lwkt_gettoken_shared(&ng_typelist_token)
+#define	TYPELIST_RUNLOCK()	lwkt_reltoken(&ng_typelist_token)
+#define	TYPELIST_WLOCK()	lwkt_gettoken(&ng_typelist_token)
+#define	TYPELIST_WUNLOCK()	lwkt_reltoken(&ng_typelist_token)
 
 /* Hash related definitions */
 /* XXX Don't need to initialise them because it's a LIST */
@@ -438,7 +442,7 @@ static const struct ng_parse_type ng_generic_linkinfo_array_type = {
 	&ng_generic_linkinfo_array_type_info
 };
 
-DEFINE_PARSE_STRUCT_TYPE(typelist, TYPELIST, (&ng_generic_nodeinfoarray_type));
+DEFINE_PARSE_STRUCT_TYPE(typelist, TYPELIST, (&ng_generic_typeinfoarray_type));
 DEFINE_PARSE_STRUCT_TYPE(hooklist, HOOKLIST,
 	(&ng_generic_nodeinfo_type, &ng_generic_linkinfo_array_type));
 DEFINE_PARSE_STRUCT_TYPE(listnodes, LISTNODES,
@@ -1169,12 +1173,11 @@ ng_newtype(struct ng_type *tp)
 		return (EEXIST);
 	}
 
-
 	/* Link in new type */
-	mtx_lock(&ng_typelist_mtx);
+	TYPELIST_WLOCK();
 	LIST_INSERT_HEAD(&ng_typelist, tp, types);
 	tp->refs = 1;	/* first ref is linked list */
-	mtx_unlock(&ng_typelist_mtx);
+	TYPELIST_WUNLOCK();
 	return (0);
 }
 
@@ -1192,9 +1195,9 @@ ng_rmtype(struct ng_type *tp)
 	}
 
 	/* Unlink type */
-	mtx_lock(&ng_typelist_mtx);
+	TYPELIST_WLOCK();
 	LIST_REMOVE(tp, types);
-	mtx_unlock(&ng_typelist_mtx);
+	TYPELIST_WUNLOCK();
 	return (0);
 }
 
@@ -1206,12 +1209,12 @@ ng_findtype(const char *typename)
 {
 	struct ng_type *type;
 
-	mtx_lock(&ng_typelist_mtx);
+	TYPELIST_RLOCK();
 	LIST_FOREACH(type, &ng_typelist, types) {
 		if (strcmp(type->name, typename) == 0)
 			break;
 	}
-	mtx_unlock(&ng_typelist_mtx);
+	TYPELIST_RUNLOCK();
 	return (type);
 }
 
@@ -2253,17 +2256,16 @@ ng_generic_msg(node_p here, item_p item, hook_p lasthook)
 		struct ng_type *type;
 		int num = 0;
 
-		mtx_lock(&ng_typelist_mtx);
+		TYPELIST_RLOCK();
 		/* Count number of types */
-		LIST_FOREACH(type, &ng_typelist, types) {
+		LIST_FOREACH(type, &ng_typelist, types)
 			num++;
-		}
-		mtx_unlock(&ng_typelist_mtx);
 
 		/* Get response struct */
 		NG_MKRESPONSE(resp, msg, sizeof(*tl)
 		    + (num * sizeof(struct typeinfo)), M_WAITOK | M_NULLOK);
 		if (resp == NULL) {
+			TYPELIST_RUNLOCK();
 			error = ENOMEM;
 			break;
 		}
@@ -2271,20 +2273,15 @@ ng_generic_msg(node_p here, item_p item, hook_p lasthook)
 
 		/* Cycle through the linked list of types */
 		tl->numtypes = 0;
-		mtx_lock(&ng_typelist_mtx);
 		LIST_FOREACH(type, &ng_typelist, types) {
 			struct typeinfo *const tp = &tl->typeinfo[tl->numtypes];
 
-			if (tl->numtypes >= num) {
-				log(LOG_ERR, "%s: number of %s changed\n",
-				    __func__, "types");
-				break;
-			}
 			strcpy(tp->type_name, type->name);
 			tp->numnodes = type->refs - 1; /* don't count list */
+			KASSERT(tl->numtypes < num, ("%s: no space", __func__));
 			tl->numtypes++;
 		}
-		mtx_unlock(&ng_typelist_mtx);
+		TYPELIST_RUNLOCK();
 		break;
 	    }
 
@@ -2628,10 +2625,10 @@ ng_mod_event(module_t mod, int event, void *data)
 		/* Call type specific code */
 		if (type->mod_event != NULL)
 			if ((error = (*type->mod_event)(mod, event, data))) {
-				mtx_lock(&ng_typelist_mtx);
+				TYPELIST_WLOCK();
 				type->refs--;	/* undo it */
 				LIST_REMOVE(type, types);
-				mtx_unlock(&ng_typelist_mtx);
+				TYPELIST_WUNLOCK();
 			}
 		break;
 
@@ -2649,9 +2646,9 @@ ng_mod_event(module_t mod, int event, void *data)
 					break;
 				}
 			}
-			mtx_lock(&ng_typelist_mtx);
+			TYPELIST_WLOCK();
 			LIST_REMOVE(type, types);
-			mtx_unlock(&ng_typelist_mtx);
+			TYPELIST_WUNLOCK();
 		}
 		break;
 
@@ -2684,7 +2681,7 @@ ngb_mod_event(module_t mod, int event, void *data)
 			   NULL, 0, i, "netgraph %d", i);
 			ng_msgport[i] = &td->td_msgport;
 		}
-		mtx_init(&ng_typelist_mtx);
+		lwkt_token_init(&ng_typelist_token, "ng typelist");
 		mtx_init(&ng_idhash_mtx);
 		mtx_init(&ng_namehash_mtx);
 		lwkt_token_init(&ng_topo_token, "ng topology");
