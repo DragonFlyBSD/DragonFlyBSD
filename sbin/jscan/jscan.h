@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sbin/jscan/jscan.h,v 1.10 2005/09/07 19:10:09 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -162,7 +160,6 @@ const char *type_to_name(int16_t rectype);
 void stringout(FILE *fp, char c, int exact);
 void jattr_reset(struct jattr *jattr);
 int64_t buf_to_int64(const void *buf, int bytes);
-void *dupdata(const void *buf, int bytes);
 char *dupdatastr(const void *buf, int bytes);
 char *dupdatapath(const void *buf, int bytes);
 void get_transid_from_file(const char *path, int64_t *transid, int flags);

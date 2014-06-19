@@ -30,8 +30,6 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/sbin/jscan/subs.c,v 1.8 2005/09/07 19:10:09 dillon Exp $
  */
 
 #include "jscan.h"
@@ -298,17 +296,6 @@ buf_to_int64(const void *buf, int bytes)
 	v = 0;
     }
     return(v);
-}
-
-void *
-dupdata(const void *buf, int bytes)
-{
-    void *res;
-
-    res = malloc(bytes);
-    bcopy(buf, res, bytes);
-
-    return(res);
 }
 
 char *
