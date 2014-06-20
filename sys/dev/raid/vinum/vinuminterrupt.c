@@ -414,12 +414,12 @@ complete_raid5_write(struct rqelement *rqe)
 #if VINUMDEBUG
 		    if (debug & DEBUG_ADDRESSES)
 			log(LOG_DEBUG,
-			    "  %s dev %s, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
+			    "  %s dev %s, sd %d, offset 0x%jx, devoffset 0x%jx, length %d\n",
 			    (rqe->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 			    drive->devicename,
 			    rqe->sdno,
-			    rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT),
-			    rqe->b.b_bio1.bio_offset,
+			    (uintmax_t)(rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT)),
+			    (uintmax_t)rqe->b.b_bio1.bio_offset,
 			    rqe->b.b_bcount);
 		    if (debug & DEBUG_LASTREQS)
 			logrq(loginfo_raid5_data, (union rqinfou) rqe, ubio);
@@ -451,12 +451,12 @@ complete_raid5_write(struct rqelement *rqe)
 #if VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
-	    "  %s dev %s, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
+	    "  %s dev %s, sd %d, offset 0x%jx, devoffset 0x%jx, length %d\n",
 	    (rqe->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 	    drive->devicename,
 	    rqe->sdno,
-	    rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT),
-	    rqe->b.b_bio1.bio_offset,
+	    (uintmax_t)(rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT)),
+	    (uintmax_t)rqe->b.b_bio1.bio_offset,
 	    rqe->b.b_bcount);
     if (debug & DEBUG_LASTREQS)
 	logrq(loginfo_raid5_parity, (union rqinfou) rqe, ubio);

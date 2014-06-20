@@ -341,13 +341,13 @@ launch_requests(struct request *rq, int reviveok)
 #if VINUMDEBUG
 	if (debug & DEBUG_REVIVECONFLICT) {
 	    log(LOG_DEBUG,
-		"Revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%llx, length %d\n",
+		"Revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%jx, length %d\n",
 		rq->sdno,
 		rq,
 		(rq->bio->bio_buf->b_cmd & BUF_CMD_READ) ? "Read" : "Write",
 		major(((cdev_t)rq->bio->bio_driver_info)),
 		minor(((cdev_t)rq->bio->bio_driver_info)),
-		rq->bio->bio_offset,
+		(uintmax_t)rq->bio->bio_offset,
 		rq->bio->bio_buf->b_bcount);
 	}
 #endif
@@ -357,12 +357,12 @@ launch_requests(struct request *rq, int reviveok)
 #if VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
-	    "Request: %p\n%s dev %d.%d, offset 0x%llx, length %d\n",
+	    "Request: %p\n%s dev %d.%d, offset 0x%jx, length %d\n",
 	    rq,
 	    (rq->bio->bio_buf->b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 	    major(((cdev_t)rq->bio->bio_driver_info)),
 	    minor(((cdev_t)rq->bio->bio_driver_info)),
-	    rq->bio->bio_offset,
+	    (uintmax_t)rq->bio->bio_offset,
 	    rq->bio->bio_buf->b_bcount);
     vinum_conf.lastrq = rq;
     vinum_conf.lastbio = rq->bio;
@@ -420,13 +420,13 @@ launch_requests(struct request *rq, int reviveok)
 #ifdef VINUMDEBUG
 		if (debug & DEBUG_ADDRESSES)
 		    log(LOG_DEBUG,
-			"  %s dev %d.%d, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
+			"  %s dev %d.%d, sd %d, offset 0x%jx, devoffset 0x%jx, length %d\n",
 			(rqe->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 			major(dev),
 			minor(dev),
 			rqe->sdno,
-			rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT),
-			rqe->b.b_bio1.bio_offset,
+			(uintmax_t)(rqe->b.b_bio1.bio_offset - ((off_t)SD[rqe->sdno].driveoffset << DEV_BSHIFT)),
+			(uintmax_t)rqe->b.b_bio1.bio_offset,
 			rqe->b.b_bcount);
 		if (debug & DEBUG_LASTREQS)
 		    logrq(loginfo_rqe, (union rqinfou) rqe, rq->bio);
@@ -964,12 +964,12 @@ sdio(struct bio *bio)
 #if VINUMDEBUG
     if (debug & DEBUG_ADDRESSES)
 	log(LOG_DEBUG,
-	    "  %s dev %s, sd %d, offset 0x%llx, devoffset 0x%llx, length %d\n",
+	    "  %s dev %s, sd %d, offset 0x%jx, devoffset 0x%jx, length %d\n",
 	    (sbp->b.b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 	    drive->devicename,
 	    sbp->sdno,
-	    sbp->b.b_bio1.bio_offset - ((off_t)SD[sbp->sdno].driveoffset << DEV_BSHIFT),
-	    sbp->b.b_bio1.bio_offset,
+	    (uintmax_t)(sbp->b.b_bio1.bio_offset - ((off_t)SD[sbp->sdno].driveoffset << DEV_BSHIFT)),
+	    (uintmax_t)sbp->b.b_bio1.bio_offset,
 	    sbp->b.b_bcount);
 #endif
     crit_enter();

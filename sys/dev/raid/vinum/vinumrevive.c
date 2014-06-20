@@ -204,13 +204,13 @@ revive_block(int sdno)
 	    if (debug & DEBUG_REVIVECONFLICT) {
 		dev = rq->bio->bio_driver_info;
 		log(LOG_DEBUG,
-		    "Relaunch revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%llx, length %d\n",
+		    "Relaunch revive conflict sd %d: %p\n%s dev %d.%d, offset 0x%jx, length %d\n",
 		    rq->sdno,
 		    rq,
 		    (rq->bio->bio_buf->b_cmd == BUF_CMD_READ) ? "Read" : "Write",
 		    major(dev),
 		    minor(dev),
-		    rq->bio->bio_offset,
+		    (uintmax_t)rq->bio->bio_offset,
 		    rq->bio->bio_buf->b_bcount);
 	    }
 #endif
