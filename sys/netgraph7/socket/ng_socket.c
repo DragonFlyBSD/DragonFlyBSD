@@ -770,8 +770,10 @@ ng_connect_data(struct sockaddr *nam, struct ngpcb *pcbp)
 	/* The item will hold the node reference. */
 	item = ng_package_data(NULL, NG_WAITOK);
 
-	if ((error = ng_address_path(NULL, item,  sap->sg_data, 0)))
-		return (error); /* item is freed on failure */
+	if ((error = ng_address_path(NULL, item,  sap->sg_data, 0))) {
+		ng_free_item(item);
+		return (error);
+	}
 
 	/*
 	 * Extract node from item and free item. Remember we now have
@@ -780,12 +782,12 @@ ng_connect_data(struct sockaddr *nam, struct ngpcb *pcbp)
 	 */
 	farnode = item->el_dest; /* shortcut */
 	if (strcmp(farnode->nd_type->name, NG_SOCKET_NODE_TYPE) != 0) {
-		NG_FREE_ITEM(item); /* drop the reference to the node */
+		ng_free_item(item); /* drop the reference to the node */
 		return (EINVAL);
 	}
 	priv = NG_NODE_PRIVATE(farnode);
 	if (priv->datasock != NULL) {
-		NG_FREE_ITEM(item);	/* drop the reference to the node */
+		ng_free_item(item);	/* drop the reference to the node */
 		return (EADDRINUSE);
 	}
 
@@ -798,7 +800,7 @@ ng_connect_data(struct sockaddr *nam, struct ngpcb *pcbp)
 	pcbp->sockdata = priv;
 	priv->refs++;
 	mtx_unlock(&priv->mtx);
-	NG_FREE_ITEM(item);	/* drop the reference to the node */
+	ng_free_item(item);	/* drop the reference to the node */
 	return (0);
 }
 
