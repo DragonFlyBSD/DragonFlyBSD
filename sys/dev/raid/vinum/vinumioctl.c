@@ -375,7 +375,7 @@ vinumioctl(struct dev_ioctl_args *ap)
 /*
  * The following four functions check the supplied
  * object index and return a pointer to the object
- * if it exists.  Otherwise they longjump out via
+ * if it exists.  Otherwise they longjmp out via
  * throw_rude_remark.
  */
 struct drive *
