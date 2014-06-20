@@ -38,7 +38,6 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/netgraph.h,v 1.74 2008/06/24 18:49:49 gnn Exp $
- * $DragonFly: src/sys/netgraph7/netgraph.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: netgraph.h,v 1.29 1999/11/01 07:56:13 julian Exp $
  */
 
@@ -340,7 +339,7 @@ struct ng_node {
 	void   *nd_private;		/* node type dependant node ID */
 	ng_ID_t	nd_ID;			/* Unique per node */
 	LIST_HEAD(hooks, ng_hook) nd_hooks;	/* linked list of node hooks */
-	LIST_ENTRY(ng_node)	  nd_nodes;	/* linked list of all nodes */
+	LIST_ENTRY(ng_node)	  nd_nodes;	/* name hash collision list */
 	LIST_ENTRY(ng_node)	  nd_idnodes;	/* ID hash collision list */
 	struct	lwkt_token	  nd_token;
 	int	nd_refs;		/* # of references to this node */
@@ -372,7 +371,7 @@ struct ng_node {
  * Public methods for nodes.
  * If you can't do it with these you probably shouldn't be doing it.
  */
-int	ng_unref_node(node_p node); /* don't move this */
+void	ng_unref_node(node_p node); /* don't move this */
 #define _NG_NODE_NAME(node)	((node)->nd_name + 0)
 #define _NG_NODE_HAS_NAME(node)	((node)->nd_name[0] + 0)
 #define _NG_NODE_ID(node)	((node)->nd_ID + 0)
