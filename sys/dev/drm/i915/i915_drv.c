@@ -822,6 +822,12 @@ int i915_reset(struct drm_device *dev)
 	return 0;
 }
 
+/* We give fast paths for the really cool registers */
+#define NEEDS_FORCE_WAKE(dev_priv, reg) \
+	((HAS_FORCE_WAKE((dev_priv)->dev)) && \
+	 ((reg) < 0x40000) &&            \
+	 ((reg) != FORCEWAKE))
+
 static bool IS_DISPLAYREG(u32 reg)
 {
 	/*

@@ -357,6 +357,17 @@ static const intel_limit_t intel_limits_ironlake_display_port = {
 	.find_pll = intel_find_pll_ironlake_dp,
 };
 
+static void vlv_init_dpio(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	/* Reset the DPIO config */
+	I915_WRITE(DPIO_CTL, 0);
+	POSTING_READ(DPIO_CTL);
+	I915_WRITE(DPIO_CTL, 1);
+	POSTING_READ(DPIO_CTL);
+}
+
 static const intel_limit_t *intel_ironlake_limit(struct drm_crtc *crtc,
 						int refclk)
 {
@@ -5800,6 +5811,31 @@ static const struct drm_crtc_funcs intel_crtc_funcs = {
 	.page_flip = intel_crtc_page_flip,
 };
 
+static void intel_cpu_pll_init(struct drm_device *dev)
+{
+#if 0
+	if (IS_HASWELL(dev))
+		intel_ddi_pll_init(dev);
+#endif
+}
+
+static void intel_pch_pll_init(struct drm_device *dev)
+{
+	drm_i915_private_t *dev_priv = dev->dev_private;
+	int i;
+
+	if (dev_priv->num_pch_pll == 0) {
+		DRM_DEBUG_KMS("No PCH PLLs on this hardware, skipping initialisation\n");
+		return;
+	}
+
+	for (i = 0; i < dev_priv->num_pch_pll; i++) {
+		dev_priv->pch_plls[i].pll_reg = _PCH_DPLL(i);
+		dev_priv->pch_plls[i].fp0_reg = _PCH_FP0(i);
+		dev_priv->pch_plls[i].fp1_reg = _PCH_FP1(i);
+	}
+}
+
 static void intel_crtc_init(struct drm_device *dev, int pipe)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
@@ -6316,6 +6352,24 @@ static void i915_disable_vga(struct drm_device *dev)
 	POSTING_READ(vga_reg);
 }
 
+void intel_modeset_init_hw(struct drm_device *dev)
+{
+	/* We attempt to init the necessary power wells early in the initialization
+	 * time, so the subsystems that expect power to be enabled can work.
+	 */
+	intel_init_power_wells(dev);
+
+#if 0
+	intel_prepare_ddi(dev);
+#endif
+
+	intel_init_clock_gating(dev);
+
+	DRM_LOCK(dev);
+	intel_enable_gt_powersave(dev);
+	DRM_UNLOCK(dev);
+}
+
 void intel_modeset_init(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -6329,8 +6383,7 @@ void intel_modeset_init(struct drm_device *dev)
 	dev->mode_config.preferred_depth = 24;
 	dev->mode_config.prefer_shadow = 1;
 
-	dev->mode_config.funcs = __DECONST(struct drm_mode_config_funcs *,
-	    &intel_mode_funcs);
+	dev->mode_config.funcs = &intel_mode_funcs;
 
 	intel_init_quirks(dev);
 
@@ -6360,23 +6413,12 @@ void intel_modeset_init(struct drm_device *dev)
 			DRM_DEBUG_KMS("plane %d init failed: %d\n", i, ret);
 	}
 
+	intel_cpu_pll_init(dev);
+	intel_pch_pll_init(dev);
+
 	/* Just disable it once at startup */
 	i915_disable_vga(dev);
 	intel_setup_outputs(dev);
-
-	intel_init_clock_gating(dev);
-
-	if (IS_IRONLAKE_M(dev)) {
-		ironlake_enable_drps(dev);
-		intel_init_emon(dev);
-	}
-
-	if (IS_GEN6(dev)) {
-		gen6_enable_rps(dev_priv);
-		gen6_update_ring_freq(dev_priv);
-	}
-
-	callout_init_mp(&dev_priv->idle_callout);
 }
 
 void intel_modeset_gem_init(struct drm_device *dev)
@@ -6411,13 +6453,12 @@ void intel_modeset_cleanup(struct drm_device *dev)
 
 	intel_disable_fbc(dev);
 
-	if (IS_IRONLAKE_M(dev))
-		ironlake_disable_drps(dev);
-	if (IS_GEN6(dev))
-		gen6_disable_rps(dev);
+	intel_disable_gt_powersave(dev);
 
-	if (IS_IRONLAKE_M(dev))
-		ironlake_disable_rc6(dev);
+	ironlake_teardown_rc6(dev);
+
+	if (IS_VALLEYVIEW(dev))
+		vlv_init_dpio(dev);
 
 	DRM_UNLOCK(dev);
 
@@ -6429,6 +6470,9 @@ void intel_modeset_cleanup(struct drm_device *dev)
 
 	/* flush any delayed tasks or pending work */
 	flush_scheduled_work();
+
+	/* destroy backlight, if any, before the connectors */
+	intel_panel_destroy_backlight(dev);
 
 	drm_mode_config_cleanup(dev);
 }

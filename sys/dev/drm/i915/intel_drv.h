@@ -254,6 +254,17 @@ struct intel_watermark_params {
 	unsigned long cacheline_size;
 };
 
+struct cxsr_latency {
+	int is_desktop;
+	int is_ddr3;
+	unsigned long fsb_freq;
+	unsigned long mem_freq;
+	unsigned long display_sr;
+	unsigned long display_hpll_disable;
+	unsigned long cursor_sr;
+	unsigned long cursor_hpll_disable;
+};
+
 #define to_intel_crtc(x) container_of(x, struct intel_crtc, base)
 #define to_intel_connector(x) container_of(x, struct intel_connector, base)
 #define to_intel_encoder(x) container_of(x, struct intel_encoder, base)
@@ -464,13 +475,6 @@ extern void intel_crtc_fb_gamma_set(struct drm_crtc *crtc, u16 red, u16 green,
 extern void intel_crtc_fb_gamma_get(struct drm_crtc *crtc, u16 *red, u16 *green,
 				    u16 *blue, int regno);
 extern void intel_enable_clock_gating(struct drm_device *dev);
-extern void ironlake_disable_rc6(struct drm_device *dev);
-extern void ironlake_enable_drps(struct drm_device *dev);
-extern void ironlake_disable_drps(struct drm_device *dev);
-extern void gen6_enable_rps(struct drm_i915_private *dev_priv);
-extern void gen6_update_ring_freq(struct drm_i915_private *dev_priv);
-extern void gen6_disable_rps(struct drm_device *dev);
-extern void intel_init_emon(struct drm_device *dev);
 
 extern int intel_pin_and_fence_fb_obj(struct drm_device *dev,
 				      struct drm_i915_gem_object *obj,
@@ -514,6 +518,8 @@ extern void intel_update_watermarks(struct drm_device *dev);
 extern void intel_update_sprite_watermarks(struct drm_device *dev, int pipe,
 					   uint32_t sprite_width,
 					   int pixel_size);
+extern void intel_update_linetime_watermarks(struct drm_device *dev, int pipe,
+			 struct drm_display_mode *mode);
 
 extern unsigned long intel_gen4_compute_offset_xtiled(int *x, int *y,
 						      unsigned int bpp,
@@ -527,22 +533,17 @@ extern int intel_sprite_get_colorkey(struct drm_device *dev, void *data,
 /* Power-related functions, located in intel_pm.c */
 extern void intel_init_pm(struct drm_device *dev);
 /* FBC */
-extern void i8xx_disable_fbc(struct drm_device *dev);
-extern void i8xx_enable_fbc(struct drm_crtc *crtc, unsigned long interval);
-extern bool i8xx_fbc_enabled(struct drm_device *dev);
-extern void g4x_enable_fbc(struct drm_crtc *crtc, unsigned long interval);
-extern void g4x_disable_fbc(struct drm_device *dev);
-extern bool g4x_fbc_enabled(struct drm_device *dev);
-extern void ironlake_enable_fbc(struct drm_crtc *crtc, unsigned long interval);
-extern void ironlake_disable_fbc(struct drm_device *dev);
-extern bool ironlake_fbc_enabled(struct drm_device *dev);
 extern bool intel_fbc_enabled(struct drm_device *dev);
 extern void intel_enable_fbc(struct drm_crtc *crtc, unsigned long interval);
 extern void intel_update_fbc(struct drm_device *dev);
+/* IPS */
+extern void intel_gpu_ips_init(struct drm_i915_private *dev_priv);
+extern void intel_gpu_ips_teardown(void);
 
 extern void intel_init_power_wells(struct drm_device *dev);
 extern void intel_enable_gt_powersave(struct drm_device *dev);
 extern void intel_disable_gt_powersave(struct drm_device *dev);
 extern void gen6_gt_check_fifodbg(struct drm_i915_private *dev_priv);
+extern void ironlake_teardown_rc6(struct drm_device *dev);
 
 #endif
