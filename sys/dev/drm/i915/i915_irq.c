@@ -341,7 +341,10 @@ static void notify_ring(struct drm_device *dev,
 	if (ring->obj == NULL)
 		return;
 
-	wake_up_all(&ring->irq_queue);
+       lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
+       wakeup(ring);
+       lockmgr(&ring->irq_lock, LK_RELEASE);
+
 	if (i915_enable_hangcheck) {
 		dev_priv->hangcheck_count = 0;
 		mod_timer(&dev_priv->hangcheck_timer,
