@@ -263,22 +263,31 @@ main.5: 	pushw %dx			// Save args
 		// YYY
 		pushw $MEM_BTX_ENTRY		// Start BTX
 		retw
-// 
-// Enable A20 so we can access memory above 1 meg.
-// 
-seta20: 	cli				// Disable interrupts
-seta20.1:	inb $0x64,%al			// Get status
-		testb $0x2,%al			// Busy?
-		jnz seta20.1			// Yes
-		movb $0xd1,%al			// Command: Write
-		outb %al,$0x64			//  output port
-seta20.2:	inb $0x64,%al			// Get status
-		testb $0x2,%al			// Busy?
-		jnz seta20.2			// Yes
-		movb $0xdf,%al			// Enable
-		outb %al,$0x60			//  A20
-		sti				// Enable interrupts
-		retw				// To caller
+
+		/*
+		 * Enable A20. Put upper limit on amount of time we wait for the
+		 * keyboard controller to get ready (65K x ISA access time). If
+		 * we wait more than that amount it's likely that the hardware
+		 * is legacy-free and simply doesn't have keyboard controller
+		 * and don't need enabling A20 at all.
+		 */
+seta20: 	cli				# Disable interrupts
+		xor %cx,%cx			# Clear
+seta20.1:	inc %cx				# Increment, overflow?
+		jz seta20.3			# Yes
+		inb $0x64,%al			# Get status
+		testb $0x2,%al			# Busy?
+		jnz seta20.1			# Yes
+		movb $0xd1,%al			# Command: Write
+		outb %al,$0x64			#  output port
+seta20.2:	inb $0x64,%al			# Get status
+		testb $0x2,%al			# Busy?
+		jnz seta20.2			# Yes
+		movb $0xdf,%al			# Enable
+		outb %al,$0x60			#  A20
+seta20.3:	sti				# Enable interrupts
+		retw				# To caller
+
 // 
 // Trampoline used to call read from within boot1.
 // 
@@ -303,7 +312,7 @@ error:		callw putstr			// Display message
 		xorb %ah,%ah			// BIOS: Get
 		int $0x16			//  keypress
 		movw $0x1234, BDA_BOOT		// Do a warm boot
-		ljmp $0xffff,$0x0		// reboot the machine
+		ljmp $0xf000,$0xfff0		// reboot the machine
 // 
 // Display a null-terminated string using the BIOS output.
 // 
