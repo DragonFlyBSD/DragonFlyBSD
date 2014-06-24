@@ -62,6 +62,7 @@
 #define	_PATH_ETC	"/etc"
 #define	_PATH_FTPUSERS	"/etc/ftpusers"
 #define	_PATH_I18NMODULE	"/usr/lib/i18n"
+#define	_PATH_IFCONFIG	"/sbin/ifconfig"
 #define	_PATH_KMEM	__SYS_PATH_KMEM
 #define	_PATH_LIBMAP_CONF	"/etc/libmap.conf"
 #define	_PATH_LOCALE	"/usr/share/locale"
