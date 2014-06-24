@@ -568,7 +568,16 @@ h2init(struct hammer2_fs *hfs)
 	int i;
 
 	/*
-	 * Find the best volume header
+	 * Find the best volume header.
+	 *
+	 * WARNING BIOS BUGS: It looks like some BIOSes will implode when
+	 * given a disk offset beyond the EOM.  XXX We need to probe the
+	 * size of the media and limit our accesses, until then we have
+	 * to give up if the first volume header does not have a hammer2
+	 * signature.
+	 *
+	 * XXX Probably still going to be problems w/ HAMMER2 volumes on
+	 *     media which is too small w/certain BIOSes.
 	 */
 	best = -1;
 	for (i = 0; i < HAMMER2_NUM_VOLHDRS; ++i) {
@@ -576,9 +585,9 @@ h2init(struct hammer2_fs *hfs)
 		if (i)
 			no_io_error = 1;
 		if (h2read(hfs, &media, sizeof(media.voldata), off))
-			continue;
+			break;
 		if (media.voldata.magic != HAMMER2_VOLUME_ID_HBO)
-			continue;
+			break;
 		if (best < 0 || best_tid < media.voldata.mirror_tid) {
 			best = i;
 			best_tid = media.voldata.mirror_tid;
