@@ -237,6 +237,8 @@ bd_int13probe(struct bdinfo *bd)
 	bd->bd_type = v86.ebx & 0xff;
 
 	/* Determine if we can use EDD with this device. */
+	v86.ctl = V86_FLAGS;
+	v86.addr = 0x13;
 	v86.eax = 0x4100;
 	v86.edx = bd->bd_unit;
 	v86.ebx = 0x55aa;
