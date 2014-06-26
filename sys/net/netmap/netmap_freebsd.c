@@ -46,6 +46,7 @@
 #include <sys/event.h>
 #include <net/if.h>
 #include <net/if_var.h>
+#include <net/ifq_var.h>
 #include <sys/bus.h>	/* bus_dmamap_* */
 
 #include <net/netmap.h>
@@ -132,7 +133,7 @@ generic_xmit_frame(struct ifnet *ifp, struct mbuf *m,
 #endif
 	m->m_pkthdr.hash = ring_nr;	/* XXX probably not accurate */
 	m->m_pkthdr.rcvif = ifp; /* used for tx notification */
-	ret = ifp->if_transmit(ifp, m);
+	ret = ifq_dispatch(ifp, m, NULL);
 	return ret;
 }
 
