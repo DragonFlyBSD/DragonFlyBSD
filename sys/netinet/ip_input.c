@@ -453,13 +453,17 @@ ip_input(struct mbuf *m)
 	}
 	ip = mtod(m, struct ip *);
 
-	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr))) {
+	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
+	    ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK)) {
 		/*
-		 * XXX handle multicast on CPU0 for now.
+		 * XXX handle multicast and fragment on CPU0 for now.
 		 *
-		 * This could happen for packets hashed by hardware
-		 * using RSS, which does not differentiate multicast
-		 * packets from unicast packets.
+		 * This could happen for IP packets hashed by hardwares
+		 * using RSS:
+		 * - Hardware may not differentiate multicast IP packets
+		 *   from unicast IP packets.
+		 * - Hardware may not differentiate IP fragments from
+		 *   unfragmented IP packets.
 		 */
 		m->m_pkthdr.hash = 0;
 		check_msgport = TRUE;
