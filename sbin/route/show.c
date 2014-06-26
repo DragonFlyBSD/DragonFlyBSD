@@ -402,7 +402,7 @@ p_flags(int f, const char *format)
 	char name[33], *flags;
 	const struct bits *p = bits;
 
-	for (flags = name; p->b_mask && flags < &name[sizeof(name-2)]; p++) {
+	for (flags = name; p->b_mask && flags < &name[sizeof(name) - 2]; p++) {
 		if (p->b_mask & f)
 			*flags++ = p->b_val;
 	}
