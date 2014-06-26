@@ -23,6 +23,13 @@ removed in kernel configs derived from X86_64_GENERIC.
 +         UPGRADING DRAGONFLY FROM 3.6 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+UPDATE FROM MOST RECENT 3.6
+---------------------------
+
+Versions of 3.6 built before June 25th have a bug where installworld might 
+crash during installation of the new initrd.  Upgrade to the latest version
+of 3.6 before updating to 3.8 or later.
+
 ATM, IPX, NCP AND NWFS SUPPORT DROPPED
 --------------------------------------
 
