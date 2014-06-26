@@ -88,7 +88,7 @@ main(int argc, char **argv)
 			if (ptr) {
 				ptr += 8;
 				for (i = 0, k = 0;
-				    (ptr[i] != '\0') && (ptr[i] != ',') && (i < MAXPATHLEN);
+				    (i < MAXPATHLEN) && (ptr[i] != '\0') && (ptr[i] != ',');
 				    i++) {
 					rule_file[k++] = ptr[i];
 

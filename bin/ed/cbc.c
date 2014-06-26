@@ -239,7 +239,7 @@ expand_des_key(char *obuf, char *kbuf)
 		/*
 		 * now translate it, bombing on any illegal hex digit
 		 */
-		for (i = 0; kbuf[i] && i < 16; i++)
+		for (i = 0; i < 16 && kbuf[i]; i++)
 			if ((nbuf[i] = hex_to_binary((int) kbuf[i], 16)) == -1)
 				des_error("bad hex digit in key");
 		while (i < 16)
@@ -259,7 +259,7 @@ expand_des_key(char *obuf, char *kbuf)
 		/*
 		 * now translate it, bombing on any illegal binary digit
 		 */
-		for (i = 0; kbuf[i] && i < 16; i++)
+		for (i = 0; i < 16 && kbuf[i]; i++)
 			if ((nbuf[i] = hex_to_binary((int) kbuf[i], 2)) == -1)
 				des_error("bad binary digit in key");
 		while (i < 64)

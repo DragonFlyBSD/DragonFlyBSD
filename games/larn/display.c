@@ -1,6 +1,5 @@
 /*	display.c		Larn is copyrighted 1986 by Noah Morgan. */
 /* $FreeBSD: src/games/larn/display.c,v 1.4 1999/11/16 02:57:21 billf Exp $ */
-/* $DragonFly: src/games/larn/display.c,v 1.3 2006/08/26 17:05:05 pavalos Exp $ */
 #include "header.h"
 #define makecode(_a,_b,_c) (((_a)<<16) + ((_b)<<8) + (_c))
 
@@ -301,7 +300,7 @@ drawscreen(void)
 
 	for (i = d_ymin; i < d_ymax; i++) {
 		j = d_xmin;
-		while ((screen[j][i] == ' ') && (j < d_xmax))
+		while ((j < d_xmax) && (screen[j][i] == ' '))
 			j++;
 		/* was m=0 */
 		if (j >= d_xmax)	/* don't search backwards if blank line */
@@ -321,7 +320,7 @@ drawscreen(void)
 					if (screen[l][i] != ' ')
 						l = 1000;
 				if (l < 1000) {
-					while (screen[j][i] == ' ' && j <= m)
+					while (j <= m && screen[j][i] == ' ')
 						j++;
 					cursor(j + 1, i + 1);
 				}

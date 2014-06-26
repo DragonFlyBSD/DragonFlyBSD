@@ -29,7 +29,6 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pig.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/games/pig/pig.c,v 1.7 1999/11/30 03:49:08 billf Exp $
- * $DragonFly: src/games/pig/pig.c,v 1.4 2005/04/25 16:10:24 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -97,7 +96,7 @@ pigout(char *buf, int len)
 	 * isn't treated as a vowel.
 	 */
 	for (start = 0, olen = len;
-	    !index("aeiouyAEIOUY", buf[start]) && start < olen;) {
+	    start < olen && !index("aeiouyAEIOUY", buf[start]);) {
 		ch = buf[len++] = buf[start++];
 		if ((ch == 'q' || ch == 'Q') && start < olen &&
 		    (buf[start] == 'u' || buf[start] == 'U'))

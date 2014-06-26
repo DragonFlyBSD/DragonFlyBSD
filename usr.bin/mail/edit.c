@@ -28,7 +28,6 @@
  *
  * @(#)edit.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/edit.c,v 1.2.6.4 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/edit.c,v 1.4 2004/09/08 03:01:11 joerg Exp $
  */
 
 #include "rcv.h"
@@ -75,7 +74,7 @@ edit1(int *msgvec, int type)
 	/*
 	 * Deal with each message to be edited . . .
 	 */
-	for (i = 0; msgvec[i] && i < msgCount; i++) {
+	for (i = 0; i < msgCount && msgvec[i]; i++) {
 		sig_t sigint;
 
 		if (i > 0) {
