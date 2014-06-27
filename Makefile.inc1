@@ -476,6 +476,8 @@ installcheck:
 #
 # Backs up the current world if ${AUTO_BACKUP} is writable.
 # Installs everything compiled by a 'buildworld'.
+#
+# Includes sleep/sync safety before running mkinitrd.
 
 installworld: installcheck
 	-@mkdir -p ${AUTO_BACKUP} > /dev/null 2>&1
@@ -486,6 +488,7 @@ installworld: installcheck
 
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
 	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
+	sync; sleep 2; sync; sleep 2
 	mkinitrd -b ${DESTDIR}/boot
 
 #
