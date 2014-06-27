@@ -301,6 +301,18 @@ print_state(struct pfsync_state *s, int opts)
 		u_int32_t creation = ntohl(s->creation);
 		u_int32_t expire = ntohl(s->expire);
 
+		printf("   rule %u", ntohl(s->rule));
+		if (ntohl(s->anchor) != -1)
+			printf(", anchor %u", ntohl(s->anchor));
+		printf(", flags:");
+		if (s->state_flags & PFSTATE_SLOPPY)
+			printf(" sloppy");
+		if (s->sync_flags & PFSYNC_FLAG_SRCNODE)
+			printf(" source-track");
+		if (s->sync_flags & PFSYNC_FLAG_NATSRCNODE)
+			printf(" sticky-address");
+		printf("\n");
+
 		sec = creation % 60;
 		creation /= 60;
 		min = creation % 60;
@@ -308,7 +320,7 @@ print_state(struct pfsync_state *s, int opts)
 		printf("   age %.2u:%.2u:%.2u", creation, min, sec);
 		sec = expire % 60;
 		expire /= 60;
-		min = s->expire % 60;
+		min = expire % 60;
 		expire /= 60;
 		printf(", expires in %.2u:%.2u:%.2u", expire, min, sec);
 
@@ -316,22 +328,12 @@ print_state(struct pfsync_state *s, int opts)
 		bcopy(s->packets[1], &packets[1], sizeof(u_int64_t));
 		bcopy(s->bytes[0], &bytes[0], sizeof(u_int64_t));
 		bcopy(s->bytes[1], &bytes[1], sizeof(u_int64_t));
-		printf(", %" PRIu64 ":%" PRIu64 " pkts, %" PRIu64 ":%" PRIu64 " bytes",
+		printf(", %" PRIu64 ":%" PRIu64 " pkts, %" PRIu64 ":%"
+		       PRIu64 " bytes\n",
 		    be64toh(packets[0]),
 		    be64toh(packets[1]),
 		    be64toh(bytes[0]),
 		    be64toh(bytes[1]));
-		if (ntohl(s->anchor) != -1)
-			printf(", anchor %u", ntohl(s->anchor));
-		if (ntohl(s->rule) != -1)
-			printf(", rule %u", ntohl(s->rule));
-		if (s->state_flags & PFSTATE_SLOPPY)
-			printf(", sloppy");
-		if (s->sync_flags & PFSYNC_FLAG_SRCNODE)
-			printf(", source-track");
-		if (s->sync_flags & PFSYNC_FLAG_NATSRCNODE)
-			printf(", sticky-address");
-		printf("\n");
 	}
 	if (opts & PF_OPT_VERBOSE2) {
 		u_int64_t id;
