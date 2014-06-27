@@ -289,11 +289,9 @@ ip_hashfn(struct mbuf **mptr, int hoff, int dir)
 	ip = mtodoff(m, struct ip *, hoff);
 	iphlen = ip->ip_hl << 2;
 
-	/*
-	 * XXX generic packet handling defrag on CPU 0 for now.
-	 */
 	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK)) {
-		hash = 0;
+		hash = toeplitz_hash(toeplitz_rawhash_addr(
+		    ip->ip_src.s_addr, ip->ip_dst.s_addr));
 		goto back;
 	}
 

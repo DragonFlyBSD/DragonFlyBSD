@@ -425,7 +425,6 @@ ip_input(struct mbuf *m)
 	int hlen, checkif;
 	u_short sum;
 	struct in_addr pkt_dst;
-	boolean_t check_msgport = FALSE;
 	boolean_t using_srcrt = FALSE;		/* forward (by PFIL_HOOKS) */
 	struct in_addr odst;			/* original dst address(NAT) */
 	struct m_tag *mtag;
@@ -443,37 +442,31 @@ ip_input(struct mbuf *m)
 	 * This routine is called from numerous places which may not have
 	 * characterized the packet.
 	 */
+	ip = mtod(m, struct ip *);
+	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
+	    ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK)) {
+		/*
+		 * Force hash recalculation for fragments and multicast
+		 * packets; hardware may not do it correctly.
+		 * XXX add flag to indicate the hash is from hardware
+		 */
+		m->m_flags &= ~M_HASH;
+	}
 	if ((m->m_flags & M_HASH) == 0) {
-		atomic_add_long(&ip_hash_count, 1);
 		ip_hashfn(&m, 0, IP_MPORT_IN);
 		if (m == NULL)
 			return;
 		KKASSERT(m->m_flags & M_HASH);
-		check_msgport = TRUE;
-	}
-	ip = mtod(m, struct ip *);
 
-	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
-	    ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK)) {
-		/*
-		 * XXX handle multicast and fragment on CPU0 for now.
-		 *
-		 * This could happen for IP packets hashed by hardwares
-		 * using RSS:
-		 * - Hardware may not differentiate multicast IP packets
-		 *   from unicast IP packets.
-		 * - Hardware may not differentiate IP fragments from
-		 *   unfragmented IP packets.
-		 */
-		m->m_pkthdr.hash = 0;
-		check_msgport = TRUE;
-	}
+		if (&curthread->td_msgport !=
+		    netisr_hashport(m->m_pkthdr.hash)) {
+			netisr_queue(NETISR_IP, m);
+			/* Requeued to other netisr msgport; done */
+			return;
+		}
 
-	if (check_msgport &&
-	    &curthread->td_msgport != netisr_hashport(m->m_pkthdr.hash)) {
-		netisr_queue(NETISR_IP, m);
-		/* Requeued to other netisr msgport; done */
-		return;
+		/* mbuf could have been changed */
+		ip = mtod(m, struct ip *);
 	}
 
 	/*
