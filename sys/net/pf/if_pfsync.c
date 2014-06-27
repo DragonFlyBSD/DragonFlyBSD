@@ -1,5 +1,3 @@
-/*	$OpenBSD: if_pfsync.c,v 1.98 2008/06/29 08:42:15 mcbride Exp $	*/
-
 /*
  * Copyright (c) 2002 Michael Shalayeff
  * All rights reserved.
@@ -24,6 +22,8 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $OpenBSD: if_pfsync.c,v 1.98 2008/06/29 08:42:15 mcbride Exp $
  */
 
 #include "opt_inet.h"
@@ -148,6 +148,8 @@ pfsync_clone_create(struct if_clone *ifc, int unit, caddr_t param __unused)
 	sc->sc_ureq_sent = 0;
 	sc->sc_bulk_send_next = NULL;
 	sc->sc_bulk_terminator = NULL;
+	sc->sc_bulk_send_cpu = 0;
+	sc->sc_bulk_terminator_cpu = 0;
 	sc->sc_imo.imo_max_memberships = IP_MAX_MEMBERSHIPS;
 	lwkt_reltoken(&pf_token);
 	ifp = &sc->sc_if;
@@ -530,6 +532,9 @@ pfsync_input(struct mbuf *m, ...)
 		struct pf_state *nexts;
 		struct pf_state_key *nextsk;
 		struct pfi_kif *kif;
+		globaldata_t save_gd = mycpu;
+		int nn;
+
 		u_int32_t creatorid;
 		if ((mp = m_pulldown(m, iplen + sizeof(*ph),
 		    sizeof(*cp), &offp)) == NULL) {
@@ -541,32 +546,50 @@ pfsync_input(struct mbuf *m, ...)
 
 		crit_enter();
 		if (cp->ifname[0] == '\0') {
-			for (st = RB_MIN(pf_state_tree_id, &tree_id);
-			    st; st = nexts) {
-				nexts = RB_NEXT(pf_state_tree_id, &tree_id, st);
-				if (st->creatorid == creatorid) {
-					st->sync_flags |= PFSTATE_FROMSYNC;
-					pf_unlink_state(st);
+			lwkt_gettoken(&pf_token);
+			for (nn = 0; nn < ncpus; ++nn) {
+				lwkt_setcpu_self(globaldata_find(nn));
+				for (st = RB_MIN(pf_state_tree_id,
+						 &tree_id[nn]);
+				     st; st = nexts) {
+					nexts = RB_NEXT(pf_state_tree_id,
+							&tree_id[n], st);
+					if (st->creatorid == creatorid) {
+						st->sync_flags |=
+							PFSTATE_FROMSYNC;
+						pf_unlink_state(st);
+					}
 				}
 			}
+			lwkt_setcpu_self(save_gd);
+			lwkt_reltoken(&pf_token);
 		} else {
 			if ((kif = pfi_kif_get(cp->ifname)) == NULL) {
 				crit_exit();
 				return;
 			}
 			/* XXX correct? */
-			for (sk = RB_MIN(pf_state_tree,
-			    &pf_statetbl); sk; sk = nextsk) {
-				nextsk = RB_NEXT(pf_state_tree,
-				    &pf_statetbl, sk);
-				TAILQ_FOREACH(si, &sk->states, entry) {
-					if (si->s->creatorid == creatorid) {
-						si->s->sync_flags |=
-						    PFSTATE_FROMSYNC;
-						pf_unlink_state(si->s);
+			lwkt_gettoken(&pf_token);
+			for (nn = 0; nn < ncpus; ++nn) {
+				lwkt_setcpu_self(globaldata_find(nn));
+				for (sk = RB_MIN(pf_state_tree,
+						 &pf_statetbl[nn]);
+				     sk;
+				     sk = nextsk) {
+					nextsk = RB_NEXT(pf_state_tree,
+					    &pf_statetbl[n], sk);
+					TAILQ_FOREACH(si, &sk->states, entry) {
+						if (si->s->creatorid ==
+						    creatorid) {
+							si->s->sync_flags |=
+							    PFSTATE_FROMSYNC;
+							pf_unlink_state(si->s);
+						}
 					}
 				}
 			}
+			lwkt_setcpu_self(save_gd);
+			lwkt_reltoken(&pf_token);
 		}
 		crit_exit();
 
@@ -881,10 +904,16 @@ pfsync_input(struct mbuf *m, ...)
 
 			if (id_key.id == 0 && id_key.creatorid == 0) {
 				sc->sc_ureq_received = mycpu->gd_time_seconds;
-				if (sc->sc_bulk_send_next == NULL)
+				if (sc->sc_bulk_send_next == NULL) {
+					if (++sc->sc_bulk_send_cpu >= ncpus)
+						sc->sc_bulk_send_cpu = 0;
 					sc->sc_bulk_send_next =
-					    TAILQ_FIRST(&state_list);
-				sc->sc_bulk_terminator = sc->sc_bulk_send_next;
+					    TAILQ_FIRST(&state_list[sc->sc_bulk_send_cpu]);
+				}
+				sc->sc_bulk_terminator =
+					sc->sc_bulk_send_next;
+				sc->sc_bulk_terminator_cpu =
+					sc->sc_bulk_send_cpu;
 				if (pf_status.debug >= PF_DEBUG_MISC)
 					kprintf("pfsync: received "
 					    "bulk update request\n");
@@ -1518,6 +1547,7 @@ pfsync_bulk_update(void *v)
 {
 	struct pfsync_softc *sc = v;
 	int i = 0;
+	int cpu;
 	struct pf_state *state;
 
 	ASSERT_LWKT_TOKEN_HELD(&pf_token);
@@ -1531,6 +1561,7 @@ pfsync_bulk_update(void *v)
 	 * been sent since the latest request was made.
 	 */
 	state = sc->sc_bulk_send_next;
+	cpu = sc->sc_bulk_send_cpu;
 	if (state)
 		do {
 			/* send state update if syncable and not already sent */
@@ -1545,17 +1576,24 @@ pfsync_bulk_update(void *v)
 			state = TAILQ_NEXT(state, entry_list);
 
 			/* wrap to start of list if we hit the end */
-			if (!state)
-				state = TAILQ_FIRST(&state_list);
+			if (state == NULL) {
+				if (++cpu >= ncpus)
+					cpu = 0;
+				state = TAILQ_FIRST(&state_list[cpu]);
+			}
 		} while (i < sc->sc_maxcount * PFSYNC_BULKPACKETS &&
+		    cpu != sc->sc_bulk_terminator_cpu &&
 		    state != sc->sc_bulk_terminator);
 
-	if (!state || state == sc->sc_bulk_terminator) {
+	if (state == NULL || (cpu == sc->sc_bulk_terminator_cpu &&
+			      state == sc->sc_bulk_terminator)) {
 		/* we're done */
 		pfsync_send_bus(sc, PFSYNC_BUS_END);
 		sc->sc_ureq_received = 0;
 		sc->sc_bulk_send_next = NULL;
 		sc->sc_bulk_terminator = NULL;
+		sc->sc_bulk_send_cpu = 0;
+		sc->sc_bulk_terminator_cpu = 0;
 		lwkt_reltoken(&pf_token);
 		callout_stop(&sc->sc_bulk_tmo);
 		lwkt_gettoken(&pf_token);
@@ -1568,6 +1606,7 @@ pfsync_bulk_update(void *v)
 			    LIST_FIRST(&pfsync_list));
 		lwkt_gettoken(&pf_token);
 		sc->sc_bulk_send_next = state;
+		sc->sc_bulk_send_cpu = cpu;
 	}
 	if (sc->sc_mbuf != NULL)
 		pfsync_sendout(sc);

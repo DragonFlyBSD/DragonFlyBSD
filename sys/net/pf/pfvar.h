@@ -811,7 +811,8 @@ struct pf_state {
 	u_int64_t		 id;
 	u_int32_t		 creatorid;
 	u_int8_t		 direction;
-	u_int8_t		 pad[3];
+	u_int8_t		 cpuid;
+	u_int8_t		 pad[2];
 
 	TAILQ_ENTRY(pf_state)	 entry_list;
 	RB_ENTRY(pf_state)	 entry_id;
@@ -1137,7 +1138,7 @@ TAILQ_HEAD(pfi_statehead, pfi_kif);
 RB_HEAD(pfi_ifhead, pfi_kif);
 
 /* state tables */
-extern struct pf_state_tree	 pf_statetbl;
+extern struct pf_state_tree	 pf_statetbl[MAXCPU];
 
 /* keep synced with pfi_kif, used in RB_FIND */
 struct pfi_kif_cmp {
@@ -1347,10 +1348,10 @@ struct pf_status {
 	u_int64_t	scounters[SCNT_MAX];
 	u_int64_t	pcounters[2][2][3];
 	u_int64_t	bcounters[2][2];
-	u_int64_t	stateid;
+	u_int64_t	stateid;		/* atomic */
 	u_int32_t	running;
-	u_int32_t	states;
-	u_int32_t	src_nodes;
+	u_int32_t	states;			/* atomic */
+	u_int32_t	src_nodes;		/* atomic */
 	u_int32_t	since;
 	u_int32_t	debug;
 	u_int32_t	hostid;
@@ -1729,13 +1730,13 @@ struct pf_ifspeed {
 #ifdef _KERNEL
 RB_HEAD(pf_src_tree, pf_src_node);
 RB_PROTOTYPE(pf_src_tree, pf_src_node, entry, pf_src_compare);
-extern struct pf_src_tree tree_src_tracking;
+extern struct pf_src_tree tree_src_tracking[MAXCPU];
 
 RB_HEAD(pf_state_tree_id, pf_state);
 RB_PROTOTYPE(pf_state_tree_id, pf_state,
     entry_id, pf_state_compare_id);
-extern struct pf_state_tree_id tree_id;
-extern struct pf_state_queue state_list;
+extern struct pf_state_tree_id tree_id[MAXCPU];
+extern struct pf_state_queue state_list[MAXCPU];
 
 TAILQ_HEAD(pf_poolqueue, pf_pool);
 extern struct pf_poolqueue		  pf_pools[2];

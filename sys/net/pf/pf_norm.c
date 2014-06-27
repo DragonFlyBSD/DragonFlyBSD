@@ -67,12 +67,13 @@
 #define BUFFER_FRAGMENTS(fr)	(!((fr)->fr_flags & PFFRAG_NOBUFFER))
 
 
-TAILQ_HEAD(pf_fragqueue, pf_fragment)	pf_fragqueue;
-TAILQ_HEAD(pf_cachequeue, pf_fragment)	pf_cachequeue;
+TAILQ_HEAD(pf_fragqueue, pf_fragment)	pf_fragqueue[MAXCPU];
+TAILQ_HEAD(pf_cachequeue, pf_fragment)	pf_cachequeue[MAXCPU];
 
 static __inline int	 pf_frag_compare(struct pf_fragment *,
 			    struct pf_fragment *);
-RB_HEAD(pf_frag_tree, pf_fragment)	pf_frag_tree, pf_cache_tree;
+RB_HEAD(pf_frag_tree, pf_fragment)	pf_frag_tree[MAXCPU],
+					pf_cache_tree[MAXCPU];
 RB_PROTOTYPE(pf_frag_tree, pf_fragment, fr_entry, pf_frag_compare);
 RB_GENERATE(pf_frag_tree, pf_fragment, fr_entry, pf_frag_compare);
 
@@ -110,6 +111,8 @@ int			 pf_nfrents, pf_ncache;
 void
 pf_normalize_init(void)
 {
+	int n;
+
 	/* XXX
 	pool_sethiwat(&pf_frag_pl, PFFRAG_FRAG_HIWAT);
 	pool_sethardlimit(&pf_frent_pl, PFFRAG_FRENT_HIWAT, NULL, 0);
@@ -117,8 +120,12 @@ pf_normalize_init(void)
 	pool_sethardlimit(&pf_cent_pl, PFFRAG_FRCENT_HIWAT, NULL, 0);
 	*/
 
-	TAILQ_INIT(&pf_fragqueue);
-	TAILQ_INIT(&pf_cachequeue);
+	for (n = 0; n < MAXCPU; ++n) {
+		TAILQ_INIT(&pf_fragqueue[n]);
+		TAILQ_INIT(&pf_cachequeue[n]);
+		RB_INIT(&pf_frag_tree[n]);
+		RB_INIT(&pf_cache_tree[n]);
+	}
 }
 
 static __inline int
@@ -144,11 +151,13 @@ pf_frag_compare(struct pf_fragment *a, struct pf_fragment *b)
 void
 pf_purge_expired_fragments(void)
 {
-	struct pf_fragment	*frag;
-	u_int32_t		 expire = time_second -
-				    pf_default_rule.timeout[PFTM_FRAG];
+	struct pf_fragment *frag;
+	u_int32_t expire;
+	int cpu = mycpu->gd_cpuid;
 
-	while ((frag = TAILQ_LAST(&pf_fragqueue, pf_fragqueue)) != NULL) {
+	expire = time_second - pf_default_rule.timeout[PFTM_FRAG];
+
+	while ((frag = TAILQ_LAST(&pf_fragqueue[cpu], pf_fragqueue)) != NULL) {
 		KASSERT((BUFFER_FRAGMENTS(frag)),
 			("BUFFER_FRAGMENTS(frag) == 0: %s", __func__));
 		if (frag->fr_timeout > expire)
@@ -158,7 +167,7 @@ pf_purge_expired_fragments(void)
 		pf_free_fragment(frag);
 	}
 
-	while ((frag = TAILQ_LAST(&pf_cachequeue, pf_cachequeue)) != NULL) {
+	while ((frag = TAILQ_LAST(&pf_cachequeue[cpu], pf_cachequeue)) != NULL) {
 		KASSERT((!BUFFER_FRAGMENTS(frag)),
 			("BUFFER_FRAGMENTS(frag) != 0: %s", __func__));
 		if (frag->fr_timeout > expire)
@@ -166,8 +175,8 @@ pf_purge_expired_fragments(void)
 
 		DPFPRINTF(("expiring %d(%p)\n", frag->fr_id, frag));
 		pf_free_fragment(frag);
-		KASSERT((TAILQ_EMPTY(&pf_cachequeue) ||
-		    TAILQ_LAST(&pf_cachequeue, pf_cachequeue) != frag),
+		KASSERT((TAILQ_EMPTY(&pf_cachequeue[cpu]) ||
+		    TAILQ_LAST(&pf_cachequeue[cpu], pf_cachequeue) != frag),
 		    ("!(TAILQ_EMPTY() || TAILQ_LAST() == farg): %s",
 		    __func__));
 	}
@@ -180,14 +189,15 @@ pf_purge_expired_fragments(void)
 void
 pf_flush_fragments(void)
 {
-	struct pf_fragment	*frag;
-	int			 goal;
+	struct pf_fragment *frag;
+	int goal;
+	int cpu = mycpu->gd_cpuid;
 
 	goal = pf_nfrents * 9 / 10;
 	DPFPRINTF(("trying to free > %d frents\n",
 	    pf_nfrents - goal));
 	while (goal < pf_nfrents) {
-		frag = TAILQ_LAST(&pf_fragqueue, pf_fragqueue);
+		frag = TAILQ_LAST(&pf_fragqueue[cpu], pf_fragqueue);
 		if (frag == NULL)
 			break;
 		pf_free_fragment(frag);
@@ -198,7 +208,7 @@ pf_flush_fragments(void)
 	DPFPRINTF(("trying to free > %d cache entries\n",
 	    pf_ncache - goal));
 	while (goal < pf_ncache) {
-		frag = TAILQ_LAST(&pf_cachequeue, pf_cachequeue);
+		frag = TAILQ_LAST(&pf_cachequeue[cpu], pf_cachequeue);
 		if (frag == NULL)
 			break;
 		pf_free_fragment(frag);
@@ -256,6 +266,7 @@ pf_find_fragment(struct ip *ip, struct pf_frag_tree *tree)
 {
 	struct pf_fragment	 key;
 	struct pf_fragment	*frag;
+	int cpu = mycpu->gd_cpuid;
 
 	pf_ip2key(&key, ip);
 
@@ -264,11 +275,11 @@ pf_find_fragment(struct ip *ip, struct pf_frag_tree *tree)
 		/* XXX Are we sure we want to update the timeout? */
 		frag->fr_timeout = time_second;
 		if (BUFFER_FRAGMENTS(frag)) {
-			TAILQ_REMOVE(&pf_fragqueue, frag, frag_next);
-			TAILQ_INSERT_HEAD(&pf_fragqueue, frag, frag_next);
+			TAILQ_REMOVE(&pf_fragqueue[cpu], frag, frag_next);
+			TAILQ_INSERT_HEAD(&pf_fragqueue[cpu], frag, frag_next);
 		} else {
-			TAILQ_REMOVE(&pf_cachequeue, frag, frag_next);
-			TAILQ_INSERT_HEAD(&pf_cachequeue, frag, frag_next);
+			TAILQ_REMOVE(&pf_cachequeue[cpu], frag, frag_next);
+			TAILQ_INSERT_HEAD(&pf_cachequeue[cpu], frag, frag_next);
 		}
 	}
 
@@ -280,13 +291,15 @@ pf_find_fragment(struct ip *ip, struct pf_frag_tree *tree)
 void
 pf_remove_fragment(struct pf_fragment *frag)
 {
+	int cpu = mycpu->gd_cpuid;
+
 	if (BUFFER_FRAGMENTS(frag)) {
-		RB_REMOVE(pf_frag_tree, &pf_frag_tree, frag);
-		TAILQ_REMOVE(&pf_fragqueue, frag, frag_next);
+		RB_REMOVE(pf_frag_tree, &pf_frag_tree[cpu], frag);
+		TAILQ_REMOVE(&pf_fragqueue[cpu], frag, frag_next);
 		kfree(frag, M_PFFRAGPL);
 	} else {
-		RB_REMOVE(pf_frag_tree, &pf_cache_tree, frag);
-		TAILQ_REMOVE(&pf_cachequeue, frag, frag_next);
+		RB_REMOVE(pf_frag_tree, &pf_cache_tree[cpu], frag);
+		TAILQ_REMOVE(&pf_cachequeue[cpu], frag, frag_next);
 		kfree(frag, M_PFCACHEPL);
 	}
 }
@@ -300,10 +313,11 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 	struct pf_frent	*frea, *next;
 	struct pf_frent	*frep = NULL;
 	struct ip	*ip = frent->fr_ip;
-	int		 hlen = ip->ip_hl << 2;
-	u_int16_t	 off = (ip->ip_off & IP_OFFMASK) << 3;
-	u_int16_t	 ip_len = ip->ip_len - ip->ip_hl * 4;
-	u_int16_t	 max = ip_len + off;
+	int		hlen = ip->ip_hl << 2;
+	u_int16_t	off = (ip->ip_off & IP_OFFMASK) << 3;
+	u_int16_t	ip_len = ip->ip_len - ip->ip_hl * 4;
+	u_int16_t	max = ip_len + off;
+	int		cpu = mycpu->gd_cpuid;
 
 	KASSERT((*frag == NULL || BUFFER_FRAGMENTS(*frag)),
 	    ("! (*frag == NULL || BUFFER_FRAGMENTS(*frag)): %s", __func__));
@@ -331,8 +345,8 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 		(*frag)->fr_timeout = time_second;
 		LIST_INIT(&(*frag)->fr_queue);
 
-		RB_INSERT(pf_frag_tree, &pf_frag_tree, *frag);
-		TAILQ_INSERT_HEAD(&pf_fragqueue, *frag, frag_next);
+		RB_INSERT(pf_frag_tree, &pf_frag_tree[cpu], *frag);
+		TAILQ_INSERT_HEAD(&pf_fragqueue[cpu], *frag, frag_next);
 
 		/* We do not have a previous fragment */
 		frep = NULL;
@@ -497,12 +511,13 @@ struct mbuf *
 pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
     int drop, int *nomem)
 {
-	struct mbuf		*m = *m0;
-	struct pf_frcache	*frp, *fra, *cur = NULL;
-	int			 ip_len = h->ip_len - (h->ip_hl << 2);
-	u_int16_t		 off = h->ip_off << 3;
-	u_int16_t		 max = ip_len + off;
-	int			 hosed = 0;
+	struct mbuf	*m = *m0;
+	struct pf_frcache *frp, *fra, *cur = NULL;
+	int		ip_len = h->ip_len - (h->ip_hl << 2);
+	u_int16_t	off = h->ip_off << 3;
+	u_int16_t	max = ip_len + off;
+	int		hosed = 0;
+	int		cpu = mycpu->gd_cpuid;
 
 	KASSERT((*frag == NULL || !BUFFER_FRAGMENTS(*frag)),
 	    ("!(*frag == NULL || !BUFFER_FRAGMENTS(*frag)): %s", __func__));
@@ -539,8 +554,8 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 		LIST_INIT(&(*frag)->fr_cache);
 		LIST_INSERT_HEAD(&(*frag)->fr_cache, cur, fr_next);
 
-		RB_INSERT(pf_frag_tree, &pf_cache_tree, *frag);
-		TAILQ_INSERT_HEAD(&pf_cachequeue, *frag, frag_next);
+		RB_INSERT(pf_frag_tree, &pf_cache_tree[cpu], *frag);
+		TAILQ_INSERT_HEAD(&pf_cachequeue[cpu], *frag, frag_next);
 
 		DPFPRINTF(("fragcache[%d]: new %d-%d\n", h->ip_id, off, max));
 
@@ -803,17 +818,18 @@ int
 pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
     struct pf_pdesc *pd)
 {
-	struct mbuf		*m = *m0;
-	struct pf_rule		*r;
-	struct pf_frent		*frent;
-	struct pf_fragment	*frag = NULL;
-	struct ip		*h = mtod(m, struct ip *);
-	int			 mff = (h->ip_off & IP_MF);
-	int			 hlen = h->ip_hl << 2;
-	u_int16_t		 fragoff = (h->ip_off & IP_OFFMASK) << 3;
-	u_int16_t		 max;
-	int			 ip_len;
-	int			 tag = -1;
+	struct mbuf	*m = *m0;
+	struct pf_rule	*r;
+	struct pf_frent	*frent;
+	struct pf_fragment *frag = NULL;
+	struct ip	*h = mtod(m, struct ip *);
+	int		mff = (h->ip_off & IP_MF);
+	int		hlen = h->ip_hl << 2;
+	u_int16_t	fragoff = (h->ip_off & IP_OFFMASK) << 3;
+	u_int16_t	max;
+	int		ip_len;
+	int		tag = -1;
+	int		cpu = mycpu->gd_cpuid;
 
 	r = TAILQ_FIRST(pf_main_ruleset.rules[PF_RULESET_SCRUB].active.ptr);
 	while (r != NULL) {
@@ -893,7 +909,7 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 	if ((r->rule_flag & (PFRULE_FRAGCROP|PFRULE_FRAGDROP)) == 0) {
 		/* Fully buffer all of the fragments */
 
-		frag = pf_find_fragment(h, &pf_frag_tree);
+		frag = pf_find_fragment(h, &pf_frag_tree[cpu]);
 
 		/* Check if we saw the last fragment already */
 		if (frag != NULL && (frag->fr_flags & PFFRAG_SEENLAST) &&
@@ -934,7 +950,7 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason,
 			goto fragment_pass;
 		}
 
-		frag = pf_find_fragment(h, &pf_cache_tree);
+		frag = pf_find_fragment(h, &pf_cache_tree[cpu]);
 
 		/* Check if we saw the last fragment already */
 		if (frag != NULL && (frag->fr_flags & PFFRAG_SEENLAST) &&

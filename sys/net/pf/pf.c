@@ -53,6 +53,7 @@
 #include <sys/endian.h>
 #include <sys/proc.h>
 #include <sys/kthread.h>
+#include <sys/spinlock.h>
 
 #include <machine/inttypes.h>
 
@@ -97,12 +98,15 @@
 #include <sys/ucred.h>
 #include <machine/limits.h>
 #include <sys/msgport2.h>
+#include <sys/spinlock2.h>
 #include <net/netmsg2.h>
 
 extern int ip_optcopy(struct ip *, struct ip *);
 extern int debug_pfugidhack;
 
 struct lwkt_token pf_token = LWKT_TOKEN_INITIALIZER(pf_token);
+struct lwkt_token pf_secret_token = LWKT_TOKEN_INITIALIZER(pf_secret_token);
+struct spinlock pf_spin = SPINLOCK_INITIALIZER(pf_spin);
 
 #define DPFPRINTF(n, x)	if (pf_status.debug >= (n)) kprintf x
 
@@ -114,7 +118,7 @@ struct lwkt_token pf_token = LWKT_TOKEN_INITIALIZER(pf_token);
 struct radix_node_head	*pf_maskhead;
 
 /* state tables */
-struct pf_state_tree	 pf_statetbl;
+struct pf_state_tree	 pf_statetbl[MAXCPU];
 
 struct pf_altqqueue	 pf_altqs[2];
 struct pf_palist	 pf_pabuf;
@@ -324,10 +328,9 @@ static __inline int pf_state_compare_key(struct pf_state_key *,
 static __inline int pf_state_compare_id(struct pf_state *,
 	struct pf_state *);
 
-struct pf_src_tree tree_src_tracking;
-
-struct pf_state_tree_id tree_id;
-struct pf_state_queue state_list;
+struct pf_src_tree tree_src_tracking[MAXCPU];
+struct pf_state_tree_id tree_id[MAXCPU];
+struct pf_state_queue state_list[MAXCPU];
 
 RB_GENERATE(pf_src_tree, pf_src_node, entry, pf_src_compare);
 RB_GENERATE(pf_state_tree, pf_state_key, entry, pf_state_compare_key);
@@ -441,6 +444,7 @@ int
 pf_src_connlimit(struct pf_state **state)
 {
 	int bad = 0;
+	int cpu = mycpu->gd_cpuid;
 
 	(*state)->src_node->conn++;
 	(*state)->src.tcp_est = 1;
@@ -499,7 +503,7 @@ pf_src_connlimit(struct pf_state **state)
 			struct pf_state *st;
 
 			pf_status.lcounters[LCNT_OVERLOAD_FLUSH]++;
-			RB_FOREACH(st, pf_state_tree_id, &tree_id) {
+			RB_FOREACH(st, pf_state_tree_id, &tree_id[cpu]) {
 				sk = st->key[PF_SK_WIRE];
 				/*
 				 * Kill states from this source.  (Only those
@@ -541,6 +545,7 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
     struct pf_addr *src, sa_family_t af)
 {
 	struct pf_src_node	k;
+	int cpu = mycpu->gd_cpuid;
 
 	if (*sn == NULL) {
 		k.af = af;
@@ -551,12 +556,13 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
 		else
 			k.rule.ptr = NULL;
 		pf_status.scounters[SCNT_SRC_NODE_SEARCH]++;
-		*sn = RB_FIND(pf_src_tree, &tree_src_tracking, &k);
+		*sn = RB_FIND(pf_src_tree, &tree_src_tracking[cpu], &k);
 	}
 	if (*sn == NULL) {
 		if (!rule->max_src_nodes ||
 		    rule->src_nodes < rule->max_src_nodes)
-			(*sn) = kmalloc(sizeof(struct pf_src_node), M_PFSRCTREEPL, M_NOWAIT|M_ZERO);
+			(*sn) = kmalloc(sizeof(struct pf_src_node),
+					M_PFSRCTREEPL, M_NOWAIT|M_ZERO);
 		else
 			pf_status.lcounters[LCNT_SRCNODES]++;
 		if ((*sn) == NULL)
@@ -574,7 +580,7 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
 			(*sn)->rule.ptr = NULL;
 		PF_ACPY(&(*sn)->addr, src, af);
 		if (RB_INSERT(pf_src_tree,
-		    &tree_src_tracking, *sn) != NULL) {
+		    &tree_src_tracking[cpu], *sn) != NULL) {
 			if (pf_status.debug >= PF_DEBUG_MISC) {
 				kprintf("pf: src_tree insert failed: ");
 				pf_print_host(&(*sn)->addr, 0, af);
@@ -583,12 +589,18 @@ pf_insert_src_node(struct pf_src_node **sn, struct pf_rule *rule,
 			kfree(*sn, M_PFSRCTREEPL);
 			return (-1);
 		}
+
+		/*
+		 * Atomic op required to increment src_nodes in the rule
+		 * because we hold a shared token here (decrements will use
+		 * an exclusive token).
+		 */
 		(*sn)->creation = time_second;
 		(*sn)->ruletype = rule->action;
 		if ((*sn)->rule.ptr != NULL)
-			(*sn)->rule.ptr->src_nodes++;
+			atomic_add_int(&(*sn)->rule.ptr->src_nodes, 1);
 		pf_status.scounters[SCNT_SRC_NODE_INSERT]++;
-		pf_status.src_nodes++;
+		atomic_add_int(&pf_status.src_nodes, 1);
 	} else {
 		if (rule->max_src_states &&
 		    (*sn)->states >= rule->max_src_states) {
@@ -689,10 +701,11 @@ pf_state_key_attach(struct pf_state_key *sk, struct pf_state *s, int idx)
 {
 	struct pf_state_item	*si;
 	struct pf_state_key     *cur;
+	int cpu = mycpu->gd_cpuid;
 
 	KKASSERT(s->key[idx] == NULL);	/* XXX handle this? */
 
-	if ((cur = RB_INSERT(pf_state_tree, &pf_statetbl, sk)) != NULL) {
+	if ((cur = RB_INSERT(pf_state_tree, &pf_statetbl[cpu], sk)) != NULL) {
 		/* key exists. check for same kif, if none, add to key */
 		TAILQ_FOREACH(si, &cur->states, entry)
 			if (si->s->kif == s->kif &&
@@ -748,6 +761,8 @@ void
 pf_state_key_detach(struct pf_state *s, int idx)
 {
 	struct pf_state_item	*si;
+	int cpu = mycpu->gd_cpuid;
+
 	si = TAILQ_FIRST(&s->key[idx]->states);
 	while (si && si->s != s)
 	    si = TAILQ_NEXT(si, entry);
@@ -758,7 +773,7 @@ pf_state_key_detach(struct pf_state *s, int idx)
 	}
 
 	if (TAILQ_EMPTY(&s->key[idx]->states)) {
-		RB_REMOVE(pf_state_tree, &pf_statetbl, s->key[idx]);
+		RB_REMOVE(pf_state_tree, &pf_statetbl[cpu], s->key[idx]);
 		if (s->key[idx]->reverse)
 			s->key[idx]->reverse->reverse = NULL;
 		if (s->key[idx]->inp)
@@ -826,9 +841,12 @@ pf_state_key_setup(struct pf_pdesc *pd, struct pf_rule *nr,
 
 int
 pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
-    struct pf_state_key *sks, struct pf_state *s)
+		struct pf_state_key *sks, struct pf_state *s)
 {
+	int cpu = mycpu->gd_cpuid;
+
 	s->kif = kif;
+	s->cpuid = cpu;
 
 	if (skw == sks) {
 		if (pf_state_key_attach(skw, s, PF_SK_WIRE))
@@ -846,7 +864,16 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 	}
 
 	if (s->id == 0 && s->creatorid == 0) {
-		s->id = htobe64(pf_status.stateid++);
+		u_int64_t sid;
+
+		if (sizeof(long) == 8) {
+			sid = atomic_fetchadd_long(&pf_status.stateid, 1);
+		} else {
+			spin_lock(&pf_spin);
+			sid = pf_status.stateid++;
+			spin_unlock(&pf_spin);
+		}
+		s->id = htobe64(sid);
 		s->creatorid = pf_status.hostid;
 	}
 
@@ -855,7 +882,7 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 	 */
 	s->hash = crc32(s->key[PF_SK_WIRE], sizeof(*sks));
 
-	if (RB_INSERT(pf_state_tree_id, &tree_id, s) != NULL) {
+	if (RB_INSERT(pf_state_tree_id, &tree_id[cpu], s) != NULL) {
 		if (pf_status.debug >= PF_DEBUG_MISC) {
 			kprintf("pf: state insert failed: "
 			    "id: %016jx creatorid: %08x",
@@ -867,9 +894,9 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 		pf_detach_state(s);
 		return (-1);
 	}
-	TAILQ_INSERT_TAIL(&state_list, s, entry_list);
+	TAILQ_INSERT_TAIL(&state_list[cpu], s, entry_list);
 	pf_status.fcounters[FCNT_STATE_INSERT]++;
-	pf_status.states++;
+	atomic_add_int(&pf_status.states, 1);
 	pfi_kif_ref(kif, PFI_KIF_REF_STATE);
 	pfsync_insert_state(s);
 	return (0);
@@ -878,9 +905,12 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 struct pf_state *
 pf_find_state_byid(struct pf_state_cmp *key)
 {
+	int cpu = mycpu->gd_cpuid;
+
 	pf_status.fcounters[FCNT_STATE_SEARCH]++;
 
-	return (RB_FIND(pf_state_tree_id, &tree_id, (struct pf_state *)key));
+	return (RB_FIND(pf_state_tree_id, &tree_id[cpu],
+			(struct pf_state *)key));
 }
 
 struct pf_state *
@@ -889,6 +919,7 @@ pf_find_state(struct pfi_kif *kif, struct pf_state_key_cmp *key, u_int dir,
 {
 	struct pf_state_key	*sk;
 	struct pf_state_item	*si;
+	int cpu = mycpu->gd_cpuid;
 
 	pf_status.fcounters[FCNT_STATE_SEARCH]++;
 
@@ -896,7 +927,7 @@ pf_find_state(struct pfi_kif *kif, struct pf_state_key_cmp *key, u_int dir,
 	    ((struct pf_state_key *)m->m_pkthdr.pf.statekey)->reverse)
 		sk = ((struct pf_state_key *)m->m_pkthdr.pf.statekey)->reverse;
 	else {
-		if ((sk = RB_FIND(pf_state_tree, &pf_statetbl,
+		if ((sk = RB_FIND(pf_state_tree, &pf_statetbl[cpu],
 		    (struct pf_state_key *)key)) == NULL)
 			return (NULL);
 		if (dir == PF_OUT && m->m_pkthdr.pf.statekey) {
@@ -924,10 +955,12 @@ pf_find_state_all(struct pf_state_key_cmp *key, u_int dir, int *more)
 {
 	struct pf_state_key	*sk;
 	struct pf_state_item	*si, *ret = NULL;
+	int cpu = mycpu->gd_cpuid;
 
 	pf_status.fcounters[FCNT_STATE_SEARCH]++;
 
-	sk = RB_FIND(pf_state_tree, &pf_statetbl, (struct pf_state_key *)key);
+	sk = RB_FIND(pf_state_tree, &pf_statetbl[cpu],
+		     (struct pf_state_key *)key);
 
 	if (sk != NULL) {
 		TAILQ_FOREACH(si, &sk->states, entry)
@@ -952,47 +985,75 @@ pf_find_state_all(struct pf_state_key_cmp *key, u_int dir, int *more)
 void
 pf_purge_thread(void *v)
 {
+	globaldata_t save_gd = mycpu;
 	int nloops = 0;
 	int locked = 0;
+	int nn;
+	int endingit;
 
-	lwkt_gettoken(&pf_token);
 	for (;;) {
 		tsleep(pf_purge_thread, PWAIT, "pftm", 1 * hz);
 
-		lockmgr(&pf_consistency_lock, LK_EXCLUSIVE);
+		endingit = pf_end_threads;
 
-		if (pf_end_threads) {
-			pf_purge_expired_states(pf_status.states, 0);
-			pf_purge_expired_fragments();
-			pf_purge_expired_src_nodes(1);
-			pf_end_threads++;
+		for (nn = 0; nn < ncpus; ++nn) {
+			lwkt_setcpu_self(globaldata_find(nn));
 
-			lockmgr(&pf_consistency_lock, LK_RELEASE);
-			wakeup(pf_purge_thread);
-			kthread_exit();
-		}
-		crit_enter();
+			lwkt_gettoken(&pf_token);
+			lockmgr(&pf_consistency_lock, LK_EXCLUSIVE);
+			crit_enter();
 
-		/* process a fraction of the state table every second */
-		if(!pf_purge_expired_states(1 + (pf_status.states
-		    / pf_default_rule.timeout[PFTM_INTERVAL]), 0)) {
+			/*
+			 * process a fraction of the state table every second
+			 */
+			if(!pf_purge_expired_states(
+				1 + (pf_status.states /
+				     pf_default_rule.timeout[
+					PFTM_INTERVAL]), 0)) {
+				pf_purge_expired_states(
+					1 + (pf_status.states /
+					     pf_default_rule.timeout[
+						PFTM_INTERVAL]), 1);
+			}
 
-			pf_purge_expired_states(1 + (pf_status.states
-			    / pf_default_rule.timeout[PFTM_INTERVAL]), 1);
-		}
+			/*
+			 * purge other expired types every PFTM_INTERVAL
+			 * seconds
+			 */
+			if (++nloops >=
+			    pf_default_rule.timeout[PFTM_INTERVAL]) {
+				pf_purge_expired_fragments();
+				if (!pf_purge_expired_src_nodes(locked)) {
+					pf_purge_expired_src_nodes(1);
+				}
+				nloops = 0;
+			}
 
-		/* purge other expired types every PFTM_INTERVAL seconds */
-		if (++nloops >= pf_default_rule.timeout[PFTM_INTERVAL]) {
-			pf_purge_expired_fragments();
-			if (!pf_purge_expired_src_nodes(locked)) {
+			/*
+			 * If terminating the thread, clean everything out
+			 * (on all cpus).
+			 */
+			if (endingit) {
+				pf_purge_expired_states(pf_status.states, 0);
+				pf_purge_expired_fragments();
 				pf_purge_expired_src_nodes(1);
 			}
-			nloops = 0;
+
+			crit_exit();
+			lockmgr(&pf_consistency_lock, LK_RELEASE);
+			lwkt_reltoken(&pf_token);
 		}
-		crit_exit();
-		lockmgr(&pf_consistency_lock, LK_RELEASE);
+		lwkt_setcpu_self(save_gd);
+		if (endingit)
+			break;
 	}
-	lwkt_reltoken(&pf_token);
+
+	/*
+	 * Thread termination
+	 */
+	pf_end_threads++;
+	wakeup(pf_purge_thread);
+	kthread_exit();
 }
 
 u_int32_t
@@ -1032,20 +1093,26 @@ pf_state_expires(const struct pf_state *state)
 	return (state->expire + timeout);
 }
 
+/*
+ * (called with exclusive pf_token)
+ */
 int
 pf_purge_expired_src_nodes(int waslocked)
 {
-	 struct pf_src_node		*cur, *next;
-	 int				 locked = waslocked;
+	struct pf_src_node *cur, *next;
+	int locked = waslocked;
+	int cpu = mycpu->gd_cpuid;
 
-	 for (cur = RB_MIN(pf_src_tree, &tree_src_tracking); cur; cur = next) {
-		 next = RB_NEXT(pf_src_tree, &tree_src_tracking, cur);
+	for (cur = RB_MIN(pf_src_tree, &tree_src_tracking[cpu]);
+	     cur;
+	     cur = next) {
+		next = RB_NEXT(pf_src_tree, &tree_src_tracking[cpu], cur);
 
-		 if (cur->states <= 0 && cur->expire <= time_second) {
-			 if (! locked) {
+		if (cur->states <= 0 && cur->expire <= time_second) {
+			 if (!locked) {
 				 lockmgr(&pf_consistency_lock, LK_EXCLUSIVE);
 			 	 next = RB_NEXT(pf_src_tree,
-				     &tree_src_tracking, cur);
+				     &tree_src_tracking[cpu], cur);
 				 locked = 1;
 			 }
 			 if (cur->rule.ptr != NULL) {
@@ -1054,14 +1121,13 @@ pf_purge_expired_src_nodes(int waslocked)
 				     cur->rule.ptr->max_src_nodes <= 0)
 					 pf_rm_rule(NULL, cur->rule.ptr);
 			 }
-			 RB_REMOVE(pf_src_tree, &tree_src_tracking, cur);
+			 RB_REMOVE(pf_src_tree, &tree_src_tracking[cpu], cur);
 			 pf_status.scounters[SCNT_SRC_NODE_REMOVALS]++;
-			 pf_status.src_nodes--;
+			 atomic_add_int(&pf_status.src_nodes, -1);
 			 kfree(cur, M_PFSRCTREEPL);
-		 }
-	 }
-
-	 if (locked && !waslocked)
+		}
+	}
+	if (locked && !waslocked)
 		lockmgr(&pf_consistency_lock, LK_RELEASE);
 	return(1);
 }
@@ -1098,6 +1164,8 @@ pf_src_tree_remove_state(struct pf_state *s)
 void
 pf_unlink_state(struct pf_state *cur)
 {
+	int cpu = mycpu->gd_cpuid;
+
 	if (cur->src.state == PF_TCPS_PROXY_DST) {
 		/* XXX wire key the right one? */
 		pf_send_tcp(cur->rule.ptr, cur->key[PF_SK_WIRE]->af,
@@ -1108,7 +1176,7 @@ pf_unlink_state(struct pf_state *cur)
 		    cur->src.seqhi, cur->src.seqlo + 1,
 		    TH_RST|TH_ACK, 0, 0, 0, 1, cur->tag, NULL, NULL);
 	}
-	RB_REMOVE(pf_state_tree_id, &tree_id, cur);
+	RB_REMOVE(pf_state_tree_id, &tree_id[cpu], cur);
 	if (cur->creatorid == pf_status.hostid)
 		pfsync_delete_state(cur);
 	cur->timeout = PFTM_UNLINKED;
@@ -1116,13 +1184,19 @@ pf_unlink_state(struct pf_state *cur)
 	pf_detach_state(cur);
 }
 
-static struct pf_state	*purge_cur;
+static struct pf_state	*purge_cur[MAXCPU];
 
-/* callers should be at crit_enter() and hold the
- * write_lock on pf_consistency_lock */
+/*
+ * callers should be at crit_enter() and hold pf_consistency_lock exclusively.
+ * pf_token must also be held exclusively.
+ */
 void
 pf_free_state(struct pf_state *cur)
 {
+	int cpu = mycpu->gd_cpuid;
+
+	KKASSERT(cur->cpuid == cpu);
+
 	if (pfsyncif != NULL &&
 	    (pfsyncif->sc_bulk_send_next == cur ||
 	    pfsyncif->sc_bulk_terminator == cur))
@@ -1145,41 +1219,42 @@ pf_free_state(struct pf_state *cur)
 	 * We may be freeing pf_purge_expired_states()'s saved scan entry,
 	 * adjust it if necessary.
 	 */
-	if (purge_cur == cur) {
+	if (purge_cur[cpu] == cur) {
 		kprintf("PURGE CONFLICT\n");
-		purge_cur = TAILQ_NEXT(purge_cur, entry_list);
+		purge_cur[cpu] = TAILQ_NEXT(purge_cur[cpu], entry_list);
 	}
-	TAILQ_REMOVE(&state_list, cur, entry_list);
+	TAILQ_REMOVE(&state_list[cpu], cur, entry_list);
 	if (cur->tag)
 		pf_tag_unref(cur->tag);
 	kfree(cur, M_PFSTATEPL);
 	pf_status.fcounters[FCNT_STATE_REMOVALS]++;
-	pf_status.states--;
+	atomic_add_int(&pf_status.states, -1);
 }
 
 int
 pf_purge_expired_states(u_int32_t maxcheck, int waslocked)
 {
 	struct pf_state		*cur;
-	int 			 locked = waslocked;
+	int locked = waslocked;
+	int cpu = mycpu->gd_cpuid;
 
 	while (maxcheck--) {
 		/*
 		 * Wrap to start of list when we hit the end
 		 */
-		cur = purge_cur;
+		cur = purge_cur[cpu];
 		if (cur == NULL) {
-			cur = TAILQ_FIRST(&state_list);
+			cur = TAILQ_FIRST(&state_list[cpu]);
 			if (cur == NULL)
 				break;	/* list empty */
 		}
 
 		/*
-		 * Setup next (purge_cur) while we process this one.  If we block and
-		 * something else deletes purge_cur, pf_free_state() will adjust it further
-		 * ahead.
+		 * Setup next (purge_cur) while we process this one.  If
+		 * we block and something else deletes purge_cur,
+		 * pf_free_state() will adjust it further ahead.
 		 */
-		purge_cur = TAILQ_NEXT(cur, entry_list);
+		purge_cur[cpu] = TAILQ_NEXT(cur, entry_list);
 
 		if (cur->timeout == PFTM_UNLINKED) {
 			/* free unlinked state */
@@ -2297,6 +2372,7 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 	struct pf_addr		*rmask = &rpool->cur->addr.v.a.mask;
 	struct pf_pooladdr	*acur = rpool->cur;
 	struct pf_src_node	 k;
+	int cpu = mycpu->gd_cpuid;
 
 	if (*sn == NULL && r->rpool.opts & PF_POOL_STICKYADDR &&
 	    (r->rpool.opts & PF_POOL_TYPEMASK) != PF_POOL_NONE) {
@@ -2308,7 +2384,7 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 		else
 			k.rule.ptr = NULL;
 		pf_status.scounters[SCNT_SRC_NODE_SEARCH]++;
-		*sn = RB_FIND(pf_src_tree, &tree_src_tracking, &k);
+		*sn = RB_FIND(pf_src_tree, &tree_src_tracking[cpu], &k);
 		if (*sn != NULL && !PF_AZERO(&(*sn)->raddr, af)) {
 			PF_ACPY(naddr, &(*sn)->raddr, af);
 			if (pf_status.debug >= PF_DEBUG_MISC) {
@@ -3143,11 +3219,15 @@ pf_tcp_iss(struct pf_pdesc *pd)
 	u_int32_t digest[4];
 
 	if (pf_tcp_secret_init == 0) {
-		karc4rand(pf_tcp_secret, sizeof(pf_tcp_secret));
-		MD5Init(&pf_tcp_secret_ctx);
-		MD5Update(&pf_tcp_secret_ctx, pf_tcp_secret,
-		    sizeof(pf_tcp_secret));
-		pf_tcp_secret_init = 1;
+		lwkt_gettoken(&pf_secret_token);
+		if (pf_tcp_secret_init == 0) {
+			karc4rand(pf_tcp_secret, sizeof(pf_tcp_secret));
+			MD5Init(&pf_tcp_secret_ctx);
+			MD5Update(&pf_tcp_secret_ctx, pf_tcp_secret,
+			    sizeof(pf_tcp_secret));
+			pf_tcp_secret_init = 1;
+		}
+		lwkt_reltoken(&pf_secret_token);
 	}
 	ctx = pf_tcp_secret_ctx;
 
@@ -3162,6 +3242,7 @@ pf_tcp_iss(struct pf_pdesc *pd)
 	}
 	MD5Final((u_char *)digest, &ctx);
 	pf_tcp_iss_off += 4096;
+
 	return (digest[0] + pd->hdr.tcp->th_seq + pf_tcp_iss_off);
 }
 
@@ -3586,6 +3667,7 @@ pf_create_state(struct pf_rule *r, struct pf_rule *nr, struct pf_rule *a,
 	struct tcphdr		*th = pd->hdr.tcp;
 	u_int16_t		 mss = tcp_mssdflt;
 	u_short			 reason;
+	int cpu = mycpu->gd_cpuid;
 
 	/* check maximums */
 	if (r->max_states && (r->states_cur >= r->max_states)) {
@@ -3776,15 +3858,15 @@ csfailed:
 		kfree(nk, M_PFSTATEKEYPL);
 
 	if (sn != NULL && sn->states == 0 && sn->expire == 0) {
-		RB_REMOVE(pf_src_tree, &tree_src_tracking, sn);
+		RB_REMOVE(pf_src_tree, &tree_src_tracking[cpu], sn);
 		pf_status.scounters[SCNT_SRC_NODE_REMOVALS]++;
-		pf_status.src_nodes--;
+		atomic_add_int(&pf_status.src_nodes, -1);
 		kfree(sn, M_PFSRCTREEPL);
 	}
 	if (nsn != sn && nsn != NULL && nsn->states == 0 && nsn->expire == 0) {
-		RB_REMOVE(pf_src_tree, &tree_src_tracking, nsn);
+		RB_REMOVE(pf_src_tree, &tree_src_tracking[cpu], nsn);
 		pf_status.scounters[SCNT_SRC_NODE_REMOVALS]++;
-		pf_status.src_nodes--;
+		atomic_add_int(&pf_status.src_nodes, -1);
 		kfree(nsn, M_PFSRCTREEPL);
 	}
 	return (PF_DROP);
@@ -5874,6 +5956,10 @@ pf_get_divert(struct mbuf *m)
 }
 
 #ifdef INET
+
+/*
+ * WARNING: pf_token held shared on entry, THIS IS CPU LOCALIZED CODE
+ */
 int
 pf_test(int dir, struct ifnet *ifp, struct mbuf **m0,
     struct ether_header *eh, struct inpcb *inp)
@@ -6196,6 +6282,10 @@ done:
 #endif /* INET */
 
 #ifdef INET6
+
+/*
+ * WARNING: pf_token held shared on entry, THIS IS CPU LOCALIZED CODE
+ */
 int
 pf_test6(int dir, struct ifnet *ifp, struct mbuf **m0,
     struct ether_header *eh, struct inpcb *inp)

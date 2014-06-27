@@ -18,6 +18,8 @@ opt_inet.h:
 
 opt_inet6.h:
 	echo "#define INET6 1" > ${.TARGET}
+
 .endif	# !BUILDING_WITH_KERNEL
+
 
 .include <bsd.kmod.mk>

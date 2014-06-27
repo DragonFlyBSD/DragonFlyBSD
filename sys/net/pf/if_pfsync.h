@@ -154,6 +154,8 @@ struct pfsync_softc {
 	u_int32_t		 sc_ureq_sent;
 	struct pf_state		*sc_bulk_send_next;
 	struct pf_state		*sc_bulk_terminator;
+	int			 sc_bulk_send_cpu;
+	int			 sc_bulk_terminator_cpu;
 	int			 sc_bulk_tries;
 	int			 sc_maxcount;	/* number of states in mtu */
 	int			 sc_maxupdates;	/* number of updates/state */

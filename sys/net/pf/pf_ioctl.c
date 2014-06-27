@@ -197,7 +197,7 @@ void
 pfattach(void)
 {
 	u_int32_t *my_timeout = pf_default_rule.timeout;
-
+	int nn;
 
 	if (!rn_inithead((void **)&pf_maskhead, NULL, 0)) {
 		kprintf("pf mask radix tree create failed\n");
@@ -222,7 +222,10 @@ pfattach(void)
 		pf_pool_limits[PF_LIMIT_TABLE_ENTRIES].limit =
 		    PFR_KENTRY_HIWAT_SMALL;
 
-	RB_INIT(&tree_src_tracking);
+	for (nn = 0; nn < ncpus; ++nn) {
+		RB_INIT(&tree_src_tracking[nn]);
+		RB_INIT(&tree_id[nn]);
+	}
 	RB_INIT(&pf_anchors);
 	pf_init_ruleset(&pf_main_ruleset);
 	TAILQ_INIT(&pf_altqs[0]);
@@ -230,7 +233,8 @@ pfattach(void)
 	TAILQ_INIT(&pf_pabuf);
 	pf_altqs_active = &pf_altqs[0];
 	pf_altqs_inactive = &pf_altqs[1];
-	TAILQ_INIT(&state_list);
+	for (nn = 0; nn < ncpus; ++nn)
+		TAILQ_INIT(&state_list[nn]);
 
 	/* default rule should never be garbage collected */
 	pf_default_rule.entries.tqe_prev = &pf_default_rule.entries.tqe_next;
@@ -952,7 +956,7 @@ pfioctl(struct dev_ioctl_args *ap)
 	lwkt_gettoken(&pf_token);
 
 	/* XXX keep in sync with switch() below */
-	if (securelevel > 1)
+	if (securelevel > 1) {
 		switch (cmd) {
 		case DIOCGETRULES:
 		case DIOCGETRULE:
@@ -1005,8 +1009,9 @@ pfioctl(struct dev_ioctl_args *ap)
 			lwkt_reltoken(&pf_token);
 			return (EPERM);
 		}
+	}
 
-	if (!(ap->a_fflag & FWRITE))
+	if (!(ap->a_fflag & FWRITE)) {
 		switch (cmd) {
 		case DIOCGETRULES:
 		case DIOCGETADDRS:
@@ -1057,9 +1062,9 @@ pfioctl(struct dev_ioctl_args *ap)
 			lwkt_reltoken(&pf_token);
 			return (EACCES);
 		}
+	}
 
 	switch (cmd) {
-
 	case DIOCSTART:
 		if (pf_status.running)
 			error = EEXIST;
@@ -1532,18 +1537,30 @@ pfioctl(struct dev_ioctl_args *ap)
 		struct pf_state		*s, *nexts;
 		struct pfioc_state_kill *psk = (struct pfioc_state_kill *)addr;
 		u_int			 killed = 0;
+		globaldata_t save_gd = mycpu;
+		int nn;
 
-		for (s = RB_MIN(pf_state_tree_id, &tree_id); s; s = nexts) {
-			nexts = RB_NEXT(pf_state_tree_id, &tree_id, s);
+		for (nn = 0; nn < ncpus; ++nn) {
+			lwkt_setcpu_self(globaldata_find(nn));
+			for (s = RB_MIN(pf_state_tree_id, &tree_id[nn]);
+			     s; s = nexts) {
+				nexts = RB_NEXT(pf_state_tree_id,
+						&tree_id[nn], s);
 
-			if (!psk->psk_ifname[0] || !strcmp(psk->psk_ifname,
-			    s->kif->pfik_name)) {
-				/* don't send out individual delete messages */
-				s->sync_flags = PFSTATE_NOSYNC;
-				pf_unlink_state(s);
-				killed++;
+				if (!psk->psk_ifname[0] ||
+				    !strcmp(psk->psk_ifname,
+					    s->kif->pfik_name)) {
+					/*
+					 * don't send out individual
+					 * delete messages
+					 */
+					s->sync_flags = PFSTATE_NOSYNC;
+					pf_unlink_state(s);
+					killed++;
+				}
 			}
 		}
+		lwkt_setcpu_self(save_gd);
 		psk->psk_killed = killed;
 		pfsync_clear_states(pf_status.hostid, psk->psk_ifname);
 		break;
@@ -1556,66 +1573,79 @@ pfioctl(struct dev_ioctl_args *ap)
 		u_int16_t		 srcport, dstport;
 		struct pfioc_state_kill	*psk = (struct pfioc_state_kill *)addr;
 		u_int			 killed = 0;
+		globaldata_t save_gd = mycpu;
+		int nn;
 
 		if (psk->psk_pfcmp.id) {
 			if (psk->psk_pfcmp.creatorid == 0)
 				psk->psk_pfcmp.creatorid = pf_status.hostid;
-			if ((s = pf_find_state_byid(&psk->psk_pfcmp))) {
-				/* send immediate delete of state */
-				pfsync_delete_state(s);
-				s->sync_flags |= PFSTATE_NOSYNC;
-				pf_unlink_state(s);
-				psk->psk_killed = 1;
+			for (nn = 0; nn < ncpus; ++nn) {
+				lwkt_setcpu_self(globaldata_find(nn));
+				if ((s = pf_find_state_byid(&psk->psk_pfcmp))) {
+					/* send immediate delete of state */
+					pfsync_delete_state(s);
+					s->sync_flags |= PFSTATE_NOSYNC;
+					pf_unlink_state(s);
+					++psk->psk_killed;
+				}
 			}
+			lwkt_setcpu_self(save_gd);
 			break;
 		}
 
-		for (s = RB_MIN(pf_state_tree_id, &tree_id); s;
-		    s = nexts) {
-			nexts = RB_NEXT(pf_state_tree_id, &tree_id, s);
-			sk = s->key[PF_SK_WIRE];
+		for (nn = 0; nn < ncpus; ++nn) {
+		    lwkt_setcpu_self(globaldata_find(nn));
+		    for (s = RB_MIN(pf_state_tree_id, &tree_id[nn]);
+			 s; s = nexts) {
+			    nexts = RB_NEXT(pf_state_tree_id, &tree_id[nn], s);
+			    sk = s->key[PF_SK_WIRE];
 
-			if (s->direction == PF_OUT) {
-				srcaddr = &sk->addr[1];
-				dstaddr = &sk->addr[0];
-				srcport = sk->port[0];
-				dstport = sk->port[0];
-			} else {
-				srcaddr = &sk->addr[0];
-				dstaddr = &sk->addr[1];
-				srcport = sk->port[0];
-				dstport = sk->port[0];
-			}
-			if ((!psk->psk_af || sk->af == psk->psk_af)
-			    && (!psk->psk_proto || psk->psk_proto ==
-			    sk->proto) &&
-			    PF_MATCHA(psk->psk_src.neg,
-			    &psk->psk_src.addr.v.a.addr,
-			    &psk->psk_src.addr.v.a.mask,
-			    srcaddr, sk->af) &&
-			    PF_MATCHA(psk->psk_dst.neg,
-			    &psk->psk_dst.addr.v.a.addr,
-			    &psk->psk_dst.addr.v.a.mask,
-			    dstaddr, sk->af) &&
-			    (psk->psk_src.port_op == 0 ||
-			    pf_match_port(psk->psk_src.port_op,
-			    psk->psk_src.port[0], psk->psk_src.port[1],
-			    srcport)) &&
-			    (psk->psk_dst.port_op == 0 ||
-			    pf_match_port(psk->psk_dst.port_op,
-			    psk->psk_dst.port[0], psk->psk_dst.port[1],
-			    dstport)) &&
-			    (!psk->psk_label[0] || (s->rule.ptr->label[0] &&
-			    !strcmp(psk->psk_label, s->rule.ptr->label))) &&
-			    (!psk->psk_ifname[0] || !strcmp(psk->psk_ifname,
-			    s->kif->pfik_name))) {
-				/* send immediate delete of state */
-				pfsync_delete_state(s);
-				s->sync_flags |= PFSTATE_NOSYNC;
-				pf_unlink_state(s);
-				killed++;
-			}
+			    if (s->direction == PF_OUT) {
+				    srcaddr = &sk->addr[1];
+				    dstaddr = &sk->addr[0];
+				    srcport = sk->port[0];
+				    dstport = sk->port[0];
+			    } else {
+				    srcaddr = &sk->addr[0];
+				    dstaddr = &sk->addr[1];
+				    srcport = sk->port[0];
+				    dstport = sk->port[0];
+			    }
+			    if ((!psk->psk_af || sk->af == psk->psk_af)
+				&& (!psk->psk_proto || psk->psk_proto ==
+						       sk->proto) &&
+				PF_MATCHA(psk->psk_src.neg,
+					  &psk->psk_src.addr.v.a.addr,
+					  &psk->psk_src.addr.v.a.mask,
+					  srcaddr, sk->af) &&
+				PF_MATCHA(psk->psk_dst.neg,
+					  &psk->psk_dst.addr.v.a.addr,
+					  &psk->psk_dst.addr.v.a.mask,
+					  dstaddr, sk->af) &&
+				(psk->psk_src.port_op == 0 ||
+				 pf_match_port(psk->psk_src.port_op,
+					       psk->psk_src.port[0],
+					       psk->psk_src.port[1],
+					       srcport)) &&
+				(psk->psk_dst.port_op == 0 ||
+				 pf_match_port(psk->psk_dst.port_op,
+					       psk->psk_dst.port[0],
+					       psk->psk_dst.port[1],
+					       dstport)) &&
+				(!psk->psk_label[0] ||
+				 (s->rule.ptr->label[0] &&
+				  !strcmp(psk->psk_label, s->rule.ptr->label))) &&
+				(!psk->psk_ifname[0] ||
+				 !strcmp(psk->psk_ifname, s->kif->pfik_name))) {
+				    /* send immediate delete of state */
+				    pfsync_delete_state(s);
+				    s->sync_flags |= PFSTATE_NOSYNC;
+				    pf_unlink_state(s);
+				    killed++;
+			    }
+		    }
 		}
+		lwkt_setcpu_self(save_gd);
 		psk->psk_killed = killed;
 		break;
 	}
@@ -1637,16 +1667,24 @@ pfioctl(struct dev_ioctl_args *ap)
 		struct pfioc_state	*ps = (struct pfioc_state *)addr;
 		struct pf_state		*s;
 		struct pf_state_cmp	 id_key;
+		globaldata_t save_gd = mycpu;
+		int nn;
 
 		bcopy(ps->state.id, &id_key.id, sizeof(id_key.id));
 		id_key.creatorid = ps->state.creatorid;
-
-		s = pf_find_state_byid(&id_key);
-		if (s == NULL) {
-			error = ENOENT;
-			break;
+		s = NULL;
+		for (nn = 0; nn < ncpus; ++nn) {
+			lwkt_setcpu_self(globaldata_find(nn));
+			s = pf_find_state_byid(&id_key);
+			if (s)
+				break;
 		}
-		pfsync_state_export(&ps->state, s);
+		if (s) {
+			pfsync_state_export(&ps->state, s);
+		} else {
+			error = ENOENT;
+		}
+		lwkt_setcpu_self(save_gd);
 		break;
 	}
 
@@ -1655,6 +1693,8 @@ pfioctl(struct dev_ioctl_args *ap)
 		struct pf_state		*state;
 		struct pfsync_state	*p, *pstore;
 		u_int32_t		 nr = 0;
+		globaldata_t save_gd = mycpu;
+		int nn;
 
 		if (ps->ps_len == 0) {
 			nr = pf_status.states;
@@ -1666,25 +1706,30 @@ pfioctl(struct dev_ioctl_args *ap)
 
 		p = ps->ps_states;
 
-		state = TAILQ_FIRST(&state_list);
-		while (state) {
-			if (state->timeout != PFTM_UNLINKED) {
-				if ((nr+1) * sizeof(*p) > (unsigned)ps->ps_len)
-					break;
-				pfsync_state_export(pstore, state);
-				error = copyout(pstore, p, sizeof(*p));
-				if (error) {
-					kfree(pstore, M_TEMP);
-					goto fail;
+		for (nn = 0; nn < ncpus; ++nn) {
+			lwkt_setcpu_self(globaldata_find(nn));
+			state = TAILQ_FIRST(&state_list[nn]);
+			while (state) {
+				if (state->timeout != PFTM_UNLINKED) {
+					if ((nr + 1) * sizeof(*p) >
+					    (unsigned)ps->ps_len) {
+						break;
+					}
+					pfsync_state_export(pstore, state);
+					error = copyout(pstore, p, sizeof(*p));
+					if (error) {
+						kfree(pstore, M_TEMP);
+						lwkt_setcpu_self(save_gd);
+						goto fail;
+					}
+					p++;
+					nr++;
 				}
-				p++;
-				nr++;
+				state = TAILQ_NEXT(state, entry_list);
 			}
-			state = TAILQ_NEXT(state, entry_list);
 		}
-
+		lwkt_setcpu_self(save_gd);
 		ps->ps_len = sizeof(struct pfsync_state) * nr;
-
 		kfree(pstore, M_TEMP);
 		break;
 	}
@@ -1724,6 +1769,8 @@ pfioctl(struct dev_ioctl_args *ap)
 		struct pf_state_key_cmp	 key;
 		int			 m = 0, direction = pnl->direction;
 		int			 sidx, didx;
+		globaldata_t save_gd = mycpu;
+		int nn;
 
 		/* NATLOOK src and dst are reversed, so reverse sidx/didx */
 		sidx = (direction == PF_IN) ? 1 : 0;
@@ -1744,18 +1791,27 @@ pfioctl(struct dev_ioctl_args *ap)
 			PF_ACPY(&key.addr[didx], &pnl->daddr, pnl->af);
 			key.port[didx] = pnl->dport;
 
-			state = pf_find_state_all(&key, direction, &m);
+			state = NULL;
+			for (nn = 0; nn < ncpus; ++nn) {
+				lwkt_setcpu_self(globaldata_find(nn));
+				state = pf_find_state_all(&key, direction, &m);
+				if (state || m > 1)
+					break;
+				m = 0;
+			}
 
-			if (m > 1)
+			if (m > 1) {
 				error = E2BIG;	/* more than one state */
-			else if (state != NULL) {
+			} else if (state != NULL) {
 				sk = state->key[sidx];
 				PF_ACPY(&pnl->rsaddr, &sk->addr[sidx], sk->af);
 				pnl->rsport = sk->port[sidx];
 				PF_ACPY(&pnl->rdaddr, &sk->addr[didx], sk->af);
 				pnl->rdport = sk->port[didx];
-			} else
+			} else {
 				error = ENOENT;
+			}
+			lwkt_setcpu_self(save_gd);
 		}
 		break;
 	}
@@ -1945,6 +2001,7 @@ pfioctl(struct dev_ioctl_args *ap)
 		TAILQ_FOREACH(altq, pf_altqs_active, entries)
 			pa->nr++;
 		pa->ticket = ticket_altqs_active;
+		kprintf("ALTQS: %d\n", pa->nr);
 		break;
 	}
 
@@ -2730,12 +2787,17 @@ pfioctl(struct dev_ioctl_args *ap)
 	case DIOCGETSRCNODES: {
 		struct pfioc_src_nodes	*psn = (struct pfioc_src_nodes *)addr;
 		struct pf_src_node	*n, *p, *pstore;
-		u_int32_t		 nr = 0;
-		int			 space = psn->psn_len;
+		u_int32_t nr = 0;
+		int	space = psn->psn_len;
+		int	nn;
 
 		if (space == 0) {
-			RB_FOREACH(n, pf_src_tree, &tree_src_tracking)
-				nr++;
+			for (nn = 0; nn < ncpus; ++nn) {
+				RB_FOREACH(n, pf_src_tree,
+					   &tree_src_tracking[nn]) {
+					nr++;
+				}
+			}
 			psn->psn_len = sizeof(struct pf_src_node) * nr;
 			break;
 		}
@@ -2743,40 +2805,49 @@ pfioctl(struct dev_ioctl_args *ap)
 		pstore = kmalloc(sizeof(*pstore), M_TEMP, M_WAITOK);
 
 		p = psn->psn_src_nodes;
-		RB_FOREACH(n, pf_src_tree, &tree_src_tracking) {
-			int	secs = time_second, diff;
 
-			if ((nr + 1) * sizeof(*p) > (unsigned)psn->psn_len)
-				break;
+		/*
+		 * WARNING: We are not switching cpus so we cannot call
+		 *	    nominal pf.c support routines for cpu-specific
+		 *	    data.
+		 */
+		for (nn = 0; nn < ncpus; ++nn) {
+			RB_FOREACH(n, pf_src_tree, &tree_src_tracking[nn]) {
+				int	secs = time_second, diff;
 
-			bcopy(n, pstore, sizeof(*pstore));
-			if (n->rule.ptr != NULL)
-				pstore->rule.nr = n->rule.ptr->nr;
-			pstore->creation = secs - pstore->creation;
-			if (pstore->expire > secs)
-				pstore->expire -= secs;
-			else
-				pstore->expire = 0;
+				if ((nr + 1) * sizeof(*p) >
+				    (unsigned)psn->psn_len) {
+					break;
+				}
 
-			/* adjust the connection rate estimate */
-			diff = secs - n->conn_rate.last;
-			if (diff >= n->conn_rate.seconds)
-				pstore->conn_rate.count = 0;
-			else
-				pstore->conn_rate.count -=
-				    n->conn_rate.count * diff /
-				    n->conn_rate.seconds;
+				bcopy(n, pstore, sizeof(*pstore));
+				if (n->rule.ptr != NULL)
+					pstore->rule.nr = n->rule.ptr->nr;
+				pstore->creation = secs - pstore->creation;
+				if (pstore->expire > secs)
+					pstore->expire -= secs;
+				else
+					pstore->expire = 0;
 
-			error = copyout(pstore, p, sizeof(*p));
-			if (error) {
-				kfree(pstore, M_TEMP);
-				goto fail;
+				/* adjust the connection rate estimate */
+				diff = secs - n->conn_rate.last;
+				if (diff >= n->conn_rate.seconds)
+					pstore->conn_rate.count = 0;
+				else
+					pstore->conn_rate.count -=
+					    n->conn_rate.count * diff /
+					    n->conn_rate.seconds;
+
+				error = copyout(pstore, p, sizeof(*p));
+				if (error) {
+					kfree(pstore, M_TEMP);
+					goto fail;
+				}
+				p++;
+				nr++;
 			}
-			p++;
-			nr++;
 		}
 		psn->psn_len = sizeof(struct pf_src_node) * nr;
-
 		kfree(pstore, M_TEMP);
 		break;
 	}
@@ -2784,16 +2855,34 @@ pfioctl(struct dev_ioctl_args *ap)
 	case DIOCCLRSRCNODES: {
 		struct pf_src_node	*n;
 		struct pf_state		*state;
+		globaldata_t save_gd = mycpu;
+		int nn;
 
-		RB_FOREACH(state, pf_state_tree_id, &tree_id) {
-			state->src_node = NULL;
-			state->nat_src_node = NULL;
+		/*
+		 * WARNING: We are not switching cpus so we cannot call
+		 *	    nominal pf.c support routines for cpu-specific
+		 *	    data.
+		 */
+		for (nn = 0; nn < ncpus; ++nn) {
+			RB_FOREACH(state, pf_state_tree_id, &tree_id[nn]) {
+				state->src_node = NULL;
+				state->nat_src_node = NULL;
+			}
+			RB_FOREACH(n, pf_src_tree, &tree_src_tracking[nn]) {
+				n->expire = 1;
+				n->states = 0;
+			}
 		}
-		RB_FOREACH(n, pf_src_tree, &tree_src_tracking) {
-			n->expire = 1;
-			n->states = 0;
+
+		/*
+		 * WARNING: Must move to the target cpu for nominal calls
+		 *	    into pf.c
+		 */
+		for (nn = 0; nn < ncpus; ++nn) {
+			lwkt_setcpu_self(globaldata_find(nn));
+			pf_purge_expired_src_nodes(1);
 		}
-		pf_purge_expired_src_nodes(1);
+		lwkt_setcpu_self(save_gd);
 		pf_status.src_nodes = 0;
 		break;
 	}
@@ -2804,8 +2893,16 @@ pfioctl(struct dev_ioctl_args *ap)
 		struct pfioc_src_node_kill *psnk =
 		    (struct pfioc_src_node_kill *)addr;
 		u_int			killed = 0;
+		globaldata_t save_gd = mycpu;
+		int nn;
 
-		RB_FOREACH(sn, pf_src_tree, &tree_src_tracking) {
+		/*
+		 * WARNING: We are not switching cpus so we cannot call
+		 *	    nominal pf.c support routines for cpu-specific
+		 *	    data.
+		 */
+		for (nn = 0; nn < ncpus; ++nn) {
+		    RB_FOREACH(sn, pf_src_tree, &tree_src_tracking[nn]) {
 			if (PF_MATCHA(psnk->psnk_src.neg,
 				&psnk->psnk_src.addr.v.a.addr,
 				&psnk->psnk_src.addr.v.a.mask,
@@ -2817,7 +2914,7 @@ pfioctl(struct dev_ioctl_args *ap)
 				/* Handle state to src_node linkage */
 				if (sn->states != 0) {
 					RB_FOREACH(s, pf_state_tree_id,
-					    &tree_id) {
+					    &tree_id[nn]) {
 						if (s->src_node == sn)
 							s->src_node = NULL;
 						if (s->nat_src_node == sn)
@@ -2828,10 +2925,15 @@ pfioctl(struct dev_ioctl_args *ap)
 				sn->expire = 1;
 				killed++;
 			}
+		    }
 		}
-
-		if (killed > 0)
-			pf_purge_expired_src_nodes(1);
+		if (killed > 0) {
+			for (nn = 0; nn < ncpus; ++nn) {
+				lwkt_setcpu_self(globaldata_find(nn));
+				pf_purge_expired_src_nodes(1);
+			}
+			lwkt_setcpu_self(save_gd);
+		}
 
 		psnk->psnk_killed = killed;
 		break;
@@ -2896,16 +2998,22 @@ pf_clear_states(void)
 {
 	struct pf_state		*s, *nexts;
 	u_int			killed = 0;
+	globaldata_t save_gd = mycpu;
+	int nn;
 
-	for (s = RB_MIN(pf_state_tree_id, &tree_id); s; s = nexts) {
-		nexts = RB_NEXT(pf_state_tree_id, &tree_id, s);
+	for (nn = 0; nn < ncpus; ++nn) {
+		lwkt_setcpu_self(globaldata_find(nn));
+		for (s = RB_MIN(pf_state_tree_id, &tree_id[nn]); s; s = nexts) {
+			nexts = RB_NEXT(pf_state_tree_id, &tree_id[nn], s);
 
-		/* don't send out individual delete messages */
-		s->sync_flags = PFSTATE_NOSYNC;
-		pf_unlink_state(s);
-		killed++;
+			/* don't send out individual delete messages */
+			s->sync_flags = PFSTATE_NOSYNC;
+			pf_unlink_state(s);
+			killed++;
+		}
                         
 	}
+	lwkt_setcpu_self(save_gd);
 
 #if 0 /* PFSYNC */
 /*
@@ -2934,16 +3042,23 @@ pf_clear_srcnodes(void)
 {
 	struct pf_src_node	*n;
 	struct pf_state		*state;
+	globaldata_t save_gd = mycpu;
+	int nn;
 
-	RB_FOREACH(state, pf_state_tree_id, &tree_id) {
-		state->src_node = NULL;
-		state->nat_src_node = NULL;
+	for (nn = 0; nn < ncpus; ++nn) {
+		lwkt_setcpu_self(globaldata_find(nn));
+		RB_FOREACH(state, pf_state_tree_id, &tree_id[nn]) {
+			state->src_node = NULL;
+			state->nat_src_node = NULL;
+		}
+		RB_FOREACH(n, pf_src_tree, &tree_src_tracking[nn]) {
+			n->expire = 1;
+			n->states = 0;
+		}
+		pf_purge_expired_src_nodes(0);
 	}
-	RB_FOREACH(n, pf_src_tree, &tree_src_tracking) {
-		n->expire = 1;
-		n->states = 0;
-	}
-	pf_purge_expired_src_nodes(0);
+	lwkt_setcpu_self(save_gd);
+
 	pf_status.src_nodes = 0;
 }
 
@@ -3029,7 +3144,7 @@ pf_check_in(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 	 */
 	int chk;
 
-	lwkt_gettoken(&pf_token);
+	lwkt_gettoken_shared(&pf_token);
 
 	chk = pf_test(PF_IN, ifp, m, NULL, NULL);
 	if (chk && *m) {
@@ -3050,7 +3165,7 @@ pf_check_out(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 	 */
 	int chk;
 
-	lwkt_gettoken(&pf_token);
+	lwkt_gettoken_shared(&pf_token);
 
 	/* We need a proper CSUM befor we start (s. OpenBSD ip_output) */
 	if ((*m)->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
@@ -3075,7 +3190,7 @@ pf_check6_in(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 	 */
 	int chk;
 
-	lwkt_gettoken(&pf_token);
+	lwkt_gettoken_shared(&pf_token);
 
 	chk = pf_test6(PF_IN, ifp, m, NULL, NULL);
 	if (chk && *m) {
@@ -3094,7 +3209,7 @@ pf_check6_out(void *arg, struct mbuf **m, struct ifnet *ifp, int dir)
 	 */
 	int chk;
 
-	lwkt_gettoken(&pf_token);
+	lwkt_gettoken_shared(&pf_token);
 
 	/* We need a proper CSUM befor we start (s. OpenBSD ip_output) */
 	if ((*m)->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
