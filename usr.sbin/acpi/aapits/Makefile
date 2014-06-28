@@ -23,12 +23,12 @@ SRCS=	\
 
 SRCS+=	\
 	osunixxf.c \
+	ahids.c \
+	cmfsize.c \
+	getopt.c \
 	hwtimer.c \
 	hwvalid.c \
 	hwxface.c \
-	cmfsize.c \
-	getopt.c \
-	ahids.c \
 	dbcmds.c \
 	dbconvert.c \
 	dbdisply.c \
@@ -180,6 +180,7 @@ SRCS+=	\
 	uterror.c \
 	uteval.c \
 	utexcep.c \
+	utfileio.c \
 	utglobal.c \
 	utids.c \
 	utinit.c \
@@ -191,16 +192,19 @@ SRCS+=	\
 	utosi.c \
 	utownerid.c \
 	utpredef.c \
+	utprint.c \
 	utresrc.c \
 	utstate.c \
 	utstring.c \
 	uttrack.c \
 	utxface.c \
 	utxferror.c \
-	utxfinit.c
-#	../../source/components/osunixxf.c
+	utxfinit.c \
+	oslibcfs.c
+#	osunixxf.c
 
 CFLAGS+= \
+	-DACPI_APITS \
 	-DACPI_EXEC_APP \
 	-D__cdecl=
 
