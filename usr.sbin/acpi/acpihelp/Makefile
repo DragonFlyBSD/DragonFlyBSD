@@ -21,8 +21,14 @@ SRCS=	\
 
 SRCS+=	\
 	getopt.c \
+	oslibcfs.c \
+	osunixxf.c \
+	utdebug.c \
 	utexcep.c \
-	utpredef.c
+	utglobal.c \
+	utmath.c \
+	utpredef.c \
+	utprint.c
 
 CFLAGS+= \
 	-DACPI_HELP_APP \

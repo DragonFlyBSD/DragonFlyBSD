@@ -18,7 +18,6 @@ SRCS=	\
 
 SRCS+=	\
 	cmfsize.c \
-	dbfileio.c \
 	dsfield.c \
 	dsmthdat.c \
 	dsobject.c \
@@ -28,9 +27,12 @@ SRCS+=	\
 	dswscope.c \
 	dswstate.c \
 	excreate.c \
+	exdump.c \
+	exmutex.c \
 	exnames.c \
 	exresnte.c \
 	exresolv.c \
+	exsystem.c \
 	exutils.c \
 	getopt.c \
 	nsaccess.c \
@@ -47,6 +49,7 @@ SRCS+=	\
 	nsxfeval.c \
 	nsxfname.c \
 	nsxfobj.c \
+	oslibcfs.c \
 	osunixxf.c \
 	psargs.c \
 	psloop.c \
@@ -70,13 +73,18 @@ SRCS+=	\
 	tbxfroot.c \
 	utaddress.c \
 	utalloc.c \
+	utbuffer.c \
 	utcache.c \
 	utdebug.c \
 	utdecode.c \
 	utdelete.c \
 	uterror.c \
+	uteval.c \
 	utexcep.c \
+	utfileio.c \
 	utglobal.c \
+	utids.c \
+	utinit.c \
 	utlock.c \
 	utmath.c \
 	utmisc.c \
@@ -84,6 +92,7 @@ SRCS+=	\
 	utobject.c \
 	utosi.c \
 	utownerid.c \
+	utprint.c \
 	utstate.c \
 	utstring.c \
 	utxface.c \

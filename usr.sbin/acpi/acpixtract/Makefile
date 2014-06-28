@@ -14,7 +14,15 @@ SRCS=	\
 	axmain.c
 
 SRCS+=	\
-	getopt.c
+	getopt.c \
+	oslibcfs.c \
+	osunixxf.c \
+	utdebug.c \
+	utexcep.c \
+	utglobal.c \
+	utmath.c \
+	utprint.c \
+	utxferror.c
 
 CFLAGS+= \
 	-DACPI_XTRACT_APP \

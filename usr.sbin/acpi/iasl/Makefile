@@ -136,6 +136,7 @@ SRCS=	\
 	nswalk.c \
 	nsxfobj.c \
 	osunixxf.c \
+	oslibcfs.c \
 	prexpress.c \
 	prmacros.c \
 	prscan.c \
@@ -166,6 +167,7 @@ SRCS=	\
 	utdelete.c \
 	uterror.c \
 	utexcep.c \
+	utfileio.c \
 	utglobal.c \
 	utinit.c \
 	utlock.c \
@@ -175,6 +177,7 @@ SRCS=	\
 	utobject.c \
 	utownerid.c \
 	utpredef.c \
+	utprint.c \
 	utresrc.c \
 	utstate.c \
 	utstring.c \

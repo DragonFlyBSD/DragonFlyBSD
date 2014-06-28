@@ -308,8 +308,6 @@ AcpiUtStrcmp (
 }
 
 
-#ifdef ACPI_FUTURE_IMPLEMENTATION
-/* Not used at this time */
 /*******************************************************************************
  *
  * FUNCTION:    AcpiUtStrchr (strchr)
@@ -334,13 +332,13 @@ AcpiUtStrchr (
     {
         if ((*String) == (char) ch)
         {
-            return ((char *) String);
+            return (__DECONST(char *, String));
         }
     }
 
     return (NULL);
 }
-#endif
+
 
 /*******************************************************************************
  *
