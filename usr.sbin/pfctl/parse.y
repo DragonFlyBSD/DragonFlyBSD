@@ -5778,6 +5778,49 @@ parse_config(char *filename, struct pfctl *xpf)
 	blockpolicy = PFRULE_DROP;
 	require_order = 1;
 
+	/*
+	 * Default keep-polifcy is:
+	 *
+	 * set keep-policy keep state (pickups, sloppy)
+	 *
+	 * pickups - Allows TCP connections to be picked up mid-stream,
+	 *	     meaning that router restarts and changes in packet
+	 *	     routing will not destroy TCP connections already in
+	 *	     progress.
+	 *
+	 * sloppy  - Window scale options are only sent with SYN and SYN+ACK,
+	 *	     when picking up a connection in the middle, such as when
+	 *	     the router has been restarted or when multi-pathing
+	 *	     occurs, PF will not understand the window scale.  This
+	 *	     tells PF to ignore the sequence space tests for this case.
+	 *
+	 * While it is true that ICMP attack vectors are easier with these
+	 * options, the problem is that PF just has no business defaulting
+	 * to strict enforcement because it completely destroys the system
+	 * operator's ability to multi-path packets, to change packet routing,
+	 * or to restart the router (or PF) without kicking *ALL* active TCP
+	 * connections that were flowing through the router at the time.  It
+	 * unacceptable to kick active connections by default.
+	 */
+	{
+		struct node_state_opt *opt1 = calloc(1, sizeof(*opt1));
+		struct node_state_opt *opt2 = calloc(1, sizeof(*opt2));
+
+		opt1->type = PF_STATE_OPT_PICKUPS;
+		opt1->data.pickup_mode = PF_PICKUPS_ENABLED;
+		opt1->next = NULL;
+		opt1->tail = opt1;
+
+		opt2->type = PF_STATE_OPT_SLOPPY;
+		opt2->next = NULL;
+		opt2->tail = opt1;
+
+		default_keeppolicy_action = PF_STATE_NORMAL;
+		default_keeppolicy_options = opt1;
+		opt1->next = opt2;
+		opt1->tail = opt2;
+	}
+
 	if ((file = pushfile(filename, 0)) == NULL) {
 		warn("cannot open the main config file!");
 		return (-1);
