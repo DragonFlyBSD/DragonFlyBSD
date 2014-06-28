@@ -90,4 +90,27 @@ toeplitz_hash(uint32_t _rawhash)
 	return (_rawhash & 0xffff);
 }
 
+static __inline uint32_t
+toeplitz_piecemeal_addr(in_addr_t _faddr)
+{
+	uint32_t _res;
+
+	_res =  toeplitz_cache[0][_faddr & 0xff];
+	_res ^= toeplitz_cache[0][(_faddr >> 16) & 0xff];
+	_res ^= toeplitz_cache[1][(_faddr >> 8) & 0xff];
+	_res ^= toeplitz_cache[1][(_faddr >> 24) & 0xff];
+	return _res;
+}
+
+static __inline uint32_t
+toeplitz_piecemeal_port(in_port_t _fport)
+{
+	uint32_t _res;
+
+	_res  = toeplitz_cache[0][_fport & 0xff];
+	_res ^= toeplitz_cache[1][(_fport >> 8) & 0xff];
+
+	return _res;
+}
+
 #endif	/* !_NET_TOEPLITZ2_H_ */
