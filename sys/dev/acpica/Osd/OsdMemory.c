@@ -184,9 +184,9 @@ again:
 #ifdef ACPI_DEBUG_MEMMAP
     for (track = acpi_mapbase; track != NULL; track = track->next) {
 	if (track->freed && track->base == LogicalAddress) {
-	    kprintf("%s: unmapping: %p/%0*jx, mapped by %s:%d,"
+	    kprintf("%s: unmapping: %p/%08jx, mapped by %s:%d,"
 		   "last unmapped by %s:%d\n",
-		__func__, LogicalAddress, sizeof(Length) * 2, (uintmax_t)Length,
+		__func__, LogicalAddress, (uintmax_t)Length,
 		track->mapper.func, track->mapper.line,
 		track->unmapper.func, track->unmapper.line
 	    );
