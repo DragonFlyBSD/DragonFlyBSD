@@ -2001,7 +2001,6 @@ pfioctl(struct dev_ioctl_args *ap)
 		TAILQ_FOREACH(altq, pf_altqs_active, entries)
 			pa->nr++;
 		pa->ticket = ticket_altqs_active;
-		kprintf("ALTQS: %d\n", pa->nr);
 		break;
 	}
 

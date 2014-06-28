@@ -100,6 +100,7 @@
 #include <sys/msgport2.h>
 #include <sys/spinlock2.h>
 #include <net/netmsg2.h>
+#include <net/toeplitz2.h>
 
 extern int ip_optcopy(struct ip *, struct ip *);
 extern int debug_pfugidhack;
@@ -237,8 +238,10 @@ int			 pf_map_addr(u_int8_t, struct pf_rule *,
 			    struct pf_addr *, struct pf_addr *,
 			    struct pf_addr *, struct pf_src_node **);
 int			 pf_get_sport(sa_family_t, u_int8_t, struct pf_rule *,
-			    struct pf_addr *, struct pf_addr *, u_int16_t,
-			    struct pf_addr *, u_int16_t*, u_int16_t, u_int16_t,
+			    struct pf_addr *, struct pf_addr *,
+			    u_int16_t, u_int16_t,
+			    struct pf_addr *, u_int16_t *,
+			    u_int16_t, u_int16_t,
 			    struct pf_src_node **);
 void			 pf_route(struct mbuf **, struct pf_rule *, int,
 			    struct ifnet *, struct pf_state *,
@@ -296,14 +299,14 @@ struct pf_pool_limit pf_pool_limits[PF_LIMIT_MAX] = {
 
 #define STATE_INC_COUNTERS(s)				\
 	do {						\
-		s->rule.ptr->states_cur++;		\
+		atomic_add_int(&s->rule.ptr->states_cur, 1);	\
 		s->rule.ptr->states_tot++;		\
 		if (s->anchor.ptr != NULL) {		\
-			s->anchor.ptr->states_cur++;	\
+			atomic_add_int(&s->anchor.ptr->states_cur, 1);	\
 			s->anchor.ptr->states_tot++;	\
 		}					\
 		if (s->nat_rule.ptr != NULL) {		\
-			s->nat_rule.ptr->states_cur++;	\
+			atomic_add_int(&s->nat_rule.ptr->states_cur, 1); \
 			s->nat_rule.ptr->states_tot++;	\
 		}					\
 	} while (0)
@@ -311,10 +314,10 @@ struct pf_pool_limit pf_pool_limits[PF_LIMIT_MAX] = {
 #define STATE_DEC_COUNTERS(s)				\
 	do {						\
 		if (s->nat_rule.ptr != NULL)		\
-			s->nat_rule.ptr->states_cur--;	\
+			atomic_add_int(&s->nat_rule.ptr->states_cur, -1); \
 		if (s->anchor.ptr != NULL)		\
-			s->anchor.ptr->states_cur--;	\
-		s->rule.ptr->states_cur--;		\
+			atomic_add_int(&s->anchor.ptr->states_cur, -1);	\
+		atomic_add_int(&s->rule.ptr->states_cur, -1);		\
 	} while (0)
 
 static MALLOC_DEFINE(M_PFSTATEPL, "pfstatepl", "pf state pool list");
@@ -508,7 +511,7 @@ pf_src_connlimit(struct pf_state **state)
 				/*
 				 * Kill states from this source.  (Only those
 				 * from the same rule if PF_FLUSH_GLOBAL is not
-				 * set)
+				 * set).  (Only on current cpu).
 				 */
 				if (sk->af ==
 				    (*state)->key[PF_SK_WIRE]->af &&
@@ -838,7 +841,11 @@ pf_state_key_setup(struct pf_pdesc *pd, struct pf_rule *nr,
 	return (0);
 }
 
-
+/*
+ * Insert pf_state with one or two state keys (allowing a reverse path lookup
+ * which is used by NAT).  In the NAT case skw is the initiator (?) and
+ * sks is the target.
+ */
 int
 pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 		struct pf_state_key *sks, struct pf_state *s)
@@ -2546,13 +2553,15 @@ pf_map_addr(sa_family_t af, struct pf_rule *r, struct pf_addr *saddr,
 
 int
 pf_get_sport(sa_family_t af, u_int8_t proto, struct pf_rule *r,
-    struct pf_addr *saddr, struct pf_addr *daddr, u_int16_t dport,
+    struct pf_addr *saddr, struct pf_addr *daddr,
+    u_int16_t sport, u_int16_t dport,
     struct pf_addr *naddr, u_int16_t *nport, u_int16_t low, u_int16_t high,
     struct pf_src_node **sn)
 {
 	struct pf_state_key_cmp	key;
 	struct pf_addr		init_addr;
 	u_int16_t		cut;
+	u_int32_t		toeplitz_sport;
 
 	bzero(&init_addr, sizeof(init_addr));
 	if (pf_map_addr(af, r, saddr, naddr, &init_addr, sn))
@@ -2571,8 +2580,30 @@ pf_get_sport(sa_family_t af, u_int8_t proto, struct pf_rule *r,
 		key.port[1] = dport;
 
 		/*
+		 * We want to select a port that calculates to a toeplitz hash
+		 * that masks to the same cpu, otherwise the response may
+		 * not see the new state.
+		 */
+		switch(af) {
+		case AF_INET:
+			toeplitz_sport =
+				toeplitz_piecemeal_port(sport) ^
+				toeplitz_piecemeal_addr(saddr->v4.s_addr) ^
+				toeplitz_piecemeal_addr(naddr->v4.s_addr);
+			break;
+		case AF_INET6:
+			/* XXX TODO XXX */
+		default:
+			/* XXX TODO XXX */
+			toeplitz_sport = 0;
+			break;
+		}
+
+		/*
 		 * port search; start random, step;
 		 * similar 2 portloop in in_pcbbind
+		 *
+		 * XXX fixed ports present a problem for cpu localization.
 		 */
 		if (!(proto == IPPROTO_TCP || proto == IPPROTO_UDP ||
 		    proto == IPPROTO_ICMP)) {
@@ -2602,6 +2633,10 @@ pf_get_sport(sa_family_t af, u_int8_t proto, struct pf_rule *r,
 			/* low <= cut <= high */
 			for (tmp = cut; tmp <= high; ++(tmp)) {
 				key.port[0] = htons(tmp);
+				if ((toeplitz_piecemeal_port(key.port[0]) ^
+				     toeplitz_sport) & ncpus2_mask) {
+					continue;
+				}
 				if (pf_find_state_all(&key, PF_IN, NULL) ==
 				    NULL && !in_baddynamic(tmp, proto)) {
 					*nport = htons(tmp);
@@ -2610,6 +2645,10 @@ pf_get_sport(sa_family_t af, u_int8_t proto, struct pf_rule *r,
 			}
 			for (tmp = cut - 1; tmp >= low; --(tmp)) {
 				key.port[0] = htons(tmp);
+				if ((toeplitz_piecemeal_port(key.port[0]) ^
+				     toeplitz_sport) & ncpus2_mask) {
+					continue;
+				}
 				if (pf_find_state_all(&key, PF_IN, NULL) ==
 				    NULL && !in_baddynamic(tmp, proto)) {
 					*nport = htons(tmp);
@@ -2618,6 +2657,9 @@ pf_get_sport(sa_family_t af, u_int8_t proto, struct pf_rule *r,
 			}
 		}
 
+		/*
+		 * Next address
+		 */
 		switch (r->rpool.opts & PF_POOL_TYPEMASK) {
 		case PF_POOL_RANDOM:
 		case PF_POOL_ROUNDROBIN:
@@ -2764,8 +2806,9 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 			return (NULL);
 		case PF_NAT:
 			m->m_pkthdr.fw_flags &= ~BRIDGE_MBUF_TAGGED;
-			if (pf_get_sport(pd->af, pd->proto, r, saddr,
-			    daddr, dport, naddr, nport, r->rpool.proxy_port[0],
+			if (pf_get_sport(pd->af, pd->proto, r,
+			    saddr, daddr, sport, dport,
+			    naddr, nport, r->rpool.proxy_port[0],
 			    r->rpool.proxy_port[1], sn)) {
 				DPFPRINTF(PF_DEBUG_MISC,
 				    ("pf: NAT proxy port allocation "
