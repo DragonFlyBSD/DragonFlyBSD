@@ -22,6 +22,26 @@
 //   (indefinitely?) on some files.
 //
 
+// ACPI_SERIAL_BEGIN(...) / ACPI_SERIAL_END(...)
+//
+@rcu_ACPI_SERIAL_BEGIN exists@
+position p1;
+expression E;
+@@
+
+ACPI_SERIAL_BEGIN@p1(E);
+...
+ACPI_SERIAL_END(E);
+
+@exists@
+position rcu_ACPI_SERIAL_BEGIN.p1;
+expression E;
+@@
+
+*ACPI_SERIAL_BEGIN@p1(E);
+... when != ACPI_SERIAL_END(E);
+?*return ...;
+
 // crit_enter() / crit_exit()
 //
 @rcu_crit_enter exists@
