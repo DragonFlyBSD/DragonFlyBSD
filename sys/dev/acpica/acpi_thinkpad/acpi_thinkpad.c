@@ -1220,7 +1220,7 @@ acpi_thinkpad_eventhandler(struct acpi_thinkpad_softc *sc, int arg)
 		status = ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_BRIGHTNESS,
 				      &val_ec, 1);
 		if (ACPI_FAILURE(status))
-			return;
+			goto done;
 
 		val = val_ec & THINKPAD_EC_MASK_BRI;
 		val = (arg == THINKPAD_EVENT_BRIGHTNESS_UP) ? val + 1 : val - 1;
@@ -1236,7 +1236,7 @@ acpi_thinkpad_eventhandler(struct acpi_thinkpad_softc *sc, int arg)
 		/* Read the current volume */
 		status = ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_VOLUME, &val_ec, 1);
 		if (ACPI_FAILURE(status))
-			return;
+			goto done;
 
 		val = val_ec & THINKPAD_EC_MASK_VOL;
 		val = (arg == THINKPAD_EVENT_VOLUME_UP) ? val + 1 : val - 1;
@@ -1247,7 +1247,7 @@ acpi_thinkpad_eventhandler(struct acpi_thinkpad_softc *sc, int arg)
 		/* Read the current value */
 		status = ACPI_EC_READ(sc->ec_dev, THINKPAD_EC_VOLUME, &val_ec, 1);
 		if (ACPI_FAILURE(status))
-			return;
+			goto done;
 
 		val = ((val_ec & THINKPAD_EC_MASK_MUTE) == THINKPAD_EC_MASK_MUTE);
 		acpi_thinkpad_mute_set(sc, (val == 0));
@@ -1256,6 +1256,7 @@ acpi_thinkpad_eventhandler(struct acpi_thinkpad_softc *sc, int arg)
 	default:
 		break;
 	}
+done:
 	ACPI_SERIAL_END(thinkpad);
 }
 
