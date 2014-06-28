@@ -2572,12 +2572,14 @@ pf_get_sport(sa_family_t af, u_int8_t proto, struct pf_rule *r,
 		high = 65535;
 	}
 
+	bzero(&key, sizeof(key));
+	key.af = af;
+	key.proto = proto;
+	key.port[0] = dport;
+	PF_ACPY(&key.addr[0], daddr, key.af);
+
 	do {
-		key.af = af;
-		key.proto = proto;
-		PF_ACPY(&key.addr[1], daddr, key.af);
-		PF_ACPY(&key.addr[0], naddr, key.af);
-		key.port[1] = dport;
+		PF_ACPY(&key.addr[1], naddr, key.af);
 
 		/*
 		 * We want to select a port that calculates to a toeplitz hash
@@ -2607,15 +2609,19 @@ pf_get_sport(sa_family_t af, u_int8_t proto, struct pf_rule *r,
 		 */
 		if (!(proto == IPPROTO_TCP || proto == IPPROTO_UDP ||
 		    proto == IPPROTO_ICMP)) {
-			key.port[0] = dport;
-			if (pf_find_state_all(&key, PF_IN, NULL) == NULL)
+			key.port[1] = sport;
+			if (pf_find_state_all(&key, PF_IN, NULL) == NULL) {
+				*nport = sport;
 				return (0);
+			}
 		} else if (low == 0 && high == 0) {
-			key.port[0] = *nport;
-			if (pf_find_state_all(&key, PF_IN, NULL) == NULL)
+			key.port[1] = sport;
+			if (pf_find_state_all(&key, PF_IN, NULL) == NULL) {
+				*nport = sport;
 				return (0);
+			}
 		} else if (low == high) {
-			key.port[0] = htons(low);
+			key.port[1] = htons(low);
 			if (pf_find_state_all(&key, PF_IN, NULL) == NULL) {
 				*nport = htons(low);
 				return (0);
@@ -2632,8 +2638,8 @@ pf_get_sport(sa_family_t af, u_int8_t proto, struct pf_rule *r,
 			cut = htonl(karc4random()) % (1 + high - low) + low;
 			/* low <= cut <= high */
 			for (tmp = cut; tmp <= high; ++(tmp)) {
-				key.port[0] = htons(tmp);
-				if ((toeplitz_piecemeal_port(key.port[0]) ^
+				key.port[1] = htons(tmp);
+				if ((toeplitz_piecemeal_port(key.port[1]) ^
 				     toeplitz_sport) & ncpus2_mask) {
 					continue;
 				}
@@ -2644,8 +2650,8 @@ pf_get_sport(sa_family_t af, u_int8_t proto, struct pf_rule *r,
 				}
 			}
 			for (tmp = cut - 1; tmp >= low; --(tmp)) {
-				key.port[0] = htons(tmp);
-				if ((toeplitz_piecemeal_port(key.port[0]) ^
+				key.port[1] = htons(tmp);
+				if ((toeplitz_piecemeal_port(key.port[1]) ^
 				     toeplitz_sport) & ncpus2_mask) {
 					continue;
 				}
