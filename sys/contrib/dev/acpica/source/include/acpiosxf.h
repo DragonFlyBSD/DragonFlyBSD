@@ -150,14 +150,6 @@ AcpiOsAcquireLock (
     ACPI_SPINLOCK           Handle);
 #endif
 
-#ifdef ACPI_DEBUG_LOCKS
-ACPI_CPU_FLAGS
-_AcpiOsAcquireLock (
-    ACPI_SPINLOCK           Handle,
-    const char              *func,
-    int                     line);
-#endif
-
 #ifndef ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsReleaseLock
 void
 AcpiOsReleaseLock (
@@ -268,21 +260,6 @@ AcpiOsUnmapMemory (
     ACPI_SIZE               Size);
 #endif
 
-#ifdef ACPI_DEBUG_MEMMAP
-void *
-_AcpiOsMapMemory (
-    ACPI_PHYSICAL_ADDRESS   Where,
-    ACPI_SIZE               Length,
-    const char              *caller,
-    int line);
-void
-_AcpiOsUnmapMemory (
-    void                    *LogicalAddress,
-    ACPI_SIZE               Length,
-    const char              *caller,
-    int                     line);
-#endif
-
 #ifndef ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetPhysicalAddress
 ACPI_STATUS
 AcpiOsGetPhysicalAddress (
@@ -328,14 +305,6 @@ AcpiOsReleaseObject (
     void                    *Object);
 #endif
 
-#ifdef ACPI_DEBUG_CACHE
-ACPI_STATUS
-_AcpiOsReleaseObject (
-    ACPI_CACHE_T            *Cache,
-    void                    *Object,
-    const char              *func,
-    int                     line);
-#endif
 
 /*
  * Interrupt handlers

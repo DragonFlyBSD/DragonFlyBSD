@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Name: acenvex.h - Extra host and compiler configuration
+ * Name: acdragonflyex.h - Extra OS specific defines, etc. for DragonFly
  *
  *****************************************************************************/
 
@@ -41,26 +41,44 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-#ifndef __ACENVEX_H__
-#define __ACENVEX_H__
+#ifndef __ACDRAGONFLYEX_H__
+#define __ACDRAGONFLYEX_H__
 
-/*! [Begin] no source code translation */
+#ifdef _KERNEL
 
-/******************************************************************************
- *
- * Extra host configuration files. All ACPICA headers are included before
- * including these files.
- *
- *****************************************************************************/
-
-#if defined(_LINUX) || defined(__linux__)
-#include "aclinuxex.h"
-
-#elif defined(__DragonFly__)
-#include "acdragonflyex.h"
-
+#ifdef ACPI_DEBUG_CACHE
+ACPI_STATUS
+_AcpiOsReleaseObject (
+    ACPI_CACHE_T		*Cache,
+    void			*Object,
+    const char			*func,
+    int				line);
 #endif
 
-/*! [End] no source code translation !*/
+#ifdef ACPI_DEBUG_LOCKS
+ACPI_CPU_FLAGS
+_AcpiOsAcquireLock (
+    ACPI_SPINLOCK		Spin,
+    const char			*func,
+    int				line);
+#endif
 
-#endif /* __ACENVEX_H__ */
+#ifdef ACPI_DEBUG_MEMMAP
+void *
+_AcpiOsMapMemory (
+    ACPI_PHYSICAL_ADDRESS	Where,
+    ACPI_SIZE			Length,
+    const char			*caller,
+    int				line);
+
+void
+_AcpiOsUnmapMemory (
+    void			*LogicalAddress,
+    ACPI_SIZE			Length,
+    const char			*caller,
+    int				line);
+#endif
+
+#endif /* _KERNEL */
+
+#endif /* __ACDRAGONFLYEX_H__ */
