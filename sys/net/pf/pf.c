@@ -873,13 +873,13 @@ pf_state_insert(struct pfi_kif *kif, struct pf_state_key *skw,
 	if (s->id == 0 && s->creatorid == 0) {
 		u_int64_t sid;
 
-		if (sizeof(long) == 8) {
-			sid = atomic_fetchadd_long(&pf_status.stateid, 1);
-		} else {
-			spin_lock(&pf_spin);
-			sid = pf_status.stateid++;
-			spin_unlock(&pf_spin);
-		}
+#if __SIZEOF_LONG__ == 8
+		sid = atomic_fetchadd_long(&pf_status.stateid, 1);
+#else
+		spin_lock(&pf_spin);
+		sid = pf_status.stateid++;
+		spin_unlock(&pf_spin);
+#endif
 		s->id = htobe64(sid);
 		s->creatorid = pf_status.hostid;
 	}
