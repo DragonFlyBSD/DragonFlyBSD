@@ -4516,7 +4516,7 @@ bce_rx_int_next_rx:
 				m->m_pkthdr.ether_vlantag =
 					l2fhdr->l2_fhdr_vlan_tag;
 			}
-			ether_input_pkt(ifp, m, pi, cpuid);
+			ifp->if_input(ifp, m, pi, cpuid);
 #ifdef BCE_RSS_DEBUG
 			rxr->rx_pkts++;
 #endif

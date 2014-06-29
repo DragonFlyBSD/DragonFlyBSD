@@ -2504,7 +2504,7 @@ jme_rxpkt(struct jme_rxdata *rdata, int cpuid)
 #endif
 
 			/* Pass it on. */
-			ether_input_pkt(ifp, m, pi, cpuid);
+			ifp->if_input(ifp, m, pi, cpuid);
 
 			/* Reset mbuf chains. */
 			JME_RXCHAIN_RESET(rdata);

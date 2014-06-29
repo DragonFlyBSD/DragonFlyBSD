@@ -2741,7 +2741,7 @@ next_desc:
 			i = 0;
 
 		if (sendmp != NULL)
-			ether_input_pkt(ifp, sendmp, pi, cpuid);
+			ifp->if_input(ifp, sendmp, pi, cpuid);
 
 		if (nsegs >= rxr->rx_wreg_nsegs) {
 			ix_rx_refresh(rxr, i);

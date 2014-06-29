@@ -2711,7 +2711,7 @@ discard:
 		}
 
 		if (m != NULL)
-			ether_input_pkt(ifp, m, pi, cpuid);
+			ifp->if_input(ifp, m, pi, cpuid);
 
 		/* Advance our pointers to the next descriptor. */
 		if (++i == rxr->num_rx_desc)
