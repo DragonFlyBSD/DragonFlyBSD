@@ -66,6 +66,7 @@ struct ip;
 struct ip6_hdr;
 
 extern struct lwkt_token pf_token;
+extern struct lwkt_token pf_gtoken;
 
 #define	PF_TCPS_PROXY_SRC	((TCP_NSTATES)+0)
 #define	PF_TCPS_PROXY_DST	((TCP_NSTATES)+1)
@@ -838,12 +839,15 @@ struct pf_state {
 	u_int8_t		 state_flags;
 #define	PFSTATE_ALLOWOPTS	0x01
 #define	PFSTATE_SLOPPY		0x02
+#define PFSTATE_STACK_GLOBAL	0x04	/* pf_state_key[1] is global */
+#define PFSTATE_CREATEINPROG	0x08	/* prevent find from finding it */
 	u_int8_t		 timeout;
 	u_int8_t		 sync_flags;
 	u_int8_t		 pickup_mode;
 #define	PFSTATE_NOSYNC	 0x01
 #define	PFSTATE_FROMSYNC 0x02
 #define	PFSTATE_STALE	 0x04
+	struct lock		lk;
 };
 
 /*
@@ -1138,7 +1142,7 @@ TAILQ_HEAD(pfi_statehead, pfi_kif);
 RB_HEAD(pfi_ifhead, pfi_kif);
 
 /* state tables */
-extern struct pf_state_tree	 pf_statetbl[MAXCPU];
+extern struct pf_state_tree	 pf_statetbl[MAXCPU+1];
 
 /* keep synced with pfi_kif, used in RB_FIND */
 struct pfi_kif_cmp {
@@ -1224,6 +1228,7 @@ struct pf_pdesc {
 	u_int8_t	 dir;		/* direction */
 	u_int8_t	 sidx;		/* key index for source */
 	u_int8_t	 didx;		/* key index for destination */
+	u_int8_t	 not_cpu_localized; /* translation not localized */
 };
 
 /* flags for RDR options */
@@ -1918,6 +1923,7 @@ void		 pf_qid_unref(u_int32_t);
 extern struct pf_status	pf_status;
 extern struct malloc_type	*pf_frent_pl, *pf_frag_pl;
 extern struct lock	pf_consistency_lock;
+extern struct lock	pf_global_statetbl_lock;
 
 struct pf_pool_limit {
 	void		*pp;

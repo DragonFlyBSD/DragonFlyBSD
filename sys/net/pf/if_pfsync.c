@@ -346,6 +346,7 @@ pfsync_state_import(struct pfsync_state *sp, u_int8_t flags)
 
 	if ((st = kmalloc(sizeof(struct pf_state), M_PFSYNC, pool_flags)) == NULL)
 		goto cleanup;
+	lockinit(&st->lk, "pfstlk", 0, 0);
 
 	if ((skw = pf_alloc_state_key(pool_flags)) == NULL)
 		goto cleanup;

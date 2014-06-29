@@ -117,6 +117,7 @@ void			 pf_addr_copyout(struct pf_addr_wrap *);
 
 struct pf_rule		 pf_default_rule;
 struct lock		 pf_consistency_lock;
+struct lock		 pf_global_statetbl_lock;
 #ifdef ALTQ
 static int		 pf_altq_running;
 #endif
@@ -3309,6 +3310,7 @@ pf_load(void)
 	pf_dev = make_dev(&pf_ops, 0, 0, 0, 0600, PF_NAME);
 	pfattach();
 	lockinit(&pf_consistency_lock, "pfconslck", 0, LK_CANRECURSE);
+	lockinit(&pf_global_statetbl_lock, "pfglstlk", 0, 0);
 	lwkt_reltoken(&pf_token);
 	return (0);
 }

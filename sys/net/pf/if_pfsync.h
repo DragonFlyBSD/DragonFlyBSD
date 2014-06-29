@@ -252,13 +252,13 @@ int			pfsync_state_import(struct pfsync_state *, u_int8_t);
 	st->sync_flags &= ~PFSTATE_FROMSYNC;			\
 } while (0)
 #define pfsync_update_state(st) do {				\
-	if (!st->sync_flags)					\
+	if (!(st)->sync_flags)					\
 		pfsync_pack_state(PFSYNC_ACT_UPD, (st), 	\
 		    PFSYNC_FLAG_COMPRESS);			\
-	st->sync_flags &= ~PFSTATE_FROMSYNC;			\
+	(st)->sync_flags &= ~PFSTATE_FROMSYNC;			\
 } while (0)
 #define pfsync_delete_state(st) do {				\
-	if (!st->sync_flags)					\
+	if (!(st)->sync_flags)					\
 		pfsync_pack_state(PFSYNC_ACT_DEL, (st),		\
 		    PFSYNC_FLAG_COMPRESS);			\
 } while (0)
