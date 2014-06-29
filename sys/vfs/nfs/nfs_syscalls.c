@@ -442,6 +442,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 	struct mbuf *m, *mreq;
 	int error, cacherep, sotype, writes_todo;
 	int procrastinate;
+	int slplocked;
 	u_quad_t cur_usec;
 
 #ifndef nolint
@@ -504,13 +505,24 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 				 * allowing the tcp socket to continue to
 				 * drain while we are processing records.
 				 */
-				if (slp->ns_flag & SLP_DISCONN) {
-					nfsrv_zapsock(slp);
-				} else if (slp->ns_flag & SLP_NEEDQ) {
-					(void)nfs_slplock(slp, 1);
-					nfsrv_rcv(slp->ns_so, (caddr_t)slp,
-						  MB_WAIT);
-					nfs_slpunlock(slp);
+				while (slp->ns_flag & (SLP_DISCONN|SLP_NEEDQ)) {
+					if (slp->ns_flag & SLP_DISCONN) {
+						nfsrv_zapsock(slp);
+						break;
+					}
+					if (slp->ns_flag & SLP_NEEDQ) {
+						nfs_slplock(slp, 1);
+						if ((slp->ns_flag &
+						     SLP_NEEDQ) == 0) {
+							nfs_slpunlock(slp);
+							continue;
+						}
+						nfsrv_rcv(slp->ns_so,
+							  (caddr_t)slp,
+							  MB_WAIT);
+						nfs_slpunlock(slp);
+						break;
+					}
 				}
 				error = nfsrv_dorec(slp, nfsd, &nd);
 				cur_usec = nfs_curusec();
@@ -540,9 +552,12 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			}
 			if (NFSRV_RECLIMIT(slp) == 0 &&
 			    (slp->ns_flag & SLP_NEEDQ)) {
-				(void)nfs_slplock(slp, 1);
-				nfsrv_rcv(slp->ns_so, (caddr_t)slp,
-					  MB_WAIT);
+				nfs_slplock(slp, 1);
+				if (NFSRV_RECLIMIT(slp) == 0 &&
+				    (slp->ns_flag & SLP_NEEDQ)) {
+					nfsrv_rcv(slp->ns_so, (caddr_t)slp,
+						  MB_WAIT);
+				}
 				nfs_slpunlock(slp);
 			}
 		}
@@ -567,13 +582,13 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			}
 			continue;
 		}
+		sotype = slp->ns_so->so_type;
 
 		/*
 		 * Execute the NFS request - handle the server side cache
 		 *
 		 * nfs_token not held here.  slp token is held.
 		 */
-		sotype = slp->ns_so->so_type;
 		if (nd) {
 		    getmicrotime(&nd->nd_starttime);
 		    if (nd->nd_nam2)
@@ -627,7 +642,6 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 				   inet_ntoa(sin->sin_addr), port);
 			}
 		    }
-
 		}
 
 		/*
@@ -693,15 +707,21 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 				M_PREPEND(m, NFSX_UNSIGNED, MB_WAIT);
 				if (m == NULL) {
 					error = ENOBUFS;
+					slplocked = 0;
 					goto skip;
 				}
 				*mtod(m, u_int32_t *) = htonl(0x80000000 | siz);
 			}
-			if (slp->ns_so->so_proto->pr_flags & PR_CONNREQUIRED)
-				(void) nfs_slplock(slp, 1);
-			if (slp->ns_flag & SLP_VALID)
+			if ((slp->ns_flag & SLP_VALID) &&
+			    (slp->ns_so->so_proto->pr_flags & PR_CONNREQUIRED)){
+				nfs_slplock(slp, 1);
+				slplocked = 1;
+			} else {
+				slplocked = 0;
+			}
+			if (slp->ns_flag & SLP_VALID) {
 			    error = nfs_send(slp->ns_so, nd->nd_nam2, m, NULL);
-			else {
+			} else {
 			    error = EPIPE;
 			    m_freem(m);
 			}
@@ -714,7 +734,7 @@ skip:
 				m_freem(nd->nd_mrep);
 			if (error == EPIPE || error == ENOBUFS)
 				nfsrv_zapsock(slp);
-			if (slp->ns_so->so_proto->pr_flags & PR_CONNREQUIRED)
+			if (slplocked)
 				nfs_slpunlock(slp);
 			if (error == EINTR || error == ERESTART) {
 				kfree((caddr_t)nd, M_NFSRVDESC);
@@ -785,9 +805,14 @@ done:
 /*
  * Shut down a socket associated with an nfssvc_sock structure.
  * Should be called with the send lock set, if required.
+ *
  * The trick here is to increment the sref at the start, so that the nfsds
  * will stop using it and clear ns_flag at the end so that it will not be
  * reassigned during cleanup.
+ *
+ * That said, while we shutdown() the socket here, we don't actually destroy
+ * it until the final deref as there might be other code in the middle of
+ * using it.
  */
 static void
 nfsrv_zapsock(struct nfssvc_sock *slp)
@@ -795,22 +820,25 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 	struct nfsuid *nuidp, *nnuidp;
 	struct nfsrv_descript *nwp, *nnwp;
 	struct socket *so;
-	struct file *fp;
 	struct nfsrv_rec *rec;
+	int wasvalid;
 
+	wasvalid = slp->ns_flag & SLP_VALID;
 	slp->ns_flag &= ~SLP_ALLFLAGS;
-	fp = slp->ns_fp;
-	if (fp) {
-		slp->ns_fp = NULL;
+	if (wasvalid && slp->ns_fp) {
 		so = slp->ns_so;
 		atomic_clear_int(&so->so_rcv.ssb_flags, SSB_UPCALL);
 		so->so_upcall = NULL;
 		so->so_upcallarg = NULL;
 		soshutdown(so, SHUT_RDWR);
-		closef(fp, NULL);
-		if (slp->ns_nam)
+		if (slp->ns_nam) {
 			kfree(slp->ns_nam, M_SONAME);
+			slp->ns_nam = NULL;
+		}
+
 		m_freem(slp->ns_raw);
+		slp->ns_raw = NULL;
+
 		while ((rec = STAILQ_FIRST(&slp->ns_rec)) != NULL) {
 			--slp->ns_numrec;
 			STAILQ_REMOVE_HEAD(&slp->ns_rec, nr_link);
@@ -829,7 +857,7 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 				kfree(nuidp->nu_nam, M_SONAME);
 			kfree((caddr_t)nuidp, M_NFSUID);
 		}
-		crit_enter();
+		crit_enter();	/* XXX doesn't do anything any more */
 		for (nwp = slp->ns_tq.lh_first; nwp; nwp = nnwp) {
 			nnwp = nwp->nd_tq.le_next;
 			LIST_REMOVE(nwp, nd_tq);
@@ -837,6 +865,7 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 		}
 		LIST_INIT(&slp->ns_tq);
 		crit_exit();
+
 		nfsrv_slpderef(slp);
 	}
 }
@@ -850,11 +879,18 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 void
 nfsrv_slpderef(struct nfssvc_sock *slp)
 {
+	struct file *fp;
+
 	ASSERT_LWKT_TOKEN_HELD(&nfs_token);
 	if (slp->ns_sref == 1) {
 		KKASSERT((slp->ns_flag & SLP_VALID) == 0);
 		TAILQ_REMOVE(&nfssvc_sockhead, slp, ns_chain);
 		slp->ns_sref = 0;
+		fp = slp->ns_fp;
+		slp->ns_fp = NULL;
+		slp->ns_so = NULL;
+		if (fp)
+			closef(fp, NULL);
 		kfree((caddr_t)slp, M_NFSSVC);
 	} else {
 		--slp->ns_sref;
@@ -916,12 +952,12 @@ nfsrv_init(int terminating)
 
 	if (terminating) {
 		TAILQ_FOREACH_MUTABLE(slp, &nfssvc_sockhead, ns_chain, nslp) {
+			nfsrv_slpref(slp);
+			lwkt_gettoken(&slp->ns_token);
 			if (slp->ns_flag & SLP_VALID)
 				nfsrv_zapsock(slp);
-			/*
-			TAILQ_REMOVE(&nfssvc_sockhead, slp, ns_chain);
-			kfree((caddr_t)slp, M_NFSSVC);
-			*/
+			lwkt_reltoken(&slp->ns_token);
+			nfsrv_slpderef(slp);
 		}
 		nfsrv_cleancache();	/* And clear out server cache */
 	} else {
