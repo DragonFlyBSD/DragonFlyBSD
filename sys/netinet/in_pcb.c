@@ -1650,23 +1650,17 @@ inp_localgroup_alloc(u_char vflag,
 	return grp;
 }
 
-static struct inp_localgroup *
-inp_localgroup_create(struct inp_localgrphead *hdr, u_char vflag,
-    uint16_t port, const union in_dependaddr *addr, int size)
+static void
+inp_localgroup_free(struct inp_localgroup *grp)
 {
-	struct inp_localgroup *grp;
-
-	grp = inp_localgroup_alloc(vflag, port, addr, size);
-	LIST_INSERT_HEAD(hdr, grp, il_list);
-
-	return grp;
+	kfree(grp, M_TEMP);
 }
 
 static void
 inp_localgroup_destroy(struct inp_localgroup *grp)
 {
 	LIST_REMOVE(grp, il_list);
-	kfree(grp, M_TEMP);
+	inp_localgroup_free(grp);
 }
 
 static void
@@ -1684,20 +1678,6 @@ inp_localgroup_copy(struct inp_localgroup *grp,
 	grp->il_factor = old_grp->il_factor;
 }
 
-static struct inp_localgroup *
-inp_localgroup_resize(struct inp_localgrphead *hdr,
-    struct inp_localgroup *old_grp, int size)
-{
-	struct inp_localgroup *grp;
-
-	grp = inp_localgroup_create(hdr, old_grp->il_vflag,
-	    old_grp->il_lport, &old_grp->il_dependladdr, size);
-	inp_localgroup_copy(grp, old_grp);
-	inp_localgroup_destroy(old_grp);
-
-	return grp;
-}
-
 static void
 inp_localgroup_factor(struct inp_localgroup *grp)
 {
@@ -1711,7 +1691,7 @@ static void
 in_pcbinslocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 {
 	struct inp_localgrphead *hdr;
-	struct inp_localgroup *grp;
+	struct inp_localgroup *grp, *grp_alloc = NULL;
 	struct ucred *cred;
 
 	if (pcbinfo->localgrphashbase == NULL)
@@ -1740,6 +1720,7 @@ in_pcbinslocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	hdr = &pcbinfo->localgrphashbase[
 	    INP_PCBLOCALGRPHASH(inp->inp_lport, pcbinfo->localgrphashmask)];
 
+again:
 	LIST_FOREACH(grp, hdr, il_list) {
 		if (grp->il_vflag == inp->inp_vflag &&
 		    grp->il_lport == inp->inp_lport &&
@@ -1750,10 +1731,26 @@ in_pcbinslocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 		}
 	}
 	if (grp == NULL) {
-		/* Create new local group */
-		grp = inp_localgroup_create(hdr, inp->inp_vflag,
-		    inp->inp_lport, &inp->inp_inc.inc_ie.ie_dependladdr,
-		    INP_LOCALGROUP_SIZMIN);
+		/*
+		 * Create a new local group
+		 */
+		if (grp_alloc == NULL) {
+			grp_alloc = inp_localgroup_alloc(inp->inp_vflag,
+			    inp->inp_lport, &inp->inp_inc.inc_ie.ie_dependladdr,
+			    INP_LOCALGROUP_SIZMIN);
+			/*
+			 * Local group allocation could block and the
+			 * local group w/ the same property might have
+			 * been added by others when we were blocked;
+			 * check again.
+			 */
+			goto again;
+		} else {
+			/* Local group has been allocated; link it */
+			grp = grp_alloc;
+			grp_alloc = NULL;
+			LIST_INSERT_HEAD(hdr, grp, il_list);
+		}
 	} else if (grp->il_inpcnt == grp->il_inpsiz) {
 		if (grp->il_inpsiz >= INP_LOCALGROUP_SIZMAX) {
 			static int limit_logged = 0;
@@ -1763,11 +1760,59 @@ in_pcbinslocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 				kprintf("local group port %d, "
 				    "limit reached\n", ntohs(grp->il_lport));
 			}
+			if (grp_alloc != NULL) {
+				/*
+				 * This would happen if the local group
+				 * w/ the same property was expanded when
+				 * our local group allocation blocked.
+				 */
+				inp_localgroup_free(grp_alloc);
+			}
 			return;
 		}
 
-		/* Expand this local group */
-		grp = inp_localgroup_resize(hdr, grp, grp->il_inpsiz * 2);
+		/*
+		 * Expand this local group
+		 */
+		if (grp_alloc == NULL ||
+		    grp->il_inpcnt >= grp_alloc->il_inpsiz) {
+			if (grp_alloc != NULL)
+				inp_localgroup_free(grp_alloc);
+			grp_alloc = inp_localgroup_alloc(grp->il_vflag,
+			    grp->il_lport, &grp->il_dependladdr,
+			    grp->il_inpsiz * 2);
+			/*
+			 * Local group allocation could block and the
+			 * local group w/ the same property might have
+			 * been expanded by others when we were blocked;
+			 * check again.
+			 */
+			goto again;
+		}
+
+		/*
+		 * Save the old local group, link the new one, and then
+		 * destroy the old local group
+		 */
+		inp_localgroup_copy(grp_alloc, grp);
+		LIST_INSERT_HEAD(hdr, grp_alloc, il_list);
+		inp_localgroup_destroy(grp);
+
+		grp = grp_alloc;
+		grp_alloc = NULL;
+	} else {
+		/*
+		 * Found the local group
+		 */
+		if (grp_alloc != NULL) {
+			/*
+			 * This would happen if the local group w/ the
+			 * same property was added or expanded when our
+			 * local group allocation blocked.
+			 */
+			inp_localgroup_free(grp_alloc);
+			grp_alloc = NULL;
+		}
 	}
 
 	KASSERT(grp->il_inpcnt < grp->il_inpsiz,
@@ -1839,13 +1884,6 @@ in_pcbremlocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 					grp->il_inp[i] = grp->il_inp[i + 1];
 				grp->il_inpcnt--;
 				inp_localgroup_factor(grp);
-
-				if (grp->il_inpsiz > INP_LOCALGROUP_SIZMIN &&
-				    grp->il_inpcnt <= (grp->il_inpsiz / 4)) {
-					/* Shrink this local group */
-					grp = inp_localgroup_resize(hdr, grp,
-					    grp->il_inpsiz / 2);
-				}
 			}
 			return;
 		}
