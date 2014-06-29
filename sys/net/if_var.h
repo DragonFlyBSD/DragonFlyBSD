@@ -56,7 +56,9 @@
  * received from its medium.
  *
  * Output occurs when the routine if_output is called, with four parameters:
+ *
  *	ifp->if_output(ifp, m, dst, rt)
+ *
  * Here m is the mbuf chain to be sent and dst is the destination address.
  * The output routine encapsulates the supplied datagram if necessary,
  * and then transmits it on its medium.
@@ -64,12 +66,17 @@
  * On input, each interface unwraps the data received by it, and either
  * places it on the input queue of a internetwork datagram routine
  * and posts the associated software interrupt, or passes the datagram to
- * the routine if_input. It is called with the mbuf chain as parameter:
- *	ifp->if_input(ifp, m, NULL, -1)
- * The input routine removes the protocol dependent header if necessary.
- * NOTE:
- * Driver may call type specific interface, e.g. ether_input_pkt(), instead
- * of if_input, to take advantage of hardware supplied information.
+ * the routine if_input. It is called with four parameters:
+ *
+ *	ifp->if_input(ifp, m, pi, cpuid)
+ *
+ * Here m is the mbuf chain to be received. The input routine removes the
+ * protocol dependent header if necessary. A driver may also call using
+ * custom struct pktinfo reference pi and a cpuid to take advantage of
+ * hardware supplied information. Otherwise, the defaults for pi and cpuid
+ * are as follows:
+ *
+ *	ifp->if_input(ifp, m, NULL, -1);
  *
  * Routines exist for locating interfaces by their addresses
  * or for locating a interface on a certain network, as well as more general
@@ -888,7 +895,7 @@ void	ether_ifdetach(struct ifnet *);
 void	ether_demux(struct mbuf *);
 void	ether_demux_oncpu(struct ifnet *, struct mbuf *);
 void	ether_reinput_oncpu(struct ifnet *, struct mbuf *, int);
-void	ether_input_pkt(struct ifnet *, struct mbuf *,
+void	ether_input(struct ifnet *, struct mbuf *,
 	    const struct pktinfo *, int);
 int	ether_output_frame(struct ifnet *, struct mbuf *);
 int	ether_ioctl(struct ifnet *, u_long, caddr_t);

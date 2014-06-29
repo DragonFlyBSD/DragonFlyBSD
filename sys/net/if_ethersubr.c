@@ -525,13 +525,6 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 	}
 }
 
-static void
-ether_input(struct ifnet *ifp, struct mbuf *m,
-    const struct pktinfo *pi, int cpuid)
-{
-	ether_input_pkt(ifp, m, pi, cpuid);
-}
-
 /*
  * Perform common duties while attaching to interface list
  */
@@ -1070,7 +1063,7 @@ post_stats:
 #ifdef MPLS
 	case ETHERTYPE_MPLS:
 	case ETHERTYPE_MPLS_MCAST:
-		/* Should have been set by ether_input_pkt(). */
+		/* Should have been set by ether_input(). */
 		KKASSERT(m->m_flags & M_MPLSLABELED);
 		isr = NETISR_MPLS;
 		break;
@@ -1202,7 +1195,7 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 }
 
 /*
- * Perform certain functions of ether_input_pkt():
+ * Perform certain functions of ether_input():
  * - Test IFF_UP
  * - Update statistics
  * - Run bpf(4) tap if requested
@@ -1388,7 +1381,7 @@ ether_dispatch(int isr, struct mbuf *m, int cpuid)
  * be passed as 'cpuid' argument.
  */
 void
-ether_input_pkt(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
+ether_input(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
     int cpuid)
 {
 	int isr;
