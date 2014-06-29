@@ -601,7 +601,7 @@ epic_rx_done(epic_softc_t *sc)
 		m->m_pkthdr.len = m->m_len = len;
 
 		/* Give mbuf to OS */
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 
 		/* Successfuly received frame */
 		IFNET_STAT_INC(ifp, ipackets, 1);

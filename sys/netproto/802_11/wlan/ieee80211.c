@@ -246,7 +246,8 @@ null_output(struct ifnet *ifp, struct mbuf *m,
 }
 
 static void
-null_input(struct ifnet *ifp, struct mbuf *m)
+null_input(struct ifnet *ifp, struct mbuf *m,
+	const struct pktinfo *pi, int cpuid)
 {
 	if_printf(ifp, "if_input should not be called\n");
 	m_freem(m);

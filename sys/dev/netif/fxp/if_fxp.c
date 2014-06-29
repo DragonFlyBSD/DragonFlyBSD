@@ -1422,7 +1422,7 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 				continue;
 			}
 			m->m_pkthdr.len = m->m_len = total_len;
-			ifp->if_input(ifp, m);
+			ifp->if_input(ifp, m, NULL, -1);
 		}
 	}
 

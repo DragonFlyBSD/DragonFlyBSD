@@ -1435,7 +1435,7 @@ tl_intvec_rxeof(void *xsc, u_int32_t type)
 				continue;
 		}
 
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 
 	return(r);

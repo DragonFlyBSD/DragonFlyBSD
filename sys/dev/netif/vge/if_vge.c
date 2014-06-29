@@ -1396,7 +1396,7 @@ vge_rxeof(struct vge_softc *sc, int count)
 			m->m_pkthdr.ether_vlantag =
 				ntohs((rxctl & VGE_RDCTL_VLANID));
 		}
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 
 		lim++;
 		if (lim == VGE_RX_DESC_CNT)

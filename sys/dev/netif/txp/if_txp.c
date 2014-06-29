@@ -726,7 +726,7 @@ txp_rx_reclaim(struct txp_softc *sc, struct txp_rx_ring *r)
 			m->m_flags |= M_VLANTAG;
 			m->m_pkthdr.ether_vlantag = htons(rxd->rx_vlan >> 16);
 		}
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 
 next:
 

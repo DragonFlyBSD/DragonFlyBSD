@@ -735,7 +735,7 @@ read_again:
     top->m_pkthdr.rcvif = &sc->arpcom.ac_if;
     top->m_pkthdr.len = sc->cur_len;
 
-    ifp->if_input(ifp, top);
+    ifp->if_input(ifp, top, NULL, -1);
     sc->top = 0;
     while (inw(BASE + EP_STATUS) & S_COMMAND_IN_PROGRESS);
     outw(BASE + EP_COMMAND, SET_RX_EARLY_THRESH | RX_INIT_EARLY_THRESH);

@@ -828,7 +828,7 @@ xe_intr(void *xscp)
 	/* Deliver packet to upper layers */
 	mbp->m_pkthdr.rcvif = ifp;
 	mbp->m_pkthdr.len = mbp->m_len = len;
-	ifp->if_input(ifp, mbp);
+	ifp->if_input(ifp, mbp, NULL, -1);
 	IFNET_STAT_INC(ifp, ipackets, 1);
       }
       else if (rsr & XE_RSR_ALIGN_ERROR) {

@@ -2301,7 +2301,7 @@ mxge_rx_done_big(struct ifnet *ifp, mxge_rx_ring_t *rx,
 		m->m_pkthdr.csum_flags = CSUM_PSEUDO_HDR |
 		    CSUM_DATA_VALID;
 	}
-	ifp->if_input(ifp, m);
+	ifp->if_input(ifp, m, NULL, -1);
 }
 
 static __inline void
@@ -2358,7 +2358,7 @@ mxge_rx_done_small(struct ifnet *ifp, mxge_rx_ring_t *rx,
 		m->m_pkthdr.csum_flags = CSUM_PSEUDO_HDR |
 		    CSUM_DATA_VALID;
 	}
-	ifp->if_input(ifp, m);
+	ifp->if_input(ifp, m, NULL, -1);
 }
 
 static __inline void

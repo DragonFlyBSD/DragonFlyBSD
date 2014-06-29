@@ -3193,7 +3193,7 @@ refresh_rx:
 			m->m_flags |= M_VLANTAG;
 			m->m_pkthdr.ether_vlantag = vlan_tag;
 		}
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 
 	bge_writembx(sc, BGE_MBX_RX_CONS0_LO, sc->bge_rx_saved_considx);

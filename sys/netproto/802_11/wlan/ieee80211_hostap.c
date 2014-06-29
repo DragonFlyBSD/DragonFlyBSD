@@ -436,7 +436,7 @@ hostap_deliver_data(struct ieee80211vap *vap,
 			m->m_pkthdr.ether_vlantag = ni->ni_vlan;
 			m->m_flags |= M_VLANTAG;
 		}
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 }
 

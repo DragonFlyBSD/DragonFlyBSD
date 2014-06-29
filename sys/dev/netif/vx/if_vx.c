@@ -692,7 +692,7 @@ again:
 	return;
     }
 
-    ifp->if_input(ifp, m);
+    ifp->if_input(ifp, m, NULL, -1);
 
     /*
     * In periods of high traffic we can actually receive enough

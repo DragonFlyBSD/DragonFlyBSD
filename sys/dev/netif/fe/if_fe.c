@@ -1886,7 +1886,7 @@ fe_get_packet (struct fe_softc * sc, u_short len)
 	}
 
 	/* Feed the packet to upper layer.  */
-	sc->sc_if.if_input(&sc->sc_if, m);
+	sc->sc_if.if_input(&sc->sc_if, m, NULL, -1);
 	return 0;
 }
 

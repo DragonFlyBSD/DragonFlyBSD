@@ -2776,7 +2776,7 @@ ed_get_packet(struct ed_softc *sc, char *buf, u_short len)
 
 	m->m_pkthdr.len = m->m_len = len;
 
-	ifp->if_input(ifp, m);
+	ifp->if_input(ifp, m, NULL, -1);
 }
 
 /*

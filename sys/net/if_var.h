@@ -65,7 +65,7 @@
  * places it on the input queue of a internetwork datagram routine
  * and posts the associated software interrupt, or passes the datagram to
  * the routine if_input. It is called with the mbuf chain as parameter:
- *	ifp->if_input(ifp, m)
+ *	ifp->if_input(ifp, m, NULL, -1)
  * The input routine removes the protocol dependent header if necessary.
  * NOTE:
  * Driver may call type specific interface, e.g. ether_input_pkt(), instead
@@ -341,7 +341,8 @@ struct ifnet {
 		(struct ifnet *, struct mbuf *, struct sockaddr *,
 		     struct rtentry *);
 	void	(*if_input)		/* input routine from hardware driver */
-		(struct ifnet *, struct mbuf *);
+		(struct ifnet *, struct mbuf *,
+		     const struct pktinfo *pi, int cpuid);
 	void	(*if_start)		/* initiate output routine */
 		(struct ifnet *, struct ifaltq_subque *);
 	int	(*if_ioctl)		/* ioctl routine */

@@ -966,7 +966,7 @@ tapwrite(struct dev_write_args *ap)
 	 * adjust mbuf and give packet to the ether_input
 	 */
 	ifnet_serialize_all(ifp);
-	ifp->if_input(ifp, top);
+	ifp->if_input(ifp, top, NULL, -1);
 	IFNET_STAT_INC(ifp, ipackets, 1);/* ibytes are counted in ether_input */
 	ifnet_deserialize_all(ifp);
 

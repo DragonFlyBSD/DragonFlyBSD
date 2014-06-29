@@ -781,7 +781,7 @@ indicate_frames(struct sbsh_softc *sc)
 				sc->rbd[sc->head_rdesc].length & 0x7ff;
 		m->m_pkthdr.rcvif = ifp;
 
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 		++sc->in_stats.rcvd_pkts;
 		IFNET_STAT_INC(ifp, ipackets, 1);
 

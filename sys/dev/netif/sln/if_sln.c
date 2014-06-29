@@ -945,7 +945,7 @@ sln_rx(struct sln_softc *sc)
 		PDEBUG("ipackets = %lu\n", ipkts);
 #endif
 
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 
 		rx_offset = (rx_offset + rx_size + 4) & (u_long) (SL_RX_BUFLEN - 1);	/* 4 bytes for receive
 											 * frame head */

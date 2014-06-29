@@ -1297,7 +1297,7 @@ nge_rxeof(struct nge_softc *sc)
 			m->m_pkthdr.ether_vlantag =
 				(extsts & NGE_RXEXTSTS_VTCI);
 		}
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 
 	sc->nge_cdata.nge_rx_prod = i;

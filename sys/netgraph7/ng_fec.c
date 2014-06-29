@@ -144,7 +144,9 @@
 struct ng_fec_portlist {
 	struct ifnet		*fec_if;
 	void			(*fec_if_input) (struct ifnet *,
-						 struct mbuf *);
+						 struct mbuf *,
+						 const struct pktinfo *,
+						 int);
 	int			fec_idx;
 	int			fec_ifstat;
 	struct ether_addr	fec_mac;
@@ -185,7 +187,8 @@ struct ng_fec_private {
 typedef struct ng_fec_private *priv_p;
 
 /* Interface methods */
-static void	ng_fec_input(struct ifnet *, struct mbuf *);
+static void	ng_fec_input(struct ifnet *, struct mbuf *,
+			const struct pktinfo *, int);
 static void	ng_fec_start(struct ifnet *ifp, struct ifaltq_subque *);
 static int	ng_fec_choose_port(struct ng_fec_bundle *b,
 			struct mbuf *m, struct ifnet **ifp);
@@ -908,7 +911,7 @@ ng_fec_input(struct ifnet *ifp, struct mbuf *m0)
 	ifp->if_ibytes += m0->m_pkthdr.len;
 
 	bifp->if_ipackets++;
-	(*bifp->if_input)(bifp, m0);
+	bifp->if_input(bifp, m0, NULL, -1);
 
 	return;
 }

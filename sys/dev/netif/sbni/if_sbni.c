@@ -842,7 +842,7 @@ indicate_pkt(struct sbni_softc *sc)
 	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len   = m->m_len = sc->inppos;
 
-	ifp->if_input(ifp, m);
+	ifp->if_input(ifp, m, NULL, -1);
 	sc->rx_buf_p = NULL;
 }
 

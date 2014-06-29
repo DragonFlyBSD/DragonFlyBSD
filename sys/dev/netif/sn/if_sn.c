@@ -1052,7 +1052,7 @@ read_another:
 
 	m->m_pkthdr.len = m->m_len = packet_length;
 
-	ifp->if_input(ifp, m);
+	ifp->if_input(ifp, m, NULL, -1);
 
 out:
 

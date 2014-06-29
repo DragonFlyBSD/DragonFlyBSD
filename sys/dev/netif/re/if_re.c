@@ -2078,7 +2078,7 @@ re_rxeof(struct re_softc *sc)
 			m->m_pkthdr.ether_vlantag =
 				be16toh((rxctrl & RE_RDESC_CTL_TAGDATA));
 		}
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 
 	sc->re_ldata.re_rx_prodidx = i;

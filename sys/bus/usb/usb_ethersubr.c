@@ -83,7 +83,7 @@ usbintr(netmsg_t msg)
 	/* not MPSAFE */
 	get_mplock();
 	ifp = m->m_pkthdr.rcvif;
-	(*ifp->if_input)(ifp, m);
+	ifp->if_input(ifp, m, NULL, -1);
 	/* the msg is embedded in the mbuf, do not reply it */
 	rel_mplock();
 }

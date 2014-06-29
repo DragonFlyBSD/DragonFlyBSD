@@ -1909,7 +1909,7 @@ et_rxeof(struct et_softc *sc)
 				m_adj(m, -ETHER_CRC_LEN);
 
 				IFNET_STAT_INC(ifp, ipackets, 1);
-				ifp->if_input(ifp, m);
+				ifp->if_input(ifp, m, NULL, -1);
 			}
 		} else {
 			IFNET_STAT_INC(ifp, ierrors, 1);

@@ -1704,7 +1704,7 @@ ti_rxeof(struct ti_softc *sc)
 			m->m_flags |= M_VLANTAG;
 			m->m_pkthdr.ether_vlantag = vlan_tag;
 		}
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 
 	/* Only necessary on the Tigon 1. */

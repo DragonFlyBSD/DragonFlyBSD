@@ -955,7 +955,7 @@ an_rxeof(struct an_softc *sc)
 				rx_frame.an_rx_signal_strength,
 				rx_frame.an_rsvd0);
 #endif
-			ifp->if_input(ifp, m);
+			ifp->if_input(ifp, m, NULL, -1);
 		}
 
 	} else { /* MPI-350 */
@@ -1016,7 +1016,7 @@ an_rxeof(struct an_softc *sc)
 					rx_frame.an_rsvd0);
 #endif
 #endif
-				ifp->if_input(ifp, m);
+				ifp->if_input(ifp, m, NULL, -1);
 			
 				an_rx_desc.an_valid = 1;
 				an_rx_desc.an_len = AN_RX_BUFFER_SIZE;

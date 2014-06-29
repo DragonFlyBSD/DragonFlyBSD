@@ -531,7 +531,7 @@ vke_rx_intr(cothread_t cotd)
 		nm = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (nm) {
 			vke_rxfifo_dequeue(sc, nm);
-			ifp->if_input(ifp, m);
+			ifp->if_input(ifp, m, NULL, -1);
 			if (count++ == VKE_CHUNK) {
 				cothread_lock(cotd, 0);
 				cothread_signal(cotd);

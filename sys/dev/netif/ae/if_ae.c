@@ -632,7 +632,7 @@ ae_rxeof(struct ae_softc *sc, struct ae_rxd *rxd)
 		m->m_pkthdr.ether_vlantag = AE_RXD_VLAN(le16toh(rxd->vlan));
 		m->m_flags |= M_VLANTAG;
 	}
-	ifp->if_input(ifp, m);
+	ifp->if_input(ifp, m, NULL, -1);
 
 	return (0);
 }

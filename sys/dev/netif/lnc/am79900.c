@@ -327,7 +327,7 @@ am79900_rint(struct lance_softc *sc)
 #endif
 
 			/* Pass the packet up. */
-			(*ifp->if_input)(ifp, m);
+			ifp->if_input(ifp, m, NULL, -1);
 		} else
 			IFNET_STAT_INC(ifp, ierrors, 1);
 	}

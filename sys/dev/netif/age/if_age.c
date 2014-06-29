@@ -2139,7 +2139,7 @@ age_rxeof(struct age_softc *sc, struct rx_rdesc *rxrd)
 			}
 
 			/* Pass it on. */
-			ifp->if_input(ifp, m);
+			ifp->if_input(ifp, m, NULL, -1);
 
 			/* Reset mbuf chains. */
 			AGE_RXCHAIN_RESET(sc);

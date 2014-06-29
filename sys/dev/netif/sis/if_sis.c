@@ -1402,7 +1402,7 @@ sis_rxeof(struct sis_softc *sc)
 		}
 
 		IFNET_STAT_INC(ifp, ipackets, 1);
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 	sc->sis_cdata.sis_rx_prod = i;
 }

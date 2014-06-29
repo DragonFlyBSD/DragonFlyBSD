@@ -695,7 +695,7 @@ ste_rxeof(struct ste_softc *sc)
 		m->m_pkthdr.rcvif = ifp;
 		m->m_pkthdr.len = m->m_len = total_len;
 
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 		
 		cur_rx->ste_ptr->ste_status = 0;
 		count++;

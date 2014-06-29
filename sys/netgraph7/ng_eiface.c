@@ -532,7 +532,7 @@ ng_eiface_rcvdata(hook_p hook, item_p item)
 	/* Update interface stats */
 	ifp->if_ipackets++;
 
-	(*ifp->if_input)(ifp, m);
+	ifp->if_input(ifp, m, NULL, -1);
 
 	/* Done */
 	return (0);

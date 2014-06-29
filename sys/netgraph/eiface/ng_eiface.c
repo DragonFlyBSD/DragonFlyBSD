@@ -513,7 +513,7 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 
 	BPF_MTAP(ifp, m);
 
-	ifp->if_input(ifp, m);
+	ifp->if_input(ifp, m, NULL, -1);
 
 	/* Done */
 	return (error);

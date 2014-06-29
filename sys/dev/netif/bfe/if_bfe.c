@@ -1145,7 +1145,7 @@ bfe_rxeof(struct bfe_softc *sc)
 		IFNET_STAT_INC(ifp, ipackets, 1);
 		m->m_pkthdr.rcvif = ifp;
 
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 		BFE_INC(cons, BFE_RX_LIST_CNT);
 	}
 

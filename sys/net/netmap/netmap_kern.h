@@ -51,7 +51,7 @@
 #define	NM_SELINFO_T	struct kqinfo
 #define	MBUF_LEN(m)	((m)->m_pkthdr.len)
 #define	MBUF_IFP(m)	((m)->m_pkthdr.rcvif)
-#define	NM_SEND_UP(ifp, m)	((ifp)->if_input)(ifp, m)
+#define	NM_SEND_UP(ifp, m)	((ifp)->if_input(ifp, m, NULL, -1))
 
 #define NM_ATOMIC_T	volatile int	// XXX ?
 /* atomic operations */
@@ -400,7 +400,8 @@ struct netmap_generic_adapter {	/* non-native device */
 	 * mit_timer and mit_pending implement rx interrupt mitigation,
 	 */
 	struct net_device_ops generic_ndo;
-	void (*save_if_input)(struct ifnet *, struct mbuf *);
+	void (*save_if_input)(struct ifnet *, struct mbuf *,
+	    const struct pktinfo *, int);
 
 	struct hrtimer mit_timer;
 	int mit_pending;
@@ -917,7 +918,8 @@ int generic_netmap_register(struct netmap_adapter *na, int enable);
 int generic_netmap_attach(struct ifnet *ifp);
 
 int netmap_catch_rx(struct netmap_adapter *na, int intercept);
-void generic_rx_handler(struct ifnet *ifp, struct mbuf *m);;
+void generic_rx_handler(struct ifnet *ifp, struct mbuf *m,
+    const struct pktinfo *, int);
 void netmap_catch_packet_steering(struct netmap_generic_adapter *na, int enable);
 int generic_xmit_frame(struct ifnet *ifp, struct mbuf *m, void *addr, u_int len, u_int ring_nr);
 int generic_find_num_desc(struct ifnet *ifp, u_int *tx, u_int *rx);

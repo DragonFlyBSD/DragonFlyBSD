@@ -2839,7 +2839,7 @@ msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len)
 		}
 #endif
 
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	} while (0);
 
 	MSK_INC(sc_if->msk_cdata.msk_rx_cons, MSK_RX_RING_CNT);
@@ -2892,7 +2892,7 @@ msk_jumbo_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len)
 			m->m_flags |= M_VLANTAG;
 		}
 		MSK_IF_UNLOCK(sc_if);
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 		MSK_IF_LOCK(sc_if);
 	} while (0);
 

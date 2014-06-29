@@ -2036,7 +2036,7 @@ again:
 			}
 		}
 
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 
 	if (sc->xl_type != XL_TYPE_905B) {

@@ -657,7 +657,7 @@ uether_rxflush(struct usb_ether *ue)
 		 * The USB xfer has been resubmitted so its safe to unlock now.
 		 */
 		UE_UNLOCK(ue);
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 		UE_LOCK(ue);
 	}
 }

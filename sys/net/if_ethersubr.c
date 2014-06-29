@@ -526,9 +526,10 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 }
 
 static void
-ether_input(struct ifnet *ifp, struct mbuf *m)
+ether_input(struct ifnet *ifp, struct mbuf *m,
+    const struct pktinfo *pi, int cpuid)
 {
-	ether_input_pkt(ifp, m, NULL, -1);
+	ether_input_pkt(ifp, m, pi, cpuid);
 }
 
 /*

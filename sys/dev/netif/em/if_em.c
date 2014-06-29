@@ -3512,7 +3512,7 @@ discard:
 		current_desc->status = 0;
 
 		if (m != NULL)
-			ifp->if_input(ifp, m);
+			ifp->if_input(ifp, m, NULL, -1);
 
 		/* Advance our pointers to the next descriptor. */
 		if (++i == adapter->num_rx_desc)

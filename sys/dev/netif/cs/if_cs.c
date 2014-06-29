@@ -867,7 +867,7 @@ cs_get_packet(struct cs_softc *sc)
 
 	if (status & (RX_IA | RX_BROADCAST) || 
 	    (ifp->if_flags & IFF_MULTICAST && status & RX_HASHED)) {
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 
 		IFNET_STAT_INC(ifp, ipackets, 1);
 

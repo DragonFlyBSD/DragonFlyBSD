@@ -1487,7 +1487,7 @@ ndis_rxeof(ndis_handle adapter, ndis_packet **packets, uint32_t pktcnt)
 
 /*
  * This routine is run at PASSIVE_LEVEL. We use this routine to pass
- * packets into the stack in order to avoid calling (*ifp->if_input)()
+ * packets into the stack in order to avoid calling ifp->if_input()
  * with any locks held (at DISPATCH_LEVEL, we'll be holding the
  * 'dispatch level' per-cpu sleep lock).
  */
@@ -1515,7 +1515,7 @@ ndis_inputtask(device_object *dobj, void *arg)
 		if ((sc->ndis_80211 != 0) && (vap != NULL))
 			vap->iv_deliver_data(vap, vap->iv_bss, m);
 		else
-			(*ifp->if_input)(ifp, m);
+			ifp->if_input(ifp, m, NULL, -1);
 		KeAcquireSpinLock(&sc->ndis_rxlock, &irql);
 	}
 	KeReleaseSpinLock(&sc->ndis_rxlock, irql);

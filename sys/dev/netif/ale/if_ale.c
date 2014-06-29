@@ -2266,7 +2266,7 @@ ale_rxeof(struct ale_softc *sc)
 		}
 
 		/* Pass it to upper layer. */
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 
 		ale_rx_update_page(sc, &rx_page, length, &prod);
 	}

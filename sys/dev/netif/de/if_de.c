@@ -3147,7 +3147,7 @@ tulip_rx_intr(tulip_softc_t *sc)
 		) {
 #if !defined(TULIP_COPY_RXDATA)
 		ms->m_pkthdr.len = total_len;
-		ifp->if_input(ifp, ms);
+		ifp->if_input(ifp, ms, NULL, -1);
 #else
 #ifdef BIG_PACKET
 #error BIG_PACKET is incompatible with TULIP_COPY_RXDATA
@@ -3156,7 +3156,7 @@ tulip_rx_intr(tulip_softc_t *sc)
 		m_copydata(ms, 0, total_len, mtod(m0, caddr_t));
 		m0->m_len = m0->m_pkthdr.len = total_len;
 		m0->m_pkthdr.rcvif = ifp;
-		ifp->if_input(ifp, m0);
+		ifp->if_input(ifp, m0, NULL, -1);
 		m0 = ms;
 #endif /* ! TULIP_COPY_RXDATA */
 	    }

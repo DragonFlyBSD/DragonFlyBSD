@@ -1156,7 +1156,7 @@ nfe_rxeof(struct nfe_softc *sc)
 		}
 
 		IFNET_STAT_INC(ifp, ipackets, 1);
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 skip:
 		nfe_set_ready_rxdesc(sc, ring, ring->cur);
 		sc->rxq.cur = (sc->rxq.cur + 1) % sc->sc_rx_ring_count;

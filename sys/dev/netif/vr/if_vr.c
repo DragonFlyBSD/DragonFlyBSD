@@ -1024,7 +1024,7 @@ vr_rxeof(struct vr_softc *sc)
 		m = m0;
 
 		IFNET_STAT_INC(ifp, ipackets, 1);
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 }
 

@@ -2868,7 +2868,7 @@ alc_rxeof(struct alc_softc *sc, struct rx_rdesc *rrd)
 			}
 
 			/* Pass it on. */
-			ifp->if_input(ifp, m);
+			ifp->if_input(ifp, m, NULL, -1);
 		}
 	}
 	/* Reset mbuf chains. */

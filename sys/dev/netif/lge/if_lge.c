@@ -918,7 +918,7 @@ lge_rxeof(struct lge_softc *sc, int cnt)
 			m->m_pkthdr.csum_data = 0xffff;
 		}
 
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 
 	sc->lge_cdata.lge_rx_cons = i;

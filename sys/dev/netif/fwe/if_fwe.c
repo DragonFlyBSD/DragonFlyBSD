@@ -584,7 +584,7 @@ fwe_as_input(struct fw_xferq *xferq)
 			 c[20], c[21], c[22], c[23]
 		 );
 #endif
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 		IFNET_STAT_INC(ifp, ipackets, 1);
 	}
 	if (STAILQ_FIRST(&xferq->stfree) != NULL)

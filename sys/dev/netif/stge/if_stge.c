@@ -1683,7 +1683,7 @@ stge_rxeof(struct stge_softc *sc, int count)
 				m->m_pkthdr.ether_vlantag = RFD_TCI(status64);
 			}
 			/* Pass it on. */
-			ifp->if_input(ifp, m);
+			ifp->if_input(ifp, m, NULL, -1);
 
 			STGE_RXCHAIN_RESET(sc);
 		}

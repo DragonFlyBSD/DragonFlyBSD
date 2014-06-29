@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/ifnet.9,v 1.9.2.10 2003/06/15 02:22:30 hmp Exp $
 .\"
-.Dd May 10, 2008
+.Dd June 29, 2014
 .Dt IFNET 9
 .Os
 .Sh NAME
@@ -89,7 +89,10 @@
 .Fa "struct sockaddr *dst" "struct rtentry *rt"
 .Fc
 .Ft void
-.Fn (*if_input) "struct ifnet *ifp" "struct mbuf *m"
+.Fo (*if_input)
+.Fa "struct ifnet *ifp" "struct mbuf *m"
+.Fa "const struct pktinfo *pi" "int cpuid"
+.Fc
 .Ft void
 .Fn (*if_start) "struct ifnet *ifp"
 .Ft int

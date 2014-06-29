@@ -799,7 +799,7 @@ pcn_rxeof(struct pcn_softc *sc)
 		    cur_rx->pcn_rxlen - ETHER_CRC_LEN;
 		m->m_pkthdr.rcvif = ifp;
 
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 
 	sc->pcn_cdata.pcn_rx_prod = i;

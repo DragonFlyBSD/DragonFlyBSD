@@ -2599,7 +2599,7 @@ dc_rxeof(struct dc_softc *sc)
 		}
 
 		IFNET_STAT_INC(ifp, ipackets, 1);
-		ifp->if_input(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 	}
 
 	sc->dc_cdata.dc_rx_prod = i;

@@ -590,7 +590,8 @@ generic_netmap_txsync(struct netmap_adapter *na, u_int ring_nr, int flags)
  * Stolen packets are put in a queue where the
  * generic_netmap_rxsync() callback can extract them.
  */
-void generic_rx_handler(struct ifnet *ifp, struct mbuf *m)
+void generic_rx_handler(struct ifnet *ifp, struct mbuf *m,
+    const struct pktinfo *pi, int cpuid)
 {
     struct netmap_adapter *na = NA(ifp);
     struct netmap_generic_adapter *gna = (struct netmap_generic_adapter *)na;

@@ -729,7 +729,7 @@ ex_rx_intr(struct ex_softc *sc)
 						m->m_len = MLEN;
 					}
 				}
-				ifp->if_input(ifp, ipkt);
+				ifp->if_input(ifp, ipkt, NULL, -1);
 				IFNET_STAT_INC(ifp, ipackets, 1);
 			}
 		} else {

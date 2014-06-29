@@ -1629,7 +1629,7 @@ vtnet_rxeof(struct vtnet_softc *sc, int count, int *rx_npktsp)
 
 		lwkt_serialize_exit(&sc->vtnet_slz);
 		rx_npkts++;
-		(*ifp->if_input)(ifp, m);
+		ifp->if_input(ifp, m, NULL, -1);
 		lwkt_serialize_enter(&sc->vtnet_slz);
 
 		/*

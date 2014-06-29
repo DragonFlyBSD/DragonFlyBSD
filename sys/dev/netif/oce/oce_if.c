@@ -1378,7 +1378,7 @@ oce_rx(struct oce_rq *rq, uint32_t rqe_idx, struct oce_nic_rx_cqe *cqe)
 #endif
 #endif
 
-		(*sc->ifp->if_input) (sc->ifp, m);
+		sc->ifp->if_input(sc->ifp, m, NULL, -1);
 #if defined(INET6) || defined(INET)
 #if 0 /* XXX swildner: LRO */
 post_done:
