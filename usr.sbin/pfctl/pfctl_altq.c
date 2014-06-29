@@ -18,6 +18,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
