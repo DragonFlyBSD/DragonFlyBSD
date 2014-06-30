@@ -459,10 +459,16 @@ _sem_open(const char *name, int oflag, ...)
 	fd = -1;
 	sem = SEM_FAILED;
 
-	oflag = oflag & (O_CREAT | O_EXCL);
+	/*
+	 * Bail out if invalid flags specified.
+	 */
+	if (oflag & ~(O_CREAT|O_EXCL)) {
+		errno = EINVAL;
+		return (SEM_FAILED);
+	}
+
 	oflag |= O_RDWR;
 	oflag |= O_CLOEXEC;
-
 
 	if (name == NULL) {
 		errno = EINVAL;
