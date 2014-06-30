@@ -3,3 +3,4 @@
 
 # Options used when building app-specific efi components
 CFLAGS+=	-ffreestanding -fshort-wchar -Wformat
+CFLAGS+=        -mno-mmx -mno-3dnow -mno-sse -mno-sse2 -mno-sse3 -msoft-float
