@@ -91,7 +91,13 @@ static	void	fpurstor	(union savefpu *);
 uint32_t npx_mxcsr_mask = 0xFFBF;	/* this is the default */
 
 /*
- * Probe the npx_mxcsr_mask
+ * Probe the npx_mxcsr_mask as described in the intel document
+ * "Intel processor identification and the CPUID instruction" Section 7
+ * "Denormals are Zero".
+ * Note that for fxsave to work reliably, the os support bit for 
+ * FXSAVE/FXRESTORE operations in CR4 has to be set as per
+ * Intel 64 and IA-32 Architectures Developer's Manual: Vol. 1,
+ * 10.5.1.2.
  */
 void npxprobemask(void)
 {
@@ -100,6 +106,7 @@ void npxprobemask(void)
 
 	crit_enter();
 	stop_emulating();
+	load_cr4(rcr4() | CR4_FXSR);
 	fxsave(&dummy);
 	npx_mxcsr_mask = ((uint32_t *)&dummy)[7];
 	start_emulating();
