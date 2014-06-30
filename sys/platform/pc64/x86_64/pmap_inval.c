@@ -68,7 +68,7 @@ static void pmap_inval_callback(void *arg);
  * Initialize for add or flush
  *
  * The critical section is required to prevent preemption, allowing us to
- * set CPUMASK_LOCK on the pmap.  The critical section is also assumed
+ * set CPULOCK_EXCL on the pmap.  The critical section is also assumed
  * when lwkt_process_ipiq() is called.
  */
 void
@@ -82,23 +82,23 @@ pmap_inval_init(pmap_inval_info_t info)
  * Add a (pmap, va) pair to the invalidation list and protect access
  * as appropriate.
  *
- * CPUMASK_LOCK is used to interlock thread switchins, otherwise another
+ * CPULOCK_EXCL is used to interlock thread switchins, otherwise another
  * cpu can switch in a pmap that we are unaware of and interfere with our
  * pte operation.
  */
 void
 pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
 {
-    cpumask_t oactive;
-    cpumask_t nactive;
+    cpulock_t olock;
+    cpulock_t nlock;
 
     DEBUG_PUSH_INFO("pmap_inval_interlock");
     for (;;) {
-	oactive = pmap->pm_active;
+	olock = pmap->pm_active_lock;
 	cpu_ccfence();
-	nactive = oactive | CPUMASK_LOCK;
-	if ((oactive & CPUMASK_LOCK) == 0 &&
-	    atomic_cmpset_cpumask(&pmap->pm_active, oactive, nactive)) {
+	nlock = olock | CPULOCK_EXCL;
+	if (olock != nlock &&
+	    atomic_cmpset_int(&pmap->pm_active_lock, olock, nlock)) {
 		break;
 	}
 	lwkt_process_ipiq();
@@ -109,7 +109,8 @@ pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
 
     info->pir_va = va;
     info->pir_flags = PIRF_CPUSYNC;
-    lwkt_cpusync_init(&info->pir_cpusync, oactive, pmap_inval_callback, info);
+    lwkt_cpusync_init(&info->pir_cpusync, pmap->pm_active,
+		      pmap_inval_callback, info);
     lwkt_cpusync_interlock(&info->pir_cpusync);
     atomic_add_acq_long(&pmap->pm_invgen, 1);
 }
@@ -124,7 +125,7 @@ void
 pmap_inval_deinterlock(pmap_inval_info_t info, pmap_t pmap)
 {
     KKASSERT(info->pir_flags & PIRF_CPUSYNC);
-    atomic_clear_cpumask(&pmap->pm_active, CPUMASK_LOCK);
+    atomic_clear_int(&pmap->pm_active_lock, CPULOCK_EXCL);
     lwkt_cpusync_deinterlock(&info->pir_cpusync);
     info->pir_flags = 0;
 }

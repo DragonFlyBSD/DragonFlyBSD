@@ -342,7 +342,8 @@ struct	proc {
 	struct sem_undo	*p_sem_undo;	/* Fast semaphore tracking lookup */
 	void		*p_drv_priv;	/* scp linkage (for syscons) */
 	void		*p_vmm;
-	cpumask_t	p_vmm_cpumask;
+	cpulock_t	p_vmm_cpulock;	/* count cpus in and kickout lock */
+	cpumask_t	p_vmm_cpumask;	/* cpus entering or in vmm */
 };
 
 #define lwp_wchan	lwp_thread->td_wchan

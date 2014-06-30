@@ -136,6 +136,7 @@ struct pmap {
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist_free;	/* free mappings */
 	int			pm_count;	/* reference count */
+	cpulock_t		pm_active_lock; /* interlock */
 	cpumask_t		pm_active;	/* active on cpus */
 	int			pm_pdindex;	/* page dir page in obj */
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
@@ -144,9 +145,6 @@ struct pmap {
 	struct spinlock		pm_spin;
 	struct lwkt_token	pm_token;
 };
-
-#define CPUMASK_LOCK		CPUMASK(SMP_MAXCPU)
-#define CPUMASK_BIT		SMP_MAXCPU	/* 1 << SMP_MAXCPU */
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
 

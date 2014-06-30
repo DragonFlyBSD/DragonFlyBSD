@@ -254,6 +254,7 @@ struct pmap {
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist_free;	/* free mappings */
 	int			pm_count;	/* reference count */
+	cpulock_t		pm_active_lock; /* interlock */
 	cpumask_t		pm_active;	/* active on cpus */
 	cpumask_t		pm_cached;	/* cached on cpus */
 	int			pm_filler02;	/* (filler sync w/vkernel) */
@@ -265,9 +266,6 @@ struct pmap {
 };
 
 #define pmap_resident_count(pmap) (pmap)->pm_stats.resident_count
-
-#define CPUMASK_LOCK		CPUMASK(SMP_MAXCPU)
-#define CPUMASK_BIT		SMP_MAXCPU	/* 1 << SMP_MAXCPU */
 
 typedef struct pmap	*pmap_t;
 

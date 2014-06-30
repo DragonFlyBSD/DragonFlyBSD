@@ -907,7 +907,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 */
 	kernel_pmap.pm_pml4 = (pdp_entry_t *) (PTOV_OFFSET + KPML4phys);
 	kernel_pmap.pm_count = 1;
-	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;
+	kernel_pmap.pm_active = (cpumask_t)-1;
 	RB_INIT(&kernel_pmap.pm_pvroot);
 	spin_init(&kernel_pmap.pm_spin);
 	lwkt_token_init(&kernel_pmap.pm_token, "kpmap_tok");
@@ -5220,7 +5220,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
 			atomic_set_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
-			if (pmap->pm_active & CPUMASK_LOCK)
+			if (pmap->pm_active_lock & CPULOCK_EXCL)
 				pmap_interlock_wait(newvm);
 #if defined(SWTCH_OPTIM_STATS)
 			tlb_flush_count++;
@@ -5256,11 +5256,11 @@ pmap_interlock_wait(struct vmspace *vm)
 {
 	struct pmap *pmap = &vm->vm_pmap;
 
-	if (pmap->pm_active & CPUMASK_LOCK) {
+	if (pmap->pm_active_lock & CPULOCK_EXCL) {
 		crit_enter();
 		KKASSERT(curthread->td_critcount >= 2);
 		DEBUG_PUSH_INFO("pmap_interlock_wait");
-		while (pmap->pm_active & CPUMASK_LOCK) {
+		while (pmap->pm_active_lock & CPULOCK_EXCL) {
 			cpu_ccfence();
 			lwkt_process_ipiq();
 		}

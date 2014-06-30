@@ -178,7 +178,7 @@ pmap_bootstrap(void)
 	kernel_pmap.pm_pdir = KernelPTD - (KvaStart >> SEG_SHIFT);
 	kernel_pmap.pm_pdirpte = KernelPTA[i];
 	kernel_pmap.pm_count = 1;
-	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;
+	kernel_pmap.pm_active = (cpumask_t)-1;
 	kernel_pmap.pm_pteobj = NULL;	/* see pmap_init */
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	TAILQ_INIT(&kernel_pmap.pm_pvlist_free);

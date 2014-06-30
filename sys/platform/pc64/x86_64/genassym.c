@@ -77,6 +77,7 @@
 ASSYM(P_VMSPACE, offsetof(struct proc, p_vmspace));
 ASSYM(VM_PMAP, offsetof(struct vmspace, vm_pmap));
 ASSYM(PM_ACTIVE, offsetof(struct pmap, pm_active));
+ASSYM(PM_ACTIVE_LOCK, offsetof(struct pmap, pm_active_lock));
 
 ASSYM(LWP_VMSPACE, offsetof(struct lwp, lwp_vmspace));
 ASSYM(V_IPI, offsetof(struct vmmeter, v_ipi));
@@ -238,8 +239,10 @@ ASSYM(MSR_FSBASE, MSR_FSBASE);
 ASSYM(MACHINTR_INTREN, offsetof(struct machintr_abi, intr_enable));
 
 ASSYM(TDPRI_INT_SUPPORT, TDPRI_INT_SUPPORT);
-ASSYM(CPUMASK_LOCK, CPUMASK_LOCK);
-ASSYM(CPUMASK_BIT, CPUMASK_BIT);
+ASSYM(CPULOCK_EXCLBIT, CPULOCK_EXCLBIT);
+ASSYM(CPULOCK_EXCL, CPULOCK_EXCL);
+ASSYM(CPULOCK_INCR, CPULOCK_INCR);
+ASSYM(CPULOCK_CNTMASK, CPULOCK_CNTMASK);
 
 ASSYM(IOAPIC_IRQI_ADDR, offsetof(struct ioapic_irqinfo, io_addr));
 ASSYM(IOAPIC_IRQI_IDX, offsetof(struct ioapic_irqinfo, io_idx));

@@ -279,6 +279,7 @@ struct pmap {
 	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
 	RB_HEAD(pv_entry_rb_tree, pv_entry) pm_pvroot;
 	int			pm_count;	/* reference count */
+	cpulock_t		pm_active_lock; /* interlock */
 	cpumask_t		pm_active;	/* active on cpus */
 	int			pm_flags;
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
@@ -300,9 +301,6 @@ struct pmap {
 	int (*suword)(void *, long);
 	int (*suword32)(void *, int);
 };
-
-#define CPUMASK_LOCK		CPUMASK(SMP_MAXCPU)
-#define CPUMASK_BIT		SMP_MAXCPU	/* for 1LLU << SMP_MAXCPU */
 
 #define PMAP_FLAG_SIMPLE	0x00000001
 #define PMAP_EMULATE_AD_BITS	0x00000002

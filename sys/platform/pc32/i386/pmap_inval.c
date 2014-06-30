@@ -78,19 +78,19 @@ pmap_inval_init(pmap_inval_info_t info)
  * Add a (pmap, va) pair to the invalidation list and protect access
  * as appropriate.
  *
- * CPUMASK_LOCK is used to interlock thread switchins
+ * CPULOCK_EXCL is used to interlock thread switchins
  */
 void
 pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
 {
-    cpumask_t oactive;
-    cpumask_t nactive;
+    cpulock_t olock;
+    cpulock_t nlock;
 
     DEBUG_PUSH_INFO("pmap_inval_interlock");
     for (;;) {
-	oactive = pmap->pm_active & ~CPUMASK_LOCK;
-	nactive = oactive | CPUMASK_LOCK;
-	if (atomic_cmpset_cpumask(&pmap->pm_active, oactive, nactive))
+	olock = pmap->pm_active_lock & ~CPULOCK_EXCL;
+	nlock = olock | CPULOCK_EXCL;
+	if (atomic_cmpset_int(&pmap->pm_active_lock, olock, nlock))
 		break;
 	lwkt_process_ipiq();
 	cpu_pause();
@@ -99,7 +99,8 @@ pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
     KKASSERT((info->pir_flags & PIRF_CPUSYNC) == 0);
     info->pir_va = va;
     info->pir_flags = PIRF_CPUSYNC;
-    lwkt_cpusync_init(&info->pir_cpusync, oactive, pmap_inval_callback, info);
+    lwkt_cpusync_init(&info->pir_cpusync, pmap->pm_active,
+		      pmap_inval_callback, info);
     lwkt_cpusync_interlock(&info->pir_cpusync);
 }
 
@@ -107,7 +108,7 @@ void
 pmap_inval_deinterlock(pmap_inval_info_t info, pmap_t pmap)
 {
     KKASSERT(info->pir_flags & PIRF_CPUSYNC);
-    atomic_clear_cpumask(&pmap->pm_active, CPUMASK_LOCK);
+    atomic_clear_int(&pmap->pm_active_lock, CPULOCK_EXCL);
     lwkt_cpusync_deinterlock(&info->pir_cpusync);
     info->pir_flags = 0;
 }

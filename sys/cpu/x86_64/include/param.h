@@ -88,7 +88,7 @@
  * Use SMP_MAXCPU instead of MAXCPU for structures that are intended to
  * remain compatible between UP and SMP builds.
  */
-#define SMP_MAXCPU	63
+#define SMP_MAXCPU	64
 #define MAXCPU		SMP_MAXCPU
 
 #define ALIGNBYTES	_ALIGNBYTES

@@ -309,23 +309,18 @@ ENTRY(cpu_heavy_restore)
 	 */
 	movq	TD_LWP(%rax),%rcx
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	movq    %rax,%r12                       /* save newthread ptr */
-1:
-	movq    VM_PMAP+PM_ACTIVE(%rcx),%rax    /* old contents */
 	movq    PCPU(cpumask),%rsi              /* new contents */
-	orq     %rax,%rsi
-	MPLOCKED cmpxchgq %rsi,VM_PMAP+PM_ACTIVE(%rcx)
-	jnz     1b
+	MPLOCKED orq %rsi, VM_PMAP+PM_ACTIVE(%rcx)
+	movl    VM_PMAP+PM_ACTIVE_LOCK(%rcx),%esi
+	testl	$CPULOCK_EXCL,%esi
+	jz	1f
 
-	btq	$CPUMASK_BIT,%rax
-	jnc	2f
-
+	movq    %rax,%r12		/* save newthread ptr */
 	movq    %rcx,%rdi               /* (found to be set) */
 	call    pmap_interlock_wait     /* pmap_interlock_wait(%rdi:vm) */
 	movq    %r12,%rax
 	movq    TD_PCB(%rax),%rdx       /* RDX = PCB */
-2:
-	movq	%r12,%rax
+1:
 	/*
 	 * Restore the MMU address space.  If it is the same as the last
 	 * thread we don't have to invalidate the tlb (i.e. reload cr3).
@@ -345,7 +340,7 @@ ENTRY(cpu_heavy_restore)
 4:
 #endif
 	/*
-	 * NOTE: %rbx is the previous thread and %eax is the new thread.
+	 * NOTE: %rbx is the previous thread and %rax is the new thread.
 	 *	 %rbx is retained throughout so we can return it.
 	 *
 	 *	 lwkt_switch[_return] is responsible for handling TDF_RUNNING.

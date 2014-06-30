@@ -564,7 +564,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	kernel_pmap.pm_pml4 = (pml4_entry_t *)PHYS_TO_DMAP(KPML4phys);
 	kernel_pmap.pm_count = 1;
 	/* don't allow deactivation */
-	kernel_pmap.pm_active = (cpumask_t)-1 & ~CPUMASK_LOCK;
+	kernel_pmap.pm_active = (cpumask_t)-1;
 	kernel_pmap.pm_pteobj = NULL;	/* see pmap_init */
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	TAILQ_INIT(&kernel_pmap.pm_pvlist_free);
@@ -3381,7 +3381,7 @@ pmap_interlock_wait (struct vmspace *vm)
 {
 	pmap_t pmap = vmspace_pmap(vm);
 
-	while (pmap->pm_active & CPUMASK_LOCK)
+	while (pmap->pm_active_lock & CPULOCK_EXCL)
 		pthread_yield();
 }
 

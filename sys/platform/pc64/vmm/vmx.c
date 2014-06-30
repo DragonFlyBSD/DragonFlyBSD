@@ -1316,8 +1316,8 @@ vmx_vmrun(void)
 	int ret;
 	int sticks = 0;
 	uint64_t val;
-	cpumask_t oactive;
-	cpumask_t nactive;
+	cpulock_t olock;
+	cpulock_t nlock;
 	struct trapframe *save_frame;
 	thread_t td = curthread;
 
@@ -1366,14 +1366,20 @@ restart:
 	/*
 	 * Add us to the list of cpus running vkernel operations, interlock
 	 * against anyone trying to do an invalidation.
+	 *
+	 * We must set the cpumask first to ensure that we interlock another
+	 * cpu that may desire to IPI us after we have successfully
+	 * incremented the cpulock counter.
 	 */
+	atomic_set_cpumask(&td->td_proc->p_vmm_cpumask, gd->gd_cpumask);
+
         for (;;) {
-                oactive = td->td_proc->p_vmm_cpumask;
-                cpu_ccfence();
-		if ((oactive & CPUMASK_LOCK) == 0) {
-			nactive = oactive | gd->gd_cpumask;
-			if (atomic_cmpset_cpumask(&td->td_proc->p_vmm_cpumask,
-						  oactive, nactive)) {
+		olock = td->td_proc->p_vmm_cpulock;
+		cpu_ccfence();
+		if ((olock & CPULOCK_EXCL) == 0) {
+			nlock = olock + CPULOCK_INCR;
+			if (atomic_cmpset_int(&td->td_proc->p_vmm_cpulock,
+					      olock, nlock)) {
 				/* fast path */
 				break;
 			}
@@ -1383,12 +1389,15 @@ restart:
 		}
 
 		/*
-		 * More complex.
+		 * More complex.  After sleeping we have to re-test
+		 * everything.
 		 */
+		atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask,
+				     gd->gd_cpumask);
 		cpu_enable_intr();
-		tsleep_interlock(&td->td_proc->p_vmm_cpumask, 0);
-		if (td->td_proc->p_vmm_cpumask & CPUMASK_LOCK) {
-			tsleep(&td->td_proc->p_vmm_cpumask, PINTERLOCKED,
+		tsleep_interlock(&td->td_proc->p_vmm_cpulock, 0);
+		if (td->td_proc->p_vmm_cpulock & CPULOCK_EXCL) {
+			tsleep(&td->td_proc->p_vmm_cpulock, PINTERLOCKED,
 			       "vmminvl", hz);
 		}
 		crit_exit();
@@ -1451,8 +1460,6 @@ restart:
 		ret = vmx_launch(vti);
 	}
 
-	atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask, gd->gd_cpumask);
-
 	/*
 	 * This is our return point from the vmlaunch/vmresume
 	 * There are two situations:
@@ -1464,8 +1471,13 @@ restart:
 	 *   immediately with ret set to the error code
 	 */
 	if (ret == VM_EXIT) {
-
 		ERROR_IF(vmx_vmexit_loadinfo());
+
+		atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask,
+				     gd->gd_cpumask);
+		atomic_add_int(&td->td_proc->p_vmm_cpulock,
+			       -CPULOCK_INCR);
+		/* WARNING: don't adjust cpulock twice! */
 
 		cpu_enable_intr();
 		trap_handle_userenter(td);
@@ -1480,7 +1492,10 @@ restart:
 		if (vmx_handle_vmexit())
 			goto done;
 
-		/* We handled the VMEXIT reason and continue with VM execution */
+		/*
+		 * We handled the VMEXIT reason and continue with
+		 * VM execution
+		 */
 		goto restart;
 
 	} else {
@@ -1496,9 +1511,12 @@ restart:
 		if (ret == VM_FAIL_VALID) {
 			vmread(VMCS_INSTR_ERR, &val);
 			err = (int) val;
-			kprintf("VMM: vmx_vmrun: vmenter failed with VM_FAIL_VALID, error code %d\n", err);
+			kprintf("VMM: vmx_vmrun: vmenter failed with "
+				"VM_FAIL_VALID, error code %d\n",
+				err);
 		} else {
-			kprintf("VMM: vmx_vmrun: vmenter failed with VM_FAIL_INVALID\n");
+			kprintf("VMM: vmx_vmrun: vmenter failed with "
+				"VM_FAIL_INVALID\n");
 		}
 		goto error;
 	}
@@ -1506,11 +1524,14 @@ done:
 	kprintf("VMM: vmx_vmrun: returning with success\n");
 	return 0;
 error:
+	atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask, gd->gd_cpumask);
+	atomic_add_int(&td->td_proc->p_vmm_cpulock, -CPULOCK_INCR);
 	cpu_enable_intr();
 error2:
 	trap_handle_userenter(td);
 	td->td_lwp->lwp_md.md_regs = save_frame;
-	atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask, gd->gd_cpumask);
+	KKASSERT((td->td_proc->p_vmm_cpumask & gd->gd_cpumask) == 0);
+	/*atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask, gd->gd_cpumask);*/
 	crit_exit();
 	kprintf("VMM: vmx_vmrun failed\n");
 	return err;

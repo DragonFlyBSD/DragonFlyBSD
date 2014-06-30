@@ -89,7 +89,9 @@
  * Use SMP_MAXCPU instead of MAXCPU for structures that are intended to
  * remain compatible between UP and SMP builds.
  *
- * NOTE: Max supported cpus is 32 because we use 32 bit cpu masks.
+ * NOTE: Max supported cpus is 32 because we use 32 bit cpu masks.  On
+ *	 32-bit systems the kernel build defaults SMP_MAXCPU to 16 to
+ *	 reduce KVM overhead, but can be increased up to 32.
  */
 #ifndef SMP_MAXCPU
 #define SMP_MAXCPU	16

@@ -304,32 +304,25 @@ ENTRY(cpu_heavy_restore)
 	 * wait for it to complete before we can continue.
 	 */
 	movl	LWP_VMSPACE(%ecx), %ecx		/* ECX = vmspace */
-	pushl	%eax				/* save curthread */
-1:
-	movl	VM_PMAP+PM_ACTIVE(%ecx),%eax	/* old value for cmpxchgl */
 	movl	PCPU(cpumask), %esi
-	orl	%eax,%esi			/* new value for cmpxchgl */
-	MPLOCKED cmpxchgl %esi,VM_PMAP+PM_ACTIVE(%ecx)
-	jnz	1b
+	MPLOCKED orl %esi, VM_PMAP+PM_ACTIVE(%ecx)
 
-	/*
-	 * Check CPUMASK_BIT
-	 */
-	testl	$CPUMASK_LOCK,%eax
+	movl	VM_PMAP+PM_ACTIVE_LOCK(%ecx),%esi
+	testl	$CPULOCK_EXCL,%esi
 	jz	1f
+	pushl	%eax				/* save curthread */
 	pushl	%ecx				/* call(stack:vmspace) */
 	call	pmap_interlock_wait
 	popl	%ecx
+	popl	%eax
 
 	/*
 	 * Needs unconditional load cr3
 	 */
-	popl	%eax				/* EAX = curthread */
 	movl	TD_PCB(%eax),%edx		/* EDX = PCB */
 	movl	PCB_CR3(%edx),%ecx
 	jmp	2f
 1:
-	popl	%eax
 
 	/*
 	 * Restore the MMU address space.  If it is the same as the last

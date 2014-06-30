@@ -126,50 +126,45 @@ guest_sync_addr(struct pmap *pmap,
 		volatile vpte_t *dst_ptep, volatile vpte_t *src_ptep)
 {
 	globaldata_t gd = mycpu;
-	cpumask_t oactive;
-	cpumask_t nactive;
+	cpulock_t olock;
+	cpulock_t nlock;
 
+	/*
+	 * Lock the pmap
+	 */
 	crit_enter();
-	if (pmap->pm_active == 0 &&
-	    atomic_cmpset_cpumask(&pmap->pm_active, 0, CPUMASK_LOCK)) {
-		/*
-		 * Avoid IPIs if pmap is inactive and we can trivially
-		 * lock it.
-		 */
-		*dst_ptep = *src_ptep;
-		vmm_cpu_invltlb();
-	} else if (pmap->pm_active == gd->gd_cpumask &&
-	    atomic_cmpset_cpumask(&pmap->pm_active,
-			    gd->gd_cpumask, gd->gd_cpumask | CPUMASK_LOCK)) {
-		/*
-		 * Avoid IPIs if only our cpu is using the pmap and we
-		 * can trivially lock it.
-		 */
+	for (;;) {
+		olock = pmap->pm_active_lock;
+		cpu_ccfence();
+		if ((olock & CPULOCK_EXCL) == 0) {
+			nlock = olock | CPULOCK_EXCL;
+			if (atomic_cmpset_int(&pmap->pm_active_lock,
+					      olock, nlock)) {
+				break;
+			}
+		}
+		cpu_pause();
+		lwkt_process_ipiq();
+		pthread_yield();
+	}
+
+	/*
+	 * Update the pte and synchronize with other cpus.  If we can update
+	 * it trivially, do so.
+	 */
+	if (pmap->pm_active == 0 ||
+	    pmap->pm_active == gd->gd_cpumask) {
 		*dst_ptep = *src_ptep;
 		vmm_cpu_invltlb();
 	} else {
-		/*
-		 * Lock the pmap
-		 */
-		for (;;) {
-			oactive = pmap->pm_active;
-			cpu_ccfence();
-			if ((oactive & CPUMASK_LOCK) == 0) {
-				nactive = oactive | CPUMASK_LOCK;
-				if (atomic_cmpset_cpumask(&pmap->pm_active,
-							  oactive,
-							  nactive)) {
-					break;
-				}
-			}
-			cpu_pause();
-			lwkt_process_ipiq();
-			pthread_yield();
-		}
 		vmm_guest_sync_addr(__DEVOLATILE(void *, dst_ptep),
 				    __DEVOLATILE(void *, src_ptep));
 	}
-	atomic_clear_cpumask(&pmap->pm_active, CPUMASK_LOCK);
+
+	/*
+	 * Unlock the pmap
+	 */
+	atomic_clear_int(&pmap->pm_active_lock, CPULOCK_EXCL);
 	crit_exit();
 }
 

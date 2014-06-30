@@ -308,53 +308,36 @@ ENTRY(cpu_heavy_restore)
 	 * safely test/reload %cr3 until after we have set the bit in the
 	 * pmap.
 	 *
-	 * We must do an interlocked test of the CPUMASK_BIT at the same
+	 * We must do an interlocked test of the CPULOCK_EXCL at the same
 	 * time.  If found to be set we will have to wait for it to clear
 	 * and then do a forced reload of %cr3 (even if the value matches).
 	 *
 	 * XXX When switching between two LWPs sharing the same vmspace
 	 *     the cpu_heavy_switch() code currently avoids clearing the
 	 *     cpu bit in PM_ACTIVE.  So if the bit is already set we can
-	 *     avoid checking for the interlock via CPUMASK_BIT.  We currently
+	 *     avoid checking for the interlock via CPULOCK_EXCL.  We currently
 	 *     do not perform this optimization.
-	 *
-	 * %rax is needed for the cmpxchgl so store newthread in %r12
-	 * temporarily.
 	 */
 	movq	TD_LWP(%rax),%rcx
 	movq	LWP_VMSPACE(%rcx),%rcx		/* RCX = vmspace */
-	movq	%rax,%r12			/* save newthread ptr */
-1:
-	movq	VM_PMAP+PM_ACTIVE(%rcx),%rax	/* old contents */
 	movq	PCPU(cpumask),%rsi		/* new contents */
-	orq	%rax,%rsi
-	MPLOCKED cmpxchgq %rsi,VM_PMAP+PM_ACTIVE(%rcx)
-	jnz	1b
+	MPLOCKED orq %rsi, VM_PMAP+PM_ACTIVE(%rcx)
+	movl	VM_PMAP+PM_ACTIVE_LOCK(%rcx),%esi
+	testl	$CPULOCK_EXCL,%esi
+	jz	1f
 
-	/*
-	 * Check CPUMASK_BIT
-	 */
-	btq	$CPUMASK_BIT,%rax	/* test interlock */
-	jnc	1f
-
-#if 0
-	movq	TD_PCB(%r12),%rdx	/* XXX debugging unconditional */
-	movq	PCB_CR3(%rdx),%rdx	/*     reloading of %cr3 */
-	movq	%rdx,%cr3
-#endif
-
+	movq	%rax,%r12		/* save newthread ptr */
 	movq	%rcx,%rdi		/* (found to be set) */
 	call	pmap_interlock_wait	/* pmap_interlock_wait(%rdi:vm) */
+	movq	%r12,%rax
 
 	/*
 	 * Need unconditional load cr3
 	 */
-	movq	%r12,%rax
 	movq	TD_PCB(%rax),%rdx	/* RDX = PCB */
 	movq	PCB_CR3(%rdx),%rcx	/* RCX = desired CR3 */
 	jmp	2f			/* unconditional reload */
 1:
-	movq	%r12,%rax		/* restore RAX = newthread */
 	/*
 	 * Restore the MMU address space.  If it is the same as the last
 	 * thread we don't have to invalidate the tlb (i.e. reload cr3).

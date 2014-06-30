@@ -127,8 +127,8 @@ int
 sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 {
 	int error = 0;
-	cpumask_t oactive;
-	cpumask_t nactive;
+	cpulock_t olock;
+	cpulock_t nlock;
 	long val;
 	struct proc *p = curproc;
 
@@ -138,13 +138,14 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	crit_enter_id("vmm_inval");
 
 	/*
-	 * Set CPUMASK_LOCK, spin if anyone else is trying to set CPUMASK_LOCK.
+	 * Acquire CPULOCK_EXCL, spin while we wait.
 	 */
+	KKASSERT((p->p_vmm_cpumask & mycpu->gd_cpumask) == 0);
 	for (;;) {
-		oactive = p->p_vmm_cpumask & ~CPUMASK_LOCK;
+		olock = p->p_vmm_cpulock & ~CPULOCK_EXCL;
 		cpu_ccfence();
-		nactive = oactive | CPUMASK_LOCK;
-		if (atomic_cmpset_cpumask(&p->p_vmm_cpumask, oactive, nactive))
+		nlock = olock | CPULOCK_EXCL;
+		if (atomic_cmpset_int(&p->p_vmm_cpulock, olock, nlock))
 			break;
 		lwkt_process_ipiq();
 		cpu_pause();
@@ -155,11 +156,16 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	 * new cpus will enter VMM mode while we hold the lock.  New waiters
 	 * may turn-up though so the wakeup() later on has to be
 	 * unconditional.
+	 *
+	 * We must test on p_vmm_cpulock's counter, not the mask, because
+	 * VMM entries will set the mask bit unconditionally first
+	 * (interlocking our IPI below) and then conditionally bump the
+	 * counter.
 	 */
-	if (oactive & mycpu->gd_other_cpus) {
-		lwkt_send_ipiq_mask(oactive & mycpu->gd_other_cpus,
+	if (olock & CPULOCK_CNTMASK) {
+		lwkt_send_ipiq_mask(p->p_vmm_cpumask & mycpu->gd_other_cpus,
 				    vmm_exit_vmm, NULL);
-		while (p->p_vmm_cpumask & ~CPUMASK_LOCK) {
+		while (p->p_vmm_cpulock & CPULOCK_CNTMASK) {
 			lwkt_process_ipiq();
 			cpu_pause();
 		}
@@ -171,8 +177,8 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	copyin(uap->srcaddr, &val, sizeof(long));
 	copyout(&val, uap->dstaddr, sizeof(long));
 
-	atomic_clear_cpumask(&p->p_vmm_cpumask, CPUMASK_LOCK);
-	wakeup(&p->p_vmm_cpumask);
+	atomic_clear_int(&p->p_vmm_cpulock, CPULOCK_EXCL);
+	wakeup(&p->p_vmm_cpulock);
 
 	crit_exit_id("vmm_inval");
 
