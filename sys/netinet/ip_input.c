@@ -160,7 +160,6 @@ SYSCTL_INT(_net_inet_ip, IPCTL_KEEPFAITH, keepfaith, CTLFLAG_RW,
     &ip_keepfaith, 0,
     "Enable packet capture for FAITH IPv4->IPv6 translator daemon");
 
-static int nipq = 0;	/* total # of reass queues */
 static int maxnipq;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, maxfragpackets, CTLFLAG_RW,
     &maxnipq, 0,
@@ -215,8 +214,6 @@ SYSCTL_ULONG(_net_inet_ip, OID_AUTO, dispatch_slow_count, CTLFLAG_RD,
     &ip_dispatch_slow, 0, "Number of packets messaged to another CPU");
 #endif
 
-static struct lwkt_token ipq_token = LWKT_TOKEN_INITIALIZER(ipq_token);
-
 #ifdef DIAGNOSTIC
 static int ipprintfs = 0;
 #endif
@@ -259,7 +256,15 @@ SYSCTL_PROC(_net_inet_ip, IPCTL_STATS, stats, (CTLTYPE_OPAQUE | CTLFLAG_RW),
 #define	IPREASS_HASH(x,y)						\
     (((((x) & 0xF) | ((((x) >> 8) & 0xF) << 4)) ^ (y)) & IPREASS_HMASK)
 
-static TAILQ_HEAD(ipqhead, ipq) ipq[IPREASS_NHASH];
+TAILQ_HEAD(ipqhead, ipq);
+struct ipfrag_queue {
+	int			nipq;
+	struct netmsg_base	timeo_netmsg;
+	struct netmsg_base	drain_netmsg;
+	struct ipqhead		ipq[IPREASS_NHASH];
+} __cachealign;
+
+static struct ipfrag_queue	ipfrag_queue_pcpu[MAXCPU];
 
 #ifdef IPCTL_DEFMTU
 SYSCTL_INT(_net_inet_ip, IPCTL_DEFMTU, mtu, CTLFLAG_RW,
@@ -303,13 +308,20 @@ struct ip_srcrt_opt {
 	struct ip_srcrt	ip_srcrt;
 };
 
+#define IPFRAG_MPIPE_MAX	4096
+#define MAXIPFRAG_MIN		((IPFRAG_MPIPE_MAX * 2) / 256)
+
 static MALLOC_DEFINE(M_IPQ, "ipq", "IP Fragment Management");
 static struct malloc_pipe ipq_mpipe;
 
 static void		save_rte(struct mbuf *, u_char *, struct in_addr);
 static int		ip_dooptions(struct mbuf *m, int, struct sockaddr_in *);
-static void		ip_freef(struct ipqhead *, struct ipq *);
+static void		ip_freef(struct ipfrag_queue *, struct ipqhead *,
+			    struct ipq *);
 static void		ip_input_handler(netmsg_t);
+
+static void		ipfrag_timeo_dispatch(netmsg_t);
+static void		ipfrag_drain_dispatch(netmsg_t);
 
 /*
  * IP initialization: fill in IP protocol switch table.
@@ -319,19 +331,18 @@ void
 ip_init(void)
 {
 	struct protosw *pr;
-	int i;
-	int cpu;
+	int cpu, i;
 
 	/*
 	 * Make sure we can handle a reasonable number of fragments but
-	 * cap it at 4000 (XXX).
+	 * cap it at IPFRAG_MPIPE_MAX.
 	 */
 	mpipe_init(&ipq_mpipe, M_IPQ, sizeof(struct ipq),
-		    IFQ_MAXLEN, 4000, 0, NULL, NULL, NULL);
-	for (i = 0; i < ncpus; ++i) {
-		TAILQ_INIT(&in_ifaddrheads[i]);
-		in_ifaddrhashtbls[i] =
-			hashinit(INADDR_NHASH, M_IFADDR, &in_ifaddrhmask);
+	    IFQ_MAXLEN, IPFRAG_MPIPE_MAX, 0, NULL, NULL, NULL);
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		TAILQ_INIT(&in_ifaddrheads[cpu]);
+		in_ifaddrhashtbls[cpu] =
+		    hashinit(INADDR_NHASH, M_IFADDR, &in_ifaddrhmask);
 	}
 	pr = pffindproto(PF_INET, IPPROTO_RAW, SOCK_RAW);
 	if (pr == NULL)
@@ -353,10 +364,9 @@ ip_init(void)
 			"error %d\n", __func__, i);
 	}
 
-	for (i = 0; i < IPREASS_NHASH; i++)
-		TAILQ_INIT(&ipq[i]);
-
-	maxnipq = nmbclusters / 32;
+	maxnipq = (nmbclusters / 32) / ncpus2;
+	if (maxnipq < MAXIPFRAG_MIN)
+		maxnipq = MAXIPFRAG_MIN;
 	maxfragsperpacket = 16;
 
 	ip_id = time_second & 0xffff;	/* time_second survives reboots */
@@ -371,6 +381,19 @@ ip_init(void)
 		 * Preallocate mbuf template for forwarding
 		 */
 		MGETHDR(ipforward_mtemp[cpu], MB_WAIT, MT_DATA);
+
+		/*
+		 * Initialize per-cpu ip fragments queues
+		 */
+		for (i = 0; i < IPREASS_NHASH; i++) {
+			struct ipfrag_queue *fragq = &ipfrag_queue_pcpu[cpu];
+
+			TAILQ_INIT(&fragq->ipq[i]);
+			netmsg_init(&fragq->timeo_netmsg, NULL,
+			    &netisr_adone_rport, 0, ipfrag_timeo_dispatch);
+			netmsg_init(&fragq->drain_netmsg, NULL,
+			    &netisr_adone_rport, 0, ipfrag_drain_dispatch);
+		}
 	}
 
 	netisr_register(NETISR_IP, ip_input_handler, ip_hashfn_in);
@@ -991,6 +1014,7 @@ bad:
 struct mbuf *
 ip_reass(struct mbuf *m)
 {
+	struct ipfrag_queue *fragq = &ipfrag_queue_pcpu[mycpuid];
 	struct ip *ip = mtod(m, struct ip *);
 	struct mbuf *p = NULL, *q, *nq;
 	struct mbuf *n;
@@ -1012,8 +1036,7 @@ ip_reass(struct mbuf *m)
 	/*
 	 * Look for queue of fragments of this datagram.
 	 */
-	lwkt_gettoken(&ipq_token);
-	head = &ipq[sum];
+	head = &fragq->ipq[sum];
 	TAILQ_FOREACH(fp, head, ipq_list) {
 		if (ip->ip_id == fp->ipq_id &&
 		    ip->ip_src.s_addr == fp->ipq_src.s_addr &&
@@ -1029,7 +1052,7 @@ ip_reass(struct mbuf *m)
 	 * for which we attempt reassembly;
 	 * If maxnipq is -1, accept all fragments without limitation.
 	 */
-	if (nipq > maxnipq && maxnipq > 0) {
+	if (fragq->nipq > maxnipq && maxnipq > 0) {
 		/*
 		 * drop something from the tail of the current queue
 		 * before proceeding further
@@ -1041,16 +1064,17 @@ ip_reass(struct mbuf *m)
 			 * so drop from one of the others.
 			 */
 			for (i = 0; i < IPREASS_NHASH; i++) {
-				struct ipq *r = TAILQ_LAST(&ipq[i], ipqhead);
+				struct ipq *r = TAILQ_LAST(&fragq->ipq[i],
+				    ipqhead);
 				if (r) {
 					ipstat.ips_fragtimeout += r->ipq_nfrags;
-					ip_freef(&ipq[i], r);
+					ip_freef(fragq, &fragq->ipq[i], r);
 					break;
 				}
 			}
 		} else {
 			ipstat.ips_fragtimeout += q->ipq_nfrags;
-			ip_freef(head, q);
+			ip_freef(fragq, head, q);
 		}
 	}
 found:
@@ -1102,7 +1126,7 @@ found:
 		if ((fp = mpipe_alloc_nowait(&ipq_mpipe)) == NULL)
 			goto dropfrag;
 		TAILQ_INSERT_HEAD(head, fp, ipq_list);
-		nipq++;
+		fragq->nipq++;
 		fp->ipq_nfrags = 1;
 		fp->ipq_ttl = IPFRAGTTL;
 		fp->ipq_p = ip->ip_p;
@@ -1190,7 +1214,7 @@ inserted:
 		if (GETIP(q)->ip_off != next) {
 			if (fp->ipq_nfrags > maxfragsperpacket) {
 				ipstat.ips_fragdropped += fp->ipq_nfrags;
-				ip_freef(head, fp);
+				ip_freef(fragq, head, fp);
 			}
 			goto done;
 		}
@@ -1200,7 +1224,7 @@ inserted:
 	if (p->m_flags & M_FRAG) {
 		if (fp->ipq_nfrags > maxfragsperpacket) {
 			ipstat.ips_fragdropped += fp->ipq_nfrags;
-			ip_freef(head, fp);
+			ip_freef(fragq, head, fp);
 		}
 		goto done;
 	}
@@ -1213,7 +1237,7 @@ inserted:
 	if (next + (IP_VHL_HL(ip->ip_vhl) << 2) > IP_MAXPACKET) {
 		ipstat.ips_toolong++;
 		ipstat.ips_fragdropped += fp->ipq_nfrags;
-		ip_freef(head, fp);
+		ip_freef(fragq, head, fp);
 		goto done;
 	}
 
@@ -1254,7 +1278,7 @@ inserted:
 	ip->ip_src = fp->ipq_src;
 	ip->ip_dst = fp->ipq_dst;
 	TAILQ_REMOVE(head, fp, ipq_list);
-	nipq--;
+	fragq->nipq--;
 	mpipe_free(&ipq_mpipe, fp);
 	m->m_len += (IP_VHL_HL(ip->ip_vhl) << 2);
 	m->m_data -= (IP_VHL_HL(ip->ip_vhl) << 2);
@@ -1278,7 +1302,6 @@ inserted:
 	m->m_flags &= ~(M_HASH | M_FRAG);
 
 	ipstat.ips_reassembled++;
-	lwkt_reltoken(&ipq_token);
 	return (m);
 
 dropfrag:
@@ -1287,7 +1310,6 @@ dropfrag:
 		fp->ipq_nfrags--;
 	m_freem(m);
 done:
-	lwkt_reltoken(&ipq_token);
 	return (NULL);
 
 #undef GETIP
@@ -1296,11 +1318,9 @@ done:
 /*
  * Free a fragment reassembly header and all
  * associated datagrams.
- *
- * Called with ipq_token held.
  */
 static void
-ip_freef(struct ipqhead *fhp, struct ipq *fp)
+ip_freef(struct ipfrag_queue *fragq, struct ipqhead *fhp, struct ipq *fp)
 {
 	struct mbuf *q;
 
@@ -1319,28 +1339,30 @@ ip_freef(struct ipqhead *fhp, struct ipq *fp)
 		m_freem(q);
 	}
 	mpipe_free(&ipq_mpipe, fp);
-	nipq--;
+	fragq->nipq--;
 }
 
 /*
- * IP timer processing;
- * if a timer expires on a reassembly
- * queue, discard it.
+ * If a timer expires on a reassembly queue, discard it.
  */
-void
-ip_slowtimo(void)
+static void
+ipfrag_timeo_dispatch(netmsg_t nmsg)
 {
+	struct ipfrag_queue *fragq = &ipfrag_queue_pcpu[mycpuid];
 	struct ipq *fp, *fp_temp;
 	struct ipqhead *head;
 	int i;
 
-	lwkt_gettoken(&ipq_token);
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);  /* reply ASAP */
+	crit_exit();
+
 	for (i = 0; i < IPREASS_NHASH; i++) {
-		head = &ipq[i];
+		head = &fragq->ipq[i];
 		TAILQ_FOREACH_MUTABLE(fp, head, ipq_list, fp_temp) {
 			if (--fp->ipq_ttl == 0) {
 				ipstat.ips_fragtimeout += fp->ipq_nfrags;
-				ip_freef(head, fp);
+				ip_freef(fragq, head, fp);
 			}
 		}
 	}
@@ -1349,38 +1371,105 @@ ip_slowtimo(void)
 	 * (due to the limit being lowered), drain off
 	 * enough to get down to the new limit.
 	 */
-	if (maxnipq >= 0 && nipq > maxnipq) {
+	if (maxnipq >= 0 && fragq->nipq > maxnipq) {
 		for (i = 0; i < IPREASS_NHASH; i++) {
-			head = &ipq[i];
-			while (nipq > maxnipq && !TAILQ_EMPTY(head)) {
+			head = &fragq->ipq[i];
+			while (fragq->nipq > maxnipq && !TAILQ_EMPTY(head)) {
 				ipstat.ips_fragdropped +=
 				    TAILQ_FIRST(head)->ipq_nfrags;
-				ip_freef(head, TAILQ_FIRST(head));
+				ip_freef(fragq, head, TAILQ_FIRST(head));
 			}
 		}
 	}
-	lwkt_reltoken(&ipq_token);
+}
+
+static void
+ipfrag_timeo_ipi(void *arg __unused)
+{
+	int cpu = mycpuid;
+	struct lwkt_msg *msg = &ipfrag_queue_pcpu[cpu].timeo_netmsg.lmsg;
+
+	crit_enter();
+	if (msg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(cpu), msg);
+	crit_exit();
+}
+
+static void
+ipfrag_slowtimo(void)
+{
+	cpumask_t mask = 0;
+	int i;
+
+	for (i = 0; i < ncpus; ++i)
+		mask |= CPUMASK(i);
+	mask &= smp_active_mask;
+	if (mask != 0)
+		lwkt_send_ipiq_mask(mask, ipfrag_timeo_ipi, NULL);
+}
+
+/*
+ * IP timer processing
+ */
+void
+ip_slowtimo(void)
+{
+	ipfrag_slowtimo();
 	ipflow_slowtimo();
 }
 
 /*
  * Drain off all datagram fragments.
  */
-void
-ip_drain(void)
+static void
+ipfrag_drain_dispatch(netmsg_t nmsg)
 {
+	struct ipfrag_queue *fragq = &ipfrag_queue_pcpu[mycpuid];
 	struct ipqhead *head;
 	int i;
 
-	lwkt_gettoken(&ipq_token);
+	crit_enter();
+	lwkt_replymsg(&nmsg->lmsg, 0);  /* reply ASAP */
+	crit_exit();
+
 	for (i = 0; i < IPREASS_NHASH; i++) {
-		head = &ipq[i];
+		head = &fragq->ipq[i];
 		while (!TAILQ_EMPTY(head)) {
 			ipstat.ips_fragdropped += TAILQ_FIRST(head)->ipq_nfrags;
-			ip_freef(head, TAILQ_FIRST(head));
+			ip_freef(fragq, head, TAILQ_FIRST(head));
 		}
 	}
-	lwkt_reltoken(&ipq_token);
+}
+
+static void
+ipfrag_drain_ipi(void *arg __unused)
+{
+	int cpu = mycpuid;
+	struct lwkt_msg *msg = &ipfrag_queue_pcpu[cpu].drain_netmsg.lmsg;
+
+	crit_enter();
+	if (msg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg_oncpu(netisr_cpuport(cpu), msg);
+	crit_exit();
+}
+
+static void
+ipfrag_drain(void)
+{
+	cpumask_t mask = 0;
+	int i;
+
+	for (i = 0; i < ncpus; ++i)
+		mask |= CPUMASK(i);
+	mask &= smp_active_mask;
+	if (mask != 0)
+		lwkt_send_ipiq_mask(mask, ipfrag_drain_ipi, NULL);
+}
+
+void
+ip_drain(void)
+{
+	ipfrag_drain();
 	in_rtqdrain();
 }
 
