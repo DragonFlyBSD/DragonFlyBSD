@@ -87,7 +87,7 @@ main(int argc, char **argv)
 			clear = 1;
 			break;
 		case 'f':
-			tailmode = 1;
+			++tailmode;
 			break;
 		case 'M':
 			memf = optarg;
@@ -170,7 +170,8 @@ main(int argc, char **argv)
 			if (rindex == cur.msg_bufx) {
 				if (tailmode == 0)
 					break;
-				sleep(1);
+				if (tailmode == 1)
+					sleep(1);
 			}
 			if (KREAD((long)bufp, cur))
 				errx(1, "kvm_read: %s", kvm_geterr(kd));
