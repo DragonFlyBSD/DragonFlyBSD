@@ -1709,6 +1709,23 @@ done:
 }
 
 /*
+ * Returns number of pages available in our DMA memory reserve
+ * (adjusted with vm.dma_reserved=<value>m in /boot/loader.conf)
+ */
+vm_size_t
+vm_contig_avail_pages(void)
+{
+	alist_blk_t blk;
+	alist_blk_t count;
+	alist_blk_t bfree;
+	spin_lock(&vm_contig_spin);
+	bfree = alist_free_info(&vm_contig_alist, &blk, &count);
+	spin_unlock(&vm_contig_spin);
+
+	return bfree;
+}
+
+/*
  * Attempt to allocate contiguous physical memory with the specified
  * requirements.
  */
