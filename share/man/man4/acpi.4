@@ -25,7 +25,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/acpi.4,v 1.61.8.1 2009/04/15 03:14:26 kensmith Exp $
 .\"
-.Dd June 1, 2014
+.Dd July 1, 2014
 .Dt ACPI 4
 .Os
 .Sh NAME
@@ -129,6 +129,30 @@ to enter when the power button is pressed.
 Default is
 .Li S5
 (power-off nicely).
+.It Va hw.acpi.install_interface , hw.acpi.remove_interface
+Install or remove OS interface(s) to control the return value of the
+.Ql _OSI
+query method.
+When an OS interface is specified in
+.Va hw.acpi.install_interface ,
+the
+.Li _OSI
+query for the interface returns it is
+.Em supported .
+Conversely, when an OS interface is specified in
+.Va hw.acpi.remove_interface ,
+the
+.Li _OSI
+query returns it is
+.Em not supported .
+Multiple interfaces can be specified in a comma-separated list and
+any leading white spaces will be ignored.
+For example,
+.Qq Li FreeBSD, Linux
+is a valid list of two interfaces
+.Qq Li FreeBSD
+and
+.Qq Li Linux .
 .It Va hw.acpi.reset_video
 Reset the video adapter from real mode during the resume path.
 Some systems need this help, others have display problems if it is enabled.
