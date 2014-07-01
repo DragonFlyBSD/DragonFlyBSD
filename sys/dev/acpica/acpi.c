@@ -890,7 +890,7 @@ acpi_read_ivar(device_t dev, device_t child, int index, uintptr_t *result)
     struct acpi_device	*ad;
 
     if ((ad = device_get_ivars(child)) == NULL) {
-	kprintf("device has no ivars\n");
+	device_printf(child, "device has no ivars\n");
 	return (ENOENT);
     }
 
@@ -929,7 +929,7 @@ acpi_write_ivar(device_t dev, device_t child, int index, uintptr_t value)
     struct acpi_device	*ad;
 
     if ((ad = device_get_ivars(child)) == NULL) {
-	kprintf("device has no ivars\n");
+	device_printf(child, "device has no ivars\n");
 	return (ENOENT);
     }
 
@@ -1735,35 +1735,37 @@ acpi_shutdown_final(void *arg, int howto)
     if ((howto & RB_POWEROFF) != 0) {
 	status = AcpiEnterSleepStatePrep(ACPI_STATE_S5);
 	if (ACPI_FAILURE(status)) {
-	    kprintf("AcpiEnterSleepStatePrep failed - %s\n",
+	    device_printf(sc->acpi_dev, "AcpiEnterSleepStatePrep failed - %s\n",
 		   AcpiFormatException(status));
 	    return;
 	}
-	kprintf("Powering system off using ACPI\n");
+	device_printf(sc->acpi_dev, "Powering system off\n");
 	ACPI_DISABLE_IRQS();
 	status = AcpiEnterSleepState(ACPI_STATE_S5);
 	if (ACPI_FAILURE(status)) {
-	    kprintf("ACPI power-off failed - %s\n", AcpiFormatException(status));
+	    device_printf(sc->acpi_dev, "power-off failed - %s\n",
+		AcpiFormatException(status));
 	} else {
 	    DELAY(1000000);
-	    kprintf("ACPI power-off failed - timeout\n");
+	    device_printf(sc->acpi_dev, "power-off failed - timeout\n");
 	}
     } else if ((howto & RB_HALT) == 0 && sc->acpi_handle_reboot) {
 	/* Reboot using the reset register. */
 	status = AcpiReset();
 	if (ACPI_FAILURE(status)) {
 	    if (status != AE_NOT_EXIST)
-		    kprintf("ACPI reset failed - %s\n", AcpiFormatException(status));
+		    device_printf(sc->acpi_dev, "reset failed - %s\n",
+			AcpiFormatException(status));
 	} else {
 	    DELAY(1000000);
-	    kprintf("ACPI reset failed - timeout\n");
+	    device_printf(sc->acpi_dev, "reset failed - timeout\n");
 	}
     } else if (sc->acpi_do_disable && panicstr == NULL) {
 	/*
 	 * Only disable ACPI if the user requested.  On some systems, writing
 	 * the disable value to SMI_CMD hangs the system.
 	 */
-	kprintf("Shutting down ACPI\n");
+	device_printf(sc->acpi_dev, "Shutting down\n");
 	AcpiTerminate();
     }
 }
@@ -2167,7 +2169,7 @@ acpi_SetSleepState(struct acpi_softc *sc, int state)
     static int once;
 
     if (!once) {
-	kprintf(
+	device_printf(sc->acpi_dev,
 "warning: acpi_SetSleepState() deprecated, need to update your software\n");
 	once = 1;
     }
@@ -2179,10 +2181,12 @@ acpi_sleep_force(void *arg)
 {
     struct acpi_softc *sc;
 
-    kprintf("acpi: suspend request timed out, forcing sleep now\n");
     sc = arg;
+    device_printf(sc->acpi_dev,
+	"suspend request timed out, forcing sleep now\n");
     if (ACPI_FAILURE(acpi_EnterSleepState(sc, sc->acpi_next_sstate)))
-	kprintf("acpi: force sleep state S%d failed\n", sc->acpi_next_sstate);
+	device_printf(sc->acpi_dev, "force sleep state S%d failed\n",
+	    sc->acpi_next_sstate);
 }
 
 /*
@@ -2287,7 +2291,8 @@ acpi_AckSleepState(struct apm_clone_data *clone, int error)
     if (error) {
 	sc->acpi_next_sstate = 0;
 	callout_stop(&sc->susp_force_to);
-	kprintf("acpi: listener on %s cancelled the pending suspend\n",
+	device_printf(sc->acpi_dev,
+	    "listener on %s cancelled the pending suspend\n",
 	    devtoname(clone->cdev));
 	ACPI_UNLOCK(acpi);
 	return (0);
@@ -2355,7 +2360,8 @@ acpi_EnterSleepState(struct acpi_softc *sc, int state)
     ACPI_LOCK(acpi);
     if (sc->acpi_sleep_disabled) {
 	ACPI_UNLOCK(acpi);
-	kprintf("acpi: suspend request ignored (not ready yet)\n");
+	device_printf(sc->acpi_dev,
+	    "suspend request ignored (not ready yet)\n");
 	return (AE_ERROR);
     }
     sc->acpi_sleep_disabled = 1;
@@ -2768,9 +2774,12 @@ out:
 static void
 acpi_system_eventhandler_sleep(void *arg, int state)
 {
+    struct acpi_softc *sc;
     int ret;
 
     ACPI_FUNCTION_TRACE_U32((char *)(uintptr_t)__func__, state);
+
+    sc = arg;
 
     /* Check if button action is disabled. */
     if (state == ACPI_S_STATES_MAX + 1)
@@ -2779,8 +2788,8 @@ acpi_system_eventhandler_sleep(void *arg, int state)
     /* Request that the system prepare to enter the given suspend state. */
     ret = acpi_ReqSleepState((struct acpi_softc *)arg, state);
     if (ret != 0)
-	kprintf("acpi: request to enter state S%d failed (err %d)\n",
-	    state, ret);
+	device_printf(sc->acpi_dev,
+	    "request to enter state S%d failed (err %d)\n", state, ret);
 
     return_VOID;
 }
@@ -3086,7 +3095,8 @@ acpiioctl(struct dev_ioctl_args *ap)
 	if (state != ACPI_STATE_S5)
 	    error = acpi_ReqSleepState(sc, state);
 	else {
-	    kprintf("power off via acpi ioctl not supported\n");
+	    device_printf(sc->acpi_dev,
+		"power off via acpi ioctl not supported\n");
 	    error = ENXIO;
 	}
 	break;
