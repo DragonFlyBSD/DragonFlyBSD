@@ -267,11 +267,12 @@ taskqueue_enqueue_timeout(struct taskqueue *queue,
 
 	TQ_LOCK(queue);
 	KASSERT(timeout_task->q == NULL || timeout_task->q == queue,
-	    ("Migrated queue"));
+		("Migrated queue"));
 	timeout_task->q = queue;
 	res = timeout_task->t.ta_pending;
 	if (ticks == 0) {
 		taskqueue_enqueue_locked(queue, &timeout_task->t);
+		TQ_UNLOCK(queue);
 	} else {
 		if ((timeout_task->f & DT_CALLOUT_ARMED) != 0) {
 			res++;
@@ -279,10 +280,10 @@ taskqueue_enqueue_timeout(struct taskqueue *queue,
 			queue->tq_callouts++;
 			timeout_task->f |= DT_CALLOUT_ARMED;
 		}
+		TQ_UNLOCK(queue);
 		callout_reset(&timeout_task->c, ticks, taskqueue_timeout_func,
-		    timeout_task);
+			      timeout_task);
 	}
-	TQ_UNLOCK(queue);
 	return (res);
 }
 
@@ -325,13 +326,12 @@ taskqueue_run(struct taskqueue *queue, int lock_held)
 		pending = task->ta_pending;
 		task->ta_pending = 0;
 		queue->tq_running = task;
+
 		TQ_UNLOCK(queue);
-
 		task->ta_func(task->ta_context, pending);
-
-		TQ_LOCK(queue);
 		queue->tq_running = NULL;
 		wakeup(task);
+		TQ_LOCK(queue);
 	}
 	if (lock_held == 0)
 		TQ_UNLOCK(queue);
@@ -366,13 +366,13 @@ taskqueue_cancel(struct taskqueue *queue, struct task *task, u_int *pendp)
 
 int
 taskqueue_cancel_timeout(struct taskqueue *queue,
-    struct timeout_task *timeout_task, u_int *pendp)
+			 struct timeout_task *timeout_task, u_int *pendp)
 {
 	u_int pending, pending1;
 	int error;
 
-	TQ_LOCK(queue);
 	pending = !!callout_stop(&timeout_task->c);
+	TQ_LOCK(queue);
 	error = taskqueue_cancel_locked(queue, &timeout_task->t, &pending1);
 	if ((timeout_task->f & DT_CALLOUT_ARMED) != 0) {
 		timeout_task->f &= ~DT_CALLOUT_ARMED;
@@ -494,8 +494,8 @@ taskqueue_thread_loop(void *arg)
 
 	/* rendezvous with thread that asked us to terminate */
 	tq->tq_tcount--;
-	wakeup_one(tq->tq_threads);
 	TQ_UNLOCK(tq);
+	wakeup_one(tq->tq_threads);
 	lwkt_exit();
 }
 
