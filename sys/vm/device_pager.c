@@ -111,7 +111,6 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 	cdev_t dev;
 	vm_object_t object;
 	u_short color;
-	dev = handle;
 
 	/*
 	 * Offset should be page aligned.
@@ -139,7 +138,14 @@ cdev_pager_allocate(void *handle, enum obj_type tp, struct cdev_pager_ops *ops,
 		object->un_pager.devp.ops = ops;
 		object->un_pager.devp.dev = handle;
 		TAILQ_INIT(&object->un_pager.devp.devp_pglist);
-		dev->si_object = object;
+
+		/*
+		 * handle is only a device for old_dev_pager_ctor.
+		 */
+		if (ops->cdev_pg_ctor == old_dev_pager_ctor) {
+			dev = handle;
+			dev->si_object = object;
+		}
 
 		TAILQ_INSERT_TAIL(&dev_pager_object_list, object,
 		    pager_object_list);
