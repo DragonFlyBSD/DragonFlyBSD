@@ -630,7 +630,7 @@ iwn_pci_attach(device_t dev)
 	}
 
 	if (sc->sc_flags & IWN_FLAG_HAS_11N) {
-#if notyet
+#ifdef notyet
 		ic->ic_rxstream = sc->nrxchains;
 		ic->ic_txstream = sc->ntxchains;
 #endif
@@ -647,7 +647,7 @@ iwn_pci_attach(device_t dev)
 		 * cap this!  But, anything that touches rates in the
 		 * driver needs to be audited first before 3x3 is enabled.
 		 */
-#if notyet
+#ifdef notyet
 		if (ic->ic_rxstream > 2)
 			ic->ic_rxstream = 2;
 		if (ic->ic_txstream > 2)

@@ -121,7 +121,7 @@ DRIVER_MODULE(usbus, uhci, usb_driver, usb_devclass, 0, 0);
 DRIVER_MODULE(usbus, ehci, usb_driver, usb_devclass, 0, 0);
 DRIVER_MODULE(usbus, xhci, usb_driver, usb_devclass, 0, 0);
 
-#if XXX // these are not ported yet (mpf)
+#if 0 // XXX these are not ported yet (mpf)
 /* Device Only Drivers */
 DRIVER_MODULE(usbus, at91_udp, usb_driver, usb_devclass, 0, 0);
 DRIVER_MODULE(usbus, musbotg, usb_driver, usb_devclass, 0, 0);

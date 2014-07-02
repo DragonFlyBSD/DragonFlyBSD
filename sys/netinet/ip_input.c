@@ -912,7 +912,7 @@ ours:
 		goto bad;
 	}
 #endif
-#if FAST_IPSEC
+#ifdef FAST_IPSEC
 	/*
 	 * enforce IPsec policy checking if we are seeing last header.
 	 * note that we do not visit this with protocols with pcb layer
@@ -2156,7 +2156,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 				key_freesp(sp);
 			}
 		}
-#elif FAST_IPSEC
+#elif defined(FAST_IPSEC)
 		/*
 		 * If the packet is routed over IPsec tunnel, tell the
 		 * originator the tunnel MTU.

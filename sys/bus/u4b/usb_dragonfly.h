@@ -1,4 +1,3 @@
-/* $FreeBSD$ */
 /*-
  * Copyright (c) 2008 Hans Petter Selasky. All rights reserved.
  *
@@ -35,9 +34,7 @@
 #define	USB_HAVE_UGEN 1
 #define	USB_HAVE_DEVCTL 1
 #define	USB_HAVE_BUSDMA 1
-#if 0
-#define	USB_HAVE_COMPAT_LINUX 1
-#endif
+#define	USB_HAVE_COMPAT_LINUX 0	/* XXX */
 #define	USB_HAVE_USER_IO 1
 #define	USB_HAVE_MBUF 1
 #define	USB_HAVE_TT_SUPPORT 1
