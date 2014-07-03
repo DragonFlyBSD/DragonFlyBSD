@@ -94,16 +94,7 @@ struct ctlname {
 #define	CTLFLAG_DYN	0x02000000	/* Dynamic oid - can be freed */
 #define	CTLFLAG_SKIP	0x01000000	/* Skip this sysctl when listing */
 #define	CTLMASK_SECURE	0x00F00000	/* Secure level */
-#define	CTLFLAG_TUN	0x00080000	/* Tunable variable */
-#define	CTLFLAG_RDTUN	(CTLFLAG_RD|CTLFLAG_TUN)
-#define	CTLFLAG_RWTUN	(CTLFLAG_RW|CTLFLAG_TUN)
-#define	CTLFLAG_MPSAFE	0x00040000	/* Handler is MP safe */
-#define	CTLFLAG_VNET	0x00020000	/* Prisons with vnet can fiddle */
 #define	CTLFLAG_DYING	0x00010000	/* Oid is being removed */
-#define	CTLFLAG_CAPRD	0x00008000	/* Can be read in capability mode */
-#define	CTLFLAG_CAPWR	0x00004000	/* Can be written in capability mode */
-#define	CTLFLAG_STATS	0x00002000	/* Statistics, not a tuneable */
-#define	CTLFLAG_CAPRW	(CTLFLAG_CAPRD|CTLFLAG_CAPWR)
 
 /*
  * USE THIS instead of a hardwired number from the categories below
@@ -203,8 +194,6 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	SYSCTL_NODE_CHILDREN(parent, name) \
 	sysctl_##parent##_##name##_children
 
-#define	SYSCTL_ASSERT_TYPE(type, ptr, parent, name)
-
 #ifndef NO_SYSCTL_DESCR
 #define	__DESCR(d) d
 #else
@@ -253,10 +242,8 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 
 /* Oid for an int.  If ptr is NULL, val is returned. */
 #define	SYSCTL_INT(parent, nbr, name, access, ptr, val, descr)		\
-	SYSCTL_ASSERT_TYPE(INT, ptr, parent, name);			\
-	SYSCTL_OID(parent, nbr, name,					\
-	    CTLTYPE_INT | CTLFLAG_MPSAFE | (access),			\
-	    ptr, val, sysctl_handle_int, "I", descr)
+	SYSCTL_OID(parent, nbr, name, CTLTYPE_INT|(access),		\
+		ptr, val, sysctl_handle_int, "I", descr)
 
 #define SYSCTL_ADD_INT(ctx, parent, nbr, name, access, ptr, val, descr)	    \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_INT|access,	    \
