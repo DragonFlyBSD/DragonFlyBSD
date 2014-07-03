@@ -37,7 +37,6 @@
 #include <drm/ttm/ttm_placement.h>
 #include <linux/atomic.h>
 #include <linux/export.h>
-#include <linux/rbtree.h>
 #include <linux/wait.h>
 
 #define TTM_ASSERT_LOCKED(param)
@@ -222,7 +221,7 @@ int ttm_bo_reserve_nolru(struct ttm_buffer_object *bo,
 			 * Already reserved by a thread that will not back
 			 * off for us. We need to back off.
 			 */
-			if (unlikely(sequence - bo->val_seq < (1 << 31)))
+			if (unlikely(sequence - bo->val_seq < (1U << 31)))
 				return -EAGAIN;
 		}
 
@@ -241,7 +240,7 @@ int ttm_bo_reserve_nolru(struct ttm_buffer_object *bo,
 		 * Wake up waiters that may need to recheck for deadlock,
 		 * if we decreased the sequence number.
 		 */
-		if (unlikely((bo->val_seq - sequence < (1 << 31))
+		if (unlikely((bo->val_seq - sequence < (1U << 31))
 			     || !bo->seq_valid))
 			wake_up = true;
 
@@ -287,14 +286,17 @@ int ttm_bo_reserve(struct ttm_buffer_object *bo,
 	int put_count = 0;
 	int ret;
 
+	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	ret = ttm_bo_reserve_nolru(bo, interruptible, no_wait, use_sequence,
 				   sequence);
 	if (likely(ret == 0)) {
-		lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 		put_count = ttm_bo_del_from_lru(bo);
 		lockmgr(&glob->lru_lock, LK_RELEASE);
 		ttm_bo_list_ref_sub(bo, put_count, true);
+	} else {
+		lockmgr(&glob->lru_lock, LK_RELEASE);
 	}
+
 
 	return ret;
 }
@@ -314,7 +316,7 @@ int ttm_bo_reserve_slowpath_nolru(struct ttm_buffer_object *bo,
 			return ret;
 	}
 
-	if ((bo->val_seq - sequence < (1 << 31)) || !bo->seq_valid)
+	if ((bo->val_seq - sequence < (1U << 31)) || !bo->seq_valid)
 		wake_up = true;
 
 	/**
@@ -335,12 +337,14 @@ int ttm_bo_reserve_slowpath(struct ttm_buffer_object *bo,
 	struct ttm_bo_global *glob = bo->glob;
 	int put_count, ret;
 
+	lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 	ret = ttm_bo_reserve_slowpath_nolru(bo, interruptible, sequence);
 	if (likely(!ret)) {
-		lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 		put_count = ttm_bo_del_from_lru(bo);
 		lockmgr(&glob->lru_lock, LK_RELEASE);
 		ttm_bo_list_ref_sub(bo, put_count, true);
+	} else {
+		lockmgr(&glob->lru_lock, LK_RELEASE);
 	}
 	return ret;
 }
@@ -715,10 +719,8 @@ static int ttm_bo_delayed_delete(struct ttm_bo_device *bdev, bool remove_all)
 
 		ret = ttm_bo_reserve_nolru(entry, false, true, false, 0);
 		if (remove_all && ret) {
-			lockmgr(&glob->lru_lock, LK_RELEASE);
 			ret = ttm_bo_reserve_nolru(entry, false, false,
 						   false, 0);
-			lockmgr(&glob->lru_lock, LK_EXCLUSIVE);
 		}
 
 		if (!ret)
@@ -764,8 +766,14 @@ static void ttm_bo_release(struct kref *kref)
 	struct ttm_mem_type_manager *man = &bdev->man[bo->mem.mem_type];
 
 	lockmgr(&bdev->vm_lock, LK_EXCLUSIVE);
+	if (atomic_read(&bo->kref.refcount) > 0) {
+		lockmgr(&bdev->vm_lock, LK_RELEASE);
+		return;
+	}
 	if (likely(bo->vm_node != NULL)) {
-		rb_erase(&bo->vm_rb, &bdev->addr_space_rb);
+		kprintf("TTM ERASE %p \n", bo);
+		RB_REMOVE(ttm_bo_device_buffer_objects,
+				&bdev->addr_space_rb, bo);
 		drm_mm_put_block(bo->vm_node);
 		bo->vm_node = NULL;
 	}
@@ -1610,7 +1618,7 @@ int ttm_bo_device_init(struct ttm_bo_device *bdev,
 	if (unlikely(ret != 0))
 		goto out_no_sys;
 
-	bdev->addr_space_rb = RB_ROOT;
+	RB_INIT(&bdev->addr_space_rb);
 	ret = drm_mm_init(&bdev->addr_space_mm, file_page_offset, 0x10000000);
 	if (unlikely(ret != 0))
 		goto out_no_addr_mm;
@@ -1678,27 +1686,12 @@ EXPORT_SYMBOL(ttm_bo_unmap_virtual);
 
 static void ttm_bo_vm_insert_rb(struct ttm_buffer_object *bo)
 {
+
 	struct ttm_bo_device *bdev = bo->bdev;
-	struct rb_node **cur = &bdev->addr_space_rb.rb_node;
-	struct rb_node *parent = NULL;
-	struct ttm_buffer_object *cur_bo;
-	unsigned long offset = bo->vm_node->start;
-	unsigned long cur_offset;
 
-	while (*cur) {
-		parent = *cur;
-		cur_bo = rb_entry(parent, struct ttm_buffer_object, vm_rb);
-		cur_offset = cur_bo->vm_node->start;
-		if (offset < cur_offset)
-			cur = &parent->rb_left;
-		else if (offset > cur_offset)
-			cur = &parent->rb_right;
-		else
-			BUG();
-	}
+	/* The caller acquired bdev->vm_lock. */
+	RB_INSERT(ttm_bo_device_buffer_objects, &bdev->addr_space_rb, bo);
 
-	rb_link_node(&bo->vm_rb, parent, cur);
-	rb_insert_color(&bo->vm_rb, &bdev->addr_space_rb);
 }
 
 /**

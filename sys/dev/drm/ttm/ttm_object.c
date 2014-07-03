@@ -189,6 +189,10 @@ static void ttm_release_base(struct kref *kref)
 	struct ttm_object_device *tdev = base->tfile->tdev;
 
 	lockmgr(&tdev->object_lock, LK_EXCLUSIVE);
+	if (atomic_read(&kref->refcount)) {
+		lockmgr(&tdev->object_lock, LK_RELEASE);
+		return;
+	}
 	(void)drm_ht_remove_item(&tdev->object_hash, &base->hash);
 	lockmgr(&tdev->object_lock, LK_RELEASE);
 

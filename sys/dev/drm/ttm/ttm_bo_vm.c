@@ -47,29 +47,45 @@
 #include <vm/vm.h>
 #include <vm/vm_page.h>
 #include <linux/export.h>
-#include <linux/rbtree.h>
+
+RB_GENERATE(ttm_bo_device_buffer_objects, ttm_buffer_object, vm_rb,
+    ttm_bo_cmp_rb_tree_items);
+
 
 #define TTM_BO_VM_NUM_PREFAULT 16
+
+int
+ttm_bo_cmp_rb_tree_items(struct ttm_buffer_object *a,
+    struct ttm_buffer_object *b)
+{
+    if (a->vm_node->start < b->vm_node->start) {
+        return (-1);
+    } else if (a->vm_node->start > b->vm_node->start) {
+        return (1);
+    } else {
+        return (0);
+    }
+}
+
 
 static struct ttm_buffer_object *ttm_bo_vm_lookup_rb(struct ttm_bo_device *bdev,
 						     unsigned long page_start,
 						     unsigned long num_pages)
 {
-	struct rb_node *cur = bdev->addr_space_rb.rb_node;
 	unsigned long cur_offset;
 	struct ttm_buffer_object *bo;
 	struct ttm_buffer_object *best_bo = NULL;
 
-	while (likely(cur != NULL)) {
-		bo = rb_entry(cur, struct ttm_buffer_object, vm_rb);
+	bo = RB_ROOT(&bdev->addr_space_rb);
+	while (bo != NULL) {
 		cur_offset = bo->vm_node->start;
 		if (page_start >= cur_offset) {
-			cur = cur->rb_right;
 			best_bo = bo;
 			if (page_start == cur_offset)
 				break;
+			bo = RB_RIGHT(bo, vm_rb);
 		} else
-			cur = cur->rb_left;
+			bo = RB_LEFT(bo, vm_rb);
 	}
 
 	if (unlikely(best_bo == NULL))
@@ -391,11 +407,11 @@ ssize_t ttm_bo_io(struct ttm_bo_device *bdev, struct file *filp,
 	bool no_wait = false;
 	bool dummy;
 
-	read_lock(&bdev->vm_lock);
+	lockmgr(&bdev->vm_lock, LK_EXCLUSIVE);
 	bo = ttm_bo_vm_lookup_rb(bdev, dev_offset, 1);
 	if (likely(bo != NULL))
 		ttm_bo_reference(bo);
-	read_unlock(&bdev->vm_lock);
+	lockmgr(&bdev->vm_lock, LK_RELEASE);
 
 	if (unlikely(bo == NULL))
 		return -EFAULT;
