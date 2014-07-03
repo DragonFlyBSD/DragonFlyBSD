@@ -592,7 +592,7 @@ static void ttm_bo_cleanup_refs_or_queue(struct ttm_buffer_object *bo)
 		driver->sync_obj_flush(sync_obj);
 		driver->sync_obj_unref(&sync_obj);
 	}
-	taskqueue_enqueue_timeout(taskqueue_thread[mycpuid], &bdev->wq,
+	taskqueue_enqueue_timeout(taskqueue_thread[0], &bdev->wq,
 	    ((hz / 100) < 1) ? 1 : hz / 100);
 }
 
@@ -753,44 +753,64 @@ static void ttm_bo_delayed_workqueue(void *arg, int pending __unused)
 	struct ttm_bo_device *bdev = arg;
 
 	if (ttm_bo_delayed_delete(bdev, false)) {
-		taskqueue_enqueue_timeout(taskqueue_thread[mycpuid], &bdev->wq,
+		taskqueue_enqueue_timeout(taskqueue_thread[0], &bdev->wq,
 		    ((hz / 100) < 1) ? 1 : hz / 100);
 	}
 }
 
+/*
+ * NOTE: bdev->vm_lock already held on call, this function release it.
+ */
 static void ttm_bo_release(struct kref *kref)
 {
 	struct ttm_buffer_object *bo =
 	    container_of(kref, struct ttm_buffer_object, kref);
 	struct ttm_bo_device *bdev = bo->bdev;
 	struct ttm_mem_type_manager *man = &bdev->man[bo->mem.mem_type];
+	int release_active;
 
-	lockmgr(&bdev->vm_lock, LK_EXCLUSIVE);
 	if (atomic_read(&bo->kref.refcount) > 0) {
 		lockmgr(&bdev->vm_lock, LK_RELEASE);
 		return;
 	}
 	if (likely(bo->vm_node != NULL)) {
-		kprintf("TTM ERASE %p \n", bo);
 		RB_REMOVE(ttm_bo_device_buffer_objects,
 				&bdev->addr_space_rb, bo);
 		drm_mm_put_block(bo->vm_node);
 		bo->vm_node = NULL;
 	}
-	lockmgr(&bdev->vm_lock, LK_RELEASE);
-	ttm_mem_io_lock(man, false);
-	ttm_mem_io_free_vm(bo);
-	ttm_mem_io_unlock(man);
-	ttm_bo_cleanup_refs_or_queue(bo);
-	kref_put(&bo->list_kref, ttm_bo_release_list);
+
+	/*
+	 * Should we clean up our implied list_kref?  Because ttm_bo_release()
+	 * can be called reentrantly due to races (this may not be true any
+	 * more with the lock management changes in the deref), it is possible
+	 * to get here twice, but there's only one list_kref ref to drop and
+	 * in the other path 'bo' can be kfree()d by another thread the
+	 * instant we release our lock.
+	 */
+	release_active = test_bit(TTM_BO_PRIV_FLAG_ACTIVE, &bo->priv_flags);
+	if (release_active) {
+		clear_bit(TTM_BO_PRIV_FLAG_ACTIVE, &bo->priv_flags);
+		lockmgr(&bdev->vm_lock, LK_RELEASE);
+		ttm_mem_io_lock(man, false);
+		ttm_mem_io_free_vm(bo);
+		ttm_mem_io_unlock(man);
+		ttm_bo_cleanup_refs_or_queue(bo);
+		kref_put(&bo->list_kref, ttm_bo_release_list);
+	} else {
+		lockmgr(&bdev->vm_lock, LK_RELEASE);
+	}
 }
 
 void ttm_bo_unref(struct ttm_buffer_object **p_bo)
 {
 	struct ttm_buffer_object *bo = *p_bo;
+	struct ttm_bo_device *bdev = bo->bdev;
 
 	*p_bo = NULL;
-	kref_put(&bo->kref, ttm_bo_release);
+	lockmgr(&bdev->vm_lock, LK_EXCLUSIVE);
+	if (kref_put(&bo->kref, ttm_bo_release) == 0)
+		lockmgr(&bdev->vm_lock, LK_RELEASE);
 }
 EXPORT_SYMBOL(ttm_bo_unref);
 
@@ -798,9 +818,9 @@ int ttm_bo_lock_delayed_workqueue(struct ttm_bo_device *bdev)
 {
 	int pending;
 
-	taskqueue_cancel_timeout(taskqueue_thread[mycpuid], &bdev->wq, &pending);
+	taskqueue_cancel_timeout(taskqueue_thread[0], &bdev->wq, &pending);
 	if (pending)
-		taskqueue_drain_timeout(taskqueue_thread[mycpuid], &bdev->wq);
+		taskqueue_drain_timeout(taskqueue_thread[0], &bdev->wq);
 	return (pending);
 }
 EXPORT_SYMBOL(ttm_bo_lock_delayed_workqueue);
@@ -808,7 +828,7 @@ EXPORT_SYMBOL(ttm_bo_lock_delayed_workqueue);
 void ttm_bo_unlock_delayed_workqueue(struct ttm_bo_device *bdev, int resched)
 {
 	if (resched) {
-		taskqueue_enqueue_timeout(taskqueue_thread[mycpuid], &bdev->wq,
+		taskqueue_enqueue_timeout(taskqueue_thread[0], &bdev->wq,
 		    ((hz / 100) < 1) ? 1 : hz / 100);
 	}
 }
@@ -1274,6 +1294,7 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 	INIT_LIST_HEAD(&bo->ddestroy);
 	INIT_LIST_HEAD(&bo->swap);
 	INIT_LIST_HEAD(&bo->io_reserve_lru);
+	/*bzero(&bo->vm_rb, sizeof(bo->vm_rb));*/
 	bo->bdev = bdev;
 	bo->glob = bdev->glob;
 	bo->type = type;
@@ -1292,6 +1313,11 @@ int ttm_bo_init(struct ttm_bo_device *bdev,
 	bo->acc_size = acc_size;
 	bo->sg = sg;
 	atomic_inc(&bo->glob->bo_count);
+
+	/*
+	 * Mirror ref from kref_init() for list_kref.
+	 */
+	set_bit(TTM_BO_PRIV_FLAG_ACTIVE, &bo->priv_flags);
 
 	ret = ttm_bo_check_placement(bo, placement);
 	if (unlikely(ret != 0))
@@ -1365,6 +1391,7 @@ int ttm_bo_create(struct ttm_bo_device *bdev,
 	size_t acc_size;
 	int ret;
 
+	*p_bo = NULL;
 	bo = kmalloc(sizeof(*bo), M_TTM_BO, M_WAITOK | M_ZERO);
 	if (unlikely(bo == NULL))
 		return -ENOMEM;
@@ -1494,9 +1521,12 @@ EXPORT_SYMBOL(ttm_bo_init_mm);
 
 static void ttm_bo_global_kobj_release(struct ttm_bo_global *glob)
 {
-
 	ttm_mem_unregister_shrink(glob->mem_glob, &glob->shrink);
+	vm_page_free_contig(glob->dummy_read_page, PAGE_SIZE);
+	glob->dummy_read_page = NULL;
+	/*
 	vm_page_free(glob->dummy_read_page);
+	*/
 }
 
 void ttm_bo_global_release(struct drm_global_reference *ref)
@@ -1542,7 +1572,11 @@ int ttm_bo_global_init(struct drm_global_reference *ref)
 	return (0);
 
 out_no_shrink:
+	vm_page_free_contig(glob->dummy_read_page, PAGE_SIZE);
+	glob->dummy_read_page = NULL;
+	/*
 	vm_page_free(glob->dummy_read_page);
+	*/
 out_no_drp:
 	kfree(glob, M_DRM_GLOBAL);
 	return ret;
@@ -1574,8 +1608,8 @@ int ttm_bo_device_release(struct ttm_bo_device *bdev)
 	list_del(&bdev->device_list);
 	lockmgr(&glob->device_list_mutex, LK_RELEASE);
 
-	if (taskqueue_cancel_timeout(taskqueue_thread[mycpuid], &bdev->wq, NULL))
-		taskqueue_drain_timeout(taskqueue_thread[mycpuid], &bdev->wq);
+	if (taskqueue_cancel_timeout(taskqueue_thread[0], &bdev->wq, NULL))
+		taskqueue_drain_timeout(taskqueue_thread[0], &bdev->wq);
 
 	while (ttm_bo_delayed_delete(bdev, true))
 		;
@@ -1623,7 +1657,7 @@ int ttm_bo_device_init(struct ttm_bo_device *bdev,
 	if (unlikely(ret != 0))
 		goto out_no_addr_mm;
 
-	TIMEOUT_TASK_INIT(taskqueue_thread[mycpuid], &bdev->wq, 0,
+	TIMEOUT_TASK_INIT(taskqueue_thread[0], &bdev->wq, 0,
 	    ttm_bo_delayed_workqueue, bdev);
 	INIT_LIST_HEAD(&bdev->ddestroy);
 	bdev->dev_mapping = NULL;
@@ -1686,12 +1720,10 @@ EXPORT_SYMBOL(ttm_bo_unmap_virtual);
 
 static void ttm_bo_vm_insert_rb(struct ttm_buffer_object *bo)
 {
-
 	struct ttm_bo_device *bdev = bo->bdev;
 
 	/* The caller acquired bdev->vm_lock. */
 	RB_INSERT(ttm_bo_device_buffer_objects, &bdev->addr_space_rb, bo);
-
 }
 
 /**

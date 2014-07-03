@@ -170,9 +170,9 @@ static void ttm_shrink(struct ttm_mem_global *glob, bool from_wq,
 
 	while (ttm_zones_above_swap_target(glob, from_wq, extra)) {
 		shrink = glob->shrink;
-		spin_lock(&glob->spin);
-		ret = shrink->do_shrink(shrink);
 		spin_unlock(&glob->spin);
+		ret = shrink->do_shrink(shrink);
+		spin_lock(&glob->spin);
 		if (unlikely(ret != 0))
 			goto out;
 	}
@@ -220,7 +220,7 @@ static int ttm_mem_init_dma32_zone(struct ttm_mem_global *glob,
 	 * No special dma32 zone needed.
 	 */
 
-	if (mem <= ((uint64_t) 1ULL << 32)) {
+	if ((physmem * PAGE_SIZE) <= ((uint64_t) 1ULL << 32)) {
 		drm_free(zone, M_TTM_ZONE);
 		return 0;
 	}
@@ -230,8 +230,9 @@ static int ttm_mem_init_dma32_zone(struct ttm_mem_global *glob,
 	 * until we can figure out how big this
 	 * zone really is.
 	 */
+	if (mem > ((uint64_t) 1ULL << 32))
+		mem = ((uint64_t) 1ULL << 32);
 
-	mem = ((uint64_t) 1ULL << 32);
 	zone->name = "dma32";
 	zone->zone_mem = mem;
 	zone->max_mem = mem >> 1;
@@ -260,7 +261,13 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 
 	refcount_init(&glob->kobj_ref, 1);
 
-	mem = physmem * PAGE_SIZE;
+	/*
+	 * Managed contiguous memory for TTM.  Only use kernel-reserved
+	 * dma memory for TTM, which can be controlled via /boot/loader.conf
+	 * (e.g. vm.dma_reserved=256m).  This is the only truly dependable
+	 * DMA memory.
+	 */
+	mem = (uint64_t)vm_contig_avail_pages() * PAGE_SIZE;
 
 	ret = ttm_mem_init_kernel_zone(glob, mem);
 	if (unlikely(ret != 0))
@@ -268,6 +275,7 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 	ret = ttm_mem_init_dma32_zone(glob, mem);
 	if (unlikely(ret != 0))
 		goto out_no_zone;
+	kprintf("[TTM] (struct ttm_mem_global *)%p\n", glob);
 	for (i = 0; i < glob->num_zones; ++i) {
 		zone = glob->zones[i];
 		kprintf("[TTM] Zone %7s: Available graphics memory: %llu kiB\n",

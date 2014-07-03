@@ -202,16 +202,16 @@ void radeon_bo_unref(struct radeon_bo **bo)
 {
 	struct ttm_buffer_object *tbo;
 	struct radeon_device *rdev;
+	struct radeon_bo *rbo;
 
-	if ((*bo) == NULL)
+	if ((rbo = *bo) == NULL)
 		return;
-	rdev = (*bo)->rdev;
-	tbo = &((*bo)->tbo);
+	*bo = NULL;
+	rdev = rbo->rdev;
+	tbo = &rbo->tbo;
 	lockmgr(&rdev->pm.mclk_lock, LK_SHARED);
 	ttm_bo_unref(&tbo);
 	lockmgr(&rdev->pm.mclk_lock, LK_RELEASE);
-	if (tbo == NULL)
-		*bo = NULL;
 }
 
 int radeon_bo_pin_restricted(struct radeon_bo *bo, u32 domain, u64 max_offset,

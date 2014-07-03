@@ -188,7 +188,6 @@ static void ttm_release_base(struct kref *kref)
 	    container_of(kref, struct ttm_base_object, refcount);
 	struct ttm_object_device *tdev = base->tfile->tdev;
 
-	lockmgr(&tdev->object_lock, LK_EXCLUSIVE);
 	if (atomic_read(&kref->refcount)) {
 		lockmgr(&tdev->object_lock, LK_RELEASE);
 		return;
@@ -211,10 +210,14 @@ static void ttm_release_base(struct kref *kref)
 void ttm_base_object_unref(struct ttm_base_object **p_base)
 {
 	struct ttm_base_object *base = *p_base;
+	struct ttm_object_device *tdev = base->tfile->tdev;
 
 	*p_base = NULL;
 
-	kref_put(&base->refcount, ttm_release_base);
+	lockmgr(&tdev->object_lock, LK_EXCLUSIVE);
+	if (kref_put(&base->refcount, ttm_release_base) == 0) {
+		lockmgr(&tdev->object_lock, LK_RELEASE);
+	}
 }
 EXPORT_SYMBOL(ttm_base_object_unref);
 

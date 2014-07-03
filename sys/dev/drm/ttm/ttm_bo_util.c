@@ -406,7 +406,7 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	struct ttm_bo_device *bdev = bo->bdev;
 	struct ttm_bo_driver *driver = bdev->driver;
 
-	fbo = kmalloc(sizeof(*fbo), M_TTM_TRANSF_OBJ, M_WAITOK);
+	fbo = kmalloc(sizeof(*fbo), M_TTM_TRANSF_OBJ, M_WAITOK | M_ZERO);
 	if (!fbo)
 		return -ENOMEM;
 
@@ -435,6 +435,11 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	kref_init(&fbo->kref);
 	fbo->destroy = &ttm_transfered_destroy;
 	fbo->acc_size = 0;
+
+        /*
+	 * Mirror ref from kref_init() for list_kref.
+	 */
+	set_bit(TTM_BO_PRIV_FLAG_ACTIVE, &fbo->priv_flags);
 
 	*new_obj = fbo;
 	return 0;

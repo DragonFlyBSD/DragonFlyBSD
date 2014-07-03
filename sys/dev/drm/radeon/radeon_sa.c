@@ -328,7 +328,7 @@ int radeon_sa_bo_new(struct radeon_device *rdev,
 	KASSERT(size <= sa_manager->size, ("size > sa_manager->size"));
 
 	*sa_bo = kmalloc(sizeof(struct radeon_sa_bo), DRM_MEM_DRIVER,
-			 M_WAITOK);
+			 M_WAITOK | M_ZERO);
 	if ((*sa_bo) == NULL) {
 		return -ENOMEM;
 	}

@@ -286,7 +286,6 @@ ttm_bo_vm_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
 	 * Thus, the reference acquired in ttm_bo_mmap_single() is
 	 * sufficient.
 	 */
-
 	*color = 0;
 	return (0);
 }
@@ -314,6 +313,8 @@ ttm_bo_mmap_single(struct ttm_bo_device *bdev, vm_ooffset_t *offset, vm_size_t s
 	struct vm_object *vm_obj;
 	int ret;
 
+	*obj_res = NULL;
+
 	lockmgr(&bdev->vm_lock, LK_EXCLUSIVE);
 	bo = ttm_bo_vm_lookup_rb(bdev, OFF_TO_IDX(*offset), OFF_TO_IDX(size));
 	if (likely(bo != NULL))
@@ -336,6 +337,7 @@ ttm_bo_mmap_single(struct ttm_bo_device *bdev, vm_ooffset_t *offset, vm_size_t s
 
 	vm_obj = cdev_pager_allocate(bo, OBJT_MGTDEVICE, &ttm_pager_ops,
 	    size, nprot, 0, curthread->td_ucred);
+
 	if (vm_obj == NULL) {
 		ret = EINVAL;
 		goto out_unref;

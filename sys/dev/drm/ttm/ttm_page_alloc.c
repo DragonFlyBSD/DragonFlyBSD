@@ -143,8 +143,12 @@ ttm_vm_page_free(vm_page_t m)
 #endif
 	m->flags &= ~PG_FICTITIOUS;
 	vm_page_busy_wait(m, FALSE, "ttmvpf");
+	vm_page_wakeup(m);
+	vm_page_free_contig(m, PAGE_SIZE);
+	/*
 	vm_page_unwire(m, 0);
 	vm_page_free(m);
+	*/
 }
 
 static vm_memattr_t

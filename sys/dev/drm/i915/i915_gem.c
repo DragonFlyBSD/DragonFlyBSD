@@ -1867,16 +1867,15 @@ i915_gem_object_bind_to_gtt(struct drm_i915_gem_object *obj,
 			return (ret);
 		goto search_free;
 	}
+
+	/*
+	 * NOTE: i915_gem_object_get_pages_gtt() cannot
+	 *	 return ENOMEM, since we used VM_ALLOC_RETRY.
+	 */
 	ret = i915_gem_object_get_pages_gtt(obj, 0);
 	if (ret != 0) {
 		drm_mm_put_block(obj->gtt_space);
 		obj->gtt_space = NULL;
-		/*
-		 * i915_gem_object_get_pages_gtt() cannot return
-		 * ENOMEM, since we use vm_page_grab(VM_ALLOC_RETRY)
-		 * (which does not support operation without a flag
-		 * anyway).
-		 */
 		return (ret);
 	}
 

@@ -506,9 +506,10 @@ struct ttm_bo_global {
 
 #define TTM_NUM_MEM_TYPES 8
 
-#define TTM_BO_PRIV_FLAG_MOVING  0	/* Buffer object is moving and needs
+#define TTM_BO_PRIV_FLAG_MOVING	0	/* Buffer object is moving and needs
 					   idling before CPU mapping */
-#define TTM_BO_PRIV_FLAG_MAX 1
+#define TTM_BO_PRIV_FLAG_MAX	1
+#define TTM_BO_PRIV_FLAG_ACTIVE	2	/* Used for release sequencing */
 /**
  * struct ttm_bo_device - Buffer object driver device-specific data.
  *

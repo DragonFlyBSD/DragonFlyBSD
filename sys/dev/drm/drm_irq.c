@@ -874,10 +874,13 @@ void drm_vblank_put(struct drm_device *dev, int crtc)
 	BUG_ON(atomic_read(&dev->vblank_refcount[crtc]) == 0);
 
 	/* Last user schedules interrupt disable */
+	lockmgr(&dev->vblank_time_lock, LK_EXCLUSIVE);
 	if (atomic_dec_and_test(&dev->vblank_refcount[crtc]) &&
-	    (drm_vblank_offdelay > 0))
+	    (drm_vblank_offdelay > 0)) {
 		mod_timer(&dev->vblank_disable_timer,
 			  jiffies + ((drm_vblank_offdelay * DRM_HZ)/1000));
+	}
+	lockmgr(&dev->vblank_time_lock, LK_RELEASE);
 }
 EXPORT_SYMBOL(drm_vblank_put);
 
