@@ -89,6 +89,7 @@
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/route.h>
+#include <net/netisr2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_pcb.h>
@@ -140,6 +141,13 @@ int ipport_hilastauto = IPPORT_HILASTAUTO;	/* 65535 */
 int udpencap_enable = 1;	/* enabled by default */
 int udpencap_port = 4500;	/* triggers decapsulation */
 
+/*
+ * Per-netisr inpcb markers.
+ * NOTE: they should only be used in netisrs.
+ */
+static struct inpcb		*in_pcbmarkers;
+static struct inpcontainer	*in_pcbcontainer_markers;
+
 static int
 sysctl_net_ipport_check(SYSCTL_HANDLER_ARGS)
 {
@@ -188,12 +196,22 @@ SYSCTL_PROC(_net_inet_ip_portrange, OID_AUTO, hilast, CTLTYPE_INT|CTLFLAG_RW,
  */
 
 void
-in_pcbinfo_init(struct inpcbinfo *pcbinfo)
+in_pcbinfo_init(struct inpcbinfo *pcbinfo, int cpu, boolean_t shared)
 {
+	KASSERT(cpu >= 0 && cpu < ncpus, ("invalid cpu%d", cpu));
+	pcbinfo->cpu = cpu;
+
 	LIST_INIT(&pcbinfo->pcblisthead);
-	pcbinfo->cpu = -1;
 	pcbinfo->portsave = kmalloc(sizeof(*pcbinfo->portsave), M_PCB,
 				    M_WAITOK | M_ZERO);
+
+	if (shared) {
+		pcbinfo->infotoken = kmalloc(sizeof(struct lwkt_token),
+		    M_PCB, M_WAITOK);
+		lwkt_token_init(pcbinfo->infotoken, "infotoken");
+	} else {
+		pcbinfo->infotoken = NULL;
+	}
 }
 
 struct baddynamicports baddynamicports;
@@ -219,6 +237,39 @@ in_baddynamic(u_int16_t port, u_int16_t proto)
 	}
 }
 
+void
+in_pcbonlist(struct inpcb *inp)
+{
+	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
+	    ("not in the correct netisr"));
+	KASSERT((inp->inp_flags & INP_ONLIST) == 0, ("already on pcblist"));
+	inp->inp_flags |= INP_ONLIST;
+
+	GET_PCBINFO_TOKEN(pcbinfo);
+	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, inp, inp_list);
+	pcbinfo->ipi_count++;
+	REL_PCBINFO_TOKEN(pcbinfo);
+}
+
+void
+in_pcbofflist(struct inpcb *inp)
+{
+	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
+	    ("not in the correct netisr"));
+	KASSERT(inp->inp_flags & INP_ONLIST, ("not on pcblist"));
+	inp->inp_flags &= ~INP_ONLIST;
+
+	GET_PCBINFO_TOKEN(pcbinfo);
+	LIST_REMOVE(inp, inp_list);
+	KASSERT(pcbinfo->ipi_count > 0,
+	    ("invalid inpcb count %d", pcbinfo->ipi_count));
+	pcbinfo->ipi_count--;
+	REL_PCBINFO_TOKEN(pcbinfo);
+}
 
 /*
  * Allocate a PCB and associate it with the socket.
@@ -252,8 +303,8 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 #endif
 	soreference(so);
 	so->so_pcb = inp;
-	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, inp, inp_list);
-	pcbinfo->ipi_count++;
+
+	in_pcbonlist(inp);
 	return (0);
 }
 
@@ -269,8 +320,7 @@ in_pcbunlink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	KASSERT((inp->inp_flags & (INP_WILDCARD | INP_CONNECTED)) == 0,
 	    ("already linked"));
 
-	LIST_REMOVE(inp, inp_list);
-	pcbinfo->ipi_count--;
+	in_pcbofflist(inp);
 	inp->inp_pcbinfo = NULL;
 }
 
@@ -285,8 +335,7 @@ in_pcblink(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	    ("already linked"));
 
 	inp->inp_pcbinfo = pcbinfo;
-	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, inp, inp_list);
-	pcbinfo->ipi_count++;
+	in_pcbonlist(inp);
 }
 
 static int
@@ -985,9 +1034,9 @@ void
 in_pcbdisconnect(struct inpcb *inp)
 {
 
+	in_pcbremconnhash(inp);
 	inp->inp_faddr.s_addr = INADDR_ANY;
 	inp->inp_fport = 0;
-	in_pcbremconnhash(inp);
 }
 
 void
@@ -1098,17 +1147,29 @@ in_setpeeraddr_dispatch(netmsg_t msg)
 }
 
 void
-in_pcbnotifyall(struct inpcbhead *head, struct in_addr faddr, int err,
+in_pcbnotifyall(struct inpcbinfo *pcbinfo, struct in_addr faddr, int err,
 		void (*notify)(struct inpcb *, int))
 {
-	struct inpcb *inp, *ninp;
+	struct inpcb *inp, *marker;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
+	    ("not in the correct netisr"));
+	marker = &in_pcbmarkers[mycpuid];
 
 	/*
-	 * note: if INP_PLACEMARKER is set we must ignore the rest of
-	 * the structure and skip it.
+	 * NOTE:
+	 * - If INP_PLACEMARKER is set we must ignore the rest of the
+	 *   structure and skip it.
+	 * - It is safe to nuke inpcbs here, since we are in their own
+	 *   netisr.
 	 */
-	crit_enter();
-	LIST_FOREACH_MUTABLE(inp, head, inp_list, ninp) {
+	GET_PCBINFO_TOKEN(pcbinfo);
+
+	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, marker, inp_list);
+	while ((inp = LIST_NEXT(marker, inp_list)) != NULL) {
+		LIST_REMOVE(marker, inp_list);
+		LIST_INSERT_AFTER(inp, marker, inp_list);
+
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
 #ifdef INET6
@@ -1120,21 +1181,57 @@ in_pcbnotifyall(struct inpcbhead *head, struct in_addr faddr, int err,
 			continue;
 		(*notify)(inp, err);		/* can remove inp from list! */
 	}
-	crit_exit();
+	LIST_REMOVE(marker, inp_list);
+
+	REL_PCBINFO_TOKEN(pcbinfo);
 }
 
 void
-in_pcbpurgeif0(struct inpcb *head, struct ifnet *ifp)
+in_pcbpurgeif0(struct inpcbinfo *pcbinfo, struct ifnet *ifp)
 {
-	struct inpcb *inp;
-	struct ip_moptions *imo;
-	int i, gap;
+	struct inpcb *inp, *marker;
 
-	for (inp = head; inp != NULL; inp = LIST_NEXT(inp, inp_list)) {
+	/*
+	 * We only need to make sure that we are in netisr0, where all
+	 * multicast operation happen.  We could check inpcbinfo which
+	 * does not belong to netisr0 by holding the inpcbinfo's token.
+	 * In this case, the pcbinfo must be able to be shared, i.e.
+	 * pcbinfo->infotoken is not NULL.
+	 */
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+	KASSERT(pcbinfo->cpu == 0 || pcbinfo->infotoken != NULL,
+	    ("pcbinfo could not be shared"));
+
+	/*
+	 * Get a marker for the current netisr (netisr0).
+	 *
+	 * It is possible that the multicast address deletion blocks,
+	 * which could cause temporary token releasing.  So we use
+	 * inpcb marker here to get a coherent view of the inpcb list.
+	 *
+	 * While, on the other hand, moptions are only added and deleted
+	 * in netisr0, so we would not see staled moption or miss moption
+	 * even if the token was released due to the blocking multicast
+	 * address deletion.
+	 */
+	marker = &in_pcbmarkers[mycpuid];
+
+	GET_PCBINFO_TOKEN(pcbinfo);
+
+	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, marker, inp_list);
+	while ((inp = LIST_NEXT(marker, inp_list)) != NULL) {
+		struct ip_moptions *imo;
+
+		LIST_REMOVE(marker, inp_list);
+		LIST_INSERT_AFTER(inp, marker, inp_list);
+
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
 		imo = inp->inp_moptions;
 		if ((inp->inp_vflag & INP_IPV4) && imo != NULL) {
+			int i, gap;
+
 			/*
 			 * Unselect the outgoing interface if it is being
 			 * detached.
@@ -1149,6 +1246,11 @@ in_pcbpurgeif0(struct inpcb *head, struct ifnet *ifp)
 			for (i = 0, gap = 0; i < imo->imo_num_memberships;
 			    i++) {
 				if (imo->imo_membership[i]->inm_ifp == ifp) {
+					/*
+					 * NOTE:
+					 * This could block and the pcbinfo
+					 * token could be passively released.
+					 */
 					in_delmulti(imo->imo_membership[i]);
 					gap++;
 				} else if (gap != 0)
@@ -1158,6 +1260,9 @@ in_pcbpurgeif0(struct inpcb *head, struct ifnet *ifp)
 			imo->imo_num_memberships -= gap;
 		}
 	}
+	LIST_REMOVE(marker, inp_list);
+
+	REL_PCBINFO_TOKEN(pcbinfo);
 }
 
 /*
@@ -1291,6 +1396,8 @@ in_pcblocalgroup_last(const struct inpcbinfo *pcbinfo,
 	if (pcbinfo->localgrphashbase == NULL)
 		return NULL;
 
+	GET_PCBINFO_TOKEN(pcbinfo);
+
 	hdr = &pcbinfo->localgrphashbase[
 	    INP_PCBLOCALGRPHASH(inp->inp_lport, pcbinfo->localgrphashmask)];
 
@@ -1303,8 +1410,10 @@ in_pcblocalgroup_last(const struct inpcbinfo *pcbinfo,
 			break;
 		}
 	}
-	if (grp == NULL || grp->il_inpcnt == 1)
+	if (grp == NULL || grp->il_inpcnt == 1) {
+		REL_PCBINFO_TOKEN(pcbinfo);
 		return NULL;
+	}
 
 	KASSERT(grp->il_inpcnt >= 2,
 	    ("invalid localgroup inp count %d", grp->il_inpcnt));
@@ -1314,9 +1423,11 @@ in_pcblocalgroup_last(const struct inpcbinfo *pcbinfo,
 
 			if (i == last)
 				last = grp->il_inpcnt - 2;
+			REL_PCBINFO_TOKEN(pcbinfo);
 			return grp->il_inp[last];
 		}
 	}
+	REL_PCBINFO_TOKEN(pcbinfo);
 	return NULL;
 }
 
@@ -1327,6 +1438,8 @@ inp_localgroup_lookup(const struct inpcbinfo *pcbinfo,
 	struct inpcb *local_wild = NULL;
 	const struct inp_localgrphead *hdr;
 	const struct inp_localgroup *grp;
+
+	ASSERT_PCBINFO_TOKEN_HELD(pcbinfo);
 
 	hdr = &pcbinfo->localgrphashbase[
 	    INP_PCBLOCALGRPHASH(lport, pcbinfo->localgrphashmask)];
@@ -1413,6 +1526,7 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 	}
 	if (jinp != NULL)
 		return (jinp);
+
 	if (wildcard) {
 		struct inpcb *local_wild = NULL;
 		struct inpcb *jinp_wild = NULL;
@@ -1424,6 +1538,8 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 		struct sockaddr_in jsin;
 		struct ucred *cred;
 
+		GET_PCBINFO_TOKEN(pcbinfo);
+
 		/*
 		 * Check local group first
 		 */
@@ -1432,8 +1548,10 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 		    !(ifp && ifp->if_type == IFT_FAITH)) {
 			inp = inp_localgroup_lookup(pcbinfo,
 			    laddr, lport, m->m_pkthdr.hash);
-			if (inp != NULL)
+			if (inp != NULL) {
+				REL_PCBINFO_TOKEN(pcbinfo);
 				return inp;
+			}
 		}
 
 		/*
@@ -1448,6 +1566,9 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 		    INP_PCBWILDCARDHASH(lport, pcbinfo->wildcardhashmask)];
 		LIST_FOREACH(ic, chead, ic_list) {
 			inp = ic->ic_inp;
+			if (inp->inp_flags & INP_PLACEMARKER)
+				continue;
+
 			jsin.sin_addr.s_addr = laddr.s_addr;
 #ifdef INET6
 			if (!(inp->inp_vflag & INP_IPV4))
@@ -1470,10 +1591,12 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 				    !(inp->inp_flags & INP_FAITH))
 					continue;
 				if (inp->inp_laddr.s_addr == laddr.s_addr) {
-					if (cred != NULL && jailed(cred))
+					if (cred != NULL && jailed(cred)) {
 						jinp = inp;
-					else
+					} else {
+						REL_PCBINFO_TOKEN(pcbinfo);
 						return (inp);
+					}
 				}
 				if (inp->inp_laddr.s_addr == INADDR_ANY) {
 #ifdef INET6
@@ -1490,6 +1613,9 @@ in_pcblookup_pkthash(struct inpcbinfo *pcbinfo, struct in_addr faddr,
 				}
 			}
 		}
+
+		REL_PCBINFO_TOKEN(pcbinfo);
+
 		if (local_wild != NULL)
 			return (local_wild);
 #ifdef INET6
@@ -1538,10 +1664,10 @@ in_pcbinsconnhash(struct inpcb *inp)
 	}
 #endif
 
-	KASSERT(!(inp->inp_flags & INP_WILDCARD),
-		("already on wildcardhash"));
-	KASSERT(!(inp->inp_flags & INP_CONNECTED),
-		("already on connhash"));
+	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
+	    ("not in the correct netisr"));
+	KASSERT(!(inp->inp_flags & INP_WILDCARD), ("already on wildcardhash"));
+	KASSERT(!(inp->inp_flags & INP_CONNECTED), ("already on connhash"));
 	inp->inp_flags |= INP_CONNECTED;
 
 	/*
@@ -1558,7 +1684,12 @@ in_pcbinsconnhash(struct inpcb *inp)
 void
 in_pcbremconnhash(struct inpcb *inp)
 {
+	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+
+	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
+	    ("not in the correct netisr"));
 	KASSERT(inp->inp_flags & INP_CONNECTED, ("inp not connected"));
+
 	LIST_REMOVE(inp, inp_hash);
 	inp->inp_flags &= ~INP_CONNECTED;
 }
@@ -1693,6 +1824,8 @@ in_pcbinslocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	struct inp_localgrphead *hdr;
 	struct inp_localgroup *grp, *grp_alloc = NULL;
 	struct ucred *cred;
+
+	ASSERT_PCBINFO_TOKEN_HELD(pcbinfo);
 
 	if (pcbinfo->localgrphashbase == NULL)
 		return;
@@ -1829,6 +1962,8 @@ in_pcbinswildcardhash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	struct inpcontainer *ic;
 	struct inpcontainerhead *bucket;
 
+	GET_PCBINFO_TOKEN(pcbinfo);
+
 	in_pcbinslocalgrphash_oncpu(inp, pcbinfo);
 
 	bucket = &pcbinfo->wildcardhashbase[
@@ -1837,6 +1972,8 @@ in_pcbinswildcardhash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	ic = kmalloc(sizeof(struct inpcontainer), M_TEMP, M_INTWAIT);
 	ic->ic_inp = inp;
 	LIST_INSERT_HEAD(bucket, ic, ic_list);
+
+	REL_PCBINFO_TOKEN(pcbinfo);
 }
 
 /*
@@ -1847,6 +1984,8 @@ in_pcbinswildcardhash(struct inpcb *inp)
 {
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
+	    ("not in correct netisr"));
 	KASSERT(!(inp->inp_flags & INP_CONNECTED),
 		("already on connhash"));
 	KASSERT(!(inp->inp_flags & INP_WILDCARD),
@@ -1861,6 +2000,8 @@ in_pcbremlocalgrphash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 {
 	struct inp_localgrphead *hdr;
 	struct inp_localgroup *grp;
+
+	ASSERT_PCBINFO_TOKEN_HELD(pcbinfo);
 
 	if (pcbinfo->localgrphashbase == NULL)
 		return;
@@ -1896,6 +2037,8 @@ in_pcbremwildcardhash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 	struct inpcontainer *ic;
 	struct inpcontainerhead *head;
 
+	GET_PCBINFO_TOKEN(pcbinfo);
+
 	in_pcbremlocalgrphash_oncpu(inp, pcbinfo);
 
 	/* find bucket */
@@ -1906,10 +2049,12 @@ in_pcbremwildcardhash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
 		if (ic->ic_inp == inp)
 			goto found;
 	}
+	REL_PCBINFO_TOKEN(pcbinfo);
 	return;			/* not found! */
 
 found:
 	LIST_REMOVE(ic, ic_list);	/* remove container from bucket chain */
+	REL_PCBINFO_TOKEN(pcbinfo);
 	kfree(ic, M_TEMP);		/* deallocate container */
 }
 
@@ -1921,7 +2066,10 @@ in_pcbremwildcardhash(struct inpcb *inp)
 {
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 
+	KASSERT(&curthread->td_msgport == netisr_cpuport(pcbinfo->cpu),
+	    ("not in correct netisr"));
 	KASSERT(inp->inp_flags & INP_WILDCARD, ("inp not wildcard"));
+
 	in_pcbremwildcardhash_oncpu(inp, pcbinfo);
 	inp->inp_flags &= ~INP_WILDCARD;
 }
@@ -1958,8 +2106,9 @@ in_pcbremlists(struct inpcb *inp)
 	} else if (inp->inp_flags & INP_CONNECTED) {
 		in_pcbremconnhash(inp);
 	}
-	LIST_REMOVE(inp, inp_list);
-	inp->inp_pcbinfo->ipi_count--;
+
+	if (inp->inp_flags & INP_ONLIST)
+		in_pcbofflist(inp);
 }
 
 int
@@ -1982,142 +2131,96 @@ prison_xinpcb(struct thread *td, struct inpcb *inp)
 int
 in_pcblist_global(SYSCTL_HANDLER_ARGS)
 {
-	struct inpcbinfo *pcbinfo = arg1;
-	struct inpcb *inp, *marker;
-	struct xinpcb xi;
-	int error, i, n;
+	struct inpcbinfo *pcbinfo_arr = arg1;
+	int pcbinfo_arrlen = arg2;
+	struct inpcb *marker;
+	int cpu, origcpu;
+	int error, n;
+
+	KASSERT(pcbinfo_arrlen <= ncpus && pcbinfo_arrlen >= 1,
+	    ("invalid pcbinfo count %d", pcbinfo_arrlen));
 
 	/*
 	 * The process of preparing the TCB list is too time-consuming and
 	 * resource-intensive to repeat twice on every request.
 	 */
+	n = 0;
 	if (req->oldptr == NULL) {
-		n = pcbinfo->ipi_count;
+		for (cpu = 0; cpu < pcbinfo_arrlen; ++cpu)
+			n += pcbinfo_arr[cpu].ipi_count;
 		req->oldidx = (n + n/8 + 10) * sizeof(struct xinpcb);
 		return 0;
 	}
 
 	if (req->newptr != NULL)
 		return EPERM;
+
+	marker = kmalloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
+	marker->inp_flags |= INP_PLACEMARKER;
 
 	/*
 	 * OK, now we're committed to doing something.  Re-fetch ipi_count
 	 * after obtaining the generation count.
 	 */
-	n = pcbinfo->ipi_count;
-
-	marker = kmalloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
-	marker->inp_flags |= INP_PLACEMARKER;
-	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, marker, inp_list);
-
-	i = 0;
 	error = 0;
+	origcpu = mycpuid;
+	for (cpu = 0; cpu < pcbinfo_arrlen && error == 0; ++cpu) {
+		struct inpcbinfo *pcbinfo = &pcbinfo_arr[cpu];
+		struct inpcb *inp;
+		struct xinpcb xi;
+		int i;
 
-	while ((inp = LIST_NEXT(marker, inp_list)) != NULL && i < n) {
-		LIST_REMOVE(marker, inp_list);
-		LIST_INSERT_AFTER(inp, marker, inp_list);
+		lwkt_migratecpu(cpu);
 
-		if (inp->inp_flags & INP_PLACEMARKER)
-			continue;
-		if (prison_xinpcb(req->td, inp))
-			continue;
-		bzero(&xi, sizeof xi);
-		xi.xi_len = sizeof xi;
-		bcopy(inp, &xi.xi_inp, sizeof *inp);
-		if (inp->inp_socket)
-			sotoxsocket(inp->inp_socket, &xi.xi_socket);
-		if ((error = SYSCTL_OUT(req, &xi, sizeof xi)) != 0)
-			break;
-		++i;
-	}
-	LIST_REMOVE(marker, inp_list);
-	if (error == 0 && i < n) {
-		bzero(&xi, sizeof xi);
-		xi.xi_len = sizeof xi;
-		while (i < n) {
-			error = SYSCTL_OUT(req, &xi, sizeof xi);
+		GET_PCBINFO_TOKEN(pcbinfo);
+
+		n = pcbinfo->ipi_count;
+
+		LIST_INSERT_HEAD(&pcbinfo->pcblisthead, marker, inp_list);
+		i = 0;
+		while ((inp = LIST_NEXT(marker, inp_list)) != NULL && i < n) {
+			LIST_REMOVE(marker, inp_list);
+			LIST_INSERT_AFTER(inp, marker, inp_list);
+
+			if (inp->inp_flags & INP_PLACEMARKER)
+				continue;
+			if (prison_xinpcb(req->td, inp))
+				continue;
+
+			bzero(&xi, sizeof xi);
+			xi.xi_len = sizeof xi;
+			bcopy(inp, &xi.xi_inp, sizeof *inp);
+			if (inp->inp_socket)
+				sotoxsocket(inp->inp_socket, &xi.xi_socket);
+			if ((error = SYSCTL_OUT(req, &xi, sizeof xi)) != 0)
+				break;
 			++i;
 		}
+		LIST_REMOVE(marker, inp_list);
+
+		REL_PCBINFO_TOKEN(pcbinfo);
+
+		if (error == 0 && i < n) {
+			bzero(&xi, sizeof xi);
+			xi.xi_len = sizeof xi;
+			while (i < n) {
+				error = SYSCTL_OUT(req, &xi, sizeof xi);
+				if (error)
+					break;
+				++i;
+			}
+		}
 	}
+
+	lwkt_migratecpu(origcpu);
 	kfree(marker, M_TEMP);
-	return(error);
-}
-
-int
-in_pcblist_global_cpu0(SYSCTL_HANDLER_ARGS)
-{
-	boolean_t migrate = FALSE;
-	int origcpu = mycpuid;
-	int error;
-
-	if (origcpu != 0) {
-		migrate = TRUE;
-		lwkt_migratecpu(0);
-	}
-
-	error = in_pcblist_global(oidp, arg1, arg2, req);
-
-	if (migrate)
-		lwkt_migratecpu(origcpu);
 	return error;
 }
 
 int
-in_pcblist_global_nomarker(SYSCTL_HANDLER_ARGS, struct xinpcb **xi0, int *nxi0)
+in_pcblist_global_ncpus2(SYSCTL_HANDLER_ARGS)
 {
-	struct inpcbinfo *pcbinfo = arg1;
-	struct inpcb *inp;
-	struct xinpcb *xi;
-	int nxi;
-
-	*nxi0 = 0;
-	*xi0 = NULL;
-
-	/*
-	 * The process of preparing the PCB list is too time-consuming and
-	 * resource-intensive to repeat twice on every request.
-	 */
-	if (req->oldptr == NULL) {
-		int n = pcbinfo->ipi_count;
-
-		req->oldidx = (n + n/8 + 10) * sizeof(struct xinpcb);
-		return 0;
-	}
-
-	if (req->newptr != NULL)
-		return EPERM;
-
-	if (pcbinfo->ipi_count == 0)
-		return 0;
-
-	nxi = 0;
-	xi = kmalloc(pcbinfo->ipi_count * sizeof(*xi), M_TEMP,
-		     M_WAITOK | M_ZERO | M_NULLOK);
-	if (xi == NULL)
-		return ENOMEM;
-
-	LIST_FOREACH(inp, &pcbinfo->pcblisthead, inp_list) {
-		struct xinpcb *xi_ptr = &xi[nxi];
-
-		if (prison_xinpcb(req->td, inp))
-			continue;
-
-		xi_ptr->xi_len = sizeof(*xi_ptr);
-		bcopy(inp, &xi_ptr->xi_inp, sizeof(*inp));
-		if (inp->inp_socket)
-			sotoxsocket(inp->inp_socket, &xi_ptr->xi_socket);
-		++nxi;
-	}
-
-	if (nxi == 0) {
-		kfree(xi, M_TEMP);
-		return 0;
-	}
-
-	*nxi0 = nxi;
-	*xi0 = xi;
-
-	return 0;
+	return in_pcblist_global(oidp, arg1, ncpus2, req);
 }
 
 void
@@ -2181,4 +2284,41 @@ in_pcbportrange(u_short *hi0, u_short *lo0, u_short ofs, u_short step)
 
 	*hi0 = hi;
 	*lo0 = lo;
+}
+
+void
+in_pcbglobalinit(void)
+{
+	int cpu;
+
+	in_pcbmarkers = kmalloc(ncpus * sizeof(struct inpcb), M_PCB,
+	    M_WAITOK | M_ZERO);
+	in_pcbcontainer_markers = kmalloc(ncpus * sizeof(struct inpcontainer),
+	    M_PCB, M_WAITOK | M_ZERO);
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		struct inpcontainer *ic = &in_pcbcontainer_markers[cpu];
+		struct inpcb *marker = &in_pcbmarkers[cpu];
+
+		marker->inp_flags |= INP_PLACEMARKER;
+		ic->ic_inp = marker;
+	}
+}
+
+struct inpcb *
+in_pcbmarker(int cpuid)
+{
+	KASSERT(cpuid >= 0 && cpuid < ncpus, ("invalid cpuid %d", cpuid));
+	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
+
+	return &in_pcbmarkers[cpuid];
+}
+
+struct inpcontainer *
+in_pcbcontainer_marker(int cpuid)
+{
+	KASSERT(cpuid >= 0 && cpuid < ncpus, ("invalid cpuid %d", cpuid));
+	KASSERT(curthread->td_type == TD_TYPE_NETISR, ("not in netisr"));
+
+	return &in_pcbcontainer_markers[cpuid];
 }

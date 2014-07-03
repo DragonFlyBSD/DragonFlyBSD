@@ -60,6 +60,7 @@ struct netmsg_base {
 };
 
 #define MSGF_IGNSOPORT		MSGF_USER0	/* don't check so_port */
+#define MSGF_PROTO1		MSGF_USER1	/* protocol specific */
 
 typedef struct netmsg_base *netmsg_base_t;
 

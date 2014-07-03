@@ -274,7 +274,7 @@ so_pru_detach(struct socket *so)
 	return (error);
 }
 
-void
+int
 so_pru_detach_direct(struct socket *so)
 {
 	struct netmsg_pru_detach msg;
@@ -285,6 +285,7 @@ so_pru_detach_direct(struct socket *so)
 	msg.base.lmsg.ms_flags |= MSGF_SYNC;
 	func((netmsg_t)&msg);
 	KKASSERT(msg.base.lmsg.ms_flags & MSGF_DONE);
+	return(msg.base.lmsg.ms_error);
 }
 
 int

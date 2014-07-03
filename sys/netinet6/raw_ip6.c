@@ -310,7 +310,7 @@ rip6_ctlinput(netmsg_t msg)
 		sa6_src = &sa6_any;
 	}
 
-	in6_pcbnotify(&ripcbinfo.pcblisthead, sa, 0,
+	in6_pcbnotify(&ripcbinfo, sa, 0,
 		      (const struct sockaddr *)sa6_src, 0, cmd, 0, notify);
 out:
 	lwkt_replymsg(&msg->ctlinput.base.lmsg, 0);

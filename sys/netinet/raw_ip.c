@@ -127,7 +127,7 @@ void (*ip_rsvp_force_done)(struct socket *);
 void
 rip_init(void)
 {
-	in_pcbinfo_init(&ripcbinfo);
+	in_pcbinfo_init(&ripcbinfo, 0, FALSE);
 	in_pcbportinfo_init(&ripcbportinfo, 1, FALSE, 0);
 	/*
 	 * XXX We don't use the hash list for raw IP, but it's easier
@@ -735,8 +735,8 @@ rip_send(netmsg_t msg)
 	lwkt_replymsg(&msg->lmsg, error);
 }
 
-SYSCTL_PROC(_net_inet_raw, OID_AUTO/*XXX*/, pcblist, CTLFLAG_RD, &ripcbinfo, 0,
-	    in_pcblist_global_cpu0, "S,xinpcb", "List of active raw IP sockets");
+SYSCTL_PROC(_net_inet_raw, OID_AUTO/*XXX*/, pcblist, CTLFLAG_RD, &ripcbinfo, 1,
+	    in_pcblist_global, "S,xinpcb", "List of active raw IP sockets");
 
 struct pr_usrreqs rip_usrreqs = {
 	.pru_abort = rip_abort,

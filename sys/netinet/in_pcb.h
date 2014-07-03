@@ -303,6 +303,7 @@ struct inpcbportinfo {
 } __cachealign;
 
 struct inpcbinfo {		/* XXX documentation, prefixes */
+	struct	lwkt_token *infotoken;	/* if this inpcbinfo is shared */
 	struct	inpcbhead *hashbase;
 	u_long	hashmask;
 	int	portinfo_mask;
@@ -315,8 +316,8 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 	struct	inpcbhead pcblisthead;	/* head of queue of active pcb's */
 	size_t	ipi_size;	/* allocation size for pcbs */
 	u_int	ipi_count;	/* number of pcbs in this list */
+	int	cpu;		/* related protocol thread cpu */
 	u_quad_t ipi_gencnt;	/* current generation count */
-	int	cpu;		/* related protocol thread cpu or -1 */
 } __cachealign;
 
 
@@ -362,6 +363,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	IN6P_RFC2292		0x40000000 /* used RFC2292 API on the socket */
 #define	IN6P_MTU		0x80000000 /* receive path MTU */
 
+#define INP_ONLIST		0x20000000 /* on pcblist */
 #define	INP_RECVTTL		0x80000000 /* receive incoming IP TTL */
 
 #define	INP_CONTROLOPTS		(INP_RECVOPTS|INP_RECVRETOPTS|INP_RECVDSTADDR|\
@@ -439,6 +441,28 @@ do { \
 #define ASSERT_PORT_TOKEN_HELD(portinfo)
 #endif	/* INVARIANTS */
 
+#define GET_PCBINFO_TOKEN(pcbinfo) \
+do { \
+	if ((pcbinfo)->infotoken) \
+		lwkt_gettoken((pcbinfo)->infotoken); \
+} while (0)
+
+#define REL_PCBINFO_TOKEN(pcbinfo) \
+do { \
+	if ((pcbinfo)->infotoken) \
+		lwkt_reltoken((pcbinfo)->infotoken); \
+} while (0)
+
+#ifdef INVARIANTS
+#define ASSERT_PCBINFO_TOKEN_HELD(pcbinfo) \
+do { \
+	if ((pcbinfo)->infotoken) \
+		ASSERT_LWKT_TOKEN_HELD((pcbinfo)->infotoken); \
+} while (0)
+#else	/* !INVARIANTS */
+#define ASSERT_PCBINFO_TOKEN_HELD(pcbinfo)
+#endif	/* INVARIANTS */
+
 extern int	ipport_lowfirstauto;
 extern int	ipport_lowlastauto;
 extern int	ipport_firstauto;
@@ -450,14 +474,16 @@ union netmsg;
 struct xinpcb;
 
 void	in_pcbportrange(u_short *, u_short *, u_short, u_short);
-void	in_pcbpurgeif0 (struct inpcb *, struct ifnet *);
+void	in_pcbpurgeif0 (struct inpcbinfo *, struct ifnet *);
 void	in_losing (struct inpcb *);
 void	in_rtchange (struct inpcb *, int);
-void	in_pcbinfo_init (struct inpcbinfo *);
+void	in_pcbinfo_init (struct inpcbinfo *, int, boolean_t);
 void	in_pcbportinfo_init (struct inpcbportinfo *, int, boolean_t, u_short);
 int	in_pcballoc (struct socket *, struct inpcbinfo *);
 void	in_pcbunlink (struct inpcb *, struct inpcbinfo *);
 void	in_pcblink (struct inpcb *, struct inpcbinfo *);
+void	in_pcbonlist (struct inpcb *);
+void	in_pcbofflist (struct inpcb *);
 int	in_pcbbind (struct inpcb *, struct sockaddr *, struct thread *);
 int	in_pcbbind_remote(struct inpcb *, const struct sockaddr *,
 	    struct thread *);
@@ -484,7 +510,7 @@ struct inpcb *
 	in_pcblookup_pkthash (struct inpcbinfo *,
 			       struct in_addr, u_int, struct in_addr, u_int,
 			       boolean_t, struct ifnet *, const struct mbuf *);
-void	in_pcbnotifyall (struct inpcbhead *, struct in_addr,
+void	in_pcbnotifyall (struct inpcbinfo *, struct in_addr,
 	    int, void (*)(struct inpcb *, int));
 int	in_setpeeraddr (struct socket *so, struct sockaddr **nam);
 void	in_setpeeraddr_dispatch(union netmsg *);
@@ -499,11 +525,15 @@ int	prison_xinpcb (struct thread *p, struct inpcb *inp);
 void	in_savefaddr (struct socket *so, const struct sockaddr *faddr);
 struct inpcb *
 	in_pcblocalgroup_last(const struct inpcbinfo *, const struct inpcb *);
+void	in_pcbglobalinit(void);
 
 int	in_pcblist_global(SYSCTL_HANDLER_ARGS);
-int	in_pcblist_global_cpu0(SYSCTL_HANDLER_ARGS);
-int	in_pcblist_global_nomarker(SYSCTL_HANDLER_ARGS,
-	    struct xinpcb **, int *);
+int	in_pcblist_global_ncpus2(SYSCTL_HANDLER_ARGS);
+
+struct inpcb *
+	in_pcbmarker(int cpuid);
+struct inpcontainer *
+	in_pcbcontainer_marker(int cpuid);
 
 #endif /* _KERNEL */
 

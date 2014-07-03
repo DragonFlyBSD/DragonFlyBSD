@@ -50,6 +50,7 @@
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
+#include <netinet/in_pcb.h>
 #include <netinet/ip.h>
 #include <netinet/ip_var.h>
 #include <netinet/ip_icmp.h>
@@ -85,7 +86,6 @@
 #endif /* FAST_IPSEC */
 
 #ifdef SCTP
-#include <netinet/in_pcb.h>
 #include <netinet/sctp_pcb.h>
 #include <netinet/sctp.h>
 #include <netinet/sctp_var.h>
@@ -122,6 +122,7 @@ struct protosw inetsw[] = {
 	.pr_flags = PR_ATOMIC|PR_ADDR|PR_MPSAFE|
 	    PR_ASYNC_SEND|PR_ASEND_HOLDTD,
 
+	.pr_initport = udp_initport,
 	.pr_input = udp_input,
 	.pr_output = NULL,
 	.pr_ctlinput = udp_ctlinput,
@@ -497,8 +498,14 @@ struct protosw inetsw[] = {
 #endif
 };
 
+static void
+inetdomain_init(void)
+{
+	in_pcbglobalinit();
+}
+
 struct domain inetdomain = {
-	AF_INET, "internet", NULL, NULL, NULL,
+	AF_INET, "internet", inetdomain_init, NULL, NULL,
 	inetsw, &inetsw[NELEM(inetsw)],
 	SLIST_ENTRY_INITIALIZER,
 	in_inithead, 32, sizeof(struct sockaddr_in),

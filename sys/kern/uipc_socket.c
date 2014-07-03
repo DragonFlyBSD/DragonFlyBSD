@@ -112,7 +112,6 @@ static void 	filt_sowdetach(struct knote *kn);
 static int	filt_sowrite(struct knote *kn, long hint);
 static int	filt_solisten(struct knote *kn, long hint);
 
-static void	sodiscard(struct socket *so);
 static int	soclose_sync(struct socket *so, int fflag);
 static void	soclose_fast(struct socket *so);
 
@@ -422,6 +421,7 @@ soclose(struct socket *so, int fflag)
 	int error;
 
 	funsetown(&so->so_sigio);
+	sosetstate(so, SS_ISCLOSING);
 	if (!use_soclose_fast ||
 	    (so->so_proto->pr_flags & PR_SYNC_PORT) ||
 	    ((so->so_state & SS_ISCONNECTED) &&
@@ -434,7 +434,7 @@ soclose(struct socket *so, int fflag)
 	return error;
 }
 
-static void
+void
 sodiscard(struct socket *so)
 {
 	lwkt_getpooltoken(so);
@@ -560,6 +560,13 @@ drop:
 		int error2;
 
 		error2 = so_pru_detach(so);
+		if (error2 == EJUSTRETURN) {
+			/*
+			 * Protocol will call sodiscard()
+			 * and sofree() for us.
+			 */
+			return error;
+		}
 		if (error == 0)
 			error = error2;
 	}
@@ -596,8 +603,18 @@ soclose_disconn_async_handler(netmsg_t msg)
 	    (so->so_state & SS_ISDISCONNECTING) == 0)
 		so_pru_disconnect_direct(so);
 
-	if (so->so_pcb)
-		so_pru_detach_direct(so);
+	if (so->so_pcb) {
+		int error;
+
+		error = so_pru_detach_direct(so);
+		if (error == EJUSTRETURN) {
+			/*
+			 * Protocol will call sodiscard()
+			 * and sofree() for us.
+			 */
+			return;
+		}
+	}
 
 	sodiscard(so);
 	sofree(so);
@@ -618,8 +635,18 @@ soclose_detach_async_handler(netmsg_t msg)
 {
 	struct socket *so = msg->base.nm_so;
 
-	if (so->so_pcb)
-		so_pru_detach_direct(so);
+	if (so->so_pcb) {
+		int error;
+
+		error = so_pru_detach_direct(so);
+		if (error == EJUSTRETURN) {
+			/*
+			 * Protocol will call sodiscard()
+			 * and sofree() for us.
+			 */
+			return;
+		}
+	}
 
 	sodiscard(so);
 	sofree(so);

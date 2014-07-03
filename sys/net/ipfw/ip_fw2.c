@@ -1566,15 +1566,15 @@ _ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
 {
 	struct in_addr src_ip, dst_ip;
 	struct inpcbinfo *pi;
-	int wildcard;
+	boolean_t wildcard;
 	struct inpcb *pcb;
 
 	if (fid->proto == IPPROTO_TCP) {
-		wildcard = 0;
+		wildcard = FALSE;
 		pi = &tcbinfo[mycpuid];
 	} else if (fid->proto == IPPROTO_UDP) {
-		wildcard = 1;
-		pi = &udbinfo;
+		wildcard = TRUE;
+		pi = &udbinfo[mycpuid];
 	} else {
 		return 0;
 	}

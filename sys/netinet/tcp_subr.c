@@ -376,8 +376,7 @@ tcp_init(void)
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		ticb = &tcbinfo[cpu];
-		in_pcbinfo_init(ticb);
-		ticb->cpu = cpu;
+		in_pcbinfo_init(ticb, cpu, FALSE);
 		ticb->hashbase = hashinit(hashsize, M_PCB,
 					  &ticb->hashmask);
 		in_pcbportinfo_init(&portinfo[cpu], hashsize, TRUE, cpu);
@@ -1178,7 +1177,6 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	int error, i, n;
 	struct inpcb *marker;
 	struct inpcb *inp;
-	globaldata_t gd;
 	int origcpu, ccpu;
 
 	error = 0;
@@ -1189,10 +1187,8 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	 * resource-intensive to repeat twice on every request.
 	 */
 	if (req->oldptr == NULL) {
-		for (ccpu = 0; ccpu < ncpus2; ++ccpu) {
-			gd = globaldata_find(ccpu);
-			n += tcbinfo[gd->gd_cpuid].ipi_count;
-		}
+		for (ccpu = 0; ccpu < ncpus2; ++ccpu)
+			n += tcbinfo[ccpu].ipi_count;
 		req->oldidx = (n + n/8 + 10) * sizeof(struct xtcpcb);
 		return (0);
 	}
@@ -1369,7 +1365,7 @@ tcp_notifyall_oncpu(netmsg_t msg)
 	struct netmsg_tcp_notify *nm = (struct netmsg_tcp_notify *)msg;
 	int nextcpu;
 
-	in_pcbnotifyall(&tcbinfo[mycpuid].pcblisthead, nm->nm_faddr,
+	in_pcbnotifyall(&tcbinfo[mycpuid], nm->nm_faddr,
 			nm->nm_arg, nm->nm_notify);
 
 	nextcpu = mycpuid + 1;
@@ -1535,7 +1531,7 @@ tcp6_ctlinput(netmsg_t msg)
 		bzero(&th, sizeof th);
 		m_copydata(m, off, sizeof *thp, (caddr_t)&th);
 
-		in6_pcbnotify(&tcbinfo[0].pcblisthead, sa, th.th_dport,
+		in6_pcbnotify(&tcbinfo[0], sa, th.th_dport,
 		    (struct sockaddr *)ip6cp->ip6c_src,
 		    th.th_sport, cmd, arg, notify);
 
@@ -1546,7 +1542,7 @@ tcp6_ctlinput(netmsg_t msg)
 		inc.inc_isipv6 = 1;
 		syncache_unreach(&inc, &th);
 	} else {
-		in6_pcbnotify(&tcbinfo[0].pcblisthead, sa, 0,
+		in6_pcbnotify(&tcbinfo[0], sa, 0,
 		    (const struct sockaddr *)sa6_src, 0, cmd, arg, notify);
 	}
 out:

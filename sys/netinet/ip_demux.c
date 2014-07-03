@@ -86,24 +86,14 @@ tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 	return (netisr_hashcpu(INP_MPORT_HASH_TCP(faddr, laddr, fport, lport)));
 }
 
-/*
- * Not implemented yet, use protocol thread 0
- */
 int
 udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-#ifdef notyet
-	return (netisr_hashcpu(INP_MPORT_HASH_UDP(faddr, laddr, fport, lport)));
-#else
-	return 0;
-#endif
-}
-
-int
-udp_addrcpu_pkt(in_addr_t faddr, in_port_t fport, in_addr_t laddr,
-    in_port_t lport)
-{
-	if (IN_MULTICAST(ntohl(faddr))) {
+	/*
+	 * NOTE: laddr could be multicast, since UDP socket could be
+	 * bound to multicast address.
+	 */
+	if (IN_MULTICAST(ntohl(faddr)) || IN_MULTICAST(ntohl(laddr))) {
 		/* XXX handle multicast on CPU0 for now */
 		return 0;
 	}
@@ -469,6 +459,12 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 
 struct lwkt_port *
 tcp_initport(void)
+{
+	return netisr_cpuport(mycpuid & ncpus2_mask);
+}
+
+struct lwkt_port *
+udp_initport(void)
 {
 	return netisr_cpuport(mycpuid & ncpus2_mask);
 }

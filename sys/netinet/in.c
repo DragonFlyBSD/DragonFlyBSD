@@ -1414,9 +1414,11 @@ in_ifdetach_dispatch(netmsg_t nmsg)
 {
 	struct lwkt_msg *lmsg = &nmsg->lmsg;
 	struct ifnet *ifp = lmsg->u.ms_resultp;
+	int cpu;
 
-	in_pcbpurgeif0(LIST_FIRST(&ripcbinfo.pcblisthead), ifp);
-	in_pcbpurgeif0(LIST_FIRST(&udbinfo.pcblisthead), ifp);
+	in_pcbpurgeif0(&ripcbinfo, ifp);
+	for (cpu = 0; cpu < ncpus2; ++cpu)
+		in_pcbpurgeif0(&udbinfo[cpu], ifp);
 
 	lwkt_replymsg(lmsg, 0);
 }

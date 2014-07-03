@@ -3246,7 +3246,7 @@ pf_socket_lookup(int direction, struct pf_pdesc *pd)
 			return (-1);
 		sport = pd->hdr.udp->uh_sport;
 		dport = pd->hdr.udp->uh_dport;
-		pi = &udbinfo;
+		pi = &udbinfo[mycpuid];
 		break;
 	default:
 		return (-1);

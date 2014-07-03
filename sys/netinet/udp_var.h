@@ -147,15 +147,13 @@ SYSCTL_DECL(_net_inet_udp);
 #define udp_stat	udpstat_percpu[mycpuid]
 
 extern struct	pr_usrreqs udp_usrreqs;
-extern struct	inpcbinfo udbinfo;
+extern struct	inpcbinfo udbinfo[MAXCPU];
 extern u_long	udp_sendspace;
 extern u_long	udp_recvspace;
 extern struct	udpstat udpstat_percpu[MAXCPU];
 extern int	log_in_vain;
 
 int			udp_addrcpu (in_addr_t faddr, in_port_t fport,
-				     in_addr_t laddr, in_port_t lport);
-int			udp_addrcpu_pkt (in_addr_t faddr, in_port_t fport,
 				     in_addr_t laddr, in_port_t lport);
 struct lwkt_port	*udp_addrport (in_addr_t faddr, in_port_t fport,
 				     in_addr_t laddr, in_port_t lport);
@@ -166,12 +164,8 @@ int			udp_input (struct mbuf **, int *, int);
 void			udp_notify (struct inpcb *inp, int error);
 void			udp_shutdown (union netmsg *);
 struct lwkt_port	*udp_ctlport (int, struct sockaddr *, void *);
+struct lwkt_port	*udp_initport(void);
 struct lwkt_port	*udp_cport (int);
-
-void			udbinfo_lock(void);
-void			udbinfo_unlock(void);
-void			udbinfo_barrier_set(void);
-void			udbinfo_barrier_rem(void);
 
 #endif
 

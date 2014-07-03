@@ -127,7 +127,7 @@ static struct lwkt_token div_token = LWKT_TOKEN_INITIALIZER(div_token);
 void
 div_init(void)
 {
-	in_pcbinfo_init(&divcbinfo);
+	in_pcbinfo_init(&divcbinfo, 0, FALSE);
 	in_pcbportinfo_init(&divcbportinfo, 1, FALSE, 0);
 	/*
 	 * XXX We don't use the hash list for divert IP, but it's easier
@@ -517,8 +517,8 @@ div_send(netmsg_t msg)
 }
 
 SYSCTL_DECL(_net_inet_divert);
-SYSCTL_PROC(_net_inet_divert, OID_AUTO, pcblist, CTLFLAG_RD, &divcbinfo, 0,
-	    in_pcblist_global_cpu0, "S,xinpcb", "List of active divert sockets");
+SYSCTL_PROC(_net_inet_divert, OID_AUTO, pcblist, CTLFLAG_RD, &divcbinfo, 1,
+	    in_pcblist_global, "S,xinpcb", "List of active divert sockets");
 
 struct pr_usrreqs div_usrreqs = {
 	.pru_abort = div_abort,

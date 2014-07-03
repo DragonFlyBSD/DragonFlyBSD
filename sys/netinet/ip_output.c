@@ -1348,6 +1348,25 @@ ip_ctloutput(netmsg_t msg)
 		goto done;
 	}
 
+	switch (sopt->sopt_name) {
+	case IP_MULTICAST_IF:
+	case IP_MULTICAST_VIF:
+	case IP_MULTICAST_TTL:
+	case IP_MULTICAST_LOOP:
+	case IP_ADD_MEMBERSHIP:
+	case IP_DROP_MEMBERSHIP:
+		/*
+		 * Handle multicast options in netisr0
+		 */
+		if (&curthread->td_msgport != netisr_cpuport(0)) {
+			/* NOTE: so_port MUST NOT be checked in netisr0 */
+			msg->lmsg.ms_flags |= MSGF_IGNSOPORT;
+			lwkt_forwardmsg(netisr_cpuport(0), &msg->lmsg);
+			return;
+		}
+		break;
+	}
+
 	switch (sopt->sopt_dir) {
 	case SOPT_SET:
 		switch (sopt->sopt_name) {

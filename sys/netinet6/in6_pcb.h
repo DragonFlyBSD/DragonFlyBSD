@@ -96,7 +96,7 @@ struct route_in6;
 struct sockaddr_in6;
 union netmsg;
 
-void	in6_pcbpurgeif0 (struct in6pcb *, struct ifnet *);
+void	in6_pcbpurgeif0 (struct inpcbinfo *, struct ifnet *);
 void	in6_losing (struct inpcb *);
 int	in6_pcballoc (struct socket *, struct inpcbinfo *, struct thread *);
 int	in6_pcbbind (struct inpcb *, struct sockaddr *, struct thread *);
@@ -112,7 +112,7 @@ struct	inpcb *
 	in6_pcblookup_hash (struct inpcbinfo *,
 				struct in6_addr *, u_int, struct in6_addr *,
 				u_int, int, struct ifnet *);
-void	in6_pcbnotify (struct inpcbhead *, struct sockaddr *,
+void	in6_pcbnotify (struct inpcbinfo *, struct sockaddr *,
 			   in_port_t, const struct sockaddr *, in_port_t,
 			   int, int, void (*)(struct inpcb *, int));
 void	in6_rtchange (struct inpcb *, int);

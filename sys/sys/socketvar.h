@@ -189,6 +189,7 @@ struct socket {
 #define	SS_ASSERTINPROG		0x0100	/* sonewconn race debugging */
 #define	SS_ASYNC		0x0200	/* async i/o notify */
 #define	SS_ISCONFIRMING		0x0400	/* deciding to accept connection req */
+#define	SS_ISCLOSING		0x0800	/* in process of closing */
 
 #define	SS_INCOMP		0x0800	/* unaccepted, incomplete connection */
 #define	SS_COMP			0x1000	/* unaccepted, complete connection */
@@ -430,6 +431,7 @@ int	soconnect2 (struct socket *so1, struct socket *so2);
 int	socreate (int dom, struct socket **aso, int type, int proto,
 	    struct thread *td);
 int	sodisconnect (struct socket *so);
+void	sodiscard (struct socket *so);
 void	sofree (struct socket *so);
 int	sogetopt (struct socket *so, struct sockopt *sopt);
 void	sohasoutofband (struct socket *so);

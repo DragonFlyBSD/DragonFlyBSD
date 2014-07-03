@@ -89,6 +89,7 @@
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/route.h>
+#include <net/netisr2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -887,15 +888,13 @@ in6_mapped_peeraddr_dispatch(netmsg_t msg)
  * cmds that are uninteresting (e.g., no error in the map).
  * Call the protocol specific routine (if any) to report
  * any errors for each matching socket.
- *
- * Must be called under crit_enter().
  */
 void
-in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, in_port_t fport,
-	      const struct sockaddr *src, in_port_t lport, int cmd, int arg,
-	      void (*notify) (struct inpcb *, int))
+in6_pcbnotify(struct inpcbinfo *pcbinfo, struct sockaddr *dst, in_port_t fport,
+    const struct sockaddr *src, in_port_t lport, int cmd, int arg,
+    void (*notify) (struct inpcb *, int))
 {
-	struct inpcb *inp, *ninp;
+	struct inpcb *inp, *marker;
 	struct sockaddr_in6 sa6_src, *sa6_dst;
 	u_int32_t flowinfo;
 
@@ -930,9 +929,15 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, in_port_t fport,
 	}
 	if (cmd != PRC_MSGSIZE)
 		arg = inet6ctlerrmap[cmd];
-	crit_enter();
-	for (inp = LIST_FIRST(head); inp != NULL; inp = ninp) {
-		ninp = LIST_NEXT(inp, inp_list);
+
+	marker = in_pcbmarker(mycpuid);
+
+	GET_PCBINFO_TOKEN(pcbinfo);
+
+	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, marker, inp_list);
+	while ((inp = LIST_NEXT(marker, inp_list)) != NULL) {
+		LIST_REMOVE(marker, inp_list);
+		LIST_INSERT_AFTER(inp, marker, inp_list);
 
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
@@ -981,7 +986,9 @@ do_notify:
 		if (notify)
 			(*notify)(inp, arg);
 	}
-	crit_exit();
+	LIST_REMOVE(marker, inp_list);
+
+	REL_PCBINFO_TOKEN(pcbinfo);
 }
 
 /*
@@ -1058,13 +1065,45 @@ in6_pcblookup_local(struct inpcbportinfo *portinfo,
 }
 
 void
-in6_pcbpurgeif0(struct in6pcb *head, struct ifnet *ifp)
+in6_pcbpurgeif0(struct inpcbinfo *pcbinfo, struct ifnet *ifp)
 {
-	struct in6pcb *in6p;
+	struct in6pcb *in6p, *marker;
 	struct ip6_moptions *im6o;
 	struct in6_multi_mship *imm, *nimm;
 
-	for (in6p = head; in6p != NULL; in6p = LIST_NEXT(in6p, inp_list)) {
+	/*
+	 * We only need to make sure that we are in netisr0, where all
+	 * multicast operation happen.  We could check inpcbinfo which
+	 * does not belong to netisr0 by holding the inpcbinfo's token.
+	 * In this case, the pcbinfo must be able to be shared, i.e.
+	 * pcbinfo->infotoken is not NULL.
+	 */
+	KASSERT(&curthread->td_msgport == netisr_cpuport(0),
+	    ("not in netisr0"));
+	KASSERT(pcbinfo->cpu == 0 || pcbinfo->infotoken != NULL,
+	    ("pcbinfo could not be shared"));
+
+	/*
+	 * Get a marker for the current netisr (netisr0).
+	 *
+	 * It is possible that the multicast address deletion blocks,
+	 * which could cause temporary token releasing.  So we use
+	 * inpcb marker here to get a coherent view of the inpcb list.
+	 *
+	 * While, on the other hand, moptions are only added and deleted
+	 * in netisr0, so we would not see staled moption or miss moption
+	 * even if the token was released due to the blocking multicast
+	 * address deletion.
+	 */
+	marker = in_pcbmarker(mycpuid);
+
+	GET_PCBINFO_TOKEN(pcbinfo);
+
+	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, marker, inp_list);
+	while ((in6p = LIST_NEXT(marker, inp_list)) != NULL) {
+		LIST_REMOVE(marker, inp_list);
+		LIST_INSERT_AFTER(in6p, marker, inp_list);
+
 		if (in6p->in6p_flags & INP_PLACEMARKER)
 			continue;
 		im6o = in6p->in6p_moptions;
@@ -1094,6 +1133,9 @@ in6_pcbpurgeif0(struct in6pcb *head, struct ifnet *ifp)
 			}
 		}
 	}
+	LIST_REMOVE(marker, inp_list);
+
+	REL_PCBINFO_TOKEN(pcbinfo);
 }
 
 /*
@@ -1193,6 +1235,7 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 	}
 	if (jinp != NULL)
 		return(jinp);
+
 	if (wildcard) {
 		struct inpcontainerhead *chead;
 		struct inpcontainer *ic;
@@ -1211,8 +1254,12 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 		jsin6.sin6_family = AF_INET6;
 		chead = &pcbinfo->wildcardhashbase[INP_PCBWILDCARDHASH(lport,
 		    pcbinfo->wildcardhashmask)];
+
+		GET_PCBINFO_TOKEN(pcbinfo);
 		LIST_FOREACH(ic, chead, ic_list) {
 			inp = ic->ic_inp;
+			if (inp->inp_flags & INP_PLACEMARKER)
+				continue;
 
 			if (!(inp->inp_vflag & INP_IPV6))
 				continue;
@@ -1237,10 +1284,12 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 					continue;
 				if (IN6_ARE_ADDR_EQUAL(&inp->in6p_laddr,
 						       laddr)) {
-					if (cred != NULL && jailed(cred))
+					if (cred != NULL && jailed(cred)) {
 						jinp = inp;
-					else
+					} else {
+						REL_PCBINFO_TOKEN(pcbinfo);
 						return (inp);
+					}
 				} else if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr)) {
 					if (cred != NULL && jailed(cred))
 						jinp_wild = inp;
@@ -1249,6 +1298,8 @@ in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
 				}
 			}
 		}
+		REL_PCBINFO_TOKEN(pcbinfo);
+
 		if (local_wild != NULL)
 			return (local_wild);
 		if (jinp != NULL)

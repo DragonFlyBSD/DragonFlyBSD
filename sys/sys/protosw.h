@@ -243,6 +243,10 @@ struct pr_usrreqs {
 	void	(*pru_connect) (netmsg_t msg);
 	void	(*pru_connect2) (netmsg_t msg);
 	void	(*pru_control) (netmsg_t msg);
+	/*
+	 * If pru_detach() returns EJUSTRETURN, then protocol will
+	 * call sodiscard() and sofree() for soclose().
+	 */
 	void	(*pru_detach) (netmsg_t msg);
 	void	(*pru_disconnect) (netmsg_t msg);
 	void	(*pru_listen) (netmsg_t msg);

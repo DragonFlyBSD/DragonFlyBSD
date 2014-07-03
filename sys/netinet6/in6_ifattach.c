@@ -44,6 +44,8 @@
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/route.h>
+#include <net/netisr2.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -763,6 +765,28 @@ statinit:
 		in6_maxmtu = ifp->if_mtu;
 }
 
+static void
+in6_leavemcast_dispatch(netmsg_t nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->lmsg;
+	struct ifnet *ifp = lmsg->u.ms_resultp;
+	struct in6_multi *in6m;
+	struct in6_multi *in6m_next;
+
+	in6_pcbpurgeif0(&ripcbinfo, ifp);
+	in6_pcbpurgeif0(&udbinfo[0], ifp);
+
+	for (in6m = LIST_FIRST(&in6_multihead); in6m; in6m = in6m_next) {
+		in6m_next = LIST_NEXT(in6m, in6m_entry);
+		if (in6m->in6m_ifp != ifp)
+			continue;
+		in6_delmulti(in6m);
+		in6m = NULL;
+	}
+
+	lwkt_replymsg(lmsg, 0);
+}
+
 /*
  * NOTE: in6_ifdetach() does not support loopback if at this moment.
  * We don't need this function in bsdi, because interfaces are never removed
@@ -776,8 +800,8 @@ in6_ifdetach(struct ifnet *ifp)
 	struct rtentry *rt;
 	short rtflags;
 	struct sockaddr_in6 sin6;
-	struct in6_multi *in6m;
-	struct in6_multi *in6m_next;
+	struct netmsg_base nmsg;
+	struct lwkt_msg *lmsg = &nmsg.lmsg;
 
 	/* nuke prefix list.  this may try to remove some of ifaddrs as well */
 	in6_purgeprefix(ifp);
@@ -844,18 +868,10 @@ in6_ifdetach(struct ifnet *ifp)
 	}
 
 	/* leave from all multicast groups joined */
-	udbinfo_lock();
-	in6_pcbpurgeif0(LIST_FIRST(&udbinfo.pcblisthead), ifp);
-	udbinfo_unlock();
-
-	in6_pcbpurgeif0(LIST_FIRST(&ripcbinfo.pcblisthead), ifp);
-	for (in6m = LIST_FIRST(&in6_multihead); in6m; in6m = in6m_next) {
-		in6m_next = LIST_NEXT(in6m, in6m_entry);
-		if (in6m->in6m_ifp != ifp)
-			continue;
-		in6_delmulti(in6m);
-		in6m = NULL;
-	}
+	netmsg_init(&nmsg, NULL, &curthread->td_msgport, 0,
+	    in6_leavemcast_dispatch);
+	lmsg->u.ms_resultp = ifp;
+	lwkt_domsg(netisr_cpuport(0), lmsg, 0);
 
 	/*
 	 * remove neighbor management table.  we call it twice just to make

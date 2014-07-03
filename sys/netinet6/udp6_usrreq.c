@@ -153,6 +153,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 	int plen, ulen;
 	struct sockaddr_in6 udp_in6;
 	struct socket *so;
+	struct inpcbinfo *pcbinfo = &udbinfo[0];
 
 	IP6_EXTHDR_CHECK(m, off, sizeof(struct udphdr), IPPROTO_DONE);
 
@@ -186,7 +187,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 	}
 
 	if (IN6_IS_ADDR_MULTICAST(&ip6->ip6_dst)) {
-		struct	inpcb *last;
+		struct	inpcb *last, *marker;
 
 		/*
 		 * Deliver a multicast datagram to all sockets
@@ -229,9 +230,18 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		 * (Algorithm copied from raw_intr().)
 		 */
 		last = NULL;
-		LIST_FOREACH(in6p, &udbinfo.pcblisthead, inp_list) {
-			KKASSERT((in6p->inp_flags & INP_PLACEMARKER) == 0);
 
+		marker = in_pcbmarker(mycpuid);
+
+		GET_PCBINFO_TOKEN(pcbinfo);
+
+		LIST_INSERT_HEAD(&pcbinfo->pcblisthead, marker, inp_list);
+		while ((in6p = LIST_NEXT(marker, inp_list)) != NULL) {
+			LIST_REMOVE(marker, inp_list);
+			LIST_INSERT_AFTER(in6p, marker, inp_list);
+
+			if (in6p->inp_flags & INP_PLACEMARKER)
+				continue;
 			if (!(in6p->inp_vflag & INP_IPV6))
 				continue;
 			if (in6p->in6p_lport != uh->uh_dport)
@@ -313,6 +323,9 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 			     (SO_REUSEPORT | SO_REUSEADDR)) == 0)
 				break;
 		}
+		LIST_REMOVE(marker, inp_list);
+
+		REL_PCBINFO_TOKEN(pcbinfo);
 
 		if (last == NULL) {
 			/*
@@ -361,7 +374,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 	/*
 	 * Locate pcb for datagram.
 	 */
-	in6p = in6_pcblookup_hash(&udbinfo, &ip6->ip6_src, uh->uh_sport,
+	in6p = in6_pcblookup_hash(pcbinfo, &ip6->ip6_src, uh->uh_sport,
 				  &ip6->ip6_dst, uh->uh_dport, 1,
 				  m->m_pkthdr.rcvif);
 	if (in6p == NULL) {
@@ -487,11 +500,11 @@ udp6_ctlinput(netmsg_t msg)
 		bzero(&uh, sizeof(uh));
 		m_copydata(m, off, sizeof(*uhp), (caddr_t)&uh);
 
-		in6_pcbnotify(&udbinfo.pcblisthead, sa, uh.uh_dport,
+		in6_pcbnotify(&udbinfo[0], sa, uh.uh_dport,
 			      (struct sockaddr *)ip6cp->ip6c_src, uh.uh_sport,
 			      cmd, 0, notify);
 	} else {
-		in6_pcbnotify(&udbinfo.pcblisthead, sa, 0,
+		in6_pcbnotify(&udbinfo[0], sa, 0,
 			      (const struct sockaddr *)sa6_src, 0,
 			      cmd, 0, notify);
 	}
@@ -518,7 +531,7 @@ udp6_getcred(SYSCTL_HANDLER_ARGS)
 	if (error)
 		return (error);
 	crit_enter();
-	inp = in6_pcblookup_hash(&udbinfo, &addrs[1].sin6_addr,
+	inp = in6_pcblookup_hash(&udbinfo[0], &addrs[1].sin6_addr,
 				 addrs[1].sin6_port,
 				 &addrs[0].sin6_addr, addrs[0].sin6_port,
 				 1, NULL);
@@ -553,9 +566,7 @@ udp6_abort(netmsg_t msg)
 	if (inp) {
 		soisdisconnected(so);
 
-		udbinfo_barrier_set();
 		in6_pcbdetach(inp);
-		udbinfo_barrier_rem();
 		error = 0;
 	} else {
 		error = EINVAL;
@@ -584,10 +595,7 @@ udp6_attach(netmsg_t msg)
 			goto out;
 	}
 
-	udbinfo_barrier_set();
-	error = in_pcballoc(so, &udbinfo);
-	udbinfo_barrier_rem();
-
+	error = in_pcballoc(so, &udbinfo[0]);
 	if (error)
 		goto out;
 
@@ -649,10 +657,7 @@ udp6_bind(netmsg_t msg)
 	if (error == 0) {
 		if (IN6_IS_ADDR_UNSPECIFIED(&sin6_p->sin6_addr))
 			inp->inp_flags |= INP_WASBOUND_NOTANY;
-
-		udbinfo_barrier_set();
 		in_pcbinswildcardhash(inp);
-		udbinfo_barrier_rem();
 	}
 out:
 	lwkt_replymsg(&msg->bind.base.lmsg, error);
@@ -666,8 +671,6 @@ udp6_connect(netmsg_t msg)
 	struct thread *td = msg->connect.nm_td;
 	struct inpcb *inp;
 	int error;
-
-	udbinfo_barrier_set();
 
 	inp = so->so_pcb;
 	if (inp == NULL) {
@@ -730,7 +733,6 @@ udp6_connect(netmsg_t msg)
 		in_pcbinswildcardhash(inp);
 	}
 out:
-	udbinfo_barrier_rem();
 	lwkt_replymsg(&msg->connect.base.lmsg, error);
 }
 
@@ -743,9 +745,7 @@ udp6_detach(netmsg_t msg)
 
 	inp = so->so_pcb;
 	if (inp) {
-		udbinfo_barrier_set();
 		in6_pcbdetach(inp);
-		udbinfo_barrier_rem();
 		error = 0;
 	} else {
 		error = EINVAL;
@@ -777,9 +777,7 @@ udp6_disconnect(netmsg_t msg)
 	if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr)) {
 		error = ENOTCONN;
 	} else {
-		udbinfo_barrier_set();
 		in6_pcbdisconnect(inp);
-		udbinfo_barrier_rem();
 		soclrstate(so, SS_ISCONNECTED);		/* XXX */
 		error = 0;
 	}
