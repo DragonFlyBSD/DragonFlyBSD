@@ -37,6 +37,7 @@
 #include "i915_reg.h"
 #include "intel_bios.h"
 #include "intel_ringbuffer.h"
+#include <linux/completion.h>
 #include <linux/workqueue.h>
 
 /* General customization:
@@ -677,6 +678,7 @@ typedef struct drm_i915_private {
 	struct lock irq_lock;
 
 	u32 hotplug_supported_mask;
+	struct work_struct hotplug_work;
 
 	int tex_lru_log_granularity;
 	int allow_batchbuffer;
@@ -946,10 +948,8 @@ typedef struct drm_i915_private {
 	/* Protected by dev->error_lock. */
 	struct drm_i915_error_state *first_error;
 	struct work_struct error_work;
-	int error_completion;
-	struct lock error_completion_lock;
+	struct completion error_completion;
 	struct workqueue_struct *wq;
-	struct work_struct hotplug_work;
 
 	unsigned long last_gpu_reset;
 
@@ -1431,6 +1431,7 @@ i915_gem_object_unpin_fence(struct drm_i915_gem_object *obj)
 
 void i915_gem_retire_requests(struct drm_device *dev);
 void i915_gem_retire_requests_ring(struct intel_ring_buffer *ring);
+
 void i915_gem_clflush_object(struct drm_i915_gem_object *obj);
 struct drm_i915_gem_object *i915_gem_alloc_object(struct drm_device *dev,
     size_t size);

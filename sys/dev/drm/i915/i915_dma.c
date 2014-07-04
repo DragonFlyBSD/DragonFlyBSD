@@ -1459,7 +1459,6 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	lockinit(&dev_priv->irq_lock, "userirq", 0, LK_CANRECURSE);
 	lockinit(&dev_priv->error_lock, "915err", 0, LK_CANRECURSE);
 	spin_init(&dev_priv->rps.lock);
-	lockinit(&dev_priv->error_completion_lock, "915cmp", 0, LK_CANRECURSE);
 
 	lockinit(&dev_priv->rps.hw_lock, "i915 rps.hw_lock", 0, LK_CANRECURSE);
 
@@ -1587,7 +1586,6 @@ i915_driver_unload_int(struct drm_device *dev, bool locked)
 	intel_teardown_gmbus(dev);
 
 	lockuninit(&dev_priv->error_lock);
-	lockuninit(&dev_priv->error_completion_lock);
 	drm_free(dev->dev_private, DRM_MEM_DRIVER);
 
 	return (0);

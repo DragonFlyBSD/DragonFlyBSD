@@ -810,10 +810,7 @@ static void i915_error_work_func(struct work_struct *work)
 			atomic_set(&dev_priv->mm.wedged, 0);
 			/* kobject_uevent_env(&dev->primary->kdev.kobj, KOBJ_CHANGE, reset_done_event); */
 		}
-		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
-		dev_priv->error_completion++;
-		wakeup(&dev_priv->error_completion);
-		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
+		complete_all(&dev_priv->error_completion);
 	}
 }
 
@@ -1420,10 +1417,8 @@ void i915_handle_error(struct drm_device *dev, bool wedged)
 	i915_report_and_clear_eir(dev);
 
 	if (wedged) {
-		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
-		dev_priv->error_completion = 0;
+		INIT_COMPLETION(dev_priv->error_completion);
 		atomic_set(&dev_priv->mm.wedged, 1);
-		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 
 		/*
 		 * Wakeup waiting processes so they don't hang

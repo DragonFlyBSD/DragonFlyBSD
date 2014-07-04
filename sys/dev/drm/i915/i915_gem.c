@@ -61,6 +61,7 @@
 #include "i915_drv.h"
 #include "intel_drv.h"
 #include "intel_ringbuffer.h"
+#include <linux/completion.h>
 
 static void i915_gem_object_flush_gtt_write_domain(struct drm_i915_gem_object *obj);
 static void i915_gem_object_flush_cpu_write_domain(struct drm_i915_gem_object *obj);
@@ -119,21 +120,24 @@ static int
 i915_gem_wait_for_error(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct completion *x = &dev_priv->error_completion;
 	int ret;
 
 	if (!atomic_read(&dev_priv->mm.wedged))
 		return 0;
 
-	lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
-	while (dev_priv->error_completion == 0) {
-		ret = -lksleep(&dev_priv->error_completion,
-		    &dev_priv->error_completion_lock, PCATCH, "915wco", 0);
-		if (ret != 0) {
-			lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
-			return (ret);
-		}
+	/*
+	 * Only wait 10 seconds for the gpu reset to complete to avoid hanging
+	 * userspace. If it takes that long something really bad is going on and
+	 * we should simply try to bail out and fail as gracefully as possible.
+	 */
+	ret = wait_for_completion_interruptible_timeout(x, 10*hz);
+	if (ret == 0) {
+		DRM_ERROR("Timed out waiting for the gpu reset to complete\n");
+		return -EIO;
+	} else if (ret < 0) {
+		return ret;
 	}
-	lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
 
 	if (atomic_read(&dev_priv->mm.wedged)) {
 		/* GPU is hung, bump the completion count to account for
@@ -141,9 +145,9 @@ i915_gem_wait_for_error(struct drm_device *dev)
 		 * end up waiting upon a subsequent completion event that
 		 * will never happen.
 		 */
-		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
-		dev_priv->error_completion++;
-		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
+		spin_lock(&x->wait.lock);
+		x->done++;
+		spin_unlock(&x->wait.lock);
 	}
 	return 0;
 }
@@ -348,10 +352,11 @@ i915_wait_seqno(struct intel_ring_buffer *ring, uint32_t seqno)
 	ret = 0;
 
 	if (atomic_read(&dev_priv->mm.wedged) != 0) {
+		struct completion *x = &dev_priv->error_completion;
+		spin_lock(&x->wait.lock);
 		/* Give the error handler a chance to run. */
-		lockmgr(&dev_priv->error_completion_lock, LK_EXCLUSIVE);
-		recovery_complete = (&dev_priv->error_completion) > 0;
-		lockmgr(&dev_priv->error_completion_lock, LK_RELEASE);
+		recovery_complete = x->done > 0;
+		spin_unlock(&x->wait.lock);
 		return (recovery_complete ? -EIO : -EAGAIN);
 	}
 
@@ -2867,7 +2872,7 @@ i915_gem_load(struct drm_device *dev)
 		INIT_LIST_HEAD(&dev_priv->fence_regs[i].lru_list);
 	INIT_DELAYED_WORK(&dev_priv->mm.retire_work,
 			  i915_gem_retire_work_handler);
-	dev_priv->error_completion = 0;
+	init_completion(&dev_priv->error_completion);
 
 	/* On GEN3 we really need to make sure the ARB C3 LP bit is set */
 	if (IS_GEN3(dev)) {
