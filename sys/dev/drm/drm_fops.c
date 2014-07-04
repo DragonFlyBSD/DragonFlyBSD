@@ -75,7 +75,6 @@ static int drm_setup(struct drm_device *dev)
 		dev->magiclist[i].tail = NULL;
 	}
 
-	dev->lock.lock_queue = 0;
 	if (!drm_core_check_feature(dev, DRIVER_MODESET))
 		dev->irq_enabled = 0;
 	dev->context_flag = 0;

@@ -27,9 +27,18 @@
 #ifndef _LINUX_WAIT_H_
 #define _LINUX_WAIT_H_
 
-typedef int wait_queue_head_t;
+#include <sys/spinlock2.h>
 
-#define init_waitqueue_head(eq)
+typedef struct {
+	struct spinlock	lock;
+} wait_queue_head_t;
+
+static inline void
+init_waitqueue_head(wait_queue_head_t *eq)
+{
+	spin_init(&eq->lock);
+}
+
 #define wake_up_all(eq)		wakeup(eq)
 
 #endif	/* _LINUX_WAIT_H_ */
