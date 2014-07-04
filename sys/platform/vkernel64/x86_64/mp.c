@@ -66,9 +66,11 @@ extern pt_entry_t *KPTphys;
 extern int vmm_enabled;
 
 volatile cpumask_t stopped_cpus;
-cpumask_t	smp_active_mask = 1;  /* which cpus are ready for IPIs etc? */
+/* which cpus are ready for IPIs etc? */
+cpumask_t	smp_active_mask = CPUMASK_INITIALIZER_ONLYONE;
 static int	boot_address;
-static cpumask_t smp_startup_mask = 1;  /* which cpus have been started */
+/* which cpus have been started */
+static cpumask_t smp_startup_mask = CPUMASK_INITIALIZER_ONLYONE;
 int		mp_naps;                /* # of Applications processors */
 static int  mp_finish;
 
@@ -103,8 +105,6 @@ static
 void
 ap_finish(void)
 {
-	int i;
-
         mp_finish = 1;
         if (bootverbose)
                 kprintf("Finish MP startup\n");
@@ -118,7 +118,7 @@ ap_finish(void)
 	 * of 'other' CPUs.
 	 */
         rel_mplock();
-        while (smp_active_mask != smp_startup_mask) {
+        while (CPUMASK_CMPMASKNEQ(smp_active_mask,smp_startup_mask)) {
 		DELAY(100000);
                 cpu_lfence();
 	}
@@ -126,7 +126,7 @@ ap_finish(void)
         while (try_mplock() == 0)
 		DELAY(100000);
         if (bootverbose)
-                kprintf("Active CPU Mask: %08lx\n", (long)smp_active_mask);
+                kprintf("Active CPU Mask: %08lx\n", (long)CPUMASK_LOWMASK(smp_active_mask));
 }
 
 SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)

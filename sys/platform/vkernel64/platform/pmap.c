@@ -1176,7 +1176,7 @@ pmap_pinit(struct pmap *pmap)
 		pmap_kenter((vm_offset_t)pmap->pm_pml4, VM_PAGE_TO_PHYS(ptdpg));
 	}
 	pmap->pm_count = 1;
-	pmap->pm_active = 0;
+	CPUMASK_ASSZERO(pmap->pm_active);
 	pmap->pm_ptphint = NULL;
 	TAILQ_INIT(&pmap->pm_pvlist);
 	TAILQ_INIT(&pmap->pm_pvlist_free);
@@ -1199,7 +1199,7 @@ pmap_puninit(pmap_t pmap)
 {
 	vm_page_t p;
 
-	KKASSERT(pmap->pm_active == 0);
+	KKASSERT(CPUMASK_TESTZERO(pmap->pm_active));
 	if ((p = pmap->pm_pdirm) != NULL) {
 		KKASSERT(pmap->pm_pml4 != NULL);
 		pmap_kremove((vm_offset_t)pmap->pm_pml4);

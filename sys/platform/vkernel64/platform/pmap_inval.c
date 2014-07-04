@@ -152,8 +152,8 @@ guest_sync_addr(struct pmap *pmap,
 	 * Update the pte and synchronize with other cpus.  If we can update
 	 * it trivially, do so.
 	 */
-	if (pmap->pm_active == 0 ||
-	    pmap->pm_active == gd->gd_cpumask) {
+	if (CPUMASK_TESTZERO(pmap->pm_active) ||
+	    CPUMASK_CMPMASKEQ(pmap->pm_active, gd->gd_cpumask)) {
 		*dst_ptep = *src_ptep;
 		vmm_cpu_invltlb();
 	} else {
