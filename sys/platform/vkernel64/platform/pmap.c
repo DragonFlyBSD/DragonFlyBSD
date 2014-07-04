@@ -564,7 +564,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr, int64_t ptov_offset)
 	kernel_pmap.pm_pml4 = (pml4_entry_t *)PHYS_TO_DMAP(KPML4phys);
 	kernel_pmap.pm_count = 1;
 	/* don't allow deactivation */
-	kernel_pmap.pm_active = (cpumask_t)-1;
+	CPUMASK_ASSALLONES(kernel_pmap.pm_active);
 	kernel_pmap.pm_pteobj = NULL;	/* see pmap_init */
 	TAILQ_INIT(&kernel_pmap.pm_pvlist);
 	TAILQ_INIT(&kernel_pmap.pm_pvlist_free);
@@ -3362,12 +3362,12 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 	 */
 	crit_enter();
 	pmap = vmspace_pmap(newvm);
-	atomic_set_cpumask(&pmap->pm_active, CPUMASK(mycpu->gd_cpuid));
+	ATOMIC_CPUMASK_ORBIT(pmap->pm_active, mycpu->gd_cpuid);
 #if defined(SWTCH_OPTIM_STATS)
 	tlb_flush_count++;
 #endif
 	pmap = vmspace_pmap(oldvm);
-	atomic_clear_cpumask(&pmap->pm_active, CPUMASK(mycpu->gd_cpuid));
+	ATOMIC_CPUMASK_NANDBIT(pmap->pm_active, mycpu->gd_cpuid);
 	crit_exit();
 }
 

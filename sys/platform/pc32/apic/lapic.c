@@ -587,7 +587,7 @@ selected_apic_ipi(cpumask_t target, int vector, int delivery_mode)
 	crit_enter();
 	while (target) {
 		int n = BSFCPUMASK(target);
-		target &= ~CPUMASK(n);
+		CPUMASK_NANDBIT(target, n);
 		single_apic_ipi(n, vector, delivery_mode);
 	}
 	crit_exit();

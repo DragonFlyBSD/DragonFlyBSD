@@ -1512,7 +1512,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 		int nid;
 
 		nid = (origcpu + n) % ncpus;
-		if ((smp_active_mask & CPUMASK(nid)) == 0)
+		if (CPUMASK_TESTBIT(smp_active_mask, nid) == 0)
 			continue;
 		rgd = globaldata_find(nid);
 		lwkt_setcpu_self(rgd);

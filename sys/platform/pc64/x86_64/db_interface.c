@@ -158,7 +158,8 @@ kdb_trap(int type, int code, struct x86_64_saved_state *regs)
 
 	crit_enter();
 	db_printf("\nCPU%d stopping CPUs: 0x%08jx\n",
-	    mycpu->gd_cpuid, (uintmax_t)mycpu->gd_other_cpus);
+		  mycpu->gd_cpuid,
+		  (uintmax_t)CPUMASK_LOWMASK(mycpu->gd_other_cpus));
 
 	/* We stop all CPUs except ourselves (obviously) */
 	stop_cpus(mycpu->gd_other_cpus);
@@ -180,14 +181,15 @@ kdb_trap(int type, int code, struct x86_64_saved_state *regs)
 	db_global_jmpbuf_valid = FALSE;
 
 	db_printf("\nCPU%d restarting CPUs: 0x%016jx\n",
-	    mycpu->gd_cpuid, (uintmax_t)stopped_cpus);
+		  mycpu->gd_cpuid,
+		  (uintmax_t)CPUMASK_LOWMASK(stopped_cpus));
 
 	/* Restart all the CPUs we previously stopped */
-	if (stopped_cpus != mycpu->gd_other_cpus) {
+	if (CPUMASK_CMPMASKNEQ(stopped_cpus, mycpu->gd_other_cpus)) {
 		db_printf("whoa, other_cpus: 0x%016jx, "
 			  "stopped_cpus: 0x%016jx\n",
-			  (uintmax_t)mycpu->gd_other_cpus,
-			  (uintmax_t)stopped_cpus);
+			  (uintmax_t)CPUMASK_LOWMASK(mycpu->gd_other_cpus),
+			  (uintmax_t)CPUMASK_LOWMASK(stopped_cpus));
 		panic("stop_cpus() failed");
 	}
 	restart_cpus(stopped_cpus);

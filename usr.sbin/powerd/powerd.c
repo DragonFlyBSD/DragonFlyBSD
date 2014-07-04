@@ -37,6 +37,7 @@
  * via hw.acpi.cpu.px_dom*.
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <sys/kinfo.h>
@@ -297,7 +298,7 @@ acpi_setcpufreq(int nstate)
 	/*
 	 * Set the mask of cpus the userland scheduler is allowed to use.
 	 */
-	global_cpumask = (1L << nstate) - 1;
+	CPUMASK_ASSBMASK(global_cpumask, nstate);
 	sysctlbyname("kern.usched_global_cpumask", NULL, 0,
 		     &global_cpumask, sizeof(global_cpumask));
 

@@ -450,7 +450,7 @@ mptable_hyperthread_fixup(cpumask_t id_mask, int cpu_count)
 		 */
 		dist = cur = prev = -1;
 		for (id = 0; id < MAXCPU; ++id) {
-			if ((id_mask & CPUMASK(id)) == 0)
+			if (CPUMASK_TESTBIT(id_mask, id) == 0)
 				continue;
 
 			cur = id;
@@ -491,13 +491,13 @@ mptable_hyperthread_fixup(cpumask_t id_mask, int cpu_count)
 	 * already in the table, then kill the fixup.
 	 */
 	for (id = 0; id < MAXCPU; id++) {
-		if ((id_mask & CPUMASK(id)) == 0)
+		if (CPUMASK_TESTBIT(id_mask, id) == 0)
 			continue;
 		/* First, make sure we are on a logical_cpus boundary. */
 		if (id % logical_cpus != 0)
 			return 0;
 		for (i = id + 1; i < id + logical_cpus; i++)
-			if ((id_mask & CPUMASK(i)) != 0)
+			if (CPUMASK_TESTBIT(id_mask, i) != 0)
 				return 0;
 	}
 	return logical_cpus;
@@ -780,9 +780,15 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 	KKASSERT(arg1.cpu_count != 0);
  
 	/* See if we need to fixup HT logical CPUs. */
+	/*
+	 * XXX fixup for cpus >= 32 ? XXX
+	 */
 	if (arg1.ht_fixup) {
-		logical_cpus = mptable_hyperthread_fixup(arg1.ht_apicid_mask,
-							 arg1.cpu_count);
+		cpumask_t mask;
+
+		CPUMASK_ASSZERO(mask);
+		mask.m0 = arg1.ht_apicid_mask;
+		logical_cpus = mptable_hyperthread_fixup(mask, arg1.cpu_count);
 		if (logical_cpus != 0)
 			arg1.cpu_count *= logical_cpus;
 	}

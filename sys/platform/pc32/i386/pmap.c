@@ -834,10 +834,10 @@ get_ptbase(pmap_t pmap)
 
 	if ((*gd->gd_GDMAP1 & PG_FRAME) != frame) {
 		*gd->gd_GDMAP1 = frame | PG_RW | PG_V;
-		pmap->pm_cached |= gd->mi.gd_cpumask;
+		CPUMASK_ORMASK(pmap->pm_cached, gd->mi.gd_cpumask);
 		cpu_invltlb();
-	} else if ((pmap->pm_cached & gd->mi.gd_cpumask) == 0) {
-		pmap->pm_cached |= gd->mi.gd_cpumask;
+	} else if (CPUMASK_TESTMASK(pmap->pm_cached, gd->mi.gd_cpumask) == 0) {
+		CPUMASK_ORMASK(pmap->pm_cached, gd->mi.gd_cpumask);
 		cpu_invltlb();
 	} else if (dreadful_invltlb) {
 		cpu_invltlb();
@@ -3775,7 +3775,8 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 		lp->lwp_vmspace = newvm;
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
-			atomic_set_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
+			ATOMIC_CPUMASK_ORMASK(pmap->pm_active,
+					      mycpu->gd_cpumask);
 			if (pmap->pm_active_lock & CPULOCK_EXCL)
 				pmap_interlock_wait(newvm);
 #if defined(SWTCH_OPTIM_STATS)
@@ -3784,8 +3785,8 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			curthread->td_pcb->pcb_cr3 = vtophys(pmap->pm_pdir);
 			load_cr3(curthread->td_pcb->pcb_cr3);
 			pmap = vmspace_pmap(oldvm);
-			atomic_clear_cpumask(&pmap->pm_active,
-					     mycpu->gd_cpumask);
+			ATOMIC_CPUMASK_NANDMASK(pmap->pm_active,
+						mycpu->gd_cpumask);
 		}
 	}
 }

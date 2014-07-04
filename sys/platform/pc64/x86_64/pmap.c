@@ -907,7 +907,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 */
 	kernel_pmap.pm_pml4 = (pdp_entry_t *) (PTOV_OFFSET + KPML4phys);
 	kernel_pmap.pm_count = 1;
-	kernel_pmap.pm_active = (cpumask_t)-1;
+	CPUMASK_ASSALLONES(kernel_pmap.pm_active);
 	RB_INIT(&kernel_pmap.pm_pvroot);
 	spin_init(&kernel_pmap.pm_spin);
 	lwkt_token_init(&kernel_pmap.pm_token, "kpmap_tok");
@@ -1617,7 +1617,7 @@ pmap_pinit0(struct pmap *pmap)
 {
 	pmap->pm_pml4 = (pml4_entry_t *)(PTOV_OFFSET + KPML4phys);
 	pmap->pm_count = 1;
-	pmap->pm_active = 0;
+	CPUMASK_ASSZERO(pmap->pm_active);
 	pmap->pm_pvhint = NULL;
 	RB_INIT(&pmap->pm_pvroot);
 	spin_init(&pmap->pm_spin);
@@ -1637,7 +1637,7 @@ pmap_pinit_simple(struct pmap *pmap)
 	 * Misc initialization
 	 */
 	pmap->pm_count = 1;
-	pmap->pm_active = 0;
+	CPUMASK_ASSZERO(pmap->pm_active);
 	pmap->pm_pvhint = NULL;
 	pmap->pm_flags = PMAP_FLAG_SIMPLE;
 
@@ -1737,7 +1737,7 @@ pmap_puninit(pmap_t pmap)
 	pv_entry_t pv;
 	vm_page_t p;
 
-	KKASSERT(pmap->pm_active == 0);
+	KKASSERT(CPUMASK_TESTZERO(pmap->pm_active));
 	if ((pv = pmap->pm_pmlpv) != NULL) {
 		if (pv_hold_try(pv) == 0)
 			pv_lock(pv);
@@ -2275,8 +2275,9 @@ pmap_release(struct pmap *pmap)
 {
 	struct pmap_release_info info;
 
-	KASSERT(pmap->pm_active == 0,
-		("pmap still active! %016jx", (uintmax_t)pmap->pm_active));
+	KASSERT(CPUMASK_TESTZERO(pmap->pm_active),
+		("pmap still active! %016jx",
+		(uintmax_t)CPUMASK_LOWMASK(pmap->pm_active)));
 
 	spin_lock(&pmap_spin);
 	TAILQ_REMOVE(&pmap_list, pmap, pm_pmnode);
@@ -5219,7 +5220,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 		lp->lwp_vmspace = newvm;
 		if (curthread->td_lwp == lp) {
 			pmap = vmspace_pmap(newvm);
-			atomic_set_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
+			ATOMIC_CPUMASK_ORBIT(pmap->pm_active, mycpu->gd_cpuid);
 			if (pmap->pm_active_lock & CPULOCK_EXCL)
 				pmap_interlock_wait(newvm);
 #if defined(SWTCH_OPTIM_STATS)
@@ -5234,7 +5235,8 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 			}
 			load_cr3(curthread->td_pcb->pcb_cr3);
 			pmap = vmspace_pmap(oldvm);
-			atomic_clear_cpumask(&pmap->pm_active, mycpu->gd_cpumask);
+			ATOMIC_CPUMASK_NANDBIT(pmap->pm_active,
+					       mycpu->gd_cpuid);
 		}
 		crit_exit();
 	}
@@ -5318,7 +5320,7 @@ pmap_object_free(vm_object_t object)
 		object->md.pmap_rw = NULL;
 		pmap_remove_noinval(pmap,
 				  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
-		pmap->pm_active = 0;
+		CPUMASK_ASSZERO(pmap->pm_active);
 		pmap_release(pmap);
 		pmap_puninit(pmap);
 		kfree(pmap, M_OBJPMAP);
@@ -5327,7 +5329,7 @@ pmap_object_free(vm_object_t object)
 		object->md.pmap_ro = NULL;
 		pmap_remove_noinval(pmap,
 				  VM_MIN_USER_ADDRESS, VM_MAX_USER_ADDRESS);
-		pmap->pm_active = 0;
+		CPUMASK_ASSZERO(pmap->pm_active);
 		pmap_release(pmap);
 		pmap_puninit(pmap);
 		kfree(pmap, M_OBJPMAP);

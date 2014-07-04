@@ -177,7 +177,8 @@ struct usched usched_dfly = {
  * the state of all 32 queues and then a ffs() to find the first busy
  * queue.
  */
-static cpumask_t dfly_curprocmask = -1;	/* currently running a user process */
+					/* currently running a user process */
+static cpumask_t dfly_curprocmask = CPUMASK_INITIALIZER_ALLONES;
 static cpumask_t dfly_rdyprocmask;	/* ready to accept a user process */
 static volatile int dfly_scancpu;
 static volatile int dfly_ucount;	/* total running on whole system */
@@ -366,7 +367,7 @@ dfly_acquire_curproc(struct lwp *lp)
 		if (dd->uschedcp == NULL) {
 			atomic_clear_int(&lp->lwp_thread->td_mpflags,
 					 TDF_MP_DIDYIELD);
-			atomic_set_cpumask(&dfly_curprocmask, gd->gd_cpumask);
+			ATOMIC_CPUMASK_ORBIT(dfly_curprocmask, gd->gd_cpuid);
 			dd->uschedcp = lp;
 			dd->upri = lp->lwp_priority;
 			KKASSERT(lp->lwp_qcpu == dd->cpuid);
@@ -518,7 +519,7 @@ dfly_release_curproc(struct lwp *lp)
 		if (dd->uschedcp == lp) {
 			dd->uschedcp = NULL;	/* don't let lp be selected */
 			dd->upri = PRIBASE_NULL;
-			atomic_clear_cpumask(&dfly_curprocmask, gd->gd_cpumask);
+			ATOMIC_CPUMASK_NANDBIT(dfly_curprocmask, gd->gd_cpuid);
 			spin_unlock(&dd->spin);
 			dfly_select_curproc(gd);
 		} else {
@@ -554,7 +555,7 @@ dfly_select_curproc(globaldata_t gd)
 	nlp = dfly_chooseproc_locked(dd, dd, dd->uschedcp, 0);
 
 	if (nlp) {
-		atomic_set_cpumask(&dfly_curprocmask, CPUMASK(cpuid));
+		ATOMIC_CPUMASK_ORBIT(dfly_curprocmask, cpuid);
 		dd->upri = nlp->lwp_priority;
 		dd->uschedcp = nlp;
 #if 0
@@ -828,7 +829,7 @@ dfly_schedulerclock(struct lwp *lp, sysclock_t period, sysclock_t cpstamp)
 		 */
 		if (nlp &&
 		    (nlp->lwp_priority & ~PPQMASK) < (dd->upri & ~PPQMASK)) {
-			atomic_set_cpumask(&dfly_curprocmask, dd->cpumask);
+			ATOMIC_CPUMASK_ORMASK(dfly_curprocmask, dd->cpumask);
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
 #if 0
@@ -1133,7 +1134,7 @@ dfly_resetpriority(struct lwp *lp)
 	 * check which will fail in that case.
 	 */
 	if (rcpu >= 0) {
-		if ((dfly_rdyprocmask & CPUMASK(rcpu)) &&
+		if (CPUMASK_TESTBIT(dfly_rdyprocmask, rcpu) &&
 		    (checkpri == 0 ||
 		     (rdd->upri & ~PRIMASK) >
 		     (lp->lwp_priority & ~PRIMASK))) {
@@ -1455,7 +1456,7 @@ dfly_choose_best_queue(struct lwp *lp)
 	if ((wakecpu = lp->lwp_thread->td_wakefromcpu) >= 0)
 		wakemask = dfly_pcpu[wakecpu].cpumask;
 	else
-		wakemask = 0;
+		CPUMASK_ASSZERO(wakemask);
 
 	/*
 	 * When the topology is known choose a cpu whos group has, in
@@ -1490,15 +1491,17 @@ dfly_choose_best_queue(struct lwp *lp)
 			 * which are members of this node.
 			 */
 			cpun = cpup->child_node[n];
-			mask = cpun->members & usched_global_cpumask &
-			       smp_active_mask & lp->lwp_cpumask;
-			if (mask == 0)
+			mask = cpun->members;
+			CPUMASK_ANDMASK(mask, usched_global_cpumask);
+			CPUMASK_ANDMASK(mask, smp_active_mask);
+			CPUMASK_ANDMASK(mask, lp->lwp_cpumask);
+			if (CPUMASK_TESTZERO(mask))
 				continue;
 
 			count = 0;
 			load = 0;
 
-			while (mask) {
+			while (CPUMASK_TESTNZERO(mask)) {
 				cpuid = BSFCPUMASK(mask);
 				rdd = &dfly_pcpu[cpuid];
 				load += rdd->uload;
@@ -1515,7 +1518,7 @@ dfly_choose_best_queue(struct lwp *lp)
 					load -= usched_dfly_weight4 / 2;
 				}
 #endif
-				mask &= ~CPUMASK(cpuid);
+				CPUMASK_NANDBIT(mask, cpuid);
 				++count;
 			}
 
@@ -1526,7 +1529,7 @@ dfly_choose_best_queue(struct lwp *lp)
 			 * otherwise the calculation is bogus.
 			 */
 			if ((lp->lwp_mpflags & LWP_MP_ULOAD) &&
-			    (dd->cpumask & cpun->members)) {
+			    CPUMASK_TESTMASK(dd->cpumask, cpun->members)) {
 				load -= lp->lwp_uload;
 				load -= usched_dfly_weight3;
 			}
@@ -1536,7 +1539,7 @@ dfly_choose_best_queue(struct lwp *lp)
 			/*
 			 * Advantage the cpu group (lp) is already on.
 			 */
-			if (cpun->members & dd->cpumask)
+			if (CPUMASK_TESTMASK(cpun->members, dd->cpumask))
 				load -= usched_dfly_weight1;
 
 			/*
@@ -1556,7 +1559,7 @@ dfly_choose_best_queue(struct lwp *lp)
 			 * all-but-one by the same amount, so it won't effect
 			 * the weight1 factor for the all-but-one nodes.
 			 */
-			if (cpun->members & wakemask) {
+			if (CPUMASK_TESTMASK(cpun->members, wakemask)) {
 				if (cpun->child_no != 0) {
 					/* advantage */
 					load -= usched_dfly_weight2;
@@ -1573,7 +1576,7 @@ dfly_choose_best_queue(struct lwp *lp)
 			 */
 			if (cpub == NULL || lowest_load > load ||
 			    (lowest_load == load &&
-			     (cpun->members & dd->cpumask))
+			     CPUMASK_TESTMASK(cpun->members, dd->cpumask))
 			) {
 				lowest_load = load;
 				cpub = cpun;
@@ -1657,14 +1660,15 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 			 * which are members of this node.
 			 */
 			cpun = cpup->child_node[n];
-			mask = cpun->members & usched_global_cpumask &
-			       smp_active_mask;
-			if (mask == 0)
+			mask = cpun->members;
+			CPUMASK_ANDMASK(mask, usched_global_cpumask);
+			CPUMASK_ANDMASK(mask, smp_active_mask);
+			if (CPUMASK_TESTZERO(mask))
 				continue;
 			count = 0;
 			load = 0;
 
-			while (mask) {
+			while (CPUMASK_TESTNZERO(mask)) {
 				cpuid = BSFCPUMASK(mask);
 				rdd = &dfly_pcpu[cpuid];
 				load += rdd->uload;
@@ -1680,7 +1684,7 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 					load -= usched_dfly_weight4 / 2;
 				}
 #endif
-				mask &= ~CPUMASK(cpuid);
+				CPUMASK_NANDBIT(mask, cpuid);
 				++count;
 			}
 			load /= count;
@@ -1689,7 +1693,7 @@ dfly_choose_worst_queue(dfly_pcpu_t dd)
 			 * Prefer candidates which are somewhat closer to
 			 * our cpu.
 			 */
-			if (dd->cpumask & cpun->members)
+			if (CPUMASK_TESTMASK(dd->cpumask, cpun->members))
 				load += usched_dfly_weight1;
 
 			/*
@@ -1745,40 +1749,50 @@ dfly_choose_queue_simple(dfly_pcpu_t dd, struct lwp *lp)
 	 */
 	++dfly_scancpu;
 	cpuid = (dfly_scancpu & 0xFFFF) % ncpus;
-	mask = ~dfly_curprocmask & dfly_rdyprocmask & lp->lwp_cpumask &
-	       smp_active_mask & usched_global_cpumask;
+	mask = dfly_rdyprocmask;
+	CPUMASK_NANDMASK(mask, dfly_curprocmask);
+	CPUMASK_ANDMASK(mask, lp->lwp_cpumask);
+	CPUMASK_ANDMASK(mask, smp_active_mask);
+	CPUMASK_ANDMASK(mask, usched_global_cpumask);
 
-	while (mask) {
-		tmpmask = ~(CPUMASK(cpuid) - 1);
-		if (mask & tmpmask)
-			cpuid = BSFCPUMASK(mask & tmpmask);
-		else
+	while (CPUMASK_TESTNZERO(mask)) {
+		CPUMASK_ASSNBMASK(tmpmask, cpuid);
+		if (CPUMASK_TESTMASK(tmpmask, mask)) {
+			CPUMASK_ANDMASK(tmpmask, mask);
+			cpuid = BSFCPUMASK(tmpmask);
+		} else {
 			cpuid = BSFCPUMASK(mask);
+		}
 		rdd = &dfly_pcpu[cpuid];
 
 		if ((rdd->upri & ~PPQMASK) >= (lp->lwp_priority & ~PPQMASK))
 			goto found;
-		mask &= ~CPUMASK(cpuid);
+		CPUMASK_NANDBIT(mask, cpuid);
 	}
 
 	/*
 	 * Then cpus which might have a currently running lp
 	 */
 	cpuid = (dfly_scancpu & 0xFFFF) % ncpus;
-	mask = dfly_curprocmask & dfly_rdyprocmask &
-	       lp->lwp_cpumask & smp_active_mask & usched_global_cpumask;
+	mask = dfly_rdyprocmask;
+	CPUMASK_ANDMASK(mask, dfly_curprocmask);
+	CPUMASK_ANDMASK(mask, lp->lwp_cpumask);
+	CPUMASK_ANDMASK(mask, smp_active_mask);
+	CPUMASK_ANDMASK(mask, usched_global_cpumask);
 
-	while (mask) {
-		tmpmask = ~(CPUMASK(cpuid) - 1);
-		if (mask & tmpmask)
-			cpuid = BSFCPUMASK(mask & tmpmask);
-		else
+	while (CPUMASK_TESTNZERO(mask)) {
+		CPUMASK_ASSNBMASK(tmpmask, cpuid);
+		if (CPUMASK_TESTMASK(tmpmask, mask)) {
+			CPUMASK_ANDMASK(tmpmask, mask);
+			cpuid = BSFCPUMASK(tmpmask);
+		} else {
 			cpuid = BSFCPUMASK(mask);
+		}
 		rdd = &dfly_pcpu[cpuid];
 
 		if ((rdd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK))
 			goto found;
-		mask &= ~CPUMASK(cpuid);
+		CPUMASK_NANDBIT(mask, cpuid);
 	}
 
 	/*
@@ -1793,7 +1807,7 @@ dfly_choose_queue_simple(dfly_pcpu_t dd, struct lwp *lp)
 	 * set the user resched flag because
 	 */
 	cpuid = (dfly_scancpu & 0xFFFF) % ncpus;
-	if ((CPUMASK(cpuid) & usched_global_cpumask) == 0)
+	if (CPUMASK_TESTBIT(usched_global_cpumask, cpuid) == 0)
 		cpuid = 0;
 	rdd = &dfly_pcpu[cpuid];
 found:
@@ -1822,8 +1836,9 @@ dfly_need_user_resched_remote(void *dummy)
 	 *
 	 * Call wakeup_mycpu to avoid sending IPIs to other CPUs
 	 */
-	if (dd->uschedcp == NULL && (dfly_rdyprocmask & gd->gd_cpumask)) {
-		atomic_clear_cpumask(&dfly_rdyprocmask, gd->gd_cpumask);
+	if (dd->uschedcp == NULL &&
+	    CPUMASK_TESTBIT(dfly_rdyprocmask, gd->gd_cpuid)) {
+		ATOMIC_CPUMASK_NANDBIT(dfly_rdyprocmask, gd->gd_cpuid);
 		wakeup_mycpu(&dd->helper_thread);
 	}
 }
@@ -2009,7 +2024,7 @@ dfly_helper_thread(void *dummy)
 
 	spin_lock(&dd->spin);
 
-	atomic_set_cpumask(&dfly_rdyprocmask, mask);
+	ATOMIC_CPUMASK_ORMASK(dfly_rdyprocmask, mask);
 	clear_user_resched();	/* This satisfied the reschedule request */
 #if 0
 	dd->rrcount = 0;	/* Reset the round-robin counter */
@@ -2023,7 +2038,7 @@ dfly_helper_thread(void *dummy)
 		 */
 		nlp = dfly_chooseproc_locked(dd, dd, dd->uschedcp, 0);
 		if (nlp) {
-			atomic_set_cpumask(&dfly_curprocmask, mask);
+			ATOMIC_CPUMASK_ORMASK(dfly_curprocmask, mask);
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
 #if 0
@@ -2063,7 +2078,7 @@ dfly_helper_thread(void *dummy)
 			nlp = NULL;
 		}
 		if (nlp) {
-			atomic_set_cpumask(&dfly_curprocmask, mask);
+			ATOMIC_CPUMASK_ORMASK(dfly_curprocmask, mask);
 			dd->upri = nlp->lwp_priority;
 			dd->uschedcp = nlp;
 #if 0
@@ -2140,21 +2155,22 @@ usched_dfly_cpu_init(void)
 
 	for (i = 0; i < ncpus; ++i) {
 		dfly_pcpu_t dd = &dfly_pcpu[i];
-		cpumask_t mask = CPUMASK(i);
+		cpumask_t mask;
 
-		if ((mask & smp_active_mask) == 0)
+		CPUMASK_ASSBIT(mask, i);
+		if (CPUMASK_TESTMASK(mask, smp_active_mask) == 0)
 		    continue;
 
 		spin_init(&dd->spin);
 		dd->cpunode = get_cpu_node_by_cpuid(i);
 		dd->cpuid = i;
-		dd->cpumask = CPUMASK(i);
+		CPUMASK_ASSBIT(dd->cpumask, i);
 		for (j = 0; j < NQS; j++) {
 			TAILQ_INIT(&dd->queues[j]);
 			TAILQ_INIT(&dd->rtqueues[j]);
 			TAILQ_INIT(&dd->idqueues[j]);
 		}
-		atomic_clear_cpumask(&dfly_curprocmask, 1);
+		ATOMIC_CPUMASK_NANDBIT(dfly_curprocmask, 0);
 
 		if (dd->cpunode == NULL) {
 			smt_not_supported = 1;
@@ -2219,8 +2235,8 @@ usched_dfly_cpu_init(void)
 		 * been enabled in rqinit().
 		 */
 		if (i)
-		    atomic_clear_cpumask(&dfly_curprocmask, mask);
-		atomic_set_cpumask(&dfly_rdyprocmask, mask);
+			ATOMIC_CPUMASK_NANDMASK(dfly_curprocmask, mask);
+		ATOMIC_CPUMASK_ORMASK(dfly_rdyprocmask, mask);
 		dd->upri = PRIBASE_NULL;
 
 	}

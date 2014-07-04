@@ -108,12 +108,12 @@ build_topology_tree(int *children_no_per_level,
 
 	node->child_no = children_no_per_level[cur_level];
 	node->type = level_types[cur_level];
-	node->members = 0;
+	CPUMASK_ASSZERO(node->members);
 	node->compute_unit_id = -1;
 
 	if (node->child_no == 0) {
 		*apicid = get_next_valid_apicid(*apicid);
-		node->members = CPUMASK(get_cpuid_from_apicid(*apicid));
+		CPUMASK_ASSBIT(node->members, get_cpuid_from_apicid(*apicid));
 		return;
 	}
 
@@ -133,7 +133,7 @@ build_topology_tree(int *children_no_per_level,
 		    last_free_node,
 		    apicid);
 
-		node->members |= node->child_node[i]->members;
+		CPUMASK_ORMASK(node->members, node->child_node[i]->members);
 	}
 }
 
@@ -175,10 +175,11 @@ build_cpu_topology(void)
 	 * and witin core to build up the topology
 	 */
 	for (i = 0; i < ncpus; i++) {
+		cpumask_t mask;
 
-		cpumask_t mask = CPUMASK(i);
+		CPUMASK_ASSBIT(mask, i);
 
-		if ((mask & smp_active_mask) == 0)
+		if (CPUMASK_TESTMASK(mask, smp_active_mask) == 0)
 			continue;
 
 		if (get_chip_ID(BSPID) == get_chip_ID(i))
@@ -293,7 +294,7 @@ build_cpu_topology(void)
 
 								last_free_node->child_node[last_free_node->child_no] = parent->child_node[j];
 								last_free_node->child_no++;
-								last_free_node->members |= parent->child_node[j]->members;
+								CPUMASK_ORMASK(last_free_node->members, parent->child_node[j]->members);
 
 								parent->child_node[j]->type = THREAD_LEVEL;
 								parent->child_node[j]->parent_node = last_free_node;
@@ -443,9 +444,8 @@ get_cpu_node_by_cpumask(cpu_node_t * node,
 	cpu_node_t * found = NULL;
 	int i;
 
-	if (node->members == mask) {
+	if (CPUMASK_CMPMASKEQ(node->members, mask))
 		return node;
-	}
 
 	for (i = 0; i < node->child_no; i++) {
 		found = get_cpu_node_by_cpumask(node->child_node[i], mask);
@@ -458,7 +458,9 @@ get_cpu_node_by_cpumask(cpu_node_t * node,
 
 cpu_node_t *
 get_cpu_node_by_cpuid(int cpuid) {
-	cpumask_t mask = CPUMASK(cpuid);
+	cpumask_t mask;
+
+	CPUMASK_ASSBIT(mask, cpuid);
 
 	KASSERT(cpu_root_node != NULL, ("cpu_root_node isn't initialized"));
 
@@ -471,14 +473,17 @@ get_cpumask_from_level(int cpuid,
 			uint8_t level_type)
 {
 	cpu_node_t * node;
-	cpumask_t mask = CPUMASK(cpuid);
+	cpumask_t mask;
+
+	CPUMASK_ASSBIT(mask, cpuid);
 
 	KASSERT(cpu_root_node != NULL, ("cpu_root_node isn't initialized"));
 
 	node = get_cpu_node_by_cpumask(cpu_root_node, mask);
 
 	if (node == NULL) {
-		return 0;
+		CPUMASK_ASSZERO(mask);
+		return mask;
 	}
 
 	while (node != NULL) {
@@ -487,8 +492,9 @@ get_cpumask_from_level(int cpuid,
 		}
 		node = node->parent_node;
 	}
+	CPUMASK_ASSZERO(mask);
 
-	return 0;
+	return mask;
 }
 
 /* init pcpu_sysctl structure info */
@@ -510,7 +516,7 @@ init_pcpu_topology_sysctl(void)
 
 		/* Get physical siblings */
 		mask = get_cpumask_from_level(i, CHIP_LEVEL);
-		if (mask == 0) {
+		if (CPUMASK_TESTZERO(mask)) {
 			pcpu_sysctl[i].physical_id = INVALID_ID;
 			continue;
 		}
@@ -527,7 +533,7 @@ init_pcpu_topology_sysctl(void)
 
 		/* Get core siblings */
 		mask = get_cpumask_from_level(i, CORE_LEVEL);
-		if (mask == 0) {
+		if (CPUMASK_TESTZERO(mask)) {
 			pcpu_sysctl[i].core_id = INVALID_ID;
 			continue;
 		}

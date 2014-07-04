@@ -48,7 +48,7 @@
 
 static TAILQ_HEAD(, usched) usched_list = TAILQ_HEAD_INITIALIZER(usched_list);
 
-cpumask_t usched_mastermask = -1;
+cpumask_t usched_mastermask = CPUMASK_INITIALIZER_ALLONES;
 
 /*
  * Called from very low level boot code, i386/i386/machdep.c/init386().
@@ -243,11 +243,11 @@ sys_usched_set(struct usched_set_args *uap)
 			error = EFBIG;
 			break;
 		}
-		if ((smp_active_mask & CPUMASK(cpuid)) == 0) {
+		if (CPUMASK_TESTBIT(smp_active_mask, cpuid) == 0) {
 			error = EINVAL;
 			break;
 		}
-		lp->lwp_cpumask = CPUMASK(cpuid);
+		CPUMASK_ASSBIT(lp->lwp_cpumask, cpuid);
 		if (cpuid != mycpu->gd_cpuid) {
 			lwkt_migratecpu(cpuid);
 			p->p_usched->changedcpu(lp);
@@ -275,11 +275,11 @@ sys_usched_set(struct usched_set_args *uap)
 			error = EFBIG;
 			break;
 		}
-		if (!(smp_active_mask & CPUMASK(cpuid))) {
+		if (CPUMASK_TESTBIT(smp_active_mask, cpuid) == 0) {
 			error = EINVAL;
 			break;
 		}
-		lp->lwp_cpumask |= CPUMASK(cpuid);
+		CPUMASK_ORBIT(lp->lwp_cpumask, cpuid);
 		break;
 	case USCHED_DEL_CPU:
 		/* USCHED_DEL_CPU doesn't require special privileges. */
@@ -295,14 +295,18 @@ sys_usched_set(struct usched_set_args *uap)
 			break;
 		}
 		lp = curthread->td_lwp;
-		mask = lp->lwp_cpumask & smp_active_mask & ~CPUMASK(cpuid);
-		if (mask == 0)
+		mask = lp->lwp_cpumask;
+		CPUMASK_ANDMASK(mask, smp_active_mask);
+		CPUMASK_NANDBIT(mask, cpuid);
+		if (CPUMASK_TESTZERO(mask)) {
 			error = EPERM;
-		else {
-			lp->lwp_cpumask &= ~CPUMASK(cpuid);
-			if ((lp->lwp_cpumask & mycpu->gd_cpumask) == 0) {
-				cpuid = BSFCPUMASK(lp->lwp_cpumask &
-						   smp_active_mask);
+		} else {
+			CPUMASK_NANDBIT(lp->lwp_cpumask, cpuid);
+			if (CPUMASK_TESTMASK(lp->lwp_cpumask,
+					    mycpu->gd_cpumask) == 0) {
+				mask = lp->lwp_cpumask;
+				CPUMASK_ANDMASK(mask, smp_active_mask);
+				cpuid = BSFCPUMASK(mask);
 				lwkt_migratecpu(cpuid);
 				p->p_usched->changedcpu(lp);
 			}

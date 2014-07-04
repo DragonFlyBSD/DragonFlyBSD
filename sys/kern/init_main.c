@@ -171,7 +171,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	lwp0.lwp_thread = &thread0;
 	lwp0.lwp_proc = &proc0;
 	proc0.p_usched = usched_init();
-	lwp0.lwp_cpumask = (cpumask_t)-1;
+	CPUMASK_ASSALLONES(lwp0.lwp_cpumask);
 	lwkt_token_init(&lwp0.lwp_token, "lwp_token");
 	spin_init(&lwp0.lwp_spin);
 	varsymset_init(&proc0.p_varsymset, NULL);
@@ -724,10 +724,10 @@ mi_gdinit(struct globaldata *gd, int cpuid)
 	TAILQ_INIT(&gd->gd_systimerq);
 	gd->gd_sysid_alloc = cpuid;	/* prime low bits for cpu lookup */
 	gd->gd_cpuid = cpuid;
-	gd->gd_cpumask = CPUMASK(cpuid);
+	CPUMASK_ASSBIT(gd->gd_cpumask, cpuid);
 	lwkt_gdinit(gd);
 	vm_map_entry_reserve_cpu_init(gd);
 	sleep_gdinit(gd);
-	atomic_set_cpumask(&usched_global_cpumask, CPUMASK(cpuid));
+	ATOMIC_CPUMASK_ORBIT(usched_global_cpumask, cpuid);
 }
 

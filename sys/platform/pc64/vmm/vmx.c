@@ -338,7 +338,8 @@ vmx_init(void)
 	    PROCBASED_ACTIVATE_SECONDARY_CONTROLS,
 	    ONE);
 	if (err) {
-		kprintf("VMM: PROCBASED_ACTIVATE_SECONDARY_CONTROLS not supported by this CPU\n");
+		kprintf("VMM: PROCBASED_ACTIVATE_SECONDARY_CONTROLS not "
+			"supported by this CPU\n");
 		return (ENODEV);
 	}
 	vmx_set_default_settings(&vmx_procbased2);
@@ -351,44 +352,43 @@ vmx_init(void)
 	    PINBASED_EXTERNAL_INTERRUPT_EXITING,
 	    ONE);
 	if (err) {
-		kprintf("VMM: PINBASED_EXTERNAL_INTERRUPT_EXITING not supported by this CPU\n");
+		kprintf("VMM: PINBASED_EXTERNAL_INTERRUPT_EXITING not "
+			"supported by this CPU\n");
 		return (ENODEV);
 	}
 
 	/* Enable non-maskable interrupts exiting */
-	err = vmx_set_ctl_setting(&vmx_pinbased,
-	    PINBASED_NMI_EXITING,
-	    ONE);
+	err = vmx_set_ctl_setting(&vmx_pinbased, PINBASED_NMI_EXITING, ONE);
 	if (err) {
-		kprintf("VMM: PINBASED_NMI_EXITING not supported by this CPU\n");
+		kprintf("VMM: PINBASED_NMI_EXITING not "
+			"supported by this CPU\n");
 		return (ENODEV);
 	}
 
 
 	/* Set 64bits mode for GUEST */
-	err = vmx_set_ctl_setting(&vmx_entry,
-	    VMENTRY_IA32e_MODE_GUEST,
-	    ONE);
+	err = vmx_set_ctl_setting(&vmx_entry, VMENTRY_IA32e_MODE_GUEST, ONE);
 	if (err) {
-		kprintf("VMM: VMENTRY_IA32e_MODE_GUEST not supported by this CPU\n");
+		kprintf("VMM: VMENTRY_IA32e_MODE_GUEST not "
+			"supported by this CPU\n");
 		return (ENODEV);
 	}
 
 	/* Load MSR EFER on enry */
 	err = vmx_set_ctl_setting(&vmx_entry,
-	    VMENTRY_LOAD_IA32_EFER,
-	    ONE);
+				  VMENTRY_LOAD_IA32_EFER, ONE);
 	if (err) {
-		kprintf("VMM: VMENTRY_LOAD_IA32_EFER not supported by this CPU\n");
+		kprintf("VMM: VMENTRY_LOAD_IA32_EFER not "
+			"supported by this CPU\n");
 		return (ENODEV);
 	}
 
 	/* Set 64bits mode */
 	err = vmx_set_ctl_setting(&vmx_exit,
-	    VMEXIT_HOST_ADDRESS_SPACE_SIZE,
-	    ONE);
+				  VMEXIT_HOST_ADDRESS_SPACE_SIZE, ONE);
 	if (err) {
-		kprintf("VMM: VMEXIT_HOST_ADDRESS_SPACE_SIZE not supported by this CPU\n");
+		kprintf("VMM: VMEXIT_HOST_ADDRESS_SPACE_SIZE not "
+			"supported by this CPU\n");
 		return (ENODEV);
 	}
 
@@ -397,7 +397,8 @@ vmx_init(void)
 	    VMEXIT_SAVE_IA32_EFER,
 	    ONE);
 	if (err) {
-		kprintf("VMM: VMEXIT_SAVE_IA32_EFER not supported by this CPU\n");
+		kprintf("VMM: VMEXIT_SAVE_IA32_EFER not "
+			"supported by this CPU\n");
 		return (ENODEV);
 	}
 
@@ -406,7 +407,8 @@ vmx_init(void)
 	    VMEXIT_LOAD_IA32_EFER,
 	    ONE);
 	if (err) {
-		kprintf("VMM: VMEXIT_LOAD_IA32_EFER not supported by this CPU\n");
+		kprintf("VMM: VMEXIT_LOAD_IA32_EFER not "
+			"supported by this CPU\n");
 		return (ENODEV);
 	}
 
@@ -415,7 +417,8 @@ vmx_init(void)
 	    PROCBASED2_ENABLE_EPT,
 	    ONE);
 	if (err) {
-		kprintf("VMM: PROCBASED2_ENABLE_EPT not supported by this CPU\n");
+		kprintf("VMM: PROCBASED2_ENABLE_EPT not "
+			"supported by this CPU\n");
 		return (ENODEV);
 	}
 
@@ -430,7 +433,8 @@ vmx_init(void)
 	    PROCBASED2_ENABLE_VPID,
 	    ONE);
 	if (err) {
-		kprintf("VMM: PROCBASED2_ENABLE_VPID not supported by this CPU\n");
+		kprintf("VMM: PROCBASED2_ENABLE_VPID not "
+			"supported by this CPU\n");
 		return (ENODEV);
 	}
 #endif
@@ -578,8 +582,11 @@ vmx_enable(void)
 
 	alloc_vmxon_regions();
 	for (cpu = 0; cpu < ncpus; cpu++) {
+		cpumask_t mask;
+
 		err = 0;
-		lwkt_cpusync_simple(CPUMASK(cpu), execute_vmxon, &err);
+		CPUMASK_ASSBIT(mask, cpu);
+		lwkt_cpusync_simple(mask, execute_vmxon, &err);
 		if(err) {
 			kprintf("VMM: vmx_enable error %d on cpu%d\n", err, cpu);
 			return err;
@@ -598,8 +605,12 @@ vmx_disable(void)
 		kprintf("VMM: vmx_disable not allowed; vmx wasn't enabled\n");
 	}
 
-	for (cpu = 0; cpu < ncpus; cpu++)
-		lwkt_cpusync_simple(CPUMASK(cpu), execute_vmxoff, NULL);
+	for (cpu = 0; cpu < ncpus; cpu++) {
+		cpumask_t mask;
+
+		CPUMASK_ASSBIT(mask, cpu);
+		lwkt_cpusync_simple(mask, execute_vmxoff, NULL);
+	}
 
 	free_vmxon_regions();
 
@@ -954,6 +965,7 @@ vmx_check_cpu_migration(void)
 {
 	struct vmx_thread_info * vti;
 	struct globaldata *gd;
+	cpumask_t mask;
 	int err;
 
 	gd = mycpu;
@@ -968,11 +980,12 @@ vmx_check_cpu_migration(void)
 		 * with.  The pcpu_info[] check prevents unecessary extra
 		 * cpusyncs.
 		 */
-		dkprintf("VMM: cpusync from %d to %d\n", gd->gd_cpuid, vti->last_cpu);
+		dkprintf("VMM: cpusync from %d to %d\n",
+			 gd->gd_cpuid, vti->last_cpu);
 
 		/* Clear the VMCS area if ran on another CPU */
-		lwkt_cpusync_simple(CPUMASK(vti->last_cpu),
-				    execute_vmclear, (void *)vti);
+		CPUMASK_ASSBIT(mask, vti->last_cpu);
+		lwkt_cpusync_simple(mask, execute_vmclear, (void *)vti);
 	}
 	return 0;
 error:
@@ -1371,7 +1384,7 @@ restart:
 	 * cpu that may desire to IPI us after we have successfully
 	 * incremented the cpulock counter.
 	 */
-	atomic_set_cpumask(&td->td_proc->p_vmm_cpumask, gd->gd_cpumask);
+	ATOMIC_CPUMASK_ORBIT(td->td_proc->p_vmm_cpumask, gd->gd_cpuid);
 
         for (;;) {
 		olock = td->td_proc->p_vmm_cpulock;
@@ -1392,8 +1405,8 @@ restart:
 		 * More complex.  After sleeping we have to re-test
 		 * everything.
 		 */
-		atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask,
-				     gd->gd_cpumask);
+		ATOMIC_CPUMASK_NANDBIT(td->td_proc->p_vmm_cpumask,
+				       gd->gd_cpuid);
 		cpu_enable_intr();
 		tsleep_interlock(&td->td_proc->p_vmm_cpulock, 0);
 		if (td->td_proc->p_vmm_cpulock & CPULOCK_EXCL) {
@@ -1473,8 +1486,8 @@ restart:
 	if (ret == VM_EXIT) {
 		ERROR_IF(vmx_vmexit_loadinfo());
 
-		atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask,
-				     gd->gd_cpumask);
+		ATOMIC_CPUMASK_NANDBIT(td->td_proc->p_vmm_cpumask,
+				       gd->gd_cpuid);
 		atomic_add_int(&td->td_proc->p_vmm_cpulock,
 			       -CPULOCK_INCR);
 		/* WARNING: don't adjust cpulock twice! */
@@ -1524,13 +1537,14 @@ done:
 	kprintf("VMM: vmx_vmrun: returning with success\n");
 	return 0;
 error:
-	atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask, gd->gd_cpumask);
+	ATOMIC_CPUMASK_NANDBIT(td->td_proc->p_vmm_cpumask, gd->gd_cpuid);
 	atomic_add_int(&td->td_proc->p_vmm_cpulock, -CPULOCK_INCR);
 	cpu_enable_intr();
 error2:
 	trap_handle_userenter(td);
 	td->td_lwp->lwp_md.md_regs = save_frame;
-	KKASSERT((td->td_proc->p_vmm_cpumask & gd->gd_cpumask) == 0);
+	KKASSERT(CPUMASK_TESTMASK(td->td_proc->p_vmm_cpumask,
+				  gd->gd_cpumask) == 0);
 	/*atomic_clear_cpumask(&td->td_proc->p_vmm_cpumask, gd->gd_cpumask);*/
 	crit_exit();
 	kprintf("VMM: vmx_vmrun failed\n");

@@ -33,6 +33,7 @@
  * SUCH DAMAGE.
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/types.h>
 #include <sys/usched.h>
 #include <stdio.h>
@@ -52,8 +53,10 @@ main(int ac, char **av)
 	char *sched = NULL;
 	char *cpustr = NULL;
 	char *sched_cpustr = NULL;
-	cpumask_t cpumask = 0;
-	int cpuid = -1;
+	cpumask_t cpumask;
+	int cpuid;
+
+	CPUMASK_ASSZERO(cpumask);
 
 	while ((ch = getopt(ac, av, "d")) != -1) {
 		switch (ch) {
@@ -81,8 +84,19 @@ main(int ac, char **av)
 		usage();
 		/* NOTREACHED */
 	}
-	if (cpustr != NULL)
-		cpumask = strtoul(cpustr, NULL, 0);
+
+	/*
+	 * XXX needs expanded support for > 64 cpus
+	 */
+	if (cpustr != NULL) {
+		unsigned long v;
+
+		v = strtoul(cpustr, NULL, 0);
+		for (cpuid = 0; cpuid < (int)sizeof(v) * 8; ++cpuid) {
+			if (v & (1LU << cpuid))
+				CPUMASK_ORBIT(cpumask, cpuid);
+		}
+	}
 
 	if (strlen(sched) != 0) {
 		if (DebugOpt)
@@ -93,30 +107,34 @@ main(int ac, char **av)
 			exit(1);
 		}
 	}
-	if (cpumask != 0) {
-		while ((cpumask & 1) == 0) {
-			cpuid++;
-			cpumask >>= 1;
+	if (CPUMASK_TESTNZERO(cpumask)) {
+		for (cpuid = 0; cpuid < (int)sizeof(cpumask) * 8; ++cpuid) {
+			if (CPUMASK_TESTBIT(cpumask, cpuid))
+				break;
 		}
-		cpuid++;
-		cpumask >>= 1;
-		if (DebugOpt)
-			fprintf(stderr, "DEBUG: USCHED_SET_CPU: cpuid: %d\n", cpuid);
-		res = usched_set(getpid(), USCHED_SET_CPU, &cpuid, sizeof(int));
+		if (DebugOpt) {
+			fprintf(stderr, "DEBUG: USCHED_SET_CPU: cpuid: %d\n",
+				cpuid);
+		}
+		res = usched_set(getpid(), USCHED_SET_CPU,
+				 &cpuid, sizeof(int));
 		if (res != 0) {
 			perror("usched_set(,USCHED_SET_CPU,,)");
 			exit(1);
 		}
-		while (cpumask != 0) {
-			while ((cpumask & 1) == 0) {
-				cpuid++;
-				cpumask >>= 1;
+		CPUMASK_NANDBIT(cpumask, cpuid);
+		while (CPUMASK_TESTNZERO(cpumask)) {
+			++cpuid;
+			if (CPUMASK_TESTBIT(cpumask, cpuid) == 0)
+				continue;
+			CPUMASK_NANDBIT(cpumask, cpuid);
+			if (DebugOpt) {
+				fprintf(stderr,
+					"DEBUG: USCHED_ADD_CPU: cpuid: %d\n",
+					cpuid);
 			}
-			cpuid++;
-			cpumask >>= 1;
-			if (DebugOpt)
-				fprintf(stderr, "DEBUG: USCHED_ADD_CPU: cpuid: %d\n", cpuid);
-			res = usched_set(getpid(), USCHED_ADD_CPU, &cpuid, sizeof(int));
+			res = usched_set(getpid(), USCHED_ADD_CPU,
+					 &cpuid, sizeof(int));
 			if (res != 0) {
 				perror("usched_set(,USCHED_ADD_CPU,,)");
 				exit(1);
@@ -131,6 +149,8 @@ static
 void
 usage(void)
 {
-	fprintf(stderr, "usage: usched [-d] {scheduler[:cpumask] | :cpumask} program [argument ...]\n");
+	fprintf(stderr,
+		"usage: usched [-d] {scheduler[:cpumask] | :cpumask} "
+		"program [argument ...]\n");
 	exit(1);
 }

@@ -255,7 +255,7 @@ lwkt_send_ipiq3(globaldata_t target, ipifunc3_t func, void *arg1, int arg2)
     ip->ip_info[windex].arg2 = arg2;
     cpu_sfence();
     ++ip->ip_windex;
-    atomic_set_cpumask(&target->gd_ipimask, gd->gd_cpumask);
+    ATOMIC_CPUMASK_ORBIT(target->gd_ipimask, gd->gd_cpuid);
 
     /*
      * signal the target cpu that there is work pending.
@@ -352,7 +352,7 @@ lwkt_send_ipiq3_passive(globaldata_t target, ipifunc3_t func,
     ip->ip_info[windex].arg2 = arg2;
     cpu_sfence();
     ++ip->ip_windex;
-    atomic_set_cpumask(&target->gd_ipimask, gd->gd_cpumask);
+    ATOMIC_CPUMASK_ORBIT(target->gd_ipimask, gd->gd_cpuid);
     --gd->gd_intr_nesting_level;
 
     /*
@@ -403,7 +403,7 @@ lwkt_send_ipiq3_nowait(globaldata_t target, ipifunc3_t func,
     ip->ip_info[windex].arg2 = arg2;
     cpu_sfence();
     ++ip->ip_windex;
-    atomic_set_cpumask(&target->gd_ipimask, gd->gd_cpumask);
+    ATOMIC_CPUMASK_ORBIT(target->gd_ipimask, gd->gd_cpuid);
 
     /*
      * This isn't a passive IPI, we still have to signal the target cpu.
@@ -440,11 +440,11 @@ lwkt_send_ipiq3_mask(cpumask_t mask, ipifunc3_t func, void *arg1, int arg2)
     int cpuid;
     int count = 0;
 
-    mask &= ~stopped_cpus;
-    while (mask) {
+    CPUMASK_NANDMASK(mask, stopped_cpus);
+    while (CPUMASK_TESTNZERO(mask)) {
 	cpuid = BSFCPUMASK(mask);
 	lwkt_send_ipiq3(globaldata_find(cpuid), func, arg1, arg2);
-	mask &= ~CPUMASK(cpuid);
+	CPUMASK_NANDBIT(mask, cpuid);
 	++count;
     }
     return(count);
@@ -560,8 +560,8 @@ lwkt_process_ipiq(void)
 again:
     cpu_lfence();
     mask = gd->gd_ipimask;
-    atomic_clear_cpumask(&gd->gd_ipimask, mask);
-    while (mask) {
+    ATOMIC_CPUMASK_NANDMASK(gd->gd_ipimask, mask);
+    while (CPUMASK_TESTNZERO(mask)) {
 	n = BSFCPUMASK(mask);
 	if (n != gd->gd_cpuid) {
 	    sgd = globaldata_find(n);
@@ -571,7 +571,7 @@ again:
 		    ;
 	    }
 	}
-	mask &= ~CPUMASK(n);
+	CPUMASK_NANDBIT(mask, n);
     }
 
     /*
@@ -589,11 +589,11 @@ again:
      * Interlock to allow more IPI interrupts.  Recheck ipimask after
      * releasing gd_npoll.
      */
-    if (gd->gd_ipimask)
+    if (CPUMASK_TESTNZERO(gd->gd_ipimask))
 	goto again;
     atomic_poll_release_int(&gd->gd_npoll);
     cpu_mfence();
-    if (gd->gd_ipimask)
+    if (CPUMASK_TESTNZERO(gd->gd_ipimask))
 	goto again;
     --gd->gd_processing_ipiq;
 }
@@ -610,8 +610,8 @@ lwkt_process_ipiq_frame(struct intrframe *frame)
 again:
     cpu_lfence();
     mask = gd->gd_ipimask;
-    atomic_clear_cpumask(&gd->gd_ipimask, mask);
-    while (mask) {
+    ATOMIC_CPUMASK_NANDMASK(gd->gd_ipimask, mask);
+    while (CPUMASK_TESTNZERO(mask)) {
 	n = BSFCPUMASK(mask);
 	if (n != gd->gd_cpuid) {
 	    sgd = globaldata_find(n);
@@ -621,7 +621,7 @@ again:
 		    ;
 	    }
 	}
-	mask &= ~CPUMASK(n);
+	CPUMASK_NANDBIT(mask, n);
     }
     if (gd->gd_cpusyncq.ip_rindex != gd->gd_cpusyncq.ip_windex) {
 	if (lwkt_process_ipiq_core(gd, &gd->gd_cpusyncq, frame)) {
@@ -635,11 +635,11 @@ again:
      * Interlock to allow more IPI interrupts.  Recheck ipimask after
      * releasing gd_npoll.
      */
-    if (gd->gd_ipimask)
+    if (CPUMASK_TESTNZERO(gd->gd_ipimask))
 	goto again;
     atomic_poll_release_int(&gd->gd_npoll);
     cpu_mfence();
-    if (gd->gd_ipimask)
+    if (CPUMASK_TESTNZERO(gd->gd_ipimask))
 	goto again;
 }
 
@@ -774,8 +774,8 @@ lwkt_sync_ipiq(void *arg)
 {
     volatile cpumask_t *cpumask = arg;
 
-    atomic_clear_cpumask(cpumask, mycpu->gd_cpumask);
-    if (*cpumask == 0)
+    ATOMIC_CPUMASK_NANDBIT(*cpumask, mycpu->gd_cpuid);
+    if (CPUMASK_TESTZERO(*cpumask))
 	wakeup(cpumask);
 }
 
@@ -784,13 +784,14 @@ lwkt_synchronize_ipiqs(const char *wmesg)
 {
     volatile cpumask_t other_cpumask;
 
-    other_cpumask = mycpu->gd_other_cpus & smp_active_mask;
+    other_cpumask = smp_active_mask;
+    CPUMASK_ANDMASK(other_cpumask, mycpu->gd_other_cpus);
     lwkt_send_ipiq_mask(other_cpumask, lwkt_sync_ipiq,
-    	__DEVOLATILE(void *, &other_cpumask));
+			__DEVOLATILE(void *, &other_cpumask));
 
-    while (other_cpumask != 0) {
+    while (CPUMASK_TESTNZERO(other_cpumask)) {
 	tsleep_interlock(&other_cpumask, 0);
-	if (other_cpumask != 0)
+	if (CPUMASK_TESTNZERO(other_cpumask))
 	    tsleep(&other_cpumask, PINTERLOCKED, wmesg, 0);
     }
 }
@@ -830,20 +831,23 @@ lwkt_cpusync_interlock(lwkt_cpusync_t cs)
      *
      * mack does not include the current cpu.
      */
-    mask = cs->cs_mask & gd->gd_other_cpus & smp_active_mask;
-    cs->cs_mack = 0;
+    mask = cs->cs_mask;
+    CPUMASK_ANDMASK(mask, gd->gd_other_cpus);
+    CPUMASK_ANDMASK(mask, smp_active_mask);
+    CPUMASK_ASSZERO(cs->cs_mack);
+
     crit_enter_id("cpusync");
-    if (mask) {
+    if (CPUMASK_TESTNZERO(mask)) {
 	DEBUG_PUSH_INFO("cpusync_interlock");
 	++ipiq_stat(gd).ipiq_cscount;
 	++gd->gd_curthread->td_cscount;
 	lwkt_send_ipiq_mask(mask, (ipifunc1_t)lwkt_cpusync_remote1, cs);
-	logipiq2(sync_start, (long)mask);
+	logipiq2(sync_start, (long)CPUMASK_LOWMASK(mask));
 #if 0
 	if (gd->gd_curthread->td_wmesg == NULL)
 		gd->gd_curthread->td_wmesg = smsg;
 #endif
-	while (cs->cs_mack != mask) {
+	while (CPUMASK_CMPMASKNEQ(cs->cs_mack, mask)) {
 	    lwkt_process_ipiq();
 	    cpu_pause();
 #ifdef _KERNEL_VIRTUAL
@@ -884,17 +888,17 @@ lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
      */
     mask = cs->cs_mack;
     cpu_ccfence();
-    cs->cs_mack = 0;
+    CPUMASK_ASSZERO(cs->cs_mack);
     cpu_ccfence();
-    if (cs->cs_func && (cs->cs_mask & gd->gd_cpumask))
+    if (cs->cs_func && CPUMASK_TESTBIT(cs->cs_mask, gd->gd_cpuid))
 	    cs->cs_func(cs->cs_data);
-    if (mask) {
+    if (CPUMASK_TESTNZERO(mask)) {
 	DEBUG_PUSH_INFO("cpusync_deinterlock");
 #if 0
 	if (gd->gd_curthread->td_wmesg == NULL)
 		gd->gd_curthread->td_wmesg = smsg;
 #endif
-	while (cs->cs_mack != mask) {
+	while (CPUMASK_CMPMASKNEQ(cs->cs_mack, mask)) {
 	    lwkt_process_ipiq();
 	    cpu_pause();
 #ifdef _KERNEL_VIRTUAL
@@ -913,7 +917,7 @@ lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
 	 */
 	--gd->gd_curthread->td_cscount;
 	lwkt_process_ipiq();
-	logipiq2(sync_end, (long)mask);
+	logipiq2(sync_end, (long)CPUMASK_LOWMASK(mask));
     }
     crit_exit_id("cpusync");
 }
@@ -930,7 +934,7 @@ lwkt_cpusync_remote1(lwkt_cpusync_t cs)
 {
     globaldata_t gd = mycpu;
 
-    atomic_set_cpumask(&cs->cs_mack, gd->gd_cpumask);
+    ATOMIC_CPUMASK_ORBIT(cs->cs_mack, gd->gd_cpuid);
     lwkt_cpusync_remote2(cs);
 }
 
@@ -945,10 +949,10 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 {
     globaldata_t gd = mycpu;
 
-    if ((cs->cs_mack & gd->gd_cpumask) == 0) {
+    if (CPUMASK_TESTMASK(cs->cs_mack, gd->gd_cpumask) == 0) {
 	if (cs->cs_func)
 		cs->cs_func(cs->cs_data);
-	atomic_set_cpumask(&cs->cs_mack, gd->gd_cpumask);
+	ATOMIC_CPUMASK_ORBIT(cs->cs_mack, gd->gd_cpuid);
 	/* cs can be ripped out at this point */
     } else {
 	lwkt_ipiq_t ip;
@@ -968,7 +972,8 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 	if (ipiq_debug && (ip->ip_windex & 0xFFFFFF) == 0) {
 		kprintf("cpu %d cm=%016jx %016jx f=%p\n",
 			gd->gd_cpuid,
-			(intmax_t)cs->cs_mask, (intmax_t)cs->cs_mack,
+			(intmax_t)CPUMASK_LOWMASK(cs->cs_mask),
+			(intmax_t)CPUMASK_LOWMASK(cs->cs_mack),
 			cs->cs_func);
 	}
     }

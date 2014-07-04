@@ -162,6 +162,9 @@
 #include <machine/limits.h>
 #endif
 
+/*
+ * WARNING! Max supported cpu's due to PWAKEUP_CPUMASK is 16384.
+ */
 #define PCATCH		0x00000100	/* tsleep checks signals */
 #define PUSRFLAG1	0x00000200	/* Subsystem specific flag */
 #define PINTERLOCKED	0x00000400	/* Interlocked tsleep */

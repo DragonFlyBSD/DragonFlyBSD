@@ -220,7 +220,8 @@ pmap_inval_pde(volatile vpte_t *ptep, struct pmap *pmap, vm_offset_t va)
 	if (vmm_enabled == 0) {
 		*ptep = 0;
 		pmap_inval_cpu(pmap, va, SEG_SIZE);
-	} else if ((pmap->pm_active & mycpu->gd_other_cpus) == 0) {
+	} else if (CPUMASK_TESTMASK(pmap->pm_active,
+				    mycpu->gd_other_cpus) == 0) {
 		*ptep = 0;
 		vmm_cpu_invltlb();
 	} else {

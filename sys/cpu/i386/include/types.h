@@ -65,9 +65,51 @@ typedef __uint32_t	cpumask_t;	/* mask representing a set of cpus */
 typedef __uint32_t	cpulock_t;	/* count and exclusive lock */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-#define CPUMASK(cpu)		(1U << (cpu))
+
+/*
+ * NOTE! CPUMASK_TESTMASK() - caller should only test == 0 or != 0
+ */
+
+#define CPUMASK_INITIALIZER_ALLONES	(cpumask_t)-1
+#define CPUMASK_INITIALIZER_ONLYONE	(cpumask_t)1
+
+#define CPUMASK_SIMPLE(cpu)	(1U << (cpu))
 #define BSRCPUMASK(mask)	bsrl(mask)
 #define BSFCPUMASK(mask)	bsfl(mask)
+
+#define CPUMASK_CMPMASKEQ(mask1, mask2)	((mask1) == (mask2))
+#define CPUMASK_CMPMASKNEQ(mask1, mask2) ((mask1) != (mask2))
+#define CPUMASK_ISUP(mask)		 ((mask) == 1)
+
+#define CPUMASK_TESTZERO(mask)		((mask) == 0)
+#define CPUMASK_TESTNZERO(mask)		((mask) != 0)
+#define CPUMASK_TESTBIT(mask, i)	((mask) & CPUMASK_SIMPLE(i))
+#define CPUMASK_TESTMASK(mask1, mask2)	((mask1) & (mask2))
+#define CPUMASK_LOWMASK(mask)		(mask)
+
+#define CPUMASK_ORBIT(mask, i)		mask |= CPUMASK_SIMPLE(i)
+#define CPUMASK_ANDBIT(mask, i)         mask &= CPUMASK_SIMPLE(i)
+#define CPUMASK_NANDBIT(mask, i)        mask &= ~CPUMASK_SIMPLE(i)
+
+#define CPUMASK_ASSZERO(mask)		mask = 0
+#define CPUMASK_ASSALLONES(mask)	mask = (cpumask_t)-1
+#define CPUMASK_ASSBIT(mask, i)		mask = CPUMASK_SIMPLE(i)
+#define CPUMASK_ASSBMASK(mask, i)	mask = (CPUMASK_SIMPLE(i) - 1)
+#define CPUMASK_ASSNBMASK(mask, i)	mask = ~(CPUMASK_SIMPLE(i) - 1)
+
+#define CPUMASK_ANDMASK(mask, m1)	mask &= (m1)
+#define CPUMASK_NANDMASK(mask, m1)	mask &= ~(m1)
+#define CPUMASK_ORMASK(mask, m1)	mask |= (m1)
+
+#define ATOMIC_CPUMASK_ORBIT(mask, i)		\
+			atomic_set_cpumask(&(mask), CPUMASK_SIMPLE(i))
+#define ATOMIC_CPUMASK_NANDBIT(mask, i)		\
+			atomic_clear_cpumask(&(mask), CPUMASK_SIMPLE(i))
+#define ATOMIC_CPUMASK_ORMASK(mask, m1)	\
+			atomic_set_cpumask(&(mask), m1)
+#define ATOMIC_CPUMASK_NANDMASK(mask, m1)	\
+			atomic_clear_cpumask(&(mask), m1)
+
 #endif
 
 #define CPULOCK_EXCLBIT	0		/* exclusive lock bit number */

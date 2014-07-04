@@ -129,6 +129,7 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	int error = 0;
 	cpulock_t olock;
 	cpulock_t nlock;
+	cpumask_t mask;
 	long val;
 	struct proc *p = curproc;
 
@@ -140,7 +141,7 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	/*
 	 * Acquire CPULOCK_EXCL, spin while we wait.
 	 */
-	KKASSERT((p->p_vmm_cpumask & mycpu->gd_cpumask) == 0);
+	KKASSERT(CPUMASK_TESTMASK(p->p_vmm_cpumask, mycpu->gd_cpumask) == 0);
 	for (;;) {
 		olock = p->p_vmm_cpulock & ~CPULOCK_EXCL;
 		cpu_ccfence();
@@ -163,8 +164,9 @@ sys_vmm_guest_sync_addr(struct vmm_guest_sync_addr_args *uap)
 	 * counter.
 	 */
 	if (olock & CPULOCK_CNTMASK) {
-		lwkt_send_ipiq_mask(p->p_vmm_cpumask & mycpu->gd_other_cpus,
-				    vmm_exit_vmm, NULL);
+		mask = p->p_vmm_cpumask;
+		CPUMASK_ANDMASK(mask, mycpu->gd_other_cpus);
+		lwkt_send_ipiq_mask(mask, vmm_exit_vmm, NULL);
 		while (p->p_vmm_cpulock & CPULOCK_CNTMASK) {
 			lwkt_process_ipiq();
 			cpu_pause();

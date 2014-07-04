@@ -102,7 +102,7 @@ struct usched_dummy_pcpu {
 typedef struct usched_dummy_pcpu *dummy_pcpu_t;
 
 static struct usched_dummy_pcpu dummy_pcpu[MAXCPU];
-static cpumask_t dummy_curprocmask = -1;
+static cpumask_t dummy_curprocmask = CPUMASK_INITIALIZER_ALLONES;
 static cpumask_t dummy_rdyprocmask;
 static struct spinlock dummy_spin;
 static TAILQ_HEAD(rq, lwp) dummy_runq;
@@ -121,7 +121,7 @@ dummyinit(void *dummy)
 {
 	TAILQ_INIT(&dummy_runq);
 	spin_init(&dummy_spin);
-	atomic_clear_cpumask(&dummy_curprocmask, 1);
+	ATOMIC_CPUMASK_NANDBIT(dummy_curprocmask, 0);
 }
 SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, dummyinit, NULL)
 
@@ -164,7 +164,7 @@ dummy_acquire_curproc(struct lwp *lp)
 	 */
 	if (dd->uschedcp == lp ||
 	    (dd->uschedcp == NULL && TAILQ_EMPTY(&dummy_runq))) {
-		atomic_set_cpumask(&dummy_curprocmask, gd->gd_cpumask);
+		ATOMIC_CPUMASK_ORBIT(dummy_curprocmask, gd->gd_cpuid);
 		dd->uschedcp = lp;
 		return;
 	}
@@ -243,14 +243,14 @@ dummy_select_curproc(globaldata_t gd)
 	spin_lock(&dummy_spin);
 	if ((lp = TAILQ_FIRST(&dummy_runq)) == NULL) {
 		dd->uschedcp = NULL;
-		atomic_clear_cpumask(&dummy_curprocmask, gd->gd_cpumask);
+		ATOMIC_CPUMASK_NANDBIT(dummy_curprocmask, gd->gd_cpuid);
 		spin_unlock(&dummy_spin);
 	} else {
 		--dummy_runqcount;
 		TAILQ_REMOVE(&dummy_runq, lp, lwp_procq);
 		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_ONRUNQ);
 		dd->uschedcp = lp;
-		atomic_set_cpumask(&dummy_curprocmask, gd->gd_cpumask);
+		ATOMIC_CPUMASK_ORBIT(dummy_curprocmask, gd->gd_cpuid);
 		spin_unlock(&dummy_spin);
 		lwkt_acquire(lp->lwp_thread);
 		lwkt_schedule(lp->lwp_thread);
@@ -280,7 +280,7 @@ dummy_setrunqueue(struct lwp *lp)
 
 	if (dd->uschedcp == NULL) {
 		dd->uschedcp = lp;
-		atomic_set_cpumask(&dummy_curprocmask, gd->gd_cpumask);
+		ATOMIC_CPUMASK_ORBIT(dummy_curprocmask, gd->gd_cpuid);
 		lwkt_schedule(lp->lwp_thread);
 	} else {
 		/*
@@ -304,11 +304,12 @@ dummy_setrunqueue(struct lwp *lp)
 		 * helper thread cannot find a home for it it will forward
 		 * the request to another available cpu.
 		 */
-		mask = ~dummy_curprocmask & dummy_rdyprocmask & 
-		       gd->gd_other_cpus;
-		if (mask) {
+		mask = dummy_rdyprocmask;
+		CPUMASK_NANDMASK(mask, dummy_curprocmask);
+		CPUMASK_ANDMASK(mask, gd->gd_other_cpus);
+		if (CPUMASK_TESTNZERO(mask)) {
 			cpuid = BSFCPUMASK(mask);
-			atomic_clear_cpumask(&dummy_rdyprocmask, CPUMASK(cpuid));
+			ATOMIC_CPUMASK_NANDBIT(dummy_rdyprocmask, cpuid);
 			spin_unlock(&dummy_spin);
 			lwkt_schedule(&dummy_pcpu[cpuid].helper_thread);
 		} else {
@@ -475,23 +476,24 @@ dummy_sched_thread(void *dummy)
     gd = mycpu;
     cpuid = gd->gd_cpuid;
     dd = &dummy_pcpu[cpuid];
-    cpumask = CPUMASK(cpuid);
+    CPUMASK_ASSBIT(cpumask, cpuid);
 
     for (;;) {
 	lwkt_deschedule_self(gd->gd_curthread);		/* interlock */
-	atomic_set_cpumask(&dummy_rdyprocmask, cpumask);
+	ATOMIC_CPUMASK_ORBIT(dummy_rdyprocmask, cpuid);
 	spin_lock(&dummy_spin);
 	if (dd->uschedcp) {
 		/*
 		 * We raced another cpu trying to schedule a thread onto us.
 		 * If the runq isn't empty hit another free cpu.
 		 */
-		tmpmask = ~dummy_curprocmask & dummy_rdyprocmask & 
-		          gd->gd_other_cpus;
-		if (tmpmask && dummy_runqcount) {
+		tmpmask = dummy_rdyprocmask;
+		CPUMASK_NANDMASK(tmpmask, dummy_curprocmask);
+		CPUMASK_ANDMASK(tmpmask, gd->gd_other_cpus);
+		if (CPUMASK_TESTNZERO(tmpmask) && dummy_runqcount) {
 			tmpid = BSFCPUMASK(tmpmask);
 			KKASSERT(tmpid != cpuid);
-			atomic_clear_cpumask(&dummy_rdyprocmask, CPUMASK(tmpid));
+			ATOMIC_CPUMASK_NANDBIT(dummy_rdyprocmask, tmpid);
 			spin_unlock(&dummy_spin);
 			lwkt_schedule(&dummy_pcpu[tmpid].helper_thread);
 		} else {
@@ -502,7 +504,7 @@ dummy_sched_thread(void *dummy)
 		TAILQ_REMOVE(&dummy_runq, lp, lwp_procq);
 		atomic_clear_int(&lp->lwp_mpflags, LWP_MP_ONRUNQ);
 		dd->uschedcp = lp;
-		atomic_set_cpumask(&dummy_curprocmask, cpumask);
+		ATOMIC_CPUMASK_ORBIT(dummy_curprocmask, cpuid);
 		spin_unlock(&dummy_spin);
 		lwkt_acquire(lp->lwp_thread);
 		lwkt_schedule(lp->lwp_thread);
@@ -527,9 +529,11 @@ dummy_sched_thread_cpu_init(void)
 
     for (i = 0; i < ncpus; ++i) {
 	dummy_pcpu_t dd = &dummy_pcpu[i];
-	cpumask_t mask = CPUMASK(i);
+	cpumask_t mask;
 
-	if ((mask & smp_active_mask) == 0)
+	CPUMASK_ASSBIT(mask, i);
+
+	if (CPUMASK_TESTMASK(mask, smp_active_mask) == 0)
 	    continue;
 
 	if (bootverbose)
@@ -543,8 +547,8 @@ dummy_sched_thread_cpu_init(void)
 	 * been enabled in rqinit().
 	 */
 	if (i)
-	    atomic_clear_cpumask(&dummy_curprocmask, mask);
-	atomic_set_cpumask(&dummy_rdyprocmask, mask);
+		ATOMIC_CPUMASK_NANDMASK(dummy_curprocmask, mask);
+	ATOMIC_CPUMASK_ORMASK(dummy_rdyprocmask, mask);
     }
     if (bootverbose)
 	kprintf("\n");

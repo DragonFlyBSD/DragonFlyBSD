@@ -261,7 +261,7 @@ boot(int howto)
 	 * We really want to shutdown on the BSP.  Subsystems such as ACPI
 	 * can't power-down the box otherwise.
 	 */
-	if (smp_active_mask > 1) {
+	if (!CPUMASK_ISUP(smp_active_mask)) {
 		kprintf("boot() called on cpu#%d\n", mycpu->gd_cpuid);
 	}
 	if (panicstr == NULL && mycpu->gd_cpuid != 0) {

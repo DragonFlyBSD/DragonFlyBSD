@@ -28,11 +28,9 @@ cpu_node_t *get_cpu_node_by_cpuid(int cpuid);
 #define	CORE_LEVEL	3
 #define	THREAD_LEVEL	4
 
-#define	CPU_ISSET(n, p)	((CPUMASK(n) & p) != 0)
-
 #define CPUSET_FOREACH(cpu, mask)			\
 	for ((cpu) = 0; (cpu) < ncpus; (cpu)++)		\
-		if (CPU_ISSET(cpu, mask))
+		if (CPUMASK_TESTBIT(mask, cpu))
 
 
 #endif /* _KERNEL */

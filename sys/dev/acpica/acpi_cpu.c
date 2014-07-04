@@ -303,7 +303,7 @@ acpi_cpu_get_id(uint32_t idx, uint32_t *acpi_id, uint32_t *cpu_id)
     KASSERT(acpi_id != NULL, ("Null acpi_id"));
     KASSERT(cpu_id != NULL, ("Null cpu_id"));
     for (i = 0; i < ncpus; i++) {
-	if ((smp_active_mask & CPUMASK(i)) == 0)
+	if (CPUMASK_TESTBIT(smp_active_mask, i) == 0)
 	    continue;
 	md = (struct mdglobaldata *)globaldata_find(i);
 	KASSERT(md != NULL, ("no pcpu data for %d", i));

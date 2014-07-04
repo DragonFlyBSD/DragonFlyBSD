@@ -382,9 +382,11 @@ cpu_reset(void)
 		int cnt;
 		kprintf("cpu_reset called on cpu#%d\n",mycpu->gd_cpuid);
 
-		map = mycpu->gd_other_cpus & ~stopped_cpus & smp_active_mask;
+		map = mycpu->gd_other_cpus;
+		CPUMASK_NANDMASK(map, stopped_cpus);
+		CPUMASK_ANDMASK(map, smp_active_mask);
 
-		if (map != 0) {
+		if (CPUMASK_TESTNZERO(map)) {
 			kprintf("cpu_reset: Stopping other CPUs\n");
 			stop_cpus(map);		/* Stop all other CPUs */
 		}

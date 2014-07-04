@@ -431,15 +431,16 @@ ipflow_timo_ipi(void *arg __unused)
 void
 ipflow_slowtimo(void)
 {
-	cpumask_t mask = 0;
+	cpumask_t mask;
 	int i;
 
+	CPUMASK_ASSZERO(mask);
 	for (i = 0; i < ncpus; ++i) {
 		if (ipflow_inuse_pcpu[i])
-			mask |= CPUMASK(i);
+			CPUMASK_ORBIT(mask, i);
 	}
-	mask &= smp_active_mask;
-	if (mask != 0)
+	CPUMASK_ANDMASK(mask, smp_active_mask);
+	if (CPUMASK_TESTNZERO(mask))
 		lwkt_send_ipiq_mask(mask, ipflow_timo_ipi, NULL);
 }
 

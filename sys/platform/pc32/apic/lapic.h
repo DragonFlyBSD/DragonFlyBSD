@@ -84,7 +84,7 @@ int	single_apic_ipi_passive(int, int, int);
 static __inline int
 all_but_self_ipi(int vector)
 {
-	if (smp_active_mask == 1)
+	if (CPUMASK_ISUP(smp_active_mask))
 		return 0;
 	return apic_ipi(APIC_DEST_ALLESELF, vector, APIC_DELMODE_FIXED);
 }

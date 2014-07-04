@@ -611,8 +611,8 @@ netisr_barrier_dispatch(netmsg_t nmsg)
 {
 	struct netmsg_barrier *msg = (struct netmsg_barrier *)nmsg;
 
-	atomic_clear_cpumask(msg->br_cpumask, mycpu->gd_cpumask);
-	if (*msg->br_cpumask == 0)
+	ATOMIC_CPUMASK_NANDBIT(*msg->br_cpumask, mycpu->gd_cpuid);
+	if (CPUMASK_TESTZERO(*msg->br_cpumask))
 		wakeup(msg->br_cpumask);
 
 	for (;;) {
@@ -649,7 +649,8 @@ netisr_barrier_set(struct netisr_barrier *br)
 	KKASSERT(&curthread->td_msgport == netisr_cpuport(0));
 	KKASSERT(!br->br_isset);
 
-	other_cpumask = mycpu->gd_other_cpus & smp_active_mask;
+	other_cpumask = mycpu->gd_other_cpus;
+	CPUMASK_ANDMASK(other_cpumask, smp_active_mask);
 	cur_cpuid = mycpuid;
 
 	for (i = 0; i < ncpus; ++i) {
@@ -667,7 +668,7 @@ netisr_barrier_set(struct netisr_barrier *br)
 		 * the caller.
 		 */
 		netmsg_init(&msg->base, NULL, &netisr_afree_rport, 0,
-		    netisr_barrier_dispatch);
+			    netisr_barrier_dispatch);
 		msg->br_cpumask = &other_cpumask;
 		msg->br_done = NETISR_BR_NOTDONE;
 
@@ -681,9 +682,9 @@ netisr_barrier_set(struct netisr_barrier *br)
 		lwkt_sendmsg(netisr_cpuport(i), &br->br_msgs[i]->base.lmsg);
 	}
 
-	while (other_cpumask != 0) {
+	while (CPUMASK_TESTNZERO(other_cpumask)) {
 		tsleep_interlock(&other_cpumask, 0);
-		if (other_cpumask != 0)
+		if (CPUMASK_TESTNZERO(other_cpumask))
 			tsleep(&other_cpumask, PINTERLOCKED, "nbrset", 0);
 	}
 	br->br_isset = 1;

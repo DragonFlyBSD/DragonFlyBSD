@@ -1398,13 +1398,11 @@ ipfrag_timeo_ipi(void *arg __unused)
 static void
 ipfrag_slowtimo(void)
 {
-	cpumask_t mask = 0;
-	int i;
+	cpumask_t mask;
 
-	for (i = 0; i < ncpus; ++i)
-		mask |= CPUMASK(i);
-	mask &= smp_active_mask;
-	if (mask != 0)
+	CPUMASK_ASSBMASK(mask, ncpus);
+	CPUMASK_ANDMASK(mask, smp_active_mask);
+	if (CPUMASK_TESTNZERO(mask))
 		lwkt_send_ipiq_mask(mask, ipfrag_timeo_ipi, NULL);
 }
 
@@ -1456,13 +1454,11 @@ ipfrag_drain_ipi(void *arg __unused)
 static void
 ipfrag_drain(void)
 {
-	cpumask_t mask = 0;
-	int i;
+	cpumask_t mask;
 
-	for (i = 0; i < ncpus; ++i)
-		mask |= CPUMASK(i);
-	mask &= smp_active_mask;
-	if (mask != 0)
+	CPUMASK_ASSBMASK(mask, ncpus);
+	CPUMASK_ANDMASK(mask, smp_active_mask);
+	if (CPUMASK_TESTNZERO(mask))
 		lwkt_send_ipiq_mask(mask, ipfrag_drain_ipi, NULL);
 }
 

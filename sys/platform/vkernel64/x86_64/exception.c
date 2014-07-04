@@ -118,7 +118,7 @@ stopsig(int nada, siginfo_t *info, void *ctxp)
 
 	++td->td_critcount;
 	++gd->gd_intr_nesting_level;
-	while (stopped_cpus & gd->gd_cpumask) {
+	while (CPUMASK_TESTMASK(stopped_cpus, gd->gd_cpumask)) {
 		sigsuspend(&ss);
 	}
 	--gd->gd_intr_nesting_level;

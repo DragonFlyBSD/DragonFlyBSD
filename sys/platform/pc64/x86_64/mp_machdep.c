@@ -168,9 +168,13 @@ static int	start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest);
 static int	smitest(void);
 static void	mp_bsp_simple_setup(void);
 
-static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
-static cpumask_t smp_lapic_mask = 1;	/* which cpus have lapic been inited */
-cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
+/* which cpus have been started */
+static cpumask_t smp_startup_mask = CPUMASK_INITIALIZER_ONLYONE;
+/* which cpus have lapic been inited */
+static cpumask_t smp_lapic_mask = CPUMASK_INITIALIZER_ONLYONE;
+/* which cpus are ready for IPIs etc? */
+cpumask_t smp_active_mask = CPUMASK_INITIALIZER_ONLYONE;
+
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 static u_int	bootMP_size;
 
@@ -486,8 +490,10 @@ start_all_aps(u_int boot_addr)
 	ncpus_fit_mask = ncpus_fit - 1;
 
 	/* build our map of 'other' CPUs */
-	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
-	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * ncpus);
+	mycpu->gd_other_cpus = smp_startup_mask;
+	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
+	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map,
+					    sizeof(lwkt_ipiq) * ncpus);
 	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
 
 	/* restore the warmstart vector */
@@ -511,7 +517,7 @@ start_all_aps(u_int boot_addr)
 		tsc0_offset = rdtsc();
 	tsc_offsets[0] = 0;
 	rel_mplock();
-	while (smp_lapic_mask != smp_startup_mask) {
+	while (CPUMASK_CMPMASKNEQ(smp_lapic_mask, smp_startup_mask)) {
 		cpu_lfence();
 		if (cpu_feature & CPUID_TSC)
 			tsc0_offset = rdtsc();
@@ -729,7 +735,7 @@ start_ap(struct mdglobaldata *gd, u_int boot_addr, int smibest)
 	/* wait for it to start, see ap_init() */
 	set_apic_timer(5000000);/* == 5 seconds */
 	while (read_apic_timer()) {
-		if (smp_startup_mask & CPUMASK(gd->mi.gd_cpuid))
+		if (CPUMASK_TESTBIT(smp_startup_mask, gd->mi.gd_cpuid))
 			return 1;	/* return SUCCESS */
 	}
 
@@ -786,27 +792,37 @@ smp_invltlb(void)
 	long count = 0;
 	long xcount = 0;
 #endif
+	cpumask_t tmpmask;
+	cpumask_t tmpmask2;
 
 	crit_enter_gd(&md->mi);
-	md->gd_invltlb_ret = 0;
+	CPUMASK_ASSZERO(md->gd_invltlb_ret);
 	++md->mi.gd_cnt.v_smpinvltlb;
-	atomic_set_cpumask(&smp_invltlb_req, md->mi.gd_cpumask);
+	ATOMIC_CPUMASK_ORBIT(smp_invltlb_req, md->mi.gd_cpuid);
 #ifdef SMP_INVLTLB_DEBUG
 again:
 #endif
-	if (smp_startup_mask == smp_active_mask) {
+	if (CPUMASK_CMPMASKEQ(smp_startup_mask, smp_active_mask)) {
 		all_but_self_ipi(XINVLTLB_OFFSET);
 	} else {
-		selected_apic_ipi(smp_active_mask & ~md->mi.gd_cpumask,
-				  XINVLTLB_OFFSET, APIC_DELMODE_FIXED);
+		tmpmask = smp_active_mask;
+		CPUMASK_NANDMASK(tmpmask, md->mi.gd_cpumask);
+		selected_apic_ipi(tmpmask, XINVLTLB_OFFSET, APIC_DELMODE_FIXED);
 	}
 
 #ifdef SMP_INVLTLB_DEBUG
 	if (xcount)
 		kprintf("smp_invltlb: ipi sent\n");
 #endif
-	while ((md->gd_invltlb_ret & smp_active_mask & ~md->mi.gd_cpumask) !=
-	       (smp_active_mask & ~md->mi.gd_cpumask)) {
+	for (;;) {
+		tmpmask = smp_active_mask;
+		tmpmask2 = tmpmask;
+		CPUMASK_ANDMASK(tmpmask, md->gd_invltlb_ret);
+		CPUMASK_NANDMASK(tmpmask, md->mi.gd_cpumask);
+		CPUMASK_NANDMASK(tmpmask2, md->mi.gd_cpumask);
+
+		if (CPUMASK_CMPMASKEQ(tmpmask, tmpmask2))
+			break;
 		cpu_mfence();
 		cpu_pause();
 #ifdef SMP_INVLTLB_DEBUG
@@ -815,18 +831,21 @@ again:
 			print_backtrace(-1);
 			kprintf("smp_invltlb: endless loop %08lx %08lx, "
 				"rflags %016jx retry",
-			      (long)md->gd_invltlb_ret,
-			      (long)smp_invltlb_req,
+			      (long)CPUMASK_LOWMASK(md->gd_invltlb_ret),
+			      (long)CPUMASK_LOWMASK(smp_invltlb_req),
 			      (intmax_t)read_rflags());
 			__asm __volatile ("sti");
 			++xcount;
 			if (xcount > 2)
 				lwkt_process_ipiq();
 			if (xcount > 3) {
-				int bcpu = BSFCPUMASK(~md->gd_invltlb_ret &
-						      ~md->mi.gd_cpumask &
-						      smp_active_mask);
+				int bcpu;
 				globaldata_t xgd;
+
+				tmpmask = smp_active_mask;
+				CPUMASK_NANDMASK(tmpmask, md->gd_invltlb_ret);
+				CPUMASK_NANDMASK(tmpmask, md->mi.gd_cpumask);
+				bcpu = BSFCPUMASK(tmpmask);
 
 				kprintf("bcpu %d\n", bcpu);
 				xgd = globaldata_find(bcpu);
@@ -839,7 +858,7 @@ again:
 		}
 #endif
 	}
-	atomic_clear_cpumask(&smp_invltlb_req, md->mi.gd_cpumask);
+	ATOMIC_CPUMASK_NANDBIT(smp_invltlb_req, md->mi.gd_cpuid);
 	crit_exit_gd(&md->mi);
 }
 
@@ -859,11 +878,11 @@ smp_invltlb_intr(void)
 	cpu_mfence();
 	mask = smp_invltlb_req;
 	cpu_invltlb();
-	while (mask) {
+	while (CPUMASK_TESTNZERO(mask)) {
 		cpu = BSFCPUMASK(mask);
-		mask &= ~CPUMASK(cpu);
+		CPUMASK_NANDBIT(mask, cpu);
 		omd = (struct mdglobaldata *)globaldata_find(cpu);
-		atomic_set_cpumask(&omd->gd_invltlb_ret, md->mi.gd_cpumask);
+		ATOMIC_CPUMASK_ORBIT(omd->gd_invltlb_ret, md->mi.gd_cpuid);
 	}
 }
 
@@ -905,13 +924,18 @@ smp_invlpg_range_cpusync(void *arg)
 int
 stop_cpus(cpumask_t map)
 {
-	map &= smp_active_mask;
+	cpumask_t mask;
+
+	CPUMASK_ANDMASK(map, smp_active_mask);
 
 	/* send the Xcpustop IPI to all CPUs in map */
 	selected_apic_ipi(map, XCPUSTOP_OFFSET, APIC_DELMODE_FIXED);
-	
-	while ((stopped_cpus & map) != map)
-		/* spin */ ;
+
+	do {
+		mask = stopped_cpus;
+		CPUMASK_ANDMASK(mask, map);
+		/* spin */
+	} while (CPUMASK_CMPMASKNEQ(mask, map));
 
 	return 1;
 }
@@ -933,11 +957,18 @@ stop_cpus(cpumask_t map)
 int
 restart_cpus(cpumask_t map)
 {
-	/* signal other cpus to restart */
-	started_cpus = map & smp_active_mask;
+	cpumask_t mask;
 
-	while ((stopped_cpus & map) != 0) /* wait for each to clear its bit */
-		/* spin */ ;
+	/* signal other cpus to restart */
+	mask = map;
+	CPUMASK_ANDMASK(mask, smp_active_mask);
+	cpu_ccfence();
+	started_cpus = mask;
+	cpu_ccfence();
+
+	/* wait for each to clear its bit */
+	while (CPUMASK_CMPMASKNEQ(stopped_cpus, map))
+		cpu_pause();
 
 	return 1;
 }
@@ -963,7 +994,7 @@ ap_init(void)
 	 * interrupts physically disabled and remote cpus could deadlock
 	 * trying to send us an IPI.
 	 */
-	smp_startup_mask |= CPUMASK(mycpu->gd_cpuid);
+	ATOMIC_CPUMASK_ORBIT(smp_startup_mask, mycpu->gd_cpuid);
 	cpu_mfence();
 
 	/*
@@ -995,7 +1026,8 @@ ap_init(void)
 	cpu_invltlb();
 
 	/* Build our map of 'other' CPUs. */
-	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
+	mycpu->gd_other_cpus = smp_startup_mask;
+	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
 
 	/* A quick check from sanity claus */
 	cpu_id = APICID_TO_CPUID((lapic->id & 0xff000000) >> 24);
@@ -1013,7 +1045,7 @@ ap_init(void)
 	lapic_init(FALSE);
 
 	/* LAPIC initialization is done */
-	smp_lapic_mask |= CPUMASK(mycpu->gd_cpuid);
+	CPUMASK_ORBIT(smp_lapic_mask, mycpu->gd_cpuid);
 	cpu_mfence();
 
 	/* Let BSP move onto the next initialization stage */
@@ -1057,7 +1089,7 @@ ap_init(void)
 	 * nothing we've done put it there.
 	 */
 	KKASSERT(get_mplock_count(curthread) == 1);
-	smp_active_mask |= CPUMASK(mycpu->gd_cpuid);
+	CPUMASK_ORBIT(smp_active_mask, mycpu->gd_cpuid);
 
 	/*
 	 * Enable interrupts here.  idle_restore will also do it, but
@@ -1089,13 +1121,15 @@ ap_finish(void)
 	if (bootverbose)
 		kprintf("Finish MP startup\n");
 	rel_mplock();
-	while (smp_active_mask != smp_startup_mask)
+	while (CPUMASK_CMPMASKNEQ(smp_active_mask, smp_startup_mask)) {
 		cpu_lfence();
+		cpu_pause();
+	}
 	while (try_mplock() == 0)
 		;
 	if (bootverbose) {
 		kprintf("Active CPU Mask: %016jx\n",
-			(uintmax_t)smp_active_mask);
+			(uintmax_t)CPUMASK_LOWMASK(smp_active_mask));
 	}
 }
 
@@ -1104,7 +1138,7 @@ SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)
 void
 cpu_send_ipiq(int dcpu)
 {
-        if (CPUMASK(dcpu) & smp_active_mask)
+	if (CPUMASK_TESTBIT(smp_active_mask, dcpu))
                 single_apic_ipi(dcpu, XIPIQ_OFFSET, APIC_DELMODE_FIXED);
 }
 
@@ -1116,7 +1150,7 @@ int
 cpu_send_ipiq_passive(int dcpu)
 {
         int r = 0;
-        if (CPUMASK(dcpu) & smp_active_mask) {
+	if (CPUMASK_TESTBIT(smp_active_mask, dcpu)) {
                 r = single_apic_ipi_passive(dcpu, XIPIQ_OFFSET,
                                         APIC_DELMODE_FIXED);
         }
@@ -1128,8 +1162,10 @@ static void
 mp_bsp_simple_setup(void)
 {
 	/* build our map of 'other' CPUs */
-	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
-	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * ncpus);
+	mycpu->gd_other_cpus = smp_startup_mask;
+	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
+	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map,
+					    sizeof(lwkt_ipiq) * ncpus);
 	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
 
 	pmap_set_opt();
@@ -1266,17 +1302,22 @@ amd_get_compute_unit_id(void *arg)
 int
 fix_amd_topology(void)
 {
+	cpumask_t mask;
+
 	if (cpu_vendor_id != CPU_VENDOR_AMD)
 		return -1;
 	if ((amd_feature2 & AMDID2_TOPOEXT) == 0)
 		return -1;
 
-	lwkt_cpusync_simple(-1, amd_get_compute_unit_id, NULL);
+	CPUMASK_ASSALLONES(mask);
+	lwkt_cpusync_simple(mask, amd_get_compute_unit_id, NULL);
 
 	kprintf("Compute unit iDS:\n");
 	int i;
-	for (i = 0; i < ncpus; i++)
-		kprintf("%d-%d; \n", i, get_cpu_node_by_cpuid(i)->compute_unit_id);
+	for (i = 0; i < ncpus; i++) {
+		kprintf("%d-%d; \n",
+			i, get_cpu_node_by_cpuid(i)->compute_unit_id);
+	}
 
 	return 0;
 }

@@ -1239,7 +1239,7 @@ tsc_mpsync_test(void)
 
 		crit_enter();
 		lwkt_cpusync_init(&cs, gd->gd_other_cpus,
-		    tsc_mpsync_test_remote, NULL);
+				  tsc_mpsync_test_remote, NULL);
 		lwkt_cpusync_interlock(&cs);
 		tsc_mpsync_target = rdtsc();
 		cpu_mfence();

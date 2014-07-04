@@ -650,7 +650,7 @@ lwp_fork(struct lwp *origlp, struct proc *destproc, int flags)
 	lp->lwp_cpbase = gd->gd_schedclock.time - gd->gd_schedclock.periodic;
 	destproc->p_usched->heuristic_forking(origlp, lp);
 	crit_exit();
-	lp->lwp_cpumask &= usched_mastermask;
+	CPUMASK_ANDMASK(lp->lwp_cpumask, usched_mastermask);
 	lwkt_token_init(&lp->lwp_token, "lwp_token");
 	spin_init(&lp->lwp_spin);
 

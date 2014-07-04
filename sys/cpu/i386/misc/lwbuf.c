@@ -159,7 +159,7 @@ _lwbuf_kva(struct lwbuf *lwb, struct mdglobaldata *gd)
 {
     pmap_kenter_sync_quick(lwb->kva);
 
-    atomic_set_int(&lwb->cpumask, gd->mi.gd_cpumask);
+    ATOMIC_CPUMASK_ORBIT(lwb->cpumask, gd->mi.gd_cpuid);
 
     return (lwb->kva);
 }
@@ -169,7 +169,7 @@ lwbuf_kva(struct lwbuf *lwb)
 {
     struct mdglobaldata *gd = mdcpu;
 
-    if (lwb->cpumask & gd->mi.gd_cpumask)
+    if (CPUMASK_TESTBIT(lwb->cpumask, gd->mi.gd_cpuid))
         return (lwb->kva);
 
     return (_lwbuf_kva(lwb, gd));

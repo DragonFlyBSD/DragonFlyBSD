@@ -100,24 +100,21 @@ void
 ap_finish(void)
 {
 	int i;
-	cpumask_t ncpus_mask = 0;
-
-	for (i = 1; i <= ncpus; i++)
-		ncpus_mask |= CPUMASK(i);
 
         mp_finish = 1;
         if (bootverbose)
                 kprintf("Finish MP startup\n");
 
 	/* build our map of 'other' CPUs */
-	mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
+	mycpu->gd_other_cpus = smp_startup_mask;
+	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
 
 	/*
 	 * Let the other cpu's finish initializing and build their map
 	 * of 'other' CPUs.
 	 */
         rel_mplock();
-        while (smp_active_mask != smp_startup_mask) {
+	while (CPUMASK_CMPMASKNEQ(smp_active_mask, smp_startup_mask)) {
 		DELAY(100000);
                 cpu_lfence();
 	}
@@ -196,9 +193,10 @@ mp_announce(void)
 void
 cpu_send_ipiq(int dcpu)
 {
-	if (CPUMASK(dcpu) & smp_active_mask)
+	if (CPUMASK_TESTBIT(smp_active_mask, dcpu)) {
 		if (pthread_kill(ap_tids[dcpu], SIGUSR1) != 0)
 			panic("pthread_kill failed in cpu_send_ipiq");
+	}
 #if 0
 	panic("XXX cpu_send_ipiq()");
 #endif
@@ -219,9 +217,9 @@ void
 selected_cpu_ipi(cpumask_t target, int vector, int delivery_mode)
 {
 	crit_enter();
-	while (target) {
+	while (CPUMASK_TESTNZERO(target)) {
 		int n = BSFCPUMASK(target);
-		target &= ~CPUMASK(n);
+		CPUMASK_NANDBIT(target, n);
 		single_cpu_ipi(n, vector, delivery_mode);
 	}
 	crit_exit();
@@ -230,13 +228,13 @@ selected_cpu_ipi(cpumask_t target, int vector, int delivery_mode)
 int
 stop_cpus(cpumask_t map)
 {
-	map &= smp_active_mask;
+	CPUMASK_ANDMASK(map, smp_active_mask);
 
 	crit_enter();
-	while (map) {
+	while (CPUMASK_TESTNZERO(map)) {
 		int n = BSFCPUMASK(map);
-		map &= ~CPUMASK(n);
-		stopped_cpus |= CPUMASK(n);
+		CPUMASK_NANDBIT(map, n);
+		ATOMIC_CPUMASK_ORBIT(stopped_cpus, n);
 		if (pthread_kill(ap_tids[n], SIGXCPU) != 0)
 			panic("stop_cpus: pthread_kill failed");
 	}
@@ -251,13 +249,13 @@ stop_cpus(cpumask_t map)
 int
 restart_cpus(cpumask_t map)
 {
-	map &= smp_active_mask;
+	CPUMASK_ANDMASK(map, smp_active_mask);
 
 	crit_enter();
-	while (map) {
+	while (CPUMASK_TESTNZERO(map)) {
 		int n = BSFCPUMASK(map);
-		map &= ~CPUMASK(n);
-		stopped_cpus &= ~CPUMASK(n);
+		CPUMASK_NANDBIT(map, n);
+		ATOMIC_CPUMASK_NANDBIT(stopped_cpus, n);
 		if (pthread_kill(ap_tids[n], SIGXCPU) != 0)
 			panic("restart_cpus: pthread_kill failed");
 	}
@@ -281,7 +279,7 @@ ap_init(void)
          * interrupts physically disabled and remote cpus could deadlock
          * trying to send us an IPI.
          */
-	smp_startup_mask |= CPUMASK(mycpu->gd_cpuid);
+	ATOMIC_CPUMASK_ORBIT(smp_startup_mask, mycpu->gd_cpuid);
 	cpu_mfence();
 
         /*
@@ -308,7 +306,8 @@ ap_init(void)
         cpu_invltlb();
 
         /* Build our map of 'other' CPUs. */
-        mycpu->gd_other_cpus = smp_startup_mask & ~CPUMASK(mycpu->gd_cpuid);
+        mycpu->gd_other_cpus = smp_startup_mask;
+	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
 
         kprintf("SMP: AP CPU #%d Launched!\n", mycpu->gd_cpuid);
 
@@ -330,7 +329,7 @@ ap_init(void)
          * nothing we've done put it there.
          */
         KKASSERT(get_mplock_count(curthread) == 1);
-        smp_active_mask |= CPUMASK(mycpu->gd_cpuid);
+	ATOMIC_CPUMASK_ORBIT(smp_active_mask, mycpu->gd_cpuid);
 
 	mdcpu->gd_fpending = 0;
 	mdcpu->gd_ipending = 0;
@@ -448,7 +447,7 @@ start_all_aps(u_int boot_addr)
 		pthread_create(&ap_tids[x], NULL, start_ap, NULL);
 		cpu_enable_intr();
 
-		while((smp_startup_mask & CPUMASK(x)) == 0) {
+		while (CPUMASK_TESTBIT(smp_startup_mask, x) == 0) {
 			cpu_lfence(); /* XXX spin until the AP has started */
 			DELAY(1000);
 		}

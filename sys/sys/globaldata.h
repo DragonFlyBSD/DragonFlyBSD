@@ -128,7 +128,7 @@ struct globaldata {
 	lwkt_queue	gd_tdallq;		/* all threads */
 	lwkt_queue	gd_tdrunq;		/* runnable threads */
 	__uint32_t	gd_cpuid;
-	cpumask_t	gd_cpumask;		/* mask = CPUMASK(cpuid) */
+	cpumask_t	gd_cpumask;		/* CPUMASK_ASSBIT(cpuid) */
 	cpumask_t	gd_other_cpus;		/* mask of 'other' cpus */
 	struct timeval	gd_stattv;
 	int		gd_intr_nesting_level;	/* hard code, intrs, ipis */

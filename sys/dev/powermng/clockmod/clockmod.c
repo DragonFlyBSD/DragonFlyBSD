@@ -184,12 +184,14 @@ clockmod_dom_attach(struct clockmod_softc *sc)
 {
 	struct clockmod_softc *sc1;
 	struct clockmod_dom *dom;
-	cpumask_t mask, found_mask = 0;
+	cpumask_t mask, found_mask;
 	int error = 0;
 
+	CPUMASK_ASSZERO(found_mask);
+
 	mask = get_cpumask_from_level(sc->sc_cpuid, CORE_LEVEL);
-	if (mask == 0)
-		mask = CPUMASK(sc->sc_cpuid);
+	if (CPUMASK_TESTZERO(mask))
+		CPUMASK_ASSBIT(mask, sc->sc_cpuid);
 
 	lwkt_serialize_enter(&clockmod_dom_slize);
 
@@ -206,9 +208,9 @@ clockmod_dom_attach(struct clockmod_softc *sc)
 	TAILQ_INSERT_TAIL(&dom->dom_list, sc, sc_link);
 
 	TAILQ_FOREACH(sc1, &dom->dom_list, sc_link)
-		found_mask |= CPUMASK(sc1->sc_cpuid);
+		CPUMASK_ORBIT(found_mask, sc1->sc_cpuid);
 
-	if (found_mask == dom->dom_cpumask) {
+	if (CPUMASK_CMPMASKEQ(found_mask, dom->dom_cpumask)) {
 		/* All cpus in this domain is found */
 		dom->dom_flags |= CLOCKMOD_DOM_FLAG_ACTIVE;
 	}
@@ -251,7 +253,7 @@ clockmod_dom_find(cpumask_t mask)
 	struct clockmod_dom *dom;
 
 	TAILQ_FOREACH(dom, &clockmod_dom_list, dom_link) {
-		if (dom->dom_cpumask == mask)
+		if (CPUMASK_CMPMASKEQ(dom->dom_cpumask, mask))
 			return dom;
 	}
 	return NULL;

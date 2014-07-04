@@ -366,15 +366,15 @@ _tsleep_interlock(globaldata_t gd, const volatile void *ident, int flags)
 		id = LOOKUP(td->td_wchan);
 		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_sleepq);
 		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL) {
-			atomic_clear_cpumask(&slpque_cpumasks[id],
-					     gd->gd_cpumask);
+			ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[id],
+					       gd->gd_cpuid);
 		}
 	} else {
 		td->td_flags |= TDF_TSLEEPQ;
 	}
 	id = LOOKUP(ident);
 	TAILQ_INSERT_TAIL(&gd->gd_tsleep_hash[id], td, td_sleepq);
-	atomic_set_cpumask(&slpque_cpumasks[id], gd->gd_cpumask);
+	ATOMIC_CPUMASK_ORBIT(slpque_cpumasks[id], gd->gd_cpuid);
 	td->td_wchan = ident;
 	td->td_wdomain = flags & PDOMAIN_MASK;
 	crit_exit_quick(td);
@@ -402,8 +402,10 @@ _tsleep_remove(thread_t td)
 		td->td_flags &= ~TDF_TSLEEPQ;
 		id = LOOKUP(td->td_wchan);
 		TAILQ_REMOVE(&gd->gd_tsleep_hash[id], td, td_sleepq);
-		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL)
-			atomic_clear_cpumask(&slpque_cpumasks[id], gd->gd_cpumask);
+		if (TAILQ_FIRST(&gd->gd_tsleep_hash[id]) == NULL) {
+			ATOMIC_CPUMASK_NANDBIT(slpque_cpumasks[id],
+					       gd->gd_cpuid);
+		}
 		td->td_wchan = NULL;
 		td->td_wdomain = 0;
 	}
@@ -921,10 +923,13 @@ restart:
 	 * should be ok since we are passing idents in the IPI rather then
 	 * thread pointers.
 	 */
-	if ((domain & PWAKEUP_MYCPU) == 0 &&
-	    (mask = slpque_cpumasks[id] & gd->gd_other_cpus) != 0) {
-		lwkt_send_ipiq2_mask(mask, _wakeup, ident,
-				     domain | PWAKEUP_MYCPU);
+	if ((domain & PWAKEUP_MYCPU) == 0) {
+		mask = slpque_cpumasks[id];
+		CPUMASK_ANDMASK(mask, gd->gd_other_cpus);
+		if (CPUMASK_TESTNZERO(mask)) {
+			lwkt_send_ipiq2_mask(mask, _wakeup, ident,
+					     domain | PWAKEUP_MYCPU);
+		}
 	}
 done:
 	logtsleep1(wakeup_end);
