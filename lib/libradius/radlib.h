@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/lib/libradius/radlib.h,v 1.3.2.1 2002/06/17 02:24:57 brian Exp $
- *	$DragonFly: src/lib/libradius/radlib.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ *	$FreeBSD: src/lib/libradius/radlib.h,v 1.8 2009/09/11 11:42:56 mav Exp $
  */
 
 #ifndef _RADLIB_H_
@@ -33,6 +32,9 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 
+/* Limits */
+#define RAD_MAX_ATTR_LEN		253
+
 /* Message types */
 #define RAD_ACCESS_REQUEST		1
 #define RAD_ACCESS_ACCEPT		2
@@ -40,6 +42,12 @@
 #define RAD_ACCOUNTING_REQUEST		4
 #define RAD_ACCOUNTING_RESPONSE		5
 #define RAD_ACCESS_CHALLENGE		11
+#define RAD_DISCONNECT_REQUEST		40
+#define RAD_DISCONNECT_ACK		41
+#define RAD_DISCONNECT_NAK		42
+#define RAD_COA_REQUEST			43
+#define RAD_COA_ACK			44
+#define RAD_COA_NAK			45
 
 /* Attribute types and values */
 #define RAD_USER_NAME			1	/* String */
@@ -99,6 +107,9 @@
 #define RAD_FRAMED_APPLETALK_NETWORK	38	/* Integer */
 #define RAD_FRAMED_APPLETALK_ZONE	39	/* Integer */
      /* reserved for accounting		40-59 */
+#define RAD_ACCT_INPUT_GIGAWORDS	52
+#define RAD_ACCT_OUTPUT_GIGAWORDS	53
+
 #define RAD_CHAP_CHALLENGE		60	/* String */
 #define RAD_NAS_PORT_TYPE		61	/* Integer */
 	#define RAD_ASYNC			0
@@ -124,11 +135,21 @@
 #define RAD_PORT_LIMIT			62	/* Integer */
 #define RAD_LOGIN_LAT_PORT		63	/* Integer */
 #define RAD_CONNECT_INFO		77	/* String */
+#define RAD_EAP_MESSAGE			79	/* Octets */
+#define RAD_MESSAGE_AUTHENTIC		80	/* Octets */
+#define RAD_ACCT_INTERIM_INTERVAL	85	/* Integer */
+#define RAD_NAS_IPV6_ADDRESS		95	/* IPv6 address */
+#define RAD_FRAMED_INTERFACE_ID		96	/* 8 octets */
+#define RAD_FRAMED_IPV6_PREFIX		97	/* Octets */
+#define RAD_LOGIN_IPV6_HOST		98	/* IPv6 address */
+#define RAD_FRAMED_IPV6_ROUTE		99	/* String */
+#define RAD_FRAMED_IPV6_POOL		100	/* String */
 
 /* Accounting attribute types and values */
 #define RAD_ACCT_STATUS_TYPE		40	/* Integer */
 	#define RAD_START			1
 	#define RAD_STOP			2
+	#define RAD_UPDATE			3
 	#define RAD_ACCOUNTING_ON		7
 	#define RAD_ACCOUNTING_OFF		8
 #define RAD_ACCT_DELAY_TIME		41	/* Integer */
@@ -164,6 +185,8 @@
 #define	RAD_ACCT_MULTI_SESSION_ID	50	/* String */
 #define	RAD_ACCT_LINK_COUNT		51	/* Integer */
 
+#define	RAD_ERROR_CAUSE			101	/* Integer */
+
 struct rad_handle;
 struct timeval;
 
@@ -171,13 +194,19 @@ __BEGIN_DECLS
 struct rad_handle	*rad_acct_open(void);
 int			 rad_add_server(struct rad_handle *,
 			    const char *, int, const char *, int, int);
+int			 rad_add_server_ex(struct rad_handle *,
+			    const char *, int, const char *, int, int,
+			    int, struct in_addr *);
 struct rad_handle	*rad_auth_open(void);
+void			 rad_bind_to(struct rad_handle *, in_addr_t);
 void			 rad_close(struct rad_handle *);
 int			 rad_config(struct rad_handle *, const char *);
 int			 rad_continue_send_request(struct rad_handle *, int,
 			    int *, struct timeval *);
 int			 rad_create_request(struct rad_handle *, int);
+int			 rad_create_response(struct rad_handle *, int);
 struct in_addr		 rad_cvt_addr(const void *);
+struct in6_addr		 rad_cvt_addr6(const void *);
 u_int32_t		 rad_cvt_int(const void *);
 char			*rad_cvt_string(const void *, size_t);
 int			 rad_get_attr(struct rad_handle *, const void **,
@@ -186,16 +215,24 @@ int			 rad_init_send_request(struct rad_handle *, int *,
 			    struct timeval *);
 struct rad_handle	*rad_open(void);  /* Deprecated, == rad_auth_open */
 int			 rad_put_addr(struct rad_handle *, int, struct in_addr);
+int			 rad_put_addr6(struct rad_handle *, int, struct in6_addr);
 int			 rad_put_attr(struct rad_handle *, int,
 			    const void *, size_t);
 int			 rad_put_int(struct rad_handle *, int, u_int32_t);
 int			 rad_put_string(struct rad_handle *, int,
 			    const char *);
+int			 rad_put_message_authentic(struct rad_handle *);
 ssize_t			 rad_request_authenticator(struct rad_handle *, char *,
 			    size_t);
+int			 rad_receive_request(struct rad_handle *);
 int			 rad_send_request(struct rad_handle *);
+int			 rad_send_response(struct rad_handle *);
+struct rad_handle	*rad_server_open(int fd);
 const char		*rad_server_secret(struct rad_handle *);
 const char		*rad_strerror(struct rad_handle *);
+u_char			*rad_demangle(struct rad_handle *, const void *,
+			    size_t);
+
 __END_DECLS
 
 #endif /* _RADLIB_H_ */

@@ -23,8 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/lib/libradius/radlib_private.h,v 1.4.2.1 2002/06/17 02:24:57 brian Exp $
- *	$DragonFly: src/lib/libradius/radlib_private.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ *	$FreeBSD: src/lib/libradius/radlib_private.h,v 1.7 2009/09/11 11:42:56 mav Exp $
  */
 
 #ifndef RADLIB_PRIVATE_H
@@ -39,6 +38,7 @@
 /* Handle types */
 #define RADIUS_AUTH		0   /* RADIUS authentication, default */
 #define RADIUS_ACCT		1   /* RADIUS accounting */
+#define RADIUS_SERVER		2   /* RADIUS server */
 
 /* Defaults */
 #define MAXTRIES		3
@@ -46,6 +46,7 @@
 #define RADIUS_PORT		1812
 #define RADACCT_PORT		1813
 #define TIMEOUT			3	/* In seconds */
+#define	DEAD_TIME		0
 
 /* Limits */
 #define ERRSIZE		128		/* Maximum error message length */
@@ -68,6 +69,10 @@ struct rad_server {
 	int		 timeout;	/* Timeout in seconds */
 	int		 max_tries;	/* Number of tries before giving up */
 	int		 num_tries;	/* Number of tries so far */
+	int		 is_dead;	/* The server did not answer last time */
+	time_t		 dead_time;	/* Don't try this server for the time period if it is dead */
+	time_t		 next_probe;	/* Time of a next probe after failure */
+	in_addr_t	 bindto;	/* Bind to address */
 };
 
 struct rad_handle {
@@ -76,19 +81,21 @@ struct rad_handle {
 	int		 num_servers;	/* Number of valid server entries */
 	int		 ident;		/* Current identifier value */
 	char		 errmsg[ERRSIZE];	/* Most recent error message */
-	unsigned char	 request[MSGSIZE];	/* Request to send */
-	int		 req_len;	/* Length of request */
+	unsigned char	 out[MSGSIZE];	/* Request to send */
+	char		 out_created;	/* rad_create_request() called? */
+	int		 out_len;	/* Length of request */
 	char		 pass[PASSSIZE];	/* Cleartext password */
 	int		 pass_len;	/* Length of cleartext password */
 	int		 pass_pos;	/* Position of scrambled password */
-	char	 	 chap_pass;	/* Have we got a CHAP_PASSWORD ? */
-	unsigned char	 response[MSGSIZE];	/* Response received */
-	int		 resp_len;	/* Length of response */
-	int		 resp_pos;	/* Current position scanning attrs */
-	int		 total_tries;	/* How many requests we'll send */
-	int		 try;		/* How many requests we've sent */
+	char		 chap_pass;	/* Have we got a CHAP_PASSWORD ? */
+	int		 authentic_pos;	/* Position of message authenticator */
+	char		 eap_msg;	/* Are we an EAP Proxy? */
+	unsigned char	 in[MSGSIZE];	/* Response received */
+	int		 in_len;	/* Length of response */
+	int		 in_pos;	/* Current position scanning attrs */
 	int		 srv;		/* Server number we did last */
 	int		 type;		/* Handle type */
+	in_addr_t	 bindto;	/* Current bind address */
 };
 
 struct vendor_attribute {
