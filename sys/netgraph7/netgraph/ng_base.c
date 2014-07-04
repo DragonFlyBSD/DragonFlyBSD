@@ -2853,10 +2853,10 @@ static int			maxalloc = 4096;/* limit the damage of a leak */
 static int			maxdata = 512;	/* limit the damage of a DoS */
 
 TUNABLE_INT("net.graph.maxalloc", &maxalloc);
-SYSCTL_INT(_net_graph, OID_AUTO, maxalloc, CTLFLAG_RDTUN, &maxalloc,
+SYSCTL_INT(_net_graph, OID_AUTO, maxalloc, CTLFLAG_RD, &maxalloc,
     0, "Maximum number of non-data queue items to allocate");
 TUNABLE_INT("net.graph.maxdata", &maxdata);
-SYSCTL_INT(_net_graph, OID_AUTO, maxdata, CTLFLAG_RDTUN, &maxdata,
+SYSCTL_INT(_net_graph, OID_AUTO, maxdata, CTLFLAG_RD, &maxdata,
     0, "Maximum number of data queue items to allocate");
 
 #ifdef	NETGRAPH_DEBUG
