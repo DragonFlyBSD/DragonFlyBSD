@@ -787,7 +787,7 @@ mptable_lapic_enumerate(struct lapic_enumerator *e)
 		cpumask_t mask;
 
 		CPUMASK_ASSZERO(mask);
-		mask.m0 = arg1.ht_apicid_mask;
+		mask.ary[0] = arg1.ht_apicid_mask;
 		logical_cpus = mptable_hyperthread_fixup(mask, arg1.cpu_count);
 		if (logical_cpus != 0)
 			arg1.cpu_count *= logical_cpus;

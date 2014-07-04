@@ -511,6 +511,7 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 		 * to ensure that the loop does not use a speculative value
 		 * (which may improve performance).
 		 */
+		cpu_pause();
 		cpu_lfence();
 	    }
 	    DEBUG_POP_INFO();
@@ -958,10 +959,29 @@ lwkt_cpusync_remote2(lwkt_cpusync_t cs)
 	lwkt_ipiq_t ip;
 	int wi;
 
+	cpu_pause();
 #ifdef _KERNEL_VIRTUAL
 	pthread_yield();
 #endif
+	cpu_lfence();
+
+	/*
+	 * Requeue our IPI to avoid a deep stack recursion.  If no other
+	 * IPIs are pending we can just loop up, which should help VMs
+	 * better-detect spin loops.
+	 */
 	ip = &gd->gd_cpusyncq;
+#if 0
+	if (ip->ip_rindex == ip->ip_windex) {
+		__asm __volatile("cli");
+		if (ip->ip_rindex == ip->ip_windex) {
+			__asm __volatile("sti; hlt");
+		} else {
+			__asm __volatile("sti");
+		}
+	}
+#endif
+
 	wi = ip->ip_windex & MAXCPUFIFO_MASK;
 	ip->ip_info[wi].func = (ipifunc3_t)(ipifunc1_t)lwkt_cpusync_remote2;
 	ip->ip_info[wi].arg1 = cs;

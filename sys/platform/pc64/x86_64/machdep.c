@@ -1116,6 +1116,7 @@ cpu_idle(void)
 
 	crit_exit();
 	KKASSERT(td->td_critcount == 0);
+
 	for (;;) {
 		/*
 		 * See if there are any LWKTs ready to go.

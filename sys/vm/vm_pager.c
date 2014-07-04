@@ -240,10 +240,16 @@ vm_pager_bufferinit(void *dummy __unused)
 	 * Initial pbuf setup.  These pbufs do not have KVA reservations,
 	 * so we can have a lot more of them.  These are typically used
 	 * to massage low level buf/bio requests.
+	 *
+	 * NOTE: We use KM_NOTLBSYNC here to reduce unnecessary IPIs
+	 *	 during startup, which can really slow down emulated
+	 *	 systems.
 	 */
 	nswbuf_raw = nbuf * 2;
-	swbuf_raw = (void *)kmem_alloc(&kernel_map,
-				round_page(nswbuf_raw * sizeof(struct buf)));
+	swbuf_raw = (void *)kmem_alloc3(&kernel_map,
+				round_page(nswbuf_raw * sizeof(struct buf)),
+				KM_NOTLBSYNC);
+	smp_invltlb();
 	bp = swbuf_raw;
 	for (i = 0; i < nswbuf_raw; ++i, ++bp) {
 		BUF_LOCKINIT(bp);

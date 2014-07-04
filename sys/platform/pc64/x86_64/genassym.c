@@ -244,6 +244,8 @@ ASSYM(CPULOCK_EXCL, CPULOCK_EXCL);
 ASSYM(CPULOCK_INCR, CPULOCK_INCR);
 ASSYM(CPULOCK_CNTMASK, CPULOCK_CNTMASK);
 
+ASSYM(CPUMASK_ELEMENTS, CPUMASK_ELEMENTS);
+
 ASSYM(IOAPIC_IRQI_ADDR, offsetof(struct ioapic_irqinfo, io_addr));
 ASSYM(IOAPIC_IRQI_IDX, offsetof(struct ioapic_irqinfo, io_idx));
 ASSYM(IOAPIC_IRQI_FLAGS, offsetof(struct ioapic_irqinfo, io_flags));

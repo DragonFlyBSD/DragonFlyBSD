@@ -87,8 +87,13 @@
 /*
  * Use SMP_MAXCPU instead of MAXCPU for structures that are intended to
  * remain compatible between UP and SMP builds.
+ *
+ * WARNING!  CPUMASK macros in include/types.h must also be adjusted,
+ *	     as well as any assembly.  Be sure that CPUMASK_ELEMENTS
+ *	     is always correct so incompatible assembly #error's out
+ *	     during the kernel compile.
  */
-#define SMP_MAXCPU	64
+#define SMP_MAXCPU	256
 #define MAXCPU		SMP_MAXCPU
 
 #define ALIGNBYTES	_ALIGNBYTES

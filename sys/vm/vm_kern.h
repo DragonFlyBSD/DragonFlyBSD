@@ -81,6 +81,7 @@
 #define KM_PAGEABLE	0x0001
 #define KM_KRESERVE	0x0002
 #define KM_STACK	0x0004
+#define KM_NOTLBSYNC	0x0008
 
 /* Kernel memory management definitions. */
 extern struct vm_map buffer_map;

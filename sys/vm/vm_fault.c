@@ -278,7 +278,9 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	struct lwp *lp;
 	int growstack;
 	int retry = 0;
+	int inherit_prot;
 
+	inherit_prot = fault_type & VM_PROT_NOSYNC;
 	vm_page_pcpu_cache();
 	fs.hardfault = 0;
 	fs.fault_flags = fault_flags;
@@ -524,7 +526,8 @@ RetryFault:
 	 */
 	KKASSERT(fs.lookup_still_valid == TRUE);
 	vm_page_flag_set(fs.m, PG_REFERENCED);
-	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot, fs.wired, fs.entry);
+	pmap_enter(fs.map->pmap, vaddr, fs.m, fs.prot | inherit_prot,
+		   fs.wired, fs.entry);
 	mycpu->gd_cnt.v_vm_faults++;
 	if (curthread->td_lwp)
 		++curthread->td_lwp->lwp_ru.ru_minflt;
@@ -1952,7 +1955,8 @@ vm_fault_quick_hold_pages(vm_map_t map, vm_offset_t addr, vm_size_t len,
  * No requirements.
  */
 int
-vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
+vm_fault_wire(vm_map_t map, vm_map_entry_t entry,
+	      boolean_t user_wire, int kmflags)
 {
 	boolean_t fictitious;
 	vm_offset_t start;
@@ -1962,8 +1966,20 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
 	vm_page_t m;
 	pmap_t pmap;
 	int rv;
+	int wire_prot;
+	int fault_flags;
 
 	lwkt_gettoken(&map->token);
+
+	if (user_wire) {
+		wire_prot = VM_PROT_READ;
+		fault_flags = VM_FAULT_USER_WIRE;
+	} else {
+		wire_prot = VM_PROT_READ | VM_PROT_WRITE;
+		fault_flags = VM_FAULT_CHANGE_WIRING;
+	}
+	if (kmflags & KM_NOTLBSYNC)
+		wire_prot |= VM_PROT_NOSYNC;
 
 	pmap = vm_map_pmap(map);
 	start = entry->start;
@@ -1981,13 +1997,7 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
 	 * map.
 	 */
 	for (va = start; va < end; va += PAGE_SIZE) {
-		if (user_wire) {
-			rv = vm_fault(map, va, VM_PROT_READ, 
-					VM_FAULT_USER_WIRE);
-		} else {
-			rv = vm_fault(map, va, VM_PROT_READ|VM_PROT_WRITE,
-					VM_FAULT_CHANGE_WIRING);
-		}
+		rv = vm_fault(map, va, wire_prot, fault_flags);
 		if (rv) {
 			while (va > start) {
 				va -= PAGE_SIZE;

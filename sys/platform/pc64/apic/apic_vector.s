@@ -223,8 +223,6 @@ Xcpustop:
 	addq	%rax, %rdi
 	call	CNAME(savectx)		/* Save process context */
 
-	movslq	PCPU(cpuid), %rax
-
 	/*
 	 * Indicate that we have stopped and loop waiting for permission
 	 * to start again.  We must still process IPI events while in a
@@ -233,24 +231,58 @@ Xcpustop:
 	 * Interrupts must remain enabled for non-IPI'd per-cpu interrupts
 	 * (e.g. Xtimer, Xinvltlb).
 	 */
-	MPLOCKED
-	btsq	%rax, stopped_cpus	/* stopped_cpus |= (1<<id) */
+#if CPUMASK_ELEMENTS != 4
+#error "assembly incompatible with cpumask_t"
+#endif
+	movq	PCPU(cpumask)+0,%rax	/* stopped_cpus |= 1 << cpuid */
+	MPLOCKED orq %rax, stopped_cpus+0
+	movq	PCPU(cpumask)+8,%rax
+	MPLOCKED orq %rax, stopped_cpus+8
+	movq	PCPU(cpumask)+16,%rax
+	MPLOCKED orq %rax, stopped_cpus+16
+	movq	PCPU(cpumask)+24,%rax
+	MPLOCKED orq %rax, stopped_cpus+24
 	sti
 1:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
-	pushq	%rax
 	call	lwkt_smp_stopped
-	popq	%rax
 	pause
-	btq	%rax, started_cpus	/* while (!(started_cpus & (1<<id))) */
-	jnc	1b
 
-	MPLOCKED
-	btrq	%rax, started_cpus	/* started_cpus &= ~(1<<id) */
-	MPLOCKED
-	btrq	%rax, stopped_cpus	/* stopped_cpus &= ~(1<<id) */
+	subq	%rdi,%rdi
+	movq	started_cpus+0,%rax	/* while (!(started_cpus & (1<<id))) */
+	andq	PCPU(cpumask)+0,%rax
+	orq	%rax,%rdi
+	movq	started_cpus+8,%rax
+	andq	PCPU(cpumask)+8,%rax
+	orq	%rax,%rdi
+	movq	started_cpus+16,%rax
+	andq	PCPU(cpumask)+16,%rax
+	orq	%rax,%rdi
+	movq	started_cpus+24,%rax
+	andq	PCPU(cpumask)+24,%rax
+	orq	%rax,%rdi
+	testq	%rdi,%rdi
+	jz	1b
 
-	testq	%rax, %rax
+	movq	PCPU(other_cpus)+0,%rax	/* started_cpus &= ~(1 << cpuid) */
+	MPLOCKED andq %rax, started_cpus+0
+	movq	PCPU(other_cpus)+8,%rax
+	MPLOCKED andq %rax, started_cpus+8
+	movq	PCPU(other_cpus)+16,%rax
+	MPLOCKED andq %rax, started_cpus+16
+	movq	PCPU(other_cpus)+24,%rax
+	MPLOCKED andq %rax, started_cpus+24
+
+	movq	PCPU(other_cpus)+0,%rax	/* stopped_cpus &= ~(1 << cpuid) */
+	MPLOCKED andq %rax, stopped_cpus+0
+	movq	PCPU(other_cpus)+8,%rax
+	MPLOCKED andq %rax, stopped_cpus+8
+	movq	PCPU(other_cpus)+16,%rax
+	MPLOCKED andq %rax, stopped_cpus+16
+	movq	PCPU(other_cpus)+24,%rax
+	MPLOCKED andq %rax, stopped_cpus+24
+
+	cmpl	$0,PCPU(cpuid)
 	jnz	2f
 
 	movq	CNAME(cpustop_restartfunc), %rax
@@ -535,11 +567,20 @@ MCOUNT_LABEL(eintr)
 
 	.data
 
+#if CPUMASK_ELEMENTS != 4
+#error "assembly incompatible with cpumask_t"
+#endif
 /* variables used by stop_cpus()/restart_cpus()/Xcpustop */
 	.globl stopped_cpus, started_cpus
 stopped_cpus:
 	.quad	0
+	.quad	0
+	.quad	0
+	.quad	0
 started_cpus:
+	.quad	0
+	.quad	0
+	.quad	0
 	.quad	0
 
 	.globl CNAME(cpustop_restartfunc)

@@ -147,8 +147,14 @@ ENTRY(cpu_heavy_switch)
 	cmpq	LWP_VMSPACE(%r13),%rcx		/* same vmspace? */
 	je	2f
 1:
-	movslq	PCPU(cpuid), %rax
-	MPLOCKED btrq	%rax, VM_PMAP+PM_ACTIVE(%rcx)
+	movq	PCPU(other_cpus)+0, %rax
+	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+0(%rcx)
+	movq	PCPU(other_cpus)+8, %rax
+	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+8(%rcx)
+	movq	PCPU(other_cpus)+16, %rax
+	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+16(%rcx)
+	movq	PCPU(other_cpus)+24, %rax
+	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+24(%rcx)
 2:
 
 	/*
@@ -252,9 +258,15 @@ ENTRY(cpu_exit_switch)
 	movq	TD_LWP(%rbx),%rcx
 	testq	%rcx,%rcx
 	jz	2f
-	movslq	PCPU(cpuid), %rax
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	MPLOCKED btrq	%rax, VM_PMAP+PM_ACTIVE(%rcx)
+	movq	PCPU(other_cpus)+0, %rax
+	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+0(%rcx)
+	movq	PCPU(other_cpus)+8, %rax
+	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+8(%rcx)
+	movq	PCPU(other_cpus)+16, %rax
+	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+16(%rcx)
+	movq	PCPU(other_cpus)+24, %rax
+	MPLOCKED andq	%rax, VM_PMAP+PM_ACTIVE+24(%rcx)
 2:
 	/*
 	 * Switch to the next thread.  RET into the restore function, which
@@ -309,8 +321,16 @@ ENTRY(cpu_heavy_restore)
 	 */
 	movq	TD_LWP(%rax),%rcx
 	movq	LWP_VMSPACE(%rcx), %rcx		/* RCX = vmspace */
-	movq    PCPU(cpumask),%rsi              /* new contents */
-	MPLOCKED orq %rsi, VM_PMAP+PM_ACTIVE(%rcx)
+
+	movq	PCPU(other_cpus)+0, %rsi
+	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE+0(%rcx)
+	movq	PCPU(other_cpus)+8, %rsi
+	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE+8(%rcx)
+	movq	PCPU(other_cpus)+16, %rsi
+	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE+16(%rcx)
+	movq	PCPU(other_cpus)+24, %rsi
+	MPLOCKED orq	%rsi, VM_PMAP+PM_ACTIVE+24(%rcx)
+
 	movl    VM_PMAP+PM_ACTIVE_LOCK(%rcx),%esi
 	testl	$CPULOCK_EXCL,%esi
 	jz	1f

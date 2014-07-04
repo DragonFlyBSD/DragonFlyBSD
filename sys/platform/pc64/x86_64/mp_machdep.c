@@ -518,12 +518,15 @@ start_all_aps(u_int boot_addr)
 	tsc_offsets[0] = 0;
 	rel_mplock();
 	while (CPUMASK_CMPMASKNEQ(smp_lapic_mask, smp_startup_mask)) {
+		cpu_pause();
 		cpu_lfence();
 		if (cpu_feature & CPUID_TSC)
 			tsc0_offset = rdtsc();
 	}
-	while (try_mplock() == 0)
-		;
+	while (try_mplock() == 0) {
+		cpu_pause();
+		cpu_lfence();
+	}
 
 	/* number of APs actually started */
 	return ncpus - 1;
@@ -1009,10 +1012,14 @@ ap_init(void)
 	 * from improperly caching mp_finish_lapic, and the cpu from improperly
 	 * caching it.
 	 */
-	while (mp_finish_lapic == 0)
+	while (mp_finish_lapic == 0) {
+		cpu_pause();
 		cpu_lfence();
-	while (try_mplock() == 0)
-		;
+	}
+	while (try_mplock() == 0) {
+		cpu_pause();
+		cpu_lfence();
+	}
 
 	if (cpu_feature & CPUID_TSC) {
 		/*
@@ -1063,10 +1070,14 @@ ap_init(void)
 	 * from improperly caching mp_finish, and the cpu from improperly
 	 * caching it.
 	 */
-	while (mp_finish == 0)
+	while (mp_finish == 0) {
+		cpu_pause();
 		cpu_lfence();
-	while (try_mplock() == 0)
-		;
+	}
+	while (try_mplock() == 0) {
+		cpu_pause();
+		cpu_lfence();
+	}
 
 	/* BSP may have changed PTD while we're waiting for the lock */
 	cpu_invltlb();
@@ -1108,6 +1119,16 @@ ap_init(void)
 	 */
 	rel_mplock();
 	KKASSERT((curthread->td_flags & TDF_RUNQ) == 0);
+
+#if 0
+	/*
+	 * This is a qemu aid.  If we go into the normal idle loop qemu
+	 */
+	while (mp_finish != 2) {
+		;
+		/*__asm__ __volatile("hlt");*/
+	}
+#endif
 }
 
 /*
@@ -1121,12 +1142,17 @@ ap_finish(void)
 	if (bootverbose)
 		kprintf("Finish MP startup\n");
 	rel_mplock();
+
 	while (CPUMASK_CMPMASKNEQ(smp_active_mask, smp_startup_mask)) {
-		cpu_lfence();
 		cpu_pause();
+		cpu_lfence();
 	}
-	while (try_mplock() == 0)
-		;
+	while (try_mplock() == 0) {
+		cpu_pause();
+		cpu_lfence();
+	}
+	mp_finish = 2;
+
 	if (bootverbose) {
 		kprintf("Active CPU Mask: %016jx\n",
 			(uintmax_t)CPUMASK_LOWMASK(smp_active_mask));

@@ -2180,7 +2180,7 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 			 */
 			save_start = entry->start;
 			save_end = entry->end;
-			rv = vm_fault_wire(map, entry, TRUE);
+			rv = vm_fault_wire(map, entry, TRUE, 0);
 			if (rv) {
 				CLIP_CHECK_BACK(entry, save_start);
 				for (;;) {
@@ -2405,7 +2405,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 			vm_offset_t save_end = entry->end;
 
 			if (entry->wired_count == 1)
-				rv = vm_fault_wire(map, entry, FALSE);
+				rv = vm_fault_wire(map, entry, FALSE, kmflags);
 			if (rv) {
 				CLIP_CHECK_BACK(entry, save_start);
 				for (;;) {
