@@ -81,6 +81,7 @@ ASSYM(LWP_VMSPACE, offsetof(struct lwp, lwp_vmspace));
 ASSYM(GD_CURTHREAD, offsetof(struct mdglobaldata, mi.gd_curthread));
 ASSYM(GD_CPUID, offsetof(struct mdglobaldata, mi.gd_cpuid));
 ASSYM(GD_CPUMASK, offsetof(struct mdglobaldata, mi.gd_cpumask));
+ASSYM(GD_OTHER_CPUS, offsetof(struct mdglobaldata, mi.gd_other_cpus));
 
 ASSYM(CPULOCK_EXCLBIT, CPULOCK_EXCLBIT);
 ASSYM(CPULOCK_EXCL, CPULOCK_EXCL);
