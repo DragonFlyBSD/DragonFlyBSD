@@ -47,13 +47,13 @@ struct  intel_ring_buffer {
 		BCS,
 	} id;
 #define I915_NUM_RINGS 3
-	uint32_t	mmio_base;
-	void		*virtual_start;
+	u32		mmio_base;
+	void		__iomem *virtual_start;
 	struct		drm_device *dev;
 	struct		drm_i915_gem_object *obj;
 
-	uint32_t	head;
-	uint32_t	tail;
+	u32		head;
+	u32		tail;
 	int		space;
 	int		size;
 	int		effective_size;
@@ -70,20 +70,21 @@ struct  intel_ring_buffer {
 	u32		last_retired_head;
 
 	struct lock	irq_lock;
-	u32		irq_refcount;
 	u32		irq_mask;
+	u32		irq_refcount;		/* protected by dev_priv->irq_lock */
+	u32		irq_enable_mask;	/* bitmask to enable ring interrupt */
 	u32		trace_irq_seqno;
 	u32		sync_seqno[I915_NUM_RINGS-1];
-	bool		(*irq_get)(struct intel_ring_buffer *ring);
+	bool __must_check (*irq_get)(struct intel_ring_buffer *ring);
 	void		(*irq_put)(struct intel_ring_buffer *ring);
 
 	int		(*init)(struct intel_ring_buffer *ring);
 
 	void		(*write_tail)(struct intel_ring_buffer *ring,
-				      uint32_t value);
-	int		(*flush)(struct intel_ring_buffer *ring,
-				  uint32_t	invalidate_domains,
-				  uint32_t	flush_domains);
+				      u32 value);
+	int __must_check (*flush)(struct intel_ring_buffer *ring,
+				  u32	invalidate_domains,
+				  u32	flush_domains);
 	int		(*add_request)(struct intel_ring_buffer *ring,
 				       uint32_t *seqno);
 	/* Some chipsets are not quite as coherent as advertised and need
@@ -96,14 +97,15 @@ struct  intel_ring_buffer {
 				     bool lazy_coherency);
 	int		(*dispatch_execbuffer)(struct intel_ring_buffer *ring,
 					       uint32_t offset, uint32_t length);
+#define I915_DISPATCH_SECURE 0x1
+#define I915_DISPATCH_PINNED 0x2
 	void		(*cleanup)(struct intel_ring_buffer *ring);
 	int		(*sync_to)(struct intel_ring_buffer *ring,
 				   struct intel_ring_buffer *to,
 				   u32 seqno);
- 
+
 	u32		semaphore_register[3]; /*our mbox written by others */
 	u32		signal_mbox[2]; /* mboxes this ring signals to */
-
 	/**
 	 * List of objects currently involved in rendering from the
 	 * ringbuffer.
@@ -122,24 +124,24 @@ struct  intel_ring_buffer {
 	 */
 	struct list_head request_list;
 
-	/**
-	 * List of objects currently pending a GPU write flush.
-	 *
-	 * All elements on this list will belong to either the
-	 * active_list or flushing_list, last_rendering_seqno can
-	 * be used to differentiate between the two elements.
-	 */
 	struct list_head gpu_write_list;
 
 	/**
 	 * Do we have some not yet emitted requests outstanding?
 	 */
-	uint32_t outstanding_lazy_request;
+	u32 outstanding_lazy_request;
 	bool gpu_caches_dirty;
 
 	wait_queue_head_t irq_queue;
 
 	drm_local_map_t map;
+
+	/**
+	 * Do an explicit TLB flush before MI_SET_CONTEXT
+	 */
+	bool itlb_before_ctx_switch;
+	struct i915_hw_context *default_context;
+	struct drm_i915_gem_object *last_context_obj;
 
 	void *private;
 };

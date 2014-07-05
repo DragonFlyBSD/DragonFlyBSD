@@ -2705,6 +2705,38 @@ i915_gem_idle(struct drm_device *dev)
 	return (ret);
 }
 
+void i915_gem_l3_remap(struct drm_device *dev)
+{
+	drm_i915_private_t *dev_priv = dev->dev_private;
+	u32 misccpctl;
+	int i;
+
+	if (!HAS_L3_GPU_CACHE(dev))
+		return;
+
+	if (!dev_priv->l3_parity.remap_info)
+		return;
+
+	misccpctl = I915_READ(GEN7_MISCCPCTL);
+	I915_WRITE(GEN7_MISCCPCTL, misccpctl & ~GEN7_DOP_CLOCK_GATE_ENABLE);
+	POSTING_READ(GEN7_MISCCPCTL);
+
+	for (i = 0; i < GEN7_L3LOG_SIZE; i += 4) {
+		u32 remap = I915_READ(GEN7_L3LOG_BASE + i);
+		if (remap && remap != dev_priv->l3_parity.remap_info[i/4])
+			DRM_DEBUG("0x%x was already programmed to %x\n",
+				  GEN7_L3LOG_BASE + i, remap);
+		if (remap && !dev_priv->l3_parity.remap_info[i/4])
+			DRM_DEBUG_DRIVER("Clearing remapped register\n");
+		I915_WRITE(GEN7_L3LOG_BASE + i, dev_priv->l3_parity.remap_info[i/4]);
+	}
+
+	/* Make sure all the writes land before disabling dop clock gating */
+	POSTING_READ(GEN7_L3LOG_BASE);
+
+	I915_WRITE(GEN7_MISCCPCTL, misccpctl);
+}
+
 void
 i915_gem_init_swizzling(struct drm_device *dev)
 {
@@ -2729,41 +2761,72 @@ i915_gem_init_swizzling(struct drm_device *dev)
 		I915_WRITE(ARB_MODE, _MASKED_BIT_ENABLE(ARB_MODE_SWIZZLE_IVB));
 }
 
+static bool
+intel_enable_blt(struct drm_device *dev)
+{
+	int revision;
+
+	if (!HAS_BLT(dev))
+		return false;
+
+	/* The blitter was dysfunctional on early prototypes */
+	revision = pci_read_config(dev->dev, PCIR_REVID, 1);
+	if (IS_GEN6(dev) && revision < 8) {
+		DRM_INFO("BLT not supported on this pre-production hardware;"
+			 " graphics performance will be degraded.\n");
+		return false;
+	}
+
+	return true;
+}
+
 int
 i915_gem_init_hw(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv;
+	drm_i915_private_t *dev_priv = dev->dev_private;
 	int ret;
 
-	dev_priv = dev->dev_private;
+	if (IS_HASWELL(dev) && (I915_READ(0x120010) == 1))
+		I915_WRITE(0x9008, I915_READ(0x9008) | 0xf0000);
+
+	i915_gem_l3_remap(dev);
 
 	i915_gem_init_swizzling(dev);
 
 	ret = intel_init_render_ring_buffer(dev);
-	if (ret != 0)
-		return (ret);
+	if (ret)
+		return ret;
 
 	if (HAS_BSD(dev)) {
 		ret = intel_init_bsd_ring_buffer(dev);
-		if (ret != 0)
+		if (ret)
 			goto cleanup_render_ring;
 	}
 
-	if (HAS_BLT(dev)) {
+	if (intel_enable_blt(dev)) {
 		ret = intel_init_blt_ring_buffer(dev);
-		if (ret != 0)
+		if (ret)
 			goto cleanup_bsd_ring;
 	}
 
 	dev_priv->next_seqno = 1;
+
+	/*
+	 * XXX: There was some w/a described somewhere suggesting loading
+	 * contexts before PPGTT.
+	 */
+#if 0	/* XXX: HW context support */
+	i915_gem_context_init(dev);
+#endif
 	i915_gem_init_ppgtt(dev);
-	return (0);
+
+	return 0;
 
 cleanup_bsd_ring:
 	intel_cleanup_ring_buffer(&dev_priv->ring[VCS]);
 cleanup_render_ring:
 	intel_cleanup_ring_buffer(&dev_priv->ring[RCS]);
-	return (ret);
+	return ret;
 }
 
 void

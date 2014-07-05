@@ -1153,6 +1153,7 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 	u32 exec_start, exec_len;
 	u32 seqno;
 	u32 mask;
+	u32 flags;
 	int ret, mode, i;
 
 	if (!i915_gem_check_execbuffer(args)) {
@@ -1164,8 +1165,15 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 		return (0);
 
 	ret = validate_exec_list(exec, args->buffer_count, &relocs_ma);
-	if (ret != 0)
-		goto pre_struct_lock_err;
+	if (ret)
+		return ret;
+
+	flags = 0;
+	if (args->flags & I915_EXEC_SECURE) {
+		flags |= I915_DISPATCH_SECURE;
+	}
+	if (args->flags & I915_EXEC_IS_PINNED)
+		flags |= I915_DISPATCH_PINNED;
 
 	switch (args->flags & I915_EXEC_RING_MASK) {
 	case I915_EXEC_DEFAULT:
@@ -1322,6 +1330,13 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 	}
 	batch_obj->base.pending_read_domains |= I915_GEM_DOMAIN_COMMAND;
 
+	/* snb/ivb/vlv conflate the "batch in ppgtt" bit with the "non-secure
+	 * batch" bit. Hence we need to pin secure batches into the global gtt.
+	 * hsw should have this fixed, but let's be paranoid and do it
+	 * unconditionally for now. */
+	if (flags & I915_DISPATCH_SECURE && !batch_obj->has_global_gtt_mapping)
+		i915_gem_gtt_bind_object(batch_obj, batch_obj->cache_level);
+
 	ret = i915_gem_execbuffer_move_to_gpu(ring, &objects);
 	if (ret)
 		goto err;
@@ -1377,13 +1392,14 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 			if (ret)
 				goto err;
 
-			ret = ring->dispatch_execbuffer(ring, exec_start,
-			    exec_len);
+			ret = ring->dispatch_execbuffer(ring,
+							exec_start, exec_len);
 			if (ret)
 				goto err;
 		}
 	} else {
-		ret = ring->dispatch_execbuffer(ring, exec_start, exec_len);
+		ret = ring->dispatch_execbuffer(ring,
+						exec_start, exec_len);
 		if (ret)
 			goto err;
 	}

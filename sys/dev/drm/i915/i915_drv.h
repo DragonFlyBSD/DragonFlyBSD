@@ -1456,6 +1456,7 @@ int i915_gem_object_wait_rendering(struct drm_i915_gem_object *obj);
 int i915_gem_object_put_fence(struct drm_i915_gem_object *obj);
 int i915_gem_idle(struct drm_device *dev);
 int i915_gem_init_hw(struct drm_device *dev);
+void i915_gem_l3_remap(struct drm_device *dev);
 void i915_gem_init_swizzling(struct drm_device *dev);
 void i915_gem_init_ppgtt(struct drm_device *dev);
 void i915_gem_cleanup_ringbuffer(struct drm_device *dev);
