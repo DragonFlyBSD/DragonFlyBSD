@@ -16,7 +16,7 @@ SRCS	= \
 	intel_dp.c \
 	intel_fb.c \
 	intel_hdmi.c \
-	intel_iic.c \
+	intel_i2c.c \
 	intel_lvds.c \
 	intel_modes.c \
 	intel_opregion.c \
