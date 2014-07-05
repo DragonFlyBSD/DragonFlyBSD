@@ -1358,8 +1358,6 @@ extern void i915_destroy_error_state(struct drm_device *dev);
 #endif
 
 /* i915_gem.c */
-int i915_gem_create(struct drm_file *file, struct drm_device *dev, uint64_t size,
-			uint32_t *handle_p);
 int i915_gem_init_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
 int i915_gem_create_ioctl(struct drm_device *dev, void *data,
@@ -1431,6 +1429,8 @@ i915_gem_object_unpin_fence(struct drm_i915_gem_object *obj)
 
 void i915_gem_retire_requests(struct drm_device *dev);
 void i915_gem_retire_requests_ring(struct intel_ring_buffer *ring);
+int __must_check i915_gem_check_wedge(struct drm_i915_private *dev_priv,
+				      bool interruptible);
 
 void i915_gem_clflush_object(struct drm_i915_gem_object *obj);
 struct drm_i915_gem_object *i915_gem_alloc_object(struct drm_device *dev,

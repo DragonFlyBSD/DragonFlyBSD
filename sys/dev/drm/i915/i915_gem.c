@@ -228,7 +228,7 @@ i915_gem_get_aperture_ioctl(struct drm_device *dev, void *data,
 	return (0);
 }
 
-int
+static int
 i915_gem_create(struct drm_file *file, struct drm_device *dev, uint64_t size,
     uint32_t *handle_p)
 {
@@ -332,6 +332,34 @@ i915_gem_pwrite_ioctl(struct drm_device *dev, void *data,
 	    args->offset, UIO_WRITE, file));
 }
 
+int
+i915_gem_check_wedge(struct drm_i915_private *dev_priv,
+		     bool interruptible)
+{
+	if (atomic_read(&dev_priv->mm.wedged)) {
+		struct completion *x = &dev_priv->error_completion;
+		bool recovery_complete;
+
+		/* Give the error handler a chance to run. */
+		spin_lock(&x->wait.lock);
+		recovery_complete = x->done > 0;
+		spin_unlock(&x->wait.lock);
+
+		/* Non-interruptible callers can't handle -EAGAIN, hence return
+		 * -EIO unconditionally for these. */
+		if (!interruptible)
+			return -EIO;
+
+		/* Recovery complete, but still wedged means reset failure. */
+		if (recovery_complete)
+			return -EIO;
+
+		return -EAGAIN;
+	}
+
+	return 0;
+}
+
 /**
  * Waits for a sequence number to be signaled, and cleans up the
  * request and object lists appropriately for that event.
@@ -339,26 +367,20 @@ i915_gem_pwrite_ioctl(struct drm_device *dev, void *data,
 int
 i915_wait_seqno(struct intel_ring_buffer *ring, uint32_t seqno)
 {
-	drm_i915_private_t *dev_priv;
+	struct drm_device *dev = ring->dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	bool interruptible = dev_priv->mm.interruptible;
 	struct drm_i915_gem_request *request;
 	uint32_t ier;
 	int flags, ret;
-	bool recovery_complete;
 	bool do_retire = true;
 
-	KASSERT(seqno != 0, ("Zero seqno"));
+	DRM_LOCK_ASSERT(dev);
+	BUG_ON(seqno == 0);
 
-	dev_priv = ring->dev->dev_private;
-	ret = 0;
-
-	if (atomic_read(&dev_priv->mm.wedged) != 0) {
-		struct completion *x = &dev_priv->error_completion;
-		spin_lock(&x->wait.lock);
-		/* Give the error handler a chance to run. */
-		recovery_complete = x->done > 0;
-		spin_unlock(&x->wait.lock);
-		return (recovery_complete ? -EIO : -EAGAIN);
-	}
+	ret = i915_gem_check_wedge(dev_priv, interruptible);
+	if (ret)
+		return ret;
 
 	if (seqno == ring->outstanding_lazy_request) {
 		request = kmalloc(sizeof(*request), DRM_I915_GEM,

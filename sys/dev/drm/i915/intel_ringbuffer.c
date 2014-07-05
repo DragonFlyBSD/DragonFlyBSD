@@ -1190,22 +1190,20 @@ static int ring_wait_for_space(struct intel_ring_buffer *ring, int n)
 {
 	struct drm_device *dev = ring->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	int end;
+	unsigned long end;
 	int ret;
 
 	ret = intel_ring_wait_request(ring, n);
 	if (ret != -ENOSPC)
 		return ret;
 
-	if (drm_core_check_feature(dev, DRIVER_GEM))
-		/* With GEM the hangcheck timer should kick us out of the loop,
-		 * leaving it early runs the risk of corrupting GEM state (due
-		 * to running on almost untested codepaths). But on resume
-		 * timers don't work yet, so prevent a complete hang in that
-		 * case by choosing an insanely large timeout. */
-		end = ticks + hz * 60;
-	else
-		end = ticks + hz * 3;
+	/* With GEM the hangcheck timer should kick us out of the loop,
+	 * leaving it early runs the risk of corrupting GEM state (due
+	 * to running on almost untested codepaths). But on resume
+	 * timers don't work yet, so prevent a complete hang in that
+	 * case by choosing an insanely large timeout. */
+	end = ticks + 60 * hz;
+
 	do {
 		ring->head = I915_READ_HEAD(ring);
 		ring->space = ring_space(ring);
@@ -1225,9 +1223,10 @@ static int ring_wait_for_space(struct intel_ring_buffer *ring, int n)
 #endif
 
 		DELAY(1000);
-		if (atomic_read(&dev_priv->mm.wedged) != 0) {
-			return -EAGAIN;
-		}
+
+		ret = i915_gem_check_wedge(dev_priv, dev_priv->mm.interruptible);
+		if (ret)
+			return ret;
 	} while (!time_after(ticks, end));
 	return -EBUSY;
 }
@@ -1266,12 +1265,13 @@ int intel_ring_begin(struct intel_ring_buffer *ring,
 	int n = 4*num_dwords;
 	int ret;
 
-	if (atomic_read(&dev_priv->mm.wedged))
-		return -EIO;
+	ret = i915_gem_check_wedge(dev_priv, dev_priv->mm.interruptible);
+	if (ret)
+		return ret;
 
-	if (ring->tail + n > ring->effective_size) {
+	if (unlikely(ring->tail + n > ring->effective_size)) {
 		ret = intel_wrap_ring_buffer(ring);
-		if (ret != 0)
+		if (unlikely(ret))
 			return ret;
 	}
 
