@@ -1,6 +1,6 @@
 KMOD	= i915kms
 SRCS	= \
-	i915_debug.c \
+	i915_debugfs.c \
 	i915_dma.c \
 	i915_drv.c \
 	i915_gem.c \
