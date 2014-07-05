@@ -234,28 +234,28 @@ KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_select_curproc, 0,
 KTR_INFO(KTR_USCHED_BSD4, usched, batchy_test_false, 0,
     "USCHED_BSD4(batchy_looser_pri_test false: pid %d, "
     "cpuid %d, verify_mask %lu)",
-    pid_t pid, int cpuid, cpumask_t mask);
+    pid_t pid, int cpuid, unsigned long mask);
 KTR_INFO(KTR_USCHED_BSD4, usched, batchy_test_true, 0,
     "USCHED_BSD4(batchy_looser_pri_test true: pid %d, "
     "cpuid %d, verify_mask %lu)",
-    pid_t pid, int cpuid, cpumask_t mask);
+    pid_t pid, int cpuid, unsigned long mask);
 
 KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_setrunqueue_fc_smt, 0,
     "USCHED_BSD4(bsd4_setrunqueue free cpus smt: pid %d, cpuid %d, "
     "mask %lu, curr_cpuid %d)",
-    pid_t pid, int cpuid, cpumask_t mask, int curr);
+    pid_t pid, int cpuid, unsigned long mask, int curr);
 KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_setrunqueue_fc_non_smt, 0,
     "USCHED_BSD4(bsd4_setrunqueue free cpus check non_smt: pid %d, "
     "cpuid %d, mask %lu, curr_cpuid %d)",
-    pid_t pid, int cpuid, cpumask_t mask, int curr);
+    pid_t pid, int cpuid, unsigned long mask, int curr);
 KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_setrunqueue_rc, 0,
     "USCHED_BSD4(bsd4_setrunqueue running cpus check: pid %d, "
     "cpuid %d, mask %lu, curr_cpuid %d)",
-    pid_t pid, int cpuid, cpumask_t mask, int curr);
+    pid_t pid, int cpuid, unsigned long mask, int curr);
 KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_setrunqueue_found, 0,
     "USCHED_BSD4(bsd4_setrunqueue found cpu: pid %d, cpuid %d, "
     "mask %lu, found_cpuid %d, curr_cpuid %d)",
-    pid_t pid, int cpuid, cpumask_t mask, int found_cpuid, int curr);
+    pid_t pid, int cpuid, unsigned long mask, int found_cpuid, int curr);
 KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_setrunqueue_not_found, 0,
     "USCHED_BSD4(bsd4_setrunqueue not found cpu: pid %d, cpuid %d, "
     "try_cpuid %d, curr_cpuid %d)",
@@ -263,7 +263,7 @@ KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_setrunqueue_not_found, 0,
 KTR_INFO(KTR_USCHED_BSD4, usched, bsd4_setrunqueue_found_best_cpuid, 0,
     "USCHED_BSD4(bsd4_setrunqueue found cpu: pid %d, cpuid %d, "
     "mask %lu, found_cpuid %d, curr_cpuid %d)",
-    pid_t pid, int cpuid, cpumask_t mask, int found_cpuid, int curr);
+    pid_t pid, int cpuid, unsigned long mask, int found_cpuid, int curr);
 
 KTR_INFO(KTR_USCHED_BSD4, usched, chooseproc, 0,
     "USCHED_BSD4(chooseproc: pid %d, old_cpuid %d, curr_cpuid %d)",
@@ -274,11 +274,11 @@ KTR_INFO(KTR_USCHED_BSD4, usched, chooseproc_cc, 0,
 KTR_INFO(KTR_USCHED_BSD4, usched, chooseproc_cc_not_good, 0,
     "USCHED_BSD4(chooseproc_cc not good: pid %d, old_cpumask %lu, "
     "sibling_mask %lu, curr_cpumask %lu)",
-    pid_t pid, cpumask_t old_cpumask, cpumask_t sibling_mask, cpumask_t curr);
+    pid_t pid, unsigned long old_cpumask, unsigned long sibling_mask, unsigned long curr);
 KTR_INFO(KTR_USCHED_BSD4, usched, chooseproc_cc_elected, 0,
     "USCHED_BSD4(chooseproc_cc elected: pid %d, old_cpumask %lu, "
     "sibling_mask %lu, curr_cpumask: %lu)",
-    pid_t pid, cpumask_t old_cpumask, cpumask_t sibling_mask, cpumask_t curr);
+    pid_t pid, unsigned long old_cpumask, unsigned long sibling_mask, unsigned long curr);
 
 KTR_INFO(KTR_USCHED_BSD4, usched, sched_thread_no_process, 0,
     "USCHED_BSD4(sched_thread %d no process scheduled: pid %d, old_cpuid %d)",
@@ -288,7 +288,7 @@ KTR_INFO(KTR_USCHED_BSD4, usched, sched_thread_process, 0,
     int id, pid_t pid, int cpuid);
 KTR_INFO(KTR_USCHED_BSD4, usched, sched_thread_no_process_found, 0,
     "USCHED_BSD4(sched_thread %d no process found; tmpmask %lu)",
-    int id, cpumask_t tmpmask);
+    int id, unsigned long tmpmask);
 
 /*
  * Initialize the run queues at boot time.
@@ -587,7 +587,7 @@ bsd4_batchy_looser_pri_test(struct lwp* lp)
 			    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 			    lp->lwp_proc->p_pid,
 			    lp->lwp_thread->td_gd->gd_cpuid,
-			    (unsigned long)mask);
+			    (unsigned long)CPUMASK_LOWMASK(mask));
 
 			return 0;
 		}
@@ -598,7 +598,7 @@ bsd4_batchy_looser_pri_test(struct lwp* lp)
 	    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 	    lp->lwp_proc->p_pid,
 	    lp->lwp_thread->td_gd->gd_cpuid,
-	    (unsigned long)mask);
+	    (unsigned long)CPUMASK_LOWMASK(mask));
 
 	return 1;
 }
@@ -700,7 +700,7 @@ bsd4_setrunqueue(struct lwp *lp)
 		    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 		    lp->lwp_proc->p_pid,
 		    lp->lwp_thread->td_gd->gd_cpuid,
-		    (unsigned long)mask,
+		    (unsigned long)CPUMASK_LOWMASK(mask),
 		    mycpu->gd_cpuid);
 
 		while (CPUMASK_TESTNZERO(mask)) {
@@ -723,7 +723,7 @@ bsd4_setrunqueue(struct lwp *lp)
 					    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 					    lp->lwp_proc->p_pid,
 					    lp->lwp_thread->td_gd->gd_cpuid,
-					    (unsigned long)mask,
+					    (unsigned long)CPUMASK_LOWMASK(mask),
 					    cpuid,
 					    mycpu->gd_cpuid);
 
@@ -754,7 +754,7 @@ bsd4_setrunqueue(struct lwp *lp)
 			    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 			    lp->lwp_proc->p_pid,
 			    lp->lwp_thread->td_gd->gd_cpuid,
-			    (unsigned long)mask,
+			    (unsigned long)CPUMASK_LOWMASK(mask),
 			    cpuid,
 			    mycpu->gd_cpuid);
 
@@ -773,7 +773,7 @@ bsd4_setrunqueue(struct lwp *lp)
 		    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 		    lp->lwp_proc->p_pid,
 		    lp->lwp_thread->td_gd->gd_cpuid,
-		    (unsigned long)mask,
+		    (unsigned long)CPUMASK_LOWMASK(mask),
 		    mycpu->gd_cpuid);
 
 		while (CPUMASK_TESTNZERO(mask)) {
@@ -835,7 +835,7 @@ bsd4_setrunqueue(struct lwp *lp)
 			    lp->lwp_proc->p_pid == usched_bsd4_pid_debug,
 			    lp->lwp_proc->p_pid,
 			    lp->lwp_thread->td_gd->gd_cpuid,
-			    (unsigned long)mask,
+			    (unsigned long)CPUMASK_LOWMASK(mask),
 			    cpuid,
 			    mycpu->gd_cpuid);
 
@@ -1835,7 +1835,7 @@ sched_thread(void *dummy)
 			}
 
 			KTR_LOG(usched_sched_thread_no_process_found,
-				gd->gd_cpuid, (unsigned long)tmpmask);
+				gd->gd_cpuid, (unsigned long)CPUMASK_LOWMASK(tmpmask));
 		}
 	} else {
 		/*
