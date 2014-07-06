@@ -252,8 +252,10 @@ restart:
 		if (sip->subsystem == SI_SPECIAL_DONE)
 			continue;
 
+#if 0
 		if (bootverbose)
 			kprintf("(%08x-%p)\n", sip->subsystem, sip->func);
+#endif
 
 		/* Call function */
 		(*(sip->func))(sip->udata);
