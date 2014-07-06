@@ -1,5 +1,3 @@
-/*	$NetBSD: auth.h,v 1.15 2000/06/02 22:57:55 fvdl Exp $	*/
-
 /*-
  * Copyright (c) 2009, Sun Microsystems, Inc.
  * All rights reserved.
