@@ -174,6 +174,7 @@ static cpumask_t smp_startup_mask = CPUMASK_INITIALIZER_ONLYONE;
 static cpumask_t smp_lapic_mask = CPUMASK_INITIALIZER_ONLYONE;
 /* which cpus are ready for IPIs etc? */
 cpumask_t smp_active_mask = CPUMASK_INITIALIZER_ONLYONE;
+cpumask_t smp_finalize_mask = CPUMASK_INITIALIZER_ONLYONE;
 
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 static u_int	bootMP_size;
@@ -355,6 +356,7 @@ start_all_aps(u_int boot_addr)
 	u_long  mpbioswarmvec;
 	struct mdglobaldata *gd;
 	struct privatespace *ps;
+	size_t ipiq_size;
 
 	POSTCODE(START_ALL_APS_POST);
 
@@ -429,12 +431,13 @@ start_all_aps(u_int boot_addr)
 
 	/* start each AP */
 	for (x = 1; x <= naps; ++x) {
-
 		/* This is a bit verbose, it will go away soon.  */
 
+#if 0
 		/* allocate new private data page(s) */
 		gd = (struct mdglobaldata *)kmem_alloc(&kernel_map, 
 				MDGLOBALDATA_BASEALLOC_SIZE);
+#endif
 
 		gd = &CPU_prvspace[x].mdglobaldata;	/* official location */
 		bzero(gd, sizeof(*gd));
@@ -443,8 +446,9 @@ start_all_aps(u_int boot_addr)
 		/* prime data page for it to use */
 		mi_gdinit(&gd->mi, x);
 		cpu_gdinit(gd, x);
-		gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * (naps + 1));
-		bzero(gd->mi.gd_ipiq, sizeof(lwkt_ipiq) * (naps + 1));
+		ipiq_size = sizeof(struct lwkt_ipiq) * (naps + 1);
+		gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+		bzero(gd->mi.gd_ipiq, ipiq_size);
 
 		/* setup a vector to our boot code */
 		*((volatile u_short *) WARMBOOT_OFF) = WARMBOOT_TARGET;
@@ -455,7 +459,7 @@ start_all_aps(u_int boot_addr)
 		/*
 		 * Setup the AP boot stack
 		 */
-		bootSTK = &ps->idlestack[UPAGES*PAGE_SIZE/2];
+		bootSTK = &ps->idlestack[UPAGES * PAGE_SIZE - PAGE_SIZE];
 		bootAP = x;
 
 		/* attempt to start the Application Processor */
@@ -492,9 +496,10 @@ start_all_aps(u_int boot_addr)
 	/* build our map of 'other' CPUs */
 	mycpu->gd_other_cpus = smp_startup_mask;
 	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
-	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map,
-					    sizeof(lwkt_ipiq) * ncpus);
-	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
+
+	ipiq_size = sizeof(struct lwkt_ipiq) * ncpus;
+	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+	bzero(mycpu->gd_ipiq, ipiq_size);
 
 	/* restore the warmstart vector */
 	*(u_long *) WARMBOOT_OFF = mpbioswarmvec;
@@ -510,13 +515,14 @@ start_all_aps(u_int boot_addr)
 	/*
 	 * Wait all APs to finish initializing LAPIC
 	 */
-	mp_finish_lapic = 1;
 	if (bootverbose)
 		kprintf("SMP: Waiting APs LAPIC initialization\n");
 	if (cpu_feature & CPUID_TSC)
 		tsc0_offset = rdtsc();
 	tsc_offsets[0] = 0;
+	mp_finish_lapic = 1;
 	rel_mplock();
+
 	while (CPUMASK_CMPMASKNEQ(smp_lapic_mask, smp_startup_mask)) {
 		cpu_pause();
 		cpu_lfence();
@@ -1016,10 +1022,12 @@ ap_init(void)
 		cpu_pause();
 		cpu_lfence();
 	}
+#if 0
 	while (try_mplock() == 0) {
 		cpu_pause();
 		cpu_lfence();
 	}
+#endif
 
 	if (cpu_feature & CPUID_TSC) {
 		/*
@@ -1034,7 +1042,7 @@ ap_init(void)
 
 	/* Build our map of 'other' CPUs. */
 	mycpu->gd_other_cpus = smp_startup_mask;
-	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
+	ATOMIC_CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
 
 	/* A quick check from sanity claus */
 	cpu_id = APICID_TO_CPUID((lapic->id & 0xff000000) >> 24);
@@ -1052,11 +1060,13 @@ ap_init(void)
 	lapic_init(FALSE);
 
 	/* LAPIC initialization is done */
-	CPUMASK_ORBIT(smp_lapic_mask, mycpu->gd_cpuid);
+	ATOMIC_CPUMASK_ORBIT(smp_lapic_mask, mycpu->gd_cpuid);
 	cpu_mfence();
 
+#if 0
 	/* Let BSP move onto the next initialization stage */
 	rel_mplock();
+#endif
 
 	/*
 	 * Interlock for finalization.  Wait until mp_finish is non-zero,
@@ -1071,10 +1081,6 @@ ap_init(void)
 	 * caching it.
 	 */
 	while (mp_finish == 0) {
-		cpu_pause();
-		cpu_lfence();
-	}
-	while (try_mplock() == 0) {
 		cpu_pause();
 		cpu_lfence();
 	}
@@ -1099,36 +1105,52 @@ ap_init(void)
 	 * The idle thread is never placed on the runq, make sure
 	 * nothing we've done put it there.
 	 */
-	KKASSERT(get_mplock_count(curthread) == 1);
-	CPUMASK_ORBIT(smp_active_mask, mycpu->gd_cpuid);
 
 	/*
-	 * Enable interrupts here.  idle_restore will also do it, but
-	 * doing it here lets us clean up any strays that got posted to
-	 * the CPU during the AP boot while we are still in a critical
-	 * section.
+	 * Hold a critical section and allow real interrupts to occur.  Zero
+	 * any spurious interrupts which have accumulated, then set our
+	 * smp_active_mask indicating that we are fully operational.
 	 */
+	crit_enter();
 	__asm __volatile("sti; pause; pause"::);
 	bzero(mdcpu->gd_ipending, sizeof(mdcpu->gd_ipending));
-
-	initclocks_pcpu();	/* clock interrupts (via IPIs) */
-	lwkt_process_ipiq();
+	ATOMIC_CPUMASK_ORBIT(smp_active_mask, mycpu->gd_cpuid);
 
 	/*
-	 * Releasing the mp lock lets the BSP finish up the SMP init
+	 * Wait until all cpus have set their smp_active_mask and have fully
+	 * operational interrupts before proceeding.
+	 *
+	 * We need a final cpu_invltlb() because we would not have received
+	 * any until we set our bit in smp_active_mask.
 	 */
-	rel_mplock();
-	KKASSERT((curthread->td_flags & TDF_RUNQ) == 0);
-
-#if 0
-	/*
-	 * This is a qemu aid.  If we go into the normal idle loop qemu
-	 */
-	while (mp_finish != 2) {
-		;
-		/*__asm__ __volatile("hlt");*/
+	while (mp_finish == 1) {
+		cpu_pause();
+		cpu_lfence();
 	}
-#endif
+	cpu_invltlb();
+
+	/*
+	 * Initialize per-cpu clocks and do other per-cpu initialization.
+	 * At this point code is expected to be able to use the full kernel
+	 * API.
+	 */
+	initclocks_pcpu();	/* clock interrupts (via IPIs) */
+
+	/*
+	 * Since we may have cleaned up the interrupt triggers, manually
+	 * process any pending IPIs before exiting our critical section.
+	 * Once the critical section has exited, normal interrupt processing
+	 * may occur.
+	 */
+	lwkt_process_ipiq();
+	crit_exit_noyield(mycpu->gd_curthread);
+
+	/*
+	 * Final final, allow the waiting BSP to resume the boot process,
+	 * return 'into' the idle thread bootstrap.
+	 */
+	ATOMIC_CPUMASK_ORBIT(smp_finalize_mask, mycpu->gd_cpuid);
+	KKASSERT((curthread->td_flags & TDF_RUNQ) == 0);
 }
 
 /*
@@ -1138,20 +1160,39 @@ static
 void
 ap_finish(void)
 {
-	mp_finish = 1;
 	if (bootverbose)
 		kprintf("Finish MP startup\n");
 	rel_mplock();
 
+	/*
+	 * Wait for the active mask to complete, after which all cpus will
+	 * be accepting interrupts.
+	 */
+	mp_finish = 1;
 	while (CPUMASK_CMPMASKNEQ(smp_active_mask, smp_startup_mask)) {
 		cpu_pause();
 		cpu_lfence();
 	}
+
+	/*
+	 * Wait for the finalization mask to complete, after which all cpus
+	 * have completely finished initializing and are entering or are in
+	 * their idle thread.
+	 *
+	 * BSP should have received all required invltlbs but do another
+	 * one just in case.
+	 */
+	cpu_invltlb();
+	mp_finish = 2;
+	while (CPUMASK_CMPMASKNEQ(smp_finalize_mask, smp_startup_mask)) {
+		cpu_pause();
+		cpu_lfence();
+	}
+
 	while (try_mplock() == 0) {
 		cpu_pause();
 		cpu_lfence();
 	}
-	mp_finish = 2;
 
 	if (bootverbose) {
 		kprintf("Active CPU Mask: %016jx\n",
@@ -1187,12 +1228,15 @@ cpu_send_ipiq_passive(int dcpu)
 static void
 mp_bsp_simple_setup(void)
 {
+	size_t ipiq_size;
+
 	/* build our map of 'other' CPUs */
 	mycpu->gd_other_cpus = smp_startup_mask;
 	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
-	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map,
-					    sizeof(lwkt_ipiq) * ncpus);
-	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
+
+	ipiq_size = sizeof(struct lwkt_ipiq) * ncpus;
+	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+	bzero(mycpu->gd_ipiq, ipiq_size);
 
 	pmap_set_opt();
 

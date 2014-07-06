@@ -1144,6 +1144,8 @@ cpu_idle(void)
 		 *		will be slow waking up.  Slows down e.g.
 		 *		compiles and other pipe/event oriented stuff.
 		 *
+		 *	4	Always use HLT.
+		 *
 		 * NOTE: Interrupts are enabled and we are not in a critical
 		 *	 section.
 		 *

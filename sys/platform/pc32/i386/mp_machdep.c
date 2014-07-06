@@ -329,6 +329,7 @@ start_all_aps(u_int boot_addr)
 	struct privatespace *ps;
 	char *stack;
 	uintptr_t kptbase;
+	size_t ipiq_size;
 
 	POSTCODE(START_ALL_APS_POST);
 
@@ -385,7 +386,6 @@ start_all_aps(u_int boot_addr)
 
 	/* start each AP */
 	for (x = 1; x <= naps; ++x) {
-
 		/* This is a bit verbose, it will go away soon.  */
 
 		/* first page of AP's private space */
@@ -436,8 +436,10 @@ start_all_aps(u_int boot_addr)
 			kmem_alloc_nofault(&kernel_map, SEG_SIZE, SEG_SIZE);
 		gd->gd_GDMAP1 = &PTD[(vm_offset_t)gd->gd_GDADDR1 >> PDRSHIFT];
 
-		gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * (naps + 1));
-		bzero(gd->mi.gd_ipiq, sizeof(lwkt_ipiq) * (naps + 1));
+		ipiq_size = sizeof(struct lwkt_ipiq) * (naps + 1);
+
+		gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+		bzero(gd->mi.gd_ipiq, ipiq_size);
 
 		/*
 		 * Setup the AP boot stack
@@ -479,9 +481,10 @@ start_all_aps(u_int boot_addr)
 	/* build our map of 'other' CPUs */
 	mycpu->gd_other_cpus = smp_startup_mask;
 	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
-	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map,
-					    sizeof(lwkt_ipiq) * ncpus);
-	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
+
+	ipiq_size = sizeof(struct lwkt_ipiq) * ncpus;
+	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+	bzero(mycpu->gd_ipiq, ipiq_size);
 
 	/* restore the warmstart vector */
 	*(u_long *) WARMBOOT_OFF = mpbioswarmvec;
@@ -1123,12 +1126,15 @@ cpu_send_ipiq_passive(int dcpu)
 static void
 mp_bsp_simple_setup(void)
 {
+	size_t ipiq_size;
+
 	/* build our map of 'other' CPUs */
 	mycpu->gd_other_cpus = smp_startup_mask;
 	CPUMASK_NANDBIT(mycpu->gd_other_cpus, mycpu->gd_cpuid);
-	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map,
-					    sizeof(lwkt_ipiq) * ncpus);
-	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
+
+	ipiq_size = sizeof(struct lwkt_ipiq) * ncpus;
+	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+	bzero(mycpu->gd_ipiq, ipiq_size);
 
 	pmap_set_opt();
 

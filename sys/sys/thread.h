@@ -194,7 +194,7 @@ typedef void (*ipifunc1_t)(void *arg);
 typedef void (*ipifunc2_t)(void *arg, int arg2);
 typedef void (*ipifunc3_t)(void *arg, int arg2, struct intrframe *frame);
 
-typedef struct lwkt_ipiq {
+struct lwkt_ipiq {
     int		ip_rindex;      /* only written by target cpu */
     int		ip_xindex;      /* written by target, indicates completion */
     int		ip_windex;      /* only written by source cpu */
@@ -204,7 +204,7 @@ typedef struct lwkt_ipiq {
 	int		arg2;
 	char		filler[32 - sizeof(int) - sizeof(void *) * 2];
     } ip_info[MAXCPUFIFO];
-} lwkt_ipiq;
+};
 
 /*
  * CPU Synchronization structure.  See lwkt_cpusync_start() and

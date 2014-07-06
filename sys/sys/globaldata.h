@@ -130,7 +130,10 @@ struct globaldata {
 	__uint32_t	gd_cpuid;
 	cpumask_t	gd_cpumask;		/* CPUMASK_ASSBIT(cpuid) */
 	cpumask_t	gd_other_cpus;		/* mask of 'other' cpus */
-	struct timeval	gd_stattv;
+	union {
+		struct timeval	gd_stattv;
+		sysclock_t	gd_statcv;
+	} statint;
 	int		gd_intr_nesting_level;	/* hard code, intrs, ipis */
 	struct vmmeter	gd_cnt;
 	struct vmtotal	gd_vmtotal;

@@ -756,9 +756,16 @@ startrtclock(void)
 
 	/* 
 	 * Can we use the TSC?
+	 *
+	 * NOTE: If running under qemu, probably a good idea to force the
+	 *	 TSC because we are not likely to detect it as being
+	 *	 invariant or mpsyncd if you don't.  This will greatly
+	 *	 reduce SMP contention.
 	 */
 	if (cpu_feature & CPUID_TSC) {
 		tsc_present = 1;
+		TUNABLE_INT_FETCH("hw.tsc_cputimer_force", &tsc_invariant);
+
 		if ((cpu_vendor_id == CPU_VENDOR_INTEL ||
 		     cpu_vendor_id == CPU_VENDOR_AMD) &&
 		    cpu_exthigh >= 0x80000007) {
@@ -1220,6 +1227,15 @@ tsc_mpsync_test(void)
 		return;
 	}
 
+	/*
+	 * Forcing can be used w/qemu to reduce contention
+	 */
+	TUNABLE_INT_FETCH("hw.tsc_cputimer_force", &tsc_mpsync);
+	if (tsc_mpsync) {
+		kprintf("TSC as cputimer forced\n");
+		return;
+	}
+
 	if (cpu_vendor_id != CPU_VENDOR_INTEL) {
 		/* XXX only Intel works */
 		return;
@@ -1321,8 +1337,8 @@ tsc_cputimer_register(void)
 	cputimer_register(&tsc_cputimer);
 	cputimer_select(&tsc_cputimer, 0);
 }
-SYSINIT(tsc_cputimer_reg, SI_BOOT2_MACHDEP, SI_ORDER_ANY,
-    tsc_cputimer_register, NULL);
+SYSINIT(tsc_cputimer_reg, SI_BOOT2_POST_SMP, SI_ORDER_FIRST,
+	tsc_cputimer_register, NULL);
 
 SYSCTL_NODE(_hw, OID_AUTO, i8254, CTLFLAG_RW, 0, "I8254");
 SYSCTL_UINT(_hw_i8254, OID_AUTO, freq, CTLFLAG_RD, &i8254_cputimer.freq, 0,

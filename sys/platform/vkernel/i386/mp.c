@@ -143,6 +143,7 @@ void
 mp_start(void)
 {
 	int shift;
+	size_t ipiq_size;
 
 	ncpus = optcpus;
 
@@ -165,9 +166,9 @@ mp_start(void)
 	/*
 	 * cpu0 initialization
 	 */
-	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map,
-					    sizeof(lwkt_ipiq) * ncpus);
-	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
+	ipiq_size = sizeof(struct lwkt_ipiq) * ncpus;
+	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+	bzero(mycpu->gd_ipiq, ipiq_size);
 
 	/*
 	 * cpu 1-(n-1)
@@ -379,6 +380,7 @@ start_all_aps(u_int boot_addr)
 	struct privatespace *ps;
 	vm_page_t m;
 	vm_offset_t va;
+	size_t ipiq_size;
 #if 0
 	struct lwp_params params;
 #endif
@@ -424,8 +426,9 @@ start_all_aps(u_int boot_addr)
                 gd->gd_PADDR1 = (vpte_t *)ps->PPAGE1;
 #endif
 
-                gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * (mp_naps + 1));
-                bzero(gd->mi.gd_ipiq, sizeof(lwkt_ipiq) * (mp_naps + 1));
+		ipiq_size = sizeof(struct lwkt_ipiq) * (mp_naps + 1);
+                gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+                bzero(gd->mi.gd_ipiq, ipiq_size);
 
                 /*
                  * Setup the AP boot stack

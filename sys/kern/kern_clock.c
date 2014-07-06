@@ -92,6 +92,7 @@
 #include <sys/sysctl.h>
 
 #include <sys/thread2.h>
+#include <sys/mplock2.h>
 
 #include <machine/cpu.h>
 #include <machine/limits.h>
@@ -255,7 +256,12 @@ initclocks(void *dummy)
 }
 
 /*
- * Called on a per-cpu basis
+ * Called on a per-cpu basis from the idle thread bootstrap on each cpu
+ * during SMP initialization.
+ *
+ * This routine is called concurrently during low-level SMP initialization
+ * and may not block in any way.  Meaning, among other things, we can't
+ * acquire any tokens.
  */
 void
 initclocks_pcpu(void)
@@ -274,23 +280,49 @@ initclocks_pcpu(void)
 
 	systimer_intr_enable();
 
-#ifdef IFPOLL_ENABLE
-	ifpoll_init_pcpu(gd->gd_cpuid);
-#endif
-
-	/*
-	 * Use a non-queued periodic systimer to prevent multiple ticks from
-	 * building up if the sysclock jumps forward (8254 gets reset).  The
-	 * sysclock will never jump backwards.  Our time sync is based on
-	 * the actual sysclock, not the ticks count.
-	 */
-	systimer_init_periodic_nq(&gd->gd_hardclock, hardclock, NULL, hz);
-	systimer_init_periodic_nq(&gd->gd_statclock, statclock, NULL, stathz);
-	/* XXX correct the frequency for scheduler / estcpu tests */
-	systimer_init_periodic_nq(&gd->gd_schedclock, schedclock, 
-				NULL, ESTCPUFREQ); 
 	crit_exit();
 }
+
+/*
+ * This routine is called on just the BSP, just after SMP initialization
+ * completes to * finish initializing any clocks that might contend/block
+ * (e.g. like on a token).  We can't do this in initclocks_pcpu() because
+ * that function is called from the idle thread bootstrap for each cpu and
+ * not allowed to block at all.
+ */
+static
+void
+initclocks_other(void *dummy)
+{
+	struct globaldata *ogd = mycpu;
+	struct globaldata *gd;
+	int n;
+
+	for (n = 0; n < ncpus; ++n) {
+		lwkt_setcpu_self(globaldata_find(n));
+		gd = mycpu;
+
+		/*
+		 * Use a non-queued periodic systimer to prevent multiple
+		 * ticks from building up if the sysclock jumps forward
+		 * (8254 gets reset).  The sysclock will never jump backwards.
+		 * Our time sync is based on the actual sysclock, not the
+		 * ticks count.
+		 */
+		systimer_init_periodic_nq(&gd->gd_hardclock, hardclock,
+					  NULL, hz);
+		systimer_init_periodic_nq(&gd->gd_statclock, statclock,
+					  NULL, stathz);
+		/* XXX correct the frequency for scheduler / estcpu tests */
+		systimer_init_periodic_nq(&gd->gd_schedclock, schedclock,
+					  NULL, ESTCPUFREQ);
+#ifdef IFPOLL_ENABLE
+		ifpoll_init_pcpu(gd->gd_cpuid);
+#endif
+	}
+	lwkt_setcpu_self(ogd);
+}
+SYSINIT(clocks2, SI_BOOT2_POST_SMP, SI_ORDER_ANY, initclocks_other, NULL)
 
 /*
  * This sets the current real time of day.  Timespecs are in seconds and
@@ -587,13 +619,32 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 	thread_t td;
 	struct proc *p;
 	int bump;
-	struct timeval tv;
-	struct timeval *stv;
+	sysclock_t cv;
+	sysclock_t scv;
 
 	/*
-	 * How big was our timeslice relative to the last time?
+	 * How big was our timeslice relative to the last time?  Calculate
+	 * in microseconds.
+	 *
+	 * NOTE: Use of microuptime() is typically MPSAFE, but usually not
+	 *	 during early boot.  Just use the systimer count to be nice
+	 *	 to e.g. qemu.  The systimer has a better chance of being
+	 *	 MPSAFE at early boot.
 	 */
-	microuptime(&tv);	/* mpsafe */
+	cv = sys_cputimer->count();
+	scv = mycpu->statint.gd_statcv;
+	if (scv == 0) {
+		bump = 1;
+	} else {
+		bump = (sys_cputimer->freq64_usec * (cv - scv)) >> 32;
+		if (bump < 0)
+			bump = 0;
+		if (bump > 1000000)
+			bump = 1000000;
+	}
+	mycpu->statint.gd_statcv = cv;
+
+#if 0
 	stv = &mycpu->gd_stattv;
 	if (stv->tv_sec == 0) {
 	    bump = 1;
@@ -606,6 +657,7 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 		bump = 1000000;
 	}
 	*stv = tv;
+#endif
 
 	td = curthread;
 	p = td->td_proc;

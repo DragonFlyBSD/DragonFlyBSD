@@ -157,6 +157,7 @@ enum sysinit_sub_id {
 	SI_BOOT2_SOFTCLOCK	= 0x1b80000,
 	SI_BOOT2_CLOCKS		= 0x1c00000,	/* select & start clocks */
 	SI_BOOT2_FINISH_SMP	= 0x1c80000,	/* SMP go (& synch clocks) */
+	SI_BOOT2_POST_SMP	= 0x1cc0000,	/* post-SMP low level */
 
 	/*
 	 * Finish up core kernel initialization and set up the process

@@ -147,7 +147,9 @@ pthread_t ap_tids[MAXCPU];
 void
 mp_start(void)
 {
+	size_t ipiq_size;
 	int shift;
+
 	ncpus = optcpus;
 
 	mp_naps = ncpus - 1;
@@ -169,9 +171,9 @@ mp_start(void)
 	/*
 	 * cpu0 initialization
 	 */
-	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map,
-					    sizeof(lwkt_ipiq) * ncpus);
-	bzero(mycpu->gd_ipiq, sizeof(lwkt_ipiq) * ncpus);
+	ipiq_size = sizeof(struct lwkt_ipiq) * ncpus;
+	mycpu->gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+	bzero(mycpu->gd_ipiq, ipiq_size);
 
 	/*
 	 * cpu 1-(n-1)
@@ -426,8 +428,9 @@ start_all_aps(u_int boot_addr)
                 gd->gd_PADDR1 = (vpte_t *)ps->PPAGE1;
 #endif
 
-                gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, sizeof(lwkt_ipiq) * (mp_naps + 1));
-                bzero(gd->mi.gd_ipiq, sizeof(lwkt_ipiq) * (mp_naps + 1));
+		ipiq_size = sizeof(struct lwkt_ipiq) * (mp_naps + 1);
+                gd->mi.gd_ipiq = (void *)kmem_alloc(&kernel_map, ipiq_size);
+                bzero(gd->mi.gd_ipiq, ipiq_size);
 
                 /*
                  * Setup the AP boot stack
