@@ -59,20 +59,30 @@ bios_seconds(void)
     return (now);
 }
 
+/*
+ * Some BIOSes (notably qemu) don't correctly read the RTC
+ * registers in an atomic way, sometimes returning bogus values.
+ * Therefore we "debounce" the reading by accepting it only when
+ * we got 8 identical values in succession.
+ *
+ * If we pass midnight, don't wrap back to 0.
+ */
 time_t
 time(time_t *t)
 {
     static time_t lasttime;
     time_t now, check;
-    int try;
+    int same, try;
 
-    try = 0;
-    now = bios_seconds();
-    while (now != (check = bios_seconds())) {
+    try = same = 0;
+    check = bios_seconds();
+    do {
 	now = check;
-	if (++try == 1000)
-		break;
-    }
+	check = bios_seconds();
+	if (check != now)
+	    same = 0;
+    } while (++same < 8 && ++try < 1000);
+
     if (now < lasttime)
 	now += 24 * 3600;
     lasttime = now;
