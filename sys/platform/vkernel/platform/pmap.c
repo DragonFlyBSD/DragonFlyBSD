@@ -3069,6 +3069,7 @@ pmap_setlwpvm(struct lwp *lp, struct vmspace *newvm)
 {
 	struct vmspace *oldvm;
 	struct pmap *pmap;
+	struct mdglobaldata *gd = mdcpu;
 
 	crit_enter();
 	oldvm = lp->lwp_vmspace;

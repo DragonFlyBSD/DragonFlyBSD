@@ -99,8 +99,6 @@ static
 void
 ap_finish(void)
 {
-	int i;
-
         mp_finish = 1;
         if (bootverbose)
                 kprintf("Finish MP startup\n");
