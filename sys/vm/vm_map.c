@@ -178,6 +178,8 @@ static void vm_map_unclip_range (vm_map_t map, vm_map_entry_t start_entry, vm_of
  *
  *	- The kernel map is allocated statically.
  *	- Initial kernel map entries are allocated out of a static pool.
+ *	- We must set ZONE_SPECIAL here or the early boot code can get
+ *	  stuck if there are >63 cores.
  *
  *	These restrictions are necessary since malloc() uses the
  *	maps and requires map entries.
@@ -192,7 +194,8 @@ vm_map_startup(void)
 		map_init, MAX_KMAP);
 	mapentzone = &mapentzone_store;
 	zbootinit(mapentzone, "MAP ENTRY", sizeof (struct vm_map_entry),
-		map_entry_init, MAX_MAPENT);
+		  map_entry_init, MAX_MAPENT);
+	mapentzone_store.zflags |= ZONE_SPECIAL;
 }
 
 /*

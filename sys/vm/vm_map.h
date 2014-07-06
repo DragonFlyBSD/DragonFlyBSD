@@ -490,7 +490,7 @@ vmspace_president_count(struct vmspace *vmspace)
  * during boot to bootstrap the VM system.
  */
 #define MAX_KMAP	10
-#define	MAX_MAPENT	2048	/* required to support up to 64 cpus */
+#define MAX_MAPENT	(SMP_MAXCPU * 32 + 1024)
 
 /*
  * Copy-on-write flags for vm_map operations
