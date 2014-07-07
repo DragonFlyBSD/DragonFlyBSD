@@ -719,7 +719,7 @@ render_ring_get_irq(struct intel_ring_buffer *ring)
 	if (!dev->irq_enabled)
 		return false;
 
-	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	if (ring->irq_refcount++ == 0) {
 		if (HAS_PCH_SPLIT(dev))
 			ironlake_enable_irq(dev_priv,
@@ -727,6 +727,7 @@ render_ring_get_irq(struct intel_ring_buffer *ring)
 		else
 			i915_enable_irq(dev_priv, I915_USER_INTERRUPT);
 	}
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	return true;
 }
@@ -737,7 +738,7 @@ render_ring_put_irq(struct intel_ring_buffer *ring)
 	struct drm_device *dev = ring->dev;
 	drm_i915_private_t *dev_priv = dev->dev_private;
 
-	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	if (--ring->irq_refcount == 0) {
 		if (HAS_PCH_SPLIT(dev))
 			ironlake_disable_irq(dev_priv,
@@ -746,6 +747,7 @@ render_ring_put_irq(struct intel_ring_buffer *ring)
 		else
 			i915_disable_irq(dev_priv, I915_USER_INTERRUPT);
 	}
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 }
 
 void intel_ring_setup_status_page(struct intel_ring_buffer *ring)
@@ -830,12 +832,13 @@ gen6_ring_get_irq(struct intel_ring_buffer *ring, uint32_t gflag, uint32_t rflag
 
 	gen6_gt_force_wake_get(dev_priv);
 
-	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	if (ring->irq_refcount++ == 0) {
 		ring->irq_mask &= ~rflag;
 		I915_WRITE_IMR(ring, ring->irq_mask);
 		ironlake_enable_irq(dev_priv, gflag);
 	}
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	return true;
 }
@@ -846,12 +849,13 @@ gen6_ring_put_irq(struct intel_ring_buffer *ring, uint32_t gflag, uint32_t rflag
 	struct drm_device *dev = ring->dev;
 	drm_i915_private_t *dev_priv = dev->dev_private;
 
-	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	if (--ring->irq_refcount == 0) {
 		ring->irq_mask |= rflag;
 		I915_WRITE_IMR(ring, ring->irq_mask);
 		ironlake_disable_irq(dev_priv, gflag);
 	}
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	gen6_gt_force_wake_put(dev_priv);
 }
@@ -865,13 +869,14 @@ bsd_ring_get_irq(struct intel_ring_buffer *ring)
 	if (!dev->irq_enabled)
 		return false;
 
-	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	if (ring->irq_refcount++ == 0) {
 		if (IS_G4X(dev))
 			i915_enable_irq(dev_priv, I915_BSD_USER_INTERRUPT);
 		else
 			ironlake_enable_irq(dev_priv, GT_BSD_USER_INTERRUPT);
 	}
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 
 	return true;
 }
@@ -881,13 +886,14 @@ bsd_ring_put_irq(struct intel_ring_buffer *ring)
 	struct drm_device *dev = ring->dev;
 	drm_i915_private_t *dev_priv = dev->dev_private;
 
-	KKASSERT(lockstatus(&ring->irq_lock, curthread) != 0);
+	lockmgr(&dev_priv->irq_lock, LK_EXCLUSIVE);
 	if (--ring->irq_refcount == 0) {
 		if (IS_G4X(dev))
 			i915_disable_irq(dev_priv, I915_BSD_USER_INTERRUPT);
 		else
 			ironlake_disable_irq(dev_priv, GT_BSD_USER_INTERRUPT);
 	}
+	lockmgr(&dev_priv->irq_lock, LK_RELEASE);
 }
 
 static int

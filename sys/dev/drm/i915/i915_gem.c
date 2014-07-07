@@ -361,6 +361,57 @@ i915_gem_check_wedge(struct drm_i915_private *dev_priv,
 }
 
 /**
+ * __wait_seqno - wait until execution of seqno has finished
+ * @ring: the ring expected to report seqno
+ * @seqno: duh!
+ * @interruptible: do an interruptible wait (normally yes)
+ * @timeout: in - how long to wait (NULL forever); out - how much time remaining
+ *
+ * Returns 0 if the seqno was found within the alloted time. Else returns the
+ * errno with remaining time filled in timeout argument.
+ */
+static int __wait_seqno(struct intel_ring_buffer *ring, u32 seqno,
+			bool interruptible, struct timespec *timeout)
+{
+	drm_i915_private_t *dev_priv = ring->dev->dev_private;
+	int ret = 0;
+
+	if (i915_seqno_passed(ring->get_seqno(ring, true), seqno))
+		return 0;
+
+	if (WARN_ON(!ring->irq_get(ring)))
+		return -ENODEV;
+
+	if (!i915_seqno_passed(ring->get_seqno(ring,false), seqno)) {
+
+		lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
+		if (ring->irq_get(ring)) {
+			int flags = dev_priv->mm.interruptible ? PCATCH : 0;
+			while (!i915_seqno_passed(ring->get_seqno(ring,false), seqno)
+			    && !atomic_read(&dev_priv->mm.wedged) &&
+			    ret == 0) {
+				ret = -lksleep(ring, &ring->irq_lock, flags,
+				    "915gwr", 1*hz);
+			}
+			ring->irq_put(ring);
+			lockmgr(&ring->irq_lock, LK_RELEASE);
+		} else {
+			lockmgr(&ring->irq_lock, LK_RELEASE);
+			if (_intel_wait_for(ring->dev,
+			    i915_seqno_passed(ring->get_seqno(ring,false), seqno) ||
+			    atomic_read(&dev_priv->mm.wedged), 3000,
+			    0, "i915wrq") != 0)
+				ret = -EBUSY;
+		}
+
+	}
+
+	ring->irq_put(ring);
+
+	return ret;
+}
+
+/**
  * Waits for a sequence number to be signaled, and cleans up the
  * request and object lists appropriately for that event.
  */
@@ -371,9 +422,7 @@ i915_wait_seqno(struct intel_ring_buffer *ring, uint32_t seqno)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	bool interruptible = dev_priv->mm.interruptible;
 	struct drm_i915_gem_request *request;
-	uint32_t ier;
-	int flags, ret;
-	bool do_retire = true;
+	int ret;
 
 	DRM_LOCK_ASSERT(dev);
 	BUG_ON(seqno == 0);
@@ -397,51 +446,7 @@ i915_wait_seqno(struct intel_ring_buffer *ring, uint32_t seqno)
 		seqno = request->seqno;
 	}
 
-	if (!i915_seqno_passed(ring->get_seqno(ring,false), seqno)) {
-		if (HAS_PCH_SPLIT(ring->dev))
-			ier = I915_READ(DEIER) | I915_READ(GTIER);
-		else
-			ier = I915_READ(IER);
-		if (!ier) {
-			DRM_ERROR("something (likely vbetool) disabled "
-				  "interrupts, re-enabling\n");
-			ring->dev->driver->irq_preinstall(ring->dev);
-			ring->dev->driver->irq_postinstall(ring->dev);
-		}
-
-		lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
-		if (ring->irq_get(ring)) {
-			flags = dev_priv->mm.interruptible ? PCATCH : 0;
-			while (!i915_seqno_passed(ring->get_seqno(ring,false), seqno)
-			    && !atomic_read(&dev_priv->mm.wedged) &&
-			    ret == 0) {
-				ret = -lksleep(ring, &ring->irq_lock, flags,
-				    "915gwr", 1*hz);
-			}
-			ring->irq_put(ring);
-			lockmgr(&ring->irq_lock, LK_RELEASE);
-		} else {
-			lockmgr(&ring->irq_lock, LK_RELEASE);
-			if (_intel_wait_for(ring->dev,
-			    i915_seqno_passed(ring->get_seqno(ring,false), seqno) ||
-			    atomic_read(&dev_priv->mm.wedged), 3000,
-			    0, "i915wrq") != 0)
-				ret = -EBUSY;
-		}
-
-	}
-	if (atomic_read(&dev_priv->mm.wedged))
-		ret = -EAGAIN;
-
-	/* Directly dispatch request retiring.  While we have the work queue
-	 * to handle this, the waiter on a request often wants an associated
-	 * buffer to have made it to the inactive list, and we would need
-	 * a separate wait queue to handle that.
-	 */
-	if (ret == 0 && do_retire)
-		i915_gem_retire_requests_ring(ring);
-
-	return (ret);
+	return __wait_seqno(ring, seqno, interruptible, NULL);
 }
 
 /**
@@ -2252,13 +2257,8 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 	u32 seqno = 0;
 	int ret;
 
-	dev_priv = dev->dev_private;
 	if (atomic_read(&dev_priv->mm.wedged))
 		return -EIO;
-
-	recent_enough = ticks - (20 * hz / 1000);
-	ring = NULL;
-	seqno = 0;
 
 	spin_lock(&file_priv->mm.lock);
 	list_for_each_entry(request, &file_priv->mm.request_list, client_list) {
@@ -2273,25 +2273,7 @@ i915_gem_ring_throttle(struct drm_device *dev, struct drm_file *file)
 	if (seqno == 0)
 		return 0;
 
-	ret = 0;
-	lockmgr(&ring->irq_lock, LK_EXCLUSIVE);
-	if (!i915_seqno_passed(ring->get_seqno(ring,false), seqno)) {
-		if (ring->irq_get(ring)) {
-			while (ret == 0 &&
-			    !(i915_seqno_passed(ring->get_seqno(ring,false), seqno) ||
-			    atomic_read(&dev_priv->mm.wedged)))
-				ret = -lksleep(ring, &ring->irq_lock, PCATCH,
-				    "915thr", 1*hz);
-			ring->irq_put(ring);
-			if (ret == 0 && atomic_read(&dev_priv->mm.wedged))
-				ret = -EIO;
-		} else if (_intel_wait_for(dev,
-		    i915_seqno_passed(ring->get_seqno(ring,false), seqno) ||
-		    atomic_read(&dev_priv->mm.wedged), 3000, 0, "915rtr")) {
-			ret = -EBUSY;
-		}
-	}
-	lockmgr(&ring->irq_lock, LK_RELEASE);
+	ret = __wait_seqno(ring, seqno, true, NULL);
 
 	if (ret == 0)
 		queue_delayed_work(dev_priv->wq, &dev_priv->mm.retire_work, 0);
