@@ -1,3 +1,4 @@
+/*	@(#)auth_des.h	2.2 88/07/29 4.0 RPCSRC; from 1.3 88/02/08 SMI */
 /*-
  * Copyright (c) 2009, Sun Microsystems, Inc.
  * All rights reserved.
