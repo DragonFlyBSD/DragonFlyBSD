@@ -139,15 +139,12 @@
 
 #ifdef ACPI_DEBUG
 #define ACPI_DEBUG_OUTPUT	/* for backward compatibility */
-#define ACPI_DISASSEMBLER
-#endif
-
-#ifdef ACPI_DEBUG_OUTPUT
 #include "opt_ddb.h"
 #ifdef DDB
 #define ACPI_DEBUGGER
 #endif /* DDB */
-#endif /* ACPI_DEBUG_OUTPUT */
+#define ACPI_DISASSEMBLER
+#endif
 
 #ifdef ACPI_DEBUG_CACHE
 #define	ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsReleaseObject
@@ -186,12 +183,10 @@ struct acpicache;
 #else /* _KERNEL */
 
 /* Always use DragonFly code over our local versions */
+#define ACPI_USE_STANDARD_HEADERS
 #define ACPI_USE_SYSTEM_CLIBRARY
 
 #define ACPI_CAST_PTHREAD_T(pthread)    ((ACPI_THREAD_ID) ACPI_TO_INTEGER (pthread))
-
-/* Not building kernel code, so use libc */
-#define ACPI_USE_STANDARD_HEADERS
 #define ACPI_FLUSH_CPU_CACHE()
 
 #endif /* _KERNEL */
