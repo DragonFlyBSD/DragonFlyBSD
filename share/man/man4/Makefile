@@ -529,6 +529,7 @@ MAN+=	rum.4 \
 	uipaq.4 \
 	umcs.4 \
 	umoscom.4 \
+	urndis.4 \
 	urtwn.4 \
 	urtwnfw.4 \
 	usb_quirk.4 \
@@ -539,6 +540,7 @@ MAN+=	rum.4 \
 MLINKS+=rum.4 if_rum.4
 MLINKS+=run.4 if_run.4
 MLINKS+=udav.4 if_udav.4
+MLINKS+=urndis.4 if_urndis.4
 MLINKS+=urtwn.4 if_urtwn.4
 .endif
 

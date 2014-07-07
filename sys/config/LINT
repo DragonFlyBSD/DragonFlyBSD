@@ -2219,6 +2219,9 @@ device		rum
 device		run
 device		runfw
 #
+# RNDIS USB ethernet driver
+device		urndis
+#
 # Realtek RTL8188CU/RTL8192CU wireless driver
 device		urtwn
 device		urtwnfw
