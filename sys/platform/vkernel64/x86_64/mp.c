@@ -382,6 +382,7 @@ start_all_aps(u_int boot_addr)
 	vm_offset_t va;
 	void *stack;
 	pthread_attr_t attr;
+	size_t ipiq_size;
 #if 0
 	struct lwp_params params;
 #endif
