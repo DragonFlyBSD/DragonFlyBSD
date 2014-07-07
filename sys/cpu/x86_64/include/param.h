@@ -92,6 +92,10 @@
  *	     as well as any assembly.  Be sure that CPUMASK_ELEMENTS
  *	     is always correct so incompatible assembly #error's out
  *	     during the kernel compile.
+ *
+ * WARNING!  To raise SMP_MAXCPU further we probably need to reserve
+ *	     more KVM space via MPPTDI (platform/pc64/include/pmap.h),
+ *	     depends on SMP_MAXCPU * sizeof(struct privatedata).
  */
 #define SMP_MAXCPU	256
 #define MAXCPU		SMP_MAXCPU

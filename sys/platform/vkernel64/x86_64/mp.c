@@ -126,7 +126,8 @@ ap_finish(void)
         while (try_mplock() == 0)
 		DELAY(100000);
         if (bootverbose)
-                kprintf("Active CPU Mask: %08lx\n", (long)CPUMASK_LOWMASK(smp_active_mask));
+                kprintf("Active CPU Mask: %08lx\n",
+			(long)CPUMASK_LOWMASK(smp_active_mask));
 }
 
 SYSINIT(finishsmp, SI_BOOT2_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)
