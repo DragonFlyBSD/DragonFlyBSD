@@ -803,7 +803,7 @@ set_display_start(video_adapter_t *adp, int x, int y)
     inb(CRTC + 6);
     outb(ATC, 0x20);
 
-    /* preset raw scan */
+    /* preset row scan */
     outb(CRTC, 8);
     outb(CRTC + 1, roff);
 
