@@ -760,7 +760,7 @@ set_line_length(video_adapter_t *adp, int pixel)
     if (mp[10 + 0x17] & 0x40)			/* CRTC mode control reg */
 	count *= 2;				/* byte mode */
     outb(CRTC, 0x13);
-    outb(CRTC, count);
+    outb(CRTC + 1, count);
     adp->va_line_width = bpl;
 
     return 0;
