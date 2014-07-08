@@ -36,7 +36,6 @@
 .Sh SYNOPSIS
 .Cd "options VESA"
 .Cd "options VESA_DEBUG=N"
-.Cd "options VGA_ALT_SEQACCESS"
 .Cd "options VGA_KEEP_POWERON_MODE"
 .Cd "options VGA_NO_FONT_LOADING"
 .Cd "options VGA_NO_MODE_CHANGE"
@@ -80,10 +79,6 @@ can be used to control the
 driver.
 These options provide compatibility with certain VGA cards.
 .Bl -tag -width ".Dv VGA_KEEP_POWERON_MODE"
-.It Dv VGA_ALT_SEQACCESS
-You may want to try this option if the mouse pointer is not drawn correctly
-or the font does not seem to be loaded properly on the VGA card.
-However, it may cause flicker on some systems.
 .It Dv VGA_DEBUG=N
 Set the VGA support debug level to
 .Fa N .

@@ -369,7 +369,7 @@ static video_info_t bios_vmode[] = {
 };
 
 static int		vga_init_done = FALSE;
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
+#ifndef VGA_NO_MODE_CHANGE
 static u_char		*video_mode_ptr = NULL;
 #endif
 static u_char		*mode_map[V_MODE_MAP_SIZE];
@@ -380,11 +380,9 @@ static int		rows_offset = 1;
 /* local macros and functions */
 #define BIOS_SADDRTOLADDR(p) ((((p) & 0xffff0000) >> 12) + ((p) & 0x0000ffff))
 
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
+#ifndef VGA_NO_MODE_CHANGE
 static void map_mode_table(u_char **, u_char *);
 static int map_mode_num(int);
-#endif
-#ifndef VGA_NO_BIOS
 static int map_bios_mode_num(int);
 #endif
 static u_char *get_mode_param(int);
@@ -446,7 +444,7 @@ vga_configure(int flags)
 
 /* local subroutines */
 
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
+#ifndef VGA_NO_MODE_CHANGE
 /* construct the mode parameter map (accept 40x25, 80x25 and 80x30 modes) */
 static void
 map_mode_table(u_char *map[], u_char *table)
@@ -463,9 +461,9 @@ map_mode_table(u_char *map[], u_char *table)
 	    map[i] = NULL;
     }
 }
-#endif /* !VGA_NO_BIOS && !VGA_NO_MODE_CHANGE */
+#endif /* !VGA_NO_MODE_CHANGE */
 
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
+#ifndef VGA_NO_MODE_CHANGE
 /* map the non-standard video mode to a known mode number */
 static int
 map_mode_num(int mode)
@@ -504,9 +502,7 @@ map_mode_num(int mode)
     }
     return mode;
 }
-#endif /* !VGA_NO_BIOS && !VGA_NO_MODE_CHANGE */
 
-#ifndef VGA_NO_BIOS
 /* turn the BIOS video number into our video mode number */
 static int
 map_bios_mode_num(int bios_mode)
@@ -531,13 +527,13 @@ map_bios_mode_num(int bios_mode)
 
     return M_VGA_C80x25;
 }
-#endif
+#endif /* !VGA_NO_MODE_CHANGE */
 
 /* look up a parameter table entry */
 static u_char *
 get_mode_param(int mode)
 {
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
+#ifndef VGA_NO_MODE_CHANGE
     if (mode >= V_MODE_MAP_SIZE)
 	mode = map_mode_num(mode);
 #endif
@@ -552,7 +548,7 @@ verify_adapter(video_adapter_t *adp)
 {
     vm_offset_t buf;
     u_int16_t v;
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
+#ifndef VGA_NO_MODE_CHANGE
     u_int32_t p;
 #endif
 
@@ -570,7 +566,7 @@ verify_adapter(video_adapter_t *adp)
     adp->va_flags |= V_ADP_STATELOAD | V_ADP_STATESAVE | V_ADP_PALETTE |
 	V_ADP_BORDER;
 
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
+#ifndef VGA_NO_MODE_CHANGE
     /* get the BIOS video mode pointer */
     p = *(u_int32_t *)BIOS_PADDRTOVADDR(0x4a8);
     p = BIOS_SADDRTOLADDR(p);
@@ -628,7 +624,7 @@ probe_adapters(void)
 {
     video_adapter_t *adp;
     video_info_t info;
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
+#ifndef VGA_NO_MODE_CHANGE
     u_char *mp;
 #endif
     int i;
@@ -642,7 +638,7 @@ probe_adapters(void)
 	return 0;
 
     biosadapter.va_flags |= V_ADP_PROBED;
-#ifndef VGA_NO_BIOS
+#ifndef VGA_NO_MODE_CHANGE
     biosadapter.va_initial_bios_mode = readb(BIOS_PADDRTOVADDR(0x449));
     biosadapter.va_mode = biosadapter.va_initial_mode =
 	map_bios_mode_num(biosadapter.va_initial_bios_mode);
@@ -668,10 +664,10 @@ probe_adapters(void)
     vga_save_state(adp, &adpstate, sizeof(adpstate));
     for(i = 0; i < 16; i++)
 	adp->va_palette_regs[i] = adpstate.regs[35 + i];
-#if defined(VGA_NO_BIOS) || defined(VGA_NO_MODE_CHANGE)
+#ifdef VGA_NO_MODE_CHANGE
     mode_map[adp->va_initial_mode] = adpstate.regs;
     rows_offset = 1;
-#else /* VGA_NO_BIOS || VGA_NO_MODE_CHANGE */
+#else /* !VGA_NO_MODE_CHANGE */
     if (video_mode_ptr == NULL) {
 	mode_map[adp->va_initial_mode] = adpstate.regs;
 	rows_offset = 1;
@@ -679,7 +675,7 @@ probe_adapters(void)
 	/* discard modes that we are not familiar with */
 	map_mode_table(mode_map, video_mode_ptr);
 	mp = get_mode_param(adp->va_initial_mode);
-#if !defined(VGA_KEEP_POWERON_MODE)
+#ifndef VGA_KEEP_POWERON_MODE
 	if (mp != NULL) {
 	    bcopy(mp, adpstate2.regs, sizeof(adpstate2.regs));
 	    rows_offset = adpstate.regs[1] + 1 - mp[1];
@@ -690,7 +686,7 @@ probe_adapters(void)
 	    rows_offset = 1;
 	}
     }
-#endif /* VGA_NO_BIOS || VGA_NO_MODE_CHANGE */
+#endif /* VGA_NO_MODE_CHANGE */
 
 #ifndef VGA_NO_MODE_CHANGE
     adp->va_flags |= V_ADP_MODECHANGE;
@@ -1168,15 +1164,8 @@ set_font_mode(video_adapter_t *adp, u_char *buf)
     outb(ATC, 0x10); outb(ATC, buf[5] & ~0x01);
     inb(CRTC + 6);				/* reset flip-flop */
     outb(ATC, 0x20);				/* enable palette */
-
-#ifdef VGA_ALT_SEQACCESS
-    outw(TSIDX, 0x0100);
-#endif
     outw(TSIDX, 0x0402);
     outw(TSIDX, 0x0704);
-#ifdef VGA_ALT_SEQACCESS
-    outw(TSIDX, 0x0300);
-#endif
     outw(GDCIDX, 0x0204);
     outw(GDCIDX, 0x0005);
     outw(GDCIDX, 0x0406);               /* addr = a0000, 64kb */
@@ -1194,15 +1183,8 @@ set_normal_mode(video_adapter_t *adp, u_char *buf)
     outb(ATC, 0x10); outb(ATC, buf[5]);
     inb(CRTC + 6);				/* reset flip-flop */
     outb(ATC, 0x20);				/* enable palette */
-
-#ifdef VGA_ALT_SEQACCESS
-    outw(TSIDX, 0x0100);
-#endif
     outw(TSIDX, 0x0002 | (buf[0] << 8));
     outw(TSIDX, 0x0004 | (buf[1] << 8));
-#ifdef VGA_ALT_SEQACCESS
-    outw(TSIDX, 0x0300);
-#endif
     outw(GDCIDX, 0x0004 | (buf[2] << 8));
     outw(GDCIDX, 0x0005 | (buf[3] << 8));
     outw(GDCIDX, 0x0006 | (((buf[4] & 0x03) | 0x0c)<<8));
@@ -1224,9 +1206,6 @@ vga_save_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
     u_char buf[PARAM_BUFSIZE];
     vm_offset_t segment;
     int c;
-#ifdef VGA_ALT_SEQACCESS
-    u_char val = 0;
-#endif
 
     prologue(adp, V_ADP_FONT, ENODEV);
 
@@ -1249,15 +1228,6 @@ vga_save_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
     if (page > 3)
 	segment -= 0xe000;
 
-#ifdef VGA_ALT_SEQACCESS
-    crit_enter();
-    outb(TSIDX, 0x00); outb(TSREG, 0x01);
-    outb(TSIDX, 0x01); val = inb(TSREG);	/* disable screen */
-    outb(TSIDX, 0x01); outb(TSREG, val | 0x20);
-    outb(TSIDX, 0x00); outb(TSREG, 0x03);
-    crit_exit();
-#endif
-
     set_font_mode(adp, buf);
     if (fontsize == 32) {
 	bcopy_fromio((uintptr_t)segment + ch*32, data, fontsize*count);
@@ -1268,14 +1238,6 @@ vga_save_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 	}
     }
     set_normal_mode(adp, buf);
-
-#ifdef VGA_ALT_SEQACCESS
-    crit_enter();
-    outb(TSIDX, 0x00); outb(TSREG, 0x01);
-    outb(TSIDX, 0x01); outb(TSREG, val & 0xdf);	/* enable screen */
-    outb(TSIDX, 0x00); outb(TSREG, 0x03);
-    crit_exit();
-#endif
 
     return 0;
 #else /* VGA_NO_FONT_LOADING */
@@ -1297,9 +1259,6 @@ vga_load_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
     u_char buf[PARAM_BUFSIZE];
     vm_offset_t segment;
     int c;
-#ifdef VGA_ALT_SEQACCESS
-    u_char val = 0;
-#endif
 
     prologue(adp, V_ADP_FONT, ENODEV);
 
@@ -1322,15 +1281,6 @@ vga_load_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
     if (page > 3)
 	segment -= 0xe000;
 
-#ifdef VGA_ALT_SEQACCESS
-    crit_enter();
-    outb(TSIDX, 0x00); outb(TSREG, 0x01);
-    outb(TSIDX, 0x01); val = inb(TSREG);	/* disable screen */
-    outb(TSIDX, 0x01); outb(TSREG, val | 0x20);
-    outb(TSIDX, 0x00); outb(TSREG, 0x03);
-    crit_exit();
-#endif
-
     set_font_mode(adp, buf);
     if (fontsize == 32) {
 	bcopy_toio(data, (uintptr_t)segment + ch*32, fontsize*count);
@@ -1341,14 +1291,6 @@ vga_load_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 	}
     }
     set_normal_mode(adp, buf);
-
-#ifdef VGA_ALT_SEQACCESS
-    crit_enter();
-    outb(TSIDX, 0x00); outb(TSREG, 0x01);
-    outb(TSIDX, 0x01); outb(TSREG, val & 0xdf);	/* enable screen */
-    outb(TSIDX, 0x00); outb(TSREG, 0x03);
-    crit_exit();
-#endif
 
     return 0;
 #else /* VGA_NO_FONT_LOADING */
@@ -1615,7 +1557,7 @@ vga_load_state(video_adapter_t *adp, void *p)
     outb(ATC, 0x20);				/* enable palette */
 
 #if 0 /* XXX a temporary workaround for kernel panic */
-#ifndef VGA_NO_BIOS
+#ifndef VGA_NO_MODE_CHANGE
     if (adp->va_unit == V_ADP_PRIMARY) {
 	writeb(BIOS_PADDRTOVADDR(0x44a), buf[0]);	/* COLS */
 	writeb(BIOS_PADDRTOVADDR(0x484), buf[1] + rows_offset - 1); /* ROWS */
@@ -1625,7 +1567,7 @@ vga_load_state(video_adapter_t *adp, void *p)
 	writeb(BIOS_PADDRTOVADDR(0x44d), buf[4]);
 #endif
     }
-#endif /* VGA_NO_BIOS */
+#endif /* !VGA_NO_MODE_CHANGE */
 #endif /* XXX */
 
     crit_exit();
@@ -2328,7 +2270,7 @@ vga_diag(video_adapter_t *adp, int level)
 	return ENXIO;
 
 #if FB_DEBUG > 1
-#ifndef VGA_NO_BIOS
+#ifndef VGA_NO_MODE_CHANGE
     kprintf("vga: DCC code:0x%02x\n",
 	readb(BIOS_PADDRTOVADDR(0x488)));
     kprintf("vga: CRTC:0x%x, video option:0x%02x, ",
@@ -2338,8 +2280,6 @@ vga_diag(video_adapter_t *adp, int level)
 	readb(BIOS_PADDRTOVADDR(0x44a)),
 	readb(BIOS_PADDRTOVADDR(0x484)) + 1,
 	readb(BIOS_PADDRTOVADDR(0x485)));
-#endif /* VGA_NO_BIOS */
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
     kprintf("vga: param table:%p\n", video_mode_ptr);
     kprintf("vga: rows_offset:%d\n", rows_offset);
 #endif
@@ -2362,7 +2302,7 @@ vga_diag(video_adapter_t *adp, int level)
     }
 #endif /* FB_DEBUG > 1 */
 
-#if !defined(VGA_NO_BIOS) && !defined(VGA_NO_MODE_CHANGE)
+#ifndef VGA_NO_MODE_CHANGE
     if (video_mode_ptr == NULL)
 	kprintf("vga%d: %s: WARNING: video mode switching is not "
 	       "fully supported on this adapter\n",

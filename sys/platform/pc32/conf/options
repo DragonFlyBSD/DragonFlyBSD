@@ -78,7 +78,6 @@ SC_NORM_REV_ATTR	opt_syscons.h
 SC_PIXEL_MODE		opt_syscons.h
 SC_TWOBUTTON_MOUSE	opt_syscons.h
 
-VGA_ALT_SEQACCESS	opt_vga.h
 VGA_DEBUG		opt_vga.h
 VGA_KEEP_POWERON_MODE	opt_vga.h
 VGA_NO_FONT_LOADING	opt_vga.h
