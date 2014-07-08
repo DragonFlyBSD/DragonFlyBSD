@@ -809,6 +809,8 @@ int i915_save_state(struct drm_device *dev)
 
 	dev_priv->regfile.saveLBB = pci_read_config(dev->dev, LBB, 1);
 
+	DRM_LOCK(dev);
+
 	i915_save_display(dev);
 
 	if (!drm_core_check_feature(dev, DRIVER_MODESET)) {
@@ -845,6 +847,8 @@ int i915_save_state(struct drm_device *dev)
 	for (i = 0; i < 3; i++)
 		dev_priv->regfile.saveSWF2[i] = I915_READ(SWF30 + (i << 2));
 
+	DRM_UNLOCK(dev);
+
 	return 0;
 }
 
@@ -854,6 +858,8 @@ int i915_restore_state(struct drm_device *dev)
 	int i;
 
 	pci_write_config(dev->dev, LBB, dev_priv->regfile.saveLBB, 1);
+
+	DRM_LOCK(dev);
 
 	i915_restore_display(dev);
 
@@ -885,6 +891,8 @@ int i915_restore_state(struct drm_device *dev)
 	}
 	for (i = 0; i < 3; i++)
 		I915_WRITE(SWF30 + (i << 2), dev_priv->regfile.saveSWF2[i]);
+
+	DRM_UNLOCK(dev);
 
 	intel_iic_reset(dev);
 
