@@ -540,17 +540,30 @@ ENTRY(cpu_idle_restore)
 	movl	$0,%ebp
 	pushl	$0
 	movl	%ecx,%cr3
-	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
-	orl	$TDF_RUNNING,TD_FLAGS(%eax)	/* manual, no switch_return */
 	cmpl	$0,PCPU(cpuid)
 	je	1f
+	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
+	orl	$TDF_RUNNING,TD_FLAGS(%eax)	/* manual, no switch_return */
 	call	ap_init
-1:
 	/*
 	 * ap_init can decide to enable interrupts early, but otherwise, or if
 	 * we are UP, do it here.
 	 */
 	sti
+	jmp	cpu_idle
+
+	/*
+	 * cpu 0's idle thread entry for the first time must use normal
+	 * lwkt_switch_return() semantics or a pending cpu migration on
+	 * thread0 will deadlock.
+	 */
+1:
+	sti
+	pushl	%eax
+	pushl	%ebx	/* argument to lwkt_switch_return */
+	call	lwkt_switch_return
+	addl	$4,%esp
+	popl	%eax
 	jmp	cpu_idle
 
 /*
