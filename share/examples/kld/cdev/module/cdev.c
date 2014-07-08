@@ -98,7 +98,7 @@
 
 /* Stores string recv'd by _write() */
 static char buf[512+1];
-static int len;
+static size_t len;
 
 int
 mydev_open(struct dev_open_args *args)
