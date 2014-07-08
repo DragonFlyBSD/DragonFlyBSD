@@ -1310,6 +1310,60 @@ i915_gem_retire_work_handler(struct work_struct *work)
 	DRM_UNLOCK(dev);
 }
 
+/**
+ * i915_gem_object_sync - sync an object to a ring.
+ *
+ * @obj: object which may be in use on another ring.
+ * @to: ring we wish to use the object on. May be NULL.
+ *
+ * This code is meant to abstract object synchronization with the GPU.
+ * Calling with NULL implies synchronizing the object with the CPU
+ * rather than a particular GPU ring.
+ *
+ * Returns 0 if successful, else propagates up the lower layer error.
+ */
+int
+i915_gem_object_sync(struct drm_i915_gem_object *obj,
+		     struct intel_ring_buffer *to)
+{
+	struct intel_ring_buffer *from = obj->ring;
+	u32 seqno;
+	int ret, idx;
+
+	if (from == NULL || to == from)
+		return 0;
+
+	if (to == NULL || !i915_semaphore_is_enabled(obj->base.dev))
+		return i915_gem_object_wait_rendering(obj);
+
+	idx = intel_ring_sync_index(from, to);
+
+	seqno = obj->last_rendering_seqno;
+	if (seqno <= from->sync_seqno[idx])
+		return 0;
+
+	if (seqno == from->outstanding_lazy_request) {
+		struct drm_i915_gem_request *request;
+
+		request = kmalloc(sizeof(*request), DRM_I915_GEM,
+		    M_WAITOK | M_ZERO);
+		if (request == NULL)
+			return -ENOMEM;
+
+		ret = i915_add_request(from, NULL, request);
+		if (ret) {
+			kfree(request, DRM_I915_GEM);
+			return ret;
+		}
+
+		seqno = request->seqno;
+	}
+
+	from->sync_seqno[idx] = seqno;
+
+	return to->sync_to(to, from, seqno - 1);
+}
+
 static void i915_gem_object_finish_gtt(struct drm_i915_gem_object *obj)
 {
 	u32 old_write_domain, old_read_domains;
@@ -2137,9 +2191,9 @@ i915_gem_object_pin_to_display_plane(struct drm_i915_gem_object *obj,
 		return (ret);
 
 	if (pipelined != obj->ring) {
-		ret = i915_gem_object_wait_rendering(obj);
-		if (ret == -ERESTART || ret == -EINTR)
-			return (ret);
+		ret = i915_gem_object_sync(obj, pipelined);
+		if (ret)
+			return ret;
 	}
 
 	ret = i915_gem_object_set_cache_level(obj, I915_CACHE_NONE);

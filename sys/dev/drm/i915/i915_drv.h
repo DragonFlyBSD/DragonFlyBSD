@@ -1440,6 +1440,9 @@ int i915_gem_do_init(struct drm_device *dev, unsigned long start,
 uint32_t i915_gem_get_unfenced_gtt_alignment(struct drm_device *dev,
     uint32_t size, int tiling_mode);
 int i915_mutex_lock_interruptible(struct drm_device *dev);
+int i915_gem_object_sync(struct drm_i915_gem_object *obj,
+			 struct intel_ring_buffer *to);
+
 int i915_gem_object_set_to_gtt_domain(struct drm_i915_gem_object *obj,
     bool write);
 int __must_check
@@ -1558,6 +1561,8 @@ extern void gen6_set_rps(struct drm_device *dev, u8 val);
 extern void intel_detect_pch(struct drm_device *dev);
 extern int intel_trans_dp_port_sel(struct drm_crtc *crtc);
 extern int intel_enable_rc6(const struct drm_device *dev);
+
+extern bool i915_semaphore_is_enabled(struct drm_device *dev);
 
 extern struct intel_overlay_error_state *intel_overlay_capture_error_state(
     struct drm_device *dev);

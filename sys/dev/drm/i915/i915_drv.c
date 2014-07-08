@@ -359,6 +359,23 @@ void intel_detect_pch(struct drm_device *dev)
 	}
 }
 
+bool i915_semaphore_is_enabled(struct drm_device *dev)
+{
+	if (INTEL_INFO(dev)->gen < 6)
+		return 0;
+
+	if (i915_semaphores >= 0)
+		return i915_semaphores;
+
+#ifdef CONFIG_INTEL_IOMMU
+	/* Enable semaphores on SNB when IO remapping is off */
+	if (INTEL_INFO(dev)->gen == 6 && intel_iommu_gfx_mapped)
+		return false;
+#endif
+
+	return 1;
+}
+
 static int i915_drm_freeze(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
