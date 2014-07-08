@@ -135,7 +135,7 @@ static long bufreusecnt, bufdefragcnt, buffreekvacnt;
 static long lorunningspace;
 static long hirunningspace;
 static long dirtykvaspace;		/* atomic */
-static long dirtybufspace;		/* atomic */
+long dirtybufspace;			/* atomic (global for systat) */
 static long dirtybufcount;		/* atomic */
 static long dirtybufspacehw;		/* atomic */
 static long dirtybufcounthw;		/* atomic */
