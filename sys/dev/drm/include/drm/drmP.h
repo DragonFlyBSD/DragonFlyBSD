@@ -1270,9 +1270,6 @@ extern int drm_calc_vbltimestamp_from_scanoutpos(struct drm_device *dev,
 						 struct drm_crtc *refcrtc);
 extern void drm_calc_timestamping_constants(struct drm_crtc *crtc);
 
-struct timeval ns_to_timeval(const int64_t nsec);
-int64_t timeval_to_ns(const struct timeval *tv);
-
 /* AGP/PCI Express/GART support (drm_agpsupport.c) */
 int	drm_device_is_agp(struct drm_device *dev);
 int	drm_device_is_pcie(struct drm_device *dev);

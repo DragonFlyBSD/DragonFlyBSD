@@ -33,6 +33,7 @@
 
 #include <linux/export.h>
 #include <linux/mutex.h>
+#include <linux/time.h>
 #include <linux/timer.h>
 #include <drm/drmP.h>
 
@@ -181,38 +182,6 @@ int drm_control(struct drm_device *dev, void *data, struct drm_file *file_priv)
 	default:
 		return EINVAL;
 	}
-}
-
-#define NSEC_PER_USEC	1000L
-#define NSEC_PER_SEC	1000000000L
-
-int64_t
-timeval_to_ns(const struct timeval *tv)
-{
-	return ((int64_t)tv->tv_sec * NSEC_PER_SEC) +
-		tv->tv_usec * NSEC_PER_USEC;
-}
-
-struct timeval
-ns_to_timeval(const int64_t nsec)
-{
-        struct timeval tv;
-	long rem;
-
-	if (nsec == 0) {
-		tv.tv_sec = 0;
-		tv.tv_usec = 0;
-		return (tv);
-	}
-
-        tv.tv_sec = nsec / NSEC_PER_SEC;
-	rem = nsec % NSEC_PER_SEC;
-        if (rem < 0) {
-                tv.tv_sec--;
-                rem += NSEC_PER_SEC;
-        }
-	tv.tv_usec = rem / 1000;
-        return (tv);
 }
 
 /*
