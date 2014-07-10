@@ -95,6 +95,7 @@
 
 #include <linux/atomic.h>
 #include <linux/idr.h>
+#include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/kref.h>
 #include <linux/list.h>
@@ -244,11 +245,6 @@ enum {
 #define DRM_SUSER(p)		(priv_check(p, PRIV_DRIVER) == 0)
 #define DRM_AGP_FIND_DEVICE()	agp_find_device()
 #define DRM_MTRR_WC		MDF_WRITECOMBINE
-#define jiffies			ticks
-#define	jiffies_to_msecs(x)	(((int64_t)(x)) * 1000 / hz)
-#define	msecs_to_jiffies(x)	(((int64_t)(x)) * hz / 1000)
-#define	time_after(a,b)		((long)(b) - (long)(a) < 0)
-#define	time_after_eq(a,b)	((long)(b) - (long)(a) <= 0)
 
 /* DRM_READMEMORYBARRIER() prevents reordering of reads.
  * DRM_WRITEMEMORYBARRIER() prevents reordering of writes.
