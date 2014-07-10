@@ -1031,7 +1031,6 @@ static int intel_init_ring_buffer(struct drm_device *dev,
 	INIT_LIST_HEAD(&ring->request_list);
 	INIT_LIST_HEAD(&ring->gpu_write_list);
 
-	lockinit(&ring->irq_lock, "ringb", 0, LK_CANRECURSE);
 	ring->irq_mask = ~0;
 
 	init_waitqueue_head(&ring->irq_queue);

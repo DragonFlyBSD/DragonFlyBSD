@@ -28,6 +28,7 @@
 #define _LINUX_WAIT_H_
 
 #include <sys/spinlock2.h>
+#include <sys/param.h>
 
 typedef struct {
 	struct spinlock	lock;
@@ -40,5 +41,59 @@ init_waitqueue_head(wait_queue_head_t *eq)
 }
 
 #define wake_up_all(eq)		wakeup(eq)
+
+/*
+ * wait_event_timeout:
+ * - The process is put to sleep until the condition evaluates to true.
+ * - The condition is checked each time the waitqueue wq is woken up.
+ * - wake_up has to be called after changing any variable that could change
+ * the result of the wait condition.
+ *
+ * returns:
+ *   - 0 if the timeout elapsed
+ *   - the remaining jiffies if the condition evaluated to true before
+ *   the timeout elapsed.
+ *   - remaining jiffies are always at least 1
+*/
+#define __wait_event_common(wq, condition, timeout_jiffies, flags)	\
+({									\
+	int start_jiffies, elapsed_jiffies, remaining_jiffies;		\
+	bool timeout_expired = false;					\
+	long retval;							\
+									\
+	start_jiffies = ticks;						\
+									\
+	spin_lock(&wq.lock);						\
+	while (1) {							\
+		if (condition)						\
+			break;						\
+									\
+		ret = ssleep(&wq, &wq.lock, flags,			\
+					"lwe", timeout_jiffies);	\
+		if (ret == EWOULDBLOCK) {				\
+			timeout_expired = true;				\
+			break;						\
+		}							\
+	}								\
+	spin_unlock(&wq.lock);						\
+									\
+	elapsed_jiffies = ticks - start_jiffies;			\
+	remaining_jiffies = timeout_jiffies - elapsed_jiffies;		\
+	if (remaining_jiffies == 0)					\
+		remaining_jiffies = 1;					\
+									\
+	if (timeout_expired)						\
+		retval = 0;						\
+	else 								\
+		retval = remaining_jiffies;				\
+									\
+	retval;								\
+})
+
+#define wait_event_timeout(wq, condition, timeout)			\
+		__wait_event_common(wq, condition, timeout, 0)
+
+#define wait_event_interruptible_timeout(wq, condition, timeout)	\
+		__wait_event_common(wq, condition, timeout, PCATCH)
 
 #endif	/* _LINUX_WAIT_H_ */
