@@ -181,9 +181,6 @@ static video_adapter_t biosadapter = {
 /* video driver declarations */
 static int			vga_configure(int flags);
        int			(*vga_sub_configure)(int flags);
-#if 0
-static int			vga_nop(void);
-#endif
 static int			vga_error(void);
 static vi_probe_t		vga_probe;
 static vi_init_t		vga_init;
@@ -409,13 +406,6 @@ static void filll_io(int, vm_offset_t, size_t);
 static void planar_fill(video_adapter_t *, int);
 static void packed_fill(video_adapter_t *, int);
 static void direct_fill(video_adapter_t *, int);
-#ifdef notyet
-static void planar_fill_rect(video_adapter_t *, int, int, int, int, int);
-static void packed_fill_rect(video_adapter_t *, int, int, int, int, int);
-static void direct_fill_rect16(video_adapter_t *, int, int, int, int, int);
-static void direct_fill_rect24(video_adapter_t *, int, int, int, int, int);
-static void direct_fill_rect32(video_adapter_t *, int, int, int, int, int);
-#endif /* notyet */
 #endif /* !VGA_NO_MODE_CHANGE */
 
 #define	ISMAPPED(pa, width)				\
@@ -834,14 +824,6 @@ filll_io(int val, vm_offset_t d, size_t size)
 #endif /* !VGA_NO_MODE_CHANGE */
 
 /* entry points */
-
-#if 0
-static int
-vga_nop(void)
-{
-    return 0;
-}
-#endif
 
 static int
 vga_error(void)
@@ -1845,276 +1827,11 @@ vga_clear(video_adapter_t *adp)
     return 0;
 }
 
-#ifdef notyet
-static void
-planar_fill_rect(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
-{
-    int banksize;
-    int bank;
-    int pos;
-    int offset;			/* offset within window */
-    int bx;
-    int l;
-
-    lwkt_gettoken(&tty_token);
-    outw(GDCIDX, 0x0005);		/* read mode 0, write mode 0 */
-    outw(GDCIDX, 0x0003);		/* data rotate/function select */
-    outw(GDCIDX, 0x0f01);		/* set/reset enable */
-    outw(GDCIDX, 0xff08);		/* bit mask */
-    outw(GDCIDX, (val << 8) | 0x00); /* set/reset */
-
-    banksize = adp->va_window_size;
-    bank = -1;
-    while (cy > 0) {
-	pos = adp->va_line_width*y + x/8;
-	if (bank != pos/banksize) {
-	    (*vidsw[adp->va_index]->set_win_org)(adp, pos);
-	    bank = pos/banksize;
-	}
-	offset = pos%banksize;
-	bx = (x + cx)/8 - x/8;
-	if (x % 8) {
-	    outw(GDCIDX, ((0xff00 >> (x % 8)) & 0xff00) | 0x08);
-	    writeb(adp->va_window + offset, 0);
-	    ++offset;
-	    --bx;
-	    if (offset >= banksize) {
-		offset = 0;
-		++bank;		/* next bank */
-		(*vidsw[adp->va_index]->set_win_org)(adp, bank*banksize);
-	    }
-	    outw(GDCIDX, 0xff08);	/* bit mask */
-	}
-	while (bx > 0) {
-	    l = imin(bx, banksize);
-	    bzero_io(adp->va_window + offset, l);
-	    offset += l;
-	    bx -= l;
-	    if (offset >= banksize) {
-		offset = 0;
-		++bank;		/* next bank */
-		(*vidsw[adp->va_index]->set_win_org)(adp, bank*banksize);
-	    }
-	}
-	if ((x + cx) % 8) {
-	    outw(GDCIDX, (~(0xff00 >> ((x + cx) % 8)) & 0xff00) | 0x08);
-	    writeb(adp->va_window + offset, 0);
-	    ++offset;
-	    if (offset >= banksize) {
-		offset = 0;
-		++bank;		/* next bank */
-		(*vidsw[adp->va_index]->set_win_org)(adp, bank*banksize);
-	    }
-	    outw(GDCIDX, 0xff08);	/* bit mask */
-	}
-	++y;
-	--cy;
-    }
-
-    outw(GDCIDX, 0xff08);		/* bit mask */
-    outw(GDCIDX, 0x0000);		/* set/reset */
-    outw(GDCIDX, 0x0001);		/* set/reset enable */
-    lwkt_reltoken(&tty_token);
-}
-
-static void
-packed_fill_rect(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
-{
-    int banksize;
-    int bank;
-    int pos;
-    int offset;			/* offset within window */
-    int end;
-
-    lwkt_gettoken(&tty_token);
-    banksize = adp->va_window_size;
-    bank = -1;
-    cx *= adp->va_info.vi_pixel_size;
-    while (cy > 0) {
-	pos = adp->va_line_width*y + x*adp->va_info.vi_pixel_size;
-	if (bank != pos/banksize) {
-	    (*vidsw[adp->va_index]->set_win_org)(adp, pos);
-	    bank = pos/banksize;
-	}
-	offset = pos%banksize;
-	end = imin(offset + cx, banksize);
-	fill_io(val, adp->va_window + offset,
-		(end - offset)/adp->va_info.vi_pixel_size);
-	/* the line may cross the window boundary */
-	if (offset + cx > banksize) {
-	    ++bank;		/* next bank */
-	    (*vidsw[adp->va_index]->set_win_org)(adp, bank*banksize);
-	    end = offset + cx - banksize;
-	    fill_io(val, adp->va_window, end/adp->va_info.vi_pixel_size);
-	}
-	++y;
-	--cy;
-    }
-    lwkt_reltoken(&tty_token);
-}
-
-static void
-direct_fill_rect16(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
-{
-    int banksize;
-    int bank;
-    int pos;
-    int offset;			/* offset within window */
-    int end;
-
-    lwkt_gettoken(&tty_token);
-    /*
-     * XXX: the function assumes that banksize is a muliple of
-     * sizeof(u_int16_t).
-     */
-    banksize = adp->va_window_size;
-    bank = -1;
-    cx *= sizeof(u_int16_t);
-    while (cy > 0) {
-	pos = adp->va_line_width*y + x*sizeof(u_int16_t);
-	if (bank != pos/banksize) {
-	    (*vidsw[adp->va_index]->set_win_org)(adp, pos);
-	    bank = pos/banksize;
-	}
-	offset = pos%banksize;
-	end = imin(offset + cx, banksize);
-	fillw_io(val, adp->va_window + offset,
-		 (end - offset)/sizeof(u_int16_t));
-	/* the line may cross the window boundary */
-	if (offset + cx > banksize) {
-	    ++bank;		/* next bank */
-	    (*vidsw[adp->va_index]->set_win_org)(adp, bank*banksize);
-	    end = offset + cx - banksize;
-	    fillw_io(val, adp->va_window, end/sizeof(u_int16_t));
-	}
-	++y;
-	--cy;
-    }
-    lwkt_reltoken(&tty_token);
-}
-
-static void
-direct_fill_rect24(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
-{
-    int banksize;
-    int bank;
-    int pos;
-    int offset;			/* offset within window */
-    int end;
-    int i;
-    int j;
-    u_int8_t b[3];
-
-    lwkt_gettoken(&tty_token);
-    b[0] = val & 0x0000ff;
-    b[1] = (val >> 8) & 0x0000ff;
-    b[2] = (val >> 16) & 0x0000ff;
-    banksize = adp->va_window_size;
-    bank = -1;
-    cx *= 3;
-    while (cy > 0) {
-	pos = adp->va_line_width*y + x*3;
-	if (bank != pos/banksize) {
-	    (*vidsw[adp->va_index]->set_win_org)(adp, pos);
-	    bank = pos/banksize;
-	}
-	offset = pos%banksize;
-	end = imin(offset + cx, banksize);
-	for (i = 0, j = offset; j < end; i = (++i)%3, ++j) {
-	    writeb(adp->va_window + j, b[i]);
-	}
-	/* the line may cross the window boundary */
-	if (offset + cx >= banksize) {
-	    ++bank;		/* next bank */
-	    (*vidsw[adp->va_index]->set_win_org)(adp, bank*banksize);
-	    j = 0;
-	    end = offset + cx - banksize;
-	    for (; j < end; i = (++i)%3, ++j) {
-		writeb(adp->va_window + j, b[i]);
-	    }
-	}
-	++y;
-	--cy;
-    }
-    lwkt_reltoken(&tty_token);
-}
-
-static void
-direct_fill_rect32(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
-{
-    int banksize;
-    int bank;
-    int pos;
-    int offset;			/* offset within window */
-    int end;
-
-    lwkt_gettoken(&tty_token);
-    /*
-     * XXX: the function assumes that banksize is a muliple of
-     * sizeof(u_int32_t).
-     */
-    banksize = adp->va_window_size;
-    bank = -1;
-    cx *= sizeof(u_int32_t);
-    while (cy > 0) {
-	pos = adp->va_line_width*y + x*sizeof(u_int32_t);
-	if (bank != pos/banksize) {
-	    (*vidsw[adp->va_index]->set_win_org)(adp, pos);
-	    bank = pos/banksize;
-	}
-	offset = pos%banksize;
-	end = imin(offset + cx, banksize);
-	filll_io(val, adp->va_window + offset,
-		 (end - offset)/sizeof(u_int32_t));
-	/* the line may cross the window boundary */
-	if (offset + cx > banksize) {
-	    ++bank;		/* next bank */
-	    (*vidsw[adp->va_index]->set_win_org)(adp, bank*banksize);
-	    end = offset + cx - banksize;
-	    filll_io(val, adp->va_window, end/sizeof(u_int32_t));
-	}
-	++y;
-	--cy;
-    }
-    lwkt_reltoken(&tty_token);
-}
-
-static int
-vga_fill_rect(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
-{
-    switch (adp->va_info.vi_mem_model) {
-    case V_INFO_MM_TEXT:
-	/* do nothing? XXX */
-	break;
-    case V_INFO_MM_PLANAR:
-	planar_fill_rect(adp, val, x, y, cx, cy);
-	break;
-    case V_INFO_MM_PACKED:
-	packed_fill_rect(adp, val, x, y, cx, cy);
-	break;
-    case V_INFO_MM_DIRECT:
-	switch (adp->va_info.vi_pixel_size) {
-	case sizeof(u_int16_t):
-	    direct_fill_rect16(adp, val, x, y, cx, cy);
-	    break;
-	case 3:
-	    direct_fill_rect24(adp, val, x, y, cx, cy);
-	    break;
-	case sizeof(u_int32_t):
-	    direct_fill_rect32(adp, val, x, y, cx, cy);
-	    break;
-	}
-	break;
-    }
-    return 0;
-}
-#else /* !notyet */
 static int
 vga_fill_rect(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
 {
     return ENODEV;
 }
-#endif /* notyet */
 
 static int
 vga_bitblt(video_adapter_t *adp,...)
