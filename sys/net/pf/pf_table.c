@@ -1986,6 +1986,7 @@ pfr_match_addr(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af)
 	switch (af) {
 #ifdef INET
 	case AF_INET:
+		bzero(&pfr_sin, sizeof(pfr_sin));
 		pfr_sin.sin_len = sizeof(pfr_sin);
 		pfr_sin.sin_family = AF_INET;
 		pfr_sin.sin_addr.s_addr = a->addr32[0];
@@ -1997,6 +1998,7 @@ pfr_match_addr(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af)
 #endif /* INET */
 #ifdef INET6
 	case AF_INET6:
+		bzero(&pfr_sin6, sizeof(pfr_sin6));
 		pfr_sin6.sin6_len = sizeof(pfr_sin6);
 		pfr_sin6.sin6_family = AF_INET6;
 		bcopy(a, &pfr_sin6.sin6_addr, sizeof(pfr_sin6.sin6_addr));
@@ -2031,6 +2033,7 @@ pfr_update_stats(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af,
 	switch (af) {
 #ifdef INET
 	case AF_INET:
+		bzero(&pfr_sin, sizeof(pfr_sin));
 		pfr_sin.sin_len = sizeof(pfr_sin);
 		pfr_sin.sin_family = AF_INET;
 		pfr_sin.sin_addr.s_addr = a->addr32[0];
@@ -2042,6 +2045,7 @@ pfr_update_stats(struct pfr_ktable *kt, struct pf_addr *a, sa_family_t af,
 #endif /* INET */
 #ifdef INET6
 	case AF_INET6:
+		bzero(&pfr_sin6, sizeof(pfr_sin6));
 		pfr_sin6.sin6_len = sizeof(pfr_sin6);
 		pfr_sin6.sin6_family = AF_INET6;
 		bcopy(a, &pfr_sin6.sin6_addr, sizeof(pfr_sin6.sin6_addr));
