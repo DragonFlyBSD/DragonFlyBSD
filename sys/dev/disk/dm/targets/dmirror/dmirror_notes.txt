@@ -14,7 +14,7 @@
 	  are out of sync would be resynchronized.
 
 	  We want to avoid having to completely resynchronize the entire
-	  contents of a potentitally multi-terrabyte drive if one is
+	  contents of a potentially multi-terabyte drive if one is
 	  taken offline temporarily and then brought back online.
 
 	* Allow mixed I/O errors on both drives making up the mirror
@@ -266,7 +266,7 @@
 	When formatting a new mirror or when a drive is torn out and a new
 	drive is added the drive(s) in question must be formatted.  To
 	avoid actually writing to all sectors of the drive, which would
-	take too long on multi-terrabyte drives and create unnecesary
+	take too long on multi-terabyte drives and create unnecesary
 	writes on things like SSDs we instead of an UNINITIALIZED flag
 	state in the descriptor.
 
