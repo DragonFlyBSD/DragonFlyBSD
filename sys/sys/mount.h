@@ -729,8 +729,6 @@ extern	struct nfs_public nfs_pub;
  * functions or casting entries in the VFS op table to "enopnotsupp()".
  */ 
 vfs_start_t 	vfs_stdstart;
-vfs_mount_t 	vfs_stdmount;
-vfs_unmount_t 	vfs_stdunmount;
 vfs_root_t  	vfs_stdroot;
 vfs_quotactl_t 	vfs_stdquotactl;
 vfs_statfs_t  	vfs_stdstatfs;

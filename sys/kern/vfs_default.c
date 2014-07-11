@@ -147,12 +147,6 @@ vop_defaultop(struct vop_generic_args *ap)
 	return (VOCALL(&default_vnode_vops, ap));
 }
 
-int
-vop_panic(struct vop_generic_args *ap)
-{
-	panic("filesystem goof: vop_panic[%s]", ap->a_desc->sd_name);
-}
-
 /*
  * vop_compat_resolve { struct nchandle *a_nch, struct vnode *dvp }
  * XXX STOPGAP FUNCTION
@@ -1266,18 +1260,6 @@ vop_stdnowrite(struct vop_write_args *ap)
  * vfs default ops
  * used to fill the vfs fucntion table to get reasonable default return values.
  */
-int 
-vfs_stdmount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
-{
-	return (0);
-}
-
-int	
-vfs_stdunmount(struct mount *mp, int mntflags)
-{
-	return (0);
-}
-
 int
 vop_stdmountctl(struct vop_mountctl_args *ap)
 {

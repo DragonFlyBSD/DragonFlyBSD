@@ -528,7 +528,6 @@ int	vop_einval (struct vop_generic_args *ap);
 int	vop_enotty (struct vop_generic_args *ap);
 int	vop_defaultop (struct vop_generic_args *ap);
 int	vop_null (struct vop_generic_args *ap);
-int	vop_panic (struct vop_generic_args *ap);
 int	vop_write_dirent(int *, struct uio *, ino_t, uint8_t, uint16_t,
 			 const char *);
 
