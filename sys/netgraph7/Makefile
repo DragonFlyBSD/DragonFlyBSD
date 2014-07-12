@@ -18,7 +18,6 @@ SUBDIR=	UI \
 	ksocket \
 	l2tp \
 	lmi \
-	mppc \
 	netgraph \
 	one2many \
 	ppp \
@@ -35,7 +34,7 @@ SUBDIR=	UI \
 #	sync_sr \
 
 .if !defined(NO_CRYPT) && exists(${.CURDIR}/../crypto/rc4/rc4.c)
-#SUBDIR+=	mppc
+SUBDIR+=	mppc
 .endif
 
 .include <bsd.subdir.mk>
