@@ -6423,8 +6423,7 @@ void intel_modeset_init(struct drm_device *dev)
 
 void intel_modeset_gem_init(struct drm_device *dev)
 {
-	if (IS_IRONLAKE_M(dev))
-		ironlake_enable_rc6(dev);
+	intel_modeset_init_hw(dev);
 
 	intel_setup_overlay(dev);
 }
