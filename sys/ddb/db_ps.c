@@ -102,7 +102,7 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 	 * Dump running threads
 	 */
 	for (cpuidx = 0; cpuidx < ncpus; ++cpuidx) {
-	    struct globaldata *gd = &CPU_prvspace[cpuidx].mdglobaldata.mi;
+	    struct globaldata *gd = globaldata_find(cpuidx);
 	    thread_t td;
 	    int j;
 

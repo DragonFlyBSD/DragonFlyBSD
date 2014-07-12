@@ -141,14 +141,16 @@ struct sysref_class vmspace_sysref_class = {
  * per-cpu page table cross mappings are initialized in early boot
  * and might require a considerable number of vm_map_entry structures.
  */
-#define VMEPERCPU	(MAXCPU+1)
+#define MAPENTRYBSP_CACHE	(MAXCPU+1)
+#define MAPENTRYAP_CACHE	8
 
 static struct vm_zone mapentzone_store, mapzone_store;
 static vm_zone_t mapentzone, mapzone;
 static struct vm_object mapentobj, mapobj;
 
 static struct vm_map_entry map_entry_init[MAX_MAPENT];
-static struct vm_map_entry cpu_map_entry_init[MAXCPU][VMEPERCPU];
+static struct vm_map_entry cpu_map_entry_init_bsp[MAPENTRYBSP_CACHE];
+static struct vm_map_entry cpu_map_entry_init_ap[MAXCPU][MAPENTRYAP_CACHE];
 static struct vm_map map_init[MAX_KMAP];
 
 static int randomize_mmap;
@@ -628,16 +630,27 @@ vm_map_entry_allocate_object(vm_map_entry_t entry)
  * vm_map_entry_reserve().
  *
  * Called from the low level boot code only (for each cpu)
+ *
+ * WARNING! Take care not to have too-big a static/BSS structure here
+ *	    as MAXCPU can be 256+, otherwise the loader's 64MB heap
+ *	    can get blown out by the kernel plus the initrd image.
  */
 void
 vm_map_entry_reserve_cpu_init(globaldata_t gd)
 {
 	vm_map_entry_t entry;
+	int count;
 	int i;
 
 	gd->gd_vme_avail -= MAP_RESERVE_COUNT * 2;
-	entry = &cpu_map_entry_init[gd->gd_cpuid][0];
-	for (i = 0; i < VMEPERCPU; ++i, ++entry) {
+	if (gd->gd_cpuid == 0) {
+		entry = &cpu_map_entry_init_bsp[0];
+		count = MAPENTRYBSP_CACHE;
+	} else {
+		entry = &cpu_map_entry_init_ap[gd->gd_cpuid][0];
+		count = MAPENTRYAP_CACHE;
+	}
+	for (i = 0; i < count; ++i, ++entry) {
 		entry->next = gd->gd_vme_base;
 		gd->gd_vme_base = entry;
 	}

@@ -159,7 +159,8 @@ SYSINIT(cpu_finish, SI_BOOT2_FINISH_CPU, SI_ORDER_FIRST, cpu_finish, NULL)
 extern vm_offset_t ksym_start, ksym_end;
 #endif
 
-struct privatespace CPU_prvspace[MAXCPU] __aligned(4096); /* XXX */
+struct privatespace CPU_prvspace_bsp __aligned(4096);
+struct privatespace *CPU_prvspace[MAXCPU] = { &CPU_prvspace_bsp };
 
 int	_udatasel, _ucodesel, _ucode32sel;
 u_long	atdevbase;
@@ -1917,7 +1918,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	/*
 	 * Prevent lowering of the ipl if we call tsleep() early.
 	 */
-	gd = &CPU_prvspace[0].mdglobaldata;
+	gd = &CPU_prvspace[0]->mdglobaldata;
 	bzero(gd, sizeof(*gd));
 
 	/*
@@ -1977,9 +1978,9 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * make gdt memory segments
 	 */
 	gdt_segs[GPROC0_SEL].ssd_base =
-		(uintptr_t) &CPU_prvspace[0].mdglobaldata.gd_common_tss;
+		(uintptr_t) &CPU_prvspace[0]->mdglobaldata.gd_common_tss;
 
-	gd->mi.gd_prvspace = &CPU_prvspace[0];
+	gd->mi.gd_prvspace = CPU_prvspace[0];
 
 	for (x = 0; x < NGDT; x++) {
 		if (x != GPROC0_SEL && x != (GPROC0_SEL + 1))
@@ -2184,13 +2185,20 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 	*(void **)gd->mi.gd_idlethread.td_sp = cpu_idle_restore;
 }
 
+/*
+ * We only have to check for DMAP bounds, the globaldata space is
+ * actually part of the kernel_map so we don't have to waste time
+ * checking CPU_prvspace[*].
+ */
 int
 is_globaldata_space(vm_offset_t saddr, vm_offset_t eaddr)
 {
+#if 0
 	if (saddr >= (vm_offset_t)&CPU_prvspace[0] &&
 	    eaddr <= (vm_offset_t)&CPU_prvspace[MAXCPU]) {
 		return (TRUE);
 	}
+#endif
 	if (saddr >= DMAP_MIN_ADDRESS && eaddr <= DMAP_MAX_ADDRESS)
 		return (TRUE);
 	return (FALSE);
@@ -2200,7 +2208,7 @@ struct globaldata *
 globaldata_find(int cpu)
 {
 	KKASSERT(cpu >= 0 && cpu < ncpus);
-	return(&CPU_prvspace[cpu].mdglobaldata.mi);
+	return(&CPU_prvspace[cpu]->mdglobaldata.mi);
 }
 
 int

@@ -235,7 +235,7 @@ init_secondary(void)
 	struct mdglobaldata *md;
 	struct privatespace *ps;
 
-	ps = &CPU_prvspace[myid];
+	ps = CPU_prvspace[myid];
 
 	gdt_segs[GPROC0_SEL].ssd_base =
 		(long) &ps->mdglobaldata.gd_common_tss;
@@ -347,6 +347,7 @@ start_all_aps(u_int boot_addr)
 {
 	vm_offset_t va = boot_address + KERNBASE;
 	u_int64_t *pt4, *pt3, *pt2;
+	int	pssize;
 	int     x, i;
 	int	shift;
 	int	smicount;
@@ -433,15 +434,15 @@ start_all_aps(u_int boot_addr)
 	for (x = 1; x <= naps; ++x) {
 		/* This is a bit verbose, it will go away soon.  */
 
+		pssize = sizeof(struct privatespace);
+		ps = (void *)kmem_alloc(&kernel_map, pssize);
+		CPU_prvspace[x] = ps;
 #if 0
-		/* allocate new private data page(s) */
-		gd = (struct mdglobaldata *)kmem_alloc(&kernel_map, 
-				MDGLOBALDATA_BASEALLOC_SIZE);
+		kprintf("ps %d %p %d\n", x, ps, pssize);
 #endif
-
-		gd = &CPU_prvspace[x].mdglobaldata;	/* official location */
-		bzero(gd, sizeof(*gd));
-		gd->mi.gd_prvspace = ps = &CPU_prvspace[x];
+		bzero(ps, pssize);
+		gd = &ps->mdglobaldata;
+		gd->mi.gd_prvspace = ps;
 
 		/* prime data page for it to use */
 		mi_gdinit(&gd->mi, x);

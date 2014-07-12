@@ -129,7 +129,7 @@ struct privatespace {
 
 #ifdef _KERNEL
 
-extern struct privatespace CPU_prvspace[];
+extern struct privatespace *CPU_prvspace[];
 
 #endif
 
