@@ -107,6 +107,12 @@ km_probe(struct device *dev)
 	case PCI_PRODUCT_AMD_AMD64_F15_1x_MISC:
 		desc = "AMD Family 15/1xh temperature sensor";
 		break;
+	case PCI_PRODUCT_AMD_AMD64_F15_3x_MISC:
+		desc = "AMD Family 15/3xh temperature sensor";
+		break;
+	case PCI_PRODUCT_AMD_AMD64_F16_MISC:
+		desc = "AMD Family 16h temperature sensor";
+		break;
 	default:
 		return ENXIO;
 	}
