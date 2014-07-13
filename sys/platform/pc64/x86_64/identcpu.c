@@ -349,10 +349,10 @@ printcpuinfo(void)
 				"\027Topology"	/* Topology Extensions */
 				"\030PCX_CORE"  /* Core Performance Counter */
 				"\031PCX_NB"    /* NB Performance Counter */
-				"\032<b25>"
-				"\033<b26>"
-				"\034<b27>"
-				"\035<b28>"
+				"\032SPM"	/* Streaming Perf Monitor */
+				"\033DBE"	/* Data Breakpoint Extension */
+				"\034PTSC"	/* Performance TSC */
+				"\035PCX_L2I"	/* L2I Performance Counter */
 				"\036<b29>"
 				"\037<b30>"
 				"\040<b31>"
