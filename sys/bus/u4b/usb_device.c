@@ -2527,7 +2527,7 @@ usb_notify_addq(const char *type, struct usb_device *udev)
 		if (iface->idesc == NULL)
 			continue;	/* no interface descriptor */
 		
-		sb = 0;
+		sb = NULL;
 		sb = sbuf_new(NULL, NULL, 4096, SBUF_AUTOEXTEND);
 		sbuf_printf(sb,
 #if USB_HAVE_UGEN

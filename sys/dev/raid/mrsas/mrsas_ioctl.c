@@ -156,7 +156,7 @@ int mrsas_passthru( struct mrsas_softc *sc, void *arg )
     bus_addr_t ioctl_data_phys_addr[MAX_IOCTL_SGE]; // ioctl data phys addr
     bus_dma_tag_t ioctl_sense_tag = 0;
     bus_dmamap_t ioctl_sense_dmamap = 0;
-    void *ioctl_sense_mem = 0;  
+    void *ioctl_sense_mem = NULL;  
     bus_addr_t ioctl_sense_phys_addr = 0; 
     int i, adapter, ioctl_data_size, ioctl_sense_size, ret=0;
     struct mrsas_sge32 *kern_sge32;
