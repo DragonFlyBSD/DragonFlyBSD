@@ -37,6 +37,7 @@
 #include <drm/drm_mm.h>
 #include <drm/drm_global.h>
 #include <sys/tree.h>
+#include <linux/workqueue.h>
 
 struct ttm_backend_func {
 	/**
@@ -561,7 +562,7 @@ struct ttm_bo_device {
 	 * Internal protection.
 	 */
 
-	struct timeout_task wq;
+	struct delayed_work wq;
 
 	bool need_dma32;
 };
