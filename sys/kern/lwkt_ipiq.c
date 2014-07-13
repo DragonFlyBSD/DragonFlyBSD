@@ -110,6 +110,7 @@ KTR_INFO(KTR_IPIQ, ipiq, sync_start, 5, "cpumask=%08lx", unsigned long mask);
 KTR_INFO(KTR_IPIQ, ipiq, sync_end, 6, "cpumask=%08lx", unsigned long mask);
 KTR_INFO(KTR_IPIQ, ipiq, cpu_send, 7, IPIQ_STRING, IPIQ_ARGS);
 KTR_INFO(KTR_IPIQ, ipiq, send_end, 8, IPIQ_STRING, IPIQ_ARGS);
+KTR_INFO(KTR_IPIQ, ipiq, sync_quick, 9, "cpumask=%08lx", unsigned long mask);
 
 #define logipiq(name, func, arg1, arg2, sgd, dgd)	\
 	KTR_LOG(ipiq_ ## name, func, arg1, arg2, sgd->gd_cpuid, dgd->gd_cpuid)
@@ -821,9 +822,6 @@ lwkt_cpusync_simple(cpumask_t mask, cpusync_func_t func, void *arg)
 void
 lwkt_cpusync_interlock(lwkt_cpusync_t cs)
 {
-#if 0
-    const char *smsg = "SMPSYNL";
-#endif
     globaldata_t gd = mycpu;
     cpumask_t mask;
 
@@ -844,10 +842,6 @@ lwkt_cpusync_interlock(lwkt_cpusync_t cs)
 	++gd->gd_curthread->td_cscount;
 	lwkt_send_ipiq_mask(mask, (ipifunc1_t)lwkt_cpusync_remote1, cs);
 	logipiq2(sync_start, (long)CPUMASK_LOWMASK(mask));
-#if 0
-	if (gd->gd_curthread->td_wmesg == NULL)
-		gd->gd_curthread->td_wmesg = smsg;
-#endif
 	while (CPUMASK_CMPMASKNEQ(cs->cs_mack, mask)) {
 	    lwkt_process_ipiq();
 	    cpu_pause();
@@ -855,10 +849,6 @@ lwkt_cpusync_interlock(lwkt_cpusync_t cs)
 	    pthread_yield();
 #endif
 	}
-#if 0
-	if (gd->gd_curthread->td_wmesg == smsg)
-		gd->gd_curthread->td_wmesg = NULL;
-#endif
 	DEBUG_POP_INFO();
     }
 }
@@ -873,9 +863,6 @@ void
 lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
 {
     globaldata_t gd = mycpu;
-#if 0
-    const char *smsg = "SMPSYNU";
-#endif
     cpumask_t mask;
 
     /*
@@ -895,10 +882,6 @@ lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
 	    cs->cs_func(cs->cs_data);
     if (CPUMASK_TESTNZERO(mask)) {
 	DEBUG_PUSH_INFO("cpusync_deinterlock");
-#if 0
-	if (gd->gd_curthread->td_wmesg == NULL)
-		gd->gd_curthread->td_wmesg = smsg;
-#endif
 	while (CPUMASK_CMPMASKNEQ(cs->cs_mack, mask)) {
 	    lwkt_process_ipiq();
 	    cpu_pause();
@@ -906,10 +889,6 @@ lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
 	    pthread_yield();
 #endif
 	}
-#if 0
-	if (gd->gd_curthread->td_wmesg == smsg)
-		gd->gd_curthread->td_wmesg = NULL;
-#endif
 	DEBUG_POP_INFO();
 	/*
 	 * cpusyncq ipis may be left queued without the RQF flag set due to
@@ -920,6 +899,57 @@ lwkt_cpusync_deinterlock(lwkt_cpusync_t cs)
 	lwkt_process_ipiq();
 	logipiq2(sync_end, (long)CPUMASK_LOWMASK(mask));
     }
+    crit_exit_id("cpusync");
+}
+
+/*
+ * The quick version does not quiesce the target cpu(s) but instead executes
+ * the function on the target cpu(s) and waits for all to acknowledge.  This
+ * avoids spinning on the target cpus.
+ *
+ * This function is typically only used for kernel_pmap updates.  User pmaps
+ * have to be quiesced.
+ */
+void
+lwkt_cpusync_quick(lwkt_cpusync_t cs)
+{
+    globaldata_t gd = mycpu;
+    cpumask_t mask;
+
+    /*
+     * stage-2 cs_mack only.
+     */
+    mask = cs->cs_mask;
+    CPUMASK_ANDMASK(mask, gd->gd_other_cpus);
+    CPUMASK_ANDMASK(mask, smp_active_mask);
+    CPUMASK_ASSZERO(cs->cs_mack);
+
+    crit_enter_id("cpusync");
+    if (CPUMASK_TESTNZERO(mask)) {
+	DEBUG_PUSH_INFO("cpusync_interlock");
+	++ipiq_stat(gd).ipiq_cscount;
+	++gd->gd_curthread->td_cscount;
+	lwkt_send_ipiq_mask(mask, (ipifunc1_t)lwkt_cpusync_remote2, cs);
+	logipiq2(sync_quick, (long)CPUMASK_LOWMASK(mask));
+	while (CPUMASK_CMPMASKNEQ(cs->cs_mack, mask)) {
+	    lwkt_process_ipiq();
+	    cpu_pause();
+#ifdef _KERNEL_VIRTUAL
+	    pthread_yield();
+#endif
+	}
+
+	/*
+	 * cpusyncq ipis may be left queued without the RQF flag set due to
+	 * a non-zero td_cscount, so be sure to process any laggards after
+	 * decrementing td_cscount.
+	 */
+	DEBUG_POP_INFO();
+	--gd->gd_curthread->td_cscount;
+	lwkt_process_ipiq();
+    }
+    if (cs->cs_func && CPUMASK_TESTBIT(cs->cs_mask, gd->gd_cpuid))
+	    cs->cs_func(cs->cs_data);
     crit_exit_id("cpusync");
 }
 

@@ -502,6 +502,7 @@ extern void lwkt_synchronize_ipiqs(const char *);
 extern void lwkt_cpusync_simple(cpumask_t, cpusync_func_t, void *);
 extern void lwkt_cpusync_interlock(lwkt_cpusync_t);
 extern void lwkt_cpusync_deinterlock(lwkt_cpusync_t);
+extern void lwkt_cpusync_quick(lwkt_cpusync_t);
 
 extern void crit_panic(void) __dead2;
 extern struct lwp *lwkt_preempted_proc(void);
