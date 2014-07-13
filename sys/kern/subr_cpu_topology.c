@@ -65,6 +65,7 @@ static struct sysctl_ctx_list cpu_topology_sysctl_ctx;
 static struct sysctl_oid *cpu_topology_sysctl_tree;
 static char cpu_topology_members[8*MAXCPU];
 static per_cpu_sysctl_info_t pcpu_sysctl[MAXCPU];
+static void sbuf_print_cpuset(struct sbuf *sb, cpumask_t *mask);
 
 int cpu_topology_levels_number = 1;
 cpu_node_t *root_cpu_node;
@@ -369,10 +370,7 @@ print_cpu_topology_tree_sysctl_helper(cpu_node_t *node,
 	} else {
 		sbuf_printf(sb,"UNKNOWN: ");
 	}
-	CPUSET_FOREACH(i, node->members) {
-		sbuf_printf(sb,"cpu%d ", i);
-	}	
-	
+	sbuf_print_cpuset(sb, &node->members);
 	sbuf_printf(sb,"\n");
 
 	for (i = 0; i < node->child_no; i++) {
@@ -501,7 +499,6 @@ get_cpumask_from_level(int cpuid,
 static void
 init_pcpu_topology_sysctl(void)
 {
-	int cpu;
 	int i;
 	cpumask_t mask;
 	struct sbuf sb;
@@ -523,9 +520,7 @@ init_pcpu_topology_sysctl(void)
 
 		sbuf_new(&sb, pcpu_sysctl[i].physical_siblings,
 		    sizeof(pcpu_sysctl[i].physical_siblings), SBUF_FIXEDLEN);
-		CPUSET_FOREACH(cpu, mask) {
-			sbuf_printf(&sb,"cpu%d ", cpu);
-		}
+		sbuf_print_cpuset(&sb, &mask);
 		sbuf_trim(&sb);
 		sbuf_finish(&sb);
 
@@ -540,9 +535,7 @@ init_pcpu_topology_sysctl(void)
 
 		sbuf_new(&sb, pcpu_sysctl[i].core_siblings,
 		    sizeof(pcpu_sysctl[i].core_siblings), SBUF_FIXEDLEN);
-		CPUSET_FOREACH(cpu, mask) {
-			sbuf_printf(&sb,"cpu%d ", cpu);
-		}
+		sbuf_print_cpuset(&sb, &mask);
 		sbuf_trim(&sb);
 		sbuf_finish(&sb);
 
@@ -585,9 +578,7 @@ build_sysctl_cpu_topology(void)
 	/* SYSCTL cpu_topology "members" entry */
 	sbuf_new(&sb, cpu_topology_members,
 	    sizeof(cpu_topology_members), SBUF_FIXEDLEN);
-	CPUSET_FOREACH(i, cpu_root_node->members) {
-		sbuf_printf(&sb,"cpu%d ", i);
-	}
+	sbuf_print_cpuset(&sb, &cpu_root_node->members);
 	sbuf_trim(&sb);
 	sbuf_finish(&sb);
 	SYSCTL_ADD_STRING(&cpu_topology_sysctl_ctx,
@@ -644,6 +635,49 @@ build_sysctl_cpu_topology(void)
 		    pcpu_sysctl[i].core_siblings, 0,
 		    "Core siblings");
 	}
+}
+
+static
+void
+sbuf_print_cpuset(struct sbuf *sb, cpumask_t *mask)
+{
+	int i;
+	int b = -1;
+	int e = -1;
+	int more = 0;
+
+	sbuf_printf(sb, "cpus(");
+	CPUSET_FOREACH(i, *mask) {
+		if (b < 0) {
+			b = i;
+			e = b + 1;
+			continue;
+		}
+		if (e == i) {
+			++e;
+			continue;
+		}
+		if (more)
+			sbuf_printf(sb, ", ");
+		if (b == e - 1) {
+			sbuf_printf(sb, "%d", b);
+		} else {
+			sbuf_printf(sb, "%d-%d", b, e - 1);
+		}
+		more = 1;
+		b = i;
+		e = b + 1;
+	}
+	if (more)
+		sbuf_printf(sb, ", ");
+	if (b >= 0) {
+		if (b == e + 1) {
+			sbuf_printf(sb, "%d", b);
+		} else {
+			sbuf_printf(sb, "%d-%d", b, e - 1);
+		}
+	}
+	sbuf_printf(sb, ") ");
 }
 
 /* Build the CPU Topology and SYSCTL Topology tree */

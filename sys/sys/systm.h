@@ -204,6 +204,7 @@ int     kvsprintf (char *buf, const char *,
 			__va_list) __printflike(2, 0);
 int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);
 void	hexdump (const void *ptr, int length, const char *hdr, int flags);
+void	kprint_cpuset(cpumask_t *mask);
 #define	HD_COLUMN_MASK	0xff
 #define	HD_DELIM_MASK	0xff00
 #define	HD_OMIT_COUNT	(1 << 16)

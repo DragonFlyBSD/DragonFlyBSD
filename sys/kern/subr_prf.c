@@ -55,6 +55,7 @@
 #include <sys/ctype.h>
 #include <sys/eventhandler.h>
 #include <sys/kthread.h>
+#include <sys/cpu_topology.h>
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
@@ -1211,4 +1212,46 @@ hexdump(const void *ptr, int length, const char *hdr, int flags)
 		}
 		kprintf("\n");
 	}
+}
+
+void
+kprint_cpuset(cpumask_t *mask)
+{
+	int i;
+	int b = -1;
+	int e = -1;
+	int more = 0;
+
+	kprintf("cpus(");
+	CPUSET_FOREACH(i, *mask) {
+		if (b < 0) {
+			b = i;
+			e = b + 1;
+			continue;
+		}
+		if (e == i) {
+			++e;
+			continue;
+		}
+		if (more)
+			kprintf(", ");
+		if (b == e - 1) {
+			kprintf("%d", b);
+		} else {
+			kprintf("%d-%d", b, e - 1);
+		}
+		more = 1;
+		b = i;
+		e = b + 1;
+	}
+	if (more)
+		kprintf(", ");
+	if (b >= 0) {
+		if (b == e + 1) {
+			kprintf("%d", b);
+		} else {
+			kprintf("%d-%d", b, e - 1);
+		}
+	}
+	kprintf(") ");
 }

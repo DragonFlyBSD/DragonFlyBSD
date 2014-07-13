@@ -2140,7 +2140,6 @@ usched_dfly_cpu_init(void)
 {
 	int i;
 	int j;
-	int cpuid;
 	int smt_not_supported = 0;
 	int cache_coherent_not_supported = 0;
 
@@ -2176,13 +2175,13 @@ usched_dfly_cpu_init(void)
 			smt_not_supported = 1;
 			cache_coherent_not_supported = 1;
 			if (bootverbose)
-				kprintf ("\tcpu%d - WARNING: No CPU NODE "
+				kprintf ("    cpu%d - WARNING: No CPU NODE "
 					 "found for cpu\n", i);
 		} else {
 			switch (dd->cpunode->type) {
 			case THREAD_LEVEL:
 				if (bootverbose)
-					kprintf ("\tcpu%d - HyperThreading "
+					kprintf ("    cpu%d - HyperThreading "
 						 "available. Core siblings: ",
 						 i);
 				break;
@@ -2190,7 +2189,7 @@ usched_dfly_cpu_init(void)
 				smt_not_supported = 1;
 
 				if (bootverbose)
-					kprintf ("\tcpu%d - No HT available, "
+					kprintf ("    cpu%d - No HT available, "
 						 "multi-core/physical "
 						 "cpu. Physical siblings: ",
 						 i);
@@ -2199,7 +2198,7 @@ usched_dfly_cpu_init(void)
 				smt_not_supported = 1;
 
 				if (bootverbose)
-					kprintf ("\tcpu%d - No HT available, "
+					kprintf ("    cpu%d - No HT available, "
 						 "single-core/physical cpu. "
 						 "Package Siblings: ",
 						 i);
@@ -2209,7 +2208,7 @@ usched_dfly_cpu_init(void)
 				smt_not_supported = 1;
 				cache_coherent_not_supported = 1;
 				if (bootverbose)
-					kprintf ("\tcpu%d - Unknown cpunode->"
+					kprintf ("    cpu%d - Unknown cpunode->"
 						 "type=%u. Siblings: ",
 						 i,
 						 (u_int)dd->cpunode->type);
@@ -2218,8 +2217,8 @@ usched_dfly_cpu_init(void)
 
 			if (bootverbose) {
 				if (dd->cpunode->parent_node != NULL) {
-					CPUSET_FOREACH(cpuid, dd->cpunode->parent_node->members)
-						kprintf("cpu%d ", cpuid);
+					kprint_cpuset(&dd->cpunode->
+							parent_node->members);
 					kprintf("\n");
 				} else {
 					kprintf(" no siblings\n");
