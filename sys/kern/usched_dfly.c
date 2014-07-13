@@ -2182,7 +2182,7 @@ usched_dfly_cpu_init(void)
 			case THREAD_LEVEL:
 				if (bootverbose)
 					kprintf ("    cpu%d - HyperThreading "
-						 "available. Core siblings: ",
+						 "available. Core Sibs: ",
 						 i);
 				break;
 			case CORE_LEVEL:
@@ -2191,7 +2191,7 @@ usched_dfly_cpu_init(void)
 				if (bootverbose)
 					kprintf ("    cpu%d - No HT available, "
 						 "multi-core/physical "
-						 "cpu. Physical siblings: ",
+						 "cpu. Physical Sibs: ",
 						 i);
 				break;
 			case CHIP_LEVEL:
@@ -2200,7 +2200,7 @@ usched_dfly_cpu_init(void)
 				if (bootverbose)
 					kprintf ("    cpu%d - No HT available, "
 						 "single-core/physical cpu. "
-						 "Package Siblings: ",
+						 "Package Sibs: ",
 						 i);
 				break;
 			default:
@@ -2209,7 +2209,7 @@ usched_dfly_cpu_init(void)
 				cache_coherent_not_supported = 1;
 				if (bootverbose)
 					kprintf ("    cpu%d - Unknown cpunode->"
-						 "type=%u. Siblings: ",
+						 "type=%u. Sibs: ",
 						 i,
 						 (u_int)dd->cpunode->type);
 				break;
