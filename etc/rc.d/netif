@@ -209,10 +209,6 @@ childif_create()
 	# Create vlan interfaces
 	child_vlans=`get_if_var $ifn vlans_IF`
 
-	if [ -n "${child_vlans}" ]; then
-		load_kld if_vlan
-	fi
-
 	for child in ${child_vlans}; do
 		if expr $child : '[1-9][0-9]*$' >/dev/null 2>&1; then
 			child="${ifn}.${child}"
