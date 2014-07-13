@@ -48,7 +48,12 @@
 #define	KERN_INFO	"<6>"
 #define	KERN_DEBUG	"<7>"
 
-#define BUG()			panic("BUG")
+#define BUG()	do				\
+{						\
+	panic("BUG in %s at %s:%u",		\
+		__func__, __FILE__, __LINE__);	\
+} while (0)
+
 #define BUG_ON(condition)	do { if (condition) BUG(); } while(0)
 
 #define _WARN_STR(x) #x
