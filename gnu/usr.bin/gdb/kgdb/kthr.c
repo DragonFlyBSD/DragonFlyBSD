@@ -80,7 +80,7 @@ kgdb_thr_init(void)
 	struct lwp lwp;
 	struct mdglobaldata gd;
 	struct kthr *kt;
-	CORE_ADDR addr, paddr, prvspace;
+	CORE_ADDR addr, paddr, prvspace, gdptr;
 	int cpu, ncpus;
 
 	while (first != NULL) {
@@ -120,7 +120,8 @@ kgdb_thr_init(void)
 		addr = kgdb_lookup("_dumping");
 		kvm_read(kvm, addr, &dumping, sizeof(dumping));
 		if (dumping) {
-			kvm_read(kvm, prvspace +
+			kvm_read(kvm, prvspace + 0, &gdptr, sizeof(gdptr));
+			kvm_read(kvm, gdptr +
 				 offsetof(struct privatespace, mdglobaldata),
 				 &gd, sizeof(struct mdglobaldata));
 			dumptid = (CORE_ADDR)gd.mi.gd_curthread;
@@ -131,8 +132,9 @@ kgdb_thr_init(void)
 	}
 
 	for (cpu = 0; cpu < ncpus; cpu++) {
-		kvm_read(kvm, prvspace +
-			 cpu * sizeof(struct privatespace) +
+		kvm_read(kvm, prvspace + cpu * sizeof(void *),
+			 &gdptr, sizeof(gdptr));
+		kvm_read(kvm, gdptr +
 			 offsetof(struct privatespace, mdglobaldata),
 			 &gd, sizeof(struct mdglobaldata));
 
