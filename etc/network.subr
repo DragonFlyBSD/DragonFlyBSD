@@ -236,7 +236,7 @@ ifalias_up()
 	_ret=1
 	alias=0
 	while : ; do
-		eval ifconfig_args=\$ifconfig_$1_alias${alias}
+		ifconfig_args=`get_if_var $1 ifconfig_IF_alias${alias}`
 		if [ -n "${ifconfig_args}" ]; then
 			ifconfig $1 ${ifconfig_args} alias
 			alias=$((${alias} + 1))
@@ -258,7 +258,7 @@ ifalias_down()
 	_ret=1
 	alias=0
 	while : ; do
-		eval ifconfig_args=\$ifconfig_$1_alias${alias}
+		ifconfig_args=`get_if_var $1 ifconfig_IF_alias${alias}`
 		if [ -n "${ifconfig_args}" ]; then
 			ifconfig $1 ${ifconfig_args} -alias
 			alias=$((${alias} + 1))
@@ -362,7 +362,7 @@ ifnet_rename()
 	_ifn_list="`ifconfig -l`"
 	[ -z "$_ifn_list" ] && return 0
 	for _if in ${_ifn_list} ; do
-		eval _ifname=\$ifconfig_${_if}_name
+		_ifname=`get_if_var $_if ifconfig_IF_name`
 		if [ ! -z "$_ifname" ]; then
 			ifconfig $_if name $_ifname
 		fi
@@ -490,7 +490,7 @@ network6_interface_setup()
 	esac
 	for i in $interfaces; do
 		rtsol_interface=yes
-		eval prefix=\$ipv6_prefix_$i
+		prefix=`get_if_var $i ipv6_prefix_IF`
 		if [ -n "${prefix}" ]; then
 			rtsol_available=no
 			rtsol_interface=no
@@ -510,7 +510,7 @@ network6_interface_setup()
 				esac
 			done
 		fi
-		eval ipv6_ifconfig=\$ipv6_ifconfig_$i
+		ipv6_ifconfig=`get_if_var $i ipv6_ifconfig_IF`
 		if [ -n "${ipv6_ifconfig}" ]; then
 			rtsol_available=no
 			rtsol_interface=no
@@ -545,7 +545,7 @@ network6_interface_setup()
 	for i in $interfaces; do
 		alias=0
 		while : ; do
-			eval ipv6_ifconfig=\$ipv6_ifconfig_${i}_alias${alias}
+			ipv6_ifconfig=`get_if_var $i ipv6_ifconfig_IF_alias${alias}`
 			if [ -z "${ipv6_ifconfig}" ]; then
 				break;
 			fi
