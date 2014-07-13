@@ -532,6 +532,13 @@ top:
                         callbacks = cb->cb_next;
                         cb->cb_func(s, cb->cb_arg);
                         iscreate = 0;
+
+			/*
+			 * After cloning, make sure we have an up-to-date name
+			 * in ifr_name.
+			 */
+			strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+
                         /*
                          * Handle any address family spec that
                          * immediately follows and potentially
