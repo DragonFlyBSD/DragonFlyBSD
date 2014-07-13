@@ -183,6 +183,7 @@
 #define	PML4pml4e	((pd_entry_t *)(addr_PML4pml4e))
 
 extern u_int64_t KPML4phys;	/* physical address of kernel level 4 */
+extern int pmap_fast_kernel_cpusync;
 #endif
 
 #ifdef _KERNEL

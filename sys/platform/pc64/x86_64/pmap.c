@@ -241,6 +241,9 @@ SYSCTL_INT(_machdep, OID_AUTO, pmap_yield_count, CTLFLAG_RW,
 static int pmap_mmu_optimize = 0;
 SYSCTL_INT(_machdep, OID_AUTO, pmap_mmu_optimize, CTLFLAG_RW,
     &pmap_mmu_optimize, 0, "Share page table pages when possible");
+int pmap_fast_kernel_cpusync = 0;
+SYSCTL_INT(_machdep, OID_AUTO, pmap_fast_kernel_cpusync, CTLFLAG_RW,
+    &pmap_fast_kernel_cpusync, 0, "Share page table pages when possible");
 
 #define DISABLE_PSE
 
@@ -987,8 +990,11 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 
 	/* Initialize the PAT MSR */
 	pmap_init_pat();
-
 	pmap_pinit_defaults(&kernel_pmap);
+
+	TUNABLE_INT_FETCH("machdep.pmap_fast_kernel_cpusync",
+			  &pmap_fast_kernel_cpusync);
+
 }
 
 /*

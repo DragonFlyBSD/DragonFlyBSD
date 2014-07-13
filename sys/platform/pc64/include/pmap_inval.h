@@ -52,6 +52,7 @@ typedef pmap_inval_info *pmap_inval_info_t;
 #define PIRF_INVLTLB	0x0001	/* request invalidation of whole table */
 #define PIRF_INVL1PG	0x0002	/* else request invalidation of one page */
 #define PIRF_CPUSYNC	0x0004	/* cpusync is currently active */
+#define PIRF_QUICK	0x0008	/* quick (deinterlock only) */
 
 #ifdef _KERNEL
 

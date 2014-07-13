@@ -85,6 +85,13 @@ pmap_inval_init(pmap_inval_info_t info)
  * CPULOCK_EXCL is used to interlock thread switchins, otherwise another
  * cpu can switch in a pmap that we are unaware of and interfere with our
  * pte operation.
+ *
+ * NOTE! If pmap_fast_kernel_cpusync is enabled, interlocks on kernel_pmap
+ *	 are effectively NOPs and will not quiesce target cpus.  The
+ *	 deinterlock will then issue the IPI and wait for completion,
+ *	 which avoids spinning all AP cpus at once.
+ *
+ *	 This needs testing before it can be enabled by default.
  */
 void
 pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
@@ -111,8 +118,12 @@ pmap_inval_interlock(pmap_inval_info_t info, pmap_t pmap, vm_offset_t va)
     info->pir_flags = PIRF_CPUSYNC;
     lwkt_cpusync_init(&info->pir_cpusync, pmap->pm_active,
 		      pmap_inval_callback, info);
-    lwkt_cpusync_interlock(&info->pir_cpusync);
-    atomic_add_acq_long(&pmap->pm_invgen, 1);
+    if (pmap == &kernel_pmap && pmap_fast_kernel_cpusync) {
+	info->pir_flags |= PIRF_QUICK;
+    } else {
+	lwkt_cpusync_interlock(&info->pir_cpusync);
+	atomic_add_acq_long(&pmap->pm_invgen, 1);
+    }
 }
 
 void
@@ -121,12 +132,25 @@ pmap_inval_invltlb(pmap_inval_info_t info)
 	info->pir_va = (vm_offset_t)-1;
 }
 
+/*
+ * Deinterlock a pmap after making a change to a PTE.
+ *
+ * WARNING!  We currently do not use a fully synchronous cpusync for
+ *	     kernel_map adjustments.  We assume that all use cases for
+ *	     accesses via the kernel map are locally interlocked, so instead
+ *	     we use a semi-synchronous smp_invltlb().
+ */
 void
 pmap_inval_deinterlock(pmap_inval_info_t info, pmap_t pmap)
 {
     KKASSERT(info->pir_flags & PIRF_CPUSYNC);
     atomic_clear_int(&pmap->pm_active_lock, CPULOCK_EXCL);
-    lwkt_cpusync_deinterlock(&info->pir_cpusync);
+    if (info->pir_flags & PIRF_QUICK) {
+	atomic_add_acq_long(&pmap->pm_invgen, 1);
+	lwkt_cpusync_quick(&info->pir_cpusync);
+    } else {
+	lwkt_cpusync_deinterlock(&info->pir_cpusync);
+    }
     info->pir_flags = 0;
 }
 
@@ -147,4 +171,3 @@ pmap_inval_done(pmap_inval_info_t info)
     KKASSERT((info->pir_flags & PIRF_CPUSYNC) == 0);
     crit_exit_id("inval");
 }
-

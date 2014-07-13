@@ -2078,6 +2078,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	TUNABLE_INT_FETCH("hw.apic_io_enable", &ioapic_enable); /* for compat */
 	TUNABLE_INT_FETCH("hw.ioapic_enable", &ioapic_enable);
 	TUNABLE_INT_FETCH("hw.lapic_enable", &lapic_enable);
+	TUNABLE_INT_FETCH("machdep.cpu_idle_hlt", &cpu_idle_hlt);
 
 	/*
 	 * Some of the virtual machines do not work w/ I/O APIC
