@@ -21,6 +21,9 @@
 #include <sys/bus.h>
 #include <sys/sensors.h>
 
+#include <machine/md_var.h>
+#include <machine/specialreg.h>
+
 #include <bus/pci/pcivar.h>
 #include "pcidevs.h"
 
@@ -99,7 +102,10 @@ km_probe(struct device *dev)
 		desc = "AMD Family 11h temperature sensor";
 		break;
 	case PCI_PRODUCT_AMD_AMD64_F14_MISC:
-		desc = "AMD Family 14h temperature sensor";
+		if (CPUID_TO_FAMILY(cpu_id) == 0x12)
+			desc = "AMD Family 12h temperature sensor";
+		else
+			desc = "AMD Family 14h temperature sensor";
 		break;
 	case PCI_PRODUCT_AMD_AMD64_F15_0x_MISC:
 		desc = "AMD Family 15/0xh temperature sensor";
