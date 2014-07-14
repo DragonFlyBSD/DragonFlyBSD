@@ -241,7 +241,11 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_max, CTLFLAG_RW,
 
 static int tcp_inflight_stab = 50;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_stab, CTLFLAG_RW,
-    &tcp_inflight_stab, 0, "Slop in maximal packets / 10 (20 = 3 packets)");
+    &tcp_inflight_stab, 0, "Fudge bw 1/10% (50=5%)");
+
+static int tcp_inflight_adjrtt = 2;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_adjrtt, CTLFLAG_RW,
+    &tcp_inflight_adjrtt, 0, "Slop for rtt 1/(hz*32)");
 
 static int tcp_do_rfc3390 = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
@@ -1917,6 +1921,7 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	 * a long time we have to reset the bandwidth calculator.
 	 */
 	save_ticks = ticks;
+	cpu_ccfence();
 	delta_ticks = save_ticks - tp->t_bw_rtttime;
 	if (tp->t_bw_rtttime == 0 || delta_ticks < 0 || delta_ticks > hz * 10) {
 		tp->t_bw_rtttime = ticks;
@@ -1925,7 +1930,13 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 			tp->snd_bandwidth = tcp_inflight_min;
 		return;
 	}
-	if (delta_ticks == 0)
+
+	/*
+	 * A delta of at least 1 tick is required.  Waiting 2 ticks will
+	 * result in better (bw) accuracy.  More than that and the ramp-up
+	 * will be too slow.
+	 */
+	if (delta_ticks == 0 || delta_ticks == 1)
 		return;
 
 	/*
@@ -1955,6 +1966,12 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	 * spot and also handles the bandwidth run-up case.  Without the
 	 * slop we could be locking ourselves into a lower bandwidth.
 	 *
+	 * At very high speeds the bw calculation can become overly sensitive
+	 * and error prone when delta_ticks is low (e.g. usually 1).  To deal
+	 * with the problem the stab must be scaled to the bw.  A stab of 50
+	 * (the default) increases the bw for the purposes of the bwnd
+	 * calculation by 5%.
+	 *
 	 * Situations Handled:
 	 *	(1) Prevents over-queueing of packets on LANs, especially on
 	 *	    high speed LANs, allowing larger TCP buffers to be
@@ -1977,9 +1994,10 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	 *	    choice.
 	 */
 
-#define	USERTT	((tp->t_srtt + tp->t_rttbest) / 2)
+#define	USERTT	(((tp->t_srtt + tp->t_rttbest) / 2) + tcp_inflight_adjrtt)
+	bw += bw * tcp_inflight_stab / 1000;
 	bwnd = (int64_t)bw * USERTT / (hz << TCP_RTT_SHIFT) +
-	       tcp_inflight_stab * (int)tp->t_maxseg / 10;
+	       (int)tp->t_maxseg * 2;
 #undef USERTT
 
 	if (tcp_inflight_debug > 0) {

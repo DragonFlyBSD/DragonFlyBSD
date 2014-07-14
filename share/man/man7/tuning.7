@@ -347,17 +347,11 @@ affect data reception (downloading).
 Adjusting
 .Va net.inet.tcp.inflight_stab
 is not recommended.
-This parameter defaults to 20, representing 2 maximal packets added
-to the bandwidth delay product window calculation.  The additional
-window is required to stabilize the algorithm and improve responsiveness
-to changing conditions, but it can also result in higher ping times
-over slow links (though still much lower than you would get without
-the inflight algorithm).  In such cases you may
-wish to try reducing this parameter to 15, 10, or 5, and you may also
-have to reduce
-.Va net.inet.tcp.inflight_min
-(for example, to 3500) to get the desired effect.  Reducing these parameters
-should be done as a last resort only.
+This parameter defaults to 50, representing +5% fudge when calculating the
+bwnd from the bw.  This fudge is on top of an additional fixed +2*maxseg
+added to bwnd.  The fudge factor is required to stabilize the algorithm
+at very high speeds while the fixed 2*maxseg stabilizes the algorithm at
+low speeds.  If you increase this value excessive packet buffering may occur.
 .Pp
 The
 .Va net.inet.ip.portrange.*

@@ -425,18 +425,18 @@ global per-connection limit on queued data, potentially allowing you to
 intentionally set a less than optimum limit to smooth data flow over a
 network while still being able to specify huge internal TCP buffers.
 .It tcp.inflight_stab
-The bandwidth delay product algorithm requires a slightly larger window
-than it otherwise calculates for stability.  This parameter determines the
-extra window in maximal packets / 10.  The default value of 20 represents
-2 maximal packets.  Reducing this value is not recommended but you may
-come across a situation with very slow links where the ping time
-reduction of the default inflight code is not sufficient.  If this case
-occurs you should first try reducing tcp.inflight_min and, if that does not
-work, reduce both tcp.inflight_min and tcp.inflight_stab, trying values of
-15, 10, or 5 for the latter.  Never use a value less than 5.  Reducing
-tcp.inflight_stab can lead to upwards of a 20% underutilization of the link
-as well as reducing the algorithm's ability to adapt to changing
-situations and should only be done as a last resort.
+This value stabilizes the bwnd (write window) calculation at high speeds
+by increasing the bandwidth calculation in 1/10% increments.  The default
+value of 50 represents a +5% increase.  In addition, bwnd is further increased
+by a fixed 2*maxseg bytes to stabilize the algorithm at low speeds.
+Changing the stab value is not recommended, but you may come across
+situations where tuning is beneficial.
+However, our recommendation for tuning is to stick with only adjusting
+tcp.inflight_min.
+Reducing tcp.inflight_stab too much can lead to upwards of a 20%
+underutilization of the link and prevent the algorithm from properly adapting
+to changing situations.  Increasing tcp.inflight_stab too much can lead to
+an excessive packet buffering situation.
 .El
 .Sh ERRORS
 A socket operation may fail with one of the following errors returned:
