@@ -64,6 +64,8 @@ int CpuCount[256];	/* # of cpus in any given domain */
 int CpuToDom[256];	/* domain a particular cpu belongs to */
 double Trigger = 0.25;	/* load per cpu to force max freq */
 
+static void sigintr(int signo);
+
 int
 main(int ac, char **av)
 {
@@ -144,6 +146,12 @@ main(int ac, char **av)
 	}
 
 	/*
+	 * Set to maximum performance if killed.
+	 */
+	signal(SIGINT, sigintr);
+	signal(SIGTERM, sigintr);
+
+	/*
 	 * Monitoring loop
 	 *
 	 * Calculate nstate, the number of cpus we wish to run at max
@@ -166,6 +174,15 @@ main(int ac, char **av)
 			acpi_setcpufreq(nstate);
 		sleep(1);
 	}
+}
+
+static
+void
+sigintr(int signo __unused)
+{
+	syslog(LOG_INFO, "killed, setting max and exiting");
+	acpi_setcpufreq(NCpus);
+	exit(1);
 }
 
 /*
