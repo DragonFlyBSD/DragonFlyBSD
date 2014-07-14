@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $Id: ng_bt3c_pccard.c,v 1.5 2003/04/01 18:15:21 max Exp $
- * $FreeBSD: src/sys/netgraph/bluetooth/drivers/bt3c/ng_bt3c_pccard.c,v 1.20 2007/02/23 12:19:02 piso Exp $
+ * $FreeBSD: head/sys/netgraph/bluetooth/drivers/bt3c/ng_bt3c_pccard.c 243882 2012-12-05 08:04:20Z glebius $
  *
  * XXX XXX XX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX 
  *
@@ -43,7 +43,6 @@
 #include <sys/systm.h>
 
 #include <sys/bus.h>
-#include <machine/bus.h>
 
 #include <sys/conf.h>
 #include <sys/endian.h>
@@ -52,24 +51,23 @@
 #include <sys/mbuf.h>
 #include <sys/module.h>
 
-#include <machine/resource.h>
 #include <sys/rman.h>
 
 #include <sys/socket.h>
 #include <net/if.h>
 #include <net/if_var.h>
 
-#include <dev/pccard/pccardreg.h>
-#include <dev/pccard/pccardvar.h>
+#include <bus/pccard/pccardreg.h>
+#include <bus/pccard/pccardvar.h>
 #include "pccarddevs.h"
 
-#include "ng_message.h"
-#include "netgraph.h"
-#include "ng_parse.h"
-#include "bluetooth/include/ng_bluetooth.h"
-#include "bluetooth/include/ng_hci.h"
-#include "bluetooth/include/ng_bt3c.h"
-#include "bluetooth/drivers/bt3c/ng_bt3c_var.h"
+#include <netgraph7/ng_message.h>
+#include <netgraph7/netgraph.h>
+#include <netgraph7/ng_parse.h>
+#include <netgraph7/bluetooth/include/ng_bluetooth.h>
+#include <netgraph7/bluetooth/include/ng_hci.h>
+#include <netgraph7/bluetooth/include/ng_bt3c.h>
+#include <netgraph7/bluetooth/drivers/bt3c/ng_bt3c_var.h>
 
 /* Netgraph methods */
 static ng_constructor_t	ng_bt3c_constructor;
@@ -88,7 +86,7 @@ static int	bt3c_pccard_detach	(device_t);
 static void	bt3c_intr		(void *);
 static void	bt3c_receive		(bt3c_softc_p);
 
-static void	bt3c_swi_intr		(void *);
+static void	bt3c_swi_intr		(void *, void *);
 static void	bt3c_forward		(node_p, hook_p, void *, int);
 static void	bt3c_send		(node_p, hook_p, void *, int);
 
@@ -391,9 +389,9 @@ ng_bt3c_rcvmsg(node_p node, item_p item, hook_p lasthook)
 					sc->flags,
 					sc->debug,
 					sc->state,
-					_IF_QLEN(&sc->inq), /* XXX */
+					IF_QLEN(&sc->inq), /* XXX */
 					sc->inq.ifq_maxlen, /* XXX */
-					_IF_QLEN(&sc->outq), /* XXX */
+					IF_QLEN(&sc->outq), /* XXX */
 					sc->outq.ifq_maxlen /* XXX */
 					);
 			break;
@@ -555,18 +553,16 @@ ng_bt3c_rcvdata(hook_p hook, item_p item)
 
 	NGI_GET_M(item, m);
 
-	IF_LOCK(&sc->outq);
-	if (_IF_QFULL(&sc->outq)) {
+	if (IF_QFULL(&sc->outq)) {
 		NG_BT3C_ERR(sc->dev,
 "Outgoing queue is full. Dropping mbuf, len=%d\n", m->m_pkthdr.len);
 
-		_IF_DROP(&sc->outq);
+		IF_DROP(&sc->outq);
 		NG_BT3C_STAT_OERROR(sc->stat);
 
 		NG_FREE_M(m);
 	} else 
-		_IF_ENQUEUE(&sc->outq, m);
-	IF_UNLOCK(&sc->outq);
+		IF_ENQUEUE(&sc->outq, m);
 
 	error = ng_send_fn(sc->node, NULL, bt3c_send, NULL, 0 /* new send */);
 out:
@@ -589,7 +585,7 @@ static int
 bt3c_pccard_probe(device_t dev)
 {
 	static struct pccard_product const	bt3c_pccard_products[] = {
-		PCMCIA_CARD(3COM, 3CRWB609),
+		PCMCIA_CARD(3COM, 3CRWB609, 0),
 		{ NULL, }
 	};
 
@@ -635,16 +631,17 @@ bt3c_pccard_attach(device_t dev)
 	}
 
 	sc->irq_cookie = NULL;
-	if (bus_setup_intr(dev, sc->irq, INTR_TYPE_TTY, NULL, bt3c_intr, sc,
-			&sc->irq_cookie) != 0) {
+	if (bus_setup_intr(dev, sc->irq, 0, bt3c_intr, sc,
+			&sc->irq_cookie, NULL) != 0) {
 		device_printf(dev, "Could not setup ISR\n");
 		goto bad;
 	}
 
 	/* Attach handler to TTY SWI thread */
 	sc->ith = NULL;
-	if (swi_add(&tty_intr_event, device_get_nameunit(dev),
-			bt3c_swi_intr, sc, SWI_TTY, 0, &sc->ith) < 0) {
+	sc->ith = register_swi_mp(SWI_TTY, bt3c_swi_intr, sc,
+	    device_get_nameunit(dev), NULL, -1);
+	if (sc->ith == NULL) {
 		device_printf(dev, "Could not setup SWI ISR\n");
 		goto bad;
 	}
@@ -668,8 +665,6 @@ bt3c_pccard_attach(device_t dev)
 	sc->debug = NG_BT3C_WARN_LEVEL;
 
 	sc->inq.ifq_maxlen = sc->outq.ifq_maxlen = BT3C_DEFAULTQLEN;
-	mtx_init(&sc->inq.ifq_mtx, "BT3C inq", NULL, MTX_DEF);
-	mtx_init(&sc->outq.ifq_mtx, "BT3C outq", NULL, MTX_DEF);
 
 	sc->state = NG_BT3C_W4_PKT_IND;
 	sc->want = 1;
@@ -679,7 +674,7 @@ bt3c_pccard_attach(device_t dev)
 	return (0);
 bad:
 	if (sc->ith != NULL) {
-		swi_remove(sc->ith);
+		unregister_swi(sc->ith, SWI_TTY, -1);
 		sc->ith = NULL;
 	}
 
@@ -717,7 +712,7 @@ bt3c_pccard_detach(device_t dev)
 	if (sc == NULL)
 		return (0);
 
-	swi_remove(sc->ith);
+	unregister_swi(sc->ith, SWI_TTY, -1);
 	sc->ith = NULL;
 
 	bus_teardown_intr(dev, sc->irq, sc->irq_cookie);
@@ -739,9 +734,6 @@ bt3c_pccard_detach(device_t dev)
 	NG_FREE_M(sc->m);
 	IF_DRAIN(&sc->inq);
 	IF_DRAIN(&sc->outq);
-
-	mtx_destroy(&sc->inq.ifq_mtx);
-	mtx_destroy(&sc->outq.ifq_mtx);
 
 	return (0);
 } /* bt3c_pccacd_detach */
@@ -779,7 +771,7 @@ bt3c_intr(void *context)
 
 	/* Record status and schedule SWI */
 	sc->status |= status;
-	swi_sched(sc->ith, 0);
+	schedsofttty();
 
 	/* Complete interrupt */
 	bt3c_write(sc, 0x7001, 0x0000);
@@ -934,20 +926,18 @@ bt3c_receive(bt3c_softc_p sc)
 			NG_BT3C_STAT_BYTES_RECV(sc->stat, sc->m->m_pkthdr.len);
 			NG_BT3C_STAT_PCKTS_RECV(sc->stat);
 
-			IF_LOCK(&sc->inq);
-			if (_IF_QFULL(&sc->inq)) {
+			if (IF_QFULL(&sc->inq)) {
 				NG_BT3C_ERR(sc->dev,
 "Incoming queue is full. Dropping mbuf, len=%d\n", sc->m->m_pkthdr.len);
 
-				_IF_DROP(&sc->inq);
+				IF_DROP(&sc->inq);
 				NG_BT3C_STAT_IERROR(sc->stat);
 
 				NG_FREE_M(sc->m);
 			} else {
-				_IF_ENQUEUE(&sc->inq, sc->m);
+				IF_ENQUEUE(&sc->inq, sc->m);
 				sc->m = NULL;
 			}
-			IF_UNLOCK(&sc->inq);
 
 			sc->state = NG_BT3C_W4_PKT_IND;
 			sc->want = 1;
@@ -970,7 +960,7 @@ bt3c_receive(bt3c_softc_p sc)
  */
 
 static void
-bt3c_swi_intr(void *context)
+bt3c_swi_intr(void *context, void *dummy)
 {
 	bt3c_softc_p	sc = (bt3c_softc_p) context;
 	u_int16_t	data;
@@ -1032,16 +1022,14 @@ bt3c_forward(node_p node, hook_p hook, void *arg1, int arg2)
 				NG_BT3C_STAT_IERROR(sc->stat);
 		}
 	} else {
-		IF_LOCK(&sc->inq);
 		for (;;) {
-			_IF_DEQUEUE(&sc->inq, m);
+			IF_DEQUEUE(&sc->inq, m);
 			if (m == NULL)
 				break;
 
 			NG_BT3C_STAT_IERROR(sc->stat);
 			NG_FREE_M(m);
 		}
-		IF_UNLOCK(&sc->inq);
 	}
 } /* bt3c_forward */
 
@@ -1222,7 +1210,8 @@ bt3c_modevent(module_t mod, int event, void *data)
 	return (error);
 } /* bt3c_modevent */
 
-DRIVER_MODULE(bt3c, pccard, bt3c_pccard_driver, bt3c_devclass, bt3c_modevent,NULL);
+DRIVER_MODULE(bt3c, pccard, bt3c_pccard_driver, bt3c_devclass, bt3c_modevent,
+    NULL);
 MODULE_VERSION(ng_bt3c, NG_BLUETOOTH_VERSION);
 MODULE_DEPEND(ng_bt3c, netgraph, NG_ABI_VERSION, NG_ABI_VERSION,NG_ABI_VERSION);
 
