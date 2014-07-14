@@ -289,7 +289,6 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 		from_page = vm_page_grab(obj, i, VM_ALLOC_NORMAL |
 						 VM_ALLOC_RETRY);
 		if (from_page->valid != VM_PAGE_BITS_ALL) {
-			vm_page_busy_try(from_page, FALSE);
 			if (vm_pager_has_page(obj, i)) {
 				rv = vm_pager_get_page(obj, &from_page, 1);
 				if (rv != VM_PAGER_OK) {
@@ -297,17 +296,19 @@ int ttm_tt_swapin(struct ttm_tt *ttm)
 					ret = -EIO;
 					goto err_ret;
 				}
-			} else
+			} else {
 				vm_page_zero_invalid(from_page, TRUE);
-			vm_page_wakeup(from_page);
+			}
 		}
 		to_page = ttm->pages[i];
 		if (unlikely(to_page == NULL)) {
 			ret = -ENOMEM;
+			vm_page_wakeup(from_page);
 			goto err_ret;
 		}
 		pmap_copy_page(VM_PAGE_TO_PHYS(from_page),
-					VM_PAGE_TO_PHYS(to_page));
+			       VM_PAGE_TO_PHYS(to_page));
+		vm_page_wakeup(from_page);
 	}
 	vm_object_pip_wakeup(obj);
 	VM_OBJECT_WUNLOCK(obj);
