@@ -176,6 +176,7 @@
 
 /* PCI Config defines */
 #define IGB_MSIX_BAR			3
+#define IGB_MSIX_BAR_ALT		4
 
 #define IGB_MAX_SCATTER			64
 #define IGB_VFTA_SIZE			128

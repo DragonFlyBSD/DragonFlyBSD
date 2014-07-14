@@ -4367,8 +4367,13 @@ igb_msix_try_alloc(struct igb_softc *sc)
 	sc->msix_mem_res = bus_alloc_resource_any(sc->dev, SYS_RES_MEMORY,
 	    &sc->msix_mem_rid, RF_ACTIVE);
 	if (sc->msix_mem_res == NULL) {
-		device_printf(sc->dev, "Unable to map MSI-X table\n");
-		return;
+		sc->msix_mem_rid = PCIR_BAR(IGB_MSIX_BAR_ALT);
+		sc->msix_mem_res = bus_alloc_resource_any(sc->dev, SYS_RES_MEMORY,
+		    &sc->msix_mem_rid, RF_ACTIVE);
+		if (sc->msix_mem_res == NULL) {
+			device_printf(sc->dev, "Unable to map MSI-X table\n");
+			return;
+		}
 	}
 
 	sc->msix_cnt = alloc_cnt;
