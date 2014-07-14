@@ -2522,6 +2522,16 @@ Otherwise set to the filename used to store cached entropy through reboots.
 This file should be located on the root file system to seed the
 .Xr random 4
 device as early as possible in the boot process.
+.It Va entropy_save_sz
+.Pq Vt int
+Determines the size of the entropy cache files used for entropy cached
+through reboots and also entropy cached via
+.Xr cron 8 .
+The entropy is fed to the system in blocks of 512 bytes, so this number
+should be large enough to fill as many of the entropy pools in the kernel
+CSPRNG as possible.
+By default, it is set to 16384, which should be able to seed all 32 entropy
+pools in the Fortuna CSPRNG.
 .It Va ipsec_enable
 .Pq Vt bool
 Set to

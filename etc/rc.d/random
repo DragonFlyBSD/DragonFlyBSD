@@ -19,7 +19,10 @@ feed_dev_random()
 {
 	if [ -f "${1}" -a -r "${1}" -a -s "${1}" ]; then
 		sysctl kern.seedenable=1 >/dev/null
-		cat "${1}" | dd of=/dev/random bs=8k 2>/dev/null
+		# Feed using a small block size so that a pool-based CSPRNG
+		# is more likely to distribute the entropy over several
+		# pools
+		cat "${1}" | dd of=/dev/random bs=512 2>/dev/null
 		sysctl kern.seedenable=0 >/dev/null
 	fi
 }
@@ -28,7 +31,7 @@ random_start()
 {
 	# Reseed /dev/random with previously stored entropy.
 	case ${entropy_dir} in
-	[Nn][Oo])
+	[Nn][Oo] | '')
 		;;
 	*)
 		entropy_dir=${entropy_dir:-/var/db/entropy}
@@ -68,22 +71,15 @@ random_stop()
 		umask 077
 		if touch ${entropy_file}; then
 			entropy_file_confirmed="${entropy_file}"
-		else
-			# Try this as a reasonable alternative for read-only
-			# roots, diskless workstations, etc.
-			rm -f /var/db/entropy
-			if touch /var/db/entropy; then
-				entropy_file_confirmed=/var/db/entropy
-			fi
 		fi
 		case ${entropy_file_confirmed} in
 		'')
-			err 1 '${entropy_file_confirmed}:' \
+			err 1 '${entropy_file}:' \
 			    ' entropy file write failed.'
 			;;
 		*)
 			dd if=/dev/random of=${entropy_file_confirmed} \
-			   bs=4096 count=1 2> /dev/null
+			   bs=${entropy_save_sz} count=1 2> /dev/null
 			echo '.'
 			;;
 		esac
