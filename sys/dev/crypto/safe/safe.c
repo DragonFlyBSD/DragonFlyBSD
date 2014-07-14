@@ -210,7 +210,7 @@ safe_partname(struct safe_softc *sc)
 static void
 default_harvest(struct rndtest_state *rsp, void *buf, u_int count)
 {
-	add_buffer_randomness(buf, count);
+	add_buffer_randomness_src(buf, count, RAND_SRC_SAFE);
 }
 #endif /* SAFE_NO_RNG */
 

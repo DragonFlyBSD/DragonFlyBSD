@@ -488,7 +488,8 @@ glxsb_rnd(void *v)
 	if (status & SB_RNS_TRNG_VALID) {
 		value = bus_read_4(sc->sc_sr, SB_RANDOM_NUM);
 		/* feed with one uint32 */
-		add_buffer_randomness((const char *)&value, sizeof(value));
+		add_buffer_randomness_src((const char *)&value, sizeof(value),
+		    RAND_SRC_GLXSB);
 	}
 
 	callout_reset(&sc->sc_rngco, sc->sc_rnghz, glxsb_rnd, sc);

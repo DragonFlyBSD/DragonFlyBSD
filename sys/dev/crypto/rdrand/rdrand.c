@@ -125,7 +125,7 @@ rdrand_rng_harvest(void *arg)
 
 	cnt = rdrand_rng(arandomness, RDRAND_SIZE);
 	if (cnt > 0 && cnt < sizeof(randomness)) {
-		add_buffer_randomness(arandomness, cnt);
+		add_buffer_randomness_src(arandomness, cnt, RAND_SRC_RDRAND);
 
 		if (rdrand_debug) {
 			kprintf("rdrand(%d): %02x %02x %02x %02x...\n",

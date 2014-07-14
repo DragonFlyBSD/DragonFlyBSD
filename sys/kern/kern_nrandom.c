@@ -1,5 +1,10 @@
 /*
- * Copyright (c) 2004, 2005, 2006 Robin J Carey. All rights reserved.
+ * Copyright (c) 2004-2014 The DragonFly Project. All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ * by Alex Hornung <alex@alexhornung.com>
+ * by Robin J Carey
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -120,6 +125,9 @@
  * o Added missing (u_char *) cast in RnddevRead() function.
  * o Changed copyright to 3-clause BSD license and cleaned up the layout
  *   of this file.
+ *
+ * For a proper changelog, refer to the version control history of this
+ * file.
  */
 
 #include <sys/types.h>
@@ -134,11 +142,16 @@
 #include <sys/lock.h>
 #include <sys/sysctl.h>
 #include <sys/spinlock.h>
+#include <sys/csprng.h>
+#include <machine/atomic.h>
 #include <machine/clock.h>
 
 #include <sys/thread2.h>
 #include <sys/spinlock2.h>
 #include <sys/mplock2.h>
+
+
+struct csprng_state csprng_state;
 
 /*
  * Portability note: The u_char/unsigned char type is used where
@@ -253,6 +266,24 @@ IBAA_Seed (const u_int32_t val)
 	iptr = &IBAA_memory[memIndex & MASK];
 	*iptr = ((*iptr << 3) | (*iptr >> 29)) + (val ^ (IBAA_Byte() & 15));
 	++memIndex;
+}
+
+static void
+IBAA_Vector (const char *buf, int bytes)
+{
+	int i;
+
+	while (bytes >= sizeof(int)) {
+		IBAA_Seed(*(const int *)buf);
+		buf += sizeof(int);
+		bytes -= sizeof(int);
+	}
+
+	/*
+	 * Warm up the generator to get rid of weak initial states.
+	 */
+	for (i = 0; i < 10; ++i)
+		IBAA_Call();
 }
 
 /*
@@ -395,7 +426,7 @@ L15_Vector (const LByteType * const key, const size_t keyLen)
  *				KERNEL INTERFACE			*
  ************************************************************************
  *
- * By Robin J Carey and Matthew Dillon.
+ * By Robin J Carey, Matthew Dillon and Alex Hornung.
  */
 
 static int rand_thread_signal = 1;
@@ -406,9 +437,16 @@ static struct spinlock rand_spin;
 static int sysctl_kern_random(SYSCTL_HANDLER_ARGS);
 
 static int nrandevents;
+static int rand_mode = 2;
+
+static int sysctl_kern_rand_mode(SYSCTL_HANDLER_ARGS);
+
 SYSCTL_INT(_kern, OID_AUTO, nrandevents, CTLFLAG_RD, &nrandevents, 0, "");
 SYSCTL_PROC(_kern, OID_AUTO, random, CTLFLAG_RD | CTLFLAG_ANYBODY, 0, 0,
 		sysctl_kern_random, "I", "Acquire random data");
+SYSCTL_PROC(_kern, OID_AUTO, rand_mode, CTLTYPE_STRING | CTLFLAG_RW, NULL, 0,
+    sysctl_kern_rand_mode, "A", "RNG mode (csprng, ibaa or mixed)");
+
 
 /*
  * Called from early boot
@@ -418,6 +456,17 @@ rand_initialize(void)
 {
 	struct timespec	now;
 	int i;
+
+	csprng_init(&csprng_state);
+#if 0
+	/*
+	 * XXX: we do the reseeding when someone uses the RNG instead
+	 * of regularly using init_reseed (which initializes a callout)
+	 * to avoid unnecessary and regular reseeding.
+	 */
+	csprng_init_reseed(&csprng_state);
+#endif
+
 
 	spin_init(&rand_spin);
 
@@ -429,13 +478,11 @@ rand_initialize(void)
 	L15((const LByteType *)&now.tv_nsec, sizeof(now.tv_nsec));
 	for (i = 0; i < (SIZE / 2); ++i) {
 		nanotime(&now);
-		IBAA_Seed(now.tv_nsec);
-		L15_Vector((const LByteType *)&now.tv_nsec,
-			   sizeof(now.tv_nsec));
+		add_buffer_randomness_src((const uint8_t *)&now.tv_nsec,
+		    sizeof(now.tv_nsec), RAND_SRC_TIMING);
 		nanouptime(&now);
-		IBAA_Seed(now.tv_nsec);
-		L15_Vector((const LByteType *)&now.tv_nsec,
-			   sizeof(now.tv_nsec));
+		add_buffer_randomness_src((const uint8_t *)&now.tv_nsec,
+		    sizeof(now.tv_nsec), RAND_SRC_TIMING);
 	}
 
 	/*
@@ -472,35 +519,39 @@ add_interrupt_randomness(int intr)
 /*
  * True random number source
  */
-void
-add_true_randomness(int val)
-{
-	spin_lock(&rand_spin);
-	IBAA_Seed(val);
-	L15_Vector((const LByteType *) &val, sizeof (val));
-	++nrandevents;
-	spin_unlock(&rand_spin);
-}
-
 int
 add_buffer_randomness(const char *buf, int bytes)
 {
-	int i;
+	spin_lock(&rand_spin);
+	L15_Vector((const LByteType *)buf, bytes);
+	IBAA_Vector(buf, bytes);
+	spin_unlock(&rand_spin);
 
-	while (bytes >= sizeof(int)) {
-		add_true_randomness(*(const int *)buf);
-		buf += sizeof(int);
-		bytes -= sizeof(int);
-	}
+	atomic_add_int(&nrandevents, 1);
 
-	/*
-	 * Warm up the generator to get rid of weak initial states.
-	 */
-	for (i = 0; i < 10; ++i)
-		IBAA_Call();
+	csprng_add_entropy(&csprng_state, RAND_SRC_UNKNOWN,
+	    (const uint8_t *)buf, bytes, 0);
 
 	return 0;
 }
+
+
+int
+add_buffer_randomness_src(const char *buf, int bytes, int srcid)
+{
+	spin_lock(&rand_spin);
+	L15_Vector((const LByteType *)buf, bytes);
+	IBAA_Vector(buf, bytes);
+	spin_unlock(&rand_spin);
+
+	atomic_add_int(&nrandevents, 1);
+
+	csprng_add_entropy(&csprng_state, srcid & 0xff,
+	    (const uint8_t *)buf, bytes, 0);
+
+	return 0;
+}
+
 
 /*
  * Kqueue filter (always succeeds)
@@ -520,14 +571,28 @@ random_filter_read(struct knote *kn, long hint)
 u_int
 read_random(void *buf, u_int nbytes)
 {
-	u_int i;
+	int i, j;
 
-	spin_lock(&rand_spin);
-	for (i = 0; i < nbytes; ++i)
-		((u_char *)buf)[i] = IBAA_Byte();
-	spin_unlock(&rand_spin);
+	if (rand_mode == 0) {
+		/* Only use CSPRNG */
+		i = csprng_get_random(&csprng_state, buf, nbytes, 0);
+	} else if (rand_mode == 1) {
+		/* Only use IBAA */
+		spin_lock(&rand_spin);
+		for (i = 0; i < nbytes; i++)
+			((u_char *)buf)[i] = IBAA_Byte();
+		spin_unlock(&rand_spin);
+	} else {
+		/* Mix both CSPRNG and IBAA */
+		i = csprng_get_random(&csprng_state, buf, nbytes, 0);
+		spin_lock(&rand_spin);
+		for (j = 0; j < i; j++)
+			((u_char *)buf)[j] ^= IBAA_Byte();
+		spin_unlock(&rand_spin);
+	}
+
 	add_interrupt_randomness(0);
-	return (i);
+	return (i > 0) ? i : 0;
 }
 
 /*
@@ -572,6 +637,49 @@ sysctl_kern_random(SYSCTL_HANDLER_ARGS)
 		n -= r;
 	}
 	return(error);
+}
+
+/*
+ * Change the random mode via sysctl().
+ */
+static
+const char *
+rand_mode_to_str(int mode)
+{
+	switch (mode) {
+	case 0:
+		return "csprng";
+	case 1:
+		return "ibaa";
+	case 2:
+		return "mixed";
+	default:
+		return "unknown";
+	}
+}
+
+static
+int
+sysctl_kern_rand_mode(SYSCTL_HANDLER_ARGS)
+{
+	char mode[32];
+	int error;
+
+	strncpy(mode, rand_mode_to_str(rand_mode), sizeof(mode)-1);
+	error = sysctl_handle_string(oidp, mode, sizeof(mode), req);
+	if (error || req->newptr == NULL)
+	    return error;
+
+	if ((strncmp(mode, "csprng", sizeof(mode))) == 0)
+		rand_mode = 0;
+	else if ((strncmp(mode, "ibaa", sizeof(mode))) == 0)
+		rand_mode = 1;
+	else if ((strncmp(mode, "mixed", sizeof(mode))) == 0)
+		rand_mode = 2;
+	else
+		error = EINVAL;
+
+	return error;
 }
 
 /*
@@ -630,7 +738,6 @@ NANOUP_EVENT(void)
 	static struct timespec	ACCUM = { 0, 0 };
 	static struct timespec	NEXT  = { 0, 0 };
 	struct timespec		now;
-	int i;
 
 	nanouptime(&now);
 	spin_lock(&rand_spin);
@@ -655,17 +762,10 @@ NANOUP_EVENT(void)
 		if (tsc_present)
 			ACCUM.tv_nsec ^= rdtsc() & 255;
 
-		IBAA_Seed(ACCUM.tv_nsec);
-		L15_Vector((const LByteType *)&ACCUM.tv_nsec,
-			   sizeof(ACCUM.tv_nsec));
-
-		/*
-		 * Run another warm-up to get rid of weak inital states
-		 * introduced by the seeding.
-		 */
-		for (i = 0; i < 10; ++i)
-			IBAA_Call();
-		++nrandevents;
+		spin_unlock(&rand_spin);
+		add_buffer_randomness_src((const uint8_t *)&ACCUM.tv_nsec,
+		    sizeof(ACCUM.tv_nsec), RAND_SRC_INTR);
+		spin_lock(&rand_spin);
 	}
 	spin_unlock(&rand_spin);
 }

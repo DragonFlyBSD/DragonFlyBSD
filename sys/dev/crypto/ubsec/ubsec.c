@@ -258,7 +258,7 @@ ubsec_partname(struct ubsec_softc *sc)
 static void
 default_harvest(struct rndtest_state *rsp __unused, void *buf, u_int count)
 {
-	add_buffer_randomness(buf, count);
+	add_buffer_randomness_src(buf, count, RAND_SRC_UBSEC);
 }
 
 static int

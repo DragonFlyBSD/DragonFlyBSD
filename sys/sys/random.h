@@ -67,6 +67,21 @@
 
 #ifdef _KERNEL
 
+/*
+ * XXX: consider only statically allocating some, and allocating
+ *      most others dynamically.
+ */
+#define RAND_SRC_UNKNOWN	0x00
+#define RAND_SRC_SEEDING	0x01
+#define RAND_SRC_TIMING		0x02
+#define RAND_SRC_INTR		0x03
+#define RAND_SRC_RDRAND		0x04
+#define RAND_SRC_PADLOCK	0x05
+#define RAND_SRC_GLXSB		0x06
+#define RAND_SRC_HIFN		0x07
+#define RAND_SRC_UBSEC		0x08
+#define RAND_SRC_SAFE		0x09
+
 /* Type of the cookie passed to add_interrupt_randomness. */
 
 struct random_softc {
@@ -82,8 +97,8 @@ void add_interrupt_randomness(int intr);
 #ifdef notused
 void add_blkdev_randomness(int major);
 #endif
-void add_true_randomness(int);
 int add_buffer_randomness(const char *, int);
+int add_buffer_randomness_src(const char *, int, int srcid);
 
 #ifdef notused
 void get_random_bytes(void *buf, u_int nbytes);

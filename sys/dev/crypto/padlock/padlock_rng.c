@@ -51,7 +51,7 @@ padlock_rng_harvest(void *arg)
 	arandomness = PADLOCK_ALIGN(randomness);
 	cnt = padlock_rng(arandomness, PADLOCK_RNDBYTES);
 
-	add_buffer_randomness(arandomness, cnt);
+	add_buffer_randomness_src(arandomness, cnt, RAND_SRC_PADLOCK);
 
 	callout_reset(&sc->sc_rng_co, sc->sc_rng_ticks,
 	    padlock_rng_harvest, sc);

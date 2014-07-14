@@ -241,7 +241,7 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 				if (error == 0 &&
 				    seedenable &&
 				    securelevel <= 0) {
-					error = add_buffer_randomness(buf, c);
+					error = add_buffer_randomness_src(buf, c, RAND_SRC_SEEDING);
 				} else if (error == 0) {
 					error = EPERM;
 				}
