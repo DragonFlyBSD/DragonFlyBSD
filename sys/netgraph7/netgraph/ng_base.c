@@ -224,7 +224,6 @@ static int	ng_mkpeer(node_p node, const char *name, const char *name2,
 		    char *type);
 static void	ng_name_rehash(void);
 static void	ng_ID_rehash(void);
-static void	ng_check_apply(item_p item, int error);
 static boolean_t	bzero_ctor(void *obj, void *private, int ocflags);
 
 /* Imported, these used to be externally visible, some may go back. */
@@ -754,7 +753,6 @@ ng_unref_node(node_p node)
 
 	if (node == &ng_deadnode)
 		return;
-
 
 	if (refcount_release(&node->nd_refs)) { /* we were the last */
 
@@ -1921,7 +1919,7 @@ ng_snd_item(item_p item, int flags)
 	 * Every time an item is sent or forwarded we hold a reference on it
 	 * to postone the callback (if there is one) and item freedom.
 	 */
-	refcount_acquire(&item->depth);
+	ng_ref_item(item);
 
 	/*
 	 * Node is never optional.
@@ -1943,7 +1941,7 @@ ng_snd_item(item_p item, int flags)
 	/*
 	 * Always queue items entering netgraph for the first time.
 	 */
-	if (item->depth == 1) {
+	if (item->refs == 1) {
 		struct lwkt_msg *msg = &item->el_lmsg;
 
 		lwkt_initmsg(msg, &ng_panic_reply_port, 0);
@@ -2104,10 +2102,8 @@ ng_apply_item(item_p item)
 	ng_leave_readwrite(node);
 
 	/* Free the item if we own the last reference to it. */
-	if (refcount_release(&item->depth)) {
-		ng_check_apply(item, error);
-		ng_free_item(item);
-	}
+	ng_unref_item(item, error);
+
 	NG_NODE_UNREF(node);
 
 	return (error);
@@ -2682,18 +2678,6 @@ __inline void
 ng_free_apply(apply_p apply)
 {
 	objcache_put(ng_apply_oc, apply);
-}
-
-static void
-ng_check_apply(item_p item, int error)
-{
-	if (item->apply == NULL)
-		return;
-
-	KKASSERT(item->apply->apply != NULL);
-	(*item->apply->apply)(item->apply->context, error);
-	ng_free_apply(item->apply);
-	item->apply = NULL;
 }
 
 /************************************************************************

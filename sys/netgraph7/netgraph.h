@@ -623,7 +623,7 @@ struct ng_item {
 	 * and its context.
 	 */
 	struct ng_apply_info	*apply;
-	u_int	depth;
+	u_int	refs;
 #ifdef	NETGRAPH_DEBUG /*----------------------------------------------*/
 	char *lastfile;
 	int  lastline;

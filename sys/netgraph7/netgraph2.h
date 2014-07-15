@@ -30,6 +30,10 @@
 #ifndef _NETGRAPH_NETGRAPH2_H_
 #define _NETGRAPH_NETGRAPH2_H_
 
+/*
+ * This header implements the netgraph kernel public inline functions.
+ */
+
 #ifndef _KERNEL
 #error "kernel only header file"
 #endif
@@ -52,6 +56,36 @@ ng_cpuport(int cpu)
 {
 	KKASSERT(cpu >= 0 && cpu < ncpus);
 	return ng_msgport[cpu];
+}
+
+/*
+ * Grab a reference on the item.
+ */
+static __inline void
+ng_ref_item(item_p item)
+{
+	refcount_acquire(&item->refs);
+}
+
+/*
+ * Release a reference on the item.
+ *
+ * When the last reference is released, call the item's callback function if
+ * there is one and free the item.
+ */
+static __inline void
+ng_unref_item(item_p item, int error)
+{
+	if (refcount_release(&item->refs)) {
+		/* We have released the last reference */
+		if (item->apply != NULL) {
+			KKASSERT(item->apply->apply != NULL);
+			(*item->apply->apply)(item->apply->context, error);
+			ng_free_apply(item->apply);
+			item->apply = NULL;
+		}
+		ng_free_item(item);
+	}
 }
 
 #endif	/* _NETGRAPH_NETGRAPH2_H_ */
