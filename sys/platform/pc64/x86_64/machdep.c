@@ -2212,10 +2212,19 @@ globaldata_find(int cpu)
 	return(&CPU_prvspace[cpu]->mdglobaldata.mi);
 }
 
+/*
+ * This path should be safe from the SYSRET issue because only stopped threads
+ * can have their %rip adjusted this way (and all heavy weight thread switches
+ * clear QUICKREF and thus do not use SYSRET).  However, the code path is
+ * convoluted so add a safety by forcing %rip to be cannonical.
+ */
 int
 ptrace_set_pc(struct lwp *lp, unsigned long addr)
 {
-	lp->lwp_md.md_regs->tf_rip = addr;
+	if (addr & 0x0000800000000000LLU)
+		lp->lwp_md.md_regs->tf_rip = addr | 0xFFFF000000000000LLU;
+	else
+		lp->lwp_md.md_regs->tf_rip = addr & 0x0000FFFFFFFFFFFFLLU;
 	return (0);
 }
 
