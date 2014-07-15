@@ -32,7 +32,6 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.24 2008/10/27 02:56:30 sephe Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -106,9 +105,9 @@ struct protosw {
 					/* input to protocol (from below) */
 	int	(*pr_output)(struct mbuf *, struct socket *, ...);
 					/* output to protocol (from above) */
-	void	(*pr_ctlinput)(union netmsg *);
+	void	(*pr_ctlinput)(netmsg_t);
 					/* control input (from below) */
-	void	(*pr_ctloutput)(union netmsg *);
+	void	(*pr_ctloutput)(netmsg_t);
 					/* control output (from above) */
 	struct lwkt_port *(*pr_ctlport)(int, struct sockaddr *, void *);
 
