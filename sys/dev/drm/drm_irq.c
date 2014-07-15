@@ -73,117 +73,6 @@ int drm_irq_by_busid(struct drm_device *dev, void *data,
 	return 0;
 }
 
-int
-drm_irq_install(struct drm_device *dev)
-{
-	int retcode;
-
-	if (dev->irq == 0 || dev->dev_private == NULL)
-		return (EINVAL);
-
-	DRM_DEBUG("irq=%d\n", dev->irq);
-
-	DRM_LOCK(dev);
-	if (dev->irq_enabled) {
-		DRM_UNLOCK(dev);
-		return EBUSY;
-	}
-	dev->irq_enabled = 1;
-
-	dev->context_flag = 0;
-
-	/* Before installing handler */
-	if (dev->driver->irq_preinstall)
-		dev->driver->irq_preinstall(dev);
-	DRM_UNLOCK(dev);
-
-	/* Install handler */
-	retcode = bus_setup_intr(dev->dev, dev->irqr, INTR_MPSAFE,
-	    dev->driver->irq_handler, dev, &dev->irqh, &dev->irq_lock);
-	if (retcode != 0)
-		goto err;
-
-	/* After installing handler */
-	DRM_LOCK(dev);
-	if (dev->driver->irq_postinstall)
-		dev->driver->irq_postinstall(dev);
-	DRM_UNLOCK(dev);
-
-	return (0);
-err:
-	device_printf(dev->dev, "Error setting interrupt: %d\n", retcode);
-	dev->irq_enabled = 0;
-
-	return (retcode);
-}
-
-int drm_irq_uninstall(struct drm_device *dev)
-{
-	int i;
-
-	if (!dev->irq_enabled)
-		return EINVAL;
-
-	dev->irq_enabled = 0;
-
-	/*
-	* Wake up any waiters so they don't hang.
-	*/
-	if (dev->num_crtcs) {
-		lockmgr(&dev->vbl_lock, LK_EXCLUSIVE);
-		for (i = 0; i < dev->num_crtcs; i++) {
-			wakeup(&dev->_vblank_count[i]);
-			dev->vblank_enabled[i] = 0;
-			dev->last_vblank[i] =
-				dev->driver->get_vblank_counter(dev, i);
-		}
-		lockmgr(&dev->vbl_lock, LK_RELEASE);
-	}
-
-	DRM_DEBUG("irq=%d\n", dev->irq);
-
-	if (dev->driver->irq_uninstall)
-		dev->driver->irq_uninstall(dev);
-
-	DRM_UNLOCK(dev);
-	bus_teardown_intr(dev->dev, dev->irqr, dev->irqh);
-	DRM_LOCK(dev);
-
-	return 0;
-}
-
-int drm_control(struct drm_device *dev, void *data, struct drm_file *file_priv)
-{
-	struct drm_control *ctl = data;
-	int err;
-
-	switch (ctl->func) {
-	case DRM_INST_HANDLER:
-		/* Handle drivers whose DRM used to require IRQ setup but the
-		 * no longer does.
-		 */
-		if (!drm_core_check_feature(dev, DRIVER_HAVE_IRQ))
-			return 0;
-		if (drm_core_check_feature(dev, DRIVER_MODESET))
-			return 0;
-		if (dev->if_version < DRM_IF_VERSION(1, 2) &&
-		    ctl->irq != dev->irq)
-			return EINVAL;
-		return drm_irq_install(dev);
-	case DRM_UNINST_HANDLER:
-		if (!drm_core_check_feature(dev, DRIVER_HAVE_IRQ))
-			return 0;
-		if (drm_core_check_feature(dev, DRIVER_MODESET))
-			return 0;
-		DRM_LOCK(dev);
-		err = drm_irq_uninstall(dev);
-		DRM_UNLOCK(dev);
-		return err;
-	default:
-		return EINVAL;
-	}
-}
-
 /*
  * Clear vblank timestamp buffer for a crtc.
  */
@@ -355,6 +244,117 @@ int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 	return 0;
 }
 EXPORT_SYMBOL(drm_vblank_init);
+
+int
+drm_irq_install(struct drm_device *dev)
+{
+	int retcode;
+
+	if (dev->irq == 0 || dev->dev_private == NULL)
+		return (EINVAL);
+
+	DRM_DEBUG("irq=%d\n", dev->irq);
+
+	DRM_LOCK(dev);
+	if (dev->irq_enabled) {
+		DRM_UNLOCK(dev);
+		return EBUSY;
+	}
+	dev->irq_enabled = 1;
+
+	dev->context_flag = 0;
+
+	/* Before installing handler */
+	if (dev->driver->irq_preinstall)
+		dev->driver->irq_preinstall(dev);
+	DRM_UNLOCK(dev);
+
+	/* Install handler */
+	retcode = bus_setup_intr(dev->dev, dev->irqr, INTR_MPSAFE,
+	    dev->driver->irq_handler, dev, &dev->irqh, &dev->irq_lock);
+	if (retcode != 0)
+		goto err;
+
+	/* After installing handler */
+	DRM_LOCK(dev);
+	if (dev->driver->irq_postinstall)
+		dev->driver->irq_postinstall(dev);
+	DRM_UNLOCK(dev);
+
+	return (0);
+err:
+	device_printf(dev->dev, "Error setting interrupt: %d\n", retcode);
+	dev->irq_enabled = 0;
+
+	return (retcode);
+}
+
+int drm_irq_uninstall(struct drm_device *dev)
+{
+	int i;
+
+	if (!dev->irq_enabled)
+		return EINVAL;
+
+	dev->irq_enabled = 0;
+
+	/*
+	* Wake up any waiters so they don't hang.
+	*/
+	if (dev->num_crtcs) {
+		lockmgr(&dev->vbl_lock, LK_EXCLUSIVE);
+		for (i = 0; i < dev->num_crtcs; i++) {
+			wakeup(&dev->_vblank_count[i]);
+			dev->vblank_enabled[i] = 0;
+			dev->last_vblank[i] =
+				dev->driver->get_vblank_counter(dev, i);
+		}
+		lockmgr(&dev->vbl_lock, LK_RELEASE);
+	}
+
+	DRM_DEBUG("irq=%d\n", dev->irq);
+
+	if (dev->driver->irq_uninstall)
+		dev->driver->irq_uninstall(dev);
+
+	DRM_UNLOCK(dev);
+	bus_teardown_intr(dev->dev, dev->irqr, dev->irqh);
+	DRM_LOCK(dev);
+
+	return 0;
+}
+
+int drm_control(struct drm_device *dev, void *data, struct drm_file *file_priv)
+{
+	struct drm_control *ctl = data;
+	int err;
+
+	switch (ctl->func) {
+	case DRM_INST_HANDLER:
+		/* Handle drivers whose DRM used to require IRQ setup but the
+		 * no longer does.
+		 */
+		if (!drm_core_check_feature(dev, DRIVER_HAVE_IRQ))
+			return 0;
+		if (drm_core_check_feature(dev, DRIVER_MODESET))
+			return 0;
+		if (dev->if_version < DRM_IF_VERSION(1, 2) &&
+		    ctl->irq != dev->irq)
+			return EINVAL;
+		return drm_irq_install(dev);
+	case DRM_UNINST_HANDLER:
+		if (!drm_core_check_feature(dev, DRIVER_HAVE_IRQ))
+			return 0;
+		if (drm_core_check_feature(dev, DRIVER_MODESET))
+			return 0;
+		DRM_LOCK(dev);
+		err = drm_irq_uninstall(dev);
+		DRM_UNLOCK(dev);
+		return err;
+	default:
+		return EINVAL;
+	}
+}
 
 void
 drm_calc_timestamping_constants(struct drm_crtc *crtc)
