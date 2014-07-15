@@ -245,66 +245,98 @@ int drm_vblank_init(struct drm_device *dev, int num_crtcs)
 }
 EXPORT_SYMBOL(drm_vblank_init);
 
-int
-drm_irq_install(struct drm_device *dev)
+/**
+ * Install IRQ handler.
+ *
+ * \param dev DRM device.
+ *
+ * Initializes the IRQ related data. Installs the handler, calling the driver
+ * \c irq_preinstall() and \c irq_postinstall() functions
+ * before and after the installation.
+ */
+int drm_irq_install(struct drm_device *dev)
 {
-	int retcode;
+	int ret;
 
-	if (dev->irq == 0 || dev->dev_private == NULL)
-		return (EINVAL);
+	if (!drm_core_check_feature(dev, DRIVER_HAVE_IRQ))
+		return -EINVAL;
 
-	DRM_DEBUG("irq=%d\n", dev->irq);
+	if (dev->irq == 0)
+		return -EINVAL;
 
 	DRM_LOCK(dev);
+
+	/* Driver must have been initialized */
+	if (!dev->dev_private) {
+		DRM_UNLOCK(dev);
+		return -EINVAL;
+	}
+
 	if (dev->irq_enabled) {
 		DRM_UNLOCK(dev);
-		return EBUSY;
+		return -EBUSY;
 	}
 	dev->irq_enabled = 1;
+	DRM_UNLOCK(dev);
 
-	dev->context_flag = 0;
+	DRM_DEBUG("irq=%d\n", dev->irq);
 
 	/* Before installing handler */
 	if (dev->driver->irq_preinstall)
 		dev->driver->irq_preinstall(dev);
-	DRM_UNLOCK(dev);
 
 	/* Install handler */
-	retcode = bus_setup_intr(dev->dev, dev->irqr, INTR_MPSAFE,
+	ret = bus_setup_intr(dev->dev, dev->irqr, INTR_MPSAFE,
 	    dev->driver->irq_handler, dev, &dev->irqh, &dev->irq_lock);
-	if (retcode != 0)
-		goto err;
+
+	if (ret != 0) {
+		DRM_LOCK(dev);
+		dev->irq_enabled = 0;
+		DRM_UNLOCK(dev);
+		return ret;
+	}
 
 	/* After installing handler */
-	DRM_LOCK(dev);
 	if (dev->driver->irq_postinstall)
-		dev->driver->irq_postinstall(dev);
-	DRM_UNLOCK(dev);
+		ret = dev->driver->irq_postinstall(dev);
 
-	return (0);
-err:
-	device_printf(dev->dev, "Error setting interrupt: %d\n", retcode);
-	dev->irq_enabled = 0;
+	if (ret < 0) {
+		DRM_LOCK(dev);
+		dev->irq_enabled = 0;
+		DRM_UNLOCK(dev);
+		bus_teardown_intr(dev->dev, dev->irqr, dev->irqh);
+	}
 
-	return (retcode);
+	return ret;
 }
+EXPORT_SYMBOL(drm_irq_install);
 
+/**
+ * Uninstall the IRQ handler.
+ *
+ * \param dev DRM device.
+ *
+ * Calls the driver's \c irq_uninstall() function, and stops the irq.
+ */
 int drm_irq_uninstall(struct drm_device *dev)
 {
-	int i;
+	int irq_enabled, i;
 
-	if (!dev->irq_enabled)
-		return EINVAL;
+	if (!drm_core_check_feature(dev, DRIVER_HAVE_IRQ))
+		return -EINVAL;
 
+	DRM_LOCK(dev);
+	irq_enabled = dev->irq_enabled;
 	dev->irq_enabled = 0;
+	DRM_UNLOCK(dev);
 
 	/*
-	* Wake up any waiters so they don't hang.
-	*/
+	 * Wake up any waiters so they don't hang.
+	 */
 	if (dev->num_crtcs) {
 		lockmgr(&dev->vbl_lock, LK_EXCLUSIVE);
 		for (i = 0; i < dev->num_crtcs; i++) {
-			wakeup(&dev->_vblank_count[i]);
+			DRM_WAKEUP(&dev->vbl_queue[i]);
 			dev->vblank_enabled[i] = 0;
 			dev->last_vblank[i] =
 				dev->driver->get_vblank_counter(dev, i);
@@ -312,47 +344,59 @@ int drm_irq_uninstall(struct drm_device *dev)
 		lockmgr(&dev->vbl_lock, LK_RELEASE);
 	}
 
+	if (!irq_enabled)
+		return -EINVAL;
+
 	DRM_DEBUG("irq=%d\n", dev->irq);
 
 	if (dev->driver->irq_uninstall)
 		dev->driver->irq_uninstall(dev);
 
-	DRM_UNLOCK(dev);
 	bus_teardown_intr(dev->dev, dev->irqr, dev->irqh);
-	DRM_LOCK(dev);
 
 	return 0;
 }
+EXPORT_SYMBOL(drm_irq_uninstall);
 
-int drm_control(struct drm_device *dev, void *data, struct drm_file *file_priv)
+/**
+ * IRQ control ioctl.
+ *
+ * \param inode device inode.
+ * \param file_priv DRM file private.
+ * \param cmd command.
+ * \param arg user argument, pointing to a drm_control structure.
+ * \return zero on success or a negative number on failure.
+ *
+ * Calls irq_install() or irq_uninstall() according to \p arg.
+ */
+int drm_control(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
 {
 	struct drm_control *ctl = data;
-	int err;
+
+	/* if we haven't irq we fallback for compatibility reasons -
+	 * this used to be a separate function in drm_dma.h
+	 */
+
 
 	switch (ctl->func) {
 	case DRM_INST_HANDLER:
-		/* Handle drivers whose DRM used to require IRQ setup but the
-		 * no longer does.
-		 */
 		if (!drm_core_check_feature(dev, DRIVER_HAVE_IRQ))
 			return 0;
 		if (drm_core_check_feature(dev, DRIVER_MODESET))
 			return 0;
 		if (dev->if_version < DRM_IF_VERSION(1, 2) &&
 		    ctl->irq != dev->irq)
-			return EINVAL;
+			return -EINVAL;
 		return drm_irq_install(dev);
 	case DRM_UNINST_HANDLER:
 		if (!drm_core_check_feature(dev, DRIVER_HAVE_IRQ))
 			return 0;
 		if (drm_core_check_feature(dev, DRIVER_MODESET))
 			return 0;
-		DRM_LOCK(dev);
-		err = drm_irq_uninstall(dev);
-		DRM_UNLOCK(dev);
-		return err;
+		return drm_irq_uninstall(dev);
 	default:
-		return EINVAL;
+		return -EINVAL;
 	}
 }
 
