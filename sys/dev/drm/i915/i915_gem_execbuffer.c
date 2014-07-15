@@ -687,7 +687,7 @@ i915_gem_execbuffer_reserve(struct intel_ring_buffer *ring,
 		/* First attempt, just clear anything that is purgeable.
 		 * Second attempt, clear the entire GTT.
 		 */
-		ret = i915_gem_evict_everything(ring->dev, retry == 0);
+		ret = i915_gem_evict_everything(ring->dev);
 		if (ret)
 			return ret;
 
@@ -978,7 +978,7 @@ i915_gem_execbuffer_move_to_active(struct list_head *objects,
 		i915_gem_object_move_to_active(obj, ring, seqno);
 		if (obj->base.write_domain) {
 			obj->dirty = 1;
-			obj->pending_gpu_write = true;
+			obj->last_write_seqno = seqno;
 			list_move_tail(&obj->gpu_write_list,
 				       &ring->gpu_write_list);
 			intel_mark_busy(ring->dev);
@@ -993,30 +993,11 @@ i915_gem_execbuffer_retire_commands(struct drm_device *dev,
 				    struct drm_file *file,
 				    struct intel_ring_buffer *ring)
 {
-	struct drm_i915_gem_request *request;
-	u32 invalidate;
-
-	/*
-	 * Ensure that the commands in the batch buffer are
-	 * finished before the interrupt fires.
-	 *
-	 * The sampler always gets flushed on i965 (sigh).
-	 */
-	invalidate = I915_GEM_DOMAIN_COMMAND;
-	if (INTEL_INFO(dev)->gen >= 4)
-		invalidate |= I915_GEM_DOMAIN_SAMPLER;
-	if (ring->flush(ring, invalidate, 0)) {
-		i915_gem_next_request_seqno(ring);
-		return;
-	}
+	/* Unconditionally force add_request to emit a full flush. */
+	ring->gpu_caches_dirty = true;
 
 	/* Add a breadcrumb for the completion of the batch buffer */
-	request = kmalloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
-	if (request == NULL || i915_add_request(ring, file, request)) {
-		i915_gem_next_request_seqno(ring);
-		drm_free(request, DRM_I915_GEM);
-	} else if (i915_gem_sync_exec_requests)
-		i915_wait_seqno(ring, request->seqno);
+	(void)i915_add_request(ring, file, NULL);
 }
 
 static void
@@ -1295,6 +1276,7 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 			ret = i915_gpu_idle(dev);
 			if (ret)
 				goto err;
+			i915_gem_retire_requests(dev);
 
 			KASSERT(ring->sync_seqno[i] == 0, ("Non-zero sync_seqno"));
 		}

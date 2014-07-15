@@ -133,8 +133,6 @@ struct  intel_ring_buffer {
 
 	wait_queue_head_t irq_queue;
 
-	drm_local_map_t map;
-
 	/**
 	 * Do an explicit TLB flush before MI_SET_CONTEXT
 	 */

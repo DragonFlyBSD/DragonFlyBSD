@@ -165,44 +165,33 @@ found:
 }
 
 int
-i915_gem_evict_everything(struct drm_device *dev, bool purgeable_only)
+i915_gem_evict_everything(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
-	int ret;
+	struct drm_i915_gem_object *obj, *next;
 	bool lists_empty;
+	int ret;
 
 	lists_empty = (list_empty(&dev_priv->mm.inactive_list) &&
-		       list_empty(&dev_priv->mm.flushing_list) &&
 		       list_empty(&dev_priv->mm.active_list));
 	if (lists_empty)
 		return -ENOSPC;
 
-	/* Flush everything (on to the inactive lists) and evict */
+	/* The gpu_idle will flush everything in the write domain to the
+	 * active list. Then we must move everything off the active list
+	 * with retire requests.
+	 */
 	ret = i915_gpu_idle(dev);
 	if (ret)
 		return ret;
 
-	KASSERT(list_empty(&dev_priv->mm.flushing_list),
-	    ("flush list not empty"));
+	i915_gem_retire_requests(dev);
 
-	return i915_gem_evict_inactive(dev, purgeable_only);
-}
-
-/** Unbinds all inactive objects. */
-int
-i915_gem_evict_inactive(struct drm_device *dev, bool purgeable_only)
-{
-	drm_i915_private_t *dev_priv = dev->dev_private;
-	struct drm_i915_gem_object *obj, *next;
-
+	/* Having flushed everything, unbind() should never raise an error */
 	list_for_each_entry_safe(obj, next,
-				 &dev_priv->mm.inactive_list, mm_list) {
-		if (!purgeable_only || obj->madv != I915_MADV_WILLNEED) {
-			int ret = i915_gem_object_unbind(obj);
-			if (ret)
-				return ret;
-		}
-	}
+				 &dev_priv->mm.inactive_list, mm_list)
+		if (obj->pin_count == 0)
+			WARN_ON(i915_gem_object_unbind(obj));
 
 	return 0;
 }

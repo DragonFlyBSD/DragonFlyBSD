@@ -36,8 +36,6 @@
 
 extern struct drm_i915_private *i915_mch_dev;
 
-static int i915_driver_unload_int(struct drm_device *dev, bool locked);
-
 void i915_update_dri1_breadcrumb(struct drm_device *dev)
 {
 	/*
@@ -226,7 +224,7 @@ static int i915_dma_resume(struct drm_device * dev)
 
 	DRM_DEBUG("\n");
 
-	if (ring->map.handle == NULL) {
+	if (ring->virtual_start == NULL) {
 		DRM_ERROR("can not ioremap virtual address for"
 			  " ring buffer\n");
 		return -ENOMEM;
@@ -1510,33 +1508,34 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	return 0;
 
 out_gem_unload:
-	/* XXXKIB */
-	(void) i915_driver_unload_int(dev, true);
-	return (ret);
+	intel_teardown_gmbus(dev);
+	intel_teardown_mchbar(dev);
+	destroy_workqueue(dev_priv->wq);
 out_mtrrfree:
 	return ret;
 }
 
-static int
-i915_driver_unload_int(struct drm_device *dev, bool locked)
+int i915_driver_unload(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret;
 
-	if (!locked)
-		DRM_LOCK(dev);
+	intel_gpu_ips_teardown();
+
+	DRM_LOCK(dev);
 	ret = i915_gpu_idle(dev);
 	if (ret)
 		DRM_ERROR("failed to idle hardware: %d\n", ret);
-	if (!locked)
-		DRM_UNLOCK(dev);
+	i915_gem_retire_requests(dev);
+	DRM_UNLOCK(dev);
+
+	/* Cancel the retire work handler, which should be idle now. */
+	cancel_delayed_work_sync(&dev_priv->mm.retire_work);
 
 	i915_free_hws(dev);
 
 	intel_teardown_mchbar(dev);
 
-	if (locked)
-		DRM_UNLOCK(dev);
 	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
 		intel_fbdev_fini(dev);
 		intel_modeset_cleanup(dev);
@@ -1544,28 +1543,20 @@ i915_driver_unload_int(struct drm_device *dev, bool locked)
 
 	/* Free error state after interrupts are fully disabled. */
 	del_timer_sync(&dev_priv->hangcheck_timer);
-
+	cancel_work_sync(&dev_priv->error_work);
 	i915_destroy_error_state(dev);
 
 	intel_opregion_fini(dev);
 
-	if (locked)
-		DRM_LOCK(dev);
-
 	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
-		if (!locked)
-			DRM_LOCK(dev);
+		/* Flush any outstanding unpin_work. */
+		flush_workqueue(dev_priv->wq);
+
+		DRM_LOCK(dev);
 		i915_gem_free_all_phys_object(dev);
 		i915_gem_cleanup_ringbuffer(dev);
-		if (!locked)
-			DRM_UNLOCK(dev);
+		DRM_UNLOCK(dev);
 		i915_gem_cleanup_aliasing_ppgtt(dev);
-#if 1
-		KIB_NOTYET();
-#else
-		if (I915_HAS_FBC(dev) && i915_powersave)
-			i915_cleanup_compression(dev);
-#endif
 		drm_mm_takedown(&dev_priv->mm.stolen);
 
 		intel_cleanup_overlay(dev);
@@ -1576,26 +1567,15 @@ i915_driver_unload_int(struct drm_device *dev, bool locked)
 
 	i915_gem_unload(dev);
 
-	lockuninit(&dev_priv->irq_lock);
-
-	if (dev_priv->wq != NULL)
-		destroy_workqueue(dev_priv->wq);
-
 	bus_generic_detach(dev->dev);
 	drm_rmmap(dev, dev_priv->mmio_map);
 	intel_teardown_gmbus(dev);
 
-	lockuninit(&dev_priv->error_lock);
+	destroy_workqueue(dev_priv->wq);
+
 	drm_free(dev->dev_private, DRM_MEM_DRIVER);
 
-	return (0);
-}
-
-int
-i915_driver_unload(struct drm_device *dev)
-{
-
-	return (i915_driver_unload_int(dev, true));
+	return 0;
 }
 
 int

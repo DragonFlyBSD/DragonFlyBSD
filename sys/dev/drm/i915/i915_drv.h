@@ -224,7 +224,7 @@ struct drm_i915_error_state {
 	struct drm_i915_error_buffer {
 		u32 size;
 		u32 name;
-		u32 seqno;
+		u32 rseqno, wseqno;
 		u32 gtt_offset;
 		u32 read_domains;
 		u32 write_domain;
@@ -1019,12 +1019,6 @@ struct drm_i915_gem_object {
 	unsigned int dirty:1;
 
 	/**
-	 * This is set if the object has been written to since the last
-	 * GPU flush.
-	 */
-	unsigned int pending_gpu_write:1;
-
-	/**
 	 * Fence register bits (if any) for this object.  Will be set
 	 * as needed when mapped into the GTT.
 	 * Protected by dev->struct_mutex.
@@ -1095,9 +1089,11 @@ struct drm_i915_gem_object {
 	 */
 	uint32_t gtt_offset;
 
-	/** Breadcrumb of last rendering to the buffer. */
-	uint32_t last_rendering_seqno;
 	struct intel_ring_buffer *ring;
+
+	/** Breadcrumb of last rendering to the buffer. */
+	uint32_t last_read_seqno;
+	uint32_t last_write_seqno;
 
 	/** Breadcrumb of last fenced GPU access to the buffer. */
 	uint32_t last_fenced_seqno;
@@ -1108,12 +1104,6 @@ struct drm_i915_gem_object {
 
 	/** Record of address bit 17 of each page at last unbind. */
 	unsigned long *bit_17;
-
-	/**
-	 * If present, while GEM_DOMAIN_CPU is in the read domain this array
-	 * flags which individual pages are valid.
-	 */
-	uint8_t *page_cpu_valid;
 
 	/** User space pin count and filp owning the pin */
 	uint32_t user_pin_count;
@@ -1455,7 +1445,6 @@ int i915_gem_object_finish_gpu(struct drm_i915_gem_object *obj);
 int i915_gem_flush_ring(struct intel_ring_buffer *ring,
     uint32_t invalidate_domains, uint32_t flush_domains);
 void i915_gem_release_mmap(struct drm_i915_gem_object *obj);
-int i915_gem_object_wait_rendering(struct drm_i915_gem_object *obj);
 int i915_gem_object_put_fence(struct drm_i915_gem_object *obj);
 int i915_gem_idle(struct drm_device *dev);
 int i915_gem_init_hw(struct drm_device *dev);
@@ -1466,8 +1455,9 @@ void i915_gem_cleanup_ringbuffer(struct drm_device *dev);
 int __must_check i915_gpu_idle(struct drm_device *dev);
 void i915_gem_object_move_to_active(struct drm_i915_gem_object *obj,
     struct intel_ring_buffer *ring, uint32_t seqno);
-int i915_add_request(struct intel_ring_buffer *ring, struct drm_file *file,
-    struct drm_i915_gem_request *request);
+int i915_add_request(struct intel_ring_buffer *ring,
+		     struct drm_file *file,
+		     struct drm_i915_gem_request *request);
 int i915_wait_seqno(struct intel_ring_buffer *ring,
 				 uint32_t seqno);
 int i915_gem_object_get_fence(struct drm_i915_gem_object *obj,
@@ -1498,11 +1488,17 @@ void i915_gem_detect_bit_6_swizzle(struct drm_device *dev);
 void i915_gem_object_do_bit_17_swizzle(struct drm_i915_gem_object *obj);
 void i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj);
 
+/* i915_gem_debug.c */
+#if WATCH_LISTS
+int i915_verify_lists(struct drm_device *dev);
+#else
+#define i915_verify_lists(dev) 0
+#endif
+
 /* i915_gem_evict.c */
 int i915_gem_evict_something(struct drm_device *dev, int min_size,
     unsigned alignment, bool mappable);
-int i915_gem_evict_everything(struct drm_device *dev, bool purgeable_only);
-int i915_gem_evict_inactive(struct drm_device *dev, bool purgeable_only);
+int i915_gem_evict_everything(struct drm_device *dev);
 
 /* i915_suspend.c */
 extern int i915_save_state(struct drm_device *dev);
