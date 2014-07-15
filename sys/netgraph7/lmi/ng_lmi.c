@@ -462,18 +462,18 @@ nglmi_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				break;
 			}
 			arg = resp->data;
-			pos = sprintf(arg, "protocol %s ", sc->protoname);
+			pos = ksprintf(arg, "protocol %s ", sc->protoname);
 			if (sc->flags & SCF_FIXED)
-				pos += sprintf(arg + pos, "fixed\n");
+				pos += ksprintf(arg + pos, "fixed\n");
 			else if (sc->flags & SCF_AUTO)
-				pos += sprintf(arg + pos, "auto-detecting\n");
+				pos += ksprintf(arg + pos, "auto-detecting\n");
 			else
-				pos += sprintf(arg + pos, "auto on dlci %d\n",
+				pos += ksprintf(arg + pos, "auto on dlci %d\n",
 				    (sc->lmi_channel == sc->lmi_channel0) ?
 				    0 : 1023);
-			pos += sprintf(arg + pos,
+			pos += ksprintf(arg + pos,
 			    "keepalive period: %d seconds\n", sc->liv_rate);
-			pos += sprintf(arg + pos,
+			pos += ksprintf(arg + pos,
 			    "unacknowledged keepalives: %ld\n",
 			    sc->seq_retries);
 			for (count = 0;
@@ -481,7 +481,7 @@ nglmi_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			      && (pos < (NG_TEXTRESPONSE - 20)));
 			     count++) {
 				if (sc->dlci_state[count]) {
-					pos += sprintf(arg + pos,
+					pos += ksprintf(arg + pos,
 					       "dlci %d %s\n", count,
 					       (sc->dlci_state[count]
 					== DLCI_UP) ? "up" : "down");
@@ -1003,7 +1003,7 @@ print:
 			pos = 0;
 			j = 0;
 			while ((j++ < 16) && k < m->m_len) {
-				pos += sprintf(buf + pos, "%c%02x",
+				pos += ksprintf(buf + pos, "%c%02x",
 					       ((loc == k) ? '>' : ' '),
 					       bp[k]);
 				k++;
@@ -1030,7 +1030,7 @@ reject:
 			pos = 0;
 			j = 0;
 			while ((j++ < 16) && k < m->m_len) {
-				pos += sprintf(buf + pos, "%c%02x",
+				pos += ksprintf(buf + pos, "%c%02x",
 					       ((loc == k) ? '>' : ' '),
 					       bp[k]);
 				k++;

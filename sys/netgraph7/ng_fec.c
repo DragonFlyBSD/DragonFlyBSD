@@ -361,7 +361,7 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 
 	/* Only allow reconfiguration if not running. */
 	if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
-		printf("fec%d: can't add new iface; bundle is running\n",
+		kprintf("fec%d: can't add new iface; bundle is running\n",
 		    priv->unit);
 		return (EINVAL);
 	}
@@ -369,14 +369,14 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	/* Find the interface */
 	bifp = ifunit(iface);
 	if (bifp == NULL) {
-		printf("fec%d: tried to add iface %s, which "
+		kprintf("fec%d: tried to add iface %s, which "
 		    "doesn't seem to exist\n", priv->unit, iface);
 		return(ENOENT);
 	}
 
 	/* See if we have room in the bundle */
 	if (b->fec_ifcnt == FEC_BUNDLESIZ) {
-		printf("fec%d: can't add new iface; bundle is full\n",
+		kprintf("fec%d: can't add new iface; bundle is full\n",
 		    priv->unit);
 		return(ENOSPC);
 	}
@@ -384,7 +384,7 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	/* See if the interface is already in the bundle */
 	TAILQ_FOREACH(p, &b->ng_fec_ports, fec_list) {
 		if (p->fec_if == bifp) {
-			printf("fec%d: iface %s is already in this "
+			kprintf("fec%d: iface %s is already in this "
 			    "bundle\n", priv->unit, iface);
 			return(EINVAL);
 		}
@@ -397,7 +397,7 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 	 */
 	if (b->fec_if_output != NULL) {
 		if (b->fec_if_output != bifp->if_output) {
-			printf("fec%d: iface %s is not the same type "
+			kprintf("fec%d: iface %s is not the same type "
 			    "as the other interface(s) already in "
 			    "the bundle\n", priv->unit, iface);
 			return(EINVAL);
@@ -472,7 +472,7 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 
 	/* Only allow reconfiguration if not running. */
 	if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
-		printf("fec%d: can't remove iface; bundle is running\n",
+		kprintf("fec%d: can't remove iface; bundle is running\n",
 		    priv->unit);
 		return (EINVAL);
 	}
@@ -480,7 +480,7 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 	/* Find the interface */
 	bifp = ifunit(iface);
 	if (bifp == NULL) {
-		printf("fec%d: tried to remove iface %s, which "
+		kprintf("fec%d: tried to remove iface %s, which "
 		    "doesn't seem to exist\n", priv->unit, iface);
 		return(ENOENT);
 	}
@@ -491,7 +491,7 @@ ng_fec_delport(struct ng_fec_private *priv, char *iface)
 	}
 
 	if (p == NULL) {
-		printf("fec%d: tried to remove iface %s which "
+		kprintf("fec%d: tried to remove iface %s which "
 		    "is not in our bundle\n", priv->unit, iface);
 		return(EINVAL);
 	}
@@ -621,7 +621,7 @@ ng_fec_init(void *arg)
 	b = &priv->fec_bundle;
 
 	if (b->fec_ifcnt != 2 && b->fec_ifcnt != FEC_BUNDLESIZ) {
-		printf("fec%d: invalid bundle "
+		kprintf("fec%d: invalid bundle "
 		    "size: %d\n", priv->unit,
 		    b->fec_ifcnt);
 		return;
@@ -687,7 +687,7 @@ ng_fec_tick(void *arg)
 		ifp = p->fec_if;
 		error = (*ifp->if_ioctl)(ifp, SIOCGIFMEDIA, (caddr_t)&ifmr);
 		if (error) {
-			printf("fec%d: failed to check status "
+			kprintf("fec%d: failed to check status "
 			    "of link %s\n", priv->unit, ifp->if_xname);
 			continue;
 		}
@@ -697,7 +697,7 @@ ng_fec_tick(void *arg)
 				if (p->fec_ifstat == -1 ||
 				    p->fec_ifstat == 0) {
 					p->fec_ifstat = 1;
-					printf("fec%d: port %s in bundle "
+					kprintf("fec%d: port %s in bundle "
 					    "is up\n", priv->unit,
 					    ifp->if_xname);
 				}
@@ -705,7 +705,7 @@ ng_fec_tick(void *arg)
 				if (p->fec_ifstat == -1 ||
 				    p->fec_ifstat == 1) {
 					p->fec_ifstat = 0;
-					printf("fec%d: port %s in bundle "
+					kprintf("fec%d: port %s in bundle "
 					    "is down\n", priv->unit,
 					    ifp->if_xname);
 				}
@@ -803,7 +803,7 @@ ng_fec_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 				/* Sanity. */
 				if (b->fec_ifcnt != 2 &&
 				    b->fec_ifcnt != FEC_BUNDLESIZ) {
-					printf("fec%d: invalid bundle "
+					kprintf("fec%d: invalid bundle "
 					    "size: %d\n", priv->unit,
 					    b->fec_ifcnt);
 					error = EINVAL;

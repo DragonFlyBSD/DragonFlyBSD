@@ -1517,7 +1517,7 @@ ng_ppp_mp_recv(node_p node, item_p item, uint16_t proto, uint16_t linkNum)
 
 	/* Get a new frag struct from the free queue */
 	if ((frag = TAILQ_FIRST(&priv->fragsfree)) == NULL) {
-		printf("No free fragments headers in ng_ppp!\n");
+		kprintf("No free fragments headers in ng_ppp!\n");
 		NG_FREE_M(m);
 		goto process;
 	}

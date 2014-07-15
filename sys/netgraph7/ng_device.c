@@ -32,7 +32,7 @@
  */
 
 #if 0
-#define	DBG do { printf("ng_device: %s\n", __func__ ); } while (0)
+#define	DBG do { kprintf("ng_device: %s\n", __func__ ); } while (0)
 #else
 #define	DBG do {} while (0)
 #endif
@@ -179,7 +179,7 @@ ng_device_constructor(node_p node)
 	priv->ngddev = make_dev(&ngd_cdevsw, unit2minor(priv->unit), UID_ROOT,
 	    GID_WHEEL, 0600, NG_DEVICE_DEVNAME "%d", priv->unit);
 	if(priv->ngddev == NULL) {
-		printf("%s(): make_dev() failed\n",__func__);
+		kprintf("%s(): make_dev() failed\n",__func__);
 		mtx_destroy(&priv->ngd_mtx);
 		mtx_destroy(&priv->readq.ifq_mtx);
 		free_unr(ngd_unit, priv->unit);
@@ -383,7 +383,7 @@ ngdioctl(struct cdev *dev, u_long cmd, caddr_t addr, int flag, struct thread *td
 	NG_MKMESSAGE(msg, NGM_DEVICE_COOKIE, cmd, sizeof(struct ngd_param_s),
 			M_WAITOK);
 	if (msg == NULL) {
-		printf("%s(): msg == NULL\n",__func__);
+		kprintf("%s(): msg == NULL\n",__func__);
 		goto nomsg;
 	}
 
@@ -393,7 +393,7 @@ ngdioctl(struct cdev *dev, u_long cmd, caddr_t addr, int flag, struct thread *td
 
 	NG_SEND_MSG_HOOK(error, sc->node, msg, connection->active_hook, 0);
 	if(error)
-		printf("%s(): NG_SEND_MSG_HOOK error: %d\n",__func__,error);
+		kprintf("%s(): NG_SEND_MSG_HOOK error: %d\n",__func__,error);
 
 nomsg:
 

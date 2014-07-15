@@ -614,7 +614,7 @@ ng_source_store_output_ifp(sc_p sc, char *ifname)
 	ifp = ifunit(ifname);
 
 	if (ifp == NULL) {
-		printf("%s: can't find interface %d\n", __func__, if_index);
+		kprintf("%s: can't find interface %d\n", __func__, if_index);
 		return (EINVAL);
 	}
 	sc->output_ifp = ifp;
@@ -627,7 +627,7 @@ ng_source_store_output_ifp(sc_p sc, char *ifname)
 	 */
 	s = splimp();		/* XXX is this required? */
 	if (ifp->if_snd.ifq_maxlen < NG_SOURCE_DRIVER_IFQ_MAXLEN) {
-		printf("ng_source: changing ifq_maxlen from %d to %d\n",
+		kprintf("ng_source: changing ifq_maxlen from %d to %d\n",
 		    ifp->if_snd.ifq_maxlen, NG_SOURCE_DRIVER_IFQ_MAXLEN);
 		ifq_set_maxlen(&ifp->if_snd, NG_SOURCE_DRIVER_IFQ_MAXLEN);
 	}
@@ -680,7 +680,7 @@ static int
 ng_source_start(sc_p sc, uint64_t packets)
 {
 	if (sc->output_ifp == NULL) {
-		printf("ng_source: start without iface configured\n");
+		kprintf("ng_source: start without iface configured\n");
 		return (ENXIO);
 	}
 

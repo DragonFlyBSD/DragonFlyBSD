@@ -29,7 +29,6 @@
  *
  * $Id: ng_btsocket_l2cap_raw.c,v 1.12 2003/09/14 23:29:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/socket/ng_btsocket_l2cap_raw.c,v 1.20 2006/11/06 13:42:04 rwatson Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/socket/ng_btsocket_l2cap_raw.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -147,19 +146,19 @@ SYSCTL_INT(_net_bluetooth_l2cap_sockets_raw, OID_AUTO, queue_drops,
 /* Debug */
 #define NG_BTSOCKET_L2CAP_RAW_INFO \
 	if (ng_btsocket_l2cap_raw_debug_level >= NG_BTSOCKET_INFO_LEVEL) \
-		printf
+		kprintf
 
 #define NG_BTSOCKET_L2CAP_RAW_WARN \
 	if (ng_btsocket_l2cap_raw_debug_level >= NG_BTSOCKET_WARN_LEVEL) \
-		printf
+		kprintf
 
 #define NG_BTSOCKET_L2CAP_RAW_ERR \
 	if (ng_btsocket_l2cap_raw_debug_level >= NG_BTSOCKET_ERR_LEVEL) \
-		printf
+		kprintf
 
 #define NG_BTSOCKET_L2CAP_RAW_ALERT \
 	if (ng_btsocket_l2cap_raw_debug_level >= NG_BTSOCKET_ALERT_LEVEL) \
-		printf
+		kprintf
 
 /*****************************************************************************
  *****************************************************************************

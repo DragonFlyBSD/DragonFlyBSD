@@ -132,7 +132,7 @@ ng_split_rcvdata(hook_p hook, item_p item)
 	int		error = 0;
 
 	if (hook == priv->out) {
-		printf("ng_split: got packet from out hook!\n");
+		kprintf("ng_split: got packet from out hook!\n");
 		NG_FREE_ITEM(item);
 		error = EINVAL;
 	} else if ((hook == priv->in) && (priv->mixed != NULL)) {

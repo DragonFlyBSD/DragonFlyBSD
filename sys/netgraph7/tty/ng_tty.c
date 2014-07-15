@@ -209,7 +209,7 @@ ngt_open(struct cdev *dev, struct tty *tp)
 	}
 
 	atomic_add_int(&ngt_unit, 1);
-	snprintf(name, sizeof(name), "%s%d", typestruct.name, ngt_unit);
+	ksnprintf(name, sizeof(name), "%s%d", typestruct.name, ngt_unit);
 
 	/* Assign node its name */
 	if ((error = ng_name_node(sc->node, name))) {

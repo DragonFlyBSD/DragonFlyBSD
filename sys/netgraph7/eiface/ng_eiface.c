@@ -374,7 +374,7 @@ ng_eiface_constructor(node_p node)
 #if 0
 	/* Give this node name */
 	bzero(ifname, sizeof(ifname));
-	sprintf(ifname, "if%s", ifp->if_xname);
+	ksprintf(ifname, "if%s", ifp->if_xname);
 	(void)ng_name_node(node, ifname);
 #endif
 

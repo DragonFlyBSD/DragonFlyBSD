@@ -29,7 +29,6 @@
  *
  * $Id: ng_l2cap_cmds.c,v 1.2 2003/09/08 19:11:45 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/l2cap/ng_l2cap_cmds.c,v 1.7 2007/03/28 21:25:56 emax Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/l2cap/ng_l2cap_cmds.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -333,7 +332,7 @@ ng_l2cap_process_command_timeout(node_p node, hook_p hook, void *arg1, int arg2)
 	u_int8_t	ident = ((arg2 >> 16) & 0xff);
 
 	if (NG_NODE_NOT_VALID(node)) {
-		printf("%s: Netgraph node is not valid\n", __func__);
+		kprintf("%s: Netgraph node is not valid\n", __func__);
 		return;
 	}
 

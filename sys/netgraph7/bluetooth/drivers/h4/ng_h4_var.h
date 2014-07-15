@@ -29,7 +29,6 @@
  *
  * $Id: ng_h4_var.h,v 1.5 2005/10/31 17:57:43 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/drivers/h4/ng_h4_var.h,v 1.6 2007/08/13 17:19:28 emax Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/drivers/h4/ng_h4_var.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  * 
  * Based on:
  * ---------
@@ -55,10 +54,10 @@ MALLOC_DECLARE(M_NETGRAPH_H4);
  * Debug
  */
 
-#define	NG_H4_ALERT	if (sc->debug >= NG_H4_ALERT_LEVEL) printf
-#define	NG_H4_ERR	if (sc->debug >= NG_H4_ERR_LEVEL)   printf
-#define	NG_H4_WARN	if (sc->debug >= NG_H4_WARN_LEVEL)  printf
-#define	NG_H4_INFO	if (sc->debug >= NG_H4_INFO_LEVEL)  printf
+#define	NG_H4_ALERT	if (sc->debug >= NG_H4_ALERT_LEVEL) kprintf
+#define	NG_H4_ERR	if (sc->debug >= NG_H4_ERR_LEVEL)   kprintf
+#define	NG_H4_WARN	if (sc->debug >= NG_H4_WARN_LEVEL)  kprintf
+#define	NG_H4_INFO	if (sc->debug >= NG_H4_INFO_LEVEL)  kprintf
 
 #define NG_H4_HIWATER		256	/* High water mark on output */
 

@@ -42,24 +42,11 @@ typedef __va_list	va_list;
 #define va_start(ap,last)	__va_start(ap,last)
 #define va_end(ap)	__va_end(ap)
 
-/*
-#define mtx_assert(mtx, MA_OWNED) 		\
-			KKASSERT(mtx_owned(&(mtx)->lock))
-
-#define mtx_assert(mtx, MA_NOTOWNED) 		\
-			KKASSERT(mtx_notowned(&(mtx)->lock))
-*/
-
 #define IFNET_RLOCK()	crit_enter()
 #define IFNET_RUNLOCK()	crit_exit()
 
 #define IFQ_LOCK(ifq)	ALTQ_LOCK((ifq))
 #define IFQ_UNLOCK(ifq)	ALTQ_UNLOCK((ifq))
-
-#define printf		kprintf
-#define sprintf		ksprintf
-#define snprintf	ksnprintf
-#define vsnprintf	kvsnprintf
 
 #define CTR1(ktr_line, ...)
 #define CTR2(ktr_line, ...)

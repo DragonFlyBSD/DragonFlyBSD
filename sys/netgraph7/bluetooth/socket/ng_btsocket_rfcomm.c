@@ -71,19 +71,19 @@ MALLOC_DEFINE(M_NETGRAPH_BTSOCKET_RFCOMM, "netgraph_btsocks_rfcomm",
 /* Debug */
 #define NG_BTSOCKET_RFCOMM_INFO \
 	if (ng_btsocket_rfcomm_debug_level >= NG_BTSOCKET_INFO_LEVEL) \
-		printf
+		kprintf
 
 #define NG_BTSOCKET_RFCOMM_WARN \
 	if (ng_btsocket_rfcomm_debug_level >= NG_BTSOCKET_WARN_LEVEL) \
-		printf
+		kprintf
 
 #define NG_BTSOCKET_RFCOMM_ERR \
 	if (ng_btsocket_rfcomm_debug_level >= NG_BTSOCKET_ERR_LEVEL) \
-		printf
+		kprintf
 
 #define NG_BTSOCKET_RFCOMM_ALERT \
 	if (ng_btsocket_rfcomm_debug_level >= NG_BTSOCKET_ALERT_LEVEL) \
-		printf
+		kprintf
 
 #define	ALOT	0x7fff
 

@@ -286,7 +286,7 @@ ngc_send(netmsg_t netmsg)
 			}
 
 			/* Not found, try to load it as a loadable module. */
-			snprintf(filename, sizeof(filename), "ng_%s.ko",
+			ksnprintf(filename, sizeof(filename), "ng_%s.ko",
 			    mkp->type);
 			error = linker_load_file(filename, &fileid);
 			if (error != 0) {
@@ -308,13 +308,13 @@ ngc_send(netmsg_t netmsg)
 	if ((error = ng_address_path((pcbp->sockdata->node), item, path, 0))
 	    != 0) {
 #ifdef TRACE_MESSAGES
-		printf("ng_address_path: errx=%d\n", error);
+		kprintf("ng_address_path: errx=%d\n", error);
 #endif
 		goto release;
 	}
 
 #ifdef TRACE_MESSAGES
-	printf("[%x]:<---------[socket]: c=<%d>cmd=%x(%s) f=%x #%d (%s)\n",
+	kprintf("[%x]:<---------[socket]: c=<%d>cmd=%x(%s) f=%x #%d (%s)\n",
 		item->el_dest->nd_ID,
 		msg->header.typecookie,
 		msg->header.cmd,
@@ -373,7 +373,7 @@ ngc_connect(netmsg_t msg)
 	 * At this time refuse to do this.. it used to
 	 * do something but it was undocumented and not used.
 	 */
-	printf("program tried to connect control socket to remote node\n");
+	kprintf("program tried to connect control socket to remote node\n");
 	lwkt_replymsg(&msg->connect.base.lmsg, EINVAL);
 }
 
@@ -900,7 +900,7 @@ ngs_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	so = pcbp->ng_socket;
 
 #ifdef TRACE_MESSAGES
-	printf("[%x]:---------->[socket]: c=<%d>cmd=%x(%s) f=%x #%d\n",
+	kprintf("[%x]:---------->[socket]: c=<%d>cmd=%x(%s) f=%x #%d\n",
 		retaddr,
 		msg->header.typecookie,
 		msg->header.cmd,
@@ -929,10 +929,10 @@ ngs_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	bzero(&addr, sizeof(addr));
 	addr.sg_len = sizeof(addr);
 	addr.sg_family = AF_NETGRAPH;
-	addrlen = snprintf((char *)&addr.sg_data, sizeof(addr.sg_data),
+	addrlen = ksnprintf((char *)&addr.sg_data, sizeof(addr.sg_data),
 	    "[%x]:", retaddr);
 	if (addrlen < 0 || addrlen > sizeof(addr.sg_data)) {
-		printf("%s: snprintf([%x]) failed - %d\n", __func__, retaddr,
+		kprintf("%s: ksnprintf([%x]) failed - %d\n", __func__, retaddr,
 		    addrlen);
 		NG_FREE_MSG(msg);
 		return (EINVAL);

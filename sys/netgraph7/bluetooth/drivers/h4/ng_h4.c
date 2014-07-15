@@ -183,7 +183,7 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 	if (error != 0) {
 		NG_H4_UNLOCK(sc);
 
-		printf("%s: Unable to create new node!\n", __func__);
+		kprintf("%s: Unable to create new node!\n", __func__);
 
 		mtx_destroy(&sc->outq.ifq_mtx);
 		bzero(sc, sizeof(*sc));
@@ -194,13 +194,13 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 	}
 
 	/* Assign node its name */
-	snprintf(name, sizeof(name), "%s%d", typestruct.name, ng_h4_node ++);
+	ksnprintf(name, sizeof(name), "%s%d", typestruct.name, ng_h4_node ++);
 
 	error = ng_name_node(sc->node, name);
 	if (error != 0) {
 		NG_H4_UNLOCK(sc);
 
-		printf("%s: %s - node name exists?\n", __func__, name);
+		kprintf("%s: %s - node name exists?\n", __func__, name);
 
 		NG_NODE_UNREF(sc->node);
 		mtx_destroy(&sc->outq.ifq_mtx);
@@ -872,7 +872,7 @@ ng_h4_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			if (resp == NULL)
 				error = ENOMEM;
 			else
-				snprintf(resp->data, NG_TEXTRESPONSE,
+				ksnprintf(resp->data, NG_TEXTRESPONSE,
 					"Hook: %s\n"   \
 					"Debug: %d\n"  \
 					"State: %d\n"  \
@@ -1016,7 +1016,7 @@ ng_h4_mod_event(module_t mod, int event, void *data)
 		mtx_unlock(&Giant);
 
 		if (ng_h4_ldisc < 0) {
-			printf("%s: can't register H4 line discipline\n",
+			kprintf("%s: can't register H4 line discipline\n",
 				__func__);
 			error = EIO;
 		}

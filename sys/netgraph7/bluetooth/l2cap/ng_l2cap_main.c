@@ -29,7 +29,6 @@
  *
  * $Id: ng_l2cap_main.c,v 1.2 2003/04/28 21:44:59 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/l2cap/ng_l2cap_main.c,v 1.5 2005/01/07 01:45:43 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/l2cap/ng_l2cap_main.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -488,7 +487,7 @@ ng_l2cap_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			if (rsp == NULL)
 				error = ENOMEM;
 			else
-				snprintf(rsp->data, NG_TEXTRESPONSE,
+				ksnprintf(rsp->data, NG_TEXTRESPONSE,
 					"bdaddr %x:%x:%x:%x:%x:%x, " \
 					"pkt_size %d\n" \
 					"Hooks %s %s %s\n" \

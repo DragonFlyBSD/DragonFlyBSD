@@ -29,7 +29,6 @@
  *
  * $Id: ng_hci_var.h,v 1.3 2003/04/26 22:35:21 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/hci/ng_hci_var.h,v 1.6 2005/01/07 01:45:43 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/hci/ng_hci_var.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #ifndef _NETGRAPH_HCI_VAR_H_
@@ -43,10 +42,10 @@ MALLOC_DECLARE(M_NETGRAPH_HCI);
 #endif /* NG_SEPARATE_MALLOC */
 
 /* Debug */
-#define	NG_HCI_ALERT	if (unit->debug >= NG_HCI_ALERT_LEVEL) printf
-#define	NG_HCI_ERR	if (unit->debug >= NG_HCI_ERR_LEVEL)   printf
-#define	NG_HCI_WARN	if (unit->debug >= NG_HCI_WARN_LEVEL)  printf
-#define	NG_HCI_INFO	if (unit->debug >= NG_HCI_INFO_LEVEL)  printf
+#define	NG_HCI_ALERT	if (unit->debug >= NG_HCI_ALERT_LEVEL) kprintf
+#define	NG_HCI_ERR	if (unit->debug >= NG_HCI_ERR_LEVEL)   kprintf
+#define	NG_HCI_WARN	if (unit->debug >= NG_HCI_WARN_LEVEL)  kprintf
+#define	NG_HCI_INFO	if (unit->debug >= NG_HCI_INFO_LEVEL)  kprintf
 
 /* Wrapper around m_pullup */
 #define NG_HCI_M_PULLUP(m, s) 				\

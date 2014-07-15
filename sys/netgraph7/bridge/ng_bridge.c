@@ -594,7 +594,7 @@ ng_bridge_rcvdata(hook_p hook, item_p item)
 					char suffix[32];
 
 					if (ifp != NULL)
-						snprintf(suffix, sizeof(suffix),
+						ksnprintf(suffix, sizeof(suffix),
 						    " (%s)", ifp->if_xname);
 					else
 						*suffix = '\0';
@@ -1037,9 +1037,9 @@ ng_bridge_nodename(node_p node)
 	static char name[NG_NODESIZ];
 
 	if (NG_NODE_NAME(node) != NULL)
-		snprintf(name, sizeof(name), "%s", NG_NODE_NAME(node));
+		ksnprintf(name, sizeof(name), "%s", NG_NODE_NAME(node));
 	else
-		snprintf(name, sizeof(name), "[%x]", ng_node2ID(node));
+		ksnprintf(name, sizeof(name), "[%x]", ng_node2ID(node));
 	return name;
 }
 

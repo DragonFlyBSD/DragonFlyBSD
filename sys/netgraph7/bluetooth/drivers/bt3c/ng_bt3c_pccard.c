@@ -378,7 +378,7 @@ ng_bt3c_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			if (rsp == NULL)
 				error = ENOMEM;
 			else
-				snprintf(rsp->data, NG_TEXTRESPONSE,
+				ksnprintf(rsp->data, NG_TEXTRESPONSE,
 					"Hook: %s\n" \
 					"Flags: %#x\n" \
 					"Debug: %d\n"  \
@@ -749,7 +749,7 @@ bt3c_intr(void *context)
 	u_int16_t	control, status;
 
 	if (sc == NULL || sc->ith == NULL) {
-		printf("%s: bogus interrupt\n", NG_BT3C_NODE_TYPE);
+		kprintf("%s: bogus interrupt\n", NG_BT3C_NODE_TYPE);
 		return;
 	}
 
@@ -1194,7 +1194,7 @@ bt3c_modevent(module_t mod, int event, void *data)
 	case MOD_LOAD:
 		error = ng_newtype(&typestruct);
 		if (error != 0)
-			printf("%s: Could not register Netgraph node type, " \
+			kprintf("%s: Could not register Netgraph node type, " \
 				"error=%d\n", NG_BT3C_NODE_TYPE, error);
 		break;
 

@@ -689,7 +689,7 @@ ng_rmnode(node_p node, hook_p dummy1, void *dummy2, int dummy3)
 		return;
 
 	if (node == &ng_deadnode) {
-		printf ("shutdown called on deadnode\n");
+		kprintf ("shutdown called on deadnode\n");
 		return;
 	}
 
@@ -1129,7 +1129,7 @@ ng_destroy_hook(hook_p hook)
 	node_p node;
 
 	if (hook == &ng_deadhook) {	/* better safe than sorry */
-		printf("ng_destroy_hook called on deadhook\n");
+		kprintf("ng_destroy_hook called on deadhook\n");
 		return;
 	}
 
@@ -1237,7 +1237,7 @@ ng_newtype(struct ng_type *tp)
 	|| (namelen >= NG_TYPESIZ)) {
 		TRAP_ERROR();
 		if (tp->version != NG_ABI_VERSION) {
-			printf("Netgraph: Node type rejected. ABI mismatch. Suggest recompile\n");
+			kprintf("Netgraph: Node type rejected. ABI mismatch. Suggest recompile\n");
 		}
 		return (EINVAL);
 	}
@@ -1327,7 +1327,7 @@ ng_con_part3(node_p node, item_p item, hook_p hook)
 	if (hook->hk_node->nd_type->connect) {
 		if ((error = (*hook->hk_node->nd_type->connect) (hook))) {
 			ng_destroy_hook(hook);	/* also zaps peer */
-			printf("failed in ng_con_part3()\n");
+			kprintf("failed in ng_con_part3()\n");
 			ERROUT(error);
 		}
 	}
@@ -1361,7 +1361,7 @@ ng_con_part2(node_p node, item_p item, hook_p hook)
 	if (ng_findhook(node, NG_HOOK_NAME(hook)) != NULL) {
 		TRAP_ERROR();
 		ng_destroy_hook(hook); /* should destroy peer too */
-		printf("failed in ng_con_part2()\n");
+		kprintf("failed in ng_con_part2()\n");
 		ERROUT(EEXIST);
 	}
 	/*
@@ -1374,7 +1374,7 @@ ng_con_part2(node_p node, item_p item, hook_p hook)
 		if ((error = (*node->nd_type->newhook)(node, hook,
 		    hook->hk_name))) {
 			ng_destroy_hook(hook); /* should destroy peer too */
-			printf("failed in ng_con_part2()\n");
+			kprintf("failed in ng_con_part2()\n");
 			ERROUT(error);
 		}
 	}
@@ -1401,7 +1401,7 @@ ng_con_part2(node_p node, item_p item, hook_p hook)
 	if (hook->hk_node->nd_type->connect) {
 		if ((error = (*hook->hk_node->nd_type->connect) (hook))) {
 			ng_destroy_hook(hook);	/* also zaps peer */
-			printf("failed in ng_con_part2(A)\n");
+			kprintf("failed in ng_con_part2(A)\n");
 			ERROUT(error);
 		}
 	}
@@ -1413,7 +1413,7 @@ ng_con_part2(node_p node, item_p item, hook_p hook)
 	peer = hook->hk_peer;
 	if (peer == &ng_deadhook) {
 		TOPOLOGY_RUNLOCK();
-		printf("failed in ng_con_part2(B)\n");
+		kprintf("failed in ng_con_part2(B)\n");
 		ng_destroy_hook(hook);
 		ERROUT(ENOENT);
 	}
@@ -1421,7 +1421,7 @@ ng_con_part2(node_p node, item_p item, hook_p hook)
 
 	if ((error = ng_send_fn2(peer->hk_node, peer, item, &ng_con_part3,
 	    NULL, 0, NG_REUSE_ITEM))) {
-		printf("failed in ng_con_part2(C)\n");
+		kprintf("failed in ng_con_part2(C)\n");
 		ng_destroy_hook(hook);	/* also zaps peer */
 		return (error);		/* item was consumed. */
 	}
@@ -1473,7 +1473,7 @@ ng_con_nodes(item_p item, node_p node, const char *name,
 	 */
 	if ((error = ng_send_fn2(node2, hook2, item, &ng_con_part2, NULL, 0,
 	    NG_NOFLAGS))) {
-		printf("failed in ng_con_nodes(): %d\n", error);
+		kprintf("failed in ng_con_nodes(): %d\n", error);
 		ng_destroy_hook(hook);	/* also zaps peer */
 	}
 
@@ -1778,7 +1778,7 @@ ng_path2noderef(node_p here, const char *address,
 			TRAP_ERROR();
 			NG_NODE_UNREF(node);
 #if 0
-			printf("hooknotvalid %s %s %d %d %d %d ",
+			kprintf("hooknotvalid %s %s %d %d %d %d ",
 					path,
 					segment,
 					hook == NULL,
@@ -2429,7 +2429,7 @@ ng_generic_msg(node_p here, item_p item, hook_p lasthook)
 		}
 
 		/* Convert command name to ASCII */
-		snprintf(ascii->header.cmdstr, sizeof(ascii->header.cmdstr),
+		ksnprintf(ascii->header.cmdstr, sizeof(ascii->header.cmdstr),
 		    "%s", c->name);
 
 		/* Convert command arguments to ASCII */
@@ -2830,43 +2830,43 @@ SYSCTL_INT(_net_graph, OID_AUTO, msg_version, CTLFLAG_RD, 0, NG_VERSION, "");
 void
 dumphook (hook_p hook, char *file, int line)
 {
-	printf("hook: name %s, %d refs, Last touched:\n",
+	kprintf("hook: name %s, %d refs, Last touched:\n",
 		_NG_HOOK_NAME(hook), hook->hk_refs);
-	printf("	Last active @ %s, line %d\n",
+	kprintf("	Last active @ %s, line %d\n",
 		hook->lastfile, hook->lastline);
 	if (line) {
-		printf(" problem discovered at file %s, line %d\n", file, line);
+		kprintf(" problem discovered at file %s, line %d\n", file, line);
 	}
 }
 
 void
 dumpnode(node_p node, char *file, int line)
 {
-	printf("node: ID [%x]: type '%s', %d hooks, flags 0x%x, %d refs, %s:\n",
+	kprintf("node: ID [%x]: type '%s', %d hooks, flags 0x%x, %d refs, %s:\n",
 		_NG_NODE_ID(node), node->nd_type->name,
 		node->nd_numhooks, node->nd_flags,
 		node->nd_refs, node->nd_name);
-	printf("	Last active @ %s, line %d\n",
+	kprintf("	Last active @ %s, line %d\n",
 		node->lastfile, node->lastline);
 	if (line) {
-		printf(" problem discovered at file %s, line %d\n", file, line);
+		kprintf(" problem discovered at file %s, line %d\n", file, line);
 	}
 }
 
 void
 dumpitem(item_p item, char *file, int line)
 {
-	printf(" ACTIVE item, last used at %s, line %d",
+	kprintf(" ACTIVE item, last used at %s, line %d",
 		item->lastfile, item->lastline);
 	switch(item->el_flags & NGQF_TYPE) {
 	case NGQF_DATA:
-		printf(" - [data]\n");
+		kprintf(" - [data]\n");
 		break;
 	case NGQF_MESG:
-		printf(" - retaddr[%d]:\n", _NGI_RETADDR(item));
+		kprintf(" - retaddr[%d]:\n", _NGI_RETADDR(item));
 		break;
 	case NGQF_FN:
-		printf(" - fn@%p (%p, %p, %p, %d (%x))\n",
+		kprintf(" - fn@%p (%p, %p, %p, %d (%x))\n",
 			_NGI_FN(item),
 			_NGI_NODE(item),
 			_NGI_HOOK(item),
@@ -2875,7 +2875,7 @@ dumpitem(item_p item, char *file, int line)
 			item->body.fn.fn_arg2);
 		break;
 	case NGQF_FN2:
-		printf(" - fn2@%p (%p, %p, %p, %d (%x))\n",
+		kprintf(" - fn2@%p (%p, %p, %p, %d (%x))\n",
 			_NGI_FN2(item),
 			_NGI_NODE(item),
 			_NGI_HOOK(item),
@@ -2885,9 +2885,9 @@ dumpitem(item_p item, char *file, int line)
 		break;
 	}
 	if (line) {
-		printf(" problem discovered at file %s, line %d\n", file, line);
+		kprintf(" problem discovered at file %s, line %d\n", file, line);
 		if (_NGI_NODE(item)) {
-			printf("node %p ([%x])\n",
+			kprintf("node %p ([%x])\n",
 				_NGI_NODE(item), ng_node2ID(_NGI_NODE(item)));
 		}
 	}
@@ -2899,7 +2899,7 @@ ng_dumpitems(void)
 	item_p item;
 	int i = 1;
 	TAILQ_FOREACH(item, &ng_itemlist, all) {
-		printf("[%d] ", i++);
+		kprintf("[%d] ", i++);
 		dumpitem(item, NULL, 0);
 	}
 }
@@ -2911,7 +2911,7 @@ ng_dumpnodes(void)
 	int i = 1;
 	mtx_lock(&ng_nodelist_mtx);
 	SLIST_FOREACH(node, &ng_allnodes, nd_all) {
-		printf("[%d] ", i++);
+		kprintf("[%d] ", i++);
 		dumpnode(node, NULL, 0);
 	}
 	mtx_unlock(&ng_nodelist_mtx);
@@ -2924,7 +2924,7 @@ ng_dumphooks(void)
 	int i = 1;
 	mtx_lock(&ng_nodelist_mtx);
 	SLIST_FOREACH(hook, &ng_allhooks, hk_all) {
-		printf("[%d] ", i++);
+		kprintf("[%d] ", i++);
 		dumphook(hook, NULL, 0);
 	}
 	mtx_unlock(&ng_nodelist_mtx);
@@ -2961,12 +2961,12 @@ SYSCTL_PROC(_debug, OID_AUTO, ng_dump_items, CTLTYPE_INT | CTLFLAG_RW,
 #define	ITEM_DEBUG_CHECKS						\
 	do {								\
 		if (NGI_NODE(item) ) {					\
-			printf("item already has node");		\
+			kprintf("item already has node");		\
 			kdb_enter(KDB_WHY_NETGRAPH, "has node");	\
 			NGI_CLR_NODE(item);				\
 		}							\
 		if (NGI_HOOK(item) ) {					\
-			printf("item already has hook");		\
+			kprintf("item already has hook");		\
 			kdb_enter(KDB_WHY_NETGRAPH, "has hook");	\
 			NGI_CLR_HOOK(item);				\
 		}							\

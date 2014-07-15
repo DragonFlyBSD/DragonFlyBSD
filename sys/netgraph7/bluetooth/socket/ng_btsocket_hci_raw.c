@@ -29,7 +29,6 @@
  *
  * $Id: ng_btsocket_hci_raw.c,v 1.14 2003/09/14 23:29:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/socket/ng_btsocket_hci_raw.c,v 1.23 2006/11/06 13:42:04 rwatson Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/socket/ng_btsocket_hci_raw.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -143,19 +142,19 @@ SYSCTL_INT(_net_bluetooth_hci_sockets_raw, OID_AUTO, queue_drops, CTLFLAG_RD,
 /* Debug */
 #define NG_BTSOCKET_HCI_RAW_INFO \
 	if (ng_btsocket_hci_raw_debug_level >= NG_BTSOCKET_INFO_LEVEL) \
-		printf
+		kprintf
 
 #define NG_BTSOCKET_HCI_RAW_WARN \
 	if (ng_btsocket_hci_raw_debug_level >= NG_BTSOCKET_WARN_LEVEL) \
-		printf
+		kprintf
 
 #define NG_BTSOCKET_HCI_RAW_ERR \
 	if (ng_btsocket_hci_raw_debug_level >= NG_BTSOCKET_ERR_LEVEL) \
-		printf
+		kprintf
 
 #define NG_BTSOCKET_HCI_RAW_ALERT \
 	if (ng_btsocket_hci_raw_debug_level >= NG_BTSOCKET_ALERT_LEVEL) \
-		printf
+		kprintf
 
 /****************************************************************************
  ****************************************************************************
@@ -787,7 +786,7 @@ ng_btsocket_hci_raw_init(void)
 						 M_NETGRAPH_BTSOCKET_HCI_RAW,
 						 M_WAITOK | M_NULLOK | M_ZERO);
 	if (ng_btsocket_hci_raw_sec_filter == NULL) {
-		printf("%s: Could not allocate security filter!\n", __func__);
+		kprintf("%s: Could not allocate security filter!\n", __func__);
 		return;
 	}
 
@@ -1039,7 +1038,7 @@ ng_btsocket_hci_raw_control(struct socket *so, u_long cmd, caddr_t data,
 		return (EBUSY);
 	}
 
-	snprintf(path, sizeof(path), "%s:", pcb->addr.hci_node);
+	ksnprintf(path, sizeof(path), "%s:", pcb->addr.hci_node);
 
 	switch (cmd) {
 	case SIOC_HCI_RAW_NODE_GET_STATE: {

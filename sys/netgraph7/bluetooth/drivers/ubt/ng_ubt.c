@@ -1576,7 +1576,7 @@ ng_ubt_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				break;
 			}
 
-			snprintf(rsp->data, NG_TEXTRESPONSE,
+			ksnprintf(rsp->data, NG_TEXTRESPONSE,
 				"Hook: %s\n" \
 				"Task flags: %#x\n" \
 				"Debug: %d\n" \
@@ -1834,7 +1834,7 @@ ubt_modevent(module_t mod, int event, void *data)
 	case MOD_LOAD:
 		error = ng_newtype(&typestruct);
 		if (error != 0)
-			printf("%s: Could not register Netgraph node type, " \
+			kprintf("%s: Could not register Netgraph node type, " \
 				"error=%d\n", NG_UBT_NODE_TYPE, error);
 		break;
 

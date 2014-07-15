@@ -1057,7 +1057,7 @@ ng_enaddr_unparse(const struct ng_parse_type *type,
 {
 	int len;
 
-	len = snprintf(cbuf, cbuflen, "%02x:%02x:%02x:%02x:%02x:%02x",
+	len = ksnprintf(cbuf, cbuflen, "%02x:%02x:%02x:%02x:%02x:%02x",
 	    data[*off], data[*off + 1], data[*off + 2],
 	    data[*off + 3], data[*off + 4], data[*off + 5]);
 	if (len >= cbuflen)
@@ -1636,7 +1636,7 @@ ng_parse_append(char **cbufp, int *cbuflenp, const char *fmt, ...)
 	int len;
 
 	va_start(args, fmt);
-	len = vsnprintf(*cbufp, *cbuflenp, fmt, args);
+	len = kvsnprintf(*cbufp, *cbuflenp, fmt, args);
 	va_end(args);
 	if (len >= *cbuflenp)
 		return ERANGE;
@@ -1864,7 +1864,7 @@ ng_encode_string(const char *raw, int slen)
 			break;
 		default:
 			if (*raw < 0x20 || *raw > 0x7e) {
-				off += sprintf(cbuf + off,
+				off += ksprintf(cbuf + off,
 				    "\\x%02x", (u_char)*raw);
 				break;
 			}

@@ -29,7 +29,6 @@
  *
  * $Id: ng_hci_main.c,v 1.2 2003/03/18 00:09:36 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/hci/ng_hci_main.c,v 1.6 2005/01/07 01:45:43 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/hci/ng_hci_main.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -308,7 +307,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			NG_HCI_BUFF_SCO_TOTAL(unit->buffer, sco_total);
 			NG_HCI_BUFF_SCO_SIZE(unit->buffer, sco_size);
 
-			snprintf(rsp->data, NG_TEXTRESPONSE,
+			ksnprintf(rsp->data, NG_TEXTRESPONSE,
 				"bdaddr %x:%x:%x:%x:%x:%x\n" \
 				"Hooks  %s %s %s %s\n" \
 				"State  %#x\n" \

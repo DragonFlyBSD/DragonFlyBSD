@@ -260,9 +260,9 @@ cisco_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				break;
 			}
 			arg = (char *) resp->data;
-			pos = sprintf(arg,
+			pos = ksprintf(arg,
 			  "keepalive period: %d sec; ", KEEPALIVE_SECS);
-			pos += sprintf(arg + pos,
+			pos += ksprintf(arg + pos,
 			  "unacknowledged keepalives: %ld", sc->seqRetries);
 			resp->header.arglen = pos + 1;
 			break;

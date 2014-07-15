@@ -186,7 +186,7 @@ static __inline void
 _chkhook(hook_p hook, char *file, int line)
 {
 	if (hook->hk_magic != HK_MAGIC) {
-		printf("Accessing freed hook ");
+		kprintf("Accessing freed hook ");
 		dumphook(hook, file, line);
 	}
 	hook->lastline = line;
@@ -432,7 +432,7 @@ static __inline void
 _chknode(node_p node, char *file, int line)
 {
 	if (node->nd_magic != ND_MAGIC) {
-		printf("Accessing freed node ");
+		kprintf("Accessing freed node ");
 		dumpnode(node, file, line);
 	}
 	node->lastline = line;

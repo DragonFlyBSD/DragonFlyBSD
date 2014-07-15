@@ -29,7 +29,6 @@
  *
  * $Id: ng_hci_ulpi.c,v 1.7 2003/09/08 18:57:51 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/hci/ng_hci_ulpi.c,v 1.8 2005/01/07 01:45:43 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/hci/ng_hci_ulpi.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1156,7 +1155,7 @@ ng_hci_process_con_timeout(node_p node, hook_p hook, void *arg1, int con_handle)
 	ng_hci_unit_con_p	con = NULL;
 
 	if (NG_NODE_NOT_VALID(node)) {
-		printf("%s: Netgraph node is not valid\n", __func__);
+		kprintf("%s: Netgraph node is not valid\n", __func__);
 		return;
 	}
 

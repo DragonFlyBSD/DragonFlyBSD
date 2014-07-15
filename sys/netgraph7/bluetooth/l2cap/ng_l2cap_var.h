@@ -29,7 +29,6 @@
  *
  * $Id: ng_l2cap_var.h,v 1.2 2003/04/28 21:44:59 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/l2cap/ng_l2cap_var.h,v 1.6 2005/01/07 01:45:43 imp Exp $
- * $DragonFly: src/sys/netgraph7/bluetooth/l2cap/ng_l2cap_var.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #ifndef _NETGRAPH_L2CAP_VAR_H_
@@ -43,10 +42,10 @@ MALLOC_DECLARE(M_NETGRAPH_L2CAP);
 #endif /* NG_SEPARATE_MALLOC */
 
 /* Debug */
-#define	NG_L2CAP_ALERT	if (l2cap->debug >= NG_L2CAP_ALERT_LEVEL) printf
-#define	NG_L2CAP_ERR	if (l2cap->debug >= NG_L2CAP_ERR_LEVEL)   printf
-#define	NG_L2CAP_WARN	if (l2cap->debug >= NG_L2CAP_WARN_LEVEL)  printf
-#define	NG_L2CAP_INFO	if (l2cap->debug >= NG_L2CAP_INFO_LEVEL)  printf
+#define	NG_L2CAP_ALERT	if (l2cap->debug >= NG_L2CAP_ALERT_LEVEL) kprintf
+#define	NG_L2CAP_ERR	if (l2cap->debug >= NG_L2CAP_ERR_LEVEL)   kprintf
+#define	NG_L2CAP_WARN	if (l2cap->debug >= NG_L2CAP_WARN_LEVEL)  kprintf
+#define	NG_L2CAP_INFO	if (l2cap->debug >= NG_L2CAP_INFO_LEVEL)  kprintf
 
 /* Wrapper around m_pullup */
 #define NG_L2CAP_M_PULLUP(m, s) \
