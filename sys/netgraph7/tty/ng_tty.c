@@ -695,7 +695,6 @@ ngt_mod_event(module_t mod, int event, void *data)
 {
 	int error = 0;
 
-	lwkt_gettoken(&tty_token);
 	switch (event) {
 	case MOD_LOAD:
 		/* Register line discipline */
@@ -704,7 +703,6 @@ ngt_mod_event(module_t mod, int event, void *data)
 			crit_exit();
 			log(LOG_ERR, "%s: can't register line discipline",
 			    __func__);
-			lwkt_reltoken(&tty_token);
 			return (EIO);
 		}
 		crit_exit();
@@ -722,6 +720,5 @@ ngt_mod_event(module_t mod, int event, void *data)
 		error = EOPNOTSUPP;
 		break;
 	}
-	lwkt_reltoken(&tty_token);
 	return (error);
 }
