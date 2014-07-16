@@ -263,6 +263,7 @@ struct mbuf {
 #define M_PROTO8        0x800000/* protocol-specific */
 #define M_CKHASH	0x1000000/* hash needs software verification */
 #define M_PRIO		0x2000000/* high priority mbuf */
+#define M_SOLOCKED	0x4000000/* locked by userland for read() */
 
 /*
  * Flags copied when copying m_pkthdr.

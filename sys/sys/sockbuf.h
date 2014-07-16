@@ -61,7 +61,7 @@ struct sockbuf {
 					 * valid <=> sb_mb non-NULL */
 };
 
-#define SB_MAX		(256*1024)	/* default for max chars in sockbuf */
+#define SB_MAX		(512*1024)	/* default for max chars in sockbuf */
 
 #endif
 

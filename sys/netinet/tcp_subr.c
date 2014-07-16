@@ -1902,6 +1902,7 @@ void
 tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 {
 	u_long bw;
+	u_long ibw;
 	u_long bwnd;
 	int save_ticks;
 	int delta_ticks;
@@ -1953,10 +1954,10 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	 * slop will ramp us up if this case occurs and the bandwidth later
 	 * increases.
 	 */
-	bw = (int64_t)(ack_seq - tp->t_bw_rtseq) * hz / delta_ticks;
+	ibw = (int64_t)(ack_seq - tp->t_bw_rtseq) * hz / delta_ticks;
 	tp->t_bw_rtttime = save_ticks;
 	tp->t_bw_rtseq = ack_seq;
-	bw = ((int64_t)tp->snd_bandwidth * 15 + bw) >> 4;
+	bw = ((int64_t)tp->snd_bandwidth * 15 + ibw) >> 4;
 
 	tp->snd_bandwidth = bw;
 
@@ -2004,8 +2005,10 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 		static int ltime;
 		if ((u_int)(ticks - ltime) >= hz / tcp_inflight_debug) {
 			ltime = ticks;
-			kprintf("%p bw %ld rttbest %d srtt %d bwnd %ld\n",
-				tp, bw, tp->t_rttbest, tp->t_srtt, bwnd);
+			kprintf("%p ibw %ld bw %ld rttbest %d srtt %d "
+				"bwnd %ld delta %d snd_win %ld\n",
+				tp, ibw, bw, tp->t_rttbest, tp->t_srtt,
+				bwnd, delta_ticks, tp->snd_wnd);
 		}
 	}
 	if ((long)bwnd < tcp_inflight_min)

@@ -370,8 +370,13 @@ sbcompress(struct sockbuf *sb, struct mbuf *m, struct mbuf *tailm)
 			continue;
 		}
 
-		/* See if we can coalesce with preceding mbuf. */
-		if (tailm && !(tailm->m_flags & M_EOR) && M_WRITABLE(tailm) &&
+		/*
+		 * See if we can coalesce with preceding mbuf.  Never try
+		 * to coalesce a mbuf representing an end-of-record or
+		 * a mbuf locked by userland for reading.
+		 */
+		if (tailm && !(tailm->m_flags & (M_EOR | M_SOLOCKED)) &&
+		    M_WRITABLE(tailm) &&
 		    m->m_len <= MCLBYTES / 4 && /* XXX: Don't copy too much */
 		    m->m_len <= M_TRAILINGSPACE(tailm) &&
 		    tailm->m_type == m->m_type) {

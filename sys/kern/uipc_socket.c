@@ -1639,7 +1639,8 @@ sorecvtcp(struct socket *so, struct sockaddr **psa, struct uio *uio,
 	int flags, len, error, offset;
 	struct protosw *pr = so->so_proto;
 	int moff;
-	size_t resid, orig_resid;
+	int didoob;
+	size_t resid, orig_resid, restmp;
 
 	if (uio)
 		resid = uio->uio_resid;
@@ -1687,14 +1688,19 @@ bad:
 	/*
 	 * The token interlocks against the protocol thread while
 	 * ssb_lock is a blocking lock against other userland entities.
+	 *
+	 * Lock a limited number of mbufs (not all, so sbcompress() still
+	 * works well).  The token is used as an interlock for sbwait() so
+	 * release it afterwords.
 	 */
-	lwkt_gettoken(&so->so_rcv.ssb_token);
 restart:
 	error = ssb_lock(&so->so_rcv, SBLOCKWAIT(flags));
 	if (error)
 		goto done;
 
+	lwkt_gettoken(&so->so_rcv.ssb_token);
 	m = so->so_rcv.ssb_mb;
+
 	/*
 	 * If we have less data than requested, block awaiting more
 	 * (subject to any timeout) if:
@@ -1714,6 +1720,7 @@ restart:
 		if (so->so_error) {
 			if (m)
 				goto dontblock;
+			lwkt_reltoken(&so->so_rcv.ssb_token);
 			error = so->so_error;
 			if ((flags & MSG_PEEK) == 0)
 				so->so_error = 0;
@@ -1722,27 +1729,51 @@ restart:
 		if (so->so_state & SS_CANTRCVMORE) {
 			if (m)
 				goto dontblock;
-			else
-				goto release;
+			lwkt_reltoken(&so->so_rcv.ssb_token);
+			goto release;
 		}
 		if ((so->so_state & (SS_ISCONNECTED|SS_ISCONNECTING)) == 0 &&
 		    (pr->pr_flags & PR_CONNREQUIRED)) {
+			lwkt_reltoken(&so->so_rcv.ssb_token);
 			error = ENOTCONN;
 			goto release;
 		}
-		if (resid == 0)
+		if (resid == 0) {
+			lwkt_reltoken(&so->so_rcv.ssb_token);
 			goto release;
+		}
 		if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT)) {
+			lwkt_reltoken(&so->so_rcv.ssb_token);
 			error = EWOULDBLOCK;
 			goto release;
 		}
 		ssb_unlock(&so->so_rcv);
 		error = ssb_wait(&so->so_rcv);
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 		if (error)
 			goto done;
 		goto restart;
 	}
+
+	/*
+	 * Token still held
+	 */
 dontblock:
+	n = m;
+	restmp = 0;
+	while (n && restmp < resid) {
+		n->m_flags |= M_SOLOCKED;
+		restmp += n->m_len;
+		if (n->m_next == NULL)
+			n = n->m_nextpkt;
+		else
+			n = n->m_next;
+	}
+
+	/*
+	 * Release token for loop
+	 */
+	lwkt_reltoken(&so->so_rcv.ssb_token);
 	if (uio && uio->uio_td && uio->uio_td->td_proc)
 		uio->uio_td->td_lwp->lwp_ru.ru_msgrcv++;
 
@@ -1755,10 +1786,14 @@ dontblock:
 
 	/*
 	 * Copy to the UIO or mbuf return chain (*mp).
+	 *
+	 * NOTE: Token is not held for loop
 	 */
 	moff = 0;
 	offset = 0;
-	while (m && resid > 0 && error == 0) {
+	didoob = 0;
+
+	while (m && (m->m_flags & M_SOLOCKED) && resid > 0 && error == 0) {
 		KASSERT(m->m_type == MT_DATA || m->m_type == MT_HEADER,
 		    ("receive 3"));
 
@@ -1787,58 +1822,93 @@ dontblock:
 		/*
 		 * Eat the entire mbuf or just a piece of it
 		 */
+		offset += len;
 		if (len == m->m_len - moff) {
-			if (flags & MSG_PEEK) {
-				m = m->m_next;
-				moff = 0;
-			} else {
-				if (sio) {
-					n = sbunlinkmbuf(&so->so_rcv.sb, m, NULL);
-					sbappend(sio, m);
-					m = n;
-				} else {
-					m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
-				}
-			}
+			m = m->m_next;
+			moff = 0;
 		} else {
-			if (flags & MSG_PEEK) {
-				moff += len;
-			} else {
-				if (sio) {
-					n = m_copym(m, 0, len, MB_WAIT);
-					if (n)
-						sbappend(sio, n);
-				}
-				m->m_data += len;
-				m->m_len -= len;
-				so->so_rcv.ssb_cc -= len;
-			}
+			moff += len;
 		}
-		if (so->so_oobmark) {
-			if ((flags & MSG_PEEK) == 0) {
-				so->so_oobmark -= len;
+
+		/*
+		 * Check oobmark
+		 */
+		if (so->so_oobmark && offset == so->so_oobmark) {
+			didoob = 1;
+			break;
+		}
+	}
+
+	/*
+	 * Synchronize sockbuf with data we read.
+	 *
+	 * NOTE: (m) is junk on entry (it could be left over from the
+	 *	 previous loop).
+	 */
+	if ((flags & MSG_PEEK) == 0) {
+		lwkt_gettoken(&so->so_rcv.ssb_token);
+		m = so->so_rcv.ssb_mb;
+		while (m && offset >= m->m_len) {
+			if (so->so_oobmark) {
+				so->so_oobmark -= m->m_len;
 				if (so->so_oobmark == 0) {
 					sosetstate(so, SS_RCVATMARK);
-					break;
+					didoob = 1;
 				}
+			}
+			offset -= m->m_len;
+			if (sio) {
+				n = sbunlinkmbuf(&so->so_rcv.sb, m, NULL);
+				sbappend(sio, m);
+				m = n;
 			} else {
-				offset += len;
-				if (offset == so->so_oobmark)
-					break;
+				m = sbunlinkmbuf(&so->so_rcv.sb,
+						 m, &free_chain);
 			}
 		}
-		/*
-		 * If the MSG_WAITALL flag is set (for non-atomic socket),
-		 * we must not quit until resid == 0 or an error
-		 * termination.  If a signal/timeout occurs, return
-		 * with a short count but without error.
-		 * Keep signalsockbuf locked against other readers.
-		 */
-		while ((flags & MSG_WAITALL) && m == NULL && 
-		       resid > 0 && !sosendallatonce(so) && 
-		       so->so_rcv.ssb_mb == NULL) {
-			if (so->so_error || so->so_state & SS_CANTRCVMORE)
+		if (offset) {
+			KKASSERT(m);
+			if (sio) {
+				n = m_copym(m, 0, offset, MB_WAIT);
+				if (n)
+					sbappend(sio, n);
+			}
+			m->m_data += offset;
+			m->m_len -= offset;
+			so->so_rcv.ssb_cc -= offset;
+			if (so->so_oobmark) {
+				so->so_oobmark -= offset;
+				if (so->so_oobmark == 0) {
+					sosetstate(so, SS_RCVATMARK);
+					didoob = 1;
+				}
+			}
+			offset = 0;
+		}
+		lwkt_reltoken(&so->so_rcv.ssb_token);
+	}
+
+	/*
+	 * If the MSG_WAITALL flag is set (for non-atomic socket),
+	 * we must not quit until resid == 0 or an error termination.
+	 *
+	 * If a signal/timeout occurs, return with a short count but without
+	 * error.
+	 *
+	 * Keep signalsockbuf locked against other readers.
+	 *
+	 * XXX if MSG_PEEK we currently do quit.
+	 */
+	if ((flags & MSG_WAITALL) && !(flags & MSG_PEEK) &&
+	    didoob == 0 && resid > 0 &&
+	    !sosendallatonce(so)) {
+		lwkt_gettoken(&so->so_rcv.ssb_token);
+		error = 0;
+		while ((m = so->so_rcv.ssb_mb) == NULL) {
+			if (so->so_error || (so->so_state & SS_CANTRCVMORE)) {
+				error = so->so_error;
 				break;
+			}
 			/*
 			 * The window might have closed to zero, make
 			 * sure we send an ack now that we've drained
@@ -1847,18 +1917,24 @@ dontblock:
 			 */
 			if (so->so_pcb)
 				so_pru_rcvd_async(so);
-			error = ssb_wait(&so->so_rcv);
+			if (so->so_rcv.ssb_mb == NULL)
+				error = ssb_wait(&so->so_rcv);
 			if (error) {
+				lwkt_reltoken(&so->so_rcv.ssb_token);
 				ssb_unlock(&so->so_rcv);
 				error = 0;
 				goto done;
 			}
-			m = so->so_rcv.ssb_mb;
 		}
+		if (m && error == 0)
+			goto dontblock;
+		lwkt_reltoken(&so->so_rcv.ssb_token);
 	}
 
 	/*
-	 * Cleanup.  If an atomic read was requested drop any unread data.
+	 * Token not held here.
+	 *
+	 * Cleanup.  If an atomic read was requested drop any unread data XXX
 	 */
 	if ((flags & MSG_PEEK) == 0) {
 		if (so->so_pcb)
@@ -1876,7 +1952,6 @@ dontblock:
 release:
 	ssb_unlock(&so->so_rcv);
 done:
-	lwkt_reltoken(&so->so_rcv.ssb_token);
 	if (free_chain)
 		m_freem(free_chain);
 	return (error);

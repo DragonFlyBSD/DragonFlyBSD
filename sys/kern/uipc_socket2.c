@@ -663,7 +663,7 @@ ssb_reserve(struct signalsockbuf *ssb, u_long cc, struct socket *so,
 	 * from generating a huge number of context switches.
 	 */
 	if (ssb->ssb_flags & SSB_AUTOLOWAT) {
-		ssb->ssb_lowat = ssb->ssb_hiwat / 2;
+		ssb->ssb_lowat = ssb->ssb_hiwat / 4;
 		if (ssb->ssb_lowat < MCLBYTES)
 			ssb->ssb_lowat = MCLBYTES;
 	}
