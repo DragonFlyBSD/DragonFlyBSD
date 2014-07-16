@@ -122,8 +122,8 @@ ivb_update_plane(struct drm_plane *plane, struct drm_framebuffer *fb,
 
 	linear_offset = y * fb->pitches[0] + x * pixel_size;
 	sprsurf_offset =
-		intel_gen4_compute_offset_xtiled(&x, &y,
-						 pixel_size, fb->pitches[0]);
+		intel_gen4_compute_page_offset(&x, &y, obj->tiling_mode,
+					       pixel_size, fb->pitches[0]);
 	linear_offset -= sprsurf_offset;
 
 	/* HSW consolidates SPRTILEOFF and SPRLINOFF into a single SPROFFSET
@@ -287,8 +287,8 @@ ilk_update_plane(struct drm_plane *plane, struct drm_framebuffer *fb,
 
 	linear_offset = y * fb->pitches[0] + x * pixel_size;
 	dvssurf_offset =
-		intel_gen4_compute_offset_xtiled(&x, &y,
-						 pixel_size, fb->pitches[0]);
+		intel_gen4_compute_page_offset(&x, &y, obj->tiling_mode,
+					       pixel_size, fb->pitches[0]);
 	linear_offset -= dvssurf_offset;
 
 	if (obj->tiling_mode != I915_TILING_NONE)
@@ -421,6 +421,8 @@ intel_update_plane(struct drm_plane *plane, struct drm_crtc *crtc,
 	struct intel_framebuffer *intel_fb;
 	struct drm_i915_gem_object *obj, *old_obj;
 	int pipe = intel_plane->pipe;
+	enum transcoder cpu_transcoder = intel_pipe_to_cpu_transcoder(dev_priv,
+								      pipe);
 	int ret = 0;
 	int x = src_x >> 16, y = src_y >> 16;
 	int primary_w = crtc->mode.hdisplay, primary_h = crtc->mode.vdisplay;
@@ -435,7 +437,7 @@ intel_update_plane(struct drm_plane *plane, struct drm_crtc *crtc,
 	src_h = src_h >> 16;
 
 	/* Pipe must be running... */
-	if (!(I915_READ(PIPECONF(pipe)) & PIPECONF_ENABLE))
+	if (!(I915_READ(PIPECONF(cpu_transcoder)) & PIPECONF_ENABLE))
 		return -EINVAL;
 
 	if (crtc_x >= primary_w || crtc_y >= primary_h)
@@ -572,7 +574,7 @@ static void intel_destroy_plane(struct drm_plane *plane)
 	struct intel_plane *intel_plane = to_intel_plane(plane);
 	intel_disable_plane(plane);
 	drm_plane_cleanup(plane);
-	drm_free(intel_plane, DRM_MEM_KMS);
+	kfree(intel_plane, DRM_MEM_KMS);
 }
 
 int intel_sprite_set_colorkey(struct drm_device *dev, void *data,
@@ -723,7 +725,7 @@ intel_plane_init(struct drm_device *dev, enum i915_pipe pipe)
 			     plane_formats, num_plane_formats,
 			     false);
 	if (ret)
-		drm_free(intel_plane, DRM_MEM_KMS);
+		kfree(intel_plane, DRM_MEM_KMS);
 
 	return ret;
 }

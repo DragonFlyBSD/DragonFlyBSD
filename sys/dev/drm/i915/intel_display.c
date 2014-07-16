@@ -1623,18 +1623,29 @@ void intel_unpin_fb_obj(struct drm_i915_gem_object *obj)
 
 /* Computes the linear offset to the base tile and adjusts x, y. bytes per pixel
  * is assumed to be a power-of-two. */
-unsigned long intel_gen4_compute_offset_xtiled(int *x, int *y,
-					       unsigned int bpp,
-					       unsigned int pitch)
+unsigned long intel_gen4_compute_page_offset(int *x, int *y,
+					     unsigned int tiling_mode,
+					     unsigned int cpp,
+					     unsigned int pitch)
 {
-	int tile_rows, tiles;
+	if (tiling_mode != I915_TILING_NONE) {
+		unsigned int tile_rows, tiles;
 
-	tile_rows = *y / 8;
-	*y %= 8;
-	tiles = *x / (512/bpp);
-	*x %= 512/bpp;
+		tile_rows = *y / 8;
+		*y %= 8;
 
-	return tile_rows * pitch * 8 + tiles * 4096;
+		tiles = *x / (512/cpp);
+		*x %= 512/cpp;
+
+		return tile_rows * pitch * 8 + tiles * 4096;
+	} else {
+		unsigned int offset;
+
+		offset = *y * pitch + *x * cpp;
+		*y = 0;
+		*x = (offset & 4095) / cpp;
+		return offset & -4096;
+	}
 }
 
 static int i9xx_update_plane(struct drm_crtc *crtc, struct drm_framebuffer *fb,
