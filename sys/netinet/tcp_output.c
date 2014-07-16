@@ -127,6 +127,10 @@ static int avoid_pure_win_update = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, avoid_pure_win_update, CTLFLAG_RW,
 	&avoid_pure_win_update, 1, "Avoid pure window updates when possible");
 
+/*
+ * 1 - enabled for increasing and decreasing the buffer size
+ * 2 - enabled only for increasing the buffer size
+ */
 int tcp_do_autosndbuf = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sendbuf_auto, CTLFLAG_RW,
     &tcp_do_autosndbuf, 0, "Enable automatic send buffer sizing");
@@ -134,6 +138,10 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, sendbuf_auto, CTLFLAG_RW,
 int tcp_autosndbuf_inc = 8*1024;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sendbuf_inc, CTLFLAG_RW,
     &tcp_autosndbuf_inc, 0, "Incrementor step size of automatic send buffer");
+
+int tcp_autosndbuf_min = 32768;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, sendbuf_min, CTLFLAG_RW,
+    &tcp_autosndbuf_min, 0, "Min size of automatic send buffer");
 
 int tcp_autosndbuf_max = 2*1024*1024;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, sendbuf_max, CTLFLAG_RW,
@@ -419,10 +427,12 @@ again:
 	 * The criteria to step up the send buffer one notch are:
 	 *  1. receive window of remote host is larger than send buffer
 	 *     (with a fudge factor of 5/4th);
-	 *  2. send buffer is filled to 7/8th with data (so we actually
+	 *  2. hiwat has not significantly exceeded bwnd (inflight)
+	 *     (bwnd is a maximal value if inflight is disabled).
+	 *  3. send buffer is filled to 7/8th with data (so we actually
 	 *     have data to make use of it);
-	 *  3. send buffer fill has not hit maximal automatic size;
-	 *  4. our send window (slow start and cogestion controlled) is
+	 *  4. hiwat has not hit maximal automatic size;
+	 *  5. our send window (slow start and cogestion controlled) is
 	 *     larger than sent but unacknowledged data in send buffer.
 	 *
 	 * The remote host receive window scaling factor may limit the
@@ -438,24 +448,38 @@ again:
 	 * of available bandwith (the non-use of it) for wasting some
 	 * socket buffer memory.
 	 *
-	 * TODO: Shrink send buffer during idle periods together
-	 * with congestion window.  Requires another timer.  Has to
-	 * wait for upcoming tcp timer rewrite.
+	 * The criteria for shrinking the buffer is based solely on
+	 * the inflight code (snd_bwnd).  If inflight is disabled,
+	 * the buffer will not be shrinked.  Note that snd_bwnd already
+	 * has a fudge factor.  Our test adds a little hysteresis.
 	 */
-	if (tcp_do_autosndbuf && so->so_snd.ssb_flags & SSB_AUTOSIZE) {
-		if ((tp->snd_wnd / 4 * 5) >= so->so_snd.ssb_hiwat &&
-		    so->so_snd.ssb_cc >= (so->so_snd.ssb_hiwat / 8 * 7) &&
-		    so->so_snd.ssb_cc < tcp_autosndbuf_max &&
-		    sendwin >= (so->so_snd.ssb_cc - (tp->snd_nxt - tp->snd_una))) {
-			u_long newsize;
+	if (tcp_do_autosndbuf && (so->so_snd.ssb_flags & SSB_AUTOSIZE)) {
+		const int asbinc = tcp_autosndbuf_inc;
+		const int hiwat = so->so_snd.ssb_hiwat;
+		const int lowat = so->so_snd.ssb_lowat;
+		u_long newsize;
 
-			newsize = ulmin(so->so_snd.ssb_hiwat +
-					 tcp_autosndbuf_inc,
-					tcp_autosndbuf_max);
+		if ((tp->snd_wnd / 4 * 5) >= hiwat &&
+		    so->so_snd.ssb_cc >= (hiwat / 8 * 7) &&
+		    hiwat < tp->snd_bwnd + hiwat / 10 &&
+		    hiwat + asbinc < tcp_autosndbuf_max &&
+		    hiwat < (TCP_MAXWIN << tp->snd_scale) &&
+		    sendwin >= (so->so_snd.ssb_cc -
+				(tp->snd_nxt - tp->snd_una))) {
+			newsize = ulmin(hiwat + asbinc, tcp_autosndbuf_max);
 			if (!ssb_reserve(&so->so_snd, newsize, so, NULL))
 				atomic_clear_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE);
+#if 0
 			if (newsize >= (TCP_MAXWIN << tp->snd_scale))
 				atomic_clear_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE);
+#endif
+		} else if ((long)tp->snd_bwnd <
+			   (long)(hiwat * 3 / 4 - lowat - asbinc) &&
+			   hiwat > tp->t_maxseg * 2 + asbinc &&
+			   hiwat + asbinc >= tcp_autosndbuf_min &&
+			   tcp_do_autosndbuf == 1) {
+			newsize = ulmax(hiwat - asbinc, tp->t_maxseg * 2);
+			ssb_reserve(&so->so_snd, newsize, so, NULL);
 		}
 	}
 
