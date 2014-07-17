@@ -2614,6 +2614,11 @@ ng_free_item(item_p item)
 	KASSERT(item->apply == NULL, ("freeing item with registered callback"));
 
 	/*
+	 * Make sure the reference count has reached zero.
+	 */
+	KASSERT(item->refs == 0, ("freeing item with non-zero refcount"));
+
+	/*
 	 * The item may hold resources on it's own. We need to free
 	 * these before we can free the item. What they are depends upon
 	 * what kind of item it is. it is important that nodes zero
