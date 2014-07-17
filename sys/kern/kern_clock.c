@@ -743,7 +743,7 @@ statclock(systimer_t info, int in_ipi, struct intrframe *frame)
 				 * in the LWKT scheduler.  Count such as
 				 * system time.
 				 */
-				if (mycpu->gd_reqflags & RQF_AST_LWKT_RESCHED)
+				if (mycpu->gd_reqflags & RQF_IDLECHECK_WK_MASK)
 					cpu_time.cp_sys += bump;
 				else
 					cpu_time.cp_idle += bump;
