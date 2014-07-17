@@ -42,13 +42,18 @@ init_completion(struct completion *c)
 
 #define	INIT_COMPLETION(c)	(c.done = 0)
 
+/*
+ * Completion interlock and wakeup.  Be careful not to execute the wakeup
+ * from inside the spinlock as this can deadlock if the IPIQ fifo is full.
+ * (also note that wakeup() is asynchronous anyway, so no point doing that).
+ */
 static inline void
 complete(struct completion *c)
 {
 	spin_lock(&c->wait.lock);
 	c->done++;
-	wakeup_one(&c->wait);
 	spin_unlock(&c->wait.lock);
+	wakeup_one(&c->wait);
 }
 
 static inline void
@@ -56,8 +61,8 @@ complete_all(struct completion *c)
 {
 	spin_lock(&c->wait.lock);
 	c->done++;
-	wakeup(&c->wait);
 	spin_unlock(&c->wait.lock);
+	wakeup(&c->wait);
 }
 
 static inline long

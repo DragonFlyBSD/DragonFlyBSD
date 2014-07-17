@@ -293,6 +293,21 @@ nfsm_dissect(nfsm_info_t info, int bytes)
 	int error;
 	int n;
 
+	/*
+	 * Check for missing reply packet.  This typically occurs if there
+	 * is a soft termination w/too many retries.
+	 */
+	if (info->md == NULL) {
+		if (info->mrep) {
+			m_freem(info->mrep);
+			info->mrep = NULL;
+		}
+		return NULL;
+	}
+
+	/*
+	 * Otherwise any error will be due to the packet format
+	 */
 	n = mtod(info->md, caddr_t) + info->md->m_len - info->dpos;
 	if (bytes <= n) {
 		ptr = info->dpos;
