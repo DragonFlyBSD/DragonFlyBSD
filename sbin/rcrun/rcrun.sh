@@ -128,6 +128,9 @@ rcstop)
 rcrestart)
     arg=restart
     ;;
+rcreload)
+    arg=reload
+    ;;
 rcvar)
     arg=rcvar
     ;;
@@ -193,6 +196,17 @@ restart)
 	    fi
 	done
 	;;
+reload)
+	for tgt in $@; do
+	    buildrclist $tgt
+	    dep=`echo "$rclist" | tail -1`
+	    if [ X$dep = X ]; then
+		echo "Unable to find keyword $tgt"
+	    else
+		(sh $dep reload)
+	    fi
+	done
+	;;
 disable|enable)
 	if [ "$arg" = "enable" ]; then
 	    mode=YES
@@ -249,7 +263,7 @@ list)
 *)
 	echo "usage: rcrun action rcscript1 ..."
 	echo "  where 'action' is one of:"
-	echo "    start|stop|restart|rcvar|list|forcestart|faststart|onestart"
-	echo "    disable|enable"
+	echo "    start|stop|restart|reload|rcvar|list|forcestart|faststart"
+	echo "    onestart|disable|enable"
 	;;
 esac
