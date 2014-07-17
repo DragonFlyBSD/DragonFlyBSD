@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2012 The DragonFly Project.  All rights reserved.
+.\" Copyright (c) 2012-2014 The DragonFly Project.  All rights reserved.
 .\"
 .\" This code is derived from software contributed to The DragonFly Project
 .\" by Nuno Antunes <nuno.antunes@gmail.com>.
@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd September 17, 2012
+.Dd July 16, 2014
 .Dt MSGPORT 9
 .Os
 .Sh NAME
@@ -61,7 +61,7 @@
 .Ft void
 .Fn lwkt_initport_thread "lwkt_port_t port" "struct thread *td"
 .Ft void
-.Fn lwkt_initport_spin "lwkt_port_t port" "struct thread *td"
+.Fn lwkt_initport_spin "lwkt_port_t port" "struct thread *td" "boolean_t fixed_cpuid"
 .Ft void
 .Fn lwkt_initport_serialize "lwkt_port_t port" "struct lwkt_serialize *slz"
 .Ft void
@@ -251,6 +251,12 @@ If
 is passed, then the port will not have a defined owner, so functions like
 .Fn lwkt_dropmsg
 will not be available for this port.
+If we know that this
+.Sq spin
+port is accessed exclusively by threads on a single CPU, we can set the
+.Fa fixed_cpuid
+argument to true, which will prevent the occurrence of unnecessary IPIs trying
+to wake up threads on other CPUs.
 This function will also initialize the embedded spinlock within the
 .Vt lwkt_port
 structure which will protect subsequent port access.
