@@ -400,6 +400,14 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	atomic_clear_int(&so->so_snd.ssb_flags, SSB_NOINTR);
 	so->so_snd.ssb_timeo = 0;
 
+	/*
+	 * Clear AUTOSIZE, otherwise the socket buffer could be reduced
+	 * to the point where rpc's cannot be queued using the mbuf
+	 * interface.
+	 */
+	atomic_clear_int(&so->so_rcv.ssb_flags, SSB_AUTOSIZE);
+	atomic_clear_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE);
+
 	slp = kmalloc(sizeof (struct nfssvc_sock), M_NFSSVC, M_WAITOK | M_ZERO);
 	mtx_init(&slp->ns_solock);
 	STAILQ_INIT(&slp->ns_rec);

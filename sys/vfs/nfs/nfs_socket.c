@@ -331,6 +331,14 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 	atomic_set_int(&so->so_rcv.ssb_flags, SSB_NOINTR);
 	atomic_set_int(&so->so_snd.ssb_flags, SSB_NOINTR);
 
+	/*
+	 * Clear AUTOSIZE, otherwise the socket buffer could be reduced
+	 * to the point where rpc's cannot be queued using the mbuf
+	 * interface.
+	 */
+	atomic_clear_int(&so->so_rcv.ssb_flags, SSB_AUTOSIZE);
+	atomic_clear_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE);
+
 	/* Initialize other non-zero congestion variables */
 	nmp->nm_srtt[0] = nmp->nm_srtt[1] = nmp->nm_srtt[2] = 
 		nmp->nm_srtt[3] = (NFS_TIMEO << NFS_RTT_SCALE_BITS);
