@@ -374,7 +374,8 @@ tcp_ncr_update_rxtthresh(struct tcpcb *tp)
 	int old_rxtthresh = tp->t_rxtthresh;
 	uint32_t ownd = tp->snd_max - tp->snd_una;
 
-	tp->t_rxtthresh = max(tcprexmtthresh, ((ownd / tp->t_maxseg) >> 1));
+	tp->t_rxtthresh = min(tcp_ncr_rxtthresh_max,
+	    max(tcprexmtthresh, ((ownd / tp->t_maxseg) >> 1)));
 	if (tp->t_rxtthresh != old_rxtthresh) {
 		tcp_sack_update_lostseq(&tp->scb, tp->snd_una,
 		    tp->t_maxseg, tp->t_rxtthresh);

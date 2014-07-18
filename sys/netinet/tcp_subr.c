@@ -268,6 +268,11 @@ static int tcp_do_ncr = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, ncr, CTLFLAG_RW,
     &tcp_do_ncr, 0, "Non-Congestion Robustness (RFC 4653)");
 
+int tcp_ncr_rxtthresh_max = 16;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, ncr_rxtthresh_max, CTLFLAG_RW,
+    &tcp_ncr_rxtthresh_max, 0,
+    "Non-Congestion Robustness (RFC 4653), DupThresh upper limit");
+
 static MALLOC_DEFINE(M_TCPTEMP, "tcptemp", "TCP Templates for Keepalives");
 static struct malloc_pipe tcptemp_mpipe;
 
