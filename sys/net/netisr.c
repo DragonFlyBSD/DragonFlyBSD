@@ -101,6 +101,10 @@ lwkt_port netisr_sync_port;
 static int (*netmsg_fwd_port_fn)(lwkt_port_t, lwkt_msg_t);
 
 SYSCTL_NODE(_net, OID_AUTO, netisr, CTLFLAG_RW, 0, "netisr");
+static int netisr_rollup_limit = 32;
+SYSCTL_INT(_net_netisr, OID_AUTO, rollup_limit, CTLFLAG_RW,
+	&netisr_rollup_limit, 0, "Message to process before rollup");
+
 
 /*
  * netisr_afree_rport replymsg function, only used to handle async
@@ -288,7 +292,7 @@ netmsg_service_loop(void *arg)
 		/*
 		 * Run up to 512 pending netmsgs.
 		 */
-		limit = 512;
+		limit = netisr_rollup_limit;
 		do {
 			KASSERT(msg->nm_dispatch != NULL,
 				("netmsg_service isr %d badmsg",

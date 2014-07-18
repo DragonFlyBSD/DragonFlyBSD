@@ -1314,13 +1314,13 @@ after_listen:
 				 */
 				if ((to.to_flags & TOF_TS) && to.to_tsecr) {
 					tcp_xmit_timer(tp,
-					    ticks - to.to_tsecr + 1,
-					    th->th_ack);
+						      ticks - to.to_tsecr + 1,
+						      th->th_ack);
 				} else if (tp->t_rtttime &&
 					   SEQ_GT(th->th_ack, tp->t_rtseq)) {
 					tcp_xmit_timer(tp,
-					    ticks - tp->t_rtttime,
-					    th->th_ack);
+						      ticks - tp->t_rtttime + 1,
+						      th->th_ack);
 				}
 				tcp_xmit_bandwidth_limit(tp, th->th_ack);
 				acked = th->th_ack - tp->snd_una;
@@ -2159,9 +2159,11 @@ process_ACK:
 		 * timestamps of 0.
 		 */
 		if ((to.to_flags & TOF_TS) && (to.to_tsecr != 0))
-			tcp_xmit_timer(tp, ticks - to.to_tsecr + 1, th->th_ack);
+			tcp_xmit_timer(tp, ticks - to.to_tsecr + 1,
+				       th->th_ack);
 		else if (tp->t_rtttime && SEQ_GT(th->th_ack, tp->t_rtseq))
-			tcp_xmit_timer(tp, ticks - tp->t_rtttime, th->th_ack);
+			tcp_xmit_timer(tp, ticks - tp->t_rtttime + 1,
+				       th->th_ack);
 		tcp_xmit_bandwidth_limit(tp, th->th_ack);
 
 		/*
@@ -2830,8 +2832,8 @@ tcp_pulloutofband(struct socket *so, struct tcphdr *th, struct mbuf *m, int off)
 }
 
 /*
- * Collect new round-trip time estimate
- * and update averages and current timeout.
+ * Collect new round-trip time estimate and update averages and current
+ * timeout.
  */
 static void
 tcp_xmit_timer(struct tcpcb *tp, int rtt, tcp_seq ack)
@@ -2865,9 +2867,9 @@ tcp_xmit_timer(struct tcpcb *tp, int rtt, tcp_seq ack)
 
 		/*
 		 * srtt is stored as fixed point with 5 bits after the
-		 * binary point (i.e., scaled by 8).  The following magic
+		 * binary point (i.e., scaled by 32).  The following magic
 		 * is equivalent to the smoothing algorithm in rfc793 with
-		 * an alpha of .875 (srtt = rtt/8 + srtt*7/8 in fixed
+		 * an alpha of .875 (srtt = rtt/32 + srtt*31/32 in fixed
 		 * point).  Adjust rtt to origin 0.
 		 */
 		delta = ((rtt - 1) << TCP_DELTA_SHIFT)

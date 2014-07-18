@@ -526,7 +526,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 	    tcp_seq ack, tcp_seq seq, int flags)
 {
 	int tlen;
-	int win = 0;
+	long win = 0;
 	struct route *ro = NULL;
 	struct route sro;
 	struct ip *ip = ipgen;
@@ -1925,7 +1925,7 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	cpu_ccfence();
 	delta_ticks = save_ticks - tp->t_bw_rtttime;
 	if (tp->t_bw_rtttime == 0 || delta_ticks < 0 || delta_ticks > hz * 10) {
-		tp->t_bw_rtttime = ticks;
+		tp->t_bw_rtttime = save_ticks;
 		tp->t_bw_rtseq = ack_seq;
 		if (tp->snd_bandwidth == 0)
 			tp->snd_bandwidth = tcp_inflight_min;
@@ -1995,7 +1995,7 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	 *	    choice.
 	 */
 
-#define	USERTT	(((tp->t_srtt + tp->t_rttbest) / 2) + tcp_inflight_adjrtt)
+#define	USERTT	((tp->t_srtt + tp->t_rttvar) + tcp_inflight_adjrtt)
 	bw += bw * tcp_inflight_stab / 1000;
 	bwnd = (int64_t)bw * USERTT / (hz << TCP_RTT_SHIFT) +
 	       (int)tp->t_maxseg * 2;
@@ -2003,11 +2003,11 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 
 	if (tcp_inflight_debug > 0) {
 		static int ltime;
-		if ((u_int)(ticks - ltime) >= hz / tcp_inflight_debug) {
-			ltime = ticks;
-			kprintf("%p ibw %ld bw %ld rttbest %d srtt %d "
+		if ((u_int)(save_ticks - ltime) >= hz / tcp_inflight_debug) {
+			ltime = save_ticks;
+			kprintf("%p ibw %ld bw %ld rttvar %d srtt %d "
 				"bwnd %ld delta %d snd_win %ld\n",
-				tp, ibw, bw, tp->t_rttbest, tp->t_srtt,
+				tp, ibw, bw, tp->t_rttvar, tp->t_srtt,
 				bwnd, delta_ticks, tp->snd_wnd);
 		}
 	}

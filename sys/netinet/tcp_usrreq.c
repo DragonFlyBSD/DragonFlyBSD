@@ -804,8 +804,10 @@ tcp_usr_send(netmsg_t msg)
 	/*
 	 * Pump the data into the socket.
 	 */
-	if (m)
+	if (m) {
 		ssb_appendstream(&so->so_snd, m);
+		sowwakeup(so);
+	}
 	if (flags & PRUS_OOB) {
 		/*
 		 * According to RFC961 (Assigned Protocols),

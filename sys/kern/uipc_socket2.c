@@ -95,7 +95,7 @@ ssb_wait(struct signalsockbuf *ssb)
 		cpu_ccfence();
 
 		/*
-		 * WAKEUP and WAIT interlock eachother.  We can catch the
+		 * WAKEUP and WAIT interlock each other.  We can catch the
 		 * race by checking to see if WAKEUP has already been set,
 		 * and only setting WAIT if WAKEUP is clear.
 		 */
@@ -489,11 +489,23 @@ socantrcvmore(struct socket *so)
  *	     thread.  aka is called on the 'head' listen socket when
  *	     a new connection comes in.
  */
+
 void
 sowakeup(struct socket *so, struct signalsockbuf *ssb)
 {
 	struct kqinfo *kqinfo = &ssb->ssb_kq;
 	uint32_t flags;
+
+	/*
+	 * Atomically check the flags.  When no special features are being
+	 * used, WAIT is clear, and WAKEUP is already set, we can simply
+	 * return.  The upcoming synchronous waiter will not block.
+	 */
+	flags = atomic_fetchadd_int(&ssb->ssb_flags, 0);
+	if ((flags & SSB_NOTIFY_MASK) == 0) {
+		if (flags & SSB_WAKEUP)
+			return;
+	}
 
 	/*
 	 * Check conditions, set the WAKEUP flag, and clear and signal if
@@ -504,7 +516,8 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 		flags = ssb->ssb_flags;
 		cpu_ccfence();
 
-		if ((ssb == &so->so_snd && ssb_space(ssb) >= ssb->ssb_lowat) ||
+		if ((ssb == &so->so_snd &&
+		     ssb_space_prealloc(ssb) >= ssb->ssb_lowat) ||
 		    (ssb == &so->so_rcv && ssb->ssb_cc >= ssb->ssb_lowat) ||
 		    (ssb == &so->so_snd && (so->so_state & SS_CANTSENDMORE)) ||
 		    (ssb == &so->so_rcv && (so->so_state & SS_CANTRCVMORE))

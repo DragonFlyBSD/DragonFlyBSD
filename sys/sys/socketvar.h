@@ -245,19 +245,6 @@ struct	xsocket {
      ((so)->so_state & SS_CANTSENDMORE) || \
      (so)->so_error)
 
-/*
- * Do we need to notify the other side when I/O is possible?
- *
- * NOTE: Interlock for ssb_wait/wakeup.  The protocol side will set
- *	 SSB_WAKEUP asynchronously and this can race, so if it isn't
- *	 set we have to go through the full-on notification check.
- *	 If it is set but no waiting ever takes place it simply
- *	 remains set.
- */
-#define ssb_notify(ssb)					\
-	    (((ssb)->ssb_flags & SSB_NOTIFY_MASK) ||	\
-	     ((ssb)->ssb_flags & SSB_WAKEUP) == 0)
-
 /* do we have to send all at once on a socket? */
 
 #ifdef _KERNEL
@@ -346,17 +333,8 @@ ssb_preallocstream(struct signalsockbuf *ssb, struct mbuf *m)
 		atomic_clear_int(&(ssb)->ssb_flags, SSB_KNOTE);		\
 }
 
-#define	sorwakeup(so)						\
-	do {							\
-		if (ssb_notify(&(so)->so_rcv))			\
-			sowakeup((so), &(so)->so_rcv);		\
-	} while (0)
-
-#define	sowwakeup(so)						\
-	do {							\
-		if (ssb_notify(&(so)->so_snd))			\
-			sowakeup((so), &(so)->so_snd);		\
-	} while (0)
+#define	sorwakeup(so)	sowakeup((so), &(so)->so_rcv)
+#define	sowwakeup(so)	sowakeup((so), &(so)->so_snd)
 
 #ifdef _KERNEL
 
