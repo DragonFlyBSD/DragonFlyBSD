@@ -1280,6 +1280,8 @@ nfs_request_try(struct nfsreq *rep)
 	if (nmp->nm_flag & NFSMNT_FORCE) {
 		rep->r_flags |= R_SOFTTERM;
 		rep->r_flags &= ~R_LOCKED;
+		if (rep->r_info)
+			rep->r_info->error = EINTR;
 		return (0);
 	}
 	rep->r_flags |= R_NEEDSXMIT;	/* in case send lock races us */
@@ -1428,12 +1430,19 @@ nfs_request_processreply(nfsm_info_t info, int error)
 	 * tprintf a response.
 	 */
 	if (error == 0 && (req->r_flags & R_TPRINTFMSG)) {
-		nfs_msg(req->r_td, nmp->nm_mountp->mnt_stat.f_mntfromname,
-		    "is alive again");
+		nfs_msg(req->r_td,
+			nmp->nm_mountp->mnt_stat.f_mntfromname,
+			"is alive again");
 	}
+
+	/*
+	 * Assign response and handle any pre-process error.  Response
+	 * fields can be NULL if an error is already pending.
+	 */
 	info->mrep = req->r_mrep;
 	info->md = req->r_md;
 	info->dpos = req->r_dpos;
+
 	if (error) {
 		m_freem(req->r_mreq);
 		req->r_mreq = NULL;
@@ -1973,6 +1982,8 @@ static void
 nfs_softterm(struct nfsreq *rep, int islocked)
 {
 	rep->r_flags |= R_SOFTTERM;
+	if (rep->r_info)
+		rep->r_info->error = EINTR;
 	nfs_hardterm(rep, islocked);
 }
 
@@ -2015,6 +2026,12 @@ nfs_hardterm(struct nfsreq *rep, int islocked)
 			TAILQ_INSERT_TAIL(&nmp->nm_reqrxq, rep, r_chain);
 			KKASSERT(rep->r_info->state == NFSM_STATE_TRY ||
 				 rep->r_info->state == NFSM_STATE_WAITREPLY);
+
+			/*
+			 * When setting the state to PROCESSREPLY we must
+			 * roll-up any error not related to the contents of
+			 * the reply (i.e. if there is no contents).
+			 */
 			rep->r_info->state = NFSM_STATE_PROCESSREPLY;
 			nfssvc_iod_reader_wakeup(nmp);
 			if (TAILQ_FIRST(&nmp->nm_bioq) &&

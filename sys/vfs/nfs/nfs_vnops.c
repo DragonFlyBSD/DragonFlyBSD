@@ -1838,10 +1838,14 @@ nfs_remove(struct vop_old_remove_args *ap)
 
 /*
  * nfs file remove rpc called from nfs_inactive
+ *
+ * NOTE: s_dvp can be VBAD during a forced unmount.
  */
 int
 nfs_removeit(struct sillyrename *sp)
 {
+	if (sp->s_dvp->v_type == VBAD)
+		return(0);
 	return (nfs_removerpc(sp->s_dvp, sp->s_name, sp->s_namlen,
 		sp->s_cred, NULL));
 }
