@@ -1032,7 +1032,7 @@ struct sym_nvram {
  *  Misc.
  */
 #define	SYM_LOCK()		lockmgr(&np->lock, LK_EXCLUSIVE)
-#define	SYM_LOCK_ASSERT(_what)	KKASSERT(lockstatus(&np->lock, curthread) == (_what));
+#define	SYM_LOCK_ASSERT(_what)	KKASSERT(lockstatus(&np->lock, curthread) == (_what))
 #define	SYM_LOCK_DESTROY()	lockuninit(&np->lock)
 #define	SYM_LOCK_INIT()		lockinit(&np->lock, "sym_lock", 0, LK_CANRECURSE)
 #if 0 /* XXX swildner */
