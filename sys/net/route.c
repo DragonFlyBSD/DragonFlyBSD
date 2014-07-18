@@ -1155,14 +1155,12 @@ rt_fixchange(struct radix_node *rn, void *vp)
 			 rt->rt_flags, NULL);
 }
 
-#define ROUNDUP(a) (a>0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-
 int
 rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate,
 	   boolean_t generate_report)
 {
 	char *space, *oldspace;
-	int dlen = ROUNDUP(dst->sa_len), glen = ROUNDUP(gate->sa_len);
+	int dlen = RT_ROUNDUP(dst->sa_len), glen = RT_ROUNDUP(gate->sa_len);
 	struct rtentry *rt = rt0;
 	struct radix_node_head *rnh = rt_tables[mycpuid][dst->sa_family];
 
@@ -1191,7 +1189,8 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate,
 	 * if we need to malloc a new chunk, then keep the old one around
 	 * till we don't need it any more.
 	 */
-	if (rt->rt_gateway == NULL || glen > ROUNDUP(rt->rt_gateway->sa_len)) {
+	if (rt->rt_gateway == NULL ||
+	    glen > RT_ROUNDUP(rt->rt_gateway->sa_len)) {
 		oldspace = (char *)rt_key(rt);
 		R_Malloc(space, char *, dlen + glen);
 		if (space == NULL)
@@ -1331,7 +1330,7 @@ rt_setshims(struct rtentry *rt, struct sockaddr **rt_shim){
 		if (shim == NULL)
 			break;
 
-		shimlen = ROUNDUP(shim->sa_len);
+		shimlen = RT_ROUNDUP(shim->sa_len);
 		R_Malloc(rt->rt_shim[i], struct sockaddr *, shimlen);
 		bcopy(shim, rt->rt_shim[i], shimlen);
 	}

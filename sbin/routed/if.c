@@ -636,8 +636,7 @@ rt_xaddrs(struct rt_addrinfo *info,
 #define ROUNDUP(a) ((a) > 0 ? (1 + (((a) - 1) | (sizeof(__uint64_t) - 1))) \
 		    : sizeof(__uint64_t))
 #else
-#define ROUNDUP(a) ((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) \
-		    : sizeof(long))
+#define ROUNDUP(a) RT_ROUNDUP(a)
 #endif
 
 

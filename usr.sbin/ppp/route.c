@@ -318,7 +318,7 @@ route_ParseHdr(struct rt_msghdr *rtm, struct sockaddr *sa[RTAX_MAX])
   for (rtax = 0; rtax < RTAX_MAX; rtax++)
     if (rtm->rtm_addrs & (1 << rtax)) {
       sa[rtax] = (struct sockaddr *)wp;
-      wp += ROUNDUP(sa[rtax]->sa_len);
+      wp += RT_ROUNDUP(sa[rtax]->sa_len);
       if (sa[rtax]->sa_family == 0)
         sa[rtax] = NULL;	/* ??? */
     } else
@@ -701,7 +701,7 @@ memcpy_roundup(char *cp, const void *data, size_t len)
 {
   size_t padlen;
 
-  padlen = ROUNDUP(len);
+  padlen = RT_ROUNDUP(len);
   memcpy(cp, data, len);
   if (padlen > len)
     memset(cp + len, '\0', padlen - len);

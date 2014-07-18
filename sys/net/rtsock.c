@@ -779,9 +779,6 @@ rt_setmetrics(u_long which, struct rt_metrics *in, struct rt_metrics *out)
 #undef setmetric
 }
 
-#define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-
 /*
  * Extract the addresses of the passed sockaddrs.
  * Do a little sanity checking so as to avoid bad memory references.
@@ -823,7 +820,7 @@ rt_xaddrs(char *cp, char *cplim, struct rt_addrinfo *rtinfo)
 
 		/* Accept the sockaddr. */
 		rtinfo->rti_info[i] = sa;
-		cp += ROUNDUP(sa->sa_len);
+		cp += RT_ROUNDUP(sa->sa_len);
 	}
 	return (0);
 }
@@ -856,7 +853,7 @@ rt_msgsize(int type, struct rt_addrinfo *rtinfo)
 	len = rt_msghdrsize(type);
 	for (i = 0; i < RTAX_MAX; i++) {
 		if (rtinfo->rti_info[i] != NULL)
-			len += ROUNDUP(rtinfo->rti_info[i]->sa_len);
+			len += RT_ROUNDUP(rtinfo->rti_info[i]->sa_len);
 	}
 	len = ALIGN(len);
 	return len;
@@ -892,7 +889,7 @@ rt_msg_buffer(int type, struct rt_addrinfo *rtinfo, void *buf, int msglen)
 		if ((sa = rtinfo->rti_info[i]) == NULL)
 			continue;
 		rtinfo->rti_addrs |= (1 << i);
-		dlen = ROUNDUP(sa->sa_len);
+		dlen = RT_ROUNDUP(sa->sa_len);
 		bcopy(sa, cp, dlen);
 		cp += dlen;
 	}
@@ -934,7 +931,7 @@ rt_msg_mbuf(int type, struct rt_addrinfo *rtinfo)
 		if ((sa = rtinfo->rti_info[i]) == NULL)
 			continue;
 		rtinfo->rti_addrs |= (1 << i);
-		dlen = ROUNDUP(sa->sa_len);
+		dlen = RT_ROUNDUP(sa->sa_len);
 		m_copyback(m, len, dlen, (caddr_t)sa); /* can grow mbuf chain */
 		len += dlen;
 	}

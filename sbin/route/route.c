@@ -122,10 +122,6 @@ usage(const char *cp)
 	/* NOTREACHED */
 }
 
-#define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-#define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
-
 int
 main(int argc, char **argv)
 {
@@ -299,7 +295,7 @@ bad:			usage(*argv);
 			    printf("%-20.20s ", rtm->rtm_flags & RTF_HOST ?
 				routename(sa) : netname(sa));
 			}
-			sa = (struct sockaddr *)(ROUNDUP(sa->sa_len) +
+			sa = (struct sockaddr *)(RT_ROUNDUP(sa->sa_len) +
 			    (char *)sa);
 			if (wflag) {
 			    printf("%-20s ", routename(sa));
@@ -1262,7 +1258,7 @@ rtmsg(int cmd, int flags)
 
 #define NEXTADDR(w, u) \
 	if (rtm_addrs & (w)) {\
-	    l = ROUNDUP(u.sa.sa_len); memmove(cp, &(u), l); cp += l;\
+	    l = RT_ROUNDUP(u.sa.sa_len); memmove(cp, &(u), l); cp += l;\
 	    if (verbose) sodump(&(u),"u");\
 	}
 
@@ -1504,7 +1500,7 @@ print_getmsg(struct rt_msghdr *rtm, int msglen)
 						ifp = (struct sockaddr_dl *)sa;
 					break;
 				}
-				ADVANCE(cp, sa);
+				RT_ADVANCE(cp, sa);
 			}
 	if (dst != NULL && mask != NULL)
 		mask->sa_family = dst->sa_family;	/* XXX */
@@ -1586,7 +1582,7 @@ pmsg_addrs(char *cp, int addrs)
 		if (i & addrs) {
 			sa = (struct sockaddr *)cp;
 			printf(" %s", routename(sa));
-			ADVANCE(cp, sa);
+			RT_ADVANCE(cp, sa);
 		}
 	putchar('\n');
 	fflush(stdout);

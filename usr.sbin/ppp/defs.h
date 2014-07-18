@@ -116,8 +116,6 @@
 #define	LOAD_QUIETLY	1
 #define	LOAD_VERBOSLY	2
 
-#define ROUNDUP(x) ((x) ? (1 + (((x) - 1) | (sizeof(long) - 1))) : sizeof(long))
-
 #if defined(__NetBSD__)
 extern void randinit(void);
 #else

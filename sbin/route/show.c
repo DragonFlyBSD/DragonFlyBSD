@@ -55,10 +55,6 @@
 #include "extern.h"
 #include "keywords.h"
 
-#define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-#define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
-
 /*
  * Definitions for showing gateway flags.
  */
@@ -233,7 +229,7 @@ p_rtentry(struct rt_msghdr *rtm)
 		p_sockaddr(sa, 0, WID_DST + WID_GW + 2);
 	} else {
 		width = p_sockaddr(sa, rtm->rtm_flags, WID_DST);
-		sa = (struct sockaddr *)(ROUNDUP(sa->sa_len) + (char *)sa);
+		sa = (struct sockaddr *)(RT_ROUNDUP(sa->sa_len) + (char *)sa);
 		p_sockaddr(sa, 0, WID_GW + WID_DST - width);
 	}
 	p_flags(rtm->rtm_flags & interesting, "%-6.6s ");

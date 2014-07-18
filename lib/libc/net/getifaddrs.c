@@ -55,8 +55,7 @@
 #define	SA_LEN(sa)	(sa)->sa_len
 #endif
 
-#define	SALIGN	(sizeof(long) - 1)
-#define	SA_RLEN(sa)	((sa)->sa_len ? (((sa)->sa_len + SALIGN) & ~SALIGN) : (SALIGN + 1))
+#define	SA_RLEN(sa)	RT_ROUNDUP((sa)->sa_len)
 
 #ifndef	ALIGNBYTES
 /*

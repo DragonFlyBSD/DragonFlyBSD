@@ -434,7 +434,7 @@ ng_eiface_rcvmsg(node_p node, struct ng_mesg *msg,
 			caddr_t ptr;
 			int buflen;
 
-#define SA_SIZE(s)	((s)->sa_len<sizeof(*(s))? sizeof(*(s)):(s)->sa_len)
+#define SA_SIZE(s)	RT_ROUNDUP((s)->sa_len)
 
 			/* Determine size of response and allocate it */
 			buflen = 0;

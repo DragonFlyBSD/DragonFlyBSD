@@ -713,7 +713,7 @@ iface_ParseHdr(struct ifa_msghdr *ifam, struct sockaddr *sa[RTAX_MAX])
   for (rtax = 0; rtax < RTAX_MAX; rtax++)
     if (ifam->ifam_addrs & (1 << rtax)) {
       sa[rtax] = (struct sockaddr *)wp;
-      wp += ROUNDUP(sa[rtax]->sa_len);
+      wp += RT_ROUNDUP(sa[rtax]->sa_len);
     } else
       sa[rtax] = NULL;
 }

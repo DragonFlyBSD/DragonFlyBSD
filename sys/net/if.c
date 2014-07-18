@@ -545,11 +545,9 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	namelen = strlen(ifp->if_xname);
 	masklen = offsetof(struct sockaddr_dl, sdl_data[0]) + namelen;
 	socksize = masklen + ifp->if_addrlen;
-#define ROUNDUP(a) (1 + (((a) - 1) | (sizeof(long) - 1)))
 	if (socksize < sizeof(*sdl))
 		socksize = sizeof(*sdl);
-	socksize = ROUNDUP(socksize);
-#undef ROUNDUP
+	socksize = RT_ROUNDUP(socksize);
 	ifasize = sizeof(struct ifaddr) + 2 * socksize;
 	ifa = ifa_create(ifasize, M_WAITOK);
 	sdl = (struct sockaddr_dl *)(ifa + 1);

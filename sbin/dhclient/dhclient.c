@@ -97,9 +97,6 @@ int		 res_hnok(const char *dn);
 char		*option_as_string(unsigned int code, unsigned char *data, int len);
 int		 fork_privchld(int, int);
 void		 get_ifname(char *, char *);
-#define	ROUNDUP(a) \
-	    ((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-#define	ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
 
 time_t	scripttime;
 static FILE *leaseFile;
@@ -128,7 +125,7 @@ findproto(char *cp, int n)
 			case RTA_IFP:
 				break;
 			}
-			ADVANCE(cp, sa);
+			RT_ADVANCE(cp, sa);
 		}
 	}
 	return (-1);
@@ -147,7 +144,7 @@ get_ifa(char *cp, int n)
 			sa = (struct sockaddr *)cp;
 			if (i == RTA_IFA)
 				return (sa);
-			ADVANCE(cp, sa);
+			RT_ADVANCE(cp, sa);
 		}
 
 	return (NULL);

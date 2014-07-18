@@ -205,13 +205,6 @@ interface_status(struct ifinfo *ifinfo)
 	return(1);
 }
 
-#define ROUNDUP(a, size) \
-	(((a) & ((size)-1)) ? (1 + ((a) | ((size)-1))) : (a))
-
-#define NEXT_SA(ap) (ap) = (struct sockaddr *) \
-	((caddr_t)(ap) + ((ap)->sa_len ? ROUNDUP((ap)->sa_len,\
-						 sizeof(u_long)) :\
-			  			 sizeof(u_long)))
 #define ROUNDUP8(a) (1 + (((a) - 1) | 7))
 
 int
@@ -461,7 +454,7 @@ get_rtaddrs(int addrs, struct sockaddr *sa, struct sockaddr **rti_info)
 	for (i = 0; i < RTAX_MAX; i++) {
 		if (addrs & (1 << i)) {
 			rti_info[i] = sa;
-			NEXT_SA(sa);
+			RT_ADVANCE(sa, sa);
 		}
 		else
 			rti_info[i] = NULL;

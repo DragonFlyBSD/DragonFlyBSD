@@ -113,11 +113,6 @@
 #define NI_WITHSCOPEID	0
 #endif
 
-/* packing rule for routing socket */
-#define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-#define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
-
 static int pid;
 static int cflag;
 static int nflag;
@@ -400,7 +395,7 @@ set(int argc, char **argv)
 		return (1);
 	}
 	sin = (struct sockaddr_in6 *)(rtm + 1);
-	sdl = (struct sockaddr_dl *)(ROUNDUP(sin->sin6_len) + (char *)sin);
+	sdl = (struct sockaddr_dl *)(RT_ROUNDUP(sin->sin6_len) + (char *)sin);
 	if (IN6_ARE_ADDR_EQUAL(&sin->sin6_addr, &sin_m.sin6_addr)) {
 		if (sdl->sdl_family == AF_LINK &&
 		    (rtm->rtm_flags & RTF_LLINFO) &&
@@ -497,7 +492,7 @@ delete(char *host)
 		return (1);
 	}
 	sin = (struct sockaddr_in6 *)(rtm + 1);
-	sdl = (struct sockaddr_dl *)(ROUNDUP(sin->sin6_len) + (char *)sin);
+	sdl = (struct sockaddr_dl *)(RT_ROUNDUP(sin->sin6_len) + (char *)sin);
 	if (IN6_ARE_ADDR_EQUAL(&sin->sin6_addr, &sin_m.sin6_addr)) {
 		if (sdl->sdl_family == AF_LINK &&
 		    (rtm->rtm_flags & RTF_LLINFO) &&
@@ -589,7 +584,8 @@ again:;
 
 		rtm = (struct rt_msghdr *)next;
 		sin = (struct sockaddr_in6 *)(rtm + 1);
-		sdl = (struct sockaddr_dl *)((char *)sin + ROUNDUP(sin->sin6_len));
+		sdl = (struct sockaddr_dl *)((char *)sin +
+			    RT_ROUNDUP(sin->sin6_len));
 
 		/*
 		 * Some OSes can produce a route that has the LINK flag but

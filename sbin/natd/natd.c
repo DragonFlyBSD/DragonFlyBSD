@@ -742,13 +742,9 @@ SetAliasAddressFromIfName(const char *ifn)
 			int i;
 			char *cp = (char *)(ifam + 1);
 
-#define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-#define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
-
 			for (i = 1; i < RTA_IFA; i <<= 1)
 				if (ifam->ifam_addrs & i)
-					ADVANCE(cp, (struct sockaddr *)cp);
+					RT_ADVANCE(cp, (struct sockaddr *)cp);
 			if (((struct sockaddr *)cp)->sa_family == AF_INET) {
 				s_in = (struct sockaddr_in *)cp;
 				break;

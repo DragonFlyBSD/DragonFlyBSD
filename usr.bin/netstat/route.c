@@ -63,12 +63,6 @@
 
 #define kget(p, d) (kread((u_long)(p), (char *)&(d), sizeof (d)))
 
-
-/* alignment constraint for routing socket */
-#define ROUNDUP(a) \
-       ((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-#define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
-
 /*
  * Definitions for showing gateway flags.
  */
@@ -594,7 +588,7 @@ np_rtentry(struct rt_msghdr *rtm)
 		p_sockaddr(sa, NULL, 0, 36);
 	else {
 		p_sockaddr(sa, NULL, rtm->rtm_flags, 16);
-		sa = (struct sockaddr *)(ROUNDUP(sa->sa_len) + (char *)sa);
+		sa = (struct sockaddr *)(RT_ROUNDUP(sa->sa_len) + (char *)sa);
 		p_sockaddr(sa, NULL, 0, 18);
 	}
 	p_flags(rtm->rtm_flags & interesting, "%-6.6s ");

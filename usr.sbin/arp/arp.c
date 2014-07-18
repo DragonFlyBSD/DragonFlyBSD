@@ -107,8 +107,6 @@ struct	{
 #define F_REPLACE	4
 #define F_DELETE	5
 
-#define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 #define SETFUNC(f)	{ if (func) usage(); func = (f); }
 
 int
@@ -316,7 +314,7 @@ tryagain:
 		return(1);
 	}
 	addr = (struct sockaddr_inarp *)(rtm + 1);
-	sdl = (struct sockaddr_dl *)(ROUNDUP(addr->sin_len) + (char *)addr);
+	sdl = (struct sockaddr_dl *)(RT_ROUNDUP(addr->sin_len) + (char *)addr);
 	if (addr->sin_addr.s_addr == sin_m.sin_addr.s_addr) {
 		if (sdl->sdl_family == AF_LINK &&
 		    (rtm->rtm_flags & RTF_LLINFO) &&
@@ -408,7 +406,7 @@ tryagain:
 		return(1);
 	}
 	addr = (struct sockaddr_inarp *)(rtm + 1);
-	sdl = (struct sockaddr_dl *)(ROUNDUP(addr->sin_len) + (char *)addr);
+	sdl = (struct sockaddr_dl *)(RT_ROUNDUP(addr->sin_len) + (char *)addr);
 	if (addr->sin_addr.s_addr == sin_m.sin_addr.s_addr) {
 		if (sdl->sdl_family == AF_LINK &&
 		    (rtm->rtm_flags & RTF_LLINFO) &&
@@ -486,7 +484,8 @@ search(u_long addr, void (*action)(struct sockaddr_dl *sdl,
 	for (next = buf; next < lim; next += rtm->rtm_msglen) {
 		rtm = (struct rt_msghdr *)next;
 		sin2 = (struct sockaddr_inarp *)(rtm + 1);
-		sdl = (struct sockaddr_dl *)((char *)sin2 + ROUNDUP(sin2->sin_len));
+		sdl = (struct sockaddr_dl *)((char *)sin2 +
+			    RT_ROUNDUP(sin2->sin_len));
 		if (addr) {
 			if (addr != sin2->sin_addr.s_addr)
 				continue;
@@ -533,7 +532,7 @@ print_entry(struct sockaddr_dl *sdl,
 		printf(" published (proxy only)");
 	if (rtm->rtm_addrs & RTA_NETMASK) {
 		addr = (struct sockaddr_inarp *)
-			(ROUNDUP(sdl->sdl_len) + (char *)sdl);
+			(RT_ROUNDUP(sdl->sdl_len) + (char *)sdl);
 		if (addr->sin_addr.s_addr == 0xffffffff)
 			printf(" published");
 		if (addr->sin_len != 8)
@@ -633,9 +632,12 @@ rtmsg(int cmd)
 	case RTM_GET:
 		rtm->rtm_addrs |= RTA_DST;
 	}
-#define NEXTADDR(w, s) \
-	if (rtm->rtm_addrs & (w)) { \
-		bcopy((char *)&s, cp, sizeof(s)); cp += ROUNDUP(sizeof(s));}
+
+#define NEXTADDR(w, s)					\
+	if (rtm->rtm_addrs & (w)) {			\
+		bcopy((char *)&s, cp, sizeof(s));	\
+		cp += RT_ROUNDUP(sizeof(s));		\
+	}
 
 	NEXTADDR(RTA_DST, sin_m);
 	NEXTADDR(RTA_GATEWAY, sdl_m);

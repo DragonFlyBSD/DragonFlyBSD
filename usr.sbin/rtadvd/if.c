@@ -63,14 +63,6 @@
 #include "rtadvd.h"
 #include "if.h"
 
-#define ROUNDUP(a, size) \
-	(((a) & ((size)-1)) ? (1 + ((a) | ((size)-1))) : (a))
-
-#define NEXT_SA(ap) (ap) = (struct sockaddr *) \
-	((caddr_t)(ap) + ((ap)->sa_len ? ROUNDUP((ap)->sa_len,\
-						 sizeof(u_long)) :\
-			  			 sizeof(u_long)))
-
 struct if_msghdr **iflist;
 int iflist_init_ok;
 size_t ifblock_size;
@@ -88,7 +80,7 @@ get_rtaddrs(int addrs, struct sockaddr *sa, struct sockaddr **rti_info)
 	for (i = 0; i < RTAX_MAX; i++) {
 		if (addrs & (1 << i)) {
 			rti_info[i] = sa;
-			NEXT_SA(sa);
+			RT_ADVANCE(sa, sa);
 		}
 		else
 			rti_info[i] = NULL;

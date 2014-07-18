@@ -78,11 +78,6 @@
 #define	INIT_INTERVAL6	10	/* Wait to submit a initial riprequest */
 #endif
 
-/* alignment constraint for routing socket */
-#define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-#define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
-
 /*
  * Following two macros are highly depending on KAME Release
  */
@@ -1555,7 +1550,7 @@ rtrecv(void)
 		for (i = 0; i < RTAX_MAX; i++) {
 			if (addrs & (1 << i)) {
 				rta[i] = (struct sockaddr_in6 *)q;
-				q += ROUNDUP(rta[i]->sin6_len);
+				q += RT_ROUNDUP(rta[i]->sin6_len);
 			}
 		}
 
@@ -2464,22 +2459,22 @@ rt_entry(struct rt_msghdr *rtm, int again)
 	if ((rtm->rtm_addrs & RTA_DST) == 0)
 		return;		/* ignore routes without destination address */
 	sin6_dst = (struct sockaddr_in6 *)rtmp;
-	rtmp += ROUNDUP(sin6_dst->sin6_len);
+	rtmp += RT_ROUNDUP(sin6_dst->sin6_len);
 	if (rtm->rtm_addrs & RTA_GATEWAY) {
 		sin6_gw = (struct sockaddr_in6 *)rtmp;
-		rtmp += ROUNDUP(sin6_gw->sin6_len);
+		rtmp += RT_ROUNDUP(sin6_gw->sin6_len);
 	}
 	if (rtm->rtm_addrs & RTA_NETMASK) {
 		sin6_mask = (struct sockaddr_in6 *)rtmp;
-		rtmp += ROUNDUP(sin6_mask->sin6_len);
+		rtmp += RT_ROUNDUP(sin6_mask->sin6_len);
 	}
 	if (rtm->rtm_addrs & RTA_GENMASK) {
 		sin6_genmask = (struct sockaddr_in6 *)rtmp;
-		rtmp += ROUNDUP(sin6_genmask->sin6_len);
+		rtmp += RT_ROUNDUP(sin6_genmask->sin6_len);
 	}
 	if (rtm->rtm_addrs & RTA_IFP) {
 		sin6_ifp = (struct sockaddr_in6 *)rtmp;
-		rtmp += ROUNDUP(sin6_ifp->sin6_len);
+		rtmp += RT_ROUNDUP(sin6_ifp->sin6_len);
 	}
 
 	/* Destination */
@@ -2628,17 +2623,17 @@ addroute(struct riprt *rrt, const struct in6_addr *gw, struct ifc *ifcp)
 	sin->sin6_len = sizeof(struct sockaddr_in6);
 	sin->sin6_family = AF_INET6;
 	sin->sin6_addr = np->rip6_dest;
-	sin = (struct sockaddr_in6 *)((char *)sin + ROUNDUP(sin->sin6_len));
+	sin = (struct sockaddr_in6 *)((char *)sin + RT_ROUNDUP(sin->sin6_len));
 	/* Gateway */
 	sin->sin6_len = sizeof(struct sockaddr_in6);
 	sin->sin6_family = AF_INET6;
 	sin->sin6_addr = *gw;
-	sin = (struct sockaddr_in6 *)((char *)sin + ROUNDUP(sin->sin6_len));
+	sin = (struct sockaddr_in6 *)((char *)sin + RT_ROUNDUP(sin->sin6_len));
 	/* Netmask */
 	sin->sin6_len = sizeof(struct sockaddr_in6);
 	sin->sin6_family = AF_INET6;
 	sin->sin6_addr = *(plen2mask(np->rip6_plen));
-	sin = (struct sockaddr_in6 *)((char *)sin + ROUNDUP(sin->sin6_len));
+	sin = (struct sockaddr_in6 *)((char *)sin + RT_ROUNDUP(sin->sin6_len));
 
 	len = (char *)sin - (char *)buf;
 	rtm->rtm_msglen = len;
@@ -2693,17 +2688,17 @@ delroute(struct netinfo6 *np, struct in6_addr *gw)
 	sin->sin6_len = sizeof(struct sockaddr_in6);
 	sin->sin6_family = AF_INET6;
 	sin->sin6_addr = np->rip6_dest;
-	sin = (struct sockaddr_in6 *)((char *)sin + ROUNDUP(sin->sin6_len));
+	sin = (struct sockaddr_in6 *)((char *)sin + RT_ROUNDUP(sin->sin6_len));
 	/* Gateway */
 	sin->sin6_len = sizeof(struct sockaddr_in6);
 	sin->sin6_family = AF_INET6;
 	sin->sin6_addr = *gw;
-	sin = (struct sockaddr_in6 *)((char *)sin + ROUNDUP(sin->sin6_len));
+	sin = (struct sockaddr_in6 *)((char *)sin + RT_ROUNDUP(sin->sin6_len));
 	/* Netmask */
 	sin->sin6_len = sizeof(struct sockaddr_in6);
 	sin->sin6_family = AF_INET6;
 	sin->sin6_addr = *(plen2mask(np->rip6_plen));
-	sin = (struct sockaddr_in6 *)((char *)sin + ROUNDUP(sin->sin6_len));
+	sin = (struct sockaddr_in6 *)((char *)sin + RT_ROUNDUP(sin->sin6_len));
 
 	len = (char *)sin - (char *)buf;
 	rtm->rtm_msglen = len;
@@ -2764,7 +2759,7 @@ getroute(struct netinfo6 *np, struct in6_addr *gw)
 	sin = (struct sockaddr_in6 *)&buf[sizeof(struct rt_msghdr)];
 	if (rtm->rtm_addrs & RTA_DST) {
 		sin = (struct sockaddr_in6 *)
-			((char *)sin + ROUNDUP(sin->sin6_len));
+			((char *)sin + RT_ROUNDUP(sin->sin6_len));
 	}
 	if (rtm->rtm_addrs & RTA_GATEWAY) {
 		*gw = sin->sin6_addr;

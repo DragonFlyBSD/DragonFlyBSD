@@ -231,20 +231,6 @@ routename(struct sockaddr *sa)
 	return (line);
 }
 
-#ifndef SA_SIZE
-/*
- * This macro returns the size of a struct sockaddr when passed
- * through a routing socket. Basically we round up sa_len to
- * a multiple of sizeof(long), with a minimum of sizeof(long).
- * The check for a NULL pointer is just a convenience, probably never used.
- * The case sa_len == 0 should only apply to empty structures.
- */
-#define SA_SIZE(sa)						\
-    (  (!(sa) || ((struct sockaddr *)(sa))->sa_len == 0) ?	\
-	sizeof(long)		:				\
-	1 + ( (((struct sockaddr *)(sa))->sa_len - 1) | (sizeof(long) - 1) ) )
-#endif
-
 static void
 pmsg_addrs(char *cp, int addrs)
 {
@@ -262,7 +248,7 @@ pmsg_addrs(char *cp, int addrs)
 		if (i & addrs) {
 			sa = (struct sockaddr *)cp;
 			printf(" %s", routename(sa));
-			cp += SA_SIZE(sa);
+			RT_ADVANCE(cp, sa);
 		}
 	putchar('\n');
 }

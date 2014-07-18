@@ -42,6 +42,7 @@
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/netisr.h>
+#include <net/route.h>
 
 #include <netgraph7/netgraph.h>
 #include <netgraph7/ng_message.h>
@@ -450,7 +451,7 @@ ng_eiface_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			caddr_t ptr;
 			int buflen;
 
-#define SA_SIZE(s)	((s)->sa_len<sizeof(*(s))? sizeof(*(s)):(s)->sa_len)
+#define SA_SIZE(s)	RT_ROUNDUP((s)->sa_len)
 
 			/* Determine size of response and allocate it */
 			buflen = 0;

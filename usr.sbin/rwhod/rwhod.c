@@ -574,10 +574,6 @@ quit(const char *msg, int wrterrno)
 	exit(1);
 }
 
-#define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-#define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
-
 void
 rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 {
@@ -589,7 +585,7 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 		if ((rtinfo->rti_addrs & (1 << i)) == 0)
 			continue;
 		rtinfo->rti_info[i] = sa = (struct sockaddr *)cp;
-		ADVANCE(cp, sa);
+		RT_ADVANCE(cp, sa);
 	}
 }
 

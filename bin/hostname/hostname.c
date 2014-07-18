@@ -62,8 +62,6 @@
 #define HST_IF_V6 (1 << 1)
 #define HST_IF_V4 (1 << 2)
 
-
-
 /*
  * Expand the compacted form of addresses as returned via the
  * configuration read via sysctl().
@@ -73,9 +71,13 @@
 static void rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
 static void usage (void);
 
-#define ROUNDUP(a) \
+#ifndef RT_ROUNDUP
+#define RT_ROUNDUP(a) \
 	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-#define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
+#endif
+#ifndef RT_ADVANCE
+#define RT_ADVANCE(x, n) (x += RT_ROUNDUP((n)->sa_len))
+#endif
 
 static
 void
@@ -89,7 +91,7 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 		if ((rtinfo->rti_addrs & (1 << i)) == 0)
 			continue;
 		rtinfo->rti_info[i] = sa = (struct sockaddr *)cp;
-		ADVANCE(cp, sa);
+		RT_ADVANCE(cp, sa);
 	}
 }
 

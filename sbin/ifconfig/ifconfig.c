@@ -63,18 +63,6 @@
 #include "ifconfig.h"
 
 /*
- * This macro returns the size of a struct sockaddr when passed
- * through a routing socket. Basically we round up sa_len to
- * a multiple of sizeof(long), with a minimum of sizeof(long).
- * The check for a NULL pointer is just a convenience, probably never used.
- * The case sa_len == 0 should only apply to empty structures.
- */     
-#define SA_SIZE(sa)                                             \
-    (  (!(sa) || ((struct sockaddr *)(sa))->sa_len == 0) ?      \
-	sizeof(long)            :                               \
-	1 + ( (((struct sockaddr *)(sa))->sa_len - 1) | (sizeof(long) - 1) ) )
-
-/*
  * Since "struct ifreq" is composed of various union members, callers
  * should pay special attention to interprete the value.
  * (.e.g. little/big endian difference in the structure.)
@@ -867,7 +855,7 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 		if ((rtinfo->rti_addrs & (1 << i)) == 0)
 			continue;
 		rtinfo->rti_info[i] = sa = (struct sockaddr *)cp;
-		cp += SA_SIZE(sa);
+		RT_ADVANCE(cp, sa);
 	}
 }
 

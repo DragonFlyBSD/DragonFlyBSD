@@ -170,17 +170,6 @@ struct afswtch *afp = NULL;	/*the address family being set or asked about*/
 void	rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
 int	ifconfig(int argc, char *argv[], int af, struct afswtch *rafp);
 
-
-
-/*
- * Expand the compacted form of addresses as returned via the
- * configuration read via sysctl().
- */
-
-#define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-#define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
-
 void
 rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 {
@@ -192,7 +181,7 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 		if ((rtinfo->rti_addrs & (1 << i)) == 0)
 			continue;
 		rtinfo->rti_info[i] = sa = (struct sockaddr *)cp;
-		ADVANCE(cp, sa);
+		RT_ADVANCE(cp, sa);
 	}
 }
 
