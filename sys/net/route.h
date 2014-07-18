@@ -308,6 +308,19 @@ struct rt_msghdr {
 #define RTAX_MPLS3	10	/* mpls label and/or operation present */
 #define RTAX_MAX	11	/* size of array to allocate */
 
+/*
+ * Sockaddrs passed through the routing socket are padded up to a certain
+ * size, currently multiples of sizeof(long).  These macros used to be
+ * replicated in various user and kernel files, but are now made available
+ * here for convenience and consistency.
+ *
+ * FreeBSD uses a similar macro SA_SIZE which could be defined as
+ * #define SA_SIZE(sa)	RT_ROUNDUP((sa)->sa_len)
+ */
+#define RT_ROUNDUP2(a, n)	((a) > 0 ? (1 + (((a) - 1) | ((n) - 1))) : (n))
+#define RT_ROUNDUP(a)		RT_ROUNDUP2((a), sizeof(long))
+#define RT_ADVANCE(x, n)	(x += RT_ROUNDUP((n)->sa_len))
+
 struct rt_addrinfo {
 	int		 rti_addrs;
 	struct sockaddr	*rti_info[RTAX_MAX];
