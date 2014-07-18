@@ -103,6 +103,8 @@ struct signalsockbuf {
 #define	SSB_AUTOSIZE	0x0800		/* automatically size socket buffer */
 #define SSB_AUTOLOWAT	0x1000		/* automatically scale lowat */
 #define SSB_WAKEUP	0x2000		/* wakeup event race */
+#define SSB_PREALLOC	0x4000		/* prealloc supported */
+#define SSB_STOPSUPP	0x8000		/* SSB_STOP supported */
 
 #define SSB_CLEAR_MASK	(SSB_ASYNC | SSB_UPCALL | SSB_STOP | \
 			 SSB_AUTOSIZE | SSB_AUTOLOWAT)

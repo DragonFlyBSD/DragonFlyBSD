@@ -513,11 +513,16 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 	 * client side.
 	 */
 	for (;;) {
+		long space;
+
 		flags = ssb->ssb_flags;
 		cpu_ccfence();
+		if (ssb->ssb_flags & SSB_PREALLOC)
+			space = ssb_space_prealloc(ssb);
+		else
+			space = ssb_space(ssb);
 
-		if ((ssb == &so->so_snd &&
-		     ssb_space_prealloc(ssb) >= ssb->ssb_lowat) ||
+		if ((ssb == &so->so_snd && space >= ssb->ssb_lowat) ||
 		    (ssb == &so->so_rcv && ssb->ssb_cc >= ssb->ssb_lowat) ||
 		    (ssb == &so->so_snd && (so->so_state & SS_CANTSENDMORE)) ||
 		    (ssb == &so->so_rcv && (so->so_state & SS_CANTRCVMORE))

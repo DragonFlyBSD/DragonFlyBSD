@@ -1585,6 +1585,16 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 		goto done;
 	}
 
+	/*
+	 * preallocation is required for asynchronous passing of mbufs,
+	 * otherwise we can wind up building up an infinite number of
+	 * mbufs during the asynchronous latency.
+	 */
+	if ((so->so_snd.ssb_flags & (SSB_PREALLOC | SSB_STOPSUPP)) == 0) {
+		error = EINVAL;
+		goto done;
+	}
+
 	*sbytes = 0;
 	/*
 	 * Protect against multiple writers to the socket.
@@ -1600,7 +1610,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	for (off = offset; ; off += xfsize, *sbytes += xfsize + hbytes) {
 		vm_pindex_t pindex;
 		vm_offset_t pgoff;
-		int space;
+		long space;
 
 		pindex = OFF_TO_IDX(off);
 retry_lookup:
@@ -1622,8 +1632,12 @@ retry_lookup:
 		 * Optimize the non-blocking case by looking at the socket space
 		 * before going to the extra work of constituting the sf_buf.
 		 */
-		if ((fp->f_flag & FNONBLOCK) &&
-		    ssb_space_prealloc(&so->so_snd) <= 0) {
+		if (so->so_snd.ssb_flags & SSB_PREALLOC)
+			space = ssb_space_prealloc(&so->so_snd);
+		else
+			space = ssb_space(&so->so_snd);
+
+		if ((fp->f_flag & FNONBLOCK) && space <= 0) {
 			if (so->so_state & SS_CANTSENDMORE)
 				error = EPIPE;
 			else
@@ -1803,7 +1817,11 @@ retry_space:
 		 * after checking the connection state above in order to avoid
 		 * a race condition with ssb_wait().
 		 */
-		space = ssb_space_prealloc(&so->so_snd);
+		if (so->so_snd.ssb_flags & SSB_PREALLOC)
+			space = ssb_space_prealloc(&so->so_snd);
+		else
+			space = ssb_space(&so->so_snd);
+
 		if (space < m->m_pkthdr.len && space < so->so_snd.ssb_lowat) {
 			if (fp->f_flag & FNONBLOCK) {
 				m_freem(m);
@@ -1827,8 +1845,10 @@ retry_space:
 			goto retry_space;
 		}
 
-		for (mp = m; mp != NULL; mp = mp->m_next)
-			ssb_preallocstream(&so->so_snd, mp);
+		if (so->so_snd.ssb_flags & SSB_PREALLOC) {
+			for (mp = m; mp != NULL; mp = mp->m_next)
+				ssb_preallocstream(&so->so_snd, mp);
+		}
 		if (use_sendfile_async)
 			error = so_pru_senda(so, 0, m, NULL, NULL, td);
 		else
@@ -1843,8 +1863,10 @@ retry_space:
 	if (mheader != NULL) {
 		*sbytes += mheader->m_pkthdr.len;
 
-		for (mp = mheader; mp != NULL; mp = mp->m_next)
-			ssb_preallocstream(&so->so_snd, mp);
+		if (so->so_snd.ssb_flags & SSB_PREALLOC) {
+			for (mp = mheader; mp != NULL; mp = mp->m_next)
+				ssb_preallocstream(&so->so_snd, mp);
+		}
 		if (use_sendfile_async)
 			error = so_pru_senda(so, 0, mheader, NULL, NULL, td);
 		else

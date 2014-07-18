@@ -717,6 +717,9 @@ sctp_attach(netmsg_t msg)
 		goto out;
 	}
 	error = soreserve(so, sctp_sendspace, sctp_recvspace, NULL);
+	atomic_set_int(&so->so_rcv.ssb_flags, SSB_PREALLOC);
+	atomic_set_int(&so->so_snd.ssb_flags, SSB_PREALLOC);
+
 	if (error)
 		goto out;
 	error = sctp_inpcb_alloc(so);

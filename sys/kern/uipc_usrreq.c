@@ -816,7 +816,6 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 
 	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {
 		switch (so->so_type) {
-
 		case SOCK_STREAM:
 		case SOCK_SEQPACKET:
 			error = soreserve(so, unpst_sendspace, unpst_recvspace,
@@ -834,6 +833,17 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 		if (error)
 			goto failed;
 	}
+
+	/*
+	 * In order to support sendfile we have to set either SSB_STOPSUPP
+	 * or SSB_PREALLOC.  Unix domain sockets use the SSB_STOP flow
+	 * control mechanism.
+	 */
+	if (so->so_type == SOCK_STREAM) {
+		atomic_set_int(&so->so_rcv.ssb_flags, SSB_STOPSUPP);
+		atomic_set_int(&so->so_snd.ssb_flags, SSB_STOPSUPP);
+	}
+
 	unp = kmalloc(sizeof(*unp), M_UNPCB, M_WAITOK | M_ZERO | M_NULLOK);
 	if (unp == NULL) {
 		error = ENOBUFS;

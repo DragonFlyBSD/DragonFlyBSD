@@ -1601,8 +1601,8 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 		if (error)
 			return (error);
 	}
-	atomic_set_int(&so->so_rcv.ssb_flags, SSB_AUTOSIZE);
-	atomic_set_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE);
+	atomic_set_int(&so->so_rcv.ssb_flags, SSB_AUTOSIZE | SSB_PREALLOC);
+	atomic_set_int(&so->so_snd.ssb_flags, SSB_AUTOSIZE | SSB_PREALLOC);
 	cpu = mycpu->gd_cpuid;
 
 	/*
