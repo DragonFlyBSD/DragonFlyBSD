@@ -185,6 +185,9 @@ static struct dev_ops mrsas_ops = {
 
 MALLOC_DEFINE(M_MRSAS, "mrsasbuf", "Buffers for the MRSAS driver");
 
+static int	mrsas_mfi_enable = 0;
+TUNABLE_INT("hw.mrsas.mfi_enable", &mrsas_mfi_enable);
+
 static int	mrsas_msi_enable = 1;
 TUNABLE_INT("hw.mrsas.msi.enable", &mrsas_msi_enable);
 
@@ -339,13 +342,19 @@ static int mrsas_probe(device_t dev)
     struct mrsas_ident *id;
 
     if ((id = mrsas_find_ident(dev)) != NULL) {
-        if (first_ctrl) {
-            kprintf("LSI MegaRAID SAS FreeBSD mrsas driver version: %s\n", MRSAS_VERSION);
-            first_ctrl = 0;
-        } 
-        device_set_desc(dev, id->desc);
-    	/* between BUS_PROBE_DEFAULT and BUS_PROBE_LOW_PRIORITY */
-    	return (-30);
+        /* give priority to mfi(4) if tunable set */
+        TUNABLE_INT_FETCH("hw.mrsas.mfi_enable", &mrsas_mfi_enable);
+        if ((id->device == MRSAS_TBOLT) && mrsas_mfi_enable) {
+            return (ENXIO);
+        } else {
+            if (first_ctrl) {
+                kprintf("LSI MegaRAID SAS FreeBSD mrsas driver version: %s\n",
+                    MRSAS_VERSION);
+                first_ctrl = 0;
+            } 
+            device_set_desc(dev, id->desc);
+            return (BUS_PROBE_DEFAULT);
+        }
     }
     return (ENXIO);
 }

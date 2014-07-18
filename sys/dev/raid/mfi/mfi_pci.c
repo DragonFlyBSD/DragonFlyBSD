@@ -107,9 +107,6 @@ MODULE_VERSION(mfi, 1);
 static int	mfi_msi_enable = 1;
 TUNABLE_INT("hw.mfi.msi.enable", &mfi_msi_enable);
 
-static int	mfi_mrsas_enable = 0;
-TUNABLE_INT("hw.mfi.mrsas_enable", &mfi_mrsas_enable);
-
 struct mfi_ident {
 	uint16_t	vendor;
 	uint16_t	device;
@@ -119,37 +116,37 @@ struct mfi_ident {
 	const char	*desc;
 } mfi_identifiers[] = {
 	{ 0x1000, 0x005b, 0x1028, 0x1f2d,
-	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT | MFI_FLAGS_MRSAS,
+	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT,
 	  "Dell PERC H810 Adapter" },
 	{ 0x1000, 0x005b, 0x1028, 0x1f30,
-	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT | MFI_FLAGS_MRSAS,
+	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT,
 	  "Dell PERC H710 Embedded" },
 	{ 0x1000, 0x005b, 0x1028, 0x1f31,
-	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT | MFI_FLAGS_MRSAS,
+	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT,
 	  "Dell PERC H710P Adapter" },
 	{ 0x1000, 0x005b, 0x1028, 0x1f33,
-	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT | MFI_FLAGS_MRSAS,
+	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT,
 	  "Dell PERC H710P Mini (blades)" },
 	{ 0x1000, 0x005b, 0x1028, 0x1f34,
-	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT | MFI_FLAGS_MRSAS,
+	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT,
 	  "Dell PERC H710P Mini (monolithics)" },
 	{ 0x1000, 0x005b, 0x1028, 0x1f35,
-	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT | MFI_FLAGS_MRSAS,
+	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT,
 	  "Dell PERC H710 Adapter" },
 	{ 0x1000, 0x005b, 0x1028, 0x1f37,
-	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT | MFI_FLAGS_MRSAS,
+	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT,
 	  "Dell PERC H710 Mini (blades)" },
 	{ 0x1000, 0x005b, 0x1028, 0x1f38,
-	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT | MFI_FLAGS_MRSAS,
+	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT,
 	  "Dell PERC H710 Mini (monolithics)" },
 	{ 0x1000, 0x005b, 0x8086, 0x9265,
-	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT | MFI_FLAGS_MRSAS,
+	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT,
 	  "Intel (R) RAID Controller RS25DB080" },
 	{ 0x1000, 0x005b, 0x8086, 0x9285,
-	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT | MFI_FLAGS_MRSAS,
+	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT,
 	  "Intel (R) RAID Controller RS25NB008" },
 	{ 0x1000, 0x005b, 0xffff, 0xffff,
-	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT | MFI_FLAGS_MRSAS,
+	  MFI_FLAGS_SKINNY | MFI_FLAGS_TBOLT,
 	  "ThunderBolt" },
 	{ 0x1000, 0x0060, 0x1028, 0xffff, MFI_FLAGS_1078,
 	  "Dell PERC 6" },
@@ -215,13 +212,7 @@ mfi_pci_probe(device_t dev)
 
 	if ((id = mfi_find_ident(dev)) != NULL) {
 		device_set_desc(dev, id->desc);
-
-		/* give priority to mrsas if tunable set */
-		TUNABLE_INT_FETCH("hw.mfi.mrsas_enable", &mfi_mrsas_enable);
-		if ((id->flags & MFI_FLAGS_MRSAS) && mfi_mrsas_enable)
-			return (ENXIO); /* XXX (BUS_PROBE_LOW_PRIORITY); */
-		else
-			return (BUS_PROBE_DEFAULT);
+		return (BUS_PROBE_DEFAULT);
 	}
 	return (ENXIO);
 }

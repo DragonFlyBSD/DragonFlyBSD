@@ -34,7 +34,7 @@
 .\"
 .\" $FreeBSD: head/share/man/man4/mrsas.4 267182 2014-06-06 19:00:43Z joel $
 .\"
-.Dd June 14, 2014
+.Dd July 18, 2014
 .Dt MRSAS 4
 .Os
 .Sh NAME
@@ -97,28 +97,6 @@ and
 .Nm
 drivers can detect and manage the LSI MegaRAID SAS 2208/2308/3008/3108 series of
 controllers.
-.Pp
-The
-.Xr device.hints 5
-option is provided to tune the
-.Nm
-driver's behavior for LSI MegaRAID SAS 2208/2308/3008/3108 controllers.
-By default, the
-.Xr mfi 4
-driver will detect these controllers.
-See the
-.Nm PRIORITY
-section to know more about driver priority for MR-Fusion devices.
-.Pp
-.Nm
-will provide a priority of (-30) (between
-.Dv BUS_PROBE_DEFAULT
-and
-.Dv BUS_PROBE_LOW_PRIORITY )
-at probe call for device id's 0x005B, 0x005D, and
-0x005F so that
-.Nm
-does not take control of these devices without user intervention.
 .Sh HARDWARE
 The
 .Nm
@@ -164,6 +142,21 @@ DELL PERC H730/P
 DELL PERC H330
 .El
 .Sh CONFIGURATION
+A tunable is provided to adjust the
+.Nm
+driver's behaviour when attaching to a card.
+By default, the driver will attach to all known cards with
+high probe priority.
+For
+.Dq Thunderbolt
+series cards this behavior can be changed to attaching via the
+.Xr mfi 4
+driver by setting the following tunable value in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+hw.mrsas.mfi_enable=1
+.Ed
+.Pp
 By default, the driver will use MSI if it is supported.
 This behavior can be turned off by setting the following tunable value in
 .Xr loader.conf 5 :
@@ -229,96 +222,6 @@ Enable prints for OCR and I/O timeout.
 .It 0x10
 Enable prints for AEN events.
 .El
-.Sh PRIORITY
-The
-.Nm
-driver will always set a default (-30) priority in the PCI subsystem for
-selection of MR-Fusion cards.
-(It is between
-.Dv BUS_PROBE_DEFAULT
-and
-.Dv BUS_PROBE_LOW_PRIORITY ) .
-MR-Fusion Controllers include all cards with the
-Device IDs -
-0x005B,
-0x005D,
-0x005F.
-.Pp
-The
-.Xr mfi 4
-driver will set a priority of either
-.Dv BUS_PROBE_DEFAULT
-or
-.Dv BUS_PROBE_LOW_PRIORITY
-(depending on the device.hints setting) in the PCI
-subsystem for selection of MR-Fusion cards.
-With the above design in place, the
-.Xr mfi 4
-driver will attach to a MR-Fusion card given that it has a higher priority than
-.Nm .
-.Pp
-Using
-.Pa /boot/device.hints
-(as mentioned below), the user can provide a preference
-for the
-.Nm
-driver to detect a MR-Fusion card instead of the
-.Xr mfi 4
-driver.
-.Bd -ragged -offset indent
-.Cd hw.mfi.mrsas_enable="1"
-.Ed
-.Pp
-At boot time, the
-.Xr mfi 4
-driver will get priority to detect MR-Fusion controllers by default.
-Before
-changing this default driver selection policy, LSI advises users to understand
-how the driver selection policy works.
-LSI's policy is to provide priority to
-the
-.Xr mfi 4
-driver to detect MR-Fusion cards, but allow for the ability to choose the
-.Nm
-driver to detect MR-Fusion cards.
-.Pp
-LSI recommends setting hw.mfi.mrsas_enable="0" for customers who are using the
-older
-.Xr mfi 4
-driver and do not want to switch to
-.Nm .
-For those customers who are using a MR-Fusion controller for the first time, LSI
-recommends using the
-.Nm
-driver and setting hw.mfi.mrsas_enable="1".
-.Pp
-Changing the default behavior is well tested under most conditions, but
-unexpected behavior may pop up if more complex and unrealistic operations are
-executed by switching between the
-.Xr mfi 4
-and
-.Nm
-drivers for MR-Fusion.
-Switching drivers is designed to happen only one time.
-Although multiple
-switching is possible, it is not recommended.
-The user should decide from
-.Nm Start of Day
-which driver they want to use for the MR-Fusion card.
-.Pp
-The user may see different device names when switching from
-.Xr mfi 4
-to
-.Nm .
-This behavior is
-.Nm Functions As Designed
-and the user needs to change the
-.Xr fstab 5
-entry manually if they are doing any experiments with
-.Xr mfi 4
-and
-.Nm
-interoperability.
 .Sh FILES
 .Bl -tag -width ".Pa /dev/mrsas?" -compact
 .It Pa /dev/da?

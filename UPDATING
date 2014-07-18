@@ -12,6 +12,18 @@
 +         UPGRADING DRAGONFLY FROM 3.8 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+DEFAULT DRIVER CHANGED FOR LSI "THUNDERBOLT" SERIES RAID CONTROLLERS
+--------------------------------------------------------------------
+
+The default driver for those controllers is now mrsas(4) due to reports
+of file system corruption using the mfi(4) driver. The whole issue (and
+how to deal with potential problems when switching) was explained here:
+
+http://lists.dragonflybsd.org/pipermail/users/2014-July/128703.html
+
+A tunable is provided for letting those controllers still attach via
+the mfi(4) driver, hw.mrsas.mfi_enable (see mrsas(4) manual page).
+
 OLDER NETWORK DRIVERS MOVED TO I386 ONLY
 ----------------------------------------
 
