@@ -1340,7 +1340,7 @@ re_attach(device_t dev)
 	int error = 0, qlen, msi_enable;
 	u_int irq_flags;
 
-	callout_init(&sc->re_timer);
+	callout_init_mp(&sc->re_timer);
 	sc->re_dev = dev;
 
 	if (RE_IS_8139CP(sc)) {
