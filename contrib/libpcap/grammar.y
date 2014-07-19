@@ -25,8 +25,6 @@ static const char rcsid[] _U_ =
     "@(#) $Header: /tcpdump/master/libpcap/grammar.y,v 1.101 2007-11-18 02:03:52 guy Exp $ (LBL)";
 #endif
 
-#define _KERNEL_STRUCTURES
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -57,7 +55,6 @@ struct rtentry;
 #include "gencode.h"
 #ifdef HAVE_NET_PFVAR_H
 #include <net/if.h>
-#include <net/if_var.h>
 #include <net/pf/pfvar.h>
 #include <net/pf/if_pflog.h>
 #endif

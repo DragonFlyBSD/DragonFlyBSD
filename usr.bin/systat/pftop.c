@@ -31,8 +31,6 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/tree.h>

@@ -27,7 +27,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 %{
-#define _KERNEL_STRUCTURES
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>

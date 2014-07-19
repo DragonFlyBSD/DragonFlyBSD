@@ -1,10 +1,7 @@
-/*	$OpenBSD: pfvar.h,v 1.276 2008/07/03 15:46:23 henning Exp $ */
-
 /*
- * Copyright (c) 2010 The DragonFly Project.  All rights reserved.
- *
- * Copyright (c) 2001 Daniel Hartmeier
- * All rights reserved.
+ * Copyright (c) 2010-2014 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2001 Daniel Hartmeier.  All rights reserved.
+ * Originally imported from OpenBSD.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,7 +26,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
 #ifndef _NET_PFVAR_H_
@@ -64,6 +60,7 @@ union sockaddr_union {
 
 struct ip;
 struct ip6_hdr;
+struct pf_state;
 
 extern struct lwkt_token pf_token;
 extern struct lwkt_token pf_gtoken;
@@ -808,6 +805,8 @@ struct pf_state_cmp {
 	u_int8_t		 pad[3];
 };
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 struct pf_state {
 	u_int64_t		 id;
 	u_int32_t		 creatorid;
@@ -837,18 +836,28 @@ struct pf_state {
 	u_int16_t		 tag;
 	u_int8_t		 log;
 	u_int8_t		 state_flags;
+	u_int8_t		 timeout;
+	u_int8_t		 sync_flags;
+	u_int8_t		 pickup_mode;
+	struct lock		lk;
+};
+
+#endif
+
+/*
+ * state_flags
+ */
 #define	PFSTATE_ALLOWOPTS	0x01
 #define	PFSTATE_SLOPPY		0x02
 #define PFSTATE_STACK_GLOBAL	0x04	/* pf_state_key[1] is global */
 #define PFSTATE_CREATEINPROG	0x08	/* prevent find from finding it */
-	u_int8_t		 timeout;
-	u_int8_t		 sync_flags;
-	u_int8_t		 pickup_mode;
+
+/*
+ * sync_flags
+ */
 #define	PFSTATE_NOSYNC	 0x01
 #define	PFSTATE_FROMSYNC 0x02
 #define	PFSTATE_STALE	 0x04
-	struct lock		lk;
-};
 
 /*
  * Unified state structures for pulling states out of the kernel

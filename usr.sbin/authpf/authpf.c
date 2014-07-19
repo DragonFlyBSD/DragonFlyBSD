@@ -18,7 +18,6 @@
  * $FreeBSD: head/contrib/pf/authpf/authpf.c 223637 2011-06-28 11:57:25Z bz $
  */
 
-#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/file.h>
