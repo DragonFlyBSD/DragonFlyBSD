@@ -75,6 +75,7 @@ static device_method_t rgephy_methods[] = {
 static const struct mii_phydesc rgephys[] = {
 	MII_PHYDESC(REALTEK2,	RTL8169S),
 	MII_PHYDESC(xxREALTEK,	RTL8169S),
+	MII_PHYDESC(xxREALTEK,	RTL8251),
 	MII_PHYDESC_NULL
 };
 
@@ -422,7 +423,8 @@ rgephy_loop(struct mii_softc *sc)
 	uint16_t id2;
 
 	id2 = PHY_READ(sc, MII_PHYIDR2);
-	if (MII_REV(id2) < 2) {
+	if (MII_MODEL(id2) != MII_MODEL_xxREALTEK_RTL8251 &&
+	    MII_REV(id2) < 2) {
 		PHY_WRITE(sc, RGEPHY_MII_BMCR, RGEPHY_BMCR_PDOWN);
 		DELAY(1000);
 	}
@@ -456,7 +458,7 @@ rgephy_load_dspcode(struct mii_softc *sc)
 {
 	int val;
 
-	if (sc->mii_rev > 1)
+	if (sc->mii_model == MII_MODEL_xxREALTEK_RTL8251 || sc->mii_rev > 1)
 		return;
 
 	PHY_WRITE(sc, 31, 0x0001);

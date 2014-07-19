@@ -234,6 +234,7 @@ model QUALSEMI QS6612		0x0000 QS6612 10/100 media interface
 
 /* RealTek Semiconductor PHYs */
 model REALTEK RTL8201L		0x0020 RTL8201L 10/100 media interface
+model xxREALTEK RTL8251		0x0000 RTL8251 media interface
 model xxREALTEK RTL8169S	0x0011 8211B/RTL8169S/8110S media interface
 model REALTEK2 RTL8169S		0x0011 RTL8169S/8110S media interface
 
