@@ -1366,6 +1366,7 @@ nfs_readrpc_bio_done(nfsm_info_t info)
 
 	lwkt_gettoken(&nmp->nm_token);
 
+	ERROROUT(info->error);
 	if (info->v3) {
 		ERROROUT(nfsm_postop_attr(info, info->vp, &attrflag,
 					 NFS_LATTR_NOSHRINK));
@@ -1519,6 +1520,7 @@ nfs_writerpc_bio_done(nfsm_info_t info)
 
 	lwkt_gettoken(&nmp->nm_token);
 
+	ERROROUT(info->error);
 	if (info->v3) {
 		/*
 		 * The write RPC returns a before and after mtime.  The
@@ -1703,6 +1705,7 @@ nfs_commitrpc_bio_done(nfsm_info_t info)
 
 	lwkt_gettoken(&nmp->nm_token);
 
+	ERROROUT(info->error);
 	ERROROUT(nfsm_wcc_data(info, info->vp, &wccflag));
 	if (error == 0) {
 		NULLOUT(tl = nfsm_dissect(info, NFSX_V3WRITEVERF));
