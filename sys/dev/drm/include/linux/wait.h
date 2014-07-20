@@ -40,6 +40,7 @@ init_waitqueue_head(wait_queue_head_t *eq)
 	spin_init(&eq->lock);
 }
 
+#define wake_up(eq)		wakeup_one(eq)
 #define wake_up_all(eq)		wakeup(eq)
 
 /*
@@ -57,7 +58,7 @@ init_waitqueue_head(wait_queue_head_t *eq)
 */
 #define __wait_event_common(wq, condition, timeout_jiffies, flags)	\
 ({									\
-	int start_jiffies, elapsed_jiffies, remaining_jiffies;		\
+	int start_jiffies, elapsed_jiffies, remaining_jiffies, ret;	\
 	bool timeout_expired = false;					\
 	long retval;							\
 									\
@@ -89,6 +90,9 @@ init_waitqueue_head(wait_queue_head_t *eq)
 									\
 	retval;								\
 })
+
+#define wait_event(wq, condition)					\
+		__wait_event_common(wq, condition, 0, 0)
 
 #define wait_event_timeout(wq, condition, timeout)			\
 		__wait_event_common(wq, condition, timeout, 0)
