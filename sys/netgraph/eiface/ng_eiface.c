@@ -46,6 +46,7 @@
 #include <net/if_types.h>
 #include <net/ifq_var.h>
 #include <net/netisr.h>
+#include <net/route.h>
 
 
 #include <netgraph/ng_message.h>
