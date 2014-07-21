@@ -620,6 +620,8 @@ struct intel_l3_parity {
 typedef struct drm_i915_private {
 	struct drm_device *dev;
 
+	const struct intel_device_info *info;
+
 	device_t *gmbus_bridge;
 	device_t *bbbus_bridge;
 	device_t *gmbus;
@@ -889,8 +891,6 @@ typedef struct drm_i915_private {
 
 	/* Kernel Modesetting */
 
-	const struct intel_device_info *info;
-
 	struct sdvo_device_mapping sdvo_mappings[2];
 	/* indicate whether the LVDS_BORDER should be enabled or not */
 	unsigned int lvds_border_bits;
@@ -899,8 +899,7 @@ typedef struct drm_i915_private {
 
 	struct drm_crtc *plane_to_crtc_mapping[3];
 	struct drm_crtc *pipe_to_crtc_mapping[3];
-	/* wait_queue_head_t pending_flip_queue; XXXKIB */
-	bool flip_pending_is_done;
+	wait_queue_head_t pending_flip_queue;
 
 	struct intel_pch_pll pch_plls[I915_NUM_PLLS];
 	struct intel_ddi_plls ddi_plls;

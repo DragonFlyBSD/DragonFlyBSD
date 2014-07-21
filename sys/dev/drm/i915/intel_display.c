@@ -1823,18 +1823,13 @@ static int
 intel_finish_fb(struct drm_framebuffer *old_fb)
 {
 	struct drm_i915_gem_object *obj = to_intel_framebuffer(old_fb)->obj;
-	struct drm_device *dev = obj->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = obj->base.dev->dev_private;
 	bool was_interruptible = dev_priv->mm.interruptible;
 	int ret;
 
-/* XXX */	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
-	while (!atomic_read(&dev_priv->mm.wedged) &&
-	       atomic_read(&obj->pending_flip) != 0) {
-		lksleep(&obj->pending_flip, &dev->event_lock,
-		    0, "915flp", 0);
-	}
-/* XXX */	lockmgr(&dev->event_lock, LK_RELEASE);
+	wait_event(dev_priv->pending_flip_queue,
+		   atomic_read(&dev_priv->mm.wedged) ||
+		   atomic_read(&obj->pending_flip) == 0);
 
 	/* Big Hammer, we also need to ensure that any pending
 	 * MI_WAIT_FOR_EVENT inside a user batch buffer on the
@@ -1847,6 +1842,7 @@ intel_finish_fb(struct drm_framebuffer *old_fb)
 	dev_priv->mm.interruptible = false;
 	ret = i915_gem_object_finish_gpu(obj);
 	dev_priv->mm.interruptible = was_interruptible;
+
 	return ret;
 }
 
@@ -2483,6 +2479,22 @@ static void ironlake_fdi_disable(struct drm_crtc *crtc)
 	DELAY(100);
 }
 
+static bool intel_crtc_has_pending_flip(struct drm_crtc *crtc)
+{
+	struct drm_device *dev = crtc->dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	bool pending;
+
+	if (atomic_read(&dev_priv->mm.wedged))
+		return false;
+
+	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
+	pending = to_intel_crtc(crtc)->unpin_work != NULL;
+	lockmgr(&dev->event_lock, LK_RELEASE);
+
+	return pending;
+}
+
 /*
  * When we disable a pipe, we need to clear any pending scanline wait events
  * to avoid hanging the ring, which we assume we are waiting on.
@@ -2505,20 +2517,18 @@ static void intel_clear_scanline_wait(struct drm_device *dev)
 
 static void intel_crtc_wait_for_pending_flips(struct drm_crtc *crtc)
 {
-	struct drm_i915_gem_object *obj;
-	struct drm_i915_private *dev_priv;
-	struct drm_device *dev;
+	struct drm_device *dev = crtc->dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	if (crtc->fb == NULL)
 		return;
 
-	obj = to_intel_framebuffer(crtc->fb)->obj;
-	dev = crtc->dev;
-	dev_priv = dev->dev_private;
-	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
-	while (atomic_read(&obj->pending_flip) != 0)
-		lksleep(&obj->pending_flip, &dev->event_lock, 0, "915wfl", 0);
-	lockmgr(&dev->event_lock, LK_RELEASE);
+	wait_event(dev_priv->pending_flip_queue,
+		   !intel_crtc_has_pending_flip(crtc));
+
+	DRM_LOCK(dev);
+	intel_finish_fb(crtc->fb);
+	DRM_UNLOCK(dev);
 }
 
 static bool intel_crtc_driving_pch(struct drm_crtc *crtc)
@@ -5414,10 +5424,17 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 
 	lockmgr(&dev->event_lock, LK_EXCLUSIVE);
 	work = intel_crtc->unpin_work;
-	if (work == NULL || !atomic_read(&work->pending)) {
+
+	/* Ensure we don't miss a work->pending update ... */
+	cpu_lfence();
+
+	if (work == NULL || atomic_read(&work->pending) < INTEL_FLIP_COMPLETE) {
 		lockmgr(&dev->event_lock, LK_RELEASE);
 		return;
 	}
+
+	/* and that the unpin work is consistent wrt ->pending. */
+	cpu_lfence();
 
 	intel_crtc->unpin_work = NULL;
 
@@ -5432,7 +5449,7 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 
 	atomic_clear_mask(1 << intel_crtc->plane,
 			  &obj->pending_flip.counter);
-	wakeup(&obj->pending_flip);
+	wake_up(&dev_priv->pending_flip_queue);
 
 	queue_work(dev_priv->wq, &work->work);
 }
