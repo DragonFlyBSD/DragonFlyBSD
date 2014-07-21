@@ -169,7 +169,6 @@ struct drm_i915_master_private {
 struct drm_i915_fence_reg {
 	struct list_head lru_list;
 	struct drm_i915_gem_object *obj;
-	uint32_t setup_seqno;
 	int pin_count;
 };
 
@@ -1097,7 +1096,6 @@ struct drm_i915_gem_object {
 
 	/** Breadcrumb of last fenced GPU access to the buffer. */
 	uint32_t last_fenced_seqno;
-	struct intel_ring_buffer *last_fenced_ring;
 
 	/** Current tiling stride for the object, if it's tiled. */
 	uint32_t stride;
@@ -1445,7 +1443,6 @@ int i915_gem_object_finish_gpu(struct drm_i915_gem_object *obj);
 int i915_gem_flush_ring(struct intel_ring_buffer *ring,
     uint32_t invalidate_domains, uint32_t flush_domains);
 void i915_gem_release_mmap(struct drm_i915_gem_object *obj);
-int i915_gem_object_put_fence(struct drm_i915_gem_object *obj);
 int i915_gem_idle(struct drm_device *dev);
 int i915_gem_init_hw(struct drm_device *dev);
 void i915_gem_l3_remap(struct drm_device *dev);
@@ -1460,8 +1457,6 @@ int i915_add_request(struct intel_ring_buffer *ring,
 		     struct drm_i915_gem_request *request);
 int i915_wait_seqno(struct intel_ring_buffer *ring,
 				 uint32_t seqno);
-int i915_gem_object_get_fence(struct drm_i915_gem_object *obj,
-    struct intel_ring_buffer *pipelined);
 void i915_gem_reset(struct drm_device *dev);
 int i915_gem_mmap(struct drm_device *dev, uint64_t offset, int prot);
 int i915_gem_fault(struct drm_device *dev, uint64_t offset, int prot,
@@ -1610,6 +1605,9 @@ i915_seqno_passed(uint32_t seq1, uint32_t seq2)
 }
 
 u32 i915_gem_next_request_seqno(struct intel_ring_buffer *ring);
+
+int __must_check i915_gem_object_get_fence(struct drm_i915_gem_object *obj);
+int __must_check i915_gem_object_put_fence(struct drm_i915_gem_object *obj);
 
 /* On SNB platform, before reading ring registers forcewake bit
  * must be set to prevent GT core from power down and stale values being

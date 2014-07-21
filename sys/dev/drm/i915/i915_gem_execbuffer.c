@@ -531,7 +531,7 @@ pin_and_fence_object(struct drm_i915_gem_object *obj,
 	if (has_fenced_gpu_access) {
 		if (entry->flags & EXEC_OBJECT_NEEDS_FENCE) {
 			if (obj->tiling_mode) {
-				ret = i915_gem_object_get_fence(obj, ring);
+				ret = i915_gem_object_get_fence(obj);
 				if (ret)
 					goto err_unpin;
 
