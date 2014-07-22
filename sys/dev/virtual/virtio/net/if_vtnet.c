@@ -245,10 +245,6 @@ struct vtnet_mac_filter {
 #define VTNET_MAX_RX_SEGS	34
 #define VTNET_MAX_TX_SEGS	34
 
-#ifndef CSUM_TSO
-#define CSUM_TSO                0
-#endif
-
 #define IFCAP_TSO4              0x00100 /* can do TCP Segmentation Offload */
 #define IFCAP_TSO6              0x00200 /* can do TCP6 Segmentation Offload */
 #define IFCAP_LRO               0x00400 /* can do Large Receive Offload */
