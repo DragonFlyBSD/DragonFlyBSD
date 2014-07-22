@@ -197,8 +197,6 @@ static const struct uchcom_divider_record dividers[] =
 	{367, 1, 11719, {0, 0, 0}},
 };
 
-#define	NUM_DIVIDERS	(sizeof (dividers) / sizeof (dividers[0]))
-
 static const STRUCT_USB_HOST_ID uchcom_devs[] = {
 	{USB_VPI(USB_VENDOR_WCH, USB_PRODUCT_WCH_CH341SER, 0)},
 	{USB_VPI(USB_VENDOR_WCH2, USB_PRODUCT_WCH2_CH341SER, 0)},
@@ -545,7 +543,7 @@ uchcom_calc_divider_settings(struct uchcom_divider *dp, uint32_t rate)
 	uint8_t i;
 
 	/* find record */
-	for (i = 0; i != NUM_DIVIDERS; i++) {
+	for (i = 0; i != NELEM(dividers); i++) {
 		if (dividers[i].dvr_high >= rate &&
 		    dividers[i].dvr_low <= rate) {
 			rp = &dividers[i];

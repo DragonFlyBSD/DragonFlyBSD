@@ -1446,7 +1446,7 @@ atp_compute_smoothening_scale_ratio(atp_stroke *stroke, int *numerator,
 		155, 155, 155, 156, 156, 156, 157, 157,
 		157, 158, 158, 158, 159, 159, 159, 160
 	};
-	const u_int N = sizeof(sqrt_table) / sizeof(sqrt_table[0]);
+	const u_int N = NELEM(sqrt_table);
 
 	dxdt = stroke->components[X].delta_mickeys;
 	dydt = stroke->components[Y].delta_mickeys;

@@ -611,8 +611,6 @@ static const int32_t uplcom_rates[] = {
 	230400, 460800, 614400, 921600, 1228800
 };
 
-#define	N_UPLCOM_RATES	(sizeof(uplcom_rates)/sizeof(uplcom_rates[0]))
-
 static int
 uplcom_pre_param(struct ucom_softc *ucom, struct termios *t)
 {
@@ -632,7 +630,7 @@ uplcom_pre_param(struct ucom_softc *ucom, struct termios *t)
 	 *      it the same as the PL2303X.
 	 */
 	if (sc->sc_chiptype != TYPE_PL2303HX) {
-		for (i = 0; i < N_UPLCOM_RATES; i++) {
+		for (i = 0; i < NELEM(uplcom_rates); i++) {
 			if (uplcom_rates[i] == t->c_ospeed)
 				return (0);
 		}

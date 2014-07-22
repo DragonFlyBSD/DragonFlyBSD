@@ -604,7 +604,7 @@ u3g_sael_m460_init(struct usb_device *udev)
 		return;
 	}
 
-	for (n = 0; n != (sizeof(setup)/sizeof(setup[0])); n++) {
+	for (n = 0; n != NELEM(setup); n++) {
 
 		memcpy(&req, setup[n], sizeof(req));
 
