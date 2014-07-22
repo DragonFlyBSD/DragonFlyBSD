@@ -54,7 +54,9 @@ struct tls_tcb {
 	void *tcb_dtv;			/* Dynamic Thread Vector */
 	void *tcb_pthread;		/* thread library's data*/
 	int *tcb_errno_p;		/* pointer to per-thread errno */
-	void *tcb_unused[4];
+	void *tcb_segstack;		/* used for segmented stacks */
+					/* e.g. by LLVM to store stack bound */
+	void *tcb_unused[3];
 };
 
 struct tls_dtv {
