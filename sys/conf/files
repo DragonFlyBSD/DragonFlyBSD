@@ -94,7 +94,6 @@ crypto/camellia/camellia.c		optional ipsec ipsec_esp
 crypto/camellia/camellia-api.c		optional ipsec ipsec_esp
 crypto/sha1.c				optional ipsec
 crypto/sha1.c				optional carp
-crypto/sha2/sha2.c			optional ipsec
 opencrypto/cast.c			optional ipsec ipsec_esp
 ddb/db_access.c				optional ddb
 ddb/db_kld.c				optional ddb
@@ -1849,7 +1848,7 @@ crypto/rijndael/rijndael-alg-fst.c	optional crypto
 crypto/rijndael/rijndael-api-fst.c	optional crypto
 crypto/rijndael/rijndael-api.c		optional crypto
 crypto/sha1.c      			optional crypto
-crypto/sha2/sha2.c     			optional crypto
+crypto/sha2/sha2.c     			standard
 crypto/twofish/twofish.c		optional crypto
 crypto/serpent/serpent.c		optional crypto
 net/zlib.c				optional crypto
