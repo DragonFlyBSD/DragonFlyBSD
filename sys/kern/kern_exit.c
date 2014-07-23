@@ -382,12 +382,14 @@ exit1(int rv)
 	}
 
 	/*
-	 * Release user portion of address space.
-	 * This releases references to vnodes,
-	 * which could cause I/O if the file has been unlinked.
-	 * Need to do this early enough that we can still sleep.
-	 * Can't free the entire vmspace as the kernel stack
-	 * may be mapped within that space also.
+	 * Release the user portion of address space.  The exitbump prevents
+	 * the vmspace from being completely eradicated (using holdcnt).
+	 * This releases references to vnodes, which could cause I/O if the
+	 * file has been unlinked.  We need to do this early enough that
+	 * we can still sleep.
+	 *
+	 * We can't free the entire vmspace as the kernel stack may be mapped
+	 * within that space also.
 	 *
 	 * Processes sharing the same vmspace may exit in one order, and
 	 * get cleaned up by vmspace_exit() in a different order.  The
@@ -396,8 +398,7 @@ exit1(int rv)
 	 * by vmspace_exit() (which decrements exitingcnt) cleans up the
 	 * remainder.
 	 */
-	vmspace_exitbump(vm);
-	sysref_put(&vm->vm_sysref);
+	vmspace_relexit(vm);
 
 	if (SESS_LEADER(p)) {
 		struct session *sp = p->p_session;

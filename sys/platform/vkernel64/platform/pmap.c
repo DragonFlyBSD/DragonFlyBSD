@@ -3331,8 +3331,8 @@ pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 		lp = RB_ROOT(&p->p_lwp_tree);
 		pmap_setlwpvm(lp, newvm);
 		if (adjrefs) {
-			sysref_get(&newvm->vm_sysref);
-			sysref_put(&oldvm->vm_sysref);
+			vmspace_ref(newvm);
+			vmspace_rel(oldvm);
 		}
 	}
 	crit_exit();

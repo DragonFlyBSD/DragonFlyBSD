@@ -828,7 +828,7 @@ exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 		vmspace = imgp->proc->p_vmspace;
 		pmap_remove_pages(vmspace_pmap(vmspace), stack_addr, USRSTACK);
 		map = &vmspace->vm_map;
-	} else if (vmspace->vm_sysref.refcnt == 1) {
+	} else if (vmspace_getrefs(vmspace) == 1) {
 		shmexit(vmspace);
 		pmap_remove_pages(vmspace_pmap(vmspace),
 				  0, VM_MAX_USER_ADDRESS);

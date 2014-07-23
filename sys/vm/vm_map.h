@@ -265,17 +265,18 @@ struct vmspace {
 	caddr_t vm_daddr;	/* user virtual address of data XXX */
 	caddr_t vm_maxsaddr;	/* user VA at max stack growth */
 	caddr_t vm_minsaddr;	/* user VA at max stack growth */
-#define vm_endcopy	vm_exitingcnt
-	int	vm_exitingcnt;  /* exit/wait context reaping */
-	int	vm_unused01;	/* for future fields */
+#define vm_endcopy	vm_unused01
+	int	vm_unused01;
+	int	vm_unused02;
 	int	vm_pagesupply;
-	u_int	vm_holdcount;
-	void	*vm_unused02;	/* for future fields */
-	struct sysref vm_sysref;	/* sysref, refcnt, etc */
+	u_int	vm_holdcnt;	/* temporary hold count and exit sequencing */
+	u_int	vm_refcnt;	/* normal ref count */
 };
 
-#define VMSPACE_EXIT1	0x0001	/* partial exit */
-#define VMSPACE_EXIT2	0x0002	/* full exit */
+#define VMSPACE_EXIT1		0x0001	/* partial exit */
+#define VMSPACE_EXIT2		0x0002	/* full exit */
+
+#define VMSPACE_HOLDEXIT	0x80000000
 
 /*
  * Resident executable holding structure.  A user program can take a snapshot
@@ -520,8 +521,6 @@ vmspace_president_count(struct vmspace *vmspace)
 #define VM_FAULT_WIRE_MASK	(VM_FAULT_CHANGE_WIRING|VM_FAULT_USER_WIRE)
 
 #ifdef _KERNEL
-
-extern struct sysref_class vmspace_sysref_class;
 
 boolean_t vm_map_check_protection (vm_map_t, vm_offset_t, vm_offset_t,
 		vm_prot_t, boolean_t);

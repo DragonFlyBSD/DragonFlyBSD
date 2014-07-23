@@ -742,7 +742,7 @@ vmx_vminit_master(struct vmm_guest_options *options)
 	lwkt_reltoken(&newvmspace->vm_map.token);
 	lwkt_reltoken(&oldvmspace->vm_map.token);
 
-	vmspace_free(oldvmspace);
+	vmspace_rel(oldvmspace);
 
 	options->vmm_cr3 = vtophys(vmspace_pmap(newvmspace)->pm_pml4);
 

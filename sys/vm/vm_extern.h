@@ -110,15 +110,18 @@ int vm_mmap_to_errno(int rv);
 vm_offset_t kmem_alloc_contig (vm_offset_t, vm_paddr_t, vm_paddr_t, vm_offset_t);
 void vm_set_page_size (void);
 struct vmspace *vmspace_alloc (vm_offset_t, vm_offset_t);
-void vmspace_ref (struct vmspace *);
-void vmspace_free (struct vmspace *);
+void vmspace_initrefs (struct vmspace *);
+int vmspace_getrefs (struct vmspace *);
 void vmspace_hold (struct vmspace *);
 void vmspace_drop (struct vmspace *);
+void vmspace_ref (struct vmspace *);
+void vmspace_rel (struct vmspace *);
+void vmspace_relexit (struct vmspace *);
+void vmspace_exitfree (struct proc *);
+
 struct vmspace *vmspace_fork (struct vmspace *);
 void vmspace_exec (struct proc *, struct vmspace *);
 void vmspace_unshare (struct proc *);
-void vmspace_exitfree (struct proc *);
-void vmspace_exitbump (struct vmspace *);
 void vslock (caddr_t, u_int);
 void vsunlock (caddr_t, u_int);
 void vm_object_print (/* db_expr_t */ long, boolean_t, /* db_expr_t */ long,

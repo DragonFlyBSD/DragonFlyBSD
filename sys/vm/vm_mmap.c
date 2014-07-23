@@ -390,7 +390,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	 * to make the limit reasonable for threads.
 	 */
 	if (max_proc_mmap && 
-	    vms->vm_map.nentries >= max_proc_mmap * vms->vm_sysref.refcnt) {
+	    vms->vm_map.nentries >= max_proc_mmap * vmspace_getrefs(vms)) {
 		error = ENOMEM;
 		lwkt_reltoken(&vms->vm_map.token);
 		goto done;

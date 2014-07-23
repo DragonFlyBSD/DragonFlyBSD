@@ -436,12 +436,11 @@ proc0_init(void *dummy __unused)
 	pmap_pinit0(vmspace_pmap(&vmspace0));
 	p->p_vmspace = &vmspace0;
 	lp->lwp_vmspace = p->p_vmspace;
-	sysref_init(&vmspace0.vm_sysref, &vmspace_sysref_class);
+	vmspace_initrefs(&vmspace0);
 	vm_map_init(&vmspace0.vm_map,
 		    round_page(VM_MIN_USER_ADDRESS),
 		    trunc_page(VM_MAX_USER_ADDRESS),
 		    vmspace_pmap(&vmspace0));
-	sysref_activate(&vmspace0.vm_sysref);
 
 	kqueue_init(&lwp0.lwp_kqueue, &filedesc0);
 

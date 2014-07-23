@@ -149,10 +149,6 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 	kp->kp_swtime = p->p_swtime;
 
 	if ((vm = p->p_vmspace) != NULL) {
-#ifdef _KERNEL
-		/*sysref_get(&vm->vm_sysref);*/
-		/*lwkt_gettoken(&vm->vm_map.token);*/
-#endif
 		kp->kp_vm_map_size = vm->vm_map.size;
 		kp->kp_vm_rssize = vmspace_resident_count(vm);
 #ifdef _KERNEL
@@ -163,10 +159,6 @@ fill_kinfo_proc(struct proc *p, struct kinfo_proc *kp)
 		kp->kp_vm_tsize = vm->vm_tsize;
 		kp->kp_vm_dsize = vm->vm_dsize;
 		kp->kp_vm_ssize = vm->vm_ssize;
-#ifdef _KERNEL
-		/*lwkt_reltoken(&vm->vm_map.token);*/
-		/*sysref_put(&vm->vm_sysref);*/
-#endif
 	}
 
 	if (p->p_ucred && jailed(p->p_ucred))

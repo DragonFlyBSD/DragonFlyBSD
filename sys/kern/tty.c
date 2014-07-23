@@ -2657,6 +2657,11 @@ ttyinfo(struct tty *tp)
 
 	LWPRELE(lp);
 
+	/*
+	 * NOTE: vmspace should be protected from destruction by the
+	 *	 combination of pg_token and the fact that we are not
+	 *	 flagged as a zombie.
+	 */
 	if (pick->p_stat == SIDL || pick->p_stat == SZOMB) {
 		vmsz = 0;
 	} else if ((vm = pick->p_vmspace) == NULL) {

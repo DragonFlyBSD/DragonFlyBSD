@@ -305,7 +305,7 @@ restart:
 		vmres->vr_vnode = NULL;
 	    }
 	    if (vmres->vr_vmspace) {
-		vmspace_free(vmres->vr_vmspace);
+		vmspace_rel(vmres->vr_vmspace);
 		vmres->vr_vmspace = NULL;
 	    }
 	    kfree(vmres, M_EXEC_RES);

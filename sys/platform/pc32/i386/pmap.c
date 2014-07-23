@@ -3743,13 +3743,13 @@ pmap_replacevm(struct proc *p, struct vmspace *newvm, int adjrefs)
 	oldvm = p->p_vmspace;
 	if (oldvm != newvm) {
 		if (adjrefs)
-			sysref_get(&newvm->vm_sysref);
+			vmspace_ref(newvm);
 		p->p_vmspace = newvm;
 		KKASSERT(p->p_nthreads == 1);
 		lp = RB_ROOT(&p->p_lwp_tree);
 		pmap_setlwpvm(lp, newvm);
 		if (adjrefs) 
-			sysref_put(&oldvm->vm_sysref);
+			vmspace_rel(oldvm);
 	}
 }
 

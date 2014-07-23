@@ -240,7 +240,7 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
 		 * COW locally.
 		 */
 		if ((flags & RFMEM) == 0) {
-			if (p1->p_vmspace->vm_sysref.refcnt > 1) {
+			if (vmspace_getrefs(p1->p_vmspace) > 1) {
 				vmspace_unshare(p1);
 			}
 		}
