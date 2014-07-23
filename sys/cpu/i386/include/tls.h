@@ -55,7 +55,9 @@ struct tls_tcb {
 	void *tcb_pthread;		/* thread library's data*/
 	int *tcb_errno_p;		/* pointer to per-thread errno */
 	void *tcb_segstack;		/* used for segmented stacks */
-					/* e.g. by LLVM to store stack bound */
+					/* e.g. by LLVM to store stack bound. */
+					/* NOTE: do not reorder this field */
+					/* as LLVM uses a fixed offset (16) */
 	void *tcb_unused[3];
 };
 
