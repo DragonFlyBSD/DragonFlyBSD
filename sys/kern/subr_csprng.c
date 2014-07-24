@@ -152,10 +152,7 @@ csprng_get_random(struct csprng_state *state, uint8_t *out, int bytes,
 again:
 	if (!state->callout_based_reseed &&
 	     ratecheck(&state->last_reseed, &csprng_reseed_interval)) {
-		if ((r = csprng_reseed(state)) != 0) {
-			STATE_SLEEP(state, "csprngrsd", 0);
-			goto again;
-		}
+		csprng_reseed(state);
 	}
 
 	KKASSERT(state->reseed_cnt >= 0);
