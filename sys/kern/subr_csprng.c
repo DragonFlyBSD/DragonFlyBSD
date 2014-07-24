@@ -40,6 +40,12 @@
 #define STATE_UNLOCK(state)	\
     spin_unlock(&state->lock)
 
+#define STATE_SLEEP(state, wmesg, timo)	\
+    ssleep(state, &state->lock, 0, wmesg, timo)
+
+#define STATE_WAKEUP(state)	\
+    wakeup(state)
+
 static void csprng_reseed_callout(void *arg);
 static int csprng_reseed(struct csprng_state *state);
 
@@ -131,6 +137,7 @@ csprng_get_random(struct csprng_state *state, uint8_t *out, int bytes,
 {
 	int cnt;
 	int total_bytes = 0;
+	int r;
 
 	/*
 	 * XXX: can optimize a bit by digging into chacha_encrypt_bytes
@@ -142,12 +149,21 @@ csprng_get_random(struct csprng_state *state, uint8_t *out, int bytes,
 
 	STATE_LOCK(state);
 
+again:
 	if (!state->callout_based_reseed &&
 	     ratecheck(&state->last_reseed, &csprng_reseed_interval)) {
-		csprng_reseed(state);
+		if ((r = csprng_reseed(state)) != 0) {
+			STATE_SLEEP(state, "csprngrsd", 0);
+			goto again;
+		}
 	}
 
-	KKASSERT(state->reseed_cnt > 0);
+	KKASSERT(state->reseed_cnt >= 0);
+
+	if (state->reseed_cnt == 0) {
+		STATE_SLEEP(state, "csprngrsd", 0);
+		goto again;
+	}
 
 	while (bytes > 0) {
 		/* Limit amount of output without rekeying to 2^20 */
@@ -252,6 +268,7 @@ csprng_reseed_callout(void *arg)
 
 	csprng_reseed(arg);
 
+	STATE_WAKEUP(state);
 	STATE_UNLOCK(state);
 
 	callout_reset(&state->reseed_callout, reseed_interval,
@@ -292,6 +309,12 @@ csprng_add_entropy(struct csprng_state *state, int src_id,
 	pool->bytes += bytes;
 
 	POOL_UNLOCK(pool);
+
+	/*
+	 * If a wakeup is missed, it doesn't matter too much - it'll get woken
+	 * up by the next add_entropy() call.
+	 */
+	STATE_WAKEUP(state);
 
 	return 0;
 }
