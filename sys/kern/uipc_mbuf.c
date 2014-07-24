@@ -260,6 +260,8 @@ int		nmbclusters;
 static int	nmbjclusters;
 int		nmbufs;
 
+static int	mjclph_cachefrac;
+static int	mjcl_cachefrac;
 static int	mclph_cachefrac;
 static int	mcl_cachefrac;
 
@@ -348,6 +350,12 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, nmbufs, CTLFLAG_RD, &nmbufs, 0,
 	   "Maximum number of mbufs available");
 SYSCTL_INT(_kern_ipc, OID_AUTO, nmbjclusters, CTLFLAG_RD, &nmbjclusters, 0,
 	   "Maximum number of mbuf jclusters available");
+SYSCTL_INT(_kern_ipc, OID_AUTO, mjclph_cachefrac, CTLFLAG_RD,
+	   &mjclph_cachefrac, 0,
+	   "Fraction of cacheable mbuf jclusters w/ pkthdr");
+SYSCTL_INT(_kern_ipc, OID_AUTO, mjcl_cachefrac, CTLFLAG_RD,
+	   &mjcl_cachefrac, 0,
+	   "Fraction of cacheable mbuf jclusters");
 SYSCTL_INT(_kern_ipc, OID_AUTO, mclph_cachefrac, CTLFLAG_RD,
     	   &mclph_cachefrac, 0,
 	   "Fraction of cacheable mbuf clusters w/ pkthdr");
@@ -383,6 +391,12 @@ static void m_mjclfree(void *arg);
 #ifndef NMBCLUSTERS
 #define NMBCLUSTERS	(512 + maxusers * 16)
 #endif
+#ifndef MJCLPH_CACHEFRAC
+#define MJCLPH_CACHEFRAC 16
+#endif
+#ifndef MJCL_CACHEFRAC
+#define MJCL_CACHEFRAC	4
+#endif
 #ifndef MCLPH_CACHEFRAC
 #define MCLPH_CACHEFRAC	16
 #endif
@@ -407,10 +421,27 @@ tunable_mbinit(void *dummy)
 	 */
 	nmbclusters = NMBCLUSTERS;
 	TUNABLE_INT_FETCH("kern.ipc.nmbclusters", &nmbclusters);
+	mjclph_cachefrac = MJCLPH_CACHEFRAC;
+	TUNABLE_INT_FETCH("kern.ipc.mjclph_cachefrac", &mjclph_cachefrac);
+	mjcl_cachefrac = MJCL_CACHEFRAC;
+	TUNABLE_INT_FETCH("kern.ipc.mjcl_cachefrac", &mjcl_cachefrac);
 	mclph_cachefrac = MCLPH_CACHEFRAC;
 	TUNABLE_INT_FETCH("kern.ipc.mclph_cachefrac", &mclph_cachefrac);
 	mcl_cachefrac = MCL_CACHEFRAC;
 	TUNABLE_INT_FETCH("kern.ipc.mcl_cachefrac", &mcl_cachefrac);
+
+	/*
+	 * WARNING! each mcl cache feeds two mbuf caches, so the minimum
+	 *	    cachefrac is 2.  For safety, use 3.
+	 */
+	if (mjclph_cachefrac < 3)
+		mjclph_cachefrac = 3;
+	if (mjcl_cachefrac < 3)
+		mjcl_cachefrac = 3;
+	if (mclph_cachefrac < 3)
+		mclph_cachefrac = 3;
+	if (mcl_cachefrac < 3)
+		mcl_cachefrac = 3;
 
 	nmbjclusters = NMBJCLUSTERS;
 	TUNABLE_INT_FETCH("kern.ipc.nmbjclusters", &nmbjclusters);
@@ -669,7 +700,7 @@ mbinit(void *dummy)
 
 	limit = nmbufs;
 	mbuf_cache = objcache_create("mbuf",
-	    limit, 0,
+	    limit, nmbufs / 4,
 	    mbuf_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
@@ -683,14 +714,14 @@ mbinit(void *dummy)
 
 	ncl_limit = nmbclusters;
 	mclmeta_cache = objcache_create("cluster mbuf",
-	    ncl_limit, 0,
+	    ncl_limit, nmbclusters / 4,
 	    mclmeta_ctor, mclmeta_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mclmeta_malloc_args);
 	cl_limit += ncl_limit;
 
 	jcl_limit = nmbjclusters;
 	mjclmeta_cache = objcache_create("jcluster mbuf",
-	    jcl_limit, 0,
+	    jcl_limit, nmbjclusters / 4,
 	    mjclmeta_ctor, mclmeta_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mclmeta_malloc_args);
 	cl_limit += jcl_limit;
@@ -711,14 +742,14 @@ mbinit(void *dummy)
 
 	limit = nmbjclusters;
 	mbufjcluster_cache = objcache_create("mbuf + jcluster",
-	    limit, 0,
+	    limit, nmbjclusters / mjcl_cachefrac,
 	    mbufjcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
 
 	limit = nmbjclusters;
 	mbufphdrjcluster_cache = objcache_create("mbuf pkt hdr + jcluster",
-	    limit, 0,
+	    limit, nmbjclusters / mjclph_cachefrac,
 	    mbufphdrjcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
 	mb_limit += limit;
@@ -731,14 +762,14 @@ mbinit(void *dummy)
 	 */
 	cl_limit += cl_limit / 8;
 	kmalloc_raise_limit(mclmeta_malloc_args.mtype,
-	    mclmeta_malloc_args.objsize * (size_t)cl_limit);
+			    mclmeta_malloc_args.objsize * (size_t)cl_limit);
 	kmalloc_raise_limit(M_MBUFCL,
-	    (MCLBYTES * (size_t)ncl_limit) +
-	    (MJUMPAGESIZE * (size_t)jcl_limit));
+			    (MCLBYTES * (size_t)ncl_limit) +
+			    (MJUMPAGESIZE * (size_t)jcl_limit));
 
 	mb_limit += mb_limit / 8;
 	kmalloc_raise_limit(mbuf_malloc_args.mtype,
-	    mbuf_malloc_args.objsize * (size_t)mb_limit);
+			    mbuf_malloc_args.objsize * (size_t)mb_limit);
 }
 
 /*
