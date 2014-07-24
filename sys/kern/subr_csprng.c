@@ -137,7 +137,6 @@ csprng_get_random(struct csprng_state *state, uint8_t *out, int bytes,
 {
 	int cnt;
 	int total_bytes = 0;
-	int r;
 
 	/*
 	 * XXX: can optimize a bit by digging into chacha_encrypt_bytes
