@@ -37,10 +37,8 @@
 
 enum {
 	ACTIVE_LIST,
-	FLUSHING_LIST,
 	INACTIVE_LIST,
 	PINNED_LIST,
-	DEFERRED_FREE_LIST,
 };
 
 static const char *
@@ -173,18 +171,6 @@ i915_gem_object_list_info(struct drm_device *dev, struct sbuf *m, void *data)
 		sbuf_printf(m, "Inactive:\n");
 		head = &dev_priv->mm.inactive_list;
 		break;
-	case PINNED_LIST:
-		sbuf_printf(m, "Pinned:\n");
-		head = &dev_priv->mm.pinned_list;
-		break;
-	case FLUSHING_LIST:
-		sbuf_printf(m, "Flushing:\n");
-		head = &dev_priv->mm.flushing_list;
-		break;
-	case DEFERRED_FREE_LIST:
-		sbuf_printf(m, "Deferred free:\n");
-		head = &dev_priv->mm.deferred_free_list;
-		break;
 	default:
 		DRM_UNLOCK(dev);
 		return (EINVAL);
@@ -238,23 +224,12 @@ i915_gem_object_info(struct drm_device *dev, struct sbuf *m, void *data)
 
 	size = count = mappable_size = mappable_count = 0;
 	count_objects(&dev_priv->mm.active_list, mm_list);
-	count_objects(&dev_priv->mm.flushing_list, mm_list);
 	sbuf_printf(m, "  %u [%u] active objects, %zu [%zu] bytes\n",
-		   count, mappable_count, size, mappable_size);
-
-	size = count = mappable_size = mappable_count = 0;
-	count_objects(&dev_priv->mm.pinned_list, mm_list);
-	sbuf_printf(m, "  %u [%u] pinned objects, %zu [%zu] bytes\n",
 		   count, mappable_count, size, mappable_size);
 
 	size = count = mappable_size = mappable_count = 0;
 	count_objects(&dev_priv->mm.inactive_list, mm_list);
 	sbuf_printf(m, "  %u [%u] inactive objects, %zu [%zu] bytes\n",
-		   count, mappable_count, size, mappable_size);
-
-	size = count = mappable_size = mappable_count = 0;
-	count_objects(&dev_priv->mm.deferred_free_list, mm_list);
-	sbuf_printf(m, "  %u [%u] freed objects, %zu [%zu] bytes\n",
 		   count, mappable_count, size, mappable_size);
 
 	size = count = mappable_size = mappable_count = 0;
@@ -718,6 +693,7 @@ static int i915_error_state(struct drm_device *dev, struct sbuf *m,
 	    (intmax_t)error->time.tv_usec);
 	sbuf_printf(m, "PCI ID: 0x%04x\n", dev->pci_device);
 	sbuf_printf(m, "EIR: 0x%08x\n", error->eir);
+	sbuf_printf(m, "IER: 0x%08x\n", error->ier);
 	sbuf_printf(m, "PGTBL_ER: 0x%08x\n", error->pgtbl_er);
 
 	for (i = 0; i < dev_priv->num_fence_regs; i++)
@@ -1512,15 +1488,9 @@ static struct i915_info_sysctl_list {
 	{"i915_capabilities", i915_capabilities, 0},
 	{"i915_gem_objects", i915_gem_object_info, 0},
 	{"i915_gem_gtt", i915_gem_gtt_info, 0},
+	{"i915_gem_pinned", i915_gem_gtt_info, 0, (void *) PINNED_LIST},
 	{"i915_gem_active", i915_gem_object_list_info, 0, (void *)ACTIVE_LIST},
-	{"i915_gem_flushing", i915_gem_object_list_info, 0,
-	    (void *)FLUSHING_LIST},
-	{"i915_gem_inactive", i915_gem_object_list_info, 0,
-	    (void *)INACTIVE_LIST},
-	{"i915_gem_pinned", i915_gem_object_list_info, 0,
-	    (void *)PINNED_LIST},
-	{"i915_gem_deferred_free", i915_gem_object_list_info, 0,
-	    (void *)DEFERRED_FREE_LIST},
+	{"i915_gem_inactive", i915_gem_object_list_info, 0, (void *)INACTIVE_LIST},
 	{"i915_gem_pageflip", i915_gem_pageflip_info, 0},
 	{"i915_gem_request", i915_gem_request_info, 0},
 	{"i915_gem_seqno", i915_gem_seqno_info, 0},

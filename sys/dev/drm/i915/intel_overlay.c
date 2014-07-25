@@ -211,22 +211,20 @@ static void intel_overlay_unmap_regs(struct intel_overlay *overlay,
 }
 
 static int intel_overlay_do_wait_request(struct intel_overlay *overlay,
-					 struct drm_i915_gem_request *request,
 					 void (*tail)(struct intel_overlay *))
 {
 	struct drm_device *dev = overlay->dev;
 	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct intel_ring_buffer *ring = &dev_priv->ring[RCS];
 	int ret;
 
 	BUG_ON(overlay->last_flip_req);
-	ret = i915_add_request(LP_RING(dev_priv), NULL, request);
-	if (ret) {
-		drm_free(request, DRM_I915_GEM);
+	ret = i915_add_request(ring, NULL, &overlay->last_flip_req);
+	if (ret)
 		return ret;
-	}
-	overlay->last_flip_req = request->seqno;
+
 	overlay->flip_tail = tail;
-	ret = i915_wait_seqno(LP_RING(dev_priv), overlay->last_flip_req);
+	ret = i915_wait_seqno(ring, overlay->last_flip_req);
 	if (ret)
 		return ret;
 	i915_gem_retire_requests(dev);
@@ -240,7 +238,7 @@ static int intel_overlay_on(struct intel_overlay *overlay)
 {
 	struct drm_device *dev = overlay->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct drm_i915_gem_request *request;
+	struct intel_ring_buffer *ring = &dev_priv->ring[RCS];
 	int ret;
 
 	BUG_ON(overlay->active);
@@ -248,24 +246,17 @@ static int intel_overlay_on(struct intel_overlay *overlay)
 
 	WARN_ON(IS_I830(dev) && !(dev_priv->quirks & QUIRK_PIPEA_FORCE));
 
-	request = kmalloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	ret = intel_ring_begin(ring, 4);
+	if (ret)
+		return ret;
 
-	ret = BEGIN_LP_RING(4);
-	if (ret) {
-		drm_free(request, DRM_I915_GEM);
-		goto out;
-	}
+	intel_ring_emit(ring, MI_OVERLAY_FLIP | MI_OVERLAY_ON);
+	intel_ring_emit(ring, overlay->flip_addr | OFC_UPDATE);
+	intel_ring_emit(ring, MI_WAIT_FOR_EVENT | MI_WAIT_FOR_OVERLAY_FLIP);
+	intel_ring_emit(ring, MI_NOOP);
+	intel_ring_advance(ring);
 
-	OUT_RING(MI_OVERLAY_FLIP | MI_OVERLAY_ON);
-	OUT_RING(overlay->flip_addr | OFC_UPDATE);
-	OUT_RING(MI_WAIT_FOR_EVENT | MI_WAIT_FOR_OVERLAY_FLIP);
-	OUT_RING(MI_NOOP);
-	ADVANCE_LP_RING();
-
-	ret = intel_overlay_do_wait_request(overlay, request, NULL);
-out:
-
-	return ret;
+	return intel_overlay_do_wait_request(overlay, NULL);
 }
 
 /* overlay needs to be enabled in OCMD reg */
@@ -274,14 +265,12 @@ static int intel_overlay_continue(struct intel_overlay *overlay,
 {
 	struct drm_device *dev = overlay->dev;
 	drm_i915_private_t *dev_priv = dev->dev_private;
-	struct drm_i915_gem_request *request;
+	struct intel_ring_buffer *ring = &dev_priv->ring[RCS];
 	u32 flip_addr = overlay->flip_addr;
 	u32 tmp;
 	int ret;
 
-	KASSERT(overlay->active, ("Overlay not active"));
-
-	request = kmalloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	BUG_ON(!overlay->active);
 
 	if (load_polyphase_filter)
 		flip_addr |= OFC_UPDATE;
@@ -291,23 +280,15 @@ static int intel_overlay_continue(struct intel_overlay *overlay,
 	if (tmp & (1 << 17))
 		DRM_DEBUG("overlay underrun, DOVSTA: %x\n", tmp);
 
-	ret = BEGIN_LP_RING(2);
-	if (ret) {
-		drm_free(request, DRM_I915_GEM);
+	ret = intel_ring_begin(ring, 2);
+	if (ret)
 		return ret;
-	}
-	OUT_RING(MI_OVERLAY_FLIP | MI_OVERLAY_CONTINUE);
-	OUT_RING(flip_addr);
-	ADVANCE_LP_RING();
 
-	ret = i915_add_request(LP_RING(dev_priv), NULL, request);
-	if (ret) {
-		drm_free(request, DRM_I915_GEM);
-		return ret;
-	}
+	intel_ring_emit(ring, MI_OVERLAY_FLIP | MI_OVERLAY_CONTINUE);
+	intel_ring_emit(ring, flip_addr);
+	intel_ring_advance(ring);
 
-	overlay->last_flip_req = request->seqno;
-	return 0;
+	return i915_add_request(ring, NULL, &overlay->last_flip_req);
 }
 
 static void intel_overlay_release_old_vid_tail(struct intel_overlay *overlay)
@@ -341,13 +322,11 @@ static int intel_overlay_off(struct intel_overlay *overlay)
 {
 	struct drm_device *dev = overlay->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_ring_buffer *ring = &dev_priv->ring[RCS];
 	u32 flip_addr = overlay->flip_addr;
-	struct drm_i915_gem_request *request;
 	int ret;
 
-	KASSERT(overlay->active, ("Overlay is not active"));
-
-	request = kmalloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
+	BUG_ON(!overlay->active);
 
 	/* According to intel docs the overlay hw may hang (when switching
 	 * off) without loading the filter coeffs. It is however unclear whether
@@ -355,23 +334,21 @@ static int intel_overlay_off(struct intel_overlay *overlay)
 	 * of the hw. Do it in both cases */
 	flip_addr |= OFC_UPDATE;
 
-	ret = BEGIN_LP_RING(6);
-	if (ret) {
-		drm_free(request, DRM_I915_GEM);
+	ret = intel_ring_begin(ring, 6);
+	if (ret)
 		return ret;
-	}
-	/* wait for overlay to go idle */
-	OUT_RING(MI_OVERLAY_FLIP | MI_OVERLAY_CONTINUE);
-	OUT_RING(flip_addr);
-	OUT_RING(MI_WAIT_FOR_EVENT | MI_WAIT_FOR_OVERLAY_FLIP);
-	/* turn overlay off */
-	OUT_RING(MI_OVERLAY_FLIP | MI_OVERLAY_OFF);
-	OUT_RING(flip_addr);
-	OUT_RING(MI_WAIT_FOR_EVENT | MI_WAIT_FOR_OVERLAY_FLIP);
-	ADVANCE_LP_RING();
 
-	return intel_overlay_do_wait_request(overlay, request,
-					     intel_overlay_off_tail);
+	/* wait for overlay to go idle */
+	intel_ring_emit(ring, MI_OVERLAY_FLIP | MI_OVERLAY_CONTINUE);
+	intel_ring_emit(ring, flip_addr);
+	intel_ring_emit(ring, MI_WAIT_FOR_EVENT | MI_WAIT_FOR_OVERLAY_FLIP);
+	/* turn overlay off */
+	intel_ring_emit(ring, MI_OVERLAY_FLIP | MI_OVERLAY_OFF);
+	intel_ring_emit(ring, flip_addr);
+	intel_ring_emit(ring, MI_WAIT_FOR_EVENT | MI_WAIT_FOR_OVERLAY_FLIP);
+	intel_ring_advance(ring);
+
+	return intel_overlay_do_wait_request(overlay, intel_overlay_off_tail);
 }
 
 /* recover from an interruption due to a signal
@@ -406,6 +383,7 @@ static int intel_overlay_release_old_vid(struct intel_overlay *overlay)
 {
 	struct drm_device *dev = overlay->dev;
 	drm_i915_private_t *dev_priv = dev->dev_private;
+	struct intel_ring_buffer *ring = &dev_priv->ring[RCS];
 	int ret;
 
 	/* Only wait if there is actually an old frame to release to
@@ -415,22 +393,16 @@ static int intel_overlay_release_old_vid(struct intel_overlay *overlay)
 		return 0;
 
 	if (I915_READ(ISR) & I915_OVERLAY_PLANE_FLIP_PENDING_INTERRUPT) {
-		struct drm_i915_gem_request *request;
-
 		/* synchronous slowpath */
-		request = kmalloc(sizeof(*request), DRM_I915_GEM, M_WAITOK | M_ZERO);
-
-		ret = BEGIN_LP_RING(2);
-		if (ret) {
-			drm_free(request, DRM_I915_GEM);
+		ret = intel_ring_begin(ring, 2);
+		if (ret)
 			return ret;
-		}
 
-		OUT_RING(MI_WAIT_FOR_EVENT | MI_WAIT_FOR_OVERLAY_FLIP);
-		OUT_RING(MI_NOOP);
-		ADVANCE_LP_RING();
+		intel_ring_emit(ring, MI_WAIT_FOR_EVENT | MI_WAIT_FOR_OVERLAY_FLIP);
+		intel_ring_emit(ring, MI_NOOP);
+		intel_ring_advance(ring);
 
-		ret = intel_overlay_do_wait_request(overlay, request,
+		ret = intel_overlay_do_wait_request(overlay,
 						    intel_overlay_release_old_vid_tail);
 		if (ret)
 			return ret;

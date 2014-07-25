@@ -313,12 +313,12 @@ i915_gem_set_tiling(struct drm_device *dev, void *data,
 
 	if (!i915_tiling_ok(dev,
 			    args->stride, obj->base.size, args->tiling_mode)) {
-		drm_gem_object_unreference(&obj->base);
+		drm_gem_object_unreference_unlocked(&obj->base);
 		return -EINVAL;
 	}
 
 	if (obj->pin_count) {
-		drm_gem_object_unreference(&obj->base);
+		drm_gem_object_unreference_unlocked(&obj->base);
 		return -EBUSY;
 	}
 
@@ -357,9 +357,7 @@ i915_gem_set_tiling(struct drm_device *dev, void *data,
 		/* We need to rebind the object if its current allocation
 		 * no longer meets the alignment restrictions for its new
 		 * tiling mode. Otherwise we can just leave it alone, but
-		 * need to ensure that any fence register is updated before
-		 * the next fenced (either through the GTT or by the BLT unit
-		 * on older GPUs) access.
+		 * need to ensure that any fence register is cleared.
 		 *
 		 * After updating the tiling parameters, we then flag whether
 		 * we need to update an associated fence register. Note this
@@ -382,8 +380,12 @@ i915_gem_set_tiling(struct drm_device *dev, void *data,
 			if (obj->gtt_offset & (unfenced_alignment - 1))
 				ret = i915_gem_object_unbind(obj);
 		}
+
 		if (ret == 0) {
-			obj->tiling_changed = true;
+			obj->fence_dirty =
+				obj->fenced_gpu_access ||
+				obj->fence_reg != I915_FENCE_REG_NONE;
+
 			obj->tiling_mode = args->tiling_mode;
 			obj->stride = args->stride;
 		}
@@ -495,6 +497,11 @@ i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj)
 	if (obj->bit_17 == NULL) {
 		obj->bit_17 = kmalloc(BITS_TO_LONGS(page_count) *
 		    sizeof(long), DRM_I915_GEM, M_WAITOK);
+		if (obj->bit_17 == NULL) {
+			DRM_ERROR("Failed to allocate memory for bit 17 "
+				  "record\n");
+			return;
+		}
 	}
 
 	/* XXXKIB: review locking, atomics might be not needed there */

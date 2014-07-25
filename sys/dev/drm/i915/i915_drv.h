@@ -184,6 +184,7 @@ struct sdvo_device_mapping {
 struct drm_i915_error_state {
 	u32 eir;
 	u32 pgtbl_er;
+	u32 ier;
 	bool waiting[I915_NUM_RINGS];
 	u32 pipestat[I915_MAX_PIPES];
 	u32 tail[I915_NUM_RINGS];
@@ -682,7 +683,6 @@ typedef struct drm_i915_private {
 	struct work_struct hotplug_work;
 
 	int tex_lru_log_granularity;
-	int allow_batchbuffer;
 	unsigned int sr01, adpa, ppcr, dvob, dvoc, lvds;
 	int vblank_pipe;
 
@@ -789,15 +789,6 @@ typedef struct drm_i915_private {
 		struct list_head active_list;
 
 		/**
-		 * List of objects which are not in the ringbuffer but which
-		 * still have a write_domain which needs to be flushed before
-		 * unbinding.
-		 *
-		 * A reference is held on the buffer while on this list.
-		 */
-		struct list_head flushing_list;
-
-		/**
 		 * LRU list of objects which are not in the ringbuffer and
 		 * are ready to unbind, but are still in the GTT.
 		 *
@@ -809,22 +800,8 @@ typedef struct drm_i915_private {
 		 */
 		struct list_head inactive_list;
 
-		/**
-		 * LRU list of objects which are not in the ringbuffer but
-		 * are still pinned in the GTT.
-		 */
-		struct list_head pinned_list;
-
 		/** LRU list of objects with fence regs on them. */
 		struct list_head fence_list;
-
-		/**
-		 * List of objects currently pending being freed.
-		 *
-		 * These objects are no longer in use, but due to a signal
-		 * we were prevented from freeing them at the appointed time.
-		 */
-		struct list_head deferred_free_list;
 
 		/**
 		 * We leave the user IRQ off as much as possible,
@@ -995,7 +972,7 @@ struct drm_i915_gem_object {
 	/** Current space allocated to this object in the GTT, if any. */
 	struct drm_mm_node *gtt_space;
 	struct list_head gtt_list;
-	/** This object's place on the active/flushing/inactive lists */
+	/** This object's place on the active/inactive lists */
 	struct list_head ring_list;
 	struct list_head mm_list;
 	/** This object's place on GPU write list */
@@ -1004,9 +981,9 @@ struct drm_i915_gem_object {
 	struct list_head exec_list;
 
 	/**
-	 * This is set if the object is on the active or flushing lists
-	 * (has pending rendering), and is not set if it's on inactive (ready
-	 * to be unbound).
+	 * This is set if the object is on the active lists (has pending
+	 * rendering and so a non-zero seqno), and is not set if it i s on
+	 * inactive (ready to be unbound) list.
 	 */
 	unsigned int active:1;
 
@@ -1032,7 +1009,14 @@ struct drm_i915_gem_object {
 	 * Current tiling mode for the object.
 	 */
 	unsigned int tiling_mode:2;
-	unsigned int tiling_changed:1;
+	/**
+	 * Whether the tiling parameters for the currently associated fence
+	 * register have changed. Note that for the purposes of tracking
+	 * tiling changes we also treat the unfenced register, the register
+	 * slot that the object occupies whilst it executes a fenced
+	 * command (such as BLT on gen2/3), as a "fence".
+	 */
+	unsigned int fence_dirty:1;
 
 	/** How many users have pinned this object in GTT space. The following
 	 * users can each hold at most one reference: pwrite/pread, pin_ioctl
@@ -1439,6 +1423,7 @@ i915_gem_object_pin_to_display_plane(struct drm_i915_gem_object *obj,
 				     u32 alignment,
 				     struct intel_ring_buffer *pipelined);
 int i915_gem_object_finish_gpu(struct drm_i915_gem_object *obj);
+int __must_check i915_gem_init(struct drm_device *dev);
 int i915_gem_flush_ring(struct intel_ring_buffer *ring,
     uint32_t invalidate_domains, uint32_t flush_domains);
 void i915_gem_release_mmap(struct drm_i915_gem_object *obj);
@@ -1453,7 +1438,7 @@ void i915_gem_object_move_to_active(struct drm_i915_gem_object *obj,
     struct intel_ring_buffer *ring, uint32_t seqno);
 int i915_add_request(struct intel_ring_buffer *ring,
 		     struct drm_file *file,
-		     struct drm_i915_gem_request *request);
+		     u32 *seqno);
 int i915_wait_seqno(struct intel_ring_buffer *ring,
 				 uint32_t seqno);
 void i915_gem_reset(struct drm_device *dev);
@@ -1520,6 +1505,7 @@ void i915_gem_restore_gtt_mappings(struct drm_device *dev);
 void i915_gem_gtt_bind_object(struct drm_i915_gem_object *obj,
 				enum i915_cache_level cache_level);
 void i915_gem_gtt_unbind_object(struct drm_i915_gem_object *obj);
+void i915_gem_gtt_finish_object(struct drm_i915_gem_object *obj);
 
 /* intel_opregion.c */
 extern int intel_opregion_setup(struct drm_device *dev);

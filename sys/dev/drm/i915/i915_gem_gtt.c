@@ -454,3 +454,21 @@ void i915_gem_gtt_unbind_object(struct drm_i915_gem_object *obj)
 	undo_idling(dev_priv, interruptible);
 	obj->has_global_gtt_mapping = 0;
 }
+
+void i915_gem_gtt_finish_object(struct drm_i915_gem_object *obj)
+{
+	struct drm_device *dev = obj->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	bool interruptible;
+
+	interruptible = do_idling(dev_priv);
+
+#if 0
+	if (!obj->has_dma_mapping)
+		dma_unmap_sg(&dev->pdev->dev,
+			     obj->pages->sgl, obj->pages->nents,
+			     PCI_DMA_BIDIRECTIONAL);
+#endif
+
+	undo_idling(dev_priv, interruptible);
+}

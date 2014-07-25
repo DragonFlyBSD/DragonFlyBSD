@@ -212,7 +212,7 @@ static int i915_initialize(struct drm_device * dev, drm_i915_init_t * init)
 
 	/* Allow hardware batchbuffers unless told otherwise.
 	 */
-	dev_priv->allow_batchbuffer = 1;
+	dev_priv->dri1.allow_batchbuffer = 1;
 
 	return 0;
 }
@@ -634,7 +634,7 @@ static int i915_batchbuffer(struct drm_device *dev, void *data,
 	size_t cliplen;
 	int ret;
 
-	if (!dev_priv->allow_batchbuffer) {
+	if (!dev_priv->dri1.allow_batchbuffer) {
 		DRM_ERROR("Batchbuffer ioctl disabled\n");
 		return -EINVAL;
 	}
@@ -929,7 +929,7 @@ static int i915_getparam(struct drm_device *dev, void *data,
 		value = dev->irq_enabled ? 1 : 0;
 		break;
 	case I915_PARAM_ALLOW_BATCHBUFFER:
-		value = dev_priv->allow_batchbuffer ? 1 : 0;
+		value = dev_priv->dri1.allow_batchbuffer ? 1 : 0;
 		break;
 	case I915_PARAM_LAST_DISPATCH:
 		value = READ_BREADCRUMB(dev_priv);
@@ -950,13 +950,14 @@ static int i915_getparam(struct drm_device *dev, void *data,
 		value = 1;
 		break;
 	case I915_PARAM_HAS_EXECBUF2:
+		/* depends on GEM */
 		value = 1;
 		break;
 	case I915_PARAM_HAS_BSD:
-		value = HAS_BSD(dev);
+		value = intel_ring_initialized(&dev_priv->ring[VCS]);
 		break;
 	case I915_PARAM_HAS_BLT:
-		value = HAS_BLT(dev);
+		value = intel_ring_initialized(&dev_priv->ring[BCS]);
 		break;
 	case I915_PARAM_HAS_RELAXED_FENCING:
 		value = 1;
@@ -975,6 +976,9 @@ static int i915_getparam(struct drm_device *dev, void *data,
 		break;
 	case I915_PARAM_HAS_LLC:
 		value = HAS_LLC(dev);
+		break;
+	case I915_PARAM_HAS_ALIASING_PPGTT:
+		value = dev_priv->mm.aliasing_ppgtt ? 1 : 0;
 		break;
 	default:
 		DRM_DEBUG_DRIVER("Unknown parameter %d\n",
@@ -1008,7 +1012,7 @@ static int i915_setparam(struct drm_device *dev, void *data,
 		dev_priv->tex_lru_log_granularity = param->value;
 		break;
 	case I915_SETPARAM_ALLOW_BATCHBUFFER:
-		dev_priv->allow_batchbuffer = param->value;
+		dev_priv->dri1.allow_batchbuffer = param->value;
 		break;
 	case I915_SETPARAM_NUM_USED_FENCES:
 		if (param->value > dev_priv->num_fence_regs ||
@@ -1074,92 +1078,7 @@ static int i915_set_status_page(struct drm_device *dev, void *data,
 	return 0;
 }
 
-static bool
-intel_enable_ppgtt(struct drm_device *dev)
-{
-	if (i915_enable_ppgtt >= 0)
-		return i915_enable_ppgtt;
-
-	/* Disable ppgtt on SNB if VT-d is on. */
-	if (INTEL_INFO(dev)->gen == 6 && intel_iommu_enabled)
-		return false;
-
-	return true;
-}
-
-static int
-i915_load_gem_init(struct drm_device *dev)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	unsigned long prealloc_size, gtt_size, mappable_size;
-	int ret;
-
-	prealloc_size = dev_priv->mm.gtt->stolen_size;
-	gtt_size = dev_priv->mm.gtt->gtt_total_entries << PAGE_SHIFT;
-	mappable_size = dev_priv->mm.gtt->gtt_mappable_entries << PAGE_SHIFT;
-
-	/* Basic memrange allocator for stolen space */
-	drm_mm_init(&dev_priv->mm.stolen, 0, prealloc_size);
-
-	DRM_LOCK(dev);
-	if (intel_enable_ppgtt(dev) && HAS_ALIASING_PPGTT(dev)) {
-		/* PPGTT pdes are stolen from global gtt ptes, so shrink the
-		 * aperture accordingly when using aliasing ppgtt. */
-		gtt_size -= I915_PPGTT_PD_ENTRIES*PAGE_SIZE;
-		/* For paranoia keep the guard page in between. */
-		gtt_size -= PAGE_SIZE;
-
-		i915_gem_do_init(dev, 0, mappable_size, gtt_size);
-
-		ret = i915_gem_init_aliasing_ppgtt(dev);
-		if (ret) {
-			DRM_UNLOCK(dev);
-			return ret;
-		}
-	} else {
-		/* Let GEM Manage all of the aperture.
-		 *
-		 * However, leave one page at the end still bound to the scratch
-		 * page.  There are a number of places where the hardware
-		 * apparently prefetches past the end of the object, and we've
-		 * seen multiple hangs with the GPU head pointer stuck in a
-		 * batchbuffer bound at the last page of the aperture.  One page
-		 * should be enough to keep any prefetching inside of the
-		 * aperture.
-		 */
-		i915_gem_do_init(dev, 0, mappable_size, gtt_size - PAGE_SIZE);
-	}
-
-	ret = i915_gem_init_hw(dev);
-	DRM_UNLOCK(dev);
-	if (ret != 0) {
-		i915_gem_cleanup_aliasing_ppgtt(dev);
-		return (ret);
-	}
-
-#if 0
-	/* Try to set up FBC with a reasonable compressed buffer size */
-	if (I915_HAS_FBC(dev) && i915_powersave) {
-		int cfb_size;
-
-		/* Leave 1M for line length buffer & misc. */
-
-		/* Try to get a 32M buffer... */
-		if (prealloc_size > (36*1024*1024))
-			cfb_size = 32*1024*1024;
-		else /* fall back to 7/8 of the stolen space */
-			cfb_size = prealloc_size * 7 / 8;
-		i915_setup_compression(dev, cfb_size);
-	}
-#endif
-
-	/* Allow hardware batchbuffers unless told otherwise. */
-	dev_priv->allow_batchbuffer = 1;
-	return 0;
-}
-
-static int
-i915_load_modeset_init(struct drm_device *dev)
+static int i915_load_modeset_init(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret;
@@ -1169,14 +1088,39 @@ i915_load_modeset_init(struct drm_device *dev)
 		DRM_INFO("failed to find VBIOS tables\n");
 
 #if 0
+	/* If we have > 1 VGA cards, then we need to arbitrate access
+	 * to the common VGA resources.
+	 *
+	 * If we are a secondary display controller (!PCI_DISPLAY_CLASS_VGA),
+	 * then we do not take part in VGA arbitration and the
+	 * vga_client_register() fails with -ENODEV.
+	 */
+	ret = vga_client_register(dev->pdev, dev, NULL, i915_vga_set_decode);
+	if (ret && ret != -ENODEV)
+		goto out;
+
 	intel_register_dsm_handler();
+
+	ret = vga_switcheroo_register_client(dev->pdev,
+					     i915_switcheroo_set_state,
+					     NULL,
+					     i915_switcheroo_can_switch);
+	if (ret)
+		goto cleanup_vga_client;
+
+	/* Initialise stolen first so that we may reserve preallocated
+	 * objects for the BIOS to KMS transition.
+	 */
+	ret = i915_gem_init_stolen(dev);
+	if (ret)
+		goto cleanup_vga_switcheroo;
 #endif
 
 	intel_modeset_init(dev);
 
-	ret = i915_load_gem_init(dev);
-	if (ret != 0)
-		goto cleanup_gem;
+	ret = i915_gem_init(dev);
+	if (ret)
+		goto cleanup_gem_stolen;
 
 	intel_modeset_gem_init(dev);
 
@@ -1184,25 +1128,38 @@ i915_load_modeset_init(struct drm_device *dev)
 	if (ret)
 		goto cleanup_gem;
 
+	/* Always safe in the mode setting case. */
+	/* FIXME: do pre/post-mode set stuff in core KMS code */
 	dev->vblank_disable_allowed = 1;
 
 	ret = intel_fbdev_init(dev);
 	if (ret)
-		goto cleanup_gem;
+		goto cleanup_irq;
 
 	drm_kms_helper_poll_init(dev);
 
 	/* We're off and running w/KMS */
 	dev_priv->mm.suspended = 0;
 
-	return (0);
+	return 0;
 
+cleanup_irq:
+	drm_irq_uninstall(dev);
 cleanup_gem:
 	DRM_LOCK(dev);
 	i915_gem_cleanup_ringbuffer(dev);
 	DRM_UNLOCK(dev);
 	i915_gem_cleanup_aliasing_ppgtt(dev);
-	return (ret);
+cleanup_gem_stolen:
+#if 0
+	i915_gem_cleanup_stolen(dev);
+cleanup_vga_switcheroo:
+	vga_switcheroo_unregister_client(dev->pdev);
+cleanup_vga_client:
+	vga_client_register(dev->pdev, NULL, NULL, NULL);
+out:
+#endif
+	return ret;
 }
 
 static int

@@ -91,26 +91,6 @@ i915_gem_evict_something(struct drm_device *dev, int min_size,
 
 	/* Now merge in the soon-to-be-expired objects... */
 	list_for_each_entry(obj, &dev_priv->mm.active_list, mm_list) {
-		/* Does the object require an outstanding flush? */
-		if (obj->base.write_domain || obj->pin_count)
-			continue;
-
-		if (mark_free(obj, &unwind_list))
-			goto found;
-	}
-
-	/* Finally add anything with a pending flush (in order of retirement) */
-	list_for_each_entry(obj, &dev_priv->mm.flushing_list, mm_list) {
-		if (obj->pin_count)
-			continue;
-
-		if (mark_free(obj, &unwind_list))
-			goto found;
-	}
-	list_for_each_entry(obj, &dev_priv->mm.active_list, mm_list) {
-		if (!obj->base.write_domain || obj->pin_count)
-			continue;
-
 		if (mark_free(obj, &unwind_list))
 			goto found;
 	}
@@ -122,7 +102,7 @@ i915_gem_evict_something(struct drm_device *dev, int min_size,
 				       exec_list);
 
 		ret = drm_mm_scan_remove_block(obj->gtt_space);
-		KASSERT(ret == 0, ("drm_mm_scan_remove_block failed %d", ret));
+		BUG_ON(ret);
 
 		list_del_init(&obj->exec_list);
 	}
