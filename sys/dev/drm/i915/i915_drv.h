@@ -1100,6 +1100,7 @@ struct drm_i915_gem_object {
 	 */
 	atomic_t pending_flip;
 };
+#define to_gem_object(obj) (&((struct drm_i915_gem_object *)(obj))->base)
 
 #define	to_intel_bo(x) container_of(x, struct drm_i915_gem_object, base)
 
@@ -1435,7 +1436,7 @@ void i915_gem_init_ppgtt(struct drm_device *dev);
 void i915_gem_cleanup_ringbuffer(struct drm_device *dev);
 int __must_check i915_gpu_idle(struct drm_device *dev);
 void i915_gem_object_move_to_active(struct drm_i915_gem_object *obj,
-    struct intel_ring_buffer *ring, uint32_t seqno);
+				    struct intel_ring_buffer *ring);
 int i915_add_request(struct intel_ring_buffer *ring,
 		     struct drm_file *file,
 		     u32 *seqno);
@@ -1589,7 +1590,7 @@ i915_seqno_passed(uint32_t seq1, uint32_t seq2)
 	return ((int32_t)(seq1 - seq2) >= 0);
 }
 
-u32 i915_gem_next_request_seqno(struct intel_ring_buffer *ring);
+extern int i915_gem_get_seqno(struct drm_device *dev, u32 *seqno);
 
 int __must_check i915_gem_object_get_fence(struct drm_i915_gem_object *obj);
 int __must_check i915_gem_object_put_fence(struct drm_i915_gem_object *obj);

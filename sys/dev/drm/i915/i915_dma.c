@@ -134,7 +134,7 @@ void i915_kernel_lost_context(struct drm_device * dev)
 
 	ring->head = I915_READ_HEAD(ring) & HEAD_ADDR;
 	ring->tail = I915_READ_TAIL(ring) & TAIL_ADDR;
-	ring->space = ring->head - (ring->tail + 8);
+	ring->space = ring->head - (ring->tail + I915_RING_FREE_SPACE);
 	if (ring->space < 0)
 		ring->space += ring->size;
 
@@ -979,6 +979,9 @@ static int i915_getparam(struct drm_device *dev, void *data,
 		break;
 	case I915_PARAM_HAS_ALIASING_PPGTT:
 		value = dev_priv->mm.aliasing_ppgtt ? 1 : 0;
+		break;
+	case I915_PARAM_HAS_PINNED_BATCHES:
+		value = 1;
 		break;
 	default:
 		DRM_DEBUG_DRIVER("Unknown parameter %d\n",

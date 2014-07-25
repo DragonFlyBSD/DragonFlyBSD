@@ -1006,11 +1006,11 @@ failed:
 
 void
 i915_gem_object_move_to_active(struct drm_i915_gem_object *obj,
-			       struct intel_ring_buffer *ring,
-			       u32 seqno)
+			       struct intel_ring_buffer *ring)
 {
 	struct drm_device *dev = obj->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	u32 seqno = intel_ring_get_seqno(ring);
 
 	BUG_ON(ring == NULL);
 	obj->ring = ring;
@@ -1069,17 +1069,54 @@ i915_gem_object_move_to_inactive(struct drm_i915_gem_object *obj)
 	WARN_ON(i915_verify_lists(dev));
 }
 
-static u32
-i915_gem_get_seqno(struct drm_device *dev)
+static int
+i915_gem_handle_seqno_wrap(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
-	u32 seqno = dev_priv->next_seqno;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_ring_buffer *ring;
+	int ret, i, j;
+
+	/* The hardware uses various monotonic 32-bit counters, if we
+	 * detect that they will wraparound we need to idle the GPU
+	 * and reset those counters.
+	 */
+	ret = 0;
+	for_each_ring(ring, dev_priv, i) {
+		for (j = 0; j < ARRAY_SIZE(ring->sync_seqno); j++)
+			ret |= ring->sync_seqno[j] != 0;
+	}
+	if (ret == 0)
+		return ret;
+
+	ret = i915_gpu_idle(dev);
+	if (ret)
+		return ret;
+
+	i915_gem_retire_requests(dev);
+	for_each_ring(ring, dev_priv, i) {
+		for (j = 0; j < ARRAY_SIZE(ring->sync_seqno); j++)
+			ring->sync_seqno[j] = 0;
+	}
+
+	return 0;
+}
+
+int
+i915_gem_get_seqno(struct drm_device *dev, u32 *seqno)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	/* reserve 0 for non-seqno */
-	if (++dev_priv->next_seqno == 0)
-		dev_priv->next_seqno = 1;
+	if (dev_priv->next_seqno == 0) {
+		int ret = i915_gem_handle_seqno_wrap(dev);
+		if (ret)
+			return ret;
 
-	return seqno;
+		dev_priv->next_seqno = 1;
+	}
+
+	*seqno = dev_priv->next_seqno++;
+	return 0;
 }
 
 int
@@ -1090,7 +1127,6 @@ i915_add_request(struct intel_ring_buffer *ring,
 	drm_i915_private_t *dev_priv = ring->dev->dev_private;
 	struct drm_i915_gem_request *request;
 	u32 request_ring_position;
-	u32 seqno;
 	int was_empty;
 	int ret;
 
@@ -1113,8 +1149,6 @@ i915_add_request(struct intel_ring_buffer *ring,
 	if (request == NULL)
 		return -ENOMEM;
 
-	seqno = i915_gem_next_request_seqno(ring);
-
 	/* Record the position of the start of the request so that
 	 * should we detect the updated seqno part-way through the
 	 * GPU processing the request, we never over-estimate the
@@ -1122,13 +1156,13 @@ i915_add_request(struct intel_ring_buffer *ring,
 	 */
 	request_ring_position = intel_ring_get_tail(ring);
 
-	ret = ring->add_request(ring, &seqno);
+	ret = ring->add_request(ring);
 	if (ret) {
 		kfree(request, DRM_I915_GEM);
 		return ret;
 	}
 
-	request->seqno = seqno;
+	request->seqno = intel_ring_get_seqno(ring);
 	request->ring = ring;
 	request->tail = request_ring_position;
 	request->emitted_jiffies = jiffies;
@@ -1162,7 +1196,7 @@ i915_add_request(struct intel_ring_buffer *ring,
 	}
 
 	if (out_seqno)
-		*out_seqno = seqno;
+		*out_seqno = request->seqno;
 	return 0;
 }
 
@@ -1266,7 +1300,6 @@ void
 i915_gem_retire_requests_ring(struct intel_ring_buffer *ring)
 {
 	uint32_t seqno;
-	int i;
 
 	if (list_empty(&ring->request_list))
 		return;
@@ -1274,10 +1307,6 @@ i915_gem_retire_requests_ring(struct intel_ring_buffer *ring)
 	WARN_ON(i915_verify_lists(ring->dev));
 
 	seqno = ring->get_seqno(ring, true);
-
-	for (i = 0; i < ARRAY_SIZE(ring->sync_seqno); i++)
-		if (seqno >= ring->sync_seqno[i])
-			ring->sync_seqno[i] = 0;
 
 	while (!list_empty(&ring->request_list)) {
 		struct drm_i915_gem_request *request;
@@ -3673,8 +3702,7 @@ i915_gem_process_flushing_list(struct intel_ring_buffer *ring,
 			old_write_domain = obj->base.write_domain;
 			obj->base.write_domain = 0;
 			list_del_init(&obj->gpu_write_list);
-			i915_gem_object_move_to_active(obj, ring,
-			    i915_gem_next_request_seqno(ring));
+			i915_gem_object_move_to_active(obj, ring);
 		}
 	}
 }
@@ -3727,15 +3755,6 @@ i915_gem_flush_ring(struct intel_ring_buffer *ring, uint32_t invalidate_domains,
 	if (flush_domains & I915_GEM_GPU_DOMAINS)
 		i915_gem_process_flushing_list(ring, flush_domains);
 	return 0;
-}
-
-u32
-i915_gem_next_request_seqno(struct intel_ring_buffer *ring)
-{
-	if (ring->outstanding_lazy_request == 0)
-		ring->outstanding_lazy_request = i915_gem_get_seqno(ring->dev);
-
-	return ring->outstanding_lazy_request;
 }
 
 static int

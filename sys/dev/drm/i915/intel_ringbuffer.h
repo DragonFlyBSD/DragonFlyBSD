@@ -83,8 +83,7 @@ struct  intel_ring_buffer {
 	int __must_check (*flush)(struct intel_ring_buffer *ring,
 				  u32	invalidate_domains,
 				  u32	flush_domains);
-	int		(*add_request)(struct intel_ring_buffer *ring,
-				       uint32_t *seqno);
+	int		(*add_request)(struct intel_ring_buffer *ring);
 	/* Some chipsets are not quite as coherent as advertised and need
 	 * an expensive kick to force a true read of the up-to-date seqno.
 	 * However, the up-to-date seqno is not always required and the last
@@ -94,7 +93,8 @@ struct  intel_ring_buffer {
 	u32		(*get_seqno)(struct intel_ring_buffer *ring,
 				     bool lazy_coherency);
 	int		(*dispatch_execbuffer)(struct intel_ring_buffer *ring,
-					       uint32_t offset, uint32_t length);
+					       u32 offset, u32 length,
+					       unsigned flags);
 #define I915_DISPATCH_SECURE 0x1
 #define I915_DISPATCH_PINNED 0x2
 	void		(*cleanup)(struct intel_ring_buffer *ring);

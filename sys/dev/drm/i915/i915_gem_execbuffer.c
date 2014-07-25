@@ -961,8 +961,7 @@ validate_exec_list(struct drm_i915_gem_exec_object2 *exec, int count,
 
 static void
 i915_gem_execbuffer_move_to_active(struct list_head *objects,
-				   struct intel_ring_buffer *ring,
-				   u32 seqno)
+				   struct intel_ring_buffer *ring)
 {
 	struct drm_i915_gem_object *obj;
 	uint32_t old_read, old_write;
@@ -975,10 +974,10 @@ i915_gem_execbuffer_move_to_active(struct list_head *objects,
 		obj->base.write_domain = obj->base.pending_write_domain;
 		obj->fenced_gpu_access = obj->pending_fenced_gpu_access;
 
-		i915_gem_object_move_to_active(obj, ring, seqno);
+		i915_gem_object_move_to_active(obj, ring);
 		if (obj->base.write_domain) {
 			obj->dirty = 1;
-			obj->last_write_seqno = seqno;
+			obj->last_write_seqno = intel_ring_get_seqno(ring);
 			list_move_tail(&obj->gpu_write_list,
 				       &ring->gpu_write_list);
 			intel_mark_busy(ring->dev);
@@ -1076,7 +1075,6 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 	struct intel_ring_buffer *ring;
 	vm_page_t **relocs_ma;
 	u32 exec_start, exec_len;
-	u32 seqno;
 	u32 mask;
 	u32 flags;
 	int ret, mode, i;
@@ -1124,6 +1122,11 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 			  (int)(args->flags & I915_EXEC_RING_MASK));
 		ret = -EINVAL;
 		goto pre_struct_lock_err;
+	}
+	if (!intel_ring_initialized(ring)) {
+		DRM_DEBUG("execbuf with invalid ring: %d\n",
+			  (int)(args->flags & I915_EXEC_RING_MASK));
+		return -EINVAL;
 	}
 
 	mode = args->flags & I915_EXEC_CONSTANTS_MASK;
@@ -1266,22 +1269,6 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 	if (ret)
 		goto err;
 
-	seqno = i915_gem_next_request_seqno(ring);
-	for (i = 0; i < I915_NUM_RINGS - 1; i++) {
-		if (seqno < ring->sync_seqno[i]) {
-			/* The GPU can not handle its semaphore value wrapping,
-			 * so every billion or so execbuffers, we need to stall
-			 * the GPU in order to reset the counters.
-			 */
-			ret = i915_gpu_idle(dev);
-			if (ret)
-				goto err;
-			i915_gem_retire_requests(dev);
-
-			KASSERT(ring->sync_seqno[i] == 0, ("Non-zero sync_seqno"));
-		}
-	}
-
 	if (ring == &dev_priv->ring[RCS] &&
 	    mode != dev_priv->relative_constants_mode) {
 		ret = intel_ring_begin(ring, 4);
@@ -1319,18 +1306,20 @@ i915_gem_do_execbuffer(struct drm_device *dev, void *data,
 				goto err;
 
 			ret = ring->dispatch_execbuffer(ring,
-							exec_start, exec_len);
+							exec_start, exec_len,
+							flags);
 			if (ret)
 				goto err;
 		}
 	} else {
 		ret = ring->dispatch_execbuffer(ring,
-						exec_start, exec_len);
+						exec_start, exec_len,
+						flags);
 		if (ret)
 			goto err;
 	}
 
-	i915_gem_execbuffer_move_to_active(&objects, ring, seqno);
+	i915_gem_execbuffer_move_to_active(&objects, ring);
 	i915_gem_execbuffer_retire_commands(dev, file, ring);
 
 err:
