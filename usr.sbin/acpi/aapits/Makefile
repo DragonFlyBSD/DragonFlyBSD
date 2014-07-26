@@ -129,7 +129,6 @@ SRCS+=	\
 	nsarguments.c \
 	nsconvert.c \
 	nsdump.c \
-	nsdumpdv.c \
 	nseval.c \
 	nsinit.c \
 	nsload.c \

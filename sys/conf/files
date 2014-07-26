@@ -2199,7 +2199,6 @@ ${ACPICA_COMP_DIR}/namespace/nsalloc.c		optional acpi
 ${ACPICA_COMP_DIR}/namespace/nsarguments.c	optional acpi
 ${ACPICA_COMP_DIR}/namespace/nsconvert.c	optional acpi
 ${ACPICA_COMP_DIR}/namespace/nsdump.c		optional acpi
-${ACPICA_COMP_DIR}/namespace/nsdumpdv.c		optional acpi
 ${ACPICA_COMP_DIR}/namespace/nseval.c		optional acpi
 ${ACPICA_COMP_DIR}/namespace/nsinit.c		optional acpi
 ${ACPICA_COMP_DIR}/namespace/nsload.c		optional acpi
