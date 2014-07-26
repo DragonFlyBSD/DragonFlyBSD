@@ -17,7 +17,8 @@ SRCS=	\
 	ahdecode.c \
 	ahids.c \
 	ahpredef.c \
-	ahmain.c
+	ahmain.c \
+	ahuuids.c
 
 SRCS+=	\
 	getopt.c \
@@ -26,9 +27,11 @@ SRCS+=	\
 	utdebug.c \
 	utexcep.c \
 	utglobal.c \
+	uthex.c \
 	utmath.c \
 	utpredef.c \
-	utprint.c
+	utprint.c \
+	utuuid.c
 
 CFLAGS+= \
 	-DACPI_HELP_APP \

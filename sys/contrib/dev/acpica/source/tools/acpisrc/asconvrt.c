@@ -268,7 +268,7 @@ AsCheckAndSkipLiterals (
  *
  * FUNCTION:    AsAsCheckForBraces
  *
- * DESCRIPTION: Check for an open brace after each if statement
+ * DESCRIPTION: Check for an open brace after each if/else statement
  *
  ******************************************************************************/
 
@@ -280,14 +280,69 @@ AsCheckForBraces (
     char                    *SubBuffer = Buffer;
     char                    *NextBrace;
     char                    *NextSemicolon;
-    char                    *NextIf;
     UINT32                  TotalLines = 1;
+    char                    *EndBuffer;
 
 
-    while (*SubBuffer)
+    EndBuffer = SubBuffer + strlen (SubBuffer);
+
+    while (SubBuffer <= EndBuffer)
     {
+        /* TBD: Update this function to work properly, as per code below */
+        /* SubBuffer = AsCheckAndSkipLiterals (SubBuffer, &TotalLines); */
 
-        SubBuffer = AsCheckAndSkipLiterals (SubBuffer, &TotalLines);
+        /* Skip normal comments */
+
+        if ((*SubBuffer == '/') &&
+            (*(SubBuffer + 1) == '*'))
+        {
+            /* Must maintain line count */
+
+            SubBuffer += 2;
+            while (strncmp ("*/", SubBuffer, 2))
+            {
+                if (*SubBuffer == '\n')
+                {
+                    TotalLines++;
+                }
+                SubBuffer++;
+            }
+            SubBuffer += 2;
+            continue;
+        }
+
+        /* Skip single quoted chars */
+
+        if (*SubBuffer == '\'')
+        {
+            SubBuffer++;
+            if (*SubBuffer == '\\')
+            {
+                SubBuffer++;
+            }
+            SubBuffer++;
+            continue;
+        }
+
+        /* Skip quoted strings */
+
+        if (*SubBuffer == '"')
+        {
+            SubBuffer++;
+            while (*SubBuffer != '"')
+            {
+                /* Handle escapes within the string */
+
+                if (*SubBuffer == '\\')
+                {
+                    SubBuffer++;
+                }
+                SubBuffer++;
+            }
+
+            SubBuffer++;
+            continue;
+        }
 
         if (*SubBuffer == '\n')
         {
@@ -296,13 +351,12 @@ AsCheckForBraces (
         else if (!(strncmp (" if", SubBuffer, 3)))
         {
             SubBuffer += 2;
+
             NextBrace = strstr (SubBuffer, "{");
             NextSemicolon = strstr (SubBuffer, ";");
-            NextIf = strstr (SubBuffer, " if");
 
             if ((!NextBrace) ||
-               (NextSemicolon && (NextBrace > NextSemicolon)) ||
-               (NextIf && (NextBrace > NextIf)))
+               (NextSemicolon && (NextBrace > NextSemicolon)))
             {
                 Gbl_MissingBraces++;
 
@@ -315,19 +369,18 @@ AsCheckForBraces (
         else if (!(strncmp (" else if", SubBuffer, 8)))
         {
             SubBuffer += 7;
+
             NextBrace = strstr (SubBuffer, "{");
             NextSemicolon = strstr (SubBuffer, ";");
-            NextIf = strstr (SubBuffer, " if");
 
             if ((!NextBrace) ||
-               (NextSemicolon && (NextBrace > NextSemicolon)) ||
-               (NextIf && (NextBrace > NextIf)))
+               (NextSemicolon && (NextBrace > NextSemicolon)))
             {
                 Gbl_MissingBraces++;
 
                 if (!Gbl_QuietMode)
                 {
-                    printf ("Missing braces for <if>, line %u: %s\n", TotalLines, Filename);
+                    printf ("Missing braces for <else if>, line %u: %s\n", TotalLines, Filename);
                 }
             }
         }
@@ -336,11 +389,9 @@ AsCheckForBraces (
             SubBuffer += 4;
             NextBrace = strstr (SubBuffer, "{");
             NextSemicolon = strstr (SubBuffer, ";");
-            NextIf = strstr (SubBuffer, " if");
 
             if ((!NextBrace) ||
-               (NextSemicolon && (NextBrace > NextSemicolon)) ||
-               (NextIf && (NextBrace > NextIf)))
+               (NextSemicolon && (NextBrace > NextSemicolon)))
             {
                 Gbl_MissingBraces++;
 
@@ -1192,6 +1243,9 @@ AsCountTabs (
  * DESCRIPTION: Count the number of "//" comments. This type of comment is
  *              non-ANSI C.
  *
+ * NOTE: July 2014: Allows // within quoted strings and within normal
+ *       comments. Eliminates extraneous warnings from this utility.
+ *
  ******************************************************************************/
 
 void
@@ -1200,22 +1254,82 @@ AsCountNonAnsiComments (
     char                    *Filename)
 {
     char                    *SubBuffer = Buffer;
+    char                    *EndBuffer;
     UINT32                  CommentCount = 0;
+    char                    *StartBuffer;
 
 
-    while (SubBuffer)
+    EndBuffer = SubBuffer + strlen (SubBuffer);
+
+    while (SubBuffer <= EndBuffer)
     {
-        SubBuffer = strstr (SubBuffer, "//");
-        if (SubBuffer)
+        /* Skip normal comments */
+
+        if ((*SubBuffer == '/') &&
+            (*(SubBuffer + 1) == '*'))
+        {
+            SubBuffer = strstr (SubBuffer + 2, "*/");
+            if (!SubBuffer)
+            {
+                break;
+            }
+
+            SubBuffer += 2;
+            continue;
+        }
+
+        /* Skip single quoted chars */
+
+        if (*SubBuffer == '\'')
+        {
+            SubBuffer++;
+            if (*SubBuffer == '\\')
+            {
+                SubBuffer++;
+            }
+            SubBuffer++;
+            continue;
+        }
+
+        /* Skip quoted strings */
+
+        if (*SubBuffer == '"')
+        {
+ StartBuffer = SubBuffer;
+AcpiOsPrintf ("START STRING: %.64s\n", StartBuffer);
+           SubBuffer++;
+            while (*SubBuffer != '"')
+            {
+                /* Handle escapes within the string */
+
+                if (*SubBuffer == '\\')
+                {
+                    SubBuffer++;
+                }
+                SubBuffer++;
+            }
+
+            SubBuffer++;
+            continue;
+        }
+
+        /* Finally: check for slash-slash comment */
+
+        if ((*SubBuffer == '/') &&
+            (*(SubBuffer + 1) == '/'))
         {
             CommentCount++;
-            SubBuffer += 2;
+            SubBuffer++;
         }
+
+        SubBuffer++;
     }
+
+    /* Error if any slash-slash comments found */
 
     if (CommentCount)
     {
-        AsPrint ("Non-ANSI Comments found", CommentCount, Filename);
+        AsPrint ("Non-ANSI // Comments Found", CommentCount, Filename);
         Gbl_NonAnsiComments += CommentCount;
     }
 }

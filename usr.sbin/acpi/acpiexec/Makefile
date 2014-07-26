@@ -20,6 +20,7 @@ SRCS=	\
 SRCS+=	\
 	acgetline.c \
 	ahids.c \
+	ahuuids.c \
 	cmfsize.c \
 	dbcmds.c \
 	dbconvert.c \
@@ -178,6 +179,7 @@ SRCS+=	\
 	utexcep.c \
 	utfileio.o \
 	utglobal.c \
+	uthex.c \
 	utids.c \
 	utinit.c \
 	utlock.c \
@@ -193,6 +195,7 @@ SRCS+=	\
 	utstate.c \
 	utstring.c \
 	uttrack.c \
+	utuuid.c \
 	utxface.c \
 	utxferror.c \
 	utxfinit.c \

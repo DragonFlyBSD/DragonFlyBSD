@@ -1159,7 +1159,7 @@ AcpiOsGetTimer (
  * FUNCTION:    AcpiOsReadPciConfiguration
  *
  * PARAMETERS:  PciId               - Seg/Bus/Dev
- *              Register            - Device Register
+ *              PciRegister         - Device Register
  *              Value               - Buffer where value is placed
  *              Width               - Number of bits
  *
@@ -1172,7 +1172,7 @@ AcpiOsGetTimer (
 ACPI_STATUS
 AcpiOsReadPciConfiguration (
     ACPI_PCI_ID             *PciId,
-    UINT32                  Register,
+    UINT32                  PciRegister,
     UINT64                  *Value,
     UINT32                  Width)
 {
@@ -1187,7 +1187,7 @@ AcpiOsReadPciConfiguration (
  * FUNCTION:    AcpiOsWritePciConfiguration
  *
  * PARAMETERS:  PciId               - Seg/Bus/Dev
- *              Register            - Device Register
+ *              PciRegister         - Device Register
  *              Value               - Value to be written
  *              Width               - Number of bits
  *
@@ -1200,7 +1200,7 @@ AcpiOsReadPciConfiguration (
 ACPI_STATUS
 AcpiOsWritePciConfiguration (
     ACPI_PCI_ID             *PciId,
-    UINT32                  Register,
+    UINT32                  PciRegister,
     UINT64                  Value,
     UINT32                  Width)
 {

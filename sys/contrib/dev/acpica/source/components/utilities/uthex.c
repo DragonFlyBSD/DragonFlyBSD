@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Name: achaiku.h - OS specific defines, etc. for Haiku (www.haiku-os.org)
+ * Module Name: uthex -- Hex/ASCII support functions
  *
  *****************************************************************************/
 
@@ -41,66 +41,73 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-#ifndef __ACHAIKU_H__
-#define __ACHAIKU_H__
+#define __UTHEX_C__
 
-#include "acgcc.h"
-#include <KernelExport.h>
+#include "acpi.h"
+#include "accommon.h"
 
-struct mutex;
-
-
-/* Host-dependent types and defines for user- and kernel-space ACPICA */
-
-#define ACPI_USE_SYSTEM_CLIBRARY
-#define ACPI_USE_STANDARD_HEADERS
-
-#define ACPI_MUTEX_TYPE             ACPI_OSL_MUTEX
-#define ACPI_MUTEX                  struct mutex *
-
-#define ACPI_USE_NATIVE_DIVIDE
-
-/* #define ACPI_THREAD_ID               thread_id */
-
-#define ACPI_SEMAPHORE              sem_id
-#define ACPI_SPINLOCK               spinlock *
-#define ACPI_CPU_FLAGS              cpu_status
-
-#define COMPILER_DEPENDENT_INT64    int64
-#define COMPILER_DEPENDENT_UINT64   uint64
+#define _COMPONENT          ACPI_COMPILER
+        ACPI_MODULE_NAME    ("uthex")
 
 
-#ifdef B_HAIKU_64_BIT
-#define ACPI_MACHINE_WIDTH          64
-#else
-#define ACPI_MACHINE_WIDTH          32
-#endif
+/* Hex to ASCII conversion table */
+
+static char                 AcpiGbl_HexToAscii[] =
+{
+    '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
+};
 
 
-#ifdef _KERNEL_MODE
-/* Host-dependent types and defines for in-kernel ACPICA */
+/*******************************************************************************
+ *
+ * FUNCTION:    AcpiUtHexToAsciiChar
+ *
+ * PARAMETERS:  Integer             - Contains the hex digit
+ *              Position            - bit position of the digit within the
+ *                                    integer (multiple of 4)
+ *
+ * RETURN:      The converted Ascii character
+ *
+ * DESCRIPTION: Convert a hex digit to an Ascii character
+ *
+ ******************************************************************************/
 
-/* ACPICA cache implementation is adequate. */
-#define ACPI_USE_LOCAL_CACHE
+char
+AcpiUtHexToAsciiChar (
+    UINT64                  Integer,
+    UINT32                  Position)
+{
 
-#define ACPI_FLUSH_CPU_CACHE() __asm __volatile("wbinvd");
+    return (AcpiGbl_HexToAscii[(Integer >> Position) & 0xF]);
+}
 
-/* Based on FreeBSD's due to lack of documentation */
-extern int AcpiOsAcquireGlobalLock(uint32 *lock);
-extern int AcpiOsReleaseGlobalLock(uint32 *lock);
 
-#define ACPI_ACQUIRE_GLOBAL_LOCK(GLptr, Acq)    do {                \
-        (Acq) = AcpiOsAcquireGlobalLock(&((GLptr)->GlobalLock));    \
-} while (0)
+/*******************************************************************************
+ *
+ * FUNCTION:    AcpiUtHexCharToValue
+ *
+ * PARAMETERS:  AsciiChar             - Hex character in Ascii
+ *
+ * RETURN:      The binary value of the ascii/hex character
+ *
+ * DESCRIPTION: Perform ascii-to-hex translation
+ *
+ ******************************************************************************/
 
-#define ACPI_RELEASE_GLOBAL_LOCK(GLptr, Acq)    do {                \
-        (Acq) = AcpiOsReleaseGlobalLock(&((GLptr)->GlobalLock));    \
-} while (0)
+UINT8
+AcpiUtAsciiCharToHex (
+    int                     HexChar)
+{
 
-#else /* _KERNEL_MODE */
-/* Host-dependent types and defines for user-space ACPICA */
+    if (HexChar <= 0x39)
+    {
+        return ((UINT8) (HexChar - 0x30));
+    }
 
-#error "We only support kernel mode ACPI atm."
+    if (HexChar <= 0x46)
+    {
+        return ((UINT8) (HexChar - 0x37));
+    }
 
-#endif /* _KERNEL_MODE */
-#endif /* __ACHAIKU_H__ */
+    return ((UINT8) (HexChar - 0x57));
+}

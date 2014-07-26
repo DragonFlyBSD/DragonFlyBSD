@@ -83,6 +83,7 @@ SRCS+=	\
 	utexcep.c \
 	utfileio.c \
 	utglobal.c \
+	uthex.c \
 	utids.c \
 	utinit.c \
 	utlock.c \

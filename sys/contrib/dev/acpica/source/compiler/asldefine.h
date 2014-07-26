@@ -55,7 +55,7 @@
 #define ASL_INVOCATION_NAME         "iasl"
 #define ASL_CREATOR_ID              "INTL"
 
-#define ASL_COMPLIANCE              "Supports ACPI Specification Revision 5.0A"
+#define ASL_COMPLIANCE              "Supports ACPI Specification Revision 5.1"
 
 
 /* Configuration constants */

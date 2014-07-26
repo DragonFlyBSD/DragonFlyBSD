@@ -25,6 +25,7 @@ SRCS=	\
 	adwalk.c \
 	ahids.c \
 	ahpredef.c \
+	ahuuids.c \
 	aslanalyze.c \
 	aslbtypes.c \
 	aslcodegen.c \
@@ -169,6 +170,7 @@ SRCS=	\
 	utexcep.c \
 	utfileio.c \
 	utglobal.c \
+	uthex.c \
 	utinit.c \
 	utlock.c \
 	utmath.c \
@@ -181,6 +183,7 @@ SRCS=	\
 	utresrc.c \
 	utstate.c \
 	utstring.c \
+	utuuid.c \
 	utxface.c \
 	utxferror.c
 

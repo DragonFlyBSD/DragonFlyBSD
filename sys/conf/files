@@ -2096,6 +2096,7 @@ kern/dsched/bfq/bfq_helper_thread.c	optional dsched_bfq
 
 # ACPICA code
 ${ACPICA_DIR}/common/ahids.c			optional acpi
+${ACPICA_DIR}/common/ahuuids.c			optional acpi
 ${ACPICA_COMP_DIR}/debugger/dbcmds.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbconvert.c		optional acpi acpi_debug
 ${ACPICA_COMP_DIR}/debugger/dbdisply.c		optional acpi acpi_debug
@@ -2251,6 +2252,7 @@ ${ACPICA_COMP_DIR}/utilities/uterror.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/uteval.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utexcep.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utglobal.c		optional acpi
+${ACPICA_COMP_DIR}/utilities/uthex.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utids.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utinit.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utlock.c		optional acpi
@@ -2264,6 +2266,7 @@ ${ACPICA_COMP_DIR}/utilities/utpredef.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utresrc.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utstate.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utstring.c		optional acpi
+${ACPICA_COMP_DIR}/utilities/utuuid.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utxface.c		optional acpi
 ${ACPICA_COMP_DIR}/utilities/utxferror.c	optional acpi
 ${ACPICA_COMP_DIR}/utilities/utxfinit.c		optional acpi

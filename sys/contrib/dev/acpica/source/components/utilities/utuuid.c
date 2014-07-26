@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Name: achaiku.h - OS specific defines, etc. for Haiku (www.haiku-os.org)
+ * Module Name: utuuid -- UUID support functions
  *
  *****************************************************************************/
 
@@ -41,66 +41,63 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-#ifndef __ACHAIKU_H__
-#define __ACHAIKU_H__
+#define __UTUUID_C__
 
-#include "acgcc.h"
-#include <KernelExport.h>
+#include "acpi.h"
+#include "accommon.h"
 
-struct mutex;
-
-
-/* Host-dependent types and defines for user- and kernel-space ACPICA */
-
-#define ACPI_USE_SYSTEM_CLIBRARY
-#define ACPI_USE_STANDARD_HEADERS
-
-#define ACPI_MUTEX_TYPE             ACPI_OSL_MUTEX
-#define ACPI_MUTEX                  struct mutex *
-
-#define ACPI_USE_NATIVE_DIVIDE
-
-/* #define ACPI_THREAD_ID               thread_id */
-
-#define ACPI_SEMAPHORE              sem_id
-#define ACPI_SPINLOCK               spinlock *
-#define ACPI_CPU_FLAGS              cpu_status
-
-#define COMPILER_DEPENDENT_INT64    int64
-#define COMPILER_DEPENDENT_UINT64   uint64
+#define _COMPONENT          ACPI_COMPILER
+        ACPI_MODULE_NAME    ("utuuid")
 
 
-#ifdef B_HAIKU_64_BIT
-#define ACPI_MACHINE_WIDTH          64
-#else
-#define ACPI_MACHINE_WIDTH          32
-#endif
+/*
+ * UUID support functions.
+ *
+ * This table is used to convert an input UUID ascii string to a 16 byte
+ * buffer and the reverse. The table maps a UUID buffer index 0-15 to
+ * the index within the 36-byte UUID string where the associated 2-byte
+ * hex value can be found.
+ *
+ * 36-byte UUID strings are of the form:
+ *     aabbccdd-eeff-gghh-iijj-kkllmmnnoopp
+ * Where aa-pp are one byte hex numbers, made up of two hex digits
+ *
+ * Note: This table is basically the inverse of the string-to-offset table
+ * found in the ACPI spec in the description of the ToUUID macro.
+ */
+const UINT8    AcpiGbl_MapToUuidOffset[UUID_BUFFER_LENGTH] =
+{
+    6,4,2,0,11,9,16,14,19,21,24,26,28,30,32,34
+};
 
 
-#ifdef _KERNEL_MODE
-/* Host-dependent types and defines for in-kernel ACPICA */
+/*******************************************************************************
+ *
+ * FUNCTION:    AcpiUtConvertStringToUuid
+ *
+ * PARAMETERS:  InString            - 36-byte formatted UUID string
+ *              UuidBuffer          - Where the 16-byte UUID buffer is returned
+ *
+ * RETURN:      None. Output data is returned in the UuidBuffer
+ *
+ * DESCRIPTION: Convert a 36-byte formatted UUID string to 16-byte UUID buffer
+ *
+ ******************************************************************************/
 
-/* ACPICA cache implementation is adequate. */
-#define ACPI_USE_LOCAL_CACHE
+void
+AcpiUtConvertStringToUuid (
+    char                    *InString,
+    UINT8                   *UuidBuffer)
+{
+    UINT32                  i;
 
-#define ACPI_FLUSH_CPU_CACHE() __asm __volatile("wbinvd");
 
-/* Based on FreeBSD's due to lack of documentation */
-extern int AcpiOsAcquireGlobalLock(uint32 *lock);
-extern int AcpiOsReleaseGlobalLock(uint32 *lock);
+    for (i = 0; i < UUID_BUFFER_LENGTH; i++)
+    {
+        UuidBuffer[i] =
+            (AcpiUtAsciiCharToHex (InString[AcpiGbl_MapToUuidOffset[i]]) << 4);
 
-#define ACPI_ACQUIRE_GLOBAL_LOCK(GLptr, Acq)    do {                \
-        (Acq) = AcpiOsAcquireGlobalLock(&((GLptr)->GlobalLock));    \
-} while (0)
-
-#define ACPI_RELEASE_GLOBAL_LOCK(GLptr, Acq)    do {                \
-        (Acq) = AcpiOsReleaseGlobalLock(&((GLptr)->GlobalLock));    \
-} while (0)
-
-#else /* _KERNEL_MODE */
-/* Host-dependent types and defines for user-space ACPICA */
-
-#error "We only support kernel mode ACPI atm."
-
-#endif /* _KERNEL_MODE */
-#endif /* __ACHAIKU_H__ */
+        UuidBuffer[i] |=
+            AcpiUtAsciiCharToHex (InString[AcpiGbl_MapToUuidOffset[i] + 1]);
+    }
+}
