@@ -316,8 +316,8 @@ netmsg_service_loop(void *arg)
 				 * e.g. TCP, so kprintf socket port chasing
 				 * could be too verbose for the console.
 				 */
-				kprintf("netmsg_service_loop: Warning, "
-					"port changed so=%p\n", msg->nm_so);
+				kprintf("%s: Warning, port changed so=%p\n",
+					__func__, msg->nm_so);
 #endif
 				lwkt_forwardmsg(msg->nm_so->so_port,
 						&msg->lmsg);
@@ -360,7 +360,7 @@ netisr_queue(int num, struct mbuf *m)
 
 	ni = &netisrs[num];
 	if (ni->ni_handler == NULL) {
-		kprintf("Unregistered isr %d\n", num);
+		kprintf("%s: Unregistered isr %d\n", __func__, num);
 		m_freem(m);
 		return (EIO);
 	}
@@ -376,7 +376,8 @@ netisr_queue(int num, struct mbuf *m)
 		if (m == NULL)
 			return (EIO);
 		if ((m->m_flags & M_HASH) == 0) {
-			kprintf("netisr_queue(%d): packet hash failed\n", num);
+			kprintf("%s(%d): packet hash failed\n",
+				__func__, num);
 			m_freem(m);
 			return (EIO);
 		}
@@ -419,7 +420,7 @@ netisr_handle(int num, struct mbuf *m)
 	KASSERT((num > 0 && num <= NELEM(netisrs)), ("bad isr %d", num));
 	ni = &netisrs[num];
 	if (ni->ni_handler == NULL) {
-		kprintf("unregistered isr %d\n", num);
+		kprintf("%s: unregistered isr %d\n", __func__, num);
 		m_freem(m);
 		return EIO;
 	}
@@ -471,7 +472,7 @@ netisr_characterize(int num, struct mbuf **mp, int hoff)
 	 */
 	ni = &netisrs[num];
 	if (ni->ni_handler == NULL) {
-		kprintf("Unregistered isr %d\n", num);
+		kprintf("%s: Unregistered isr %d\n", __func__, num);
 		m_freem(m);
 		*mp = NULL;
 	}
@@ -482,8 +483,10 @@ netisr_characterize(int num, struct mbuf **mp, int hoff)
 	if ((m->m_flags & M_HASH) == 0) {
 		ni->ni_hashfn(mp, hoff);
 		m = *mp;
-		if (m && (m->m_flags & M_HASH) == 0)
-			kprintf("netisr_queue(%d): packet hash failed\n", num);
+		if (m && (m->m_flags & M_HASH) == 0) {
+			kprintf("%s(%d): packet hash failed\n",
+				__func__, num);
+		}
 	}
 }
 
