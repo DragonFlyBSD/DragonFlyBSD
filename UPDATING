@@ -12,6 +12,16 @@
 +         UPGRADING DRAGONFLY FROM 3.8 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+SMP and DEVICE_POLLING OPTIONS MADE UNKNOWN
+-------------------------------------------
+
+DEVICE_POLLING was replaced by IFPOLL_ENABLE and the former SMP code is
+the default now (even on single-core systems), both for, like, 21 months.
+We kept the options around as no-ops as a convenience, to allow people
+using the same config for the then current release and the then current
+master. That period is now over, so any configs still having those
+options have to be adjusted.
+
 SYSVIPC SYSCALLS MADE NON-OPTIONAL
 ----------------------------------
 

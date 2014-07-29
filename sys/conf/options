@@ -711,8 +711,6 @@ PANIC_REBOOT_WAIT_TIME	opt_panic.h
 
 # Obsolete options (will be removed in the future)
 #
-DEVICE_POLLING		opt_dontuse.h
-SMP			opt_dontuse.h
 SYSVMSG			opt_dontuse.h
 SYSVSEM			opt_dontuse.h
 SYSVSHM			opt_dontuse.h
