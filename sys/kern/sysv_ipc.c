@@ -31,22 +31,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opt_sysvipc.h"
-
 #include <sys/param.h>
 #include <sys/ipc.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
 #include <sys/ucred.h>
-
-#define SYSCALL_NOT_PRESENT_GEN(SC, str) \
-int sys_##SC (struct SC##_args *uap) \
-{ \
-	sysv_nosys(str); \
-	return sys_nosys((struct nosys_args *)uap); \
-}
-
-#if defined(SYSVSEM) || defined(SYSVSHM) || defined(SYSVMSG)
 
 /*
  * Check for ipc permission
@@ -74,91 +63,3 @@ ipcperm(struct proc *p, struct ipc_perm *perm, int mode)
 	return ((mode & perm->mode) == mode || 
 		priv_check_cred(cred, PRIV_ROOT, 0) == 0 ? 0 : EACCES);
 }
-
-#endif /* defined(SYSVSEM) || defined(SYSVSHM) || defined(SYSVMSG) */
-
-
-#if !defined(SYSVSEM) || !defined(SYSVSHM) || !defined(SYSVMSG)
-
-#include <sys/proc.h>
-#include <sys/sem.h>
-#include <sys/shm.h>
-#include <sys/syslog.h>
-#include <sys/sysproto.h>
-#include <sys/systm.h>
-
-static void sysv_nosys (char *s);
-
-static void 
-sysv_nosys(char *s)
-{
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-
-	log(LOG_ERR, "cmd %s pid %d tried to use non-present %s\n",
-			(p ? p->p_comm : td->td_comm),
-			(p ? p->p_pid : -1), s);
-}
-
-#if !defined(SYSVSEM)
-
-/*
- * SYSVSEM stubs
- */
-
-SYSCALL_NOT_PRESENT_GEN(__semctl, "SYSVSEM");
-SYSCALL_NOT_PRESENT_GEN(semget, "SYSVSEM");
-SYSCALL_NOT_PRESENT_GEN(semop, "SYSVSEM");
-
-/* called from kern_exit.c */
-void
-semexit(struct proc *p)
-{
-	/* empty */
-}
-
-#endif /* !defined(SYSVSEM) */
-
-
-#if !defined(SYSVMSG)
-
-/*
- * SYSVMSG stubs
- */
-
-SYSCALL_NOT_PRESENT_GEN(msgctl, "SYSVMSG");
-SYSCALL_NOT_PRESENT_GEN(msgget, "SYSVMSG");
-SYSCALL_NOT_PRESENT_GEN(msgsnd, "SYSVMSG");
-SYSCALL_NOT_PRESENT_GEN(msgrcv, "SYSVMSG");
-
-#endif /* !defined(SYSVMSG) */
-
-
-#if !defined(SYSVSHM)
-
-/*
- * SYSVSHM stubs
- */
-
-SYSCALL_NOT_PRESENT_GEN(shmdt, "SYSVSHM");
-SYSCALL_NOT_PRESENT_GEN(shmat, "SYSVSHM");
-SYSCALL_NOT_PRESENT_GEN(shmctl, "SYSVSHM");
-SYSCALL_NOT_PRESENT_GEN(shmget, "SYSVSHM");
-
-/* called from kern_fork.c */
-void
-shmfork(struct proc *p1, struct proc *p2)
-{
-	/* empty */
-}
-
-/* called from kern_exit.c */
-void
-shmexit(struct vmspace *vm)
-{
-	/* empty */
-}
-
-#endif /* !defined(SYSVSHM) */
-
-#endif /* !defined(SYSVSEM) || !defined(SYSVSHM) || !defined(SYSVMSG) */

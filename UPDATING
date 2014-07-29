@@ -12,6 +12,12 @@
 +         UPGRADING DRAGONFLY FROM 3.8 TO LATER VERSIONS                +
 +-----------------------------------------------------------------------+
 
+SYSVIPC SYSCALLS MADE NON-OPTIONAL
+----------------------------------
+
+The code related to the SYSVMSG, SYSVSEM and SYSVSHM kernel options is
+now compiled in by default. The options are no-ops for now.
+
 DEFAULT DRIVER CHANGED FOR LSI "THUNDERBOLT" SERIES RAID CONTROLLERS
 --------------------------------------------------------------------
 

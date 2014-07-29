@@ -91,9 +91,6 @@ NSWBUF_MIN	opt_swap.h
 PPS_SYNC	opt_ntp.h
 QUOTA
 SUIDDIR		opt_suiddir.h
-SYSVMSG		opt_sysvipc.h
-SYSVSEM		opt_sysvipc.h
-SYSVSHM		opt_sysvipc.h
 SHMMIN		opt_sysvipc.h
 SHMMNI		opt_sysvipc.h
 SHMSEG		opt_sysvipc.h
@@ -716,3 +713,6 @@ PANIC_REBOOT_WAIT_TIME	opt_panic.h
 #
 DEVICE_POLLING		opt_dontuse.h
 SMP			opt_dontuse.h
+SYSVMSG			opt_dontuse.h
+SYSVSEM			opt_dontuse.h
+SYSVSHM			opt_dontuse.h

@@ -218,13 +218,11 @@ device		ndis
 # memory, semaphores, and message queues, respectively.
 #
 # System V shared memory and tunable parameters
-options 	SYSVSHM		# include support for shared memory
 options 	SHMMIN=2	# min shared memory segment size (bytes)
 options 	SHMMNI=33	# max number of shared memory identifiers
 options 	SHMSEG=9	# max shared memory segments per process
 
 # System V semaphores and tunable parameters
-options 	SYSVSEM		# include support for semaphores
 options 	SEMMAP=31	# amount of entries in semaphore map
 options 	SEMMNI=11	# number of semaphore identifiers in the system
 options 	SEMMNS=61	# number of semaphores in the system
@@ -234,7 +232,6 @@ options 	SEMOPM=101	# max number of operations per semop call
 options 	SEMUME=11	# max number of undo entries per process
 
 # System V message queues and tunable parameters
-options 	SYSVMSG		# include support for message queues
 options 	MSGMNB=2049	# max characters per message queue
 options 	MSGMNI=41	# max number of message queue identifiers
 options 	MSGSEG=2049	# max number of message segments in the system

@@ -34,12 +34,8 @@
 
 . ../default.cfg
 
-kldstat -v | grep -q sysvmsg  || kldload sysvmsg
-kldstat -v | grep -q sysvsem  || kldload sysvsem
-kldstat -v | grep -q sysvshm  || kldload sysvshm
-
-kldstat -v | grep -q aio      || kldload aio
-kldstat -v | grep -q mqueuefs || kldload mqueuefs
+#kldstat -v | grep -q aio      || kldload aio
+#kldstat -v | grep -q mqueuefs || kldload mqueuefs
 
 syscall=`grep SYS_MAXSYSCALL /usr/include/sys/syscall.h | awk '{print $NF}'`
 

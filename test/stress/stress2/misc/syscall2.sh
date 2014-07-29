@@ -41,12 +41,8 @@ sed '1,/^EOF/d' < $odir/$0 > syscall2.c
 cc -o syscall2 -Wall -I $odir/../include -L $odir/../lib syscall2.c -lstress -lutil
 rm -f syscall2.c
 
-kldstat -v | grep -q sysvmsg  || kldload sysvmsg
-kldstat -v | grep -q sysvsem  || kldload sysvsem
-kldstat -v | grep -q sysvshm  || kldload sysvshm
-
-kldstat -v | grep -q aio      || kldload aio
-kldstat -v | grep -q mqueuefs || kldload mqueuefs
+#kldstat -v | grep -q aio      || kldload aio
+#kldstat -v | grep -q mqueuefs || kldload mqueuefs
 
 syscall=`grep SYS_MAXSYSCALL /usr/include/sys/syscall.h | awk '{print $NF}'`
 

@@ -1017,9 +1017,9 @@ kern/subr_unit.c	standard
 kern/sys_mqueue.c	standard
 kern/sys_socket.c	standard
 kern/sysv_ipc.c		standard
-kern/sysv_msg.c		optional sysvmsg
-kern/sysv_sem.c		optional sysvsem
-kern/sysv_shm.c		optional sysvshm
+kern/sysv_msg.c		standard
+kern/sysv_sem.c		standard
+kern/sysv_shm.c		standard
 kern/tty.c		standard
 kern/tty_compat.c	optional compat_43
 kern/tty_conf.c		standard

@@ -11,21 +11,6 @@
 
 echo -n 'Additional ABI support:'
 
-name="sysvipc"
-rcvar=`set_rcvar`
-start_cmd="sysv_start"
-stop_cmd=":"
-
-sysv_start()
-{
-	echo -n ' sysvipc'
-	kldload -n sysvmsg
-	kldload -n sysvsem
-	kldload -n sysvshm
-}
-load_rc_config $name
-run_rc_command "$1"
-
 name="linux"
 rcvar=`set_rcvar`
 start_cmd="linux_start"
