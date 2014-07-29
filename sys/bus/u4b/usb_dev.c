@@ -134,7 +134,7 @@ static usb_fifo_cmd_t usb_fifo_dummy_cmd;
 
 /* character device structure used for devices (/dev/ugenX.Y and /dev/uXXX) */
 struct dev_ops usb_ops = {
-	{ "usbdev", 0, D_MEM },
+	{ "usbdev", 0, D_MPSAFE | D_MEM },
 	.d_open = usb_open,
 	.d_close = usb_close,
 	.d_ioctl = usb_ioctl,

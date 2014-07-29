@@ -168,7 +168,7 @@ static d_write_t ucom_dev_write;
 static d_ioctl_t ucom_dev_ioctl;
 
 static struct dev_ops ucom_ops = {
-  { "ucom", 0, D_TTY },
+  { "ucom", 0, D_MPSAFE | D_TTY },
   .d_open =       ucom_dev_open,
   .d_close =      ucom_dev_close,
   .d_read =       ucom_dev_read,
