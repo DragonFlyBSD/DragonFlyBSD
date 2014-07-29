@@ -316,17 +316,17 @@ static int getSpanInfo(MR_FW_RAID_MAP_ALL *map, PLD_SPAN_INFO ldSpanInfo)
                                (unsigned int)span_set->span_row_data_width, 
                                (unsigned int)span_set->diff);
                        kprintf("    logical LBA start=0x%08lx, end=0x%08lx\n", 
-                               (long unsigned int)span_set->log_start_lba, 
-                               (long unsigned int)span_set->log_end_lba);
+                               (unsigned long)span_set->log_start_lba, 
+                               (unsigned long)span_set->log_end_lba);
                        kprintf("       span row start=0x%08lx, end=0x%08lx\n",
-                               (long unsigned int)span_set->span_row_start, 
-                               (long unsigned int)span_set->span_row_end);
+                               (unsigned long)span_set->span_row_start, 
+                               (unsigned long)span_set->span_row_end);
                        kprintf("       data row start=0x%08lx, end=0x%08lx\n", 
-                               (long unsigned int)span_set->data_row_start, 
-                               (long unsigned int)span_set->data_row_end);
+                               (unsigned long)span_set->data_row_start, 
+                               (unsigned long)span_set->data_row_end);
                        kprintf("       data strip start=0x%08lx, end=0x%08lx\n", 
-                               (long unsigned int)span_set->data_strip_start, 
-                               (long unsigned int)span_set->data_strip_end);
+                               (unsigned long)span_set->data_strip_start, 
+                               (unsigned long)span_set->data_strip_end);
                        
                        for (span=0; span<raid->spanDepth; span++) {
                                if (map->raidMap.ldSpanMap[ld].spanBlock[span].
@@ -337,10 +337,10 @@ static int getSpanInfo(MR_FW_RAID_MAP_ALL *map, PLD_SPAN_INFO ldSpanInfo)
                                kprintf("  Span=%x, Quad=%x, diff=%x\n", span, 
                                        element, quad->diff);
                                kprintf("    offset_in_span=0x%08lx\n", 
-                                       (long unsigned int)quad->offsetInSpan);
+                                       (unsigned long)quad->offsetInSpan);
                                kprintf("     logical start=0x%08lx, end=0x%08lx\n", 
-                                       (long unsigned int)quad->logStart, 
-                                       (long unsigned int)quad->logEnd);
+                                       (unsigned long)quad->logStart, 
+                                       (unsigned long)quad->logEnd);
                                }
                        }
                }
@@ -523,7 +523,7 @@ static u_int64_t get_strip_from_row(struct mrsas_softc *sc,
                        }
        }
        mrsas_dprint(sc, MRSAS_PRL11,"LSI Debug - get_strip_from_row: returns invalid "
-               "strip for ld=%x, row=%lx\n", ld, (long unsigned int)row);
+               "strip for ld=%x, row=%lx\n", ld, (unsigned long)row);
        return -1;
 }
 
@@ -573,12 +573,12 @@ static u_int32_t get_arm_from_strip(struct mrsas_softc *sc,
                        }
                mrsas_dprint(sc, MRSAS_PRL11, "LSI PRL11: get_arm_from_strip: "
                        " for ld=0x%x strip=0x%lx arm is  0x%x\n", ld, 
-                       (long unsigned int)strip, (strip_offset - span_offset));
+                       (unsigned long)strip, (strip_offset - span_offset));
                return (strip_offset - span_offset);
        }
 
        mrsas_dprint(sc, MRSAS_PRL11, "LSI Debug: - get_arm_from_strip: returns invalid arm"
-               " for ld=%x strip=%lx\n", ld, (long unsigned int)strip);
+               " for ld=%x strip=%lx\n", ld, (unsigned long)strip);
 
        return -1;
 }

@@ -95,7 +95,7 @@ void mrsas_dump_dcmd( struct mrsas_softc *sc, struct mrsas_dcmd_frame* dcmd )
         device_printf(sc->mrsas_dev, "    sge32[%02d].length:    0x%08x\n", 
             i, dcmd->sgl.sge32[i].length);
         device_printf(sc->mrsas_dev, "    sge64[%02d].phys_addr: 0x%08llx\n",
-            i, (long long unsigned int) dcmd->sgl.sge64[i].phys_addr);
+            i, (unsigned long long) dcmd->sgl.sge64[i].phys_addr);
         device_printf(sc->mrsas_dev, "    sge64[%02d].length:    0x%08x\n", 
             i, dcmd->sgl.sge64[i].length);
     }

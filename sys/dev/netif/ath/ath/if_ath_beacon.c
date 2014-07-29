@@ -240,7 +240,7 @@ ath_beacon_alloc(struct ath_softc *sc, struct ieee80211_node *ni)
 		    "%s: %s beacons bslot %d intval %u tsfadjust %llu\n",
 		    __func__, sc->sc_stagbeacons ? "stagger" : "burst",
 		    avp->av_bslot, ni->ni_intval,
-		    (long long unsigned) le64toh(tsfadjust));
+		    (unsigned long long) le64toh(tsfadjust));
 
 		wh = mtod(m, struct ieee80211_frame *);
 		memcpy(&wh[1], &tsfadjust, sizeof(tsfadjust));

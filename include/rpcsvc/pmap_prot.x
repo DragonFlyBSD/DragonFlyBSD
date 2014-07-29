@@ -28,7 +28,6 @@
 % *
 % * @(#)pmap_prot.x	1.6	94/04/29 SMI
 % * $FreeBSD: src/include/rpcsvc/pmap_prot.x,v 1.3 2003/05/04 02:51:42 obrien Exp $
-% * $DragonFly: src/include/rpcsvc/pmap_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 %/*
 % * Copyright (c) 1984,1989 by Sun Microsystems, Inc.
@@ -65,7 +64,7 @@
 % *	TRUE is success, FALSE is failure.  Un-registers pair
 % *	[prog, vers].  prot and port are ignored.
 % *
-% * PMAPPROC_GETPORT(struct pmap) returns (long unsigned).
+% * PMAPPROC_GETPORT(struct pmap) returns (unsigned long).
 % *	0 is failure.  Otherwise returns the port number where the pair
 % *	[prog, vers] is registered.  It may lie!
 % *
@@ -254,10 +253,10 @@ program PMAPPROG {
 %#define	PMAPPORT 111
 %
 %struct pmap {
-%	long unsigned pm_prog;
-%	long unsigned pm_vers;
-%	long unsigned pm_prot;
-%	long unsigned pm_port;
+%	unsigned long pm_prog;
+%	unsigned long pm_vers;
+%	unsigned long pm_prot;
+%	unsigned long pm_port;
 %};
 %typedef struct pmap PMAP;
 %extern bool_t xdr_pmap (XDR *, struct pmap *);

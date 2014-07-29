@@ -29,7 +29,6 @@
  *	from: @(#)pmap_prot.h	2.1 88/07/29 4.0 RPCSRC
  * $NetBSD: pmap_prot.h,v 1.8 2000/06/02 22:57:55 fvdl Exp $
  * $FreeBSD: src/include/rpc/pmap_prot.h,v 1.12 2002/03/23 17:24:55 imp Exp $
- * $DragonFly: src/include/rpc/pmap_prot.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
  */
 
 /*
@@ -51,7 +50,7 @@
  *	TRUE is success, FALSE is failure.  Un-registers pair
  *	[prog, vers].  prot and port are ignored.
  *
- * PMAPPROC_GETPORT(struct pmap) returns (long unsigned).
+ * PMAPPROC_GETPORT(struct pmap) returns (unsigned long).
  *	0 is failure.  Otherwise returns the port number where the pair
  *	[prog, vers] is registered.  It may lie!
  *
@@ -86,10 +85,10 @@
 #define PMAPPROC_CALLIT		((u_long)5)
 
 struct pmap {
-	long unsigned pm_prog;
-	long unsigned pm_vers;
-	long unsigned pm_prot;
-	long unsigned pm_port;
+	unsigned long pm_prog;
+	unsigned long pm_vers;
+	unsigned long pm_prot;
+	unsigned long pm_port;
 };
 
 struct pmaplist {

@@ -93,7 +93,7 @@ static const struct  xdr_ops xdrrec_ops = {
 /*
  * A record is composed of one or more record fragments.
  * A record fragment is a four-byte header followed by zero to
- * 2**32-1 bytes.  The header is treated as a long unsigned and is
+ * 2**32-1 bytes.  The header is treated as an unsigned long and is
  * encode/decoded to the network via htonl/ntohl.  The low order 31 bits
  * are a byte count of the fragment.  The highest order bit is a boolean:
  * 1 => this fragment is the last fragment of the record,
