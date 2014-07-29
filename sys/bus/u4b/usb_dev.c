@@ -147,7 +147,7 @@ static struct cdev* usb_dev = NULL;
 
 /* character device structure used for /bus/u4b */
 static struct dev_ops usb_static_ops = {
-	{ "usb", 0, D_MEM },
+	{ "usb", 0, D_MPSAFE | D_MEM },
 	.d_open = usb_static_open,
 	.d_close = usb_static_close,
 	.d_ioctl = usb_static_ioctl,
