@@ -1,5 +1,5 @@
-# $FreeBSD: src/sys/modules/usb/urtwnfw/Makefile,v 1.1 2013/07/11 00:28:45 svnexp Exp $
+# $FreeBSD: head/sys/modules/usb/urtwnfw/Makefile 264912 2014-04-25 08:01:22Z kevlo $
 
-SUBDIR=	urtwnrtl8192cT urtwnrtl8192cU
+SUBDIR=	urtwnrtl8188eu urtwnrtl8192cT urtwnrtl8192cU
 
 .include <bsd.subdir.mk>
