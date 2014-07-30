@@ -184,8 +184,9 @@ static
 int
 hammer2_vop_inactive(struct vop_inactive_args *ap)
 {
+	const hammer2_inode_data_t *ripdata;
 	hammer2_inode_t *ip;
-	hammer2_cluster_t *cparent;
+	hammer2_cluster_t *cluster;
 	struct vnode *vp;
 
 	vp = ap->a_vp;
@@ -204,17 +205,24 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 	 * the strategy code.  Simply mark the inode modified so it gets
 	 * picked up by our normal flush.
 	 */
-	cparent = hammer2_inode_lock_ex(ip);
-	KKASSERT(cparent);
+	cluster = hammer2_inode_lock_ex(ip);
+	KKASSERT(cluster);
+	ripdata = &hammer2_cluster_data(cluster)->ipdata;
 
 	/*
 	 * Check for deleted inodes and recycle immediately.
 	 */
-	if (hammer2_cluster_unlinked(cparent) & HAMMER2_CHAIN_UNLINKED) {
-		hammer2_inode_unlock_ex(ip, cparent);
+	if (ripdata->nlinks == 0) {
+		hammer2_key_t lbase;
+		int nblksize;
+
+		nblksize = hammer2_calc_logical(ip, 0, &lbase, NULL);
+		nvtruncbuf(vp, 0, nblksize, 0, 0);
+
+		hammer2_inode_unlock_ex(ip, cluster);
 		vrecycle(vp);
 	} else {
-		hammer2_inode_unlock_ex(ip, cparent);
+		hammer2_inode_unlock_ex(ip, cluster);
 	}
 	return (0);
 }
@@ -227,6 +235,7 @@ static
 int
 hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 {
+	const hammer2_inode_data_t *ripdata;
 	hammer2_cluster_t *cluster;
 	hammer2_inode_t *ip;
 	hammer2_pfsmount_t *pmp;
@@ -242,6 +251,7 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 */
 	pmp = ip->pmp;
 	cluster = hammer2_inode_lock_ex(ip);
+	ripdata = &hammer2_cluster_data(cluster)->ipdata;
 
 	/*
 	 * The final close of a deleted file or directory marks it for
@@ -267,15 +277,15 @@ hammer2_vop_reclaim(struct vop_reclaim_args *ap)
 	 * the ip is left with a reference and placed on a linked list and
 	 * handled later on.
 	 */
-	if (hammer2_cluster_unlinked(cluster)) {
+	if (ripdata->nlinks == 0) {
 		hammer2_inode_unlink_t *ipul;
 
 		ipul = kmalloc(sizeof(*ipul), pmp->minode, M_WAITOK | M_ZERO);
 		ipul->ip = ip;
 
-		spin_lock(&pmp->unlinkq_spin);
+		spin_lock(&pmp->list_spin);
 		TAILQ_INSERT_TAIL(&pmp->unlinkq, ipul, entry);
-		spin_unlock(&pmp->unlinkq_spin);
+		spin_unlock(&pmp->list_spin);
 		hammer2_inode_unlock_ex(ip, cluster);	/* unlock */
 		/* retain ref from vp for ipul */
 	} else {
@@ -1234,7 +1244,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 		ipdata = &hammer2_cluster_data(cluster)->ipdata;
 		if (ipdata->type == HAMMER2_OBJTYPE_HARDLINK) {
 			hammer2_tid_t inum = ipdata->inum;
-			error = hammer2_hardlink_find(dip, cluster);
+			error = hammer2_hardlink_find(dip, NULL, cluster);
 			if (error) {
 				kprintf("hammer2: unable to find hardlink "
 					"0x%016jx\n", inum);
@@ -1373,7 +1383,6 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 	hammer2_trans_init(&trans, dip->pmp, HAMMER2_TRANS_NEWINODE);
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &cluster, &error);
-	cluster->focus->inode_reason = 1;
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1561,7 +1570,6 @@ hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &ncluster, &error);
-	ncluster->focus->inode_reason = 2;
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1607,7 +1615,6 @@ hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &ncluster, &error);
-	ncluster->focus->inode_reason = 3;
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1655,7 +1662,6 @@ hammer2_vop_nsymlink(struct vop_nsymlink_args *ap)
 
 	nip = hammer2_inode_create(&trans, dip, ap->a_vap, ap->a_cred,
 				   name, name_len, &ncparent, &error);
-	ncparent->focus->inode_reason = 4;
 	if (error) {
 		KKASSERT(nip == NULL);
 		*ap->a_vpp = NULL;
@@ -1744,7 +1750,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	hammer2_pfs_memory_wait(dip->pmp);
 	hammer2_trans_init(&trans, dip->pmp, 0);
 	error = hammer2_unlink_file(&trans, dip, name, name_len,
-				    0, NULL, ap->a_nch);
+				    0, NULL, ap->a_nch, -1);
 	hammer2_trans_done(&trans);
 	if (error == 0)
 		cache_unlink(ap->a_nch);
@@ -1777,7 +1783,7 @@ hammer2_vop_nrmdir(struct vop_nrmdir_args *ap)
 	hammer2_trans_init(&trans, dip->pmp, 0);
 	hammer2_run_unlinkq(&trans, dip->pmp);
 	error = hammer2_unlink_file(&trans, dip, name, name_len,
-				    1, NULL, ap->a_nch);
+				    1, NULL, ap->a_nch, -1);
 	hammer2_trans_done(&trans);
 	if (error == 0)
 		cache_unlink(ap->a_nch);
@@ -1874,15 +1880,14 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * Remove target if it exists
 	 */
 	error = hammer2_unlink_file(&trans, tdip, tname, tname_len,
-				    -1, NULL, ap->a_tnch);
+				    -1, NULL, ap->a_tnch, -1);
 	if (error && error != ENOENT)
 		goto done;
 	cache_setunresolved(ap->a_tnch);
 
 	/*
 	 * When renaming a hardlinked file we may have to re-consolidate
-	 * the location of the hardlink target.  Also adjust nlinks by +1
-	 * to counter-act the unlink below.
+	 * the location of the hardlink target.
 	 *
 	 * If ip represents a regular file the consolidation code essentially
 	 * does nothing other than return the same locked cluster that was
@@ -1896,7 +1901,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 */
 	cluster = hammer2_inode_lock_ex(ip);
 	error = hammer2_hardlink_consolidate(&trans, ip, &cluster,
-					     cdip, cdcluster, 1);
+					     cdip, cdcluster, 0);
 	if (error)
 		goto done;
 
@@ -1912,9 +1917,12 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 *
 	 * The target cluster may be marked DELETED but will not be destroyed
 	 * since we retain our hold on ip and cluster.
+	 *
+	 * NOTE: We pass nlinks as 0 (not -1) in order to retain the file's
+	 *	 link count.
 	 */
 	error = hammer2_unlink_file(&trans, fdip, fname, fname_len,
-				    -1, &hlink, NULL);
+				    -1, &hlink, NULL, 0);
 	KKASSERT(error != EAGAIN);
 	if (error)
 		goto done;
@@ -1932,12 +1940,13 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	 * WARNING: Chain locks can lock buffer cache buffers, to avoid
 	 *	    deadlocks we want to unlock before issuing a cache_*()
 	 *	    op (that might have to lock a vnode).
+	 *
+	 * NOTE:    Pass nlinks as 0 because we retained the link count from
+	 *	    the unlink, so we do not have to modify it.
 	 */
-	hammer2_cluster_refactor(cluster);
 	error = hammer2_inode_connect(&trans, &cluster, hlink,
 				      tdip, tdcluster,
 				      tname, tname_len, 0);
-	cluster->focus->inode_reason = 5;
 	if (error == 0) {
 		KKASSERT(cluster != NULL);
 		hammer2_inode_repoint(ip, (hlink ? ip->pip : tdip), cluster);
@@ -2230,36 +2239,42 @@ hammer2_vop_mountctl(struct vop_mountctl_args *ap)
 }
 
 /*
- * This handles unlinked open files after the cnode is finally dereferenced.
+ * This handles unlinked open files after the vnode is finally dereferenced.
  */
 void
 hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp)
 {
+	const hammer2_inode_data_t *ripdata;
 	hammer2_inode_unlink_t *ipul;
 	hammer2_inode_t *ip;
 	hammer2_cluster_t *cluster;
+	hammer2_cluster_t *cparent;
 
 	if (TAILQ_EMPTY(&pmp->unlinkq))
 		return;
 
-	spin_lock(&pmp->unlinkq_spin);
+	spin_lock(&pmp->list_spin);
 	while ((ipul = TAILQ_FIRST(&pmp->unlinkq)) != NULL) {
 		TAILQ_REMOVE(&pmp->unlinkq, ipul, entry);
-		spin_unlock(&pmp->unlinkq_spin);
+		spin_unlock(&pmp->list_spin);
 		ip = ipul->ip;
 		kfree(ipul, pmp->minode);
 
 		cluster = hammer2_inode_lock_ex(ip);
-		KKASSERT(cluster->focus->flags & HAMMER2_CHAIN_UNLINKED);
+		ripdata = &hammer2_cluster_data(cluster)->ipdata;
 		kprintf("hammer2: unlink on reclaim: %s\n",
 			cluster->focus->data->ipdata.filename);
-		hammer2_cluster_delete(trans, cluster, 0);
+		KKASSERT(ripdata->nlinks == 0);
+
+		cparent = hammer2_cluster_parent(cluster);
+		hammer2_cluster_delete(trans, cparent, cluster,
+				       HAMMER2_DELETE_PERMANENT);
 		hammer2_inode_unlock_ex(ip, cluster);	/* inode lock */
 		hammer2_inode_drop(ip);			/* ipul ref */
 
-		spin_lock(&pmp->unlinkq_spin);
+		spin_lock(&pmp->list_spin);
 	}
-	spin_unlock(&pmp->unlinkq_spin);
+	spin_unlock(&pmp->list_spin);
 }
 
 

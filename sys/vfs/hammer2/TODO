@@ -1,5 +1,6 @@
 
-* hammer2_xid_t needs to be 64 bits
+* flush synchronization boundary crossing check and current flush chain
+  interlock needed.
 
 * snapshot creation must allocate and separately pass a new pmp for the pfs
   degenerate 'cluster' representing the snapshot.  This theoretically will

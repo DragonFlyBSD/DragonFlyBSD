@@ -49,19 +49,19 @@
 void
 hammer2_mount_exlock(hammer2_mount_t *hmp)
 {
-	ccms_thread_lock(&hmp->vchain.core->cst, CCMS_STATE_EXCLUSIVE);
+	ccms_thread_lock(&hmp->vchain.core.cst, CCMS_STATE_EXCLUSIVE);
 }
 
 void
 hammer2_mount_shlock(hammer2_mount_t *hmp)
 {
-	ccms_thread_lock(&hmp->vchain.core->cst, CCMS_STATE_SHARED);
+	ccms_thread_lock(&hmp->vchain.core.cst, CCMS_STATE_SHARED);
 }
 
 void
 hammer2_mount_unlock(hammer2_mount_t *hmp)
 {
-	ccms_thread_unlock(&hmp->vchain.core->cst);
+	ccms_thread_unlock(&hmp->vchain.core.cst);
 }
 
 /*

@@ -89,12 +89,6 @@ hammer2_cluster_modified(hammer2_cluster_t *cluster)
 	return((cluster->focus->flags & HAMMER2_CHAIN_MODIFIED) != 0);
 }
 
-int
-hammer2_cluster_unlinked(hammer2_cluster_t *cluster)
-{
-	return((cluster->focus->flags & HAMMER2_CHAIN_UNLINKED) != 0);
-}
-
 /*
  * Return a bref representative of the cluster.  Any data offset is removed
  * (since it would only be applicable to a particular chain in the cluster).
@@ -123,7 +117,7 @@ hammer2_cluster_set_chainflags(hammer2_cluster_t *cluster, uint32_t flags)
 }
 
 void
-hammer2_cluster_setsubmod(hammer2_trans_t *trans, hammer2_cluster_t *cluster)
+hammer2_cluster_setflush(hammer2_trans_t *trans, hammer2_cluster_t *cluster)
 {
 	hammer2_chain_t *chain;
 	int i;
@@ -131,7 +125,7 @@ hammer2_cluster_setsubmod(hammer2_trans_t *trans, hammer2_cluster_t *cluster)
 	for (i = 0; i < cluster->nchains; ++i) {
 		chain = cluster->array[i];
 		if (chain)
-			hammer2_chain_setsubmod(trans, chain);
+			hammer2_chain_setflush(trans, chain);
 	}
 }
 
@@ -167,7 +161,9 @@ hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
 	hammer2_cluster_t *cluster;
 	hammer2_cluster_t *rcluster;
 	hammer2_chain_t *chain;
+#if 0
 	u_int bytes = 1U << (int)(bref->data_off & HAMMER2_OFF_MASK_RADIX);
+#endif
 	int i;
 
 	KKASSERT(pmp != NULL);
@@ -204,26 +200,19 @@ hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
 	for (i = 0; i < rcluster->nchains; ++i) {
 		chain = hammer2_chain_alloc(rcluster->array[i]->hmp,
 					    pmp, trans, bref);
+#if 0
 		chain->hmp = rcluster->array[i]->hmp;
 		chain->bref = *bref;
 		chain->bytes = bytes;
 		chain->refs = 1;
 		chain->flags = HAMMER2_CHAIN_ALLOCATED;
-		chain->delete_xid = HAMMER2_XID_MAX;
+#endif
 
 		/*
-		 * Set modify_tid if a transaction is creating the inode.
-		 * Enforce update_xlo = 0 so nearby transactions do not think
-		 * it has been flushed when it hasn't.
-		 *
 		 * NOTE: When loading a chain from backing store or creating a
 		 *	 snapshot, trans will be NULL and the caller is
 		 *	 responsible for setting these fields.
 		 */
-		if (trans) {
-			chain->modify_xid = trans->sync_xid;
-			chain->update_xlo = 0;
-		}
 		cluster->array[i] = chain;
 	}
 	cluster->nchains = i;
@@ -231,32 +220,6 @@ hammer2_cluster_alloc(hammer2_pfsmount_t *pmp,
 	cluster->focus = cluster->array[0];
 
 	return (cluster);
-}
-
-/*
- * Associate an existing core with the chain or allocate a new core.
- *
- * The core is not locked.  No additional refs on the chain are made.
- * (trans) must not be NULL if (core) is not NULL.
- *
- * When chains are delete-duplicated during flushes we insert nchain on
- * the ownerq after ochain instead of at the end in order to give the
- * drop code visibility in the correct order, otherwise drops can be missed.
- */
-void
-hammer2_cluster_core_alloc(hammer2_trans_t *trans,
-			   hammer2_cluster_t *ncluster,
-			   hammer2_cluster_t *ocluster)
-{
-	int i;
-
-	for (i = 0; i < ocluster->nchains; ++i) {
-		if (ncluster->array[i]) {
-			hammer2_chain_core_alloc(trans,
-						 ncluster->array[i],
-						 ocluster->array[i]);
-		}
-	}
 }
 
 /*
@@ -445,9 +408,9 @@ hammer2_cluster_copy(hammer2_cluster_t *ocluster, int copy_flags)
 	ncluster = kmalloc(sizeof(*ncluster), M_HAMMER2, M_WAITOK | M_ZERO);
 	ncluster->pmp = pmp;
 	ncluster->nchains = ocluster->nchains;
-	ncluster->focus = ocluster->focus;
 	ncluster->refs = (copy_flags & HAMMER2_CLUSTER_COPY_NOREF) ? 0 : 1;
 	if ((copy_flags & HAMMER2_CLUSTER_COPY_NOCHAINS) == 0) {
+		ncluster->focus = ocluster->focus;
 		for (i = 0; i < ocluster->nchains; ++i) {
 			chain = ocluster->array[i];
 			ncluster->array[i] = chain;
@@ -487,24 +450,6 @@ hammer2_cluster_unlock(hammer2_cluster_t *cluster)
 }
 
 /*
- * Refactor the locked chains of a cluster.
- */
-void
-hammer2_cluster_refactor(hammer2_cluster_t *cluster)
-{
-	int i;
-
-	cluster->focus = NULL;
-	for (i = 0; i < cluster->nchains; ++i) {
-		if (cluster->array[i]) {
-			hammer2_chain_refactor(&cluster->array[i]);
-			if (cluster->focus == NULL)
-				cluster->focus = cluster->array[i];
-		}
-	}
-}
-
-/*
  * Resize the cluster's physical storage allocation in-place.  This may
  * replace the cluster's chains.
  */
@@ -524,7 +469,7 @@ hammer2_cluster_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 			KKASSERT(cparent->array[i]);
 			hammer2_chain_resize(trans, ip,
 					     cparent->array[i],
-					     &cluster->array[i],
+					     cluster->array[i],
 					     nradix, flags);
 			if (cluster->focus == NULL)
 				cluster->focus = cluster->array[i];
@@ -566,7 +511,7 @@ hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
 	cluster->focus = NULL;
 	for (i = 0; i < cluster->nchains; ++i) {
 		if (cluster->array[i]) {
-			hammer2_chain_modify(trans, &cluster->array[i], flags);
+			hammer2_chain_modify(trans, cluster->array[i], flags);
 			if (cluster->focus == NULL)
 				cluster->focus = cluster->array[i];
 		}
@@ -578,10 +523,10 @@ hammer2_cluster_modify(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
  *
  * Nominal front-end operations only edit non-block-table data in a single
  * chain.  This code copies such modifications to the other chains in the
- * cluster.
+ * cluster.  Blocktable modifications are handled on a chain-by-chain basis
+ * by both the frontend and the backend and will explode in fireworks if
+ * blindly copied.
  */
-/* hammer2_cluster_modsync() */
-
 void
 hammer2_cluster_modsync(hammer2_cluster_t *cluster)
 {
@@ -911,17 +856,16 @@ hammer2_cluster_create(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 }
 
 /*
- * Duplicate a cluster under a new parent.
+ * Rename a cluster to a new parent.
  *
- * WARNING! Unlike hammer2_chain_duplicate(), only the key and keybits fields
+ * WARNING! Unlike hammer2_chain_rename(), only the key and keybits fields
  *	    are used from a passed-in non-NULL bref pointer.  All other fields
  *	    are extracted from the original chain for each chain in the
  *	    iteration.
  */
 void
-hammer2_cluster_duplicate(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
-			  hammer2_cluster_t *cluster, hammer2_blockref_t *bref,
-			  int snapshot, int duplicate_reason)
+hammer2_cluster_rename(hammer2_trans_t *trans, hammer2_blockref_t *bref,
+		       hammer2_cluster_t *cparent, hammer2_cluster_t *cluster)
 {
 	hammer2_chain_t *chain;
 	hammer2_blockref_t xbref;
@@ -937,17 +881,13 @@ hammer2_cluster_duplicate(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 				xbref = chain->bref;
 				xbref.key = bref->key;
 				xbref.keybits = bref->keybits;
-				hammer2_chain_duplicate(trans,
-							&cparent->array[i],
-							&chain, &xbref,
-							snapshot,
-							duplicate_reason);
+				hammer2_chain_rename(trans, &xbref,
+						     &cparent->array[i],
+						     chain);
 			} else {
-				hammer2_chain_duplicate(trans,
-							&cparent->array[i],
-							&chain, NULL,
-							snapshot,
-							duplicate_reason);
+				hammer2_chain_rename(trans, NULL,
+						     &cparent->array[i],
+						     chain);
 			}
 			cluster->array[i] = chain;
 			if (cluster->focus == NULL)
@@ -962,41 +902,29 @@ hammer2_cluster_duplicate(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 }
 
 /*
- * Delete-duplicate a cluster in-place.
- */
-void
-hammer2_cluster_delete_duplicate(hammer2_trans_t *trans,
-				 hammer2_cluster_t *cluster, int flags)
-{
-	hammer2_chain_t *chain;
-	int i;
-
-	cluster->focus = NULL;
-	for (i = 0; i < cluster->nchains; ++i) {
-		chain = cluster->array[i];
-		if (chain) {
-			hammer2_chain_delete_duplicate(trans, &chain, flags);
-			cluster->array[i] = chain;
-			if (cluster->focus == NULL)
-				cluster->focus = chain;
-		}
-	}
-}
-
-/*
  * Mark a cluster deleted
  */
 void
-hammer2_cluster_delete(hammer2_trans_t *trans, hammer2_cluster_t *cluster,
-		       int flags)
+hammer2_cluster_delete(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
+		       hammer2_cluster_t *cluster, int flags)
 {
 	hammer2_chain_t *chain;
+	hammer2_chain_t *parent;
 	int i;
 
+	if (cparent == NULL) {
+		kprintf("cparent is NULL\n");
+		return;
+	}
+
 	for (i = 0; i < cluster->nchains; ++i) {
+		parent = (i < cparent->nchains) ? cparent->array[i] : NULL;
 		chain = cluster->array[i];
-		if (chain)
-			hammer2_chain_delete(trans, chain, flags);
+		if (chain && parent == NULL) {
+			kprintf("hammer2_cluster_delete: parent NULL\n");
+		} else if (chain) {
+			hammer2_chain_delete(trans, parent, chain, flags);
+		}
 	}
 }
 
@@ -1069,6 +997,41 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 		hammer2_inode_unlock_ex(nip, ncluster);
 	}
 	return (error);
+}
+
+/*
+ * Return locked parent cluster given a locked child.  The child remains
+ * locked on return.
+ */
+hammer2_cluster_t *
+hammer2_cluster_parent(hammer2_cluster_t *cluster)
+{
+	hammer2_cluster_t *cparent;
+	int i;
+
+	cparent = hammer2_cluster_copy(cluster, HAMMER2_CLUSTER_COPY_NOCHAINS);
+	for (i = 0; i < cluster->nchains; ++i) {
+		hammer2_chain_t *chain;
+		hammer2_chain_t *rchain;
+
+		chain = cluster->array[i];
+		if (chain == NULL)
+			continue;
+		hammer2_chain_ref(chain);
+		while ((rchain = chain->parent) != NULL) {
+			hammer2_chain_ref(rchain);
+			hammer2_chain_unlock(chain);
+			hammer2_chain_lock(rchain, HAMMER2_RESOLVE_ALWAYS);
+			hammer2_chain_lock(chain, HAMMER2_RESOLVE_ALWAYS);
+			hammer2_chain_drop(rchain);
+			if (chain->parent == rchain)
+				break;
+			hammer2_chain_unlock(rchain);
+		}
+		hammer2_chain_drop(chain);
+		cparent->array[i] = rchain;
+	}
+	return cparent;
 }
 
 /************************************************************************

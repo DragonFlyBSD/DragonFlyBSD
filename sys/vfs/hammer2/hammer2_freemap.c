@@ -349,7 +349,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 				     HAMMER2_FREEMAP_LEVELN_PSIZE);
 		KKASSERT(error == 0);
 		if (error == 0) {
-			hammer2_chain_modify(trans, &chain, 0);
+			hammer2_chain_modify(trans, chain, 0);
 			bzero(&chain->data->bmdata[0],
 			      HAMMER2_FREEMAP_LEVELN_PSIZE);
 			chain->bref.check.freemap.bigmask = (uint32_t)-1;
@@ -367,7 +367,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		/*
 		 * Modify existing chain to setup for adjustment.
 		 */
-		hammer2_chain_modify(trans, &chain, 0);
+		hammer2_chain_modify(trans, chain, 0);
 	}
 
 	/*
@@ -384,7 +384,7 @@ hammer2_freemap_try_alloc(hammer2_trans_t *trans, hammer2_chain_t **parentp,
 		start = (int)((iter->bnext - key) >>
 			      HAMMER2_FREEMAP_LEVEL0_RADIX);
 		KKASSERT(start >= 0 && start < HAMMER2_FREEMAP_COUNT);
-		hammer2_chain_modify(trans, &chain, 0);
+		hammer2_chain_modify(trans, chain, 0);
 
 		error = ENOSPC;
 		for (count = 0; count < HAMMER2_FREEMAP_COUNT; ++count) {
@@ -815,7 +815,7 @@ hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 		}
 
 		if (error == 0) {
-			hammer2_chain_modify(trans, &chain, 0);
+			hammer2_chain_modify(trans, chain, 0);
 			bzero(&chain->data->bmdata[0],
 			      HAMMER2_FREEMAP_LEVELN_PSIZE);
 			chain->bref.check.freemap.bigmask = (uint32_t)-1;
@@ -874,7 +874,7 @@ again:
 			 */
 			if ((*bitmap & bmmask11) != bmmask11) {
 				if (modified == 0) {
-					hammer2_chain_modify(trans, &chain, 0);
+					hammer2_chain_modify(trans, chain, 0);
 					modified = 1;
 					goto again;
 				}
@@ -902,7 +902,7 @@ again:
 			 * marked as being fully allocated.
 			 */
 			if (!modified) {
-				hammer2_chain_modify(trans, &chain, 0);
+				hammer2_chain_modify(trans, chain, 0);
 				modified = 1;
 				goto again;
 			}
@@ -917,7 +917,7 @@ again:
 			 */
 			if (how == HAMMER2_FREEMAP_DOREALFREE) {
 				if (!modified) {
-					hammer2_chain_modify(trans, &chain, 0);
+					hammer2_chain_modify(trans, chain, 0);
 					modified = 1;
 					goto again;
 				}
