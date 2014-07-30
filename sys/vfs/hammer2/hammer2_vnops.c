@@ -211,15 +211,17 @@ hammer2_vop_inactive(struct vop_inactive_args *ap)
 
 	/*
 	 * Check for deleted inodes and recycle immediately.
+	 *
+	 * WARNING: nvtruncbuf() can only be safely called without the inode
+	 *	    lock held due to the way our write thread works.
 	 */
 	if (ripdata->nlinks == 0) {
 		hammer2_key_t lbase;
 		int nblksize;
 
 		nblksize = hammer2_calc_logical(ip, 0, &lbase, NULL);
-		nvtruncbuf(vp, 0, nblksize, 0, 0);
-
 		hammer2_inode_unlock_ex(ip, cluster);
+		nvtruncbuf(vp, 0, nblksize, 0, 0);
 		vrecycle(vp);
 	} else {
 		hammer2_inode_unlock_ex(ip, cluster);
@@ -1140,7 +1142,10 @@ hammer2_write_file(hammer2_inode_t *ip,
 /*
  * Truncate the size of a file.  The inode must not be locked.
  *
- * NOTE: Caller handles setting HAMMER2_INODE_MODIFIED
+ * NOTE:    Caller handles setting HAMMER2_INODE_MODIFIED
+ *
+ * WARNING: nvtruncbuf() can only be safely called without the inode lock
+ *	    held due to the way our write thread works.
  */
 static
 void
@@ -1268,6 +1273,7 @@ hammer2_vop_nresolve(struct vop_nresolve_args *ap)
 			hammer2_cluster_unlock(cluster);
 			cluster = hammer2_inode_lock_ex(ip);
 			ipdata = &hammer2_cluster_data(cluster)->ipdata;
+			hammer2_inode_drop(ip);
 			kprintf("nresolve: fixup to type %02x\n", ipdata->type);
 		}
 	} else {
@@ -1533,6 +1539,7 @@ done:
 	hammer2_inode_unlock_ex(tdip, tdcluster);
 	hammer2_inode_unlock_ex(fdip, fdcluster);
 	hammer2_inode_unlock_ex(cdip, cdcluster);
+	hammer2_inode_drop(cdip);
 	hammer2_trans_done(&trans);
 
 	return error;
@@ -1751,6 +1758,7 @@ hammer2_vop_nremove(struct vop_nremove_args *ap)
 	hammer2_trans_init(&trans, dip->pmp, 0);
 	error = hammer2_unlink_file(&trans, dip, name, name_len,
 				    0, NULL, ap->a_nch, -1);
+	hammer2_run_unlinkq(&trans, dip->pmp);
 	hammer2_trans_done(&trans);
 	if (error == 0)
 		cache_unlink(ap->a_nch);
@@ -1813,6 +1821,7 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	const uint8_t *tname;
 	size_t tname_len;
 	int error;
+	int tnch_error;
 	int hlink;
 
 	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)
@@ -1877,13 +1886,13 @@ hammer2_vop_nrename(struct vop_nrename_args *ap)
 	hammer2_inode_ref(ip);
 
 	/*
-	 * Remove target if it exists
+	 * Remove target if it exists.
 	 */
 	error = hammer2_unlink_file(&trans, tdip, tname, tname_len,
 				    -1, NULL, ap->a_tnch, -1);
+	tnch_error = error;
 	if (error && error != ENOENT)
 		goto done;
-	cache_setunresolved(ap->a_tnch);
 
 	/*
 	 * When renaming a hardlinked file we may have to re-consolidate
@@ -1957,12 +1966,18 @@ done:
 	hammer2_inode_unlock_ex(fdip, fdcluster);
 	hammer2_inode_unlock_ex(cdip, cdcluster);
 	hammer2_inode_drop(ip);
+	hammer2_inode_drop(cdip);
+	hammer2_run_unlinkq(&trans, fdip->pmp);
 	hammer2_trans_done(&trans);
 
 	/*
 	 * Issue the namecache update after unlocking all the internal
 	 * hammer structures, otherwise we might deadlock.
 	 */
+	if (tnch_error == 0) {
+		cache_unlink(ap->a_tnch);
+		cache_setunresolved(ap->a_tnch);
+	}
 	if (error == 0)
 		cache_rename(ap->a_fnch, ap->a_tnch);
 
@@ -2240,6 +2255,9 @@ hammer2_vop_mountctl(struct vop_mountctl_args *ap)
 
 /*
  * This handles unlinked open files after the vnode is finally dereferenced.
+ * To avoid deadlocks it cannot be called from the normal vnode recycling
+ * path, so we call it (1) after a unlink, rmdir, or rename, (2) on every
+ * flush, and (3) on umount.
  */
 void
 hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp)
@@ -2262,13 +2280,17 @@ hammer2_run_unlinkq(hammer2_trans_t *trans, hammer2_pfsmount_t *pmp)
 
 		cluster = hammer2_inode_lock_ex(ip);
 		ripdata = &hammer2_cluster_data(cluster)->ipdata;
-		kprintf("hammer2: unlink on reclaim: %s\n",
-			cluster->focus->data->ipdata.filename);
+		if (hammer2_debug & 0x400) {
+			kprintf("hammer2: unlink on reclaim: %s refs=%d\n",
+				cluster->focus->data->ipdata.filename,
+				ip->refs);
+		}
 		KKASSERT(ripdata->nlinks == 0);
 
 		cparent = hammer2_cluster_parent(cluster);
 		hammer2_cluster_delete(trans, cparent, cluster,
 				       HAMMER2_DELETE_PERMANENT);
+		hammer2_cluster_unlock(cparent);
 		hammer2_inode_unlock_ex(ip, cluster);	/* inode lock */
 		hammer2_inode_drop(ip);			/* ipul ref */
 

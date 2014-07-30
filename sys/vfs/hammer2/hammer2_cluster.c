@@ -920,9 +920,13 @@ hammer2_cluster_delete(hammer2_trans_t *trans, hammer2_cluster_t *cparent,
 	for (i = 0; i < cluster->nchains; ++i) {
 		parent = (i < cparent->nchains) ? cparent->array[i] : NULL;
 		chain = cluster->array[i];
-		if (chain && parent == NULL) {
-			kprintf("hammer2_cluster_delete: parent NULL\n");
-		} else if (chain) {
+		if (chain == NULL)
+			continue;
+		if (chain->parent != parent) {
+			kprintf("hammer2_cluster_delete: parent "
+				"mismatch chain=%p parent=%p against=%p\n",
+				chain, chain->parent, parent);
+		} else {
 			hammer2_chain_delete(trans, parent, chain, flags);
 		}
 	}

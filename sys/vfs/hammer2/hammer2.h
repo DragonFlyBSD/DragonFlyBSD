@@ -320,7 +320,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
  */
 #define HAMMER2_MODIFY_OPTDATA		0x00000002	/* data can be NULL */
 #define HAMMER2_MODIFY_NO_MODIFY_TID	0x00000004
-#define HAMMER2_MODIFY_ASSERTNOCOPY	0x00000008	/* assert no del-dup */
+#define HAMMER2_MODIFY_UNUSED0008	0x00000008
 #define HAMMER2_MODIFY_NOREALLOC	0x00000010
 
 /*

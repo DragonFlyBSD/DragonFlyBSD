@@ -1316,14 +1316,20 @@ again:
 			hammer2_inode_move_to_hidden(trans, &cparent, &cluster,
 						     wipdata->inum);
 		} else {
-			hammer2_cluster_delete(trans, cparent, cluster, 0);
+			/*
+			 * This won't get everything if a vnode is still
+			 * present, but the cache_unlink() call the caller
+			 * makes will.
+			 */
+			hammer2_cluster_delete(trans, cparent, cluster,
+					       HAMMER2_DELETE_PERMANENT);
 		}
 	} else if (*hlinkp == 0) {
 		/*
 		 * If this wasn't a hardlinked file and wipdata->nlinks is
 		 * still non-zero, the adjustment should be 0 (i.e. a rename),
-		 * in which case we delete the object so the rename code can
-		 * reconnect it elsewhere.
+		 * in which case we temporarily delete the object so the
+		 * rename code can reconnect it elsewhere.
 		 */
 		KKASSERT(nlinks == 0);
 		hammer2_cluster_delete(trans, cparent, cluster, 0);
@@ -1729,8 +1735,10 @@ hammer2_hardlink_find(hammer2_inode_t *dip,
 }
 
 /*
- * Find the directory common to both fdip and tdip, hold and return
- * its inode.
+ * Find the directory common to both fdip and tdip.
+ *
+ * Returns a held but not locked inode.  Caller typically locks the inode,
+ * and when through unlocks AND drops it.
  */
 hammer2_inode_t *
 hammer2_inode_common_parent(hammer2_inode_t *fdip, hammer2_inode_t *tdip)

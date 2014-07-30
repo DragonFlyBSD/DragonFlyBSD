@@ -2352,8 +2352,7 @@ again:
 		case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
 		case HAMMER2_BREF_TYPE_INODE:
 			hammer2_chain_modify(trans, chain,
-					     HAMMER2_MODIFY_OPTDATA |
-					     HAMMER2_MODIFY_ASSERTNOCOPY);
+					     HAMMER2_MODIFY_OPTDATA);
 			break;
 		default:
 			/*

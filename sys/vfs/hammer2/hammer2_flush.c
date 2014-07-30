@@ -73,6 +73,7 @@ struct hammer2_flush_info {
 	int		cache_index;
 	struct h2_flush_list flushq;
 	hammer2_xid_t	sync_xid;	/* memory synchronization point */
+	hammer2_chain_t	*debug;
 };
 
 typedef struct hammer2_flush_info hammer2_flush_info_t;
@@ -515,8 +516,14 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	 * (1) Optimize downward recursion to locate nodes needing action.
 	 *     Nothing to do if none of these flags are set.
 	 */
-	if ((chain->flags & HAMMER2_CHAIN_FLUSH_MASK) == 0)
-		return;
+	if ((chain->flags & HAMMER2_CHAIN_FLUSH_MASK) == 0) {
+		if (hammer2_debug & 0x200) {
+			if (info->debug == NULL)
+				info->debug = chain;
+		} else {
+			return;
+		}
+	}
 
 	hmp = chain->hmp;
 	pmp = chain->pmp;
@@ -581,6 +588,22 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	 * Chain was already modified or has become modified, flush it out.
 	 */
 again:
+	if ((hammer2_debug & 0x200) &&
+	    info->debug &&
+	    (chain->flags & (HAMMER2_CHAIN_MODIFIED | HAMMER2_CHAIN_UPDATE))) {
+		hammer2_chain_t *scan = chain;
+
+		kprintf("DISCONNECTED FLUSH %p->%p\n", info->debug, chain);
+		while (scan) {
+			kprintf("    chain %p [%08x] bref=%016jx:%02x\n",
+				scan, scan->flags,
+				scan->bref.key, scan->bref.type);
+			if (scan == info->debug)
+				break;
+			scan = scan->parent;
+		}
+	}
+
 	if (chain->flags & HAMMER2_CHAIN_MODIFIED) {
 		/*
 		 * Dispose of the modified bit.  UPDATE should already be
@@ -873,6 +896,10 @@ again:
 done:
 	KKASSERT(chain->refs > 1);
 	KKASSERT(chain->bref.mirror_tid <= chain->pmp->flush_tid);
+	if (hammer2_debug & 0x200) {
+		if (info->debug == chain)
+			info->debug = NULL;
+	}
 }
 
 /*
@@ -928,6 +955,14 @@ hammer2_flush_recurse(hammer2_chain_t *child, void *data)
 			++info->depth;
 			hammer2_flush_core(info, child, 0); /* XXX deleting */
 			--info->depth;
+		} else if (hammer2_debug & 0x200) {
+			if (info->debug == NULL)
+				info->debug = child;
+			++info->depth;
+			hammer2_flush_core(info, child, 0); /* XXX deleting */
+			--info->depth;
+			if (info->debug == child)
+				info->debug = NULL;
 		}
 	}
 

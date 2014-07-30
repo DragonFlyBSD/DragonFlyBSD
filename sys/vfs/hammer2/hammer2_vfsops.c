@@ -1668,24 +1668,21 @@ hammer2_vfs_unmount_hmp1(struct mount *mp, hammer2_mount_t *hmp)
 	kdmsg_iocom_uninit(&hmp->iocom);	/* XXX chain depend deadlck? */
 
 	/*
-	 * Flush any left over chains.  The voldata lock is only used
-	 * to synchronize against HAMMER2_CHAIN_MODIFIED_AUX.
+	 * Cycle the volume data lock as a safety (probably not needed any
+	 * more).  To ensure everything is out we need to flush at least
+	 * three times.  (1) The running of the unlinkq can dirty the
+	 * filesystem, (2) A normal flush can dirty the freemap, and
+	 * (3) ensure that the freemap is fully synchronized.
 	 *
-	 * Flush twice to ensure that the freemap is completely
-	 * synchronized.  If we only do it once the next mount's
-	 * recovery scan will have to do some fixups (which isn't
-	 * bad, but we don't want it to have to do it except when
-	 * recovering from a crash).
+	 * The next mount's recovery scan can clean everything up but we want
+	 * to leave the filesystem in a 100% clean state on a normal unmount.
 	 */
 	hammer2_voldata_lock(hmp);
-	if ((hmp->vchain.flags | hmp->fchain.flags) &
-	    HAMMER2_CHAIN_FLUSH_MASK) {
-		hammer2_voldata_unlock(hmp);
-		hammer2_vfs_sync(mp, MNT_WAIT);
-		hammer2_vfs_sync(mp, MNT_WAIT);
-	} else {
-		hammer2_voldata_unlock(hmp);
-	}
+	hammer2_voldata_unlock(hmp);
+	hammer2_vfs_sync(mp, MNT_WAIT);
+	hammer2_vfs_sync(mp, MNT_WAIT);
+	hammer2_vfs_sync(mp, MNT_WAIT);
+
 	if (hmp->pmp_count == 0) {
 		if ((hmp->vchain.flags | hmp->fchain.flags) &
 		    HAMMER2_CHAIN_FLUSH_MASK) {
