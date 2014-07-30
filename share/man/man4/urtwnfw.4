@@ -1,3 +1,4 @@
+.\"
 .\" Copyright (c) 2013 Kevin Lo
 .\" All rights reserved.
 .\"
@@ -20,9 +21,9 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: head/share/man/man4/urtwnfw.4 257408 2013-10-31 01:57:05Z kevlo $
+.\" $FreeBSD: head/share/man/man4/urtwnfw.4 264912 2014-04-25 08:01:22Z kevlo $
 .\"
-.Dd March 6, 2014
+.Dd July 30, 2014
 .Dt URTWNFW 4
 .Os
 .Sh NAME
@@ -42,6 +43,7 @@ kernel configuration file:
 .\".Bd -ragged -offset indent
 .\".Cd "device urtwn-rtl8192cfwT"
 .\".Cd "device urtwn-rtl8192cfwU"
+.\".Cd "device urtwn-rtl8188eufw"
 .\".Ed
 .Pp
 Alternatively, to load the driver as a
@@ -50,10 +52,11 @@ module at boot time, place the following line in
 .Bd -literal -offset indent
 urtwn-rtl8192cfwT_load="YES"
 urtwn-rtl8192cfwU_load="YES"
+urtwn-rtl8188eufw_load="YES"
 .Ed
 .Sh DESCRIPTION
 This module provides access to firmware sets for the
-Realtek RTL8188CUS, RTL8188CE-VAU, RTL8188RU and RTL8192CU
+Realtek RTL8188CUS, RTL8188CE-VAU, RTL8188EUS, RTL8188RU and RTL8192CU
 chip based USB WiFi adapters.
 It may be
 statically linked into the kernel, or loaded as a module.

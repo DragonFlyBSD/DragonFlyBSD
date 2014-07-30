@@ -13,14 +13,14 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.\" $FreeBSD: head/share/man/man4/urtwn.4 257408 2013-10-31 01:57:05Z kevlo $
+.\" $FreeBSD: head/share/man/man4/urtwn.4 267938 2014-06-26 21:46:14Z bapt $
 .\"
-.Dd March 16, 2014
+.Dd July 30, 2014
 .Dt URTWN 4
 .Os
 .Sh NAME
 .Nm urtwn
-.Nd Realtek RTL8188CU/RTL8192CU USB IEEE 802.11b/g/n wireless network device
+.Nd Realtek RTL8188CU/RTL8188EU/RTL8192CU USB IEEE 802.11b/g/n wireless network device
 .Sh SYNOPSIS
 To compile this driver into the kernel,
 place the following lines in your
@@ -51,11 +51,11 @@ legal.realtek.license_ack=1
 The
 .Nm
 driver supports USB 2.0 wireless network devices based on Realtek
-RTL8188CUS, RTL8188CE-VAU, RTL8188RU and RTL8192CU chipsets.
+RTL8188CUS, RTL8188CE-VAU, RTL8188EUS, RTL8188RU and RTL8192CU chipsets.
 .Pp
-The RTL8188CUS is a highly integrated 802.11n adapter that combines
-a MAC, a 1T1R capable baseband and an RF in a single chip.
-It operates in the 2GHz spectrum only.
+The RTL8188CUS and RTL8188EUS are highly integrated 802.11n adapter that
+combine a MAC, a 1T1R capable baseband and an RF in a single chip.
+They operate in the 2GHz spectrum only.
 The RTL8188RU is a high-power variant of the RTL8188CUS.
 The RTL8188CE-VAU is a PCI Express Mini Card adapter that attaches
 to the USB interface.
@@ -81,15 +81,22 @@ must be agreed to by adding the following line to
 firmware license
 .El
 .Sh HARDWARE
-The following adapters should work:
+The
+.Nm
+driver supports Realtek RTL8188CU/RTL8188EU/RTL8192CU based USB
+IEEE 802.11b/g/n wireless network adapters, including:
 .Pp
 .Bl -tag -width Ds -offset indent -compact
+.It Adafruit USB WiFi (802.11b/g/n) Module
+.It ASUS USB-N10 NANO
 .It Belkin F7D1102 Surf Wireless Micro
 .It D-Link DWA-131
 .It Edimax EW-7811Un
 .It Netgear WNA1000M
 .It Realtek RTL8192CU
 .It Realtek RTL8188CUS
+.It TP-LINK TL-WN723N v3
+.It TP-LINK TL-WN725N v2
 .El
 .Sh EXAMPLES
 Join an existing BSS network (i.e., connect to an access point):
