@@ -243,6 +243,8 @@ hammer2_inode_lookup(hammer2_pfsmount_t *pmp, hammer2_tid_t inum)
 /*
  * Adding a ref to an inode is only legal if the inode already has at least
  * one ref.
+ *
+ * (can be called with spinlock held)
  */
 void
 hammer2_inode_ref(hammer2_inode_t *ip)
@@ -1626,7 +1628,6 @@ done:
 	if (cparent)
 		hammer2_cluster_unlock(cparent);
 	*clusterp = cluster;
-	hammer2_inode_drop(cdip);
 
 	return (error);
 }

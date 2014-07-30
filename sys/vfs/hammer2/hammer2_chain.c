@@ -239,6 +239,8 @@ hammer2_chain_core_alloc(hammer2_trans_t *trans, hammer2_chain_t *chain)
 
 /*
  * Add a reference to a chain element, preventing its destruction.
+ *
+ * (can be called with spinlock held)
  */
 void
 hammer2_chain_ref(hammer2_chain_t *chain)
@@ -1290,8 +1292,7 @@ hammer2_voldata_modify(hammer2_mount_t *hmp)
 
 /*
  * This function returns the chain at the nearest key within the specified
- * range.  The core spinlock must be held on call and the returned chain
- * will be referenced but not locked.
+ * range.  The returned chain will be referenced but not locked.
  *
  * This function will recurse through chain->rbtree as necessary and will
  * return a *key_nextp suitable for iteration.  *key_nextp is only set if
@@ -1305,6 +1306,9 @@ hammer2_voldata_modify(hammer2_mount_t *hmp)
  * (*key_nextp) can be passed as key_beg in an iteration only while non-NULL
  * chains continue to be returned.  On EOF (*key_nextp) may overflow since
  * it will wind up being (key_end + 1).
+ *
+ * WARNING!  Must be called with child's spinlock held.  Spinlock remains
+ *	     held through the operation.
  */
 struct hammer2_chain_find_info {
 	hammer2_chain_t		*best;
@@ -3293,7 +3297,8 @@ hammer2_chain_delete(hammer2_trans_t *trans, hammer2_chain_t *parent,
  * (*cache_indexp) is a heuristic and can be any value without effecting
  * the result.
  *
- * The spin lock on the related chain must be held.
+ * WARNING!  Must be called with parent's spinlock held.  Spinlock remains
+ *	     held through the operation.
  */
 static int
 hammer2_base_find(hammer2_chain_t *parent,
@@ -3386,12 +3391,13 @@ hammer2_base_find(hammer2_chain_t *parent,
  * When no in-memory chain has been found and a non-NULL bref is returned
  * in *bresp.
  *
- * Must be called with parent's spinlock held.  Spinlock remains held
- * through the operation.
  *
  * The returned chain is not locked or referenced.  Use the returned bref
  * to determine if the search exhausted or not.  Iterate if the base find
  * is chosen but matches a deleted chain.
+ *
+ * WARNING!  Must be called with parent's spinlock held.  Spinlock remains
+ *	     held through the operation.
  */
 static hammer2_chain_t *
 hammer2_combined_find(hammer2_chain_t *parent,
