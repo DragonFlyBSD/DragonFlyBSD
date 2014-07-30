@@ -425,7 +425,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp = (void *)mp->mnt_data;
 		KKASSERT(hmp != NULL);
 	} else {
-		if (info.nvolumes <= 0 || info.nvolumes >= 32768)
+		if (info.nvolumes <= 0 || info.nvolumes > HAMMER_MAX_VOLUMES)
 			return (EINVAL);
 		hmp = NULL;
 	}
