@@ -920,7 +920,6 @@ product ADMTEK PEGASUSII_3	0x8515	AN8515 Ethernet
 /* ADDON products */
 /* PNY OEMs these */
 product ADDON ATTACHE		0x1300	USB 2.0 Flash Drive
-product ADDON ATTACHE		0x1300	USB 2.0 Flash Drive
 product ADDON A256MB		0x1400	Attache 256MB USB 2.0 Flash Drive
 product ADDON DISKPRO512	0x1420	USB 2.0 Flash Drive (DANE-ELEC zMate 512MB USB flash drive)
 
@@ -1026,18 +1025,12 @@ product AMOI H01		0x0800	H01 3G modem
 product AMOI H01A		0x7002	H01A 3G modem
 product AMOI H02		0x0802	H02 3G modem
 
-/* American Power Conversion products */
-product APC UPS			0x0002	Uninterruptible Power Supply
-
 /* Ambit Microsystems products */
 product AMBIT WLAN		0x0302	WLAN
 product AMBIT NTL_250		0x6098	NTL 250 cable modem
 
 /* Apacer products */
 product APACER HT202		0xb113	USB 2.0 Flash Drive
-
-/* American Power Conversion products */
-product APC UPS			0x0002	Uninterruptible Power Supply
 
 /* Amigo Technology products */
 product AMIGO RT2870_1		0x9031	RT2870
@@ -1144,7 +1137,6 @@ product ASUS RT2870_4		0x1760	RT2870
 product ASUS RT2870_5		0x1761	RT2870
 product	ASUS USBN13		0x1784	USB-N13
 product	ASUS RT3070_1		0x1790	RT3070
-product ASUS RTL8192CU		0x17ab	RTL8192CU
 product ASUS USBN10		0x1786	USB-N10
 product ASUS RTL8192CU		0x17ab	RTL8192CU
 product ASUS USBN66		0x17ad	USB-N66
@@ -1762,10 +1754,6 @@ product FEIYA DUMMY		0x0000	Dummy product
 product FEIYA 5IN1		0x1132	5-in-1 Card Reader
 product FEIYA ELANGO		0x6200	MicroSDHC Card Reader
 product FEIYA AC110		0x6300	AC-110 Card Reader
-
-/* FeiXun Communication products */
-product FEIXUN RTL8188CU	0x0090	RTL8188CU
-product FEIXUN RTL8192CU	0x0091	RTL8192CU
 
 /* Festo */
 product FESTO CPX_USB		0x0102	CPX-USB
@@ -3647,8 +3635,6 @@ product REALTEK RTL8188CU_2     0x817b  RTL8188CU
 product REALTEK RTL8192CE	0x817c	RTL8192CE
 product REALTEK RTL8188RU_1	0x817d	RTL8188RU
 product REALTEK RTL8188CE_1     0x817e  RTL8188CE
-product REALTEK USBKR100	0x8150	USBKR100 USB Ethernet
-product REALTEK RTL8188CE_0     0x8170  RTL8188CE
 product REALTEK RTL8171		0x8171	RTL8171
 product REALTEK RTL8172		0x8172	RTL8172
 product REALTEK RTL8173		0x8173	RTL8173
@@ -3664,15 +3650,8 @@ product REALTEK RTL8188CUS	0x818a	RTL8188CUS
 product REALTEK RTL8187B_1	0x8197	RTL8187B Wireless Adapter
 product REALTEK RTL8187B_2	0x8198	RTL8187B Wireless Adapter
 product REALTEK RTL8188CU_COMBO	0x8754	RTL8188CU
-product REALTEK RTL8188CUS	0x818a	RTL8188CUS
-product REALTEK RTL8188CU_COMBO	0x8754	RTL8188CU
-product REALTEK RTL8191CU	0x8177	RTL8191CU
-product REALTEK RTL8192CU	0x8178	RTL8192CU
-product REALTEK RTL8192CE	0x817c	RTL8192CE
-product REALTEK RTL8188RU_1	0x817d	RTL8188RU
 product REALTEK RTL8712		0x8712	RTL8712
 product REALTEK RTL8713		0x8712	RTL8713
-product REALTEK RTL8188RU_2	0x317f	RTL8188RU
 product REALTEK RTL8192SU	0xc512	RTL8192SU
 
 /* RedOctane products */
@@ -3878,9 +3857,7 @@ product SIEMENS3 EF81 		0x0005	EF81
 product SIERRA EM5625		0x0017	EM5625
 product SIERRA MC5720_2		0x0018	MC5720
 product SIERRA MC5725		0x0020	MC5725
-product SIERRA AIRCARD580	0x0112	Sierra Wireless AirCard 580
 product SIERRA AIRCARD595	0x0019	Sierra Wireless AirCard 595
-product SIERRA AC595U		0x0120	Sierra Wireless AirCard 595U
 product SIERRA AC597E		0x0021	Sierra Wireless AirCard 597E
 product SIERRA EM5725		0x0022	EM5725
 product SIERRA C597		0x0023	Sierra Wireless Compass 597
