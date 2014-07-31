@@ -970,17 +970,21 @@ hammer2_chain_countbrefs(hammer2_chain_t *chain,
 }
 
 /*
- * Resize the chain's physical storage allocation in-place.  This will
- * modify the passed-in chain.  Chains can be resized smaller without
- * reallocating the storage.  Resizing larger will reallocate the storage.
- * Excess or prior storage is reclaimed asynchronously at a later time.
+ * Resize the chain's physical storage allocation in-place.  This function does
+ * not adjust the data pointer and must be followed by (typically) a
+ * hammer2_chain_modify() call to copy any old data over and adjust the
+ * data pointer.
+ *
+ * Chains can be resized smaller without reallocating the storage.  Resizing
+ * larger will reallocate the storage.  Excess or prior storage is reclaimed
+ * asynchronously at a later time.
  *
  * Must be passed an exclusively locked parent and chain.
  *
  * This function is mostly used with DATA blocks locked RESOLVE_NEVER in order
  * to avoid instantiating a device buffer that conflicts with the vnode data
- * buffer.  That is, the passed-in bp is a logical buffer, whereas any
- * chain-oriented bp would be a device buffer.
+ * buffer.  However, because H2 can compress or encrypt data, the chain may
+ * have a dio assigned to it in those situations, and they do not conflict.
  *
  * XXX return error if cannot resize.
  */
@@ -1012,12 +1016,10 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 		return;
 
 	/*
-	 * The parent does not have to be locked for the delete/duplicate call,
-	 * but is in this particular code path.
-	 *
-	 * NOTE: If we are not crossing a synchronization point the
-	 *	 duplication code will simply reuse the existing chain
-	 *	 structure.
+	 * Make sure the old data is instantiated so we can copy it.  If this
+	 * is a data block, the device data may be superfluous since the data
+	 * might be in a logical block, but compressed or encrypted data is
+	 * another matter.
 	 *
 	 * NOTE: The modify will set BMAPUPD for us if BMAPPED is set.
 	 */
@@ -1035,10 +1037,16 @@ hammer2_chain_resize(hammer2_trans_t *trans, hammer2_inode_t *ip,
 	/*ip->delta_dcount += (ssize_t)(nbytes - obytes);*/ /* XXX atomic */
 
 	/*
-	 * For now just support it on DATA chains (and not on indirect
-	 * blocks).
+	 * We don't want the followup chain_modify() to try to copy data
+	 * from the old (wrong-sized) buffer.  It won't know how much to
+	 * copy.  This case should only occur during writes when the
+	 * originator already has the data to write in-hand.
 	 */
-	KKASSERT(chain->dio == NULL);
+	if (chain->dio) {
+		KKASSERT(chain->bref.type == HAMMER2_BREF_TYPE_DATA);
+		hammer2_io_brelse(&chain->dio);
+		chain->data = NULL;
+	}
 }
 
 #if 0

@@ -679,6 +679,11 @@ MPTOPMP(struct mount *mp)
 	return ((hammer2_pfsmount_t *)mp->mnt_data);
 }
 
+#define LOCKSTART	int __nlocks = curthread->td_locks
+#define LOCKENTER	(++curthread->td_locks)
+#define LOCKEXIT	(--curthread->td_locks)
+#define LOCKSTOP	KKASSERT(curthread->td_locks == __nlocks)
+
 extern struct vop_ops hammer2_vnode_vops;
 extern struct vop_ops hammer2_spec_vops;
 extern struct vop_ops hammer2_fifo_vops;
@@ -960,7 +965,7 @@ void hammer2_freemap_adjust(hammer2_trans_t *trans, hammer2_mount_t *hmp,
 /*
  * hammer2_cluster.c
  */
-u_int hammer2_cluster_bytes(hammer2_cluster_t *cluster);
+int hammer2_cluster_need_resize(hammer2_cluster_t *cluster, int bytes);
 uint8_t hammer2_cluster_type(hammer2_cluster_t *cluster);
 const hammer2_media_data_t *hammer2_cluster_data(hammer2_cluster_t *cluster);
 hammer2_media_data_t *hammer2_cluster_wdata(hammer2_cluster_t *cluster);

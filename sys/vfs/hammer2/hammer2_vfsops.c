@@ -1055,14 +1055,22 @@ retry:
 			 */
 			break;
 		case HAMMER2_BREF_TYPE_DATA:
-			if (hammer2_cluster_bytes(cluster) != pblksize) {
+			if (hammer2_cluster_need_resize(cluster, pblksize)) {
 				hammer2_cluster_resize(trans, ip,
 						     dparent, cluster,
 						     pradix,
 						     HAMMER2_MODIFY_OPTDATA);
 			}
+
+			/*
+			 * DATA buffers must be marked modified whether the
+			 * data is in a logical buffer or not.  We also have
+			 * to make this call to fixup the chain data pointers
+			 * after resizing in case this is an encrypted or
+			 * compressed buffer.
+			 */
 			hammer2_cluster_modify(trans, cluster,
-					     HAMMER2_MODIFY_OPTDATA);
+					       HAMMER2_MODIFY_OPTDATA);
 			break;
 		default:
 			panic("hammer2_assign_physical: bad type");

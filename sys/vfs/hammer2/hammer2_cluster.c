@@ -54,10 +54,21 @@
 
 #include "hammer2.h"
 
-u_int
-hammer2_cluster_bytes(hammer2_cluster_t *cluster)
+/*
+ * Returns TRUE if any chain in the cluster needs to be resized.
+ */
+int
+hammer2_cluster_need_resize(hammer2_cluster_t *cluster, int bytes)
 {
-	return(cluster->focus->bytes);
+	hammer2_chain_t *chain;
+	int i;
+
+	for (i = 0; i < cluster->nchains; ++i) {
+		chain = cluster->array[i];
+		if (chain && chain->bytes != bytes)
+			return 1;
+	}
+	return 0;
 }
 
 uint8_t

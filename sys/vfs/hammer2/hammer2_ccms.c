@@ -47,6 +47,7 @@
 #include <sys/spinlock2.h>
 
 #include "hammer2_ccms.h"
+#include "hammer2.h"
 
 int ccms_debug = 0;
 
@@ -190,6 +191,7 @@ ccms_thread_lock(ccms_cst_t *cst, ccms_state_t state)
 	 * already holds an exclusive lock we bump the exclusive count and
 	 * return.  This requires no spinlock.
 	 */
+	LOCKENTER;
 	if (cst->count < 0 && cst->td == curthread) {
 		--cst->count;
 		return;
@@ -230,6 +232,7 @@ ccms_thread_lock_nonblock(ccms_cst_t *cst, ccms_state_t state)
 {
 	if (cst->count < 0 && cst->td == curthread) {
 		--cst->count;
+		LOCKENTER;
 		return(0);
 	}
 
@@ -253,6 +256,7 @@ ccms_thread_lock_nonblock(ccms_cst_t *cst, ccms_state_t state)
 		panic("ccms_thread_lock_nonblock: bad state %d\n", state);
 	}
 	spin_unlock(&cst->spin);
+	LOCKENTER;
 	return(0);
 }
 
@@ -340,6 +344,7 @@ ccms_thread_lock_downgrade(ccms_cst_t *cst, ccms_state_t ostate)
 void
 ccms_thread_unlock(ccms_cst_t *cst)
 {
+	LOCKEXIT;
 	if (cst->count < 0) {
 		/*
 		 * Exclusive
@@ -391,6 +396,7 @@ void
 ccms_thread_unlock_upgraded(ccms_cst_t *cst, ccms_state_t ostate)
 {
 	if (ostate == CCMS_STATE_SHARED) {
+		LOCKEXIT;
 		KKASSERT(cst->td == curthread);
 		KKASSERT(cst->count == -1);
 		spin_lock(&cst->spin);
