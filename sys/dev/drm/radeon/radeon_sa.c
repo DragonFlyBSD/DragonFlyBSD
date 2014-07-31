@@ -356,14 +356,14 @@ int radeon_sa_bo_new(struct radeon_device *rdev,
 			/* see if we can skip over some allocations */
 		} while (radeon_sa_bo_next_hole(sa_manager, fences, tries));
 
-		lockmgr(&sa_manager->wq_lock, LK_EXCLUSIVE);
+		lockmgr(&sa_manager->wq_lock, LK_RELEASE);
 		r = radeon_fence_wait_any(rdev, fences, false);
 		lockmgr(&sa_manager->wq_lock, LK_EXCLUSIVE);
 		/* if we have nothing to wait for block */
 		if (r == -ENOENT && block) {
 			while (!radeon_sa_event(sa_manager, size, align)) {
 				r = -cv_wait_sig(&sa_manager->wq,
-				    &sa_manager->wq_lock);
+						 &sa_manager->wq_lock);
 				if (r != 0)
 					break;
 			}
