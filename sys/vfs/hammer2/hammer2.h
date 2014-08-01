@@ -293,7 +293,7 @@ RB_PROTOTYPE(hammer2_chain_tree, hammer2_chain, rbnode, hammer2_chain_cmp);
 #define HAMMER2_CHAIN_BMAPPED		0x00040000	/* present in blkmap */
 #define HAMMER2_CHAIN_BMAPUPD		0x00080000	/* +needs updating */
 #define HAMMER2_CHAIN_UNUSED00100000	0x00100000
-#define HAMMER2_CHAIN_PFSROOT		0x00200000	/* in pfs->cluster */
+#define HAMMER2_CHAIN_UNUSED00200000	0x00200000
 #define HAMMER2_CHAIN_PFSBOUNDARY	0x00400000	/* super->pfs inode */
 
 #define HAMMER2_CHAIN_FLUSH_MASK	(HAMMER2_CHAIN_MODIFIED |	\

@@ -595,7 +595,8 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 
 	hammer2_vfs_sync(ip->pmp->mp, MNT_WAIT);
 
-	hammer2_trans_init(&trans, ip->pmp, HAMMER2_TRANS_NEWINODE);
+	hammer2_trans_init(&trans, ip->pmp,
+			   HAMMER2_TRANS_ISFLUSH | HAMMER2_TRANS_NEWINODE);
 	cparent = hammer2_inode_lock_ex(ip);
 	error = hammer2_cluster_snapshot(&trans, cparent, pfs);
 	hammer2_inode_unlock_ex(ip, cparent);

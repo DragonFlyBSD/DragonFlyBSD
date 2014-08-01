@@ -631,7 +631,6 @@ hammer2_vfs_mount(struct mount *mp, char *path, caddr_t data,
 		spmp->pfs_clid = schain->data->ipdata.pfs_clid;
 
 		/*
-		 * NOTE: The CHAIN_PFSROOT is not set on the super-root inode.
 		 * NOTE: inode_get sucks up schain's lock.
 		 */
 		cluster = hammer2_cluster_from_chain(schain);
@@ -1687,9 +1686,11 @@ hammer2_vfs_unmount_hmp1(struct mount *mp, hammer2_mount_t *hmp)
 	 */
 	hammer2_voldata_lock(hmp);
 	hammer2_voldata_unlock(hmp);
-	hammer2_vfs_sync(mp, MNT_WAIT);
-	hammer2_vfs_sync(mp, MNT_WAIT);
-	hammer2_vfs_sync(mp, MNT_WAIT);
+	if (mp->mnt_data) {
+		hammer2_vfs_sync(mp, MNT_WAIT);
+		hammer2_vfs_sync(mp, MNT_WAIT);
+		hammer2_vfs_sync(mp, MNT_WAIT);
+	}
 
 	if (hmp->pmp_count == 0) {
 		if ((hmp->vchain.flags | hmp->fchain.flags) &

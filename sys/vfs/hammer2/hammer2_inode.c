@@ -1331,6 +1331,7 @@ again:
 		 * Target nlinks has reached 0, file now unlinked (but may
 		 * still be open).
 		 */
+		/* XXX need interlock if mounted
 		if ((cluster->focus->flags & HAMMER2_CHAIN_PFSROOT) &&
 		    cluster->pmp) {
 			error = EINVAL;
@@ -1339,6 +1340,7 @@ again:
 				wipdata->filename);
 			goto done;
 		}
+		*/
 		if (nch && cache_isopen(nch)) {
 			hammer2_inode_move_to_hidden(trans, &cparent, &cluster,
 						     wipdata->inum);

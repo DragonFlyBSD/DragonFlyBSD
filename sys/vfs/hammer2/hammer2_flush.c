@@ -526,14 +526,14 @@ hammer2_flush_core(hammer2_flush_info_t *info, hammer2_chain_t *chain,
 	}
 
 	hmp = chain->hmp;
-	pmp = chain->pmp;
+	pmp = chain->pmp;		/* can be NULL */
 	diddeferral = info->diddeferral;
 	parent = info->parent;		/* can be NULL */
 
 	/*
 	 * mirror_tid should not be forward-indexed
 	 */
-	KKASSERT(chain->bref.mirror_tid <= pmp->flush_tid);
+	KKASSERT(pmp == NULL || chain->bref.mirror_tid <= pmp->flush_tid);
 
 	/*
 	 * Downward search recursion
@@ -612,8 +612,10 @@ again:
 		KKASSERT((chain->flags & HAMMER2_CHAIN_UPDATE) ||
 			 chain == &hmp->vchain);
 		atomic_clear_int(&chain->flags, HAMMER2_CHAIN_MODIFIED);
-		hammer2_pfs_memory_wakeup(pmp);
-		chain->bref.mirror_tid = pmp->flush_tid;
+		if (pmp) {
+			hammer2_pfs_memory_wakeup(pmp);
+			chain->bref.mirror_tid = pmp->flush_tid;
+		}
 
 		if ((chain->flags & HAMMER2_CHAIN_UPDATE) ||
 		    chain == &hmp->vchain ||
@@ -735,16 +737,15 @@ again:
 			    HAMMER2_OPFLAG_PFSROOT) {
 				/*
 				 * non-NULL pmp if mounted as a PFS.  We must
-				 * sync fields cached in the pmp.
+				 * sync fields cached in the pmp? XXX
 				 */
 				hammer2_inode_data_t *ipdata;
 
 				ipdata = &chain->data->ipdata;
-				ipdata->pfs_inum = pmp->inode_tid;
+				if (pmp)
+					ipdata->pfs_inum = pmp->inode_tid;
 			} else {
 				/* can't be mounted as a PFS */
-				KKASSERT((chain->flags &
-					  HAMMER2_CHAIN_PFSROOT) == 0);
 			}
 
 			/*
@@ -924,7 +925,8 @@ again:
 	 */
 done:
 	KKASSERT(chain->refs > 1);
-	KKASSERT(chain->bref.mirror_tid <= chain->pmp->flush_tid);
+	KKASSERT(pmp == NULL ||
+		 chain->bref.mirror_tid <= chain->pmp->flush_tid);
 	if (hammer2_debug & 0x200) {
 		if (info->debug == chain)
 			info->debug = NULL;

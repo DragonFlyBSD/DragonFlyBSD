@@ -967,6 +967,7 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 	struct vattr vat;
 	uuid_t opfs_clid;
 	int error;
+	int i;
 
 	kprintf("snapshot %s\n", pfs->name);
 
@@ -1001,17 +1002,35 @@ hammer2_cluster_snapshot(hammer2_trans_t *trans, hammer2_cluster_t *ocluster,
 		wipdata = hammer2_cluster_modify_ip(trans, nip, ncluster, 0);
 		wipdata->pfs_type = HAMMER2_PFSTYPE_SNAPSHOT;
 		kern_uuidgen(&wipdata->pfs_fsid, 1);
-		if (ocluster->focus->flags & HAMMER2_CHAIN_PFSROOT)
+		if (ocluster->focus->flags & HAMMER2_CHAIN_PFSBOUNDARY)
 			wipdata->pfs_clid = opfs_clid;
 		else
 			kern_uuidgen(&wipdata->pfs_clid, 1);
-		hammer2_cluster_set_chainflags(ncluster, HAMMER2_CHAIN_PFSROOT);
+
+		for (i = 0; i < ncluster->nchains; ++i) {
+			if (ncluster->array[i]) {
+				ncluster->array[i]->bref.flags |=
+				    HAMMER2_BREF_FLAG_PFSROOT;
+			}
+		}
+#if 0
+		/* XXX can't set this unless we do an explicit flush, which
+		   we also need a pmp assigned to do, else the flush code
+		   won't flush ncluster because it thinks it is crossing a
+		   flush boundary */
+		hammer2_cluster_set_chainflags(ncluster,
+					       HAMMER2_CHAIN_PFSBOUNDARY);
+#endif
 
 		/* XXX hack blockset copy */
 		/* XXX doesn't work with real cluster */
 		KKASSERT(ocluster->nchains == 1);
 		wipdata->u.blockset = ocluster->focus->data->ipdata.u.blockset;
 		hammer2_cluster_modsync(ncluster);
+		for (i = 0; i < ncluster->nchains; ++i) {
+			if (ncluster->array[i])
+				hammer2_flush(trans, ncluster->array[i]);
+		}
 		hammer2_inode_unlock_ex(nip, ncluster);
 	}
 	return (error);
